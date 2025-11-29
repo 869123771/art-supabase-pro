@@ -34,8 +34,5 @@ export { useLayoutHeight, useAutoLayoutHeight } from './core/useLayoutHeight'
 // 图片预览
 export { useImageViewer } from './core/useImageViewer'
 
-//aipexbase 相关
-export { useAipexbase } from './core/useAipexbase'
-
 //supabase 相关
 export { useSupabase } from './core/useSupabase'
