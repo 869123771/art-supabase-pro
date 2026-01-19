@@ -24,6 +24,35 @@ Art Supabase Pro 是一个基于 **Vue 3**, **TypeScript**, **Element Plus** 和
   - 📝 升级日志管理。
   - 🔧 强大的设置面板，可实时调整布局、颜色、导航等。
 
+
+## 功能截图
+
+### 1. 登录页面
+![登录](screenshort/登录.png)
+
+### 2. 用户管理
+![用户管理列表](screenshort/用户管理列表.png)
+
+### 3. 用户管理新增
+![用户管理列表](screenshort/用户管理新增.png)
+
+### 4. 角色管理
+![角色管理列表](screenshort/角色管理列表.png)
+
+### 5. 菜单管理
+![菜单管理列表](screenshort/菜单管理列表.png)
+
+### 6. 菜单管理新增
+![菜单管理列表](screenshort/菜单管理新增.png)
+
+### 7. 数据字典
+![数据字典列表](screenshort/数据字典列表.png)
+
+### 8. 资源管理
+![资源管理列表](screenshort/资源管理列表.png)
+
+
+
 ## 🛠️ 技术栈
 
 - **构建工具**: Vite
