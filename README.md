@@ -34,7 +34,7 @@ Art Supabase Pro 是一个基于 **Vue 3**, **TypeScript**, **Element Plus** 和
 ![用户管理列表](screenshort/用户管理列表.png)
 
 ### 3. 用户管理新增
-![用户管理列表](screenshort/用户管理新增.png)
+![用户管理新增](screenshort/用户管理新增.png)
 
 ### 4. 角色管理
 ![角色管理列表](screenshort/角色管理列表.png)
@@ -43,7 +43,7 @@ Art Supabase Pro 是一个基于 **Vue 3**, **TypeScript**, **Element Plus** 和
 ![菜单管理列表](screenshort/菜单管理列表.png)
 
 ### 6. 菜单管理新增
-![菜单管理列表](screenshort/菜单管理新增.png)
+![菜单管理新增](screenshort/菜单管理新增.png)
 
 ### 7. 数据字典
 ![数据字典列表](screenshort/数据字典列表.png)
