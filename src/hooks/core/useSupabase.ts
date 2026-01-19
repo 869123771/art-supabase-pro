@@ -1,5 +1,6 @@
 import { supabase } from '@/plugins/supabase'
 import { isBoolean } from 'lodash-es'
+import { ElMessage } from 'element-plus'
 
 export type SupabaseAction = 'select' | 'insert' | 'update' | 'delete' | 'rpc'
 

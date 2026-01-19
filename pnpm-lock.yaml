@@ -32,9 +32,6 @@ importers:
       '@wangeditor/editor-for-vue':
         specifier: next
         version: 5.1.12(@wangeditor/editor@5.1.23)(vue@3.5.22(typescript@5.6.3))
-      aipexbase-js:
-        specifier: ^1.1.2
-        version: 1.1.2
       axios:
         specifier: ^1.12.2
         version: 1.12.2
@@ -1539,9 +1536,6 @@ packages:
   adler-32@1.3.1:
     resolution: {integrity: sha512-ynZ4w/nUUv5rrsR8UUGoe1VC9hZj6V5hU9Qw1HlMDJGEJw5S7TfTErWTjMys6M7vr0YWcPqs3qAr4ss0nDfP+A==}
     engines: {node: '>=0.8'}
-
-  aipexbase-js@1.1.2:
-    resolution: {integrity: sha512-bkuIe0SDCFKmd+ou9tfyhXGkvSjjxhfpUTbd4jY1arkx+iErL8KiETqX7h1FUcMS2kdqLMCCfWcnv8/LR0om0g==}
 
   ajv@6.12.6:
     resolution: {integrity: sha512-j3fVLgvTo527anyYyJOGTYJbG+vnnQYvE0m5mmkc1TK+nxAppkCLMIL0aZ4dblVCNoGShhm+kzE4ZUykBoMg4g==}
@@ -5471,8 +5465,6 @@ snapshots:
   acorn@8.15.0: {}
 
   adler-32@1.3.1: {}
-
-  aipexbase-js@1.1.2: {}
 
   ajv@6.12.6:
     dependencies:
