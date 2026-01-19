@@ -1,5 +1,9 @@
+[build]
+  command = "pnpm run build" # 如果你用 npm，改为 `npm run build`；用 yarn 则改为 `yarn build`
+  publish = "dist" # 这是最关键的一行，必须与 Vite 的输出目录名称完全一致
+
 [[redirects]]
   from = "/*"
   to = "/art-supabase-pro/:splat"
   status = 200
-  force = true
+  force = true # 确保所有请求（包括根路径）都被重写
