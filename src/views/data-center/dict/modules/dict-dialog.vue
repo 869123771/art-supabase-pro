@@ -5,6 +5,7 @@
     width="60%"
     align-center
     destroy-on-close
+    @close="handleClose"
   >
     <ArtForm
       ref="formRef"

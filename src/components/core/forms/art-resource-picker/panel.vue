@@ -800,7 +800,7 @@
     width: 40px;
     height: 40px;
 
-    background-image: linear-gradient(to top right, transparent 50%, rgb(37, 99, 235) 50%);
+    background-image: linear-gradient(to top right, transparent 50%, var(--main-color) 50%);
   }
 
   .resource-item__selected-icon {
@@ -831,6 +831,6 @@
 
   .resource-item:hover,
   .resource-item.active {
-    box-shadow: 0 0 0 2px rgb(37, 99, 235);
+    box-shadow: 0 0 0 2px var(--main-color);
   }
 </style>
