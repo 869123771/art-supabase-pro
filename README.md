@@ -1,6 +1,6 @@
 
 
-# Art Supabase Pro
+# Art Supabase Pro （[输入链接说明](https://869123771.github.io/art-supabase-pro/)）
 
 Art Supabase Pro 是一个基于 **Vue 3**, **TypeScript**, **Element Plus** 和 **Supabase** 构建的现代化后台管理系统模板。它提供了丰富的功能组件、完善的权限控制以及开箱即用的系统管理模块，旨在帮助开发者快速构建高性能的企业级应用。
 
