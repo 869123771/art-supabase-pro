@@ -349,8 +349,8 @@ async function handleDynamicRoutes(
       console.error(`[RouteGuard] 错误码: ${error.code}, 消息: ${error.message}`)
     }
 
-    // 跳转到 500 页面，使用 replace 避免产生历史记录
-    next({ name: 'Exception500', replace: true })
+    // 跳转到 403 页面，使用 replace 避免产生历史记录
+    next({ name: 'Exception403', replace: true })
   }
 }
 

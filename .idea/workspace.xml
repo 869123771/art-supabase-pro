@@ -4,9 +4,13 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="b8f35119-660a-46e7-82f4-53eee06863eb" name="Changes" comment="add docs">
-      <change afterPath="$PROJECT_DIR$/.nojekyll" afterDir="false" />
+    <list default="true" id="b8f35119-660a-46e7-82f4-53eee06863eb" name="Changes" comment="feat github page not found _xxx file">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/core/views/exception/ArtException.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/views/exception/ArtException.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/locales/langs/en.json" beforeDir="false" afterPath="$PROJECT_DIR$/src/locales/langs/en.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/locales/langs/zh.json" beforeDir="false" afterPath="$PROJECT_DIR$/src/locales/langs/zh.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/router/guards/beforeEach.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/router/guards/beforeEach.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/exception/403/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/exception/403/index.vue" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -83,6 +87,7 @@
       <recent name="D:\spa\art-design-pro\src\store\modules" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="D:\spa\art-supabase-pro\docs" />
       <recent name="D:\spa\art-design-pro\src\views\data-center" />
     </key>
   </component>
@@ -121,7 +126,7 @@
       <workItem from="1768529208260" duration="6969000" />
       <workItem from="1768782790351" duration="416000" />
       <workItem from="1768783227159" duration="16328000" />
-      <workItem from="1768870696672" duration="2849000" />
+      <workItem from="1768870696672" duration="7145000" />
     </task>
     <task id="LOCAL-00001" summary="feat project clean">
       <option name="closed" value="true" />
@@ -291,7 +296,23 @@
       <option name="project" value="LOCAL" />
       <updated>1768871920237</updated>
     </task>
-    <option name="localTasksCounter" value="22" />
+    <task id="LOCAL-00022" summary="feat github page not found _xxx file">
+      <option name="closed" value="true" />
+      <created>1768873881939</created>
+      <option name="number" value="00022" />
+      <option name="presentableId" value="LOCAL-00022" />
+      <option name="project" value="LOCAL" />
+      <updated>1768873881939</updated>
+    </task>
+    <task id="LOCAL-00023" summary="feat github page not found _xxx file">
+      <option name="closed" value="true" />
+      <created>1768874729797</created>
+      <option name="number" value="00023" />
+      <option name="presentableId" value="LOCAL-00023" />
+      <option name="project" value="LOCAL" />
+      <updated>1768874729797</updated>
+    </task>
+    <option name="localTasksCounter" value="24" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -337,7 +358,8 @@
     <MESSAGE value="feat build directory" />
     <MESSAGE value="remove docs" />
     <MESSAGE value="add docs" />
-    <option name="LAST_COMMIT_MESSAGE" value="add docs" />
+    <MESSAGE value="feat github page not found _xxx file" />
+    <option name="LAST_COMMIT_MESSAGE" value="feat github page not found _xxx file" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
