@@ -1,0 +1,1 @@
+import{_ as e}from"./_plugin-vue_export-helper-BCo6x5W8.js";import{e as r,f as t}from"./index-CSMnfbno.js";const n=e({},[["render",function(e,n){return t(),r("h2",null,"test")}]]);export{n as default};
