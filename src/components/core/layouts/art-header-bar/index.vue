@@ -217,7 +217,7 @@
     storeToRefs(settingStore)
 
   const { language } = storeToRefs(userStore)
-  const { menuLis } = storeToRefs(menuStore)
+  const { menuList } = storeToRefs(menuStore)
 
   const showNotice = ref(false)
   const notice = ref(null)

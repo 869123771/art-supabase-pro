@@ -5,7 +5,7 @@
       <ArtIconButton icon="ri:more-2-fill" class="!size-8 bg-g-200 dark:bg-g-300/45 text-sm" />
       <template #dropdown>
         <ElDropdownMenu>
-          <template v-for="item in list" :key="item.key">
+          <template v-for="item in dropdownList" :key="item.key">
             <ElDropdownItem
               v-if="!item.auth || hasAuth(item.auth)"
               :disabled="item.disabled"
@@ -49,16 +49,20 @@
 
   interface Props {
     /** 下拉项列表 */
-    list: ButtonMoreItem[]
+    list: ButtonMoreItem[] | (() => ButtonMoreItem[])
     /** 整体权限控制 */
     auth?: string
   }
 
   const props = withDefaults(defineProps<Props>(), {})
 
+  const dropdownList = computed(() =>
+    typeof props.list === 'function' ? props?.list() : props.list
+  )
+
   // 检查是否有任何有权限的 item
   const hasAnyAuthItem = computed(() => {
-    return props.list.some((item) => !item.auth || hasAuth(item.auth))
+    return dropdownList.value.some((item) => !item.auth || hasAuth(item.auth))
   })
 
   const emit = defineEmits<{

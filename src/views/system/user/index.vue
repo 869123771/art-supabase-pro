@@ -192,24 +192,35 @@
                   onClick: () => showDialog('edit', row)
                 }),
                 h(ArtButtonMore, {
-                  list: [
-                    {
-                      key: 'assignRoles',
-                      label: '赋予角色',
-                      icon: 'ri-user-add-line'
-                    },
-                    {
-                      key: 'reset',
-                      label: '初始化密码',
-                      icon: 'ri-user-received-line'
-                    },
-                    {
-                      key: 'delete',
-                      label: '删除用户',
-                      icon: 'ri:delete-bin-4-line',
-                      color: '#f56c6c'
+                  list: () => {
+                    const { info } = userStore
+                    const selfExcludeButtonKeys = ['assignRoles', 'delete']
+                    let buttonList: ButtonMoreItem[] = [
+                      {
+                        key: 'assignRoles',
+                        label: '赋予角色',
+                        icon: 'ri-user-add-line'
+                      },
+                      {
+                        key: 'reset',
+                        label: '初始化密码',
+                        icon: 'ri-user-received-line'
+                      },
+                      {
+                        key: 'delete',
+                        label: '删除用户',
+                        icon: 'ri:delete-bin-4-line',
+                        color: '#f56c6c'
+                      }
+                    ]
+                    if (info.email === row.userEmail) {
+                      buttonList = buttonList.filter(
+                        (item: ButtonMoreItem) =>
+                          !selfExcludeButtonKeys.includes(item.key as string)
+                      )
                     }
-                  ],
+                    return buttonList
+                  },
                   onClick: (item: ButtonMoreItem) => handleButtonMoreClick(item, row)
                 })
               ]

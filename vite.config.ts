@@ -11,15 +11,20 @@ import ElementPlus from 'unplugin-element-plus/vite'
 import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
 import tailwindcss from '@tailwindcss/vite'
 
+// 添加插件用于生成 .nojekyll 文件
+import { createNoJekyllPlugin } from './src/plugins/nojekyll'
+
 // import { visualizer } from 'rollup-plugin-visualizer'
 
 export default ({ mode }: { mode: string }) => {
   const root = process.cwd()
   const env = loadEnv(mode, root)
-  const { VITE_VERSION, VITE_PORT, VITE_BASE_URL, VITE_API_URL, VITE_API_PROXY_URL } = env
+  const { VITE_VERSION, VITE_PORT, VITE_BASE_URL, VITE_API_URL, VITE_API_PROXY_URL, VITE_OUT_DIR } =
+    env
 
   console.log(`🚀 API_URL = ${VITE_API_URL}`)
   console.log(`🚀 VERSION = ${VITE_VERSION}`)
+  console.log(`🚀 VITE_OUT_DIR = ${VITE_OUT_DIR}`)
 
   return defineConfig({
     define: {
@@ -50,7 +55,7 @@ export default ({ mode }: { mode: string }) => {
     },
     build: {
       target: 'es2015',
-      outDir: 'docs', //dist
+      outDir: VITE_OUT_DIR, //dist
       chunkSizeWarningLimit: 2000,
       minify: 'terser',
       terserOptions: {
@@ -100,7 +105,9 @@ export default ({ mode }: { mode: string }) => {
         threshold: 10240, // 只有大小大于该值的资源会被处理 10240B = 10KB
         deleteOriginFile: false // 压缩后是否删除原文件
       }),
-      vueDevTools()
+      vueDevTools(),
+      // 创建 .nojekyll 文件，禁用 Jekyll 处理
+      createNoJekyllPlugin(VITE_OUT_DIR)
       // 打包分析
       // visualizer({
       //   open: true,

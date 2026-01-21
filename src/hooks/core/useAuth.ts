@@ -29,27 +29,25 @@
  * @module useAuth
  * @author Art Design Pro Team
  */
-
-import { useRoute } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useUserStore } from '@/store/modules/user'
 import { useAppMode } from '@/hooks/core/useAppMode'
 import type { AppRouteRecord } from '@/types/router'
-
-type AuthItem = NonNullable<AppRouteRecord['meta']['authList']>[number]
+import { useMenuStore } from '@/store/modules/menu'
 
 export const useAuth = () => {
-  const route = useRoute()
   const { isFrontendMode } = useAppMode()
   const userStore = useUserStore()
+  const menuStore = useMenuStore()
   const { info } = storeToRefs(userStore)
+  const { buttonList } = storeToRefs(menuStore)
 
   // 前端按钮权限（例如：['add', 'edit']）
   const frontendAuthList = info.value?.buttons ?? []
 
   // 后端路由 meta 配置的权限列表（例如：[{ authMark: 'add' }]）
-  const backendAuthList: AuthItem[] = Array.isArray(route.meta.authList)
-    ? (route.meta.authList as AuthItem[])
+  const backendAuthList: AppRouteRecord[] = Array.isArray(buttonList)
+    ? (buttonList as AppRouteRecord[])
     : []
 
   /**
@@ -64,7 +62,7 @@ export const useAuth = () => {
     }
 
     // 后端模式
-    return backendAuthList.some((item) => item?.authMark === auth)
+    return backendAuthList.some((item) => item?.name === auth)
   }
 
   return {
