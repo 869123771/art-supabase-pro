@@ -11,13 +11,8 @@ export async function checkUnique(params: {
   excludeId?: string
   extraWhere?: string | any
 }) {
-  const { getUserInfo } = useUserStore()
   const { table, field, value, excludeId, extraWhere } = params
-  let query = supabase
-    .from(table)
-    .select('id', { count: 'exact', head: true })
-    .eq(field, value)
-    .eq('create_by', getUserInfo.email)
+  let query = supabase.from(table).select('id', { count: 'exact', head: true }).eq(field, value)
 
   //编辑排除自己id
   if (excludeId) {

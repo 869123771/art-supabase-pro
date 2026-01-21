@@ -36,6 +36,7 @@
   import type { FormInstance, FormRules } from 'element-plus'
 
   import { addRole, editRole } from '@/api/system-manage'
+  import { uniqueValidator } from '@/utils'
 
   type RoleListItem = Api.SystemManage.RoleListItem
 
@@ -75,14 +76,23 @@
    */
   const rules = reactive<FormRules>({
     roleName: [
-      { required: true, message: '请输入角色名称', trigger: 'blur' },
-      { min: 2, max: 20, message: '长度在 2 到 20 个字符', trigger: 'blur' }
+      { required: true, message: '请输入角色名称', trigger: 'change' },
+      { min: 2, max: 20, message: '长度在 2 到 20 个字符', trigger: 'change' }
     ],
     roleCode: [
-      { required: true, message: '请输入角色编码', trigger: 'blur' },
-      { min: 2, max: 50, message: '长度在 2 到 50 个字符', trigger: 'blur' }
+      { required: true, message: '请输入角色编码', trigger: 'change' },
+      { min: 2, max: 50, message: '长度在 2 到 50 个字符', trigger: 'change' },
+      {
+        validator: uniqueValidator({
+          table: 'roles',
+          field: 'role_code',
+          getExcludeId: (): string | undefined => form?.id,
+          message: '角色编码已存在'
+        }),
+        trigger: 'change'
+      }
     ],
-    description: [{ required: true, message: '请输入角色描述', trigger: 'blur' }]
+    description: [{ required: true, message: '请输入角色描述', trigger: 'change' }]
   })
 
   /**
