@@ -8,35 +8,35 @@
   >
     <ElForm ref="formRef" :model="formData" :rules="rules" label-width="100px" class="pr-4">
       <ElRow>
-        <ElCol :span="24">
+        <ElCol :xs="24" :sm="24" :lg="24">
           <ElFormItem label="图像" prop="avatar">
             <ArtUploadImage v-model="formData.avatar" />
           </ElFormItem>
         </ElCol>
-        <ElCol :span="12">
+        <ElCol :xs="24" :sm="24" :lg="12">
           <ElFormItem label="用户名" prop="userName">
             <ElInput v-model="formData.userName" placeholder="请输入用户名" />
           </ElFormItem>
         </ElCol>
-        <ElCol :span="12">
+        <ElCol :xs="24" :sm="24" :lg="12">
           <ElFormItem label="昵称" prop="nickName">
             <ElInput v-model="formData.nickName" placeholder="请输入昵称" />
           </ElFormItem>
         </ElCol>
 
-        <ElCol :span="12">
+        <ElCol :xs="24" :sm="24" :lg="12">
           <ElFormItem label="手机号" prop="userPhone">
             <ElInput v-model="formData.userPhone" placeholder="请输入手机号" />
           </ElFormItem>
         </ElCol>
-        <ElCol :span="12" v-if="dialogType === 'add'">
+        <ElCol :xs="24" :sm="24" :lg="12" v-if="dialogType === 'add'">
           <ElFormItem label="邮箱" prop="userEmail">
             <ElInput v-model="formData.userEmail" placeholder="请输入邮箱" />
           </ElFormItem>
         </ElCol>
 
         <template v-if="dialogType === 'add'">
-          <ElCol :span="12">
+          <ElCol :xs="24" :sm="24" :lg="12">
             <ElFormItem label="密码" prop="password">
               <ElInput
                 v-model.trim="formData.password"
@@ -47,7 +47,7 @@
               />
             </ElFormItem>
           </ElCol>
-          <ElCol :span="12">
+          <ElCol :xs="24" :sm="24" :lg="12">
             <ElFormItem label="确认密码" prop="confirmPassword">
               <ElInput
                 v-model.trim="formData.confirmPassword"
@@ -59,7 +59,7 @@
             </ElFormItem>
           </ElCol>
         </template>
-        <ElCol :span="12">
+        <ElCol :xs="24" :sm="24" :lg="12">
           <ElFormItem label="性别" prop="userGender">
             <ElSelect v-model="formData.userGender">
               <ElOption
@@ -71,7 +71,7 @@
             </ElSelect>
           </ElFormItem>
         </ElCol>
-        <ElCol :span="12" v-if="dialogType === 'add'">
+        <ElCol :xs="24" :sm="24" :lg="12" v-if="dialogType === 'add'">
           <ElFormItem label="用户类型" prop="userType">
             <ElRadioGroup v-model="formData.userType">
               <ElRadioButton
@@ -83,7 +83,7 @@
             </ElRadioGroup>
           </ElFormItem>
         </ElCol>
-        <ElCol :span="24">
+        <ElCol :xs="24" :sm="24" :lg="24">
           <ElFormItem label="备注" prop="remark">
             <ElInput
               v-model.trim="formData.remark"
@@ -93,7 +93,7 @@
             />
           </ElFormItem>
         </ElCol>
-        <ElCol :span="24">
+        <ElCol :xs="24" :sm="24" :lg="24">
           <ElFormItem label="状态" prop="status">
             <ElRadioGroup v-model="formData.status" multiple>
               <ElRadio
