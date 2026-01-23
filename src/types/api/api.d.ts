@@ -207,5 +207,54 @@ declare namespace Api {
         url?: string
       }
     }
+    namespace SqlConsole {
+      interface DatabaseMetadata {
+        schemas: string[]
+        tables: TableMetadata[]
+        functions: FunctionMetadata[]
+      }
+
+      interface TableMetadata {
+        schema: string
+        tableName: string
+        columns: Array<{
+          name: string
+          dataType: string
+          isNullable: boolean
+        }>
+      }
+
+      interface ColumnMetadata {
+        tableSchema: string
+        tableName: string
+        columnName: string
+        dataType: string
+        isNullable: string
+        ordinalPosition: number
+      }
+
+      interface FunctionMetadata {
+        routineSchema: string
+        routineName: string
+        returnType: string
+      }
+
+      interface SqlExecuteRequest {
+        query: string
+      }
+
+      interface SqlExecuteResponse {
+        status: 'ok' | 'error'
+        error_message?: string
+        rows?: any[]
+        columns?: any[]
+        command_tag?: string
+        row_count?: number
+        duration_ms?: number
+        notices?: string[]
+        warnings?: string[]
+        query_text?: string
+      }
+    }
   }
 }

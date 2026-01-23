@@ -53,6 +53,7 @@
   },
   "dependencies": {
     "@element-plus/icons-vue": "^2.3.2",
+    "@guolao/vue-monaco-editor": "^1.6.0",
     "@iconify/vue": "^5.0.0",
     "@supabase/supabase-js": "^2.88.0",
     "@tailwindcss/vite": "^4.1.14",
@@ -69,6 +70,8 @@
     "highlight.js": "^11.10.0",
     "lodash-es": "^4.17.21",
     "mitt": "^3.0.1",
+    "monaco-editor": "0.31.0",
+    "monaco-sql-languages": "^0.15.1",
     "nprogress": "^0.2.0",
     "ohash": "^2.0.11",
     "pinia": "^3.0.3",

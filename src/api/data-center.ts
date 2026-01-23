@@ -1,6 +1,7 @@
 import { useSupabase } from '@/hooks'
 import { applyFilters, FilterSpec } from '@utils/supabase-filters'
 const { supabase, keysToSnakeDeep, responseHandle } = useSupabase()
+import { QueryResult } from '@supabase/supabase-js'
 
 /*获取字典类型列表*/
 export async function fetchGetDictTypeList(params: Api.DataCenter.DictListItem) {
@@ -189,4 +190,114 @@ export async function deleteResource(params: Api.DataCenter.Resources.ResourceLi
       showMessage: true
     }
   )
+}
+
+/*sql控制台*/
+/**
+ * 获取数据库元数据（Schema, Tables, Columns, Functions）
+ * 注意：需要有访问 information_schema 的权限
+ */
+export async function fetchDatabaseMetadata(): Promise<Api.DataCenter.SqlConsole.DatabaseMetadata> {
+  try {
+    // 尝试使用 RPC 函数获取元数据
+    const { data, error } = await responseHandle(
+      () => supabase.rpc('get_database_metadata_all') as any,
+      {
+        showMessage: false,
+        ignoreCheck: true
+      }
+    )
+
+    if (error || !data) {
+      // 如果 RPC 不存在，使用 information_schema 查询
+      return await fetchMetadataFromInformationSchema()
+    }
+
+    // Supabase 返回的 data 可能直接是解析后的 JSON，
+    // 也可能是 array/other shape, 所以要适配
+    const payload = Array.isArray(data) && data.length > 0 ? data[0] : (data as any)
+
+    const schemas: string[] = payload?.schemas ?? []
+
+    const columns: Api.DataCenter.SqlConsole.ColumnMetadata[] = (payload?.columns ?? []).map(
+      (c: any) => ({
+        tableSchema: c.tableSchema,
+        tableName: c.tableName,
+        columnName: c.columnName,
+        dataType: c.dataType,
+        isNullable: c.isNullable,
+        ordinalPosition: c.ordinalPosition
+      })
+    )
+
+    const tablesMap = new Map<string, Api.DataCenter.SqlConsole.TableMetadata>()
+    columns.forEach((col) => {
+      const key = `${col.tableSchema}.${col.tableName}`
+      if (!tablesMap.has(key)) {
+        tablesMap.set(key, {
+          schema: col.tableSchema,
+          tableName: col.tableName,
+          columns: []
+        })
+      }
+      tablesMap.get(key)!.columns.push({
+        name: col.columnName,
+        dataType: col.dataType,
+        isNullable: col.isNullable === 'YES'
+      })
+    })
+
+    const functions = (payload?.functions ?? []).map((f: any) => ({
+      routineSchema: f.routineSchema,
+      routineName: f.routineName,
+      returnType: f.returnType
+    }))
+    return {
+      schemas,
+      tables: Array.from(tablesMap.values()),
+      functions
+    }
+  } catch (error) {
+    console.error('Failed to fetch database metadata:', error)
+    // 返回空数据
+    return {
+      schemas: ['public'],
+      tables: [],
+      functions: []
+    }
+  }
+}
+
+/**
+ * 从 information_schema 获取元数据（备用方案）
+ */
+async function fetchMetadataFromInformationSchema(): Promise<Api.DataCenter.SqlConsole.DatabaseMetadata> {
+  // 这里可以添加从 information_schema 查询的逻辑
+  // 目前返回空数据，后续可以扩展
+  return {
+    schemas: ['public'],
+    tables: [],
+    functions: []
+  }
+}
+
+/**
+ * 执行 SQL 查询
+ * @param params SQL 查询参数
+ * @returns SQL 执行结果
+ */
+export async function executeSql(
+  params: Api.DataCenter.SqlConsole.SqlExecuteRequest
+): Promise<QueryResult<any>> {
+  const invokeResp = () =>
+    supabase.functions.invoke<Api.DataCenter.SqlConsole.SqlExecuteResponse>(
+      'execute-sql-with-columns',
+      {
+        body: params
+      }
+    )
+
+  return await responseHandle(invokeResp, {
+    showMessage: false
+  })
 }

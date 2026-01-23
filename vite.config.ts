@@ -130,7 +130,15 @@ export default ({ mode }: { mode: string }) => {
         'vue-img-cutter',
         'element-plus/es',
         'element-plus/es/components/*/style/css',
-        'element-plus/es/components/*/style/index'
+        'element-plus/es/components/*/style/index',
+        // 预打包 Monaco Editor 的核心和语言 Worker 文件
+        'monaco-editor/esm/vs/editor/editor.worker',
+        'monaco-editor/esm/vs/language/json/json.worker',
+        'monaco-editor/esm/vs/language/css/css.worker',
+        'monaco-editor/esm/vs/language/html/html.worker',
+        'monaco-editor/esm/vs/language/typescript/ts.worker', // 对JS/TS提示至关重要
+        'monaco-sql-languages/esm/languages/pgsql/pgsql.worker.js', // 关键
+        'monaco-sql-languages/esm/languages/mysql/mysql.worker.js'
       ]
     },
     css: {
