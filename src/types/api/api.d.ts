@@ -245,15 +245,30 @@ declare namespace Api {
 
       interface SqlExecuteResponse {
         status: 'ok' | 'error'
-        error_message?: string
+        errorMessage?: string
         rows?: any[]
-        columns?: any[]
-        command_tag?: string
-        row_count?: number
-        duration_ms?: number
+        columns?: Array<{
+          name: string
+          type?: string | null
+          fullType?: string | null
+          nullable?: boolean | null
+          jsType?: string | null
+          description?: string | null
+          maxLength?: number | null
+          precision?: number | null
+          scale?: number | null
+          display?: {
+            title?: string | null
+            width?: number | null
+            align?: 'left' | 'center' | 'right' | null
+          }
+        }>
+        commandTag?: string
+        rowCount?: number
+        durationMs?: number
         notices?: string[]
         warnings?: string[]
-        query_text?: string
+        queryText?: string
       }
     }
   }

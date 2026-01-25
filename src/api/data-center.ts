@@ -298,6 +298,7 @@ export async function executeSql(
     )
 
   return await responseHandle(invokeResp, {
-    showMessage: false
+    convertToCamelShadow: true,
+    returnRawError: true
   })
 }

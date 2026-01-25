@@ -6,11 +6,11 @@
   <component name="ChangeListManager">
     <list default="true" id="b8f35119-660a-46e7-82f4-53eee06863eb" name="Changes" comment="feat github page not found _xxx file">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/components/core/views/exception/ArtException.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/views/exception/ArtException.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/locales/langs/en.json" beforeDir="false" afterPath="$PROJECT_DIR$/src/locales/langs/en.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/locales/langs/zh.json" beforeDir="false" afterPath="$PROJECT_DIR$/src/locales/langs/zh.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/router/guards/beforeEach.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/router/guards/beforeEach.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/exception/403/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/exception/403/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/api/data-center.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/data-center.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/hooks/core/useSupabase.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/hooks/core/useSupabase.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/types/api/api.d.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/types/api/api.d.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/data-center/sql-console/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/data-center/sql-console/index.vue" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -42,6 +42,9 @@
   <component name="HighlightingSettingsPerFile">
     <setting file="file://$PROJECT_DIR$/node_modules/.pnpm/vue-router@4.5.1_vue@3.5.22_typescript@5.6.3_/node_modules/vue-router/dist/vue-router.d.ts" root0="SKIP_INSPECTION" />
   </component>
+  <component name="PackageJsonUpdateNotifier">
+    <dismissed value="$PROJECT_DIR$/package.json" />
+  </component>
   <component name="ProjectColorInfo">{
   &quot;associatedIndex&quot;: 7
 }</component>
@@ -50,36 +53,36 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
-    "disable.download.node.interpreter.editor.notification": "true",
-    "git-widget-placeholder": "master",
-    "javascript.preferred.runtime.type.id": "node",
-    "last_opened_file_path": "D:/spa/art-supabase-pro",
-    "node.js.detected.package.eslint": "true",
-    "node.js.detected.package.standard": "true",
-    "node.js.detected.package.stylelint": "true",
-    "node.js.detected.package.tslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.standard": "",
-    "node.js.selected.package.stylelint": "D:\\spa\\art-design-pro\\node_modules\\stylelint",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "nodejs_package_manager_path": "pnpm",
-    "prettierjs.PrettierConfiguration.Package": "D:\\spa\\art-supabase-pro\\node_modules\\prettier",
-    "settings.editor.selected.configurable": "settings.javascript.prettier",
-    "ts.external.directory.path": "D:\\spa\\art-supabase-pro\\node_modules\\typescript\\lib",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
+    &quot;disable.download.node.interpreter.editor.notification&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;master&quot;,
+    &quot;javascript.preferred.runtime.type.id&quot;: &quot;node&quot;,
+    &quot;last_opened_file_path&quot;: &quot;C:/Users/Administrator/Desktop/spa/art-supabase-pro&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.standard&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.stylelint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.standard&quot;: &quot;&quot;,
+    &quot;node.js.selected.package.stylelint&quot;: &quot;D:\\spa\\art-design-pro\\node_modules\\stylelint&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;pnpm&quot;,
+    &quot;prettierjs.PrettierConfiguration.Package&quot;: &quot;D:\\spa\\art-supabase-pro\\node_modules\\prettier&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;settings.javascript.prettier&quot;,
+    &quot;ts.external.directory.path&quot;: &quot;C:\\Users\\Administrator\\Desktop\\spa\\art-supabase-pro\\node_modules\\typescript\\lib&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   },
-  "keyToStringList": {
-    "vue.recent.templates": [
-      "Vue Composition API Component"
+  &quot;keyToStringList&quot;: {
+    &quot;vue.recent.templates&quot;: [
+      &quot;Vue Composition API Component&quot;
     ]
   }
-}]]></component>
+}</component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="D:\spa\art-design-pro\src\hooks\core" />
@@ -94,7 +97,7 @@
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-js-predefined-d6986cc7102b-9b0f141eb926-JavaScript-WS-253.29346.143" />
+        <option value="bundled-js-predefined-d6986cc7102b-a71380e98a7c-JavaScript-WS-252.28539.21" />
       </set>
     </attachedChunks>
   </component>
@@ -127,6 +130,8 @@
       <workItem from="1768782790351" duration="416000" />
       <workItem from="1768783227159" duration="16328000" />
       <workItem from="1768870696672" duration="7145000" />
+      <workItem from="1769257847688" duration="10102000" />
+      <workItem from="1769306653569" duration="14705000" />
     </task>
     <task id="LOCAL-00001" summary="feat project clean">
       <option name="closed" value="true" />

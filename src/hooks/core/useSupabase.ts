@@ -11,6 +11,8 @@ export interface RunQueryOptions {
   showMessage?: boolean // 是否显示提示，默认 false
   showErrorMessage?: boolean // 是否显示错误提示，默认 false
   convertToCamel?: boolean // 是否将返回字段从 snake_case 转为 camelCase，默认 true
+  convertToCamelShadow?: boolean // 是否只转换最外层的驼峰命名，默认 false（深层转换）
+  returnRawError?: boolean // 是否返回原生错误字段，默认 false
   message?: string
   action?: SupabaseAction
   breakReturn?: boolean //打断返回
@@ -58,6 +60,21 @@ export function useSupabase() {
     return obj as T
   }
 
+  /** Only convert top-level object keys to camelCase */
+  function keysToCamelShallow<T = any>(obj: any): T {
+    if (Array.isArray(obj)) {
+      return obj as unknown as T
+    }
+    if (isPlainObject(obj)) {
+      const res: Record<string, any> = {}
+      for (const [k, v] of Object.entries(obj)) {
+        res[toCamel(k)] = v
+      }
+      return res as T
+    }
+    return obj as T
+  }
+
   /** Recursively convert object keys to snake_case */
   function keysToSnakeDeep<T = any>(obj: any): T {
     if (Array.isArray(obj)) {
@@ -86,6 +103,8 @@ export function useSupabase() {
       showMessage: false,
       showErrorMessage: false,
       convertToCamel: true,
+      convertToCamelShadow: false,
+      returnRawError: false,
       breakReturn: false,
       ignoreCheck: false
     }
@@ -95,6 +114,8 @@ export function useSupabase() {
       showErrorMessage = false,
       breakReturn = false,
       convertToCamel = true,
+      convertToCamelShadow = false,
+      returnRawError = false,
       ignoreCheck = false
     } = options ?? {}
     //对用户角色 | 用户邮箱检查是否有写入权限
@@ -113,14 +134,23 @@ export function useSupabase() {
       if (breakReturn) {
         throw new Error(message)
       }
-      return { data: null, error }
+      return {
+        data: null,
+        error: returnRawError && responseJson ? keysToCamelDeep(responseJson) : error
+      }
     }
     if (showMessage) {
       ElMessage.closeAll()
       ElMessage.success(options.message || '操作成功')
     }
-    const out =
-      isBoolean(convertToCamel) && !convertToCamel ? (data as T) : keysToCamelDeep<T>(data)
+    let out: T
+    if (isBoolean(convertToCamel) && !convertToCamel) {
+      out = data as T
+    } else if (convertToCamelShadow) {
+      out = keysToCamelShallow<T>(data)
+    } else {
+      out = keysToCamelDeep<T>(data)
+    }
     return { data: out, total: count ?? 0, error: null }
   }
 
