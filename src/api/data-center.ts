@@ -217,25 +217,28 @@ export async function fetchDatabaseMetadata(): Promise<Api.DataCenter.SqlConsole
     // 也可能是 array/other shape, 所以要适配
     const payload = Array.isArray(data) && data.length > 0 ? data[0] : (data as any)
 
+    // ========== 1. 提取并格式化 Schemas ==========
     const schemas: string[] = payload?.schemas ?? []
 
+    // ========== 2. 提取并格式化 Columns（严格匹配类型） ==========
     const columns: Api.DataCenter.SqlConsole.ColumnMetadata[] = (payload?.columns ?? []).map(
       (c: any) => ({
-        tableSchema: c.tableSchema,
-        tableName: c.tableName,
-        columnName: c.columnName,
-        dataType: c.dataType,
-        isNullable: c.isNullable,
-        ordinalPosition: c.ordinalPosition
+        tableSchema: c.tableSchema || '', // 确保非空
+        tableName: c.tableName || '',
+        columnName: c.columnName || '',
+        dataType: c.dataType || '',
+        isNullable: c.isNullable || 'YES',
+        ordinalPosition: c.ordinalPosition || 0
       })
     )
 
+    // ========== 3. 提取并格式化 Tables（修正字段名：schema → tableSchema） ==========
     const tablesMap = new Map<string, Api.DataCenter.SqlConsole.TableMetadata>()
     columns.forEach((col) => {
       const key = `${col.tableSchema}.${col.tableName}`
       if (!tablesMap.has(key)) {
         tablesMap.set(key, {
-          schema: col.tableSchema,
+          tableSchema: col.tableSchema, // 关键修正：匹配类型定义的 tableSchema
           tableName: col.tableName,
           columns: []
         })
@@ -246,22 +249,30 @@ export async function fetchDatabaseMetadata(): Promise<Api.DataCenter.SqlConsole
         isNullable: col.isNullable === 'YES'
       })
     })
+    const tables: Api.DataCenter.SqlConsole.TableMetadata[] = Array.from(tablesMap.values())
 
-    const functions = (payload?.functions ?? []).map((f: any) => ({
-      routineSchema: f.routineSchema,
-      routineName: f.routineName,
-      returnType: f.returnType
-    }))
+    // ========== 4. 提取并格式化 Functions ==========
+    const functions: Api.DataCenter.SqlConsole.FunctionMetadata[] = (payload?.functions ?? []).map(
+      (f: any) => ({
+        routineSchema: f.routineSchema || '',
+        routineName: f.routineName || '',
+        returnType: f.returnType || ''
+      })
+    )
+
+    // ========== 5. 返回完整的 DatabaseMetadata（包含所有必填字段） ==========
     return {
       schemas,
-      tables: Array.from(tablesMap.values()),
+      columns, // 补全类型要求的 columns 字段
+      tables,
       functions
     }
   } catch (error) {
     console.error('Failed to fetch database metadata:', error)
-    // 返回空数据
+    // 异常时返回符合类型的空数据（避免类型报错）
     return {
       schemas: ['public'],
+      columns: [], // 补全空 columns
       tables: [],
       functions: []
     }
@@ -269,13 +280,13 @@ export async function fetchDatabaseMetadata(): Promise<Api.DataCenter.SqlConsole
 }
 
 /**
- * 从 information_schema 获取元数据（备用方案）
+ * 从 information_schema 获取元数据（备用方案：返回完整类型结构）
  */
 async function fetchMetadataFromInformationSchema(): Promise<Api.DataCenter.SqlConsole.DatabaseMetadata> {
-  // 这里可以添加从 information_schema 查询的逻辑
-  // 目前返回空数据，后续可以扩展
+  // 备用方案也返回完整的类型结构（即使为空）
   return {
     schemas: ['public'],
+    columns: [], // 补全空 columns
     tables: [],
     functions: []
   }

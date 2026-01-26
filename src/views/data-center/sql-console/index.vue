@@ -4,18 +4,7 @@
       <!-- 上部分：SQL 编辑器 -->
       <el-splitter-panel>
         <div class="sql-editor-section">
-          <div class="editor-wrapper">
-            <vue-monaco-editor
-              ref="editorRef"
-              :wrapperStyle="{ height: '100%' }"
-              v-model:value="sqlCode"
-              language="pgsql"
-              :theme="editorTheme"
-              :options="editorOptions"
-              @keydown="handleKeyDown"
-              @editor-mounted="handleEditorMounted"
-            />
-          </div>
+          <Editor ref="editorRef" v-model="sqlCode" @execute="handleExecute" />
         </div>
       </el-splitter-panel>
 
@@ -43,14 +32,18 @@
                 :offset="8"
                 :show-arrow="false"
               >
-                <ArtIconButton @click="handleExecute" icon="ri-play-line" class="!size-6.5" />
+                <ArtIconButton
+                  @click="() => handleExecute()"
+                  icon="ri-play-line"
+                  class="!size-6.5"
+                />
               </el-tooltip>
               <el-tooltip v-else content="执行中" placement="top" :offset="8" :show-arrow="false">
                 <ArtIconButton
-                  @click="handleExecute"
+                  @click="() => handleExecute()"
                   icon="ri-loader-2-line"
                   :loading="executing"
-                  class="!size-6.5 animate-spin duration-[3000ms]"
+                  class="size-6.5! animate-spin duration-3000"
                 />
               </el-tooltip>
               <el-tooltip
@@ -59,10 +52,10 @@
                 :offset="8"
                 :show-arrow="false"
               >
-                <ArtIconButton @click="handleFormat" icon="ri-magic-line" class="!size-6.5" />
+                <ArtIconButton @click="handleFormat" icon="ri-magic-line" class="size-6.5!" />
               </el-tooltip>
               <el-tooltip content="清空" placement="top" :offset="8" :show-arrow="false">
-                <ArtIconButton @click="handleClear" icon="ri-close-line" class="!size-6.5" />
+                <ArtIconButton @click="handleClear" icon="ri-close-line" class="size-6.5!" />
               </el-tooltip>
             </div>
           </div>
@@ -72,7 +65,7 @@
                 v-if="executing"
                 :loading="executing"
                 icon="ri-loader-2-line"
-                class="size-[30px] animate-spin duration-[3000ms]"
+                class="size-[30px] animate-spin duration-3000"
               ></ArtSvgIcon>
               <el-empty v-else description="执行 SQL 后将在此显示结果" />
             </div>
@@ -87,8 +80,7 @@
                 v-if="result.status === 'ok' && result.rows && result.rows.length > 0"
                 class="result-table"
               >
-                <ArtTable :loading="executing" :data="result.rows" :columns="tableColumns" border>
-                </ArtTable>
+                <ArtTable :loading="executing" :data="result.rows" :columns="tableColumns" border />
               </div>
             </template>
           </div>
@@ -99,42 +91,27 @@
 </template>
 
 <script setup lang="ts">
-  import { ref, onMounted, computed } from 'vue'
+  import { ref, computed } from 'vue'
   import { ElMessage } from 'element-plus'
-  import VueMonacoEditor from '@guolao/vue-monaco-editor'
   import ArtTable from '@/components/core/tables/art-table/index.vue'
-  import { fetchDatabaseMetadata, executeSql } from '@/api/data-center'
-  import { registerSqlMetadata } from '@/utils/monacoSqlSetup'
-  import { useSettingStore } from '@/store/modules/setting'
+  import { executeSql } from '@/api/data-center'
+  import Editor from './modules/editor.vue'
 
-  const settingStore = useSettingStore()
+  interface EditorInstance {
+    format: () => Promise<void>
+    clear: () => void
+    getSqlToExecute: () => string
+  }
+
   const sqlCode = ref('SELECT * FROM app_users LIMIT 10;')
   const executing = ref(false)
   const result = ref<Api.DataCenter.SqlConsole.SqlExecuteResponse | null>(null)
   const splitRatio = ref(0.6) // 默认上部分占60%
-  const editorRef = ref<any>(null)
-  let editorInstance: any = null
-
-  const editorOptions = ref({
-    automaticLayout: true,
-    minimap: { enabled: false },
-    lineNumbers: 'on',
-    roundedSelection: false,
-    scrollBeyondLastLine: false,
-    readOnly: false,
-    // SQL 相关提示选项（确保开启）
-    suggestOnTriggerCharacters: true,
-    quickSuggestions: true,
-    wordBasedSuggestions: true
-  })
+  const editorRef = ref<EditorInstance | null>(null)
 
   const tabs = ref({
     active: 'result',
     list: [{ name: 'result', label: '结果' }]
-  })
-
-  const editorTheme = computed(() => {
-    return settingStore.systemThemeType === 'dark' ? 'vs-dark' : 'vs'
   })
 
   // 动态生成表格列配置
@@ -150,27 +127,11 @@
     }))
   })
 
-  // 编辑器挂载完成
-  const handleEditorMounted = (editor: any) => {
-    editorInstance = editor
-  }
-
-  // 获取选中的 SQL 或整个 SQL
-  const getSelectedSql = () => {
-    if (editorInstance) {
-      const selection = editorInstance.getSelection()
-      if (selection && !selection.isEmpty()) {
-        return editorInstance.getValueInRange(selection)
-      }
-    }
-    return sqlCode.value
-  }
-
   // 执行 SQL
-  const handleExecute = async () => {
-    const sqlToExecute = getSelectedSql()
+  const handleExecute = async (sql?: string) => {
+    const sqlToExecute = sql || editorRef.value?.getSqlToExecute() || sqlCode.value
 
-    if (!sqlToExecute.trim()) {
+    if (!sqlToExecute || !sqlToExecute.trim()) {
       ElMessage.warning('请输入 SQL 查询')
       return
     }
@@ -197,58 +158,14 @@
 
   // 格式化 SQL
   const handleFormat = async () => {
-    if (!sqlCode.value.trim()) {
-      return
-    }
-
-    try {
-      const { format } = await import('sql-formatter')
-      const formattedSql = format(sqlCode.value, {
-        language: 'postgresql',
-        indent: '  ',
-        uppercase: true,
-        linesBetweenQueries: 1
-      })
-      sqlCode.value = formattedSql
-    } catch (error) {
-      console.error('SQL 格式化失败:', error)
-      ElMessage.error('SQL 格式化失败')
-    }
+    editorRef.value?.format()
   }
 
   // 清空编辑器
   const handleClear = () => {
-    sqlCode.value = ''
+    editorRef.value?.clear()
     result.value = null
   }
-
-  // 键盘快捷键
-  const handleKeyDown = (event: KeyboardEvent) => {
-    // Ctrl+Enter 或 Cmd+Enter 执行
-    if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
-      event.preventDefault()
-      handleExecute()
-    }
-    // Shift+Enter 执行
-    if (event.shiftKey && event.key === 'Enter') {
-      event.preventDefault()
-      handleExecute()
-    }
-    // Ctrl+Shift+F 格式化
-    if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key === 'F') {
-      event.preventDefault()
-      handleFormat()
-    }
-  }
-
-  onMounted(async () => {
-    try {
-      const metadata = await fetchDatabaseMetadata()
-      registerSqlMetadata(metadata)
-    } catch (error) {
-      console.error('Failed to load database metadata:', error)
-    }
-  })
 </script>
 
 <style scoped lang="scss">
@@ -263,14 +180,6 @@
       display: flex;
       flex-direction: column;
       min-height: 0;
-
-      .editor-wrapper {
-        flex: 1;
-        border: 1px solid var(--el-border-color);
-        border-radius: 0 0 4px 4px;
-        min-height: 0;
-        overflow: hidden;
-      }
     }
   }
 
@@ -351,7 +260,6 @@
         pre {
           white-space: pre-wrap;
           word-break: break-word;
-          font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
           color: var(--el-color-error);
           margin: 0;
         }

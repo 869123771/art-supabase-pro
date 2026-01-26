@@ -209,13 +209,14 @@ declare namespace Api {
     }
     namespace SqlConsole {
       interface DatabaseMetadata {
+        columns: ColumnMetadata[]
         schemas: string[]
         tables: TableMetadata[]
         functions: FunctionMetadata[]
       }
 
       interface TableMetadata {
-        schema: string
+        tableSchema: string
         tableName: string
         columns: Array<{
           name: string
