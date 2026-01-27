@@ -80,7 +80,7 @@
                 v-if="result.status === 'ok' && result.rows && result.rows.length > 0"
                 class="result-table"
               >
-                <ArtTable :loading="executing" :data="result.rows" :columns="tableColumns" border />
+                <ResultTable :loading="executing" :data="result.rows" :columns="result.columns" />
               </div>
             </template>
           </div>
@@ -91,12 +91,11 @@
 </template>
 
 <script setup lang="ts">
-  import { ref, computed } from 'vue'
+  import { ref } from 'vue'
   import { ElMessage } from 'element-plus'
-  import ArtTable from '@/components/core/tables/art-table/index.vue'
   import { executeSql } from '@/api/data-center'
   import Editor from './modules/editor.vue'
-  import { isObject } from 'lodash-es'
+  import ResultTable from './modules/result-table.vue'
 
   interface EditorInstance {
     format: () => Promise<void>
@@ -113,27 +112,6 @@
   const tabs = ref({
     active: 'result',
     list: [{ name: 'result', label: '结果' }]
-  })
-
-  // 动态生成表格列配置
-  const tableColumns = computed(() => {
-    if (!result.value || !result.value.columns || result.value.columns.length === 0) {
-      return []
-    }
-
-    return result.value.columns.map((column) => ({
-      prop: column.name,
-      label: column.name,
-      minWidth: 120,
-      showOverflowTooltip: true,
-      formatter: (row: any) => {
-        const value = row[column.name]
-        if (isObject(value)) {
-          return JSON.stringify(value)
-        }
-        return value
-      }
-    }))
   })
 
   // 执行 SQL
@@ -275,11 +253,14 @@
 
       .result-table {
         height: 100%;
-        .art-table {
+        :deep(.art-table) {
           height: 100% !important;
         }
         :deep(.el-table) {
           margin: 0;
+          &::before {
+            width: 0;
+          }
           .el-table__inner-wrapper {
             &::before {
               background-color: transparent;

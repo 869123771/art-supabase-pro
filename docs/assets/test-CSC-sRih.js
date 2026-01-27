@@ -1,0 +1,1 @@
+import{_ as e}from"./_plugin-vue_export-helper-BCo6x5W8.js";import{b as r,c as t}from"./index-DocD4lg6.js";const n=e({},[["render",function(e,n){return r(),t("h2",null,"test")}]]);export{n as default};

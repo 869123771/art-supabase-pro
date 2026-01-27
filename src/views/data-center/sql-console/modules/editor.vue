@@ -4,7 +4,7 @@
       ref="editorRef"
       :wrapperStyle="{ height: '100%' }"
       :value="modelValue"
-      language="pgsql"
+      :language="language"
       :theme="editorTheme"
       :options="editorOptions as any"
       @update:value="handleChange"
@@ -23,9 +23,17 @@
   import { registerSqlMetadata } from '@/utils/monacoSqlSetup'
   import { useSettingStore } from '@/store/modules/setting'
 
-  const props = defineProps<{
-    modelValue: string
-  }>()
+  const props = withDefaults(
+    defineProps<{
+      modelValue: string
+      language?: string
+      readOnly?: boolean
+    }>(),
+    {
+      language: 'pgsql',
+      readOnly: false
+    }
+  )
 
   const emit = defineEmits<{
     (e: 'update:modelValue', value: string): void
@@ -46,7 +54,7 @@
     lineNumbers: 'on',
     roundedSelection: false,
     scrollBeyondLastLine: false,
-    readOnly: false,
+    readOnly: props.readOnly,
     fixedOverflowWidgets: true, // 修复提示框被遮挡问题
     // SQL 相关提示选项（确保开启）
     suggestOnTriggerCharacters: true,
