@@ -96,6 +96,7 @@
   import ArtTable from '@/components/core/tables/art-table/index.vue'
   import { executeSql } from '@/api/data-center'
   import Editor from './modules/editor.vue'
+  import { isObject } from 'lodash-es'
 
   interface EditorInstance {
     format: () => Promise<void>
@@ -123,7 +124,15 @@
     return result.value.columns.map((column) => ({
       prop: column.name,
       label: column.name,
-      minWidth: 120
+      minWidth: 120,
+      showOverflowTooltip: true,
+      formatter: (row: any) => {
+        const value = row[column.name]
+        if (isObject(value)) {
+          return JSON.stringify(value)
+        }
+        return value
+      }
     }))
   })
 
@@ -173,7 +182,8 @@
     width: 100%;
     padding: 0;
     margin: 0;
-
+    border: 1px solid var(--el-border-color);
+    border-radius: var(--el-border-radius-base);
     .sql-editor-section {
       width: 100%;
       height: 100%;
@@ -186,8 +196,6 @@
   .result-section {
     width: 100%;
     height: 100%;
-    border: 1px solid var(--el-border-color);
-    border-radius: 4px;
     background: var(--el-bg-color);
     display: flex;
     flex-direction: column;
@@ -272,6 +280,17 @@
         }
         :deep(.el-table) {
           margin: 0;
+          .el-table__inner-wrapper {
+            &::before {
+              background-color: transparent;
+            }
+            &::after {
+              background-color: transparent;
+            }
+            .el-table__border-left-patch {
+              background-color: transparent;
+            }
+          }
         }
       }
 

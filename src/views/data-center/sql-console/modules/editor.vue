@@ -42,6 +42,7 @@
     automaticLayout: true,
     minimap: { enabled: false },
     fontSize: 13,
+    border: false,
     lineNumbers: 'on',
     roundedSelection: false,
     scrollBeyondLastLine: false,
@@ -162,8 +163,6 @@
 <style scoped lang="scss">
   .editor-wrapper {
     flex: 1;
-    border: 1px solid var(--el-border-color);
-    border-radius: 0 0 4px 4px;
     min-height: 0;
     overflow: hidden;
     position: relative; // 确保 placeholder 绝对定位基于此容器
