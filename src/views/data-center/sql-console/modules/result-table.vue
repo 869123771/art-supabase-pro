@@ -41,9 +41,9 @@
   import { useClipboard } from '@vueuse/core'
 
   interface Props {
-    loading: boolean
-    data: any[]
-    columns: any[] // Metadata columns
+    loading?: boolean
+    data?: any[]
+    columns?: any[] // Metadata columns
   }
 
   const props = withDefaults(defineProps<Props>(), {
@@ -98,7 +98,7 @@
     {
       key: 'view',
       label: '查看',
-      icon: 'ri-fullscreen-line'
+      icon: 'ri-eye-line'
     }
   ])
 

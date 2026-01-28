@@ -28,7 +28,7 @@ export type QueryResult<T> = {
   total?: number
 }
 
-type QueryFactory<T> = () => Promise<Api.Common.PaginatedResponse>
+type QueryFactory = () => Promise<Api.Common.PaginatedResponse>
 
 export function useSupabase() {
   /** convert snake_case string to camelCase */
@@ -98,7 +98,7 @@ export function useSupabase() {
    */
 
   async function responseHandle<T = any>(
-    queryFactory: QueryFactory<T>,
+    queryFactory: QueryFactory,
     options: RunQueryOptions = {
       showMessage: false,
       showErrorMessage: false,
@@ -120,6 +120,7 @@ export function useSupabase() {
     } = options ?? {}
     //对用户角色 | 用户邮箱检查是否有写入权限
     if (!ignoreCheck) {
+      // TODO: Implement permission check
     }
 
     const { data, error, count, response } = await queryFactory()

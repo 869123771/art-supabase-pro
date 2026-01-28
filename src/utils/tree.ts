@@ -198,7 +198,7 @@ export default class TreeUtils {
     const t = this.clone(tree) as TreeNode[]
     let removed: TreeNode | null = null
 
-    const walk = (nodes: TreeNode[], parent?: TreeNode) => {
+    const walk = (nodes: TreeNode[]) => {
       for (let i = nodes.length - 1; i >= 0; i--) {
         const node = nodes[i]
         if (node[this.idKey] === id) {
@@ -207,14 +207,14 @@ export default class TreeUtils {
         }
         const children = node[this.childrenKey]
         if (children && children.length) {
-          const found = walk(children, node)
+          const found = walk(children)
           if (found) return true
         }
       }
       return false
     }
 
-    walk(t, undefined)
+    walk(t)
     return { tree: t, removed }
   }
 
@@ -463,7 +463,7 @@ export default class TreeUtils {
     const t = this.clone(tree) as TreeNode[]
     const removed: TreeNode[] = []
 
-    const removeRecursively = (nodes: TreeNode[], parent?: TreeNode): TreeNode[] => {
+    const removeRecursively = (nodes: TreeNode[]): TreeNode[] => {
       const result: TreeNode[] = []
 
       for (const node of nodes) {
@@ -480,7 +480,7 @@ export default class TreeUtils {
         // 递归处理子节点
         const children = node[this.childrenKey]
         if (Array.isArray(children) && children.length > 0) {
-          newNode[this.childrenKey] = removeRecursively(children, newNode)
+          newNode[this.childrenKey] = removeRecursively(children)
         }
 
         result.push(newNode)

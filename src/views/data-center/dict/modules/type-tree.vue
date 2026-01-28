@@ -81,7 +81,7 @@
   }
 
   const handleDelete = async (row: DictListItem) => {
-    await deleteDictType({ id: row.id })
+    await deleteDictType({ id: row?.id } as DictListItem)
     await handleGetDictTypeList()
   }
   const handleEdit = async (data: DictListItem) => {
@@ -102,10 +102,10 @@
     try {
       tree.value.loading = true
       const { name } = unref(tree)
-      const params: DictListItem = {
+      const params = {
         name
       }
-      const { data } = await fetchGetDictTypeList(params)
+      const { data } = await fetchGetDictTypeList(params as DictListItem)
       tree.value = {
         ...unref(tree),
         data

@@ -27,10 +27,11 @@
           </ArtTableHeader>
 
           <ArtTable
+            table-layout="fixed"
             ref="artTableRef"
             rowKey="id"
             :loading="loading"
-            :data="data"
+            :data="data as Record<string, any>[]"
             :columns="columns"
             :pagination="pagination"
             @pagination:size-change="handleSizeChange"
@@ -55,6 +56,7 @@
   import { ElMessageBox, ElTag } from 'element-plus'
   import { useUserStore } from '@/store/modules/user'
   import type { TagProps } from 'element-plus'
+  import { ColumnOption } from '@/types'
   const { getDictLabelByValue } = useUserStore()
 
   defineOptions({ name: 'dict' })
@@ -91,7 +93,7 @@
         current: 1,
         size: 20
       },
-      columnsFactory: () => [
+      columnsFactory: (): ColumnOption[] => [
         {
           type: 'selection'
         },

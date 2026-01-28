@@ -28,8 +28,9 @@
 
       <!-- 表格 -->
       <ArtTable
+        table-layout="fixed"
         :loading="loading"
-        :data="data"
+        :data="data as any"
         :columns="columns"
         :pagination="pagination"
         @pagination:size-change="handleSizeChange"
@@ -68,6 +69,7 @@
   import { pageInfoHandler } from '@utils/table/tableUtils'
 
   import { deleteRole } from '@/api/system-manage'
+  import { ColumnOption } from '@/types'
 
   defineOptions({ name: 'Role' })
 
@@ -110,7 +112,7 @@
       },
       // 排除 apiParams 中的属性
       excludeParams: ['daterange'],
-      columnsFactory: () => [
+      columnsFactory: (): ColumnOption[] => [
         {
           prop: 'roleName',
           label: '角色名称',

@@ -32,7 +32,6 @@
  * @author Art Design Pro Team
  */
 
-import { router } from '@/router'
 import { App, Directive, DirectiveBinding } from 'vue'
 import { useMenuStore } from '@/store/modules/menu'
 import { AppRouteRecord } from '@/types'

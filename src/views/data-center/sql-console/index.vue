@@ -127,7 +127,7 @@
     result.value = null
 
     try {
-      const { data, error } = await executeSql({ query: sqlToExecute })
+      const { data, error } = (await executeSql({ query: sqlToExecute })) as any
       if (error) {
         result.value = {
           status: 'error',

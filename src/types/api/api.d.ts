@@ -44,8 +44,8 @@ declare namespace Api {
       /** 总条数 */
       total: number
       /*适配supabase分页*/
-      from: number
-      to: number
+      from?: number
+      to?: number
     }
 
     /** 通用搜索参数 */

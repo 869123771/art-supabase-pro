@@ -16,7 +16,7 @@ import 'monaco-sql-languages/esm/languages/pgsql/pgsql.contribution'
 import { LanguageIdEnum, setupLanguageFeatures } from 'monaco-sql-languages'
 
 // 配置 Monaco Worker
-// @ts-ignore
+// @ts-expect-error: MonacoEnvironment is added to window by monaco-editor loader
 self.MonacoEnvironment = {
   getWorker(_: any, label: string) {
     if (label === 'json') {

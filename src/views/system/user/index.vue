@@ -20,8 +20,9 @@
 
       <!-- 表格 -->
       <ArtTable
+        table-layout="fixed"
         :loading="loading"
-        :data="data"
+        :data="data as any"
         :columns="columns"
         :pagination="pagination"
         @selection-change="handleSelectionChange"
@@ -49,7 +50,7 @@
   import UserSearch from './modules/user-search.vue'
   import UserDialog from './modules/user-dialog.vue'
   import { ElTag, ElMessageBox, ElImage, type TagProps } from 'element-plus'
-  import { DialogType } from '@/types'
+  import { ColumnOption, DialogType } from '@/types'
 
   import { formatWithDayjs } from '@/utils/time'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
@@ -109,7 +110,7 @@
       //   current: 'pageNum',
       //   size: 'pageSize'
       // },
-      columnsFactory: () => [
+      columnsFactory: (): ColumnOption[] => [
         { type: 'selection' }, // 勾选列
         { type: 'index', width: 60, label: '序号' }, // 序号
         {
@@ -121,7 +122,7 @@
             return h('div', { class: 'user flex-c' }, [
               h(ElImage, {
                 class: 'size-9.5 rounded-md',
-                src: row.avatar,
+                src: row.avatar || '',
                 previewSrcList: [row.avatar || ''],
                 // 图片预览是否插入至 body 元素上，用于解决表格内部图片预览样式异常
                 previewTeleported: true

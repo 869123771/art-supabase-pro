@@ -27,6 +27,7 @@
       </ArtTableHeader>
 
       <ArtTable
+        table-layout="fixed"
         ref="tableRef"
         rowKey="id"
         :loading="loading"

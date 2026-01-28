@@ -64,7 +64,12 @@ export default [
   {
     files: ['**/*.vue'],
     languageOptions: {
-      parserOptions: { parser: tseslint.parser }
+      parserOptions: {
+        parser: tseslint.parser,
+        ecmaFeatures: {
+          jsx: true
+        }
+      }
     }
   },
   // 忽略文件
