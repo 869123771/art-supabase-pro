@@ -122,7 +122,7 @@
             return h('div', { class: 'user flex-c' }, [
               h(ElImage, {
                 class: 'size-9.5 rounded-md',
-                src: row.avatar || '',
+                src: row.avatar as string,
                 previewSrcList: [row.avatar || ''],
                 // 图片预览是否插入至 body 元素上，用于解决表格内部图片预览样式异常
                 previewTeleported: true

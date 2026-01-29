@@ -37,9 +37,13 @@
             <ArtSvgIcon icon="ri:user-3-line" />
             <span>{{ $t('topBar.user.userCenter') }}</span>
           </li>
-          <li class="btn-item" @click="toDocs()">
+          <!--          <li class="btn-item" @click="toDocs()">
             <ArtSvgIcon icon="ri:book-2-line" />
             <span>{{ $t('topBar.user.docs') }}</span>
+          </li>-->
+          <li class="btn-item" @click="toGitee()">
+            <ArtSvgIcon icon="ri:gitee-line" />
+            <span>{{ $t('topBar.user.gitee') }}</span>
           </li>
           <li class="btn-item" @click="toGithub()">
             <ArtSvgIcon icon="ri:github-line" />
@@ -90,6 +94,13 @@
    */
   const toDocs = (): void => {
     window.open(WEB_LINKS.DOCS)
+  }
+
+  /**
+   * 打开 GitHub 页面
+   */
+  const toGitee = (): void => {
+    window.open(WEB_LINKS.GITEE)
   }
 
   /**
