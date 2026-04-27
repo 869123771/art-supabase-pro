@@ -2,8 +2,9 @@
   <ElDialog
     v-model="visible"
     :title="dialogType === 'add' ? '新增角色' : '编辑角色'"
-    width="30%"
+    width="35%"
     align-center
+    draggable
     @close="handleClose"
   >
     <ElForm ref="formRef" :model="form" :rules="rules" label-width="120px" class="pr-6">
@@ -58,9 +59,7 @@
   })
 
   const emit = defineEmits<Emits>()
-
   const formRef = ref<FormInstance>()
-
   const loading = ref(false)
 
   /**
@@ -87,6 +86,9 @@
           table: 'roles',
           field: 'role_code',
           getExcludeId: (): string | undefined => form?.id,
+          extraWhere: () => ({
+            create_by: form.createBy
+          }),
           message: '角色编码已存在'
         }),
         trigger: 'change'
@@ -131,14 +133,15 @@
    * 根据弹窗类型填充表单或重置表单
    */
   const initForm = () => {
-    const { id, roleName, roleCode, description, enabled } = props.roleData ?? {}
+    const { id, roleName, roleCode, description, enabled, createBy } = props.roleData ?? {}
 
     Object.assign(form, {
       id,
       roleName,
       roleCode,
       description,
-      enabled
+      enabled,
+      createBy
     })
   }
 

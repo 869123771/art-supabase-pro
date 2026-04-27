@@ -145,6 +145,11 @@
           }
         },
         {
+          prop: 'createBy',
+          label: '创建人',
+          width: 180
+        },
+        {
           prop: 'createTime',
           label: '创建日期',
           width: 180,

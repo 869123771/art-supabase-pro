@@ -151,6 +151,7 @@ declare namespace Api {
       description?: string
       enabled?: boolean
       createTime?: string
+      createBy?: string
       startTime?: string
       endTime?: string
     }
