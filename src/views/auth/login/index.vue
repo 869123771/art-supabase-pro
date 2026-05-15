@@ -123,6 +123,8 @@
   import { ElNotification, type FormInstance, type FormRules } from 'element-plus'
   import { useSettingStore } from '@/store/modules/setting'
   import { login } from '@/api/auth'
+  import { MenuProcessor } from '@/router/core'
+  import { getFirstMenuPath } from '@/utils'
 
   defineOptions({ name: 'Login' })
 
@@ -175,6 +177,7 @@
   const userStore = useUserStore()
   const router = useRouter()
   const route = useRoute()
+  const menuProcessor = new MenuProcessor()
   const isPassing = ref(false)
   const isClickPass = ref(false)
 
@@ -195,6 +198,33 @@
   }))
 
   const loading = ref(false)
+
+  const isForbiddenRedirect = (redirect?: string): boolean => {
+    if (!redirect) {
+      return false
+    }
+
+    return redirect.split('?')[0] === '/403'
+  }
+
+  const resolvePostLoginPath = async (): Promise<string> => {
+    const redirect = route.query.redirect as string | undefined
+
+    if (!redirect) {
+      return '/'
+    }
+
+    if (!isForbiddenRedirect(redirect)) {
+      return redirect
+    }
+
+    const menuList = await menuProcessor.getMenuList()
+    if (!menuProcessor.validateMenuList(menuList)) {
+      return redirect
+    }
+
+    return getFirstMenuPath(menuList) || '/'
+  }
 
   onMounted(() => {
     // setupAccount('super')
@@ -248,8 +278,8 @@
       showLoginSuccessNotice()
 
       // 获取 redirect 参数，如果存在则跳转到指定页面，否则跳转到首页
-      const redirect = route.query.redirect as string
-      await router.push(redirect || '/')
+      const targetPath = await resolvePostLoginPath()
+      await router.push(targetPath)
     } catch (error) {
       // 处理 HttpError
       if (error instanceof HttpError) {

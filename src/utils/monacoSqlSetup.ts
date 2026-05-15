@@ -6,229 +6,267 @@ import cssWorker from 'monaco-editor/esm/vs/language/css/css.worker?worker'
 import htmlWorker from 'monaco-editor/esm/vs/language/html/html.worker?worker'
 import tsWorker from 'monaco-editor/esm/vs/language/typescript/ts.worker?worker'
 import PgSQLWorker from 'monaco-sql-languages/esm/languages/pgsql/pgsql.worker?worker'
+import {
+  buildJoinSuggestions,
+  buildSqlTemplateSuggestions,
+  extractSqlAliases,
+  getColumnsForSqlContext,
+  resolveTableRef
+} from './sqlWorkbench'
 
-// 0. 配置 loader 使用本地 monaco 实例
 loader.config({ monaco })
 
-// 1. 导入贡献文件，自动注册语言
 import 'monaco-sql-languages/esm/languages/pgsql/pgsql.contribution'
-// 2. 从主入口导入设置函数
 import { LanguageIdEnum, setupLanguageFeatures } from 'monaco-sql-languages'
 
-// 配置 Monaco Worker
-// @ts-expect-error: MonacoEnvironment is added to window by monaco-editor loader
+// Monaco 在 Vite 里需要手动分发不同语言的 worker。
+// 这里把 pgsql worker 单独接进来，避免 SQL 提示和解析退化成纯文本。
+// @ts-expect-error MonacoEnvironment is attached by monaco-editor
 self.MonacoEnvironment = {
   getWorker(_: any, label: string) {
-    if (label === 'json') {
-      return new jsonWorker()
-    }
-    if (label === 'css' || label === 'scss' || label === 'less') {
-      return new cssWorker()
-    }
-    if (label === 'html' || label === 'handlebars' || label === 'razor') {
-      return new htmlWorker()
-    }
-    if (label === 'typescript' || label === 'javascript') {
-      return new tsWorker()
-    }
-    if (label === 'pgsql') {
-      return new PgSQLWorker()
-    }
+    if (label === 'json') return new jsonWorker()
+    if (label === 'css' || label === 'scss' || label === 'less') return new cssWorker()
+    if (label === 'html' || label === 'handlebars' || label === 'razor') return new htmlWorker()
+    if (label === 'typescript' || label === 'javascript') return new tsWorker()
+    if (label === 'pgsql') return new PgSQLWorker()
     return new editorWorker()
   }
 }
 
-// 3. 配置启用补全
-// 存储元数据
 let dbMetadata: Api.DataCenter.SqlConsole.DatabaseMetadata = {
   schemas: [],
   tables: [],
   functions: [],
-  columns: []
+  columns: [],
+  foreignKeys: []
 }
 
-// 导出注册函数
-export function registerSqlMetadata(metadata: any) {
+export function registerSqlMetadata(metadata: Api.DataCenter.SqlConsole.DatabaseMetadata | any) {
   if (!metadata) return
 
   if (Array.isArray(metadata)) {
     dbMetadata.tables = metadata
-  } else {
-    // 确保结构完整
-    dbMetadata = {
-      schemas: metadata.schemas || [],
-      tables: metadata.tables || [],
-      functions: metadata.functions || [],
-      columns: metadata.columns || []
-    }
+    return
   }
-  console.log('SQL Metadata Registered:', dbMetadata)
+
+  dbMetadata = {
+    schemas: metadata.schemas || [],
+    tables: metadata.tables || [],
+    functions: metadata.functions || [],
+    columns: metadata.columns || [],
+    foreignKeys: metadata.foreignKeys || []
+  }
 }
 
-function findTableByAlias(
+function createRange(model: monaco.editor.ITextModel, position: monaco.Position) {
+  const word = model.getWordUntilPosition(position)
+  return {
+    startLineNumber: position.lineNumber,
+    endLineNumber: position.lineNumber,
+    startColumn: word.startColumn,
+    endColumn: word.endColumn
+  }
+}
+
+function buildTableCompletionItems(range: monaco.IRange) {
+  return dbMetadata.tables.flatMap((table) => {
+    const schemaName = table.tableSchema || 'public'
+    const columnsPreview = table.columns
+      .slice(0, 6)
+      .map((column) => `${column.name} ${column.dataType}`)
+      .join(', ')
+    const alias = table.tableName
+      .split('_')
+      .filter(Boolean)
+      .map((item) => item[0])
+      .join('')
+      .toLowerCase()
+
+    return [
+      {
+        label: table.tableName,
+        kind: monaco.languages.CompletionItemKind.Class,
+        detail: `TABLE ${schemaName}`,
+        insertText: table.tableName,
+        documentation: {
+          value: `**${schemaName}.${table.tableName}**\n\n${columnsPreview || 'No columns loaded'}`
+        },
+        range,
+        sortText: `30_${table.tableName}`
+      },
+      {
+        label: `${schemaName}.${table.tableName}`,
+        kind: monaco.languages.CompletionItemKind.Class,
+        detail: 'Qualified table',
+        insertText: `${schemaName}.${table.tableName} ${alias || 't'}`,
+        range,
+        sortText: `31_${table.tableName}`
+      }
+    ]
+  })
+}
+
+function buildFunctionCompletionItems(range: monaco.IRange) {
+  return dbMetadata.functions.map((fn) => ({
+    label: fn.routineName,
+    kind: monaco.languages.CompletionItemKind.Function,
+    detail: `${fn.routineSchema}.${fn.routineName}() -> ${fn.returnType}`,
+    insertText: `${fn.routineName}($1)`,
+    insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+    range,
+    sortText: `40_${fn.routineName}`
+  }))
+}
+
+function buildSchemaCompletionItems(range: monaco.IRange) {
+  return dbMetadata.schemas.map((schema) => ({
+    label: schema,
+    kind: monaco.languages.CompletionItemKind.Module,
+    detail: 'Schema',
+    insertText: schema,
+    range,
+    sortText: `50_${schema}`
+  }))
+}
+
+function buildKeywordCompletionItems(range: monaco.IRange, keywords: string[] = []) {
+  return keywords.map((keyword) => ({
+    label: keyword,
+    kind: monaco.languages.CompletionItemKind.Keyword,
+    detail: 'Keyword',
+    insertText: keyword,
+    range,
+    sortText: `80_${keyword}`
+  }))
+}
+
+function buildColumnCompletionItems(
+  range: monaco.IRange,
   sql: string,
-  alias: string
-): Api.DataCenter.SqlConsole.TableMetadata | undefined {
-  if (!dbMetadata.tables) return undefined
+  aliasOnly?: string
+): monaco.languages.CompletionItem[] {
+  const aliases = extractSqlAliases(sql)
 
-  // 1. 尝试直接匹配表名 (如果 alias 本身就是表名)
-  const directMatch = dbMetadata.tables.find((t) => t.tableName === alias)
-  if (directMatch) return directMatch
+  if (aliasOnly) {
+    const table = resolveTableRef(aliasOnly, dbMetadata, aliases)
+    if (!table) return []
 
-  // 2. 尝试解析 alias
-  // 匹配模式: FROM tableName alias 或 JOIN tableName alias
-  // 忽略大小写
-  // \b 单词边界
-  // 捕获组 1: 表名
-  const regex = new RegExp(`\\b([a-zA-Z0-9_]+)\\s+(?:AS\\s+)?${alias}\\b`, 'i')
-  const match = sql.match(regex)
-
-  if (match) {
-    const tableName = match[1]
-    return dbMetadata.tables.find((t) => t.tableName === tableName)
+    return table.columns.map((column) => ({
+      label: column.name,
+      kind: monaco.languages.CompletionItemKind.Field,
+      detail: `${table.tableName}.${column.name} ${column.dataType}`,
+      insertText: column.name,
+      documentation: `Table: ${table.tableSchema}.${table.tableName}\nColumn: ${column.name}\nType: ${column.dataType}`,
+      range,
+      sortText: `00_${column.name}`
+    }))
   }
 
-  return undefined
+  return getColumnsForSqlContext(sql, dbMetadata).map(({ alias, table, column }) => ({
+    label: `${alias}.${column.name}`,
+    kind: monaco.languages.CompletionItemKind.Field,
+    detail: `${table.tableName}.${column.name} ${column.dataType}`,
+    insertText: `${alias}.${column.name}`,
+    documentation: `Table: ${table.tableSchema}.${table.tableName}\nColumn: ${column.name}\nType: ${column.dataType}`,
+    range,
+    sortText: `05_${alias}.${column.name}`
+  }))
+}
+
+function buildJoinCompletionItems(range: monaco.IRange, sql: string) {
+  return buildJoinSuggestions(sql, dbMetadata).map((item, index) => ({
+    label: item.label,
+    kind: monaco.languages.CompletionItemKind.Snippet,
+    detail: item.detail,
+    documentation: item.documentation,
+    insertText: item.insertText,
+    range,
+    sortText: `10_${index}`,
+    insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet
+  }))
+}
+
+function buildTemplateCompletionItems(range: monaco.IRange) {
+  return buildSqlTemplateSuggestions(dbMetadata).map((item, index) => ({
+    label: item.label,
+    kind: monaco.languages.CompletionItemKind.Snippet,
+    detail: item.detail,
+    documentation: item.documentation,
+    insertText: item.insertText,
+    range,
+    sortText: `01_${index}`,
+    insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet
+  }))
 }
 
 setupLanguageFeatures(LanguageIdEnum.PG, {
   completionItems: {
     enable: true,
-    triggerCharacters: [' ', '.', '"'],
+    triggerCharacters: [' ', '.', '('],
     completionService: async (
       model: monaco.editor.ITextModel,
       position: monaco.Position,
       context: monaco.languages.CompletionContext,
       suggestions: any
     ) => {
-      const items: any[] = []
-      const { keywords } = suggestions || {}
-
-      const word = model.getWordUntilPosition(position)
-      const range = {
-        startLineNumber: position.lineNumber,
-        endLineNumber: position.lineNumber,
-        startColumn: word.startColumn,
-        endColumn: word.endColumn
-      }
-
-      // 获取当前行内容
+      const range = createRange(model, position)
+      const fullSql = model.getValue()
       const lineContent = model.getLineContent(position.lineNumber)
+      const textBeforeCursor = model.getValueInRange(
+        new monaco.Range(1, 1, position.lineNumber, position.column)
+      )
+      const items: monaco.languages.CompletionItem[] = []
+      const keywords = suggestions?.keywords || []
 
-      // 确定检查点号的位置
-      // 如果当前在输入单词中，检查单词前的字符
-      // 如果不在单词中（刚输入点号），检查光标前的字符
-      let indexToCheck = position.column - 2
-      if (word.word.length > 0) {
-        indexToCheck = word.startColumn - 2
-      }
-
+      const indexToCheck = position.column - 2
       const charBefore = indexToCheck >= 0 ? lineContent.charAt(indexToCheck) : ''
       const isDotTrigger = context.triggerCharacter === '.' || charBefore === '.'
 
+      // a. 点号补全只返回别名下的列，避免把全库字段全塞进来。
       if (isDotTrigger) {
-        // 尝试获取点号前的别名
-        if (indexToCheck >= 0) {
-          // 提取点号前的单词
-          // 从 indexToCheck - 1 开始向前找 (indexToCheck 是点号的位置)
-          const textBeforeDot = lineContent.substring(0, indexToCheck)
-          // 简单的正则提取最后一个单词
-          const match = textBeforeDot.match(/([a-zA-Z0-9_]+)\s*$/)
-          if (match) {
-            const alias = match[1]
-            const fullSql = model.getValue()
-            const table = findTableByAlias(fullSql, alias)
+        const textBeforeDot = textBeforeCursor.slice(0, -1)
+        const aliasMatch = textBeforeDot.match(/([a-zA-Z0-9_"]+)\s*$/)
+        const alias = aliasMatch?.[1]?.replace(/"/g, '')
 
-            if (table && table.columns) {
-              // 如果找到了表，只返回该表的字段
-              table.columns.forEach((col) => {
-                items.push({
-                  label: col.name,
-                  kind: monaco.languages.CompletionItemKind.Field,
-                  detail: col.dataType, // 右侧显示字段类型
-                  insertText: col.name,
-                  documentation: `Table: ${table.tableName}\nColumn: ${col.name}\nType: ${col.dataType}`,
-                  range: range,
-                  sortText: '00' + col.name // 保证排在最前
-                })
-              })
-              return items
-            }
-          }
+        if (alias) {
+          return buildColumnCompletionItems(range, fullSql, alias)
         }
       }
 
-      // 如果不是点号触发，或者没找到对应的表，返回默认建议
-      // 1. 关键字
-      if (keywords) {
-        items.push(
-          ...keywords.map((kw: string) => ({
-            label: kw,
-            kind: monaco.languages.CompletionItemKind.Keyword,
-            detail: 'Keyword',
-            insertText: kw,
-            range: range,
-            sortText: '90' + kw // 关键字放后面
-          }))
-        )
+      const upperBeforeCursor = textBeforeCursor.toUpperCase()
+      const wantsTemplates =
+        /^\s*$/.test(textBeforeCursor) ||
+        /\b(SELECT|WITH|INSERT|UPDATE|DELETE)\s*$/i.test(textBeforeCursor)
+      const wantsTables = /\b(FROM|JOIN|UPDATE|INTO)\s+[a-zA-Z0-9_."-]*$/i.test(textBeforeCursor)
+      const wantsJoin = /\bJOIN\s+[a-zA-Z0-9_."-]*$/i.test(textBeforeCursor)
+      const wantsSelectColumns =
+        /\bSELECT\s+[^;]*$/i.test(textBeforeCursor) && /\bFROM\b/i.test(upperBeforeCursor)
+
+      // b. 空白位置和语句开头优先给整句模板，接近 Cursor / DataGrip 的起手体验。
+      if (wantsTemplates) {
+        items.push(...buildTemplateCompletionItems(range))
       }
 
-      // 2. Schema
-      if (dbMetadata.schemas) {
-        dbMetadata.schemas.forEach((schema: string) => {
-          items.push({
-            label: schema,
-            kind: monaco.languages.CompletionItemKind.Module,
-            detail: 'Schema',
-            insertText: schema,
-            range: range,
-            sortText: '80' + schema
-          })
-        })
+      // c. JOIN 上下文优先给可直接落地的关联语句，而不是只给表名。
+      if (wantsJoin) {
+        items.push(...buildJoinCompletionItems(range, fullSql))
       }
 
-      // 3. 表名
-      if (dbMetadata.tables) {
-        dbMetadata.tables.forEach((table: Api.DataCenter.SqlConsole.TableMetadata) => {
-          const schemaName = table.tableSchema || 'public'
-          // 构建表结构的简要描述
-          const columnsPreview = table.columns
-            ? `(${table.columns.map((c) => `${c.name} ${c.dataType}`).join(', ')})`
-            : ''
-
-          // 表名
-          items.push({
-            label: table.tableName,
-            kind: monaco.languages.CompletionItemKind.Class,
-            detail: `TABLE${columnsPreview}`, // 右侧显示表结构预览
-            insertText: table.tableName,
-            documentation: {
-              value: `**Table**: ${schemaName}.${table.tableName}\n\n**Columns**:\n${table.columns
-                ?.map((c) => `- \`${c.name}\`: ${c.dataType}`)
-                .join('\n')}`
-            },
-            range: range,
-            sortText: '50' + table.tableName
-          })
-
-          // schema.table
-          items.push({
-            label: `${schemaName}.${table.tableName}`,
-            kind: monaco.languages.CompletionItemKind.Class,
-            detail: 'Table',
-            insertText: `${schemaName}.${table.tableName}`,
-            range: range,
-            sortText: '60' + table.tableName
-          })
-        })
+      if (wantsTables) {
+        items.push(...buildTableCompletionItems(range))
       }
 
-      // 注意：这里不再默认添加所有字段，避免重复和干扰
+      if (wantsSelectColumns) {
+        items.push(...buildColumnCompletionItems(range, fullSql))
+      }
+
+      items.push(...buildFunctionCompletionItems(range))
+      items.push(...buildSchemaCompletionItems(range))
+      items.push(...buildTableCompletionItems(range))
+      items.push(...buildKeywordCompletionItems(range, keywords))
 
       return items
     }
   },
-  diagnostics: { enable: false } // 可先关闭诊断聚焦补全
+  diagnostics: false
 })
-
-console.log('PGSQL 语言支持已加载（Monaco 0.31.0）。')

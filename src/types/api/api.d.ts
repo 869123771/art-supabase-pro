@@ -230,6 +230,7 @@ declare namespace Api {
         schemas: string[]
         tables: TableMetadata[]
         functions: FunctionMetadata[]
+        foreignKeys: ForeignKeyMetadata[]
       }
 
       interface TableMetadata {
@@ -255,6 +256,16 @@ declare namespace Api {
         routineSchema: string
         routineName: string
         returnType: string
+      }
+
+      interface ForeignKeyMetadata {
+        sourceSchema: string
+        sourceTable: string
+        sourceColumn: string
+        targetSchema: string
+        targetTable: string
+        targetColumn: string
+        constraintName: string
       }
 
       interface SqlExecuteRequest {
@@ -287,6 +298,19 @@ declare namespace Api {
         notices?: string[]
         warnings?: string[]
         queryText?: string
+      }
+
+      interface SqlAiGenerateRequest {
+        prompt: string
+        mode?: 'generate' | 'fix'
+        currentSql?: string
+        metadata?: DatabaseMetadata
+      }
+
+      interface SqlAiGenerateResponse {
+        sql: string
+        summary?: string
+        warnings?: string[]
       }
     }
   }

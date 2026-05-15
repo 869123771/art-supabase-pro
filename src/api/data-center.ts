@@ -1,25 +1,24 @@
 import { useSupabase } from '@/hooks'
+import type { QueryResult } from '@/hooks/core/useSupabase'
 import { applyFilters, FilterSpec } from '@utils/supabase-filters'
-const { supabase, keysToSnakeDeep, responseHandle } = useSupabase()
-import { QueryResult } from '@supabase/supabase-js'
 
-/*获取字典类型列表*/
+const { supabase, keysToSnakeDeep, responseHandle } = useSupabase()
+
+// 字典类型列表
 export async function fetchGetDictTypeList(params: Api.DataCenter.DictListItem) {
   const { name } = params
   const specs = [{ col: 'name', op: 'ilike', val: name ? `%${name}%` : undefined }]
 
-  // 构建查询
   let query: any = supabase
     .from('dict_type')
     .select('*', { count: 'exact' })
-    .order('create_time', { ascending: false }) // 按创建时间倒序
+    .order('create_time', { ascending: false })
 
-  // applyFilters 支持传入 FilterSpec[]（这里 specs 已为 snake_case）
   query = applyFilters(query, specs, { skipEmpty: true, camelToSnake: false })
   return await responseHandle(() => query as any, { ignoreCheck: true })
 }
 
-/*删除字典类型*/
+// 删除字典类型
 export async function deleteDictType(params: Api.DataCenter.DictListItem) {
   const { id } = params
   return await responseHandle(() => supabase.from('dict_type').delete().eq('id', id) as any, {
@@ -27,7 +26,7 @@ export async function deleteDictType(params: Api.DataCenter.DictListItem) {
   })
 }
 
-/*新增字典类型*/
+// 新增字典类型
 export async function addDictType(params: Api.DataCenter.DictListItem) {
   return await responseHandle(
     () => supabase.from('dict_type').insert(keysToSnakeDeep(params)) as any,
@@ -38,7 +37,7 @@ export async function addDictType(params: Api.DataCenter.DictListItem) {
   )
 }
 
-/*编辑字典类型*/
+// 编辑字典类型
 export async function editDictType(params: Api.DataCenter.DictListItem) {
   const { id } = params
   return await responseHandle(
@@ -50,7 +49,7 @@ export async function editDictType(params: Api.DataCenter.DictListItem) {
   )
 }
 
-/*获取字典列表通过类型Id*/
+// 根据类型 ID 查询字典项
 export async function fetchGetDictListByTypeId(params: Api.DataCenter.DictListItem) {
   const { typeId, label = '', code, i18nScope, status } = params
   const specs = [
@@ -61,20 +60,17 @@ export async function fetchGetDictListByTypeId(params: Api.DataCenter.DictListIt
     { col: 'status', op: 'eq', val: status }
   ]
 
-  // 构建查询
   let query: any = supabase
     .from('dict')
     .select('*', { count: 'exact' })
     .order('sort', { ascending: true })
 
-  // applyFilters 支持传入 FilterSpec[]（这里 specs 已为 snake_case）
   query = applyFilters(query, specs, { skipEmpty: true, camelToSnake: true })
   return await responseHandle(() => query as any, { ignoreCheck: true })
 }
 
-/*获取字典列表*/
+// 字典项列表
 export async function fetchGetDictList() {
-  // 构建查询
   const query = supabase
     .from('dict')
     .select(
@@ -92,16 +88,14 @@ export async function fetchGetDictList() {
       )
     `
     )
-    // dict 表本身状态
     .eq('status', '1')
-    // 关联 dict_type 表状态
     .eq('dict_type.status', '1')
-    // 可选：排序
     .order('sort', { ascending: true })
+
   return await responseHandle(() => query as any, { ignoreCheck: true })
 }
 
-/*删除字典*/
+// 删除字典项
 export async function deleteDict(params: Api.DataCenter.DictListItem) {
   const { id } = params
   return await responseHandle(() => supabase.from('dict').delete().eq('id', id) as any, {
@@ -109,14 +103,14 @@ export async function deleteDict(params: Api.DataCenter.DictListItem) {
   })
 }
 
-/*删除字典批量*/
+// 批量删除字典项
 export async function deleteDictBatch(ids: string[]) {
   return await responseHandle(() => supabase.from('dict').delete().in('id', ids) as any, {
     showMessage: true
   })
 }
 
-/*新增字典类型*/
+// 新增字典项
 export async function addDict(params: Api.DataCenter.DictListItem) {
   return await responseHandle(() => supabase.from('dict').insert(keysToSnakeDeep(params)) as any, {
     showMessage: true,
@@ -124,7 +118,7 @@ export async function addDict(params: Api.DataCenter.DictListItem) {
   })
 }
 
-/*编辑字典类型*/
+// 编辑字典项
 export async function editDict(params: Api.DataCenter.DictListItem) {
   const { id } = params
   return await responseHandle(
@@ -136,12 +130,11 @@ export async function editDict(params: Api.DataCenter.DictListItem) {
   )
 }
 
-/*获取资源列表*/
+// 资源列表
 export async function fetchGetResourceList(params: Api.DataCenter.Resources.ResourceSearchParams) {
   const { originName = '', suffix = '', from = 0, to = 9 } = params
   const specs: FilterSpec[] = [{ col: 'originName', op: 'ilike', val: `%${originName}%` }]
 
-  // 处理 suffix：将逗号分隔的字符串转换为数组，并使用 in 操作符
   if (suffix) {
     const suffixArray = suffix
       .split(',')
@@ -152,38 +145,35 @@ export async function fetchGetResourceList(params: Api.DataCenter.Resources.Reso
       specs.push({ col: 'suffix', op: 'in', val: suffixArray })
     }
   }
-  // 构建查询
+
   let query: any = supabase
     .from('attachment')
     .select('*', { count: 'exact' })
     .order('create_time', { ascending: false })
     .range(from, to)
 
-  // applyFilters 支持传入 FilterSpec[]（这里 specs 已为 snake_case）
   query = applyFilters(query, specs, { skipEmpty: true, camelToSnake: true })
   return await responseHandle(() => query as any, { ignoreCheck: true, showErrorMessage: true })
 }
 
-/*删除资源*/
+// 删除资源，同时清理 Storage 对象
 export async function deleteResource(params: Api.DataCenter.Resources.ResourceListItem) {
   const { id } = params
 
-  // 1) 获取要删除记录的 object_name
   const { data: resourceItem } = await responseHandle(
     () => supabase.from('attachment').select().eq('id', id).single() as any,
     {
       ignoreCheck: true
     }
   )
+
   const { storagePath, objectName } = resourceItem as Api.DataCenter.Resources.ResourceListItem
   const fullPath = `${storagePath}/${objectName}`
-  // 2) 删除 DB 记录（原示例行为）
 
   await responseHandle(() => supabase.from('attachment').delete().eq('id', id).single() as any, {
     breakReturn: true
   })
 
-  // 3) 如果 DB 删除成功，删除 Storage 对象（注意：remove 接受路径数组）
   return await responseHandle(
     () => supabase.storage.from('attachments').remove([fullPath]) as any,
     {
@@ -192,14 +182,13 @@ export async function deleteResource(params: Api.DataCenter.Resources.ResourceLi
   )
 }
 
-/*sql控制台*/
 /**
- * 获取数据库元数据（Schema, Tables, Columns, Functions）
- * 注意：需要有访问 information_schema 的权限
+ * 读取 SQL 工作台需要的元数据。
+ * 当前除了 schema / table / column / function，也会补上外键信息，
+ * 这样前端才能做 JOIN 自动推断。
  */
 export async function fetchDatabaseMetadata(): Promise<Api.DataCenter.SqlConsole.DatabaseMetadata> {
   try {
-    // 尝试使用 RPC 函数获取元数据
     const { data, error } = await responseHandle(
       () => supabase.rpc('get_database_metadata_all') as any,
       {
@@ -209,21 +198,15 @@ export async function fetchDatabaseMetadata(): Promise<Api.DataCenter.SqlConsole
     )
 
     if (error || !data) {
-      // 如果 RPC 不存在，使用 information_schema 查询
       return await fetchMetadataFromInformationSchema()
     }
 
-    // Supabase 返回的 data 可能直接是解析后的 JSON，
-    // 也可能是 array/other shape, 所以要适配
     const payload = Array.isArray(data) && data.length > 0 ? data[0] : (data as any)
-
-    // ========== 1. 提取并格式化 Schemas ==========
     const schemas: string[] = payload?.schemas ?? []
 
-    // ========== 2. 提取并格式化 Columns（严格匹配类型） ==========
     const columns: Api.DataCenter.SqlConsole.ColumnMetadata[] = (payload?.columns ?? []).map(
       (c: any) => ({
-        tableSchema: c.tableSchema || '', // 确保非空
+        tableSchema: c.tableSchema || '',
         tableName: c.tableName || '',
         columnName: c.columnName || '',
         dataType: c.dataType || '',
@@ -232,13 +215,13 @@ export async function fetchDatabaseMetadata(): Promise<Api.DataCenter.SqlConsole
       })
     )
 
-    // ========== 3. 提取并格式化 Tables（修正字段名：schema → tableSchema） ==========
+    // 以后端 columns 为准重建 table 结构，保证表和列始终同步。
     const tablesMap = new Map<string, Api.DataCenter.SqlConsole.TableMetadata>()
     columns.forEach((col) => {
       const key = `${col.tableSchema}.${col.tableName}`
       if (!tablesMap.has(key)) {
         tablesMap.set(key, {
-          tableSchema: col.tableSchema, // 关键修正：匹配类型定义的 tableSchema
+          tableSchema: col.tableSchema,
           tableName: col.tableName,
           columns: []
         })
@@ -251,7 +234,6 @@ export async function fetchDatabaseMetadata(): Promise<Api.DataCenter.SqlConsole
     })
     const tables: Api.DataCenter.SqlConsole.TableMetadata[] = Array.from(tablesMap.values())
 
-    // ========== 4. 提取并格式化 Functions ==========
     const functions: Api.DataCenter.SqlConsole.FunctionMetadata[] = (payload?.functions ?? []).map(
       (f: any) => ({
         routineSchema: f.routineSchema || '',
@@ -260,43 +242,78 @@ export async function fetchDatabaseMetadata(): Promise<Api.DataCenter.SqlConsole
       })
     )
 
-    // ========== 5. 返回完整的 DatabaseMetadata（包含所有必填字段） ==========
+    const foreignKeys = await fetchForeignKeysMetadata()
+
     return {
       schemas,
-      columns, // 补全类型要求的 columns 字段
+      columns,
       tables,
-      functions
+      functions,
+      foreignKeys
     }
   } catch (error) {
     console.error('Failed to fetch database metadata:', error)
-    // 异常时返回符合类型的空数据（避免类型报错）
     return {
       schemas: ['public'],
-      columns: [], // 补全空 columns
+      columns: [],
       tables: [],
-      functions: []
+      functions: [],
+      foreignKeys: []
     }
   }
 }
 
-/**
- * 从 information_schema 获取元数据（备用方案：返回完整类型结构）
- */
+// RPC 不可用时的兜底返回，至少不让前端提示链路崩掉。
 async function fetchMetadataFromInformationSchema(): Promise<Api.DataCenter.SqlConsole.DatabaseMetadata> {
-  // 备用方案也返回完整的类型结构（即使为空）
   return {
     schemas: ['public'],
-    columns: [], // 补全空 columns
+    columns: [],
     tables: [],
-    functions: []
+    functions: [],
+    foreignKeys: []
   }
 }
 
-/**
- * 执行 SQL 查询
- * @param params SQL 查询参数
- * @returns SQL 执行结果
- */
+// 额外查询外键关系，给 JOIN 自动推断和 AI schema 摘要使用。
+async function fetchForeignKeysMetadata(): Promise<Api.DataCenter.SqlConsole.ForeignKeyMetadata[]> {
+  const relationQuery = `
+    SELECT
+      tc.table_schema AS source_schema,
+      tc.table_name AS source_table,
+      kcu.column_name AS source_column,
+      ccu.table_schema AS target_schema,
+      ccu.table_name AS target_table,
+      ccu.column_name AS target_column,
+      tc.constraint_name
+    FROM information_schema.table_constraints tc
+    JOIN information_schema.key_column_usage kcu
+      ON tc.constraint_name = kcu.constraint_name
+      AND tc.table_schema = kcu.table_schema
+    JOIN information_schema.constraint_column_usage ccu
+      ON ccu.constraint_name = tc.constraint_name
+      AND ccu.constraint_schema = tc.constraint_schema
+    WHERE tc.constraint_type = 'FOREIGN KEY'
+      AND tc.table_schema NOT IN ('pg_catalog', 'information_schema', 'pg_toast')
+    ORDER BY tc.table_schema, tc.table_name, tc.constraint_name
+  `
+
+  const { data, error } = (await executeSql({ query: relationQuery })) as any
+  if (error || !data?.rows) {
+    return []
+  }
+
+  return (data.rows || []).map((item: any) => ({
+    sourceSchema: item.sourceSchema || item.source_schema || '',
+    sourceTable: item.sourceTable || item.source_table || '',
+    sourceColumn: item.sourceColumn || item.source_column || '',
+    targetSchema: item.targetSchema || item.target_schema || '',
+    targetTable: item.targetTable || item.target_table || '',
+    targetColumn: item.targetColumn || item.target_column || '',
+    constraintName: item.constraintName || item.constraint_name || ''
+  }))
+}
+
+// SQL 执行入口，调用现有 Edge Function 并保留原始错误给编辑器做定位。
 export async function executeSql(
   params: Api.DataCenter.SqlConsole.SqlExecuteRequest
 ): Promise<QueryResult<any>> {
@@ -312,4 +329,22 @@ export async function executeSql(
     convertToCamelShadow: true,
     returnRawError: true
   })
+}
+
+// AI SQL 入口单独保留，方便后面替换模型提供方而不动工作台页面。
+export async function generateSqlByAi(
+  params: Api.DataCenter.SqlConsole.SqlAiGenerateRequest
+): Promise<QueryResult<Api.DataCenter.SqlConsole.SqlAiGenerateResponse>> {
+  const { data, error } =
+    await supabase.functions.invoke<Api.DataCenter.SqlConsole.SqlAiGenerateResponse>(
+      'ai-sql-assistant',
+      {
+        body: params
+      }
+    )
+
+  return {
+    data: data ?? null,
+    error
+  }
 }
