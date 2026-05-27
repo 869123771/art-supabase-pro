@@ -36,9 +36,9 @@ import { App, Directive, DirectiveBinding } from 'vue'
 import { useMenuStore } from '@/store/modules/menu'
 import { AppRouteRecord } from '@/types'
 
-export type AuthDirective = Directive<HTMLElement, string>
+export type AuthDirective = Directive<HTMLElement, string | undefined>
 
-function checkAuthPermission(el: HTMLElement, binding: DirectiveBinding<string>): void {
+function checkAuthPermission(el: HTMLElement, binding: DirectiveBinding<string | undefined>): void {
   // 获取当前路由的权限列表
   const menuStore = useMenuStore()
   // const authList = (router.currentRoute.value.meta.authList as Array<{ authMark: string }>) || []

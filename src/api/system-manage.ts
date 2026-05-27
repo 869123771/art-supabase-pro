@@ -232,7 +232,7 @@ export async function fetchGetMenuList(params: AppRouteRecord) {
 }
 
 /*删除菜单*/
-export async function deleteMenu(params: Array<string>) {
+export async function deleteMenu(params: Record<string, any>) {
   const { ids } = params as any
   return await responseHandle(() => supabase.from('menus').delete().in('id', ids) as any, {
     showMessage: true

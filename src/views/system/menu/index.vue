@@ -4,8 +4,8 @@
     <!-- 搜索栏 -->
     <ArtSearchBar
       v-model="formFilters"
+      v-show="showSearchBar"
       :items="formItems"
-      :showExpand="false"
       @reset="handleReset"
       @search="handleSearch"
     />
@@ -15,6 +15,7 @@
       <ArtTableHeader
         :showZebra="false"
         :loading="loading"
+        v-model:showSearchBar="showSearchBar"
         v-model:columns="columnChecks"
         @refresh="handleRefresh"
       >
@@ -76,6 +77,7 @@
   const isExpanded = ref(false)
   const tableRef = ref()
 
+  const showSearchBar = ref(false)
   // 弹窗相关
   const menuDialogRef = ref()
   const dialogVisible = ref(false)
@@ -358,7 +360,7 @@
       const ids = treeUtils
         .getDescendants(tableData.value, row.id as string, true)
         ?.map((item: any) => item.id)
-      await deleteMenu({ ids })
+      await deleteMenu({ ids } as Record<any, any>)
       await handleGetMenuList()
     } catch (error) {
       if (error !== 'cancel') {
