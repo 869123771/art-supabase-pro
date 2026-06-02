@@ -239,7 +239,7 @@
           props: { placeholder: '如：ri:user-line' }
         },
         {
-          label: '菜单排序',
+          label: createLabelTooltip('菜单排序', '值越小越靠前'),
           key: 'sort',
           type: 'number',
           props: { min: 1, controlsPosition: 'right', style: { width: '100%' } }
@@ -310,7 +310,7 @@
           props: { placeholder: '如：ri:user-line' }
         },
         {
-          label: '菜单排序',
+          label: createLabelTooltip('菜单排序', '值越小越靠前'),
           key: 'sort',
           type: 'number',
           props: { min: 1, controlsPosition: 'right', style: { width: '100%' } }
@@ -370,7 +370,7 @@
           props: { placeholder: '如：add、edit、delete' }
         },
         {
-          label: '权限排序',
+          label: createLabelTooltip('权限排序', '值越小越靠前'),
           key: 'sort',
           type: 'number',
           props: { min: 1, controlsPosition: 'right', style: { width: '100%' } }

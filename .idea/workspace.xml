@@ -4,11 +4,9 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="b8f35119-660a-46e7-82f4-53eee06863eb" name="Changes" comment="feat ai write sql">
+    <list default="true" id="b8f35119-660a-46e7-82f4-53eee06863eb" name="Changes" comment="feat menu">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/api/system-manage.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/system-manage.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/directives/core/auth.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/directives/core/auth.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/system/menu/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/system/menu/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/system/menu/modules/menu-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/system/menu/modules/menu-dialog.vue" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -181,7 +179,8 @@
       <workItem from="1778740270627" duration="18095000" />
       <workItem from="1778833091169" duration="3527000" />
       <workItem from="1779064502806" duration="653000" />
-      <workItem from="1779842147584" duration="6347000" />
+      <workItem from="1779842147584" duration="10153000" />
+      <workItem from="1780361687253" duration="2006000" />
     </task>
     <task id="LOCAL-00001" summary="feat project clean">
       <option name="closed" value="true" />
@@ -455,7 +454,15 @@
       <option name="project" value="LOCAL" />
       <updated>1778827020146</updated>
     </task>
-    <option name="localTasksCounter" value="35" />
+    <task id="LOCAL-00035" summary="feat menu">
+      <option name="closed" value="true" />
+      <created>1779868735517</created>
+      <option name="number" value="00035" />
+      <option name="presentableId" value="LOCAL-00035" />
+      <option name="project" value="LOCAL" />
+      <updated>1779868735517</updated>
+    </task>
+    <option name="localTasksCounter" value="36" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -485,7 +492,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="feat menu" />
     <MESSAGE value="pref user | role | menu" />
     <MESSAGE value="pref dict" />
     <MESSAGE value="pref login upload-image" />
@@ -510,7 +516,8 @@
     <MESSAGE value="feat HarmonyOS Sans font" />
     <MESSAGE value="feat same role data validate" />
     <MESSAGE value="feat ai write sql" />
-    <option name="LAST_COMMIT_MESSAGE" value="feat ai write sql" />
+    <MESSAGE value="feat menu" />
+    <option name="LAST_COMMIT_MESSAGE" value="feat menu" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
