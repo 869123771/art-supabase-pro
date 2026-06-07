@@ -2,11 +2,11 @@
 <template>
   <div class="art-full-height">
     <div class="box-border flex gap-4 h-full max-md:block max-md:gap-0 max-md:h-auto">
-      <div class="flex-shrink-0 w-58 h-full max-md:w-full max-md:h-auto max-md:mb-5">
+      <div class="shrink-0 w-58 h-full max-md:w-full max-md:h-auto max-md:mb-5">
         <TypeTree ref="typeTreeRef" @tree-node-click="getData" />
       </div>
 
-      <div class="flex flex-col flex-grow min-w-0">
+      <div class="flex flex-col grow min-w-0">
         <DictSearch v-model="form" @search="getData" />
 
         <ElCard class="flex flex-col flex-1 min-h-0 art-table-card" shadow="never">
@@ -31,7 +31,7 @@
             ref="artTableRef"
             rowKey="id"
             :loading="loading"
-            :data="data as Record<string, any>[]"
+            :data="data"
             :columns="columns"
             :pagination="pagination"
             @pagination:size-change="handleSizeChange"
@@ -85,7 +85,7 @@
     refreshData,
     handleSizeChange,
     handleCurrentChange
-  } = useTable({
+  } = useTable<DictListItem>({
     core: {
       apiFn: () => handleGetDictListByTypeId(),
       immediate: false,

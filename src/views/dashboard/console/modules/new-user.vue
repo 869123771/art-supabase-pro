@@ -13,6 +13,7 @@
     </div>
     <ArtTable
       class="w-full"
+      table-layout="fixed"
       :data="tableData"
       style="width: 100%"
       size="large"

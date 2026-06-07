@@ -30,7 +30,7 @@
       <ArtTable
         table-layout="fixed"
         :loading="loading"
-        :data="data as any"
+        :data="data"
         :columns="columns"
         :pagination="pagination"
         @pagination:size-change="handleSizeChange"
@@ -40,19 +40,10 @@
     </ElCard>
 
     <!-- 角色编辑弹窗 -->
-    <RoleEditDialog
-      v-model="dialogVisible"
-      :dialog-type="dialogType"
-      :role-data="currentRoleData"
-      @success="refreshData"
-    />
+    <RoleEditDialog ref="roleEditDialogRef" @success="refreshData" />
 
     <!-- 菜单权限弹窗 -->
-    <RolePermissionDialog
-      v-model="permissionDialog"
-      :role-data="currentRoleData"
-      @success="refreshData"
-    />
+    <RolePermissionDialog ref="rolePermissionDialogRef" @success="refreshData" />
   </div>
 </template>
 
@@ -86,9 +77,16 @@
 
   const showSearchBar = ref(false)
 
-  const dialogVisible = ref(false)
-  const permissionDialog = ref(false)
-  const currentRoleData = ref<RoleListItem | undefined>(undefined)
+  interface RoleEditDialogExpose {
+    handleOpen: (data: { type: 'add' | 'edit'; roleData?: RoleListItem }) => Promise<void>
+  }
+
+  interface RolePermissionDialogExpose {
+    handleOpen: (data: RoleListItem) => Promise<void>
+  }
+
+  const roleEditDialogRef = ref<RoleEditDialogExpose>()
+  const rolePermissionDialogRef = ref<RolePermissionDialogExpose>()
 
   const {
     columns,
@@ -102,7 +100,7 @@
     handleSizeChange,
     handleCurrentChange,
     refreshData
-  } = useTable({
+  } = useTable<RoleListItem>({
     // 核心配置
     core: {
       apiFn: () => handleGetRoleList(),
@@ -112,7 +110,7 @@
       },
       // 排除 apiParams 中的属性
       excludeParams: ['daterange'],
-      columnsFactory: (): ColumnOption[] => [
+      columnsFactory: (): ColumnOption<RoleListItem>[] => [
         {
           prop: 'roleName',
           label: '角色名称',
@@ -161,7 +159,7 @@
           label: '操作',
           width: 80,
           fixed: 'right',
-          formatter: (row) =>
+          formatter: (row: RoleListItem) =>
             h('div', [
               h(ArtButtonMore, {
                 list: [
@@ -190,12 +188,11 @@
     }
   })
 
-  const dialogType = ref<'add' | 'edit'>('add')
-
   const showDialog = (type: 'add' | 'edit', row?: RoleListItem) => {
-    dialogVisible.value = true
-    dialogType.value = type
-    currentRoleData.value = row
+    void roleEditDialogRef.value?.handleOpen({
+      type,
+      roleData: row
+    })
   }
 
   /**
@@ -226,9 +223,8 @@
     }
   }
 
-  const showPermissionDialog = (row?: RoleListItem) => {
-    permissionDialog.value = true
-    currentRoleData.value = row
+  const showPermissionDialog = (row: RoleListItem) => {
+    void rolePermissionDialogRef.value?.handleOpen(row)
   }
 
   const handleDeleteRole = (row: RoleListItem) => {

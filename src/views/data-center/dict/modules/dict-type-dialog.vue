@@ -1,11 +1,5 @@
 <template>
-  <ElDialog
-    v-model="dialog.visible"
-    :title="isEdit ? '编辑字典分类' : '新增字典分类'"
-    width="30%"
-    align-center
-    destroy-on-close
-  >
+  <ArtDialog ref="dialogRef">
     <ArtForm
       ref="formRef"
       v-model="form.data"
@@ -18,37 +12,33 @@
       :show-submit="false"
     >
     </ArtForm>
-    <template #footer>
-      <span class="dialog-footer">
-        <ElButton @click="handleClose">取 消</ElButton>
-        <ElButton type="primary" @click="handleSubmit" :loading="dialog.loading">确 定</ElButton>
-      </span>
-    </template>
-  </ElDialog>
+  </ArtDialog>
 </template>
 
 <script setup lang="ts">
+  import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
+  import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtForm from '@/components/core/forms/art-form/index.vue'
   import type { FormItem } from '@/components/core/forms/art-form/index.vue'
-  import type { FormRules } from 'element-plus'
+  import type { FormInstance, FormRules } from 'element-plus'
   import { cloneDeep, isEmpty } from 'lodash-es'
   import { addDictType, editDictType } from '@/api/data-center'
   import { useUserStore } from '@/store/modules/user'
   import { uniqueValidator } from '@/utils/form/validator'
 
   type DictListItem = Api.DataCenter.DictListItem
+  interface ArtFormExpose {
+    ref: Ref<FormInstance | undefined>
+    validate: () => Promise<boolean | void>
+  }
 
   const emits = defineEmits(['success'])
 
   const userStore = useUserStore()
   const { getDictMap } = storeToRefs(userStore) as Record<string, any>
 
-  const formRef = ref<HTMLFormElement>()
-
-  const dialog = ref({
-    visible: false,
-    loading: false
-  })
+  const dialogRef = ref<ArtDialogExpose<DictListItem>>()
+  const formRef = ref<ArtFormExpose>()
 
   const dataDefault = {
     name: '',
@@ -120,52 +110,48 @@
 
   const handleResetFields = () => {
     form.value.data = cloneDeep(dataDefault)
+    formRef.value?.ref.value?.clearValidate()
   }
 
-  const handleOpen = (data: DictListItem = {} as DictListItem) => {
-    dialog.value = {
-      ...unref(dialog),
-      visible: true
-    }
-    if (!isEmpty(data)) {
-      form.value.data = data
-    }
-  }
-  const handleClose = () => {
+  const handleOpen = async (data: DictListItem = {} as DictListItem): Promise<void> => {
     handleResetFields()
-    dialog.value = {
-      ...unref(dialog),
-      visible: false
+    if (!isEmpty(data)) {
+      form.value.data = {
+        ...form.value.data,
+        ...cloneDeep(data)
+      } as DictListItem
     }
+
+    await dialogRef.value?.handleOpen(data, {
+      title: isEdit.value ? '编辑字典分类' : '新增字典分类',
+      width: '30%',
+      onConfirm: handleSubmit,
+      onReset: handleResetFields
+    })
   }
 
-  const handleSubmit = async () => {
-    if (!formRef.value) return
+  const handleSubmit = async (): Promise<boolean> => {
+    if (!formRef.value) return false
 
     try {
       await formRef.value.validate()
-      try {
-        dialog.value.loading = true
-        const {
-          data: { id, ...rest }
-        } = form.value
-        const params: DictListItem = {
-          ...rest
-        }
-        if (!isEdit.value) {
-          await addDictType(params)
-        } else {
-          await editDictType({ ...params, id })
-        }
-        //获取新的字典列表
-        await useUserStore().fetchDictList()
-        emits('success')
-        handleClose()
-      } finally {
-        dialog.value.loading = false
+      const {
+        data: { id, ...rest }
+      } = form.value
+      const params: DictListItem = {
+        ...rest
       }
+      if (!isEdit.value) {
+        await addDictType(params)
+      } else {
+        await editDictType({ ...params, id })
+      }
+      await useUserStore().fetchDictList()
+      emits('success')
+      return true
     } catch (error) {
       console.log('表单验证失败:', error)
+      return false
     }
   }
 

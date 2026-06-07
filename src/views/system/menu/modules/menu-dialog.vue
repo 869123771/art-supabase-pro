@@ -1,13 +1,5 @@
 <template>
-  <ElDialog
-    :title="dialogTitle"
-    :model-value="visible"
-    @update:model-value="handleCancel"
-    width="860px"
-    align-center
-    class="menu-dialog"
-    destroy-on-close
-  >
+  <ArtDialog width="860px" ref="dialogRef">
     <ArtForm
       ref="formRef"
       v-model="form"
@@ -16,68 +8,27 @@
       :span="width > 640 ? 12 : 24"
       :gutter="20"
       label-width="100px"
+      :validate-on-rule-change="false"
       :show-reset="false"
       :show-submit="false"
-    >
-      <template #type>
-        <ElRadioGroup v-model="form.type" :disabled="disableMenuType">
-          <ElRadioButton value="folder" label="menu">目录</ElRadioButton>
-          <ElRadioButton value="menu" label="menu">菜单</ElRadioButton>
-          <ElRadioButton value="button" label="button">按钮</ElRadioButton>
-        </ElRadioGroup>
-      </template>
-    </ArtForm>
-
-    <template #footer>
-      <span class="dialog-footer">
-        <ElButton @click="handleCancel">取 消</ElButton>
-        <ElButton type="primary" @click="handleSubmit" :loading="loading">确 定</ElButton>
-      </span>
-    </template>
-  </ElDialog>
+    />
+  </ArtDialog>
 </template>
 
 <script setup lang="ts">
   import type { FormRules } from 'element-plus'
-  import { ElIcon, ElTooltip } from 'element-plus'
-  import { QuestionFilled } from '@element-plus/icons-vue'
   import { formatMenuTitle } from '@/utils/router'
   import type { AppRouteRecord } from '@/types/router'
   import type { FormItem } from '@/components/core/forms/art-form/index.vue'
   import ArtForm from '@/components/core/forms/art-form/index.vue'
+  import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
+  import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import { useWindowSize } from '@vueuse/core'
 
-  import { isEmpty } from 'lodash-es'
   import { addRMenu, editMenu } from '@/api/system-manage'
+  import { useUserStore } from '@/store/modules/user'
 
   const { width } = useWindowSize()
-
-  /**
-   * 创建带 tooltip 的表单标签
-   * @param label 标签文本
-   * @param tooltip 提示文本
-   * @returns 渲染函数
-   */
-  const createLabelTooltip = (label: string, tooltip: string | (() => any)) => {
-    return () =>
-      h('span', { class: 'flex items-center' }, [
-        h('span', label),
-        h(
-          ElTooltip,
-          { placement: 'top' },
-          {
-            // 👇 tooltip 内容插槽
-            content: () =>
-              typeof tooltip === 'function'
-                ? tooltip()
-                : h('span', { class: 'whitespace-pre-line' }, tooltip),
-
-            // 👇 触发器
-            default: () => h(ElIcon, { class: 'ml-0.5 cursor-help' }, () => h(QuestionFilled))
-          }
-        )
-      ])
-  }
 
   interface MenuFormData extends MenuFormSelectData {
     id?: string
@@ -106,32 +57,30 @@
     menuTree?: any
   }
 
-  interface Props {
-    visible: boolean
+  interface MenuDialogOpenData {
     editData?: AppRouteRecord | any
     type?: 'folder' | 'menu' | 'button'
-    lockType?: boolean
+    parent?: AppRouteRecord | MenuFormData
+    menuTree?: AppRouteRecord[]
   }
 
   interface Emits {
-    (e: 'update:visible', value: boolean): void
     (e: 'submit', data: MenuFormData): void
   }
 
-  const props = withDefaults(defineProps<Props>(), {
-    visible: false,
-    type: 'menu',
-    lockType: false,
-    editData: {}
-  })
+  type MenuType = 'folder' | 'menu' | 'button'
+  type MenuFormModel = MenuFormData & { type: MenuType }
 
   const emit = defineEmits<Emits>()
-
+  const dialogRef = ref<ArtDialogExpose<MenuDialogOpenData>>()
   const formRef = ref()
 
-  const loading = ref(false)
+  const userStore = useUserStore()
+  const { getDictMap } = storeToRefs(userStore) as Record<string, any>
+  console.log(getDictMap.value)
 
-  const form = reactive<MenuFormData & { type: 'folder' | 'menu' | 'button' }>({
+  const createInitialForm = (): MenuFormModel => ({
+    id: undefined,
     type: 'menu',
     parentId: '',
     name: '',
@@ -154,11 +103,11 @@
     isFullPage: false
   })
 
+  const form = reactive<MenuFormModel>(createInitialForm())
+
   const select = ref<MenuFormSelectData>({
     menuTree: []
   })
-
-  const isEdit = computed(() => form.id)
 
   const rules = computed<FormRules>(() => {
     const titleMessage = {
@@ -180,7 +129,22 @@
    * 表单项配置
    */
   const formItems = computed<FormItem[]>(() => {
-    const baseItems: FormItem[] = [{ label: '菜单类型', key: 'type', span: 24 }]
+    const baseItems: FormItem[] = [
+      {
+        label: '菜单类型',
+        key: 'type',
+        type: 'radiogroup',
+        span: 24,
+        description: '新建时可直接选择类型。按钮权限仍需挂在具体菜单下。',
+        props: {
+          optionType: 'button',
+          disabled: form.id != null && form.type !== 'button',
+          validateEvent: false,
+          onChange: handleMenuTypeChange,
+          options: getDictMap.value.menuType ?? []
+        }
+      }
+    ]
     // Switch 组件的 span：小屏幕 12，大屏幕 6
     const switchSpan = width.value < 640 ? 12 : 6
     if (['folder'].includes(form.type)) {
@@ -193,6 +157,7 @@
           props: {
             clearable: true,
             filterable: true,
+            placeholder: '不选择则创建为顶级菜单',
             data: select.value.menuTree,
             props: {
               label: (data: AppRouteRecord) => formatMenuTitle(data.meta?.title),
@@ -202,44 +167,40 @@
         },
         { label: '目录名称', key: 'title', type: 'input', props: { placeholder: '目录名称' } },
         {
-          label: createLabelTooltip(
-            '路由地址',
-            '一级菜单：以 / 开头的绝对路径（如 /dashboard）\n二级及以下：相对路径（如 console、user）'
-          ),
+          label: '路由地址',
+          help: () =>
+            [
+              '一级菜单：以 / 开头的绝对路径（如 /dashboard）',
+              '二级及以下：相对路径（如 console、user）'
+            ].map((value) => h('p', value)),
           key: 'path',
           type: 'input',
           props: { placeholder: '如：/dashboard 或 console' }
         },
         { label: '权限标识', key: 'name', type: 'input', props: { placeholder: '如：User' } },
         {
-          label: createLabelTooltip(
-            '组件路径',
-            '一级父级菜单：填写 /index/index\n具体页面：填写组件路径（如 /system/user）'
-          ),
+          label: '组件路径',
+          help: () =>
+            ['一级父级菜单：填写 /index/index', '具体页面：填写组件路径（如 /system/user）'].map(
+              (value) => h('p', value)
+            ),
           key: 'component',
           type: 'input',
-          props: { placeholder: '如：/system/user 或留空' }
+          props: {
+            disabled: true,
+            placeholder: '一级父级菜单固定为 /index/index'
+          }
         },
         {
-          label: createLabelTooltip('图标', () =>
-            h('div', { class: 'leading-5' }, [
-              h(
-                'a',
-                {
-                  href: 'https://remixicon.com/',
-                  target: '_blank',
-                  class: 'text-primary underline inline-block'
-                },
-                'Remix Icon 官网 '
-              )
-            ])
-          ),
+          label: '图标',
+          help: '支持搜索并选择 Remix Icon 图标',
           key: 'icon',
-          type: 'input',
-          props: { placeholder: '如：ri:user-line' }
+          type: 'iconpicker',
+          props: { placeholder: '请选择菜单图标' }
         },
         {
-          label: createLabelTooltip('菜单排序', '值越小越靠前'),
+          label: '菜单排序',
+          help: '值越小越靠前',
           key: 'sort',
           type: 'number',
           props: { min: 1, controlsPosition: 'right', style: { width: '100%' } }
@@ -251,6 +212,7 @@
           props: { placeholder: '如：New、Hot' }
         },
         { label: '是否启用', key: 'isEnable', type: 'switch', span: switchSpan },
+        { label: '隐藏菜单', key: 'isHide', type: 'switch', span: switchSpan },
         { label: '显示徽章', key: 'showBadge', type: 'switch', span: switchSpan }
       ]
     }
@@ -264,6 +226,7 @@
           props: {
             clearable: true,
             filterable: true,
+            placeholder: '不选择则创建为顶级菜单',
             data: select.value.menuTree,
             props: {
               label: (data: AppRouteRecord) => formatMenuTitle(data.meta?.title),
@@ -273,53 +236,48 @@
         },
         { label: '菜单名称', key: 'title', type: 'input', props: { placeholder: '菜单名称' } },
         {
-          label: createLabelTooltip(
-            '路由地址',
-            '一级菜单：以 / 开头的绝对路径（如 /dashboard）\n二级及以下：相对路径（如 console、user）'
-          ),
+          label: '路由地址',
+          help: () =>
+            [
+              '一级菜单：以 / 开头的绝对路径（如 /dashboard）',
+              '二级及以下：相对路径（如 console、user）'
+            ].map((value) => h('p', value)),
           key: 'path',
           type: 'input',
           props: { placeholder: '如：/dashboard 或 console' }
         },
         { label: '权限标识', key: 'name', type: 'input', props: { placeholder: '如：User' } },
         {
-          label: createLabelTooltip(
-            '组件路径',
-            '一级父级菜单：填写 /index/index\n具体页面：填写组件路径（如 /system/user）'
-          ),
+          label: '组件路径',
+          help: () =>
+            ['一级父级菜单：填写 /index/index', '具体页面：填写组件路径（如 /system/user）'].map(
+              (value) => h('p', value)
+            ),
           key: 'component',
           type: 'input',
           props: { placeholder: '如：/system/user 或留空' }
         },
         {
-          label: createLabelTooltip('图标', () =>
-            h('div', { class: 'leading-5' }, [
-              h(
-                'a',
-                {
-                  href: 'https://remixicon.com/',
-                  target: '_blank',
-                  class: 'text-primary underline inline-block'
-                },
-                'Remix Icon 官网 '
-              )
-            ])
-          ),
+          label: '图标',
+          help: '支持搜索并选择 Remix Icon 图标',
           key: 'icon',
-          type: 'input',
-          props: { placeholder: '如：ri:user-line' }
+          type: 'iconpicker',
+          props: { placeholder: '请选择菜单图标' }
         },
         {
-          label: createLabelTooltip('菜单排序', '值越小越靠前'),
+          label: '菜单排序',
+          help: '值越小越靠前',
           key: 'sort',
           type: 'number',
           props: { min: 1, controlsPosition: 'right', style: { width: '100%' } }
         },
         /*{
-          label: createLabelTooltip(
-            '角色权限',
-            '仅用于前端权限模式：配置角色标识（如 R_SUPER、R_ADMIN）\n后端权限模式：无需配置'
-          ),
+          label: '角色权限',
+          help: () =>
+            [
+              '仅用于前端权限模式：配置角色标识（如 R_SUPER、R_ADMIN）',
+              '后端权限模式：无需配置'
+            ].map((value) => h('p', value)),
           key: 'roles',
           type: 'inputtag',
           props: { placeholder: '输入角色标识后按回车，如：R_SUPER' }
@@ -337,10 +295,12 @@
           props: { placeholder: '如：New、Hot' }
         },
         {
-          label: createLabelTooltip(
-            '激活路径',
-            '用于详情页等隐藏菜单，指定高亮显示的父级菜单路径\n例如：用户详情页高亮显示"用户管理"菜单'
-          ),
+          label: '激活路径',
+          help: () =>
+            [
+              '用于详情页等隐藏菜单，指定高亮显示的父级菜单路径',
+              '例如：用户详情页高亮显示"用户管理"菜单'
+            ].map((value) => h('p', value)),
           key: 'activePath',
           type: 'input',
           props: { placeholder: '如：/system/user' }
@@ -370,7 +330,8 @@
           props: { placeholder: '如：add、edit、delete' }
         },
         {
-          label: createLabelTooltip('权限排序', '值越小越靠前'),
+          label: '权限排序',
+          help: '值越小越靠前',
           key: 'sort',
           type: 'number',
           props: { min: 1, controlsPosition: 'right', style: { width: '100%' } }
@@ -379,36 +340,31 @@
     }
   })
 
-  const dialogTitle = computed(() => {
-    const typeMap = {
-      folder: '目录',
-      menu: '菜单',
-      button: '按钮'
-    }
-    const type = typeMap[form.type]
-    return isEdit.value ? `编辑${type}` : `新建${type}`
-  })
+  const handleMenuTypeChange = async (
+    value: string | number | boolean | undefined
+  ): Promise<void> => {
+    if (value !== 'folder' && value !== 'menu' && value !== 'button') return
 
-  /**
-   * 是否禁用菜单类型切换
-   */
-  const disableMenuType = computed(() => {
-    return props.lockType
-  })
+    form.component = value === 'folder' ? '/index/index' : ''
+    await nextTick()
+    formRef.value?.clearValidate()
+  }
 
   /**
    * 重置表单数据
    */
   const handleResetFields = async (): Promise<void> => {
     await nextTick()
-    const { ref } = formRef.value
-    ref.value?.resetFields()
+    formRef.value?.clearValidate()
   }
 
   /**
    * 加载表单数据（编辑模式）
    */
-  const loadFormData = (): void => {
+  const loadFormData = (
+    editData: AppRouteRecord | Record<string, never>,
+    defaultType: MenuType
+  ): void => {
     const {
       id,
       parentId = form.parentId,
@@ -417,12 +373,13 @@
       sort,
       path,
       component,
-      meta = {}
-    } = props.editData ?? {}
+      meta: routeMeta = {}
+    } = editData
+    const meta = routeMeta as NonNullable<AppRouteRecord['meta']>
     Object.assign(form, {
       id,
       parentId,
-      type: type || props.type,
+      type: type || defaultType,
       title: formatMenuTitle(meta?.title || ''),
       name,
       sort,
@@ -446,18 +403,18 @@
   /**
    * 提交表单
    */
-  const handleSubmit = async (): Promise<void> => {
-    if (!formRef.value) return
+  const handleSubmit = async (): Promise<boolean> => {
+    if (!formRef.value) return false
 
     try {
       await formRef.value.validate()
     } catch {
       ElMessage.error('表单校验失败，请检查输入')
+      return false
     }
-    try {
-      loading.value = true
-      const { id, parentId, path, component, name, type, sort, ...rest } = toRaw(form)
 
+    try {
+      const { id, parentId, path, component = '', name, type, sort, ...rest } = toRaw(form)
       const params: AppRouteRecord = {
         parentId: parentId ?? null,
         path,
@@ -467,24 +424,16 @@
         sort,
         meta: { ...rest }
       }
-      if (isEmpty(props.editData)) {
+      if (id == null) {
         await addRMenu(params)
       } else {
         await editMenu({ ...params, id })
       }
       emit('submit', { ...form })
-      handleCancel()
-    } finally {
-      loading.value = false
+      return true
+    } catch {
+      return false
     }
-  }
-
-  /**
-   * 取消操作
-   */
-  const handleCancel = (): void => {
-    emit('update:visible', false)
-    handleResetFields()
   }
 
   const handleSetParent = (row: MenuFormData = {} as MenuFormData): void => {
@@ -495,20 +444,45 @@
     }
   }
 
-  /**
-   * 监听对话框显示状态
-   */
-  watch(
-    () => props.visible,
-    (newVal) => {
-      if (newVal) {
-        loadFormData()
-        handleResetFields()
-      }
+  const initializeForm = async (data: MenuDialogOpenData = {}): Promise<void> => {
+    Object.assign(form, createInitialForm())
+    handleSetParent({
+      ...(data.parent ?? {}),
+      menuTree: data.menuTree ?? []
+    } as MenuFormData)
+    loadFormData(data.editData ?? {}, data.type ?? 'menu')
+    if (form.type === 'folder') {
+      form.component = '/index/index'
     }
-  )
+    await handleResetFields()
+  }
+
+  const handleReset = async (): Promise<void> => {
+    Object.assign(form, createInitialForm())
+    select.value = { menuTree: [] }
+    await handleResetFields()
+  }
+
+  const handleOpen = async (data: MenuDialogOpenData = {}): Promise<void> => {
+    await initializeForm(data)
+    await dialogRef.value?.handleOpen(data, {
+      title: `${data.editData?.id != null ? '编辑' : '新增'}${
+        { folder: '目录', menu: '菜单', button: '权限' }[form.type]
+      }`,
+      dialogProps: {
+        class: 'menu-dialog'
+      },
+      onConfirm: handleSubmit,
+      onReset: () => {
+        handleReset()
+      }
+    })
+  }
 
   defineExpose({
+    handleOpen,
+    handleSubmit,
+    handleReset,
     handleSetParent
   })
 </script>

@@ -1,139 +1,114 @@
 <template>
-  <ElDialog
-    v-model="dialog.visible"
-    title="赋予角色"
-    width="50%"
-    align-center
-    destroy-on-close
-    @close="handleClose"
-  >
+  <ArtDialog ref="dialogRef">
     <ArtForm
-      class="pr-4"
       ref="formRef"
-      v-model="form.data"
-      :items="form.items"
-      :rules="form.rules"
+      v-model="formData"
+      class="pr-4"
+      :items="formItems"
+      :rules="rules"
       :span="24"
       :gutter="20"
       label-width="80px"
       :show-reset="false"
       :show-submit="false"
-    >
-    </ArtForm>
-    <template #footer>
-      <span class="dialog-footer">
-        <ElButton @click="handleClose">取 消</ElButton>
-        <ElButton type="primary" @click="handleSubmit" :loading="dialog.loading">确 定</ElButton>
-      </span>
-    </template>
-  </ElDialog>
+    />
+  </ArtDialog>
 </template>
 
 <script setup lang="ts">
-  import ArtForm, { FormItem } from '@/components/core/forms/art-form/index.vue'
-  import { cloneDeep, isEmpty } from 'lodash-es'
+  import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
+  import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
+  import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
+  import { cloneDeep } from 'lodash-es'
   import type { FormRules } from 'element-plus'
   import { editUser, fetchGetEnableRoleList } from '@/api/system-manage'
 
-  import UserListItem = Api.SystemManage.UserListItem
-  import RoleListItem = Api.SystemManage.RoleListItem
-  import DictListItem = Api.DataCenter.DictListItem
+  type UserListItem = Api.SystemManage.UserListItem
+  type RoleListItem = Api.SystemManage.RoleListItem
+  type DictListItem = Api.DataCenter.DictListItem
+  type UserRoleFormData = Pick<UserListItem, 'userRoles' | 'id'>
 
-  const emits = defineEmits(['success'])
+  interface Emits {
+    (e: 'success'): void
+  }
 
-  const dialog = ref({
-    visible: false,
-    loading: false
-  })
+  const emit = defineEmits<Emits>()
+  const dialogRef = ref<ArtDialogExpose<UserListItem>>()
+  const formRef = ref()
+  const roleOptions = ref<DictListItem[]>([])
+  const rules: FormRules = {}
 
-  const dataDefault = {
+  const createInitialForm = (): UserRoleFormData => ({
     userRoles: []
-  }
-  const form = ref({
-    data: cloneDeep(dataDefault) as Pick<UserListItem, 'userRoles' | 'id'>,
-    items: computed<FormItem[]>(() => {
-      return [
-        {
-          label: '角色',
-          key: 'userRoles',
-          type: 'select',
-          props: {
-            multiple: true,
-            options: select.value?.roles ?? []
-          }
-        }
-      ]
-    }),
-    rules: computed<FormRules>(() => {
-      return {}
-    })
   })
 
-  const select = ref({
-    roles: [] as DictListItem[]
-  })
+  const formData = ref<UserRoleFormData>(createInitialForm())
 
-  const handleResetFields = () => {
-    form.value.data = cloneDeep(dataDefault)
-  }
-
-  const handleOpen = (data: UserListItem = {} as UserListItem) => {
-    dialog.value = {
-      ...unref(dialog),
-      visible: true
-    }
-    if (!isEmpty(data)) {
-      const { id, userRoles = [] } = data
-      form.value.data = {
-        userRoles,
-        id
+  const formItems = computed<FormItem[]>(() => [
+    {
+      label: '角色',
+      key: 'userRoles',
+      type: 'select',
+      props: {
+        multiple: true,
+        options: roleOptions.value
       }
     }
-  }
-  const handleClose = () => {
-    handleResetFields()
-    dialog.value = {
-      ...unref(dialog),
-      visible: false
-    }
+  ])
+
+  const resetForm = async (): Promise<void> => {
+    formData.value = cloneDeep(createInitialForm())
+    await nextTick()
+    formRef.value?.ref?.value?.clearValidate()
   }
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (): Promise<boolean> => {
     try {
-      dialog.value.loading = true
-      const { data } = form.value
+      await formRef.value?.validate()
+    } catch {
+      return false
+    }
 
-      const params = {
-        ...data
-      }
-      await editUser(params as UserListItem)
-      emits('success')
-      handleClose()
-    } finally {
-      dialog.value.loading = false
+    try {
+      await editUser({ ...formData.value } as UserListItem)
+      emit('success')
+      return true
+    } catch {
+      return false
     }
   }
 
-  const handleGetRoles = async () => {
-    const { data } = await fetchGetEnableRoleList()
-    select.value = {
-      ...unref(select),
-      roles: (data as RoleListItem[]).map(({ roleCode, roleName }) => {
-        return {
-          label: roleName,
-          value: roleCode
-        }
-      }) as DictListItem[]
+  const handleOpen = async (data: UserListItem): Promise<void> => {
+    await resetForm()
+    formData.value = {
+      id: data.id,
+      userRoles: cloneDeep(data.userRoles ?? [])
     }
+    await dialogRef.value?.handleOpen(data, {
+      title: '赋予角色',
+      width: '50%',
+      onConfirm: handleSubmit,
+      onReset: () => {
+        void resetForm()
+      }
+    })
+  }
+
+  const handleGetRoles = async (): Promise<void> => {
+    const { data } = await fetchGetEnableRoleList()
+    roleOptions.value = (data as RoleListItem[]).map(({ roleCode, roleName }) => ({
+      label: roleName,
+      value: roleCode
+    })) as DictListItem[]
   }
 
   onMounted(() => {
-    handleGetRoles()
+    void handleGetRoles()
   })
 
   defineExpose({
-    handleOpen
+    handleOpen,
+    handleSubmit,
+    handleClose: () => dialogRef.value?.handleClose()
   })
 </script>
-
-<style scoped lang="scss"></style>

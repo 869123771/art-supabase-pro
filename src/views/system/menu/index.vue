@@ -40,13 +40,7 @@
       />
 
       <!-- 菜单弹窗 -->
-      <MenuDialog
-        ref="menuDialogRef"
-        v-model:visible="dialogVisible"
-        :editData="editData"
-        :lockType="lockMenuType"
-        @submit="handleSubmit"
-      />
+      <MenuDialog ref="menuDialogRef" @submit="handleSubmit" />
     </ElCard>
   </div>
 </template>
@@ -78,11 +72,23 @@
   const tableRef = ref()
 
   const showSearchBar = ref(false)
+  interface MenuDialogOpenData {
+    editData?: AppRouteRecord | Record<string, never>
+    type?: 'folder' | 'menu' | 'button'
+    parent?: AppRouteRecord
+    menuTree: AppRouteRecord[]
+  }
+
+  interface MenuDialogExpose {
+    handleOpen: (data: MenuDialogOpenData) => Promise<void>
+  }
+
   // 弹窗相关
-  const menuDialogRef = ref()
-  const dialogVisible = ref(false)
-  const editData = ref<AppRouteRecord | any>({})
-  const lockMenuType = ref(false)
+  const menuDialogRef = ref<MenuDialogExpose>()
+
+  const openMenuDialog = async (data: MenuDialogOpenData): Promise<void> => {
+    await menuDialogRef.value?.handleOpen(data)
+  }
 
   // 搜索相关
   const initialSearchState = {
@@ -275,10 +281,9 @@
    * 添加菜单
    */
   const handleAddMenu = (): void => {
-    editData.value = {}
-    lockMenuType.value = false
-    dialogVisible.value = true
-    menuDialogRef.value.handleSetParent({
+    void openMenuDialog({
+      editData: {},
+      type: 'menu',
       menuTree: tableData.value
     })
   }
@@ -287,13 +292,12 @@
    * 添加权限按钮
    */
   const handleAddAuth = (row: AppRouteRecord): void => {
-    editData.value = {}
-    lockMenuType.value = false
-    menuDialogRef.value.handleSetParent({
-      ...row,
+    void openMenuDialog({
+      editData: {},
+      type: 'button',
+      parent: row,
       menuTree: tableData.value
     })
-    dialogVisible.value = true
   }
 
   /**
@@ -301,11 +305,9 @@
    * @param row 菜单行数据
    */
   const handleEditMenu = (row: AppRouteRecord): void => {
-    editData.value = row
-    lockMenuType.value = true
-    dialogVisible.value = true
-    menuDialogRef.value.handleSetParent({
-      ...row,
+    void openMenuDialog({
+      editData: row,
+      parent: row,
       menuTree: tableData.value
     })
   }
@@ -315,11 +317,9 @@
    * @param row 权限行数据
    */
   const handleEditAuth = (row: AppRouteRecord): void => {
-    editData.value = row
-    lockMenuType.value = false
-    dialogVisible.value = true
-    menuDialogRef.value.handleSetParent({
-      ...row,
+    void openMenuDialog({
+      editData: row,
+      parent: row,
       menuTree: tableData.value
     })
   }

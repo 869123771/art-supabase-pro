@@ -1,12 +1,5 @@
 <template>
-  <ElDialog
-    v-model="dialog.visible"
-    :title="isEdit ? '编辑字典' : '新增字典'"
-    width="60%"
-    align-center
-    destroy-on-close
-    @close="handleClose"
-  >
+  <ArtDialog ref="dialogRef">
     <ArtForm
       ref="formRef"
       v-model="form.data"
@@ -25,37 +18,33 @@
         />
       </template>
     </ArtForm>
-    <template #footer>
-      <span class="dialog-footer">
-        <ElButton @click="handleClose">取 消</ElButton>
-        <ElButton type="primary" @click="handleSubmit" :loading="dialog.loading">确 定</ElButton>
-      </span>
-    </template>
-  </ElDialog>
+  </ArtDialog>
 </template>
 
 <script setup lang="ts">
+  import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
+  import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtForm from '@/components/core/forms/art-form/index.vue'
   import type { FormItem } from '@/components/core/forms/art-form/index.vue'
-  import type { FormRules } from 'element-plus'
+  import type { FormInstance, FormRules } from 'element-plus'
   import { cloneDeep, isEmpty, omit } from 'lodash-es'
   import { addDict, editDict } from '@/api/data-center'
   import { useUserStore } from '@/store/modules/user'
   import { uniqueValidator } from '@/utils'
 
   type DictListItem = Api.DataCenter.DictListItem
+  interface ArtFormExpose {
+    ref: Ref<FormInstance | undefined>
+    validate: () => Promise<boolean | void>
+  }
 
   const emits = defineEmits(['success'])
 
   const userStore = useUserStore()
   const { getDictMap } = storeToRefs(userStore) as Record<string, any>
 
-  const formRef = ref<HTMLFormElement>()
-
-  const dialog = ref({
-    visible: false,
-    loading: false
-  })
+  const dialogRef = ref<ArtDialogExpose<DictListItem>>()
+  const formRef = ref<ArtFormExpose>()
 
   const dataDefault = {
     typeId: '',
@@ -65,7 +54,7 @@
     value: '',
     i18nScope: '1',
     status: '1',
-    sort: 0,
+    sort: 1,
     color: '',
     remark: ''
   }
@@ -141,6 +130,7 @@
             label: '排序',
             key: 'sort',
             type: 'number',
+            help: '值越小越靠前',
             props: {
               placeholder: '请输入排序'
             }
@@ -187,60 +177,53 @@
     })
   })
 
-  const handleOpen = (data: DictListItem = {} as DictListItem) => {
-    dialog.value = {
-      ...unref(dialog),
-      visible: true
-    }
+  const handleResetFields = () => {
+    form.value.data = cloneDeep(dataDefault)
+    formRef.value?.ref.value?.clearValidate()
+  }
+
+  const handleOpen = async (data: DictListItem = {} as DictListItem): Promise<void> => {
+    handleResetFields()
     if (!isEmpty(data)) {
       form.value.data = {
         ...form.value.data,
-        ...data
+        ...cloneDeep(data)
       }
     }
-  }
-  const handleClose = () => {
-    handleResetFields()
-    dialog.value = {
-      ...unref(dialog),
-      visible: false
-    }
+
+    await dialogRef.value?.handleOpen(data, {
+      title: isEdit.value ? '编辑字典' : '新增字典',
+      width: '60%',
+      onConfirm: handleSubmit,
+      onReset: handleResetFields
+    })
   }
 
-  const handleResetFields = () => {
-    form.value.data = cloneDeep(dataDefault)
-  }
-
-  const handleSubmit = async () => {
-    if (!formRef.value) return
+  const handleSubmit = async (): Promise<boolean> => {
+    if (!formRef.value) return false
 
     try {
       await formRef.value.validate()
-      try {
-        dialog.value.loading = true
-        const {
-          data: { id, ...rest }
-        } = form.value
-        const params = omit<DictListItem>(
-          {
-            ...(rest as DictListItem)
-          },
-          ['dictTypeName']
-        )
-        if (!isEdit.value) {
-          await addDict(params as DictListItem)
-        } else {
-          await editDict({ ...params, id } as DictListItem)
-        }
-        //获取新的字典列表
-        await useUserStore().fetchDictList()
-        emits('success')
-        handleClose()
-      } finally {
-        dialog.value.loading = false
+      const {
+        data: { id, ...rest }
+      } = form.value
+      const params = omit<DictListItem>(
+        {
+          ...(rest as DictListItem)
+        },
+        ['dictTypeName']
+      )
+      if (!isEdit.value) {
+        await addDict(params as DictListItem)
+      } else {
+        await editDict({ ...params, id } as DictListItem)
       }
+      await useUserStore().fetchDictList()
+      emits('success')
+      return true
     } catch (error) {
       console.log('表单验证失败:', error)
+      return false
     }
   }
 

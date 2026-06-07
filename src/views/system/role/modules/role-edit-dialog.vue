@@ -1,12 +1,5 @@
 <template>
-  <ElDialog
-    v-model="visible"
-    :title="dialogType === 'add' ? '新增角色' : '编辑角色'"
-    width="35%"
-    align-center
-    draggable
-    @close="handleClose"
-  >
+  <ArtDialog ref="dialogRef">
     <ElForm ref="formRef" :model="form" :rules="rules" label-width="120px" class="pr-6">
       <ElFormItem label="角色名称" prop="roleName">
         <ElInput v-model="form.roleName" placeholder="请输入角色名称" />
@@ -26,53 +19,44 @@
         <ElSwitch v-model="form.enabled" />
       </ElFormItem>
     </ElForm>
-    <template #footer>
-      <ElButton @click="handleClose">取消</ElButton>
-      <ElButton type="primary" @click="handleSubmit" :loading="loading">提交</ElButton>
-    </template>
-  </ElDialog>
+  </ArtDialog>
 </template>
 
 <script setup lang="ts">
   import type { FormInstance, FormRules } from 'element-plus'
-
+  import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
+  import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import { addRole, editRole } from '@/api/system-manage'
   import { uniqueValidator } from '@/utils'
 
   type RoleListItem = Api.SystemManage.RoleListItem
+  type DialogType = 'add' | 'edit'
 
-  interface Props {
-    modelValue: boolean
-    dialogType: 'add' | 'edit'
+  interface RoleEditDialogOpenData {
+    type: DialogType
     roleData?: RoleListItem
   }
 
   interface Emits {
-    (e: 'update:modelValue', value: boolean): void
     (e: 'success'): void
   }
 
-  const props = withDefaults(defineProps<Props>(), {
-    modelValue: false,
-    dialogType: 'add',
-    roleData: undefined
-  })
-
   const emit = defineEmits<Emits>()
+  const dialogRef = ref<ArtDialogExpose<RoleEditDialogOpenData>>()
   const formRef = ref<FormInstance>()
-  const loading = ref(false)
+  const dialogType = ref<DialogType>('add')
 
-  /**
-   * 弹窗显示状态双向绑定
-   */
-  const visible = computed({
-    get: () => props.modelValue,
-    set: (value) => emit('update:modelValue', value)
+  const createInitialForm = (): RoleListItem => ({
+    id: undefined,
+    roleName: '',
+    roleCode: '',
+    description: '',
+    enabled: true,
+    createBy: undefined
   })
 
-  /**
-   * 表单验证规则
-   */
+  const form = reactive<RoleListItem>(createInitialForm())
+
   const rules = reactive<FormRules>({
     roleName: [
       { required: true, message: '请输入角色名称', trigger: 'change' },
@@ -85,7 +69,7 @@
         validator: uniqueValidator({
           table: 'roles',
           field: 'role_code',
-          getExcludeId: (): string | undefined => form?.id,
+          getExcludeId: (): string | undefined => form.id,
           extraWhere: () => ({
             create_by: form.createBy
           }),
@@ -97,89 +81,67 @@
     description: [{ required: true, message: '请输入角色描述', trigger: 'change' }]
   })
 
-  /**
-   * 表单数据
-   */
-  const form = reactive<RoleListItem>({
-    roleName: '',
-    roleCode: '',
-    description: '',
-    enabled: true
-  })
+  const resetForm = async (): Promise<void> => {
+    Object.assign(form, createInitialForm())
+    await nextTick()
+    formRef.value?.clearValidate()
+  }
 
-  /**
-   * 监听弹窗打开，初始化表单数据
-   */
-  watch(
-    () => props.modelValue,
-    (newVal) => {
-      if (newVal) initForm()
+  const initializeForm = async (data: RoleEditDialogOpenData): Promise<void> => {
+    await resetForm()
+    dialogType.value = data.type
+
+    if (data.roleData) {
+      const { id, roleName, roleCode, description, enabled, createBy } = data.roleData
+      Object.assign(form, {
+        id,
+        roleName,
+        roleCode,
+        description,
+        enabled,
+        createBy
+      })
     }
-  )
-
-  /**
-   * 监听角色数据变化，更新表单
-   */
-  watch(
-    () => props.roleData,
-    (newData) => {
-      if (newData && props.modelValue) initForm()
-    },
-    { deep: true }
-  )
-
-  /**
-   * 初始化表单数据
-   * 根据弹窗类型填充表单或重置表单
-   */
-  const initForm = () => {
-    const { id, roleName, roleCode, description, enabled, createBy } = props.roleData ?? {}
-
-    Object.assign(form, {
-      id,
-      roleName,
-      roleCode,
-      description,
-      enabled,
-      createBy
-    })
   }
 
-  /**
-   * 关闭弹窗并重置表单
-   */
-  const handleClose = () => {
-    visible.value = false
-    formRef.value?.resetFields()
-  }
-
-  /**
-   * 提交表单
-   * 验证通过后调用接口保存数据
-   */
-  const handleSubmit = async () => {
-    if (!formRef.value) return
+  const handleSubmit = async (): Promise<boolean> => {
+    if (!formRef.value) return false
 
     try {
       await formRef.value.validate()
-      try {
-        loading.value = true
-        const { id, ...rest } = toRaw(form)
-        const params = {
-          ...rest
-        }
-        if (props.dialogType === 'add') {
-          await addRole(params)
-        } else {
-          await editRole({ ...params, id })
-        }
-      } finally {
-        loading.value = false
+    } catch {
+      return false
+    }
+
+    try {
+      const { id, ...params } = toRaw(form)
+      if (dialogType.value === 'add') {
+        await addRole(params)
+      } else {
+        await editRole({ ...params, id })
       }
       emit('success')
-      handleClose()
-    } catch (error) {
-      console.log('表单验证失败:', error)
+      return true
+    } catch {
+      return false
     }
   }
+
+  const handleOpen = async (data: RoleEditDialogOpenData): Promise<void> => {
+    await initializeForm(data)
+    await dialogRef.value?.handleOpen(data, {
+      title: data.type === 'add' ? '新增角色' : '编辑角色',
+      width: '35%',
+      onConfirm: handleSubmit,
+      onReset: () => {
+        void resetForm()
+      }
+    })
+  }
+
+  defineExpose({
+    handleOpen,
+    handleSubmit,
+    handleClose: () => dialogRef.value?.handleClose()
+  })
 </script>

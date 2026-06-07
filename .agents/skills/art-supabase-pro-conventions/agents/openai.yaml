@@ -1,0 +1,4 @@
+interface:
+  display_name: 'Art Supabase Pro Conventions'
+  short_description: 'Project UI and CRUD coding conventions'
+  default_prompt: 'Use $art-supabase-pro-conventions to implement this feature with the project component and code conventions.'

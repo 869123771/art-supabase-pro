@@ -169,6 +169,28 @@ declare namespace Api {
     >
   }
 
+  /** 车辆管理系统 */
+  namespace VehicleMgtSys {
+    namespace BasicInfo {
+      interface InsuranceCompany {
+        id?: string
+        companyName: string
+        contactPerson?: string
+        contactPhone?: string
+        region?: string
+        addressDetail?: string
+        remark?: string
+        createTime?: string
+        updateTime?: string
+      }
+
+      type InsuranceCompanySearchParams = Partial<
+        Pick<InsuranceCompany, 'companyName' | 'contactPerson' | 'contactPhone'> &
+          Api.Common.CommonSearchParams
+      >
+    }
+  }
+
   /** 数据中心类型 */
   namespace DataCenter {
     /** 数据字典列表项 */

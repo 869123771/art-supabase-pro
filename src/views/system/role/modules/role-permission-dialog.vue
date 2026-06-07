@@ -1,13 +1,6 @@
 <template>
-  <ElDialog
-    v-model="visible"
-    title="菜单权限"
-    width="520px"
-    align-center
-    class="el-dialog-border"
-    @close="handleClose"
-  >
-    <ElScrollbar height="70vh" v-loading="loading">
+  <ArtDialog ref="dialogRef">
+    <div v-loading="contentLoading">
       <ElTree
         ref="treeRef"
         :data="menuList"
@@ -20,26 +13,33 @@
         @check="handleTreeCheck"
       >
         <template #default="{ data }">
-          <div style="display: flex; align-items: center">
-            <span v-if="data.isAuth">
-              {{ data.label }}
-            </span>
+          <div class="flex items-center">
+            <span v-if="data.isAuth">{{ data.label }}</span>
             <span v-else>{{ defaultProps.label(data) }}</span>
           </div>
         </template>
       </ElTree>
-    </ElScrollbar>
-    <template #footer>
-      <ElButton @click="outputSelectedData">获取选中数据</ElButton>
+    </div>
 
+    <template #footer="{ loading, api }">
+      <ElButton @click="outputSelectedData">获取选中数据</ElButton>
       <ElButton @click="toggleExpandAll">{{ isExpandAll ? '全部收起' : '全部展开' }}</ElButton>
       <ElButton @click="toggleSelectAll">{{ isSelectAll ? '取消全选' : '全部选择' }}</ElButton>
-      <ElButton type="primary" @click="savePermission" :loading="loading">保存</ElButton>
+      <ElButton
+        type="primary"
+        :loading="loading"
+        :disabled="contentLoading"
+        @click="api.handleConfirm"
+      >
+        保存
+      </ElButton>
     </template>
-  </ElDialog>
+  </ArtDialog>
 </template>
 
 <script setup lang="ts">
+  import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
+  import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import { formatMenuTitle } from '@/utils/router'
   import TreeUtils from '@utils/tree'
   import type { AppRouteRecord } from '@/types'
@@ -50,23 +50,20 @@
   } from '@/api/system-manage'
 
   type RoleListItem = Api.SystemManage.RoleListItem
-
-  interface Props {
-    modelValue: boolean
-    roleData?: RoleListItem
-  }
+  type TreeKey = string | number
 
   interface Emits {
-    (e: 'update:modelValue', value: boolean): void
     (e: 'success'): void
   }
 
-  const props = withDefaults(defineProps<Props>(), {
-    modelValue: false,
-    roleData: undefined
-  })
-
   const emit = defineEmits<Emits>()
+  const dialogRef = ref<ArtDialogExpose<RoleListItem>>()
+  const treeRef = ref()
+  const roleData = shallowRef<RoleListItem>()
+  const menuList = ref<AppRouteRecord[]>([])
+  const contentLoading = ref(false)
+  const isExpandAll = ref(true)
+  const isSelectAll = ref(false)
 
   const treeUtils = new TreeUtils({
     idKey: 'id',
@@ -75,131 +72,94 @@
     deepClone: true
   })
 
-  const loading = ref<boolean>(false)
-  const menuList = ref<AppRouteRecord[]>([])
-  const treeRef = ref()
-  const isExpandAll = ref(true)
-  const isSelectAll = ref(false)
+  const getCheckedKeys = computed<TreeKey[]>(() => treeRef.value?.getCheckedKeys() ?? [])
 
-  /**
-   * 弹窗显示状态双向绑定
-   */
-  const visible = computed({
-    get: () => props.modelValue,
-    set: (value) => emit('update:modelValue', value)
-  })
-
-  const getCheckedKeys = computed(() => {
-    const tree = treeRef.value
-    if (!tree) return
-
-    return tree.getCheckedKeys()
-  })
-  /**
-   * 树形组件配置
-   */
   const defaultProps = {
     children: 'children',
-    label: (data: any) => formatMenuTitle(data.meta?.title) || data.label || ''
+    label: (data: Record<string, unknown>) => {
+      const meta = data.meta as AppRouteRecord['meta'] | undefined
+      return formatMenuTitle(meta?.title ?? '') || String(data.label ?? '')
+    }
   }
 
-  /**
-   * 监听弹窗打开，初始化权限数据
-   */
-  watch(
-    () => props.modelValue,
-    async (newVal) => {
-      if (newVal && props.roleData) {
-        await handleGetMenuList()
-        await handleSetCurrentRoleMenus()
-        // TODO: 根据角色加载对应的权限数据
-        console.log('设置权限:', props.roleData)
-      }
-    }
-  )
+  const getAllMenuKeys = (): TreeKey[] => {
+    const list = treeUtils.treeToList(menuList.value, {
+      includeDepth: true,
+      includeParentChain: true
+    })
+    return (list ?? [])
+      .map((item) => item.id)
+      .filter((id): id is TreeKey => typeof id === 'string' || typeof id === 'number')
+  }
 
-  /**
-   * 关闭弹窗并清空选中状态
-   */
-  const handleClose = () => {
-    visible.value = false
+  const resetPermission = (): void => {
     treeRef.value?.setCheckedKeys([])
+    roleData.value = undefined
+    menuList.value = []
+    isExpandAll.value = true
+    isSelectAll.value = false
   }
 
-  /**
-   * 保存权限配置
-   */
-  const savePermission = async () => {
+  const loadPermission = async (): Promise<void> => {
+    if (!roleData.value?.id) return
+
+    contentLoading.value = true
     try {
-      loading.value = true
-      const checkedKeys = getCheckedKeys.value
-      const params = {
-        p_role_id: props.roleData?.id,
-        p_menu_ids: checkedKeys
-      }
-      const { error } = await saveRoleMenuList(params)
-      if (!error) {
-        emit('success')
-        handleClose()
-      }
+      const [{ data: menus }, { data: roleMenus }] = await Promise.all([
+        fetchGetEnableMenuList(),
+        getCurrentRoleMenus({ id: roleData.value.id } as AppRouteRecord)
+      ])
+      menuList.value = treeUtils.listToTree(menus) as AppRouteRecord[]
+      await nextTick()
+      const menuIds = (roleMenus ?? []).map((item: { menuId: TreeKey }) => item.menuId)
+      treeRef.value?.setCheckedKeys(menuIds)
+      handleTreeCheck()
     } finally {
-      loading.value = false
+      contentLoading.value = false
     }
   }
 
-  /**
-   * 切换全部展开/收起状态
-   */
-  const toggleExpandAll = () => {
+  const savePermission = async (): Promise<boolean> => {
+    if (!roleData.value?.id) return false
+
+    try {
+      const { error } = await saveRoleMenuList({
+        p_role_id: roleData.value.id,
+        p_menu_ids: getCheckedKeys.value
+      })
+      if (error) return false
+
+      emit('success')
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  const toggleExpandAll = (): void => {
     const tree = treeRef.value
     if (!tree) return
 
-    const nodes = tree.store.nodesMap
-    // 这里保留 any，因为 Element Plus 的内部节点类型较复杂
-    Object.values(nodes).forEach((node: any) => {
+    Object.values(tree.store.nodesMap).forEach((node: any) => {
       node.expanded = !isExpandAll.value
     })
-
     isExpandAll.value = !isExpandAll.value
   }
 
-  /**
-   * 切换全选/取消全选状态
-   */
-  const toggleSelectAll = () => {
+  const toggleSelectAll = (): void => {
     const tree = treeRef.value
     if (!tree) return
 
-    if (!isSelectAll.value) {
-      const allKeys = treeUtils
-        .treeToList(menuList.value, { includeDepth: true, includeParentChain: true })
-        ?.map((item: any) => item.id)
-      tree.setCheckedKeys(allKeys)
-    } else {
-      tree.setCheckedKeys([])
-    }
-
+    tree.setCheckedKeys(isSelectAll.value ? [] : getAllMenuKeys())
     isSelectAll.value = !isSelectAll.value
   }
 
-  /**
-   * 处理树节点选中状态变化
-   * 同步更新全选按钮状态
-   */
-  const handleTreeCheck = () => {
-    const checkedKeys = getCheckedKeys.value
-    const allKeys = treeUtils
-      .treeToList(menuList.value, { includeDepth: true, includeParentChain: true })
-      ?.map((item: any) => item.id)
-
-    isSelectAll.value = checkedKeys.length === allKeys.length && allKeys.length > 0
+  const handleTreeCheck = (): void => {
+    const allKeys = getAllMenuKeys()
+    isSelectAll.value = getCheckedKeys.value.length === allKeys.length && allKeys.length > 0
   }
 
-  /**
-   * 输出选中的权限数据到控制台
-   * 用于调试和查看当前选中的权限配置
-   */
-  const outputSelectedData = () => {
+  const outputSelectedData = (): void => {
     const tree = treeRef.value
     if (!tree) return
 
@@ -216,24 +176,24 @@
     ElMessage.success(`已输出选中数据到控制台，共选中 ${selectedData.totalChecked} 个节点`)
   }
 
-  const handleGetMenuList = async () => {
-    try {
-      loading.value = true
-      const { data } = await fetchGetEnableMenuList()
-      menuList.value = treeUtils.listToTree(data) as AppRouteRecord[]
-    } finally {
-      loading.value = false
-    }
+  const handleOpen = async (data: RoleListItem): Promise<void> => {
+    resetPermission()
+    roleData.value = data
+    await dialogRef.value?.handleOpen(data, {
+      title: '菜单权限',
+      width: '520px',
+      contentHeight: '70vh',
+      dialogProps: {
+        class: 'el-dialog-border'
+      },
+      onOpen: loadPermission,
+      onConfirm: savePermission,
+      onReset: resetPermission
+    })
   }
 
-  const handleSetCurrentRoleMenus = async () => {
-    const params = {
-      id: props.roleData?.id
-    }
-    const { data } = await getCurrentRoleMenus(params as AppRouteRecord)
-    if (data) {
-      const menuIds = (data || []).map((r: any) => r.menuId)
-      treeRef.value?.setCheckedKeys(menuIds)
-    }
-  }
+  defineExpose({
+    handleOpen,
+    handleClose: () => dialogRef.value?.handleClose()
+  })
 </script>

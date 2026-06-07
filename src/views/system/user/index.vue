@@ -22,7 +22,7 @@
       <ArtTable
         table-layout="fixed"
         :loading="loading"
-        :data="data as any"
+        :data="data"
         :columns="columns"
         :pagination="pagination"
         @selection-change="handleSelectionChange"
@@ -32,12 +32,7 @@
       </ArtTable>
 
       <!-- 用户弹窗 -->
-      <UserDialog
-        v-model:visible="dialogVisible"
-        :type="dialogType"
-        :user-data="currentUserData"
-        @submit="handleDialogSubmit"
-      />
+      <UserDialog ref="userDialogRef" @submit="getData" />
 
       <UserRoleDialog ref="userRoleRef" @success="getData" />
     </ElCard>
@@ -65,12 +60,16 @@
 
   const userStore = useUserStore()
 
-  // 弹窗相关
-  const dialogType = ref<DialogType>('add')
-  const dialogVisible = ref(false)
-  const currentUserData = ref<Partial<UserListItem>>({})
+  interface UserDialogExpose {
+    handleOpen: (data: { type: DialogType; userData?: Partial<UserListItem> }) => Promise<void>
+  }
 
-  const userRoleRef = ref()
+  interface UserRoleDialogExpose {
+    handleOpen: (data: UserListItem) => Promise<void>
+  }
+
+  const userDialogRef = ref<UserDialogExpose>()
+  const userRoleRef = ref<UserRoleDialogExpose>()
 
   // 选中行
   const selectedRows = ref<UserListItem[]>([])
@@ -96,7 +95,7 @@
     handleSizeChange,
     handleCurrentChange,
     refreshData
-  } = useTable({
+  } = useTable<UserListItem>({
     // 核心配置
     core: {
       apiFn: () => handleGetUserList(),
@@ -110,7 +109,7 @@
       //   current: 'pageNum',
       //   size: 'pageSize'
       // },
-      columnsFactory: (): ColumnOption[] => [
+      columnsFactory: (): ColumnOption<UserListItem>[] => [
         { type: 'selection' }, // 勾选列
         { type: 'index', width: 60, label: '序号' }, // 序号
         {
@@ -246,18 +245,16 @@
    * 显示用户弹窗
    */
   const showDialog = (type: DialogType, row?: UserListItem): void => {
-    console.log('打开弹窗:', { type, row })
-    dialogType.value = type
-    currentUserData.value = row || {}
-    nextTick(() => {
-      dialogVisible.value = true
+    void userDialogRef.value?.handleOpen({
+      type,
+      userData: row
     })
   }
 
   const handleButtonMoreClick = (item: ButtonMoreItem, row: UserListItem) => {
     switch (item.key) {
       case 'assignRoles':
-        userRoleRef.value.handleOpen(row)
+        void userRoleRef.value?.handleOpen(row)
         break
       case 'reset':
         handleResetPassword(row)
@@ -315,19 +312,6 @@
       await deleteUser(row)
       await getData()
     })
-  }
-
-  /**
-   * 处理弹窗提交事件
-   */
-  const handleDialogSubmit = async () => {
-    try {
-      dialogVisible.value = false
-      currentUserData.value = {}
-      await getData()
-    } catch (error) {
-      console.error('提交失败:', error)
-    }
   }
 
   /**

@@ -112,10 +112,19 @@ export interface UseTableConfig<
   }
 }
 
-export function useTable<TApiFn extends (params: any) => Promise<any>>(
-  config: UseTableConfig<TApiFn>
+export function useTable<
+  TRecord = never,
+  TApiFn extends (params: any) => Promise<any> = (params: any) => Promise<any>
+>(
+  config: UseTableConfig<
+    TApiFn,
+    [TRecord] extends [never] ? InferRecordType<InferApiResponse<TApiFn>> : TRecord
+  >
 ) {
-  return useTableImpl(config)
+  type ResolvedRecord = [TRecord] extends [never]
+    ? InferRecordType<InferApiResponse<TApiFn>>
+    : TRecord
+  return useTableImpl<TApiFn, ResolvedRecord>(config)
 }
 
 /**
@@ -129,10 +138,9 @@ export function useTable<TApiFn extends (params: any) => Promise<any>>(
  * - 错误处理
  * - 列配置管理
  */
-function useTableImpl<TApiFn extends (params: any) => Promise<any>>(
-  config: UseTableConfig<TApiFn>
+function useTableImpl<TApiFn extends (params: any) => Promise<any>, TRecord>(
+  config: UseTableConfig<TApiFn, TRecord>
 ) {
-  type TRecord = InferRecordType<InferApiResponse<TApiFn>>
   type TParams = InferApiParams<TApiFn>
   const {
     core: {

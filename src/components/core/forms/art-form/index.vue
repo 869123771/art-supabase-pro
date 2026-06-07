@@ -24,49 +24,72 @@
             :label-width="item.label ? item.labelWidth || labelWidth : undefined"
           >
             <template #label v-if="item.label">
-              <component v-if="typeof item.label !== 'string'" :is="item.label" />
-              <span v-else>{{ item.label }}</span>
+              <span class="art-form-item__label">
+                <component v-if="typeof item.label !== 'string'" :is="item.label" />
+                <span v-else>{{ item.label }}</span>
+                <ElTooltip v-if="item.help" placement="top" effect="dark">
+                  <template #content>
+                    <component v-if="typeof item.help !== 'string'" :is="item.help" />
+                    <span v-else class="whitespace-pre-line">{{ item.help }}</span>
+                  </template>
+                  <ElIcon class="art-form-item__help-icon" aria-label="查看帮助信息" tabindex="0">
+                    <QuestionFilled />
+                  </ElIcon>
+                </ElTooltip>
+              </span>
             </template>
-            <slot :name="item.key" :item="item" :modelValue="modelValue">
-              <component
-                :is="getComponent(item)"
-                :model-value="getFieldValue(item.key)"
-                @update:model-value="setFieldValue(item.key, $event)"
-                v-bind="getProps(item)"
-              >
-                <!-- 下拉选择 -->
-                <template v-if="item.type === 'select' && getProps(item)?.options">
-                  <ElOption
-                    v-for="option in getProps(item).options"
-                    v-bind="option"
-                    :key="option.value"
-                  />
-                </template>
+            <div class="art-form-item__content">
+              <slot :name="item.key" :item="item" :modelValue="modelValue">
+                <component
+                  :is="getComponent(item)"
+                  :model-value="getFieldValue(item.key)"
+                  @update:model-value="setFieldValue(item.key, $event)"
+                  v-bind="getComponentProps(item)"
+                >
+                  <!-- 下拉选择 -->
+                  <template v-if="item.type === 'select' && getProps(item)?.options">
+                    <ElOption
+                      v-for="option in getProps(item).options"
+                      v-bind="option"
+                      :key="option.value"
+                    />
+                  </template>
 
-                <!-- 复选框组 -->
-                <template v-if="item.type === 'checkboxgroup' && getProps(item)?.options">
-                  <ElCheckbox
-                    v-for="option in getProps(item).options"
-                    v-bind="option"
-                    :key="option.value"
-                  />
-                </template>
+                  <!-- 复选框组 -->
+                  <template v-if="item.type === 'checkboxgroup' && getProps(item)?.options">
+                    <ElCheckbox
+                      v-for="option in getProps(item).options"
+                      v-bind="option"
+                      :key="option.value"
+                    />
+                  </template>
 
-                <!-- 单选框组 -->
-                <template v-if="item.type === 'radiogroup' && getProps(item)?.options">
-                  <ElRadio
-                    v-for="option in getProps(item).options"
-                    v-bind="option"
-                    :key="option.value"
-                  />
-                </template>
+                  <!-- 单选框组 -->
+                  <template v-if="item.type === 'radiogroup' && getProps(item)?.options">
+                    <component
+                      :is="getProps(item).optionType === 'button' ? ElRadioButton : ElRadio"
+                      v-for="option in getProps(item).options"
+                      v-bind="option"
+                      :key="option.value"
+                    />
+                  </template>
 
-                <!-- 动态插槽支持 -->
-                <template v-for="(slotFn, slotName) in getSlots(item)" :key="slotName" #[slotName]>
-                  <component :is="slotFn" />
-                </template>
-              </component>
-            </slot>
+                  <!-- 动态插槽支持 -->
+                  <template
+                    v-for="(slotFn, slotName) in getSlots(item)"
+                    :key="slotName"
+                    #[slotName]
+                  >
+                    <component :is="slotFn" />
+                  </template>
+                </component>
+              </slot>
+
+              <div v-if="item.description" class="art-form-item__description">
+                <component v-if="typeof item.description !== 'string'" :is="item.description" />
+                <span v-else class="whitespace-pre-line">{{ item.description }}</span>
+              </div>
+            </div>
           </ElFormItem>
         </ElCol>
         <ElCol :xs="24" :sm="24" :md="span" :lg="span" :xl="span" class="max-w-full flex-1">
@@ -99,25 +122,31 @@
 <script setup lang="ts">
   import { useWindowSize } from '@vueuse/core'
   import { useI18n } from 'vue-i18n'
-  import { toRaw, type Component } from 'vue'
+  import { toRaw, type Component, type VNodeChild } from 'vue'
   import {
     ElCascader,
     ElCheckbox,
     ElCheckboxGroup,
     ElDatePicker,
+    ElIcon,
     ElInput,
     ElInputTag,
     ElInputNumber,
+    ElRadio,
     ElRadioGroup,
+    ElRadioButton,
     ElRate,
     ElSelect,
     ElSlider,
     ElSwitch,
     ElTimePicker,
     ElTimeSelect,
+    ElTooltip,
     ElTreeSelect,
     type FormInstance
   } from 'element-plus'
+  import { QuestionFilled } from '@element-plus/icons-vue'
+  import ArtIconPicker from '@/components/core/forms/art-icon-picker/index.vue'
   import { calculateResponsiveSpan, type ResponsiveBreakpoint } from '@/utils/form/responsive'
 
   defineOptions({ name: 'ArtForm' })
@@ -140,7 +169,8 @@
     cascader: ElCascader, // 级联选择器
     timepicker: ElTimePicker, // 时间选择器
     timeselect: ElTimeSelect, // 时间选择
-    treeselect: ElTreeSelect // 树选择器
+    treeselect: ElTreeSelect, // 树选择器
+    iconpicker: ArtIconPicker // 图标选择器
   }
 
   const { width } = useWindowSize()
@@ -149,12 +179,18 @@
 
   const formInstance = useTemplateRef<FormInstance>('formRef')
 
+  export type FormItemContent = string | (() => VNodeChild) | Component
+
   // 表单项配置
   export interface FormItem {
     /** 表单项的唯一标识 */
     key: string
     /** 表单项的标签文本或自定义渲染函数 */
     label: string | (() => VNode) | Component
+    /** 显示在组件下方的常驻描述 */
+    description?: FormItemContent
+    /** 显示在标签帮助图标中的提示内容 */
+    help?: FormItemContent
     /** 表单项标签的宽度，会覆盖 Form 的 labelWidth */
     labelWidth?: string | number
     /** 表单项类型，支持预定义的组件类型 */
@@ -263,7 +299,18 @@
 
   initialModelValue.value = cloneModelValue(modelValue.value)
 
-  const rootProps = ['label', 'labelWidth', 'key', 'type', 'hidden', 'span', 'slots']
+  const rootProps = [
+    'label',
+    'description',
+    'help',
+    'labelWidth',
+    'key',
+    'type',
+    'render',
+    'hidden',
+    'span',
+    'slots'
+  ]
   // 输出时的清洗策略默认偏“接口友好”，但允许按业务覆盖。
   const sanitizeOutputOptions = computed<SanitizeOutputOptions>(() => ({
     removeEmptyString: true,
@@ -413,10 +460,19 @@
     return (sanitizeOutputValue(cloneModelValue(modelValue.value)) || {}) as Record<string, any>
   }
 
-  const getProps = (item: FormItem) => {
+  const getProps = (item: FormItem): Record<string, any> => {
     if (item.props) return item.props
-    const props = { ...item }
-    rootProps.forEach((key) => delete (props as Record<string, any>)[key])
+    const props: Record<string, any> = { ...item }
+    rootProps.forEach((key) => delete props[key])
+    return props
+  }
+
+  const getComponentProps = (item: FormItem) => {
+    const props = { ...getProps(item) }
+    if (['select', 'checkboxgroup', 'radiogroup'].includes(String(item.type))) {
+      delete props.options
+    }
+    delete props.optionType
     return props
   }
 
@@ -497,6 +553,7 @@
   defineExpose({
     ref: formInstance,
     validate: (...args: any[]) => formInstance.value?.validate(...args),
+    clearValidate: (...args: any[]) => formInstance.value?.clearValidate(...args),
     reset: handleReset,
     // 允许外部在不触发提交事件时主动获取清洗后的输出。
     getOutput: getSanitizedOutput
@@ -505,3 +562,30 @@
   // 解构 props 以便在模板中直接使用
   const { span, gutter, labelPosition, labelWidth } = toRefs(props)
 </script>
+
+<style scoped lang="scss">
+  .art-form-item__label {
+    display: inline-flex;
+    align-items: center;
+    min-width: 0;
+  }
+
+  .art-form-item__help-icon {
+    flex: none;
+    margin-left: 4px;
+    color: var(--el-text-color-secondary);
+    cursor: help;
+  }
+
+  .art-form-item__content {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .art-form-item__description {
+    margin-top: 6px;
+    font-size: 12px;
+    line-height: 20px;
+    color: var(--el-text-color-secondary);
+  }
+</style>
