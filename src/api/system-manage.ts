@@ -34,7 +34,7 @@ export async function fetchGetUserList(params: Api.SystemManage.UserSearchParams
 
   // 构建查询
   let query = supabase
-    .from('app_users')
+    .from('sys_users')
     .select('*', { count: 'exact' })
     .order('create_time', { ascending: false }) // 按创建时间倒序
     .range(from, to)
@@ -120,7 +120,9 @@ export async function editUser(params: Api.SystemManage.UserListItem) {
 
 // 获取所有用户可分配的角色
 export async function fetchGetEnableRoleList() {
-  return await responseHandle(() => supabase.from('roles').select() as any, { ignoreCheck: true })
+  return await responseHandle(() => supabase.from('sys_role').select() as any, {
+    ignoreCheck: true
+  })
 }
 
 // 获取角色列表
@@ -146,7 +148,7 @@ export async function fetchGetRoleList(params: Api.SystemManage.RoleSearchParams
 
   // 构建查询
   let query: any = supabase
-    .from('roles')
+    .from('sys_role')
     .select('*', { count: 'exact' })
     .order('create_time', { ascending: false }) // 按创建时间倒序
     .range(from, to)
@@ -161,24 +163,27 @@ export async function fetchGetRoleList(params: Api.SystemManage.RoleSearchParams
 /*删除角色*/
 export async function deleteRole(params: Api.SystemManage.RoleListItem) {
   const { id } = params
-  return await responseHandle(() => supabase.from('roles').delete().eq('id', id) as any, {
+  return await responseHandle(() => supabase.from('sys_role').delete().eq('id', id) as any, {
     showMessage: true
   })
 }
 
 /*新增角色*/
 export async function addRole(params: Api.SystemManage.RoleListItem) {
-  return await responseHandle(() => supabase.from('roles').insert(keysToSnakeDeep(params)) as any, {
-    showMessage: true,
-    breakReturn: true
-  })
+  return await responseHandle(
+    () => supabase.from('sys_role').insert(keysToSnakeDeep(params)) as any,
+    {
+      showMessage: true,
+      breakReturn: true
+    }
+  )
 }
 
 /*编辑角色*/
 export async function editRole(params: Api.SystemManage.RoleListItem) {
   const { id } = params
   return await responseHandle(
-    () => supabase.from('roles').update(keysToSnakeDeep(params)).eq('id', id) as any,
+    () => supabase.from('sys_role').update(keysToSnakeDeep(params)).eq('id', id) as any,
     {
       showMessage: true,
       breakReturn: true
@@ -189,16 +194,19 @@ export async function editRole(params: Api.SystemManage.RoleListItem) {
 /*获取当前角色拥有的菜单*/
 export async function getCurrentRoleMenus(params: AppRouteRecord) {
   const { id } = params
-  return await responseHandle(() => supabase.from('role_menus').select().eq('role_id', id) as any, {
-    ignoreCheck: true
-  })
+  return await responseHandle(
+    () => supabase.from('sys_role_menu').select().eq('role_id', id) as any,
+    {
+      ignoreCheck: true
+    }
+  )
 }
 
 // 获取有用的菜单列表
 export async function fetchGetEnableMenuList() {
   // 构建查询
   const query = supabase
-    .from('menus')
+    .from('sys_menu')
     .select('*', { count: 'exact' })
     .order('sort', { ascending: true }) // 按sort倒序
 
@@ -220,7 +228,7 @@ export async function fetchGetMenuList(params: AppRouteRecord) {
   })
 
   // 构建查询
-  let query: any = supabase.from('menus').select('*', { count: 'exact' })
+  let query: any = supabase.from('sys_menu').select('*', { count: 'exact' })
 
   if (name) {
     query = query.filter('meta->>title', 'ilike', `%${name}%`)
@@ -234,23 +242,26 @@ export async function fetchGetMenuList(params: AppRouteRecord) {
 /*删除菜单*/
 export async function deleteMenu(params: Record<string, any>) {
   const { ids } = params as any
-  return await responseHandle(() => supabase.from('menus').delete().in('id', ids) as any, {
+  return await responseHandle(() => supabase.from('sys_menu').delete().in('id', ids) as any, {
     showMessage: true
   })
 }
 
 /*新增菜单*/
 export async function addRMenu(params: AppRouteRecord) {
-  return await responseHandle(() => supabase.from('menus').insert(keysToSnakeDeep(params)) as any, {
-    showMessage: true
-  })
+  return await responseHandle(
+    () => supabase.from('sys_menu').insert(keysToSnakeDeep(params)) as any,
+    {
+      showMessage: true
+    }
+  )
 }
 
 /*编辑菜单*/
 export async function editMenu(params: AppRouteRecord) {
   const { id } = params
   return await responseHandle(
-    () => supabase.from('menus').update(keysToSnakeDeep(params)).eq('id', id) as any,
+    () => supabase.from('sys_menu').update(keysToSnakeDeep(params)).eq('id', id) as any,
     {
       showMessage: true
     }

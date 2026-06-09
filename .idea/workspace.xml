@@ -8,35 +8,8 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="b8f35119-660a-46e7-82f4-53eee06863eb" name="Changes" comment="fix eslint error">
-      <change afterPath="$PROJECT_DIR$/src/components/core/tables/art-table-query/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.agents/skills/art-supabase-pro-conventions/SKILL.md" beforeDir="false" afterPath="$PROJECT_DIR$/.agents/skills/art-supabase-pro-conventions/SKILL.md" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/dataSources.local.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources.local.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/api/common.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/common.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/api/vehicle-mgt-sys.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/vehicle-mgt-sys.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/components/core/dialogs/art-dialog/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/dialogs/art-dialog/README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/components/core/dialogs/art-dialog/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/dialogs/art-dialog/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/components/core/dialogs/art-dialog/types.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/dialogs/art-dialog/types.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/components/core/drawers/art-drawer/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/drawers/art-drawer/README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/components/core/drawers/art-drawer/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/drawers/art-drawer/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/components/core/drawers/art-drawer/types.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/drawers/art-drawer/types.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/components/core/forms/art-excel-import/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/forms/art-excel-import/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/components/core/forms/art-form/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/forms/art-form/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/components/core/forms/art-search-bar/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/forms/art-search-bar/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/components/core/tables/art-table-header/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/tables/art-table-header/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/components/core/tables/art-table/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/tables/art-table/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/types/component/index.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/types/component/index.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/data-center/dict/modules/dict-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/data-center/dict/modules/dict-dialog.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/data-center/dict/modules/dict-type-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/data-center/dict/modules/dict-type-dialog.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/system/menu/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/system/menu/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/system/menu/modules/menu-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/system/menu/modules/menu-dialog.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/system/role/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/system/role/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/system/role/modules/role-search.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/system/role/modules/role-search.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/system/user/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/system/user/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/system/user/modules/user-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/system/user/modules/user-dialog.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/system/user/modules/user-search.vue" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/vehicle-mgt-sys/basic-info/insurance-company/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-mgt-sys/basic-info/insurance-company/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/vehicle-mgt-sys/basic-info/insurance-company/modules/insurance-company-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-mgt-sys/basic-info/insurance-company/modules/insurance-company-dialog.vue" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -44,7 +17,7 @@
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="EmbeddingIndexingInfo">
-    <option name="cachedIndexableFilesCount" value="802" />
+    <option name="cachedIndexableFilesCount" value="801" />
     <option name="fileBasedEmbeddingIndicesEnabled" value="true" />
   </component>
   <component name="FileTemplateManagerImpl">
@@ -78,61 +51,61 @@
   </component>
   <component name="NextEditCompletionFeaturesState">
     <decayedCancelled>
-      <entry key="MS100" value="1.000000000294707" />
-      <entry key="MS500" value="1.0124130375015017" />
-      <entry key="S2" value="1.333787075823977" />
-      <entry key="S5" value="1.6447447390109486" />
-      <entry key="S10" value="1.802981853927037" />
-      <entry key="S30" value="1.957425654242889" />
-      <entry key="S60" value="2.1314248733608925" />
-      <entry key="M2" value="2.4015275777239693" />
-      <entry key="M5" value="2.9039674762161347" />
-      <entry key="M10" value="3.8016480513588986" />
-      <entry key="M15" value="4.831208894071067" />
-      <entry key="M30" value="7.7872888622581495" />
-      <entry key="H1" value="12.772002350179854" />
-      <entry key="H2" value="21.406252495035403" />
-      <entry key="H4" value="33.811040509524425" />
-      <entry key="D1" value="58.11229959248254" />
-      <entry key="W1" value="64.78616826583456" />
+      <entry key="MS100" value="9.592054151157864E-6" />
+      <entry key="MS500" value="0.30766844437406177" />
+      <entry key="S2" value="2.7805104698460252" />
+      <entry key="S5" value="4.40128919306466" />
+      <entry key="S10" value="5.136948677626824" />
+      <entry key="S30" value="5.710312056063829" />
+      <entry key="S60" value="6.4792951727259025" />
+      <entry key="M2" value="10.329012449708335" />
+      <entry key="M5" value="20.71705640295536" />
+      <entry key="M10" value="30.45513783065754" />
+      <entry key="M15" value="36.532497552999544" />
+      <entry key="M30" value="46.88859338449945" />
+      <entry key="H1" value="57.15482273597911" />
+      <entry key="H2" value="69.09937103175429" />
+      <entry key="H4" value="83.6618825548622" />
+      <entry key="D1" value="111.10049921828902" />
+      <entry key="W1" value="118.62904484754496" />
     </decayedCancelled>
     <decayedSelected>
-      <entry key="MS100" value="0.0" />
-      <entry key="MS500" value="0.0" />
-      <entry key="S2" value="0.0" />
-      <entry key="S5" value="0.0" />
-      <entry key="S10" value="2.0876804307571474E-178" />
-      <entry key="S30" value="5.932275886066555E-60" />
-      <entry key="S60" value="2.4356263847451144E-30" />
-      <entry key="M2" value="1.5606493471453204E-15" />
-      <entry key="M5" value="1.1948740628933122E-6" />
-      <entry key="M10" value="0.0010931031637260189" />
-      <entry key="M15" value="0.010611810299703707" />
-      <entry key="M30" value="0.10380414068603662" />
-      <entry key="H1" value="0.36697738291454823" />
-      <entry key="H2" value="0.969598148650403" />
-      <entry key="H4" value="2.00196358710225" />
-      <entry key="D1" value="4.241151784222622" />
-      <entry key="W1" value="4.882491037011626" />
+      <entry key="MS100" value="1.0" />
+      <entry key="MS500" value="1.0" />
+      <entry key="S2" value="1.0" />
+      <entry key="S5" value="1.0" />
+      <entry key="S10" value="1.0000000002725722" />
+      <entry key="S30" value="1.0008164534161765" />
+      <entry key="S60" value="1.0385037099216847" />
+      <entry key="M2" value="1.2740327094179034" />
+      <entry key="M5" value="1.930797496421213" />
+      <entry key="M10" value="2.516663712340144" />
+      <entry key="M15" value="2.848646971124981" />
+      <entry key="M30" value="3.3673264167822" />
+      <entry key="H1" value="3.891435109595129" />
+      <entry key="H2" value="4.634472821429393" />
+      <entry key="H4" value="5.754859309576171" />
+      <entry key="D1" value="8.171114660502248" />
+      <entry key="W1" value="8.871296136195136" />
     </decayedSelected>
     <decayedShown>
-      <entry key="MS100" value="0.002259156609195073" />
-      <entry key="MS500" value="0.29704073388741703" />
-      <entry key="S2" value="0.9302333002559902" />
-      <entry key="S5" value="1.4029807078266507" />
-      <entry key="S10" value="1.66042754877213" />
-      <entry key="S30" value="1.9029217096911681" />
-      <entry key="S60" value="2.100775691602854" />
-      <entry key="M2" value="2.383680558929037" />
-      <entry key="M5" value="2.895239337211309" />
-      <entry key="M10" value="3.797422394524094" />
-      <entry key="M15" value="4.837596952529023" />
-      <entry key="M30" value="7.887879783825972" />
-      <entry key="H1" value="13.136352011931272" />
-      <entry key="H2" value="22.37372618837859" />
-      <entry key="H4" value="35.81144084253895" />
-      <entry key="D1" value="62.353045890157794" />
-      <entry key="W1" value="69.66859600193668" />
+      <entry key="MS100" value="4.498596190261623E-5" />
+      <entry key="MS500" value="0.4296215961950202" />
+      <entry key="S2" value="3.3621962312399813" />
+      <entry key="S5" value="5.204760813928252" />
+      <entry key="S10" value="6.032964816070596" />
+      <entry key="S30" value="6.675032085895754" />
+      <entry key="S60" value="7.497911516753112" />
+      <entry key="M2" value="11.587954439767538" />
+      <entry key="M5" value="22.635975116757425" />
+      <entry key="M10" value="32.96257401524723" />
+      <entry key="M15" value="39.37334048544224" />
+      <entry key="M30" value="50.250197022138394" />
+      <entry key="H1" value="61.042098303382936" />
+      <entry key="H2" value="73.73084058399608" />
+      <entry key="H4" value="89.41468574361792" />
+      <entry key="D1" value="119.27110979548509" />
+      <entry key="W1" value="127.50026292496234" />
     </decayedShown>
   </component>
   <component name="PackageJsonUpdateNotifier">
@@ -146,47 +119,47 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "JavaScript Debug.__devtools__.executor": "Debug",
-    "RunOnceActivity.MCP Project settings loaded": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
-    "codeWithMe.voiceChat.enabledByDefault": "false",
-    "com.intellij.ml.llm.matterhorn.ej.ui.settings.DefaultModelSelectionForGA.v1": "true",
-    "disable.download.node.interpreter.editor.notification": "true",
-    "git-widget-placeholder": "master",
-    "git.auto.fetch.suggestion.counter": "1",
-    "ignore.virus.scanning.warn.message": "true",
-    "javascript.preferred.runtime.type.id": "node",
-    "junie.onboarding.icon.badge.shown": "true",
-    "last_opened_file_path": "D:/spa/art-supabase-pro",
-    "node.js.detected.package.eslint": "true",
-    "node.js.detected.package.standard": "true",
-    "node.js.detected.package.stylelint": "true",
-    "node.js.detected.package.tslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.standard": "",
-    "node.js.selected.package.stylelint": "D:\\spa\\art-design-pro\\node_modules\\stylelint",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "nodejs_package_manager_path": "pnpm",
-    "prettierjs.PrettierConfiguration.Package": "D:\\spa\\art-supabase-pro\\node_modules\\prettier",
-    "settings.editor.selected.configurable": "ml.llm.LLMThirdPartyAiProvidersConfigurable",
-    "to.speed.mode.migration.done": "true",
-    "ts.external.directory.path": "D:\\spa\\art-supabase-pro\\node_modules\\typescript\\lib",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;JavaScript Debug.__devtools__.executor&quot;: &quot;Debug&quot;,
+    &quot;RunOnceActivity.MCP Project settings loaded&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
+    &quot;codeWithMe.voiceChat.enabledByDefault&quot;: &quot;false&quot;,
+    &quot;com.intellij.ml.llm.matterhorn.ej.ui.settings.DefaultModelSelectionForGA.v1&quot;: &quot;true&quot;,
+    &quot;disable.download.node.interpreter.editor.notification&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;master&quot;,
+    &quot;git.auto.fetch.suggestion.counter&quot;: &quot;3&quot;,
+    &quot;ignore.virus.scanning.warn.message&quot;: &quot;true&quot;,
+    &quot;javascript.preferred.runtime.type.id&quot;: &quot;node&quot;,
+    &quot;junie.onboarding.icon.badge.shown&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;D:/spa/art-supabase-pro&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.standard&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.stylelint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.standard&quot;: &quot;&quot;,
+    &quot;node.js.selected.package.stylelint&quot;: &quot;D:\\spa\\art-design-pro\\node_modules\\stylelint&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;pnpm&quot;,
+    &quot;prettierjs.PrettierConfiguration.Package&quot;: &quot;D:\\spa\\art-supabase-pro\\node_modules\\prettier&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;ml.llm.mcp&quot;,
+    &quot;to.speed.mode.migration.done&quot;: &quot;true&quot;,
+    &quot;ts.external.directory.path&quot;: &quot;D:\\spa\\art-supabase-pro\\node_modules\\typescript\\lib&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   },
-  "keyToStringList": {
-    "DatabaseDriversLRU": [
-      "postgresql"
+  &quot;keyToStringList&quot;: {
+    &quot;DatabaseDriversLRU&quot;: [
+      &quot;postgresql&quot;
     ],
-    "vue.recent.templates": [
-      "Vue Composition API Component"
+    &quot;vue.recent.templates&quot;: [
+      &quot;Vue Composition API Component&quot;
     ]
   }
-}]]></component>
+}</component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="D:\spa\art-supabase-pro\src\assets\fonts" />
@@ -215,7 +188,7 @@
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-js-predefined-d6986cc7102b-3bd3a6803838-JavaScript-WS-261.22158.274" />
+        <option value="bundled-js-predefined-d6986cc7102b-31caf2ab9e3c-JavaScript-WS-261.25134.101" />
       </set>
     </attachedChunks>
   </component>
@@ -284,6 +257,11 @@
       <workItem from="1780975683992" duration="11456000" />
       <workItem from="1780991410804" duration="74000" />
       <workItem from="1780991514157" duration="6968000" />
+      <workItem from="1781009129400" duration="273000" />
+      <workItem from="1781009416904" duration="1257000" />
+      <workItem from="1781010701685" duration="583000" />
+      <workItem from="1781011294208" duration="744000" />
+      <workItem from="1781012563064" duration="3010000" />
     </task>
     <task id="LOCAL-00001" summary="feat project clean">
       <option name="closed" value="true" />
@@ -582,7 +560,7 @@
                   <entry key="branch">
                     <value>
                       <list>
-                        <option value="upstream/main" />
+                        <option value="origin/master" />
                       </list>
                     </value>
                   </entry>

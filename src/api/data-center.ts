@@ -10,7 +10,7 @@ export async function fetchGetDictTypeList(params: Api.DataCenter.DictListItem) 
   const specs = [{ col: 'name', op: 'ilike', val: name ? `%${name}%` : undefined }]
 
   let query: any = supabase
-    .from('dict_type')
+    .from('sys_dict_type')
     .select('*', { count: 'exact' })
     .order('create_time', { ascending: false })
 
@@ -21,7 +21,7 @@ export async function fetchGetDictTypeList(params: Api.DataCenter.DictListItem) 
 // 删除字典类型
 export async function deleteDictType(params: Api.DataCenter.DictListItem) {
   const { id } = params
-  return await responseHandle(() => supabase.from('dict_type').delete().eq('id', id) as any, {
+  return await responseHandle(() => supabase.from('sys_dict_type').delete().eq('id', id) as any, {
     showMessage: true
   })
 }
@@ -29,7 +29,7 @@ export async function deleteDictType(params: Api.DataCenter.DictListItem) {
 // 新增字典类型
 export async function addDictType(params: Api.DataCenter.DictListItem) {
   return await responseHandle(
-    () => supabase.from('dict_type').insert(keysToSnakeDeep(params)) as any,
+    () => supabase.from('sys_dict_type').insert(keysToSnakeDeep(params)) as any,
     {
       showMessage: true,
       breakReturn: true
@@ -41,7 +41,7 @@ export async function addDictType(params: Api.DataCenter.DictListItem) {
 export async function editDictType(params: Api.DataCenter.DictListItem) {
   const { id } = params
   return await responseHandle(
-    () => supabase.from('dict_type').update(keysToSnakeDeep(params)).eq('id', id) as any,
+    () => supabase.from('sys_dict_type').update(keysToSnakeDeep(params)).eq('id', id) as any,
     {
       showMessage: true,
       breakReturn: true
@@ -61,7 +61,7 @@ export async function fetchGetDictListByTypeId(params: Api.DataCenter.DictListIt
   ]
 
   let query: any = supabase
-    .from('dict')
+    .from('sys_dictionary')
     .select('*', { count: 'exact' })
     .order('sort', { ascending: true })
 
@@ -72,7 +72,7 @@ export async function fetchGetDictListByTypeId(params: Api.DataCenter.DictListIt
 // 字典项列表
 export async function fetchGetDictList() {
   const query = supabase
-    .from('dict')
+    .from('sys_dictionary')
     .select(
       `
       id,
@@ -82,14 +82,14 @@ export async function fetchGetDictList() {
       value,
       sort,
       color,
-      dict_type_table:dict_type!inner(
+      dict_type_table:sys_dict_type!inner(
         code,
         name
       )
     `
     )
     .eq('status', '1')
-    .eq('dict_type.status', '1')
+    .eq('dict_type_table.status', '1')
     .order('sort', { ascending: true })
 
   return await responseHandle(() => query as any, { ignoreCheck: true })
@@ -98,31 +98,34 @@ export async function fetchGetDictList() {
 // 删除字典项
 export async function deleteDict(params: Api.DataCenter.DictListItem) {
   const { id } = params
-  return await responseHandle(() => supabase.from('dict').delete().eq('id', id) as any, {
+  return await responseHandle(() => supabase.from('sys_dictionary').delete().eq('id', id) as any, {
     showMessage: true
   })
 }
 
 // 批量删除字典项
 export async function deleteDictBatch(ids: string[]) {
-  return await responseHandle(() => supabase.from('dict').delete().in('id', ids) as any, {
+  return await responseHandle(() => supabase.from('sys_dictionary').delete().in('id', ids) as any, {
     showMessage: true
   })
 }
 
 // 新增字典项
 export async function addDict(params: Api.DataCenter.DictListItem) {
-  return await responseHandle(() => supabase.from('dict').insert(keysToSnakeDeep(params)) as any, {
-    showMessage: true,
-    breakReturn: true
-  })
+  return await responseHandle(
+    () => supabase.from('sys_dictionary').insert(keysToSnakeDeep(params)) as any,
+    {
+      showMessage: true,
+      breakReturn: true
+    }
+  )
 }
 
 // 编辑字典项
 export async function editDict(params: Api.DataCenter.DictListItem) {
   const { id } = params
   return await responseHandle(
-    () => supabase.from('dict').update(keysToSnakeDeep(params)).eq('id', id) as any,
+    () => supabase.from('sys_dictionary').update(keysToSnakeDeep(params)).eq('id', id) as any,
     {
       showMessage: true,
       breakReturn: true
@@ -147,7 +150,7 @@ export async function fetchGetResourceList(params: Api.DataCenter.Resources.Reso
   }
 
   let query: any = supabase
-    .from('attachment')
+    .from('sys_attachment')
     .select('*', { count: 'exact' })
     .order('create_time', { ascending: false })
     .range(from, to)
@@ -161,7 +164,7 @@ export async function deleteResource(params: Api.DataCenter.Resources.ResourceLi
   const { id } = params
 
   const { data: resourceItem } = await responseHandle(
-    () => supabase.from('attachment').select().eq('id', id).single() as any,
+    () => supabase.from('sys_attachment').select().eq('id', id).single() as any,
     {
       ignoreCheck: true
     }
@@ -170,9 +173,12 @@ export async function deleteResource(params: Api.DataCenter.Resources.ResourceLi
   const { storagePath, objectName } = resourceItem as Api.DataCenter.Resources.ResourceListItem
   const fullPath = `${storagePath}/${objectName}`
 
-  await responseHandle(() => supabase.from('attachment').delete().eq('id', id).single() as any, {
-    breakReturn: true
-  })
+  await responseHandle(
+    () => supabase.from('sys_attachment').delete().eq('id', id).single() as any,
+    {
+      breakReturn: true
+    }
+  )
 
   return await responseHandle(
     () => supabase.storage.from('attachments').remove([fullPath]) as any,

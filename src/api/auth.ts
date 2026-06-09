@@ -84,7 +84,7 @@ export async function fetchGetUserInfo() {
   const uid = session?.data?.session?.user?.id
 
   return await responseHandle(
-    () => supabase.from('app_users').select('*').eq('auth_user_id', uid).single() as any,
+    () => supabase.from('sys_users').select('*').eq('auth_user_id', uid).single() as any,
     {
       ignoreCheck: true
     }

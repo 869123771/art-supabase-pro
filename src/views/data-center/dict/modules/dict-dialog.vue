@@ -161,7 +161,7 @@
           { required: true, message: '字典编码不能为空', trigger: 'change' },
           {
             validator: uniqueValidator({
-              table: 'dict',
+              table: 'sys_dictionary',
               field: 'code',
               getExcludeId: (): string | undefined => form.value.data?.id,
               extraWhere: (): Record<string, any> => ({

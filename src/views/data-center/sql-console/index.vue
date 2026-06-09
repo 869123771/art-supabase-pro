@@ -46,7 +46,11 @@
                 :offset="8"
                 :show-arrow="false"
               >
-                <ArtIconButton @click="() => handleExecute()" icon="ri-play-line" class="!size-6.5" />
+                <ArtIconButton
+                  @click="() => handleExecute()"
+                  icon="ri-play-line"
+                  class="!size-6.5"
+                />
               </el-tooltip>
               <el-tooltip v-else content="执行中" placement="top" :offset="8" :show-arrow="false">
                 <ArtIconButton
@@ -157,7 +161,7 @@
     applyErrorMarker: (location: SqlErrorLocation | null, message: string) => void
   }
 
-  const sqlCode = ref('SELECT * FROM app_users LIMIT 10;')
+  const sqlCode = ref('SELECT * FROM sys_users LIMIT 10;')
   const executing = ref(false)
   const result = ref<Api.DataCenter.SqlConsole.SqlExecuteResponse | null>(null)
   const splitRatio = ref(0.6)

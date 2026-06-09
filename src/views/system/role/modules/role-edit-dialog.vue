@@ -67,7 +67,7 @@
       { min: 2, max: 50, message: '长度在 2 到 50 个字符', trigger: 'change' },
       {
         validator: uniqueValidator({
-          table: 'roles',
+          table: 'sys_role',
           field: 'role_code',
           getExcludeId: (): string | undefined => form.id,
           extraWhere: () => ({

@@ -94,7 +94,7 @@ export async function uploadAttachment(
 
     // 2️⃣ 查重
     const { data: existed } = await supabase
-      .from('attachment')
+      .from('sys_attachment')
       .select('*')
       .eq('hash', hash)
       .maybeSingle()
@@ -145,7 +145,7 @@ export async function uploadAttachment(
       remark
     }
 
-    const query = await supabase.from('attachment').insert(insertData).select().single()
+    const query = await supabase.from('sys_attachment').insert(insertData).select().single()
 
     return await responseHandle(() => query as any, {
       ignoreCheck: true,

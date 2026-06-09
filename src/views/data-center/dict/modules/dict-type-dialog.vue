@@ -96,7 +96,7 @@
           { required: true, message: '分类编码不能为空', trigger: 'change' },
           {
             validator: uniqueValidator({
-              table: 'dict_type',
+              table: 'sys_dict_type',
               field: 'code',
               getExcludeId: (): string | undefined => form.value.data?.id,
               message: '分类编码已存在'
