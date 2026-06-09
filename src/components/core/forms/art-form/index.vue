@@ -95,7 +95,14 @@
             </div>
           </ElFormItem>
         </ElCol>
-        <ElCol :xs="24" :sm="24" :md="span" :lg="span" :xl="span" class="max-w-full flex-1">
+        <ElCol
+          :xs="getActionColSpan('xs')"
+          :sm="getActionColSpan('sm')"
+          :md="getActionColSpan('md')"
+          :lg="getActionColSpan('lg')"
+          :xl="getActionColSpan('xl')"
+          class="max-w-full"
+        >
           <div
             class="mb-3 flex-c flex-wrap justify-end md:flex-row md:items-stretch md:gap-2"
             :style="actionButtonsStyle"
@@ -768,6 +775,14 @@
    */
   const getColSpan = (itemSpan: number | undefined, breakpoint: ResponsiveBreakpoint): number => {
     return calculateResponsiveSpan(itemSpan, span.value, breakpoint)
+  }
+
+  const getActionColSpan = (breakpoint: ResponsiveBreakpoint): number => {
+    const occupiedSpan = visibleFormItems.value.reduce((total, item) => {
+      return (total + getColSpan(item.span, breakpoint)) % 24
+    }, 0)
+
+    return occupiedSpan === 0 ? 24 : 24 - occupiedSpan
   }
 
   const isFormItemHidden = (item: FormItem): boolean => {

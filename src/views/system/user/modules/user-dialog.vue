@@ -264,7 +264,6 @@
     await dialogRef.value?.handleOpen(row, {
       title: isEdit.value ? '编辑用户' : '添加用户',
       width: '60%',
-      contentHeight: '70vh',
       onConfirm: handleSubmit,
       onReset: () => void resetForm()
     })
