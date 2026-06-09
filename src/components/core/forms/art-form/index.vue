@@ -2,12 +2,13 @@
 <!-- 支持常用表单组件、自定义组件、插槽、校验、隐藏表单项 -->
 <!-- 写法同 ElementPlus 官方文档组件，把属性写在 props 里面就可以了 -->
 <template>
-  <section class="px-4 pb-0 pt-4 md:px-4 md:pt-4">
+  <section :class="['art-form px-4 pb-0 pt-4 md:px-4 md:pt-4', rootClass]">
     <ElForm
       ref="formRef"
       :model="modelValue"
       :label-position="labelPosition"
       v-bind="{ ...$attrs }"
+      @validate="handleValidate"
     >
       <ElRow class="flex flex-wrap" :gutter="gutter">
         <ElCol
@@ -47,28 +48,30 @@
                   v-bind="getComponentProps(item)"
                 >
                   <!-- 下拉选择 -->
-                  <template v-if="item.type === 'select' && getProps(item)?.options">
+                  <template v-if="item.type === 'select' && getOptions(item).length">
                     <ElOption
-                      v-for="option in getProps(item).options"
+                      v-for="option in getOptions(item)"
                       v-bind="option"
                       :key="option.value"
+                      :label="option.label"
+                      :value="option.value"
                     />
                   </template>
 
                   <!-- 复选框组 -->
-                  <template v-if="item.type === 'checkboxgroup' && getProps(item)?.options">
+                  <template v-if="item.type === 'checkboxGroup' && getOptions(item).length">
                     <ElCheckbox
-                      v-for="option in getProps(item).options"
+                      v-for="option in getOptions(item)"
                       v-bind="option"
                       :key="option.value"
                     />
                   </template>
 
                   <!-- 单选框组 -->
-                  <template v-if="item.type === 'radiogroup' && getProps(item)?.options">
+                  <template v-if="item.type === 'radioGroup' && getOptions(item).length">
                     <component
                       :is="getProps(item).optionType === 'button' ? ElRadioButton : ElRadio"
-                      v-for="option in getProps(item).options"
+                      v-for="option in getOptions(item)"
                       v-bind="option"
                       :key="option.value"
                     />
@@ -99,7 +102,10 @@
           >
             <div class="flex gap-2 md:justify-center">
               <ElButton v-if="showReset" class="reset-button" @click="handleReset" v-ripple>
-                {{ t('table.form.reset') }}
+                <ElIcon>
+                  <RefreshLeft />
+                </ElIcon>
+                {{ resetText || t('table.form.reset') }}
               </ElButton>
               <ElButton
                 v-if="showSubmit"
@@ -109,8 +115,24 @@
                 v-ripple
                 :disabled="disabledSubmit"
               >
-                {{ t('table.form.submit') }}
+                <ElIcon>
+                  <Search />
+                </ElIcon>
+                {{ submitText || t('table.form.submit') }}
               </ElButton>
+            </div>
+            <div
+              v-if="shouldShowExpandToggle"
+              class="art-form__filter-toggle"
+              @click="toggleExpand"
+            >
+              <span>{{ expandToggleText }}</span>
+              <div class="art-form__filter-toggle-icon">
+                <ElIcon>
+                  <ArrowUpBold v-if="isExpanded" />
+                  <ArrowDownBold v-else />
+                </ElIcon>
+              </div>
             </div>
           </div>
         </ElCol>
@@ -122,7 +144,7 @@
 <script setup lang="ts">
   import { useWindowSize } from '@vueuse/core'
   import { useI18n } from 'vue-i18n'
-  import { toRaw, type Component, type VNodeChild } from 'vue'
+  import { onMounted, toRaw, unref, watch, type Component, type Ref, type VNodeChild } from 'vue'
   import {
     ElCascader,
     ElCheckbox,
@@ -143,9 +165,17 @@
     ElTimeSelect,
     ElTooltip,
     ElTreeSelect,
-    type FormInstance
+    type FormInstance,
+    type FormItemProp,
+    type FormPropsPublic
   } from 'element-plus'
-  import { QuestionFilled } from '@element-plus/icons-vue'
+  import {
+    ArrowDownBold,
+    ArrowUpBold,
+    QuestionFilled,
+    RefreshLeft,
+    Search
+  } from '@element-plus/icons-vue'
   import ArtIconPicker from '@/components/core/forms/art-icon-picker/index.vue'
   import { calculateResponsiveSpan, type ResponsiveBreakpoint } from '@/utils/form/responsive'
 
@@ -153,24 +183,21 @@
 
   const componentMap = {
     input: ElInput, // 输入框
-    inputtag: ElInputTag, // 标签输入框
+    inputTag: ElInputTag, // 标签输入框
     number: ElInputNumber, // 数字输入框
     select: ElSelect, // 选择器
     switch: ElSwitch, // 开关
     checkbox: ElCheckbox, // 复选框
-    checkboxgroup: ElCheckboxGroup, // 复选框组
-    radiogroup: ElRadioGroup, // 单选框组
+    checkboxGroup: ElCheckboxGroup, // 复选框组
+    radioGroup: ElRadioGroup, // 单选框组
     date: ElDatePicker, // 日期选择器
-    daterange: ElDatePicker, // 日期范围选择器
-    datetime: ElDatePicker, // 日期时间选择器
-    datetimerange: ElDatePicker, // 日期时间范围选择器
     rate: ElRate, // 评分
     slider: ElSlider, // 滑块
     cascader: ElCascader, // 级联选择器
-    timepicker: ElTimePicker, // 时间选择器
-    timeselect: ElTimeSelect, // 时间选择
-    treeselect: ElTreeSelect, // 树选择器
-    iconpicker: ArtIconPicker // 图标选择器
+    timePicker: ElTimePicker, // 时间选择器
+    timeSelect: ElTimeSelect, // 时间选择
+    treeSelect: ElTreeSelect, // 树选择器
+    iconPicker: ArtIconPicker // 图标选择器
   }
 
   const { width } = useWindowSize()
@@ -180,9 +207,38 @@
   const formInstance = useTemplateRef<FormInstance>('formRef')
 
   export type FormItemContent = string | (() => VNodeChild) | Component
+  export type FormItemType = keyof typeof componentMap | (string & {})
+  export type MaybePromise<T> = T | Promise<T>
+  export type FormItemApiParams = Record<string, any> | undefined
+  export type FormItemOption = Record<string, any>
+  export type FormItemApiFn<TParams = FormItemApiParams, TResult = unknown> = (
+    params: TParams
+  ) => MaybePromise<TResult>
+  export type FormItemBeforeFetch<TParams = FormItemApiParams> = (
+    params: TParams
+  ) => MaybePromise<TParams>
+  export type FormItemShouldFetch<TParams = FormItemApiParams> = (
+    params: TParams
+  ) => MaybePromise<boolean>
+  export type FormItemAfterFetch<TResult = unknown> = (
+    result: TResult
+  ) => MaybePromise<TResult | FormItemOption[]>
+  export type ApiComponentLabelFn<TOption extends FormItemOption = FormItemOption> = (
+    option: TOption
+  ) => string
+  export type ApiComponentAutoSelect<TOption extends FormItemOption = FormItemOption> =
+    | 'first'
+    | 'last'
+    | 'one'
+    | false
+    | ((options: TOption[]) => TOption | undefined)
+  export type FormItemHidden =
+    | boolean
+    | Ref<boolean>
+    | ((model: Record<string, any>, item: FormItem) => boolean)
 
   // 表单项配置
-  export interface FormItem {
+  export interface FormItem<TApiResult = unknown, TParams = FormItemApiParams> {
     /** 表单项的唯一标识 */
     key: string
     /** 表单项的标签文本或自定义渲染函数 */
@@ -194,11 +250,11 @@
     /** 表单项标签的宽度，会覆盖 Form 的 labelWidth */
     labelWidth?: string | number
     /** 表单项类型，支持预定义的组件类型 */
-    type?: keyof typeof componentMap | string
+    type?: FormItemType
     /** 自定义渲染函数或组件，用于渲染自定义组件（优先级高于 type） */
     render?: (() => VNode) | Component
     /** 是否隐藏该表单项 */
-    hidden?: boolean
+    hidden?: FormItemHidden
     /** 表单项占据的列宽，基于24格栅格系统 */
     span?: number
     /** 选项数据，用于 select、checkbox-group、radio-group 等 */
@@ -209,11 +265,37 @@
     slots?: Record<string, (() => any) | undefined>
     /** 表单项的占位符文本 */
     placeholder?: string
+    /** 异步获取选项数据的接口，适用于 select、checkboxGroup、radioGroup、cascader、treeSelect */
+    api?: FormItemApiFn<TParams, TApiResult>
+    /** 是否在组件挂载后立即请求 api，默认 true */
+    immediate?: boolean
+    /** 传递给 api 的参数 */
+    params?: TParams
+    /** 请求前转换参数 */
+    beforeFetch?: FormItemBeforeFetch<TParams>
+    /** 请求前判断是否允许请求，返回 false 时跳过请求 */
+    shouldFetch?: FormItemShouldFetch<TParams>
+    /** 请求后转换响应数据，可直接返回 options 数组或返回新的响应对象 */
+    afterFetch?: FormItemAfterFetch<TApiResult>
+    /** 从响应对象中提取 options 数组的字段路径，支持 a.b.c */
+    resultField?: string
+    /** 选项 label 字段名，默认 label */
+    labelField?: string
+    /** 选项 value 字段名，默认 value */
+    valueField?: string
+    /** 自定义选项 label */
+    labelFn?: ApiComponentLabelFn
+    /** 子级字段名，默认 children，适用于 cascader/treeSelect */
+    childrenField?: string
+    /** 自动选择策略：first 首项，last 末项，one 仅一项时选中，函数自定义，false 不自动选择 */
+    autoSelect?: ApiComponentAutoSelect
     /** 更多属性配置请参考 ElementPlus 官方文档 */
   }
 
   // 表单配置
-  interface FormProps {
+  export interface ArtFormProps extends Partial<
+    Omit<FormPropsPublic, 'model' | 'labelPosition' | 'labelWidth'>
+  > {
     /** 表单数据 */
     items: FormItem[]
     /** 每列的宽度（基于 24 格布局） */
@@ -232,6 +314,20 @@
     showSubmit?: boolean
     /** 是否禁用提交按钮 */
     disabledSubmit?: boolean
+    /** 根节点附加 class */
+    rootClass?: string
+    /** 重置按钮文本 */
+    resetText?: string
+    /** 提交按钮文本 */
+    submitText?: string
+    /** 是否启用折叠展开能力 */
+    enableExpand?: boolean
+    /** 是否强制展开全部表单项 */
+    isExpand?: boolean
+    /** 默认是否展开 */
+    defaultExpanded?: boolean
+    /** 是否显示展开/收起按钮 */
+    showExpand?: boolean
     /** 提交时是否清洗空值 */
     sanitizeOutput?: Partial<SanitizeOutputOptions>
   }
@@ -251,7 +347,7 @@
     keepFalse: boolean
   }
 
-  const props = withDefaults(defineProps<FormProps>(), {
+  const props = withDefaults(defineProps<ArtFormProps>(), {
     items: () => [],
     span: 6,
     gutter: 12,
@@ -261,18 +357,29 @@
     showReset: true,
     showSubmit: true,
     disabledSubmit: false,
+    rootClass: '',
+    resetText: '',
+    submitText: '',
+    enableExpand: false,
+    isExpand: false,
+    defaultExpanded: false,
+    showExpand: true,
     sanitizeOutput: () => ({})
   })
 
-  interface FormEmits {
+  export interface ArtFormEmits {
     reset: []
     submit: [Record<string, any>]
+    validate: [prop: FormItemProp, isValid: boolean, message: string]
   }
 
-  const emit = defineEmits<FormEmits>()
+  const emit = defineEmits<ArtFormEmits>()
 
   const modelValue = defineModel<Record<string, any>>({ default: {} })
   const initialModelValue = ref<Record<string, any>>({})
+  const isExpanded = ref(props.defaultExpanded)
+  const asyncOptionsMap = ref<Record<string, Record<string, any>[]>>({})
+  const asyncLoadingMap = ref<Record<string, boolean>>({})
 
   // 保存组件初始化时的表单快照，用于 reset 时恢复默认值。
   const cloneModelValue = (value: Record<string, any> | undefined) => {
@@ -309,7 +416,19 @@
     'render',
     'hidden',
     'span',
-    'slots'
+    'slots',
+    'api',
+    'immediate',
+    'params',
+    'beforeFetch',
+    'shouldFetch',
+    'afterFetch',
+    'resultField',
+    'labelField',
+    'valueField',
+    'labelFn',
+    'childrenField',
+    'autoSelect'
   ]
   // 输出时的清洗策略默认偏“接口友好”，但允许按业务覆盖。
   const sanitizeOutputOptions = computed<SanitizeOutputOptions>(() => ({
@@ -339,35 +458,43 @@
     }, modelValue.value)
   }
 
-  // 清空字段时只删除路径的最后一段，避免误删同级数据。
-  const deleteFieldValue = (path: string) => {
+  const createModelSnapshot = () => cloneModelValue(modelValue.value)
+
+  const commitModelValue = (nextValue: Record<string, any>) => {
+    modelValue.value = nextValue
+  }
+
+  const deleteFieldValue = (path: string, target: Record<string, any>) => {
     const segments = parsePath(path)
-    if (!segments.length) return
+    if (!segments.length) return target
 
     const lastSegment = segments.pop()
     const parent = segments.reduce<any>((currentValue, segment) => {
       if (currentValue == null) return undefined
       return currentValue[segment]
-    }, modelValue.value)
+    }, target)
 
     if (parent != null && lastSegment !== undefined) {
       delete parent[lastSegment]
     }
+
+    return target
   }
 
-  // 表单清空输入时不保留空字符串，同时按路径自动补齐中间对象或数组。
   const setFieldValue = (path: string, value: unknown) => {
     const normalizedValue = value === '' ? undefined : value
     const segments = parsePath(path)
 
     if (!segments.length) return
 
+    const nextModelValue = createModelSnapshot()
+
     if (normalizedValue === undefined) {
-      deleteFieldValue(path)
+      commitModelValue(deleteFieldValue(path, nextModelValue))
       return
     }
 
-    let currentValue: any = modelValue.value
+    let currentValue: any = nextModelValue
 
     segments.forEach((segment, index) => {
       const isLast = index === segments.length - 1
@@ -390,8 +517,9 @@
 
       currentValue = currentValue[segment]
     })
-  }
 
+    commitModelValue(nextModelValue)
+  }
   const isRichTextEmpty = (value: string) => {
     if (/<(img|video|audio|iframe|embed|object)\b/i.test(value)) {
       return false
@@ -457,7 +585,125 @@
   }
 
   const getSanitizedOutput = () => {
-    return (sanitizeOutputValue(cloneModelValue(modelValue.value)) || {}) as Record<string, any>
+    const outputValue = cloneModelValue(modelValue.value)
+
+    props.items.forEach((item) => {
+      if (isFormItemHidden(item)) {
+        deleteFieldValue(item.key, outputValue)
+      }
+    })
+
+    return (sanitizeOutputValue(outputValue) || {}) as Record<string, any>
+  }
+
+  const optionComponentTypes = ['select', 'checkboxGroup', 'radioGroup', 'cascader', 'treeSelect']
+
+  const isOptionComponent = (item: FormItem) => optionComponentTypes.includes(String(item.type))
+
+  const getValueByPath = (source: unknown, path?: string): unknown => {
+    if (!path) return source
+    return path.split('.').reduce<unknown>((currentValue, segment) => {
+      if (currentValue == null || typeof currentValue !== 'object') return undefined
+      return (currentValue as Record<string, unknown>)[segment]
+    }, source)
+  }
+
+  const extractOptionsResult = (result: unknown, resultField?: string): Record<string, any>[] => {
+    const target = getValueByPath(result, resultField)
+    return Array.isArray(target) ? target : []
+  }
+
+  const normalizeOptionItem = (
+    option: Record<string, any>,
+    item: FormItem
+  ): Record<string, any> => {
+    const labelField = item.labelField || 'label'
+    const valueField = item.valueField || 'value'
+    const childrenField = item.childrenField || 'children'
+    const children = option[childrenField]
+    const normalizedOption: Record<string, any> = {
+      ...option,
+      label: item.labelFn ? item.labelFn(option) : (option[labelField] ?? option.label),
+      value: option[valueField] ?? option.value
+    }
+
+    if (Array.isArray(children)) {
+      normalizedOption.children = children.map((child) => normalizeOptionItem(child, item))
+    }
+
+    return normalizedOption
+  }
+
+  const normalizeOptions = (options: Record<string, any>[], item: FormItem) => {
+    return options.map((option) => normalizeOptionItem(option, item))
+  }
+
+  const isEmptyFieldValue = (value: unknown) => {
+    return (
+      value === undefined ||
+      value === null ||
+      value === '' ||
+      (Array.isArray(value) && !value.length)
+    )
+  }
+
+  const applyAutoSelect = (item: FormItem, options: Record<string, any>[]) => {
+    if (!item.autoSelect || !options.length || !isEmptyFieldValue(getFieldValue(item.key))) return
+
+    let selectedOption: Record<string, any> | undefined
+    if (item.autoSelect === 'first') {
+      selectedOption = options[0]
+    } else if (item.autoSelect === 'last') {
+      selectedOption = options[options.length - 1]
+    } else if (item.autoSelect === 'one' && options.length === 1) {
+      selectedOption = options[0]
+    } else if (typeof item.autoSelect === 'function') {
+      selectedOption = item.autoSelect(options)
+    }
+
+    if (selectedOption) {
+      setFieldValue(item.key, selectedOption.value)
+    }
+  }
+
+  const fetchOptions = async (item: FormItem): Promise<Record<string, any>[]> => {
+    if (!item.api || !isOptionComponent(item)) return getOptions(item)
+
+    let apiParams = cloneModelValue(item.params) as Record<string, any> | undefined
+    if (item.beforeFetch) {
+      apiParams = await item.beforeFetch(apiParams)
+    }
+
+    if (item.shouldFetch) {
+      const canFetch = await item.shouldFetch(apiParams)
+      if (!canFetch) return getOptions(item)
+    }
+
+    asyncLoadingMap.value[item.key] = true
+    try {
+      const rawResult = await item.api(apiParams)
+      const result = item.afterFetch ? await item.afterFetch(rawResult) : rawResult
+      const options = normalizeOptions(extractOptionsResult(result, item.resultField), item)
+      asyncOptionsMap.value[item.key] = options
+      applyAutoSelect(item, options)
+      return options
+    } finally {
+      asyncLoadingMap.value[item.key] = false
+    }
+  }
+
+  const loadImmediateOptions = () => {
+    props.items.forEach((item) => {
+      if (item.api && item.immediate !== false) {
+        void fetchOptions(item)
+      }
+    })
+  }
+
+  const reloadOptions = async (key?: string) => {
+    const targetItems = key ? props.items.filter((item) => item.key === key) : props.items
+    const results = await Promise.all(targetItems.filter((item) => item.api).map(fetchOptions))
+    return key ? results[0] : results
   }
 
   const getProps = (item: FormItem): Record<string, any> => {
@@ -467,10 +713,27 @@
     return props
   }
 
+  const getOptions = (item: FormItem): Record<string, any>[] => {
+    if (asyncOptionsMap.value[item.key]) return asyncOptionsMap.value[item.key]
+    const options = item.options ?? getProps(item).options
+    return Array.isArray(options) ? options : []
+  }
+
   const getComponentProps = (item: FormItem) => {
     const props = { ...getProps(item) }
-    if (['select', 'checkboxgroup', 'radiogroup'].includes(String(item.type))) {
+    const options = getOptions(item)
+
+    if (['select', 'checkboxGroup', 'radioGroup'].includes(String(item.type))) {
       delete props.options
+    }
+    if (String(item.type) === 'cascader') {
+      props.options = options
+    }
+    if (String(item.type) === 'treeSelect') {
+      props.data = props.data ?? options
+    }
+    if (item.api) {
+      props.loading = asyncLoadingMap.value[item.key] || props.loading
     }
     delete props.optionType
     return props
@@ -507,12 +770,48 @@
     return calculateResponsiveSpan(itemSpan, span.value, breakpoint)
   }
 
+  const isFormItemHidden = (item: FormItem): boolean => {
+    if (typeof item.hidden === 'function') {
+      return item.hidden(modelValue.value, item)
+    }
+
+    return !!unref(item.hidden)
+  }
+
+  const filteredFormItems = computed(() => {
+    return props.items.filter((item) => !isFormItemHidden(item))
+  })
+
   /**
    * 可见的表单项
    */
   const visibleFormItems = computed(() => {
-    return props.items.filter((item) => !item.hidden)
+    const shouldShowLess = props.enableExpand && !props.isExpand && !isExpanded.value
+
+    if (shouldShowLess) {
+      const maxItemsPerRow = Math.floor(24 / props.span) - 1
+      return filteredFormItems.value.slice(0, maxItemsPerRow)
+    }
+
+    return filteredFormItems.value
   })
+
+  const shouldShowExpandToggle = computed(() => {
+    return (
+      props.enableExpand &&
+      !props.isExpand &&
+      props.showExpand &&
+      filteredFormItems.value.length > Math.floor(24 / props.span) - 1
+    )
+  })
+
+  const expandToggleText = computed(() => {
+    return isExpanded.value ? t('table.searchBar.collapse') : t('table.searchBar.expand')
+  })
+
+  const toggleExpand = () => {
+    isExpanded.value = !isExpanded.value
+  }
 
   /**
    * 操作按钮样式
@@ -520,7 +819,7 @@
   const actionButtonsStyle = computed(() => ({
     'justify-content': isMobile.value
       ? 'flex-end'
-      : props.items.filter((item) => !item.hidden).length <= props.buttonLeftLimit
+      : filteredFormItems.value.length <= props.buttonLeftLimit
         ? 'flex-start'
         : 'flex-end'
   }))
@@ -533,10 +832,7 @@
     formInstance.value?.resetFields()
 
     // 恢复初始表单值，保留默认值而不是简单清空。
-    Object.keys(modelValue.value).forEach((key) => {
-      delete modelValue.value[key]
-    })
-    Object.assign(modelValue.value, cloneModelValue(initialModelValue.value))
+    modelValue.value = cloneModelValue(initialModelValue.value)
 
     // 触发 reset 事件
     emit('reset')
@@ -550,11 +846,31 @@
     emit('submit', getSanitizedOutput())
   }
 
+  const handleValidate = (prop: FormItemProp, isValid: boolean, message: string) => {
+    emit('validate', prop, isValid, message)
+  }
+
+  onMounted(loadImmediateOptions)
+
+  watch(
+    () =>
+      props.items.map((item) => ({
+        key: item.key,
+        hasApi: !!item.api,
+        immediate: item.immediate,
+        params: item.params
+      })),
+    loadImmediateOptions,
+    { deep: true }
+  )
+
   defineExpose({
     ref: formInstance,
     validate: (...args: any[]) => formInstance.value?.validate(...args),
     clearValidate: (...args: any[]) => formInstance.value?.clearValidate(...args),
     reset: handleReset,
+    fetchOptions,
+    reloadOptions,
     // 允许外部在不触发提交事件时主动获取清洗后的输出。
     getOutput: getSanitizedOutput
   })
@@ -568,6 +884,10 @@
     display: inline-flex;
     align-items: center;
     min-width: 0;
+  }
+
+  .art-form.art-search-bar {
+    padding: 15px 20px 0;
   }
 
   .art-form-item__help-icon {
@@ -587,5 +907,38 @@
     font-size: 12px;
     line-height: 20px;
     color: var(--el-text-color-secondary);
+  }
+
+  .art-form__filter-toggle {
+    display: flex;
+    align-items: center;
+    margin-left: 10px;
+    line-height: 32px;
+    color: var(--theme-color);
+    cursor: pointer;
+    transition: color 0.2s ease;
+
+    &:hover {
+      color: var(--ElColor-primary);
+    }
+
+    span {
+      font-size: 14px;
+      user-select: none;
+    }
+  }
+
+  .art-form__filter-toggle-icon {
+    display: flex;
+    align-items: center;
+    margin-left: 4px;
+    font-size: 14px;
+    transition: transform 0.2s ease;
+  }
+
+  @media (width <= 768px) {
+    .art-form.art-search-bar {
+      padding: 16px 16px 0;
+    }
   }
 </style>

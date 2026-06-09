@@ -23,6 +23,7 @@ Use these components before assembling equivalent Element Plus plumbing:
 
 | Need                            | Preferred component                                          |
 | ------------------------------- | ------------------------------------------------------------ |
+| Query table composition         | `ArtTableQuery`                                              |
 | Search/filter area              | `ArtSearchBar` or the feature's search component built on it |
 | Table tools and column controls | `ArtTableHeader`                                             |
 | Data table and pagination       | `ArtTable`                                                   |
@@ -36,27 +37,25 @@ Use raw `ElDialog` or `ElDrawer` only when the wrapper cannot support a document
 
 ## Build CRUD Pages
 
-Use the standard page composition:
+Use `ArtTableQuery` as the default composition for list pages that combine filters, table toolbar, table body, and pagination. Split into separate `ArtSearchBar` + `ArtTableHeader` + `ArtTable` only when the layout is genuinely non-standard and `ArtTableQuery` cannot express it cleanly.
 
 ```vue
 <template>
-  <FeatureSearch v-model="searchForm" @search="handleSearch" @reset="resetSearchParams" />
-
-  <ElCard class="art-table-card" shadow="never">
-    <ArtTableHeader v-model:columns="columnChecks" :loading="loading" @refresh="refreshData" />
-    <ArtTable
-      :data="data"
-      :columns="columns"
-      :loading="loading"
-      :pagination="pagination"
-      @pagination:size-change="handleSizeChange"
-      @pagination:current-change="handleCurrentChange"
+  <div class="art-full-height">
+    <ArtTableQuery
+      ref="tableQueryRef"
+      :api-fn="fetchTableData"
+      :columns-factory="columnsFactory"
+      :search-items="searchItems"
+      :header-actions="headerActions"
     />
-  </ElCard>
 
-  <FeatureDialog ref="dialogRef" @success="refreshData" />
+    <FeatureDialog ref="dialogRef" @success="tableQueryRef?.refreshData()" />
+  </div>
 </template>
 ```
+
+Prefer `headerActions` for common toolbar actions instead of `#header-left`; only use the slot when the action cannot be expressed with `ArtTableQueryHeaderAction`. Search form action buttons should remain aligned to the right side of the card, including reset/search and expand/collapse controls.
 
 Type table records at the hook boundary:
 
@@ -94,9 +93,14 @@ The business component owns `ArtDialog`, form state, initialization, submission,
 
 ```vue
 <ArtDialog ref="dialogRef">
-  <ElForm ref="formRef" :model="form" :rules="rules">
-    <!-- business fields -->
-  </ElForm>
+  <ArtForm
+    ref="formRef"
+    v-model="form"
+    :items="formItems"
+    :rules="rules"
+    :show-reset="false"
+    :show-submit="false"
+  />
 </ArtDialog>
 ```
 

@@ -6,52 +6,13 @@ import http from '@/utils/http'
 
 const { supabase, responseHandle } = useSupabase()
 
-export interface RegionOption {
-  label: string
-  value: string
-  children?: RegionOption[]
-}
-
-interface AdministrativeDivisionRaw {
-  name?: string
-  code?: string
-  children?: AdministrativeDivisionRaw[]
-}
-
-const parseAdministrativeDivision = (
-  data: AdministrativeDivisionRaw[] | string
-): AdministrativeDivisionRaw[] => {
-  if (Array.isArray(data)) return data
-
-  try {
-    const parsed = JSON.parse(data) as unknown
-    return Array.isArray(parsed) ? (parsed as AdministrativeDivisionRaw[]) : []
-  } catch {
-    return []
-  }
-}
-
-const mapAdministrativeDivision = (items: AdministrativeDivisionRaw[] = []): RegionOption[] => {
-  return items.map((item) => {
-    const label = item.name || item.code || ''
-    const children = mapAdministrativeDivision(item.children)
-
-    return {
-      label,
-      value: label,
-      ...(children.length ? { children } : {})
-    }
-  })
-}
-
-export async function fetchRegionOptions(): Promise<RegionOption[]> {
-  const data = await http.get<AdministrativeDivisionRaw[] | string>({
+export async function fetchRegionOptions(): Promise<string> {
+  return await http.get<string>({
     url: 'https://raw.githubusercontent.com/modood/Administrative-divisions-of-China/master/dist/pca-code.json',
     skipAuth: true,
     skipResponseWrapper: true,
     showErrorMessage: true
   })
-  return mapAdministrativeDivision(parseAdministrativeDivision(data))
 }
 
 export async function checkUnique(params: {

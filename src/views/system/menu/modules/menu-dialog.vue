@@ -58,7 +58,7 @@
   }
 
   interface MenuDialogOpenData {
-    editData?: AppRouteRecord | any
+    row?: AppRouteRecord | any
     type?: 'folder' | 'menu' | 'button'
     parent?: AppRouteRecord | MenuFormData
     menuTree?: AppRouteRecord[]
@@ -77,7 +77,6 @@
 
   const userStore = useUserStore()
   const { getDictMap } = storeToRefs(userStore) as Record<string, any>
-  console.log(getDictMap.value)
 
   const createInitialForm = (): MenuFormModel => ({
     id: undefined,
@@ -103,7 +102,7 @@
     isFullPage: false
   })
 
-  const form = reactive<MenuFormModel>(createInitialForm())
+  const form = ref<MenuFormModel>(createInitialForm())
 
   const select = ref<MenuFormSelectData>({
     menuTree: []
@@ -121,7 +120,7 @@
         { min: 2, max: 20, message: '长度在 2 到 20 个字符', trigger: 'blur' }
       ],
       path: [{ required: true, message: '请输入路由地址', trigger: 'blur' }],
-      title: [{ required: true, message: titleMessage[form.type], trigger: 'blur' }]
+      title: [{ required: true, message: titleMessage[form.value.type], trigger: 'blur' }]
     }
   })
 
@@ -133,12 +132,12 @@
       {
         label: '菜单类型',
         key: 'type',
-        type: 'radiogroup',
+        type: 'radioGroup',
         span: 24,
         description: '新建时可直接选择类型。按钮权限仍需挂在具体菜单下。',
         props: {
           optionType: 'button',
-          disabled: form.id != null && form.type !== 'button',
+          disabled: form.value.id != null && form.value.type !== 'button',
           validateEvent: false,
           onChange: handleMenuTypeChange,
           options: getDictMap.value.menuType ?? []
@@ -147,13 +146,13 @@
     ]
     // Switch 组件的 span：小屏幕 12，大屏幕 6
     const switchSpan = width.value < 640 ? 12 : 6
-    if (['folder'].includes(form.type)) {
+    if (['folder'].includes(form.value.type)) {
       return [
         ...baseItems,
         {
           label: '父级菜单',
           key: 'parentId',
-          type: 'treeselect',
+          type: 'treeSelect',
           props: {
             clearable: true,
             filterable: true,
@@ -195,7 +194,7 @@
           label: '图标',
           help: '支持搜索并选择 Remix Icon 图标',
           key: 'icon',
-          type: 'iconpicker',
+          type: 'iconPicker',
           props: { placeholder: '请选择菜单图标' }
         },
         {
@@ -216,13 +215,13 @@
         { label: '显示徽章', key: 'showBadge', type: 'switch', span: switchSpan }
       ]
     }
-    if (['menu'].includes(form.type)) {
+    if (['menu'].includes(form.value.type)) {
       return [
         ...baseItems,
         {
           label: '父级菜单',
           key: 'parentId',
-          type: 'treeselect',
+          type: 'treeSelect',
           props: {
             clearable: true,
             filterable: true,
@@ -261,7 +260,7 @@
           label: '图标',
           help: '支持搜索并选择 Remix Icon 图标',
           key: 'icon',
-          type: 'iconpicker',
+          type: 'iconPicker',
           props: { placeholder: '请选择菜单图标' }
         },
         {
@@ -279,7 +278,7 @@
               '后端权限模式：无需配置'
             ].map((value) => h('p', value)),
           key: 'roles',
-          type: 'inputtag',
+          type: 'inputTag',
           props: { placeholder: '输入角色标识后按回车，如：R_SUPER' }
         },*/
         {
@@ -345,7 +344,7 @@
   ): Promise<void> => {
     if (value !== 'folder' && value !== 'menu' && value !== 'button') return
 
-    form.component = value === 'folder' ? '/index/index' : ''
+    form.value.component = value === 'folder' ? '/index/index' : ''
     await nextTick()
     formRef.value?.clearValidate()
   }
@@ -362,21 +361,21 @@
    * 加载表单数据（编辑模式）
    */
   const loadFormData = (
-    editData: AppRouteRecord | Record<string, never>,
+    row: AppRouteRecord | Record<string, never>,
     defaultType: MenuType
   ): void => {
     const {
       id,
-      parentId = form.parentId,
+      parentId = form.value.parentId,
       type,
       name,
       sort,
       path,
       component,
       meta: routeMeta = {}
-    } = editData
+    } = row
     const meta = routeMeta as NonNullable<AppRouteRecord['meta']>
-    Object.assign(form, {
+    Object.assign(form.value, {
       id,
       parentId,
       type: type || defaultType,
@@ -414,7 +413,7 @@
     }
 
     try {
-      const { id, parentId, path, component = '', name, type, sort, ...rest } = toRaw(form)
+      const { id, parentId, path, component = '', name, type, sort, ...rest } = toRaw(form.value)
       const params: AppRouteRecord = {
         parentId: parentId ?? null,
         path,
@@ -429,7 +428,7 @@
       } else {
         await editMenu({ ...params, id })
       }
-      emit('submit', { ...form })
+      emit('submit', { ...form.value })
       return true
     } catch {
       return false
@@ -437,7 +436,7 @@
   }
 
   const handleSetParent = (row: MenuFormData = {} as MenuFormData): void => {
-    form.parentId = row.id ?? null
+    form.value.parentId = row.id ?? null
     select.value = {
       ...unref(select),
       menuTree: row.menuTree
@@ -445,20 +444,20 @@
   }
 
   const initializeForm = async (data: MenuDialogOpenData = {}): Promise<void> => {
-    Object.assign(form, createInitialForm())
+    Object.assign(form.value, createInitialForm())
     handleSetParent({
       ...(data.parent ?? {}),
       menuTree: data.menuTree ?? []
     } as MenuFormData)
-    loadFormData(data.editData ?? {}, data.type ?? 'menu')
-    if (form.type === 'folder') {
-      form.component = '/index/index'
+    loadFormData(data.row ?? {}, data.type ?? 'menu')
+    if (form.value.type === 'folder') {
+      form.value.component = '/index/index'
     }
     await handleResetFields()
   }
 
   const handleReset = async (): Promise<void> => {
-    Object.assign(form, createInitialForm())
+    Object.assign(form.value, createInitialForm())
     select.value = { menuTree: [] }
     await handleResetFields()
   }
@@ -466,8 +465,8 @@
   const handleOpen = async (data: MenuDialogOpenData = {}): Promise<void> => {
     await initializeForm(data)
     await dialogRef.value?.handleOpen(data, {
-      title: `${data.editData?.id != null ? '编辑' : '新增'}${
-        { folder: '目录', menu: '菜单', button: '权限' }[form.type]
+      title: `${data.row?.id != null ? '编辑' : '新增'}${
+        { folder: '目录', menu: '菜单', button: '权限' }[form.value.type]
       }`,
       dialogProps: {
         class: 'menu-dialog'

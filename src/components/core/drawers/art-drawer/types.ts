@@ -17,7 +17,7 @@ export interface ArtDrawerOptions<TData = unknown> extends ArtOverlayOptions<
 }
 
 export type ArtDrawerProps<TData = unknown> = ArtDrawerOptions<TData> &
-  Partial<Omit<DrawerPropsPublic, 'modelValue'>>
+  Partial<Omit<DrawerPropsPublic, 'modelValue' | 'title' | 'size' | 'direction'>>
 
 export interface ArtDrawerExpose<TData = unknown> extends ArtOverlayExpose<
   TData,

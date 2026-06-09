@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <ArtSearchBar
     ref="searchBarRef"
     v-model="formData"
@@ -6,8 +6,7 @@
     :rules="rules"
     @reset="handleReset"
     @search="handleSearch"
-  >
-  </ArtSearchBar>
+  />
 </template>
 
 <script setup lang="ts">
@@ -23,33 +22,20 @@
 
   const props = defineProps<Props>()
   const emit = defineEmits<Emits>()
-
   const searchBarRef = ref()
 
-  /**
-   * 表单数据双向绑定
-   */
   const formData = computed({
     get: () => props.modelValue,
     set: (val) => emit('update:modelValue', val)
   })
 
-  /**
-   * 表单校验规则
-   */
   const rules = {}
 
-  /**
-   * 角色状态选项
-   */
   const statusOptions = ref([
     { label: '启用', value: true },
     { label: '禁用', value: false }
   ])
 
-  /**
-   * 搜索表单配置项
-   */
   const formItems = computed(() => [
     {
       label: '角色名称',
@@ -85,7 +71,7 @@
     {
       label: '创建日期',
       key: 'daterange',
-      type: 'datetime',
+      type: 'date',
       props: {
         style: { width: '100%' },
         placeholder: '请选择日期范围',
@@ -103,17 +89,10 @@
     }
   ])
 
-  /**
-   * 处理重置事件
-   */
   const handleReset = () => {
     emit('reset')
   }
 
-  /**
-   * 处理搜索事件
-   * 验证表单后触发搜索
-   */
   const handleSearch = async () => {
     await searchBarRef.value.validate()
     emit('search', formData.value)

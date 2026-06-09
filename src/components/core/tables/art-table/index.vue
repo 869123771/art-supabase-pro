@@ -322,18 +322,20 @@
     (e: 'pagination:current-change', val: number): void
   }>()
 
-  // 查找并绑定表格头部元素 - 使用 VueUse 优化
+  // 查找并绑定当前表格所在卡片内的头部元素，避免多个表格共享全局 id 时算错高度。
   const findTableHeader = () => {
     if (!props.showTableHeader) {
       tableHeaderRef.value = undefined
       return
     }
 
-    const tableHeader = document.getElementById('art-table-header')
+    const tableElement = elTableRef.value?.$el as HTMLElement | undefined
+    const tableBody = tableElement?.closest('.el-card__body')
+    const tableHeader = tableBody?.querySelector<HTMLElement>('.art-table-header')
+
     if (tableHeader) {
       tableHeaderRef.value = tableHeader
     } else {
-      // 如果找不到表格头部，设置为 undefined，useElementSize 会返回 0
       tableHeaderRef.value = undefined
     }
   }

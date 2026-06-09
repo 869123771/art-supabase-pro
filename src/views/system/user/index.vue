@@ -1,52 +1,31 @@
-<!-- 用户管理页面 -->
-<!-- art-full-height 自动计算出页面剩余高度 -->
-<!-- art-table-card 一个符合系统样式的 class，同时自动撑满剩余高度 -->
-<!-- 更多 useTable 使用示例请移步至 功能示例 下面的高级表格示例或者查看官方文档 -->
-<!-- useTable 文档：https://www.artd.pro/docs/zh/guide/hooks/use-table.html -->
 <template>
   <div class="user-page art-full-height">
-    <!-- 搜索栏 -->
-    <UserSearch v-model="searchForm" @search="handleSearch" @reset="resetSearchParams"></UserSearch>
+    <ArtTableQuery
+      ref="tableQueryRef"
+      v-model="searchForm"
+      :search-items="searchItems"
+      :api-fn="fetchTableData"
+      :columns-factory="columnsFactory"
+      :header-actions="headerActions"
+      :table-props="tableProps"
+    />
 
-    <ElCard class="art-table-card" shadow="never">
-      <!-- 表格头部 -->
-      <ArtTableHeader v-model:columns="columnChecks" :loading="loading" @refresh="refreshData">
-        <template #left>
-          <ElSpace wrap>
-            <ElButton @click="showDialog('add')" v-ripple>新增用户</ElButton>
-          </ElSpace>
-        </template>
-      </ArtTableHeader>
-
-      <!-- 表格 -->
-      <ArtTable
-        table-layout="fixed"
-        :loading="loading"
-        :data="data"
-        :columns="columns"
-        :pagination="pagination"
-        @selection-change="handleSelectionChange"
-        @pagination:size-change="handleSizeChange"
-        @pagination:current-change="handleCurrentChange"
-      >
-      </ArtTable>
-
-      <!-- 用户弹窗 -->
-      <UserDialog ref="userDialogRef" @submit="getData" />
-
-      <UserRoleDialog ref="userRoleRef" @success="getData" />
-    </ElCard>
+    <UserDialog ref="userDialogRef" @success="handleSaveSuccess" />
+    <UserRoleDialog ref="userRoleRef" @success="tableQueryRef?.refreshUpdate()" />
   </div>
 </template>
 
 <script setup lang="ts">
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
-  import { useTable } from '@/hooks/core/useTable'
-  import UserSearch from './modules/user-search.vue'
   import UserDialog from './modules/user-dialog.vue'
   import { ElTag, ElMessageBox, ElImage, type TagProps } from 'element-plus'
-  import { ColumnOption, DialogType } from '@/types'
-
+  import type { ColumnOption } from '@/types'
+  import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
+  import type {
+    ArtTableQueryExpose,
+    ArtTableQueryHeaderAction,
+    ArtTableQueryTableProps
+  } from '@/components/core/tables/art-table-query/index.vue'
   import { formatWithDayjs } from '@/utils/time'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { useUserStore } from '@/store/modules/user'
@@ -59,23 +38,24 @@
   type UserListItem = Api.SystemManage.UserListItem
 
   const userStore = useUserStore()
+  const { getDictMap } = storeToRefs(userStore) as Record<string, any>
 
   interface UserDialogExpose {
-    handleOpen: (data: { type: DialogType; userData?: Partial<UserListItem> }) => Promise<void>
+    handleOpen: (row?: Partial<UserListItem>) => Promise<void>
   }
 
   interface UserRoleDialogExpose {
     handleOpen: (data: UserListItem) => Promise<void>
   }
 
+  const tableQueryRef = ref<ArtTableQueryExpose>()
   const userDialogRef = ref<UserDialogExpose>()
   const userRoleRef = ref<UserRoleDialogExpose>()
 
-  // 选中行
-  const selectedRows = ref<UserListItem[]>([])
+  type SearchParams = Api.SystemManage.UserSearchParams
+  type TableParams = SearchParams & Pick<Api.Common.PaginationParams, 'current' | 'size'>
 
-  // 搜索表单
-  const searchForm = ref({
+  const searchForm = ref<SearchParams>({
     userName: undefined,
     userGender: undefined,
     userPhone: undefined,
@@ -83,172 +63,186 @@
     status: ''
   })
 
-  const {
-    columns,
-    columnChecks,
-    data,
-    loading,
-    pagination,
-    getData,
-    searchParams,
-    resetSearchParams,
-    handleSizeChange,
-    handleCurrentChange,
-    refreshData
-  } = useTable<UserListItem>({
-    // 核心配置
-    core: {
-      apiFn: () => handleGetUserList(),
-      apiParams: {
-        current: 1,
-        size: 20,
-        ...searchForm.value
-      },
-      // 自定义分页字段映射，未设置时将使用全局配置 tableConfig.ts 中的 paginationKey
-      // paginationKey: {
-      //   current: 'pageNum',
-      //   size: 'pageSize'
-      // },
-      columnsFactory: (): ColumnOption<UserListItem>[] => [
-        { type: 'selection' }, // 勾选列
-        { type: 'index', width: 60, label: '序号' }, // 序号
-        {
-          prop: 'userInfo',
-          label: '用户名',
-          width: 280,
-          // visible: false, // 默认是否显示列
-          formatter: (row: UserListItem) => {
-            return h('div', { class: 'user flex-c' }, [
-              h(ElImage, {
-                class: 'size-9.5 rounded-md',
-                src: row.avatar as string,
-                previewSrcList: [row.avatar || ''],
-                // 图片预览是否插入至 body 元素上，用于解决表格内部图片预览样式异常
-                previewTeleported: true
-              }),
-              h('div', { class: 'ml-2' }, [
-                h('p', { class: 'user-name' }, row.userName),
-                h('p', { class: 'email' }, row.userEmail)
-              ])
-            ])
-          }
-        },
-        {
-          prop: 'userType',
-          label: '用户类型',
-          formatter: (row: UserListItem) => {
-            const colorMap: Record<string, TagProps['type']> = {
-              '1': 'primary',
-              '2': 'info'
-            }
-            const tagType = colorMap[String(row.userType)] ?? 'info'
-            return h(ElTag, { type: tagType }, () =>
-              userStore.getDictLabelByValue('userType', row?.userType || '')
-            )
-          }
-        },
-        {
-          prop: 'userGender',
-          label: '性别',
-          sortable: true,
-          formatter: (row: UserListItem) => userStore.getDictLabelByValue('sex', row.userGender)
-        },
-        { prop: 'userPhone', label: '手机号' },
-        {
-          prop: 'status',
-          label: '状态',
-          formatter: (row: UserListItem) => {
-            const colorMap: Record<string, TagProps['type']> = {
-              '1': 'success',
-              '2': 'danger'
-            }
-            const tagType = colorMap[String(row.status)] ?? 'info'
-            return h(ElTag, { type: tagType }, () =>
-              userStore.getDictLabelByValue('status', row?.status || '')
-            )
-          }
-        },
-        {
-          prop: 'createTime',
-          label: '创建日期',
-          sortable: true,
-          width: 180,
-          formatter: (row: UserListItem) => formatWithDayjs(row.createTime)
-        },
-        {
-          prop: 'operation',
-          label: '操作',
-          width: 120,
-          fixed: 'right', // 固定列
-          formatter: (row: UserListItem) =>
-            h(
-              'div',
-              {
-                class: 'flex '
-              },
-              [
-                h(ArtButtonTable, {
-                  type: 'edit',
-                  onClick: () => showDialog('edit', row)
-                }),
-                h(ArtButtonMore, {
-                  list: () => {
-                    const { info } = userStore
-                    const selfExcludeButtonKeys = ['assignRoles', 'delete']
-                    let buttonList: ButtonMoreItem[] = [
-                      {
-                        key: 'assignRoles',
-                        label: '赋予角色',
-                        icon: 'ri-user-add-line'
-                      },
-                      {
-                        key: 'reset',
-                        label: '初始化密码',
-                        icon: 'ri-user-received-line'
-                      },
-                      {
-                        key: 'delete',
-                        label: '删除用户',
-                        icon: 'ri:delete-bin-4-line',
-                        color: '#f56c6c'
-                      }
-                    ]
-                    if (info.email === row.userEmail) {
-                      buttonList = buttonList.filter(
-                        (item: ButtonMoreItem) =>
-                          !selfExcludeButtonKeys.includes(item.key as string)
-                      )
-                    }
-                    return buttonList
-                  },
-                  onClick: (item: ButtonMoreItem) => handleButtonMoreClick(item, row)
-                })
-              ]
-            )
-        }
-      ]
+  const searchItems = computed<SearchFormItem[]>(() => [
+    {
+      label: '用户名',
+      key: 'userName',
+      type: 'input',
+      placeholder: '请输入用户名',
+      clearable: true
+    },
+    {
+      label: '手机号',
+      key: 'userPhone',
+      type: 'input',
+      props: { placeholder: '请输入手机号', maxlength: '11' }
+    },
+    {
+      label: '邮箱',
+      key: 'userEmail',
+      type: 'input',
+      props: { placeholder: '请输入邮箱' }
+    },
+    {
+      label: '状态',
+      key: 'status',
+      type: 'select',
+      props: {
+        placeholder: '请选择状态',
+        options: getDictMap.value.status ?? []
+      }
+    },
+    {
+      label: '性别',
+      key: 'userGender',
+      type: 'radioGroup',
+      props: {
+        options: getDictMap.value.sex ?? []
+      }
     }
-  })
+  ])
 
-  /**
-   * 搜索处理
-   * @param params 参数
-   */
-  const handleSearch = (params: Record<string, any>) => {
-    console.log(params)
-    // 搜索参数赋值
-    Object.assign(searchParams, params)
-    getData()
+  const headerActions = computed<ArtTableQueryHeaderAction[]>(() => [
+    {
+      type: 'add',
+      label: '新增用户',
+      onClick: () => openDialog()
+    }
+  ])
+
+  const tableProps: ArtTableQueryTableProps = {
+    tableLayout: 'fixed'
   }
 
-  /**
-   * 显示用户弹窗
-   */
-  const showDialog = (type: DialogType, row?: UserListItem): void => {
-    void userDialogRef.value?.handleOpen({
-      type,
-      userData: row
+  const fetchTableData = (params: TableParams) => {
+    const { from, to } = pageInfoHandler({
+      current: params.current,
+      size: params.size
     })
+    return fetchGetUserList({
+      ...params,
+      from,
+      to
+    })
+  }
+
+  const columnsFactory = (): ColumnOption<UserListItem>[] => [
+    { type: 'selection' },
+    { type: 'index', width: 60, label: '序号' },
+    {
+      prop: 'userInfo',
+      label: '用户名',
+      width: 280,
+      formatter: (row: UserListItem) => {
+        return h('div', { class: 'user flex-c' }, [
+          h(ElImage, {
+            class: 'size-9.5 rounded-md',
+            src: row.avatar as string,
+            previewSrcList: [row.avatar || ''],
+            previewTeleported: true
+          }),
+          h('div', { class: 'ml-2' }, [
+            h('p', { class: 'user-name' }, row.userName),
+            h('p', { class: 'email' }, row.userEmail)
+          ])
+        ])
+      }
+    },
+    {
+      prop: 'userType',
+      label: '用户类型',
+      formatter: (row: UserListItem) => {
+        const colorMap: Record<string, TagProps['type']> = {
+          '1': 'primary',
+          '2': 'info'
+        }
+        const tagType = colorMap[String(row.userType)] ?? 'info'
+        return h(ElTag, { type: tagType }, () =>
+          userStore.getDictLabelByValue('userType', row?.userType || '')
+        )
+      }
+    },
+    {
+      prop: 'userGender',
+      label: '性别',
+      sortable: true,
+      formatter: (row: UserListItem) => userStore.getDictLabelByValue('sex', row.userGender)
+    },
+    { prop: 'userPhone', label: '手机号' },
+    {
+      prop: 'status',
+      label: '状态',
+      formatter: (row: UserListItem) => {
+        const colorMap: Record<string, TagProps['type']> = {
+          '1': 'success',
+          '2': 'danger'
+        }
+        const tagType = colorMap[String(row.status)] ?? 'info'
+        return h(ElTag, { type: tagType }, () =>
+          userStore.getDictLabelByValue('status', row?.status || '')
+        )
+      }
+    },
+    {
+      prop: 'createTime',
+      label: '创建日期',
+      sortable: true,
+      width: 180,
+      formatter: (row: UserListItem) => formatWithDayjs(row.createTime)
+    },
+    {
+      prop: 'operation',
+      label: '操作',
+      width: 120,
+      fixed: 'right',
+      formatter: (row: UserListItem) =>
+        h('div', { class: 'flex ' }, [
+          h(ArtButtonTable, {
+            type: 'edit',
+            onClick: () => openDialog(row)
+          }),
+          h(ArtButtonMore, {
+            list: () => getMoreActions(row),
+            onClick: (item: ButtonMoreItem) => handleButtonMoreClick(item, row)
+          })
+        ])
+    }
+  ]
+
+  const getMoreActions = (row: UserListItem): ButtonMoreItem[] => {
+    const { info } = userStore
+    const selfExcludeButtonKeys = ['assignRoles', 'delete']
+    const buttonList: ButtonMoreItem[] = [
+      {
+        key: 'assignRoles',
+        label: '赋予角色',
+        icon: 'ri-user-add-line'
+      },
+      {
+        key: 'reset',
+        label: '初始化密码',
+        icon: 'ri-user-received-line'
+      },
+      {
+        key: 'delete',
+        label: '删除用户',
+        icon: 'ri:delete-bin-4-line',
+        color: '#f56c6c'
+      }
+    ]
+
+    if (info.email !== row.userEmail) return buttonList
+    return buttonList.filter((item) => !selfExcludeButtonKeys.includes(item.key as string))
+  }
+
+  const openDialog = (row?: UserListItem): void => {
+    void userDialogRef.value?.handleOpen(row)
+  }
+
+  const handleSaveSuccess = (type: 'add' | 'edit'): void => {
+    void (type === 'add'
+      ? tableQueryRef.value?.refreshCreate()
+      : tableQueryRef.value?.refreshUpdate())
   }
 
   const handleButtonMoreClick = (item: ButtonMoreItem, row: UserListItem) => {
@@ -257,82 +251,42 @@
         void userRoleRef.value?.handleOpen(row)
         break
       case 'reset':
-        handleResetPassword(row)
+        void handleResetPassword(row)
         break
       case 'delete':
-        handleDeleteUser(row)
+        void handleDeleteUser(row)
         break
     }
   }
 
-  /**
-   * 删除用户
-   */
-  const handleResetPassword = (row: UserListItem): void => {
-    ElMessageBox.confirm(`是否将用户密码重置为[123456]?`, '系统提示', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning',
-      beforeClose: async (action, instance, done) => {
-        if (action !== 'confirm') {
-          done()
-          return
-        }
-
-        instance.confirmButtonLoading = true
-        instance.confirmButtonText = '处理中...'
-
-        try {
-          const params: Pick<UserListItem, 'userEmail' | 'password'> = {
-            userEmail: row.userEmail,
-            password: '123456'
-          }
-
-          await resetUser(params as UserListItem)
-
-          done() // ✅ 成功才关闭
-        } finally {
-          instance.confirmButtonLoading = false
-          instance.confirmButtonText = '确定'
-        }
+  const handleResetPassword = async (row: UserListItem): Promise<void> => {
+    try {
+      await ElMessageBox.confirm('是否将用户密码重置为[123456]?', '系统提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      })
+      const params: Pick<UserListItem, 'userEmail' | 'password'> = {
+        userEmail: row.userEmail,
+        password: '123456'
       }
-    })
+      await resetUser(params as UserListItem)
+    } catch {
+      // 用户取消时无需额外提示。
+    }
   }
 
-  /**
-   * 删除用户
-   */
-  const handleDeleteUser = (row: UserListItem): void => {
-    console.log('删除用户:', row)
-    ElMessageBox.confirm(`确定要注销该用户吗?`, '注销用户', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    }).then(async () => {
+  const handleDeleteUser = async (row: UserListItem): Promise<void> => {
+    try {
+      await ElMessageBox.confirm('确定要注销该用户吗?', '注销用户', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      })
       await deleteUser(row)
-      await getData()
-    })
-  }
-
-  /**
-   * 处理表格行选择变化
-   */
-  const handleSelectionChange = (selection: UserListItem[]): void => {
-    selectedRows.value = selection
-    console.log('选中行数据:', selectedRows.value)
-  }
-
-  const handleGetUserList = async () => {
-    const { userName, userPhone, userEmail, userGender, status } = searchParams as UserListItem
-    const { from, to } = pageInfoHandler(pagination)
-    return await fetchGetUserList({
-      userName,
-      userPhone,
-      userEmail,
-      userGender,
-      status,
-      from,
-      to
-    })
+      await tableQueryRef.value?.refreshRemove()
+    } catch {
+      // 用户取消时无需额外提示。
+    }
   }
 </script>

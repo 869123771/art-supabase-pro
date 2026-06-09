@@ -273,6 +273,8 @@ dialogRef.value?.handleOpen(user, {
 
 ## ElDialog API 透传
 
+`ArtDialog` 的 SFC Props 类型已继承 `DialogPropsPublic`，所以在模板中使用时，除 `model-value` 外的 `ElDialog` Props 都会有类型提示。`model-value`、`update:model-value` 由命令式 API 接管，不要在业务侧使用。
+
 静态属性可以直接写在组件上：
 
 ```vue
@@ -298,6 +300,54 @@ dialogRef.value?.handleOpen(data, {
 ```
 
 优先级为：组件默认值、静态透传属性、`dialogProps`、`ArtDialogOptions` 中的核心配置。
+
+### ElDialog Props 完整列表
+
+| 属性                    | 说明                                      |
+| ----------------------- | ----------------------------------------- |
+| `append-to-body`        | 是否插入至 body                           |
+| `append-to`             | 挂载目标，默认 `body`                     |
+| `before-close`          | 关闭前回调；命令式场景优先用 `onClose`    |
+| `destroy-on-close`      | 关闭后销毁内容；`ArtDialog` 默认 `true`   |
+| `close-on-click-modal`  | 点击遮罩关闭                              |
+| `close-on-press-escape` | 按 ESC 关闭                               |
+| `lock-scroll`           | 打开时锁定 body 滚动                      |
+| `modal`                 | 是否显示遮罩                              |
+| `modal-penetrable`      | 遮罩是否穿透                              |
+| `open-delay`            | 打开延迟                                  |
+| `close-delay`           | 关闭延迟                                  |
+| `top`                   | 顶部距离                                  |
+| `modal-class`           | 遮罩 class                                |
+| `header-class`          | header class                              |
+| `body-class`            | body class                                |
+| `footer-class`          | footer class                              |
+| `width`                 | 弹窗宽度；也可用 `ArtDialog.width`        |
+| `z-index`               | 层级                                      |
+| `trap-focus`            | 是否启用焦点陷阱                          |
+| `header-aria-level`     | header aria level                         |
+| `transition`            | 过渡动画                                  |
+| `center`                | header/footer 是否居中                    |
+| `align-center`          | 是否水平垂直居中；`ArtDialog` 默认 `true` |
+| `close-icon`            | 自定义关闭图标                            |
+| `draggable`             | 是否可拖拽；`ArtDialog` 默认 `true`       |
+| `overflow`              | 拖拽是否可超出视口                        |
+| `fullscreen`            | 是否全屏                                  |
+| `show-close`            | 是否显示关闭按钮                          |
+| `title`                 | 标题；也可用 `ArtDialog.title`            |
+| `aria-level`            | aria level                                |
+
+### ElDialog Events
+
+| 事件               | 说明                                       |
+| ------------------ | ------------------------------------------ |
+| `open`             | Dialog 打开动画开始；事件参数为当前 `data` |
+| `opened`           | Dialog 打开动画结束；事件参数为当前 `data` |
+| `close`            | Dialog 关闭动画开始；事件参数为当前 `data` |
+| `closed`           | Dialog 关闭动画结束                        |
+| `open-auto-focus`  | 内容获得焦点时触发                         |
+| `close-auto-focus` | 内容失去焦点时触发                         |
+
+`update:model-value` 不对业务开放；请使用 `ref.handleOpen()` 和 `ref.handleClose()`。
 
 ## 使用建议
 

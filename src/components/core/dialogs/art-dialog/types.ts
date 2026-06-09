@@ -16,7 +16,7 @@ export interface ArtDialogOptions<TData = unknown> extends ArtOverlayOptions<
 }
 
 export type ArtDialogProps<TData = unknown> = ArtDialogOptions<TData> &
-  Partial<Omit<DialogPropsPublic, 'modelValue'>>
+  Partial<Omit<DialogPropsPublic, 'modelValue' | 'title' | 'width'>>
 
 export interface ArtDialogExpose<TData = unknown> extends ArtOverlayExpose<
   TData,

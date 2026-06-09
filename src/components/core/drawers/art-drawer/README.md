@@ -232,6 +232,8 @@ drawerRef.value?.handleOpen(order, {
 
 ## ElDrawer API 透传
 
+`ArtDrawer` 的 SFC Props 类型已继承 `DrawerPropsPublic`，所以在模板中使用时，除 `model-value` 外的 `ElDrawer` Props 都会有类型提示。`model-value`、`update:model-value` 由命令式 API 接管，不要在业务侧使用。
+
 ```vue
 <ArtDrawer
   ref="drawerRef"
@@ -256,6 +258,62 @@ drawerRef.value?.handleOpen(data, {
 ```
 
 优先级为：组件默认值、静态透传属性、`drawerProps`、`ArtDrawerOptions` 中的核心配置。
+
+### ElDrawer Props 完整列表
+
+| 属性                    | 说明                                    |
+| ----------------------- | --------------------------------------- |
+| `direction`             | 打开方向；也可用 `ArtDrawer.direction`  |
+| `resizable`             | 是否可拖拽调整尺寸                      |
+| `size`                  | 抽屉尺寸；也可用 `ArtDrawer.size`       |
+| `with-header`           | 是否显示 header                         |
+| `modal-fade`            | 是否启用遮罩动画                        |
+| `header-aria-level`     | header aria level                       |
+| `append-to-body`        | 是否插入至 body                         |
+| `append-to`             | 挂载目标，默认 `body`                   |
+| `before-close`          | 关闭前回调；命令式场景优先用 `onClose`  |
+| `destroy-on-close`      | 关闭后销毁内容；`ArtDrawer` 默认 `true` |
+| `close-on-click-modal`  | 点击遮罩关闭                            |
+| `close-on-press-escape` | 按 ESC 关闭                             |
+| `lock-scroll`           | 打开时锁定 body 滚动                    |
+| `modal`                 | 是否显示遮罩                            |
+| `modal-penetrable`      | 遮罩是否穿透                            |
+| `open-delay`            | 打开延迟                                |
+| `close-delay`           | 关闭延迟                                |
+| `top`                   | 顶部距离                                |
+| `modal-class`           | 遮罩 class                              |
+| `header-class`          | header class                            |
+| `body-class`            | body class                              |
+| `footer-class`          | footer class                            |
+| `width`                 | 底层兼容属性；抽屉尺寸优先用 `size`     |
+| `z-index`               | 层级                                    |
+| `trap-focus`            | 是否启用焦点陷阱                        |
+| `transition`            | 过渡动画                                |
+| `center`                | header/footer 是否居中                  |
+| `align-center`          | 是否居中对齐                            |
+| `close-icon`            | 自定义关闭图标                          |
+| `draggable`             | 底层兼容属性                            |
+| `overflow`              | 底层兼容属性                            |
+| `fullscreen`            | 底层兼容属性                            |
+| `show-close`            | 是否显示关闭按钮                        |
+| `title`                 | 标题；也可用 `ArtDrawer.title`          |
+| `aria-level`            | aria level                              |
+
+### ElDrawer Events
+
+| 事件               | 说明                                       |
+| ------------------ | ------------------------------------------ |
+| `open`             | Drawer 打开动画开始；事件参数为当前 `data` |
+| `opened`           | Drawer 打开动画结束；事件参数为当前 `data` |
+| `close`            | Drawer 关闭动画开始；事件参数为当前 `data` |
+| `closed`           | Drawer 关闭动画结束                        |
+| `open-auto-focus`  | 内容获得焦点时触发                         |
+| `close-auto-focus` | 内容失去焦点时触发                         |
+| `resize-start`     | 开始调整尺寸，参数为 `event, size`         |
+| `resize`           | 调整尺寸中，参数为 `event, size`           |
+| `resize-end`       | 结束调整尺寸，参数为 `event, size`         |
+
+`update:model-value` 不对业务开放；请使用 `ref.handleOpen()` 和 `ref.handleClose()`。
 
 ## 使用建议
 

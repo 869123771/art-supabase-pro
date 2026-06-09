@@ -3,11 +3,15 @@
   <div class="inline-block">
     <ElUpload
       :auto-upload="false"
-      accept=".xlsx, .xls"
+      :accept="accept"
       :show-file-list="false"
       @change="handleFileChange"
     >
-      <ElButton type="primary" v-ripple>
+      <ElButton v-bind="buttonProps" :disabled="disabled" v-ripple>
+        <template v-if="icon" #icon>
+          <component v-if="typeof icon !== 'string'" :is="icon" />
+          <ArtSvgIcon v-else :icon="icon" />
+        </template>
         <slot>导入 Excel</slot>
       </ElButton>
     </ElUpload>
@@ -17,8 +21,23 @@
 <script setup lang="ts">
   import * as XLSX from 'xlsx'
   import type { UploadFile } from 'element-plus'
+  import type { Component } from 'vue'
 
   defineOptions({ name: 'ArtExcelImport' })
+
+  withDefaults(
+    defineProps<{
+      accept?: string
+      disabled?: boolean
+      icon?: string | Component
+      buttonProps?: Record<string, any>
+    }>(),
+    {
+      accept: '.xlsx, .xls',
+      disabled: false,
+      buttonProps: () => ({ type: 'primary' })
+    }
+  )
 
   // Excel 导入工具函数
   async function importExcel(file: File): Promise<Array<Record<string, unknown>>> {
@@ -43,13 +62,11 @@
     })
   }
 
-  // 定义 emits
   const emit = defineEmits<{
     'import-success': [data: Array<Record<string, unknown>>]
     'import-error': [error: Error]
   }>()
 
-  // 处理文件导入
   const handleFileChange = async (uploadFile: UploadFile) => {
     try {
       if (!uploadFile.raw) return

@@ -1,5 +1,5 @@
-<template>
-  <ArtDialog ref="dialogRef">
+﻿<template>
+  <ArtDialog ref="dialogRef" width="720px">
     <ArtForm
       ref="formRef"
       v-model="form"
@@ -20,24 +20,19 @@
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import { addInsuranceCompany, editInsuranceCompany } from '@/api/vehicle-mgt-sys'
-  import { fetchRegionOptions, type RegionOption } from '@/api/common'
+  import { fetchRegionOptions } from '@/api/common'
 
   type InsuranceCompany = Api.VehicleMgtSys.BasicInfo.InsuranceCompany
   type InsuranceCompanyForm = InsuranceCompany & {
     regionPath?: string[]
   }
 
-  interface OpenData {
-    type: 'add' | 'edit'
-    editData?: InsuranceCompany
-  }
-
   interface Emits {
-    (e: 'success', type: OpenData['type']): void
+    (e: 'success', type: 'add' | 'edit'): void
   }
 
   const emit = defineEmits<Emits>()
-  const dialogRef = ref<ArtDialogExpose<OpenData>>()
+  const dialogRef = ref<ArtDialogExpose<InsuranceCompany | undefined>>()
   const formRef = ref<{
     validate: () => Promise<boolean>
     clearValidate: () => void
@@ -55,8 +50,6 @@
   })
 
   const form = reactive<InsuranceCompanyForm>(createInitialForm())
-  const regionOptions = ref<RegionOption[]>([])
-  const regionLoading = ref(false)
 
   const rules: FormRules<InsuranceCompany> = {
     companyName: [
@@ -115,12 +108,23 @@
       props: {
         clearable: true,
         filterable: true,
-        options: regionOptions.value,
         placeholder: '请选择省/市/区',
         props: {
           checkStrictly: true
-        },
-        loading: regionLoading.value
+        }
+      },
+      api: fetchRegionOptions,
+      labelField: 'name',
+      valueField: 'code',
+      childrenField: 'children',
+      afterFetch: (data: any) => {
+        if (Array.isArray(data)) return data
+        try {
+          const parsed = JSON.parse(data) as unknown
+          return Array.isArray(parsed) ? (parsed as any[]) : []
+        } catch {
+          return []
+        }
       }
     },
     {
@@ -176,18 +180,18 @@
     }
   }
 
-  const handleOpen = async (data: OpenData): Promise<void> => {
+  const handleOpen = async (row?: InsuranceCompany): Promise<void> => {
     await resetForm()
-    await loadRegionOptions()
-    if (data.editData) {
-      const editData = structuredClone(toRaw(data.editData)) as InsuranceCompanyForm
+    const isEdit = !!row?.id
+
+    if (isEdit) {
+      const editData = structuredClone(toRaw(row)) as InsuranceCompanyForm
       editData.regionPath = editData.region?.split('/').filter(Boolean) || []
       Object.assign(form, editData)
     }
 
-    await dialogRef.value?.handleOpen(data, {
-      title: data.type === 'add' ? '新增保险公司' : '编辑保险公司',
-      width: '720px',
+    await dialogRef.value?.handleOpen(row, {
+      title: isEdit ? '编辑保险公司' : '新增保险公司',
       onConfirm: handleSubmit,
       onReset: () => void resetForm()
     })
@@ -197,17 +201,4 @@
     handleOpen,
     handleClose: () => dialogRef.value?.handleClose()
   })
-
-  const loadRegionOptions = async (): Promise<void> => {
-    if (regionOptions.value.length || regionLoading.value) return
-
-    regionLoading.value = true
-    try {
-      regionOptions.value = await fetchRegionOptions()
-    } catch {
-      // HTTP layer already shows the error; keep dialog usable.
-    } finally {
-      regionLoading.value = false
-    }
-  }
 </script>

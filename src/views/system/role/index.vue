@@ -1,48 +1,29 @@
-<!-- 角色管理页面 -->
 <template>
   <div class="art-full-height">
-    <RoleSearch
-      v-show="showSearchBar"
+    <ArtTableQuery
       v-model="searchForm"
+      v-model:columns="columnChecks"
+      v-model:show-search-bar="showSearchBar"
+      :loading="loading"
+      :data="data"
+      :table-columns="columns"
+      :pagination="pagination"
+      :search-bar-props="searchBarProps"
+      :table-props="tableProps"
       @search="handleSearch"
       @reset="resetSearchParams"
-    ></RoleSearch>
-
-    <ElCard
-      class="art-table-card"
-      shadow="never"
-      :style="{ 'margin-top': showSearchBar ? '12px' : '0' }"
+      @refresh="refreshData"
+      @pagination:size-change="handleSizeChange"
+      @pagination:current-change="handleCurrentChange"
     >
-      <ArtTableHeader
-        v-model:columns="columnChecks"
-        v-model:showSearchBar="showSearchBar"
-        :loading="loading"
-        @refresh="refreshData"
-      >
-        <template #left>
-          <ElSpace wrap>
-            <ElButton @click="showDialog('add')" v-ripple>新增角色</ElButton>
-          </ElSpace>
-        </template>
-      </ArtTableHeader>
+      <template #header-left>
+        <ElSpace wrap>
+          <ElButton @click="showDialog('add')" v-ripple>新增角色</ElButton>
+        </ElSpace>
+      </template>
+    </ArtTableQuery>
 
-      <!-- 表格 -->
-      <ArtTable
-        table-layout="fixed"
-        :loading="loading"
-        :data="data"
-        :columns="columns"
-        :pagination="pagination"
-        @pagination:size-change="handleSizeChange"
-        @pagination:current-change="handleCurrentChange"
-      >
-      </ArtTable>
-    </ElCard>
-
-    <!-- 角色编辑弹窗 -->
     <RoleEditDialog ref="roleEditDialogRef" @success="refreshData" />
-
-    <!-- 菜单权限弹窗 -->
     <RolePermissionDialog ref="rolePermissionDialogRef" @success="refreshData" />
   </div>
 </template>
@@ -50,23 +31,24 @@
 <script setup lang="ts">
   import { ButtonMoreItem } from '@/components/core/forms/art-button-more/index.vue'
   import { useTable } from '@/hooks/core/useTable'
-  import { fetchGetRoleList } from '@/api/system-manage'
+  import { deleteRole, fetchGetRoleList } from '@/api/system-manage'
   import ArtButtonMore from '@/components/core/forms/art-button-more/index.vue'
-  import RoleSearch from './modules/role-search.vue'
   import RoleEditDialog from './modules/role-edit-dialog.vue'
   import RolePermissionDialog from './modules/role-permission-dialog.vue'
   import { ElTag, ElMessageBox } from 'element-plus'
   import { formatWithDayjs } from '@/utils/time'
   import { pageInfoHandler } from '@utils/table/tableUtils'
-
-  import { deleteRole } from '@/api/system-manage'
   import { ColumnOption } from '@/types'
+  import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
+  import type {
+    ArtTableQuerySearchBarProps,
+    ArtTableQueryTableProps
+  } from '@/components/core/tables/art-table-query/index.vue'
 
   defineOptions({ name: 'Role' })
 
   type RoleListItem = Api.SystemManage.RoleListItem
 
-  // 搜索表单
   const searchForm = ref({
     roleName: undefined,
     roleCode: undefined,
@@ -76,6 +58,71 @@
   })
 
   const showSearchBar = ref(false)
+  const statusOptions = [
+    { label: '启用', value: true },
+    { label: '禁用', value: false }
+  ]
+
+  const searchItems = computed<SearchFormItem[]>(() => [
+    {
+      label: '角色名称',
+      key: 'roleName',
+      type: 'input',
+      placeholder: '请输入角色名称',
+      clearable: true
+    },
+    {
+      label: '角色编码',
+      key: 'roleCode',
+      type: 'input',
+      placeholder: '请输入角色编码',
+      clearable: true
+    },
+    {
+      label: '角色描述',
+      key: 'description',
+      type: 'input',
+      placeholder: '请输入角色描述',
+      clearable: true
+    },
+    {
+      label: '角色状态',
+      key: 'enabled',
+      type: 'select',
+      props: {
+        placeholder: '请选择状态',
+        options: statusOptions,
+        clearable: true
+      }
+    },
+    {
+      label: '创建日期',
+      key: 'daterange',
+      type: 'date',
+      props: {
+        style: { width: '100%' },
+        placeholder: '请选择日期范围',
+        type: 'daterange',
+        rangeSeparator: '至',
+        startPlaceholder: '开始日期',
+        endPlaceholder: '结束日期',
+        valueFormat: 'YYYY-MM-DD',
+        shortcuts: [
+          { text: '今日', value: [new Date(), new Date()] },
+          { text: '最近一周', value: [new Date(Date.now() - 604800000), new Date()] },
+          { text: '最近一个月', value: [new Date(Date.now() - 2592000000), new Date()] }
+        ]
+      }
+    }
+  ])
+
+  const searchBarProps = computed<ArtTableQuerySearchBarProps>(() => ({
+    items: searchItems.value
+  }))
+
+  const tableProps: ArtTableQueryTableProps = {
+    tableLayout: 'fixed'
+  }
 
   interface RoleEditDialogExpose {
     handleOpen: (data: { type: 'add' | 'edit'; roleData?: RoleListItem }) => Promise<void>
@@ -101,14 +148,12 @@
     handleCurrentChange,
     refreshData
   } = useTable<RoleListItem>({
-    // 核心配置
     core: {
       apiFn: () => handleGetRoleList(),
       apiParams: {
         current: 1,
         size: 20
       },
-      // 排除 apiParams 中的属性
       excludeParams: ['daterange'],
       columnsFactory: (): ColumnOption<RoleListItem>[] => [
         {
@@ -195,18 +240,11 @@
     })
   }
 
-  /**
-   * 搜索处理
-   * @param params 搜索参数
-   */
   const handleSearch = (params: Record<string, any>) => {
-    // 处理日期区间参数，把 daterange 转换为 startTime 和 endTime
     const { daterange, ...filtersParams } = params
     const [startTime, endTime] = Array.isArray(daterange) ? daterange : [null, null]
-
-    // 搜索参数赋值
     Object.assign(searchParams, { ...filtersParams, startTime, endTime })
-    getData()
+    void getData()
   }
 
   const buttonMoreClick = (item: ButtonMoreItem, row: RoleListItem) => {
@@ -245,7 +283,7 @@
   const handleGetRoleList = async () => {
     const { roleName, roleCode, description, enabled, startTime, endTime } = searchParams as any
     const { from, to } = pageInfoHandler(pagination)
-    const params = {
+    return await fetchGetRoleList({
       roleName,
       roleCode,
       description,
@@ -254,7 +292,6 @@
       endTime,
       from,
       to
-    }
-    return await fetchGetRoleList(params)
+    })
   }
 </script>

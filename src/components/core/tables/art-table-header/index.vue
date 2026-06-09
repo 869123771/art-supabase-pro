@@ -1,6 +1,6 @@
 <!-- 表格头部，包含表格大小、刷新、全屏、列设置、其他设置 -->
 <template>
-  <div class="flex-cb max-md:!block" id="art-table-header">
+  <div ref="rootRef" class="art-table-header flex-cb max-md:!block" id="art-table-header">
     <div class="flex-wrap">
       <slot name="left"></slot>
     </div>
@@ -135,6 +135,7 @@
   defineOptions({ name: 'ArtTableHeader' })
 
   const { t } = useI18n()
+  const rootRef = ref<HTMLElement>()
 
   interface Props {
     /** 斑马纹 */
@@ -315,6 +316,10 @@
         el.classList.remove('el-full-screen')
       }
     }
+  })
+
+  defineExpose({
+    rootRef
   })
 </script>
 

@@ -75,7 +75,7 @@
 
 <script setup lang="ts" generic="T = Record<string, any>">
   import type { Component } from 'vue'
-  import type { DialogInstance, ScrollbarInstance } from 'element-plus'
+  import type { DialogInstance, DialogPropsPublic, ScrollbarInstance } from 'element-plus'
   import type { ArtDialogExpose, ArtDialogOptions, ArtScrollOptions } from './types'
   import { mergeOverlayRecords, useArtOverlay } from '@/hooks/core/useArtOverlay'
 
@@ -84,7 +84,9 @@
     inheritAttrs: false
   })
 
-  interface Props {
+  interface ArtDialogProps<TData = Record<string, any>> extends Partial<
+    Omit<DialogPropsPublic, 'modelValue' | 'title' | 'width'>
+  > {
     title?: string
     width?: string | number
     contentHeight?: string | number
@@ -101,14 +103,14 @@
     nativeScrollbar?: boolean
     content?: Component
     contentProps?: Record<string, unknown>
-    dialogProps?: ArtDialogOptions<T>['dialogProps']
-    onOpen?: ArtDialogOptions<T>['onOpen']
-    onConfirm?: ArtDialogOptions<T>['onConfirm']
-    onClose?: ArtDialogOptions<T>['onClose']
-    onReset?: ArtDialogOptions<T>['onReset']
+    dialogProps?: ArtDialogOptions<TData>['dialogProps']
+    onOpen?: ArtDialogOptions<TData>['onOpen']
+    onConfirm?: ArtDialogOptions<TData>['onConfirm']
+    onClose?: ArtDialogOptions<TData>['onClose']
+    onReset?: ArtDialogOptions<TData>['onReset']
   }
 
-  const props = withDefaults(defineProps<Props>(), {
+  const props = withDefaults(defineProps<ArtDialogProps<T>>(), {
     title: '',
     width: '50%',
     contentHeight: undefined,

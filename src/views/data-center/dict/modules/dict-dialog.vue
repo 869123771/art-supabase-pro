@@ -113,7 +113,7 @@
           {
             label: '国际化范围',
             key: 'i18nScope',
-            type: 'radiogroup',
+            type: 'radioGroup',
             props: {
               options: getDictMap.value.i18nScope ?? []
             }
@@ -121,7 +121,7 @@
           {
             label: '状态',
             key: 'status',
-            type: 'radiogroup',
+            type: 'radioGroup',
             props: {
               options: getDictMap.value.status ?? []
             }

@@ -78,7 +78,7 @@
 
 <script setup lang="ts" generic="T = Record<string, any>">
   import type { Component } from 'vue'
-  import type { ScrollbarInstance } from 'element-plus'
+  import type { DrawerPropsPublic, ScrollbarInstance } from 'element-plus'
   import type { ArtDrawerExpose, ArtDrawerOptions, ArtScrollOptions } from './types'
   import { mergeOverlayRecords, useArtOverlay } from '@/hooks/core/useArtOverlay'
 
@@ -87,7 +87,9 @@
     inheritAttrs: false
   })
 
-  interface Props {
+  interface ArtDrawerProps<TData = Record<string, any>> extends Partial<
+    Omit<DrawerPropsPublic, 'modelValue' | 'title' | 'size' | 'direction'>
+  > {
     title?: string
     size?: string | number
     direction?: 'ltr' | 'rtl' | 'ttb' | 'btt'
@@ -105,14 +107,14 @@
     nativeScrollbar?: boolean
     content?: Component
     contentProps?: Record<string, unknown>
-    drawerProps?: ArtDrawerOptions<T>['drawerProps']
-    onOpen?: ArtDrawerOptions<T>['onOpen']
-    onConfirm?: ArtDrawerOptions<T>['onConfirm']
-    onClose?: ArtDrawerOptions<T>['onClose']
-    onReset?: ArtDrawerOptions<T>['onReset']
+    drawerProps?: ArtDrawerOptions<TData>['drawerProps']
+    onOpen?: ArtDrawerOptions<TData>['onOpen']
+    onConfirm?: ArtDrawerOptions<TData>['onConfirm']
+    onClose?: ArtDrawerOptions<TData>['onClose']
+    onReset?: ArtDrawerOptions<TData>['onReset']
   }
 
-  const props = withDefaults(defineProps<Props>(), {
+  const props = withDefaults(defineProps<ArtDrawerProps<T>>(), {
     title: '',
     size: '40%',
     direction: 'rtl',
