@@ -1,0 +1,415 @@
+---
+name: art-crud-page-standard
+description: Use when creating or refactoring standard CRUD list pages in art-supabase-pro, especially pages modeled after vehicle-mgt-sys/basic-info/insurance-company with ArtTableQuery, headerActions, ArtDialog, ArtForm, import/export, batch delete, and typed API-driven list/detail workflows.
+---
+
+# Art CRUD Page Standard
+
+Use this skill for normal CRUD pages under `src/views/**`. The reference implementation is:
+
+- `src/views/vehicle-mgt-sys/basic-info/insurance-company/index.vue`
+- `src/views/vehicle-mgt-sys/basic-info/insurance-company/modules/insurance-company-dialog.vue`
+
+Also follow the base project conventions in `art-supabase-pro-conventions`.
+
+## Page Shape
+
+Use one page entry plus feature modules:
+
+```text
+src/views/<domain>/<feature>/index.vue
+src/views/<domain>/<feature>/modules/<feature>-dialog.vue
+```
+
+The list page owns:
+
+- `ArtTableQuery`
+- search model and search items
+- table columns
+- toolbar `headerActions`
+- row operation buttons
+- list API parameter adaptation
+- dialog ref and success refresh behavior
+
+The dialog module owns:
+
+- `ArtDialog`
+- `ArtForm`
+- form state
+- validation rules
+- add/edit initialization
+- add/edit submit API calls
+- success emit
+
+## List Page Template
+
+Use `ArtTableQuery` in internal managed mode.
+
+```vue
+<template>
+  <div class="art-full-height">
+    <ArtTableQuery
+      ref="tableQueryRef"
+      v-model="searchQuery"
+      :search-items="searchItems"
+      :api-fn="fetchTableData"
+      :columns-factory="columnsFactory"
+      :header-actions="headerActions"
+    />
+
+    <FeatureDialog ref="dialogRef" @success="handleSaveSuccess" />
+  </div>
+</template>
+```
+
+Do not manually compose `ArtSearchBar + ArtTableHeader + ArtTable` for normal CRUD pages.
+
+## Types
+
+Define business types near the top:
+
+```ts
+type RecordItem = Api.Domain.Feature.RecordItem
+type SearchParams = Api.Domain.Feature.SearchParams
+type TableParams = SearchParams & Pick<Api.Common.PaginationParams, 'current' | 'size'>
+
+interface DialogExpose {
+  handleOpen: (row?: RecordItem) => Promise<void>
+}
+```
+
+Rules:
+
+- Type rows, search params, table params, dialog expose, and columns.
+- Avoid `Record<string, any>` in business code unless bridging a generic component API.
+- Use `interface` for contracts and `type` for aliases/unions.
+
+## Search
+
+Keep search state explicit and aligned with API params:
+
+```ts
+const searchQuery = ref<SearchParams>({
+  name: '',
+  phone: ''
+})
+
+const searchItems = computed<SearchFormItem[]>(() => [
+  { label: '名称', key: 'name', type: 'input' },
+  { label: '电话', key: 'phone', type: 'input' }
+])
+```
+
+Rely on `ArtForm`/`ArtSearchBar` defaults for common `clearable`, `filterable`, and placeholder behavior. Only pass props when the business needs a different value.
+
+## Fetch Data
+
+Adapt pagination once in `fetchTableData`.
+
+```ts
+const fetchTableData = (params: TableParams) => {
+  const { from, to } = pageInfoHandler({
+    current: params.current,
+    size: params.size
+  })
+  return fetchFeatureList({
+    ...params,
+    from,
+    to
+  })
+}
+```
+
+Rules:
+
+- Keep Supabase `from/to` conversion in the page or API boundary, not in table columns.
+- Keep response adaptation in API utilities or `responseAdapter` if the response shape is non-standard.
+
+## Header Actions
+
+Use `headerActions`; do not hand-roll toolbar buttons for standard operations.
+
+```ts
+const headerActions = computed<ArtTableQueryHeaderAction[]>(() => [
+  {
+    type: 'add',
+    permission: 'Feature:Add',
+    onClick: () => openDialog()
+  },
+  {
+    type: 'delete',
+    permission: 'Feature:Delete',
+    content: ({ selectedCount }) => `确定删除选中的 ${selectedCount} 条数据吗？删除后无法恢复。`,
+    onClick: async ({ selectedRows }) => {
+      const ids = selectedRows.map((row) => row.id).filter(Boolean)
+      await deleteFeatureBatch(ids)
+      await tableQueryRef.value?.refreshRemove()
+    }
+  }
+])
+```
+
+Refresh rules:
+
+- Add success: `refreshCreate()`
+- Edit success: `refreshUpdate()`
+- Delete success: `refreshRemove()`
+- Generic reload: `refreshData()`
+
+## Import And Export
+
+Put import/export configuration in `headerActions`; do not keep page-local Excel parsing/export plumbing.
+
+```ts
+const excelColumns: ArtTableQueryExcelColumn[] = [
+  { key: 'name', title: '名称', required: true },
+  { key: 'phone', title: '电话' }
+]
+
+const headerActions = computed<ArtTableQueryHeaderAction[]>(() => [
+  {
+    type: 'import',
+    importColumns: excelColumns,
+    importApi: async (rows) => {
+      await importFeatures(rows as RecordItem[])
+    },
+    onImportError: () => {
+      ElMessage.error('导入文件解析失败')
+    }
+  },
+  {
+    type: 'export',
+    exportFilename: '业务数据',
+    exportSheetName: '业务数据',
+    exportColumns: excelColumns,
+    exportApi: ({ selectedIds, searchParams, maxRows }) => {
+      return exportFeatureList({
+        ...(searchParams as SearchParams),
+        ids: selectedIds.map(String),
+        maxRows
+      })
+    }
+  }
+])
+```
+
+Rules:
+
+- Share one `excelColumns` list between import and export when possible.
+- Import duplicates/upserts should be handled in API utilities, not the page.
+- Export selected rows through `selectedIds`; when no selection exists, backend export should use current search params.
+
+## Columns
+
+Use `ColumnOption<RecordItem>[]`.
+
+```tsx
+const columnsFactory = (): ColumnOption<RecordItem>[] => [
+  { type: 'selection', width: 50, fixed: 'left', reserveSelection: true },
+  { type: 'globalIndex', label: '序号', width: 80 },
+  { prop: 'name', label: '名称', minWidth: 180 },
+  {
+    prop: 'address',
+    label: '地址',
+    minWidth: 260,
+    formatter: (row) => [row.region, row.addressDetail].filter(Boolean).join(' ') || '-'
+  },
+  {
+    prop: 'operation',
+    label: '操作',
+    width: 120,
+    fixed: 'right',
+    formatter: (row) => (
+      <div>
+        <ArtButtonTable type="edit" onClick={() => openDialog(row)} />
+        <ArtButtonTable type="delete" onClick={() => handleDelete(row)} />
+      </div>
+    )
+  }
+]
+```
+
+Rules:
+
+- Include selection column when batch delete/export selected rows are supported.
+- Use `globalIndex` for page-aware serial numbers.
+- Use `ArtButtonTable` for row edit/delete.
+- Keep operation column right fixed when table can scroll horizontally.
+- Do not pass `showOverflowTooltip` repeatedly unless overriding default behavior.
+
+## Row Delete
+
+```ts
+const handleDelete = async (row: RecordItem): Promise<void> => {
+  if (!row.id) return
+
+  try {
+    await ElMessageBox.confirm(`确定删除「${row.name}」吗？删除后无法恢复。`, '删除确认', {
+      confirmButtonText: '删除',
+      cancelButtonText: '取消',
+      type: 'warning',
+      confirmButtonClass: 'el-button--danger'
+    })
+    await deleteFeature(row.id)
+    await tableQueryRef.value?.refreshRemove()
+  } catch {
+    // User cancelled; no extra message needed.
+  }
+}
+```
+
+## Dialog Template
+
+```vue
+<template>
+  <ArtDialog ref="dialogRef" width="800px">
+    <ArtForm
+      ref="formRef"
+      v-model="form"
+      :items="items"
+      :rules="rules"
+      :span="12"
+      :gutter="20"
+      label-width="120px"
+      :show-reset="false"
+      :show-submit="false"
+    />
+  </ArtDialog>
+</template>
+```
+
+The dialog component, not the parent page, owns all form details.
+
+## Dialog State
+
+Use a factory and `reactive` for form state.
+
+```ts
+const createInitialForm = (): FeatureForm => ({
+  id: undefined,
+  name: '',
+  remark: ''
+})
+
+const form = reactive<FeatureForm>(createInitialForm())
+```
+
+When replacing reactive form data, clear stale keys first:
+
+```ts
+const replaceForm = (nextForm: FeatureForm): void => {
+  Object.keys(form).forEach((key) => {
+    delete form[key as keyof FeatureForm]
+  })
+  Object.assign(form, nextForm)
+}
+```
+
+This avoids stale edit-only fields leaking into add mode.
+
+## Dialog Form Items
+
+Use computed `FormItem[]`.
+
+```ts
+const items = computed<FormItem[]>(() => [
+  {
+    label: '名称',
+    key: 'name',
+    type: 'input',
+    span: 24,
+    props: { maxlength: 100 }
+  },
+  {
+    label: '备注',
+    key: 'remark',
+    type: 'input',
+    span: 24,
+    props: {
+      type: 'textarea',
+      rows: 3,
+      maxlength: 500,
+      showWordLimit: true
+    }
+  }
+])
+```
+
+Rules:
+
+- Rely on `ArtForm` defaults for `clearable`, `filterable`, and placeholder.
+- Pass `maxlength`, `rows`, `showWordLimit`, and business-specific placeholders when needed.
+- For cascader/tree data, keep option normalization in `afterFetch`.
+
+## Dialog Submit
+
+```ts
+const handleSubmit = async (): Promise<boolean> => {
+  try {
+    await formRef.value?.validate()
+  } catch {
+    return false
+  }
+
+  try {
+    const payload = toRaw(form)
+    if (form.id) {
+      await editFeature(payload)
+    } else {
+      await addFeature(payload)
+    }
+    emit('success', form.id ? 'edit' : 'add')
+    return true
+  } catch {
+    return false
+  }
+}
+```
+
+Rules:
+
+- Return `false` on validation or API failure so `ArtDialog` does not close.
+- Emit success only after persistence succeeds.
+- Let API utilities / response layer show normal API messages.
+
+## Dialog Open
+
+```ts
+const handleOpen = async (row?: RecordItem): Promise<void> => {
+  await resetForm()
+  const isEdit = !!row?.id
+  if (isEdit) {
+    replaceForm(structuredClone(toRaw(row)) as FeatureForm)
+  }
+
+  await dialogRef.value?.handleOpen(row, {
+    title: isEdit ? '编辑记录' : '新增记录',
+    onConfirm: handleSubmit,
+    onReset: () => void resetForm()
+  })
+}
+
+defineExpose({
+  handleOpen,
+  handleClose: () => dialogRef.value?.handleClose()
+})
+```
+
+Rules:
+
+- Do not expose `visible`, `type`, or `editData` props.
+- Parent calls `dialogRef.value?.handleOpen(row)`.
+- Clone edit data before assigning.
+- Derive `add/edit` from `row?.id`.
+
+## Verification
+
+Run focused checks:
+
+```powershell
+pnpm.cmd exec prettier --write <changed-files>
+pnpm.cmd exec eslint <changed-files>
+pnpm.cmd exec vue-tsc --noEmit --pretty false
+```
+
+If `vue-tsc` fails with existing project errors, report them separately and state whether the current CRUD change introduced new errors.
