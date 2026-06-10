@@ -33,7 +33,7 @@
             class="art-table-query__header-left"
           >
             <template v-for="action in visibleHeaderActions" :key="getHeaderActionKey(action)">
-              <span :class="getHeaderActionClass(action)">
+              <span :class="getHeaderActionClass()">
                 <slot
                   v-if="action.slot"
                   :name="action.slot"
@@ -94,7 +94,13 @@
         </template>
       </ArtTableHeader>
 
-      <ArtTable v-bind="artTableBindings">
+      <ArtTable
+        ref="tableRef"
+        v-bind="artTableBindings"
+        @row-drag-start="handleRowDragStart"
+        @row-drag-update="handleRowDragUpdate"
+        @row-drag-end="handleRowDragEnd"
+      >
         <template v-for="slotName in tableSlotNames" :key="slotName" #[slotName]="slotProps">
           <slot :name="slotName" v-bind="slotProps" />
         </template>
@@ -111,6 +117,7 @@
     computed,
     h,
     onMounted,
+    nextTick,
     ref,
     useSlots,
     type Component,
@@ -118,13 +125,20 @@
     type VNodeChild
   } from 'vue'
   import type { TableProps } from 'element-plus'
-  import { ElMessageBox } from 'element-plus'
+  import { ElMessage, ElMessageBox } from 'element-plus'
+  import type { ElTable } from 'element-plus'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import ArtExcelImport from '@/components/core/forms/art-excel-import/index.vue'
+  import ArtTable from '@/components/core/tables/art-table/index.vue'
   import type { ColumnOption } from '@/types'
   import { useTable } from '@/hooks/core/useTable'
   import type { ApiResponse } from '@/utils/table/tableCache'
-  import type { TableError } from '@/utils/table/tableUtils'
+  import {
+    defaultResponseAdapter,
+    extractTableData,
+    type TableError
+  } from '@/utils/table/tableUtils'
+  import { exportExcel, mapExcelRowsToRecords, type ExcelColumn } from '@/utils/file'
 
   defineOptions({ name: 'ArtTableQuery' })
 
@@ -295,6 +309,18 @@
     | string
     | Component
     | ((ctx: ArtTableQueryHeaderActionContext) => VNodeChild)
+  export type ArtTableQueryExcelColumn = ExcelColumn<Record<string, any>>
+  export type ArtTableQueryExcelColumns =
+    | ArtTableQueryExcelColumn[]
+    | ((ctx: ArtTableQueryHeaderActionContext) => ArtTableQueryExcelColumn[])
+  export interface ArtTableQueryExportApiParams {
+    selectedRows: Record<string, any>[]
+    selectedIds: Array<string | number>
+    selectedCount: number
+    searchParams: Record<string, unknown>
+    columns: ArtTableQueryExcelColumn[]
+    maxRows: number
+  }
 
   export interface ArtTableQueryHeaderActionContext {
     action: ArtTableQueryHeaderAction
@@ -323,6 +349,15 @@
       data: Array<Record<string, unknown>>,
       ctx: ArtTableQueryHeaderActionContext
     ) => void | Promise<void>
+    importColumns?: ArtTableQueryExcelColumns
+    importTransformer?: (
+      rows: Array<Record<string, unknown>>,
+      ctx: ArtTableQueryHeaderActionContext
+    ) => Array<Record<string, any>> | Promise<Array<Record<string, any>>>
+    importApi?: (
+      rows: Array<Record<string, any>>,
+      ctx: ArtTableQueryHeaderActionContext
+    ) => void | Promise<void>
     /** Excel 导入失败回调，仅 type=import 时生效 */
     onImportError?: (error: Error, ctx: ArtTableQueryHeaderActionContext) => void | Promise<void>
     /** 确认框内容；delete 默认启用确认框 */
@@ -345,12 +380,28 @@
     render?: Component
     /** 透传给 ElButton 的属性 */
     buttonProps?: Record<string, any>
+    exportColumns?: ArtTableQueryExcelColumns
+    exportFilename?: string | ((ctx: ArtTableQueryHeaderActionContext) => string)
+    exportSheetName?: string
+    exportMaxRows?: number
+    exportApi?: (
+      params: ArtTableQueryExportApiParams,
+      ctx: ArtTableQueryHeaderActionContext
+    ) => unknown | Promise<unknown>
+    exportResponseAdapter?: ArtTableQueryResponseAdapter
+    exportData?: (
+      ctx: ArtTableQueryHeaderActionContext
+    ) => Array<Record<string, any>> | Promise<Array<Record<string, any>>>
   }
 
   interface PaginationConfig {
     current: number
     size: number
     total: number
+  }
+
+  interface ArtTableExpose {
+    elTableRef?: InstanceType<typeof ElTable> | null
   }
 
   interface Props {
@@ -429,6 +480,7 @@
   const columnsModel = defineModel<ColumnOption[]>('columns', { default: () => [] })
   const showSearchBar = defineModel<boolean>('showSearchBar', { default: true })
   const initialSearchModel = ref<Record<string, unknown>>({})
+  const tableRef = ref<ArtTableExpose | null>(null)
   const selectedRows = ref<Record<string, any>[]>([])
   const selectedRowMap = ref(new Map<string | number, Record<string, any>>())
 
@@ -443,6 +495,12 @@
     'header-search': []
     /** ElTable selection-change 透传。 */
     'selection-change': [any[]]
+    /** 行拖拽开始透传。 */
+    'row-drag-start': [Record<string, any>]
+    /** 行拖拽位置更新透传。 */
+    'row-drag-update': [Record<string, any>]
+    /** 行拖拽结束透传。 */
+    'row-drag-end': [Record<string, any>]
     /** 分页 page-size 改变时触发。内管模式下组件会先自动处理分页。 */
     'pagination:size-change': [number]
     /** 分页 current-page 改变时触发。内管模式下组件会先自动处理分页。 */
@@ -526,6 +584,9 @@
   const clearSelectedRows = (): void => {
     selectedRowMap.value.clear()
     selectedRows.value = []
+    void nextTick(() => {
+      tableRef.value?.elTableRef?.clearSelection()
+    })
   }
 
   const resolvedColumnsModel = computed({
@@ -653,9 +714,8 @@
     return action.key || action.type || `${props.headerActions.indexOf(action)}`
   }
 
-  const getHeaderActionClass = (action: ArtTableQueryHeaderAction) => ({
-    'art-table-query__header-action': true,
-    'art-table-query__header-action--separated': action.type === 'delete'
+  const getHeaderActionClass = () => ({
+    'art-table-query__header-action': true
   })
 
   const getHeaderActionDefault = (action: ArtTableQueryHeaderAction) => {
@@ -727,13 +787,141 @@
     return action.confirm ?? getHeaderActionDefault(action)?.confirm ?? false
   }
 
+  const isExcelColumn = (column: ColumnOption): boolean => {
+    return (
+      !!column.prop &&
+      column.prop !== 'operation' &&
+      column.exportable !== false &&
+      !['selection', 'expand', 'index', 'globalIndex'].includes(String(column.type)) &&
+      typeof column.label === 'string'
+    )
+  }
+
+  const resolveExcelColumns = (
+    columns: ArtTableQueryExcelColumns | undefined,
+    ctx: ArtTableQueryHeaderActionContext
+  ): ArtTableQueryExcelColumn[] => {
+    if (typeof columns === 'function') return columns(ctx)
+    if (Array.isArray(columns) && columns.length) return columns
+
+    return resolvedColumns.value.filter(isExcelColumn).map((column: ColumnOption) => ({
+      key: column.prop as string,
+      title: String(column.label),
+      width: typeof column.width === 'number' ? column.width : undefined,
+      formatter: column.formatter
+        ? (_value: unknown, row: Record<string, any>) => {
+            const formattedValue = column.formatter?.(row)
+            if (formattedValue && typeof formattedValue === 'object') return ''
+            return formattedValue as string | number | boolean | null | undefined
+          }
+        : undefined
+    }))
+  }
+
+  const getActionFilename = (
+    action: ArtTableQueryHeaderAction,
+    ctx: ArtTableQueryHeaderActionContext
+  ): string => {
+    if (typeof action.exportFilename === 'function') return action.exportFilename(ctx)
+    return action.exportFilename || '表格数据'
+  }
+
+  const fetchExportRows = async (
+    action: ArtTableQueryHeaderAction,
+    ctx: ArtTableQueryHeaderActionContext
+  ): Promise<Record<string, any>[]> => {
+    const maxRows = action.exportMaxRows || 10000
+    const columns = resolveExcelColumns(action.exportColumns, ctx)
+
+    if (action.exportApi) {
+      const selectedIds = ctx.selectedRows
+        .map((row) => getRowIdentity(row))
+        .filter((id): id is string | number => id !== undefined)
+      const response = await action.exportApi(
+        {
+          selectedRows: ctx.selectedRows,
+          selectedIds,
+          selectedCount: ctx.selectedCount,
+          searchParams: cloneSearchModel(searchModel.value),
+          columns,
+          maxRows
+        },
+        ctx
+      )
+
+      if (Array.isArray(response)) return response as Record<string, any>[]
+
+      const adapter =
+        action.exportResponseAdapter || props.responseAdapter || defaultResponseAdapter
+      return extractTableData(adapter(response))
+    }
+
+    if (action.exportData) return await action.exportData(ctx)
+    if (ctx.selectedRows.length) return ctx.selectedRows
+    if (!props.apiFn) return resolvedData.value
+
+    const currentKey = props.paginationKey?.current || 'current'
+    const sizeKey = props.paginationKey?.size || 'size'
+    const response = await props.apiFn({
+      ...searchModel.value,
+      [currentKey]: 1,
+      [sizeKey]: maxRows
+    })
+    const adapter = props.responseAdapter || defaultResponseAdapter
+    return extractTableData(adapter(response))
+  }
+
+  const handleDefaultExport = async (
+    action: ArtTableQueryHeaderAction,
+    ctx: ArtTableQueryHeaderActionContext
+  ): Promise<void> => {
+    const rows = await fetchExportRows(action, ctx)
+    if (!rows.length) {
+      ElMessage.warning('暂无可导出的数据')
+      return
+    }
+
+    exportExcel({
+      data: rows,
+      columns: resolveExcelColumns(action.exportColumns, ctx),
+      filename: getActionFilename(action, ctx),
+      sheetName: action.exportSheetName || getActionFilename(action, ctx),
+      maxRows: action.exportMaxRows
+    })
+  }
+
+  const resolveImportRows = async (
+    action: ArtTableQueryHeaderAction,
+    rows: Array<Record<string, unknown>>,
+    ctx: ArtTableQueryHeaderActionContext
+  ): Promise<Array<Record<string, any>>> => {
+    if (action.importTransformer) return await action.importTransformer(rows, ctx)
+    return mapExcelRowsToRecords(rows, resolveExcelColumns(action.importColumns, ctx))
+  }
+
   const handleHeaderActionImportSuccess = async (
     action: ArtTableQueryHeaderAction,
     data: Array<Record<string, unknown>>
   ): Promise<void> => {
     const ctx = createHeaderActionContext(action)
     emit('header-action-click', action, ctx)
-    await action.onImportSuccess?.(data, ctx)
+    const rows =
+      action.importApi || action.importTransformer || action.importColumns
+        ? await resolveImportRows(action, data, ctx)
+        : data
+
+    if (action.importApi) {
+      if (!rows.length) {
+        ElMessage.warning('未读取到可导入的数据')
+        return
+      }
+      await action.importApi(rows as Array<Record<string, any>>, ctx)
+      if (isManaged.value) {
+        await managedTable.refreshCreate()
+      }
+    }
+
+    await action.onImportSuccess?.(rows, ctx)
   }
 
   const handleHeaderActionImportError = async (
@@ -769,7 +957,11 @@
     }
 
     emit('header-action-click', action, ctx)
-    await action.onClick?.(ctx)
+    if (action.type === 'export' && !action.onClick) {
+      await handleDefaultExport(action, ctx)
+    } else {
+      await action.onClick?.(ctx)
+    }
     if (action.type === 'delete') {
       clearSelectedRows()
     }
@@ -813,6 +1005,11 @@
     emit('refresh')
   }
 
+  const refreshRemove = async (): Promise<void> => {
+    clearSelectedRows()
+    await managedTable.refreshRemove()
+  }
+
   const handleSelectionChange = (selection: Record<string, any>[]): void => {
     const currentPageKeys = new Set(
       resolvedData.value
@@ -840,6 +1037,18 @@
 
     syncSelectedRows()
     emit('selection-change', selectedRows.value)
+  }
+
+  const handleRowDragStart = (payload: Record<string, any>): void => {
+    emit('row-drag-start', payload)
+  }
+
+  const handleRowDragUpdate = (payload: Record<string, any>): void => {
+    emit('row-drag-update', payload)
+  }
+
+  const handleRowDragEnd = (payload: Record<string, any>): void => {
+    emit('row-drag-end', payload)
   }
 
   const handleSizeChange = (val: number): void => {
@@ -886,7 +1095,7 @@
     refreshData: managedTable.refreshData,
     refreshCreate: managedTable.refreshCreate,
     refreshUpdate: managedTable.refreshUpdate,
-    refreshRemove: managedTable.refreshRemove,
+    refreshRemove,
     getData: managedTable.getData,
     resetSearchParams
   })
@@ -920,9 +1129,5 @@
 
   .art-table-query__header-action {
     display: inline-flex;
-  }
-
-  .art-table-query__header-action--separated {
-    margin-left: 8px;
   }
 </style>

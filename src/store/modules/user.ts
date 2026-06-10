@@ -42,6 +42,7 @@ import { setPageTitle } from '@/utils/router'
 import { resetRouterState } from '@/router/guards/beforeEach'
 import { useMenuStore } from './menu'
 import { StorageConfig } from '@/utils/storage/storage-config'
+import type { DictMap } from '@/types/store'
 
 import { fetchGetUserInfo, logout } from '@/api/auth'
 import { fetchGetDictList } from '@/api/data-center'
@@ -70,21 +71,22 @@ export const useUserStore = defineStore(
     // 刷新令牌
     const refreshToken = ref('')
     //数据字典数据
-    const dictMap: Record<string, any> = ref({})
+    const dictMap = ref<DictMap>({})
     // 计算属性：获取用户信息
-    const getUserInfo = computed(() => info.value)
+    const getUserInfo = computed<Partial<Api.Auth.UserInfo>>(() => info.value)
     // 计算属性：获取用户信息
     const getDictMap = computed(() => dictMap.value)
     // 计算属性：获取设置状态
     const getSettingState = computed(() => useSettingStore().$state)
     // 计算属性：获取工作台状态
     const getWorktabState = computed(() => useWorktabStore().$state)
-
+    // 当前用户是否为超级管理员
+    const isSuper = computed(() => getUserInfo.value.userRoles?.includes('R_SUPER'))
     /**
      * 设置用户字典
      * @param data 字典信息
      */
-    const setDictMap = (data: Record<string, Api.DataCenter.DictListItem[]>) => {
+    const setDictMap = (data: DictMap) => {
       dictMap.value = data
     }
     /**
@@ -216,8 +218,8 @@ export const useUserStore = defineStore(
       localStorage.removeItem(StorageConfig.LAST_USER_ID_KEY)
     }
 
-    const getDictLabelByValue = (dictCode: string, value: string) => {
-      return value ? dictMap.value[dictCode]?.find((item: any) => item.value === value)?.label : ''
+    const getDictLabelByValue = (dictCode: keyof DictMap | string, value: string) => {
+      return value ? dictMap.value[dictCode]?.find((item) => item.value === value)?.label : ''
     }
 
     const fetchUserInfo = async () => {
@@ -235,14 +237,11 @@ export const useUserStore = defineStore(
       if (!data) return
 
       // 1️⃣ 按字典类型 code 分组
-      const groupData: Record<string, Api.DataCenter.DictListItem[]> = groupBy(
-        data,
-        (dictItem) => dictItem.dictTypeTable.code
-      )
+      const groupData = groupBy(data, (dictItem) => dictItem.dictTypeTable.code) as DictMap
 
       // 2️⃣ 每个分组内按 sort 正序
       Object.keys(groupData).forEach((key) => {
-        groupData[key] = groupData[key].slice().sort((a, b) => {
+        groupData[key] = (groupData[key] ?? []).slice().sort((a, b) => {
           return Number(a.sort) - Number(b.sort)
         })
       })
@@ -260,6 +259,7 @@ export const useUserStore = defineStore(
       accessToken,
       refreshToken,
       dictMap,
+      isSuper,
       getDictMap,
       getUserInfo,
       getSettingState,

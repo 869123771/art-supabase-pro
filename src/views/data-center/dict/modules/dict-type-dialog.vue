@@ -35,7 +35,7 @@
   const emits = defineEmits(['success'])
 
   const userStore = useUserStore()
-  const { getDictMap } = storeToRefs(userStore) as Record<string, any>
+  const { getDictMap } = storeToRefs(userStore)
 
   const dialogRef = ref<ArtDialogExpose<DictListItem>>()
   const formRef = ref<ArtFormExpose>()

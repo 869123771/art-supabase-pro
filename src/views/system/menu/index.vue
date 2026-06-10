@@ -13,6 +13,7 @@
       :header-actions="headerActions"
       :table-header-props="tableHeaderProps"
       :table-props="tableProps"
+      @row-drag-end="handleMenuDragEnd"
     />
 
     <!-- 菜单弹窗 -->
@@ -26,7 +27,7 @@
   import type { AppRouteRecord } from '@/types/router'
   import MenuDialog from './modules/menu-dialog.vue'
   import TreeUtils from '@/utils/tree'
-  import { ElMessageBox, ElTag } from 'element-plus'
+  import { ElMessage, ElMessageBox, ElTag } from 'element-plus'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type {
     ArtTableQueryExpose,
@@ -38,7 +39,8 @@
   import type { ApiResponse } from '@/utils/table/tableCache'
 
   import { formatWithDayjs } from '@/utils/time'
-  import { deleteMenu, fetchGetMenuList } from '@/api/system-manage'
+  import { deleteMenu, fetchGetMenuList, saveMenuDragSort } from '@/api/system-manage'
+  import { useUserStore } from '@/store/modules/user'
 
   defineOptions({ name: 'Menus' })
 
@@ -49,10 +51,6 @@
     deepClone: true
   })
 
-  const isExpanded = ref(false)
-  const expandRowKeys = ref<string[]>([])
-
-  const showSearchBar = ref(false)
   type MenuType = 'folder' | 'menu' | 'button'
 
   interface MenuDialogOpenData {
@@ -66,6 +64,25 @@
     handleOpen: (data: MenuDialogOpenData) => Promise<void>
   }
 
+  interface MenuRowDragPayload {
+    row?: AppRouteRecord
+    targetRow?: AppRouteRecord
+    oldIndex?: number
+    newIndex?: number
+  }
+
+  interface MenuDragSortUpdate {
+    id: string
+    parentId: string | null
+    sort: number
+  }
+
+  const { isSuper } = storeToRefs(useUserStore())
+
+  const isExpanded = ref(false)
+  const expandRowKeys = ref<string[]>([])
+
+  const showSearchBar = ref(false)
   // 弹窗相关
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const menuDialogRef = ref<MenuDialogExpose>()
@@ -167,6 +184,8 @@
       prop: 'meta.title',
       label: '菜单名称',
       minWidth: 120,
+      draggable: true,
+      dragDisabled: (row: AppRouteRecord) => !isSuper.value || row.type === 'button',
       formatter: (row: AppRouteRecord) => formatMenuTitle(row.meta?.title)
     },
     {
@@ -312,6 +331,90 @@
    */
   const handleSubmit = (): void => {
     void tableQueryRef.value?.refreshData()
+  }
+
+  const normalizeParentId = (parentId: AppRouteRecord['parentId']): string | null => {
+    return parentId || null
+  }
+
+  const getSiblingMenus = (parentId: string | null): AppRouteRecord[] => {
+    if (parentId == null) return tableData.value
+    const parent = treeUtils.findNode(tableData.value, parentId) as AppRouteRecord | null
+    return parent?.children ?? []
+  }
+
+  const hasDescendant = (row: AppRouteRecord, targetId: string | null): boolean => {
+    if (!targetId || !row.id) return false
+    return treeUtils
+      .getDescendants(tableData.value, row.id, false)
+      .some((item) => item.id === targetId)
+  }
+
+  const reindexSiblingMenus = (
+    parentId: string | null,
+    rows: AppRouteRecord[]
+  ): MenuDragSortUpdate[] => {
+    return rows
+      .filter((item): item is AppRouteRecord & { id: string } => !!item.id)
+      .map((item, index) => ({
+        id: item.id,
+        parentId,
+        sort: index + 1
+      }))
+  }
+
+  const buildMenuDragUpdates = (
+    row: AppRouteRecord,
+    targetRow: AppRouteRecord,
+    targetParentId: string | null,
+    oldIndex = 0,
+    newIndex = 0
+  ): MenuDragSortUpdate[] => {
+    const sourceParentId = normalizeParentId(row.parentId)
+    const sourceSiblings = getSiblingMenus(sourceParentId).filter((item) => item.id !== row.id)
+    const targetSiblings = getSiblingMenus(targetParentId).filter((item) => item.id !== row.id)
+    const targetIndex = targetSiblings.findIndex((item) => item.id === targetRow.id)
+    if (targetIndex < 0) {
+      targetSiblings.push(row)
+    } else {
+      const insertIndex = oldIndex < newIndex ? targetIndex + 1 : targetIndex
+      targetSiblings.splice(insertIndex, 0, row)
+    }
+
+    const updates = new Map<string, MenuDragSortUpdate>()
+    if (sourceParentId !== targetParentId) {
+      reindexSiblingMenus(sourceParentId, sourceSiblings).forEach((item) =>
+        updates.set(item.id, item)
+      )
+    }
+    reindexSiblingMenus(targetParentId, targetSiblings).forEach((item) =>
+      updates.set(item.id, item)
+    )
+    return Array.from(updates.values())
+  }
+
+  const handleMenuDragEnd = async (payload: MenuRowDragPayload): Promise<void> => {
+    const { row, targetRow, oldIndex, newIndex } = payload
+    if (!row?.id || !targetRow?.id || oldIndex === newIndex) return
+
+    const targetParentId = normalizeParentId(targetRow.parentId)
+    if (row.id === targetRow.id || hasDescendant(row, targetParentId)) {
+      ElMessage.warning('不能拖拽到自身或子级菜单下')
+      await tableQueryRef.value?.refreshData()
+      return
+    }
+
+    try {
+      const updates = buildMenuDragUpdates(row, targetRow, targetParentId, oldIndex, newIndex)
+      if (!updates.length) return
+
+      await saveMenuDragSort(updates)
+      ElMessage.success('菜单排序已保存')
+      await tableQueryRef.value?.refreshData()
+    } catch {
+      ElMessage.error('菜单拖拽保存失败')
+      await tableQueryRef.value?.refreshData()
+    }
   }
 
   /**

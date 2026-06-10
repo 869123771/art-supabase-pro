@@ -26,6 +26,7 @@
   type InsuranceCompanyForm = InsuranceCompany & {
     regionPath?: string[]
   }
+  type RegionOption = Record<string, unknown> & { children?: RegionOption[] }
 
   interface Emits {
     (e: 'success', type: 'add' | 'edit'): void
@@ -51,7 +52,7 @@
 
   const form = reactive<InsuranceCompanyForm>(createInitialForm())
 
-  const rules: FormRules<InsuranceCompany> = {
+  const rules: FormRules<InsuranceCompanyForm> = {
     companyName: [
       { required: true, message: '请输入保险公司名称', trigger: 'blur' },
       { min: 2, max: 100, message: '长度应为 2 到 100 个字符', trigger: 'blur' }
@@ -76,9 +77,7 @@
       type: 'input',
       span: 24,
       props: {
-        clearable: true,
-        maxlength: 100,
-        placeholder: '请输入保险公司名称'
+        maxlength: 100
       }
     },
     {
@@ -86,9 +85,7 @@
       key: 'contactPerson',
       type: 'input',
       props: {
-        clearable: true,
-        maxlength: 50,
-        placeholder: '请输入联系人'
+        maxlength: 50
       }
     },
     {
@@ -96,7 +93,6 @@
       key: 'contactPhone',
       type: 'input',
       props: {
-        clearable: true,
         maxlength: 20,
         placeholder: '请输入手机号或座机号'
       }
@@ -106,22 +102,32 @@
       key: 'regionPath',
       type: 'cascader',
       props: {
-        clearable: true,
-        filterable: true,
-        placeholder: '请选择省/市/区',
         props: {
+          label: 'name',
+          value: 'name',
+          children: 'children',
+          emitPath: true,
           checkStrictly: true
         }
       },
       api: fetchRegionOptions,
       labelField: 'name',
-      valueField: 'code',
+      valueField: 'name',
       childrenField: 'children',
-      afterFetch: (data: any) => {
-        if (Array.isArray(data)) return data
+      afterFetch: (data: unknown) => {
+        const normalizeRegionOptions = (options: RegionOption[]): RegionOption[] => {
+          return options.map((option) => ({
+            ...option,
+            children: Array.isArray(option.children)
+              ? normalizeRegionOptions(option.children)
+              : undefined
+          }))
+        }
+        if (Array.isArray(data)) return normalizeRegionOptions(data as RegionOption[])
+        if (typeof data !== 'string') return []
         try {
           const parsed = JSON.parse(data) as unknown
-          return Array.isArray(parsed) ? (parsed as any[]) : []
+          return Array.isArray(parsed) ? normalizeRegionOptions(parsed as RegionOption[]) : []
         } catch {
           return []
         }
@@ -132,7 +138,6 @@
       key: 'addressDetail',
       type: 'input',
       props: {
-        clearable: true,
         maxlength: 200,
         placeholder: '请输入道路、门牌号、小区、楼栋等'
       }
@@ -152,8 +157,15 @@
     }
   ])
 
+  const replaceForm = (nextForm: InsuranceCompanyForm): void => {
+    Object.keys(form).forEach((key) => {
+      delete form[key as keyof InsuranceCompanyForm]
+    })
+    Object.assign(form, nextForm)
+  }
+
   const resetForm = async (): Promise<void> => {
-    Object.assign(form, createInitialForm())
+    replaceForm(createInitialForm())
     await nextTick()
     formRef.value?.clearValidate()
   }
@@ -183,11 +195,10 @@
   const handleOpen = async (row?: InsuranceCompany): Promise<void> => {
     await resetForm()
     const isEdit = !!row?.id
-
     if (isEdit) {
       const editData = structuredClone(toRaw(row)) as InsuranceCompanyForm
       editData.regionPath = editData.region?.split('/').filter(Boolean) || []
-      Object.assign(form, editData)
+      replaceForm(editData)
     }
 
     await dialogRef.value?.handleOpen(row, {

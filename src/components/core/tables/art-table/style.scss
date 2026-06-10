@@ -7,6 +7,69 @@
     margin-top: 10px;
   }
 
+  &__cell-content {
+    display: inline-flex;
+    max-width: 100%;
+    gap: 6px;
+    align-items: center;
+    vertical-align: middle;
+  }
+
+  &__cell-value {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__drag-handle {
+    flex: 0 0 auto;
+    display: inline-flex;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    color: var(--el-text-color-regular);
+    cursor: grab;
+    background: var(--el-fill-color-blank);
+    border: 1px solid var(--el-border-color-lighter);
+    border-radius: 6px;
+    align-items: center;
+    justify-content: center;
+    transition:
+      color 0.2s,
+      background 0.2s,
+      border-color 0.2s,
+      box-shadow 0.2s;
+
+    &:hover {
+      color: var(--theme-color);
+      background: var(--el-fill-color-light);
+      border-color: var(--theme-color);
+      box-shadow: 0 0 0 2px var(--el-color-primary-light-9);
+    }
+
+    &:active {
+      cursor: grabbing;
+    }
+
+    &.is-disabled {
+      color: var(--el-disabled-text-color);
+      cursor: not-allowed;
+      background: var(--el-disabled-bg-color);
+      border-color: var(--el-border-color-lighter);
+      box-shadow: none;
+    }
+  }
+
+  :deep(.art-table__drag-ghost) {
+    opacity: 0.55;
+    background-color: var(--el-fill-color-light);
+  }
+
+  :deep(.art-table__drag-chosen) {
+    background-color: var(--el-fill-color-lighter);
+  }
+
   :deep(.el-loading-mask) {
     z-index: 100;
     background-color: var(--default-box-color) !important;

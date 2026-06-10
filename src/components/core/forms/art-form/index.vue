@@ -468,6 +468,16 @@
   const createModelSnapshot = () => cloneModelValue(modelValue.value)
 
   const commitModelValue = (nextValue: Record<string, any>) => {
+    const currentValue = modelValue.value
+
+    if (currentValue && typeof currentValue === 'object' && !Array.isArray(currentValue)) {
+      Object.keys(currentValue).forEach((key) => {
+        delete currentValue[key]
+      })
+      Object.assign(currentValue, nextValue)
+      return
+    }
+
     modelValue.value = nextValue
   }
 
@@ -726,8 +736,62 @@
     return Array.isArray(options) ? options : []
   }
 
+  const getPlainTextLabel = (item: FormItem): string => {
+    return typeof item.label === 'string' ? item.label : ''
+  }
+
+  const getDefaultPlaceholder = (item: FormItem): string | undefined => {
+    const label = getPlainTextLabel(item)
+    if (!label) return undefined
+
+    if (
+      ['select', 'cascader', 'treeSelect', 'date', 'timePicker', 'timeSelect'].includes(
+        String(item.type)
+      )
+    ) {
+      return `请选择${label}`
+    }
+
+    if (['input', 'inputTag', 'number'].includes(String(item.type))) {
+      return `请输入${label}`
+    }
+
+    return undefined
+  }
+
+  const getDefaultComponentProps = (item: FormItem): Record<string, any> => {
+    const itemType = String(item.type)
+    const defaults: Record<string, any> = {}
+    const placeholder = getDefaultPlaceholder(item)
+
+    if (placeholder) {
+      defaults.placeholder = placeholder
+    }
+
+    if (
+      [
+        'input',
+        'inputTag',
+        'select',
+        'cascader',
+        'treeSelect',
+        'date',
+        'timePicker',
+        'timeSelect'
+      ].includes(itemType)
+    ) {
+      defaults.clearable = true
+    }
+
+    if (['select', 'cascader', 'treeSelect'].includes(itemType)) {
+      defaults.filterable = true
+    }
+
+    return defaults
+  }
+
   const getComponentProps = (item: FormItem) => {
-    const props = { ...getProps(item) }
+    const props = { ...getDefaultComponentProps(item), ...getProps(item) }
     const options = getOptions(item)
 
     if (['select', 'checkboxGroup', 'radioGroup'].includes(String(item.type))) {
@@ -847,7 +911,7 @@
     formInstance.value?.resetFields()
 
     // 恢复初始表单值，保留默认值而不是简单清空。
-    modelValue.value = cloneModelValue(initialModelValue.value)
+    commitModelValue(cloneModelValue(initialModelValue.value))
 
     // 触发 reset 事件
     emit('reset')

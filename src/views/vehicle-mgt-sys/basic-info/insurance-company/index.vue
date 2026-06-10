@@ -15,11 +15,10 @@
 
 <script setup lang="tsx">
   import { ElMessage, ElMessageBox } from 'element-plus'
-  import * as XLSX from 'xlsx'
-  import FileSaver from 'file-saver'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type {
     ArtTableQueryExpose,
+    ArtTableQueryExcelColumn,
     ArtTableQueryHeaderAction,
     ArtTableQueryHeaderActionContext
   } from '@/components/core/tables/art-table-query/index.vue'
@@ -29,6 +28,7 @@
   import {
     deleteInsuranceCompany,
     deleteInsuranceCompanyBatch,
+    exportInsuranceCompanyList,
     fetchInsuranceCompanyList,
     importInsuranceCompanies
   } from '@/api/vehicle-mgt-sys'
@@ -57,47 +57,56 @@
     {
       label: '保险公司名称',
       key: 'companyName',
-      type: 'input',
-      props: {
-        clearable: true,
-        placeholder: '请输入保险公司名称'
-      }
+      type: 'input'
     },
     {
       label: '联系人',
       key: 'contactPerson',
-      type: 'input',
-      props: {
-        clearable: true,
-        placeholder: '请输入联系人'
-      }
+      type: 'input'
     },
     {
       label: '联系电话',
       key: 'contactPhone',
-      type: 'input',
-      props: {
-        clearable: true,
-        placeholder: '请输入联系电话'
-      }
+      type: 'input'
     }
   ])
+
+  const insuranceCompanyExcelColumns: ArtTableQueryExcelColumn[] = [
+    { key: 'companyName', title: '保险公司名称', required: true },
+    { key: 'contactPerson', title: '联系人' },
+    { key: 'contactPhone', title: '联系电话' },
+    { key: 'region', title: '所在地区' },
+    { key: 'addressDetail', title: '详细地址' },
+    { key: 'remark', title: '备注' }
+  ]
 
   const headerActions = computed<ArtTableQueryHeaderAction[]>(() => [
     {
       type: 'add',
-      //permission: 'add',
+      // permission: 'add',
       onClick: () => openDialog()
     },
     {
       type: 'import',
-      onImportSuccess: handleImportSuccess,
+      importColumns: insuranceCompanyExcelColumns,
+      importApi: async (rows) => {
+        await importInsuranceCompanies(rows as InsuranceCompany[])
+      },
       onImportError: handleImportError
     },
     {
       type: 'export',
       // permission: 'export',
-      onClick: handleExport
+      exportFilename: '保险公司',
+      exportSheetName: '保险公司',
+      exportColumns: insuranceCompanyExcelColumns,
+      exportApi: ({ selectedIds, searchParams, maxRows }) => {
+        return exportInsuranceCompanyList({
+          ...(searchParams as SearchParams),
+          ids: selectedIds.map(String),
+          maxRows
+        })
+      }
     },
     {
       type: 'delete',
@@ -139,8 +148,7 @@
     {
       prop: 'companyName',
       label: '保险公司名称',
-      minWidth: 180,
-      showOverflowTooltip: true
+      minWidth: 180
     },
     {
       prop: 'contactPerson',
@@ -156,14 +164,12 @@
       prop: 'address',
       label: '联系地址',
       minWidth: 260,
-      showOverflowTooltip: true,
       formatter: (row) => [row.region, row.addressDetail].filter(Boolean).join(' ') || '-'
     },
     {
       prop: 'remark',
       label: '备注',
-      minWidth: 180,
-      showOverflowTooltip: true
+      minWidth: 180
     },
     {
       prop: 'operation',
@@ -210,81 +216,7 @@
     }
   }
 
-  const exportColumns: Record<keyof InsuranceCompany, string> = {
-    id: 'ID',
-    companyName: '保险公司名称',
-    contactPerson: '联系人',
-    contactPhone: '联系电话',
-    region: '所在地区',
-    addressDetail: '详细地址',
-    remark: '备注',
-    createTime: '创建时间',
-    updateTime: '更新时间'
-  }
-
-  const normalizeImportRow = (row: Record<string, unknown>): InsuranceCompany | null => {
-    const companyName = String(row['保险公司名称'] ?? row.companyName ?? '').trim()
-    if (!companyName) return null
-
-    return {
-      companyName,
-      contactPerson: String(row['联系人'] ?? row.contactPerson ?? '').trim(),
-      contactPhone: String(row['联系电话'] ?? row.contactPhone ?? '').trim(),
-      region: String(row['所在地区'] ?? row.region ?? '').trim(),
-      addressDetail: String(row['详细地址'] ?? row.addressDetail ?? '').trim(),
-      remark: String(row['备注'] ?? row.remark ?? '').trim()
-    }
-  }
-
-  const handleImportSuccess = async (rows: Array<Record<string, unknown>>): Promise<void> => {
-    const data = rows
-      .map((row) => normalizeImportRow(row))
-      .filter((row): row is InsuranceCompany => row !== null)
-
-    if (!data.length) {
-      ElMessage.warning('未读取到可导入的保险公司数据')
-      return
-    }
-
-    await importInsuranceCompanies(data)
-    await tableQueryRef.value?.refreshCreate()
-  }
-
   const handleImportError = (): void => {
     ElMessage.error('导入文件解析失败')
-  }
-
-  const handleExport = async (ctx?: ArtTableQueryHeaderActionContext): Promise<void> => {
-    const exportData = ctx?.selectedRows.length
-      ? (ctx.selectedRows as InsuranceCompany[])
-      : ((
-          (await fetchInsuranceCompanyList({
-            ...searchQuery.value,
-            from: 0,
-            to: 9999
-          })) as { data?: InsuranceCompany[] }
-        )?.data ?? [])
-
-    const rows = exportData.map((row) => {
-      const item: Record<string, string> = {}
-      Object.entries(exportColumns).forEach(([key, title]) => {
-        item[title] = String(row[key as keyof InsuranceCompany] ?? '')
-      })
-      return item
-    })
-
-    if (!rows.length) {
-      ElMessage.warning('暂无可导出的保险公司数据')
-      return
-    }
-
-    const worksheet = XLSX.utils.json_to_sheet(rows)
-    const workbook = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(workbook, worksheet, '保险公司')
-    const buffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' })
-    FileSaver.saveAs(
-      new Blob([buffer], { type: 'application/octet-stream' }),
-      `保险公司_${new Date().toISOString().slice(0, 10)}.xlsx`
-    )
   }
 </script>

@@ -38,7 +38,7 @@
   type UserListItem = Api.SystemManage.UserListItem
 
   const userStore = useUserStore()
-  const { getDictMap } = storeToRefs(userStore) as Record<string, any>
+  const { getDictMap, getUserInfo } = storeToRefs(userStore)
 
   interface UserDialogExpose {
     handleOpen: (row?: Partial<UserListItem>) => Promise<void>
@@ -210,7 +210,6 @@
   ]
 
   const getMoreActions = (row: UserListItem): ButtonMoreItem[] => {
-    const { info } = userStore
     const selfExcludeButtonKeys = ['assignRoles', 'delete']
     const buttonList: ButtonMoreItem[] = [
       {
@@ -231,7 +230,7 @@
       }
     ]
 
-    if (info.email !== row.userEmail) return buttonList
+    if (getUserInfo.value.email !== row.userEmail) return buttonList
     return buttonList.filter((item) => !selfExcludeButtonKeys.includes(item.key as string))
   }
 

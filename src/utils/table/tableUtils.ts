@@ -303,6 +303,6 @@ export const pageInfoHandler = (page: { current: number; size: number }) => {
   const { current, size } = page
   return {
     from: (current - 1) * size,
-    to: current * size
+    to: current * size - 1
   }
 }

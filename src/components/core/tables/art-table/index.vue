@@ -30,16 +30,37 @@
               {{ col.label }}
             </slot>
           </template>
-          <template v-if="col.useSlot && col.prop" #default="slotScope">
-            <slot
-              v-if="shouldRenderSlotScope(slotScope)"
-              :name="col.slotName || col.prop"
-              v-bind="{
-                ...slotScope,
-                prop: col.prop,
-                value: col.prop ? slotScope.row[col.prop] : undefined
-              }"
-            />
+          <template v-if="shouldUseCustomCellTemplate(col)" #default="slotScope">
+            <div v-if="shouldRenderSlotScope(slotScope)" class="art-table__cell-content">
+              <button
+                v-if="isColumnDraggable(col, slotScope.row)"
+                type="button"
+                class="art-table__drag-handle"
+                :class="{ 'is-disabled': isColumnDragDisabled(col, slotScope.row) }"
+                :disabled="isColumnDragDisabled(col, slotScope.row)"
+                :data-row-key="getRowIdentity(slotScope.row)"
+                :aria-label="isColumnDragDisabled(col, slotScope.row) ? '不可拖拽' : '拖拽排序'"
+                :title="isColumnDragDisabled(col, slotScope.row) ? '不可拖拽' : '拖拽排序'"
+              >
+                <ArtSvgIcon :icon="col.dragIcon || 'ri:draggable'" />
+              </button>
+              <span class="art-table__cell-value">
+                <slot
+                  v-if="col.useSlot && col.prop"
+                  :name="col.slotName || col.prop"
+                  v-bind="{
+                    ...slotScope,
+                    prop: col.prop,
+                    value: col.prop ? getCellValue(slotScope.row, col.prop) : undefined
+                  }"
+                />
+                <component
+                  v-else-if="isComponentCellContent(getColumnCellContent(col, slotScope))"
+                  :is="getColumnCellContent(col, slotScope)"
+                />
+                <span v-else>{{ getColumnCellContent(col, slotScope) }}</span>
+              </span>
+            </div>
           </template>
         </ElTableColumn>
       </template>
@@ -72,9 +93,10 @@
 </template>
 
 <script setup lang="ts">
-  import { ref, computed, nextTick, watchEffect, getCurrentInstance, useAttrs } from 'vue'
+  import { ref, computed, nextTick, watch, watchEffect, getCurrentInstance, useAttrs } from 'vue'
   import type { ElTable, TableProps } from 'element-plus'
   import { storeToRefs } from 'pinia'
+  import { useDraggable, type DraggableEvent } from 'vue-draggable-plus'
   import { ColumnOption } from '@/types'
   import { useTableStore } from '@/store/modules/table'
   import { useCommon } from '@/hooks/core/useCommon'
@@ -87,8 +109,18 @@
   const elTableRef = ref<InstanceType<typeof ElTable> | null>(null)
   const paginationRef = ref<HTMLElement>()
   const tableHeaderRef = ref<HTMLElement>()
+  const sortableTargetRef = ref<HTMLElement>()
+  const rowKeysBeforeDrag = ref<string[]>([])
   const tableStore = useTableStore()
   const { isBorder, isZebra, tableSize, isFullScreen, isHeaderBackground } = storeToRefs(tableStore)
+
+  interface RowDragPayload<T = Record<string, any>> {
+    row?: T
+    targetRow?: T
+    oldIndex?: number
+    newIndex?: number
+    event: DraggableEvent<T>
+  }
 
   /** 分页配置接口 */
   interface PaginationConfig {
@@ -119,7 +151,9 @@
   }
 
   /** ArtTable 组件的 Props 接口 */
-  interface ArtTableProps extends TableProps<Record<string, any>> {
+  interface ArtTableProps extends Partial<TableProps<Record<string, any>>> {
+    /** 表格数据 */
+    data?: Record<string, any>[]
     /** 加载状态 */
     loading?: boolean
     /** 列渲染配置 */
@@ -272,20 +306,191 @@
   // 是否显示分页器
   const showPagination = computed(() => props.pagination && !isEmpty.value)
 
+  const hasDraggableColumn = computed(() =>
+    props.columns.some(
+      (column) => column.draggable === true || typeof column.draggable === 'function'
+    )
+  )
+
   // Element Plus 在部分场景会先用 $index = -1 进行预渲染。
   // 这对普通展示无影响，但会让 ElForm 错误注册出 lineList.-1.xxx 这类字段。
   const shouldRenderSlotScope = (slotScope: { $index?: number }) => {
     return slotScope.$index === undefined || slotScope.$index >= 0
   }
 
+  const shouldUseCustomCellTemplate = (col: ColumnOption) => {
+    return (
+      (col.useSlot && col.prop) || col.draggable === true || typeof col.draggable === 'function'
+    )
+  }
+
+  const resolveColumnBoolean = (
+    value: boolean | ((row: Record<string, any>) => boolean) | undefined,
+    row: Record<string, any>,
+    defaultValue = false
+  ) => {
+    if (typeof value === 'function') return value(row)
+    return value ?? defaultValue
+  }
+
+  const isColumnDraggable = (col: ColumnOption, row: Record<string, any>) => {
+    return resolveColumnBoolean(col.draggable, row)
+  }
+
+  const isColumnDragDisabled = (col: ColumnOption, row: Record<string, any>) => {
+    return resolveColumnBoolean(col.dragDisabled, row)
+  }
+
+  const getCellValue = (row: Record<string, any>, prop: string) => {
+    return prop.split('.').reduce<unknown>((value, key) => {
+      if (value && typeof value === 'object') {
+        return (value as Record<string, unknown>)[key]
+      }
+      return undefined
+    }, row)
+  }
+
+  const getColumnCellContent = (
+    col: ColumnOption,
+    slotScope: { row: Record<string, any>; column: unknown; $index: number }
+  ) => {
+    if (col.formatter) return col.formatter(slotScope.row)
+    if (col.prop) return getCellValue(slotScope.row, col.prop)
+    return ''
+  }
+
+  const isComponentCellContent = (content: unknown) => {
+    return typeof content === 'object' || typeof content === 'function'
+  }
+
+  const getRowIdentity = (row: Record<string, any>): string => {
+    const rowKey = props.rowKey
+    if (typeof rowKey === 'function') return String(rowKey(row))
+    if (typeof rowKey === 'string') return String(getCellValue(row, rowKey) ?? '')
+    return String(row.id ?? '')
+  }
+
+  const flattenRows = (rows: Record<string, any>[] = []): Record<string, any>[] => {
+    const result: Record<string, any>[] = []
+    const walk = (items: Record<string, any>[]) => {
+      items.forEach((item) => {
+        result.push(item)
+        if (Array.isArray(item.children)) {
+          walk(item.children)
+        }
+      })
+    }
+    walk(rows)
+    return result
+  }
+
+  const rowMap = computed(() => {
+    const map = new Map<string, Record<string, any>>()
+    flattenRows(props.data ?? []).forEach((row) => {
+      const key = getRowIdentity(row)
+      if (key) map.set(key, row)
+    })
+    return map
+  })
+
+  const getDragHandleRowKey = (rowElement: Element | undefined): string | undefined => {
+    const handle = rowElement?.querySelector<HTMLElement>('.art-table__drag-handle')
+    return handle?.dataset.rowKey || undefined
+  }
+
+  const getVisibleRowKeysFromDom = (): string[] => {
+    const tableElement = elTableRef.value?.$el as HTMLElement | undefined
+    return Array.from(
+      tableElement?.querySelectorAll('.el-table__body-wrapper .el-table__row') ?? []
+    )
+      .map((rowElement) => getDragHandleRowKey(rowElement))
+      .filter((key): key is string => !!key)
+  }
+
+  const buildRowDragPayload = (event: DraggableEvent<Record<string, any>>): RowDragPayload => {
+    const snapshotKeys = rowKeysBeforeDrag.value.length
+      ? rowKeysBeforeDrag.value
+      : getVisibleRowKeysFromDom()
+    const rowKey = snapshotKeys[event.oldIndex ?? -1]
+    const targetRowKey = snapshotKeys[event.newIndex ?? -1]
+    return {
+      row: rowKey ? rowMap.value.get(rowKey) : undefined,
+      targetRow: targetRowKey ? rowMap.value.get(targetRowKey) : undefined,
+      oldIndex: event.oldIndex,
+      newIndex: event.newIndex,
+      event
+    }
+  }
+
+  const handleRowDragStart = (event: DraggableEvent<Record<string, any>>) => {
+    rowKeysBeforeDrag.value = getVisibleRowKeysFromDom()
+    emit('row-drag-start', buildRowDragPayload(event))
+  }
+
+  const handleRowDragUpdate = (event: DraggableEvent<Record<string, any>>) => {
+    emit('row-drag-update', buildRowDragPayload(event))
+  }
+
+  const handleRowDragEnd = (event: DraggableEvent<Record<string, any>>) => {
+    emit('row-drag-end', buildRowDragPayload(event))
+    rowKeysBeforeDrag.value = []
+  }
+
+  const rowDraggable = useDraggable<Record<string, any>>(sortableTargetRef, {
+    immediate: false,
+    handle: '.art-table__drag-handle:not(.is-disabled)',
+    draggable: '.el-table__row',
+    filter: '.art-table__drag-handle.is-disabled',
+    preventOnFilter: false,
+    animation: 150,
+    ghostClass: 'art-table__drag-ghost',
+    chosenClass: 'art-table__drag-chosen',
+    onStart: handleRowDragStart,
+    onUpdate: handleRowDragUpdate,
+    onEnd: handleRowDragEnd
+  })
+
+  const syncRowDraggable = async () => {
+    await nextTick()
+    const tableElement = elTableRef.value?.$el as HTMLElement | undefined
+    const target = tableElement?.querySelector<HTMLElement>('.el-table__body-wrapper tbody')
+
+    if (target && sortableTargetRef.value !== target) {
+      sortableTargetRef.value = target
+      rowDraggable.start(target)
+    }
+
+    rowDraggable.option('disabled', !hasDraggableColumn.value || !!props.loading)
+  }
+
+  watch(
+    () => [hasDraggableColumn.value, props.loading, props.data?.length],
+    () => {
+      void syncRowDraggable()
+    },
+    { immediate: true, flush: 'post' }
+  )
+
   // 清理列属性，移除插槽相关的自定义属性，确保它们不会被 ElTableColumn 错误解释
   const cleanColumnProps = (col: ColumnOption) => {
     const columnProps = { ...col }
+    const shouldDefaultOverflowTooltip =
+      columnProps.showOverflowTooltip === undefined &&
+      !['selection', 'expand', 'globalIndex'].includes(String(columnProps.type)) &&
+      columnProps.prop !== 'operation'
+
+    if (shouldDefaultOverflowTooltip) {
+      columnProps.showOverflowTooltip = true
+    }
+
     // 删除自定义的插槽控制属性
     delete columnProps.useHeaderSlot
     delete columnProps.headerSlotName
     delete columnProps.useSlot
     delete columnProps.slotName
+    delete columnProps.draggable
+    delete columnProps.dragDisabled
+    delete columnProps.dragIcon
     return columnProps
   }
 
@@ -320,6 +525,9 @@
   const emit = defineEmits<{
     (e: 'pagination:size-change', val: number): void
     (e: 'pagination:current-change', val: number): void
+    (e: 'row-drag-start', payload: RowDragPayload): void
+    (e: 'row-drag-update', payload: RowDragPayload): void
+    (e: 'row-drag-end', payload: RowDragPayload): void
   }>()
 
   // 查找并绑定当前表格所在卡片内的头部元素，避免多个表格共享全局 id 时算错高度。

@@ -1,62 +1,92 @@
-﻿# ArtTableQuery
+# ArtTableQuery
 
-`ArtTableQuery` 是本项目标准的“查询 + 表格”组合组件，内部组合：
+`ArtTableQuery` 是项目标准的查询表格组合组件，内部组合：
 
 - `ArtSearchBar`：查询表单
-- `ArtTableHeader`：表格工具栏、刷新、搜索区域显隐、列设置
-- `ArtTable`：表格内容和分页
-- `useTable`：可选的内部数据生命周期管理
+- `ArtTableHeader`：工具栏、刷新、搜索区显隐、列设置、表格设置
+- `ArtTable`：表格主体、分页、列渲染、行拖拽事件
+- `useTable`：可选的内管数据生命周期
 
-标准 CRUD 列表页优先使用 `ArtTableQuery`，不要再重复手动拼 `ArtSearchBar + ArtTableHeader + ArtTable`。
+标准 CRUD 列表页优先使用 `ArtTableQuery`，不要重复手写 `ArtSearchBar + ArtTableHeader + ArtTable`。
 
-## 基础用法
+## 使用模式
 
 ### 内管模式
 
-传入 `apiFn` 后启用内管模式。组件内部负责 loading、data、pagination、columns、查询、重置、刷新、分页变化。
+传入 `apiFn` 后启用内管模式。组件内部接管：
+
+- `loading`
+- `data`
+- `pagination`
+- `columns`
+- 查询、重置、刷新
+- 分页变化
+- 列设置
 
 ```vue
-<ArtTableQuery
-  ref="tableQueryRef"
-  :api-fn="fetchTableData"
-  :columns-factory="columnsFactory"
-  :search-items="searchItems"
-/>
+<template>
+  <ArtTableQuery
+    ref="tableQueryRef"
+    v-model="searchQuery"
+    :search-items="searchItems"
+    :api-fn="fetchTableData"
+    :columns-factory="columnsFactory"
+    :header-actions="headerActions"
+  />
+</template>
 ```
 
 ```ts
 import type { ArtTableQueryExpose } from '@/components/core/tables/art-table-query/index.vue'
+import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
 import type { ColumnOption } from '@/types'
 
-interface Row {
-  id: number
-  name: string
-}
+type Row = Api.Module.Row
+type SearchParams = Api.Module.SearchParams
 
 const tableQueryRef = ref<ArtTableQueryExpose>()
 
-const fetchTableData = (params: Record<string, any>) => {
+const searchQuery = ref<SearchParams>({
+  name: ''
+})
+
+const searchItems = computed<SearchFormItem[]>(() => [
+  { label: '名称', key: 'name', type: 'input' }
+])
+
+const fetchTableData = (params: SearchParams & { current: number; size: number }) => {
   return fetchList(params)
 }
 
 const columnsFactory = (): ColumnOption<Row>[] => [
+  { type: 'selection', width: 50, reserveSelection: true },
   { type: 'globalIndex', label: '序号', width: 80 },
-  { prop: 'name', label: '名称' }
-]
-
-const searchItems = [
-  {
-    label: '名称',
-    key: 'name',
-    type: 'input',
-    props: { clearable: true, placeholder: '请输入名称' }
-  }
+  { prop: 'name', label: '名称', minWidth: 180 }
 ]
 ```
 
-### 初始不请求接口
+### 受控模式
 
-设置 `:immediate="false"`，组件挂载后不会自动调用 `apiFn`。需要加载时手动调用 `getData()` 或 `refreshData()`。
+不传 `apiFn` 时，组件只负责布局和事件转发，业务页自行维护数据生命周期。
+
+```vue
+<ArtTableQuery
+  v-model="searchQuery"
+  v-model:columns="columnChecks"
+  :loading="loading"
+  :data="data"
+  :table-columns="columns"
+  :pagination="pagination"
+  :search-items="searchItems"
+  @search="handleSearch"
+  @reset="handleReset"
+  @refresh="handleRefresh"
+  @pagination:size-change="handleSizeChange"
+  @pagination:current-change="handleCurrentChange"
+/>
+```
+
+### 首次不自动请求
 
 ```vue
 <ArtTableQuery
@@ -73,73 +103,43 @@ const load = () => {
 }
 ```
 
-### 受控模式
-
-不传 `apiFn` 时，组件只负责布局和事件转发，业务页自己维护 `useTable`。
-
-```vue
-<ArtTableQuery
-  v-model="searchForm"
-  v-model:columns="columnChecks"
-  :loading="loading"
-  :data="data"
-  :table-columns="columns"
-  :pagination="pagination"
-  :search-items="searchItems"
-  @search="handleSearch"
-  @reset="resetSearchParams"
-  @refresh="refreshData"
-  @pagination:size-change="handleSizeChange"
-  @pagination:current-change="handleCurrentChange"
-/>
-```
-
-## 内管模式推荐传入
-
-| Prop | 类型 | 必填 | 默认值 | 说明 |
-| --- | --- | --- | --- | --- |
-| `apiFn` | `(params: any) => Promise<any>` | 是 | - | 列表接口函数，传入后启用内管模式。 |
-| `columnsFactory` | `() => ColumnOption[]` | 是 | `() => []` | 表格列工厂。 |
-| `searchItems` | `SearchFormItem[]` | 否 | `[]` | 查询表单项。没有查询项时搜索区域不渲染。 |
-| `apiParams` | `Record<string, any>` | 否 | `{}` | 默认请求参数，会和 `{ current: 1, size: 20 }` 合并。 |
-| `immediate` | `boolean` | 否 | `true` | 是否挂载后立即请求接口。 |
-
-## Props API
+## Props
 
 ### 顶层 Props
 
 | Prop | 类型 | 模式 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| `apiFn` | `(params: any) => Promise<any>` | 内管 | - | 列表接口函数。 |
-| `apiParams` | `Record<string, any>` | 内管 | `{}` | 默认请求参数。组件会先合并 `{ current: 1, size: 20 }`。 |
-| `immediate` | `boolean` | 内管 | `true` | 是否自动首次请求。 |
-| `excludeParams` | `string[]` | 内管 | `[]` | 请求前排除指定字段。 |
+| `loading` | `boolean` | 受控 | `false` | 外部 loading。内管模式由组件内部控制。 |
+| `data` | `Record<string, any>[]` | 受控 | `[]` | 外部表格数据。内管模式由组件内部控制。 |
+| `tableColumns` | `ColumnOption[]` | 受控 | `[]` | 外部表格列。内管模式由 `columnsFactory` 控制。 |
+| `pagination` | `{ current: number; size: number; total: number }` | 受控 | - | 外部分页状态。内管模式由组件内部控制。 |
+| `searchItems` | `SearchFormItem[]` | 两种 | `[]` | 查询表单项。优先级高于 `searchBarProps.items`。为空时不渲染搜索区。 |
+| `headerActions` | `ArtTableQueryHeaderAction[]` | 两种 | `[]` | 工具栏左侧操作按钮配置。 |
+| `apiFn` | `(params: any) => Promise<any>` | 内管 | - | 列表接口函数。传入后启用内管模式。 |
+| `apiParams` | `Record<string, any>` | 内管 | `{}` | 默认接口参数，会和 `{ current: 1, size: 20 }` 合并。 |
+| `immediate` | `boolean` | 内管 | `true` | 是否挂载后立即请求。 |
+| `excludeParams` | `string[]` | 内管 | `[]` | 请求前从参数中排除的字段。 |
 | `paginationKey` | `{ current?: string; size?: string }` | 内管 | - | 自定义分页字段名。 |
-| `columnsFactory` | `() => ColumnOption[]` | 内管 | - | 列工厂，传给内部 `useTable`。 |
-| `enableCache` | `boolean` | 内管 | `false` | 是否启用请求缓存。 |
+| `enableCache` | `boolean` | 内管 | `false` | 是否启用 `useTable` 缓存。 |
 | `cacheTime` | `number` | 内管 | `300000` | 缓存时间，单位毫秒。 |
 | `debounceTime` | `number` | 内管 | `300` | 搜索防抖时间，单位毫秒。 |
 | `maxCacheSize` | `number` | 内管 | `50` | 最大缓存条数。 |
-| `dataTransformer` | `(data: any[]) => any[]` | 内管 | - | 响应数据转换。 |
-| `responseAdapter` | `(response: any) => ApiResponse` | 内管 | 默认适配器 | 接口响应适配器。 |
+| `dataTransformer` | `(data: T[]) => T[]` | 内管 | - | 响应记录转换函数。 |
+| `responseAdapter` | `(response) => ApiResponse<T>` | 内管 | `defaultResponseAdapter` | 把接口响应转换为 `{ records, total, current, size }`。 |
 | `onSuccess` | `(data, response) => void` | 内管 | - | 请求成功回调。 |
 | `onError` | `(error) => void` | 内管 | - | 请求失败回调。 |
 | `onCacheHit` | `(data, response) => void` | 内管 | - | 缓存命中回调。 |
 | `debug` | `boolean` | 内管 | `false` | 是否开启 `useTable` 调试日志。 |
-| `searchItems` | `SearchFormItem[]` | 两种 | `[]` | 查询项配置，优先级高于 `searchBarProps.items`。 |
+| `columnsFactory` | `() => ColumnOption[]` | 内管 | `() => []` | 内管模式列工厂。 |
 | `searchBarProps` | `ArtTableQuerySearchBarProps` | 两种 | `{}` | 透传给 `ArtSearchBar`。 |
 | `tableHeaderProps` | `ArtTableQueryTableHeaderProps` | 两种 | `{}` | 透传给 `ArtTableHeader`。 |
 | `tableProps` | `ArtTableQueryTableProps` | 两种 | `{}` | 透传给 `ArtTable` / `ElTable`。 |
-| `loading` | `boolean` | 受控 | `false` | 外部 loading，内管模式忽略。 |
-| `data` | `Record<string, any>[]` | 受控 | `[]` | 外部表格数据，内管模式忽略。 |
-| `tableColumns` | `ColumnOption[]` | 受控 | `[]` | 外部表格列，内管模式忽略。 |
-| `pagination` | `{ current: number; size: number; total: number }` | 受控 | - | 外部分页，内管模式忽略。 |
 
 ### searchBarProps
 
 | Prop | 类型 | 默认值 | 说明 |
 | --- | --- | --- | --- |
-| `items` | `SearchFormItem[]` | - | 查询项。推荐用顶层 `searchItems`。 |
+| `items` | `SearchFormItem[]` | - | 查询项。推荐优先使用顶层 `searchItems`。 |
 | `span` | `number` | `6` | 查询项栅格宽度。 |
 | `gutter` | `number` | `12` | 查询项间距。 |
 | `isExpand` | `boolean` | `false` | 是否强制展开全部查询项。 |
@@ -153,6 +153,17 @@ const load = () => {
 | `disabledSearch` | `boolean` | `false` | 是否禁用查询按钮。 |
 | `sanitizeOutput` | `Partial<ArtTableQuerySanitizeOutputOptions>` | - | 查询输出清洗策略。 |
 
+### sanitizeOutput
+
+| Prop | 类型 | 默认含义 |
+| --- | --- | --- |
+| `removeEmptyString` | `boolean` | 移除空字符串。 |
+| `removeEmptyArray` | `boolean` | 移除空数组。 |
+| `removeEmptyObject` | `boolean` | 移除清洗后为空的对象。 |
+| `removeEmptyRichText` | `boolean` | 移除空富文本占位内容。 |
+| `keepZero` | `boolean` | 保留数字 `0`。 |
+| `keepFalse` | `boolean` | 保留布尔值 `false`。 |
+
 ### tableHeaderProps
 
 | Prop | 类型 | 默认值 | 说明 |
@@ -163,18 +174,29 @@ const load = () => {
 | `fullClass` | `string` | `'art-page-view'` | 全屏容器 class。 |
 | `layout` | `string` | `'search,refresh,size,fullscreen,columns,settings'` | 工具栏按钮布局。 |
 
+`layout` 可用项：
+
+| Key | 说明 |
+| --- | --- |
+| `search` | 搜索区域显隐按钮。 |
+| `refresh` | 刷新按钮。 |
+| `size` | 表格尺寸切换。 |
+| `fullscreen` | 全屏按钮。 |
+| `columns` | 列设置。 |
+| `settings` | 表格设置。 |
+
 ### tableProps
 
-`tableProps` 会透传给 `ArtTable`，而 `ArtTable` 又会透传给 Element Plus `ElTable`。组件内置默认值：
+`tableProps` 会透传给 `ArtTable`，再透传给 Element Plus `ElTable`。组件内置：
 
 - `rowKey: 'id'`
 - `tableLayout: 'fixed'`
 
-不建议在 `tableProps` 里传 `data`、`columns`、`loading`、`pagination`，这些由 `ArtTableQuery` 接管。
+不要在 `tableProps` 中传 `data`、`columns`、`loading`、`pagination`。
 
 | Prop | 类型 | 默认值 | 说明 |
 | --- | --- | --- | --- |
-| `rowKey` | `string \| (row) => string` | `'id'` | 行 key。 |
+| `rowKey` | `string \| (row) => string` | `'id'` | 行 key。选择保留、行拖拽、树表格都依赖它。 |
 | `tableLayout` | `'fixed' \| 'auto'` | `'fixed'` | 表格布局。 |
 | `height` | `string \| number` | `'100%'` | 表格高度。 |
 | `maxHeight` | `string \| number` | - | 表格最大高度。 |
@@ -186,11 +208,11 @@ const load = () => {
 | `highlightCurrentRow` | `boolean` | - | 是否高亮当前行。 |
 | `currentRowKey` | `string \| number` | - | 当前行 key。 |
 | `flexible` | `boolean` | - | 空数据时是否按最大高度撑开。 |
-| `defaultExpandAll` | `boolean` | - | 是否默认展开所有行。 |
-| `expandRowKeys` | `(string \| number)[]` | - | 默认展开行 key。 |
+| `defaultExpandAll` | `boolean` | - | 是否默认展开所有树节点。 |
+| `expandRowKeys` | `(string \| number)[]` | - | 展开的树节点 key。 |
 | `lazy` | `boolean` | - | 是否懒加载树形数据。 |
 | `load` | `TableProps['load']` | - | 树形数据加载函数。 |
-| `treeProps` | `TableProps['treeProps']` | - | 树形数据字段配置。 |
+| `treeProps` | `TableProps['treeProps']` | - | 树形数据配置，例如 `{ children: 'children', hasChildren: 'hasChildren' }`。 |
 | `tooltipOptions` | `TableProps['tooltipOptions']` | - | tooltip 配置。 |
 | `headerRowClassName` | `TableProps['headerRowClassName']` | - | 表头行 class。 |
 | `headerRowStyle` | `TableProps['headerRowStyle']` | - | 表头行 style。 |
@@ -219,39 +241,60 @@ const load = () => {
 | `background` | `boolean` | `true` | 是否显示分页背景。 |
 | `hideOnSinglePage` | `boolean` | `false` | 只有一页时是否隐藏分页。 |
 | `size` | `'small' \| 'default' \| 'large'` | `'default'` | 分页器尺寸。 |
-| `pagerCount` | `number` | `7 或 5` | 页码按钮数量。 |
+| `pagerCount` | `number` | `7 / 5` | 页码按钮数量。 |
 
 ## v-model
 
 | Model | 类型 | 说明 |
 | --- | --- | --- |
-| `v-model` | `Record<string, unknown>` | 查询表单模型。内管模式通常不用传；需要外部默认值或动态联动时可传。 |
-| `v-model:columns` | `ColumnOption[]` | 列显隐配置。内管模式通常不用传。 |
-| `v-model:show-search-bar` | `boolean` | 搜索区域显隐状态。只有业务需要外部控制时传。 |
+| `v-model` | `Record<string, unknown>` | 查询表单模型。常用于默认查询值和外部联动。 |
+| `v-model:columns` | `ColumnOption[]` | 列显隐和排序配置。受控模式常用，内管模式通常不用传。 |
+| `v-model:show-search-bar` | `boolean` | 搜索区域显隐状态。 |
 
 ## Events
 
-内管模式下事件仍会 emit，但组件会先执行默认行为。
+内管模式下，组件会先执行默认行为，然后 emit 事件。业务不要在同一个事件中重复调用相同刷新动作。
 
 | Event | Payload | 说明 |
 | --- | --- | --- |
-| `search` | `Record<string, unknown>` | 点击查询后触发。内管模式先更新查询参数并重新查询。 |
-| `reset` | 无 | 点击重置后触发。内管模式先恢复查询表单初始值并重置查询参数。 |
+| `search` | `Record<string, unknown>` | 点击查询后触发。内管模式先更新查询参数并查询。 |
+| `reset` | 无 | 点击重置后触发。内管模式先恢复初始查询模型并重置查询参数。 |
 | `refresh` | 无 | 点击工具栏刷新后触发。内管模式先刷新数据。 |
-| `header-search` | 无 | 点击工具栏搜索区域显隐按钮后触发。 |
-| `selection-change` | `any[]` | 透传表格选择变化。 |
-| `pagination:size-change` | `number` | page size 改变后触发。内管模式先处理分页并重新查询。 |
-| `pagination:current-change` | `number` | current page 改变后触发。内管模式先处理分页并重新查询。 |
+| `header-search` | 无 | 点击工具栏搜索区显隐按钮后触发。 |
+| `selection-change` | `Record<string, any>[]` | 表格选择变化。组件会维护跨页选中缓存。 |
+| `row-drag-start` | `ArtTableRowDragPayload` | 行拖拽开始。 |
+| `row-drag-update` | `ArtTableRowDragPayload` | 行拖拽位置更新。 |
+| `row-drag-end` | `ArtTableRowDragPayload` | 行拖拽结束。 |
+| `pagination:size-change` | `number` | page size 改变。内管模式先处理分页并查询。 |
+| `pagination:current-change` | `number` | current page 改变。内管模式先处理分页并查询。 |
+| `header-action-click` | `(action, ctx)` | 点击工具栏 action 后触发。导入成功也会触发一次。 |
+
+### ArtTableRowDragPayload
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `row` | `Record<string, any> \| undefined` | 被拖拽行。 |
+| `targetRow` | `Record<string, any> \| undefined` | 目标位置原始行。 |
+| `oldIndex` | `number \| undefined` | 拖拽前可见行索引。 |
+| `newIndex` | `number \| undefined` | 拖拽后可见行索引。 |
+| `event` | `DraggableEvent` | `vue-draggable-plus` 原始事件。 |
 
 ## Slots
 
 | Slot | 说明 |
 | --- | --- |
-| `header-left` | 工具栏左侧，一般放新增、批量操作。 |
-| `header-right` | 工具栏右侧扩展区域。 |
-| `default` | 额外表格内容。 |
-| 表格列 slot | 除 `header-left`、`header-right`、`default`、`search-*` 外的 slot 会透传给 `ArtTable`。 |
-| `search-{key}` | 自定义查询项内容，例如 `search-status` 对应查询项 `key: 'status'`。 |
+| `header-left` | 工具栏左侧扩展，渲染在 `headerActions` 后面。 |
+| `header-right` | 工具栏右侧扩展。 |
+| `default` | 透传给 `ArtTable` 的默认插槽。 |
+| 表格列 slot | 除保留插槽外，其它插槽会透传给 `ArtTable`。例如列 `prop: 'status'` 可写 `#status`。 |
+| `search-{key}` | 查询项插槽。例如查询项 `key: 'status'` 可写 `#search-status`。 |
+
+保留插槽名：
+
+- `header-left`
+- `header-right`
+- `default`
+- `search-*`
 
 ## Expose
 
@@ -266,105 +309,29 @@ interface ArtTableQueryExpose {
 }
 ```
 
-| 方法                  | 使用场景                                     |
-| --------------------- | -------------------------------------------- |
-| `refreshCreate()`     | 新增成功后刷新，默认回到第一页。             |
-| `refreshUpdate()`     | 编辑成功后刷新，默认保留当前页。             |
-| `refreshRemove()`     | 删除成功后刷新，当前页为空时自动回退上一页。 |
-| `refreshData()`       | 手动刷新或不区分场景的全量刷新。             |
-| `getData()`           | 手动查询，搜索语义，默认回到第一页。         |
-| `resetSearchParams()` | 外部主动清空查询表单并重置查询参数。         |
-
-## 示例
-
-### tableProps 提示示例
-
-```vue
-<ArtTableQuery
-  :api-fn="fetchTableData"
-  :columns-factory="columnsFactory"
-  :table-props="{
-    rowKey: 'uuid',
-    height: '100%',
-    border: true,
-    stripe: true,
-    size: 'default',
-    emptyText: '暂无记录',
-    paginationOptions: {
-      align: 'right',
-      pageSizes: [20, 50, 100]
-    }
-  }"
-/>
-```
-
-### 自定义响应适配器
-
-```vue
-<ArtTableQuery
-  :api-fn="fetchTableData"
-  :columns-factory="columnsFactory"
-  :response-adapter="responseAdapter"
-/>
-```
-
-```ts
-const responseAdapter = (response: any) => ({
-  records: response.data.list,
-  total: response.data.total,
-  current: response.data.page,
-  size: response.data.pageSize
-})
-```
-
-### 动态查询项隐藏
-
-```ts
-const searchItems = computed<SearchFormItem[]>(() => [
-  {
-    label: '保险公司名称',
-    key: 'companyName',
-    type: 'input'
-  },
-  {
-    label: '联系人',
-    key: 'contactPerson',
-    type: 'input',
-    hidden: (model) => model.companyName !== '123'
-  }
-])
-```
-
-## 注意事项
-
-- 标准 CRUD 页面优先使用内管模式。
-- 内管模式中不要在 `search/reset/refresh/pagination` 事件里重复调用同一个刷新方法，否则会重复请求。
-- `searchItems` 和 `searchBarProps.items` 同时存在时，优先使用 `searchItems`。
-- `tableProps` 会在内部默认值之后合并，因此可以覆盖 `rowKey`、`tableLayout` 等默认配置。
-- `immediate=false` 只阻止首次自动请求，不影响后续查询、分页、刷新。
+| 方法 | 说明 |
+| --- | --- |
+| `refreshData()` | 全量刷新，适合工具栏刷新。 |
+| `refreshCreate()` | 新增成功后刷新，默认回到第一页。 |
+| `refreshUpdate()` | 编辑成功后刷新，默认保留当前页。 |
+| `refreshRemove()` | 删除成功后刷新，当前页为空时自动回退上一页，并清空选中状态。 |
+| `getData()` | 查询语义的数据加载，默认回到第一页。 |
+| `resetSearchParams()` | 外部主动清空查询表单并重置内部查询参数。 |
 
 ## headerActions
 
-`headerActions` 用于配置 `ArtTableHeader` 左侧按钮。标准列表页优先使用它，不再手写 `#header-left`。
-
-```vue
-<ArtTableQuery
-  :api-fn="fetchTableData"
-  :columns-factory="columnsFactory"
-  :header-actions="headerActions"
-/>
-```
+`headerActions` 用于声明工具栏左侧按钮。标准 CRUD 页优先使用它，不手写 `#header-left`。
 
 ```ts
 const headerActions = computed<ArtTableQueryHeaderAction[]>(() => [
   {
     type: 'add',
-    permission: 'add',
+    permission: 'Module:Add',
     onClick: () => openDialog()
   },
   {
     type: 'delete',
-    permission: 'delete',
+    permission: 'Module:Delete',
     content: ({ selectedCount }) => `确定删除选中的 ${selectedCount} 条数据吗？`,
     onClick: async ({ selectedRows, api }) => {
       await batchDelete(selectedRows.map((row) => row.id))
@@ -374,61 +341,264 @@ const headerActions = computed<ArtTableQueryHeaderAction[]>(() => [
 ])
 ```
 
-### 预制类型
+### 预制 type
 
-| type | 默认文案 | 默认图标 | 默认按钮 | 行为 |
+| type | 默认文案 | 默认图标 | 默认按钮 | 默认行为 |
 | --- | --- | --- | --- | --- |
-| `add` | `新增` | `ri:add-line` | `primary plain` | 直接触发 `onClick`。 |
-| `delete` | `批量删除` | `ri:delete-bin-line` | `danger plain` | 默认需要选中行，未选中禁用；选中后显示 `批量删除(n)`；点击先弹确认框。 |
-| `import` | `导入` | `ri:upload-2-line` | `success plain` | 直接触发 `onClick`。 |
-| `export` | `导出` | `ri:download-2-line` | `warning plain` | 直接触发 `onClick`。 |
+| `add` | `新增` | `ri:add-line` | `primary plain` | 直接执行 `onClick`。 |
+| `delete` | `批量删除` | `ri:delete-bin-line` | `danger plain` | 默认需要选中行；点击前确认；确认后执行 `onClick`；执行后清空选中状态。 |
+| `import` | `导入` | `ri:upload-2-line` | `success plain` | 渲染 `ArtExcelImport`，导入成功后执行公共导入流程。 |
+| `export` | `导出` | `ri:download-2-line` | `warning plain` | 未传 `onClick` 时执行公共导出流程。 |
 
-### Action API
+### ArtTableQueryHeaderAction
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
-| `key` | `string` | 唯一标识，未传时使用 `type` 或索引。 |
-| `type` | `'add' \| 'delete' \| 'import' \| 'export'` | 命中预制类型时使用默认文案、图标和行为。 |
-| `hidden` | `boolean \| (ctx) => boolean` | 是否隐藏，支持按选中行动态判断。 |
-| `label` | `string \| Component` | 自定义按钮文案或组件，不传时使用预设文案。 |
-| `onClick` | `(ctx) => void \| Promise<void>` | 点击回调；`delete` 会在确认后触发。 |
-| `content` | `string \| Component \| (ctx) => VNodeChild` | 确认框内容，主要用于批量删除。 |
-| `permission` | `string` | 权限标识，会透传给 `v-auth`。 |
-| `icon` | `string \| Component` | 自定义图标。字符串使用 `ArtSvgIcon`。 |
+| `key` | `string` | 唯一标识。未传时使用 `type` 或数组索引。 |
+| `type` | `'add' \| 'delete' \| 'import' \| 'export'` | 预制类型。 |
+| `hidden` | `boolean \| (ctx) => boolean` | 是否隐藏。 |
+| `label` | `string \| Component` | 按钮文案或组件。未传时使用预制文案。 |
+| `onClick` | `(ctx) => void \| Promise<void>` | 点击回调。`delete` 会在确认后触发。`export` 未传时走默认导出。 |
+| `onImportSuccess` | `(data, ctx) => void \| Promise<void>` | 导入成功回调。公共导入流程结束后触发。 |
+| `importColumns` | `ArtTableQueryExcelColumns` | 导入列映射配置。 |
+| `importTransformer` | `(rows, ctx) => rows \| Promise<rows>` | 导入数据转换。优先级高于 `importColumns` 默认映射。 |
+| `importApi` | `(rows, ctx) => void \| Promise<void>` | 导入接口。执行成功后内管模式会自动 `refreshCreate()`。 |
+| `onImportError` | `(error, ctx) => void \| Promise<void>` | 导入失败回调。 |
+| `content` | `string \| Component \| (ctx) => VNodeChild` | 确认框内容。常用于 `delete`。 |
+| `permission` | `string` | 权限标识，透传给 `v-auth`。 |
+| `icon` | `string \| Component` | 图标。字符串使用 `ArtSvgIcon`。 |
 | `disabled` | `boolean \| (ctx) => boolean` | 是否禁用。 |
-| `selectionRequired` | `boolean` | 是否需要勾选表格行；`delete` 默认 `true`。 |
-| `confirm` | `boolean` | 点击前是否弹确认框；`delete` 默认 `true`。 |
+| `selectionRequired` | `boolean` | 是否需要选中行。`delete` 默认 `true`。 |
+| `confirm` | `boolean` | 是否点击前确认。`delete` 默认 `true`。 |
 | `confirmTitle` | `string` | 确认框标题。 |
-| `slot` | `string` | 使用指定 slot 自定义渲染该 action。 |
-| `render` | `Component` | 使用组件自定义渲染该 action。 |
-| `buttonProps` | `Record<string, any>` | 透传给 `ElButton`，会覆盖预制按钮属性。 |
+| `slot` | `string` | 使用指定 slot 自定义该 action。 |
+| `render` | `Component` | 使用组件自定义该 action。 |
+| `buttonProps` | `Record<string, any>` | 透传给 `ElButton`。 |
+| `exportColumns` | `ArtTableQueryExcelColumns` | 导出列配置。未传时默认使用当前显示列，排除操作、选择、展开、序号列。 |
+| `exportFilename` | `string \| (ctx) => string` | 导出文件名。 |
+| `exportSheetName` | `string` | Excel sheet 名称。 |
+| `exportMaxRows` | `number` | 默认导出最大行数。默认 `10000`。 |
+| `exportApi` | `(params, ctx) => unknown \| Promise<unknown>` | 后台导出数据接口。 |
+| `exportResponseAdapter` | `ArtTableQueryResponseAdapter` | 导出响应适配器。未传时复用组件 `responseAdapter` 或默认适配器。 |
+| `exportData` | `(ctx) => rows \| Promise<rows>` | 自定义前端导出数据来源。 |
 
-### onClick Context
+### Context
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
 | `action` | `ArtTableQueryHeaderAction` | 当前 action 配置。 |
-| `selectedRows` | `Record<string, any>[]` | 当前表格选中行。 |
+| `selectedRows` | `Record<string, any>[]` | 当前选中行。 |
 | `selectedCount` | `number` | 当前选中数量。 |
 | `event` | `MouseEvent \| undefined` | 点击事件。 |
 | `api` | `{ refreshData, refreshCreate, refreshUpdate, refreshRemove, getData }` | 表格刷新 API。 |
 
-### 自定义渲染
+## 导入导出
 
-如果预制按钮不满足，可以使用 `slot`：
+### Excel 列配置
+
+```ts
+const excelColumns: ArtTableQueryExcelColumn[] = [
+  { key: 'companyName', title: '保险公司名称', required: true },
+  { key: 'contactPerson', title: '联系人' },
+  { key: 'contactPhone', title: '联系电话' }
+]
+```
+
+| 字段 | 说明 |
+| --- | --- |
+| `key` | 业务字段名。 |
+| `title` | Excel 表头。 |
+| `required` | 导入时是否必填。 |
+| `width` | 导出列宽。 |
+| `formatter` | 导出格式化函数。 |
+
+### 导入
+
+```ts
+const headerActions = computed<ArtTableQueryHeaderAction[]>(() => [
+  {
+    type: 'import',
+    importColumns: excelColumns,
+    importApi: async (rows) => {
+      await importRows(rows)
+    },
+    onImportError: () => {
+      ElMessage.error('导入文件解析失败')
+    }
+  }
+])
+```
+
+导入处理优先级：
+
+1. 如果传 `importTransformer`，使用它转换原始 Excel 行。
+2. 否则如果传 `importColumns`，按列配置把 Excel 表头映射为业务字段。
+3. 如果传 `importApi`，提交转换后的 rows。
+4. `importApi` 成功后，内管模式自动 `refreshCreate()`。
+5. 最后触发 `onImportSuccess(rows, ctx)`。
+
+### 导出
+
+```ts
+const headerActions = computed<ArtTableQueryHeaderAction[]>(() => [
+  {
+    type: 'export',
+    exportFilename: '保险公司',
+    exportSheetName: '保险公司',
+    exportColumns: excelColumns,
+    exportApi: ({ selectedIds, searchParams, maxRows }) => {
+      return exportList({
+        ...searchParams,
+        ids: selectedIds.map(String),
+        maxRows
+      })
+    }
+  }
+])
+```
+
+默认导出数据来源优先级：
+
+1. `exportApi`
+2. `exportData`
+3. 当前选中行
+4. `apiFn` 全量拉取，使用 `exportMaxRows`
+5. 当前表格数据
+
+默认导出列：
+
+- 使用当前 `resolvedColumns`
+- 需要有 `prop`
+- `label` 必须是字符串
+- 排除 `operation`
+- 排除 `selection`、`expand`、`index`、`globalIndex`
+- `exportable === false` 的列不导出
+
+## 行拖拽
+
+列配置支持拖拽手柄：
+
+```ts
+const columnsFactory = (): ColumnOption<Row>[] => [
+  {
+    prop: 'name',
+    label: '名称',
+    draggable: true,
+    dragDisabled: (row) => row.status === 'disabled',
+    dragIcon: 'ri:drag-move-2-fill'
+  }
+]
+```
+
+| 字段 | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `draggable` | `boolean \| (row) => boolean` | `false` | 是否展示拖拽按钮。 |
+| `dragDisabled` | `boolean \| (row) => boolean` | `false` | 是否禁用当前行拖拽。 |
+| `dragIcon` | `string` | `ri:drag-move-2-fill` | 拖拽按钮图标。 |
+
+监听拖拽结束：
 
 ```vue
-<ArtTableQuery :header-actions="[{ key: 'custom', slot: 'custom-action' }]">
-  <template #custom-action="{ selectedRows }">
-    <ElButton @click="doSomething(selectedRows)">自定义按钮</ElButton>
+<ArtTableQuery
+  :api-fn="fetchTableData"
+  :columns-factory="columnsFactory"
+  @row-drag-end="handleRowDragEnd"
+/>
+```
+
+```ts
+const handleRowDragEnd = async ({ row, targetRow, oldIndex, newIndex }) => {
+  if (!row || !targetRow || oldIndex === newIndex) return
+  await updateSort(row, targetRow, oldIndex, newIndex)
+  await tableQueryRef.value?.refreshData()
+}
+```
+
+树表格拖拽依赖 `tableProps.rowKey`，必须保证 row key 稳定。
+
+## 自定义 action 渲染
+
+### slot
+
+```ts
+const headerActions = computed<ArtTableQueryHeaderAction[]>(() => [
+  { key: 'custom', slot: 'custom-action' }
+])
+```
+
+```vue
+<ArtTableQuery :header-actions="headerActions">
+  <template #custom-action="{ selectedRows, selectedCount }">
+    <ElButton @click="doSomething(selectedRows)">
+      自定义 {{ selectedCount }}
+    </ElButton>
   </template>
 </ArtTableQuery>
 ```
 
-也可以继续使用旧的 `#header-left`，它会渲染在 `headerActions` 后面：
+### render
+
+```ts
+const headerActions = computed<ArtTableQueryHeaderAction[]>(() => [
+  {
+    key: 'custom-render',
+    render: CustomAction
+  }
+])
+```
+
+## 标准 CRUD 示例
 
 ```vue
-<template #header-left="{ selectedRows, selectedCount }">
-  <ElButton>额外按钮 {{ selectedCount }}</ElButton>
+<template>
+  <div class="art-full-height">
+    <ArtTableQuery
+      ref="tableQueryRef"
+      v-model="searchQuery"
+      :search-items="searchItems"
+      :api-fn="fetchTableData"
+      :columns-factory="columnsFactory"
+      :header-actions="headerActions"
+    />
+
+    <FeatureDialog ref="dialogRef" @success="handleSaveSuccess" />
+  </div>
 </template>
 ```
+
+```ts
+const headerActions = computed<ArtTableQueryHeaderAction[]>(() => [
+  {
+    type: 'add',
+    permission: 'Feature:Add',
+    onClick: () => openDialog()
+  },
+  {
+    type: 'delete',
+    permission: 'Feature:Delete',
+    content: ({ selectedCount }) => `确定删除选中的 ${selectedCount} 条数据吗？`,
+    onClick: async ({ selectedRows }) => {
+      await batchDelete(selectedRows.map((row) => row.id))
+      await tableQueryRef.value?.refreshRemove()
+    }
+  }
+])
+
+const handleSaveSuccess = (type: 'add' | 'edit'): void => {
+  void (type === 'add'
+    ? tableQueryRef.value?.refreshCreate()
+    : tableQueryRef.value?.refreshUpdate())
+}
+```
+
+## 注意事项
+
+- 标准 CRUD 页面优先使用内管模式。
+- 内管模式中不要在 `search/reset/refresh/pagination` 事件里重复调用同一个刷新方法。
+- `searchItems` 和 `searchBarProps.items` 同时存在时，优先使用 `searchItems`。
+- `tableProps` 会在内部默认值之后合并，因此可以覆盖 `rowKey`、`tableLayout`。
+- `immediate=false` 只阻止首次自动请求，不影响后续查询、分页、刷新。
+- 批量删除走 `headerActions.type = 'delete'`，删除成功后调用 `api.refreshRemove()` 或 `tableQueryRef.value?.refreshRemove()`。
+- 新增成功用 `refreshCreate()`，编辑成功用 `refreshUpdate()`，删除成功用 `refreshRemove()`。
+- 导入导出列配置优先放在 `ArtTableQuery` 的 action 中，不要在业务页面堆页面级 Excel 解析/导出逻辑。
+- 行拖拽只负责 UI 事件，不在公共组件里写业务持久化；业务页监听 `row-drag-end` 后自行保存。

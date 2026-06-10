@@ -58,6 +58,12 @@ export interface ColumnOption<T = any> {
   fixed?: boolean | 'left' | 'right'
   // 是否可排序
   sortable?: boolean | 'custom'
+  // 是否展示行拖拽手柄，默认 false；支持按行动态控制
+  draggable?: boolean | ((row: T) => boolean)
+  // 是否禁用当前行拖拽，默认 false；支持按行动态控制
+  dragDisabled?: boolean | ((row: T) => boolean)
+  // 行拖拽手柄图标
+  dragIcon?: string
   // 过滤器选项
   filters?: any[]
   // 过滤方法

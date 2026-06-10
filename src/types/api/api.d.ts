@@ -97,7 +97,7 @@ declare namespace Api {
 
     /** 用户信息 */
     interface UserInfo {
-      roles: string[]
+      userRoles: string[]
       userId: number
       userName?: string
       nickName?: string

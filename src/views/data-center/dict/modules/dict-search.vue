@@ -16,7 +16,7 @@
   import { useUserStore } from '@/store/modules/user'
 
   const userStore = useUserStore()
-  const { getDictMap } = storeToRefs(userStore) as Record<string, any>
+  const { getDictMap } = storeToRefs(userStore)
 
   interface Props {
     modelValue: Record<string, any>

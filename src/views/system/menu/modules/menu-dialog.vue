@@ -76,7 +76,7 @@
   const formRef = ref()
 
   const userStore = useUserStore()
-  const { getDictMap } = storeToRefs(userStore) as Record<string, any>
+  const { getDictMap } = storeToRefs(userStore)
 
   const createInitialForm = (): MenuFormModel => ({
     id: undefined,

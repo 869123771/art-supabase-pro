@@ -268,6 +268,22 @@ export async function editMenu(params: AppRouteRecord) {
   )
 }
 
+/*拖拽保存菜单父级与排序*/
+export async function saveMenuDragSort(
+  params: Array<{ id: string; parentId: string | null; sort: number }>
+) {
+  const results = await Promise.all(
+    params.map(({ id, ...data }) =>
+      supabase.from('sys_menu').update(keysToSnakeDeep(data)).eq('id', id)
+    )
+  )
+
+  const error = results.find((result) => result.error)?.error
+  if (error) throw error
+
+  return { data: null, error: null }
+}
+
 /*获取当前用户的菜单权限*/
 export async function fetchCurrentUserMenu() {
   return await responseHandle(() => supabase.rpc('get_menus_for_current_user') as any, {

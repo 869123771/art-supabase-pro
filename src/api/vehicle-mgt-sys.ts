@@ -28,6 +28,34 @@ export async function fetchInsuranceCompanyList(params: InsuranceCompanySearchPa
   })
 }
 
+export async function exportInsuranceCompanyList(
+  params: InsuranceCompanySearchParams & { ids?: string[]; maxRows?: number }
+) {
+  const { companyName, contactPerson, contactPhone, ids, maxRows = 10000 } = params
+  const filters: FilterSpec[] = [
+    { col: 'companyName', op: 'ilike', val: companyName ? `%${companyName}%` : undefined },
+    { col: 'contactPerson', op: 'ilike', val: contactPerson ? `%${contactPerson}%` : undefined },
+    { col: 'contactPhone', op: 'ilike', val: contactPhone ? `%${contactPhone}%` : undefined }
+  ]
+
+  let query: any = supabase
+    .from('vehicle_insurance_company')
+    .select('*')
+    .order('create_time', { ascending: false })
+    .limit(maxRows)
+
+  if (ids?.length) {
+    query = query.in('id', ids)
+  } else {
+    query = applyFilters(query, filters, { skipEmpty: true, camelToSnake: true })
+  }
+
+  return await responseHandle(() => query as any, {
+    ignoreCheck: true,
+    showErrorMessage: true
+  })
+}
+
 export async function addInsuranceCompany(params: InsuranceCompany) {
   return await responseHandle(
     () => supabase.from('vehicle_insurance_company').insert(keysToSnakeDeep(params)) as any,
@@ -60,7 +88,10 @@ export async function deleteInsuranceCompanyBatch(ids: string[]) {
 
 export async function importInsuranceCompanies(rows: InsuranceCompany[]) {
   return await responseHandle(
-    () => supabase.from('vehicle_insurance_company').insert(keysToSnakeDeep(rows)) as any,
+    () =>
+      supabase
+        .from('vehicle_insurance_company')
+        .upsert(keysToSnakeDeep(rows), { onConflict: 'company_name' }) as any,
     { showMessage: true, breakReturn: true }
   )
 }

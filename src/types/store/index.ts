@@ -113,6 +113,14 @@ export interface UserState {
   permissions: string[]
 }
 
+export interface DictMap extends Record<string, Api.DataCenter.DictListItem[] | undefined> {
+  status?: Api.DataCenter.DictListItem[]
+  sex?: Api.DataCenter.DictListItem[]
+  userType?: Api.DataCenter.DictListItem[]
+  menuType?: Api.DataCenter.DictListItem[]
+  i18nScope?: Api.DataCenter.DictListItem[]
+}
+
 // 设置Store状态
 export interface SettingStoreState extends SettingState {
   // 额外的设置状态
