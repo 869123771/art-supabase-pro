@@ -50,8 +50,10 @@ export async function editDictType(params: Api.DataCenter.DictListItem) {
 }
 
 // 根据类型 ID 查询字典项
-export async function fetchGetDictListByTypeId(params: Api.DataCenter.DictListItem) {
-  const { typeId, label = '', code, i18nScope, status } = params
+export async function fetchGetDictListByTypeId(
+  params: Partial<Api.DataCenter.DictListItem> & Api.Common.CommonSearchParams
+) {
+  const { typeId, label = '', code, i18nScope, status, from = 0, to = 9 } = params
   const specs = [
     { col: 'typeId', op: 'eq', val: typeId },
     { col: 'label', op: 'ilike', val: `%${label}%` },
@@ -64,6 +66,7 @@ export async function fetchGetDictListByTypeId(params: Api.DataCenter.DictListIt
     .from('sys_dictionary')
     .select('*', { count: 'exact' })
     .order('sort', { ascending: true })
+    .range(from, to)
 
   query = applyFilters(query, specs, { skipEmpty: true, camelToSnake: true })
   return await responseHandle(() => query as any, { ignoreCheck: true })

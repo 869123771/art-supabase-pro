@@ -2,7 +2,12 @@
   <ElCard class="tree-card art-card-xs flex flex-col h-full mt-0" shadow="never">
     <template #header>
       <div class="flex gap-3">
-        <ElInput v-model="tree.name" placeholder="输入名称" @input="debounceFetch" clearable>
+        <ElInput
+          v-model="tree.name"
+          placeholder="请输入字典类型名称"
+          @input="debounceFetch"
+          clearable
+        >
         </ElInput>
         <ElButton type="primary" @click="handleAdd">
           <ArtSvgIcon icon="ri:add-fill" />

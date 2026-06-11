@@ -106,6 +106,15 @@ Do NOT use `apply_migration` to change a local database schema — it writes a m
 3. **Generate the migration** → `supabase db pull <descriptive-name> --local --yes`
 4. **Verify** → `supabase migration list --local`
 
+## art-supabase-pro Table Convention
+
+For this repository, new business tables must match the existing audit-field convention:
+
+- Include `create_by text`, `create_time timestamptz not null default now()`, `update_by text`, and `update_time timestamptz not null default now()`.
+- Do not use `uuid default auth.uid()` for `create_by` or `update_by`; the frontend treats them as display strings (`createBy` / `updateBy`).
+- Bind `public.trg_set_create_time_and_by('true', 'true')` as a `before insert` trigger.
+- Bind `public.trg_set_update_time_and_by()` as a `before update` trigger.
+- Before writing SQL, inspect a neighboring existing table or local metadata and reuse its id type, naming, indexes, RLS style, comments, and audit trigger pattern.
 ## Reference Guides
 
 - **Skill Feedback** → [references/skill-feedback.md](references/skill-feedback.md)

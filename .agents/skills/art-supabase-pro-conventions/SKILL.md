@@ -154,6 +154,12 @@ Apply the same ownership model to `ArtDrawer`.
 - Prefix intentionally unawaited calls with `void`.
 - Remove debug logging unless it is an explicit diagnostic action.
 
+## Style Rules
+
+- In Vue SFCs with `lang="scss"`, write styles with SCSS nesting under the feature/root class instead of repeating flat sibling selectors.
+- Keep responsive overrides nested under the same root selector and place `:deep(...)` rules inside the relevant component block.
+- Avoid adding scattered top-level selectors in scoped SCSS unless the selector genuinely targets an independent root.
+
 ## Async And Error Semantics
 
 - Keep list loading in `useTable`.
@@ -170,6 +176,35 @@ Apply the same ownership model to `ArtDrawer`.
 - Reusable UI wrappers: `src/components/core`
 - Shared composables: `src/hooks/core`
 - Keep wrapper types and detailed usage docs beside the wrapper.
+
+## Supabase Table Rules
+
+When creating or changing Supabase tables for this project, first inspect the closest existing table and match its conventions. New business tables must include the standard audit columns unless the user explicitly says otherwise:
+
+```sql
+create_by text,
+create_time timestamptz not null default now(),
+update_by text,
+update_time timestamptz not null default now()
+```
+
+Do not use `uuid default auth.uid()` for `create_by` or `update_by` in this project. These fields are display strings and map to frontend `createBy` / `updateBy`.
+
+Bind the existing project audit triggers on every new business table:
+
+```sql
+create trigger <table>_create_audit
+before insert on public.<table>
+for each row
+execute function public.trg_set_create_time_and_by('true', 'true');
+
+create trigger <table>_update_audit
+before update on public.<table>
+for each row
+execute function public.trg_set_update_time_and_by();
+```
+
+Frontend API insert/update helpers should omit `createBy`, `createTime`, `updateBy`, and `updateTime` before writing, unless the existing neighboring module intentionally supplies audit values.
 
 ## Verify Before Finishing
 

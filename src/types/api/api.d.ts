@@ -188,6 +188,46 @@ declare namespace Api {
         Pick<InsuranceCompany, 'companyName' | 'contactPerson' | 'contactPhone'> &
           Api.Common.CommonSearchParams
       >
+
+      interface Supplier {
+        id?: string
+        supplierName: string
+        contactPerson?: string
+        contactPhone?: string
+        region?: string
+        addressDetail?: string
+        remark?: string
+        createBy?: string
+        createTime?: string
+        updateBy?: string
+        updateTime?: string
+      }
+
+      type SupplierSearchParams = Partial<
+        Pick<Supplier, 'supplierName' | 'contactPerson' | 'contactPhone'> &
+          Api.Common.CommonSearchParams
+      >
+
+      interface PartsCategory {
+        id?: string
+        parentId?: string | null
+        categoryName: string
+        categoryCode: string
+        categoryLevel?: number
+        sort?: number
+        status?: Api.Common.EnableStatus
+        remark?: string
+        createBy?: string
+        createTime?: string
+        updateBy?: string
+        updateTime?: string
+        children?: PartsCategory[]
+      }
+
+      type PartsCategorySearchParams = Partial<
+        Pick<PartsCategory, 'parentId' | 'categoryName' | 'categoryCode' | 'status'> &
+          Api.Common.CommonSearchParams
+      >
     }
   }
 

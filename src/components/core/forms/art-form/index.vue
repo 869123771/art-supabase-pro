@@ -6,6 +6,7 @@
     <ElForm
       ref="formRef"
       :model="modelValue"
+      :rules="props.rules"
       :label-position="labelPosition"
       v-bind="{ ...$attrs }"
       @validate="handleValidate"

@@ -1,235 +1,385 @@
-<!-- 左树右表示例页面 -->
 <template>
   <div class="art-full-height">
-    <div class="box-border flex gap-4 h-full max-md:block max-md:gap-0 max-md:h-auto">
-      <div class="shrink-0 w-58 h-full max-md:w-full max-md:h-auto max-md:mb-5">
-        <TypeTree ref="typeTreeRef" @tree-node-click="getData" />
-      </div>
+    <div class="dict-layout">
+      <ElSplitter class="dict-splitter">
+        <ElSplitterPanel size="232px" min="280px" max="420px">
+          <div class="dict-tree-panel">
+            <TypeTree ref="typeTreeRef" @tree-node-click="handleTreeNodeClick" />
+          </div>
+        </ElSplitterPanel>
 
-      <div class="flex flex-col grow min-w-0">
-        <DictSearch v-model="form" @search="getData" />
-
-        <ElCard class="flex flex-col flex-1 min-h-0 art-table-card" shadow="never">
-          <ArtTableHeader v-model:columns="columnChecks" :loading="loading" @refresh="refreshData">
-            <template #left>
-              <ElSpace wrap>
-                <ElButton @click="handleAdd" v-ripple type="primary" plain>新增 </ElButton>
-                <ElButton
-                  :disabled="isEmpty(tableSelections)"
-                  @click="handleDeleteBatch"
-                  v-ripple
-                  type="danger"
-                  plain
-                  >删除
-                </ElButton>
-              </ElSpace>
-            </template>
-          </ArtTableHeader>
-
-          <ArtTable
-            table-layout="fixed"
-            ref="artTableRef"
-            rowKey="id"
-            :loading="loading"
-            :data="data"
-            :columns="columns"
-            :pagination="pagination"
-            @pagination:size-change="handleSizeChange"
-            @pagination:current-change="handleCurrentChange"
-          >
-          </ArtTable>
-        </ElCard>
-      </div>
+        <ElSplitterPanel>
+          <div class="dict-table-panel">
+            <ArtTableQuery
+              ref="tableQueryRef"
+              v-model="searchQuery"
+              :search-items="searchItems"
+              :api-fn="fetchTableData"
+              :columns-factory="columnsFactory"
+              :header-actions="headerActions"
+              :immediate="false"
+              :search-bar-props="{ span: 8, labelWidth: 100 }"
+              :table-props="{ rowKey: 'id', tableLayout: 'fixed' }"
+            />
+          </div>
+        </ElSplitterPanel>
+      </ElSplitter>
     </div>
-    <DictDialog ref="dictDialogRef" @success="getData"></DictDialog>
+
+    <DictDialog ref="dictDialogRef" @success="handleSaveSuccess" />
   </div>
 </template>
 
 <script setup lang="tsx">
-  import { useTable } from '@/hooks/core/useTable'
-  import DictSearch from './modules/dict-search.vue'
+  import { isEmpty } from 'lodash-es'
+  import { ElMessage, ElMessageBox, ElTag, type TagProps } from 'element-plus'
+  import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
+  import type {
+    ArtTableQueryExpose,
+    ArtTableQueryHeaderAction,
+    ArtTableQueryHeaderActionContext
+  } from '@/components/core/tables/art-table-query/index.vue'
+  import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
+  import { ColumnOption } from '@/types'
+  import { pageInfoHandler } from '@/utils/table/tableUtils'
+  import { useUserStore } from '@/store/modules/user'
+  import { deleteDict, deleteDictBatch, fetchGetDictListByTypeId } from '@/api/data-center'
   import TypeTree from './modules/type-tree.vue'
   import DictDialog from './modules/dict-dialog.vue'
-  import { fetchGetDictListByTypeId, deleteDict, deleteDictBatch } from '@/api/data-center'
-  import { isEmpty } from 'lodash-es'
-  import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
-  import { ElMessageBox, ElTag } from 'element-plus'
-  import { useUserStore } from '@/store/modules/user'
-  import type { TagProps } from 'element-plus'
-  import { ColumnOption } from '@/types'
-  const { getDictLabelByValue } = useUserStore()
 
   defineOptions({ name: 'dict' })
 
   type DictListItem = Api.DataCenter.DictListItem
+  type SearchParams = Partial<Pick<DictListItem, 'label' | 'code' | 'i18nScope' | 'status'>>
+  type TableParams = SearchParams & Pick<Api.Common.PaginationParams, 'current' | 'size'>
+  type DictQueryParams = Partial<DictListItem> & Api.Common.CommonSearchParams
+  type DictDialogOpenData = Partial<DictListItem> & { dictTypeName?: string }
+  type DictTypeItem = Pick<DictListItem, 'id' | 'name'>
 
-  const artTableRef = ref()
-  const typeTreeRef = ref()
-  const dictDialogRef = ref()
+  interface TypeTreeExpose {
+    getCurrentDictType: DictTypeItem
+  }
 
-  // 表单搜索初始值
-  const form = ref<Partial<DictListItem>>({
+  interface DictDialogExpose {
+    handleOpen: (data?: DictDialogOpenData) => Promise<void>
+  }
+
+  const userStore = useUserStore()
+  const { getDictLabelByValue } = userStore
+  const { getDictMap } = storeToRefs(userStore)
+
+  const tableQueryRef = ref<ArtTableQueryExpose>()
+  const typeTreeRef = ref<TypeTreeExpose>()
+  const dictDialogRef = ref<DictDialogExpose>()
+
+  const searchQuery = ref<SearchParams>({
     label: '',
     code: '',
     i18nScope: '',
     status: ''
   })
 
-  const {
-    data,
-    columns,
-    columnChecks,
-    loading,
-    pagination,
-    getData,
-    refreshData,
-    handleSizeChange,
-    handleCurrentChange
-  } = useTable<DictListItem>({
-    core: {
-      apiFn: () => handleGetDictListByTypeId(),
-      immediate: false,
-      apiParams: {
-        current: 1,
-        size: 20
-      },
-      columnsFactory: (): ColumnOption[] => [
-        {
-          type: 'selection'
-        },
-        {
-          prop: 'label',
-          label: '字典名称'
-        },
-        {
-          prop: 'code',
-          label: '字典编码'
-        },
-        {
-          prop: 'value',
-          label: '字典值'
-        },
-        {
-          prop: 'i18n',
-          label: '国际化'
-        },
-        {
-          prop: 'i18nScope',
-          label: '国际化范围',
-          formatter: (row: DictListItem) => {
-            const colorMap: Record<string, TagProps['type']> = {
-              '1': 'primary',
-              '2': 'danger'
-            }
-            const tagType = colorMap[String(row.i18nScope)] ?? 'info'
-            return (
-              <ElTag type={tagType}>
-                <span>{getDictLabelByValue('i18nScope', row?.i18nScope || '')}</span>
-              </ElTag>
-            )
-          }
-        },
-        {
-          prop: 'status',
-          label: '状态',
-          formatter: (row: DictListItem) => {
-            const colorMap: Record<string, TagProps['type']> = {
-              '1': 'success',
-              '2': 'danger'
-            }
-            const tagType = colorMap[String(row.status)] ?? 'info'
-            return (
-              <ElTag type={tagType}>
-                <span>{getDictLabelByValue('status', row.status)}</span>
-              </ElTag>
-            )
-          }
-        },
-        {
-          prop: 'color',
-          label: '文字颜色'
-        },
-        {
-          prop: 'sort',
-          label: '排序'
-        },
-        {
-          prop: 'operation',
-          label: '操作',
-          width: 120,
-          fixed: 'right', // 固定列
-          formatter: (row: DictListItem) =>
-            h('div', [
-              h(ArtButtonTable, {
-                type: 'edit',
-                onClick: () => handleEdit(row)
-              }),
-              h(ArtButtonTable, {
-                type: 'delete',
-                onClick: () => handleDelete(row)
-              })
-            ])
+  const searchItems = computed<SearchFormItem[]>(() => [
+    {
+      label: '字典标签',
+      key: 'label',
+      type: 'input',
+      props: { placeholder: '请输入字典标签' }
+    },
+    {
+      label: '字典编码',
+      key: 'code',
+      type: 'input',
+      props: { placeholder: '请输入字典编码' }
+    },
+    {
+      label: '国际化范围',
+      key: 'i18nScope',
+      type: 'select',
+      props: {
+        placeholder: '请选择国际化范围',
+        options: getDictMap.value?.i18nScope ?? []
+      }
+    },
+    {
+      label: '状态',
+      key: 'status',
+      type: 'select',
+      props: {
+        placeholder: '请选择状态',
+        options: getDictMap.value?.status ?? []
+      }
+    }
+  ])
+
+  const headerActions = computed<ArtTableQueryHeaderAction[]>(() => [
+    {
+      type: 'add',
+      onClick: () => handleAdd()
+    },
+    {
+      type: 'delete',
+      content: ({ selectedCount }: ArtTableQueryHeaderActionContext) =>
+        `确定要删除选中的 ${selectedCount} 个字典项吗？`,
+      onClick: async ({ selectedRows }) => {
+        const ids = selectedRows
+          .map((row) => row.id)
+          .filter((id): id is string => typeof id === 'string')
+        await deleteDictBatch(ids)
+        await tableQueryRef.value?.refreshRemove()
+      }
+    }
+  ])
+
+  const columnsFactory = (): ColumnOption<DictListItem>[] => [
+    {
+      type: 'selection',
+      width: 50,
+      fixed: 'left',
+      reserveSelection: true
+    },
+    {
+      prop: 'label',
+      label: '字典名称'
+    },
+    {
+      prop: 'code',
+      label: '字典编码'
+    },
+    {
+      prop: 'value',
+      label: '字典值'
+    },
+    {
+      prop: 'i18n',
+      label: '国际化'
+    },
+    {
+      prop: 'i18nScope',
+      label: '国际化范围',
+      formatter: (row) => {
+        const colorMap: Record<string, TagProps['type']> = {
+          '1': 'primary',
+          '2': 'danger'
         }
-      ]
+        const tagType = colorMap[String(row.i18nScope)] ?? 'info'
+        return (
+          <ElTag type={tagType}>
+            <span>{getDictLabelByValue('i18nScope', row.i18nScope || '')}</span>
+          </ElTag>
+        )
+      }
+    },
+    {
+      prop: 'status',
+      label: '状态',
+      formatter: (row) => {
+        const colorMap: Record<string, TagProps['type']> = {
+          '1': 'success',
+          '2': 'danger'
+        }
+        const tagType = colorMap[String(row.status)] ?? 'info'
+        return (
+          <ElTag type={tagType}>
+            <span>{getDictLabelByValue('status', row.status)}</span>
+          </ElTag>
+        )
+      }
+    },
+    {
+      prop: 'color',
+      label: '文字颜色'
+    },
+    {
+      prop: 'sort',
+      label: '排序'
+    },
+    {
+      prop: 'operation',
+      label: '操作',
+      width: 120,
+      fixed: 'right',
+      formatter: (row) => (
+        <div>
+          <ArtButtonTable type="edit" onClick={() => handleEdit(row)} />
+          <ArtButtonTable type="delete" onClick={() => handleDelete(row)} />
+        </div>
+      )
     }
-  })
+  ]
 
-  const tableSelections = computed(() => {
-    const { elTableRef = null } = artTableRef.value ?? {}
-    return elTableRef?.getSelectionRows() ?? []
-  })
-
-  const handleAdd = () => {
-    const currentDictType = typeTreeRef.value.getCurrentDictType
-    if (isEmpty(currentDictType)) {
-      return ElMessage.warning('请选择字典类型')
+  const fetchTableData = (params: TableParams) => {
+    const currentDictType = typeTreeRef.value?.getCurrentDictType
+    if (isEmpty(currentDictType) || !currentDictType?.id) {
+      return Promise.resolve({
+        records: [],
+        total: 0,
+        current: params.current,
+        size: params.size
+      })
     }
-    dictDialogRef.value.handleOpen({
+
+    const { from, to } = pageInfoHandler({
+      current: params.current,
+      size: params.size
+    })
+
+    return fetchGetDictListByTypeId({
+      typeId: currentDictType.id,
+      ...params,
+      from,
+      to
+    } satisfies DictQueryParams)
+  }
+
+  const handleTreeNodeClick = (): void => {
+    void tableQueryRef.value?.getData()
+  }
+
+  const handleAdd = (): void => {
+    const currentDictType = typeTreeRef.value?.getCurrentDictType
+    if (isEmpty(currentDictType) || !currentDictType?.id) {
+      ElMessage.warning('请选择字典类型')
+      return
+    }
+
+    void dictDialogRef.value?.handleOpen({
       typeId: currentDictType.id,
       dictTypeName: currentDictType.name
     })
   }
-  const handleEdit = (row: DictListItem) => {
-    const currentDictType = typeTreeRef.value.getCurrentDictType
-    dictDialogRef.value.handleOpen({
+
+  const handleEdit = (row: DictListItem): void => {
+    const currentDictType = typeTreeRef.value?.getCurrentDictType
+    void dictDialogRef.value?.handleOpen({
       ...row,
-      dictTypeName: currentDictType.name
+      dictTypeName: currentDictType?.name
     })
   }
 
-  const handleDeleteBatch = () => {
-    const ids: string[] = tableSelections.value?.map((item: DictListItem) => item.id)
-    ElMessageBox.confirm(`确定要删除选中字典项吗？`, '删除字典项', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'error'
-    }).then(async () => {
-      await deleteDictBatch(ids)
-      await getData()
-    })
-  }
-  const handleDelete = (row: DictListItem) => {
-    ElMessageBox.confirm(`确定要删除该字典项吗？`, '删除字典项', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'error'
-    }).then(async () => {
+  const handleDelete = async (row: DictListItem): Promise<void> => {
+    try {
+      await ElMessageBox.confirm('确定要删除该字典项吗？', '删除字典项', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning',
+        confirmButtonClass: 'el-button--danger'
+      })
       await deleteDict(row)
-      await getData()
-    })
+      await tableQueryRef.value?.refreshRemove()
+    } catch {
+      // 用户取消删除时无需额外提示。
+    }
   }
 
-  const handleGetDictListByTypeId = async () => {
-    const currentDictType = typeTreeRef.value.getCurrentDictType
-    if (isEmpty(currentDictType)) {
-      return false
-    }
-    const params: Partial<DictListItem> = {
-      typeId: currentDictType.id,
-      ...form.value
-    }
-    return await fetchGetDictListByTypeId(params as DictListItem)
+  const handleSaveSuccess = (): void => {
+    void tableQueryRef.value?.refreshData()
   }
 </script>
 
-<style scoped></style>
+<style scoped lang="scss">
+  .dict-layout {
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+
+    .dict-tree-panel,
+    .dict-table-panel {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      min-width: 0;
+      min-height: 0;
+    }
+
+    .dict-tree-panel {
+      padding-right: 8px;
+    }
+
+    .dict-table-panel {
+      padding-left: 8px;
+    }
+
+    .dict-splitter {
+      :deep(.el-splitter-panel) {
+        overflow: hidden;
+      }
+
+      :deep(.el-splitter-bar) {
+        width: 16px;
+        cursor: col-resize;
+      }
+
+      :deep(.el-splitter-bar::before) {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 50%;
+        width: 1px;
+        content: '';
+        background: var(--el-border-color);
+        opacity: 0;
+        transform: translateX(-50%);
+        transition:
+          opacity 0.18s ease,
+          background-color 0.18s ease;
+      }
+
+      :deep(.el-splitter-bar__dragger) {
+        width: 16px;
+        height: 56px;
+        border-radius: 999px;
+        opacity: 0;
+        transition:
+          opacity 0.18s ease,
+          background-color 0.18s ease,
+          box-shadow 0.18s ease;
+      }
+
+      :deep(.el-splitter-bar__dragger::before) {
+        width: 3px;
+        height: 32px;
+        border-radius: 999px;
+        background: var(--el-color-primary);
+      }
+
+      :deep(.el-splitter-bar:hover::before),
+      :deep(.el-splitter-bar:has(.el-splitter-bar__dragger-active)::before) {
+        opacity: 1;
+        background: var(--el-color-primary-light-7);
+      }
+
+      :deep(.el-splitter-bar:hover .el-splitter-bar__dragger),
+      :deep(.el-splitter-bar__dragger-active) {
+        opacity: 1;
+      }
+    }
+
+    @media (width <= 768px) {
+      height: auto;
+
+      .dict-splitter {
+        display: block;
+
+        :deep(.el-splitter-panel) {
+          width: 100% !important;
+          height: auto;
+          overflow: visible;
+        }
+
+        :deep(.el-splitter-bar) {
+          display: none;
+        }
+      }
+
+      .dict-tree-panel {
+        padding-right: 0;
+        margin-bottom: 20px;
+      }
+
+      .dict-table-panel {
+        padding-left: 0;
+      }
+    }
+  }
+</style>
