@@ -1,42 +1,114 @@
 <template>
-  <ElDialog
-    v-model="dialogVisible"
-    title="资源选择器"
-    append-to-body
-    destroy-on-close
-    align-center
-    :footer="false"
+  <ArtDialog
+    ref="dialogRef"
+    :width="width"
+    :fullscreen="fullscreen"
+    :show-footer="false"
+    :dialog-props="dialogProps"
+    @closed="handleClosed"
   >
     <div class="h-[595px]">
-      <ResourcePanel v-bind="attrs" @cancel="onCancel" @confirm="onConfirm" />
+      <ResourcePanel
+        v-model="modelValue"
+        v-bind="panelProps"
+        @cancel="handleCancel"
+        @confirm="handleConfirm"
+      />
     </div>
-  </ElDialog>
+  </ArtDialog>
 </template>
 
 <script setup lang="ts">
-  import { omit } from 'lodash-es'
+  import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
+  import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ResourcePanel from './panel.vue'
-  import type { Resource } from './type.ts'
+  import type { Resource, ResourcePanelProps } from './type.ts'
 
-  defineOptions({ name: 'MaResourcePicker' })
+  defineOptions({ name: 'ArtResourcePicker' })
+
+  interface ArtResourcePickerProps extends ResourcePanelProps {
+    title?: string
+    width?: string | number
+    fullscreen?: boolean
+  }
+
+  const props = withDefaults(defineProps<ArtResourcePickerProps>(), {
+    title: '资源选择器',
+    width: '960px',
+    fullscreen: false,
+    multiple: false,
+    limit: undefined,
+    pageSize: 30,
+    showAction: true,
+    dbClickConfirm: false,
+    defaultFileType: ''
+  })
 
   const emit = defineEmits<{
     cancel: []
     confirm: [selected: Resource[]]
   }>()
-  const dialogVisible = defineModel<boolean>('visible', { default: false })
-  function onCancel() {
-    dialogVisible.value = false
+
+  const visibleModel = defineModel<boolean>('visible', { default: false })
+  const modelValue = defineModel<string | string[] | undefined>()
+  const dialogRef = ref<ArtDialogExpose<void>>()
+
+  const dialogProps = {
+    appendToBody: true,
+    closeOnClickModal: false
+  }
+
+  const panelProps = computed<ResourcePanelProps>(() => ({
+    multiple: props.multiple,
+    limit: props.limit,
+    pageSize: props.pageSize,
+    showAction: props.showAction,
+    dbClickConfirm: props.dbClickConfirm,
+    defaultFileType: props.defaultFileType,
+    fileTypes: props.fileTypes
+  }))
+
+  const openDialog = async () => {
+    await dialogRef.value?.handleOpen(undefined, {
+      title: props.title,
+      width: props.width,
+      fullscreen: props.fullscreen,
+      showFooter: false
+    })
+  }
+
+  const closeDialog = async () => {
+    await dialogRef.value?.handleClose(true)
+  }
+
+  const handleCancel = () => {
     emit('cancel')
+    visibleModel.value = false
+    void closeDialog()
   }
 
-  function onConfirm(selected: any[]) {
-    dialogVisible.value = false
+  const handleConfirm = (selected: Resource[]) => {
     emit('confirm', selected)
+    visibleModel.value = false
+    void closeDialog()
   }
 
-  // 获得所有attrs
-  const attrs = omit(useAttrs(), ['onConfirm', 'onCancel'])
-</script>
+  const handleClosed = () => {
+    visibleModel.value = false
+  }
 
-<style scoped lang="scss"></style>
+  watch(
+    () => visibleModel.value,
+    (visible) => {
+      if (visible) {
+        void openDialog()
+        return
+      }
+
+      if (dialogRef.value?.visible.value) {
+        void closeDialog()
+      }
+    },
+    { immediate: true }
+  )
+</script>

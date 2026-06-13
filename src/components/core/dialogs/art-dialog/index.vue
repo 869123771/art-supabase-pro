@@ -12,8 +12,14 @@
     @open-auto-focus="emit('open-auto-focus')"
     @close-auto-focus="emit('close-auto-focus')"
   >
-    <template v-if="$slots.header" #header>
-      <slot name="header" :data="openData" :api="exposedApi" />
+    <template v-if="$slots.header || hasSubtitle" #header="{ titleId, titleClass }">
+      <slot v-if="$slots.header" name="header" :data="openData" :api="exposedApi" />
+      <span v-else :id="titleId" :class="titleClass">{{ dialogTitle }}</span>
+      <div v-if="hasSubtitle" class="art-dialog__subtitle">
+        <slot name="subtitle" :data="openData" :api="exposedApi">
+          {{ dialogSubtitle }}
+        </slot>
+      </div>
     </template>
 
     <ElScrollbar
@@ -50,23 +56,28 @@
 
     <template v-if="options.showFooter" #footer>
       <slot name="footer" :data="openData" :loading="confirmLoading" :api="exposedApi">
-        <div class="art-dialog__footer">
-          <ElButton
-            v-if="options.showCancelButton"
-            :disabled="loading || confirmLoading"
-            @click="() => handleClose()"
-          >
-            {{ options.cancelText }}
-          </ElButton>
-          <ElButton
-            v-if="options.showConfirmButton"
-            type="primary"
-            :loading="confirmLoading"
-            :disabled="loading || options.confirmDisabled"
-            @click="handleConfirm"
-          >
-            {{ options.confirmText }}
-          </ElButton>
+        <div class="art-dialog__footer" :class="{ 'has-left': $slots['footer-left'] }">
+          <div v-if="$slots['footer-left']" class="art-dialog__footer-left">
+            <slot name="footer-left" :data="openData" :loading="confirmLoading" :api="exposedApi" />
+          </div>
+          <div class="art-dialog__footer-actions">
+            <ElButton
+              v-if="options.showCancelButton"
+              :disabled="loading || confirmLoading"
+              @click="() => handleClose()"
+            >
+              {{ options.cancelText }}
+            </ElButton>
+            <ElButton
+              v-if="options.showConfirmButton"
+              type="primary"
+              :loading="confirmLoading"
+              :disabled="loading || options.confirmDisabled"
+              @click="handleConfirm"
+            >
+              {{ options.confirmText }}
+            </ElButton>
+          </div>
         </div>
       </slot>
     </template>
@@ -88,7 +99,9 @@
     Omit<DialogPropsPublic, 'modelValue' | 'title' | 'width'>
   > {
     title?: string
+    subtitle?: string
     width?: string | number
+    fullscreen?: boolean
     contentHeight?: string | number
     showFooter?: boolean
     showCancelButton?: boolean
@@ -112,7 +125,9 @@
 
   const props = withDefaults(defineProps<ArtDialogProps<T>>(), {
     title: '',
+    subtitle: '',
     width: '50%',
+    fullscreen: false,
     contentHeight: undefined,
     showFooter: true,
     showCancelButton: true,
@@ -140,12 +155,15 @@
   }>()
 
   const attrs = useAttrs()
+  const slots = useSlots()
   const dialogRef = shallowRef<DialogInstance>()
   const scrollbarRef = shallowRef<ScrollbarInstance>()
 
   const getDefaultOptions = (): ArtDialogOptions<T> => ({
     title: props.title,
+    subtitle: props.subtitle,
     width: props.width,
+    fullscreen: props.fullscreen,
     contentHeight: props.contentHeight,
     showFooter: props.showFooter,
     showCancelButton: props.showCancelButton,
@@ -222,6 +240,10 @@
     (options.value.dialogProps as Record<string, unknown> | undefined)?.class
   ])
 
+  const dialogTitle = computed(() => String(options.value.title ?? attrs.title ?? ''))
+  const dialogSubtitle = computed(() => String(options.value.subtitle ?? ''))
+  const hasSubtitle = computed(() => Boolean(slots.subtitle || dialogSubtitle.value))
+
   const dialogBindings = computed<Record<string, unknown>>(() => {
     const runtimeProps = options.value.dialogProps ?? {}
     const inheritedAttrs = { ...attrs } as Record<string, unknown>
@@ -243,8 +265,9 @@
       draggable: true,
       ...inheritedAttrs,
       ...runtimeBindings,
-      title: String(options.value.title ?? inheritedAttrs.title ?? ''),
-      width: options.value.width ?? inheritedAttrs.width ?? '50%'
+      title: dialogTitle.value,
+      width: options.value.width ?? inheritedAttrs.width ?? '50%',
+      fullscreen: Boolean(options.value.fullscreen)
     }
   })
 
@@ -297,21 +320,50 @@
     max-width: calc(100vw - 32px);
   }
 
-  .art-dialog__content {
-    min-height: 1px;
-  }
-
-  .art-dialog__scrollbar {
-    width: 100%;
-
-    :deep(.el-scrollbar__view) {
-      padding-right: 4px;
+  .art-dialog {
+    &__content {
+      min-height: 1px;
     }
-  }
 
-  .art-dialog__footer {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
+    &__subtitle {
+      margin: 0 0 16px;
+      font-size: 14px;
+      line-height: 22px;
+      color: var(--el-text-color-secondary);
+    }
+
+    &__scrollbar {
+      width: 100%;
+
+      :deep(.el-scrollbar__view) {
+        padding-right: 4px;
+      }
+    }
+
+    &__footer {
+      display: flex;
+      gap: 0;
+      align-items: center;
+      justify-content: flex-end;
+      width: 100%;
+
+      &.has-left {
+        justify-content: space-between;
+      }
+    }
+
+    &__footer-left {
+      min-width: 0;
+      overflow: hidden;
+      font-size: 14px;
+      color: var(--el-text-color-secondary);
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    &__footer-actions {
+      display: flex;
+      flex: none;
+    }
   }
 </style>

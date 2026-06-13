@@ -180,13 +180,13 @@
   import type { FileType, Resource, ResourcePanelProps } from './type.ts'
   import ArtMenuRight from '@/components/core/others/art-menu-right/index.vue'
   import type { MenuItemType } from '@/components/core/others/art-menu-right/index.vue'
-  import { ElMessageBox } from 'element-plus'
+  import { ElMessage, ElMessageBox } from 'element-plus'
   import { deleteResource, fetchGetResourceList } from '@/api/data-center'
   import useResourceStore from '@/store/modules/resource'
   import { pageInfoHandler } from '@utils/table/tableUtils'
   import { useImageViewer } from '@/hooks'
 
-  defineOptions({ name: 'ArtSourcePanel' })
+  defineOptions({ name: 'ArtResourcePanel' })
 
   const props = withDefaults(defineProps<ResourcePanelProps>(), {
     multiple: false,
@@ -325,17 +325,31 @@
     (newValue) => {
       selectedKeys.value = Array.isArray(newValue) ? newValue : newValue ? [newValue] : []
     },
-    { deep: true }
+    { deep: true, immediate: true }
   )
 
   // 监听selectedKeys变化，更新v-model
   watch(
     () => selectedKeys.value,
     (newKeys) => {
-      const newValue = props.multiple ? newKeys : newKeys[0]
-      // 同样，只有在modelValue真正改变时才更新
-      if (modelValue.value && modelValue.value !== newValue) {
-        modelValue.value = newValue as string | string[]
+      const newValue = props.multiple ? [...newKeys] : newKeys[0]
+      if (props.multiple) {
+        const currentValue = Array.isArray(modelValue.value)
+          ? modelValue.value
+          : modelValue.value
+            ? [modelValue.value]
+            : []
+        const isSame =
+          currentValue.length === newKeys.length &&
+          currentValue.every((key, index) => key === newKeys[index])
+        if (!isSame) {
+          modelValue.value = newValue as string[]
+        }
+        return
+      }
+
+      if (modelValue.value !== newValue) {
+        modelValue.value = newValue as string | undefined
       }
     },
     { deep: true }
@@ -393,11 +407,12 @@
    */
   function select(resource: Resource) {
     const key = resource[returnType] as string
-    // 单选
+    if (!key || selectedKeys.value.includes(key)) return
+
     if (props.multiple) {
-      // 判断是否上限
       if (props.limit && selectedKeys.value.length >= props.limit) {
-        //return msg.warning(t('maxSelect', { limit: props.limit }))
+        ElMessage.warning(`最多只能选择 ${props.limit} 个资源`)
+        return
       }
       selectedKeys.value.push(key)
       if (!selected.value.find((i) => i[returnType] === key)) {
@@ -468,6 +483,7 @@
    * 处理双击资源事件
    */
   function handleDbClick(resource: Resource) {
+    if (!props.dbClickConfirm) return
     // 双击确认选中单个元素
     clearSelected()
     select(resource)

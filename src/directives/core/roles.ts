@@ -30,7 +30,7 @@
  *
  * ## 权限逻辑
  *
- * - 用户角色从 userStore.getUserInfo.roles 获取
+ * - 用户角色从 userStore.getUserInfo.userRoles 获取
  * - 只要用户拥有指定角色中的任意一个，元素就会显示
  * - 如果用户没有任何角色或不满足条件，元素将被移除
  *
@@ -51,7 +51,7 @@ export type RolesDirective = Directive<HTMLElement, string | string[]>
 
 function checkRolePermission(el: HTMLElement, binding: DirectiveBinding<string | string[]>): void {
   const userStore = useUserStore()
-  const userRoles = userStore.getUserInfo.roles
+  const userRoles = userStore.getUserInfo.userRoles
 
   // 如果用户角色为空或未定义，移除元素
   if (!userRoles?.length) {

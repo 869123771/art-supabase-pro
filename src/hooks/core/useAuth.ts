@@ -41,14 +41,14 @@ export const useAuth = () => {
   const menuStore = useMenuStore()
   const { info } = storeToRefs(userStore)
   const { buttonList } = storeToRefs(menuStore)
+  type UserInfoWithDemoButtons = Partial<Api.Auth.UserInfo> & { buttons?: string[] }
 
   // 前端按钮权限（例如：['add', 'edit']）
-  const frontendAuthList = info.value?.buttons ?? []
+  const getFrontendAuthList = () => (info.value as UserInfoWithDemoButtons).buttons ?? []
 
   // 后端路由 meta 配置的权限列表（例如：[{ authMark: 'add' }]）
-  const backendAuthList: AppRouteRecord[] = Array.isArray(buttonList)
-    ? (buttonList as AppRouteRecord[])
-    : []
+  const getBackendAuthList = (): AppRouteRecord[] =>
+    Array.isArray(buttonList.value) ? (buttonList.value as AppRouteRecord[]) : []
 
   /**
    * 检查是否拥有某权限标识（前后端模式通用）
@@ -58,11 +58,11 @@ export const useAuth = () => {
   const hasAuth = (auth: string): boolean => {
     // 前端模式
     if (isFrontendMode.value) {
-      return frontendAuthList.includes(auth)
+      return getFrontendAuthList().includes(auth)
     }
 
     // 后端模式
-    return backendAuthList.some((item) => item?.name === auth)
+    return getBackendAuthList().some((item) => item?.name === auth)
   }
 
   return {
