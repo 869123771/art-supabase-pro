@@ -59,7 +59,7 @@ export class MenuProcessor {
    */
   private async processBackendMenu(): Promise<AppRouteRecord[]> {
     const { data } = await fetchCurrentUserMenu()
-    const { flat, tree = [] } = data ?? {}
+    const { flat = [], tree = [] } = data ?? {}
     // 保存按钮数据到 store
     const menuStore = useMenuStore()
     menuStore.setButtonList(flat)

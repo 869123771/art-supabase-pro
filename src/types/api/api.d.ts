@@ -199,6 +199,134 @@ declare namespace Api {
 
   /** 车辆管理系统 */
   namespace VehicleMgtSys {
+    namespace ArchiveManage {
+      type AuditStatus = 'pending' | 'approved' | 'rejected'
+
+      interface VehicleArchiveAttachment {
+        name: string
+        url: string
+        fileType?: string
+        fileSize?: string
+      }
+
+      interface VehicleArchive {
+        id?: string
+        tenantId?: string
+        plateNo: string
+        companyName?: string
+        selfNo?: string
+        vehicleType: string
+        originType?: string
+        vin: string
+        manufacturer?: string
+        brandModel?: string
+        operationCertNo?: string
+        purchaseCertNo?: string
+        registrationCertNo?: string
+        vehicleColor?: string
+        chassisNo?: string
+        acCode?: string
+        gearboxSerialNo?: string
+        registerDate?: string
+        issueDate?: string
+        invoiceDate?: string
+        startUseDate?: string
+        serviceYears?: number | null
+        approvedPassengerCount?: number | null
+        seatCount?: number | null
+        businessType?: string
+        isAirConditioned?: boolean
+        operationStatus?: string
+        operationStatusChangeDate?: string
+        purchaseStatus?: string
+        purchaseStatusChangeDate?: string
+        inspectionStartDate?: string
+        vehicleLevel?: string
+        isNewEnergy?: boolean
+        threeGuaranteeMileage?: number | null
+        threeGuaranteeDuration?: number | null
+        warrantyMileage?: number | null
+        warrantyDuration?: number | null
+        remark?: string
+
+        grossMass?: number | null
+        curbWeight?: number | null
+        approvedLoadMass?: number | null
+        overallLength?: number | null
+        overallWidth?: number | null
+        overallHeight?: number | null
+        platform?: string
+        frontTrack?: number | null
+        rearTrack?: number | null
+        wheelbase?: number | null
+        axleCount?: number | null
+        tireCount?: number | null
+        leafSpringCount?: number | null
+        isDoubleDeck?: boolean
+
+        engineNo?: string
+        engineModel?: string
+        fuelType?: string
+        displacement?: number | null
+        emissionStandard?: string
+        enginePower?: number | null
+        ratedTorqueSpeed?: number | null
+        engineTorque?: number | null
+
+        plateColor?: string
+        transportIndustry?: string
+        operationType?: string
+        ownerId?: string
+        ownerName?: string
+        ownerPhone?: string
+        terminalPhone?: string
+        ownerGender?: string
+        idCardNo?: string
+        mailingAddress?: string
+        tonnageOrSeat?: string
+        driverOneName?: string
+        driverOnePhone?: string
+        driverTwoName?: string
+        driverTwoPhone?: string
+        operationRoute?: string
+        licensePlateCode?: string
+        serviceStartTime?: string
+        serviceEndTime?: string
+        supportPhoto?: boolean
+
+        vehiclePhotoUrl?: string
+        drivingLicenseFrontUrl?: string
+        drivingLicenseBackUrl?: string
+        operationLicenseUrl?: string
+        attachments?: VehicleArchiveAttachment[]
+
+        auditStatus?: AuditStatus
+        auditRemark?: string
+        auditBy?: string
+        auditTime?: string
+        createBy?: string
+        createTime?: string
+        updateBy?: string
+        updateTime?: string
+      }
+
+      type VehicleArchiveSearchParams = Partial<
+        Pick<
+          VehicleArchive,
+          | 'plateNo'
+          | 'companyName'
+          | 'vehicleType'
+          | 'manufacturer'
+          | 'chassisNo'
+          | 'operationStatus'
+          | 'auditStatus'
+        > &
+          Api.Common.CommonSearchParams & {
+            createTimeRange?: string[]
+          }
+      >
+    }
+
     namespace BasicInfo {
       interface InsuranceCompany {
         id?: string

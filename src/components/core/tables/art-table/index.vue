@@ -333,8 +333,9 @@
   }
 
   const formatEmptyCellValue = (value: unknown) => {
+    if (isEmptyCellValue(value)) return EMPTY_CELL_TEXT
     if (isComponentCellContent(value)) return value
-    return isEmptyCellValue(value) ? EMPTY_CELL_TEXT : value
+    return value
   }
 
   const resolveColumnBoolean = (
@@ -373,7 +374,7 @@
   }
 
   const isComponentCellContent = (content: unknown) => {
-    return typeof content === 'object' || typeof content === 'function'
+    return content !== null && (typeof content === 'object' || typeof content === 'function')
   }
 
   const getRowIdentity = (row: Record<string, any>): string => {

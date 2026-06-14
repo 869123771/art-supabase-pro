@@ -90,6 +90,7 @@ export default ({ mode }: { mode: string }) => {
       // 自动按需导入组件
       Components({
         dts: 'src/types/import/components.d.ts',
+        exclude: [/[\\/]art-data-select[\\/]preview\.vue$/],
         resolvers: [ElementPlusResolver()]
       }),
       // 按需定制主题配置

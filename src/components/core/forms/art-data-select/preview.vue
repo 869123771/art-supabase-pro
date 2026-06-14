@@ -56,22 +56,61 @@
 </template>
 
 <script setup lang="ts">
-  import ArtTableMultipleSelect from '@/components/core/forms/art-data-select/table-multiple.vue'
-  import ArtTableSingleSelect from '@/components/core/forms/art-data-select/table-single.vue'
-  import ArtTreeMultipleSelect from '@/components/core/forms/art-data-select/tree-multiple.vue'
-  import ArtTreeSingleSelect from '@/components/core/forms/art-data-select/tree-single.vue'
-  import type {
-    DataSelectColumn,
-    DataSelectRecord
-  } from '@/components/core/forms/art-data-select/types'
+  import ArtTableMultipleSelect from './table-multiple.vue'
+  import ArtTableSingleSelect from './table-single.vue'
+  import ArtTreeMultipleSelect from './tree-multiple.vue'
+  import ArtTreeSingleSelect from './tree-single.vue'
+  import type { DataSelectColumn, DataSelectRecord } from './types'
 
   const companies: DataSelectRecord[] = [
-    { id: 6910, name: '宁波澄澜数智园区服务有限公司', code: 'NB-P6910', industry: 'park', city: '宁波市', risk: '低' },
-    { id: 7094, name: '洛阳砚川装备运维股份有限公司', code: 'LY-M56210', industry: 'maintenance', city: '洛阳市', risk: '中' },
-    { id: 5691, name: '合肥青岚绿色材料科技有限公司', code: 'HF-G5691', industry: 'material', city: '合肥市', risk: '低' },
-    { id: 9828, name: '泉州简仓即时零售集团', code: 'QZ-R39022', industry: 'retail', city: '泉州市', risk: '高' },
-    { id: 8153, name: '无锡云拓智能供应链有限公司', code: 'WX-S8153', industry: 'supply', city: '无锡市', risk: '中' },
-    { id: 7342, name: '晋江跨境集拼服务中心', code: 'JJ-C7342', industry: 'logistics', city: '晋江市', risk: '低' }
+    {
+      id: 6910,
+      name: '宁波澄澜数智园区服务有限公司',
+      code: 'NB-P6910',
+      industry: 'park',
+      city: '宁波市',
+      risk: '低'
+    },
+    {
+      id: 7094,
+      name: '洛阳砚川装备运维股份有限公司',
+      code: 'LY-M56210',
+      industry: 'maintenance',
+      city: '洛阳市',
+      risk: '中'
+    },
+    {
+      id: 5691,
+      name: '合肥青岚绿色材料科技有限公司',
+      code: 'HF-G5691',
+      industry: 'material',
+      city: '合肥市',
+      risk: '低'
+    },
+    {
+      id: 9828,
+      name: '泉州简仓即时零售集团',
+      code: 'QZ-R39022',
+      industry: 'retail',
+      city: '泉州市',
+      risk: '高'
+    },
+    {
+      id: 8153,
+      name: '无锡云拓智能供应链有限公司',
+      code: 'WX-S8153',
+      industry: 'supply',
+      city: '无锡市',
+      risk: '中'
+    },
+    {
+      id: 7342,
+      name: '晋江跨境集拼服务中心',
+      code: 'JJ-C7342',
+      industry: 'logistics',
+      city: '晋江市',
+      risk: '低'
+    }
   ]
   const warehouses: DataSelectRecord[] = [
     { id: 2001, name: '海曙云拣中心', city: '宁波市', capacity: '82%' },
@@ -122,9 +161,20 @@
   const companyColumns: DataSelectColumn[] = [
     { prop: 'id', label: 'ID', width: 90 },
     { prop: 'name', label: '企业名称', minWidth: 220 },
-    { prop: 'industry', label: '行业', minWidth: 130, formatter: (row) => industryOptions.find((item) => item.value === row.industry)?.label ?? '' },
+    {
+      prop: 'industry',
+      label: '行业',
+      minWidth: 130,
+      formatter: (row) => industryOptions.find((item) => item.value === row.industry)?.label ?? ''
+    },
     { prop: 'city', label: '城市', width: 120 },
-    { prop: 'risk', label: '风险', width: 90, align: 'center', tagType: (row) => row.risk === '低' ? 'success' : row.risk === '中' ? 'warning' : 'danger' }
+    {
+      prop: 'risk',
+      label: '风险',
+      width: 90,
+      align: 'center',
+      tagType: (row) => (row.risk === '低' ? 'success' : row.risk === '中' ? 'warning' : 'danger')
+    }
   ]
   const warehouseColumns: DataSelectColumn[] = [
     { prop: 'id', label: '编号', width: 110 },
@@ -138,7 +188,11 @@
   const warehouseValue = ref<string | number>(2003)
   const warehouseSelected = ref([warehouses[2]])
   const regionValue = ref<Array<string | number>>(['ningbo', 'taihu', 'luoyang'])
-  const regionSelected = ref([regions[0].children[0], regions[0].children[2], regions[1].children[0]])
+  const regionSelected = ref([
+    regions[0].children[0],
+    regions[0].children[2],
+    regions[1].children[0]
+  ])
   const singleRegionValue = ref<string | number>('taihu')
   const singleRegionSelected = ref([regions[0].children[2]])
 </script>

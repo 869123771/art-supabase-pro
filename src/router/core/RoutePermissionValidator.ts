@@ -129,12 +129,23 @@ export class RoutePermissionValidator {
       return false
     }
 
-    const pattern = routePath
-      .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-      .replace(/:([^/]+)/g, '[^/]+')
-      .replace(/\\\*/g, '.*')
+    const segments = routePath.split('/').filter(Boolean)
+    const pattern = `^${segments
+      .map((segment) => {
+        if (segment === '*') {
+          return '(?:/.*)?'
+        }
 
-    return new RegExp(`^${pattern}$`).test(targetPath)
+        if (segment.startsWith(':')) {
+          const isOptional = segment.endsWith('?')
+          return isOptional ? '(?:/[^/]+)?' : '/[^/]+'
+        }
+
+        return `/${segment.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`
+      })
+      .join('')}/?$`
+
+    return new RegExp(pattern).test(targetPath)
   }
 
   /**

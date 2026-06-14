@@ -27,6 +27,8 @@
 import { MenuTypeEnum, SystemThemeEnum } from '@/enums/appEnum'
 import { MenuThemeType, SystemThemeTypes } from '@/types/store'
 
+export type ApiProvider = 'supabase' | 'java'
+
 // 主题设置
 export interface ThemeSetting {
   /** 主题名称 */
@@ -158,6 +160,8 @@ export interface EnvConfig {
   VITE_BASE_URL: string
   // API 地址
   VITE_API_URL: string
+  // API provider: supabase / java
+  VITE_API_PROVIDER?: ApiProvider
   // 是否开启 Mock
   VITE_USE_MOCK?: string
   // 是否开启压缩

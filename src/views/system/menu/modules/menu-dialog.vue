@@ -108,6 +108,23 @@
     menuTree: []
   })
 
+  const hasParentId = (parentId?: string | null): boolean => parentId != null && parentId !== ''
+
+  const resolveFolderComponent = (parentId?: string | null): string =>
+    hasParentId(parentId) ? '' : '/index/index'
+
+  const syncComponentByType = (): void => {
+    if (form.value.type === 'folder') {
+      form.value.component = resolveFolderComponent(form.value.parentId)
+      return
+    }
+
+    if (form.value.type === 'button') {
+      form.value.path = ''
+      form.value.component = ''
+    }
+  }
+
   const rules = computed<FormRules>(() => {
     const titleMessage = {
       button: '输入权限标识',
@@ -119,7 +136,10 @@
         { required: true, message: '请输入名称', trigger: 'blur' },
         { min: 2, max: 20, message: '长度在 2 到 20 个字符', trigger: 'blur' }
       ],
-      path: [{ required: true, message: '请输入路由地址', trigger: 'blur' }],
+      path:
+        form.value.type === 'button'
+          ? []
+          : [{ required: true, message: '请输入路由地址', trigger: 'blur' }],
       title: [{ required: true, message: titleMessage[form.value.type], trigger: 'blur' }]
     }
   })
@@ -137,7 +157,6 @@
         description: '新建时可直接选择类型。按钮权限仍需挂在具体菜单下。',
         props: {
           optionType: 'button',
-          disabled: form.value.id != null && form.value.type !== 'button',
           validateEvent: false,
           onChange: handleMenuTypeChange,
           options: getDictMap.value.menuType ?? []
@@ -156,6 +175,7 @@
           props: {
             clearable: true,
             filterable: true,
+            onChange: handleParentChange,
             placeholder: '不选择则创建为顶级菜单',
             data: select.value.menuTree,
             props: {
@@ -344,9 +364,13 @@
   ): Promise<void> => {
     if (value !== 'folder' && value !== 'menu' && value !== 'button') return
 
-    form.value.component = value === 'folder' ? '/index/index' : ''
+    syncComponentByType()
     await nextTick()
     formRef.value?.clearValidate()
+  }
+
+  const handleParentChange = (): void => {
+    syncComponentByType()
   }
 
   /**
@@ -414,10 +438,13 @@
 
     try {
       const { id, parentId, path, component = '', name, type, sort, ...rest } = toRaw(form.value)
+      const submitPath = type === 'button' ? '' : path
+      const submitComponent =
+        type === 'folder' ? resolveFolderComponent(parentId) : type === 'button' ? '' : component
       const params: AppRouteRecord = {
         parentId: parentId ?? null,
-        path,
-        component,
+        path: submitPath,
+        component: submitComponent,
         name,
         type,
         sort,
@@ -450,9 +477,7 @@
       menuTree: data.menuTree ?? []
     } as MenuFormData)
     loadFormData(data.row ?? {}, data.type ?? 'menu')
-    if (form.value.type === 'folder') {
-      form.value.component = '/index/index'
-    }
+    syncComponentByType()
     await handleResetFields()
   }
 
