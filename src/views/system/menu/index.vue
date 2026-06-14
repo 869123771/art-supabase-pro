@@ -411,8 +411,8 @@
       await saveMenuDragSort(updates)
       ElMessage.success('菜单排序已保存')
       await tableQueryRef.value?.refreshData()
-    } catch {
-      ElMessage.error('菜单拖拽保存失败')
+    } catch (error) {
+      ElMessage.error(error instanceof Error ? error.message : '菜单拖拽保存失败')
       await tableQueryRef.value?.refreshData()
     }
   }
@@ -434,7 +434,7 @@
       await tableQueryRef.value?.refreshRemove()
     } catch (error) {
       if (error !== 'cancel') {
-        ElMessage.error('删除失败')
+        ElMessage.error(error instanceof Error ? error.message : '删除失败')
       }
     }
   }

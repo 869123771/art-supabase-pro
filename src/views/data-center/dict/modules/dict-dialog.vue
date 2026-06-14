@@ -17,6 +17,24 @@
           :predefine="['#67C23A', '#E6A23C', '#F56C6C', '#909399']"
         />
       </template>
+
+      <template #tagType>
+        <div class="dict-tag-style-field">
+          <el-select v-model="form.data.tagType" clearable placeholder="请选择标签样式">
+            <el-option
+              v-for="option in tagTypeOptions"
+              :key="option.value"
+              :label="option.value"
+              :value="option.value"
+            >
+              <div class="dict-tag-style-field__option">
+                <span class="dict-tag-style-field__value">{{ option.value }}</span>
+                <el-tag :type="option.value">{{ option.label }}</el-tag>
+              </div>
+            </el-option>
+          </el-select>
+        </div>
+      </template>
     </ArtForm>
   </ArtDialog>
 </template>
@@ -56,8 +74,16 @@
     status: '1',
     sort: 1,
     color: '',
+    tagType: '',
     remark: ''
   }
+  const tagTypeOptions: Array<{ label: string; value: Api.Common.TagPreset }> = [
+    { label: '主要', value: 'primary' },
+    { label: '成功', value: 'success' },
+    { label: '信息', value: 'info' },
+    { label: '警告', value: 'warning' },
+    { label: '危险', value: 'danger' }
+  ]
   const form = ref({
     data: cloneDeep(dataDefault) as DictListItem | Record<string, any>,
     items: computed(
@@ -141,6 +167,11 @@
             slots: 'color'
           },
           {
+            label: '标签样式',
+            key: 'tagType',
+            slots: 'tagType'
+          },
+          {
             label: '备注信息',
             key: 'remark',
             type: 'input',
@@ -211,7 +242,15 @@
         {
           ...(rest as DictListItem)
         },
-        ['dictTypeName']
+        [
+          'dictTypeName',
+          'tenantId',
+          'createBy',
+          'createTime',
+          'updateBy',
+          'updateTime',
+          'dictTypeTable'
+        ]
       )
       if (!isEdit.value) {
         await addDict(params as DictListItem)
@@ -234,4 +273,38 @@
   const isEdit = computed(() => !!form.value.data?.id)
 </script>
 
-<style scoped lang="scss"></style>
+<style scoped lang="scss">
+  .dict-tag-style-field {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    gap: 8px;
+
+    .el-select {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .el-tag {
+      flex: none;
+    }
+
+    &__option {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      min-width: 0;
+      gap: 12px;
+    }
+
+    &__value {
+      overflow: hidden;
+      font-family:
+        ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
+      color: var(--el-text-color-regular);
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  }
+</style>

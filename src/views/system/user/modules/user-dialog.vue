@@ -29,7 +29,7 @@
   import type { FormItem } from '@/components/core/forms/art-form/index.vue'
   import ArtUploadImage from '@/components/core/forms/art-upload-image/index.vue'
   import { useUserStore } from '@/store/modules/user'
-  import { addUser, editUser } from '@/api/system-manage'
+  import { addUser, editUser, fetchGetEnableTenantList } from '@/api/system-manage'
 
   type UserListItem = Api.SystemManage.UserListItem
   type SaveType = 'add' | 'edit'
@@ -51,6 +51,7 @@
 
   const createInitialForm = (): UserListItem => ({
     id: undefined,
+    tenantId: undefined,
     authUserId: undefined,
     avatar: null,
     userName: '',
@@ -70,6 +71,7 @@
   const isEdit = computed(() => !!formData.value.id)
 
   const rules = computed<FormRules>(() => ({
+    tenantId: [{ required: true, message: '请选择所属租户', trigger: 'change' }],
     userName: [{ min: 2, max: 20, message: '长度在 2 到 20 个字符', trigger: 'change' }],
     userPhone: [{ pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号格式', trigger: 'change' }],
     userEmail: [{ required: true, type: 'email', message: '请输入正确的邮箱', trigger: 'change' }],
@@ -85,6 +87,21 @@
       label: '图像',
       key: 'avatar',
       span: 24
+    },
+    {
+      label: '所属租户',
+      key: 'tenantId',
+      type: 'select',
+      span: 24,
+      api: fetchGetEnableTenantList,
+      resultField: 'data',
+      labelField: 'tenantName',
+      valueField: 'id',
+      labelFn: (item) => `${item.tenantName}（${item.tenantCode}）`,
+      props: {
+        placeholder: '请选择所属租户',
+        filterable: true
+      }
     },
     {
       label: '用户名',

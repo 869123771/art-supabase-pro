@@ -32,7 +32,7 @@
 
 <script setup lang="tsx">
   import { isEmpty } from 'lodash-es'
-  import { ElMessage, ElMessageBox, ElTag, type TagProps } from 'element-plus'
+  import { ElMessage, ElMessageBox, ElTag } from 'element-plus'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type {
     ArtTableQueryExpose,
@@ -65,7 +65,6 @@
   }
 
   const userStore = useUserStore()
-  const { getDictLabelByValue } = userStore
   const { getDictMap } = storeToRefs(userStore)
 
   const tableQueryRef = ref<ArtTableQueryExpose>()
@@ -158,30 +157,18 @@
       prop: 'i18nScope',
       label: '国际化范围',
       formatter: (row) => {
-        const colorMap: Record<string, TagProps['type']> = {
-          '1': 'primary',
-          '2': 'danger'
-        }
-        const tagType = colorMap[String(row.i18nScope)] ?? 'info'
-        return (
-          <ElTag type={tagType}>
-            <span>{getDictLabelByValue('i18nScope', row.i18nScope || '')}</span>
-          </ElTag>
-        )
+        const label = userStore.getDictLabelByValue('i18nScope', row.i18nScope)
+        return <span>{label}</span>
       }
     },
     {
       prop: 'status',
       label: '状态',
       formatter: (row) => {
-        const colorMap: Record<string, TagProps['type']> = {
-          '1': 'success',
-          '2': 'danger'
-        }
-        const tagType = colorMap[String(row.status)] ?? 'info'
+        const tag = userStore.getDictTagByValue('status', row.status)
         return (
-          <ElTag type={tagType}>
-            <span>{getDictLabelByValue('status', row.status)}</span>
+          <ElTag type={tag.type}>
+            <span>{tag.label}</span>
           </ElTag>
         )
       }

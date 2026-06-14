@@ -23,10 +23,10 @@
     </template>
 
     <ElScrollbar
-      v-if="normalizedContentHeight"
+      v-if="shouldUseScrollbar"
       ref="scrollbarRef"
       :height="normalizedContentHeight"
-      :max-height="normalizedContentHeight"
+      :max-height="normalizedContentMaxHeight"
       :always="options.scrollbarAlways"
       :native="options.nativeScrollbar"
       class="art-dialog__scrollbar"
@@ -103,6 +103,7 @@
     width?: string | number
     fullscreen?: boolean
     contentHeight?: string | number
+    contentMaxHeight?: string | number
     showFooter?: boolean
     showCancelButton?: boolean
     showConfirmButton?: boolean
@@ -129,6 +130,7 @@
     width: '50%',
     fullscreen: false,
     contentHeight: undefined,
+    contentMaxHeight: undefined,
     showFooter: true,
     showCancelButton: true,
     showConfirmButton: true,
@@ -165,6 +167,7 @@
     width: props.width,
     fullscreen: props.fullscreen,
     contentHeight: props.contentHeight,
+    contentMaxHeight: props.contentMaxHeight,
     showFooter: props.showFooter,
     showCancelButton: props.showCancelButton,
     showConfirmButton: props.showConfirmButton,
@@ -230,9 +233,21 @@
     getData
   } = overlay
 
+  const normalizeSize = (value?: string | number) => {
+    return typeof value === 'number' ? `${value}px` : value
+  }
+
   const normalizedContentHeight = computed(() => {
     const height = options.value.contentHeight
-    return typeof height === 'number' ? `${height}px` : height
+    return normalizeSize(height)
+  })
+
+  const normalizedContentMaxHeight = computed(() => {
+    return normalizeSize(options.value.contentMaxHeight ?? options.value.contentHeight)
+  })
+
+  const shouldUseScrollbar = computed(() => {
+    return Boolean(normalizedContentHeight.value || normalizedContentMaxHeight.value)
   })
 
   const dialogClass = computed(() => [

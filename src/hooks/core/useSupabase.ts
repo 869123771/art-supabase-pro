@@ -3,6 +3,7 @@ import { isBoolean } from 'lodash-es'
 import { ElMessage } from 'element-plus'
 
 export type SupabaseAction = 'select' | 'insert' | 'update' | 'delete' | 'rpc'
+export const WRITE_PERMISSION_DENIED_MESSAGE = '当前账号没有该数据的维护权限'
 
 /**
  * Options for runQuery
@@ -14,8 +15,10 @@ export interface RunQueryOptions {
   convertToCamelShadow?: boolean // 是否只转换最外层的驼峰命名，默认 false（深层转换）
   returnRawError?: boolean // 是否返回原生错误字段，默认 false
   message?: string
+  noAffectedMessage?: string
   action?: SupabaseAction
   breakReturn?: boolean //打断返回
+  requireAffected?: boolean // 写操作是否要求至少影响一行，用于识别 RLS 导致的 0 行更新/删除
   ignoreCheck?: boolean // 👈 是否忽略检查当前角色有写入权限 默认insert update delete 都检查，查询忽略
 }
 
@@ -106,6 +109,7 @@ export function useSupabase() {
       convertToCamelShadow: false,
       returnRawError: false,
       breakReturn: false,
+      requireAffected: false,
       ignoreCheck: false
     }
   ): Promise<QueryResult<T>> {
@@ -116,6 +120,7 @@ export function useSupabase() {
       convertToCamel = true,
       convertToCamelShadow = false,
       returnRawError = false,
+      requireAffected = false,
       ignoreCheck = false
     } = options ?? {}
     //对用户角色 | 用户邮箱检查是否有写入权限
@@ -140,6 +145,21 @@ export function useSupabase() {
         error: returnRawError && responseJson ? keysToCamelDeep(responseJson) : error
       }
     }
+
+    if (requireAffected && count === 0) {
+      const message = options.noAffectedMessage || '当前账号没有权限操作该数据，或数据不存在'
+      if (showMessage || showErrorMessage) {
+        ElMessage.error(message)
+      }
+      if (breakReturn) {
+        throw new Error(message)
+      }
+      return {
+        data: null,
+        error: new Error(message)
+      }
+    }
+
     if (showMessage) {
       ElMessage.closeAll()
       ElMessage.success(options.message || '操作成功')

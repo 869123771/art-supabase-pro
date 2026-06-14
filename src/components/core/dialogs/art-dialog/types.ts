@@ -14,6 +14,7 @@ export interface ArtDialogOptions<TData = unknown> extends ArtOverlayOptions<
   subtitle?: string
   width?: string | number
   fullscreen?: boolean
+  contentMaxHeight?: string | number
   dialogProps?: Partial<DialogPropsPublic> & Record<string, unknown>
 }
 

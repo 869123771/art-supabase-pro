@@ -70,7 +70,12 @@
     showSearch: true,
     disabledSearch: false,
     enableEnterSearch: true,
-    sanitizeOutput: () => ({})
+    sanitizeOutput: () => ({
+      removeEmptyString: true,
+      removeEmptyArray: true,
+      removeEmptyObject: true,
+      removeEmptyRichText: true
+    })
   })
 
   const emit = defineEmits<{

@@ -218,8 +218,33 @@ export const useUserStore = defineStore(
       localStorage.removeItem(StorageConfig.LAST_USER_ID_KEY)
     }
 
-    const getDictLabelByValue = (dictCode: keyof DictMap | string, value: string) => {
-      return value ? dictMap.value[dictCode]?.find((item) => item.value === value)?.label : ''
+    const getDictLabelByValue = (dictCode: keyof DictMap | string, value?: string) => {
+      return getDictItemByValue(dictCode, value)?.label ?? ''
+    }
+
+    const getDictItemByValue = (dictCode: keyof DictMap | string, value?: string | number) => {
+      if (value === undefined || value === null || value === '') return undefined
+
+      return dictMap.value[dictCode]?.find((item) => String(item.value) === String(value))
+    }
+
+    const getDictTagTypeByValue = (
+      dictCode: keyof DictMap | string,
+      value?: string | number
+    ): Api.Common.TagPreset | undefined => {
+      const tagType = getDictItemByValue(dictCode, value)?.tagType
+      return tagType ? (tagType as Api.Common.TagPreset) : undefined
+    }
+
+    const getDictTagByValue = (dictCode: keyof DictMap | string, value?: string | number) => {
+      const dictItem = getDictItemByValue(dictCode, value)
+
+      return {
+        label: dictItem?.label ?? (value === undefined || value === null ? '' : String(value)),
+        type: getDictTagTypeByValue(dictCode, value),
+        color: dictItem?.color || undefined,
+        item: dictItem
+      }
     }
 
     const fetchUserInfo = async () => {
@@ -265,6 +290,9 @@ export const useUserStore = defineStore(
       getSettingState,
       getWorktabState,
       getDictLabelByValue,
+      getDictItemByValue,
+      getDictTagTypeByValue,
+      getDictTagByValue,
       setDictMap,
       setUserInfo,
       setLoginStatus,

@@ -11,6 +11,7 @@ export type ArtScrollOptions =
 
 export interface ArtOverlayOptions<TData, TApi> {
   contentHeight?: string | number
+  contentMaxHeight?: string | number
   showFooter?: boolean
   showCancelButton?: boolean
   showConfirmButton?: boolean

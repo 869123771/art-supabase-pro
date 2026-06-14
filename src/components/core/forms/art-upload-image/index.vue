@@ -94,7 +94,7 @@
   const uploadBtnRef = ref<HTMLElement>()
   const isOpenResource = ref<boolean>(false)
   const previewList = ref<string[]>([])
-  const ElImageRefs = ref([])
+  const ElImageRefs = ref<Array<{ $el?: HTMLElement }> | { $el?: HTMLElement } | null>(null)
 
   const getSize = computed(() => {
     return {
@@ -180,7 +180,7 @@
   function updateModelValue() {
     emit(
       'update:modelValue',
-      (multiple ? fileList.value.map((file) => file.url!) : fileList.value[0]?.url) as
+      (multiple ? fileList.value.map((file) => file.url!) : (fileList.value[0]?.url ?? '')) as
         | string
         | string[]
     )
@@ -217,7 +217,11 @@
   }
 
   const handleView = () => {
-    ElImageRefs.value?.$el?.children[0]?.click?.()
+    const imageRef = Array.isArray(ElImageRefs.value) ? ElImageRefs.value[0] : ElImageRefs.value
+    const previewElement = imageRef?.$el?.children[0]
+    if (previewElement instanceof HTMLElement) {
+      previewElement.click()
+    }
   }
 
   const handleRemove = (index: number) => {

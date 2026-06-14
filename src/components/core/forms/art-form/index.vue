@@ -21,10 +21,20 @@
           :lg="getColSpan(item.span, 'lg')"
           :xl="getColSpan(item.span, 'xl')"
         >
-          <ElFormItem
-            :prop="item.key"
-            :label-width="item.label ? item.labelWidth || labelWidth : undefined"
-          >
+          <div v-if="isDividerItem(item)" class="art-form-divider">
+            <slot
+              :name="item.key"
+              :item="item"
+              :modelValue="modelValue"
+              :value="getFieldValue(item.key)"
+              :setValue="createSlotSetValue(item)"
+              :clearValue="createSlotClearValue(item)"
+            >
+              <component v-if="typeof item.label !== 'string'" :is="item.label" />
+              <span v-else>{{ item.label }}</span>
+            </slot>
+          </div>
+          <ElFormItem v-else :prop="item.key" :label-width="getFormItemLabelWidth(item)">
             <template #label v-if="item.label">
               <span class="art-form-item__label">
                 <component v-if="typeof item.label !== 'string'" :is="item.label" />
@@ -41,11 +51,18 @@
               </span>
             </template>
             <div class="art-form-item__content">
-              <slot :name="item.key" :item="item" :modelValue="modelValue">
+              <slot
+                :name="item.key"
+                :item="item"
+                :modelValue="modelValue"
+                :value="getFieldValue(item.key)"
+                :setValue="createSlotSetValue(item)"
+                :clearValue="createSlotClearValue(item)"
+              >
                 <component
                   :is="getComponent(item)"
                   :model-value="getFieldValue(item.key)"
-                  @update:model-value="setFieldValue(item.key, $event)"
+                  @update:model-value="setFieldValue(item.key, $event, item)"
                   v-bind="getComponentProps(item)"
                 >
                   <!-- 下拉选择 -->
@@ -209,6 +226,8 @@
     iconPicker: ArtIconPicker, // 图标选择器
     dataSelect: ArtDataSelect // 数据选择器
   }
+
+  const dividerType = 'divider'
 
   const { width } = useWindowSize()
   const { t } = useI18n()
@@ -440,12 +459,12 @@
     'childrenField',
     'autoSelect'
   ]
-  // 输出时的清洗策略默认偏“接口友好”，但允许按业务覆盖。
+  // 业务表单默认保留空字符串，避免编辑时清空字段后输出丢字段；搜索表单可在 ArtSearchBar 中覆盖。
   const sanitizeOutputOptions = computed<SanitizeOutputOptions>(() => ({
-    removeEmptyString: true,
-    removeEmptyArray: true,
-    removeEmptyObject: true,
-    removeEmptyRichText: true,
+    removeEmptyString: false,
+    removeEmptyArray: false,
+    removeEmptyObject: false,
+    removeEmptyRichText: false,
     keepZero: true,
     keepFalse: true,
     ...props.sanitizeOutput
@@ -462,10 +481,14 @@
   }
 
   const getFieldValue = (path: string) => {
+    return getRecordFieldValue(modelValue.value, path)
+  }
+
+  const getRecordFieldValue = (record: Record<string, any> | undefined, path: string) => {
     return parsePath(path).reduce<any>((currentValue, segment) => {
       if (currentValue == null) return undefined
       return currentValue[segment]
-    }, modelValue.value)
+    }, record)
   }
 
   const createModelSnapshot = () => cloneModelValue(modelValue.value)
@@ -501,8 +524,18 @@
     return target
   }
 
-  const setFieldValue = (path: string, value: unknown) => {
-    const normalizedValue = value === '' ? undefined : value
+  const normalizeClearedValue = (value: unknown, item: FormItem): unknown => {
+    if (value !== undefined && value !== null) return value
+
+    if (shouldNormalizeClearToEmptyString(item)) {
+      return ''
+    }
+
+    return value
+  }
+
+  const setFieldValue = (path: string, value: unknown, item: FormItem) => {
+    const normalizedValue = normalizeClearedValue(value, item)
     const segments = parsePath(path)
 
     if (!segments.length) return
@@ -540,6 +573,42 @@
 
     commitModelValue(nextModelValue)
   }
+
+  const emptyStringClearTypes = ['input', 'inputTag', 'select', 'treeSelect', 'cascader']
+  const stringValueFieldKeys = ref(new Set<string>())
+
+  const shouldNormalizeClearToEmptyString = (item: FormItem): boolean => {
+    if (emptyStringClearTypes.includes(String(item.type))) return true
+
+    if (!item.slots && !item.render) return false
+
+    const initialValue = getRecordFieldValue(initialModelValue.value, item.key)
+    return stringValueFieldKeys.value.has(item.key) || typeof initialValue === 'string'
+  }
+
+  const normalizeClearedFormValues = () => {
+    props.items.forEach((item) => {
+      const value = getFieldValue(item.key)
+
+      if (typeof value === 'string') {
+        stringValueFieldKeys.value.add(item.key)
+        return
+      }
+
+      if ((value === null || value === undefined) && shouldNormalizeClearToEmptyString(item)) {
+        setFieldValue(item.key, '', item)
+      }
+    })
+  }
+
+  const createSlotSetValue = (item: FormItem) => {
+    return (value: unknown) => setFieldValue(item.key, value, item)
+  }
+
+  const createSlotClearValue = (item: FormItem) => {
+    return () => setFieldValue(item.key, undefined, item)
+  }
+
   const isRichTextEmpty = (value: string) => {
     if (/<(img|video|audio|iframe|embed|object)\b/i.test(value)) {
       return false
@@ -682,7 +751,7 @@
     }
 
     if (selectedOption) {
-      setFieldValue(item.key, selectedOption.value)
+      setFieldValue(item.key, selectedOption.value, item)
     }
   }
 
@@ -798,6 +867,12 @@
     }
 
     return defaults
+  }
+
+  const isDividerItem = (item: FormItem): boolean => String(item.type) === dividerType
+
+  const getFormItemLabelWidth = (item: FormItem): string | number | undefined => {
+    return item.label ? item.labelWidth || labelWidth.value : undefined
   }
 
   const getComponentProps = (item: FormItem) => {
@@ -968,6 +1043,19 @@
     { deep: true }
   )
 
+  watch(
+    () =>
+      props.items.map((item) => ({
+        key: item.key,
+        type: item.type,
+        slots: item.slots,
+        render: item.render,
+        value: getFieldValue(item.key)
+      })),
+    normalizeClearedFormValues,
+    { deep: true, immediate: true }
+  )
+
   defineExpose({
     ref: formInstance,
     validate: (...args: any[]) => formInstance.value?.validate(...args),
@@ -984,65 +1072,96 @@
 </script>
 
 <style scoped lang="scss">
-  .art-form-item__label {
-    display: inline-flex;
-    align-items: center;
-    min-width: 0;
-  }
-
-  .art-form.art-search-bar {
-    padding: 15px 20px 0;
-  }
-
-  .art-form-item__help-icon {
-    flex: none;
-    margin-left: 4px;
-    color: var(--el-text-color-secondary);
-    cursor: help;
-  }
-
-  .art-form-item__content {
-    width: 100%;
-    min-width: 0;
-  }
-
-  .art-form-item__description {
-    margin-top: 6px;
-    font-size: 12px;
-    line-height: 20px;
-    color: var(--el-text-color-secondary);
-  }
-
-  .art-form__filter-toggle {
-    display: flex;
-    align-items: center;
-    margin-left: 10px;
-    line-height: 32px;
-    color: var(--theme-color);
-    cursor: pointer;
-    transition: color 0.2s ease;
-
-    &:hover {
-      color: var(--ElColor-primary);
+  .art-form {
+    &.art-search-bar {
+      padding: 15px 20px 0;
     }
 
-    span {
+    &-item {
+      &__label {
+        display: inline-flex;
+        align-items: center;
+        min-width: 0;
+      }
+
+      &__help-icon {
+        flex: none;
+        margin-left: 4px;
+        color: var(--el-text-color-secondary);
+        cursor: help;
+      }
+
+      &__content {
+        width: 100%;
+        min-width: 0;
+      }
+
+      &__description {
+        margin-top: 6px;
+        font-size: 12px;
+        line-height: 20px;
+        color: var(--el-text-color-secondary);
+      }
+    }
+
+    &-divider {
+      display: flex;
+      align-items: center;
+      width: 100%;
+      margin: 4px 0 14px;
+      color: var(--el-text-color-primary);
+      font-weight: 600;
+      line-height: 24px;
+
+      &::before {
+        width: 3px;
+        height: 14px;
+        margin-right: 8px;
+        content: '';
+        border-radius: 999px;
+        background: var(--el-color-primary);
+      }
+
+      &::after {
+        flex: 1;
+        height: 1px;
+        margin-left: 12px;
+        content: '';
+        background: var(--el-border-color-lighter);
+      }
+    }
+
+    &__filter-toggle {
+      display: flex;
+      align-items: center;
+      margin-left: 10px;
+      line-height: 32px;
+      color: var(--theme-color);
+      cursor: pointer;
+      transition: color 0.2s ease;
+
+      &:hover {
+        color: var(--ElColor-primary);
+      }
+
+      span {
+        font-size: 14px;
+        user-select: none;
+      }
+    }
+
+    &__filter-toggle-icon {
+      display: flex;
+      align-items: center;
+      margin-left: 4px;
       font-size: 14px;
-      user-select: none;
+      transition: transform 0.2s ease;
     }
-  }
 
-  .art-form__filter-toggle-icon {
-    display: flex;
-    align-items: center;
-    margin-left: 4px;
-    font-size: 14px;
-    transition: transform 0.2s ease;
-  }
-
-  @media (width <= 768px) {
-    .art-form.art-search-bar {
-      padding: 16px 16px 0;
+    @media (width <= 768px) {
+      &.art-search-bar {
+        padding: 16px 16px 0;
+      }
     }
   }
 </style>

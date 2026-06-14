@@ -32,6 +32,12 @@
 
   const formItems = computed<FormItem[]>(() => [
     {
+      label: '基础信息',
+      key: 'basicSection',
+      type: 'divider',
+      span: 24
+    },
+    {
       label: '名称',
       key: 'name',
       type: 'input',
@@ -208,6 +214,7 @@
 | `timeSelect` | `ElTimeSelect` | 无 |
 | `treeSelect` | `ElTreeSelect` | `props.data` / `options` / `api` |
 | `iconPicker` | `ArtIconPicker` | 无 |
+| `divider` | 内置分区标题 | 使用 `label` 作为标题，建议 `span: 24` |
 
 字段组件的 Element Plus Props 和事件写在 `item.props` 中：
 
@@ -225,6 +232,26 @@
     }
   }
 }
+```
+
+## 分区标题
+
+普通表单分区标题直接使用 `type: 'divider'`，不要在业务组件里为标题单独写插槽和样式。
+
+```ts
+const formItems = computed<FormItem[]>(() => [
+  {
+    label: '基础信息',
+    key: 'basicSection',
+    type: 'divider',
+    span: 24
+  },
+  {
+    label: '名称',
+    key: 'name',
+    type: 'input'
+  }
+])
 ```
 
 ## 异步选项

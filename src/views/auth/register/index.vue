@@ -88,7 +88,7 @@
 <script setup lang="ts">
   import { useI18n } from 'vue-i18n'
   import type { FormInstance, FormRules } from 'element-plus'
-  import { QueryResult } from '@supabase/supabase-js'
+  import type { QueryResult } from '@/hooks/core/useSupabase'
   import { register } from '@/api/auth'
 
   defineOptions({ name: 'Register' })

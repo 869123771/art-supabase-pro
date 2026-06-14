@@ -132,18 +132,19 @@
     {
       prop: 'userInfo',
       label: '用户名',
-      width: 280,
+      minWidth: 260,
       formatter: (row: UserListItem) => {
-        return h('div', { class: 'user flex-c' }, [
+        return h('div', { class: 'user-info-cell' }, [
           h(ElImage, {
-            class: 'size-9.5 rounded-md',
+            class: 'user-info-cell__avatar',
             src: row.avatar as string,
             previewSrcList: [row.avatar || ''],
+            fit: 'cover',
             previewTeleported: true
           }),
-          h('div', { class: 'ml-2' }, [
-            h('p', { class: 'user-name' }, row.userName),
-            h('p', { class: 'email' }, row.userEmail)
+          h('div', { class: 'user-info-cell__content' }, [
+            h('p', { class: 'user-info-cell__name' }, row.userName),
+            h('p', { class: 'user-info-cell__email', title: row.userEmail }, row.userEmail)
           ])
         ])
       }
@@ -289,3 +290,51 @@
     }
   }
 </script>
+
+<style scoped lang="scss">
+  .user-page {
+    :deep(.user-info-cell) {
+      display: flex;
+      min-width: 0;
+      align-items: center;
+    }
+
+    :deep(.user-info-cell__avatar) {
+      flex: 0 0 38px;
+      width: 38px;
+      height: 38px;
+      overflow: hidden;
+      border-radius: 6px;
+
+      .el-image__inner {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+    }
+
+    :deep(.user-info-cell__content) {
+      min-width: 0;
+      margin-left: 10px;
+      line-height: 20px;
+    }
+
+    :deep(.user-info-cell__name),
+    :deep(.user-info-cell__email) {
+      max-width: 100%;
+      margin: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    :deep(.user-info-cell__name) {
+      font-weight: 600;
+      color: var(--el-text-color-primary);
+    }
+
+    :deep(.user-info-cell__email) {
+      color: var(--el-text-color-regular);
+    }
+  }
+</style>

@@ -11,7 +11,7 @@
 - 默认显示“取消”和“确定”按钮
 - 确认成功后默认自动关闭
 - 关闭完成后默认重置运行时数据和 Loading 状态
-- 设置 `contentHeight` 后自动使用 `ElScrollbar`
+- 设置 `contentHeight` 或 `contentMaxHeight` 后自动使用 `ElScrollbar`
 - 未封装的 `ElDialog` Props、事件和属性可以直接透传
 
 ## 配置方式与优先级
@@ -22,7 +22,7 @@
 <ArtDialog
   ref="dialogRef"
   width="680px"
-  content-height="60vh"
+  content-max-height="60vh"
   :show-footer="true"
   :dialog-props="{ appendToBody: true, closeOnClickModal: false }"
   :on-confirm="handleDefaultConfirm"
@@ -132,7 +132,7 @@ dialogRef.value?.handleOpen(data, {
     await dialogRef.value?.handleOpen(data, {
       title: data.mode === 'edit' ? '编辑用户' : '新增用户',
       width: '760px',
-      contentHeight: '65vh',
+      contentMaxHeight: '65vh',
       onOpen: async (openData) => {
         await nextTick()
         await formRef.value?.handleOpen(openData)
@@ -149,7 +149,7 @@ dialogRef.value?.handleOpen(data, {
 
 `onConfirm` 返回 `false` 时弹窗不会关闭，适合表单校验失败或接口提交失败的场景。
 
-## 固定内容高度
+## 内容滚动高度
 
 传入数字时按像素处理，传入字符串时原样使用：
 
@@ -159,12 +159,12 @@ dialogRef.value?.handleOpen(data, {
 })
 
 dialogRef.value?.handleOpen(data, {
-  contentHeight: '70vh',
+  contentMaxHeight: '70vh',
   scrollbarAlways: true
 })
 ```
 
-没有设置 `contentHeight` 时，不会额外创建 `ElScrollbar`。
+`contentHeight` 是固定内容高度；`contentMaxHeight` 是最大内容高度，内容没超过时自然适应，超过后自动出现滚动条。没有设置 `contentHeight` 和 `contentMaxHeight` 时，不会额外创建 `ElScrollbar`。
 
 ## 自定义插槽
 
@@ -225,6 +225,7 @@ dialogRef.value?.handleOpen(user, {
 | `title` | `string` | `''` | 标题 |
 | `width` | `string \| number` | `'50%'` | 弹窗宽度 |
 | `contentHeight` | `string \| number` | `undefined` | 内容固定高度，设置后启用滚动条 |
+| `contentMaxHeight` | `string \| number` | `undefined` | 内容最大高度，超过后启用滚动条 |
 | `showFooter` | `boolean` | `true` | 是否显示 Footer |
 | `showCancelButton` | `boolean` | `true` | 是否显示取消按钮 |
 | `showConfirmButton` | `boolean` | `true` | 是否显示确定按钮 |
@@ -354,7 +355,7 @@ dialogRef.value?.handleOpen(data, {
 - 列表页面只维护业务弹窗 Ref，不直接组合 `ArtDialog` 和业务表单
 - 表单校验失败时让 `onConfirm` 返回 `false`
 - 接口异常建议在业务层提示，并返回 `false` 保持弹窗
-- 大表单统一设置 `contentHeight: '70vh'`
+- 大表单优先设置 `contentMaxHeight: '70vh'`，确实需要固定内容区域时再用 `contentHeight`
 - 多种业务内容共用一个弹窗时使用动态 `content`
 - 需要完全自定义操作区时使用 `#footer`
 - 通用默认配置放组件 Props，业务场景差异放 `handleOpen` 第二参数

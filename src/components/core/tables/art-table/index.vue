@@ -324,6 +324,19 @@
     )
   }
 
+  const EMPTY_CELL_TEXT = '--'
+
+  const isEmptyCellValue = (value: unknown) => {
+    return (
+      value === undefined || value === null || (typeof value === 'string' && value.trim() === '')
+    )
+  }
+
+  const formatEmptyCellValue = (value: unknown) => {
+    if (isComponentCellContent(value)) return value
+    return isEmptyCellValue(value) ? EMPTY_CELL_TEXT : value
+  }
+
   const resolveColumnBoolean = (
     value: boolean | ((row: Record<string, any>) => boolean) | undefined,
     row: Record<string, any>,
@@ -354,9 +367,9 @@
     col: ColumnOption,
     slotScope: { row: Record<string, any>; column: unknown; $index: number }
   ) => {
-    if (col.formatter) return col.formatter(slotScope.row)
-    if (col.prop) return getCellValue(slotScope.row, col.prop)
-    return ''
+    if (col.formatter) return formatEmptyCellValue(col.formatter(slotScope.row))
+    if (col.prop) return formatEmptyCellValue(getCellValue(slotScope.row, col.prop))
+    return EMPTY_CELL_TEXT
   }
 
   const isComponentCellContent = (content: unknown) => {
@@ -481,6 +494,21 @@
 
     if (shouldDefaultOverflowTooltip) {
       columnProps.showOverflowTooltip = true
+    }
+
+    const shouldFormatEmptyValue =
+      !columnProps.useSlot &&
+      columnProps.prop &&
+      !['selection', 'expand', 'globalIndex', 'index'].includes(String(columnProps.type))
+
+    if (shouldFormatEmptyValue) {
+      const userFormatter = columnProps.formatter
+      columnProps.formatter = (row: Record<string, any>) => {
+        const value = userFormatter
+          ? userFormatter(row)
+          : getCellValue(row, String(columnProps.prop))
+        return formatEmptyCellValue(value)
+      }
     }
 
     // 删除自定义的插槽控制属性

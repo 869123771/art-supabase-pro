@@ -65,6 +65,10 @@ declare namespace Api {
 
     /** 启用状态 */
     type EnableStatus = '1' | '2'
+    /** Element Plus Tag 预设类型 */
+    type TagPreset = 'primary' | 'success' | 'info' | 'warning' | 'danger'
+    /** 字典项保存的 Tag 类型，空值表示默认样式 */
+    type TagType = '' | TagPreset
   }
 
   /** 认证类型 */
@@ -114,6 +118,7 @@ declare namespace Api {
     /** 用户列表项 */
     interface UserListItem {
       id?: string
+      tenantId?: string
       avatar?: string | null
       status?: string
       password: string
@@ -145,6 +150,7 @@ declare namespace Api {
     /** 角色列表项 */
     interface RoleListItem {
       id?: string
+      tenantId?: string
       roleId?: number
       roleName: string
       roleCode: string
@@ -167,6 +173,28 @@ declare namespace Api {
           endTime: string | null
         }
     >
+
+    /** 租户列表项 */
+    interface TenantListItem {
+      id?: string
+      tenantCode: string
+      tenantName: string
+      status?: Api.Common.EnableStatus
+      contactName?: string
+      contactPhone?: string
+      contactEmail?: string
+      remark?: string
+      createBy?: string
+      createTime?: string
+      updateBy?: string
+      updateTime?: string
+    }
+
+    /** 租户搜索参数 */
+    type TenantSearchParams = Partial<
+      Pick<TenantListItem, 'tenantCode' | 'tenantName' | 'status' | 'contactName'> &
+        Api.Common.CommonSearchParams
+    >
   }
 
   /** 车辆管理系统 */
@@ -174,6 +202,7 @@ declare namespace Api {
     namespace BasicInfo {
       interface InsuranceCompany {
         id?: string
+        tenantId?: string
         companyName: string
         contactPerson?: string
         contactPhone?: string
@@ -191,6 +220,7 @@ declare namespace Api {
 
       interface Supplier {
         id?: string
+        tenantId?: string
         supplierName: string
         contactPerson?: string
         contactPhone?: string
@@ -210,6 +240,7 @@ declare namespace Api {
 
       interface PartsCategory {
         id?: string
+        tenantId?: string
         parentId?: string | null
         categoryName: string
         categoryCode: string
@@ -228,6 +259,41 @@ declare namespace Api {
         Pick<PartsCategory, 'parentId' | 'categoryName' | 'categoryCode' | 'status'> &
           Api.Common.CommonSearchParams
       >
+
+      interface Parts {
+        id?: string
+        tenantId?: string
+        partName: string
+        partCode: string
+        categoryId?: string | null
+        categoryName?: string
+        brand?: string
+        model?: string
+        unit?: string
+        supplierId?: string | null
+        supplierName?: string
+        manufacturer?: string
+        supplierContact?: string
+        isConsumable?: boolean
+        warrantyMileage?: number | null
+        warrantyDuration?: number | null
+        serviceLife?: number | null
+        serviceMileage?: number | null
+        status?: Api.Common.EnableStatus
+        remark?: string
+        createBy?: string
+        createTime?: string
+        updateBy?: string
+        updateTime?: string
+      }
+
+      type PartsSearchParams = Partial<
+        Pick<
+          Parts,
+          'partName' | 'partCode' | 'categoryId' | 'brand' | 'model' | 'supplierId' | 'status'
+        > &
+          Api.Common.CommonSearchParams
+      >
     }
   }
 
@@ -236,6 +302,7 @@ declare namespace Api {
     /** 数据字典列表项 */
     interface DictListItem {
       id?: string
+      tenantId?: string
       typeId?: string
       name: string
       code: string
@@ -246,6 +313,7 @@ declare namespace Api {
       i18nScope?: string
       remark?: string
       color?: string
+      tagType?: Api.Common.TagType
       sort?: number
       createBy?: string
       createTime?: string
@@ -274,6 +342,7 @@ declare namespace Api {
 
       interface ResourceListItem {
         id?: number
+        tenantId?: string
         storageMode?: number
         originName?: string
         objectName?: string

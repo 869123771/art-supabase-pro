@@ -24,8 +24,6 @@
   import { editUser, fetchGetEnableRoleList } from '@/api/system-manage'
 
   type UserListItem = Api.SystemManage.UserListItem
-  type RoleListItem = Api.SystemManage.RoleListItem
-  type DictListItem = Api.DataCenter.DictListItem
   type UserRoleFormData = Pick<UserListItem, 'userRoles' | 'id'>
 
   interface Emits {
@@ -35,7 +33,6 @@
   const emit = defineEmits<Emits>()
   const dialogRef = ref<ArtDialogExpose<UserListItem>>()
   const formRef = ref()
-  const roleOptions = ref<DictListItem[]>([])
   const rules: FormRules = {}
 
   const createInitialForm = (): UserRoleFormData => ({
@@ -49,9 +46,12 @@
       label: '角色',
       key: 'userRoles',
       type: 'select',
+      api: fetchGetEnableRoleList,
+      resultField: 'data',
+      labelField: 'roleName',
+      valueField: 'roleCode',
       props: {
-        multiple: true,
-        options: roleOptions.value
+        multiple: true
       }
     }
   ])
@@ -93,18 +93,6 @@
       }
     })
   }
-
-  const handleGetRoles = async (): Promise<void> => {
-    const { data } = await fetchGetEnableRoleList()
-    roleOptions.value = (data as RoleListItem[]).map(({ roleCode, roleName }) => ({
-      label: roleName,
-      value: roleCode
-    })) as DictListItem[]
-  }
-
-  onMounted(() => {
-    void handleGetRoles()
-  })
 
   defineExpose({
     handleOpen,

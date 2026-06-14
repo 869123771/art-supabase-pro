@@ -1,8 +1,12 @@
 import { AppRouteRecord } from '@/types/router'
 import { useSupabase } from '@/hooks'
+import { WRITE_PERMISSION_DENIED_MESSAGE } from '@/hooks/core/useSupabase'
 import { buildSpecsFromMap, applyFilters } from '@utils/supabase-filters'
 import { toNextDayStartUTC, toStartOfDayUTC } from '@/utils'
 const { supabase, keysToSnakeDeep, responseHandle } = useSupabase()
+
+type TenantListItem = Api.SystemManage.TenantListItem
+type TenantSearchParams = Api.SystemManage.TenantSearchParams
 
 // 获取用户列表
 export async function fetchGetUserList(params: Api.SystemManage.UserSearchParams) {
@@ -43,6 +47,80 @@ export async function fetchGetUserList(params: Api.SystemManage.UserSearchParams
   query = applyFilters(query, specs, { skipEmpty: true, camelToSnake: false })
 
   return await responseHandle(() => query as any, { ignoreCheck: true })
+}
+
+// 获取租户列表
+export async function fetchGetTenantList(params: TenantSearchParams) {
+  const { tenantCode, tenantName, status, contactName, from = 0, to = 9 } = params
+  const specs = [
+    { col: 'tenant_code', op: 'ilike', val: tenantCode ? `%${tenantCode}%` : undefined },
+    { col: 'tenant_name', op: 'ilike', val: tenantName ? `%${tenantName}%` : undefined },
+    { col: 'status', op: 'eq', val: status },
+    { col: 'contact_name', op: 'ilike', val: contactName ? `%${contactName}%` : undefined }
+  ]
+
+  let query: any = supabase
+    .from('sys_tenant')
+    .select('*', { count: 'exact' })
+    .order('create_time', { ascending: false })
+    .range(from, to)
+
+  query = applyFilters(query, specs, { skipEmpty: true, camelToSnake: false })
+  return await responseHandle(() => query as any, {
+    ignoreCheck: true,
+    showErrorMessage: true
+  })
+}
+
+// 获取可用租户列表
+export async function fetchGetEnableTenantList() {
+  const query = supabase
+    .from('sys_tenant')
+    .select('id, tenant_code, tenant_name, status')
+    .eq('status', '1')
+    .order('tenant_code', { ascending: true })
+
+  return await responseHandle(() => query as any, {
+    ignoreCheck: true,
+    showErrorMessage: true
+  })
+}
+
+// 新增租户
+export async function addTenant(params: TenantListItem) {
+  return await responseHandle(
+    () => supabase.from('sys_tenant').insert(keysToSnakeDeep(params)) as any,
+    {
+      showMessage: true,
+      breakReturn: true
+    }
+  )
+}
+
+// 编辑租户
+export async function editTenant(params: TenantListItem) {
+  const { id, ...data } = params
+  return await responseHandle(
+    () => supabase.from('sys_tenant').update(keysToSnakeDeep(data)).eq('id', id) as any,
+    {
+      showMessage: true,
+      breakReturn: true
+    }
+  )
+}
+
+// 删除租户
+export async function deleteTenant(id: string) {
+  return await responseHandle(() => supabase.from('sys_tenant').delete().eq('id', id) as any, {
+    showMessage: true
+  })
+}
+
+// 批量删除租户
+export async function deleteTenantBatch(ids: string[]) {
+  return await responseHandle(() => supabase.from('sys_tenant').delete().in('id', ids) as any, {
+    showMessage: true
+  })
 }
 
 /*重置密码*/
@@ -242,9 +320,14 @@ export async function fetchGetMenuList(params: AppRouteRecord) {
 /*删除菜单*/
 export async function deleteMenu(params: Record<string, any>) {
   const { ids } = params as any
-  return await responseHandle(() => supabase.from('sys_menu').delete().in('id', ids) as any, {
-    showMessage: true
-  })
+  return await responseHandle(
+    () => supabase.from('sys_menu').delete({ count: 'exact' }).in('id', ids) as any,
+    {
+      showMessage: true,
+      requireAffected: true,
+      noAffectedMessage: WRITE_PERMISSION_DENIED_MESSAGE
+    }
+  )
 }
 
 /*新增菜单*/
@@ -261,9 +344,16 @@ export async function addRMenu(params: AppRouteRecord) {
 export async function editMenu(params: AppRouteRecord) {
   const { id } = params
   return await responseHandle(
-    () => supabase.from('sys_menu').update(keysToSnakeDeep(params)).eq('id', id) as any,
+    () =>
+      supabase
+        .from('sys_menu')
+        .update(keysToSnakeDeep(params), { count: 'exact' })
+        .eq('id', id) as any,
     {
-      showMessage: true
+      showMessage: true,
+      breakReturn: true,
+      requireAffected: true,
+      noAffectedMessage: WRITE_PERMISSION_DENIED_MESSAGE
     }
   )
 }
@@ -274,12 +364,16 @@ export async function saveMenuDragSort(
 ) {
   const results = await Promise.all(
     params.map(({ id, ...data }) =>
-      supabase.from('sys_menu').update(keysToSnakeDeep(data)).eq('id', id)
+      supabase.from('sys_menu').update(keysToSnakeDeep(data), { count: 'exact' }).eq('id', id)
     )
   )
 
   const error = results.find((result) => result.error)?.error
   if (error) throw error
+
+  if (results.some((result) => result.count === 0)) {
+    throw new Error(WRITE_PERMISSION_DENIED_MESSAGE)
+  }
 
   return { data: null, error: null }
 }

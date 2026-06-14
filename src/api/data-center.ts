@@ -1,5 +1,5 @@
 import { useSupabase } from '@/hooks'
-import type { QueryResult } from '@/hooks/core/useSupabase'
+import { WRITE_PERMISSION_DENIED_MESSAGE, type QueryResult } from '@/hooks/core/useSupabase'
 import { applyFilters, FilterSpec } from '@utils/supabase-filters'
 
 const { supabase, keysToSnakeDeep, responseHandle } = useSupabase()
@@ -21,9 +21,14 @@ export async function fetchGetDictTypeList(params: Api.DataCenter.DictListItem) 
 // 删除字典类型
 export async function deleteDictType(params: Api.DataCenter.DictListItem) {
   const { id } = params
-  return await responseHandle(() => supabase.from('sys_dict_type').delete().eq('id', id) as any, {
-    showMessage: true
-  })
+  return await responseHandle(
+    () => supabase.from('sys_dict_type').delete({ count: 'exact' }).eq('id', id) as any,
+    {
+      showMessage: true,
+      requireAffected: true,
+      noAffectedMessage: WRITE_PERMISSION_DENIED_MESSAGE
+    }
+  )
 }
 
 // 新增字典类型
@@ -41,10 +46,16 @@ export async function addDictType(params: Api.DataCenter.DictListItem) {
 export async function editDictType(params: Api.DataCenter.DictListItem) {
   const { id } = params
   return await responseHandle(
-    () => supabase.from('sys_dict_type').update(keysToSnakeDeep(params)).eq('id', id) as any,
+    () =>
+      supabase
+        .from('sys_dict_type')
+        .update(keysToSnakeDeep(params), { count: 'exact' })
+        .eq('id', id) as any,
     {
       showMessage: true,
-      breakReturn: true
+      breakReturn: true,
+      requireAffected: true,
+      noAffectedMessage: WRITE_PERMISSION_DENIED_MESSAGE
     }
   )
 }
@@ -85,6 +96,7 @@ export async function fetchGetDictList() {
       value,
       sort,
       color,
+      tag_type,
       dict_type_table:sys_dict_type!inner(
         code,
         name
@@ -101,16 +113,26 @@ export async function fetchGetDictList() {
 // 删除字典项
 export async function deleteDict(params: Api.DataCenter.DictListItem) {
   const { id } = params
-  return await responseHandle(() => supabase.from('sys_dictionary').delete().eq('id', id) as any, {
-    showMessage: true
-  })
+  return await responseHandle(
+    () => supabase.from('sys_dictionary').delete({ count: 'exact' }).eq('id', id) as any,
+    {
+      showMessage: true,
+      requireAffected: true,
+      noAffectedMessage: WRITE_PERMISSION_DENIED_MESSAGE
+    }
+  )
 }
 
 // 批量删除字典项
 export async function deleteDictBatch(ids: string[]) {
-  return await responseHandle(() => supabase.from('sys_dictionary').delete().in('id', ids) as any, {
-    showMessage: true
-  })
+  return await responseHandle(
+    () => supabase.from('sys_dictionary').delete({ count: 'exact' }).in('id', ids) as any,
+    {
+      showMessage: true,
+      requireAffected: true,
+      noAffectedMessage: WRITE_PERMISSION_DENIED_MESSAGE
+    }
+  )
 }
 
 // 新增字典项
@@ -128,10 +150,16 @@ export async function addDict(params: Api.DataCenter.DictListItem) {
 export async function editDict(params: Api.DataCenter.DictListItem) {
   const { id } = params
   return await responseHandle(
-    () => supabase.from('sys_dictionary').update(keysToSnakeDeep(params)).eq('id', id) as any,
+    () =>
+      supabase
+        .from('sys_dictionary')
+        .update(keysToSnakeDeep(params), { count: 'exact' })
+        .eq('id', id) as any,
     {
       showMessage: true,
-      breakReturn: true
+      breakReturn: true,
+      requireAffected: true,
+      noAffectedMessage: WRITE_PERMISSION_DENIED_MESSAGE
     }
   )
 }
