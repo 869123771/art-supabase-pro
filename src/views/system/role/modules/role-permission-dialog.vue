@@ -1,25 +1,23 @@
 <template>
-  <ArtDialog ref="dialogRef">
-    <div v-loading="contentLoading">
-      <ElTree
-        ref="treeRef"
-        :data="menuList"
-        show-checkbox
-        check-strictly
-        node-key="id"
-        :default-expand-all="isExpandAll"
-        :default-checked-keys="[]"
-        :props="defaultProps"
-        @check="handleTreeCheck"
-      >
-        <template #default="{ data }">
-          <div class="flex items-center">
-            <span v-if="data.isAuth">{{ data.label }}</span>
-            <span v-else>{{ defaultProps.label(data) }}</span>
-          </div>
-        </template>
-      </ElTree>
-    </div>
+  <ArtDialog ref="dialogRef" :loading="contentLoading">
+    <ElTree
+      ref="treeRef"
+      :data="menuList"
+      show-checkbox
+      check-strictly
+      node-key="id"
+      :default-expand-all="isExpandAll"
+      :default-checked-keys="[]"
+      :props="defaultProps"
+      @check="handleTreeCheck"
+    >
+      <template #default="{ data }">
+        <div class="flex items-center">
+          <span v-if="data.isAuth">{{ data.label }}</span>
+          <span v-else>{{ defaultProps.label(data) }}</span>
+        </div>
+      </template>
+    </ElTree>
 
     <template #footer="{ loading, api }">
       <ElButton @click="outputSelectedData">获取选中数据</ElButton>
@@ -125,7 +123,7 @@
     try {
       const { error } = await saveRoleMenuList({
         p_role_id: roleData.value.id,
-        p_menu_ids: getCheckedKeys.value
+        p_menu_ids: getCheckedKeys.value.filter((key): key is string => typeof key === 'string')
       })
       if (error) return false
 

@@ -1,5 +1,42 @@
 # ArtDialog
 
+## Content Loading
+
+`loading` controls the dialog content mask and disables the default footer buttons. It is independent from the confirm button's `confirmLoading`.
+
+```vue
+<ArtDialog
+  ref="dialogRef"
+  :loading="loading"
+  loading-text="Loading..."
+  loading-background="rgba(255, 255, 255, 0.72)"
+/>
+```
+
+It can also be configured for one open operation or controlled through the exposed API:
+
+```ts
+await dialogRef.value?.handleOpen(data, {
+  loading: true,
+  loadingText: 'Loading details...'
+})
+
+dialogRef.value?.setLoading(false)
+```
+
+For asynchronous initialization:
+
+```ts
+onOpen: async (_data, api) => {
+  api.setLoading(true)
+  try {
+    await loadDetail()
+  } finally {
+    api.setLoading(false)
+  }
+}
+```
+
 `ArtDialog` 是基于 Element Plus `ElDialog` 封装的命令式弹窗组件。父组件不需要维护 `v-model`、`visible` 或多组弹窗 Props，只需要持有组件 Ref，并通过 `handleOpen`、 `handleClose`、`handleConfirm` 等方法控制弹窗。
 
 ## 默认行为

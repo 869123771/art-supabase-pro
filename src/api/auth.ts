@@ -36,6 +36,7 @@ export async function login(params: Api.Auth.RegisterParams) {
     }
   )
 }
+
 /*忘记密码*/
 export async function forgetPassword(params: Api.Auth.ForgetPwdParams) {
   const { email, redirectTo } = params
@@ -89,6 +90,46 @@ export async function fetchGetUserInfo() {
       ignoreCheck: true
     }
   )
+}
+
+export async function updateCurrentUserProfile(params: Api.Auth.UserInfo) {
+  const { userId, ...rest } = params
+  return await responseHandle(
+    () =>
+      supabase
+        .from('sys_users')
+        .update(keysToSnakeDeep(rest), { count: 'exact' })
+        .eq('id', userId) as any,
+    {
+      showMessage: true,
+      message: '个人资料保存成功',
+      breakReturn: true,
+      requireAffected: true,
+      ignoreCheck: true
+    }
+  )
+}
+
+export async function updateCurrentUserPassword(currentPassword: string, newPassword: string) {
+  const session = await supabase.auth.getSession()
+  const email = session.data.session?.user.email
+  if (!email) throw new Error('当前账号未绑定登录邮箱')
+
+  await responseHandle(
+    () => supabase.auth.signInWithPassword({ email, password: currentPassword }) as any,
+    {
+      showErrorMessage: true,
+      breakReturn: true,
+      ignoreCheck: true
+    }
+  )
+
+  return await responseHandle(() => supabase.auth.updateUser({ password: newPassword }) as any, {
+    showMessage: true,
+    message: '密码修改成功',
+    breakReturn: true,
+    ignoreCheck: true
+  })
 }
 
 export async function logout() {

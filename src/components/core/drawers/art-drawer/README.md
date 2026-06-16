@@ -1,5 +1,42 @@
 # ArtDrawer
 
+## Content Loading
+
+`loading` controls the drawer content mask and disables the default footer buttons. It is independent from the confirm button's `confirmLoading`.
+
+```vue
+<ArtDrawer
+  ref="drawerRef"
+  :loading="loading"
+  loading-text="Loading..."
+  loading-background="rgba(255, 255, 255, 0.72)"
+/>
+```
+
+It can also be configured for one open operation or controlled through the exposed API:
+
+```ts
+await drawerRef.value?.handleOpen(data, {
+  loading: true,
+  loadingText: 'Loading details...'
+})
+
+drawerRef.value?.setLoading(false)
+```
+
+For asynchronous initialization:
+
+```ts
+onOpen: async (_data, api) => {
+  api.setLoading(true)
+  try {
+    await loadDetail()
+  } finally {
+    api.setLoading(false)
+  }
+}
+```
+
 `ArtDrawer` 是基于 Element Plus `ElDrawer` 封装的命令式抽屉组件。父组件通过 Ref 调用方法，不需要维护 `v-model` 和显示状态，适合详情、编辑、配置、审批等侧边工作流。
 
 ## 默认行为

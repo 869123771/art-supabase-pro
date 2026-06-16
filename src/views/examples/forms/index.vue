@@ -357,7 +357,7 @@
   ]
 
   // 表单配置
-  const formItems = computed(() => [
+  const formItems = computed<FormItem[]>(() => [
     ...(showUserName.value ? [userItem.value] : []),
     // 动态表单项
     ...dynamicFormItems.value,

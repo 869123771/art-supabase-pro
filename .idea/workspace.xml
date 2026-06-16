@@ -8,24 +8,23 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="b8f35119-660a-46e7-82f4-53eee06863eb" name="Changes" comment="feat : parts&#10;pref : system">
-      <change beforePath="$PROJECT_DIR$/.env" beforeDir="false" afterPath="$PROJECT_DIR$/.env" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.env.development" beforeDir="false" afterPath="$PROJECT_DIR$/.env.development" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.env.production" beforeDir="false" afterPath="$PROJECT_DIR$/.env.production" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/dataSources.local.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources.local.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/art-supabase-pro-dev.err.log" beforeDir="false" afterPath="$PROJECT_DIR$/art-supabase-pro-dev.err.log" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/art-supabase-pro-dev.out.log" beforeDir="false" afterPath="$PROJECT_DIR$/art-supabase-pro-dev.out.log" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/data-select-preview.html" beforeDir="false" afterPath="$PROJECT_DIR$/data-select-preview.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/api/vehicle-mgt-sys.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/vehicle-mgt-sys.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/components/core/tables/art-table/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/tables/art-table/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/data-select-preview.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/data-select-preview.vue" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/plugins/supabase.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/plugins/supabase.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/router/core/MenuProcessor.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/router/core/MenuProcessor.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/router/core/RoutePermissionValidator.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/router/core/RoutePermissionValidator.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/api/auth.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/auth.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/api/system-manage.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/system-manage.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/core/dialogs/art-dialog/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/dialogs/art-dialog/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/core/dialogs/art-dialog/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/dialogs/art-dialog/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/core/drawers/art-drawer/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/drawers/art-drawer/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/core/drawers/art-drawer/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/drawers/art-drawer/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/core/forms/art-form/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/forms/art-form/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/hooks/core/useArtOverlay.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/hooks/core/useArtOverlay.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/types/api/api.d.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/types/api/api.d.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/types/config/index.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/types/config/index.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/system/menu/modules/menu-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/system/menu/modules/menu-dialog.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/vite.config.ts" beforeDir="false" afterPath="$PROJECT_DIR$/vite.config.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/auth/login/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/auth/login/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/examples/forms/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/examples/forms/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/system/role/modules/role-permission-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/system/role/modules/role-permission-dialog.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/system/tenant/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/system/tenant/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/system/user-center/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/system/user-center/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/system/user/modules/user-role-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/system/user/modules/user-role-dialog.vue" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -652,16 +651,5 @@
     <MESSAGE value="feat : vehicle info &#10;pref : system" />
     <MESSAGE value="feat : parts&#10;pref : system" />
     <option name="LAST_COMMIT_MESSAGE" value="feat : parts&#10;pref : system" />
-  </component>
-  <component name="XDebuggerManager">
-    <breakpoint-manager>
-      <breakpoints>
-        <line-breakpoint enabled="true" type="javascript">
-          <url>file://$PROJECT_DIR$/src/views/system/role/modules/role-permission-dialog.vue</url>
-          <line>3</line>
-          <option name="timeStamp" value="2" />
-        </line-breakpoint>
-      </breakpoints>
-    </breakpoint-manager>
   </component>
 </project>

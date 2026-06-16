@@ -10,6 +10,10 @@ export type ArtScrollOptions =
     }
 
 export interface ArtOverlayOptions<TData, TApi> {
+  loading?: boolean
+  loadingText?: string
+  loadingBackground?: string
+  loadingCustomClass?: string
   contentHeight?: string | number
   contentMaxHeight?: string | number
   showFooter?: boolean
@@ -101,6 +105,7 @@ export const useArtOverlay = <TData, TApi, TOptions extends ArtOverlayOptions<TD
 
   const setOptions = (value: Partial<TOptions>) => {
     options.value = config.mergeOptions(options.value, value)
+    if ('loading' in value) loading.value = Boolean(value.loading)
   }
 
   const setData = (data: TData) => {
@@ -126,6 +131,8 @@ export const useArtOverlay = <TData, TApi, TOptions extends ArtOverlayOptions<TD
   const handleOpen = async (data = {} as TData, openOptions: Partial<TOptions> = {}) => {
     const sequence = ++openSequence
     options.value = config.mergeOptions(config.getDefaultOptions(), openOptions)
+    loading.value = Boolean(options.value.loading)
+    confirmLoading.value = false
     initialData.value = cloneOverlayData(data)
     openData.value = cloneOverlayData(data)
     closePending.value = false

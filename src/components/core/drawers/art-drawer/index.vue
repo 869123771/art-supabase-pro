@@ -21,14 +21,18 @@
 
     <ElScrollbar
       v-if="normalizedContentHeight"
+      v-loading="contentLoading"
       ref="scrollbarRef"
       :height="normalizedContentHeight"
       :max-height="normalizedContentHeight"
       :always="options.scrollbarAlways"
       :native="options.nativeScrollbar"
+      :element-loading-text="options.loadingText"
+      :element-loading-background="options.loadingBackground"
+      :element-loading-custom-class="options.loadingCustomClass"
       class="art-drawer__scrollbar"
     >
-      <div v-loading="loading" class="art-drawer__content">
+      <div class="art-drawer__content">
         <component
           :is="options.content"
           v-if="options.content"
@@ -36,11 +40,18 @@
           :data="openData"
           :drawer-api="exposedApi"
         />
-        <slot v-else :data="openData" :api="exposedApi" />
+        <slot v-else :data="openData" :loading="contentLoading" :api="exposedApi" />
       </div>
     </ElScrollbar>
 
-    <div v-else v-loading="loading" class="art-drawer__content">
+    <div
+      v-else
+      v-loading="contentLoading"
+      :element-loading-text="options.loadingText"
+      :element-loading-background="options.loadingBackground"
+      :element-loading-custom-class="options.loadingCustomClass"
+      class="art-drawer__content"
+    >
       <component
         :is="options.content"
         v-if="options.content"
@@ -48,7 +59,7 @@
         :data="openData"
         :drawer-api="exposedApi"
       />
-      <slot v-else :data="openData" :api="exposedApi" />
+      <slot v-else :data="openData" :loading="contentLoading" :api="exposedApi" />
     </div>
 
     <template v-if="options.showFooter" #footer>
@@ -56,7 +67,7 @@
         <div class="art-drawer__footer">
           <ElButton
             v-if="options.showCancelButton"
-            :disabled="loading || confirmLoading"
+            :disabled="contentLoading || confirmLoading"
             @click="() => handleClose()"
           >
             {{ options.cancelText }}
@@ -65,7 +76,7 @@
             v-if="options.showConfirmButton"
             type="primary"
             :loading="confirmLoading"
-            :disabled="loading || options.confirmDisabled"
+            :disabled="contentLoading || options.confirmDisabled"
             @click="handleConfirm"
           >
             {{ options.confirmText }}
@@ -93,6 +104,10 @@
     title?: string
     size?: string | number
     direction?: 'ltr' | 'rtl' | 'ttb' | 'btt'
+    loading?: boolean
+    loadingText?: string
+    loadingBackground?: string
+    loadingCustomClass?: string
     contentHeight?: string | number
     showFooter?: boolean
     showCancelButton?: boolean
@@ -118,6 +133,10 @@
     title: '',
     size: '40%',
     direction: 'rtl',
+    loading: false,
+    loadingText: '',
+    loadingBackground: '',
+    loadingCustomClass: '',
     contentHeight: undefined,
     showFooter: true,
     showCancelButton: true,
@@ -155,6 +174,10 @@
     title: props.title,
     size: props.size,
     direction: props.direction,
+    loading: props.loading,
+    loadingText: props.loadingText,
+    loadingBackground: props.loadingBackground,
+    loadingCustomClass: props.loadingCustomClass,
     contentHeight: props.contentHeight,
     showFooter: props.showFooter,
     showCancelButton: props.showCancelButton,
@@ -204,7 +227,7 @@
 
   const {
     visible,
-    loading,
+    loading: contentLoading,
     confirmLoading,
     openData,
     options,
@@ -230,6 +253,11 @@
     attrs.class,
     (options.value.drawerProps as Record<string, unknown> | undefined)?.class
   ])
+
+  watch(
+    () => props.loading,
+    (value) => setLoading(value)
+  )
 
   const drawerBindings = computed<Record<string, unknown>>(() => {
     const runtimeProps = options.value.drawerProps ?? {}
@@ -280,7 +308,7 @@
 
   exposedApi = {
     visible: readonly(visible),
-    loading: readonly(loading),
+    loading: readonly(contentLoading),
     confirmLoading: readonly(confirmLoading),
     data: readonly(openData) as Readonly<Ref<T>>,
     options: readonly(options) as Readonly<Ref<ArtDrawerOptions<T>>>,

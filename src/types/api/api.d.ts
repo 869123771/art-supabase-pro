@@ -73,6 +73,8 @@ declare namespace Api {
 
   /** 认证类型 */
   namespace Auth {
+    import UserListItem = Api.SystemManage.UserListItem
+
     /** 登录参数 */
     interface RegisterParams {
       userName?: string
@@ -100,14 +102,12 @@ declare namespace Api {
     }
 
     /** 用户信息 */
-    interface UserInfo {
-      userRoles: string[]
-      userId: number
-      userName?: string
-      nickName?: string
-      email: string
-      avatar?: string
-    }
+    type UserInfo = Partial<
+      Omit<UserListItem, 'id' | 'userEmail'> & {
+        userId: string
+        email: string
+      }
+    >
   }
 
   /** 系统管理类型 */
@@ -136,6 +136,7 @@ declare namespace Api {
       updateBy?: string
       updateTime?: string
       authUserId?: string
+      extra?: Record<string, any>
     }
 
     /** 用户搜索参数 */
@@ -436,7 +437,7 @@ declare namespace Api {
       code: string
       status: string
       label?: string
-      value?: string
+      value: string
       i18n?: string
       i18nScope?: string
       remark?: string

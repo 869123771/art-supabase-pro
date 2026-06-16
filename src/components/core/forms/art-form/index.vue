@@ -194,6 +194,7 @@
     type FormItemProp,
     type FormPropsPublic
   } from 'element-plus'
+  import type { SelectPropsPublic } from 'element-plus/es/components/select/src/select'
   import {
     ArrowDownBold,
     ArrowUpBold,
@@ -235,8 +236,18 @@
 
   const formInstance = useTemplateRef<FormInstance>('formRef')
 
+  type ComponentMap = typeof componentMap
+  type FormItemTypedComponentPropsMap = {
+    select: SelectPropsPublic
+  }
+
   export type FormItemContent = string | (() => VNodeChild) | Component
-  export type FormItemType = keyof typeof componentMap | (string & {})
+  export type FormItemPresetType = keyof ComponentMap
+  export type FormItemType = FormItemPresetType | (string & {})
+  export type FormItemComponentProps<TType extends FormItemType> =
+    TType extends keyof FormItemTypedComponentPropsMap
+      ? Partial<FormItemTypedComponentPropsMap[TType]>
+      : Record<string, any>
   export type MaybePromise<T> = T | Promise<T>
   export type FormItemApiParams = Record<string, any> | undefined
   export type FormItemOption = Record<string, any>
@@ -267,7 +278,11 @@
     | ((model: Record<string, any>, item: FormItem) => boolean)
 
   // 表单项配置
-  export interface FormItem<TApiResult = unknown, TParams = FormItemApiParams> {
+  export interface FormItemBase<
+    TApiResult = unknown,
+    TParams = FormItemApiParams,
+    TType extends FormItemType = FormItemType
+  > {
     /** 表单项的唯一标识 */
     key: string
     /** 表单项的标签文本或自定义渲染函数 */
@@ -279,7 +294,7 @@
     /** 表单项标签的宽度，会覆盖 Form 的 labelWidth */
     labelWidth?: string | number
     /** 表单项类型，支持预定义的组件类型 */
-    type?: FormItemType
+    type?: TType
     /** 自定义渲染函数或组件，用于渲染自定义组件（优先级高于 type） */
     render?: (() => VNode) | Component
     /** 是否隐藏该表单项 */
@@ -289,7 +304,7 @@
     /** 选项数据，用于 select、checkbox-group、radio-group 等 */
     options?: Record<string, any>
     /** 传递给表单项组件的属性 */
-    props?: Record<string, any>
+    props?: FormItemComponentProps<TType> & Record<string, any>
     /** 表单项的插槽配置 */
     slots?: Record<string, (() => any) | undefined>
     /** 表单项的占位符文本 */
@@ -320,6 +335,12 @@
     autoSelect?: ApiComponentAutoSelect
     /** 更多属性配置请参考 ElementPlus 官方文档 */
   }
+
+  export type FormItem<TApiResult = unknown, TParams = FormItemApiParams> =
+    | {
+        [TType in FormItemPresetType]: FormItemBase<TApiResult, TParams, TType>
+      }[FormItemPresetType]
+    | FormItemBase<TApiResult, TParams, string & {}>
 
   // 表单配置
   export interface ArtFormProps extends Partial<

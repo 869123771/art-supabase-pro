@@ -24,14 +24,18 @@
 
     <ElScrollbar
       v-if="shouldUseScrollbar"
+      v-loading="contentLoading"
       ref="scrollbarRef"
       :height="normalizedContentHeight"
       :max-height="normalizedContentMaxHeight"
       :always="options.scrollbarAlways"
       :native="options.nativeScrollbar"
+      :element-loading-text="options.loadingText"
+      :element-loading-background="options.loadingBackground"
+      :element-loading-custom-class="options.loadingCustomClass"
       class="art-dialog__scrollbar"
     >
-      <div v-loading="loading" class="art-dialog__content">
+      <div class="art-dialog__content">
         <component
           :is="options.content"
           v-if="options.content"
@@ -39,11 +43,18 @@
           :data="openData"
           :dialog-api="exposedApi"
         />
-        <slot v-else :data="openData" :api="exposedApi" />
+        <slot v-else :data="openData" :loading="contentLoading" :api="exposedApi" />
       </div>
     </ElScrollbar>
 
-    <div v-else v-loading="loading" class="art-dialog__content">
+    <div
+      v-else
+      v-loading="contentLoading"
+      :element-loading-text="options.loadingText"
+      :element-loading-background="options.loadingBackground"
+      :element-loading-custom-class="options.loadingCustomClass"
+      class="art-dialog__content"
+    >
       <component
         :is="options.content"
         v-if="options.content"
@@ -51,7 +62,7 @@
         :data="openData"
         :dialog-api="exposedApi"
       />
-      <slot v-else :data="openData" :api="exposedApi" />
+      <slot v-else :data="openData" :loading="contentLoading" :api="exposedApi" />
     </div>
 
     <template v-if="options.showFooter" #footer>
@@ -63,7 +74,7 @@
           <div class="art-dialog__footer-actions">
             <ElButton
               v-if="options.showCancelButton"
-              :disabled="loading || confirmLoading"
+              :disabled="contentLoading || confirmLoading"
               @click="() => handleClose()"
             >
               {{ options.cancelText }}
@@ -72,7 +83,7 @@
               v-if="options.showConfirmButton"
               type="primary"
               :loading="confirmLoading"
-              :disabled="loading || options.confirmDisabled"
+              :disabled="contentLoading || options.confirmDisabled"
               @click="handleConfirm"
             >
               {{ options.confirmText }}
@@ -102,6 +113,10 @@
     subtitle?: string
     width?: string | number
     fullscreen?: boolean
+    loading?: boolean
+    loadingText?: string
+    loadingBackground?: string
+    loadingCustomClass?: string
     contentHeight?: string | number
     contentMaxHeight?: string | number
     showFooter?: boolean
@@ -129,6 +144,10 @@
     subtitle: '',
     width: '50%',
     fullscreen: false,
+    loading: false,
+    loadingText: '',
+    loadingBackground: '',
+    loadingCustomClass: '',
     contentHeight: undefined,
     contentMaxHeight: undefined,
     showFooter: true,
@@ -166,6 +185,10 @@
     subtitle: props.subtitle,
     width: props.width,
     fullscreen: props.fullscreen,
+    loading: props.loading,
+    loadingText: props.loadingText,
+    loadingBackground: props.loadingBackground,
+    loadingCustomClass: props.loadingCustomClass,
     contentHeight: props.contentHeight,
     contentMaxHeight: props.contentMaxHeight,
     showFooter: props.showFooter,
@@ -216,7 +239,7 @@
 
   const {
     visible,
-    loading,
+    loading: contentLoading,
     confirmLoading,
     openData,
     options,
@@ -258,6 +281,11 @@
   const dialogTitle = computed(() => String(options.value.title ?? attrs.title ?? ''))
   const dialogSubtitle = computed(() => String(options.value.subtitle ?? ''))
   const hasSubtitle = computed(() => Boolean(slots.subtitle || dialogSubtitle.value))
+
+  watch(
+    () => props.loading,
+    (value) => setLoading(value)
+  )
 
   const dialogBindings = computed<Record<string, unknown>>(() => {
     const runtimeProps = options.value.dialogProps ?? {}
@@ -307,7 +335,7 @@
 
   exposedApi = {
     visible: readonly(visible),
-    loading: readonly(loading),
+    loading: readonly(contentLoading),
     confirmLoading: readonly(confirmLoading),
     data: readonly(openData) as Readonly<Ref<T>>,
     options: readonly(options) as Readonly<Ref<ArtDialogOptions<T>>>,

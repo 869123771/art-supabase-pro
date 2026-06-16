@@ -197,8 +197,21 @@ export async function editUser(params: Api.SystemManage.UserListItem) {
 }
 
 // 获取所有用户可分配的角色
-export async function fetchGetEnableRoleList() {
-  return await responseHandle(() => supabase.from('sys_role').select() as any, {
+export async function fetchGetEnableRoleList(params: { tenantId?: string } = {}) {
+  const { tenantId } = params
+
+  if (!tenantId) {
+    return { data: [], error: null }
+  }
+
+  const query = supabase
+    .from('sys_role')
+    .select('id, role_name, role_code, enabled, tenant_id')
+    .eq('tenant_id', tenantId)
+    .eq('enabled', true)
+    .order('role_code', { ascending: true })
+
+  return await responseHandle(() => query as any, {
     ignoreCheck: true
   })
 }
@@ -292,9 +305,10 @@ export async function fetchGetEnableMenuList() {
 }
 
 // 保存角色权限
-export async function saveRoleMenuList(params: any) {
+export async function saveRoleMenuList(params: { p_role_id: string; p_menu_ids: string[] }) {
   return await responseHandle(() => supabase.rpc('set_role_menus', params) as any, {
-    showMessage: true
+    showMessage: true,
+    breakReturn: true
   })
 }
 

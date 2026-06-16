@@ -181,7 +181,6 @@
   const isPassing = ref(false)
   const isClickPass = ref(false)
 
-  const systemName = AppConfig.systemInfo.name
   const formRef = ref<FormInstance>()
 
   const formData = reactive({
@@ -302,13 +301,15 @@
 
   // 登录成功提示
   const showLoginSuccessNotice = () => {
+    const { userName, nickName, email } = userStore.getUserInfo
+    const systemName = nickName || userName || email
     setTimeout(() => {
       ElNotification({
         title: t('login.success.title'),
         type: 'success',
         duration: 2500,
         zIndex: 10000,
-        message: `${t('login.success.message')}, ${systemName}!`
+        message: `${t('login.success.message')}, ${systemName}`
       })
     }, 1000)
   }

@@ -27,6 +27,7 @@
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import { deleteTenant, deleteTenantBatch, fetchGetTenantList } from '@/api/system-manage'
   import TenantDialog from './modules/tenant-dialog.vue'
+  import { useUserStore } from '@/store/modules/user'
 
   defineOptions({ name: 'Tenant' })
 
@@ -37,6 +38,7 @@
   interface DialogExpose {
     handleOpen: (row?: Tenant) => Promise<void>
   }
+  const { getDictMap, getDictTagByValue } = useUserStore()
 
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<DialogExpose>()
@@ -47,11 +49,6 @@
     status: undefined,
     contactName: ''
   })
-
-  const statusOptions = [
-    { label: '启用', value: '1' },
-    { label: '禁用', value: '2' }
-  ]
 
   const searchItems = computed<SearchFormItem[]>(() => [
     {
@@ -74,7 +71,7 @@
       key: 'status',
       type: 'select',
       props: {
-        options: statusOptions
+        options: getDictMap?.status ?? []
       }
     }
   ])
@@ -110,12 +107,6 @@
     })
   }
 
-  const getStatusConfig = (status?: Api.Common.EnableStatus) => {
-    return status === '2'
-      ? { type: 'warning' as const, text: '禁用' }
-      : { type: 'success' as const, text: '启用' }
-  }
-
   const columnsFactory = (): ColumnOption<Tenant>[] => [
     {
       type: 'selection',
@@ -143,8 +134,12 @@
       label: '状态',
       width: 100,
       formatter: (row) => {
-        const status = getStatusConfig(row.status)
-        return <ElTag type={status.type}>{status.text}</ElTag>
+        const tag = getDictTagByValue('status', row.status)
+        return (
+          <ElTag type={tag.type}>
+            <span>{tag.label}</span>
+          </ElTag>
+        )
       }
     },
     {

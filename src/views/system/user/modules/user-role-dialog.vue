@@ -24,7 +24,7 @@
   import { editUser, fetchGetEnableRoleList } from '@/api/system-manage'
 
   type UserListItem = Api.SystemManage.UserListItem
-  type UserRoleFormData = Pick<UserListItem, 'userRoles' | 'id'>
+  type UserRoleFormData = Pick<UserListItem, 'userRoles' | 'id' | 'tenantId'>
 
   interface Emits {
     (e: 'success'): void
@@ -47,11 +47,21 @@
       key: 'userRoles',
       type: 'select',
       api: fetchGetEnableRoleList,
+      params: {
+        tenantId: formData.value.tenantId
+      },
+      shouldFetch: (params) => Boolean(params?.tenantId),
       resultField: 'data',
       labelField: 'roleName',
       valueField: 'roleCode',
       props: {
-        multiple: true
+        multiple: true,
+        filterable: true,
+        collapseTags: true,
+        collapseTagsTooltip: true,
+        maxCollapseTags: 3,
+        disabled: !formData.value.tenantId,
+        placeholder: formData.value.tenantId ? '请选择角色' : '当前用户未绑定租户'
       }
     }
   ])
@@ -80,9 +90,11 @@
 
   const handleOpen = async (data: UserListItem): Promise<void> => {
     await resetForm()
+    const { id, userRoles, tenantId } = data
     formData.value = {
-      id: data.id,
-      userRoles: cloneDeep(data.userRoles ?? [])
+      id,
+      userRoles,
+      tenantId
     }
     await dialogRef.value?.handleOpen(data, {
       title: '赋予角色',
