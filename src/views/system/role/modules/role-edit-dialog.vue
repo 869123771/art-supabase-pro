@@ -5,7 +5,11 @@
         <ElInput v-model="form.roleName" placeholder="请输入角色名称" />
       </ElFormItem>
       <ElFormItem label="角色编码" prop="roleCode">
-        <ElInput v-model="form.roleCode" placeholder="请输入角色编码" />
+        <ElInput
+          v-model="form.roleCode"
+          :disabled="isDefaultRegisterRole"
+          placeholder="请输入角色编码"
+        />
       </ElFormItem>
       <ElFormItem label="描述" prop="description">
         <ElInput
@@ -16,7 +20,7 @@
         />
       </ElFormItem>
       <ElFormItem label="启用">
-        <ElSwitch v-model="form.enabled" />
+        <ElSwitch v-model="form.enabled" :disabled="isDefaultRegisterRole" />
       </ElFormItem>
     </ElForm>
   </ArtDialog>
@@ -45,6 +49,17 @@
   const dialogRef = ref<ArtDialogExpose<RoleEditDialogOpenData>>()
   const formRef = ref<FormInstance>()
   const dialogType = ref<DialogType>('add')
+  const currentTenantCode = ref('')
+  const DEFAULT_REGISTER_TENANT_CODE = 'public-register'
+  const DEFAULT_REGISTER_ROLE_CODE = 'R_REGISTER'
+
+  const isDefaultRegisterRole = computed(() => {
+    return (
+      dialogType.value === 'edit' &&
+      currentTenantCode.value.toLowerCase() === DEFAULT_REGISTER_TENANT_CODE &&
+      String(form.roleCode ?? '').toUpperCase() === DEFAULT_REGISTER_ROLE_CODE
+    )
+  })
 
   const createInitialForm = (): RoleListItem => ({
     id: undefined,
@@ -70,9 +85,6 @@
           table: 'sys_role',
           field: 'role_code',
           getExcludeId: (): string | undefined => form.id,
-          extraWhere: () => ({
-            create_by: form.createBy
-          }),
           message: '角色编码已存在'
         }),
         trigger: 'change'
@@ -83,6 +95,7 @@
 
   const resetForm = async (): Promise<void> => {
     Object.assign(form, createInitialForm())
+    currentTenantCode.value = ''
     await nextTick()
     formRef.value?.clearValidate()
   }
@@ -93,6 +106,7 @@
 
     if (data.roleData) {
       const { id, roleName, roleCode, description, enabled, createBy } = data.roleData
+      currentTenantCode.value = data.roleData.tenant?.tenantCode ?? ''
       Object.assign(form, {
         id,
         roleName,
@@ -115,6 +129,11 @@
 
     try {
       const { id, ...params } = toRaw(form)
+      if (isDefaultRegisterRole.value) {
+        params.roleCode = DEFAULT_REGISTER_ROLE_CODE
+        params.enabled = true
+      }
+
       if (dialogType.value === 'add') {
         await addRole(params)
       } else {

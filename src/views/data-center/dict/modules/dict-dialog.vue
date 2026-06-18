@@ -46,14 +46,22 @@
   import type { FormItem } from '@/components/core/forms/art-form/index.vue'
   import type { FormInstance, FormRules } from 'element-plus'
   import { cloneDeep, isEmpty, omit } from 'lodash-es'
-  import { addDict, editDict } from '@/api/data-center'
+  import { addDict, editDict, fetchGetDictListByTypeId } from '@/api/data-center'
   import { useUserStore } from '@/store/modules/user'
   import { uniqueValidator } from '@/utils'
+  import TreeUtils from '@/utils/tree'
 
   type DictListItem = Api.DataCenter.DictListItem
   interface ArtFormExpose {
     ref: Ref<FormInstance | undefined>
     validate: () => Promise<boolean | void>
+    reloadOptions: (key?: string) => Promise<unknown>
+  }
+
+  interface FormGroup {
+    data: DictListItem | Record<string, any>
+    items: FormItem[]
+    rules: FormRules
   }
 
   const emits = defineEmits(['success'])
@@ -63,9 +71,15 @@
 
   const dialogRef = ref<ArtDialogExpose<DictListItem>>()
   const formRef = ref<ArtFormExpose>()
+  const treeUtils = new TreeUtils({
+    idKey: 'id',
+    parentKey: 'parentId',
+    childrenKey: 'children'
+  })
 
   const dataDefault = {
     typeId: '',
+    parentId: undefined,
     dictTypeName: '',
     label: '',
     code: '',
@@ -84,10 +98,10 @@
     { label: '警告', value: 'warning' },
     { label: '危险', value: 'danger' }
   ]
-  const form = ref({
+  const form: Ref<FormGroup> = ref({
     data: cloneDeep(dataDefault) as DictListItem | Record<string, any>,
     items: computed(
-      () =>
+      (): FormItem[] =>
         [
           {
             label: '所属类型',
@@ -98,6 +112,49 @@
               placeholder: '请输入所属类型',
               clearable: true,
               disabled: true
+            }
+          },
+          {
+            label: '上级字典项',
+            key: 'parentId',
+            type: 'treeSelect',
+            span: 24,
+            api: fetchGetDictListByTypeId,
+            immediate: false,
+            params: {},
+            beforeFetch: () => ({
+              typeId: String(form.value.data.typeId || '')
+            }),
+            shouldFetch: (params): boolean => !!params?.typeId,
+            afterFetch: ({ data = [] }) => {
+              const tree = treeUtils.listToTree(data as DictListItem[]) as DictListItem[]
+              const excludedIds = new Set(
+                treeUtils
+                  .getDescendants(tree, String(form.value.data.id || ''), true)
+                  .map((item) => String(item.id))
+              )
+              const available = (data as DictListItem[]).filter(
+                (item) => !item.id || !excludedIds.has(String(item.id))
+              )
+              return treeUtils.listToTree(
+                available,
+                (a, b) => Number(a.sort || 0) - Number(b.sort || 0)
+              ) as DictListItem[]
+            },
+            labelField: 'label',
+            valueField: 'id',
+            childrenField: 'children',
+            props: {
+              clearable: true,
+              checkStrictly: true,
+              defaultExpandAll: true,
+              renderAfterExpand: false,
+              placeholder: '不选择则为一级字典项',
+              props: {
+                label: 'label',
+                value: 'id',
+                children: 'children'
+              }
             }
           },
           {
@@ -221,14 +278,21 @@
         ...cloneDeep(data)
       }
     }
-
     await dialogRef.value?.handleOpen(data, {
       title: isEdit.value ? '编辑字典' : '新增字典',
       width: '60%',
+      onOpen: async () => {
+        await formRef.value?.reloadOptions('parentId')
+      },
       onConfirm: handleSubmit,
       onReset: handleResetFields
     })
   }
+
+  const normalizePayload = (data: DictListItem): DictListItem => ({
+    ...data,
+    parentId: data.parentId === '' ? null : data.parentId
+  })
 
   const handleSubmit = async (): Promise<boolean> => {
     if (!formRef.value) return false
@@ -238,19 +302,17 @@
       const {
         data: { id, ...rest }
       } = form.value
-      const params = omit<DictListItem>(
-        {
-          ...(rest as DictListItem)
-        },
-        [
+      const params = normalizePayload(
+        omit(rest, [
           'dictTypeName',
+          'children',
           'tenantId',
           'createBy',
           'createTime',
           'updateBy',
           'updateTime',
           'dictTypeTable'
-        ]
+        ]) as DictListItem
       )
       if (!isEdit.value) {
         await addDict(params as DictListItem)

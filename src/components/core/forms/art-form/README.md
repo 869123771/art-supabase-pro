@@ -204,7 +204,7 @@
 | `select` | `ElSelect` + `ElOption` | `props.options` / `options` / `api` |
 | `switch` | `ElSwitch` | 无 |
 | `checkbox` | `ElCheckbox` | 无 |
-| `checkboxGroup` | `ElCheckboxGroup` + `ElCheckbox` | `props.options` / `options` / `api` |
+| `checkboxGroup` | `ElCheckboxGroup` + `ElCheckbox` / `ElCheckboxButton` | `props.options` / `options` / `api`；`props.optionType='button'` 使用按钮样式 |
 | `radioGroup` | `ElRadioGroup` + `ElRadio` / `ElRadioButton` | `props.options` / `options` / `api`；`props.optionType='button'` 使用按钮样式 |
 | `date` | `ElDatePicker` | 无 |
 | `rate` | `ElRate` | 无 |

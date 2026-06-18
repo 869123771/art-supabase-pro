@@ -192,7 +192,7 @@
       { required: true, validator: validatePassword, trigger: 'change' },
       { min: PASSWORD_MIN_LENGTH, message: t('register.rule.passwordLength'), trigger: 'change' }
     ],
-    email: [{ type: 'email', trigger: 'change' }],
+    email: [{ type: 'email', trigger: 'change', message: t('register.rule.emailIncorrect') }],
     confirmPassword: [{ required: true, validator: validateConfirmPassword, trigger: 'change' }],
     agreement: [{ validator: validateAgreement, trigger: 'change' }]
   }))

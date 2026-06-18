@@ -152,6 +152,7 @@ declare namespace Api {
     interface RoleListItem {
       id?: string
       tenantId?: string
+      tenant?: Pick<TenantListItem, 'tenantCode' | 'tenantName'>
       roleId?: number
       roleName: string
       roleCode: string
@@ -181,9 +182,6 @@ declare namespace Api {
       tenantCode: string
       tenantName: string
       status?: Api.Common.EnableStatus
-      contactName?: string
-      contactPhone?: string
-      contactEmail?: string
       remark?: string
       createBy?: string
       createTime?: string
@@ -193,8 +191,7 @@ declare namespace Api {
 
     /** 租户搜索参数 */
     type TenantSearchParams = Partial<
-      Pick<TenantListItem, 'tenantCode' | 'tenantName' | 'status' | 'contactName'> &
-        Api.Common.CommonSearchParams
+      Pick<TenantListItem, 'tenantCode' | 'tenantName' | 'status'> & Api.Common.CommonSearchParams
     >
   }
 
@@ -433,6 +430,7 @@ declare namespace Api {
       id?: string
       tenantId?: string
       typeId?: string
+      parentId?: string | null
       name: string
       code: string
       status: string
@@ -448,6 +446,26 @@ declare namespace Api {
       createTime?: string
       updateBy?: string
       updateTime?: string
+      children?: DictListItem[]
+    }
+
+    type DictTypeNodeType = 'directory' | 'dictionary'
+
+    interface DictTypeItem {
+      id?: string
+      tenantId?: string
+      parentId?: string | null
+      nodeType: DictTypeNodeType
+      name: string
+      code: string
+      status: string
+      sort?: number
+      remark?: string
+      createBy?: string
+      createTime?: string
+      updateBy?: string
+      updateTime?: string
+      children?: DictTypeItem[]
     }
     namespace Resources {
       interface Args {

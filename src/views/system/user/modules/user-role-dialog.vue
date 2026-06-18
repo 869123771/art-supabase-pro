@@ -22,6 +22,7 @@
   import { cloneDeep } from 'lodash-es'
   import type { FormRules } from 'element-plus'
   import { editUser, fetchGetEnableRoleList } from '@/api/system-manage'
+  import { useUserStore } from '@/store/modules/user'
 
   type UserListItem = Api.SystemManage.UserListItem
   type UserRoleFormData = Pick<UserListItem, 'userRoles' | 'id' | 'tenantId'>
@@ -31,6 +32,8 @@
   }
 
   const emit = defineEmits<Emits>()
+  const userStore = useUserStore()
+  const { getUserInfo, isSuper } = storeToRefs(userStore) as Record<string, any>
   const dialogRef = ref<ArtDialogExpose<UserListItem>>()
   const formRef = ref()
   const rules: FormRules = {}
@@ -40,6 +43,10 @@
   })
 
   const formData = ref<UserRoleFormData>(createInitialForm())
+  const currentTenantId = computed(() => getUserInfo.value.tenantId)
+  const roleQueryTenantId = computed(() =>
+    isSuper.value ? formData.value.tenantId : currentTenantId.value
+  )
 
   const formItems = computed<FormItem[]>(() => [
     {
@@ -48,7 +55,7 @@
       type: 'select',
       api: fetchGetEnableRoleList,
       params: {
-        tenantId: formData.value.tenantId
+        tenantId: roleQueryTenantId.value
       },
       shouldFetch: (params) => Boolean(params?.tenantId),
       resultField: 'data',
@@ -60,8 +67,8 @@
         collapseTags: true,
         collapseTagsTooltip: true,
         maxCollapseTags: 3,
-        disabled: !formData.value.tenantId,
-        placeholder: formData.value.tenantId ? '请选择角色' : '当前用户未绑定租户'
+        disabled: !roleQueryTenantId.value,
+        placeholder: roleQueryTenantId.value ? '请选择角色' : '当前用户未绑定租户'
       }
     }
   ])
@@ -80,7 +87,11 @@
     }
 
     try {
-      await editUser({ ...formData.value } as UserListItem)
+      const params = { ...formData.value } as UserListItem
+      if (!isSuper.value) {
+        params.tenantId = currentTenantId.value
+      }
+      await editUser(params)
       emit('success')
       return true
     } catch {
@@ -94,7 +105,7 @@
     formData.value = {
       id,
       userRoles,
-      tenantId
+      tenantId: isSuper.value ? tenantId : currentTenantId.value
     }
     await dialogRef.value?.handleOpen(data, {
       title: '赋予角色',

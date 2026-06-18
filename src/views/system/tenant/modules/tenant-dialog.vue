@@ -41,9 +41,6 @@
     tenantCode: '',
     tenantName: '',
     status: '1',
-    contactName: '',
-    contactPhone: '',
-    contactEmail: '',
     remark: ''
   })
 
@@ -63,12 +60,6 @@
       { required: true, message: '请输入租户名称', trigger: 'blur' },
       { min: 2, max: 100, message: '长度应为 2 到 100 个字符', trigger: 'blur' }
     ],
-    contactName: [{ max: 50, message: '联系人不能超过 50 个字符', trigger: 'blur' }],
-    contactPhone: [{ max: 30, message: '联系电话不能超过 30 个字符', trigger: 'blur' }],
-    contactEmail: [
-      { type: 'email', message: '请输入正确的邮箱地址', trigger: 'blur' },
-      { max: 100, message: '联系邮箱不能超过 100 个字符', trigger: 'blur' }
-    ],
     remark: [{ max: 500, message: '备注不能超过 500 个字符', trigger: 'blur' }]
   }
 
@@ -85,30 +76,6 @@
     {
       label: '租户名称',
       key: 'tenantName',
-      type: 'input',
-      props: {
-        maxlength: 100
-      }
-    },
-    {
-      label: '联系人',
-      key: 'contactName',
-      type: 'input',
-      props: {
-        maxlength: 50
-      }
-    },
-    {
-      label: '联系电话',
-      key: 'contactPhone',
-      type: 'input',
-      props: {
-        maxlength: 30
-      }
-    },
-    {
-      label: '联系邮箱',
-      key: 'contactEmail',
       type: 'input',
       props: {
         maxlength: 100

@@ -18,7 +18,7 @@
 <script setup lang="ts">
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import UserDialog from './modules/user-dialog.vue'
-  import { ElTag, ElMessageBox, ElImage, type TagProps } from 'element-plus'
+  import { ElTag, ElMessageBox, ElImage } from 'element-plus'
   import type { ColumnOption } from '@/types'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type {
@@ -153,14 +153,8 @@
       prop: 'userType',
       label: '用户类型',
       formatter: (row: UserListItem) => {
-        const colorMap: Record<string, TagProps['type']> = {
-          '1': 'primary',
-          '2': 'info'
-        }
-        const tagType = colorMap[String(row.userType)] ?? 'info'
-        return h(ElTag, { type: tagType }, () =>
-          userStore.getDictLabelByValue('userType', row?.userType || '')
-        )
+        const tag = userStore.getDictTagByValue('userType', row.userType)
+        return h(ElTag, { type: tag.type, color: tag.color }, () => tag.label)
       }
     },
     {
@@ -174,14 +168,8 @@
       prop: 'status',
       label: '状态',
       formatter: (row: UserListItem) => {
-        const colorMap: Record<string, TagProps['type']> = {
-          '1': 'success',
-          '2': 'danger'
-        }
-        const tagType = colorMap[String(row.status)] ?? 'info'
-        return h(ElTag, { type: tagType }, () =>
-          userStore.getDictLabelByValue('status', row?.status || '')
-        )
+        const tag = userStore.getDictTagByValue('status', row.status)
+        return h(ElTag, { type: tag.type, color: tag.color }, () => tag.label)
       }
     },
     {

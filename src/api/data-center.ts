@@ -4,22 +4,23 @@ import { applyFilters, FilterSpec } from '@utils/supabase-filters'
 
 const { supabase, keysToSnakeDeep, responseHandle } = useSupabase()
 
-// 字典类型列表
-export async function fetchGetDictTypeList(params: Api.DataCenter.DictListItem) {
+// 字典目录与类型列表
+export async function fetchGetDictTypeList(params: Partial<Api.DataCenter.DictTypeItem> = {}) {
   const { name } = params
   const specs = [{ col: 'name', op: 'ilike', val: name ? `%${name}%` : undefined }]
 
   let query: any = supabase
     .from('sys_dict_type')
     .select('*', { count: 'exact' })
-    .order('create_time', { ascending: false })
+    .order('sort', { ascending: true })
+    .order('name', { ascending: true })
 
   query = applyFilters(query, specs, { skipEmpty: true, camelToSnake: false })
   return await responseHandle(() => query as any, { ignoreCheck: true })
 }
 
 // 删除字典类型
-export async function deleteDictType(params: Api.DataCenter.DictListItem) {
+export async function deleteDictType(params: Api.DataCenter.DictTypeItem) {
   const { id } = params
   return await responseHandle(
     () => supabase.from('sys_dict_type').delete({ count: 'exact' }).eq('id', id) as any,
@@ -32,7 +33,7 @@ export async function deleteDictType(params: Api.DataCenter.DictListItem) {
 }
 
 // 新增字典类型
-export async function addDictType(params: Api.DataCenter.DictListItem) {
+export async function addDictType(params: Api.DataCenter.DictTypeItem) {
   return await responseHandle(
     () => supabase.from('sys_dict_type').insert(keysToSnakeDeep(params)) as any,
     {
@@ -43,13 +44,13 @@ export async function addDictType(params: Api.DataCenter.DictListItem) {
 }
 
 // 编辑字典类型
-export async function editDictType(params: Api.DataCenter.DictListItem) {
-  const { id } = params
+export async function editDictType(params: Api.DataCenter.DictTypeItem) {
+  const { id, ...payload } = params
   return await responseHandle(
     () =>
       supabase
         .from('sys_dict_type')
-        .update(keysToSnakeDeep(params), { count: 'exact' })
+        .update(keysToSnakeDeep(payload), { count: 'exact' })
         .eq('id', id) as any,
     {
       showMessage: true,
@@ -60,11 +61,26 @@ export async function editDictType(params: Api.DataCenter.DictListItem) {
   )
 }
 
+export async function saveDictTypeTreeOrder(
+  updates: Array<{ id: string; parentId: string | null; sort: number }>
+) {
+  return await responseHandle(
+    () =>
+      supabase.rpc('save_dict_type_tree_order', {
+        p_updates: updates
+      }) as any,
+    {
+      breakReturn: true,
+      showMessage: false
+    }
+  )
+}
+
 // 根据类型 ID 查询字典项
 export async function fetchGetDictListByTypeId(
   params: Partial<Api.DataCenter.DictListItem> & Api.Common.CommonSearchParams
 ) {
-  const { typeId, label = '', code, i18nScope, status, from = 0, to = 9 } = params
+  const { typeId, label = '', code, i18nScope, status } = params
   const specs = [
     { col: 'typeId', op: 'eq', val: typeId },
     { col: 'label', op: 'ilike', val: `%${label}%` },
@@ -77,7 +93,7 @@ export async function fetchGetDictListByTypeId(
     .from('sys_dictionary')
     .select('*', { count: 'exact' })
     .order('sort', { ascending: true })
-    .range(from, to)
+    .order('label', { ascending: true })
 
   query = applyFilters(query, specs, { skipEmpty: true, camelToSnake: true })
   return await responseHandle(() => query as any, { ignoreCheck: true })
@@ -148,12 +164,12 @@ export async function addDict(params: Api.DataCenter.DictListItem) {
 
 // 编辑字典项
 export async function editDict(params: Api.DataCenter.DictListItem) {
-  const { id } = params
+  const { id, ...payload } = params
   return await responseHandle(
     () =>
       supabase
         .from('sys_dictionary')
-        .update(keysToSnakeDeep(params), { count: 'exact' })
+        .update(keysToSnakeDeep(payload), { count: 'exact' })
         .eq('id', id) as any,
     {
       showMessage: true,

@@ -78,7 +78,8 @@
 
                   <!-- 复选框组 -->
                   <template v-if="item.type === 'checkboxGroup' && getOptions(item).length">
-                    <ElCheckbox
+                    <component
+                      :is="getProps(item).optionType === 'button' ? ElCheckboxButton : ElCheckbox"
                       v-for="option in getOptions(item)"
                       v-bind="option"
                       :key="option.value"
@@ -173,6 +174,7 @@
   import {
     ElCascader,
     ElCheckbox,
+    ElCheckboxButton,
     ElCheckboxGroup,
     ElDatePicker,
     ElIcon,
@@ -430,6 +432,7 @@
   const isExpanded = ref(props.defaultExpanded)
   const asyncOptionsMap = ref<Record<string, Record<string, any>[]>>({})
   const asyncLoadingMap = ref<Record<string, boolean>>({})
+  const asyncRequestSignatureMap = ref<Record<string, string>>({})
 
   // 保存组件初始化时的表单快照，用于 reset 时恢复默认值。
   const cloneModelValue = (value: Record<string, any> | undefined) => {
@@ -802,9 +805,27 @@
     }
   }
 
+  const getOptionsRequestSignature = (item: FormItem): string => {
+    const params = cloneModelValue(item.params) as Record<string, any> | undefined
+
+    try {
+      return JSON.stringify({
+        key: item.key,
+        immediate: item.immediate,
+        params
+      })
+    } catch {
+      return `${item.key}:${String(item.immediate)}`
+    }
+  }
+
   const loadImmediateOptions = () => {
     props.items.forEach((item) => {
       if (item.api && item.immediate !== false) {
+        const signature = getOptionsRequestSignature(item)
+        if (asyncRequestSignatureMap.value[item.key] === signature) return
+
+        asyncRequestSignatureMap.value[item.key] = signature
         void fetchOptions(item)
       }
     })

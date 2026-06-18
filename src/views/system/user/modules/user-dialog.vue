@@ -44,7 +44,8 @@
   }
 
   const emit = defineEmits<Emits>()
-  const { getDictMap } = storeToRefs(useUserStore()) as Record<string, any>
+  const userStore = useUserStore()
+  const { getDictMap, getUserInfo, isSuper } = storeToRefs(userStore) as Record<string, any>
   const { t } = useI18n()
   const dialogRef = ref<ArtDialogExpose<Partial<UserListItem> | undefined>>()
   const formRef = ref<ArtFormExpose>()
@@ -69,9 +70,13 @@
 
   const formData = ref<UserListItem>(createInitialForm())
   const isEdit = computed(() => !!formData.value.id)
+  const canSelectTenant = computed(() => Boolean(isSuper.value))
+  const currentTenantId = computed(() => getUserInfo.value.tenantId)
 
   const rules = computed<FormRules>(() => ({
-    tenantId: [{ required: true, message: '请选择所属租户', trigger: 'change' }],
+    tenantId: canSelectTenant.value
+      ? [{ required: true, message: '请选择所属租户', trigger: 'change' }]
+      : [],
     userName: [{ min: 2, max: 20, message: '长度在 2 到 20 个字符', trigger: 'change' }],
     userPhone: [{ pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号格式', trigger: 'change' }],
     userEmail: [{ required: true, type: 'email', message: '请输入正确的邮箱', trigger: 'change' }],
@@ -93,6 +98,7 @@
       key: 'tenantId',
       type: 'select',
       span: 24,
+      hidden: !canSelectTenant.value,
       api: fetchGetEnableTenantList,
       resultField: 'data',
       labelField: 'tenantName',
@@ -243,6 +249,8 @@
         ...formData.value,
         ...cloneDeep(row)
       }
+    } else if (!canSelectTenant.value) {
+      formData.value.tenantId = currentTenantId.value
     }
   }
 
@@ -261,6 +269,9 @@
         userEmail,
         password,
         ...rest
+      }
+      if (!canSelectTenant.value) {
+        params.tenantId = currentTenantId.value
       }
 
       if (!isEdit.value) {

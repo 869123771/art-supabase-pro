@@ -7,24 +7,32 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="b8f35119-660a-46e7-82f4-53eee06863eb" name="Changes" comment="feat : parts&#10;pref : system">
-      <change beforePath="$PROJECT_DIR$/.idea/dataSources.local.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources.local.xml" afterDir="false" />
+    <list default="true" id="b8f35119-660a-46e7-82f4-53eee06863eb" name="Changes" comment="feat : dict support multi level">
+      <change beforePath="$PROJECT_DIR$/.agents/skills/art-crud-page-standard/SKILL.md" beforeDir="false" afterPath="$PROJECT_DIR$/.agents/skills/art-crud-page-standard/SKILL.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.agents/skills/art-supabase-pro-conventions/SKILL.md" beforeDir="false" afterPath="$PROJECT_DIR$/.agents/skills/art-supabase-pro-conventions/SKILL.md" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/api/auth.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/auth.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.vscode/extensions.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.vscode/settings.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/api/data-center.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/data-center.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/api/system-manage.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/system-manage.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/components/core/dialogs/art-dialog/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/dialogs/art-dialog/README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/components/core/dialogs/art-dialog/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/dialogs/art-dialog/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/components/core/drawers/art-drawer/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/drawers/art-drawer/README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/components/core/drawers/art-drawer/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/drawers/art-drawer/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/core/forms/art-form/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/forms/art-form/README.md" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/components/core/forms/art-form/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/forms/art-form/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/hooks/core/useArtOverlay.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/hooks/core/useArtOverlay.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/types/api/api.d.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/types/api/api.d.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/auth/login/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/auth/login/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/examples/forms/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/examples/forms/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/system/role/modules/role-permission-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/system/role/modules/role-permission-dialog.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/auth/register/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/auth/register/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/data-center/dict/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/data-center/dict/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/data-center/dict/modules/dict-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/data-center/dict/modules/dict-dialog.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/data-center/dict/modules/dict-type-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/data-center/dict/modules/dict-type-dialog.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/data-center/dict/modules/type-tree.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/data-center/dict/modules/type-tree.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/system/role/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/system/role/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/system/role/modules/role-edit-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/system/role/modules/role-edit-dialog.vue" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/views/system/tenant/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/system/tenant/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/system/user-center/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/system/user-center/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/system/tenant/modules/tenant-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/system/tenant/modules/tenant-dialog.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/system/user/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/system/user/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/system/user/modules/user-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/system/user/modules/user-dialog.vue" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/views/system/user/modules/user-role-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/system/user/modules/user-role-dialog.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/vehicle-mgt-sys/archive-manage/modules/vehicle-archive-list.vue" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/vehicle-mgt-sys/archive-manage/vehicle-archive-edit/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-mgt-sys/archive-manage/vehicle-archive-edit/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/vehicle-mgt-sys/archive-manage/vehicle-archive-entry/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-mgt-sys/archive-manage/vehicle-archive-entry/index.vue" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -32,7 +40,7 @@
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="EmbeddingIndexingInfo">
-    <option name="cachedIndexableFilesCount" value="827" />
+    <option name="cachedIndexableFilesCount" value="905" />
     <option name="fileBasedEmbeddingIndicesEnabled" value="true" />
   </component>
   <component name="FileTemplateManagerImpl">
@@ -161,7 +169,7 @@
     &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
     &quot;nodejs_package_manager_path&quot;: &quot;pnpm&quot;,
     &quot;prettierjs.PrettierConfiguration.Package&quot;: &quot;D:\\spa\\art-supabase-pro\\node_modules\\prettier&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;ml.llm.mcp&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.pluginManager&quot;,
     &quot;to.speed.mode.migration.done&quot;: &quot;true&quot;,
     &quot;ts.external.directory.path&quot;: &quot;D:\\spa\\art-supabase-pro\\node_modules\\typescript\\lib&quot;,
     &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
@@ -203,7 +211,7 @@
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-js-predefined-d6986cc7102b-31caf2ab9e3c-JavaScript-WS-261.25134.101" />
+        <option value="bundled-js-predefined-d6986cc7102b-3bd3a6803838-JavaScript-WS-261.22158.274" />
       </set>
     </attachedChunks>
   </component>
@@ -282,6 +290,8 @@
       <workItem from="1781323338109" duration="6455000" />
       <workItem from="1781342917470" duration="17848000" />
       <workItem from="1781395103387" duration="30581000" />
+      <workItem from="1781686108227" duration="11315000" />
+      <workItem from="1781751658029" duration="13711000" />
     </task>
     <task id="LOCAL-00001" summary="feat project clean">
       <option name="closed" value="true" />
@@ -595,7 +605,15 @@
       <option name="project" value="LOCAL" />
       <updated>1781425589399</updated>
     </task>
-    <option name="localTasksCounter" value="40" />
+    <task id="LOCAL-00040" summary="feat : tenant">
+      <option name="closed" value="true" />
+      <created>1781591210762</created>
+      <option name="number" value="00040" />
+      <option name="presentableId" value="LOCAL-00040" />
+      <option name="project" value="LOCAL" />
+      <updated>1781591210762</updated>
+    </task>
+    <option name="localTasksCounter" value="41" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -625,8 +643,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="pref login upload-image" />
-    <MESSAGE value="feat reset password | assign roles" />
     <MESSAGE value="feat user can see there own data" />
     <MESSAGE value="feat screenshort" />
     <MESSAGE value="fix hooks remove aipexbase" />
@@ -650,6 +666,8 @@
     <MESSAGE value="feat menu" />
     <MESSAGE value="feat : vehicle info &#10;pref : system" />
     <MESSAGE value="feat : parts&#10;pref : system" />
-    <option name="LAST_COMMIT_MESSAGE" value="feat : parts&#10;pref : system" />
+    <MESSAGE value="feat : tenant" />
+    <MESSAGE value="feat : dict support multi level" />
+    <option name="LAST_COMMIT_MESSAGE" value="feat : dict support multi level" />
   </component>
 </project>

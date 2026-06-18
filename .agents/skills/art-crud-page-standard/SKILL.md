@@ -50,11 +50,12 @@ Use `ArtTableQuery` in internal managed mode.
   <div class="art-full-height">
     <ArtTableQuery
       ref="tableQueryRef"
-      v-model="searchQuery"
-      :search-items="searchItems"
+      v-model="table.searchQuery"
+      :search-items="table.searchItems"
       :api-fn="fetchTableData"
-      :columns-factory="columnsFactory"
-      :header-actions="headerActions"
+      :columns-factory="table.columnsFactory"
+      :header-actions="table.headerActions"
+      :table-props="table.props"
     />
 
     <FeatureDialog ref="dialogRef" @success="handleSaveSuccess" />
@@ -101,6 +102,54 @@ const searchItems = computed<SearchFormItem[]>(() => [
 ```
 
 Rely on `ArtForm`/`ArtSearchBar` defaults for common `clearable`, `filterable`, and placeholder behavior. Only pass props when the business needs a different value.
+
+## Group Related Variables
+
+Group variables by workflow on every CRUD page. Prefer one typed `table` group on the list page and one typed `form` group in the dialog instead of separate top-level search, column, action, form-data, form-item, and rule variables.
+
+```ts
+interface TableGroup {
+  searchQuery: SearchParams
+  searchItems: ComputedRef<SearchFormItem[]>
+  headerActions: ComputedRef<ArtTableQueryHeaderAction[]>
+  columnsFactory: () => ColumnOption<RecordItem>[]
+  props: {
+    rowKey: string
+  }
+}
+
+const table: UnwrapNestedRefs<TableGroup> = reactive<TableGroup>({
+  searchQuery: createInitialSearch(),
+  searchItems: computed(() => []),
+  headerActions: computed(() => []),
+  columnsFactory: () => [],
+  props: {
+    rowKey: 'id'
+  }
+})
+```
+
+```ts
+interface FormGroup {
+  data: FeatureForm
+  items: FormItem[]
+  rules: FormRules
+}
+
+const form: Ref<FormGroup> = ref({
+  data: createInitialForm(),
+  items: computed(() => []),
+  rules: computed(() => ({}))
+})
+```
+
+Rules:
+
+- Bind templates through the group, such as `table.searchQuery`, `table.searchItems`, `form.data`, `form.items`, and `form.rules`.
+- Keep component refs (`tableQueryRef`, `dialogRef`, `formRef`) outside the groups.
+- Keep API functions, event handlers, and shared utility instances outside the groups.
+- Use separate typed groups for unrelated workflows; do not create a generic catch-all state object.
+- Preserve explicit object-replacement semantics when reset or edit initialization replaces `form.data`.
 
 ## Fetch Data
 
@@ -265,9 +314,9 @@ const handleDelete = async (row: RecordItem): Promise<void> => {
   <ArtDialog ref="dialogRef" width="800px">
     <ArtForm
       ref="formRef"
-      v-model="form"
-      :items="items"
-      :rules="rules"
+      v-model="form.data"
+      :items="form.items"
+      :rules="form.rules"
       :span="12"
       :gutter="20"
       label-width="120px"
@@ -282,7 +331,7 @@ The dialog component, not the parent page, owns all form details.
 
 ## Dialog State
 
-Use a factory and `reactive` for form state.
+Use a factory for form state. In the standard grouped structure, keep replaceable form data under `form.data`.
 
 ```ts
 const createInitialForm = (): FeatureForm => ({
@@ -291,17 +340,27 @@ const createInitialForm = (): FeatureForm => ({
   remark: ''
 })
 
-const form = reactive<FeatureForm>(createInitialForm())
+interface FormGroup {
+  data: FeatureForm
+  items: FormItem[]
+  rules: FormRules
+}
+
+const form: Ref<FormGroup> = ref({
+  data: createInitialForm(),
+  items: computed<FormItem[]>(() => []),
+  rules: computed<FormRules>(() => ({}))
+})
 ```
 
-When replacing reactive form data, clear stale keys first:
+Replace `form.data` from a complete default value so stale edit-only keys do not leak into add mode:
 
 ```ts
 const replaceForm = (nextForm: FeatureForm): void => {
-  Object.keys(form).forEach((key) => {
-    delete form[key as keyof FeatureForm]
-  })
-  Object.assign(form, nextForm)
+  form.value.data = {
+    ...createInitialForm(),
+    ...structuredClone(nextForm)
+  }
 }
 ```
 
@@ -340,6 +399,22 @@ Rules:
 - Rely on `ArtForm` defaults for `clearable`, `filterable`, and placeholder.
 - Pass `maxlength`, `rows`, `showWordLimit`, and business-specific placeholders when needed.
 - For cascader/tree data, keep option normalization in `afterFetch`.
+- For remote options that depend on initialized dialog data, set `immediate: false`, derive current parameters in `beforeFetch`, and load them from the dialog `onOpen` callback.
+
+```ts
+{
+  key: 'parentId',
+  type: 'treeSelect',
+  api: fetchParentOptions,
+  immediate: false,
+  params: {},
+  beforeFetch: () => ({
+    typeId: form.value.data.typeId
+  }),
+  shouldFetch: (params) => Boolean(params?.typeId),
+  afterFetch: normalizeParentTree
+}
+```
 
 ## Dialog Submit
 
@@ -352,13 +427,13 @@ const handleSubmit = async (): Promise<boolean> => {
   }
 
   try {
-    const payload = toRaw(form)
-    if (form.id) {
+    const payload = toRaw(form.value.data)
+    if (form.value.data.id) {
       await editFeature(payload)
     } else {
       await addFeature(payload)
     }
-    emit('success', form.id ? 'edit' : 'add')
+    emit('success', form.value.data.id ? 'edit' : 'add')
     return true
   } catch {
     return false
@@ -384,6 +459,9 @@ const handleOpen = async (row?: RecordItem): Promise<void> => {
 
   await dialogRef.value?.handleOpen(row, {
     title: isEdit ? '编辑记录' : '新增记录',
+    onOpen: async () => {
+      await formRef.value?.reloadOptions('parentId')
+    },
     onConfirm: handleSubmit,
     onReset: () => void resetForm()
   })
@@ -401,6 +479,7 @@ Rules:
 - Parent calls `dialogRef.value?.handleOpen(row)`.
 - Clone edit data before assigning.
 - Derive `add/edit` from `row?.id`.
+- Do not call child methods such as `formRef.reloadOptions()` before `dialogRef.handleOpen()`. `ArtDialog` destroys closed content, so child refs may not exist until `onOpen`.
 
 ## Verification
 

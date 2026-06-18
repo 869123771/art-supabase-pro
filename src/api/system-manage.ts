@@ -51,12 +51,11 @@ export async function fetchGetUserList(params: Api.SystemManage.UserSearchParams
 
 // 获取租户列表
 export async function fetchGetTenantList(params: TenantSearchParams) {
-  const { tenantCode, tenantName, status, contactName, from = 0, to = 9 } = params
+  const { tenantCode, tenantName, status, from = 0, to = 9 } = params
   const specs = [
     { col: 'tenant_code', op: 'ilike', val: tenantCode ? `%${tenantCode}%` : undefined },
     { col: 'tenant_name', op: 'ilike', val: tenantName ? `%${tenantName}%` : undefined },
-    { col: 'status', op: 'eq', val: status },
-    { col: 'contact_name', op: 'ilike', val: contactName ? `%${contactName}%` : undefined }
+    { col: 'status', op: 'eq', val: status }
   ]
 
   let query: any = supabase
@@ -240,7 +239,9 @@ export async function fetchGetRoleList(params: Api.SystemManage.RoleSearchParams
   // 构建查询
   let query: any = supabase
     .from('sys_role')
-    .select('*', { count: 'exact' })
+    .select('*, tenant:sys_tenant!sys_role_tenant_id_fkey(tenant_code, tenant_name)', {
+      count: 'exact'
+    })
     .order('create_time', { ascending: false }) // 按创建时间倒序
     .range(from, to)
 

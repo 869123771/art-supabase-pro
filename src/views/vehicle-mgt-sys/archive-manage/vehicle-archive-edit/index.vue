@@ -363,41 +363,75 @@
       label: '满载总质量',
       key: 'grossMass',
       type: 'number',
-      description: 'kg',
-      props: numberProps
+      props: numberProps,
+      slots: {
+        suffix: () => 'kg'
+      }
     },
-    { label: '整备质量', key: 'curbWeight', type: 'number', description: 'kg', props: numberProps },
+    {
+      label: '整备质量',
+      key: 'curbWeight',
+      type: 'number',
+      props: numberProps,
+      slots: {
+        suffix: () => 'kg'
+      }
+    },
     {
       label: '核定载质量',
       key: 'approvedLoadMass',
       type: 'number',
-      description: 'kg',
-      props: numberProps
+      props: numberProps,
+      slots: {
+        suffix: () => 'kg'
+      }
     },
     {
       label: '外廓长度',
       key: 'overallLength',
       type: 'number',
-      description: 'mm',
-      props: numberProps
+      props: numberProps,
+      slots: {
+        suffix: () => 'mm'
+      }
     },
     {
       label: '外廓宽度',
       key: 'overallWidth',
       type: 'number',
-      description: 'mm',
-      props: numberProps
+      props: numberProps,
+      slots: {
+        suffix: () => 'mm'
+      }
     },
     {
       label: '外廓高度',
       key: 'overallHeight',
       type: 'number',
-      description: 'mm',
-      props: numberProps
+      props: numberProps,
+      slots: {
+        suffix: () => 'mm'
+      }
     },
     { label: '标台', key: 'platform', type: 'input' },
-    { label: '前轮距', key: 'frontTrack', type: 'number', description: 'mm', props: numberProps },
-    { label: '后轮距', key: 'rearTrack', type: 'number', description: 'mm', props: numberProps },
+    {
+      label: '前轮距',
+      key: 'frontTrack',
+      type: 'number',
+      props: numberProps,
+      slots: {
+        suffix: () => 'mm'
+      }
+    },
+    {
+      label: '后轮距',
+      key: 'rearTrack',
+      type: 'number',
+      props: numberProps,
+      slots: {
+        suffix: () => 'mm'
+      }
+    },
     { label: '轴距', key: 'wheelbase', type: 'number', props: numberProps },
     { label: '车轴数', key: 'axleCount', type: 'number', props: numberProps },
     { label: '轮胎数', key: 'tireCount', type: 'number', props: numberProps },
@@ -405,8 +439,10 @@
       label: '钢板弹簧数',
       key: 'leafSpringCount',
       type: 'number',
-      description: '片',
-      props: numberProps
+      props: numberProps,
+      slots: {
+        suffix: () => '片'
+      }
     },
     { label: '是否双层', key: 'isDoubleDeck', type: 'radioGroup', props: { options: yesNoOptions } }
   ])
@@ -419,8 +455,10 @@
       label: '发动机排量',
       key: 'displacement',
       type: 'number',
-      description: 'L',
-      props: numberProps
+      props: numberProps,
+      slots: {
+        suffix: () => 'L'
+      }
     },
     {
       label: '排放标准',
@@ -432,22 +470,28 @@
       label: '发动机功率',
       key: 'enginePower',
       type: 'number',
-      description: 'KW',
-      props: numberProps
+      props: numberProps,
+      slots: {
+        suffix: () => 'KW'
+      }
     },
     {
       label: '额定扭矩转速',
       key: 'ratedTorqueSpeed',
       type: 'number',
-      description: 'r/min',
-      props: numberProps
+      props: numberProps,
+      slots: {
+        suffix: () => 'r/min'
+      }
     },
     {
       label: '发动机扭矩',
       key: 'engineTorque',
       type: 'number',
-      description: 'N-M',
-      props: numberProps
+      props: numberProps,
+      slots: {
+        suffix: () => 'N-M'
+      }
     }
   ])
 
@@ -590,7 +634,8 @@
 
   const dateProps = {
     type: 'date',
-    valueFormat: 'YYYY-MM-DD'
+    valueFormat: 'YYYY-MM-DD',
+    class: '!w-full'
   }
 
   const numberProps = {

@@ -134,6 +134,40 @@
 
   const roleEditDialogRef = ref<RoleEditDialogExpose>()
   const rolePermissionDialogRef = ref<RolePermissionDialogExpose>()
+  const DEFAULT_REGISTER_TENANT_CODE = 'public-register'
+  const DEFAULT_REGISTER_ROLE_CODE = 'R_REGISTER'
+
+  const isDefaultRegisterRole = (row: RoleListItem): boolean => {
+    return (
+      String(row.tenant?.tenantCode ?? '').toLowerCase() === DEFAULT_REGISTER_TENANT_CODE &&
+      String(row.roleCode ?? '').toUpperCase() === DEFAULT_REGISTER_ROLE_CODE
+    )
+  }
+
+  const getRoleActions = (row: RoleListItem): ButtonMoreItem[] => {
+    const actions: ButtonMoreItem[] = [
+      {
+        key: 'permission',
+        label: '菜单权限',
+        icon: 'ri:user-3-line'
+      },
+      {
+        key: 'edit',
+        label: '编辑角色',
+        icon: 'ri:edit-2-line'
+      },
+      {
+        key: 'delete',
+        label: '删除角色',
+        icon: 'ri:delete-bin-4-line',
+        color: '#f56c6c'
+      }
+    ]
+
+    return isDefaultRegisterRole(row)
+      ? actions.filter((item) => item.key !== 'permission' && item.key !== 'delete')
+      : actions
+  }
 
   const {
     columns,
@@ -207,24 +241,7 @@
           formatter: (row: RoleListItem) =>
             h('div', [
               h(ArtButtonMore, {
-                list: [
-                  {
-                    key: 'permission',
-                    label: '菜单权限',
-                    icon: 'ri:user-3-line'
-                  },
-                  {
-                    key: 'edit',
-                    label: '编辑角色',
-                    icon: 'ri:edit-2-line'
-                  },
-                  {
-                    key: 'delete',
-                    label: '删除角色',
-                    icon: 'ri:delete-bin-4-line',
-                    color: '#f56c6c'
-                  }
-                ],
+                list: getRoleActions(row),
                 onClick: (item: ButtonMoreItem) => buttonMoreClick(item, row)
               })
             ])

@@ -154,6 +154,9 @@ Apply the same ownership model to `ArtDrawer`.
 
 - Prefer `interface` for component contracts and `type` for aliases/unions.
 - Type `defineEmits`, exposed Ref APIs, table rows, columns, and open payloads.
+- Group related page variables by business responsibility instead of scattering top-level refs and computed values. Use typed `table`, `form`, or `dialog` groups containing their model, items, rules, columns, actions, and component props. Keep component refs and reusable utilities outside these groups.
+- Use `reactive<GroupInterface>()` when the group contains ordinary reactive state. Use `Ref<GroupInterface>` only when the whole group or nested model is intentionally replaced.
+- Do not create one large untyped page state object. Define an interface for each group and keep unrelated workflows in separate groups.
 - Prefer `unknown` plus narrowing over introducing new `any`.
 - Keep unavoidable `any` local and explain why, such as undocumented Element Plus internals.
 - Use `Object.assign(state, createInitialState())` for reactive resets, and include every mutable optional key such as `id` in the factory with an `undefined` default so stale edit state is overwritten.
@@ -172,6 +175,10 @@ Apply the same ownership model to `ArtDrawer`.
 
 - Keep list loading in `useTable`.
 - Keep dialog content loading separate from confirm loading when opening requires data.
+- `ArtDialog` uses `destroyOnClose`; do not call child-component methods such as `formRef.reloadOptions()` before `dialogRef.handleOpen()`, because the child ref may not exist.
+- Load dialog-dependent remote form options through the `onOpen` callback passed to `handleOpen`. At that point the dialog content has mounted.
+- When remote option parameters depend on the current form model, derive them in the form item's `beforeFetch` callback. Do not rely on a computed `params` object having refreshed in the same tick as form initialization.
+- Keep `immediate: false` for options that require dialog data, then explicitly call `reloadOptions(fieldKey)` from `onOpen`.
 - Run independent initialization requests with `Promise.all`.
 - On validation failure, return `false` without closing.
 - On API failure, rely on the project's API response layer for user messages unless the feature needs a specific message, then return `false`.
