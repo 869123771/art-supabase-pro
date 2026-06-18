@@ -21,7 +21,7 @@
           :lg="getColSpan(item.span, 'lg')"
           :xl="getColSpan(item.span, 'xl')"
         >
-          <div v-if="isDividerItem(item)" class="art-form-divider">
+          <ArtSectionTitle v-if="isDividerItem(item)" :show-line="getDividerShowLine(item)">
             <slot
               :name="item.key"
               :item="item"
@@ -33,7 +33,7 @@
               <component v-if="typeof item.label !== 'string'" :is="item.label" />
               <span v-else>{{ item.label }}</span>
             </slot>
-          </div>
+          </ArtSectionTitle>
           <ElFormItem v-else :prop="item.key" :label-width="getFormItemLabelWidth(item)">
             <template #label v-if="item.label">
               <span class="art-form-item__label">
@@ -206,6 +206,7 @@
   } from '@element-plus/icons-vue'
   import ArtIconPicker from '@/components/core/forms/art-icon-picker/index.vue'
   import ArtDataSelect from '@/components/core/forms/art-data-select/index.vue'
+  import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
   import { calculateResponsiveSpan, type ResponsiveBreakpoint } from '@/utils/form/responsive'
 
   defineOptions({ name: 'ArtForm' })
@@ -913,6 +914,8 @@
 
   const isDividerItem = (item: FormItem): boolean => String(item.type) === dividerType
 
+  const getDividerShowLine = (item: FormItem): boolean => getProps(item).showLine !== false
+
   const getFormItemLabelWidth = (item: FormItem): string | number | undefined => {
     return item.label ? item.labelWidth || labelWidth.value : undefined
   }
@@ -1143,33 +1146,6 @@
         font-size: 12px;
         line-height: 20px;
         color: var(--el-text-color-secondary);
-      }
-    }
-
-    &-divider {
-      display: flex;
-      align-items: center;
-      width: 100%;
-      margin: 4px 0 14px;
-      color: var(--el-text-color-primary);
-      font-weight: 600;
-      line-height: 24px;
-
-      &::before {
-        width: 3px;
-        height: 14px;
-        margin-right: 8px;
-        content: '';
-        border-radius: 999px;
-        background: var(--el-color-primary);
-      }
-
-      &::after {
-        flex: 1;
-        height: 1px;
-        margin-left: 12px;
-        content: '';
-        background: var(--el-border-color-lighter);
       }
     }
 

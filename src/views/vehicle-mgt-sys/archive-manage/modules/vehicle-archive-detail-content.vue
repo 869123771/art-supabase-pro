@@ -1,5 +1,5 @@
 <template>
-  <div class="vehicle-archive-detail">
+  <div class="vehicle-archive-detail" v-loading="loading">
     <div class="vehicle-archive-detail__header">
       <div>
         <h2>{{ archive?.plateNo || '车辆档案详情' }}</h2>
@@ -12,9 +12,9 @@
 
     <ElTabs v-model="activeTab" class="vehicle-archive-detail__tabs">
       <ElTabPane label="基础信息" name="basic">
-        <InfoGrid :items="basicInfoItems" />
+        <InfoDescriptions :items="basicInfoItems" />
         <section class="vehicle-archive-detail__section">
-          <h3>车辆证件</h3>
+          <ArtSectionTitle>车辆证件</ArtSectionTitle>
           <div class="vehicle-archive-detail__images">
             <div
               v-for="item in certificateItems"
@@ -35,17 +35,17 @@
       </ElTabPane>
 
       <ElTabPane label="车身参数" name="body">
-        <InfoGrid :items="bodyInfoItems" />
+        <InfoDescriptions :items="bodyInfoItems" />
       </ElTabPane>
 
       <ElTabPane label="发动机参数" name="engine">
-        <InfoGrid :items="engineInfoItems" />
+        <InfoDescriptions :items="engineInfoItems" />
       </ElTabPane>
 
       <ElTabPane label="其他信息" name="other">
-        <InfoGrid :items="otherInfoItems" />
+        <InfoDescriptions :items="otherInfoItems" />
         <section class="vehicle-archive-detail__section">
-          <h3>车辆档案附件</h3>
+          <ArtSectionTitle>车辆档案附件</ArtSectionTitle>
           <ArtTable
             :data="archive?.attachments ?? []"
             :columns="attachmentColumns"
@@ -91,6 +91,8 @@
   import {
     ElButton,
     ElCard,
+    ElDescriptions,
+    ElDescriptionsItem,
     ElForm,
     ElFormItem,
     ElImage,
@@ -102,9 +104,11 @@
   } from 'element-plus'
   import ArtTable from '@/components/core/tables/art-table/index.vue'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
+  import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
   import type { ColumnOption } from '@/types'
   import { auditVehicleArchive, fetchVehicleArchiveDetail } from '@/api/vehicle-mgt-sys'
   import { useUserStore } from '@/store/modules/user'
+  import { getFileExtension, viewAttachment } from '@/utils/file'
 
   defineOptions({ name: 'VehicleArchiveDetailContent' })
 
@@ -123,7 +127,7 @@
     suffix?: string
   }
 
-  const InfoGrid = defineComponent({
+  const InfoDescriptions = defineComponent({
     props: {
       items: {
         type: Array as PropType<InfoItem[]>,
@@ -132,14 +136,18 @@
     },
     setup(props) {
       return () => (
-        <div class="vehicle-archive-detail__grid">
+        <ElDescriptions class="vehicle-archive-detail__descriptions" column={3} border>
           {props.items.map((item) => (
-            <div class="vehicle-archive-detail__grid-item">
-              <span>{item.label}</span>
-              <strong>{formatValue(item.value, item.suffix)}</strong>
-            </div>
+            <ElDescriptionsItem
+              key={item.label}
+              label={item.label}
+              labelClassName="vehicle-archive-detail__description-label"
+              className="vehicle-archive-detail__description-content"
+            >
+              {formatValue(item.value, item.suffix)}
+            </ElDescriptionsItem>
           ))}
-        </div>
+        </ElDescriptions>
       )
     }
   })
@@ -149,6 +157,7 @@
   const userStore = useUserStore()
   const activeTab = ref('basic')
   const archive = ref<VehicleArchive>()
+  const loading = ref(false)
   const savingAudit = ref(false)
   const auditForm = reactive<{
     auditStatus: Extract<AuditStatus, 'approved' | 'rejected'>
@@ -157,10 +166,12 @@
     auditStatus: 'approved',
     auditRemark: ''
   })
-  const showAuditPanel = computed(() => route.query.source !== 'manage')
+  const showAuditPanel = computed(
+    () => route.query.source !== 'manage' && archive.value?.auditStatus === 'pending'
+  )
 
-  onMounted(() => {
-    void loadArchiveDetail()
+  onMounted(async () => {
+    await Promise.all([loadArchiveDetail(), userStore.ensureDictLoaded('FILE_EXTENSION_LABEL_MAP')])
   })
 
   const basicInfoItems = computed<InfoItem[]>(() => [
@@ -281,7 +292,12 @@
   const attachmentColumns: ColumnOption<ArchiveAttachment>[] = [
     { type: 'globalIndex', label: '序号', width: 80 },
     { prop: 'name', label: '档案附件名称', minWidth: 220 },
-    { prop: 'fileType', label: '格式类型', width: 120 },
+    {
+      prop: 'fileType',
+      label: '格式类型',
+      width: 120,
+      formatter: (row) => formatAttachmentFileType(row.fileType)
+    },
     { prop: 'fileSize', label: '附件大小', width: 120 },
     {
       prop: 'operation',
@@ -289,7 +305,7 @@
       width: 120,
       formatter: (row) => (
         <div>
-          <ArtButtonTable type="view" onClick={() => window.open(row.url, '_blank')} />
+          <ArtButtonTable type="view" onClick={() => viewAttachment(row)} />
         </div>
       )
     }
@@ -298,12 +314,17 @@
   const loadArchiveDetail = async (): Promise<void> => {
     const id = String(route.params.id || '')
     if (!id) return
-    const { data } = await fetchVehicleArchiveDetail(id)
-    if (!data) return
+    loading.value = true
+    try {
+      const { data } = await fetchVehicleArchiveDetail(id)
+      if (!data) return
 
-    archive.value = { ...data, attachments: data.attachments ?? [] }
-    auditForm.auditStatus = data.auditStatus === 'rejected' ? 'rejected' : 'approved'
-    auditForm.auditRemark = data.auditRemark ?? ''
+      archive.value = { ...data, attachments: data.attachments ?? [] }
+      auditForm.auditStatus = data.auditStatus === 'rejected' ? 'rejected' : 'approved'
+      auditForm.auditRemark = data.auditRemark ?? ''
+    } finally {
+      loading.value = false
+    }
   }
 
   const handleSaveAudit = async (): Promise<void> => {
@@ -316,16 +337,16 @@
         auditStatus: auditForm.auditStatus,
         auditRemark: auditForm.auditRemark
       })
-      await loadArchiveDetail()
+      await goBack()
     } finally {
       savingAudit.value = false
     }
   }
 
-  const goBack = (): void => {
+  const goBack = async (): Promise<void> => {
     const source =
       route.query.source === 'manage' ? 'vehicle-archive-manage' : 'vehicle-archive-entry'
-    void router.push(`/vehicle-mgt-sys/archive-manage/${source}`)
+    await router.push(`/vehicle-mgt-sys/archive-manage/${source}`)
   }
 
   const formatValue = (value: InfoItem['value'], suffix = ''): string => {
@@ -340,6 +361,16 @@
 
   const getDictLabel = (dictCode: string, value?: string): string => {
     return userStore.getDictLabelByValue(dictCode, value) || value || ''
+  }
+
+  const formatAttachmentFileType = (fileType?: string): string => {
+    const normalizedFileType = getFileExtension(undefined, fileType)
+    if (!normalizedFileType) return '--'
+
+    return (
+      userStore.getDictLabelByValue('FILE_EXTENSION_LABEL_MAP', normalizedFileType) ||
+      `.${normalizedFileType}`
+    )
   }
 </script>
 
@@ -385,40 +416,23 @@
       padding: 16px 20px 24px;
     }
 
-    &__grid {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 18px 28px;
-    }
-
-    &__grid-item {
-      display: grid;
-      grid-template-columns: 120px minmax(0, 1fr);
-      gap: 12px;
-      min-height: 32px;
-      align-items: center;
-
-      span {
+    &__descriptions {
+      :deep(.vehicle-archive-detail__description-label) {
+        width: 132px;
         font-weight: 600;
         color: var(--el-text-color-regular);
+        background: var(--el-fill-color-lighter);
       }
 
-      strong {
-        min-width: 0;
-        font-weight: 400;
-        color: var(--el-text-color-secondary);
+      :deep(.vehicle-archive-detail__description-content) {
+        min-width: 180px;
+        color: var(--el-text-color-primary);
         overflow-wrap: anywhere;
       }
     }
 
     &__section {
       margin-top: 24px;
-
-      h3 {
-        margin: 0 0 14px;
-        font-size: 16px;
-        font-weight: 600;
-      }
     }
 
     &__images {
@@ -456,8 +470,10 @@
     }
 
     @media (max-width: 1100px) {
-      &__grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+      &__descriptions {
+        :deep(.el-descriptions__body) {
+          overflow-x: auto;
+        }
       }
     }
 
@@ -468,8 +484,10 @@
         gap: 12px;
       }
 
-      &__grid {
-        grid-template-columns: 1fr;
+      &__descriptions {
+        :deep(.vehicle-archive-detail__description-label) {
+          width: 108px;
+        }
       }
     }
   }

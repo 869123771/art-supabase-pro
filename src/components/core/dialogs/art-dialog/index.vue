@@ -3,7 +3,11 @@
     ref="dialogRef"
     :model-value="visible"
     v-bind="dialogBindings"
-    :class="['art-dialog', dialogClass]"
+    :class="[
+      'art-dialog',
+      dialogClass,
+      { 'is-fullscreen-toggle-enabled': options.showFullscreenButton }
+    ]"
     @update:model-value="handleModelValueChange"
     @open="handleOpenedStart"
     @opened="handleOpened"
@@ -12,13 +16,32 @@
     @open-auto-focus="emit('open-auto-focus')"
     @close-auto-focus="emit('close-auto-focus')"
   >
-    <template v-if="$slots.header || hasSubtitle" #header="{ titleId, titleClass }">
-      <slot v-if="$slots.header" name="header" :data="openData" :api="exposedApi" />
-      <span v-else :id="titleId" :class="titleClass">{{ dialogTitle }}</span>
-      <div v-if="hasSubtitle" class="art-dialog__subtitle">
-        <slot name="subtitle" :data="openData" :api="exposedApi">
-          {{ dialogSubtitle }}
-        </slot>
+    <template
+      v-if="$slots.header || hasSubtitle || options.showFullscreenButton"
+      #header="{ titleId, titleClass }"
+    >
+      <div class="art-dialog__header">
+        <div class="art-dialog__header-main">
+          <slot v-if="$slots.header" name="header" :data="openData" :api="exposedApi" />
+          <span v-else :id="titleId" :class="titleClass">{{ dialogTitle }}</span>
+          <div v-if="hasSubtitle" class="art-dialog__subtitle">
+            <slot name="subtitle" :data="openData" :api="exposedApi">
+              {{ dialogSubtitle }}
+            </slot>
+          </div>
+        </div>
+        <button
+          v-if="options.showFullscreenButton"
+          type="button"
+          class="el-dialog__headerbtn art-dialog__fullscreen-button"
+          :aria-label="fullscreenLabel"
+          :title="fullscreenLabel"
+          @click.stop="toggleFullscreen"
+        >
+          <ElIcon class="el-dialog__close">
+            <ArtSvgIcon :icon="fullscreenIcon" />
+          </ElIcon>
+        </button>
       </div>
     </template>
 
@@ -99,6 +122,7 @@
   import type { Component } from 'vue'
   import type { DialogInstance, DialogPropsPublic, ScrollbarInstance } from 'element-plus'
   import type { ArtDialogExpose, ArtDialogOptions, ArtScrollOptions } from './types'
+  import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import { mergeOverlayRecords, useArtOverlay } from '@/hooks/core/useArtOverlay'
 
   defineOptions({
@@ -113,6 +137,9 @@
     subtitle?: string
     width?: string | number
     fullscreen?: boolean
+    showFullscreenButton?: boolean
+    fullscreenText?: string
+    exitFullscreenText?: string
     loading?: boolean
     loadingText?: string
     loadingBackground?: string
@@ -144,6 +171,9 @@
     subtitle: '',
     width: '50%',
     fullscreen: false,
+    showFullscreenButton: false,
+    fullscreenText: '全屏',
+    exitFullscreenText: '退出全屏',
     loading: false,
     loadingText: '',
     loadingBackground: '',
@@ -185,6 +215,9 @@
     subtitle: props.subtitle,
     width: props.width,
     fullscreen: props.fullscreen,
+    showFullscreenButton: props.showFullscreenButton,
+    fullscreenText: props.fullscreenText,
+    exitFullscreenText: props.exitFullscreenText,
     loading: props.loading,
     loadingText: props.loadingText,
     loadingBackground: props.loadingBackground,
@@ -281,6 +314,23 @@
   const dialogTitle = computed(() => String(options.value.title ?? attrs.title ?? ''))
   const dialogSubtitle = computed(() => String(options.value.subtitle ?? ''))
   const hasSubtitle = computed(() => Boolean(slots.subtitle || dialogSubtitle.value))
+  const isFullscreen = computed(() => Boolean(options.value.fullscreen))
+  const fullscreenIcon = computed(() =>
+    isFullscreen.value ? 'ri:fullscreen-exit-line' : 'ri:fullscreen-line'
+  )
+  const fullscreenLabel = computed(() =>
+    isFullscreen.value
+      ? String(options.value.exitFullscreenText ?? '退出全屏')
+      : String(options.value.fullscreenText ?? '全屏')
+  )
+
+  const setFullscreen = (value: boolean) => {
+    setOptions({ fullscreen: value } as Partial<ArtDialogOptions<T>>)
+  }
+
+  const toggleFullscreen = () => {
+    setFullscreen(!isFullscreen.value)
+  }
 
   watch(
     () => props.loading,
@@ -338,6 +388,7 @@
     loading: readonly(contentLoading),
     confirmLoading: readonly(confirmLoading),
     data: readonly(openData) as Readonly<Ref<T>>,
+    fullscreen: readonly(isFullscreen),
     options: readonly(options) as Readonly<Ref<ArtDialogOptions<T>>>,
     dialogRef: readonly(dialogRef),
     scrollbarRef: readonly(scrollbarRef),
@@ -347,6 +398,8 @@
     handleReset,
     setLoading,
     setConfirmLoading,
+    setFullscreen,
+    toggleFullscreen,
     setOptions,
     setData,
     updateData,
@@ -359,11 +412,33 @@
 </script>
 
 <style scoped lang="scss">
-  :deep(.art-dialog) {
+  :global(.art-dialog) {
     max-width: calc(100vw - 32px);
   }
 
+  :global(.art-dialog.is-fullscreen) {
+    display: flex;
+    flex-direction: column;
+    max-width: none;
+    overflow: hidden;
+  }
+
+  :global(.art-dialog.is-fullscreen > .el-dialog__header),
+  :global(.art-dialog.is-fullscreen > .el-dialog__footer) {
+    flex: none;
+  }
+
+  :global(.art-dialog.is-fullscreen > .el-dialog__body) {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+  }
+
   .art-dialog {
+    &__fullscreen-button {
+      right: 32px;
+    }
+
     &__content {
       min-height: 1px;
     }

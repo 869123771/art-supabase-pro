@@ -321,6 +321,7 @@ declare namespace Api {
         > &
           Api.Common.CommonSearchParams & {
             createTimeRange?: string[]
+            auditStatuses?: AuditStatus[]
           }
       >
     }

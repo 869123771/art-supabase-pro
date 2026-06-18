@@ -274,6 +274,11 @@ export const useUserStore = defineStore(
       setDictMap(groupData)
     }
 
+    const ensureDictLoaded = async (dictCode: keyof DictMap | string): Promise<void> => {
+      if (dictMap.value[dictCode]?.length) return
+      await fetchDictList()
+    }
+
     return {
       language,
       isLogin,
@@ -304,7 +309,8 @@ export const useUserStore = defineStore(
       logOut,
       checkAndClearWorkTabs,
       fetchUserInfo,
-      fetchDictList
+      fetchDictList,
+      ensureDictLoaded
     }
   },
   {

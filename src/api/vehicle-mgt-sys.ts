@@ -46,3 +46,4 @@ export const editVehicleArchive = supabaseVehicleApi.editVehicleArchive
 export const deleteVehicleArchive = supabaseVehicleApi.deleteVehicleArchive
 export const deleteVehicleArchiveBatch = supabaseVehicleApi.deleteVehicleArchiveBatch
 export const auditVehicleArchive = supabaseVehicleApi.auditVehicleArchive
+export const auditVehicleArchiveBatch = supabaseVehicleApi.auditVehicleArchiveBatch

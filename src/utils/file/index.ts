@@ -177,6 +177,42 @@ export async function calcFileHash(file: File): Promise<string> {
     .join('')
 }
 
+export interface FileActionTarget {
+  url?: string
+  name?: string
+}
+
+export const getFileExtension = (fileName?: string, suffix?: string): string => {
+  const normalizedSuffix = suffix || fileName?.split('.').pop() || ''
+  return normalizedSuffix.replace(/^\./, '').trim().toLowerCase()
+}
+
+export const viewFile = (url?: string): void => {
+  if (!url) return
+  window.open(url, '_blank', 'noopener,noreferrer')
+}
+
+export const downloadFile = (url?: string, filename = 'attachment'): void => {
+  if (!url) return
+
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  link.target = '_blank'
+  link.rel = 'noopener noreferrer'
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+}
+
+export const viewAttachment = (file: FileActionTarget): void => {
+  viewFile(file.url)
+}
+
+export const downloadAttachment = (file: FileActionTarget): void => {
+  downloadFile(file.url, file.name || 'attachment')
+}
+
 export function formatSize(size: number) {
   if (size < 1024) return size + ' B'
   if (size < 1024 * 1024) return (size / 1024).toFixed(2) + ' KB'

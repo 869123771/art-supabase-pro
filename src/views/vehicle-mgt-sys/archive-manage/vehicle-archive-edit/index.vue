@@ -1,5 +1,5 @@
 <template>
-  <div class="vehicle-archive-edit">
+  <div ref="pageRef" class="vehicle-archive-edit" v-loading.lock="page.loading">
     <div class="vehicle-archive-edit__header">
       <div>
         <h2>{{ isEdit ? '编辑车辆档案' : '新增车辆档案' }}</h2>
@@ -26,7 +26,7 @@
         />
 
         <section class="vehicle-archive-edit__section">
-          <h3>车辆证件</h3>
+          <ArtSectionTitle>车辆证件</ArtSectionTitle>
           <div class="vehicle-archive-edit__images">
             <div
               v-for="item in certificateItems"
@@ -45,6 +45,7 @@
           ref="bodyFormRef"
           v-model="form"
           :items="bodyItems"
+          :rules="rules"
           :span="8"
           :gutter="20"
           label-width="130px"
@@ -58,6 +59,7 @@
           ref="engineFormRef"
           v-model="form"
           :items="engineItems"
+          :rules="rules"
           :span="8"
           :gutter="20"
           label-width="130px"
@@ -71,6 +73,7 @@
           ref="otherFormRef"
           v-model="form"
           :items="otherItems"
+          :rules="rules"
           :span="8"
           :gutter="20"
           label-width="130px"
@@ -80,10 +83,22 @@
 
         <section class="vehicle-archive-edit__section">
           <div class="vehicle-archive-edit__section-header">
-            <h3>车辆档案附件</h3>
-            <ElUpload :show-file-list="false" :http-request="handleAttachmentUpload">
-              <ElButton type="primary" plain>上传附件</ElButton>
-            </ElUpload>
+            <ArtSectionTitle class="vehicle-archive-edit__section-title" :show-line="false">
+              车辆档案附件
+            </ArtSectionTitle>
+            <ArtExcelImport
+              accept=""
+              :parse-excel="false"
+              :disabled="page.attachmentUploading"
+              :button-props="{
+                type: 'primary',
+                plain: true,
+                loading: page.attachmentUploading
+              }"
+              @file-change="handleAttachmentUpload"
+            >
+              上传附件
+            </ArtExcelImport>
           </div>
           <ArtTable
             :data="form.attachments"
@@ -99,12 +114,17 @@
 </template>
 
 <script setup lang="tsx">
-  import type { ComputedRef, UnwrapNestedRefs } from 'vue'
-  import type { FormRules, UploadRequestOptions } from 'element-plus'
-  import { ElButton, ElMessage, ElMessageBox, ElTabPane, ElTabs, ElUpload } from 'element-plus'
+  import type { ComputedRef, Ref, UnwrapNestedRefs } from 'vue'
+  import type { FormRules } from 'element-plus'
+  import { ElButton, ElMessage, ElMessageBox, ElTabPane, ElTabs } from 'element-plus'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import ArtTable from '@/components/core/tables/art-table/index.vue'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
+  import ArtButtonMore, {
+    type ButtonMoreItem
+  } from '@/components/core/forms/art-button-more/index.vue'
+  import ArtExcelImport from '@/components/core/forms/art-excel-import/index.vue'
+  import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
   import ArtUploadImage from '@/components/core/forms/art-upload-image/index.vue'
   import type { ColumnOption } from '@/types'
   import {
@@ -114,11 +134,14 @@
   } from '@/api/vehicle-mgt-sys'
   import { uploadAttachment } from '@/api/common'
   import { useUserStore } from '@/store/modules/user'
+  import { downloadAttachment, getFileExtension, viewAttachment } from '@/utils/file'
 
   defineOptions({ name: 'VehicleArchiveEdit' })
 
   type VehicleArchive = Api.VehicleMgtSys.ArchiveManage.VehicleArchive
   type ArchiveAttachment = Api.VehicleMgtSys.ArchiveManage.VehicleArchiveAttachment
+  type ArchiveTabName = 'basic' | 'body' | 'engine' | 'other'
+  type VehicleArchiveWritePayload = Record<string, unknown> & { id?: string }
   type ImageKey =
     | 'vehiclePhotoUrl'
     | 'drivingLicenseFrontUrl'
@@ -131,8 +154,15 @@
   }
 
   interface PageGroup {
-    activeTab: string
+    activeTab: ArchiveTabName
+    loading: boolean
     saving: boolean
+    attachmentUploading: boolean
+  }
+
+  interface FormTab {
+    name: ArchiveTabName
+    formRef: Readonly<Ref<FormExpose | undefined>>
   }
 
   interface OptionGroup {
@@ -156,12 +186,21 @@
   const { getDictMap } = storeToRefs(userStore)
   const page = reactive<PageGroup>({
     activeTab: 'basic',
-    saving: false
+    loading: false,
+    saving: false,
+    attachmentUploading: false
   })
+  const pageRef = ref<HTMLElement>()
   const basicFormRef = ref<FormExpose>()
   const bodyFormRef = ref<FormExpose>()
   const engineFormRef = ref<FormExpose>()
   const otherFormRef = ref<FormExpose>()
+  const formTabs: FormTab[] = [
+    { name: 'basic', formRef: basicFormRef },
+    { name: 'body', formRef: bodyFormRef },
+    { name: 'engine', formRef: engineFormRef },
+    { name: 'other', formRef: otherFormRef }
+  ]
 
   const isEdit = computed(() => typeof route.params.id === 'string' && route.params.id.length > 0)
 
@@ -298,7 +337,7 @@
       label: '国产/进口',
       key: 'originType',
       type: 'radioGroup',
-      props: { options: options.originType }
+      props: { options: options.originType, optionType: 'button' }
     },
     { label: '车架号（VIN）', key: 'vin', type: 'input' },
     { label: '车辆厂商', key: 'manufacturer', type: 'input' },
@@ -579,30 +618,44 @@
   const attachmentColumns: ColumnOption<ArchiveAttachment>[] = [
     { type: 'globalIndex', label: '序号', width: 80 },
     { prop: 'name', label: '档案附件名称', minWidth: 220 },
-    { prop: 'fileType', label: '格式类型', width: 120 },
+    {
+      prop: 'fileType',
+      label: '格式类型',
+      width: 120,
+      formatter: (row) => formatAttachmentFileType(row.fileType)
+    },
     { prop: 'fileSize', label: '附件大小', width: 120 },
     {
       prop: 'operation',
       label: '操作',
       width: 120,
       formatter: (row) => (
-        <div>
-          <ArtButtonTable type="view" onClick={() => window.open(row.url, '_blank')} />
-          <ArtButtonTable type="delete" onClick={() => removeAttachment(row)} />
+        <div class="flex">
+          <ArtButtonTable type="view" onClick={() => viewAttachment(row)} />
+          <ArtButtonMore
+            list={getAttachmentMoreActions()}
+            onClick={(item: ButtonMoreItem) => handleAttachmentMoreAction(item, row)}
+          />
         </div>
       )
     }
   ]
 
-  onMounted(() => {
-    void loadArchiveDetail()
+  onMounted(async () => {
+    await Promise.all([loadArchiveDetail(), userStore.ensureDictLoaded('FILE_EXTENSION_LABEL_MAP')])
   })
 
   const loadArchiveDetail = async (): Promise<void> => {
     if (!isEdit.value) return
     const id = String(route.params.id)
-    const { data } = await fetchVehicleArchiveDetail(id)
-    if (data) replaceForm({ ...createInitialForm(), ...data, attachments: data.attachments ?? [] })
+    page.loading = true
+    try {
+      const { data } = await fetchVehicleArchiveDetail(id)
+      if (data)
+        replaceForm({ ...createInitialForm(), ...data, attachments: data.attachments ?? [] })
+    } finally {
+      page.loading = false
+    }
   }
 
   const replaceForm = (nextForm: VehicleArchive): void => {
@@ -612,16 +665,70 @@
     Object.assign(form, nextForm)
   }
 
+  const focusFirstInvalidField = (tabName: ArchiveTabName): void => {
+    const invalidItem = pageRef.value?.querySelector<HTMLElement>(
+      `#pane-${tabName} .el-form-item.is-error`
+    )
+    if (!invalidItem) return
+
+    invalidItem.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    invalidItem
+      .querySelector<HTMLElement>(
+        'input:not([type="hidden"]):not([disabled]), textarea:not([disabled]), button:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      )
+      ?.focus()
+  }
+
   const validateForms = async (): Promise<boolean> => {
-    try {
-      await basicFormRef.value?.validate()
-      await bodyFormRef.value?.validate()
-      await engineFormRef.value?.validate()
-      await otherFormRef.value?.validate()
-      return true
-    } catch {
-      page.activeTab = 'basic'
-      return false
+    for (const tab of formTabs) {
+      try {
+        await tab.formRef.value?.validate()
+      } catch {
+        page.activeTab = tab.name
+        await nextTick()
+        focusFirstInvalidField(tab.name)
+        return false
+      }
+    }
+
+    return true
+  }
+
+  const sanitizeVehicleArchivePayload = (params: VehicleArchive): VehicleArchiveWritePayload => {
+    const {
+      id,
+      tenantId,
+      createBy,
+      createTime,
+      updateBy,
+      updateTime,
+      auditBy,
+      auditTime,
+      ...formPayload
+    } = params
+    const payload = {
+      ...formPayload,
+      attachments: formPayload.attachments ?? [],
+      auditStatus: formPayload.auditStatus ?? 'pending',
+      isAirConditioned: formPayload.isAirConditioned ?? false,
+      isNewEnergy: formPayload.isNewEnergy ?? false,
+      isDoubleDeck: formPayload.isDoubleDeck ?? false,
+      supportPhoto: formPayload.supportPhoto ?? false
+    }
+
+    void tenantId
+    void createBy
+    void createTime
+    void updateBy
+    void updateTime
+    void auditBy
+    void auditTime
+
+    return {
+      ...(id ? { id } : {}),
+      ...Object.fromEntries(
+        Object.entries(payload).map(([key, value]) => [key, value === '' ? null : value])
+      )
     }
   }
 
@@ -631,7 +738,7 @@
 
     page.saving = true
     try {
-      const payload = toRaw(form)
+      const payload = sanitizeVehicleArchivePayload(toRaw(form))
       if (isEdit.value) {
         await editVehicleArchive(payload)
       } else {
@@ -643,16 +750,64 @@
     }
   }
 
-  const handleAttachmentUpload = async (options: UploadRequestOptions): Promise<void> => {
-    const [resource] = await uploadAttachment(options.file)
-    const nextAttachment: ArchiveAttachment = {
-      name: resource.origin_name,
-      url: resource.url,
-      fileType: resource.suffix ? `.${resource.suffix}` : '',
-      fileSize: resource.size_info
+  const normalizeFileType = (fileType?: string): string => getFileExtension(undefined, fileType)
+
+  const formatAttachmentFileType = (fileType?: string): string => {
+    const normalizedFileType = normalizeFileType(fileType)
+    if (!normalizedFileType) return '--'
+
+    return (
+      userStore.getDictLabelByValue('FILE_EXTENSION_LABEL_MAP', normalizedFileType) ||
+      `.${normalizedFileType}`
+    )
+  }
+
+  const getAttachmentMoreActions = (): ButtonMoreItem[] => [
+    {
+      key: 'download',
+      label: '下载',
+      icon: 'ri:download-2-line'
+    },
+    {
+      key: 'delete',
+      label: '删除',
+      icon: 'ri:delete-bin-5-line',
+      color: '#f56c6c'
     }
-    form.attachments = [...(form.attachments ?? []), nextAttachment]
-    ElMessage.success('附件上传成功')
+  ]
+
+  const handleAttachmentMoreAction = (item: ButtonMoreItem, row: ArchiveAttachment): void => {
+    if (item.key === 'download') {
+      downloadAttachment(row)
+      return
+    }
+
+    if (item.key === 'delete') {
+      void removeAttachment(row)
+    }
+  }
+
+  const handleAttachmentUpload = async (file: File): Promise<void> => {
+    page.attachmentUploading = true
+    try {
+      const [resource] = await uploadAttachment(file)
+      if (!resource?.url) {
+        throw new Error('附件上传失败')
+      }
+
+      const nextAttachment: ArchiveAttachment = {
+        name: resource.originName || file.name,
+        url: resource.url,
+        fileType: getFileExtension(file.name, resource.suffix),
+        fileSize: resource.sizeInfo
+      }
+      form.attachments = [...(form.attachments ?? []), nextAttachment]
+      ElMessage.success('附件上传成功')
+    } catch (error) {
+      ElMessage.error(error instanceof Error ? error.message : '附件上传失败')
+    } finally {
+      page.attachmentUploading = false
+    }
   }
 
   const removeAttachment = async (row: ArchiveAttachment): Promise<void> => {
@@ -750,6 +905,11 @@
       margin-bottom: 12px;
     }
 
+    &__section-title {
+      flex: 1;
+      margin: 0 !important;
+    }
+
     &__images {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
@@ -763,6 +923,10 @@
       gap: 8px;
       align-items: center;
       color: var(--el-text-color-regular);
+
+      .art-upload {
+        display: flex;
+      }
     }
 
     :deep(.el-tabs__content) {

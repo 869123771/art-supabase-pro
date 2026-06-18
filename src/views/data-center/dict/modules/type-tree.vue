@@ -34,6 +34,7 @@
           <div class="dict-type-tree__node">
             <div class="dict-type-tree__label">
               <ArtSvgIcon
+                class="dict-type-tree__node-icon"
                 :icon="data.nodeType === 'directory' ? 'ri:folder-3-line' : 'ri:book-2-line'"
               />
               <span>{{ data.name }}</span>
@@ -310,6 +311,13 @@
         text-overflow: ellipsis;
         white-space: nowrap;
       }
+    }
+
+    &__node-icon {
+      width: 1em;
+      height: 1em;
+      flex: 0 0 1em;
+      font-size: 16px;
     }
 
     &__actions {

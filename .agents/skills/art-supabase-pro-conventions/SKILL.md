@@ -1,6 +1,6 @@
 ---
 name: art-supabase-pro-conventions
-description: Apply the art-supabase-pro frontend architecture and coding conventions. Use for creating, refactoring, or reviewing Vue pages, CRUD modules, search forms, tables, dialogs, drawers, and business components under src, especially when choosing between ArtSearchBar, ArtTableHeader, ArtTable, ArtDialog, ArtDrawer, ArtForm, and Element Plus primitives.
+description: Apply the art-supabase-pro frontend architecture and coding conventions. Use for creating, refactoring, or reviewing Vue pages, CRUD modules, search forms, tables, dialogs, drawers, business components, write payloads, and API provider boundaries under src.
 ---
 
 # Art Supabase Pro Conventions
@@ -32,6 +32,9 @@ Use these components before assembling equivalent Element Plus plumbing:
 | Side-panel business workflow    | `ArtDrawer`                                                  |
 | Metadata-driven form            | `ArtForm`                                                    |
 | Uploads and common actions      | Existing `Art*` core form/action component                   |
+| Business section title          | `ArtSectionTitle`                                            |
+
+When a project wrapper already exists, use it before raw Element Plus primitives. For example, prefer `ArtExcelImport`, `ArtUploadImage`, `ArtButtonTable`, `ArtButtonMore`, and similar `src/components/core` wrappers over page-local `ElUpload`, ad hoc action buttons, or custom dropdown wiring. If the wrapper is close but missing a broadly reusable capability, extend the wrapper first and consume that extension from the business page.
 
 Use raw `ElDialog` or `ElDrawer` only when the wrapper cannot support a documented platform requirement. Extend the core wrapper instead when the missing behavior is broadly reusable.
 
@@ -41,7 +44,7 @@ For dictionary-backed options, do not create page-local API calls or `ArtForm` i
 
 For tree-shaped data operations, use the shared utilities in `src/utils/tree.ts` such as `TreeUtils.listToTree`, `treeToList`, and related helpers. Do not hand-write page-local list/tree conversion, node lookup, flattening, or descendant traversal logic. If the shared utility does not cover a needed tree operation, extend the utility first and then consume it from business pages.
 
-For metadata form section titles such as "基础信息" or "供应信息", use `ArtForm` items with `type: 'divider'` and `span: 24`. Do not create business-page slots and local SCSS just to render a section divider; if the shared divider style or behavior is insufficient, extend `ArtForm` first.
+For business section titles such as "基础信息", "车辆证件", or "车辆档案附件", use `ArtSectionTitle` to keep the visual language consistent. In `ArtForm`, use items with `type: 'divider'` and `span: 24`, because the divider is rendered through `ArtSectionTitle`. Do not create page-local `h3` headings and SCSS for section titles. Use the default right-side line for ordinary section breaks; pass `:show-line="false"` only for compact header rows where the line should be hidden, such as a title with a right-aligned action button.
 
 ## Build CRUD Pages
 
@@ -183,6 +186,16 @@ Apply the same ownership model to `ArtDrawer`.
 - On validation failure, return `false` without closing.
 - On API failure, rely on the project's API response layer for user messages unless the feature needs a specific message, then return `false`.
 - Emit `success` or `submit` only after persistence succeeds.
+
+## Own Write Payloads In The Business Layer
+
+- Build and normalize create/update payloads in the owning page, business dialog, feature composable, or feature module before calling an API function.
+- Keep business rules out of `src/api` providers. Do not put form defaults, conditional fields, empty-string-to-null conversion, date formatting, attachment shaping, validation-derived values, or feature-specific field removal in API request functions.
+- Keep API providers transport-focused: choose the table or endpoint, extract path/query identifiers required by the request, convert key naming such as camelCase to snake_case, execute the request, and apply generic response handling.
+- Treat identifier extraction for an update request as transport work; treat deciding whether an identifier or field belongs in the payload as business work.
+- Remove audit/read-only fields such as `tenantId`, `createBy`, `createTime`, `updateBy`, and `updateTime` while constructing the business payload, not inside the API provider.
+- Normalize optional database values according to the schema after validation. For nullable non-text values such as dates, numbers, and UUIDs, convert blank form values to `null` before the API call.
+- If payload construction is reused by multiple screens in one feature, place it in that feature's `modules` or feature composable. Do not turn the API provider into a domain service.
 
 ## File Organization
 

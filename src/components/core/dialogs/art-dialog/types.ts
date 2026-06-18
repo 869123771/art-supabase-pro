@@ -14,6 +14,9 @@ export interface ArtDialogOptions<TData = unknown> extends ArtOverlayOptions<
   subtitle?: string
   width?: string | number
   fullscreen?: boolean
+  showFullscreenButton?: boolean
+  fullscreenText?: string
+  exitFullscreenText?: string
   contentMaxHeight?: string | number
   dialogProps?: Partial<DialogPropsPublic> & Record<string, unknown>
 }
@@ -27,8 +30,11 @@ export interface ArtDialogExpose<TData = unknown> extends ArtOverlayExpose<
 > {
   dialogRef: Readonly<Ref<unknown>>
   scrollbarRef: Readonly<Ref<unknown>>
+  fullscreen: Readonly<Ref<boolean>>
   handleOpen: (data?: TData, options?: ArtDialogOptions<TData>) => Promise<void>
   getDialogInstance: () => unknown
+  setFullscreen: (value: boolean) => void
+  toggleFullscreen: () => void
   scrollTo: (options: ArtScrollOptions) => void
 }
 

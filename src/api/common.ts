@@ -50,7 +50,7 @@ export async function uploadAttachment(
     remark?: string
     concurrency?: number
   }
-): Promise<any[]> {
+): Promise<Api.DataCenter.Resources.ResourceListItem[]> {
   const {
     getUserInfo: { userName, nickName }
   } = useUserStore()
@@ -64,7 +64,7 @@ export async function uploadAttachment(
   // 统一成数组
   const fileList = Array.isArray(files) ? files : [files]
   const queue = [...fileList]
-  const results: any[] = []
+  const results: Api.DataCenter.Resources.ResourceListItem[] = []
 
   // worker（并发控制）
   async function worker() {
@@ -93,11 +93,12 @@ export async function uploadAttachment(
     const hash = await calcFileHash(file)
 
     // 2️⃣ 查重
-    const { data: existed } = await supabase
-      .from('sys_attachment')
-      .select('*')
-      .eq('hash', hash)
-      .maybeSingle()
+    const { data: existed } = await responseHandle<Api.DataCenter.Resources.ResourceListItem>(
+      () => supabase.from('sys_attachment').select('*').eq('hash', hash).maybeSingle() as any,
+      {
+        ignoreCheck: true
+      }
+    )
 
     if (existed) return existed
 
@@ -147,9 +148,19 @@ export async function uploadAttachment(
 
     const query = await supabase.from('sys_attachment').insert(insertData).select().single()
 
-    return await responseHandle(() => query as any, {
-      ignoreCheck: true,
-      showMessage: true
-    })
+    const { data: inserted } = await responseHandle<Api.DataCenter.Resources.ResourceListItem>(
+      () => query as any,
+      {
+        ignoreCheck: true,
+        showMessage: true,
+        breakReturn: true
+      }
+    )
+
+    if (!inserted) {
+      throw new Error('附件上传失败')
+    }
+
+    return inserted
   }
 }

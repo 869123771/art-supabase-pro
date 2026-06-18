@@ -130,6 +130,7 @@ export interface DictMap extends Record<string, Api.DataCenter.DictListItem[] | 
   vehicleEmissionStandard?: Api.DataCenter.DictListItem[]
   vehicleTransportIndustry?: Api.DataCenter.DictListItem[]
   vehicleOperationType?: Api.DataCenter.DictListItem[]
+  FILE_EXTENSION_LABEL_MAP?: Api.DataCenter.DictListItem[]
 }
 
 // 设置Store状态

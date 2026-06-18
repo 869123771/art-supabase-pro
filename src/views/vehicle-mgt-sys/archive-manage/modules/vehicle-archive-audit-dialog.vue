@@ -5,6 +5,7 @@
       v-model="form.data"
       :items="form.items"
       :rules="form.rules"
+      :span="24"
       :show-reset="false"
       :show-submit="false"
       label-width="100px"
@@ -17,13 +18,13 @@
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
-  import { auditVehicleArchive } from '@/api/vehicle-mgt-sys'
+  import { auditVehicleArchive, auditVehicleArchiveBatch } from '@/api/vehicle-mgt-sys'
 
   type VehicleArchive = Api.VehicleMgtSys.ArchiveManage.VehicleArchive
   type AuditStatus = Api.VehicleMgtSys.ArchiveManage.AuditStatus
 
   interface AuditForm {
-    id: string
+    ids: string[]
     auditStatus: Extract<AuditStatus, 'approved' | 'rejected'>
     auditRemark: string
   }
@@ -44,9 +45,10 @@
 
   const dialogRef = ref<ArtDialogExpose<VehicleArchive>>()
   const formRef = ref<FormExpose>()
+  const isBatch = ref(false)
 
   const createInitialForm = (): AuditForm => ({
-    id: '',
+    ids: [],
     auditStatus: 'approved',
     auditRemark: ''
   })
@@ -59,10 +61,15 @@
         key: 'auditStatus',
         type: 'radioGroup',
         props: {
-          options: [
-            { label: '通过', value: 'approved' },
-            { label: '未通过', value: 'rejected' }
-          ]
+          options: isBatch.value
+            ? [
+                { label: '批量通过', value: 'approved' },
+                { label: '批量未通过', value: 'rejected' }
+              ]
+            : [
+                { label: '通过', value: 'approved' },
+                { label: '未通过', value: 'rejected' }
+              ]
         }
       },
       {
@@ -85,7 +92,12 @@
   const handleSubmit = async (): Promise<boolean> => {
     try {
       await formRef.value?.validate()
-      await auditVehicleArchive(form.value.data)
+      const { ids, auditStatus, auditRemark } = form.value.data
+      if (isBatch.value) {
+        await auditVehicleArchiveBatch({ ids, auditStatus, auditRemark })
+      } else {
+        await auditVehicleArchive({ id: ids[0], auditStatus, auditRemark })
+      }
       emit('success')
       return true
     } catch {
@@ -96,8 +108,9 @@
   const handleOpen = async (row: VehicleArchive): Promise<void> => {
     if (!row.id) return
 
+    isBatch.value = false
     form.value.data = {
-      id: row.id,
+      ids: [row.id],
       auditStatus: row.auditStatus === 'rejected' ? 'rejected' : 'approved',
       auditRemark: row.auditRemark ?? ''
     }
@@ -108,9 +121,34 @@
       onConfirm: handleSubmit,
       onReset: () => {
         form.value.data = createInitialForm()
+        isBatch.value = false
       }
     })
   }
 
-  defineExpose({ handleOpen })
+  const handleBatchOpen = async (rows: VehicleArchive[]): Promise<void> => {
+    const ids = rows
+      .map((row) => row.id)
+      .filter((id): id is string => typeof id === 'string' && id.length > 0)
+    if (!ids.length) return
+
+    isBatch.value = true
+    form.value.data = {
+      ids,
+      auditStatus: 'approved',
+      auditRemark: ''
+    }
+
+    await dialogRef.value?.handleOpen(rows[0], {
+      title: `批量审核车辆档案（${ids.length}条）`,
+      width: '620px',
+      onConfirm: handleSubmit,
+      onReset: () => {
+        form.value.data = createInitialForm()
+        isBatch.value = false
+      }
+    })
+  }
+
+  defineExpose({ handleOpen, handleBatchOpen })
 </script>

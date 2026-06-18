@@ -17,26 +17,35 @@
     </slot>
     <template #file="{ file, index }">
       <div class="preview-list upload-container relative" :style="getSize">
-        <div class="preview-mask">
-          <i @click="handleView">
-            <ArtSvgIcon icon="ri-eye-line" class="icon text-[20px]" />
-          </i>
-          <i @click="handleRemove(index)">
-            <ArtSvgIcon icon="ri-delete-bin-2-line" class="icon" />
-          </i>
+        <template v-if="file.url">
+          <div class="preview-mask">
+            <i @click="handleView">
+              <ArtSvgIcon icon="ri-eye-line" class="icon text-[20px]" />
+            </i>
+            <i @click="handleRemove(index)">
+              <ArtSvgIcon icon="ri-delete-bin-2-line" class="icon" />
+            </i>
+          </div>
+          <el-image
+            ref="ElImageRefs"
+            :src="file.url"
+            class="absolute rounded-md"
+            :style="getSize"
+            fit="cover"
+            :zoom-rate="1.2"
+            :max-scale="7"
+            :min-scale="0.2"
+            :preview-src-list="previewList"
+            :initial-index="index"
+            :preview-teleported="true"
+            :z-index="10000"
+          />
+        </template>
+        <div v-else-if="file.status === 'fail'" class="upload-state">加载失败</div>
+        <div v-else class="upload-state upload-state--loading">
+          <ArtSvgIcon icon="ri:loader-4-line" class="upload-state__spinner" />
+          <span>上传中</span>
         </div>
-        <el-image
-          ref="ElImageRefs"
-          :src="file?.url"
-          class="absolute rounded-md"
-          :style="getSize"
-          fit="cover"
-          :zoom-rate="1.2"
-          :max-scale="7"
-          :min-scale="0.2"
-          :preview-src-list="previewList"
-          :initial-index="index"
-        />
       </div>
       <component
         :is="btnRender()"
@@ -247,7 +256,7 @@
     display: flex;
     gap: 0.375rem;
     flex-wrap: wrap;
-
+    margin: 0;
     .el-upload-list__item {
       // @apply w-auto outline-none b-0;
       width: auto;
@@ -345,11 +354,45 @@
       }
     }
 
+    .upload-state {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 6px;
+      width: 100%;
+      height: 100%;
+      padding: 8px;
+      font-size: 12px;
+      color: var(--el-text-color-secondary);
+      text-align: center;
+    }
+
+    .upload-state--loading {
+      color: var(--el-color-primary);
+      background-color: rgba(255, 255, 255, 0.72);
+    }
+
+    .upload-state__spinner {
+      font-size: 22px;
+      animation: upload-spin 0.9s linear infinite;
+    }
+
     &:hover,
     .resource-btn:hover {
       // @apply text-[rgb(var(--ui-primary))] b-[rgb(var(--ui-primary))];
       color: var(--el-color-primary);
       border-color: var(--el-color-primary);
+    }
+  }
+
+  @keyframes upload-spin {
+    from {
+      transform: rotate(0deg);
+    }
+
+    to {
+      transform: rotate(360deg);
     }
   }
 </style>

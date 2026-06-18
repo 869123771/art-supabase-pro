@@ -9,7 +9,7 @@ export function useImageViewer(images: string[], options?: Options) {
   const viewerProps = {
     urlList: images,
     hideOnClickModal: true,
-    zIndex: 2500,
+    zIndex: 10000,
     initialIndex: 0,
     ...options,
     onClose: () => {

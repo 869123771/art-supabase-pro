@@ -1,22 +1,25 @@
 ---
 name: supabase
-description: 'Use when doing ANY task involving Supabase. Triggers: Supabase products (Database, Auth, Edge Functions, Realtime, Storage, Vectors, Cron, Queues); client libraries and SSR integrations (supabase-js, @supabase/ssr) in Next.js, React, SvelteKit, Astro, Remix; auth issues (login, logout, sessions, JWT, cookies, getSession, getUser, getClaims, RLS); Supabase CLI or MCP server; schema changes, migrations, security audits, Postgres extensions (pg_graphql, pg_cron, pg_vector).'
+description: "Use when doing ANY task involving Supabase. Triggers: Supabase products (Database, Auth, Edge Functions, Realtime, Storage, Vectors, Cron, Queues); client libraries and SSR integrations (supabase-js, @supabase/ssr) in Next.js, React, SvelteKit, Astro, Remix; auth issues (login, logout, sessions, JWT, cookies, getSession, getUser, getClaims, RLS); Supabase CLI or MCP server; schema changes, migrations, security audits, Postgres extensions (pg_graphql, pg_cron, pg_vector)."
 metadata:
   author: supabase
-  version: '0.1.2'
+  version: "0.1.2"
 ---
 
 # Supabase
 
 ## Core Principles
 
-**1. Supabase changes frequently — verify against changelog and current docs before implementing.** Do not rely on training data for Supabase features. Function signatures, config.toml settings, and API conventions change between versions.
+**1. Supabase changes frequently — verify against changelog and current docs before implementing.**
+Do not rely on training data for Supabase features. Function signatures, config.toml settings, and API conventions change between versions.
 
 First, fetch `https://supabase.com/changelog.md` (a lightweight summary index — not a heavy pull), scan for `breaking-change` tags relevant to your task, and follow the linked page for any that apply. Then look up the relevant topic using the documentation access methods below.
 
-**2. Verify your work.** After implementing any fix, run a test query to confirm the change works. A fix without verification is incomplete.
+**2. Verify your work.**
+After implementing any fix, run a test query to confirm the change works. A fix without verification is incomplete.
 
-**3. Recover from errors, don't loop.** If an approach fails after 2-3 attempts, stop and reconsider. Try a different method, check documentation, inspect the error more carefully, and review relevant logs when available. Supabase issues are not always solved by retrying the same command, and the answer is not always in the logs, but logs are often worth checking before proceeding.
+**3. Recover from errors, don't loop.**
+If an approach fails after 2-3 attempts, stop and reconsider. Try a different method, check documentation, inspect the error more carefully, and review relevant logs when available. Supabase issues are not always solved by retrying the same command, and the answer is not always in the logs, but logs are often worth checking before proceeding.
 
 **4. Exposing tables to the Data API:** Depending on the user's [Data API settings](https://supabase.com/dashboard/project/<ref>/integrations/data_api/settings), newly created tables may not be automatically exposed via the Data (REST) API. If this is the case, `anon` and `authenticated` roles will need to be explicitly granted access.
 
@@ -24,9 +27,11 @@ First, fetch `https://supabase.com/changelog.md` (a lightweight summary index �
 
 When a user reports a SQL-created table is unexpectedly inaccessible, check their Data API settings and whether the roles have been granted access via explicit `GRANT` SQL. When granting public (`anon`/`authenticated`) access, always enable RLS too. See [Exposing a Table to the Data API](https://supabase.com/docs/guides/api/securing-your-api.md) for the full setup workflow.
 
-**5. RLS in exposed schemas.** Enable RLS on every table in any exposed schema, which includes `public` by default. This is critical in Supabase because tables in exposed schemas can be reachable through the Data API when the `anon`/`authenticated` roles have access (see [Exposing a Table to the Data API](https://supabase.com/docs/guides/api/securing-your-api.md)). For private schemas, prefer RLS as defense in depth. After enabling RLS, create policies that match the actual access model rather than defaulting every table to the same `auth.uid()` pattern.
+**5. RLS in exposed schemas.**
+Enable RLS on every table in any exposed schema, which includes `public` by default. This is critical in Supabase because tables in exposed schemas can be reachable through the Data API when the `anon`/`authenticated` roles have access (see [Exposing a Table to the Data API](https://supabase.com/docs/guides/api/securing-your-api.md)). For private schemas, prefer RLS as defense in depth. After enabling RLS, create policies that match the actual access model rather than defaulting every table to the same `auth.uid()` pattern.
 
-**6. Security checklist.** When working on any Supabase task that touches auth, RLS, views, storage, or user data, run through this checklist. These are Supabase-specific security traps that silently create vulnerabilities:
+**6. Security checklist.**
+When working on any Supabase task that touches auth, RLS, views, storage, or user data, run through this checklist. These are Supabase-specific security traps that silently create vulnerabilities:
 
 - **Auth and session security**
   - **Never use `user_metadata` claims in JWT-based authorization decisions.** In Supabase, `raw_user_meta_data` is user-editable and can appear in `auth.jwt()`, so it is unsafe for RLS policies or any other authorization logic. Store authorization data in `raw_app_meta_data` / `app_metadata` instead.
@@ -39,10 +44,33 @@ When a user reports a SQL-created table is unexpectedly inaccessible, check thei
 - **RLS, views, and privileged database code**
   - **Views bypass RLS by default.** In Postgres 15 and above, use `CREATE VIEW ... WITH (security_invoker = true)`. In older versions of Postgres, protect your views by revoking access from the `anon` and `authenticated` roles, or by putting them in an unexposed schema.
   - **UPDATE requires a SELECT policy.** In Postgres RLS, an UPDATE needs to first SELECT the row. Without a SELECT policy, updates silently return 0 rows — no error, just no change.
-  - **Do not put `security definer` functions in an exposed schema.** Keep them in a private or otherwise unexposed schema.
+  - **`auth.role()` is deprecated — use the `TO` clause instead.** Supabase has deprecated `auth.role()` in favour of specifying the target role directly on the policy with `TO authenticated` or `TO anon`. Beyond deprecation, `auth.role() = 'authenticated'` breaks silently when anonymous sign-ins are enabled, because anonymous users carry the `authenticated` Postgres role and pass the check regardless of whether the user is genuinely signed in.
+    ```sql
+    -- Deprecated (do not use)
+    create policy "example" on table_name for select
+    using ( auth.role() = 'authenticated' );
+    ```
+  - **`TO authenticated` alone is authentication without authorization (BOLA / IDOR).** Using `TO authenticated` only checks the role — it does not restrict which rows a user can access. The correct pattern combines `TO authenticated` with an ownership predicate in `USING`:
+    ```sql
+    create policy "example" on table_name for select
+    to authenticated
+    using ( (select auth.uid()) = user_id );
+    ```
+  - **UPDATE policies require both `USING` and `WITH CHECK`.** Without `WITH CHECK`, a user can reassign a row's `user_id` to another user:
+    ```sql
+    create policy "example" on table_name for update
+    to authenticated
+    using ( (select auth.uid()) = user_id )
+    with check ( (select auth.uid()) = user_id );
+    ```
+  - **`SECURITY DEFINER` functions bypass RLS.** A `SECURITY DEFINER` function runs with its creator's privileges — typically a role with `bypassrls` (e.g., `postgres`). Never add `SECURITY DEFINER` to resolve a permission error; it silently removes access control without fixing the underlying cause. Prefer `SECURITY INVOKER`.
+  - **`SECURITY DEFINER` functions in `public` are callable by all roles.** Postgres grants `EXECUTE` to `PUBLIC` by default for every new function, so any `SECURITY DEFINER` function in `public` is a public API endpoint callable by `anon` and `authenticated` (which inherit from `PUBLIC`) without any additional grant. When `SECURITY DEFINER` is genuinely needed (e.g., bypassing RLS on an internal lookup table), keep the function in a non-exposed schema, always include an `auth.uid()` check in the function body, and run `supabase db advisors` after making changes.
 
 - **Storage access control**
   - **Storage upsert requires INSERT + SELECT + UPDATE.** Granting only INSERT allows new uploads but file replacement (upsert) silently fails. You need all three.
+
+- **Dependency and supply-chain security**
+  - **Always pin package versions and commit lockfiles** when installing Supabase packages (`supabase-js`, `@supabase/ssr`, `supabase-py`, etc.). See the [npm security guide](https://supabase.com/docs/guides/security/npm-security.md) for the full checklist.
 
 For any security concern not covered above, fetch the Supabase product security index: `https://supabase.com/docs/guides/security/product-security.md`
 
@@ -70,11 +98,15 @@ For setup instructions, server URL, and configuration, see the [MCP setup guide]
 
 **Troubleshooting connection issues** — follow these steps in order:
 
-1. **Check if the server is reachable:** `curl -so /dev/null -w "%{http_code}" https://mcp.supabase.com/mcp` A `401` is expected (no token) and means the server is up. Timeout or "connection refused" means it may be down.
+1. **Check if the server is reachable:**
+   `curl -so /dev/null -w "%{http_code}" https://mcp.supabase.com/mcp`
+   A `401` is expected (no token) and means the server is up. Timeout or "connection refused" means it may be down.
 
-2. **Check `.mcp.json` configuration:** Verify the project root has a valid `.mcp.json` with the correct server URL. If missing, create one pointing to `https://mcp.supabase.com/mcp`.
+2. **Check `.mcp.json` configuration:**
+   Verify the project root has a valid `.mcp.json` with the correct server URL. If missing, create one pointing to `https://mcp.supabase.com/mcp`.
 
-3. **Authenticate the MCP server:** If the server is reachable and `.mcp.json` is correct but tools aren't visible, the user needs to authenticate. The Supabase MCP server uses OAuth 2.1 — tell the user to trigger the auth flow in their agent, complete it in the browser, and reload the session.
+3. **Authenticate the MCP server:**
+   If the server is reachable and `.mcp.json` is correct but tools aren't visible, the user needs to authenticate. The Supabase MCP server uses OAuth 2.1 — tell the user to trigger the auth flow in their agent, complete it in the browser, and reload the session.
 
 ## Supabase Documentation
 
@@ -97,19 +129,7 @@ Do NOT use `apply_migration` to change a local database schema — it writes a m
 3. **Generate the migration** → `supabase db pull <descriptive-name> --local --yes`
 4. **Verify** → `supabase migration list --local`
 
-## art-supabase-pro Table Convention
-
-For this repository, new business tables must match the existing audit-field convention:
-
-- Include `create_by text`, `create_time timestamptz not null default now()`, `update_by text`, `update_time timestamptz not null default now()`, and `tenant_id uuid not null default app_private.current_user_tenant_id()`.
-- Do not make ordinary frontend business forms pass `tenant_id`; the database should derive it from the authenticated user. Reserve `app_private.default_register_tenant_id()` for registration/default-user flows that intentionally use the public registration tenant.
-- Do not use `uuid default auth.uid()` for `create_by` or `update_by`; the frontend treats them as display strings (`createBy` / `updateBy`).
-- Bind `public.trg_set_create_time_and_by('true', 'true')` as a `before insert` trigger.
-- Bind `public.trg_set_update_time_and_by()` as a `before update` trigger.
-- Enable RLS on every new `public` business table and include table policies in the SQL. The default policy shape is `tenant_select`, `tenant_insert`, `tenant_update`, and `tenant_delete`.
-- Use `app_private.is_platform_super()` for platform super administrator access, `tenant_id = app_private.current_user_tenant_id()` for tenant isolation, and `app_private.owns_record(create_by)` only where ordinary creator ownership is required. Tenant-admin-only tables should use `app_private.is_tenant_admin()` for update/delete.
-- Before writing SQL, inspect a neighboring existing table or local metadata and reuse its id type, naming, indexes, RLS style, comments, and audit trigger pattern.
-
 ## Reference Guides
 
-- **Skill Feedback** → [references/skill-feedback.md](references/skill-feedback.md) **MUST read when** the user reports that this skill gave incorrect guidance or is missing information.
+- **Skill Feedback** → [references/skill-feedback.md](references/skill-feedback.md)
+  **MUST read when** the user reports that this skill gave incorrect guidance or is missing information.

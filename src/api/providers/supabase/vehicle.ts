@@ -15,6 +15,7 @@ type PartsSearchParams = Api.VehicleMgtSys.BasicInfo.PartsSearchParams
 type VehicleArchive = Api.VehicleMgtSys.ArchiveManage.VehicleArchive
 type VehicleArchiveSearchParams = Api.VehicleMgtSys.ArchiveManage.VehicleArchiveSearchParams
 type VehicleArchiveAuditStatus = Api.VehicleMgtSys.ArchiveManage.AuditStatus
+type VehicleArchiveWritePayload = Record<string, unknown> & { id?: string }
 
 // 保险公司
 export async function fetchInsuranceCompanyList(params: InsuranceCompanySearchParams) {
@@ -478,41 +479,9 @@ const getVehicleArchiveSearchFilters = (params: VehicleArchiveSearchParams): Fil
   },
   { col: 'chassisNo', op: 'ilike', val: params.chassisNo ? `%${params.chassisNo}%` : undefined },
   { col: 'operationStatus', op: 'eq', val: params.operationStatus },
-  { col: 'auditStatus', op: 'eq', val: params.auditStatus }
+  { col: 'auditStatus', op: 'eq', val: params.auditStatus },
+  { col: 'auditStatus', op: 'in', val: params.auditStatuses }
 ]
-
-const sanitizeVehicleArchivePayload = (params: VehicleArchive): Partial<VehicleArchive> => {
-  const {
-    id,
-    tenantId,
-    createBy,
-    createTime,
-    updateBy,
-    updateTime,
-    auditBy,
-    auditTime,
-    ...payload
-  } = params
-
-  void id
-  void tenantId
-  void createBy
-  void createTime
-  void updateBy
-  void updateTime
-  void auditBy
-  void auditTime
-
-  return {
-    ...payload,
-    attachments: payload.attachments ?? [],
-    auditStatus: payload.auditStatus ?? 'pending',
-    isAirConditioned: payload.isAirConditioned ?? false,
-    isNewEnergy: payload.isNewEnergy ?? false,
-    isDoubleDeck: payload.isDoubleDeck ?? false,
-    supportPhoto: payload.supportPhoto ?? false
-  }
-}
 
 export async function fetchVehicleArchiveList(params: VehicleArchiveSearchParams) {
   const { from = 0, to = 9, createTimeRange } = params
@@ -575,12 +544,9 @@ export async function fetchVehicleArchiveDetail(id: string) {
   )
 }
 
-export async function addVehicleArchive(params: VehicleArchive) {
+export async function addVehicleArchive(params: VehicleArchiveWritePayload) {
   return await responseHandle(
-    () =>
-      supabase
-        .from(VEHICLE_ARCHIVE_TABLE)
-        .insert(keysToSnakeDeep(sanitizeVehicleArchivePayload(params))) as any,
+    () => supabase.from(VEHICLE_ARCHIVE_TABLE).insert(keysToSnakeDeep(params)) as any,
     {
       showMessage: true,
       breakReturn: true
@@ -588,13 +554,13 @@ export async function addVehicleArchive(params: VehicleArchive) {
   )
 }
 
-export async function editVehicleArchive(params: VehicleArchive) {
-  const { id } = params
+export async function editVehicleArchive(params: VehicleArchiveWritePayload) {
+  const { id, ...payload } = params
   return await responseHandle(
     () =>
       supabase
         .from(VEHICLE_ARCHIVE_TABLE)
-        .update(keysToSnakeDeep(sanitizeVehicleArchivePayload(params)), { count: 'exact' })
+        .update(keysToSnakeDeep(payload), { count: 'exact' })
         .eq('id', id) as any,
     {
       showMessage: true,
@@ -648,6 +614,34 @@ export async function auditVehicleArchive(params: {
           { count: 'exact' }
         )
         .eq('id', id) as any,
+    {
+      showMessage: true,
+      breakReturn: true,
+      requireAffected: true,
+      noAffectedMessage: WRITE_PERMISSION_DENIED_MESSAGE
+    }
+  )
+}
+
+export async function auditVehicleArchiveBatch(params: {
+  ids: string[]
+  auditStatus: VehicleArchiveAuditStatus
+  auditRemark?: string
+}) {
+  const { ids, auditStatus, auditRemark = '' } = params
+  return await responseHandle(
+    () =>
+      supabase
+        .from(VEHICLE_ARCHIVE_TABLE)
+        .update(
+          keysToSnakeDeep({
+            auditStatus,
+            auditRemark,
+            auditTime: new Date().toISOString()
+          }),
+          { count: 'exact' }
+        )
+        .in('id', ids) as any,
     {
       showMessage: true,
       breakReturn: true,
