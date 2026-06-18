@@ -1,1 +1,0 @@
-import{x as s,aR as a,s as e,eo as n}from"./index-Cv8wfDi_.js";const o=()=>{const{isFrontendMode:o}=n(),r=s(),t=a(),{info:u}=e(r),{buttonList:l}=e(t);return{hasAuth:s=>{return o.value?(null!=(a=u.value.buttons)?a:[]).includes(s):(Array.isArray(l.value)?l.value:[]).some(a=>(null==a?void 0:a.name)===s);var a}}};export{o as u};

@@ -278,12 +278,11 @@
         ...cloneDeep(data)
       }
     }
+    await formRef.value?.reloadOptions('parentId')
+
     await dialogRef.value?.handleOpen(data, {
       title: isEdit.value ? '编辑字典' : '新增字典',
       width: '60%',
-      onOpen: async () => {
-        await formRef.value?.reloadOptions('parentId')
-      },
       onConfirm: handleSubmit,
       onReset: handleResetFields
     })

@@ -7,11 +7,11 @@
       </div>
       <div class="vehicle-archive-edit__actions">
         <ElButton @click="goBack">返回</ElButton>
-        <ElButton type="primary" :loading="saving" @click="handleSave">保存</ElButton>
+        <ElButton type="primary" :loading="page.saving" @click="handleSave">保存</ElButton>
       </div>
     </div>
 
-    <ElTabs v-model="activeTab" class="vehicle-archive-edit__tabs">
+    <ElTabs v-model="page.activeTab" class="vehicle-archive-edit__tabs">
       <ElTabPane label="基础信息" name="basic">
         <ArtForm
           ref="basicFormRef"
@@ -99,6 +99,7 @@
 </template>
 
 <script setup lang="tsx">
+  import type { ComputedRef, UnwrapNestedRefs } from 'vue'
   import type { FormRules, UploadRequestOptions } from 'element-plus'
   import { ElButton, ElMessage, ElMessageBox, ElTabPane, ElTabs, ElUpload } from 'element-plus'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
@@ -112,6 +113,7 @@
     fetchVehicleArchiveDetail
   } from '@/api/vehicle-mgt-sys'
   import { uploadAttachment } from '@/api/common'
+  import { useUserStore } from '@/store/modules/user'
 
   defineOptions({ name: 'VehicleArchiveEdit' })
 
@@ -128,16 +130,55 @@
     clearValidate: () => void
   }
 
+  interface PageGroup {
+    activeTab: string
+    saving: boolean
+  }
+
+  interface OptionGroup {
+    vehicleType: ComputedRef<Api.DataCenter.DictListItem[]>
+    originType: ComputedRef<Api.DataCenter.DictListItem[]>
+    color: ComputedRef<Api.DataCenter.DictListItem[]>
+    businessType: ComputedRef<Api.DataCenter.DictListItem[]>
+    operationStatus: ComputedRef<Api.DataCenter.DictListItem[]>
+    purchaseStatus: ComputedRef<Api.DataCenter.DictListItem[]>
+    vehicleLevel: ComputedRef<Api.DataCenter.DictListItem[]>
+    fuelType: ComputedRef<Api.DataCenter.DictListItem[]>
+    emissionStandard: ComputedRef<Api.DataCenter.DictListItem[]>
+    transportIndustry: ComputedRef<Api.DataCenter.DictListItem[]>
+    operationType: ComputedRef<Api.DataCenter.DictListItem[]>
+    gender: ComputedRef<Api.DataCenter.DictListItem[]>
+  }
+
   const route = useRoute()
   const router = useRouter()
-  const activeTab = ref('basic')
-  const saving = ref(false)
+  const userStore = useUserStore()
+  const { getDictMap } = storeToRefs(userStore)
+  const page = reactive<PageGroup>({
+    activeTab: 'basic',
+    saving: false
+  })
   const basicFormRef = ref<FormExpose>()
   const bodyFormRef = ref<FormExpose>()
   const engineFormRef = ref<FormExpose>()
   const otherFormRef = ref<FormExpose>()
 
   const isEdit = computed(() => typeof route.params.id === 'string' && route.params.id.length > 0)
+
+  const options: UnwrapNestedRefs<OptionGroup> = reactive<OptionGroup>({
+    vehicleType: computed(() => getDictMap.value.vehicleType ?? []),
+    originType: computed(() => getDictMap.value.vehicleOriginType ?? []),
+    color: computed(() => getDictMap.value.vehicleColor ?? []),
+    businessType: computed(() => getDictMap.value.vehicleBusinessType ?? []),
+    operationStatus: computed(() => getDictMap.value.vehicleOperationStatus ?? []),
+    purchaseStatus: computed(() => getDictMap.value.vehiclePurchaseStatus ?? []),
+    vehicleLevel: computed(() => getDictMap.value.vehicleLevel ?? []),
+    fuelType: computed(() => getDictMap.value.vehicleFuelType ?? []),
+    emissionStandard: computed(() => getDictMap.value.vehicleEmissionStandard ?? []),
+    transportIndustry: computed(() => getDictMap.value.vehicleTransportIndustry ?? []),
+    operationType: computed(() => getDictMap.value.vehicleOperationType ?? []),
+    gender: computed(() => getDictMap.value.sex ?? [])
+  })
 
   const createInitialForm = (): VehicleArchive => ({
     id: undefined,
@@ -252,12 +293,12 @@
     { label: '车牌号', key: 'plateNo', type: 'input' },
     { label: '所属公司', key: 'companyName', type: 'input' },
     { label: '自编号', key: 'selfNo', type: 'input' },
-    { label: '车型', key: 'vehicleType', type: 'select', props: { options: vehicleTypeOptions } },
+    { label: '车型', key: 'vehicleType', type: 'select', props: { options: options.vehicleType } },
     {
       label: '国产/进口',
       key: 'originType',
       type: 'radioGroup',
-      props: { options: originTypeOptions }
+      props: { options: options.originType }
     },
     { label: '车架号（VIN）', key: 'vin', type: 'input' },
     { label: '车辆厂商', key: 'manufacturer', type: 'input' },
@@ -265,7 +306,7 @@
     { label: '营运证号', key: 'operationCertNo', type: 'input' },
     { label: '购置证号', key: 'purchaseCertNo', type: 'input' },
     { label: '登记证号', key: 'registrationCertNo', type: 'input' },
-    { label: '车身颜色', key: 'vehicleColor', type: 'select', props: { options: colorOptions } },
+    { label: '车身颜色', key: 'vehicleColor', type: 'select', props: { options: options.color } },
     { label: '底盘号', key: 'chassisNo', type: 'input' },
     { label: '空调号码', key: 'acCode', type: 'input' },
     { label: '波箱系列号', key: 'gearboxSerialNo', type: 'input' },
@@ -292,7 +333,7 @@
       label: '业务类型',
       key: 'businessType',
       type: 'select',
-      props: { options: businessTypeOptions }
+      props: { options: options.businessType }
     },
     {
       label: '是否空调车',
@@ -304,14 +345,14 @@
       label: '营运状态',
       key: 'operationStatus',
       type: 'select',
-      props: { options: operationStatusOptions }
+      props: { options: options.operationStatus }
     },
     { label: '营运状态变更', key: 'operationStatusChangeDate', type: 'date', props: dateProps },
     {
       label: '购置状态',
       key: 'purchaseStatus',
       type: 'select',
-      props: { options: purchaseStatusOptions }
+      props: { options: options.purchaseStatus }
     },
     { label: '购置状态变更', key: 'purchaseStatusChangeDate', type: 'date', props: dateProps },
     { label: '例检启用日期', key: 'inspectionStartDate', type: 'date', props: dateProps },
@@ -319,7 +360,7 @@
       label: '车辆等级',
       key: 'vehicleLevel',
       type: 'select',
-      props: { options: vehicleLevelOptions }
+      props: { options: options.vehicleLevel }
     },
     {
       label: '是否新能源车',
@@ -450,7 +491,7 @@
   const engineItems = computed<FormItem[]>(() => [
     { label: '发动机号', key: 'engineNo', type: 'input' },
     { label: '发动机型号', key: 'engineModel', type: 'input' },
-    { label: '燃油类型', key: 'fuelType', type: 'select', props: { options: fuelTypeOptions } },
+    { label: '燃油类型', key: 'fuelType', type: 'select', props: { options: options.fuelType } },
     {
       label: '发动机排量',
       key: 'displacement',
@@ -464,7 +505,7 @@
       label: '排放标准',
       key: 'emissionStandard',
       type: 'select',
-      props: { options: emissionStandardOptions }
+      props: { options: options.emissionStandard }
     },
     {
       label: '发动机功率',
@@ -496,24 +537,24 @@
   ])
 
   const otherItems = computed<FormItem[]>(() => [
-    { label: '车牌颜色', key: 'plateColor', type: 'select', props: { options: colorOptions } },
+    { label: '车牌颜色', key: 'plateColor', type: 'select', props: { options: options.color } },
     {
       label: '运输行业',
       key: 'transportIndustry',
       type: 'select',
-      props: { options: transportIndustryOptions }
+      props: { options: options.transportIndustry }
     },
     {
       label: '营运类型',
       key: 'operationType',
       type: 'select',
-      props: { options: operationTypeOptions }
+      props: { options: options.operationType }
     },
     { label: '业户ID', key: 'ownerId', type: 'input' },
     { label: '业户名称', key: 'ownerName', type: 'input' },
     { label: '业户联系电话', key: 'ownerPhone', type: 'input' },
     { label: '车载终端电话', key: 'terminalPhone', type: 'input' },
-    { label: '车主性别', key: 'ownerGender', type: 'select', props: { options: genderOptions } },
+    { label: '车主性别', key: 'ownerGender', type: 'select', props: { options: options.gender } },
     { label: '身份证号码', key: 'idCardNo', type: 'input' },
     { label: '通讯地址', key: 'mailingAddress', type: 'input' },
     { label: '吨位/座位', key: 'tonnageOrSeat', type: 'input' },
@@ -579,7 +620,7 @@
       await otherFormRef.value?.validate()
       return true
     } catch {
-      activeTab.value = 'basic'
+      page.activeTab = 'basic'
       return false
     }
   }
@@ -588,7 +629,7 @@
     const valid = await validateForms()
     if (!valid) return
 
-    saving.value = true
+    page.saving = true
     try {
       const payload = toRaw(form)
       if (isEdit.value) {
@@ -598,7 +639,7 @@
       }
       goBack()
     } finally {
-      saving.value = false
+      page.saving = false
     }
   }
 
@@ -629,7 +670,9 @@
   }
 
   const goBack = (): void => {
-    void router.push('/vehicle-mgt-sys/archive-manage/vehicle-archive-entry')
+    const source =
+      route.query.source === 'manage' ? 'vehicle-archive-manage' : 'vehicle-archive-entry'
+    void router.push(`/vehicle-mgt-sys/archive-manage/${source}`)
   }
 
   const dateProps = {
@@ -647,86 +690,6 @@
   const yesNoOptions = [
     { label: '是', value: true },
     { label: '否', value: false }
-  ]
-
-  const originTypeOptions = [
-    { label: '国产', value: 'domestic' },
-    { label: '进口', value: 'imported' }
-  ]
-
-  const vehicleTypeOptions = [
-    { label: '大型城市客车', value: 'large-city-bus' },
-    { label: '中型客车', value: 'medium-bus' },
-    { label: '小型客车', value: 'small-bus' },
-    { label: '货车', value: 'truck' },
-    { label: '专用车', value: 'special-vehicle' }
-  ]
-
-  const colorOptions = [
-    { label: '蓝色', value: 'blue' },
-    { label: '黄色', value: 'yellow' },
-    { label: '绿色', value: 'green' },
-    { label: '白色', value: 'white' },
-    { label: '黑色', value: 'black' },
-    { label: '其他', value: 'other' }
-  ]
-
-  const businessTypeOptions = [
-    { label: '公交线路车', value: 'bus-line' },
-    { label: '旅游客运', value: 'tourism' },
-    { label: '包车客运', value: 'charter' },
-    { label: '货运', value: 'freight' }
-  ]
-
-  const operationStatusOptions = [
-    { label: '营运', value: 'operating' },
-    { label: '停运', value: 'stopped' },
-    { label: '维修', value: 'maintenance' },
-    { label: '报废', value: 'scrapped' }
-  ]
-
-  const purchaseStatusOptions = [
-    { label: '新购置', value: 'new' },
-    { label: '转入', value: 'transferred' },
-    { label: '租赁', value: 'leased' }
-  ]
-
-  const vehicleLevelOptions = [
-    { label: '城市公交车', value: 'city-bus' },
-    { label: '一级车', value: 'level-1' },
-    { label: '二级车', value: 'level-2' },
-    { label: '三级车', value: 'level-3' }
-  ]
-
-  const fuelTypeOptions = [
-    { label: '纯电动车', value: 'electric' },
-    { label: '柴油', value: 'diesel' },
-    { label: '汽油', value: 'gasoline' },
-    { label: '天然气', value: 'gas' },
-    { label: '混合动力', value: 'hybrid' }
-  ]
-
-  const emissionStandardOptions = [
-    { label: '国V及以上', value: 'china-v-plus' },
-    { label: '国IV', value: 'china-iv' },
-    { label: '国III', value: 'china-iii' }
-  ]
-
-  const transportIndustryOptions = [
-    { label: '城市公交', value: 'city-bus' },
-    { label: '道路客运', value: 'road-passenger' },
-    { label: '道路货运', value: 'road-freight' }
-  ]
-
-  const operationTypeOptions = [
-    { label: '公交车', value: 'bus' },
-    { label: '班线客车', value: 'line-bus' },
-    { label: '旅游客车', value: 'tour-bus' }
-  ]
-
-  const genderOptions = [
-    { label: '男', value: 'male' },
-    { label: '女', value: 'female' }
   ]
 </script>
 

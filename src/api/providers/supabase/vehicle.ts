@@ -610,6 +610,7 @@ export async function deleteVehicleArchive(id: string) {
     () => supabase.from(VEHICLE_ARCHIVE_TABLE).delete({ count: 'exact' }).eq('id', id) as any,
     {
       showMessage: true,
+      breakReturn: true,
       requireAffected: true,
       noAffectedMessage: WRITE_PERMISSION_DENIED_MESSAGE
     }
@@ -621,6 +622,7 @@ export async function deleteVehicleArchiveBatch(ids: string[]) {
     () => supabase.from(VEHICLE_ARCHIVE_TABLE).delete({ count: 'exact' }).in('id', ids) as any,
     {
       showMessage: true,
+      breakReturn: true,
       requireAffected: true,
       noAffectedMessage: WRITE_PERMISSION_DENIED_MESSAGE
     }

@@ -20,12 +20,18 @@
       :search-bar-props="{ span: 8, labelWidth: 90 }"
       :table-props="{ rowKey: 'id', tableLayout: 'fixed' }"
     />
+
+    <VehicleArchiveAuditDialog ref="auditDialogRef" @success="handleAuditSuccess" />
   </div>
 </template>
 
 <script setup lang="tsx">
-  import { ElMessageBox, ElTabPane, ElTabs, ElTag } from 'element-plus'
+  import type { ComputedRef, UnwrapNestedRefs } from 'vue'
+  import { ElTabPane, ElTabs, ElTag } from 'element-plus'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
+  import ArtButtonMore, {
+    type ButtonMoreItem
+  } from '@/components/core/forms/art-button-more/index.vue'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type {
     ArtTableQueryExpose,
@@ -38,11 +44,11 @@
   import { formatWithDayjs } from '@/utils/time'
   import {
     auditVehicleArchive,
-    deleteVehicleArchive,
-    deleteVehicleArchiveBatch,
     exportVehicleArchiveList,
     fetchVehicleArchiveList
   } from '@/api/vehicle-mgt-sys'
+  import { useUserStore } from '@/store/modules/user'
+  import VehicleArchiveAuditDialog from '../modules/vehicle-archive-audit-dialog.vue'
 
   defineOptions({ name: 'VehicleArchiveEntry' })
 
@@ -52,9 +58,25 @@
   type AuditTab = Extract<AuditStatus, 'pending' | 'approved'>
   type TableParams = SearchParams & Pick<Api.Common.PaginationParams, 'current' | 'size'>
 
+  interface OptionGroup {
+    vehicleType: ComputedRef<Api.DataCenter.DictListItem[]>
+    operationStatus: ComputedRef<Api.DataCenter.DictListItem[]>
+  }
+
+  interface AuditDialogExpose {
+    handleOpen: (row: VehicleArchive) => Promise<void>
+  }
+
   const router = useRouter()
+  const userStore = useUserStore()
+  const { getDictMap } = storeToRefs(userStore)
   const tableQueryRef = ref<ArtTableQueryExpose>()
+  const auditDialogRef = ref<AuditDialogExpose>()
   const auditTab = ref<AuditTab>('pending')
+  const options: UnwrapNestedRefs<OptionGroup> = reactive<OptionGroup>({
+    vehicleType: computed(() => getDictMap.value.vehicleType ?? []),
+    operationStatus: computed(() => getDictMap.value.vehicleOperationStatus ?? [])
+  })
 
   const searchQuery = ref<SearchParams>({
     companyName: '',
@@ -74,7 +96,7 @@
       key: 'vehicleType',
       type: 'select',
       props: {
-        options: vehicleTypeOptions
+        options: options.vehicleType
       }
     },
     { label: '车辆厂商', key: 'manufacturer', type: 'input' },
@@ -84,7 +106,7 @@
       key: 'operationStatus',
       type: 'select',
       props: {
-        options: operationStatusOptions
+        options: options.operationStatus
       }
     },
     {
@@ -145,19 +167,6 @@
           maxRows
         })
       }
-    },
-    {
-      type: 'delete',
-      permission: 'VehicleArchive:Delete',
-      content: ({ selectedCount }: ArtTableQueryHeaderActionContext) =>
-        `确定删除选中的 ${selectedCount} 条车辆档案吗？删除后无法恢复。`,
-      onClick: async ({ selectedRows }) => {
-        const ids = selectedRows
-          .map((row) => row.id)
-          .filter((id): id is string => typeof id === 'string')
-        await deleteVehicleArchiveBatch(ids)
-        await tableQueryRef.value?.refreshRemove()
-      }
     }
   ])
 
@@ -177,22 +186,28 @@
 
   const columnsFactory = (): ColumnOption<VehicleArchive>[] => [
     { type: 'selection', width: 50, fixed: 'left', reserveSelection: true },
-    { type: 'globalIndex', label: '序号', width: 80 },
-    { prop: 'companyName', label: '所属公司', minWidth: 160 },
-    { prop: 'plateNo', label: '车牌号', minWidth: 130 },
-    { prop: 'vehicleType', label: '车型', minWidth: 150 },
-    { prop: 'manufacturer', label: '车辆厂商', minWidth: 140 },
-    { prop: 'chassisNo', label: '车架号', minWidth: 160 },
+    { type: 'globalIndex', label: '序号', width: 70 },
+    { prop: 'companyName', label: '所属公司', width: 150 },
+    { prop: 'plateNo', label: '车牌号', width: 120 },
+    {
+      prop: 'vehicleType',
+      label: '车型',
+      width: 140,
+      formatter: (row) => userStore.getDictLabelByValue('vehicleType', row.vehicleType)
+    },
+    { prop: 'manufacturer', label: '车辆厂商', width: 130 },
+    { prop: 'chassisNo', label: '车架号', width: 160 },
     {
       prop: 'operationStatus',
       label: '营运状态',
-      width: 120,
-      formatter: (row) => getOptionLabel(operationStatusOptions, row.operationStatus)
+      width: 100,
+      formatter: (row) =>
+        userStore.getDictLabelByValue('vehicleOperationStatus', row.operationStatus)
     },
     {
       prop: 'auditStatus',
       label: '审核状态',
-      width: 120,
+      width: 100,
       formatter: (row) => {
         const audit = getAuditMeta(row.auditStatus)
         return <ElTag type={audit.type}>{audit.label}</ElTag>
@@ -201,31 +216,24 @@
     {
       prop: 'createTime',
       label: '创建时间',
-      width: 160,
+      width: 120,
       formatter: (row) => formatWithDayjs(row.createTime, 'YYYY-MM-DD')
     },
-    { prop: 'createBy', label: '创建人', minWidth: 150 },
+    { prop: 'createBy', label: '创建人', width: 100 },
     {
       prop: 'operation',
       label: '操作',
-      width: 170,
-      fixed: 'right',
+      width: 100,
       formatter: (row) => (
-        <div>
+        <div class="flex">
           <ArtButtonTable
             type="view"
             permission="VehicleArchive:View"
             onClick={() => openDetailPage(row)}
           />
-          <ArtButtonTable
-            type="edit"
-            permission="VehicleArchive:Edit"
-            onClick={() => openEditPage(row)}
-          />
-          <ArtButtonTable
-            type="delete"
-            permission="VehicleArchive:Delete"
-            onClick={() => handleDelete(row)}
+          <ArtButtonMore
+            list={getMoreActions()}
+            onClick={(item: ButtonMoreItem) => handleMoreAction(item, row)}
           />
         </div>
       )
@@ -250,7 +258,10 @@
 
   const openDetailPage = (row: VehicleArchive): void => {
     if (!row.id) return
-    void router.push(`/vehicle-mgt-sys/archive-manage/vehicle-archive-detail/${row.id}`)
+    void router.push({
+      path: `/vehicle-mgt-sys/archive-manage/vehicle-archive-detail/${row.id}`,
+      query: { source: 'entry' }
+    })
   }
 
   const handleBatchAudit = async ({
@@ -263,24 +274,23 @@
     await tableQueryRef.value?.refreshUpdate()
   }
 
-  const handleDelete = async (row: VehicleArchive): Promise<void> => {
-    if (!row.id) return
+  const handleAuditSuccess = (): void => {
+    void tableQueryRef.value?.refreshData()
+  }
 
-    try {
-      await ElMessageBox.confirm(
-        `确定删除车辆档案“${row.plateNo}”吗？删除后无法恢复。`,
-        '删除确认',
-        {
-          confirmButtonText: '删除',
-          cancelButtonText: '取消',
-          type: 'warning',
-          confirmButtonClass: 'el-button--danger'
-        }
-      )
-      await deleteVehicleArchive(row.id)
-      await tableQueryRef.value?.refreshRemove()
-    } catch {
-      // 用户取消删除时无须提示
+  const getMoreActions = (): ButtonMoreItem[] => [
+    {
+      key: 'audit',
+      label: '审核',
+      icon: 'ri:checkbox-circle-line',
+      auth: 'VehicleArchive:Audit',
+      color: '#67c23a'
+    }
+  ]
+
+  const handleMoreAction = (item: ButtonMoreItem, row: VehicleArchive): void => {
+    if (item.key === 'audit') {
+      void auditDialogRef.value?.handleOpen(row)
     }
   }
 
@@ -292,25 +302,6 @@
     } as const
     return map[(value || 'pending') as keyof typeof map] ?? map.pending
   }
-
-  const getOptionLabel = (options: Array<{ label: string; value: string }>, value?: string) => {
-    return options.find((item) => item.value === value)?.label || value || ''
-  }
-
-  const vehicleTypeOptions = [
-    { label: '大型城市客车', value: 'large-city-bus' },
-    { label: '中型客车', value: 'medium-bus' },
-    { label: '小型客车', value: 'small-bus' },
-    { label: '货车', value: 'truck' },
-    { label: '专用车', value: 'special-vehicle' }
-  ]
-
-  const operationStatusOptions = [
-    { label: '营运', value: 'operating' },
-    { label: '停运', value: 'stopped' },
-    { label: '维修', value: 'maintenance' },
-    { label: '报废', value: 'scrapped' }
-  ]
 </script>
 
 <style scoped lang="scss">
