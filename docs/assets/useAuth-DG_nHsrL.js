@@ -1,0 +1,1 @@
+import{x as s,aR as a,s as e,eq as n}from"./index-DDSzTsFF.js";const r=()=>{const{isFrontendMode:r}=n(),t=s(),u=a(),{info:o}=e(t),{buttonList:l}=e(u);return{hasAuth:s=>{return r.value?(null!=(a=o.value.buttons)?a:[]).includes(s):(Array.isArray(l.value)?l.value:[]).some(a=>(null==a?void 0:a.name)===s);var a}}};export{r as u};
