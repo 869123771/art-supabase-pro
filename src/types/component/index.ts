@@ -42,6 +42,17 @@ export interface SearchChangeParams {
   val: unknown
 }
 
+export type DictDisplayMode = 'auto' | 'tag' | 'badge' | 'text'
+
+export interface DictColumnOption<T = any> {
+  /** 字典类型编码 */
+  code: string
+  /** auto: 标签样式优先，其次文字颜色 Badge，最后普通文字 */
+  display?: DictDisplayMode
+  /** 动态指定用于匹配字典项的值，默认读取当前列 prop */
+  value?: (row: T) => string | number | null | undefined
+}
+
 // 表格列配置接口
 export interface ColumnOption<T = any> {
   // 列类型
@@ -78,6 +89,8 @@ export interface ColumnOption<T = any> {
   checked?: boolean
   // 自定义渲染函数
   formatter?: (row: T) => any
+  // 字典展示配置
+  dict?: DictColumnOption<T>
   // 插槽相关配置
   // 是否使用插槽渲染内容
   useSlot?: boolean

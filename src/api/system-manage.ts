@@ -38,7 +38,7 @@ export async function fetchGetUserList(params: Api.SystemManage.UserSearchParams
 
   // 构建查询
   let query = supabase
-    .from('sys_users')
+    .from('sys_user')
     .select('*', { count: 'exact' })
     .order('create_time', { ascending: false }) // 按创建时间倒序
     .range(from, to)

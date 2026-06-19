@@ -54,6 +54,12 @@
                     value: col.prop ? getCellValue(slotScope.row, col.prop) : undefined
                   }"
                 />
+                <ArtDictDisplay
+                  v-else-if="col.dict"
+                  :dict-code="col.dict.code"
+                  :value="getDictColumnValue(col, slotScope.row)"
+                  :display="col.dict.display"
+                />
                 <component
                   v-else-if="isComponentCellContent(getColumnCellContent(col, slotScope))"
                   :is="getColumnCellContent(col, slotScope)"
@@ -102,6 +108,7 @@
   import { useCommon } from '@/hooks/core/useCommon'
   import { useTableHeight } from '@/hooks/core/useTableHeight'
   import { useResizeObserver, useWindowSize } from '@vueuse/core'
+  import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
 
   defineOptions({ name: 'ArtTable' })
 
@@ -320,7 +327,10 @@
 
   const shouldUseCustomCellTemplate = (col: ColumnOption) => {
     return (
-      (col.useSlot && col.prop) || col.draggable === true || typeof col.draggable === 'function'
+      (col.useSlot && col.prop) ||
+      !!col.dict ||
+      col.draggable === true ||
+      typeof col.draggable === 'function'
     )
   }
 
@@ -362,6 +372,12 @@
       }
       return undefined
     }, row)
+  }
+
+  const getDictColumnValue = (col: ColumnOption, row: Record<string, any>) => {
+    if (col.dict?.value) return col.dict.value(row)
+    if (col.prop) return getCellValue(row, col.prop) as string | number | null | undefined
+    return undefined
   }
 
   const getColumnCellContent = (
@@ -499,6 +515,7 @@
 
     const shouldFormatEmptyValue =
       !columnProps.useSlot &&
+      !columnProps.dict &&
       columnProps.prop &&
       !['selection', 'expand', 'globalIndex', 'index'].includes(String(columnProps.type))
 
@@ -520,6 +537,7 @@
     delete columnProps.draggable
     delete columnProps.dragDisabled
     delete columnProps.dragIcon
+    delete columnProps.dict
     return columnProps
   }
 

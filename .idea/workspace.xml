@@ -8,31 +8,27 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="b8f35119-660a-46e7-82f4-53eee06863eb" name="Changes" comment="feat : dict support multi level">
-      <change beforePath="$PROJECT_DIR$/.agents/skills/art-supabase-pro-conventions/SKILL.md" beforeDir="false" afterPath="$PROJECT_DIR$/.agents/skills/art-supabase-pro-conventions/SKILL.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.agents/skills/art-supabase-pro-conventions/agents/openai.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/.agents/skills/art-supabase-pro-conventions/agents/openai.yaml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.agents/skills/supabase-postgres-best-practices/references/security-rls-performance.md" beforeDir="false" afterPath="$PROJECT_DIR$/.agents/skills/supabase-postgres-best-practices/references/security-rls-performance.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.agents/skills/supabase/SKILL.md" beforeDir="false" afterPath="$PROJECT_DIR$/.agents/skills/supabase/SKILL.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/dataSources.local.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources.local.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/skills-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/skills-lock.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/api/common.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/common.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/api/providers/supabase/vehicle.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/providers/supabase/vehicle.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/api/vehicle-mgt-sys.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/vehicle-mgt-sys.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/api/auth.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/auth.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/api/system-manage.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/system-manage.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/components/core/dialogs/art-dialog/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/dialogs/art-dialog/index.vue" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/components/core/dialogs/art-dialog/types.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/dialogs/art-dialog/types.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/components/core/forms/art-excel-import/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/forms/art-excel-import/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/core/drawers/art-drawer/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/drawers/art-drawer/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/core/drawers/art-drawer/types.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/drawers/art-drawer/types.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/components/core/forms/art-form/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/forms/art-form/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/components/core/forms/art-upload-image/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/forms/art-upload-image/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/hooks/core/useImageViewer.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/hooks/core/useImageViewer.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/store/modules/user.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/store/modules/user.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/types/api/api.d.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/types/api/api.d.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/core/tables/art-table-query/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/tables/art-table-query/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/core/tables/art-table-query/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/tables/art-table-query/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/core/tables/art-table/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/tables/art-table/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/hooks/core/useArtOverlay.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/hooks/core/useArtOverlay.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/hooks/core/useSupabase.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/hooks/core/useSupabase.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/types/component/index.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/types/component/index.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/types/store/index.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/types/store/index.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/utils/file/index.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/file/index.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/data-center/dict/modules/type-tree.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/data-center/dict/modules/type-tree.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/system/menu/modules/menu-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/system/menu/modules/menu-dialog.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/data-center/dict/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/data-center/dict/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/data-center/dict/modules/dict-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/data-center/dict/modules/dict-dialog.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/data-center/dict/modules/dict-type-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/data-center/dict/modules/dict-type-dialog.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/data-center/sql-console/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/data-center/sql-console/index.vue" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/views/vehicle-mgt-sys/archive-manage/modules/vehicle-archive-audit-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-mgt-sys/archive-manage/modules/vehicle-archive-audit-dialog.vue" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/views/vehicle-mgt-sys/archive-manage/modules/vehicle-archive-detail-content.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-mgt-sys/archive-manage/modules/vehicle-archive-detail-content.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/vehicle-mgt-sys/archive-manage/vehicle-archive-edit/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-mgt-sys/archive-manage/vehicle-archive-edit/index.vue" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/views/vehicle-mgt-sys/archive-manage/vehicle-archive-entry/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-mgt-sys/archive-manage/vehicle-archive-entry/index.vue" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -75,61 +71,61 @@
   </component>
   <component name="NextEditCompletionFeaturesState">
     <decayedCancelled>
-      <entry key="MS100" value="1.0" />
-      <entry key="MS500" value="1.0000000000025084" />
-      <entry key="S2" value="1.0022527811826893" />
-      <entry key="S5" value="1.159917254721903" />
-      <entry key="S10" value="1.6848313589672625" />
-      <entry key="S30" value="2.828496018450196" />
-      <entry key="S60" value="3.3466236441938793" />
-      <entry key="M2" value="3.796098380431399" />
-      <entry key="M5" value="4.943349181231882" />
-      <entry key="M10" value="6.228100297263951" />
-      <entry key="M15" value="7.091468090306942" />
-      <entry key="M30" value="9.012147426576261" />
-      <entry key="H1" value="12.85008079952216" />
-      <entry key="H2" value="20.638347999204644" />
-      <entry key="H4" value="34.551933078662444" />
-      <entry key="D1" value="127.06770343361538" />
-      <entry key="W1" value="187.4946801247215" />
+      <entry key="MS100" value="1.0000000000067417" />
+      <entry key="MS500" value="1.0058315417589232" />
+      <entry key="S2" value="1.3011027952370426" />
+      <entry key="S5" value="1.8256207552737953" />
+      <entry key="S10" value="2.2504701655341837" />
+      <entry key="S30" value="2.699321089632895" />
+      <entry key="S60" value="2.842054261538111" />
+      <entry key="M2" value="2.919016311106044" />
+      <entry key="M5" value="2.9737648714756757" />
+      <entry key="M10" value="3.145542410248114" />
+      <entry key="M15" value="3.4963116871844613" />
+      <entry key="M30" value="5.028217371362152" />
+      <entry key="H1" value="8.922513538218132" />
+      <entry key="H2" value="17.1684946208057" />
+      <entry key="H4" value="32.154301180701204" />
+      <entry key="D1" value="128.906788040246" />
+      <entry key="W1" value="195.74431709768407" />
     </decayedCancelled>
     <decayedSelected>
       <entry key="MS100" value="0.0" />
       <entry key="MS500" value="0.0" />
-      <entry key="S2" value="1.6294253209472368E-287" />
-      <entry key="S5" value="1.9266986112759874E-115" />
-      <entry key="S10" value="4.3894175140626425E-58" />
-      <entry key="S30" value="7.599802346003841E-20" />
-      <entry key="S60" value="2.756773901864975E-10" />
-      <entry key="M2" value="1.6603535472497946E-5" />
-      <entry key="M5" value="0.012248426440412203" />
-      <entry key="M10" value="0.11073761264555165" />
-      <entry key="M15" value="0.23272908258019456" />
-      <entry key="M30" value="0.5592856779455678" />
-      <entry key="H1" value="1.176424143642593" />
-      <entry key="H2" value="2.0599859380154895" />
-      <entry key="H4" value="3.2437287084200896" />
-      <entry key="D1" value="10.343224110409269" />
-      <entry key="W1" value="14.964132701421715" />
+      <entry key="S2" value="0.0" />
+      <entry key="S5" value="0.0" />
+      <entry key="S10" value="2.5313383744157113E-299" />
+      <entry key="S30" value="2.9361849007644813E-100" />
+      <entry key="S60" value="1.7135299532732075E-50" />
+      <entry key="M2" value="1.3090186985957105E-25" />
+      <entry key="M5" value="1.1137261289190138E-10" />
+      <entry key="M10" value="1.0559520840278016E-5" />
+      <entry key="M15" value="4.8575434535980285E-4" />
+      <entry key="M30" value="0.02555151859708369" />
+      <entry key="H1" value="0.2514521990822711" />
+      <entry key="H2" value="0.9523794380348071" />
+      <entry key="H4" value="2.205552509315359" />
+      <entry key="D1" value="9.699173937120065" />
+      <entry key="W1" value="14.827325098150984" />
     </decayedSelected>
     <decayedShown>
-      <entry key="MS100" value="0.018840747307668132" />
-      <entry key="MS500" value="0.4518763633766232" />
-      <entry key="S2" value="0.8216602317782042" />
-      <entry key="S5" value="1.0634779894880706" />
-      <entry key="S10" value="1.5942301676523316" />
-      <entry key="S30" value="2.7627363157952383" />
-      <entry key="S60" value="3.3049452799748402" />
-      <entry key="M2" value="3.769911052913171" />
-      <entry key="M5" value="4.937268127107194" />
-      <entry key="M10" value="6.325435418637843" />
-      <entry key="M15" value="7.313633724910921" />
-      <entry key="M30" value="9.564429023857876" />
-      <entry key="H1" value="14.021073879725357" />
-      <entry key="H2" value="22.69388331642809" />
-      <entry key="H4" value="37.7923221823302" />
-      <entry key="D1" value="137.40974554609727" />
-      <entry key="W1" value="202.45859632744552" />
+      <entry key="MS100" value="1.1090166005646692E-10" />
+      <entry key="MS500" value="0.01045665226179386" />
+      <entry key="S2" value="0.44525787096356995" />
+      <entry key="S5" value="1.1506585534784395" />
+      <entry key="S10" value="1.7426162226719364" />
+      <entry key="S30" value="2.457004871738625" />
+      <entry key="S60" value="2.7079473211748892" />
+      <entry key="M2" value="2.848343404652005" />
+      <entry key="M5" value="2.9445345553777695" />
+      <entry key="M10" value="3.130325266979872" />
+      <entry key="M15" value="3.485924166847609" />
+      <entry key="M30" value="5.04688666272377" />
+      <entry key="H1" value="9.168824768784221" />
+      <entry key="H2" value="18.11654126944771" />
+      <entry key="H4" value="34.35635304749159" />
+      <entry key="D1" value="138.60463347882896" />
+      <entry key="W1" value="210.57139582896178" />
     </decayedShown>
   </component>
   <component name="PackageJsonUpdateNotifier">
@@ -294,6 +290,7 @@
       <workItem from="1781686108227" duration="11315000" />
       <workItem from="1781751658029" duration="19886000" />
       <workItem from="1781797287757" duration="1901000" />
+      <workItem from="1781826751634" duration="5907000" />
     </task>
     <task id="LOCAL-00001" summary="feat project clean">
       <option name="closed" value="true" />
@@ -628,6 +625,12 @@
   </component>
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="3" />
+  </component>
+  <component name="UnknownFeatures">
+    <option featureType="dependencySupport" implementationName="javascript:npm:prettier" />
+    <option featureType="dependencySupport" implementationName="javascript:npm:tailwindcss" />
+    <option featureType="dependencySupport" implementationName="javascript:npm:vite" />
+    <option featureType="dependencySupport" implementationName="javascript:npm:vue" />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
     <option name="TAB_STATES">

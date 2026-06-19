@@ -119,7 +119,6 @@
     onMounted,
     nextTick,
     ref,
-    useSlots,
     type Component,
     type VNode,
     type VNodeChild
@@ -404,7 +403,7 @@
     elTableRef?: InstanceType<typeof ElTable> | null
   }
 
-  interface Props {
+  export interface ArtTableQueryProps {
     /** 外部受控模式的加载状态；传 apiFn 时由组件内部 useTable 接管。 */
     loading?: boolean
     /** 外部受控模式的表格数据；传 apiFn 时由组件内部 useTable 接管。 */
@@ -457,7 +456,7 @@
     tableProps?: ArtTableQueryTableProps
   }
 
-  const props = withDefaults(defineProps<Props>(), {
+  const props = withDefaults(defineProps<ArtTableQueryProps>(), {
     loading: false,
     data: () => [],
     tableColumns: () => [],
@@ -484,7 +483,7 @@
   const selectedRows = ref<Record<string, any>[]>([])
   const selectedRowMap = ref(new Map<string | number, Record<string, any>>())
 
-  const emit = defineEmits<{
+  export interface ArtTableQueryEmits {
     /** 点击查询按钮时触发。内管模式下组件会先自动 replaceSearchParams + getData。 */
     search: [Record<string, unknown>]
     /** 点击重置按钮时触发。内管模式下组件会先自动 resetSearchParams。 */
@@ -510,9 +509,29 @@
       action: ArtTableQueryHeaderAction,
       ctx: ArtTableQueryHeaderActionContext
     ]
-  }>()
+  }
 
-  const slots = useSlots()
+  const emit = defineEmits<ArtTableQueryEmits>()
+
+  export interface ArtTableQueryHeaderLeftSlotProps {
+    /** 当前跨页选中的完整行 */
+    selectedRows: Record<string, any>[]
+    /** 当前跨页选中数量 */
+    selectedCount: number
+  }
+
+  export interface ArtTableQuerySlots {
+    /** 工具栏左侧扩展区，渲染在 headerActions 后 */
+    'header-left'?: (props: ArtTableQueryHeaderLeftSlotProps) => any
+    /** 工具栏右侧扩展区 */
+    'header-right'?: () => any
+    /** 透传给 ArtTable 的默认插槽 */
+    default?: () => any
+    /** 动态表格列插槽和 search-{key} 查询项插槽 */
+    [name: string]: ((props: any) => any) | undefined
+  }
+
+  const slots = defineSlots<ArtTableQuerySlots>()
   const isManaged = computed(() => !!props.apiFn)
   const managedTable = useTable<Record<string, any>>({
     core: {

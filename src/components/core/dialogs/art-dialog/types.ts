@@ -10,14 +10,23 @@ export interface ArtDialogOptions<TData = unknown> extends ArtOverlayOptions<
   TData,
   ArtDialogExpose<TData>
 > {
+  /** 弹窗标题 */
   title?: string
+  /** 标题下方的辅助说明 */
   subtitle?: string
+  /** 弹窗宽度 */
   width?: string | number
+  /** 是否全屏 */
   fullscreen?: boolean
+  /** 是否显示全屏切换按钮 */
   showFullscreenButton?: boolean
+  /** 进入全屏按钮提示文本 */
   fullscreenText?: string
+  /** 退出全屏按钮提示文本 */
   exitFullscreenText?: string
+  /** 内容区域最大高度，超过后启用滚动容器 */
   contentMaxHeight?: string | number
+  /** 单次打开时额外传递给 ElDialog 的属性 */
   dialogProps?: Partial<DialogPropsPublic> & Record<string, unknown>
 }
 
@@ -28,14 +37,56 @@ export interface ArtDialogExpose<TData = unknown> extends ArtOverlayExpose<
   TData,
   ArtDialogOptions<TData>
 > {
+  /** 底层 ElDialog 实例 Ref */
   dialogRef: Readonly<Ref<unknown>>
+  /** 内容 ElScrollbar 实例 Ref */
   scrollbarRef: Readonly<Ref<unknown>>
+  /** 当前是否全屏 */
   fullscreen: Readonly<Ref<boolean>>
+  /** 打开弹窗并传入本次数据与覆盖配置 */
   handleOpen: (data?: TData, options?: ArtDialogOptions<TData>) => Promise<void>
+  /** 获取底层 ElDialog 实例 */
   getDialogInstance: () => unknown
+  /** 设置全屏状态 */
   setFullscreen: (value: boolean) => void
+  /** 切换全屏状态 */
   toggleFullscreen: () => void
+  /** 控制内容滚动位置 */
   scrollTo: (options: ArtScrollOptions) => void
+}
+
+export interface ArtDialogEmits<TData = unknown> {
+  /** 打开动画开始 */
+  open: [data: TData]
+  /** 打开动画结束 */
+  opened: [data: TData]
+  /** 关闭动画开始 */
+  close: [data: TData]
+  /** 关闭动画结束 */
+  closed: []
+  /** 开始执行确认流程 */
+  confirm: [data: TData]
+  /** 数据重置完成 */
+  reset: []
+  /** 打开、关闭或确认回调发生异常 */
+  error: [error: unknown]
+  'open-auto-focus': []
+  'close-auto-focus': []
+}
+
+export interface ArtDialogSlotProps<TData = unknown> {
+  /** 当前打开数据 */
+  data: TData
+  /** 弹窗公开操作 API */
+  api: ArtDialogExpose<TData>
+}
+
+export interface ArtDialogSlots<TData = unknown> {
+  default?: (props: ArtDialogSlotProps<TData> & { loading: boolean }) => any
+  header?: (props: ArtDialogSlotProps<TData>) => any
+  subtitle?: (props: ArtDialogSlotProps<TData>) => any
+  footer?: (props: ArtDialogSlotProps<TData> & { loading: boolean }) => any
+  'footer-left'?: (props: ArtDialogSlotProps<TData> & { loading: boolean }) => any
 }
 
 export type { ArtScrollOptions }

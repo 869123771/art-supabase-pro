@@ -119,9 +119,15 @@
 </template>
 
 <script setup lang="ts" generic="T = Record<string, any>">
-  import type { Component } from 'vue'
-  import type { DialogInstance, DialogPropsPublic, ScrollbarInstance } from 'element-plus'
-  import type { ArtDialogExpose, ArtDialogOptions, ArtScrollOptions } from './types'
+  import type { DialogInstance, ScrollbarInstance } from 'element-plus'
+  import type {
+    ArtDialogEmits,
+    ArtDialogExpose,
+    ArtDialogOptions,
+    ArtDialogProps,
+    ArtDialogSlots,
+    ArtScrollOptions
+  } from './types'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import { mergeOverlayRecords, useArtOverlay } from '@/hooks/core/useArtOverlay'
 
@@ -129,42 +135,6 @@
     name: 'ArtDialog',
     inheritAttrs: false
   })
-
-  interface ArtDialogProps<TData = Record<string, any>> extends Partial<
-    Omit<DialogPropsPublic, 'modelValue' | 'title' | 'width'>
-  > {
-    title?: string
-    subtitle?: string
-    width?: string | number
-    fullscreen?: boolean
-    showFullscreenButton?: boolean
-    fullscreenText?: string
-    exitFullscreenText?: string
-    loading?: boolean
-    loadingText?: string
-    loadingBackground?: string
-    loadingCustomClass?: string
-    contentHeight?: string | number
-    contentMaxHeight?: string | number
-    showFooter?: boolean
-    showCancelButton?: boolean
-    showConfirmButton?: boolean
-    cancelText?: string
-    confirmText?: string
-    confirmDisabled?: boolean
-    autoClose?: boolean
-    resetOnClose?: boolean
-    closeOnConfirmError?: boolean
-    scrollbarAlways?: boolean
-    nativeScrollbar?: boolean
-    content?: Component
-    contentProps?: Record<string, unknown>
-    dialogProps?: ArtDialogOptions<TData>['dialogProps']
-    onOpen?: ArtDialogOptions<TData>['onOpen']
-    onConfirm?: ArtDialogOptions<TData>['onConfirm']
-    onClose?: ArtDialogOptions<TData>['onClose']
-    onReset?: ArtDialogOptions<TData>['onReset']
-  }
 
   const props = withDefaults(defineProps<ArtDialogProps<T>>(), {
     title: '',
@@ -193,20 +163,10 @@
     nativeScrollbar: false
   })
 
-  const emit = defineEmits<{
-    open: [data: T]
-    opened: [data: T]
-    close: [data: T]
-    closed: []
-    confirm: [data: T]
-    reset: []
-    error: [error: unknown]
-    'open-auto-focus': []
-    'close-auto-focus': []
-  }>()
+  const emit = defineEmits<ArtDialogEmits<T>>()
 
   const attrs = useAttrs()
-  const slots = useSlots()
+  const slots = defineSlots<ArtDialogSlots<T>>()
   const dialogRef = shallowRef<DialogInstance>()
   const scrollbarRef = shallowRef<ScrollbarInstance>()
 

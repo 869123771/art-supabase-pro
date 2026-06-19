@@ -12,10 +12,7 @@
       :show-submit="false"
     >
       <template #color>
-        <el-color-picker
-          v-model="form.data.color"
-          :predefine="['#67C23A', '#E6A23C', '#F56C6C', '#909399']"
-        />
+        <el-color-picker v-model="form.data.color" :predefine="elementPlusPresetColors" />
       </template>
 
       <template #tagType>
@@ -91,6 +88,7 @@
     tagType: '',
     remark: ''
   }
+  const elementPlusPresetColors = ['#409EFF', '#67C23A', '#E6A23C', '#F56C6C', '#909399']
   const tagTypeOptions: Array<{ label: string; value: Api.Common.TagPreset }> = [
     { label: '主要', value: 'primary' },
     { label: '成功', value: 'success' },
@@ -278,11 +276,12 @@
         ...cloneDeep(data)
       }
     }
-    await formRef.value?.reloadOptions('parentId')
-
     await dialogRef.value?.handleOpen(data, {
       title: isEdit.value ? '编辑字典' : '新增字典',
       width: '60%',
+      onOpen: async () => {
+        await formRef.value?.reloadOptions('parentId')
+      },
       onConfirm: handleSubmit,
       onReset: handleResetFields
     })

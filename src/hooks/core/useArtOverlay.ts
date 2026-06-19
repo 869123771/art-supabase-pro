@@ -10,45 +10,82 @@ export type ArtScrollOptions =
     }
 
 export interface ArtOverlayOptions<TData, TApi> {
+  /** 内容区域是否显示加载遮罩 */
   loading?: boolean
+  /** 内容加载遮罩文本 */
   loadingText?: string
+  /** 内容加载遮罩背景色 */
   loadingBackground?: string
+  /** 内容加载遮罩自定义 class */
   loadingCustomClass?: string
+  /** 内容区域固定高度，设置后启用滚动容器 */
   contentHeight?: string | number
+  /** 内容区域最大高度，超过后启用滚动容器 */
   contentMaxHeight?: string | number
+  /** 是否显示底部操作区 */
   showFooter?: boolean
+  /** 是否显示默认取消按钮 */
   showCancelButton?: boolean
+  /** 是否显示默认确认按钮 */
   showConfirmButton?: boolean
+  /** 取消按钮文字 */
   cancelText?: string
+  /** 确认按钮文字 */
   confirmText?: string
+  /** 是否禁用确认按钮 */
   confirmDisabled?: boolean
+  /** 确认成功后是否自动关闭 */
   autoClose?: boolean
+  /** 关闭完成后是否重置数据和加载状态 */
   resetOnClose?: boolean
+  /** 确认回调抛出异常时是否仍然关闭 */
   closeOnConfirmError?: boolean
+  /** 是否始终显示滚动条 */
   scrollbarAlways?: boolean
+  /** 是否使用原生滚动条 */
   nativeScrollbar?: boolean
+  /** 动态内容组件 */
   content?: Component
+  /** 传递给动态内容组件的属性 */
   contentProps?: Record<string, unknown>
+  /** 内容挂载完成后的打开回调 */
   onOpen?: (data: TData, api: TApi) => Awaitable<void>
+  /** 确认回调；返回 false 阻止自动关闭 */
   onConfirm?: (data: TData, api: TApi) => Awaitable<boolean | void>
+  /** 关闭前回调；返回 false 阻止关闭 */
   onClose?: (data: TData, api: TApi) => Awaitable<boolean | void>
+  /** 重置完成后的回调 */
   onReset?: (api: TApi) => void
 }
 
 export interface ArtOverlayExpose<TData, TOptions> {
+  /** 当前是否显示 */
   visible: Readonly<Ref<boolean>>
+  /** 内容加载状态 */
   loading: Readonly<Ref<boolean>>
+  /** 确认按钮加载状态 */
   confirmLoading: Readonly<Ref<boolean>>
+  /** 当前打开数据 */
   data: Readonly<Ref<TData>>
+  /** 当前合并后的运行时配置 */
   options: Readonly<Ref<TOptions>>
+  /** 关闭；force=true 时跳过 onClose */
   handleClose: (force?: boolean) => Promise<boolean>
+  /** 执行确认流程 */
   handleConfirm: () => Promise<boolean>
+  /** 恢复打开时的数据快照并清理加载状态 */
   handleReset: () => void
+  /** 设置内容加载状态 */
   setLoading: (value: boolean) => void
+  /** 设置确认按钮加载状态 */
   setConfirmLoading: (value: boolean) => void
+  /** 增量更新运行时配置 */
   setOptions: (options: Partial<TOptions>) => void
+  /** 替换当前数据 */
   setData: (data: TData) => void
+  /** 浅合并当前对象数据 */
   updateData: (data: Partial<TData>) => void
+  /** 获取当前数据 */
   getData: () => TData
 }
 

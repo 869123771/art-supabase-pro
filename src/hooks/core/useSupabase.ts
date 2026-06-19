@@ -97,7 +97,7 @@ export function useSupabase() {
    * 通用 query wrapper：可单独导入使用
    * 用法：
    *   import { runQuery } from '@/composables/useSupabase'
-   *   const { data, error } = await runQuery<MyType[]>(supabase.from('sys_users').select(), { showMessage: true })
+   *   const { data, error } = await runQuery<MyType[]>(supabase.from('sys_user').select(), { showMessage: true })
    */
 
   async function responseHandle<T = any>(

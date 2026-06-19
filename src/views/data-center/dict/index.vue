@@ -2,7 +2,7 @@
   <div class="art-full-height">
     <div class="dict-layout">
       <ElSplitter class="dict-splitter">
-        <ElSplitterPanel size="280px" min="280px" max="420px">
+        <ElSplitterPanel size="340px" min="340px" max="420px">
           <div class="dict-tree-panel">
             <TypeTree @tree-node-click="handleTreeNodeClick" />
           </div>
@@ -33,7 +33,7 @@
 
 <script setup lang="tsx">
   import type { ComputedRef, UnwrapNestedRefs } from 'vue'
-  import { ElMessage, ElMessageBox, ElTag } from 'element-plus'
+  import { ElMessage, ElMessageBox } from 'element-plus'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type {
     ArtTableQueryExpose,
@@ -41,6 +41,10 @@
     ArtTableQueryHeaderActionContext
   } from '@/components/core/tables/art-table-query/index.vue'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
+  import ArtButtonMore, {
+    type ButtonMoreItem
+  } from '@/components/core/forms/art-button-more/index.vue'
+  import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import { ColumnOption } from '@/types'
   import TreeUtils from '@/utils/tree'
   import { useUserStore } from '@/store/modules/user'
@@ -184,18 +188,19 @@
       {
         prop: 'status',
         label: '状态',
-        formatter: (row) => {
-          const tag = userStore.getDictTagByValue('status', row.status)
-          return (
-            <ElTag type={tag.type}>
-              <span>{tag.label}</span>
-            </ElTag>
-          )
-        }
+        dict: { code: 'status', display: 'auto' }
       },
       {
         prop: 'color',
-        label: '文字颜色'
+        label: '文字颜色',
+        formatter: (row) =>
+          row.color ? <ArtDictDisplay item={row} display="badge" /> : <span>--</span>
+      },
+      {
+        prop: 'tagType',
+        label: '标签样式',
+        formatter: (row) =>
+          row.tagType ? <ArtDictDisplay item={row} display="tag" /> : <span>--</span>
       },
       {
         prop: 'sort',
@@ -204,13 +209,15 @@
       {
         prop: 'operation',
         label: '操作',
-        width: 170,
+        width: 120,
         fixed: 'right',
         formatter: (row) => (
-          <div>
-            <ArtButtonTable type="add" onClick={() => handleAdd(row)} />
+          <div class="flex items-center">
             <ArtButtonTable type="edit" onClick={() => handleEdit(row)} />
-            <ArtButtonTable type="delete" onClick={() => handleDelete(row)} />
+            <ArtButtonMore
+              list={getRowMoreActions()}
+              onClick={(item: ButtonMoreItem) => handleRowMoreAction(item, row)}
+            />
           </div>
         )
       }
@@ -274,6 +281,31 @@
       ...row,
       dictTypeName: table.currentDictType?.name
     })
+  }
+
+  const getRowMoreActions = (): ButtonMoreItem[] => [
+    {
+      key: 'add',
+      label: '新增下级',
+      icon: 'ri:add-line'
+    },
+    {
+      key: 'delete',
+      label: '删除',
+      icon: 'ri:delete-bin-line',
+      color: 'var(--el-color-danger)'
+    }
+  ]
+
+  const handleRowMoreAction = (item: ButtonMoreItem, row: DictListItem): void => {
+    if (item.key === 'add') {
+      handleAdd(row)
+      return
+    }
+
+    if (item.key === 'delete') {
+      void handleDelete(row)
+    }
   }
 
   const handleDelete = async (row: DictListItem): Promise<void> => {

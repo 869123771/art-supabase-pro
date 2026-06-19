@@ -1,5 +1,65 @@
 # ArtTableQuery
 
+## 字典展示规范
+
+后续涉及字典值展示时统一使用 `ArtDictDisplay`。表格场景优先配置
+`ColumnOption.dict`，不要在业务页面重复编写 `formatter`、`ElTag` 或颜色判断。
+
+### 表格列
+
+```ts
+{
+  prop: 'status',
+  label: '状态',
+  dict: {
+    code: 'status',
+    display: 'auto',
+    value: (row) => row.status
+  }
+}
+```
+
+未提供 `value` 时默认读取列的 `prop`。需要从其他字段或组合数据取值时，使用
+`value(row)`：
+
+```ts
+{
+  label: '审核状态',
+  dict: {
+    code: 'vehicleAuditStatus',
+    display: 'auto',
+    value: (row) => row.auditStatus
+  }
+}
+```
+
+### 非表格场景
+
+```vue
+<ArtDictDisplay
+  dict-code="vehicleAuditStatus"
+  :value="detail.auditStatus"
+  display="auto"
+/>
+```
+
+已有完整字典项时也可以直接传入：
+
+```vue
+<ArtDictDisplay :item="dictItem" display="auto" />
+```
+
+### 展示模式
+
+| 模式 | 展示规则 |
+| --- | --- |
+| `auto` | 优先使用字典项 `tagType` 显示 Tag，其次使用 `color` 显示文字前置 Badge 圆点，否则显示普通文字。 |
+| `tag` | 强制按 `tagType` 显示 Tag。 |
+| `badge` | 强制按 `color` 显示文字前置 Badge 圆点。 |
+| `text` | 只显示字典文字。 |
+
+字典项未匹配时显示原始值；原始值为空时默认显示 `--`。
+
 `ArtTableQuery` 是项目标准的查询表格组合组件，内部组合：
 
 - `ArtSearchBar`：查询表单

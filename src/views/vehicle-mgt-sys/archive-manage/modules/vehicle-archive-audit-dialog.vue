@@ -19,6 +19,7 @@
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import { auditVehicleArchive, auditVehicleArchiveBatch } from '@/api/vehicle-mgt-sys'
+  import { useUserStore } from '@/store/modules/user'
 
   type VehicleArchive = Api.VehicleMgtSys.ArchiveManage.VehicleArchive
   type AuditStatus = Api.VehicleMgtSys.ArchiveManage.AuditStatus
@@ -46,6 +47,13 @@
   const dialogRef = ref<ArtDialogExpose<VehicleArchive>>()
   const formRef = ref<FormExpose>()
   const isBatch = ref(false)
+  const userStore = useUserStore()
+  const { getDictMap } = storeToRefs(userStore)
+  const auditStatusOptions = computed(() =>
+    (getDictMap.value.vehicleAuditStatus ?? []).filter((item) =>
+      ['approved', 'rejected'].includes(item.value)
+    )
+  )
 
   const createInitialForm = (): AuditForm => ({
     ids: [],
@@ -61,15 +69,7 @@
         key: 'auditStatus',
         type: 'radioGroup',
         props: {
-          options: isBatch.value
-            ? [
-                { label: '批量通过', value: 'approved' },
-                { label: '批量未通过', value: 'rejected' }
-              ]
-            : [
-                { label: '通过', value: 'approved' },
-                { label: '未通过', value: 'rejected' }
-              ]
+          options: auditStatusOptions.value
         }
       },
       {
@@ -108,6 +108,7 @@
   const handleOpen = async (row: VehicleArchive): Promise<void> => {
     if (!row.id) return
 
+    await userStore.ensureDictLoaded('vehicleAuditStatus')
     isBatch.value = false
     form.value.data = {
       ids: [row.id],
@@ -132,6 +133,7 @@
       .filter((id): id is string => typeof id === 'string' && id.length > 0)
     if (!ids.length) return
 
+    await userStore.ensureDictLoaded('vehicleAuditStatus')
     isBatch.value = true
     form.value.data = {
       ids,

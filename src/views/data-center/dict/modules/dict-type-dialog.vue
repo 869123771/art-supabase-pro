@@ -1,5 +1,5 @@
 <template>
-  <ArtDialog ref="dialogRef" width="520px">
+  <ArtDialog ref="dialogRef" width="620px">
     <ArtForm
       ref="formRef"
       v-model="form.data"
@@ -75,6 +75,7 @@
         key: 'nodeType',
         type: 'radioGroup',
         props: {
+          optionType: 'button',
           disabled: form.editing,
           options: [
             { label: '目录', value: 'directory' },

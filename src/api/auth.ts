@@ -85,7 +85,7 @@ export async function fetchGetUserInfo() {
   const uid = session?.data?.session?.user?.id
 
   return await responseHandle(
-    () => supabase.from('sys_users').select('*').eq('auth_user_id', uid).single() as any,
+    () => supabase.from('sys_user').select('*').eq('auth_user_id', uid).single() as any,
     {
       ignoreCheck: true
     }
@@ -97,7 +97,7 @@ export async function updateCurrentUserProfile(params: Api.Auth.UserInfo) {
   return await responseHandle(
     () =>
       supabase
-        .from('sys_users')
+        .from('sys_user')
         .update(keysToSnakeDeep(rest), { count: 'exact' })
         .eq('id', userId) as any,
     {

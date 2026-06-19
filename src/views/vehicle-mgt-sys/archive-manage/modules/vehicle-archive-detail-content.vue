@@ -64,8 +64,9 @@
       <ElForm label-width="90px">
         <ElFormItem label="审核状态" required>
           <ElRadioGroup v-model="auditForm.auditStatus">
-            <ElRadio value="approved">通过</ElRadio>
-            <ElRadio value="rejected">未通过</ElRadio>
+            <ElRadio v-for="option in auditStatusOptions" :key="option.value" :value="option.value">
+              {{ option.label }}
+            </ElRadio>
           </ElRadioGroup>
         </ElFormItem>
         <ElFormItem label="备注">
@@ -169,9 +170,18 @@
   const showAuditPanel = computed(
     () => route.query.source !== 'manage' && archive.value?.auditStatus === 'pending'
   )
+  const auditStatusOptions = computed(() =>
+    (userStore.getDictMap.vehicleAuditStatus ?? []).filter((item) =>
+      ['approved', 'rejected'].includes(item.value)
+    )
+  )
 
   onMounted(async () => {
-    await Promise.all([loadArchiveDetail(), userStore.ensureDictLoaded('FILE_EXTENSION_LABEL_MAP')])
+    await Promise.all([
+      loadArchiveDetail(),
+      userStore.ensureDictLoaded('FILE_EXTENSION_LABEL_MAP'),
+      userStore.ensureDictLoaded('vehicleAuditStatus')
+    ])
   })
 
   const basicInfoItems = computed<InfoItem[]>(() => [

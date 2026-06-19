@@ -88,46 +88,21 @@
 </template>
 
 <script setup lang="ts" generic="T = Record<string, any>">
-  import type { Component } from 'vue'
-  import type { DrawerPropsPublic, ScrollbarInstance } from 'element-plus'
-  import type { ArtDrawerExpose, ArtDrawerOptions, ArtScrollOptions } from './types'
+  import type { ScrollbarInstance } from 'element-plus'
+  import type {
+    ArtDrawerEmits,
+    ArtDrawerExpose,
+    ArtDrawerOptions,
+    ArtDrawerProps,
+    ArtDrawerSlots,
+    ArtScrollOptions
+  } from './types'
   import { mergeOverlayRecords, useArtOverlay } from '@/hooks/core/useArtOverlay'
 
   defineOptions({
     name: 'ArtDrawer',
     inheritAttrs: false
   })
-
-  interface ArtDrawerProps<TData = Record<string, any>> extends Partial<
-    Omit<DrawerPropsPublic, 'modelValue' | 'title' | 'size' | 'direction'>
-  > {
-    title?: string
-    size?: string | number
-    direction?: 'ltr' | 'rtl' | 'ttb' | 'btt'
-    loading?: boolean
-    loadingText?: string
-    loadingBackground?: string
-    loadingCustomClass?: string
-    contentHeight?: string | number
-    showFooter?: boolean
-    showCancelButton?: boolean
-    showConfirmButton?: boolean
-    cancelText?: string
-    confirmText?: string
-    confirmDisabled?: boolean
-    autoClose?: boolean
-    resetOnClose?: boolean
-    closeOnConfirmError?: boolean
-    scrollbarAlways?: boolean
-    nativeScrollbar?: boolean
-    content?: Component
-    contentProps?: Record<string, unknown>
-    drawerProps?: ArtDrawerOptions<TData>['drawerProps']
-    onOpen?: ArtDrawerOptions<TData>['onOpen']
-    onConfirm?: ArtDrawerOptions<TData>['onConfirm']
-    onClose?: ArtDrawerOptions<TData>['onClose']
-    onReset?: ArtDrawerOptions<TData>['onReset']
-  }
 
   const props = withDefaults(defineProps<ArtDrawerProps<T>>(), {
     title: '',
@@ -151,20 +126,8 @@
     nativeScrollbar: false
   })
 
-  const emit = defineEmits<{
-    open: [data: T]
-    opened: [data: T]
-    close: [data: T]
-    closed: []
-    confirm: [data: T]
-    reset: []
-    error: [error: unknown]
-    'open-auto-focus': []
-    'close-auto-focus': []
-    'resize-start': [event: MouseEvent, size: number]
-    resize: [event: MouseEvent, size: number]
-    'resize-end': [event: MouseEvent, size: number]
-  }>()
+  const emit = defineEmits<ArtDrawerEmits<T>>()
+  defineSlots<ArtDrawerSlots<T>>()
 
   const attrs = useAttrs()
   const drawerRef = shallowRef<unknown>()

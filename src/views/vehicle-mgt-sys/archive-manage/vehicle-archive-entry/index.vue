@@ -18,7 +18,7 @@
       :api-fn="fetchTableData"
       :columns-factory="columnsFactory"
       :header-actions="headerActions"
-      :search-bar-props="{ span: 8, labelWidth: 90 }"
+      :search-bar-props="{ span: 6, labelWidth: 90 }"
       :table-props="{ rowKey: 'id', tableLayout: 'fixed' }"
     />
 
@@ -226,6 +226,15 @@
     if (auditTab.value === 'approved') {
       columns.push(
         {
+          prop: 'auditStatus',
+          label: '审核状态',
+          width: 100,
+          dict: {
+            code: 'vehicleAuditStatus',
+            display: 'badge'
+          }
+        },
+        {
           prop: 'auditTime',
           label: '审核时间',
           width: 180,
@@ -236,12 +245,6 @@
           label: '审核人',
           width: 160,
           formatter: (row) => row.auditBy || row.updateBy || '--'
-        },
-        {
-          prop: 'auditStatus',
-          label: '审核状态',
-          width: 100,
-          formatter: (row) => formatAuditStatus(row.auditStatus)
         }
       )
     }
@@ -308,12 +311,6 @@
 
   const handleAuditSuccess = (): void => {
     void tableQueryRef.value?.refreshData()
-  }
-
-  const formatAuditStatus = (status?: AuditStatus): string => {
-    if (status === 'approved') return '通过'
-    if (status === 'rejected') return '未通过'
-    return '--'
   }
 
   const getMoreActions = (): ButtonMoreItem[] => [

@@ -196,7 +196,6 @@
     type FormItemProp,
     type FormPropsPublic
   } from 'element-plus'
-  import type { SelectPropsPublic } from 'element-plus/es/components/select/src/select'
   import {
     ArrowDownBold,
     ArrowUpBold,
@@ -240,20 +239,36 @@
   const formInstance = useTemplateRef<FormInstance>('formRef')
 
   type ComponentMap = typeof componentMap
-  type FormItemTypedComponentPropsMap = {
-    select: SelectPropsPublic
+
+  export interface FormItemOption {
+    /** 选项显示文本 */
+    label?: string
+    /** 选项提交值 */
+    value?: any
+    /** 是否禁用该选项 */
+    disabled?: boolean
+    /** 树形选项的子节点 */
+    children?: FormItemOption[]
+    [key: string]: any
+  }
+
+  export interface FormItemExtendedProps {
+    /** 静态选项；也可以使用 FormItem.options 或 FormItem.api */
+    options?: FormItemOption[]
+    /** 异步选项加载状态；FormItem.api 请求期间会自动接管 */
+    loading?: boolean
+    /** 选项渲染方式；button 使用 ElRadioButton 或 ElCheckboxButton */
+    optionType?: 'default' | 'button'
+    /** 是否显示分区标题右侧延伸线 */
+    showLine?: boolean
   }
 
   export type FormItemContent = string | (() => VNodeChild) | Component
-  export type FormItemPresetType = keyof ComponentMap
+  export type FormItemPresetType = keyof ComponentMap | 'divider'
   export type FormItemType = FormItemPresetType | (string & {})
-  export type FormItemComponentProps<TType extends FormItemType> =
-    TType extends keyof FormItemTypedComponentPropsMap
-      ? Partial<FormItemTypedComponentPropsMap[TType]>
-      : Record<string, any>
+  export type FormItemComponentProps = FormItemExtendedProps & Record<string, any>
   export type MaybePromise<T> = T | Promise<T>
   export type FormItemApiParams = Record<string, any> | undefined
-  export type FormItemOption = Record<string, any>
   export type FormItemApiFn<TParams = FormItemApiParams, TResult = unknown> = (
     params: TParams
   ) => MaybePromise<TResult>
@@ -305,9 +320,9 @@
     /** 表单项占据的列宽，基于24格栅格系统 */
     span?: number
     /** 选项数据，用于 select、checkbox-group、radio-group 等 */
-    options?: Record<string, any>
-    /** 传递给表单项组件的属性 */
-    props?: FormItemComponentProps<TType> & Record<string, any>
+    options?: FormItemOption[]
+    /** 传递给字段组件的 Element Plus 原生属性及 ArtForm 扩展属性 */
+    props?: FormItemComponentProps
     /** 表单项的插槽配置 */
     slots?: Record<string, (() => any) | undefined>
     /** 表单项的占位符文本 */
@@ -339,11 +354,10 @@
     /** 更多属性配置请参考 ElementPlus 官方文档 */
   }
 
-  export type FormItem<TApiResult = unknown, TParams = FormItemApiParams> =
-    | {
-        [TType in FormItemPresetType]: FormItemBase<TApiResult, TParams, TType>
-      }[FormItemPresetType]
-    | FormItemBase<TApiResult, TParams, string & {}>
+  export type FormItem<TApiResult = unknown, TParams = FormItemApiParams> = FormItemBase<
+    TApiResult,
+    TParams
+  >
 
   // 表单配置
   export interface ArtFormProps extends Partial<
