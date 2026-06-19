@@ -4,12 +4,15 @@
     v-auth="permission"
     :class="[
       'inline-flex items-center justify-center min-w-8 h-8 px-2.5 mr-2.5 text-sm c-p rounded-md align-middle',
-      buttonClass
+      buttonClass,
+      { 'cursor-not-allowed opacity-60': isDisabled }
     ]"
     :style="{ backgroundColor: buttonBgColor, color: iconColor }"
+    :aria-busy="loading"
+    :aria-disabled="isDisabled"
     @click="handleClick"
   >
-    <ArtSvgIcon :icon="iconContent" />
+    <ArtSvgIcon :icon="iconContent" :class="{ 'animate-spin': loading }" />
   </div>
 </template>
 
@@ -29,6 +32,10 @@
     buttonBgColor?: string
     /*按钮权限*/
     permission?: string
+    /** 是否显示加载状态 */
+    loading?: boolean
+    /** 是否禁用点击 */
+    disabled?: boolean
   }
 
   const props = withDefaults(defineProps<Props>(), {})
@@ -46,8 +53,11 @@
     more: { icon: 'ri:more-2-fill', class: '' }
   } as const
 
+  const isDisabled = computed(() => props.disabled || props.loading)
+
   // 获取图标内容
   const iconContent = computed(() => {
+    if (props.loading) return 'ri:loader-4-line'
     return props.icon || (props.type ? defaultButtons[props.type]?.icon : '') || ''
   })
 
@@ -57,6 +67,7 @@
   })
 
   const handleClick = () => {
+    if (isDisabled.value) return
     emit('click')
   }
 </script>

@@ -252,21 +252,41 @@
     [key: string]: any
   }
 
-  export interface FormItemExtendedProps {
-    /** 静态选项；也可以使用 FormItem.options 或 FormItem.api */
+  export type FormItemContent = string | (() => VNodeChild) | Component
+  export type FormItemPresetType = keyof ComponentMap | 'divider'
+  export type FormItemCustomType = string & {}
+  export type FormItemType = FormItemPresetType | FormItemCustomType
+  export type FormItemOptionType = 'default' | 'button'
+  type FormItemPassThroughProps = Record<string, any>
+
+  export interface FormItemOptionProps {
+    /** Static options; FormItem.options and FormItem.api are also supported. */
     options?: FormItemOption[]
-    /** 异步选项加载状态；FormItem.api 请求期间会自动接管 */
+    /** Async option loading state; automatically managed while FormItem.api is pending. */
     loading?: boolean
-    /** 选项渲染方式；button 使用 ElRadioButton 或 ElCheckboxButton */
-    optionType?: 'default' | 'button'
-    /** 是否显示分区标题右侧延伸线 */
+  }
+
+  export interface FormItemChoiceGroupProps extends FormItemOptionProps {
+    /** Render options as button components for radioGroup and checkboxGroup. */
+    optionType?: FormItemOptionType
+  }
+
+  export interface FormItemDividerProps {
+    /** Whether to show the divider title extension line. */
     showLine?: boolean
   }
 
-  export type FormItemContent = string | (() => VNodeChild) | Component
-  export type FormItemPresetType = keyof ComponentMap | 'divider'
-  export type FormItemType = FormItemPresetType | (string & {})
-  export type FormItemComponentProps = FormItemExtendedProps & Record<string, any>
+  export type FormItemComponentProps<TType extends FormItemType = FormItemType> = TType extends
+    | 'radioGroup'
+    | 'checkboxGroup'
+    ? FormItemPassThroughProps & FormItemChoiceGroupProps
+    : TType extends 'select' | 'cascader' | 'treeSelect'
+      ? FormItemPassThroughProps & FormItemOptionProps
+      : TType extends 'divider'
+        ? FormItemPassThroughProps & FormItemDividerProps
+        : TType extends keyof ComponentMap
+          ? FormItemPassThroughProps
+          : FormItemPassThroughProps
   export type MaybePromise<T> = T | Promise<T>
   export type FormItemApiParams = Record<string, any> | undefined
   export type FormItemApiFn<TParams = FormItemApiParams, TResult = unknown> = (
@@ -322,7 +342,7 @@
     /** 选项数据，用于 select、checkbox-group、radio-group 等 */
     options?: FormItemOption[]
     /** 传递给字段组件的 Element Plus 原生属性及 ArtForm 扩展属性 */
-    props?: FormItemComponentProps
+    props?: FormItemComponentProps<TType>
     /** 表单项的插槽配置 */
     slots?: Record<string, (() => any) | undefined>
     /** 表单项的占位符文本 */
@@ -354,10 +374,14 @@
     /** 更多属性配置请参考 ElementPlus 官方文档 */
   }
 
-  export type FormItem<TApiResult = unknown, TParams = FormItemApiParams> = FormItemBase<
-    TApiResult,
-    TParams
-  >
+  export type FormItem<TApiResult = unknown, TParams = FormItemApiParams> =
+    | (FormItemBase<TApiResult, TParams, 'input'> & { type?: 'input' })
+    | {
+        [TType in FormItemPresetType]: FormItemBase<TApiResult, TParams, TType> & {
+          type: TType
+        }
+      }[FormItemPresetType]
+    | (FormItemBase<TApiResult, TParams, FormItemCustomType> & { type: FormItemCustomType })
 
   // 表单配置
   export interface ArtFormProps extends Partial<

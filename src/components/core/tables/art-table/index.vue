@@ -20,6 +20,53 @@
           </template>
         </ElTableColumn>
 
+        <!-- 渲染分组列 -->
+        <ElTableColumn
+          v-else-if="Array.isArray(col.children) && col.children.length"
+          v-bind="cleanColumnProps(col)"
+        >
+          <ElTableColumn
+            v-for="child in col.children"
+            :key="child.prop || child.label"
+            v-bind="cleanColumnProps(child)"
+          >
+            <template v-if="child.useHeaderSlot && child.prop" #header="headerScope">
+              <slot
+                :name="child.headerSlotName || `${child.prop}-header`"
+                v-bind="{ ...headerScope, prop: child.prop, label: child.label }"
+              >
+                {{ child.label }}
+              </slot>
+            </template>
+            <template v-if="shouldUseCustomCellTemplate(child)" #default="slotScope">
+              <div v-if="shouldRenderSlotScope(slotScope)" class="art-table__cell-content">
+                <span class="art-table__cell-value">
+                  <slot
+                    v-if="child.useSlot && child.prop"
+                    :name="child.slotName || child.prop"
+                    v-bind="{
+                      ...slotScope,
+                      prop: child.prop,
+                      value: child.prop ? getCellValue(slotScope.row, child.prop) : undefined
+                    }"
+                  />
+                  <ArtDictDisplay
+                    v-else-if="child.dict"
+                    :dict-code="child.dict.code"
+                    :value="getDictColumnValue(child, slotScope.row)"
+                    :display="child.dict.display"
+                  />
+                  <component
+                    v-else-if="isComponentCellContent(getColumnCellContent(child, slotScope))"
+                    :is="getColumnCellContent(child, slotScope)"
+                  />
+                  <span v-else>{{ getColumnCellContent(child, slotScope) }}</span>
+                </span>
+              </div>
+            </template>
+          </ElTableColumn>
+        </ElTableColumn>
+
         <!-- 渲染普通列 -->
         <ElTableColumn v-else v-bind="cleanColumnProps(col)">
           <template v-if="col.useHeaderSlot && col.prop" #header="headerScope">
@@ -538,6 +585,7 @@
     delete columnProps.dragDisabled
     delete columnProps.dragIcon
     delete columnProps.dict
+    delete columnProps.children
     return columnProps
   }
 

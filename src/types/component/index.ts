@@ -61,6 +61,8 @@ export interface ColumnOption<T = any> {
   prop?: string
   // 列标题
   label?: string
+  // 分组表头子列
+  children?: ColumnOption<T>[]
   // 列宽度
   width?: string | number
   // 最小列宽度

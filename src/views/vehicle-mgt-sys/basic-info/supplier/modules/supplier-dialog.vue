@@ -108,7 +108,8 @@
           children: 'children',
           emitPath: true,
           checkStrictly: true
-        }
+        },
+        class: '!w-full'
       },
       api: fetchRegionOptions,
       labelField: 'name',

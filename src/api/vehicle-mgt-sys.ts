@@ -47,3 +47,28 @@ export const deleteVehicleArchive = supabaseVehicleApi.deleteVehicleArchive
 export const deleteVehicleArchiveBatch = supabaseVehicleApi.deleteVehicleArchiveBatch
 export const auditVehicleArchive = supabaseVehicleApi.auditVehicleArchive
 export const auditVehicleArchiveBatch = supabaseVehicleApi.auditVehicleArchiveBatch
+
+export const fetchVehicleArchiveOptions = supabaseVehicleApi.fetchVehicleArchiveOptions
+export const fetchInsuranceCompanyOptions = supabaseVehicleApi.fetchInsuranceCompanyOptions
+
+export const fetchVehicleInsuranceList = supabaseVehicleApi.fetchVehicleInsuranceList
+export const exportVehicleInsuranceList = supabaseVehicleApi.exportVehicleInsuranceList
+export const fetchVehicleInsuranceDetail = supabaseVehicleApi.fetchVehicleInsuranceDetail
+export const addVehicleInsurance = supabaseVehicleApi.addVehicleInsurance
+export const editVehicleInsurance = supabaseVehicleApi.editVehicleInsurance
+export const deleteVehicleInsurance = supabaseVehicleApi.deleteVehicleInsurance
+export const deleteVehicleInsuranceBatch = supabaseVehicleApi.deleteVehicleInsuranceBatch
+
+export const fetchVehicleInspectionList = supabaseVehicleApi.fetchVehicleInspectionList
+export const exportVehicleInspectionList = supabaseVehicleApi.exportVehicleInspectionList
+export const addVehicleInspection = supabaseVehicleApi.addVehicleInspection
+export const editVehicleInspection = supabaseVehicleApi.editVehicleInspection
+export const deleteVehicleInspection = supabaseVehicleApi.deleteVehicleInspection
+export const deleteVehicleInspectionBatch = supabaseVehicleApi.deleteVehicleInspectionBatch
+
+export const fetchVehiclePartUsageList = supabaseVehicleApi.fetchVehiclePartUsageList
+export const fetchVehiclePartUsageDetail = supabaseVehicleApi.fetchVehiclePartUsageDetail
+export const addVehiclePartUsage = supabaseVehicleApi.addVehiclePartUsage
+export const editVehiclePartUsage = supabaseVehicleApi.editVehiclePartUsage
+export const deleteVehiclePartUsage = supabaseVehicleApi.deleteVehiclePartUsage
+export const deleteVehiclePartUsageBatch = supabaseVehicleApi.deleteVehiclePartUsageBatch

@@ -1,56 +1,60 @@
 <template>
   <div class="art-data-select">
-    <div
-      v-if="!$slots.trigger"
-      role="button"
-      :tabindex="disabled ? -1 : 0"
-      class="art-data-select__trigger"
-      :class="{ 'is-disabled': disabled, 'is-empty': !displayRows.length }"
-      :aria-disabled="disabled"
-      aria-haspopup="dialog"
-      @click="open"
-      @keydown.enter.prevent="open"
-      @keydown.space.prevent="open"
-    >
-      <span v-if="displayRows.length" class="art-data-select__tags">
-        <ElTag
-          v-for="row in visibleDisplayRows"
-          :key="getRowKey(row)"
-          size="small"
-          type="info"
-          effect="plain"
-          closable
-          :disable-transitions="true"
-          @close.stop="removeConfirmed(row)"
-        >
-          {{ getRowLabel(row) }}
-        </ElTag>
-        <ElTag
-          v-if="hiddenDisplayCount > 0"
-          size="small"
-          type="info"
-          effect="plain"
-          :disable-transitions="true"
-        >
-          +{{ hiddenDisplayCount }}
-        </ElTag>
-      </span>
-      <span v-else class="art-data-select__placeholder">{{ placeholder }}</span>
-      <ElIcon class="art-data-select__arrow">
-        <ArrowDown />
-      </ElIcon>
-      <button
-        v-if="clearable && displayRows.length && !disabled"
-        type="button"
-        class="art-data-select__clear"
-        aria-label="清空"
-        @click.stop="clear"
+    <template v-if="!$slots.trigger">
+      <ElInput
+        v-if="!multiple"
+        :model-value="singleDisplayLabel"
+        :placeholder="placeholder"
+        :disabled="disabled"
+        readonly
+        class="art-data-select__single-input"
+        aria-haspopup="dialog"
+        @click="open"
+        @keydown.enter.prevent="open"
+        @keydown.space.prevent="open"
       >
-        <ElIcon>
-          <CircleClose />
-        </ElIcon>
-      </button>
-    </div>
+        <template #suffix>
+          <button
+            v-if="clearable && displayRows.length && !disabled"
+            type="button"
+            class="art-data-select__single-clear"
+            aria-label="清空"
+            @click.stop="clear"
+          >
+            <ElIcon>
+              <CircleClose />
+            </ElIcon>
+          </button>
+          <ElIcon v-else class="art-data-select__single-arrow">
+            <ArrowDown />
+          </ElIcon>
+        </template>
+      </ElInput>
+
+      <ElInputTag
+        v-else
+        :model-value="multipleDisplayLabels"
+        :max="displayRows.length"
+        :placeholder="placeholder"
+        :disabled="disabled"
+        :clearable="clearable"
+        collapse-tags
+        :max-collapse-tags="maxTagCount"
+        class="art-data-select__multiple-input"
+        aria-haspopup="dialog"
+        @click="open"
+        @keydown.enter.prevent="open"
+        @keydown.space.prevent="open"
+        @remove-tag="handleRemoveDisplayTag"
+        @clear="clear"
+      >
+        <template #suffix>
+          <ElIcon class="art-data-select__multiple-arrow">
+            <ArrowDown />
+          </ElIcon>
+        </template>
+      </ElInputTag>
+    </template>
 
     <slot
       v-else
@@ -349,10 +353,10 @@
   const draftKeys = computed(() => draftRows.value.map((row) => getRowKey(row)))
   const currentSingleKey = computed(() => draftRows.value[0] && getRowKey(draftRows.value[0]))
   const displayRows = computed(() => confirmedRows.value)
-  const visibleDisplayRows = computed(() => displayRows.value.slice(0, props.maxTagCount))
-  const hiddenDisplayCount = computed(
-    () => displayRows.value.length - visibleDisplayRows.value.length
+  const singleDisplayLabel = computed(() =>
+    displayRows.value[0] ? getRowLabel(displayRows.value[0]) : ''
   )
+  const multipleDisplayLabels = computed(() => displayRows.value.map((row) => getRowLabel(row)))
   const normalizedFilterOptions = computed(() => props.filterOptions ?? [])
   const normalizedFilterKey = computed(() => props.filterKey ?? 'type')
   const shouldShowSelectedPanel = computed(() => props.showSelectedPanel ?? props.multiple)
@@ -697,6 +701,11 @@
     updateConfirmed(confirmedRows.value.filter((item) => getRowKey(item) !== key))
   }
 
+  const handleRemoveDisplayTag = (_value: string, index: number) => {
+    const row = displayRows.value[index]
+    if (row) removeConfirmed(row)
+  }
+
   const setSingle = (row: DataSelectRecord) => {
     if (isRowDisabled(row)) return
     draftRows.value = [row]
@@ -798,87 +807,42 @@
     width: 100%;
   }
 
-  .art-data-select__trigger {
-    position: relative;
-    display: flex;
-    align-items: center;
-    width: 100%;
-    min-height: 32px;
-    padding: 2px 32px 2px 11px;
-    color: var(--el-text-color-regular);
-    text-align: left;
+  .art-data-select__single-input {
     cursor: pointer;
-    background: var(--el-fill-color-blank);
-    border: 1px solid var(--el-border-color);
-    border-radius: var(--el-border-radius-base);
-    outline: none;
-    transition:
-      border-color 0.2s ease,
-      box-shadow 0.2s ease;
 
-    &:hover,
-    &:focus {
-      border-color: var(--el-color-primary);
-    }
-
-    &.is-disabled {
-      color: var(--el-disabled-text-color);
-      cursor: not-allowed;
-      background: var(--el-disabled-bg-color);
-      border-color: var(--el-disabled-border-color);
-    }
-
-    &.is-empty {
-      color: var(--el-text-color-placeholder);
+    :deep(.el-input__wrapper),
+    :deep(.el-input__inner) {
+      cursor: pointer;
     }
   }
 
-  .art-data-select__tags {
-    display: flex;
-    flex: 1;
-    flex-wrap: wrap;
-    gap: 4px;
-    min-width: 0;
-  }
-
-  .art-data-select__placeholder {
-    flex: 1;
-    min-width: 0;
-    overflow: hidden;
-    font-size: 14px;
-    line-height: 26px;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .art-data-select__arrow,
-  .art-data-select__clear {
-    position: absolute;
-    top: 50%;
-    right: 10px;
+  .art-data-select__single-clear {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    color: var(--el-text-color-placeholder);
-    transform: translateY(-50%);
-  }
-
-  .art-data-select__clear {
-    display: none;
     padding: 0;
+    color: var(--el-text-color-placeholder);
     cursor: pointer;
     background: transparent;
     border: 0;
   }
 
-  .art-data-select__trigger:hover {
-    .art-data-select__arrow {
-      display: none;
-    }
+  .art-data-select__single-arrow {
+    color: var(--el-text-color-placeholder);
+  }
 
-    .art-data-select__clear {
-      display: inline-flex;
+  .art-data-select__multiple-input {
+    cursor: pointer;
+
+    :deep(.el-input-tag__wrapper),
+    :deep(.el-input-tag__inner),
+    :deep(.el-input-tag__input) {
+      cursor: pointer;
     }
+  }
+
+  .art-data-select__multiple-arrow {
+    color: var(--el-text-color-placeholder);
   }
 
   .art-data-select-dialog__search {
@@ -945,7 +909,7 @@
     }
 
     :deep(.el-table td.el-table__cell) {
-      height: 64px;
+      height: 56px;
     }
 
     :deep(.el-table__row.is-selected-row td.el-table__cell) {
@@ -1076,7 +1040,7 @@
     display: flex;
     gap: 12px;
     align-items: center;
-    min-height: 74px;
+    min-height: 62px;
     padding: 12px 16px 12px 24px;
     border-bottom: 1px solid #eef1f6;
     transition: background-color 0.2s ease;

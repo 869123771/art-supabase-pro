@@ -14,7 +14,7 @@
 </template>
 
 <script setup lang="tsx">
-  import { ElMessageBox, ElTag } from 'element-plus'
+  import { ElMessageBox } from 'element-plus'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type {
     ArtTableQueryExpose,
@@ -40,7 +40,6 @@
     handleOpen: (row?: Tenant) => Promise<void>
   }
   const userStore = useUserStore()
-  const { getDictTagByValue } = userStore
   const { getDictMap, isSuper } = storeToRefs(userStore)
 
   const tableQueryRef = ref<ArtTableQueryExpose>()
@@ -137,14 +136,7 @@
       prop: 'status',
       label: '状态',
       width: 100,
-      formatter: (row) => {
-        const tag = getDictTagByValue('status', row.status)
-        return (
-          <ElTag type={tag.type}>
-            <span>{tag.label}</span>
-          </ElTag>
-        )
-      }
+      dict: { code: 'status', display: 'auto' }
     },
     {
       prop: 'remark',

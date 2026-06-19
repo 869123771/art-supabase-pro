@@ -200,12 +200,14 @@ declare namespace Api {
     namespace ArchiveManage {
       type AuditStatus = 'pending' | 'approved' | 'rejected'
 
-      interface VehicleArchiveAttachment {
+      interface VehicleAttachment {
         name: string
         url: string
         fileType?: string
         fileSize?: string
       }
+
+      type VehicleArchiveAttachment = VehicleAttachment
 
       interface VehicleArchive {
         id?: string
@@ -296,7 +298,7 @@ declare namespace Api {
         drivingLicenseFrontUrl?: string
         drivingLicenseBackUrl?: string
         operationLicenseUrl?: string
-        attachments?: VehicleArchiveAttachment[]
+        attachments?: VehicleAttachment[]
 
         auditStatus?: AuditStatus
         auditRemark?: string
@@ -322,6 +324,153 @@ declare namespace Api {
           Api.Common.CommonSearchParams & {
             createTimeRange?: string[]
             auditStatuses?: AuditStatus[]
+          }
+      >
+    }
+
+    namespace VehicleManage {
+      type VehicleAttachment = Api.VehicleMgtSys.ArchiveManage.VehicleAttachment
+
+      interface VehicleOption {
+        id?: string
+        plateNo: string
+        companyName?: string
+        vin?: string
+        selfNo?: string
+      }
+
+      interface InsuranceCompanyOption {
+        id?: string
+        companyName: string
+        contactPerson?: string
+        contactPhone?: string
+      }
+
+      interface VehicleInsurance {
+        id?: string
+        tenantId?: string
+        vehicleId?: string | null
+        plateNo: string
+        companyName?: string
+        commercialPolicyNo?: string
+        commercialCompanyId?: string | null
+        commercialCompanyName?: string
+        commercialInsureDate?: string
+        commercialPremium?: number | null
+        commercialExpireDate?: string
+        compulsoryPolicyNo?: string
+        compulsoryCompanyId?: string | null
+        compulsoryCompanyName?: string
+        compulsoryInsureDate?: string
+        compulsoryPremium?: number | null
+        compulsoryExpireDate?: string
+        remark?: string
+        attachments?: VehicleAttachment[]
+        createBy?: string
+        createTime?: string
+        updateBy?: string
+        updateTime?: string
+      }
+
+      type VehicleInsuranceSearchParams = Partial<
+        Pick<
+          VehicleInsurance,
+          'companyName' | 'plateNo' | 'commercialPolicyNo' | 'compulsoryPolicyNo'
+        > &
+          Api.Common.CommonSearchParams & {
+            commercialExpireDateRange?: string[]
+            compulsoryExpireDateRange?: string[]
+            createTimeRange?: string[]
+          }
+      >
+
+      interface VehicleInspection {
+        id?: string
+        tenantId?: string
+        vehicleId?: string | null
+        plateNo: string
+        companyName?: string
+        inspectionNo?: string
+        inspectionDate?: string
+        inspectionAmount?: number | null
+        vehicleOffice?: string
+        expireDate?: string
+        compulsoryPolicyNo?: string
+        compulsoryCompanyId?: string | null
+        compulsoryCompanyName?: string
+        compulsoryInsureDate?: string
+        compulsoryPremium?: number | null
+        compulsoryExpireDate?: string
+        remark?: string
+        attachments?: VehicleAttachment[]
+        createBy?: string
+        createTime?: string
+        updateBy?: string
+        updateTime?: string
+      }
+
+      type VehicleInspectionSearchParams = Partial<
+        Pick<VehicleInspection, 'companyName' | 'plateNo' | 'inspectionNo'> &
+          Api.Common.CommonSearchParams & {
+            expireDateRange?: string[]
+            createTimeRange?: string[]
+          }
+      >
+
+      type VehiclePartType = 'original' | 'replacement'
+      type VehiclePartUsageStatus = 'normal' | 'reused' | 'scrapped'
+      type VehiclePartEnableMode = 'vehicle' | 'date'
+      type VehiclePartWarrantyMode = 'vehicle' | 'self'
+
+      interface VehiclePartUsage {
+        id?: string
+        tenantId?: string
+        vehicleId?: string | null
+        plateNo: string
+        companyName?: string
+        partId?: string | null
+        partType: VehiclePartType
+        partName: string
+        partCode: string
+        categoryId?: string | null
+        categoryName?: string
+        brand?: string
+        model?: string
+        unit?: string
+        qualityCategory?: string
+        manufacturer?: string
+        supplierId?: string | null
+        supplierName?: string
+        supplierContact?: string
+        isConsumable: boolean
+        rfidEnabled: boolean
+        rfidTag?: string
+        enableMode: VehiclePartEnableMode
+        enableDate?: string | null
+        warrantyMode: VehiclePartWarrantyMode
+        warrantyMileage?: number | null
+        warrantyDuration?: number | null
+        serviceMileageEnabled: boolean
+        serviceMileage?: number | null
+        serviceYearsEnabled: boolean
+        serviceYears?: number | null
+        usedMileage?: number | null
+        status: VehiclePartUsageStatus
+        scrapReason?: string
+        remark?: string
+        createBy?: string
+        createTime?: string
+        updateBy?: string
+        updateTime?: string
+      }
+
+      type VehiclePartUsageSearchParams = Partial<
+        Pick<
+          VehiclePartUsage,
+          'companyName' | 'plateNo' | 'partType' | 'partName' | 'categoryId' | 'rfidTag' | 'status'
+        > &
+          Api.Common.CommonSearchParams & {
+            createTimeRange?: string[]
           }
       >
     }
@@ -393,12 +542,12 @@ declare namespace Api {
         partName: string
         partCode: string
         categoryId?: string | null
-        categoryName?: string
+        category?: Pick<PartsCategory, 'id' | 'categoryName'> | null
         brand?: string
         model?: string
         unit?: string
         supplierId?: string | null
-        supplierName?: string
+        supplier?: Pick<Supplier, 'id' | 'supplierName' | 'contactPerson' | 'contactPhone'> | null
         manufacturer?: string
         supplierContact?: string
         isConsumable?: boolean

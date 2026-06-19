@@ -87,7 +87,7 @@
         prop: 'vehicleType',
         label: '车型',
         minWidth: 150,
-        formatter: (row) => userStore.getDictLabelByValue('vehicleType', row.vehicleType)
+        dict: { code: 'vehicleType', display: 'text' }
       },
       { prop: 'manufacturer', label: '车辆厂商', minWidth: 150 },
       { prop: 'chassisNo', label: '车架号', minWidth: 170 },
@@ -95,8 +95,7 @@
         prop: 'operationStatus',
         label: '营运状态',
         width: 120,
-        formatter: (row) =>
-          userStore.getDictLabelByValue('vehicleOperationStatus', row.operationStatus)
+        dict: { code: 'vehicleOperationStatus', display: 'text' }
       },
       {
         prop: 'operation',

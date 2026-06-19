@@ -18,7 +18,7 @@
 <script setup lang="ts">
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import UserDialog from './modules/user-dialog.vue'
-  import { ElTag, ElMessageBox, ElImage } from 'element-plus'
+  import { ElMessageBox, ElImage } from 'element-plus'
   import type { ColumnOption } from '@/types'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type {
@@ -152,25 +152,19 @@
     {
       prop: 'userType',
       label: '用户类型',
-      formatter: (row: UserListItem) => {
-        const tag = userStore.getDictTagByValue('userType', row.userType)
-        return h(ElTag, { type: tag.type, color: tag.color }, () => tag.label)
-      }
+      dict: { code: 'userType', display: 'auto' }
     },
     {
       prop: 'userGender',
       label: '性别',
       sortable: true,
-      formatter: (row: UserListItem) => userStore.getDictLabelByValue('sex', row.userGender)
+      dict: { code: 'sex', display: 'text' }
     },
     { prop: 'userPhone', label: '手机号' },
     {
       prop: 'status',
       label: '状态',
-      formatter: (row: UserListItem) => {
-        const tag = userStore.getDictTagByValue('status', row.status)
-        return h(ElTag, { type: tag.type, color: tag.color }, () => tag.label)
-      }
+      dict: { code: 'status', display: 'auto' }
     },
     {
       prop: 'createTime',

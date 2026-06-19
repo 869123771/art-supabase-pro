@@ -49,7 +49,9 @@ const SPECIAL_COLUMNS: Record<string, { prop: string; label: string }> = {
  * 获取列的唯一标识
  */
 export const getColumnKey = <T>(col: ColumnOption<T>) =>
-  SPECIAL_COLUMNS[col.type as keyof typeof SPECIAL_COLUMNS]?.prop ?? (col.prop as string)
+  SPECIAL_COLUMNS[col.type as keyof typeof SPECIAL_COLUMNS]?.prop ??
+  col.prop ??
+  (col.children?.length ? `__group__${col.label ?? ''}` : '')
 
 /**
  * 获取列的显示状态

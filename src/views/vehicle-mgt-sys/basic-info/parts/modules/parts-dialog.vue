@@ -58,12 +58,10 @@
     partName: '',
     partCode: '',
     categoryId: null,
-    categoryName: '',
     brand: '',
     model: '',
     unit: '',
     supplierId: null,
-    supplierName: '',
     manufacturer: '',
     supplierContact: '',
     isConsumable: false,
@@ -308,9 +306,26 @@
     }
 
     try {
-      const payload = toRaw(form)
-      payload.categoryId = payload.categoryId || null
-      payload.supplierId = payload.supplierId || null
+      const source = toRaw(form)
+      const payload: Parts = {
+        id: source.id,
+        partName: source.partName,
+        partCode: source.partCode,
+        categoryId: source.categoryId || null,
+        brand: source.brand,
+        model: source.model,
+        unit: source.unit,
+        supplierId: source.supplierId || null,
+        manufacturer: source.manufacturer,
+        supplierContact: source.supplierContact,
+        isConsumable: source.isConsumable,
+        warrantyMileage: source.warrantyMileage,
+        warrantyDuration: source.warrantyDuration,
+        serviceLife: source.serviceLife,
+        serviceMileage: source.serviceMileage,
+        status: source.status,
+        remark: source.remark
+      }
       if (form.id) {
         await editParts(payload)
       } else {

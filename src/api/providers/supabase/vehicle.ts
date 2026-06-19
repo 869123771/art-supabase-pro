@@ -16,6 +16,12 @@ type VehicleArchive = Api.VehicleMgtSys.ArchiveManage.VehicleArchive
 type VehicleArchiveSearchParams = Api.VehicleMgtSys.ArchiveManage.VehicleArchiveSearchParams
 type VehicleArchiveAuditStatus = Api.VehicleMgtSys.ArchiveManage.AuditStatus
 type VehicleArchiveWritePayload = Record<string, unknown> & { id?: string }
+type VehicleInsurance = Api.VehicleMgtSys.VehicleManage.VehicleInsurance
+type VehicleInsuranceSearchParams = Api.VehicleMgtSys.VehicleManage.VehicleInsuranceSearchParams
+type VehicleInspection = Api.VehicleMgtSys.VehicleManage.VehicleInspection
+type VehicleInspectionSearchParams = Api.VehicleMgtSys.VehicleManage.VehicleInspectionSearchParams
+type VehiclePartUsage = Api.VehicleMgtSys.VehicleManage.VehiclePartUsage
+type VehiclePartUsageSearchParams = Api.VehicleMgtSys.VehicleManage.VehiclePartUsageSearchParams
 
 // 保险公司
 export async function fetchInsuranceCompanyList(params: InsuranceCompanySearchParams) {
@@ -327,47 +333,19 @@ const getPartsSearchFilters = (params: PartsSearchParams): FilterSpec[] => [
   { col: 'status', op: 'eq', val: params.status }
 ]
 
-const normalizePartsPayload = async (params: Parts): Promise<Parts> => {
-  const payload = { ...params }
-
-  if (payload.categoryId) {
-    const { data } = await responseHandle<Pick<PartsCategory, 'categoryName'>[]>(
-      () =>
-        supabase
-          .from('vehicle_parts_category')
-          .select('category_name')
-          .eq('id', payload.categoryId)
-          .limit(1) as any,
-      { ignoreCheck: true, showErrorMessage: true }
-    )
-    payload.categoryName = data?.[0]?.categoryName ?? payload.categoryName ?? ''
-  } else {
-    payload.categoryName = ''
-  }
-
-  if (payload.supplierId) {
-    const { data } = await responseHandle<
-      Pick<Supplier, 'supplierName' | 'contactPerson' | 'contactPhone'>[]
-    >(
-      () =>
-        supabase
-          .from('vehicle_supplier')
-          .select('supplier_name, contact_person, contact_phone')
-          .eq('id', payload.supplierId)
-          .limit(1) as any,
-      { ignoreCheck: true, showErrorMessage: true }
-    )
-    const supplier = data?.[0]
-    payload.supplierName = supplier?.supplierName ?? payload.supplierName ?? ''
-    payload.supplierContact =
-      payload.supplierContact ||
-      [supplier?.contactPerson, supplier?.contactPhone].filter(Boolean).join(' / ')
-  } else {
-    payload.supplierName = ''
-  }
-
-  return payload
-}
+const PARTS_SELECT = `
+  *,
+  category:vehicle_parts_category!vehicle_parts_category_id_fkey(
+    id,
+    category_name
+  ),
+  supplier:vehicle_supplier!vehicle_parts_supplier_id_fkey(
+    id,
+    supplier_name,
+    contact_person,
+    contact_phone
+  )
+`
 
 export async function fetchPartsList(params: PartsSearchParams) {
   const { from = 0, to = 9 } = params
@@ -375,7 +353,7 @@ export async function fetchPartsList(params: PartsSearchParams) {
 
   let query: any = supabase
     .from('vehicle_parts')
-    .select('*', { count: 'exact' })
+    .select(PARTS_SELECT, { count: 'exact' })
     .order('create_time', { ascending: false })
     .range(from, to)
 
@@ -394,7 +372,7 @@ export async function exportPartsList(
 
   let query: any = supabase
     .from('vehicle_parts')
-    .select('*')
+    .select(PARTS_SELECT)
     .order('create_time', { ascending: false })
     .limit(maxRows)
 
@@ -411,15 +389,14 @@ export async function exportPartsList(
 }
 
 export async function addParts(params: Parts) {
-  const payload = await normalizePartsPayload(params)
   return await responseHandle(
-    () => supabase.from('vehicle_parts').insert(keysToSnakeDeep(payload)) as any,
+    () => supabase.from('vehicle_parts').insert(keysToSnakeDeep(params)) as any,
     { showMessage: true, breakReturn: true }
   )
 }
 
 export async function editParts(params: Parts) {
-  const { id, ...data } = await normalizePartsPayload(params)
+  const { id, ...data } = params
   return await responseHandle(
     () => supabase.from('vehicle_parts').update(keysToSnakeDeep(data)).eq('id', id) as any,
     { showMessage: true, breakReturn: true }
@@ -439,10 +416,9 @@ export async function deletePartsBatch(ids: string[]) {
 }
 
 export async function importParts(rows: Parts[]) {
-  const payload = await Promise.all(rows.map((row) => normalizePartsPayload(row)))
   return await responseHandle(
     () =>
-      supabase.from('vehicle_parts').upsert(keysToSnakeDeep(payload), {
+      supabase.from('vehicle_parts').upsert(keysToSnakeDeep(rows), {
         onConflict: 'tenant_id,part_code'
       }) as any,
     { showMessage: true, breakReturn: true }
@@ -642,6 +618,406 @@ export async function auditVehicleArchiveBatch(params: {
           { count: 'exact' }
         )
         .in('id', ids) as any,
+    {
+      showMessage: true,
+      breakReturn: true,
+      requireAffected: true,
+      noAffectedMessage: WRITE_PERMISSION_DENIED_MESSAGE
+    }
+  )
+}
+
+// 杞﹁締绠＄悊閫夐」
+export async function fetchVehicleArchiveOptions(
+  params: Partial<Pick<VehicleArchive, 'plateNo' | 'companyName'>> = {}
+) {
+  const { plateNo, companyName } = params
+  const filters: FilterSpec[] = [
+    { col: 'plateNo', op: 'ilike', val: plateNo ? `%${plateNo}%` : undefined },
+    { col: 'companyName', op: 'ilike', val: companyName ? `%${companyName}%` : undefined }
+  ]
+
+  let query: any = supabase
+    .from(VEHICLE_ARCHIVE_TABLE)
+    .select('id, plate_no, company_name, vin, self_no')
+    .order('plate_no', { ascending: true })
+    .limit(200)
+
+  query = applyFilters(query, filters, { skipEmpty: true, camelToSnake: true })
+  return await responseHandle<Api.VehicleMgtSys.VehicleManage.VehicleOption[]>(() => query as any, {
+    ignoreCheck: true,
+    showErrorMessage: true
+  })
+}
+
+export async function fetchInsuranceCompanyOptions() {
+  const query = supabase
+    .from('vehicle_insurance_company')
+    .select('id, company_name, contact_person, contact_phone')
+    .order('company_name', { ascending: true })
+    .limit(200)
+
+  return await responseHandle<Api.VehicleMgtSys.VehicleManage.InsuranceCompanyOption[]>(
+    () => query as any,
+    {
+      ignoreCheck: true,
+      showErrorMessage: true
+    }
+  )
+}
+
+// 杞﹁締淇濋櫓
+const VEHICLE_INSURANCE_TABLE = 'vehicle_insurance'
+
+const applyDateRange = (query: any, column: string, range?: string[]): any => {
+  const [startDate, endDate] = range ?? []
+  if (startDate) query = query.gte(column, startDate)
+  if (endDate) query = query.lte(column, endDate)
+  return query
+}
+
+const getVehicleInsuranceSearchFilters = (params: VehicleInsuranceSearchParams): FilterSpec[] => [
+  {
+    col: 'companyName',
+    op: 'ilike',
+    val: params.companyName ? `%${params.companyName}%` : undefined
+  },
+  { col: 'plateNo', op: 'ilike', val: params.plateNo ? `%${params.plateNo}%` : undefined },
+  {
+    col: 'commercialPolicyNo',
+    op: 'ilike',
+    val: params.commercialPolicyNo ? `%${params.commercialPolicyNo}%` : undefined
+  },
+  {
+    col: 'compulsoryPolicyNo',
+    op: 'ilike',
+    val: params.compulsoryPolicyNo ? `%${params.compulsoryPolicyNo}%` : undefined
+  }
+]
+
+export async function fetchVehicleInsuranceList(params: VehicleInsuranceSearchParams) {
+  const {
+    from = 0,
+    to = 9,
+    commercialExpireDateRange,
+    compulsoryExpireDateRange,
+    createTimeRange
+  } = params
+  let query: any = supabase
+    .from(VEHICLE_INSURANCE_TABLE)
+    .select('*', { count: 'exact' })
+    .order('create_time', { ascending: false })
+    .range(from, to)
+
+  query = applyDateRange(query, 'commercial_expire_date', commercialExpireDateRange)
+  query = applyDateRange(query, 'compulsory_expire_date', compulsoryExpireDateRange)
+  query = applyDateRange(query, 'create_time', createTimeRange)
+  query = applyFilters(query, getVehicleInsuranceSearchFilters(params), {
+    skipEmpty: true,
+    camelToSnake: true
+  })
+
+  return await responseHandle<VehicleInsurance[]>(() => query as any, {
+    ignoreCheck: true,
+    showErrorMessage: true
+  })
+}
+
+export async function exportVehicleInsuranceList(
+  params: VehicleInsuranceSearchParams & { ids?: string[]; maxRows?: number }
+) {
+  const {
+    ids,
+    maxRows = 10000,
+    commercialExpireDateRange,
+    compulsoryExpireDateRange,
+    createTimeRange
+  } = params
+  let query: any = supabase
+    .from(VEHICLE_INSURANCE_TABLE)
+    .select('*')
+    .order('create_time', { ascending: false })
+    .limit(maxRows)
+
+  if (ids?.length) {
+    query = query.in('id', ids)
+  } else {
+    query = applyDateRange(query, 'commercial_expire_date', commercialExpireDateRange)
+    query = applyDateRange(query, 'compulsory_expire_date', compulsoryExpireDateRange)
+    query = applyDateRange(query, 'create_time', createTimeRange)
+    query = applyFilters(query, getVehicleInsuranceSearchFilters(params), {
+      skipEmpty: true,
+      camelToSnake: true
+    })
+  }
+
+  return await responseHandle<VehicleInsurance[]>(() => query as any, {
+    ignoreCheck: true,
+    showErrorMessage: true
+  })
+}
+
+export async function fetchVehicleInsuranceDetail(id: string) {
+  return await responseHandle<VehicleInsurance>(
+    () => supabase.from(VEHICLE_INSURANCE_TABLE).select('*').eq('id', id).single() as any,
+    {
+      ignoreCheck: true,
+      showErrorMessage: true
+    }
+  )
+}
+
+export async function addVehicleInsurance(params: VehicleInsurance) {
+  return await responseHandle(
+    () => supabase.from(VEHICLE_INSURANCE_TABLE).insert(keysToSnakeDeep(params)) as any,
+    { showMessage: true, breakReturn: true }
+  )
+}
+
+export async function editVehicleInsurance(params: VehicleInsurance) {
+  const { id, ...data } = params
+  return await responseHandle(
+    () =>
+      supabase
+        .from(VEHICLE_INSURANCE_TABLE)
+        .update(keysToSnakeDeep(data), { count: 'exact' })
+        .eq('id', id) as any,
+    {
+      showMessage: true,
+      breakReturn: true,
+      requireAffected: true,
+      noAffectedMessage: WRITE_PERMISSION_DENIED_MESSAGE
+    }
+  )
+}
+
+export async function deleteVehicleInsurance(id: string) {
+  return await responseHandle(
+    () => supabase.from(VEHICLE_INSURANCE_TABLE).delete({ count: 'exact' }).eq('id', id) as any,
+    {
+      showMessage: true,
+      breakReturn: true,
+      requireAffected: true,
+      noAffectedMessage: WRITE_PERMISSION_DENIED_MESSAGE
+    }
+  )
+}
+
+export async function deleteVehicleInsuranceBatch(ids: string[]) {
+  return await responseHandle(
+    () => supabase.from(VEHICLE_INSURANCE_TABLE).delete({ count: 'exact' }).in('id', ids) as any,
+    {
+      showMessage: true,
+      breakReturn: true,
+      requireAffected: true,
+      noAffectedMessage: WRITE_PERMISSION_DENIED_MESSAGE
+    }
+  )
+}
+
+// 杞﹁締骞存
+const VEHICLE_INSPECTION_TABLE = 'vehicle_inspection'
+
+const getVehicleInspectionSearchFilters = (params: VehicleInspectionSearchParams): FilterSpec[] => [
+  {
+    col: 'companyName',
+    op: 'ilike',
+    val: params.companyName ? `%${params.companyName}%` : undefined
+  },
+  { col: 'plateNo', op: 'ilike', val: params.plateNo ? `%${params.plateNo}%` : undefined },
+  {
+    col: 'inspectionNo',
+    op: 'ilike',
+    val: params.inspectionNo ? `%${params.inspectionNo}%` : undefined
+  }
+]
+
+export async function fetchVehicleInspectionList(params: VehicleInspectionSearchParams) {
+  const { from = 0, to = 9, expireDateRange, createTimeRange } = params
+  let query: any = supabase
+    .from(VEHICLE_INSPECTION_TABLE)
+    .select('*', { count: 'exact' })
+    .order('create_time', { ascending: false })
+    .range(from, to)
+
+  query = applyDateRange(query, 'expire_date', expireDateRange)
+  query = applyDateRange(query, 'create_time', createTimeRange)
+  query = applyFilters(query, getVehicleInspectionSearchFilters(params), {
+    skipEmpty: true,
+    camelToSnake: true
+  })
+
+  return await responseHandle<VehicleInspection[]>(() => query as any, {
+    ignoreCheck: true,
+    showErrorMessage: true
+  })
+}
+
+export async function exportVehicleInspectionList(
+  params: VehicleInspectionSearchParams & { ids?: string[]; maxRows?: number }
+) {
+  const { ids, maxRows = 10000, expireDateRange, createTimeRange } = params
+  let query: any = supabase
+    .from(VEHICLE_INSPECTION_TABLE)
+    .select('*')
+    .order('create_time', { ascending: false })
+    .limit(maxRows)
+
+  if (ids?.length) {
+    query = query.in('id', ids)
+  } else {
+    query = applyDateRange(query, 'expire_date', expireDateRange)
+    query = applyDateRange(query, 'create_time', createTimeRange)
+    query = applyFilters(query, getVehicleInspectionSearchFilters(params), {
+      skipEmpty: true,
+      camelToSnake: true
+    })
+  }
+
+  return await responseHandle<VehicleInspection[]>(() => query as any, {
+    ignoreCheck: true,
+    showErrorMessage: true
+  })
+}
+
+export async function addVehicleInspection(params: VehicleInspection) {
+  return await responseHandle(
+    () => supabase.from(VEHICLE_INSPECTION_TABLE).insert(keysToSnakeDeep(params)) as any,
+    { showMessage: true, breakReturn: true }
+  )
+}
+
+export async function editVehicleInspection(params: VehicleInspection) {
+  const { id, ...data } = params
+  return await responseHandle(
+    () =>
+      supabase
+        .from(VEHICLE_INSPECTION_TABLE)
+        .update(keysToSnakeDeep(data), { count: 'exact' })
+        .eq('id', id) as any,
+    {
+      showMessage: true,
+      breakReturn: true,
+      requireAffected: true,
+      noAffectedMessage: WRITE_PERMISSION_DENIED_MESSAGE
+    }
+  )
+}
+
+export async function deleteVehicleInspection(id: string) {
+  return await responseHandle(
+    () => supabase.from(VEHICLE_INSPECTION_TABLE).delete({ count: 'exact' }).eq('id', id) as any,
+    {
+      showMessage: true,
+      breakReturn: true,
+      requireAffected: true,
+      noAffectedMessage: WRITE_PERMISSION_DENIED_MESSAGE
+    }
+  )
+}
+
+export async function deleteVehicleInspectionBatch(ids: string[]) {
+  return await responseHandle(
+    () => supabase.from(VEHICLE_INSPECTION_TABLE).delete({ count: 'exact' }).in('id', ids) as any,
+    {
+      showMessage: true,
+      breakReturn: true,
+      requireAffected: true,
+      noAffectedMessage: WRITE_PERMISSION_DENIED_MESSAGE
+    }
+  )
+}
+
+// 车辆零部件使用
+const VEHICLE_PART_USAGE_TABLE = 'vehicle_part_usage'
+
+const getVehiclePartUsageSearchFilters = (params: VehiclePartUsageSearchParams): FilterSpec[] => [
+  {
+    col: 'companyName',
+    op: 'ilike',
+    val: params.companyName ? `%${params.companyName}%` : undefined
+  },
+  { col: 'plateNo', op: 'ilike', val: params.plateNo ? `%${params.plateNo}%` : undefined },
+  { col: 'partType', op: 'eq', val: params.partType },
+  {
+    col: 'partName',
+    op: 'ilike',
+    val: params.partName ? `%${params.partName}%` : undefined
+  },
+  { col: 'categoryId', op: 'eq', val: params.categoryId },
+  { col: 'rfidTag', op: 'ilike', val: params.rfidTag ? `%${params.rfidTag}%` : undefined },
+  { col: 'status', op: 'eq', val: params.status }
+]
+
+export async function fetchVehiclePartUsageList(params: VehiclePartUsageSearchParams) {
+  const { from = 0, to = 9, createTimeRange } = params
+  let query: any = supabase
+    .from(VEHICLE_PART_USAGE_TABLE)
+    .select('*', { count: 'exact' })
+    .order('create_time', { ascending: false })
+    .range(from, to)
+
+  query = applyDateRange(query, 'create_time', createTimeRange)
+  query = applyFilters(query, getVehiclePartUsageSearchFilters(params), {
+    skipEmpty: true,
+    camelToSnake: true
+  })
+
+  return await responseHandle<VehiclePartUsage[]>(() => query as any, {
+    ignoreCheck: true,
+    showErrorMessage: true
+  })
+}
+
+export async function fetchVehiclePartUsageDetail(id: string) {
+  return await responseHandle<VehiclePartUsage>(
+    () => supabase.from(VEHICLE_PART_USAGE_TABLE).select('*').eq('id', id).single() as any,
+    {
+      ignoreCheck: true,
+      showErrorMessage: true
+    }
+  )
+}
+
+export async function addVehiclePartUsage(params: VehiclePartUsage) {
+  return await responseHandle(
+    () => supabase.from(VEHICLE_PART_USAGE_TABLE).insert(keysToSnakeDeep(params)) as any,
+    { showMessage: true, breakReturn: true }
+  )
+}
+
+export async function editVehiclePartUsage(params: VehiclePartUsage) {
+  const { id, ...data } = params
+  return await responseHandle(
+    () =>
+      supabase
+        .from(VEHICLE_PART_USAGE_TABLE)
+        .update(keysToSnakeDeep(data), { count: 'exact' })
+        .eq('id', id) as any,
+    {
+      showMessage: true,
+      breakReturn: true,
+      requireAffected: true,
+      noAffectedMessage: WRITE_PERMISSION_DENIED_MESSAGE
+    }
+  )
+}
+
+export async function deleteVehiclePartUsage(id: string) {
+  return await responseHandle(
+    () => supabase.from(VEHICLE_PART_USAGE_TABLE).delete({ count: 'exact' }).eq('id', id) as any,
+    {
+      showMessage: true,
+      breakReturn: true,
+      requireAffected: true,
+      noAffectedMessage: WRITE_PERMISSION_DENIED_MESSAGE
+    }
+  )
+}
+
+export async function deleteVehiclePartUsageBatch(ids: string[]) {
+  return await responseHandle(
+    () => supabase.from(VEHICLE_PART_USAGE_TABLE).delete({ count: 'exact' }).in('id', ids) as any,
     {
       showMessage: true,
       breakReturn: true,

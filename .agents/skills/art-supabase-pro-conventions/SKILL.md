@@ -40,6 +40,8 @@ Use raw `ElDialog` or `ElDrawer` only when the wrapper cannot support a document
 
 For remote option data in metadata forms, use `ArtForm` item-level API options instead of page-local `ref` state plus manual fetch/map code. Configure `api`, `resultField`, `labelField`, `valueField`, `labelFn`, `params`, `beforeFetch`, `afterFetch`, and `autoSelect` on the form item as needed. If a form control needs remote options but does not support the item-level `api` contract, extend `ArtForm` or the shared core control first, then consume it from business pages.
 
+Business pages and business components must call backend data through exported functions from `src/api/**`, such as `@/api/vehicle-mgt-sys` or `@/api/common`. Do not import provider modules, `useSupabase`, `supabase.from(...)`, `request`, or other transport clients directly from `src/views/**`. Keep direct transport access inside API providers only. If a view needs a new backend read/write or option list, add or expose an API function first, then consume that function from the page or `ArtForm` item-level `api`.
+
 For dictionary-backed options, do not create page-local API calls or `ArtForm` item APIs. Dictionary data is already loaded into `useUserStore()`; consume it through `storeToRefs(useUserStore()).getDictMap` for option lists and `userStore.getDictLabelByValue(dictCode, value)` for display text. For dictionary-backed `ElTag` displays, use `userStore.getDictTagByValue(dictCode, value)` or `getDictTagTypeByValue` and configure the preset Element Plus tag type on `sys_dictionary.tag_type`; do not hardcode repeated page-local tag type maps for dictionary values. Use `ArtForm` item-level `api` only for non-dictionary business data such as tenants, roles, suppliers, categories, and other remote business entities.
 
 For tree-shaped data operations, use the shared utilities in `src/utils/tree.ts` such as `TreeUtils.listToTree`, `treeToList`, and related helpers. Do not hand-write page-local list/tree conversion, node lookup, flattening, or descendant traversal logic. If the shared utility does not cover a needed tree operation, extend the utility first and then consume it from business pages.
@@ -142,6 +144,9 @@ defineExpose({ handleOpen })
 
 Follow these rules:
 
+- Business dialogs that contain forms must use `ArtDialog + ArtForm`. Do not place a raw `ElForm` or page-local `ElFormItem` layout directly under `ArtDialog`.
+- Express standard layout with `ArtForm` items, responsive `span`, `divider`, `hidden`, field slots, `render`, and shared core controls.
+- If a required form layout or reusable control cannot be expressed by `ArtForm`, extend `src/components/core/forms/art-form` or the relevant shared core control first, document the capability beside that component, and then consume it from the business dialog. Do not bypass `ArtForm` with a business-page-only `ElForm` implementation.
 - Do not expose `visible`, `modelValue`, `type`, or edit-data props to the list page.
 - Do not make the parent compose `<ArtDialog><FeatureForm /></ArtDialog>`.
 - Return `false` from `onConfirm` when validation or persistence fails.
@@ -178,6 +183,7 @@ Apply the same ownership model to `ArtDrawer`.
 
 - Keep list loading in `useTable`.
 - Keep dialog content loading separate from confirm loading when opening requires data.
+- For vehicle management CRUD dialogs and similar edit dialogs, open `ArtDialog` immediately. Do not await detail or option-list APIs in the parent page or at the top of `handleOpen` before `dialogRef.handleOpen()`, because that delays the modal appearing. Pass `loading: true` when needed and run dialog-dependent API work inside the `onOpen` callback, using `api.setLoading(false)` in `finally`.
 - `ArtDialog` uses `destroyOnClose`; do not call child-component methods such as `formRef.reloadOptions()` before `dialogRef.handleOpen()`, because the child ref may not exist.
 - Load dialog-dependent remote form options through the `onOpen` callback passed to `handleOpen`. At that point the dialog content has mounted.
 - When remote option parameters depend on the current form model, derive them in the form item's `beforeFetch` callback. Do not rely on a computed `params` object having refreshed in the same tick as form initialization.
@@ -236,6 +242,26 @@ execute function public.trg_set_update_time_and_by();
 Also include the table's tenant isolation policies in the SQL itself: `tenant_select`, `tenant_insert`, `tenant_update`, and `tenant_delete` or the closest existing variant for the table's access model. Prefer `app_private.is_platform_super()` for platform-wide access, `app_private.current_user_tenant_id()` for tenant scoping, and `app_private.owns_record(create_by)` when creator ownership should be preserved. Do not ship a new business table without its RLS enabled and matching policies.
 
 Frontend API insert/update helpers should omit `createBy`, `createTime`, `updateBy`, and `updateTime` before writing, unless the existing neighboring module intentionally supplies audit values.
+
+## Relational Data And Joined Queries
+
+- Normalize master and reference data. Store foreign keys such as `category_id`, `supplier_id`, `company_id`, or `user_id`; do not also add copied display columns such as `category_name`, `supplier_name`, or `company_name` merely for list display.
+- Define real Postgres foreign-key constraints so Supabase/PostgREST can discover relationships.
+- Read related display data with Supabase nested selects and aliases instead of making extra lookup requests:
+
+```ts
+supabase.from('vehicle_parts').select(`
+  *,
+  category:vehicle_parts_category(id, category_name),
+  supplier:vehicle_supplier(id, supplier_name)
+`)
+```
+
+- Model joined data as nested frontend objects such as `category?.categoryName` and `supplier?.supplierName`. Do not flatten joined names back into persisted columns.
+- Keep create/update payloads limited to fields owned by the table, including foreign-key IDs. Do not query related tables inside `add*` or `edit*` merely to copy names into the payload.
+- Prefer one joined list/detail query over a base query followed by per-row or per-write lookup requests.
+- Add indexes for foreign-key columns used by joins and filters.
+- Duplicate a related name only when the record is intentionally a historical snapshot, legal document, transaction line, audit record, or other immutable point-in-time fact that must preserve the original text after the source record is renamed. Name the snapshot field clearly, document the reason, and do not treat ordinary master-data screens as snapshots.
 
 ## Verify Before Finishing
 

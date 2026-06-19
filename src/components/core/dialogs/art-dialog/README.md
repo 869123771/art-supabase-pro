@@ -201,6 +201,8 @@ dialogRef.value?.handleOpen(data, {
 })
 ```
 
+When the dialog enters fullscreen mode, `contentHeight` and `contentMaxHeight` stop constraining the content area. The dialog body uses the available viewport height and only scrolls when the content actually exceeds it. Exiting fullscreen restores the configured height limits.
+
 `contentHeight` 是固定内容高度；`contentMaxHeight` 是最大内容高度，内容没超过时自然适应，超过后自动出现滚动条。没有设置 `contentHeight` 和 `contentMaxHeight` 时，不会额外创建 `ElScrollbar`。
 
 ## 自定义插槽

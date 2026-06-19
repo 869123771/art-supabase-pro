@@ -180,10 +180,7 @@
       {
         prop: 'i18nScope',
         label: '国际化范围',
-        formatter: (row) => {
-          const label = userStore.getDictLabelByValue('i18nScope', row.i18nScope)
-          return <span>{label}</span>
-        }
+        dict: { code: 'i18nScope', display: 'text' }
       },
       {
         prop: 'status',

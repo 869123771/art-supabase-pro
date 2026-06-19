@@ -34,7 +34,7 @@
 </template>
 
 <script setup lang="tsx">
-  import { ElMessage, ElMessageBox, ElTag, type TagProps } from 'element-plus'
+  import { ElMessage, ElMessageBox } from 'element-plus'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type {
     ArtTableQueryExpose,
@@ -43,6 +43,9 @@
     ArtTableQueryHeaderActionContext
   } from '@/components/core/tables/art-table-query/index.vue'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
+  import ArtButtonMore, {
+    type ButtonMoreItem
+  } from '@/components/core/forms/art-button-more/index.vue'
   import { ColumnOption, DialogType } from '@/types'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import {
@@ -85,11 +88,6 @@
     { label: '启用', value: '1' },
     { label: '停用', value: '2' }
   ]
-
-  const statusTextMap: Record<string, string> = {
-    '1': '启用',
-    '2': '停用'
-  }
 
   const searchItems = computed<SearchFormItem[]>(() => [
     {
@@ -201,28 +199,10 @@
       minWidth: 150
     },
     {
-      prop: 'categoryLevel',
-      label: '层级',
-      width: 90,
-      formatter: (row) => row.categoryLevel ?? '-'
-    },
-    {
-      prop: 'sort',
-      label: '排序',
-      width: 90
-    },
-    {
       prop: 'status',
       label: '状态',
       width: 100,
-      formatter: (row) => {
-        const colorMap: Record<string, TagProps['type']> = {
-          '1': 'success',
-          '2': 'danger'
-        }
-        const status = row.status || '1'
-        return <ElTag type={colorMap[status] ?? 'info'}>{statusTextMap[status] ?? status}</ElTag>
-      }
+      dict: { code: 'status', display: 'auto' }
     },
     {
       prop: 'remark',
@@ -232,13 +212,15 @@
     {
       prop: 'operation',
       label: '操作',
-      width: 160,
+      width: 120,
       fixed: 'right',
       formatter: (row) => (
-        <div>
-          <ArtButtonTable type="add" onClick={() => openDialog(undefined, row)} />
+        <div class="flex">
           <ArtButtonTable type="edit" onClick={() => openDialog(row)} />
-          <ArtButtonTable type="delete" onClick={() => handleDelete(row)} />
+          <ArtButtonMore
+            list={getMoreActions()}
+            onClick={(item: ButtonMoreItem) => handleMoreAction(item, row)}
+          />
         </div>
       )
     }
@@ -246,6 +228,30 @@
 
   const openDialog = (row?: PartsCategory, parent?: PartsCategory): void => {
     void dialogRef.value?.handleOpen(row, parent)
+  }
+
+  const getMoreActions = (): ButtonMoreItem[] => [
+    {
+      key: 'add',
+      label: '新增下级',
+      icon: 'ri:add-line'
+    },
+    {
+      key: 'delete',
+      label: '删除',
+      icon: 'ri:delete-bin-5-line',
+      color: '#f56c6c'
+    }
+  ]
+
+  const handleMoreAction = (item: ButtonMoreItem, row: PartsCategory): void => {
+    if (item.key === 'add') {
+      openDialog(undefined, row)
+      return
+    }
+    if (item.key === 'delete') {
+      void handleDelete(row)
+    }
   }
 
   const handleTreeNodeClick = (node?: PartsCategory): void => {

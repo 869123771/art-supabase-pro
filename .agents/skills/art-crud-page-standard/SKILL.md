@@ -173,6 +173,8 @@ Rules:
 
 - Keep Supabase `from/to` conversion in the page or API boundary, not in table columns.
 - Keep response adaptation in API utilities or `responseAdapter` if the response shape is non-standard.
+- For related labels, keep only foreign-key IDs in the owning table and fetch the related records with one Supabase nested `select`. Do not add duplicated `*_name` columns or issue extra lookup requests just to render table text.
+- Type joined records as nested objects and render values such as `row.category?.categoryName`.
 
 ## Header Actions
 
@@ -283,8 +285,27 @@ Rules:
 - Include selection column when batch delete/export selected rows are supported.
 - Use `globalIndex` for page-aware serial numbers.
 - Use `ArtButtonTable` for row edit/delete.
+- Show at most two direct controls in an operation column. When a row has more actions, keep one primary direct action such as edit or view and use `ArtButtonMore` as the second control for all remaining actions, including add-child and delete.
 - Keep operation column right fixed when table can scroll horizontally.
 - Do not pass `showOverflowTooltip` repeatedly unless overriding default behavior.
+
+```tsx
+{
+  prop: 'operation',
+  label: '操作',
+  width: 120,
+  fixed: 'right',
+  formatter: (row) => (
+    <div class="flex">
+      <ArtButtonTable type="edit" onClick={() => openDialog(row)} />
+      <ArtButtonMore
+        list={getMoreActions(row)}
+        onClick={(item) => handleMoreAction(item, row)}
+      />
+    </div>
+  )
+}
+```
 
 ## Row Delete
 
@@ -308,6 +329,12 @@ const handleDelete = async (row: RecordItem): Promise<void> => {
 ```
 
 ## Dialog Template
+
+Form-based CRUD dialogs must use `ArtDialog + ArtForm`.
+
+- Do not place raw `ElForm`, `ElFormItem`, `ElRow`, or `ElCol` form composition directly under `ArtDialog`.
+- Use `FormItem[]`, responsive `span`, `divider`, `hidden`, field slots, `render`, and shared core controls for complex layouts and conditional fields.
+- If `ArtForm` cannot express a reusable requirement, extend `src/components/core/forms/art-form` or the relevant shared core form control first, then use the new capability in the business dialog. Do not solve the gap with page-local raw form plumbing.
 
 ```vue
 <template>
@@ -449,6 +476,13 @@ Rules:
 
 ## Dialog Open
 
+Open CRUD dialogs before running dialog-dependent async work:
+
+- The list page must call `dialogRef.value?.handleOpen(row)` directly; do not fetch edit details or option lists in the list page before opening.
+- In the dialog component, do cheap synchronous state setup first, then call `dialogRef.handleOpen()`.
+- Any API work needed by dialog content, including remote dropdown options and edit detail refreshes, belongs in the `onOpen` callback. Use `loading: true` and `api.setLoading(false)` in `finally` so the modal appears immediately with the ArtDialog content loading mask.
+- For dropdowns in `ArtForm`, prefer item-level `api` plus `resultField`, `labelField`, `valueField`, `beforeFetch`, `afterFetch`, and `reloadOptions(...)`. Do not manually fetch option arrays in `handleOpen` and pass them through `props.options`.
+
 ```ts
 const handleOpen = async (row?: RecordItem): Promise<void> => {
   await resetForm()
@@ -459,8 +493,13 @@ const handleOpen = async (row?: RecordItem): Promise<void> => {
 
   await dialogRef.value?.handleOpen(row, {
     title: isEdit ? '编辑记录' : '新增记录',
-    onOpen: async () => {
-      await formRef.value?.reloadOptions('parentId')
+    loading: true,
+    onOpen: async (_data, api) => {
+      try {
+        await formRef.value?.reloadOptions('parentId')
+      } finally {
+        api.setLoading(false)
+      }
     },
     onConfirm: handleSubmit,
     onReset: () => void resetForm()

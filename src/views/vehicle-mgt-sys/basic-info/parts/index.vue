@@ -16,7 +16,7 @@
 </template>
 
 <script setup lang="tsx">
-  import { ElMessage, ElMessageBox, ElTag } from 'element-plus'
+  import { ElMessage, ElMessageBox } from 'element-plus'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type {
     ArtTableQueryExpose,
@@ -111,11 +111,10 @@
     }
   ])
 
-  const partsExcelColumns: ArtTableQueryExcelColumn[] = [
+  const partsImportColumns: ArtTableQueryExcelColumn[] = [
     { key: 'partName', title: '零部件名称', required: true },
     { key: 'partCode', title: '零部件编码', required: true },
     { key: 'categoryId', title: '类别ID' },
-    { key: 'categoryName', title: '类别名称' },
     { key: 'brand', title: '品牌' },
     { key: 'model', title: '型号' },
     { key: 'unit', title: '单位' },
@@ -126,7 +125,35 @@
     { key: 'serviceMileage', title: '使用里程' },
     { key: 'manufacturer', title: '生产厂商' },
     { key: 'supplierId', title: '供应厂商ID' },
-    { key: 'supplierName', title: '供应厂商' },
+    { key: 'supplierContact', title: '供应商联系人' },
+    { key: 'status', title: '状态' },
+    { key: 'remark', title: '备注' }
+  ]
+
+  const partsExportColumns: ArtTableQueryExcelColumn[] = [
+    { key: 'partName', title: '零部件名称' },
+    { key: 'partCode', title: '零部件编码' },
+    { key: 'categoryId', title: '类别ID' },
+    {
+      key: 'categoryName',
+      title: '类别名称',
+      formatter: (_value, row) => (row as Parts).category?.categoryName ?? ''
+    },
+    { key: 'brand', title: '品牌' },
+    { key: 'model', title: '型号' },
+    { key: 'unit', title: '单位' },
+    { key: 'isConsumable', title: '是否易损/耗件' },
+    { key: 'warrantyMileage', title: '质保里程' },
+    { key: 'warrantyDuration', title: '质保时长（月）' },
+    { key: 'serviceLife', title: '使用年限（年）' },
+    { key: 'serviceMileage', title: '使用里程' },
+    { key: 'manufacturer', title: '生产厂商' },
+    { key: 'supplierId', title: '供应厂商ID' },
+    {
+      key: 'supplierName',
+      title: '供应厂商',
+      formatter: (_value, row) => (row as Parts).supplier?.supplierName ?? ''
+    },
     { key: 'supplierContact', title: '供应商联系人' },
     { key: 'status', title: '状态' },
     { key: 'remark', title: '备注' }
@@ -139,7 +166,7 @@
     },
     {
       type: 'import',
-      importColumns: partsExcelColumns,
+      importColumns: partsImportColumns,
       importApi: async (rows) => {
         await importParts(rows as Parts[])
       },
@@ -149,7 +176,7 @@
       type: 'export',
       exportFilename: '零部件',
       exportSheetName: '零部件',
-      exportColumns: partsExcelColumns,
+      exportColumns: partsExportColumns,
       exportApi: ({ selectedIds, searchParams, maxRows }) => {
         return exportPartsList({
           ...(searchParams as SearchParams),
@@ -208,10 +235,10 @@
       minWidth: 160
     },
     {
-      prop: 'categoryName',
+      prop: 'category',
       label: '类别',
       minWidth: 140,
-      formatter: (row) => row.categoryName || '-'
+      formatter: (row) => row.category?.categoryName || '-'
     },
     {
       prop: 'brandModel',
@@ -225,34 +252,10 @@
       width: 90
     },
     {
-      prop: 'supplierName',
+      prop: 'supplier',
       label: '供应厂商',
       minWidth: 160,
-      formatter: (row) => row.supplierName || '-'
-    },
-    {
-      prop: 'isConsumable',
-      label: '易损/耗件',
-      width: 110,
-      formatter: (row) => (
-        <ElTag type={row.isConsumable ? 'warning' : 'info'}>{row.isConsumable ? '是' : '否'}</ElTag>
-      )
-    },
-    {
-      prop: 'status',
-      label: '状态',
-      width: 100,
-      formatter: (row) => {
-        const status = row.status || '1'
-        const tag = userStore.getDictTagByValue('status', status)
-
-        return <ElTag type={tag.type}>{tag.label}</ElTag>
-      }
-    },
-    {
-      prop: 'remark',
-      label: '备注',
-      minWidth: 180
+      formatter: (row) => row.supplier?.supplierName || '-'
     },
     {
       prop: 'operation',

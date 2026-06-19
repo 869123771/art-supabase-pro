@@ -253,17 +253,21 @@
     return typeof value === 'number' ? `${value}px` : value
   }
 
+  const isFullscreen = computed(() => Boolean(options.value.fullscreen))
+
   const normalizedContentHeight = computed(() => {
+    if (isFullscreen.value) return undefined
     const height = options.value.contentHeight
     return normalizeSize(height)
   })
 
   const normalizedContentMaxHeight = computed(() => {
+    if (isFullscreen.value) return undefined
     return normalizeSize(options.value.contentMaxHeight ?? options.value.contentHeight)
   })
 
   const shouldUseScrollbar = computed(() => {
-    return Boolean(normalizedContentHeight.value || normalizedContentMaxHeight.value)
+    return Boolean(options.value.contentHeight || options.value.contentMaxHeight)
   })
 
   const dialogClass = computed(() => [
@@ -274,7 +278,6 @@
   const dialogTitle = computed(() => String(options.value.title ?? attrs.title ?? ''))
   const dialogSubtitle = computed(() => String(options.value.subtitle ?? ''))
   const hasSubtitle = computed(() => Boolean(slots.subtitle || dialogSubtitle.value))
-  const isFullscreen = computed(() => Boolean(options.value.fullscreen))
   const fullscreenIcon = computed(() =>
     isFullscreen.value ? 'ri:fullscreen-exit-line' : 'ri:fullscreen-line'
   )

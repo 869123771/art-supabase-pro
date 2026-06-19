@@ -1,0 +1,1 @@
+import{x as s,aR as a,s as n,dF as e}from"./index-BBld8YOB.js";const r=()=>{const{isFrontendMode:r}=e(),t=s(),u=a(),{info:o}=n(t),{buttonList:l}=n(u);return{hasAuth:s=>{return r.value?(null!=(a=o.value.buttons)?a:[]).includes(s):(Array.isArray(l.value)?l.value:[]).some(a=>(null==a?void 0:a.name)===s);var a}}};export{r as u};
