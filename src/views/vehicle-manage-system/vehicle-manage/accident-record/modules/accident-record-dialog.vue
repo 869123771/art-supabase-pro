@@ -94,12 +94,9 @@
     DataSelectColumn,
     DataSelectRecord
   } from '@/components/core/forms/art-data-select/types'
-  import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
-  import ArtButtonMore, {
-    type ButtonMoreItem
-  } from '@/components/core/forms/art-button-more/index.vue'
   import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
   import ArtTable from '@/components/core/tables/art-table/index.vue'
+  import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
   import type { ColumnOption } from '@/types'
   import {
     addVehicleAccident,
@@ -108,7 +105,7 @@
   } from '@/api/vehicle-manage-system'
   import { uploadAttachment } from '@/api/common'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
-  import { downloadAttachment, getFileExtension, viewAttachment } from '@/utils/file'
+  import { downloadAttachment, getFileExtension } from '@/utils/file'
   import { useUserStore } from '@/store/modules/user'
 
   defineOptions({ name: 'AccidentRecordDialog' })
@@ -316,26 +313,23 @@
   ]
 
   const attachmentColumns: ColumnOption<Attachment>[] = [
-    { type: 'globalIndex', label: '序号', width: 72 },
-    { prop: 'name', label: '事故附件名称', minWidth: 220 },
+    { type: 'globalIndex', label: '序号', width: 56 },
+    { prop: 'name', label: '事故附件名称' },
     {
       prop: 'fileType',
       label: '格式类型',
-      width: 120,
+      width: 110,
       dict: { code: 'FILE_EXTENSION_LABEL_MAP', display: 'text' }
     },
-    { prop: 'fileSize', label: '附件大小', width: 120 },
+    { prop: 'fileSize', label: '附件大小', width: 110 },
     {
       prop: 'operation',
       label: '操作',
-      width: 150,
+      width: 96,
       formatter: (row) => (
-        <div class="flex">
-          <ArtButtonTable type="view" onClick={() => viewAttachment(row)} />
-          <ArtButtonMore
-            list={getAttachmentMoreActions()}
-            onClick={(item: ButtonMoreItem) => handleAttachmentMoreAction(item, row)}
-          />
+        <div class="flex items-center">
+          <ArtIconButton icon="ri:download-2-line" onClick={() => downloadAttachment(row)} />
+          <ArtIconButton icon="ri:delete-bin-5-line" onClick={() => void removeAttachment(row)} />
         </div>
       )
     }
@@ -498,19 +492,6 @@
       onConfirm: handleSubmit,
       onReset: () => void resetForm()
     })
-  }
-
-  const getAttachmentMoreActions = (): ButtonMoreItem[] => [
-    { key: 'download', label: '下载', icon: 'ri:download-2-line' },
-    { key: 'delete', label: '删除', icon: 'ri:delete-bin-5-line', color: '#f56c6c' }
-  ]
-
-  const handleAttachmentMoreAction = (item: ButtonMoreItem, row: Attachment): void => {
-    if (item.key === 'download') {
-      downloadAttachment(row)
-      return
-    }
-    if (item.key === 'delete') void removeAttachment(row)
   }
 
   const removeAttachment = async (row: Attachment): Promise<void> => {

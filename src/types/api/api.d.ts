@@ -417,6 +417,66 @@ declare namespace Api {
           }
       >
 
+      type VehicleRoutineInspectionType = 'daily' | 'monthly'
+      type VehicleRoutineInspectionResult = 'qualified' | 'unqualified'
+
+      interface VehicleRoutineInspectionRecord {
+        id?: string
+        tenantId?: string
+        vehicleId?: string | null
+        plateNo: string
+        companyName?: string
+        routineInspectionNo?: string
+        inspectionType: VehicleRoutineInspectionType | string
+        inspectionTime: string
+        inspector?: string
+        driverName?: string
+        checkCondition?: string
+        checkResult: VehicleRoutineInspectionResult | string
+        handlingMethod?: string
+        remark?: string
+        attachments?: VehicleAttachment[]
+        createBy?: string
+        createTime?: string
+        updateBy?: string
+        updateTime?: string
+      }
+
+      type VehicleRoutineInspectionSearchParams = Partial<
+        Pick<
+          VehicleRoutineInspectionRecord,
+          'companyName' | 'plateNo' | 'inspectionType' | 'checkResult'
+        > &
+          Api.Common.CommonSearchParams & {
+            inspectionTimeRange?: string[]
+            createTimeRange?: string[]
+          }
+      >
+
+      interface VehicleMileageRecord {
+        id?: string
+        tenantId?: string
+        vehicleId?: string | null
+        plateNo: string
+        companyName?: string
+        runningMileage?: number | null
+        startTime: string
+        startMileage?: number | null
+        endTime?: string | null
+        endMileage?: number | null
+        createBy?: string
+        createTime?: string
+        updateBy?: string
+        updateTime?: string
+      }
+
+      type VehicleMileageSearchParams = Partial<
+        Pick<VehicleMileageRecord, 'companyName' | 'plateNo'> &
+          Api.Common.CommonSearchParams & {
+            drivingTimeRange?: string[]
+          }
+      >
+
       interface VehicleViolationRecord {
         id?: string
         tenantId?: string

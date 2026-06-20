@@ -1,6 +1,6 @@
 <template>
   <ArtDialog ref="dialogRef" width="1120px" show-fullscreen-button>
-    <div class="maintenance-record-dialog">
+    <div class="routine-inspection-dialog">
       <ArtForm
         ref="formRef"
         v-model="form.data"
@@ -29,23 +29,9 @@
         </template>
       </ArtForm>
 
-      <section class="maintenance-record-dialog__section">
-        <div class="maintenance-record-dialog__section-header">
-          <ArtSectionTitle :show-line="false">项目清单</ArtSectionTitle>
-          <ElButton type="primary" plain @click="addItem">新增</ElButton>
-        </div>
-        <ArtTable
-          :data="form.data.items"
-          :columns="itemColumns"
-          :pagination="undefined"
-          :show-table-header="false"
-          empty-height="160px"
-        />
-      </section>
-
-      <section class="maintenance-record-dialog__section">
-        <div class="maintenance-record-dialog__section-header">
-          <ArtSectionTitle :show-line="false">维修保养附件</ArtSectionTitle>
+      <section class="routine-inspection-dialog__section">
+        <div class="routine-inspection-dialog__section-header">
+          <ArtSectionTitle :show-line="false">例检附件</ArtSectionTitle>
           <ElButton type="primary" plain @click="openAttachmentDialog">上传</ElButton>
         </div>
         <ArtTable
@@ -60,19 +46,19 @@
   </ArtDialog>
 
   <ArtDialog ref="attachmentDialogRef" width="760px">
-    <div class="maintenance-attachment-dialog">
+    <div class="routine-attachment-dialog">
       <ArtForm
         ref="attachmentFormRef"
         v-model="attachment.data"
         :items="attachment.items"
         :rules="attachment.rules"
         :span="24"
-        label-width="170px"
+        label-width="140px"
         :show-reset="false"
         :show-submit="false"
       >
         <template #file>
-          <div class="maintenance-attachment-dialog__upload">
+          <div class="routine-attachment-dialog__upload">
             <ArtExcelImport
               accept=""
               :parse-excel="false"
@@ -82,7 +68,7 @@
             >
               选择上传文件
             </ArtExcelImport>
-            <div v-if="attachment.data.fileName" class="maintenance-attachment-dialog__file">
+            <div v-if="attachment.data.fileName" class="routine-attachment-dialog__file">
               <span>{{ attachment.data.fileName }}</span>
               <ArtSvgIcon v-if="attachment.data.url" icon="ri:check-line" />
             </div>
@@ -97,35 +83,34 @@
   import type { ComputedRef, UnwrapNestedRefs } from 'vue'
   import { cloneDeep } from 'lodash-es'
   import type { FormRules } from 'element-plus'
-  import { ElButton, ElInput, ElInputNumber, ElMessage, ElMessageBox } from 'element-plus'
+  import { ElButton, ElMessage, ElMessageBox } from 'element-plus'
   import { storeToRefs } from 'pinia'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
-  import ArtExcelImport from '@/components/core/forms/art-excel-import/index.vue'
-  import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import ArtTableSingleSelect from '@/components/core/forms/art-data-select/table-single.vue'
   import type {
     DataSelectColumn,
     DataSelectRecord
   } from '@/components/core/forms/art-data-select/types'
+  import ArtExcelImport from '@/components/core/forms/art-excel-import/index.vue'
+  import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
   import ArtTable from '@/components/core/tables/art-table/index.vue'
   import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
   import type { ColumnOption } from '@/types'
   import {
-    addVehicleMaintenance,
-    editVehicleMaintenance,
+    addVehicleRoutineInspection,
+    editVehicleRoutineInspection,
     fetchVehicleArchiveList
   } from '@/api/vehicle-manage-system'
   import { uploadAttachment } from '@/api/common'
-  import { pageInfoHandler } from '@/utils/table/tableUtils'
-  import { downloadAttachment, getFileExtension } from '@/utils/file'
   import { useUserStore } from '@/store/modules/user'
+  import { downloadAttachment, getFileExtension } from '@/utils/file'
+  import { pageInfoHandler } from '@/utils/table/tableUtils'
 
-  defineOptions({ name: 'MaintenanceRecordDialog' })
+  defineOptions({ name: 'RoutineInspectionDialog' })
 
-  type MaintenanceRecord = Api.VehicleMgtSys.VehicleManage.VehicleMaintenanceRecord
-  type MaintenanceItem = Api.VehicleMgtSys.VehicleManage.VehicleMaintenanceItem
+  type RoutineInspection = Api.VehicleMgtSys.VehicleManage.VehicleRoutineInspectionRecord
   type VehicleArchive = Api.VehicleMgtSys.ArchiveManage.VehicleArchive
   type Attachment = Api.VehicleMgtSys.VehicleManage.VehicleAttachment
 
@@ -135,9 +120,9 @@
   }
 
   interface FormGroup {
-    data: MaintenanceRecord
+    data: RoutineInspection
     items: ComputedRef<FormItem[]>
-    rules: ComputedRef<FormRules<MaintenanceRecord>>
+    rules: ComputedRef<FormRules<RoutineInspection>>
     vehicleSelection: VehicleArchive[]
   }
 
@@ -163,35 +148,25 @@
 
   const emit = defineEmits<Emits>()
   const { getDictMap } = storeToRefs(useUserStore())
-  const dialogRef = ref<ArtDialogExpose<MaintenanceRecord | undefined>>()
+  const dialogRef = ref<ArtDialogExpose<RoutineInspection | undefined>>()
   const attachmentDialogRef = ref<ArtDialogExpose<void>>()
   const formRef = ref<FormExpose>()
   const attachmentFormRef = ref<FormExpose>()
 
-  const createInitialItem = (): MaintenanceItem => ({
-    itemName: '',
-    totalAmount: null,
-    laborAmount: null,
-    partName: '',
-    partPrice: null,
-    quantity: null
-  })
-
-  const createInitialForm = (): MaintenanceRecord => ({
+  const createInitialForm = (): RoutineInspection => ({
     id: undefined,
     vehicleId: null,
     plateNo: '',
     companyName: '',
-    maintenanceNo: '',
-    maintenanceType: 'repair',
-    initiator: '',
-    startTime: '',
-    endTime: '',
-    costAmount: null,
-    workshop: '',
-    externalRepair: false,
+    routineInspectionNo: '',
+    inspectionType: 'daily',
+    inspectionTime: '',
+    inspector: '',
+    driverName: '',
+    checkCondition: '',
+    checkResult: 'qualified',
+    handlingMethod: '',
     remark: '',
-    items: [createInitialItem()],
     attachments: []
   })
 
@@ -210,13 +185,6 @@
     class: '!w-full'
   }
 
-  const moneyProps = {
-    min: 0,
-    precision: 2,
-    controlsPosition: 'right',
-    class: '!w-full'
-  }
-
   const form: UnwrapNestedRefs<FormGroup> = reactive<FormGroup>({
     data: createInitialForm(),
     vehicleSelection: [],
@@ -224,23 +192,35 @@
       { label: '基础信息', key: 'baseSection', type: 'divider', span: 24 },
       { label: '车牌号', key: 'vehicleId', span: 12 },
       { label: '所属公司', key: 'companyName', type: 'input', props: { disabled: true } },
-      { label: '维修单号', key: 'maintenanceNo', type: 'input', props: { maxlength: 80 } },
+      { label: '例检编号', key: 'routineInspectionNo', type: 'input', props: { maxlength: 80 } },
       {
-        label: '维修类型',
-        key: 'maintenanceType',
+        label: '例检类型',
+        key: 'inspectionType',
         type: 'select',
-        props: { options: getDictMap.value.vehicleMaintenanceType ?? [] }
+        props: { options: getDictMap.value.vehicleRoutineInspectionType ?? [] }
       },
-      { label: '发起人', key: 'initiator', type: 'input', props: { maxlength: 50 } },
-      { label: '开始时间', key: 'startTime', type: 'date', props: dateTimeProps },
-      { label: '结束时间', key: 'endTime', type: 'date', props: dateTimeProps },
-      { label: '费用金额', key: 'costAmount', type: 'number', props: moneyProps },
-      { label: '维修厂', key: 'workshop', type: 'input', props: { maxlength: 120 } },
+      { label: '例检时间', key: 'inspectionTime', type: 'date', props: dateTimeProps },
+      { label: '检查人', key: 'inspector', type: 'input', props: { maxlength: 50 } },
+      { label: '驾驶员', key: 'driverName', type: 'input', props: { maxlength: 50 } },
       {
-        label: '外部维修',
-        key: 'externalRepair',
-        type: 'radioGroup',
-        props: { options: getBooleanDictOptions() }
+        label: '检查结果',
+        key: 'checkResult',
+        type: 'select',
+        props: { options: getDictMap.value.vehicleRoutineInspectionResult ?? [] }
+      },
+      {
+        label: '检查情况',
+        key: 'checkCondition',
+        type: 'input',
+        span: 24,
+        props: { type: 'textarea', rows: 3, maxlength: 500, showWordLimit: true }
+      },
+      {
+        label: '处理方式',
+        key: 'handlingMethod',
+        type: 'input',
+        span: 24,
+        props: { type: 'textarea', rows: 3, maxlength: 500, showWordLimit: true }
       },
       {
         label: '备注',
@@ -250,11 +230,13 @@
         props: { type: 'textarea', rows: 3, maxlength: 500, showWordLimit: true }
       }
     ]),
-    rules: computed<FormRules<MaintenanceRecord>>(() => ({
+    rules: computed<FormRules<RoutineInspection>>(() => ({
       vehicleId: [{ required: true, message: '请选择车辆', trigger: 'change' }],
-      maintenanceNo: [{ required: true, message: '请输入维修单号', trigger: 'blur' }],
-      maintenanceType: [{ required: true, message: '请选择维修类型', trigger: 'change' }],
-      startTime: [{ required: true, message: '请选择开始时间', trigger: 'change' }]
+      routineInspectionNo: [{ required: true, message: '请输入例检编号', trigger: 'blur' }],
+      inspectionType: [{ required: true, message: '请选择例检类型', trigger: 'change' }],
+      inspectionTime: [{ required: true, message: '请选择例检时间', trigger: 'change' }],
+      inspector: [{ required: true, message: '请输入检查人', trigger: 'blur' }],
+      checkResult: [{ required: true, message: '请选择检查结果', trigger: 'change' }]
     }))
   })
 
@@ -262,16 +244,11 @@
     data: createInitialAttachmentForm(),
     uploading: false,
     items: computed<FormItem[]>(() => [
-      {
-        label: '维修保养附件名称',
-        key: 'name',
-        type: 'input',
-        props: { maxlength: 100 }
-      },
-      { label: '选择上传文件', key: 'file' }
+      { label: '附件名称', key: 'name', type: 'input', props: { maxlength: 100 } },
+      { label: '上传文件', key: 'file' }
     ]),
     rules: computed<FormRules<AttachmentFormData>>(() => ({
-      name: [{ required: true, message: '请输入维修保养附件名称', trigger: 'blur' }],
+      name: [{ required: true, message: '请输入附件名称', trigger: 'blur' }],
       file: [{ required: true, message: '请选择上传文件', trigger: 'change' }]
     }))
   })
@@ -288,89 +265,9 @@
     { prop: 'plateNo', label: '车牌号', width: 140 },
     {
       prop: 'operationStatus',
-      label: '营运状态',
+      label: '运营状态',
       width: 120,
       dict: { code: 'vehicleOperationStatus', display: 'auto' }
-    }
-  ]
-
-  const itemColumns: ColumnOption<MaintenanceItem>[] = [
-    { type: 'globalIndex', label: '序号', width: 56 },
-    {
-      prop: 'itemName',
-      label: '项目名称',
-      minWidth: 130,
-      formatter: (row) => <ElInput v-model={row.itemName} placeholder="项目名称" />
-    },
-    {
-      prop: 'partName',
-      label: '配件名称',
-      minWidth: 120,
-      formatter: (row) => <ElInput v-model={row.partName} placeholder="配件名称" />
-    },
-    {
-      prop: 'quantity',
-      label: '数量',
-      width: 96,
-      formatter: (row) => (
-        <ElInputNumber
-          v-model={row.quantity}
-          min={0}
-          precision={2}
-          controls={false}
-          class="w-full!"
-        />
-      )
-    },
-    {
-      prop: 'partPrice',
-      label: '配件金额',
-      width: 112,
-      formatter: (row) => (
-        <ElInputNumber
-          v-model={row.partPrice}
-          min={0}
-          precision={2}
-          controls={false}
-          class="w-full!"
-        />
-      )
-    },
-    {
-      prop: 'laborAmount',
-      label: '工时费',
-      width: 112,
-      formatter: (row) => (
-        <ElInputNumber
-          v-model={row.laborAmount}
-          min={0}
-          precision={2}
-          controls={false}
-          class="w-full!"
-        />
-      )
-    },
-    {
-      prop: 'totalAmount',
-      label: '合计',
-      width: 112,
-      formatter: (row) => (
-        <ElInputNumber
-          v-model={row.totalAmount}
-          min={0}
-          precision={2}
-          controls={false}
-          class="w-full!"
-        />
-      )
-    },
-    {
-      prop: 'operation',
-      label: '操作',
-      width: 64,
-      formatter: (row) => (
-        <ArtIconButton icon="ri:delete-bin-5-line" onClick={() => removeItem(row)} />
-      )
     }
   ]
 
@@ -397,12 +294,6 @@
     }
   ]
 
-  const getBooleanDictOptions = () =>
-    (getDictMap.value.commonBoolean ?? []).map((item) => ({
-      ...item,
-      value: item.value === 'true'
-    }))
-
   const fetchVehicleSelectData = async (params: {
     page: number
     pageSize: number
@@ -425,9 +316,8 @@
     form.data.companyName = vehicle?.companyName ?? ''
   }
 
-  const replaceForm = (data: MaintenanceRecord): void => {
+  const replaceForm = (data: RoutineInspection): void => {
     Object.assign(form.data, createInitialForm(), cloneDeep(toRaw(data)))
-    form.data.items = form.data.items?.length ? form.data.items : [createInitialItem()]
     form.data.attachments ??= []
     form.vehicleSelection = form.data.vehicleId
       ? [
@@ -453,18 +343,10 @@
     attachmentFormRef.value?.clearValidate()
   }
 
-  const addItem = (): void => {
-    form.data.items = [...(form.data.items ?? []), createInitialItem()]
-  }
-
-  const removeItem = (row: MaintenanceItem): void => {
-    form.data.items = (form.data.items ?? []).filter((item) => item !== row)
-  }
-
   const openAttachmentDialog = async (): Promise<void> => {
     await resetAttachmentForm()
     await attachmentDialogRef.value?.handleOpen(undefined, {
-      title: '上传维修保养附件',
+      title: '上传例检附件',
       contentMaxHeight: '420px',
       onConfirm: handleAttachmentConfirm,
       onReset: () => void resetAttachmentForm()
@@ -481,9 +363,7 @@
       attachment.data.url = resource.url
       attachment.data.fileType = getFileExtension(file.name, resource.suffix)
       attachment.data.fileSize = resource.sizeInfo
-      if (!attachment.data.name) {
-        attachment.data.name = resource.originName || file.name
-      }
+      if (!attachment.data.name) attachment.data.name = resource.originName || file.name
       attachmentFormRef.value?.clearValidate()
       ElMessage.success('附件上传成功')
     } catch (error) {
@@ -512,55 +392,6 @@
     return true
   }
 
-  const normalizePayload = (): MaintenanceRecord => {
-    const payload = { ...toRaw(form.data) }
-    delete payload.tenantId
-    delete payload.createBy
-    delete payload.createTime
-    delete payload.updateBy
-    delete payload.updateTime
-    return {
-      ...payload,
-      vehicleId: payload.vehicleId || null,
-      endTime: payload.endTime || null,
-      items: (payload.items ?? []).filter((item) => item.itemName || item.partName),
-      attachments: payload.attachments ?? []
-    }
-  }
-
-  const handleSubmit = async (): Promise<boolean> => {
-    try {
-      await formRef.value?.validate()
-    } catch {
-      return false
-    }
-
-    try {
-      const payload = normalizePayload()
-      if (form.data.id) {
-        await editVehicleMaintenance(payload)
-      } else {
-        await addVehicleMaintenance(payload)
-      }
-      emit('success', form.data.id ? 'edit' : 'add')
-      return true
-    } catch {
-      return false
-    }
-  }
-
-  const handleOpen = async (row?: MaintenanceRecord): Promise<void> => {
-    await resetForm()
-    if (row?.id) replaceForm(row)
-
-    await dialogRef.value?.handleOpen(row, {
-      title: row?.id ? '编辑维修保养记录' : '新增维修保养记录',
-      contentMaxHeight: '74vh',
-      onConfirm: handleSubmit,
-      onReset: () => void resetForm()
-    })
-  }
-
   const removeAttachment = async (row: Attachment): Promise<void> => {
     try {
       await ElMessageBox.confirm(`确定删除附件“${row.name}”吗？`, '删除确认', {
@@ -575,6 +406,53 @@
     }
   }
 
+  const normalizePayload = (): RoutineInspection => {
+    const payload = { ...toRaw(form.data) }
+    delete payload.tenantId
+    delete payload.createBy
+    delete payload.createTime
+    delete payload.updateBy
+    delete payload.updateTime
+    return {
+      ...payload,
+      vehicleId: payload.vehicleId || null,
+      attachments: payload.attachments ?? []
+    }
+  }
+
+  const handleSubmit = async (): Promise<boolean> => {
+    try {
+      await formRef.value?.validate()
+    } catch {
+      return false
+    }
+
+    try {
+      const payload = normalizePayload()
+      if (form.data.id) {
+        await editVehicleRoutineInspection(payload)
+      } else {
+        await addVehicleRoutineInspection(payload)
+      }
+      emit('success', form.data.id ? 'edit' : 'add')
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  const handleOpen = async (row?: RoutineInspection): Promise<void> => {
+    await resetForm()
+    if (row?.id) replaceForm(row)
+
+    await dialogRef.value?.handleOpen(row, {
+      title: row?.id ? '编辑例检记录' : '新增例检记录',
+      contentMaxHeight: '74vh',
+      onConfirm: handleSubmit,
+      onReset: () => void resetForm()
+    })
+  }
+
   defineExpose({
     handleOpen,
     handleClose: () => dialogRef.value?.handleClose()
@@ -582,7 +460,7 @@
 </script>
 
 <style scoped lang="scss">
-  .maintenance-record-dialog {
+  .routine-inspection-dialog {
     &__section {
       margin-top: 8px;
       padding: 0 16px;
@@ -597,24 +475,25 @@
     }
   }
 
-  .maintenance-attachment-dialog {
-    padding: 8px 0 4px;
-
+  .routine-attachment-dialog {
     &__upload {
       display: flex;
-      flex-direction: column;
-      gap: 14px;
-      align-items: flex-start;
+      gap: 12px;
+      align-items: center;
+      min-width: 0;
     }
 
     &__file {
-      display: flex;
-      gap: 8px;
+      display: inline-flex;
+      gap: 6px;
       align-items: center;
-      color: var(--el-text-color-secondary);
+      min-width: 0;
+      color: var(--el-text-color-regular);
 
-      :deep(.art-svg-icon) {
-        color: var(--el-color-success);
+      span {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
     }
   }

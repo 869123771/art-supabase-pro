@@ -110,9 +110,9 @@
   import { isNil } from 'lodash-es'
   import { ElButton, ElDescriptions, ElDescriptionsItem } from 'element-plus'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
-  import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
   import ArtTable from '@/components/core/tables/art-table/index.vue'
+  import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
   import type { ColumnOption } from '@/types'
   import { fetchVehicleMaintenanceDetail } from '@/api/vehicle-manage-system'
   import { downloadAttachment, viewAttachment } from '@/utils/file'
@@ -154,23 +154,23 @@
   ]
 
   const attachmentColumns: ColumnOption<Attachment>[] = [
-    { type: 'globalIndex', label: '序号', width: 80 },
-    { prop: 'name', label: '附件名称', minWidth: 240 },
+    { type: 'globalIndex', label: '序号', width: 56 },
+    { prop: 'name', label: '附件名称', minWidth: 180 },
     {
       prop: 'fileType',
       label: '格式类型',
-      width: 120,
+      width: 110,
       dict: { code: 'FILE_EXTENSION_LABEL_MAP', display: 'text' }
     },
-    { prop: 'fileSize', label: '附件大小', width: 120 },
+    { prop: 'fileSize', label: '附件大小', width: 110 },
     {
       prop: 'operation',
       label: '操作',
-      width: 120,
+      width: 96,
       formatter: (row) => (
-        <div class="flex">
-          <ArtButtonTable type="view" onClick={() => viewAttachment(row)} />
-          <ArtButtonTable icon="ri:download-2-line" onClick={() => downloadAttachment(row)} />
+        <div class="flex items-center">
+          <ArtIconButton icon="ri:eye-line" onClick={() => viewAttachment(row)} />
+          <ArtIconButton icon="ri:download-2-line" onClick={() => downloadAttachment(row)} />
         </div>
       )
     }

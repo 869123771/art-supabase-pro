@@ -103,12 +103,12 @@
 
 <script setup lang="tsx">
   import { ElButton, ElDescriptions, ElDescriptionsItem } from 'element-plus'
-  import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
   import ArtTable from '@/components/core/tables/art-table/index.vue'
+  import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
   import type { ColumnOption } from '@/types'
   import { fetchVehicleInsuranceDetail } from '@/api/vehicle-manage-system'
-  import { downloadAttachment, viewAttachment } from '@/utils/file'
+  import { downloadAttachment } from '@/utils/file'
 
   defineOptions({ name: 'VehicleInsuranceDetail' })
 
@@ -133,11 +133,10 @@
     {
       prop: 'operation',
       label: '操作',
-      width: 120,
+      width: 64,
       formatter: (row) => (
-        <div class="flex">
-          <ArtButtonTable type="view" onClick={() => viewAttachment(row)} />
-          <ArtButtonTable icon="ri:download-2-line" onClick={() => downloadAttachment(row)} />
+        <div class="flex items-center">
+          <ArtIconButton icon="ri:download-2-line" onClick={() => downloadAttachment(row)} />
         </div>
       )
     }

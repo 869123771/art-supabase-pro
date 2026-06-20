@@ -60,11 +60,27 @@ export const deleteVehicleInsurance = supabaseVehicleApi.deleteVehicleInsurance
 export const deleteVehicleInsuranceBatch = supabaseVehicleApi.deleteVehicleInsuranceBatch
 
 export const fetchVehicleInspectionList = supabaseVehicleApi.fetchVehicleInspectionList
+export const fetchVehicleInspectionDetail = supabaseVehicleApi.fetchVehicleInspectionDetail
 export const exportVehicleInspectionList = supabaseVehicleApi.exportVehicleInspectionList
 export const addVehicleInspection = supabaseVehicleApi.addVehicleInspection
 export const editVehicleInspection = supabaseVehicleApi.editVehicleInspection
 export const deleteVehicleInspection = supabaseVehicleApi.deleteVehicleInspection
 export const deleteVehicleInspectionBatch = supabaseVehicleApi.deleteVehicleInspectionBatch
+
+export const fetchVehicleRoutineInspectionList =
+  supabaseVehicleApi.fetchVehicleRoutineInspectionList
+export const exportVehicleRoutineInspectionList =
+  supabaseVehicleApi.exportVehicleRoutineInspectionList
+export const fetchVehicleRoutineInspectionDetail =
+  supabaseVehicleApi.fetchVehicleRoutineInspectionDetail
+export const addVehicleRoutineInspection = supabaseVehicleApi.addVehicleRoutineInspection
+export const editVehicleRoutineInspection = supabaseVehicleApi.editVehicleRoutineInspection
+export const deleteVehicleRoutineInspection = supabaseVehicleApi.deleteVehicleRoutineInspection
+export const deleteVehicleRoutineInspectionBatch =
+  supabaseVehicleApi.deleteVehicleRoutineInspectionBatch
+
+export const fetchVehicleMileageList = supabaseVehicleApi.fetchVehicleMileageList
+export const exportVehicleMileageList = supabaseVehicleApi.exportVehicleMileageList
 
 export const fetchVehicleViolationList = supabaseVehicleApi.fetchVehicleViolationList
 export const exportVehicleViolationList = supabaseVehicleApi.exportVehicleViolationList

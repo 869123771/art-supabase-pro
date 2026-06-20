@@ -47,12 +47,9 @@
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtExcelImport from '@/components/core/forms/art-excel-import/index.vue'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
-  import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
-  import ArtButtonMore, {
-    type ButtonMoreItem
-  } from '@/components/core/forms/art-button-more/index.vue'
   import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
   import ArtTable from '@/components/core/tables/art-table/index.vue'
+  import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
   import type { ColumnOption } from '@/types'
   import {
     addVehicleInsurance,
@@ -61,7 +58,7 @@
     fetchVehicleArchiveOptions
   } from '@/api/vehicle-manage-system'
   import { uploadAttachment } from '@/api/common'
-  import { downloadAttachment, getFileExtension, viewAttachment } from '@/utils/file'
+  import { downloadAttachment, getFileExtension } from '@/utils/file'
 
   defineOptions({ name: 'VehicleInsuranceDialog' })
 
@@ -247,14 +244,11 @@
     {
       prop: 'operation',
       label: '操作',
-      width: 150,
+      width: 96,
       formatter: (row) => (
-        <div class="flex">
-          <ArtButtonTable type="view" onClick={() => viewAttachment(row)} />
-          <ArtButtonMore
-            list={getAttachmentMoreActions()}
-            onClick={(item: ButtonMoreItem) => handleAttachmentMoreAction(item, row)}
-          />
+        <div class="flex items-center">
+          <ArtIconButton icon="ri:download-2-line" onClick={() => downloadAttachment(row)} />
+          <ArtIconButton icon="ri:delete-bin-5-line" onClick={() => void removeAttachment(row)} />
         </div>
       )
     }
@@ -363,21 +357,6 @@
       onConfirm: handleSubmit,
       onReset: () => void resetForm()
     })
-  }
-
-  const getAttachmentMoreActions = (): ButtonMoreItem[] => [
-    { key: 'download', label: '下载', icon: 'ri:download-2-line' },
-    { key: 'delete', label: '删除', icon: 'ri:delete-bin-5-line', color: '#f56c6c' }
-  ]
-
-  const handleAttachmentMoreAction = (item: ButtonMoreItem, row: Attachment): void => {
-    if (item.key === 'download') {
-      downloadAttachment(row)
-      return
-    }
-    if (item.key === 'delete') {
-      void removeAttachment(row)
-    }
   }
 
   const handleAttachmentUpload = async (file: File): Promise<void> => {

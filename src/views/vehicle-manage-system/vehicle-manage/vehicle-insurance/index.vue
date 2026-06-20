@@ -181,9 +181,9 @@
         formatter: (row) => (
           <div class="flex">
             <ArtButtonTable
-              type="view"
-              permission="VehicleInsurance:View"
-              onClick={() => viewDetail(row)}
+              type="edit"
+              permission="VehicleInsurance:Edit"
+              onClick={() => openDialog(row)}
             />
             <ArtButtonMore
               list={getMoreActions()}
@@ -230,10 +230,10 @@
 
   const getMoreActions = (): ButtonMoreItem[] => [
     {
-      key: 'edit',
-      label: '编辑',
-      icon: 'ri:edit-2-line',
-      auth: 'VehicleInsurance:Edit'
+      key: 'view',
+      label: '查看',
+      icon: 'ri:eye-line',
+      auth: 'VehicleInsurance:View'
     },
     {
       key: 'delete',
@@ -245,8 +245,8 @@
   ]
 
   const handleMoreAction = (item: ButtonMoreItem, row: VehicleInsurance): void => {
-    if (item.key === 'edit') {
-      openDialog(row)
+    if (item.key === 'view') {
+      viewDetail(row)
       return
     }
     if (item.key === 'delete') {

@@ -19,6 +19,9 @@
   import type { ComputedRef, UnwrapNestedRefs } from 'vue'
   import { ElMessage, ElMessageBox } from 'element-plus'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
+  import ArtButtonMore, {
+    type ButtonMoreItem
+  } from '@/components/core/forms/art-button-more/index.vue'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type {
     ArtTableQueryExpose,
@@ -54,6 +57,7 @@
     columnsFactory: () => ColumnOption<VehicleInspection>[]
   }
 
+  const router = useRouter()
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<DialogExpose>()
 
@@ -112,31 +116,30 @@
       }
     ]),
     columnsFactory: () => [
-      { type: 'selection', width: 50, fixed: 'left', reserveSelection: true },
-      { type: 'globalIndex', label: '序号', width: 72 },
-      { prop: 'companyName', label: '所属公司', minWidth: 150 },
-      { prop: 'plateNo', label: '车牌号', width: 120 },
-      { prop: 'inspectionDate', label: '年检日期', width: 120 },
+      { type: 'selection', width: 48, fixed: 'left', reserveSelection: true },
+      { type: 'globalIndex', label: '序号', width: 64 },
+      { prop: 'companyName', label: '所属公司', minWidth: 160 },
+      { prop: 'plateNo', label: '车牌号', width: 108 },
+      { prop: 'inspectionDate', label: '年检日期', width: 108 },
       { prop: 'inspectionNo', label: '年检号', minWidth: 150 },
       {
         prop: 'inspectionAmount',
         label: '年检金额',
-        width: 120,
+        width: 110,
         formatter: (row) => formatMoney(row.inspectionAmount)
       },
       { prop: 'vehicleOffice', label: '车管所', minWidth: 140 },
-      { prop: 'expireDate', label: '到期日期', width: 120 },
+      { prop: 'expireDate', label: '到期日期', width: 108 },
       {
         prop: 'createTime',
         label: '创建时间',
-        width: 170,
+        width: 150,
         formatter: (row) => formatWithDayjs(row.createTime)
       },
-      { prop: 'createBy', label: '创建人', width: 130 },
       {
         prop: 'operation',
         label: '操作',
-        width: 104,
+        width: 120,
         fixed: 'right',
         formatter: (row) => (
           <div class="flex">
@@ -145,10 +148,9 @@
               permission="VehicleInspection:Edit"
               onClick={() => openDialog(row)}
             />
-            <ArtButtonTable
-              type="delete"
-              permission="VehicleInspection:Delete"
-              onClick={() => handleDelete(row)}
+            <ArtButtonMore
+              list={getMoreActions()}
+              onClick={(item: ButtonMoreItem) => handleMoreAction(item, row)}
             />
           </div>
         )
@@ -164,11 +166,6 @@
     { key: 'inspectionAmount', title: '年检金额' },
     { key: 'vehicleOffice', title: '车管所' },
     { key: 'expireDate', title: '到期日期' },
-    { key: 'compulsoryPolicyNo', title: '交强险保单号' },
-    { key: 'compulsoryCompanyName', title: '交强险保险公司' },
-    { key: 'compulsoryInsureDate', title: '交强险投保日期' },
-    { key: 'compulsoryPremium', title: '交强险投保金额' },
-    { key: 'compulsoryExpireDate', title: '交强险到期日期' },
     { key: 'remark', title: '备注' }
   ]
 
@@ -184,10 +181,38 @@
     void dialogRef.value?.handleOpen(row)
   }
 
+  const viewDetail = (row: VehicleInspection): void => {
+    if (!row.id) return
+    void router.push(`/vehicle-manage-system/vehicle-manage/vehicle-inspection-detail/${row.id}`)
+  }
+
   const handleSaveSuccess = (type: DialogType): void => {
     void (type === 'add'
       ? tableQueryRef.value?.refreshCreate()
       : tableQueryRef.value?.refreshUpdate())
+  }
+
+  const getMoreActions = (): ButtonMoreItem[] => [
+    {
+      key: 'detail',
+      label: '详情',
+      icon: 'ri:eye-line'
+    },
+    {
+      key: 'delete',
+      label: '删除',
+      icon: 'ri:delete-bin-5-line',
+      auth: 'VehicleInspection:Delete',
+      color: '#f56c6c'
+    }
+  ]
+
+  const handleMoreAction = (item: ButtonMoreItem, row: VehicleInspection): void => {
+    if (item.key === 'detail') {
+      viewDetail(row)
+      return
+    }
+    if (item.key === 'delete') void handleDelete(row)
   }
 
   const handleDelete = async (row: VehicleInspection): Promise<void> => {

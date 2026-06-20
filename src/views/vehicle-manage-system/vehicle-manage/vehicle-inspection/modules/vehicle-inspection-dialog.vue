@@ -11,7 +11,23 @@
         label-width="120px"
         :show-reset="false"
         :show-submit="false"
-      />
+      >
+        <template #vehicleId>
+          <ArtTableSingleSelect
+            v-model="vehicleSelectValue"
+            v-model:selected-data="form.vehicleSelection"
+            :api-fn="fetchVehicleSelectData"
+            :columns="vehicleColumns"
+            row-key="id"
+            label-key="plateNo"
+            description-key="companyName"
+            title="选择车辆"
+            search-placeholder="输入车牌号或所属公司"
+            show-pagination
+            @change="handleVehicleChange"
+          />
+        </template>
+      </ArtForm>
 
       <section class="vehicle-inspection-dialog__section">
         <div class="vehicle-inspection-dialog__section-header">
@@ -45,43 +61,42 @@
   import { ElMessage, ElMessageBox } from 'element-plus'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
+  import ArtTableSingleSelect from '@/components/core/forms/art-data-select/table-single.vue'
+  import type {
+    DataSelectColumn,
+    DataSelectRecord
+  } from '@/components/core/forms/art-data-select/types'
   import ArtExcelImport from '@/components/core/forms/art-excel-import/index.vue'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
-  import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
-  import ArtButtonMore, {
-    type ButtonMoreItem
-  } from '@/components/core/forms/art-button-more/index.vue'
   import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
   import ArtTable from '@/components/core/tables/art-table/index.vue'
+  import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
   import type { ColumnOption } from '@/types'
   import {
     addVehicleInspection,
     editVehicleInspection,
-    fetchInsuranceCompanyOptions,
-    fetchVehicleArchiveOptions
+    fetchVehicleArchiveList
   } from '@/api/vehicle-manage-system'
   import { uploadAttachment } from '@/api/common'
-  import { downloadAttachment, getFileExtension, viewAttachment } from '@/utils/file'
+  import { pageInfoHandler } from '@/utils/table/tableUtils'
+  import { downloadAttachment, getFileExtension } from '@/utils/file'
 
   defineOptions({ name: 'VehicleInspectionDialog' })
 
   type VehicleInspection = Api.VehicleMgtSys.VehicleManage.VehicleInspection
-  type VehicleOption = Api.VehicleMgtSys.VehicleManage.VehicleOption
-  type InsuranceCompanyOption = Api.VehicleMgtSys.VehicleManage.InsuranceCompanyOption
+  type VehicleArchive = Api.VehicleMgtSys.ArchiveManage.VehicleArchive
   type Attachment = Api.VehicleMgtSys.VehicleManage.VehicleAttachment
 
   interface FormExpose {
     validate: () => Promise<boolean>
     clearValidate: () => void
-    reloadOptions: (key?: string) => Promise<unknown>
   }
 
   interface FormGroup {
     data: VehicleInspection
     items: ComputedRef<FormItem[]>
     rules: ComputedRef<FormRules<VehicleInspection>>
-    vehicleOptions: VehicleOption[]
-    companyOptions: InsuranceCompanyOption[]
+    vehicleSelection: VehicleArchive[]
     attachmentUploading: boolean
   }
 
@@ -103,12 +118,6 @@
     inspectionAmount: null,
     vehicleOffice: '',
     expireDate: '',
-    compulsoryPolicyNo: '',
-    compulsoryCompanyId: null,
-    compulsoryCompanyName: '',
-    compulsoryInsureDate: '',
-    compulsoryPremium: null,
-    compulsoryExpireDate: '',
     remark: '',
     attachments: []
   })
@@ -128,56 +137,22 @@
 
   const form: UnwrapNestedRefs<FormGroup> = reactive<FormGroup>({
     data: createInitialForm(),
-    vehicleOptions: [],
-    companyOptions: [],
+    vehicleSelection: [],
     attachmentUploading: false,
     items: computed<FormItem[]>(() => [
-      { label: '车辆信息', key: 'vehicleSection', type: 'divider', span: 24 },
-      {
-        label: '车牌号',
-        key: 'vehicleId',
-        type: 'select',
-        api: fetchVehicleArchiveOptions,
-        immediate: false,
-        resultField: 'data',
-        labelField: 'plateNo',
-        valueField: 'id',
-        afterFetch: syncVehicleOptions,
-        props: {
-          onChange: handleVehicleChange
-        }
-      },
+      { label: '年检信息', key: 'inspectionSection', type: 'divider', span: 24 },
+      { label: '车牌号', key: 'vehicleId' },
       {
         label: '所属公司',
         key: 'companyName',
         type: 'input',
         props: { disabled: true, placeholder: '选择车辆后自动带出' }
       },
-      { label: '年检信息', key: 'inspectionSection', type: 'divider', span: 24 },
-      { label: '年检号', key: 'inspectionNo', type: 'input', props: { maxlength: 80 } },
       { label: '年检日期', key: 'inspectionDate', type: 'date', props: dateProps },
+      { label: '年检号', key: 'inspectionNo', type: 'input', props: { maxlength: 80 } },
       { label: '年检金额', key: 'inspectionAmount', type: 'number', props: moneyProps },
       { label: '车管所', key: 'vehicleOffice', type: 'input', props: { maxlength: 100 } },
       { label: '到期日期', key: 'expireDate', type: 'date', props: dateProps },
-      { label: '交强险', key: 'compulsorySection', type: 'divider', span: 24 },
-      { label: '交强险保单号', key: 'compulsoryPolicyNo', type: 'input', props: { maxlength: 80 } },
-      {
-        label: '保险公司',
-        key: 'compulsoryCompanyId',
-        type: 'select',
-        api: fetchInsuranceCompanyOptions,
-        immediate: false,
-        resultField: 'data',
-        labelField: 'companyName',
-        valueField: 'id',
-        afterFetch: syncCompanyOptions,
-        props: {
-          onChange: handleInsuranceCompanyChange
-        }
-      },
-      { label: '投保日期', key: 'compulsoryInsureDate', type: 'date', props: dateProps },
-      { label: '投保金额', key: 'compulsoryPremium', type: 'number', props: moneyProps },
-      { label: '到期日期', key: 'compulsoryExpireDate', type: 'date', props: dateProps },
       {
         label: '备注',
         key: 'remark',
@@ -188,78 +163,87 @@
     ]),
     rules: computed<FormRules<VehicleInspection>>(() => ({
       vehicleId: [{ required: true, message: '请选择车辆', trigger: 'change' }],
-      inspectionNo: [{ required: true, message: '请输入年检号', trigger: 'blur' }],
       inspectionDate: [{ required: true, message: '请选择年检日期', trigger: 'change' }],
       inspectionAmount: [{ required: true, message: '请输入年检金额', trigger: 'blur' }],
-      vehicleOffice: [{ required: true, message: '请输入车管所', trigger: 'blur' }],
-      expireDate: [{ required: true, message: '请选择年检到期日期', trigger: 'change' }],
-      compulsoryPolicyNo: [{ required: true, message: '请输入交强险保单号', trigger: 'blur' }],
-      compulsoryCompanyId: [{ required: true, message: '请选择交强险保险公司', trigger: 'change' }],
-      compulsoryInsureDate: [
-        { required: true, message: '请选择交强险投保日期', trigger: 'change' }
-      ],
-      compulsoryPremium: [{ required: true, message: '请输入交强险投保金额', trigger: 'blur' }],
-      compulsoryExpireDate: [{ required: true, message: '请选择交强险到期日期', trigger: 'change' }]
+      expireDate: [{ required: true, message: '请选择年检到期日期', trigger: 'change' }]
     }))
   })
 
+  const vehicleSelectValue = computed({
+    get: () => form.data.vehicleId ?? undefined,
+    set: (value?: string | number) => {
+      form.data.vehicleId = value ? String(value) : null
+    }
+  })
+
+  const vehicleColumns: DataSelectColumn[] = [
+    { prop: 'companyName', label: '所属公司', minWidth: 180 },
+    { prop: 'plateNo', label: '车牌号', width: 140 },
+    {
+      prop: 'operationStatus',
+      label: '运营状态',
+      width: 120,
+      dict: { code: 'vehicleOperationStatus', display: 'auto' }
+    }
+  ]
+
   const attachmentColumns: ColumnOption<Attachment>[] = [
-    { type: 'globalIndex', label: '序号', width: 72 },
-    { prop: 'name', label: '附件名称' },
+    { type: 'globalIndex', label: '序号', width: 56 },
+    { prop: 'name', label: '附件名称', minWidth: 180 },
     {
       prop: 'fileType',
       label: '格式类型',
-      width: 120,
+      width: 110,
       dict: { code: 'FILE_EXTENSION_LABEL_MAP', display: 'text' }
     },
-    { prop: 'fileSize', label: '附件大小', width: 120 },
+    { prop: 'fileSize', label: '附件大小', width: 110 },
     {
       prop: 'operation',
       label: '操作',
-      width: 150,
+      width: 96,
       formatter: (row) => (
-        <div class="flex">
-          <ArtButtonTable type="view" onClick={() => viewAttachment(row)} />
-          <ArtButtonMore
-            list={getAttachmentMoreActions()}
-            onClick={(item: ButtonMoreItem) => handleAttachmentMoreAction(item, row)}
-          />
+        <div class="flex items-center">
+          <ArtIconButton icon="ri:download-2-line" onClick={() => downloadAttachment(row)} />
+          <ArtIconButton icon="ri:delete-bin-5-line" onClick={() => void removeAttachment(row)} />
         </div>
       )
     }
   ]
 
-  const getResponseData = <TRecord,>(result: unknown): TRecord[] => {
-    if (!result || typeof result !== 'object') return []
-    const data = (result as { data?: TRecord[] }).data
-    return Array.isArray(data) ? data : []
+  const fetchVehicleSelectData = async (params: {
+    page: number
+    pageSize: number
+    keyword?: string
+  }) => {
+    const { from, to } = pageInfoHandler({ current: params.page, size: params.pageSize })
+    const { data, total } = await fetchVehicleArchiveList({
+      plateNo: params.keyword,
+      auditStatus: 'approved',
+      from,
+      to
+    })
+    return { data: data ?? [], total: total ?? 0 }
   }
 
-  const syncVehicleOptions = (result: unknown): unknown => {
-    form.vehicleOptions = getResponseData<VehicleOption>(result)
-    return result
-  }
-
-  const syncCompanyOptions = (result: unknown): unknown => {
-    form.companyOptions = getResponseData<InsuranceCompanyOption>(result)
-    return result
-  }
-
-  const handleVehicleChange = (vehicleId?: string): void => {
-    const vehicle = form.vehicleOptions.find((item) => item.id === vehicleId)
+  const handleVehicleChange = (_value: unknown, rows: DataSelectRecord[]): void => {
+    const vehicle = rows[0] as VehicleArchive | undefined
     form.data.vehicleId = vehicle?.id ?? null
     form.data.plateNo = vehicle?.plateNo ?? ''
     form.data.companyName = vehicle?.companyName ?? ''
   }
 
-  const handleInsuranceCompanyChange = (companyId?: string): void => {
-    const company = form.companyOptions.find((item) => item.id === companyId)
-    form.data.compulsoryCompanyName = company?.companyName ?? ''
-  }
-
   const replaceForm = (data: VehicleInspection): void => {
     Object.assign(form.data, createInitialForm(), cloneDeep(toRaw(data)))
     form.data.attachments ??= []
+    form.vehicleSelection = form.data.vehicleId
+      ? [
+          {
+            id: form.data.vehicleId,
+            plateNo: form.data.plateNo,
+            companyName: form.data.companyName
+          } as VehicleArchive
+        ]
+      : []
   }
 
   const resetForm = async (): Promise<void> => {
@@ -278,7 +262,6 @@
     return {
       ...payload,
       vehicleId: payload.vehicleId || null,
-      compulsoryCompanyId: payload.compulsoryCompanyId || null,
       attachments: payload.attachments ?? []
     }
   }
@@ -311,30 +294,9 @@
     await dialogRef.value?.handleOpen(row, {
       title: row?.id ? '编辑车辆年检' : '新增车辆年检',
       contentMaxHeight: '72vh',
-      loading: true,
-      onOpen: async (_data, api) => {
-        try {
-          await formRef.value?.reloadOptions()
-        } finally {
-          api.setLoading(false)
-        }
-      },
       onConfirm: handleSubmit,
       onReset: () => void resetForm()
     })
-  }
-
-  const getAttachmentMoreActions = (): ButtonMoreItem[] => [
-    { key: 'download', label: '下载', icon: 'ri:download-2-line' },
-    { key: 'delete', label: '删除', icon: 'ri:delete-bin-5-line', color: '#f56c6c' }
-  ]
-
-  const handleAttachmentMoreAction = (item: ButtonMoreItem, row: Attachment): void => {
-    if (item.key === 'download') {
-      downloadAttachment(row)
-      return
-    }
-    if (item.key === 'delete') void removeAttachment(row)
   }
 
   const handleAttachmentUpload = async (file: File): Promise<void> => {
