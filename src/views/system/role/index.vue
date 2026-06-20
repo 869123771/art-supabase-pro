@@ -136,15 +136,25 @@
   const rolePermissionDialogRef = ref<RolePermissionDialogExpose>()
   const DEFAULT_REGISTER_TENANT_CODE = 'public-register'
   const DEFAULT_REGISTER_ROLE_CODE = 'R_REGISTER'
+  const SUPER_ROLE_CODE = 'R_SUPER'
+
+  const normalizeRoleCode = (roleCode?: string): string => String(roleCode ?? '').toUpperCase()
 
   const isDefaultRegisterRole = (row: RoleListItem): boolean => {
     return (
       String(row.tenant?.tenantCode ?? '').toLowerCase() === DEFAULT_REGISTER_TENANT_CODE &&
-      String(row.roleCode ?? '').toUpperCase() === DEFAULT_REGISTER_ROLE_CODE
+      normalizeRoleCode(row.roleCode) === DEFAULT_REGISTER_ROLE_CODE
     )
   }
 
+  const isSuperRole = (row: RoleListItem): boolean =>
+    normalizeRoleCode(row.roleCode) === SUPER_ROLE_CODE
+
   const getRoleActions = (row: RoleListItem): ButtonMoreItem[] => {
+    if (isSuperRole(row)) {
+      return []
+    }
+
     const actions: ButtonMoreItem[] = [
       {
         key: 'permission',
@@ -164,9 +174,7 @@
       }
     ]
 
-    return isDefaultRegisterRole(row)
-      ? actions.filter((item) => item.key !== 'permission' && item.key !== 'delete')
-      : actions
+    return isDefaultRegisterRole(row) ? actions.filter((item) => item.key !== 'delete') : actions
   }
 
   const {
@@ -240,10 +248,12 @@
           fixed: 'right',
           formatter: (row: RoleListItem) =>
             h('div', [
-              h(ArtButtonMore, {
-                list: getRoleActions(row),
-                onClick: (item: ButtonMoreItem) => buttonMoreClick(item, row)
-              })
+              getRoleActions(row).length
+                ? h(ArtButtonMore, {
+                    list: getRoleActions(row),
+                    onClick: (item: ButtonMoreItem) => buttonMoreClick(item, row)
+                  })
+                : null
             ])
         }
       ]

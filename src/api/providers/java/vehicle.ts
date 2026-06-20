@@ -18,7 +18,7 @@ interface RangePaginationParams {
   size?: number
 }
 
-const API_PREFIX = '/api/vehicle-mgt-sys/basic-info'
+const API_PREFIX = '/api/vehicle-manage-system/basic-info'
 
 const ENDPOINTS = {
   insuranceCompany: `${API_PREFIX}/insurance-companies`,

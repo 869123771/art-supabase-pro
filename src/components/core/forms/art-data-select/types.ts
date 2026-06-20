@@ -1,4 +1,5 @@
 import type { Component } from 'vue'
+import type { DictColumnOption } from '@/types/component'
 
 export type DataSelectKey = string | number
 export type DataSelectMode = 'table' | 'tree'
@@ -16,6 +17,7 @@ export interface DataSelectColumn {
   minWidth?: string | number
   align?: 'left' | 'center' | 'right'
   formatter?: (row: DataSelectRecord) => string | number | Component
+  dict?: DictColumnOption<DataSelectRecord>
   tagType?:
     | 'primary'
     | 'success'

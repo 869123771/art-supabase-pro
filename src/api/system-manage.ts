@@ -245,8 +245,6 @@ export async function fetchGetRoleList(params: Api.SystemManage.RoleSearchParams
     .order('create_time', { ascending: false }) // 按创建时间倒序
     .range(from, to)
 
-  console.log('specs:', JSON.stringify(specs, null, 2))
-
   // applyFilters 支持传入 FilterSpec[]（这里 specs 已为 snake_case）
   query = applyFilters(query, specs, { skipEmpty: true, camelToSnake: false })
   return await responseHandle(() => query as any, { ignoreCheck: true })

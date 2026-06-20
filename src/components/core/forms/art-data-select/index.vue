@@ -164,9 +164,18 @@
                   :align="column.align"
                   show-overflow-tooltip
                 >
-                  <template v-if="column.formatter || column.tagType" #default="{ row }">
+                  <template
+                    v-if="column.dict || column.formatter || column.tagType"
+                    #default="{ row }"
+                  >
+                    <ArtDictDisplay
+                      v-if="column.dict"
+                      :dict-code="column.dict.code"
+                      :value="getDictColumnValue(column, row)"
+                      :display="column.dict.display"
+                    />
                     <ElTag
-                      v-if="column.tagType"
+                      v-else-if="column.tagType"
                       :type="getColumnTagType(column, row)"
                       size="small"
                       effect="light"
@@ -278,6 +287,7 @@
   import type { Component } from 'vue'
   import type { ElTable, ElTree } from 'element-plus'
   import { ArrowDown, CircleClose, Search } from '@element-plus/icons-vue'
+  import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
@@ -392,6 +402,11 @@
 
   const getColumnTagType = (column: DataSelectColumn, row: DataSelectRecord) => {
     return typeof column.tagType === 'function' ? column.tagType(row) : column.tagType
+  }
+
+  const getDictColumnValue = (column: DataSelectColumn, row: DataSelectRecord) => {
+    if (column.dict?.value) return column.dict.value(row)
+    return getValueByPath(row, column.prop) as string | number | null | undefined
   }
 
   const getValueByPath = (source: unknown, path?: string): unknown => {

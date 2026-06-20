@@ -134,7 +134,7 @@
     return {
       name: [
         { required: true, message: '请输入名称', trigger: 'blur' },
-        { min: 2, max: 20, message: '长度在 2 到 20 个字符', trigger: 'blur' }
+        { min: 2, max: 50, message: '长度在 2 到 50 个字符', trigger: 'blur' }
       ],
       path:
         form.value.type === 'button'

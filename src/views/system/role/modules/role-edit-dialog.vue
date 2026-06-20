@@ -7,7 +7,7 @@
       <ElFormItem label="角色编码" prop="roleCode">
         <ElInput
           v-model="form.roleCode"
-          :disabled="isDefaultRegisterRole"
+          :disabled="isSystemBuiltinRole"
           placeholder="请输入角色编码"
         />
       </ElFormItem>
@@ -20,7 +20,7 @@
         />
       </ElFormItem>
       <ElFormItem label="启用">
-        <ElSwitch v-model="form.enabled" :disabled="isDefaultRegisterRole" />
+        <ElSwitch v-model="form.enabled" :disabled="isSystemBuiltinRole" />
       </ElFormItem>
     </ElForm>
   </ArtDialog>
@@ -52,14 +52,23 @@
   const currentTenantCode = ref('')
   const DEFAULT_REGISTER_TENANT_CODE = 'public-register'
   const DEFAULT_REGISTER_ROLE_CODE = 'R_REGISTER'
+  const SUPER_ROLE_CODE = 'R_SUPER'
+
+  const normalizeRoleCode = (roleCode?: string): string => String(roleCode ?? '').toUpperCase()
 
   const isDefaultRegisterRole = computed(() => {
     return (
       dialogType.value === 'edit' &&
       currentTenantCode.value.toLowerCase() === DEFAULT_REGISTER_TENANT_CODE &&
-      String(form.roleCode ?? '').toUpperCase() === DEFAULT_REGISTER_ROLE_CODE
+      normalizeRoleCode(form.roleCode) === DEFAULT_REGISTER_ROLE_CODE
     )
   })
+
+  const isSuperRole = computed(() => {
+    return dialogType.value === 'edit' && normalizeRoleCode(form.roleCode) === SUPER_ROLE_CODE
+  })
+
+  const isSystemBuiltinRole = computed(() => isDefaultRegisterRole.value || isSuperRole.value)
 
   const createInitialForm = (): RoleListItem => ({
     id: undefined,
@@ -131,6 +140,11 @@
       const { id, ...params } = toRaw(form)
       if (isDefaultRegisterRole.value) {
         params.roleCode = DEFAULT_REGISTER_ROLE_CODE
+        params.enabled = true
+      }
+
+      if (isSuperRole.value) {
+        params.roleCode = SUPER_ROLE_CODE
         params.enabled = true
       }
 

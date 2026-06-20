@@ -4,6 +4,12 @@ import { applyFilters, type FilterSpec } from '@/utils/supabase-filters'
 
 const { supabase, keysToSnakeDeep, responseHandle } = useSupabase()
 
+const normalizeBooleanFilter = (value: unknown): boolean | undefined => {
+  if (value === true || value === 'true') return true
+  if (value === false || value === 'false') return false
+  return undefined
+}
+
 type InsuranceCompany = Api.VehicleMgtSys.BasicInfo.InsuranceCompany
 type InsuranceCompanySearchParams = Api.VehicleMgtSys.BasicInfo.InsuranceCompanySearchParams
 type Supplier = Api.VehicleMgtSys.BasicInfo.Supplier
@@ -20,6 +26,12 @@ type VehicleInsurance = Api.VehicleMgtSys.VehicleManage.VehicleInsurance
 type VehicleInsuranceSearchParams = Api.VehicleMgtSys.VehicleManage.VehicleInsuranceSearchParams
 type VehicleInspection = Api.VehicleMgtSys.VehicleManage.VehicleInspection
 type VehicleInspectionSearchParams = Api.VehicleMgtSys.VehicleManage.VehicleInspectionSearchParams
+type VehicleViolationRecord = Api.VehicleMgtSys.VehicleManage.VehicleViolationRecord
+type VehicleViolationSearchParams = Api.VehicleMgtSys.VehicleManage.VehicleViolationSearchParams
+type VehicleAccidentRecord = Api.VehicleMgtSys.VehicleManage.VehicleAccidentRecord
+type VehicleAccidentSearchParams = Api.VehicleMgtSys.VehicleManage.VehicleAccidentSearchParams
+type VehicleMaintenanceRecord = Api.VehicleMgtSys.VehicleManage.VehicleMaintenanceRecord
+type VehicleMaintenanceSearchParams = Api.VehicleMgtSys.VehicleManage.VehicleMaintenanceSearchParams
 type VehiclePartUsage = Api.VehicleMgtSys.VehicleManage.VehiclePartUsage
 type VehiclePartUsageSearchParams = Api.VehicleMgtSys.VehicleManage.VehiclePartUsageSearchParams
 
@@ -929,6 +941,313 @@ export async function deleteVehicleInspectionBatch(ids: string[]) {
 }
 
 // 车辆零部件使用
+const VEHICLE_VIOLATION_TABLE = 'vehicle_violation_record'
+
+const getVehicleViolationSearchFilters = (params: VehicleViolationSearchParams): FilterSpec[] => [
+  {
+    col: 'companyName',
+    op: 'ilike',
+    val: params.companyName ? `%${params.companyName}%` : undefined
+  },
+  { col: 'plateNo', op: 'ilike', val: params.plateNo ? `%${params.plateNo}%` : undefined },
+  { col: 'driverName', op: 'ilike', val: params.driverName ? `%${params.driverName}%` : undefined },
+  {
+    col: 'violationBehavior',
+    op: 'ilike',
+    val: params.violationBehavior ? `%${params.violationBehavior}%` : undefined
+  },
+  { col: 'processed', op: 'eq', val: normalizeBooleanFilter(params.processed) }
+]
+
+export async function fetchVehicleViolationList(params: VehicleViolationSearchParams) {
+  const { from = 0, to = 9, violationTimeRange } = params
+  let query: any = supabase
+    .from(VEHICLE_VIOLATION_TABLE)
+    .select('*', { count: 'exact' })
+    .order('violation_time', { ascending: false })
+    .range(from, to)
+
+  query = applyDateRange(query, 'violation_time', violationTimeRange)
+  query = applyFilters(query, getVehicleViolationSearchFilters(params), {
+    skipEmpty: true,
+    camelToSnake: true
+  })
+
+  return await responseHandle<VehicleViolationRecord[]>(() => query as any, {
+    ignoreCheck: true,
+    showErrorMessage: true
+  })
+}
+
+export async function exportVehicleViolationList(
+  params: VehicleViolationSearchParams & { ids?: string[]; maxRows?: number }
+) {
+  const { ids, maxRows = 10000, violationTimeRange } = params
+  let query: any = supabase
+    .from(VEHICLE_VIOLATION_TABLE)
+    .select('*')
+    .order('violation_time', { ascending: false })
+    .limit(maxRows)
+
+  if (ids?.length) {
+    query = query.in('id', ids)
+  } else {
+    query = applyDateRange(query, 'violation_time', violationTimeRange)
+    query = applyFilters(query, getVehicleViolationSearchFilters(params), {
+      skipEmpty: true,
+      camelToSnake: true
+    })
+  }
+
+  return await responseHandle<VehicleViolationRecord[]>(() => query as any, {
+    ignoreCheck: true,
+    showErrorMessage: true
+  })
+}
+
+const VEHICLE_ACCIDENT_TABLE = 'vehicle_accident_record'
+
+const getVehicleAccidentSearchFilters = (params: VehicleAccidentSearchParams): FilterSpec[] => [
+  {
+    col: 'companyName',
+    op: 'ilike',
+    val: params.companyName ? `%${params.companyName}%` : undefined
+  },
+  { col: 'plateNo', op: 'ilike', val: params.plateNo ? `%${params.plateNo}%` : undefined },
+  { col: 'driverName', op: 'ilike', val: params.driverName ? `%${params.driverName}%` : undefined },
+  { col: 'processed', op: 'eq', val: normalizeBooleanFilter(params.processed) },
+  { col: 'dataSource', op: 'eq', val: params.dataSource }
+]
+
+export async function fetchVehicleAccidentList(params: VehicleAccidentSearchParams) {
+  const { from = 0, to = 9, accidentTimeRange, createTimeRange } = params
+  let query: any = supabase
+    .from(VEHICLE_ACCIDENT_TABLE)
+    .select('*', { count: 'exact' })
+    .order('accident_time', { ascending: false })
+    .range(from, to)
+
+  query = applyDateRange(query, 'accident_time', accidentTimeRange)
+  query = applyDateRange(query, 'create_time', createTimeRange)
+  query = applyFilters(query, getVehicleAccidentSearchFilters(params), {
+    skipEmpty: true,
+    camelToSnake: true
+  })
+
+  return await responseHandle<VehicleAccidentRecord[]>(() => query as any, {
+    ignoreCheck: true,
+    showErrorMessage: true
+  })
+}
+
+export async function exportVehicleAccidentList(
+  params: VehicleAccidentSearchParams & { ids?: string[]; maxRows?: number }
+) {
+  const { ids, maxRows = 10000, accidentTimeRange, createTimeRange } = params
+  let query: any = supabase
+    .from(VEHICLE_ACCIDENT_TABLE)
+    .select('*')
+    .order('accident_time', { ascending: false })
+    .limit(maxRows)
+
+  if (ids?.length) {
+    query = query.in('id', ids)
+  } else {
+    query = applyDateRange(query, 'accident_time', accidentTimeRange)
+    query = applyDateRange(query, 'create_time', createTimeRange)
+    query = applyFilters(query, getVehicleAccidentSearchFilters(params), {
+      skipEmpty: true,
+      camelToSnake: true
+    })
+  }
+
+  return await responseHandle<VehicleAccidentRecord[]>(() => query as any, {
+    ignoreCheck: true,
+    showErrorMessage: true
+  })
+}
+
+export async function fetchVehicleAccidentDetail(id: string) {
+  return await responseHandle<VehicleAccidentRecord>(
+    () => supabase.from(VEHICLE_ACCIDENT_TABLE).select('*').eq('id', id).single() as any,
+    {
+      ignoreCheck: true,
+      showErrorMessage: true
+    }
+  )
+}
+
+export async function addVehicleAccident(params: VehicleAccidentRecord) {
+  return await responseHandle(
+    () => supabase.from(VEHICLE_ACCIDENT_TABLE).insert(keysToSnakeDeep(params)) as any,
+    { showMessage: true, breakReturn: true }
+  )
+}
+
+export async function editVehicleAccident(params: VehicleAccidentRecord) {
+  const { id, ...data } = params
+  return await responseHandle(
+    () =>
+      supabase
+        .from(VEHICLE_ACCIDENT_TABLE)
+        .update(keysToSnakeDeep(data), { count: 'exact' })
+        .eq('id', id) as any,
+    {
+      showMessage: true,
+      breakReturn: true,
+      requireAffected: true,
+      noAffectedMessage: WRITE_PERMISSION_DENIED_MESSAGE
+    }
+  )
+}
+
+export async function deleteVehicleAccident(id: string) {
+  return await responseHandle(
+    () => supabase.from(VEHICLE_ACCIDENT_TABLE).delete({ count: 'exact' }).eq('id', id) as any,
+    {
+      showMessage: true,
+      breakReturn: true,
+      requireAffected: true,
+      noAffectedMessage: WRITE_PERMISSION_DENIED_MESSAGE
+    }
+  )
+}
+
+export async function deleteVehicleAccidentBatch(ids: string[]) {
+  return await responseHandle(
+    () => supabase.from(VEHICLE_ACCIDENT_TABLE).delete({ count: 'exact' }).in('id', ids) as any,
+    {
+      showMessage: true,
+      breakReturn: true,
+      requireAffected: true,
+      noAffectedMessage: WRITE_PERMISSION_DENIED_MESSAGE
+    }
+  )
+}
+
+const VEHICLE_MAINTENANCE_TABLE = 'vehicle_maintenance_record'
+
+const getVehicleMaintenanceSearchFilters = (
+  params: VehicleMaintenanceSearchParams
+): FilterSpec[] => [
+  {
+    col: 'companyName',
+    op: 'ilike',
+    val: params.companyName ? `%${params.companyName}%` : undefined
+  },
+  { col: 'plateNo', op: 'ilike', val: params.plateNo ? `%${params.plateNo}%` : undefined },
+  {
+    col: 'maintenanceNo',
+    op: 'ilike',
+    val: params.maintenanceNo ? `%${params.maintenanceNo}%` : undefined
+  },
+  { col: 'maintenanceType', op: 'eq', val: params.maintenanceType }
+]
+
+export async function fetchVehicleMaintenanceList(params: VehicleMaintenanceSearchParams) {
+  const { from = 0, to = 9, createTimeRange } = params
+  let query: any = supabase
+    .from(VEHICLE_MAINTENANCE_TABLE)
+    .select('*', { count: 'exact' })
+    .order('start_time', { ascending: false })
+    .range(from, to)
+
+  query = applyDateRange(query, 'create_time', createTimeRange)
+  query = applyFilters(query, getVehicleMaintenanceSearchFilters(params), {
+    skipEmpty: true,
+    camelToSnake: true
+  })
+
+  return await responseHandle<VehicleMaintenanceRecord[]>(() => query as any, {
+    ignoreCheck: true,
+    showErrorMessage: true
+  })
+}
+
+export async function exportVehicleMaintenanceList(
+  params: VehicleMaintenanceSearchParams & { ids?: string[]; maxRows?: number }
+) {
+  const { ids, maxRows = 10000, createTimeRange } = params
+  let query: any = supabase
+    .from(VEHICLE_MAINTENANCE_TABLE)
+    .select('*')
+    .order('start_time', { ascending: false })
+    .limit(maxRows)
+
+  if (ids?.length) {
+    query = query.in('id', ids)
+  } else {
+    query = applyDateRange(query, 'create_time', createTimeRange)
+    query = applyFilters(query, getVehicleMaintenanceSearchFilters(params), {
+      skipEmpty: true,
+      camelToSnake: true
+    })
+  }
+
+  return await responseHandle<VehicleMaintenanceRecord[]>(() => query as any, {
+    ignoreCheck: true,
+    showErrorMessage: true
+  })
+}
+
+export async function fetchVehicleMaintenanceDetail(id: string) {
+  return await responseHandle<VehicleMaintenanceRecord>(
+    () => supabase.from(VEHICLE_MAINTENANCE_TABLE).select('*').eq('id', id).single() as any,
+    {
+      ignoreCheck: true,
+      showErrorMessage: true
+    }
+  )
+}
+
+export async function addVehicleMaintenance(params: VehicleMaintenanceRecord) {
+  return await responseHandle(
+    () => supabase.from(VEHICLE_MAINTENANCE_TABLE).insert(keysToSnakeDeep(params)) as any,
+    { showMessage: true, breakReturn: true }
+  )
+}
+
+export async function editVehicleMaintenance(params: VehicleMaintenanceRecord) {
+  const { id, ...data } = params
+  return await responseHandle(
+    () =>
+      supabase
+        .from(VEHICLE_MAINTENANCE_TABLE)
+        .update(keysToSnakeDeep(data), { count: 'exact' })
+        .eq('id', id) as any,
+    {
+      showMessage: true,
+      breakReturn: true,
+      requireAffected: true,
+      noAffectedMessage: WRITE_PERMISSION_DENIED_MESSAGE
+    }
+  )
+}
+
+export async function deleteVehicleMaintenance(id: string) {
+  return await responseHandle(
+    () => supabase.from(VEHICLE_MAINTENANCE_TABLE).delete({ count: 'exact' }).eq('id', id) as any,
+    {
+      showMessage: true,
+      breakReturn: true,
+      requireAffected: true,
+      noAffectedMessage: WRITE_PERMISSION_DENIED_MESSAGE
+    }
+  )
+}
+
+export async function deleteVehicleMaintenanceBatch(ids: string[]) {
+  return await responseHandle(
+    () => supabase.from(VEHICLE_MAINTENANCE_TABLE).delete({ count: 'exact' }).in('id', ids) as any,
+    {
+      showMessage: true,
+      breakReturn: true,
+      requireAffected: true,
+      noAffectedMessage: WRITE_PERMISSION_DENIED_MESSAGE
+    }
+  )
+}
+
 const VEHICLE_PART_USAGE_TABLE = 'vehicle_part_usage'
 
 const getVehiclePartUsageSearchFilters = (params: VehiclePartUsageSearchParams): FilterSpec[] => [

@@ -417,6 +417,121 @@ declare namespace Api {
           }
       >
 
+      interface VehicleViolationRecord {
+        id?: string
+        tenantId?: string
+        vehicleId?: string | null
+        plateNo: string
+        companyName?: string
+        driverName?: string
+        violationBehavior: string
+        violationTime: string
+        violationLocation?: string
+        penaltyPoints?: number | null
+        fineAmount?: number | null
+        processed: boolean
+        remark?: string
+        createBy?: string
+        createTime?: string
+        updateBy?: string
+        updateTime?: string
+      }
+
+      type VehicleViolationSearchParams = Partial<
+        Pick<
+          VehicleViolationRecord,
+          'companyName' | 'plateNo' | 'driverName' | 'violationBehavior' | 'processed'
+        > &
+          Api.Common.CommonSearchParams & {
+            violationTimeRange?: string[]
+          }
+      >
+
+      type VehicleAccidentResponsibility = 'primary' | 'secondary' | 'equal' | 'none' | 'full'
+      type VehicleAccidentDataSource = 'self' | 'external'
+
+      interface VehicleAccidentRecord {
+        id?: string
+        tenantId?: string
+        vehicleId?: string | null
+        plateNo: string
+        companyName?: string
+        driverName?: string
+        accidentTime: string
+        accidentLocation?: string
+        accidentSummary: string
+        damageLevel?: string
+        responsibilityType?: VehicleAccidentResponsibility | string
+        responsibilityPercent?: number | null
+        companyBearAmount?: number | null
+        economicLoss?: number | null
+        reported: boolean
+        insuranceReported: boolean
+        processed: boolean
+        dataSource: VehicleAccidentDataSource | string
+        remark?: string
+        attachments?: VehicleAttachment[]
+        createBy?: string
+        createTime?: string
+        updateBy?: string
+        updateTime?: string
+      }
+
+      type VehicleAccidentSearchParams = Partial<
+        Pick<
+          VehicleAccidentRecord,
+          'companyName' | 'plateNo' | 'driverName' | 'processed' | 'dataSource'
+        > &
+          Api.Common.CommonSearchParams & {
+            accidentTimeRange?: string[]
+            createTimeRange?: string[]
+          }
+      >
+
+      type VehicleMaintenanceType = 'repair' | 'maintenance'
+
+      interface VehicleMaintenanceItem {
+        itemName: string
+        totalAmount?: number | null
+        laborAmount?: number | null
+        partName?: string
+        partPrice?: number | null
+        quantity?: number | null
+      }
+
+      interface VehicleMaintenanceRecord {
+        id?: string
+        tenantId?: string
+        vehicleId?: string | null
+        plateNo: string
+        companyName?: string
+        maintenanceNo: string
+        maintenanceType: VehicleMaintenanceType | string
+        initiator?: string
+        startTime: string
+        endTime?: string | null
+        costAmount?: number | null
+        workshop?: string
+        externalRepair: boolean
+        remark?: string
+        items?: VehicleMaintenanceItem[]
+        attachments?: VehicleAttachment[]
+        createBy?: string
+        createTime?: string
+        updateBy?: string
+        updateTime?: string
+      }
+
+      type VehicleMaintenanceSearchParams = Partial<
+        Pick<
+          VehicleMaintenanceRecord,
+          'companyName' | 'plateNo' | 'maintenanceNo' | 'maintenanceType'
+        > &
+          Api.Common.CommonSearchParams & {
+            createTimeRange?: string[]
+          }
+      >
+
       type VehiclePartType = 'original' | 'replacement'
       type VehiclePartUsageStatus = 'normal' | 'reused' | 'scrapped'
       type VehiclePartEnableMode = 'vehicle' | 'date'

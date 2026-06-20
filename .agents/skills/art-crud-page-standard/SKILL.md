@@ -1,14 +1,14 @@
 ---
 name: art-crud-page-standard
-description: Use when creating or refactoring standard CRUD list pages in art-supabase-pro, especially pages modeled after vehicle-mgt-sys/basic-info/insurance-company with ArtTableQuery, headerActions, ArtDialog, ArtForm, import/export, batch delete, and typed API-driven list/detail workflows.
+description: Use when creating or refactoring standard CRUD list pages in art-supabase-pro, especially pages modeled after vehicle-manage-system/basic-info/insurance-company with ArtTableQuery, headerActions, ArtDialog, ArtForm, import/export, batch delete, and typed API-driven list/detail workflows.
 ---
 
 # Art CRUD Page Standard
 
 Use this skill for normal CRUD pages under `src/views/**`. The reference implementation is:
 
-- `src/views/vehicle-mgt-sys/basic-info/insurance-company/index.vue`
-- `src/views/vehicle-mgt-sys/basic-info/insurance-company/modules/insurance-company-dialog.vue`
+- `src/views/vehicle-manage-system/basic-info/insurance-company/index.vue`
+- `src/views/vehicle-manage-system/basic-info/insurance-company/modules/insurance-company-dialog.vue`
 
 Also follow the base project conventions in `art-supabase-pro-conventions`.
 
@@ -190,7 +190,7 @@ const headerActions = computed<ArtTableQueryHeaderAction[]>(() => [
   {
     type: 'delete',
     permission: 'Feature:Delete',
-    content: ({ selectedCount }) => `确定删除选中的 ${selectedCount} 条数据吗？删除后无法恢复。`,
+    content: ({ selectedCount }) => `确定删除选中�?${selectedCount} 条数据吗？删除后无法恢复。`,
     onClick: async ({ selectedRows }) => {
       const ids = selectedRows.map((row) => row.id).filter(Boolean)
       await deleteFeatureBatch(ids)
@@ -284,6 +284,7 @@ Rules:
 
 - Include selection column when batch delete/export selected rows are supported.
 - Use `globalIndex` for page-aware serial numbers.
+- For dictionary-backed table values, use the column dictionary configuration, such as `dict: { code: 'status', display: 'auto' }`. Let `ArtTable` render `ArtDictDisplay`; do not call `useUserStore().getDictLabelByValue`, `getDictTagByValue`, or `getDictTagTypeByValue` inside table formatters. Use direct `ArtDictDisplay` only in non-`ArtTable` display surfaces.
 - Use `ArtButtonTable` for row edit/delete.
 - Show at most two direct controls in an operation column. When a row has more actions, keep one primary direct action such as edit or view and use `ArtButtonMore` as the second control for all remaining actions, including add-child and delete.
 - Keep operation column right fixed when table can scroll horizontally.
@@ -314,7 +315,7 @@ const handleDelete = async (row: RecordItem): Promise<void> => {
   if (!row.id) return
 
   try {
-    await ElMessageBox.confirm(`确定删除「${row.name}」吗？删除后无法恢复。`, '删除确认', {
+    await ElMessageBox.confirm(`确定删除�?{row.name}」吗？删除后无法恢复。`, '删除确认', {
       confirmButtonText: '删除',
       cancelButtonText: '取消',
       type: 'warning',
