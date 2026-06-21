@@ -650,6 +650,46 @@ declare namespace Api {
       >
     }
 
+    namespace ReminderManage {
+      type ReminderKind = 'insurance' | 'inspection' | 'maintenance' | 'part' | 'vehicle'
+
+      type InsuranceType = 'commercial' | 'compulsory'
+
+      interface VehicleReminderRow {
+        id: string
+        sourceId?: string
+        vehicleId?: string | null
+        companyName?: string
+        plateNo: string
+        insuranceType?: InsuranceType
+        insuranceTypeName?: string
+        expireDate?: string | null
+        remainingDays?: number | null
+        expired: boolean
+        currentMaintenanceDate?: string | null
+        currentMileage?: number | null
+        nextMaintenanceMileage?: number | null
+        nextMaintenanceDate?: string | null
+        partType?: VehicleManage.VehiclePartType
+        partName?: string
+        categoryName?: string
+        brand?: string
+        model?: string
+        rfidTag?: string
+        usedMileage?: number | null
+        serviceMileage?: number | null
+        startUseDate?: string | null
+        serviceYears?: number | null
+      }
+
+      type VehicleReminderSearchParams = Partial<
+        Pick<VehicleReminderRow, 'companyName' | 'plateNo' | 'expired'> &
+          Api.Common.CommonSearchParams & {
+            reminderDays?: number | null
+          } & Api.Common.PaginationParams
+      >
+    }
+
     namespace BasicInfo {
       interface InsuranceCompany {
         id?: string

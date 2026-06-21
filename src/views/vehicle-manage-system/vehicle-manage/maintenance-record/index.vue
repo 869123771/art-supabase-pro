@@ -170,9 +170,9 @@
         formatter: (row) => (
           <div class="flex">
             <ArtButtonTable
-              type="view"
-              permission="VehicleMaintenance:View"
-              onClick={() => viewDetail(row)}
+              type="edit"
+              permission="VehicleMaintenance:Edit"
+              onClick={() => openDialog(row)}
             />
             <ArtButtonMore
               list={getMoreActions()}
@@ -210,9 +210,8 @@
     if (!row.id) return
     void router.push(`/vehicle-manage-system/vehicle-manage/maintenance-record-detail/${row.id}`)
   }
-
   const getMoreActions = (): ButtonMoreItem[] => [
-    { key: 'edit', label: '编辑', icon: 'ri:edit-2-line', auth: 'VehicleMaintenance:Edit' },
+    { key: 'view', label: '查看', icon: 'ri:eye-line', auth: 'VehicleMaintenance:View' },
     {
       key: 'delete',
       label: '删除',
@@ -223,8 +222,8 @@
   ]
 
   const handleMoreAction = (item: ButtonMoreItem, row: MaintenanceRecord): void => {
-    if (item.key === 'edit') {
-      openDialog(row)
+    if (item.key === 'view') {
+      viewDetail(row)
       return
     }
     if (item.key === 'delete') void handleDelete(row)

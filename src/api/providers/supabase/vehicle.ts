@@ -644,7 +644,7 @@ export async function auditVehicleArchiveBatch(params: {
   )
 }
 
-// 杞﹁締绠＄悊閫夐」
+// 车辆管理选项
 export async function fetchVehicleArchiveOptions(
   params: Partial<Pick<VehicleArchive, 'plateNo' | 'companyName'>> = {}
 ) {
@@ -683,7 +683,7 @@ export async function fetchInsuranceCompanyOptions() {
   )
 }
 
-// 杞﹁締淇濋櫓
+// 车辆保险
 const VEHICLE_INSURANCE_TABLE = 'vehicle_insurance'
 
 const applyDateRange = (query: any, column: string, range?: string[]): any => {
@@ -832,7 +832,7 @@ export async function deleteVehicleInsuranceBatch(ids: string[]) {
   )
 }
 
-// 杞﹁締骞存
+// 车辆年检
 const VEHICLE_INSPECTION_TABLE = 'vehicle_inspection'
 
 const getVehicleInspectionSearchFilters = (params: VehicleInspectionSearchParams): FilterSpec[] => [
@@ -954,6 +954,7 @@ export async function deleteVehicleInspectionBatch(ids: string[]) {
   )
 }
 
+// 车辆例行检查
 const VEHICLE_ROUTINE_INSPECTION_TABLE = 'vehicle_routine_inspection_record'
 
 const getVehicleRoutineInspectionSearchFilters = (
@@ -1085,6 +1086,7 @@ export async function deleteVehicleRoutineInspectionBatch(ids: string[]) {
   )
 }
 
+// 车辆里程
 const VEHICLE_MILEAGE_TABLE = 'vehicle_mileage_record'
 
 const getVehicleMileageSearchFilters = (params: VehicleMileageSearchParams): FilterSpec[] => [
@@ -1142,7 +1144,7 @@ export async function exportVehicleMileageList(
   })
 }
 
-// 车辆零部件使用
+// 车辆违章
 const VEHICLE_VIOLATION_TABLE = 'vehicle_violation_record'
 
 const getVehicleViolationSearchFilters = (params: VehicleViolationSearchParams): FilterSpec[] => [
@@ -1207,6 +1209,7 @@ export async function exportVehicleViolationList(
   })
 }
 
+// 车辆事故
 const VEHICLE_ACCIDENT_TABLE = 'vehicle_accident_record'
 
 const getVehicleAccidentSearchFilters = (params: VehicleAccidentSearchParams): FilterSpec[] => [
@@ -1327,6 +1330,7 @@ export async function deleteVehicleAccidentBatch(ids: string[]) {
   )
 }
 
+// 车辆保养维修
 const VEHICLE_MAINTENANCE_TABLE = 'vehicle_maintenance_record'
 
 const getVehicleMaintenanceSearchFilters = (
@@ -1450,6 +1454,7 @@ export async function deleteVehicleMaintenanceBatch(ids: string[]) {
   )
 }
 
+// 车辆零部件使用
 const VEHICLE_PART_USAGE_TABLE = 'vehicle_part_usage'
 
 const getVehiclePartUsageSearchFilters = (params: VehiclePartUsageSearchParams): FilterSpec[] => [
