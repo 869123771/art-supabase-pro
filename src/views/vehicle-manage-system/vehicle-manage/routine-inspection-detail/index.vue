@@ -1,6 +1,6 @@
 <template>
   <div class="routine-inspection-detail" v-loading="page.loading">
-    <div class="routine-inspection-detail__header">
+    <div class="routine-inspection-detail__header art-card-xs">
       <div>
         <h2>{{ detail.data?.routineInspectionNo || '例检记录详情' }}</h2>
         <p>{{
@@ -10,7 +10,7 @@
       <ElButton @click="goBack">返回</ElButton>
     </div>
 
-    <section class="routine-inspection-detail__summary">
+    <section class="routine-inspection-detail__summary art-card-xs">
       <div class="routine-inspection-detail__summary-item">
         <span>例检类型</span>
         <strong>
@@ -37,7 +37,7 @@
       </div>
     </section>
 
-    <div class="routine-inspection-detail__content">
+    <div class="routine-inspection-detail__content art-card-xs">
       <section class="routine-inspection-detail__section">
         <ArtSectionTitle>基础信息</ArtSectionTitle>
         <ElDescriptions :column="2" border>
@@ -185,14 +185,6 @@
     padding: 16px;
     background: var(--art-main-bg-color);
 
-    &__header,
-    &__summary,
-    &__content {
-      background: var(--el-bg-color);
-      border: 1px solid var(--el-border-color-light);
-      border-radius: 8px;
-    }
-
     &__header {
       display: flex;
       align-items: center;
@@ -251,7 +243,7 @@
       line-height: 1.7;
       color: var(--el-text-color-regular);
       background: var(--el-fill-color-lighter);
-      border-radius: 6px;
+      border-radius: var(--el-border-radius-base);
       overflow-wrap: anywhere;
     }
 

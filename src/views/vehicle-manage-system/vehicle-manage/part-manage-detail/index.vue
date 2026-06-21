@@ -1,6 +1,6 @@
 <template>
   <div class="vehicle-part-usage-detail" v-loading="page.loading">
-    <div class="vehicle-part-usage-detail__header">
+    <div class="vehicle-part-usage-detail__header art-card-xs">
       <div>
         <h2>{{ detail.data?.plateNo || '零部件详情' }}</h2>
         <p>{{ detail.data?.partName || '--' }}</p>
@@ -8,7 +8,7 @@
       <ElButton @click="goBack">返回</ElButton>
     </div>
 
-    <div class="vehicle-part-usage-detail__content">
+    <div class="vehicle-part-usage-detail__content art-card-xs">
       <section>
         <ArtSectionTitle>零部件信息</ArtSectionTitle>
         <ElDescriptions :column="3" border>
@@ -177,13 +177,6 @@
     min-height: 100%;
     padding: 16px;
     background: var(--art-main-bg-color);
-
-    &__header,
-    &__content {
-      background: var(--el-bg-color);
-      border: 1px solid var(--el-border-color-light);
-      border-radius: 8px;
-    }
 
     &__header {
       display: flex;

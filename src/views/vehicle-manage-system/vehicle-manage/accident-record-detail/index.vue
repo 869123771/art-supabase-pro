@@ -1,6 +1,6 @@
 <template>
   <div class="accident-record-detail" v-loading="page.loading">
-    <div class="accident-record-detail__header">
+    <div class="accident-record-detail__header art-card-xs">
       <div>
         <h2>{{ detail.data?.plateNo || '事故记录详情' }}</h2>
         <p>{{ detail.data?.companyName || '--' }}</p>
@@ -8,7 +8,7 @@
       <ElButton @click="goBack">返回</ElButton>
     </div>
 
-    <section class="accident-record-detail__summary">
+    <section class="accident-record-detail__summary art-card-xs">
       <div class="accident-record-detail__summary-item">
         <span>事故时间</span>
         <strong>{{ formatValue(detail.data?.accidentTime) }}</strong>
@@ -29,7 +29,7 @@
       </div>
     </section>
 
-    <div class="accident-record-detail__content">
+    <div class="accident-record-detail__content art-card-xs">
       <section class="accident-record-detail__section">
         <ArtSectionTitle>基础信息</ArtSectionTitle>
         <ElDescriptions :column="2" border>
@@ -215,14 +215,6 @@
     padding: 16px;
     background: var(--art-main-bg-color);
 
-    &__header,
-    &__summary,
-    &__content {
-      background: var(--el-bg-color);
-      border: 1px solid var(--el-border-color-light);
-      border-radius: 8px;
-    }
-
     &__header {
       display: flex;
       align-items: center;
@@ -281,7 +273,7 @@
       line-height: 1.7;
       color: var(--el-text-color-regular);
       background: var(--el-fill-color-lighter);
-      border-radius: 6px;
+      border-radius: var(--el-border-radius-base);
       overflow-wrap: anywhere;
     }
 

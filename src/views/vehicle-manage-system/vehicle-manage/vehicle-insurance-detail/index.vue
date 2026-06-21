@@ -1,6 +1,6 @@
 <template>
   <div class="vehicle-insurance-detail" v-loading="page.loading">
-    <div class="vehicle-insurance-detail__header">
+    <div class="vehicle-insurance-detail__header art-card-xs">
       <div>
         <h2>{{ detail.data?.plateNo || '车辆保险详情' }}</h2>
         <p>{{ detail.data?.companyName || '--' }}</p>
@@ -10,7 +10,7 @@
       </div>
     </div>
 
-    <section class="vehicle-insurance-detail__summary">
+    <section class="vehicle-insurance-detail__summary art-card-xs">
       <div class="vehicle-insurance-detail__summary-item">
         <span>商业险到期</span>
         <strong>{{ formatValue(detail.data?.commercialExpireDate) }}</strong>
@@ -25,7 +25,7 @@
       </div>
     </section>
 
-    <div class="vehicle-insurance-detail__content">
+    <div class="vehicle-insurance-detail__content art-card-xs">
       <section class="vehicle-insurance-detail__section">
         <ArtSectionTitle>保险信息</ArtSectionTitle>
         <ElDescriptions :column="2" border>
@@ -179,14 +179,6 @@
     padding: 16px;
     background: var(--art-main-bg-color);
 
-    &__header,
-    &__summary,
-    &__content {
-      background: var(--el-bg-color);
-      border: 1px solid var(--el-border-color-light);
-      border-radius: 8px;
-    }
-
     &__header {
       display: flex;
       align-items: center;
@@ -253,7 +245,7 @@
       line-height: 1.7;
       color: var(--el-text-color-regular);
       background: var(--el-fill-color-lighter);
-      border-radius: 6px;
+      border-radius: var(--el-border-radius-base);
       overflow-wrap: anywhere;
     }
 

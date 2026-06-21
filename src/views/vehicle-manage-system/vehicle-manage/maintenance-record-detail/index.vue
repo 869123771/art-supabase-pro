@@ -1,6 +1,6 @@
 <template>
   <div class="maintenance-record-detail" v-loading="page.loading">
-    <div class="maintenance-record-detail__header">
+    <div class="maintenance-record-detail__header art-card-xs">
       <div>
         <h2>{{ detail.data?.maintenanceNo || '维修保养详情' }}</h2>
         <p>{{
@@ -10,7 +10,7 @@
       <ElButton @click="goBack">返回</ElButton>
     </div>
 
-    <section class="maintenance-record-detail__summary">
+    <section class="maintenance-record-detail__summary art-card-xs">
       <div class="maintenance-record-detail__summary-item">
         <span>维修类型</span>
         <strong>
@@ -31,7 +31,7 @@
       </div>
     </section>
 
-    <div class="maintenance-record-detail__content">
+    <div class="maintenance-record-detail__content art-card-xs">
       <section class="maintenance-record-detail__section">
         <ArtSectionTitle>基础信息</ArtSectionTitle>
         <ElDescriptions :column="2" border>
@@ -218,14 +218,6 @@
     padding: 16px;
     background: var(--art-main-bg-color);
 
-    &__header,
-    &__summary,
-    &__content {
-      background: var(--el-bg-color);
-      border: 1px solid var(--el-border-color-light);
-      border-radius: 8px;
-    }
-
     &__header {
       display: flex;
       align-items: center;
@@ -284,7 +276,7 @@
       line-height: 1.7;
       color: var(--el-text-color-regular);
       background: var(--el-fill-color-lighter);
-      border-radius: 6px;
+      border-radius: var(--el-border-radius-base);
       overflow-wrap: anywhere;
     }
 

@@ -1,6 +1,6 @@
 <template>
   <div class="vehicle-archive-detail" v-loading="loading">
-    <div class="vehicle-archive-detail__header">
+    <div class="vehicle-archive-detail__header art-card-xs">
       <div>
         <h2>{{ archive?.plateNo || '车辆档案详情' }}</h2>
         <p>{{ archive?.companyName || '--' }}</p>
@@ -10,7 +10,7 @@
       </div>
     </div>
 
-    <ElTabs v-model="activeTab" class="vehicle-archive-detail__tabs">
+    <ElTabs v-model="activeTab" class="vehicle-archive-detail__tabs art-card-xs">
       <ElTabPane label="基础信息" name="basic">
         <InfoDescriptions :items="basicInfoItems" />
         <section class="vehicle-archive-detail__section">
@@ -57,7 +57,7 @@
       </ElTabPane>
     </ElTabs>
 
-    <ElCard v-if="showAuditPanel" class="vehicle-archive-detail__audit" shadow="never">
+    <ElCard v-if="showAuditPanel" class="vehicle-archive-detail__audit art-card-xs" shadow="never">
       <template #header>
         <span>审核状态</span>
       </template>
@@ -383,14 +383,6 @@
     padding: 16px;
     background: var(--art-main-bg-color);
 
-    &__header,
-    &__tabs,
-    &__audit {
-      background: var(--el-bg-color);
-      border: 1px solid var(--el-border-color-light);
-      border-radius: 8px;
-    }
-
     &__header {
       display: flex;
       align-items: center;
@@ -456,7 +448,7 @@
         width: 128px;
         height: 128px;
         border: 1px solid var(--el-border-color);
-        border-radius: 8px;
+        border-radius: var(--el-border-radius-base);
       }
     }
 

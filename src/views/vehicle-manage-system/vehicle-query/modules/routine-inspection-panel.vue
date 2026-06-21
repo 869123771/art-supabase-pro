@@ -1,0 +1,61 @@
+<template>
+  <VehicleQuerySection title="例检记录">
+    <VehicleQueryTable :data="records" :columns="columns" :loading="loading" />
+  </VehicleQuerySection>
+</template>
+
+<script setup lang="tsx">
+  import type { ColumnOption } from '@/types'
+  import { fetchVehicleRoutineInspectionList } from '@/api/vehicle-manage-system'
+  import VehicleQuerySection from './vehicle-query-section.vue'
+  import VehicleQueryTable from './vehicle-query-table.vue'
+  import type { VehicleArchive, VehicleRoutineInspectionRecord } from './types'
+  import { formatDateTime } from './query-format'
+  import { useVehiclePanelList } from './use-vehicle-panel-list'
+
+  defineOptions({ name: 'VehicleQueryRoutineInspectionPanel' })
+
+  const props = defineProps<{
+    vehicle: VehicleArchive
+  }>()
+
+  const vehicle = toRef(props, 'vehicle')
+  const { loading, records } = useVehiclePanelList<VehicleRoutineInspectionRecord>(
+    vehicle,
+    async (current) => {
+      const { data } = await fetchVehicleRoutineInspectionList({
+        plateNo: current.plateNo,
+        from: 0,
+        to: 9999
+      })
+      return data ?? []
+    }
+  )
+
+  const columns: ColumnOption<VehicleRoutineInspectionRecord>[] = [
+    { type: 'globalIndex', label: '序号', width: 80 },
+    { prop: 'routineInspectionNo', label: '例检单号', minWidth: 160 },
+    {
+      prop: 'inspectionType',
+      label: '例检类型',
+      minWidth: 130,
+      dict: { code: 'vehicleRoutineInspectionType', display: 'text' }
+    },
+    {
+      prop: 'inspectionTime',
+      label: '例检时间',
+      minWidth: 180,
+      formatter: (row) => formatDateTime(row.inspectionTime)
+    },
+    { prop: 'inspector', label: '例检员', minWidth: 130 },
+    { prop: 'driverName', label: '驾驶员姓名', minWidth: 140 },
+    { prop: 'checkCondition', label: '检查情况', minWidth: 160 },
+    {
+      prop: 'checkResult',
+      label: '检查结果',
+      minWidth: 130,
+      dict: { code: 'vehicleRoutineInspectionResult', display: 'text' }
+    },
+    { prop: 'handlingMethod', label: '处理方式', minWidth: 160 }
+  ]
+</script>

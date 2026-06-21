@@ -1,6 +1,6 @@
 <template>
   <div ref="pageRef" class="vehicle-archive-edit" v-loading.lock="page.loading">
-    <div class="vehicle-archive-edit__header">
+    <div class="vehicle-archive-edit__header art-card-xs">
       <div>
         <h2>{{ isEdit ? '编辑车辆档案' : '新增车辆档案' }}</h2>
         <p>维护车辆基础资料、车身参数、发动机参数和运营信息。</p>
@@ -11,7 +11,7 @@
       </div>
     </div>
 
-    <ElTabs v-model="page.activeTab" class="vehicle-archive-edit__tabs">
+    <ElTabs v-model="page.activeTab" class="vehicle-archive-edit__tabs art-card-xs">
       <ElTabPane label="基础信息" name="basic">
         <ArtForm
           ref="basicFormRef"
@@ -861,9 +861,6 @@
       justify-content: space-between;
       padding: 18px 20px;
       margin-bottom: 12px;
-      background: var(--el-bg-color);
-      border: 1px solid var(--el-border-color-light);
-      border-radius: 8px;
 
       h2 {
         margin: 0;
@@ -884,9 +881,6 @@
 
     &__tabs {
       padding: 16px 20px 24px;
-      background: var(--el-bg-color);
-      border: 1px solid var(--el-border-color-light);
-      border-radius: 8px;
     }
 
     &__section {
