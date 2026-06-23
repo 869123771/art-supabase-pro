@@ -170,13 +170,20 @@ export async function fetchSystemParamStats(): Promise<{
     .filter(Boolean)
     .sort()
     .at(-1)
+  const groupCounts = rows.reduce<Record<string, number>>((counts, row) => {
+    if (row.groupCode) {
+      counts[row.groupCode] = (counts[row.groupCode] ?? 0) + 1
+    }
+    return counts
+  }, {})
 
   return {
     data: {
       total: rows.length,
       enabled: rows.filter((row) => row.enabled).length,
       builtin: rows.filter((row) => row.builtin).length,
-      groups: new Set(rows.map((row) => row.groupCode).filter(Boolean)).size,
+      groups: Object.keys(groupCounts).length,
+      groupCounts,
       lastRefreshTime: latestUpdateTime
     },
     error

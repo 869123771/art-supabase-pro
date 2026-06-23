@@ -1110,12 +1110,19 @@
     }
   }
 
+  const getData = async (): Promise<unknown> => {
+    if (isManaged.value) {
+      managedTable.replaceSearchParams(cloneSearchModel(searchModel.value))
+    }
+    return await managedTable.getData()
+  }
+
   defineExpose<ArtTableQueryExpose>({
     refreshData: managedTable.refreshData,
     refreshCreate: managedTable.refreshCreate,
     refreshUpdate: managedTable.refreshUpdate,
     refreshRemove,
-    getData: managedTable.getData,
+    getData,
     resetSearchParams
   })
 </script>

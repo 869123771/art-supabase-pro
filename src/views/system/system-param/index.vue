@@ -8,14 +8,18 @@
         </p>
       </div>
       <div class="system-param-page__hero-tags">
-        <ElTag round>缓存项：{{ stats.total }}</ElTag>
-        <ElTag round>分组数：{{ stats.groups }}</ElTag>
-        <ElTag round>最近刷新：{{ lastRefreshText }}</ElTag>
+        <ElTag round>缓存项：{{ overview.stats.total }}</ElTag>
+        <ElTag round>分组数：{{ overview.stats.groups }}</ElTag>
+        <ElTag round>最近刷新：{{ overview.lastRefreshText }}</ElTag>
       </div>
     </section>
 
     <section class="system-param-page__stats">
-      <div v-for="item in statCards" :key="item.label" class="system-param-page__stat-card">
+      <div
+        v-for="item in overview.statCards"
+        :key="item.label"
+        class="system-param-page__stat-card"
+      >
         <div>
           <span>{{ item.label }}</span>
           <strong>{{ item.value }}</strong>
@@ -31,36 +35,22 @@
     </section>
 
     <div class="system-param-page__groups">
-      <ElButton
-        :type="!searchQuery.groupCode ? 'primary' : undefined"
-        size="small"
-        @click="handleGroupFilter()"
-      >
-        全部分组
-      </ElButton>
-      <ElButton
-        v-for="group in groupOptions"
-        :key="group.value"
-        :type="searchQuery.groupCode === group.value ? 'primary' : undefined"
-        size="small"
-        plain
-        @click="handleGroupFilter(String(group.value))"
-      >
-        {{ group.label
-        }}{{ groupCountMap[String(group.value)] ? ` (${groupCountMap[String(group.value)]})` : '' }}
-      </ElButton>
+      <ElSegmented
+        :model-value="table.searchQuery.groupCode"
+        :options="groupSegmentOptions"
+        @change="handleGroupFilter"
+      />
     </div>
 
     <ArtTableQuery
       ref="tableQueryRef"
-      v-model="searchQuery"
-      :search-items="searchItems"
+      v-model="table.searchQuery"
+      :search-items="table.searchItems"
       :api-fn="fetchTableData"
       :columns-factory="columnsFactory"
-      :header-actions="headerActions"
+      :header-actions="table.headerActions"
       :table-header-props="{ layout: 'refresh,size,fullscreen,columns,settings' }"
       :table-props="{ height: '100%', showOverflowTooltip: true }"
-      :on-success="handleTableSuccess"
     />
 
     <SystemParamDialog ref="dialogRef" @success="handleSaveSuccess" />
@@ -70,6 +60,7 @@
 <script setup lang="tsx">
   import { ElMessage, ElMessageBox, ElTag } from 'element-plus'
   import { omit } from 'lodash-es'
+  import type { ComputedRef, UnwrapNestedRefs } from 'vue'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import type {
@@ -99,146 +90,173 @@
     handleOpen: (row?: SystemParam) => Promise<void>
   }
 
+  interface OverviewGroup {
+    stats: Api.SystemManage.SystemParamStats
+    lastRefreshText: ComputedRef<string>
+    statCards: ComputedRef<
+      Array<{
+        label: string
+        value: number
+        description: string
+        icon: string
+        color: string
+        backgroundColor: string
+      }>
+    >
+  }
+
+  interface TableGroup {
+    searchQuery: SearchParams
+    searchItems: ComputedRef<SearchFormItem[]>
+    headerActions: ComputedRef<ArtTableQueryHeaderAction[]>
+  }
+
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<DialogExpose>()
   const userStore = useUserStore()
   const { getDictMap } = storeToRefs(userStore)
-  const tableRows = ref<SystemParam[]>([])
-
-  const stats = reactive<Api.SystemManage.SystemParamStats>({
-    total: 0,
-    enabled: 0,
-    builtin: 0,
-    groups: 0,
-    lastRefreshTime: undefined
-  })
-
-  const searchQuery = ref<SearchParams>({
-    keyword: '',
-    groupCode: undefined,
-    paramType: undefined
-  })
-
   const groupOptions = computed(() => getDictMap.value.systemParamGroup ?? [])
   const typeOptions = computed(() => getDictMap.value.systemParamType ?? [])
 
-  const groupCountMap = computed<Record<string, number>>(() =>
-    tableRows.value.reduce<Record<string, number>>((map, row) => {
-      map[row.groupCode] = (map[row.groupCode] ?? 0) + 1
-      return map
-    }, {})
-  )
-
-  const lastRefreshText = computed(() =>
-    stats.lastRefreshTime ? formatWithDayjs(stats.lastRefreshTime) : '-'
-  )
-
-  const statCards = computed(() => [
-    {
-      label: '参数总量',
-      value: stats.total,
-      description: '包括内置参数与业务扩展参数',
-      icon: 'ri:database-2-line',
-      color: '#3b82f6',
-      backgroundColor: 'var(--el-color-primary-light-9)'
+  const overview: UnwrapNestedRefs<OverviewGroup> = reactive<OverviewGroup>({
+    stats: {
+      total: 0,
+      enabled: 0,
+      builtin: 0,
+      groups: 0,
+      groupCounts: {},
+      lastRefreshTime: undefined
     },
-    {
-      label: '启用参数',
-      value: stats.enabled,
-      description: '当前会参与读取和缓存的有效参数',
-      icon: 'ri:checkbox-circle-line',
-      color: '#14b8a6',
-      backgroundColor: 'var(--el-color-success-light-9)'
-    },
-    {
-      label: '内置参数',
-      value: stats.builtin,
-      description: '平台基础参数，建议谨慎修改',
-      icon: 'ri:shield-keyhole-line',
-      color: '#f59e0b',
-      backgroundColor: 'var(--el-color-warning-light-9)'
-    },
-    {
-      label: '参数分组',
-      value: stats.groups,
-      description: '可按业务域划分不同配置命名空间',
-      icon: 'ri:folder-settings-line',
-      color: '#64748b',
-      backgroundColor: 'var(--default-bg-color)'
-    }
-  ])
-
-  const searchItems = computed<SearchFormItem[]>(() => [
-    {
-      label: '关键字',
-      key: 'keyword',
-      type: 'input',
-      props: {
-        placeholder: '请输入参数名称、键名或备注'
-      }
-    },
-    {
-      label: '分组',
-      key: 'groupCode',
-      type: 'select',
-      props: {
-        clearable: true,
-        placeholder: '请选择分组',
-        options: groupOptions.value
-      }
-    },
-    {
-      label: '参数类型',
-      key: 'paramType',
-      type: 'select',
-      props: {
-        clearable: true,
-        placeholder: '请选择参数类型',
-        options: typeOptions.value
-      }
-    }
-  ])
-
-  const headerActions = computed<ArtTableQueryHeaderAction[]>(() => [
-    {
-      type: 'add',
-      label: '新增参数',
-      // permission: 'System:SystemParam:Add',
-      onClick: () => openDialog()
-    },
-    {
-      type: 'delete',
-      permission: 'System:SystemParam:Delete',
-      disabled: ({ selectedRows }) => selectedRows.every((row) => Boolean(row.builtin)),
-      content: ({ selectedRows }: ArtTableQueryHeaderActionContext) => {
-        const removableCount = selectedRows.filter((row) => !row.builtin).length
-        return `确定删除选中的 ${removableCount} 个非内置参数吗？内置参数会被自动跳过。`
+    lastRefreshText: computed(() =>
+      overview.stats.lastRefreshTime ? formatWithDayjs(overview.stats.lastRefreshTime) || '-' : '-'
+    ),
+    statCards: computed(() => [
+      {
+        label: '参数总量',
+        value: overview.stats.total,
+        description: '包括内置参数与业务扩展参数',
+        icon: 'ri:database-2-line',
+        color: '#3b82f6',
+        backgroundColor: 'var(--el-color-primary-light-9)'
       },
-      onClick: async ({ selectedRows }) => {
-        const ids = selectedRows
-          .filter((row) => !row.builtin)
-          .map((row) => String(row.id))
-          .filter(Boolean)
-        if (!ids.length) {
-          ElMessage.warning('请选择非内置参数')
-          return
-        }
-        await deleteSystemParamBatch(ids)
-        await refreshAfterRemove()
+      {
+        label: '启用参数',
+        value: overview.stats.enabled,
+        description: '当前会参与读取和缓存的有效参数',
+        icon: 'ri:checkbox-circle-line',
+        color: '#14b8a6',
+        backgroundColor: 'var(--el-color-success-light-9)'
+      },
+      {
+        label: '内置参数',
+        value: overview.stats.builtin,
+        description: '平台基础参数，建议谨慎修改',
+        icon: 'ri:shield-keyhole-line',
+        color: '#f59e0b',
+        backgroundColor: 'var(--el-color-warning-light-9)'
+      },
+      {
+        label: '参数分组',
+        value: overview.stats.groups,
+        description: '可按业务域划分不同配置命名空间',
+        icon: 'ri:folder-settings-line',
+        color: '#64748b',
+        backgroundColor: 'var(--default-bg-color)'
       }
-    },
+    ])
+  })
+
+  const groupSegmentOptions = computed(() => [
     {
-      key: 'refresh-cache',
-      label: '刷新缓存',
-      icon: 'ri:refresh-line',
-      buttonProps: { plain: true },
-      onClick: async () => {
-        await userStore.fetchDictList()
-        await refreshPage()
-        ElMessage.success('缓存已刷新')
+      label: `全部分组 (${overview.stats.total})`,
+      value: ''
+    },
+    ...groupOptions.value.map((group) => {
+      const value = String(group.value)
+      return {
+        label: `${group.label} (${overview.stats.groupCounts[value] ?? 0})`,
+        value
       }
-    }
+    })
   ])
+
+  const table: UnwrapNestedRefs<TableGroup> = reactive<TableGroup>({
+    searchQuery: {
+      keyword: '',
+      groupCode: '',
+      paramType: undefined
+    },
+    searchItems: computed<SearchFormItem[]>(() => [
+      {
+        label: '关键字',
+        key: 'keyword',
+        type: 'input',
+        props: {
+          placeholder: '请输入参数名称、键名或备注'
+        }
+      },
+      {
+        label: '分组',
+        key: 'groupCode',
+        type: 'select',
+        props: {
+          clearable: true,
+          placeholder: '请选择分组',
+          options: groupOptions.value
+        }
+      },
+      {
+        label: '参数类型',
+        key: 'paramType',
+        type: 'select',
+        props: {
+          clearable: true,
+          placeholder: '请选择参数类型',
+          options: typeOptions.value
+        }
+      }
+    ]),
+    headerActions: computed<ArtTableQueryHeaderAction[]>(() => [
+      {
+        type: 'add',
+        label: '新增参数',
+        // permission: 'System:SystemParam:Add',
+        onClick: () => openDialog()
+      },
+      {
+        type: 'delete',
+        permission: 'System:SystemParam:Delete',
+        disabled: ({ selectedRows }) => selectedRows.every((row) => Boolean(row.builtin)),
+        content: ({ selectedRows }: ArtTableQueryHeaderActionContext) => {
+          const removableCount = selectedRows.filter((row) => !row.builtin).length
+          return `确定删除选中的 ${removableCount} 个非内置参数吗？内置参数会被自动跳过。`
+        },
+        onClick: async ({ selectedRows }) => {
+          const ids = selectedRows
+            .filter((row) => !row.builtin)
+            .map((row) => String(row.id))
+            .filter(Boolean)
+          if (!ids.length) {
+            ElMessage.warning('请选择非内置参数')
+            return
+          }
+          await deleteSystemParamBatch(ids)
+          await refreshAfterRemove()
+        }
+      },
+      {
+        key: 'refresh-cache',
+        label: '刷新缓存',
+        icon: 'ri:refresh-line',
+        buttonProps: { plain: true },
+        onClick: async () => {
+          await userStore.fetchDictList()
+          await refreshPage()
+          ElMessage.success('缓存已刷新')
+        }
+      }
+    ])
+  })
 
   const fetchTableData = (params: TableParams) => {
     const { from, to } = pageInfoHandler({
@@ -319,6 +337,11 @@
       formatter: (row) => formatWithDayjs(row.updateTime)
     },
     {
+      prop: 'updateBy',
+      label: '最后更新人',
+      width: 180
+    },
+    {
       prop: 'operation',
       label: '操作',
       width: 120,
@@ -360,18 +383,14 @@
     }
   }
 
-  const handleGroupFilter = async (groupCode?: string): Promise<void> => {
-    searchQuery.value.groupCode = groupCode
+  const handleGroupFilter = async (groupCode: string | number): Promise<void> => {
+    table.searchQuery.groupCode = String(groupCode)
     await tableQueryRef.value?.getData()
-  }
-
-  const handleTableSuccess = (rows: Record<string, any>[]): void => {
-    tableRows.value = rows as SystemParam[]
   }
 
   const loadStats = async (): Promise<void> => {
     const { data } = await fetchSystemParamStats()
-    Object.assign(stats, data, {
+    Object.assign(overview.stats, data, {
       lastRefreshTime: data.lastRefreshTime || new Date().toISOString()
     })
   }
@@ -488,9 +507,6 @@
     }
 
     &__groups {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
       padding: 12px 16px;
       background: var(--el-bg-color);
       border: 1px solid var(--el-border-color-light);
@@ -507,9 +523,28 @@
       flex: 1;
       min-height: 0;
     }
+
+    &__groups :deep(.el-segmented) {
+      --el-segmented-item-selected-color: var(--el-color-white);
+      --el-segmented-item-selected-bg-color: var(--el-color-primary);
+
+      max-width: 100%;
+
+      .el-segmented__group {
+        flex-wrap: wrap;
+      }
+
+      .el-segmented__item {
+        color: var(--el-color-primary);
+
+        &.is-selected {
+          color: var(--el-color-white);
+        }
+      }
+    }
   }
 
-  @media (max-width: 1200px) {
+  @media (width <= 1200px) {
     .system-param-page {
       &__stats {
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -517,7 +552,7 @@
     }
   }
 
-  @media (max-width: 768px) {
+  @media (width <= 768px) {
     .system-param-page {
       &__hero {
         flex-direction: column;

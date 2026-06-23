@@ -55,11 +55,11 @@
                 show-word-limit
                 placeholder="请输入多行文本内容"
               />
-              <ElInput
+              <ElInputNumber
                 v-else-if="formState.model.paramType === 'number'"
                 v-model="formState.model.paramValue"
-                type="number"
                 placeholder="请输入数字"
+                class="!w-full"
               />
               <ElSelect
                 v-else-if="formState.model.paramType === 'boolean'"
@@ -267,7 +267,10 @@
         label: '内置参数',
         key: 'builtin',
         type: 'switch',
-        span: 6
+        span: 6,
+        props: {
+          disabled: formState.model.id && formState.model.builtin
+        }
       },
       {
         label: '默认值',

@@ -190,6 +190,7 @@
     ElRadioGroup,
     ElRadioButton,
     ElRate,
+    ElSegmented,
     ElSelect,
     ElSlider,
     ElSwitch,
@@ -220,6 +221,7 @@
     inputTag: ElInputTag, // 标签输入框
     number: ElInputNumber, // 数字输入框
     select: ElSelect, // 选择器
+    segment: ElSegmented, // 分段选择器
     switch: ElSwitch, // 开关
     checkbox: ElCheckbox, // 复选框
     checkboxGroup: ElCheckboxGroup, // 复选框组
@@ -289,7 +291,7 @@
     | 'radioGroup'
     | 'checkboxGroup'
     ? FormItemPassThroughProps & FormItemChoiceGroupProps
-    : TType extends 'select' | 'cascader' | 'treeSelect'
+    : TType extends 'select' | 'segment' | 'cascader' | 'treeSelect'
       ? FormItemPassThroughProps & FormItemOptionProps
       : TType extends 'divider'
         ? FormItemPassThroughProps & FormItemDividerProps
@@ -757,7 +759,14 @@
     return (sanitizeOutputValue(outputValue) || {}) as Record<string, any>
   }
 
-  const optionComponentTypes = ['select', 'checkboxGroup', 'radioGroup', 'cascader', 'treeSelect']
+  const optionComponentTypes = [
+    'select',
+    'segment',
+    'checkboxGroup',
+    'radioGroup',
+    'cascader',
+    'treeSelect'
+  ]
 
   const isOptionComponent = (item: FormItem) => optionComponentTypes.includes(String(item.type))
 

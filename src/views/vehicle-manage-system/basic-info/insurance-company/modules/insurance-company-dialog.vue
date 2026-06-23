@@ -26,7 +26,6 @@
   type InsuranceCompanyForm = InsuranceCompany & {
     regionPath?: string[]
   }
-  type RegionOption = Record<string, unknown> & { children?: RegionOption[] }
 
   interface Emits {
     (e: 'success', type: 'add' | 'edit'): void
@@ -98,10 +97,11 @@
       }
     },
     {
-      label: '省/市/区',
+      label: '联系地址',
       key: 'regionPath',
       type: 'cascader',
       props: {
+        class: 'w-full',
         props: {
           label: 'name',
           value: 'name',
@@ -113,25 +113,7 @@
       api: fetchRegionOptions,
       labelField: 'name',
       valueField: 'name',
-      childrenField: 'children',
-      afterFetch: (data: unknown) => {
-        const normalizeRegionOptions = (options: RegionOption[]): RegionOption[] => {
-          return options.map((option) => ({
-            ...option,
-            children: Array.isArray(option.children)
-              ? normalizeRegionOptions(option.children)
-              : undefined
-          }))
-        }
-        if (Array.isArray(data)) return normalizeRegionOptions(data as RegionOption[])
-        if (typeof data !== 'string') return []
-        try {
-          const parsed = JSON.parse(data) as unknown
-          return Array.isArray(parsed) ? normalizeRegionOptions(parsed as RegionOption[]) : []
-        } catch {
-          return []
-        }
-      }
+      childrenField: 'children'
     },
     {
       label: '详细地址',

@@ -1,6 +1,6 @@
 type ID = string | number
 
-interface TreeNode {
+export interface TreeNode {
   [key: string]: any
   // must include id and parent id fields but names are configurable
 }
@@ -36,6 +36,45 @@ export default class TreeUtils {
   // is value considered root parent
   private isRootParent(value: any) {
     return this.rootParentValues.includes(value) || value === undefined
+  }
+
+  /**
+   * Normalize unknown tree data into a safe tree array.
+   * Accepts an array or a JSON string containing an array.
+   */
+  normalizeTreeData<T extends TreeNode = TreeNode>(data: unknown): T[] {
+    let source = data
+
+    if (typeof source === 'string') {
+      try {
+        source = JSON.parse(source) as unknown
+      } catch {
+        return []
+      }
+    }
+
+    if (!Array.isArray(source)) return []
+
+    const normalizeNodes = (nodes: unknown[]): T[] =>
+      nodes
+        .filter(
+          (node): node is Record<string, unknown> =>
+            typeof node === 'object' && node !== null && !Array.isArray(node)
+        )
+        .map((rawNode) => {
+          const node = this.clone(rawNode) as TreeNode
+          const children = node[this.childrenKey]
+
+          if (Array.isArray(children)) {
+            node[this.childrenKey] = normalizeNodes(children)
+          } else {
+            delete node[this.childrenKey]
+          }
+
+          return node as T
+        })
+
+    return normalizeNodes(source)
   }
 
   /**

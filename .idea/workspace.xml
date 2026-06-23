@@ -9,33 +9,22 @@
   <component name="ChangeListManager">
     <list default="true" id="b8f35119-660a-46e7-82f4-53eee06863eb" name="Changes" comment="feat : vehicle reminder manage">
       <change beforePath="$PROJECT_DIR$/.agents/skills/art-supabase-pro-conventions/SKILL.md" beforeDir="false" afterPath="$PROJECT_DIR$/.agents/skills/art-supabase-pro-conventions/SKILL.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.env" beforeDir="false" afterPath="$PROJECT_DIR$/.env" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/dataSources.local.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources.local.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/api/common.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/common.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/api/system-manage.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/system-manage.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/core/forms/art-form/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/forms/art-form/README.md" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/components/core/forms/art-form/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/forms/art-form/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/components/core/forms/art-section-title/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/forms/art-section-title/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/components/core/tables/art-table/style.scss" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/tables/art-table/style.scss" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/directives/core/roles.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/directives/core/roles.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/hooks/index.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/hooks/index.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/mock/temp/formData.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/mock/temp/formData.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/router/modules/dashboard.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/router/modules/dashboard.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/router/modules/examples.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/router/modules/examples.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/router/modules/system.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/router/modules/system.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/store/modules/user.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/store/modules/user.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/core/tables/art-table-query/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/tables/art-table-query/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/hooks/core/useTableColumns.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/hooks/core/useTableColumns.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/types/api/api.d.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/types/api/api.d.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/types/store/index.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/types/store/index.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/auth/login/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/auth/login/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/auth/register/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/auth/register/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/auth/reset-password/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/auth/reset-password/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/examples/permission/button-auth/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/examples/permission/button-auth/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/examples/permission/page-visibility/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/examples/permission/page-visibility/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/examples/permission/switch-role/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/examples/permission/switch-role/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/system/menu/modules/menu-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/system/menu/modules/menu-dialog.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/system/role/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/system/role/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/system/role/modules/role-edit-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/system/role/modules/role-edit-dialog.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/system/tenant/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/system/tenant/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/system/user-center/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/system/user-center/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/system/user/modules/user-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/system/user/modules/user-dialog.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/utils/time/format.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/time/format.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/utils/tree.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/tree.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/system/system-param/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/system/system-param/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/system/system-param/modules/system-param-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/system/system-param/modules/system-param-dialog.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/vehicle-manage-system/basic-info/insurance-company/modules/insurance-company-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-manage-system/basic-info/insurance-company/modules/insurance-company-dialog.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/vehicle-manage-system/basic-info/supplier/modules/supplier-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-manage-system/basic-info/supplier/modules/supplier-dialog.vue" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -77,61 +66,61 @@
   </component>
   <component name="NextEditCompletionFeaturesState">
     <decayedCancelled>
-      <entry key="MS100" value="1.0064585569564932" />
-      <entry key="MS500" value="1.5521896590807929" />
-      <entry key="S2" value="3.4382178020151675" />
-      <entry key="S5" value="5.320699460265363" />
-      <entry key="S10" value="6.439143752560668" />
-      <entry key="S30" value="7.419207999498933" />
-      <entry key="S60" value="7.701183373114106" />
-      <entry key="M2" value="7.848415659414038" />
-      <entry key="M5" value="7.938834645303485" />
-      <entry key="M10" value="7.969339418586617" />
-      <entry key="M15" value="7.980821601777547" />
-      <entry key="M30" value="8.149649526370725" />
-      <entry key="H1" value="10.071975992981042" />
-      <entry key="H2" value="17.613003431744815" />
-      <entry key="H4" value="34.32601912995633" />
-      <entry key="D1" value="151.6086580660943" />
-      <entry key="W1" value="284.58051912975503" />
+      <entry key="MS100" value="1.0" />
+      <entry key="MS500" value="1.0" />
+      <entry key="S2" value="1.0" />
+      <entry key="S5" value="1.0" />
+      <entry key="S10" value="1.0" />
+      <entry key="S30" value="1.0000000596263667" />
+      <entry key="S60" value="1.000488181507056" />
+      <entry key="M2" value="1.0443554719027208" />
+      <entry key="M5" value="1.7585237669817924" />
+      <entry key="M10" value="3.4548165939566973" />
+      <entry key="M15" value="4.8863332476122014" />
+      <entry key="M30" value="7.629932385513009" />
+      <entry key="H1" value="11.563673509368249" />
+      <entry key="H2" value="19.5702925437728" />
+      <entry key="H4" value="36.3083746027033" />
+      <entry key="D1" value="159.22616763722445" />
+      <entry key="W1" value="304.8583684277268" />
     </decayedCancelled>
     <decayedSelected>
-      <entry key="MS100" value="3.2482000196940905E-5" />
-      <entry key="MS500" value="0.1265693509188116" />
-      <entry key="S2" value="0.5964611180191453" />
-      <entry key="S5" value="0.8132664476479922" />
-      <entry key="S10" value="0.901812867311169" />
-      <entry key="S30" value="0.9661372106231076" />
-      <entry key="S60" value="0.9829227897567069" />
-      <entry key="M2" value="0.9914246263618364" />
-      <entry key="M5" value="0.9965609855155301" />
-      <entry key="M10" value="0.9982790118577046" />
-      <entry key="M15" value="0.9988523465041688" />
-      <entry key="M30" value="0.9994831944833279" />
-      <entry key="H1" value="1.013151110747462" />
-      <entry key="H2" value="1.2302206899992172" />
-      <entry key="H4" value="2.104991633467584" />
-      <entry key="D1" value="10.352917542523535" />
-      <entry key="W1" value="20.203790427246147" />
+      <entry key="MS100" value="0.0" />
+      <entry key="MS500" value="0.0" />
+      <entry key="S2" value="0.0" />
+      <entry key="S5" value="0.0" />
+      <entry key="S10" value="0.0" />
+      <entry key="S30" value="1.9091909186396665E-141" />
+      <entry key="S60" value="4.36942893138184E-71" />
+      <entry key="M2" value="6.610165604114503E-36" />
+      <entry key="M5" value="8.473931245979725E-15" />
+      <entry key="M10" value="9.205395833955374E-8" />
+      <entry key="M15" value="2.0387390707052716E-5" />
+      <entry key="M30" value="0.0045154981849368355" />
+      <entry key="H1" value="0.06809877706581141" />
+      <entry key="H2" value="0.31894483291321846" />
+      <entry key="H4" value="1.0718071404163738" />
+      <entry key="D1" value="9.251393073785998" />
+      <entry key="W1" value="19.881698358527238" />
     </decayedSelected>
     <decayedShown>
-      <entry key="MS100" value="0.06973781409228554" />
-      <entry key="MS500" value="1.0808011336333412" />
-      <entry key="S2" value="3.3966213170456894" />
-      <entry key="S5" value="5.616581207353735" />
-      <entry key="S10" value="6.991290157049689" />
-      <entry key="S30" value="8.239861469847526" />
-      <entry key="S60" value="8.607013533206121" />
-      <entry key="M2" value="8.800141991483187" />
-      <entry key="M5" value="8.919231170372536" />
-      <entry key="M10" value="8.959487934897775" />
-      <entry key="M15" value="8.974242824492666" />
-      <entry key="M30" value="9.146410208019411" />
-      <entry key="H1" value="11.083717640788885" />
-      <entry key="H2" value="18.84222001160705" />
-      <entry key="H4" value="36.429908353355884" />
-      <entry key="D1" value="161.9603418598595" />
-      <entry key="W1" value="304.78398265019496" />
+      <entry key="MS100" value="9.30078736619363E-9" />
+      <entry key="MS500" value="0.024757337841405287" />
+      <entry key="S2" value="0.39666692159557143" />
+      <entry key="S5" value="0.6908287359177429" />
+      <entry key="S10" value="0.8311610769987625" />
+      <entry key="S30" value="0.9402177069988197" />
+      <entry key="S60" value="0.9701305321642653" />
+      <entry key="M2" value="1.0287949312105504" />
+      <entry key="M5" value="1.7505480958860686" />
+      <entry key="M10" value="3.4487834100615" />
+      <entry key="M15" value="4.881180180154457" />
+      <entry key="M30" value="7.630725267663066" />
+      <entry key="H1" value="11.62906224873705" />
+      <entry key="H2" value="19.887175140419295" />
+      <entry key="H4" value="37.37849243027595" />
+      <entry key="D1" value="168.4762225827806" />
+      <entry key="W1" value="324.7397099709324" />
     </decayedShown>
   </component>
   <component name="PackageJsonUpdateNotifier">

@@ -231,6 +231,7 @@ declare namespace Api {
       enabled: number
       builtin: number
       groups: number
+      groupCounts: Record<string, number>
       lastRefreshTime?: string
     }
   }
@@ -824,6 +825,85 @@ declare namespace Api {
           'partName' | 'partCode' | 'categoryId' | 'brand' | 'model' | 'supplierId' | 'status'
         > &
           Api.Common.CommonSearchParams
+      >
+    }
+  }
+
+  /** TMS 运输管理系统 */
+  namespace Tms {
+    namespace BasicData {
+      type CustomerAddressType = 'shipping' | 'receiving'
+
+      interface Customer {
+        id?: string
+        tenantId?: string
+        customerCode?: string
+        customerName: string
+        industry?: string
+        customerLevel?: string
+        tags?: string[]
+        region?: string
+        addressDetail?: string
+        postalCode?: string
+        enabled?: boolean
+        contactName?: string
+        contactPhone?: string
+        contactDepartment?: string
+        contactPosition?: string
+        contactEmail?: string
+        contactQq?: string
+        invoiceTitle?: string
+        taxNo?: string
+        bankName?: string
+        bankAccount?: string
+        remark?: string
+        createBy?: string
+        createTime?: string
+        updateBy?: string
+        updateTime?: string
+      }
+
+      type CustomerSearchParams = Partial<
+        Pick<Customer, 'customerLevel' | 'industry' | 'enabled'> &
+          Api.Common.CommonSearchParams & {
+            keyword?: string
+            createTimeRange?: string[]
+          }
+      >
+
+      interface CustomerOption {
+        id: string
+        customerCode?: string
+        customerName: string
+        contactName?: string
+        contactPhone?: string
+      }
+
+      interface CustomerAddress {
+        id?: string
+        tenantId?: string
+        customerId: string
+        addressType: CustomerAddressType
+        contactName: string
+        contactPhone: string
+        region: string
+        addressDetail: string
+        postalCode?: string
+        isDefault?: boolean
+        remark?: string
+        customer?: CustomerOption | null
+        createBy?: string
+        createTime?: string
+        updateBy?: string
+        updateTime?: string
+      }
+
+      type CustomerAddressSearchParams = Partial<
+        Pick<CustomerAddress, 'customerId' | 'addressType'> &
+          Api.Common.CommonSearchParams & {
+            keyword?: string
+            createTimeRange?: string[]
+          }
       >
     }
   }

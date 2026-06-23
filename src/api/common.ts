@@ -3,16 +3,26 @@ import { calcFileHash, formatSize } from '@/utils'
 import { useUserStore } from '@/store/modules/user'
 import dayjs from 'dayjs'
 import http from '@/utils/http'
+import TreeUtils, { type TreeNode } from '@/utils/tree'
 
 const { supabase, responseHandle } = useSupabase()
+const regionTreeUtils = new TreeUtils({ childrenKey: 'children' })
 
-export async function fetchRegionOptions(): Promise<string> {
-  return await http.get<string>({
+export interface RegionOption extends TreeNode {
+  name: string
+  code?: string
+  children?: RegionOption[]
+}
+
+export async function fetchRegionOptions(): Promise<RegionOption[]> {
+  const response = await http.get<unknown>({
     url: 'https://raw.githubusercontent.com/modood/Administrative-divisions-of-China/master/dist/pca-code.json',
     skipAuth: true,
     skipResponseWrapper: true,
     showErrorMessage: true
   })
+
+  return regionTreeUtils.normalizeTreeData<RegionOption>(response)
 }
 
 export async function checkUnique(params: {

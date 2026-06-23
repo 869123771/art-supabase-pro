@@ -5,16 +5,18 @@ import timezone from 'dayjs/plugin/timezone'
 dayjs.extend(utc)
 dayjs.extend(timezone)
 
-/** Format value to 'YYYY-MM-DD HH:mm:ss' using dayjs.
+/** Format a date/time value using dayjs.
  *  value can be:
  *   - full ISO timestamp string
  *   - Date
  *   - time-only string like '12:34:56' (will use today's date)
+ *  format: dayjs format string, defaults to 'YYYY-MM-DD HH:mm:ss'
  *  timezone: IANA timezone string (e.g., 'Asia/Shanghai') or undefined to use local timezone
  */
 export function formatWithDayjs(
   value: string | Date | null | undefined,
-  tz?: string
+  format = 'YYYY-MM-DD HH:mm:ss',
+  timezone?: string
 ): string | null {
   if (value == null) return null
 
@@ -23,14 +25,12 @@ export function formatWithDayjs(
     const today = dayjs()
     const datePart = today.format('YYYY-MM-DD')
     const composed = `${datePart} ${value}`
-    return tz
-      ? dayjs.tz(composed, tz).format('YYYY-MM-DD HH:mm:ss')
-      : dayjs(composed).format('YYYY-MM-DD HH:mm:ss')
+    return timezone ? dayjs.tz(composed, timezone).format(format) : dayjs(composed).format(format)
   }
 
   const d = typeof value === 'string' ? dayjs(value) : dayjs(value)
   if (!d.isValid()) return String(value)
-  return tz ? d.tz(tz).format('YYYY-MM-DD HH:mm:ss') : d.format('YYYY-MM-DD HH:mm:ss')
+  return timezone ? d.tz(timezone).format(format) : d.format(format)
 }
 
 export function toStartOfDayUTC(dateStr: string) {
