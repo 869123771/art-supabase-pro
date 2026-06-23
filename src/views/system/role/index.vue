@@ -44,6 +44,7 @@
     ArtTableQuerySearchBarProps,
     ArtTableQueryTableProps
   } from '@/components/core/tables/art-table-query/index.vue'
+  import { useSystemParam } from '@/hooks'
 
   defineOptions({ name: 'Role' })
 
@@ -134,21 +135,29 @@
 
   const roleEditDialogRef = ref<RoleEditDialogExpose>()
   const rolePermissionDialogRef = ref<RolePermissionDialogExpose>()
-  const DEFAULT_REGISTER_TENANT_CODE = 'public-register'
-  const DEFAULT_REGISTER_ROLE_CODE = 'R_REGISTER'
-  const SUPER_ROLE_CODE = 'R_SUPER'
+  const {
+    defaultRegisterTenantCode,
+    defaultRegisterRoleCode,
+    superRoleCode,
+    loadRoleBuiltinCodes
+  } = useSystemParam()
 
   const normalizeRoleCode = (roleCode?: string): string => String(roleCode ?? '').toUpperCase()
 
   const isDefaultRegisterRole = (row: RoleListItem): boolean => {
     return (
-      String(row.tenant?.tenantCode ?? '').toLowerCase() === DEFAULT_REGISTER_TENANT_CODE &&
-      normalizeRoleCode(row.roleCode) === DEFAULT_REGISTER_ROLE_CODE
+      String(row.tenant?.tenantCode ?? '').toLowerCase() ===
+        defaultRegisterTenantCode.value.toLowerCase() &&
+      normalizeRoleCode(row.roleCode) === normalizeRoleCode(defaultRegisterRoleCode.value)
     )
   }
 
   const isSuperRole = (row: RoleListItem): boolean =>
-    normalizeRoleCode(row.roleCode) === SUPER_ROLE_CODE
+    normalizeRoleCode(row.roleCode) === normalizeRoleCode(superRoleCode.value)
+
+  onMounted(() => {
+    void loadRoleBuiltinCodes()
+  })
 
   const getRoleActions = (row: RoleListItem): ButtonMoreItem[] => {
     if (isSuperRole(row)) {

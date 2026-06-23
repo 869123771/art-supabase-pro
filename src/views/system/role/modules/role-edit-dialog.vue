@@ -32,6 +32,7 @@
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import { addRole, editRole } from '@/api/system-manage'
   import { uniqueValidator } from '@/utils'
+  import { useSystemParam } from '@/hooks'
 
   type RoleListItem = Api.SystemManage.RoleListItem
   type DialogType = 'add' | 'edit'
@@ -50,22 +51,28 @@
   const formRef = ref<FormInstance>()
   const dialogType = ref<DialogType>('add')
   const currentTenantCode = ref('')
-  const DEFAULT_REGISTER_TENANT_CODE = 'public-register'
-  const DEFAULT_REGISTER_ROLE_CODE = 'R_REGISTER'
-  const SUPER_ROLE_CODE = 'R_SUPER'
+  const {
+    defaultRegisterTenantCode,
+    defaultRegisterRoleCode,
+    superRoleCode,
+    loadRoleBuiltinCodes
+  } = useSystemParam()
 
   const normalizeRoleCode = (roleCode?: string): string => String(roleCode ?? '').toUpperCase()
 
   const isDefaultRegisterRole = computed(() => {
     return (
       dialogType.value === 'edit' &&
-      currentTenantCode.value.toLowerCase() === DEFAULT_REGISTER_TENANT_CODE &&
-      normalizeRoleCode(form.roleCode) === DEFAULT_REGISTER_ROLE_CODE
+      currentTenantCode.value.toLowerCase() === defaultRegisterTenantCode.value.toLowerCase() &&
+      normalizeRoleCode(form.roleCode) === normalizeRoleCode(defaultRegisterRoleCode.value)
     )
   })
 
   const isSuperRole = computed(() => {
-    return dialogType.value === 'edit' && normalizeRoleCode(form.roleCode) === SUPER_ROLE_CODE
+    return (
+      dialogType.value === 'edit' &&
+      normalizeRoleCode(form.roleCode) === normalizeRoleCode(superRoleCode.value)
+    )
   })
 
   const isSystemBuiltinRole = computed(() => isDefaultRegisterRole.value || isSuperRole.value)
@@ -139,12 +146,12 @@
     try {
       const { id, ...params } = toRaw(form)
       if (isDefaultRegisterRole.value) {
-        params.roleCode = DEFAULT_REGISTER_ROLE_CODE
+        params.roleCode = defaultRegisterRoleCode.value
         params.enabled = true
       }
 
       if (isSuperRole.value) {
-        params.roleCode = SUPER_ROLE_CODE
+        params.roleCode = superRoleCode.value
         params.enabled = true
       }
 
@@ -161,6 +168,7 @@
   }
 
   const handleOpen = async (data: RoleEditDialogOpenData): Promise<void> => {
+    await loadRoleBuiltinCodes()
     await initializeForm(data)
     await dialogRef.value?.handleOpen(data, {
       title: data.type === 'add' ? '新增角色' : '编辑角色',

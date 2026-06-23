@@ -168,12 +168,14 @@
 <script setup lang="ts">
   import { updateCurrentUserPassword, updateCurrentUserProfile } from '@/api/auth'
   import { useUserStore } from '@/store/modules/user'
+  import { useSystemParam } from '@/hooks'
   import type { FormInstance, FormItemRule, FormRules } from 'element-plus'
 
   defineOptions({ name: 'UserCenter' })
 
   const userStore = useUserStore()
   const { getDictMap, getUserInfo: userInfo } = storeToRefs(userStore)
+  const { passwordMinLength, loadPasswordMinLength, getPasswordMinLengthMessage } = useSystemParam()
 
   const isEdit = ref(false)
   const isEditPwd = ref(false)
@@ -231,17 +233,21 @@
     sex: [{ required: true, message: '请选择性别', trigger: 'blur' }]
   })
 
-  const pwdRules = reactive<FormRules>({
+  const pwdRules = computed<FormRules>(() => ({
     password: [{ required: true, message: '请输入当前密码', trigger: 'blur' }],
     newPassword: [
       { required: true, message: '请输入新密码', trigger: 'blur' },
-      { min: 6, message: '密码长度不能少于 6 位', trigger: 'blur' }
+      {
+        min: passwordMinLength.value,
+        message: getPasswordMinLengthMessage(),
+        trigger: 'blur'
+      }
     ],
     confirmPassword: [
       { required: true, message: '请再次输入新密码', trigger: 'blur' },
       { validator: validateConfirmPassword, trigger: 'blur' }
     ]
-  })
+  }))
 
   /**
    * 用户标签列表
@@ -250,6 +256,11 @@
 
   onMounted(() => {
     getDate()
+    void loadPasswordMinLength().then(() => {
+      if (pwdForm.newPassword) {
+        void pwdFormRef.value?.validateField('newPassword')
+      }
+    })
   })
 
   /**

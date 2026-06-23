@@ -29,7 +29,7 @@
                   :placeholder="$t('register.placeholder.confirmPassword')"
                   type="password"
                   autocomplete="off"
-                  @keyup.enter="register"
+                  @keyup.enter="handleSubmit"
                   show-password
                 />
               </ElFormItem>
@@ -60,19 +60,20 @@
 </template>
 
 <script setup lang="ts">
-  import type { FormRules } from 'element-plus'
+  import type { FormInstance, FormRules } from 'element-plus'
   import { useI18n } from 'vue-i18n'
-  import { register, resetPassword } from '@/api/auth'
+  import { resetPassword } from '@/api/auth'
+  import { useSystemParam } from '@/hooks'
 
   defineOptions({ name: 'ForgetPassword' })
 
   const { t } = useI18n()
   const router = useRouter()
-  const route = useRoute()
+  const { passwordMinLength, loadPasswordMinLength, getPasswordMinLengthMessage } = useSystemParam()
 
   const loading = ref(false)
 
-  const formRef = ref<HTMLFormElement | null>(null)
+  const formRef = ref<FormInstance>()
   const form = ref({
     password: '',
     confirmPassword: ''
@@ -81,10 +82,22 @@
   const rules = computed<FormRules<{ password: string; confirmPassword: string }>>(() => ({
     password: [
       { required: true, validator: validatePassword, trigger: 'change' },
-      { min: 6, message: t('register.rule.passwordLength'), trigger: 'change' }
+      {
+        min: passwordMinLength.value,
+        message: getPasswordMinLengthMessage(t),
+        trigger: 'change'
+      }
     ],
     confirmPassword: [{ required: true, validator: validateConfirmPassword, trigger: 'change' }]
   }))
+
+  onMounted(() => {
+    void loadPasswordMinLength().then(() => {
+      if (form.value.password) {
+        void formRef.value?.validateField('password')
+      }
+    })
+  })
 
   /**
    * 验证密码

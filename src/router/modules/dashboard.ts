@@ -1,4 +1,5 @@
 import { AppRouteRecord } from '@/types/router'
+import { SYSTEM_PARAM_DEFAULTS } from '@/config/system-param-defaults'
 
 export const dashboardRoutes: AppRouteRecord = {
   name: 'Dashboard',
@@ -7,7 +8,7 @@ export const dashboardRoutes: AppRouteRecord = {
   meta: {
     title: 'menus.dashboard.title',
     icon: 'ri:pie-chart-line',
-    roles: ['R_SUPER', 'R_ADMIN']
+    roles: [SYSTEM_PARAM_DEFAULTS.SUPER_ROLE_CODE, 'R_ADMIN']
   },
   children: [
     {

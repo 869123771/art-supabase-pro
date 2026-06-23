@@ -30,6 +30,7 @@
   import ArtUploadImage from '@/components/core/forms/art-upload-image/index.vue'
   import { useUserStore } from '@/store/modules/user'
   import { addUser, editUser, fetchGetEnableTenantList } from '@/api/system-manage'
+  import { useSystemParam } from '@/hooks'
 
   type UserListItem = Api.SystemManage.UserListItem
   type SaveType = 'add' | 'edit'
@@ -47,6 +48,7 @@
   const userStore = useUserStore()
   const { getDictMap, getUserInfo, isSuper } = storeToRefs(userStore) as Record<string, any>
   const { t } = useI18n()
+  const { passwordMinLength, loadPasswordMinLength, getPasswordMinLengthMessage } = useSystemParam()
   const dialogRef = ref<ArtDialogExpose<Partial<UserListItem> | undefined>>()
   const formRef = ref<ArtFormExpose>()
 
@@ -82,7 +84,11 @@
     userEmail: [{ required: true, type: 'email', message: '请输入正确的邮箱', trigger: 'change' }],
     password: [
       { required: true, validator: validatePassword, trigger: 'change' },
-      { min: 6, message: t('register.rule.passwordLength'), trigger: 'change' }
+      {
+        min: passwordMinLength.value,
+        message: getPasswordMinLengthMessage(t),
+        trigger: 'change'
+      }
     ],
     confirmPassword: [{ required: true, validator: validateConfirmPassword, trigger: 'change' }]
   }))
@@ -292,6 +298,13 @@
     await dialogRef.value?.handleOpen(row, {
       title: isEdit.value ? '编辑用户' : '添加用户',
       width: '60%',
+      onOpen: () => {
+        void loadPasswordMinLength().then(() => {
+          if (formData.value.password) {
+            void formRef.value?.validate()
+          }
+        })
+      },
       onConfirm: handleSubmit,
       onReset: () => void resetForm()
     })

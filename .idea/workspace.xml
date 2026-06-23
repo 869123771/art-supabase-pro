@@ -9,15 +9,33 @@
   <component name="ChangeListManager">
     <list default="true" id="b8f35119-660a-46e7-82f4-53eee06863eb" name="Changes" comment="feat : vehicle reminder manage">
       <change beforePath="$PROJECT_DIR$/.agents/skills/art-supabase-pro-conventions/SKILL.md" beforeDir="false" afterPath="$PROJECT_DIR$/.agents/skills/art-supabase-pro-conventions/SKILL.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/dataSources.local.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources.local.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/vehicle-manage-system/archive-manage/modules/vehicle-archive-detail-content.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-manage-system/archive-manage/modules/vehicle-archive-detail-content.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/vehicle-manage-system/archive-manage/vehicle-archive-edit/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-manage-system/archive-manage/vehicle-archive-edit/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-manage/accident-record-detail/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-manage/accident-record-detail/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-manage/maintenance-record-detail/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-manage/maintenance-record-detail/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-manage/part-manage-detail/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-manage/part-manage-detail/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-manage/routine-inspection-detail/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-manage/routine-inspection-detail/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-manage/vehicle-inspection-detail/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-manage/vehicle-inspection-detail/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-manage/vehicle-insurance-detail/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-manage/vehicle-insurance-detail/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/api/system-manage.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/system-manage.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/core/forms/art-form/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/forms/art-form/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/core/forms/art-section-title/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/forms/art-section-title/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/core/tables/art-table/style.scss" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/tables/art-table/style.scss" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/directives/core/roles.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/directives/core/roles.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/hooks/index.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/hooks/index.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/mock/temp/formData.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/mock/temp/formData.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/router/modules/dashboard.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/router/modules/dashboard.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/router/modules/examples.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/router/modules/examples.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/router/modules/system.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/router/modules/system.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/store/modules/user.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/store/modules/user.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/types/api/api.d.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/types/api/api.d.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/types/store/index.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/types/store/index.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/auth/login/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/auth/login/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/auth/register/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/auth/register/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/auth/reset-password/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/auth/reset-password/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/examples/permission/button-auth/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/examples/permission/button-auth/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/examples/permission/page-visibility/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/examples/permission/page-visibility/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/examples/permission/switch-role/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/examples/permission/switch-role/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/system/menu/modules/menu-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/system/menu/modules/menu-dialog.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/system/role/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/system/role/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/system/role/modules/role-edit-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/system/role/modules/role-edit-dialog.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/system/tenant/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/system/tenant/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/system/user-center/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/system/user-center/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/system/user/modules/user-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/system/user/modules/user-dialog.vue" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -25,7 +43,7 @@
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="EmbeddingIndexingInfo">
-    <option name="cachedIndexableFilesCount" value="1026" />
+    <option name="cachedIndexableFilesCount" value="1029" />
     <option name="fileBasedEmbeddingIndicesEnabled" value="true" />
   </component>
   <component name="FileTemplateManagerImpl">
@@ -197,7 +215,7 @@
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-js-predefined-d6986cc7102b-31caf2ab9e3c-JavaScript-WS-261.25134.101" />
+        <option value="bundled-js-predefined-d6986cc7102b-3bd3a6803838-JavaScript-WS-261.22158.274" />
       </set>
     </attachedChunks>
   </component>
@@ -287,6 +305,10 @@
       <workItem from="1782005845692" duration="16352000" />
       <workItem from="1782040281726" duration="949000" />
       <workItem from="1782042715181" duration="363000" />
+      <workItem from="1782089752515" duration="10373000" />
+      <workItem from="1782119249940" duration="313000" />
+      <workItem from="1782120799351" duration="17622000" />
+      <workItem from="1782201721185" duration="7138000" />
     </task>
     <task id="LOCAL-00001" summary="feat project clean">
       <option name="closed" value="true" />

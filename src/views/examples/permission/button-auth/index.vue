@@ -63,10 +63,10 @@
 
           <div class="grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-5">
             <div class="flex flex-col gap-2">
-              <ElButton type="primary" plain v-roles="'R_SUPER'"> 超级管理员可见 </ElButton>
+              <ElButton type="primary" plain v-roles="superRoleCode"> 超级管理员可见 </ElButton>
               <div class="text-xs">
                 <code class="block p-1 px-2 mb-1 font-mono bg-g-200 border-full-d rounded"
-                  >v-roles="'R_SUPER'"</code
+                  >v-roles="'{{ superRoleCode }}'"</code
                 >
                 <span class="text-g-700">只有超级管理员可见</span>
               </div>
@@ -74,12 +74,12 @@
 
             <!-- 管理员级别按钮 -->
             <div class="flex flex-col gap-2">
-              <ElButton type="warning" plain v-roles="['R_SUPER', 'R_ADMIN']">
+              <ElButton type="warning" plain v-roles="[superRoleCode, adminRoleCode]">
                 管理员可见
               </ElButton>
               <div class="text-xs">
                 <code class="block p-1 px-2 mb-1 font-mono bg-g-200 border-full-d rounded"
-                  >v-roles="['R_SUPER', 'R_ADMIN']"</code
+                  >v-roles="['{{ superRoleCode }}', '{{ adminRoleCode }}']"</code
                 >
                 <span class="text-g-700">超级管理员和管理员可见</span>
               </div>
@@ -87,12 +87,14 @@
 
             <!-- 所有已登录用户可见 -->
             <div class="flex flex-col gap-2">
-              <ElButton type="success" plain v-roles="['R_SUPER', 'R_ADMIN', 'R_USER']">
+              <ElButton type="success" plain v-roles="[superRoleCode, adminRoleCode, userRoleCode]">
                 所有用户可见
               </ElButton>
               <div class="text-xs">
                 <code class="block p-1 px-2 mb-1 font-mono bg-g-200 border-full-d rounded"
-                  >v-roles="['R_SUPER', 'R_ADMIN', 'R_USER']"</code
+                  >v-roles="['{{ superRoleCode }}', '{{ adminRoleCode }}', '{{
+                    userRoleCode
+                  }}']"</code
                 >
                 <span class="text-g-700">所有已登录用户可见</span>
               </div>
@@ -414,6 +416,7 @@
   import { useUserStore } from '@/store/modules/user'
   import { useAppMode } from '@/hooks/core/useAppMode'
   import { useRoute } from 'vue-router'
+  import { SYSTEM_PARAM_DEFAULTS } from '@/config/system-param-defaults'
 
   defineOptions({ name: 'PermissionButtonAuth' })
 
@@ -421,12 +424,15 @@
   const { isFrontendMode } = useAppMode()
   const userStore = useUserStore()
   const route = useRoute()
+  const superRoleCode = SYSTEM_PARAM_DEFAULTS.SUPER_ROLE_CODE
+  const adminRoleCode = 'R_ADMIN'
+  const userRoleCode = 'R_USER'
 
   // 动态功能状态
   const dynamicFeatureEnabled = ref(false)
 
   const ROLE_PERMISSION_MAP: Record<string, string[]> = {
-    R_SUPER: ['view', 'add', 'edit', 'delete', 'export', 'publish', 'config', 'manage'],
+    [superRoleCode]: ['view', 'add', 'edit', 'delete', 'export', 'publish', 'config', 'manage'],
     R_ADMIN: ['view', 'add', 'edit', 'export', 'publish'],
     R_USER: ['view']
   }
@@ -489,7 +495,7 @@
   // 获取角色标签类型
   const getRoleTagType = (role: string): 'primary' | 'success' | 'info' | 'warning' | 'danger' => {
     const roleMap: Record<string, 'primary' | 'success' | 'info' | 'warning' | 'danger'> = {
-      R_SUPER: 'warning',
+      [superRoleCode]: 'warning',
       R_ADMIN: 'primary',
       R_USER: 'success'
     }
@@ -499,7 +505,7 @@
   // 获取角色显示名称
   const getRoleDisplayName = (role: string) => {
     const roleMap: Record<string, string> = {
-      R_SUPER: '超级管理员',
+      [superRoleCode]: '超级管理员',
       R_ADMIN: '管理员',
       R_USER: '普通用户'
     }

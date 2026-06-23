@@ -47,6 +47,7 @@ import type { DictMap } from '@/types/store'
 import { fetchGetUserInfo, logout } from '@/api/auth'
 import { fetchGetDictList } from '@/api/data-center'
 import { groupBy } from 'lodash-es'
+import { useSystemParam } from '@/hooks/core/system-param'
 /**
  * 用户状态管理
  * 管理用户登录状态、个人信息、语言设置、搜索历史、锁屏状态等
@@ -81,7 +82,8 @@ export const useUserStore = defineStore(
     // 计算属性：获取工作台状态
     const getWorktabState = computed(() => useWorktabStore().$state)
     // 当前用户是否为超级管理员
-    const isSuper = computed(() => getUserInfo.value.userRoles?.includes('R_SUPER'))
+    const { superRoleCode, loadRoleBuiltinCodes } = useSystemParam()
+    const isSuper = computed(() => getUserInfo.value.userRoles?.includes(superRoleCode.value))
     /**
      * 设置用户字典
      * @param data 字典信息
@@ -248,6 +250,7 @@ export const useUserStore = defineStore(
     }
 
     const fetchUserInfo = async () => {
+      await loadRoleBuiltinCodes()
       const { data } = await fetchGetUserInfo()
       const { id: userId, userEmail: email, ...res } = data ?? {}
       setUserInfo({

@@ -294,12 +294,12 @@
           label: '角色权限',
           help: () =>
             [
-              '仅用于前端权限模式：配置角色标识（如 R_SUPER、R_ADMIN）',
+                '仅用于前端权限模式：配置角色标识',
               '后端权限模式：无需配置'
             ].map((value) => h('p', value)),
           key: 'roles',
           type: 'inputTag',
-          props: { placeholder: '输入角色标识后按回车，如：R_SUPER' }
+          props: { placeholder: '输入角色标识后按回车' }
         },*/
         {
           label: '外部链接',

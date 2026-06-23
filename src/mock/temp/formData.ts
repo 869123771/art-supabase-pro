@@ -8,6 +8,7 @@ import avatar7 from '@/assets/images/avatar/avatar7.webp'
 import avatar8 from '@/assets/images/avatar/avatar8.webp'
 import avatar9 from '@/assets/images/avatar/avatar9.webp'
 import avatar10 from '@/assets/images/avatar/avatar10.webp'
+import { SYSTEM_PARAM_DEFAULTS } from '@/config/system-param-defaults'
 
 export interface User {
   id: number
@@ -202,7 +203,7 @@ export interface Role {
 export const ROLE_LIST_DATA: Role[] = [
   {
     roleName: '超级管理员',
-    roleCode: 'R_SUPER',
+    roleCode: SYSTEM_PARAM_DEFAULTS.SUPER_ROLE_CODE,
     des: '拥有系统全部权限',
     date: '2025-05-15 12:30:45',
     enable: true

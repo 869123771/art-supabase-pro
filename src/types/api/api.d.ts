@@ -193,6 +193,46 @@ declare namespace Api {
     type TenantSearchParams = Partial<
       Pick<TenantListItem, 'tenantCode' | 'tenantName' | 'status'> & Api.Common.CommonSearchParams
     >
+
+    type SystemParamType = 'single_text' | 'multi_text' | 'number' | 'boolean' | 'json'
+
+    interface SystemParamItem {
+      id?: string
+      tenantId?: string
+      paramName: string
+      paramKey: string
+      groupCode: string
+      groupName: string
+      paramType: SystemParamType
+      defaultValue?: string | null
+      paramValue: string
+      extendConfig?: Record<string, any>
+      enabled: boolean
+      builtin: boolean
+      sort: number
+      remark?: string | null
+      createBy?: string
+      createTime?: string
+      updateBy?: string
+      updateTime?: string
+    }
+
+    type SystemParamSearchParams = Partial<
+      Pick<SystemParamItem, 'groupCode' | 'paramType'> &
+        Api.Common.CommonSearchParams & {
+          keyword?: string
+          enabled?: boolean
+          builtin?: boolean
+        }
+    >
+
+    interface SystemParamStats {
+      total: number
+      enabled: number
+      builtin: number
+      groups: number
+      lastRefreshTime?: string
+    }
   }
 
   /** 车辆管理系统 */

@@ -7,6 +7,8 @@ const { supabase, keysToSnakeDeep, responseHandle } = useSupabase()
 
 type TenantListItem = Api.SystemManage.TenantListItem
 type TenantSearchParams = Api.SystemManage.TenantSearchParams
+type SystemParamItem = Api.SystemManage.SystemParamItem
+type SystemParamSearchParams = Api.SystemManage.SystemParamSearchParams
 
 // 获取用户列表
 export async function fetchGetUserList(params: Api.SystemManage.UserSearchParams) {
@@ -120,6 +122,143 @@ export async function deleteTenantBatch(ids: string[]) {
   return await responseHandle(() => supabase.from('sys_tenant').delete().in('id', ids) as any, {
     showMessage: true
   })
+}
+
+export async function fetchGetSystemParamList(params: SystemParamSearchParams) {
+  const { keyword = '', groupCode, paramType, enabled, builtin, from = 0, to = 9 } = params
+  const specs = [
+    { col: 'group_code', op: 'eq', val: groupCode },
+    { col: 'param_type', op: 'eq', val: paramType },
+    { col: 'enabled', op: 'eq', val: enabled },
+    { col: 'builtin', op: 'eq', val: builtin }
+  ]
+
+  let query: any = supabase
+    .from('sys_param')
+    .select('*', { count: 'exact' })
+    .order('sort', { ascending: true })
+    .order('create_time', { ascending: false })
+    .range(from, to)
+
+  const trimmedKeyword = keyword.trim()
+  if (trimmedKeyword) {
+    query = query.or(
+      `param_name.ilike.%${trimmedKeyword}%,param_key.ilike.%${trimmedKeyword}%,remark.ilike.%${trimmedKeyword}%`
+    )
+  }
+
+  query = applyFilters(query, specs, { skipEmpty: true, camelToSnake: false })
+  return await responseHandle(() => query as any, {
+    ignoreCheck: true,
+    showErrorMessage: true
+  })
+}
+
+export async function fetchSystemParamStats(): Promise<{
+  data: Api.SystemManage.SystemParamStats
+  error: unknown | null
+}> {
+  const query = supabase.from('sys_param').select('id, enabled, builtin, group_code, update_time')
+  const { data, error } = await responseHandle<SystemParamItem[]>(() => query as any, {
+    ignoreCheck: true,
+    showErrorMessage: true
+  })
+
+  const rows = data ?? []
+  const latestUpdateTime = rows
+    .map((row) => row.updateTime || '')
+    .filter(Boolean)
+    .sort()
+    .at(-1)
+
+  return {
+    data: {
+      total: rows.length,
+      enabled: rows.filter((row) => row.enabled).length,
+      builtin: rows.filter((row) => row.builtin).length,
+      groups: new Set(rows.map((row) => row.groupCode).filter(Boolean)).size,
+      lastRefreshTime: latestUpdateTime
+    },
+    error
+  }
+}
+
+export async function fetchSystemParamByKey(paramKey: string): Promise<{
+  data: SystemParamItem | null
+  error: unknown | null
+}> {
+  return await responseHandle<SystemParamItem | null>(
+    () =>
+      supabase
+        .from('sys_param')
+        .select('*')
+        .eq('param_key', paramKey)
+        .eq('enabled', true)
+        .maybeSingle() as any,
+    {
+      ignoreCheck: true,
+      showErrorMessage: false
+    }
+  )
+}
+
+export async function addSystemParam(params: SystemParamItem) {
+  return await responseHandle(
+    () => supabase.from('sys_param').insert(keysToSnakeDeep(params)) as any,
+    {
+      showMessage: true,
+      breakReturn: true
+    }
+  )
+}
+
+export async function editSystemParam(params: SystemParamItem) {
+  const { id, ...payload } = params
+  return await responseHandle(
+    () =>
+      supabase
+        .from('sys_param')
+        .update(keysToSnakeDeep(payload), { count: 'exact' })
+        .eq('id', id) as any,
+    {
+      showMessage: true,
+      breakReturn: true,
+      requireAffected: true,
+      noAffectedMessage: WRITE_PERMISSION_DENIED_MESSAGE
+    }
+  )
+}
+
+export async function deleteSystemParam(id: string) {
+  return await responseHandle(
+    () =>
+      supabase
+        .from('sys_param')
+        .delete({ count: 'exact' })
+        .eq('id', id)
+        .eq('builtin', false) as any,
+    {
+      showMessage: true,
+      requireAffected: true,
+      noAffectedMessage: '内置参数不允许删除，或当前账号没有删除权限'
+    }
+  )
+}
+
+export async function deleteSystemParamBatch(ids: string[]) {
+  return await responseHandle(
+    () =>
+      supabase
+        .from('sys_param')
+        .delete({ count: 'exact' })
+        .in('id', ids)
+        .eq('builtin', false) as any,
+    {
+      showMessage: true,
+      requireAffected: true,
+      noAffectedMessage: '未删除任何数据，请确认未选择内置参数且当前账号有删除权限'
+    }
+  )
 }
 
 /*重置密码*/

@@ -21,7 +21,12 @@
           :lg="getColSpan(item.span, 'lg')"
           :xl="getColSpan(item.span, 'xl')"
         >
-          <ArtSectionTitle v-if="isDividerItem(item)" :show-line="getDividerShowLine(item)">
+          <ArtSectionTitle
+            v-if="isDividerItem(item)"
+            :show-line="getDividerShowLine(item)"
+            :show-label="getDividerShowLabel(item)"
+            :show-marker="getDividerShowMarker(item)"
+          >
             <slot
               :name="item.key"
               :item="item"
@@ -274,6 +279,10 @@
   export interface FormItemDividerProps {
     /** Whether to show the divider title extension line. */
     showLine?: boolean
+    /** Whether to show the divider label content. */
+    showLabel?: boolean
+    /** Whether to show the divider leading marker. */
+    showMarker?: boolean
   }
 
   export type FormItemComponentProps<TType extends FormItemType = FormItemType> = TType extends
@@ -953,6 +962,10 @@
   const isDividerItem = (item: FormItem): boolean => String(item.type) === dividerType
 
   const getDividerShowLine = (item: FormItem): boolean => getProps(item).showLine !== false
+
+  const getDividerShowLabel = (item: FormItem): boolean => getProps(item).showLabel !== false
+
+  const getDividerShowMarker = (item: FormItem): boolean => getProps(item).showMarker !== false
 
   const getFormItemLabelWidth = (item: FormItem): string | number | undefined => {
     return item.label ? item.labelWidth || labelWidth.value : undefined

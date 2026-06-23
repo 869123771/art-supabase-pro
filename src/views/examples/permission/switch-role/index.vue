@@ -99,11 +99,13 @@
   import { computed, ref } from 'vue'
   import { useUserStore } from '@/store/modules/user'
   import { useI18n } from 'vue-i18n'
+  import { SYSTEM_PARAM_DEFAULTS } from '@/config/system-param-defaults'
 
   defineOptions({ name: 'PermissionSwitchRole' })
 
   const { t } = useI18n()
   const userStore = useUserStore()
+  const superRoleCode = SYSTEM_PARAM_DEFAULTS.SUPER_ROLE_CODE
 
   // 响应式数据
   const switching = ref(false)
@@ -124,7 +126,7 @@
       userName: 'Super',
       userId: 1,
       email: 'super@example.com',
-      userRoles: ['R_SUPER'],
+      userRoles: [superRoleCode],
       permissions: ['view', 'add', 'edit', 'delete', 'export', 'publish', 'config', 'manage'],
       color: '#E6A23C',
       description: '拥有系统最高权限，可以访问所有功能模块'
@@ -157,7 +159,7 @@
   const getRoleTagType = (role?: string): 'info' | 'warning' | 'primary' | 'success' | 'danger' => {
     if (!role) return 'info'
     const roleMap: Record<string, 'info' | 'warning' | 'primary' | 'success' | 'danger'> = {
-      R_SUPER: 'warning',
+      [superRoleCode]: 'warning',
       R_ADMIN: 'primary',
       R_USER: 'success'
     }
@@ -168,7 +170,7 @@
   const getRoleDisplayName = (role?: string): string => {
     if (!role) return '未知角色'
     const roleMap: Record<string, string> = {
-      R_SUPER: '超级管理员',
+      [superRoleCode]: '超级管理员',
       R_ADMIN: '管理员',
       R_USER: '普通用户'
     }

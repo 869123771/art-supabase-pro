@@ -154,7 +154,7 @@ Follow these rules:
 - Return `false` from `onConfirm` when validation or persistence fails.
 - Let `ArtDialog` manage confirm loading, automatic close, and close-time reset.
 - Initialize from a fresh default factory and clone mutable edit data.
-- Use `contentMaxHeight` when dialog content should size naturally until a maximum height and then scroll. Use `contentHeight` only when a fixed content area is required. Do not nest page-local `ElScrollbar` for ordinary dialog content scrolling.
+- Use `contentMaxHeight` when the entire dialog content should size naturally until a maximum height and then scroll. Use `contentHeight` only when a fixed content area is required. For independent scroll regions inside a dialog, drawer, card, or side panel, wrap that region with Element Plus `ElScrollbar` and keep the parent height constrained.
 - Use the `#footer="{ loading, api }"` slot only for workflows requiring extra actions; route the primary action through `api.handleConfirm()`.
 - Put one-off `ElDialog` props in `handleOpen(..., { dialogProps })`; keep reusable defaults on the component.
 
@@ -181,6 +181,7 @@ Apply the same ownership model to `ArtDrawer`.
 - In Vue SFCs with `lang="scss"`, write styles with SCSS nesting under the feature/root class instead of repeating flat sibling selectors.
 - Keep responsive overrides nested under the same root selector and place `:deep(...)` rules inside the relevant component block.
 - Avoid adding scattered top-level selectors in scoped SCSS unless the selector genuinely targets an independent root.
+- Use Element Plus `ElScrollbar` for page, card, panel, drawer, and dialog-section scroll containers instead of native `overflow-y: auto` scrollbars. Give the scrollbar container a stable height or flex-bounded parent (`height`, `max-height`, or `flex: 1; min-height: 0`) so the scrollbar is owned by the intended content area.
 
 ## Async And Error Semantics
 

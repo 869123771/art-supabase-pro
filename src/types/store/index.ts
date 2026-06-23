@@ -143,6 +143,8 @@ export interface DictMap extends Record<string, Api.DataCenter.DictListItem[] | 
   vehiclePartWarrantyMode?: Api.DataCenter.DictListItem[]
   parts_unit?: Api.DataCenter.DictListItem[]
   FILE_EXTENSION_LABEL_MAP?: Api.DataCenter.DictListItem[]
+  systemParamGroup?: Api.DataCenter.DictListItem[]
+  systemParamType?: Api.DataCenter.DictListItem[]
 }
 
 // 设置Store状态

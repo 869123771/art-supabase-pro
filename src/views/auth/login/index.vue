@@ -116,7 +116,6 @@
 </template>
 
 <script setup lang="ts">
-  import AppConfig from '@/config'
   import { useUserStore } from '@/store/modules/user'
   import { useI18n } from 'vue-i18n'
   import { HttpError } from '@/utils/http/error'
@@ -154,7 +153,7 @@
       label: t('login.roles.super'),
       userName: 'Super',
       password: '123456',
-      roles: ['R_SUPER']
+      roles: [SYSTEM_PARAM_DEFAULTS.SUPER_ROLE_CODE]
     },
     {
       key: 'admin',

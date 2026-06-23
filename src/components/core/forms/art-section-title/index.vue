@@ -1,9 +1,19 @@
 <template>
-  <div :class="['art-section-title', { 'art-section-title--with-line': showLine }]">
-    <slot>
-      <component v-if="typeof title !== 'string'" :is="title" />
-      <span v-else>{{ title }}</span>
-    </slot>
+  <div
+    :class="[
+      'art-section-title',
+      {
+        'art-section-title--with-line': showLine,
+        'art-section-title--with-marker': showMarker
+      }
+    ]"
+  >
+    <template v-if="showLabel">
+      <slot>
+        <component v-if="typeof title !== 'string'" :is="title" />
+        <span v-else>{{ title }}</span>
+      </slot>
+    </template>
   </div>
 </template>
 
@@ -18,10 +28,14 @@
     defineProps<{
       title?: ArtSectionTitleContent
       showLine?: boolean
+      showLabel?: boolean
+      showMarker?: boolean
     }>(),
     {
       title: '',
-      showLine: true
+      showLine: true,
+      showLabel: true,
+      showMarker: true
     }
   )
 </script>
@@ -36,7 +50,7 @@
     font-weight: 600;
     line-height: 24px;
 
-    &::before {
+    &--with-marker::before {
       width: 3px;
       height: 14px;
       margin-right: 8px;

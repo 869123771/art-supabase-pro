@@ -36,3 +36,4 @@ export { useImageViewer } from './core/useImageViewer'
 
 //supabase 相关
 export { useSupabase } from './core/useSupabase'
+export { useSystemParam } from './core/system-param'

@@ -90,6 +90,7 @@
   import type { FormInstance, FormRules } from 'element-plus'
   import type { QueryResult } from '@/hooks/core/useSupabase'
   import { register } from '@/api/auth'
+  import { useSystemParam } from '@/hooks'
 
   defineOptions({ name: 'Register' })
 
@@ -104,11 +105,11 @@
 
   const USERNAME_MIN_LENGTH = 3
   const USERNAME_MAX_LENGTH = 20
-  const PASSWORD_MIN_LENGTH = 6
   const REDIRECT_DELAY = 1000
 
   const { t, locale } = useI18n()
   const router = useRouter()
+  const { passwordMinLength, loadPasswordMinLength, getPasswordMinLengthMessage } = useSystemParam()
 
   const formRef = ref<FormInstance>()
 
@@ -118,6 +119,14 @@
   // 监听语言切换，重置表单
   watch(locale, () => {
     formKey.value++
+  })
+
+  onMounted(() => {
+    void loadPasswordMinLength().then(() => {
+      if (formData.password) {
+        void formRef.value?.validateField('password')
+      }
+    })
   })
 
   const formData = reactive<RegisterForm>({
@@ -190,7 +199,11 @@
     ],
     password: [
       { required: true, validator: validatePassword, trigger: 'change' },
-      { min: PASSWORD_MIN_LENGTH, message: t('register.rule.passwordLength'), trigger: 'change' }
+      {
+        min: passwordMinLength.value,
+        message: getPasswordMinLengthMessage(t),
+        trigger: 'change'
+      }
     ],
     email: [{ type: 'email', trigger: 'change', message: t('register.rule.emailIncorrect') }],
     confirmPassword: [{ required: true, validator: validateConfirmPassword, trigger: 'change' }],

@@ -29,6 +29,7 @@
   import { deleteTenant, deleteTenantBatch, fetchGetTenantList } from '@/api/system-manage'
   import TenantDialog from './modules/tenant-dialog.vue'
   import { useUserStore } from '@/store/modules/user'
+  import { useSystemParam } from '@/hooks'
 
   defineOptions({ name: 'Tenant' })
 
@@ -41,11 +42,18 @@
   }
   const userStore = useUserStore()
   const { getDictMap, isSuper } = storeToRefs(userStore)
+  const { defaultRegisterTenantCode, loadRoleBuiltinCodes } = useSystemParam()
 
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<DialogExpose>()
-  const SYSTEM_TENANT_CODES = new Set(['platform', 'public-register'])
+  const systemTenantCodes = computed(
+    () => new Set(['platform', defaultRegisterTenantCode.value.toLowerCase()])
+  )
   const canManageTenant = computed(() => Boolean(isSuper.value))
+
+  onMounted(() => {
+    void loadRoleBuiltinCodes()
+  })
 
   const searchQuery = ref<SearchParams>({
     tenantCode: '',
@@ -169,7 +177,7 @@
   }
 
   const isSystemTenant = (row: Pick<Tenant, 'tenantCode'>): boolean => {
-    return SYSTEM_TENANT_CODES.has(String(row.tenantCode ?? '').toLowerCase())
+    return systemTenantCodes.value.has(String(row.tenantCode ?? '').toLowerCase())
   }
 
   const getTenantActions = (row: Tenant): ButtonMoreItem[] => {
