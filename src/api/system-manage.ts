@@ -11,6 +11,7 @@ type TenantSearchParams = Api.SystemManage.TenantSearchParams
 type SystemParamItem = Api.SystemManage.SystemParamItem
 type SystemParamSearchParams = Api.SystemManage.SystemParamSearchParams
 type WebsiteConfigItem = Api.SystemManage.WebsiteConfigItem
+type WebsiteConfigParamMeta = Api.SystemManage.WebsiteConfigParamMeta
 const WEBSITE_CONFIG_PARAM_KEY = 'website.config'
 
 // 获取用户列表
@@ -272,6 +273,20 @@ export async function deleteSystemParamBatch(ids: string[]) {
 }
 
 /*重置密码*/
+const getWebsiteConfigParamMeta = (row: SystemParamItem): WebsiteConfigParamMeta => ({
+  paramName: row.paramName,
+  paramKey: row.paramKey,
+  groupCode: row.groupCode,
+  groupName: row.groupName,
+  paramType: row.paramType,
+  defaultValue: row.defaultValue ?? null,
+  extendConfig: row.extendConfig ?? {},
+  enabled: row.enabled,
+  builtin: row.builtin,
+  sort: row.sort,
+  remark: row.remark ?? null
+})
+
 const parseWebsiteConfigParam = (row: SystemParamItem | null): WebsiteConfigItem | null => {
   if (!row?.paramValue) return null
 
@@ -281,6 +296,7 @@ const parseWebsiteConfigParam = (row: SystemParamItem | null): WebsiteConfigItem
       ...parsed,
       id: row.id,
       tenantId: row.tenantId,
+      paramMeta: getWebsiteConfigParamMeta(row),
       createBy: row.createBy,
       createTime: row.createTime,
       updateBy: row.updateBy,
@@ -316,10 +332,11 @@ export async function fetchWebsiteConfig(): Promise<{
 }
 
 export async function saveWebsiteConfig(params: WebsiteConfigItem) {
-  const { id } = params
+  const { id, paramMeta } = params
   const payload = omit(params, [
     'id',
     'tenantId',
+    'paramMeta',
     'createBy',
     'createTime',
     'updateBy',
@@ -327,20 +344,6 @@ export async function saveWebsiteConfig(params: WebsiteConfigItem) {
   ])
 
   const paramValue = JSON.stringify(payload)
-  const basePayload: SystemParamItem = {
-    paramName: 'Website Config',
-    paramKey: WEBSITE_CONFIG_PARAM_KEY,
-    groupCode: 'website',
-    groupName: 'Website',
-    paramType: 'json',
-    defaultValue: null,
-    paramValue,
-    extendConfig: {},
-    enabled: true,
-    builtin: true,
-    sort: 1,
-    remark: 'Website public configuration'
-  }
 
   if (!id) {
     const existing = await responseHandle<SystemParamItem | null>(
@@ -357,7 +360,10 @@ export async function saveWebsiteConfig(params: WebsiteConfigItem) {
     )
     if (existing.data?.id) {
       const existingId = existing.data.id
-      const updatePayload = omit(basePayload, ['paramKey'])
+      const updatePayload = {
+        ...omit(paramMeta ?? getWebsiteConfigParamMeta(existing.data), ['paramKey']),
+        paramValue
+      }
       return await responseHandle(
         () =>
           supabase
@@ -373,8 +379,12 @@ export async function saveWebsiteConfig(params: WebsiteConfigItem) {
       )
     }
 
+    if (!paramMeta) {
+      throw new Error('未找到网站配置参数记录，无法保存网站配置')
+    }
+
     return await responseHandle(
-      () => supabase.from('sys_param').insert(keysToSnakeDeep(basePayload)) as any,
+      () => supabase.from('sys_param').insert(keysToSnakeDeep({ ...paramMeta, paramValue })) as any,
       {
         showMessage: true,
         breakReturn: true
@@ -386,7 +396,13 @@ export async function saveWebsiteConfig(params: WebsiteConfigItem) {
     () =>
       supabase
         .from('sys_param')
-        .update(keysToSnakeDeep({ paramValue }), { count: 'exact' })
+        .update(
+          keysToSnakeDeep({
+            ...(paramMeta ? omit(paramMeta, ['paramKey']) : {}),
+            paramValue
+          }),
+          { count: 'exact' }
+        )
         .eq('id', id) as any,
     {
       showMessage: true,

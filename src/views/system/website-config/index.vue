@@ -273,16 +273,16 @@
                     :rows="3"
                   />
                 </ElFormItem>
-                <ElFormItem label="Logo 地址" prop="logoUrl">
-                  <ElInput
-                    v-model.trim="form.logoUrl"
-                    placeholder="如：https://example.com/logo.png"
-                  />
+                <ElFormItem label="Logo" prop="logoUrl">
+                  <ArtUploadImage v-model="form.logoUrl" title="上传 Logo" :size="120" :limit="1" />
                 </ElFormItem>
-                <ElFormItem label="Favicon 地址" prop="faviconUrl">
-                  <ElInput
-                    v-model.trim="form.faviconUrl"
-                    placeholder="如：https://example.com/favicon.ico"
+                <ElFormItem label="Favicon" prop="faviconUrl">
+                  <ArtUploadImage
+                    v-model="form.faviconUrl"
+                    title="上传 Favicon"
+                    :size="120"
+                    :limit="1"
+                    file-type="image/*,.ico"
                   />
                 </ElFormItem>
               </template>
@@ -368,6 +368,7 @@
   import { createWebsiteConfigDefaults } from '@/config/website-config-defaults'
   import { useWebsiteConfig } from '@/hooks'
   import { formatWithDayjs } from '@/utils/time'
+  import ArtUploadImage from '@/components/core/forms/art-upload-image/index.vue'
 
   defineOptions({ name: 'WebsiteConfig' })
 
@@ -456,7 +457,7 @@
   const turnstileSizeOptions = [
     { label: '默认', value: 'normal' },
     { label: '紧凑', value: 'compact' },
-    { label: '隐形', value: 'flexible' }
+    { label: '隐藏', value: 'hidden' }
   ]
 
   const turnstileThemeOptions = [
@@ -543,7 +544,9 @@
   ])
 
   const setForm = (config: WebsiteConfig): void => {
-    Object.assign(form, createWebsiteConfigDefaults(), config)
+    Object.assign(form, createWebsiteConfigDefaults(), config, {
+      turnstileSize: config.turnstileSize === 'flexible' ? 'hidden' : config.turnstileSize
+    })
     originalForm.value = cloneDeep(form)
   }
 

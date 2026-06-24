@@ -72,15 +72,6 @@ const fastEnterConfig: FastEnterConfig = {
       enabled: true,
       order: 7,
       routeName: 'ChangeLog'
-    },
-    {
-      name: '哔哩哔哩',
-      description: '技术分享与交流',
-      icon: 'ri:bilibili-line',
-      iconColor: '#FB7299',
-      enabled: true,
-      order: 8,
-      link: WEB_LINKS.BILIBILI
     }
   ],
   // 快速链接

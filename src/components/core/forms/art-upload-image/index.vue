@@ -1,5 +1,6 @@
 <template>
   <el-upload
+    ref="uploadRef"
     v-model:file-list="fileList"
     class="art-upload"
     :before-upload="beforeUpload"
@@ -71,7 +72,7 @@
 </template>
 
 <script setup lang="tsx">
-  import { ElMessage, UploadUserFile, UploadRequestOptions } from 'element-plus'
+  import { ElMessage, UploadUserFile, UploadRequestOptions, type UploadFile } from 'element-plus'
   import { isArray } from 'lodash-es'
   import ArtResourcePicker from '@/components/core/forms/art-resource-picker/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
@@ -101,6 +102,7 @@
   }>()
 
   const uploadBtnRef = ref<HTMLElement>()
+  const uploadRef = ref<{ $el?: HTMLElement }>()
   const isOpenResource = ref<boolean>(false)
   const previewList = ref<string[]>([])
   const ElImageRefs = ref<Array<{ $el?: HTMLElement }> | { $el?: HTMLElement } | null>(null)
@@ -138,10 +140,9 @@
 
   watch(
     () => fileList.value.length,
-    (length: number) => {
-      const uploadTextDom: HTMLElement | null = document.querySelector(
-        `.art-upload .el-upload--text`
-      )
+    async (length: number) => {
+      await nextTick()
+      const uploadTextDom = uploadRef.value?.$el?.querySelector<HTMLElement>('.el-upload--text')
       if (uploadTextDom) {
         uploadTextDom.style.display = length > 0 ? 'none' : 'block'
       }
@@ -195,11 +196,30 @@
     )
   }
 
-  function handleSuccess(res: any) {
-    const [{ id, origin_name, url }] = res ?? []
-    const index = fileList.value.findIndex((item: any) => item.response[0]?.id === id)
-    fileList.value[index].name = origin_name
-    fileList.value[index].url = url
+  const getErrorMessage = (error?: unknown): string => {
+    if (error instanceof Error && error.message) return error.message
+    if (typeof error === 'object' && error !== null && 'message' in error) {
+      const message = (error as { message?: unknown }).message
+      if (typeof message === 'string' && message) return message
+    }
+    return '图片上传失败，请您重新上传！'
+  }
+
+  function handleSuccess(res: unknown, uploadFile: UploadFile) {
+    const resource = Array.isArray(res)
+      ? (res[0] as Api.DataCenter.Resources.ResourceListItem | undefined)
+      : undefined
+    if (!resource?.url) {
+      uploadFile.status = 'fail'
+      handleError(new Error('图片上传失败，服务端未返回文件地址'))
+      return
+    }
+
+    const index = fileList.value.findIndex((item) => item.uid === uploadFile.uid)
+    if (index === -1) return
+
+    fileList.value[index].name = resource.originName ?? uploadFile.name
+    fileList.value[index].url = resource.url
 
     updateModelValue()
   }
@@ -221,8 +241,8 @@
     ElMessage.error(`当前最多只能上传 ${limit} 张图片，请重新选择上传！`)
   }
 
-  function handleError() {
-    ElMessage.error(`图片上传失败，请您重新上传！`)
+  function handleError(error?: unknown) {
+    ElMessage.error(getErrorMessage(error))
   }
 
   const handleView = () => {

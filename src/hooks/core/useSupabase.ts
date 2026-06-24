@@ -132,7 +132,8 @@ export function useSupabase() {
     if (error) {
       const responseJson = await response?.json?.()
       const message = String(
-        (responseJson?.error || (error as any)?.message) ?? JSON.stringify(error)
+        (responseJson?.message || (error as any)?.message || responseJson?.error) ??
+          JSON.stringify(error)
       )
       if (showMessage || showErrorMessage) {
         ElMessage.error(message)

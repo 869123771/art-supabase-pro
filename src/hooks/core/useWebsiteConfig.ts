@@ -3,14 +3,14 @@ import AppConfig from '@/config'
 import { fetchWebsiteConfig } from '@/api/system-manage'
 import { createWebsiteConfigDefaults } from '@/config/website-config-defaults'
 
-type WebsiteConfig = Api.SystemManage.WebsiteConfigItem
+type UseWebsiteConfig = Api.SystemManage.WebsiteConfigItem
 
-const websiteConfig = ref<WebsiteConfig>(createWebsiteConfigDefaults())
+const websiteConfig = ref<UseWebsiteConfig>(createWebsiteConfigDefaults())
 const loading = ref(false)
 const loaded = ref(false)
-let pendingLoad: Promise<WebsiteConfig> | null = null
+let pendingLoad: Promise<UseWebsiteConfig> | null = null
 
-const mergeWebsiteConfig = (config?: Partial<WebsiteConfig> | null): WebsiteConfig => ({
+const mergeWebsiteConfig = (config?: Partial<UseWebsiteConfig> | null): UseWebsiteConfig => ({
   ...createWebsiteConfigDefaults(),
   ...(config ?? {})
 })
@@ -26,13 +26,21 @@ const applyFavicon = (href?: string | null): void => {
   const head = getDocumentHead()
   if (!head) return
 
-  const faviconHref = href?.trim() || '/favicon.ico'
-  let link = head.querySelector<HTMLLinkElement>('link[rel="icon"]')
+  const faviconHref = href?.trim()
+  if (!faviconHref) return
+
+  const iconLinks = Array.from(head.querySelectorAll<HTMLLinkElement>('link[rel~="icon"]'))
+  let link = iconLinks[0]
+
+  iconLinks.slice(1).forEach((item) => item.remove())
+
   if (!link) {
     link = document.createElement('link')
-    link.rel = 'icon'
     head.appendChild(link)
   }
+
+  link.rel = 'icon'
+  link.removeAttribute('type')
   link.href = faviconHref
 }
 
@@ -60,7 +68,7 @@ const applyWebsiteDocument = (config = websiteConfig.value): void => {
   applySeoMeta('description', config.seoDescription || config.siteDescription)
 }
 
-const loadWebsiteConfig = async (force = false): Promise<WebsiteConfig> => {
+const loadWebsiteConfig = async (force = false): Promise<UseWebsiteConfig> => {
   if (loaded.value && !force) {
     return websiteConfig.value
   }
@@ -91,7 +99,7 @@ const loadWebsiteConfig = async (force = false): Promise<WebsiteConfig> => {
   return pendingLoad
 }
 
-const setWebsiteConfig = (config: WebsiteConfig): void => {
+const setWebsiteConfig = (config: UseWebsiteConfig): void => {
   websiteConfig.value = mergeWebsiteConfig(config)
   loaded.value = true
   applyWebsiteDocument()

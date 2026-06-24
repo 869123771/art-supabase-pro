@@ -16,7 +16,7 @@
   }
 
   .sub-title {
-    @apply mt-[10px] text-g-600 text-sm;
+    @apply my-[10px] text-g-600 text-sm;
   }
 
   .custom-height {

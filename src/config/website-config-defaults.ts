@@ -1,5 +1,5 @@
 export const WEBSITE_CONFIG_DEFAULTS: Api.SystemManage.WebsiteConfigItem = {
-  siteName: 'Art Supabase',
+  siteName: 'Art Supabase Pro',
   siteShortName: 'Art Supabase Pro',
   siteDescription: '商业化中后台管理系统',
   logoUrl: '',

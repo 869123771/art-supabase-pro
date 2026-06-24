@@ -75,6 +75,7 @@ export async function uploadAttachment(
   const fileList = Array.isArray(files) ? files : [files]
   const queue = [...fileList]
   const results: Api.DataCenter.Resources.ResourceListItem[] = []
+  const errors: unknown[] = []
 
   // worker（并发控制）
   async function worker() {
@@ -87,12 +88,16 @@ export async function uploadAttachment(
         results.push(res)
       } catch (e) {
         console.error('[uploadAttachment]', file.name, e)
-        // 是否中断由你决定
+        errors.push(e)
       }
     }
   }
 
   await Promise.all(Array.from({ length: Math.min(concurrency, fileList.length) }, () => worker()))
+
+  if (errors.length > 0) {
+    throw errors[0]
+  }
 
   return results
 
@@ -141,6 +146,7 @@ export async function uploadAttachment(
 
     // 6️⃣ 写库
     const insertData = {
+      tenant_id: null,
       storage_mode: 'supabase',
       origin_name: file.name,
       object_name: objectName,

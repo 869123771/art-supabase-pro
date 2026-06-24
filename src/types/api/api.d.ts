@@ -238,13 +238,28 @@ declare namespace Api {
 
     type WebsiteWatermarkContentType = 'username' | 'username_time' | 'site_name' | 'custom'
     type WebsiteCaptchaType = 'turnstile'
-    type WebsiteTurnstileSize = 'normal' | 'compact' | 'flexible'
+    type WebsiteTurnstileSize = 'normal' | 'compact' | 'flexible' | 'hidden'
     type WebsiteTurnstileTheme = 'light' | 'dark' | 'auto'
     type WebsiteDefaultLanguage = 'zh' | 'en'
+    type WebsiteConfigParamMeta = Pick<
+      SystemParamItem,
+      | 'paramName'
+      | 'paramKey'
+      | 'groupCode'
+      | 'groupName'
+      | 'paramType'
+      | 'defaultValue'
+      | 'extendConfig'
+      | 'enabled'
+      | 'builtin'
+      | 'sort'
+      | 'remark'
+    >
 
     interface WebsiteConfigItem {
       id?: string
       tenantId?: string
+      paramMeta?: WebsiteConfigParamMeta
       siteName: string
       siteShortName?: string | null
       siteDescription?: string | null

@@ -7,24 +7,22 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="b8f35119-660a-46e7-82f4-53eee06863eb" name="Changes" comment="feat : system params">
-      <change afterPath="$PROJECT_DIR$/src/components/core/forms/art-captcha-verify/index.vue" afterDir="false" />
+    <list default="true" id="b8f35119-660a-46e7-82f4-53eee06863eb" name="Changes" comment="feat : login turnstile captcha">
       <change beforePath="$PROJECT_DIR$/.idea/dataSources.local.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources.local.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/App.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/App.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/api/auth.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/auth.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/api/common.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/common.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/api/system-manage.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/system-manage.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/components/core/layouts/art-header-bar/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/layouts/art-header-bar/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/components/core/layouts/art-menus/art-sidebar-menu/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/layouts/art-menus/art-sidebar-menu/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/components/core/others/art-watermark/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/others/art-watermark/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/components/core/views/login/AuthTopBar.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/views/login/AuthTopBar.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/components/core/views/login/LoginLeftView.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/views/login/LoginLeftView.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/core/forms/art-turnstile-captcha/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/forms/art-turnstile-captcha/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/core/forms/art-upload-image/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/forms/art-upload-image/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/config/modules/fastEnter.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/config/modules/fastEnter.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/config/website-config-defaults.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/config/website-config-defaults.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/hooks/core/useSupabase.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/hooks/core/useSupabase.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/hooks/core/website-config.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/hooks/core/useWebsiteConfig.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/hooks/index.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/hooks/index.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/types/api/api.d.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/types/api/api.d.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/utils/router.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/router.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/views/auth/login/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/auth/login/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/auth/register/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/auth/register/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/dashboard/console/modules/about-project.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/dashboard/console/modules/about-project.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/auth/login/style.css" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/auth/login/style.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/system/website-config/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/system/website-config/index.vue" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -66,23 +64,23 @@
   </component>
   <component name="NextEditCompletionFeaturesState">
     <decayedCancelled>
-      <entry key="MS100" value="1.0" />
-      <entry key="MS500" value="1.0" />
-      <entry key="S2" value="1.0" />
-      <entry key="S5" value="1.0" />
-      <entry key="S10" value="1.0" />
-      <entry key="S30" value="1.0000000596263667" />
-      <entry key="S60" value="1.000488181507056" />
-      <entry key="M2" value="1.0443554719027208" />
-      <entry key="M5" value="1.7585237669817924" />
-      <entry key="M10" value="3.4548165939566973" />
-      <entry key="M15" value="4.8863332476122014" />
-      <entry key="M30" value="7.629932385513009" />
-      <entry key="H1" value="11.563673509368249" />
-      <entry key="H2" value="19.5702925437728" />
-      <entry key="H4" value="36.3083746027033" />
-      <entry key="D1" value="159.22616763722445" />
-      <entry key="W1" value="304.8583684277268" />
+      <entry key="MS100" value="1.0758873712646324" />
+      <entry key="MS500" value="1.6425078037030616" />
+      <entry key="S2" value="2.46563727168148" />
+      <entry key="S5" value="3.3799525507027526" />
+      <entry key="S10" value="4.413322239787002" />
+      <entry key="S30" value="6.206893950060891" />
+      <entry key="S60" value="6.989900183821692" />
+      <entry key="M2" value="7.462342523528145" />
+      <entry key="M5" value="7.777560617417213" />
+      <entry key="M10" value="7.91968386880787" />
+      <entry key="M15" value="8.036351083180364" />
+      <entry key="M30" value="8.737522390590069" />
+      <entry key="H1" value="12.109924645590713" />
+      <entry key="H2" value="21.00125737330989" />
+      <entry key="H4" value="38.94626145969298" />
+      <entry key="D1" value="167.39571321726766" />
+      <entry key="W1" value="323.0734502952929" />
     </decayedCancelled>
     <decayedSelected>
       <entry key="MS100" value="0.0" />
@@ -90,37 +88,37 @@
       <entry key="S2" value="0.0" />
       <entry key="S5" value="0.0" />
       <entry key="S10" value="0.0" />
-      <entry key="S30" value="1.9091909186396665E-141" />
-      <entry key="S60" value="4.36942893138184E-71" />
-      <entry key="M2" value="6.610165604114503E-36" />
-      <entry key="M5" value="8.473931245979725E-15" />
-      <entry key="M10" value="9.205395833955374E-8" />
-      <entry key="M15" value="2.0387390707052716E-5" />
-      <entry key="M30" value="0.0045154981849368355" />
-      <entry key="H1" value="0.06809877706581141" />
-      <entry key="H2" value="0.31894483291321846" />
-      <entry key="H4" value="1.0718071404163738" />
-      <entry key="D1" value="9.251393073785998" />
-      <entry key="W1" value="19.881698358527238" />
+      <entry key="S30" value="1.5165692143530042E-246" />
+      <entry key="S60" value="1.2314906472860455E-123" />
+      <entry key="M2" value="3.509260103335241E-62" />
+      <entry key="M5" value="2.6187028663417934E-25" />
+      <entry key="M10" value="5.117326319809956E-13" />
+      <entry key="M15" value="6.397771747367961E-9" />
+      <entry key="M30" value="7.999064891631895E-5" />
+      <entry key="H1" value="0.009063711779669121" />
+      <entry key="H2" value="0.1163587260416411" />
+      <entry key="H4" value="0.6473786005929694" />
+      <entry key="D1" value="8.505778766063763" />
+      <entry key="W1" value="19.644464176246828" />
     </decayedSelected>
     <decayedShown>
-      <entry key="MS100" value="9.30078736619363E-9" />
-      <entry key="MS500" value="0.024757337841405287" />
-      <entry key="S2" value="0.39666692159557143" />
-      <entry key="S5" value="0.6908287359177429" />
-      <entry key="S10" value="0.8311610769987625" />
-      <entry key="S30" value="0.9402177069988197" />
-      <entry key="S60" value="0.9701305321642653" />
-      <entry key="M2" value="1.0287949312105504" />
-      <entry key="M5" value="1.7505480958860686" />
-      <entry key="M10" value="3.4487834100615" />
-      <entry key="M15" value="4.881180180154457" />
-      <entry key="M30" value="7.630725267663066" />
-      <entry key="H1" value="11.62906224873705" />
-      <entry key="H2" value="19.887175140419295" />
-      <entry key="H4" value="37.37849243027595" />
-      <entry key="D1" value="168.4762225827806" />
-      <entry key="W1" value="324.7397099709324" />
+      <entry key="MS100" value="1.0239359122299898" />
+      <entry key="MS500" value="1.625008692066203" />
+      <entry key="S2" value="2.4590698997241365" />
+      <entry key="S5" value="3.3764638123227546" />
+      <entry key="S10" value="4.411088869984029" />
+      <entry key="S30" value="6.205855209408013" />
+      <entry key="S60" value="6.989315312495758" />
+      <entry key="M2" value="7.4620302100016325" />
+      <entry key="M5" value="7.777427483739002" />
+      <entry key="M10" value="7.919573112930881" />
+      <entry key="M15" value="8.03620979341915" />
+      <entry key="M30" value="8.737332692901148" />
+      <entry key="H1" value="12.11838734261309" />
+      <entry key="H2" value="21.11665263168879" />
+      <entry key="H4" value="39.59247461568184" />
+      <entry key="D1" value="175.9002296213069" />
+      <entry key="W1" value="342.7175570961244" />
     </decayedShown>
   </component>
   <component name="PackageJsonUpdateNotifier">
@@ -204,7 +202,7 @@
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-js-predefined-d6986cc7102b-3bd3a6803838-JavaScript-WS-261.22158.274" />
+        <option value="bundled-js-predefined-d6986cc7102b-31caf2ab9e3c-JavaScript-WS-261.25134.101" />
       </set>
     </attachedChunks>
   </component>
@@ -706,7 +704,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="feat remove netlify" />
     <MESSAGE value="feat build file" />
     <MESSAGE value="feat build directory" />
     <MESSAGE value="remove docs" />
@@ -731,6 +728,7 @@
     <MESSAGE value="feat : vehicle insure inspection" />
     <MESSAGE value="feat : vehicle violation accident-record maintenance" />
     <MESSAGE value="feat : vehicle reminder manage" />
-    <option name="LAST_COMMIT_MESSAGE" value="feat : vehicle reminder manage" />
+    <MESSAGE value="feat : login turnstile captcha" />
+    <option name="LAST_COMMIT_MESSAGE" value="feat : login turnstile captcha" />
   </component>
 </project>

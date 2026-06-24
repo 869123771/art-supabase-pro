@@ -1,5 +1,8 @@
 <template>
-  <div class="art-turnstile-captcha">
+  <div
+    class="art-turnstile-captcha"
+    :class="{ 'is-interaction-only': props.appearance === 'interaction-only' }"
+  >
     <div ref="containerRef" class="art-turnstile-captcha__widget"></div>
   </div>
 </template>
@@ -9,11 +12,15 @@
 
   type TurnstileTheme = 'light' | 'dark' | 'auto'
   type TurnstileSize = 'normal' | 'compact' | 'flexible'
+  type TurnstileAppearance = 'always' | 'execute' | 'interaction-only'
+  type TurnstileExecution = 'render' | 'execute'
 
   interface TurnstileRenderOptions {
     sitekey: string
     theme?: TurnstileTheme
     size?: TurnstileSize
+    appearance?: TurnstileAppearance
+    execution?: TurnstileExecution
     callback?: (token: string) => void
     'expired-callback'?: () => void
     'error-callback'?: () => void
@@ -24,6 +31,7 @@
     render: (container: HTMLElement, options: TurnstileRenderOptions) => string
     reset: (widgetId?: string) => void
     remove: (widgetId?: string) => void
+    execute: (widgetId?: string) => void
   }
 
   declare global {
@@ -36,11 +44,15 @@
     sitekey: string
     theme?: TurnstileTheme
     size?: TurnstileSize
+    appearance?: TurnstileAppearance
+    execution?: TurnstileExecution
   }
 
   const props = withDefaults(defineProps<Props>(), {
     theme: 'auto',
-    size: 'normal'
+    size: 'normal',
+    appearance: 'always',
+    execution: 'render'
   })
 
   const emit = defineEmits<{
@@ -56,6 +68,33 @@
   const containerRef = ref<HTMLElement>()
   const widgetId = ref<string>()
   let scriptPromise: Promise<void> | null = null
+  let executeResolver: ((token: string) => void) | undefined
+  let executeRejecter: ((error: Error) => void) | undefined
+
+  const clearExecutePromise = (): void => {
+    executeResolver = undefined
+    executeRejecter = undefined
+  }
+
+  const handleVerify = (token: string): void => {
+    executeResolver?.(token)
+    clearExecutePromise()
+    emit('verify', token)
+  }
+
+  const handleExecutionError = (type: 'error' | 'timeout'): void => {
+    executeRejecter?.(
+      new Error(
+        type === 'timeout' ? 'Turnstile verification timed out' : 'Turnstile verification failed'
+      )
+    )
+    clearExecutePromise()
+    if (type === 'timeout') {
+      emit('timeout')
+      return
+    }
+    emit('error')
+  }
 
   const loadTurnstileScript = (): Promise<void> => {
     if (typeof window === 'undefined') return Promise.resolve()
@@ -103,21 +142,38 @@
       sitekey: props.sitekey,
       theme: props.theme,
       size: props.size,
-      callback: (token: string) => emit('verify', token),
+      appearance: props.appearance,
+      execution: props.execution,
+      callback: handleVerify,
       'expired-callback': () => emit('expired'),
-      'error-callback': () => emit('error'),
-      'timeout-callback': () => emit('timeout')
+      'error-callback': () => handleExecutionError('error'),
+      'timeout-callback': () => handleExecutionError('timeout')
     })
   }
 
   const reset = (): void => {
+    clearExecutePromise()
     if (widgetId.value && window.turnstile) {
       window.turnstile.reset(widgetId.value)
     }
   }
 
+  const execute = async (): Promise<string> => {
+    await render()
+
+    if (!widgetId.value || !window.turnstile) {
+      throw new Error('Turnstile is not ready')
+    }
+
+    return await new Promise<string>((resolve, reject) => {
+      executeResolver = resolve
+      executeRejecter = reject
+      window.turnstile?.execute(widgetId.value)
+    })
+  }
+
   watch(
-    () => [props.sitekey, props.theme, props.size],
+    () => [props.sitekey, props.theme, props.size, props.appearance, props.execution],
     () => {
       void render()
     }
@@ -133,18 +189,34 @@
 
   defineExpose({
     reset,
-    remove
+    remove,
+    execute
   })
 </script>
 
 <style scoped lang="scss">
   .art-turnstile-captcha {
+    flex: 1 1 100%;
+    width: 100%;
     min-height: 65px;
 
     &__widget {
       display: flex;
       justify-content: center;
       width: 100%;
+
+      :deep(> div) {
+        width: 100% !important;
+      }
+
+      :deep(iframe) {
+        width: 100% !important;
+        max-width: 100%;
+      }
+    }
+
+    &.is-interaction-only {
+      min-height: 0;
     }
   }
 </style>

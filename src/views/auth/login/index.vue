@@ -26,26 +26,6 @@
             @keyup.enter="handleSubmit"
             class="mt-[25px]"
           >
-            <!--            <ElFormItem prop="account">
-              <ElSelect v-model="formData.account" @change="setupAccount">
-                <ElOption
-                  v-for="account in accounts"
-                  :key="account.key"
-                  :label="account.label"
-                  :value="account.key"
-                >
-                  <span>{{ account.label }}</span>
-                </ElOption>
-              </ElSelect>
-            </ElFormItem>
-            <ElFormItem prop="username">
-              <ElInput
-                class="custom-height"
-                :placeholder="$t('login.placeholder.username')"
-                v-model.trim="formData.username"
-              />
-            </ElFormItem>
-            -->
             <ElFormItem prop="email">
               <ElInput
                 class="custom-height"
@@ -64,12 +44,14 @@
               />
             </ElFormItem>
 
-            <ElFormItem v-if="showTurnstile" class="mt-6">
+            <ElFormItem v-if="showTurnstile" class="turnstile-form-item mt-6">
               <ArtTurnstileCaptcha
                 ref="turnstileRef"
                 :sitekey="turnstileSiteKey"
-                :size="websiteConfig.turnstileSize || 'normal'"
+                :size="turnstileWidgetSize"
                 :theme="websiteConfig.turnstileTheme || 'auto'"
+                :appearance="turnstileAppearance"
+                :execution="turnstileExecution"
                 @verify="handleTurnstileVerify"
                 @expired="resetTurnstileToken"
                 @timeout="resetTurnstileToken"
@@ -150,6 +132,7 @@
   const turnstileToken = ref('')
   const turnstileRef = ref<{
     reset?: () => void
+    execute?: () => Promise<string>
   }>()
 
   const formRef = ref<FormInstance>()
@@ -166,6 +149,21 @@
   const showTurnstile = computed(() => websiteConfig.value.captchaEnabled)
   const turnstileSiteKey = computed(
     () => websiteConfig.value.turnstileSiteKey || '0x4AAAAAADqOIVodNJNAZL57'
+  )
+  const turnstileWidgetSize = computed(() =>
+    websiteConfig.value.turnstileSize === 'compact' ? 'compact' : 'flexible'
+  )
+  const turnstileAppearance = computed(() =>
+    websiteConfig.value.turnstileSize === 'hidden' ||
+    websiteConfig.value.turnstileSize === 'flexible'
+      ? 'interaction-only'
+      : 'always'
+  )
+  const turnstileExecution = computed(() =>
+    turnstileAppearance.value === 'interaction-only' ? 'execute' : 'render'
+  )
+  const requiresVisibleTurnstileToken = computed(
+    () => showTurnstile.value && turnstileAppearance.value !== 'interaction-only'
   )
 
   const rules = computed<FormRules>(() => ({
@@ -202,16 +200,7 @@
 
   onMounted(() => {
     void loadWebsiteConfig()
-    // setupAccount('super')
   })
-
-  /*// 设置账号
-  const setupAccount = (key: AccountKey) => {
-    const selectedAccount = accounts.value.find((account: Account) => account.key === key)
-    formData.account = key
-    formData.username = selectedAccount?.userName ?? ''
-    formData.password = selectedAccount?.password ?? ''
-  }*/
 
   // 登录
   const handleSubmit = async () => {
@@ -222,12 +211,13 @@
       const valid = await formRef.value.validate()
       if (!valid) return
 
-      if (showTurnstile.value && !turnstileToken.value) {
+      if (requiresVisibleTurnstileToken.value && !turnstileToken.value) {
         ElMessage.warning('请先完成人机验证')
         return
       }
 
       loading.value = true
+      const captchaToken = await resolveCaptchaToken()
 
       // 登录请求
       const { email, password } = formData
@@ -235,7 +225,7 @@
       const params: Api.Auth.RegisterParams = {
         email,
         password,
-        captchaToken: showTurnstile.value ? turnstileToken.value : undefined
+        captchaToken
       }
       const { data } = await login(params)
       const { refreshToken, accessToken } = data.session
@@ -285,6 +275,16 @@
     turnstileRef.value?.reset?.()
   }
 
+  const resolveCaptchaToken = async (): Promise<string | undefined> => {
+    if (!showTurnstile.value) return undefined
+    if (turnstileToken.value) return turnstileToken.value
+    if (turnstileAppearance.value !== 'interaction-only') return undefined
+
+    const token = await turnstileRef.value?.execute?.()
+    turnstileToken.value = token || ''
+    return token || undefined
+  }
+
   // 登录成功提示
   const showLoginSuccessNotice = () => {
     const { userName, nickName, email } = userStore.getUserInfo
@@ -308,5 +308,9 @@
 <style lang="scss" scoped>
   :deep(.el-select__wrapper) {
     height: 40px !important;
+  }
+
+  :deep(.turnstile-form-item .el-form-item__content) {
+    width: 100%;
   }
 </style>
