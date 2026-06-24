@@ -18,7 +18,7 @@
         <!-- 系统信息  -->
         <div class="flex-c c-p" @click="toHome" v-if="isTopMenu">
           <ArtLogo class="pl-4.5" />
-          <p v-if="width >= 1400" class="my-0 mx-2 ml-2 text-lg">{{ AppConfig.systemInfo.name }}</p>
+          <p v-if="width >= 1400" class="my-0 mx-2 ml-2 text-lg">{{ siteName }}</p>
         </div>
 
         <ArtLogo
@@ -182,6 +182,7 @@
   import { themeAnimation } from '@/utils/ui/animation'
   import { useCommon } from '@/hooks/core/useCommon'
   import { useHeaderBar } from '@/hooks/core/useHeaderBar'
+  import { useWebsiteConfig } from '@/hooks'
   import ArtUserMenu from './widget/ArtUserMenu.vue'
 
   defineOptions({ name: 'ArtHeaderBar' })
@@ -192,6 +193,7 @@
   const router = useRouter()
   const { locale } = useI18n()
   const { width } = useWindowSize()
+  const { siteName } = useWebsiteConfig()
 
   const settingStore = useSettingStore()
   const userStore = useUserStore()

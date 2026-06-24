@@ -1,0 +1,1080 @@
+﻿<template>
+  <div class="website-config-page">
+    <section class="website-config-page__hero">
+      <div class="website-config-page__hero-main">
+        <h2>网站配置</h2>
+        <p
+          >统一维护品牌信息、登录体验、SEO
+          元信息、站点状态与对外联系资料。保存后同步影响登录页、浏览器标题、水印与系统品牌展示。</p
+        >
+      </div>
+      <div class="website-config-page__hero-aside">
+        <div class="website-config-page__hero-stat">
+          <span>最近更新</span>
+          <strong>{{ lastUpdateText }}</strong>
+          <small>{{ form.updateBy || form.createBy || 'admin' }}</small>
+        </div>
+        <div class="website-config-page__hero-stat">
+          <span>默认语言</span>
+          <strong>{{ defaultLanguageLabel }}</strong>
+          <small>登录与公共展示默认语言</small>
+        </div>
+      </div>
+    </section>
+
+    <ElForm
+      ref="formRef"
+      class="website-config-page__form"
+      :model="form"
+      :rules="rules"
+      label-position="top"
+    >
+      <div class="website-config-page__body">
+        <aside class="website-config-page__nav-panel">
+          <div class="website-config-page__nav-title">配置分组</div>
+          <button
+            v-for="item in navigationItems"
+            :key="item.key"
+            type="button"
+            class="website-config-page__nav-item"
+            :class="{ 'is-active': activeSection === item.key }"
+            @click="scrollToSection(item.key)"
+          >
+            <ArtSvgIcon :icon="item.icon" />
+            <span>{{ item.label }}</span>
+          </button>
+
+          <div class="website-config-page__publish-tip">
+            <strong>发布影响</strong>
+            <p>配置保存后会立即同步到登录页、公共配置缓存和系统品牌展示。</p>
+          </div>
+        </aside>
+
+        <main class="website-config-page__content">
+          <section id="overview" class="website-config-page__summary" aria-label="状态概览">
+            <div
+              v-for="item in summaryCards"
+              :key="item.label"
+              class="website-config-page__summary-card"
+            >
+              <div>
+                <span>{{ item.label }}</span>
+                <strong>{{ item.value }}</strong>
+                <p>{{ item.description }}</p>
+              </div>
+              <ArtSvgIcon :icon="item.icon" />
+            </div>
+          </section>
+
+          <section
+            v-for="section in formSections"
+            :id="section.key"
+            :key="section.key"
+            class="website-config-page__section"
+          >
+            <header>
+              <div>
+                <h3>{{ section.title }}</h3>
+                <p>{{ section.description }}</p>
+              </div>
+              <ArtSvgIcon :icon="section.icon" />
+            </header>
+
+            <div class="website-config-page__section-body">
+              <template v-if="section.key === 'identity'">
+                <ElFormItem label="系统名称" prop="siteName">
+                  <ElInput v-model.trim="form.siteName" maxlength="60" show-word-limit />
+                  <p>用于登录页、顶部栏、侧边栏、页面标题和系统品牌展示。</p>
+                </ElFormItem>
+                <ElFormItem label="系统简称" prop="siteShortName">
+                  <ElInput v-model.trim="form.siteShortName" maxlength="40" />
+                </ElFormItem>
+                <ElFormItem label="水印内容" prop="watermarkContentType">
+                  <ElSelect v-model="form.watermarkContentType">
+                    <ElOption
+                      v-for="option in watermarkOptions"
+                      :key="option.value"
+                      :label="option.label"
+                      :value="option.value"
+                    />
+                  </ElSelect>
+                  <p>默认使用当前登录用户名，也可切换为站点名称或自定义文本。</p>
+                </ElFormItem>
+                <ElFormItem
+                  v-if="form.watermarkContentType === 'custom'"
+                  label="自定义水印"
+                  prop="watermarkCustomText"
+                >
+                  <ElInput v-model.trim="form.watermarkCustomText" maxlength="80" />
+                </ElFormItem>
+                <ElFormItem label="站点简介" prop="siteDescription" class="is-wide">
+                  <ElInput
+                    v-model="form.siteDescription"
+                    type="textarea"
+                    resize="none"
+                    maxlength="255"
+                    show-word-limit
+                    :rows="3"
+                  />
+                </ElFormItem>
+                <ElFormItem label="启用水印" prop="watermarkEnabled" class="is-wide">
+                  <div class="website-config-page__switch-row">
+                    <div>
+                      <strong>启用水印</strong>
+                      <p>保存后作为站点级水印配置生效；用户仍可在个性化设置中临时隐藏。</p>
+                    </div>
+                    <ElSwitch v-model="form.watermarkEnabled" />
+                  </div>
+                </ElFormItem>
+              </template>
+
+              <template v-else-if="section.key === 'login'">
+                <ElFormItem label="登录欢迎标题" prop="loginTitle">
+                  <ElInput v-model.trim="form.loginTitle" maxlength="80" />
+                </ElFormItem>
+                <ElFormItem label="默认语言" prop="defaultLanguage">
+                  <ElSelect v-model="form.defaultLanguage">
+                    <ElOption
+                      v-for="option in languageOptions"
+                      :key="option.value"
+                      :label="option.label"
+                      :value="option.value"
+                    />
+                  </ElSelect>
+                </ElFormItem>
+                <ElFormItem label="验证码类型" prop="captchaType">
+                  <ElSelect v-model="form.captchaType">
+                    <ElOption
+                      v-for="option in captchaOptions"
+                      :key="option.value"
+                      :label="option.label"
+                      :value="option.value"
+                    />
+                  </ElSelect>
+                  <p
+                    >Turnstile 用于 Supabase Auth 机器人防护，需在 Supabase 后台配置 Secret key。</p
+                  >
+                </ElFormItem>
+                <ElFormItem label="Turnstile Site Key" prop="turnstileSiteKey">
+                  <ElInput
+                    v-model.trim="form.turnstileSiteKey"
+                    maxlength="120"
+                    placeholder="请输入 Turnstile Site Key"
+                  />
+                  <p>前端组件使用 Sitekey；Secret key 请只配置在 Supabase Auth 防护后台。</p>
+                </ElFormItem>
+                <ElFormItem label="Turnstile 尺寸">
+                  <ElSelect v-model="form.turnstileSize">
+                    <ElOption
+                      v-for="option in turnstileSizeOptions"
+                      :key="option.value"
+                      :label="option.label"
+                      :value="option.value"
+                    />
+                  </ElSelect>
+                </ElFormItem>
+                <ElFormItem label="Turnstile 主题">
+                  <ElSelect v-model="form.turnstileTheme">
+                    <ElOption
+                      v-for="option in turnstileThemeOptions"
+                      :key="option.value"
+                      :label="option.label"
+                      :value="option.value"
+                    />
+                  </ElSelect>
+                </ElFormItem>
+                <ElFormItem label="最大重试次数" prop="captchaMaxAttempts">
+                  <ElInputNumber
+                    v-model="form.captchaMaxAttempts"
+                    :min="0"
+                    :max="20"
+                    controls-position="right"
+                  />
+                  <p>留空或 0 表示不限制。</p>
+                </ElFormItem>
+                <ElFormItem label="锁定时间（分钟）" prop="captchaLockMinutes">
+                  <ElInputNumber
+                    v-model="form.captchaLockMinutes"
+                    :min="0"
+                    :max="1440"
+                    controls-position="right"
+                  />
+                </ElFormItem>
+                <ElFormItem label="登录欢迎描述" prop="loginDescription" class="is-wide">
+                  <ElInput
+                    v-model="form.loginDescription"
+                    type="textarea"
+                    resize="none"
+                    maxlength="255"
+                    show-word-limit
+                    :rows="3"
+                  />
+                </ElFormItem>
+                <ElFormItem label="验证码" prop="captchaEnabled" class="is-wide">
+                  <div class="website-config-page__switch-row">
+                    <div>
+                      <strong>验证码</strong>
+                      <p
+                        >开启后，登录页会显示 Turnstile，并将验证 token 交给 Supabase Auth 校验。</p
+                      >
+                    </div>
+                    <ElSwitch v-model="form.captchaEnabled" />
+                  </div>
+                </ElFormItem>
+                <ElFormItem label="开放注册" prop="registerEnabled" class="is-wide">
+                  <div class="website-config-page__switch-row">
+                    <div>
+                      <strong>开放注册</strong>
+                      <p>关闭后，登录页和注册入口不再提供公开注册入口。</p>
+                    </div>
+                    <ElSwitch v-model="form.registerEnabled" />
+                  </div>
+                </ElFormItem>
+                <ElFormItem label="维护模式" prop="maintenanceEnabled" class="is-wide">
+                  <div class="website-config-page__switch-row">
+                    <div>
+                      <strong>维护模式</strong>
+                      <p>开启后，登录页展示维护公告，用于版本升级或临时停服窗口。</p>
+                    </div>
+                    <ElSwitch v-model="form.maintenanceEnabled" />
+                  </div>
+                </ElFormItem>
+                <ElFormItem
+                  label="维护提示文案"
+                  prop="maintenanceMessage"
+                  class="is-wide"
+                  :class="{ 'is-error-lite': form.maintenanceEnabled && !form.maintenanceMessage }"
+                >
+                  <ElInput
+                    v-model.trim="form.maintenanceMessage"
+                    maxlength="160"
+                    placeholder="维护模式开启时建议填写，例如：系统今晚 23:00-24:00 升级维护"
+                  />
+                  <p v-if="form.maintenanceEnabled && !form.maintenanceMessage"
+                    >开启维护模式后，请填写维护提示文案</p
+                  >
+                </ElFormItem>
+              </template>
+
+              <template v-else-if="section.key === 'seo'">
+                <ElFormItem label="SEO 标题" prop="seoTitle">
+                  <ElInput v-model.trim="form.seoTitle" maxlength="80" />
+                </ElFormItem>
+                <ElFormItem label="SEO 关键字" prop="seoKeywords">
+                  <ElInput v-model.trim="form.seoKeywords" maxlength="160" />
+                </ElFormItem>
+                <ElFormItem label="SEO 描述" prop="seoDescription">
+                  <ElInput
+                    v-model="form.seoDescription"
+                    type="textarea"
+                    resize="none"
+                    maxlength="500"
+                    show-word-limit
+                    :rows="3"
+                  />
+                </ElFormItem>
+                <ElFormItem label="Logo 地址" prop="logoUrl">
+                  <ElInput
+                    v-model.trim="form.logoUrl"
+                    placeholder="如：https://example.com/logo.png"
+                  />
+                </ElFormItem>
+                <ElFormItem label="Favicon 地址" prop="faviconUrl">
+                  <ElInput
+                    v-model.trim="form.faviconUrl"
+                    placeholder="如：https://example.com/favicon.ico"
+                  />
+                </ElFormItem>
+              </template>
+
+              <template v-else-if="section.key === 'contact'">
+                <ElFormItem label="联系邮箱" prop="contactEmail">
+                  <ElInput v-model.trim="form.contactEmail" placeholder="如：support@example.com" />
+                </ElFormItem>
+                <ElFormItem label="联系电话" prop="contactPhone">
+                  <ElInput v-model.trim="form.contactPhone" placeholder="如：400-800-9000" />
+                </ElFormItem>
+                <ElFormItem label="联系地址" prop="contactAddress" class="is-wide">
+                  <ElInput
+                    v-model.trim="form.contactAddress"
+                    placeholder="如：广东省深圳市南山区科技园"
+                  />
+                </ElFormItem>
+                <ElFormItem label="版权文案" prop="copyrightText" class="is-wide">
+                  <ElInput v-model.trim="form.copyrightText" />
+                </ElFormItem>
+                <ElFormItem label="ICP备案号" prop="icpRecord">
+                  <ElInput
+                    v-model.trim="form.icpRecord"
+                    placeholder="如：粤ICP备 2026000000 号-1"
+                  />
+                </ElFormItem>
+                <ElFormItem label="公安备案号" prop="policeRecord">
+                  <ElInput
+                    v-model.trim="form.policeRecord"
+                    placeholder="如：粤公网安备 44030002000001 号"
+                  />
+                </ElFormItem>
+              </template>
+
+              <template v-else>
+                <div class="website-config-page__preview-grid">
+                  <div>
+                    <span>品牌名称</span>
+                    <strong>{{ form.siteName || '-' }}</strong>
+                  </div>
+                  <div>
+                    <span>默认语言</span>
+                    <strong>{{ defaultLanguageLabel }}</strong>
+                  </div>
+                  <div>
+                    <span>水印内容</span>
+                    <strong>{{ watermarkLabel }}</strong>
+                  </div>
+                  <div>
+                    <span>验证码</span>
+                    <strong>{{ form.captchaEnabled ? captchaLabel : '已关闭' }}</strong>
+                  </div>
+                </div>
+              </template>
+            </div>
+          </section>
+
+          <footer class="website-config-page__actions">
+            <div class="website-config-page__action-copy">
+              <div class="website-config-page__action-title">
+                <ArtSvgIcon icon="ri:pushpin-2-line" />
+                <strong>{{ form.siteName || '网站配置' }}</strong>
+              </div>
+              <p>保存后会同步影响登录页、浏览器标题与系统品牌展示。</p>
+            </div>
+            <div class="website-config-page__action-buttons">
+              <ElButton @click="resetForm">重置当前表单</ElButton>
+              <ElButton type="primary" :loading="saving" @click="handleSave"
+                >保存并发布配置</ElButton
+              >
+            </div>
+          </footer>
+        </main>
+      </div>
+    </ElForm>
+  </div>
+</template>
+
+<script setup lang="ts">
+  import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
+  import { cloneDeep, omit } from 'lodash-es'
+  import { fetchWebsiteConfig, saveWebsiteConfig } from '@/api/system-manage'
+  import { createWebsiteConfigDefaults } from '@/config/website-config-defaults'
+  import { useWebsiteConfig } from '@/hooks'
+  import { formatWithDayjs } from '@/utils/time'
+
+  defineOptions({ name: 'WebsiteConfig' })
+
+  type WebsiteConfig = Api.SystemManage.WebsiteConfigItem
+  type SectionKey = 'overview' | 'identity' | 'login' | 'seo' | 'contact' | 'preview'
+
+  interface NavigationItem {
+    key: SectionKey
+    label: string
+    icon: string
+  }
+
+  interface FormSection extends NavigationItem {
+    title: string
+    description: string
+  }
+
+  const formRef = ref<FormInstance>()
+  const saving = ref(false)
+  const activeSection = ref<SectionKey>('identity')
+  const form = reactive<WebsiteConfig>(createWebsiteConfigDefaults())
+  const originalForm = ref<WebsiteConfig>(createWebsiteConfigDefaults())
+  const { setWebsiteConfig, loadWebsiteConfig } = useWebsiteConfig()
+
+  const navigationItems: NavigationItem[] = [
+    { key: 'overview', label: '状态概', icon: 'ri:pulse-line' },
+    { key: 'identity', label: '系统标识', icon: 'ri:dashboard-line' },
+    { key: 'login', label: '登录体验', icon: 'ri:shield-user-line' },
+    { key: 'seo', label: 'SEO 展现', icon: 'ri:search-eye-line' },
+    { key: 'contact', label: '联系合规', icon: 'ri:file-copy-2-line' },
+    { key: 'preview', label: '发布预览', icon: 'ri:edit-box-line' }
+  ]
+
+  const formSections: FormSection[] = [
+    {
+      key: 'identity',
+      label: '系统标识',
+      icon: 'ri:dashboard-line',
+      title: '系统标识',
+      description: '配置系统名称、简称与公共水印内容。'
+    },
+    {
+      key: 'login',
+      label: '登录体验',
+      icon: 'ri:shield-user-line',
+      title: '登录体验',
+      description: '控制登录欢迎文案、验证码、安全锁定、默认语言、维护模式与注册策略。'
+    },
+    {
+      key: 'seo',
+      label: 'SEO 展现',
+      icon: 'ri:search-eye-line',
+      title: 'SEO 与搜索展现',
+      description: '用于浏览器标题、搜索摘要和对外品牌检索。'
+    },
+    {
+      key: 'contact',
+      label: '联系合规',
+      icon: 'ri:file-copy-2-line',
+      title: '联系与合规信息',
+      description: '配置对外联系方式、地址与备案文案，便于后续扩展官网或登录页页脚。'
+    },
+    {
+      key: 'preview',
+      label: '发布预览',
+      icon: 'ri:edit-box-line',
+      title: '发布预览',
+      description: '保存前快速确认即将影响公共展示的核心配置。'
+    }
+  ]
+
+  const languageOptions = [
+    { label: '简体中', value: 'zh' },
+    { label: 'English', value: 'en' }
+  ]
+
+  const watermarkOptions = [
+    { label: '用户', value: 'username' },
+    { label: '用户名 + 时间', value: 'username_time' },
+    { label: '站点名称', value: 'site_name' },
+    { label: '自定义文', value: 'custom' }
+  ]
+
+  const captchaOptions = [{ label: 'Turnstile', value: 'turnstile' }]
+
+  const turnstileSizeOptions = [
+    { label: '默认', value: 'normal' },
+    { label: '紧凑', value: 'compact' },
+    { label: '隐形', value: 'flexible' }
+  ]
+
+  const turnstileThemeOptions = [
+    { label: '浅色', value: 'light' },
+    { label: 'Dark', value: 'dark' },
+    { label: 'Auto', value: 'auto' }
+  ]
+
+  const rules: FormRules<WebsiteConfig> = {
+    siteName: [{ required: true, message: '请输入系统名', trigger: 'blur' }],
+    loginTitle: [{ required: true, message: '请输入登录欢迎标', trigger: 'blur' }],
+    watermarkContentType: [{ required: true, message: '请选择水印内容', trigger: 'change' }],
+    captchaType: [{ required: true, message: '请选择验证码类', trigger: 'change' }],
+    turnstileSiteKey: [
+      {
+        validator: (_rule, value, callback) => {
+          if (form.captchaEnabled && !String(value || '').trim()) {
+            callback(new Error('请输入 Turnstile Site Key'))
+            return
+          }
+          callback()
+        },
+        trigger: 'blur'
+      }
+    ],
+    defaultLanguage: [{ required: true, message: '请选择默认语言', trigger: 'change' }],
+    maintenanceMessage: [
+      {
+        validator: (_rule, value, callback) => {
+          if (form.maintenanceEnabled && !String(value || '').trim()) {
+            callback(new Error('开启维护模式后，请填写维护提示文案'))
+            return
+          }
+          callback()
+        },
+        trigger: 'blur'
+      }
+    ]
+  }
+
+  const lastUpdateText = computed(() =>
+    form.updateTime || form.createTime ? formatWithDayjs(form.updateTime || form.createTime) : '-'
+  )
+
+  const defaultLanguageLabel = computed(
+    () => languageOptions.find((item) => item.value === form.defaultLanguage)?.label || '-'
+  )
+
+  const watermarkLabel = computed(
+    () => watermarkOptions.find((item) => item.value === form.watermarkContentType)?.label || '-'
+  )
+
+  const captchaLabel = computed(
+    () => captchaOptions.find((item) => item.value === form.captchaType)?.label || '-'
+  )
+
+  const summaryCards = computed(() => [
+    {
+      label: '站点状态',
+      value: form.maintenanceEnabled ? '维护模式已开启' : '正常运行',
+      description: form.maintenanceEnabled ? '登录页将展示维护公告。' : '登录页将按常规流程展示。',
+      icon: form.maintenanceEnabled ? 'ri:alarm-warning-line' : 'ri:sun-line'
+    },
+    {
+      label: '开放注册',
+      value: form.registerEnabled ? '已开启' : '已关闭',
+      description: form.registerEnabled
+        ? '新用户可从登录页进入注册流程。'
+        : '登录页不展示注册入口。',
+      icon: 'ri:user-add-line'
+    },
+    {
+      label: '验证',
+      value: form.captchaEnabled ? captchaLabel.value : '未启用',
+      description: form.captchaEnabled ? '登录失败次数过多时建议启用。' : '登录页不会显示验证码。',
+      icon: 'ri:shield-check-line'
+    },
+    {
+      label: '品牌名称',
+      value: form.siteName || '-',
+      description: '影响登录页、标题、水印和系统品牌展示。',
+      icon: 'ri:bookmark-3-line'
+    }
+  ])
+
+  const setForm = (config: WebsiteConfig): void => {
+    Object.assign(form, createWebsiteConfigDefaults(), config)
+    originalForm.value = cloneDeep(form)
+  }
+
+  const fetchConfig = async (): Promise<void> => {
+    const { data } = await fetchWebsiteConfig()
+    setForm({
+      ...createWebsiteConfigDefaults(),
+      ...(data ?? {})
+    })
+  }
+
+  const normalizePayload = (): WebsiteConfig => {
+    const payload = omit(cloneDeep(form), [
+      'tenantId',
+      'createBy',
+      'createTime',
+      'updateBy',
+      'updateTime'
+    ])
+    return {
+      ...payload,
+      siteShortName: payload.siteShortName?.trim() || null,
+      siteDescription: payload.siteDescription?.trim() || null,
+      logoUrl: payload.logoUrl?.trim() || null,
+      faviconUrl: payload.faviconUrl?.trim() || null,
+      watermarkCustomText: payload.watermarkCustomText?.trim() || null,
+      loginSubtitle: payload.loginSubtitle?.trim() || payload.loginDescription?.trim() || null,
+      loginDescription: payload.loginDescription?.trim() || null,
+      turnstileSiteKey: payload.turnstileSiteKey?.trim() || null,
+      turnstileSize: payload.turnstileSize || 'normal',
+      turnstileTheme: payload.turnstileTheme || 'auto',
+      maintenanceMessage: payload.maintenanceMessage?.trim() || null,
+      seoTitle: payload.seoTitle?.trim() || null,
+      seoKeywords: payload.seoKeywords?.trim() || null,
+      seoDescription: payload.seoDescription?.trim() || null,
+      contactEmail: payload.contactEmail?.trim() || null,
+      contactPhone: payload.contactPhone?.trim() || null,
+      contactAddress: payload.contactAddress?.trim() || null,
+      copyrightText: payload.copyrightText?.trim() || null,
+      icpRecord: payload.icpRecord?.trim() || null,
+      policeRecord: payload.policeRecord?.trim() || null,
+      captchaMaxAttempts: Number(payload.captchaMaxAttempts || 0),
+      captchaLockMinutes: Number(payload.captchaLockMinutes || 0),
+      enabled: true
+    } as WebsiteConfig
+  }
+
+  const handleSave = async (): Promise<void> => {
+    await formRef.value?.validate()
+    saving.value = true
+
+    try {
+      const payload = normalizePayload()
+      await saveWebsiteConfig(payload)
+      await fetchConfig()
+      setWebsiteConfig(form)
+      await loadWebsiteConfig(true)
+      ElMessage.success('网站配置已发布')
+    } finally {
+      saving.value = false
+    }
+  }
+
+  const resetForm = (): void => {
+    setForm(originalForm.value)
+    void formRef.value?.clearValidate()
+  }
+
+  const scrollToSection = (key: SectionKey): void => {
+    const target = document.getElementById(key)
+    if (!target) return
+    activeSection.value = key
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
+  const setupSectionObserver = (): (() => void) | undefined => {
+    if (typeof IntersectionObserver === 'undefined') return undefined
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const activeEntry = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((left, right) => right.intersectionRatio - left.intersectionRatio)[0]
+        if (activeEntry?.target?.id) {
+          activeSection.value = activeEntry.target.id as SectionKey
+        }
+      },
+      {
+        rootMargin: '-160px 0px -60% 0px',
+        threshold: [0.1, 0.35, 0.6]
+      }
+    )
+
+    const observedKeys: SectionKey[] = ['overview', ...formSections.map((section) => section.key)]
+
+    observedKeys.forEach((key) => {
+      const target = document.getElementById(key)
+      if (target) observer.observe(target)
+    })
+
+    return () => observer.disconnect()
+  }
+
+  let stopObserver: (() => void) | undefined
+
+  onMounted(async () => {
+    await fetchConfig()
+    await nextTick()
+    stopObserver = setupSectionObserver()
+  })
+
+  onBeforeUnmount(() => {
+    stopObserver?.()
+  })
+</script>
+
+<style scoped lang="scss">
+  .website-config-page {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding-bottom: 16px;
+
+    &__hero,
+    &__summary-card,
+    &__nav-panel,
+    &__section,
+    &__actions {
+      background: var(--el-bg-color);
+      border: 1px solid var(--el-border-color-light);
+      border-radius: 8px;
+    }
+
+    &__hero {
+      display: flex;
+      gap: 24px;
+      justify-content: space-between;
+      padding: 22px 24px;
+    }
+
+    &__hero-main {
+      h2 {
+        margin: 0 0 10px;
+        font-size: 22px;
+        font-weight: 700;
+        color: var(--art-text-gray-900);
+      }
+
+      p {
+        max-width: 820px;
+        margin: 0;
+        font-size: 13px;
+        line-height: 2;
+        color: var(--art-text-gray-600);
+      }
+    }
+
+    &__hero-aside {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(130px, 1fr));
+      gap: 12px;
+      min-width: 340px;
+    }
+
+    &__hero-stat {
+      padding: 12px 14px;
+      background: var(--el-fill-color-blank);
+      border: 1px solid var(--el-border-color-lighter);
+      border-radius: 6px;
+
+      span,
+      small {
+        display: block;
+        font-size: 12px;
+        color: var(--el-text-color-secondary);
+      }
+
+      strong {
+        display: block;
+        margin: 8px 0 4px;
+        font-size: 15px;
+        color: var(--art-text-gray-900);
+      }
+    }
+
+    &__summary {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+      scroll-margin-top: 92px;
+    }
+
+    &__summary-card {
+      display: flex;
+      gap: 12px;
+      justify-content: space-between;
+      min-height: 84px;
+      padding: 16px 18px;
+
+      span {
+        font-size: 12px;
+        color: var(--el-text-color-secondary);
+      }
+
+      strong {
+        display: block;
+        margin: 8px 0 6px;
+        font-size: 16px;
+        color: var(--art-text-gray-900);
+      }
+
+      p {
+        margin: 0;
+        font-size: 12px;
+        line-height: 1.6;
+        color: var(--el-text-color-secondary);
+      }
+
+      .art-svg-icon {
+        flex: none;
+        margin-top: 2px;
+        font-size: 20px;
+        color: var(--el-color-primary);
+      }
+    }
+
+    &__body {
+      display: grid;
+      grid-template-columns: 184px minmax(0, 1fr);
+      gap: 16px;
+      align-items: start;
+    }
+
+    &__nav-panel {
+      position: sticky;
+      top: 84px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 14px 12px;
+    }
+
+    &__nav-title {
+      padding: 0 8px 8px;
+      font-size: 13px;
+      color: var(--el-text-color-secondary);
+    }
+
+    &__nav-item {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      width: 100%;
+      height: 34px;
+      padding: 0 8px;
+      font-size: 14px;
+      color: var(--art-text-gray-700);
+      text-align: left;
+      cursor: pointer;
+      background: transparent;
+      border: 0;
+      border-radius: 6px;
+
+      .art-svg-icon {
+        font-size: 16px;
+      }
+
+      &:hover,
+      &.is-active {
+        color: var(--el-color-primary);
+        background: var(--el-color-primary-light-9);
+      }
+    }
+
+    &__publish-tip {
+      padding: 12px;
+      margin-top: 10px;
+      background: var(--el-fill-color-blank);
+      border: 1px solid var(--el-border-color-lighter);
+      border-radius: 6px;
+
+      strong {
+        display: block;
+        margin-bottom: 8px;
+        font-size: 13px;
+        color: var(--art-text-gray-900);
+      }
+
+      p {
+        margin: 0;
+        font-size: 12px;
+        line-height: 1.7;
+        color: var(--el-text-color-secondary);
+      }
+    }
+
+    &__content {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      min-width: 0;
+    }
+
+    &__section {
+      scroll-margin-top: 92px;
+
+      > header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        padding: 20px 22px 18px;
+        border-bottom: 1px solid var(--el-border-color-lighter);
+
+        h3 {
+          margin: 0 0 8px;
+          font-size: 18px;
+          font-weight: 700;
+          color: var(--art-text-gray-900);
+        }
+
+        p {
+          margin: 0;
+          font-size: 13px;
+          color: var(--el-text-color-secondary);
+        }
+
+        .art-svg-icon {
+          flex: none;
+          font-size: 20px;
+          color: var(--el-text-color-placeholder);
+        }
+      }
+    }
+
+    &__section-body {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 22px 14px;
+      padding: 22px;
+
+      :deep(.el-form-item) {
+        display: block;
+        margin-bottom: 0;
+
+        &.is-wide {
+          grid-column: 1 / -1;
+        }
+
+        &.is-error-lite {
+          .el-input__wrapper {
+            box-shadow: 0 0 0 1px var(--el-color-danger) inset;
+          }
+        }
+
+        .el-form-item__label {
+          justify-content: flex-start;
+          height: 22px;
+          padding: 0;
+          margin-bottom: 8px;
+          line-height: 22px;
+        }
+
+        .el-form-item__content {
+          display: block;
+        }
+
+        .el-select,
+        .el-input-number {
+          width: 100%;
+        }
+
+        p {
+          margin: 6px 0 0;
+          font-size: 12px;
+          line-height: 1.7;
+          color: var(--el-text-color-secondary);
+        }
+      }
+    }
+
+    &__switch-row {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 56px;
+      padding: 12px 14px;
+      background: var(--el-fill-color-blank);
+      border: 1px solid var(--el-border-color-lighter);
+      border-radius: 6px;
+
+      strong {
+        display: block;
+        margin-bottom: 4px;
+        font-size: 14px;
+        color: var(--art-text-gray-900);
+      }
+
+      p {
+        margin: 0;
+      }
+    }
+
+    &__preview-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      grid-column: 1 / -1;
+
+      div {
+        min-height: 64px;
+        padding: 12px 14px;
+        background: var(--el-fill-color-blank);
+        border: 1px solid var(--el-border-color-lighter);
+        border-radius: 6px;
+      }
+
+      span {
+        display: block;
+        margin-bottom: 8px;
+        font-size: 12px;
+        color: var(--el-text-color-secondary);
+      }
+
+      strong {
+        font-size: 14px;
+        color: var(--art-text-gray-900);
+      }
+    }
+
+    &__actions {
+      position: sticky;
+      bottom: 16px;
+      z-index: 90;
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 64px;
+      padding: 12px 18px;
+      box-shadow: 0 8px 28px rgb(31 45 61 / 10%);
+
+      .art-svg-icon {
+        flex: none;
+        font-size: 16px;
+        color: var(--el-color-primary);
+      }
+    }
+
+    &__action-copy {
+      min-width: 0;
+
+      p {
+        margin: 4px 0 0;
+        font-size: 12px;
+        color: var(--el-text-color-secondary);
+      }
+    }
+
+    &__action-title {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+
+      strong {
+        font-size: 15px;
+        color: var(--art-text-gray-900);
+      }
+    }
+
+    &__action-buttons {
+      display: flex;
+      gap: 10px;
+      flex: none;
+    }
+  }
+
+  @media (width <= 1200px) {
+    .website-config-page {
+      &__summary {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      &__section-body,
+      &__preview-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+  }
+
+  @media (width <= 900px) {
+    .website-config-page {
+      &__hero {
+        flex-direction: column;
+      }
+
+      &__hero-aside {
+        min-width: 0;
+      }
+
+      &__body {
+        grid-template-columns: 1fr;
+      }
+
+      &__nav-panel {
+        position: static;
+      }
+    }
+  }
+
+  @media (width <= 640px) {
+    .website-config-page {
+      &__hero-aside,
+      &__summary,
+      &__section-body,
+      &__preview-grid {
+        grid-template-columns: 1fr;
+      }
+
+      &__actions {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      &__content {
+        padding-bottom: 142px;
+      }
+
+      &__action-buttons {
+        justify-content: flex-end;
+      }
+    }
+  }
+</style>

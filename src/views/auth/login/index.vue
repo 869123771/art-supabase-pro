@@ -8,8 +8,16 @@
 
       <div class="auth-right-wrap">
         <div class="form">
-          <h3 class="title">{{ $t('login.title') }}</h3>
-          <p class="sub-title">{{ $t('login.subTitle') }}</p>
+          <h3 class="title">{{ loginTitle }}</h3>
+          <p class="sub-title">{{ loginSubtitle || $t('login.subTitle') }}</p>
+          <ElAlert
+            v-if="websiteConfig.maintenanceEnabled"
+            class="mt-4"
+            type="warning"
+            show-icon
+            :closable="false"
+            :title="websiteConfig.maintenanceMessage || '系统维护中，请稍后再试'"
+          />
           <ElForm
             ref="formRef"
             :model="formData"
@@ -56,30 +64,18 @@
               />
             </ElFormItem>
 
-            <!-- 推拽验证 -->
-            <div class="relative pb-5 mt-6">
-              <div
-                class="relative z-[2] overflow-hidden select-none rounded-lg border border-transparent tad-300"
-                :class="{ '!border-[#FF4E4F]': !isPassing && isClickPass }"
-              >
-                <ArtDragVerify
-                  ref="dragVerify"
-                  v-model:value="isPassing"
-                  :text="$t('login.sliderText')"
-                  textColor="var(--art-gray-700)"
-                  :successText="$t('login.sliderSuccessText')"
-                  progressBarBg="var(--main-color)"
-                  :background="isDark ? '#26272F' : '#F1F1F4'"
-                  handlerBg="var(--default-box-color)"
-                />
-              </div>
-              <p
-                class="absolute top-0 z-[1] px-px mt-2 text-xs text-[#f56c6c] tad-300"
-                :class="{ 'translate-y-10': !isPassing && isClickPass }"
-              >
-                {{ $t('login.placeholder.slider') }}
-              </p>
-            </div>
+            <ElFormItem v-if="showTurnstile" class="mt-6">
+              <ArtTurnstileCaptcha
+                ref="turnstileRef"
+                :sitekey="turnstileSiteKey"
+                :size="websiteConfig.turnstileSize || 'normal'"
+                :theme="websiteConfig.turnstileTheme || 'auto'"
+                @verify="handleTurnstileVerify"
+                @expired="resetTurnstileToken"
+                @timeout="resetTurnstileToken"
+                @error="resetTurnstileToken"
+              />
+            </ElFormItem>
 
             <div class="flex-cb mt-2 text-sm">
               <ElCheckbox v-model="formData.rememberPassword">{{
@@ -102,7 +98,7 @@
               </ElButton>
             </div>
 
-            <div class="mt-5 text-sm text-gray-600">
+            <div v-if="websiteConfig.registerEnabled" class="mt-5 text-sm text-gray-600">
               <span>{{ $t('login.noAccount') }}</span>
               <RouterLink class="text-theme" :to="{ name: 'Register' }">{{
                 $t('login.register')
@@ -119,17 +115,17 @@
   import { useUserStore } from '@/store/modules/user'
   import { useI18n } from 'vue-i18n'
   import { HttpError } from '@/utils/http/error'
-  import { ElNotification, type FormInstance, type FormRules } from 'element-plus'
-  import { useSettingStore } from '@/store/modules/setting'
+  import { ElMessage, ElNotification, type FormInstance, type FormRules } from 'element-plus'
   import { login } from '@/api/auth'
   import { MenuProcessor } from '@/router/core'
   import { getFirstMenuPath } from '@/utils'
+  import { useWebsiteConfig } from '@/hooks'
+  import ArtTurnstileCaptcha from '@/components/core/forms/art-turnstile-captcha/index.vue'
 
   defineOptions({ name: 'Login' })
 
-  const settingStore = useSettingStore()
-  const { isDark } = storeToRefs(settingStore)
   const { t, locale } = useI18n()
+  const { websiteConfig, loginTitle, loginSubtitle, loadWebsiteConfig } = useWebsiteConfig()
   const formKey = ref(0)
 
   // 监听语言切换，重置表单
@@ -147,38 +143,14 @@
     roles: string[]
   }
 
-  /*const accounts = computed<Account[]>(() => [
-    {
-      key: 'super',
-      label: t('login.roles.super'),
-      userName: 'Super',
-      password: '123456',
-      roles: [SYSTEM_PARAM_DEFAULTS.SUPER_ROLE_CODE]
-    },
-    {
-      key: 'admin',
-      label: t('login.roles.admin'),
-      userName: 'Admin',
-      password: '123456',
-      roles: ['R_ADMIN']
-    },
-    {
-      key: 'user',
-      label: t('login.roles.user'),
-      userName: 'User',
-      password: '123456',
-      roles: ['R_USER']
-    }
-  ])*/
-
-  const dragVerify = ref()
-
   const userStore = useUserStore()
   const router = useRouter()
   const route = useRoute()
   const menuProcessor = new MenuProcessor()
-  const isPassing = ref(false)
-  const isClickPass = ref(false)
+  const turnstileToken = ref('')
+  const turnstileRef = ref<{
+    reset?: () => void
+  }>()
 
   const formRef = ref<FormInstance>()
 
@@ -190,12 +162,16 @@
     rememberPassword: true
   })
 
+  const loading = ref(false)
+  const showTurnstile = computed(() => websiteConfig.value.captchaEnabled)
+  const turnstileSiteKey = computed(
+    () => websiteConfig.value.turnstileSiteKey || '0x4AAAAAADqOIVodNJNAZL57'
+  )
+
   const rules = computed<FormRules>(() => ({
     username: [{ required: true, message: t('login.placeholder.username'), trigger: 'blur' }],
     password: [{ required: true, message: t('login.placeholder.password'), trigger: 'blur' }]
   }))
-
-  const loading = ref(false)
 
   const isForbiddenRedirect = (redirect?: string): boolean => {
     if (!redirect) {
@@ -225,6 +201,7 @@
   }
 
   onMounted(() => {
+    void loadWebsiteConfig()
     // setupAccount('super')
   })
 
@@ -245,9 +222,8 @@
       const valid = await formRef.value.validate()
       if (!valid) return
 
-      // 拖拽验证
-      if (!isPassing.value) {
-        isClickPass.value = true
+      if (showTurnstile.value && !turnstileToken.value) {
+        ElMessage.warning('请先完成人机验证')
         return
       }
 
@@ -258,7 +234,8 @@
 
       const params: Api.Auth.RegisterParams = {
         email,
-        password
+        password,
+        captchaToken: showTurnstile.value ? turnstileToken.value : undefined
       }
       const { data } = await login(params)
       const { refreshToken, accessToken } = data.session
@@ -289,13 +266,23 @@
       }
     } finally {
       loading.value = false
-      resetDragVerify()
+      if (showTurnstile.value) {
+        resetTurnstile()
+      }
     }
   }
 
-  // 重置拖拽验证
-  const resetDragVerify = () => {
-    dragVerify.value?.reset?.()
+  const handleTurnstileVerify = (token: string) => {
+    turnstileToken.value = token
+  }
+
+  const resetTurnstileToken = () => {
+    turnstileToken.value = ''
+  }
+
+  const resetTurnstile = () => {
+    resetTurnstileToken()
+    turnstileRef.value?.reset?.()
   }
 
   // 登录成功提示

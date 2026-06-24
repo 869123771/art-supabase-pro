@@ -3,12 +3,15 @@ import { useSupabase } from '@/hooks'
 import { WRITE_PERMISSION_DENIED_MESSAGE } from '@/hooks/core/useSupabase'
 import { buildSpecsFromMap, applyFilters } from '@utils/supabase-filters'
 import { toNextDayStartUTC, toStartOfDayUTC } from '@/utils'
+import { omit } from 'lodash-es'
 const { supabase, keysToSnakeDeep, responseHandle } = useSupabase()
 
 type TenantListItem = Api.SystemManage.TenantListItem
 type TenantSearchParams = Api.SystemManage.TenantSearchParams
 type SystemParamItem = Api.SystemManage.SystemParamItem
 type SystemParamSearchParams = Api.SystemManage.SystemParamSearchParams
+type WebsiteConfigItem = Api.SystemManage.WebsiteConfigItem
+const WEBSITE_CONFIG_PARAM_KEY = 'website.config'
 
 // 获取用户列表
 export async function fetchGetUserList(params: Api.SystemManage.UserSearchParams) {
@@ -269,6 +272,131 @@ export async function deleteSystemParamBatch(ids: string[]) {
 }
 
 /*重置密码*/
+const parseWebsiteConfigParam = (row: SystemParamItem | null): WebsiteConfigItem | null => {
+  if (!row?.paramValue) return null
+
+  try {
+    const parsed = JSON.parse(row.paramValue) as WebsiteConfigItem
+    return {
+      ...parsed,
+      id: row.id,
+      tenantId: row.tenantId,
+      createBy: row.createBy,
+      createTime: row.createTime,
+      updateBy: row.updateBy,
+      updateTime: row.updateTime
+    }
+  } catch {
+    return null
+  }
+}
+
+export async function fetchWebsiteConfig(): Promise<{
+  data: WebsiteConfigItem | null
+  error: unknown | null
+}> {
+  const { data, error } = await responseHandle<SystemParamItem | null>(
+    () =>
+      supabase
+        .from('sys_param')
+        .select('*')
+        .eq('param_key', WEBSITE_CONFIG_PARAM_KEY)
+        .eq('enabled', true)
+        .maybeSingle() as any,
+    {
+      ignoreCheck: true,
+      showErrorMessage: false
+    }
+  )
+
+  return {
+    data: parseWebsiteConfigParam(data),
+    error
+  }
+}
+
+export async function saveWebsiteConfig(params: WebsiteConfigItem) {
+  const { id } = params
+  const payload = omit(params, [
+    'id',
+    'tenantId',
+    'createBy',
+    'createTime',
+    'updateBy',
+    'updateTime'
+  ])
+
+  const paramValue = JSON.stringify(payload)
+  const basePayload: SystemParamItem = {
+    paramName: 'Website Config',
+    paramKey: WEBSITE_CONFIG_PARAM_KEY,
+    groupCode: 'website',
+    groupName: 'Website',
+    paramType: 'json',
+    defaultValue: null,
+    paramValue,
+    extendConfig: {},
+    enabled: true,
+    builtin: true,
+    sort: 1,
+    remark: 'Website public configuration'
+  }
+
+  if (!id) {
+    const existing = await responseHandle<SystemParamItem | null>(
+      () =>
+        supabase
+          .from('sys_param')
+          .select('*')
+          .eq('param_key', WEBSITE_CONFIG_PARAM_KEY)
+          .maybeSingle() as any,
+      {
+        ignoreCheck: true,
+        showErrorMessage: false
+      }
+    )
+    if (existing.data?.id) {
+      const existingId = existing.data.id
+      const updatePayload = omit(basePayload, ['paramKey'])
+      return await responseHandle(
+        () =>
+          supabase
+            .from('sys_param')
+            .update(keysToSnakeDeep(updatePayload), { count: 'exact' })
+            .eq('id', existingId) as any,
+        {
+          showMessage: true,
+          breakReturn: true,
+          requireAffected: true,
+          noAffectedMessage: WRITE_PERMISSION_DENIED_MESSAGE
+        }
+      )
+    }
+
+    return await responseHandle(
+      () => supabase.from('sys_param').insert(keysToSnakeDeep(basePayload)) as any,
+      {
+        showMessage: true,
+        breakReturn: true
+      }
+    )
+  }
+
+  return await responseHandle(
+    () =>
+      supabase
+        .from('sys_param')
+        .update(keysToSnakeDeep({ paramValue }), { count: 'exact' })
+        .eq('id', id) as any,
+    {
+      showMessage: true,
+      breakReturn: true,
+      requireAffected: true,
+      noAffectedMessage: WRITE_PERMISSION_DENIED_MESSAGE
+    }
+  )
+}
+
 export async function resetUser(params: Api.SystemManage.UserListItem) {
   const { userEmail, password } = params
   const invokeResp = () =>

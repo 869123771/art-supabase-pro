@@ -1,12 +1,12 @@
 <!-- 水印组件 -->
 <template>
   <div
-    v-if="watermarkVisible"
+    v-if="resolvedVisible"
     class="fixed left-0 top-0 h-screen w-screen pointer-events-none"
     :style="{ zIndex: zIndex }"
   >
     <ElWatermark
-      :content="content"
+      :content="watermarkContent"
       :font="{ fontSize: fontSize, color: fontColor }"
       :rotate="rotate"
       :gap="[gapX, gapY]"
@@ -20,11 +20,16 @@
 <script setup lang="ts">
   import AppConfig from '@/config'
   import { useSettingStore } from '@/store/modules/setting'
+  import { useUserStore } from '@/store/modules/user'
+  import { useWebsiteConfig } from '@/hooks'
 
   defineOptions({ name: 'ArtWatermark' })
 
   const settingStore = useSettingStore()
+  const userStore = useUserStore()
   const { watermarkVisible } = storeToRefs(settingStore)
+  const { websiteConfig, websiteConfigLoaded, loadWebsiteConfig, resolveWatermarkContent } =
+    useWebsiteConfig()
 
   interface WatermarkProps {
     /** 水印内容 */
@@ -49,8 +54,8 @@
     zIndex?: number
   }
 
-  withDefaults(defineProps<WatermarkProps>(), {
-    content: AppConfig.systemInfo.name,
+  const props = withDefaults(defineProps<WatermarkProps>(), {
+    content: '',
     visible: false,
     fontSize: 16,
     fontColor: 'rgba(128, 128, 128, 0.2)',
@@ -60,5 +65,21 @@
     offsetX: 50,
     offsetY: 50,
     zIndex: 3100
+  })
+
+  const resolvedVisible = computed(() => {
+    if (props.visible) return true
+    if (websiteConfigLoaded.value) {
+      return websiteConfig.value.watermarkEnabled
+    }
+    return watermarkVisible.value
+  })
+
+  const watermarkContent = computed(
+    () => props.content || resolveWatermarkContent(userStore.getUserInfo)
+  )
+
+  onMounted(() => {
+    void loadWebsiteConfig()
   })
 </script>

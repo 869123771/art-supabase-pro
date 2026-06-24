@@ -91,6 +91,7 @@
   import type { QueryResult } from '@/hooks/core/useSupabase'
   import { register } from '@/api/auth'
   import { useSystemParam } from '@/hooks'
+  import { useWebsiteConfig } from '@/hooks'
 
   defineOptions({ name: 'Register' })
 
@@ -110,6 +111,7 @@
   const { t, locale } = useI18n()
   const router = useRouter()
   const { passwordMinLength, loadPasswordMinLength, getPasswordMinLengthMessage } = useSystemParam()
+  const { websiteConfig, loadWebsiteConfig } = useWebsiteConfig()
 
   const formRef = ref<FormInstance>()
 
@@ -122,6 +124,12 @@
   })
 
   onMounted(() => {
+    void loadWebsiteConfig().then(() => {
+      if (!websiteConfig.value.registerEnabled) {
+        ElMessage.warning('当前站点未开放注册')
+        router.replace({ name: 'Login' })
+      }
+    })
     void loadPasswordMinLength().then(() => {
       if (formData.password) {
         void formRef.value?.validateField('password')
@@ -216,6 +224,11 @@
    */
   const handleRegister = async () => {
     if (!formRef.value) return
+    if (!websiteConfig.value.registerEnabled) {
+      ElMessage.warning('当前站点未开放注册')
+      router.replace({ name: 'Login' })
+      return
+    }
 
     try {
       await formRef.value.validate()

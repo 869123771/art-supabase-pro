@@ -7,24 +7,24 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="b8f35119-660a-46e7-82f4-53eee06863eb" name="Changes" comment="feat : vehicle reminder manage">
-      <change beforePath="$PROJECT_DIR$/.agents/skills/art-supabase-pro-conventions/SKILL.md" beforeDir="false" afterPath="$PROJECT_DIR$/.agents/skills/art-supabase-pro-conventions/SKILL.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.env" beforeDir="false" afterPath="$PROJECT_DIR$/.env" afterDir="false" />
+    <list default="true" id="b8f35119-660a-46e7-82f4-53eee06863eb" name="Changes" comment="feat : system params">
+      <change afterPath="$PROJECT_DIR$/src/components/core/forms/art-captcha-verify/index.vue" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/dataSources.local.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources.local.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/api/common.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/common.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/App.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/App.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/api/auth.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/auth.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/api/system-manage.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/system-manage.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/components/core/forms/art-form/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/forms/art-form/README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/components/core/forms/art-form/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/forms/art-form/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/components/core/tables/art-table-query/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/tables/art-table-query/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/hooks/core/useTableColumns.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/hooks/core/useTableColumns.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/core/layouts/art-header-bar/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/layouts/art-header-bar/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/core/layouts/art-menus/art-sidebar-menu/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/layouts/art-menus/art-sidebar-menu/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/core/others/art-watermark/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/others/art-watermark/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/core/views/login/AuthTopBar.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/views/login/AuthTopBar.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/core/views/login/LoginLeftView.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/views/login/LoginLeftView.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/hooks/index.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/hooks/index.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/types/api/api.d.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/types/api/api.d.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/utils/time/format.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/time/format.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/utils/tree.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/tree.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/system/system-param/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/system/system-param/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/system/system-param/modules/system-param-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/system/system-param/modules/system-param-dialog.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/vehicle-manage-system/basic-info/insurance-company/modules/insurance-company-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-manage-system/basic-info/insurance-company/modules/insurance-company-dialog.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/vehicle-manage-system/basic-info/supplier/modules/supplier-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-manage-system/basic-info/supplier/modules/supplier-dialog.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/utils/router.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/router.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/auth/login/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/auth/login/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/auth/register/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/auth/register/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/dashboard/console/modules/about-project.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/dashboard/console/modules/about-project.vue" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -32,7 +32,7 @@
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="EmbeddingIndexingInfo">
-    <option name="cachedIndexableFilesCount" value="1029" />
+    <option name="cachedIndexableFilesCount" value="1044" />
     <option name="fileBasedEmbeddingIndicesEnabled" value="true" />
   </component>
   <component name="FileTemplateManagerImpl">
@@ -298,6 +298,9 @@
       <workItem from="1782119249940" duration="313000" />
       <workItem from="1782120799351" duration="17622000" />
       <workItem from="1782201721185" duration="7138000" />
+      <workItem from="1782285612708" duration="1812000" />
+      <workItem from="1782293402151" duration="372000" />
+      <workItem from="1782294563687" duration="4426000" />
     </task>
     <task id="LOCAL-00001" summary="feat project clean">
       <option name="closed" value="true" />

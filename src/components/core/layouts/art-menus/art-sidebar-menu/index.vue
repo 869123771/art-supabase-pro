@@ -83,7 +83,7 @@
             opacity: !menuOpen ? 0 : 1
           }"
         >
-          {{ AppConfig.systemInfo.name }}
+          {{ siteName }}
         </p>
       </div>
       <ElScrollbar :style="scrollbarStyle">
@@ -129,7 +129,6 @@
 </template>
 
 <script setup lang="ts">
-  import AppConfig from '@/config'
   import { useSettingStore } from '@/store/modules/setting'
   import { MenuTypeEnum, MenuWidth } from '@/enums/appEnum'
   import { useMenuStore } from '@/store/modules/menu'
@@ -137,6 +136,7 @@
   import { handleMenuJump } from '@/utils/navigation'
   import SidebarSubmenu from './widget/SidebarSubmenu.vue'
   import { useCommon } from '@/hooks/core/useCommon'
+  import { useWebsiteConfig } from '@/hooks'
   import { useWindowSize, useTimeoutFn } from '@vueuse/core'
 
   defineOptions({ name: 'ArtSidebarMenu' })
@@ -148,6 +148,7 @@
   const route = useRoute()
   const router = useRouter()
   const settingStore = useSettingStore()
+  const { siteName } = useWebsiteConfig()
 
   const { getMenuOpenWidth, menuType, uniqueOpened, dualMenuShowText, menuOpen, getMenuTheme } =
     storeToRefs(settingStore)

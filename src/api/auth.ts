@@ -17,9 +17,10 @@ export async function register(payload: Api.Auth.RegisterParams) {
  * @returns 登录响应
  */
 export async function login(params: Api.Auth.RegisterParams) {
+  const { email, password, captchaToken } = params
   const invokeResp = (await supabase.functions.invoke('check_user_status', {
     body: {
-      email: params.email
+      email
     }
   })) as any
   await responseHandle(() => invokeResp, {
@@ -28,7 +29,12 @@ export async function login(params: Api.Auth.RegisterParams) {
     showErrorMessage: true
   })
   return await responseHandle(
-    () => supabase.auth.signInWithPassword(keysToSnakeDeep(params)) as any,
+    () =>
+      supabase.auth.signInWithPassword({
+        email,
+        password,
+        options: captchaToken ? { captchaToken } : undefined
+      }) as any,
     {
       showMessage: true,
       message: '登录成功',

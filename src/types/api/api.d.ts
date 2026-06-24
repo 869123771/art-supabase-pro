@@ -80,6 +80,7 @@ declare namespace Api {
       userName?: string
       email: string
       password: string
+      captchaToken?: string
     }
 
     /** 忘记密码参数 */
@@ -233,6 +234,53 @@ declare namespace Api {
       groups: number
       groupCounts: Record<string, number>
       lastRefreshTime?: string
+    }
+
+    type WebsiteWatermarkContentType = 'username' | 'username_time' | 'site_name' | 'custom'
+    type WebsiteCaptchaType = 'turnstile'
+    type WebsiteTurnstileSize = 'normal' | 'compact' | 'flexible'
+    type WebsiteTurnstileTheme = 'light' | 'dark' | 'auto'
+    type WebsiteDefaultLanguage = 'zh' | 'en'
+
+    interface WebsiteConfigItem {
+      id?: string
+      tenantId?: string
+      siteName: string
+      siteShortName?: string | null
+      siteDescription?: string | null
+      logoUrl?: string | null
+      faviconUrl?: string | null
+      watermarkEnabled: boolean
+      watermarkContentType: WebsiteWatermarkContentType
+      watermarkCustomText?: string | null
+      loginTitle: string
+      loginSubtitle?: string | null
+      loginDescription?: string | null
+      defaultLanguage: WebsiteDefaultLanguage
+      captchaEnabled: boolean
+      captchaType: WebsiteCaptchaType
+      turnstileSiteKey?: string | null
+      turnstileSize?: WebsiteTurnstileSize
+      turnstileTheme?: WebsiteTurnstileTheme
+      captchaMaxAttempts: number
+      captchaLockMinutes: number
+      registerEnabled: boolean
+      maintenanceEnabled: boolean
+      maintenanceMessage?: string | null
+      seoTitle?: string | null
+      seoKeywords?: string | null
+      seoDescription?: string | null
+      contactEmail?: string | null
+      contactPhone?: string | null
+      contactAddress?: string | null
+      copyrightText?: string | null
+      icpRecord?: string | null
+      policeRecord?: string | null
+      enabled: boolean
+      createBy?: string
+      createTime?: string
+      updateBy?: string
+      updateTime?: string
     }
   }
 
