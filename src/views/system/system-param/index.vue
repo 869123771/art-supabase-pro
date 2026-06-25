@@ -114,7 +114,7 @@
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<DialogExpose>()
   const userStore = useUserStore()
-  const { getDictMap } = storeToRefs(userStore)
+  const { getDictMap, isPlatformSuper } = storeToRefs(userStore)
   const groupOptions = computed(() => getDictMap.value.systemParamGroup ?? [])
   const typeOptions = computed(() => getDictMap.value.systemParamType ?? [])
 
@@ -216,7 +216,8 @@
         }
       }
     ]),
-    headerActions: computed<ArtTableQueryHeaderAction[]>(() => [
+    headerActions: computed<ArtTableQueryHeaderAction[]>(() =>
+      ([
       {
         type: 'add',
         label: '新增参数',
@@ -255,7 +256,10 @@
           ElMessage.success('缓存已刷新')
         }
       }
-    ])
+      ] as ArtTableQueryHeaderAction[]).filter(
+        (action) => isPlatformSuper.value || action.key === 'refresh-cache'
+      )
+    )
   })
 
   const fetchTableData = (params: TableParams) => {
@@ -270,13 +274,14 @@
     })
   }
 
-  const columnsFactory = (): ColumnOption<SystemParam>[] => [
+  const columnsFactory = (): ColumnOption<SystemParam>[] =>
+    ([
     {
       type: 'selection',
       width: 50,
       fixed: 'left',
       reserveSelection: true,
-      selectable: (row: SystemParam) => !row.builtin
+      selectable: (row: SystemParam) => isPlatformSuper.value && !row.builtin
     },
     {
       type: 'globalIndex',
@@ -346,18 +351,21 @@
       label: '操作',
       width: 120,
       fixed: 'right',
-      formatter: (row) => (
-        <div class="system-param-page__operation">
-          <ArtButtonTable type="edit" onClick={() => openDialog(row)} />
-          <ArtButtonTable
-            type="delete"
-            disabled={row.builtin}
-            onClick={() => void handleDelete(row)}
-          />
-        </div>
-      )
+      formatter: (row) =>
+        isPlatformSuper.value ? (
+          <div class="system-param-page__operation">
+            <ArtButtonTable type="edit" onClick={() => openDialog(row)} />
+            <ArtButtonTable
+              type="delete"
+              disabled={row.builtin}
+              onClick={() => void handleDelete(row)}
+            />
+          </div>
+        ) : null
     }
-  ]
+    ] as ColumnOption<SystemParam>[]).filter(
+      (column) => isPlatformSuper.value || column.prop !== 'operation'
+    )
 
   const openDialog = (row?: SystemParam): void => {
     void dialogRef.value?.handleOpen(row ? (omit(row, []) as SystemParam) : undefined)

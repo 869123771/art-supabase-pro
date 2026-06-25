@@ -27,6 +27,7 @@
       class="website-config-page__form"
       :model="form"
       :rules="rules"
+      :disabled="isReadOnly"
       label-position="top"
     >
       <div class="website-config-page__body">
@@ -349,8 +350,8 @@
               <p>保存后会同步影响登录页、浏览器标题与系统品牌展示。</p>
             </div>
             <div class="website-config-page__action-buttons">
-              <ElButton @click="resetForm">重置当前表单</ElButton>
-              <ElButton type="primary" :loading="saving" @click="handleSave"
+              <ElButton :disabled="isReadOnly" @click="resetForm">重置当前表单</ElButton>
+              <ElButton type="primary" :disabled="isReadOnly" :loading="saving" @click="handleSave"
                 >保存并发布配置</ElButton
               >
             </div>
@@ -367,6 +368,7 @@
   import { fetchWebsiteConfig, saveWebsiteConfig } from '@/api/system-manage'
   import { createWebsiteConfigDefaults } from '@/config/website-config-defaults'
   import { useWebsiteConfig } from '@/hooks'
+  import { useUserStore } from '@/store/modules/user'
   import { formatWithDayjs } from '@/utils/time'
   import ArtUploadImage from '@/components/core/forms/art-upload-image/index.vue'
 
@@ -392,6 +394,9 @@
   const form = reactive<WebsiteConfig>(createWebsiteConfigDefaults())
   const originalForm = ref<WebsiteConfig>(createWebsiteConfigDefaults())
   const { setWebsiteConfig, loadWebsiteConfig } = useWebsiteConfig()
+  const userStore = useUserStore()
+  const { isPlatformSuper } = storeToRefs(userStore)
+  const isReadOnly = computed(() => !isPlatformSuper.value)
 
   const navigationItems: NavigationItem[] = [
     { key: 'overview', label: '状态概', icon: 'ri:pulse-line' },
@@ -595,6 +600,11 @@
   }
 
   const handleSave = async (): Promise<void> => {
+    if (isReadOnly.value) {
+      ElMessage.warning('当前账号只有查看权限，不能保存网站配置')
+      return
+    }
+
     await formRef.value?.validate()
     saving.value = true
 

@@ -83,7 +83,12 @@ export const useUserStore = defineStore(
     const getWorktabState = computed(() => useWorktabStore().$state)
     // 当前用户是否为超级管理员
     const { superRoleCode, loadRoleBuiltinCodes } = useSystemParam()
-    const isSuper = computed(() => getUserInfo.value.userRoles?.includes(superRoleCode.value))
+    const isSuper = computed(() =>
+      Boolean(getUserInfo.value.userRoles?.includes(superRoleCode.value))
+    )
+    const isPlatformSuper = computed(
+      () => isSuper.value && getUserInfo.value.tenant?.tenantCode?.toLowerCase() === 'platform'
+    )
     /**
      * 设置用户字典
      * @param data 字典信息
@@ -293,6 +298,7 @@ export const useUserStore = defineStore(
       refreshToken,
       dictMap,
       isSuper,
+      isPlatformSuper,
       getDictMap,
       getUserInfo,
       getSettingState,

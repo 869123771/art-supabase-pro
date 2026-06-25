@@ -120,6 +120,7 @@ declare namespace Api {
     interface UserListItem {
       id?: string
       tenantId?: string
+      tenant?: Pick<TenantListItem, 'tenantCode' | 'tenantName'>
       avatar?: string | null
       status?: string
       password: string
