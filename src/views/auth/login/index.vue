@@ -99,7 +99,7 @@
   import { HttpError } from '@/utils/http/error'
   import { ElMessage, ElNotification, type FormInstance, type FormRules } from 'element-plus'
   import { login } from '@/api/auth'
-  import { MenuProcessor } from '@/router/core'
+  import { MenuProcessor } from '@/router/core/MenuProcessor'
   import { getFirstMenuPath } from '@/utils'
   import { useWebsiteConfig } from '@/hooks'
   import ArtTurnstileCaptcha from '@/components/core/forms/art-turnstile-captcha/index.vue'

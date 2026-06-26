@@ -6,6 +6,8 @@ type Customer = Api.Tms.BasicData.Customer
 type CustomerSearchParams = Api.Tms.BasicData.CustomerSearchParams
 type CustomerAddress = Api.Tms.BasicData.CustomerAddress
 type CustomerAddressSearchParams = Api.Tms.BasicData.CustomerAddressSearchParams
+type Carrier = Api.Tms.BasicData.Carrier
+type CarrierSearchParams = Api.Tms.BasicData.CarrierSearchParams
 
 const normalizeBooleanFilter = (value: unknown): boolean | undefined => {
   if (value === true || value === 'true') return true
@@ -174,5 +176,98 @@ export async function deleteCustomerAddressBatch(ids: string[]) {
   return await responseHandle(
     () => supabase.from('tms_customer_address').delete().in('id', ids) as any,
     { showMessage: true }
+  )
+}
+
+const applyCarrierFilters = (query: any, params: CarrierSearchParams) => {
+  const { carrierType, enabled, signedContract, keyword, createTimeRange } = params
+  if (carrierType) query = query.eq('carrier_type', carrierType)
+  const enabledValue = normalizeBooleanFilter(enabled)
+  if (enabledValue !== undefined) query = query.eq('enabled', enabledValue)
+  const signedContractValue = normalizeBooleanFilter(signedContract)
+  if (signedContractValue !== undefined) query = query.eq('signed_contract', signedContractValue)
+  if (keyword) {
+    query = query.or(
+      `company_name.ilike.%${keyword}%,carrier_code.ilike.%${keyword}%,contact_name.ilike.%${keyword}%,contact_phone.ilike.%${keyword}%`
+    )
+  }
+  return applyDateRange(query, createTimeRange)
+}
+
+export async function fetchCarrierList(params: CarrierSearchParams) {
+  const { from = 0, to = 9 } = params
+  let query: any = supabase
+    .from('tms_carrier')
+    .select('*', { count: 'exact' })
+    .order('create_time', { ascending: false })
+    .range(from, to)
+
+  query = applyCarrierFilters(query, params)
+  return await responseHandle<Carrier[]>(() => query as any, {
+    ignoreCheck: true,
+    showErrorMessage: true
+  })
+}
+
+export async function exportCarrierList(
+  params: CarrierSearchParams & { ids?: string[]; maxRows?: number }
+) {
+  const { ids, maxRows = 10000 } = params
+  let query: any = supabase
+    .from('tms_carrier')
+    .select('*')
+    .order('create_time', { ascending: false })
+    .limit(maxRows)
+
+  query = ids?.length ? query.in('id', ids) : applyCarrierFilters(query, params)
+  return await responseHandle<Carrier[]>(() => query as any, {
+    ignoreCheck: true,
+    showErrorMessage: true
+  })
+}
+
+export async function fetchCarrierDetail(id: string) {
+  const query = supabase.from('tms_carrier').select('*').eq('id', id).maybeSingle()
+
+  return await responseHandle<Carrier | null>(() => query as any, {
+    ignoreCheck: true,
+    showErrorMessage: true
+  })
+}
+
+export async function addCarrier(params: Carrier) {
+  return await responseHandle(
+    () => supabase.from('tms_carrier').insert(keysToSnakeDeep(params)) as any,
+    { showMessage: true, breakReturn: true }
+  )
+}
+
+export async function editCarrier(params: Carrier) {
+  const { id, ...data } = params
+  return await responseHandle(
+    () => supabase.from('tms_carrier').update(keysToSnakeDeep(data)).eq('id', id) as any,
+    { showMessage: true, breakReturn: true }
+  )
+}
+
+export async function deleteCarrier(id: string) {
+  return await responseHandle(() => supabase.from('tms_carrier').delete().eq('id', id) as any, {
+    showMessage: true
+  })
+}
+
+export async function deleteCarrierBatch(ids: string[]) {
+  return await responseHandle(() => supabase.from('tms_carrier').delete().in('id', ids) as any, {
+    showMessage: true
+  })
+}
+
+export async function importCarriers(rows: Carrier[]) {
+  return await responseHandle(
+    () =>
+      supabase
+        .from('tms_carrier')
+        .upsert(keysToSnakeDeep(rows), { onConflict: 'tenant_id,carrier_code' }) as any,
+    { showMessage: true, breakReturn: true }
   )
 }

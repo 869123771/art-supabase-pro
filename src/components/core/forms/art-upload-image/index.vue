@@ -116,23 +116,25 @@
 
   function btnRender() {
     return (
-      <a class="upload-container" style={getSize.value}>
+      <div class="upload-container" style={getSize.value}>
         <el-tooltip content="打开资源选择器">
-          <a
+          <button
+            type="button"
             class="resource-btn"
             onClick={(e: MouseEvent) => {
+              e.preventDefault()
               e.stopPropagation()
               isOpenResource.value = true
             }}
           >
             <ArtSvgIcon icon="ri-folder-open-line" class="text-[18px]" />
-          </a>
+          </button>
         </el-tooltip>
         <div class="mt-[18%] flex flex-col items-center">
           <ArtSvgIcon icon="ri-add-line" class="text-[20px]" />
           <span class="mt-1 text-[14px]">{title ?? '上传图片'}</span>
         </div>
-      </a>
+      </div>
     )
   }
 
@@ -144,7 +146,7 @@
       await nextTick()
       const uploadTextDom = uploadRef.value?.$el?.querySelector<HTMLElement>('.el-upload--text')
       if (uploadTextDom) {
-        uploadTextDom.style.display = length > 0 ? 'none' : 'block'
+        uploadTextDom.style.display = length > 0 ? 'none' : 'inline-flex'
       }
     },
     { immediate: true }
@@ -271,6 +273,17 @@
 </script>
 
 <style scoped lang="scss">
+  :deep(.el-upload) {
+    display: inline-flex;
+    width: auto;
+    vertical-align: top;
+  }
+
+  :deep(.el-upload--text) {
+    display: inline-flex;
+    width: auto;
+  }
+
   :deep(.el-upload-list) {
     // @apply flex gap-1.5 flex-wrap;
     display: flex;
@@ -341,6 +354,9 @@
       display: flex;
       align-items: center;
       justify-content: center;
+      padding: 0;
+      cursor: pointer;
+      outline: none;
     }
 
     .preview-mask {

@@ -17,6 +17,14 @@ Build features in the project's established Vue 3, TypeScript, Element Plus, and
    - `src/hooks/core/useTable.ts`
 4. Keep changes inside the feature boundary unless a shared abstraction is genuinely required.
 
+## Route And Menu Source
+
+This project runs business navigation from backend Supabase menu data. Do not add feature or business pages to `src/router/routes/staticRoutes.ts`, and do not add new business route modules under `src/router/modules/**` just to make a sidebar item appear.
+
+For new business pages, create the Vue page/component files and add or update `sys_menu` data, including the correct parent menu, component path, `meta.title`, sort order, hidden detail routes, and role-menu assignments. Static routes are reserved for framework-level public/error routes such as auth, 403/404/500, and iframe shell behavior.
+
+When a requested menu does not appear, check backend mode first: verify the `sys_menu` row exists, the row is enabled and not hidden, the component path points to an existing `src/views/**/index.vue`, and the current role has the corresponding `sys_role_menu` grant. Do not solve missing backend menus by adding local static or frontend route records.
+
 ## Choose Project Components First
 
 Use these components before assembling equivalent Element Plus plumbing:

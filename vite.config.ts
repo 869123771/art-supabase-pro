@@ -21,6 +21,8 @@ export default ({ mode }: { mode: string }) => {
   const env = loadEnv(mode, root)
   const { VITE_VERSION, VITE_PORT, VITE_BASE_URL, VITE_API_URL, VITE_API_PROXY_URL, VITE_OUT_DIR } =
     env
+  const isProduction = mode === 'production'
+  const enableBuildCompression = env.VITE_BUILD_COMPRESS === 'true'
 
   console.log(`🚀 API_URL = ${VITE_API_URL}`)
   console.log(`🚀 VERSION = ${VITE_VERSION}`)
@@ -54,23 +56,19 @@ export default ({ mode }: { mode: string }) => {
       }
     },
     build: {
-      target: 'es2015',
+      target: 'es2020',
       outDir: VITE_OUT_DIR, //dist
       chunkSizeWarningLimit: 2000,
-      minify: 'terser',
-      terserOptions: {
-        compress: {
-          // 生产环境去除 console
-          drop_console: true,
-          // 生产环境去除 debugger
-          drop_debugger: true
-        }
-      },
+      minify: 'esbuild',
+      reportCompressedSize: true,
       dynamicImportVarsOptions: {
         warnOnError: true,
         exclude: [],
         include: ['src/views/**/*.vue']
       }
+    },
+    esbuild: {
+      drop: isProduction ? ['console', 'debugger'] : []
     },
     plugins: [
       vue(),
@@ -98,15 +96,19 @@ export default ({ mode }: { mode: string }) => {
         useSource: true
       }),
       // 压缩
-      viteCompression({
-        verbose: false, // 是否在控制台输出压缩结果
-        disable: false, // 是否禁用
-        algorithm: 'gzip', // 压缩算法
-        ext: '.gz', // 压缩后的文件名后缀
-        threshold: 10240, // 只有大小大于该值的资源会被处理 10240B = 10KB
-        deleteOriginFile: false // 压缩后是否删除原文件
-      }),
-      vueDevTools(),
+      ...(enableBuildCompression
+        ? [
+            viteCompression({
+              verbose: false, // 是否在控制台输出压缩结果
+              disable: false, // 是否禁用
+              algorithm: 'gzip', // 压缩算法
+              ext: '.gz', // 压缩后的文件名后缀
+              threshold: 10240, // 只有大小大于该值的资源会被处理 10240B = 10KB
+              deleteOriginFile: false // 压缩后是否删除原文件
+            })
+          ]
+        : []),
+      ...(!isProduction ? [vueDevTools()] : []),
       // 创建 .nojekyll 文件，禁用 Jekyll 处理
       createNoJekyllPlugin(VITE_OUT_DIR)
       // 打包分析

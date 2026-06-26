@@ -1,0 +1,1 @@
+import{w as s,r}from"./index-aFTnHwuL.js";const n=(a,o)=>{const e=r(!1),t=r([]),l=async()=>{if(!a.value.plateNo){t.value=[];return}e.value=!0;try{t.value=await o(a.value)}finally{e.value=!1}};return s(()=>a.value.plateNo,()=>{l()},{immediate:!0}),{loading:e,records:t,loadRecords:l}};export{n as u};

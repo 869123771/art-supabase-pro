@@ -30,8 +30,8 @@ export const WEB_LINKS = {
   // 项目社区
   COMMUNITY: 'https://www.artd.pro/docs/zh/community/communicate.html',
 
-  // 个人 Gitee 主页
-  GITEE: 'https://gitee.com/wangyanghub/art-supabase-pro',
+  // 哔哩哔哩
+  BILIBILI: 'https://www.bilibili.com/',
 
   // 项目介绍
   INTRODUCE: 'https://www.artd.pro/docs/zh/guide/introduce.html'

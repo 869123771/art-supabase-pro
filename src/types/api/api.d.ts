@@ -969,6 +969,50 @@ declare namespace Api {
             createTimeRange?: string[]
           }
       >
+
+      interface Carrier {
+        id?: string
+        tenantId?: string
+        carrierCode?: string
+        companyName: string
+        carrierType: string
+        businessLicenseNo?: string
+        taxRegistrationNo?: string
+        legalRepresentative?: string
+        region?: string
+        addressDetail?: string
+        postalCode?: string
+        enabled?: boolean
+        businessLicenseUrl?: string
+        driverCount?: number | null
+        vehicleCount?: number | null
+        contactName?: string
+        contactPhone?: string
+        contactDepartment?: string
+        contactPosition?: string
+        contactEmail?: string
+        contactQq?: string
+        invoiceTitle?: string
+        taxNo?: string
+        bankName?: string
+        bankAccountName?: string
+        bankAccount?: string
+        signedContract?: boolean
+        contractAttachmentUrl?: string
+        remark?: string
+        createBy?: string
+        createTime?: string
+        updateBy?: string
+        updateTime?: string
+      }
+
+      type CarrierSearchParams = Partial<
+        Pick<Carrier, 'carrierType' | 'enabled' | 'signedContract'> &
+          Api.Common.CommonSearchParams & {
+            keyword?: string
+            createTimeRange?: string[]
+          }
+      >
     }
   }
 
