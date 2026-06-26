@@ -1,1 +1,0 @@
-import{f as A,aQ as d,K as s,bC as h}from"./index-aFTnHwuL.js";const m=()=>{const{isFrontendMode:o}=h(),n=A(),r=d(),{info:u}=s(n),{buttonList:t}=s(r),a=()=>u.value.buttons??[],c=()=>Array.isArray(t.value)?t.value:[];return{hasAuth:e=>o.value?a().includes(e):c().some(i=>i?.name===e)}};export{m as u};

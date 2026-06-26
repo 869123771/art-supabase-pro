@@ -21,7 +21,6 @@ import { LanguageIdEnum, setupLanguageFeatures } from 'monaco-sql-languages'
 
 // Monaco 在 Vite 里需要手动分发不同语言的 worker。
 // 这里把 pgsql worker 单独接进来，避免 SQL 提示和解析退化成纯文本。
-// @ts-expect-error MonacoEnvironment is attached by monaco-editor
 self.MonacoEnvironment = {
   getWorker(_: any, label: string) {
     if (label === 'json') return new jsonWorker()

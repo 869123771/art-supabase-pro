@@ -59,16 +59,13 @@ export default ({ mode }: { mode: string }) => {
       target: 'es2020',
       outDir: VITE_OUT_DIR, //dist
       chunkSizeWarningLimit: 2000,
-      minify: 'esbuild',
-      reportCompressedSize: true,
+      minify: 'oxc',
+      reportCompressedSize: false,
       dynamicImportVarsOptions: {
         warnOnError: true,
         exclude: [],
         include: ['src/views/**/*.vue']
       }
-    },
-    esbuild: {
-      drop: isProduction ? ['console', 'debugger'] : []
     },
     plugins: [
       vue(),

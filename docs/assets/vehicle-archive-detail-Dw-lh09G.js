@@ -1,0 +1,1 @@
+import{J as e,k as t,x as n}from"./vue.runtime.esm-bundler-C1gU_-F6.js";import{t as r}from"./vehicle-archive-detail-content-BbV_gfYc.js";var i=t({name:`VehicleArchiveDetail`,__name:`index`,setup(t){return(t,i)=>(e(),n(r))}});export{i as default};

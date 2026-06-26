@@ -307,6 +307,7 @@
 
   .art-drawer__content {
     min-height: 1px;
+    height: 100%;
   }
 
   .art-drawer__scrollbar {

@@ -9,6 +9,8 @@ interface WebSocketOptions {
   connectionTimeout?: number // 连接建立超时时间(ms)
 }
 
+type WebSocketSendData = string | Blob | BufferSource
+
 export default class WebSocketClient {
   private static instance: WebSocketClient | null = null
   private ws: WebSocket | null = null
@@ -23,7 +25,7 @@ export default class WebSocketClient {
   private reconnectAttempts: number = 0 // 当前重连次数
 
   // 消息队列 - 缓存连接建立前的消息
-  private messageQueue: Array<string | ArrayBufferLike | Blob | ArrayBufferView> = []
+  private messageQueue: WebSocketSendData[] = []
 
   // 定时器
   private detectionTimer: NodeJS.Timeout | null = null
@@ -140,7 +142,7 @@ export default class WebSocketClient {
   }
 
   // 发送消息 - 增加消息队列
-  send(data: string | ArrayBufferLike | Blob | ArrayBufferView, immediate: boolean = false): void {
+  send(data: WebSocketSendData, immediate: boolean = false): void {
     // 如果要求立即发送且未连接，则直接报错
     if (immediate && (!this.ws || this.ws.readyState !== WebSocket.OPEN)) {
       console.error('WebSocket未连接，无法立即发送消息')

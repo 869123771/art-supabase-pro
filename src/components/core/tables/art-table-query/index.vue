@@ -125,10 +125,10 @@
   } from 'vue'
   import type { TableProps } from 'element-plus'
   import { ElMessage, ElMessageBox } from 'element-plus'
-  import type { ElTable } from 'element-plus'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import ArtExcelImport from '@/components/core/forms/art-excel-import/index.vue'
   import ArtTable from '@/components/core/tables/art-table/index.vue'
+  import type { ArtTableInstance } from '@/components/core/tables/art-table/index.vue'
   import type { ColumnOption } from '@/types'
   import { useTable } from '@/hooks/core/useTable'
   import type { ApiResponse } from '@/utils/table/tableCache'
@@ -400,7 +400,7 @@
   }
 
   interface ArtTableExpose {
-    elTableRef?: InstanceType<typeof ElTable> | null
+    elTableRef?: ArtTableInstance | null
   }
 
   export interface ArtTableQueryProps {

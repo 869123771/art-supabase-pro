@@ -147,7 +147,8 @@
 
 <script setup lang="ts">
   import { ref, computed, nextTick, watch, watchEffect, getCurrentInstance, useAttrs } from 'vue'
-  import type { ElTable, TableProps } from 'element-plus'
+  import type { ComponentPublicInstance } from 'vue'
+  import type { TableProps } from 'element-plus'
   import { storeToRefs } from 'pinia'
   import { useDraggable, type DraggableEvent } from 'vue-draggable-plus'
   import { ColumnOption } from '@/types'
@@ -159,8 +160,20 @@
 
   defineOptions({ name: 'ArtTable' })
 
+  export type ArtTableInstance = ComponentPublicInstance & {
+    clearSelection: () => void
+    toggleAllSelection: () => void
+    toggleRowSelection: (row: unknown, selected?: boolean) => void
+    setCurrentRow: (row?: unknown) => void
+    clearSort: () => void
+    clearFilter: (columnKeys?: string[]) => void
+    doLayout: () => void
+    sort: (prop: string, order: string) => void
+    setScrollTop: (top?: number) => void
+  }
+
   const { width } = useWindowSize()
-  const elTableRef = ref<InstanceType<typeof ElTable> | null>(null)
+  const elTableRef = ref<ArtTableInstance | null>(null)
   const paginationRef = ref<HTMLElement>()
   const tableHeaderRef = ref<HTMLElement>()
   const sortableTargetRef = ref<HTMLElement>()

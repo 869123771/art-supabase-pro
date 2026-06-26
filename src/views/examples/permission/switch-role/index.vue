@@ -124,7 +124,7 @@
       key: 'super',
       label: t('login.roles.super'),
       userName: 'Super',
-      userId: 1,
+      userId: '1',
       email: 'super@example.com',
       userRoles: [superRoleCode],
       permissions: ['view', 'add', 'edit', 'delete', 'export', 'publish', 'config', 'manage'],
@@ -135,7 +135,7 @@
       key: 'admin',
       label: t('login.roles.admin'),
       userName: 'Admin',
-      userId: 2,
+      userId: '2',
       email: 'admin@example.com',
       userRoles: ['R_ADMIN'],
       permissions: ['view', 'add', 'edit', 'export', 'publish'],
@@ -146,7 +146,7 @@
       key: 'user',
       label: t('login.roles.user'),
       userName: 'User',
-      userId: 3,
+      userId: '3',
       email: 'user@example.com',
       userRoles: ['R_USER'],
       permissions: ['view'],
@@ -184,7 +184,7 @@
     key: string
     label: string
     userName: string
-    userId: number
+    userId: string
     email: string
     userRoles: string[]
     permissions: string[]

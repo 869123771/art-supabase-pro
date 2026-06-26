@@ -1,7 +1,7 @@
 <template>
   <div class="result-table-container h-full">
     <ArtTable
-      table-layout="auto"
+      table-layout="fixed"
       ref="tableRef"
       :loading="loading"
       :data="tableData"
@@ -24,11 +24,7 @@
     />
 
     <!-- Cell Content Drawer -->
-    <CellContentView
-      v-model="drawerVisible"
-      :content="currentCellContent"
-      :column-name="currentColumnName"
-    />
+    <CellContentView ref="cellContentViewRef" />
   </div>
 </template>
 
@@ -37,7 +33,7 @@
   import { isObject } from 'lodash-es'
   import ArtTable from '@/components/core/tables/art-table/index.vue'
   import ArtMenuRight, { MenuItemType } from '@/components/core/others/art-menu-right/index.vue'
-  import CellContentView from './cell-content-view.vue'
+  import CellContentView, { type CellContentViewExpose } from './cell-content-view.vue'
   import { useClipboard } from '@vueuse/core'
 
   interface Props {
@@ -54,9 +50,7 @@
 
   const menuRef = ref()
   const tableRef = ref()
-  const drawerVisible = ref(false)
-  const currentCellContent = ref('')
-  const currentColumnName = ref('')
+  const cellContentViewRef = ref<CellContentViewExpose>()
   const { copy } = useClipboard()
 
   // Selected cell info
@@ -88,6 +82,11 @@
 
   const tableData = computed(() => props.data)
 
+  const getCellContent = (row: any, property: string) => {
+    const value = row[property]
+    return isObject(value) ? JSON.stringify(value) : String(value ?? '')
+  }
+
   // Menu Items
   const menuItems = computed((): MenuItemType[] => [
     {
@@ -105,9 +104,6 @@
   // Handle Cell Click (Left Click)
   const handleCellClick = (row: any, column: any, cell: any, event: MouseEvent) => {
     selectedCell.value = { row, column, event }
-    currentColumnName.value = column.property
-    const value = row[column.property]
-    currentCellContent.value = isObject(value) ? JSON.stringify(value) : String(value ?? '')
   }
 
   // Handle Cell Context Menu (Right Click)
@@ -117,11 +113,6 @@
 
     // Update selected cell info
     selectedCell.value = { row, column, event }
-    currentColumnName.value = column.property
-
-    // Get content
-    const value = row[column.property]
-    currentCellContent.value = isObject(value) ? JSON.stringify(value) : String(value ?? '')
 
     // Show menu
     nextTick(() => {
@@ -134,14 +125,19 @@
     if (!selectedCell.value) return
 
     if (item.key === 'copy') {
-      copy(currentCellContent.value)
+      copy(getCellContent(selectedCell.value.row, selectedCell.value.column.property))
     } else if (item.key === 'view') {
-      openDrawer()
+      void openDrawer()
     }
   }
 
-  const openDrawer = () => {
-    drawerVisible.value = true
+  const openDrawer = async () => {
+    if (!selectedCell.value) return
+
+    await cellContentViewRef.value?.handleOpen({
+      content: getCellContent(selectedCell.value.row, selectedCell.value.column.property),
+      columnName: selectedCell.value.column.property
+    })
   }
 
   const cellClassName = ({ row, column }: { row: any; column: any }) => {
@@ -160,6 +156,15 @@
   .result-table-container {
     :deep(.el-table) {
       height: 100%;
+
+      .cell {
+        overflow: visible;
+        line-height: 1.5;
+        text-overflow: initial;
+        white-space: normal;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+      }
 
       // Add selection style if needed
       .el-table__cell {

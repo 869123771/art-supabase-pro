@@ -4,7 +4,7 @@
       <template #title>
         <div class="menu-icon flex-cc">
           <ArtSvgIcon
-            :icon="item.meta.icon"
+            :icon="item.meta.icon || ''"
             :color="theme?.iconColor"
             :style="{ color: theme.iconColor }"
           />
@@ -26,13 +26,13 @@
 
     <ElMenuItem
       v-else
-      :index="isExternalLink(item) ? undefined : item.path || item.meta.title"
+      :index="isExternalLink(item) ? '' : item.path || item.meta.title"
       :level-item="level + 1"
       @click="goPage(item)"
     >
       <div class="menu-icon flex-cc">
         <ArtSvgIcon
-          :icon="item.meta.icon"
+          :icon="item.meta.icon || ''"
           :color="theme?.iconColor"
           :style="{ color: theme.iconColor }"
         />

@@ -285,7 +285,8 @@
 <script setup lang="ts">
   import { isEqual } from 'lodash-es'
   import type { Component } from 'vue'
-  import type { ElTable, ElTree } from 'element-plus'
+  import type { ComponentPublicInstance } from 'vue'
+  import type { ElTree } from 'element-plus'
   import { ArrowDown, CircleClose, Search } from '@element-plus/icons-vue'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
@@ -302,6 +303,12 @@
   } from './types'
 
   defineOptions({ name: 'ArtDataSelect' })
+
+  type DataSelectTableInstance = ComponentPublicInstance & {
+    clearSelection: () => void
+    toggleRowSelection: (row: DataSelectRecord, selected?: boolean) => void
+    setCurrentRow: (row?: DataSelectRecord | null) => void
+  }
 
   const props = withDefaults(defineProps<ArtDataSelectProps>(), {
     mode: 'table',
@@ -340,7 +347,7 @@
 
   const emit = defineEmits<ArtDataSelectEmits>()
 
-  const tableRef = ref<InstanceType<typeof ElTable>>()
+  const tableRef = ref<DataSelectTableInstance>()
   const treeRef = ref<InstanceType<typeof ElTree>>()
   const dialogRef = ref<ArtDialogExpose<void>>()
   const loading = ref(false)

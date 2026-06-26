@@ -57,7 +57,7 @@
               />
               <ElInputNumber
                 v-else-if="formState.model.paramType === 'number'"
-                v-model="formState.model.paramValue"
+                v-model="numberParamValue"
                 placeholder="请输入数字"
                 class="!w-full"
               />
@@ -352,6 +352,16 @@
     return formState.model.paramValue.length > 120
       ? `${formState.model.paramValue.slice(0, 120)}...`
       : formState.model.paramValue
+  })
+  const numberParamValue = computed<number | undefined>({
+    get: () => {
+      if (formState.model.paramValue === '') return undefined
+      const value = Number(formState.model.paramValue)
+      return Number.isNaN(value) ? undefined : value
+    },
+    set: (value) => {
+      formState.model.paramValue = value === undefined ? '' : String(value)
+    }
   })
 
   const handleGroupChange = (value: string): void => {

@@ -1,81 +1,111 @@
 <template>
-  <el-drawer
-    v-model="visible"
-    title="Viewing cell details"
+  <ArtDrawer
+    ref="drawerRef"
     size="50%"
-    :with-header="true"
+    :show-footer="false"
     append-to-body
     class="cell-content-drawer"
   >
     <template #header>
       <div class="flex items-center">
-        <span class="text-lg font-medium mr-2">Viewing cell details on column:</span>
+        <span class="text-lg font-medium mr-2">查看 </span>
         <el-tag>{{ columnName }}</el-tag>
       </div>
     </template>
-    <div class="h-full flex flex-col">
+
+    <div class="cell-content-view__editor">
       <Editor v-model="formattedContent" :language="language" :read-only="true" />
     </div>
-  </el-drawer>
+  </ArtDrawer>
 </template>
 
 <script setup lang="ts">
-  import { computed } from 'vue'
+  import { ref } from 'vue'
+  import ArtDrawer from '@/components/core/drawers/art-drawer/index.vue'
+  import type { ArtDrawerExpose } from '@/components/core/drawers/art-drawer/types'
   import Editor from './editor.vue'
 
-  interface Props {
-    modelValue: boolean
+  export interface CellContentOpenData {
     content: string
     columnName: string
   }
 
-  const props = withDefaults(defineProps<Props>(), {
-    modelValue: false,
-    content: '',
-    columnName: ''
-  })
+  export interface CellContentViewExpose {
+    handleOpen: (data: CellContentOpenData) => Promise<void>
+  }
 
-  const emit = defineEmits<{
-    (e: 'update:modelValue', value: boolean): void
-  }>()
+  const drawerRef = ref<ArtDrawerExpose<CellContentOpenData>>()
+  const columnName = ref('')
+  const language = ref('text')
+  const formattedContent = ref('')
 
-  const visible = computed({
-    get: () => props.modelValue,
-    set: (val) => emit('update:modelValue', val)
-  })
-
-  const language = computed(() => {
+  const resolveContentLanguage = (content: string) => {
     try {
-      const json = JSON.parse(props.content)
+      const json = JSON.parse(content)
       if (json && typeof json === 'object') {
         return 'json'
       }
-    } catch (e) {
-      console.error(e)
+    } catch {
+      // Plain text content is expected for most table cells.
     }
     return 'text'
-  })
+  }
 
-  const formattedContent = computed({
-    get: () => {
-      try {
-        // Try to parse as JSON and format
-        const json = JSON.parse(props.content)
-        return JSON.stringify(json, null, 2)
-      } catch (e) {
-        console.log(e)
-        // If not JSON, return as is
-        return props.content
-      }
-    },
-    set: () => {} // Readonly
-  })
+  const formatContent = (content: string) => {
+    try {
+      const json = JSON.parse(content)
+      return JSON.stringify(json, null, 2)
+    } catch {
+      return content
+    }
+  }
+
+  const handleOpen = async (data: CellContentOpenData) => {
+    columnName.value = data.columnName
+    language.value = resolveContentLanguage(data.content)
+    formattedContent.value = formatContent(data.content)
+
+    await drawerRef.value?.handleOpen(data, {
+      title: '查看',
+      size: '50%',
+      showFooter: false
+    })
+  }
+
+  defineExpose<CellContentViewExpose>({ handleOpen })
 </script>
 
 <style scoped lang="scss">
-  .cell-content-drawer {
-    :deep(.el-drawer__body) {
+  :deep(.cell-content-drawer) {
+    display: flex;
+    flex-direction: column;
+
+    .el-drawer__header {
+      flex: 0 0 auto;
+    }
+
+    .el-drawer__body {
+      display: flex;
+      flex: 1;
+      flex-direction: column;
+      height: auto;
+      min-height: 0;
+      overflow: hidden;
       padding: 0;
     }
+
+    .art-drawer__content {
+      display: flex;
+      flex: 1;
+      height: auto;
+      min-height: 0;
+      overflow: hidden;
+    }
+  }
+
+  .cell-content-view__editor {
+    flex: 1;
+    height: 100%;
+    min-height: 0;
   }
 </style>
