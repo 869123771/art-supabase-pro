@@ -275,7 +275,7 @@ declare namespace Api {
       defaultLanguage: WebsiteDefaultLanguage
       captchaEnabled: boolean
       captchaType: WebsiteCaptchaType
-      turnstileSiteKey?: string | null
+      turnstileSiteKey: string
       turnstileSize?: WebsiteTurnstileSize
       turnstileTheme?: WebsiteTurnstileTheme
       captchaMaxAttempts: number
@@ -318,6 +318,8 @@ declare namespace Api {
         id?: string
         tenantId?: string
         plateNo: string
+        carrierId?: string | null
+        carrier?: Api.Tms.BasicData.CarrierOption | null
         companyName?: string
         selfNo?: string
         vehicleType: string
@@ -389,6 +391,8 @@ declare namespace Api {
         idCardNo?: string
         mailingAddress?: string
         tonnageOrSeat?: string
+        primaryDriverId?: string | null
+        primaryDriver?: Api.Tms.BasicData.DriverOption | null
         driverOneName?: string
         driverOnePhone?: string
         driverTwoName?: string
@@ -418,6 +422,7 @@ declare namespace Api {
       type VehicleArchiveSearchParams = Partial<
         Pick<
           VehicleArchive,
+          | 'carrierId'
           | 'plateNo'
           | 'companyName'
           | 'vehicleType'
@@ -1013,6 +1018,55 @@ declare namespace Api {
             createTimeRange?: string[]
           }
       >
+
+      interface CarrierOption {
+        id: string
+        carrierCode?: string
+        companyName: string
+        contactName?: string
+        contactPhone?: string
+      }
+
+      interface Driver {
+        id?: string
+        tenantId?: string
+        carrierId: string
+        driverName: string
+        phone: string
+        gender: string
+        idCardNo: string
+        licenseType: string
+        licenseExpireDate?: string | null
+        homeAddress?: string
+        emergencyContactName?: string
+        emergencyContactPhone?: string
+        enabled?: boolean
+        idCardFrontUrl?: string | null
+        idCardBackUrl?: string | null
+        driverLicenseFrontUrl?: string | null
+        driverLicenseBackUrl?: string | null
+        remark?: string
+        carrier?: CarrierOption | null
+        createBy?: string
+        createTime?: string
+        updateBy?: string
+        updateTime?: string
+      }
+
+      type DriverSearchParams = Partial<
+        Pick<Driver, 'carrierId' | 'gender' | 'enabled'> &
+          Api.Common.CommonSearchParams & {
+            keyword?: string
+            createTimeRange?: string[]
+          }
+      >
+
+      interface DriverOption {
+        id: string
+        carrierId?: string | null
+        driverName: string
+        phone?: string
+      }
     }
   }
 

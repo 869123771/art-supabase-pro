@@ -132,6 +132,7 @@
     editVehicleArchive,
     fetchVehicleArchiveDetail
   } from '@/api/vehicle-manage-system'
+  import { fetchCarrierOptions, fetchDriverOptions } from '@/api/tms'
   import { uploadAttachment } from '@/api/common'
   import { useUserStore } from '@/store/modules/user'
   import { downloadAttachment, getFileExtension, viewAttachment } from '@/utils/file'
@@ -140,6 +141,8 @@
 
   type VehicleArchive = Api.VehicleMgtSys.ArchiveManage.VehicleArchive
   type ArchiveAttachment = Api.VehicleMgtSys.ArchiveManage.VehicleArchiveAttachment
+  type CarrierOption = Api.Tms.BasicData.CarrierOption
+  type DriverOption = Api.Tms.BasicData.DriverOption
   type ArchiveTabName = 'basic' | 'body' | 'engine' | 'other'
   type VehicleArchiveWritePayload = Record<string, unknown> & { id?: string }
   type BooleanDictOption = Omit<Api.DataCenter.DictListItem, 'value'> & { value: boolean }
@@ -203,6 +206,8 @@
     { name: 'engine', formRef: engineFormRef },
     { name: 'other', formRef: otherFormRef }
   ]
+  const carrierCache = ref(new Map<string, CarrierOption>())
+  const driverCache = ref(new Map<string, DriverOption>())
 
   const isEdit = computed(() => typeof route.params.id === 'string' && route.params.id.length > 0)
 
@@ -230,6 +235,8 @@
   const createInitialForm = (): VehicleArchive => ({
     id: undefined,
     plateNo: '',
+    carrierId: null,
+    carrier: null,
     companyName: '',
     selfNo: '',
     vehicleType: '',
@@ -298,6 +305,8 @@
     idCardNo: '',
     mailingAddress: '',
     tonnageOrSeat: '',
+    primaryDriverId: null,
+    primaryDriver: null,
     driverOneName: '',
     driverOnePhone: '',
     driverTwoName: '',
@@ -320,7 +329,7 @@
 
   const rules: FormRules<VehicleArchive> = {
     plateNo: [{ required: true, message: '请输入车牌号', trigger: 'blur' }],
-    companyName: [{ required: true, message: '请输入所属公司', trigger: 'blur' }],
+    carrierId: [{ required: true, message: '请选择所属承运商', trigger: 'change' }],
     vehicleType: [{ required: true, message: '请选择车型', trigger: 'change' }],
     vin: [{ required: true, message: '请输入车架号（VIN）', trigger: 'blur' }],
     registerDate: [{ required: true, message: '请选择登记日期', trigger: 'change' }],
@@ -338,7 +347,51 @@
 
   const basicItems = computed<FormItem[]>(() => [
     { label: '车牌号', key: 'plateNo', type: 'input' },
-    { label: '所属公司', key: 'companyName', type: 'input' },
+    {
+      label: '所属承运商',
+      key: 'carrierId',
+      type: 'select',
+      span: 16,
+      api: fetchCarrierOptions,
+      resultField: 'data',
+      labelField: 'companyName',
+      valueField: 'id',
+      labelFn: (option) => {
+        const carrier = option as CarrierOption
+        return carrier.carrierCode
+          ? `${carrier.companyName}（${carrier.carrierCode}）`
+          : carrier.companyName
+      },
+      props: {
+        filterable: true,
+        clearable: true,
+        placeholder: '请选择所属承运商',
+        onVisibleChange: async (visible: boolean) => {
+          if (!visible) return
+          const { data } = await fetchCarrierOptions()
+          carrierCache.value = new Map((data ?? []).map((item) => [item.id, item]))
+        },
+        onChange: (value?: string) => {
+          if (!value) {
+            form.companyName = ''
+            form.primaryDriverId = null
+            form.primaryDriver = null
+            form.driverOneName = ''
+            form.driverOnePhone = ''
+            return
+          }
+          const carrier = carrierCache.value.get(value)
+          if (carrier) {
+            form.companyName = carrier.companyName
+          }
+          form.primaryDriverId = null
+          form.primaryDriver = null
+          form.driverOneName = ''
+          form.driverOnePhone = ''
+        }
+      }
+    },
+    { label: '所属公司', key: 'companyName', type: 'input', props: { readonly: true } },
     { label: '自编号', key: 'selfNo', type: 'input' },
     { label: '车型', key: 'vehicleType', type: 'select', props: { options: options.vehicleType } },
     {
@@ -610,8 +663,48 @@
     { label: '身份证号码', key: 'idCardNo', type: 'input' },
     { label: '通讯地址', key: 'mailingAddress', type: 'input' },
     { label: '吨位/座位', key: 'tonnageOrSeat', type: 'input' },
-    { label: '驾驶员一名称', key: 'driverOneName', type: 'input' },
-    { label: '驾驶员一电话', key: 'driverOnePhone', type: 'input' },
+    {
+      label: '主司机',
+      key: 'primaryDriverId',
+      type: 'select',
+      span: 16,
+      api: fetchDriverOptions,
+      resultField: 'data',
+      labelField: 'driverName',
+      valueField: 'id',
+      immediate: false,
+      beforeFetch: () => ({
+        carrierId: form.carrierId ?? undefined
+      }),
+      labelFn: (option) => {
+        const driver = option as DriverOption
+        return driver.phone ? `${driver.driverName}（${driver.phone}）` : driver.driverName
+      },
+      props: {
+        filterable: true,
+        clearable: true,
+        disabled: !form.carrierId,
+        placeholder: form.carrierId ? '请选择主司机' : '请先选择所属承运商',
+        onVisibleChange: async (visible: boolean) => {
+          if (visible && form.carrierId) {
+            const { data } = await fetchDriverOptions({ carrierId: form.carrierId })
+            driverCache.value = new Map((data ?? []).map((item) => [item.id, item]))
+          }
+        },
+        onChange: (value?: string) => {
+          if (!value) {
+            form.driverOneName = ''
+            form.driverOnePhone = ''
+            return
+          }
+          const driver = driverCache.value.get(value)
+          form.driverOneName = driver?.driverName ?? ''
+          form.driverOnePhone = driver?.phone ?? ''
+        }
+      }
+    },
+    { label: '驾驶员一名称', key: 'driverOneName', type: 'input', props: { readonly: true } },
+    { label: '驾驶员一电话', key: 'driverOnePhone', type: 'input', props: { readonly: true } },
     { label: '驾驶员二名称', key: 'driverTwoName', type: 'input' },
     { label: '驾驶员二电话', key: 'driverTwoPhone', type: 'input' },
     { label: '营运线路', key: 'operationRoute', type: 'input' },
@@ -681,6 +774,15 @@
       delete form[key as keyof VehicleArchive]
     })
     Object.assign(form, nextForm)
+    if (nextForm.carrier?.id) {
+      carrierCache.value.set(nextForm.carrier.id, nextForm.carrier)
+      form.companyName = nextForm.carrier.companyName
+    }
+    if (nextForm.primaryDriver?.id) {
+      driverCache.value.set(nextForm.primaryDriver.id, nextForm.primaryDriver)
+      form.driverOneName = nextForm.primaryDriver.driverName
+      form.driverOnePhone = nextForm.primaryDriver.phone ?? ''
+    }
   }
 
   const focusFirstInvalidField = (tabName: ArchiveTabName): void => {
@@ -722,6 +824,8 @@
       updateTime,
       auditBy,
       auditTime,
+      carrier,
+      primaryDriver,
       ...formPayload
     } = params
     const payload = {
@@ -741,6 +845,8 @@
     void updateTime
     void auditBy
     void auditTime
+    void carrier
+    void primaryDriver
 
     return {
       ...(id ? { id } : {}),

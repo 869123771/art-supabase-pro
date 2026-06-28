@@ -175,8 +175,9 @@
           props: {
             clearable: true,
             filterable: true,
-            onChange: handleParentChange,
             placeholder: '不选择则创建为顶级菜单',
+            checkStrictly: true,
+            onChange: handleParentChange,
             data: select.value.menuTree,
             props: {
               label: (data: AppRouteRecord) => formatMenuTitle(data.meta?.title),
@@ -246,6 +247,7 @@
             clearable: true,
             filterable: true,
             placeholder: '不选择则创建为顶级菜单',
+            checkStrictly: true,
             data: select.value.menuTree,
             props: {
               label: (data: AppRouteRecord) => formatMenuTitle(data.meta?.title),

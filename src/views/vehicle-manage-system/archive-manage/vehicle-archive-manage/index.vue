@@ -52,12 +52,14 @@
   }
 
   const router = useRouter()
+  const route = useRoute()
   const userStore = useUserStore()
   const { getDictMap } = storeToRefs(userStore)
   const tableQueryRef = ref<ArtTableQueryExpose>()
 
   const table: UnwrapNestedRefs<TableGroup> = reactive<TableGroup>({
     searchQuery: {
+      carrierId: '',
       companyName: '',
       plateNo: '',
       manufacturer: '',
@@ -124,6 +126,13 @@
     props: {
       rowKey: 'id',
       tableLayout: 'fixed'
+    }
+  })
+
+  onMounted(() => {
+    const carrierId = String(route.query.carrierId || '')
+    if (carrierId) {
+      table.searchQuery.carrierId = carrierId
     }
   })
 

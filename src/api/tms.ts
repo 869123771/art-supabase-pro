@@ -8,6 +8,8 @@ type CustomerAddress = Api.Tms.BasicData.CustomerAddress
 type CustomerAddressSearchParams = Api.Tms.BasicData.CustomerAddressSearchParams
 type Carrier = Api.Tms.BasicData.Carrier
 type CarrierSearchParams = Api.Tms.BasicData.CarrierSearchParams
+type Driver = Api.Tms.BasicData.Driver
+type DriverSearchParams = Api.Tms.BasicData.DriverSearchParams
 
 const normalizeBooleanFilter = (value: unknown): boolean | undefined => {
   if (value === true || value === 'true') return true
@@ -235,6 +237,33 @@ export async function fetchCarrierDetail(id: string) {
   })
 }
 
+export async function fetchCarrierOptions(
+  params: Partial<Pick<Api.Tms.BasicData.CarrierOption, 'carrierCode' | 'companyName'>> = {}
+) {
+  const { carrierCode, companyName } = params
+  let query: any = supabase
+    .from('tms_carrier')
+    .select('id, carrier_code, company_name, contact_name, contact_phone')
+    .eq('enabled', true)
+    .order('company_name', { ascending: true })
+    .limit(200)
+
+  if (carrierCode || companyName) {
+    const terms = [companyName, carrierCode].filter(Boolean)
+    const keyword = terms[0]
+    if (keyword) {
+      query = query.or(
+        `company_name.ilike.%${keyword}%,carrier_code.ilike.%${keyword}%,contact_name.ilike.%${keyword}%`
+      )
+    }
+  }
+
+  return await responseHandle<Api.Tms.BasicData.CarrierOption[]>(() => query as any, {
+    ignoreCheck: true,
+    showErrorMessage: true
+  })
+}
+
 export async function addCarrier(params: Carrier) {
   return await responseHandle(
     () => supabase.from('tms_carrier').insert(keysToSnakeDeep(params)) as any,
@@ -270,4 +299,125 @@ export async function importCarriers(rows: Carrier[]) {
         .upsert(keysToSnakeDeep(rows), { onConflict: 'tenant_id,carrier_code' }) as any,
     { showMessage: true, breakReturn: true }
   )
+}
+
+const DRIVER_SELECT = `
+  *,
+  carrier:tms_carrier!tms_driver_carrier_id_fkey(
+    id,
+    carrier_code,
+    company_name,
+    contact_name,
+    contact_phone
+  )
+`
+
+const applyDriverFilters = (query: any, params: DriverSearchParams) => {
+  const { carrierId, gender, enabled, keyword, createTimeRange } = params
+  if (carrierId) query = query.eq('carrier_id', carrierId)
+  if (gender) query = query.eq('gender', gender)
+  const enabledValue = normalizeBooleanFilter(enabled)
+  if (enabledValue !== undefined) query = query.eq('enabled', enabledValue)
+  if (keyword) {
+    query = query.or(
+      `driver_name.ilike.%${keyword}%,phone.ilike.%${keyword}%,id_card_no.ilike.%${keyword}%,home_address.ilike.%${keyword}%`
+    )
+  }
+  return applyDateRange(query, createTimeRange)
+}
+
+export async function fetchDriverList(params: DriverSearchParams) {
+  const { from = 0, to = 9 } = params
+  let query: any = supabase
+    .from('tms_driver')
+    .select(DRIVER_SELECT, { count: 'exact' })
+    .order('create_time', { ascending: false })
+    .range(from, to)
+
+  query = applyDriverFilters(query, params)
+  return await responseHandle<Driver[]>(() => query as any, {
+    ignoreCheck: true,
+    showErrorMessage: true
+  })
+}
+
+export async function exportDriverList(
+  params: DriverSearchParams & { ids?: string[]; maxRows?: number }
+) {
+  const { ids, maxRows = 10000 } = params
+  let query: any = supabase
+    .from('tms_driver')
+    .select(DRIVER_SELECT)
+    .order('create_time', { ascending: false })
+    .limit(maxRows)
+
+  query = ids?.length ? query.in('id', ids) : applyDriverFilters(query, params)
+  return await responseHandle<Driver[]>(() => query as any, {
+    ignoreCheck: true,
+    showErrorMessage: true
+  })
+}
+
+export async function fetchDriverOptions(
+  params: Partial<Pick<Api.Tms.BasicData.DriverOption, 'carrierId' | 'driverName'>> = {}
+) {
+  const { carrierId, driverName } = params
+  let query: any = supabase
+    .from('tms_driver')
+    .select('id, carrier_id, driver_name, phone')
+    .eq('enabled', true)
+    .order('driver_name', { ascending: true })
+    .limit(200)
+
+  if (carrierId) query = query.eq('carrier_id', carrierId)
+  if (driverName) {
+    query = query.or(`driver_name.ilike.%${driverName}%,phone.ilike.%${driverName}%`)
+  }
+
+  return await responseHandle<Api.Tms.BasicData.DriverOption[]>(() => query as any, {
+    ignoreCheck: true,
+    showErrorMessage: true
+  })
+}
+
+export async function fetchDriverListByCarrierId(carrierId: string) {
+  const query = supabase
+    .from('tms_driver')
+    .select(DRIVER_SELECT)
+    .eq('carrier_id', carrierId)
+    .order('create_time', { ascending: false })
+    .limit(1000)
+
+  return await responseHandle<Driver[]>(() => query as any, {
+    ignoreCheck: true,
+    showErrorMessage: true
+  })
+}
+
+export async function addDriver(params: Driver) {
+  return await responseHandle(
+    () => supabase.from('tms_driver').insert(keysToSnakeDeep(params)) as any,
+    { showMessage: true, breakReturn: true }
+  )
+}
+
+export async function editDriver(params: Driver) {
+  const { id, ...data } = params
+  delete data.carrier
+  return await responseHandle(
+    () => supabase.from('tms_driver').update(keysToSnakeDeep(data)).eq('id', id) as any,
+    { showMessage: true, breakReturn: true }
+  )
+}
+
+export async function deleteDriver(id: string) {
+  return await responseHandle(() => supabase.from('tms_driver').delete().eq('id', id) as any, {
+    showMessage: true
+  })
+}
+
+export async function deleteDriverBatch(ids: string[]) {
+  return await responseHandle(() => supabase.from('tms_driver').delete().in('id', ids) as any, {
+    showMessage: true
+  })
 }

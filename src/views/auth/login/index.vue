@@ -147,9 +147,7 @@
 
   const loading = ref(false)
   const showTurnstile = computed(() => websiteConfig.value.captchaEnabled)
-  const turnstileSiteKey = computed(
-    () => websiteConfig.value.turnstileSiteKey || '0x4AAAAAADqOIVodNJNAZL57'
-  )
+  const turnstileSiteKey = computed(() => websiteConfig.value.turnstileSiteKey)
   const turnstileWidgetSize = computed(() =>
     websiteConfig.value.turnstileSize === 'compact' ? 'compact' : 'flexible'
   )

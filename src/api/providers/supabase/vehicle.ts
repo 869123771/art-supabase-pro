@@ -40,6 +40,23 @@ type VehicleMaintenanceSearchParams = Api.VehicleMgtSys.VehicleManage.VehicleMai
 type VehiclePartUsage = Api.VehicleMgtSys.VehicleManage.VehiclePartUsage
 type VehiclePartUsageSearchParams = Api.VehicleMgtSys.VehicleManage.VehiclePartUsageSearchParams
 
+const VEHICLE_ARCHIVE_SELECT = `
+  *,
+  carrier:tms_carrier!vehicle_archive_carrier_id_fkey(
+    id,
+    carrier_code,
+    company_name,
+    contact_name,
+    contact_phone
+  ),
+  primary_driver:tms_driver!vehicle_archive_primary_driver_id_fkey(
+    id,
+    carrier_id,
+    driver_name,
+    phone
+  )
+`
+
 // 保险公司
 export async function fetchInsuranceCompanyList(params: InsuranceCompanySearchParams) {
   const { companyName, contactPerson, contactPhone, from = 0, to = 9 } = params
@@ -458,6 +475,7 @@ export async function fetchSupplierOptions() {
 const VEHICLE_ARCHIVE_TABLE = 'vehicle_archive'
 
 const getVehicleArchiveSearchFilters = (params: VehicleArchiveSearchParams): FilterSpec[] => [
+  { col: 'carrierId', op: 'eq', val: params.carrierId },
   { col: 'plateNo', op: 'ilike', val: params.plateNo ? `%${params.plateNo}%` : undefined },
   {
     col: 'companyName',
@@ -480,7 +498,7 @@ export async function fetchVehicleArchiveList(params: VehicleArchiveSearchParams
   const { from = 0, to = 9, createTimeRange } = params
   let query: any = supabase
     .from(VEHICLE_ARCHIVE_TABLE)
-    .select('*', { count: 'exact' })
+    .select(VEHICLE_ARCHIVE_SELECT, { count: 'exact' })
     .order('create_time', { ascending: false })
     .range(from, to)
 
@@ -505,7 +523,7 @@ export async function exportVehicleArchiveList(
   const { ids, maxRows = 10000, createTimeRange } = params
   let query: any = supabase
     .from(VEHICLE_ARCHIVE_TABLE)
-    .select('*')
+    .select(VEHICLE_ARCHIVE_SELECT)
     .order('create_time', { ascending: false })
     .limit(maxRows)
 
@@ -529,7 +547,12 @@ export async function exportVehicleArchiveList(
 
 export async function fetchVehicleArchiveDetail(id: string) {
   return await responseHandle<VehicleArchive>(
-    () => supabase.from(VEHICLE_ARCHIVE_TABLE).select('*').eq('id', id).single() as any,
+    () =>
+      supabase
+        .from(VEHICLE_ARCHIVE_TABLE)
+        .select(VEHICLE_ARCHIVE_SELECT)
+        .eq('id', id)
+        .single() as any,
     {
       ignoreCheck: true,
       showErrorMessage: true
@@ -656,7 +679,7 @@ export async function fetchVehicleArchiveOptions(
 
   let query: any = supabase
     .from(VEHICLE_ARCHIVE_TABLE)
-    .select('id, plate_no, company_name, vin, self_no')
+    .select('id, plate_no, company_name, vin, self_no, carrier_id')
     .order('plate_no', { ascending: true })
     .limit(200)
 
