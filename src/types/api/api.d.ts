@@ -1067,6 +1067,73 @@ declare namespace Api {
         driverName: string
         phone?: string
       }
+
+      interface Cargo {
+        id?: string
+        tenantId?: string
+        cargoCode?: string
+        cargoName: string
+        unit: string
+        lengthM?: number | null
+        widthM?: number | null
+        heightM?: number | null
+        volumeM3?: number | null
+        weightKg?: number | null
+        valueAmount?: number | null
+        enabled?: boolean
+        remark?: string | null
+        createBy?: string
+        createTime?: string
+        updateBy?: string
+        updateTime?: string
+      }
+
+      type CargoSearchParams = Partial<
+        Pick<Cargo, 'unit' | 'enabled'> &
+          Api.Common.CommonSearchParams & {
+            keyword?: string
+            createTimeRange?: string[]
+          }
+      >
+
+      type ContractStatus = 'draft' | 'pending' | 'approved' | 'rejected' | 'terminated'
+
+      interface ContractAttachment {
+        name: string
+        url?: string
+        fileType?: string
+        fileSize?: string
+      }
+
+      interface Contract {
+        id?: string
+        tenantId?: string
+        contractNo?: string
+        contractName: string
+        contractStatus?: ContractStatus
+        carrierId: string
+        contactName?: string | null
+        waybillNo?: string | null
+        billingMethod: string
+        contractAmount?: number | null
+        signTime: string
+        handler: string
+        contractDescription?: string | null
+        attachments?: ContractAttachment[]
+        carrier?: CarrierOption | null
+        createBy?: string
+        createTime?: string
+        updateBy?: string
+        updateTime?: string
+      }
+
+      type ContractSearchParams = Partial<
+        Pick<Contract, 'contractStatus' | 'carrierId' | 'billingMethod'> &
+          Api.Common.CommonSearchParams & {
+            keyword?: string
+            createTimeRange?: string[]
+          }
+      >
     }
   }
 

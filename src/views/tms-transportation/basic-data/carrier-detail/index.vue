@@ -59,10 +59,24 @@
             <span v-else>--</span>
           </ElDescriptionsItem>
           <ElDescriptionsItem label="司机数量">
-            <span class="carrier-detail__link-value">{{ relationStats.driverCount }}</span>
+            <ElButton
+              class="carrier-detail__link-value"
+              link
+              type="primary"
+              @click="goDriverManage"
+            >
+              {{ relationStats.driverCount }}
+            </ElButton>
           </ElDescriptionsItem>
           <ElDescriptionsItem label="车辆数量">
-            <span class="carrier-detail__link-value">{{ relationStats.vehicleCount }}</span>
+            <ElButton
+              class="carrier-detail__link-value"
+              link
+              type="primary"
+              @click="goVehicleManage"
+            >
+              {{ relationStats.vehicleCount }}
+            </ElButton>
           </ElDescriptionsItem>
           <ElDescriptionsItem label="备注信息" :span="4">{{
             formatValue(detail.data?.remark)
@@ -432,8 +446,8 @@
     }
 
     &__link-value {
-      color: var(--el-color-primary);
       font-weight: 600;
+      padding: 0;
     }
 
     :deep(.el-descriptions__label) {

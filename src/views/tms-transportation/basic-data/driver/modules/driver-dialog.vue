@@ -67,18 +67,7 @@
   const formRef = ref<DialogExposeForm>()
 
   const genderOptions = computed(() => getDictMap.value.sex ?? [])
-  const fallbackLicenseTypeOptions = [
-    { label: 'A1', value: 'A1' },
-    { label: 'A2', value: 'A2' },
-    { label: 'A3', value: 'A3' },
-    { label: 'B1', value: 'B1' },
-    { label: 'B2', value: 'B2' },
-    { label: 'C1', value: 'C1' },
-    { label: 'C2', value: 'C2' }
-  ]
-  const licenseTypeOptions = computed(
-    () => getDictMap.value.tmsDriverLicenseType ?? fallbackLicenseTypeOptions
-  )
+  const licenseTypeOptions = computed(() => getDictMap.value.tmsDriverLicenseType ?? [])
 
   const createInitialForm = (): DriverForm => ({
     id: undefined,

@@ -8,16 +8,14 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="b8f35119-660a-46e7-82f4-53eee06863eb" name="Changes" comment="feat : carrier">
-      <change beforePath="$PROJECT_DIR$/.idea/dataSources.local.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources.local.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/api/providers/supabase/vehicle.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/providers/supabase/vehicle.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/api/tms.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/tms.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/types/api/api.d.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/types/api/api.d.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/auth/login/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/auth/login/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/system/menu/modules/menu-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/system/menu/modules/menu-dialog.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/types/store/index.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/types/store/index.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/basic-data/carrier-detail/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/basic-data/carrier-detail/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/vehicle-manage-system/archive-manage/vehicle-archive-edit/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-manage-system/archive-manage/vehicle-archive-edit/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/vehicle-manage-system/archive-manage/vehicle-archive-manage/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-manage-system/archive-manage/vehicle-archive-manage/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/basic-data/carrier/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/basic-data/carrier/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/basic-data/driver/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/basic-data/driver/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/basic-data/driver/modules/driver-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/basic-data/driver/modules/driver-dialog.vue" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -59,23 +57,23 @@
   </component>
   <component name="NextEditCompletionFeaturesState">
     <decayedCancelled>
-      <entry key="MS100" value="1.7224189979198603" />
-      <entry key="MS500" value="3.8707748888469165" />
-      <entry key="S2" value="6.181444899001157" />
-      <entry key="S5" value="7.54766147883849" />
-      <entry key="S10" value="8.217940972768174" />
-      <entry key="S30" value="11.032675075182542" />
-      <entry key="S60" value="17.226148598659794" />
-      <entry key="M2" value="25.66057353119368" />
-      <entry key="M5" value="36.13266964938127" />
-      <entry key="M10" value="41.92951852512128" />
-      <entry key="M15" value="45.69691354889912" />
-      <entry key="M30" value="59.307622877703345" />
-      <entry key="H1" value="83.63805101708623" />
-      <entry key="H2" value="112.62619716068674" />
-      <entry key="H4" value="144.95751949361667" />
-      <entry key="D1" value="290.8778744684058" />
-      <entry key="W1" value="455.30814396566103" />
+      <entry key="MS100" value="1.814690588042382" />
+      <entry key="MS500" value="4.001524843223302" />
+      <entry key="S2" value="5.339684037611332" />
+      <entry key="S5" value="5.7186710809320065" />
+      <entry key="S10" value="5.919190135572949" />
+      <entry key="S30" value="9.63263787137687" />
+      <entry key="S60" value="18.755453218581806" />
+      <entry key="M2" value="33.5791159472892" />
+      <entry key="M5" value="54.63926756625541" />
+      <entry key="M10" value="66.77644799521937" />
+      <entry key="M15" value="73.07026200811147" />
+      <entry key="M30" value="89.21289941822786" />
+      <entry key="H1" value="114.93090614009644" />
+      <entry key="H2" value="144.88366935610318" />
+      <entry key="H4" value="177.87062507888345" />
+      <entry key="D1" value="324.5356837234075" />
+      <entry key="W1" value="489.2333783321935" />
     </decayedCancelled>
     <decayedSelected>
       <entry key="MS100" value="0.0" />
@@ -83,37 +81,37 @@
       <entry key="S2" value="0.0" />
       <entry key="S5" value="0.0" />
       <entry key="S10" value="0.0" />
-      <entry key="S30" value="6.826060613914128E-308" />
-      <entry key="S60" value="2.6126730782694817E-154" />
-      <entry key="M2" value="1.6163765273813757E-77" />
-      <entry key="M5" value="1.9205119509732333E-31" />
-      <entry key="M10" value="4.382364602555767E-16" />
-      <entry key="M15" value="5.769510993761345E-11" />
-      <entry key="M30" value="7.596164335852716E-6" />
-      <entry key="H1" value="0.002793081785460805" />
-      <entry key="H2" value="0.06459333984710924" />
-      <entry key="H4" value="0.4823393912819383" />
-      <entry key="D1" value="8.098659648534328" />
-      <entry key="W1" value="19.50730151860824" />
+      <entry key="S30" value="2.86535651413464E-309" />
+      <entry key="S60" value="5.352902496902625E-155" />
+      <entry key="M2" value="7.316353256167046E-78" />
+      <entry key="M5" value="1.3986783951656303E-31" />
+      <entry key="M10" value="3.739890901036736E-16" />
+      <entry key="M15" value="5.190859683271621E-11" />
+      <entry key="M30" value="7.205174342004508E-6" />
+      <entry key="H1" value="0.0027202494032447246" />
+      <entry key="H2" value="0.06374560923693952" />
+      <entry key="H4" value="0.4791637981265376" />
+      <entry key="D1" value="8.089748605086537" />
+      <entry key="W1" value="19.50423377218755" />
     </decayedSelected>
     <decayedShown>
-      <entry key="MS100" value="1.5975137449117736" />
-      <entry key="MS500" value="3.8122299474741816" />
-      <entry key="S2" value="6.1578711127973325" />
-      <entry key="S5" value="7.536037141597649" />
-      <entry key="S10" value="8.211474865366085" />
-      <entry key="S30" value="11.02575812813075" />
-      <entry key="S60" value="17.216839543034204" />
-      <entry key="M2" value="25.650881047172117" />
-      <entry key="M5" value="36.12515545358605" />
-      <entry key="M10" value="41.92455931009292" />
-      <entry key="M15" value="45.69324124047753" />
-      <entry key="M30" value="59.30549848170761" />
-      <entry key="H1" value="83.63948000917955" />
-      <entry key="H2" value="112.68961587783362" />
-      <entry key="H4" value="145.43865407480936" />
-      <entry key="D1" value="298.9752733330097" />
-      <entry key="W1" value="474.81508212323365" />
+      <entry key="MS100" value="1.7250187357843478" />
+      <entry key="MS500" value="3.9575118774241416" />
+      <entry key="S2" value="5.324669403986979" />
+      <entry key="S5" value="5.712211802841369" />
+      <entry key="S10" value="5.915684631107844" />
+      <entry key="S30" value="9.627691116138571" />
+      <entry key="S60" value="18.747399233659316" />
+      <entry key="M2" value="33.56931159869863" />
+      <entry key="M5" value="54.63068770404456" />
+      <entry key="M10" value="66.77045847153394" />
+      <entry key="M15" value="73.06573695962618" />
+      <entry key="M30" value="89.21024795699854" />
+      <entry key="H1" value="114.93197296943235" />
+      <entry key="H2" value="144.94609160614417" />
+      <entry key="H4" value="178.3485094936977" />
+      <entry key="D1" value="332.62415912100454" />
+      <entry key="W1" value="508.73724682604353" />
     </decayedShown>
   </component>
   <component name="PackageJsonUpdateNotifier">
@@ -155,7 +153,7 @@
     "nodejs_package_manager_path": "pnpm",
     "prettierjs.PrettierConfiguration.Package": "D:\\spa\\art-supabase-pro\\node_modules\\prettier",
     "run.code.analysis.last.selected.profile": "pProject Default",
-    "settings.editor.selected.configurable": "ml.llm.AcpAgentsConfigurable",
+    "settings.editor.selected.configurable": "ml.llm.LLMThirdPartyAiProvidersConfigurable",
     "to.speed.mode.migration.done": "true",
     "ts.external.directory.path": "D:\\spa\\art-supabase-pro\\node_modules\\typescript\\lib",
     "vue.rearranger.settings.migration": "true"
@@ -302,6 +300,8 @@
       <workItem from="1782625074752" duration="473000" />
       <workItem from="1782625570803" duration="834000" />
       <workItem from="1782626757786" duration="165000" />
+      <workItem from="1782641873859" duration="116000" />
+      <workItem from="1782642003256" duration="5341000" />
     </task>
     <task id="LOCAL-00001" summary="feat project clean">
       <option name="closed" value="true" />

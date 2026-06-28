@@ -149,7 +149,12 @@
       width: 90,
       dict: { code: 'sex', display: 'text' }
     },
-    { prop: 'licenseType', label: '驾照类型', width: 100 },
+    {
+      prop: 'licenseType',
+      label: '驾照类型',
+      width: 100,
+      dict: { code: 'tmsDriverLicenseType', display: 'text' }
+    },
     {
       prop: 'licenseExpireDate',
       label: '驾照日期',

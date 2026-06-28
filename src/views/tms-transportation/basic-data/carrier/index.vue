@@ -15,7 +15,7 @@
 </template>
 
 <script setup lang="tsx">
-  import { ElMessage, ElMessageBox } from 'element-plus'
+  import { ElButton, ElMessage, ElMessageBox } from 'element-plus'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type {
     ArtTableQueryExpose,
@@ -75,6 +75,7 @@
     { key: 'carrierCode', title: '承运商编码' },
     { key: 'companyName', title: '公司名称', required: true },
     { key: 'carrierType', title: '承运商类型', required: true },
+    { key: 'driverCount', title: '司机数量' },
     { key: 'vehicleCount', title: '车辆数量' },
     { key: 'region', title: '区域' },
     { key: 'addressDetail', title: '公司地址' },
@@ -134,11 +135,26 @@
       dict: { code: 'tmsCarrierType', display: 'text' }
     },
     {
+      prop: 'driverCount',
+      label: '司机数量',
+      width: 100,
+      align: 'right',
+      formatter: (row) => (
+        <ElButton link type="primary" onClick={() => goDriverManage(row)}>
+          {row.driverCount ?? 0}
+        </ElButton>
+      )
+    },
+    {
       prop: 'vehicleCount',
       label: '车辆数量',
       width: 100,
       align: 'right',
-      formatter: (row) => row.vehicleCount ?? 0
+      formatter: (row) => (
+        <ElButton link type="primary" onClick={() => goVehicleManage(row)}>
+          {row.vehicleCount ?? 0}
+        </ElButton>
+      )
     },
     {
       prop: 'address',
@@ -217,6 +233,22 @@
   const openDetail = (row: Carrier): void => {
     if (!row.id) return
     void router.push(`/tms-transportation/basic-data/carrier-detail/${row.id}`)
+  }
+
+  const goDriverManage = (row: Carrier): void => {
+    if (!row.id) return
+    void router.push({
+      path: '/tms-transportation/basic-data/driver',
+      query: { carrierId: row.id }
+    })
+  }
+
+  const goVehicleManage = (row: Carrier): void => {
+    if (!row.id) return
+    void router.push({
+      path: '/vehicle-manage-system/archive-manage/vehicle-archive-manage',
+      query: { carrierId: row.id }
+    })
   }
 
   const getMoreActions = (): ButtonMoreItem[] => [

@@ -10,6 +10,10 @@ type Carrier = Api.Tms.BasicData.Carrier
 type CarrierSearchParams = Api.Tms.BasicData.CarrierSearchParams
 type Driver = Api.Tms.BasicData.Driver
 type DriverSearchParams = Api.Tms.BasicData.DriverSearchParams
+type Cargo = Api.Tms.BasicData.Cargo
+type CargoSearchParams = Api.Tms.BasicData.CargoSearchParams
+type Contract = Api.Tms.BasicData.Contract
+type ContractSearchParams = Api.Tms.BasicData.ContractSearchParams
 
 const normalizeBooleanFilter = (value: unknown): boolean | undefined => {
   if (value === true || value === 'true') return true
@@ -420,4 +424,189 @@ export async function deleteDriverBatch(ids: string[]) {
   return await responseHandle(() => supabase.from('tms_driver').delete().in('id', ids) as any, {
     showMessage: true
   })
+}
+
+const applyCargoFilters = (query: any, params: CargoSearchParams) => {
+  const { unit, enabled, keyword, createTimeRange } = params
+  if (unit) query = query.eq('unit', unit)
+  const enabledValue = normalizeBooleanFilter(enabled)
+  if (enabledValue !== undefined) query = query.eq('enabled', enabledValue)
+  if (keyword) {
+    query = query.or(
+      `cargo_name.ilike.%${keyword}%,cargo_code.ilike.%${keyword}%,unit.ilike.%${keyword}%,remark.ilike.%${keyword}%`
+    )
+  }
+  return applyDateRange(query, createTimeRange)
+}
+
+export async function fetchCargoList(params: CargoSearchParams) {
+  const { from = 0, to = 9 } = params
+  let query: any = supabase
+    .from('tms_cargo')
+    .select('*', { count: 'exact' })
+    .order('create_time', { ascending: false })
+    .range(from, to)
+
+  query = applyCargoFilters(query, params)
+  return await responseHandle<Cargo[]>(() => query as any, {
+    ignoreCheck: true,
+    showErrorMessage: true
+  })
+}
+
+export async function exportCargoList(
+  params: CargoSearchParams & { ids?: string[]; maxRows?: number }
+) {
+  const { ids, maxRows = 10000 } = params
+  let query: any = supabase
+    .from('tms_cargo')
+    .select('*')
+    .order('create_time', { ascending: false })
+    .limit(maxRows)
+
+  query = ids?.length ? query.in('id', ids) : applyCargoFilters(query, params)
+  return await responseHandle<Cargo[]>(() => query as any, {
+    ignoreCheck: true,
+    showErrorMessage: true
+  })
+}
+
+export async function addCargo(params: Cargo) {
+  return await responseHandle(
+    () => supabase.from('tms_cargo').insert(keysToSnakeDeep(params)) as any,
+    { showMessage: true, breakReturn: true }
+  )
+}
+
+export async function editCargo(params: Cargo) {
+  const { id, ...data } = params
+  return await responseHandle(
+    () => supabase.from('tms_cargo').update(keysToSnakeDeep(data)).eq('id', id) as any,
+    { showMessage: true, breakReturn: true }
+  )
+}
+
+export async function deleteCargo(id: string) {
+  return await responseHandle(() => supabase.from('tms_cargo').delete().eq('id', id) as any, {
+    showMessage: true
+  })
+}
+
+export async function deleteCargoBatch(ids: string[]) {
+  return await responseHandle(() => supabase.from('tms_cargo').delete().in('id', ids) as any, {
+    showMessage: true
+  })
+}
+
+export async function importCargoes(rows: Cargo[]) {
+  return await responseHandle(
+    () =>
+      supabase
+        .from('tms_cargo')
+        .upsert(keysToSnakeDeep(rows), { onConflict: 'tenant_id,cargo_name' }) as any,
+    { showMessage: true, breakReturn: true }
+  )
+}
+
+const CONTRACT_SELECT = `
+  *,
+  carrier:tms_carrier!tms_contract_carrier_id_fkey(
+    id,
+    carrier_code,
+    company_name,
+    contact_name,
+    contact_phone
+  )
+`
+
+const applyContractFilters = (query: any, params: ContractSearchParams) => {
+  const { contractStatus, carrierId, billingMethod, keyword, createTimeRange } = params
+  if (contractStatus) query = query.eq('contract_status', contractStatus)
+  if (carrierId) query = query.eq('carrier_id', carrierId)
+  if (billingMethod) query = query.eq('billing_method', billingMethod)
+  if (keyword) {
+    query = query.or(
+      `contract_name.ilike.%${keyword}%,contract_no.ilike.%${keyword}%,contact_name.ilike.%${keyword}%,waybill_no.ilike.%${keyword}%,handler.ilike.%${keyword}%`
+    )
+  }
+  return applyDateRange(query, createTimeRange)
+}
+
+export async function fetchContractList(params: ContractSearchParams) {
+  const { from = 0, to = 9 } = params
+  let query: any = supabase
+    .from('tms_contract')
+    .select(CONTRACT_SELECT, { count: 'exact' })
+    .order('create_time', { ascending: false })
+    .range(from, to)
+
+  query = applyContractFilters(query, params)
+  return await responseHandle<Contract[]>(() => query as any, {
+    ignoreCheck: true,
+    showErrorMessage: true
+  })
+}
+
+export async function exportContractList(
+  params: ContractSearchParams & { ids?: string[]; maxRows?: number }
+) {
+  const { ids, maxRows = 10000 } = params
+  let query: any = supabase
+    .from('tms_contract')
+    .select(CONTRACT_SELECT)
+    .order('create_time', { ascending: false })
+    .limit(maxRows)
+
+  query = ids?.length ? query.in('id', ids) : applyContractFilters(query, params)
+  return await responseHandle<Contract[]>(() => query as any, {
+    ignoreCheck: true,
+    showErrorMessage: true
+  })
+}
+
+export async function fetchContractDetail(id: string) {
+  const query = supabase.from('tms_contract').select(CONTRACT_SELECT).eq('id', id).maybeSingle()
+
+  return await responseHandle<Contract | null>(() => query as any, {
+    ignoreCheck: true,
+    showErrorMessage: true
+  })
+}
+
+export async function addContract(params: Contract) {
+  return await responseHandle(
+    () => supabase.from('tms_contract').insert(keysToSnakeDeep(params)) as any,
+    { showMessage: true, breakReturn: true }
+  )
+}
+
+export async function editContract(params: Contract) {
+  const { id, ...data } = params
+  delete data.carrier
+  return await responseHandle(
+    () => supabase.from('tms_contract').update(keysToSnakeDeep(data)).eq('id', id) as any,
+    { showMessage: true, breakReturn: true }
+  )
+}
+
+export async function deleteContract(id: string) {
+  return await responseHandle(() => supabase.from('tms_contract').delete().eq('id', id) as any, {
+    showMessage: true
+  })
+}
+
+export async function deleteContractBatch(ids: string[]) {
+  return await responseHandle(() => supabase.from('tms_contract').delete().in('id', ids) as any, {
+    showMessage: true
+  })
+}
+
+export async function importContracts(rows: Contract[]) {
+  return await responseHandle(
+    () =>
+      supabase
+        .from('tms_contract')
+        .upsert(keysToSnakeDeep(rows), { onConflict: 'tenant_id,contract_no' }) as any,
+    { showMessage: true, breakReturn: true }
+  )
 }
