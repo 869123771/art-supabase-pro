@@ -669,17 +669,18 @@ export async function auditVehicleArchiveBatch(params: {
 
 // 车辆管理选项
 export async function fetchVehicleArchiveOptions(
-  params: Partial<Pick<VehicleArchive, 'plateNo' | 'companyName'>> = {}
+  params: Partial<Pick<VehicleArchive, 'carrierId' | 'plateNo' | 'companyName'>> = {}
 ) {
-  const { plateNo, companyName } = params
+  const { carrierId, plateNo, companyName } = params
   const filters: FilterSpec[] = [
+    { col: 'carrierId', op: 'eq', val: carrierId },
     { col: 'plateNo', op: 'ilike', val: plateNo ? `%${plateNo}%` : undefined },
     { col: 'companyName', op: 'ilike', val: companyName ? `%${companyName}%` : undefined }
   ]
 
   let query: any = supabase
     .from(VEHICLE_ARCHIVE_TABLE)
-    .select('id, plate_no, company_name, vin, self_no, carrier_id')
+    .select('id, plate_no, company_name, vin, self_no, carrier_id, vehicle_type')
     .order('plate_no', { ascending: true })
     .limit(200)
 

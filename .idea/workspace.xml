@@ -12,10 +12,6 @@
       <change beforePath="$PROJECT_DIR$/src/api/tms.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/tms.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/types/api/api.d.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/types/api/api.d.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/types/store/index.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/types/store/index.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/basic-data/carrier-detail/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/basic-data/carrier-detail/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/basic-data/carrier/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/basic-data/carrier/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/basic-data/driver/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/basic-data/driver/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/basic-data/driver/modules/driver-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/basic-data/driver/modules/driver-dialog.vue" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -23,7 +19,7 @@
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="EmbeddingIndexingInfo">
-    <option name="cachedIndexableFilesCount" value="1033" />
+    <option name="cachedIndexableFilesCount" value="1038" />
     <option name="fileBasedEmbeddingIndicesEnabled" value="true" />
   </component>
   <component name="FileTemplateManagerImpl">
@@ -49,7 +45,7 @@
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
   <component name="HighlightingSettingsPerFile">
-    <setting file="file://$PROJECT_DIR$/node_modules/.pnpm/vue-router@4.5.1_vue@3.5.22_typescript@5.6.3_/node_modules/vue-router/dist/vue-router.d.ts" root0="SKIP_INSPECTION" />
+    <setting file="file://$PROJECT_DIR$/node_modules/.pnpm/element-plus@2.14.2_vue@3.5.38_typescript@6.0.3_/node_modules/element-plus/es/components/table/src/table/defaults.d.ts" root0="SKIP_INSPECTION" />
   </component>
   <component name="McpProjectServerCommands">
     <commands />
@@ -57,23 +53,23 @@
   </component>
   <component name="NextEditCompletionFeaturesState">
     <decayedCancelled>
-      <entry key="MS100" value="1.814690588042382" />
-      <entry key="MS500" value="4.001524843223302" />
-      <entry key="S2" value="5.339684037611332" />
-      <entry key="S5" value="5.7186710809320065" />
-      <entry key="S10" value="5.919190135572949" />
-      <entry key="S30" value="9.63263787137687" />
-      <entry key="S60" value="18.755453218581806" />
-      <entry key="M2" value="33.5791159472892" />
-      <entry key="M5" value="54.63926756625541" />
-      <entry key="M10" value="66.77644799521937" />
-      <entry key="M15" value="73.07026200811147" />
-      <entry key="M30" value="89.21289941822786" />
-      <entry key="H1" value="114.93090614009644" />
-      <entry key="H2" value="144.88366935610318" />
-      <entry key="H4" value="177.87062507888345" />
-      <entry key="D1" value="324.5356837234075" />
-      <entry key="W1" value="489.2333783321935" />
+      <entry key="MS100" value="1.8756936056128903" />
+      <entry key="MS500" value="3.4649798847118487" />
+      <entry key="S2" value="4.61161051248313" />
+      <entry key="S5" value="5.1903886287750005" />
+      <entry key="S10" value="5.524446119152455" />
+      <entry key="S30" value="5.924151444564153" />
+      <entry key="S60" value="7.957856621519007" />
+      <entry key="M2" value="17.504847108054065" />
+      <entry key="M5" value="43.73136261393632" />
+      <entry key="M10" value="64.34873915092277" />
+      <entry key="M15" value="74.94719288550674" />
+      <entry key="M30" value="96.01829484999814" />
+      <entry key="H1" value="124.64747385178612" />
+      <entry key="H2" value="156.56743871952682" />
+      <entry key="H4" value="190.84595860566498" />
+      <entry key="D1" value="338.9305670979382" />
+      <entry key="W1" value="504.10413809930697" />
     </decayedCancelled>
     <decayedSelected>
       <entry key="MS100" value="0.0" />
@@ -81,37 +77,37 @@
       <entry key="S2" value="0.0" />
       <entry key="S5" value="0.0" />
       <entry key="S10" value="0.0" />
-      <entry key="S30" value="2.86535651413464E-309" />
-      <entry key="S60" value="5.352902496902625E-155" />
-      <entry key="M2" value="7.316353256167046E-78" />
-      <entry key="M5" value="1.3986783951656303E-31" />
-      <entry key="M10" value="3.739890901036736E-16" />
-      <entry key="M15" value="5.190859683271621E-11" />
-      <entry key="M30" value="7.205174342004508E-6" />
-      <entry key="H1" value="0.0027202494032447246" />
-      <entry key="H2" value="0.06374560923693952" />
-      <entry key="H4" value="0.4791637981265376" />
-      <entry key="D1" value="8.089748605086537" />
-      <entry key="W1" value="19.50423377218755" />
+      <entry key="S30" value="1.532730634295E-311" />
+      <entry key="S60" value="3.915010388613669E-156" />
+      <entry key="M2" value="1.9786385189350942E-78" />
+      <entry key="M5" value="8.289848309675426E-32" />
+      <entry key="M10" value="2.8792096675435193E-16" />
+      <entry key="M15" value="4.360291542203074E-11" />
+      <entry key="M30" value="6.60362819807649E-6" />
+      <entry key="H1" value="0.002604220681036232" />
+      <entry key="H2" value="0.06237130142759244" />
+      <entry key="H4" value="0.4739704472951479" />
+      <entry key="D1" value="8.075068900286665" />
+      <entry key="W1" value="19.49917376487912" />
     </decayedSelected>
     <decayedShown>
-      <entry key="MS100" value="1.7250187357843478" />
-      <entry key="MS500" value="3.9575118774241416" />
-      <entry key="S2" value="5.324669403986979" />
-      <entry key="S5" value="5.712211802841369" />
-      <entry key="S10" value="5.915684631107844" />
-      <entry key="S30" value="9.627691116138571" />
-      <entry key="S60" value="18.747399233659316" />
-      <entry key="M2" value="33.56931159869863" />
-      <entry key="M5" value="54.63068770404456" />
-      <entry key="M10" value="66.77045847153394" />
-      <entry key="M15" value="73.06573695962618" />
-      <entry key="M30" value="89.21024795699854" />
-      <entry key="H1" value="114.93197296943235" />
-      <entry key="H2" value="144.94609160614417" />
-      <entry key="H4" value="178.3485094936977" />
-      <entry key="D1" value="332.62415912100454" />
-      <entry key="W1" value="508.73724682604353" />
+      <entry key="MS100" value="1.525761698852165" />
+      <entry key="MS500" value="3.3487765969801253" />
+      <entry key="S2" value="4.576554066102634" />
+      <entry key="S5" value="5.1745182390936" />
+      <entry key="S10" value="5.515890036540328" />
+      <entry key="S30" value="5.920580921252212" />
+      <entry key="S60" value="7.9524306947626195" />
+      <entry key="M2" value="17.49544669669284" />
+      <entry key="M5" value="43.72078858884761" />
+      <entry key="M10" value="64.3406220491494" />
+      <entry key="M15" value="74.94085406219567" />
+      <entry key="M30" value="96.01448660619448" />
+      <entry key="H1" value="124.6477769799699" />
+      <entry key="H2" value="156.6281485750968" />
+      <entry key="H4" value="191.3184783171924" />
+      <entry key="D1" value="347.00433396335757" />
+      <entry key="W1" value="523.6029422257672" />
     </decayedShown>
   </component>
   <component name="PackageJsonUpdateNotifier">
@@ -125,48 +121,48 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "JavaScript Debug.__devtools__.executor": "Debug",
-    "RunOnceActivity.MCP Project settings loaded": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
-    "codeWithMe.voiceChat.enabledByDefault": "false",
-    "com.intellij.ml.llm.matterhorn.ej.ui.settings.DefaultModelSelectionForGA.v1": "true",
-    "disable.download.node.interpreter.editor.notification": "true",
-    "git-widget-placeholder": "master",
-    "git.auto.fetch.suggestion.counter": "3",
-    "ignore.virus.scanning.warn.message": "true",
-    "javascript.preferred.runtime.type.id": "node",
-    "junie.onboarding.icon.badge.shown": "true",
-    "last_opened_file_path": "D:/spa/art-supabase-pro",
-    "node.js.detected.package.eslint": "true",
-    "node.js.detected.package.standard": "true",
-    "node.js.detected.package.stylelint": "true",
-    "node.js.detected.package.tslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.standard": "",
-    "node.js.selected.package.stylelint": "D:\\spa\\art-design-pro\\node_modules\\stylelint",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "nodejs_package_manager_path": "pnpm",
-    "prettierjs.PrettierConfiguration.Package": "D:\\spa\\art-supabase-pro\\node_modules\\prettier",
-    "run.code.analysis.last.selected.profile": "pProject Default",
-    "settings.editor.selected.configurable": "ml.llm.LLMThirdPartyAiProvidersConfigurable",
-    "to.speed.mode.migration.done": "true",
-    "ts.external.directory.path": "D:\\spa\\art-supabase-pro\\node_modules\\typescript\\lib",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;JavaScript Debug.__devtools__.executor&quot;: &quot;Debug&quot;,
+    &quot;RunOnceActivity.MCP Project settings loaded&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
+    &quot;codeWithMe.voiceChat.enabledByDefault&quot;: &quot;false&quot;,
+    &quot;com.intellij.ml.llm.matterhorn.ej.ui.settings.DefaultModelSelectionForGA.v1&quot;: &quot;true&quot;,
+    &quot;disable.download.node.interpreter.editor.notification&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;master&quot;,
+    &quot;git.auto.fetch.suggestion.counter&quot;: &quot;3&quot;,
+    &quot;ignore.virus.scanning.warn.message&quot;: &quot;true&quot;,
+    &quot;javascript.preferred.runtime.type.id&quot;: &quot;node&quot;,
+    &quot;junie.onboarding.icon.badge.shown&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;D:/spa/art-supabase-pro&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.standard&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.stylelint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.standard&quot;: &quot;&quot;,
+    &quot;node.js.selected.package.stylelint&quot;: &quot;D:\\spa\\art-design-pro\\node_modules\\stylelint&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;pnpm&quot;,
+    &quot;prettierjs.PrettierConfiguration.Package&quot;: &quot;D:\\spa\\art-supabase-pro\\node_modules\\prettier&quot;,
+    &quot;run.code.analysis.last.selected.profile&quot;: &quot;pProject Default&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.pluginManager&quot;,
+    &quot;to.speed.mode.migration.done&quot;: &quot;true&quot;,
+    &quot;ts.external.directory.path&quot;: &quot;D:\\spa\\art-supabase-pro\\node_modules\\typescript\\lib&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   },
-  "keyToStringList": {
-    "DatabaseDriversLRU": [
-      "postgresql"
+  &quot;keyToStringList&quot;: {
+    &quot;DatabaseDriversLRU&quot;: [
+      &quot;postgresql&quot;
     ],
-    "vue.recent.templates": [
-      "Vue Composition API Component"
+    &quot;vue.recent.templates&quot;: [
+      &quot;Vue Composition API Component&quot;
     ]
   }
-}]]></component>
+}</component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="D:\spa\art-supabase-pro\src\assets\fonts" />
@@ -302,6 +298,13 @@
       <workItem from="1782626757786" duration="165000" />
       <workItem from="1782641873859" duration="116000" />
       <workItem from="1782642003256" duration="5341000" />
+      <workItem from="1782694361165" duration="1017000" />
+      <workItem from="1782696096597" duration="1314000" />
+      <workItem from="1782697591480" duration="204000" />
+      <workItem from="1782697830796" duration="263000" />
+      <workItem from="1782698164199" duration="357000" />
+      <workItem from="1782722750668" duration="27000" />
+      <workItem from="1782780216566" duration="61000" />
     </task>
     <task id="LOCAL-00001" summary="feat project clean">
       <option name="closed" value="true" />

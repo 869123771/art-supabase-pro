@@ -155,6 +155,7 @@
   interface FormExpose {
     validate: () => Promise<boolean>
     clearValidate: () => void
+    reloadOptions: (key?: string) => Promise<unknown>
   }
 
   interface PageGroup {
@@ -378,6 +379,7 @@
             form.primaryDriver = null
             form.driverOneName = ''
             form.driverOnePhone = ''
+            driverCache.value = new Map()
             return
           }
           const carrier = carrierCache.value.get(value)
@@ -388,6 +390,7 @@
           form.primaryDriver = null
           form.driverOneName = ''
           form.driverOnePhone = ''
+          driverCache.value = new Map()
         }
       }
     },
@@ -676,6 +679,8 @@
       beforeFetch: () => ({
         carrierId: form.carrierId ?? undefined
       }),
+      shouldFetch: () => Boolean(form.carrierId),
+      afterFetch: syncDriverOptions,
       labelFn: (option) => {
         const driver = option as DriverOption
         return driver.phone ? `${driver.driverName}（${driver.phone}）` : driver.driverName
@@ -685,11 +690,8 @@
         clearable: true,
         disabled: !form.carrierId,
         placeholder: form.carrierId ? '请选择主司机' : '请先选择所属承运商',
-        onVisibleChange: async (visible: boolean) => {
-          if (visible && form.carrierId) {
-            const { data } = await fetchDriverOptions({ carrierId: form.carrierId })
-            driverCache.value = new Map((data ?? []).map((item) => [item.id, item]))
-          }
+        onVisibleChange: (visible: boolean) => {
+          if (visible && form.carrierId) void otherFormRef.value?.reloadOptions('primaryDriverId')
         },
         onChange: (value?: string) => {
           if (!value) {
@@ -718,6 +720,17 @@
       props: { options: options.boolean }
     }
   ])
+
+  function syncDriverOptions(result: unknown): unknown {
+    if (!result || typeof result !== 'object') return result
+
+    const data = (result as { data?: DriverOption[] }).data
+    if (Array.isArray(data)) {
+      driverCache.value = new Map(data.map((item) => [item.id, item]))
+    }
+
+    return result
+  }
 
   const certificateItems: Array<{ key: ImageKey; label: string }> = [
     { key: 'vehiclePhotoUrl', label: '车辆照片' },

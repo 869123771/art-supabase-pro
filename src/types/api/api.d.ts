@@ -443,10 +443,12 @@ declare namespace Api {
 
       interface VehicleOption {
         id?: string
+        carrierId?: string | null
         plateNo: string
         companyName?: string
         vin?: string
         selfNo?: string
+        vehicleType?: string
       }
 
       interface InsuranceCompanyOption {
@@ -975,6 +977,74 @@ declare namespace Api {
           }
       >
 
+      interface CustomerPriceCargoItem {
+        cargoName?: string | null
+        quantity?: number | null
+        unit?: string | null
+        volumeM3?: number | null
+        weightKg?: number | null
+      }
+
+      interface CustomerPrice {
+        id?: string
+        tenantId?: string
+        customerId: string
+        customer?: CustomerOption | null
+        originRegion: string
+        destinationRegion: string
+        transportType: string
+        cargoType?: string | null
+        shippingContactName: string
+        shippingContactPhone: string
+        shippingAddressDetail: string
+        receivingContactName: string
+        receivingContactPhone: string
+        receivingAddressDetail: string
+        cargoItems?: CustomerPriceCargoItem[]
+        cargoQuantityTotal?: number | null
+        cargoVolumeTotal?: number | null
+        cargoWeightTotal?: number | null
+        vehicleType?: string | null
+        vehicleLength?: string | null
+        vehicleCount?: number | null
+        billingMethod: string
+        transportFee?: number | null
+        insuranceFee?: number | null
+        packageFee?: number | null
+        loadingFee?: number | null
+        transferFee?: number | null
+        fuelFee?: number | null
+        serviceFee?: number | null
+        otherFee?: number | null
+        totalFee?: number | null
+        cashAmount?: number | null
+        prepaidAmount?: number | null
+        collectAmount?: number | null
+        periodicAmount?: number | null
+        paymentTotal?: number | null
+        remark?: string | null
+        createBy?: string
+        createTime?: string
+        updateBy?: string
+        updateTime?: string
+      }
+
+      type CustomerPriceSearchParams = Partial<
+        Pick<
+          CustomerPrice,
+          | 'customerId'
+          | 'originRegion'
+          | 'destinationRegion'
+          | 'transportType'
+          | 'cargoType'
+          | 'billingMethod'
+        > &
+          Api.Common.CommonSearchParams & {
+            keyword?: string
+            createTimeRange?: string[]
+          }
+      >
+
       interface Carrier {
         id?: string
         tenantId?: string
@@ -1026,6 +1096,73 @@ declare namespace Api {
         contactName?: string
         contactPhone?: string
       }
+
+      interface CarrierPriceCargoItem {
+        orderNo?: string | null
+        originRegion?: string | null
+        destinationRegion?: string | null
+        cargoName?: string | null
+        quantity?: number | null
+        unit?: string | null
+        volumeM3?: number | null
+        weightKg?: number | null
+        splitTransportFee?: number | null
+        loadingFee?: number | null
+        packageFee?: number | null
+      }
+
+      interface CarrierPrice {
+        id?: string
+        tenantId?: string
+        carrierId: string
+        carrier?: CarrierOption | null
+        driverId?: string | null
+        driver?: DriverOption | null
+        vehicleId?: string | null
+        vehicle?: Api.VehicleMgtSys.VehicleManage.VehicleOption | null
+        originRegion: string
+        destinationRegion: string
+        transportMode: string
+        contactName?: string | null
+        contactPhone?: string | null
+        driverName?: string | null
+        driverPhone?: string | null
+        plateNo?: string | null
+        vehicleType?: string | null
+        vehicleLength?: string | null
+        cargoItems?: CarrierPriceCargoItem[]
+        cargoQuantityTotal?: number | null
+        cargoVolumeTotal?: number | null
+        cargoWeightTotal?: number | null
+        billingMethod: string
+        transportCost?: number | null
+        splitTransportFee?: number | null
+        loadingFee?: number | null
+        packageFee?: number | null
+        otherFee?: number | null
+        totalFee?: number | null
+        cashAmount?: number | null
+        prepaidAmount?: number | null
+        collectAmount?: number | null
+        periodicAmount?: number | null
+        paymentTotal?: number | null
+        remark?: string | null
+        createBy?: string
+        createTime?: string
+        updateBy?: string
+        updateTime?: string
+      }
+
+      type CarrierPriceSearchParams = Partial<
+        Pick<
+          CarrierPrice,
+          'carrierId' | 'originRegion' | 'destinationRegion' | 'transportMode' | 'billingMethod'
+        > &
+          Api.Common.CommonSearchParams & {
+            keyword?: string
+            createTimeRange?: string[]
+          }
+      >
 
       interface Driver {
         id?: string

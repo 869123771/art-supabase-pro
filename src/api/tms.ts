@@ -14,6 +14,10 @@ type Cargo = Api.Tms.BasicData.Cargo
 type CargoSearchParams = Api.Tms.BasicData.CargoSearchParams
 type Contract = Api.Tms.BasicData.Contract
 type ContractSearchParams = Api.Tms.BasicData.ContractSearchParams
+type CustomerPrice = Api.Tms.BasicData.CustomerPrice
+type CustomerPriceSearchParams = Api.Tms.BasicData.CustomerPriceSearchParams
+type CarrierPrice = Api.Tms.BasicData.CarrierPrice
+type CarrierPriceSearchParams = Api.Tms.BasicData.CarrierPriceSearchParams
 
 const normalizeBooleanFilter = (value: unknown): boolean | undefined => {
   if (value === true || value === 'true') return true
@@ -27,6 +31,7 @@ const applyDateRange = (query: any, dateRange?: string[]) => {
   return query
 }
 
+// 客户管理
 const applyCustomerFilters = (query: any, params: CustomerSearchParams) => {
   const { customerLevel, industry, enabled, keyword, createTimeRange } = params
   if (customerLevel) query = query.eq('customer_level', customerLevel)
@@ -124,6 +129,8 @@ export async function importCustomers(rows: Customer[]) {
   )
 }
 
+
+// 地址管理
 const applyCustomerAddressFilters = (query: any, params: CustomerAddressSearchParams) => {
   const { customerId, addressType, keyword, createTimeRange } = params
   if (customerId) query = query.eq('customer_id', customerId)
@@ -185,6 +192,7 @@ export async function deleteCustomerAddressBatch(ids: string[]) {
   )
 }
 
+// 承运商管理
 const applyCarrierFilters = (query: any, params: CarrierSearchParams) => {
   const { carrierType, enabled, signedContract, keyword, createTimeRange } = params
   if (carrierType) query = query.eq('carrier_type', carrierType)
@@ -305,6 +313,8 @@ export async function importCarriers(rows: Carrier[]) {
   )
 }
 
+
+// 司机管理
 const DRIVER_SELECT = `
   *,
   carrier:tms_carrier!tms_driver_carrier_id_fkey(
@@ -426,6 +436,8 @@ export async function deleteDriverBatch(ids: string[]) {
   })
 }
 
+
+// 货物管理
 const applyCargoFilters = (query: any, params: CargoSearchParams) => {
   const { unit, enabled, keyword, createTimeRange } = params
   if (unit) query = query.eq('unit', unit)
@@ -508,6 +520,7 @@ export async function importCargoes(rows: Cargo[]) {
   )
 }
 
+// 合同管理
 const CONTRACT_SELECT = `
   *,
   carrier:tms_carrier!tms_contract_carrier_id_fkey(
@@ -608,5 +621,249 @@ export async function importContracts(rows: Contract[]) {
         .from('tms_contract')
         .upsert(keysToSnakeDeep(rows), { onConflict: 'tenant_id,contract_no' }) as any,
     { showMessage: true, breakReturn: true }
+  )
+}
+
+
+// 客户价格维护
+const CUSTOMER_PRICE_SELECT = `
+  *,
+  customer:tms_customer!tms_customer_price_customer_id_fkey(
+    id,
+    customer_code,
+    customer_name,
+    contact_name,
+    contact_phone
+  )
+`
+
+const applyCustomerPriceFilters = (query: any, params: CustomerPriceSearchParams) => {
+  const {
+    customerId,
+    originRegion,
+    destinationRegion,
+    transportType,
+    cargoType,
+    billingMethod,
+    keyword,
+    createTimeRange
+  } = params
+
+  if (customerId) query = query.eq('customer_id', customerId)
+  if (originRegion) query = query.eq('origin_region', originRegion)
+  if (destinationRegion) query = query.eq('destination_region', destinationRegion)
+  if (transportType) query = query.eq('transport_type', transportType)
+  if (cargoType) query = query.eq('cargo_type', cargoType)
+  if (billingMethod) query = query.eq('billing_method', billingMethod)
+  if (keyword) {
+    query = query.or(
+      `shipping_contact_name.ilike.%${keyword}%,shipping_contact_phone.ilike.%${keyword}%,shipping_address_detail.ilike.%${keyword}%,receiving_contact_name.ilike.%${keyword}%,receiving_contact_phone.ilike.%${keyword}%,receiving_address_detail.ilike.%${keyword}%,remark.ilike.%${keyword}%`
+    )
+  }
+
+  return applyDateRange(query, createTimeRange)
+}
+
+export async function fetchCustomerPriceList(params: CustomerPriceSearchParams) {
+  const { from = 0, to = 9 } = params
+  let query: any = supabase
+    .from('tms_customer_price')
+    .select(CUSTOMER_PRICE_SELECT, { count: 'exact' })
+    .order('create_time', { ascending: false })
+    .range(from, to)
+
+  query = applyCustomerPriceFilters(query, params)
+  return await responseHandle<CustomerPrice[]>(() => query as any, {
+    ignoreCheck: true,
+    showErrorMessage: true
+  })
+}
+
+export async function exportCustomerPriceList(
+  params: CustomerPriceSearchParams & { ids?: string[]; maxRows?: number }
+) {
+  const { ids, maxRows = 10000 } = params
+  let query: any = supabase
+    .from('tms_customer_price')
+    .select(CUSTOMER_PRICE_SELECT)
+    .order('create_time', { ascending: false })
+    .limit(maxRows)
+
+  query = ids?.length ? query.in('id', ids) : applyCustomerPriceFilters(query, params)
+  return await responseHandle<CustomerPrice[]>(() => query as any, {
+    ignoreCheck: true,
+    showErrorMessage: true
+  })
+}
+
+export async function fetchCustomerPriceDetail(id: string) {
+  const query = supabase
+    .from('tms_customer_price')
+    .select(CUSTOMER_PRICE_SELECT)
+    .eq('id', id)
+    .maybeSingle()
+
+  return await responseHandle<CustomerPrice | null>(() => query as any, {
+    ignoreCheck: true,
+    showErrorMessage: true
+  })
+}
+
+export async function addCustomerPrice(params: CustomerPrice) {
+  return await responseHandle(
+    () => supabase.from('tms_customer_price').insert(keysToSnakeDeep(params)) as any,
+    { showMessage: true, breakReturn: true }
+  )
+}
+
+export async function editCustomerPrice(params: CustomerPrice) {
+  const { id, ...data } = params
+  delete data.customer
+  return await responseHandle(
+    () => supabase.from('tms_customer_price').update(keysToSnakeDeep(data)).eq('id', id) as any,
+    { showMessage: true, breakReturn: true }
+  )
+}
+
+export async function deleteCustomerPrice(id: string) {
+  return await responseHandle(
+    () => supabase.from('tms_customer_price').delete().eq('id', id) as any,
+    { showMessage: true }
+  )
+}
+
+export async function deleteCustomerPriceBatch(ids: string[]) {
+  return await responseHandle(
+    () => supabase.from('tms_customer_price').delete().in('id', ids) as any,
+    { showMessage: true }
+  )
+}
+
+//承运商价格维护
+const CARRIER_PRICE_SELECT = `
+  *,
+  carrier:tms_carrier!tms_carrier_price_carrier_id_fkey(
+    id,
+    carrier_code,
+    company_name,
+    contact_name,
+    contact_phone
+  ),
+  driver:tms_driver!tms_carrier_price_driver_id_fkey(
+    id,
+    carrier_id,
+    driver_name,
+    phone
+  ),
+  vehicle:vehicle_archive!tms_carrier_price_vehicle_id_fkey(
+    id,
+    carrier_id,
+    plate_no,
+    company_name,
+    vehicle_type,
+    vin,
+    self_no
+  )
+`
+
+const applyCarrierPriceFilters = (query: any, params: CarrierPriceSearchParams) => {
+  const {
+    carrierId,
+    originRegion,
+    destinationRegion,
+    transportMode,
+    billingMethod,
+    keyword,
+    createTimeRange
+  } = params
+
+  if (carrierId) query = query.eq('carrier_id', carrierId)
+  if (originRegion) query = query.eq('origin_region', originRegion)
+  if (destinationRegion) query = query.eq('destination_region', destinationRegion)
+  if (transportMode) query = query.eq('transport_mode', transportMode)
+  if (billingMethod) query = query.eq('billing_method', billingMethod)
+  if (keyword) {
+    query = query.or(
+      `contact_name.ilike.%${keyword}%,contact_phone.ilike.%${keyword}%,driver_name.ilike.%${keyword}%,driver_phone.ilike.%${keyword}%,plate_no.ilike.%${keyword}%,remark.ilike.%${keyword}%`
+    )
+  }
+
+  return applyDateRange(query, createTimeRange)
+}
+
+export async function fetchCarrierPriceList(params: CarrierPriceSearchParams) {
+  const { from = 0, to = 9 } = params
+  let query: any = supabase
+    .from('tms_carrier_price')
+    .select(CARRIER_PRICE_SELECT, { count: 'exact' })
+    .order('create_time', { ascending: false })
+    .range(from, to)
+
+  query = applyCarrierPriceFilters(query, params)
+  return await responseHandle<CarrierPrice[]>(() => query as any, {
+    ignoreCheck: true,
+    showErrorMessage: true
+  })
+}
+
+export async function exportCarrierPriceList(
+  params: CarrierPriceSearchParams & { ids?: string[]; maxRows?: number }
+) {
+  const { ids, maxRows = 10000 } = params
+  let query: any = supabase
+    .from('tms_carrier_price')
+    .select(CARRIER_PRICE_SELECT)
+    .order('create_time', { ascending: false })
+    .limit(maxRows)
+
+  query = ids?.length ? query.in('id', ids) : applyCarrierPriceFilters(query, params)
+  return await responseHandle<CarrierPrice[]>(() => query as any, {
+    ignoreCheck: true,
+    showErrorMessage: true
+  })
+}
+
+export async function fetchCarrierPriceDetail(id: string) {
+  const query = supabase
+    .from('tms_carrier_price')
+    .select(CARRIER_PRICE_SELECT)
+    .eq('id', id)
+    .maybeSingle()
+
+  return await responseHandle<CarrierPrice | null>(() => query as any, {
+    ignoreCheck: true,
+    showErrorMessage: true
+  })
+}
+
+export async function addCarrierPrice(params: CarrierPrice) {
+  return await responseHandle(
+    () => supabase.from('tms_carrier_price').insert(keysToSnakeDeep(params)) as any,
+    { showMessage: true, breakReturn: true }
+  )
+}
+
+export async function editCarrierPrice(params: CarrierPrice) {
+  const { id, ...data } = params
+  delete data.carrier
+  delete data.driver
+  delete data.vehicle
+  return await responseHandle(
+    () => supabase.from('tms_carrier_price').update(keysToSnakeDeep(data)).eq('id', id) as any,
+    { showMessage: true, breakReturn: true }
+  )
+}
+
+export async function deleteCarrierPrice(id: string) {
+  return await responseHandle(
+    () => supabase.from('tms_carrier_price').delete().eq('id', id) as any,
+    { showMessage: true }
+  )
+}
+
+export async function deleteCarrierPriceBatch(ids: string[]) {
+  return await responseHandle(
+    () => supabase.from('tms_carrier_price').delete().in('id', ids) as any,
+    { showMessage: true }
   )
 }
