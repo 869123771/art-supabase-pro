@@ -1272,6 +1272,131 @@ declare namespace Api {
           }
       >
     }
+
+    namespace Order {
+      interface StationOption {
+        id: string
+        stationCode: string
+        stationName: string
+        stationType: string
+        regionCode?: string | null
+      }
+
+      interface CustomerSelectorItem {
+        id: string
+        customerCode?: string
+        customerName: string
+        contactName?: string
+        contactPhone?: string
+        region?: string
+        addressDetail?: string
+      }
+
+      interface CargoItem {
+        cargoName?: string | null
+        packageType?: string | null
+        quantity?: number | null
+        unit?: string | null
+        weightKg?: number | null
+        volumeM3?: number | null
+      }
+
+      interface OrderRecord {
+        id?: string
+        tenantId?: string
+        orderNo: string
+        cargoNo?: string | null
+        orderStatus?: string
+        originStationId?: string | null
+        destinationStationId?: string | null
+        transferStationId?: string | null
+        originStation: string
+        destinationStation: string
+        transferStation?: string | null
+        originStationRef?: StationOption | null
+        destinationStationRef?: StationOption | null
+        transferStationRef?: StationOption | null
+        deliveryMethod: string
+        shippingCustomerId?: string | null
+        receivingCustomerId?: string | null
+        shippingCustomer?: CustomerSelectorItem | null
+        receivingCustomer?: CustomerSelectorItem | null
+        shippingContactName: string
+        shippingContactPhone: string
+        shippingAddressDetail: string
+        receivingContactName: string
+        receivingContactPhone: string
+        receivingAddressDetail: string
+        cargoItems?: CargoItem[]
+        cargoQuantityTotal?: number | null
+        cargoWeightTotal?: number | null
+        cargoVolumeTotal?: number | null
+        transportFee?: number | null
+        deliveryFee?: number | null
+        unloadingFee?: number | null
+        collectPaymentFee?: number | null
+        transferFee?: number | null
+        declaredValue?: number | null
+        insuranceFee?: number | null
+        packageFee?: number | null
+        otherFee?: number | null
+        totalFee?: number | null
+        paymentMethod: string
+        cashAmount?: number | null
+        collectAmount?: number | null
+        monthlyAmount?: number | null
+        codAmount?: number | null
+        handlingFee?: number | null
+        paymentTotal?: number | null
+        transportMode?: string | null
+        orderRemark?: string | null
+        imageUrls?: string[]
+        createBy?: string
+        createTime?: string
+        updateBy?: string
+        updateTime?: string
+      }
+
+      type CustomerSelectorSearchParams = Api.Common.CommonSearchParams & {
+        keyword?: string
+      }
+    }
+
+    namespace Station {
+      type StationType = 'shipping' | 'transfer' | 'arrival'
+
+      interface StationRecord {
+        id?: string
+        tenantId?: string
+        stationCode?: string
+        stationName: string
+        stationType: StationType | string
+        regionCode?: string | null
+        managerName?: string | null
+        contactPhone?: string | null
+        enabled?: boolean
+        sort?: number
+        remark?: string | null
+        createBy?: string
+        createTime?: string
+        updateBy?: string
+        updateTime?: string
+      }
+
+      type StationSearchParams = Partial<
+        Pick<StationRecord, 'stationType' | 'enabled'> &
+          Api.Common.CommonSearchParams & {
+            keyword?: string
+            createTimeRange?: string[]
+          }
+      >
+
+      type StationOptionSearchParams = Partial<
+        Pick<StationRecord, 'stationType'> & {
+          keyword?: string
+        }
+      >
+    }
   }
 
   /** 数据中心类型 */

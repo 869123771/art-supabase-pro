@@ -29,24 +29,27 @@ When a requested menu does not appear, check backend mode first: verify the `sys
 
 Use these components before assembling equivalent Element Plus plumbing:
 
-| Need                            | Preferred component                                          |
-| ------------------------------- | ------------------------------------------------------------ |
-| Query table composition         | `ArtTableQuery`                                              |
-| Search/filter area              | `ArtSearchBar` or the feature's search component built on it |
-| Table tools and column controls | `ArtTableHeader`                                             |
-| Data table and pagination       | `ArtTable`                                                   |
-| Table data lifecycle            | `useTable<TRecord>`                                          |
-| Modal business workflow         | `ArtDialog`                                                  |
-| Side-panel business workflow    | `ArtDrawer`                                                  |
-| Metadata-driven form            | `ArtForm`                                                    |
-| Uploads and common actions      | Existing `Art*` core form/action component                   |
-| Business section title          | `ArtSectionTitle`                                            |
+| Need | Preferred component |
+| --- | --- |
+| Query table composition | `ArtTableQuery` |
+| Search/filter area | `ArtSearchBar` or the feature's search component built on it |
+| Table tools and column controls | `ArtTableHeader` |
+| Data table and pagination | `ArtTable` |
+| Table data lifecycle | `useTable<TRecord>` |
+| Modal business workflow | `ArtDialog` |
+| Side-panel business workflow | `ArtDrawer` |
+| Metadata-driven form | `ArtForm` |
+| Business data selection | `ArtTableSingleSelect` / `ArtTableMultipleSelect` / tree variants from `src/components/core/forms/art-data-select` |
+| Uploads and common actions | Existing `Art*` core form/action component |
+| Business section title | `ArtSectionTitle` |
 
 When a project wrapper already exists, use it before raw Element Plus primitives. For example, prefer `ArtExcelImport`, `ArtUploadImage`, `ArtButtonTable`, `ArtButtonMore`, and similar `src/components/core` wrappers over page-local `ElUpload`, ad hoc action buttons, or custom dropdown wiring. If the wrapper is close but missing a broadly reusable capability, extend the wrapper first and consume that extension from the business page.
 
 Use raw `ElDialog` or `ElDrawer` only when the wrapper cannot support a documented platform requirement. Extend the core wrapper instead when the missing behavior is broadly reusable.
 
 For remote option data in metadata forms, use `ArtForm` item-level API options instead of page-local `ref` state plus manual fetch/map code. Configure `api`, `resultField`, `labelField`, `valueField`, `labelFn`, `params`, `beforeFetch`, `afterFetch`, and `autoSelect` on the form item as needed. If a form control needs remote options but does not support the item-level `api` contract, extend `ArtForm` or the shared core control first, then consume it from business pages.
+
+For selecting business records from a dialog or embedded selector, use the data selector components under `src/components/core/forms/art-data-select` instead of hand-rolled `ArtDialog + ArtTable + radio/checkbox` selectors. Use `ArtTableSingleSelect` for table single-select, `ArtTableMultipleSelect` for table multi-select, and the tree variants for hierarchical selections. Adapt existing list APIs with a small feature-local `apiFn` that maps `DataSelectFetchParams` (`keyword`, `page`, `pageSize`, `filters`) into the backend provider's params, and return `{ data, total }`. Keep custom trigger slots only when the selector is opened imperatively from an existing button.
 
 Business pages and business components must call backend data through exported functions from `src/api/**`, such as `@/api/vehicle-manage-system` or `@/api/common`. Do not import provider modules, `useSupabase`, `supabase.from(...)`, `request`, or other transport clients directly from `src/views/**`. Keep direct transport access inside API providers only. If a view needs a new backend read/write or option list, add or expose an API function first, then consume that function from the page or `ArtForm` item-level `api`.
 
@@ -175,9 +178,10 @@ Apply the same ownership model to `ArtDrawer`.
 - Group related page variables by business responsibility instead of scattering top-level refs and computed values. On every page, first look for state and configuration that can be classified into typed `table`, `form`, `dialog`, `overview`, or other feature-specific groups. Keep each group's model, items, options, rules, columns, actions, and component props together, and bind templates through the group such as `table.searchQuery` and `table.searchItems`. Keep component refs, API functions, event handlers, and reusable utilities outside these groups.
 - Use `reactive<GroupInterface>()` when the group contains ordinary reactive state. Use `Ref<GroupInterface>` only when the whole group or nested model is intentionally replaced.
 - Do not create one large untyped page state object. Define an interface for each group and keep unrelated workflows in separate groups.
+- When assigning multiple fields under the same reactive model, prefer a typed patch object and `Object.assign` over repeated property assignments. For branch-specific form updates, build a `patchMap` keyed by mode/status/type and apply it with `Object.assign(form.data, patchMap[mode])`. This is especially required for grouped form models such as `form.data.shippingCustomerId`, `form.data.shippingContactName`, and similar nested business fields; avoid long runs of `form.data.xxx = ...` when the fields belong to one business update.
 - Prefer `unknown` plus narrowing over introducing new `any`.
 - Keep unavoidable `any` local and explain why, such as undocumented Element Plus internals.
-- Prefer lodash helpers from `lodash-es` for null/undefined/empty checks and value normalization, such as `isNil`, `isEmpty`, `isString`, `toNumber`, and `cloneDeep`, instead of repeating manual `value === undefined || value === null` checks across business pages.
+- Before adding page-local utility helpers, first check `lodash-es`, `@vueuse/core`, and existing project utilities under `src/utils` / `src/hooks`. Prefer lodash helpers from `lodash-es` for null/undefined/empty checks and value normalization, such as `isNil`, `isEmpty`, `isString`, `trim`, `toNumber`, `round`, and `cloneDeep`, instead of repeating manual `value === undefined || value === null` checks across business pages. Prefer VueUse hooks for reactive browser/time/state behaviors, such as `useNow` + `useDateFormat` for realtime clocks, instead of page-local timers or manual date polling. Add a local helper only when the shared library or project utility does not express the business normalization clearly.
 - Use `Object.assign(state, createInitialState())` for reactive resets, and include every mutable optional key such as `id` in the factory with an `undefined` default so stale edit state is overwritten.
 - Use `shallowRef` for selected business records that are replaced rather than mutated.
 - Do not mutate table rows to stage edit state.
@@ -189,6 +193,8 @@ Apply the same ownership model to `ArtDrawer`.
 - In Vue SFCs with `lang="scss"`, write styles with SCSS nesting under the feature/root class instead of repeating flat sibling selectors.
 - Keep responsive overrides nested under the same root selector and place `:deep(...)` rules inside the relevant component block.
 - Avoid adding scattered top-level selectors in scoped SCSS unless the selector genuinely targets an independent root.
+- Business page card sections and sticky footer action bars must use the global `art-card-xs` class, for example `<section class="feature__section art-card-xs">` and `<div class="feature__footer art-card-xs">`. Do not recreate card backgrounds, borders, radius, or shadows in page-local SCSS when `art-card-xs` applies, because that style is globally controlled. Page-local styles may only add feature layout details such as padding, spacing, sticky positioning, or internal grid alignment.
+- Business-local rounded corners must use global radius variables, global classes, or project components instead of hardcoded `px` / `rem` values. Prefer `var(--el-border-radius-base)`, `var(--el-border-radius-small)`, `var(--custom-radius)`, `art-card-xs`, or an existing shared style for badges, chips, panels, buttons, upload boxes, and similar business UI. Use fixed values only for true circles or pills such as `50%` / `999px`, or when extending an established global/core component style.
 - Use Element Plus `ElScrollbar` for page, card, panel, drawer, and dialog-section scroll containers instead of native `overflow-y: auto` scrollbars. Give the scrollbar container a stable height or flex-bounded parent (`height`, `max-height`, or `flex: 1; min-height: 0`) so the scrollbar is owned by the intended content area.
 
 ## Async And Error Semantics

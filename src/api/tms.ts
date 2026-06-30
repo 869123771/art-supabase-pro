@@ -18,6 +18,12 @@ type CustomerPrice = Api.Tms.BasicData.CustomerPrice
 type CustomerPriceSearchParams = Api.Tms.BasicData.CustomerPriceSearchParams
 type CarrierPrice = Api.Tms.BasicData.CarrierPrice
 type CarrierPriceSearchParams = Api.Tms.BasicData.CarrierPriceSearchParams
+type OrderRecord = Api.Tms.Order.OrderRecord
+type CustomerSelectorItem = Api.Tms.Order.CustomerSelectorItem
+type CustomerSelectorSearchParams = Api.Tms.Order.CustomerSelectorSearchParams
+type StationRecord = Api.Tms.Station.StationRecord
+type StationSearchParams = Api.Tms.Station.StationSearchParams
+type StationOptionSearchParams = Api.Tms.Station.StationOptionSearchParams
 
 const normalizeBooleanFilter = (value: unknown): boolean | undefined => {
   if (value === true || value === 'true') return true
@@ -92,6 +98,32 @@ export async function fetchCustomerOptions() {
   })
 }
 
+export async function fetchCustomerSelectorList(params: CustomerSelectorSearchParams) {
+  const { from = 0, to = 9, keyword } = params
+  let query: any = supabase
+    .from('tms_customer')
+    .select(
+      'id, customer_code, customer_name, contact_name, contact_phone, region, address_detail',
+      {
+        count: 'exact'
+      }
+    )
+    .eq('enabled', true)
+    .order('create_time', { ascending: false })
+    .range(from, to)
+
+  if (keyword) {
+    query = query.or(
+      `customer_name.ilike.%${keyword}%,customer_code.ilike.%${keyword}%,contact_name.ilike.%${keyword}%,contact_phone.ilike.%${keyword}%,address_detail.ilike.%${keyword}%`
+    )
+  }
+
+  return await responseHandle<CustomerSelectorItem[]>(() => query as any, {
+    ignoreCheck: true,
+    showErrorMessage: true
+  })
+}
+
 export async function addCustomer(params: Customer) {
   return await responseHandle(
     () => supabase.from('tms_customer').insert(keysToSnakeDeep(params)) as any,
@@ -128,7 +160,6 @@ export async function importCustomers(rows: Customer[]) {
     { showMessage: true, breakReturn: true }
   )
 }
-
 
 // 地址管理
 const applyCustomerAddressFilters = (query: any, params: CustomerAddressSearchParams) => {
@@ -313,7 +344,6 @@ export async function importCarriers(rows: Carrier[]) {
   )
 }
 
-
 // 司机管理
 const DRIVER_SELECT = `
   *,
@@ -435,7 +465,6 @@ export async function deleteDriverBatch(ids: string[]) {
     showMessage: true
   })
 }
-
 
 // 货物管理
 const applyCargoFilters = (query: any, params: CargoSearchParams) => {
@@ -623,7 +652,6 @@ export async function importContracts(rows: Contract[]) {
     { showMessage: true, breakReturn: true }
   )
 }
-
 
 // 客户价格维护
 const CUSTOMER_PRICE_SELECT = `
@@ -865,5 +893,191 @@ export async function deleteCarrierPriceBatch(ids: string[]) {
   return await responseHandle(
     () => supabase.from('tms_carrier_price').delete().in('id', ids) as any,
     { showMessage: true }
+  )
+}
+
+// 站点管理
+const applyStationFilters = (query: any, params: StationSearchParams) => {
+  const { stationType, enabled, keyword, createTimeRange } = params
+  if (stationType) query = query.eq('station_type', stationType)
+  const enabledValue = normalizeBooleanFilter(enabled)
+  if (enabledValue !== undefined) query = query.eq('enabled', enabledValue)
+  if (keyword) {
+    query = query.or(
+      `station_code.ilike.%${keyword}%,station_name.ilike.%${keyword}%,region_code.ilike.%${keyword}%,manager_name.ilike.%${keyword}%,contact_phone.ilike.%${keyword}%`
+    )
+  }
+  return applyDateRange(query, createTimeRange)
+}
+
+export async function fetchStationList(params: StationSearchParams) {
+  const { from = 0, to = 9 } = params
+  let query: any = supabase
+    .from('tms_station')
+    .select('*', { count: 'exact' })
+    .order('sort', { ascending: true })
+    .order('station_code', { ascending: true })
+    .range(from, to)
+
+  query = applyStationFilters(query, params)
+  return await responseHandle<StationRecord[]>(() => query as any, {
+    ignoreCheck: true,
+    showErrorMessage: true
+  })
+}
+
+export async function exportStationList(
+  params: StationSearchParams & { ids?: string[]; maxRows?: number }
+) {
+  const { ids, maxRows = 10000 } = params
+  let query: any = supabase
+    .from('tms_station')
+    .select('*')
+    .order('sort', { ascending: true })
+    .order('station_code', { ascending: true })
+    .limit(maxRows)
+
+  query = ids?.length ? query.in('id', ids) : applyStationFilters(query, params)
+  return await responseHandle<StationRecord[]>(() => query as any, {
+    ignoreCheck: true,
+    showErrorMessage: true
+  })
+}
+
+export async function fetchStationOptions(params: StationOptionSearchParams = {}) {
+  let query: any = supabase
+    .from('tms_station')
+    .select('id, station_code, station_name, station_type, region_code')
+    .eq('enabled', true)
+    .order('sort', { ascending: true })
+    .order('station_code', { ascending: true })
+    .limit(1000)
+
+  if (params.stationType) query = query.eq('station_type', params.stationType)
+  if (params.keyword) {
+    query = query.or(
+      `station_code.ilike.%${params.keyword}%,station_name.ilike.%${params.keyword}%,region_code.ilike.%${params.keyword}%`
+    )
+  }
+
+  return await responseHandle<Api.Tms.Order.StationOption[]>(() => query as any, {
+    ignoreCheck: true,
+    showErrorMessage: true
+  })
+}
+
+export async function addStation(params: StationRecord) {
+  return await responseHandle(
+    () => supabase.from('tms_station').insert(keysToSnakeDeep(params)) as any,
+    { showMessage: true, breakReturn: true }
+  )
+}
+
+export async function editStation(params: StationRecord) {
+  const { id, ...data } = params
+  return await responseHandle(
+    () => supabase.from('tms_station').update(keysToSnakeDeep(data)).eq('id', id) as any,
+    { showMessage: true, breakReturn: true }
+  )
+}
+
+export async function deleteStation(id: string) {
+  return await responseHandle(() => supabase.from('tms_station').delete().eq('id', id) as any, {
+    showMessage: true
+  })
+}
+
+export async function deleteStationBatch(ids: string[]) {
+  return await responseHandle(() => supabase.from('tms_station').delete().in('id', ids) as any, {
+    showMessage: true
+  })
+}
+
+export async function importStations(rows: StationRecord[]) {
+  return await responseHandle(
+    () =>
+      supabase
+        .from('tms_station')
+        .upsert(keysToSnakeDeep(rows), { onConflict: 'tenant_id,station_code' }) as any,
+    { showMessage: true, breakReturn: true }
+  )
+}
+
+const ORDER_SELECT = `
+  *,
+  originStationRef:tms_station!tms_order_origin_station_id_fkey(
+    id,
+    station_code,
+    station_name,
+    station_type,
+    region_code
+  ),
+  destinationStationRef:tms_station!tms_order_destination_station_id_fkey(
+    id,
+    station_code,
+    station_name,
+    station_type,
+    region_code
+  ),
+  transferStationRef:tms_station!tms_order_transfer_station_id_fkey(
+    id,
+    station_code,
+    station_name,
+    station_type,
+    region_code
+  ),
+  shippingCustomer:tms_customer!tms_order_shipping_customer_id_fkey(
+    id,
+    customer_code,
+    customer_name,
+    contact_name,
+    contact_phone,
+    region,
+    address_detail
+  ),
+  receivingCustomer:tms_customer!tms_order_receiving_customer_id_fkey(
+    id,
+    customer_code,
+    customer_name,
+    contact_name,
+    contact_phone,
+    region,
+    address_detail
+  )
+`
+
+export async function fetchOrderDetail(id: string) {
+  const query = supabase.from('tms_order').select(ORDER_SELECT).eq('id', id).maybeSingle()
+
+  return await responseHandle<OrderRecord | null>(() => query as any, {
+    ignoreCheck: true,
+    showErrorMessage: true
+  })
+}
+
+export async function addOrder(params: OrderRecord) {
+  return await responseHandle<OrderRecord>(
+    () => supabase.from('tms_order').insert(keysToSnakeDeep(params)).select().single() as any,
+    { showMessage: true, breakReturn: true }
+  )
+}
+
+export async function editOrder(params: OrderRecord) {
+  const { id, ...data } = params
+  delete data.shippingCustomer
+  delete data.receivingCustomer
+  delete data.originStationRef
+  delete data.destinationStationRef
+  delete data.transferStationRef
+
+  return await responseHandle<OrderRecord>(
+    () =>
+      supabase
+        .from('tms_order')
+        .update(keysToSnakeDeep(data))
+        .eq('id', id)
+        .select()
+        .single() as any,
+    { showMessage: true, breakReturn: true }
   )
 }
