@@ -1,0 +1,1 @@
+import{i as e}from"./use-size-Ci2jvbBr.js";var t=[`year`,`years`,`month`,`months`,`date`,`dates`,`week`,`datetime`,`datetimerange`,`daterange`,`monthrange`,`yearrange`],n=t=>[``,...e].includes(t);export{t as n,n as t};
