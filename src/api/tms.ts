@@ -19,6 +19,8 @@ type CustomerPriceSearchParams = Api.Tms.BasicData.CustomerPriceSearchParams
 type CarrierPrice = Api.Tms.BasicData.CarrierPrice
 type CarrierPriceSearchParams = Api.Tms.BasicData.CarrierPriceSearchParams
 type OrderRecord = Api.Tms.Order.OrderRecord
+type OrderSearchParams = Api.Tms.Order.OrderSearchParams
+type OrderFreightPayload = Api.Tms.Order.OrderFreightPayload
 type CustomerSelectorItem = Api.Tms.Order.CustomerSelectorItem
 type CustomerSelectorSearchParams = Api.Tms.Order.CustomerSelectorSearchParams
 type StationRecord = Api.Tms.Station.StationRecord
@@ -1046,6 +1048,73 @@ const ORDER_SELECT = `
   )
 `
 
+const applyOrderFilters = (query: any, params: OrderSearchParams) => {
+  const {
+    cargoKeyword,
+    shippingKeyword,
+    receivingKeyword,
+    orderStatus,
+    paymentMethod,
+    originStationId,
+    destinationStationId,
+    transferStationId,
+    createTimeRange
+  } = params
+
+  if (orderStatus) query = query.eq('order_status', orderStatus)
+  if (paymentMethod) query = query.eq('payment_method', paymentMethod)
+  if (originStationId) query = query.eq('origin_station_id', originStationId)
+  if (destinationStationId) query = query.eq('destination_station_id', destinationStationId)
+  if (transferStationId) query = query.eq('transfer_station_id', transferStationId)
+  if (cargoKeyword) {
+    query = query.or(`order_no.ilike.%${cargoKeyword}%,cargo_no.ilike.%${cargoKeyword}%`)
+  }
+  if (shippingKeyword) {
+    query = query.or(
+      `shipping_contact_name.ilike.%${shippingKeyword}%,shipping_contact_phone.ilike.%${shippingKeyword}%,shipping_address_detail.ilike.%${shippingKeyword}%`
+    )
+  }
+  if (receivingKeyword) {
+    query = query.or(
+      `receiving_contact_name.ilike.%${receivingKeyword}%,receiving_contact_phone.ilike.%${receivingKeyword}%,receiving_address_detail.ilike.%${receivingKeyword}%`
+    )
+  }
+
+  return applyDateRange(query, createTimeRange)
+}
+
+export async function fetchOrderList(params: OrderSearchParams & Api.Common.CommonSearchParams) {
+  const { from = 0, to = 9 } = params
+  let query: any = supabase
+    .from('tms_order')
+    .select(ORDER_SELECT, { count: 'exact' })
+    .order('create_time', { ascending: false })
+    .range(from, to)
+
+  query = applyOrderFilters(query, params)
+  return await responseHandle<OrderRecord[]>(() => query as any, {
+    ignoreCheck: true,
+    showErrorMessage: true
+  })
+}
+
+export async function exportOrderList(
+  params: OrderSearchParams & { ids?: string[]; maxRows?: number }
+) {
+  const { ids, maxRows = 10000 } = params
+  let query: any = supabase
+    .from('tms_order')
+    .select(ORDER_SELECT)
+    .order('create_time', { ascending: false })
+    .limit(maxRows)
+
+  query = ids?.length ? query.in('id', ids) : applyOrderFilters(query, params)
+  return await responseHandle<OrderRecord[]>(() => query as any, {
+    ignoreCheck: true,
+    showErrorMessage: true
+  })
+}
+
 export async function fetchOrderDetail(id: string) {
   const query = supabase.from('tms_order').select(ORDER_SELECT).eq('id', id).maybeSingle()
 
@@ -1080,4 +1149,31 @@ export async function editOrder(params: OrderRecord) {
         .single() as any,
     { showMessage: true, breakReturn: true }
   )
+}
+
+export async function editOrderFreight(params: OrderFreightPayload) {
+  const { id, ...data } = params
+
+  return await responseHandle<OrderRecord>(
+    () =>
+      supabase
+        .from('tms_order')
+        .update(keysToSnakeDeep(data))
+        .eq('id', id)
+        .select()
+        .single() as any,
+    { showMessage: true, breakReturn: true }
+  )
+}
+
+export async function deleteOrder(id: string) {
+  return await responseHandle(() => supabase.from('tms_order').delete().eq('id', id) as any, {
+    showMessage: true
+  })
+}
+
+export async function deleteOrderBatch(ids: string[]) {
+  return await responseHandle(() => supabase.from('tms_order').delete().in('id', ids) as any, {
+    showMessage: true
+  })
 }

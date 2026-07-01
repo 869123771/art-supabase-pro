@@ -19,6 +19,14 @@
       shadow="never"
       :style="{ marginTop: hasSearchBar && showSearchBar ? '12px' : '0' }"
     >
+      <div v-if="$slots['table-header-top']" class="art-table-query__header-top">
+        <slot
+          name="table-header-top"
+          :selected-rows="selectedRows"
+          :selected-count="selectedRows.length"
+        />
+      </div>
+
       <ArtTableHeader
         v-model:columns="resolvedColumnsModel"
         v-bind="mergedTableHeaderProps"
@@ -1151,6 +1159,10 @@
     flex-wrap: wrap;
     gap: 8px;
     align-items: center;
+  }
+
+  .art-table-query__header-top {
+    margin-bottom: 12px;
   }
 
   .art-table-query__header-action {

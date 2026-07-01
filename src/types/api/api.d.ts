@@ -1357,6 +1357,24 @@ declare namespace Api {
         updateTime?: string
       }
 
+      type OrderSearchParams = Partial<
+        Pick<
+          OrderRecord,
+          | 'orderStatus'
+          | 'paymentMethod'
+          | 'originStationId'
+          | 'destinationStationId'
+          | 'transferStationId'
+        > & {
+          cargoKeyword?: string
+          shippingKeyword?: string
+          receivingKeyword?: string
+          createTimeRange?: string[]
+        }
+      >
+
+      type OrderFreightPayload = Pick<OrderRecord, 'id' | 'totalFee'>
+
       type CustomerSelectorSearchParams = Api.Common.CommonSearchParams & {
         keyword?: string
       }
