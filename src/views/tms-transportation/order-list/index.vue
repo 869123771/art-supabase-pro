@@ -27,7 +27,7 @@
 
 <script setup lang="tsx">
   import type { ComputedRef, UnwrapNestedRefs } from 'vue'
-  import { ElMessageBox } from 'element-plus'
+  import { ElMessageBox, ElTag } from 'element-plus'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type {
     ArtTableQueryExcelColumn,
@@ -66,9 +66,45 @@
     value: string
   }
 
+  type OrderStatusValue =
+    | 'created'
+    | 'pending_load'
+    | 'loaded'
+    | 'pending_order'
+    | 'pending_pickup'
+    | 'transporting'
+    | 'signed'
+    | 'completed'
+    | 'cancelled'
+
+  const orderStatusMetas: Record<
+    OrderStatusValue,
+    { label: string; type: 'primary' | 'success' | 'info' | 'warning' | 'danger' }
+  > = {
+    created: { label: '待配载', type: 'warning' },
+    pending_load: { label: '待配载', type: 'warning' },
+    loaded: { label: '待接单', type: 'primary' },
+    pending_order: { label: '待接单', type: 'primary' },
+    pending_pickup: { label: '待提货', type: 'warning' },
+    transporting: { label: '运输中', type: 'primary' },
+    signed: { label: '待签收', type: 'warning' },
+    completed: { label: '已完成', type: 'success' },
+    cancelled: { label: '已取消', type: 'danger' }
+  }
+
+  const orderStatusTabs: StatusTab[] = [
+    { label: '待配载', value: 'pending_load' },
+    { label: '待接单', value: 'pending_order' },
+    { label: '待提货', value: 'pending_pickup' },
+    { label: '运输中', value: 'transporting' },
+    { label: '待签收', value: 'signed' },
+    { label: '已完成', value: 'completed' },
+    { label: '已取消', value: 'cancelled' }
+  ]
+
   interface TableGroup {
     searchQuery: SearchParams
-    orderStatusOptions: ComputedRef<Api.DataCenter.DictListItem[]>
+    orderStatusOptions: ComputedRef<StatusTab[]>
     paymentMethodOptions: ComputedRef<Api.DataCenter.DictListItem[]>
     statusTabs: ComputedRef<StatusTab[]>
     searchItems: ComputedRef<SearchFormItem[]>
@@ -110,14 +146,11 @@
       transferStationId: '',
       createTimeRange: []
     },
-    orderStatusOptions: computed(() => getDictMap.value.tmsOrderStatus ?? []),
+    orderStatusOptions: computed(() => orderStatusTabs),
     paymentMethodOptions: computed(() => getDictMap.value.tmsOrderPaymentMethod ?? []),
     statusTabs: computed<StatusTab[]>(() => [
       { label: '全部', value: '' },
-      ...table.orderStatusOptions.map((item) => ({
-        label: item.label || item.name || item.value,
-        value: item.value
-      }))
+      ...table.orderStatusOptions
     ]),
     searchItems: computed<SearchFormItem[]>(() => [
       {
@@ -263,7 +296,7 @@
         prop: 'orderStatus',
         label: '状态',
         width: 110,
-        dict: { code: 'tmsOrderStatus', display: 'badge' },
+        formatter: (row) => renderOrderStatus(row.orderStatus),
         fixed: 'right'
       },
       {
@@ -292,6 +325,25 @@
   function handleStatusTabChange(status: string | number | boolean): void {
     table.searchQuery.orderStatus = String(status)
     void tableQueryRef.value?.getData()
+  }
+
+  function normalizeOrderStatus(status?: string): OrderStatusValue | undefined {
+    if (!status) return undefined
+    if (status === 'created') return 'pending_load'
+    if (status === 'loaded') return 'pending_order'
+    return status as OrderStatusValue
+  }
+
+  function renderOrderStatus(status?: string) {
+    const normalizedStatus = normalizeOrderStatus(status)
+    const meta = normalizedStatus ? orderStatusMetas[normalizedStatus] : undefined
+    if (!meta) return '-'
+
+    return (
+      <ElTag type={meta.type} effect="light">
+        {meta.label}
+      </ElTag>
+    )
   }
 
   function openOrderOpen(): void {

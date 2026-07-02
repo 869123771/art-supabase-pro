@@ -1351,6 +1351,21 @@ declare namespace Api {
         transportMode?: string | null
         orderRemark?: string | null
         imageUrls?: string[]
+        dispatchStatus?: string
+        dispatchVehicleId?: string | null
+        dispatchDriverId?: string | null
+        dispatchPlateNo?: string | null
+        dispatchVehicleType?: string | null
+        dispatchVehicleLength?: string | null
+        dispatchDriverName?: string | null
+        dispatchDriverPhone?: string | null
+        plannedDepartureTime?: string | null
+        plannedArrivalTime?: string | null
+        dispatchRemark?: string | null
+        dispatchedAt?: string | null
+        dispatchBy?: string | null
+        dispatchVehicle?: Waybill.DispatchVehicleOption | null
+        dispatchDriver?: BasicData.DriverOption | null
         createBy?: string
         createTime?: string
         updateBy?: string
@@ -1377,6 +1392,49 @@ declare namespace Api {
 
       type CustomerSelectorSearchParams = Api.Common.CommonSearchParams & {
         keyword?: string
+      }
+    }
+
+    namespace Waybill {
+      type DispatchStatus = 'pending' | 'loaded' | 'cancelled'
+      type WaybillRecord = Api.Tms.Order.OrderRecord
+
+      interface DispatchVehicleOption extends Api.VehicleMgtSys.VehicleManage.VehicleOption {
+        primaryDriverId?: string | null
+        primaryDriver?: BasicData.DriverOption | null
+        driverOneName?: string | null
+        driverOnePhone?: string | null
+        tonnageOrSeat?: string | null
+        overallLength?: number | null
+      }
+
+      type WaybillSearchParams = Partial<
+        Api.Tms.Order.OrderSearchParams & {
+          dispatchStatus?: DispatchStatus | string
+          dispatchStatuses?: Array<DispatchStatus | string>
+          dispatchVehicleId?: string | null
+          vehicleKeyword?: string
+          plannedTimeRange?: string[]
+        }
+      >
+
+      type DispatchVehicleSearchParams = Api.Common.CommonSearchParams & {
+        keyword?: string
+      }
+
+      interface WaybillDispatchPayload {
+        id?: string
+        ids?: string[]
+        dispatchVehicleId: string
+        dispatchDriverId?: string | null
+        dispatchPlateNo: string
+        dispatchVehicleType?: string | null
+        dispatchVehicleLength?: string | null
+        dispatchDriverName?: string | null
+        dispatchDriverPhone?: string | null
+        plannedDepartureTime: string
+        plannedArrivalTime: string
+        dispatchRemark?: string | null
       }
     }
 

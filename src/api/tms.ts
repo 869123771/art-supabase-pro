@@ -21,6 +21,11 @@ type CarrierPriceSearchParams = Api.Tms.BasicData.CarrierPriceSearchParams
 type OrderRecord = Api.Tms.Order.OrderRecord
 type OrderSearchParams = Api.Tms.Order.OrderSearchParams
 type OrderFreightPayload = Api.Tms.Order.OrderFreightPayload
+type WaybillRecord = Api.Tms.Waybill.WaybillRecord
+type WaybillSearchParams = Api.Tms.Waybill.WaybillSearchParams
+type WaybillDispatchPayload = Api.Tms.Waybill.WaybillDispatchPayload
+type DispatchVehicleOption = Api.Tms.Waybill.DispatchVehicleOption
+type DispatchVehicleSearchParams = Api.Tms.Waybill.DispatchVehicleSearchParams
 type CustomerSelectorItem = Api.Tms.Order.CustomerSelectorItem
 type CustomerSelectorSearchParams = Api.Tms.Order.CustomerSelectorSearchParams
 type StationRecord = Api.Tms.Station.StationRecord
@@ -1061,7 +1066,13 @@ const applyOrderFilters = (query: any, params: OrderSearchParams) => {
     createTimeRange
   } = params
 
-  if (orderStatus) query = query.eq('order_status', orderStatus)
+  if (orderStatus === 'pending_load') {
+    query = query.in('order_status', ['pending_load', 'created'])
+  } else if (orderStatus === 'pending_order') {
+    query = query.in('order_status', ['pending_order', 'loaded'])
+  } else if (orderStatus) {
+    query = query.eq('order_status', orderStatus)
+  }
   if (paymentMethod) query = query.eq('payment_method', paymentMethod)
   if (originStationId) query = query.eq('origin_station_id', originStationId)
   if (destinationStationId) query = query.eq('destination_station_id', destinationStationId)
@@ -1138,6 +1149,8 @@ export async function editOrder(params: OrderRecord) {
   delete data.originStationRef
   delete data.destinationStationRef
   delete data.transferStationRef
+  delete data.dispatchVehicle
+  delete data.dispatchDriver
 
   return await responseHandle<OrderRecord>(
     () =>
@@ -1175,5 +1188,211 @@ export async function deleteOrder(id: string) {
 export async function deleteOrderBatch(ids: string[]) {
   return await responseHandle(() => supabase.from('tms_order').delete().in('id', ids) as any, {
     showMessage: true
+  })
+}
+
+// 运单配载管理
+const DISPATCH_VEHICLE_SELECT = `
+  id,
+  carrier_id,
+  plate_no,
+  company_name,
+  vin,
+  self_no,
+  vehicle_type,
+  primary_driver_id,
+  driver_one_name,
+  driver_one_phone,
+  tonnage_or_seat,
+  overall_length,
+  primaryDriver:tms_driver!vehicle_archive_primary_driver_id_fkey(
+    id,
+    carrier_id,
+    driver_name,
+    phone
+  )
+`
+
+const applyPlannedTimeRange = (query: any, plannedTimeRange?: string[]) => {
+  if (plannedTimeRange?.[0]) {
+    query = query.gte('planned_departure_time', `${plannedTimeRange[0]}T00:00:00`)
+  }
+  if (plannedTimeRange?.[1]) {
+    query = query.lte('planned_departure_time', `${plannedTimeRange[1]}T23:59:59.999`)
+  }
+  return query
+}
+
+const applyWaybillFilters = (query: any, params: WaybillSearchParams) => {
+  const { dispatchStatus, dispatchStatuses, dispatchVehicleId, vehicleKeyword, plannedTimeRange } =
+    params
+
+  query = applyOrderFilters(query, params)
+  if (dispatchStatuses?.length) query = query.in('dispatch_status', dispatchStatuses)
+  if (!dispatchStatuses?.length && dispatchStatus)
+    query = query.eq('dispatch_status', dispatchStatus)
+  if (dispatchVehicleId) query = query.eq('dispatch_vehicle_id', dispatchVehicleId)
+  if (vehicleKeyword) {
+    query = query.or(
+      `dispatch_plate_no.ilike.%${vehicleKeyword}%,dispatch_vehicle_type.ilike.%${vehicleKeyword}%,dispatch_driver_name.ilike.%${vehicleKeyword}%,dispatch_driver_phone.ilike.%${vehicleKeyword}%`
+    )
+  }
+
+  return applyPlannedTimeRange(query, plannedTimeRange)
+}
+
+const createDispatchUpdatePayload = (params: WaybillDispatchPayload) => ({
+  orderStatus: 'pending_order',
+  dispatchStatus: 'loaded',
+  dispatchVehicleId: params.dispatchVehicleId,
+  dispatchDriverId: params.dispatchDriverId || null,
+  dispatchPlateNo: params.dispatchPlateNo,
+  dispatchVehicleType: params.dispatchVehicleType || null,
+  dispatchVehicleLength: params.dispatchVehicleLength || null,
+  dispatchDriverName: params.dispatchDriverName || null,
+  dispatchDriverPhone: params.dispatchDriverPhone || null,
+  plannedDepartureTime: params.plannedDepartureTime,
+  plannedArrivalTime: params.plannedArrivalTime,
+  dispatchRemark: params.dispatchRemark || null,
+  dispatchedAt: new Date().toISOString()
+})
+
+const createCancelDispatchPayload = () => ({
+  orderStatus: 'pending_load',
+  dispatchStatus: 'pending',
+  dispatchVehicleId: null,
+  dispatchDriverId: null,
+  dispatchPlateNo: null,
+  dispatchVehicleType: null,
+  dispatchVehicleLength: null,
+  dispatchDriverName: null,
+  dispatchDriverPhone: null,
+  plannedDepartureTime: null,
+  plannedArrivalTime: null,
+  dispatchRemark: null,
+  dispatchedAt: null,
+  dispatchBy: null
+})
+
+export async function fetchWaybillList(
+  params: WaybillSearchParams & Api.Common.CommonSearchParams
+) {
+  const { from = 0, to = 9 } = params
+  let query: any = supabase
+    .from('tms_order')
+    .select(ORDER_SELECT, { count: 'exact' })
+    .order('create_time', { ascending: false })
+    .range(from, to)
+
+  query = applyWaybillFilters(query, params)
+  return await responseHandle<WaybillRecord[]>(() => query as any, {
+    ignoreCheck: true,
+    showErrorMessage: true
+  })
+}
+
+export async function exportWaybillList(
+  params: WaybillSearchParams & { ids?: string[]; maxRows?: number }
+) {
+  const { ids, maxRows = 10000 } = params
+  let query: any = supabase
+    .from('tms_order')
+    .select(ORDER_SELECT)
+    .order('create_time', { ascending: false })
+    .limit(maxRows)
+
+  query = ids?.length ? query.in('id', ids) : applyWaybillFilters(query, params)
+  return await responseHandle<WaybillRecord[]>(() => query as any, {
+    ignoreCheck: true,
+    showErrorMessage: true
+  })
+}
+
+export async function dispatchWaybill(params: WaybillDispatchPayload) {
+  const id = params.id
+  if (!id) throw new Error('缺少运单ID')
+
+  return await responseHandle<WaybillRecord>(
+    () =>
+      supabase
+        .from('tms_order')
+        .update(keysToSnakeDeep(createDispatchUpdatePayload(params)))
+        .eq('id', id)
+        .select(ORDER_SELECT)
+        .single() as any,
+    { showMessage: true, breakReturn: true }
+  )
+}
+
+export async function dispatchWaybillBatch(params: WaybillDispatchPayload) {
+  const ids = params.ids?.filter(Boolean) ?? []
+  if (!ids.length) throw new Error('请选择需要配载的运单')
+
+  return await responseHandle<WaybillRecord[]>(
+    () =>
+      supabase
+        .from('tms_order')
+        .update(keysToSnakeDeep(createDispatchUpdatePayload(params)))
+        .in('id', ids)
+        .select(ORDER_SELECT) as any,
+    { showMessage: true, breakReturn: true }
+  )
+}
+
+export async function cancelWaybillDispatch(id: string) {
+  return await responseHandle<WaybillRecord>(
+    () =>
+      supabase
+        .from('tms_order')
+        .update(keysToSnakeDeep(createCancelDispatchPayload()))
+        .eq('id', id)
+        .select(ORDER_SELECT)
+        .single() as any,
+    { showMessage: true, breakReturn: true }
+  )
+}
+
+export async function cancelWaybillDispatchBatch(ids: string[]) {
+  return await responseHandle<WaybillRecord[]>(
+    () =>
+      supabase
+        .from('tms_order')
+        .update(keysToSnakeDeep(createCancelDispatchPayload()))
+        .in('id', ids)
+        .select(ORDER_SELECT) as any,
+    { showMessage: true, breakReturn: true }
+  )
+}
+
+export async function cancelWaybillOrder(id: string) {
+  return await responseHandle<WaybillRecord>(
+    () =>
+      supabase
+        .from('tms_order')
+        .update(keysToSnakeDeep({ orderStatus: 'cancelled', dispatchStatus: 'cancelled' }))
+        .eq('id', id)
+        .select(ORDER_SELECT)
+        .single() as any,
+    { showMessage: true, breakReturn: true }
+  )
+}
+
+export async function fetchDispatchVehicleOptions(params: DispatchVehicleSearchParams = {}) {
+  const { from = 0, to = 9, keyword } = params
+  let query: any = supabase
+    .from('vehicle_archive')
+    .select(DISPATCH_VEHICLE_SELECT, { count: 'exact' })
+    .order('plate_no', { ascending: true })
+    .range(from, to)
+
+  if (keyword) {
+    query = query.or(
+      `plate_no.ilike.%${keyword}%,company_name.ilike.%${keyword}%,self_no.ilike.%${keyword}%,vehicle_type.ilike.%${keyword}%,driver_one_name.ilike.%${keyword}%,driver_one_phone.ilike.%${keyword}%`
+    )
+  }
+
+  return await responseHandle<DispatchVehicleOption[]>(() => query as any, {
+    ignoreCheck: true,
+    showErrorMessage: true
   })
 }

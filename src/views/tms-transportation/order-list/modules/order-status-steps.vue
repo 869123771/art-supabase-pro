@@ -53,7 +53,6 @@
     pending_load: 'ri:node-tree',
     pending_order: 'ri:hourglass-2-line',
     pending_pickup: 'ri:archive-drawer-line',
-    loaded: 'ri:truck-line',
     transporting: 'ri:truck-line',
     signed: 'ri:time-line',
     completed: 'ri:checkbox-circle-fill',

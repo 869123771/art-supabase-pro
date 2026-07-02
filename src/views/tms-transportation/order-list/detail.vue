@@ -37,11 +37,9 @@
           <ArtDictDisplay dict-code="tmsOrderDeliveryMethod" :value="detail.data?.deliveryMethod" />
         </ElDescriptionsItem>
         <ElDescriptionsItem label="当前状态">
-          <ArtDictDisplay
-            dict-code="tmsOrderStatus"
-            :value="detail.data?.orderStatus"
-            display="auto"
-          />
+          <ElTag :type="detail.statusMeta.type" effect="light">
+            {{ detail.statusMeta.label }}
+          </ElTag>
         </ElDescriptionsItem>
         <ElDescriptionsItem label="运输方式">
           <ArtDictDisplay dict-code="tmsOrderTransportMode" :value="detail.data?.transportMode" />
@@ -91,7 +89,7 @@
       <ArtTable
         :data="detail.cargoItems"
         :columns="detail.cargoColumns"
-        :pagination="undefined"
+        :pagination="false"
         row-key="cargoName"
       />
       <div class="order-detail__summary">
@@ -186,13 +184,13 @@
 <script setup lang="tsx">
   import type { ComputedRef, UnwrapNestedRefs } from 'vue'
   import { ArrowLeft } from '@element-plus/icons-vue'
+  import { ElTag } from 'element-plus'
   import { toNumber, trim } from 'lodash-es'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
   import ArtTable from '@/components/core/tables/art-table/index.vue'
   import type { ColumnOption } from '@/types'
   import { formatWithDayjs } from '@/utils/time'
-  import { useUserStore } from '@/store/modules/user'
   import { fetchOrderDetail } from '@/api/tms'
   import OrderStatusSteps from './modules/order-status-steps.vue'
 
@@ -206,37 +204,88 @@
     value: string
   }
 
+  type OrderStatusValue =
+    | 'created'
+    | 'pending_load'
+    | 'loaded'
+    | 'pending_order'
+    | 'pending_pickup'
+    | 'transporting'
+    | 'signed'
+    | 'completed'
+    | 'cancelled'
+
+  const orderStatusMetas: Record<
+    OrderStatusValue,
+    { label: string; type: 'primary' | 'success' | 'info' | 'warning' | 'danger' }
+  > = {
+    created: { label: '待配载', type: 'warning' },
+    pending_load: { label: '待配载', type: 'warning' },
+    loaded: { label: '待接单', type: 'primary' },
+    pending_order: { label: '待接单', type: 'primary' },
+    pending_pickup: { label: '待提货', type: 'warning' },
+    transporting: { label: '运输中', type: 'primary' },
+    signed: { label: '待签收', type: 'warning' },
+    completed: { label: '已完成', type: 'success' },
+    cancelled: { label: '已取消', type: 'danger' }
+  }
+
+  const orderStatusSteps: StatusStep[] = [
+    { label: '开单', value: 'created' },
+    { label: '待配载', value: 'pending_load' },
+    { label: '待接单', value: 'pending_order' },
+    { label: '待提货', value: 'pending_pickup' },
+    { label: '运输中', value: 'transporting' },
+    { label: '待签收', value: 'signed' },
+    { label: '已完成', value: 'completed' }
+  ]
+
   interface DetailGroup {
     loading: boolean
     data?: OrderRecord
     statusSteps: ComputedRef<StatusStep[]>
     activeStep: ComputedRef<number>
+    statusMeta: ComputedRef<{
+      label: string
+      type: 'primary' | 'success' | 'info' | 'warning' | 'danger'
+    }>
     cargoItems: ComputedRef<CargoItem[]>
     cargoColumns: ComputedRef<ColumnOption<CargoItem>[]>
   }
 
   const route = useRoute()
   const router = useRouter()
-  const { getDictMap } = storeToRefs(useUserStore())
 
   const detail: UnwrapNestedRefs<DetailGroup> = reactive<DetailGroup>({
     loading: false,
     data: undefined,
     statusSteps: computed(() =>
-      (getDictMap.value.tmsOrderStatus ?? []).map((item) => ({
-        label: item.label || item.name || item.value,
-        value: item.value
-      }))
+      detail.data?.orderStatus === 'cancelled'
+        ? [...orderStatusSteps, { label: '已取消', value: 'cancelled' }]
+        : orderStatusSteps
     ),
     activeStep: computed(() => {
-      const index = detail.statusSteps.findIndex((item) => item.value === detail.data?.orderStatus)
+      const index = detail.statusSteps.findIndex(
+        (item) => item.value === normalizeOrderStatus(detail.data?.orderStatus)
+      )
       return index < 0 ? 0 : index
+    }),
+    statusMeta: computed(() => {
+      const status = normalizeOrderStatus(detail.data?.orderStatus)
+      return status
+        ? orderStatusMetas[status] || { label: status, type: 'info' }
+        : { label: '-', type: 'info' }
     }),
     cargoItems: computed(() => detail.data?.cargoItems ?? []),
     cargoColumns: computed<ColumnOption<CargoItem>[]>(() => [
       { type: 'globalIndex', label: '序号', width: 70 },
       { prop: 'cargoName', label: '货物名称', minWidth: 180 },
-      { prop: 'packageType', label: '包装', width: 130 },
+      {
+        prop: 'packageType',
+        label: '包装',
+        width: 130,
+        dict: { code: 'tmsCargoUnit', display: 'text' }
+      },
       { prop: 'quantity', label: '数量（箱/袋）', width: 140 },
       { prop: 'weightKg', label: '重量(kg)', width: 140 },
       { prop: 'volumeM3', label: '体积(方)', width: 140 }
@@ -262,6 +311,13 @@
 
   function goBack(): void {
     void router.back()
+  }
+
+  function normalizeOrderStatus(status?: string): OrderStatusValue | undefined {
+    if (!status) return undefined
+    if (status === 'created') return 'pending_load'
+    if (status === 'loaded') return 'pending_order'
+    return status as OrderStatusValue
   }
 
   function formatValue(value?: string | number | null): string {

@@ -159,6 +159,7 @@ export interface DictMap extends Record<string, Api.DataCenter.DictListItem[] | 
   tmsOrderPaymentMethod?: Api.DataCenter.DictListItem[]
   tmsOrderTransportMode?: Api.DataCenter.DictListItem[]
   tmsOrderStatus?: Api.DataCenter.DictListItem[]
+  tmsWaybillDispatchStatus?: Api.DataCenter.DictListItem[]
 }
 
 // 设置Store状态

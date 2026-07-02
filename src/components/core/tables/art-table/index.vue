@@ -134,10 +134,10 @@
     >
       <ElPagination
         v-bind="mergedPaginationOptions"
-        :total="pagination?.total"
+        :total="currentPagination?.total"
         :disabled="loading"
-        :page-size="pagination?.size"
-        :current-page="pagination?.current"
+        :page-size="currentPagination?.size"
+        :current-page="currentPagination?.current"
         @size-change="handleSizeChange"
         @current-change="handleCurrentChange"
       />
@@ -226,7 +226,7 @@
     /** 列渲染配置 */
     columns?: ColumnOption[]
     /** 分页状态 */
-    pagination?: PaginationConfig
+    pagination?: PaginationConfig | false
     /** 分页配置 */
     paginationOptions?: PaginationOptions
     /** 空数据表格高度 */
@@ -371,7 +371,11 @@
   }))
 
   // 是否显示分页器
-  const showPagination = computed(() => props.pagination && !isEmpty.value)
+  const currentPagination = computed(() =>
+    props.pagination === false ? undefined : props.pagination
+  )
+
+  const showPagination = computed(() => !!currentPagination.value && !isEmpty.value)
 
   const hasDraggableColumn = computed(() =>
     props.columns.some(
@@ -625,8 +629,8 @@
 
   // 全局序号
   const getGlobalIndex = (index: number) => {
-    if (!props.pagination) return index + 1
-    const { current, size } = props.pagination
+    if (!currentPagination.value) return index + 1
+    const { current, size } = currentPagination.value
     return (current - 1) * size + index + 1
   }
 

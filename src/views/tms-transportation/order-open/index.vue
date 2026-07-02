@@ -662,7 +662,7 @@
     return {
       orderNo: createOrderNo(),
       cargoNo: createCargoNo(),
-      orderStatus: 'created',
+      orderStatus: 'pending_load',
       originStationId: null,
       destinationStationId: null,
       transferStationId: null,
