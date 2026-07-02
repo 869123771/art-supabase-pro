@@ -16,6 +16,13 @@ import { createNoJekyllPlugin } from './src/plugins/nojekyll'
 
 // import { visualizer } from 'rollup-plugin-visualizer'
 
+const normalizeModuleId = (id: string) => id.replace(/\\/g, '/')
+
+const matchPackages = (id: string, packages: string[]) => {
+  const normalizedId = normalizeModuleId(id)
+  return packages.some((packageName) => normalizedId.includes(`/node_modules/${packageName}`))
+}
+
 export default ({ mode }: { mode: string }) => {
   const root = process.cwd()
   const env = loadEnv(mode, root)
@@ -58,13 +65,65 @@ export default ({ mode }: { mode: string }) => {
     build: {
       target: 'es2020',
       outDir: VITE_OUT_DIR, //dist
-      chunkSizeWarningLimit: 2000,
+      chunkSizeWarningLimit: 7000,
       minify: 'oxc',
       reportCompressedSize: false,
+      rolldownOptions: {
+        checks: {
+          invalidAnnotation: false,
+          pluginTimings: false
+        },
+        output: {
+          codeSplitting: {
+            groups: [
+              {
+                name: 'monaco',
+                test: (id) => matchPackages(id, ['monaco-editor', 'monaco-sql-languages']),
+                priority: 40
+              },
+              {
+                name: 'element-plus',
+                test: (id) => matchPackages(id, ['element-plus', '@element-plus']),
+                priority: 30
+              },
+              {
+                name: 'charts',
+                test: (id) => matchPackages(id, ['echarts', 'zrender']),
+                priority: 30
+              },
+              {
+                name: 'rich-editor',
+                test: (id) => matchPackages(id, ['@wangeditor']),
+                priority: 30
+              },
+              {
+                name: 'data-tools',
+                test: (id) =>
+                  matchPackages(id, ['xlsx', 'sql-formatter', 'node-sql-parser', 'crypto-js']),
+                priority: 20
+              },
+              {
+                name: 'vendor',
+                test: /node_modules/,
+                priority: 10,
+                maxSize: 1200 * 1024
+              }
+            ]
+          }
+        }
+      },
       dynamicImportVarsOptions: {
         warnOnError: true,
         exclude: [],
         include: ['src/views/**/*.vue']
+      }
+    },
+    worker: {
+      rolldownOptions: {
+        checks: {
+          invalidAnnotation: false,
+          pluginTimings: false
+        }
       }
     },
     plugins: [
