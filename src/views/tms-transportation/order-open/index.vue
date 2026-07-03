@@ -204,7 +204,7 @@
   import { useDateFormat, useNow } from '@vueuse/core'
   import { cloneDeep, isNil, omit, round, toNumber as lodashToNumber, trim } from 'lodash-es'
   import type { FormRules } from 'element-plus'
-  import { ElInput, ElInputNumber, ElMessage, ElOption, ElSelect } from 'element-plus'
+  import { ElAutocomplete, ElInputNumber, ElMessage, ElOption, ElSelect } from 'element-plus'
   import { Plus } from '@element-plus/icons-vue'
   import dayjs from 'dayjs'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
@@ -213,7 +213,7 @@
   import ArtUploadImage from '@/components/core/forms/art-upload-image/index.vue'
   import ArtTable from '@/components/core/tables/art-table/index.vue'
   import type { ColumnOption } from '@/types'
-  import { addOrder, fetchStationOptions } from '@/api/tms'
+  import { addOrder, fetchCargoList, fetchStationOptions } from '@/api/tms'
   import { useUserStore } from '@/store/modules/user'
   import CustomerSelectorDialog from './modules/customer-selector-dialog.vue'
   import PrintCountDialog from './modules/print-count-dialog.vue'
@@ -222,11 +222,18 @@
 
   type OrderRecord = Api.Tms.Order.OrderRecord
   type CargoItem = Api.Tms.Order.CargoItem
+  type CargoMaster = Api.Tms.BasicData.Cargo
   type CustomerItem = Api.Tms.Order.CustomerSelectorItem
   type StationOption = Api.Tms.Order.StationOption
   type SelectorMode = 'shipping' | 'receiving'
   type StationMode = 'origin' | 'destination' | 'transfer'
   type PrintKind = 'waybill' | 'label'
+  type CargoSuggestionCallback = (items: CargoSuggestion[]) => void
+
+  interface CargoSuggestion extends CargoMaster {
+    value: string
+  }
+
   type ContactPatch = Partial<
     Pick<
       OrderForm,
@@ -506,7 +513,18 @@
         label: '货物名称',
         minWidth: 180,
         formatter: (row) => (
-          <ElInput v-model={row.cargoName} maxlength={80} placeholder="请输入货品名称" />
+          <ElAutocomplete
+            v-model={row.cargoName}
+            fetchSuggestions={(keyword, callback) =>
+              void fetchCargoSuggestions(keyword, callback as CargoSuggestionCallback)
+            }
+            triggerOnFocus={true}
+            valueKey="value"
+            maxlength={80}
+            clearable
+            placeholder="请选择或输入货物名称"
+            onSelect={(item) => handleCargoSelect(row, item)}
+          />
         )
       },
       {
@@ -804,6 +822,43 @@
       return
     }
     form.data.cargoItems = rows.filter((item) => item !== row)
+  }
+
+  async function fetchCargoSuggestions(
+    keyword: string,
+    callback: CargoSuggestionCallback
+  ): Promise<void> {
+    try {
+      const result = await fetchCargoList({
+        keyword: textValue(keyword),
+        enabled: true,
+        from: 0,
+        to: 19
+      })
+      callback((result.data ?? []).map(createCargoSuggestion))
+    } catch {
+      callback([])
+    }
+  }
+
+  function createCargoSuggestion(item: CargoMaster): CargoSuggestion {
+    return {
+      ...item,
+      value: item.cargoName
+    }
+  }
+
+  function handleCargoSelect(row: CargoItem, item: Record<string, unknown>): void {
+    const cargo = item as unknown as CargoSuggestion
+    const patch: Partial<CargoItem> = {
+      cargoName: cargo.cargoName,
+      packageType: cargo.unit || row.packageType || '',
+      unit: cargo.unit || row.unit || '',
+      quantity: row.quantity ?? 1,
+      weightKg: cargo.weightKg ?? row.weightKg ?? null,
+      volumeM3: cargo.volumeM3 ?? row.volumeM3 ?? null
+    }
+    Object.assign(row, patch)
   }
 
   function openCustomerSelector(mode: SelectorMode): void {

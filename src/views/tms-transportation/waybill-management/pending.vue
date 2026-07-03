@@ -22,7 +22,7 @@
     ArtTableQueryExpose,
     ArtTableQueryHeaderAction
   } from '@/components/core/tables/art-table-query/index.vue'
-  import { ColumnOption } from '@/types'
+  import type { ColumnOption } from '@/types'
   import { useUserStore } from '@/store/modules/user'
   import DispatchDialog from './modules/dispatch-dialog.vue'
   import {
