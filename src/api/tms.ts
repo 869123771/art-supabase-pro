@@ -26,6 +26,9 @@ type WaybillSearchParams = Api.Tms.Waybill.WaybillSearchParams
 type WaybillDispatchPayload = Api.Tms.Waybill.WaybillDispatchPayload
 type DispatchVehicleOption = Api.Tms.Waybill.DispatchVehicleOption
 type DispatchVehicleSearchParams = Api.Tms.Waybill.DispatchVehicleSearchParams
+type DeliveryRecord = Api.Tms.Delivery.DeliveryRecord
+type DeliverySearchParams = Api.Tms.Delivery.DeliverySearchParams
+type DeliverySignPayload = Api.Tms.Delivery.DeliverySignPayload
 type CustomerSelectorItem = Api.Tms.Order.CustomerSelectorItem
 type CustomerSelectorSearchParams = Api.Tms.Order.CustomerSelectorSearchParams
 type StationRecord = Api.Tms.Station.StationRecord
@@ -1395,4 +1398,70 @@ export async function fetchDispatchVehicleOptions(params: DispatchVehicleSearchP
     ignoreCheck: true,
     showErrorMessage: true
   })
+}
+
+// 配送管理 / 在途监控
+const applySignedTimeRange = (query: any, signedTimeRange?: string[]) => {
+  if (signedTimeRange?.[0]) query = query.gte('signed_at', `${signedTimeRange[0]}T00:00:00`)
+  if (signedTimeRange?.[1]) query = query.lte('signed_at', `${signedTimeRange[1]}T23:59:59.999`)
+  return query
+}
+
+const applyDeliveryFilters = (query: any, params: DeliverySearchParams) => {
+  const { orderStatuses, signedTimeRange } = params
+
+  query = applyOrderFilters(query, params)
+  if (orderStatuses?.length) query = query.in('order_status', orderStatuses)
+
+  return applySignedTimeRange(query, signedTimeRange)
+}
+
+export async function fetchDeliveryList(
+  params: DeliverySearchParams & Api.Common.CommonSearchParams
+) {
+  const { from = 0, to = 9 } = params
+  let query: any = supabase
+    .from('tms_order')
+    .select(ORDER_SELECT, { count: 'exact' })
+    .order('create_time', { ascending: false })
+    .range(from, to)
+
+  query = applyDeliveryFilters(query, params)
+  return await responseHandle<DeliveryRecord[]>(() => query as any, {
+    ignoreCheck: true,
+    showErrorMessage: true
+  })
+}
+
+export async function exportDeliveryList(
+  params: DeliverySearchParams & { ids?: string[]; maxRows?: number }
+) {
+  const { ids, maxRows = 10000 } = params
+  let query: any = supabase
+    .from('tms_order')
+    .select(ORDER_SELECT)
+    .order('create_time', { ascending: false })
+    .limit(maxRows)
+
+  query = ids?.length ? query.in('id', ids) : applyDeliveryFilters(query, params)
+  return await responseHandle<DeliveryRecord[]>(() => query as any, {
+    ignoreCheck: true,
+    showErrorMessage: true
+  })
+}
+
+export async function signDeliveryOrder(params: DeliverySignPayload) {
+  const { id, ...data } = params
+  if (!id) throw new Error('缺少运单ID')
+
+  return await responseHandle<DeliveryRecord>(
+    () =>
+      supabase
+        .from('tms_order')
+        .update(keysToSnakeDeep(data))
+        .eq('id', id)
+        .select(ORDER_SELECT)
+        .single() as any,
+    { showMessage: true, breakReturn: true }
+  )
 }

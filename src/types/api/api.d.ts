@@ -1351,6 +1351,9 @@ declare namespace Api {
         transportMode?: string | null
         orderRemark?: string | null
         imageUrls?: string[]
+        signedCodAmount?: number | null
+        receiptImageUrls?: string[]
+        signedAt?: string | null
         dispatchStatus?: string
         dispatchVehicleId?: string | null
         dispatchDriverId?: string | null
@@ -1436,6 +1439,22 @@ declare namespace Api {
         plannedArrivalTime: string
         dispatchRemark?: string | null
       }
+    }
+
+    namespace Delivery {
+      type DeliveryStatus = 'pending_sign' | 'signed' | 'completed'
+      type DeliveryRecord = Api.Tms.Order.OrderRecord
+      type DeliverySearchParams = Partial<
+        Api.Tms.Order.OrderSearchParams & {
+          orderStatuses?: string[]
+          signedTimeRange?: string[]
+        }
+      >
+
+      type DeliverySignPayload = Pick<
+        DeliveryRecord,
+        'id' | 'orderStatus' | 'signedCodAmount' | 'receiptImageUrls' | 'signedAt'
+      >
     }
 
     namespace Station {

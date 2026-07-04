@@ -8,10 +8,14 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="b8f35119-660a-46e7-82f4-53eee06863eb" name="Changes" comment="feat:waybill manage doc">
+      <change beforePath="$PROJECT_DIR$/.codex/config.toml" beforeDir="false" afterPath="$PROJECT_DIR$/.codex/config.toml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/order-open/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/order-open/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/waybill-management/loaded.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/waybill-management/loaded.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/waybill-management/pending.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/waybill-management/pending.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/api/tms.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/tms.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/types/api/api.d.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/types/api/api.d.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/utils/sys/console.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/sys/console.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/order-open/modules/print-count-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/order-open/modules/print-count-dialog.vue" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -19,7 +23,7 @@
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="EmbeddingIndexingInfo">
-    <option name="cachedIndexableFilesCount" value="891" />
+    <option name="cachedIndexableFilesCount" value="898" />
     <option name="fileBasedEmbeddingIndicesEnabled" value="true" />
   </component>
   <component name="FileTemplateManagerImpl">
@@ -53,61 +57,61 @@
   </component>
   <component name="NextEditCompletionFeaturesState">
     <decayedCancelled>
-      <entry key="MS100" value="1.0" />
-      <entry key="MS500" value="1.0" />
-      <entry key="S2" value="1.0000000516839513" />
-      <entry key="S5" value="1.0045098948863718" />
-      <entry key="S10" value="1.201188705601231" />
-      <entry key="S30" value="3.548110719987761" />
-      <entry key="S60" value="6.160141439873202" />
-      <entry key="M2" value="9.60896556513385" />
-      <entry key="M5" value="14.680506474911343" />
-      <entry key="M10" value="20.416438977953057" />
-      <entry key="M15" value="27.45563445832333" />
-      <entry key="M30" value="47.98845707769062" />
-      <entry key="H1" value="83.56730318880713" />
-      <entry key="H2" value="151.476725658789" />
-      <entry key="H4" value="245.93152548766784" />
-      <entry key="D1" value="575.7104975503474" />
-      <entry key="W1" value="894.088223721253" />
-    </decayedCancelled>
-    <decayedSelected>
       <entry key="MS100" value="0.0" />
       <entry key="MS500" value="0.0" />
-      <entry key="S2" value="0.0" />
-      <entry key="S5" value="0.0" />
-      <entry key="S10" value="6.874522231216681E-205" />
-      <entry key="S30" value="8.825666386278731E-69" />
-      <entry key="S60" value="9.394501788960775E-35" />
-      <entry key="M2" value="9.692523814239905E-18" />
-      <entry key="M5" value="1.5652177010430598E-7" />
-      <entry key="M10" value="3.9562832318263883E-4" />
-      <entry key="M15" value="0.005389207641361053" />
-      <entry key="M30" value="0.07341122285700641" />
-      <entry key="H1" value="0.2709450558449024" />
-      <entry key="H2" value="0.5205582481930205" />
-      <entry key="H4" value="0.7326078112874206" />
-      <entry key="D1" value="5.2685228321296105" />
-      <entry key="W1" value="18.825426077920003" />
+      <entry key="S2" value="8.393638357398473E-263" />
+      <entry key="S5" value="2.8539132763756345E-105" />
+      <entry key="S10" value="9.488579985330942E-53" />
+      <entry key="S30" value="1.3317772960973219E-17" />
+      <entry key="S60" value="9.756229399551193E-9" />
+      <entry key="M2" value="2.930769749232528E-4" />
+      <entry key="M5" value="0.2059856858143705" />
+      <entry key="M10" value="2.48445957738876" />
+      <entry key="M15" value="6.764768251415342" />
+      <entry key="M30" value="23.95958248872106" />
+      <entry key="H1" value="59.533014759762985" />
+      <entry key="H2" value="128.34245062207017" />
+      <entry key="H4" value="227.69308698749433" />
+      <entry key="D1" value="573.1541563283323" />
+      <entry key="W1" value="899.7368539842454" />
+    </decayedCancelled>
+    <decayedSelected>
+      <entry key="MS100" value="1.0" />
+      <entry key="MS500" value="1.0" />
+      <entry key="S2" value="1.0" />
+      <entry key="S5" value="1.0" />
+      <entry key="S10" value="1.0" />
+      <entry key="S30" value="1.0" />
+      <entry key="S60" value="1.0" />
+      <entry key="M2" value="1.0" />
+      <entry key="M5" value="1.0000000008034942" />
+      <entry key="M10" value="1.0000283459733146" />
+      <entry key="M15" value="1.0009296673582577" />
+      <entry key="M30" value="1.0304904469999674" />
+      <entry key="H1" value="1.174615140175403" />
+      <entry key="H2" value="1.41789739644005" />
+      <entry key="H4" value="1.6564047445964523" />
+      <entry key="D1" value="6.1729573083457145" />
+      <entry key="W1" value="19.776260591136907" />
     </decayedSelected>
     <decayedShown>
-      <entry key="MS100" value="0.10511205190671434" />
-      <entry key="MS500" value="0.6372803136596311" />
-      <entry key="S2" value="0.8934755034699522" />
-      <entry key="S5" value="0.9604007022717386" />
-      <entry key="S10" value="1.1777798576093423" />
-      <entry key="S30" value="3.5360877872133156" />
-      <entry key="S60" value="6.152119187787628" />
-      <entry key="M2" value="9.604073750232518" />
-      <entry key="M5" value="14.678216930968912" />
-      <entry key="M10" value="20.415585716274027" />
-      <entry key="M15" value="27.460125490172086" />
-      <entry key="M30" value="48.06128933358766" />
-      <entry key="H1" value="83.83778891556854" />
-      <entry key="H2" value="151.9968462752859" />
-      <entry key="H4" value="246.66372249600062" />
-      <entry key="D1" value="580.9782116605402" />
-      <entry key="W1" value="912.913293909539" />
+      <entry key="MS100" value="3.8896503519264594E-5" />
+      <entry key="MS500" value="0.1312145854528834" />
+      <entry key="S2" value="0.6018600656620439" />
+      <entry key="S5" value="0.8162030461509017" />
+      <entry key="S10" value="0.9034395641939209" />
+      <entry key="S30" value="0.9667177702304928" />
+      <entry key="S60" value="0.983218078243625" />
+      <entry key="M2" value="0.9918663899552416" />
+      <entry key="M5" value="1.2025559742668226" />
+      <entry key="M10" value="3.4825569052320247" />
+      <entry key="M15" value="7.764216611809325" />
+      <entry key="M30" value="24.98907172325205" />
+      <entry key="H1" value="60.70691339330102" />
+      <entry key="H2" value="129.75977354343894" />
+      <entry key="H4" value="229.3490084196655" />
+      <entry key="D1" value="579.3262998271443" />
+      <entry key="W1" value="919.5127567787347" />
     </decayedShown>
   </component>
   <component name="PackageJsonUpdateNotifier">
@@ -313,6 +317,8 @@
       <workItem from="1783050144453" duration="989000" />
       <workItem from="1783055716725" duration="6721000" />
       <workItem from="1783067343824" duration="683000" />
+      <workItem from="1783132292484" duration="4521000" />
+      <workItem from="1783157623454" duration="876000" />
     </task>
     <task id="LOCAL-00004" summary="feat menu">
       <option name="closed" value="true" />

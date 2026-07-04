@@ -99,7 +99,7 @@
     }
 
     &__custom {
-      width: 320px;
+      width: 320px !important;
       margin-top: 18px;
       margin-left: 84px;
     }

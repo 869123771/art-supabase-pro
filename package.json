@@ -131,5 +131,32 @@
     "vue-eslint-parser": "10.4.1",
     "vue-img-cutter": "^3.1.1",
     "vue-tsc": "~3.3.5"
-  }
+  },
+  "description": "Art Supabase Pro 是一个基于 Vue 3、TypeScript、Element Plus、Supabase 和 AI SQL 助手的企业级中后台应用模板，内置 RBAC 权限、SQL 工作台、AI 写 SQL、车辆管理系统、TMS 运输管理系统和司机端相关能力。",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://gitee.com/wangyanghub/art-supabase-pro.git"
+  },
+  "keywords": [
+    "supabase",
+    "vue3",
+    "element-plus",
+    "admin-template",
+    "admin-dashboard",
+    "ai-sql",
+    "sql-assistant",
+    "postgresql",
+    "rbac",
+    "tms",
+    "vehicle-management",
+    "fleet-management",
+    "typescript",
+    "vite"
+  ],
+  "author": "",
+  "license": "ISC"
 }

@@ -1,8 +1,6 @@
-
-
 # Art Supabase Pro
 
-Art Supabase Pro 是一个基于 **Vue 3**, **TypeScript**, **Element Plus** 和 **Supabase** 构建的现代化后台管理系统模板。它提供了丰富的功能组件、完善的权限控制以及开箱即用的系统管理模块，旨在帮助开发者快速构建高性能的企业级应用。
+Art Supabase Pro 是一个基于 **Vue 3**, **TypeScript**, **Element Plus**, **Supabase** 和 **AI SQL 助手**构建的现代化企业级中后台应用模板。它提供了丰富的功能组件、完善的权限控制、SQL 工作台、AI 写 SQL、车辆管理系统、TMS 运输管理系统以及开箱即用的系统管理模块，旨在帮助开发者快速构建高性能、可落地的企业级应用。
 
 在线地址 [https://869123771.github.io/art-supabase-pro/](https://869123771.github.io/art-supabase-pro/)
 
@@ -10,6 +8,8 @@ Art Supabase Pro 是一个基于 **Vue 3**, **TypeScript**, **Element Plus** 和
 
 - **现代化的技术栈**：基于 Vue 3 + Vite + TypeScript + Pinia 构建。
 - **后端即服务集成**：深度集成 Supabase，提供认证、数据库和实时订阅支持。
+- **AI SQL 助手**：内置 SQL 工作台，支持 PostgreSQL 编辑、JOIN 推断、字段补全、SQL 格式化、错误定位、AI 生成 SQL 和 AI 修复 SQL。
+- **真实业务模块**：内置车辆管理系统、TMS 运输管理系统和司机端相关能力，适合企业后台二次开发。
 - **完善的用户体验**：
   - 🌗 支持亮色/暗色模式切换。
   - 🔒 支持锁屏、多级权限控制 (RBAC) 和 JWT 鉴权。
@@ -26,34 +26,39 @@ Art Supabase Pro 是一个基于 **Vue 3**, **TypeScript**, **Element Plus** 和
   - 📝 升级日志管理。
   - 🔧 强大的设置面板，可实时调整布局、颜色、导航等。
 
-
 ## 功能截图
 
 ### 1. 登录页面(用邮箱注册后即可登录)
+
 ![登录](screenshort/登录.png)
 
 ### 2. 用户管理（做了用户隔离，用户只能看到自己的数据）
+
 ![用户管理列表](screenshort/用户管理列表.png)
 
 ### 3. 用户管理新增
+
 ![用户管理新增](screenshort/用户管理新增.png)
 
 ### 4. 角色管理（注册用户默认给了注册权限，可以查看所有菜单）
+
 ![角色管理列表](screenshort/角色管理列表.png)
 
 ### 5. 菜单管理
+
 ![菜单管理列表](screenshort/菜单管理列表.png)
 
 ### 6. 菜单管理新增
+
 ![菜单管理新增](screenshort/菜单管理新增.png)
 
 ### 7. 数据字典
+
 ![数据字典列表](screenshort/数据字典列表.png)
 
 ### 8. 资源管理
+
 ![资源管理列表](screenshort/资源管理列表.png)
-
-
 
 ## 🛠️ 技术栈
 
@@ -147,9 +152,20 @@ pnpm clean
 ## 📝 主要模块说明
 
 1.  **系统管理 (System)**: 包含用户管理、角色管理、菜单管理。权限粒度细化到按钮级别。
-2.  **数据中心 (Data Center)**: 提供字典数据维护和附件管理功能。
-3.  **控制台 (Dashboard)**: 展示系统关键指标，包含销售概览、用户统计、待办事项等卡片。
-4.  **登录认证 (Auth)**: 支持账号密码登录、注册、第三方集成 (需配置 Supabase Auth) 以及忘记密码功能。
+2.  **数据中心 (Data Center)**: 提供字典数据维护、附件管理、SQL 工作台和 AI 写 SQL 功能。
+3.  **AI SQL 助手 (AI SQL Assistant)**: 支持根据自然语言生成 PostgreSQL，结合数据库 schema 摘要减少表名字段名猜测，并支持 SQL 错误修复。
+4.  **车辆管理系统 (Vehicle Management)**: 包含车辆档案、入档审核、保险、年检、维修保养、事故、里程、例检、配件、供应商、到期提醒等模块。
+5.  **TMS 运输管理系统 (Transportation Management System)**: 包含客户、客户地址、客户价格、承运商、承运商价格、司机、货物、合同、站点、开单、订单、运单、配载、配送和在途监控等模块。
+6.  **控制台 (Dashboard)**: 展示系统关键指标，包含销售概览、用户统计、待办事项等卡片。
+7.  **登录认证 (Auth)**: 支持账号密码登录、注册、第三方集成 (需配置 Supabase Auth) 以及忘记密码功能。
+
+## 🤖 AI 与搜索识别
+
+项目根目录和静态站点目录已提供 `llms.txt`，方便 AI 搜索、AI 问答和代码索引工具快速理解项目定位、技术栈、主要模块和链接。
+
+推荐描述：
+
+> Art Supabase Pro 是一个基于 Vue 3、Element Plus、Supabase 和 AI SQL 助手的企业级中后台应用模板，内置 RBAC 权限、SQL 工作台、AI 写 SQL、车辆管理系统、TMS 运输管理系统和司机端相关能力。
 
 ## 📄 许可证
 
