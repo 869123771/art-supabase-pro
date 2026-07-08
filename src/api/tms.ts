@@ -192,8 +192,8 @@ export async function fetchCustomerAddressList(params: CustomerAddressSearchPara
       '*, customer:tms_customer!tms_customer_address_customer_id_fkey(id, customer_code, customer_name, contact_name, contact_phone)',
       { count: 'exact' }
     )
-    .order('is_default', { ascending: false })
-    .order('create_time', { ascending: false })
+    .order('update_time', { ascending: false, nullsFirst: false })
+    .order('create_time', { ascending: false, nullsFirst: false })
     .range(from, to)
 
   query = applyCustomerAddressFilters(query, params)
@@ -204,8 +204,13 @@ export async function fetchCustomerAddressList(params: CustomerAddressSearchPara
 }
 
 export async function addCustomerAddress(params: CustomerAddress) {
-  return await responseHandle(
-    () => supabase.from('tms_customer_address').insert(keysToSnakeDeep(params)) as any,
+  return await responseHandle<CustomerAddress>(
+    () =>
+      supabase
+        .from('tms_customer_address')
+        .insert(keysToSnakeDeep(params))
+        .select()
+        .single() as any,
     { showMessage: true, breakReturn: true }
   )
 }
@@ -213,9 +218,15 @@ export async function addCustomerAddress(params: CustomerAddress) {
 export async function editCustomerAddress(params: CustomerAddress) {
   const { id, ...data } = params
   delete data.customer
-  return await responseHandle(
-    () => supabase.from('tms_customer_address').update(keysToSnakeDeep(data)).eq('id', id) as any,
-    { showMessage: true, breakReturn: true }
+  return await responseHandle<CustomerAddress>(
+    () =>
+      supabase
+        .from('tms_customer_address')
+        .update(keysToSnakeDeep(data), { count: 'exact' })
+        .eq('id', id)
+        .select()
+        .single() as any,
+    { showMessage: true, breakReturn: true, requireAffected: true }
   )
 }
 

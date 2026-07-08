@@ -213,7 +213,7 @@
   import ArtUploadImage from '@/components/core/forms/art-upload-image/index.vue'
   import ArtTable from '@/components/core/tables/art-table/index.vue'
   import type { ColumnOption } from '@/types'
-  import { addOrder, fetchCargoList, fetchStationOptions } from '@/api/tms'
+  import { addOrder, fetchCargoList, fetchCustomerPriceList, fetchStationOptions } from '@/api/tms'
   import { useUserStore } from '@/store/modules/user'
   import CustomerSelectorDialog from './modules/customer-selector-dialog.vue'
   import PrintCountDialog from './modules/print-count-dialog.vue'
@@ -224,6 +224,8 @@
   type CargoItem = Api.Tms.Order.CargoItem
   type CargoMaster = Api.Tms.BasicData.Cargo
   type CustomerItem = Api.Tms.Order.CustomerSelectorItem
+  type CustomerPrice = Api.Tms.BasicData.CustomerPrice
+  type CustomerPriceCargoItem = Api.Tms.BasicData.CustomerPriceCargoItem
   type StationOption = Api.Tms.Order.StationOption
   type SelectorMode = 'shipping' | 'receiving'
   type StationMode = 'origin' | 'destination' | 'transfer'
@@ -865,7 +867,7 @@
     void customerDialogRef.value?.handleOpen(mode)
   }
 
-  function handleCustomerSelect(mode: SelectorMode, row: CustomerItem): void {
+  async function handleCustomerSelect(mode: SelectorMode, row: CustomerItem): Promise<void> {
     const address = [row.region, row.addressDetail].filter(Boolean).join(' ')
     const contactName = row.contactName || row.customerName
     const patchMap: Record<SelectorMode, ContactPatch> = {
@@ -884,6 +886,74 @@
     }
 
     Object.assign(form.data, patchMap[mode])
+    await applyCustomerPriceTemplate(row.id)
+  }
+
+  async function applyCustomerPriceTemplate(customerId: string): Promise<void> {
+    try {
+      const { data } = await fetchCustomerPriceList({
+        customerId,
+        from: 0,
+        to: 0
+      })
+      const price = data?.[0]
+      if (!price) return
+
+      Object.assign(form.data, createCustomerPricePatch(price))
+      if (price.cargoItems?.length) {
+        form.data.cargoItems = price.cargoItems.map(createCargoItemFromCustomerPrice)
+      }
+      await nextTick()
+      clearFormsValidate()
+      ElMessage.success('已带入客户价格维护信息')
+    } catch {
+      // 价格模板只是辅助回填，查询失败时保留已选择的客户基础信息。
+    }
+  }
+
+  function createCustomerPricePatch(price: CustomerPrice): Partial<OrderForm> {
+    return {
+      shippingCustomerId: price.customerId,
+      receivingCustomerId: price.customerId,
+      shippingContactName: textValue(price.shippingContactName),
+      shippingContactPhone: textValue(price.shippingContactPhone),
+      shippingAddressDetail: formatPriceAddress(price.originRegion, price.shippingAddressDetail),
+      receivingContactName: textValue(price.receivingContactName),
+      receivingContactPhone: textValue(price.receivingContactPhone),
+      receivingAddressDetail: formatPriceAddress(
+        price.destinationRegion,
+        price.receivingAddressDetail
+      ),
+      transportFee: moneyValue(price.transportFee),
+      unloadingFee: moneyValue(price.loadingFee),
+      transferFee: moneyValue(price.transferFee),
+      insuranceFee: moneyValue(price.insuranceFee),
+      packageFee: moneyValue(price.packageFee),
+      otherFee:
+        moneyValue(price.otherFee) + moneyValue(price.fuelFee) + moneyValue(price.serviceFee),
+      cashAmount: moneyValue(price.cashAmount) + moneyValue(price.prepaidAmount),
+      collectAmount: moneyValue(price.collectAmount),
+      monthlyAmount: moneyValue(price.periodicAmount),
+      orderRemark: price.remark ? textValue(price.remark) : form.data.orderRemark
+    }
+  }
+
+  function createCargoItemFromCustomerPrice(item: CustomerPriceCargoItem): CargoItem {
+    return {
+      cargoName: textValue(item.cargoName),
+      packageType: textValue(item.unit),
+      quantity: nullableNumber(item.quantity),
+      unit: textValue(item.unit),
+      weightKg: nullableNumber(item.weightKg),
+      volumeM3: nullableNumber(item.volumeM3)
+    }
+  }
+
+  function formatPriceAddress(region?: string | null, address?: string | null): string {
+    return [region, address]
+      .map((item) => textValue(item))
+      .filter(Boolean)
+      .join(' ')
   }
 
   function swapContacts(): void {

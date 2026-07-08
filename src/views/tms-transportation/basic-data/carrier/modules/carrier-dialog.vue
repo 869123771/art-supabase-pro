@@ -14,6 +14,15 @@
       <template #businessLicenseUrl>
         <ArtUploadImage v-model="form.businessLicenseUrl" title="营业执照" :size="104" :limit="1" />
       </template>
+      <template #addressPicker>
+        <ArtAddressPicker
+          v-model:region-path="form.regionPath"
+          v-model:address-detail="form.addressDetail"
+          :region-api="fetchRegionOptions"
+          :show-coordinate-hint="false"
+          label-width="118px"
+        />
+      </template>
     </ArtForm>
   </ArtDialog>
 </template>
@@ -23,6 +32,7 @@
   import { omit } from 'lodash-es'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
+  import ArtAddressPicker from '@/components/core/forms/art-address-picker/index.vue'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import ArtUploadImage from '@/components/core/forms/art-upload-image/index.vue'
   import { addCarrier, editCarrier } from '@/api/tms'
@@ -32,7 +42,7 @@
   defineOptions({ name: 'TmsCarrierDialog' })
 
   type Carrier = Api.Tms.BasicData.Carrier
-  type CarrierForm = Carrier & { regionPath: string[] }
+  type CarrierForm = Carrier & { addressPicker?: undefined; regionPath: string[] }
 
   interface DialogExposeForm {
     validate: () => Promise<boolean>
@@ -58,6 +68,7 @@
     taxRegistrationNo: '',
     legalRepresentative: '',
     region: '',
+    addressPicker: undefined,
     regionPath: [],
     addressDetail: '',
     postalCode: '',
@@ -144,32 +155,11 @@
       props: { maxlength: 50, placeholder: '请输入法人代表' }
     },
     {
-      label: '区域',
-      key: 'regionPath',
-      type: 'cascader',
-      api: fetchRegionOptions,
-      labelField: 'name',
-      valueField: 'name',
-      childrenField: 'children',
-      props: {
-        class: 'w-full',
-        clearable: true,
-        filterable: true,
-        props: {
-          label: 'name',
-          value: 'name',
-          children: 'children',
-          emitPath: true,
-          checkStrictly: true
-        }
-      }
-    },
-    {
-      label: '公司地址',
-      key: 'addressDetail',
+      label: '',
+      key: 'addressPicker',
       type: 'input',
-      span: 16,
-      props: { maxlength: 200, placeholder: '请输入公司详细地址' }
+      span: 24,
+      labelWidth: 0
     },
     {
       label: '邮编',
@@ -294,7 +284,8 @@
       'driverCount',
       'vehicleCount',
       'signedContract',
-      'contractAttachmentUrl'
+      'contractAttachmentUrl',
+      'addressPicker'
     ]) as Carrier
     payload.region = regionPath.join('/')
     if (!payload.carrierCode) delete payload.carrierCode

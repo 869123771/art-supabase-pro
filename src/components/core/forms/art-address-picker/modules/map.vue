@@ -1,0 +1,732 @@
+<template>
+  <div class="art-address-map">
+    <div ref="mapRef" class="art-address-map__canvas"></div>
+
+    <section v-if="showPoiSearch" class="art-address-map__panel art-card-xs">
+      <div class="art-address-map__search">
+        <ElInput
+          v-model.trim="innerSearchKeyword"
+          placeholder="搜索地点、园区、道路、仓库名称"
+          clearable
+          @input="handleSearchInput"
+          @clear="handleSearchClear"
+        >
+          <template #prefix>
+            <ElIcon><Search /></ElIcon>
+          </template>
+        </ElInput>
+      </div>
+
+      <div class="art-address-map__poi-list">
+        <ElScrollbar class="art-address-map__poi-scroll" height="100%">
+          <button
+            v-for="poi in poiList"
+            :key="poi.id || `${poi.name}-${poi.address}`"
+            type="button"
+            class="art-address-map__poi"
+            :class="{ 'is-active': selectedPoi?.id === poi.id }"
+            @click="selectPoi(poi)"
+          >
+            <ElIcon class="art-address-map__poi-icon"><LocationFilled /></ElIcon>
+            <span class="art-address-map__poi-main">
+              <strong>{{ poi.name }}</strong>
+              <small>{{ getPoiDisplayText(poi) }}</small>
+            </span>
+          </button>
+          <ElEmpty v-if="!poiList.length" description="暂无搜索结果" :image-size="92" />
+        </ElScrollbar>
+      </div>
+    </section>
+
+    <div v-if="displayMessage" class="art-address-map__message">
+      {{ displayMessage }}
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+  import { LocationFilled, Search } from '@element-plus/icons-vue'
+  import { ElMessage } from 'element-plus'
+  import { debounce, isNil, trim } from 'lodash-es'
+  import type { AddressMapPickResult } from '../types'
+
+  defineOptions({ name: 'ArtAddressMap' })
+
+  type DistrictLevel = 'province' | 'city' | 'district'
+
+  interface Props {
+    amapKey?: string
+    amapSecurityJsCode?: string
+    plugins?: string[]
+    showPoiSearch?: boolean
+    enableMapPick?: boolean
+    searchKeyword?: string
+    searchScope?: string
+    cityLimit?: boolean
+    regionPath?: string[]
+    regionAdcode?: string | null
+    regionSearchText?: string
+    districtLevel?: DistrictLevel
+    fallbackAddress?: string
+    message?: string
+  }
+
+  interface InitOptions {
+    center: [number, number]
+    zoom?: number
+  }
+
+  interface AMapPoi {
+    id?: string
+    name: string
+    address?: string
+    district?: string
+    pname?: string
+    cityname?: string
+    adname?: string
+    adcode?: string
+    location?: {
+      lng: number
+      lat: number
+      getLng?: () => number
+      getLat?: () => number
+    }
+  }
+
+  const props = withDefaults(defineProps<Props>(), {
+    amapKey: '',
+    amapSecurityJsCode: '',
+    plugins: () => [
+      'AMap.AutoComplete',
+      'AMap.PlaceSearch',
+      'AMap.DistrictSearch',
+      'AMap.Geocoder',
+      'AMap.ToolBar',
+      'AMap.Scale'
+    ],
+    showPoiSearch: false,
+    enableMapPick: false,
+    searchKeyword: '',
+    searchScope: '全国',
+    cityLimit: false,
+    regionPath: () => [],
+    regionAdcode: undefined,
+    regionSearchText: '',
+    districtLevel: 'province',
+    fallbackAddress: '',
+    message: ''
+  })
+
+  const emit = defineEmits<{
+    (event: 'map-click', payload: { lng: number; lat: number }): void
+    (event: 'location-pick', payload: AddressMapPickResult): void
+    (event: 'error', message: string): void
+    (event: 'update:searchKeyword', value: string): void
+  }>()
+
+  const mapRef = ref<HTMLDivElement>()
+  const innerSearchKeyword = ref('')
+  const poiList = ref<AMapPoi[]>([])
+  const selectedPoi = ref<AMapPoi>()
+  const poiLoading = ref(false)
+  const mapMessage = ref('')
+
+  const displayMessage = computed(() => props.message || mapMessage.value)
+
+  let amapInstance: any
+  let markerInstance: any
+  let placeSearchInstance: any
+  let autoCompleteInstance: any
+  let geocoderInstance: any
+  let districtSearchInstance: any
+  let searchSequence = 0
+
+  const amapKey = computed(() => props.amapKey || import.meta.env.VITE_AMAP_KEY || '')
+
+  const amapSecurityJsCode = computed(
+    () => props.amapSecurityJsCode || import.meta.env.VITE_AMAP_SECURITY_JS_CODE || ''
+  )
+
+  const getAmapErrorMessage = (result: any, fallback: string): string => {
+    const info = String(result?.info ?? result?.message ?? '')
+    if (info === 'INVALID_USER_DOMAIN') return '高德地图域名白名单未放行当前访问域名。'
+    return info ? `高德地图服务异常：${info}` : fallback
+  }
+
+  const normalizeCityName = (value: unknown): string => {
+    if (Array.isArray(value)) return String(value[0] ?? '')
+    return String(value ?? '')
+  }
+
+  const normalizeRegionPath = (params: {
+    province?: unknown
+    city?: unknown
+    district?: unknown
+  }): string[] =>
+    [
+      String(params.province ?? ''),
+      normalizeCityName(params.city),
+      String(params.district ?? '')
+    ].filter(Boolean)
+
+  const stripRegionPrefix = (address: string, path: string[]): string => {
+    const normalizedAddress = trim(address)
+    if (!normalizedAddress || !path.length) return normalizedAddress
+    const prefixes = path
+      .filter(Boolean)
+      .reduce<string[]>((result, item) => {
+        const previous = result.at(-1) ?? ''
+        result.push(`${previous}${item}`)
+        return result
+      }, [])
+      .sort((first, second) => second.length - first.length)
+    const matchedPrefix = prefixes.find((prefix) => normalizedAddress.startsWith(prefix))
+    return trim(matchedPrefix ? normalizedAddress.slice(matchedPrefix.length) : normalizedAddress)
+  }
+
+  const getPoiDistrict = (poi: Partial<AMapPoi>): string =>
+    trim(String(poi.district || poi.adname || ''))
+
+  const getPoiDisplayText = (poi: AMapPoi): string =>
+    trim([getPoiDistrict(poi), poi.address].filter(Boolean).join(' '))
+
+  const getPoiAddress = (poi: AMapPoi): string =>
+    trim([poi.name, poi.address].filter(Boolean).join(' '))
+
+  const getPoiLocation = (poi: AMapPoi): { lng: number; lat: number } | undefined => {
+    const location = poi.location
+    if (!location) return undefined
+    const lng = typeof location.getLng === 'function' ? location.getLng() : location.lng
+    const lat = typeof location.getLat === 'function' ? location.getLat() : location.lat
+    if (isNil(lng) || isNil(lat)) return undefined
+    return { lng: Number(lng), lat: Number(lat) }
+  }
+
+  const normalizePoi = (poi: Partial<AMapPoi>): AMapPoi | undefined => {
+    if (!poi.name) return undefined
+    const district = getPoiDistrict(poi)
+    const adcode = trim(String(poi.adcode || ''))
+    if (!district && !adcode) return undefined
+    return {
+      id: poi.id,
+      name: poi.name,
+      address: poi.address,
+      district,
+      pname: poi.pname,
+      cityname: poi.cityname,
+      adname: poi.adname,
+      adcode: poi.adcode,
+      location: poi.location
+    }
+  }
+
+  const createSelectedPoi = (params: AddressMapPickResult): AMapPoi => ({
+    id: `map-click-${params.longitude}-${params.latitude}`,
+    name: stripRegionPrefix(params.address, params.regionPath ?? []),
+    address: params.address,
+    district: params.regionPath?.at(-1),
+    adcode: params.regionAdcode,
+    location: {
+      lng: Number(params.longitude),
+      lat: Number(params.latitude)
+    }
+  })
+
+  const syncSearchKeyword = (value: string): void => {
+    innerSearchKeyword.value = value
+    emit('update:searchKeyword', value)
+  }
+
+  const emitPick = (payload: AddressMapPickResult, poi?: AMapPoi): void => {
+    const nextPoi = poi ?? createSelectedPoi(payload)
+    selectedPoi.value = nextPoi
+    poiList.value = props.showPoiSearch ? (poi ? poiList.value : [nextPoi]) : []
+    syncSearchKeyword(payload.address)
+    setMarker(payload.longitude, payload.latitude)
+    emit('location-pick', payload)
+  }
+
+  const setPickedLocation = (payload: AddressMapPickResult): void => {
+    const nextPoi = createSelectedPoi(payload)
+    selectedPoi.value = nextPoi
+    poiList.value = props.showPoiSearch ? [nextPoi] : []
+    syncSearchKeyword(payload.address)
+    setMarker(payload.longitude, payload.latitude)
+  }
+
+  const updateSearchScope = (): void => {
+    placeSearchInstance?.setCity?.(props.searchScope)
+    autoCompleteInstance?.setCity?.(props.searchScope)
+    geocoderInstance?.setCity?.(props.searchScope)
+  }
+
+  const initializeServices = (AMap: any): void => {
+    placeSearchInstance = new AMap.PlaceSearch({
+      city: props.searchScope,
+      citylimit: props.cityLimit,
+      pageSize: 12,
+      pageIndex: 1
+    })
+    autoCompleteInstance = new AMap.AutoComplete({
+      city: props.searchScope,
+      citylimit: props.cityLimit
+    })
+    geocoderInstance = new AMap.Geocoder({ city: props.searchScope })
+    districtSearchInstance = new AMap.DistrictSearch({
+      subdistrict: 0,
+      extensions: 'all',
+      level: props.districtLevel
+    })
+  }
+
+  const loadAmap = async (): Promise<any> => {
+    if (window.AMap) return window.AMap
+
+    if (!amapKey.value) throw new Error('请先配置 VITE_AMAP_KEY')
+
+    if (amapSecurityJsCode.value) {
+      window._AMapSecurityConfig = {
+        securityJsCode: amapSecurityJsCode.value
+      }
+    }
+
+    const existingScript = document.querySelector<HTMLScriptElement>('script[data-art-amap]')
+    if (existingScript) {
+      await new Promise<void>((resolve, reject) => {
+        existingScript.addEventListener('load', () => resolve(), { once: true })
+        existingScript.addEventListener('error', () => reject(new Error('高德地图加载失败')), {
+          once: true
+        })
+      })
+      return window.AMap
+    }
+
+    await new Promise<void>((resolve, reject) => {
+      const script = document.createElement('script')
+      script.dataset.artAmap = 'true'
+      script.src = `https://webapi.amap.com/maps?v=2.0&key=${amapKey.value}&plugin=${props.plugins.join(',')}`
+      script.async = true
+      script.onload = () => resolve()
+      script.onerror = () => reject(new Error('高德地图加载失败'))
+      document.head.appendChild(script)
+    })
+
+    return window.AMap
+  }
+
+  const reverseGeocode = (lng: number, lat: number): void => {
+    if (!geocoderInstance) {
+      emitPick({
+        address: props.fallbackAddress || `${lng}, ${lat}`,
+        longitude: lng,
+        latitude: lat,
+        regionPath: props.regionPath,
+        regionAdcode: props.regionAdcode ?? undefined
+      })
+      return
+    }
+
+    geocoderInstance.getAddress([lng, lat], (status: string, result: any) => {
+      if (status !== 'complete' && result?.info) {
+        const message = getAmapErrorMessage(result, '高德逆地理编码失败')
+        ElMessage.warning(message)
+      }
+
+      const component = result?.regeocode?.addressComponent
+      const nextAddress =
+        status === 'complete' ? result?.regeocode?.formattedAddress : `${lng}, ${lat}`
+      const nextRegionPath = normalizeRegionPath({
+        province: component?.province,
+        city: component?.city,
+        district: component?.district
+      })
+
+      emitPick({
+        address: nextAddress,
+        longitude: lng,
+        latitude: lat,
+        regionPath: nextRegionPath,
+        regionAdcode: component?.adcode
+      })
+    })
+  }
+
+  const searchPoi = (options: { silent?: boolean; fallbackKeyword?: string } = {}): void => {
+    const keyword = trim(innerSearchKeyword.value || options.fallbackKeyword || '')
+    if (!keyword) {
+      poiList.value = []
+      if (!options.silent) ElMessage.warning('请输入搜索关键词')
+      return
+    }
+    if (!autoCompleteInstance && !placeSearchInstance) {
+      if (options.silent) return
+      ElMessage.warning('地图尚未加载完成')
+      return
+    }
+
+    const currentSequence = ++searchSequence
+    poiLoading.value = true
+    updateSearchScope()
+    autoCompleteInstance?.search(keyword, (autoStatus: string, autoResult: any) => {
+      if (currentSequence !== searchSequence) return
+      const tips = ((autoResult?.tips ?? []) as Partial<AMapPoi>[])
+        .map(normalizePoi)
+        .filter((poi): poi is AMapPoi => Boolean(poi))
+      if (autoStatus === 'complete' && tips.length) {
+        poiLoading.value = false
+        poiList.value = tips.slice(0, 12)
+        return
+      }
+
+      updateSearchScope()
+      placeSearchInstance?.search(keyword, (placeStatus: string, placeResult: any) => {
+        if (currentSequence !== searchSequence) return
+        poiLoading.value = false
+        if (placeStatus !== 'complete') {
+          poiList.value = []
+          return
+        }
+        mapMessage.value = ''
+        poiList.value = ((placeResult?.poiList?.pois ?? []) as Partial<AMapPoi>[])
+          .map(normalizePoi)
+          .filter((poi): poi is AMapPoi => Boolean(poi))
+      })
+    })
+  }
+
+  const debouncedPoiSearch = debounce(() => {
+    searchPoi({ silent: true })
+  }, 350)
+
+  const handleSearchInput = (): void => {
+    emit('update:searchKeyword', innerSearchKeyword.value)
+    selectedPoi.value = undefined
+    if (!trim(innerSearchKeyword.value)) {
+      debouncedPoiSearch.cancel()
+      handleSearchClear()
+      return
+    }
+    debouncedPoiSearch()
+  }
+
+  const handleSearchClear = (): void => {
+    emit('update:searchKeyword', '')
+    poiList.value = []
+    poiLoading.value = false
+  }
+
+  const geocodePoi = (poi: AMapPoi): void => {
+    const address = getPoiAddress(poi)
+    if (!geocoderInstance || !address) return
+    geocoderInstance.getLocation(address, (status: string, result: any) => {
+      const geocode = result?.geocodes?.[0]
+      const location = geocode?.location
+      const lng = typeof location?.getLng === 'function' ? location.getLng() : location?.lng
+      const lat = typeof location?.getLat === 'function' ? location.getLat() : location?.lat
+      if (status !== 'complete' || isNil(lng) || isNil(lat)) {
+        const message = getAmapErrorMessage(result, '高德地址解析失败')
+        ElMessage.warning('当前地点缺少坐标，请换一个搜索结果或点击地图选点')
+        return
+      }
+
+      emitPick(
+        {
+          address,
+          longitude: Number(lng),
+          latitude: Number(lat),
+          regionPath: normalizeRegionPath({
+            province: geocode?.province || poi.pname,
+            city: geocode?.city || poi.cityname,
+            district: geocode?.district || poi.adname
+          }),
+          regionAdcode: geocode?.adcode || poi.adcode
+        },
+        poi
+      )
+    })
+  }
+
+  const selectPoi = (poi: AMapPoi): void => {
+    const location = getPoiLocation(poi)
+    if (!location) {
+      geocodePoi(poi)
+      return
+    }
+
+    emitPick(
+      {
+        address: getPoiAddress(poi),
+        longitude: location.lng,
+        latitude: location.lat,
+        regionPath: normalizeRegionPath({
+          province: poi.pname,
+          city: poi.cityname,
+          district: poi.adname
+        }),
+        regionAdcode: poi.adcode
+      },
+      poi
+    )
+  }
+
+  const centerMapByGeocoder = (region: string): void => {
+    if (!region || !geocoderInstance) return
+    geocoderInstance.getLocation(region, (status: string, result: any) => {
+      const location = result?.geocodes?.[0]?.location
+      const lng = typeof location?.getLng === 'function' ? location.getLng() : location?.lng
+      const lat = typeof location?.getLat === 'function' ? location.getLat() : location?.lat
+      if (status !== 'complete' || isNil(lng) || isNil(lat)) return
+      setZoomAndCenter(13, [Number(lng), Number(lat)])
+    })
+  }
+
+  const centerByRegion = (): void => {
+    const region = props.regionSearchText
+    if (!region) return
+    if (districtSearchInstance) {
+      districtSearchInstance.setLevel?.(props.districtLevel)
+      districtSearchInstance.search(props.regionAdcode || region, (status: string, result: any) => {
+        const center = result?.districtList?.[0]?.center
+        const lng = typeof center?.getLng === 'function' ? center.getLng() : center?.lng
+        const lat = typeof center?.getLat === 'function' ? center.getLat() : center?.lat
+        if (status === 'complete' && !isNil(lng) && !isNil(lat)) {
+          setZoomAndCenter(props.districtLevel === 'district' ? 13 : 11, [Number(lng), Number(lat)])
+          return
+        }
+        centerMapByGeocoder(region)
+      })
+      return
+    }
+    centerMapByGeocoder(region)
+  }
+
+  const initialize = async (options: InitOptions): Promise<any> => {
+    if (!mapRef.value) return undefined
+
+    const AMap = await loadAmap()
+    destroyMap()
+    amapInstance = new AMap.Map(mapRef.value, {
+      zoom: options.zoom ?? 11,
+      center: options.center,
+      viewMode: '2D',
+      mapStyle: 'amap://styles/normal',
+      features: ['bg', 'road', 'building', 'point'],
+      resizeEnable: true
+    })
+    amapInstance.addControl(new AMap.Scale())
+    amapInstance.addControl(new AMap.ToolBar({ position: 'RT' }))
+    amapInstance.on('click', (event: { lnglat: { lng: number; lat: number } }) => {
+      emit('map-click', {
+        lng: event.lnglat.lng,
+        lat: event.lnglat.lat
+      })
+      if (props.enableMapPick || props.showPoiSearch) {
+        reverseGeocode(event.lnglat.lng, event.lnglat.lat)
+      }
+    })
+    initializeServices(AMap)
+    return AMap
+  }
+
+  const setMarker = (longitude: number | string, latitude: number | string): void => {
+    if (!amapInstance || !window.AMap) return
+
+    const position = [Number(longitude), Number(latitude)]
+    if (!markerInstance) {
+      markerInstance = new window.AMap.Marker({ position })
+      amapInstance.add(markerInstance)
+    } else {
+      markerInstance.setPosition(position)
+    }
+    amapInstance.setCenter(position)
+    resize()
+  }
+
+  const setZoomAndCenter = (zoom: number, center: [number, number]): void => {
+    amapInstance?.setZoomAndCenter?.(zoom, center)
+    resize()
+  }
+
+  const resize = (): void => {
+    amapInstance?.resize?.()
+  }
+
+  const setSearchKeyword = (value: string): void => {
+    syncSearchKeyword(value)
+  }
+
+  const clearPoi = (): void => {
+    poiList.value = []
+    selectedPoi.value = undefined
+    poiLoading.value = false
+    debouncedPoiSearch.cancel()
+  }
+
+  const destroyMap = (): void => {
+    amapInstance?.destroy?.()
+    amapInstance = undefined
+    markerInstance = undefined
+  }
+
+  const destroy = (): void => {
+    clearPoi()
+    destroyMap()
+    placeSearchInstance = undefined
+    autoCompleteInstance = undefined
+    geocoderInstance = undefined
+    districtSearchInstance = undefined
+    mapMessage.value = ''
+  }
+
+  watch(
+    () => props.searchKeyword,
+    (value) => {
+      innerSearchKeyword.value = value
+    },
+    { immediate: true }
+  )
+
+  watch(
+    () => [props.searchScope, props.cityLimit],
+    () => updateSearchScope()
+  )
+
+  onBeforeUnmount(destroy)
+
+  defineExpose({
+    initialize,
+    setMarker,
+    setZoomAndCenter,
+    centerByRegion,
+    resize,
+    searchPoi,
+    setSearchKeyword,
+    setPickedLocation,
+    clearPoi,
+    destroy,
+    getMap: () => amapInstance,
+    getAMap: () => window.AMap
+  })
+</script>
+
+<script lang="ts">
+  declare global {
+    interface Window {
+      AMap?: any
+      _AMapSecurityConfig?: {
+        securityJsCode?: string
+      }
+    }
+
+    interface ImportMetaEnv {
+      VITE_AMAP_KEY?: string
+      VITE_AMAP_SECURITY_JS_CODE?: string
+    }
+  }
+</script>
+
+<style scoped lang="scss">
+  .art-address-map {
+    position: relative;
+    width: 100%;
+    height: 100%;
+
+    &__canvas {
+      position: relative;
+      z-index: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    &__panel {
+      position: absolute;
+      top: 18px;
+      left: 18px;
+      z-index: 4;
+      display: flex;
+      flex-direction: column;
+      width: min(320px, calc(100% - 36px));
+      height: min(420px, calc(100% - 36px));
+      max-height: calc(100% - 36px);
+      padding: 12px;
+      overflow: hidden;
+    }
+
+    &__search {
+      flex: none;
+      margin-bottom: 10px;
+    }
+
+    &__poi-list {
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    &__poi-scroll {
+      height: 100%;
+    }
+
+    &__poi {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      width: 100%;
+      padding: 10px 8px;
+      text-align: left;
+      cursor: pointer;
+      background: transparent;
+      border: 0;
+      border-radius: var(--el-border-radius-base);
+
+      &:hover,
+      &.is-active {
+        background: var(--el-color-primary-light-9);
+      }
+
+      &.is-active {
+        .art-address-map__poi-icon {
+          color: var(--el-color-primary);
+        }
+      }
+    }
+
+    &__poi-icon {
+      flex: none;
+      width: 22px;
+      height: 22px;
+      margin-top: 4px;
+      font-size: 22px;
+      color: var(--el-text-color-placeholder);
+    }
+
+    &__poi-main {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 0;
+
+      strong {
+        color: var(--el-text-color-primary);
+      }
+
+      small {
+        line-height: 18px;
+        color: var(--el-text-color-secondary);
+      }
+    }
+
+    &__message {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      pointer-events: none;
+      color: var(--el-text-color-secondary);
+      background: var(--el-fill-color-lighter);
+    }
+  }
+</style>

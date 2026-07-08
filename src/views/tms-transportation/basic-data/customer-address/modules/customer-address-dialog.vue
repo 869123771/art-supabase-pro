@@ -10,7 +10,23 @@
       label-width="100px"
       :show-reset="false"
       :show-submit="false"
-    />
+    >
+      <template #addressPicker>
+        <ArtAddressPicker
+          v-model:region-path="form.regionPath"
+          v-model:address-detail="form.addressDetail"
+          v-model:region-adcode="form.regionAdcode"
+          v-model:longitude="form.longitude"
+          v-model:latitude="form.latitude"
+          v-model:coordinate-system="form.coordinateSystem"
+          v-model:coordinate-source="form.coordinateSource"
+          v-model:coordinate-status="form.coordinateStatus"
+          v-model:geocode-provider="form.geocodeProvider"
+          v-model:geocoded-at="form.geocodedAt"
+          :region-api="fetchRegionOptions"
+        />
+      </template>
+    </ArtForm>
   </ArtDialog>
 </template>
 
@@ -18,6 +34,7 @@
   import type { FormRules } from 'element-plus'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
+  import ArtAddressPicker from '@/components/core/forms/art-address-picker/index.vue'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import { fetchRegionOptions } from '@/api/common'
   import { addCustomerAddress, editCustomerAddress, fetchCustomerOptions } from '@/api/tms'
@@ -27,11 +44,16 @@
 
   type CustomerAddress = Api.Tms.BasicData.CustomerAddress
   type CustomerOption = Api.Tms.BasicData.CustomerOption
-  type CustomerAddressForm = CustomerAddress & { regionPath: string[] }
+  type CustomerAddressForm = CustomerAddress & { addressPicker?: undefined; regionPath: string[] }
 
   interface CustomerContext {
     customerId?: string
     customerName?: string
+  }
+
+  interface DialogFormExpose {
+    validate: () => Promise<boolean>
+    clearValidate: () => void
   }
 
   const emit = defineEmits<{
@@ -40,7 +62,7 @@
 
   const { getDictMap } = storeToRefs(useUserStore())
   const dialogRef = ref<ArtDialogExpose<CustomerAddress | undefined>>()
-  const formRef = ref<{ validate: () => Promise<boolean>; clearValidate: () => void }>()
+  const formRef = ref<DialogFormExpose>()
   const customerContext = reactive<CustomerContext>({})
 
   const addressTypeOptions = computed(() => getDictMap.value.tmsAddressType ?? [])
@@ -52,8 +74,16 @@
     contactName: '',
     contactPhone: '',
     region: '',
+    regionAdcode: '',
     regionPath: [],
     addressDetail: '',
+    longitude: null,
+    latitude: null,
+    coordinateSystem: 'gcj02',
+    coordinateSource: '',
+    coordinateStatus: 'pending',
+    geocodeProvider: '',
+    geocodedAt: '',
     postalCode: '',
     isDefault: false,
     remark: ''
@@ -131,31 +161,11 @@
       props: { maxlength: 6, placeholder: '请输入邮编' }
     },
     {
-      label: '区域',
-      key: 'regionPath',
-      type: 'cascader',
-      api: fetchRegionOptions,
-      labelField: 'name',
-      valueField: 'name',
-      childrenField: 'children',
-      props: {
-        clearable: true,
-        filterable: true,
-        props: {
-          label: 'name',
-          value: 'name',
-          children: 'children',
-          emitPath: true,
-          checkStrictly: true
-        }
-      }
-    },
-    {
-      label: '详细地址',
-      key: 'addressDetail',
+      label: '',
+      key: 'addressPicker',
       type: 'input',
-      span: 16,
-      props: { maxlength: 200, placeholder: '请输入道路、门牌号、小区、楼栋等' }
+      span: 24,
+      labelWidth: 0
     },
     {
       label: '默认地址',
@@ -179,8 +189,50 @@
   ])
 
   const replaceForm = (nextForm: CustomerAddressForm): void => {
-    Object.keys(form).forEach((key) => delete form[key as keyof CustomerAddressForm])
-    Object.assign(form, nextForm)
+    Object.assign(form, createInitialForm(), nextForm)
+  }
+
+  const normalizeNullableNumber = (value: unknown): number | null => {
+    if (value === null || value === undefined || value === '') return null
+    const numberValue = Number(value)
+    return Number.isFinite(numberValue) ? numberValue : null
+  }
+
+  const normalizeNullableText = (value: unknown): string | null => {
+    const text = String(value ?? '').trim()
+    return text || null
+  }
+
+  const buildSubmitPayload = (data: CustomerAddressForm): CustomerAddress => {
+    const { regionPath, ...rest } = data
+    delete rest.addressPicker
+    delete rest.customer
+    delete rest.tenantId
+    delete rest.createBy
+    delete rest.createTime
+    delete rest.updateBy
+    delete rest.updateTime
+
+    const longitude = normalizeNullableNumber(rest.longitude)
+    const latitude = normalizeNullableNumber(rest.latitude)
+    const hasCoordinate = longitude !== null && latitude !== null
+
+    return {
+      ...rest,
+      region: regionPath.join('/'),
+      regionAdcode: normalizeNullableText(rest.regionAdcode),
+      longitude,
+      latitude,
+      coordinateSystem: hasCoordinate
+        ? rest.coordinateSystem || 'gcj02'
+        : normalizeNullableText(rest.coordinateSystem),
+      coordinateSource: normalizeNullableText(rest.coordinateSource),
+      coordinateStatus: hasCoordinate
+        ? rest.coordinateStatus || 'located'
+        : rest.coordinateStatus || 'pending',
+      geocodeProvider: normalizeNullableText(rest.geocodeProvider),
+      geocodedAt: normalizeNullableText(rest.geocodedAt)
+    }
   }
 
   const resetForm = async (): Promise<void> => {
@@ -200,12 +252,7 @@
     }
 
     try {
-      const { regionPath, ...rawPayload } = structuredClone(toRaw(form))
-      delete rawPayload.customer
-      const payload: CustomerAddress = {
-        ...rawPayload,
-        region: regionPath.join('/')
-      }
+      const payload = buildSubmitPayload(structuredClone(toRaw(form)))
       const type = form.id ? 'edit' : 'add'
       if (type === 'edit') await editCustomerAddress(payload)
       else await addCustomerAddress(payload)

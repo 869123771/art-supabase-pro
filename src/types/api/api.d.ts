@@ -958,7 +958,15 @@ declare namespace Api {
         contactName: string
         contactPhone: string
         region: string
+        regionAdcode?: string | null
         addressDetail: string
+        longitude?: number | string | null
+        latitude?: number | string | null
+        coordinateSystem?: string | null
+        coordinateSource?: string | null
+        coordinateStatus?: string | null
+        geocodeProvider?: string | null
+        geocodedAt?: string | null
         postalCode?: string
         isDefault?: boolean
         remark?: string

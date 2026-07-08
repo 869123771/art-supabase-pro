@@ -10,7 +10,17 @@
       label-width="120px"
       :show-reset="false"
       :show-submit="false"
-    />
+    >
+      <template #addressPicker>
+        <ArtAddressPicker
+          v-model:region-path="form.regionPath"
+          v-model:address-detail="form.addressDetail"
+          :region-api="fetchRegionOptions"
+          :show-coordinate-hint="false"
+          label-width="120px"
+        />
+      </template>
+    </ArtForm>
   </ArtDialog>
 </template>
 
@@ -18,12 +28,14 @@
   import type { FormRules } from 'element-plus'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
+  import ArtAddressPicker from '@/components/core/forms/art-address-picker/index.vue'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import { addSupplier, editSupplier } from '@/api/vehicle-manage-system'
   import { fetchRegionOptions } from '@/api/common'
 
   type Supplier = Api.VehicleMgtSys.BasicInfo.Supplier
   type SupplierForm = Supplier & {
+    addressPicker?: undefined
     regionPath?: string[]
   }
 
@@ -44,6 +56,7 @@
     contactPerson: '',
     contactPhone: '',
     region: '',
+    addressPicker: undefined,
     regionPath: [],
     addressDetail: '',
     remark: ''
@@ -98,31 +111,10 @@
     },
     {
       label: '联系地址',
-      key: 'regionPath',
-      type: 'cascader',
-      props: {
-        props: {
-          label: 'name',
-          value: 'name',
-          children: 'children',
-          emitPath: true,
-          checkStrictly: true
-        },
-        class: '!w-full'
-      },
-      api: fetchRegionOptions,
-      labelField: 'name',
-      valueField: 'name',
-      childrenField: 'children'
-    },
-    {
-      label: '详细地址',
-      key: 'addressDetail',
+      key: 'addressPicker',
       type: 'input',
-      props: {
-        maxlength: 200,
-        placeholder: '请输入道路、门牌号、小区、楼栋等'
-      }
+      span: 24,
+      labelWidth: 0
     },
     {
       label: '备注',
@@ -161,6 +153,7 @@
 
     try {
       const { regionPath, ...payload } = toRaw(form)
+      delete payload.addressPicker
       payload.region = regionPath?.join('/') || ''
       if (form.id) {
         await editSupplier(payload)

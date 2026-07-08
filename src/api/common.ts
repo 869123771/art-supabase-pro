@@ -7,6 +7,12 @@ import TreeUtils, { type TreeNode } from '@/utils/tree'
 
 const { supabase, responseHandle } = useSupabase()
 const regionTreeUtils = new TreeUtils({ childrenKey: 'children' })
+const REGION_SOURCE_URLS = [
+  '/data/pca-code.json',
+  'https://fastly.jsdelivr.net/gh/modood/Administrative-divisions-of-China@master/dist/pca-code.json',
+  'https://raw.githubusercontent.com/modood/Administrative-divisions-of-China/master/dist/pca-code.json'
+]
+let regionOptionsCache: RegionOption[] | null = null
 
 export interface RegionOption extends TreeNode {
   name: string
@@ -15,14 +21,25 @@ export interface RegionOption extends TreeNode {
 }
 
 export async function fetchRegionOptions(): Promise<RegionOption[]> {
-  const response = await http.get<unknown>({
-    url: 'https://raw.githubusercontent.com/modood/Administrative-divisions-of-China/master/dist/pca-code.json',
-    skipAuth: true,
-    skipResponseWrapper: true,
-    showErrorMessage: true
-  })
+  if (regionOptionsCache) return regionOptionsCache
 
-  return regionTreeUtils.normalizeTreeData<RegionOption>(response)
+  let lastError: unknown
+  for (const url of REGION_SOURCE_URLS) {
+    try {
+      const response = await http.get<unknown>({
+        url,
+        skipAuth: true,
+        skipResponseWrapper: true,
+        showErrorMessage: false
+      })
+      regionOptionsCache = regionTreeUtils.normalizeTreeData<RegionOption>(response)
+      return regionOptionsCache
+    } catch (error) {
+      lastError = error
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error('行政区划数据加载失败')
 }
 
 export async function checkUnique(params: {

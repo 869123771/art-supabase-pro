@@ -5,6 +5,7 @@
       v-model="tableState.searchQuery"
       :search-items="searchItems"
       :api-fn="fetchTableData"
+      :api-params="tableApiParams"
       :columns-factory="columnsFactory"
       :header-actions="headerActions"
       :search-bar-props="{ span: 6, labelWidth: 82, showExpand: false }"
@@ -60,6 +61,9 @@
   const routeCustomerId = computed(() => String(route.query.customerId ?? ''))
   const customerName = computed(() => String(route.query.customerName ?? ''))
   const addressTypeOptions = computed(() => getDictMap.value.tmsAddressType ?? [])
+  const tableApiParams = computed<Partial<TableParams>>(() => ({
+    customerId: routeCustomerId.value || undefined
+  }))
 
   const tableState = reactive<TableState>({
     searchQuery: {
@@ -209,7 +213,7 @@
   watch(routeCustomerId, async (value) => {
     tableState.searchQuery.customerId = value
     await nextTick()
-    await tableQueryRef.value?.refreshData()
+    await tableQueryRef.value?.getData()
   })
 
   const handleSaveSuccess = (type: DialogType): void => {

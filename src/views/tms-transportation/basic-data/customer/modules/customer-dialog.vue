@@ -10,7 +10,17 @@
       label-width="108px"
       :show-reset="false"
       :show-submit="false"
-    />
+    >
+      <template #addressPicker>
+        <ArtAddressPicker
+          v-model:region-path="form.regionPath"
+          v-model:address-detail="form.addressDetail"
+          :region-api="fetchRegionOptions"
+          :show-coordinate-hint="false"
+          label-width="108px"
+        />
+      </template>
+    </ArtForm>
   </ArtDialog>
 </template>
 
@@ -18,6 +28,7 @@
   import type { FormRules } from 'element-plus'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
+  import ArtAddressPicker from '@/components/core/forms/art-address-picker/index.vue'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import { addCustomer, editCustomer } from '@/api/tms'
   import { fetchRegionOptions } from '@/api/common'
@@ -26,7 +37,7 @@
   defineOptions({ name: 'TmsCustomerDialog' })
 
   type Customer = Api.Tms.BasicData.Customer
-  type CustomerForm = Customer & { regionPath: string[] }
+  type CustomerForm = Customer & { addressPicker?: undefined; regionPath: string[] }
 
   interface DialogExposeForm {
     validate: () => Promise<boolean>
@@ -53,6 +64,7 @@
     customerLevel: '',
     tags: [],
     region: '',
+    addressPicker: undefined,
     regionPath: [],
     addressDetail: '',
     postalCode: '',
@@ -146,33 +158,11 @@
       props: { activeText: '启用', inactiveText: '停用', inlinePrompt: true }
     },
     {
-      label: '区域',
-      key: 'regionPath',
-      type: 'cascader',
-      api: fetchRegionOptions,
-      labelField: 'name',
-      valueField: 'name',
-      childrenField: 'children',
-      span: 16,
-      props: {
-        class: 'w-full',
-        clearable: true,
-        filterable: true,
-        props: {
-          label: 'name',
-          value: 'name',
-          children: 'children',
-          emitPath: true,
-          checkStrictly: true
-        }
-      }
-    },
-    {
-      label: '公司地址',
-      key: 'addressDetail',
+      label: '',
+      key: 'addressPicker',
       type: 'input',
-      span: 16,
-      props: { maxlength: 200, placeholder: '请输入道路、门牌号、小区、楼栋等' }
+      span: 24,
+      labelWidth: 0
     },
     {
       label: '邮编',
@@ -278,6 +268,7 @@
 
     try {
       const { regionPath, ...rawPayload } = structuredClone(toRaw(form))
+      delete rawPayload.addressPicker
       const payload: Customer = {
         ...rawPayload,
         region: regionPath.join('/')
