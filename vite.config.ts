@@ -78,7 +78,14 @@ export default ({ mode }: { mode: string }) => {
             groups: [
               {
                 name: 'monaco',
-                test: (id) => matchPackages(id, ['monaco-editor', 'monaco-sql-languages']),
+                test: (id) =>
+                  matchPackages(id, [
+                    'monaco-editor',
+                    'monaco-sql-languages',
+                    '@guolao/vue-monaco-editor',
+                    '@monaco-editor/loader',
+                    'state-local'
+                  ]),
                 priority: 40
               },
               {
@@ -105,8 +112,7 @@ export default ({ mode }: { mode: string }) => {
               {
                 name: 'vendor',
                 test: /node_modules/,
-                priority: 10,
-                maxSize: 1200 * 1024
+                priority: 10
               }
             ]
           }
