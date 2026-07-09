@@ -1,1 +1,0 @@
-import{Ln as e,Qn as t,kn as n}from"./element-plus-B7bsTYKt.js";import{t as r}from"./vehicle-archive-detail-content-Bma0m4kN.js";var i=e({name:`VehicleArchiveDetail`,__name:`index`,setup(e){return(e,i)=>(t(),n(r))}});export{i as default};
