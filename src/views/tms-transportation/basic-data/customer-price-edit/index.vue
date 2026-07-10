@@ -33,7 +33,45 @@
               root-class="customer-price-edit__form"
               :show-reset="false"
               :show-submit="false"
-            />
+            >
+              <template #shippingAddressDetail>
+                <div
+                  class="customer-price-edit__address-card"
+                  :class="{ 'is-empty': !form.data.shippingAddressDetail }"
+                >
+                  <div class="customer-price-edit__address-main">
+                    <div class="customer-price-edit__address-text">
+                      {{ form.data.shippingAddressDetail || '选择客户后自动带出默认发货地址' }}
+                    </div>
+                    <div
+                      v-if="form.data.shippingAddressDetail"
+                      class="customer-price-edit__address-meta"
+                    >
+                      <span>{{ getAddressContactText('shipping') }}</span>
+                      <span
+                        :class="{
+                          'is-warning': !getAddressCoordinateText('shipping')
+                        }"
+                      >
+                        {{ getAddressCoordinateText('shipping') || '缺少经纬度' }}
+                      </span>
+                    </div>
+                  </div>
+                  <div class="customer-price-edit__address-actions">
+                    <ElButton type="primary" plain @click="openAddressSelector('shipping')">
+                      {{ form.data.shippingAddressDetail ? '更换' : '选择地址' }}
+                    </ElButton>
+                    <ElButton
+                      v-if="form.data.shippingAddressDetail"
+                      text
+                      @click="handleAddressClear('shipping')"
+                    >
+                      清空
+                    </ElButton>
+                  </div>
+                </div>
+              </template>
+            </ArtForm>
           </div>
 
           <div class="customer-price-edit__contact-panel">
@@ -52,7 +90,45 @@
               root-class="customer-price-edit__form"
               :show-reset="false"
               :show-submit="false"
-            />
+            >
+              <template #receivingAddressDetail>
+                <div
+                  class="customer-price-edit__address-card"
+                  :class="{ 'is-empty': !form.data.receivingAddressDetail }"
+                >
+                  <div class="customer-price-edit__address-main">
+                    <div class="customer-price-edit__address-text">
+                      {{ form.data.receivingAddressDetail || '请选择收货地址' }}
+                    </div>
+                    <div
+                      v-if="form.data.receivingAddressDetail"
+                      class="customer-price-edit__address-meta"
+                    >
+                      <span>{{ getAddressContactText('receiving') }}</span>
+                      <span
+                        :class="{
+                          'is-warning': !getAddressCoordinateText('receiving')
+                        }"
+                      >
+                        {{ getAddressCoordinateText('receiving') || '缺少经纬度' }}
+                      </span>
+                    </div>
+                  </div>
+                  <div class="customer-price-edit__address-actions">
+                    <ElButton type="primary" plain @click="openAddressSelector('receiving')">
+                      {{ form.data.receivingAddressDetail ? '更换' : '选择地址' }}
+                    </ElButton>
+                    <ElButton
+                      v-if="form.data.receivingAddressDetail"
+                      text
+                      @click="handleAddressClear('receiving')"
+                    >
+                      清空
+                    </ElButton>
+                  </div>
+                </div>
+              </template>
+            </ArtForm>
           </div>
         </div>
       </section>
@@ -130,9 +206,28 @@
     </div>
 
     <div class="customer-price-edit__footer art-card-xs">
-      <ElButton :disabled="page.saving" @click="goBack">取消</ElButton>
+      <ElButton :disabled="page.saving" @click="goBack()">取消</ElButton>
       <ElButton type="primary" :loading="page.saving" @click="handleSave">保存</ElButton>
     </div>
+
+    <ArtTableSingleSelect
+      ref="addressSelectRef"
+      v-model="addressSelector.value"
+      v-model:selected-data="addressSelector.selectedRows"
+      :api-fn="fetchAddressSelectorData"
+      :columns="addressSelector.columns"
+      :title="addressSelector.title"
+      row-key="id"
+      :label-key="getAddressLabel"
+      :description-key="getAddressDescription"
+      search-placeholder="请输入联系人/电话/地址搜索"
+      dialog-width="1080px"
+      show-pagination
+      :page-size="10"
+      @confirm="handleAddressSelectorConfirm"
+    >
+      <template #trigger></template>
+    </ArtTableSingleSelect>
   </div>
 </template>
 
@@ -140,9 +235,16 @@
   import type { ComputedRef, UnwrapNestedRefs } from 'vue'
   import { cloneDeep, omit } from 'lodash-es'
   import type { FormRules } from 'element-plus'
-  import { ElButton, ElInput, ElInputNumber, ElOption, ElSelect } from 'element-plus'
+  import { ElButton, ElInput, ElInputNumber, ElMessage, ElOption, ElSelect } from 'element-plus'
   import { Plus } from '@element-plus/icons-vue'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
+  import ArtTableSingleSelect from '@/components/core/forms/art-data-select/table-single.vue'
+  import type {
+    ArtDataSelectExpose,
+    DataSelectColumn,
+    DataSelectFetchParams,
+    DataSelectRecord
+  } from '@/components/core/forms/art-data-select/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
   import ArtTable from '@/components/core/tables/art-table/index.vue'
@@ -151,16 +253,20 @@
   import {
     addCustomerPrice,
     editCustomerPrice,
+    fetchCustomerAddressList,
     fetchCustomerOptions,
     fetchCustomerPriceDetail
   } from '@/api/tms'
   import { useUserStore } from '@/store/modules/user'
+  import { pageInfoHandler } from '@/utils/table/tableUtils'
 
   defineOptions({ name: 'TmsCustomerPriceEdit' })
 
   type CustomerPrice = Api.Tms.BasicData.CustomerPrice
   type CustomerPriceCargoItem = Api.Tms.BasicData.CustomerPriceCargoItem
   type CustomerOption = Api.Tms.BasicData.CustomerOption
+  type CustomerAddress = Api.Tms.BasicData.CustomerAddress
+  type AddressMode = 'shipping' | 'receiving'
   type CustomerPriceForm = CustomerPrice & {
     customerCode?: string
     originRegionPath: string[]
@@ -184,9 +290,18 @@
     weight: number
   }
 
+  interface AddressSelectorGroup {
+    mode: AddressMode
+    title: string
+    value?: string | number
+    selectedRows: DataSelectRecord[]
+    columns: DataSelectColumn[]
+  }
+
   interface FormGroup {
     data: CustomerPriceForm
     customerOptions: CustomerOption[]
+    shippingAddressOptions: CustomerAddress[]
     cargoUnitOptions: ComputedRef<Api.DataCenter.DictListItem[]>
     transportTypeOptions: ComputedRef<Api.DataCenter.DictListItem[]>
     cargoTypeOptions: ComputedRef<Api.DataCenter.DictListItem[]>
@@ -219,6 +334,7 @@
   const vehicleFormRef = ref<FormExpose>()
   const feeFormRef = ref<FormExpose>()
   const paymentFormRef = ref<FormExpose>()
+  const addressSelectRef = ref<ArtDataSelectExpose>()
 
   const isEdit = computed(() => Boolean(route.params.id))
   const dictCodes = [
@@ -265,12 +381,18 @@
       destinationRegionPath: [],
       transportType: '',
       cargoType: '',
+      shippingAddressId: null,
+      receivingAddressId: null,
       shippingContactName: '',
       shippingContactPhone: '',
       shippingAddressDetail: '',
+      shippingLongitude: null,
+      shippingLatitude: null,
       receivingContactName: '',
       receivingContactPhone: '',
       receivingAddressDetail: '',
+      receivingLongitude: null,
+      receivingLatitude: null,
       cargoItems: [createInitialCargoItem()],
       cargoQuantityTotal: 0,
       cargoVolumeTotal: 0,
@@ -325,9 +447,24 @@
   }
 
   const page = reactive<PageState>({ loading: false, saving: false })
+  const addressSelector = reactive<AddressSelectorGroup>({
+    mode: 'shipping',
+    title: '选择发货地址',
+    value: undefined,
+    selectedRows: [],
+    columns: [
+      { prop: 'customer.customerName', label: '客户', minWidth: 170 },
+      { prop: 'contactName', label: '联系人', width: 110 },
+      { prop: 'contactPhone', label: '联系电话', width: 140 },
+      { prop: 'region', label: '区域', minWidth: 160 },
+      { prop: 'addressDetail', label: '详细地址', minWidth: 260 },
+      { prop: 'coordinateText', label: '经纬度', width: 180, formatter: formatCoordinateColumn }
+    ]
+  })
   const form: UnwrapNestedRefs<FormGroup> = reactive<FormGroup>({
     data: createInitialForm(),
     customerOptions: [],
+    shippingAddressOptions: [],
     cargoUnitOptions: computed(() => getDictMap.value.tmsCargoUnit ?? []),
     transportTypeOptions: computed(() => getDictMap.value.tmsCustomerPriceTransportType ?? []),
     cargoTypeOptions: computed(() => getDictMap.value.tmsCustomerPriceCargoType ?? []),
@@ -369,6 +506,7 @@
         props: {
           class: 'w-full',
           clearable: true,
+          disabled: true,
           filterable: true,
           placeholder: '请选择',
           props: {
@@ -391,6 +529,7 @@
         props: {
           class: 'w-full',
           clearable: true,
+          disabled: true,
           filterable: true,
           placeholder: '请选择',
           props: {
@@ -420,13 +559,13 @@
         label: '联系人',
         key: 'shippingContactName',
         type: 'input',
-        props: { maxlength: 50, placeholder: '请输入内容' }
+        props: { disabled: true, maxlength: 50, placeholder: '选择发货地址后带出' }
       },
       {
         label: '联系电话',
         key: 'shippingContactPhone',
         type: 'input',
-        props: { maxlength: 20, placeholder: '请输入内容' }
+        props: { disabled: true, maxlength: 20, placeholder: '选择发货地址后带出' }
       },
       {
         label: '详细地址',
@@ -440,13 +579,13 @@
         label: '联系人',
         key: 'receivingContactName',
         type: 'input',
-        props: { maxlength: 50, placeholder: '请输入内容' }
+        props: { disabled: true, maxlength: 50, placeholder: '选择收货地址后带出' }
       },
       {
         label: '联系电话',
         key: 'receivingContactPhone',
         type: 'input',
-        props: { maxlength: 20, placeholder: '请输入内容' }
+        props: { disabled: true, maxlength: 20, placeholder: '选择收货地址后带出' }
       },
       {
         label: '详细地址',
@@ -703,6 +842,7 @@
       destinationRegionPath: splitRegionPath(data.destinationRegion),
       cargoItems: data.cargoItems?.length ? data.cargoItems : [createInitialCargoItem()]
     })
+    await loadCustomerAddressOptions(data.customerId, false)
   }
 
   function replaceForm(nextForm: CustomerPriceForm): void {
@@ -730,6 +870,7 @@
 
   function handleCustomerChange(customerId?: string): void {
     syncCustomerCode(customerId || '')
+    void loadCustomerAddressOptions(customerId || '', true)
   }
 
   function syncCustomerCode(customerId?: string): void {
@@ -743,6 +884,195 @@
       customer?.customerCode ||
       (form.data.customer?.id === customerId ? form.data.customer.customerCode : '') ||
       ''
+  }
+
+  async function loadCustomerAddressOptions(
+    customerId: string,
+    applyDefault: boolean
+  ): Promise<void> {
+    if (!customerId) {
+      form.shippingAddressOptions = []
+      if (applyDefault) {
+        Object.assign(form.data, {
+          shippingAddressId: null,
+          receivingAddressId: null,
+          shippingContactName: '',
+          shippingContactPhone: '',
+          shippingAddressDetail: '',
+          shippingLongitude: null,
+          shippingLatitude: null,
+          receivingContactName: '',
+          receivingContactPhone: '',
+          receivingAddressDetail: '',
+          receivingLongitude: null,
+          receivingLatitude: null,
+          originRegionPath: [],
+          destinationRegionPath: []
+        })
+      }
+      return
+    }
+
+    const shippingResult = await fetchCustomerAddressList({
+      customerId,
+      addressType: 'shipping',
+      from: 0,
+      to: 99
+    })
+    form.shippingAddressOptions = shippingResult.data ?? []
+
+    if (applyDefault) {
+      applyAddressPatch('shipping', findDefaultAddress(form.shippingAddressOptions))
+      applyAddressPatch('receiving')
+    }
+  }
+
+  function findDefaultAddress(addresses: CustomerAddress[]): CustomerAddress | undefined {
+    return addresses.find((item) => item.isDefault) ?? addresses[0]
+  }
+
+  async function openAddressSelector(mode: AddressMode): Promise<void> {
+    if (mode === 'shipping' && !form.data.customerId) {
+      ElMessage.warning('请先选择客户名称')
+      return
+    }
+
+    Object.assign(addressSelector, {
+      mode,
+      title: mode === 'shipping' ? '选择发货地址' : '选择收货地址',
+      value:
+        mode === 'shipping'
+          ? (form.data.shippingAddressId ?? undefined)
+          : (form.data.receivingAddressId ?? undefined),
+      selectedRows: []
+    })
+    await nextTick()
+    await addressSelectRef.value?.open()
+  }
+
+  function handleAddressClear(mode: AddressMode): void {
+    applyAddressPatch(mode)
+  }
+
+  async function fetchAddressSelectorData(params: DataSelectFetchParams) {
+    const { from, to } = pageInfoHandler({ current: params.page, size: params.pageSize })
+    const { data, total } = await fetchCustomerAddressList({
+      customerId: addressSelector.mode === 'shipping' ? form.data.customerId : undefined,
+      addressType: addressSelector.mode,
+      keyword: params.keyword,
+      from,
+      to
+    })
+
+    return { data: data ?? [], total: total ?? 0 }
+  }
+
+  function handleAddressSelectorConfirm(_value: unknown, rows: DataSelectRecord[]): void {
+    const address = rows[0] as CustomerAddress | undefined
+    if (!address) return
+    applyAddressPatch(addressSelector.mode, address)
+  }
+
+  function applyAddressPatch(mode: AddressMode, address?: CustomerAddress): void {
+    const patchMap: Record<AddressMode, Partial<CustomerPriceForm>> = {
+      shipping: address
+        ? {
+            shippingAddressId: address.id ?? null,
+            shippingContactName: address.contactName,
+            shippingContactPhone: address.contactPhone,
+            shippingAddressDetail: formatAddress(address),
+            shippingLongitude: address.longitude ?? null,
+            shippingLatitude: address.latitude ?? null,
+            originRegionPath: splitRegionPath(address.region)
+          }
+        : {
+            shippingAddressId: null,
+            shippingContactName: '',
+            shippingContactPhone: '',
+            shippingAddressDetail: '',
+            shippingLongitude: null,
+            shippingLatitude: null,
+            originRegionPath: []
+          },
+      receiving: address
+        ? {
+            receivingAddressId: address.id ?? null,
+            receivingContactName: address.contactName,
+            receivingContactPhone: address.contactPhone,
+            receivingAddressDetail: formatAddress(address),
+            receivingLongitude: address.longitude ?? null,
+            receivingLatitude: address.latitude ?? null,
+            destinationRegionPath: splitRegionPath(address.region)
+          }
+        : {
+            receivingAddressId: null,
+            receivingContactName: '',
+            receivingContactPhone: '',
+            receivingAddressDetail: '',
+            receivingLongitude: null,
+            receivingLatitude: null,
+            destinationRegionPath: []
+          }
+    }
+
+    Object.assign(form.data, patchMap[mode])
+    void nextTick(() => {
+      if (mode === 'shipping') shippingFormRef.value?.clearValidate()
+      else receivingFormRef.value?.clearValidate()
+      baseFormRef.value?.clearValidate()
+    })
+  }
+
+  function formatAddress(address: CustomerAddress): string {
+    return [address.region, address.addressDetail].filter(Boolean).join(' ')
+  }
+
+  function hasCoordinate(longitude?: number | string | null, latitude?: number | string | null) {
+    return (
+      longitude !== null &&
+      longitude !== undefined &&
+      longitude !== '' &&
+      latitude !== null &&
+      latitude !== undefined &&
+      latitude !== ''
+    )
+  }
+
+  function formatCoordinate(address: CustomerAddress): string {
+    if (!hasCoordinate(address.longitude, address.latitude)) return ''
+    return `${address.longitude}, ${address.latitude}`
+  }
+
+  function formatCoordinateColumn(row: DataSelectRecord): string {
+    return formatCoordinate(row as CustomerAddress) || '缺少经纬度'
+  }
+
+  function getAddressLabel(row: DataSelectRecord): string {
+    const address = row as CustomerAddress
+    return address.customer?.customerName || address.contactName || address.addressDetail
+  }
+
+  function getAddressDescription(row: DataSelectRecord): string {
+    const address = row as CustomerAddress
+    return [address.contactName, address.contactPhone, formatAddress(address)]
+      .filter(Boolean)
+      .join(' / ')
+  }
+
+  function getAddressContactText(mode: AddressMode): string {
+    const name =
+      mode === 'shipping' ? form.data.shippingContactName : form.data.receivingContactName
+    const phone =
+      mode === 'shipping' ? form.data.shippingContactPhone : form.data.receivingContactPhone
+    return [name, phone].filter(Boolean).join(' / ') || '暂无联系人'
+  }
+
+  function getAddressCoordinateText(mode: AddressMode): string {
+    const longitude =
+      mode === 'shipping' ? form.data.shippingLongitude : form.data.receivingLongitude
+    const latitude = mode === 'shipping' ? form.data.shippingLatitude : form.data.receivingLatitude
+    if (!hasCoordinate(longitude, latitude)) return ''
+    return `${longitude}, ${latitude}`
   }
 
   function addCargoItem(): void {
@@ -841,12 +1171,18 @@
     payload.collectAmount = normalizeMoney(raw.collectAmount)
     payload.periodicAmount = normalizeMoney(raw.periodicAmount)
     payload.paymentTotal = sumFields(paymentFields)
+    payload.shippingAddressId = normalizeText(raw.shippingAddressId)
+    payload.receivingAddressId = normalizeText(raw.receivingAddressId)
     payload.shippingContactName = normalizeRequiredText(raw.shippingContactName)
     payload.shippingContactPhone = normalizeRequiredText(raw.shippingContactPhone)
     payload.shippingAddressDetail = normalizeRequiredText(raw.shippingAddressDetail)
+    payload.shippingLongitude = normalizeNullableNumber(raw.shippingLongitude)
+    payload.shippingLatitude = normalizeNullableNumber(raw.shippingLatitude)
     payload.receivingContactName = normalizeRequiredText(raw.receivingContactName)
     payload.receivingContactPhone = normalizeRequiredText(raw.receivingContactPhone)
     payload.receivingAddressDetail = normalizeRequiredText(raw.receivingAddressDetail)
+    payload.receivingLongitude = normalizeNullableNumber(raw.receivingLongitude)
+    payload.receivingLatitude = normalizeNullableNumber(raw.receivingLatitude)
 
     return payload
   }
@@ -876,7 +1212,7 @@
       const payload = normalizePayload()
       if (form.data.id) await editCustomerPrice(payload)
       else await addCustomerPrice(payload)
-      goBack()
+      goBack(true)
     } catch {
       // API 层已经展示错误信息，当前页保持编辑状态。
     } finally {
@@ -884,8 +1220,16 @@
     }
   }
 
-  function goBack(): void {
-    void router.push({ name: 'TmsCustomerPrice' })
+  function goBack(refresh = false): void {
+    void router.push({
+      name: 'TmsCustomerPrice',
+      query: refresh
+        ? {
+            refresh: String(Date.now()),
+            refreshType: isEdit.value ? 'update' : 'create'
+          }
+        : undefined
+    })
   }
 
   function splitRegionPath(region?: string | null): string[] {
@@ -953,6 +1297,80 @@
 
     &__contact-panel {
       min-width: 0;
+    }
+
+    &__address-card {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      min-height: 72px;
+      padding: 10px 12px;
+      background: var(--el-fill-color-blank);
+      border: 1px solid var(--el-border-color);
+      border-radius: var(--el-border-radius-base);
+
+      &.is-empty {
+        border-style: dashed;
+
+        .customer-price-edit__address-text {
+          font-weight: 400;
+          color: var(--el-text-color-placeholder);
+        }
+      }
+    }
+
+    &__address-main {
+      flex: 1;
+      min-width: 0;
+    }
+
+    &__address-text {
+      display: -webkit-box;
+      min-width: 0;
+      overflow: hidden;
+      font-size: 14px;
+      font-weight: 500;
+      line-height: 20px;
+      color: var(--el-text-color-primary);
+      text-overflow: ellipsis;
+      overflow-wrap: anywhere;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+    }
+
+    &__address-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+
+      span {
+        display: inline-flex;
+        align-items: center;
+        max-width: 100%;
+        height: 22px;
+        padding: 0 8px;
+        overflow: hidden;
+        font-size: 12px;
+        line-height: 22px;
+        color: var(--el-text-color-secondary);
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        background: var(--el-fill-color-light);
+        border-radius: var(--el-border-radius-small);
+
+        &.is-warning {
+          color: var(--el-color-warning);
+          background: var(--el-color-warning-light-9);
+        }
+      }
+    }
+
+    &__address-actions {
+      display: flex;
+      flex: none;
+      gap: 4px;
+      align-items: center;
     }
 
     &__contact-title {
@@ -1058,6 +1476,15 @@
         div {
           justify-content: flex-start;
         }
+      }
+
+      &__address-card {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      &__address-actions {
+        justify-content: flex-end;
       }
     }
   }

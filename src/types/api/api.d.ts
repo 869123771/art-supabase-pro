@@ -1002,12 +1002,18 @@ declare namespace Api {
         destinationRegion: string
         transportType: string
         cargoType?: string | null
+        shippingAddressId?: string | null
+        receivingAddressId?: string | null
         shippingContactName: string
         shippingContactPhone: string
         shippingAddressDetail: string
+        shippingLongitude?: number | string | null
+        shippingLatitude?: number | string | null
         receivingContactName: string
         receivingContactPhone: string
         receivingAddressDetail: string
+        receivingLongitude?: number | string | null
+        receivingLatitude?: number | string | null
         cargoItems?: CustomerPriceCargoItem[]
         cargoQuantityTotal?: number | null
         cargoVolumeTotal?: number | null
@@ -1327,14 +1333,20 @@ declare namespace Api {
         deliveryMethod: string
         shippingCustomerId?: string | null
         receivingCustomerId?: string | null
+        shippingAddressId?: string | null
+        receivingAddressId?: string | null
         shippingCustomer?: CustomerSelectorItem | null
         receivingCustomer?: CustomerSelectorItem | null
         shippingContactName: string
         shippingContactPhone: string
         shippingAddressDetail: string
+        shippingLongitude?: number | string | null
+        shippingLatitude?: number | string | null
         receivingContactName: string
         receivingContactPhone: string
         receivingAddressDetail: string
+        receivingLongitude?: number | string | null
+        receivingLatitude?: number | string | null
         cargoItems?: CargoItem[]
         cargoQuantityTotal?: number | null
         cargoWeightTotal?: number | null

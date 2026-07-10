@@ -1,21 +1,16 @@
 <template>
   <ArtDialog ref="dialogRef" width="560px">
-    <div class="order-freight-dialog">
-      <div class="order-freight-dialog__summary">
-        <span>运单号：{{ form.data.orderNo || '-' }}</span>
-        <span>货号：{{ form.data.cargoNo || '-' }}</span>
-      </div>
-      <ArtForm
-        ref="formRef"
-        v-model="form.data"
-        :items="form.items"
-        :rules="form.rules"
-        :span="24"
-        label-width="86px"
-        :show-reset="false"
-        :show-submit="false"
-      />
-    </div>
+    <ArtForm
+      ref="formRef"
+      v-model="form.data"
+      root-class="order-freight-dialog__form"
+      :items="form.items"
+      :rules="form.rules"
+      :span="24"
+      label-width="86px"
+      :show-reset="false"
+      :show-submit="false"
+    />
   </ArtDialog>
 </template>
 
@@ -67,6 +62,8 @@
       totalFee: [{ required: true, message: '请输入总运费', trigger: 'blur' }]
     },
     items: computed<FormItem[]>(() => [
+      { label: '运单号', key: 'orderNo', type: 'text', span: 12 },
+      { label: '货号', key: 'cargoNo', type: 'text', span: 12 },
       { label: '总运费', key: 'totalFee', type: 'number', props: moneyProps }
     ])
   })
@@ -130,14 +127,4 @@
   defineExpose({ handleOpen })
 </script>
 
-<style scoped lang="scss">
-  .order-freight-dialog {
-    &__summary {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 14px;
-      padding: 0 0 18px 86px;
-      color: var(--art-text-gray-700);
-    }
-  }
-</style>
+<style scoped lang="scss"></style>

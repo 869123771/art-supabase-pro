@@ -64,7 +64,15 @@
                 :setValue="createSlotSetValue(item)"
                 :clearValue="createSlotClearValue(item)"
               >
+                <span
+                  v-if="isTextItem(item)"
+                  class="art-form-item__text"
+                  :class="getTextClass(item)"
+                >
+                  {{ getTextDisplayValue(item) }}
+                </span>
                 <component
+                  v-else
                   :is="getComponent(item)"
                   :model-value="getFieldValue(item.key)"
                   @update:model-value="setFieldValue(item.key, $event, item)"
@@ -238,6 +246,7 @@
   }
 
   const dividerType = 'divider'
+  const textType = 'text'
 
   const { width } = useWindowSize()
   const { t } = useI18n()
@@ -260,7 +269,7 @@
   }
 
   export type FormItemContent = string | (() => VNodeChild) | Component
-  export type FormItemPresetType = keyof ComponentMap | 'divider'
+  export type FormItemPresetType = keyof ComponentMap | 'divider' | 'text'
   export type FormItemCustomType = string & {}
   export type FormItemType = FormItemPresetType | FormItemCustomType
   export type FormItemOptionType = 'default' | 'button'
@@ -287,6 +296,15 @@
     showMarker?: boolean
   }
 
+  export interface FormItemTextProps {
+    /** Text to display when the field value is empty. */
+    emptyText?: string
+    /** Optional formatter for readonly text display. */
+    formatter?: (value: unknown, model: Record<string, any>, item: FormItem) => string | number
+    /** Extra class for the text node. */
+    class?: string | string[] | Record<string, boolean>
+  }
+
   export type FormItemComponentProps<TType extends FormItemType = FormItemType> = TType extends
     | 'radioGroup'
     | 'checkboxGroup'
@@ -295,9 +313,11 @@
       ? FormItemPassThroughProps & FormItemOptionProps
       : TType extends 'divider'
         ? FormItemPassThroughProps & FormItemDividerProps
-        : TType extends keyof ComponentMap
-          ? FormItemPassThroughProps
-          : FormItemPassThroughProps
+        : TType extends 'text'
+          ? FormItemPassThroughProps & FormItemTextProps
+          : TType extends keyof ComponentMap
+            ? FormItemPassThroughProps
+            : FormItemPassThroughProps
   export type MaybePromise<T> = T | Promise<T>
   export type FormItemApiParams = Record<string, any> | undefined
   export type FormItemApiFn<TParams = FormItemApiParams, TResult = unknown> = (
@@ -970,6 +990,23 @@
 
   const isDividerItem = (item: FormItem): boolean => String(item.type) === dividerType
 
+  const isTextItem = (item: FormItem): boolean => String(item.type) === textType
+
+  const getTextDisplayValue = (item: FormItem): string => {
+    const props = getProps(item)
+    const value = getFieldValue(item.key)
+    const formattedValue =
+      typeof props.formatter === 'function' ? props.formatter(value, modelValue.value, item) : value
+
+    if (formattedValue === undefined || formattedValue === null || formattedValue === '') {
+      return props.emptyText ?? '-'
+    }
+
+    return String(formattedValue)
+  }
+
+  const getTextClass = (item: FormItem) => getProps(item).class
+
   const getDividerShowLine = (item: FormItem): boolean => getProps(item).showLine !== false
 
   const getDividerShowLabel = (item: FormItem): boolean => getProps(item).showLabel !== false
@@ -1206,6 +1243,15 @@
         font-size: 12px;
         line-height: 20px;
         color: var(--el-text-color-secondary);
+      }
+
+      &__text {
+        display: inline-flex;
+        align-items: center;
+        min-height: 32px;
+        line-height: 20px;
+        color: var(--el-text-color-primary);
+        word-break: break-all;
       }
     }
 

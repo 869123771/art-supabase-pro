@@ -213,7 +213,13 @@
   import ArtUploadImage from '@/components/core/forms/art-upload-image/index.vue'
   import ArtTable from '@/components/core/tables/art-table/index.vue'
   import type { ColumnOption } from '@/types'
-  import { addOrder, fetchCargoList, fetchCustomerPriceList, fetchStationOptions } from '@/api/tms'
+  import {
+    addOrder,
+    fetchCargoList,
+    fetchCustomerDefaultAddress,
+    fetchCustomerPriceList,
+    fetchStationOptions
+  } from '@/api/tms'
   import { useUserStore } from '@/store/modules/user'
   import CustomerSelectorDialog from './modules/customer-selector-dialog.vue'
   import PrintCountDialog from './modules/print-count-dialog.vue'
@@ -224,6 +230,7 @@
   type CargoItem = Api.Tms.Order.CargoItem
   type CargoMaster = Api.Tms.BasicData.Cargo
   type CustomerItem = Api.Tms.Order.CustomerSelectorItem
+  type CustomerAddress = Api.Tms.BasicData.CustomerAddress
   type CustomerPrice = Api.Tms.BasicData.CustomerPrice
   type CustomerPriceCargoItem = Api.Tms.BasicData.CustomerPriceCargoItem
   type StationOption = Api.Tms.Order.StationOption
@@ -240,13 +247,19 @@
     Pick<
       OrderForm,
       | 'shippingCustomerId'
+      | 'shippingAddressId'
       | 'shippingContactName'
       | 'shippingContactPhone'
       | 'shippingAddressDetail'
+      | 'shippingLongitude'
+      | 'shippingLatitude'
       | 'receivingCustomerId'
+      | 'receivingAddressId'
       | 'receivingContactName'
       | 'receivingContactPhone'
       | 'receivingAddressDetail'
+      | 'receivingLongitude'
+      | 'receivingLatitude'
     >
   >
 
@@ -305,6 +318,7 @@
   }
 
   const pageRef = ref<HTMLElement>()
+  const router = useRouter()
   const userStore = useUserStore()
   const { getDictMap } = storeToRefs(userStore)
   const stationFormRef = ref<FormExpose>()
@@ -692,12 +706,18 @@
       deliveryMethod: 'door',
       shippingCustomerId: null,
       receivingCustomerId: null,
+      shippingAddressId: null,
+      receivingAddressId: null,
       shippingContactName: '',
       shippingContactPhone: '',
       shippingAddressDetail: '',
+      shippingLongitude: null,
+      shippingLatitude: null,
       receivingContactName: '',
       receivingContactPhone: '',
       receivingAddressDetail: '',
+      receivingLongitude: null,
+      receivingLatitude: null,
       cargoItems: [createInitialCargoItem()],
       cargoQuantityTotal: 0,
       cargoWeightTotal: 0,
@@ -868,28 +888,65 @@
   }
 
   async function handleCustomerSelect(mode: SelectorMode, row: CustomerItem): Promise<void> {
-    const address = [row.region, row.addressDetail].filter(Boolean).join(' ')
-    const contactName = row.contactName || row.customerName
+    Object.assign(form.data, await createCustomerContactPatch(mode, row))
+    await applyCustomerPriceTemplate(row.id, row)
+  }
+
+  async function createCustomerContactPatch(
+    mode: SelectorMode,
+    customer: CustomerItem
+  ): Promise<ContactPatch> {
+    const address = await fetchDefaultAddress(customer.id, mode)
+    return createAddressPatch(mode, customer, address)
+  }
+
+  async function fetchDefaultAddress(
+    customerId: string,
+    mode: SelectorMode
+  ): Promise<CustomerAddress | null> {
+    const { data } = await fetchCustomerDefaultAddress(customerId, mode)
+    return data ?? null
+  }
+
+  function createAddressPatch(
+    mode: SelectorMode,
+    customer: CustomerItem,
+    address?: CustomerAddress | null
+  ): ContactPatch {
+    const contactName = address?.contactName || customer.contactName || customer.customerName
+    const contactPhone = address?.contactPhone || customer.contactPhone || ''
+    const addressText = address
+      ? formatPriceAddress(address.region, address.addressDetail)
+      : formatPriceAddress(customer.region, customer.addressDetail)
+
     const patchMap: Record<SelectorMode, ContactPatch> = {
       shipping: {
-        shippingCustomerId: row.id,
+        shippingCustomerId: customer.id,
+        shippingAddressId: address?.id ?? null,
         shippingContactName: contactName,
-        shippingContactPhone: row.contactPhone || '',
-        shippingAddressDetail: address
+        shippingContactPhone: contactPhone,
+        shippingAddressDetail: addressText,
+        shippingLongitude: address?.longitude ?? null,
+        shippingLatitude: address?.latitude ?? null
       },
       receiving: {
-        receivingCustomerId: row.id,
+        receivingCustomerId: customer.id,
+        receivingAddressId: address?.id ?? null,
         receivingContactName: contactName,
-        receivingContactPhone: row.contactPhone || '',
-        receivingAddressDetail: address
+        receivingContactPhone: contactPhone,
+        receivingAddressDetail: addressText,
+        receivingLongitude: address?.longitude ?? null,
+        receivingLatitude: address?.latitude ?? null
       }
     }
 
-    Object.assign(form.data, patchMap[mode])
-    await applyCustomerPriceTemplate(row.id)
+    return patchMap[mode]
   }
 
-  async function applyCustomerPriceTemplate(customerId: string): Promise<void> {
+  async function applyCustomerPriceTemplate(
+    customerId: string,
+    customer: CustomerItem
+  ): Promise<void> {
     try {
       const { data } = await fetchCustomerPriceList({
         customerId,
@@ -900,6 +957,7 @@
       if (!price) return
 
       Object.assign(form.data, createCustomerPricePatch(price))
+      await applyDefaultAddressesForPriceCustomer(customer)
       if (price.cargoItems?.length) {
         form.data.cargoItems = price.cargoItems.map(createCargoItemFromCustomerPrice)
       }
@@ -911,19 +969,43 @@
     }
   }
 
+  async function applyDefaultAddressesForPriceCustomer(customer: CustomerItem): Promise<void> {
+    const [shippingAddress, receivingAddress] = await Promise.all([
+      fetchDefaultAddress(customer.id, 'shipping'),
+      fetchDefaultAddress(customer.id, 'receiving')
+    ])
+
+    const patch: ContactPatch = {}
+    if (shippingAddress && !form.data.shippingAddressId)
+      Object.assign(patch, createAddressPatch('shipping', customer, shippingAddress))
+    if (receivingAddress && !form.data.receivingAddressId)
+      Object.assign(patch, createAddressPatch('receiving', customer, receivingAddress))
+    Object.assign(form.data, patch)
+  }
+
   function createCustomerPricePatch(price: CustomerPrice): Partial<OrderForm> {
     return {
       shippingCustomerId: price.customerId,
       receivingCustomerId: price.customerId,
-      shippingContactName: textValue(price.shippingContactName),
-      shippingContactPhone: textValue(price.shippingContactPhone),
-      shippingAddressDetail: formatPriceAddress(price.originRegion, price.shippingAddressDetail),
-      receivingContactName: textValue(price.receivingContactName),
-      receivingContactPhone: textValue(price.receivingContactPhone),
-      receivingAddressDetail: formatPriceAddress(
-        price.destinationRegion,
-        price.receivingAddressDetail
-      ),
+      shippingAddressId: price.shippingAddressId || form.data.shippingAddressId || null,
+      receivingAddressId: price.receivingAddressId || form.data.receivingAddressId || null,
+      shippingContactName: textValue(price.shippingContactName) || form.data.shippingContactName,
+      shippingContactPhone: textValue(price.shippingContactPhone) || form.data.shippingContactPhone,
+      shippingAddressDetail:
+        price.shippingAddressDetail ||
+        form.data.shippingAddressDetail ||
+        formatPriceAddress(price.originRegion, null),
+      shippingLongitude: price.shippingLongitude ?? form.data.shippingLongitude ?? null,
+      shippingLatitude: price.shippingLatitude ?? form.data.shippingLatitude ?? null,
+      receivingContactName: textValue(price.receivingContactName) || form.data.receivingContactName,
+      receivingContactPhone:
+        textValue(price.receivingContactPhone) || form.data.receivingContactPhone,
+      receivingAddressDetail:
+        price.receivingAddressDetail ||
+        form.data.receivingAddressDetail ||
+        formatPriceAddress(price.destinationRegion, null),
+      receivingLongitude: price.receivingLongitude ?? form.data.receivingLongitude ?? null,
+      receivingLatitude: price.receivingLatitude ?? form.data.receivingLatitude ?? null,
       transportFee: moneyValue(price.transportFee),
       unloadingFee: moneyValue(price.loadingFee),
       transferFee: moneyValue(price.transferFee),
@@ -959,20 +1041,29 @@
   function swapContacts(): void {
     const shipping = {
       id: form.data.shippingCustomerId,
+      addressId: form.data.shippingAddressId,
       name: form.data.shippingContactName,
       phone: form.data.shippingContactPhone,
-      address: form.data.shippingAddressDetail
+      address: form.data.shippingAddressDetail,
+      longitude: form.data.shippingLongitude,
+      latitude: form.data.shippingLatitude
     }
 
     Object.assign(form.data, {
       shippingCustomerId: form.data.receivingCustomerId,
+      shippingAddressId: form.data.receivingAddressId,
       shippingContactName: form.data.receivingContactName,
       shippingContactPhone: form.data.receivingContactPhone,
       shippingAddressDetail: form.data.receivingAddressDetail,
+      shippingLongitude: form.data.receivingLongitude,
+      shippingLatitude: form.data.receivingLatitude,
       receivingCustomerId: shipping.id,
+      receivingAddressId: shipping.addressId,
       receivingContactName: shipping.name,
       receivingContactPhone: shipping.phone,
-      receivingAddressDetail: shipping.address
+      receivingAddressDetail: shipping.address,
+      receivingLongitude: shipping.longitude,
+      receivingLatitude: shipping.latitude
     })
   }
 
@@ -1004,7 +1095,8 @@
     page.saving = true
     try {
       await addOrder(normalizePayload())
-      resetForm()
+      ElMessage.success('开单成功')
+      await router.push({ name: 'TmsOrderList' })
     } catch {
       // API 层已提示错误，页面保留当前输入。
     } finally {
@@ -1025,12 +1117,6 @@
 
   function handlePrintConfirm(kind: PrintKind, count: number): void {
     ElMessage.success(`${kind === 'waybill' ? '运单' : '标签'}打印数量：${count}`)
-  }
-
-  function resetForm(): void {
-    Object.assign(form.data, createInitialForm())
-    fillDefaultOptions()
-    void nextTick(clearFormsValidate)
   }
 
   function clearFormsValidate(): void {
@@ -1087,6 +1173,12 @@
     payload.originStationId = nullableText(raw.originStationId)
     payload.destinationStationId = nullableText(raw.destinationStationId)
     payload.transferStationId = nullableText(raw.transferStationId)
+    payload.shippingAddressId = nullableText(raw.shippingAddressId)
+    payload.receivingAddressId = nullableText(raw.receivingAddressId)
+    payload.shippingLongitude = nullableNumber(raw.shippingLongitude)
+    payload.shippingLatitude = nullableNumber(raw.shippingLatitude)
+    payload.receivingLongitude = nullableNumber(raw.receivingLongitude)
+    payload.receivingLatitude = nullableNumber(raw.receivingLatitude)
     payload.originStation =
       findStationOption('origin', raw.originStationId)?.stationName || textValue(raw.originStation)
     payload.destinationStation =

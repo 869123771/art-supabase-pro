@@ -203,6 +203,27 @@ export async function fetchCustomerAddressList(params: CustomerAddressSearchPara
   })
 }
 
+export async function fetchCustomerDefaultAddress(
+  customerId: string,
+  addressType: CustomerAddress['addressType']
+) {
+  const query = supabase
+    .from('tms_customer_address')
+    .select('*')
+    .eq('customer_id', customerId)
+    .eq('address_type', addressType)
+    .order('is_default', { ascending: false })
+    .order('update_time', { ascending: false, nullsFirst: false })
+    .order('create_time', { ascending: false, nullsFirst: false })
+    .limit(1)
+    .maybeSingle()
+
+  return await responseHandle<CustomerAddress | null>(() => query as any, {
+    ignoreCheck: true,
+    showErrorMessage: true
+  })
+}
+
 export async function addCustomerAddress(params: CustomerAddress) {
   return await responseHandle<CustomerAddress>(
     () =>
@@ -1288,6 +1309,106 @@ const createCancelDispatchPayload = () => ({
   dispatchBy: null
 })
 
+const toNullableNumberValue = (value?: number | string | null): number | null => {
+  if (value === null || value === undefined || value === '') return null
+  const numberValue = Number(value)
+  return Number.isFinite(numberValue) ? numberValue : null
+}
+
+const createWaybillRoutePoints = (order: WaybillRecord) => {
+  const shipperLongitude = toNullableNumberValue(order.shippingLongitude)
+  const shipperLatitude = toNullableNumberValue(order.shippingLatitude)
+  const receiverLongitude = toNullableNumberValue(order.receivingLongitude)
+  const receiverLatitude = toNullableNumberValue(order.receivingLatitude)
+  const points: Array<Record<string, unknown>> = []
+
+  if (shipperLongitude !== null && shipperLatitude !== null) {
+    points.push({
+      type: 'shipper',
+      name: order.shippingContactName,
+      address: order.shippingAddressDetail,
+      longitude: shipperLongitude,
+      latitude: shipperLatitude,
+      lng: shipperLongitude,
+      lat: shipperLatitude
+    })
+  }
+
+  if (receiverLongitude !== null && receiverLatitude !== null) {
+    points.push({
+      type: 'receiver',
+      name: order.receivingContactName,
+      address: order.receivingAddressDetail,
+      longitude: receiverLongitude,
+      latitude: receiverLatitude,
+      lng: receiverLongitude,
+      lat: receiverLatitude
+    })
+  }
+
+  return points
+}
+
+const createDriverWaybillPayload = (order: WaybillRecord) => {
+  const firstCargo = order.cargoItems?.find((item) => item.cargoName)
+  const cargoWeightKg = toNullableNumberValue(order.cargoWeightTotal)
+  const cargoQuantity = toNullableNumberValue(order.cargoQuantityTotal)
+
+  return {
+    tenantId: order.tenantId,
+    waybillNo: order.orderNo,
+    status: 'pending',
+    driverId: order.dispatchDriverId || null,
+    vehicleId: order.dispatchVehicleId || null,
+    shipperAddressId: order.shippingAddressId || null,
+    receiverAddressId: order.receivingAddressId || null,
+    originCity: order.originStation,
+    destinationCity: order.destinationStation,
+    shipperName: order.shippingContactName || null,
+    shipperPhone: order.shippingContactPhone || null,
+    shipperAddress: order.shippingAddressDetail,
+    shipperLongitude: toNullableNumberValue(order.shippingLongitude),
+    shipperLatitude: toNullableNumberValue(order.shippingLatitude),
+    receiverName: order.receivingContactName || null,
+    receiverPhone: order.receivingContactPhone || null,
+    receiverAddress: order.receivingAddressDetail,
+    receiverLongitude: toNullableNumberValue(order.receivingLongitude),
+    receiverLatitude: toNullableNumberValue(order.receivingLatitude),
+    plannedLoadTime: order.plannedDepartureTime || null,
+    plannedUnloadTime: order.plannedArrivalTime || null,
+    cargoName: firstCargo?.cargoName || order.cargoNo || order.orderNo,
+    cargoWeightTon:
+      cargoWeightKg === null ? null : Math.round((cargoWeightKg / 1000) * 1000) / 1000,
+    cargoVolumeM3: toNullableNumberValue(order.cargoVolumeTotal),
+    cargoQuantity: cargoQuantity === null ? null : String(cargoQuantity),
+    freightAmount: toNullableNumberValue(order.totalFee) ?? 0,
+    routePoints: createWaybillRoutePoints(order),
+    remark: order.dispatchRemark || order.orderRemark || null
+  }
+}
+
+const upsertDriverWaybillFromOrder = async (order: WaybillRecord): Promise<void> => {
+  await responseHandle(
+    () =>
+      supabase.from('tms_waybill').upsert(keysToSnakeDeep(createDriverWaybillPayload(order)), {
+        onConflict: 'tenant_id,waybill_no'
+      }) as any,
+    { breakReturn: true }
+  )
+}
+
+const cancelDriverWaybillFromOrder = async (order: WaybillRecord): Promise<void> => {
+  await responseHandle(
+    () =>
+      supabase
+        .from('tms_waybill')
+        .update(keysToSnakeDeep({ status: 'cancelled', cancelledAt: new Date().toISOString() }))
+        .eq('tenant_id', order.tenantId)
+        .eq('waybill_no', order.orderNo) as any,
+    { breakReturn: true }
+  )
+}
+
 export async function fetchWaybillList(
   params: WaybillSearchParams & Api.Common.CommonSearchParams
 ) {
@@ -1326,7 +1447,7 @@ export async function dispatchWaybill(params: WaybillDispatchPayload) {
   const id = params.id
   if (!id) throw new Error('缺少运单ID')
 
-  return await responseHandle<WaybillRecord>(
+  const result = await responseHandle<WaybillRecord>(
     () =>
       supabase
         .from('tms_order')
@@ -1336,13 +1457,15 @@ export async function dispatchWaybill(params: WaybillDispatchPayload) {
         .single() as any,
     { showMessage: true, breakReturn: true }
   )
+  if (result.data) await upsertDriverWaybillFromOrder(result.data)
+  return result
 }
 
 export async function dispatchWaybillBatch(params: WaybillDispatchPayload) {
   const ids = params.ids?.filter(Boolean) ?? []
   if (!ids.length) throw new Error('请选择需要配载的运单')
 
-  return await responseHandle<WaybillRecord[]>(
+  const result = await responseHandle<WaybillRecord[]>(
     () =>
       supabase
         .from('tms_order')
@@ -1351,10 +1474,12 @@ export async function dispatchWaybillBatch(params: WaybillDispatchPayload) {
         .select(ORDER_SELECT) as any,
     { showMessage: true, breakReturn: true }
   )
+  await Promise.all((result.data ?? []).map((order) => upsertDriverWaybillFromOrder(order)))
+  return result
 }
 
 export async function cancelWaybillDispatch(id: string) {
-  return await responseHandle<WaybillRecord>(
+  const result = await responseHandle<WaybillRecord>(
     () =>
       supabase
         .from('tms_order')
@@ -1364,10 +1489,12 @@ export async function cancelWaybillDispatch(id: string) {
         .single() as any,
     { showMessage: true, breakReturn: true }
   )
+  if (result.data) await cancelDriverWaybillFromOrder(result.data)
+  return result
 }
 
 export async function cancelWaybillDispatchBatch(ids: string[]) {
-  return await responseHandle<WaybillRecord[]>(
+  const result = await responseHandle<WaybillRecord[]>(
     () =>
       supabase
         .from('tms_order')
@@ -1376,6 +1503,8 @@ export async function cancelWaybillDispatchBatch(ids: string[]) {
         .select(ORDER_SELECT) as any,
     { showMessage: true, breakReturn: true }
   )
+  await Promise.all((result.data ?? []).map((order) => cancelDriverWaybillFromOrder(order)))
+  return result
 }
 
 export async function cancelWaybillOrder(id: string) {

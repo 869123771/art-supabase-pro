@@ -22,19 +22,30 @@
       <div v-if="index < steps.length - 1" class="order-status-steps__line" />
 
       <div class="order-status-steps__content">
-        <div class="order-status-steps__title">{{ item.label }}</div>
-        <div class="order-status-steps__time">{{ timeText }}</div>
+        <div class="order-status-steps__title">
+          <ArtDictDisplay
+            v-if="dictCode && item.value !== 'created'"
+            :dict-code="dictCode"
+            :value="item.value"
+            display="text"
+          />
+          <template v-else>{{ item.label }}</template>
+        </div>
+        <div class="order-status-steps__time">{{ item.timeText ?? timeText }}</div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+  import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
+
   defineOptions({ name: 'OrderStatusSteps' })
 
   interface StatusStep {
     label: string
     value: string
+    timeText?: string
   }
 
   withDefaults(
@@ -42,9 +53,11 @@
       steps: StatusStep[]
       activeIndex: number
       timeText?: string
+      dictCode?: string
     }>(),
     {
-      timeText: '-'
+      timeText: '-',
+      dictCode: 'tmsOrderStatus'
     }
   )
 

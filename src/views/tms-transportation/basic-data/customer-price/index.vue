@@ -50,6 +50,7 @@
   }
 
   const router = useRouter()
+  const route = useRoute()
   const { getDictMap } = storeToRefs(useUserStore())
   const tableQueryRef = ref<ArtTableQueryExpose>()
 
@@ -292,6 +293,24 @@
       from,
       to
     })
+  }
+
+  onActivated(() => {
+    if (!route.query.refresh) return
+    const refreshType = String(route.query.refreshType || '')
+    void refreshAfterEdit(refreshType)
+  })
+
+  async function refreshAfterEdit(refreshType: string): Promise<void> {
+    if (refreshType === 'create') {
+      await tableQueryRef.value?.refreshCreate()
+    } else {
+      await tableQueryRef.value?.refreshUpdate()
+    }
+    const query = { ...route.query }
+    delete query.refresh
+    delete query.refreshType
+    await router.replace({ name: 'TmsCustomerPrice', query })
   }
 
   const normalizeSearchParams = (params: SearchModel): SearchParams => {

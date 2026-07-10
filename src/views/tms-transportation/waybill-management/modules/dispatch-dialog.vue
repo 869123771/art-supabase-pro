@@ -355,11 +355,6 @@
 
     :deep(.dispatch-dialog__form) {
       padding: 0;
-
-      .el-row {
-        margin-right: 0 !important;
-        margin-left: 0 !important;
-      }
     }
   }
 

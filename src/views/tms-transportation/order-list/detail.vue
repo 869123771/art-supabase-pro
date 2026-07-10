@@ -2,11 +2,7 @@
   <div v-loading="detail.loading" class="order-detail">
     <section class="order-detail__section order-detail__steps-card art-card-xs">
       <ElPageHeader :icon="ArrowLeft" @back="goBack" />
-      <OrderStatusSteps
-        :steps="detail.statusSteps"
-        :active-index="detail.activeStep"
-        :time-text="formatStepTime(detail.data?.createTime)"
-      />
+      <OrderStatusSteps :steps="detail.statusSteps" :active-index="detail.activeStep" />
     </section>
 
     <section class="order-detail__section art-card-xs">
@@ -37,9 +33,11 @@
           <ArtDictDisplay dict-code="tmsOrderDeliveryMethod" :value="detail.data?.deliveryMethod" />
         </ElDescriptionsItem>
         <ElDescriptionsItem label="当前状态">
-          <ElTag :type="detail.statusMeta.type" effect="light">
-            {{ detail.statusMeta.label }}
-          </ElTag>
+          <ArtDictDisplay
+            dict-code="tmsOrderStatus"
+            :value="normalizedOrderStatus"
+            display="auto"
+          />
         </ElDescriptionsItem>
         <ElDescriptionsItem label="运输方式">
           <ArtDictDisplay dict-code="tmsOrderTransportMode" :value="detail.data?.transportMode" />
@@ -184,13 +182,13 @@
 <script setup lang="tsx">
   import type { ComputedRef, UnwrapNestedRefs } from 'vue'
   import { ArrowLeft } from '@element-plus/icons-vue'
-  import { ElTag } from 'element-plus'
   import { toNumber, trim } from 'lodash-es'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
   import ArtTable from '@/components/core/tables/art-table/index.vue'
   import type { ColumnOption } from '@/types'
   import { formatWithDayjs } from '@/utils/time'
+  import { useUserStore } from '@/store/modules/user'
   import { fetchOrderDetail } from '@/api/tms'
   import OrderStatusSteps from './modules/order-status-steps.vue'
 
@@ -202,6 +200,7 @@
   interface StatusStep {
     label: string
     value: string
+    timeText?: string
   }
 
   type OrderStatusValue =
@@ -215,66 +214,51 @@
     | 'completed'
     | 'cancelled'
 
-  const orderStatusMetas: Record<
-    OrderStatusValue,
-    { label: string; type: 'primary' | 'success' | 'info' | 'warning' | 'danger' }
-  > = {
-    created: { label: '待配载', type: 'warning' },
-    pending_load: { label: '待配载', type: 'warning' },
-    loaded: { label: '待接单', type: 'primary' },
-    pending_order: { label: '待接单', type: 'primary' },
-    pending_pickup: { label: '待提货', type: 'warning' },
-    transporting: { label: '运输中', type: 'primary' },
-    signed: { label: '待签收', type: 'warning' },
-    completed: { label: '已完成', type: 'success' },
-    cancelled: { label: '已取消', type: 'danger' }
-  }
-
-  const orderStatusSteps: StatusStep[] = [
-    { label: '开单', value: 'created' },
-    { label: '待配载', value: 'pending_load' },
-    { label: '待接单', value: 'pending_order' },
-    { label: '待提货', value: 'pending_pickup' },
-    { label: '运输中', value: 'transporting' },
-    { label: '待签收', value: 'signed' },
-    { label: '已完成', value: 'completed' }
+  const orderStatusStepValues: OrderStatusValue[] = [
+    'created',
+    'pending_load',
+    'pending_order',
+    'pending_pickup',
+    'transporting',
+    'signed',
+    'completed'
   ]
+  const orderStatusStepOrder: OrderStatusValue[] = [...orderStatusStepValues, 'cancelled']
 
   interface DetailGroup {
     loading: boolean
     data?: OrderRecord
     statusSteps: ComputedRef<StatusStep[]>
     activeStep: ComputedRef<number>
-    statusMeta: ComputedRef<{
-      label: string
-      type: 'primary' | 'success' | 'info' | 'warning' | 'danger'
-    }>
     cargoItems: ComputedRef<CargoItem[]>
     cargoColumns: ComputedRef<ColumnOption<CargoItem>[]>
   }
 
   const route = useRoute()
   const router = useRouter()
+  const { getDictMap } = storeToRefs(useUserStore())
+  const normalizedOrderStatus = computed(() => normalizeOrderStatus(detail.data?.orderStatus))
 
   const detail: UnwrapNestedRefs<DetailGroup> = reactive<DetailGroup>({
     loading: false,
     data: undefined,
-    statusSteps: computed(() =>
-      detail.data?.orderStatus === 'cancelled'
-        ? [...orderStatusSteps, { label: '已取消', value: 'cancelled' }]
-        : orderStatusSteps
-    ),
+    statusSteps: computed(() => {
+      const values: OrderStatusValue[] =
+        normalizedOrderStatus.value === 'cancelled'
+          ? [...orderStatusStepValues, 'cancelled']
+          : orderStatusStepValues
+
+      return values.map((value) => ({
+        value,
+        label: getOrderStatusLabel(value),
+        timeText: getOrderStatusTimeText(value)
+      }))
+    }),
     activeStep: computed(() => {
       const index = detail.statusSteps.findIndex(
-        (item) => item.value === normalizeOrderStatus(detail.data?.orderStatus)
+        (item) => item.value === normalizedOrderStatus.value
       )
       return index < 0 ? 0 : index
-    }),
-    statusMeta: computed(() => {
-      const status = normalizeOrderStatus(detail.data?.orderStatus)
-      return status
-        ? orderStatusMetas[status] || { label: status, type: 'info' }
-        : { label: '-', type: 'info' }
     }),
     cargoItems: computed(() => detail.data?.cargoItems ?? []),
     cargoColumns: computed<ColumnOption<CargoItem>[]>(() => [
@@ -318,6 +302,44 @@
     if (status === 'created') return 'pending_load'
     if (status === 'loaded') return 'pending_order'
     return status as OrderStatusValue
+  }
+
+  function getOrderStatusLabel(status: OrderStatusValue): string {
+    if (status === 'created') return '开单'
+
+    const normalizedStatus = normalizeOrderStatus(status)
+    const dictItem = getDictMap.value.tmsOrderStatus?.find(
+      (item) => item.value === normalizedStatus
+    )
+    return dictItem?.label || normalizedStatus || '-'
+  }
+
+  function getOrderStatusTimeText(status: OrderStatusValue): string {
+    if (!isOrderStatusReached(status)) return '-'
+
+    const statusTimeMap: Partial<Record<OrderStatusValue, string | null | undefined>> = {
+      created: detail.data?.createTime,
+      pending_load: detail.data?.createTime,
+      pending_order: detail.data?.dispatchedAt,
+      signed: detail.data?.signedAt ?? getCurrentStatusFallbackTime('signed'),
+      completed: detail.data?.signedAt,
+      cancelled: detail.data?.updateTime
+    }
+
+    return formatStepTime(statusTimeMap[status] ?? getCurrentStatusFallbackTime(status))
+  }
+
+  function isOrderStatusReached(status: OrderStatusValue): boolean {
+    const currentStatus = normalizedOrderStatus.value
+    if (!currentStatus) return false
+
+    const statusIndex = orderStatusStepOrder.indexOf(status)
+    const currentIndex = orderStatusStepOrder.indexOf(currentStatus)
+    return statusIndex >= 0 && currentIndex >= 0 && statusIndex <= currentIndex
+  }
+
+  function getCurrentStatusFallbackTime(status: OrderStatusValue): string | null | undefined {
+    return normalizedOrderStatus.value === status ? detail.data?.updateTime : undefined
   }
 
   function formatValue(value?: string | number | null): string {
@@ -366,6 +388,11 @@
     &__steps-card {
       display: grid;
       gap: 8px;
+      :deep(.el-page-header) {
+        .el-divider {
+          display: none;
+        }
+      }
     }
 
     &__contact-card {
