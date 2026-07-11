@@ -10,9 +10,11 @@ import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
 import ArtButtonMore, {
   type ButtonMoreItem
 } from '@/components/core/forms/art-button-more/index.vue'
+import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
 import { ColumnOption } from '@/types'
 import { pageInfoHandler } from '@/utils/table/tableUtils'
 import { formatWithDayjs } from '@/utils/time'
+import { useUserStore } from '@/store/modules/user'
 import {
   cancelWaybillOrder,
   exportWaybillList,
@@ -40,6 +42,49 @@ export interface WaybillListContext {
 }
 
 export const pendingDispatchStatuses = ['pending']
+
+const waybillDispatchStatusFallbackMap: Record<string, Api.DataCenter.DictListItem> = {
+  pending: {
+    name: '待运载',
+    code: 'pending',
+    status: '1',
+    label: '待运载',
+    value: 'pending',
+    color: 'var(--el-color-primary)'
+  },
+  loaded: {
+    name: '待发车',
+    code: 'loaded',
+    status: '1',
+    label: '待发车',
+    value: 'loaded',
+    color: 'var(--el-color-primary)'
+  },
+  transporting: {
+    name: '运输中',
+    code: 'transporting',
+    status: '1',
+    label: '运输中',
+    value: 'transporting',
+    color: 'var(--el-color-primary)'
+  },
+  completed: {
+    name: '已完成',
+    code: 'completed',
+    status: '1',
+    label: '已完成',
+    value: 'completed',
+    color: 'var(--el-color-success)'
+  },
+  cancelled: {
+    name: '已取消',
+    code: 'cancelled',
+    status: '1',
+    label: '已取消',
+    value: 'cancelled',
+    color: 'var(--el-color-danger)'
+  }
+}
 
 export const createInitialWaybillSearch = (): WaybillSearchParams => ({
   cargoKeyword: '',
@@ -368,7 +413,7 @@ export const createWaybillColumns = (
       label: context.mode === 'pending' ? '状态' : '发车状态',
       width: 100,
       fixed: 'right',
-      dict: { code: 'tmsWaybillDispatchStatus', display: 'badge' }
+      formatter: (row) => formatWaybillDispatchStatus(row)
     },
     {
       prop: 'operation',
@@ -388,6 +433,23 @@ export const createWaybillColumns = (
   )
 
   return columns
+}
+
+function formatWaybillDispatchStatus(row: WaybillRecord) {
+  const status = String(row.dispatchStatus || '').trim()
+  const userStore = useUserStore()
+  const fallbackItem = userStore.getDictItemByValue('tmsWaybillDispatchStatus', status)
+    ? undefined
+    : waybillDispatchStatusFallbackMap[status]
+
+  return (
+    <ArtDictDisplay
+      dictCode="tmsWaybillDispatchStatus"
+      value={status}
+      item={fallbackItem}
+      display="badge"
+    />
+  )
 }
 
 function getMoreActions(context: WaybillListContext, row: WaybillRecord): ButtonMoreItem[] {

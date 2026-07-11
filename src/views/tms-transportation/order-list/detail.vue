@@ -321,6 +321,8 @@
       created: detail.data?.createTime,
       pending_load: detail.data?.createTime,
       pending_order: detail.data?.dispatchedAt,
+      pending_pickup: detail.data?.driverWaybillLoadedAt ?? detail.data?.driverWaybillDepartedAt,
+      transporting: detail.data?.driverWaybillDepartedAt ?? detail.data?.driverWaybillLoadedAt,
       signed: detail.data?.signedAt ?? getCurrentStatusFallbackTime('signed'),
       completed: detail.data?.signedAt,
       cancelled: detail.data?.updateTime

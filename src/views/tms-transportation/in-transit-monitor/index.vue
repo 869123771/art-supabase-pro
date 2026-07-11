@@ -1,235 +1,281 @@
 <template>
   <div class="transit-screen" v-loading="screen.loading">
-    <header class="transit-screen__header">
-      <h1>TMS 运输在途监控</h1>
-      <nav class="screen-tabs">
-        <button type="button" class="is-active">实时监控</button>
-        <button type="button">历史轨迹</button>
-        <button type="button">统计分析</button>
-      </nav>
-      <div class="header-status">
-        <strong>{{ headerTimeText }}</strong>
-        <span><i />系统运行正常</span>
-        <button type="button" @click="goHome">返回主页</button>
+    <div class="transit-screen__viewport">
+      <div class="transit-screen__stage">
+        <header class="transit-screen__header">
+          <h1>TMS 运输在途监控</h1>
+          <nav class="screen-tabs">
+            <button type="button" class="is-active">实时监控</button>
+            <button type="button">历史轨迹</button>
+            <button type="button">统计分析</button>
+          </nav>
+          <div class="header-status">
+            <strong>{{ headerTimeText }}</strong>
+            <span><i />系统运行正常</span>
+            <button type="button" @click="goHome">返回主页</button>
+          </div>
+        </header>
+
+        <main class="transit-screen__body">
+          <section class="monitor-map">
+            <div ref="chartRef" class="monitor-map__chart" />
+            <div class="monitor-map__heading">
+              <strong>单车轨迹监控</strong>
+              <span>{{ activeOrder?.routeName || '暂无线路' }}</span>
+            </div>
+            <div v-if="activeOrder" class="monitor-map__track-chip">
+              {{ activeOrder.plateNo }} · {{ activeOrder.orderNo }}
+            </div>
+            <div class="monitor-map__tools">
+              <ElButton circle :icon="ZoomIn" title="放大地图" @click="zoomMap('in')" />
+              <ElButton circle :icon="ZoomOut" title="缩小地图" @click="zoomMap('out')" />
+              <ElButton circle :icon="RefreshRight" title="定位当前车辆" @click="resetMapView" />
+            </div>
+
+            <section class="screen-panel map-float map-float--overview">
+              <div class="screen-panel__title">
+                <strong>运输概况</strong>
+                <span>{{ formatRefreshTime(screen.lastRefreshTime) }}</span>
+              </div>
+              <div class="progress-lines">
+                <div v-for="item in overviewBars" :key="item.label" class="progress-line">
+                  <div>
+                    <span>{{ item.label }}</span>
+                    <strong>{{ item.value }}</strong>
+                  </div>
+                  <i>
+                    <b :style="{ width: `${item.percent}%`, background: item.color }" />
+                  </i>
+                </div>
+              </div>
+            </section>
+
+            <section v-if="alertItems.length > 0" class="screen-panel map-float map-float--alerts">
+              <div class="screen-panel__title">
+                <strong>实时报警</strong>
+                <span>{{ alertItems.length }} 条</span>
+              </div>
+              <ElScrollbar class="alert-list">
+                <div v-for="item in alertItems" :key="item.key" class="alert-item">
+                  <i :class="`alert-item__level alert-item__level--${item.level}`" />
+                  <div>
+                    <strong>{{ item.title }}</strong>
+                    <p>{{ item.content }}</p>
+                  </div>
+                  <span>{{ item.time }}</span>
+                </div>
+              </ElScrollbar>
+            </section>
+          </section>
+
+          <aside class="transit-screen__left">
+            <section class="screen-panel screen-panel--filters">
+              <ElInput
+                v-model="screen.keyword"
+                :prefix-icon="Search"
+                clearable
+                placeholder="请输入车辆运单号"
+              />
+              <ElSelect v-model="screen.status" clearable placeholder="所有状态">
+                <ElOption
+                  v-for="item in monitorStatusOptions"
+                  :key="String(item.value)"
+                  :label="item.label"
+                  :value="String(item.value)"
+                />
+              </ElSelect>
+              <ElSelect v-model="screen.region" clearable placeholder="所有区域">
+                <ElOption
+                  v-for="item in regionOptions"
+                  :key="item.value"
+                  :label="item.label"
+                  :value="item.value"
+                />
+              </ElSelect>
+              <div class="transit-metrics">
+                <div class="transit-metric">
+                  <span>今日运输量</span>
+                  <strong>{{ overview.todayCount }}</strong>
+                  <em>较昨日 +{{ overview.growthRate }}%</em>
+                </div>
+                <div class="transit-metric">
+                  <span>准时到达率</span>
+                  <strong>{{ overview.onTimeRate }}%</strong>
+                  <em :class="{ 'is-warning': overview.delayedCount > 0 }">
+                    延误 {{ overview.delayedCount }} 单
+                  </em>
+                </div>
+              </div>
+            </section>
+
+            <section class="screen-panel screen-panel--list">
+              <div class="screen-panel__title">
+                <strong>在线车辆({{ filteredOrders.length }}/{{ monitorOrders.length }})</strong>
+              </div>
+              <ElScrollbar class="vehicle-list">
+                <button
+                  v-for="item in filteredOrders"
+                  :key="item.id"
+                  type="button"
+                  class="vehicle-card"
+                  :class="{ 'is-active': item.id === screen.selectedOrderId }"
+                  @click="selectOrder(item.id)"
+                >
+                  <div class="vehicle-card__top">
+                    <strong>{{ item.plateNo }}</strong>
+                    <span
+                      class="vehicle-card__status"
+                      :style="{
+                        color: item.statusColor,
+                        backgroundColor: withAlpha(item.statusColor, 0.18)
+                      }"
+                    >
+                      {{ item.statusLabel }}
+                    </span>
+                  </div>
+                  <p>
+                    <ArtDictDisplay
+                      dict-code="vehicleType"
+                      :value="getDictDisplayValue('vehicleType', item.vehicleTypeCode)"
+                      display="text"
+                      :empty-text="item.vehicleTypeLabel"
+                    />
+                  </p>
+                  <div class="vehicle-card__line">
+                    <span>{{ item.driverName }}</span>
+                    <span>{{ item.progress }}%</span>
+                  </div>
+                  <div class="vehicle-card__geo">
+                    经纬度：{{ formatCoordinate(item.longitude) }},
+                    {{ formatCoordinate(item.latitude) }}
+                  </div>
+                  <div class="vehicle-card__order">
+                    运单：{{ item.orderNo }}
+                    <span
+                      v-if="item.status === 'arrived'"
+                      class="vehicle-card__arrival"
+                      :class="{ 'is-delayed': item.arrivalDelayed }"
+                    >
+                      <ElIcon>
+                        <Clock v-if="item.arrivalDelayed" />
+                        <CircleCheckFilled v-else />
+                      </ElIcon>
+                      {{ item.arrivalText }}
+                    </span>
+                    <em v-else-if="item.delayed">延误{{ item.delayText }}</em>
+                  </div>
+                </button>
+                <ElEmpty
+                  v-if="filteredOrders.length === 0"
+                  description="暂无在途车辆"
+                  :image-size="72"
+                />
+              </ElScrollbar>
+            </section>
+          </aside>
+
+          <aside class="transit-screen__right">
+            <section class="screen-panel screen-panel--detail">
+              <div class="screen-panel__title">
+                <strong>车辆详情</strong>
+                <ElButton link :icon="MoreFilled" @click="openOrderDetail" />
+              </div>
+
+              <div class="detail-scroll">
+                <template v-if="activeOrder">
+                  <div class="detail-vehicle">
+                    <div class="detail-vehicle__icon">
+                      <img :src="activeOrder.vehicleImage" :alt="activeOrder.vehicleTypeLabel" />
+                    </div>
+                    <div>
+                      <strong>{{ activeOrder.plateNo }}</strong>
+                      <p>
+                        <ArtDictDisplay
+                          dict-code="vehicleType"
+                          :value="getDictDisplayValue('vehicleType', activeOrder.vehicleTypeCode)"
+                          display="text"
+                          :empty-text="activeOrder.vehicleTypeLabel"
+                        />
+                      </p>
+                    </div>
+                  </div>
+
+                  <div class="detail-speed">
+                    <div>
+                      <span>当前速度</span>
+                      <strong>{{ activeOrder.speed }}km/h</strong>
+                    </div>
+                    <div>
+                      <span>剩余里程</span>
+                      <strong>{{ activeOrder.remainingKm }}km</strong>
+                    </div>
+                  </div>
+
+                  <div class="detail-waybill">
+                    <span>当前运单</span>
+                    <strong>{{ activeOrder.orderNo }}</strong>
+                    <div class="detail-route">
+                      <div>
+                        <b>{{ activeOrder.origin }}</b>
+                        <em>{{ formatDateTime(activeOrder.plannedDepartureTime) }}</em>
+                      </div>
+                      <i>{{ activeOrder.progress }}%</i>
+                      <div>
+                        <b>{{ activeOrder.destination }}</b>
+                        <em>{{ formatDateTime(activeOrder.plannedArrivalTime) }}</em>
+                      </div>
+                    </div>
+                    <div class="detail-progress">
+                      <b :style="{ width: `${activeOrder.progress}%` }" />
+                    </div>
+                  </div>
+
+                  <div class="detail-cargo">
+                    <strong>货物信息</strong>
+                    <p v-for="item in activeOrder.cargoSummary" :key="item.label">
+                      <span>{{ item.label }}</span>
+                      <b>{{ item.value }}</b>
+                    </p>
+                  </div>
+
+                  <div class="detail-driver">
+                    <div class="detail-driver__avatar">{{
+                      activeOrder.driverName.slice(0, 1)
+                    }}</div>
+                    <div>
+                      <strong>{{ activeOrder.driverName }}</strong>
+                      <p>{{ activeOrder.driverPhone }}</p>
+                    </div>
+                  </div>
+
+                  <div class="detail-actions">
+                    <ElButton type="primary" :icon="Phone" @click="contactDriver"
+                      >联系司机</ElButton
+                    >
+                    <ElButton type="warning" :icon="Warning" @click="sendReminder"
+                      >发送提醒</ElButton
+                    >
+                  </div>
+                </template>
+
+                <ElEmpty v-else description="暂无车辆详情" :image-size="86" />
+              </div>
+            </section>
+          </aside>
+        </main>
       </div>
-    </header>
-
-    <main class="transit-screen__body">
-      <section class="monitor-map">
-        <div ref="chartRef" class="monitor-map__chart" />
-        <div class="monitor-map__heading">
-          <strong>单车轨迹监控</strong>
-          <span>{{ activeOrder?.routeName || '暂无线路' }}</span>
-        </div>
-        <div class="monitor-map__tools">
-          <ElButton :icon="ZoomIn" circle @click="zoomChinaMap('in')" />
-          <ElButton :icon="ZoomOut" circle @click="zoomChinaMap('out')" />
-          <ElButton :icon="RefreshRight" circle @click="resetChinaMapView" />
-          <span>{{ mapView.zoom }}级</span>
-        </div>
-        <div v-if="activeOrder" class="monitor-map__track-chip">
-          {{ activeOrder.plateNo }} · {{ activeOrder.orderNo }}
-        </div>
-
-        <section class="screen-panel map-float map-float--overview">
-          <div class="screen-panel__title">
-            <strong>运输概况</strong>
-            <span>{{ formatRefreshTime(screen.lastRefreshTime) }}</span>
-          </div>
-          <div class="progress-lines">
-            <div v-for="item in overviewBars" :key="item.label" class="progress-line">
-              <div>
-                <span>{{ item.label }}</span>
-                <strong>{{ item.value }}</strong>
-              </div>
-              <i>
-                <b :style="{ width: `${item.percent}%`, background: item.color }" />
-              </i>
-            </div>
-          </div>
-        </section>
-
-        <section class="screen-panel map-float map-float--alerts">
-          <div class="screen-panel__title">
-            <strong>实时报警</strong>
-            <span>{{ alertItems.length }} 条</span>
-          </div>
-          <ElScrollbar class="alert-list">
-            <div v-for="item in alertItems" :key="item.key" class="alert-item">
-              <i :class="`alert-item__level alert-item__level--${item.level}`" />
-              <div>
-                <strong>{{ item.title }}</strong>
-                <p>{{ item.content }}</p>
-              </div>
-              <span>{{ item.time }}</span>
-            </div>
-            <ElEmpty v-if="alertItems.length === 0" description="暂无报警" :image-size="64" />
-          </ElScrollbar>
-        </section>
-      </section>
-
-      <aside class="transit-screen__left">
-        <section class="screen-panel screen-panel--filters">
-          <ElInput
-            v-model="screen.keyword"
-            :prefix-icon="Search"
-            clearable
-            placeholder="请输入车辆运单号"
-          />
-          <ElSelect v-model="screen.status" clearable placeholder="所有状态">
-            <ElOption label="待提货" value="pending_pickup" />
-            <ElOption label="运输中" value="transporting" />
-          </ElSelect>
-          <ElSelect v-model="screen.region" clearable placeholder="所有区域">
-            <ElOption
-              v-for="item in regionOptions"
-              :key="item.value"
-              :label="item.label"
-              :value="item.value"
-            />
-          </ElSelect>
-          <div class="transit-metrics">
-            <div class="transit-metric">
-              <span>今日运输量</span>
-              <strong>{{ overview.todayCount }}</strong>
-              <em>较昨日 +{{ overview.growthRate }}%</em>
-            </div>
-            <div class="transit-metric">
-              <span>准时到达率</span>
-              <strong>{{ overview.onTimeRate }}%</strong>
-              <em :class="{ 'is-warning': overview.delayedCount > 0 }">
-                延误 {{ overview.delayedCount }} 单
-              </em>
-            </div>
-          </div>
-        </section>
-
-        <section class="screen-panel screen-panel--list">
-          <div class="screen-panel__title">
-            <strong>在线车辆({{ filteredOrders.length }}/{{ monitorOrders.length }})</strong>
-          </div>
-          <ElScrollbar class="vehicle-list">
-            <button
-              v-for="item in filteredOrders"
-              :key="item.id"
-              type="button"
-              class="vehicle-card"
-              :class="{ 'is-active': item.id === screen.selectedOrderId }"
-              @click="selectOrder(item.id)"
-            >
-              <div class="vehicle-card__top">
-                <strong>{{ item.plateNo }}</strong>
-                <span :class="`vehicle-card__status vehicle-card__status--${item.statusClass}`">
-                  {{ item.statusLabel }}
-                </span>
-              </div>
-              <p>{{ item.vehicleType }}</p>
-              <div class="vehicle-card__line">
-                <span>{{ item.driverName }}</span>
-                <span>{{ item.progress }}%</span>
-              </div>
-              <div class="vehicle-card__geo">
-                经纬度：{{ formatCoordinate(item.longitude) }},
-                {{ formatCoordinate(item.latitude) }}
-              </div>
-              <div class="vehicle-card__order">
-                运单：{{ item.orderNo }}
-                <em v-if="item.delayed">延误{{ item.delayText }}</em>
-              </div>
-            </button>
-            <ElEmpty
-              v-if="filteredOrders.length === 0"
-              description="暂无在途车辆"
-              :image-size="72"
-            />
-          </ElScrollbar>
-        </section>
-      </aside>
-
-      <aside class="transit-screen__right">
-        <section class="screen-panel screen-panel--detail">
-          <div class="screen-panel__title">
-            <strong>车辆详情</strong>
-            <ElButton link :icon="MoreFilled" @click="openOrderDetail" />
-          </div>
-
-          <ElScrollbar class="detail-scroll">
-            <template v-if="activeOrder">
-              <div class="detail-vehicle">
-                <div class="detail-vehicle__icon">
-                  <ArtSvgIcon icon="ri:truck-fill" />
-                </div>
-                <div>
-                  <strong>{{ activeOrder.plateNo }}</strong>
-                  <p>{{ activeOrder.vehicleType }}</p>
-                </div>
-              </div>
-
-              <div class="detail-speed">
-                <div>
-                  <span>当前速度</span>
-                  <strong>{{ activeOrder.speed }}km/h</strong>
-                </div>
-                <div>
-                  <span>剩余里程</span>
-                  <strong>{{ activeOrder.remainingKm }}km</strong>
-                </div>
-              </div>
-
-              <div class="detail-waybill">
-                <span>当前运单</span>
-                <strong>{{ activeOrder.orderNo }}</strong>
-                <div class="detail-route">
-                  <div>
-                    <b>{{ activeOrder.origin }}</b>
-                    <em>{{ formatDateTime(activeOrder.plannedDepartureTime) }}</em>
-                  </div>
-                  <i>{{ activeOrder.progress }}%</i>
-                  <div>
-                    <b>{{ activeOrder.destination }}</b>
-                    <em>{{ formatDateTime(activeOrder.plannedArrivalTime) }}</em>
-                  </div>
-                </div>
-                <div class="detail-progress">
-                  <b :style="{ width: `${activeOrder.progress}%` }" />
-                </div>
-              </div>
-
-              <div class="detail-cargo">
-                <strong>货物信息</strong>
-                <p v-for="item in activeOrder.cargoSummary" :key="item.label">
-                  <span>{{ item.label }}</span>
-                  <b>{{ item.value }}</b>
-                </p>
-              </div>
-
-              <div class="detail-driver">
-                <div class="detail-driver__avatar">{{ activeOrder.driverName.slice(0, 1) }}</div>
-                <div>
-                  <strong>{{ activeOrder.driverName }}</strong>
-                  <p>{{ activeOrder.driverPhone }}</p>
-                </div>
-              </div>
-
-              <div class="detail-actions">
-                <ElButton type="primary" :icon="Phone" @click="contactDriver">联系司机</ElButton>
-                <ElButton type="warning" :icon="Warning" @click="sendReminder">发送提醒</ElButton>
-              </div>
-            </template>
-
-            <ElEmpty v-else description="暂无车辆详情" :image-size="86" />
-          </ElScrollbar>
-        </section>
-      </aside>
-    </main>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
   import type { UnwrapNestedRefs } from 'vue'
   import dayjs from 'dayjs'
+  import { storeToRefs } from 'pinia'
   import { ElMessage } from 'element-plus'
   import {
+    CircleCheckFilled,
+    Clock,
     MoreFilled,
     Phone,
     RefreshRight,
@@ -238,36 +284,58 @@
     ZoomIn,
     ZoomOut
   } from '@element-plus/icons-vue'
-  import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
-  import { fetchDeliveryList } from '@/api/tms'
+  import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
+  import { fetchInTransitMonitorList, subscribeInTransitMonitorChanges } from '@/api/tms'
+  import { useUserStore } from '@/store/modules/user'
   import { formatWithDayjs } from '@/utils/time'
-  import { useIntervalFn } from '@vueuse/core'
+  import { useDebounceFn, useIntervalFn, useResizeObserver } from '@vueuse/core'
+  import defaultVehicleImage from '@/assets/images/tms/vehicles/default.svg?url'
+  import largeCityBusImage from '@/assets/images/tms/vehicles/large-city-bus.svg?url'
+  import mediumBusImage from '@/assets/images/tms/vehicles/medium-bus.svg?url'
+  import smallBusImage from '@/assets/images/tms/vehicles/small-bus.svg?url'
+  import specialVehicleImage from '@/assets/images/tms/vehicles/special-vehicle.svg?url'
+  import truckImage from '@/assets/images/tms/vehicles/truck.svg?url'
 
   defineOptions({ name: 'TmsInTransitMonitor' })
 
-  type DeliveryRecord = Api.Tms.Delivery.DeliveryRecord
-  type TransitStatus = 'pending_pickup' | 'transporting'
+  type InTransitRecord = Api.Tms.InTransit.MonitorRecord
+  type TransitStatus = 'pending' | 'transporting' | 'arrived' | 'delayed'
   type GeoCoord = [number, number]
 
   const INITIAL_MAP_CENTER: GeoCoord = [105.5, 34.2]
   const INITIAL_MAP_ZOOM = 5
   const MAP_MIN_ZOOM = 4
   const MAP_MAX_ZOOM = 18
-  const AMAP_PLUGINS = ['AMap.ToolBar', 'AMap.Scale']
-  const AMAP_RASTER_TILE_URL =
-    'https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}'
-
+  const AMAP_PLUGINS = ['AMap.Scale', 'AMap.Driving']
+  const VEHICLE_TYPE_DICT_CODE = 'vehicleType'
+  const MONITOR_STATUS_DICT_CODE = 'tmsInTransitMonitorStatus'
+  const VEHICLE_IMAGE_MAP: Record<string, string> = {
+    'large-city-bus': largeCityBusImage,
+    'medium-bus': mediumBusImage,
+    'small-bus': smallBusImage,
+    'special-vehicle': specialVehicleImage,
+    truck: truckImage
+  }
+  const OUT_OF_TRANSIT_MONITOR_STATUSES = new Set([
+    'cancelled',
+    'canceled',
+    'closed',
+    '已取消',
+    '已关闭'
+  ])
   interface ScreenState {
     keyword: string
     lastRefreshTime?: string
     loading: boolean
-    orders: DeliveryRecord[]
+    orders: InTransitRecord[]
     region: string
     selectedOrderId?: string
     status: TransitStatus | ''
   }
 
   interface MonitorOrder {
+    arrivalDelayed: boolean
+    arrivalText: string
     cargoBoxes: number
     cargoSummary: Array<{ label: string; value: string }>
     currentLabel: string
@@ -286,15 +354,21 @@
     plateNo: string
     plannedArrivalTime?: string | null
     plannedDepartureTime?: string | null
+    passedPath: GeoCoord[]
     progress: number
     remainingKm: number
+    remainingPath: GeoCoord[]
+    routePath: GeoCoord[]
     routeName: string
-    source: DeliveryRecord
+    source: InTransitRecord
     speed: number
-    status: string
-    statusClass: 'ready' | 'running' | 'warning'
+    status: TransitStatus
+    statusColor: string
     statusLabel: string
     vehicleType: string
+    vehicleTypeCode: string
+    vehicleTypeLabel: string
+    vehicleImage: string
   }
 
   interface AlertItem {
@@ -310,7 +384,18 @@
     zoom: number
   }
 
+  interface RouteOverlayState {
+    basePath: string
+    height: number
+    passedPath: string
+    remainingPath: string
+    visible: boolean
+    width: number
+  }
+
   const router = useRouter()
+  const userStore = useUserStore()
+  const { getDictMap } = storeToRefs(userStore)
   const chartRef = ref<HTMLDivElement>()
   const amapInstance = shallowRef<any>()
   const amapReady = ref(false)
@@ -320,11 +405,23 @@
     center: [...INITIAL_MAP_CENTER],
     zoom: INITIAL_MAP_ZOOM
   })
-  let vehicleMarker: any
+  const routeOverlay: UnwrapNestedRefs<RouteOverlayState> = reactive<RouteOverlayState>({
+    basePath: '',
+    height: 0,
+    passedPath: '',
+    remainingPath: '',
+    visible: false,
+    width: 0
+  })
+  const vehicleMarkers = new Map<string, any>()
+  const drivingRoutePaths = reactive(new Map<string, GeoCoord[]>())
+  const drivingRouteRequests = new Set<string>()
   let originMarker: any
   let destinationMarker: any
+  let routeBasePolyline: any
   let passedPolyline: any
   let remainingPolyline: any
+  let unsubscribeMonitorChanges: (() => void) | undefined
 
   const screen: UnwrapNestedRefs<ScreenState> = reactive<ScreenState>({
     keyword: '',
@@ -374,6 +471,10 @@
     { label: '西北区域', value: 'northwest', keywords: ['西安', '兰州', '银川', '乌鲁木齐'] }
   ]
 
+  const monitorStatusOptions = computed<Api.DataCenter.DictListItem[]>(
+    () => getDictMap.value[MONITOR_STATUS_DICT_CODE] ?? []
+  )
+
   const monitorOrders = computed<MonitorOrder[]>(() => screen.orders.map(createMonitorOrder))
 
   const filteredOrders = computed<MonitorOrder[]>(() => {
@@ -399,6 +500,11 @@
       filteredOrders.value[0] ??
       monitorOrders.value[0]
     )
+  })
+
+  const mapRouteOrder = computed<MonitorOrder | undefined>(() => {
+    const active = activeOrder.value
+    return active && isRouteVisibleStatus(active.status) ? active : undefined
   })
 
   const overview = computed(() => {
@@ -482,18 +588,32 @@
   })
 
   watch([activeOrder, () => liveTick.value], () => {
+    const routeOrder = mapRouteOrder.value
+    if (routeOrder) void ensureDrivingRoute(routeOrder)
     updateChinaMap()
   })
 
   onMounted(() => {
+    void Promise.all([
+      userStore.ensureDictLoaded(VEHICLE_TYPE_DICT_CODE),
+      userStore.ensureDictLoaded(MONITOR_STATUS_DICT_CODE)
+    ])
     void loadMonitorData()
+    unsubscribeMonitorChanges = subscribeInTransitMonitorChanges(refreshMonitorFromRealtime)
     void initChinaMap()
     window.addEventListener('resize', resizeChinaMap)
+    window.visualViewport?.addEventListener('resize', resizeChinaMap)
   })
 
   onBeforeUnmount(() => {
+    unsubscribeMonitorChanges?.()
     window.removeEventListener('resize', resizeChinaMap)
+    window.visualViewport?.removeEventListener('resize', resizeChinaMap)
     destroyMonitorMap()
+  })
+
+  useResizeObserver(chartRef, () => {
+    resizeChinaMap()
   })
 
   useIntervalFn(() => {
@@ -505,240 +625,148 @@
     currentTime.value = new Date().toISOString()
   }, 1000)
 
+  const refreshMonitorFromRealtime = useDebounceFn(() => {
+    void loadMonitorData(false)
+  }, 250)
+
   async function loadMonitorData(showLoading = true): Promise<void> {
     if (showLoading) screen.loading = true
     try {
-      const { data } = await fetchDeliveryList({
+      const { data } = await fetchInTransitMonitorList({
         from: 0,
-        orderStatuses: ['pending_pickup', 'transporting'],
         to: 199
       })
 
-      screen.orders = createMockDeliveryRows(data ?? [])
+      screen.orders = (data ?? []).filter(isActiveMonitorRecord)
       screen.lastRefreshTime = new Date().toISOString()
-      if (!screen.selectedOrderId && screen.orders[0]?.id) {
-        screen.selectedOrderId = screen.orders[0].id
+      if (!screen.orders.some((row) => getMonitorRecordId(row) === screen.selectedOrderId)) {
+        screen.selectedOrderId = getPreferredMonitorRecordId(screen.orders)
+      }
+      if (amapReady.value) {
+        void nextTick(() => {
+          updateChinaMap()
+          fitSelectedMapView(true)
+        })
       }
     } catch {
-      screen.orders = createMockDeliveryRows([])
+      screen.orders = []
       screen.lastRefreshTime = new Date().toISOString()
-      if (!screen.selectedOrderId && screen.orders[0]?.id) {
-        screen.selectedOrderId = screen.orders[0].id
-      }
+      screen.selectedOrderId = undefined
     } finally {
       screen.loading = false
     }
   }
 
-  function createMonitorOrder(row: DeliveryRecord): MonitorOrder {
-    const id = String(row.id || row.orderNo)
-    const origin = formatText(row.originStation)
-    const destination = formatText(row.destinationStation)
-    const originGeo = resolveStationGeo(origin)
-    const destinationGeo = resolveStationGeo(destination)
-    const progress = resolveProgress(row, id)
-    const geoPoint = resolveGeoPoint(originGeo, destinationGeo, progress, id)
-    const status = row.orderStatus || 'pending_pickup'
+  function createMonitorOrder(row: InTransitRecord): MonitorOrder {
+    const id = getMonitorRecordId(row)
+    const order = row.order
+    const origin = formatText(row.originCity || order?.originStation)
+    const destination = formatText(row.destinationCity || order?.destinationStation)
+    const originGeo = resolveEndpointGeo(
+      row,
+      'origin',
+      row.shipperLongitude ?? order?.shippingLongitude,
+      row.shipperLatitude ?? order?.shippingLatitude,
+      origin
+    )
+    const destinationGeo = resolveEndpointGeo(
+      row,
+      'destination',
+      row.receiverLongitude ?? order?.receivingLongitude,
+      row.receiverLatitude ?? order?.receivingLatitude,
+      destination
+    )
     const delayed = isDelayed(row)
-    const distance = 260 + (hashText(`${origin}-${destination}`) % 720)
+    const status = resolveTransitStatus(row, delayed)
+    const arrivalPerformance = resolveArrivalPerformance(row)
+    const progress = resolveProgress(row, id, status)
+    const routePath = getDrivingRoutePath(id)
+    const currentGeo =
+      routePath.length > 1
+        ? getRoutePosition(routePath, progress).coord
+        : status === 'arrived'
+          ? destinationGeo
+          : originGeo
+    const routeSegments = splitRoutePath(routePath, currentGeo, progress)
+    const distance = estimateDistanceKm(originGeo, destinationGeo)
+    const vehicleTypeCode = normalizeVehicleTypeCode(
+      row.vehicle?.vehicleType || order?.dispatchVehicleType
+    )
+    const vehicleTypeLabel = getDictLabel(
+      VEHICLE_TYPE_DICT_CODE,
+      vehicleTypeCode,
+      vehicleTypeCode || '运输车辆'
+    )
+    const cargoWeightText =
+      row.cargoWeightTon !== null && row.cargoWeightTon !== undefined
+        ? `${formatNumber(row.cargoWeightTon)} 吨`
+        : `${formatNumber(order?.cargoWeightTotal)} kg`
 
     return {
-      cargoBoxes: Number(row.cargoQuantityTotal ?? row.cargoItems?.length ?? 0),
+      arrivalDelayed: arrivalPerformance.delayed,
+      arrivalText: arrivalPerformance.text,
+      cargoBoxes: Number(row.cargoQuantity ?? order?.cargoQuantityTotal ?? 0),
       cargoSummary: [
         {
           label: '货物类型',
-          value: row.cargoItems?.map((item) => item.cargoName).find(Boolean) || '-'
+          value:
+            row.cargoName || order?.cargoItems?.map((item) => item.cargoName).find(Boolean) || '-'
         },
-        { label: '总数量', value: `${formatNumber(row.cargoQuantityTotal, 0)} 件` },
-        { label: '总重量', value: `${formatNumber(row.cargoWeightTotal)} kg` },
-        { label: '总体积', value: `${formatNumber(row.cargoVolumeTotal, 3)} 方` }
+        {
+          label: '总数量',
+          value: `${formatNumber(row.cargoQuantity ?? order?.cargoQuantityTotal, 0)} 件`
+        },
+        { label: '总重量', value: cargoWeightText },
+        {
+          label: '总体积',
+          value: `${formatNumber(row.cargoVolumeM3 ?? order?.cargoVolumeTotal, 3)} 方`
+        }
       ],
       currentLabel: resolveCurrentLabel(row, progress),
       delayed,
-      delayText: getDelayText(row.plannedArrivalTime),
+      delayText: getDelayText(row.plannedUnloadTime ?? order?.plannedArrivalTime),
       destination,
       destinationGeo,
-      driverName: formatText(row.dispatchDriverName, '未派司机'),
-      driverPhone: formatText(row.dispatchDriverPhone, '未登记电话'),
+      driverName: formatText(row.driver?.driverName || order?.dispatchDriverName, '未派司机'),
+      driverPhone: formatText(row.driver?.phone || order?.dispatchDriverPhone, '未登记电话'),
       id,
-      latitude: geoPoint.latitude,
-      longitude: geoPoint.longitude,
-      orderNo: formatText(row.orderNo),
+      latitude: currentGeo[1],
+      longitude: currentGeo[0],
+      orderNo: formatText(row.waybillNo || order?.orderNo),
       origin,
       originGeo,
-      plateNo: formatText(row.dispatchPlateNo, '未配车'),
-      plannedArrivalTime: row.plannedArrivalTime,
-      plannedDepartureTime: row.plannedDepartureTime,
+      plateNo: formatText(row.vehicle?.plateNo || order?.dispatchPlateNo, '未配车'),
+      plannedArrivalTime: row.plannedUnloadTime ?? order?.plannedArrivalTime,
+      plannedDepartureTime: row.plannedLoadTime ?? order?.plannedDepartureTime,
+      passedPath: routeSegments.passedPath,
       progress,
       remainingKm: Math.max(0, Math.round(distance * (1 - progress / 100))),
-      routeName: [origin, row.transferStation, destination].filter(Boolean).join(' - '),
+      remainingPath: routeSegments.remainingPath,
+      routePath,
+      routeName: [origin, order?.transferStation, destination].filter(Boolean).join(' - '),
       source: row,
-      speed: status === 'transporting' ? 62 + (hashText(id) % 24) : 0,
+      speed: resolveSpeed(row, status, id),
       status,
-      statusClass: delayed ? 'warning' : status === 'transporting' ? 'running' : 'ready',
-      statusLabel: getStatusLabel(status),
-      vehicleType: formatText(row.dispatchVehicleType, '运输车辆')
+      statusColor: getMonitorStatusColor(status),
+      statusLabel: getMonitorStatusLabel(status),
+      vehicleImage: getVehicleImage(vehicleTypeCode),
+      vehicleType: vehicleTypeCode,
+      vehicleTypeCode,
+      vehicleTypeLabel
     }
   }
 
-  function createMockDeliveryRows(rows: DeliveryRecord[]): DeliveryRecord[] {
-    const now = dayjs()
-    const mockRows = [
-      {
-        id: 'mock-zj-gan-001',
-        orderNo: 'SH20231115003',
-        orderStatus: 'transporting',
-        originStation: '浙江 · 义乌',
-        destinationStation: '江西 · 赣州',
-        transferStation: '太原',
-        dispatchPlateNo: '浙A · 12345',
-        dispatchVehicleType: '东风天龙重卡',
-        dispatchDriverName: '李师傅',
-        dispatchDriverPhone: '13800000001',
-        plannedDepartureTime: now.subtract(4, 'hour').toISOString(),
-        plannedArrivalTime: now.add(6, 'hour').toISOString(),
-        dispatchedAt: now.subtract(4, 'hour').toISOString(),
-        cargoQuantityTotal: 18,
-        cargoWeightTotal: 12600,
-        cargoVolumeTotal: 43.6,
-        cargoItems: [{ cargoName: '电子产品' }]
-      },
-      {
-        id: 'mock-su-cd-002',
-        orderNo: 'SH205023932034',
-        orderStatus: 'transporting',
-        originStation: '江苏 · 苏州',
-        destinationStation: '四川 · 成都',
-        transferStation: '西安',
-        dispatchPlateNo: '苏B · 67890',
-        dispatchVehicleType: '福田欧曼重卡',
-        dispatchDriverName: '张师傅',
-        dispatchDriverPhone: '13800000002',
-        plannedDepartureTime: now.subtract(8, 'hour').toISOString(),
-        plannedArrivalTime: now.add(7, 'hour').toISOString(),
-        dispatchedAt: now.subtract(8, 'hour').toISOString(),
-        cargoQuantityTotal: 28,
-        cargoWeightTotal: 18800,
-        cargoVolumeTotal: 58.2,
-        cargoItems: [{ cargoName: '机械设备' }]
-      },
-      {
-        id: 'mock-zj-tai-003',
-        orderNo: 'SH205023932035',
-        orderStatus: 'transporting',
-        originStation: '浙江 · 杭州',
-        destinationStation: '山西 · 太原',
-        dispatchPlateNo: '浙G · 12345',
-        dispatchVehicleType: '解放J6重卡',
-        dispatchDriverName: '赵师傅',
-        dispatchDriverPhone: '13800000003',
-        plannedDepartureTime: now.subtract(12, 'hour').toISOString(),
-        plannedArrivalTime: now.subtract(1, 'hour').toISOString(),
-        dispatchedAt: now.subtract(12, 'hour').toISOString(),
-        cargoQuantityTotal: 15,
-        cargoWeightTotal: 9200,
-        cargoVolumeTotal: 31.4,
-        cargoItems: [{ cargoName: '日用百货' }]
-      },
-      {
-        id: 'mock-jing-yue-004',
-        orderNo: 'SH205023932036',
-        orderStatus: 'pending_pickup',
-        originStation: '北京',
-        destinationStation: '广东 · 广州',
-        dispatchPlateNo: '京C · 29384',
-        dispatchVehicleType: '厢式货车',
-        dispatchDriverName: '王师傅',
-        dispatchDriverPhone: '13800000004',
-        plannedDepartureTime: now.add(2, 'hour').toISOString(),
-        plannedArrivalTime: now.add(18, 'hour').toISOString(),
-        dispatchedAt: now.toISOString(),
-        cargoQuantityTotal: 12,
-        cargoWeightTotal: 5200,
-        cargoVolumeTotal: 22.1,
-        cargoItems: [{ cargoName: '冷链食品' }]
-      },
-      {
-        id: 'mock-hu-wu-005',
-        orderNo: 'SH205023932037',
-        orderStatus: 'transporting',
-        originStation: '上海',
-        destinationStation: '湖北 · 武汉',
-        transferStation: '南京',
-        dispatchPlateNo: '沪D · 56018',
-        dispatchVehicleType: '新能源厢车',
-        dispatchDriverName: '陈师傅',
-        dispatchDriverPhone: '13800000005',
-        plannedDepartureTime: now.subtract(5, 'hour').toISOString(),
-        plannedArrivalTime: now.add(5, 'hour').toISOString(),
-        dispatchedAt: now.subtract(5, 'hour').toISOString(),
-        cargoQuantityTotal: 22,
-        cargoWeightTotal: 10400,
-        cargoVolumeTotal: 39.8,
-        cargoItems: [{ cargoName: '服装箱包' }]
-      },
-      {
-        id: 'mock-yue-qian-006',
-        orderNo: 'SH205023932038',
-        orderStatus: 'transporting',
-        originStation: '广东 · 广州',
-        destinationStation: '贵州 · 贵阳',
-        transferStation: '长沙',
-        dispatchPlateNo: '粤S · 80127',
-        dispatchVehicleType: '冷藏车',
-        dispatchDriverName: '刘师傅',
-        dispatchDriverPhone: '13800000006',
-        plannedDepartureTime: now.subtract(7, 'hour').toISOString(),
-        plannedArrivalTime: now.add(3, 'hour').toISOString(),
-        dispatchedAt: now.subtract(7, 'hour').toISOString(),
-        cargoQuantityTotal: 16,
-        cargoWeightTotal: 7600,
-        cargoVolumeTotal: 28.3,
-        cargoItems: [{ cargoName: '生鲜食品' }]
-      },
-      {
-        id: 'mock-shan-xiang-007',
-        orderNo: 'SH205023932039',
-        orderStatus: 'transporting',
-        originStation: '陕西 · 西安',
-        destinationStation: '湖南 · 长沙',
-        transferStation: '郑州',
-        dispatchPlateNo: '陕A · 6T209',
-        dispatchVehicleType: '栏板货车',
-        dispatchDriverName: '周师傅',
-        dispatchDriverPhone: '13800000007',
-        plannedDepartureTime: now.subtract(9, 'hour').toISOString(),
-        plannedArrivalTime: now.add(9, 'hour').toISOString(),
-        dispatchedAt: now.subtract(9, 'hour').toISOString(),
-        cargoQuantityTotal: 34,
-        cargoWeightTotal: 21600,
-        cargoVolumeTotal: 64.5,
-        cargoItems: [{ cargoName: '建材辅料' }]
-      },
-      {
-        id: 'mock-yu-dian-008',
-        orderNo: 'SH205023932040',
-        orderStatus: 'transporting',
-        originStation: '重庆',
-        destinationStation: '云南 · 昆明',
-        transferStation: '贵阳',
-        dispatchPlateNo: '渝B · 73K20',
-        dispatchVehicleType: '高栏货车',
-        dispatchDriverName: '孙师傅',
-        dispatchDriverPhone: '13800000008',
-        plannedDepartureTime: now.subtract(3, 'hour').toISOString(),
-        plannedArrivalTime: now.add(10, 'hour').toISOString(),
-        dispatchedAt: now.subtract(3, 'hour').toISOString(),
-        cargoQuantityTotal: 20,
-        cargoWeightTotal: 13500,
-        cargoVolumeTotal: 41.2,
-        cargoItems: [{ cargoName: '汽车零部件' }]
-      }
-    ] as DeliveryRecord[]
-
-    const existingIds = new Set(mockRows.map((row) => row.id))
-    const businessRows = rows.filter((row) => !row.id || !existingIds.has(row.id))
-    return [...mockRows, ...businessRows].slice(0, 80)
+  function isActiveMonitorRecord(row: InTransitRecord): boolean {
+    const waybillStatus = String(row.status ?? '')
+      .trim()
+      .toLowerCase()
+    const orderStatus = String(row.order?.orderStatus ?? '')
+      .trim()
+      .toLowerCase()
+    return (
+      !OUT_OF_TRANSIT_MONITOR_STATUSES.has(waybillStatus) &&
+      !OUT_OF_TRANSIT_MONITOR_STATUSES.has(orderStatus)
+    )
   }
 
   async function initChinaMap(): Promise<void> {
@@ -746,56 +774,57 @@
 
     try {
       const AMap = await loadAmap()
-      const baseLayer = createAmapBaseLayer(AMap)
       amapInstance.value = new AMap.Map(chartRef.value, {
         center: INITIAL_MAP_CENTER,
-        layers: [baseLayer],
+        doubleClickZoom: true,
+        dragEnable: true,
+        features: ['bg', 'road', 'point'],
+        mapStyle: 'amap://styles/darkblue',
         resizeEnable: true,
+        scrollWheel: true,
         viewMode: '2D',
         zoom: INITIAL_MAP_ZOOM,
+        zoomEnable: true,
         zooms: [MAP_MIN_ZOOM, MAP_MAX_ZOOM]
       })
-      amapInstance.value.setLayers([baseLayer])
+      amapInstance.value.setStatus?.({
+        doubleClickZoom: true,
+        dragEnable: true,
+        scrollWheel: true,
+        zoomEnable: true
+      })
       amapInstance.value.addControl(new AMap.Scale())
-      amapInstance.value.addControl(new AMap.ToolBar({ position: 'RT' }))
       amapInstance.value.on('zoomchange', syncMapViewState)
       amapInstance.value.on('mapmove', syncMapViewState)
       amapReady.value = true
+      const routeOrder = mapRouteOrder.value
+      if (routeOrder) void ensureDrivingRoute(routeOrder)
     } catch (error) {
       amapReady.value = false
       ElMessage.warning(error instanceof Error ? error.message : '高德地图加载失败')
     }
 
     updateChinaMap()
-  }
-
-  function createAmapBaseLayer(AMap: any): any {
-    return new AMap.TileLayer({
-      detectRetina: true,
-      getTileUrl: (x: number, y: number, z: number) =>
-        AMAP_RASTER_TILE_URL.replace('{s}', String(Math.abs(x + y + z) % 4))
-          .replace('{x}', String(x))
-          .replace('{y}', String(y))
-          .replace('{z}', String(z)),
-      opacity: 1,
-      visible: true,
-      zIndex: 1,
-      zooms: [MAP_MIN_ZOOM, MAP_MAX_ZOOM]
-    })
+    fitSelectedMapView(true)
   }
 
   function updateChinaMap(): void {
     const map = amapInstance.value
     const AMap = window.AMap
-    const active = activeOrder.value
-    if (!map || !AMap || !amapReady.value || !active) return
+    if (!map || !AMap || !amapReady.value) return
+
+    syncOnlineVehicleMarkers()
+
+    const active = mapRouteOrder.value
+    if (!active) {
+      clearRouteObjects()
+      return
+    }
 
     const origin = active.originGeo
-    const current: GeoCoord = [active.longitude, active.latitude]
     const destination = active.destinationGeo
 
     originMarker = upsertMarker(originMarker, origin, '发', active.origin, '#23d18b')
-    vehicleMarker = upsertMarker(vehicleMarker, current, '车', active.plateNo, '#315cff')
     destinationMarker = upsertMarker(
       destinationMarker,
       destination,
@@ -804,37 +833,79 @@
       '#ff9f43'
     )
 
-    passedPolyline = upsertPolyline(passedPolyline, [origin, current], '#23d18b', 7)
+    if (active.routePath.length < 2) {
+      clearRouteLines()
+      return
+    }
+
+    routeBasePolyline = upsertPolyline(
+      routeBasePolyline,
+      buildVisibleRoutePath(active),
+      '#6ec8ff',
+      12,
+      false,
+      150,
+      0.34
+    )
+    passedPolyline = upsertPolyline(passedPolyline, active.passedPath, '#315cff', 8, false, 180)
     remainingPolyline = upsertPolyline(
       remainingPolyline,
-      [current, destination],
-      '#6ba7ff',
-      5,
-      true
+      active.remainingPath,
+      '#8ed3ff',
+      7,
+      false,
+      170,
+      0.82
     )
-    fitActiveTrack()
+    scheduleRouteOverlayUpdate()
   }
 
-  function zoomChinaMap(direction: 'in' | 'out'): void {
-    const map = amapInstance.value
-    if (!map) return
-    const nextZoom =
-      direction === 'in'
-        ? Math.min(MAP_MAX_ZOOM, mapView.zoom + 1)
-        : Math.max(MAP_MIN_ZOOM, mapView.zoom - 1)
-    applyChinaMapView(nextZoom, mapView.center)
+  function syncOnlineVehicleMarkers(): void {
+    const activeIds = new Set<string>()
+
+    monitorOrders.value.forEach((item) => {
+      activeIds.add(item.id)
+      const position: GeoCoord =
+        item.status === 'pending' ? item.originGeo : [item.longitude, item.latitude]
+      vehicleMarkers.set(
+        item.id,
+        upsertMarker(
+          vehicleMarkers.get(item.id),
+          position,
+          '车',
+          item.plateNo,
+          isRouteVisibleStatus(item.status) ? '#315cff' : '#d69b12',
+          {
+            image: item.vehicleImage,
+            subtitle: item.statusLabel
+          }
+        )
+      )
+    })
+
+    vehicleMarkers.forEach((marker, id) => {
+      if (activeIds.has(id)) return
+      removeMapObject(marker)
+      vehicleMarkers.delete(id)
+    })
   }
 
-  function resetChinaMapView(): void {
-    fitActiveTrack(true)
+  function clearRouteObjects(): void {
+    originMarker = removeMapObject(originMarker)
+    destinationMarker = removeMapObject(destinationMarker)
+    clearRouteLines()
   }
 
-  function applyChinaMapView(zoom: number, center: GeoCoord): void {
-    const map = amapInstance.value
-    if (!map) return
-    mapView.zoom = Math.round(zoom)
-    mapView.center = center
-    map.setZoomAndCenter(mapView.zoom, mapView.center)
+  function clearRouteLines(): void {
+    routeBasePolyline = removeMapObject(routeBasePolyline)
+    passedPolyline = removeMapObject(passedPolyline)
+    remainingPolyline = removeMapObject(remainingPolyline)
+    resetRouteOverlay()
+  }
+
+  function removeMapObject(object: any): undefined {
+    if (object) amapInstance.value?.remove?.(object)
+    return undefined
   }
 
   function syncMapViewState(): void {
@@ -844,10 +915,19 @@
     if (center) mapView.center = [Number(center.lng), Number(center.lat)]
     const zoom = map.getZoom?.()
     if (typeof zoom === 'number') mapView.zoom = Math.round(zoom)
+    scheduleRouteOverlayUpdate()
   }
 
   function resizeChinaMap(): void {
-    amapInstance.value?.resize?.()
+    const applyResize = () => {
+      amapInstance.value?.resize?.()
+      scheduleRouteOverlayUpdate()
+    }
+
+    window.requestAnimationFrame(() => {
+      applyResize()
+      window.setTimeout(applyResize, 120)
+    })
   }
 
   async function loadAmap(): Promise<any> {
@@ -885,25 +965,96 @@
     return window.AMap
   }
 
+  async function ensureDrivingRoute(order: MonitorOrder): Promise<void> {
+    if (drivingRoutePaths.has(order.id) || drivingRouteRequests.has(order.id)) return
+
+    const AMap = window.AMap
+    if (!AMap) return
+    drivingRouteRequests.add(order.id)
+
+    try {
+      await loadAmapPlugin(AMap, 'AMap.Driving')
+      const path = await searchDrivingRoute(AMap, order.originGeo, order.destinationGeo)
+      if (path.length > 1) {
+        drivingRoutePaths.set(order.id, path)
+        await nextTick()
+        updateChinaMap()
+        if (activeOrder.value?.id === order.id) fitSelectedMapView(true)
+      }
+    } catch {
+      // 高德路线不可用时保持无线状态。
+    } finally {
+      drivingRouteRequests.delete(order.id)
+    }
+  }
+
+  function loadAmapPlugin(AMap: any, pluginName: string): Promise<void> {
+    if (AMap.Driving) return Promise.resolve()
+
+    return new Promise((resolve, reject) => {
+      const timeout = window.setTimeout(() => reject(new Error('驾车路线服务加载超时')), 8000)
+      AMap.plugin(pluginName, () => {
+        window.clearTimeout(timeout)
+        if (AMap.Driving) resolve()
+        else reject(new Error('驾车路线服务加载失败'))
+      })
+    })
+  }
+
+  function searchDrivingRoute(
+    AMap: any,
+    origin: GeoCoord,
+    destination: GeoCoord
+  ): Promise<GeoCoord[]> {
+    return new Promise((resolve, reject) => {
+      const driving = new AMap.Driving({
+        hideMarkers: true,
+        policy: AMap.DrivingPolicy?.LEAST_TIME,
+        showTraffic: false
+      })
+      driving.search(
+        new AMap.LngLat(origin[0], origin[1]),
+        new AMap.LngLat(destination[0], destination[1]),
+        (status: string, result: any) => {
+          if (status !== 'complete') {
+            reject(new Error('驾车路线规划失败'))
+            return
+          }
+
+          const path = (result.routes?.[0]?.steps ?? [])
+            .flatMap((step: any) => step.path ?? [])
+            .map((point: any) =>
+              toGeoCoord(point.lng ?? point.getLng?.(), point.lat ?? point.getLat?.())
+            )
+            .filter((point: GeoCoord | undefined): point is GeoCoord => Boolean(point))
+          resolve(dedupeGeoPath([origin, ...path, destination]))
+        }
+      )
+    })
+  }
+
   function upsertMarker(
     marker: any,
     position: GeoCoord,
     label: string,
     title: string,
-    color: string
+    color: string,
+    options: { image?: string; subtitle?: string } = {}
   ): any {
     const map = amapInstance.value
     const AMap = window.AMap
     if (!map || !AMap) return marker
 
-    const content = `<div class="transit-amap-marker" style="--marker-color:${color}"><b>${label}</b><span>${title}</span></div>`
+    const content = options.image
+      ? `<div class="transit-vehicle-marker" style="--marker-color:${color}"><i></i><img src="${options.image}" alt="${escapeHtml(options.subtitle || title)}" /><span>${escapeHtml(title)}</span></div>`
+      : `<div class="transit-amap-marker" style="--marker-color:${color}"><b>${escapeHtml(label)}</b><span>${escapeHtml(title)}</span>${options.subtitle ? `<em>${escapeHtml(options.subtitle)}</em>` : ''}</div>`
     if (!marker) {
       const nextMarker = new AMap.Marker({
         anchor: 'center',
         content,
         offset: new AMap.Pixel(0, 0),
         position,
-        zIndex: label === '车' ? 130 : 120
+        zIndex: label === '车' ? 1200 : 1100
       })
       map.add(nextMarker)
       return nextMarker
@@ -911,6 +1062,7 @@
 
     marker.setPosition(position)
     marker.setContent(content)
+    marker.setzIndex?.(label === '车' ? 1200 : 1100)
     return marker
   }
 
@@ -919,60 +1071,167 @@
     path: GeoCoord[],
     color: string,
     weight: number,
-    dashed = false
+    dashed = false,
+    zIndex = dashed ? 155 : 165,
+    opacity = dashed ? 0.78 : 0.96
   ): any {
     const map = amapInstance.value
     const AMap = window.AMap
     if (!map || !AMap) return polyline
+    const visiblePath: GeoCoord[] = path.length > 1 ? path : path[0] ? [path[0], path[0]] : []
+    const amapPath = visiblePath.map((point) => new AMap.LngLat(point[0], point[1]))
 
     if (!polyline) {
       const nextPolyline = new AMap.Polyline({
         borderWeight: 1,
+        bubble: false,
         isOutline: true,
+        lineCap: 'round',
         lineJoin: 'round',
-        outlineColor: 'rgba(0,0,0,.3)',
-        path,
+        outlineColor: 'rgba(0,0,0,.55)',
+        path: amapPath,
         showDir: !dashed,
         strokeColor: color,
-        strokeOpacity: dashed ? 0.68 : 0.95,
+        strokeOpacity: opacity,
         strokeStyle: dashed ? 'dashed' : 'solid',
         strokeWeight: weight,
-        zIndex: dashed ? 90 : 100
+        zIndex
       })
       map.add(nextPolyline)
       return nextPolyline
     }
 
-    polyline.setPath(path)
+    polyline.setOptions?.({
+      showDir: !dashed,
+      strokeColor: color,
+      strokeOpacity: opacity,
+      strokeStyle: dashed ? 'dashed' : 'solid',
+      strokeWeight: weight,
+      zIndex
+    })
+    polyline.setPath(amapPath)
     return polyline
   }
 
   function fitActiveTrack(force = false): void {
     const map = amapInstance.value
-    const AMap = window.AMap
-    const active = activeOrder.value
-    if (!map || !AMap || !active) return
+    const active = mapRouteOrder.value
+    if (!map) return
+    if (!active) {
+      const selected = activeOrder.value
+      if (selected) fitPendingVehicle(selected.originGeo)
+      return
+    }
     if (!force && mapView.zoom >= 11) return
 
-    const lngValues = [active.originGeo[0], active.destinationGeo[0], active.longitude]
-    const latValues = [active.originGeo[1], active.destinationGeo[1], active.latitude]
-    const southWest: GeoCoord = [Math.min(...lngValues), Math.min(...latValues)]
-    const northEast: GeoCoord = [Math.max(...lngValues), Math.max(...latValues)]
-    const bounds = new AMap.Bounds(southWest, northEast)
-    bounds.extend([active.longitude, active.latitude])
-    map.setBounds(bounds, false, [100, 380, 120, 360])
+    const current: GeoCoord = [active.longitude, active.latitude]
+    if (map.setZoomAndCenter) map.setZoomAndCenter(INITIAL_MAP_ZOOM, current)
+    else {
+      map.setZoom?.(INITIAL_MAP_ZOOM)
+      map.setCenter?.(current)
+    }
     syncMapViewState()
+    scheduleRouteOverlayUpdate()
+  }
+
+  function fitPendingVehicle(origin: GeoCoord): void {
+    const map = amapInstance.value
+    if (!map) return
+    map.setCenter?.(origin)
+    if (mapView.zoom !== INITIAL_MAP_ZOOM) map.setZoom?.(INITIAL_MAP_ZOOM)
+    syncMapViewState()
+  }
+
+  function fitSelectedMapView(force = false): void {
+    const selected = activeOrder.value
+    if (selected?.status === 'pending') {
+      fitPendingVehicle(selected.originGeo)
+      return
+    }
+    fitActiveTrack(force)
+  }
+
+  function zoomMap(direction: 'in' | 'out'): void {
+    const map = amapInstance.value
+    if (!map) return
+    if (direction === 'in') map.zoomIn?.()
+    else map.zoomOut?.()
+    syncMapViewState()
+  }
+
+  function resetMapView(): void {
+    fitSelectedMapView(true)
+  }
+
+  function buildVisibleRoutePath(active: MonitorOrder): GeoCoord[] {
+    return dedupeGeoPath([...active.passedPath, ...active.remainingPath.slice(1)])
+  }
+
+  function scheduleRouteOverlayUpdate(): void {
+    window.requestAnimationFrame(updateRouteOverlay)
+  }
+
+  function updateRouteOverlay(): void {
+    const map = amapInstance.value
+    const active = mapRouteOrder.value
+    const chartElement = chartRef.value
+    const chartWidth = chartElement?.clientWidth ?? 0
+    const chartHeight = chartElement?.clientHeight ?? 0
+    if (!map || !active || !chartWidth || !chartHeight) {
+      resetRouteOverlay()
+      return
+    }
+
+    const basePath = toSvgPath(buildVisibleRoutePath(active))
+    const passedPath = toSvgPath(active.passedPath)
+    const remainingPath = toSvgPath(active.remainingPath)
+    Object.assign(routeOverlay, {
+      basePath,
+      height: chartHeight,
+      passedPath,
+      remainingPath,
+      visible: Boolean(basePath),
+      width: chartWidth
+    })
+  }
+
+  function resetRouteOverlay(): void {
+    Object.assign(routeOverlay, {
+      basePath: '',
+      height: 0,
+      passedPath: '',
+      remainingPath: '',
+      visible: false,
+      width: 0
+    })
+  }
+
+  function toSvgPath(path: GeoCoord[]): string {
+    const map = amapInstance.value
+    const AMap = window.AMap
+    if (!map || !AMap || path.length < 2) return ''
+
+    return path
+      .map((point, index) => {
+        const pixel = map.lngLatToContainer(new AMap.LngLat(point[0], point[1]))
+        const x = Number((pixel.x ?? pixel.getX?.() ?? 0).toFixed(2))
+        const y = Number((pixel.y ?? pixel.getY?.() ?? 0).toFixed(2))
+        return `${index === 0 ? 'M' : 'L'} ${x} ${y}`
+      })
+      .join(' ')
   }
 
   function destroyMonitorMap(): void {
     amapInstance.value?.destroy?.()
     amapInstance.value = undefined
     amapReady.value = false
-    vehicleMarker = undefined
+    vehicleMarkers.clear()
     originMarker = undefined
     destinationMarker = undefined
+    routeBasePolyline = undefined
     passedPolyline = undefined
     remainingPolyline = undefined
+    resetRouteOverlay()
   }
 
   function matchesSelectedRegion(item: MonitorOrder): boolean {
@@ -984,20 +1243,96 @@
     return region.keywords.some((keyword) => routeText.includes(keyword))
   }
 
-  function resolveGeoPoint(
-    origin: GeoCoord,
-    destination: GeoCoord,
-    progress: number,
-    seed: string
-  ): { latitude: number; longitude: number } {
-    const longitudeBase = interpolate(origin[0], destination[0], progress)
-    const latitudeBase = interpolate(origin[1], destination[1], progress)
-    const offset = (hashText(seed) % 100) / 1000
+  function getMonitorRecordId(row: InTransitRecord): string {
+    return String(row.id || row.waybillNo)
+  }
+
+  function getPreferredMonitorRecordId(rows: InTransitRecord[]): string | undefined {
+    const preferred = rows.find((row) => {
+      const status = resolveTransitStatus(row, isDelayed(row))
+      return ['transporting', 'delayed'].includes(status)
+    })
+    const row = preferred ?? rows.find((item) => resolveTransitStatus(item, false) === 'arrived')
+    return row ? getMonitorRecordId(row) : rows[0] ? getMonitorRecordId(rows[0]) : undefined
+  }
+
+  function getDrivingRoutePath(id: string): GeoCoord[] {
+    return drivingRoutePaths.get(id) ?? []
+  }
+
+  function getRoutePosition(path: GeoCoord[], progress: number): { coord: GeoCoord } {
+    if (path.length === 0) return { coord: INITIAL_MAP_CENTER }
+    if (path.length === 1) return { coord: path[0] }
+
+    const targetIndex = clamp(Math.round((progress / 100) * (path.length - 1)), 0, path.length - 1)
 
     return {
-      latitude: Number((latitudeBase + offset).toFixed(5)),
-      longitude: Number((longitudeBase - offset).toFixed(5))
+      coord: path[targetIndex]
     }
+  }
+
+  function splitRoutePath(
+    routePath: GeoCoord[],
+    current: GeoCoord,
+    progress: number
+  ): { passedPath: GeoCoord[]; remainingPath: GeoCoord[] } {
+    if (routePath.length <= 1) {
+      return {
+        passedPath: [current],
+        remainingPath: [current]
+      }
+    }
+
+    const segmentIndex = clamp(
+      Math.floor((progress / 100) * (routePath.length - 1)),
+      0,
+      routePath.length - 2
+    )
+
+    return {
+      passedPath: dedupeGeoPath([...routePath.slice(0, segmentIndex + 1), current]),
+      remainingPath: dedupeGeoPath([current, ...routePath.slice(segmentIndex + 1)])
+    }
+  }
+
+  function resolveEndpointGeo(
+    row: InTransitRecord,
+    endpoint: 'origin' | 'destination',
+    longitude: number | string | null | undefined,
+    latitude: number | string | null | undefined,
+    fallbackText: string
+  ): GeoCoord {
+    const directGeo = toGeoCoord(longitude, latitude)
+    if (directGeo) return directGeo
+
+    const routePointGeo = getRoutePointGeo(row, endpoint)
+    if (routePointGeo) return routePointGeo
+
+    return resolveStationGeo(fallbackText)
+  }
+
+  function getRoutePointGeo(
+    row: InTransitRecord,
+    endpoint: 'origin' | 'destination'
+  ): GeoCoord | undefined {
+    const point = row.routePoints?.find((item) => {
+      const type = String(item.type ?? '').toLowerCase()
+      if (endpoint === 'origin') return ['shipper', 'origin', 'start', 'load'].includes(type)
+      return ['receiver', 'destination', 'end', 'unload'].includes(type)
+    })
+    if (!point) return undefined
+    return toGeoCoord(point.longitude ?? point.lng, point.latitude ?? point.lat)
+  }
+
+  function toGeoCoord(
+    longitude: number | string | null | undefined,
+    latitude: number | string | null | undefined
+  ): GeoCoord | undefined {
+    const lng = Number(longitude)
+    const lat = Number(latitude)
+    if (!Number.isFinite(lng) || !Number.isFinite(lat)) return undefined
+    if (Math.abs(lng) > 180 || Math.abs(lat) > 90) return undefined
+    return [Number(lng.toFixed(6)), Number(lat.toFixed(6))]
   }
 
   function resolveStationGeo(text: string): GeoCoord {
@@ -1011,11 +1346,12 @@
     return [86 + (hash % 36), 22 + ((hash >> 3) % 20)]
   }
 
-  function resolveProgress(row: DeliveryRecord, seed: string): number {
-    if (row.orderStatus === 'pending_pickup') return 18 + (hashText(row.orderNo) % 10)
+  function resolveProgress(row: InTransitRecord, seed: string, status: TransitStatus): number {
+    if (status === 'pending') return 0
+    if (status === 'arrived') return 100
 
-    const departure = dayjs(row.plannedDepartureTime)
-    const arrival = dayjs(row.plannedArrivalTime)
+    const departure = dayjs(row.loadedAt || row.plannedLoadTime || row.order?.plannedDepartureTime)
+    const arrival = dayjs(row.plannedUnloadTime || row.order?.plannedArrivalTime)
     if (departure.isValid() && arrival.isValid() && arrival.isAfter(departure)) {
       const total = arrival.diff(departure)
       const elapsed = dayjs().diff(departure)
@@ -1023,21 +1359,31 @@
       return clamp(Math.round((elapsed / total) * 100 + liveOffset), 32, 94)
     }
 
-    return clamp(48 + (hashText(row.orderNo) % 36) + (liveTick.value % 6), 32, 94)
+    return clamp(48 + (hashText(row.waybillNo) % 36) + (liveTick.value % 6), 32, 94)
   }
 
-  function resolveCurrentLabel(row: DeliveryRecord, progress: number): string {
-    if (row.orderStatus === 'pending_pickup') return row.originStation || '待提货'
-    if (progress > 80) return row.destinationStation || '目的地附近'
-    if (progress > 48 && row.transferStation) return row.transferStation
+  function resolveCurrentLabel(row: InTransitRecord, progress: number): string {
+    const status = resolveTransitStatus(row, isDelayed(row))
+    if (status === 'pending') return row.originCity || '待处理'
+    if (status === 'arrived') return row.destinationCity || '已到达'
+    if (progress > 80) return row.destinationCity || '目的地附近'
+    if (progress > 48 && row.order?.transferStation) return row.order.transferStation
     return '在途'
   }
 
-  function isDelayed(row: DeliveryRecord): boolean {
-    if (!row.plannedArrivalTime || ['signed', 'completed'].includes(String(row.orderStatus))) {
+  function isDelayed(row: InTransitRecord): boolean {
+    const plannedUnloadTime = row.plannedUnloadTime || row.order?.plannedArrivalTime
+    const waybillStatus = String(row.status ?? '').toLowerCase()
+    const orderStatus = String(row.order?.orderStatus ?? '').toLowerCase()
+    if (
+      !plannedUnloadTime ||
+      row.unloadedAt ||
+      waybillStatus === 'completed' ||
+      ['signed', 'completed'].includes(orderStatus)
+    ) {
       return false
     }
-    const arrival = dayjs(row.plannedArrivalTime)
+    const arrival = dayjs(plannedUnloadTime)
     return arrival.isValid() && dayjs().isAfter(arrival)
   }
 
@@ -1048,27 +1394,101 @@
     return `${hours}h`
   }
 
-  function getStatusLabel(status?: string): string {
-    const statusMap: Record<string, string> = {
-      pending_pickup: '待提货',
-      transporting: '运输中'
-    }
-    return statusMap[String(status)] || '在途'
+  function resolveArrivalPerformance(row: InTransitRecord): { delayed: boolean; text: string } {
+    const planned = dayjs(row.plannedUnloadTime || row.order?.plannedArrivalTime)
+    const actual = dayjs(row.unloadedAt || row.order?.signedAt || row.updateTime)
+    if (!planned.isValid() || !actual.isValid()) return { delayed: false, text: '准时' }
+
+    const delayedMinutes = actual.diff(planned, 'minute')
+    if (delayedMinutes <= 0) return { delayed: false, text: '准时' }
+
+    const delayText =
+      delayedMinutes < 60 ? `${delayedMinutes}m` : `${Number((delayedMinutes / 60).toFixed(1))}h`
+    return { delayed: true, text: `延误${delayText}` }
+  }
+
+  function getMonitorStatusItem(status: TransitStatus): Api.DataCenter.DictListItem | undefined {
+    return monitorStatusOptions.value.find((item) => String(item.value) === status)
+  }
+
+  function getMonitorStatusLabel(status: TransitStatus): string {
+    return getMonitorStatusItem(status)?.label || status
+  }
+
+  function getMonitorStatusColor(status: TransitStatus): string {
+    return getMonitorStatusItem(status)?.color || '#409EFF'
+  }
+
+  function resolveTransitStatus(row: InTransitRecord, delayed: boolean): TransitStatus {
+    if (delayed) return 'delayed'
+
+    const rawStatus = String(row.status || row.order?.orderStatus || '')
+      .trim()
+      .toLowerCase()
+    if (['completed', 'signed'].includes(rawStatus) || row.unloadedAt) return 'arrived'
+
+    const runningStatuses = [
+      'accepted',
+      'loading',
+      'transporting',
+      'unloading',
+      'in_transit',
+      'running',
+      'processing',
+      'in_progress',
+      'ongoing'
+    ]
+    return runningStatuses.includes(rawStatus) ? 'transporting' : 'pending'
+  }
+
+  function isRouteVisibleStatus(status: TransitStatus): boolean {
+    return ['transporting', 'delayed'].includes(status)
+  }
+
+  function resolveSpeed(row: InTransitRecord, status: TransitStatus, seed: string): number {
+    const speed = Number(row.speedKmh)
+    if (Number.isFinite(speed) && speed >= 0) return Math.round(speed)
+    return ['transporting', 'delayed'].includes(status) ? 58 + (hashText(seed) % 28) : 0
+  }
+
+  function withAlpha(color: string, alpha: number): string {
+    const hex = color.trim().replace('#', '')
+    if (!/^[\da-f]{6}$/i.test(hex)) return color
+    const value = Number.parseInt(hex, 16)
+    return `rgb(${(value >> 16) & 255} ${(value >> 8) & 255} ${value & 255} / ${alpha})`
+  }
+
+  function estimateDistanceKm(origin: GeoCoord, destination: GeoCoord): number {
+    const radius = 6371
+    const toRad = (value: number) => (value * Math.PI) / 180
+    const lngDiff = toRad(destination[0] - origin[0])
+    const latDiff = toRad(destination[1] - origin[1])
+    const startLat = toRad(origin[1])
+    const endLat = toRad(destination[1])
+    const factor =
+      Math.sin(latDiff / 2) ** 2 +
+      Math.cos(startLat) * Math.cos(endLat) * Math.sin(lngDiff / 2) ** 2
+
+    return Math.max(
+      30,
+      Math.round(radius * 2 * Math.atan2(Math.sqrt(factor), Math.sqrt(1 - factor)))
+    )
   }
 
   function selectOrder(id: string): void {
     screen.selectedOrderId = id
     void nextTick(() => {
       updateChinaMap()
-      fitActiveTrack(true)
+      fitSelectedMapView(true)
     })
   }
 
   function openOrderDetail(): void {
-    if (!activeOrder.value?.source.id) return
+    const orderId = activeOrder.value?.source.order?.id
+    if (!orderId) return
     void router.push({
       name: 'TmsOrderDetail',
-      params: { id: activeOrder.value.source.id }
+      params: { id: orderId }
     })
   }
 
@@ -1112,8 +1532,59 @@
     return text || fallback
   }
 
-  function interpolate(start: number, end: number, progress: number): number {
-    return Number((start + (end - start) * (progress / 100)).toFixed(2))
+  function normalizeVehicleTypeCode(value?: string | number | null): string {
+    return String(value ?? '').trim()
+  }
+
+  function getVehicleImage(vehicleTypeCode: string): string {
+    return VEHICLE_IMAGE_MAP[vehicleTypeCode] ?? defaultVehicleImage
+  }
+
+  function getDictDisplayValue(
+    dictCode: string,
+    value?: string | number | null
+  ): string | undefined {
+    const normalizedValue = String(value ?? '').trim()
+    if (!normalizedValue) return undefined
+
+    const exists = getDictMap.value[dictCode]?.some(
+      (item) => String(item.value) === normalizedValue || String(item.code) === normalizedValue
+    )
+    return exists ? normalizedValue : undefined
+  }
+
+  function getDictLabel(dictCode: string, value?: string | number | null, fallback = '-'): string {
+    const normalizedValue = String(value ?? '').trim()
+    if (!normalizedValue) return fallback
+
+    const dictItem = getDictMap.value[dictCode]?.find(
+      (item) => String(item.value) === normalizedValue || String(item.code) === normalizedValue
+    )
+    return dictItem?.label || dictItem?.name || fallback
+  }
+
+  function dedupeGeoPath(path: GeoCoord[]): GeoCoord[] {
+    return path.reduce<GeoCoord[]>((result, point) => {
+      const previous = result[result.length - 1]
+      if (!previous || previous[0] !== point[0] || previous[1] !== point[1]) {
+        result.push(point)
+      }
+      return result
+    }, [])
+  }
+
+  function escapeHtml(value: string): string {
+    return value.replace(
+      /[&<>"']/g,
+      (char) =>
+        ({
+          '&': '&amp;',
+          '<': '&lt;',
+          '>': '&gt;',
+          '"': '&quot;',
+          "'": '&#39;'
+        })[char] ?? char
+    )
   }
 
   function clamp(value: number, min: number, max: number): number {
@@ -1135,16 +1606,26 @@
     position: fixed;
     inset: 0;
     z-index: 2600;
-    display: grid;
-    grid-template-rows: 72px minmax(0, 1fr);
-    min-width: 1180px;
-    min-height: 720px;
     overflow: hidden;
     color: #eef7ff;
     background:
       radial-gradient(circle at 18% 18%, rgb(40 190 167 / 16%), transparent 30%),
       radial-gradient(circle at 82% 30%, rgb(255 178 78 / 14%), transparent 28%),
       linear-gradient(135deg, #071019 0%, #0d1a20 48%, #130f1d 100%);
+
+    &__viewport {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+    }
+
+    &__stage {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      grid-template-rows: 72px minmax(0, 1fr);
+      overflow: hidden;
+    }
 
     &__header {
       position: relative;
@@ -1153,7 +1634,6 @@
       gap: 28px;
       align-items: center;
       padding: 10px 12px;
-      margin: 6px 10px 0;
       background: rgb(29 43 62 / 96%);
       border-radius: var(--el-border-radius-base);
 
@@ -1311,10 +1791,15 @@
     }
 
     &--list,
-    &--detail,
     &--alerts {
       display: flex;
       flex-direction: column;
+    }
+
+    &--detail {
+      display: flex;
+      flex-direction: column;
+      padding: 12px;
     }
   }
 
@@ -1445,6 +1930,23 @@
       }
     }
 
+    &__arrival {
+      display: inline-flex;
+      flex: 0 0 auto;
+      gap: 4px;
+      align-items: center;
+      font-weight: 700;
+      color: #2ecc71;
+
+      .el-icon {
+        font-size: 15px;
+      }
+
+      &.is-delayed {
+        color: #ff9f43;
+      }
+    }
+
     &__geo {
       margin-top: 10px;
       font-size: 12px;
@@ -1455,21 +1957,6 @@
       padding: 3px 8px;
       font-size: 12px;
       border-radius: 999px;
-
-      &--ready {
-        color: #ffd36a;
-        background: rgb(255 211 106 / 14%);
-      }
-
-      &--running {
-        color: #97d7ff;
-        background: rgb(76 125 255 / 24%);
-      }
-
-      &--warning {
-        color: #ffbe9a;
-        background: rgb(255 101 101 / 18%);
-      }
     }
   }
 
@@ -1477,21 +1964,45 @@
     position: absolute;
     inset: 0;
     overflow: hidden;
-    background: #dfe7ee;
+    background: #020611;
 
     &__chart {
       position: absolute;
       inset: 0;
       z-index: 1;
       cursor: grab;
+      pointer-events: auto;
+      touch-action: none;
 
       &:active {
         cursor: grabbing;
       }
     }
 
+    &__route-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 4;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+
     :deep(.amap-container) {
-      background: #dfe7ee !important;
+      width: 100% !important;
+      height: 100% !important;
+      pointer-events: auto !important;
+      touch-action: none !important;
+      background: #020611 !important;
+    }
+
+    :deep(.amap-maps),
+    :deep(.amap-layers),
+    :deep(.amap-layer),
+    :deep(.amap-tile),
+    :deep(.amap-vector-layer) {
+      width: 100% !important;
+      height: 100% !important;
     }
 
     :deep(.amap-container img) {
@@ -1524,42 +2035,48 @@
 
     &__tools {
       position: absolute;
-      top: 86px;
-      right: 356px;
+      top: 14px;
+      right: 350px;
       z-index: 10;
       display: flex;
-      flex-direction: column;
-      gap: 8px;
-      align-items: center;
-      padding: 8px;
-      background: rgb(16 31 47 / 82%);
-      border-radius: var(--el-border-radius-base);
-      box-shadow: 0 12px 28px rgb(0 0 0 / 18%);
-      backdrop-filter: blur(10px);
+      gap: 6px;
 
       :deep(.el-button) {
         width: 32px;
         height: 32px;
         margin: 0;
         color: #dcecf6;
-        background: rgb(255 255 255 / 10%);
-        border: 0;
+        background: rgb(16 31 47 / 88%);
+        border: 1px solid rgb(143 178 198 / 22%);
 
         &:hover {
           color: #fff;
           background: #315cff;
         }
       }
+    }
+  }
 
-      span {
-        width: 42px;
-        overflow: hidden;
-        font-size: 12px;
-        line-height: 18px;
-        color: #8fb2c6;
-        text-align: center;
-        white-space: nowrap;
-      }
+  .route-line {
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+
+    &--base {
+      filter: drop-shadow(0 0 9px rgb(76 125 255 / 54%));
+      stroke: rgb(110 200 255 / 44%);
+      stroke-width: 14;
+    }
+
+    &--remaining {
+      stroke: rgb(142 211 255 / 88%);
+      stroke-width: 7;
+    }
+
+    &--passed {
+      filter: drop-shadow(0 0 8px rgb(49 92 255 / 66%));
+      stroke: #315cff;
+      stroke-width: 8;
     }
   }
 
@@ -1570,11 +2087,11 @@
     width: 300px;
 
     &--overview {
-      top: 86px;
+      top: 14px;
     }
 
     &--alerts {
-      bottom: 28px;
+      bottom: 16px;
       display: flex;
       flex-direction: column;
       max-height: 238px;
@@ -1609,10 +2126,83 @@
   :global(.transit-amap-marker span) {
     max-width: 160px;
     overflow: hidden;
+    text-overflow: ellipsis;
     font-size: 12px;
     font-weight: 700;
     color: #f7fbff;
+  }
+
+  :global(.transit-amap-marker em) {
+    max-width: 104px;
+    overflow: hidden;
     text-overflow: ellipsis;
+    font-size: 11px;
+    font-style: normal;
+    color: #96d8ff;
+  }
+
+  :global(.transit-vehicle-marker) {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 34px;
+    transform: translateZ(0);
+  }
+
+  :global(.transit-vehicle-marker i) {
+    position: absolute;
+    inset: -12px -16px;
+    background: radial-gradient(
+      circle,
+      rgb(35 209 139 / 38%) 0%,
+      rgb(76 125 255 / 16%) 44%,
+      transparent 68%
+    );
+    border-radius: 999px;
+    animation: transitVehiclePulse 1.35s ease-in-out infinite;
+  }
+
+  :global(.transit-vehicle-marker img) {
+    position: relative;
+    z-index: 1;
+    width: 42px;
+    height: 28px;
+    object-fit: contain;
+    filter: drop-shadow(0 8px 12px rgb(0 0 0 / 42%));
+    animation: transitVehicleFloat 1.8s ease-in-out infinite;
+  }
+
+  :global(.transit-vehicle-marker span) {
+    position: absolute;
+    bottom: 34px;
+    left: 50%;
+    z-index: 2;
+    max-width: 120px;
+    padding: 5px 9px;
+    overflow: visible;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 18px;
+    color: #263243;
+    white-space: nowrap;
+    background: #fff;
+    border: 0;
+    border-radius: var(--el-border-radius-small);
+    box-shadow: 0 5px 16px rgb(0 0 0 / 30%);
+    transform: translateX(-50%);
+  }
+
+  :global(.transit-vehicle-marker span::after) {
+    position: absolute;
+    bottom: -5px;
+    left: 50%;
+    width: 10px;
+    height: 10px;
+    content: '';
+    background: #fff;
+    transform: translateX(-50%) rotate(45deg);
   }
 
   .alert-item {
@@ -1660,32 +2250,35 @@
 
   .detail-vehicle {
     display: flex;
-    gap: 12px;
+    gap: 10px;
     align-items: center;
-    padding: 12px 0 18px;
+    min-height: 68px;
+    padding: 2px 0 10px;
 
     &__icon {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 54px;
-      height: 54px;
+      width: 72px;
+      height: 52px;
       color: #071019;
-      background: linear-gradient(135deg, #26e0a8, #ffd36a);
+      background: rgb(7 16 25 / 58%);
       border-radius: var(--el-border-radius-base);
 
-      :deep(.svg-icon) {
-        width: 30px;
-        height: 30px;
+      img {
+        width: 64px;
+        height: 42px;
+        object-fit: contain;
       }
     }
 
     strong {
-      font-size: 18px;
+      font-size: 17px;
     }
 
     p {
-      margin: 5px 0 0;
+      margin: 4px 0 0;
+      font-size: 13px;
       color: #8fb2c6;
     }
   }
@@ -1694,9 +2287,11 @@
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px;
+    margin-top: 10px;
 
     div {
-      padding: 14px;
+      min-width: 0;
+      padding: 12px;
       background: rgb(7 16 25 / 50%);
       border: 0;
       border-radius: var(--el-border-radius-base);
@@ -1704,24 +2299,33 @@
 
     span {
       display: block;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
       font-size: 12px;
       color: #8fb2c6;
     }
 
     strong {
-      font-size: 24px;
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-size: 21px;
+      line-height: 1.15;
+      white-space: nowrap;
     }
   }
 
   .detail-waybill,
   .detail-cargo,
   .detail-driver {
-    padding-top: 20px;
-    margin-top: 20px;
+    padding-top: 0;
+    margin-top: 0;
   }
 
   .detail-waybill {
+    padding-top: 18px;
+    margin-top: 18px;
+    border-top: 1px solid rgb(255 255 255 / 7%);
+
     > span {
       display: block;
       color: #8fb2c6;
@@ -1729,15 +2333,18 @@
 
     > strong {
       display: block;
-      margin: 8px 0 14px;
-      font-size: 17px;
+      margin: 8px 0 16px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-size: 16px;
+      white-space: nowrap;
     }
   }
 
   .detail-route {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 58px minmax(0, 1fr);
-    gap: 10px;
+    grid-template-columns: minmax(0, 1fr) 50px minmax(0, 1fr);
+    gap: 8px;
     align-items: center;
     text-align: center;
 
@@ -1760,10 +2367,11 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      height: 58px;
+      height: 50px;
+      font-size: 12px;
       font-style: normal;
       color: #fff;
-      border: 4px solid #315cff;
+      border: 3px solid #315cff;
       border-radius: 50%;
     }
   }
@@ -1783,6 +2391,12 @@
   }
 
   .detail-cargo {
+    flex: 1;
+    min-height: 138px;
+    padding-top: 18px;
+    margin-top: 18px;
+    border-top: 1px solid rgb(255 255 255 / 7%);
+
     strong {
       display: block;
       margin-bottom: 12px;
@@ -1790,21 +2404,33 @@
 
     p {
       display: flex;
+      gap: 10px;
       justify-content: space-between;
-      margin: 0 0 10px;
+      margin: 0 0 8px;
       font-size: 13px;
       color: #91adbe;
 
+      span {
+        flex: 0 0 auto;
+      }
+
       b {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
         color: #eef7ff;
+        white-space: nowrap;
       }
     }
   }
 
   .detail-driver {
     display: flex;
-    gap: 12px;
+    gap: 10px;
     align-items: center;
+    padding-top: 22px;
+    margin-top: 18px;
+    border-top: 1px solid rgb(255 255 255 / 7%);
 
     &__avatar {
       display: inline-flex;
@@ -1818,7 +2444,7 @@
     }
 
     p {
-      margin: 4px 0 0;
+      margin: 3px 0 0;
       color: #8fb2c6;
     }
   }
@@ -1826,35 +2452,40 @@
   .detail-actions {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
-    margin: 20px 0 4px;
+    gap: 8px;
+    margin-top: 16px;
   }
 
   .detail-scroll {
+    display: flex;
     flex: 1;
+    flex-direction: column;
+    gap: 0;
     min-height: 0;
+    overflow: hidden;
   }
 
-  @media (width <= 1360px) {
-    .transit-screen {
-      &__left {
-        width: 284px;
-      }
-
-      &__right {
-        width: 304px;
-      }
+  @keyframes transitVehiclePulse {
+    0%,
+    100% {
+      opacity: 0.35;
+      transform: scale(0.86);
     }
 
-    .map-float {
-      left: 316px;
-      width: 286px;
+    50% {
+      opacity: 1;
+      transform: scale(1.12);
+    }
+  }
+
+  @keyframes transitVehicleFloat {
+    0%,
+    100% {
+      transform: translateX(-1px);
     }
 
-    .monitor-map {
-      &__tools {
-        right: 342px;
-      }
+    50% {
+      transform: translateX(2px);
     }
   }
 </style>

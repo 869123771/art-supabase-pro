@@ -174,15 +174,6 @@
         label: '字典值'
       },
       {
-        prop: 'i18n',
-        label: '国际化'
-      },
-      {
-        prop: 'i18nScope',
-        label: '国际化范围',
-        dict: { code: 'i18nScope', display: 'text' }
-      },
-      {
         prop: 'status',
         label: '状态',
         dict: { code: 'status', display: 'auto' }

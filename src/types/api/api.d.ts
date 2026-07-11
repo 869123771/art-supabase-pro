@@ -1374,6 +1374,9 @@ declare namespace Api {
         signedCodAmount?: number | null
         receiptImageUrls?: string[]
         signedAt?: string | null
+        driverWaybillLoadedAt?: string | null
+        driverWaybillDepartedAt?: string | null
+        driverWaybillUnloadedAt?: string | null
         dispatchStatus?: string
         dispatchVehicleId?: string | null
         dispatchDriverId?: string | null
@@ -1419,7 +1422,7 @@ declare namespace Api {
     }
 
     namespace Waybill {
-      type DispatchStatus = 'pending' | 'loaded' | 'cancelled'
+      type DispatchStatus = 'pending' | 'loaded' | 'transporting' | 'completed' | 'cancelled'
       type WaybillRecord = Api.Tms.Order.OrderRecord
 
       interface DispatchVehicleOption extends Api.VehicleMgtSys.VehicleManage.VehicleOption {
@@ -1475,6 +1478,69 @@ declare namespace Api {
         DeliveryRecord,
         'id' | 'orderStatus' | 'signedCodAmount' | 'receiptImageUrls' | 'signedAt'
       >
+    }
+
+    namespace InTransit {
+      interface RoutePoint {
+        type?: string
+        name?: string | null
+        address?: string | null
+        longitude?: number | string | null
+        latitude?: number | string | null
+        lng?: number | string | null
+        lat?: number | string | null
+      }
+
+      interface MonitorRecord {
+        id?: string
+        tenantId?: string
+        waybillNo: string
+        status?: string | null
+        driverId?: string | null
+        vehicleId?: string | null
+        shipperAddressId?: string | null
+        receiverAddressId?: string | null
+        originCity?: string | null
+        destinationCity?: string | null
+        shipperName?: string | null
+        shipperPhone?: string | null
+        shipperAddress?: string | null
+        shipperLongitude?: number | string | null
+        shipperLatitude?: number | string | null
+        receiverName?: string | null
+        receiverPhone?: string | null
+        receiverAddress?: string | null
+        receiverLongitude?: number | string | null
+        receiverLatitude?: number | string | null
+        plannedLoadTime?: string | null
+        plannedUnloadTime?: string | null
+        loadedAt?: string | null
+        departedAt?: string | null
+        unloadedAt?: string | null
+        currentLongitude?: number | string | null
+        currentLatitude?: number | string | null
+        speedKmh?: number | string | null
+        cargoName?: string | null
+        cargoWeightTon?: number | string | null
+        cargoVolumeM3?: number | string | null
+        cargoQuantity?: number | string | null
+        freightAmount?: number | string | null
+        routePoints?: RoutePoint[] | null
+        remark?: string | null
+        cancelledAt?: string | null
+        createBy?: string
+        createTime?: string
+        updateBy?: string
+        updateTime?: string
+        order?: Api.Tms.Order.OrderRecord | null
+        vehicle?: Api.Tms.Waybill.DispatchVehicleOption | null
+        driver?: Api.Tms.BasicData.DriverOption | null
+      }
+
+      type MonitorSearchParams = Api.Common.CommonSearchParams & {
+        keyword?: string
+        statuses?: string[]
+      }
     }
 
     namespace Station {

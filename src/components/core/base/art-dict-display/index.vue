@@ -6,10 +6,10 @@
   <ElBadge
     v-else-if="resolvedMode === 'badge'"
     is-dot
-    :color="dictItem?.color || 'var(--el-color-primary)'"
+    :color="badgeColor"
     class="art-dict-display__badge"
   >
-    <span class="art-dict-display__label">{{ label }}</span>
+    <span class="art-dict-display__label" :style="{ color: badgeColor }">{{ label }}</span>
   </ElBadge>
 
   <span v-else>{{ label }}</span>
@@ -60,6 +60,18 @@
   const tagType = computed<Api.Common.TagPreset | undefined>(() => {
     const type = dictItem.value?.tagType
     return type ? (type as Api.Common.TagPreset) : undefined
+  })
+  const badgeColor = computed(() => {
+    if (dictItem.value?.color) return dictItem.value.color
+
+    const tagColorMap: Record<Api.Common.TagPreset, string> = {
+      primary: 'var(--el-color-primary)',
+      success: 'var(--el-color-success)',
+      warning: 'var(--el-color-warning)',
+      danger: 'var(--el-color-danger)',
+      info: 'var(--el-color-info)'
+    }
+    return tagType.value ? tagColorMap[tagType.value] : 'var(--el-color-primary)'
   })
   const resolvedMode = computed<Exclude<DictDisplayMode, 'auto'>>(() => {
     if (props.display !== 'auto') return props.display

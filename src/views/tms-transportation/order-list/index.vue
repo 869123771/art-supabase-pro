@@ -288,7 +288,7 @@
           <div class="flex items-center">
             <ArtButtonTable type="view" onClick={() => openDetail(row)} />
             <ArtButtonMore
-              list={getMoreActions()}
+              list={getMoreActions(row)}
               onClick={(item: ButtonMoreItem) => handleMoreAction(item, row)}
             />
           </div>
@@ -324,15 +324,17 @@
   }
 
   function openFreight(row: OrderRecord): void {
+    if (!canEditFreight(row)) return
     void freightDialogRef.value?.handleOpen(row)
   }
 
-  function getMoreActions(): ButtonMoreItem[] {
+  function getMoreActions(row: OrderRecord): ButtonMoreItem[] {
     return [
       {
         key: 'freight',
         label: '修改运费',
-        icon: 'ri:money-cny-circle-line'
+        icon: 'ri:money-cny-circle-line',
+        disabled: !canEditFreight(row)
       },
       {
         key: 'delete',
@@ -354,6 +356,13 @@
 
   function handleFreightSuccess(): void {
     void tableQueryRef.value?.refreshUpdate()
+  }
+
+  function canEditFreight(row: OrderRecord): boolean {
+    return (
+      ['created', 'pending_load'].includes(String(row.orderStatus || '')) ||
+      String(row.dispatchStatus || '') === 'pending'
+    )
   }
 
   async function handleDelete(row: OrderRecord): Promise<void> {
