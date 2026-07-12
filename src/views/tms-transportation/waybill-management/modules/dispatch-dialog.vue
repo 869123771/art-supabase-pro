@@ -198,7 +198,6 @@
     await dialogRef.value?.handleOpen(data, {
       title: data.mode === 'batch' ? '批量配载' : '车辆配载',
       width: '680px',
-      contentMaxHeight: '70vh',
       confirmText: '确认',
       onOpen: async () => {
         await nextTick()

@@ -8,6 +8,7 @@
       :columns-factory="columnsFactory"
       :header-actions="headerActions"
       :search-bar-props="{ span: 6, labelWidth: 86, showExpand: false }"
+      :immediate="tableImmediate"
     />
 
     <DriverDialog ref="dialogRef" @success="handleSaveSuccess" />
@@ -26,7 +27,13 @@
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatWithDayjs } from '@/utils/time'
   import { useUserStore } from '@/store/modules/user'
-  import { deleteDriver, deleteDriverBatch, fetchCarrierOptions, fetchDriverList } from '@/api/tms'
+  import {
+    deleteDriver,
+    deleteDriverBatch,
+    fetchCarrierDetail,
+    fetchCarrierOptions,
+    fetchDriverList
+  } from '@/api/tms'
   import DriverDialog from './modules/driver-dialog.vue'
 
   defineOptions({ name: 'TmsDriver' })
@@ -44,10 +51,12 @@
   const route = useRoute()
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<DriverDialogExpose>()
+  const initialCarrierId = String(route.query.carrierId || '')
+  const tableImmediate = !initialCarrierId
 
   const tableState = reactive<{ searchQuery: SearchParams }>({
     searchQuery: {
-      carrierId: '',
+      carrierId: initialCarrierId,
       gender: '',
       enabled: undefined,
       createTimeRange: [],
@@ -55,12 +64,23 @@
     }
   })
 
-  onMounted(() => {
-    const carrierId = String(route.query.carrierId || '')
-    if (carrierId) {
-      tableState.searchQuery.carrierId = carrierId
-    }
+  onMounted(async () => {
+    if (!initialCarrierId) return
+    await nextTick()
+    await tableQueryRef.value?.getData()
   })
+
+  watch(
+    () => route.query.carrierId,
+    async (value) => {
+      const carrierId = String(value || '')
+      if (tableState.searchQuery.carrierId === carrierId) return
+
+      tableState.searchQuery.carrierId = carrierId
+      await nextTick()
+      await tableQueryRef.value?.getData()
+    }
+  )
 
   const genderOptions = computed(() => getDictMap.value.sex ?? [])
   const commonBooleanOptions = computed(() =>
@@ -70,12 +90,32 @@
     }))
   )
 
+  const withSelectedCarrierOption = async (result: unknown) => {
+    const carrierResult = result as Awaited<ReturnType<typeof fetchCarrierOptions>>
+    const selectedCarrierId = tableState.searchQuery.carrierId
+    const options = carrierResult.data ?? []
+
+    if (!selectedCarrierId || options.some((option) => option.id === selectedCarrierId)) {
+      return carrierResult
+    }
+
+    const detailResult = await fetchCarrierDetail(selectedCarrierId)
+    const carrier = detailResult.data
+    if (!carrier?.id) return carrierResult
+
+    return {
+      ...carrierResult,
+      data: [carrier as CarrierOption, ...options]
+    }
+  }
+
   const searchItems = computed<SearchFormItem[]>(() => [
     {
       label: '所属承运商',
       key: 'carrierId',
       type: 'select',
       api: fetchCarrierOptions,
+      afterFetch: withSelectedCarrierOption,
       resultField: 'data',
       labelField: 'companyName',
       valueField: 'id',

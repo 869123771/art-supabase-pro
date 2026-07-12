@@ -454,6 +454,9 @@
 
     :deep(.el-descriptions) {
       margin-top: 16px;
+      .el-descriptions__body {
+        background: inherit;
+      }
     }
   }
 

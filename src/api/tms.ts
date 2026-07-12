@@ -1,4 +1,5 @@
 import { useSupabase } from '@/hooks'
+import type { QueryResult } from '@/hooks/core/useSupabase'
 
 const { supabase, keysToSnakeDeep, responseHandle } = useSupabase()
 
@@ -41,6 +42,55 @@ const normalizeBooleanFilter = (value: unknown): boolean | undefined => {
   if (value === true || value === 'true') return true
   if (value === false || value === 'false') return false
   return undefined
+}
+
+const countByCarrierId = async (
+  tableName: 'tms_driver' | 'vehicle_archive',
+  carrierId: string
+): Promise<number> => {
+  const { total } = await responseHandle<null>(
+    () =>
+      supabase
+        .from(tableName)
+        .select('id', { count: 'exact', head: true })
+        .eq('carrier_id', carrierId) as any,
+    {
+      ignoreCheck: true,
+      showErrorMessage: true
+    }
+  )
+
+  return total ?? 0
+}
+
+const attachCarrierRelationCounts = async (
+  result: QueryResult<Carrier[]>
+): Promise<QueryResult<Carrier[]>> => {
+  const rows = result.data ?? []
+  const carrierIds = rows.map((row) => String(row.id || '')).filter(Boolean)
+
+  if (!carrierIds.length) return result
+
+  const [driverEntries, vehicleEntries] = await Promise.all([
+    Promise.all(
+      carrierIds.map(async (id) => [id, await countByCarrierId('tms_driver', id)] as const)
+    ),
+    Promise.all(
+      carrierIds.map(async (id) => [id, await countByCarrierId('vehicle_archive', id)] as const)
+    )
+  ])
+
+  const driverCountMap = new Map(driverEntries)
+  const vehicleCountMap = new Map(vehicleEntries)
+
+  return {
+    ...result,
+    data: rows.map((row) => ({
+      ...row,
+      driverCount: row.id ? (driverCountMap.get(row.id) ?? 0) : 0,
+      vehicleCount: row.id ? (vehicleCountMap.get(row.id) ?? 0) : 0
+    }))
+  }
 }
 
 const applyDateRange = (query: any, dateRange?: string[]) => {
@@ -292,10 +342,12 @@ export async function fetchCarrierList(params: CarrierSearchParams) {
     .range(from, to)
 
   query = applyCarrierFilters(query, params)
-  return await responseHandle<Carrier[]>(() => query as any, {
+  const result = await responseHandle<Carrier[]>(() => query as any, {
     ignoreCheck: true,
     showErrorMessage: true
   })
+
+  return await attachCarrierRelationCounts(result)
 }
 
 export async function exportCarrierList(

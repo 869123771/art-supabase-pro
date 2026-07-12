@@ -1,7 +1,11 @@
 <template>
   <div class="transit-screen" v-loading="screen.loading">
-    <div class="transit-screen__viewport">
-      <div class="transit-screen__stage">
+    <div
+      ref="viewportRef"
+      class="transit-screen__viewport"
+      @wheel.capture="handleScreenWheelCapture"
+    >
+      <div class="transit-screen__stage" :style="screenStageStyle">
         <header class="transit-screen__header">
           <h1>TMS 运输在途监控</h1>
           <nav class="screen-tabs">
@@ -306,6 +310,8 @@
   const INITIAL_MAP_ZOOM = 5
   const MAP_MIN_ZOOM = 4
   const MAP_MAX_ZOOM = 18
+  const DEFAULT_SCREEN_DESIGN_WIDTH = 1920
+  const DEFAULT_SCREEN_DESIGN_HEIGHT = 1080
   const AMAP_PLUGINS = ['AMap.Scale', 'AMap.Driving']
   const VEHICLE_TYPE_DICT_CODE = 'vehicleType'
   const MONITOR_STATUS_DICT_CODE = 'tmsInTransitMonitorStatus'
@@ -384,6 +390,13 @@
     zoom: number
   }
 
+  interface ScreenScaleState {
+    designHeight: number
+    designWidth: number
+    viewportHeight: number
+    viewportWidth: number
+  }
+
   interface RouteOverlayState {
     basePath: string
     height: number
@@ -396,6 +409,7 @@
   const router = useRouter()
   const userStore = useUserStore()
   const { getDictMap } = storeToRefs(userStore)
+  const viewportRef = ref<HTMLDivElement>()
   const chartRef = ref<HTMLDivElement>()
   const amapInstance = shallowRef<any>()
   const amapReady = ref(false)
@@ -404,6 +418,12 @@
   const mapView: UnwrapNestedRefs<MapViewState> = reactive<MapViewState>({
     center: [...INITIAL_MAP_CENTER],
     zoom: INITIAL_MAP_ZOOM
+  })
+  const screenScale: UnwrapNestedRefs<ScreenScaleState> = reactive<ScreenScaleState>({
+    designHeight: DEFAULT_SCREEN_DESIGN_HEIGHT,
+    designWidth: DEFAULT_SCREEN_DESIGN_WIDTH,
+    viewportHeight: DEFAULT_SCREEN_DESIGN_HEIGHT,
+    viewportWidth: DEFAULT_SCREEN_DESIGN_WIDTH
   })
   const routeOverlay: UnwrapNestedRefs<RouteOverlayState> = reactive<RouteOverlayState>({
     basePath: '',
@@ -430,6 +450,29 @@
     region: '',
     selectedOrderId: undefined,
     status: ''
+  })
+
+  const screenBaseScale = computed(() => {
+    const scale = Math.min(
+      screenScale.viewportWidth / screenScale.designWidth,
+      screenScale.viewportHeight / screenScale.designHeight
+    )
+
+    return Number.isFinite(scale) && scale > 0 ? scale : 1
+  })
+
+  const screenStageStyle = computed(() => {
+    const scale = screenBaseScale.value
+    const width = screenScale.designWidth * scale
+    const height = screenScale.designHeight * scale
+    const offsetX = (screenScale.viewportWidth - width) / 2
+    const offsetY = (screenScale.viewportHeight - height) / 2
+
+    return {
+      width: `${screenScale.designWidth}px`,
+      height: `${screenScale.designHeight}px`,
+      transform: `translate(${offsetX}px, ${offsetY}px) scale(${scale})`
+    }
   })
 
   const headerTimeText = computed(() =>
@@ -594,6 +637,7 @@
   })
 
   onMounted(() => {
+    initScreenDesignSize()
     void Promise.all([
       userStore.ensureDictLoaded(VEHICLE_TYPE_DICT_CODE),
       userStore.ensureDictLoaded(MONITOR_STATUS_DICT_CODE)
@@ -601,15 +645,19 @@
     void loadMonitorData()
     unsubscribeMonitorChanges = subscribeInTransitMonitorChanges(refreshMonitorFromRealtime)
     void initChinaMap()
-    window.addEventListener('resize', resizeChinaMap)
-    window.visualViewport?.addEventListener('resize', resizeChinaMap)
+    window.addEventListener('resize', resizeScaledScreen)
+    window.visualViewport?.addEventListener('resize', resizeScaledScreen)
   })
 
   onBeforeUnmount(() => {
     unsubscribeMonitorChanges?.()
-    window.removeEventListener('resize', resizeChinaMap)
-    window.visualViewport?.removeEventListener('resize', resizeChinaMap)
+    window.removeEventListener('resize', resizeScaledScreen)
+    window.visualViewport?.removeEventListener('resize', resizeScaledScreen)
     destroyMonitorMap()
+  })
+
+  useResizeObserver(viewportRef, () => {
+    resizeScaledScreen()
   })
 
   useResizeObserver(chartRef, () => {
@@ -906,6 +954,31 @@
   function removeMapObject(object: any): undefined {
     if (object) amapInstance.value?.remove?.(object)
     return undefined
+  }
+
+  function updateScreenViewportSize(): void {
+    const viewport = viewportRef.value
+    screenScale.viewportWidth =
+      viewport?.clientWidth || window.innerWidth || DEFAULT_SCREEN_DESIGN_WIDTH
+    screenScale.viewportHeight =
+      viewport?.clientHeight || window.innerHeight || DEFAULT_SCREEN_DESIGN_HEIGHT
+  }
+
+  function initScreenDesignSize(): void {
+    screenScale.designWidth = window.screen?.width || DEFAULT_SCREEN_DESIGN_WIDTH
+    screenScale.designHeight = window.screen?.height || DEFAULT_SCREEN_DESIGN_HEIGHT
+    updateScreenViewportSize()
+  }
+
+  function resizeScaledScreen(): void {
+    updateScreenViewportSize()
+    resizeChinaMap()
+  }
+
+  function handleScreenWheelCapture(event: WheelEvent): void {
+    if (!event.ctrlKey) return
+
+    event.stopPropagation()
   }
 
   function syncMapViewState(): void {
@@ -1621,10 +1694,13 @@
 
     &__stage {
       position: absolute;
-      inset: 0;
+      top: 0;
+      left: 0;
       display: grid;
       grid-template-rows: 72px minmax(0, 1fr);
       overflow: hidden;
+      transform-origin: 0 0;
+      will-change: transform;
     }
 
     &__header {

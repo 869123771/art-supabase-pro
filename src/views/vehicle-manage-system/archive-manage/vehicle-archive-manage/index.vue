@@ -9,13 +9,14 @@
       :header-actions="table.headerActions"
       :search-bar-props="table.searchBarProps"
       :table-props="table.props"
+      :immediate="table.immediate"
     />
   </div>
 </template>
 
 <script setup lang="tsx">
   import type { ComputedRef, UnwrapNestedRefs } from 'vue'
-  import { ElMessageBox } from 'element-plus'
+  import { ElMessage, ElMessageBox } from 'element-plus'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import ArtButtonMore, {
     type ButtonMoreItem
@@ -27,12 +28,18 @@
   } from '@/components/core/tables/art-table-query/index.vue'
   import type { ColumnOption } from '@/types'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
-  import { deleteVehicleArchive, fetchVehicleArchiveList } from '@/api/vehicle-manage-system'
+  import {
+    deleteVehicleArchive,
+    fetchVehicleArchiveDeletePreview,
+    fetchVehicleArchiveList
+  } from '@/api/vehicle-manage-system'
+  import { fetchCarrierDetail, fetchCarrierOptions } from '@/api/tms'
   import { useUserStore } from '@/store/modules/user'
 
   defineOptions({ name: 'VehicleArchiveManage' })
 
   type VehicleArchive = Api.VehicleMgtSys.ArchiveManage.VehicleArchive
+  type CarrierOption = Api.Tms.BasicData.CarrierOption
   type SearchParams = Api.VehicleMgtSys.ArchiveManage.VehicleArchiveSearchParams
   type TableParams = SearchParams & Pick<Api.Common.PaginationParams, 'current' | 'size'>
 
@@ -41,6 +48,7 @@
     searchItems: ComputedRef<SearchFormItem[]>
     headerActions: ComputedRef<ArtTableQueryHeaderAction[]>
     columnsFactory: () => ColumnOption<VehicleArchive>[]
+    immediate: boolean
     searchBarProps: {
       span: number
       labelWidth: number
@@ -56,10 +64,30 @@
   const userStore = useUserStore()
   const { getDictMap } = storeToRefs(userStore)
   const tableQueryRef = ref<ArtTableQueryExpose>()
+  const initialCarrierId = String(route.query.carrierId || '')
+
+  const withSelectedCarrierOption = async (result: unknown) => {
+    const carrierResult = result as Awaited<ReturnType<typeof fetchCarrierOptions>>
+    const selectedCarrierId = table.searchQuery.carrierId
+    const options = carrierResult.data ?? []
+
+    if (!selectedCarrierId || options.some((option) => option.id === selectedCarrierId)) {
+      return carrierResult
+    }
+
+    const detailResult = await fetchCarrierDetail(selectedCarrierId)
+    const carrier = detailResult.data
+    if (!carrier?.id) return carrierResult
+
+    return {
+      ...carrierResult,
+      data: [carrier as CarrierOption, ...options]
+    }
+  }
 
   const table: UnwrapNestedRefs<TableGroup> = reactive<TableGroup>({
     searchQuery: {
-      carrierId: '',
+      carrierId: initialCarrierId,
       companyName: '',
       plateNo: '',
       manufacturer: '',
@@ -67,7 +95,27 @@
       operationStatus: ''
     },
     searchItems: computed<SearchFormItem[]>(() => [
-      { label: '所属公司', key: 'companyName', type: 'input' },
+      {
+        label: '所属承运商',
+        key: 'carrierId',
+        type: 'select',
+        api: fetchCarrierOptions,
+        afterFetch: withSelectedCarrierOption,
+        resultField: 'data',
+        labelField: 'companyName',
+        valueField: 'id',
+        labelFn: (option) => {
+          const carrier = option as CarrierOption
+          return carrier.carrierCode
+            ? `${carrier.companyName}（${carrier.carrierCode}）`
+            : carrier.companyName
+        },
+        props: {
+          clearable: true,
+          filterable: true,
+          placeholder: '请选择承运商'
+        }
+      },
       { label: '车牌号', key: 'plateNo', type: 'input' },
       { label: '车辆厂商', key: 'manufacturer', type: 'input' },
       { label: '车架号', key: 'chassisNo', type: 'input' },
@@ -81,6 +129,7 @@
       }
     ]),
     headerActions: computed<ArtTableQueryHeaderAction[]>(() => []),
+    immediate: !initialCarrierId,
     columnsFactory: (): ColumnOption<VehicleArchive>[] => [
       { type: 'globalIndex', label: '序号', width: 80 },
       { prop: 'companyName', label: '所属公司', minWidth: 180 },
@@ -120,7 +169,7 @@
       }
     ],
     searchBarProps: {
-      span: 8,
+      span: 6,
       labelWidth: 90
     },
     props: {
@@ -129,12 +178,23 @@
     }
   })
 
-  onMounted(() => {
-    const carrierId = String(route.query.carrierId || '')
-    if (carrierId) {
-      table.searchQuery.carrierId = carrierId
-    }
+  onMounted(async () => {
+    if (!initialCarrierId) return
+    await nextTick()
+    await tableQueryRef.value?.getData()
   })
+
+  watch(
+    () => route.query.carrierId,
+    async (value) => {
+      const carrierId = String(value || '')
+      if (table.searchQuery.carrierId === carrierId) return
+
+      table.searchQuery.carrierId = carrierId
+      await nextTick()
+      await tableQueryRef.value?.getData()
+    }
+  )
 
   const fetchTableData = (params: TableParams) => {
     const { from, to } = pageInfoHandler({
@@ -194,20 +254,37 @@
     if (!row.id) return
 
     try {
-      await ElMessageBox.confirm(
-        `确定删除车辆档案“${row.plateNo}”吗？删除后无法恢复。`,
-        '删除确认',
-        {
-          confirmButtonText: '删除',
-          cancelButtonText: '取消',
-          type: 'warning',
-          confirmButtonClass: 'el-button--danger'
-        }
-      )
+      const preview = await fetchVehicleArchiveDeletePreview(row.id)
+      const deletePreview = preview.data
+      if (!deletePreview) return
+
+      if (deletePreview.waybillCount > 0) {
+        ElMessage.warning(
+          `车辆“${row.plateNo}”已关联 ${deletePreview.waybillCount} 条运单，禁止删除`
+        )
+        return
+      }
+
+      const relatedSummary = deletePreview.relatedCounts
+        .filter((item) => item.count > 0)
+        .map((item) => `${item.label} ${item.count} 条`)
+        .join('，')
+      const message =
+        deletePreview.relatedTotal > 0
+          ? `确定删除车辆档案“${row.plateNo}”吗？该车辆没有关联运单，将一并清理 ${deletePreview.relatedTotal} 条附属记录：${relatedSummary}。删除后无法恢复。`
+          : `确定删除车辆档案“${row.plateNo}”吗？该车辆没有关联运单，删除后无法恢复。`
+
+      await ElMessageBox.confirm(message, '删除确认', {
+        confirmButtonText: deletePreview.relatedTotal > 0 ? '清理并删除' : '删除',
+        cancelButtonText: '取消',
+        type: 'warning',
+        confirmButtonClass: 'el-button--danger'
+      })
       await deleteVehicleArchive(row.id)
       await tableQueryRef.value?.refreshRemove()
-    } catch {
-      // 用户取消删除时无须提示
+    } catch (error) {
+      if (error === 'cancel' || error === 'close') return
+      ElMessage.error(error instanceof Error ? error.message : '删除失败')
     }
   }
 </script>

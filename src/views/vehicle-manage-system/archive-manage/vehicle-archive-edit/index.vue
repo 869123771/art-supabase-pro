@@ -117,7 +117,10 @@
   import type { ComputedRef, Ref, UnwrapNestedRefs } from 'vue'
   import type { FormRules } from 'element-plus'
   import { ElButton, ElMessage, ElMessageBox, ElTabPane, ElTabs } from 'element-plus'
-  import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
+  import ArtForm, {
+    type FormItem,
+    type FormItemOption
+  } from '@/components/core/forms/art-form/index.vue'
   import ArtTable from '@/components/core/tables/art-table/index.vue'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import ArtButtonMore, {
@@ -211,6 +214,10 @@
   const driverCache = ref(new Map<string, DriverOption>())
 
   const isEdit = computed(() => typeof route.params.id === 'string' && route.params.id.length > 0)
+  const selectedPrimaryDriverOptions = computed<FormItemOption[]>(() => {
+    const driver = getSelectedPrimaryDriver()
+    return driver ? [createDriverOption(driver)] : []
+  })
 
   const options: UnwrapNestedRefs<OptionGroup> = reactive<OptionGroup>({
     vehicleType: computed(() => getDictMap.value.vehicleType ?? []),
@@ -672,6 +679,7 @@
       type: 'select',
       span: 16,
       api: fetchDriverOptions,
+      options: selectedPrimaryDriverOptions.value,
       resultField: 'data',
       labelField: 'driverName',
       valueField: 'id',
@@ -695,11 +703,13 @@
         },
         onChange: (value?: string) => {
           if (!value) {
+            form.primaryDriver = null
             form.driverOneName = ''
             form.driverOnePhone = ''
             return
           }
           const driver = driverCache.value.get(value)
+          form.primaryDriver = driver ?? null
           form.driverOneName = driver?.driverName ?? ''
           form.driverOnePhone = driver?.phone ?? ''
         }
@@ -726,10 +736,36 @@
 
     const data = (result as { data?: DriverOption[] }).data
     if (Array.isArray(data)) {
-      driverCache.value = new Map(data.map((item) => [item.id, item]))
+      const selectedDriver = getSelectedPrimaryDriver()
+      const nextData =
+        selectedDriver && !data.some((item) => item.id === selectedDriver.id)
+          ? [selectedDriver, ...data]
+          : data
+
+      driverCache.value = new Map(nextData.map((item) => [item.id, item]))
+      return {
+        ...(result as Record<string, unknown>),
+        data: nextData
+      }
     }
 
     return result
+  }
+
+  function getSelectedPrimaryDriver(): DriverOption | undefined {
+    if (!form.primaryDriverId) return undefined
+    return (
+      driverCache.value.get(form.primaryDriverId) ??
+      (form.primaryDriver?.id === form.primaryDriverId ? form.primaryDriver : undefined)
+    )
+  }
+
+  function createDriverOption(driver: DriverOption): FormItemOption {
+    return {
+      ...driver,
+      label: driver.phone ? `${driver.driverName}（${driver.phone}）` : driver.driverName,
+      value: driver.id
+    }
   }
 
   const certificateItems: Array<{ key: ImageKey; label: string }> = [
@@ -995,7 +1031,6 @@
 
     &__actions {
       display: flex;
-      gap: 8px;
     }
 
     &__tabs {

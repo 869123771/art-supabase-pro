@@ -15,15 +15,20 @@
 <script setup lang="tsx">
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type { ColumnOption } from '@/types'
-  import { fetchVehiclePartUsageList } from '@/api/vehicle-manage-system'
+  import { fetchVehicleReminderPartServiceLifeList } from '@/api/vehicle-manage-system'
   import { useUserStore } from '@/store/modules/user'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
-  import dayjs from 'dayjs'
   import { isNil } from 'lodash-es'
+  import {
+    companySearchItem,
+    formatDate,
+    formatMileage,
+    renderRemainingDays,
+    renderReminderStatus
+  } from '../modules/reminder-table'
 
   defineOptions({ name: 'VehiclePartServiceLife' })
 
-  type PartUsageRow = Api.VehicleMgtSys.VehicleManage.VehiclePartUsage
   type ReminderRow = Api.VehicleMgtSys.ReminderManage.VehicleReminderRow
   type ReminderSearchParams = Api.VehicleMgtSys.ReminderManage.VehicleReminderSearchParams
   type ReminderTableParams = ReminderSearchParams &
@@ -57,7 +62,7 @@
 
     return {
       searchItems: [
-        { label: '所属公司', key: 'companyName', type: 'input' },
+        companySearchItem,
         { label: '车牌号', key: 'plateNo', type: 'input' },
         {
           label: '是否到期',
@@ -100,12 +105,24 @@
           width: 175,
           formatter: (row) => formatMileage(row.serviceMileage)
         },
-        { prop: 'expireDate', label: '零部件使用到期日期', width: 190 },
+        {
+          prop: 'expireDate',
+          label: '零部件使用到期日期',
+          width: 190,
+          formatter: (row) => formatDate(row.expireDate)
+        },
         {
           prop: 'expired',
-          label: '是否到期',
-          width: 110,
-          dict: { code: 'commonBoolean', display: 'auto', value: (row) => String(row.expired) }
+          label: '状态',
+          width: 100,
+          formatter: (row) => renderReminderStatus(row)
+        },
+        {
+          prop: 'remainingDays',
+          label: '到期提醒',
+          minWidth: 130,
+          sortable: true,
+          formatter: (row) => renderRemainingDays(row.remainingDays)
         }
       ]
     }
@@ -113,72 +130,12 @@
 
   const fetchTableData = async (params: ReminderTableParams) => {
     const { from, to } = pageInfoHandler({ current: params.current, size: params.size })
-    const result = await fetchVehiclePartUsageList({
+    return await fetchVehicleReminderPartServiceLifeList({
       companyName: params.companyName,
       plateNo: params.plateNo,
+      expired: params.expired,
       from,
       to
     })
-
-    return {
-      ...result,
-      data: filterReminderRows(createReminderRows(result.data ?? []), params)
-    }
   }
-
-  const createReminderRows = (rows: PartUsageRow[]): ReminderRow[] =>
-    rows.map((row) => {
-      const expireDate = getExpireDate(row)
-      const remainingDays = getRemainingDays(expireDate)
-      const dateExpired = !isNil(remainingDays) && remainingDays < 0
-      const mileageExpired =
-        row.serviceMileageEnabled &&
-        !isNil(row.usedMileage) &&
-        !isNil(row.serviceMileage) &&
-        row.usedMileage >= row.serviceMileage
-
-      return {
-        id: row.id ?? `${row.plateNo}-${row.partName}`,
-        sourceId: row.id,
-        vehicleId: row.vehicleId,
-        companyName: row.companyName,
-        plateNo: row.plateNo,
-        partType: row.partType,
-        partName: row.partName,
-        categoryName: row.categoryName,
-        brand: row.brand,
-        model: row.model,
-        rfidTag: row.rfidTag,
-        usedMileage: row.usedMileage,
-        serviceMileage: row.serviceMileage,
-        expireDate,
-        remainingDays,
-        expired: dateExpired || mileageExpired
-      }
-    })
-
-  const filterReminderRows = (rows: ReminderRow[], params: ReminderSearchParams): ReminderRow[] => {
-    const expired = normalizeBoolean(params.expired)
-    return rows.filter((row) => (isNil(expired) ? true : row.expired === expired))
-  }
-
-  const normalizeBoolean = (value: unknown): boolean | undefined => {
-    if (value === true || value === 'true') return true
-    if (value === false || value === 'false') return false
-    return undefined
-  }
-
-  const getExpireDate = (row: PartUsageRow): string | null => {
-    if (!row.serviceYearsEnabled || isNil(row.serviceYears) || isNil(row.enableDate)) return null
-    if (row.enableDate === '' || !dayjs(row.enableDate).isValid()) return null
-    return dayjs(row.enableDate).add(row.serviceYears, 'year').format('YYYY-MM-DD')
-  }
-
-  const getRemainingDays = (expireDate?: string | null): number | null => {
-    if (isNil(expireDate) || expireDate === '' || !dayjs(expireDate).isValid()) return null
-    return dayjs(expireDate).startOf('day').diff(dayjs().startOf('day'), 'day')
-  }
-
-  const formatMileage = (value?: number | null): string =>
-    isNil(value) ? '--' : Number(value).toLocaleString()
 </script>

@@ -43,12 +43,25 @@ export const exportVehicleArchiveList = supabaseVehicleApi.exportVehicleArchiveL
 export const fetchVehicleArchiveDetail = supabaseVehicleApi.fetchVehicleArchiveDetail
 export const addVehicleArchive = supabaseVehicleApi.addVehicleArchive
 export const editVehicleArchive = supabaseVehicleApi.editVehicleArchive
+export const fetchVehicleArchiveDeletePreview = supabaseVehicleApi.fetchVehicleArchiveDeletePreview
 export const deleteVehicleArchive = supabaseVehicleApi.deleteVehicleArchive
 export const deleteVehicleArchiveBatch = supabaseVehicleApi.deleteVehicleArchiveBatch
 export const auditVehicleArchive = supabaseVehicleApi.auditVehicleArchive
 export const auditVehicleArchiveBatch = supabaseVehicleApi.auditVehicleArchiveBatch
 
 export const fetchVehicleArchiveOptions = supabaseVehicleApi.fetchVehicleArchiveOptions
+export const fetchVehicleReminderCompanyOptions =
+  supabaseVehicleApi.fetchVehicleReminderCompanyOptions
+export const fetchVehicleReminderInsuranceExpiryList =
+  supabaseVehicleApi.fetchVehicleReminderInsuranceExpiryList
+export const fetchVehicleReminderInspectionExpiryList =
+  supabaseVehicleApi.fetchVehicleReminderInspectionExpiryList
+export const fetchVehicleReminderMaintenanceExpiryList =
+  supabaseVehicleApi.fetchVehicleReminderMaintenanceExpiryList
+export const fetchVehicleReminderPartServiceLifeList =
+  supabaseVehicleApi.fetchVehicleReminderPartServiceLifeList
+export const fetchVehicleReminderVehicleServiceLifeList =
+  supabaseVehicleApi.fetchVehicleReminderVehicleServiceLifeList
 export const fetchInsuranceCompanyOptions = supabaseVehicleApi.fetchInsuranceCompanyOptions
 
 export const fetchVehicleInsuranceList = supabaseVehicleApi.fetchVehicleInsuranceList
