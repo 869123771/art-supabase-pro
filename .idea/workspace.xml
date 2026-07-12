@@ -7,23 +7,14 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="b8f35119-660a-46e7-82f4-53eee06863eb" name="Changes" comment="feat monitor">
+    <list default="true" id="b8f35119-660a-46e7-82f4-53eee06863eb" name="Changes" comment="feat vehicle">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/api/providers/supabase/vehicle.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/providers/supabase/vehicle.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/api/tms.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/tms.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/api/vehicle-manage-system.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/vehicle-manage-system.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/basic-data/driver/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/basic-data/driver/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/in-transit-monitor/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/in-transit-monitor/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/order-list/detail.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/order-list/detail.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/waybill-management/detail.vue" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/waybill-management/modules/dispatch-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/waybill-management/modules/dispatch-dialog.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/vehicle-manage-system/archive-manage/vehicle-archive-edit/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-manage-system/archive-manage/vehicle-archive-edit/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/vehicle-manage-system/archive-manage/vehicle-archive-manage/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-manage-system/archive-manage/vehicle-archive-manage/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/vehicle-manage-system/reminder-manage/inspection-expiry/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-manage-system/reminder-manage/inspection-expiry/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/vehicle-manage-system/reminder-manage/insurance-expiry/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-manage-system/reminder-manage/insurance-expiry/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/vehicle-manage-system/reminder-manage/maintenance-expiry/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-manage-system/reminder-manage/maintenance-expiry/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/vehicle-manage-system/reminder-manage/part-service-life/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-manage-system/reminder-manage/part-service-life/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/vehicle-manage-system/reminder-manage/vehicle-service-life/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-manage-system/reminder-manage/vehicle-service-life/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/core/forms/art-address-picker/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/forms/art-address-picker/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/core/tables/art-table-query/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/tables/art-table-query/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/core/tables/art-table/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/tables/art-table/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/core/tables/art-table/style.scss" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/tables/art-table/style.scss" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/vehicle-manage-system/basic-info/insurance-company/modules/insurance-company-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-manage-system/basic-info/insurance-company/modules/insurance-company-dialog.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/vehicle-manage-system/basic-info/supplier/modules/supplier-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-manage-system/basic-info/supplier/modules/supplier-dialog.vue" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -65,61 +56,61 @@
   </component>
   <component name="NextEditCompletionFeaturesState">
     <decayedCancelled>
-      <entry key="MS100" value="1.1805109437729631E-36" />
-      <entry key="MS500" value="6.522498734359378E-8" />
-      <entry key="S2" value="0.015980983417926302" />
-      <entry key="S5" value="0.191179534735346" />
-      <entry key="S10" value="0.4372408200698398" />
-      <entry key="S30" value="0.7589973042293777" />
-      <entry key="S60" value="0.8712045138539662" />
-      <entry key="M2" value="0.9334493438204271" />
-      <entry key="M5" value="1.0655363812334417" />
-      <entry key="M10" value="2.037981711665613" />
-      <entry key="M15" value="3.3568836253794427" />
-      <entry key="M30" value="6.323015034336201" />
-      <entry key="H1" value="9.173406768330953" />
-      <entry key="H2" value="13.360043885146707" />
-      <entry key="H4" value="21.74066672489389" />
-      <entry key="D1" value="127.96451404232089" />
-      <entry key="W1" value="757.5705396678337" />
+      <entry key="MS100" value="2.2586355214257234E-16" />
+      <entry key="MS500" value="9.77322169634565E-4" />
+      <entry key="S2" value="0.2888886248895353" />
+      <entry key="S5" value="0.9201114248553127" />
+      <entry key="S10" value="1.3559888983976285" />
+      <entry key="S30" value="1.756840026174842" />
+      <entry key="S60" value="1.8745325381976525" />
+      <entry key="M2" value="1.9482693298296698" />
+      <entry key="M5" value="2.233164290216151" />
+      <entry key="M10" value="2.7066999949559953" />
+      <entry key="M15" value="3.0031430350955857" />
+      <entry key="M30" value="3.42250335610165" />
+      <entry key="H1" value="3.924091097878888" />
+      <entry key="H2" value="5.994473196049314" />
+      <entry key="H4" value="12.65546109283604" />
+      <entry key="D1" value="113.91780529170384" />
+      <entry key="W1" value="745.3072956255788" />
     </decayedCancelled>
     <decayedSelected>
-      <entry key="MS100" value="1.0000000000000793" />
-      <entry key="MS500" value="1.0023979212576466" />
-      <entry key="S2" value="1.2212884411448863" />
-      <entry key="S5" value="1.5469951703399478" />
-      <entry key="S10" value="1.739591218403753" />
-      <entry key="S30" value="1.9043375873256074" />
-      <entry key="S60" value="1.9509666594865849" />
-      <entry key="M2" value="1.9751834447392687" />
-      <entry key="M5" value="1.9992547368815483" />
-      <entry key="M10" value="2.091211841177155" />
-      <entry key="M15" value="2.2066433289384175" />
-      <entry key="M30" value="2.456571607595249" />
-      <entry key="H1" value="2.676101193997293" />
-      <entry key="H2" value="2.8225788666147467" />
-      <entry key="H4" value="2.9317093208999494" />
-      <entry key="D1" value="5.34397262975728" />
-      <entry key="W1" value="21.728462237061674" />
+      <entry key="MS100" value="1.0" />
+      <entry key="MS500" value="1.0" />
+      <entry key="S2" value="1.0" />
+      <entry key="S5" value="1.0" />
+      <entry key="S10" value="1.0" />
+      <entry key="S30" value="1.0" />
+      <entry key="S60" value="1.0" />
+      <entry key="M2" value="1.0" />
+      <entry key="M5" value="1.0" />
+      <entry key="M10" value="1.0000000006628282" />
+      <entry key="M15" value="1.0000010258112944" />
+      <entry key="M30" value="1.0016749316743003" />
+      <entry key="H1" value="1.0698773401687336" />
+      <entry key="H2" value="1.4561030772785983" />
+      <entry key="H4" value="2.1784994012602104" />
+      <entry key="D1" value="5.5909120006358854" />
+      <entry key="W1" value="22.262062158954986" />
     </decayedSelected>
     <decayedShown>
-      <entry key="MS100" value="9.76075894456886E-14" />
-      <entry key="MS500" value="0.002504113651352127" />
-      <entry key="S2" value="0.283921034801357" />
-      <entry key="S5" value="1.0251174754544654" />
-      <entry key="S10" value="1.7105695496394226" />
-      <entry key="S30" value="2.473811287019653" />
-      <entry key="S60" value="2.7223365000061257" />
-      <entry key="M2" value="2.857376637377258" />
-      <entry key="M5" value="3.043915931194352" />
-      <entry key="M10" value="4.118488484674354" />
-      <entry key="M15" value="5.556186709047579" />
-      <entry key="M30" value="8.775696669152689" />
-      <entry key="H1" value="11.847453733977344" />
-      <entry key="H2" value="16.181458736659064" />
-      <entry key="H4" value="24.671597782275867" />
-      <entry key="D1" value="133.3081026522078" />
-      <entry key="W1" value="779.2986765672958" />
+      <entry key="MS100" value="2.86240134875156E-14" />
+      <entry key="MS500" value="0.0024430696875500707" />
+      <entry key="S2" value="0.45623860047239156" />
+      <entry key="S5" value="1.39969801997286" />
+      <entry key="S10" value="2.0461398514015783" />
+      <entry key="S30" value="2.63988222027419" />
+      <entry key="S60" value="2.8141446652759865" />
+      <entry key="M2" value="2.9175103829441933" />
+      <entry key="M5" value="3.220151429413098" />
+      <entry key="M10" value="3.699624431794342" />
+      <entry key="M15" value="3.9981905428055846" />
+      <entry key="M30" value="4.421533587963127" />
+      <entry key="H1" value="4.992540782729829" />
+      <entry key="H2" value="7.4496861511107" />
+      <entry key="H4" value="14.8332926315262" />
+      <entry key="D1" value="119.50832764144614" />
+      <entry key="W1" value="767.5690308806749" />
     </decayedShown>
   </component>
   <component name="PackageJsonUpdateNotifier">
@@ -333,15 +324,7 @@
       <workItem from="1783560837614" duration="17365000" />
       <workItem from="1783664383594" duration="1819000" />
       <workItem from="1783724440992" duration="7690000" />
-      <workItem from="1783819690940" duration="6977000" />
-    </task>
-    <task id="LOCAL-00008" summary="feat reset password | assign roles">
-      <option name="closed" value="true" />
-      <created>1768360324840</created>
-      <option name="number" value="00008" />
-      <option name="presentableId" value="LOCAL-00008" />
-      <option name="project" value="LOCAL" />
-      <updated>1768360324840</updated>
+      <workItem from="1783819690940" duration="9869000" />
     </task>
     <task id="LOCAL-00009" summary="feat reset password | assign roles">
       <option name="closed" value="true" />
@@ -727,7 +710,15 @@
       <option name="project" value="LOCAL" />
       <updated>1783749446091</updated>
     </task>
-    <option name="localTasksCounter" value="57" />
+    <task id="LOCAL-00057" summary="feat vehicle">
+      <option name="closed" value="true" />
+      <created>1783839890773</created>
+      <option name="number" value="00057" />
+      <option name="presentableId" value="LOCAL-00057" />
+      <option name="project" value="LOCAL" />
+      <updated>1783839890774</updated>
+    </task>
+    <option name="localTasksCounter" value="58" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -763,7 +754,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="fix eslint error" />
     <MESSAGE value="merge &#10;version : 3.0.2&#10;date : 2026/03/23" />
     <MESSAGE value="fix change default pwd in Login page" />
     <MESSAGE value="feat reset pwd" />
@@ -788,6 +778,7 @@
     <MESSAGE value="feat:address picker" />
     <MESSAGE value="fix build" />
     <MESSAGE value="feat monitor" />
-    <option name="LAST_COMMIT_MESSAGE" value="feat monitor" />
+    <MESSAGE value="feat vehicle" />
+    <option name="LAST_COMMIT_MESSAGE" value="feat vehicle" />
   </component>
 </project>

@@ -1,7 +1,7 @@
 <template>
   <div class="art-address-picker">
     <ElRow :gutter="gutter">
-      <ElCol :xs="24" :sm="24" :md="regionSpan">
+      <ElCol v-if="!hideRegionSelector" :xs="24" :sm="24" :md="regionSpan">
         <ElFormItem
           ref="regionFormItemRef"
           :label="regionLabel"
@@ -23,7 +23,7 @@
         </ElFormItem>
       </ElCol>
 
-      <ElCol :xs="24" :sm="24" :md="detailSpan">
+      <ElCol :xs="24" :sm="24" :md="resolvedDetailSpan">
         <ElFormItem
           ref="detailFormItemRef"
           :label="detailLabel"
@@ -63,61 +63,63 @@
       </ElCol>
     </ElRow>
 
-    <ArtDialog
-      ref="dialogRef"
-      width="1080px"
-      :show-footer="true"
-      append-to-body
-      :close-on-click-modal="false"
-      show-fullscreen-button
-      @opened="handleDialogOpened"
-      @closed="handleDialogClosed"
-    >
-      <div class="art-address-picker-map">
-        <ArtAddressMap
-          ref="mapRef"
-          class="art-address-picker-map__canvas"
-          v-model:search-keyword="searchKeyword"
-          :amap-key="amapKey"
-          :amap-security-js-code="amapSecurityJsCode"
-          :show-poi-search="true"
-          enable-map-pick
-          :search-scope="searchScope"
-          :city-limit="limitSearchCity"
-          :region-path="regionPath"
-          :region-adcode="regionAdcode"
-          :region-search-text="regionSearchText"
-          :district-level="districtLevel"
-          :fallback-address="fullAddress || addressDetail"
-          :message="mapMessage"
-          @location-pick="setDraftLocation"
-          @error="mapMessage = $event"
-        />
-      </div>
-
-      <template #footer="{ api }">
-        <div class="art-address-picker-map__footer">
-          <div class="art-address-picker-map__selected">
-            <span class="art-address-picker-map__selected-label">已选地址</span>
-            <strong>{{ draftAddress || '请搜索或点击地图选择地址' }}</strong>
-          </div>
-          <div class="art-address-picker-map__coordinate">
-            <span>地址坐标</span>
-            <strong>{{ draftCoordinateText || '-' }}</strong>
-          </div>
-          <div>
-            <ElButton @click="api.handleClose()">取消</ElButton>
-            <ElButton
-              type="primary"
-              :disabled="!canConfirmPick"
-              @click="() => void api.handleConfirm()"
-            >
-              保存地址
-            </ElButton>
-          </div>
+    <Teleport to="body">
+      <ArtDialog
+        ref="dialogRef"
+        width="1080px"
+        :show-footer="true"
+        append-to-body
+        :close-on-click-modal="false"
+        show-fullscreen-button
+        @opened="handleDialogOpened"
+        @closed="handleDialogClosed"
+      >
+        <div class="art-address-picker-map">
+          <ArtAddressMap
+            ref="mapRef"
+            class="art-address-picker-map__canvas"
+            v-model:search-keyword="searchKeyword"
+            :amap-key="amapKey"
+            :amap-security-js-code="amapSecurityJsCode"
+            :show-poi-search="true"
+            enable-map-pick
+            :search-scope="searchScope"
+            :city-limit="limitSearchCity"
+            :region-path="regionPath"
+            :region-adcode="regionAdcode"
+            :region-search-text="regionSearchText"
+            :district-level="districtLevel"
+            :fallback-address="fullAddress || addressDetail"
+            :message="mapMessage"
+            @location-pick="setDraftLocation"
+            @error="mapMessage = $event"
+          />
         </div>
-      </template>
-    </ArtDialog>
+
+        <template #footer="{ api }">
+          <div class="art-address-picker-map__footer">
+            <div class="art-address-picker-map__selected">
+              <span class="art-address-picker-map__selected-label">已选地址</span>
+              <strong>{{ draftAddress || '请搜索或点击地图选择地址' }}</strong>
+            </div>
+            <div class="art-address-picker-map__coordinate">
+              <span>地址坐标</span>
+              <strong>{{ draftCoordinateText || '-' }}</strong>
+            </div>
+            <div>
+              <ElButton @click="api.handleClose()">取消</ElButton>
+              <ElButton
+                type="primary"
+                :disabled="!canConfirmPick"
+                @click="() => void api.handleConfirm()"
+              >
+                保存地址
+              </ElButton>
+            </div>
+          </div>
+        </template>
+      </ArtDialog>
+    </Teleport>
   </div>
 </template>
 
@@ -162,6 +164,7 @@
     cascaderProps?: Record<string, unknown>
     openPickerOnFocus?: boolean
     showCoordinateHint?: boolean
+    hideRegionSelector?: boolean
   }
 
   interface MapExpose {
@@ -202,7 +205,8 @@
     addressDetailProp: 'addressDetail',
     cascaderProps: () => ({}),
     openPickerOnFocus: false,
-    showCoordinateHint: true
+    showCoordinateHint: true,
+    hideRegionSelector: false
   })
 
   const emit = defineEmits<{
@@ -257,6 +261,8 @@
   const resolvedRegionOptions = computed(() =>
     props.regionOptions.length ? props.regionOptions : loadedRegionOptions.value
   )
+
+  const resolvedDetailSpan = computed(() => (props.hideRegionSelector ? 24 : props.detailSpan))
 
   const mergedCascaderProps = computed<Record<string, unknown>>(() => ({
     label: 'name',
@@ -613,10 +619,29 @@
     async () => {
       await nextTick()
       mapRef.value?.resize()
+      requestAnimationFrame(() => {
+        mapRef.value?.resize()
+      })
     }
   )
 
-  onMounted(loadRegionOptions)
+  const handleViewportResize = (): void => {
+    if (!dialogRef.value?.visible.value) return
+    void nextTick(() => {
+      mapRef.value?.resize()
+    })
+  }
+
+  onMounted(() => {
+    void loadRegionOptions()
+    window.addEventListener('resize', handleViewportResize)
+    window.visualViewport?.addEventListener('resize', handleViewportResize)
+  })
+
+  onBeforeUnmount(() => {
+    window.removeEventListener('resize', handleViewportResize)
+    window.visualViewport?.removeEventListener('resize', handleViewportResize)
+  })
 </script>
 
 <style scoped lang="scss">
@@ -645,8 +670,8 @@
 
   .art-address-picker-map {
     position: relative;
-    height: min(64vh, 620px);
-    min-height: 520px;
+    height: 100%;
+    min-height: 0;
     overflow: hidden;
     background: var(--el-fill-color-light);
     border: 1px solid var(--el-border-color-lighter);
@@ -689,13 +714,56 @@
     }
   }
 
+  :global(.art-address-picker-dialog:not(.is-fullscreen)) {
+    display: flex;
+    flex-direction: column;
+    width: min(1080px, calc(100vw - 32px)) !important;
+    height: min(820px, calc(100dvh - 32px));
+    max-height: calc(100dvh - 32px);
+    overflow: hidden;
+  }
+
+  :global(.art-address-picker-dialog:not(.is-fullscreen) > .el-dialog__header),
+  :global(.art-address-picker-dialog:not(.is-fullscreen) > .el-dialog__footer) {
+    flex: none;
+  }
+
+  :global(.art-address-picker-dialog:not(.is-fullscreen) > .el-dialog__body) {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  :global(.art-address-picker-dialog:not(.is-fullscreen) .art-dialog__content) {
+    flex: 1;
+    height: 100%;
+    min-height: 0;
+  }
+
   @media (width <= 900px) {
     .art-address-picker-map {
-      height: 560px;
-
       &__footer {
         grid-template-columns: minmax(0, 1fr);
       }
+    }
+  }
+
+  @media (height <= 720px) {
+    .art-address-picker-map__footer {
+      grid-template-columns: minmax(0, 1fr) auto;
+    }
+
+    .art-address-picker-map__coordinate {
+      display: none;
+    }
+  }
+
+  @media (height <= 520px) {
+    :global(.art-address-picker-dialog:not(.is-fullscreen)) {
+      height: calc(100dvh - 16px);
+      max-height: calc(100dvh - 16px);
     }
   }
 

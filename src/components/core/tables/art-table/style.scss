@@ -71,6 +71,18 @@
     background-color: var(--el-fill-color-lighter);
   }
 
+  :deep(.el-table__body tr.is-art-selected-row > td.el-table__cell) {
+    background-color: var(--el-table-row-hover-bg-color);
+  }
+
+  :deep(.el-table__body tr.is-art-selected-row.hover-row > td.el-table__cell) {
+    background-color: var(--el-table-row-hover-bg-color);
+  }
+
+  &.is-row-selection-dragging {
+    user-select: none;
+  }
+
   :deep(.el-loading-mask) {
     z-index: 100;
     background-color: var(--default-box-color) !important;

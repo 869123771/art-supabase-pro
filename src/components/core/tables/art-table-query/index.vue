@@ -608,6 +608,12 @@
     selectedRows.value = Array.from(selectedRowMap.value.values())
   }
 
+  const selectedRowKeys = computed(() =>
+    selectedRows.value
+      .map((row) => getRowIdentity(row))
+      .filter((key): key is string | number => key !== undefined)
+  )
+
   const clearSelectedRows = (): void => {
     selectedRowMap.value.clear()
     selectedRows.value = []
@@ -649,6 +655,7 @@
         data: resolvedData.value,
         columns: resolvedColumns.value,
         pagination: resolvedPagination.value,
+        selectedRowKeys: selectedRowKeys.value,
         'onSelection-change': handleSelectionChange,
         'onPagination:size-change': handleSizeChange,
         'onPagination:current-change': handleCurrentChange

@@ -3,7 +3,12 @@
 <!-- 扩展功能：分页组件、渲染自定义列、loading、表格全局边框、斑马纹、表格尺寸、表头背景配置 -->
 <!-- 获取 ref：默认暴露了 elTableRef 外部通过 ref.value.elTableRef 可以调用 el-table 方法 -->
 <template>
-  <div class="art-table" :class="{ 'is-empty': isEmpty }" :style="containerHeight">
+  <div
+    class="art-table"
+    :class="{ 'is-empty': isEmpty, 'is-row-selection-dragging': isRowSelectionDragging }"
+    :style="containerHeight"
+    @mousedown="handleTableMouseDown"
+  >
     <ElTable ref="elTableRef" v-loading="!!loading" v-bind="mergedTableProps">
       <template v-for="col in columns" :key="col.prop || col.type">
         <!-- 渲染全局序号列 -->
@@ -146,7 +151,17 @@
 </template>
 
 <script setup lang="ts">
-  import { ref, computed, nextTick, watch, watchEffect, getCurrentInstance, useAttrs } from 'vue'
+  import {
+    ref,
+    computed,
+    nextTick,
+    watch,
+    watchEffect,
+    getCurrentInstance,
+    useAttrs,
+    onMounted,
+    onBeforeUnmount
+  } from 'vue'
   import type { ComponentPublicInstance } from 'vue'
   import type { TableProps } from 'element-plus'
   import { storeToRefs } from 'pinia'
@@ -235,6 +250,8 @@
     emptyText?: string
     /** 是否开启 ArtTableHeader，解决表格高度自适应问题 */
     showTableHeader?: boolean
+    /** 已选中行 key，用于选中行背景展示 */
+    selectedRowKeys?: Array<string | number>
   }
 
   const props = withDefaults(defineProps<ArtTableProps>(), {
@@ -246,7 +263,8 @@
     size: undefined,
     emptyHeight: '100%',
     emptyText: '暂无数据',
-    showTableHeader: true
+    showTableHeader: true,
+    selectedRowKeys: () => []
   })
   const instance = getCurrentInstance()
   const attrs = useAttrs()
@@ -295,6 +313,9 @@
 
   const paginationHeight = ref(0)
   const tableHeaderHeight = ref(0)
+  const isRowSelectionDragging = ref(false)
+  const rowSelectionDragMode = ref<'select' | 'deselect'>('select')
+  const dragSelectedRowKeys = new Set<string>()
 
   // 使用 useResizeObserver 监听分页器高度变化
   useResizeObserver(paginationRef, (entries) => {
@@ -356,19 +377,28 @@
     return propName in rawProps || kebabName in rawProps
   }
 
-  const mergedTableProps = computed(() => ({
-    ...attrs,
-    ...props,
-    height: height.value,
-    stripe: stripe.value,
-    border: border.value,
-    size: size.value,
-    headerCellStyle: headerCellStyle.value,
-    // Element Plus 默认值为 true，未显式传入时不应被 ArtTable 覆盖成 false。
-    selectOnIndeterminate: hasExplicitTableProp('selectOnIndeterminate')
-      ? props.selectOnIndeterminate
-      : undefined
-  }))
+  const mergedTableProps = computed(() => {
+    const tableProps = {
+      ...attrs,
+      ...props
+    } as Record<string, unknown>
+    delete tableProps.selectedRowKeys
+
+    return {
+      ...tableProps,
+      height: height.value,
+      stripe: stripe.value,
+      border: border.value,
+      size: size.value,
+      headerCellStyle: headerCellStyle.value,
+      rowClassName: resolveRowClassName,
+      onCellMouseEnter: handleCellMouseEnter,
+      // Element Plus 默认值为 true，未显式传入时不应被 ArtTable 覆盖成 false。
+      selectOnIndeterminate: hasExplicitTableProp('selectOnIndeterminate')
+        ? props.selectOnIndeterminate
+        : undefined
+    }
+  })
 
   // 是否显示分页器
   const currentPagination = computed(() =>
@@ -381,6 +411,10 @@
     props.columns.some(
       (column) => column.draggable === true || typeof column.draggable === 'function'
     )
+  )
+
+  const hasSelectionColumn = computed(() =>
+    props.columns.some((column) => column.type === 'selection')
   )
 
   // Element Plus 在部分场景会先用 $index = -1 进行预渲染。
@@ -463,6 +497,133 @@
     if (typeof rowKey === 'string') return String(getCellValue(row, rowKey) ?? '')
     return String(row.id ?? '')
   }
+
+  const selectedRowKeySet = computed(
+    () => new Set(props.selectedRowKeys.map((key) => String(key)).filter(Boolean))
+  )
+
+  const normalizeClassName = (value: unknown): string => {
+    if (Array.isArray(value)) return value.map(normalizeClassName).filter(Boolean).join(' ')
+    if (value && typeof value === 'object') {
+      return Object.entries(value as Record<string, unknown>)
+        .filter(([, enabled]) => Boolean(enabled))
+        .map(([className]) => className)
+        .join(' ')
+    }
+    return typeof value === 'string' ? value : ''
+  }
+
+  const resolveRowClassName = (scope: { row: Record<string, any>; rowIndex: number }) => {
+    const customClassName =
+      typeof props.rowClassName === 'function' ? props.rowClassName(scope) : props.rowClassName
+    const classNames = [normalizeClassName(customClassName)]
+    if (selectedRowKeySet.value.has(getRowIdentity(scope.row))) {
+      classNames.push('is-art-selected-row')
+    }
+    return classNames.filter(Boolean).join(' ')
+  }
+
+  const callTableEventHandler = (handler: unknown, ...args: unknown[]): void => {
+    if (Array.isArray(handler)) {
+      handler.forEach((item) => callTableEventHandler(item, ...args))
+      return
+    }
+    if (typeof handler === 'function') {
+      handler(...args)
+    }
+  }
+
+  const applyRowSelectionByDrag = (row: Record<string, any> | undefined): void => {
+    if (!row) return
+    const rowKey = getRowIdentity(row)
+    if (!rowKey || dragSelectedRowKeys.has(rowKey)) return
+    const selected = selectedRowKeySet.value.has(rowKey)
+    const shouldSelect = rowSelectionDragMode.value === 'select'
+    if (selected === shouldSelect) return
+    dragSelectedRowKeys.add(rowKey)
+    elTableRef.value?.toggleRowSelection(row, shouldSelect)
+  }
+
+  const endRowSelectionDrag = (): void => {
+    if (!isRowSelectionDragging.value) return
+    isRowSelectionDragging.value = false
+    dragSelectedRowKeys.clear()
+  }
+
+  const handleCellMouseEnter = (
+    row: Record<string, any>,
+    column: unknown,
+    cell: HTMLTableCellElement,
+    event: Event
+  ): void => {
+    callTableEventHandler(
+      (attrs as Record<string, unknown>).onCellMouseEnter,
+      row,
+      column,
+      cell,
+      event
+    )
+    if (!isRowSelectionDragging.value) return
+    applyRowSelectionByDrag(row)
+  }
+
+  const ignoredDragStartSelector = [
+    'button',
+    'a',
+    'input',
+    'textarea',
+    'select',
+    '[role="button"]',
+    '.el-button',
+    '.el-switch',
+    '.el-radio',
+    '.el-input',
+    '.el-select',
+    '.el-dropdown',
+    '.art-table__drag-handle'
+  ].join(',')
+
+  const getPointerRow = (event: MouseEvent): Record<string, any> | undefined => {
+    const target = event.target
+    if (!(target instanceof Element)) return undefined
+    const rowElement = target.closest<HTMLTableRowElement>('tr.el-table__row')
+    const tableBody = rowElement?.parentElement
+    if (!rowElement || !tableBody) return undefined
+    const rowElements = Array.from(
+      tableBody.querySelectorAll<HTMLTableRowElement>('tr.el-table__row')
+    )
+    const rowIndex = rowElements.indexOf(rowElement)
+    return flattenRows(props.data ?? [])[rowIndex]
+  }
+
+  const handleTableMouseDown = (event: MouseEvent): void => {
+    if (event.button !== 0 || props.loading || !hasSelectionColumn.value) return
+    const target = event.target
+    if (!(target instanceof Element)) return
+    if (!target.closest('.el-table__body-wrapper')) return
+    if (target.closest('.el-checkbox')) return
+    if (target.closest(ignoredDragStartSelector)) return
+
+    const row = getPointerRow(event)
+    if (!row) return
+    isRowSelectionDragging.value = true
+    rowSelectionDragMode.value = selectedRowKeySet.value.has(getRowIdentity(row))
+      ? 'deselect'
+      : 'select'
+    dragSelectedRowKeys.clear()
+    applyRowSelectionByDrag(row)
+    event.preventDefault()
+  }
+
+  onMounted(() => {
+    window.addEventListener('mouseup', endRowSelectionDrag)
+    window.addEventListener('blur', endRowSelectionDrag)
+  })
+
+  onBeforeUnmount(() => {
+    window.removeEventListener('mouseup', endRowSelectionDrag)
+    window.removeEventListener('blur', endRowSelectionDrag)
+  })
 
   const flattenRows = (rows: Record<string, any>[] = []): Record<string, any>[] => {
     const result: Record<string, any>[] = []

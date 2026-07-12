@@ -17,6 +17,7 @@
           v-model:address-detail="form.addressDetail"
           :region-api="fetchRegionOptions"
           :show-coordinate-hint="false"
+          hide-region-selector
           label-width="120px"
         />
       </template>
@@ -110,7 +111,7 @@
       }
     },
     {
-      label: '联系地址',
+      label: '',
       key: 'addressPicker',
       type: 'input',
       span: 24,
