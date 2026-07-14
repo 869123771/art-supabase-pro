@@ -64,7 +64,7 @@
   const iconMap: Record<string, string> = {
     created: 'ri:file-list-3-line',
     pending_load: 'ri:node-tree',
-    pending_order: 'ri:hourglass-2-line',
+    pending_order: 'ri:hourglass-line',
     pending_pickup: 'ri:archive-drawer-line',
     transporting: 'ri:truck-line',
     signed: 'ri:time-line',
@@ -75,8 +75,6 @@
   const fallbackIcons = [
     'ri:file-list-3-line',
     'ri:node-tree',
-    'ri:hourglass-2-line',
-    'ri:archive-drawer-line',
     'ri:truck-line',
     'ri:time-line',
     'ri:checkbox-circle-fill'

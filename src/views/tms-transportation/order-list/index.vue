@@ -27,7 +27,7 @@
 
 <script setup lang="tsx">
   import type { ComputedRef, UnwrapNestedRefs } from 'vue'
-  import { ElMessageBox } from 'element-plus'
+  import { ElMessage, ElMessageBox } from 'element-plus'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type {
     ArtTableQueryExcelColumn,
@@ -45,6 +45,8 @@
   import {
     deleteOrder,
     deleteOrderBatch,
+    cancelWaybillOrder,
+    cancelWaybillOrderBatch,
     exportOrderList,
     fetchOrderList,
     fetchStationOptions
@@ -67,6 +69,7 @@
   }
 
   const orderStatusTabValues = [
+    'created',
     'pending_load',
     'pending_order',
     'pending_pickup',
@@ -224,11 +227,40 @@
           })
       },
       {
+        key: 'batch-cancel',
+        label: '批量取消',
+        icon: 'ri:close-circle-line',
+        selectionRequired: true,
+        buttonProps: { type: 'warning', plain: true },
+        onClick: async ({ selectedRows }) => {
+          const rows = selectedRows as OrderRecord[]
+          if (rows.some((row) => !canCancelOrder(row))) {
+            ElMessage.warning('已签收、已完成或已取消的订单不能取消')
+            return
+          }
+          await ElMessageBox.confirm(
+            `确定取消选中的 ${rows.length} 条订单及其关联运单吗？取消后大屏将不再展示。`,
+            '取消订单',
+            {
+              confirmButtonText: '确认取消',
+              cancelButtonText: '关闭',
+              type: 'warning'
+            }
+          )
+          await cancelWaybillOrderBatch(rows.map((row) => String(row.id)).filter(Boolean))
+          await tableQueryRef.value?.refreshUpdate()
+        }
+      },
+      {
         type: 'delete',
         content: ({ selectedCount }: { selectedCount: number }) =>
-          `确定删除选中的 ${selectedCount} 条订单吗？删除后无法恢复。`,
+          `确定永久删除选中的 ${selectedCount} 条订单及其关联数据吗？删除后无法恢复。`,
+        disabled: ({ selectedRows }) =>
+          (selectedRows as OrderRecord[]).some((row) => !canDeleteOrder(row)),
         onClick: async ({ selectedRows }) => {
-          await deleteOrderBatch(selectedRows.map((row) => String(row.id)).filter(Boolean))
+          await deleteOrderBatch(
+            (selectedRows as OrderRecord[]).map((row) => String(row.id)).filter(Boolean)
+          )
           await tableQueryRef.value?.refreshRemove()
         }
       }
@@ -275,14 +307,14 @@
       {
         prop: 'orderStatus',
         label: '状态',
-        width: 110,
+        width: 90,
         dict: { code: 'tmsOrderStatus', display: 'badge' },
         fixed: 'right'
       },
       {
         prop: 'operation',
         label: '操作',
-        width: 120,
+        width: 100,
         fixed: 'right',
         formatter: (row) => (
           <div class="flex items-center">
@@ -337,17 +369,26 @@
         disabled: !canEditFreight(row)
       },
       {
+        key: 'cancel',
+        label: '取消订单',
+        icon: 'ri:close-circle-line',
+        color: 'var(--el-color-warning)',
+        disabled: !canCancelOrder(row)
+      },
+      {
         key: 'delete',
-        label: '删除',
+        label: '永久删除',
         icon: 'ri:delete-bin-line',
-        color: 'var(--el-color-danger)'
+        color: 'var(--el-color-danger)',
+        disabled: !canDeleteOrder(row)
       }
-    ]
+    ].filter((item) => !item.disabled)
   }
 
   function handleMoreAction(item: ButtonMoreItem, row: OrderRecord): void {
     const actionMap: Record<string, () => void> = {
       freight: () => openFreight(row),
+      cancel: () => void handleCancel(row),
       delete: () => void handleDelete(row)
     }
 
@@ -365,15 +406,46 @@
     )
   }
 
-  async function handleDelete(row: OrderRecord): Promise<void> {
-    if (!row.id) return
+  function canDeleteOrder(row: OrderRecord): boolean {
+    return Boolean(row.id)
+  }
+
+  function canCancelOrder(row: OrderRecord): boolean {
+    return !['cancelled', 'signed', 'completed'].includes(String(row.orderStatus || ''))
+  }
+
+  async function handleCancel(row: OrderRecord): Promise<void> {
+    if (!row.id || !canCancelOrder(row)) return
     try {
-      await ElMessageBox.confirm(`确定删除订单“${row.orderNo}”吗？删除后无法恢复。`, '删除确认', {
-        confirmButtonText: '删除',
-        cancelButtonText: '取消',
-        type: 'warning',
-        confirmButtonClass: 'el-button--danger'
-      })
+      await ElMessageBox.confirm(
+        `确定取消订单“${row.orderNo}”及其关联运单吗？取消后大屏将不再展示。`,
+        '取消订单',
+        {
+          confirmButtonText: '确认取消',
+          cancelButtonText: '关闭',
+          type: 'warning'
+        }
+      )
+      await cancelWaybillOrder(row.id)
+      await tableQueryRef.value?.refreshUpdate()
+    } catch {
+      // 用户取消操作时不提示。
+    }
+  }
+
+  async function handleDelete(row: OrderRecord): Promise<void> {
+    if (!row.id || !canDeleteOrder(row)) return
+    try {
+      await ElMessageBox.confirm(
+        `确定永久删除订单“${row.orderNo}”及其关联运单、轨迹和回单吗？删除后无法恢复。`,
+        '删除确认',
+        {
+          confirmButtonText: '删除',
+          cancelButtonText: '取消',
+          type: 'warning',
+          confirmButtonClass: 'el-button--danger'
+        }
+      )
       await deleteOrder(row.id)
       await tableQueryRef.value?.refreshRemove()
     } catch {

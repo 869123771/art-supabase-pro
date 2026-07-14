@@ -422,15 +422,20 @@
    */
   const handleDelete = async (row: AppRouteRecord): Promise<void> => {
     try {
-      await ElMessageBox.confirm('确定要删除该菜单吗？删除后无法恢复', '提示', {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
-      })
+      await ElMessageBox.confirm(
+        '确定要删除该菜单吗？删除后将同步清理所有角色的关联权限，且无法恢复。',
+        '提示',
+        {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning'
+        }
+      )
       const ids = treeUtils
         .getDescendants(tableData.value, row.id as string, true)
-        ?.map((item: any) => item.id)
-      await deleteMenu({ ids } as Record<any, any>)
+        ?.map((item: any) => String(item.id))
+      await deleteMenu({ ids })
+      ElMessage.success('菜单删除成功')
       await tableQueryRef.value?.refreshRemove()
     } catch (error) {
       if (error !== 'cancel') {

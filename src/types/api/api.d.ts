@@ -1377,6 +1377,7 @@ declare namespace Api {
         driverWaybillLoadedAt?: string | null
         driverWaybillDepartedAt?: string | null
         driverWaybillUnloadedAt?: string | null
+        waybillStatus?: string | null
         dispatchStatus?: string
         dispatchVehicleId?: string | null
         dispatchDriverId?: string | null

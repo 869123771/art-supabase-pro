@@ -621,12 +621,43 @@ export async function fetchGetMenuList(params: AppRouteRecord) {
 }
 
 /*删除菜单*/
-export async function deleteMenu(params: Record<string, any>) {
-  const { ids } = params as any
+export async function deleteMenu(params: { ids: string[] }) {
+  const { ids } = params
+  if (!ids.length) throw new Error('未找到需要删除的菜单')
+
+  try {
+    return await deleteMenuRows(ids)
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    if (message.includes('sys_role_menu_menu_id_fkey')) {
+      await responseHandle(
+        () => supabase.from('sys_role_menu').delete({ count: 'exact' }).in('menu_id', ids) as any,
+        {
+          breakReturn: true,
+          requireAffected: true,
+          noAffectedMessage: '当前账号没有清理角色菜单关联权限'
+        }
+      )
+
+      try {
+        return await deleteMenuRows(ids)
+      } catch (retryError) {
+        throw new Error('角色菜单关联已清理，但菜单删除仍然失败', { cause: retryError })
+      }
+    }
+
+    if (message.includes('foreign key')) {
+      throw new Error('该菜单仍被其他业务数据引用，暂时不能删除。', { cause: error })
+    }
+    throw error
+  }
+}
+
+async function deleteMenuRows(ids: string[]) {
   return await responseHandle(
     () => supabase.from('sys_menu').delete({ count: 'exact' }).in('id', ids) as any,
     {
-      showMessage: true,
+      breakReturn: true,
       requireAffected: true,
       noAffectedMessage: WRITE_PERMISSION_DENIED_MESSAGE
     }

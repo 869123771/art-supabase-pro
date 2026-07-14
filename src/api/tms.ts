@@ -1155,11 +1155,7 @@ const applyOrderFilters = (query: any, params: OrderSearchParams) => {
     createTimeRange
   } = params
 
-  if (orderStatus === 'pending_load') {
-    query = query.or('order_status.in.(pending_load,created),dispatch_status.eq.pending')
-  } else if (orderStatus === 'pending_order') {
-    query = query.in('order_status', ['pending_order', 'loaded'])
-  } else if (orderStatus) {
+  if (orderStatus) {
     query = query.eq('order_status', orderStatus)
   }
   if (paymentMethod) query = query.eq('payment_method', paymentMethod)
@@ -1186,60 +1182,6 @@ const applyOrderFilters = (query: any, params: OrderSearchParams) => {
 const DRIVER_WAYBILL_SELECT =
   'id, tenant_id, waybill_no, status, loaded_at, departed_at, unloaded_at, cancelled_at, update_time'
 
-const DRIVER_WAYBILL_RUNNING_STATUSES = new Set([
-  'accepted',
-  'loading',
-  'transporting',
-  'unloading',
-  'pending_pickup',
-  'picked',
-  'loaded',
-  'in_transit',
-  'running',
-  'processing',
-  'in_progress',
-  'ongoing',
-  'pickup',
-  'started',
-  'active',
-  '待提货',
-  '运输中',
-  '进行中'
-])
-const DRIVER_WAYBILL_COMPLETED_STATUSES = new Set(['completed', 'signed', '已完成', '已到达'])
-const DRIVER_WAYBILL_CANCELLED_STATUSES = new Set([
-  'cancelled',
-  'canceled',
-  'closed',
-  '已取消',
-  '已关闭'
-])
-
-const normalizeDriverWaybillStatus = (status?: string | null): string =>
-  String(status ?? '')
-    .trim()
-    .toLowerCase()
-
-const getDriverWaybillOrderStatus = (status?: string | null): string | null => {
-  const normalizedStatus = normalizeDriverWaybillStatus(status)
-  if (DRIVER_WAYBILL_CANCELLED_STATUSES.has(normalizedStatus)) return 'cancelled'
-  if (DRIVER_WAYBILL_COMPLETED_STATUSES.has(normalizedStatus)) return 'completed'
-  if (DRIVER_WAYBILL_RUNNING_STATUSES.has(normalizedStatus)) return 'transporting'
-  return null
-}
-
-const getDriverWaybillDispatchStatus = (status?: string | null): string | null => {
-  const orderStatus = getDriverWaybillOrderStatus(status)
-  if (
-    orderStatus === 'transporting' ||
-    orderStatus === 'completed' ||
-    orderStatus === 'cancelled'
-  ) {
-    return orderStatus
-  }
-  return null
-}
-
 const fetchDriverWaybillMap = async (
   orderNos: string[]
 ): Promise<Map<string, InTransitMonitorRecord>> => {
@@ -1258,23 +1200,14 @@ const mergeDriverWaybillStatus = (
   order: OrderRecord,
   driverWaybill?: InTransitMonitorRecord
 ): OrderRecord => {
-  if (!driverWaybill?.status) return order
-
-  const orderStatus = getDriverWaybillOrderStatus(driverWaybill.status)
-  const dispatchStatus = getDriverWaybillDispatchStatus(driverWaybill.status)
-  if (!orderStatus && !dispatchStatus) return order
+  if (!driverWaybill) return order
 
   return {
     ...order,
     driverWaybillLoadedAt: driverWaybill.loadedAt ?? order.driverWaybillLoadedAt,
     driverWaybillDepartedAt: driverWaybill.departedAt ?? order.driverWaybillDepartedAt,
     driverWaybillUnloadedAt: driverWaybill.unloadedAt ?? order.driverWaybillUnloadedAt,
-    orderStatus: orderStatus ?? order.orderStatus,
-    dispatchStatus: dispatchStatus ?? order.dispatchStatus,
-    signedAt:
-      orderStatus === 'completed'
-        ? order.signedAt || driverWaybill.unloadedAt || driverWaybill.updateTime || null
-        : order.signedAt,
+    waybillStatus: driverWaybill.status ?? null,
     updateTime: driverWaybill.updateTime || order.updateTime
   }
 }
@@ -1380,15 +1313,17 @@ export async function editOrderFreight(params: OrderFreightPayload) {
 }
 
 export async function deleteOrder(id: string) {
-  return await responseHandle(() => supabase.from('tms_order').delete().eq('id', id) as any, {
-    showMessage: true
-  })
+  return await responseHandle(
+    () => supabase.rpc('tms_delete_order_with_waybill', { p_order_id: id }) as any,
+    { showMessage: true, breakReturn: true }
+  )
 }
 
 export async function deleteOrderBatch(ids: string[]) {
-  return await responseHandle(() => supabase.from('tms_order').delete().in('id', ids) as any, {
-    showMessage: true
-  })
+  return await responseHandle(
+    () => supabase.rpc('tms_delete_orders_with_waybills', { p_order_ids: ids }) as any,
+    { showMessage: true, breakReturn: true }
+  )
 }
 
 // 运单配载管理
@@ -1523,6 +1458,7 @@ const createDriverWaybillPayload = (order: WaybillRecord) => {
   const cargoQuantity = toNullableNumberValue(order.cargoQuantityTotal)
 
   return {
+    orderId: order.id || null,
     tenantId: order.tenantId,
     waybillNo: order.orderNo,
     status: 'pending',
@@ -1678,18 +1614,24 @@ export async function cancelWaybillDispatchBatch(ids: string[]) {
 }
 
 export async function cancelWaybillOrder(id: string) {
-  const result = await responseHandle<WaybillRecord>(
-    () =>
-      supabase
-        .from('tms_order')
-        .update(keysToSnakeDeep({ orderStatus: 'cancelled', dispatchStatus: 'cancelled' }))
-        .eq('id', id)
-        .select(ORDER_SELECT)
-        .single() as any,
+  return await responseHandle(
+    () => supabase.rpc('tms_cancel_order_with_waybill', { p_order_id: id }) as any,
     { showMessage: true, breakReturn: true }
   )
-  if (result.data) await cancelDriverWaybillFromOrder(result.data)
-  return result
+}
+
+export async function cancelWaybillOrderBatch(ids: string[]) {
+  return await responseHandle(
+    () => supabase.rpc('tms_cancel_orders_with_waybills', { p_order_ids: ids }) as any,
+    { showMessage: true, breakReturn: true }
+  )
+}
+
+export async function confirmWaybillDeparture(orderId: string) {
+  return await responseHandle(
+    () => supabase.rpc('tms_confirm_waybill_departure', { p_order_id: orderId }) as any,
+    { showMessage: true, breakReturn: true }
+  )
 }
 
 export async function fetchDispatchVehicleOptions(params: DispatchVehicleSearchParams = {}) {
@@ -1714,16 +1656,8 @@ export async function fetchDispatchVehicleOptions(params: DispatchVehicleSearchP
 
 // 在途监控
 const IN_TRANSIT_WAYBILL_STATUSES = [
-  'pending',
-  'accepted',
-  'loading',
   'transporting',
-  'unloading',
-  'completed',
   // 兼容历史数据，司机端当前约束使用上面的标准状态。
-  'pending_pickup',
-  'picked',
-  'loaded',
   'in_transit',
   'running',
   'processing',
@@ -1738,13 +1672,7 @@ const IN_TRANSIT_WAYBILL_STATUSES = [
   '进行中'
 ]
 
-const IN_TRANSIT_ORDER_STATUSES = [
-  'pending_order',
-  'pending_pickup',
-  'transporting',
-  'signed',
-  'completed'
-]
+const IN_TRANSIT_ORDER_STATUSES = ['transporting']
 const OUT_OF_TRANSIT_STATUSES = new Set(['cancelled', 'canceled', 'closed', '已取消', '已关闭'])
 
 const uniqueStringValues = (values: Array<string | null | undefined>): string[] =>
@@ -1757,7 +1685,9 @@ const isActiveTransitMonitorRow = (row: InTransitMonitorRecord): boolean => {
   const orderStatus = String(row.order?.orderStatus ?? '')
     .trim()
     .toLowerCase()
-  return !OUT_OF_TRANSIT_STATUSES.has(waybillStatus) && !OUT_OF_TRANSIT_STATUSES.has(orderStatus)
+  return (
+    IN_TRANSIT_WAYBILL_STATUSES.includes(waybillStatus) && !OUT_OF_TRANSIT_STATUSES.has(orderStatus)
+  )
 }
 
 const fetchInTransitVehicleMap = async (
@@ -1843,6 +1773,7 @@ export async function fetchInTransitMonitorList(
   let query: any = supabase
     .from('tms_waybill')
     .select('*', { count: 'exact' })
+    .not('order_id', 'is', null)
     .order('update_time', { ascending: false, nullsFirst: false })
     .order('create_time', { ascending: false, nullsFirst: false })
     .range(from, to)
@@ -1952,14 +1883,14 @@ export async function signDeliveryOrder(params: DeliverySignPayload) {
   const { id, ...data } = params
   if (!id) throw new Error('缺少运单ID')
 
-  return await responseHandle<DeliveryRecord>(
+  return await responseHandle(
     () =>
-      supabase
-        .from('tms_order')
-        .update(keysToSnakeDeep(data))
-        .eq('id', id)
-        .select(ORDER_SELECT)
-        .single() as any,
+      supabase.rpc('tms_complete_order_with_waybill', {
+        p_order_id: id,
+        p_signed_cod_amount: data.signedCodAmount ?? 0,
+        p_receipt_image_urls: data.receiptImageUrls ?? [],
+        p_signed_at: data.signedAt ?? new Date().toISOString()
+      }) as any,
     { showMessage: true, breakReturn: true }
   )
 }

@@ -183,6 +183,8 @@ export default ({ mode }: { mode: string }) => {
     ],
     // 依赖预构建：避免运行时重复请求与转换，提升首次加载速度
     optimizeDeps: {
+      entries: ['index.html', 'src/views/**/*.vue'],
+      ignoreOutdatedRequests: true,
       include: [
         'echarts/core',
         'echarts/charts',

@@ -19,7 +19,7 @@
       shadow="never"
       :style="{ marginTop: hasSearchBar && showSearchBar ? '12px' : '0' }"
     >
-      <div v-if="$slots['table-header-top']" class="art-table-query__header-top">
+      <div v-if="$slots['table-header-top']" ref="headerTopRef" class="art-table-query__header-top">
         <slot
           name="table-header-top"
           :selected-rows="selectedRows"
@@ -133,6 +133,7 @@
   } from 'vue'
   import type { TableProps } from 'element-plus'
   import { ElMessage, ElMessageBox } from 'element-plus'
+  import { useResizeObserver } from '@vueuse/core'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import ArtExcelImport from '@/components/core/forms/art-excel-import/index.vue'
   import ArtTable from '@/components/core/tables/art-table/index.vue'
@@ -300,6 +301,8 @@
     emptyText?: string
     /** 是否启用表头高度参与表格高度计算，默认 true */
     showTableHeader?: boolean
+    /** 工具栏上方额外内容占用的高度 */
+    additionalHeightOffset?: number
     /** 分页器配置 */
     paginationOptions?: ArtTableQueryPaginationOptions
   }
@@ -488,6 +491,8 @@
   const showSearchBar = defineModel<boolean>('showSearchBar', { default: true })
   const initialSearchModel = ref<Record<string, unknown>>({})
   const tableRef = ref<ArtTableExpose | null>(null)
+  const headerTopRef = ref<HTMLElement>()
+  const headerTopHeight = ref(0)
   const selectedRows = ref<Record<string, any>[]>([])
   const selectedRowMap = ref(new Map<string | number, Record<string, any>>())
 
@@ -597,6 +602,20 @@
     ...props.tableProps
   }))
 
+  useResizeObserver(headerTopRef, (entries) => {
+    const entry = entries[0]
+    if (!entry) return
+
+    window.requestAnimationFrame(() => {
+      const element = headerTopRef.value
+      if (!element) return
+      const style = window.getComputedStyle(element)
+      const marginHeight =
+        (Number.parseFloat(style.marginTop) || 0) + (Number.parseFloat(style.marginBottom) || 0)
+      headerTopHeight.value = element.getBoundingClientRect().height + marginHeight
+    })
+  })
+
   const getRowIdentity = (row: Record<string, any>): string | number | undefined => {
     const rowKey = resolvedTableProps.value.rowKey
     if (typeof rowKey === 'function') return rowKey(row)
@@ -651,6 +670,8 @@
     () =>
       ({
         ...resolvedTableProps.value,
+        additionalHeightOffset:
+          Number(resolvedTableProps.value.additionalHeightOffset ?? 0) + headerTopHeight.value,
         loading: resolvedLoading.value,
         data: resolvedData.value,
         columns: resolvedColumns.value,
@@ -668,7 +689,7 @@
     loading: resolvedLoading.value
   }))
 
-  const reservedSlotNames = new Set(['header-left', 'header-right', 'default'])
+  const reservedSlotNames = new Set(['header-left', 'header-right', 'table-header-top', 'default'])
 
   const searchBarSlotNames = computed(() => {
     return resolvedSearchItems.value?.map((item) => item.key) ?? []

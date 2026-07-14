@@ -21,7 +21,7 @@
 
   interface Props {
     /** 按钮类型 */
-    type?: 'add' | 'edit' | 'delete' | 'more' | 'view'
+    type?: 'add' | 'edit' | 'delete' | 'more' | 'sign' | 'view'
     /** 按钮图标 */
     icon?: string
     /** 按钮样式类 */
@@ -49,6 +49,7 @@
     add: { icon: 'ri:add-fill', class: 'bg-theme/12 text-theme' },
     edit: { icon: 'ri:pencil-line', class: 'bg-secondary/12 text-secondary' },
     delete: { icon: 'ri:delete-bin-5-line', class: 'bg-error/12 text-error' },
+    sign: { icon: 'ri:checkbox-circle-line', class: 'bg-success/12 text-success' },
     view: { icon: 'ri:eye-line', class: 'bg-info/12 text-info' },
     more: { icon: 'ri:more-2-fill', class: '' }
   } as const

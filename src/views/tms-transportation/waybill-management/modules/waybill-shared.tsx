@@ -17,6 +17,7 @@ import { formatWithDayjs } from '@/utils/time'
 import { useUserStore } from '@/store/modules/user'
 import {
   cancelWaybillOrder,
+  confirmWaybillDeparture,
   exportWaybillList,
   fetchStationOptions,
   fetchWaybillList
@@ -45,18 +46,18 @@ export const pendingDispatchStatuses = ['pending']
 
 const waybillDispatchStatusFallbackMap: Record<string, Api.DataCenter.DictListItem> = {
   pending: {
-    name: '待运载',
+    name: '待配载',
     code: 'pending',
     status: '1',
-    label: '待运载',
+    label: '待配载',
     value: 'pending',
     color: 'var(--el-color-primary)'
   },
   loaded: {
-    name: '待发车',
+    name: '已配载',
     code: 'loaded',
     status: '1',
-    label: '待发车',
+    label: '已配载',
     value: 'loaded',
     color: 'var(--el-color-primary)'
   },
@@ -410,10 +411,11 @@ export const createWaybillColumns = (
   columns.push(
     {
       prop: 'dispatchStatus',
-      label: context.mode === 'pending' ? '状态' : '发车状态',
+      label: context.mode === 'pending' ? '配载状态' : '运单状态',
       width: 100,
       fixed: 'right',
-      formatter: (row) => formatWaybillDispatchStatus(row)
+      formatter: (row) =>
+        context.mode === 'pending' ? formatWaybillDispatchStatus(row) : formatWaybillStatus(row)
     },
     {
       prop: 'operation',
@@ -452,44 +454,57 @@ function formatWaybillDispatchStatus(row: WaybillRecord) {
   )
 }
 
+function formatWaybillStatus(row: WaybillRecord) {
+  return <ArtDictDisplay dictCode="tmsWaybillStatus" value={row.waybillStatus} display="badge" />
+}
+
 function getMoreActions(context: WaybillListContext, row: WaybillRecord): ButtonMoreItem[] {
+  const actions: ButtonMoreItem[] = []
+
   if (context.mode === 'pending') {
-    return [
-      {
+    if (row.dispatchStatus === 'pending') {
+      actions.push({
         key: 'dispatch',
         label: '配载',
-        icon: 'ri:truck-line',
-        disabled: row.dispatchStatus !== 'pending'
-      },
-      {
+        icon: 'ri:truck-line'
+      })
+    }
+    if (canCancelWaybillOrder(row)) {
+      actions.push({
         key: 'cancel-order',
         label: '取消订单',
         icon: 'ri:close-circle-line',
         color: 'var(--el-color-danger)'
-      }
-    ]
+      })
+    }
+
+    return actions
   }
 
-  return [
-    {
+  if (row.waybillStatus === 'loading') {
+    actions.push({
       key: 'confirm-departure',
       label: '确认发车',
-      icon: 'ri:send-plane-line',
-      disabled: row.dispatchStatus !== 'loaded'
-    },
-    {
+      icon: 'ri:send-plane-line'
+    })
+  }
+  if (row.dispatchStatus === 'loaded') {
+    actions.push({
       key: 'print',
       label: '打印',
-      icon: 'ri:printer-line',
-      disabled: row.dispatchStatus !== 'loaded'
-    },
-    {
+      icon: 'ri:printer-line'
+    })
+  }
+  if (canCancelWaybillOrder(row)) {
+    actions.push({
       key: 'cancel-order',
       label: '取消订单',
       icon: 'ri:close-circle-line',
       color: 'var(--el-color-danger)'
-    }
-  ]
+    })
+  }
+
+  return actions
 }
 
 function handleMoreAction(
@@ -499,7 +514,7 @@ function handleMoreAction(
 ): void {
   const actionMap: Record<string, () => void> = {
     dispatch: () => openDispatch(context, row),
-    'confirm-departure': () => handleConfirmDeparture(row),
+    'confirm-departure': () => void handleConfirmDeparture(context, row),
     print: () => handlePrint(row),
     'cancel-order': () => void handleCancelOrder(context, row)
   }
@@ -520,7 +535,7 @@ function openDetail(context: WaybillListContext, row: WaybillRecord): void {
 }
 
 async function handleCancelOrder(context: WaybillListContext, row: WaybillRecord): Promise<void> {
-  if (!row.id) return
+  if (!row.id || !canCancelWaybillOrder(row)) return
   try {
     await ElMessageBox.confirm(`确定取消运单“${row.orderNo}”吗？`, '取消运单', {
       confirmButtonText: '取消运单',
@@ -535,9 +550,30 @@ async function handleCancelOrder(context: WaybillListContext, row: WaybillRecord
   }
 }
 
-function handleConfirmDeparture(row: WaybillRecord): void {
-  if (row.dispatchStatus !== 'loaded') return
-  ElMessage.info('确认发车接口未接入')
+function canCancelWaybillOrder(row: WaybillRecord): boolean {
+  return !['signed', 'completed', 'cancelled'].includes(String(row.orderStatus || ''))
+}
+
+async function handleConfirmDeparture(
+  context: WaybillListContext,
+  row: WaybillRecord
+): Promise<void> {
+  if (!row.id || row.waybillStatus !== 'loading') return
+  try {
+    await ElMessageBox.confirm(
+      `确认运单“${row.orderNo}”已发车吗？确认后运单和订单都会进入运输中。`,
+      '确认发车',
+      {
+        confirmButtonText: '确认发车',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+    await confirmWaybillDeparture(row.id)
+    await context.tableQueryRef.value?.refreshUpdate()
+  } catch {
+    // 用户取消操作时不需要提示。
+  }
 }
 
 function handlePrint(row: WaybillRecord): void {

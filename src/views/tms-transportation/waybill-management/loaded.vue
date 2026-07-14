@@ -70,4 +70,8 @@
   function fetchTableData(params: TableParams) {
     return fetchWaybillTableData(params, 'loaded')
   }
+
+  onActivated(() => {
+    void tableQueryRef.value?.getData()
+  })
 </script>

@@ -206,7 +206,6 @@
   type OrderStatusValue =
     | 'created'
     | 'pending_load'
-    | 'loaded'
     | 'pending_order'
     | 'pending_pickup'
     | 'transporting'
@@ -299,7 +298,6 @@
 
   function normalizeOrderStatus(status?: string): OrderStatusValue | undefined {
     if (!status) return undefined
-    if (status === 'created') return 'pending_load'
     if (status === 'loaded') return 'pending_order'
     return status as OrderStatusValue
   }

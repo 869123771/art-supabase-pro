@@ -1,5 +1,4 @@
 import { computed, type ComputedRef, type Ref } from 'vue'
-import { ElTag } from 'element-plus'
 import type { Router } from 'vue-router'
 import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
 import type {
@@ -7,6 +6,9 @@ import type {
   ArtTableQueryHeaderAction
 } from '@/components/core/tables/art-table-query/index.vue'
 import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
+import ArtButtonMore, {
+  type ButtonMoreItem
+} from '@/components/core/forms/art-button-more/index.vue'
 import type { ColumnOption } from '@/types'
 import { pageInfoHandler } from '@/utils/table/tableUtils'
 import { exportDeliveryList, fetchDeliveryList } from '@/api/tms'
@@ -30,19 +32,8 @@ export interface DeliveryListContext {
   signDialogRef?: Ref<DeliverySignDialogExpose | undefined>
 }
 
-const deliveryOrderStatuses = ['signed']
+const deliveryOrderStatuses = ['signed', 'completed']
 const transitOrderStatuses = ['pending_pickup', 'transporting']
-
-const orderStatusMetas: Record<
-  string,
-  { label: string; type: 'primary' | 'success' | 'info' | 'warning' | 'danger' }
-> = {
-  pending_pickup: { label: '待提货', type: 'warning' },
-  transporting: { label: '运输中', type: 'primary' },
-  signed: { label: '待签收', type: 'warning' },
-  completed: { label: '已完成', type: 'success' },
-  cancelled: { label: '已取消', type: 'danger' }
-}
 
 export const createInitialDeliverySearch = (): DeliverySearchParams => ({
   cargoKeyword: '',
@@ -236,23 +227,20 @@ export const createDeliveryColumns = (
     label: '状态',
     width: 100,
     fixed: 'right',
-    formatter: (row) => renderOrderStatus(row.orderStatus)
+    dict: { code: 'tmsOrderStatus', display: 'badge' }
   },
   {
     prop: 'operation',
     label: '操作',
-    width: context.mode === 'delivery' ? 120 : 80,
+    width: 100,
     fixed: 'right',
     formatter: (row) => (
       <div class="flex items-center">
         <ArtButtonTable type="view" onClick={() => openDetail(context, row)} />
-        {context.mode === 'delivery' ? (
-          <ArtButtonTable
-            type="edit"
-            disabled={row.orderStatus !== 'signed'}
-            onClick={() => openSignDialog(context, row)}
-          />
-        ) : null}
+        <ArtButtonMore
+          list={getMoreActions(context, row)}
+          onClick={(item: ButtonMoreItem) => handleMoreAction(context, row, item)}
+        />
       </div>
     )
   }
@@ -275,15 +263,25 @@ function openSignDialog(context: DeliveryListContext, row: DeliveryRecord): void
   void context.signDialogRef?.value?.handleOpen(row)
 }
 
-function renderOrderStatus(status?: string) {
-  const meta = status ? orderStatusMetas[status] : undefined
-  if (!meta) return '-'
+function getMoreActions(context: DeliveryListContext, row: DeliveryRecord): ButtonMoreItem[] {
+  if (context.mode !== 'delivery' || row.orderStatus !== 'signed') return []
 
-  return (
-    <ElTag type={meta.type} effect="light">
-      {meta.label}
-    </ElTag>
-  )
+  return [
+    {
+      key: 'sign',
+      label: '签收',
+      icon: 'ri:checkbox-circle-line',
+      color: 'var(--el-color-success)'
+    }
+  ]
+}
+
+function handleMoreAction(
+  context: DeliveryListContext,
+  row: DeliveryRecord,
+  item: ButtonMoreItem
+): void {
+  if (item.key === 'sign') openSignDialog(context, row)
 }
 
 function formatCargoType(row: DeliveryRecord): string {

@@ -2,8 +2,7 @@
 
 ## 字典展示规范
 
-后续涉及字典值展示时统一使用 `ArtDictDisplay`。表格场景优先配置
-`ColumnOption.dict`，不要在业务页面重复编写 `formatter`、`ElTag` 或颜色判断。
+后续涉及字典值展示时统一使用 `ArtDictDisplay`。表格场景优先配置 `ColumnOption.dict`，不要在业务页面重复编写 `formatter`、`ElTag` 或颜色判断。
 
 ### 表格列
 
@@ -19,8 +18,7 @@
 }
 ```
 
-未提供 `value` 时默认读取列的 `prop`。需要从其他字段或组合数据取值时，使用
-`value(row)`：
+未提供 `value` 时默认读取列的 `prop`。需要从其他字段或组合数据取值时，使用 `value(row)`：
 
 ```ts
 {
@@ -36,11 +34,7 @@
 ### 非表格场景
 
 ```vue
-<ArtDictDisplay
-  dict-code="vehicleAuditStatus"
-  :value="detail.auditStatus"
-  display="auto"
-/>
+<ArtDictDisplay dict-code="vehicleAuditStatus" :value="detail.auditStatus" display="auto" />
 ```
 
 已有完整字典项时也可以直接传入：
@@ -215,14 +209,14 @@ const load = () => {
 
 ### sanitizeOutput
 
-| Prop | 类型 | 默认含义 |
-| --- | --- | --- |
-| `removeEmptyString` | `boolean` | 移除空字符串。 |
-| `removeEmptyArray` | `boolean` | 移除空数组。 |
-| `removeEmptyObject` | `boolean` | 移除清洗后为空的对象。 |
+| Prop                  | 类型      | 默认含义               |
+| --------------------- | --------- | ---------------------- |
+| `removeEmptyString`   | `boolean` | 移除空字符串。         |
+| `removeEmptyArray`    | `boolean` | 移除空数组。           |
+| `removeEmptyObject`   | `boolean` | 移除清洗后为空的对象。 |
 | `removeEmptyRichText` | `boolean` | 移除空富文本占位内容。 |
-| `keepZero` | `boolean` | 保留数字 `0`。 |
-| `keepFalse` | `boolean` | 保留布尔值 `false`。 |
+| `keepZero`            | `boolean` | 保留数字 `0`。         |
+| `keepFalse`           | `boolean` | 保留布尔值 `false`。   |
 
 ### tableHeaderProps
 
@@ -236,14 +230,14 @@ const load = () => {
 
 `layout` 可用项：
 
-| Key | 说明 |
-| --- | --- |
-| `search` | 搜索区域显隐按钮。 |
-| `refresh` | 刷新按钮。 |
-| `size` | 表格尺寸切换。 |
-| `fullscreen` | 全屏按钮。 |
-| `columns` | 列设置。 |
-| `settings` | 表格设置。 |
+| Key          | 说明               |
+| ------------ | ------------------ |
+| `search`     | 搜索区域显隐按钮。 |
+| `refresh`    | 刷新按钮。         |
+| `size`       | 表格尺寸切换。     |
+| `fullscreen` | 全屏按钮。         |
+| `columns`    | 列设置。           |
+| `settings`   | 表格设置。         |
 
 ### tableProps
 
@@ -289,6 +283,7 @@ const load = () => {
 | `emptyHeight` | `string` | `'100%'` | 空数据表格高度。 |
 | `emptyText` | `string` | `'暂无数据'` | 空数据文案。 |
 | `showTableHeader` | `boolean` | `true` | 是否启用表头高度参与表格高度计算。 |
+| `additionalHeightOffset` | `number` | `0` | 工具栏上方其它内容占用的高度；`table-header-top` 插槽会自动测量，无需手动设置。 |
 | `paginationOptions` | `ArtTableQueryPaginationOptions` | - | 分页器配置。 |
 
 ### paginationOptions
@@ -331,13 +326,13 @@ const load = () => {
 
 ### ArtTableRowDragPayload
 
-| 字段 | 类型 | 说明 |
-| --- | --- | --- |
-| `row` | `Record<string, any> \| undefined` | 被拖拽行。 |
-| `targetRow` | `Record<string, any> \| undefined` | 目标位置原始行。 |
-| `oldIndex` | `number \| undefined` | 拖拽前可见行索引。 |
-| `newIndex` | `number \| undefined` | 拖拽后可见行索引。 |
-| `event` | `DraggableEvent` | `vue-draggable-plus` 原始事件。 |
+| 字段        | 类型                               | 说明                            |
+| ----------- | ---------------------------------- | ------------------------------- |
+| `row`       | `Record<string, any> \| undefined` | 被拖拽行。                      |
+| `targetRow` | `Record<string, any> \| undefined` | 目标位置原始行。                |
+| `oldIndex`  | `number \| undefined`              | 拖拽前可见行索引。              |
+| `newIndex`  | `number \| undefined`              | 拖拽后可见行索引。              |
+| `event`     | `DraggableEvent`                   | `vue-draggable-plus` 原始事件。 |
 
 ## Slots
 
@@ -345,6 +340,7 @@ const load = () => {
 | --- | --- |
 | `header-left` | 工具栏左侧扩展，渲染在 `headerActions` 后面。 |
 | `header-right` | 工具栏右侧扩展。 |
+| `table-header-top` | 工具栏上方扩展区，高度会自动计入表格布局。 |
 | `default` | 透传给 `ArtTable` 的默认插槽。 |
 | 表格列 slot | 除保留插槽外，其它插槽会透传给 `ArtTable`。例如列 `prop: 'status'` 可写 `#status`。 |
 | `search-{key}` | 查询项插槽。例如查询项 `key: 'status'` 可写 `#search-status`。 |
@@ -353,6 +349,7 @@ const load = () => {
 
 - `header-left`
 - `header-right`
+- `table-header-top`
 - `default`
 - `search-*`
 
@@ -369,14 +366,14 @@ interface ArtTableQueryExpose {
 }
 ```
 
-| 方法 | 说明 |
-| --- | --- |
-| `refreshData()` | 全量刷新，适合工具栏刷新。 |
-| `refreshCreate()` | 新增成功后刷新，默认回到第一页。 |
-| `refreshUpdate()` | 编辑成功后刷新，默认保留当前页。 |
-| `refreshRemove()` | 删除成功后刷新，当前页为空时自动回退上一页，并清空选中状态。 |
-| `getData()` | 查询语义的数据加载，默认回到第一页。 |
-| `resetSearchParams()` | 外部主动清空查询表单并重置内部查询参数。 |
+| 方法                  | 说明                                                         |
+| --------------------- | ------------------------------------------------------------ |
+| `refreshData()`       | 全量刷新，适合工具栏刷新。                                   |
+| `refreshCreate()`     | 新增成功后刷新，默认回到第一页。                             |
+| `refreshUpdate()`     | 编辑成功后刷新，默认保留当前页。                             |
+| `refreshRemove()`     | 删除成功后刷新，当前页为空时自动回退上一页，并清空选中状态。 |
+| `getData()`           | 查询语义的数据加载，默认回到第一页。                         |
+| `resetSearchParams()` | 外部主动清空查询表单并重置内部查询参数。                     |
 
 ## headerActions
 
@@ -464,12 +461,12 @@ const excelColumns: ArtTableQueryExcelColumn[] = [
 ]
 ```
 
-| 字段 | 说明 |
-| --- | --- |
-| `key` | 业务字段名。 |
-| `title` | Excel 表头。 |
-| `required` | 导入时是否必填。 |
-| `width` | 导出列宽。 |
+| 字段        | 说明             |
+| ----------- | ---------------- |
+| `key`       | 业务字段名。     |
+| `title`     | Excel 表头。     |
+| `required`  | 导入时是否必填。 |
+| `width`     | 导出列宽。       |
 | `formatter` | 导出格式化函数。 |
 
 ### 导入
@@ -550,11 +547,11 @@ const columnsFactory = (): ColumnOption<Row>[] => [
 ]
 ```
 
-| 字段 | 类型 | 默认值 | 说明 |
-| --- | --- | --- | --- |
-| `draggable` | `boolean \| (row) => boolean` | `false` | 是否展示拖拽按钮。 |
-| `dragDisabled` | `boolean \| (row) => boolean` | `false` | 是否禁用当前行拖拽。 |
-| `dragIcon` | `string` | `ri:drag-move-2-fill` | 拖拽按钮图标。 |
+| 字段           | 类型                          | 默认值                | 说明                 |
+| -------------- | ----------------------------- | --------------------- | -------------------- |
+| `draggable`    | `boolean \| (row) => boolean` | `false`               | 是否展示拖拽按钮。   |
+| `dragDisabled` | `boolean \| (row) => boolean` | `false`               | 是否禁用当前行拖拽。 |
+| `dragIcon`     | `string`                      | `ri:drag-move-2-fill` | 拖拽按钮图标。       |
 
 监听拖拽结束：
 

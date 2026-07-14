@@ -23,6 +23,8 @@ import { computed, type Ref } from 'vue'
 interface TableHeightOptions {
   /** 是否显示表格头部 */
   showTableHeader: Ref<boolean>
+  /** 表格工具栏上方额外内容占用的高度 */
+  additionalHeightOffset: Ref<number>
   /** 分页器高度 */
   paginationHeight: Ref<number>
   /** 表格头部高度 */
@@ -55,14 +57,21 @@ class TableHeightCalculator {
    * 计算偏移量
    */
   private calculateOffset(): number {
+    const additionalHeightOffset = Math.max(0, this.options.additionalHeightOffset.value)
+
     if (!this.options.showTableHeader.value) {
-      return this.calculatePaginationOffset()
+      return additionalHeightOffset + this.calculatePaginationOffset()
     }
 
     const headerHeight = this.getHeaderHeight()
     const paginationOffset = this.calculatePaginationOffset()
 
-    return headerHeight + paginationOffset + TableHeightCalculator.TABLE_HEADER_SPACING
+    return (
+      additionalHeightOffset +
+      headerHeight +
+      paginationOffset +
+      TableHeightCalculator.TABLE_HEADER_SPACING
+    )
   }
 
   /**

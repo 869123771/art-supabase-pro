@@ -75,6 +75,6 @@
   }
 
   function handleDispatchSuccess(): void {
-    void tableQueryRef.value?.refreshUpdate()
+    void router.push({ name: 'TmsLoadedWaybillList' })
   }
 </script>

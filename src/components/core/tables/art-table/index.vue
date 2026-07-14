@@ -250,6 +250,8 @@
     emptyText?: string
     /** 是否开启 ArtTableHeader，解决表格高度自适应问题 */
     showTableHeader?: boolean
+    /** 工具栏上方额外内容占用的高度 */
+    additionalHeightOffset?: number
     /** 已选中行 key，用于选中行背景展示 */
     selectedRowKeys?: Array<string | number>
   }
@@ -264,6 +266,7 @@
     emptyHeight: '100%',
     emptyText: '暂无数据',
     showTableHeader: true,
+    additionalHeightOffset: 0,
     selectedRowKeys: () => []
   })
   const instance = getCurrentInstance()
@@ -345,6 +348,7 @@
   // 使用表格高度计算 Hook
   const { containerHeight } = useTableHeight({
     showTableHeader: computed(() => props.showTableHeader),
+    additionalHeightOffset: computed(() => props.additionalHeightOffset),
     paginationHeight,
     tableHeaderHeight,
     paginationSpacing: PAGINATION_SPACING

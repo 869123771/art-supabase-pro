@@ -329,6 +329,14 @@
     '已取消',
     '已关闭'
   ])
+  const ACTIVE_TRANSIT_MONITOR_STATUSES = new Set([
+    'transporting',
+    'in_transit',
+    'running',
+    'processing',
+    'in_progress',
+    'ongoing'
+  ])
   interface ScreenState {
     keyword: string
     lastRefreshTime?: string
@@ -391,8 +399,6 @@
   }
 
   interface ScreenScaleState {
-    designHeight: number
-    designWidth: number
     viewportHeight: number
     viewportWidth: number
   }
@@ -420,8 +426,6 @@
     zoom: INITIAL_MAP_ZOOM
   })
   const screenScale: UnwrapNestedRefs<ScreenScaleState> = reactive<ScreenScaleState>({
-    designHeight: DEFAULT_SCREEN_DESIGN_HEIGHT,
-    designWidth: DEFAULT_SCREEN_DESIGN_WIDTH,
     viewportHeight: DEFAULT_SCREEN_DESIGN_HEIGHT,
     viewportWidth: DEFAULT_SCREEN_DESIGN_WIDTH
   })
@@ -454,8 +458,8 @@
 
   const screenBaseScale = computed(() => {
     const scale = Math.min(
-      screenScale.viewportWidth / screenScale.designWidth,
-      screenScale.viewportHeight / screenScale.designHeight
+      screenScale.viewportWidth / DEFAULT_SCREEN_DESIGN_WIDTH,
+      screenScale.viewportHeight / DEFAULT_SCREEN_DESIGN_HEIGHT
     )
 
     return Number.isFinite(scale) && scale > 0 ? scale : 1
@@ -463,14 +467,14 @@
 
   const screenStageStyle = computed(() => {
     const scale = screenBaseScale.value
-    const width = screenScale.designWidth * scale
-    const height = screenScale.designHeight * scale
+    const width = DEFAULT_SCREEN_DESIGN_WIDTH * scale
+    const height = DEFAULT_SCREEN_DESIGN_HEIGHT * scale
     const offsetX = (screenScale.viewportWidth - width) / 2
     const offsetY = (screenScale.viewportHeight - height) / 2
 
     return {
-      width: `${screenScale.designWidth}px`,
-      height: `${screenScale.designHeight}px`,
+      width: `${DEFAULT_SCREEN_DESIGN_WIDTH}px`,
+      height: `${DEFAULT_SCREEN_DESIGN_HEIGHT}px`,
       transform: `translate(${offsetX}px, ${offsetY}px) scale(${scale})`
     }
   })
@@ -637,7 +641,7 @@
   })
 
   onMounted(() => {
-    initScreenDesignSize()
+    updateScreenViewportSize()
     void Promise.all([
       userStore.ensureDictLoaded(VEHICLE_TYPE_DICT_CODE),
       userStore.ensureDictLoaded(MONITOR_STATUS_DICT_CODE)
@@ -812,6 +816,7 @@
       .trim()
       .toLowerCase()
     return (
+      ACTIVE_TRANSIT_MONITOR_STATUSES.has(waybillStatus) &&
       !OUT_OF_TRANSIT_MONITOR_STATUSES.has(waybillStatus) &&
       !OUT_OF_TRANSIT_MONITOR_STATUSES.has(orderStatus)
     )
@@ -962,12 +967,6 @@
       viewport?.clientWidth || window.innerWidth || DEFAULT_SCREEN_DESIGN_WIDTH
     screenScale.viewportHeight =
       viewport?.clientHeight || window.innerHeight || DEFAULT_SCREEN_DESIGN_HEIGHT
-  }
-
-  function initScreenDesignSize(): void {
-    screenScale.designWidth = window.screen?.width || DEFAULT_SCREEN_DESIGN_WIDTH
-    screenScale.designHeight = window.screen?.height || DEFAULT_SCREEN_DESIGN_HEIGHT
-    updateScreenViewportSize()
   }
 
   function resizeScaledScreen(): void {

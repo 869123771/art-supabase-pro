@@ -40,7 +40,7 @@ export const useTableStore = defineStore(
     // 边框
     const isBorder = ref(false)
     // 表头背景
-    const isHeaderBackground = ref(false)
+    const isHeaderBackground = ref(true)
 
     // 是否全屏
     const isFullScreen = ref(false)
