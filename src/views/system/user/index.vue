@@ -32,6 +32,7 @@
   import { deleteUser, fetchGetUserList, resetUser } from '@/api/system-manage'
   import ArtButtonMore, { ButtonMoreItem } from '@/components/core/forms/art-button-more/index.vue'
   import UserRoleDialog from '@views/system/user/modules/user-role-dialog.vue'
+  import { useSystemParam } from '@/hooks'
 
   defineOptions({ name: 'User' })
 
@@ -39,6 +40,7 @@
 
   const userStore = useUserStore()
   const { getDictMap, getUserInfo } = storeToRefs(userStore)
+  const { loadPasswordPolicy, createTemporaryPassword } = useSystemParam()
 
   interface UserDialogExpose {
     handleOpen: (row?: Partial<UserListItem>) => Promise<void>
@@ -243,14 +245,16 @@
 
   const handleResetPassword = async (row: UserListItem): Promise<void> => {
     try {
-      await ElMessageBox.confirm('是否将用户密码重置为[123456]?', '系统提示', {
+      await loadPasswordPolicy()
+      const password = createTemporaryPassword()
+      await ElMessageBox.confirm(`是否将用户密码重置为[${password}]?`, '系统提示', {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
         type: 'warning'
       })
       const params: Pick<UserListItem, 'userEmail' | 'password'> = {
         userEmail: row.userEmail,
-        password: '123456'
+        password
       }
       await resetUser(params as UserListItem)
     } catch {

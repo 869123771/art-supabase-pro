@@ -10,6 +10,25 @@ interface ReadSystemParamOptions<TValue> {
 
 const configuredValueCache = new Map<string, unknown>()
 const pendingLoadCache = new Map<string, Promise<unknown>>()
+let cacheVersion = 0
+
+/**
+ * 使已读取的系统参数失效，下一次读取会从服务端获取最新值。
+ *
+ * 版本号可防止刷新前已发出的请求在稍后返回时重新写入旧缓存。
+ */
+export const clearSystemParamCache = (key?: string): void => {
+  cacheVersion++
+
+  if (key) {
+    configuredValueCache.delete(key)
+    pendingLoadCache.delete(key)
+    return
+  }
+
+  configuredValueCache.clear()
+  pendingLoadCache.clear()
+}
 
 export const readSystemParamValue = async <TValue>(
   options: ReadSystemParamOptions<TValue>
@@ -24,10 +43,11 @@ export const readSystemParamValue = async <TValue>(
     return pendingLoad
   }
 
+  const loadVersion = cacheVersion
   const nextLoad = fetchSystemParamByKey(options.key)
     .then(({ data }) => {
       const parsedValue = data ? options.parse(data.paramValue, data) : undefined
-      if (parsedValue !== undefined) {
+      if (parsedValue !== undefined && loadVersion === cacheVersion) {
         configuredValueCache.set(options.key, parsedValue)
       }
       return parsedValue ?? options.fallback

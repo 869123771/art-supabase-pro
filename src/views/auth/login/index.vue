@@ -140,8 +140,8 @@
   const formData = reactive({
     account: '',
     username: '',
-    email: '624944977@qq.com',
-    password: '123456',
+    email: '',
+    password: '',
     rememberPassword: true
   })
 

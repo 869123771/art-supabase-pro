@@ -75,6 +75,7 @@
     fetchGetSystemParamList,
     fetchSystemParamStats
   } from '@/api/system-manage'
+  import { clearSystemParamCache } from '@/hooks/core/system-param/read-system-param'
   import { useUserStore } from '@/store/modules/user'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatWithDayjs } from '@/utils/time'
@@ -217,48 +218,49 @@
       }
     ]),
     headerActions: computed<ArtTableQueryHeaderAction[]>(() =>
-      ([
-      {
-        type: 'add',
-        label: '新增参数',
-        // permission: 'System:SystemParam:Add',
-        onClick: () => openDialog()
-      },
-      {
-        type: 'delete',
-        permission: 'System:SystemParam:Delete',
-        disabled: ({ selectedRows }) => selectedRows.every((row) => Boolean(row.builtin)),
-        content: ({ selectedRows }: ArtTableQueryHeaderActionContext) => {
-          const removableCount = selectedRows.filter((row) => !row.builtin).length
-          return `确定删除选中的 ${removableCount} 个非内置参数吗？内置参数会被自动跳过。`
-        },
-        onClick: async ({ selectedRows }) => {
-          const ids = selectedRows
-            .filter((row) => !row.builtin)
-            .map((row) => String(row.id))
-            .filter(Boolean)
-          if (!ids.length) {
-            ElMessage.warning('请选择非内置参数')
-            return
+      (
+        [
+          {
+            type: 'add',
+            label: '新增参数',
+            // permission: 'System:SystemParam:Add',
+            onClick: () => openDialog()
+          },
+          {
+            type: 'delete',
+            permission: 'System:SystemParam:Delete',
+            disabled: ({ selectedRows }) => selectedRows.every((row) => Boolean(row.builtin)),
+            content: ({ selectedRows }: ArtTableQueryHeaderActionContext) => {
+              const removableCount = selectedRows.filter((row) => !row.builtin).length
+              return `确定删除选中的 ${removableCount} 个非内置参数吗？内置参数会被自动跳过。`
+            },
+            onClick: async ({ selectedRows }) => {
+              const ids = selectedRows
+                .filter((row) => !row.builtin)
+                .map((row) => String(row.id))
+                .filter(Boolean)
+              if (!ids.length) {
+                ElMessage.warning('请选择非内置参数')
+                return
+              }
+              await deleteSystemParamBatch(ids)
+              await refreshAfterRemove()
+            }
+          },
+          {
+            key: 'refresh-cache',
+            label: '刷新缓存',
+            icon: 'ri:refresh-line',
+            buttonProps: { plain: true },
+            onClick: async () => {
+              await userStore.fetchDictList()
+              clearSystemParamCache()
+              await refreshPage()
+              ElMessage.success('缓存已刷新')
+            }
           }
-          await deleteSystemParamBatch(ids)
-          await refreshAfterRemove()
-        }
-      },
-      {
-        key: 'refresh-cache',
-        label: '刷新缓存',
-        icon: 'ri:refresh-line',
-        buttonProps: { plain: true },
-        onClick: async () => {
-          await userStore.fetchDictList()
-          await refreshPage()
-          ElMessage.success('缓存已刷新')
-        }
-      }
-      ] as ArtTableQueryHeaderAction[]).filter(
-        (action) => isPlatformSuper.value || action.key === 'refresh-cache'
-      )
+        ] as ArtTableQueryHeaderAction[]
+      ).filter((action) => isPlatformSuper.value || action.key === 'refresh-cache')
     )
   })
 
@@ -275,97 +277,97 @@
   }
 
   const columnsFactory = (): ColumnOption<SystemParam>[] =>
-    ([
-    {
-      type: 'selection',
-      width: 50,
-      fixed: 'left',
-      reserveSelection: true,
-      selectable: (row: SystemParam) => isPlatformSuper.value && !row.builtin
-    },
-    {
-      type: 'globalIndex',
-      label: '序号',
-      width: 80
-    },
-    {
-      prop: 'paramName',
-      label: '参数名称',
-      minWidth: 180
-    },
-    {
-      prop: 'paramKey',
-      label: '参数键名',
-      minWidth: 240
-    },
-    {
-      prop: 'groupCode',
-      label: '分组',
-      width: 120,
-      dict: { code: 'systemParamGroup', display: 'text' }
-    },
-    {
-      prop: 'paramType',
-      label: '类型',
-      width: 120,
-      dict: { code: 'systemParamType', display: 'auto' }
-    },
-    {
-      prop: 'paramValue',
-      label: '当前值',
-      minWidth: 160
-    },
-    {
-      prop: 'enabled',
-      label: '状态',
-      width: 100,
-      formatter: (row) => (
-        <ElTag type={row.enabled ? 'success' : 'info'} effect="light">
-          {row.enabled ? '启用' : '停用'}
-        </ElTag>
-      )
-    },
-    {
-      prop: 'builtin',
-      label: '属性',
-      width: 100,
-      formatter: (row) => (
-        <ElTag type={row.builtin ? 'warning' : 'info'} effect="light">
-          {row.builtin ? '内置' : '自定义'}
-        </ElTag>
-      )
-    },
-    {
-      prop: 'updateTime',
-      label: '最后更新',
-      width: 180,
-      formatter: (row) => formatWithDayjs(row.updateTime)
-    },
-    {
-      prop: 'updateBy',
-      label: '最后更新人',
-      width: 180
-    },
-    {
-      prop: 'operation',
-      label: '操作',
-      width: 120,
-      fixed: 'right',
-      formatter: (row) =>
-        isPlatformSuper.value ? (
-          <div class="system-param-page__operation">
-            <ArtButtonTable type="edit" onClick={() => openDialog(row)} />
-            <ArtButtonTable
-              type="delete"
-              disabled={row.builtin}
-              onClick={() => void handleDelete(row)}
-            />
-          </div>
-        ) : null
-    }
-    ] as ColumnOption<SystemParam>[]).filter(
-      (column) => isPlatformSuper.value || column.prop !== 'operation'
-    )
+    (
+      [
+        {
+          type: 'selection',
+          width: 50,
+          fixed: 'left',
+          reserveSelection: true,
+          selectable: (row: SystemParam) => isPlatformSuper.value && !row.builtin
+        },
+        {
+          type: 'globalIndex',
+          label: '序号',
+          width: 80
+        },
+        {
+          prop: 'paramName',
+          label: '参数名称',
+          minWidth: 180
+        },
+        {
+          prop: 'paramKey',
+          label: '参数键名',
+          minWidth: 240
+        },
+        {
+          prop: 'groupCode',
+          label: '分组',
+          width: 120,
+          dict: { code: 'systemParamGroup', display: 'text' }
+        },
+        {
+          prop: 'paramType',
+          label: '类型',
+          width: 120,
+          dict: { code: 'systemParamType', display: 'auto' }
+        },
+        {
+          prop: 'paramValue',
+          label: '当前值',
+          minWidth: 160
+        },
+        {
+          prop: 'enabled',
+          label: '状态',
+          width: 100,
+          formatter: (row) => (
+            <ElTag type={row.enabled ? 'success' : 'info'} effect="light">
+              {row.enabled ? '启用' : '停用'}
+            </ElTag>
+          )
+        },
+        {
+          prop: 'builtin',
+          label: '属性',
+          width: 100,
+          formatter: (row) => (
+            <ElTag type={row.builtin ? 'warning' : 'info'} effect="light">
+              {row.builtin ? '内置' : '自定义'}
+            </ElTag>
+          )
+        },
+        {
+          prop: 'updateTime',
+          label: '最后更新',
+          width: 180,
+          formatter: (row) => formatWithDayjs(row.updateTime)
+        },
+        {
+          prop: 'updateBy',
+          label: '最后更新人',
+          width: 180
+        },
+        {
+          prop: 'operation',
+          label: '操作',
+          width: 120,
+          fixed: 'right',
+          formatter: (row) =>
+            isPlatformSuper.value ? (
+              <div class="system-param-page__operation">
+                <ArtButtonTable type="edit" onClick={() => openDialog(row)} />
+                <ArtButtonTable
+                  type="delete"
+                  disabled={row.builtin}
+                  onClick={() => void handleDelete(row)}
+                />
+              </div>
+            ) : null
+        }
+      ] as ColumnOption<SystemParam>[]
+    ).filter((column) => isPlatformSuper.value || column.prop !== 'operation')
 
   const openDialog = (row?: SystemParam): void => {
     void dialogRef.value?.handleOpen(row ? (omit(row, []) as SystemParam) : undefined)
@@ -408,10 +410,12 @@
   }
 
   const refreshAfterRemove = async (): Promise<void> => {
+    clearSystemParamCache()
     await Promise.all([tableQueryRef.value?.refreshRemove(), loadStats()])
   }
 
   const handleSaveSuccess = (type: DialogType): void => {
+    clearSystemParamCache()
     void Promise.all([
       type === 'add' ? tableQueryRef.value?.refreshCreate() : tableQueryRef.value?.refreshUpdate(),
       loadStats()

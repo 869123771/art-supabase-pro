@@ -110,7 +110,13 @@
 
   const { t, locale } = useI18n()
   const router = useRouter()
-  const { passwordMinLength, loadPasswordMinLength, getPasswordMinLengthMessage } = useSystemParam()
+  const {
+    passwordMinLength,
+    loadPasswordPolicy,
+    getPasswordMinLengthMessage,
+    getPasswordComplexityMessage,
+    validatePasswordComplexity
+  } = useSystemParam()
   const { websiteConfig, loadWebsiteConfig } = useWebsiteConfig()
 
   const formRef = ref<FormInstance>()
@@ -130,7 +136,7 @@
         router.replace({ name: 'Login' })
       }
     })
-    void loadPasswordMinLength().then(() => {
+    void loadPasswordPolicy().then(() => {
       if (formData.password) {
         void formRef.value?.validateField('password')
       }
@@ -156,6 +162,11 @@
 
     if (formData.confirmPassword) {
       formRef.value?.validateField('confirmPassword')
+    }
+
+    if (!validatePasswordComplexity(value)) {
+      callback(new Error(getPasswordComplexityMessage(t)))
+      return
     }
 
     callback()

@@ -175,7 +175,13 @@
 
   const userStore = useUserStore()
   const { getDictMap, getUserInfo: userInfo } = storeToRefs(userStore)
-  const { passwordMinLength, loadPasswordMinLength, getPasswordMinLengthMessage } = useSystemParam()
+  const {
+    passwordMinLength,
+    loadPasswordPolicy,
+    getPasswordMinLengthMessage,
+    getPasswordComplexityMessage,
+    validatePasswordComplexity
+  } = useSystemParam()
 
   const isEdit = ref(false)
   const isEditPwd = ref(false)
@@ -215,6 +221,14 @@
     callback()
   }
 
+  const validateNewPassword: FormItemRule['validator'] = (_rule, value, callback) => {
+    if (value && !validatePasswordComplexity(value)) {
+      callback(new Error(getPasswordComplexityMessage()))
+      return
+    }
+    callback()
+  }
+
   /**
    * 表单验证规则
    */
@@ -241,7 +255,8 @@
         min: passwordMinLength.value,
         message: getPasswordMinLengthMessage(),
         trigger: 'blur'
-      }
+      },
+      { validator: validateNewPassword, trigger: 'blur' }
     ],
     confirmPassword: [
       { required: true, message: '请再次输入新密码', trigger: 'blur' },
@@ -256,7 +271,7 @@
 
   onMounted(() => {
     getDate()
-    void loadPasswordMinLength().then(() => {
+    void loadPasswordPolicy().then(() => {
       if (pwdForm.newPassword) {
         void pwdFormRef.value?.validateField('newPassword')
       }

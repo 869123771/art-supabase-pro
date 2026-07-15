@@ -183,6 +183,7 @@
       "passwordMismatch": "The two passwords are inconsistent!",
       "usernameLength": "The length is 3 to 20 characters",
       "passwordLength": "The password length cannot be less than 6 digits",
+      "passwordComplexity": "Password must contain uppercase and lowercase letters, a number, and a special character",
       "agreementRequired": "Please agree to the privacy policy",
       "emailIncorrect": "Email incorrect"
     },

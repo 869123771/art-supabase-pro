@@ -48,7 +48,13 @@
   const userStore = useUserStore()
   const { getDictMap, getUserInfo, isSuper } = storeToRefs(userStore) as Record<string, any>
   const { t } = useI18n()
-  const { passwordMinLength, loadPasswordMinLength, getPasswordMinLengthMessage } = useSystemParam()
+  const {
+    passwordMinLength,
+    loadPasswordPolicy,
+    getPasswordMinLengthMessage,
+    getPasswordComplexityMessage,
+    validatePasswordComplexity
+  } = useSystemParam()
   const dialogRef = ref<ArtDialogExpose<Partial<UserListItem> | undefined>>()
   const formRef = ref<ArtFormExpose>()
 
@@ -216,6 +222,11 @@
       return
     }
 
+    if (!validatePasswordComplexity(value)) {
+      callback(new Error(getPasswordComplexityMessage(t)))
+      return
+    }
+
     callback()
   }
 
@@ -299,7 +310,7 @@
       title: isEdit.value ? '编辑用户' : '添加用户',
       width: '60%',
       onOpen: () => {
-        void loadPasswordMinLength().then(() => {
+        void loadPasswordPolicy().then(() => {
           if (formData.value.password) {
             void formRef.value?.validate()
           }
