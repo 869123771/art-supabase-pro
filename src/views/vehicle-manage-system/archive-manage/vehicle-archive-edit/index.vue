@@ -143,6 +143,12 @@
   defineOptions({ name: 'VehicleArchiveEdit' })
 
   type VehicleArchive = Api.VehicleMgtSys.ArchiveManage.VehicleArchive
+  type VehicleArchiveForm = VehicleArchive & {
+    primaryDriverName: string
+    primaryDriverPhone: string
+    secondaryDriverName: string
+    secondaryDriverPhone: string
+  }
   type ArchiveAttachment = Api.VehicleMgtSys.ArchiveManage.VehicleArchiveAttachment
   type CarrierOption = Api.Tms.BasicData.CarrierOption
   type DriverOption = Api.Tms.BasicData.DriverOption
@@ -218,6 +224,10 @@
     const driver = getSelectedPrimaryDriver()
     return driver ? [createDriverOption(driver)] : []
   })
+  const selectedSecondaryDriverOptions = computed<FormItemOption[]>(() => {
+    const driver = getSelectedSecondaryDriver()
+    return driver ? [createDriverOption(driver)] : []
+  })
 
   const options: UnwrapNestedRefs<OptionGroup> = reactive<OptionGroup>({
     vehicleType: computed(() => getDictMap.value.vehicleType ?? []),
@@ -240,7 +250,7 @@
     )
   })
 
-  const createInitialForm = (): VehicleArchive => ({
+  const createInitialForm = (): VehicleArchiveForm => ({
     id: undefined,
     plateNo: '',
     carrierId: null,
@@ -315,10 +325,12 @@
     tonnageOrSeat: '',
     primaryDriverId: null,
     primaryDriver: null,
-    driverOneName: '',
-    driverOnePhone: '',
-    driverTwoName: '',
-    driverTwoPhone: '',
+    primaryDriverName: '',
+    primaryDriverPhone: '',
+    secondaryDriverId: null,
+    secondaryDriver: null,
+    secondaryDriverName: '',
+    secondaryDriverPhone: '',
     operationRoute: '',
     licensePlateCode: '',
     serviceStartTime: '',
@@ -333,9 +345,9 @@
     auditRemark: ''
   })
 
-  const form = reactive<VehicleArchive>(createInitialForm())
+  const form = reactive<VehicleArchiveForm>(createInitialForm())
 
-  const rules: FormRules<VehicleArchive> = {
+  const rules: FormRules<VehicleArchiveForm> = {
     plateNo: [{ required: true, message: '请输入车牌号', trigger: 'blur' }],
     carrierId: [{ required: true, message: '请选择所属承运商', trigger: 'change' }],
     vehicleType: [{ required: true, message: '请选择车型', trigger: 'change' }],
@@ -384,8 +396,12 @@
             form.companyName = ''
             form.primaryDriverId = null
             form.primaryDriver = null
-            form.driverOneName = ''
-            form.driverOnePhone = ''
+            form.primaryDriverName = ''
+            form.primaryDriverPhone = ''
+            form.secondaryDriverId = null
+            form.secondaryDriver = null
+            form.secondaryDriverName = ''
+            form.secondaryDriverPhone = ''
             driverCache.value = new Map()
             return
           }
@@ -395,8 +411,12 @@
           }
           form.primaryDriverId = null
           form.primaryDriver = null
-          form.driverOneName = ''
-          form.driverOnePhone = ''
+          form.primaryDriverName = ''
+          form.primaryDriverPhone = ''
+          form.secondaryDriverId = null
+          form.secondaryDriver = null
+          form.secondaryDriverName = ''
+          form.secondaryDriverPhone = ''
           driverCache.value = new Map()
         }
       }
@@ -677,7 +697,7 @@
       label: '主司机',
       key: 'primaryDriverId',
       type: 'select',
-      span: 16,
+      span: 8,
       api: fetchDriverOptions,
       options: selectedPrimaryDriverOptions.value,
       resultField: 'data',
@@ -685,10 +705,11 @@
       valueField: 'id',
       immediate: false,
       beforeFetch: () => ({
-        carrierId: form.carrierId ?? undefined
+        carrierId: form.carrierId ?? undefined,
+        driverType: 'primary'
       }),
       shouldFetch: () => Boolean(form.carrierId),
-      afterFetch: syncDriverOptions,
+      afterFetch: syncPrimaryDriverOptions,
       labelFn: (option) => {
         const driver = option as DriverOption
         return driver.phone ? `${driver.driverName}（${driver.phone}）` : driver.driverName
@@ -704,21 +725,64 @@
         onChange: (value?: string) => {
           if (!value) {
             form.primaryDriver = null
-            form.driverOneName = ''
-            form.driverOnePhone = ''
+            form.primaryDriverName = ''
+            form.primaryDriverPhone = ''
             return
           }
           const driver = driverCache.value.get(value)
           form.primaryDriver = driver ?? null
-          form.driverOneName = driver?.driverName ?? ''
-          form.driverOnePhone = driver?.phone ?? ''
+          form.primaryDriverName = driver?.driverName ?? ''
+          form.primaryDriverPhone = driver?.phone ?? ''
         }
       }
     },
-    { label: '驾驶员一名称', key: 'driverOneName', type: 'input', props: { readonly: true } },
-    { label: '驾驶员一电话', key: 'driverOnePhone', type: 'input', props: { readonly: true } },
-    { label: '驾驶员二名称', key: 'driverTwoName', type: 'input' },
-    { label: '驾驶员二电话', key: 'driverTwoPhone', type: 'input' },
+    { label: '主司机姓名', key: 'primaryDriverName', type: 'input', props: { readonly: true } },
+    { label: '主司机电话', key: 'primaryDriverPhone', type: 'input', props: { readonly: true } },
+    {
+      label: '辅司机',
+      key: 'secondaryDriverId',
+      type: 'select',
+      span: 8,
+      api: fetchDriverOptions,
+      options: selectedSecondaryDriverOptions.value,
+      resultField: 'data',
+      labelField: 'driverName',
+      valueField: 'id',
+      immediate: false,
+      beforeFetch: () => ({
+        carrierId: form.carrierId ?? undefined,
+        driverType: 'secondary'
+      }),
+      shouldFetch: () => Boolean(form.carrierId),
+      afterFetch: syncSecondaryDriverOptions,
+      labelFn: (option) => {
+        const driver = option as DriverOption
+        return driver.phone ? `${driver.driverName}（${driver.phone}）` : driver.driverName
+      },
+      props: {
+        filterable: true,
+        clearable: true,
+        disabled: !form.carrierId,
+        placeholder: form.carrierId ? '请选择辅司机' : '请先选择所属承运商',
+        onVisibleChange: (visible: boolean) => {
+          if (visible && form.carrierId) void otherFormRef.value?.reloadOptions('secondaryDriverId')
+        },
+        onChange: (value?: string) => {
+          if (!value) {
+            form.secondaryDriver = null
+            form.secondaryDriverName = ''
+            form.secondaryDriverPhone = ''
+            return
+          }
+          const driver = driverCache.value.get(value)
+          form.secondaryDriver = driver ?? null
+          form.secondaryDriverName = driver?.driverName ?? ''
+          form.secondaryDriverPhone = driver?.phone ?? ''
+        }
+      }
+    },
+    { label: '辅司机姓名', key: 'secondaryDriverName', type: 'input', props: { readonly: true } },
+    { label: '辅司机电话', key: 'secondaryDriverPhone', type: 'input', props: { readonly: true } },
     { label: '营运线路', key: 'operationRoute', type: 'input' },
     { label: '车籍地代码', key: 'licensePlateCode', type: 'input' },
     { label: '服务开始时间', key: 'serviceStartTime', type: 'date', props: dateProps },
@@ -731,12 +795,19 @@
     }
   ])
 
-  function syncDriverOptions(result: unknown): unknown {
+  function syncPrimaryDriverOptions(result: unknown): unknown {
+    return syncDriverOptions(result, getSelectedPrimaryDriver())
+  }
+
+  function syncSecondaryDriverOptions(result: unknown): unknown {
+    return syncDriverOptions(result, getSelectedSecondaryDriver())
+  }
+
+  function syncDriverOptions(result: unknown, selectedDriver?: DriverOption): unknown {
     if (!result || typeof result !== 'object') return result
 
     const data = (result as { data?: DriverOption[] }).data
     if (Array.isArray(data)) {
-      const selectedDriver = getSelectedPrimaryDriver()
       const nextData =
         selectedDriver && !data.some((item) => item.id === selectedDriver.id)
           ? [selectedDriver, ...data]
@@ -757,6 +828,14 @@
     return (
       driverCache.value.get(form.primaryDriverId) ??
       (form.primaryDriver?.id === form.primaryDriverId ? form.primaryDriver : undefined)
+    )
+  }
+
+  function getSelectedSecondaryDriver(): DriverOption | undefined {
+    if (!form.secondaryDriverId) return undefined
+    return (
+      driverCache.value.get(form.secondaryDriverId) ??
+      (form.secondaryDriver?.id === form.secondaryDriverId ? form.secondaryDriver : undefined)
     )
   }
 
@@ -818,7 +897,7 @@
     }
   }
 
-  const replaceForm = (nextForm: VehicleArchive): void => {
+  const replaceForm = (nextForm: VehicleArchiveForm): void => {
     Object.keys(form).forEach((key) => {
       delete form[key as keyof VehicleArchive]
     })
@@ -829,8 +908,13 @@
     }
     if (nextForm.primaryDriver?.id) {
       driverCache.value.set(nextForm.primaryDriver.id, nextForm.primaryDriver)
-      form.driverOneName = nextForm.primaryDriver.driverName
-      form.driverOnePhone = nextForm.primaryDriver.phone ?? ''
+      form.primaryDriverName = nextForm.primaryDriver.driverName
+      form.primaryDriverPhone = nextForm.primaryDriver.phone ?? ''
+    }
+    if (nextForm.secondaryDriver?.id) {
+      driverCache.value.set(nextForm.secondaryDriver.id, nextForm.secondaryDriver)
+      form.secondaryDriverName = nextForm.secondaryDriver.driverName
+      form.secondaryDriverPhone = nextForm.secondaryDriver.phone ?? ''
     }
   }
 
@@ -863,7 +947,9 @@
     return true
   }
 
-  const sanitizeVehicleArchivePayload = (params: VehicleArchive): VehicleArchiveWritePayload => {
+  const sanitizeVehicleArchivePayload = (
+    params: VehicleArchiveForm
+  ): VehicleArchiveWritePayload => {
     const {
       id,
       tenantId,
@@ -875,6 +961,15 @@
       auditTime,
       carrier,
       primaryDriver,
+      secondaryDriver,
+      primaryDriverName,
+      primaryDriverPhone,
+      secondaryDriverName,
+      secondaryDriverPhone,
+      driverOneName,
+      driverOnePhone,
+      driverTwoName,
+      driverTwoPhone,
       ...formPayload
     } = params
     const payload = {
@@ -896,6 +991,15 @@
     void auditTime
     void carrier
     void primaryDriver
+    void secondaryDriver
+    void primaryDriverName
+    void primaryDriverPhone
+    void secondaryDriverName
+    void secondaryDriverPhone
+    void driverOneName
+    void driverOnePhone
+    void driverTwoName
+    void driverTwoPhone
 
     return {
       ...(id ? { id } : {}),

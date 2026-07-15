@@ -26,6 +26,7 @@
   import VehicleQuerySideTabs from '../modules/vehicle-query-side-tabs.vue'
   import VehicleViewPanel from '../modules/vehicle-view-panel.vue'
   import ArchivePanel from '../modules/archive-panel.vue'
+  import DriverPanel from '../modules/driver-panel.vue'
   import PartsPanel from '../modules/parts-panel.vue'
   import InsurancePanel from '../modules/insurance-panel.vue'
   import InspectionPanel from '../modules/inspection-panel.vue'
@@ -68,6 +69,7 @@
   const tabs: VehicleQueryTab[] = [
     { key: 'view', label: '车辆视图' },
     { key: 'archive', label: '车辆档案' },
+    { key: 'driver', label: '司机管理' },
     { key: 'parts', label: '车辆零部件' },
     { key: 'insurance', label: '车辆保险' },
     { key: 'inspection', label: '车辆年检' },
@@ -82,6 +84,7 @@
   const panelMap = {
     view: VehicleViewPanel,
     archive: ArchivePanel,
+    driver: DriverPanel,
     parts: PartsPanel,
     insurance: InsurancePanel,
     inspection: InspectionPanel,

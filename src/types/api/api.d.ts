@@ -393,6 +393,8 @@ declare namespace Api {
         tonnageOrSeat?: string
         primaryDriverId?: string | null
         primaryDriver?: Api.Tms.BasicData.DriverOption | null
+        secondaryDriverId?: string | null
+        secondaryDriver?: Api.Tms.BasicData.DriverOption | null
         driverOneName?: string
         driverOnePhone?: string
         driverTwoName?: string
@@ -1187,6 +1189,7 @@ declare namespace Api {
         gender: string
         idCardNo: string
         licenseType: string
+        driverType: 'primary' | 'secondary'
         licenseExpireDate?: string | null
         homeAddress?: string
         emergencyContactName?: string
@@ -1205,7 +1208,7 @@ declare namespace Api {
       }
 
       type DriverSearchParams = Partial<
-        Pick<Driver, 'carrierId' | 'gender' | 'enabled'> &
+        Pick<Driver, 'carrierId' | 'driverType' | 'gender' | 'enabled'> &
           Api.Common.CommonSearchParams & {
             keyword?: string
             createTimeRange?: string[]
@@ -1217,6 +1220,9 @@ declare namespace Api {
         carrierId?: string | null
         driverName: string
         phone?: string
+        driverType?: 'primary' | 'secondary'
+        licenseType?: string
+        enabled?: boolean
       }
 
       interface Cargo {
@@ -1439,6 +1445,7 @@ declare namespace Api {
         Api.Tms.Order.OrderSearchParams & {
           dispatchStatus?: DispatchStatus | string
           dispatchStatuses?: Array<DispatchStatus | string>
+          waybillStatus?: string
           dispatchVehicleId?: string | null
           vehicleKeyword?: string
           plannedTimeRange?: string[]
@@ -1470,6 +1477,7 @@ declare namespace Api {
       type DeliveryRecord = Api.Tms.Order.OrderRecord
       type DeliverySearchParams = Partial<
         Api.Tms.Order.OrderSearchParams & {
+          deliveryStatus?: string
           orderStatuses?: string[]
           signedTimeRange?: string[]
         }

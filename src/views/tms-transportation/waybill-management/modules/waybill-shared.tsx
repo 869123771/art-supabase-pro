@@ -1,5 +1,5 @@
 import { computed, type ComputedRef, type Ref } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElLink, ElMessage, ElMessageBox } from 'element-plus'
 import type { Router } from 'vue-router'
 import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
 import type {
@@ -42,7 +42,15 @@ export interface WaybillListContext {
   dispatchDialogRef: Ref<WaybillDialogExpose | undefined>
 }
 
-export const pendingDispatchStatuses = ['pending']
+export const WAYBILL_STATUS_ALL = '__all__'
+export const loadedWaybillStatusTabValues = [
+  'pending',
+  'loading',
+  'transporting',
+  'unloading',
+  'completed',
+  'cancelled'
+]
 
 const waybillDispatchStatusFallbackMap: Record<string, Api.DataCenter.DictListItem> = {
   pending: {
@@ -97,7 +105,8 @@ export const createInitialWaybillSearch = (): WaybillSearchParams => ({
   transferStationId: '',
   vehicleKeyword: '',
   plannedTimeRange: [],
-  createTimeRange: []
+  createTimeRange: [],
+  waybillStatus: WAYBILL_STATUS_ALL
 })
 
 export const waybillExcelColumns: ArtTableQueryExcelColumn[] = [
@@ -222,12 +231,31 @@ export const createWaybillSearchItems = (
     return items
   })
 
+export const createWaybillModeParams = (
+  params: WaybillSearchParams,
+  mode: WaybillMode
+): Partial<WaybillSearchParams> => {
+  if (mode === 'pending') {
+    const dispatchStatus = params.dispatchStatus
+    return {
+      dispatchStatus: undefined,
+      dispatchStatuses:
+        dispatchStatus === WAYBILL_STATUS_ALL ? undefined : [dispatchStatus || 'pending'],
+      waybillStatus: undefined
+    }
+  }
+
+  return {
+    dispatchStatus: 'loaded',
+    dispatchStatuses: undefined,
+    waybillStatus:
+      params.waybillStatus === WAYBILL_STATUS_ALL ? undefined : params.waybillStatus || undefined
+  }
+}
+
 export function fetchWaybillTableData(params: TableParams, mode: WaybillMode) {
   const { from, to } = pageInfoHandler({ current: params.current, size: params.size })
-  const modeParams =
-    mode === 'pending'
-      ? { dispatchStatuses: pendingDispatchStatuses }
-      : { dispatchStatus: 'loaded' }
+  const modeParams = createWaybillModeParams(params, mode)
   return fetchWaybillList({ ...params, ...modeParams, from, to })
 }
 
@@ -256,13 +284,10 @@ export const createWaybillHeaderActions = (
         exportSheetName: context.mode === 'pending' ? '待运载运单' : '已配载运单',
         exportColumns: waybillExcelColumns,
         exportApi: ({ selectedIds, searchParams, maxRows }) => {
-          const modeParams =
-            context.mode === 'pending'
-              ? { dispatchStatuses: pendingDispatchStatuses }
-              : { dispatchStatus: 'loaded' }
+          const waybillSearchParams = searchParams as WaybillSearchParams
           return exportWaybillList({
-            ...(searchParams as WaybillSearchParams),
-            ...modeParams,
+            ...waybillSearchParams,
+            ...createWaybillModeParams(waybillSearchParams, context.mode),
             ids: selectedIds.map(String),
             maxRows
           })
@@ -382,7 +407,17 @@ export const createWaybillColumns = (
   const columns: ColumnOption<WaybillRecord>[] = [
     { type: 'selection', width: 50, fixed: 'left', reserveSelection: true },
     { prop: 'cargoNo', label: '货号', fixed: 'left', width: 130, showOverflowTooltip: true },
-    { prop: 'orderNo', label: '运单号', fixed: 'left', width: 140, showOverflowTooltip: true }
+    {
+      prop: 'orderNo',
+      label: '运单号',
+      fixed: 'left',
+      width: 140,
+      formatter: (row) => (
+        <ElLink type="primary" underline="never" onClick={() => openDetail(context, row)}>
+          {row.orderNo}
+        </ElLink>
+      )
+    }
   ]
 
   if (context.mode === 'pending') {

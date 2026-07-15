@@ -27,7 +27,7 @@
 
 <script setup lang="tsx">
   import type { ComputedRef, UnwrapNestedRefs } from 'vue'
-  import { ElMessage, ElMessageBox } from 'element-plus'
+  import { ElLink, ElMessage, ElMessageBox } from 'element-plus'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type {
     ArtTableQueryExcelColumn,
@@ -49,6 +49,7 @@
     cancelWaybillOrderBatch,
     exportOrderList,
     fetchOrderList,
+    fetchOrderStatusCounts,
     fetchStationOptions
   } from '@/api/tms'
   import FreightDialog from './modules/freight-dialog.vue'
@@ -81,6 +82,7 @@
 
   interface TableGroup {
     searchQuery: SearchParams
+    statusCounts: Record<string, number>
     orderStatusOptions: ComputedRef<StatusTab[]>
     paymentMethodOptions: ComputedRef<Api.DataCenter.DictListItem[]>
     statusTabs: ComputedRef<StatusTab[]>
@@ -93,6 +95,7 @@
   const { getDictMap } = storeToRefs(useUserStore())
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const freightDialogRef = ref<FreightDialogExpose>()
+  const statusCountRequestId = ref(0)
 
   const orderExcelColumns: ArtTableQueryExcelColumn[] = [
     { key: 'cargoNo', title: '货号' },
@@ -123,6 +126,7 @@
       transferStationId: '',
       createTimeRange: []
     },
+    statusCounts: {},
     orderStatusOptions: computed(() => {
       const orderStatusDict = getDictMap.value.tmsOrderStatus ?? []
       return orderStatusTabValues
@@ -131,10 +135,19 @@
         .map((item) => ({ label: item.label || item.name, value: item.value }))
     }),
     paymentMethodOptions: computed(() => getDictMap.value.tmsOrderPaymentMethod ?? []),
-    statusTabs: computed<StatusTab[]>(() => [
-      { label: '全部', value: '' },
-      ...table.orderStatusOptions
-    ]),
+    statusTabs: computed<StatusTab[]>(() => {
+      const total = orderStatusTabValues.reduce(
+        (sum, status) => sum + (table.statusCounts[status] ?? 0),
+        0
+      )
+      return [
+        { label: `全部 (${total})`, value: '' },
+        ...table.orderStatusOptions.map((item) => ({
+          ...item,
+          label: `${item.label} (${table.statusCounts[item.value] ?? 0})`
+        }))
+      ]
+    }),
     searchItems: computed<SearchFormItem[]>(() => [
       {
         label: '货号',
@@ -268,7 +281,17 @@
     columnsFactory: (): ColumnOption<OrderRecord>[] => [
       { type: 'selection', width: 50, fixed: 'left', reserveSelection: true },
       { prop: 'cargoNo', label: '货号', fixed: 'left', width: 130, showOverflowTooltip: true },
-      { prop: 'orderNo', label: '运单号', fixed: 'left', width: 140, showOverflowTooltip: true },
+      {
+        prop: 'orderNo',
+        label: '运单号',
+        fixed: 'left',
+        width: 140,
+        formatter: (row) => (
+          <ElLink type="primary" underline="never" onClick={() => openDetail(row)}>
+            {row.orderNo}
+          </ElLink>
+        )
+      },
       { prop: 'shippingContactName', label: '发货人', width: 110 },
       { prop: 'shippingContactPhone', label: '发货人电话', width: 140 },
       {
@@ -335,7 +358,14 @@
 
   function fetchTableData(params: TableParams) {
     const { from, to } = pageInfoHandler({ current: params.current, size: params.size })
+    void loadStatusCounts(params)
     return fetchOrderList({ ...params, from, to })
+  }
+
+  async function loadStatusCounts(params: TableParams): Promise<void> {
+    const requestId = ++statusCountRequestId.value
+    const counts = await fetchOrderStatusCounts(params)
+    if (requestId === statusCountRequestId.value) table.statusCounts = counts
   }
 
   function handleStatusTabChange(status: string | number | boolean): void {

@@ -45,12 +45,13 @@
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import ArtUploadImage from '@/components/core/forms/art-upload-image/index.vue'
   import { addDriver, editDriver, fetchCarrierOptions } from '@/api/tms'
+  import { fetchVehicleArchiveOptions } from '@/api/vehicle-manage-system'
   import { useUserStore } from '@/store/modules/user'
 
   defineOptions({ name: 'TmsDriverDialog' })
 
   type Driver = Api.Tms.BasicData.Driver
-  type DriverForm = Driver
+  type DriverForm = Driver & { carrierVehiclePlates: string[] }
   type CarrierOption = Api.Tms.BasicData.CarrierOption
 
   interface DialogExposeForm {
@@ -68,12 +69,14 @@
 
   const genderOptions = computed(() => getDictMap.value.sex ?? [])
   const licenseTypeOptions = computed(() => getDictMap.value.tmsDriverLicenseType ?? [])
+  const driverTypeOptions = computed(() => getDictMap.value.tmsDriverType ?? [])
 
   const createInitialForm = (): DriverForm => ({
     id: undefined,
     carrierId: '',
     driverName: '',
     phone: '',
+    driverType: 'primary',
     gender: '',
     idCardNo: '',
     licenseType: '',
@@ -86,7 +89,8 @@
     idCardBackUrl: '',
     driverLicenseFrontUrl: '',
     driverLicenseBackUrl: '',
-    remark: ''
+    remark: '',
+    carrierVehiclePlates: []
   })
 
   const form = reactive<DriverForm>(createInitialForm())
@@ -97,6 +101,7 @@
       { min: 2, max: 50, message: '长度应为 2 到 50 个字符', trigger: 'blur' }
     ],
     carrierId: [{ required: true, message: '请选择所属承运商', trigger: 'change' }],
+    driverType: [{ required: true, message: '请选择司机类型', trigger: 'change' }],
     phone: [
       { required: true, message: '请输入手机号码', trigger: 'blur' },
       {
@@ -148,6 +153,12 @@
       props: { maxlength: 18, placeholder: '请输入身份证号' }
     },
     {
+      label: '司机类型',
+      key: 'driverType',
+      type: 'radioGroup',
+      props: { options: driverTypeOptions.value }
+    },
+    {
       label: '性别',
       key: 'gender',
       type: 'select',
@@ -196,7 +207,20 @@
       props: {
         filterable: true,
         clearable: true,
-        placeholder: '公司名称/承运商编码'
+        placeholder: '公司名称/承运商编码',
+        onChange: (carrierId?: string) => void loadCarrierVehiclePlates(carrierId)
+      }
+    },
+    {
+      label: '车牌号',
+      key: 'carrierVehiclePlates',
+      type: 'inputTag',
+      span: 16,
+      props: {
+        disabled: true,
+        tagType: 'primary',
+        tagEffect: 'light',
+        placeholder: '选择承运商后自动展示名下车辆'
       }
     },
     {
@@ -278,7 +302,8 @@
       'createTime',
       'updateBy',
       'updateTime',
-      'carrier'
+      'carrier',
+      'carrierVehiclePlates'
     ]) as Driver
 
     return {
@@ -324,9 +349,22 @@
       title: isEdit ? '编辑司机' : '新增司机',
       subtitle: '维护司机基础资料与证件信息',
       contentMaxHeight: '72vh',
+      onOpen: async () => {
+        await loadCarrierVehiclePlates(form.carrierId)
+      },
       onConfirm: handleSubmit,
       onReset: () => void resetForm()
     })
+  }
+
+  const loadCarrierVehiclePlates = async (carrierId?: string): Promise<void> => {
+    if (!carrierId) {
+      form.carrierVehiclePlates = []
+      return
+    }
+
+    const { data } = await fetchVehicleArchiveOptions({ carrierId })
+    form.carrierVehiclePlates = (data ?? []).map((vehicle) => vehicle.plateNo)
   }
 
   defineExpose({

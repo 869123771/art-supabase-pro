@@ -75,7 +75,6 @@
         key: 'nodeType',
         type: 'radioGroup',
         props: {
-          optionType: 'button',
           disabled: form.editing,
           options: [
             { label: '目录', value: 'directory' },

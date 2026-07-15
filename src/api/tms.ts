@@ -453,8 +453,9 @@ const DRIVER_SELECT = `
 `
 
 const applyDriverFilters = (query: any, params: DriverSearchParams) => {
-  const { carrierId, gender, enabled, keyword, createTimeRange } = params
+  const { carrierId, driverType, gender, enabled, keyword, createTimeRange } = params
   if (carrierId) query = query.eq('carrier_id', carrierId)
+  if (driverType) query = query.eq('driver_type', driverType)
   if (gender) query = query.eq('gender', gender)
   const enabledValue = normalizeBooleanFilter(enabled)
   if (enabledValue !== undefined) query = query.eq('enabled', enabledValue)
@@ -499,17 +500,20 @@ export async function exportDriverList(
 }
 
 export async function fetchDriverOptions(
-  params: Partial<Pick<Api.Tms.BasicData.DriverOption, 'carrierId' | 'driverName'>> = {}
+  params: Partial<
+    Pick<Api.Tms.BasicData.DriverOption, 'carrierId' | 'driverName' | 'driverType'>
+  > = {}
 ) {
-  const { carrierId, driverName } = params
+  const { carrierId, driverName, driverType } = params
   let query: any = supabase
     .from('tms_driver')
-    .select('id, carrier_id, driver_name, phone')
+    .select('id, carrier_id, driver_name, phone, driver_type, license_type, enabled')
     .eq('enabled', true)
     .order('driver_name', { ascending: true })
     .limit(200)
 
   if (carrierId) query = query.eq('carrier_id', carrierId)
+  if (driverType) query = query.eq('driver_type', driverType)
   if (driverName) {
     query = query.or(`driver_name.ilike.%${driverName}%,phone.ilike.%${driverName}%`)
   }
@@ -1236,6 +1240,34 @@ export async function fetchOrderList(params: OrderSearchParams & Api.Common.Comm
   return { ...result, data: await mergeOrdersWithDriverWaybills(result.data) }
 }
 
+const ORDER_STATUS_COUNT_VALUES = [
+  'created',
+  'pending_load',
+  'pending_order',
+  'pending_pickup',
+  'transporting',
+  'signed',
+  'completed',
+  'cancelled'
+] as const
+
+export async function fetchOrderStatusCounts(
+  params: OrderSearchParams
+): Promise<Record<string, number>> {
+  const sharedFilters = { ...params, orderStatus: undefined }
+  const countEntries = await Promise.all(
+    ORDER_STATUS_COUNT_VALUES.map(async (orderStatus) => {
+      let query: any = supabase.from('tms_order').select('id', { count: 'exact', head: true })
+
+      query = applyOrderFilters(query, { ...sharedFilters, orderStatus })
+      const { total } = await responseHandle<null>(() => query as any, { ignoreCheck: true })
+      return [orderStatus, total ?? 0] as const
+    })
+  )
+
+  return Object.fromEntries(countEntries)
+}
+
 export async function exportOrderList(
   params: OrderSearchParams & { ids?: string[]; maxRows?: number }
 ) {
@@ -1379,6 +1411,75 @@ const applyWaybillFilters = (query: any, params: WaybillSearchParams) => {
   return applyPlannedTimeRange(query, plannedTimeRange)
 }
 
+interface DriverWaybillStatusReference {
+  orderId?: string | null
+}
+
+interface WaybillStatusCountResult {
+  total: number
+  counts: Record<string, number>
+}
+
+const WAYBILL_STATUS_VALUES = [
+  'pending',
+  'loading',
+  'transporting',
+  'unloading',
+  'completed',
+  'cancelled'
+] as const
+
+const countWaybillOrders = async (
+  params: WaybillSearchParams,
+  orderIds?: string[] | null
+): Promise<number> => {
+  if (orderIds !== null && orderIds !== undefined && !orderIds.length) return 0
+
+  let query: any = supabase.from('tms_order').select('id', { count: 'exact', head: true })
+  query = applyWaybillFilters(query, params)
+  if (orderIds?.length) query = query.in('id', orderIds)
+
+  const { total } = await responseHandle<null>(() => query as any, {
+    ignoreCheck: true,
+    showErrorMessage: true
+  })
+  return total ?? 0
+}
+
+const fetchWaybillOrderIdsByStatus = async (status?: string): Promise<string[] | null> => {
+  if (!status) return null
+
+  const { data } = await responseHandle<DriverWaybillStatusReference[]>(
+    () =>
+      supabase
+        .from('tms_waybill')
+        .select('order_id')
+        .eq('status', status)
+        .not('order_id', 'is', null) as any,
+    { ignoreCheck: true, showErrorMessage: true }
+  )
+
+  return uniqueStringValues((data ?? []).map((item) => item.orderId))
+}
+
+export async function fetchWaybillStatusCounts(
+  params: WaybillSearchParams
+): Promise<WaybillStatusCountResult> {
+  const sharedFilters = { ...params, waybillStatus: undefined }
+  const [total, countEntries] = await Promise.all([
+    countWaybillOrders(sharedFilters),
+    Promise.all(
+      WAYBILL_STATUS_VALUES.map(async (waybillStatus) => {
+        const orderIds = await fetchWaybillOrderIdsByStatus(waybillStatus)
+        const count = await countWaybillOrders(sharedFilters, orderIds)
+        return [waybillStatus, count] as const
+      })
+    )
+  ])
+
+  return { total, counts: Object.fromEntries(countEntries) }
+}
+
 const createDispatchUpdatePayload = (params: WaybillDispatchPayload) => ({
   orderStatus: 'pending_order',
   dispatchStatus: 'loaded',
@@ -1517,6 +1618,9 @@ export async function fetchWaybillList(
   params: WaybillSearchParams & Api.Common.CommonSearchParams
 ) {
   const { from = 0, to = 9 } = params
+  const orderIds = await fetchWaybillOrderIdsByStatus(params.waybillStatus)
+  if (orderIds !== null && !orderIds.length) return { data: [], total: 0 }
+
   let query: any = supabase
     .from('tms_order')
     .select(ORDER_SELECT, { count: 'exact' })
@@ -1524,6 +1628,7 @@ export async function fetchWaybillList(
     .range(from, to)
 
   query = applyWaybillFilters(query, params)
+  if (orderIds) query = query.in('id', orderIds)
   const result = await responseHandle<WaybillRecord[]>(() => query as any, {
     ignoreCheck: true,
     showErrorMessage: true
@@ -1535,13 +1640,16 @@ export async function exportWaybillList(
   params: WaybillSearchParams & { ids?: string[]; maxRows?: number }
 ) {
   const { ids, maxRows = 10000 } = params
+  const orderIds = ids?.length ? null : await fetchWaybillOrderIdsByStatus(params.waybillStatus)
+  if (orderIds !== null && !orderIds.length) return { data: [], total: 0 }
+
   let query: any = supabase
     .from('tms_order')
     .select(ORDER_SELECT)
     .order('create_time', { ascending: false })
     .limit(maxRows)
-
   query = ids?.length ? query.in('id', ids) : applyWaybillFilters(query, params)
+  if (orderIds) query = query.in('id', orderIds)
   const result = await responseHandle<WaybillRecord[]>(() => query as any, {
     ignoreCheck: true,
     showErrorMessage: true
@@ -1843,6 +1951,46 @@ const applyDeliveryFilters = (query: any, params: DeliverySearchParams) => {
   if (orderStatuses?.length) query = query.in('order_status', orderStatuses)
 
   return applySignedTimeRange(query, signedTimeRange)
+}
+
+interface DeliveryStatusCountResult {
+  total: number
+  counts: Record<string, number>
+}
+
+const DELIVERY_STATUS_COUNT_VALUES = ['signed', 'completed'] as const
+
+const countDeliveryOrders = async (params: DeliverySearchParams): Promise<number> => {
+  let query: any = supabase.from('tms_order').select('id', { count: 'exact', head: true })
+  query = applyDeliveryFilters(query, params)
+
+  const { total } = await responseHandle<null>(() => query as any, {
+    ignoreCheck: true,
+    showErrorMessage: true
+  })
+  return total ?? 0
+}
+
+export async function fetchDeliveryStatusCounts(
+  params: DeliverySearchParams
+): Promise<DeliveryStatusCountResult> {
+  const sharedFilters = {
+    ...params,
+    deliveryStatus: undefined,
+    orderStatus: undefined,
+    orderStatuses: undefined
+  }
+  const [total, countEntries] = await Promise.all([
+    countDeliveryOrders({ ...sharedFilters, orderStatuses: [...DELIVERY_STATUS_COUNT_VALUES] }),
+    Promise.all(
+      DELIVERY_STATUS_COUNT_VALUES.map(async (orderStatus) => {
+        const count = await countDeliveryOrders({ ...sharedFilters, orderStatuses: [orderStatus] })
+        return [orderStatus, count] as const
+      })
+    )
+  ])
+
+  return { total, counts: Object.fromEntries(countEntries) }
 }
 
 export async function fetchDeliveryList(

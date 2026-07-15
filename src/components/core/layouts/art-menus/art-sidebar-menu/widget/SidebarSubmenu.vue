@@ -28,6 +28,7 @@
       v-else
       :index="isExternalLink(item) ? '' : item.path || item.meta.title"
       :level-item="level + 1"
+      @mouseenter="preloadMenuRoute(item)"
       @click="goPage(item)"
     >
       <div class="menu-icon flex-cc">
@@ -60,7 +61,7 @@
   import { computed } from 'vue'
   import type { AppRouteRecord } from '@/types/router'
   import { formatMenuTitle } from '@/utils/router'
-  import { handleMenuJump } from '@/utils/navigation'
+  import { handleMenuJump, preloadMenuRoute } from '@/utils/navigation'
   import { useSettingStore } from '@/store/modules/setting'
 
   interface MenuTheme {

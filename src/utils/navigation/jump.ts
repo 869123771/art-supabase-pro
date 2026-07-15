@@ -18,6 +18,35 @@ import { AppRouteRecord } from '@/types/router'
 import { router } from '@/router'
 import { isNavigableMenuItem } from './route'
 
+const preloadingRoutes = new Map<string, Promise<void>>()
+
+/**
+ * 提前加载菜单对应的异步路由组件，减少首次点击后的空等时间。
+ */
+export const preloadMenuRoute = (item: AppRouteRecord): Promise<void> => {
+  const targetPath = item.path
+  if (!targetPath || item.meta.link || item.meta.isIframe) return Promise.resolve()
+
+  const existingTask = preloadingRoutes.get(targetPath)
+  if (existingTask) return existingTask
+
+  const resolved = router.resolve(targetPath)
+  const loaders = resolved.matched.flatMap((record) =>
+    Object.values(record.components ?? {}).filter(
+      (component): component is () => Promise<unknown> => typeof component === 'function'
+    )
+  )
+
+  const task = Promise.all(loaders.map((loader) => loader()))
+    .then(() => undefined)
+    .catch(() => {
+      preloadingRoutes.delete(targetPath)
+    })
+
+  preloadingRoutes.set(targetPath, task)
+  return task
+}
+
 // 打开外部链接
 export const openExternalLink = (link: string) => {
   window.open(link, '_blank')
@@ -38,6 +67,7 @@ export const handleMenuJump = (item: AppRouteRecord, jumpToFirst: boolean = fals
 
   // 如果不需要跳转到第一个子菜单，或者没有子菜单，直接跳转当前路径
   if (!jumpToFirst || !item.children?.length) {
+    void preloadMenuRoute(item)
     return router.push(item.path)
   }
 
@@ -64,5 +94,6 @@ export const handleMenuJump = (item: AppRouteRecord, jumpToFirst: boolean = fals
   }
 
   // 跳转到子菜单路径
-  router.push(firstChild.path)
+  void preloadMenuRoute(firstChild)
+  return router.push(firstChild.path)
 }

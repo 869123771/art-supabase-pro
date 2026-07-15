@@ -136,7 +136,10 @@
       <section class="customer-price-edit__section art-card-xs">
         <div class="customer-price-edit__section-header">
           <ArtSectionTitle :show-line="false">货物信息</ArtSectionTitle>
-          <ElButton type="primary" plain :icon="Plus" @click="addCargoItem">添加</ElButton>
+          <div class="customer-price-edit__section-actions">
+            <ElButton plain :icon="Collection" @click="openCargoSelector">批量选货物</ElButton>
+            <ElButton type="primary" plain :icon="Plus" @click="addCargoItem">添加</ElButton>
+          </div>
         </div>
         <ArtTable
           :data="form.cargoItems"
@@ -228,6 +231,26 @@
     >
       <template #trigger></template>
     </ArtTableSingleSelect>
+
+    <ArtTableMultipleSelect
+      ref="cargoSelectRef"
+      v-model="cargoSelector.value"
+      v-model:selected-data="cargoSelector.selectedRows"
+      :api-fn="fetchCargoSelectorData"
+      :columns="cargoSelector.columns"
+      title="批量选择货物"
+      subtitle="从货物管理中选择后，会自动带入计量单位、单件体积和单件重量。"
+      row-key="id"
+      label-key="cargoName"
+      description-key="cargoCode"
+      search-placeholder="请输入货物名称、编码、单位或备注"
+      dialog-width="1040px"
+      show-pagination
+      :page-size="10"
+      @confirm="handleCargoSelectorConfirm"
+    >
+      <template #trigger></template>
+    </ArtTableMultipleSelect>
   </div>
 </template>
 
@@ -235,9 +258,17 @@
   import type { ComputedRef, UnwrapNestedRefs } from 'vue'
   import { cloneDeep, omit } from 'lodash-es'
   import type { FormRules } from 'element-plus'
-  import { ElButton, ElInput, ElInputNumber, ElMessage, ElOption, ElSelect } from 'element-plus'
-  import { Plus } from '@element-plus/icons-vue'
+  import {
+    ElAutocomplete,
+    ElButton,
+    ElInputNumber,
+    ElMessage,
+    ElOption,
+    ElSelect
+  } from 'element-plus'
+  import { Collection, Plus } from '@element-plus/icons-vue'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
+  import ArtTableMultipleSelect from '@/components/core/forms/art-data-select/table-multiple.vue'
   import ArtTableSingleSelect from '@/components/core/forms/art-data-select/table-single.vue'
   import type {
     ArtDataSelectExpose,
@@ -253,6 +284,7 @@
   import {
     addCustomerPrice,
     editCustomerPrice,
+    fetchCargoList,
     fetchCustomerAddressList,
     fetchCustomerOptions,
     fetchCustomerPriceDetail
@@ -264,9 +296,15 @@
 
   type CustomerPrice = Api.Tms.BasicData.CustomerPrice
   type CustomerPriceCargoItem = Api.Tms.BasicData.CustomerPriceCargoItem
+  type CargoMaster = Api.Tms.BasicData.Cargo
   type CustomerOption = Api.Tms.BasicData.CustomerOption
   type CustomerAddress = Api.Tms.BasicData.CustomerAddress
   type AddressMode = 'shipping' | 'receiving'
+  type CargoSuggestionCallback = (items: CargoSuggestion[]) => void
+
+  interface CargoSuggestion extends CargoMaster {
+    value: string
+  }
   type CustomerPriceForm = CustomerPrice & {
     customerCode?: string
     originRegionPath: string[]
@@ -294,6 +332,12 @@
     mode: AddressMode
     title: string
     value?: string | number
+    selectedRows: DataSelectRecord[]
+    columns: DataSelectColumn[]
+  }
+
+  interface CargoSelectorGroup {
+    value: Array<string | number>
     selectedRows: DataSelectRecord[]
     columns: DataSelectColumn[]
   }
@@ -335,6 +379,7 @@
   const feeFormRef = ref<FormExpose>()
   const paymentFormRef = ref<FormExpose>()
   const addressSelectRef = ref<ArtDataSelectExpose>()
+  const cargoSelectRef = ref<ArtDataSelectExpose>()
 
   const isEdit = computed(() => Boolean(route.params.id))
   const dictCodes = [
@@ -359,6 +404,30 @@
     controlsPosition: 'right',
     class: '!w-full'
   }
+
+  const cargoSelector = reactive<CargoSelectorGroup>({
+    value: [],
+    selectedRows: [],
+    columns: [
+      { prop: 'cargoCode', label: '货物编码', width: 150 },
+      { prop: 'cargoName', label: '货物名称', minWidth: 220 },
+      { prop: 'unit', label: '单位', width: 100, formatter: formatCargoUnit },
+      {
+        prop: 'volumeM3',
+        label: '单件体积(m³)',
+        width: 140,
+        align: 'right',
+        formatter: (row) => formatCargoNumber((row as CargoMaster).volumeM3, 3)
+      },
+      {
+        prop: 'weightKg',
+        label: '单件重量(kg)',
+        width: 140,
+        align: 'right',
+        formatter: (row) => formatCargoNumber((row as CargoMaster).weightKg, 2)
+      }
+    ]
+  })
 
   function createInitialCargoItem(): CustomerPriceCargoItem {
     return {
@@ -673,7 +742,18 @@
         label: '货物名称',
         minWidth: 180,
         formatter: (row) => (
-          <ElInput v-model={row.cargoName} maxlength={80} placeholder="请输入内容" />
+          <ElAutocomplete
+            v-model={row.cargoName}
+            fetchSuggestions={(keyword, callback) =>
+              void fetchCargoSuggestions(keyword, callback as CargoSuggestionCallback)
+            }
+            triggerOnFocus={true}
+            valueKey="value"
+            maxlength={80}
+            clearable
+            placeholder="请选择或输入货物名称"
+            onSelect={(item) => handleCargoSelect(row, item)}
+          />
         )
       },
       {
@@ -1079,6 +1159,87 @@
     form.data.cargoItems = [...(form.data.cargoItems ?? []), createInitialCargoItem()]
   }
 
+  async function openCargoSelector(): Promise<void> {
+    await nextTick()
+    await cargoSelectRef.value?.open()
+  }
+
+  async function fetchCargoSelectorData(params: DataSelectFetchParams) {
+    const { from, to } = pageInfoHandler({ current: params.page, size: params.pageSize })
+    const { data, total } = await fetchCargoList({
+      keyword: String(params.keyword ?? '').trim(),
+      enabled: true,
+      from,
+      to
+    })
+    return { data: data ?? [], total: total ?? 0 }
+  }
+
+  function handleCargoSelectorConfirm(_value: unknown, rows: DataSelectRecord[]): void {
+    const selectedCargoes = rows as CargoMaster[]
+    const currentItems = form.data.cargoItems ?? []
+    const existingNames = new Set(
+      currentItems.map((item) => String(item.cargoName ?? '').trim()).filter(Boolean)
+    )
+    const additions = selectedCargoes
+      .filter((item) => item.cargoName && !existingNames.has(item.cargoName))
+      .map(createCargoItemFromMaster)
+
+    if (!additions.length) return
+
+    const isSingleEmptyRow =
+      currentItems.length === 1 &&
+      !Object.values(currentItems[0]).some(
+        (value) => value !== null && value !== undefined && value !== ''
+      )
+    form.data.cargoItems = isSingleEmptyRow ? additions : [...currentItems, ...additions]
+    cargoSelector.value = []
+    cargoSelector.selectedRows = []
+  }
+
+  async function fetchCargoSuggestions(
+    keyword: string,
+    callback: CargoSuggestionCallback
+  ): Promise<void> {
+    try {
+      const result = await fetchCargoList({
+        keyword: String(keyword ?? '').trim(),
+        enabled: true,
+        from: 0,
+        to: 19
+      })
+      callback((result.data ?? []).map((item) => ({ ...item, value: item.cargoName })))
+    } catch {
+      callback([])
+    }
+  }
+
+  function handleCargoSelect(row: CustomerPriceCargoItem, item: Record<string, unknown>): void {
+    Object.assign(row, createCargoItemFromMaster(item as unknown as CargoSuggestion), {
+      quantity: row.quantity
+    })
+  }
+
+  function createCargoItemFromMaster(cargo: CargoMaster): CustomerPriceCargoItem {
+    return {
+      cargoName: cargo.cargoName,
+      quantity: null,
+      unit: cargo.unit || '',
+      volumeM3: cargo.volumeM3 ?? null,
+      weightKg: cargo.weightKg ?? null
+    }
+  }
+
+  function formatCargoUnit(row: DataSelectRecord): string {
+    const unit = String((row as CargoMaster).unit ?? '')
+    return form.cargoUnitOptions.find((item) => String(item.value) === unit)?.label || unit || '-'
+  }
+
+  function formatCargoNumber(value?: number | null, precision = 2): string {
+    const numberValue = Number(value)
+    return Number.isFinite(numberValue) ? numberValue.toFixed(precision) : '-'
+  }
+
   function removeCargoItem(row: CustomerPriceCargoItem): void {
     const rows = form.data.cargoItems ?? []
     if (rows.length <= 1) {
@@ -1286,6 +1447,19 @@
       align-items: center;
       justify-content: space-between;
       margin-bottom: 14px;
+    }
+
+    &__section-actions {
+      display: flex;
+      flex: 0 0 auto;
+      flex-wrap: nowrap;
+      gap: 10px;
+      align-items: center;
+
+      :deep(.el-button) {
+        flex: 0 0 auto;
+        white-space: nowrap;
+      }
     }
 
     &__contact-grid {

@@ -3,6 +3,7 @@ import type { Router } from 'vue-router'
 const RECOVERY_QUERY_KEY = '__route_reload'
 const RECOVERY_STORAGE_KEY = 'art-route-module-recovery'
 const RECOVERY_TTL = 60_000
+const MAX_RECOVERY_ATTEMPTS = 2
 const MODULE_LOAD_ERROR_PATTERNS = [
   'Failed to fetch dynamically imported module',
   'Importing a module script failed',
@@ -13,16 +14,15 @@ const MODULE_LOAD_ERROR_PATTERNS = [
 interface RouteRecoveryState {
   path: string
   timestamp: number
+  attempts: number
 }
 
 export function setupRouteErrorRecovery(router: Router): void {
   router.onError((error, to) => {
-    if (!isModuleLoadError(error) || !canRecoverRoute(to.fullPath)) return
+    if (!isModuleLoadError(error)) return
 
-    const recoveryState: RouteRecoveryState = {
-      path: to.fullPath,
-      timestamp: Date.now()
-    }
+    const recoveryState = createRecoveryState(to.fullPath)
+    if (!recoveryState) return
     sessionStorage.setItem(RECOVERY_STORAGE_KEY, JSON.stringify(recoveryState))
 
     const recoveryUrl = new URL(window.location.href)
@@ -44,11 +44,18 @@ function isModuleLoadError(error: unknown): boolean {
   return MODULE_LOAD_ERROR_PATTERNS.some((pattern) => message.includes(pattern))
 }
 
-function canRecoverRoute(path: string): boolean {
+function createRecoveryState(path: string): RouteRecoveryState | undefined {
   const recoveryState = readRecoveryState()
-  if (!recoveryState) return true
+  if (
+    recoveryState &&
+    recoveryState.path === path &&
+    Date.now() - recoveryState.timestamp <= RECOVERY_TTL
+  ) {
+    if (recoveryState.attempts >= MAX_RECOVERY_ATTEMPTS) return undefined
+    return { ...recoveryState, timestamp: Date.now(), attempts: recoveryState.attempts + 1 }
+  }
 
-  return recoveryState.path !== path || Date.now() - recoveryState.timestamp > RECOVERY_TTL
+  return { path, timestamp: Date.now(), attempts: 1 }
 }
 
 function readRecoveryState(): RouteRecoveryState | undefined {
@@ -56,7 +63,9 @@ function readRecoveryState(): RouteRecoveryState | undefined {
   if (!storedValue) return undefined
 
   try {
-    return JSON.parse(storedValue) as RouteRecoveryState
+    const parsedValue = JSON.parse(storedValue) as Partial<RouteRecoveryState>
+    if (!parsedValue.path || !parsedValue.timestamp) return undefined
+    return { ...parsedValue, attempts: parsedValue.attempts ?? 1 } as RouteRecoveryState
   } catch {
     sessionStorage.removeItem(RECOVERY_STORAGE_KEY)
     return undefined

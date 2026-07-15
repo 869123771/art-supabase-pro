@@ -75,7 +75,19 @@ const VEHICLE_ARCHIVE_SELECT = `
     id,
     carrier_id,
     driver_name,
-    phone
+    phone,
+    driver_type,
+    license_type,
+    enabled
+  ),
+  secondary_driver:tms_driver!vehicle_archive_secondary_driver_id_fkey(
+    id,
+    carrier_id,
+    driver_name,
+    phone,
+    driver_type,
+    license_type,
+    enabled
   )
 `
 

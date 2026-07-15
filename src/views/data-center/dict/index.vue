@@ -52,7 +52,7 @@
   import TypeTree from './modules/type-tree.vue'
   import DictDialog from './modules/dict-dialog.vue'
 
-  defineOptions({ name: 'dict' })
+  defineOptions({ name: 'Dict' })
 
   type DictListItem = Api.DataCenter.DictListItem
   type SearchParams = Partial<Pick<DictListItem, 'label' | 'code' | 'i18nScope' | 'status'>>

@@ -1,4 +1,5 @@
 import { computed, type ComputedRef, type Ref } from 'vue'
+import { ElLink } from 'element-plus'
 import type { Router } from 'vue-router'
 import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
 import type {
@@ -32,7 +33,8 @@ export interface DeliveryListContext {
   signDialogRef?: Ref<DeliverySignDialogExpose | undefined>
 }
 
-const deliveryOrderStatuses = ['signed', 'completed']
+export const DELIVERY_STATUS_ALL = '__all__'
+export const deliveryOrderStatuses = ['signed', 'completed']
 const transitOrderStatuses = ['pending_pickup', 'transporting']
 
 export const createInitialDeliverySearch = (): DeliverySearchParams => ({
@@ -41,7 +43,8 @@ export const createInitialDeliverySearch = (): DeliverySearchParams => ({
   receivingKeyword: '',
   paymentMethod: '',
   signedTimeRange: [],
-  createTimeRange: []
+  createTimeRange: [],
+  deliveryStatus: DELIVERY_STATUS_ALL
 })
 
 export const deliveryExcelColumns: ArtTableQueryExcelColumn[] = [
@@ -118,7 +121,12 @@ export const createDeliverySearchItems = (
 
 export function fetchDeliveryTableData(params: TableParams, mode: DeliveryMode) {
   const { from, to } = pageInfoHandler({ current: params.current, size: params.size })
-  return fetchDeliveryList({ ...params, orderStatuses: getModeStatuses(mode), from, to })
+  return fetchDeliveryList({
+    ...params,
+    orderStatuses: getModeStatuses(mode, params.deliveryStatus),
+    from,
+    to
+  })
 }
 
 export const createDeliveryHeaderActions = (
@@ -133,7 +141,10 @@ export const createDeliveryHeaderActions = (
       exportApi: ({ selectedIds, searchParams, maxRows }) =>
         exportDeliveryList({
           ...(searchParams as DeliverySearchParams),
-          orderStatuses: getModeStatuses(context.mode),
+          orderStatuses: getModeStatuses(
+            context.mode,
+            (searchParams as DeliverySearchParams).deliveryStatus
+          ),
           ids: selectedIds.map(String),
           maxRows
         })
@@ -145,7 +156,17 @@ export const createDeliveryColumns = (
 ): ColumnOption<DeliveryRecord>[] => [
   { type: 'selection', width: 50, fixed: 'left', reserveSelection: true },
   { prop: 'cargoNo', label: '货号', fixed: 'left', width: 130, showOverflowTooltip: true },
-  { prop: 'orderNo', label: '运单号', fixed: 'left', width: 140, showOverflowTooltip: true },
+  {
+    prop: 'orderNo',
+    label: '运单号',
+    fixed: 'left',
+    width: 140,
+    formatter: (row) => (
+      <ElLink type="primary" underline="never" onClick={() => openDetail(context, row)}>
+        {row.orderNo}
+      </ElLink>
+    )
+  },
   { prop: 'receivingContactName', label: '收货人', width: 110, showOverflowTooltip: true },
   { prop: 'receivingContactPhone', label: '收货人电话', width: 140, showOverflowTooltip: true },
   {
@@ -246,8 +267,11 @@ export const createDeliveryColumns = (
   }
 ]
 
-function getModeStatuses(mode: DeliveryMode): string[] {
-  return mode === 'delivery' ? deliveryOrderStatuses : transitOrderStatuses
+function getModeStatuses(mode: DeliveryMode, deliveryStatus?: string): string[] {
+  if (mode === 'transit') return transitOrderStatuses
+  return deliveryStatus && deliveryStatus !== DELIVERY_STATUS_ALL
+    ? [deliveryStatus]
+    : deliveryOrderStatuses
 }
 
 function openDetail(context: DeliveryListContext, row: DeliveryRecord): void {

@@ -57,6 +57,7 @@
   const tableState = reactive<{ searchQuery: SearchParams }>({
     searchQuery: {
       carrierId: initialCarrierId,
+      driverType: undefined,
       gender: '',
       enabled: undefined,
       createTimeRange: [],
@@ -83,6 +84,7 @@
   )
 
   const genderOptions = computed(() => getDictMap.value.sex ?? [])
+  const driverTypeOptions = computed(() => getDictMap.value.tmsDriverType ?? [])
   const commonBooleanOptions = computed(() =>
     (getDictMap.value.commonBoolean ?? []).map((item) => ({
       ...item,
@@ -138,6 +140,12 @@
       props: { options: genderOptions.value, clearable: true }
     },
     {
+      label: '司机类型',
+      key: 'driverType',
+      type: 'select',
+      props: { options: driverTypeOptions.value, clearable: true }
+    },
+    {
       label: '状态',
       key: 'enabled',
       type: 'select',
@@ -181,6 +189,12 @@
       minWidth: 210,
       showOverflowTooltip: true,
       formatter: (row) => row.carrier?.companyName || '-'
+    },
+    {
+      prop: 'driverType',
+      label: '司机类型',
+      width: 100,
+      dict: { code: 'tmsDriverType', display: 'tag' }
     },
     { prop: 'phone', label: '手机号码', width: 150 },
     {

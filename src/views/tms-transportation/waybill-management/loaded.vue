@@ -9,7 +9,17 @@
       :header-actions="table.headerActions"
       :search-bar-props="{ span: 6, labelWidth: 86 }"
       :table-props="{ rowKey: 'id', tableLayout: 'fixed' }"
-    />
+    >
+      <template #table-header-top>
+        <div class="waybill-list__status-tabs">
+          <ElSegmented
+            :model-value="table.searchQuery.waybillStatus"
+            :options="table.statusTabs"
+            @change="handleStatusTabChange"
+          />
+        </div>
+      </template>
+    </ArtTableQuery>
   </div>
 </template>
 
@@ -21,13 +31,17 @@
     ArtTableQueryHeaderAction
   } from '@/components/core/tables/art-table-query/index.vue'
   import type { ColumnOption } from '@/types'
+  import { fetchWaybillStatusCounts } from '@/api/tms'
   import { useUserStore } from '@/store/modules/user'
   import {
+    WAYBILL_STATUS_ALL,
     createInitialWaybillSearch,
+    createWaybillModeParams,
     createWaybillColumns,
     createWaybillHeaderActions,
     createWaybillSearchItems,
     fetchWaybillTableData,
+    loadedWaybillStatusTabValues,
     type TableParams,
     type WaybillDialogExpose,
     type WaybillRecord,
@@ -38,19 +52,51 @@
 
   interface TableGroup {
     searchQuery: WaybillSearchParams
+    statusCounts: Record<string, number>
+    statusTotal: number
+    statusTabs: ComputedRef<StatusTab[]>
     searchItems: ComputedRef<SearchFormItem[]>
     headerActions: ComputedRef<ArtTableQueryHeaderAction[]>
     columnsFactory: () => ColumnOption<WaybillRecord>[]
+  }
+
+  interface StatusTab {
+    label: string
+    value: string
   }
 
   const router = useRouter()
   const { getDictMap } = storeToRefs(useUserStore())
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const dispatchDialogRef = ref<WaybillDialogExpose>()
+  const statusCountRequestId = ref(0)
   const paymentMethodOptions = computed(() => getDictMap.value.tmsOrderPaymentMethod ?? [])
+  const loadedStatusFallbackLabels: Record<string, string> = {
+    pending: '待装货',
+    loading: '装货中',
+    transporting: '运输中',
+    unloading: '卸货中',
+    completed: '已完成',
+    cancelled: '已取消'
+  }
 
   const table: UnwrapNestedRefs<TableGroup> = reactive<TableGroup>({
     searchQuery: createInitialWaybillSearch(),
+    statusCounts: {},
+    statusTotal: 0,
+    statusTabs: computed<StatusTab[]>(() => {
+      const statusDict = getDictMap.value.tmsWaybillStatus ?? []
+      return [
+        { label: `全部 (${table.statusTotal})`, value: WAYBILL_STATUS_ALL },
+        ...loadedWaybillStatusTabValues.map((value) => {
+          const item = statusDict.find((option) => option.value === value)
+          return {
+            label: `${item?.label || item?.name || loadedStatusFallbackLabels[value] || value} (${table.statusCounts[value] ?? 0})`,
+            value
+          }
+        })
+      ]
+    }),
     searchItems: createWaybillSearchItems(paymentMethodOptions, true),
     headerActions: createWaybillHeaderActions({
       mode: 'loaded',
@@ -68,10 +114,55 @@
   })
 
   function fetchTableData(params: TableParams) {
+    void loadStatusCounts(params)
     return fetchWaybillTableData(params, 'loaded')
+  }
+
+  async function loadStatusCounts(params: TableParams): Promise<void> {
+    const requestId = ++statusCountRequestId.value
+    const searchParams = { ...params, ...createWaybillModeParams(params, 'loaded') }
+    const result = await fetchWaybillStatusCounts(searchParams)
+    if (requestId !== statusCountRequestId.value) return
+
+    table.statusTotal = result.total
+    table.statusCounts = result.counts
+  }
+
+  function handleStatusTabChange(status: string | number | boolean): void {
+    table.searchQuery.waybillStatus = String(status)
+    void tableQueryRef.value?.getData()
   }
 
   onActivated(() => {
     void tableQueryRef.value?.getData()
   })
 </script>
+
+<style scoped lang="scss">
+  .waybill-list {
+    &__status-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+
+      :deep(.el-segmented) {
+        --el-segmented-item-selected-color: var(--el-color-white);
+        --el-segmented-item-selected-bg-color: var(--el-color-primary);
+
+        max-width: 100%;
+
+        .el-segmented__group {
+          flex-wrap: wrap;
+        }
+
+        .el-segmented__item {
+          color: var(--el-color-primary);
+
+          &.is-selected {
+            color: var(--el-color-white);
+          }
+        }
+      }
+    }
+  }
+</style>
