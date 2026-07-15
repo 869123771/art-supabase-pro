@@ -1,5 +1,6 @@
 import * as XLSX from 'xlsx'
 import FileSaver from 'file-saver'
+import { openFilePreview, type FilePreviewTarget } from '@/hooks/core/useFilePreview'
 
 export type ExcelCellValue = string | number | boolean | null | undefined | Date
 
@@ -177,10 +178,7 @@ export async function calcFileHash(file: File): Promise<string> {
     .join('')
 }
 
-export interface FileActionTarget {
-  url?: string
-  name?: string
-}
+export type FileActionTarget = FilePreviewTarget
 
 export const getFileExtension = (fileName?: string, suffix?: string): string => {
   const normalizedSuffix = suffix || fileName?.split('.').pop() || ''
@@ -206,7 +204,7 @@ export const downloadFile = (url?: string, filename = 'attachment'): void => {
 }
 
 export const viewAttachment = (file: FileActionTarget): void => {
-  viewFile(file.url)
+  openFilePreview(file)
 }
 
 export const downloadAttachment = (file: FileActionTarget): void => {

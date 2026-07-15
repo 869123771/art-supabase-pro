@@ -53,6 +53,8 @@
   },
   "dependencies": {
     "@element-plus/icons-vue": "^2.3.2",
+    "@file-viewer/preset-all": "2.1.28",
+    "@file-viewer/vue3": "2.1.28",
     "@guolao/vue-monaco-editor": "^1.6.0",
     "@iconify/vue": "^5.0.1",
     "@supabase/supabase-js": "^2.108.2",
@@ -91,6 +93,7 @@
     "@commitlint/cli": "^21.1.0",
     "@commitlint/config-conventional": "^21.1.0",
     "@eslint/js": "^10.0.1",
+    "@file-viewer/vite-plugin": "2.1.28",
     "@types/lodash-es": "^4.17.12",
     "@types/node": "^26.0.1",
     "@typescript-eslint/eslint-plugin": "^8.62.0",

@@ -28,7 +28,13 @@
       <ElTable :data="selectedRows" border class="mt-4">
         <ElTableColumn prop="originName" label="文件名" min-width="180">
           <template #default="{ row }">
-            <span class="widget-section__value">{{ row.originName }}</span>
+            <ArtAttachmentLink
+              :file="{
+                name: row.originName,
+                url: row.url,
+                fileType: row.suffix
+              }"
+            />
           </template>
         </ElTableColumn>
         <ElTableColumn prop="mimeType" label="MIME" min-width="160" />
@@ -93,7 +99,9 @@
 </template>
 
 <script setup lang="ts">
+  import { ElMessage } from 'element-plus'
   import ArtResourcePicker from '@/components/core/forms/art-resource-picker/index.vue'
+  import ArtAttachmentLink from '@/components/core/media/art-file-viewer/attachment-link.vue'
   import type { Resource } from '@/components/core/forms/art-resource-picker/type'
 
   defineOptions({ name: 'ResourcePickerWidget' })

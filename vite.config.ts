@@ -10,6 +10,7 @@ import AutoImport from 'unplugin-auto-import/vite'
 import ElementPlus from 'unplugin-element-plus/vite'
 import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
 import tailwindcss from '@tailwindcss/vite'
+import { fileViewerRenderers } from '@file-viewer/vite-plugin'
 
 // 添加插件用于生成 .nojekyll 文件
 import { createNoJekyllPlugin } from './src/plugins/nojekyll'
@@ -136,6 +137,11 @@ export default ({ mode }: { mode: string }) => {
       vue(),
       vueJsx(),
       tailwindcss(),
+      fileViewerRenderers({
+        inject: false,
+        copyAssets: true,
+        chunkStrategy: 'renderer'
+      }),
       // 自动按需导入 API
       AutoImport({
         imports: ['vue', 'vue-router', 'pinia', '@vueuse/core'],

@@ -109,6 +109,7 @@
   import type { ColumnOption } from '@/types'
   import { fetchVehicleInsuranceDetail } from '@/api/vehicle-manage-system'
   import { downloadAttachment } from '@/utils/file'
+  import { renderAttachmentLink } from '@/components/core/media/art-file-viewer/render'
 
   defineOptions({ name: 'VehicleInsuranceDetail' })
 
@@ -122,7 +123,7 @@
 
   const attachmentColumns: ColumnOption<Attachment>[] = [
     { type: 'globalIndex', label: '序号', width: 80 },
-    { prop: 'name', label: '附件名称', minWidth: 240 },
+    { prop: 'name', label: '附件名称', minWidth: 240, formatter: renderAttachmentLink },
     {
       prop: 'fileType',
       label: '格式类型',

@@ -140,13 +140,12 @@
             />
           </ElDescriptionsItem>
           <ElDescriptionsItem label="合同附件">
-            <ElImage
+            <ArtAttachmentLink
               v-if="detail.data?.contractAttachmentUrl"
-              class="carrier-detail__image"
-              :src="detail.data.contractAttachmentUrl"
-              :preview-src-list="[detail.data.contractAttachmentUrl]"
-              fit="cover"
-              preview-teleported
+              :file="{
+                name: '合同附件',
+                url: detail.data.contractAttachmentUrl
+              }"
             />
             <span v-else>--</span>
           </ElDescriptionsItem>
@@ -188,6 +187,7 @@
   import { isNil } from 'lodash-es'
   import { ElButton, ElDescriptions, ElDescriptionsItem, ElImage } from 'element-plus'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
+  import ArtAttachmentLink from '@/components/core/media/art-file-viewer/attachment-link.vue'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
   import VehicleQueryTable from '@/views/vehicle-manage-system/vehicle-query/modules/vehicle-query-table.vue'

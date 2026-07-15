@@ -43,6 +43,12 @@ export const staticRoutes: AppRouteRecordRaw[] = [
     meta: { title: 'menus.resetPassword.title', isHideTab: true }
   },
   {
+    path: '/file-preview',
+    name: 'FilePreview',
+    component: () => import('@/components/core/media/art-file-viewer/index.vue'),
+    meta: { title: '文件预览', isHideTab: true }
+  },
+  {
     path: '/403',
     name: 'Exception403',
     component: () => import('@views/exception/403/index.vue'),

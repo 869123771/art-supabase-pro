@@ -215,9 +215,11 @@
   import type { ColumnOption } from '@/types'
   import {
     addOrder,
+    editOrder,
     fetchCargoList,
     fetchCustomerDefaultAddress,
     fetchCustomerPriceList,
+    fetchOrderDetail,
     fetchStationOptions
   } from '@/api/tms'
   import { useUserStore } from '@/store/modules/user'
@@ -318,6 +320,7 @@
   }
 
   const pageRef = ref<HTMLElement>()
+  const route = useRoute()
   const router = useRouter()
   const userStore = useUserStore()
   const { getDictMap } = storeToRefs(userStore)
@@ -329,6 +332,7 @@
   const otherFormRef = ref<FormExpose>()
   const customerDialogRef = ref<CustomerSelectorExpose>()
   const printDialogRef = ref<PrintDialogExpose>()
+  const initializedOrderId = ref<string>()
 
   const dictCodes = [
     'tmsOrderDeliveryMethod',
@@ -654,15 +658,34 @@
   ]
 
   onMounted(async () => {
+    await initializePage()
+  })
+
+  onActivated(() => {
+    void initializePage()
+  })
+
+  function getOrderId(): string {
+    return typeof route.query.id === 'string' ? route.query.id : ''
+  }
+
+  async function initializePage(): Promise<void> {
+    const orderId = getOrderId()
+    if (page.loading || initializedOrderId.value === orderId) return
+
     page.loading = true
     try {
       await Promise.all(dictCodes.map((code) => userStore.ensureDictLoaded(code)))
+      if (orderId) await loadOrderDetail(orderId)
+      else replaceForm(createInitialForm())
       fillDefaultOptions()
+      initializedOrderId.value = orderId
+      await nextTick()
       clearFormsValidate()
     } finally {
       page.loading = false
     }
-  })
+  }
 
   watch(
     () => form.cargoSummary,
@@ -743,6 +766,31 @@
       orderRemark: '',
       imageUrls: []
     }
+  }
+
+  async function loadOrderDetail(id: string): Promise<void> {
+    const { data } = await fetchOrderDetail(id)
+    if (!data) {
+      ElMessage.warning('订单不存在或无权访问')
+      await router.replace({ name: 'TmsOrderList' })
+      return
+    }
+    if (data.orderStatus !== 'pending_load') {
+      ElMessage.warning('只有待配载订单可以编辑')
+      await router.replace({ name: 'TmsOrderList' })
+      return
+    }
+
+    replaceForm({
+      ...createInitialForm(),
+      ...cloneDeep(data),
+      cargoItems: data.cargoItems?.length ? cloneDeep(data.cargoItems) : [createInitialCargoItem()],
+      imageUrls: data.imageUrls ?? []
+    })
+  }
+
+  function replaceForm(nextForm: OrderForm): void {
+    Object.assign(form.data, createInitialForm(), cloneDeep(nextForm))
   }
 
   function createInitialCargoItem(): CargoItem {
@@ -1094,8 +1142,14 @@
 
     page.saving = true
     try {
-      await addOrder(normalizePayload())
-      ElMessage.success('开单成功')
+      const payload = normalizePayload()
+      if (payload.id) {
+        await editOrder(payload)
+        ElMessage.success('订单修改成功')
+      } else {
+        await addOrder(payload)
+        ElMessage.success('开单成功')
+      }
       await router.push({ name: 'TmsOrderList' })
     } catch {
       // API 层已提示错误，页面保留当前输入。

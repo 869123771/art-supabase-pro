@@ -63,15 +63,11 @@
       <section class="contract-detail__section art-card-xs">
         <ArtSectionTitle>合同附件</ArtSectionTitle>
         <div v-if="attachments.length" class="contract-detail__attachments">
-          <ElButton
+          <ArtAttachmentLink
             v-for="attachment in attachments"
             :key="`${attachment.url}-${attachment.name}`"
-            link
-            type="primary"
-            @click="downloadAttachment(attachment)"
-          >
-            {{ attachment.name }}
-          </ElButton>
+            :file="attachment"
+          />
         </div>
         <span v-else>--</span>
       </section>
@@ -84,9 +80,9 @@
   import { ElButton, ElDescriptions, ElDescriptionsItem, ElTag } from 'element-plus'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
+  import ArtAttachmentLink from '@/components/core/media/art-file-viewer/attachment-link.vue'
   import { fetchContractDetail } from '@/api/tms'
   import { formatWithDayjs } from '@/utils/time'
-  import { downloadAttachment } from '@/utils/file'
 
   defineOptions({ name: 'TmsContractDetail' })
 

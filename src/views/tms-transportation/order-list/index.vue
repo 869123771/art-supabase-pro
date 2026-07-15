@@ -70,7 +70,6 @@
   }
 
   const orderStatusTabValues = [
-    'created',
     'pending_load',
     'pending_order',
     'pending_pickup',
@@ -377,6 +376,11 @@
     void router.push({ name: 'TmsOrderOpen' })
   }
 
+  function openOrderEdit(row: OrderRecord): void {
+    if (!canEditOrder(row)) return
+    void router.push({ name: 'TmsOrderOpen', query: { id: row.id } })
+  }
+
   function openDetail(row: OrderRecord): void {
     if (!row.id) return
     void router.push({
@@ -392,6 +396,12 @@
 
   function getMoreActions(row: OrderRecord): ButtonMoreItem[] {
     return [
+      {
+        key: 'edit',
+        label: '编辑',
+        icon: 'ri:edit-line',
+        disabled: !canEditOrder(row)
+      },
       {
         key: 'freight',
         label: '修改运费',
@@ -417,6 +427,7 @@
 
   function handleMoreAction(item: ButtonMoreItem, row: OrderRecord): void {
     const actionMap: Record<string, () => void> = {
+      edit: () => openOrderEdit(row),
       freight: () => openFreight(row),
       cancel: () => void handleCancel(row),
       delete: () => void handleDelete(row)
@@ -434,6 +445,10 @@
       ['created', 'pending_load'].includes(String(row.orderStatus || '')) ||
       String(row.dispatchStatus || '') === 'pending'
     )
+  }
+
+  function canEditOrder(row: OrderRecord): boolean {
+    return Boolean(row.id) && row.orderStatus === 'pending_load'
   }
 
   function canDeleteOrder(row: OrderRecord): boolean {

@@ -184,7 +184,7 @@
   import { deleteResource, fetchGetResourceList } from '@/api/data-center'
   import useResourceStore from '@/store/modules/resource'
   import { pageInfoHandler } from '@utils/table/tableUtils'
-  import { useImageViewer } from '@/hooks'
+  import { openFilePreview } from '@/hooks/core/useFilePreview'
 
   defineOptions({ name: 'ArtResourcePanel' })
 
@@ -309,7 +309,12 @@
         select(resource)
       }
       if (item.key === 'view') {
-        useImageViewer([resource?.url ?? ''])
+        const result = openFilePreview({
+          name: resource.originName,
+          url: resource.url,
+          fileType: resource.suffix
+        })
+        if (result === 'blocked') ElMessage.warning('浏览器阻止了新页签，请允许本站打开弹出式窗口')
       }
       if (item.key === 'delete') {
         if (resource?.id) {
@@ -390,7 +395,7 @@
    * @param resource
    */
   function canPreview(resource: Resource) {
-    return resource?.mimeType?.startsWith('image')
+    return Boolean(resource?.url)
   }
 
   /**

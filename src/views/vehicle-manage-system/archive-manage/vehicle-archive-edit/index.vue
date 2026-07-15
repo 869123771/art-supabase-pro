@@ -139,6 +139,7 @@
   import { uploadAttachment } from '@/api/common'
   import { useUserStore } from '@/store/modules/user'
   import { downloadAttachment, getFileExtension, viewAttachment } from '@/utils/file'
+  import { renderAttachmentLink } from '@/components/core/media/art-file-viewer/render'
 
   defineOptions({ name: 'VehicleArchiveEdit' })
 
@@ -856,7 +857,12 @@
 
   const attachmentColumns: ColumnOption<ArchiveAttachment>[] = [
     { type: 'globalIndex', label: '序号', width: 80 },
-    { prop: 'name', label: '档案附件名称', minWidth: 220 },
+    {
+      prop: 'name',
+      label: '档案附件名称',
+      minWidth: 220,
+      formatter: renderAttachmentLink
+    },
     {
       prop: 'fileType',
       label: '格式类型',

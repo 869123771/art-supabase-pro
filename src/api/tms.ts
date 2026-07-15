@@ -1183,6 +1183,9 @@ const applyOrderFilters = (query: any, params: OrderSearchParams) => {
   return applyDateRange(query, createTimeRange)
 }
 
+const applyOrderListFilters = (query: any, params: OrderSearchParams) =>
+  applyOrderFilters(query.neq('order_status', 'created'), params)
+
 const DRIVER_WAYBILL_SELECT =
   'id, tenant_id, waybill_no, status, loaded_at, departed_at, unloaded_at, cancelled_at, update_time'
 
@@ -1232,7 +1235,7 @@ export async function fetchOrderList(params: OrderSearchParams & Api.Common.Comm
     .order('create_time', { ascending: false })
     .range(from, to)
 
-  query = applyOrderFilters(query, params)
+  query = applyOrderListFilters(query, params)
   const result = await responseHandle<OrderRecord[]>(() => query as any, {
     ignoreCheck: true,
     showErrorMessage: true
@@ -1241,7 +1244,6 @@ export async function fetchOrderList(params: OrderSearchParams & Api.Common.Comm
 }
 
 const ORDER_STATUS_COUNT_VALUES = [
-  'created',
   'pending_load',
   'pending_order',
   'pending_pickup',
@@ -1259,7 +1261,7 @@ export async function fetchOrderStatusCounts(
     ORDER_STATUS_COUNT_VALUES.map(async (orderStatus) => {
       let query: any = supabase.from('tms_order').select('id', { count: 'exact', head: true })
 
-      query = applyOrderFilters(query, { ...sharedFilters, orderStatus })
+      query = applyOrderListFilters(query, { ...sharedFilters, orderStatus })
       const { total } = await responseHandle<null>(() => query as any, { ignoreCheck: true })
       return [orderStatus, total ?? 0] as const
     })
@@ -1278,7 +1280,7 @@ export async function exportOrderList(
     .order('create_time', { ascending: false })
     .limit(maxRows)
 
-  query = ids?.length ? query.in('id', ids) : applyOrderFilters(query, params)
+  query = ids?.length ? query.in('id', ids) : applyOrderListFilters(query, params)
   const result = await responseHandle<OrderRecord[]>(() => query as any, {
     ignoreCheck: true,
     showErrorMessage: true
@@ -1323,6 +1325,7 @@ export async function editOrder(params: OrderRecord) {
         .from('tms_order')
         .update(keysToSnakeDeep(data))
         .eq('id', id)
+        .eq('order_status', 'pending_load')
         .select()
         .single() as any,
     { showMessage: true, breakReturn: true }

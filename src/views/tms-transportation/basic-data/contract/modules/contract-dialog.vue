@@ -1,5 +1,5 @@
 <template>
-  <ArtDialog ref="dialogRef" width="1080px" show-fullscreen-button>
+  <ArtDialog ref="dialogRef" width="1080px">
     <div class="contract-dialog">
       <ArtForm
         ref="formRef"
@@ -69,6 +69,7 @@
   import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
   import ArtTable from '@/components/core/tables/art-table/index.vue'
   import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
+  import { renderAttachmentLink } from '@/components/core/media/art-file-viewer/render'
   import type { ColumnOption } from '@/types'
   import { addContract, editContract, fetchCarrierOptions } from '@/api/tms'
   import { uploadAttachment } from '@/api/common'
@@ -271,7 +272,13 @@
 
   const attachmentColumns: ColumnOption<ContractAttachment>[] = [
     { type: 'globalIndex', label: '序号', width: 72 },
-    { prop: 'name', label: '附件名称', minWidth: 220, showOverflowTooltip: true },
+    {
+      prop: 'name',
+      label: '附件名称',
+      minWidth: 220,
+      showOverflowTooltip: true,
+      formatter: renderAttachmentLink
+    },
     {
       prop: 'fileType',
       label: '格式类型',

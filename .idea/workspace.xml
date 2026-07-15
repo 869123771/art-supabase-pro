@@ -7,39 +7,32 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="b8f35119-660a-46e7-82f4-53eee06863eb" name="Changes" comment="fix in-transit monitor">
+    <list default="true" id="b8f35119-660a-46e7-82f4-53eee06863eb" name="Changes" comment="fix">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/api/providers/supabase/vehicle.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/providers/supabase/vehicle.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pnpm-lock.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/pnpm-lock.yaml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/api/tms.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/tms.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/components/core/layouts/art-menus/art-sidebar-menu/widget/SidebarSubmenu.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/layouts/art-menus/art-sidebar-menu/widget/SidebarSubmenu.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/components/core/layouts/art-page-content/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/layouts/art-page-content/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/router/guards/errorRecovery.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/router/guards/errorRecovery.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/types/api/api.d.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/types/api/api.d.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/types/store/index.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/types/store/index.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/utils/navigation/jump.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/navigation/jump.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/dashboard/console/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/dashboard/console/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/dashboard/console/modules/about-project.vue" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/dashboard/console/modules/active-user.vue" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/dashboard/console/modules/card-list.vue" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/dashboard/console/modules/dynamic-stats.vue" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/dashboard/console/modules/new-user.vue" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/dashboard/console/modules/sales-overview.vue" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/dashboard/console/modules/todo-list.vue" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/data-center/dict/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/data-center/dict/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/data-center/dict/modules/dict-type-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/data-center/dict/modules/dict-type-dialog.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/basic-data/customer-price-edit/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/basic-data/customer-price-edit/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/basic-data/driver/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/basic-data/driver/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/basic-data/driver/modules/driver-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/basic-data/driver/modules/driver-dialog.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/delivery-management/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/delivery-management/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/delivery-management/modules/delivery-shared.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/delivery-management/modules/delivery-shared.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/core/forms/art-resource-picker/panel.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/forms/art-resource-picker/panel.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/router/routes/staticRoutes.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/router/routes/staticRoutes.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/utils/file/index.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/file/index.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/basic-data/carrier-detail/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/basic-data/carrier-detail/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/basic-data/contract-detail/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/basic-data/contract-detail/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/basic-data/contract/modules/contract-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/basic-data/contract/modules/contract-dialog.vue" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/order-list/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/order-list/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/waybill-management/loaded.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/waybill-management/loaded.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/waybill-management/modules/waybill-shared.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/waybill-management/modules/waybill-shared.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/order-open/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/order-open/index.vue" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/views/vehicle-manage-system/archive-manage/modules/vehicle-archive-detail-content.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-manage-system/archive-manage/modules/vehicle-archive-detail-content.vue" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/views/vehicle-manage-system/archive-manage/vehicle-archive-edit/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-manage-system/archive-manage/vehicle-archive-edit/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-query/detail/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-query/detail/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-query/modules/archive-panel.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-query/modules/archive-panel.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-query/modules/types.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-query/modules/types.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-manage/accident-record-detail/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-manage/accident-record-detail/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-manage/accident-record/modules/accident-record-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-manage/accident-record/modules/accident-record-dialog.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-manage/maintenance-record-detail/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-manage/maintenance-record-detail/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-manage/maintenance-record/modules/maintenance-record-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-manage/maintenance-record/modules/maintenance-record-dialog.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-manage/routine-inspection-detail/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-manage/routine-inspection-detail/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-manage/routine-inspection/modules/routine-inspection-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-manage/routine-inspection/modules/routine-inspection-dialog.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-manage/vehicle-inspection-detail/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-manage/vehicle-inspection-detail/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-manage/vehicle-inspection/modules/vehicle-inspection-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-manage/vehicle-inspection/modules/vehicle-inspection-dialog.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-manage/vehicle-insurance-detail/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-manage/vehicle-insurance-detail/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-manage/vehicle-insurance/modules/vehicle-insurance-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-manage/vehicle-insurance/modules/vehicle-insurance-dialog.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/widgets/resource-picker/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/widgets/resource-picker/index.vue" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/vite.config.ts" beforeDir="false" afterPath="$PROJECT_DIR$/vite.config.ts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -82,61 +75,61 @@
   </component>
   <component name="NextEditCompletionFeaturesState">
     <decayedCancelled>
-      <entry key="MS100" value="1.0146684305474287" />
-      <entry key="MS500" value="1.6849936709839013" />
-      <entry key="S2" value="2.5226050552628916" />
-      <entry key="S5" value="2.841525580128077" />
-      <entry key="S10" value="3.1150540070001216" />
-      <entry key="S30" value="3.569107161385029" />
-      <entry key="S60" value="3.75984153420338" />
-      <entry key="M2" value="3.872947246731259" />
-      <entry key="M5" value="3.9572642364655977" />
-      <entry key="M10" value="4.370834554378613" />
-      <entry key="M15" value="5.344342692443766" />
-      <entry key="M30" value="8.66324903185156" />
-      <entry key="H1" value="12.862395709792233" />
-      <entry key="H2" value="17.73215239997628" />
-      <entry key="H4" value="25.574939462663565" />
-      <entry key="D1" value="123.40673202672866" />
-      <entry key="W1" value="756.2627675047073" />
+      <entry key="MS100" value="1.0203101380731978" />
+      <entry key="MS500" value="1.948317046260036" />
+      <entry key="S2" value="4.952904520939404" />
+      <entry key="S5" value="6.946565510393819" />
+      <entry key="S10" value="7.881065389500254" />
+      <entry key="S30" value="8.681950814405269" />
+      <entry key="S60" value="9.356709443286345" />
+      <entry key="M2" value="10.392244791063534" />
+      <entry key="M5" value="11.656528161884195" />
+      <entry key="M10" value="12.264937391185265" />
+      <entry key="M15" value="12.509391138013557" />
+      <entry key="M30" value="13.203494944009245" />
+      <entry key="H1" value="15.845937231273396" />
+      <entry key="H2" value="21.466198883701605" />
+      <entry key="H4" value="30.70776073964219" />
+      <entry key="D1" value="129.10379089915017" />
+      <entry key="W1" value="762.7053628027862" />
     </decayedCancelled>
     <decayedSelected>
       <entry key="MS100" value="0.0" />
-      <entry key="MS500" value="0.0" />
-      <entry key="S2" value="0.0" />
-      <entry key="S5" value="3.330000313830369E-193" />
-      <entry key="S10" value="5.770615490422464E-97" />
-      <entry key="S30" value="8.325443523423806E-33" />
-      <entry key="S60" value="9.124386841549302E-17" />
-      <entry key="M2" value="9.552165640078332E-9" />
-      <entry key="M5" value="6.194991829222628E-4" />
-      <entry key="M10" value="0.02488974054260719" />
-      <entry key="M15" value="0.0852473146304843" />
-      <entry key="M30" value="0.29227266648415373" />
-      <entry key="H1" value="0.5589019413727956" />
-      <entry key="H2" value="0.9268565971663995" />
-      <entry key="H4" value="1.6479713359010175" />
-      <entry key="D1" value="5.696571239832908" />
-      <entry key="W1" value="22.727580347253262" />
+      <entry key="MS500" value="1.895709082358362E-101" />
+      <entry key="S2" value="6.59846508011863E-26" />
+      <entry key="S5" value="8.467928241375989E-11" />
+      <entry key="S10" value="9.20213466613915E-6" />
+      <entry key="S30" value="0.020955411566665364" />
+      <entry key="S60" value="0.14475984100110556" />
+      <entry key="M2" value="0.38047318039660244" />
+      <entry key="M5" value="0.6794063779296956" />
+      <entry key="M10" value="0.8242649484955975" />
+      <entry key="M15" value="0.8793551156062249" />
+      <entry key="M30" value="0.9532818566229945" />
+      <entry key="H1" value="1.0977276351203107" />
+      <entry key="H2" value="1.430044017999573" />
+      <entry key="H4" value="2.1351759809069732" />
+      <entry key="D1" value="6.358378366475567" />
+      <entry key="W1" value="23.530346386994253" />
     </decayedSelected>
     <decayedShown>
-      <entry key="MS100" value="0.0921266279359986" />
-      <entry key="MS500" value="0.885086813657149" />
-      <entry key="S2" value="1.842775350509912" />
-      <entry key="S5" value="2.42191845652204" />
-      <entry key="S10" value="2.8338152920068604" />
-      <entry key="S30" value="3.4338618180889755" />
-      <entry key="S60" value="3.683211346256753" />
-      <entry key="M2" value="3.8319278947895548" />
-      <entry key="M5" value="3.941372019445972" />
-      <entry key="M10" value="4.411795306102757" />
-      <entry key="M15" value="5.508718169900241" />
-      <entry key="M30" value="9.244055781717751" />
-      <entry key="H1" value="13.959673124281363" />
-      <entry key="H2" value="19.39290160872896" />
-      <entry key="H4" value="28.07946143027941" />
-      <entry key="D1" value="130.07754763582795" />
-      <entry key="W1" value="779.9863562058704" />
+      <entry key="MS100" value="0.12386877568328492" />
+      <entry key="MS500" value="1.5766584142145494" />
+      <entry key="S2" value="4.8367786605507925" />
+      <entry key="S5" value="6.896619283824047" />
+      <entry key="S10" value="7.855365648246368" />
+      <entry key="S30" value="8.693694715311674" />
+      <entry key="S60" value="9.495468416319992" />
+      <entry key="M2" value="10.768399588739474" />
+      <entry key="M5" value="12.333538229740954" />
+      <entry key="M10" value="13.087844450920919" />
+      <entry key="M15" value="13.388025927384945" />
+      <entry key="M30" value="14.171753744842093" />
+      <entry key="H1" value="17.06808359512486" />
+      <entry key="H2" value="23.249277428879235" />
+      <entry key="H4" value="33.43706073644596" />
+      <entry key="D1" value="136.37879347347007" />
+      <entry key="W1" value="787.2230808641168" />
     </decayedShown>
   </component>
   <component name="PackageJsonUpdateNotifier">
@@ -356,15 +349,7 @@
       <workItem from="1783989679100" duration="4500000" />
       <workItem from="1784007904542" duration="425000" />
       <workItem from="1784016793686" duration="4351000" />
-      <workItem from="1784075874594" duration="4626000" />
-    </task>
-    <task id="LOCAL-00009" summary="feat reset password | assign roles">
-      <option name="closed" value="true" />
-      <created>1768377321301</created>
-      <option name="number" value="00009" />
-      <option name="presentableId" value="LOCAL-00009" />
-      <option name="project" value="LOCAL" />
-      <updated>1768377321301</updated>
+      <workItem from="1784075874594" duration="10786000" />
     </task>
     <task id="LOCAL-00010" summary="feat user can see there own data">
       <option name="closed" value="true" />
@@ -750,7 +735,15 @@
       <option name="project" value="LOCAL" />
       <updated>1783839890774</updated>
     </task>
-    <option name="localTasksCounter" value="58" />
+    <task id="LOCAL-00058" summary="fix">
+      <option name="closed" value="true" />
+      <created>1784083734205</created>
+      <option name="number" value="00058" />
+      <option name="presentableId" value="LOCAL-00058" />
+      <option name="project" value="LOCAL" />
+      <updated>1784083734206</updated>
+    </task>
+    <option name="localTasksCounter" value="59" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -786,7 +779,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="merge &#10;version : 3.0.2&#10;date : 2026/03/23" />
     <MESSAGE value="fix change default pwd in Login page" />
     <MESSAGE value="feat reset pwd" />
     <MESSAGE value="feat HarmonyOS Sans font" />
@@ -811,14 +803,15 @@
     <MESSAGE value="fix build" />
     <MESSAGE value="feat monitor" />
     <MESSAGE value="feat vehicle" />
-    <option name="LAST_COMMIT_MESSAGE" value="feat vehicle" />
+    <MESSAGE value="fix" />
+    <option name="LAST_COMMIT_MESSAGE" value="fix" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
       <breakpoints>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/src/views/tms-transportation/order-list/index.vue</url>
-          <line>150</line>
+          <line>149</line>
           <option name="timeStamp" value="1" />
         </line-breakpoint>
       </breakpoints>
