@@ -10,13 +10,12 @@
           <h1>TMS 运输在途监控</h1>
           <nav class="screen-tabs">
             <button type="button" class="is-active">实时监控</button>
-            <button type="button">历史轨迹</button>
-            <button type="button">统计分析</button>
+            <button type="button">运单监控</button>
+            <button type="button">车辆监控</button>
           </nav>
           <div class="header-status">
             <strong>{{ headerTimeText }}</strong>
             <span><i />系统运行正常</span>
-            <button type="button" @click="goHome">返回主页</button>
           </div>
         </header>
 
@@ -146,12 +145,28 @@
                     />
                   </p>
                   <div class="vehicle-card__line">
-                    <span>{{ item.driverName }}</span>
+                    <span class="vehicle-card__driver">
+                      <ElIcon><UserFilled /></ElIcon>
+                      {{ item.driverName }}
+                    </span>
                     <span>{{ item.progress }}%</span>
                   </div>
                   <div class="vehicle-card__geo">
-                    经纬度：{{ formatCoordinate(item.longitude) }},
-                    {{ formatCoordinate(item.latitude) }}
+                    <span class="vehicle-card__poi">
+                      <ElIcon><Location /></ElIcon>
+                      <span class="vehicle-card__poi-text">{{ getVehiclePoiText(item) }}</span>
+                    </span>
+                    <span
+                      class="vehicle-card__poi-refresh"
+                      :class="{ 'is-loading': isVehiclePoiLoading(item) }"
+                      role="button"
+                      tabindex="0"
+                      title="刷新当前位置"
+                      @click.stop="handleVehiclePoiRefresh(item)"
+                      @keydown.enter.stop.prevent="handleVehiclePoiRefresh(item)"
+                    >
+                      <ElIcon><RefreshRight /></ElIcon>
+                    </span>
                   </div>
                   <div class="vehicle-card__order">
                     运单：{{ item.orderNo }}
@@ -221,16 +236,22 @@
                     <div class="detail-route">
                       <div>
                         <b>{{ activeOrder.origin }}</b>
+                        <small>出发时间</small>
                         <em>{{ formatDateTime(activeOrder.plannedDepartureTime) }}</em>
                       </div>
                       <i>{{ activeOrder.progress }}%</i>
                       <div>
                         <b>{{ activeOrder.destination }}</b>
+                        <small>预计到达</small>
                         <em>{{ formatDateTime(activeOrder.plannedArrivalTime) }}</em>
                       </div>
                     </div>
                     <div class="detail-progress">
-                      <b :style="{ width: `${activeOrder.progress}%` }" />
+                      <div>
+                        <span>运输进度</span>
+                        <b>{{ activeOrder.completedKm }}/{{ activeOrder.totalKm }} km</b>
+                      </div>
+                      <i><b :style="{ width: `${activeOrder.progress}%` }" /></i>
                     </div>
                   </div>
 
@@ -280,10 +301,12 @@
   import {
     CircleCheckFilled,
     Clock,
+    Location,
     MoreFilled,
     Phone,
     RefreshRight,
     Search,
+    UserFilled,
     Warning,
     ZoomIn,
     ZoomOut
@@ -312,7 +335,8 @@
   const MAP_MAX_ZOOM = 18
   const DEFAULT_SCREEN_DESIGN_WIDTH = 1920
   const DEFAULT_SCREEN_DESIGN_HEIGHT = 1080
-  const AMAP_PLUGINS = ['AMap.Scale', 'AMap.Driving']
+  const AMAP_PLUGINS = ['AMap.Scale', 'AMap.Driving', 'AMap.Geocoder']
+  const INITIAL_POI_CONCURRENCY = 4
   const VEHICLE_TYPE_DICT_CODE = 'vehicleType'
   const MONITOR_STATUS_DICT_CODE = 'tmsInTransitMonitorStatus'
   const VEHICLE_IMAGE_MAP: Record<string, string> = {
@@ -352,6 +376,7 @@
     arrivalText: string
     cargoBoxes: number
     cargoSummary: Array<{ label: string; value: string }>
+    completedKm: number
     currentLabel: string
     delayed: boolean
     delayText: string
@@ -379,6 +404,7 @@
     status: TransitStatus
     statusColor: string
     statusLabel: string
+    totalKm: number
     vehicleType: string
     vehicleTypeCode: string
     vehicleTypeLabel: string
@@ -412,6 +438,20 @@
     width: number
   }
 
+  interface VehiclePoiState {
+    coordinateKey: string
+    label: string
+    loading: boolean
+  }
+
+  interface ReverseGeocodeResult {
+    regeocode?: {
+      formattedAddress?: string
+      formatted_address?: string
+      pois?: Array<{ name?: string }>
+    }
+  }
+
   const router = useRouter()
   const userStore = useUserStore()
   const { getDictMap } = storeToRefs(userStore)
@@ -438,6 +478,7 @@
     width: 0
   })
   const vehicleMarkers = new Map<string, any>()
+  const vehiclePois = reactive(new Map<string, VehiclePoiState>())
   const drivingRoutePaths = reactive(new Map<string, GeoCoord[]>())
   const drivingRouteRequests = new Set<string>()
   let originMarker: any
@@ -694,6 +735,7 @@
       if (!screen.orders.some((row) => getMonitorRecordId(row) === screen.selectedOrderId)) {
         screen.selectedOrderId = getPreferredMonitorRecordId(screen.orders)
       }
+      void loadVehiclePois()
       if (amapReady.value) {
         void nextTick(() => {
           updateChinaMap()
@@ -775,6 +817,7 @@
         }
       ],
       currentLabel: resolveCurrentLabel(row, progress),
+      completedKm: Math.round(distance * (progress / 100)),
       delayed,
       delayText: getDelayText(row.plannedUnloadTime ?? order?.plannedArrivalTime),
       destination,
@@ -801,6 +844,7 @@
       status,
       statusColor: getMonitorStatusColor(status),
       statusLabel: getMonitorStatusLabel(status),
+      totalKm: distance,
       vehicleImage: getVehicleImage(vehicleTypeCode),
       vehicleType: vehicleTypeCode,
       vehicleTypeCode,
@@ -1037,6 +1081,99 @@
     return window.AMap
   }
 
+  async function loadVehiclePois(): Promise<void> {
+    const orders = [...monitorOrders.value]
+    const activeIds = new Set(orders.map((item) => item.id))
+    vehiclePois.forEach((_, id) => {
+      if (!activeIds.has(id)) vehiclePois.delete(id)
+    })
+
+    const queue = [...orders]
+    const workerCount = Math.min(INITIAL_POI_CONCURRENCY, queue.length)
+    await Promise.all(
+      Array.from({ length: workerCount }, async () => {
+        let order = queue.shift()
+        while (order) {
+          await refreshVehiclePoi(order)
+          order = queue.shift()
+        }
+      })
+    )
+  }
+
+  function getVehiclePoiText(order: MonitorOrder): string {
+    const poi = vehiclePois.get(order.id)
+    return poi?.coordinateKey === getVehicleCoordinateKey(order) ? poi.label : '正在获取位置...'
+  }
+
+  function isVehiclePoiLoading(order: MonitorOrder): boolean {
+    const poi = vehiclePois.get(order.id)
+    return poi?.coordinateKey === getVehicleCoordinateKey(order) && poi.loading
+  }
+
+  async function handleVehiclePoiRefresh(order: MonitorOrder): Promise<void> {
+    const success = await refreshVehiclePoi(order, true)
+    if (!success) ElMessage.warning('当前坐标暂无 POI 信息，请稍后重试')
+  }
+
+  async function refreshVehiclePoi(order: MonitorOrder, force = false): Promise<boolean> {
+    const coordinateKey = getVehicleCoordinateKey(order)
+    const current = vehiclePois.get(order.id)
+    if (!force && current?.coordinateKey === coordinateKey)
+      return current.label !== '暂未获取到 POI'
+
+    const state: VehiclePoiState = {
+      coordinateKey,
+      label: current?.coordinateKey === coordinateKey ? current.label : '正在获取位置...',
+      loading: true
+    }
+    vehiclePois.set(order.id, state)
+
+    try {
+      const label = await reverseGeocode(order.longitude, order.latitude)
+      const nextState = vehiclePois.get(order.id)
+      if (nextState?.coordinateKey === coordinateKey) nextState.label = label
+      return true
+    } catch {
+      const nextState = vehiclePois.get(order.id)
+      if (nextState?.coordinateKey === coordinateKey) nextState.label = '暂未获取到 POI'
+      return false
+    } finally {
+      const nextState = vehiclePois.get(order.id)
+      if (nextState?.coordinateKey === coordinateKey) nextState.loading = false
+    }
+  }
+
+  async function reverseGeocode(longitude: number, latitude: number): Promise<string> {
+    const AMap = await loadAmap()
+    await loadAmapPlugin(AMap, 'AMap.Geocoder')
+
+    return new Promise((resolve, reject) => {
+      const geocoder = new AMap.Geocoder({ extensions: 'all', radius: 1000 })
+      geocoder.getAddress([longitude, latitude], (status: string, result: ReverseGeocodeResult) => {
+        if (status !== 'complete') {
+          reject(new Error('高德逆地理编码失败'))
+          return
+        }
+
+        const regeocode = result?.regeocode
+        const poiName = regeocode?.pois?.[0]?.name
+        const address = String(
+          regeocode?.formattedAddress || regeocode?.formatted_address || poiName || ''
+        ).trim()
+        if (!address) {
+          reject(new Error('未查询到 POI'))
+          return
+        }
+        resolve(address)
+      })
+    })
+  }
+
+  function getVehicleCoordinateKey(order: MonitorOrder): string {
+    return `${order.longitude.toFixed(6)},${order.latitude.toFixed(6)}`
+  }
+
   async function ensureDrivingRoute(order: MonitorOrder): Promise<void> {
     if (drivingRoutePaths.has(order.id) || drivingRouteRequests.has(order.id)) return
 
@@ -1061,14 +1198,15 @@
   }
 
   function loadAmapPlugin(AMap: any, pluginName: string): Promise<void> {
-    if (AMap.Driving) return Promise.resolve()
+    const pluginConstructorName = pluginName.replace('AMap.', '')
+    if (AMap[pluginConstructorName]) return Promise.resolve()
 
     return new Promise((resolve, reject) => {
-      const timeout = window.setTimeout(() => reject(new Error('驾车路线服务加载超时')), 8000)
+      const timeout = window.setTimeout(() => reject(new Error(`${pluginName} 服务加载超时`)), 8000)
       AMap.plugin(pluginName, () => {
         window.clearTimeout(timeout)
-        if (AMap.Driving) resolve()
-        else reject(new Error('驾车路线服务加载失败'))
+        if (AMap[pluginConstructorName]) resolve()
+        else reject(new Error(`${pluginName} 服务加载失败`))
       })
     })
   }
@@ -1555,18 +1693,7 @@
     })
   }
 
-  function openOrderDetail(): void {
-    const orderId = activeOrder.value?.source.order?.id
-    if (!orderId) return
-    void router.push({
-      name: 'TmsOrderDetail',
-      params: { id: orderId }
-    })
-  }
-
-  function goHome(): void {
-    void router.push('/')
-  }
+  function openOrderDetail(): void {}
 
   function contactDriver(): void {
     if (!activeOrder.value) return
@@ -1593,10 +1720,6 @@
       .toFixed(precision)
       .replace(/(\.\d*?)0+$/, '$1')
       .replace(/\.$/, '')
-  }
-
-  function formatCoordinate(value: number): string {
-    return value.toFixed(5)
   }
 
   function formatText(value?: string | number | null, fallback = '-'): string {
@@ -1996,6 +2119,18 @@
       color: #cfe6f6;
     }
 
+    &__driver {
+      display: inline-flex;
+      gap: 4px;
+      align-items: center;
+      min-width: 0;
+
+      .el-icon {
+        flex: 0 0 auto;
+        color: #96d8ff;
+      }
+    }
+
     &__order {
       margin-top: 10px;
 
@@ -2023,9 +2158,60 @@
     }
 
     &__geo {
+      display: flex;
+      gap: 8px;
+      align-items: stretch;
+      justify-content: space-between;
+      min-width: 0;
       margin-top: 10px;
       font-size: 12px;
       color: #83a9bd;
+    }
+
+    &__poi {
+      display: inline-flex;
+      flex: 1;
+      gap: 4px;
+      align-items: flex-start;
+      min-width: 0;
+
+      .el-icon {
+        flex: 0 0 auto;
+        margin-top: 2px;
+        color: #4cbbff;
+      }
+    }
+
+    &__poi-text {
+      display: -webkit-box;
+      overflow: hidden;
+      line-height: 18px;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+    }
+
+    &__poi-refresh {
+      display: inline-flex;
+      flex: 0 0 auto;
+      align-self: center;
+      align-items: center;
+      justify-content: center;
+      width: 20px;
+      height: 20px;
+      color: #9bc4d9;
+      cursor: pointer;
+      border-radius: 50%;
+
+      &:hover,
+      &:focus-visible {
+        color: #fff;
+        outline: 0;
+        background: rgb(76 125 255 / 58%);
+      }
+
+      &.is-loading .el-icon {
+        animation: transitPoiRefresh 0.9s linear infinite;
+      }
     }
 
     &__status {
@@ -2424,11 +2610,18 @@
     text-align: center;
 
     b,
+    small,
     em {
       display: block;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+    }
+
+    small {
+      margin-top: 5px;
+      font-size: 11px;
+      color: #7399ae;
     }
 
     em {
@@ -2452,16 +2645,36 @@
   }
 
   .detail-progress {
-    height: 6px;
     margin-top: 16px;
-    overflow: hidden;
-    background: rgb(255 255 255 / 10%);
-    border-radius: 999px;
 
-    b {
+    > div {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 7px;
+      font-size: 12px;
+
+      span {
+        color: #b9d8e7;
+      }
+
+      b {
+        color: #f2f8ff;
+      }
+    }
+
+    > i {
       display: block;
-      height: 100%;
-      background: linear-gradient(90deg, #315cff, #26e0a8);
+      height: 6px;
+      overflow: hidden;
+      background: rgb(255 255 255 / 10%);
+      border-radius: 999px;
+
+      b {
+        display: block;
+        height: 100%;
+        background: linear-gradient(90deg, #315cff, #26e0a8);
+      }
     }
   }
 
@@ -2561,6 +2774,12 @@
 
     50% {
       transform: translateX(2px);
+    }
+  }
+
+  @keyframes transitPoiRefresh {
+    to {
+      transform: rotate(360deg);
     }
   }
 </style>

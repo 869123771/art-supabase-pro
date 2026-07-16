@@ -77,7 +77,9 @@ export default [
     ignores: [
       'node_modules',
       'dist',
+      'docs',
       'public',
+      'supabase/**',
       '.vscode/**',
       'src/assets/**',
       'src/utils/console.ts'

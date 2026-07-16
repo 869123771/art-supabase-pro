@@ -1,6 +1,8 @@
 dist
+docs
 node_modules
 public
+supabase
 .husky
 .vscode
 

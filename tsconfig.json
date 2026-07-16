@@ -26,5 +26,5 @@
     }
   },
   "include": ["src/**/*", "src/**/*.ts", "src/**/*.d.ts", "src/**/*.tsx", "src/**/*.vue"],
-  "exclude": ["node_modules", "dist", "**/*.js"]
+  "exclude": ["node_modules", "dist", "supabase", "**/*.js"]
 }
