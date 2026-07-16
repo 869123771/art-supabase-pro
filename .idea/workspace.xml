@@ -7,8 +7,9 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="b8f35119-660a-46e7-82f4-53eee06863eb" name="Changes" comment="feat params config">
+    <list default="true" id="b8f35119-660a-46e7-82f4-53eee06863eb" name="Changes" comment="feat supabase script">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/.nojekyll" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/docs/assets/403-ti933YWW.js" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/docs/assets/404-C3227q2H.js" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/docs/assets/500-DTgnlBnx.js" beforeDir="false" />
@@ -182,18 +183,6 @@
       <change beforePath="$PROJECT_DIR$/docs/favicon.ico" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/docs/flyfish-viewer-assets.json" beforeDir="false" afterPath="$PROJECT_DIR$/docs/flyfish-viewer-assets.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/docs/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/docs/index.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/eslint.config.mjs" beforeDir="false" afterPath="$PROJECT_DIR$/eslint.config.mjs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/pnpm-lock.yaml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/public/favicon.ico" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/api/tms.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/tms.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/types/api/api.d.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/types/api/api.d.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/utils/sys/console.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/sys/console.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/auth/login/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/auth/login/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/auth/reset-password/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/auth/reset-password/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/basic-data/customer-address/modules/customer-address-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/basic-data/customer-address/modules/customer-address-dialog.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/basic-data/customer/modules/customer-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/basic-data/customer/modules/customer-dialog.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/order-open/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/order-open/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/waybill-management/pending.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/waybill-management/pending.vue" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -235,23 +224,23 @@
   </component>
   <component name="NextEditCompletionFeaturesState">
     <decayedCancelled>
-      <entry key="MS100" value="1.0351258490645752" />
-      <entry key="MS500" value="2.6876760238320925" />
-      <entry key="S2" value="5.294579508716302" />
-      <entry key="S5" value="6.241465963154334" />
-      <entry key="S10" value="6.6173631349974205" />
-      <entry key="S30" value="7.205122527565529" />
-      <entry key="S60" value="7.752860375729324" />
-      <entry key="M2" value="8.245683334384044" />
-      <entry key="M5" value="8.658781434359849" />
-      <entry key="M10" value="8.821984320877627" />
-      <entry key="M15" value="8.879609695946407" />
-      <entry key="M30" value="8.93893077447191" />
-      <entry key="H1" value="8.969504623016963" />
-      <entry key="H2" value="9.08063128226034" />
-      <entry key="H4" value="11.289667950610554" />
-      <entry key="D1" value="96.41667190178885" />
-      <entry key="W1" value="734.2057058175127" />
+      <entry key="MS100" value="1.0031412800657356" />
+      <entry key="MS500" value="2.0339493642092137" />
+      <entry key="S2" value="4.792044051414694" />
+      <entry key="S5" value="5.985953280942664" />
+      <entry key="S10" value="6.474023210175502" />
+      <entry key="S30" value="7.336132062525355" />
+      <entry key="S60" value="8.514787647048777" />
+      <entry key="M2" value="9.786488849377443" />
+      <entry key="M5" value="10.964339182334777" />
+      <entry key="M10" value="11.453386281381013" />
+      <entry key="M15" value="11.636331616393349" />
+      <entry key="M30" value="12.073527577820851" />
+      <entry key="H1" value="13.442101570913804" />
+      <entry key="H2" value="15.711700189699835" />
+      <entry key="H4" value="19.240321645549354" />
+      <entry key="D1" value="101.58156624072252" />
+      <entry key="W1" value="738.5378850992788" />
     </decayedCancelled>
     <decayedSelected>
       <entry key="MS100" value="0.0" />
@@ -261,35 +250,35 @@
       <entry key="S10" value="0.0" />
       <entry key="S30" value="0.0" />
       <entry key="S60" value="0.0" />
-      <entry key="M2" value="7.317503853502841E-189" />
-      <entry key="M5" value="5.568589240647646E-76" />
-      <entry key="M10" value="2.359796834804141E-38" />
-      <entry key="M15" value="8.229424829063526E-26" />
-      <entry key="M30" value="2.9162444242387475E-13" />
-      <entry key="H1" value="6.071498536598941E-7" />
-      <entry key="H2" value="0.0010635307571491349" />
-      <entry key="H4" value="0.05822828507808454" />
-      <entry key="D1" value="3.4884279314608935" />
-      <entry key="W1" value="21.596485896202527" />
+      <entry key="M2" value="7.695941234096011E-212" />
+      <entry key="M5" value="3.585128257611122E-85" />
+      <entry key="M10" value="5.987621937228279E-43" />
+      <entry key="M15" value="7.105958284351013E-29" />
+      <entry key="M30" value="8.569401811385185E-15" />
+      <entry key="H1" value="1.0407805976010974E-7" />
+      <entry key="H2" value="4.403334728865791E-4" />
+      <entry key="H4" value="0.03746707785542992" />
+      <entry key="D1" value="3.2412738521614055" />
+      <entry key="W1" value="21.370955646310325" />
     </decayedSelected>
     <decayedShown>
-      <entry key="MS100" value="0.12442163284328303" />
-      <entry key="MS500" value="2.2896961898181796" />
-      <entry key="S2" value="5.170155331270622" />
-      <entry key="S5" value="6.188987813654738" />
-      <entry key="S10" value="6.590624999526042" />
-      <entry key="S30" value="7.195982927501009" />
-      <entry key="S60" value="7.748185889531317" />
-      <entry key="M2" value="8.24329789766734" />
-      <entry key="M5" value="8.657810853679052" />
-      <entry key="M10" value="8.821495764066787" />
-      <entry key="M15" value="8.87928322040433" />
-      <entry key="M30" value="8.938767139308636" />
-      <entry key="H1" value="8.969423372996003" />
-      <entry key="H2" value="9.081915028725012" />
-      <entry key="H4" value="11.364064504845395" />
-      <entry key="D1" value="100.40796087113563" />
-      <entry key="W1" value="756.7084089262762" />
+      <entry key="MS100" value="0.011269563781595925" />
+      <entry key="MS500" value="1.4039636446267247" />
+      <entry key="S2" value="4.565750718011346" />
+      <entry key="S5" value="5.887515149689574" />
+      <entry key="S10" value="6.423349007933662" />
+      <entry key="S30" value="7.31876363750342" />
+      <entry key="S60" value="8.505904612844505" />
+      <entry key="M2" value="9.781946949961222" />
+      <entry key="M5" value="10.962485829276876" />
+      <entry key="M10" value="11.45245203294239" />
+      <entry key="M15" value="11.635706702962459" />
+      <entry key="M30" value="12.073209515845633" />
+      <entry key="H1" value="13.441930775165918" />
+      <entry key="H2" value="15.71215320403922" />
+      <entry key="H4" value="19.288152957692798" />
+      <entry key="D1" value="105.29006703014166" />
+      <entry key="W1" value="760.8055934743352" />
     </decayedShown>
   </component>
   <component name="PackageJsonUpdateNotifier">
@@ -511,15 +500,7 @@
       <workItem from="1784007904542" duration="425000" />
       <workItem from="1784016793686" duration="4351000" />
       <workItem from="1784075874594" duration="12373000" />
-      <workItem from="1784097971342" duration="12906000" />
-    </task>
-    <task id="LOCAL-00012" summary="feat screenshort">
-      <option name="closed" value="true" />
-      <created>1768784323645</created>
-      <option name="number" value="00012" />
-      <option name="presentableId" value="LOCAL-00012" />
-      <option name="project" value="LOCAL" />
-      <updated>1768784323645</updated>
+      <workItem from="1784097971342" duration="13516000" />
     </task>
     <task id="LOCAL-00013" summary="fix hooks remove aipexbase">
       <option name="closed" value="true" />
@@ -905,7 +886,15 @@
       <option name="project" value="LOCAL" />
       <updated>1784105636495</updated>
     </task>
-    <option name="localTasksCounter" value="61" />
+    <task id="LOCAL-00061" summary="feat supabase script">
+      <option name="closed" value="true" />
+      <created>1784172058362</created>
+      <option name="number" value="00061" />
+      <option name="presentableId" value="LOCAL-00061" />
+      <option name="project" value="LOCAL" />
+      <updated>1784172058362</updated>
+    </task>
+    <option name="localTasksCounter" value="62" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -941,7 +930,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="feat HarmonyOS Sans font" />
     <MESSAGE value="feat same role data validate" />
     <MESSAGE value="feat ai write sql" />
     <MESSAGE value="feat menu" />
@@ -966,7 +954,8 @@
     <MESSAGE value="fix" />
     <MESSAGE value="feat file-viewer" />
     <MESSAGE value="feat params config" />
-    <option name="LAST_COMMIT_MESSAGE" value="feat params config" />
+    <MESSAGE value="feat supabase script" />
+    <option name="LAST_COMMIT_MESSAGE" value="feat supabase script" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
