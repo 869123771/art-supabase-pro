@@ -8,4 +8,6 @@ const asciiArt = `
 \x1b[0m
 `
 
-console.log(asciiArt)
+if (import.meta.env.DEV) {
+  console.log(asciiArt)
+}

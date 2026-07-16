@@ -1,0 +1,137 @@
+import { serve } from 'https://deno.land/std@0.224.0/http/server.ts'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type'
+}
+
+const ADMIN_ROLE_CODES = new Set(['R_SUPER', 'R_ADMIN'])
+
+interface UserProfile {
+  auth_user_id: string
+  tenant_id: string
+  user_roles: string[]
+  status: string | null
+  sys_tenant: { tenant_code: string | null } | { tenant_code: string | null }[] | null
+}
+
+const getTenantCode = (profile: UserProfile): string | null => {
+  const tenant = Array.isArray(profile.sys_tenant) ? profile.sys_tenant[0] : profile.sys_tenant
+  return tenant?.tenant_code?.toLowerCase() ?? null
+}
+
+const isPlatformSuper = (profile: UserProfile): boolean =>
+  getTenantCode(profile) === 'platform' && profile.user_roles.includes('R_SUPER')
+
+const canResetPasswords = (profile: UserProfile): boolean =>
+  profile.status === '1' && profile.user_roles.some((role) => ADMIN_ROLE_CODES.has(role))
+
+serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { status: 204, headers: corsHeaders })
+  }
+
+  if (req.method !== 'POST') {
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+      status: 405,
+      headers: corsHeaders
+    })
+  }
+
+  try {
+    const authHeader = req.headers.get('authorization')
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ error: 'Missing Authorization header' }), {
+        status: 401,
+        headers: corsHeaders
+      })
+    }
+
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')
+    const anonKey = Deno.env.get('SUPABASE_ANON_KEY')
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+    if (!supabaseUrl || !anonKey || !serviceRoleKey) {
+      return new Response(JSON.stringify({ error: 'Server not configured' }), {
+        status: 500,
+        headers: corsHeaders
+      })
+    }
+
+    const token = authHeader.slice('Bearer '.length)
+    const authClient = createClient(supabaseUrl, anonKey, { auth: { persistSession: false } })
+    const { data: authData, error: authError } = await authClient.auth.getUser(token)
+    if (authError || !authData.user) {
+      return new Response(JSON.stringify({ error: 'Invalid or expired token' }), {
+        status: 401,
+        headers: corsHeaders
+      })
+    }
+
+    const { email, password } = await req.json()
+    const targetEmail = typeof email === 'string' ? email.trim().toLowerCase() : ''
+    if (!targetEmail || typeof password !== 'string' || password.length < 6) {
+      return new Response(JSON.stringify({ error: 'A valid email and password are required' }), {
+        status: 400,
+        headers: corsHeaders
+      })
+    }
+
+    const adminClient = createClient(supabaseUrl, serviceRoleKey, {
+      auth: { persistSession: false }
+    })
+    const { data: operator, error: operatorError } = await adminClient
+      .from('sys_user')
+      .select('auth_user_id, tenant_id, user_roles, status, sys_tenant:tenant_id(tenant_code)')
+      .eq('auth_user_id', authData.user.id)
+      .maybeSingle<UserProfile>()
+
+    if (operatorError || !operator || !canResetPasswords(operator)) {
+      return new Response(JSON.stringify({ error: 'Administrator permission is required' }), {
+        status: 403,
+        headers: corsHeaders
+      })
+    }
+
+    const { data: target, error: targetError } = await adminClient
+      .from('sys_user')
+      .select('auth_user_id, tenant_id, status')
+      .eq('user_email', targetEmail)
+      .maybeSingle()
+
+    if (targetError || !target?.auth_user_id || target.status !== '1') {
+      return new Response(JSON.stringify({ error: 'User not found or disabled' }), {
+        status: 404,
+        headers: corsHeaders
+      })
+    }
+
+    if (!isPlatformSuper(operator) && target.tenant_id !== operator.tenant_id) {
+      return new Response(JSON.stringify({ error: 'Cannot reset a user in another tenant' }), {
+        status: 403,
+        headers: corsHeaders
+      })
+    }
+
+    const { error: updateError } = await adminClient.auth.admin.updateUserById(
+      target.auth_user_id,
+      {
+        password
+      }
+    )
+    if (updateError) {
+      return new Response(JSON.stringify({ error: 'Password reset failed' }), {
+        status: 400,
+        headers: corsHeaders
+      })
+    }
+
+    return new Response(JSON.stringify({ ok: true }), { status: 200, headers: corsHeaders })
+  } catch {
+    return new Response(JSON.stringify({ error: 'Unexpected server error' }), {
+      status: 500,
+      headers: corsHeaders
+    })
+  }
+})

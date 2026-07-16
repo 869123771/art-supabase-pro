@@ -974,8 +974,8 @@
         shippingContactName: contactName,
         shippingContactPhone: contactPhone,
         shippingAddressDetail: addressText,
-        shippingLongitude: address?.longitude ?? null,
-        shippingLatitude: address?.latitude ?? null
+        shippingLongitude: address?.longitude ?? customer.longitude ?? null,
+        shippingLatitude: address?.latitude ?? customer.latitude ?? null
       },
       receiving: {
         receivingCustomerId: customer.id,
@@ -983,8 +983,8 @@
         receivingContactName: contactName,
         receivingContactPhone: contactPhone,
         receivingAddressDetail: addressText,
-        receivingLongitude: address?.longitude ?? null,
-        receivingLatitude: address?.latitude ?? null
+        receivingLongitude: address?.longitude ?? customer.longitude ?? null,
+        receivingLatitude: address?.latitude ?? customer.latitude ?? null
       }
     }
 
@@ -1150,7 +1150,7 @@
         await addOrder(payload)
         ElMessage.success('开单成功')
       }
-      await router.push({ name: 'TmsOrderList' })
+      await router.push({ name: 'TmsPendingWaybillList' })
     } catch {
       // API 层已提示错误，页面保留当前输入。
     } finally {

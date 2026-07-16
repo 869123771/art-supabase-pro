@@ -44,6 +44,14 @@ const normalizeBooleanFilter = (value: unknown): boolean | undefined => {
   return undefined
 }
 
+const createRealtimeChannelId = (): string => {
+  if (typeof globalThis.crypto?.randomUUID === 'function') {
+    return globalThis.crypto.randomUUID()
+  }
+
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`
+}
+
 const countByCarrierId = async (
   tableName: 'tms_driver' | 'vehicle_archive',
   carrierId: string
@@ -149,7 +157,26 @@ export async function exportCustomerList(
 export async function fetchCustomerOptions() {
   const query = supabase
     .from('tms_customer')
-    .select('id, customer_code, customer_name, contact_name, contact_phone')
+    .select(
+      `
+      id,
+      customer_code,
+      customer_name,
+      contact_name,
+      contact_phone,
+      region,
+      region_adcode,
+      address_detail,
+      longitude,
+      latitude,
+      coordinate_system,
+      coordinate_source,
+      coordinate_status,
+      geocode_provider,
+      geocoded_at,
+      postal_code
+    `
+    )
     .eq('enabled', true)
     .order('customer_name', { ascending: true })
     .limit(1000)
@@ -165,7 +192,7 @@ export async function fetchCustomerSelectorList(params: CustomerSelectorSearchPa
   let query: any = supabase
     .from('tms_customer')
     .select(
-      'id, customer_code, customer_name, contact_name, contact_phone, region, address_detail',
+      'id, customer_code, customer_name, contact_name, contact_phone, region, region_adcode, address_detail, longitude, latitude',
       {
         count: 'exact'
       }
@@ -1929,7 +1956,7 @@ export async function fetchInTransitMonitorList(
 
 export function subscribeInTransitMonitorChanges(onChange: () => void): () => void {
   const channel = supabase
-    .channel(`tms-in-transit-monitor-${crypto.randomUUID()}`)
+    .channel(`tms-in-transit-monitor-${createRealtimeChannelId()}`)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'tms_waybill' }, onChange)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'tms_order' }, onChange)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicle_archive' }, onChange)

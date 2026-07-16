@@ -15,8 +15,15 @@
         <ArtAddressPicker
           v-model:region-path="form.regionPath"
           v-model:address-detail="form.addressDetail"
+          v-model:region-adcode="form.regionAdcode"
+          v-model:longitude="form.longitude"
+          v-model:latitude="form.latitude"
+          v-model:coordinate-system="form.coordinateSystem"
+          v-model:coordinate-source="form.coordinateSource"
+          v-model:coordinate-status="form.coordinateStatus"
+          v-model:geocode-provider="form.geocodeProvider"
+          v-model:geocoded-at="form.geocodedAt"
           :region-api="fetchRegionOptions"
-          :show-coordinate-hint="false"
           label-width="108px"
         />
       </template>
@@ -64,9 +71,17 @@
     customerLevel: '',
     tags: [],
     region: '',
+    regionAdcode: '',
     addressPicker: undefined,
     regionPath: [],
     addressDetail: '',
+    longitude: null,
+    latitude: null,
+    coordinateSystem: 'gcj02',
+    coordinateSource: '',
+    coordinateStatus: 'pending',
+    geocodeProvider: '',
+    geocodedAt: '',
     postalCode: '',
     enabled: true,
     contactName: '',
@@ -253,6 +268,46 @@
     Object.assign(form, nextForm)
   }
 
+  const normalizeNullableNumber = (value: unknown): number | null => {
+    if (value === null || value === undefined || value === '') return null
+    const numberValue = Number(value)
+    return Number.isFinite(numberValue) ? numberValue : null
+  }
+
+  const normalizeNullableText = (value: unknown): string | null => {
+    const text = String(value ?? '').trim()
+    return text || null
+  }
+
+  const buildSubmitPayload = (data: CustomerForm): Customer => {
+    const { regionPath, ...rawPayload } = data
+    delete rawPayload.addressPicker
+
+    const longitude = normalizeNullableNumber(rawPayload.longitude)
+    const latitude = normalizeNullableNumber(rawPayload.latitude)
+    const hasCoordinate = longitude !== null && latitude !== null
+
+    const payload: Customer = {
+      ...rawPayload,
+      region: regionPath.join('/'),
+      regionAdcode: normalizeNullableText(rawPayload.regionAdcode),
+      longitude,
+      latitude,
+      coordinateSystem: hasCoordinate
+        ? rawPayload.coordinateSystem || 'gcj02'
+        : normalizeNullableText(rawPayload.coordinateSystem),
+      coordinateSource: normalizeNullableText(rawPayload.coordinateSource),
+      coordinateStatus: hasCoordinate
+        ? rawPayload.coordinateStatus || 'located'
+        : rawPayload.coordinateStatus || 'pending',
+      geocodeProvider: normalizeNullableText(rawPayload.geocodeProvider),
+      geocodedAt: normalizeNullableText(rawPayload.geocodedAt)
+    }
+
+    if (!payload.customerCode) delete payload.customerCode
+    return payload
+  }
+
   const resetForm = async (): Promise<void> => {
     replaceForm(createInitialForm())
     await nextTick()
@@ -267,14 +322,7 @@
     }
 
     try {
-      const { regionPath, ...rawPayload } = structuredClone(toRaw(form))
-      delete rawPayload.addressPicker
-      const payload: Customer = {
-        ...rawPayload,
-        region: regionPath.join('/')
-      }
-      if (!payload.customerCode) delete payload.customerCode
-
+      const payload = buildSubmitPayload(structuredClone(toRaw(form)))
       const type = form.id ? 'edit' : 'add'
       if (type === 'edit') await editCustomer(payload)
       else await addCustomer(payload)

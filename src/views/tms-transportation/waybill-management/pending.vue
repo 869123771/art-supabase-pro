@@ -77,4 +77,8 @@
   function handleDispatchSuccess(): void {
     void router.push({ name: 'TmsLoadedWaybillList' })
   }
+
+  onActivated(() => {
+    void tableQueryRef.value?.getData()
+  })
 </script>

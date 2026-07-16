@@ -63,6 +63,7 @@
   const { getDictMap } = storeToRefs(useUserStore())
   const dialogRef = ref<ArtDialogExpose<CustomerAddress | undefined>>()
   const formRef = ref<DialogFormExpose>()
+  const customerOptions = shallowRef<CustomerOption[]>([])
   const customerContext = reactive<CustomerContext>({})
 
   const addressTypeOptions = computed(() => getDictMap.value.tmsAddressType ?? [])
@@ -129,6 +130,7 @@
       resultField: 'data',
       labelField: 'customerName',
       valueField: 'id',
+      afterFetch: syncCustomerOptions,
       labelFn: (option) => {
         const customer = option as CustomerOption
         return customer.customerCode
@@ -139,6 +141,7 @@
         disabled: Boolean(customerContext.customerId),
         filterable: true,
         clearable: !customerContext.customerId,
+        onChange: handleCustomerChange,
         placeholder: '请选择客户'
       }
     },
@@ -192,6 +195,12 @@
     Object.assign(form, createInitialForm(), nextForm)
   }
 
+  const getResponseData = <TRecord,>(result: unknown): TRecord[] => {
+    if (!result || typeof result !== 'object') return []
+    const data = (result as { data?: TRecord[] }).data
+    return Array.isArray(data) ? data : []
+  }
+
   const normalizeNullableNumber = (value: unknown): number | null => {
     if (value === null || value === undefined || value === '') return null
     const numberValue = Number(value)
@@ -201,6 +210,45 @@
   const normalizeNullableText = (value: unknown): string | null => {
     const text = String(value ?? '').trim()
     return text || null
+  }
+
+  const syncCustomerOptions = (result: unknown): unknown => {
+    customerOptions.value = getResponseData<CustomerOption>(result)
+    if (!form.id && form.customerId) applyCustomerProfile(form.customerId)
+    return result
+  }
+
+  const handleCustomerChange = (customerId?: string): void => {
+    if (!customerId) return
+    applyCustomerProfile(customerId)
+  }
+
+  const applyCustomerProfile = (customerId: string): void => {
+    const customer = customerOptions.value.find((item) => item.id === customerId)
+    if (!customer) return
+
+    const longitude = normalizeNullableNumber(customer.longitude)
+    const latitude = normalizeNullableNumber(customer.latitude)
+    const hasCoordinate = longitude !== null && latitude !== null
+
+    Object.assign(form, {
+      contactName: customer.contactName || '',
+      contactPhone: customer.contactPhone || '',
+      region: customer.region || '',
+      regionAdcode: customer.regionAdcode || '',
+      regionPath: customer.region?.split('/').filter(Boolean) ?? [],
+      addressDetail: customer.addressDetail || '',
+      longitude,
+      latitude,
+      coordinateSystem: hasCoordinate ? customer.coordinateSystem || 'gcj02' : 'gcj02',
+      coordinateSource: customer.coordinateSource || '',
+      coordinateStatus: hasCoordinate
+        ? customer.coordinateStatus || 'located'
+        : customer.coordinateStatus || 'pending',
+      geocodeProvider: customer.geocodeProvider || '',
+      geocodedAt: customer.geocodedAt || '',
+      postalCode: customer.postalCode || ''
+    })
   }
 
   const buildSubmitPayload = (data: CustomerAddressForm): CustomerAddress => {

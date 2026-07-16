@@ -1,0 +1,116 @@
+import { createClient } from "npm:@supabase/supabase-js@2.35.0"
+import { v4 as uuidv4 } from "npm:uuid@9.0.0"
+
+const allowedOrigins = ["http://localhost:3006", "http://localhost:3007", "http://localhost:4173", "https://ckbftoopuyophiebamwy.supabase.co"]
+const SYS_USER_COLUMNS = new Set(["user_name", "nick_name", "user_gender", "user_phone", "user_email", "status", "create_by", "update_by", "update_time", "extra", "user_roles", "create_time", "auth_user_id", "id", "user_type", "remark", "avatar", "tenant_id"])
+
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!
+const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!
+const supabaseAdmin = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } })
+const supabaseDB = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } })
+
+type CallerProfile = { id: string; auth_user_id: string; user_email: string; tenant_id: string; tenant_code: string | null; user_roles: string[]; status: string | null }
+
+function getOriginAllowed(origin: string | null) { if (!origin) return null; if (allowedOrigins.includes(origin)) return origin; return null }
+function corsHeaders(origin: string | null) {
+  const allowed = getOriginAllowed(origin) !== null
+  const headers: Record<string, string> = { "Content-Type": "application/json", "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS", "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With, apikey, x-client-info", "Access-Control-Max-Age": "86400" }
+  if (allowed) { headers["Access-Control-Allow-Origin"] = origin as string; headers["Access-Control-Allow-Credentials"] = "true"; headers["Vary"] = "Origin" } else { headers["Access-Control-Allow-Origin"] = "*" }
+  return headers
+}
+async function json(req: Request) { try { return await req.json() } catch { return {} } }
+function cleanAppUserData(appUserData: unknown): Record<string, unknown> {
+  if (!appUserData || typeof appUserData !== "object") return {}
+  const cleaned: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries(appUserData as Record<string, unknown>)) { if (value === undefined) continue; if (SYS_USER_COLUMNS.has(key)) cleaned[key] = value }
+  return cleaned
+}
+function parseJWT(token: string): { userId: string | null; email: string | null } {
+  try { const parts = token.split("."); if (parts.length !== 3) return { userId: null, email: null }; const payload = JSON.parse(atob(parts[1])); return { userId: payload.sub || null, email: (payload.email || "").toLowerCase().trim() || null } } catch (e) { console.error("parseJWT error", e); return { userId: null, email: null } }
+}
+function createClientWithToken(token: string) { return createClient(SUPABASE_URL, ANON_KEY, { auth: { persistSession: false }, global: { headers: { Authorization: `Bearer ${token}` } } }) }
+
+async function getCallerProfile(callerAuthUserId: string | null): Promise<CallerProfile | null> {
+  if (!callerAuthUserId) return null
+  const { data, error } = await supabaseDB.from("sys_user").select("id, auth_user_id, user_email, tenant_id, user_roles, status, sys_tenant:tenant_id(tenant_code)").eq("auth_user_id", callerAuthUserId).maybeSingle()
+  if (error || !data) { if (error) console.error("getCallerProfile error", error.message); return null }
+  const tenant = Array.isArray(data.sys_tenant) ? data.sys_tenant[0] : data.sys_tenant
+  return { id: data.id, auth_user_id: data.auth_user_id, user_email: String(data.user_email || "").toLowerCase().trim(), tenant_id: data.tenant_id, tenant_code: tenant?.tenant_code ?? null, user_roles: data.user_roles || [], status: data.status ?? null }
+}
+function isPlatformSuper(profile: CallerProfile | null) { return Boolean(profile && profile.user_email === "869123771@qq.com" && profile.tenant_code?.toLowerCase() === "platform" && profile.user_roles.includes("R_SUPER") && profile.status === "1") }
+function getFriendlyErrorMessage(error: any, action: string): string {
+  const errorMsg = error?.message || String(error); const errorCode = error?.code || ""
+  const isPermissionError = errorMsg.toLowerCase().includes("permission denied") || errorMsg.toLowerCase().includes("row-level security") || errorMsg.toLowerCase().includes("policy") || errorMsg.toLowerCase().includes("violates") || errorCode === "42501" || errorCode === "PGRST301" || errorCode === "PGRST116"
+  if (isPermissionError) { const actionMap: Record<string, string> = { create: "创建", update: "编辑", delete: "删除" }; return `当前用户角色没有${actionMap[action] || action}权限，无法执行此操作` }
+  return errorMsg
+}
+async function insertAudit(auditId: string, requestId: string, action: string, input: unknown) { try { const { error } = await supabaseDB.from("sync_user_audit").insert([{ id: auditId, request_id: requestId, action, input }]); if (error) console.warn("Audit insert skipped:", error.message) } catch (e) { console.warn("Audit insert skipped:", e) } }
+async function updateAudit(auditId: string, result: unknown) { try { const { error } = await supabaseDB.from("sync_user_audit").update({ result }).eq("id", auditId); if (error) console.warn("Audit update skipped:", error.message) } catch (e) { console.warn("Audit update skipped:", e) } }
+async function deleteAuthUser(authUserId: string) { try { const { error } = await supabaseAdmin.auth.admin.deleteUser(authUserId); if (error) console.error("Delete auth user failed:", error.message) } catch (e) { console.error("Delete auth user failed:", e) } }
+async function restoreSnapshot(snapshot: unknown) { if (!snapshot) return; try { const { error } = await supabaseDB.from("sys_user").insert(snapshot); if (error) console.error("Restore sys_user snapshot failed:", error.message) } catch (e) { console.error("Restore sys_user snapshot failed:", e) } }
+
+Deno.serve(async (req: Request) => {
+  const origin = req.headers.get("origin")
+  if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders(origin) })
+  const requestId = uuidv4(); const body = await json(req); const auditId = uuidv4(); const action = (body.action || "").toLowerCase()
+  if (!["create", "update", "delete"].includes(action)) return new Response(JSON.stringify({ ok: false, error: "invalid action" }), { status: 400, headers: corsHeaders(origin) })
+  await insertAudit(auditId, requestId, action, body)
+
+  const authHeader = req.headers.get("authorization") || req.headers.get("Authorization")
+  const bearer = authHeader && authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null
+  let callerAuthUserId: string | null = null; let callerEmail: string | null = null
+  if (bearer) {
+    const parsed = parseJWT(bearer); callerAuthUserId = parsed.userId; callerEmail = parsed.email; const callerSupabase = createClientWithToken(bearer)
+    try { const { data: user, error: userErr } = await callerSupabase.auth.getUser(); if (!userErr && user?.user) { callerAuthUserId = user.user.id; callerEmail = (user.user.email || "").toLowerCase().trim() || null } } catch (e) { console.error("getUser error (non-fatal):", e) }
+  }
+  const callerProfile = await getCallerProfile(callerAuthUserId); const callerIsSuper = isPlatformSuper(callerProfile)
+
+  try {
+    if (action === "create") {
+      const emailFromBody = String(body.email || "").toLowerCase().trim(); const appUserData = body.app_user_data || {}
+      if (!emailFromBody) return new Response(JSON.stringify({ ok: false, error: "email required" }), { status: 400, headers: corsHeaders(origin) })
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+      if (!emailRegex.test(emailFromBody)) return new Response(JSON.stringify({ ok: false, error: "Invalid email format" }), { status: 400, headers: corsHeaders(origin) })
+      if (!callerProfile || !callerEmail) return new Response(JSON.stringify({ ok: false, error: "需要登录用户才能创建新用户" }), { status: 401, headers: corsHeaders(origin) })
+      const password = appUserData.password || body.password || uuidv4().slice(0, 12)
+      if (String(password).length < 6) return new Response(JSON.stringify({ ok: false, error: "Password must be at least 6 characters" }), { status: 400, headers: corsHeaders(origin) })
+      try { const { data: existingAuth } = await supabaseAdmin.auth.admin.listUsers(); const existingUser = existingAuth?.users?.find((u) => u.email?.toLowerCase() === emailFromBody); if (existingUser) return new Response(JSON.stringify({ ok: false, error: "该邮箱已被注册" }), { status: 400, headers: corsHeaders(origin) }) } catch (e) { console.warn("check existing auth user error (non-fatal)", e) }
+      const { data: authUser, error: authErr } = await supabaseAdmin.auth.admin.createUser({ email: emailFromBody, password, email_confirm: true })
+      if (authErr) { const duplicateErrors = ["user_already_exists", "duplicate key", "Email already registered", "already exists"]; const isDuplicate = duplicateErrors.some((keyword) => authErr.code === keyword || (authErr.message || "").includes(keyword)); return new Response(JSON.stringify({ ok: false, error: isDuplicate ? "Email already registered" : `Failed to create user: ${authErr.message}` }), { status: isDuplicate ? 400 : 500, headers: corsHeaders(origin) }) }
+      const authUserId = authUser.user.id
+      const insertData: Record<string, unknown> = { ...cleanAppUserData(appUserData), auth_user_id: authUserId, user_email: emailFromBody, create_by: callerEmail }
+      if (!callerIsSuper) insertData.tenant_id = callerProfile.tenant_id; else if (!insertData.tenant_id) insertData.tenant_id = callerProfile.tenant_id
+      const { data: created, error: insertErr } = await supabaseDB.from("sys_user").insert(insertData).select().single()
+      if (insertErr) { await deleteAuthUser(authUserId); return new Response(JSON.stringify({ ok: false, error: getFriendlyErrorMessage(insertErr, action) }), { status: 500, headers: corsHeaders(origin) }) }
+      const result = { ok: true, auth_user_id: authUserId, app_user: created }; await updateAudit(auditId, result); return new Response(JSON.stringify(result), { status: 200, headers: corsHeaders(origin) })
+    }
+
+    if (action === "update") {
+      const { id, auth_user_id, email, password, app_user_data } = body
+      if (!id) return new Response(JSON.stringify({ ok: false, error: "id required for update" }), { status: 400, headers: corsHeaders(origin) })
+      const cleanedAppUserData = cleanAppUserData(app_user_data)
+      if (!callerIsSuper && cleanedAppUserData.tenant_id && cleanedAppUserData.tenant_id !== callerProfile?.tenant_id) return new Response(JSON.stringify({ ok: false, error: "不能把用户分配到当前租户之外" }), { status: 403, headers: corsHeaders(origin) })
+      if (auth_user_id) {
+        const updateAuthData: Record<string, string> = {}; const emailForAuth = email || cleanedAppUserData.user_email; const passwordForAuth = password || (app_user_data && app_user_data.password)
+        if (typeof emailForAuth === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailForAuth)) updateAuthData.email = emailForAuth
+        if (typeof passwordForAuth === "string" && passwordForAuth.trim().length >= 6) updateAuthData.password = passwordForAuth
+        if (Object.keys(updateAuthData).length > 0) { const { error: updateAuthErr } = await supabaseAdmin.auth.admin.updateUserById(auth_user_id, updateAuthData); if (updateAuthErr) return new Response(JSON.stringify({ ok: false, error: `Failed to update auth user: ${updateAuthErr.message}` }), { status: 500, headers: corsHeaders(origin) }) }
+      }
+      if (Object.keys(cleanedAppUserData).length === 0) { const { data: existingUser, error: selectErr } = await supabaseDB.from("sys_user").select("*").eq("id", id).single(); if (selectErr) return new Response(JSON.stringify({ ok: false, error: getFriendlyErrorMessage(selectErr, action) }), { status: 500, headers: corsHeaders(origin) }); const result = { ok: true, app_user: existingUser }; await updateAudit(auditId, result); return new Response(JSON.stringify(result), { status: 200, headers: corsHeaders(origin) }) }
+      const { data: updatedUser, error: updateErr } = await supabaseDB.from("sys_user").update(cleanedAppUserData).eq("id", id).select().single()
+      if (updateErr) return new Response(JSON.stringify({ ok: false, error: getFriendlyErrorMessage(updateErr, action) }), { status: 500, headers: corsHeaders(origin) })
+      const result = { ok: true, app_user: updatedUser }; await updateAudit(auditId, result); return new Response(JSON.stringify(result), { status: 200, headers: corsHeaders(origin) })
+    }
+
+    if (action === "delete") {
+      const id = body.id; const auth_user_id = body.auth_user_id || body.authUserId
+      if (!id) return new Response(JSON.stringify({ ok: false, error: "id required" }), { status: 400, headers: corsHeaders(origin) })
+      const { data: snapshot } = await supabaseDB.from("sys_user").select("*").eq("id", id).single(); const { error: delErr } = await supabaseDB.from("sys_user").delete().eq("id", id)
+      if (delErr) return new Response(JSON.stringify({ ok: false, error: getFriendlyErrorMessage(delErr, action) }), { status: 500, headers: corsHeaders(origin) })
+      if (auth_user_id) { const { error: delAuthErr } = await supabaseAdmin.auth.admin.deleteUser(auth_user_id); if (delAuthErr) { await restoreSnapshot(snapshot); throw delAuthErr } }
+      const result = auth_user_id ? { ok: true, deleted_app_user_id: id, deleted_auth_user_id: auth_user_id } : { ok: true, deleted_app_user_id: id }
+      await updateAudit(auditId, result); return new Response(JSON.stringify(result), { status: 200, headers: corsHeaders(origin) })
+    }
+  } catch (e) { const errorMsg = (e as Error).message || String(e); await updateAudit(auditId, { ok: false, error: errorMsg }); return new Response(JSON.stringify({ ok: false, error: errorMsg }), { status: 500, headers: corsHeaders(origin) }) }
+})
