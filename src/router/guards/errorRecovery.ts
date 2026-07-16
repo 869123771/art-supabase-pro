@@ -18,6 +18,8 @@ interface RouteRecoveryState {
 }
 
 export function setupRouteErrorRecovery(router: Router): void {
+  removeRecoveryQuery()
+
   router.onError((error, to) => {
     if (!isModuleLoadError(error)) return
 
@@ -25,10 +27,7 @@ export function setupRouteErrorRecovery(router: Router): void {
     if (!recoveryState) return
     sessionStorage.setItem(RECOVERY_STORAGE_KEY, JSON.stringify(recoveryState))
 
-    const recoveryUrl = new URL(window.location.href)
-    recoveryUrl.hash = to.fullPath
-    recoveryUrl.searchParams.set(RECOVERY_QUERY_KEY, String(recoveryState.timestamp))
-    window.location.replace(recoveryUrl)
+    reloadAtRoute(to.fullPath)
   })
 
   router.afterEach((_to, _from, failure) => {
@@ -37,6 +36,14 @@ export function setupRouteErrorRecovery(router: Router): void {
     sessionStorage.removeItem(RECOVERY_STORAGE_KEY)
     removeRecoveryQuery()
   })
+}
+
+function reloadAtRoute(path: string): void {
+  const recoveryUrl = new URL(window.location.href)
+  recoveryUrl.hash = path
+  recoveryUrl.searchParams.delete(RECOVERY_QUERY_KEY)
+  window.history.replaceState(window.history.state, '', recoveryUrl)
+  window.location.reload()
 }
 
 function isModuleLoadError(error: unknown): boolean {

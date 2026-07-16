@@ -81,7 +81,7 @@
     plateNo: '',
     vehicleType: '',
     manufacturer: '',
-    chassisNo: '',
+    vin: '',
     operationStatus: '',
     auditStatus: auditTab.value
   })
@@ -98,7 +98,7 @@
       }
     },
     { label: '车辆厂商', key: 'manufacturer', type: 'input' },
-    { label: '车架号', key: 'chassisNo', type: 'input' },
+    { label: '车架号（VIN）', key: 'vin', type: 'input' },
     {
       label: '营运状态',
       key: 'operationStatus',
@@ -126,7 +126,7 @@
     { key: 'plateNo', title: '车牌号', required: true },
     { key: 'vehicleType', title: '车型', required: true },
     { key: 'manufacturer', title: '车辆厂商' },
-    { key: 'chassisNo', title: '车架号' },
+    { key: 'chassisNo', title: '底盘号' },
     { key: 'vin', title: '车架号（VIN）', required: true },
     { key: 'operationStatus', title: '营运状态' },
     { key: 'auditStatus', title: '审核状态' },
@@ -206,7 +206,7 @@
         dict: { code: 'vehicleType', display: 'text' }
       },
       { prop: 'manufacturer', label: '车辆厂商', width: 130 },
-      { prop: 'chassisNo', label: '车架号', width: 200 },
+      { prop: 'vin', label: '车架号（VIN）', width: 200 },
       {
         prop: 'operationStatus',
         label: '营运状态',
@@ -365,7 +365,8 @@
 
       :deep(.art-search-bar) {
         padding-top: 12px;
-        /*border: 1px solid var(--el-border-color-light);*/
+
+        /* border: 1px solid var(--el-border-color-light); */
         border-top: 0;
         border-radius: 0 0 var(--el-border-radius-base) var(--el-border-radius-base) !important;
         box-shadow: none;

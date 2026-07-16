@@ -2,7 +2,8 @@
 param(
   [string]$ProjectRef = 'ckbftoopuyophiebamwy',
   [securestring]$DbPassword,
-  [string]$BackupRoot
+  [string]$BackupRoot,
+  [string]$DbUrl
 )
 
 $ErrorActionPreference = 'Stop'
@@ -10,8 +11,16 @@ $ErrorActionPreference = 'Stop'
 function Invoke-Supabase {
   param([Parameter(Mandatory = $true)][string[]]$Arguments)
 
-  & supabase @Arguments
-  if ($LASTEXITCODE -ne 0) {
+  $previousPreference = $ErrorActionPreference
+  try {
+    $ErrorActionPreference = 'Continue'
+    & supabase @Arguments
+    $exitCode = $LASTEXITCODE
+  }
+  finally {
+    $ErrorActionPreference = $previousPreference
+  }
+  if ($exitCode -ne 0) {
     throw 'A Supabase CLI command failed. See the preceding command output.'
   }
 }
@@ -29,7 +38,20 @@ function Get-PlainText {
 }
 
 function Get-LinkedDatabaseConnection {
-  param([Parameter(Mandatory = $true)][string]$Password)
+  param(
+    [Parameter(Mandatory = $true)][string]$Password,
+    [string]$DatabaseUrl
+  )
+
+  if ($DatabaseUrl) {
+    $uri = [uri]$DatabaseUrl
+    return @{
+      Host = $uri.Host
+      Port = $uri.Port
+      User = ([uri]::UnescapeDataString($uri.UserInfo) -split ':')[0]
+      Database = $uri.AbsolutePath.TrimStart('/')
+    }
+  }
 
   # The CLI resolves the correct pooler host for the project. Capture, never print,
   # its dry-run output because it contains the database password.
@@ -86,20 +108,33 @@ try {
   $metadataPath = Join-Path $backupPath 'metadata'
   New-Item -ItemType Directory -Force -Path $databasePath, $storagePath, $metadataPath | Out-Null
 
-  Write-Host 'Linking the source project...'
-  Invoke-Supabase @('link', '--project-ref', $ProjectRef, '--password', $plainPassword)
-  $connection = Get-LinkedDatabaseConnection $plainPassword
+  # Reuse an existing matching link. Calling `supabase link` on every backup is
+  # unnecessary and requires the Management API to be reachable.
+  $linkedProjectFile = Join-Path $supabaseRoot '.temp\linked-project.json'
+  $linkedProjectRef = $null
+  if (Test-Path $linkedProjectFile) {
+    try { $linkedProjectRef = (Get-Content -Raw $linkedProjectFile | ConvertFrom-Json).ref } catch {}
+  }
+  if ($linkedProjectRef -eq $ProjectRef) {
+    Write-Host 'Reusing the existing source-project link...'
+  }
+  else {
+    Write-Host 'Linking the source project...'
+    Invoke-Supabase @('link', '--project-ref', $ProjectRef, '--password', $plainPassword)
+  }
+  $dbTarget = if ($DbUrl) { @('--db-url', $DbUrl) } else { @('--linked', '--password', $plainPassword) }
+  $connection = Get-LinkedDatabaseConnection -Password $plainPassword -DatabaseUrl $DbUrl
 
   Write-Host 'Exporting database roles, schema, and data...'
-  Invoke-Supabase @('db', 'dump', '--linked', '--password', $plainPassword, '--role-only', '--file', (Join-Path $databasePath 'roles.sql'))
-  Invoke-Supabase @('db', 'dump', '--linked', '--password', $plainPassword, '--keep-comments', '--file', (Join-Path $databasePath 'schema.sql'))
+  Invoke-Supabase (@('db', 'dump') + $dbTarget + @('--role-only', '--file', (Join-Path $databasePath 'roles.sql')))
+  Invoke-Supabase (@('db', 'dump') + $dbTarget + @('--keep-comments', '--file', (Join-Path $databasePath 'schema.sql')))
   # Do not exclude any application schema or Storage metadata: this is a full logical backup.
-  Invoke-Supabase @('db', 'dump', '--linked', '--password', $plainPassword, '--data-only', '--use-copy', '--file', (Join-Path $databasePath 'data.sql'))
-  Invoke-Supabase @('db', 'dump', '--linked', '--password', $plainPassword, '--schema', 'supabase_migrations', '--file', (Join-Path $databasePath 'migration-history-schema.sql'))
-  Invoke-Supabase @('db', 'dump', '--linked', '--password', $plainPassword, '--schema', 'supabase_migrations', '--data-only', '--use-copy', '--file', (Join-Path $databasePath 'migration-history-data.sql'))
+  Invoke-Supabase (@('db', 'dump') + $dbTarget + @('--data-only', '--use-copy', '--file', (Join-Path $databasePath 'data.sql')))
+  Invoke-Supabase (@('db', 'dump') + $dbTarget + @('--schema', 'supabase_migrations', '--file', (Join-Path $databasePath 'migration-history-schema.sql')))
+  Invoke-Supabase (@('db', 'dump') + $dbTarget + @('--schema', 'supabase_migrations', '--data-only', '--use-copy', '--file', (Join-Path $databasePath 'migration-history-data.sql')))
   # Standard schema dumps omit managed auth/storage schemas. This records only the
   # changes made to those managed schemas, which can safely be replayed on a new project.
-  Invoke-Supabase @('db', 'diff', '--linked', '--schema', 'auth,storage', '--output', (Join-Path $databasePath 'managed-schema-changes.sql'))
+  Invoke-Supabase (@('db', 'diff') + $dbTarget + @('--schema', 'auth,storage', '--output', (Join-Path $databasePath 'managed-schema-changes.sql')))
 
   Write-Host 'Capturing deployed Edge Function source and metadata...'
   Invoke-Supabase @('functions', 'download', '--project-ref', $ProjectRef, '--use-api')
@@ -110,10 +145,10 @@ try {
   if ($LASTEXITCODE -ne 0) { throw 'Unable to list Edge Function secret names.' }
   & supabase projects list --output json | Set-Content -Path (Join-Path $metadataPath 'projects.json') -Encoding utf8
   if ($LASTEXITCODE -ne 0) { throw 'Unable to capture project metadata.' }
-  & supabase db query --linked --agent=no --output json 'select id, name, public, file_size_limit, allowed_mime_types, created_at, updated_at from storage.buckets order by id' |
+  & supabase db query @dbTarget --agent=no --output json 'select id, name, public, file_size_limit, allowed_mime_types, created_at, updated_at from storage.buckets order by id' |
     Set-Content -Path (Join-Path $metadataPath 'storage-buckets.json') -Encoding utf8
   if ($LASTEXITCODE -ne 0) { throw 'Unable to list Storage buckets.' }
-  & supabase db query --linked --agent=no --output json "select schemaname, tablename from pg_publication_tables where pubname = 'supabase_realtime' order by schemaname, tablename" |
+  & supabase db query @dbTarget --agent=no --output json "select schemaname, tablename from pg_publication_tables where pubname = 'supabase_realtime' order by schemaname, tablename" |
     Set-Content -Path (Join-Path $metadataPath 'realtime-publication-tables.json') -Encoding utf8
   if ($LASTEXITCODE -ne 0) { throw 'Unable to list Realtime publication tables.' }
 

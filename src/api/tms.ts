@@ -1398,8 +1398,6 @@ const DISPATCH_VEHICLE_SELECT = `
   self_no,
   vehicle_type,
   primary_driver_id,
-  driver_one_name,
-  driver_one_phone,
   tonnage_or_seat,
   overall_length,
   primaryDriver:tms_driver!vehicle_archive_primary_driver_id_fkey(
@@ -1781,9 +1779,27 @@ export async function fetchDispatchVehicleOptions(params: DispatchVehicleSearchP
     .range(from, to)
 
   if (keyword) {
-    query = query.or(
-      `plate_no.ilike.%${keyword}%,company_name.ilike.%${keyword}%,self_no.ilike.%${keyword}%,vehicle_type.ilike.%${keyword}%,driver_one_name.ilike.%${keyword}%,driver_one_phone.ilike.%${keyword}%`
+    const { data: driverRows } = await responseHandle<Array<{ id?: string }>>(
+      () =>
+        supabase
+          .from('tms_driver')
+          .select('id')
+          .or(`driver_name.ilike.%${keyword}%,phone.ilike.%${keyword}%`)
+          .limit(200) as any,
+      { ignoreCheck: true }
     )
+    const driverIds = (driverRows ?? []).map((item) => item.id).filter((id): id is string => !!id)
+    const conditions = [
+      `plate_no.ilike.%${keyword}%`,
+      `company_name.ilike.%${keyword}%`,
+      `self_no.ilike.%${keyword}%`,
+      `vehicle_type.ilike.%${keyword}%`
+    ]
+    if (driverIds.length) {
+      const ids = driverIds.join(',')
+      conditions.push(`primary_driver_id.in.(${ids})`)
+    }
+    query = query.or(conditions.join(','))
   }
 
   return await responseHandle<DispatchVehicleOption[]>(() => query as any, {

@@ -429,7 +429,7 @@ declare namespace Api {
           | 'companyName'
           | 'vehicleType'
           | 'manufacturer'
-          | 'chassisNo'
+          | 'vin'
           | 'operationStatus'
           | 'auditStatus'
         > &
@@ -1457,8 +1457,6 @@ declare namespace Api {
       interface DispatchVehicleOption extends Api.VehicleMgtSys.VehicleManage.VehicleOption {
         primaryDriverId?: string | null
         primaryDriver?: BasicData.DriverOption | null
-        driverOneName?: string | null
-        driverOnePhone?: string | null
         tonnageOrSeat?: string | null
         overallLength?: number | null
       }

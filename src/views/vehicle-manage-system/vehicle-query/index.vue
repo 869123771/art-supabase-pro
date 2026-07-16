@@ -68,7 +68,7 @@
       companyName: '',
       plateNo: '',
       manufacturer: '',
-      chassisNo: '',
+      vin: '',
       operationStatus: undefined
     },
     searchItems: computed<SearchFormItem[]>(() => [
@@ -91,8 +91,8 @@
         props: { clearable: true }
       },
       {
-        label: '车架号',
-        key: 'chassisNo',
+        label: '车架号（VIN）',
+        key: 'vin',
         type: 'input',
         props: { clearable: true }
       },
@@ -114,7 +114,7 @@
         dict: { code: 'vehicleType', display: 'text' }
       },
       { prop: 'manufacturer', label: '车型厂商', minWidth: 140 },
-      { prop: 'vin', label: '车架号', minWidth: 170 },
+      { prop: 'vin', label: '车架号（VIN）', minWidth: 170 },
       {
         prop: 'invoiceDate',
         label: '购入开票日期',

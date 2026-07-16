@@ -8,14 +8,19 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="b8f35119-660a-46e7-82f4-53eee06863eb" name="Changes" comment="feat supabase script">
-      <change beforePath="$PROJECT_DIR$/.idea/codeStyles/Project.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/codeStyles/Project.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/prettier.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/prettier.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.prettierignore" beforeDir="false" afterPath="$PROJECT_DIR$/.prettierignore" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.stylelintignore" beforeDir="false" afterPath="$PROJECT_DIR$/.stylelintignore" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/eslint.config.mjs" beforeDir="false" afterPath="$PROJECT_DIR$/eslint.config.mjs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/flyfish-viewer-assets.json" beforeDir="false" afterPath="$PROJECT_DIR$/docs/flyfish-viewer-assets.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/api/providers/supabase/vehicle.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/providers/supabase/vehicle.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/api/tms.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/tms.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/router/guards/errorRecovery.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/router/guards/errorRecovery.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/types/api/api.d.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/types/api/api.d.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/in-transit-monitor/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/in-transit-monitor/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tsconfig.json" beforeDir="false" afterPath="$PROJECT_DIR$/tsconfig.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/waybill-management/modules/dispatch-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/waybill-management/modules/dispatch-dialog.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/vehicle-manage-system/archive-manage/vehicle-archive-entry/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-manage-system/archive-manage/vehicle-archive-entry/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/vehicle-manage-system/archive-manage/vehicle-archive-manage/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-manage-system/archive-manage/vehicle-archive-manage/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-query/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-query/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/supabase/backup-supabase.ps1" beforeDir="false" afterPath="$PROJECT_DIR$/supabase/backup-supabase.ps1" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/vite.config.ts" beforeDir="false" afterPath="$PROJECT_DIR$/vite.config.ts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -333,15 +338,7 @@
       <workItem from="1784007904542" duration="425000" />
       <workItem from="1784016793686" duration="4351000" />
       <workItem from="1784075874594" duration="12373000" />
-      <workItem from="1784097971342" duration="18603000" />
-    </task>
-    <task id="LOCAL-00014" summary="fix netlify.toml adapt VITE_BASE_URL">
-      <option name="closed" value="true" />
-      <created>1768801144198</created>
-      <option name="number" value="00014" />
-      <option name="presentableId" value="LOCAL-00014" />
-      <option name="project" value="LOCAL" />
-      <updated>1768801144198</updated>
+      <workItem from="1784097971342" duration="28793000" />
     </task>
     <task id="LOCAL-00015" summary="fix netlify.toml adapt VITE_BASE_URL">
       <option name="closed" value="true" />
@@ -727,7 +724,15 @@
       <option name="project" value="LOCAL" />
       <updated>1784172822853</updated>
     </task>
-    <option name="localTasksCounter" value="63" />
+    <task id="LOCAL-00063" summary="feat supabase script">
+      <option name="closed" value="true" />
+      <created>1784182952034</created>
+      <option name="number" value="00063" />
+      <option name="presentableId" value="LOCAL-00063" />
+      <option name="project" value="LOCAL" />
+      <updated>1784182952034</updated>
+    </task>
+    <option name="localTasksCounter" value="64" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">

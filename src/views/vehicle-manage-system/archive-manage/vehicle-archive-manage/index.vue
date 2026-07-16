@@ -91,7 +91,7 @@
       companyName: '',
       plateNo: '',
       manufacturer: '',
-      chassisNo: '',
+      vin: '',
       operationStatus: ''
     },
     searchItems: computed<SearchFormItem[]>(() => [
@@ -118,7 +118,7 @@
       },
       { label: '车牌号', key: 'plateNo', type: 'input' },
       { label: '车辆厂商', key: 'manufacturer', type: 'input' },
-      { label: '车架号', key: 'chassisNo', type: 'input' },
+      { label: '车架号（VIN）', key: 'vin', type: 'input' },
       {
         label: '营运状态',
         key: 'operationStatus',
@@ -141,7 +141,7 @@
         dict: { code: 'vehicleType', display: 'text' }
       },
       { prop: 'manufacturer', label: '车辆厂商', minWidth: 150 },
-      { prop: 'chassisNo', label: '车架号', minWidth: 170 },
+      { prop: 'vin', label: '车架号（VIN）', minWidth: 170 },
       {
         prop: 'operationStatus',
         label: '营运状态',

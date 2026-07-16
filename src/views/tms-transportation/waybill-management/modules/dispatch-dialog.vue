@@ -188,8 +188,18 @@
         dict: { code: 'vehicleType', display: 'text' }
       },
       { prop: 'tonnageOrSeat', label: '吨位/座位', width: 120 },
-      { prop: 'driverOneName', label: '司机', width: 110 },
-      { prop: 'driverOnePhone', label: '司机电话', width: 130 }
+      {
+        prop: 'primaryDriver',
+        label: '司机',
+        width: 110,
+        formatter: (row) => formatPrimaryDriverName(row as DispatchVehicleOption)
+      },
+      {
+        prop: 'primaryDriver',
+        label: '司机电话',
+        width: 130,
+        formatter: (row) => formatPrimaryDriverPhone(row as DispatchVehicleOption)
+      }
     ])
   })
 
@@ -277,9 +287,17 @@
       dispatchPlateNo: vehicle?.plateNo || '',
       dispatchVehicleType: vehicle?.vehicleType || '',
       dispatchVehicleLength: formatVehicleLength(vehicle),
-      dispatchDriverName: driver?.driverName || vehicle?.driverOneName || '',
-      dispatchDriverPhone: driver?.phone || vehicle?.driverOnePhone || ''
+      dispatchDriverName: driver?.driverName || '',
+      dispatchDriverPhone: driver?.phone || ''
     })
+  }
+
+  function formatPrimaryDriverName(vehicle: DispatchVehicleOption): string {
+    return vehicle.primaryDriver?.driverName || '-'
+  }
+
+  function formatPrimaryDriverPhone(vehicle: DispatchVehicleOption): string {
+    return vehicle.primaryDriver?.phone || '-'
   }
 
   function normalizePayload(): DispatchPayload {

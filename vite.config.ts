@@ -146,7 +146,7 @@ export default ({ mode }: { mode: string }) => {
       AutoImport({
         imports: ['vue', 'vue-router', 'pinia', '@vueuse/core'],
         dts: 'src/types/import/auto-imports.d.ts',
-        resolvers: [ElementPlusResolver()],
+        resolvers: [ElementPlusResolver({ importStyle: 'sass' })],
         eslintrc: {
           enabled: true,
           filepath: './.auto-import.json',
@@ -157,7 +157,7 @@ export default ({ mode }: { mode: string }) => {
       Components({
         dts: 'src/types/import/components.d.ts',
         exclude: [/[\\/]art-data-select[\\/]preview\.vue$/],
-        resolvers: [ElementPlusResolver()]
+        resolvers: [ElementPlusResolver({ importStyle: 'sass' })]
       }),
       // 按需定制主题配置
       ElementPlus({
@@ -202,7 +202,6 @@ export default ({ mode }: { mode: string }) => {
         'file-saver',
         'vue-img-cutter',
         'element-plus/es',
-        'element-plus/es/components/*/style/css',
         'element-plus/es/components/*/style/index',
         // 预打包 Monaco Editor 的核心和语言 Worker 文件
         'monaco-editor/esm/vs/editor/editor.worker',

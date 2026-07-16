@@ -686,7 +686,7 @@ const getVehicleArchiveSearchFilters = (params: VehicleArchiveSearchParams): Fil
     op: 'ilike',
     val: params.manufacturer ? `%${params.manufacturer}%` : undefined
   },
-  { col: 'chassisNo', op: 'ilike', val: params.chassisNo ? `%${params.chassisNo}%` : undefined },
+  { col: 'vin', op: 'ilike', val: params.vin ? `%${params.vin}%` : undefined },
   { col: 'operationStatus', op: 'eq', val: params.operationStatus },
   { col: 'auditStatus', op: 'eq', val: params.auditStatus },
   { col: 'auditStatus', op: 'in', val: params.auditStatuses }

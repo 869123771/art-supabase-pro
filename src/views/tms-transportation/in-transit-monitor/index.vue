@@ -9,9 +9,15 @@
         <header class="transit-screen__header">
           <h1>TMS 运输在途监控</h1>
           <nav class="screen-tabs">
-            <button type="button" class="is-active">实时监控</button>
-            <button type="button">运单监控</button>
-            <button type="button">车辆监控</button>
+            <button
+              v-for="item in monitorTabs"
+              :key="item.value"
+              type="button"
+              :class="{ 'is-active': activeMode === item.value }"
+              @click="activeMode = item.value"
+            >
+              {{ item.label }}
+            </button>
           </nav>
           <div class="header-status">
             <strong>{{ headerTimeText }}</strong>
@@ -23,19 +29,22 @@
           <section class="monitor-map">
             <div ref="chartRef" class="monitor-map__chart" />
             <div class="monitor-map__heading">
-              <strong>单车轨迹监控</strong>
+              <strong>{{ monitorHeadingTitle }}</strong>
               <span>{{ activeOrder?.routeName || '暂无线路' }}</span>
             </div>
             <div v-if="activeOrder" class="monitor-map__track-chip">
               {{ activeOrder.plateNo }} · {{ activeOrder.orderNo }}
             </div>
-            <div class="monitor-map__tools">
+            <div class="monitor-map__tools" :class="{ 'is-wide': activeMode !== 'realtime' }">
               <ElButton circle :icon="ZoomIn" title="放大地图" @click="zoomMap('in')" />
               <ElButton circle :icon="ZoomOut" title="缩小地图" @click="zoomMap('out')" />
               <ElButton circle :icon="RefreshRight" title="定位当前车辆" @click="resetMapView" />
             </div>
 
-            <section class="screen-panel map-float map-float--overview">
+            <section
+              v-if="activeMode === 'realtime'"
+              class="screen-panel map-float map-float--overview"
+            >
               <div class="screen-panel__title">
                 <strong>运输概况</strong>
                 <span>{{ formatRefreshTime(screen.lastRefreshTime) }}</span>
@@ -53,7 +62,10 @@
               </div>
             </section>
 
-            <section v-if="alertItems.length > 0" class="screen-panel map-float map-float--alerts">
+            <section
+              v-if="activeMode === 'realtime' && alertItems.length > 0"
+              class="screen-panel map-float map-float--alerts"
+            >
               <div class="screen-panel__title">
                 <strong>实时报警</strong>
                 <span>{{ alertItems.length }} 条</span>
@@ -71,222 +83,50 @@
             </section>
           </section>
 
-          <aside class="transit-screen__left">
-            <section class="screen-panel screen-panel--filters">
-              <ElInput
-                v-model="screen.keyword"
-                :prefix-icon="Search"
-                clearable
-                placeholder="请输入车辆运单号"
-              />
-              <ElSelect v-model="screen.status" clearable placeholder="所有状态">
-                <ElOption
-                  v-for="item in monitorStatusOptions"
-                  :key="String(item.value)"
-                  :label="item.label"
-                  :value="String(item.value)"
-                />
-              </ElSelect>
-              <ElSelect v-model="screen.region" clearable placeholder="所有区域">
-                <ElOption
-                  v-for="item in regionOptions"
-                  :key="item.value"
-                  :label="item.label"
-                  :value="item.value"
-                />
-              </ElSelect>
-              <div class="transit-metrics">
-                <div class="transit-metric">
-                  <span>今日运输量</span>
-                  <strong>{{ overview.todayCount }}</strong>
-                  <em>较昨日 +{{ overview.growthRate }}%</em>
-                </div>
-                <div class="transit-metric">
-                  <span>准时到达率</span>
-                  <strong>{{ overview.onTimeRate }}%</strong>
-                  <em :class="{ 'is-warning': overview.delayedCount > 0 }">
-                    延误 {{ overview.delayedCount }} 单
-                  </em>
-                </div>
-              </div>
-            </section>
+          <RealtimeMonitorPanel
+            v-if="activeMode === 'realtime'"
+            v-model:keyword="screen.keyword"
+            v-model:region="screen.region"
+            v-model:status="screen.status"
+            class="transit-screen__left"
+            :get-poi-text="getVehiclePoiText"
+            :is-poi-loading="isVehiclePoiLoading"
+            :orders="filteredOrders"
+            :overview="overview"
+            :region-options="regionOptions"
+            :selected-id="screen.selectedOrderId"
+            :status-options="monitorStatusOptions"
+            :total-count="monitorOrders.length"
+            @refresh-poi="handleVehiclePoiRefresh"
+            @select="selectOrder"
+          />
+          <WaybillMonitorPanel
+            v-else-if="activeMode === 'waybill'"
+            v-model:keyword="monitorKeywords.waybill"
+            class="transit-screen__left"
+            :orders="monitorOrders"
+            :overview="overview"
+            :selected-id="screen.selectedOrderId"
+            @select="selectOrder"
+          />
+          <VehicleMonitorPanel
+            v-else
+            v-model:keyword="monitorKeywords.vehicle"
+            class="transit-screen__left"
+            :orders="monitorOrders"
+            :overview="overview"
+            :selected-id="screen.selectedOrderId"
+            @select="selectOrder"
+          />
 
-            <section class="screen-panel screen-panel--list">
-              <div class="screen-panel__title">
-                <strong>在线车辆({{ filteredOrders.length }}/{{ monitorOrders.length }})</strong>
-              </div>
-              <ElScrollbar class="vehicle-list">
-                <button
-                  v-for="item in filteredOrders"
-                  :key="item.id"
-                  type="button"
-                  class="vehicle-card"
-                  :class="{ 'is-active': item.id === screen.selectedOrderId }"
-                  @click="selectOrder(item.id)"
-                >
-                  <div class="vehicle-card__top">
-                    <strong>{{ item.plateNo }}</strong>
-                    <span
-                      class="vehicle-card__status"
-                      :style="{
-                        color: item.statusColor,
-                        backgroundColor: withAlpha(item.statusColor, 0.18)
-                      }"
-                    >
-                      {{ item.statusLabel }}
-                    </span>
-                  </div>
-                  <p>
-                    <ArtDictDisplay
-                      dict-code="vehicleType"
-                      :value="getDictDisplayValue('vehicleType', item.vehicleTypeCode)"
-                      display="text"
-                      :empty-text="item.vehicleTypeLabel"
-                    />
-                  </p>
-                  <div class="vehicle-card__line">
-                    <span class="vehicle-card__driver">
-                      <ElIcon><UserFilled /></ElIcon>
-                      {{ item.driverName }}
-                    </span>
-                    <span>{{ item.progress }}%</span>
-                  </div>
-                  <div class="vehicle-card__geo">
-                    <span class="vehicle-card__poi">
-                      <ElIcon><Location /></ElIcon>
-                      <span class="vehicle-card__poi-text">{{ getVehiclePoiText(item) }}</span>
-                    </span>
-                    <span
-                      class="vehicle-card__poi-refresh"
-                      :class="{ 'is-loading': isVehiclePoiLoading(item) }"
-                      role="button"
-                      tabindex="0"
-                      title="刷新当前位置"
-                      @click.stop="handleVehiclePoiRefresh(item)"
-                      @keydown.enter.stop.prevent="handleVehiclePoiRefresh(item)"
-                    >
-                      <ElIcon><RefreshRight /></ElIcon>
-                    </span>
-                  </div>
-                  <div class="vehicle-card__order">
-                    运单：{{ item.orderNo }}
-                    <span
-                      v-if="item.status === 'arrived'"
-                      class="vehicle-card__arrival"
-                      :class="{ 'is-delayed': item.arrivalDelayed }"
-                    >
-                      <ElIcon>
-                        <Clock v-if="item.arrivalDelayed" />
-                        <CircleCheckFilled v-else />
-                      </ElIcon>
-                      {{ item.arrivalText }}
-                    </span>
-                    <em v-else-if="item.delayed">延误{{ item.delayText }}</em>
-                  </div>
-                </button>
-                <ElEmpty
-                  v-if="filteredOrders.length === 0"
-                  description="暂无在途车辆"
-                  :image-size="72"
-                />
-              </ElScrollbar>
-            </section>
-          </aside>
-
-          <aside class="transit-screen__right">
-            <section class="screen-panel screen-panel--detail">
-              <div class="screen-panel__title">
-                <strong>车辆详情</strong>
-                <ElButton link :icon="MoreFilled" @click="openOrderDetail" />
-              </div>
-
-              <div class="detail-scroll">
-                <template v-if="activeOrder">
-                  <div class="detail-vehicle">
-                    <div class="detail-vehicle__icon">
-                      <img :src="activeOrder.vehicleImage" :alt="activeOrder.vehicleTypeLabel" />
-                    </div>
-                    <div>
-                      <strong>{{ activeOrder.plateNo }}</strong>
-                      <p>
-                        <ArtDictDisplay
-                          dict-code="vehicleType"
-                          :value="getDictDisplayValue('vehicleType', activeOrder.vehicleTypeCode)"
-                          display="text"
-                          :empty-text="activeOrder.vehicleTypeLabel"
-                        />
-                      </p>
-                    </div>
-                  </div>
-
-                  <div class="detail-speed">
-                    <div>
-                      <span>当前速度</span>
-                      <strong>{{ activeOrder.speed }}km/h</strong>
-                    </div>
-                    <div>
-                      <span>剩余里程</span>
-                      <strong>{{ activeOrder.remainingKm }}km</strong>
-                    </div>
-                  </div>
-
-                  <div class="detail-waybill">
-                    <span>当前运单</span>
-                    <strong>{{ activeOrder.orderNo }}</strong>
-                    <div class="detail-route">
-                      <div>
-                        <b>{{ activeOrder.origin }}</b>
-                        <small>出发时间</small>
-                        <em>{{ formatDateTime(activeOrder.plannedDepartureTime) }}</em>
-                      </div>
-                      <i>{{ activeOrder.progress }}%</i>
-                      <div>
-                        <b>{{ activeOrder.destination }}</b>
-                        <small>预计到达</small>
-                        <em>{{ formatDateTime(activeOrder.plannedArrivalTime) }}</em>
-                      </div>
-                    </div>
-                    <div class="detail-progress">
-                      <div>
-                        <span>运输进度</span>
-                        <b>{{ activeOrder.completedKm }}/{{ activeOrder.totalKm }} km</b>
-                      </div>
-                      <i><b :style="{ width: `${activeOrder.progress}%` }" /></i>
-                    </div>
-                  </div>
-
-                  <div class="detail-cargo">
-                    <strong>货物信息</strong>
-                    <p v-for="item in activeOrder.cargoSummary" :key="item.label">
-                      <span>{{ item.label }}</span>
-                      <b>{{ item.value }}</b>
-                    </p>
-                  </div>
-
-                  <div class="detail-driver">
-                    <div class="detail-driver__avatar">{{
-                      activeOrder.driverName.slice(0, 1)
-                    }}</div>
-                    <div>
-                      <strong>{{ activeOrder.driverName }}</strong>
-                      <p>{{ activeOrder.driverPhone }}</p>
-                    </div>
-                  </div>
-
-                  <div class="detail-actions">
-                    <ElButton type="primary" :icon="Phone" @click="contactDriver"
-                      >联系司机</ElButton
-                    >
-                    <ElButton type="warning" :icon="Warning" @click="sendReminder"
-                      >发送提醒</ElButton
-                    >
-                  </div>
-                </template>
-
-                <ElEmpty v-else description="暂无车辆详情" :image-size="86" />
-              </div>
-            </section>
-          </aside>
+          <MonitorDetailPanel
+            v-if="activeMode === 'realtime'"
+            class="transit-screen__right"
+            :order="activeOrder"
+            @contact-driver="contactDriver"
+            @open-detail="openOrderDetail"
+            @send-reminder="sendReminder"
+          />
         </main>
       </div>
     </div>
@@ -298,20 +138,7 @@
   import dayjs from 'dayjs'
   import { storeToRefs } from 'pinia'
   import { ElMessage } from 'element-plus'
-  import {
-    CircleCheckFilled,
-    Clock,
-    Location,
-    MoreFilled,
-    Phone,
-    RefreshRight,
-    Search,
-    UserFilled,
-    Warning,
-    ZoomIn,
-    ZoomOut
-  } from '@element-plus/icons-vue'
-  import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
+  import { RefreshRight, ZoomIn, ZoomOut } from '@element-plus/icons-vue'
   import { fetchInTransitMonitorList, subscribeInTransitMonitorChanges } from '@/api/tms'
   import { useUserStore } from '@/store/modules/user'
   import { formatWithDayjs } from '@/utils/time'
@@ -322,12 +149,19 @@
   import smallBusImage from '@/assets/images/tms/vehicles/small-bus.svg?url'
   import specialVehicleImage from '@/assets/images/tms/vehicles/special-vehicle.svg?url'
   import truckImage from '@/assets/images/tms/vehicles/truck.svg?url'
+  import MonitorDetailPanel from './modules/monitor-detail-panel.vue'
+  import RealtimeMonitorPanel from './modules/realtime-monitor-panel.vue'
+  import VehicleMonitorPanel from './modules/vehicle-monitor-panel.vue'
+  import WaybillMonitorPanel from './modules/waybill-monitor-panel.vue'
+  import type {
+    GeoCoord,
+    InTransitRecord,
+    MonitorMode,
+    MonitorOrder,
+    TransitStatus
+  } from './modules/monitor-types'
 
   defineOptions({ name: 'TmsInTransitMonitor' })
-
-  type InTransitRecord = Api.Tms.InTransit.MonitorRecord
-  type TransitStatus = 'pending' | 'transporting' | 'arrived' | 'delayed'
-  type GeoCoord = [number, number]
 
   const INITIAL_MAP_CENTER: GeoCoord = [105.5, 34.2]
   const INITIAL_MAP_ZOOM = 5
@@ -371,44 +205,9 @@
     status: TransitStatus | ''
   }
 
-  interface MonitorOrder {
-    arrivalDelayed: boolean
-    arrivalText: string
-    cargoBoxes: number
-    cargoSummary: Array<{ label: string; value: string }>
-    completedKm: number
-    currentLabel: string
-    delayed: boolean
-    delayText: string
-    destination: string
-    destinationGeo: GeoCoord
-    driverName: string
-    driverPhone: string
-    id: string
-    latitude: number
-    longitude: number
-    orderNo: string
-    origin: string
-    originGeo: GeoCoord
-    plateNo: string
-    plannedArrivalTime?: string | null
-    plannedDepartureTime?: string | null
-    passedPath: GeoCoord[]
-    progress: number
-    remainingKm: number
-    remainingPath: GeoCoord[]
-    routePath: GeoCoord[]
-    routeName: string
-    source: InTransitRecord
-    speed: number
-    status: TransitStatus
-    statusColor: string
-    statusLabel: string
-    totalKm: number
-    vehicleType: string
-    vehicleTypeCode: string
-    vehicleTypeLabel: string
-    vehicleImage: string
+  interface MonitorKeywordState {
+    vehicle: string
+    waybill: string
   }
 
   interface AlertItem {
@@ -452,7 +251,6 @@
     }
   }
 
-  const router = useRouter()
   const userStore = useUserStore()
   const { getDictMap } = storeToRefs(userStore)
   const viewportRef = ref<HTMLDivElement>()
@@ -461,6 +259,16 @@
   const amapReady = ref(false)
   const liveTick = ref(0)
   const currentTime = ref(new Date().toISOString())
+  const activeMode = ref<MonitorMode>('realtime')
+  const monitorKeywords = reactive<MonitorKeywordState>({
+    vehicle: '',
+    waybill: ''
+  })
+  const monitorTabs: Array<{ label: string; value: MonitorMode }> = [
+    { label: '实时监控', value: 'realtime' },
+    { label: '运单监控', value: 'waybill' },
+    { label: '车辆监控', value: 'vehicle' }
+  ]
   const mapView: UnwrapNestedRefs<MapViewState> = reactive<MapViewState>({
     center: [...INITIAL_MAP_CENTER],
     zoom: INITIAL_MAP_ZOOM
@@ -522,6 +330,14 @@
 
   const headerTimeText = computed(() =>
     formatWithDayjs(currentTime.value, 'YYYY年MM月DD日 HH:mm:ss')
+  )
+  const monitorHeadingTitle = computed(
+    () =>
+      ({
+        realtime: '单车轨迹监控',
+        vehicle: '车辆实时位置',
+        waybill: '运单运输轨迹'
+      })[activeMode.value]
   )
 
   const stationGeoPositions: Array<{ keywords: string[]; coord: GeoCoord }> = [
@@ -1661,13 +1477,6 @@
     return ['transporting', 'delayed'].includes(status) ? 58 + (hashText(seed) % 28) : 0
   }
 
-  function withAlpha(color: string, alpha: number): string {
-    const hex = color.trim().replace('#', '')
-    if (!/^[\da-f]{6}$/i.test(hex)) return color
-    const value = Number.parseInt(hex, 16)
-    return `rgb(${(value >> 16) & 255} ${(value >> 8) & 255} ${value & 255} / ${alpha})`
-  }
-
   function estimateDistanceKm(origin: GeoCoord, destination: GeoCoord): number {
     const radius = 6371
     const toRad = (value: number) => (value * Math.PI) / 180
@@ -1733,19 +1542,6 @@
 
   function getVehicleImage(vehicleTypeCode: string): string {
     return VEHICLE_IMAGE_MAP[vehicleTypeCode] ?? defaultVehicleImage
-  }
-
-  function getDictDisplayValue(
-    dictCode: string,
-    value?: string | number | null
-  ): string | undefined {
-    const normalizedValue = String(value ?? '').trim()
-    if (!normalizedValue) return undefined
-
-    const exists = getDictMap.value[dictCode]?.some(
-      (item) => String(item.value) === normalizedValue || String(item.code) === normalizedValue
-    )
-    return exists ? normalizedValue : undefined
   }
 
   function getDictLabel(dictCode: string, value?: string | number | null, fallback = '-'): string {
@@ -1866,6 +1662,7 @@
     &__left {
       left: 16px;
       grid-template-rows: auto minmax(0, 1fr);
+      width: 340px;
     }
 
     &__right {
@@ -1964,78 +1761,9 @@
       }
     }
 
-    &--filters {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 10px 8px;
-      padding: 12px;
-
-      :deep(.el-input) {
-        grid-column: 1 / -1;
-      }
-
-      :deep(.el-input__wrapper),
-      :deep(.el-select__wrapper) {
-        min-height: 34px;
-        background: rgb(255 255 255 / 8%);
-        border: 0;
-        box-shadow: none;
-      }
-
-      .transit-metrics {
-        grid-column: 1 / -1;
-        margin-bottom: 0;
-      }
-    }
-
-    &--list,
     &--alerts {
       display: flex;
       flex-direction: column;
-    }
-
-    &--detail {
-      display: flex;
-      flex-direction: column;
-      padding: 12px;
-    }
-  }
-
-  .transit-metrics {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
-    margin-bottom: 14px;
-  }
-
-  .transit-metric {
-    min-width: 0;
-    padding: 14px;
-    background: rgb(7 16 25 / 60%);
-    border: 0;
-    border-radius: var(--el-border-radius-base);
-
-    span,
-    em {
-      display: block;
-      font-size: 12px;
-      font-style: normal;
-      color: #8fb2c6;
-    }
-
-    strong {
-      display: block;
-      margin: 8px 0 4px;
-      font-size: 28px;
-      line-height: 1;
-    }
-
-    em {
-      color: #23d18b;
-
-      &.is-warning {
-        color: #ffb04f;
-      }
     }
   }
 
@@ -2068,157 +1796,9 @@
     }
   }
 
-  .vehicle-list,
   .alert-list {
     flex: 1;
     min-height: 0;
-  }
-
-  .vehicle-card {
-    display: block;
-    width: 100%;
-    padding: 14px;
-    margin-bottom: 10px;
-    color: #dcecf6;
-    text-align: left;
-    cursor: pointer;
-    background: rgb(7 16 25 / 44%);
-    border: 0;
-    border-radius: var(--el-border-radius-base);
-    transition: 0.18s ease;
-
-    &:hover,
-    &.is-active {
-      background: rgb(29 49 78 / 86%);
-      box-shadow: inset 0 0 0 1px rgb(76 125 255 / 68%);
-    }
-
-    p {
-      margin: 5px 0 12px;
-      font-size: 12px;
-      color: #8fb2c6;
-    }
-
-    &__top,
-    &__line,
-    &__order {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    &__top strong {
-      font-size: 15px;
-      color: #fff;
-    }
-
-    &__line,
-    &__order {
-      font-size: 12px;
-      color: #cfe6f6;
-    }
-
-    &__driver {
-      display: inline-flex;
-      gap: 4px;
-      align-items: center;
-      min-width: 0;
-
-      .el-icon {
-        flex: 0 0 auto;
-        color: #96d8ff;
-      }
-    }
-
-    &__order {
-      margin-top: 10px;
-
-      em {
-        font-style: normal;
-        color: #ffb04f;
-      }
-    }
-
-    &__arrival {
-      display: inline-flex;
-      flex: 0 0 auto;
-      gap: 4px;
-      align-items: center;
-      font-weight: 700;
-      color: #2ecc71;
-
-      .el-icon {
-        font-size: 15px;
-      }
-
-      &.is-delayed {
-        color: #ff9f43;
-      }
-    }
-
-    &__geo {
-      display: flex;
-      gap: 8px;
-      align-items: stretch;
-      justify-content: space-between;
-      min-width: 0;
-      margin-top: 10px;
-      font-size: 12px;
-      color: #83a9bd;
-    }
-
-    &__poi {
-      display: inline-flex;
-      flex: 1;
-      gap: 4px;
-      align-items: flex-start;
-      min-width: 0;
-
-      .el-icon {
-        flex: 0 0 auto;
-        margin-top: 2px;
-        color: #4cbbff;
-      }
-    }
-
-    &__poi-text {
-      display: -webkit-box;
-      overflow: hidden;
-      line-height: 18px;
-      -webkit-box-orient: vertical;
-      -webkit-line-clamp: 2;
-    }
-
-    &__poi-refresh {
-      display: inline-flex;
-      flex: 0 0 auto;
-      align-self: center;
-      align-items: center;
-      justify-content: center;
-      width: 20px;
-      height: 20px;
-      color: #9bc4d9;
-      cursor: pointer;
-      border-radius: 50%;
-
-      &:hover,
-      &:focus-visible {
-        color: #fff;
-        outline: 0;
-        background: rgb(76 125 255 / 58%);
-      }
-
-      &.is-loading .el-icon {
-        animation: transitPoiRefresh 0.9s linear infinite;
-      }
-    }
-
-    &__status {
-      padding: 3px 8px;
-      font-size: 12px;
-      border-radius: 999px;
-    }
   }
 
   .monitor-map {
@@ -2231,9 +1811,9 @@
       position: absolute;
       inset: 0;
       z-index: 1;
-      cursor: grab;
       pointer-events: auto;
       touch-action: none;
+      cursor: grab;
 
       &:active {
         cursor: grabbing;
@@ -2294,6 +1874,25 @@
       }
     }
 
+    &__track-chip {
+      position: absolute;
+      top: 62px;
+      left: 50%;
+      z-index: 8;
+      max-width: 360px;
+      padding: 6px 12px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-size: 12px;
+      color: #dcecf6;
+      white-space: nowrap;
+      background: rgb(16 31 47 / 84%);
+      border-radius: 999px;
+      box-shadow: 0 8px 20px rgb(0 0 0 / 18%);
+      backdrop-filter: blur(8px);
+      transform: translateX(-50%);
+    }
+
     &__tools {
       position: absolute;
       top: 14px;
@@ -2301,6 +1900,10 @@
       z-index: 10;
       display: flex;
       gap: 6px;
+
+      &.is-wide {
+        right: 16px;
+      }
 
       :deep(.el-button) {
         width: 32px;
@@ -2343,7 +1946,7 @@
 
   .map-float {
     position: absolute;
-    left: 332px;
+    left: 372px;
     z-index: 9;
     width: 300px;
 
@@ -2509,250 +2112,6 @@
     }
   }
 
-  .detail-vehicle {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-    min-height: 68px;
-    padding: 2px 0 10px;
-
-    &__icon {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 72px;
-      height: 52px;
-      color: #071019;
-      background: rgb(7 16 25 / 58%);
-      border-radius: var(--el-border-radius-base);
-
-      img {
-        width: 64px;
-        height: 42px;
-        object-fit: contain;
-      }
-    }
-
-    strong {
-      font-size: 17px;
-    }
-
-    p {
-      margin: 4px 0 0;
-      font-size: 13px;
-      color: #8fb2c6;
-    }
-  }
-
-  .detail-speed {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
-    margin-top: 10px;
-
-    div {
-      min-width: 0;
-      padding: 12px;
-      background: rgb(7 16 25 / 50%);
-      border: 0;
-      border-radius: var(--el-border-radius-base);
-    }
-
-    span {
-      display: block;
-      margin-bottom: 6px;
-      font-size: 12px;
-      color: #8fb2c6;
-    }
-
-    strong {
-      display: block;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      font-size: 21px;
-      line-height: 1.15;
-      white-space: nowrap;
-    }
-  }
-
-  .detail-waybill,
-  .detail-cargo,
-  .detail-driver {
-    padding-top: 0;
-    margin-top: 0;
-  }
-
-  .detail-waybill {
-    padding-top: 18px;
-    margin-top: 18px;
-    border-top: 1px solid rgb(255 255 255 / 7%);
-
-    > span {
-      display: block;
-      color: #8fb2c6;
-    }
-
-    > strong {
-      display: block;
-      margin: 8px 0 16px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      font-size: 16px;
-      white-space: nowrap;
-    }
-  }
-
-  .detail-route {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 50px minmax(0, 1fr);
-    gap: 8px;
-    align-items: center;
-    text-align: center;
-
-    b,
-    small,
-    em {
-      display: block;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    small {
-      margin-top: 5px;
-      font-size: 11px;
-      color: #7399ae;
-    }
-
-    em {
-      margin-top: 4px;
-      font-size: 12px;
-      font-style: normal;
-      color: #8fb2c6;
-    }
-
-    i {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      height: 50px;
-      font-size: 12px;
-      font-style: normal;
-      color: #fff;
-      border: 3px solid #315cff;
-      border-radius: 50%;
-    }
-  }
-
-  .detail-progress {
-    margin-top: 16px;
-
-    > div {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 7px;
-      font-size: 12px;
-
-      span {
-        color: #b9d8e7;
-      }
-
-      b {
-        color: #f2f8ff;
-      }
-    }
-
-    > i {
-      display: block;
-      height: 6px;
-      overflow: hidden;
-      background: rgb(255 255 255 / 10%);
-      border-radius: 999px;
-
-      b {
-        display: block;
-        height: 100%;
-        background: linear-gradient(90deg, #315cff, #26e0a8);
-      }
-    }
-  }
-
-  .detail-cargo {
-    flex: 1;
-    min-height: 138px;
-    padding-top: 18px;
-    margin-top: 18px;
-    border-top: 1px solid rgb(255 255 255 / 7%);
-
-    strong {
-      display: block;
-      margin-bottom: 12px;
-    }
-
-    p {
-      display: flex;
-      gap: 10px;
-      justify-content: space-between;
-      margin: 0 0 8px;
-      font-size: 13px;
-      color: #91adbe;
-
-      span {
-        flex: 0 0 auto;
-      }
-
-      b {
-        min-width: 0;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        color: #eef7ff;
-        white-space: nowrap;
-      }
-    }
-  }
-
-  .detail-driver {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-    padding-top: 22px;
-    margin-top: 18px;
-    border-top: 1px solid rgb(255 255 255 / 7%);
-
-    &__avatar {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 44px;
-      height: 44px;
-      font-weight: 700;
-      background: #315cff;
-      border-radius: 50%;
-    }
-
-    p {
-      margin: 3px 0 0;
-      color: #8fb2c6;
-    }
-  }
-
-  .detail-actions {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
-    margin-top: 16px;
-  }
-
-  .detail-scroll {
-    display: flex;
-    flex: 1;
-    flex-direction: column;
-    gap: 0;
-    min-height: 0;
-    overflow: hidden;
-  }
-
   @keyframes transitVehiclePulse {
     0%,
     100% {
@@ -2774,12 +2133,6 @@
 
     50% {
       transform: translateX(2px);
-    }
-  }
-
-  @keyframes transitPoiRefresh {
-    to {
-      transform: rotate(360deg);
     }
   }
 </style>
