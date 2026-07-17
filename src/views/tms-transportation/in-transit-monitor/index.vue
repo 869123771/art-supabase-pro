@@ -96,7 +96,7 @@
             :region-options="regionOptions"
             :selected-id="screen.selectedOrderId"
             :status-options="monitorStatusOptions"
-            :total-count="monitorOrders.length"
+            :total-count="realtimeOrders.length"
             @refresh-poi="handleVehiclePoiRefresh"
             @select="selectOrder"
           />
@@ -180,14 +180,7 @@
     'special-vehicle': specialVehicleImage,
     truck: truckImage
   }
-  const OUT_OF_TRANSIT_MONITOR_STATUSES = new Set([
-    'cancelled',
-    'canceled',
-    'closed',
-    '已取消',
-    '已关闭'
-  ])
-  const ACTIVE_TRANSIT_MONITOR_STATUSES = new Set([
+  const REALTIME_WAYBILL_STATUSES = new Set([
     'transporting',
     'in_transit',
     'running',
@@ -381,10 +374,18 @@
 
   const monitorOrders = computed<MonitorOrder[]>(() => screen.orders.map(createMonitorOrder))
 
+  const realtimeOrders = computed<MonitorOrder[]>(() =>
+    monitorOrders.value.filter(isRealtimeMonitorOrder)
+  )
+
+  const modeOrders = computed<MonitorOrder[]>(() =>
+    activeMode.value === 'realtime' ? realtimeOrders.value : monitorOrders.value
+  )
+
   const filteredOrders = computed<MonitorOrder[]>(() => {
     const keyword = screen.keyword.trim().toLowerCase()
 
-    return monitorOrders.value.filter((item) => {
+    return realtimeOrders.value.filter((item) => {
       const matchesStatus = !screen.status || item.status === screen.status
       const matchesRegion = matchesSelectedRegion(item)
       const matchesKeyword =
@@ -400,9 +401,8 @@
 
   const activeOrder = computed<MonitorOrder | undefined>(() => {
     return (
-      monitorOrders.value.find((item) => item.id === screen.selectedOrderId) ??
-      filteredOrders.value[0] ??
-      monitorOrders.value[0]
+      modeOrders.value.find((item) => item.id === screen.selectedOrderId) ??
+      (activeMode.value === 'realtime' ? filteredOrders.value[0] : modeOrders.value[0])
     )
   })
 
@@ -412,12 +412,13 @@
   })
 
   const overview = computed(() => {
-    const transporting = monitorOrders.value.filter((item) => item.status === 'transporting').length
-    const delayed = monitorOrders.value.filter((item) => item.delayed).length
-    const routeCount = new Set(monitorOrders.value.map((item) => item.routeName)).size
-    const vehicleCount = new Set(monitorOrders.value.map((item) => item.plateNo)).size
-    const cargoCount = monitorOrders.value.reduce((sum, item) => sum + item.cargoBoxes, 0)
-    const total = monitorOrders.value.length
+    const orders = modeOrders.value
+    const transporting = orders.filter(isRealtimeMonitorOrder).length
+    const delayed = orders.filter((item) => item.delayed).length
+    const routeCount = new Set(orders.map((item) => item.routeName)).size
+    const vehicleCount = new Set(orders.map((item) => item.plateNo)).size
+    const cargoCount = orders.reduce((sum, item) => sum + item.cargoBoxes, 0)
+    const total = orders.length
     const onTimeRate = total > 0 ? Math.round(((total - delayed) / total) * 100) : 100
 
     return {
@@ -454,14 +455,13 @@
   ])
 
   const averageProgress = computed(() => {
-    if (monitorOrders.value.length === 0) return 0
-    return Math.round(
-      monitorOrders.value.reduce((sum, item) => sum + item.progress, 0) / monitorOrders.value.length
-    )
+    const orders = modeOrders.value
+    if (orders.length === 0) return 0
+    return Math.round(orders.reduce((sum, item) => sum + item.progress, 0) / orders.length)
   })
 
   const alertItems = computed<AlertItem[]>(() => {
-    const delayedAlerts = monitorOrders.value
+    const delayedAlerts = realtimeOrders.value
       .filter((item) => item.delayed)
       .map((item) => ({
         content: `${item.orderNo} 预计到达 ${formatDateTime(item.plannedArrivalTime)}`,
@@ -471,7 +471,7 @@
         title: `${item.plateNo} 路线偏离或延误`
       }))
 
-    const missingVehicleAlerts = monitorOrders.value
+    const missingVehicleAlerts = realtimeOrders.value
       .filter((item) => item.plateNo === '未配车')
       .map((item) => ({
         content: `${item.orderNo} 已进入在途池，请补充配载车辆信息`,
@@ -485,13 +485,20 @@
   })
 
   watch(filteredOrders, (items) => {
+    if (activeMode.value !== 'realtime') return
     if (!items.length) return
     if (!items.some((item) => item.id === screen.selectedOrderId)) {
       screen.selectedOrderId = items[0].id
     }
   })
 
-  watch([activeOrder, () => liveTick.value], () => {
+  watch(modeOrders, (items) => {
+    if (!items.some((item) => item.id === screen.selectedOrderId)) {
+      screen.selectedOrderId = items[0]?.id
+    }
+  })
+
+  watch([activeMode, activeOrder, () => liveTick.value], () => {
     const routeOrder = mapRouteOrder.value
     if (routeOrder) void ensureDrivingRoute(routeOrder)
     updateChinaMap()
@@ -546,7 +553,7 @@
         to: 199
       })
 
-      screen.orders = (data ?? []).filter(isActiveMonitorRecord)
+      screen.orders = data ?? []
       screen.lastRefreshTime = new Date().toISOString()
       if (!screen.orders.some((row) => getMonitorRecordId(row) === screen.selectedOrderId)) {
         screen.selectedOrderId = getPreferredMonitorRecordId(screen.orders)
@@ -668,20 +675,6 @@
     }
   }
 
-  function isActiveMonitorRecord(row: InTransitRecord): boolean {
-    const waybillStatus = String(row.status ?? '')
-      .trim()
-      .toLowerCase()
-    const orderStatus = String(row.order?.orderStatus ?? '')
-      .trim()
-      .toLowerCase()
-    return (
-      ACTIVE_TRANSIT_MONITOR_STATUSES.has(waybillStatus) &&
-      !OUT_OF_TRANSIT_MONITOR_STATUSES.has(waybillStatus) &&
-      !OUT_OF_TRANSIT_MONITOR_STATUSES.has(orderStatus)
-    )
-  }
-
   async function initChinaMap(): Promise<void> {
     if (!chartRef.value) return
 
@@ -776,7 +769,7 @@
   function syncOnlineVehicleMarkers(): void {
     const activeIds = new Set<string>()
 
-    monitorOrders.value.forEach((item) => {
+    modeOrders.value.forEach((item) => {
       activeIds.add(item.id)
       const position: GeoCoord =
         item.status === 'pending' ? item.originGeo : [item.longitude, item.latitude]
@@ -898,7 +891,7 @@
   }
 
   async function loadVehiclePois(): Promise<void> {
-    const orders = [...monitorOrders.value]
+    const orders = [...realtimeOrders.value]
     const activeIds = new Set(orders.map((item) => item.id))
     vehiclePois.forEach((_, id) => {
       if (!activeIds.has(id)) vehiclePois.delete(id)
@@ -1267,6 +1260,13 @@
 
     const routeText = [item.origin, item.destination, item.routeName, item.currentLabel].join('')
     return region.keywords.some((keyword) => routeText.includes(keyword))
+  }
+
+  function isRealtimeMonitorOrder(item: MonitorOrder): boolean {
+    const waybillStatus = String(item.source.status ?? '')
+      .trim()
+      .toLowerCase()
+    return REALTIME_WAYBILL_STATUSES.has(waybillStatus)
   }
 
   function getMonitorRecordId(row: InTransitRecord): string {

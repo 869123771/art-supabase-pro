@@ -1763,6 +1763,13 @@ export async function cancelWaybillOrderBatch(ids: string[]) {
   )
 }
 
+export async function confirmWaybillAcceptance(orderId: string) {
+  return await responseHandle(
+    () => supabase.rpc('tms_accept_waybill', { p_order_id: orderId }) as any,
+    { showMessage: true, breakReturn: true }
+  )
+}
+
 export async function confirmWaybillDeparture(orderId: string) {
   return await responseHandle(
     () => supabase.rpc('tms_confirm_waybill_departure', { p_order_id: orderId }) as any,
@@ -1809,9 +1816,15 @@ export async function fetchDispatchVehicleOptions(params: DispatchVehicleSearchP
 }
 
 // 在途监控
-const IN_TRANSIT_WAYBILL_STATUSES = [
+const MONITORED_WAYBILL_STATUSES = [
+  'pending',
+  'accepted',
+  'loading',
   'transporting',
-  // 兼容历史数据，司机端当前约束使用上面的标准状态。
+  'unloading',
+  'signed',
+  'completed',
+  // 兼容历史在途状态，司机端当前使用上面的标准状态。
   'in_transit',
   'running',
   'processing',
@@ -1826,13 +1839,27 @@ const IN_TRANSIT_WAYBILL_STATUSES = [
   '进行中'
 ]
 
-const IN_TRANSIT_ORDER_STATUSES = ['transporting']
-const OUT_OF_TRANSIT_STATUSES = new Set(['cancelled', 'canceled', 'closed', '已取消', '已关闭'])
+const MONITORED_ORDER_STATUSES = [
+  'pending_load',
+  'pending_order',
+  'pending_pickup',
+  'transporting',
+  'signed',
+  'completed'
+]
+const EXCLUDED_MONITOR_STATUSES = new Set([
+  'created',
+  'cancelled',
+  'canceled',
+  'closed',
+  '已取消',
+  '已关闭'
+])
 
 const uniqueStringValues = (values: Array<string | null | undefined>): string[] =>
   Array.from(new Set(values.map((value) => String(value ?? '').trim()).filter(Boolean)))
 
-const isActiveTransitMonitorRow = (row: InTransitMonitorRecord): boolean => {
+const isMonitoredTransportRow = (row: InTransitMonitorRecord): boolean => {
   const waybillStatus = String(row.status ?? '')
     .trim()
     .toLowerCase()
@@ -1840,7 +1867,9 @@ const isActiveTransitMonitorRow = (row: InTransitMonitorRecord): boolean => {
     .trim()
     .toLowerCase()
   return (
-    IN_TRANSIT_WAYBILL_STATUSES.includes(waybillStatus) && !OUT_OF_TRANSIT_STATUSES.has(orderStatus)
+    MONITORED_WAYBILL_STATUSES.includes(waybillStatus) &&
+    !EXCLUDED_MONITOR_STATUSES.has(waybillStatus) &&
+    !EXCLUDED_MONITOR_STATUSES.has(orderStatus)
   )
 }
 
@@ -1890,7 +1919,7 @@ const fetchInTransitOrderMonitorRows = async (
   let query: any = supabase
     .from('tms_order')
     .select(ORDER_SELECT)
-    .in('order_status', IN_TRANSIT_ORDER_STATUSES)
+    .in('order_status', MONITORED_ORDER_STATUSES)
     .order('update_time', { ascending: false, nullsFirst: false })
     .order('create_time', { ascending: false, nullsFirst: false })
     .limit(to + 1)
@@ -1923,7 +1952,7 @@ const fetchInTransitOrderMonitorRows = async (
 export async function fetchInTransitMonitorList(
   params: InTransitMonitorSearchParams = { from: 0, to: 199 }
 ) {
-  const { from = 0, to = 199, keyword, statuses = IN_TRANSIT_WAYBILL_STATUSES } = params
+  const { from = 0, to = 199, keyword, statuses = MONITORED_WAYBILL_STATUSES } = params
   let query: any = supabase
     .from('tms_waybill')
     .select('*', { count: 'exact' })
@@ -1966,7 +1995,7 @@ export async function fetchInTransitMonitorList(
         order: row.order ?? orderMap.get(String(row.waybillNo)) ?? null,
         vehicle: row.vehicleId ? (vehicleMap.get(String(row.vehicleId)) ?? null) : null
       }))
-      .filter(isActiveTransitMonitorRow)
+      .filter(isMonitoredTransportRow)
   }
 }
 

@@ -317,6 +317,7 @@
   const paginationHeight = ref(0)
   const tableHeaderHeight = ref(0)
   const isRowSelectionDragging = ref(false)
+  const rowSelectionDragStartRow = ref<Record<string, any>>()
   const rowSelectionDragMode = ref<'select' | 'deselect'>('select')
   const dragSelectedRowKeys = new Set<string>()
 
@@ -548,9 +549,17 @@
     elTableRef.value?.toggleRowSelection(row, shouldSelect)
   }
 
+  const startRowSelectionDrag = (row: Record<string, any>): void => {
+    const startRow = rowSelectionDragStartRow.value
+    if (!startRow) return
+    isRowSelectionDragging.value = true
+    applyRowSelectionByDrag(startRow)
+    applyRowSelectionByDrag(row)
+  }
+
   const endRowSelectionDrag = (): void => {
-    if (!isRowSelectionDragging.value) return
     isRowSelectionDragging.value = false
+    rowSelectionDragStartRow.value = undefined
     dragSelectedRowKeys.clear()
   }
 
@@ -567,8 +576,12 @@
       cell,
       event
     )
-    if (!isRowSelectionDragging.value) return
-    applyRowSelectionByDrag(row)
+    if (!rowSelectionDragStartRow.value) return
+    if (!(event instanceof MouseEvent) || (event.buttons & 1) === 0) {
+      endRowSelectionDrag()
+      return
+    }
+    startRowSelectionDrag(row)
   }
 
   const ignoredDragStartSelector = [
@@ -610,13 +623,11 @@
 
     const row = getPointerRow(event)
     if (!row) return
-    isRowSelectionDragging.value = true
+    rowSelectionDragStartRow.value = row
     rowSelectionDragMode.value = selectedRowKeySet.value.has(getRowIdentity(row))
       ? 'deselect'
       : 'select'
     dragSelectedRowKeys.clear()
-    applyRowSelectionByDrag(row)
-    event.preventDefault()
   }
 
   onMounted(() => {

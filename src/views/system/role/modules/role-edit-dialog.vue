@@ -1,6 +1,22 @@
 <template>
   <ArtDialog ref="dialogRef">
     <ElForm ref="formRef" :model="form" :rules="rules" label-width="120px" class="pr-6">
+      <ElFormItem v-if="canSelectTenant" label="所属租户" prop="tenantId">
+        <ElSelect
+          v-model="form.tenantId"
+          :disabled="dialogType === 'edit'"
+          filterable
+          placeholder="请选择所属租户"
+          @change="handleTenantChange"
+        >
+          <ElOption
+            v-for="tenant in selectableTenantOptions"
+            :key="tenant.id"
+            :label="formatTenantOption(tenant)"
+            :value="tenant.id"
+          />
+        </ElSelect>
+      </ElFormItem>
       <ElFormItem label="角色名称" prop="roleName">
         <ElInput v-model="form.roleName" placeholder="请输入角色名称" />
       </ElFormItem>
@@ -30,11 +46,13 @@
   import type { FormInstance, FormRules } from 'element-plus'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
-  import { addRole, editRole } from '@/api/system-manage'
+  import { addRole, editRole, fetchGetEnableTenantList } from '@/api/system-manage'
   import { uniqueValidator } from '@/utils'
+  import { useUserStore } from '@/store/modules/user'
   import { useSystemParam } from '@/hooks'
 
   type RoleListItem = Api.SystemManage.RoleListItem
+  type TenantListItem = Api.SystemManage.TenantListItem
   type DialogType = 'add' | 'edit'
 
   interface RoleEditDialogOpenData {
@@ -47,10 +65,13 @@
   }
 
   const emit = defineEmits<Emits>()
+  const userStore = useUserStore()
+  const { getUserInfo, isSuper } = storeToRefs(userStore)
   const dialogRef = ref<ArtDialogExpose<RoleEditDialogOpenData>>()
   const formRef = ref<FormInstance>()
   const dialogType = ref<DialogType>('add')
   const currentTenantCode = ref('')
+  const tenantOptions = shallowRef<TenantListItem[]>([])
   const {
     defaultRegisterTenantCode,
     defaultRegisterRoleCode,
@@ -59,6 +80,13 @@
   } = useSystemParam()
 
   const normalizeRoleCode = (roleCode?: string): string => String(roleCode ?? '').toUpperCase()
+  const canSelectTenant = computed(() => Boolean(isSuper.value))
+  const currentTenantId = computed(() => getUserInfo.value.tenantId)
+  const selectableTenantOptions = computed(() =>
+    tenantOptions.value.filter((tenant): tenant is TenantListItem & { id: string } =>
+      Boolean(tenant.id)
+    )
+  )
 
   const isDefaultRegisterRole = computed(() => {
     return (
@@ -79,6 +107,7 @@
 
   const createInitialForm = (): RoleListItem => ({
     id: undefined,
+    tenantId: undefined,
     roleName: '',
     roleCode: '',
     description: '',
@@ -88,7 +117,10 @@
 
   const form = reactive<RoleListItem>(createInitialForm())
 
-  const rules = reactive<FormRules>({
+  const rules = computed<FormRules>(() => ({
+    tenantId: canSelectTenant.value
+      ? [{ required: true, message: '请选择所属租户', trigger: 'change' }]
+      : [],
     roleName: [
       { required: true, message: '请输入角色名称', trigger: 'change' },
       { min: 2, max: 20, message: '长度在 2 到 20 个字符', trigger: 'change' }
@@ -101,13 +133,14 @@
           table: 'sys_role',
           field: 'role_code',
           getExcludeId: (): string | undefined => form.id,
+          extraWhere: () => ({ tenant_id: form.tenantId }),
           message: '角色编码已存在'
         }),
         trigger: 'change'
       }
     ],
     description: [{ required: true, message: '请输入角色描述', trigger: 'change' }]
-  })
+  }))
 
   const resetForm = async (): Promise<void> => {
     Object.assign(form, createInitialForm())
@@ -121,16 +154,19 @@
     dialogType.value = data.type
 
     if (data.roleData) {
-      const { id, roleName, roleCode, description, enabled, createBy } = data.roleData
+      const { id, tenantId, roleName, roleCode, description, enabled, createBy } = data.roleData
       currentTenantCode.value = data.roleData.tenant?.tenantCode ?? ''
       Object.assign(form, {
         id,
+        tenantId,
         roleName,
         roleCode,
         description,
         enabled,
         createBy
       })
+    } else if (!canSelectTenant.value) {
+      form.tenantId = currentTenantId.value
     }
   }
 
@@ -145,6 +181,10 @@
 
     try {
       const { id, ...params } = toRaw(form)
+      if (!canSelectTenant.value) {
+        params.tenantId = currentTenantId.value
+      }
+
       if (isDefaultRegisterRole.value) {
         params.roleCode = defaultRegisterRoleCode.value
         params.enabled = true
@@ -167,8 +207,23 @@
     }
   }
 
+  const loadTenantOptions = async (): Promise<void> => {
+    if (!canSelectTenant.value) return
+    const { data } = await fetchGetEnableTenantList()
+    tenantOptions.value = data ?? []
+  }
+
+  const formatTenantOption = (tenant: TenantListItem): string =>
+    tenant.tenantCode ? `${tenant.tenantName}（${tenant.tenantCode}）` : tenant.tenantName
+
+  const handleTenantChange = (): void => {
+    if (form.roleCode) {
+      void formRef.value?.validateField('roleCode')
+    }
+  }
+
   const handleOpen = async (data: RoleEditDialogOpenData): Promise<void> => {
-    await loadRoleBuiltinCodes()
+    await Promise.all([loadRoleBuiltinCodes(), loadTenantOptions()])
     await initializeForm(data)
     await dialogRef.value?.handleOpen(data, {
       title: data.type === 'add' ? '新增角色' : '编辑角色',

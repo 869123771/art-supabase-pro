@@ -23,6 +23,9 @@
           ><b>{{ item.originStation || '始发站' }}</b
           ><i /><b>{{ item.destinationStation || '目的站' }}</b></div
         >
+        <span class="transit-row__customer" :title="item.shippingCustomerName || undefined">{{
+          item.shippingCustomerName || '发货方未维护'
+        }}</span>
         <span class="transit-row__driver">{{ item.dispatchDriverName || '司机待分配' }}</span>
         <ElTag size="small" type="success" effect="light">运输中</ElTag>
       </button>
@@ -77,7 +80,7 @@
   }
   .transit-row {
     display: grid;
-    grid-template-columns: 33px 104px minmax(120px, 1fr) 82px auto;
+    grid-template-columns: 33px 104px minmax(120px, 1fr) minmax(96px, 0.6fr) 82px auto;
     gap: 9px;
     align-items: center;
     width: 100%;
@@ -116,6 +119,7 @@
     white-space: nowrap;
   }
   .transit-row__main span,
+  .transit-row__customer,
   .transit-row__driver {
     overflow: hidden;
     font-size: 11px;
@@ -149,6 +153,7 @@
       grid-template-columns: 33px minmax(0, 1fr) auto;
     }
     .transit-row__route,
+    .transit-row__customer,
     .transit-row__driver {
       display: none;
     }

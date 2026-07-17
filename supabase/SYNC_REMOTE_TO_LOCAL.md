@@ -22,6 +22,8 @@
 脚本会复用当前项目已有的 Supabase link，不会每次调用 Management API。首次使用且项目未链接时，才会执行 `supabase link`。
 
 数据库 pooler 主机名无法被本机 DNS 解析时，脚本会通过 DNS-over-HTTPS 临时解析 IP，并使用 TLS 加密的直连 URL 进行数据库导出；不会把密码写入文件。
+Windows 已启用系统代理时，脚本会先将该代理用于本次 PowerShell 进程的 DNS-over-HTTPS、Supabase API 请求；不会更改系统代理配置。
+Storage 下载会先尝试 Supabase CLI；如果 CLI 在 Windows 上把路径误判成“本地到本地”并报 `Unsupported operation`，脚本会自动改用 Storage API 递归下载 bucket 文件。service role key 只在内存里临时使用，不会写入备份目录。
 
 成功时，终端会显示 baseline SQL 路径和 `manifest.json` 路径。
 
@@ -65,3 +67,12 @@ Get-ChildItem .\supabase\backups -Directory | Sort-Object LastWriteTime -Descend
 ```
 
 baseline 的 Local 与 Remote 版本应一致；最新备份目录必须有 `manifest.json`。
+
+如果脚本在 `Capturing deployed Edge Function source and metadata...` 之后提示
+`api.supabase.com: no such host`，这是本机 DNS/代理问题。脚本会自动复用 Windows
+系统代理；请确认代理软件正在运行，并且 Windows 的系统代理已启用，然后重新运行脚本。
+失败时新建的备份目录没有 `manifest.json`，属于不完整备份，不能用于恢复。
+
+`supabase secrets list` 偶尔会因管理 API 返回 `EOF` 而失败。脚本会自动重试 3 次；
+仍失败时会在 `edge-function-secret-names.json` 记录错误并继续。Supabase 本身无法导出
+Secret 值，因此恢复时始终需要手工重新录入全部 Secret 值。

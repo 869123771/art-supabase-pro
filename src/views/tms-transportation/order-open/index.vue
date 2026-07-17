@@ -78,7 +78,10 @@
     <section class="order-open__section art-card-xs">
       <div class="order-open__section-header">
         <ArtSectionTitle :show-line="false">货品信息</ArtSectionTitle>
-        <ElButton type="primary" plain :icon="Plus" @click="addCargoItem">添加</ElButton>
+        <div class="order-open__section-actions">
+          <ElButton plain :icon="Collection" @click="openCargoSelector">批量选货物</ElButton>
+          <ElButton type="primary" plain :icon="Plus" @click="addCargoItem">添加</ElButton>
+        </div>
       </div>
       <ArtTable
         :data="form.cargoItems"
@@ -196,6 +199,7 @@
 
     <CustomerSelectorDialog ref="customerDialogRef" @select="handleCustomerSelect" />
     <PrintCountDialog ref="printDialogRef" @confirm="handlePrintConfirm" />
+    <CargoMultipleSelect ref="cargoSelectorRef" @confirm="handleCargoSelectorConfirm" />
   </div>
 </template>
 
@@ -205,7 +209,7 @@
   import { cloneDeep, isNil, omit, round, toNumber as lodashToNumber, trim } from 'lodash-es'
   import type { FormRules } from 'element-plus'
   import { ElAutocomplete, ElInputNumber, ElMessage, ElOption, ElSelect } from 'element-plus'
-  import { Plus } from '@element-plus/icons-vue'
+  import { Collection, Plus } from '@element-plus/icons-vue'
   import dayjs from 'dayjs'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
@@ -223,6 +227,7 @@
     fetchStationOptions
   } from '@/api/tms'
   import { useUserStore } from '@/store/modules/user'
+  import CargoMultipleSelect from '../modules/cargo-multiple-select.vue'
   import CustomerSelectorDialog from './modules/customer-selector-dialog.vue'
   import PrintCountDialog from './modules/print-count-dialog.vue'
 
@@ -249,6 +254,7 @@
     Pick<
       OrderForm,
       | 'shippingCustomerId'
+      | 'shippingCustomerName'
       | 'shippingAddressId'
       | 'shippingContactName'
       | 'shippingContactPhone'
@@ -256,6 +262,7 @@
       | 'shippingLongitude'
       | 'shippingLatitude'
       | 'receivingCustomerId'
+      | 'receivingCustomerName'
       | 'receivingAddressId'
       | 'receivingContactName'
       | 'receivingContactPhone'
@@ -278,6 +285,10 @@
     handleOpen: (data: { kind: PrintKind; cargoQuantity: number }) => Promise<void>
   }
 
+  interface CargoSelectorExpose {
+    open: () => Promise<void>
+  }
+
   interface PageGroup {
     loading: boolean
     saving: boolean
@@ -292,6 +303,8 @@
 
   type OrderForm = OrderRecord & {
     imageUrls: string[]
+    shippingCustomerName: string
+    receivingCustomerName: string
   }
 
   interface FormGroup {
@@ -332,6 +345,7 @@
   const otherFormRef = ref<FormExpose>()
   const customerDialogRef = ref<CustomerSelectorExpose>()
   const printDialogRef = ref<PrintDialogExpose>()
+  const cargoSelectorRef = ref<CargoSelectorExpose>()
   const initializedOrderId = ref<string>()
 
   const dictCodes = [
@@ -436,6 +450,12 @@
     ]),
     shippingItems: computed<FormItem[]>(() => [
       {
+        label: '客户名称',
+        key: 'shippingCustomerName',
+        type: 'input',
+        props: { maxlength: 100, readonly: true, placeholder: '请选择发货方客户' }
+      },
+      {
         label: '姓名',
         key: 'shippingContactName',
         type: 'input',
@@ -455,6 +475,12 @@
       }
     ]),
     receivingItems: computed<FormItem[]>(() => [
+      {
+        label: '客户名称',
+        key: 'receivingCustomerName',
+        type: 'input',
+        props: { maxlength: 100, readonly: true, placeholder: '请选择收货方客户' }
+      },
       {
         label: '姓名',
         key: 'receivingContactName',
@@ -729,6 +755,8 @@
       deliveryMethod: 'door',
       shippingCustomerId: null,
       receivingCustomerId: null,
+      shippingCustomerName: '',
+      receivingCustomerName: '',
       shippingAddressId: null,
       receivingAddressId: null,
       shippingContactName: '',
@@ -790,7 +818,13 @@
   }
 
   function replaceForm(nextForm: OrderForm): void {
-    Object.assign(form.data, createInitialForm(), cloneDeep(nextForm))
+    const clonedForm = cloneDeep(nextForm)
+    Object.assign(form.data, createInitialForm(), clonedForm, {
+      shippingCustomerName:
+        clonedForm.shippingCustomerName || clonedForm.shippingCustomer?.customerName || '',
+      receivingCustomerName:
+        clonedForm.receivingCustomerName || clonedForm.receivingCustomer?.customerName || ''
+    })
   }
 
   function createInitialCargoItem(): CargoItem {
@@ -885,6 +919,24 @@
     form.data.cargoItems = [...(form.data.cargoItems ?? []), createInitialCargoItem()]
   }
 
+  async function openCargoSelector(): Promise<void> {
+    await cargoSelectorRef.value?.open()
+  }
+
+  function handleCargoSelectorConfirm(selectedCargoes: CargoMaster[]): void {
+    const currentItems = form.data.cargoItems ?? []
+    const existingNames = new Set(
+      currentItems.map((item) => textValue(item.cargoName)).filter(Boolean)
+    )
+    const additions = selectedCargoes
+      .filter((item) => item.cargoName && !existingNames.has(item.cargoName))
+      .map(createCargoItemFromMaster)
+    if (!additions.length) return
+
+    const isSingleEmptyRow = currentItems.length === 1 && !textValue(currentItems[0].cargoName)
+    form.data.cargoItems = isSingleEmptyRow ? additions : [...currentItems, ...additions]
+  }
+
   function removeCargoItem(row: CargoItem): void {
     const rows = form.data.cargoItems ?? []
     if (rows.length <= 1) {
@@ -915,6 +967,17 @@
     return {
       ...item,
       value: item.cargoName
+    }
+  }
+
+  function createCargoItemFromMaster(cargo: CargoMaster): CargoItem {
+    return {
+      cargoName: cargo.cargoName,
+      packageType: cargo.unit || '',
+      quantity: 1,
+      unit: cargo.unit || '',
+      weightKg: cargo.weightKg ?? null,
+      volumeM3: cargo.volumeM3 ?? null
     }
   }
 
@@ -970,6 +1033,7 @@
     const patchMap: Record<SelectorMode, ContactPatch> = {
       shipping: {
         shippingCustomerId: customer.id,
+        shippingCustomerName: customer.customerName,
         shippingAddressId: address?.id ?? null,
         shippingContactName: contactName,
         shippingContactPhone: contactPhone,
@@ -979,6 +1043,7 @@
       },
       receiving: {
         receivingCustomerId: customer.id,
+        receivingCustomerName: customer.customerName,
         receivingAddressId: address?.id ?? null,
         receivingContactName: contactName,
         receivingContactPhone: contactPhone,
@@ -1004,7 +1069,7 @@
       const price = data?.[0]
       if (!price) return
 
-      Object.assign(form.data, createCustomerPricePatch(price))
+      Object.assign(form.data, createCustomerPricePatch(price, customer))
       await applyDefaultAddressesForPriceCustomer(customer)
       if (price.cargoItems?.length) {
         form.data.cargoItems = price.cargoItems.map(createCargoItemFromCustomerPrice)
@@ -1031,10 +1096,15 @@
     Object.assign(form.data, patch)
   }
 
-  function createCustomerPricePatch(price: CustomerPrice): Partial<OrderForm> {
+  function createCustomerPricePatch(
+    price: CustomerPrice,
+    customer: CustomerItem
+  ): Partial<OrderForm> {
     return {
       shippingCustomerId: price.customerId,
       receivingCustomerId: price.customerId,
+      shippingCustomerName: customer.customerName || form.data.shippingCustomerName,
+      receivingCustomerName: customer.customerName || form.data.receivingCustomerName,
       shippingAddressId: price.shippingAddressId || form.data.shippingAddressId || null,
       receivingAddressId: price.receivingAddressId || form.data.receivingAddressId || null,
       shippingContactName: textValue(price.shippingContactName) || form.data.shippingContactName,
@@ -1089,6 +1159,7 @@
   function swapContacts(): void {
     const shipping = {
       id: form.data.shippingCustomerId,
+      customerName: form.data.shippingCustomerName,
       addressId: form.data.shippingAddressId,
       name: form.data.shippingContactName,
       phone: form.data.shippingContactPhone,
@@ -1099,6 +1170,7 @@
 
     Object.assign(form.data, {
       shippingCustomerId: form.data.receivingCustomerId,
+      shippingCustomerName: form.data.receivingCustomerName,
       shippingAddressId: form.data.receivingAddressId,
       shippingContactName: form.data.receivingContactName,
       shippingContactPhone: form.data.receivingContactPhone,
@@ -1106,6 +1178,7 @@
       shippingLongitude: form.data.receivingLongitude,
       shippingLatitude: form.data.receivingLatitude,
       receivingCustomerId: shipping.id,
+      receivingCustomerName: shipping.customerName,
       receivingAddressId: shipping.addressId,
       receivingContactName: shipping.name,
       receivingContactPhone: shipping.phone,
@@ -1195,6 +1268,8 @@
       'tenantId',
       'shippingCustomer',
       'receivingCustomer',
+      'shippingCustomerName',
+      'receivingCustomerName',
       'originStationRef',
       'destinationStationRef',
       'transferStationRef',
@@ -1370,6 +1445,9 @@
         padding-top: 18px;
         padding-bottom: 2px;
       }
+      &-actions {
+        display: flex;
+      }
     }
 
     &__section-header {
@@ -1498,8 +1576,8 @@
     &__fee-detail {
       p {
         margin: 8px 0 12px;
-        color: var(--art-text-gray-500);
         line-height: 1.6;
+        color: var(--art-text-gray-500);
       }
 
       dl {
@@ -1545,7 +1623,7 @@
     }
   }
 
-  @media (max-width: 1100px) {
+  @media (width <= 1100px) {
     .order-open {
       &__header {
         grid-template-columns: 1fr;

@@ -45,6 +45,28 @@ function Get-PlainText {
   }
 }
 
+function Enable-SystemProxy {
+  # Windows proxy settings are not automatically passed to curl.exe or the
+  # Supabase CLI. Apply them only to this script process before DNS-over-HTTPS
+  # and any later Management API requests.
+  $settingsPath = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Internet Settings'
+  try {
+    $settings = Get-ItemProperty -Path $settingsPath -ErrorAction Stop
+    if ($settings.ProxyEnable -ne 1 -or [string]::IsNullOrWhiteSpace($settings.ProxyServer)) { return }
+
+    $proxy = ($settings.ProxyServer -split ';' | Select-Object -First 1).Trim()
+    if ($proxy -notmatch '^[a-z]+://') { $proxy = "http://$proxy" }
+    $env:HTTP_PROXY = $proxy
+    $env:HTTPS_PROXY = $proxy
+    $env:http_proxy = $proxy
+    $env:https_proxy = $proxy
+    Write-Host 'Using the configured Windows proxy for Supabase network calls...'
+  }
+  catch {
+    Write-Verbose 'Windows proxy settings could not be read; continuing without an HTTP proxy.'
+  }
+}
+
 function Resolve-DatabaseHost {
   param([Parameter(Mandatory = $true)][string]$HostName)
 
@@ -164,6 +186,8 @@ $postgresImage = "public.ecr.aws/supabase/postgres:$postgresVersion"
 $plainPassword = Get-PlainText $DbPassword
 
 try {
+  Enable-SystemProxy
+
   # The project is normally already linked in supabase/.temp. Avoid a needless
   # management-API call on each backup, which is especially useful on unstable DNS.
   $linkedProjectFile = Join-Path $supabaseRoot '.temp\linked-project.json'

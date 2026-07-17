@@ -1,6 +1,7 @@
 import { defineConfig, loadEnv } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import vueJsx from '@vitejs/plugin-vue-jsx'
+import { existsSync, readdirSync } from 'node:fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import vueDevTools from 'vite-plugin-vue-devtools'
@@ -24,6 +25,19 @@ const matchPackages = (id: string, packages: string[]) => {
   return packages.some((packageName) => normalizedId.includes(`/node_modules/${packageName}`))
 }
 
+const getElementPlusStyleDeps = (root: string): string[] => {
+  const componentsDir = path.resolve(root, 'node_modules/element-plus/es/components')
+  if (!existsSync(componentsDir)) return []
+
+  return readdirSync(componentsDir, { withFileTypes: true })
+    .filter(
+      (entry) =>
+        entry.isDirectory() && existsSync(path.join(componentsDir, entry.name, 'style/index.mjs'))
+    )
+    .map((entry) => `element-plus/es/components/${entry.name}/style/index`)
+    .sort()
+}
+
 export default ({ mode }: { mode: string }) => {
   const root = process.cwd()
   const env = loadEnv(mode, root)
@@ -31,6 +45,11 @@ export default ({ mode }: { mode: string }) => {
     env
   const isProduction = mode === 'production'
   const enableBuildCompression = env.VITE_BUILD_COMPRESS === 'true'
+  const enableVueDevTools = env.VITE_DEVTOOLS === 'true'
+  const enableFileViewerPlugin = isProduction || env.VITE_FILE_VIEWER === 'true'
+  const enableFileViewerAssets = isProduction || env.VITE_FILE_VIEWER_ASSETS === 'true'
+  const outDir = VITE_OUT_DIR || 'dist'
+  const elementPlusStyleDeps = getElementPlusStyleDeps(root)
 
   console.log(`🚀 API_URL = ${VITE_API_URL}`)
   console.log(`🚀 VERSION = ${VITE_VERSION}`)
@@ -43,6 +62,9 @@ export default ({ mode }: { mode: string }) => {
     base: VITE_BASE_URL,
     server: {
       port: Number(VITE_PORT),
+      watch: {
+        ignored: ['**/.codex/**', '**/.idea/**', `**/${outDir}/**`, '**/dist/**', '**/dist-ssr/**']
+      },
       proxy: {
         '/api': {
           target: VITE_API_PROXY_URL,
@@ -65,7 +87,7 @@ export default ({ mode }: { mode: string }) => {
     },
     build: {
       target: 'es2020',
-      outDir: VITE_OUT_DIR, //dist
+      outDir, //dist
       chunkSizeWarningLimit: 7000,
       minify: 'oxc',
       reportCompressedSize: false,
@@ -137,11 +159,15 @@ export default ({ mode }: { mode: string }) => {
       vue(),
       vueJsx(),
       tailwindcss(),
-      fileViewerRenderers({
-        inject: false,
-        copyAssets: true,
-        chunkStrategy: 'renderer'
-      }),
+      ...(enableFileViewerPlugin
+        ? [
+            fileViewerRenderers({
+              inject: false,
+              copyAssets: enableFileViewerAssets,
+              chunkStrategy: 'renderer'
+            })
+          ]
+        : []),
       // 自动按需导入 API
       AutoImport({
         imports: ['vue', 'vue-router', 'pinia', '@vueuse/core'],
@@ -176,9 +202,9 @@ export default ({ mode }: { mode: string }) => {
             })
           ]
         : []),
-      ...(!isProduction ? [vueDevTools()] : []),
+      ...(!isProduction && enableVueDevTools ? [vueDevTools()] : []),
       // 创建 .nojekyll 文件，禁用 Jekyll 处理
-      createNoJekyllPlugin(VITE_OUT_DIR)
+      createNoJekyllPlugin(outDir)
       // 打包分析
       // visualizer({
       //   open: true,
@@ -191,6 +217,9 @@ export default ({ mode }: { mode: string }) => {
     optimizeDeps: {
       entries: ['index.html', 'src/views/**/*.vue'],
       ignoreOutdatedRequests: true,
+      // Element Plus 的按需样式入口会导入 Sass 源码。让 Vite 直接按需处理它们，
+      // 避免懒加载页面首次访问时触发依赖重优化和整页刷新。
+      exclude: elementPlusStyleDeps,
       include: [
         'echarts/core',
         'echarts/charts',
@@ -202,7 +231,6 @@ export default ({ mode }: { mode: string }) => {
         'file-saver',
         'vue-img-cutter',
         'element-plus/es',
-        'element-plus/es/components/*/style/index',
         // 预打包 Monaco Editor 的核心和语言 Worker 文件
         'monaco-editor/esm/vs/editor/editor.worker',
         'monaco-editor/esm/vs/language/json/json.worker',

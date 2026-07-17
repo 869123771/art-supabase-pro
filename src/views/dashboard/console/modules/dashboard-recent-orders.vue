@@ -6,8 +6,8 @@
         >全部订单 <ElIcon><ArrowRight /></ElIcon></button
     ></header>
     <div class="recent-orders__head"
-      ><span>订单编号</span><span>运输线路</span><span>车辆 / 司机</span><span>运费</span
-      ><span>状态</span></div
+      ><span>订单编号</span><span>发货方</span><span>运输线路</span><span>车辆 / 司机</span
+      ><span>运费</span><span>状态</span></div
     >
     <ElScrollbar class="recent-orders__list">
       <button
@@ -18,6 +18,9 @@
         @click="emit('open-order', item.id)"
       >
         <strong>{{ item.orderNo }}</strong>
+        <span :title="item.shippingCustomerName || undefined">{{
+          item.shippingCustomerName || '发货方未维护'
+        }}</span>
         <span>{{ item.originStation || '-' }} → {{ item.destinationStation || '-' }}</span>
         <span
           >{{ item.dispatchPlateNo || '待配载'
@@ -99,7 +102,7 @@
   .recent-orders__head,
   .recent-orders__row {
     display: grid;
-    grid-template-columns: 1.15fr 1.4fr 1.1fr 0.72fr 0.65fr;
+    grid-template-columns: 1.05fr 1.05fr 1.3fr 1.1fr 0.72fr 0.65fr;
     gap: 14px;
     align-items: center;
   }
@@ -163,7 +166,9 @@
     }
     .recent-orders__head span:nth-child(3),
     .recent-orders__head span:nth-child(4),
+    .recent-orders__head span:nth-child(5),
     .recent-orders__row > span:nth-child(3),
+    .recent-orders__row > span:nth-child(4),
     .recent-orders__row > b {
       display: none;
     }

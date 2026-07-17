@@ -17,6 +17,7 @@ import { formatWithDayjs } from '@/utils/time'
 import { useUserStore } from '@/store/modules/user'
 import {
   cancelWaybillOrder,
+  confirmWaybillAcceptance,
   confirmWaybillDeparture,
   exportWaybillList,
   fetchStationOptions,
@@ -516,6 +517,13 @@ function getMoreActions(context: WaybillListContext, row: WaybillRecord): Button
     return actions
   }
 
+  if (row.waybillStatus === 'pending') {
+    actions.push({
+      key: 'confirm-acceptance',
+      label: '确认接单',
+      icon: 'ri:checkbox-circle-line'
+    })
+  }
   if (row.waybillStatus === 'loading') {
     actions.push({
       key: 'confirm-departure',
@@ -549,6 +557,7 @@ function handleMoreAction(
 ): void {
   const actionMap: Record<string, () => void> = {
     dispatch: () => openDispatch(context, row),
+    'confirm-acceptance': () => void handleConfirmAcceptance(context, row),
     'confirm-departure': () => void handleConfirmDeparture(context, row),
     print: () => handlePrint(row),
     'cancel-order': () => void handleCancelOrder(context, row)
@@ -587,6 +596,28 @@ async function handleCancelOrder(context: WaybillListContext, row: WaybillRecord
 
 function canCancelWaybillOrder(row: WaybillRecord): boolean {
   return !['signed', 'completed', 'cancelled'].includes(String(row.orderStatus || ''))
+}
+
+async function handleConfirmAcceptance(
+  context: WaybillListContext,
+  row: WaybillRecord
+): Promise<void> {
+  if (!row.id || row.waybillStatus !== 'pending') return
+  try {
+    await ElMessageBox.confirm(
+      `确认接收运单“${row.orderNo}”吗？确认后 Web 端和司机端都会进入待提货状态。`,
+      '确认接单',
+      {
+        confirmButtonText: '确认接单',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+    await confirmWaybillAcceptance(row.id)
+    await context.tableQueryRef.value?.refreshUpdate()
+  } catch {
+    // 用户取消操作时不需要提示。
+  }
 }
 
 async function handleConfirmDeparture(

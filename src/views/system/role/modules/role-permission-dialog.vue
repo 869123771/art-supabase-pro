@@ -4,7 +4,7 @@
       ref="treeRef"
       :data="menuList"
       show-checkbox
-      check-strictly
+      :check-strictly="!isCascadeCheck"
       node-key="id"
       :default-expand-all="isExpandAll"
       :default-checked-keys="[]"
@@ -20,17 +20,31 @@
     </ElTree>
 
     <template #footer="{ loading, api }">
-      <ElButton @click="outputSelectedData">获取选中数据</ElButton>
-      <ElButton @click="toggleExpandAll">{{ isExpandAll ? '全部收起' : '全部展开' }}</ElButton>
-      <ElButton @click="toggleSelectAll">{{ isSelectAll ? '取消全选' : '全部选择' }}</ElButton>
-      <ElButton
-        type="primary"
-        :loading="loading"
-        :disabled="contentLoading"
-        @click="api.handleConfirm"
-      >
-        保存
-      </ElButton>
+      <div class="role-permission-dialog__footer">
+        <ElCheckbox
+          v-model="isCascadeCheck"
+          :disabled="contentLoading"
+          @change="handleCascadeCheckChange"
+        >
+          父子关联
+        </ElCheckbox>
+        <div class="role-permission-dialog__footer-actions">
+          <ElButton @click="toggleExpandAll">
+            {{ isExpandAll ? '全部收起' : '全部展开' }}
+          </ElButton>
+          <ElButton @click="toggleSelectAll">
+            {{ isSelectAll ? '取消全选' : '全部选择' }}
+          </ElButton>
+          <ElButton
+            type="primary"
+            :loading="loading"
+            :disabled="contentLoading"
+            @click="api.handleConfirm"
+          >
+            保存
+          </ElButton>
+        </div>
+      </div>
     </template>
   </ArtDialog>
 </template>
@@ -49,6 +63,7 @@
 
   type RoleListItem = Api.SystemManage.RoleListItem
   type TreeKey = string | number
+  type TreeStoreNode = { expanded: boolean }
 
   interface Emits {
     (e: 'success'): void
@@ -62,6 +77,7 @@
   const contentLoading = ref(false)
   const isExpandAll = ref(true)
   const isSelectAll = ref(false)
+  const isCascadeCheck = ref(false)
 
   const treeUtils = new TreeUtils({
     idKey: 'id',
@@ -71,6 +87,7 @@
   })
 
   const getCheckedKeys = computed<TreeKey[]>(() => treeRef.value?.getCheckedKeys() ?? [])
+  const getHalfCheckedKeys = computed<TreeKey[]>(() => treeRef.value?.getHalfCheckedKeys() ?? [])
 
   const defaultProps = {
     children: 'children',
@@ -96,6 +113,7 @@
     menuList.value = []
     isExpandAll.value = true
     isSelectAll.value = false
+    isCascadeCheck.value = false
   }
 
   const loadPermission = async (): Promise<void> => {
@@ -121,9 +139,10 @@
     if (!roleData.value?.id) return false
 
     try {
+      const menuIds = getSelectedMenuIds()
       const { error } = await saveRoleMenuList({
         p_role_id: roleData.value.id,
-        p_menu_ids: getCheckedKeys.value.filter((key): key is string => typeof key === 'string')
+        p_menu_ids: menuIds.filter((key): key is string => typeof key === 'string')
       })
       if (error) return false
 
@@ -138,8 +157,9 @@
     const tree = treeRef.value
     if (!tree) return
 
-    Object.values(tree.store.nodesMap).forEach((node: any) => {
-      node.expanded = !isExpandAll.value
+    Object.values(tree.store.nodesMap).forEach((node) => {
+      const storeNode = node as TreeStoreNode
+      storeNode.expanded = !isExpandAll.value
     })
     isExpandAll.value = !isExpandAll.value
   }
@@ -157,21 +177,22 @@
     isSelectAll.value = getCheckedKeys.value.length === allKeys.length && allKeys.length > 0
   }
 
-  const outputSelectedData = (): void => {
+  const getSelectedMenuIds = (): TreeKey[] => {
+    if (!isCascadeCheck.value) {
+      return getCheckedKeys.value
+    }
+
+    return [...new Set([...getCheckedKeys.value, ...getHalfCheckedKeys.value])]
+  }
+
+  const handleCascadeCheckChange = async (): Promise<void> => {
     const tree = treeRef.value
     if (!tree) return
 
-    const selectedData = {
-      checkedKeys: tree.getCheckedKeys(),
-      halfCheckedKeys: tree.getHalfCheckedKeys(),
-      checkedNodes: tree.getCheckedNodes(),
-      halfCheckedNodes: tree.getHalfCheckedNodes(),
-      totalChecked: tree.getCheckedKeys().length,
-      totalHalfChecked: tree.getHalfCheckedKeys().length
-    }
-
-    console.log('=== 选中的权限数据 ===', selectedData)
-    ElMessage.success(`已输出选中数据到控制台，共选中 ${selectedData.totalChecked} 个节点`)
+    const checkedKeys = getCheckedKeys.value
+    await nextTick()
+    tree.setCheckedKeys(checkedKeys)
+    handleTreeCheck()
   }
 
   const handleOpen = async (data: RoleListItem): Promise<void> => {
@@ -195,3 +216,20 @@
     handleClose: () => dialogRef.value?.handleClose()
   })
 </script>
+
+<style scoped lang="scss">
+  .role-permission-dialog {
+    &__footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    &__footer-actions {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+    }
+  }
+</style>

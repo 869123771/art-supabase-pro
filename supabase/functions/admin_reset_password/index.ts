@@ -78,9 +78,7 @@ serve(async (req) => {
       })
     }
 
-    const adminClient = createClient(supabaseUrl, serviceRoleKey, {
-      auth: { persistSession: false }
-    })
+    const adminClient = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false } })
     const { data: operator, error: operatorError } = await adminClient
       .from('sys_user')
       .select('auth_user_id, tenant_id, user_roles, status, sys_tenant:tenant_id(tenant_code)')
@@ -114,12 +112,9 @@ serve(async (req) => {
       })
     }
 
-    const { error: updateError } = await adminClient.auth.admin.updateUserById(
-      target.auth_user_id,
-      {
-        password
-      }
-    )
+    const { error: updateError } = await adminClient.auth.admin.updateUserById(target.auth_user_id, {
+      password
+    })
     if (updateError) {
       return new Response(JSON.stringify({ error: 'Password reset failed' }), {
         status: 400,

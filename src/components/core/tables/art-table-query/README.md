@@ -324,6 +324,8 @@ const load = () => {
 | `pagination:current-change` | `number` | current page 改变。内管模式先处理分页并查询。 |
 | `header-action-click` | `(action, ctx)` | 点击工具栏 action 后触发。导入成功也会触发一次。 |
 
+包含 `selection` 列时，点击行内复选框或表头全选框会改变勾选状态；按住鼠标左键划过数据行可批量勾选或取消。普通行单击仍透传原生行事件，但不会切换复选框。
+
 ### ArtTableRowDragPayload
 
 | 字段        | 类型                               | 说明                            |

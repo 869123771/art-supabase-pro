@@ -39,7 +39,10 @@
       <section class="carrier-price-edit__section art-card-xs">
         <div class="carrier-price-edit__section-header">
           <ArtSectionTitle :show-line="false">货物信息</ArtSectionTitle>
-          <ElButton type="primary" plain :icon="Plus" @click="addCargoItem">添加</ElButton>
+          <div class="carrier-price-edit__section-actions">
+            <ElButton plain :icon="Collection" @click="openCargoSelector">批量选货物</ElButton>
+            <ElButton type="primary" plain :icon="Plus" @click="addCargoItem">添加</ElButton>
+          </div>
         </div>
         <ArtTable
           :data="form.cargoItems"
@@ -92,6 +95,8 @@
       <ElButton :disabled="page.saving" @click="goBack">取消</ElButton>
       <ElButton type="primary" :loading="page.saving" @click="handleSave">保存</ElButton>
     </div>
+
+    <CargoMultipleSelect ref="cargoSelectorRef" @confirm="handleCargoSelectorConfirm" />
   </div>
 </template>
 
@@ -100,7 +105,7 @@
   import { cloneDeep, omit } from 'lodash-es'
   import type { FormRules } from 'element-plus'
   import { ElButton, ElInput, ElInputNumber, ElOption, ElSelect } from 'element-plus'
-  import { Plus } from '@element-plus/icons-vue'
+  import { Collection, Plus } from '@element-plus/icons-vue'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
@@ -116,11 +121,13 @@
   } from '@/api/tms'
   import { fetchVehicleArchiveOptions } from '@/api/vehicle-manage-system'
   import { useUserStore } from '@/store/modules/user'
+  import CargoMultipleSelect from '../../modules/cargo-multiple-select.vue'
 
   defineOptions({ name: 'TmsCarrierPriceEdit' })
 
   type CarrierPrice = Api.Tms.BasicData.CarrierPrice
   type CarrierPriceCargoItem = Api.Tms.BasicData.CarrierPriceCargoItem
+  type CargoMaster = Api.Tms.BasicData.Cargo
   type CarrierOption = Api.Tms.BasicData.CarrierOption
   type DriverOption = Api.Tms.BasicData.DriverOption
   type VehicleOption = Api.VehicleMgtSys.VehicleManage.VehicleOption
@@ -133,6 +140,10 @@
     validate: () => Promise<boolean>
     clearValidate: () => void
     reloadOptions: (key?: string) => Promise<unknown>
+  }
+
+  interface CargoSelectorExpose {
+    open: () => Promise<void>
   }
 
   interface PageState {
@@ -186,6 +197,7 @@
   const carrierFormRef = ref<FormExpose>()
   const feeFormRef = ref<FormExpose>()
   const paymentFormRef = ref<FormExpose>()
+  const cargoSelectorRef = ref<CargoSelectorExpose>()
 
   const isEdit = computed(() => Boolean(route.params.id))
   const dictCodes = [
@@ -874,6 +886,35 @@
     form.data.cargoItems = [...(form.data.cargoItems ?? []), createInitialCargoItem()]
   }
 
+  async function openCargoSelector(): Promise<void> {
+    await cargoSelectorRef.value?.open()
+  }
+
+  function handleCargoSelectorConfirm(selectedCargoes: CargoMaster[]): void {
+    const currentItems = form.data.cargoItems ?? []
+    const existingNames = new Set(
+      currentItems.map((item) => normalizeText(item.cargoName) ?? '').filter(Boolean)
+    )
+    const additions = selectedCargoes
+      .filter((item) => item.cargoName && !existingNames.has(item.cargoName))
+      .map(createCargoItemFromMaster)
+    if (!additions.length) return
+
+    const isSingleEmptyRow = currentItems.length === 1 && !normalizeText(currentItems[0].cargoName)
+    form.data.cargoItems = isSingleEmptyRow ? additions : [...currentItems, ...additions]
+  }
+
+  function createCargoItemFromMaster(cargo: CargoMaster): CarrierPriceCargoItem {
+    return {
+      ...createInitialCargoItem(),
+      cargoName: cargo.cargoName,
+      quantity: 1,
+      unit: cargo.unit || '',
+      volumeM3: cargo.volumeM3 ?? null,
+      weightKg: cargo.weightKg ?? null
+    }
+  }
+
   function removeCargoItem(row: CarrierPriceCargoItem): void {
     const rows = form.data.cargoItems ?? []
     if (rows.length <= 1) {
@@ -1071,6 +1112,13 @@
       margin-bottom: 14px;
     }
 
+    &__section-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
     &__cargo-summary {
       display: flex;
       align-items: center;
@@ -1099,8 +1147,8 @@
       display: flex;
       gap: 10px;
       justify-content: flex-end;
-      margin-top: 16px;
       padding: 16px 20px;
+      margin-top: 16px;
     }
 
     :deep(.carrier-price-edit__form) {
@@ -1117,12 +1165,12 @@
     }
   }
 
-  @media (max-width: 900px) {
+  @media (width <= 900px) {
     .carrier-price-edit {
       &__cargo-summary {
-        align-items: flex-start;
         flex-direction: column;
         gap: 8px;
+        align-items: flex-start;
         padding: 12px;
 
         div {

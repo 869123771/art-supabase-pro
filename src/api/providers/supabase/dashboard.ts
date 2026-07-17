@@ -12,6 +12,7 @@ export interface DashboardOrder {
   dispatchStatus?: string | null
   originStation?: string | null
   destinationStation?: string | null
+  shippingCustomerName?: string | null
   dispatchPlateNo?: string | null
   dispatchDriverName?: string | null
   plannedArrivalTime?: string | null
@@ -56,6 +57,10 @@ interface DashboardOrderRow {
   dispatchStatus?: string | null
   originStation?: string | null
   destinationStation?: string | null
+  shippingCustomerName?: string | null
+  shippingCustomer?: {
+    customerName?: string | null
+  } | null
   dispatchPlateNo?: string | null
   dispatchDriverName?: string | null
   plannedArrivalTime?: string | null
@@ -64,7 +69,7 @@ interface DashboardOrderRow {
 }
 
 const orderSelect =
-  'id, order_no, order_status, dispatch_status, origin_station, destination_station, dispatch_plate_no, dispatch_driver_name, planned_arrival_time, total_fee, create_time'
+  'id, order_no, order_status, dispatch_status, origin_station, destination_station, dispatch_plate_no, dispatch_driver_name, planned_arrival_time, total_fee, create_time, shippingCustomer:tms_customer!tms_order_shipping_customer_id_fkey(customer_name)'
 
 const statusKeys = ['pending_load', 'pending_order', 'transporting', 'signed', 'completed'] as const
 
@@ -120,6 +125,7 @@ function toDashboardOrder(row: DashboardOrderRow): DashboardOrder {
     dispatchStatus: row.dispatchStatus,
     originStation: row.originStation,
     destinationStation: row.destinationStation,
+    shippingCustomerName: row.shippingCustomer?.customerName ?? row.shippingCustomerName ?? null,
     dispatchPlateNo: row.dispatchPlateNo,
     dispatchDriverName: row.dispatchDriverName,
     plannedArrivalTime: row.plannedArrivalTime,

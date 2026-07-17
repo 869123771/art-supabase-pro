@@ -8,7 +8,7 @@
       <div class="summary-grid">
         <div>
           <strong>{{ overview.todayCount }}</strong>
-          <span>今日运输量</span>
+          <span>监控运单</span>
         </div>
         <div>
           <strong>{{ overview.onTimeRate }}%</strong>
@@ -29,7 +29,7 @@
 
     <section class="monitor-panel monitor-panel--list">
       <div class="monitor-panel__title">
-        <strong>在途运单（{{ filteredOrders.length }}）</strong>
+        <strong>运单列表（{{ filteredOrders.length }}）</strong>
         <span v-if="overview.delayedCount" class="is-warning">
           {{ overview.delayedCount }} 单延误
         </span>

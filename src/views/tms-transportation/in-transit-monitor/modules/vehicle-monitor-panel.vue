@@ -2,13 +2,13 @@
   <aside class="monitor-sidebar">
     <section class="monitor-panel monitor-panel--summary">
       <div class="monitor-panel__title">
-        <strong>车辆实时监控</strong>
+        <strong>车辆监控</strong>
         <span>定位已连接</span>
       </div>
       <div class="summary-grid">
         <div>
           <strong>{{ vehicleOrders.length }}</strong>
-          <span>在途车辆</span>
+          <span>监控车辆</span>
         </div>
         <div>
           <strong>{{ overview.onTimeRate }}%</strong>
@@ -102,8 +102,11 @@
   const vehicleOrders = computed(() => {
     const ordersByPlate = new Map<string, MonitorOrder>()
     props.orders.forEach((item) => {
+      if (item.plateNo === '未配车') return
       const existing = ordersByPlate.get(item.plateNo)
-      if (!existing || item.progress > existing.progress) ordersByPlate.set(item.plateNo, item)
+      if (!existing || getVehicleOrderPriority(item) > getVehicleOrderPriority(existing)) {
+        ordersByPlate.set(item.plateNo, item)
+      }
     })
     return [...ordersByPlate.values()]
   })
@@ -126,6 +129,13 @@
       vehicleOrders.value.reduce((sum, item) => sum + item.progress, 0) / vehicleOrders.value.length
     )
   })
+
+  function getVehicleOrderPriority(item: MonitorOrder): number {
+    if (item.status === 'delayed') return 4
+    if (item.status === 'transporting') return 3
+    if (item.status === 'pending') return 2
+    return 1
+  }
 
   function withAlpha(color: string, alpha: number): string {
     if (/^#[\da-f]{6}$/i.test(color)) {
