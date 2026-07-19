@@ -38,6 +38,10 @@ type StationRecord = Api.Tms.Station.StationRecord
 type StationSearchParams = Api.Tms.Station.StationSearchParams
 type StationOptionSearchParams = Api.Tms.Station.StationOptionSearchParams
 
+interface TmsWriteOptions {
+  showMessage?: boolean
+}
+
 const normalizeBooleanFilter = (value: unknown): boolean | undefined => {
   if (value === true || value === 'true') return true
   if (value === false || value === 'false') return false
@@ -213,10 +217,10 @@ export async function fetchCustomerSelectorList(params: CustomerSelectorSearchPa
   })
 }
 
-export async function addCustomer(params: Customer) {
-  return await responseHandle(
-    () => supabase.from('tms_customer').insert(keysToSnakeDeep(params)) as any,
-    { showMessage: true, breakReturn: true }
+export async function addCustomer(params: Customer, options: TmsWriteOptions = {}) {
+  return await responseHandle<Customer>(
+    () => supabase.from('tms_customer').insert(keysToSnakeDeep(params)).select().single() as any,
+    { showMessage: options.showMessage ?? true, breakReturn: true }
   )
 }
 
@@ -303,7 +307,7 @@ export async function fetchCustomerDefaultAddress(
   })
 }
 
-export async function addCustomerAddress(params: CustomerAddress) {
+export async function addCustomerAddress(params: CustomerAddress, options: TmsWriteOptions = {}) {
   return await responseHandle<CustomerAddress>(
     () =>
       supabase
@@ -311,7 +315,7 @@ export async function addCustomerAddress(params: CustomerAddress) {
         .insert(keysToSnakeDeep(params))
         .select()
         .single() as any,
-    { showMessage: true, breakReturn: true }
+    { showMessage: options.showMessage ?? true, breakReturn: true }
   )
 }
 
@@ -639,10 +643,10 @@ export async function exportCargoList(
   })
 }
 
-export async function addCargo(params: Cargo) {
-  return await responseHandle(
-    () => supabase.from('tms_cargo').insert(keysToSnakeDeep(params)) as any,
-    { showMessage: true, breakReturn: true }
+export async function addCargo(params: Cargo, options: TmsWriteOptions = {}) {
+  return await responseHandle<Cargo>(
+    () => supabase.from('tms_cargo').insert(keysToSnakeDeep(params)).select().single() as any,
+    { showMessage: options.showMessage ?? true, breakReturn: true }
   )
 }
 
@@ -1093,10 +1097,10 @@ export async function fetchStationOptions(params: StationOptionSearchParams = {}
   })
 }
 
-export async function addStation(params: StationRecord) {
-  return await responseHandle(
-    () => supabase.from('tms_station').insert(keysToSnakeDeep(params)) as any,
-    { showMessage: true, breakReturn: true }
+export async function addStation(params: StationRecord, options: TmsWriteOptions = {}) {
+  return await responseHandle<StationRecord>(
+    () => supabase.from('tms_station').insert(keysToSnakeDeep(params)).select().single() as any,
+    { showMessage: options.showMessage ?? true, breakReturn: true }
   )
 }
 
@@ -1331,6 +1335,52 @@ export async function addOrder(params: OrderRecord) {
     () => supabase.from('tms_order').insert(keysToSnakeDeep(params)).select().single() as any,
     { showMessage: true, breakReturn: true }
   )
+}
+
+export async function analyzeOrderByAi(
+  params: Api.Tms.Order.AiOrderAnalyzeRequest
+): Promise<QueryResult<Api.Tms.Order.AiOrderAnalyzeResponse>> {
+  const { data, error } = await supabase.functions.invoke<Api.Tms.Order.AiOrderAnalyzeResponse>(
+    'ai-order-assistant',
+    { body: params }
+  )
+
+  return {
+    data: data ?? null,
+    error: await normalizeEdgeFunctionError(error)
+  }
+}
+
+export async function generateAiOrderExample(
+  params: Api.Tms.Order.AiOrderExampleRequest = {}
+): Promise<QueryResult<Api.Tms.Order.AiOrderExampleResponse>> {
+  const { data, error } = await supabase.functions.invoke<Api.Tms.Order.AiOrderExampleResponse>(
+    'ai-order-assistant',
+    { body: { ...params, action: 'generate_example' } }
+  )
+
+  return {
+    data: data ?? null,
+    error: await normalizeEdgeFunctionError(error)
+  }
+}
+
+async function normalizeEdgeFunctionError(error: unknown): Promise<unknown | null> {
+  if (!error || typeof error !== 'object' || !('context' in error)) return error
+
+  const context = (error as { context?: unknown }).context
+  if (!(context instanceof Response)) return error
+
+  try {
+    const payload = (await context.clone().json()) as { code?: unknown; message?: unknown }
+    if (typeof payload.message !== 'string' || !payload.message) return error
+    return {
+      code: typeof payload.code === 'string' ? payload.code : undefined,
+      message: payload.message
+    }
+  } catch {
+    return error
+  }
 }
 
 export async function editOrder(params: OrderRecord) {

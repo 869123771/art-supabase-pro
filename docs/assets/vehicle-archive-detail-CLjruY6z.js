@@ -1,0 +1,1 @@
+import{Pt as e,R as t,Y as n}from"./monaco-aKhfTkcy.js";import{t as r}from"./vehicle-archive-detail-content-Cor1hzuY.js";var i=n({name:`VehicleArchiveDetail`,__name:`index`,setup(n){return(n,i)=>(e(),t(r))}});export{i as default};

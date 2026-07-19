@@ -1,1 +1,0 @@
-import{ot as e}from"./monaco-aKhfTkcy.js";import{t}from"./attachment-link-DHyzND1Y.js";var n=n=>e(t,{file:n});export{n as t};

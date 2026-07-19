@@ -189,6 +189,9 @@
 
       <div class="order-open__footer-actions">
         <ElButton size="large" :loading="page.saving" @click="handleSaveOnly">仅开单</ElButton>
+        <ElButton size="large" type="primary" plain @click="openAiOrderDrawer">
+          AI智能填单
+        </ElButton>
         <ElButton size="large" type="primary" @click="openPrintDialog('waybill')"
           >打印运单</ElButton
         >
@@ -200,6 +203,7 @@
     <CustomerSelectorDialog ref="customerDialogRef" @select="handleCustomerSelect" />
     <PrintCountDialog ref="printDialogRef" @confirm="handlePrintConfirm" />
     <CargoMultipleSelect ref="cargoSelectorRef" @confirm="handleCargoSelectorConfirm" />
+    <AiOrderDrawer ref="aiOrderDrawerRef" @apply="handleAiOrderApply" />
   </div>
 </template>
 
@@ -228,8 +232,10 @@
   } from '@/api/tms'
   import { useUserStore } from '@/store/modules/user'
   import CargoMultipleSelect from '../modules/cargo-multiple-select.vue'
+  import AiOrderDrawer from './modules/ai-order-drawer.vue'
   import CustomerSelectorDialog from './modules/customer-selector-dialog.vue'
   import PrintCountDialog from './modules/print-count-dialog.vue'
+  import type { AiOrderApplyPayload, AiOrderDrawerExpose } from './modules/ai-order-types'
 
   defineOptions({ name: 'TmsOrderOpen' })
 
@@ -346,6 +352,7 @@
   const customerDialogRef = ref<CustomerSelectorExpose>()
   const printDialogRef = ref<PrintDialogExpose>()
   const cargoSelectorRef = ref<CargoSelectorExpose>()
+  const aiOrderDrawerRef = ref<AiOrderDrawerExpose>()
   const initializedOrderId = ref<string>()
 
   const dictCodes = [
@@ -1188,6 +1195,141 @@
     })
   }
 
+  function openAiOrderDrawer(): void {
+    void aiOrderDrawerRef.value?.handleOpen({
+      options: {
+        deliveryMethods: toAiOptions(form.deliveryMethodOptions),
+        paymentMethods: toAiOptions(form.paymentMethodOptions),
+        transportModes: toAiOptions(form.transportModeOptions),
+        cargoUnits: toAiOptions(form.cargoUnitOptions)
+      }
+    })
+  }
+
+  async function handleAiOrderApply(payload: AiOrderApplyPayload): Promise<void> {
+    const draft = payload.analysis.order
+    const references = payload.references
+    const patch: Partial<OrderForm> = {}
+
+    applyDraftTextFields(patch, draft)
+    applyDraftNumberFields(patch, draft)
+
+    if (references.originStation.id) {
+      Object.assign(patch, {
+        originStationId: references.originStation.id,
+        originStation: references.originStation.label || draft.originStationName || ''
+      })
+    }
+    if (references.destinationStation.id) {
+      Object.assign(patch, {
+        destinationStationId: references.destinationStation.id,
+        destinationStation:
+          references.destinationStation.label || draft.destinationStationName || ''
+      })
+    }
+    if (references.transferStation.id) {
+      Object.assign(patch, {
+        transferStationId: references.transferStation.id,
+        transferStation: references.transferStation.label || draft.transferStationName || ''
+      })
+    }
+    if (references.shippingCustomer.id) {
+      Object.assign(patch, {
+        shippingCustomerId: references.shippingCustomer.id,
+        shippingCustomerName: references.shippingCustomer.label || draft.shippingCustomerName || ''
+      })
+    }
+    if (references.shippingAddress.id) {
+      Object.assign(patch, { shippingAddressId: references.shippingAddress.id })
+    }
+    if (references.receivingCustomer.id) {
+      Object.assign(patch, {
+        receivingCustomerId: references.receivingCustomer.id,
+        receivingCustomerName:
+          references.receivingCustomer.label || draft.receivingCustomerName || ''
+      })
+    }
+    if (references.receivingAddress.id) {
+      Object.assign(patch, { receivingAddressId: references.receivingAddress.id })
+    }
+
+    Object.assign(form.data, patch)
+    if (draft.cargoItems?.some((item) => textValue(item.cargoName))) {
+      form.data.cargoItems = draft.cargoItems.map((item) => ({
+        cargoName: textValue(item.cargoName),
+        packageType: textValue(item.packageType || item.unit),
+        quantity: nullableNumber(item.quantity),
+        unit: textValue(item.unit || item.packageType),
+        weightKg: nullableNumber(item.weightKg),
+        volumeM3: nullableNumber(item.volumeM3)
+      }))
+    }
+
+    await nextTick()
+    clearFormsValidate()
+    ElMessage.success('AI 识别结果已填入，请检查后保存订单')
+  }
+
+  function applyDraftTextFields(
+    patch: Partial<OrderForm>,
+    draft: Api.Tms.Order.AiOrderDraft
+  ): void {
+    const fieldMap: Array<[keyof OrderForm, string | null | undefined]> = [
+      ['deliveryMethod', draft.deliveryMethod],
+      ['shippingCustomerName', draft.shippingCustomerName],
+      ['shippingContactName', draft.shippingContactName],
+      ['shippingContactPhone', draft.shippingContactPhone],
+      ['shippingAddressDetail', draft.shippingAddressDetail],
+      ['receivingCustomerName', draft.receivingCustomerName],
+      ['receivingContactName', draft.receivingContactName],
+      ['receivingContactPhone', draft.receivingContactPhone],
+      ['receivingAddressDetail', draft.receivingAddressDetail],
+      ['paymentMethod', draft.paymentMethod],
+      ['transportMode', draft.transportMode],
+      ['orderRemark', draft.orderRemark]
+    ]
+
+    fieldMap.forEach(([key, value]) => {
+      const normalized = textValue(value)
+      if (normalized) Object.assign(patch, { [key]: normalized })
+    })
+  }
+
+  function applyDraftNumberFields(
+    patch: Partial<OrderForm>,
+    draft: Api.Tms.Order.AiOrderDraft
+  ): void {
+    const fieldMap: Array<[keyof OrderForm, number | null | undefined]> = [
+      ['transportFee', draft.transportFee],
+      ['deliveryFee', draft.deliveryFee],
+      ['unloadingFee', draft.unloadingFee],
+      ['collectPaymentFee', draft.collectPaymentFee],
+      ['transferFee', draft.transferFee],
+      ['declaredValue', draft.declaredValue],
+      ['insuranceFee', draft.insuranceFee],
+      ['packageFee', draft.packageFee],
+      ['otherFee', draft.otherFee],
+      ['cashAmount', draft.cashAmount],
+      ['collectAmount', draft.collectAmount],
+      ['monthlyAmount', draft.monthlyAmount],
+      ['codAmount', draft.codAmount],
+      ['handlingFee', draft.handlingFee]
+    ]
+
+    fieldMap.forEach(([key, value]) => {
+      if (!isNil(value)) Object.assign(patch, { [key]: moneyValue(value) })
+    })
+  }
+
+  function toAiOptions(options: Api.DataCenter.DictListItem[]): Api.Tms.Order.AiOrderOption[] {
+    return options
+      .filter((item) => item.value)
+      .map((item) => ({
+        label: item.label || item.name || item.value,
+        value: item.value
+      }))
+  }
+
   async function validateForms(): Promise<boolean> {
     const formRefs = [stationFormRef, shippingFormRef, receivingFormRef, paymentFormRef]
     for (const item of formRefs) {
@@ -1445,6 +1587,7 @@
         padding-top: 18px;
         padding-bottom: 2px;
       }
+
       &-actions {
         display: flex;
       }

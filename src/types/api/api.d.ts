@@ -1343,6 +1343,72 @@ declare namespace Api {
         volumeM3?: number | null
       }
 
+      interface AiOrderOption {
+        label: string
+        value: string
+      }
+
+      interface AiOrderAnalyzeRequest {
+        action?: 'analyze'
+        prompt?: string
+        imageUrls?: string[]
+        options?: {
+          deliveryMethods?: AiOrderOption[]
+          paymentMethods?: AiOrderOption[]
+          transportModes?: AiOrderOption[]
+          cargoUnits?: AiOrderOption[]
+        }
+      }
+
+      interface AiOrderExampleRequest {
+        options?: AiOrderAnalyzeRequest['options']
+      }
+
+      interface AiOrderExampleResponse {
+        prompt: string
+      }
+
+      interface AiOrderDraft {
+        originStationName?: string | null
+        destinationStationName?: string | null
+        transferStationName?: string | null
+        deliveryMethod?: string | null
+        shippingCustomerName?: string | null
+        shippingContactName?: string | null
+        shippingContactPhone?: string | null
+        shippingAddressDetail?: string | null
+        receivingCustomerName?: string | null
+        receivingContactName?: string | null
+        receivingContactPhone?: string | null
+        receivingAddressDetail?: string | null
+        cargoItems?: CargoItem[]
+        transportFee?: number | null
+        deliveryFee?: number | null
+        unloadingFee?: number | null
+        collectPaymentFee?: number | null
+        transferFee?: number | null
+        declaredValue?: number | null
+        insuranceFee?: number | null
+        packageFee?: number | null
+        otherFee?: number | null
+        paymentMethod?: string | null
+        cashAmount?: number | null
+        collectAmount?: number | null
+        monthlyAmount?: number | null
+        codAmount?: number | null
+        handlingFee?: number | null
+        transportMode?: string | null
+        orderRemark?: string | null
+      }
+
+      interface AiOrderAnalyzeResponse {
+        summary: string
+        confidence: number
+        missingFields: string[]
+        warnings: string[]
+        order: AiOrderDraft
+      }
+
       interface OrderRecord {
         id?: string
         tenantId?: string
