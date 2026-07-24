@@ -1054,13 +1054,15 @@
   }
 
   function applyAddressPatch(mode: AddressMode, address?: CustomerAddress): void {
+    // 详细地址只存 addressDetail；区域单独写入 origin/destinationRegionPath。
+    // 列表会用 region + detail 拼接展示，这里不能再把区域拼进 detail，否则会重复。
     const patchMap: Record<AddressMode, Partial<CustomerPriceForm>> = {
       shipping: address
         ? {
             shippingAddressId: address.id ?? null,
             shippingContactName: address.contactName,
             shippingContactPhone: address.contactPhone,
-            shippingAddressDetail: formatAddress(address),
+            shippingAddressDetail: normalizeAddressDetail(address.addressDetail),
             shippingLongitude: address.longitude ?? null,
             shippingLatitude: address.latitude ?? null,
             originRegionPath: splitRegionPath(address.region)
@@ -1079,7 +1081,7 @@
             receivingAddressId: address.id ?? null,
             receivingContactName: address.contactName,
             receivingContactPhone: address.contactPhone,
-            receivingAddressDetail: formatAddress(address),
+            receivingAddressDetail: normalizeAddressDetail(address.addressDetail),
             receivingLongitude: address.longitude ?? null,
             receivingLatitude: address.latitude ?? null,
             destinationRegionPath: splitRegionPath(address.region)
@@ -1104,7 +1106,12 @@
   }
 
   function formatAddress(address: CustomerAddress): string {
-    return [address.region, address.addressDetail].filter(Boolean).join(' ')
+    // 仅用于选择器描述展示，不用于落库。
+    return [address.region, normalizeAddressDetail(address.addressDetail)].filter(Boolean).join(' ')
+  }
+
+  function normalizeAddressDetail(addressDetail?: string | null): string {
+    return String(addressDetail ?? '').trim()
   }
 
   function hasCoordinate(longitude?: number | string | null, latitude?: number | string | null) {
