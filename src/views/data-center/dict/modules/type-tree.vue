@@ -83,7 +83,7 @@
   import type { ElTree, NodeDropType } from 'element-plus'
   import { ElMessage, ElMessageBox } from 'element-plus'
   import { cloneDeep } from 'lodash-es'
-  import TreeUtils, { type TreeNode } from '@/utils/tree'
+  import TreeUtils from '@/utils/tree'
   import { deleteDictType, fetchGetDictTypeList, saveDictTypeTreeOrder } from '@/api/data-center'
   import DictTypeDialog from './dict-type-dialog.vue'
 
@@ -239,9 +239,9 @@
   }
 
   const getFlatTreeNodes = (nodes: DictTypeItem[] = tree.data): FlatDictTypeItem[] => {
-    return treeUtils.treeToList(nodes as TreeNode[], {
+    return treeUtils.treeToList<FlatDictTypeItem>(nodes, {
       includeParentChain: true
-    }) as FlatDictTypeItem[]
+    })
   }
 
   const getVisibleSelectableNodes = (): DictTypeItem[] => {
@@ -317,7 +317,8 @@
 
   const getTreeNodeKeys = (nodes: DictTypeItem[]): Set<string> => {
     return new Set(
-      (treeUtils.treeToList(nodes as TreeNode[]) as DictTypeItem[])
+      treeUtils
+        .treeToList(nodes)
         .map(getNodeKey)
         .filter((key): key is string => Boolean(key))
     )
@@ -346,15 +347,14 @@
 
   const applyExpandedKeys = (): void => {
     const expandedKeySet = new Set(tree.expandedKeys)
-    const treeNodes = treeUtils.treeToList(tree.data as TreeNode[]) as DictTypeItem[]
+    const treeNodes = treeUtils.treeToList(tree.data)
 
     treeNodes.forEach((node) => {
       const key = getNodeKey(node)
       if (!key) return
 
       const elTreeNode = treeRef.value?.getNode(key) as unknown as
-        | { expanded?: boolean }
-        | undefined
+        { expanded?: boolean } | undefined
       if (elTreeNode) {
         elTreeNode.expanded = expandedKeySet.has(key)
       }
@@ -372,9 +372,8 @@
     const key = getNodeKey(data)
     if (!key) return
 
-    const descendantKeys = (
-      treeUtils.getDescendants(tree.data as TreeNode[], key, true) as DictTypeItem[]
-    )
+    const descendantKeys = treeUtils
+      .getDescendants(tree.data, key, true)
       .map(getNodeKey)
       .filter((itemKey): itemKey is string => Boolean(itemKey))
 
@@ -419,9 +418,7 @@
     const parentId = flatTarget.__parentChain?.length
       ? String(flatTarget.__parentChain[flatTarget.__parentChain.length - 1])
       : null
-    const siblings = parentId
-      ? ((treeUtils.findNode(nodes as TreeNode[], parentId) as DictTypeItem | null)?.children ?? [])
-      : nodes
+    const siblings = parentId ? (treeUtils.findNode(nodes, parentId)?.children ?? []) : nodes
     const targetIndex = siblings.findIndex((node) => getNodeKey(node) === targetNodeKey)
 
     if (targetIndex === -1) return undefined
@@ -442,11 +439,11 @@
     const movedNodes: DictTypeItem[] = []
 
     orderedKeys.forEach((key) => {
-      const result = treeUtils.removeNode(nextTree as TreeNode[], key)
-      nextTree = result.tree as DictTypeItem[]
+      const result = treeUtils.removeNode(nextTree, key)
+      nextTree = result.tree
 
       if (result.removed) {
-        movedNodes.push(result.removed as DictTypeItem)
+        movedNodes.push(result.removed)
       }
     })
 
@@ -493,10 +490,7 @@
     movedNodes: DictTypeItem[],
     targetDirectoryId: string
   ): DictTypeItem[] | undefined => {
-    const targetNode = treeUtils.findNode(
-      nextTree as TreeNode[],
-      targetDirectoryId
-    ) as DictTypeItem | null
+    const targetNode = treeUtils.findNode(nextTree, targetDirectoryId)
     if (!targetNode) return undefined
 
     targetNode.children = targetNode.children ?? []
@@ -645,7 +639,7 @@
       tree.data = treeUtils.listToTree(
         data as DictTypeItem[],
         (a, b) => Number(a.sort || 0) - Number(b.sort || 0)
-      ) as DictTypeItem[]
+      )
       syncExpandedKeysAfterDataLoad()
       syncSelectedKeysAfterDataLoad()
       await nextTick()

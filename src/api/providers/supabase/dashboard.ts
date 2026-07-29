@@ -1,5 +1,6 @@
 import dayjs from 'dayjs'
 import { useSupabase } from '@/hooks'
+import type { SupabaseQueryLike } from '@/api/modules/tms/query'
 
 const { supabase, responseHandle } = useSupabase()
 
@@ -134,20 +135,26 @@ function toDashboardOrder(row: DashboardOrderRow): DashboardOrder {
   }
 }
 
-async function countRows(query: any): Promise<number> {
-  const { total } = await responseHandle<null>(() => query as any, { ignoreCheck: true })
+function asDashboardQuery(query: unknown): SupabaseQueryLike {
+  return query as SupabaseQueryLike
+}
+
+async function countRows(query: SupabaseQueryLike): Promise<number> {
+  const { total } = await responseHandle<null>(() => query, { ignoreCheck: true })
   return total ?? 0
 }
 
-async function fetchRows<T>(query: any): Promise<T[]> {
-  const { data } = await responseHandle<T[]>(() => query as any, { ignoreCheck: true })
+async function fetchRows<T>(query: SupabaseQueryLike): Promise<T[]> {
+  const { data } = await responseHandle<T[]>(() => query, { ignoreCheck: true })
   return data ?? []
 }
 
 async function fetchReminderCounts(): Promise<DashboardReminder[]> {
   return await Promise.all(
     reminderConfigs.map(async (item) => {
-      let query: any = supabase.from(item.table).select('*', { count: 'exact', head: true })
+      let query = supabase
+        .from(item.table)
+        .select('*', { count: 'exact', head: true }) as unknown as SupabaseQueryLike
       query =
         item.field === 'remaining_days'
           ? query.lte('remaining_days', 30)
@@ -199,52 +206,66 @@ export async function fetchDashboardData(days = 14): Promise<DashboardData> {
     reminders
   ] = await Promise.all([
     fetchRows<DashboardOrderRow>(
-      supabase.from('tms_order').select(orderSelect).gte('create_time', todayStart)
+      asDashboardQuery(
+        supabase.from('tms_order').select(orderSelect).gte('create_time', todayStart)
+      )
     ),
     countRows(
-      supabase
-        .from('tms_order')
-        .select('id', { count: 'exact', head: true })
-        .eq('dispatch_status', 'pending')
+      asDashboardQuery(
+        supabase
+          .from('tms_order')
+          .select('id', { count: 'exact', head: true })
+          .eq('dispatch_status', 'pending')
+      )
     ),
     countRows(
-      supabase
-        .from('tms_order')
-        .select('id', { count: 'exact', head: true })
-        .eq('order_status', 'transporting')
+      asDashboardQuery(
+        supabase
+          .from('tms_order')
+          .select('id', { count: 'exact', head: true })
+          .eq('order_status', 'transporting')
+      )
     ),
     fetchRows<{ operationStatus?: string | null; auditStatus?: string | null }>(
-      supabase.from('vehicle_archive').select('operation_status, audit_status')
+      asDashboardQuery(supabase.from('vehicle_archive').select('operation_status, audit_status'))
     ),
     countRows(
-      supabase
-        .from('tms_order')
-        .select('id', { count: 'exact', head: true })
-        .eq('order_status', 'completed')
-        .gte('signed_at', todayStart)
+      asDashboardQuery(
+        supabase
+          .from('tms_order')
+          .select('id', { count: 'exact', head: true })
+          .eq('order_status', 'completed')
+          .gte('signed_at', todayStart)
+      )
     ),
     fetchRows<DashboardOrderRow>(
-      supabase
-        .from('tms_order')
-        .select('order_no, order_status, total_fee, create_time')
-        .gte('create_time', trendStart)
-        .order('create_time', { ascending: true })
-        .limit(2000)
+      asDashboardQuery(
+        supabase
+          .from('tms_order')
+          .select('order_no, order_status, total_fee, create_time')
+          .gte('create_time', trendStart)
+          .order('create_time', { ascending: true })
+          .limit(2000)
+      )
     ),
     fetchRows<DashboardOrderRow>(
-      supabase
-        .from('tms_order')
-        .select(orderSelect)
-        .eq('order_status', 'transporting')
-        .order('update_time', { ascending: false })
-        .limit(6)
+      asDashboardQuery(
+        supabase
+          .from('tms_order')
+          .select(orderSelect)
+          .eq('order_status', 'transporting')
+          .order('update_time', { ascending: false })
+          .limit(6)
+      )
     ),
     fetchRows<DashboardOrderRow>(
-      supabase
-        .from('tms_order')
-        .select(orderSelect)
-        .order('create_time', { ascending: false })
-        .limit(6)
+      asDashboardQuery(
+        supabase
+          .from('tms_order')
+          .select(orderSelect)
+          .order('create_time', { ascending: false })
+          .limit(6)
+      )
     ),
     fetchReminderCounts()
   ])

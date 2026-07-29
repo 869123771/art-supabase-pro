@@ -135,7 +135,6 @@
 
 <script setup lang="ts">
   import type { UnwrapNestedRefs } from 'vue'
-  import dayjs from 'dayjs'
   import { storeToRefs } from 'pinia'
   import { ElMessage } from 'element-plus'
   import { RefreshRight, ZoomIn, ZoomOut } from '@element-plus/icons-vue'
@@ -143,112 +142,162 @@
   import { useUserStore } from '@/store/modules/user'
   import { formatWithDayjs } from '@/utils/time'
   import { useDebounceFn, useIntervalFn, useResizeObserver } from '@vueuse/core'
-  import defaultVehicleImage from '@/assets/images/tms/vehicles/default.svg?url'
-  import largeCityBusImage from '@/assets/images/tms/vehicles/large-city-bus.svg?url'
-  import mediumBusImage from '@/assets/images/tms/vehicles/medium-bus.svg?url'
-  import smallBusImage from '@/assets/images/tms/vehicles/small-bus.svg?url'
-  import specialVehicleImage from '@/assets/images/tms/vehicles/special-vehicle.svg?url'
-  import truckImage from '@/assets/images/tms/vehicles/truck.svg?url'
   import MonitorDetailPanel from './modules/monitor-detail-panel.vue'
   import RealtimeMonitorPanel from './modules/realtime-monitor-panel.vue'
   import VehicleMonitorPanel from './modules/vehicle-monitor-panel.vue'
   import WaybillMonitorPanel from './modules/waybill-monitor-panel.vue'
+  import {
+    AMAP_PLUGINS,
+    DEFAULT_SCREEN_DESIGN_HEIGHT,
+    DEFAULT_SCREEN_DESIGN_WIDTH,
+    getVehicleImage,
+    INITIAL_MAP_CENTER,
+    INITIAL_MAP_ZOOM,
+    INITIAL_POI_CONCURRENCY,
+    MAP_MAX_ZOOM,
+    MAP_MIN_ZOOM,
+    MONITOR_STATUS_DICT_CODE,
+    monitorTabs,
+    REALTIME_WAYBILL_STATUSES,
+    regionOptions,
+    VEHICLE_TYPE_DICT_CODE
+  } from './modules/monitor-config'
   import type {
+    AlertItem,
     GeoCoord,
     InTransitRecord,
+    MapViewState,
     MonitorMode,
+    MonitorKeywordState,
     MonitorOrder,
-    TransitStatus
+    ReverseGeocodeResult,
+    RouteOverlayState,
+    ScreenScaleState,
+    ScreenState,
+    TransitStatus,
+    VehiclePoiState
   } from './modules/monitor-types'
+  import {
+    dedupeGeoPath,
+    escapeHtml,
+    estimateDistanceKm,
+    formatDateTime,
+    formatNumber,
+    formatRefreshTime,
+    formatText,
+    getDelayText,
+    getMonitorRecordId,
+    getRoutePosition,
+    isDelayed,
+    isRouteVisibleStatus,
+    normalizeVehicleTypeCode,
+    percentOf,
+    resolveArrivalPerformance,
+    resolveCurrentLabel,
+    resolveEndpointGeo,
+    resolveProgress,
+    resolveSpeed,
+    resolveTransitStatus,
+    splitRoutePath,
+    toGeoCoord
+  } from './modules/monitor-utils'
 
   defineOptions({ name: 'TmsInTransitMonitor' })
 
-  const INITIAL_MAP_CENTER: GeoCoord = [105.5, 34.2]
-  const INITIAL_MAP_ZOOM = 5
-  const MAP_MIN_ZOOM = 4
-  const MAP_MAX_ZOOM = 18
-  const DEFAULT_SCREEN_DESIGN_WIDTH = 1920
-  const DEFAULT_SCREEN_DESIGN_HEIGHT = 1080
-  const AMAP_PLUGINS = ['AMap.Scale', 'AMap.Driving', 'AMap.Geocoder']
-  const INITIAL_POI_CONCURRENCY = 4
-  const VEHICLE_TYPE_DICT_CODE = 'vehicleType'
-  const MONITOR_STATUS_DICT_CODE = 'tmsInTransitMonitorStatus'
-  const VEHICLE_IMAGE_MAP: Record<string, string> = {
-    'large-city-bus': largeCityBusImage,
-    'medium-bus': mediumBusImage,
-    'small-bus': smallBusImage,
-    'special-vehicle': specialVehicleImage,
-    truck: truckImage
-  }
-  const REALTIME_WAYBILL_STATUSES = new Set([
-    'transporting',
-    'in_transit',
-    'running',
-    'processing',
-    'in_progress',
-    'ongoing'
-  ])
-  interface ScreenState {
-    keyword: string
-    lastRefreshTime?: string
-    loading: boolean
-    orders: InTransitRecord[]
-    region: string
-    selectedOrderId?: string
-    status: TransitStatus | ''
+  interface MonitorAmapLngLatLike {
+    lng?: number
+    lat?: number
+    getLng?: () => number
+    getLat?: () => number
   }
 
-  interface MonitorKeywordState {
-    vehicle: string
-    waybill: string
+  interface MonitorAmapPixelLike {
+    x?: number
+    y?: number
+    getX?: () => number
+    getY?: () => number
   }
 
-  interface AlertItem {
-    content: string
-    key: string
-    level: 'danger' | 'warning' | 'info'
-    time: string
-    title: string
+  interface MonitorAmapMarkerInstance {
+    setContent: (content: string) => void
+    setPosition: (position: GeoCoord) => void
+    setzIndex?: (zIndex: number) => void
   }
 
-  interface MapViewState {
-    center: GeoCoord
-    zoom: number
+  interface MonitorAmapPolylineInstance {
+    setOptions?: (options: Record<string, unknown>) => void
+    setPath: (path: MonitorAmapLngLatLike[]) => void
   }
 
-  interface ScreenScaleState {
-    viewportHeight: number
-    viewportWidth: number
+  type MonitorAmapOverlay = MonitorAmapMarkerInstance | MonitorAmapPolylineInstance
+
+  interface MonitorAmapMapInstance {
+    add: (overlay: MonitorAmapOverlay | unknown) => void
+    addControl: (control: unknown) => void
+    destroy?: () => void
+    getCenter?: () => MonitorAmapLngLatLike
+    getZoom?: () => number
+    lngLatToContainer: (lngLat: MonitorAmapLngLatLike) => MonitorAmapPixelLike
+    on: (event: string, handler: () => void) => void
+    remove?: (overlay: MonitorAmapOverlay) => void
+    resize?: () => void
+    setCenter?: (center: GeoCoord) => void
+    setStatus?: (status: Record<string, boolean>) => void
+    setZoom?: (zoom: number) => void
+    setZoomAndCenter?: (zoom: number, center: GeoCoord) => void
+    zoomIn?: () => void
+    zoomOut?: () => void
   }
 
-  interface RouteOverlayState {
-    basePath: string
-    height: number
-    passedPath: string
-    remainingPath: string
-    visible: boolean
-    width: number
+  interface MonitorAmapGeocoderInstance {
+    getAddress: (
+      position: GeoCoord,
+      callback: (status: string, result: ReverseGeocodeResult) => void
+    ) => void
   }
 
-  interface VehiclePoiState {
-    coordinateKey: string
-    label: string
-    loading: boolean
+  interface MonitorAmapDrivingResult {
+    routes?: Array<{
+      steps?: Array<{
+        path?: MonitorAmapLngLatLike[]
+      }>
+    }>
   }
 
-  interface ReverseGeocodeResult {
-    regeocode?: {
-      formattedAddress?: string
-      formatted_address?: string
-      pois?: Array<{ name?: string }>
+  interface MonitorAmapDrivingInstance {
+    search: (
+      origin: MonitorAmapLngLatLike,
+      destination: MonitorAmapLngLatLike,
+      callback: (status: string, result: MonitorAmapDrivingResult) => void
+    ) => void
+  }
+
+  interface MonitorAmapNamespace {
+    Driving: new (options: Record<string, unknown>) => MonitorAmapDrivingInstance
+    DrivingPolicy?: {
+      LEAST_TIME?: unknown
     }
+    Geocoder: new (options: Record<string, unknown>) => MonitorAmapGeocoderInstance
+    LngLat: new (lng: number, lat: number) => MonitorAmapLngLatLike
+    Map: new (container: HTMLElement, options: Record<string, unknown>) => MonitorAmapMapInstance
+    Marker: new (options: Record<string, unknown>) => MonitorAmapMarkerInstance
+    Pixel: new (x: number, y: number) => unknown
+    Polyline: new (options: Record<string, unknown>) => MonitorAmapPolylineInstance
+    Scale: new () => unknown
+    plugin: (pluginName: string, callback: () => void) => void
+    [key: string]: unknown
+  }
+
+  const getLoadedAmap = (): MonitorAmapNamespace => {
+    if (!window.AMap) throw new Error('AMap SDK is not loaded')
+    return window.AMap as unknown as MonitorAmapNamespace
   }
 
   const userStore = useUserStore()
   const { getDictMap } = storeToRefs(userStore)
   const viewportRef = ref<HTMLDivElement>()
   const chartRef = ref<HTMLDivElement>()
-  const amapInstance = shallowRef<any>()
+  const amapInstance = shallowRef<MonitorAmapMapInstance>()
   const amapReady = ref(false)
   const liveTick = ref(0)
   const currentTime = ref(new Date().toISOString())
@@ -257,11 +306,6 @@
     vehicle: '',
     waybill: ''
   })
-  const monitorTabs: Array<{ label: string; value: MonitorMode }> = [
-    { label: '实时监控', value: 'realtime' },
-    { label: '运单监控', value: 'waybill' },
-    { label: '车辆监控', value: 'vehicle' }
-  ]
   const mapView: UnwrapNestedRefs<MapViewState> = reactive<MapViewState>({
     center: [...INITIAL_MAP_CENTER],
     zoom: INITIAL_MAP_ZOOM
@@ -278,15 +322,15 @@
     visible: false,
     width: 0
   })
-  const vehicleMarkers = new Map<string, any>()
+  const vehicleMarkers = new Map<string, MonitorAmapMarkerInstance>()
   const vehiclePois = reactive(new Map<string, VehiclePoiState>())
   const drivingRoutePaths = reactive(new Map<string, GeoCoord[]>())
   const drivingRouteRequests = new Set<string>()
-  let originMarker: any
-  let destinationMarker: any
-  let routeBasePolyline: any
-  let passedPolyline: any
-  let remainingPolyline: any
+  let originMarker: MonitorAmapMarkerInstance | undefined
+  let destinationMarker: MonitorAmapMarkerInstance | undefined
+  let routeBasePolyline: MonitorAmapPolylineInstance | undefined
+  let passedPolyline: MonitorAmapPolylineInstance | undefined
+  let remainingPolyline: MonitorAmapPolylineInstance | undefined
   let unsubscribeMonitorChanges: (() => void) | undefined
 
   const screen: UnwrapNestedRefs<ScreenState> = reactive<ScreenState>({
@@ -332,41 +376,6 @@
         waybill: '运单运输轨迹'
       })[activeMode.value]
   )
-
-  const stationGeoPositions: Array<{ keywords: string[]; coord: GeoCoord }> = [
-    { keywords: ['北京', '京'], coord: [116.4074, 39.9042] },
-    { keywords: ['天津'], coord: [117.2009, 39.0842] },
-    { keywords: ['太原', '晋'], coord: [112.5492, 37.8706] },
-    { keywords: ['郑州', '豫'], coord: [113.6254, 34.7466] },
-    { keywords: ['西安', '陕'], coord: [108.9402, 34.3416] },
-    { keywords: ['上海', '沪'], coord: [121.4737, 31.2304] },
-    { keywords: ['南京', '宁'], coord: [118.7969, 32.0603] },
-    { keywords: ['苏州', '苏'], coord: [120.5853, 31.2989] },
-    { keywords: ['杭州', '杭'], coord: [120.1551, 30.2741] },
-    { keywords: ['义乌', '金华'], coord: [120.0751, 29.3068] },
-    { keywords: ['武汉', '鄂'], coord: [114.3054, 30.5931] },
-    { keywords: ['长沙', '湘'], coord: [112.9388, 28.2282] },
-    { keywords: ['南昌', '赣'], coord: [115.8582, 28.682] },
-    { keywords: ['赣州'], coord: [114.935, 25.8311] },
-    { keywords: ['广州', '粤'], coord: [113.2644, 23.1291] },
-    { keywords: ['成都', '川'], coord: [104.0665, 30.5723] },
-    { keywords: ['重庆', '渝'], coord: [106.5516, 29.563] },
-    { keywords: ['贵阳', '黔'], coord: [106.6302, 26.647] },
-    { keywords: ['昆明', '滇'], coord: [102.8329, 24.8801] }
-  ]
-
-  const regionOptions = [
-    {
-      label: '华东区域',
-      value: 'east',
-      keywords: ['上海', '杭州', '南京', '苏州', '义乌', '金华']
-    },
-    { label: '华北区域', value: 'north', keywords: ['北京', '天津', '太原', '石家庄'] },
-    { label: '华中区域', value: 'central', keywords: ['郑州', '武汉', '长沙', '南昌'] },
-    { label: '华南区域', value: 'south', keywords: ['广州', '深圳', '佛山', '赣州'] },
-    { label: '西南区域', value: 'southwest', keywords: ['成都', '重庆', '贵阳', '昆明'] },
-    { label: '西北区域', value: 'northwest', keywords: ['西安', '兰州', '银川', '乌鲁木齐'] }
-  ]
 
   const monitorStatusOptions = computed<Api.DataCenter.DictListItem[]>(
     () => getDictMap.value[MONITOR_STATUS_DICT_CODE] ?? []
@@ -596,7 +605,7 @@
     const delayed = isDelayed(row)
     const status = resolveTransitStatus(row, delayed)
     const arrivalPerformance = resolveArrivalPerformance(row)
-    const progress = resolveProgress(row, id, status)
+    const progress = resolveProgress(row, id, status, liveTick.value)
     const routePath = getDrivingRoutePath(id)
     const currentGeo =
       routePath.length > 1
@@ -716,8 +725,7 @@
 
   function updateChinaMap(): void {
     const map = amapInstance.value
-    const AMap = window.AMap
-    if (!map || !AMap || !amapReady.value) return
+    if (!map || !window.AMap || !amapReady.value) return
 
     syncOnlineVehicleMarkers()
 
@@ -773,20 +781,18 @@
       activeIds.add(item.id)
       const position: GeoCoord =
         item.status === 'pending' ? item.originGeo : [item.longitude, item.latitude]
-      vehicleMarkers.set(
-        item.id,
-        upsertMarker(
-          vehicleMarkers.get(item.id),
-          position,
-          '车',
-          item.plateNo,
-          isRouteVisibleStatus(item.status) ? '#315cff' : '#d69b12',
-          {
-            image: item.vehicleImage,
-            subtitle: item.statusLabel
-          }
-        )
+      const marker = upsertMarker(
+        vehicleMarkers.get(item.id),
+        position,
+        '车',
+        item.plateNo,
+        isRouteVisibleStatus(item.status) ? '#315cff' : '#d69b12',
+        {
+          image: item.vehicleImage,
+          subtitle: item.statusLabel
+        }
       )
+      if (marker) vehicleMarkers.set(item.id, marker)
     })
 
     vehicleMarkers.forEach((marker, id) => {
@@ -809,7 +815,7 @@
     resetRouteOverlay()
   }
 
-  function removeMapObject(object: any): undefined {
+  function removeMapObject(object: MonitorAmapOverlay | undefined): undefined {
     if (object) amapInstance.value?.remove?.(object)
     return undefined
   }
@@ -855,8 +861,8 @@
     })
   }
 
-  async function loadAmap(): Promise<any> {
-    if (window.AMap) return window.AMap
+  async function loadAmap(): Promise<MonitorAmapNamespace> {
+    if (window.AMap) return getLoadedAmap()
 
     const amapKey = import.meta.env.VITE_AMAP_KEY
     if (!amapKey) throw new Error('请先配置 VITE_AMAP_KEY')
@@ -874,7 +880,7 @@
           once: true
         })
       })
-      return window.AMap
+      return getLoadedAmap()
     }
 
     await new Promise<void>((resolve, reject) => {
@@ -887,7 +893,7 @@
       document.head.appendChild(script)
     })
 
-    return window.AMap
+    return getLoadedAmap()
   }
 
   async function loadVehiclePois(): Promise<void> {
@@ -986,7 +992,7 @@
   async function ensureDrivingRoute(order: MonitorOrder): Promise<void> {
     if (drivingRoutePaths.has(order.id) || drivingRouteRequests.has(order.id)) return
 
-    const AMap = window.AMap
+    const AMap = window.AMap ? getLoadedAmap() : undefined
     if (!AMap) return
     drivingRouteRequests.add(order.id)
 
@@ -1006,7 +1012,7 @@
     }
   }
 
-  function loadAmapPlugin(AMap: any, pluginName: string): Promise<void> {
+  function loadAmapPlugin(AMap: MonitorAmapNamespace, pluginName: string): Promise<void> {
     const pluginConstructorName = pluginName.replace('AMap.', '')
     if (AMap[pluginConstructorName]) return Promise.resolve()
 
@@ -1021,7 +1027,7 @@
   }
 
   function searchDrivingRoute(
-    AMap: any,
+    AMap: MonitorAmapNamespace,
     origin: GeoCoord,
     destination: GeoCoord
   ): Promise<GeoCoord[]> {
@@ -1034,15 +1040,15 @@
       driving.search(
         new AMap.LngLat(origin[0], origin[1]),
         new AMap.LngLat(destination[0], destination[1]),
-        (status: string, result: any) => {
+        (status: string, result) => {
           if (status !== 'complete') {
             reject(new Error('驾车路线规划失败'))
             return
           }
 
           const path = (result.routes?.[0]?.steps ?? [])
-            .flatMap((step: any) => step.path ?? [])
-            .map((point: any) =>
+            .flatMap((step) => step.path ?? [])
+            .map((point) =>
               toGeoCoord(point.lng ?? point.getLng?.(), point.lat ?? point.getLat?.())
             )
             .filter((point: GeoCoord | undefined): point is GeoCoord => Boolean(point))
@@ -1053,16 +1059,16 @@
   }
 
   function upsertMarker(
-    marker: any,
+    marker: MonitorAmapMarkerInstance | undefined,
     position: GeoCoord,
     label: string,
     title: string,
     color: string,
     options: { image?: string; subtitle?: string } = {}
-  ): any {
+  ): MonitorAmapMarkerInstance | undefined {
     const map = amapInstance.value
-    const AMap = window.AMap
-    if (!map || !AMap) return marker
+    if (!map || !window.AMap) return marker
+    const AMap = getLoadedAmap()
 
     const content = options.image
       ? `<div class="transit-vehicle-marker" style="--marker-color:${color}"><i></i><img src="${options.image}" alt="${escapeHtml(options.subtitle || title)}" /><span>${escapeHtml(title)}</span></div>`
@@ -1086,17 +1092,17 @@
   }
 
   function upsertPolyline(
-    polyline: any,
+    polyline: MonitorAmapPolylineInstance | undefined,
     path: GeoCoord[],
     color: string,
     weight: number,
     dashed = false,
     zIndex = dashed ? 155 : 165,
     opacity = dashed ? 0.78 : 0.96
-  ): any {
+  ): MonitorAmapPolylineInstance | undefined {
     const map = amapInstance.value
-    const AMap = window.AMap
-    if (!map || !AMap) return polyline
+    if (!map || !window.AMap) return polyline
+    const AMap = getLoadedAmap()
     const visiblePath: GeoCoord[] = path.length > 1 ? path : path[0] ? [path[0], path[0]] : []
     const amapPath = visiblePath.map((point) => new AMap.LngLat(point[0], point[1]))
 
@@ -1227,8 +1233,8 @@
 
   function toSvgPath(path: GeoCoord[]): string {
     const map = amapInstance.value
-    const AMap = window.AMap
-    if (!map || !AMap || path.length < 2) return ''
+    if (!map || !window.AMap || path.length < 2) return ''
+    const AMap = getLoadedAmap()
 
     return path
       .map((point, index) => {
@@ -1269,10 +1275,6 @@
     return REALTIME_WAYBILL_STATUSES.has(waybillStatus)
   }
 
-  function getMonitorRecordId(row: InTransitRecord): string {
-    return String(row.id || row.waybillNo)
-  }
-
   function getPreferredMonitorRecordId(rows: InTransitRecord[]): string | undefined {
     const preferred = rows.find((row) => {
       const status = resolveTransitStatus(row, isDelayed(row))
@@ -1286,153 +1288,6 @@
     return drivingRoutePaths.get(id) ?? []
   }
 
-  function getRoutePosition(path: GeoCoord[], progress: number): { coord: GeoCoord } {
-    if (path.length === 0) return { coord: INITIAL_MAP_CENTER }
-    if (path.length === 1) return { coord: path[0] }
-
-    const targetIndex = clamp(Math.round((progress / 100) * (path.length - 1)), 0, path.length - 1)
-
-    return {
-      coord: path[targetIndex]
-    }
-  }
-
-  function splitRoutePath(
-    routePath: GeoCoord[],
-    current: GeoCoord,
-    progress: number
-  ): { passedPath: GeoCoord[]; remainingPath: GeoCoord[] } {
-    if (routePath.length <= 1) {
-      return {
-        passedPath: [current],
-        remainingPath: [current]
-      }
-    }
-
-    const segmentIndex = clamp(
-      Math.floor((progress / 100) * (routePath.length - 1)),
-      0,
-      routePath.length - 2
-    )
-
-    return {
-      passedPath: dedupeGeoPath([...routePath.slice(0, segmentIndex + 1), current]),
-      remainingPath: dedupeGeoPath([current, ...routePath.slice(segmentIndex + 1)])
-    }
-  }
-
-  function resolveEndpointGeo(
-    row: InTransitRecord,
-    endpoint: 'origin' | 'destination',
-    longitude: number | string | null | undefined,
-    latitude: number | string | null | undefined,
-    fallbackText: string
-  ): GeoCoord {
-    const directGeo = toGeoCoord(longitude, latitude)
-    if (directGeo) return directGeo
-
-    const routePointGeo = getRoutePointGeo(row, endpoint)
-    if (routePointGeo) return routePointGeo
-
-    return resolveStationGeo(fallbackText)
-  }
-
-  function getRoutePointGeo(
-    row: InTransitRecord,
-    endpoint: 'origin' | 'destination'
-  ): GeoCoord | undefined {
-    const point = row.routePoints?.find((item) => {
-      const type = String(item.type ?? '').toLowerCase()
-      if (endpoint === 'origin') return ['shipper', 'origin', 'start', 'load'].includes(type)
-      return ['receiver', 'destination', 'end', 'unload'].includes(type)
-    })
-    if (!point) return undefined
-    return toGeoCoord(point.longitude ?? point.lng, point.latitude ?? point.lat)
-  }
-
-  function toGeoCoord(
-    longitude: number | string | null | undefined,
-    latitude: number | string | null | undefined
-  ): GeoCoord | undefined {
-    const lng = Number(longitude)
-    const lat = Number(latitude)
-    if (!Number.isFinite(lng) || !Number.isFinite(lat)) return undefined
-    if (Math.abs(lng) > 180 || Math.abs(lat) > 90) return undefined
-    return [Number(lng.toFixed(6)), Number(lat.toFixed(6))]
-  }
-
-  function resolveStationGeo(text: string): GeoCoord {
-    const normalized = text.trim()
-    const matched = stationGeoPositions.find((item) =>
-      item.keywords.some((keyword) => normalized.includes(keyword))
-    )
-    if (matched) return matched.coord
-
-    const hash = hashText(normalized)
-    return [86 + (hash % 36), 22 + ((hash >> 3) % 20)]
-  }
-
-  function resolveProgress(row: InTransitRecord, seed: string, status: TransitStatus): number {
-    if (status === 'pending') return 0
-    if (status === 'arrived') return 100
-
-    const departure = dayjs(row.loadedAt || row.plannedLoadTime || row.order?.plannedDepartureTime)
-    const arrival = dayjs(row.plannedUnloadTime || row.order?.plannedArrivalTime)
-    if (departure.isValid() && arrival.isValid() && arrival.isAfter(departure)) {
-      const total = arrival.diff(departure)
-      const elapsed = dayjs().diff(departure)
-      const liveOffset = ((liveTick.value + hashText(seed)) % 8) * 0.45
-      return clamp(Math.round((elapsed / total) * 100 + liveOffset), 32, 94)
-    }
-
-    return clamp(48 + (hashText(row.waybillNo) % 36) + (liveTick.value % 6), 32, 94)
-  }
-
-  function resolveCurrentLabel(row: InTransitRecord, progress: number): string {
-    const status = resolveTransitStatus(row, isDelayed(row))
-    if (status === 'pending') return row.originCity || '待处理'
-    if (status === 'arrived') return row.destinationCity || '已到达'
-    if (progress > 80) return row.destinationCity || '目的地附近'
-    if (progress > 48 && row.order?.transferStation) return row.order.transferStation
-    return '在途'
-  }
-
-  function isDelayed(row: InTransitRecord): boolean {
-    const plannedUnloadTime = row.plannedUnloadTime || row.order?.plannedArrivalTime
-    const waybillStatus = String(row.status ?? '').toLowerCase()
-    const orderStatus = String(row.order?.orderStatus ?? '').toLowerCase()
-    if (
-      !plannedUnloadTime ||
-      row.unloadedAt ||
-      waybillStatus === 'completed' ||
-      ['signed', 'completed'].includes(orderStatus)
-    ) {
-      return false
-    }
-    const arrival = dayjs(plannedUnloadTime)
-    return arrival.isValid() && dayjs().isAfter(arrival)
-  }
-
-  function getDelayText(value?: string | null): string {
-    const arrival = dayjs(value)
-    if (!arrival.isValid()) return ''
-    const hours = Math.max(1, dayjs().diff(arrival, 'hour'))
-    return `${hours}h`
-  }
-
-  function resolveArrivalPerformance(row: InTransitRecord): { delayed: boolean; text: string } {
-    const planned = dayjs(row.plannedUnloadTime || row.order?.plannedArrivalTime)
-    const actual = dayjs(row.unloadedAt || row.order?.signedAt || row.updateTime)
-    if (!planned.isValid() || !actual.isValid()) return { delayed: false, text: '准时' }
-
-    const delayedMinutes = actual.diff(planned, 'minute')
-    if (delayedMinutes <= 0) return { delayed: false, text: '准时' }
-
-    const delayText =
-      delayedMinutes < 60 ? `${delayedMinutes}m` : `${Number((delayedMinutes / 60).toFixed(1))}h`
-    return { delayed: true, text: `延误${delayText}` }
-  }
-
   function getMonitorStatusItem(status: TransitStatus): Api.DataCenter.DictListItem | undefined {
     return monitorStatusOptions.value.find((item) => String(item.value) === status)
   }
@@ -1443,55 +1298,6 @@
 
   function getMonitorStatusColor(status: TransitStatus): string {
     return getMonitorStatusItem(status)?.color || '#409EFF'
-  }
-
-  function resolveTransitStatus(row: InTransitRecord, delayed: boolean): TransitStatus {
-    if (delayed) return 'delayed'
-
-    const rawStatus = String(row.status || row.order?.orderStatus || '')
-      .trim()
-      .toLowerCase()
-    if (['completed', 'signed'].includes(rawStatus) || row.unloadedAt) return 'arrived'
-
-    const runningStatuses = [
-      'accepted',
-      'loading',
-      'transporting',
-      'unloading',
-      'in_transit',
-      'running',
-      'processing',
-      'in_progress',
-      'ongoing'
-    ]
-    return runningStatuses.includes(rawStatus) ? 'transporting' : 'pending'
-  }
-
-  function isRouteVisibleStatus(status: TransitStatus): boolean {
-    return ['transporting', 'delayed'].includes(status)
-  }
-
-  function resolveSpeed(row: InTransitRecord, status: TransitStatus, seed: string): number {
-    const speed = Number(row.speedKmh)
-    if (Number.isFinite(speed) && speed >= 0) return Math.round(speed)
-    return ['transporting', 'delayed'].includes(status) ? 58 + (hashText(seed) % 28) : 0
-  }
-
-  function estimateDistanceKm(origin: GeoCoord, destination: GeoCoord): number {
-    const radius = 6371
-    const toRad = (value: number) => (value * Math.PI) / 180
-    const lngDiff = toRad(destination[0] - origin[0])
-    const latDiff = toRad(destination[1] - origin[1])
-    const startLat = toRad(origin[1])
-    const endLat = toRad(destination[1])
-    const factor =
-      Math.sin(latDiff / 2) ** 2 +
-      Math.cos(startLat) * Math.cos(endLat) * Math.sin(lngDiff / 2) ** 2
-
-    return Math.max(
-      30,
-      Math.round(radius * 2 * Math.atan2(Math.sqrt(factor), Math.sqrt(1 - factor)))
-    )
   }
 
   function selectOrder(id: string): void {
@@ -1514,36 +1320,6 @@
     ElMessage.success(`已向 ${activeOrder.value.plateNo} 发送在途提醒`)
   }
 
-  function formatDateTime(value?: string | null): string {
-    return formatWithDayjs(value, 'HH:mm') || '--'
-  }
-
-  function formatRefreshTime(value?: string): string {
-    return formatWithDayjs(value, 'HH:mm:ss') || '--'
-  }
-
-  function formatNumber(value?: number | string | null, precision = 2): string {
-    const numeric = Number(value ?? 0)
-    if (!Number.isFinite(numeric)) return '0'
-    return numeric
-      .toFixed(precision)
-      .replace(/(\.\d*?)0+$/, '$1')
-      .replace(/\.$/, '')
-  }
-
-  function formatText(value?: string | number | null, fallback = '-'): string {
-    const text = String(value ?? '').trim()
-    return text || fallback
-  }
-
-  function normalizeVehicleTypeCode(value?: string | number | null): string {
-    return String(value ?? '').trim()
-  }
-
-  function getVehicleImage(vehicleTypeCode: string): string {
-    return VEHICLE_IMAGE_MAP[vehicleTypeCode] ?? defaultVehicleImage
-  }
-
   function getDictLabel(dictCode: string, value?: string | number | null, fallback = '-'): string {
     const normalizedValue = String(value ?? '').trim()
     if (!normalizedValue) return fallback
@@ -1553,586 +1329,6 @@
     )
     return dictItem?.label || dictItem?.name || fallback
   }
-
-  function dedupeGeoPath(path: GeoCoord[]): GeoCoord[] {
-    return path.reduce<GeoCoord[]>((result, point) => {
-      const previous = result[result.length - 1]
-      if (!previous || previous[0] !== point[0] || previous[1] !== point[1]) {
-        result.push(point)
-      }
-      return result
-    }, [])
-  }
-
-  function escapeHtml(value: string): string {
-    return value.replace(
-      /[&<>"']/g,
-      (char) =>
-        ({
-          '&': '&amp;',
-          '<': '&lt;',
-          '>': '&gt;',
-          '"': '&quot;',
-          "'": '&#39;'
-        })[char] ?? char
-    )
-  }
-
-  function clamp(value: number, min: number, max: number): number {
-    return Math.min(Math.max(value, min), max)
-  }
-
-  function percentOf(value: number, total: number): number {
-    return total > 0 ? clamp(Math.round((value / total) * 100), 0, 100) : 0
-  }
-
-  function hashText(value?: string | number | null): number {
-    const text = String(value ?? '')
-    return Array.from(text).reduce((hash, char) => hash + char.charCodeAt(0), 0)
-  }
 </script>
 
-<style scoped lang="scss">
-  .transit-screen {
-    position: fixed;
-    inset: 0;
-    z-index: 2600;
-    overflow: hidden;
-    color: #eef7ff;
-    background:
-      radial-gradient(circle at 18% 18%, rgb(40 190 167 / 16%), transparent 30%),
-      radial-gradient(circle at 82% 30%, rgb(255 178 78 / 14%), transparent 28%),
-      linear-gradient(135deg, #071019 0%, #0d1a20 48%, #130f1d 100%);
-
-    &__viewport {
-      position: absolute;
-      inset: 0;
-      overflow: hidden;
-    }
-
-    &__stage {
-      position: absolute;
-      top: 0;
-      left: 0;
-      display: grid;
-      grid-template-rows: 72px minmax(0, 1fr);
-      overflow: hidden;
-      transform-origin: 0 0;
-      will-change: transform;
-    }
-
-    &__header {
-      position: relative;
-      z-index: 20;
-      display: flex;
-      gap: 28px;
-      align-items: center;
-      padding: 10px 12px;
-      background: rgb(29 43 62 / 96%);
-      border-radius: var(--el-border-radius-base);
-
-      h1 {
-        margin: 0;
-        font-size: 24px;
-        font-weight: 800;
-        line-height: 1;
-        color: #f7fbff;
-        letter-spacing: 0;
-      }
-    }
-
-    &__body {
-      position: relative;
-      min-height: 0;
-      overflow: hidden;
-    }
-
-    &__left,
-    &__right {
-      position: absolute;
-      top: 14px;
-      bottom: 16px;
-      z-index: 12;
-      display: grid;
-      gap: 12px;
-      width: 296px;
-      min-height: 0;
-    }
-
-    &__left {
-      left: 16px;
-      grid-template-rows: auto minmax(0, 1fr);
-      width: 340px;
-    }
-
-    &__right {
-      right: 16px;
-      grid-template-rows: minmax(0, 1fr);
-      width: 318px;
-    }
-  }
-
-  .screen-tabs {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-
-    button {
-      min-width: 84px;
-      height: 32px;
-      padding: 0 16px;
-      font-size: 14px;
-      font-weight: 700;
-      color: #dce9f6;
-      cursor: pointer;
-      background: rgb(255 255 255 / 10%);
-      border: 0;
-      border-radius: var(--el-border-radius-small);
-
-      &.is-active {
-        color: #fff;
-        background: #2f66ff;
-      }
-    }
-  }
-
-  .header-status {
-    display: flex;
-    gap: 30px;
-    align-items: center;
-    margin-left: auto;
-    font-size: 14px;
-
-    strong {
-      font-size: 15px;
-      color: #fff;
-    }
-
-    span {
-      display: inline-flex;
-      gap: 8px;
-      align-items: center;
-      color: #eef7ff;
-
-      i {
-        width: 7px;
-        height: 7px;
-        background: #23d18b;
-        border-radius: 50%;
-      }
-    }
-
-    button {
-      height: 34px;
-      padding: 0 16px;
-      font-weight: 700;
-      color: #f4f8ff;
-      cursor: pointer;
-      background: rgb(255 255 255 / 12%);
-      border: 0;
-      border-radius: var(--el-border-radius-small);
-    }
-  }
-
-  .screen-panel {
-    min-width: 0;
-    min-height: 0;
-    padding: 14px;
-    background: rgb(16 31 47 / 86%);
-    border: 0;
-    border-radius: var(--el-border-radius-base);
-    box-shadow: 0 16px 38px rgb(0 0 0 / 20%);
-    backdrop-filter: blur(10px);
-
-    &__title {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 12px;
-
-      strong {
-        font-size: 15px;
-        color: #f7fbff;
-      }
-
-      span {
-        font-size: 12px;
-        color: #8fb2c6;
-      }
-    }
-
-    &--alerts {
-      display: flex;
-      flex-direction: column;
-    }
-  }
-
-  .progress-lines {
-    display: grid;
-    gap: 12px;
-  }
-
-  .progress-line {
-    div {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 6px;
-      font-size: 12px;
-      color: #b9d8e7;
-    }
-
-    i {
-      display: block;
-      height: 6px;
-      overflow: hidden;
-      background: rgb(255 255 255 / 10%);
-      border-radius: 999px;
-
-      b {
-        display: block;
-        height: 100%;
-        border-radius: inherit;
-      }
-    }
-  }
-
-  .alert-list {
-    flex: 1;
-    min-height: 0;
-  }
-
-  .monitor-map {
-    position: absolute;
-    inset: 0;
-    overflow: hidden;
-    background: #020611;
-
-    &__chart {
-      position: absolute;
-      inset: 0;
-      z-index: 1;
-      pointer-events: auto;
-      touch-action: none;
-      cursor: grab;
-
-      &:active {
-        cursor: grabbing;
-      }
-    }
-
-    &__route-overlay {
-      position: absolute;
-      inset: 0;
-      z-index: 4;
-      width: 100%;
-      height: 100%;
-      pointer-events: none;
-    }
-
-    :deep(.amap-container) {
-      width: 100% !important;
-      height: 100% !important;
-      pointer-events: auto !important;
-      touch-action: none !important;
-      background: #020611 !important;
-    }
-
-    :deep(.amap-maps),
-    :deep(.amap-layers),
-    :deep(.amap-layer),
-    :deep(.amap-tile),
-    :deep(.amap-vector-layer) {
-      width: 100% !important;
-      height: 100% !important;
-    }
-
-    :deep(.amap-container img) {
-      max-width: none !important;
-    }
-
-    :deep(.amap-layer) {
-      opacity: 1 !important;
-    }
-
-    &__heading {
-      position: absolute;
-      top: 16px;
-      left: 50%;
-      z-index: 8;
-      display: grid;
-      gap: 4px;
-      text-align: center;
-      transform: translateX(-50%);
-
-      strong {
-        font-size: 16px;
-      }
-
-      span {
-        font-size: 12px;
-        color: #8fb2c6;
-      }
-    }
-
-    &__track-chip {
-      position: absolute;
-      top: 62px;
-      left: 50%;
-      z-index: 8;
-      max-width: 360px;
-      padding: 6px 12px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      font-size: 12px;
-      color: #dcecf6;
-      white-space: nowrap;
-      background: rgb(16 31 47 / 84%);
-      border-radius: 999px;
-      box-shadow: 0 8px 20px rgb(0 0 0 / 18%);
-      backdrop-filter: blur(8px);
-      transform: translateX(-50%);
-    }
-
-    &__tools {
-      position: absolute;
-      top: 14px;
-      right: 350px;
-      z-index: 10;
-      display: flex;
-      gap: 6px;
-
-      &.is-wide {
-        right: 16px;
-      }
-
-      :deep(.el-button) {
-        width: 32px;
-        height: 32px;
-        margin: 0;
-        color: #dcecf6;
-        background: rgb(16 31 47 / 88%);
-        border: 1px solid rgb(143 178 198 / 22%);
-
-        &:hover {
-          color: #fff;
-          background: #315cff;
-        }
-      }
-    }
-  }
-
-  .route-line {
-    fill: none;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-
-    &--base {
-      filter: drop-shadow(0 0 9px rgb(76 125 255 / 54%));
-      stroke: rgb(110 200 255 / 44%);
-      stroke-width: 14;
-    }
-
-    &--remaining {
-      stroke: rgb(142 211 255 / 88%);
-      stroke-width: 7;
-    }
-
-    &--passed {
-      filter: drop-shadow(0 0 8px rgb(49 92 255 / 66%));
-      stroke: #315cff;
-      stroke-width: 8;
-    }
-  }
-
-  .map-float {
-    position: absolute;
-    left: 372px;
-    z-index: 9;
-    width: 300px;
-
-    &--overview {
-      top: 14px;
-    }
-
-    &--alerts {
-      bottom: 16px;
-      display: flex;
-      flex-direction: column;
-      max-height: 238px;
-    }
-  }
-
-  :global(.transit-amap-marker) {
-    display: inline-flex;
-    gap: 6px;
-    align-items: center;
-    min-width: 0;
-    padding: 5px 8px 5px 5px;
-    white-space: nowrap;
-    background: rgb(9 21 34 / 92%);
-    border: 1px solid rgb(255 255 255 / 34%);
-    border-radius: 999px;
-    box-shadow: 0 8px 18px rgb(0 0 0 / 24%);
-  }
-
-  :global(.transit-amap-marker b) {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 24px;
-    height: 24px;
-    font-size: 12px;
-    color: #fff;
-    background: var(--marker-color);
-    border-radius: 50%;
-  }
-
-  :global(.transit-amap-marker span) {
-    max-width: 160px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    font-size: 12px;
-    font-weight: 700;
-    color: #f7fbff;
-  }
-
-  :global(.transit-amap-marker em) {
-    max-width: 104px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    font-size: 11px;
-    font-style: normal;
-    color: #96d8ff;
-  }
-
-  :global(.transit-vehicle-marker) {
-    position: relative;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 44px;
-    height: 34px;
-    transform: translateZ(0);
-  }
-
-  :global(.transit-vehicle-marker i) {
-    position: absolute;
-    inset: -12px -16px;
-    background: radial-gradient(
-      circle,
-      rgb(35 209 139 / 38%) 0%,
-      rgb(76 125 255 / 16%) 44%,
-      transparent 68%
-    );
-    border-radius: 999px;
-    animation: transitVehiclePulse 1.35s ease-in-out infinite;
-  }
-
-  :global(.transit-vehicle-marker img) {
-    position: relative;
-    z-index: 1;
-    width: 42px;
-    height: 28px;
-    object-fit: contain;
-    filter: drop-shadow(0 8px 12px rgb(0 0 0 / 42%));
-    animation: transitVehicleFloat 1.8s ease-in-out infinite;
-  }
-
-  :global(.transit-vehicle-marker span) {
-    position: absolute;
-    bottom: 34px;
-    left: 50%;
-    z-index: 2;
-    max-width: 120px;
-    padding: 5px 9px;
-    overflow: visible;
-    font-size: 12px;
-    font-weight: 700;
-    line-height: 18px;
-    color: #263243;
-    white-space: nowrap;
-    background: #fff;
-    border: 0;
-    border-radius: var(--el-border-radius-small);
-    box-shadow: 0 5px 16px rgb(0 0 0 / 30%);
-    transform: translateX(-50%);
-  }
-
-  :global(.transit-vehicle-marker span::after) {
-    position: absolute;
-    bottom: -5px;
-    left: 50%;
-    width: 10px;
-    height: 10px;
-    content: '';
-    background: #fff;
-    transform: translateX(-50%) rotate(45deg);
-  }
-
-  .alert-item {
-    display: grid;
-    grid-template-columns: 8px minmax(0, 1fr) auto;
-    gap: 10px;
-    align-items: start;
-    padding: 10px 0;
-    border-bottom: 1px solid rgb(255 255 255 / 7%);
-
-    strong {
-      font-size: 13px;
-      color: #fff;
-    }
-
-    p {
-      margin: 4px 0 0;
-      font-size: 12px;
-      color: #91adbe;
-    }
-
-    span {
-      font-size: 12px;
-      color: #8fb2c6;
-    }
-
-    &__level {
-      width: 4px;
-      height: 34px;
-      border-radius: 999px;
-
-      &--danger {
-        background: #ff5c6c;
-      }
-
-      &--warning {
-        background: #ffb04f;
-      }
-
-      &--info {
-        background: #4c7dff;
-      }
-    }
-  }
-
-  @keyframes transitVehiclePulse {
-    0%,
-    100% {
-      opacity: 0.35;
-      transform: scale(0.86);
-    }
-
-    50% {
-      opacity: 1;
-      transform: scale(1.12);
-    }
-  }
-
-  @keyframes transitVehicleFloat {
-    0%,
-    100% {
-      transform: translateX(-1px);
-    }
-
-    50% {
-      transform: translateX(2px);
-    }
-  }
-</style>
+<style scoped lang="scss" src="./modules/in-transit-monitor.scss"></style>

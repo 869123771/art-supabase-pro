@@ -193,8 +193,7 @@
     emit(
       'update:modelValue',
       (multiple ? fileList.value.map((file) => file.url!) : (fileList.value[0]?.url ?? '')) as
-        | string
-        | string[]
+        string | string[]
     )
   }
 

@@ -1,4 +1,4 @@
-import type { Ref } from 'vue'
+import type { Ref, VNodeChild } from 'vue'
 import type { DrawerPropsPublic } from 'element-plus'
 import type {
   ArtOverlayExpose,
@@ -69,9 +69,9 @@ export interface ArtDrawerSlotProps<TData = unknown> {
 }
 
 export interface ArtDrawerSlots<TData = unknown> {
-  default?: (props: ArtDrawerSlotProps<TData> & { loading: boolean }) => any
-  header?: (props: ArtDrawerSlotProps<TData>) => any
-  footer?: (props: ArtDrawerSlotProps<TData> & { loading: boolean }) => any
+  default?: (props: ArtDrawerSlotProps<TData> & { loading: boolean }) => VNodeChild
+  header?: (props: ArtDrawerSlotProps<TData>) => VNodeChild
+  footer?: (props: ArtDrawerSlotProps<TData> & { loading: boolean }) => VNodeChild
 }
 
 export type { ArtScrollOptions }

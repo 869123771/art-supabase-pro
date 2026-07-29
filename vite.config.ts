@@ -12,6 +12,7 @@ import ElementPlus from 'unplugin-element-plus/vite'
 import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
 import tailwindcss from '@tailwindcss/vite'
 import { fileViewerRenderers } from '@file-viewer/vite-plugin'
+import { visualizer } from 'rollup-plugin-visualizer'
 
 // 添加插件用于生成 .nojekyll 文件
 import { createNoJekyllPlugin } from './src/plugins/nojekyll'
@@ -45,6 +46,8 @@ export default ({ mode }: { mode: string }) => {
     env
   const isProduction = mode === 'production'
   const enableBuildCompression = env.VITE_BUILD_COMPRESS === 'true'
+  const enableBundleAnalyzer =
+    env.VITE_BUILD_ANALYZE === 'true' || process.env.VITE_BUILD_ANALYZE === 'true'
   const enableVueDevTools = env.VITE_DEVTOOLS === 'true'
   const enableFileViewerPlugin = isProduction || env.VITE_FILE_VIEWER === 'true'
   const enableFileViewerAssets = isProduction || env.VITE_FILE_VIEWER_ASSETS === 'true'
@@ -99,6 +102,48 @@ export default ({ mode }: { mode: string }) => {
         output: {
           codeSplitting: {
             groups: [
+              {
+                name: 'file-viewer',
+                test: (id) =>
+                  matchPackages(id, [
+                    '@file-viewer',
+                    '@ljheee/xmind-parser',
+                    'ag-psd',
+                    'avsc',
+                    'jszip',
+                    'libarchive.js',
+                    'rtf.js',
+                    'mermaid',
+                    '@mermaid-js/parser',
+                    'pdfjs-dist',
+                    'maplibre-gl',
+                    'heic2any',
+                    'cytoscape',
+                    'cytoscape-cose-bilkent',
+                    'cytoscape-fcose',
+                    'layout-base',
+                    'cose-base',
+                    'three',
+                    'billboard.js',
+                    'katex',
+                    'epubjs',
+                    'plantuml-encoder',
+                    '@kenjiuno/msgreader',
+                    'hyparquet',
+                    'postal-mime',
+                    '@myriaddreamin/typst-ts-renderer',
+                    'sql.js',
+                    'cfb',
+                    'dompurify',
+                    'iconv-lite'
+                  ]),
+                priority: 50
+              },
+              {
+                name: 'media',
+                test: (id) => matchPackages(id, ['xgplayer', 'hls.js']),
+                priority: 45
+              },
               {
                 name: 'monaco',
                 test: (id) =>
@@ -204,7 +249,17 @@ export default ({ mode }: { mode: string }) => {
         : []),
       ...(!isProduction && enableVueDevTools ? [vueDevTools()] : []),
       // 创建 .nojekyll 文件，禁用 Jekyll 处理
-      createNoJekyllPlugin(outDir)
+      createNoJekyllPlugin(outDir),
+      ...(enableBundleAnalyzer
+        ? [
+            visualizer({
+              filename: '.bundle-stats.html',
+              open: false,
+              gzipSize: true,
+              brotliSize: true
+            })
+          ]
+        : [])
       // 打包分析
       // visualizer({
       //   open: true,
@@ -234,11 +289,7 @@ export default ({ mode }: { mode: string }) => {
         // 预打包 Monaco Editor 的核心和语言 Worker 文件
         'monaco-editor/esm/vs/editor/editor.worker',
         'monaco-editor/esm/vs/language/json/json.worker',
-        'monaco-editor/esm/vs/language/css/css.worker',
-        'monaco-editor/esm/vs/language/html/html.worker',
-        'monaco-editor/esm/vs/language/typescript/ts.worker', // 对JS/TS提示至关重要
-        'monaco-sql-languages/esm/languages/pgsql/pgsql.worker.js', // 关键
-        'monaco-sql-languages/esm/languages/mysql/mysql.worker.js'
+        'monaco-sql-languages/esm/languages/pgsql/pgsql.worker.js'
       ]
     },
     css: {

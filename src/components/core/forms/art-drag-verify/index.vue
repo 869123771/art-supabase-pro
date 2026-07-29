@@ -44,7 +44,11 @@
   defineOptions({ name: 'ArtDragVerify' })
 
   // 事件定义
-  const emit = defineEmits(['handlerMove', 'update:value', 'passCallback'])
+  const emit = defineEmits<{
+    handlerMove: []
+    'update:value': [value: boolean]
+    passCallback: []
+  }>()
 
   // 组件属性接口定义
   interface PropsType {
@@ -117,10 +121,10 @@
   const { isOk } = toRefs(state)
 
   // DOM 元素引用
-  const dragVerify = ref()
-  const messageRef = ref()
-  const handler = ref()
-  const progressBar = ref()
+  const dragVerify = ref<HTMLElement>()
+  const messageRef = ref<HTMLElement>()
+  const handler = ref<HTMLElement>()
+  const progressBar = ref<HTMLElement>()
 
   // 触摸事件变量 - 用于禁止页面滑动
   let startX: number, startY: number, moveX: number, moveY: number
@@ -129,18 +133,33 @@
    * 触摸开始事件处理
    * @param e 触摸事件对象
    */
-  const onTouchStart = (e: any) => {
-    startX = e.targetTouches[0].pageX
-    startY = e.targetTouches[0].pageY
+  const getTouchPoint = (event: TouchEvent): Touch | undefined =>
+    event.targetTouches[0] ?? event.changedTouches[0]
+
+  const getEventPageX = (event: MouseEvent | TouchEvent): number => {
+    if (event instanceof MouseEvent) return event.pageX
+
+    return getTouchPoint(event)?.pageX ?? 0
+  }
+
+  const onTouchStart = (e: TouchEvent) => {
+    const touch = getTouchPoint(e)
+    if (!touch) return
+
+    startX = touch.pageX
+    startY = touch.pageY
   }
 
   /**
    * 触摸移动事件处理 - 判断是否为横向滑动，如果是则阻止默认行为
    * @param e 触摸事件对象
    */
-  const onTouchMove = (e: any) => {
-    moveX = e.targetTouches[0].pageX
-    moveY = e.targetTouches[0].pageY
+  const onTouchMove = (e: TouchEvent) => {
+    const touch = getTouchPoint(e)
+    if (!touch) return
+
+    moveX = touch.pageX
+    moveY = touch.pageY
 
     // 如果横向移动距离大于纵向移动距离，阻止默认行为（防止页面滑动）
     if (Math.abs(moveX - startX) > Math.abs(moveY - startY)) {
@@ -149,9 +168,6 @@
   }
 
   // 全局事件监听器添加
-  document.addEventListener('touchstart', onTouchStart)
-  document.addEventListener('touchmove', onTouchMove, { passive: false })
-
   // 获取数值形式的宽度
   const getNumericWidth = (): number => {
     if (typeof props.width === 'string') {
@@ -232,13 +248,12 @@
    * 拖拽开始处理函数
    * @param e 鼠标或触摸事件对象
    */
-  const dragStart = (e: any) => {
-    if (!props.value) {
+  const dragStart = (e: MouseEvent | TouchEvent) => {
+    if (!props.value && handler.value) {
       state.isMoving = true
       handler.value.style.transition = 'none'
       // 计算拖拽起始位置
-      state.x =
-        (e.pageX || e.touches[0].pageX) - parseInt(handler.value.style.left.replace('px', ''), 10)
+      state.x = getEventPageX(e) - parseInt(handler.value.style.left.replace('px', ''), 10)
     }
     emit('handlerMove')
   }
@@ -247,11 +262,11 @@
    * 拖拽移动处理函数
    * @param e 鼠标或触摸事件对象
    */
-  const dragMoving = (e: any) => {
-    if (state.isMoving && !props.value) {
+  const dragMoving = (e: MouseEvent | TouchEvent) => {
+    if (state.isMoving && !props.value && handler.value && progressBar.value) {
       const numericWidth = getNumericWidth()
       // 计算当前位置
-      let _x = (e.pageX || e.touches[0].pageX) - state.x
+      const _x = getEventPageX(e) - state.x
 
       // 在有效范围内移动
       if (_x > 0 && _x <= numericWidth - props.height) {
@@ -270,11 +285,11 @@
    * 拖拽结束处理函数
    * @param e 鼠标或触摸事件对象
    */
-  const dragFinish = (e: any) => {
-    if (state.isMoving && !props.value) {
+  const dragFinish = (e: MouseEvent | TouchEvent) => {
+    if (state.isMoving && !props.value && handler.value && progressBar.value) {
       const numericWidth = getNumericWidth()
       // 计算最终位置
-      let _x = (e.pageX || e.changedTouches[0].pageX) - state.x
+      const _x = getEventPageX(e) - state.x
 
       if (_x < numericWidth - props.height) {
         // 未拖拽到末端，重置位置
@@ -301,10 +316,13 @@
     emit('update:value', true)
     state.isMoving = false
     // 更新样式为成功状态
-    progressBar.value.style.background = props.completedBg
-    messageRef.value.style['-webkit-text-fill-color'] = 'unset'
-    messageRef.value.style.animation = 'slidetounlock2 2s cubic-bezier(0, 0.2, 1, 1) infinite'
-    messageRef.value.style.color = '#fff'
+    progressBar.value?.style.setProperty('background', props.completedBg)
+    messageRef.value?.style.setProperty('-webkit-text-fill-color', 'unset')
+    messageRef.value?.style.setProperty(
+      'animation',
+      'slidetounlock2 2s cubic-bezier(0, 0.2, 1, 1) infinite'
+    )
+    messageRef.value?.style.setProperty('color', '#fff')
     emit('passCallback')
   }
 
@@ -313,13 +331,16 @@
    */
   const reset = () => {
     // 重置滑块位置
-    handler.value.style.left = '0'
-    progressBar.value.style.width = '0'
-    progressBar.value.style.background = props.progressBarBg
+    handler.value?.style.setProperty('left', '0')
+    progressBar.value?.style.setProperty('width', '0')
+    progressBar.value?.style.setProperty('background', props.progressBarBg)
     // 重置文本样式
-    messageRef.value.style['-webkit-text-fill-color'] = 'transparent'
-    messageRef.value.style.animation = 'slidetounlock 2s cubic-bezier(0, 0.2, 1, 1) infinite'
-    messageRef.value.style.color = props.background
+    messageRef.value?.style.setProperty('-webkit-text-fill-color', 'transparent')
+    messageRef.value?.style.setProperty(
+      'animation',
+      'slidetounlock 2s cubic-bezier(0, 0.2, 1, 1) infinite'
+    )
+    messageRef.value?.style.setProperty('color', props.background)
     // 重置状态
     emit('update:value', false)
     state.isOk = false

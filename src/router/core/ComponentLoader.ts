@@ -7,20 +7,24 @@
  * @author Art Design Pro Team
  */
 
-import { h } from 'vue'
+import { h, type Component } from 'vue'
+
+type AsyncRouteComponent = () => Promise<Component>
+type RouteComponentModule = { default: Component }
+type RouteComponentLoader = () => Promise<RouteComponentModule>
 
 export class ComponentLoader {
-  private modules: Record<string, () => Promise<any>>
+  private modules: Record<string, RouteComponentLoader>
 
   constructor() {
     // 动态导入 views 目录下所有 .vue 组件
-    this.modules = import.meta.glob('../../views/**/*.vue')
+    this.modules = import.meta.glob<RouteComponentModule>('../../views/**/*.vue')
   }
 
   /**
    * 加载组件
    */
-  load(componentPath: string): () => Promise<any> {
+  load(componentPath: string): AsyncRouteComponent {
     if (!componentPath) {
       return this.createEmptyComponent()
     }
@@ -39,27 +43,39 @@ export class ComponentLoader {
       return this.createErrorComponent(componentPath)
     }
 
-    return module
+    return async () => {
+      const componentModule = await module()
+
+      return componentModule.default
+    }
   }
 
   /**
    * 加载布局组件
    */
-  loadLayout(): () => Promise<any> {
-    return () => import('@/views/index/index.vue')
+  loadLayout(): AsyncRouteComponent {
+    return async () => {
+      const componentModule = await import('@/views/index/index.vue')
+
+      return componentModule.default
+    }
   }
 
   /**
    * 加载 iframe 组件
    */
-  loadIframe(): () => Promise<any> {
-    return () => import('@/views/outside/Iframe.vue')
+  loadIframe(): AsyncRouteComponent {
+    return async () => {
+      const componentModule = await import('@/views/outside/Iframe.vue')
+
+      return componentModule.default
+    }
   }
 
   /**
    * 创建空组件
    */
-  private createEmptyComponent(): () => Promise<any> {
+  private createEmptyComponent(): AsyncRouteComponent {
     return () =>
       Promise.resolve({
         render() {
@@ -71,7 +87,7 @@ export class ComponentLoader {
   /**
    * 创建错误提示组件
    */
-  private createErrorComponent(componentPath: string): () => Promise<any> {
+  private createErrorComponent(componentPath: string): AsyncRouteComponent {
     return () =>
       Promise.resolve({
         render() {

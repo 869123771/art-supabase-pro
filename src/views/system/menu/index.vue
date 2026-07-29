@@ -285,10 +285,7 @@
   }
 
   const responseAdapter = (response: { data: AppRouteRecord[] }): ApiResponse<AppRouteRecord> => {
-    const treeData = treeUtils.listToTree(
-      response.data,
-      (a, b) => a.sort - b.sort
-    ) as AppRouteRecord[]
+    const treeData = treeUtils.listToTree(response.data, (a, b) => (a.sort ?? 0) - (b.sort ?? 0))
     tableData.value = treeData
     if (isExpanded.value) {
       expandRowKeys.value = getExpandableRowKeys(treeData)

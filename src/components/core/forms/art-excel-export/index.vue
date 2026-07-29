@@ -120,7 +120,7 @@
     constructor(
       message: string,
       public code: string,
-      public details?: any
+      public details?: unknown
     ) {
       super(message)
       this.name = 'ExportError'

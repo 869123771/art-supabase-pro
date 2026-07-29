@@ -4,7 +4,9 @@ import { openFilePreview, type FilePreviewTarget } from '@/hooks/core/useFilePre
 
 export type ExcelCellValue = string | number | boolean | null | undefined | Date
 
-export interface ExcelColumn<TRecord extends Record<string, any> = Record<string, any>> {
+export type ExcelRecord = Record<string, unknown>
+
+export interface ExcelColumn<TRecord extends ExcelRecord = ExcelRecord> {
   key: keyof TRecord | string
   title: string
   width?: number
@@ -12,7 +14,7 @@ export interface ExcelColumn<TRecord extends Record<string, any> = Record<string
   formatter?: (value: unknown, row: TRecord, index: number) => ExcelCellValue
 }
 
-export interface ExportExcelOptions<TRecord extends Record<string, any> = Record<string, any>> {
+export interface ExportExcelOptions<TRecord extends ExcelRecord = ExcelRecord> {
   data: TRecord[]
   columns: ExcelColumn<TRecord>[]
   filename?: string
@@ -50,7 +52,7 @@ const calculateExcelColumnWidths = (
   })
 }
 
-export const buildExcelRows = <TRecord extends Record<string, any>>(
+export const buildExcelRows = <TRecord extends ExcelRecord>(
   data: TRecord[],
   columns: ExcelColumn<TRecord>[],
   options: Pick<ExportExcelOptions<TRecord>, 'autoIndex' | 'indexColumnTitle'> = {}
@@ -72,7 +74,7 @@ export const buildExcelRows = <TRecord extends Record<string, any>>(
   })
 }
 
-export const exportExcel = <TRecord extends Record<string, any>>(
+export const exportExcel = <TRecord extends ExcelRecord>(
   options: ExportExcelOptions<TRecord>
 ): void => {
   const {
@@ -143,7 +145,7 @@ export async function importExcelFile(file: File): Promise<Array<Record<string, 
   })
 }
 
-export const mapExcelRowsToRecords = <TRecord extends Record<string, any>>(
+export const mapExcelRowsToRecords = <TRecord extends ExcelRecord>(
   rows: Array<Record<string, unknown>>,
   columns: ExcelColumn<TRecord>[]
 ): TRecord[] => {

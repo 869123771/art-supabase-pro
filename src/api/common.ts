@@ -7,6 +7,7 @@ import TreeUtils, { type TreeNode } from '@/utils/tree'
 
 const { supabase, responseHandle } = useSupabase()
 const regionTreeUtils = new TreeUtils({ childrenKey: 'children' })
+type ExtraWhere = Record<string, string | number | boolean | null | undefined>
 const REGION_SOURCE_URLS = [
   '/data/pca-code.json',
   'https://fastly.jsdelivr.net/gh/modood/Administrative-divisions-of-China@master/dist/pca-code.json',
@@ -47,7 +48,7 @@ export async function checkUnique(params: {
   field: string
   value: string
   excludeId?: string
-  extraWhere?: string | any
+  extraWhere?: ExtraWhere
 }) {
   const { table, field, value, excludeId, extraWhere } = params
   let query = supabase.from(table).select('id', { count: 'exact', head: true }).eq(field, value)
@@ -66,7 +67,7 @@ export async function checkUnique(params: {
     })
   }
 
-  return await responseHandle(() => query as any, { ignoreCheck: true })
+  return await responseHandle(() => query, { ignoreCheck: true })
 }
 
 export async function uploadAttachment(
@@ -126,7 +127,7 @@ export async function uploadAttachment(
 
     // 2️⃣ 查重
     const { data: existed } = await responseHandle<Api.DataCenter.Resources.ResourceListItem>(
-      () => supabase.from('sys_attachment').select('*').eq('hash', hash).maybeSingle() as any,
+      () => supabase.from('sys_attachment').select('*').eq('hash', hash).maybeSingle(),
       {
         ignoreCheck: true
       }
@@ -155,7 +156,7 @@ export async function uploadAttachment(
 
     // 5️⃣ url
     const { data } = await responseHandle(
-      () => supabase.storage.from(bucket).getPublicUrl(fullPath) as any,
+      () => Promise.resolve(supabase.storage.from(bucket).getPublicUrl(fullPath)),
       {
         ignoreCheck: true
       }
@@ -179,10 +180,10 @@ export async function uploadAttachment(
       remark
     }
 
-    const query = await supabase.from('sys_attachment').insert(insertData).select().single()
+    const query = supabase.from('sys_attachment').insert(insertData).select().single()
 
     const { data: inserted } = await responseHandle<Api.DataCenter.Resources.ResourceListItem>(
-      () => query as any,
+      () => query,
       {
         ignoreCheck: true,
         showMessage: true,

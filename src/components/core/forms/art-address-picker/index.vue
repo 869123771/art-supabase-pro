@@ -168,7 +168,7 @@
   }
 
   interface MapExpose {
-    initialize: (options: { center: [number, number]; zoom?: number }) => Promise<any>
+    initialize: (options: { center: [number, number]; zoom?: number }) => Promise<unknown>
     setMarker: (longitude: number | string, latitude: number | string) => void
     setZoomAndCenter: (zoom: number, center: [number, number]) => void
     centerByRegion: () => void

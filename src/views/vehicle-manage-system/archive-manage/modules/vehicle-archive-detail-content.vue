@@ -120,10 +120,7 @@
   type ArchiveAttachment = Api.VehicleMgtSys.ArchiveManage.VehicleArchiveAttachment
   type AuditStatus = Api.VehicleMgtSys.ArchiveManage.AuditStatus
   type ImageKey =
-    | 'vehiclePhotoUrl'
-    | 'drivingLicenseFrontUrl'
-    | 'drivingLicenseBackUrl'
-    | 'operationLicenseUrl'
+    'vehiclePhotoUrl' | 'drivingLicenseFrontUrl' | 'drivingLicenseBackUrl' | 'operationLicenseUrl'
 
   interface InfoItem {
     label: string

@@ -2,10 +2,11 @@ import { useSupabase } from '@/hooks'
 const { supabase, keysToSnakeDeep, responseHandle } = useSupabase()
 
 export async function register(payload: Api.Auth.RegisterParams) {
-  const invokeResp = (await supabase.functions.invoke('register-and-sync-user', {
-    body: payload
-  })) as any
-  return await responseHandle(() => invokeResp, {
+  const invokeResp = () =>
+    supabase.functions.invoke('register-and-sync-user', {
+      body: payload
+    })
+  return await responseHandle(invokeResp, {
     showMessage: true,
     message: '注册成功,请前往登录',
     ignoreCheck: true
@@ -18,12 +19,13 @@ export async function register(payload: Api.Auth.RegisterParams) {
  */
 export async function login(params: Api.Auth.RegisterParams) {
   const { email, password, captchaToken } = params
-  const invokeResp = (await supabase.functions.invoke('check_user_status', {
-    body: {
-      email
-    }
-  })) as any
-  await responseHandle(() => invokeResp, {
+  const invokeResp = () =>
+    supabase.functions.invoke('check_user_status', {
+      body: {
+        email
+      }
+    })
+  await responseHandle(invokeResp, {
     ignoreCheck: true,
     breakReturn: true,
     showErrorMessage: true
@@ -34,7 +36,7 @@ export async function login(params: Api.Auth.RegisterParams) {
         email,
         password,
         options: captchaToken ? { captchaToken } : undefined
-      }) as any,
+      }),
     {
       showMessage: true,
       message: '登录成功',
@@ -96,7 +98,7 @@ export async function fetchGetUserInfo() {
         .from('sys_user')
         .select('*, tenant:sys_tenant!sys_user_tenant_id_fkey(tenant_code, tenant_name)')
         .eq('auth_user_id', uid)
-        .single() as any,
+        .single(),
     {
       ignoreCheck: true
     }
@@ -107,10 +109,7 @@ export async function updateCurrentUserProfile(params: Api.Auth.UserInfo) {
   const { userId, ...rest } = params
   return await responseHandle(
     () =>
-      supabase
-        .from('sys_user')
-        .update(keysToSnakeDeep(rest), { count: 'exact' })
-        .eq('id', userId) as any,
+      supabase.from('sys_user').update(keysToSnakeDeep(rest), { count: 'exact' }).eq('id', userId),
     {
       showMessage: true,
       message: '个人资料保存成功',
@@ -127,7 +126,7 @@ export async function updateCurrentUserPassword(currentPassword: string, newPass
   if (!email) throw new Error('当前账号未绑定登录邮箱')
 
   await responseHandle(
-    () => supabase.auth.signInWithPassword({ email, password: currentPassword }) as any,
+    () => supabase.auth.signInWithPassword({ email, password: currentPassword }),
     {
       showErrorMessage: true,
       breakReturn: true,
@@ -135,7 +134,7 @@ export async function updateCurrentUserPassword(currentPassword: string, newPass
     }
   )
 
-  return await responseHandle(() => supabase.auth.updateUser({ password: newPassword }) as any, {
+  return await responseHandle(() => supabase.auth.updateUser({ password: newPassword }), {
     showMessage: true,
     message: '密码修改成功',
     breakReturn: true,

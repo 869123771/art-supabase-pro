@@ -54,6 +54,7 @@ import { storeToRefs } from 'pinia'
 import { useSettingStore } from '@/store/modules/setting'
 import { getCssVar } from '@/utils/ui'
 import type { BaseChartProps, ChartThemeConfig, UseChartOptions } from '@/types/component/chart'
+import type { WatchSource } from 'vue'
 
 // 图表主题配置
 export const useChartOps = (): ChartThemeConfig => ({
@@ -81,6 +82,8 @@ export const useChartOps = (): ChartThemeConfig => ({
 const RESIZE_DELAYS = [50, 100, 200, 350] as const
 const MENU_RESIZE_DELAYS = [50, 100, 200] as const
 const RESIZE_DEBOUNCE_DELAY = 100
+
+type ChartStyleConfig = Record<string, unknown>
 
 export function useChart(options: UseChartOptions = {}) {
   const { initOptions, initDelay = 0, threshold = 0.1, autoTheme = true } = options
@@ -198,10 +201,15 @@ export function useChart(options: UseChartOptions = {}) {
   })
 
   // 缓存样式配置以减少重复计算
-  const styleCache = {
-    axisLine: null as any,
-    splitLine: null as any,
-    axisLabel: null as any,
+  const styleCache: {
+    axisLabel: ChartStyleConfig | null
+    axisLine: ChartStyleConfig | null
+    splitLine: ChartStyleConfig | null
+    lastDarkValue: boolean
+  } = {
+    axisLine: null,
+    splitLine: null,
+    axisLabel: null,
     lastDarkValue: isDark.value
   }
 
@@ -269,7 +277,10 @@ export function useChart(options: UseChartOptions = {}) {
   })
 
   // 获取统一的 tooltip 配置
-  const getTooltipStyle = (trigger: 'item' | 'axis' = 'axis', customOptions: any = {}) => ({
+  const getTooltipStyle = (
+    trigger: 'item' | 'axis' = 'axis',
+    customOptions: ChartStyleConfig = {}
+  ) => ({
     trigger,
     backgroundColor: isDark.value ? 'rgba(0, 0, 0, 0.8)' : 'rgba(255, 255, 255, 0.9)',
     borderColor: isDark.value ? '#333' : '#ddd',
@@ -283,7 +294,7 @@ export function useChart(options: UseChartOptions = {}) {
   // 获取统一的图例配置
   const getLegendStyle = (
     position: 'bottom' | 'top' | 'left' | 'right' = 'bottom',
-    customOptions: any = {}
+    customOptions: ChartStyleConfig = {}
   ) => {
     const baseConfig = {
       textStyle: {
@@ -302,32 +313,32 @@ export function useChart(options: UseChartOptions = {}) {
           ...baseConfig,
           bottom: 0,
           left: 'center',
-          orient: 'horizontal',
-          icon: 'roundRect'
+          orient: 'horizontal' as const,
+          icon: 'roundRect' as const
         }
       case 'top':
         return {
           ...baseConfig,
           top: 0,
           left: 'center',
-          orient: 'horizontal',
-          icon: 'roundRect'
+          orient: 'horizontal' as const,
+          icon: 'roundRect' as const
         }
       case 'left':
         return {
           ...baseConfig,
           left: 0,
           top: 'center',
-          orient: 'vertical',
-          icon: 'roundRect'
+          orient: 'vertical' as const,
+          icon: 'roundRect' as const
         }
       case 'right':
         return {
           ...baseConfig,
           right: 0,
           top: 'center',
-          orient: 'vertical',
-          icon: 'roundRect'
+          orient: 'vertical' as const,
+          icon: 'roundRect' as const
         }
       default:
         return baseConfig
@@ -338,7 +349,7 @@ export function useChart(options: UseChartOptions = {}) {
   const getGridWithLegend = (
     showLegend: boolean,
     legendPosition: 'bottom' | 'top' | 'left' | 'right' = 'bottom',
-    baseGrid: any = {}
+    baseGrid: ChartStyleConfig = {}
   ) => {
     const defaultGrid = {
       top: 15,
@@ -631,7 +642,7 @@ interface UseChartComponentOptions<T extends BaseChartProps> {
   /** 空数据检查函数 */
   checkEmpty?: () => boolean
   /** 自定义监听的响应式数据 */
-  watchSources?: (() => any)[]
+  watchSources?: WatchSource<unknown>[]
   /** 自定义可视事件处理 */
   onVisible?: () => void
   /** useChart选项 */

@@ -134,13 +134,11 @@ export const defaultResponseAdapter = <T>(response: unknown): ApiResponse<T> => 
   }
 
   const res = response as Record<string, unknown>
-  let records: T[] = []
-  let total = 0
+  let records = extractRecords<T>(res, recordFields)
+  let total = extractTotal(res, records, tableConfig.totalFields)
   let pagination: Pick<ApiResponse<unknown>, 'current' | 'size'> | undefined
 
   // 处理标准格式或直接列表
-  records = extractRecords(res, recordFields)
-  total = extractTotal(res, records, tableConfig.totalFields)
   pagination = extractPagination(res)
 
   // 如果没有找到，检查嵌套data
@@ -199,16 +197,19 @@ export const updatePaginationFromResponse = <T>(
 /**
  * 创建智能防抖函数 - 支持取消和立即执行
  */
-export const createSmartDebounce = <T extends (...args: any[]) => Promise<any>>(
-  fn: T,
+export const createSmartDebounce = <TArgs extends unknown[], TResult>(
+  fn: (...args: TArgs) => Promise<TResult>,
   delay: number
-): T & { cancel: () => void; flush: () => Promise<any> } => {
+): ((...args: TArgs) => Promise<TResult>) & {
+  cancel: () => void
+  flush: () => Promise<TResult | void>
+} => {
   let timeoutId: NodeJS.Timeout | null = null
-  let lastArgs: Parameters<T> | null = null
-  let lastResolve: ((value: any) => void) | null = null
-  let lastReject: ((reason: any) => void) | null = null
+  let lastArgs: TArgs | null = null
+  let lastResolve: ((value: TResult | PromiseLike<TResult>) => void) | null = null
+  let lastReject: ((reason?: unknown) => void) | null = null
 
-  const debouncedFn = (...args: Parameters<T>): Promise<any> => {
+  const debouncedFn = (...args: TArgs): Promise<TResult> => {
     return new Promise((resolve, reject) => {
       if (timeoutId) clearTimeout(timeoutId)
       lastArgs = args
@@ -260,7 +261,7 @@ export const createSmartDebounce = <T extends (...args: any[]) => Promise<any>>(
     return Promise.resolve()
   }
 
-  return debouncedFn as any
+  return debouncedFn
 }
 
 /**
@@ -271,7 +272,7 @@ export const createErrorHandler = (
   enableLog: boolean = false
 ) => {
   const logger = {
-    error: (message: string, ...args: any[]) => {
+    error: (message: string, ...args: unknown[]) => {
       if (enableLog) console.error(`[useTable] ${message}`, ...args)
     }
   }

@@ -2,7 +2,6 @@
   <div class="result-table-container h-full">
     <ArtTable
       table-layout="fixed"
-      ref="tableRef"
       :loading="loading"
       :data="tableData"
       :columns="tableColumns"
@@ -35,11 +34,27 @@
   import ArtMenuRight, { MenuItemType } from '@/components/core/others/art-menu-right/index.vue'
   import CellContentView, { type CellContentViewExpose } from './cell-content-view.vue'
   import { useClipboard } from '@vueuse/core'
+  import type { ColumnOption } from '@/types'
+
+  type SqlResultRow = Record<string, unknown>
+
+  interface SqlMetadataColumn {
+    name: string
+    property?: string
+  }
+
+  interface TableCellColumn {
+    property: string
+  }
+
+  interface MenuExpose {
+    show: (event: MouseEvent) => void
+  }
 
   interface Props {
     loading?: boolean
-    data?: any[]
-    columns?: any[] // Metadata columns
+    data?: SqlResultRow[]
+    columns?: SqlMetadataColumn[]
   }
 
   const props = withDefaults(defineProps<Props>(), {
@@ -48,20 +63,19 @@
     columns: () => []
   })
 
-  const menuRef = ref()
-  const tableRef = ref()
+  const menuRef = ref<MenuExpose>()
   const cellContentViewRef = ref<CellContentViewExpose>()
   const { copy } = useClipboard()
 
   // Selected cell info
   const selectedCell = ref<{
-    row: any
-    column: any
+    row: SqlResultRow
+    column: TableCellColumn
     event: MouseEvent
   } | null>(null)
 
   // Compute table columns
-  const tableColumns = computed(() => {
+  const tableColumns = computed<ColumnOption<SqlResultRow>[]>(() => {
     if (!props.columns || props.columns.length === 0) {
       return []
     }
@@ -70,7 +84,7 @@
       prop: column.name,
       label: column.name,
       minWidth: 120,
-      formatter: (row: any) => {
+      formatter: (row) => {
         const value = row[column.name]
         if (isObject(value)) {
           return JSON.stringify(value)
@@ -82,7 +96,7 @@
 
   const tableData = computed(() => props.data)
 
-  const getCellContent = (row: any, property: string) => {
+  const getCellContent = (row: SqlResultRow, property: string) => {
     const value = row[property]
     return isObject(value) ? JSON.stringify(value) : String(value ?? '')
   }
@@ -102,12 +116,24 @@
   ])
 
   // Handle Cell Click (Left Click)
-  const handleCellClick = (row: any, column: any, cell: any, event: MouseEvent) => {
+  const handleCellClick = (
+    row: SqlResultRow,
+    column: TableCellColumn,
+    cell: HTMLTableCellElement,
+    event: MouseEvent
+  ) => {
+    void cell
     selectedCell.value = { row, column, event }
   }
 
   // Handle Cell Context Menu (Right Click)
-  const handleCellContextMenu = (row: any, column: any, cell: any, event: MouseEvent) => {
+  const handleCellContextMenu = (
+    row: SqlResultRow,
+    column: TableCellColumn,
+    cell: HTMLTableCellElement,
+    event: MouseEvent
+  ) => {
+    void cell
     // Prevent default browser menu
     event.preventDefault()
 
@@ -121,7 +147,7 @@
   }
 
   // Handle Menu Selection
-  const handleMenuSelect = (item: any) => {
+  const handleMenuSelect = (item: MenuItemType) => {
     if (!selectedCell.value) return
 
     if (item.key === 'copy') {
@@ -140,7 +166,7 @@
     })
   }
 
-  const cellClassName = ({ row, column }: { row: any; column: any }) => {
+  const cellClassName = ({ row, column }: { row: SqlResultRow; column: TableCellColumn }) => {
     if (
       selectedCell.value &&
       selectedCell.value.row === row &&

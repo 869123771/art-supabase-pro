@@ -255,17 +255,22 @@
   const formInstance = useTemplateRef<FormInstance>('formRef')
 
   type ComponentMap = typeof componentMap
+  // ArtForm is a metadata-driven wrapper; model and option payloads are owned by business pages.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  type FormRecord = Record<string, any>
+  // Deep path writes walk arbitrary object/array branches in the form model.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  type FormPathCursor = any
 
-  export interface FormItemOption {
+  export interface FormItemOption extends FormRecord {
     /** 选项显示文本 */
     label?: string
     /** 选项提交值 */
-    value?: any
+    value?: unknown
     /** 是否禁用该选项 */
     disabled?: boolean
     /** 树形选项的子节点 */
     children?: FormItemOption[]
-    [key: string]: any
   }
 
   export type FormItemContent = string | (() => VNodeChild) | Component
@@ -273,7 +278,7 @@
   export type FormItemCustomType = string & {}
   export type FormItemType = FormItemPresetType | FormItemCustomType
   export type FormItemOptionType = 'default' | 'button'
-  type FormItemPassThroughProps = Record<string, any>
+  type FormItemPassThroughProps = FormRecord
 
   export interface FormItemOptionProps {
     /** Static options; FormItem.options and FormItem.api are also supported. */
@@ -300,14 +305,13 @@
     /** Text to display when the field value is empty. */
     emptyText?: string
     /** Optional formatter for readonly text display. */
-    formatter?: (value: unknown, model: Record<string, any>, item: FormItem) => string | number
+    formatter?: (value: unknown, model: FormRecord, item: FormItem) => string | number
     /** Extra class for the text node. */
     class?: string | string[] | Record<string, boolean>
   }
 
   export type FormItemComponentProps<TType extends FormItemType = FormItemType> = TType extends
-    | 'radioGroup'
-    | 'checkboxGroup'
+    'radioGroup' | 'checkboxGroup'
     ? FormItemPassThroughProps & FormItemChoiceGroupProps
     : TType extends 'select' | 'segment' | 'cascader' | 'treeSelect'
       ? FormItemPassThroughProps & FormItemOptionProps
@@ -319,7 +323,7 @@
             ? FormItemPassThroughProps
             : FormItemPassThroughProps
   export type MaybePromise<T> = T | Promise<T>
-  export type FormItemApiParams = Record<string, any> | undefined
+  export type FormItemApiParams = FormRecord | undefined
   export type FormItemApiFn<TParams = FormItemApiParams, TResult = unknown> = (
     params: TParams
   ) => MaybePromise<TResult>
@@ -336,15 +340,9 @@
     option: TOption
   ) => string
   export type ApiComponentAutoSelect<TOption extends FormItemOption = FormItemOption> =
-    | 'first'
-    | 'last'
-    | 'one'
-    | false
-    | ((options: TOption[]) => TOption | undefined)
+    'first' | 'last' | 'one' | false | ((options: TOption[]) => TOption | undefined)
   export type FormItemHidden =
-    | boolean
-    | Ref<boolean>
-    | ((model: Record<string, any>, item: FormItem) => boolean)
+    boolean | Ref<boolean> | ((model: FormRecord, item: FormItem) => boolean)
 
   // 表单项配置
   export interface FormItemBase<
@@ -375,7 +373,7 @@
     /** 传递给字段组件的 Element Plus 原生属性及 ArtForm 扩展属性 */
     props?: FormItemComponentProps<TType>
     /** 表单项的插槽配置 */
-    slots?: Record<string, (() => any) | undefined>
+    slots?: Record<string, (() => VNodeChild) | undefined>
     /** 表单项的占位符文本 */
     placeholder?: string
     /** 异步获取选项数据的接口，适用于 select、checkboxGroup、radioGroup、cascader、treeSelect */
@@ -491,21 +489,21 @@
 
   export interface ArtFormEmits {
     reset: []
-    submit: [Record<string, any>]
+    submit: [FormRecord]
     validate: [prop: FormItemProp, isValid: boolean, message: string]
   }
 
   const emit = defineEmits<ArtFormEmits>()
 
-  const modelValue = defineModel<Record<string, any>>({ default: {} })
-  const initialModelValue = ref<Record<string, any>>({})
+  const modelValue = defineModel<FormRecord>({ default: () => ({}) })
+  const initialModelValue = ref<FormRecord>({})
   const isExpanded = ref(props.defaultExpanded)
-  const asyncOptionsMap = ref<Record<string, Record<string, any>[]>>({})
+  const asyncOptionsMap = ref<Record<string, FormRecord[]>>({})
   const asyncLoadingMap = ref<Record<string, boolean>>({})
   const asyncRequestSignatureMap = ref<Record<string, string>>({})
 
   // 保存组件初始化时的表单快照，用于 reset 时恢复默认值。
-  const cloneModelValue = (value: Record<string, any> | undefined) => {
+  const cloneModelValue = (value: FormRecord | undefined) => {
     if (!value) return {}
 
     const deepClone = (source: unknown): unknown => {
@@ -524,7 +522,7 @@
       return source
     }
 
-    return deepClone(toRaw(value)) as Record<string, any>
+    return deepClone(toRaw(value)) as FormRecord
   }
 
   initialModelValue.value = cloneModelValue(modelValue.value)
@@ -578,8 +576,8 @@
     return getRecordFieldValue(modelValue.value, path)
   }
 
-  const getRecordFieldValue = (record: Record<string, any> | undefined, path: string) => {
-    return parsePath(path).reduce<any>((currentValue, segment) => {
+  const getRecordFieldValue = (record: FormRecord | undefined, path: string) => {
+    return parsePath(path).reduce<FormPathCursor>((currentValue, segment) => {
       if (currentValue == null) return undefined
       return currentValue[segment]
     }, record)
@@ -587,7 +585,7 @@
 
   const createModelSnapshot = () => cloneModelValue(modelValue.value)
 
-  const commitModelValue = (nextValue: Record<string, any>) => {
+  const commitModelValue = (nextValue: FormRecord) => {
     const currentValue = modelValue.value
 
     if (currentValue && typeof currentValue === 'object' && !Array.isArray(currentValue)) {
@@ -601,12 +599,12 @@
     modelValue.value = nextValue
   }
 
-  const deleteFieldValue = (path: string, target: Record<string, any>) => {
+  const deleteFieldValue = (path: string, target: FormRecord) => {
     const segments = parsePath(path)
     if (!segments.length) return target
 
     const lastSegment = segments.pop()
-    const parent = segments.reduce<any>((currentValue, segment) => {
+    const parent = segments.reduce<FormPathCursor>((currentValue, segment) => {
       if (currentValue == null) return undefined
       return currentValue[segment]
     }, target)
@@ -641,7 +639,7 @@
       return
     }
 
-    let currentValue: any = nextModelValue
+    let currentValue: FormPathCursor = nextModelValue
 
     segments.forEach((segment, index) => {
       const isLast = index === segments.length - 1
@@ -776,7 +774,7 @@
       }
     })
 
-    return (sanitizeOutputValue(outputValue) || {}) as Record<string, any>
+    return (sanitizeOutputValue(outputValue) || {}) as FormRecord
   }
 
   const optionComponentTypes = [
@@ -798,20 +796,17 @@
     }, source)
   }
 
-  const extractOptionsResult = (result: unknown, resultField?: string): Record<string, any>[] => {
+  const extractOptionsResult = (result: unknown, resultField?: string): FormRecord[] => {
     const target = getValueByPath(result, resultField)
     return Array.isArray(target) ? target : []
   }
 
-  const normalizeOptionItem = (
-    option: Record<string, any>,
-    item: FormItem
-  ): Record<string, any> => {
+  const normalizeOptionItem = (option: FormRecord, item: FormItem): FormRecord => {
     const labelField = item.labelField || 'label'
     const valueField = item.valueField || 'value'
     const childrenField = item.childrenField || 'children'
     const children = option[childrenField]
-    const normalizedOption: Record<string, any> = {
+    const normalizedOption: FormRecord = {
       ...option,
       label: item.labelFn ? item.labelFn(option) : (option[labelField] ?? option.label),
       value: option[valueField] ?? option.value
@@ -824,7 +819,7 @@
     return normalizedOption
   }
 
-  const normalizeOptions = (options: Record<string, any>[], item: FormItem) => {
+  const normalizeOptions = (options: FormRecord[], item: FormItem) => {
     return options.map((option) => normalizeOptionItem(option, item))
   }
 
@@ -837,10 +832,10 @@
     )
   }
 
-  const applyAutoSelect = (item: FormItem, options: Record<string, any>[]) => {
+  const applyAutoSelect = (item: FormItem, options: FormRecord[]) => {
     if (!item.autoSelect || !options.length || !isEmptyFieldValue(getFieldValue(item.key))) return
 
-    let selectedOption: Record<string, any> | undefined
+    let selectedOption: FormRecord | undefined
     if (item.autoSelect === 'first') {
       selectedOption = options[0]
     } else if (item.autoSelect === 'last') {
@@ -856,10 +851,10 @@
     }
   }
 
-  const fetchOptions = async (item: FormItem): Promise<Record<string, any>[]> => {
+  const fetchOptions = async (item: FormItem): Promise<FormRecord[]> => {
     if (!item.api || !isOptionComponent(item)) return getOptions(item)
 
-    let apiParams = cloneModelValue(item.params) as Record<string, any> | undefined
+    let apiParams = cloneModelValue(item.params) as FormRecord | undefined
     if (item.beforeFetch) {
       apiParams = await item.beforeFetch(apiParams)
     }
@@ -883,7 +878,7 @@
   }
 
   const getOptionsRequestSignature = (item: FormItem): string => {
-    const params = cloneModelValue(item.params) as Record<string, any> | undefined
+    const params = cloneModelValue(item.params) as FormRecord | undefined
 
     try {
       return JSON.stringify({
@@ -914,14 +909,14 @@
     return key ? results[0] : results
   }
 
-  const getProps = (item: FormItem): Record<string, any> => {
+  const getProps = (item: FormItem): FormRecord => {
     if (item.props) return item.props
-    const props: Record<string, any> = { ...item }
+    const props: FormRecord = { ...item }
     rootProps.forEach((key) => delete props[key])
     return props
   }
 
-  const getOptions = (item: FormItem): Record<string, any>[] => {
+  const getOptions = (item: FormItem): FormRecord[] => {
     if (asyncOptionsMap.value[item.key]) return asyncOptionsMap.value[item.key]
     const options = item.options ?? getProps(item).options
     return Array.isArray(options) ? options : []
@@ -956,9 +951,9 @@
     return undefined
   }
 
-  const getDefaultComponentProps = (item: FormItem): Record<string, any> => {
+  const getDefaultComponentProps = (item: FormItem): FormRecord => {
     const itemType = String(item.type)
-    const defaults: Record<string, any> = {}
+    const defaults: FormRecord = {}
     const placeholder = getDefaultPlaceholder(item)
 
     if (placeholder) {
@@ -1032,11 +1027,9 @@
     }
     if (String(item.type) === 'dataSelect') {
       if (item.api && !props.apiFn) {
-        props.apiFn = (params: Record<string, any>) => {
+        props.apiFn = (params: FormRecord) => {
           const baseParams =
-            item.params && typeof item.params === 'object'
-              ? (item.params as Record<string, any>)
-              : {}
+            item.params && typeof item.params === 'object' ? (item.params as FormRecord) : {}
           return item.api?.({ ...baseParams, ...params } as never)
         }
       }
@@ -1055,7 +1048,7 @@
   // 获取插槽
   const getSlots = (item: FormItem) => {
     if (!item.slots) return {}
-    const validSlots: Record<string, () => any> = {}
+    const validSlots: Record<string, () => VNodeChild> = {}
     Object.entries(item.slots).forEach(([key, slotFn]) => {
       if (slotFn) {
         validSlots[key] = slotFn
@@ -1200,8 +1193,10 @@
 
   defineExpose({
     ref: formInstance,
-    validate: (...args: any[]) => formInstance.value?.validate(...args),
-    clearValidate: (...args: any[]) => formInstance.value?.clearValidate(...args),
+    validate: (...args: Parameters<FormInstance['validate']>) =>
+      formInstance.value?.validate(...args),
+    clearValidate: (...args: Parameters<FormInstance['clearValidate']>) =>
+      formInstance.value?.clearValidate(...args),
     reset: handleReset,
     fetchOptions,
     reloadOptions,

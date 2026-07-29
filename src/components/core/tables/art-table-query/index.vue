@@ -210,6 +210,24 @@
   }
 
   export type ArtTableQueryTableSize = 'small' | 'default' | 'large'
+  // Core table wrapper accepts arbitrary business row shapes from many modules.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  type TableQueryRecord = Record<string, any>
+  // API params are intentionally broad because page-level APIs own their exact search model.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  type TableQueryApiParams = any
+  type TableQueryApiResponse = unknown
+  // Dynamic named slots receive payloads owned by ArtSearchBar/ArtTable internals.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  type TableQuerySlotProps = any
+
+  type BivariantAsyncHandler<TParams, TResponse> = {
+    bivarianceHack(params: TParams): Promise<TResponse>
+  }['bivarianceHack']
+
+  type BivariantSyncHandler<TParams, TResponse> = {
+    bivarianceHack(params: TParams): TResponse
+  }['bivarianceHack']
 
   export interface ArtTableQueryPaginationOptions {
     /** 每页条数选项 */
@@ -228,7 +246,7 @@
     pagerCount?: number
   }
 
-  type ElementTablePassThroughProps = Partial<Omit<TableProps<Record<string, any>>, 'data'>>
+  type ElementTablePassThroughProps = Partial<Omit<TableProps<TableQueryRecord>, 'data'>>
 
   /**
    * 透传给 ArtTable / Element Plus ElTable 的属性。
@@ -236,7 +254,7 @@
    */
   export interface ArtTableQueryTableProps extends ElementTablePassThroughProps {
     /** 行数据 key，默认 id */
-    rowKey?: string | ((row: Record<string, any>) => string)
+    rowKey?: string | ((row: TableQueryRecord) => string)
     /** 表格布局，默认 fixed */
     tableLayout?: 'fixed' | 'auto'
     /** 表格高度 */
@@ -266,35 +284,35 @@
     /** 树形数据懒加载 */
     lazy?: boolean
     /** 树形数据加载函数 */
-    load?: TableProps<Record<string, any>>['load']
+    load?: TableProps<TableQueryRecord>['load']
     /** 树形数据配置 */
-    treeProps?: TableProps<Record<string, any>>['treeProps']
+    treeProps?: TableProps<TableQueryRecord>['treeProps']
     /** tooltip 配置 */
-    tooltipOptions?: TableProps<Record<string, any>>['tooltipOptions']
+    tooltipOptions?: TableProps<TableQueryRecord>['tooltipOptions']
     /** 表头行 class */
-    headerRowClassName?: TableProps<Record<string, any>>['headerRowClassName']
+    headerRowClassName?: TableProps<TableQueryRecord>['headerRowClassName']
     /** 表头行 style */
-    headerRowStyle?: TableProps<Record<string, any>>['headerRowStyle']
+    headerRowStyle?: TableProps<TableQueryRecord>['headerRowStyle']
     /** 表头单元格 class */
-    headerCellClassName?: TableProps<Record<string, any>>['headerCellClassName']
+    headerCellClassName?: TableProps<TableQueryRecord>['headerCellClassName']
     /** 表头单元格 style */
-    headerCellStyle?: TableProps<Record<string, any>>['headerCellStyle']
+    headerCellStyle?: TableProps<TableQueryRecord>['headerCellStyle']
     /** 行 class */
-    rowClassName?: TableProps<Record<string, any>>['rowClassName']
+    rowClassName?: TableProps<TableQueryRecord>['rowClassName']
     /** 行 style */
-    rowStyle?: TableProps<Record<string, any>>['rowStyle']
+    rowStyle?: TableProps<TableQueryRecord>['rowStyle']
     /** 单元格 class */
-    cellClassName?: TableProps<Record<string, any>>['cellClassName']
+    cellClassName?: TableProps<TableQueryRecord>['cellClassName']
     /** 单元格 style */
-    cellStyle?: TableProps<Record<string, any>>['cellStyle']
+    cellStyle?: TableProps<TableQueryRecord>['cellStyle']
     /** 合并行列 */
-    spanMethod?: TableProps<Record<string, any>>['spanMethod']
+    spanMethod?: TableProps<TableQueryRecord>['spanMethod']
     /** 默认排序 */
-    defaultSort?: TableProps<Record<string, any>>['defaultSort']
+    defaultSort?: TableProps<TableQueryRecord>['defaultSort']
     /** tooltip effect */
-    tooltipEffect?: TableProps<Record<string, any>>['tooltipEffect']
+    tooltipEffect?: TableProps<TableQueryRecord>['tooltipEffect']
     /** 是否显示溢出 tooltip */
-    showOverflowTooltip?: TableProps<Record<string, any>>['showOverflowTooltip']
+    showOverflowTooltip?: TableProps<TableQueryRecord>['showOverflowTooltip']
     /** 空数据表格高度，默认 100% */
     emptyHeight?: string
     /** 空数据文案 */
@@ -307,24 +325,27 @@
     paginationOptions?: ArtTableQueryPaginationOptions
   }
 
-  export type ArtTableQueryApiFn = (params: any) => Promise<any>
-  export type ArtTableQueryResponseAdapter<TRecord = Record<string, any>, TResponse = any> = (
-    response: TResponse
-  ) => ApiResponse<TRecord>
-  export type ArtTableQueryDataTransformer<TRecord = Record<string, any>> = (
-    data: TRecord[]
-  ) => TRecord[]
+  export type ArtTableQueryApiFn<
+    TParams = TableQueryApiParams,
+    TResponse = TableQueryApiResponse
+  > = BivariantAsyncHandler<TParams, TResponse>
+  export type ArtTableQueryResponseAdapter<
+    TRecord = TableQueryRecord,
+    TResponse = TableQueryApiResponse
+  > = BivariantSyncHandler<TResponse, ApiResponse<TRecord>>
+  export type ArtTableQueryDataTransformer<TRecord = TableQueryRecord> = BivariantSyncHandler<
+    TRecord[],
+    TRecord[]
+  >
   export type ArtTableQueryHeaderActionType = 'add' | 'delete' | 'import' | 'export'
   export type ArtTableQueryHeaderActionContent =
-    | string
-    | Component
-    | ((ctx: ArtTableQueryHeaderActionContext) => VNodeChild)
-  export type ArtTableQueryExcelColumn = ExcelColumn<Record<string, any>>
+    string | Component | ((ctx: ArtTableQueryHeaderActionContext) => VNodeChild)
+  export type ArtTableQueryExcelColumn = ExcelColumn<TableQueryRecord>
   export type ArtTableQueryExcelColumns =
     | ArtTableQueryExcelColumn[]
     | ((ctx: ArtTableQueryHeaderActionContext) => ArtTableQueryExcelColumn[])
   export interface ArtTableQueryExportApiParams {
-    selectedRows: Record<string, any>[]
+    selectedRows: TableQueryRecord[]
     selectedIds: Array<string | number>
     selectedCount: number
     searchParams: Record<string, unknown>
@@ -334,7 +355,7 @@
 
   export interface ArtTableQueryHeaderActionContext {
     action: ArtTableQueryHeaderAction
-    selectedRows: Record<string, any>[]
+    selectedRows: TableQueryRecord[]
     selectedCount: number
     event?: MouseEvent
     api: Pick<
@@ -363,9 +384,9 @@
     importTransformer?: (
       rows: Array<Record<string, unknown>>,
       ctx: ArtTableQueryHeaderActionContext
-    ) => Array<Record<string, any>> | Promise<Array<Record<string, any>>>
+    ) => Array<TableQueryRecord> | Promise<Array<TableQueryRecord>>
     importApi?: (
-      rows: Array<Record<string, any>>,
+      rows: Array<TableQueryRecord>,
       ctx: ArtTableQueryHeaderActionContext
     ) => void | Promise<void>
     /** Excel 导入失败回调，仅 type=import 时生效 */
@@ -389,7 +410,7 @@
     /** 自定义渲染组件；传入后不渲染默认按钮 */
     render?: Component
     /** 透传给 ElButton 的属性 */
-    buttonProps?: Record<string, any>
+    buttonProps?: TableQueryRecord
     exportColumns?: ArtTableQueryExcelColumns
     exportFilename?: string | ((ctx: ArtTableQueryHeaderActionContext) => string)
     exportSheetName?: string
@@ -401,7 +422,7 @@
     exportResponseAdapter?: ArtTableQueryResponseAdapter
     exportData?: (
       ctx: ArtTableQueryHeaderActionContext
-    ) => Array<Record<string, any>> | Promise<Array<Record<string, any>>>
+    ) => Array<TableQueryRecord> | Promise<Array<TableQueryRecord>>
   }
 
   interface PaginationConfig {
@@ -414,11 +435,23 @@
     elTableRef?: ArtTableInstance | null
   }
 
+  interface ArtTableBindings extends ArtTableQueryTableProps {
+    additionalHeightOffset: number
+    loading: boolean
+    data: TableQueryRecord[]
+    columns: ColumnOption[]
+    pagination: PaginationConfig
+    selectedRowKeys: Array<string | number>
+    'onSelection-change': (selection: TableQueryRecord[]) => void
+    'onPagination:size-change': (value: number) => void
+    'onPagination:current-change': (value: number) => void
+  }
+
   export interface ArtTableQueryProps {
     /** 外部受控模式的加载状态；传 apiFn 时由组件内部 useTable 接管。 */
     loading?: boolean
     /** 外部受控模式的表格数据；传 apiFn 时由组件内部 useTable 接管。 */
-    data?: Record<string, any>[]
+    data?: TableQueryRecord[]
     /** 外部受控模式的表格列配置；传 columnsFactory 时由组件内部 useTable 接管。 */
     tableColumns?: ColumnOption[]
     /** 外部受控模式的分页状态；传 apiFn 时由组件内部 useTable 接管。 */
@@ -430,7 +463,7 @@
     /** 内管模式的数据接口。传入后 ArtTableQuery 会内部创建 useTable 并接管查询、分页、刷新。 */
     apiFn?: ArtTableQueryApiFn
     /** 内管模式的默认接口参数，默认会合并 { current: 1, size: 20 }。 */
-    apiParams?: Record<string, any>
+    apiParams?: TableQueryRecord
     /** 内管模式是否挂载后立即请求接口，默认 true。false 时可通过 ref.getData()/refreshData() 手动加载。 */
     immediate?: boolean
     /** 请求前从 apiParams / 搜索参数中排除的字段 */
@@ -450,11 +483,11 @@
     /** 响应适配器，用于把接口响应转成 records/total/current/size */
     responseAdapter?: ArtTableQueryResponseAdapter
     /** 请求成功回调 */
-    onSuccess?: (data: Record<string, any>[], response: ApiResponse<Record<string, any>>) => void
+    onSuccess?: (data: TableQueryRecord[], response: ApiResponse<TableQueryRecord>) => void
     /** 请求失败回调 */
     onError?: (error: TableError) => void
     /** 缓存命中回调 */
-    onCacheHit?: (data: Record<string, any>[], response: ApiResponse<Record<string, any>>) => void
+    onCacheHit?: (data: TableQueryRecord[], response: ApiResponse<TableQueryRecord>) => void
     /** 是否开启 useTable 调试日志 */
     debug?: boolean
     /** 内管模式的列工厂函数，用法同 useTable.core.columnsFactory。 */
@@ -493,8 +526,8 @@
   const tableRef = ref<ArtTableExpose | null>(null)
   const headerTopRef = ref<HTMLElement>()
   const headerTopHeight = ref(0)
-  const selectedRows = ref<Record<string, any>[]>([])
-  const selectedRowMap = ref(new Map<string | number, Record<string, any>>())
+  const selectedRows = ref<TableQueryRecord[]>([])
+  const selectedRowMap = ref(new Map<string | number, TableQueryRecord>())
 
   export interface ArtTableQueryEmits {
     /** 点击查询按钮时触发。内管模式下组件会先自动 replaceSearchParams + getData。 */
@@ -506,13 +539,13 @@
     /** 点击表格头部搜索显隐按钮时触发。 */
     'header-search': []
     /** ElTable selection-change 透传。 */
-    'selection-change': [any[]]
+    'selection-change': [TableQueryRecord[]]
     /** 行拖拽开始透传。 */
-    'row-drag-start': [Record<string, any>]
+    'row-drag-start': [TableQueryRecord]
     /** 行拖拽位置更新透传。 */
-    'row-drag-update': [Record<string, any>]
+    'row-drag-update': [TableQueryRecord]
     /** 行拖拽结束透传。 */
-    'row-drag-end': [Record<string, any>]
+    'row-drag-end': [TableQueryRecord]
     /** 分页 page-size 改变时触发。内管模式下组件会先自动处理分页。 */
     'pagination:size-change': [number]
     /** 分页 current-page 改变时触发。内管模式下组件会先自动处理分页。 */
@@ -528,27 +561,27 @@
 
   export interface ArtTableQueryHeaderLeftSlotProps {
     /** 当前跨页选中的完整行 */
-    selectedRows: Record<string, any>[]
+    selectedRows: TableQueryRecord[]
     /** 当前跨页选中数量 */
     selectedCount: number
   }
 
   export interface ArtTableQuerySlots {
     /** 工具栏左侧扩展区，渲染在 headerActions 后 */
-    'header-left'?: (props: ArtTableQueryHeaderLeftSlotProps) => any
+    'header-left'?: (props: ArtTableQueryHeaderLeftSlotProps) => VNodeChild
     /** 工具栏右侧扩展区 */
-    'header-right'?: () => any
+    'header-right'?: () => VNodeChild
     /** 透传给 ArtTable 的默认插槽 */
-    default?: () => any
+    default?: () => VNodeChild
     /** 动态表格列插槽和 search-{key} 查询项插槽 */
-    [name: string]: ((props: any) => any) | undefined
+    [name: string]: ((props: TableQuerySlotProps) => VNodeChild) | undefined
   }
 
   const slots = defineSlots<ArtTableQuerySlots>()
   const isManaged = computed(() => !!props.apiFn)
-  const managedTable = useTable<Record<string, any>>({
+  const managedTable = useTable<TableQueryRecord>({
     core: {
-      apiFn: (params: Record<string, any>) => {
+      apiFn: (params: TableQueryRecord) => {
         if (!props.apiFn) {
           return Promise.resolve({ records: [], total: 0, current: 1, size: 20 })
         }
@@ -616,11 +649,12 @@
     })
   })
 
-  const getRowIdentity = (row: Record<string, any>): string | number | undefined => {
+  const getRowIdentity = (row: TableQueryRecord): string | number | undefined => {
     const rowKey = resolvedTableProps.value.rowKey
     if (typeof rowKey === 'function') return rowKey(row)
-    if (typeof rowKey === 'string') return row[rowKey]
-    return row.id
+    const rowRecord = row as Record<string, unknown>
+    const value = typeof rowKey === 'string' ? rowRecord[rowKey] : rowRecord.id
+    return typeof value === 'string' || typeof value === 'number' ? value : undefined
   }
 
   const syncSelectedRows = (): void => {
@@ -666,7 +700,7 @@
     isManaged.value ? managedTable.pagination : props.pagination
   )
 
-  const artTableBindings = computed(
+  const artTableBindings = computed<ArtTableBindings>(
     () =>
       ({
         ...resolvedTableProps.value,
@@ -681,7 +715,7 @@
         'onPagination:size-change': handleSizeChange,
         'onPagination:current-change': handleCurrentChange
         // ArtTable 组合透传时，vue-tsc 对含冒号的事件名推断不完整，运行时正常。
-      }) as any
+      }) as ArtTableBindings
   )
 
   const mergedTableHeaderProps = computed(() => ({
@@ -706,7 +740,7 @@
     {
       label: string
       icon: string
-      buttonProps: Record<string, any>
+      buttonProps: TableQueryRecord
       selectionRequired?: boolean
       confirm?: boolean
       confirmTitle?: string
@@ -864,7 +898,7 @@
       title: String(column.label),
       width: typeof column.width === 'number' ? column.width : undefined,
       formatter: column.formatter
-        ? (_value: unknown, row: Record<string, any>) => {
+        ? (_value: unknown, row: TableQueryRecord) => {
             const formattedValue = column.formatter?.(row)
             if (formattedValue && typeof formattedValue === 'object') return ''
             return formattedValue as string | number | boolean | null | undefined
@@ -884,7 +918,7 @@
   const fetchExportRows = async (
     action: ArtTableQueryHeaderAction,
     ctx: ArtTableQueryHeaderActionContext
-  ): Promise<Record<string, any>[]> => {
+  ): Promise<TableQueryRecord[]> => {
     const maxRows = action.exportMaxRows || 10000
     const columns = resolveExcelColumns(action.exportColumns, ctx)
 
@@ -904,7 +938,7 @@
         ctx
       )
 
-      if (Array.isArray(response)) return response as Record<string, any>[]
+      if (Array.isArray(response)) return response as TableQueryRecord[]
 
       const adapter =
         action.exportResponseAdapter || props.responseAdapter || defaultResponseAdapter
@@ -949,7 +983,7 @@
     action: ArtTableQueryHeaderAction,
     rows: Array<Record<string, unknown>>,
     ctx: ArtTableQueryHeaderActionContext
-  ): Promise<Array<Record<string, any>>> => {
+  ): Promise<Array<TableQueryRecord>> => {
     if (action.importTransformer) return await action.importTransformer(rows, ctx)
     return mapExcelRowsToRecords(rows, resolveExcelColumns(action.importColumns, ctx))
   }
@@ -970,7 +1004,7 @@
         ElMessage.warning('未读取到可导入的数据')
         return
       }
-      await action.importApi(rows as Array<Record<string, any>>, ctx)
+      await action.importApi(rows as Array<TableQueryRecord>, ctx)
       if (isManaged.value) {
         await managedTable.refreshCreate()
       }
@@ -1065,7 +1099,7 @@
     await managedTable.refreshRemove()
   }
 
-  const handleSelectionChange = (selection: Record<string, any>[]): void => {
+  const handleSelectionChange = (selection: TableQueryRecord[]): void => {
     const currentPageKeys = new Set(
       resolvedData.value
         .map((row) => getRowIdentity(row))
@@ -1094,15 +1128,15 @@
     emit('selection-change', selectedRows.value)
   }
 
-  const handleRowDragStart = (payload: Record<string, any>): void => {
+  const handleRowDragStart = (payload: TableQueryRecord): void => {
     emit('row-drag-start', payload)
   }
 
-  const handleRowDragUpdate = (payload: Record<string, any>): void => {
+  const handleRowDragUpdate = (payload: TableQueryRecord): void => {
     emit('row-drag-update', payload)
   }
 
-  const handleRowDragEnd = (payload: Record<string, any>): void => {
+  const handleRowDragEnd = (payload: TableQueryRecord): void => {
     emit('row-drag-end', payload)
   }
 

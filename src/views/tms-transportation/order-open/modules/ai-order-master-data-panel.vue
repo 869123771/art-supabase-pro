@@ -58,8 +58,8 @@
     { immediate: true, deep: true }
   )
 
-  function handleSelectedKeysChange(keys: string[]): void {
-    emit('update:selectedKeys', keys)
+  function handleSelectedKeysChange(keys: Array<string | number>): void {
+    emit('update:selectedKeys', keys.map(String))
   }
 </script>
 

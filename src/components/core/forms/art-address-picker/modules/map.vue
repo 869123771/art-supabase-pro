@@ -76,6 +76,13 @@
     zoom?: number
   }
 
+  interface AMapLngLatLike {
+    lng?: number
+    lat?: number
+    getLng?: () => number
+    getLat?: () => number
+  }
+
   interface AMapPoi {
     id?: string
     name: string
@@ -85,12 +92,116 @@
     cityname?: string
     adname?: string
     adcode?: string
-    location?: {
-      lng: number
-      lat: number
-      getLng?: () => number
-      getLat?: () => number
+    location?: AMapLngLatLike
+  }
+
+  interface AMapErrorLike {
+    info?: unknown
+    message?: unknown
+  }
+
+  interface AMapAddressComponent {
+    province?: unknown
+    city?: unknown
+    district?: unknown
+    adcode?: string
+  }
+
+  interface AMapReverseGeocodeResult extends AMapErrorLike {
+    regeocode?: {
+      addressComponent?: AMapAddressComponent
+      formattedAddress?: string
     }
+  }
+
+  interface AMapGeocodeItem {
+    location?: AMapLngLatLike
+    province?: unknown
+    city?: unknown
+    district?: unknown
+    adcode?: string
+  }
+
+  interface AMapGeocodeResult extends AMapErrorLike {
+    geocodes?: AMapGeocodeItem[]
+  }
+
+  interface AMapAutoCompleteResult extends AMapErrorLike {
+    tips?: Partial<AMapPoi>[]
+  }
+
+  interface AMapPlaceSearchResult extends AMapErrorLike {
+    poiList?: {
+      pois?: Partial<AMapPoi>[]
+    }
+  }
+
+  interface AMapDistrictSearchResult extends AMapErrorLike {
+    districtList?: Array<{
+      center?: AMapLngLatLike
+    }>
+  }
+
+  interface AMapMarkerInstance {
+    setPosition: (position: [number, number]) => void
+  }
+
+  interface AMapMapInstance {
+    add: (marker: AMapMarkerInstance) => void
+    addControl: (control: unknown) => void
+    destroy?: () => void
+    on: (event: 'click', handler: (event: { lnglat: { lng: number; lat: number } }) => void) => void
+    resize?: () => void
+    setCenter: (center: [number, number]) => void
+    setZoomAndCenter?: (zoom: number, center: [number, number]) => void
+  }
+
+  interface AMapCityScopedService {
+    setCity?: (city: string) => void
+  }
+
+  interface AMapPlaceSearchInstance extends AMapCityScopedService {
+    search: (
+      keyword: string,
+      callback: (status: string, result: AMapPlaceSearchResult) => void
+    ) => void
+  }
+
+  interface AMapAutoCompleteInstance extends AMapCityScopedService {
+    search: (
+      keyword: string,
+      callback: (status: string, result: AMapAutoCompleteResult) => void
+    ) => void
+  }
+
+  interface AMapGeocoderInstance extends AMapCityScopedService {
+    getAddress: (
+      location: [number, number],
+      callback: (status: string, result: AMapReverseGeocodeResult) => void
+    ) => void
+    getLocation: (
+      address: string,
+      callback: (status: string, result: AMapGeocodeResult) => void
+    ) => void
+  }
+
+  interface AMapDistrictSearchInstance {
+    search: (
+      keyword: string,
+      callback: (status: string, result: AMapDistrictSearchResult) => void
+    ) => void
+    setLevel?: (level: DistrictLevel) => void
+  }
+
+  interface AMapConstructor {
+    AutoComplete: new (options: Record<string, unknown>) => AMapAutoCompleteInstance
+    DistrictSearch: new (options: Record<string, unknown>) => AMapDistrictSearchInstance
+    Geocoder: new (options: Record<string, unknown>) => AMapGeocoderInstance
+    Map: new (container: HTMLElement, options: Record<string, unknown>) => AMapMapInstance
+    Marker: new (options: { position: [number, number] }) => AMapMarkerInstance
+    PlaceSearch: new (options: Record<string, unknown>) => AMapPlaceSearchInstance
+    Scale: new () => unknown
+    ToolBar: new (options: Record<string, unknown>) => unknown
   }
 
   const props = withDefaults(defineProps<Props>(), {
@@ -133,12 +244,12 @@
 
   const displayMessage = computed(() => props.message || mapMessage.value)
 
-  let amapInstance: any
-  let markerInstance: any
-  let placeSearchInstance: any
-  let autoCompleteInstance: any
-  let geocoderInstance: any
-  let districtSearchInstance: any
+  let amapInstance: AMapMapInstance | undefined
+  let markerInstance: AMapMarkerInstance | undefined
+  let placeSearchInstance: AMapPlaceSearchInstance | undefined
+  let autoCompleteInstance: AMapAutoCompleteInstance | undefined
+  let geocoderInstance: AMapGeocoderInstance | undefined
+  let districtSearchInstance: AMapDistrictSearchInstance | undefined
   let searchSequence = 0
 
   const amapKey = computed(() => props.amapKey || import.meta.env.VITE_AMAP_KEY || '')
@@ -147,7 +258,7 @@
     () => props.amapSecurityJsCode || import.meta.env.VITE_AMAP_SECURITY_JS_CODE || ''
   )
 
-  const getAmapErrorMessage = (result: any, fallback: string): string => {
+  const getAmapErrorMessage = (result: AMapErrorLike | undefined, fallback: string): string => {
     const info = String(result?.info ?? result?.message ?? '')
     if (info === 'INVALID_USER_DOMAIN') return '高德地图域名白名单未放行当前访问域名。'
     return info ? `高德地图服务异常：${info}` : fallback
@@ -260,7 +371,12 @@
     geocoderInstance?.setCity?.(props.searchScope)
   }
 
-  const initializeServices = (AMap: any): void => {
+  const getLoadedAmap = (): AMapConstructor => {
+    if (!window.AMap) throw new Error('AMap SDK is not loaded')
+    return window.AMap as unknown as AMapConstructor
+  }
+
+  const initializeServices = (AMap: AMapConstructor): void => {
     placeSearchInstance = new AMap.PlaceSearch({
       city: props.searchScope,
       citylimit: props.cityLimit,
@@ -279,8 +395,8 @@
     })
   }
 
-  const loadAmap = async (): Promise<any> => {
-    if (window.AMap) return window.AMap
+  const loadAmap = async (): Promise<AMapConstructor> => {
+    if (window.AMap) return getLoadedAmap()
 
     if (!amapKey.value) throw new Error('请先配置 VITE_AMAP_KEY')
 
@@ -298,7 +414,7 @@
           once: true
         })
       })
-      return window.AMap
+      return getLoadedAmap()
     }
 
     await new Promise<void>((resolve, reject) => {
@@ -311,7 +427,7 @@
       document.head.appendChild(script)
     })
 
-    return window.AMap
+    return getLoadedAmap()
   }
 
   const reverseGeocode = (lng: number, lat: number): void => {
@@ -326,7 +442,7 @@
       return
     }
 
-    geocoderInstance.getAddress([lng, lat], (status: string, result: any) => {
+    geocoderInstance.getAddress([lng, lat], (status: string, result) => {
       if (status !== 'complete' && result?.info) {
         const message = getAmapErrorMessage(result, '高德逆地理编码失败')
         ElMessage.warning(message)
@@ -334,7 +450,9 @@
 
       const component = result?.regeocode?.addressComponent
       const nextAddress =
-        status === 'complete' ? result?.regeocode?.formattedAddress : `${lng}, ${lat}`
+        status === 'complete'
+          ? (result?.regeocode?.formattedAddress ?? `${lng}, ${lat}`)
+          : `${lng}, ${lat}`
       const nextRegionPath = normalizeRegionPath({
         province: component?.province,
         city: component?.city,
@@ -367,7 +485,7 @@
     const currentSequence = ++searchSequence
     poiLoading.value = true
     updateSearchScope()
-    autoCompleteInstance?.search(keyword, (autoStatus: string, autoResult: any) => {
+    autoCompleteInstance?.search(keyword, (autoStatus: string, autoResult) => {
       if (currentSequence !== searchSequence) return
       const tips = ((autoResult?.tips ?? []) as Partial<AMapPoi>[])
         .map(normalizePoi)
@@ -379,7 +497,7 @@
       }
 
       updateSearchScope()
-      placeSearchInstance?.search(keyword, (placeStatus: string, placeResult: any) => {
+      placeSearchInstance?.search(keyword, (placeStatus: string, placeResult) => {
         if (currentSequence !== searchSequence) return
         poiLoading.value = false
         if (placeStatus !== 'complete') {
@@ -418,7 +536,7 @@
   const geocodePoi = (poi: AMapPoi): void => {
     const address = getPoiAddress(poi)
     if (!geocoderInstance || !address) return
-    geocoderInstance.getLocation(address, (status: string, result: any) => {
+    geocoderInstance.getLocation(address, (status: string, result) => {
       const geocode = result?.geocodes?.[0]
       const location = geocode?.location
       const lng = typeof location?.getLng === 'function' ? location.getLng() : location?.lng
@@ -471,7 +589,7 @@
 
   const centerMapByGeocoder = (region: string): void => {
     if (!region || !geocoderInstance) return
-    geocoderInstance.getLocation(region, (status: string, result: any) => {
+    geocoderInstance.getLocation(region, (status: string, result) => {
       const location = result?.geocodes?.[0]?.location
       const lng = typeof location?.getLng === 'function' ? location.getLng() : location?.lng
       const lat = typeof location?.getLat === 'function' ? location.getLat() : location?.lat
@@ -485,7 +603,7 @@
     if (!region) return
     if (districtSearchInstance) {
       districtSearchInstance.setLevel?.(props.districtLevel)
-      districtSearchInstance.search(props.regionAdcode || region, (status: string, result: any) => {
+      districtSearchInstance.search(props.regionAdcode || region, (status: string, result) => {
         const center = result?.districtList?.[0]?.center
         const lng = typeof center?.getLng === 'function' ? center.getLng() : center?.lng
         const lat = typeof center?.getLat === 'function' ? center.getLat() : center?.lat
@@ -500,7 +618,7 @@
     centerMapByGeocoder(region)
   }
 
-  const initialize = async (options: InitOptions): Promise<any> => {
+  const initialize = async (options: InitOptions): Promise<AMapConstructor | undefined> => {
     if (!mapRef.value) return undefined
 
     const AMap = await loadAmap()
@@ -531,9 +649,10 @@
   const setMarker = (longitude: number | string, latitude: number | string): void => {
     if (!amapInstance || !window.AMap) return
 
-    const position = [Number(longitude), Number(latitude)]
+    const position: [number, number] = [Number(longitude), Number(latitude)]
     if (!markerInstance) {
-      markerInstance = new window.AMap.Marker({ position })
+      const AMap = window.AMap as unknown as AMapConstructor
+      markerInstance = new AMap.Marker({ position })
       amapInstance.add(markerInstance)
     } else {
       markerInstance.setPosition(position)
@@ -611,8 +730,22 @@
 
 <script lang="ts">
   declare global {
+    interface ArtAmapBrowserNamespace {
+      AutoComplete: new (options: Record<string, unknown>) => unknown
+      DistrictSearch: new (options: Record<string, unknown>) => unknown
+      Geocoder: new (options: Record<string, unknown>) => unknown
+      LngLat: new (lng: number, lat: number) => unknown
+      Map: new (container: HTMLElement, options: Record<string, unknown>) => unknown
+      Marker: new (options: Record<string, unknown>) => unknown
+      Pixel: new (x: number, y: number) => unknown
+      PlaceSearch: new (options: Record<string, unknown>) => unknown
+      Polyline: new (options: Record<string, unknown>) => unknown
+      Scale: new () => unknown
+      ToolBar: new (options?: Record<string, unknown>) => unknown
+    }
+
     interface Window {
-      AMap?: any
+      AMap?: ArtAmapBrowserNamespace
       _AMapSecurityConfig?: {
         securityJsCode?: string
       }

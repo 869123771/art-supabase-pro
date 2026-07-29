@@ -31,12 +31,14 @@
 </template>
 
 <script setup lang="ts">
+  import type { FormInstance } from 'element-plus'
   import { computed } from 'vue'
   import { useI18n } from 'vue-i18n'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
 
   defineOptions({ name: 'ArtSearchBar' })
 
+  type SearchBarValue = Record<string, unknown>
   export type SearchFormItem = FormItem
 
   export interface SearchBarProps {
@@ -80,10 +82,10 @@
 
   const emit = defineEmits<{
     reset: []
-    search: [Record<string, any>]
+    search: [SearchBarValue]
   }>()
 
-  const modelValue = defineModel<Record<string, any>>({ default: () => ({}) })
+  const modelValue = defineModel<SearchBarValue>({ default: () => ({}) })
   const slots = useSlots()
   const { t } = useI18n()
   const searchBarRef = ref<InstanceType<typeof ArtForm>>()
@@ -96,7 +98,7 @@
     emit('reset')
   }
 
-  const handleSearch = (params: Record<string, any>) => {
+  const handleSearch = (params: SearchBarValue) => {
     emit('search', params)
   }
 
@@ -113,8 +115,10 @@
 
   defineExpose({
     ref: computed(() => searchBarRef.value?.ref),
-    validate: (...args: any[]) => searchBarRef.value?.validate(...args),
-    clearValidate: (...args: any[]) => searchBarRef.value?.clearValidate(...args),
+    validate: (...args: Parameters<FormInstance['validate']>) =>
+      searchBarRef.value?.validate(...args),
+    clearValidate: (...args: Parameters<FormInstance['clearValidate']>) =>
+      searchBarRef.value?.clearValidate(...args),
     reset: () => searchBarRef.value?.reset(),
     fetchOptions: (item: FormItem) => searchBarRef.value?.fetchOptions(item),
     reloadOptions: (key?: string) => searchBarRef.value?.reloadOptions(key),

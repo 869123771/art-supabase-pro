@@ -37,13 +37,16 @@ import {
 import { tableConfig } from '../../utils/table/tableConfig'
 
 // 类型推导工具类型
-type InferApiParams<T> = T extends (params: infer P) => any ? P : never
-type InferApiResponse<T> = T extends (params: any) => Promise<infer R> ? R : never
+// useTable 需要保留任意业务 API 的参数/响应推导能力，动态边界集中在这一处。
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type TableApiFn<TParams = any, TResponse = any> = (params: TParams) => Promise<TResponse>
+type InferApiParams<T> = T extends (params: infer P) => unknown ? P : never
+type InferApiResponse<T> = T extends (params: infer _P) => Promise<infer R> ? R : never
 type InferRecordType<T> = T extends Api.Common.PaginatedResponse<infer U> ? U : never
 
 // 优化的配置接口 - 支持自动类型推导
 export interface UseTableConfig<
-  TApiFn extends (params: any) => Promise<any> = (params: any) => Promise<any>,
+  TApiFn extends TableApiFn = TableApiFn,
   TRecord = InferRecordType<InferApiResponse<TApiFn>>,
   TParams = InferApiParams<TApiFn>,
   TResponse = InferApiResponse<TApiFn>
@@ -112,10 +115,7 @@ export interface UseTableConfig<
   }
 }
 
-export function useTable<
-  TRecord = never,
-  TApiFn extends (params: any) => Promise<any> = (params: any) => Promise<any>
->(
+export function useTable<TRecord = never, TApiFn extends TableApiFn = TableApiFn>(
   config: UseTableConfig<
     TApiFn,
     [TRecord] extends [never] ? InferRecordType<InferApiResponse<TApiFn>> : TRecord
@@ -138,9 +138,7 @@ export function useTable<
  * - 错误处理
  * - 列配置管理
  */
-function useTableImpl<TApiFn extends (params: any) => Promise<any>, TRecord>(
-  config: UseTableConfig<TApiFn, TRecord>
-) {
+function useTableImpl<TApiFn extends TableApiFn, TRecord>(config: UseTableConfig<TApiFn, TRecord>) {
   type TParams = InferApiParams<TApiFn>
   const {
     core: {
@@ -256,8 +254,6 @@ function useTableImpl<TApiFn extends (params: any) => Promise<any>, TRecord>(
   const clearCache = (strategy: CacheInvalidationStrategy, context?: string): void => {
     if (!cache) return
 
-    let clearedCount = 0
-
     switch (strategy) {
       case CacheInvalidationStrategy.CLEAR_ALL:
         cache.clear()
@@ -265,13 +261,17 @@ function useTableImpl<TApiFn extends (params: any) => Promise<any>, TRecord>(
         break
 
       case CacheInvalidationStrategy.CLEAR_CURRENT:
-        clearedCount = cache.clearCurrentSearch(searchParams)
-        logger.log(`清空当前搜索缓存 ${clearedCount} 条 - ${context || ''}`)
+        {
+          const clearedCount = cache.clearCurrentSearch(searchParams)
+          logger.log(`清空当前搜索缓存 ${clearedCount} 条 - ${context || ''}`)
+        }
         break
 
       case CacheInvalidationStrategy.CLEAR_PAGINATION:
-        clearedCount = cache.clearPagination()
-        logger.log(`清空分页缓存 ${clearedCount} 条 - ${context || ''}`)
+        {
+          const clearedCount = cache.clearPagination()
+          logger.log(`清空分页缓存 ${clearedCount} 条 - ${context || ''}`)
+        }
         break
 
       case CacheInvalidationStrategy.KEEP_ALL:

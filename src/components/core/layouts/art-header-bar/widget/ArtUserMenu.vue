@@ -90,13 +90,6 @@
   }
 
   /**
-   * 打开文档页面
-   */
-  const toDocs = (): void => {
-    window.open(WEB_LINKS.DOCS)
-  }
-
-  /**
    * 打开 GitHub 页面
    */
   const toGitee = (): void => {

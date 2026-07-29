@@ -32,7 +32,7 @@
       accept?: string
       disabled?: boolean
       icon?: string | Component
-      buttonProps?: Record<string, any>
+      buttonProps?: Record<string, unknown>
       parseExcel?: boolean
     }>(),
     {

@@ -4,6 +4,21 @@ import { applyFilters, type FilterSpec } from '@/utils/supabase-filters'
 
 const { supabase, keysToSnakeDeep, responseHandle } = useSupabase()
 
+interface SupabaseProviderResponse {
+  data?: unknown
+  error?: unknown
+  count?: number | null
+  response?: {
+    json?: () => Promise<unknown>
+  }
+}
+
+interface SupabaseProviderQueryLike extends PromiseLike<SupabaseProviderResponse> {
+  gte(column: string, value: unknown): this
+  in(column: string, values: readonly unknown[]): this
+  lte(column: string, value: unknown): this
+}
+
 const normalizeBooleanFilter = (value: unknown): boolean | undefined => {
   if (value === true || value === 'true') return true
   if (value === false || value === 'false') return false
@@ -124,7 +139,7 @@ async function fetchVehicleReminderViewList(
   mode: 'days' | 'expired'
 ) {
   const { from = 0, to = 9 } = params
-  let query: any = supabase
+  let query = supabase
     .from(viewName)
     .select('*', { count: 'exact' })
     .order('remaining_days', { ascending: true })
@@ -139,10 +154,13 @@ async function fetchVehicleReminderViewList(
     camelToSnake: true
   })
 
-  return await responseHandle<VehicleReminderRow[]>(() => query as any, {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
+  return await responseHandle<VehicleReminderRow[]>(
+    () => query as unknown as SupabaseProviderQueryLike,
+    {
+      ignoreCheck: true,
+      showErrorMessage: true
+    }
+  )
 }
 
 // 保险公司
@@ -154,14 +172,14 @@ export async function fetchInsuranceCompanyList(params: InsuranceCompanySearchPa
     { col: 'contactPhone', op: 'ilike', val: contactPhone ? `%${contactPhone}%` : undefined }
   ]
 
-  let query: any = supabase
+  let query = supabase
     .from('vehicle_insurance_company')
     .select('*', { count: 'exact' })
     .order('create_time', { ascending: false })
     .range(from, to)
 
   query = applyFilters(query, filters, { skipEmpty: true, camelToSnake: true })
-  return await responseHandle(() => query as any, {
+  return await responseHandle(() => query as unknown as SupabaseProviderQueryLike, {
     ignoreCheck: true,
     showErrorMessage: true
   })
@@ -177,7 +195,7 @@ export async function exportInsuranceCompanyList(
     { col: 'contactPhone', op: 'ilike', val: contactPhone ? `%${contactPhone}%` : undefined }
   ]
 
-  let query: any = supabase
+  let query = supabase
     .from('vehicle_insurance_company')
     .select('*')
     .order('create_time', { ascending: false })
@@ -189,7 +207,7 @@ export async function exportInsuranceCompanyList(
     query = applyFilters(query, filters, { skipEmpty: true, camelToSnake: true })
   }
 
-  return await responseHandle(() => query as any, {
+  return await responseHandle(() => query as unknown as SupabaseProviderQueryLike, {
     ignoreCheck: true,
     showErrorMessage: true
   })
@@ -197,7 +215,10 @@ export async function exportInsuranceCompanyList(
 
 export async function addInsuranceCompany(params: InsuranceCompany) {
   return await responseHandle(
-    () => supabase.from('vehicle_insurance_company').insert(keysToSnakeDeep(params)) as any,
+    () =>
+      supabase
+        .from('vehicle_insurance_company')
+        .insert(keysToSnakeDeep(params)) as unknown as SupabaseProviderQueryLike,
     { showMessage: true, breakReturn: true }
   )
 }
@@ -206,21 +227,32 @@ export async function editInsuranceCompany(params: InsuranceCompany) {
   const { id, ...data } = params
   return await responseHandle(
     () =>
-      supabase.from('vehicle_insurance_company').update(keysToSnakeDeep(data)).eq('id', id) as any,
+      supabase
+        .from('vehicle_insurance_company')
+        .update(keysToSnakeDeep(data))
+        .eq('id', id) as unknown as SupabaseProviderQueryLike,
     { showMessage: true, breakReturn: true }
   )
 }
 
 export async function deleteInsuranceCompany(id: string) {
   return await responseHandle(
-    () => supabase.from('vehicle_insurance_company').delete().eq('id', id) as any,
+    () =>
+      supabase
+        .from('vehicle_insurance_company')
+        .delete()
+        .eq('id', id) as unknown as SupabaseProviderQueryLike,
     { showMessage: true }
   )
 }
 
 export async function deleteInsuranceCompanyBatch(ids: string[]) {
   return await responseHandle(
-    () => supabase.from('vehicle_insurance_company').delete().in('id', ids) as any,
+    () =>
+      supabase
+        .from('vehicle_insurance_company')
+        .delete()
+        .in('id', ids) as unknown as SupabaseProviderQueryLike,
     { showMessage: true }
   )
 }
@@ -228,9 +260,9 @@ export async function deleteInsuranceCompanyBatch(ids: string[]) {
 export async function importInsuranceCompanies(rows: InsuranceCompany[]) {
   return await responseHandle(
     () =>
-      supabase
-        .from('vehicle_insurance_company')
-        .upsert(keysToSnakeDeep(rows), { onConflict: 'company_name' }) as any,
+      supabase.from('vehicle_insurance_company').upsert(keysToSnakeDeep(rows), {
+        onConflict: 'company_name'
+      }) as unknown as SupabaseProviderQueryLike,
     { showMessage: true, breakReturn: true }
   )
 }
@@ -244,14 +276,14 @@ export async function fetchSupplierList(params: SupplierSearchParams) {
     { col: 'contactPhone', op: 'ilike', val: contactPhone ? `%${contactPhone}%` : undefined }
   ]
 
-  let query: any = supabase
+  let query = supabase
     .from('vehicle_supplier')
     .select('*', { count: 'exact' })
     .order('create_time', { ascending: false })
     .range(from, to)
 
   query = applyFilters(query, filters, { skipEmpty: true, camelToSnake: true })
-  return await responseHandle(() => query as any, {
+  return await responseHandle(() => query as unknown as SupabaseProviderQueryLike, {
     ignoreCheck: true,
     showErrorMessage: true
   })
@@ -267,7 +299,7 @@ export async function exportSupplierList(
     { col: 'contactPhone', op: 'ilike', val: contactPhone ? `%${contactPhone}%` : undefined }
   ]
 
-  let query: any = supabase
+  let query = supabase
     .from('vehicle_supplier')
     .select('*')
     .order('create_time', { ascending: false })
@@ -279,7 +311,7 @@ export async function exportSupplierList(
     query = applyFilters(query, filters, { skipEmpty: true, camelToSnake: true })
   }
 
-  return await responseHandle(() => query as any, {
+  return await responseHandle(() => query as unknown as SupabaseProviderQueryLike, {
     ignoreCheck: true,
     showErrorMessage: true
   })
@@ -287,7 +319,10 @@ export async function exportSupplierList(
 
 export async function addSupplier(params: Supplier) {
   return await responseHandle(
-    () => supabase.from('vehicle_supplier').insert(keysToSnakeDeep(params)) as any,
+    () =>
+      supabase
+        .from('vehicle_supplier')
+        .insert(keysToSnakeDeep(params)) as unknown as SupabaseProviderQueryLike,
     { showMessage: true, breakReturn: true }
   )
 }
@@ -295,21 +330,33 @@ export async function addSupplier(params: Supplier) {
 export async function editSupplier(params: Supplier) {
   const { id, ...data } = params
   return await responseHandle(
-    () => supabase.from('vehicle_supplier').update(keysToSnakeDeep(data)).eq('id', id) as any,
+    () =>
+      supabase
+        .from('vehicle_supplier')
+        .update(keysToSnakeDeep(data))
+        .eq('id', id) as unknown as SupabaseProviderQueryLike,
     { showMessage: true, breakReturn: true }
   )
 }
 
 export async function deleteSupplier(id: string) {
   return await responseHandle(
-    () => supabase.from('vehicle_supplier').delete().eq('id', id) as any,
+    () =>
+      supabase
+        .from('vehicle_supplier')
+        .delete()
+        .eq('id', id) as unknown as SupabaseProviderQueryLike,
     { showMessage: true }
   )
 }
 
 export async function deleteSupplierBatch(ids: string[]) {
   return await responseHandle(
-    () => supabase.from('vehicle_supplier').delete().in('id', ids) as any,
+    () =>
+      supabase
+        .from('vehicle_supplier')
+        .delete()
+        .in('id', ids) as unknown as SupabaseProviderQueryLike,
     { showMessage: true }
   )
 }
@@ -319,7 +366,7 @@ export async function importSuppliers(rows: Supplier[]) {
     () =>
       supabase.from('vehicle_supplier').upsert(keysToSnakeDeep(rows), {
         onConflict: 'create_by,supplier_name'
-      }) as any,
+      }) as unknown as SupabaseProviderQueryLike,
     { showMessage: true, breakReturn: true }
   )
 }
@@ -333,7 +380,7 @@ export async function fetchPartsCategoryList(params: PartsCategorySearchParams) 
     { col: 'status', op: 'eq', val: status }
   ]
 
-  let query: any = supabase
+  let query = supabase
     .from('vehicle_parts_category')
     .select('*', { count: 'exact' })
     .order('sort', { ascending: true })
@@ -346,7 +393,7 @@ export async function fetchPartsCategoryList(params: PartsCategorySearchParams) 
       : query.eq('parent_id', parentId)
   query = applyFilters(query, filters, { skipEmpty: true, camelToSnake: true })
 
-  return await responseHandle(() => query as any, {
+  return await responseHandle(() => query as unknown as SupabaseProviderQueryLike, {
     ignoreCheck: true,
     showErrorMessage: true
   })
@@ -356,7 +403,7 @@ export async function fetchPartsCategoryTree(
   params: Partial<Pick<PartsCategory, 'categoryName'>> = {}
 ) {
   const { categoryName } = params
-  let query: any = supabase
+  let query = supabase
     .from('vehicle_parts_category')
     .select('*')
     .order('sort', { ascending: true })
@@ -366,10 +413,13 @@ export async function fetchPartsCategoryTree(
     query = query.ilike('category_name', `%${categoryName}%`)
   }
 
-  return await responseHandle<PartsCategory[]>(() => query as any, {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
+  return await responseHandle<PartsCategory[]>(
+    () => query as unknown as SupabaseProviderQueryLike,
+    {
+      ignoreCheck: true,
+      showErrorMessage: true
+    }
+  )
 }
 
 export async function exportPartsCategoryList(
@@ -382,7 +432,7 @@ export async function exportPartsCategoryList(
     { col: 'status', op: 'eq', val: status }
   ]
 
-  let query: any = supabase
+  let query = supabase
     .from('vehicle_parts_category')
     .select('*')
     .order('sort', { ascending: true })
@@ -399,7 +449,7 @@ export async function exportPartsCategoryList(
     query = applyFilters(query, filters, { skipEmpty: true, camelToSnake: true })
   }
 
-  return await responseHandle(() => query as any, {
+  return await responseHandle(() => query as unknown as SupabaseProviderQueryLike, {
     ignoreCheck: true,
     showErrorMessage: true
   })
@@ -407,7 +457,10 @@ export async function exportPartsCategoryList(
 
 export async function addPartsCategory(params: PartsCategory) {
   return await responseHandle(
-    () => supabase.from('vehicle_parts_category').insert(keysToSnakeDeep(params)) as any,
+    () =>
+      supabase
+        .from('vehicle_parts_category')
+        .insert(keysToSnakeDeep(params)) as unknown as SupabaseProviderQueryLike,
     { showMessage: true, breakReturn: true }
   )
 }
@@ -415,21 +468,33 @@ export async function addPartsCategory(params: PartsCategory) {
 export async function editPartsCategory(params: PartsCategory) {
   const { id, ...data } = params
   return await responseHandle(
-    () => supabase.from('vehicle_parts_category').update(keysToSnakeDeep(data)).eq('id', id) as any,
+    () =>
+      supabase
+        .from('vehicle_parts_category')
+        .update(keysToSnakeDeep(data))
+        .eq('id', id) as unknown as SupabaseProviderQueryLike,
     { showMessage: true, breakReturn: true }
   )
 }
 
 export async function deletePartsCategory(id: string) {
   return await responseHandle(
-    () => supabase.from('vehicle_parts_category').delete().eq('id', id) as any,
+    () =>
+      supabase
+        .from('vehicle_parts_category')
+        .delete()
+        .eq('id', id) as unknown as SupabaseProviderQueryLike,
     { showMessage: true }
   )
 }
 
 export async function deletePartsCategoryBatch(ids: string[]) {
   return await responseHandle(
-    () => supabase.from('vehicle_parts_category').delete().in('id', ids) as any,
+    () =>
+      supabase
+        .from('vehicle_parts_category')
+        .delete()
+        .in('id', ids) as unknown as SupabaseProviderQueryLike,
     { showMessage: true }
   )
 }
@@ -439,7 +504,7 @@ export async function importPartsCategories(rows: PartsCategory[]) {
     () =>
       supabase.from('vehicle_parts_category').upsert(keysToSnakeDeep(rows), {
         onConflict: 'category_code'
-      }) as any,
+      }) as unknown as SupabaseProviderQueryLike,
     { showMessage: true, breakReturn: true }
   )
 }
@@ -473,14 +538,14 @@ export async function fetchPartsList(params: PartsSearchParams) {
   const { from = 0, to = 9 } = params
   const filters = getPartsSearchFilters(params)
 
-  let query: any = supabase
+  let query = supabase
     .from('vehicle_parts')
     .select(PARTS_SELECT, { count: 'exact' })
     .order('create_time', { ascending: false })
     .range(from, to)
 
   query = applyFilters(query, filters, { skipEmpty: true, camelToSnake: true })
-  return await responseHandle(() => query as any, {
+  return await responseHandle(() => query as unknown as SupabaseProviderQueryLike, {
     ignoreCheck: true,
     showErrorMessage: true
   })
@@ -492,7 +557,7 @@ export async function exportPartsList(
   const { ids, maxRows = 10000 } = params
   const filters = getPartsSearchFilters(params)
 
-  let query: any = supabase
+  let query = supabase
     .from('vehicle_parts')
     .select(PARTS_SELECT)
     .order('create_time', { ascending: false })
@@ -504,7 +569,7 @@ export async function exportPartsList(
     query = applyFilters(query, filters, { skipEmpty: true, camelToSnake: true })
   }
 
-  return await responseHandle(() => query as any, {
+  return await responseHandle(() => query as unknown as SupabaseProviderQueryLike, {
     ignoreCheck: true,
     showErrorMessage: true
   })
@@ -512,7 +577,10 @@ export async function exportPartsList(
 
 export async function addParts(params: Parts) {
   return await responseHandle(
-    () => supabase.from('vehicle_parts').insert(keysToSnakeDeep(params)) as any,
+    () =>
+      supabase
+        .from('vehicle_parts')
+        .insert(keysToSnakeDeep(params)) as unknown as SupabaseProviderQueryLike,
     { showMessage: true, breakReturn: true }
   )
 }
@@ -520,21 +588,33 @@ export async function addParts(params: Parts) {
 export async function editParts(params: Parts) {
   const { id, ...data } = params
   return await responseHandle(
-    () => supabase.from('vehicle_parts').update(keysToSnakeDeep(data)).eq('id', id) as any,
+    () =>
+      supabase
+        .from('vehicle_parts')
+        .update(keysToSnakeDeep(data))
+        .eq('id', id) as unknown as SupabaseProviderQueryLike,
     { showMessage: true, breakReturn: true }
   )
 }
 
 export async function deleteParts(id: string) {
-  return await responseHandle(() => supabase.from('vehicle_parts').delete().eq('id', id) as any, {
-    showMessage: true
-  })
+  return await responseHandle(
+    () =>
+      supabase.from('vehicle_parts').delete().eq('id', id) as unknown as SupabaseProviderQueryLike,
+    {
+      showMessage: true
+    }
+  )
 }
 
 export async function deletePartsBatch(ids: string[]) {
-  return await responseHandle(() => supabase.from('vehicle_parts').delete().in('id', ids) as any, {
-    showMessage: true
-  })
+  return await responseHandle(
+    () =>
+      supabase.from('vehicle_parts').delete().in('id', ids) as unknown as SupabaseProviderQueryLike,
+    {
+      showMessage: true
+    }
+  )
 }
 
 export async function importParts(rows: Parts[]) {
@@ -542,7 +622,7 @@ export async function importParts(rows: Parts[]) {
     () =>
       supabase.from('vehicle_parts').upsert(keysToSnakeDeep(rows), {
         onConflict: 'tenant_id,part_code'
-      }) as any,
+      }) as unknown as SupabaseProviderQueryLike,
     { showMessage: true, breakReturn: true }
   )
 }
@@ -553,7 +633,7 @@ export async function fetchSupplierOptions() {
     .select('id, supplier_name, contact_person, contact_phone')
     .order('supplier_name', { ascending: true })
 
-  return await responseHandle(() => query as any, {
+  return await responseHandle(() => query as unknown as SupabaseProviderQueryLike, {
     ignoreCheck: true,
     showErrorMessage: true
   })
@@ -586,7 +666,7 @@ const countRowsByVehicleIds = async (
       ? supabase.from(tableName).select('id', { count: 'exact', head: true }).eq(columnName, ids[0])
       : supabase.from(tableName).select('id', { count: 'exact', head: true }).in(columnName, ids)
 
-  const result = await responseHandle(() => query as any, {
+  const result = await responseHandle(() => query as unknown as SupabaseProviderQueryLike, {
     ignoreCheck: true,
     showErrorMessage: true,
     breakReturn: true
@@ -616,11 +696,14 @@ const fetchVehicleArchiveCarrierIds = async (ids: string[]): Promise<string[]> =
       ? supabase.from(VEHICLE_ARCHIVE_TABLE).select('carrier_id').eq('id', ids[0])
       : supabase.from(VEHICLE_ARCHIVE_TABLE).select('carrier_id').in('id', ids)
 
-  const result = await responseHandle<VehicleArchiveDeleteBase[]>(() => query as any, {
-    ignoreCheck: true,
-    showErrorMessage: true,
-    breakReturn: true
-  })
+  const result = await responseHandle<VehicleArchiveDeleteBase[]>(
+    () => query as unknown as SupabaseProviderQueryLike,
+    {
+      ignoreCheck: true,
+      showErrorMessage: true,
+      breakReturn: true
+    }
+  )
 
   return Array.from(
     new Set((result.data ?? []).map((item) => item.carrierId).filter((id): id is string => !!id))
@@ -643,7 +726,7 @@ const deleteRowsByVehicleIds = async (tableName: string, ids: string[]): Promise
       ? supabase.from(tableName).delete({ count: 'exact' }).eq('vehicle_id', ids[0])
       : supabase.from(tableName).delete({ count: 'exact' }).in('vehicle_id', ids)
 
-  await responseHandle(() => query as any, {
+  await responseHandle(() => query as unknown as SupabaseProviderQueryLike, {
     showErrorMessage: true,
     breakReturn: true
   })
@@ -662,7 +745,7 @@ const refreshCarrierVehicleCounts = async (carrierIds: string[]): Promise<void> 
           supabase
             .from('tms_carrier')
             .update({ vehicle_count: count }, { count: 'exact' })
-            .eq('id', carrierId) as any,
+            .eq('id', carrierId) as unknown as SupabaseProviderQueryLike,
         {
           showErrorMessage: true,
           breakReturn: true
@@ -694,7 +777,7 @@ const getVehicleArchiveSearchFilters = (params: VehicleArchiveSearchParams): Fil
 
 export async function fetchVehicleArchiveList(params: VehicleArchiveSearchParams) {
   const { from = 0, to = 9, createTimeRange } = params
-  let query: any = supabase
+  let query = supabase
     .from(VEHICLE_ARCHIVE_TABLE)
     .select(VEHICLE_ARCHIVE_SELECT, { count: 'exact' })
     .order('create_time', { ascending: false })
@@ -709,17 +792,20 @@ export async function fetchVehicleArchiveList(params: VehicleArchiveSearchParams
     camelToSnake: true
   })
 
-  return await responseHandle<VehicleArchive[]>(() => query as any, {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
+  return await responseHandle<VehicleArchive[]>(
+    () => query as unknown as SupabaseProviderQueryLike,
+    {
+      ignoreCheck: true,
+      showErrorMessage: true
+    }
+  )
 }
 
 export async function exportVehicleArchiveList(
   params: VehicleArchiveSearchParams & { ids?: string[]; maxRows?: number }
 ) {
   const { ids, maxRows = 10000, createTimeRange } = params
-  let query: any = supabase
+  let query = supabase
     .from(VEHICLE_ARCHIVE_TABLE)
     .select(VEHICLE_ARCHIVE_SELECT)
     .order('create_time', { ascending: false })
@@ -737,10 +823,13 @@ export async function exportVehicleArchiveList(
     })
   }
 
-  return await responseHandle<VehicleArchive[]>(() => query as any, {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
+  return await responseHandle<VehicleArchive[]>(
+    () => query as unknown as SupabaseProviderQueryLike,
+    {
+      ignoreCheck: true,
+      showErrorMessage: true
+    }
+  )
 }
 
 export async function fetchVehicleArchiveDetail(id: string) {
@@ -750,7 +839,7 @@ export async function fetchVehicleArchiveDetail(id: string) {
         .from(VEHICLE_ARCHIVE_TABLE)
         .select(VEHICLE_ARCHIVE_SELECT)
         .eq('id', id)
-        .single() as any,
+        .single() as unknown as SupabaseProviderQueryLike,
     {
       ignoreCheck: true,
       showErrorMessage: true
@@ -760,7 +849,10 @@ export async function fetchVehicleArchiveDetail(id: string) {
 
 export async function addVehicleArchive(params: VehicleArchiveWritePayload) {
   return await responseHandle(
-    () => supabase.from(VEHICLE_ARCHIVE_TABLE).insert(keysToSnakeDeep(params)) as any,
+    () =>
+      supabase
+        .from(VEHICLE_ARCHIVE_TABLE)
+        .insert(keysToSnakeDeep(params)) as unknown as SupabaseProviderQueryLike,
     {
       showMessage: true,
       breakReturn: true
@@ -775,7 +867,7 @@ export async function editVehicleArchive(params: VehicleArchiveWritePayload) {
       supabase
         .from(VEHICLE_ARCHIVE_TABLE)
         .update(keysToSnakeDeep(payload), { count: 'exact' })
-        .eq('id', id) as any,
+        .eq('id', id) as unknown as SupabaseProviderQueryLike,
     {
       showMessage: true,
       breakReturn: true,
@@ -818,7 +910,11 @@ export async function deleteVehicleArchive(id: string) {
   )
 
   return await responseHandle(
-    () => supabase.from(VEHICLE_ARCHIVE_TABLE).delete({ count: 'exact' }).eq('id', id) as any,
+    () =>
+      supabase
+        .from(VEHICLE_ARCHIVE_TABLE)
+        .delete({ count: 'exact' })
+        .eq('id', id) as unknown as SupabaseProviderQueryLike,
     {
       showMessage: true,
       message:
@@ -841,7 +937,11 @@ export async function deleteVehicleArchiveBatch(ids: string[]) {
   )
 
   return await responseHandle(
-    () => supabase.from(VEHICLE_ARCHIVE_TABLE).delete({ count: 'exact' }).in('id', ids) as any,
+    () =>
+      supabase
+        .from(VEHICLE_ARCHIVE_TABLE)
+        .delete({ count: 'exact' })
+        .in('id', ids) as unknown as SupabaseProviderQueryLike,
     {
       showMessage: true,
       breakReturn: true,
@@ -869,7 +969,7 @@ export async function auditVehicleArchive(params: {
           }),
           { count: 'exact' }
         )
-        .eq('id', id) as any,
+        .eq('id', id) as unknown as SupabaseProviderQueryLike,
     {
       showMessage: true,
       breakReturn: true,
@@ -897,7 +997,7 @@ export async function auditVehicleArchiveBatch(params: {
           }),
           { count: 'exact' }
         )
-        .in('id', ids) as any,
+        .in('id', ids) as unknown as SupabaseProviderQueryLike,
     {
       showMessage: true,
       breakReturn: true,
@@ -918,17 +1018,20 @@ export async function fetchVehicleArchiveOptions(
     { col: 'companyName', op: 'ilike', val: companyName ? `%${companyName}%` : undefined }
   ]
 
-  let query: any = supabase
+  let query = supabase
     .from(VEHICLE_ARCHIVE_TABLE)
     .select('id, plate_no, company_name, vin, self_no, carrier_id, vehicle_type')
     .order('plate_no', { ascending: true })
     .limit(200)
 
   query = applyFilters(query, filters, { skipEmpty: true, camelToSnake: true })
-  return await responseHandle<Api.VehicleMgtSys.VehicleManage.VehicleOption[]>(() => query as any, {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
+  return await responseHandle<Api.VehicleMgtSys.VehicleManage.VehicleOption[]>(
+    () => query as unknown as SupabaseProviderQueryLike,
+    {
+      ignoreCheck: true,
+      showErrorMessage: true
+    }
+  )
 }
 
 export async function fetchVehicleReminderCompanyOptions() {
@@ -941,7 +1044,7 @@ export async function fetchVehicleReminderCompanyOptions() {
             .select('company_name')
             .not('company_name', 'is', null)
             .neq('company_name', '')
-            .order('company_name', { ascending: true }) as any,
+            .order('company_name', { ascending: true }) as unknown as SupabaseProviderQueryLike,
         { ignoreCheck: true, showErrorMessage: true }
       )
     )
@@ -1001,7 +1104,7 @@ export async function fetchInsuranceCompanyOptions() {
     .limit(200)
 
   return await responseHandle<Api.VehicleMgtSys.VehicleManage.InsuranceCompanyOption[]>(
-    () => query as any,
+    () => query as unknown as SupabaseProviderQueryLike,
     {
       ignoreCheck: true,
       showErrorMessage: true
@@ -1012,11 +1115,16 @@ export async function fetchInsuranceCompanyOptions() {
 // 车辆保险
 const VEHICLE_INSURANCE_TABLE = 'vehicle_insurance'
 
-const applyDateRange = (query: any, column: string, range?: string[]): any => {
+const applyDateRange = <TQuery extends SupabaseProviderQueryLike>(
+  query: TQuery,
+  column: string,
+  range?: string[]
+): TQuery => {
   const [startDate, endDate] = range ?? []
-  if (startDate) query = query.gte(column, startDate)
-  if (endDate) query = query.lte(column, endDate)
-  return query
+  let nextQuery: SupabaseProviderQueryLike = query
+  if (startDate) nextQuery = nextQuery.gte(column, startDate)
+  if (endDate) nextQuery = nextQuery.lte(column, endDate)
+  return nextQuery as TQuery
 }
 
 const getVehicleInsuranceSearchFilters = (params: VehicleInsuranceSearchParams): FilterSpec[] => [
@@ -1046,7 +1154,7 @@ export async function fetchVehicleInsuranceList(params: VehicleInsuranceSearchPa
     compulsoryExpireDateRange,
     createTimeRange
   } = params
-  let query: any = supabase
+  let query = supabase
     .from(VEHICLE_INSURANCE_TABLE)
     .select('*', { count: 'exact' })
     .order('create_time', { ascending: false })
@@ -1060,10 +1168,13 @@ export async function fetchVehicleInsuranceList(params: VehicleInsuranceSearchPa
     camelToSnake: true
   })
 
-  return await responseHandle<VehicleInsurance[]>(() => query as any, {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
+  return await responseHandle<VehicleInsurance[]>(
+    () => query as unknown as SupabaseProviderQueryLike,
+    {
+      ignoreCheck: true,
+      showErrorMessage: true
+    }
+  )
 }
 
 export async function exportVehicleInsuranceList(
@@ -1076,7 +1187,7 @@ export async function exportVehicleInsuranceList(
     compulsoryExpireDateRange,
     createTimeRange
   } = params
-  let query: any = supabase
+  let query = supabase
     .from(VEHICLE_INSURANCE_TABLE)
     .select('*')
     .order('create_time', { ascending: false })
@@ -1094,15 +1205,23 @@ export async function exportVehicleInsuranceList(
     })
   }
 
-  return await responseHandle<VehicleInsurance[]>(() => query as any, {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
+  return await responseHandle<VehicleInsurance[]>(
+    () => query as unknown as SupabaseProviderQueryLike,
+    {
+      ignoreCheck: true,
+      showErrorMessage: true
+    }
+  )
 }
 
 export async function fetchVehicleInsuranceDetail(id: string) {
   return await responseHandle<VehicleInsurance>(
-    () => supabase.from(VEHICLE_INSURANCE_TABLE).select('*').eq('id', id).single() as any,
+    () =>
+      supabase
+        .from(VEHICLE_INSURANCE_TABLE)
+        .select('*')
+        .eq('id', id)
+        .single() as unknown as SupabaseProviderQueryLike,
     {
       ignoreCheck: true,
       showErrorMessage: true
@@ -1112,7 +1231,10 @@ export async function fetchVehicleInsuranceDetail(id: string) {
 
 export async function addVehicleInsurance(params: VehicleInsurance) {
   return await responseHandle(
-    () => supabase.from(VEHICLE_INSURANCE_TABLE).insert(keysToSnakeDeep(params)) as any,
+    () =>
+      supabase
+        .from(VEHICLE_INSURANCE_TABLE)
+        .insert(keysToSnakeDeep(params)) as unknown as SupabaseProviderQueryLike,
     { showMessage: true, breakReturn: true }
   )
 }
@@ -1124,7 +1246,7 @@ export async function editVehicleInsurance(params: VehicleInsurance) {
       supabase
         .from(VEHICLE_INSURANCE_TABLE)
         .update(keysToSnakeDeep(data), { count: 'exact' })
-        .eq('id', id) as any,
+        .eq('id', id) as unknown as SupabaseProviderQueryLike,
     {
       showMessage: true,
       breakReturn: true,
@@ -1136,7 +1258,11 @@ export async function editVehicleInsurance(params: VehicleInsurance) {
 
 export async function deleteVehicleInsurance(id: string) {
   return await responseHandle(
-    () => supabase.from(VEHICLE_INSURANCE_TABLE).delete({ count: 'exact' }).eq('id', id) as any,
+    () =>
+      supabase
+        .from(VEHICLE_INSURANCE_TABLE)
+        .delete({ count: 'exact' })
+        .eq('id', id) as unknown as SupabaseProviderQueryLike,
     {
       showMessage: true,
       breakReturn: true,
@@ -1148,7 +1274,11 @@ export async function deleteVehicleInsurance(id: string) {
 
 export async function deleteVehicleInsuranceBatch(ids: string[]) {
   return await responseHandle(
-    () => supabase.from(VEHICLE_INSURANCE_TABLE).delete({ count: 'exact' }).in('id', ids) as any,
+    () =>
+      supabase
+        .from(VEHICLE_INSURANCE_TABLE)
+        .delete({ count: 'exact' })
+        .in('id', ids) as unknown as SupabaseProviderQueryLike,
     {
       showMessage: true,
       breakReturn: true,
@@ -1177,7 +1307,7 @@ const getVehicleInspectionSearchFilters = (params: VehicleInspectionSearchParams
 
 export async function fetchVehicleInspectionList(params: VehicleInspectionSearchParams) {
   const { from = 0, to = 9, expireDateRange, createTimeRange } = params
-  let query: any = supabase
+  let query = supabase
     .from(VEHICLE_INSPECTION_TABLE)
     .select('*', { count: 'exact' })
     .order('create_time', { ascending: false })
@@ -1190,17 +1320,20 @@ export async function fetchVehicleInspectionList(params: VehicleInspectionSearch
     camelToSnake: true
   })
 
-  return await responseHandle<VehicleInspection[]>(() => query as any, {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
+  return await responseHandle<VehicleInspection[]>(
+    () => query as unknown as SupabaseProviderQueryLike,
+    {
+      ignoreCheck: true,
+      showErrorMessage: true
+    }
+  )
 }
 
 export async function exportVehicleInspectionList(
   params: VehicleInspectionSearchParams & { ids?: string[]; maxRows?: number }
 ) {
   const { ids, maxRows = 10000, expireDateRange, createTimeRange } = params
-  let query: any = supabase
+  let query = supabase
     .from(VEHICLE_INSPECTION_TABLE)
     .select('*')
     .order('create_time', { ascending: false })
@@ -1217,15 +1350,23 @@ export async function exportVehicleInspectionList(
     })
   }
 
-  return await responseHandle<VehicleInspection[]>(() => query as any, {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
+  return await responseHandle<VehicleInspection[]>(
+    () => query as unknown as SupabaseProviderQueryLike,
+    {
+      ignoreCheck: true,
+      showErrorMessage: true
+    }
+  )
 }
 
 export async function fetchVehicleInspectionDetail(id: string) {
   return await responseHandle<VehicleInspection>(
-    () => supabase.from(VEHICLE_INSPECTION_TABLE).select('*').eq('id', id).single() as any,
+    () =>
+      supabase
+        .from(VEHICLE_INSPECTION_TABLE)
+        .select('*')
+        .eq('id', id)
+        .single() as unknown as SupabaseProviderQueryLike,
     {
       ignoreCheck: true,
       showErrorMessage: true
@@ -1234,7 +1375,10 @@ export async function fetchVehicleInspectionDetail(id: string) {
 }
 export async function addVehicleInspection(params: VehicleInspection) {
   return await responseHandle(
-    () => supabase.from(VEHICLE_INSPECTION_TABLE).insert(keysToSnakeDeep(params)) as any,
+    () =>
+      supabase
+        .from(VEHICLE_INSPECTION_TABLE)
+        .insert(keysToSnakeDeep(params)) as unknown as SupabaseProviderQueryLike,
     { showMessage: true, breakReturn: true }
   )
 }
@@ -1246,7 +1390,7 @@ export async function editVehicleInspection(params: VehicleInspection) {
       supabase
         .from(VEHICLE_INSPECTION_TABLE)
         .update(keysToSnakeDeep(data), { count: 'exact' })
-        .eq('id', id) as any,
+        .eq('id', id) as unknown as SupabaseProviderQueryLike,
     {
       showMessage: true,
       breakReturn: true,
@@ -1258,7 +1402,11 @@ export async function editVehicleInspection(params: VehicleInspection) {
 
 export async function deleteVehicleInspection(id: string) {
   return await responseHandle(
-    () => supabase.from(VEHICLE_INSPECTION_TABLE).delete({ count: 'exact' }).eq('id', id) as any,
+    () =>
+      supabase
+        .from(VEHICLE_INSPECTION_TABLE)
+        .delete({ count: 'exact' })
+        .eq('id', id) as unknown as SupabaseProviderQueryLike,
     {
       showMessage: true,
       breakReturn: true,
@@ -1270,7 +1418,11 @@ export async function deleteVehicleInspection(id: string) {
 
 export async function deleteVehicleInspectionBatch(ids: string[]) {
   return await responseHandle(
-    () => supabase.from(VEHICLE_INSPECTION_TABLE).delete({ count: 'exact' }).in('id', ids) as any,
+    () =>
+      supabase
+        .from(VEHICLE_INSPECTION_TABLE)
+        .delete({ count: 'exact' })
+        .in('id', ids) as unknown as SupabaseProviderQueryLike,
     {
       showMessage: true,
       breakReturn: true,
@@ -1300,7 +1452,7 @@ export async function fetchVehicleRoutineInspectionList(
   params: VehicleRoutineInspectionSearchParams
 ) {
   const { from = 0, to = 9, inspectionTimeRange, createTimeRange } = params
-  let query: any = supabase
+  let query = supabase
     .from(VEHICLE_ROUTINE_INSPECTION_TABLE)
     .select('*', { count: 'exact' })
     .order('inspection_time', { ascending: false })
@@ -1313,17 +1465,20 @@ export async function fetchVehicleRoutineInspectionList(
     camelToSnake: true
   })
 
-  return await responseHandle<VehicleRoutineInspectionRecord[]>(() => query as any, {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
+  return await responseHandle<VehicleRoutineInspectionRecord[]>(
+    () => query as unknown as SupabaseProviderQueryLike,
+    {
+      ignoreCheck: true,
+      showErrorMessage: true
+    }
+  )
 }
 
 export async function exportVehicleRoutineInspectionList(
   params: VehicleRoutineInspectionSearchParams & { ids?: string[]; maxRows?: number }
 ) {
   const { ids, maxRows = 10000, inspectionTimeRange, createTimeRange } = params
-  let query: any = supabase
+  let query = supabase
     .from(VEHICLE_ROUTINE_INSPECTION_TABLE)
     .select('*')
     .order('inspection_time', { ascending: false })
@@ -1340,15 +1495,23 @@ export async function exportVehicleRoutineInspectionList(
     })
   }
 
-  return await responseHandle<VehicleRoutineInspectionRecord[]>(() => query as any, {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
+  return await responseHandle<VehicleRoutineInspectionRecord[]>(
+    () => query as unknown as SupabaseProviderQueryLike,
+    {
+      ignoreCheck: true,
+      showErrorMessage: true
+    }
+  )
 }
 
 export async function fetchVehicleRoutineInspectionDetail(id: string) {
   return await responseHandle<VehicleRoutineInspectionRecord>(
-    () => supabase.from(VEHICLE_ROUTINE_INSPECTION_TABLE).select('*').eq('id', id).single() as any,
+    () =>
+      supabase
+        .from(VEHICLE_ROUTINE_INSPECTION_TABLE)
+        .select('*')
+        .eq('id', id)
+        .single() as unknown as SupabaseProviderQueryLike,
     {
       ignoreCheck: true,
       showErrorMessage: true
@@ -1358,7 +1521,10 @@ export async function fetchVehicleRoutineInspectionDetail(id: string) {
 
 export async function addVehicleRoutineInspection(params: VehicleRoutineInspectionRecord) {
   return await responseHandle(
-    () => supabase.from(VEHICLE_ROUTINE_INSPECTION_TABLE).insert(keysToSnakeDeep(params)) as any,
+    () =>
+      supabase
+        .from(VEHICLE_ROUTINE_INSPECTION_TABLE)
+        .insert(keysToSnakeDeep(params)) as unknown as SupabaseProviderQueryLike,
     { showMessage: true, breakReturn: true }
   )
 }
@@ -1370,7 +1536,7 @@ export async function editVehicleRoutineInspection(params: VehicleRoutineInspect
       supabase
         .from(VEHICLE_ROUTINE_INSPECTION_TABLE)
         .update(keysToSnakeDeep(data), { count: 'exact' })
-        .eq('id', id) as any,
+        .eq('id', id) as unknown as SupabaseProviderQueryLike,
     {
       showMessage: true,
       breakReturn: true,
@@ -1386,7 +1552,7 @@ export async function deleteVehicleRoutineInspection(id: string) {
       supabase
         .from(VEHICLE_ROUTINE_INSPECTION_TABLE)
         .delete({ count: 'exact' })
-        .eq('id', id) as any,
+        .eq('id', id) as unknown as SupabaseProviderQueryLike,
     {
       showMessage: true,
       breakReturn: true,
@@ -1402,7 +1568,7 @@ export async function deleteVehicleRoutineInspectionBatch(ids: string[]) {
       supabase
         .from(VEHICLE_ROUTINE_INSPECTION_TABLE)
         .delete({ count: 'exact' })
-        .in('id', ids) as any,
+        .in('id', ids) as unknown as SupabaseProviderQueryLike,
     {
       showMessage: true,
       breakReturn: true,
@@ -1426,7 +1592,7 @@ const getVehicleMileageSearchFilters = (params: VehicleMileageSearchParams): Fil
 
 export async function fetchVehicleMileageList(params: VehicleMileageSearchParams) {
   const { from = 0, to = 9, drivingTimeRange } = params
-  let query: any = supabase
+  let query = supabase
     .from(VEHICLE_MILEAGE_TABLE)
     .select('*', { count: 'exact' })
     .order('start_time', { ascending: false })
@@ -1438,17 +1604,20 @@ export async function fetchVehicleMileageList(params: VehicleMileageSearchParams
     camelToSnake: true
   })
 
-  return await responseHandle<VehicleMileageRecord[]>(() => query as any, {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
+  return await responseHandle<VehicleMileageRecord[]>(
+    () => query as unknown as SupabaseProviderQueryLike,
+    {
+      ignoreCheck: true,
+      showErrorMessage: true
+    }
+  )
 }
 
 export async function exportVehicleMileageList(
   params: VehicleMileageSearchParams & { ids?: string[]; maxRows?: number }
 ) {
   const { ids, maxRows = 10000, drivingTimeRange } = params
-  let query: any = supabase
+  let query = supabase
     .from(VEHICLE_MILEAGE_TABLE)
     .select('*')
     .order('start_time', { ascending: false })
@@ -1464,10 +1633,13 @@ export async function exportVehicleMileageList(
     })
   }
 
-  return await responseHandle<VehicleMileageRecord[]>(() => query as any, {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
+  return await responseHandle<VehicleMileageRecord[]>(
+    () => query as unknown as SupabaseProviderQueryLike,
+    {
+      ignoreCheck: true,
+      showErrorMessage: true
+    }
+  )
 }
 
 // 车辆违章
@@ -1491,7 +1663,7 @@ const getVehicleViolationSearchFilters = (params: VehicleViolationSearchParams):
 
 export async function fetchVehicleViolationList(params: VehicleViolationSearchParams) {
   const { from = 0, to = 9, violationTimeRange } = params
-  let query: any = supabase
+  let query = supabase
     .from(VEHICLE_VIOLATION_TABLE)
     .select('*', { count: 'exact' })
     .order('violation_time', { ascending: false })
@@ -1503,17 +1675,20 @@ export async function fetchVehicleViolationList(params: VehicleViolationSearchPa
     camelToSnake: true
   })
 
-  return await responseHandle<VehicleViolationRecord[]>(() => query as any, {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
+  return await responseHandle<VehicleViolationRecord[]>(
+    () => query as unknown as SupabaseProviderQueryLike,
+    {
+      ignoreCheck: true,
+      showErrorMessage: true
+    }
+  )
 }
 
 export async function exportVehicleViolationList(
   params: VehicleViolationSearchParams & { ids?: string[]; maxRows?: number }
 ) {
   const { ids, maxRows = 10000, violationTimeRange } = params
-  let query: any = supabase
+  let query = supabase
     .from(VEHICLE_VIOLATION_TABLE)
     .select('*')
     .order('violation_time', { ascending: false })
@@ -1529,10 +1704,13 @@ export async function exportVehicleViolationList(
     })
   }
 
-  return await responseHandle<VehicleViolationRecord[]>(() => query as any, {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
+  return await responseHandle<VehicleViolationRecord[]>(
+    () => query as unknown as SupabaseProviderQueryLike,
+    {
+      ignoreCheck: true,
+      showErrorMessage: true
+    }
+  )
 }
 
 // 车辆事故
@@ -1552,7 +1730,7 @@ const getVehicleAccidentSearchFilters = (params: VehicleAccidentSearchParams): F
 
 export async function fetchVehicleAccidentList(params: VehicleAccidentSearchParams) {
   const { from = 0, to = 9, accidentTimeRange, createTimeRange } = params
-  let query: any = supabase
+  let query = supabase
     .from(VEHICLE_ACCIDENT_TABLE)
     .select('*', { count: 'exact' })
     .order('accident_time', { ascending: false })
@@ -1565,17 +1743,20 @@ export async function fetchVehicleAccidentList(params: VehicleAccidentSearchPara
     camelToSnake: true
   })
 
-  return await responseHandle<VehicleAccidentRecord[]>(() => query as any, {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
+  return await responseHandle<VehicleAccidentRecord[]>(
+    () => query as unknown as SupabaseProviderQueryLike,
+    {
+      ignoreCheck: true,
+      showErrorMessage: true
+    }
+  )
 }
 
 export async function exportVehicleAccidentList(
   params: VehicleAccidentSearchParams & { ids?: string[]; maxRows?: number }
 ) {
   const { ids, maxRows = 10000, accidentTimeRange, createTimeRange } = params
-  let query: any = supabase
+  let query = supabase
     .from(VEHICLE_ACCIDENT_TABLE)
     .select('*')
     .order('accident_time', { ascending: false })
@@ -1592,15 +1773,23 @@ export async function exportVehicleAccidentList(
     })
   }
 
-  return await responseHandle<VehicleAccidentRecord[]>(() => query as any, {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
+  return await responseHandle<VehicleAccidentRecord[]>(
+    () => query as unknown as SupabaseProviderQueryLike,
+    {
+      ignoreCheck: true,
+      showErrorMessage: true
+    }
+  )
 }
 
 export async function fetchVehicleAccidentDetail(id: string) {
   return await responseHandle<VehicleAccidentRecord>(
-    () => supabase.from(VEHICLE_ACCIDENT_TABLE).select('*').eq('id', id).single() as any,
+    () =>
+      supabase
+        .from(VEHICLE_ACCIDENT_TABLE)
+        .select('*')
+        .eq('id', id)
+        .single() as unknown as SupabaseProviderQueryLike,
     {
       ignoreCheck: true,
       showErrorMessage: true
@@ -1610,7 +1799,10 @@ export async function fetchVehicleAccidentDetail(id: string) {
 
 export async function addVehicleAccident(params: VehicleAccidentRecord) {
   return await responseHandle(
-    () => supabase.from(VEHICLE_ACCIDENT_TABLE).insert(keysToSnakeDeep(params)) as any,
+    () =>
+      supabase
+        .from(VEHICLE_ACCIDENT_TABLE)
+        .insert(keysToSnakeDeep(params)) as unknown as SupabaseProviderQueryLike,
     { showMessage: true, breakReturn: true }
   )
 }
@@ -1622,7 +1814,7 @@ export async function editVehicleAccident(params: VehicleAccidentRecord) {
       supabase
         .from(VEHICLE_ACCIDENT_TABLE)
         .update(keysToSnakeDeep(data), { count: 'exact' })
-        .eq('id', id) as any,
+        .eq('id', id) as unknown as SupabaseProviderQueryLike,
     {
       showMessage: true,
       breakReturn: true,
@@ -1634,7 +1826,11 @@ export async function editVehicleAccident(params: VehicleAccidentRecord) {
 
 export async function deleteVehicleAccident(id: string) {
   return await responseHandle(
-    () => supabase.from(VEHICLE_ACCIDENT_TABLE).delete({ count: 'exact' }).eq('id', id) as any,
+    () =>
+      supabase
+        .from(VEHICLE_ACCIDENT_TABLE)
+        .delete({ count: 'exact' })
+        .eq('id', id) as unknown as SupabaseProviderQueryLike,
     {
       showMessage: true,
       breakReturn: true,
@@ -1646,7 +1842,11 @@ export async function deleteVehicleAccident(id: string) {
 
 export async function deleteVehicleAccidentBatch(ids: string[]) {
   return await responseHandle(
-    () => supabase.from(VEHICLE_ACCIDENT_TABLE).delete({ count: 'exact' }).in('id', ids) as any,
+    () =>
+      supabase
+        .from(VEHICLE_ACCIDENT_TABLE)
+        .delete({ count: 'exact' })
+        .in('id', ids) as unknown as SupabaseProviderQueryLike,
     {
       showMessage: true,
       breakReturn: true,
@@ -1678,7 +1878,7 @@ const getVehicleMaintenanceSearchFilters = (
 
 export async function fetchVehicleMaintenanceList(params: VehicleMaintenanceSearchParams) {
   const { from = 0, to = 9, createTimeRange } = params
-  let query: any = supabase
+  let query = supabase
     .from(VEHICLE_MAINTENANCE_TABLE)
     .select('*', { count: 'exact' })
     .order('start_time', { ascending: false })
@@ -1690,17 +1890,20 @@ export async function fetchVehicleMaintenanceList(params: VehicleMaintenanceSear
     camelToSnake: true
   })
 
-  return await responseHandle<VehicleMaintenanceRecord[]>(() => query as any, {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
+  return await responseHandle<VehicleMaintenanceRecord[]>(
+    () => query as unknown as SupabaseProviderQueryLike,
+    {
+      ignoreCheck: true,
+      showErrorMessage: true
+    }
+  )
 }
 
 export async function exportVehicleMaintenanceList(
   params: VehicleMaintenanceSearchParams & { ids?: string[]; maxRows?: number }
 ) {
   const { ids, maxRows = 10000, createTimeRange } = params
-  let query: any = supabase
+  let query = supabase
     .from(VEHICLE_MAINTENANCE_TABLE)
     .select('*')
     .order('start_time', { ascending: false })
@@ -1716,15 +1919,23 @@ export async function exportVehicleMaintenanceList(
     })
   }
 
-  return await responseHandle<VehicleMaintenanceRecord[]>(() => query as any, {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
+  return await responseHandle<VehicleMaintenanceRecord[]>(
+    () => query as unknown as SupabaseProviderQueryLike,
+    {
+      ignoreCheck: true,
+      showErrorMessage: true
+    }
+  )
 }
 
 export async function fetchVehicleMaintenanceDetail(id: string) {
   return await responseHandle<VehicleMaintenanceRecord>(
-    () => supabase.from(VEHICLE_MAINTENANCE_TABLE).select('*').eq('id', id).single() as any,
+    () =>
+      supabase
+        .from(VEHICLE_MAINTENANCE_TABLE)
+        .select('*')
+        .eq('id', id)
+        .single() as unknown as SupabaseProviderQueryLike,
     {
       ignoreCheck: true,
       showErrorMessage: true
@@ -1734,7 +1945,10 @@ export async function fetchVehicleMaintenanceDetail(id: string) {
 
 export async function addVehicleMaintenance(params: VehicleMaintenanceRecord) {
   return await responseHandle(
-    () => supabase.from(VEHICLE_MAINTENANCE_TABLE).insert(keysToSnakeDeep(params)) as any,
+    () =>
+      supabase
+        .from(VEHICLE_MAINTENANCE_TABLE)
+        .insert(keysToSnakeDeep(params)) as unknown as SupabaseProviderQueryLike,
     { showMessage: true, breakReturn: true }
   )
 }
@@ -1746,7 +1960,7 @@ export async function editVehicleMaintenance(params: VehicleMaintenanceRecord) {
       supabase
         .from(VEHICLE_MAINTENANCE_TABLE)
         .update(keysToSnakeDeep(data), { count: 'exact' })
-        .eq('id', id) as any,
+        .eq('id', id) as unknown as SupabaseProviderQueryLike,
     {
       showMessage: true,
       breakReturn: true,
@@ -1758,7 +1972,11 @@ export async function editVehicleMaintenance(params: VehicleMaintenanceRecord) {
 
 export async function deleteVehicleMaintenance(id: string) {
   return await responseHandle(
-    () => supabase.from(VEHICLE_MAINTENANCE_TABLE).delete({ count: 'exact' }).eq('id', id) as any,
+    () =>
+      supabase
+        .from(VEHICLE_MAINTENANCE_TABLE)
+        .delete({ count: 'exact' })
+        .eq('id', id) as unknown as SupabaseProviderQueryLike,
     {
       showMessage: true,
       breakReturn: true,
@@ -1770,7 +1988,11 @@ export async function deleteVehicleMaintenance(id: string) {
 
 export async function deleteVehicleMaintenanceBatch(ids: string[]) {
   return await responseHandle(
-    () => supabase.from(VEHICLE_MAINTENANCE_TABLE).delete({ count: 'exact' }).in('id', ids) as any,
+    () =>
+      supabase
+        .from(VEHICLE_MAINTENANCE_TABLE)
+        .delete({ count: 'exact' })
+        .in('id', ids) as unknown as SupabaseProviderQueryLike,
     {
       showMessage: true,
       breakReturn: true,
@@ -1803,7 +2025,7 @@ const getVehiclePartUsageSearchFilters = (params: VehiclePartUsageSearchParams):
 
 export async function fetchVehiclePartUsageList(params: VehiclePartUsageSearchParams) {
   const { from = 0, to = 9, createTimeRange } = params
-  let query: any = supabase
+  let query = supabase
     .from(VEHICLE_PART_USAGE_TABLE)
     .select('*', { count: 'exact' })
     .order('create_time', { ascending: false })
@@ -1815,15 +2037,23 @@ export async function fetchVehiclePartUsageList(params: VehiclePartUsageSearchPa
     camelToSnake: true
   })
 
-  return await responseHandle<VehiclePartUsage[]>(() => query as any, {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
+  return await responseHandle<VehiclePartUsage[]>(
+    () => query as unknown as SupabaseProviderQueryLike,
+    {
+      ignoreCheck: true,
+      showErrorMessage: true
+    }
+  )
 }
 
 export async function fetchVehiclePartUsageDetail(id: string) {
   return await responseHandle<VehiclePartUsage>(
-    () => supabase.from(VEHICLE_PART_USAGE_TABLE).select('*').eq('id', id).single() as any,
+    () =>
+      supabase
+        .from(VEHICLE_PART_USAGE_TABLE)
+        .select('*')
+        .eq('id', id)
+        .single() as unknown as SupabaseProviderQueryLike,
     {
       ignoreCheck: true,
       showErrorMessage: true
@@ -1833,7 +2063,10 @@ export async function fetchVehiclePartUsageDetail(id: string) {
 
 export async function addVehiclePartUsage(params: VehiclePartUsage) {
   return await responseHandle(
-    () => supabase.from(VEHICLE_PART_USAGE_TABLE).insert(keysToSnakeDeep(params)) as any,
+    () =>
+      supabase
+        .from(VEHICLE_PART_USAGE_TABLE)
+        .insert(keysToSnakeDeep(params)) as unknown as SupabaseProviderQueryLike,
     { showMessage: true, breakReturn: true }
   )
 }
@@ -1845,7 +2078,7 @@ export async function editVehiclePartUsage(params: VehiclePartUsage) {
       supabase
         .from(VEHICLE_PART_USAGE_TABLE)
         .update(keysToSnakeDeep(data), { count: 'exact' })
-        .eq('id', id) as any,
+        .eq('id', id) as unknown as SupabaseProviderQueryLike,
     {
       showMessage: true,
       breakReturn: true,
@@ -1857,7 +2090,11 @@ export async function editVehiclePartUsage(params: VehiclePartUsage) {
 
 export async function deleteVehiclePartUsage(id: string) {
   return await responseHandle(
-    () => supabase.from(VEHICLE_PART_USAGE_TABLE).delete({ count: 'exact' }).eq('id', id) as any,
+    () =>
+      supabase
+        .from(VEHICLE_PART_USAGE_TABLE)
+        .delete({ count: 'exact' })
+        .eq('id', id) as unknown as SupabaseProviderQueryLike,
     {
       showMessage: true,
       breakReturn: true,
@@ -1869,7 +2106,11 @@ export async function deleteVehiclePartUsage(id: string) {
 
 export async function deleteVehiclePartUsageBatch(ids: string[]) {
   return await responseHandle(
-    () => supabase.from(VEHICLE_PART_USAGE_TABLE).delete({ count: 'exact' }).in('id', ids) as any,
+    () =>
+      supabase
+        .from(VEHICLE_PART_USAGE_TABLE)
+        .delete({ count: 'exact' })
+        .in('id', ids) as unknown as SupabaseProviderQueryLike,
     {
       showMessage: true,
       breakReturn: true,

@@ -1,29 +1,79 @@
 import { useSupabase } from '@/hooks'
 import { WRITE_PERMISSION_DENIED_MESSAGE, type QueryResult } from '@/hooks/core/useSupabase'
+import type { SupabaseQueryLike } from '@/api/modules/tms/query'
 import { applyFilters, FilterSpec } from '@utils/supabase-filters'
 
 const { supabase, keysToSnakeDeep, responseHandle } = useSupabase()
+
+type DataCenterQueryResult<T> = QueryResult<T>
+
+interface MetadataPayload {
+  schemas?: string[]
+  columns?: MetadataColumnRow[]
+  functions?: MetadataFunctionRow[]
+}
+
+interface MetadataColumnRow {
+  tableSchema?: string
+  tableName?: string
+  columnName?: string
+  dataType?: string
+  isNullable?: string
+  ordinalPosition?: number
+}
+
+interface MetadataFunctionRow {
+  routineSchema?: string
+  routineName?: string
+  returnType?: string
+}
+
+interface ForeignKeyRow {
+  sourceSchema?: string
+  source_schema?: string
+  sourceTable?: string
+  source_table?: string
+  sourceColumn?: string
+  source_column?: string
+  targetSchema?: string
+  target_schema?: string
+  targetTable?: string
+  target_table?: string
+  targetColumn?: string
+  target_column?: string
+  constraintName?: string
+  constraint_name?: string
+}
+
+type SqlRowsResponse = Api.DataCenter.SqlConsole.SqlExecuteResponse & {
+  rows?: ForeignKeyRow[]
+}
+
+function normalizeMetadataPayload(data: unknown): MetadataPayload | null {
+  const payload = Array.isArray(data) ? data[0] : data
+  return payload && typeof payload === 'object' ? (payload as MetadataPayload) : null
+}
 
 // 字典目录与类型列表
 export async function fetchGetDictTypeList(params: Partial<Api.DataCenter.DictTypeItem> = {}) {
   const { name } = params
   const specs = [{ col: 'name', op: 'ilike', val: name ? `%${name}%` : undefined }]
 
-  let query: any = supabase
+  let query = supabase
     .from('sys_dict_type')
     .select('*', { count: 'exact' })
     .order('sort', { ascending: true })
     .order('name', { ascending: true })
 
   query = applyFilters(query, specs, { skipEmpty: true, camelToSnake: false })
-  return await responseHandle(() => query as any, { ignoreCheck: true })
+  return await responseHandle(() => query as unknown as SupabaseQueryLike, { ignoreCheck: true })
 }
 
 // 删除字典类型
 export async function deleteDictType(params: Api.DataCenter.DictTypeItem) {
   const { id } = params
   return await responseHandle(
-    () => supabase.from('sys_dict_type').delete({ count: 'exact' }).eq('id', id) as any,
+    () => supabase.from('sys_dict_type').delete({ count: 'exact' }).eq('id', id),
     {
       showMessage: true,
       requireAffected: true,
@@ -35,7 +85,7 @@ export async function deleteDictType(params: Api.DataCenter.DictTypeItem) {
 // 新增字典类型
 export async function addDictType(params: Api.DataCenter.DictTypeItem) {
   return await responseHandle(
-    () => supabase.from('sys_dict_type').insert(keysToSnakeDeep(params)) as any,
+    () => supabase.from('sys_dict_type').insert(keysToSnakeDeep(params)),
     {
       showMessage: true,
       breakReturn: true
@@ -51,7 +101,7 @@ export async function editDictType(params: Api.DataCenter.DictTypeItem) {
       supabase
         .from('sys_dict_type')
         .update(keysToSnakeDeep(payload), { count: 'exact' })
-        .eq('id', id) as any,
+        .eq('id', id),
     {
       showMessage: true,
       breakReturn: true,
@@ -68,7 +118,7 @@ export async function saveDictTypeTreeOrder(
     () =>
       supabase.rpc('save_dict_type_tree_order', {
         p_updates: updates
-      }) as any,
+      }),
     {
       breakReturn: true,
       showMessage: false
@@ -89,14 +139,14 @@ export async function fetchGetDictListByTypeId(
     { col: 'status', op: 'eq', val: status }
   ]
 
-  let query: any = supabase
+  let query = supabase
     .from('sys_dictionary')
     .select('*', { count: 'exact' })
     .order('sort', { ascending: true })
     .order('label', { ascending: true })
 
   query = applyFilters(query, specs, { skipEmpty: true, camelToSnake: true })
-  return await responseHandle(() => query as any, { ignoreCheck: true })
+  return await responseHandle(() => query as unknown as SupabaseQueryLike, { ignoreCheck: true })
 }
 
 // 字典项列表
@@ -123,14 +173,14 @@ export async function fetchGetDictList() {
     .eq('dict_type_table.status', '1')
     .order('sort', { ascending: true })
 
-  return await responseHandle(() => query as any, { ignoreCheck: true })
+  return await responseHandle(() => query, { ignoreCheck: true })
 }
 
 // 删除字典项
 export async function deleteDict(params: Api.DataCenter.DictListItem) {
   const { id } = params
   return await responseHandle(
-    () => supabase.from('sys_dictionary').delete({ count: 'exact' }).eq('id', id) as any,
+    () => supabase.from('sys_dictionary').delete({ count: 'exact' }).eq('id', id),
     {
       showMessage: true,
       requireAffected: true,
@@ -142,7 +192,7 @@ export async function deleteDict(params: Api.DataCenter.DictListItem) {
 // 批量删除字典项
 export async function deleteDictBatch(ids: string[]) {
   return await responseHandle(
-    () => supabase.from('sys_dictionary').delete({ count: 'exact' }).in('id', ids) as any,
+    () => supabase.from('sys_dictionary').delete({ count: 'exact' }).in('id', ids),
     {
       showMessage: true,
       requireAffected: true,
@@ -154,7 +204,7 @@ export async function deleteDictBatch(ids: string[]) {
 // 新增字典项
 export async function addDict(params: Api.DataCenter.DictListItem) {
   return await responseHandle(
-    () => supabase.from('sys_dictionary').insert(keysToSnakeDeep(params)) as any,
+    () => supabase.from('sys_dictionary').insert(keysToSnakeDeep(params)),
     {
       showMessage: true,
       breakReturn: true
@@ -170,7 +220,7 @@ export async function editDict(params: Api.DataCenter.DictListItem) {
       supabase
         .from('sys_dictionary')
         .update(keysToSnakeDeep(payload), { count: 'exact' })
-        .eq('id', id) as any,
+        .eq('id', id),
     {
       showMessage: true,
       breakReturn: true,
@@ -196,14 +246,17 @@ export async function fetchGetResourceList(params: Api.DataCenter.Resources.Reso
     }
   }
 
-  let query: any = supabase
+  let query = supabase
     .from('sys_attachment')
     .select('*', { count: 'exact' })
     .order('create_time', { ascending: false })
     .range(from, to)
 
   query = applyFilters(query, specs, { skipEmpty: true, camelToSnake: true })
-  return await responseHandle(() => query as any, { ignoreCheck: true, showErrorMessage: true })
+  return await responseHandle(() => query as unknown as SupabaseQueryLike, {
+    ignoreCheck: true,
+    showErrorMessage: true
+  })
 }
 
 // 删除资源，同时清理 Storage 对象
@@ -211,7 +264,7 @@ export async function deleteResource(params: Api.DataCenter.Resources.ResourceLi
   const { id } = params
 
   const { data: resourceItem } = await responseHandle(
-    () => supabase.from('sys_attachment').select().eq('id', id).single() as any,
+    () => supabase.from('sys_attachment').select().eq('id', id).single(),
     {
       ignoreCheck: true
     }
@@ -220,19 +273,13 @@ export async function deleteResource(params: Api.DataCenter.Resources.ResourceLi
   const { storagePath, objectName } = resourceItem as Api.DataCenter.Resources.ResourceListItem
   const fullPath = `${storagePath}/${objectName}`
 
-  await responseHandle(
-    () => supabase.from('sys_attachment').delete().eq('id', id).single() as any,
-    {
-      breakReturn: true
-    }
-  )
+  await responseHandle(() => supabase.from('sys_attachment').delete().eq('id', id).single(), {
+    breakReturn: true
+  })
 
-  return await responseHandle(
-    () => supabase.storage.from('attachments').remove([fullPath]) as any,
-    {
-      showMessage: true
-    }
-  )
+  return await responseHandle(() => supabase.storage.from('attachments').remove([fullPath]), {
+    showMessage: true
+  })
 }
 
 /**
@@ -242,23 +289,20 @@ export async function deleteResource(params: Api.DataCenter.Resources.ResourceLi
  */
 export async function fetchDatabaseMetadata(): Promise<Api.DataCenter.SqlConsole.DatabaseMetadata> {
   try {
-    const { data, error } = await responseHandle(
-      () => supabase.rpc('get_database_metadata_all') as any,
-      {
-        showMessage: false,
-        ignoreCheck: true
-      }
-    )
+    const { data, error } = await responseHandle(() => supabase.rpc('get_database_metadata_all'), {
+      showMessage: false,
+      ignoreCheck: true
+    })
 
     if (error || !data) {
       return await fetchMetadataFromInformationSchema()
     }
 
-    const payload = Array.isArray(data) && data.length > 0 ? data[0] : (data as any)
+    const payload = normalizeMetadataPayload(data)
     const schemas: string[] = payload?.schemas ?? []
 
     const columns: Api.DataCenter.SqlConsole.ColumnMetadata[] = (payload?.columns ?? []).map(
-      (c: any) => ({
+      (c) => ({
         tableSchema: c.tableSchema || '',
         tableName: c.tableName || '',
         columnName: c.columnName || '',
@@ -288,7 +332,7 @@ export async function fetchDatabaseMetadata(): Promise<Api.DataCenter.SqlConsole
     const tables: Api.DataCenter.SqlConsole.TableMetadata[] = Array.from(tablesMap.values())
 
     const functions: Api.DataCenter.SqlConsole.FunctionMetadata[] = (payload?.functions ?? []).map(
-      (f: any) => ({
+      (f) => ({
         routineSchema: f.routineSchema || '',
         routineName: f.routineName || '',
         returnType: f.returnType || ''
@@ -350,12 +394,12 @@ async function fetchForeignKeysMetadata(): Promise<Api.DataCenter.SqlConsole.For
     ORDER BY tc.table_schema, tc.table_name, tc.constraint_name
   `
 
-  const { data, error } = (await executeSql({ query: relationQuery })) as any
+  const { data, error } = await executeSql({ query: relationQuery })
   if (error || !data?.rows) {
     return []
   }
 
-  return (data.rows || []).map((item: any) => ({
+  return (data.rows || []).map((item) => ({
     sourceSchema: item.sourceSchema || item.source_schema || '',
     sourceTable: item.sourceTable || item.source_table || '',
     sourceColumn: item.sourceColumn || item.source_column || '',
@@ -369,7 +413,7 @@ async function fetchForeignKeysMetadata(): Promise<Api.DataCenter.SqlConsole.For
 // SQL 执行入口，调用现有 Edge Function 并保留原始错误给编辑器做定位。
 export async function executeSql(
   params: Api.DataCenter.SqlConsole.SqlExecuteRequest
-): Promise<QueryResult<any>> {
+): Promise<DataCenterQueryResult<SqlRowsResponse>> {
   const invokeResp = () =>
     supabase.functions.invoke<Api.DataCenter.SqlConsole.SqlExecuteResponse>(
       'execute-sql-with-columns',

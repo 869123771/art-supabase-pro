@@ -104,7 +104,9 @@
     })
     return (list ?? [])
       .map((item) => item.id)
-      .filter((id): id is TreeKey => typeof id === 'string' || typeof id === 'number')
+      .filter(
+        (id): id is NonNullable<typeof id> => typeof id === 'string' || typeof id === 'number'
+      )
   }
 
   const resetPermission = (): void => {

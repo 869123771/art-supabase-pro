@@ -19,7 +19,8 @@ export interface RunQueryOptions {
   action?: SupabaseAction
   breakReturn?: boolean //打断返回
   requireAffected?: boolean // 写操作是否要求至少影响一行，用于识别 RLS 导致的 0 行更新/删除
-  ignoreCheck?: boolean // 👈 是否忽略检查当前角色有写入权限 默认insert update delete 都检查，查询忽略
+  /** @deprecated Kept for API compatibility. Database authorization is enforced by Supabase RLS. */
+  ignoreCheck?: boolean
 }
 
 /**
@@ -31,7 +32,16 @@ export type QueryResult<T> = {
   total?: number
 }
 
-type QueryFactory = () => Promise<Api.Common.PaginatedResponse>
+interface QueryResponse {
+  data?: unknown
+  error?: unknown
+  count?: number | null
+  response?: {
+    json?: () => Promise<unknown>
+  }
+}
+
+type QueryFactory = () => PromiseLike<QueryResponse>
 
 export function useSupabase() {
   /** convert snake_case string to camelCase */
@@ -44,17 +54,17 @@ export function useSupabase() {
       .replace(/^_/, '')
       .toLowerCase()
 
-  function isPlainObject(x: any): x is Record<string, any> {
+  function isPlainObject(x: unknown): x is Record<string, unknown> {
     return x !== null && typeof x === 'object' && x.constructor === Object
   }
 
   /** Recursively convert object keys to camelCase */
-  function keysToCamelDeep<T = any>(obj: any): T {
+  function keysToCamelDeep<T>(obj: unknown): T {
     if (Array.isArray(obj)) {
       return obj.map(keysToCamelDeep) as unknown as T
     }
     if (isPlainObject(obj)) {
-      const res: Record<string, any> = {}
+      const res: Record<string, unknown> = {}
       for (const [k, v] of Object.entries(obj)) {
         res[toCamel(k)] = keysToCamelDeep(v)
       }
@@ -64,12 +74,12 @@ export function useSupabase() {
   }
 
   /** Only convert top-level object keys to camelCase */
-  function keysToCamelShallow<T = any>(obj: any): T {
+  function keysToCamelShallow<T>(obj: unknown): T {
     if (Array.isArray(obj)) {
       return obj as unknown as T
     }
     if (isPlainObject(obj)) {
-      const res: Record<string, any> = {}
+      const res: Record<string, unknown> = {}
       for (const [k, v] of Object.entries(obj)) {
         res[toCamel(k)] = v
       }
@@ -79,12 +89,12 @@ export function useSupabase() {
   }
 
   /** Recursively convert object keys to snake_case */
-  function keysToSnakeDeep<T = any>(obj: any): T {
+  function keysToSnakeDeep<T>(obj: T): T {
     if (Array.isArray(obj)) {
       return obj.map(keysToSnakeDeep) as unknown as T
     }
     if (isPlainObject(obj)) {
-      const res: Record<string, any> = {}
+      const res: Record<string, unknown> = {}
       for (const [k, v] of Object.entries(obj)) {
         res[toSnake(k)] = keysToSnakeDeep(v)
       }
@@ -123,16 +133,16 @@ export function useSupabase() {
       requireAffected = false,
       ignoreCheck = false
     } = options ?? {}
-    //对用户角色 | 用户邮箱检查是否有写入权限
-    if (!ignoreCheck) {
-      // TODO: Implement permission check
-    }
+    // Frontend checks are not an authorization boundary. Supabase RLS owns data access control.
+    void ignoreCheck
 
     const { data, error, count, response } = await queryFactory()
     if (error) {
       const responseJson = await response?.json?.()
+      const responseError = isPlainObject(responseJson) ? responseJson : undefined
+      const queryError = isPlainObject(error) ? error : undefined
       const message = String(
-        (responseJson?.message || (error as any)?.message || responseJson?.error) ??
+        (responseError?.message || queryError?.message || responseError?.error) ??
           JSON.stringify(error)
       )
       if (showMessage || showErrorMessage) {

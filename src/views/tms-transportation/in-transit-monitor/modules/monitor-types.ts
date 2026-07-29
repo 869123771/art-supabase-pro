@@ -62,3 +62,64 @@ export interface RegionOption {
   label: string
   value: string
 }
+
+export interface StationGeoPosition {
+  coord: GeoCoord
+  keywords: string[]
+}
+
+export interface ScreenState {
+  keyword: string
+  lastRefreshTime?: string
+  loading: boolean
+  orders: InTransitRecord[]
+  region: string
+  selectedOrderId?: string
+  status: TransitStatus | ''
+}
+
+export interface MonitorKeywordState {
+  vehicle: string
+  waybill: string
+}
+
+export interface AlertItem {
+  content: string
+  key: string
+  level: 'danger' | 'warning' | 'info'
+  time: string
+  title: string
+}
+
+export interface MapViewState {
+  center: GeoCoord
+  zoom: number
+}
+
+export interface ScreenScaleState {
+  viewportHeight: number
+  viewportWidth: number
+}
+
+export interface RouteOverlayState {
+  basePath: string
+  height: number
+  passedPath: string
+  remainingPath: string
+  visible: boolean
+  width: number
+}
+
+export interface VehiclePoiState {
+  coordinateKey: string
+  label: string
+  loading: boolean
+}
+
+export interface ReverseGeocodeResult {
+  regeocode?: {
+    formattedAddress?: string
+    formatted_address?: string
+    pois?: Array<{ name?: string }>
+  }
+}

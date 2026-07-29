@@ -33,14 +33,7 @@ import type { EChartsOption } from '@/plugins/echarts'
 export type LegendPosition = 'bottom' | 'top' | 'left' | 'right'
 
 export type SymbolType =
-  | 'circle'
-  | 'rect'
-  | 'roundRect'
-  | 'triangle'
-  | 'diamond'
-  | 'pin'
-  | 'arrow'
-  | 'none'
+  'circle' | 'rect' | 'roundRect' | 'triangle' | 'diamond' | 'pin' | 'arrow' | 'none'
 
 // 图表主题配置
 export interface ChartThemeConfig {

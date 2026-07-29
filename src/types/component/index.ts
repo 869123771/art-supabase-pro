@@ -44,7 +44,13 @@ export interface SearchChangeParams {
 
 export type DictDisplayMode = 'auto' | 'tag' | 'badge' | 'text'
 
-export interface DictColumnOption<T = any> {
+// 通用组件配置默认服务于元数据驱动场景，未知行结构由调用处通过泛型收窄。
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type ComponentRecord = any
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type ComponentValue = any
+
+export interface DictColumnOption<T = ComponentRecord> {
   /** 字典类型编码 */
   code: string
   /** auto: 标签样式优先，其次文字颜色 Badge，最后普通文字 */
@@ -54,7 +60,7 @@ export interface DictColumnOption<T = any> {
 }
 
 // 表格列配置接口
-export interface ColumnOption<T = any> {
+export interface ColumnOption<T = ComponentRecord> {
   // 列类型
   type?: 'selection' | 'expand' | 'index' | 'globalIndex'
   // 列属性名
@@ -78,9 +84,9 @@ export interface ColumnOption<T = any> {
   // 行拖拽手柄图标
   dragIcon?: string
   // 过滤器选项
-  filters?: any[]
+  filters?: ComponentValue[]
   // 过滤方法
-  filterMethod?: (value: any, row: any) => boolean
+  filterMethod?: (value: ComponentValue, row: T) => boolean
   // 过滤器位置
   filterPlacement?: string
   // 是否禁用
@@ -90,7 +96,7 @@ export interface ColumnOption<T = any> {
   // 是否选中显示
   checked?: boolean
   // 自定义渲染函数
-  formatter?: (row: T) => any
+  formatter?: (row: T) => ComponentValue
   // 字典展示配置
   dict?: DictColumnOption<T>
   // 插槽相关配置
@@ -103,7 +109,7 @@ export interface ColumnOption<T = any> {
   // 表头插槽名称（默认为 `${prop}-header`）
   headerSlotName?: string
   // 其他属性
-  [key: string]: any
+  [key: string]: ComponentValue
 }
 
 // 分页配置
@@ -137,7 +143,11 @@ export interface FormRule {
   // 正则表达式
   pattern?: RegExp
   // 自定义验证函数
-  validator?: (rule: any, value: any, callback: any) => void
+  validator?: (
+    rule: ComponentValue,
+    value: ComponentValue,
+    callback: (error?: Error) => void
+  ) => void
 }
 
 // 对话框配置

@@ -1,4 +1,4 @@
-import type { Ref } from 'vue'
+import type { Ref, VNodeChild } from 'vue'
 import type { DialogPropsPublic } from 'element-plus'
 import type {
   ArtOverlayExpose,
@@ -82,11 +82,11 @@ export interface ArtDialogSlotProps<TData = unknown> {
 }
 
 export interface ArtDialogSlots<TData = unknown> {
-  default?: (props: ArtDialogSlotProps<TData> & { loading: boolean }) => any
-  header?: (props: ArtDialogSlotProps<TData>) => any
-  subtitle?: (props: ArtDialogSlotProps<TData>) => any
-  footer?: (props: ArtDialogSlotProps<TData> & { loading: boolean }) => any
-  'footer-left'?: (props: ArtDialogSlotProps<TData> & { loading: boolean }) => any
+  default?: (props: ArtDialogSlotProps<TData> & { loading: boolean }) => VNodeChild
+  header?: (props: ArtDialogSlotProps<TData>) => VNodeChild
+  subtitle?: (props: ArtDialogSlotProps<TData>) => VNodeChild
+  footer?: (props: ArtDialogSlotProps<TData> & { loading: boolean }) => VNodeChild
+  'footer-left'?: (props: ArtDialogSlotProps<TData> & { loading: boolean }) => VNodeChild
 }
 
 export type { ArtScrollOptions }

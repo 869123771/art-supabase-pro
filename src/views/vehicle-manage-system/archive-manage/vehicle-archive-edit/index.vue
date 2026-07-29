@@ -157,10 +157,7 @@
   type VehicleArchiveWritePayload = Record<string, unknown> & { id?: string }
   type BooleanDictOption = Omit<Api.DataCenter.DictListItem, 'value'> & { value: boolean }
   type ImageKey =
-    | 'vehiclePhotoUrl'
-    | 'drivingLicenseFrontUrl'
-    | 'drivingLicenseBackUrl'
-    | 'operationLicenseUrl'
+    'vehiclePhotoUrl' | 'drivingLicenseFrontUrl' | 'drivingLicenseBackUrl' | 'operationLicenseUrl'
 
   interface FormExpose {
     validate: () => Promise<boolean>

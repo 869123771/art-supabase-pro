@@ -187,6 +187,12 @@
     setScrollTop: (top?: number) => void
   }
 
+  // ArtTable 是项目级通用表格外壳，行数据由各业务模块决定字段形状；这里把动态边界集中到一个别名中。
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  type ArtTableRow = any
+
+  type ArtTableColumn = ColumnOption<ArtTableRow>
+
   const { width } = useWindowSize()
   const elTableRef = ref<ArtTableInstance | null>(null)
   const paginationRef = ref<HTMLElement>()
@@ -196,7 +202,7 @@
   const tableStore = useTableStore()
   const { isBorder, isZebra, tableSize, isFullScreen, isHeaderBackground } = storeToRefs(tableStore)
 
-  interface RowDragPayload<T = Record<string, any>> {
+  interface RowDragPayload<T = ArtTableRow> {
     row?: T
     targetRow?: T
     oldIndex?: number
@@ -233,13 +239,13 @@
   }
 
   /** ArtTable 组件的 Props 接口 */
-  interface ArtTableProps extends Partial<TableProps<Record<string, any>>> {
+  interface ArtTableProps extends Partial<TableProps<ArtTableRow>> {
     /** 表格数据 */
-    data?: Record<string, any>[]
+    data?: ArtTableRow[]
     /** 加载状态 */
     loading?: boolean
     /** 列渲染配置 */
-    columns?: ColumnOption[]
+    columns?: ArtTableColumn[]
     /** 分页状态 */
     pagination?: PaginationConfig | false
     /** 分页配置 */
@@ -317,7 +323,7 @@
   const paginationHeight = ref(0)
   const tableHeaderHeight = ref(0)
   const isRowSelectionDragging = ref(false)
-  const rowSelectionDragStartRow = ref<Record<string, any>>()
+  const rowSelectionDragStartRow = ref<ArtTableRow>()
   const rowSelectionDragMode = ref<'select' | 'deselect'>('select')
   const dragSelectedRowKeys = new Set<string>()
 
@@ -428,7 +434,7 @@
     return slotScope.$index === undefined || slotScope.$index >= 0
   }
 
-  const shouldUseCustomCellTemplate = (col: ColumnOption) => {
+  const shouldUseCustomCellTemplate = (col: ArtTableColumn) => {
     return (
       (col.useSlot && col.prop) ||
       !!col.dict ||
@@ -452,23 +458,23 @@
   }
 
   const resolveColumnBoolean = (
-    value: boolean | ((row: Record<string, any>) => boolean) | undefined,
-    row: Record<string, any>,
+    value: boolean | ((row: ArtTableRow) => boolean) | undefined,
+    row: ArtTableRow,
     defaultValue = false
   ) => {
     if (typeof value === 'function') return value(row)
     return value ?? defaultValue
   }
 
-  const isColumnDraggable = (col: ColumnOption, row: Record<string, any>) => {
+  const isColumnDraggable = (col: ArtTableColumn, row: ArtTableRow) => {
     return resolveColumnBoolean(col.draggable, row)
   }
 
-  const isColumnDragDisabled = (col: ColumnOption, row: Record<string, any>) => {
+  const isColumnDragDisabled = (col: ArtTableColumn, row: ArtTableRow) => {
     return resolveColumnBoolean(col.dragDisabled, row)
   }
 
-  const getCellValue = (row: Record<string, any>, prop: string) => {
+  const getCellValue = (row: ArtTableRow, prop: string) => {
     return prop.split('.').reduce<unknown>((value, key) => {
       if (value && typeof value === 'object') {
         return (value as Record<string, unknown>)[key]
@@ -477,15 +483,15 @@
     }, row)
   }
 
-  const getDictColumnValue = (col: ColumnOption, row: Record<string, any>) => {
+  const getDictColumnValue = (col: ArtTableColumn, row: ArtTableRow) => {
     if (col.dict?.value) return col.dict.value(row)
     if (col.prop) return getCellValue(row, col.prop) as string | number | null | undefined
     return undefined
   }
 
   const getColumnCellContent = (
-    col: ColumnOption,
-    slotScope: { row: Record<string, any>; column: unknown; $index: number }
+    col: ArtTableColumn,
+    slotScope: { row: ArtTableRow; column: unknown; $index: number }
   ) => {
     if (col.formatter) return formatEmptyCellValue(col.formatter(slotScope.row))
     if (col.prop) return formatEmptyCellValue(getCellValue(slotScope.row, col.prop))
@@ -496,7 +502,7 @@
     return content !== null && (typeof content === 'object' || typeof content === 'function')
   }
 
-  const getRowIdentity = (row: Record<string, any>): string => {
+  const getRowIdentity = (row: ArtTableRow): string => {
     const rowKey = props.rowKey
     if (typeof rowKey === 'function') return String(rowKey(row))
     if (typeof rowKey === 'string') return String(getCellValue(row, rowKey) ?? '')
@@ -518,7 +524,7 @@
     return typeof value === 'string' ? value : ''
   }
 
-  const resolveRowClassName = (scope: { row: Record<string, any>; rowIndex: number }) => {
+  const resolveRowClassName = (scope: { row: ArtTableRow; rowIndex: number }) => {
     const customClassName =
       typeof props.rowClassName === 'function' ? props.rowClassName(scope) : props.rowClassName
     const classNames = [normalizeClassName(customClassName)]
@@ -538,7 +544,7 @@
     }
   }
 
-  const applyRowSelectionByDrag = (row: Record<string, any> | undefined): void => {
+  const applyRowSelectionByDrag = (row: ArtTableRow | undefined): void => {
     if (!row) return
     const rowKey = getRowIdentity(row)
     if (!rowKey || dragSelectedRowKeys.has(rowKey)) return
@@ -549,7 +555,7 @@
     elTableRef.value?.toggleRowSelection(row, shouldSelect)
   }
 
-  const startRowSelectionDrag = (row: Record<string, any>): void => {
+  const startRowSelectionDrag = (row: ArtTableRow): void => {
     const startRow = rowSelectionDragStartRow.value
     if (!startRow) return
     isRowSelectionDragging.value = true
@@ -564,7 +570,7 @@
   }
 
   const handleCellMouseEnter = (
-    row: Record<string, any>,
+    row: ArtTableRow,
     column: unknown,
     cell: HTMLTableCellElement,
     event: Event
@@ -600,7 +606,7 @@
     '.art-table__drag-handle'
   ].join(',')
 
-  const getPointerRow = (event: MouseEvent): Record<string, any> | undefined => {
+  const getPointerRow = (event: MouseEvent): ArtTableRow | undefined => {
     const target = event.target
     if (!(target instanceof Element)) return undefined
     const rowElement = target.closest<HTMLTableRowElement>('tr.el-table__row')
@@ -640,9 +646,9 @@
     window.removeEventListener('blur', endRowSelectionDrag)
   })
 
-  const flattenRows = (rows: Record<string, any>[] = []): Record<string, any>[] => {
-    const result: Record<string, any>[] = []
-    const walk = (items: Record<string, any>[]) => {
+  const flattenRows = (rows: ArtTableRow[] = []): ArtTableRow[] => {
+    const result: ArtTableRow[] = []
+    const walk = (items: ArtTableRow[]) => {
       items.forEach((item) => {
         result.push(item)
         if (Array.isArray(item.children)) {
@@ -655,7 +661,7 @@
   }
 
   const rowMap = computed(() => {
-    const map = new Map<string, Record<string, any>>()
+    const map = new Map<string, ArtTableRow>()
     flattenRows(props.data ?? []).forEach((row) => {
       const key = getRowIdentity(row)
       if (key) map.set(key, row)
@@ -677,7 +683,7 @@
       .filter((key): key is string => !!key)
   }
 
-  const buildRowDragPayload = (event: DraggableEvent<Record<string, any>>): RowDragPayload => {
+  const buildRowDragPayload = (event: DraggableEvent<ArtTableRow>): RowDragPayload => {
     const snapshotKeys = rowKeysBeforeDrag.value.length
       ? rowKeysBeforeDrag.value
       : getVisibleRowKeysFromDom()
@@ -692,21 +698,21 @@
     }
   }
 
-  const handleRowDragStart = (event: DraggableEvent<Record<string, any>>) => {
+  const handleRowDragStart = (event: DraggableEvent<ArtTableRow>) => {
     rowKeysBeforeDrag.value = getVisibleRowKeysFromDom()
     emit('row-drag-start', buildRowDragPayload(event))
   }
 
-  const handleRowDragUpdate = (event: DraggableEvent<Record<string, any>>) => {
+  const handleRowDragUpdate = (event: DraggableEvent<ArtTableRow>) => {
     emit('row-drag-update', buildRowDragPayload(event))
   }
 
-  const handleRowDragEnd = (event: DraggableEvent<Record<string, any>>) => {
+  const handleRowDragEnd = (event: DraggableEvent<ArtTableRow>) => {
     emit('row-drag-end', buildRowDragPayload(event))
     rowKeysBeforeDrag.value = []
   }
 
-  const rowDraggable = useDraggable<Record<string, any>>(sortableTargetRef, {
+  const rowDraggable = useDraggable<ArtTableRow>(sortableTargetRef, {
     immediate: false,
     handle: '.art-table__drag-handle:not(.is-disabled)',
     draggable: '.el-table__row',
@@ -742,7 +748,7 @@
   )
 
   // 清理列属性，移除插槽相关的自定义属性，确保它们不会被 ElTableColumn 错误解释
-  const cleanColumnProps = (col: ColumnOption) => {
+  const cleanColumnProps = (col: ArtTableColumn) => {
     const columnProps = { ...col }
     const shouldDefaultOverflowTooltip =
       columnProps.showOverflowTooltip === undefined &&
@@ -761,7 +767,7 @@
 
     if (shouldFormatEmptyValue) {
       const userFormatter = columnProps.formatter
-      columnProps.formatter = (row: Record<string, any>) => {
+      columnProps.formatter = (row: ArtTableRow) => {
         const value = userFormatter
           ? userFormatter(row)
           : getCellValue(row, String(columnProps.prop))

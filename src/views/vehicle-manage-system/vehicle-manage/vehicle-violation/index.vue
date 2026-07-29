@@ -17,7 +17,6 @@
   import type { ComputedRef, UnwrapNestedRefs } from 'vue'
   import { isNil } from 'lodash-es'
   import { storeToRefs } from 'pinia'
-  import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type {
     ArtTableQueryExpose,

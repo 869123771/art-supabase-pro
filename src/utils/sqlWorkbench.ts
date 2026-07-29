@@ -236,7 +236,10 @@ export function buildJoinSuggestions(sql: string, metadata: SqlMetadataRef): Sql
   metadata.tables
     .filter((table) => !SYSTEM_SCHEMAS.has(table.tableSchema))
     .forEach((candidate) => {
-      if (candidate.tableName === baseTable.tableName && candidate.tableSchema === baseTable.tableSchema) {
+      if (
+        candidate.tableName === baseTable.tableName &&
+        candidate.tableSchema === baseTable.tableSchema
+      ) {
         return
       }
 
@@ -244,15 +247,20 @@ export function buildJoinSuggestions(sql: string, metadata: SqlMetadataRef): Sql
       const relation =
         foreignKeys.find(
           (item) =>
-            (getTableKey(item.sourceSchema, item.sourceTable) === getTableKey(baseTable.tableSchema, baseTable.tableName) &&
+            (getTableKey(item.sourceSchema, item.sourceTable) ===
+              getTableKey(baseTable.tableSchema, baseTable.tableName) &&
               getTableKey(item.targetSchema, item.targetTable) === candidateKey) ||
-            (getTableKey(item.targetSchema, item.targetTable) === getTableKey(baseTable.tableSchema, baseTable.tableName) &&
+            (getTableKey(item.targetSchema, item.targetTable) ===
+              getTableKey(baseTable.tableSchema, baseTable.tableName) &&
               getTableKey(item.sourceSchema, item.sourceTable) === candidateKey)
         ) || buildFallbackRelation(baseTable, candidate)
 
       if (!relation) return
 
-      const candidateAlias = suggestAlias(candidate.tableName, aliases.map((item) => item.alias))
+      const candidateAlias = suggestAlias(
+        candidate.tableName,
+        aliases.map((item) => item.alias)
+      )
       const baseAliasName = baseAlias.alias
 
       const joinCondition =
@@ -302,12 +310,17 @@ export function suggestAlias(tableName: string, usedAliases: string[] = []) {
 
 // 给语句开头补整句模板，减少只会补关键字不会补结构的问题。
 export function buildSqlTemplateSuggestions(metadata: SqlMetadataRef): SqlJoinSuggestion[] {
-  const primaryTable = metadata.tables.find((item) => item.tableSchema === 'public') || metadata.tables[0]
-  const tableName = primaryTable ? `${primaryTable.tableSchema}.${primaryTable.tableName}` : 'public.table_name'
+  const primaryTable =
+    metadata.tables.find((item) => item.tableSchema === 'public') || metadata.tables[0]
+  const tableName = primaryTable
+    ? `${primaryTable.tableSchema}.${primaryTable.tableName}`
+    : 'public.table_name'
   const alias = primaryTable ? suggestAlias(primaryTable.tableName) : 't'
   const selectedColumns =
-    primaryTable?.columns.slice(0, 4).map((item) => `${alias}.${item.name}`).join(',\n  ') ||
-    `${alias}.id,\n  ${alias}.name`
+    primaryTable?.columns
+      .slice(0, 4)
+      .map((item) => `${alias}.${item.name}`)
+      .join(',\n  ') || `${alias}.id,\n  ${alias}.name`
 
   return [
     {
@@ -318,25 +331,24 @@ export function buildSqlTemplateSuggestions(metadata: SqlMetadataRef): SqlJoinSu
     },
     {
       label: 'SELECT with WHERE',
-      insertText:
-        `SELECT\n  ${selectedColumns}\nFROM ${tableName} ${alias}\nWHERE ${alias}.${primaryTable?.columns[0]?.name || 'id'} = \${1:value}\nLIMIT 100;`,
+      insertText: `SELECT\n  ${selectedColumns}\nFROM ${tableName} ${alias}\nWHERE ${alias}.${primaryTable?.columns[0]?.name || 'id'} = \${1:value}\nLIMIT 100;`,
       detail: 'Template',
       documentation: 'Generate a filtered SELECT query.'
     },
     {
       label: 'INSERT statement',
-      insertText:
-        `INSERT INTO ${tableName} (\n  ${(primaryTable?.columns || [])
+      insertText: `INSERT INTO ${tableName} (\n  ${
+        (primaryTable?.columns || [])
           .slice(0, 3)
           .map((item) => item.name)
-          .join(',\n  ') || 'column_a,\n  column_b'}\n) VALUES (\n  \${1:value_a},\n  \${2:value_b}\n);`,
+          .join(',\n  ') || 'column_a,\n  column_b'
+      }\n) VALUES (\n  \${1:value_a},\n  \${2:value_b}\n);`,
       detail: 'Template',
       documentation: 'Generate an INSERT statement.'
     },
     {
       label: 'UPDATE statement',
-      insertText:
-        `UPDATE ${tableName}\nSET ${primaryTable?.columns[0]?.name || 'column_name'} = \${1:value}\nWHERE ${primaryTable?.columns[1]?.name || 'id'} = \${2:id};`,
+      insertText: `UPDATE ${tableName}\nSET ${primaryTable?.columns[0]?.name || 'column_name'} = \${1:value}\nWHERE ${primaryTable?.columns[1]?.name || 'id'} = \${2:id};`,
       detail: 'Template',
       documentation: 'Generate an UPDATE statement.'
     },
@@ -348,8 +360,7 @@ export function buildSqlTemplateSuggestions(metadata: SqlMetadataRef): SqlJoinSu
     },
     {
       label: 'CTE statement',
-      insertText:
-        `WITH ranked_rows AS (\n  SELECT\n    ${selectedColumns},\n    ROW_NUMBER() OVER (ORDER BY ${alias}.${primaryTable?.columns[0]?.name || 'id'} DESC) AS rn\n  FROM ${tableName} ${alias}\n)\nSELECT *\nFROM ranked_rows\nWHERE rn <= 100;`,
+      insertText: `WITH ranked_rows AS (\n  SELECT\n    ${selectedColumns},\n    ROW_NUMBER() OVER (ORDER BY ${alias}.${primaryTable?.columns[0]?.name || 'id'} DESC) AS rn\n  FROM ${tableName} ${alias}\n)\nSELECT *\nFROM ranked_rows\nWHERE rn <= 100;`,
       detail: 'Template',
       documentation: 'Generate a common table expression.'
     }

@@ -57,10 +57,7 @@
   }>()
 
   type ImageKey =
-    | 'vehiclePhotoUrl'
-    | 'drivingLicenseFrontUrl'
-    | 'drivingLicenseBackUrl'
-    | 'operationLicenseUrl'
+    'vehiclePhotoUrl' | 'drivingLicenseFrontUrl' | 'drivingLicenseBackUrl' | 'operationLicenseUrl'
 
   const panel = reactive({
     activeTab: 'basic'

@@ -1,7 +1,7 @@
 import { AppRouteRecord } from '@/types/router'
 import { useSupabase } from '@/hooks'
 import { WRITE_PERMISSION_DENIED_MESSAGE } from '@/hooks/core/useSupabase'
-import { buildSpecsFromMap, applyFilters } from '@utils/supabase-filters'
+import { buildSpecsFromMap, applyFilters, type Op } from '@utils/supabase-filters'
 import { toNextDayStartUTC, toStartOfDayUTC } from '@/utils'
 import { omit } from 'lodash-es'
 const { supabase, keysToSnakeDeep, responseHandle } = useSupabase()
@@ -14,6 +14,12 @@ type WebsiteConfigItem = Api.SystemManage.WebsiteConfigItem
 type WebsiteConfigParamMeta = Api.SystemManage.WebsiteConfigParamMeta
 const WEBSITE_CONFIG_PARAM_KEY = 'website.config'
 
+interface DeleteUserSyncPayload {
+  action: 'delete'
+  id: string
+  auth_user_id?: string
+}
+
 // 获取用户列表
 export async function fetchGetUserList(params: Api.SystemManage.UserSearchParams) {
   const { userName, userPhone, userGender, userEmail, status, from = 0, to = 9 } = params
@@ -22,7 +28,7 @@ export async function fetchGetUserList(params: Api.SystemManage.UserSearchParams
   const opsMap = {
     userName: 'ilike' // will be mapped to user_name internally
     // userPhone 默认 eq
-  } as Record<string, any>
+  } as Record<string, Op>
 
   // buildSpecsFromMap 会把 keys 转为 snake_case，并返回 FilterSpec[]
   // 它默认 op 为 'eq'，但会把 opsMap 中指定的替换为对应 op
@@ -52,7 +58,7 @@ export async function fetchGetUserList(params: Api.SystemManage.UserSearchParams
   // applyFilters 支持传入 FilterSpec[]（这里 specs 已为 snake_case）
   query = applyFilters(query, specs, { skipEmpty: true, camelToSnake: false })
 
-  return await responseHandle(() => query as any, { ignoreCheck: true })
+  return await responseHandle(() => query, { ignoreCheck: true })
 }
 
 // 获取租户列表
@@ -64,14 +70,14 @@ export async function fetchGetTenantList(params: TenantSearchParams) {
     { col: 'status', op: 'eq', val: status }
   ]
 
-  let query: any = supabase
+  let query = supabase
     .from('sys_tenant')
     .select('*', { count: 'exact' })
     .order('create_time', { ascending: false })
     .range(from, to)
 
   query = applyFilters(query, specs, { skipEmpty: true, camelToSnake: false })
-  return await responseHandle(() => query as any, {
+  return await responseHandle(() => query, {
     ignoreCheck: true,
     showErrorMessage: true
   })
@@ -85,7 +91,7 @@ export async function fetchGetEnableTenantList() {
     .eq('status', '1')
     .order('tenant_code', { ascending: true })
 
-  return await responseHandle(() => query as any, {
+  return await responseHandle(() => query, {
     ignoreCheck: true,
     showErrorMessage: true
   })
@@ -93,20 +99,17 @@ export async function fetchGetEnableTenantList() {
 
 // 新增租户
 export async function addTenant(params: TenantListItem) {
-  return await responseHandle(
-    () => supabase.from('sys_tenant').insert(keysToSnakeDeep(params)) as any,
-    {
-      showMessage: true,
-      breakReturn: true
-    }
-  )
+  return await responseHandle(() => supabase.from('sys_tenant').insert(keysToSnakeDeep(params)), {
+    showMessage: true,
+    breakReturn: true
+  })
 }
 
 // 编辑租户
 export async function editTenant(params: TenantListItem) {
   const { id, ...data } = params
   return await responseHandle(
-    () => supabase.from('sys_tenant').update(keysToSnakeDeep(data)).eq('id', id) as any,
+    () => supabase.from('sys_tenant').update(keysToSnakeDeep(data)).eq('id', id),
     {
       showMessage: true,
       breakReturn: true
@@ -116,14 +119,14 @@ export async function editTenant(params: TenantListItem) {
 
 // 删除租户
 export async function deleteTenant(id: string) {
-  return await responseHandle(() => supabase.from('sys_tenant').delete().eq('id', id) as any, {
+  return await responseHandle(() => supabase.from('sys_tenant').delete().eq('id', id), {
     showMessage: true
   })
 }
 
 // 批量删除租户
 export async function deleteTenantBatch(ids: string[]) {
-  return await responseHandle(() => supabase.from('sys_tenant').delete().in('id', ids) as any, {
+  return await responseHandle(() => supabase.from('sys_tenant').delete().in('id', ids), {
     showMessage: true
   })
 }
@@ -137,7 +140,7 @@ export async function fetchGetSystemParamList(params: SystemParamSearchParams) {
     { col: 'builtin', op: 'eq', val: builtin }
   ]
 
-  let query: any = supabase
+  let query = supabase
     .from('sys_param')
     .select('*', { count: 'exact' })
     .order('sort', { ascending: true })
@@ -152,7 +155,7 @@ export async function fetchGetSystemParamList(params: SystemParamSearchParams) {
   }
 
   query = applyFilters(query, specs, { skipEmpty: true, camelToSnake: false })
-  return await responseHandle(() => query as any, {
+  return await responseHandle(() => query, {
     ignoreCheck: true,
     showErrorMessage: true
   })
@@ -163,7 +166,7 @@ export async function fetchSystemParamStats(): Promise<{
   error: unknown | null
 }> {
   const query = supabase.from('sys_param').select('id, enabled, builtin, group_code, update_time')
-  const { data, error } = await responseHandle<SystemParamItem[]>(() => query as any, {
+  const { data, error } = await responseHandle<SystemParamItem[]>(() => query, {
     ignoreCheck: true,
     showErrorMessage: true
   })
@@ -205,7 +208,7 @@ export async function fetchSystemParamByKey(paramKey: string): Promise<{
         .select('*')
         .eq('param_key', paramKey)
         .eq('enabled', true)
-        .maybeSingle() as any,
+        .maybeSingle(),
     {
       ignoreCheck: true,
       showErrorMessage: false
@@ -214,23 +217,17 @@ export async function fetchSystemParamByKey(paramKey: string): Promise<{
 }
 
 export async function addSystemParam(params: SystemParamItem) {
-  return await responseHandle(
-    () => supabase.from('sys_param').insert(keysToSnakeDeep(params)) as any,
-    {
-      showMessage: true,
-      breakReturn: true
-    }
-  )
+  return await responseHandle(() => supabase.from('sys_param').insert(keysToSnakeDeep(params)), {
+    showMessage: true,
+    breakReturn: true
+  })
 }
 
 export async function editSystemParam(params: SystemParamItem) {
   const { id, ...payload } = params
   return await responseHandle(
     () =>
-      supabase
-        .from('sys_param')
-        .update(keysToSnakeDeep(payload), { count: 'exact' })
-        .eq('id', id) as any,
+      supabase.from('sys_param').update(keysToSnakeDeep(payload), { count: 'exact' }).eq('id', id),
     {
       showMessage: true,
       breakReturn: true,
@@ -242,12 +239,7 @@ export async function editSystemParam(params: SystemParamItem) {
 
 export async function deleteSystemParam(id: string) {
   return await responseHandle(
-    () =>
-      supabase
-        .from('sys_param')
-        .delete({ count: 'exact' })
-        .eq('id', id)
-        .eq('builtin', false) as any,
+    () => supabase.from('sys_param').delete({ count: 'exact' }).eq('id', id).eq('builtin', false),
     {
       showMessage: true,
       requireAffected: true,
@@ -258,12 +250,7 @@ export async function deleteSystemParam(id: string) {
 
 export async function deleteSystemParamBatch(ids: string[]) {
   return await responseHandle(
-    () =>
-      supabase
-        .from('sys_param')
-        .delete({ count: 'exact' })
-        .in('id', ids)
-        .eq('builtin', false) as any,
+    () => supabase.from('sys_param').delete({ count: 'exact' }).in('id', ids).eq('builtin', false),
     {
       showMessage: true,
       requireAffected: true,
@@ -318,7 +305,7 @@ export async function fetchWebsiteConfig(): Promise<{
         .select('*')
         .eq('param_key', WEBSITE_CONFIG_PARAM_KEY)
         .eq('enabled', true)
-        .maybeSingle() as any,
+        .maybeSingle(),
     {
       ignoreCheck: true,
       showErrorMessage: false
@@ -352,7 +339,7 @@ export async function saveWebsiteConfig(params: WebsiteConfigItem) {
           .from('sys_param')
           .select('*')
           .eq('param_key', WEBSITE_CONFIG_PARAM_KEY)
-          .maybeSingle() as any,
+          .maybeSingle(),
       {
         ignoreCheck: true,
         showErrorMessage: false
@@ -369,7 +356,7 @@ export async function saveWebsiteConfig(params: WebsiteConfigItem) {
           supabase
             .from('sys_param')
             .update(keysToSnakeDeep(updatePayload), { count: 'exact' })
-            .eq('id', existingId) as any,
+            .eq('id', existingId),
         {
           showMessage: true,
           breakReturn: true,
@@ -384,7 +371,7 @@ export async function saveWebsiteConfig(params: WebsiteConfigItem) {
     }
 
     return await responseHandle(
-      () => supabase.from('sys_param').insert(keysToSnakeDeep({ ...paramMeta, paramValue })) as any,
+      () => supabase.from('sys_param').insert(keysToSnakeDeep({ ...paramMeta, paramValue })),
       {
         showMessage: true,
         breakReturn: true
@@ -403,7 +390,7 @@ export async function saveWebsiteConfig(params: WebsiteConfigItem) {
           }),
           { count: 'exact' }
         )
-        .eq('id', id) as any,
+        .eq('id', id),
     {
       showMessage: true,
       breakReturn: true,
@@ -431,15 +418,18 @@ export async function resetUser(params: Api.SystemManage.UserListItem) {
 /*删除用户*/
 export async function deleteUser(params: Api.SystemManage.UserListItem) {
   const { id, authUserId } = params
+  if (!id) {
+    throw new Error('未找到需要删除的用户')
+  }
   //删除auth.usres 表对应记录
-  const payload: any = { action: 'delete', id: id }
+  const payload: DeleteUserSyncPayload = { action: 'delete', id: id }
   if (authUserId) {
     payload.auth_user_id = authUserId
   }
   const invokeResp = () =>
     supabase.functions.invoke('sync-user', {
       body: payload
-    }) as any
+    })
   await responseHandle(invokeResp, {
     showMessage: true,
     breakReturn: true
@@ -500,7 +490,7 @@ export async function fetchGetEnableRoleList(params: { tenantId?: string } = {})
     .eq('enabled', true)
     .order('role_code', { ascending: true })
 
-  return await responseHandle(() => query as any, {
+  return await responseHandle(() => query, {
     ignoreCheck: true
   })
 }
@@ -527,7 +517,7 @@ export async function fetchGetRoleList(params: Api.SystemManage.RoleSearchParams
   ]
 
   // 构建查询
-  let query: any = supabase
+  let query = supabase
     .from('sys_role')
     .select('*, tenant:sys_tenant!sys_role_tenant_id_fkey(tenant_code, tenant_name)', {
       count: 'exact'
@@ -537,33 +527,30 @@ export async function fetchGetRoleList(params: Api.SystemManage.RoleSearchParams
 
   // applyFilters 支持传入 FilterSpec[]（这里 specs 已为 snake_case）
   query = applyFilters(query, specs, { skipEmpty: true, camelToSnake: false })
-  return await responseHandle(() => query as any, { ignoreCheck: true })
+  return await responseHandle(() => query, { ignoreCheck: true })
 }
 
 /*删除角色*/
 export async function deleteRole(params: Api.SystemManage.RoleListItem) {
   const { id } = params
-  return await responseHandle(() => supabase.from('sys_role').delete().eq('id', id) as any, {
+  return await responseHandle(() => supabase.from('sys_role').delete().eq('id', id), {
     showMessage: true
   })
 }
 
 /*新增角色*/
 export async function addRole(params: Api.SystemManage.RoleListItem) {
-  return await responseHandle(
-    () => supabase.from('sys_role').insert(keysToSnakeDeep(params)) as any,
-    {
-      showMessage: true,
-      breakReturn: true
-    }
-  )
+  return await responseHandle(() => supabase.from('sys_role').insert(keysToSnakeDeep(params)), {
+    showMessage: true,
+    breakReturn: true
+  })
 }
 
 /*编辑角色*/
 export async function editRole(params: Api.SystemManage.RoleListItem) {
   const { id } = params
   return await responseHandle(
-    () => supabase.from('sys_role').update(keysToSnakeDeep(params)).eq('id', id) as any,
+    () => supabase.from('sys_role').update(keysToSnakeDeep(params)).eq('id', id),
     {
       showMessage: true,
       breakReturn: true
@@ -574,12 +561,9 @@ export async function editRole(params: Api.SystemManage.RoleListItem) {
 /*获取当前角色拥有的菜单*/
 export async function getCurrentRoleMenus(params: AppRouteRecord) {
   const { id } = params
-  return await responseHandle(
-    () => supabase.from('sys_role_menu').select().eq('role_id', id) as any,
-    {
-      ignoreCheck: true
-    }
-  )
+  return await responseHandle(() => supabase.from('sys_role_menu').select().eq('role_id', id), {
+    ignoreCheck: true
+  })
 }
 
 // 获取有用的菜单列表
@@ -590,12 +574,12 @@ export async function fetchGetEnableMenuList() {
     .select('*', { count: 'exact' })
     .order('sort', { ascending: true }) // 按sort倒序
 
-  return await responseHandle(() => query as any, { ignoreCheck: true })
+  return await responseHandle(() => query, { ignoreCheck: true })
 }
 
 // 保存角色权限
 export async function saveRoleMenuList(params: { p_role_id: string; p_menu_ids: string[] }) {
-  return await responseHandle(() => supabase.rpc('set_role_menus', params) as any, {
+  return await responseHandle(() => supabase.rpc('set_role_menus', params), {
     showMessage: true,
     breakReturn: true
   })
@@ -609,7 +593,7 @@ export async function fetchGetMenuList(params: AppRouteRecord) {
   })
 
   // 构建查询
-  let query: any = supabase.from('sys_menu').select('*', { count: 'exact' })
+  let query = supabase.from('sys_menu').select('*', { count: 'exact' })
 
   if (name) {
     query = query.filter('meta->>title', 'ilike', `%${name}%`)
@@ -617,7 +601,7 @@ export async function fetchGetMenuList(params: AppRouteRecord) {
   // applyFilters 支持传入 FilterSpec[]（这里 specs 已为 snake_case）
   query = applyFilters(query, specs, { skipEmpty: true, camelToSnake: false })
 
-  return await responseHandle(() => query as any, { ignoreCheck: true })
+  return await responseHandle(() => query, { ignoreCheck: true })
 }
 
 /*删除菜单*/
@@ -631,7 +615,7 @@ export async function deleteMenu(params: { ids: string[] }) {
     const message = error instanceof Error ? error.message : String(error)
     if (message.includes('sys_role_menu_menu_id_fkey')) {
       await responseHandle(
-        () => supabase.from('sys_role_menu').delete({ count: 'exact' }).in('menu_id', ids) as any,
+        () => supabase.from('sys_role_menu').delete({ count: 'exact' }).in('menu_id', ids),
         {
           breakReturn: true,
           requireAffected: true,
@@ -655,7 +639,7 @@ export async function deleteMenu(params: { ids: string[] }) {
 
 async function deleteMenuRows(ids: string[]) {
   return await responseHandle(
-    () => supabase.from('sys_menu').delete({ count: 'exact' }).in('id', ids) as any,
+    () => supabase.from('sys_menu').delete({ count: 'exact' }).in('id', ids),
     {
       breakReturn: true,
       requireAffected: true,
@@ -666,12 +650,9 @@ async function deleteMenuRows(ids: string[]) {
 
 /*新增菜单*/
 export async function addRMenu(params: AppRouteRecord) {
-  return await responseHandle(
-    () => supabase.from('sys_menu').insert(keysToSnakeDeep(params)) as any,
-    {
-      showMessage: true
-    }
-  )
+  return await responseHandle(() => supabase.from('sys_menu').insert(keysToSnakeDeep(params)), {
+    showMessage: true
+  })
 }
 
 /*编辑菜单*/
@@ -679,10 +660,7 @@ export async function editMenu(params: AppRouteRecord) {
   const { id } = params
   return await responseHandle(
     () =>
-      supabase
-        .from('sys_menu')
-        .update(keysToSnakeDeep(params), { count: 'exact' })
-        .eq('id', id) as any,
+      supabase.from('sys_menu').update(keysToSnakeDeep(params), { count: 'exact' }).eq('id', id),
     {
       showMessage: true,
       breakReturn: true,
@@ -714,7 +692,7 @@ export async function saveMenuDragSort(
 
 /*获取当前用户的菜单权限*/
 export async function fetchCurrentUserMenu() {
-  return await responseHandle(() => supabase.rpc('get_menus_for_current_user') as any, {
+  return await responseHandle(() => supabase.rpc('get_menus_for_current_user'), {
     showMessage: false,
     ignoreCheck: true
   })

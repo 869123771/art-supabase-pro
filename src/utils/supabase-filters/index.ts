@@ -1,6 +1,24 @@
 export type FilterValue = string | number | boolean | null | undefined | Array<string | number>
 
 export type Filters = Record<string, FilterValue>
+type FilterPayload = FilterValue | { op?: Op; val?: FilterValue }
+
+interface FilterQueryLike {
+  containedBy(column: string, value: unknown): this
+  contains(column: string, value: unknown): this
+  eq(column: string, value: unknown): this
+  gt(column: string, value: unknown): this
+  gte(column: string, value: unknown): this
+  ilike(column: string, value: string): this
+  in(column: string, values: readonly unknown[]): this
+  is(column: string, value: unknown): this
+  like(column: string, value: string): this
+  lt(column: string, value: unknown): this
+  lte(column: string, value: unknown): this
+  neq(column: string, value: unknown): this
+  overlaps(column: string, value: unknown): this
+  textSearch(column: string, value: string): this
+}
 
 /**
  * Supabase / PostgREST 常用操作符全集
@@ -27,14 +45,20 @@ export type FilterSpec = {
   val: FilterValue
 }
 
+type LooseFilterSpec = {
+  col: string
+  op?: Op | string
+  val: FilterValue
+}
+
 /** camelCase → snake_case */
 export function camelToSnake(str: string) {
   return str.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`)
 }
 
 /** shallow object camelCase → snake_case */
-export function convertKeysToSnake<T extends Record<string, any>>(obj: T): Record<string, any> {
-  const out: Record<string, any> = {}
+export function convertKeysToSnake<TValue>(obj: Record<string, TValue>): Record<string, TValue> {
+  const out: Record<string, TValue> = {}
   Object.entries(obj || {}).forEach(([k, v]) => {
     out[camelToSnake(k)] = v
   })
@@ -42,22 +66,35 @@ export function convertKeysToSnake<T extends Record<string, any>>(obj: T): Recor
 }
 
 /** 内部使用：数组 specs 时转换 col */
-function normalizeSpecArray(specs: FilterSpec[], camelToSnake: boolean): FilterSpec[] {
-  if (!camelToSnake) return specs
-  return specs.map((spec) => ({
+function toOp(value: Op | string | undefined): Op | undefined {
+  return value && value in opHandlers ? (value as Op) : undefined
+}
+
+function isFilterDescriptor(payload: FilterPayload): payload is { op?: Op; val?: FilterValue } {
+  return !Array.isArray(payload) && typeof payload === 'object' && payload !== null
+}
+
+function normalizeSpecArray(specs: LooseFilterSpec[], camelToSnake: boolean): FilterSpec[] {
+  const normalized = specs.map((spec) => ({
+    col: spec.col,
+    op: toOp(spec.op),
+    val: spec.val
+  }))
+  if (!camelToSnake) return normalized
+  return normalized.map((spec) => ({
     ...spec,
     col: camelToSnakeStr(spec.col)
   }))
 }
 
 /** Apply eq filters（保留你的原函数） */
-export function applyEqFilters(
-  query: any,
+export function applyEqFilters<TQuery extends FilterQueryLike>(
+  query: TQuery,
   filters: Filters,
   opts: { skipEmpty?: boolean; camelToSnake?: boolean } = {}
-) {
+): TQuery {
   const { skipEmpty = true, camelToSnake: toSnake = true } = opts
-  const useFilters = toSnake ? convertKeysToSnake(filters as any) : filters
+  const useFilters = toSnake ? convertKeysToSnake(filters) : filters
 
   Object.entries(useFilters || {}).forEach(([col, val]) => {
     if (val === undefined || val === null) return
@@ -69,7 +106,10 @@ export function applyEqFilters(
 }
 
 /** Op → Supabase Query 映射表（工程化核心） */
-const opHandlers: Record<Op, (query: any, col: string, val: any) => any> = {
+const opHandlers: Record<
+  Op,
+  <TQuery extends FilterQueryLike>(query: TQuery, col: string, val: FilterValue) => TQuery
+> = {
   eq: (q, c, v) => q.eq(c, v),
   neq: (q, c, v) => q.neq(c, v),
   gt: (q, c, v) => q.gt(c, v),
@@ -89,31 +129,21 @@ const opHandlers: Record<Op, (query: any, col: string, val: any) => any> = {
 /**
  * Apply filters（核心入口）
  */
-export function applyFilters(
-  query: any,
-  specs: FilterSpec[] | Record<string, any>,
+export function applyFilters<TQuery extends FilterQueryLike>(
+  query: TQuery,
+  specs: LooseFilterSpec[] | Record<string, FilterPayload>,
   opts: { skipEmpty?: boolean; camelToSnake?: boolean } = {}
-) {
+): TQuery {
   const { skipEmpty = true, camelToSnake: toSnake = true } = opts
 
-  let specArray: FilterSpec[] = []
-
-  if (Array.isArray(specs)) {
-    // ✅ 数组 specs 也支持 camelToSnake
-    specArray = normalizeSpecArray(specs, toSnake)
-  } else {
-    const raw = toSnake ? convertKeysToSnake(specs as any) : (specs as Record<string, any>)
-    specArray = Object.entries(raw).map(([col, payload]) => {
-      if (payload && typeof payload === 'object' && ('op' in payload || 'val' in payload)) {
-        return {
-          col,
-          op: payload.op as Op | undefined,
-          val: payload.val
+  const specArray: FilterSpec[] = Array.isArray(specs)
+    ? normalizeSpecArray(specs, toSnake)
+    : Object.entries(toSnake ? convertKeysToSnake(specs) : specs).map(([col, payload]) => {
+        if (isFilterDescriptor(payload)) {
+          return { col, op: toOp(payload.op), val: payload.val }
         }
-      }
-      return { col, op: 'eq', val: payload }
-    })
-  }
+        return { col, op: 'eq', val: payload }
+      })
 
   specArray.forEach(({ col, op = 'eq', val }) => {
     if (val === undefined || val === null) return
@@ -134,9 +164,7 @@ export function buildSpecsFromMap(
   ops?: Record<string, Op>,
   camelToSnake = true
 ): FilterSpec[] {
-  const snakeFilters = camelToSnake
-    ? convertKeysToSnake(filters as any)
-    : (filters as Record<string, any>)
+  const snakeFilters: Filters = camelToSnake ? convertKeysToSnake(filters) : filters
 
   const snakeOps: Record<string, Op> = {}
   if (ops) {

@@ -3,11 +3,7 @@ export type AddressCoordinateSystem = 'gcj02' | 'wgs84' | 'bd09' | (string & {})
 export type AddressCoordinateSource = 'geocode' | 'map_pick' | 'import' | (string & {})
 
 export type AddressCoordinateStatus =
-  | 'pending'
-  | 'located'
-  | 'failed'
-  | 'unconfirmed'
-  | (string & {})
+  'pending' | 'located' | 'failed' | 'unconfirmed' | (string & {})
 
 export interface AddressRegionOption {
   name: string
