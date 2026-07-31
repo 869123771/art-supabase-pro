@@ -138,6 +138,7 @@
   import { useCommon } from '@/hooks/core/useCommon'
   import { useWebsiteConfig } from '@/hooks'
   import { useWindowSize, useTimeoutFn } from '@vueuse/core'
+  import type { AppRouteRecord } from '@/types/router'
 
   defineOptions({ name: 'ArtSidebarMenu' })
 
@@ -232,9 +233,12 @@
   /**
    * 查找 iframe 对应的二级菜单列表
    */
-  const findIframeMenuList = (currentPath: string, menuList: any[]) => {
+  const findIframeMenuList = (
+    currentPath: string,
+    menuList: AppRouteRecord[]
+  ): AppRouteRecord[] => {
     // 递归查找包含当前路径的菜单项
-    const hasPath = (items: any[]): boolean => {
+    const hasPath = (items: AppRouteRecord[]): boolean => {
       for (const item of items) {
         if (item.path === currentPath) {
           return true

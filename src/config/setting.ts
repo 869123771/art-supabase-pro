@@ -99,7 +99,7 @@ export function getSettingDefaults() {
  * 重置为默认设置
  * @param currentSettings 当前设置对象
  */
-export function resetToDefaults(currentSettings: Record<string, any>) {
+export function resetToDefaults(currentSettings: Record<string, unknown>) {
   const defaults = getSettingDefaults()
   Object.keys(defaults).forEach((key) => {
     if (key in currentSettings) {

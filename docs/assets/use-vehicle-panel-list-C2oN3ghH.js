@@ -1,1 +1,0 @@
-import{Mt as e,vt as t}from"./file-viewer-BxGU53dO.js";var n=(n,r)=>{let i=e(!1),a=e([]),o=async()=>{if(!n.value.plateNo){a.value=[];return}i.value=!0;try{a.value=await r(n.value)}finally{i.value=!1}};return t(()=>n.value.plateNo,()=>void o(),{immediate:!0}),{loading:i,records:a,loadRecords:o}};export{n as t};

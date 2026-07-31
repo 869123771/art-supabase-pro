@@ -319,11 +319,13 @@ export function validateBankCard(value: string): boolean {
   return sum % 10 === 0
 }
 
+type UniqueExtraWhere = Record<string, string | number | boolean | null | undefined>
+
 export function uniqueValidator(options: {
   table: string
   field: string
   getExcludeId?: () => string | undefined
-  extraWhere?: () => Record<string, any>
+  extraWhere?: () => UniqueExtraWhere
   message?: string
   delay?: number
 }): FormItemRule['validator'] {
@@ -344,8 +346,8 @@ export function uniqueValidator(options: {
       } else {
         callback()
       }
-    } catch (e: any) {
-      callback(new Error(e?.message ?? '校验失败'))
+    } catch (error: unknown) {
+      callback(new Error(error instanceof Error ? error.message : '校验失败'))
     }
   }, delay)
 

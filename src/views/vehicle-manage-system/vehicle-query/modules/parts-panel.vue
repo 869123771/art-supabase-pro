@@ -50,7 +50,7 @@
       prop: 'partType',
       label: '零部件类型',
       width: 120,
-      dict: { code: 'vehiclePartType', display: 'text' }
+      dict: { code: 'vehiclePartType', display: 'auto' }
     },
     { prop: 'partName', label: '零部件名称', minWidth: 160 },
     { prop: 'categoryName', label: '类别', width: 120 },
@@ -82,7 +82,7 @@
       prop: 'status',
       label: '状态',
       width: 100,
-      dict: { code: 'vehiclePartUsageStatus', display: 'text' }
+      dict: { code: 'vehiclePartUsageStatus', display: 'auto' }
     }
   ]
 

@@ -52,15 +52,15 @@ declare namespace Api {
     type CommonSearchParams = Pick<PaginationParams, 'from' | 'to'>
 
     /** 分页响应基础结构 */
-    interface PaginatedResponse<T = any> {
+    interface PaginatedResponse<T = unknown> {
       records?: T[]
       current?: number
       size?: number
       total?: number
-      data?: any
-      error?: any
+      data?: T[]
+      error?: unknown
       count?: number | null
-      response?: any
+      response?: unknown
     }
 
     /** 启用状态 */
@@ -138,7 +138,7 @@ declare namespace Api {
       updateBy?: string
       updateTime?: string
       authUserId?: string
-      extra?: Record<string, any>
+      extra?: Record<string, unknown>
     }
 
     /** 用户搜索参数 */
@@ -208,7 +208,7 @@ declare namespace Api {
       paramType: SystemParamType
       defaultValue?: string | null
       paramValue: string
-      extendConfig?: Record<string, any>
+      extendConfig?: Record<string, unknown>
       enabled: boolean
       builtin: boolean
       sort: number
@@ -1721,7 +1721,9 @@ declare namespace Api {
     }
     namespace Resources {
       interface Args {
-        [key: string]: any
+        btn?: Button
+        handleGetResourceList?: () => void | Promise<void>
+        [key: string]: unknown
       }
 
       /** 用户搜索参数 */
@@ -1733,9 +1735,9 @@ declare namespace Api {
         name: string
         label: string
         icon: string
-        click?: (btn: Resources.Button, selected: any[]) => void
-        upload?: (files: File | File[], args: Args) => void
-        uploadConfig?: Record<string, any>
+        click?: (btn: Resources.Button, selected: ResourceListItem[]) => void
+        upload?: (files: File | File[], args: Args) => void | Promise<void>
+        uploadConfig?: Record<string, unknown>
         order?: number
       }
 
@@ -1805,7 +1807,7 @@ declare namespace Api {
       interface SqlExecuteResponse {
         status: 'ok' | 'error'
         errorMessage?: string
-        rows?: any[]
+        rows?: Array<Record<string, unknown>>
         columns?: Array<{
           name: string
           type?: string | null

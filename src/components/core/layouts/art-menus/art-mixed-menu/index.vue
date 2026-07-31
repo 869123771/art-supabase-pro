@@ -74,13 +74,17 @@
 
   type ScrollDirection = 'left' | 'right'
 
+  interface ScrollbarExpose {
+    wrapRef?: HTMLDivElement
+  }
+
   const route = useRoute()
 
   const props = withDefaults(defineProps<Props>(), {
     list: () => []
   })
 
-  const scrollbarRef = ref<any>()
+  const scrollbarRef = ref<ScrollbarExpose>()
   const showLeftArrow = ref(false)
   const showRightArrow = ref(false)
 

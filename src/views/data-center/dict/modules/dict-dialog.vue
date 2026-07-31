@@ -49,6 +49,10 @@
   import TreeUtils from '@/utils/tree'
 
   type DictListItem = Api.DataCenter.DictListItem
+  type DictFormData = Omit<Partial<DictListItem>, 'tagType'> & {
+    dictTypeName: string
+    tagType?: Api.Common.TagType | ''
+  }
   interface ArtFormExpose {
     ref: Ref<FormInstance | undefined>
     validate: () => Promise<boolean | void>
@@ -56,7 +60,7 @@
   }
 
   interface FormGroup {
-    data: DictListItem | Record<string, any>
+    data: DictFormData
     items: FormItem[]
     rules: FormRules
   }
@@ -74,7 +78,7 @@
     childrenKey: 'children'
   })
 
-  const dataDefault = {
+  const dataDefault: DictFormData = {
     typeId: '',
     parentId: undefined,
     dictTypeName: '',
@@ -97,7 +101,7 @@
     { label: '危险', value: 'danger' }
   ]
   const form: Ref<FormGroup> = ref({
-    data: cloneDeep(dataDefault) as DictListItem | Record<string, any>,
+    data: cloneDeep(dataDefault),
     items: computed(
       (): FormItem[] =>
         [
@@ -250,7 +254,7 @@
               table: 'sys_dictionary',
               field: 'code',
               getExcludeId: (): string | undefined => form.value.data?.id,
-              extraWhere: (): Record<string, any> => ({
+              extraWhere: (): Record<string, string | number | boolean | null | undefined> => ({
                 type_id: form.value.data?.typeId
               }),
               message: '字典编码已存在'
@@ -321,7 +325,7 @@
       emits('success')
       return true
     } catch (error) {
-      console.log('表单验证失败:', error)
+      console.warn('表单验证失败:', error)
       return false
     }
   }

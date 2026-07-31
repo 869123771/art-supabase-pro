@@ -46,6 +46,8 @@ import hljs from 'highlight.js'
 
 export type HighlightDirective = Directive<HTMLElement>
 
+const highlightObservers = new WeakMap<HTMLElement, MutationObserver>()
+
 // 高亮代码
 function highlightCode(block: HTMLElement) {
   hljs.highlightElement(block)
@@ -222,7 +224,7 @@ const highlightDirective: HighlightDirective = {
     })
 
     // 将 observer 存储到元素上，以便在 unmounted 时清理
-    ;(el as any)._highlightObserver = observer
+    highlightObservers.set(el, observer)
   },
 
   updated(el: HTMLElement) {
@@ -234,10 +236,10 @@ const highlightDirective: HighlightDirective = {
 
   unmounted(el: HTMLElement) {
     // 清理 MutationObserver
-    const observer = (el as any)._highlightObserver
+    const observer = highlightObservers.get(el)
     if (observer) {
       observer.disconnect()
-      delete (el as any)._highlightObserver
+      highlightObservers.delete(el)
     }
   }
 }

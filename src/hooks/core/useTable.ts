@@ -35,20 +35,35 @@ import {
   createErrorHandler
 } from '../../utils/table/tableUtils'
 import { tableConfig } from '../../utils/table/tableConfig'
+import type { ApiRequestOptions } from '@/types/api/request'
 
 // 类型推导工具类型
 // useTable 需要保留任意业务 API 的参数/响应推导能力，动态边界集中在这一处。
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type TableApiFn<TParams = any, TResponse = any> = (params: TParams) => Promise<TResponse>
-type InferApiParams<T> = T extends (params: infer P) => unknown ? P : never
-type InferApiResponse<T> = T extends (params: infer _P) => Promise<infer R> ? R : never
+export type TableRequestOptions = ApiRequestOptions
+type TableRequestParams = Record<string, unknown>
+export type TableApiFn<TParams extends object = TableRequestParams, TResponse = unknown> = (
+  params: TParams,
+  options?: TableRequestOptions
+) => Promise<TResponse>
+type AnyTableApiFn = (params: never, options?: TableRequestOptions) => Promise<unknown>
+type InferApiParams<T> = T extends (params: infer P, options?: TableRequestOptions) => unknown
+  ? P extends object
+    ? P
+    : TableRequestParams
+  : TableRequestParams
+type InferApiResponse<T> = T extends (
+  params: infer _P,
+  options?: TableRequestOptions
+) => Promise<infer R>
+  ? R
+  : unknown
 type InferRecordType<T> = T extends Api.Common.PaginatedResponse<infer U> ? U : never
 
 // 优化的配置接口 - 支持自动类型推导
 export interface UseTableConfig<
-  TApiFn extends TableApiFn = TableApiFn,
+  TApiFn extends AnyTableApiFn = TableApiFn,
   TRecord = InferRecordType<InferApiResponse<TApiFn>>,
-  TParams = InferApiParams<TApiFn>,
+  TParams extends object = InferApiParams<TApiFn>,
   TResponse = InferApiResponse<TApiFn>
 > {
   // 核心配置
@@ -115,7 +130,7 @@ export interface UseTableConfig<
   }
 }
 
-export function useTable<TRecord = never, TApiFn extends TableApiFn = TableApiFn>(
+export function useTable<TRecord = never, TApiFn extends AnyTableApiFn = TableApiFn>(
   config: UseTableConfig<
     TApiFn,
     [TRecord] extends [never] ? InferRecordType<InferApiResponse<TApiFn>> : TRecord
@@ -138,7 +153,9 @@ export function useTable<TRecord = never, TApiFn extends TableApiFn = TableApiFn
  * - 错误处理
  * - 列配置管理
  */
-function useTableImpl<TApiFn extends TableApiFn, TRecord>(config: UseTableConfig<TApiFn, TRecord>) {
+function useTableImpl<TApiFn extends AnyTableApiFn, TRecord>(
+  config: UseTableConfig<TApiFn, TRecord>
+) {
   type TParams = InferApiParams<TApiFn>
   const {
     core: {
@@ -350,7 +367,9 @@ function useTableImpl<TApiFn extends TableApiFn, TRecord>(config: UseTableConfig
         }
       }
 
-      const response = await apiFn(requestParams)
+      const response = (await apiFn(requestParams as never, {
+        signal: currentController.signal
+      })) as InferApiResponse<TApiFn>
 
       // 检查请求是否被取消
       if (currentController.signal.aborted) {
@@ -399,9 +418,11 @@ function useTableImpl<TApiFn extends TableApiFn, TRecord>(config: UseTableConfig
 
       return standardResponse
     } catch (err) {
-      if (err instanceof Error && err.message === '请求已取消') {
-        // 请求被取消，回到 idle 状态
-        loadingState.value = 'idle'
+      if (currentController.signal.aborted) {
+        // 旧请求完成得比新请求晚时，不能覆盖新请求的 loading / error / data 状态。
+        if (abortController === currentController) {
+          loadingState.value = 'idle'
+        }
         return { records: [], total: 0, current: 1, size: 10 }
       }
 
@@ -637,14 +658,17 @@ function useTableImpl<TApiFn extends TableApiFn, TRecord>(config: UseTableConfig
 
   // 设置定期清理过期缓存
   if (enableCache && cache) {
-    cacheCleanupTimer = setInterval(() => {
-      const cleanedCount = cache.cleanupExpired()
-      if (cleanedCount > 0) {
-        logger.log(`自动清理 ${cleanedCount} 条过期缓存`)
-        // 手动触发缓存状态更新
-        cacheUpdateTrigger.value++
-      }
-    }, cacheTime / 2) // 每半个缓存周期清理一次
+    cacheCleanupTimer = setInterval(
+      () => {
+        const cleanedCount = cache.cleanupExpired()
+        if (cleanedCount > 0) {
+          logger.log(`自动清理 ${cleanedCount} 条过期缓存`)
+          // 手动触发缓存状态更新
+          cacheUpdateTrigger.value++
+        }
+      },
+      Math.max(cacheTime / 2, 1000)
+    ) // 每半个缓存周期清理一次，最低每秒执行一次
   }
 
   // 挂载时自动加载数据

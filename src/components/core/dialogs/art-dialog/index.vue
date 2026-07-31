@@ -118,7 +118,7 @@
   </ElDialog>
 </template>
 
-<script setup lang="ts" generic="T = Record<string, any>">
+<script setup lang="ts" generic="T = Record<string, unknown>">
   import type { DialogInstance, ScrollbarInstance } from 'element-plus'
   import type {
     ArtDialogEmits,

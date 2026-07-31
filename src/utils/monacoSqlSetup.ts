@@ -20,7 +20,7 @@ import { LanguageIdEnum, setupLanguageFeatures } from 'monaco-sql-languages'
 // Monaco 在 Vite 里需要手动分发不同语言的 worker。
 // 这里把 pgsql worker 单独接进来，避免 SQL 提示和解析退化成纯文本。
 self.MonacoEnvironment = {
-  getWorker(_: any, label: string) {
+  getWorker(_workerId: string, label: string) {
     if (label === 'json') return new jsonWorker()
     if (label === 'pgsql') return new PgSQLWorker()
     return new editorWorker()
@@ -35,7 +35,9 @@ let dbMetadata: Api.DataCenter.SqlConsole.DatabaseMetadata = {
   foreignKeys: []
 }
 
-export function registerSqlMetadata(metadata: Api.DataCenter.SqlConsole.DatabaseMetadata | any) {
+export function registerSqlMetadata(
+  metadata: Api.DataCenter.SqlConsole.DatabaseMetadata | Api.DataCenter.SqlConsole.TableMetadata[]
+) {
   if (!metadata) return
 
   if (Array.isArray(metadata)) {
@@ -201,7 +203,7 @@ setupLanguageFeatures(LanguageIdEnum.PG, {
       model: monaco.editor.ITextModel,
       position: monaco.Position,
       context: monaco.languages.CompletionContext,
-      suggestions: any
+      suggestions: { keywords?: string[] } | null
     ) => {
       const range = createRange(model, position)
       const fullSql = model.getValue()

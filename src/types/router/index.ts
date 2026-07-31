@@ -75,6 +75,6 @@ export interface AppRouteRecord extends Omit<RouteRecordRaw, 'meta' | 'children'
   type?: string
   meta: RouteMeta
   children?: AppRouteRecord[]
-  component?: string | (() => Promise<any>)
+  component?: string | RouteRecordRaw['component']
   updateTime?: string
 }

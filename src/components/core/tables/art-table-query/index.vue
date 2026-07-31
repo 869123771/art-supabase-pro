@@ -676,9 +676,12 @@
   }
 
   const resolvedColumnsModel = computed({
-    get: () => (isManaged.value ? managedTable.columnChecks.value : columnsModel.value),
+    get: () =>
+      isManaged.value
+        ? (managedTable.columnChecks?.value ?? columnsModel.value)
+        : columnsModel.value,
     set: (value) => {
-      if (isManaged.value) {
+      if (isManaged.value && managedTable.columnChecks) {
         managedTable.columnChecks.value = value
       } else {
         columnsModel.value = value
@@ -693,7 +696,7 @@
   const resolvedData = computed(() => (isManaged.value ? managedTable.data.value : props.data))
 
   const resolvedColumns = computed(() =>
-    isManaged.value ? managedTable.columns.value : props.tableColumns
+    isManaged.value ? (managedTable.columns?.value ?? props.tableColumns) : props.tableColumns
   )
 
   const resolvedPagination = computed(() =>

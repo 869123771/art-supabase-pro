@@ -87,7 +87,7 @@
 
 <script setup lang="ts">
   import { useI18n } from 'vue-i18n'
-  import type { FormInstance, FormRules } from 'element-plus'
+  import type { FormInstance, FormItemRule, FormRules } from 'element-plus'
   import type { QueryResult } from '@/hooks/core/useSupabase'
   import { register } from '@/api/auth'
   import { useSystemParam } from '@/hooks'
@@ -104,8 +104,6 @@
     agreement: boolean
   }
 
-  const USERNAME_MIN_LENGTH = 3
-  const USERNAME_MAX_LENGTH = 20
   const REDIRECT_DELAY = 1000
 
   const { t, locale } = useI18n()
@@ -154,8 +152,10 @@
    * 验证密码
    * 当密码输入后，如果确认密码已填写，则触发确认密码的验证
    */
-  const validatePassword = (_rule: any, value: string, callback: (error?: Error) => void) => {
-    if (!value) {
+  const validatePassword: FormItemRule['validator'] = (_rule, value, callback) => {
+    const password = String(value ?? '')
+
+    if (!password) {
       callback(new Error(t('register.placeholder.password')))
       return
     }
@@ -164,7 +164,7 @@
       formRef.value?.validateField('confirmPassword')
     }
 
-    if (!validatePasswordComplexity(value)) {
+    if (!validatePasswordComplexity(password)) {
       callback(new Error(getPasswordComplexityMessage(t)))
       return
     }
@@ -176,17 +176,15 @@
    * 验证确认密码
    * 检查确认密码是否与密码一致
    */
-  const validateConfirmPassword = (
-    _rule: any,
-    value: string,
-    callback: (error?: Error) => void
-  ) => {
-    if (!value) {
+  const validateConfirmPassword: FormItemRule['validator'] = (_rule, value, callback) => {
+    const confirmPassword = String(value ?? '')
+
+    if (!confirmPassword) {
       callback(new Error(t('register.rule.confirmPasswordRequired')))
       return
     }
 
-    if (value !== formData.password) {
+    if (confirmPassword !== formData.password) {
       callback(new Error(t('register.rule.passwordMismatch')))
       return
     }
@@ -198,7 +196,7 @@
    * 验证用户协议
    * 确保用户已勾选同意协议
    */
-  const validateAgreement = (_rule: any, value: boolean, callback: (error?: Error) => void) => {
+  const validateAgreement: FormItemRule['validator'] = (_rule, value, callback) => {
     if (!value) {
       callback(new Error(t('register.rule.agreementRequired')))
       return
@@ -207,15 +205,6 @@
   }
 
   const rules = computed<FormRules<RegisterForm>>(() => ({
-    user_name: [
-      { required: true, message: t('register.placeholder.username'), trigger: 'change' },
-      {
-        min: USERNAME_MIN_LENGTH,
-        max: USERNAME_MAX_LENGTH,
-        message: t('register.rule.usernameLength'),
-        trigger: 'change'
-      }
-    ],
     password: [
       { required: true, validator: validatePassword, trigger: 'change' },
       {
@@ -249,7 +238,7 @@
         email: formData.email,
         password: formData.password
       }
-      const { data } = (await registerAndLink(params)) as QueryResult<any>
+      const { data } = (await registerAndLink(params)) as QueryResult<unknown>
       if (data) {
         toLogin()
       }
@@ -260,7 +249,7 @@
     }
   }
 
-  const registerAndLink = async (payload: RegisterParams): Promise<QueryResult<any>> => {
+  const registerAndLink = async (payload: RegisterParams): Promise<QueryResult<unknown>> => {
     return register(payload)
   }
 

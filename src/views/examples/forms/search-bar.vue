@@ -67,8 +67,8 @@
   import type { FormItem } from '@/components/core/forms/art-form/index.vue'
 
   interface Emits {
-    (e: 'update:modelValue', value: Record<string, any>): void
-    (e: 'search', params: Record<string, any>): void
+    (e: 'update:modelValue', value: Record<string, unknown>): void
+    (e: 'search', params: Record<string, unknown>): void
     (e: 'reset'): void
   }
 
@@ -215,8 +215,8 @@
     type: string
     placeholder?: string
     clearable?: boolean
-    props?: Record<string, any>
-    [key: string]: any
+    props?: Record<string, unknown>
+    [key: string]: unknown
   }
 
   /**
@@ -633,17 +633,26 @@
    * @param formData 表单数据
    * @param type 表单类型描述
    */
-  const createFormHandler = (ref: Ref<any>, formData: Record<string, any>, type: string) => ({
+  interface SearchBarExpose {
+    validate: () => Promise<boolean | void>
+  }
+
+  const createFormHandler = <TForm extends object>(
+    ref: Ref<SearchBarExpose | undefined>,
+    formData: Ref<TForm>,
+    type: string
+  ) => ({
     reset: () => {
       console.log(`重置${type}表单`)
       emit('reset')
     },
     search: async () => {
+      if (!ref.value) return
       await ref.value.validate()
-      emit('search', formData.value)
+      emit('search', formData.value as Record<string, unknown>)
       console.log(`${type}表单数据`, formData.value)
     },
-    validate: () => ref.value.validate()
+    validate: () => ref.value?.validate()
   })
 
   /**

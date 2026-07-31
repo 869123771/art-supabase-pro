@@ -108,7 +108,8 @@
 
 <script setup lang="ts">
   import { Lock, Unlock } from '@element-plus/icons-vue'
-  import type { FormInstance, FormRules } from 'element-plus'
+  import { useScrollLock } from '@vueuse/core'
+  import { ElInput, type FormInstance, type FormRules } from 'element-plus'
   import { useI18n } from 'vue-i18n'
   import CryptoJS from 'crypto-js'
   import { useUserStore } from '@/store/modules/user'
@@ -123,11 +124,12 @@
   // Store
   const userStore = useUserStore()
   const { info: userInfo, lockPassword, isLock } = storeToRefs(userStore)
+  const isBodyScrollLocked = useScrollLock(document.body)
 
   // 响应式数据
   const visible = ref<boolean>(false)
-  const lockInputRef = ref<any>(null)
-  const unlockInputRef = ref<any>(null)
+  const lockInputRef = ref<InstanceType<typeof ElInput>>()
+  const unlockInputRef = ref<InstanceType<typeof ElInput>>()
   const showDevToolsWarning = ref<boolean>(false)
 
   // 表单相关
@@ -410,12 +412,12 @@
   // 监听锁屏状态变化
   watch(isLock, (newValue) => {
     if (newValue) {
-      document.body.style.overflow = 'hidden'
+      isBodyScrollLocked.value = true
       setTimeout(() => {
         unlockInputRef.value?.input?.focus()
       }, 100)
     } else {
-      document.body.style.overflow = 'auto'
+      isBodyScrollLocked.value = false
       showDevToolsWarning.value = false
     }
   })
@@ -440,8 +442,9 @@
   })
 
   onUnmounted(() => {
+    mittBus.off('openLockScreen', openLockScreen)
     document.removeEventListener('keydown', handleKeydown)
-    document.body.style.overflow = 'auto'
+    isBodyScrollLocked.value = false
     // 清理禁用开发者工具的事件监听器
     if (cleanupDevTools) {
       cleanupDevTools()

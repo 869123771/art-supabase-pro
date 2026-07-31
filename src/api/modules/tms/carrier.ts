@@ -1,5 +1,6 @@
 import { useSupabase } from '@/hooks'
-import type { SupabaseQueryLike } from '@/api/modules/tms/query'
+import { withRequestOptions, type SupabaseQueryLike } from '@/api/modules/tms/query'
+import type { ApiRequestOptions } from '@/types/api/request'
 import { attachCarrierRelationCounts } from './carrier-relations'
 
 type Carrier = Api.Tms.BasicData.Carrier
@@ -38,7 +39,7 @@ const applyCarrierFilters = (
   return applyDateRange(query, createTimeRange)
 }
 
-export async function fetchCarrierList(params: CarrierSearchParams) {
+export async function fetchCarrierList(params: CarrierSearchParams, options?: ApiRequestOptions) {
   const { from = 0, to = 9 } = params
   let query = supabase
     .from('tms_carrier')
@@ -47,7 +48,7 @@ export async function fetchCarrierList(params: CarrierSearchParams) {
     .range(from, to) as unknown as SupabaseQueryLike
 
   query = applyCarrierFilters(query, params)
-  const result = await responseHandle<Carrier[]>(() => query, {
+  const result = await responseHandle<Carrier[]>(() => withRequestOptions(query, options), {
     ignoreCheck: true,
     showErrorMessage: true
   })
@@ -80,7 +81,8 @@ export async function fetchCarrierDetail(id: string) {
 }
 
 export async function fetchCarrierOptions(
-  params: Partial<Pick<CarrierOption, 'carrierCode' | 'companyName'>> = {}
+  params: Partial<Pick<CarrierOption, 'carrierCode' | 'companyName'>> = {},
+  options?: ApiRequestOptions
 ) {
   const { carrierCode, companyName } = params
   let query = supabase
@@ -97,10 +99,13 @@ export async function fetchCarrierOptions(
     )
   }
 
-  return await responseHandle<CarrierOption[]>(() => query, {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
+  return await responseHandle<CarrierOption[]>(
+    () => withRequestOptions(query as unknown as SupabaseQueryLike, options),
+    {
+      ignoreCheck: true,
+      showErrorMessage: true
+    }
+  )
 }
 
 export async function addCarrier(params: Carrier) {

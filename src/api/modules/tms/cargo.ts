@@ -1,5 +1,6 @@
 import { useSupabase } from '@/hooks'
-import type { SupabaseQueryLike } from '@/api/modules/tms/query'
+import { withRequestOptions, type SupabaseQueryLike } from '@/api/modules/tms/query'
+import type { ApiRequestOptions } from '@/types/api/request'
 
 type Cargo = Api.Tms.BasicData.Cargo
 type CargoSearchParams = Api.Tms.BasicData.CargoSearchParams
@@ -36,7 +37,7 @@ const applyCargoFilters = (
   return query
 }
 
-export async function fetchCargoList(params: CargoSearchParams) {
+export async function fetchCargoList(params: CargoSearchParams, options?: ApiRequestOptions) {
   const { from = 0, to = 9 } = params
   let query = supabase
     .from('tms_cargo')
@@ -44,7 +45,7 @@ export async function fetchCargoList(params: CargoSearchParams) {
     .order('create_time', { ascending: false })
     .range(from, to) as unknown as SupabaseQueryLike
   query = applyCargoFilters(query, params)
-  return await responseHandle<Cargo[]>(() => query, {
+  return await responseHandle<Cargo[]>(() => withRequestOptions(query, options), {
     ignoreCheck: true,
     showErrorMessage: true
   })

@@ -77,7 +77,7 @@ export async function fetchGetTenantList(params: TenantSearchParams) {
     .range(from, to)
 
   query = applyFilters(query, specs, { skipEmpty: true, camelToSnake: false })
-  return await responseHandle(() => query, {
+  return await responseHandle<TenantListItem[]>(() => query, {
     ignoreCheck: true,
     showErrorMessage: true
   })
@@ -91,7 +91,7 @@ export async function fetchGetEnableTenantList() {
     .eq('status', '1')
     .order('tenant_code', { ascending: true })
 
-  return await responseHandle(() => query, {
+  return await responseHandle<TenantListItem[]>(() => query, {
     ignoreCheck: true,
     showErrorMessage: true
   })
@@ -561,9 +561,12 @@ export async function editRole(params: Api.SystemManage.RoleListItem) {
 /*获取当前角色拥有的菜单*/
 export async function getCurrentRoleMenus(params: AppRouteRecord) {
   const { id } = params
-  return await responseHandle(() => supabase.from('sys_role_menu').select().eq('role_id', id), {
-    ignoreCheck: true
-  })
+  return await responseHandle<Array<{ menuId: string }>>(
+    () => supabase.from('sys_role_menu').select().eq('role_id', id),
+    {
+      ignoreCheck: true
+    }
+  )
 }
 
 // 获取有用的菜单列表
@@ -574,7 +577,7 @@ export async function fetchGetEnableMenuList() {
     .select('*', { count: 'exact' })
     .order('sort', { ascending: true }) // 按sort倒序
 
-  return await responseHandle(() => query, { ignoreCheck: true })
+  return await responseHandle<AppRouteRecord[]>(() => query, { ignoreCheck: true })
 }
 
 // 保存角色权限
@@ -601,7 +604,7 @@ export async function fetchGetMenuList(params: AppRouteRecord) {
   // applyFilters 支持传入 FilterSpec[]（这里 specs 已为 snake_case）
   query = applyFilters(query, specs, { skipEmpty: true, camelToSnake: false })
 
-  return await responseHandle(() => query, { ignoreCheck: true })
+  return await responseHandle<AppRouteRecord[]>(() => query, { ignoreCheck: true })
 }
 
 /*删除菜单*/
@@ -692,8 +695,11 @@ export async function saveMenuDragSort(
 
 /*获取当前用户的菜单权限*/
 export async function fetchCurrentUserMenu() {
-  return await responseHandle(() => supabase.rpc('get_menus_for_current_user'), {
-    showMessage: false,
-    ignoreCheck: true
-  })
+  return await responseHandle<{ flat: AppRouteRecord[]; tree: AppRouteRecord[] }>(
+    () => supabase.rpc('get_menus_for_current_user'),
+    {
+      showMessage: false,
+      ignoreCheck: true
+    }
+  )
 }

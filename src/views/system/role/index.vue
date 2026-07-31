@@ -49,6 +49,9 @@
   defineOptions({ name: 'Role' })
 
   type RoleListItem = Api.SystemManage.RoleListItem
+  type RoleSearchParams = Api.SystemManage.RoleSearchParams & {
+    daterange?: [string, string] | null
+  }
 
   const searchForm = ref({
     roleName: undefined,
@@ -276,7 +279,7 @@
     })
   }
 
-  const handleSearch = (params: Record<string, any>) => {
+  const handleSearch = (params: Record<string, unknown>) => {
     const { daterange, ...filtersParams } = params
     const [startTime, endTime] = Array.isArray(daterange) ? daterange : [null, null]
     Object.assign(searchParams, { ...filtersParams, startTime, endTime })
@@ -317,7 +320,8 @@
   }
 
   const handleGetRoleList = async () => {
-    const { roleName, roleCode, description, enabled, startTime, endTime } = searchParams as any
+    const { roleName, roleCode, description, enabled, startTime, endTime } =
+      searchParams as RoleSearchParams
     const { from, to } = pageInfoHandler(pagination)
     return await fetchGetRoleList({
       roleName,

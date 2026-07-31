@@ -45,10 +45,6 @@ interface ForeignKeyRow {
   constraint_name?: string
 }
 
-type SqlRowsResponse = Api.DataCenter.SqlConsole.SqlExecuteResponse & {
-  rows?: ForeignKeyRow[]
-}
-
 function normalizeMetadataPayload(data: unknown): MetadataPayload | null {
   const payload = Array.isArray(data) ? data[0] : data
   return payload && typeof payload === 'object' ? (payload as MetadataPayload) : null
@@ -173,7 +169,9 @@ export async function fetchGetDictList() {
     .eq('dict_type_table.status', '1')
     .order('sort', { ascending: true })
 
-  return await responseHandle(() => query, { ignoreCheck: true })
+  return await responseHandle<
+    Array<Api.DataCenter.DictListItem & { dictTypeTable: { code: string; name: string } }>
+  >(() => query, { ignoreCheck: true })
 }
 
 // 删除字典项
@@ -253,10 +251,13 @@ export async function fetchGetResourceList(params: Api.DataCenter.Resources.Reso
     .range(from, to)
 
   query = applyFilters(query, specs, { skipEmpty: true, camelToSnake: true })
-  return await responseHandle(() => query as unknown as SupabaseQueryLike, {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
+  return await responseHandle<Api.DataCenter.Resources.ResourceListItem[]>(
+    () => query as unknown as SupabaseQueryLike,
+    {
+      ignoreCheck: true,
+      showErrorMessage: true
+    }
+  )
 }
 
 // 删除资源，同时清理 Storage 对象
@@ -395,11 +396,12 @@ async function fetchForeignKeysMetadata(): Promise<Api.DataCenter.SqlConsole.For
   `
 
   const { data, error } = await executeSql({ query: relationQuery })
-  if (error || !data?.rows) {
+  const rows = data?.rows as ForeignKeyRow[] | undefined
+  if (error || !rows) {
     return []
   }
 
-  return (data.rows || []).map((item) => ({
+  return rows.map((item) => ({
     sourceSchema: item.sourceSchema || item.source_schema || '',
     sourceTable: item.sourceTable || item.source_table || '',
     sourceColumn: item.sourceColumn || item.source_column || '',
@@ -413,7 +415,7 @@ async function fetchForeignKeysMetadata(): Promise<Api.DataCenter.SqlConsole.For
 // SQL 执行入口，调用现有 Edge Function 并保留原始错误给编辑器做定位。
 export async function executeSql(
   params: Api.DataCenter.SqlConsole.SqlExecuteRequest
-): Promise<DataCenterQueryResult<SqlRowsResponse>> {
+): Promise<DataCenterQueryResult<Api.DataCenter.SqlConsole.SqlExecuteResponse>> {
   const invokeResp = () =>
     supabase.functions.invoke<Api.DataCenter.SqlConsole.SqlExecuteResponse>(
       'execute-sql-with-columns',

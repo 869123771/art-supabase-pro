@@ -25,6 +25,7 @@
   } from '@/api/vehicle-manage-system'
   import { useUserStore } from '@/store/modules/user'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
+  import { mapWithConcurrency } from '@/utils/async'
   import { formatDate, formatMileage, getLatestByDate } from './modules/query-format'
   import type {
     VehicleArchive,
@@ -111,7 +112,7 @@
         prop: 'vehicleType',
         label: '车型',
         width: 130,
-        dict: { code: 'vehicleType', display: 'text' }
+        dict: { code: 'vehicleType', display: 'auto' }
       },
       { prop: 'manufacturer', label: '车型厂商', minWidth: 140 },
       { prop: 'vin', label: '车架号（VIN）', minWidth: 170 },
@@ -131,7 +132,7 @@
         prop: 'operationStatus',
         label: '营运状态',
         width: 120,
-        dict: { code: 'vehicleOperationStatus', display: 'text' }
+        dict: { code: 'vehicleOperationStatus', display: 'auto' }
       },
       {
         prop: 'operationYears',
@@ -206,7 +207,7 @@
   }
 
   const createQueryRows = async (rows: VehicleArchive[]): Promise<VehicleQueryRow[]> => {
-    const summaries = await Promise.all(rows.map((row) => loadVehicleSummary(row)))
+    const summaries = await mapWithConcurrency(rows, 4, (row) => loadVehicleSummary(row))
     return rows.map((row, index) => ({
       ...row,
       ...summaries[index]

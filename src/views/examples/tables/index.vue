@@ -467,7 +467,7 @@
 
   // 缓存调试状态
   const cacheDebugLogs = ref<string[]>([])
-  const requestParams = ref<any>({
+  const requestParams = ref<ExampleUserSearchParams>({
     current: 1,
     size: 20,
     name: '',
@@ -1085,7 +1085,7 @@
    * Excel 导入成功处理
    * @param data 导入的数据数组
    */
-  const handleImportSuccess = (data: Record<string, any>[]) => {
+  const handleImportSuccess = (data: Array<Record<string, unknown>>) => {
     ElMessage.success(`导入 ${data.length} 条数据成功`)
     refreshCreate()
   }
@@ -1209,10 +1209,14 @@
 
   // 监听分页和搜索状态变化
   watch(
-    () => [pagination.current, pagination.size, searchFormState.value],
-    ([current, size, search]) => {
+    () => ({
+      current: pagination.current,
+      size: pagination.size,
+      search: searchFormState.value
+    }),
+    ({ current, size, search }) => {
       requestParams.value = {
-        ...(search as any),
+        ...search,
         current,
         size
       }

@@ -1,7 +1,8 @@
 import { useSupabase } from '@/hooks'
 import type { QueryResult } from '@/hooks/core/useSupabase'
-import type { SupabaseQueryLike } from '@/api/modules/tms/query'
+import { withRequestOptions, type SupabaseQueryLike } from '@/api/modules/tms/query'
 import { applyOrderFilters, ORDER_SELECT } from '@/api/modules/tms/order-shared'
+import type { ApiRequestOptions } from '@/types/api/request'
 
 type DeliveryRecord = Api.Tms.Delivery.DeliveryRecord
 type DeliverySearchParams = Api.Tms.Delivery.DeliverySearchParams
@@ -75,7 +76,8 @@ export async function fetchDeliveryStatusCounts(
 }
 
 export async function fetchDeliveryList(
-  params: DeliverySearchParams & Api.Common.CommonSearchParams
+  params: DeliverySearchParams & Api.Common.CommonSearchParams,
+  options?: ApiRequestOptions
 ) {
   const { from = 0, to = 9 } = params
   let query = supabase
@@ -85,7 +87,7 @@ export async function fetchDeliveryList(
     .range(from, to) as unknown as SupabaseQueryLike
 
   query = applyDeliveryFilters(query, params)
-  return await responseHandle<DeliveryRecord[]>(() => query, {
+  return await responseHandle<DeliveryRecord[]>(() => withRequestOptions(query, options), {
     ignoreCheck: true,
     showErrorMessage: true
   })

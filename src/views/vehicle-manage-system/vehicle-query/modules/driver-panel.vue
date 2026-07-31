@@ -36,7 +36,7 @@
       prop: 'licenseType',
       label: '驾照类型',
       width: 120,
-      dict: { code: 'tmsDriverLicenseType', display: 'text' }
+      dict: { code: 'tmsDriverLicenseType', display: 'auto' }
     },
     {
       prop: 'enabled',

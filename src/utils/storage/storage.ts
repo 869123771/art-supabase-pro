@@ -51,11 +51,11 @@ class StorageCompatibilityManager {
   /**
    * 获取系统存储数据（兼容旧格式）
    */
-  getSystemStorage(): any {
+  getSystemStorage<T = unknown>(): T | null {
     const version = this.getSystemVersion() || StorageConfig.CURRENT_VERSION
     const legacyKey = StorageConfig.generateLegacyKey(version)
     const data = localStorage.getItem(legacyKey)
-    return data ? JSON.parse(data) : null
+    return data ? (JSON.parse(data) as T) : null
   }
 
   /**
@@ -83,9 +83,9 @@ class StorageCompatibilityManager {
   /**
    * 获取旧格式的本地存储数据
    */
-  private getLegacyStorageData(): Record<string, any> {
+  private getLegacyStorageData(): Record<string, unknown> {
     try {
-      const systemStorage = this.getSystemStorage()
+      const systemStorage = this.getSystemStorage<Record<string, unknown>>()
       return systemStorage || {}
     } catch (error) {
       console.warn('[Storage] 解析旧格式存储数据失败:', error)
@@ -222,8 +222,8 @@ const storageManager = new StorageCompatibilityManager()
 /**
  * 获取系统存储数据
  */
-export function getSystemStorage(): any {
-  return storageManager.getSystemStorage()
+export function getSystemStorage<T = unknown>(): T | null {
+  return storageManager.getSystemStorage<T>()
 }
 
 /**

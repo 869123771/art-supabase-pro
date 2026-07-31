@@ -1,5 +1,6 @@
 import { useSupabase } from '@/hooks'
-import type { SupabaseQueryLike } from '@/api/modules/tms/query'
+import { withRequestOptions, type SupabaseQueryLike } from '@/api/modules/tms/query'
+import type { ApiRequestOptions } from '@/types/api/request'
 
 type Customer = Api.Tms.BasicData.Customer
 type CustomerSearchParams = Api.Tms.BasicData.CustomerSearchParams
@@ -43,7 +44,7 @@ const applyCustomerFilters = (
   return applyDateRange(query, createTimeRange)
 }
 
-export async function fetchCustomerList(params: CustomerSearchParams) {
+export async function fetchCustomerList(params: CustomerSearchParams, options?: ApiRequestOptions) {
   const { from = 0, to = 9 } = params
   let query = supabase
     .from('tms_customer')
@@ -51,7 +52,7 @@ export async function fetchCustomerList(params: CustomerSearchParams) {
     .order('create_time', { ascending: false })
     .range(from, to) as unknown as SupabaseQueryLike
   query = applyCustomerFilters(query, params)
-  return await responseHandle<Customer[]>(() => query, {
+  return await responseHandle<Customer[]>(() => withRequestOptions(query, options), {
     ignoreCheck: true,
     showErrorMessage: true
   })
@@ -73,22 +74,28 @@ export async function exportCustomerList(
   })
 }
 
-export async function fetchCustomerOptions() {
+export async function fetchCustomerOptions(_params?: unknown, options?: ApiRequestOptions) {
   return await responseHandle<Api.Tms.BasicData.CustomerOption[]>(
     () =>
-      supabase
-        .from('tms_customer')
-        .select(
-          'id, customer_code, customer_name, contact_name, contact_phone, region, region_adcode, address_detail, longitude, latitude, coordinate_system, coordinate_source, coordinate_status, geocode_provider, geocoded_at, postal_code'
-        )
-        .eq('enabled', true)
-        .order('customer_name', { ascending: true })
-        .limit(1000),
+      withRequestOptions(
+        supabase
+          .from('tms_customer')
+          .select(
+            'id, customer_code, customer_name, contact_name, contact_phone, region, region_adcode, address_detail, longitude, latitude, coordinate_system, coordinate_source, coordinate_status, geocode_provider, geocoded_at, postal_code'
+          )
+          .eq('enabled', true)
+          .order('customer_name', { ascending: true })
+          .limit(1000) as unknown as SupabaseQueryLike,
+        options
+      ),
     { ignoreCheck: true, showErrorMessage: true }
   )
 }
 
-export async function fetchCustomerSelectorList(params: CustomerSelectorSearchParams) {
+export async function fetchCustomerSelectorList(
+  params: CustomerSelectorSearchParams,
+  options?: ApiRequestOptions
+) {
   const { from = 0, to = 9, keyword } = params
   let query = supabase
     .from('tms_customer')
@@ -104,10 +111,13 @@ export async function fetchCustomerSelectorList(params: CustomerSelectorSearchPa
       `customer_name.ilike.%${keyword}%,customer_code.ilike.%${keyword}%,contact_name.ilike.%${keyword}%,contact_phone.ilike.%${keyword}%,address_detail.ilike.%${keyword}%`
     )
   }
-  return await responseHandle<CustomerSelectorItem[]>(() => query, {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
+  return await responseHandle<CustomerSelectorItem[]>(
+    () => withRequestOptions(query as unknown as SupabaseQueryLike, options),
+    {
+      ignoreCheck: true,
+      showErrorMessage: true
+    }
+  )
 }
 
 export async function addCustomer(params: Customer, options: WriteOptions = {}) {
@@ -162,7 +172,10 @@ const applyCustomerAddressFilters = (
   return applyDateRange(query, createTimeRange)
 }
 
-export async function fetchCustomerAddressList(params: CustomerAddressSearchParams) {
+export async function fetchCustomerAddressList(
+  params: CustomerAddressSearchParams,
+  options?: ApiRequestOptions
+) {
   const { from = 0, to = 9 } = params
   let query = supabase
     .from('tms_customer_address')
@@ -174,7 +187,7 @@ export async function fetchCustomerAddressList(params: CustomerAddressSearchPara
     .order('create_time', { ascending: false, nullsFirst: false })
     .range(from, to) as unknown as SupabaseQueryLike
   query = applyCustomerAddressFilters(query, params)
-  return await responseHandle<CustomerAddress[]>(() => query, {
+  return await responseHandle<CustomerAddress[]>(() => withRequestOptions(query, options), {
     ignoreCheck: true,
     showErrorMessage: true
   })

@@ -153,10 +153,10 @@
   )
 
   const setPreviewData = useDebounceFn(() => {
-    previewList.value = []
-    fileList.value?.map((item: any) => {
-      previewList.value.push(item.url)
-    })
+    previewList.value = fileList.value.reduce<string[]>((urls, item) => {
+      if (item.url) urls.push(item.url)
+      return urls
+    }, [])
   })
 
   watch(
@@ -260,8 +260,8 @@
   }
 
   const handleConfirm = (selected: ResourceListItem[]) => {
-    fileList.value = selected.map((item: any) => {
-      return { name: item.ogirinName, url: item.url }
+    fileList.value = selected.map((item) => {
+      return { name: item.originName ?? item.objectName ?? '资源文件', url: item.url }
     })
     updateModelValue()
   }

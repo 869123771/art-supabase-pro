@@ -87,7 +87,7 @@
   </ElDrawer>
 </template>
 
-<script setup lang="ts" generic="T = Record<string, any>">
+<script setup lang="ts" generic="T = Record<string, unknown>">
   import type { ScrollbarInstance } from 'element-plus'
   import type {
     ArtDrawerEmits,

@@ -29,7 +29,7 @@
   }
 
   const emit = defineEmits<Emits>()
-  const { getDictMap } = storeToRefs(useUserStore()) as Record<string, any>
+  const { getDictMap } = storeToRefs(useUserStore())
   const dialogRef = ref<ArtDialogExpose<Tenant | undefined>>()
   const formRef = ref<{
     validate: () => Promise<boolean>

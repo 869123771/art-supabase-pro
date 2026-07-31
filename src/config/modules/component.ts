@@ -15,7 +15,7 @@
  * @author Art Design Pro Team
  */
 
-import { defineAsyncComponent } from 'vue'
+import { defineAsyncComponent, type Component } from 'vue'
 
 /**
  * 全局组件配置列表
@@ -80,7 +80,7 @@ export interface GlobalComponentConfig {
   /** 组件标识 */
   key: string
   /** 组件 */
-  component: any
+  component: Component
   /** 是否启用 */
   enabled?: boolean
   /** 组件描述 */

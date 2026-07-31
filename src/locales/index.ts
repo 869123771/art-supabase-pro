@@ -44,6 +44,15 @@ const messages = {
   [LanguageEnum.ZH]: zhMessages
 }
 
+interface LegacySystemStorage {
+  user?: {
+    language?: unknown
+  }
+}
+
+const isLanguage = (value: unknown): value is LanguageEnum =>
+  typeof value === 'string' && Object.values(LanguageEnum).includes(value as LanguageEnum)
+
 /**
  * 语言选项列表
  * 用于语言切换下拉框
@@ -65,7 +74,7 @@ const getDefaultLanguage = (): LanguageEnum => {
 
     if (userStore) {
       const { language } = JSON.parse(userStore)
-      if (language && Object.values(LanguageEnum).includes(language)) {
+      if (isLanguage(language)) {
         return language
       }
     }
@@ -75,19 +84,15 @@ const getDefaultLanguage = (): LanguageEnum => {
 
   // 尝试从系统存储中获取语言设置
   try {
-    const sys = getSystemStorage()
-    if (sys) {
-      const { user } = JSON.parse(sys)
-      if (user?.language && Object.values(LanguageEnum).includes(user.language)) {
-        return user.language
-      }
+    const sys = getSystemStorage<LegacySystemStorage>()
+    if (isLanguage(sys?.user?.language)) {
+      return sys.user.language
     }
   } catch (error) {
     console.warn('[i18n] 从系统存储获取语言设置失败:', error)
   }
 
   // 返回默认语言
-  console.debug('[i18n] 使用默认语言:', LanguageEnum.ZH)
   return LanguageEnum.ZH
 }
 

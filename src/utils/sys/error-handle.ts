@@ -29,7 +29,7 @@
  * @module utils/sys/error-handle
  * @author Art Design Pro Team
  */
-import type { App } from 'vue'
+import type { App, ComponentPublicInstance } from 'vue'
 
 const IGNORABLE_SCRIPT_ERRORS = [
   'ResizeObserver loop completed with undelivered notifications.',
@@ -71,7 +71,11 @@ function isIgnorableScriptError(message: Event | string, source?: string): boole
 /**
  * Vue 运行时错误处理
  */
-export function vueErrorHandler(err: unknown, instance: any, info: string) {
+export function vueErrorHandler(
+  err: unknown,
+  instance: ComponentPublicInstance | null,
+  info: string
+) {
   console.error('[VueError]', err, info, instance)
   // 这里可以上报到服务端，比如：
   // reportError({ type: 'vue', err, info })

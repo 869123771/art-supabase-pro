@@ -57,7 +57,7 @@
     comment: string
     key: keyof typeof settingStore
     enumMap?: Record<string, string>
-    forceValue?: any
+    forceValue?: unknown
   }
 
   const CONFIG_ITEMS: ConfigItem[] = [
@@ -95,7 +95,7 @@
   /**
    * 将值转换为代码字符串
    */
-  const valueToCode = (value: any, enumMap?: Record<string, string>): string => {
+  const valueToCode = (value: unknown, enumMap?: Record<string, string>): string => {
     if (value === null) return 'null'
     if (value === undefined) return 'undefined'
 

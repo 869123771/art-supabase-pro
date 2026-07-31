@@ -46,7 +46,7 @@
 
   const emit = defineEmits<Emits>()
   const userStore = useUserStore()
-  const { getDictMap, getUserInfo, isSuper } = storeToRefs(userStore) as Record<string, any>
+  const { getDictMap, getUserInfo, isSuper } = storeToRefs(userStore)
   const { t } = useI18n()
   const {
     passwordMinLength,

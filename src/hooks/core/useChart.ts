@@ -97,19 +97,27 @@ export function useChart(options: UseChartOptions = {}) {
   let pendingOptions: EChartsOption | null = null
   let resizeTimeoutId: number | null = null
   let resizeFrameId: number | null = null
+  let initTimerId: number | null = null
   let isDestroyed = false
   let emptyStateDiv: HTMLElement | null = null
+  const delayedResizeTimerIds = new Set<number>()
 
   // 清理定时器的统一方法
   const clearTimers = () => {
-    if (resizeTimeoutId) {
+    if (resizeTimeoutId !== null) {
       clearTimeout(resizeTimeoutId)
       resizeTimeoutId = null
     }
-    if (resizeFrameId) {
+    if (resizeFrameId !== null) {
       cancelAnimationFrame(resizeFrameId)
       resizeFrameId = null
     }
+    if (initTimerId !== null) {
+      clearTimeout(initTimerId)
+      initTimerId = null
+    }
+    delayedResizeTimerIds.forEach((timerId) => clearTimeout(timerId))
+    delayedResizeTimerIds.clear()
   }
 
   // 使用 requestAnimationFrame 优化 resize 处理
@@ -125,7 +133,7 @@ export function useChart(options: UseChartOptions = {}) {
 
   // 防抖的resize处理（用于窗口resize事件）
   const debouncedResize = () => {
-    if (resizeTimeoutId) {
+    if (resizeTimeoutId !== null) {
       clearTimeout(resizeTimeoutId)
     }
     resizeTimeoutId = window.setTimeout(() => {
@@ -136,12 +144,20 @@ export function useChart(options: UseChartOptions = {}) {
 
   // 多延迟resize处理 - 统一方法
   const multiDelayResize = (delays: readonly number[]) => {
+    // 菜单连续切换时仅保留最后一组补偿重绘，避免积累无效 resize。
+    delayedResizeTimerIds.forEach((timerId) => clearTimeout(timerId))
+    delayedResizeTimerIds.clear()
+
     // 立即调用一次，快速响应
     nextTick(requestAnimationResize)
 
     // 使用延迟时间，确保图表正确适应变化
     delays.forEach((delay) => {
-      setTimeout(requestAnimationResize, delay)
+      const timerId = window.setTimeout(() => {
+        delayedResizeTimerIds.delete(timerId)
+        requestAnimationResize()
+      }, delay)
+      delayedResizeTimerIds.add(timerId)
     })
   }
 
@@ -153,7 +169,11 @@ export function useChart(options: UseChartOptions = {}) {
     menuOpenStopHandle = watch(menuOpen, () => multiDelayResize(RESIZE_DELAYS))
     menuTypeStopHandle = watch(menuType, () => {
       nextTick(requestAnimationResize)
-      setTimeout(() => multiDelayResize(MENU_RESIZE_DELAYS), 0)
+      const timerId = window.setTimeout(() => {
+        delayedResizeTimerIds.delete(timerId)
+        multiDelayResize(MENU_RESIZE_DELAYS)
+      }, 0)
+      delayedResizeTimerIds.add(timerId)
     })
   }
 
@@ -528,7 +548,13 @@ export function useChart(options: UseChartOptions = {}) {
       if (isContainerVisible(chartRef.value)) {
         // 容器可见，正常初始化
         if (initDelay > 0) {
-          setTimeout(() => performChartInit(mergedOptions), initDelay)
+          if (initTimerId !== null) {
+            clearTimeout(initTimerId)
+          }
+          initTimerId = window.setTimeout(() => {
+            initTimerId = null
+            performChartInit(mergedOptions)
+          }, initDelay)
         } else {
           performChartInit(mergedOptions)
         }

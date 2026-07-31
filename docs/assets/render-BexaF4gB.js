@@ -1,1 +1,0 @@
-import{U as e}from"./file-viewer-BxGU53dO.js";import{t}from"./attachment-link-BXrspN_B.js";var n=n=>e(t,{file:n});export{n as t};

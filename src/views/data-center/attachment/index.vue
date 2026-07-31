@@ -6,7 +6,7 @@
 
 <script setup lang="ts">
   import ArtResourcePanel from '@/components/core/forms/art-resource-picker/panel.vue'
-  const model = ref<any>()
+  const model = ref<string | string[]>()
 </script>
 
 <style scoped lang="scss"></style>

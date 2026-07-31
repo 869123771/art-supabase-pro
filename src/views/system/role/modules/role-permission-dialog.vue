@@ -127,7 +127,7 @@
         fetchGetEnableMenuList(),
         getCurrentRoleMenus({ id: roleData.value.id } as AppRouteRecord)
       ])
-      menuList.value = treeUtils.listToTree(menus) as AppRouteRecord[]
+      menuList.value = treeUtils.listToTree(menus ?? []) as AppRouteRecord[]
       await nextTick()
       const menuIds = (roleMenus ?? []).map((item: { menuId: TreeKey }) => item.menuId)
       treeRef.value?.setCheckedKeys(menuIds)

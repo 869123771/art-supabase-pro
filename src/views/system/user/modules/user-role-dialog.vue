@@ -33,7 +33,7 @@
 
   const emit = defineEmits<Emits>()
   const userStore = useUserStore()
-  const { getUserInfo, isSuper } = storeToRefs(userStore) as Record<string, any>
+  const { getUserInfo, isSuper } = storeToRefs(userStore)
   const dialogRef = ref<ArtDialogExpose<UserListItem>>()
   const formRef = ref()
   const rules: FormRules = {}

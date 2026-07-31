@@ -19,7 +19,7 @@ export interface FileType {
   label: string | (() => string)
   suffix: string
   icon?: string
-  [key: string]: any
+  [key: string]: unknown
 }
 
 // 定义 Props 类型

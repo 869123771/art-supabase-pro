@@ -111,7 +111,7 @@
       </el-splitter-panel>
     </el-splitter>
 
-    <el-dialog v-model="aiDialog.visible" title="AI SQL 助手" width="640px" destroy-on-close>
+    <ArtDialog ref="aiDialogRef">
       <div class="ai-panel">
         <el-segmented
           v-model="aiDialog.mode"
@@ -129,19 +129,15 @@
         />
         <div v-if="aiDialog.summary" class="ai-summary">{{ aiDialog.summary }}</div>
       </div>
-      <template #footer>
-        <el-button @click="aiDialog.visible = false">取消</el-button>
-        <el-button type="primary" :loading="aiDialog.loading" @click="handleAiGenerate">
-          {{ aiDialog.mode === 'fix' ? '修复 SQL' : '生成 SQL' }}
-        </el-button>
-      </template>
-    </el-dialog>
+    </ArtDialog>
   </div>
 </template>
 
 <script setup lang="ts">
   import { computed, ref } from 'vue'
   import { ElMessage } from 'element-plus'
+  import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
+  import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import { executeSql, fetchDatabaseMetadata, generateSqlByAi } from '@/api/data-center'
   import Editor from './modules/editor.vue'
   import ResultTable from './modules/result-table.vue'
@@ -161,11 +157,26 @@
     applyErrorMarker: (location: SqlErrorLocation | null, message: string) => void
   }
 
+  interface SqlConsoleError {
+    message?: string
+    durationMs?: number
+  }
+
+  const normalizeSqlConsoleError = (error: unknown): SqlConsoleError => {
+    if (!error || typeof error !== 'object') return {}
+    const record = error as Record<string, unknown>
+    return {
+      message: typeof record.message === 'string' ? record.message : undefined,
+      durationMs: typeof record.durationMs === 'number' ? record.durationMs : undefined
+    }
+  }
+
   const sqlCode = ref('SELECT * FROM sys_user LIMIT 10;')
   const executing = ref(false)
   const result = ref<Api.DataCenter.SqlConsole.SqlExecuteResponse | null>(null)
   const splitRatio = ref(0.6)
   const editorRef = ref<EditorInstance | null>(null)
+  const aiDialogRef = ref<ArtDialogExpose>()
   const metadataCache = ref<Api.DataCenter.SqlConsole.DatabaseMetadata | null>(null)
   const sqlErrorLocation = ref<SqlErrorLocation | null>(null)
 
@@ -175,8 +186,6 @@
   })
 
   const aiDialog = ref({
-    visible: false,
-    loading: false,
     mode: 'generate' as 'generate' | 'fix',
     prompt: '',
     summary: ''
@@ -211,16 +220,17 @@
     editorRef.value?.clearErrorMarkers()
 
     try {
-      const { data, error } = (await executeSql({ query: sqlToExecute })) as any
+      const { data, error } = await executeSql({ query: sqlToExecute })
       if (error) {
-        const errorMessage = error.message || '执行 SQL 时发生错误'
+        const sqlError = normalizeSqlConsoleError(error)
+        const errorMessage = sqlError.message || '执行 SQL 时发生错误'
         const location = parseSqlErrorLocation(errorMessage)
         sqlErrorLocation.value = location
         editorRef.value?.applyErrorMarker(location, errorMessage)
         result.value = {
           status: 'error',
           errorMessage,
-          durationMs: error.durationMs,
+          durationMs: sqlError.durationMs,
           queryText: sqlToExecute
         }
         return
@@ -246,7 +256,6 @@
   }
 
   const openAiDialog = (mode: 'generate' | 'fix' = 'generate') => {
-    aiDialog.value.visible = true
     aiDialog.value.mode = mode
     aiDialog.value.summary = ''
 
@@ -254,20 +263,29 @@
       aiDialog.value.prompt = result.value?.errorMessage
         ? `修复这条 PostgreSQL，并解释改动原因。\n\n错误信息：${result.value.errorMessage}`
         : '修复这条 PostgreSQL，并解释改动原因。'
+      void openAiDialogRef(mode)
       return
     }
 
     aiDialog.value.prompt = ''
+    void openAiDialogRef(mode)
   }
 
+  const openAiDialogRef = (mode: 'generate' | 'fix') =>
+    aiDialogRef.value?.handleOpen(undefined, {
+      title: 'AI SQL 助手',
+      width: '640px',
+      contentMaxHeight: '60vh',
+      confirmText: mode === 'fix' ? '修复 SQL' : '生成 SQL',
+      onConfirm: handleAiGenerate
+    })
+
   // AI 生成会带上当前 schema 摘要，避免模型在表名和关联关系上瞎猜。
-  const handleAiGenerate = async () => {
+  const handleAiGenerate = async (): Promise<boolean> => {
     if (!aiDialog.value.prompt.trim()) {
       ElMessage.warning('请输入需求描述')
-      return
+      return false
     }
-
-    aiDialog.value.loading = true
 
     try {
       const metadata = await ensureMetadata()
@@ -280,21 +298,21 @@
       const { data, error } = aiResponse
 
       if (error || !data?.sql) {
+        const aiError = normalizeSqlConsoleError(error)
         ElMessage.error(
-          (error as any)?.message ||
-            'AI SQL 功能未配置。请在 Supabase Edge Function 中配置模型密钥。'
+          aiError.message || 'AI SQL 功能未配置。请在 Supabase Edge Function 中配置模型密钥。'
         )
-        return
+        return false
       }
 
       editorRef.value?.setSql(data.sql)
       editorRef.value?.clearErrorMarkers()
       sqlErrorLocation.value = null
       aiDialog.value.summary = data.summary || ''
-      aiDialog.value.visible = false
       ElMessage.success('AI SQL 已写入编辑器')
-    } finally {
-      aiDialog.value.loading = false
+      return true
+    } catch {
+      return false
     }
   }
 </script>
@@ -412,7 +430,7 @@
         .error-caret {
           margin-top: 12px;
           padding: 12px;
-          border-radius: 6px;
+          border-radius: var(--el-border-radius-base);
           background: color-mix(in srgb, var(--el-color-error) 6%, transparent);
         }
       }
@@ -457,7 +475,7 @@
 
     .ai-summary {
       padding: 12px 14px;
-      border-radius: 6px;
+      border-radius: var(--el-border-radius-base);
       background: var(--el-fill-color-light);
       color: var(--el-text-color-secondary);
       line-height: 1.6;

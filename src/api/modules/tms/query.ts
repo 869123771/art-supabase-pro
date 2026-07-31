@@ -1,3 +1,5 @@
+import type { ApiRequestOptions } from '@/types/api/request'
+
 interface SupabaseQueryResponse {
   data?: unknown
   error?: unknown
@@ -8,6 +10,7 @@ interface SupabaseQueryResponse {
 }
 
 export interface SupabaseQueryLike extends PromiseLike<SupabaseQueryResponse> {
+  abortSignal(signal: AbortSignal): this
   eq(column: string, value: unknown): this
   gte(column: string, value: unknown): this
   in(column: string, values: readonly unknown[]): this
@@ -19,6 +22,11 @@ export interface SupabaseQueryLike extends PromiseLike<SupabaseQueryResponse> {
   order(column: string, options?: Record<string, unknown>): this
   range(from: number, to: number): this
 }
+
+export const withRequestOptions = (
+  query: SupabaseQueryLike,
+  options?: ApiRequestOptions
+): SupabaseQueryLike => (options?.signal ? query.abortSignal(options.signal) : query)
 
 export const applyCreateTimeRange = (
   query: SupabaseQueryLike,

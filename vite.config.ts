@@ -51,12 +51,12 @@ export default ({ mode }: { mode: string }) => {
   const enableVueDevTools = env.VITE_DEVTOOLS === 'true'
   const enableFileViewerPlugin = isProduction || env.VITE_FILE_VIEWER === 'true'
   const enableFileViewerAssets = isProduction || env.VITE_FILE_VIEWER_ASSETS === 'true'
-  const outDir = VITE_OUT_DIR || 'dist'
+  const outDir = process.env.VITE_OUT_DIR || VITE_OUT_DIR || 'dist'
   const elementPlusStyleDeps = getElementPlusStyleDeps(root)
 
-  console.log(`🚀 API_URL = ${VITE_API_URL}`)
-  console.log(`🚀 VERSION = ${VITE_VERSION}`)
-  console.log(`🚀 VITE_OUT_DIR = ${VITE_OUT_DIR}`)
+  console.log(`[vite] API_URL=${VITE_API_URL}`)
+  console.log(`[vite] VERSION=${VITE_VERSION}`)
+  console.log(`[vite] outDir=${outDir}`)
 
   return defineConfig({
     define: {

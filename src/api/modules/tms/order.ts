@@ -1,6 +1,7 @@
 import { useSupabase } from '@/hooks'
 import type { QueryResult } from '@/hooks/core/useSupabase'
-import type { SupabaseQueryLike } from '@/api/modules/tms/query'
+import { withRequestOptions, type SupabaseQueryLike } from '@/api/modules/tms/query'
+import type { ApiRequestOptions } from '@/types/api/request'
 import {
   applyOrderListFilters,
   mergeOrdersWithDriverWaybills,
@@ -13,7 +14,10 @@ type OrderFreightPayload = Api.Tms.Order.OrderFreightPayload
 
 const { supabase, keysToSnakeDeep, responseHandle } = useSupabase()
 
-export async function fetchOrderList(params: OrderSearchParams & Api.Common.CommonSearchParams) {
+export async function fetchOrderList(
+  params: OrderSearchParams & Api.Common.CommonSearchParams,
+  options?: ApiRequestOptions
+) {
   const { from = 0, to = 9 } = params
   let query = supabase
     .from('tms_order')
@@ -22,7 +26,7 @@ export async function fetchOrderList(params: OrderSearchParams & Api.Common.Comm
     .range(from, to) as unknown as SupabaseQueryLike
 
   query = applyOrderListFilters(query, params)
-  const result = await responseHandle<OrderRecord[]>(() => query, {
+  const result = await responseHandle<OrderRecord[]>(() => withRequestOptions(query, options), {
     ignoreCheck: true,
     showErrorMessage: true
   })

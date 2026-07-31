@@ -27,7 +27,7 @@
  * @module types/component/chart
  * @author Art Design Pro Team
  */
-import type { EChartsOption } from '@/plugins/echarts'
+import type { EChartsOption, LineSeriesOption } from '@/plugins/echarts'
 
 // 图例位置类型
 export type LegendPosition = 'bottom' | 'top' | 'left' | 'right'
@@ -135,7 +135,7 @@ export interface LineDataItem {
     /** 渐变结束透明度 */
     endOpacity?: number
     /** 自定义 ECharts areaStyle 配置 */
-    custom?: any
+    custom?: LineSeriesOption['areaStyle']
   }
   /** 是否平滑曲线 */
   smooth?: boolean
@@ -262,7 +262,7 @@ export interface DualBarCompareChartProps extends BaseChartProps {
 // 地图图表 Props 接口 - 统一地图图表配置
 export interface MapChartProps extends BaseChartProps {
   /** 地图数据 */
-  mapData?: any[]
+  mapData?: unknown[]
   /** 选中区域 */
   selectedRegion?: string
   /** 是否显示标签 */
@@ -302,7 +302,7 @@ export interface BidirectionalBarChartProps
 export type ChartOptionGenerator = () => EChartsOption
 
 // 图表事件回调类型
-export type ChartEventCallback = (params: any) => void
+export type ChartEventCallback = (params: unknown) => void
 
 // 图表错误信息接口
 export interface ChartError {
@@ -311,5 +311,5 @@ export interface ChartError {
   /** 错误信息 */
   message: string
   /** 错误详情 */
-  details?: any
+  details?: unknown
 }

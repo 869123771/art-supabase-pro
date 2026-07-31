@@ -50,7 +50,7 @@
       width: 120,
       dict: {
         code: 'vehicleRecordProcessed',
-        display: 'text',
+        display: 'auto',
         value: (row) => String(row.processed)
       }
     },
@@ -58,7 +58,7 @@
       prop: 'dataSource',
       label: '数据来源',
       width: 120,
-      dict: { code: 'vehicleAccidentDataSource', display: 'text' },
+      dict: { code: 'vehicleAccidentDataSource', display: 'auto' },
       formatter: (row) => formatValue(row.dataSource)
     }
   ]

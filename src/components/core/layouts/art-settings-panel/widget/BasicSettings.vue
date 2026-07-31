@@ -23,6 +23,9 @@
   const { basicSettingsConfig } = useSettingsConfig()
   const { basicHandlers } = useSettingsHandlers()
 
+  type SettingValue = string | number | boolean | null | undefined
+  type SettingHandler = (value: SettingValue) => void
+
   // 获取store的响应式状态
   const {
     uniqueOpened,
@@ -66,8 +69,9 @@
   }
 
   // 统一的设置变更处理
-  const handleSettingChange = (handlerName: string, value: any) => {
-    const handler = (basicHandlers as any)[handlerName]
+  const handleSettingChange = (handlerName: string, value: SettingValue) => {
+    const handlerMap = basicHandlers as Record<string, SettingHandler>
+    const handler = handlerMap[handlerName]
     if (typeof handler === 'function') {
       handler(value)
     } else {

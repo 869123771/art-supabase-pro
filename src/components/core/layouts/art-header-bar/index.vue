@@ -40,7 +40,7 @@
           icon="ri:refresh-line"
           class="!ml-3 refresh-btn max-sm:!hidden"
           :style="{ marginLeft: !isLeftMenu ? '10px' : '0' }"
-          @click="reload"
+          @click="() => reload()"
         />
 
         <!-- 快速入口 -->
@@ -315,10 +315,11 @@
    * 点击页面其他区域关闭通知面板
    * @param {Event} e - 点击事件对象
    */
-  const bodyCloseNotice = (e: any): void => {
+  const bodyCloseNotice = (e: MouseEvent): void => {
     if (!showNotice.value) return
 
-    const target = e.target as HTMLElement
+    const target = e.target
+    if (!(target instanceof Element)) return
 
     // 检查是否点击了通知按钮或通知面板内部
     const isNoticeButton = target.closest('.notice-button')

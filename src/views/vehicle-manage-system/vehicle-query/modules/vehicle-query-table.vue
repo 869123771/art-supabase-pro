@@ -18,9 +18,9 @@
 
   withDefaults(
     defineProps<{
-      // ArtTable 是业务记录无关的包装组件；这里保留局部 any，避免 Vue 模板泛型推断把各业务行类型退成 Record<string, unknown>。
-      data: any[]
-      columns: ColumnOption<any>[]
+      /** 车辆查询详情页的轻量表格包装，行结构由各业务面板决定。 */
+      data: unknown[]
+      columns: ColumnOption[]
       loading?: boolean
       emptyHeight?: string
       tableLayout?: 'auto' | 'fixed'

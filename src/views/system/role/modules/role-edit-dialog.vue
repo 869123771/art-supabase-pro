@@ -1,51 +1,22 @@
 <template>
   <ArtDialog ref="dialogRef">
-    <ElForm ref="formRef" :model="form" :rules="rules" label-width="120px" class="pr-6">
-      <ElFormItem v-if="canSelectTenant" label="所属租户" prop="tenantId">
-        <ElSelect
-          v-model="form.tenantId"
-          :disabled="dialogType === 'edit'"
-          filterable
-          placeholder="请选择所属租户"
-          @change="handleTenantChange"
-        >
-          <ElOption
-            v-for="tenant in selectableTenantOptions"
-            :key="tenant.id"
-            :label="formatTenantOption(tenant)"
-            :value="tenant.id"
-          />
-        </ElSelect>
-      </ElFormItem>
-      <ElFormItem label="角色名称" prop="roleName">
-        <ElInput v-model="form.roleName" placeholder="请输入角色名称" />
-      </ElFormItem>
-      <ElFormItem label="角色编码" prop="roleCode">
-        <ElInput
-          v-model="form.roleCode"
-          :disabled="isSystemBuiltinRole"
-          placeholder="请输入角色编码"
-        />
-      </ElFormItem>
-      <ElFormItem label="描述" prop="description">
-        <ElInput
-          v-model="form.description"
-          type="textarea"
-          :rows="3"
-          placeholder="请输入角色描述"
-        />
-      </ElFormItem>
-      <ElFormItem label="启用">
-        <ElSwitch v-model="form.enabled" :disabled="isSystemBuiltinRole" />
-      </ElFormItem>
-    </ElForm>
+    <ArtForm
+      ref="formRef"
+      v-model="form"
+      :items="formItems"
+      :rules="rules"
+      label-width="120px"
+      :show-reset="false"
+      :show-submit="false"
+    />
   </ArtDialog>
 </template>
 
 <script setup lang="ts">
-  import type { FormInstance, FormRules } from 'element-plus'
+  import type { FormRules } from 'element-plus'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
+  import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import { addRole, editRole, fetchGetEnableTenantList } from '@/api/system-manage'
   import { uniqueValidator } from '@/utils'
   import { useUserStore } from '@/store/modules/user'
@@ -60,6 +31,12 @@
     roleData?: RoleListItem
   }
 
+  interface ArtFormExpose {
+    validate: () => Promise<boolean>
+    clearValidate: () => void
+    validateField: (prop: string) => void
+  }
+
   interface Emits {
     (e: 'success'): void
   }
@@ -68,7 +45,7 @@
   const userStore = useUserStore()
   const { getUserInfo, isSuper } = storeToRefs(userStore)
   const dialogRef = ref<ArtDialogExpose<RoleEditDialogOpenData>>()
-  const formRef = ref<FormInstance>()
+  const formRef = ref<ArtFormExpose>()
   const dialogType = ref<DialogType>('add')
   const currentTenantCode = ref('')
   const tenantOptions = shallowRef<TenantListItem[]>([])
@@ -142,6 +119,62 @@
     description: [{ required: true, message: '请输入角色描述', trigger: 'change' }]
   }))
 
+  const formatTenantOption = (tenant: TenantListItem): string =>
+    tenant.tenantCode ? `${tenant.tenantName}（${tenant.tenantCode}）` : tenant.tenantName
+
+  const formItems = computed<FormItem[]>(() => [
+    {
+      label: '所属租户',
+      key: 'tenantId',
+      type: 'select',
+      hidden: !canSelectTenant.value,
+      props: {
+        disabled: dialogType.value === 'edit',
+        filterable: true,
+        options: selectableTenantOptions.value.map((tenant) => ({
+          label: formatTenantOption(tenant),
+          value: tenant.id
+        })),
+        onChange: handleTenantChange
+      }
+    },
+    {
+      label: '角色名称',
+      key: 'roleName',
+      type: 'input',
+      props: {
+        placeholder: '请输入角色名称'
+      }
+    },
+    {
+      label: '角色编码',
+      key: 'roleCode',
+      type: 'input',
+      props: {
+        disabled: isSystemBuiltinRole.value,
+        placeholder: '请输入角色编码'
+      }
+    },
+    {
+      label: '描述',
+      key: 'description',
+      type: 'input',
+      props: {
+        type: 'textarea',
+        rows: 3,
+        placeholder: '请输入角色描述'
+      }
+    },
+    {
+      label: '启用',
+      key: 'enabled',
+      type: 'switch',
+      props: {
+        disabled: isSystemBuiltinRole.value
+      }
+    }
+  ])
+
   const resetForm = async (): Promise<void> => {
     Object.assign(form, createInitialForm())
     currentTenantCode.value = ''
@@ -165,9 +198,33 @@
         enabled,
         createBy
       })
-    } else if (!canSelectTenant.value) {
+      return
+    }
+
+    if (!canSelectTenant.value) {
       form.tenantId = currentTenantId.value
     }
+  }
+
+  const buildRolePayload = (): Omit<RoleListItem, 'id'> => {
+    const payload = { ...toRaw(form) }
+    delete payload.id
+
+    if (!canSelectTenant.value) {
+      payload.tenantId = currentTenantId.value
+    }
+
+    if (isDefaultRegisterRole.value) {
+      payload.roleCode = defaultRegisterRoleCode.value
+      payload.enabled = true
+    }
+
+    if (isSuperRole.value) {
+      payload.roleCode = superRoleCode.value
+      payload.enabled = true
+    }
+
+    return payload
   }
 
   const handleSubmit = async (): Promise<boolean> => {
@@ -180,25 +237,12 @@
     }
 
     try {
-      const { id, ...params } = toRaw(form)
-      if (!canSelectTenant.value) {
-        params.tenantId = currentTenantId.value
-      }
-
-      if (isDefaultRegisterRole.value) {
-        params.roleCode = defaultRegisterRoleCode.value
-        params.enabled = true
-      }
-
-      if (isSuperRole.value) {
-        params.roleCode = superRoleCode.value
-        params.enabled = true
-      }
+      const payload = buildRolePayload()
 
       if (dialogType.value === 'add') {
-        await addRole(params)
+        await addRole(payload)
       } else {
-        await editRole({ ...params, id })
+        await editRole({ ...payload, id: form.id })
       }
       emit('success')
       return true
@@ -212,9 +256,6 @@
     const { data } = await fetchGetEnableTenantList()
     tenantOptions.value = data ?? []
   }
-
-  const formatTenantOption = (tenant: TenantListItem): string =>
-    tenant.tenantCode ? `${tenant.tenantName}（${tenant.tenantCode}）` : tenant.tenantName
 
   const handleTenantChange = (): void => {
     if (form.roleCode) {

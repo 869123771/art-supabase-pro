@@ -574,7 +574,7 @@
     source: response.meta.source
   })
 
-  const managedDataTransformer = (rows: Record<string, any>[]): Record<string, any>[] => {
+  const managedDataTransformer = (rows: DemoOrder[]): DemoOrder[] => {
     return rows.map((row) => ({
       ...row,
       customer: row.enabled ? row.customer : `${row.customer}（停用）`

@@ -37,7 +37,7 @@ const { LIGHT, DARK } = SystemThemeEnum
  * 主题切换动画
  * @param e 鼠标点击事件
  */
-export const themeAnimation = (e: any) => {
+export const themeAnimation = (e: MouseEvent) => {
   const x = e.clientX
   const y = e.clientY
   // 计算鼠标点击位置距离视窗的最大圆半径

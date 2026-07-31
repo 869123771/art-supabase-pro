@@ -198,7 +198,7 @@
 
   const emit = defineEmits<{
     (e: 'cancel'): void
-    (e: 'confirm', value: any[]): void
+    (e: 'confirm', value: Resource[]): void
   }>()
 
   const modelValue = defineModel<string | string[] | undefined>()
@@ -241,13 +241,31 @@
   /**
    * 查询参数
    */
-  const queryParams = ref<Record<string, any>>({
+  interface ResourceQueryParams {
+    page: number
+    pageSize: number
+    total: number
+    originName: string
+    suffix: string
+  }
+
+  interface ResourceDockListener {
+    app: HTMLDivElement
+    parent: HTMLElement | null
+    click: (event: MouseEvent) => void
+    mouseover: () => void
+    mouseout: () => void
+  }
+
+  const queryParams = ref<ResourceQueryParams>({
     page: 1,
     pageSize: props.pageSize,
     total: 0,
     originName: '',
     suffix: ''
   })
+
+  const dockListeners: ResourceDockListener[] = []
 
   /**
    * 当前资源列表
@@ -516,17 +534,9 @@
     }
   }
 
-  function getParentNode(e: PointerEvent | MouseEvent, labelName: string) {
-    let node: any = e.target
-    while (node.tagName !== labelName.toUpperCase()) {
-      node = node?.parentNode
-    }
-    return node
-  }
-
-  const handleFileTypesChange = (value: any) => {
+  const handleFileTypesChange = (value: string | number | boolean) => {
     const { options } = segment.value
-    queryParams.value.suffix = options.find((i) => i.value === value)?.suffix as string
+    queryParams.value.suffix = options.find((i) => i.value === String(value))?.suffix ?? ''
     handleGetResourceList()
   }
 
@@ -552,26 +562,29 @@
   onMounted(async () => {
     await handleGetResourceList()
 
-    // eslint-disable-next-line no-undef
-    const apps = document.getElementsByClassName('res-app') as HTMLCollectionOf<HTMLDivElement>
+    const apps = Array.from(document.getElementsByClassName('res-app')).filter(
+      (item): item is HTMLDivElement => item instanceof HTMLDivElement
+    )
 
     for (let i = 0; i < apps.length; i++) {
-      const app = apps[i] as HTMLDivElement
-      app.addEventListener('click', (e: MouseEvent) => {
+      const app = apps[i]
+      const parent = app.parentElement
+      const click = (e: MouseEvent) => {
         e.stopPropagation()
-        const node = getParentNode(e, 'div')
-        const fileInput = node.children[0]
+        const fileInput = app.querySelector<HTMLInputElement>('input[type="file"]')
+        if (!fileInput) return
+
         const btn = resourceStore
           .getAllButton()
           ?.find((item) => item.name === fileInput.getAttribute('name'))
         if (btn?.click) {
-          btn?.click?.(btn, selected as any)
+          btn.click(btn, selected.value)
         }
         if (btn?.upload) {
-          fileInput?.click?.()
+          fileInput.click()
         }
-      })
-      app?.parentElement?.addEventListener('mouseover', () => {
+      }
+      const mouseover = () => {
         const index = i
         app.className = 'res-app main-effect'
 
@@ -605,23 +618,29 @@
             apps[index + 2].className = 'res-app third-effect'
           }
         }
-      })
+      }
 
-      app?.parentElement?.addEventListener('mouseout', () => {
-        for (const app of apps as any) {
-          app.className = 'res-app'
+      const mouseout = () => {
+        for (const dockApp of Array.from(apps)) {
+          dockApp.className = 'res-app'
         }
-      })
+      }
+
+      app.addEventListener('click', click)
+      parent?.addEventListener('mouseover', mouseover)
+      parent?.addEventListener('mouseout', mouseout)
+      dockListeners.push({ app, parent, click, mouseover, mouseout })
     }
   })
 
   onUnmounted(() => {
     // 取消监听
-    document.querySelectorAll('.ma-resource-dock .res-app').forEach((app) => {
-      app.removeEventListener('mousemove', () => {})
-      app.removeEventListener('mouseout', () => {})
-      app.removeEventListener('click', () => {})
+    dockListeners.forEach(({ app, parent, click, mouseover, mouseout }) => {
+      app.removeEventListener('click', click)
+      parent?.removeEventListener('mouseover', mouseover)
+      parent?.removeEventListener('mouseout', mouseout)
     })
+    dockListeners.length = 0
   })
 </script>
 

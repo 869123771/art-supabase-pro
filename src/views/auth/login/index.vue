@@ -226,7 +226,7 @@
         captchaToken
       }
       const { data } = await login(params)
-      const { refreshToken, accessToken } = data.session
+      const { refreshToken, accessToken } = data?.session ?? {}
       // 验证token
       if (!accessToken) {
         throw new Error('Login failed - no token received')

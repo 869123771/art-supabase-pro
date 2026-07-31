@@ -186,6 +186,7 @@ export interface AppConfig extends SystemConfig {
 export interface FeatureConfigItem {
   enabled: boolean
   description: string
+  minWidth?: number
 }
 
 // 顶部栏功能配置接口

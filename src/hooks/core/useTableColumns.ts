@@ -32,7 +32,7 @@
  * @author Art Design Pro Team
  */
 
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, type ComputedRef, type Ref } from 'vue'
 import { $t } from '@/locales'
 import type { ColumnOption } from '@/types/component'
 
@@ -84,7 +84,7 @@ export const getColumnChecks = <T>(columns: ColumnOption<T>[]) =>
 /**
  * 动态列配置接口
  */
-export interface DynamicColumnConfig<T = any> {
+export interface DynamicColumnConfig<T = unknown> {
   /**
    * 新增列（支持单个或批量）
    * @param column 列配置或列配置数组
@@ -141,11 +141,11 @@ export interface DynamicColumnConfig<T = any> {
   resetColumns: () => void
 }
 
-export function useTableColumns<T = any>(
+export function useTableColumns<T = unknown>(
   columnsFactory: () => ColumnOption<T>[]
 ): {
-  columns: any
-  columnChecks: any
+  columns: ComputedRef<ColumnOption<T>[]>
+  columnChecks: Ref<ColumnOption<T>[]>
 } & DynamicColumnConfig<T> {
   const dynamicColumns = ref<ColumnOption<T>[]>(columnsFactory())
   const columnChecks = ref<ColumnOption<T>[]>(getColumnChecks(dynamicColumns.value))
@@ -265,7 +265,10 @@ export function useTableColumns<T = any>(
      * 重置所有列
      */
     resetColumns: () => {
-      dynamicColumns.value = columnsFactory()
+      const initialColumns = columnsFactory()
+      // 先恢复列勾选状态，再更新列定义，避免 watcher 将旧的可见性覆盖回初始配置。
+      columnChecks.value = getColumnChecks(initialColumns)
+      dynamicColumns.value = initialColumns
     },
 
     /**

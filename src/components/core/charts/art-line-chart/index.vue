@@ -10,7 +10,7 @@
 </template>
 
 <script setup lang="ts">
-  import { graphic, type EChartsOption } from '@/plugins/echarts'
+  import { graphic, type EChartsOption, type LineSeriesOption } from '@/plugins/echarts'
   import { getCssVar, hexToRgba } from '@/utils/ui'
   import { useChartOps, useChartComponent } from '@/hooks/core/useChart'
   import type { LineChartProps, LineDataItem } from '@/types/component/chart'
@@ -163,7 +163,7 @@
     symbol?: string
     symbolSize?: number
     lineWidth?: number
-    areaStyle?: any
+    areaStyle?: LineSeriesOption['areaStyle']
   }) => {
     return {
       name: config.name,

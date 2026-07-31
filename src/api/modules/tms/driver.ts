@@ -1,5 +1,6 @@
 import { useSupabase } from '@/hooks'
-import type { SupabaseQueryLike } from '@/api/modules/tms/query'
+import { withRequestOptions, type SupabaseQueryLike } from '@/api/modules/tms/query'
+import type { ApiRequestOptions } from '@/types/api/request'
 
 type Driver = Api.Tms.BasicData.Driver
 type DriverSearchParams = Api.Tms.BasicData.DriverSearchParams
@@ -48,7 +49,7 @@ const applyDriverFilters = (
   return applyDateRange(query, createTimeRange)
 }
 
-export async function fetchDriverList(params: DriverSearchParams) {
+export async function fetchDriverList(params: DriverSearchParams, options?: ApiRequestOptions) {
   const { from = 0, to = 9 } = params
   let query = supabase
     .from('tms_driver')
@@ -57,7 +58,7 @@ export async function fetchDriverList(params: DriverSearchParams) {
     .range(from, to) as unknown as SupabaseQueryLike
 
   query = applyDriverFilters(query, params)
-  return await responseHandle<Driver[]>(() => query, {
+  return await responseHandle<Driver[]>(() => withRequestOptions(query, options), {
     ignoreCheck: true,
     showErrorMessage: true
   })
@@ -81,7 +82,8 @@ export async function exportDriverList(
 }
 
 export async function fetchDriverOptions(
-  params: Partial<Pick<DriverOption, 'carrierId' | 'driverName' | 'driverType'>> = {}
+  params: Partial<Pick<DriverOption, 'carrierId' | 'driverName' | 'driverType'>> = {},
+  options?: ApiRequestOptions
 ) {
   const { carrierId, driverName, driverType } = params
   let query = supabase
@@ -97,10 +99,13 @@ export async function fetchDriverOptions(
     query = query.or(`driver_name.ilike.%${driverName}%,phone.ilike.%${driverName}%`)
   }
 
-  return await responseHandle<DriverOption[]>(() => query, {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
+  return await responseHandle<DriverOption[]>(
+    () => withRequestOptions(query as unknown as SupabaseQueryLike, options),
+    {
+      ignoreCheck: true,
+      showErrorMessage: true
+    }
+  )
 }
 
 export async function fetchDriverListByCarrierId(carrierId: string) {

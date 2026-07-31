@@ -54,11 +54,11 @@
   }
 
   interface MenuFormSelectData {
-    menuTree?: any
+    menuTree?: AppRouteRecord[]
   }
 
   interface MenuDialogOpenData {
-    row?: AppRouteRecord | any
+    row?: AppRouteRecord
     type?: 'folder' | 'menu' | 'button'
     parent?: AppRouteRecord | MenuFormData
     menuTree?: AppRouteRecord[]

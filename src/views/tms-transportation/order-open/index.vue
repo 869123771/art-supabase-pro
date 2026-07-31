@@ -1033,9 +1033,10 @@
   ): ContactPatch {
     const contactName = address?.contactName || customer.contactName || customer.customerName
     const contactPhone = address?.contactPhone || customer.contactPhone || ''
-    const addressText = address
-      ? formatPriceAddress(address.region, address.addressDetail)
-      : formatPriceAddress(customer.region, customer.addressDetail)
+    const addressText = formatFullAddress(
+      address?.region || customer.region,
+      address?.addressDetail || customer.addressDetail
+    )
 
     const patchMap: Record<SelectorMode, ContactPatch> = {
       shipping: {
@@ -1107,6 +1108,15 @@
     price: CustomerPrice,
     customer: CustomerItem
   ): Partial<OrderForm> {
+    const shippingAddressDetail = formatFullAddress(
+      price.originRegion || customer.region,
+      price.shippingAddressDetail || form.data.shippingAddressDetail
+    )
+    const receivingAddressDetail = formatFullAddress(
+      price.destinationRegion || customer.region,
+      price.receivingAddressDetail || form.data.receivingAddressDetail
+    )
+
     return {
       shippingCustomerId: price.customerId,
       receivingCustomerId: price.customerId,
@@ -1116,19 +1126,13 @@
       receivingAddressId: price.receivingAddressId || form.data.receivingAddressId || null,
       shippingContactName: textValue(price.shippingContactName) || form.data.shippingContactName,
       shippingContactPhone: textValue(price.shippingContactPhone) || form.data.shippingContactPhone,
-      shippingAddressDetail:
-        price.shippingAddressDetail ||
-        form.data.shippingAddressDetail ||
-        formatPriceAddress(price.originRegion, null),
+      shippingAddressDetail,
       shippingLongitude: price.shippingLongitude ?? form.data.shippingLongitude ?? null,
       shippingLatitude: price.shippingLatitude ?? form.data.shippingLatitude ?? null,
       receivingContactName: textValue(price.receivingContactName) || form.data.receivingContactName,
       receivingContactPhone:
         textValue(price.receivingContactPhone) || form.data.receivingContactPhone,
-      receivingAddressDetail:
-        price.receivingAddressDetail ||
-        form.data.receivingAddressDetail ||
-        formatPriceAddress(price.destinationRegion, null),
+      receivingAddressDetail,
       receivingLongitude: price.receivingLongitude ?? form.data.receivingLongitude ?? null,
       receivingLatitude: price.receivingLatitude ?? form.data.receivingLatitude ?? null,
       transportFee: moneyValue(price.transportFee),
@@ -1156,11 +1160,23 @@
     }
   }
 
-  function formatPriceAddress(region?: string | null, address?: string | null): string {
-    return [region, address]
-      .map((item) => textValue(item))
-      .filter(Boolean)
-      .join(' ')
+  function formatFullAddress(region?: string | null, address?: string | null): string {
+    const regionText = textValue(region)
+    const addressText = textValue(address)
+    if (!regionText) return addressText
+    if (!addressText) return regionText
+    if (isAddressRegionIncluded(regionText, addressText)) return addressText
+    return `${regionText} ${addressText}`
+  }
+
+  function isAddressRegionIncluded(region: string, address: string): boolean {
+    const normalizedRegion = normalizeAddressForCompare(region)
+    const normalizedAddress = normalizeAddressForCompare(address)
+    return Boolean(normalizedRegion && normalizedAddress.startsWith(normalizedRegion))
+  }
+
+  function normalizeAddressForCompare(value: string): string {
+    return value.replace(/[\s,，/／]+/g, '')
   }
 
   function swapContacts(): void {

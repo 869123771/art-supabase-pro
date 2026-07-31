@@ -240,7 +240,7 @@
     })
   }
 
-  const transformDictTree = (records: Record<string, any>[]): DictListItem[] =>
+  const transformDictTree = (records: unknown[]): DictListItem[] =>
     dictTreeUtils.listToTree(
       records as DictListItem[],
       (a, b) => Number(a.sort || 0) - Number(b.sort || 0)

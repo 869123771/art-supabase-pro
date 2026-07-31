@@ -110,7 +110,7 @@ export function useSupabase() {
    *   const { data, error } = await runQuery<MyType[]>(supabase.from('sys_user').select(), { showMessage: true })
    */
 
-  async function responseHandle<T = any>(
+  async function responseHandle<T = unknown>(
     queryFactory: QueryFactory,
     options: RunQueryOptions = {
       showMessage: false,

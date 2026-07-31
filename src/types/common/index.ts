@@ -43,10 +43,10 @@ export type SortOrder = 'ascending' | 'descending'
 export type ActionType = 'create' | 'update' | 'delete' | 'view'
 
 // 可选的记录类型
-export type Recordable<T = any> = Record<string, T>
+export type Recordable<T = unknown> = Record<string, T>
 
 // 键值对类型
-export type KeyValue<T = any> = {
+export type KeyValue<T = unknown> = {
   key: string
   value: T
   label?: string

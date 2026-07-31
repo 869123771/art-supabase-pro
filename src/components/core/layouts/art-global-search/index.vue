@@ -128,6 +128,7 @@
   })
 
   onUnmounted(() => {
+    mittBus.off('openSearchDialog', openSearchDialog)
     document.removeEventListener('keydown', handleKeydown)
   })
 

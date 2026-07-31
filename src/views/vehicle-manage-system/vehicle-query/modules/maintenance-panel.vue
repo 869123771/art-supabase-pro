@@ -61,7 +61,7 @@
       prop: 'maintenanceType',
       label: '维修类别',
       minWidth: 130,
-      dict: { code: 'vehicleMaintenanceType', display: 'text' }
+      dict: { code: 'vehicleMaintenanceType', display: 'auto' }
     },
     { prop: 'initiator', label: '发起人', minWidth: 130 },
     {

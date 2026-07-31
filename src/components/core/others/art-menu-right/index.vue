@@ -98,7 +98,7 @@
     showLine?: boolean
     /** 子菜单 */
     children?: MenuItemType[]
-    [key: string]: any
+    [key: string]: unknown
   }
 
   interface Props {

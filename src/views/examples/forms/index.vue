@@ -68,8 +68,8 @@
   import { Plus } from '@element-plus/icons-vue'
 
   interface Emits {
-    (e: 'update:modelValue', value: Record<string, any>): void
-    (e: 'search', params: Record<string, any>): void
+    (e: 'update:modelValue', value: Record<string, unknown>): void
+    (e: 'search', params: Record<string, unknown>): void
     (e: 'reset'): void
   }
 
@@ -201,8 +201,8 @@
     key: string
     type: string
     placeholder?: string
-    props?: Record<string, any>
-    [key: string]: any
+    props?: Record<string, unknown>
+    [key: string]: unknown
   }
 
   /**
@@ -719,7 +719,7 @@
   /**
    * 处理表单提交事件
    */
-  const handleSubmit = async (params: Record<string, any>): Promise<void> => {
+  const handleSubmit = async (params: Record<string, unknown>): Promise<void> => {
     await formRef.value.validate()
     emit('search', params)
     console.log('表单数据', params)

@@ -199,7 +199,7 @@
     nickName: userInfo.value.nickName,
     email: userInfo.value.email,
     mobile: userInfo.value.userPhone,
-    address: userInfo.value.extra?.address ?? '',
+    address: typeof userInfo.value.extra?.address === 'string' ? userInfo.value.extra.address : '',
     sex: userInfo.value.userGender,
     des: userInfo.value.remark
   })

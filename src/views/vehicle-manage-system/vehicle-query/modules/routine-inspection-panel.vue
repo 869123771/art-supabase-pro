@@ -39,7 +39,7 @@
       prop: 'inspectionType',
       label: '例检类型',
       minWidth: 130,
-      dict: { code: 'vehicleRoutineInspectionType', display: 'text' }
+      dict: { code: 'vehicleRoutineInspectionType', display: 'auto' }
     },
     {
       prop: 'inspectionTime',
@@ -54,7 +54,7 @@
       prop: 'checkResult',
       label: '检查结果',
       minWidth: 130,
-      dict: { code: 'vehicleRoutineInspectionResult', display: 'text' }
+      dict: { code: 'vehicleRoutineInspectionResult', display: 'auto' }
     },
     { prop: 'handlingMethod', label: '处理方式', minWidth: 160 }
   ]

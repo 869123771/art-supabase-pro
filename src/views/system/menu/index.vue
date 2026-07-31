@@ -208,7 +208,7 @@
       label: '权限标识',
       formatter: (row: AppRouteRecord) => {
         if (row.children?.length) {
-          if (row.children.some((item: any) => item.meta?.menuType === 'button')) {
+          if (row.children.some((item) => item.meta?.menuType === 'button')) {
             return `${row.children.length} 个权限标识`
           } else {
             return row.name
@@ -430,7 +430,7 @@
       )
       const ids = treeUtils
         .getDescendants(tableData.value, row.id as string, true)
-        ?.map((item: any) => String(item.id))
+        ?.map((item) => String(item.id))
       await deleteMenu({ ids })
       ElMessage.success('菜单删除成功')
       await tableQueryRef.value?.refreshRemove()

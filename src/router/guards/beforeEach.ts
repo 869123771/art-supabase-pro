@@ -57,7 +57,8 @@ import { ApiStatus } from '@/utils/http/status'
 import { isHttpError } from '@/utils/http/error'
 import { RouteRegistry, MenuProcessor, IframeRouteManager, RoutePermissionValidator } from '../core'
 import TreeUtils from '@utils/tree'
-import { AppRouteRecord } from '@/types'
+import type { AppRouteRecord } from '@/types'
+import type { AppRouteRecordRaw } from '@/utils/router'
 
 // 路由注册器实例
 let routeRegistry: RouteRegistry | null = null
@@ -225,7 +226,7 @@ function getLoginRedirect(
  * 检查路由是否为静态路由
  */
 function isStaticRoute(path: string): boolean {
-  const checkRoute = (routes: any[], targetPath: string): boolean => {
+  const checkRoute = (routes: AppRouteRecordRaw[], targetPath: string): boolean => {
     return routes.some((route) => {
       // 404 catch-all 路由不应视为可匿名访问的静态页，
       // 否则未登录时手动输入任意地址会直接落到 404，无法跳转登录页。

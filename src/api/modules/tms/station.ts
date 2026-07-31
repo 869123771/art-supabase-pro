@@ -1,5 +1,10 @@
 import { useSupabase } from '@/hooks'
-import { applyCreateTimeRange, type SupabaseQueryLike } from '@/api/modules/tms/query'
+import {
+  applyCreateTimeRange,
+  withRequestOptions,
+  type SupabaseQueryLike
+} from '@/api/modules/tms/query'
+import type { ApiRequestOptions } from '@/types/api/request'
 
 type StationRecord = Api.Tms.Station.StationRecord
 type StationSearchParams = Api.Tms.Station.StationSearchParams
@@ -33,7 +38,7 @@ const applyStationFilters = (
   return applyCreateTimeRange(query, createTimeRange)
 }
 
-export async function fetchStationList(params: StationSearchParams) {
+export async function fetchStationList(params: StationSearchParams, options?: ApiRequestOptions) {
   const { from = 0, to = 9 } = params
   let query = supabase
     .from('tms_station')
@@ -43,7 +48,7 @@ export async function fetchStationList(params: StationSearchParams) {
     .range(from, to) as unknown as SupabaseQueryLike
 
   query = applyStationFilters(query, params)
-  return await responseHandle<StationRecord[]>(() => query, {
+  return await responseHandle<StationRecord[]>(() => withRequestOptions(query, options), {
     ignoreCheck: true,
     showErrorMessage: true
   })
@@ -67,7 +72,10 @@ export async function exportStationList(
   })
 }
 
-export async function fetchStationOptions(params: StationOptionSearchParams = {}) {
+export async function fetchStationOptions(
+  params: StationOptionSearchParams = {},
+  options?: ApiRequestOptions
+) {
   let query = supabase
     .from('tms_station')
     .select('id, station_code, station_name, station_type, region_code')
@@ -83,10 +91,13 @@ export async function fetchStationOptions(params: StationOptionSearchParams = {}
     )
   }
 
-  return await responseHandle<Api.Tms.Order.StationOption[]>(() => query, {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
+  return await responseHandle<Api.Tms.Order.StationOption[]>(
+    () => withRequestOptions(query, options),
+    {
+      ignoreCheck: true,
+      showErrorMessage: true
+    }
+  )
 }
 
 export async function addStation(params: StationRecord, options: WriteOptions = {}) {

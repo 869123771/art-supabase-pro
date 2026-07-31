@@ -1,5 +1,6 @@
 import { useSupabase } from '@/hooks'
-import type { SupabaseQueryLike } from '@/api/modules/tms/query'
+import { withRequestOptions, type SupabaseQueryLike } from '@/api/modules/tms/query'
+import type { ApiRequestOptions } from '@/types/api/request'
 
 type Contract = Api.Tms.BasicData.Contract
 type ContractSearchParams = Api.Tms.BasicData.ContractSearchParams
@@ -37,7 +38,7 @@ const applyContractFilters = (
   return query
 }
 
-export async function fetchContractList(params: ContractSearchParams) {
+export async function fetchContractList(params: ContractSearchParams, options?: ApiRequestOptions) {
   const { from = 0, to = 9 } = params
   let query = supabase
     .from('tms_contract')
@@ -45,7 +46,7 @@ export async function fetchContractList(params: ContractSearchParams) {
     .order('create_time', { ascending: false })
     .range(from, to) as unknown as SupabaseQueryLike
   query = applyContractFilters(query, params)
-  return await responseHandle<Contract[]>(() => query, {
+  return await responseHandle<Contract[]>(() => withRequestOptions(query, options), {
     ignoreCheck: true,
     showErrorMessage: true
   })

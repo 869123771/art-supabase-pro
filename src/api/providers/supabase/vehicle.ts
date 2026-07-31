@@ -1,6 +1,7 @@
 import { useSupabase } from '@/hooks'
 import { WRITE_PERMISSION_DENIED_MESSAGE } from '@/hooks/core/useSupabase'
 import { applyFilters, type FilterSpec } from '@/utils/supabase-filters'
+import type { ApiRequestOptions } from '@/types/api/request'
 
 const { supabase, keysToSnakeDeep, responseHandle } = useSupabase()
 
@@ -14,10 +15,16 @@ interface SupabaseProviderResponse {
 }
 
 interface SupabaseProviderQueryLike extends PromiseLike<SupabaseProviderResponse> {
+  abortSignal(signal: AbortSignal): this
   gte(column: string, value: unknown): this
   in(column: string, values: readonly unknown[]): this
   lte(column: string, value: unknown): this
 }
+
+const withRequestOptions = (
+  query: SupabaseProviderQueryLike,
+  options?: ApiRequestOptions
+): SupabaseProviderQueryLike => (options?.signal ? query.abortSignal(options.signal) : query)
 
 const normalizeBooleanFilter = (value: unknown): boolean | undefined => {
   if (value === true || value === 'true') return true
@@ -136,7 +143,8 @@ const getVehicleReminderSearchFilters = (
 async function fetchVehicleReminderViewList(
   viewName: VehicleReminderViewName,
   params: VehicleReminderSearchParams,
-  mode: 'days' | 'expired'
+  mode: 'days' | 'expired',
+  options?: ApiRequestOptions
 ) {
   const { from = 0, to = 9 } = params
   let query = supabase
@@ -155,7 +163,7 @@ async function fetchVehicleReminderViewList(
   })
 
   return await responseHandle<VehicleReminderRow[]>(
-    () => query as unknown as SupabaseProviderQueryLike,
+    () => withRequestOptions(query as unknown as SupabaseProviderQueryLike, options),
     {
       ignoreCheck: true,
       showErrorMessage: true
@@ -164,7 +172,10 @@ async function fetchVehicleReminderViewList(
 }
 
 // 保险公司
-export async function fetchInsuranceCompanyList(params: InsuranceCompanySearchParams) {
+export async function fetchInsuranceCompanyList(
+  params: InsuranceCompanySearchParams,
+  options?: ApiRequestOptions
+) {
   const { companyName, contactPerson, contactPhone, from = 0, to = 9 } = params
   const filters: FilterSpec[] = [
     { col: 'companyName', op: 'ilike', val: companyName ? `%${companyName}%` : undefined },
@@ -179,10 +190,13 @@ export async function fetchInsuranceCompanyList(params: InsuranceCompanySearchPa
     .range(from, to)
 
   query = applyFilters(query, filters, { skipEmpty: true, camelToSnake: true })
-  return await responseHandle(() => query as unknown as SupabaseProviderQueryLike, {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
+  return await responseHandle(
+    () => withRequestOptions(query as unknown as SupabaseProviderQueryLike, options),
+    {
+      ignoreCheck: true,
+      showErrorMessage: true
+    }
+  )
 }
 
 export async function exportInsuranceCompanyList(
@@ -268,7 +282,7 @@ export async function importInsuranceCompanies(rows: InsuranceCompany[]) {
 }
 
 // 供应厂商
-export async function fetchSupplierList(params: SupplierSearchParams) {
+export async function fetchSupplierList(params: SupplierSearchParams, options?: ApiRequestOptions) {
   const { supplierName, contactPerson, contactPhone, from = 0, to = 9 } = params
   const filters: FilterSpec[] = [
     { col: 'supplierName', op: 'ilike', val: supplierName ? `%${supplierName}%` : undefined },
@@ -283,10 +297,13 @@ export async function fetchSupplierList(params: SupplierSearchParams) {
     .range(from, to)
 
   query = applyFilters(query, filters, { skipEmpty: true, camelToSnake: true })
-  return await responseHandle(() => query as unknown as SupabaseProviderQueryLike, {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
+  return await responseHandle(
+    () => withRequestOptions(query as unknown as SupabaseProviderQueryLike, options),
+    {
+      ignoreCheck: true,
+      showErrorMessage: true
+    }
+  )
 }
 
 export async function exportSupplierList(
@@ -372,7 +389,10 @@ export async function importSuppliers(rows: Supplier[]) {
 }
 
 // 零部件类别
-export async function fetchPartsCategoryList(params: PartsCategorySearchParams) {
+export async function fetchPartsCategoryList(
+  params: PartsCategorySearchParams,
+  options?: ApiRequestOptions
+) {
   const { parentId, categoryName, categoryCode, status, from = 0, to = 9 } = params
   const filters: FilterSpec[] = [
     { col: 'categoryName', op: 'ilike', val: categoryName ? `%${categoryName}%` : undefined },
@@ -393,14 +413,18 @@ export async function fetchPartsCategoryList(params: PartsCategorySearchParams) 
       : query.eq('parent_id', parentId)
   query = applyFilters(query, filters, { skipEmpty: true, camelToSnake: true })
 
-  return await responseHandle(() => query as unknown as SupabaseProviderQueryLike, {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
+  return await responseHandle(
+    () => withRequestOptions(query as unknown as SupabaseProviderQueryLike, options),
+    {
+      ignoreCheck: true,
+      showErrorMessage: true
+    }
+  )
 }
 
 export async function fetchPartsCategoryTree(
-  params: Partial<Pick<PartsCategory, 'categoryName'>> = {}
+  params: Partial<Pick<PartsCategory, 'categoryName'>> = {},
+  options?: ApiRequestOptions
 ) {
   const { categoryName } = params
   let query = supabase
@@ -414,7 +438,7 @@ export async function fetchPartsCategoryTree(
   }
 
   return await responseHandle<PartsCategory[]>(
-    () => query as unknown as SupabaseProviderQueryLike,
+    () => withRequestOptions(query as unknown as SupabaseProviderQueryLike, options),
     {
       ignoreCheck: true,
       showErrorMessage: true
@@ -534,7 +558,7 @@ const PARTS_SELECT = `
   )
 `
 
-export async function fetchPartsList(params: PartsSearchParams) {
+export async function fetchPartsList(params: PartsSearchParams, options?: ApiRequestOptions) {
   const { from = 0, to = 9 } = params
   const filters = getPartsSearchFilters(params)
 
@@ -545,10 +569,13 @@ export async function fetchPartsList(params: PartsSearchParams) {
     .range(from, to)
 
   query = applyFilters(query, filters, { skipEmpty: true, camelToSnake: true })
-  return await responseHandle(() => query as unknown as SupabaseProviderQueryLike, {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
+  return await responseHandle(
+    () => withRequestOptions(query as unknown as SupabaseProviderQueryLike, options),
+    {
+      ignoreCheck: true,
+      showErrorMessage: true
+    }
+  )
 }
 
 export async function exportPartsList(
@@ -627,16 +654,19 @@ export async function importParts(rows: Parts[]) {
   )
 }
 
-export async function fetchSupplierOptions() {
+export async function fetchSupplierOptions(_params?: unknown, options?: ApiRequestOptions) {
   const query = supabase
     .from('vehicle_supplier')
     .select('id, supplier_name, contact_person, contact_phone')
     .order('supplier_name', { ascending: true })
 
-  return await responseHandle(() => query as unknown as SupabaseProviderQueryLike, {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
+  return await responseHandle(
+    () => withRequestOptions(query as unknown as SupabaseProviderQueryLike, options),
+    {
+      ignoreCheck: true,
+      showErrorMessage: true
+    }
+  )
 }
 
 // 车辆档案
@@ -775,7 +805,10 @@ const getVehicleArchiveSearchFilters = (params: VehicleArchiveSearchParams): Fil
   { col: 'auditStatus', op: 'in', val: params.auditStatuses }
 ]
 
-export async function fetchVehicleArchiveList(params: VehicleArchiveSearchParams) {
+export async function fetchVehicleArchiveList(
+  params: VehicleArchiveSearchParams,
+  options?: ApiRequestOptions
+) {
   const { from = 0, to = 9, createTimeRange } = params
   let query = supabase
     .from(VEHICLE_ARCHIVE_TABLE)
@@ -793,7 +826,7 @@ export async function fetchVehicleArchiveList(params: VehicleArchiveSearchParams
   })
 
   return await responseHandle<VehicleArchive[]>(
-    () => query as unknown as SupabaseProviderQueryLike,
+    () => withRequestOptions(query as unknown as SupabaseProviderQueryLike, options),
     {
       ignoreCheck: true,
       showErrorMessage: true
@@ -1009,7 +1042,8 @@ export async function auditVehicleArchiveBatch(params: {
 
 // 车辆管理选项
 export async function fetchVehicleArchiveOptions(
-  params: Partial<Pick<VehicleArchive, 'carrierId' | 'plateNo' | 'companyName'>> = {}
+  params: Partial<Pick<VehicleArchive, 'carrierId' | 'plateNo' | 'companyName'>> = {},
+  options?: ApiRequestOptions
 ) {
   const { carrierId, plateNo, companyName } = params
   const filters: FilterSpec[] = [
@@ -1026,7 +1060,7 @@ export async function fetchVehicleArchiveOptions(
 
   query = applyFilters(query, filters, { skipEmpty: true, camelToSnake: true })
   return await responseHandle<Api.VehicleMgtSys.VehicleManage.VehicleOption[]>(
-    () => query as unknown as SupabaseProviderQueryLike,
+    () => withRequestOptions(query as unknown as SupabaseProviderQueryLike, options),
     {
       ignoreCheck: true,
       showErrorMessage: true
@@ -1066,37 +1100,67 @@ export async function fetchVehicleReminderCompanyOptions() {
   }
 }
 
-export async function fetchVehicleReminderInsuranceExpiryList(params: VehicleReminderSearchParams) {
-  return await fetchVehicleReminderViewList('vehicle_reminder_insurance_expiry', params, 'days')
+export async function fetchVehicleReminderInsuranceExpiryList(
+  params: VehicleReminderSearchParams,
+  options?: ApiRequestOptions
+) {
+  return await fetchVehicleReminderViewList(
+    'vehicle_reminder_insurance_expiry',
+    params,
+    'days',
+    options
+  )
 }
 
 export async function fetchVehicleReminderInspectionExpiryList(
-  params: VehicleReminderSearchParams
+  params: VehicleReminderSearchParams,
+  options?: ApiRequestOptions
 ) {
-  return await fetchVehicleReminderViewList('vehicle_reminder_inspection_expiry', params, 'days')
+  return await fetchVehicleReminderViewList(
+    'vehicle_reminder_inspection_expiry',
+    params,
+    'days',
+    options
+  )
 }
 
 export async function fetchVehicleReminderVehicleServiceLifeList(
-  params: VehicleReminderSearchParams
+  params: VehicleReminderSearchParams,
+  options?: ApiRequestOptions
 ) {
-  return await fetchVehicleReminderViewList('vehicle_reminder_vehicle_service_life', params, 'days')
+  return await fetchVehicleReminderViewList(
+    'vehicle_reminder_vehicle_service_life',
+    params,
+    'days',
+    options
+  )
 }
 
 export async function fetchVehicleReminderMaintenanceExpiryList(
-  params: VehicleReminderSearchParams
+  params: VehicleReminderSearchParams,
+  options?: ApiRequestOptions
 ) {
   return await fetchVehicleReminderViewList(
     'vehicle_reminder_maintenance_expiry',
     params,
-    'expired'
+    'expired',
+    options
   )
 }
 
-export async function fetchVehicleReminderPartServiceLifeList(params: VehicleReminderSearchParams) {
-  return await fetchVehicleReminderViewList('vehicle_reminder_part_service_life', params, 'expired')
+export async function fetchVehicleReminderPartServiceLifeList(
+  params: VehicleReminderSearchParams,
+  options?: ApiRequestOptions
+) {
+  return await fetchVehicleReminderViewList(
+    'vehicle_reminder_part_service_life',
+    params,
+    'expired',
+    options
+  )
 }
 
-export async function fetchInsuranceCompanyOptions() {
+export async function fetchInsuranceCompanyOptions(_params?: unknown, options?: ApiRequestOptions) {
   const query = supabase
     .from('vehicle_insurance_company')
     .select('id, company_name, contact_person, contact_phone')
@@ -1104,7 +1168,7 @@ export async function fetchInsuranceCompanyOptions() {
     .limit(200)
 
   return await responseHandle<Api.VehicleMgtSys.VehicleManage.InsuranceCompanyOption[]>(
-    () => query as unknown as SupabaseProviderQueryLike,
+    () => withRequestOptions(query as unknown as SupabaseProviderQueryLike, options),
     {
       ignoreCheck: true,
       showErrorMessage: true
@@ -1146,7 +1210,10 @@ const getVehicleInsuranceSearchFilters = (params: VehicleInsuranceSearchParams):
   }
 ]
 
-export async function fetchVehicleInsuranceList(params: VehicleInsuranceSearchParams) {
+export async function fetchVehicleInsuranceList(
+  params: VehicleInsuranceSearchParams,
+  options?: ApiRequestOptions
+) {
   const {
     from = 0,
     to = 9,
@@ -1169,7 +1236,7 @@ export async function fetchVehicleInsuranceList(params: VehicleInsuranceSearchPa
   })
 
   return await responseHandle<VehicleInsurance[]>(
-    () => query as unknown as SupabaseProviderQueryLike,
+    () => withRequestOptions(query as unknown as SupabaseProviderQueryLike, options),
     {
       ignoreCheck: true,
       showErrorMessage: true
@@ -1305,7 +1372,10 @@ const getVehicleInspectionSearchFilters = (params: VehicleInspectionSearchParams
   }
 ]
 
-export async function fetchVehicleInspectionList(params: VehicleInspectionSearchParams) {
+export async function fetchVehicleInspectionList(
+  params: VehicleInspectionSearchParams,
+  options?: ApiRequestOptions
+) {
   const { from = 0, to = 9, expireDateRange, createTimeRange } = params
   let query = supabase
     .from(VEHICLE_INSPECTION_TABLE)
@@ -1321,7 +1391,7 @@ export async function fetchVehicleInspectionList(params: VehicleInspectionSearch
   })
 
   return await responseHandle<VehicleInspection[]>(
-    () => query as unknown as SupabaseProviderQueryLike,
+    () => withRequestOptions(query as unknown as SupabaseProviderQueryLike, options),
     {
       ignoreCheck: true,
       showErrorMessage: true
@@ -1449,7 +1519,8 @@ const getVehicleRoutineInspectionSearchFilters = (
 ]
 
 export async function fetchVehicleRoutineInspectionList(
-  params: VehicleRoutineInspectionSearchParams
+  params: VehicleRoutineInspectionSearchParams,
+  options?: ApiRequestOptions
 ) {
   const { from = 0, to = 9, inspectionTimeRange, createTimeRange } = params
   let query = supabase
@@ -1466,7 +1537,7 @@ export async function fetchVehicleRoutineInspectionList(
   })
 
   return await responseHandle<VehicleRoutineInspectionRecord[]>(
-    () => query as unknown as SupabaseProviderQueryLike,
+    () => withRequestOptions(query as unknown as SupabaseProviderQueryLike, options),
     {
       ignoreCheck: true,
       showErrorMessage: true
@@ -1590,7 +1661,10 @@ const getVehicleMileageSearchFilters = (params: VehicleMileageSearchParams): Fil
   { col: 'plateNo', op: 'ilike', val: params.plateNo ? `%${params.plateNo}%` : undefined }
 ]
 
-export async function fetchVehicleMileageList(params: VehicleMileageSearchParams) {
+export async function fetchVehicleMileageList(
+  params: VehicleMileageSearchParams,
+  options?: ApiRequestOptions
+) {
   const { from = 0, to = 9, drivingTimeRange } = params
   let query = supabase
     .from(VEHICLE_MILEAGE_TABLE)
@@ -1605,7 +1679,7 @@ export async function fetchVehicleMileageList(params: VehicleMileageSearchParams
   })
 
   return await responseHandle<VehicleMileageRecord[]>(
-    () => query as unknown as SupabaseProviderQueryLike,
+    () => withRequestOptions(query as unknown as SupabaseProviderQueryLike, options),
     {
       ignoreCheck: true,
       showErrorMessage: true
@@ -1661,7 +1735,10 @@ const getVehicleViolationSearchFilters = (params: VehicleViolationSearchParams):
   { col: 'processed', op: 'eq', val: normalizeBooleanFilter(params.processed) }
 ]
 
-export async function fetchVehicleViolationList(params: VehicleViolationSearchParams) {
+export async function fetchVehicleViolationList(
+  params: VehicleViolationSearchParams,
+  options?: ApiRequestOptions
+) {
   const { from = 0, to = 9, violationTimeRange } = params
   let query = supabase
     .from(VEHICLE_VIOLATION_TABLE)
@@ -1676,7 +1753,7 @@ export async function fetchVehicleViolationList(params: VehicleViolationSearchPa
   })
 
   return await responseHandle<VehicleViolationRecord[]>(
-    () => query as unknown as SupabaseProviderQueryLike,
+    () => withRequestOptions(query as unknown as SupabaseProviderQueryLike, options),
     {
       ignoreCheck: true,
       showErrorMessage: true
@@ -1728,7 +1805,10 @@ const getVehicleAccidentSearchFilters = (params: VehicleAccidentSearchParams): F
   { col: 'dataSource', op: 'eq', val: params.dataSource }
 ]
 
-export async function fetchVehicleAccidentList(params: VehicleAccidentSearchParams) {
+export async function fetchVehicleAccidentList(
+  params: VehicleAccidentSearchParams,
+  options?: ApiRequestOptions
+) {
   const { from = 0, to = 9, accidentTimeRange, createTimeRange } = params
   let query = supabase
     .from(VEHICLE_ACCIDENT_TABLE)
@@ -1744,7 +1824,7 @@ export async function fetchVehicleAccidentList(params: VehicleAccidentSearchPara
   })
 
   return await responseHandle<VehicleAccidentRecord[]>(
-    () => query as unknown as SupabaseProviderQueryLike,
+    () => withRequestOptions(query as unknown as SupabaseProviderQueryLike, options),
     {
       ignoreCheck: true,
       showErrorMessage: true
@@ -1876,7 +1956,10 @@ const getVehicleMaintenanceSearchFilters = (
   { col: 'maintenanceType', op: 'eq', val: params.maintenanceType }
 ]
 
-export async function fetchVehicleMaintenanceList(params: VehicleMaintenanceSearchParams) {
+export async function fetchVehicleMaintenanceList(
+  params: VehicleMaintenanceSearchParams,
+  options?: ApiRequestOptions
+) {
   const { from = 0, to = 9, createTimeRange } = params
   let query = supabase
     .from(VEHICLE_MAINTENANCE_TABLE)
@@ -1891,7 +1974,7 @@ export async function fetchVehicleMaintenanceList(params: VehicleMaintenanceSear
   })
 
   return await responseHandle<VehicleMaintenanceRecord[]>(
-    () => query as unknown as SupabaseProviderQueryLike,
+    () => withRequestOptions(query as unknown as SupabaseProviderQueryLike, options),
     {
       ignoreCheck: true,
       showErrorMessage: true
@@ -2023,7 +2106,10 @@ const getVehiclePartUsageSearchFilters = (params: VehiclePartUsageSearchParams):
   { col: 'status', op: 'eq', val: params.status }
 ]
 
-export async function fetchVehiclePartUsageList(params: VehiclePartUsageSearchParams) {
+export async function fetchVehiclePartUsageList(
+  params: VehiclePartUsageSearchParams,
+  options?: ApiRequestOptions
+) {
   const { from = 0, to = 9, createTimeRange } = params
   let query = supabase
     .from(VEHICLE_PART_USAGE_TABLE)
@@ -2038,7 +2124,7 @@ export async function fetchVehiclePartUsageList(params: VehiclePartUsageSearchPa
   })
 
   return await responseHandle<VehiclePartUsage[]>(
-    () => query as unknown as SupabaseProviderQueryLike,
+    () => withRequestOptions(query as unknown as SupabaseProviderQueryLike, options),
     {
       ignoreCheck: true,
       showErrorMessage: true

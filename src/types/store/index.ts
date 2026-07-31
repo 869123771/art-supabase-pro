@@ -1,3 +1,5 @@
+import type { AppRouteRecord } from '@/types/router'
+
 /**
  * Store 状态类型定义模块
  *
@@ -187,7 +189,7 @@ export interface WorkTabState {
 // 菜单Store状态
 export interface MenuState {
   /** 菜单列表 */
-  menuList: any[]
+  menuList: AppRouteRecord[]
   /** 菜单是否已加载 */
   isLoaded: boolean
   /** 菜单是否折叠 */

@@ -155,7 +155,7 @@ export async function uploadAttachment(
     )
 
     // 5️⃣ url
-    const { data } = await responseHandle(
+    const { data } = await responseHandle<{ publicUrl: string }>(
       () => Promise.resolve(supabase.storage.from(bucket).getPublicUrl(fullPath)),
       {
         ignoreCheck: true
@@ -174,7 +174,7 @@ export async function uploadAttachment(
       suffix,
       size_byte: file.size,
       size_info: formatSize(file.size),
-      url: data.publicUrl,
+      url: data?.publicUrl ?? '',
       create_by: createBy,
       update_by: createBy,
       remark

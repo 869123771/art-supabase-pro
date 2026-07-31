@@ -1,12 +1,11 @@
 <template>
   <div class="editor-wrapper">
     <vue-monaco-editor
-      ref="editorRef"
       :wrapperStyle="{ height: '100%' }"
       :value="modelValue"
       :language="language"
       :theme="editorTheme"
-      :options="editorOptions as any"
+      :options="editorOptions"
       @update:value="handleChange"
       @keydown="handleKeyDown"
       @mount="handleEditorMounted"
@@ -18,7 +17,7 @@
 </template>
 
 <script setup lang="ts">
-  import { ref, computed, onMounted } from 'vue'
+  import { computed, onMounted } from 'vue'
   import * as monaco from 'monaco-editor'
   import { ElMessage } from 'element-plus'
   import VueMonacoEditor from '@guolao/vue-monaco-editor'
@@ -46,10 +45,9 @@
   }>()
 
   const settingStore = useSettingStore()
-  const editorRef = ref<any>(null)
   let editorInstance: monaco.editor.IStandaloneCodeEditor | null = null
 
-  const editorOptions = ref({
+  const editorOptions = computed<monaco.editor.IStandaloneEditorConstructionOptions>(() => ({
     automaticLayout: true,
     minimap: { enabled: false },
     fontSize: 13,
@@ -70,7 +68,7 @@
     inlineSuggest: {
       enabled: true
     }
-  })
+  }))
 
   const editorTheme = computed(() => {
     return settingStore.systemThemeType === 'dark' ? 'vs-dark' : 'vs'

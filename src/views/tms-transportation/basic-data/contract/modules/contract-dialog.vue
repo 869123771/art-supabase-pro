@@ -83,7 +83,7 @@
   type ContractAttachment = Api.Tms.BasicData.ContractAttachment
   type CarrierOption = Api.Tms.BasicData.CarrierOption
   type SubmitMode = 'save' | 'submit'
-  type FooterApi = Pick<ArtDialogExpose<Record<string, any>>, 'handleConfirm'>
+  type FooterApi = Pick<ArtDialogExpose<Contract | undefined>, 'handleConfirm'>
 
   interface FormExpose {
     validate: () => Promise<boolean>

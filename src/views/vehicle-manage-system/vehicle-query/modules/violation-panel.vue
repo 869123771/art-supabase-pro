@@ -56,7 +56,7 @@
       width: 120,
       dict: {
         code: 'vehicleRecordProcessed',
-        display: 'text',
+        display: 'auto',
         value: (row) => String(row.processed)
       }
     }

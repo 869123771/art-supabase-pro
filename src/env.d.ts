@@ -26,7 +26,7 @@ declare module 'qrcode.vue' {
     foreground?: string
     renderAs?: RenderAs
   }
-  const QrcodeVue: any
+  const QrcodeVue: import('vue').DefineComponent<QRCodeProps>
   export default QrcodeVue
 }
 

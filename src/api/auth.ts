@@ -1,6 +1,13 @@
 import { useSupabase } from '@/hooks'
 const { supabase, keysToSnakeDeep, responseHandle } = useSupabase()
 
+interface AuthSessionResponse {
+  session: {
+    accessToken?: string
+    refreshToken?: string
+  } | null
+}
+
 export async function register(payload: Api.Auth.RegisterParams) {
   const invokeResp = () =>
     supabase.functions.invoke('register-and-sync-user', {
@@ -30,7 +37,7 @@ export async function login(params: Api.Auth.RegisterParams) {
     breakReturn: true,
     showErrorMessage: true
   })
-  return await responseHandle(
+  return await responseHandle<AuthSessionResponse>(
     () =>
       supabase.auth.signInWithPassword({
         email,
@@ -92,7 +99,7 @@ export async function fetchGetUserInfo() {
   const session = await supabase.auth.getSession()
   const uid = session?.data?.session?.user?.id
 
-  return await responseHandle(
+  return await responseHandle<Api.SystemManage.UserListItem>(
     () =>
       supabase
         .from('sys_user')
