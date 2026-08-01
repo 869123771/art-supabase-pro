@@ -373,13 +373,29 @@
     return '100%'
   })
 
-  // 表头背景颜色样式
-  const headerCellStyle = computed(() => ({
-    background: isHeaderBackground.value
-      ? 'var(--el-fill-color-lighter)'
-      : 'var(--default-box-color)',
-    ...(props.headerCellStyle || {}) // 合并用户传入的样式
-  }))
+  type HeaderCellStyle = NonNullable<TableProps<ArtTableRow>['headerCellStyle']>
+  type HeaderCellStyleResolver = Extract<HeaderCellStyle, (...args: never[]) => unknown>
+  type HeaderCellStyleContext = Parameters<HeaderCellStyleResolver>[0]
+
+  // 默认使用可辨识的项目灰阶；业务传入的样式保持最高优先级。
+  const headerCellStyle = computed<HeaderCellStyle>(() => {
+    const defaultStyle = {
+      backgroundColor: isHeaderBackground.value ? 'var(--art-gray-200)' : 'var(--default-box-color)'
+    }
+    const customStyle = props.headerCellStyle
+
+    if (typeof customStyle === 'function') {
+      return (context: HeaderCellStyleContext) => ({
+        ...defaultStyle,
+        ...customStyle(context)
+      })
+    }
+
+    return {
+      ...defaultStyle,
+      ...customStyle
+    }
+  })
 
   // 只有显式传入时才覆盖 ElTable 的原生默认值，避免继承的 Boolean props 把官方默认值冲掉。
   const hasExplicitTableProp = (propName: string): boolean => {
