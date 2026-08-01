@@ -120,3 +120,16 @@ export {
   fetchCarrierPriceDetail,
   fetchCarrierPriceList
 } from '@/api/modules/tms/carrier-price'
+export {
+  addWaybillCost,
+  deleteWaybillCost,
+  editWaybillCost,
+  exportWaybillCostList,
+  exportWaybillProfitList,
+  fetchFinanceWaybillOptions,
+  fetchWaybillCostList,
+  fetchWaybillProfitList,
+  reviewWaybillCost,
+  submitWaybillCost,
+  voidWaybillCost
+} from '@/api/modules/tms/finance'

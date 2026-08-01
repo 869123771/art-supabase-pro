@@ -2,7 +2,8 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
 interface SqlExecuteRequest {
-  query: string;
+  action?: "execute" | "metadata";
+  query?: string;
 }
 
 interface SqlExecuteResponse {
@@ -158,7 +159,43 @@ Deno.serve(async (req: Request) => {
       return json({ status: "error", message: "Invalid or expired token" } satisfies SqlExecuteResponse, 401);
     }
 
+    const { data: isSuper, error: superError } = await supabase.rpc("current_is_super");
+    if (superError) {
+      await writeAudit({
+        auth_user_id: user.id,
+        auth_email: user.email ?? null,
+        query_text: "",
+        is_write: false,
+        status: "error",
+        error_message: `Failed to check superuser status: ${superError.message}`,
+      });
+      return json({ status: "error", message: "Failed to verify SQL console permission" } satisfies SqlExecuteResponse, 500);
+    }
+
+    if (!isSuper) {
+      await writeAudit({
+        auth_user_id: user.id,
+        auth_email: user.email ?? null,
+        query_text: "",
+        is_write: false,
+        status: "error",
+        error_message: "Permission denied: SQL console is restricted to platform super administrators",
+      });
+      return json({
+        status: "error",
+        message: "Permission denied: SQL console is restricted to platform super administrators",
+      } satisfies SqlExecuteResponse, 403);
+    }
+
     const body: SqlExecuteRequest = await req.json();
+    if (body?.action === "metadata") {
+      const { data, error } = await supabaseAdmin.rpc("get_database_metadata_all");
+      if (error) {
+        return json({ status: "error", message: error.message } satisfies SqlExecuteResponse, 500);
+      }
+      return json(data);
+    }
+
     const rawQuery = body?.query;
     if (!rawQuery || typeof rawQuery !== "string" || rawQuery.trim() === "") {
       await writeAudit({
@@ -189,41 +226,6 @@ Deno.serve(async (req: Request) => {
     const writeKeywords = ["INSERT", "UPDATE", "DELETE", "DROP", "TRUNCATE", "ALTER", "CREATE", "GRANT", "REVOKE", "COMMENT"];
     const upperQuery = queryText.toUpperCase().trim();
     const isWriteOperation = writeKeywords.some((keyword) => upperQuery.startsWith(keyword));
-
-    if (isWriteOperation) {
-      const userSupabase = createClient(supabaseUrl, supabaseAnonKey, {
-        global: { headers: { Authorization: `Bearer ${token}` } },
-      });
-      const { data: isSuper, error: superError } = await userSupabase.rpc("current_is_super");
-
-      if (superError) {
-        await writeAudit({
-          auth_user_id: user.id,
-          auth_email: user.email ?? null,
-          query_text: queryText,
-          is_write: true,
-          status: "error",
-          error_message: `Failed to check superuser status: ${superError.message}`,
-        });
-        return json({ status: "error", message: `Failed to check superuser status: ${superError.message}`, query_text: queryText } satisfies SqlExecuteResponse, 500);
-      }
-
-      if (!isSuper) {
-        await writeAudit({
-          auth_user_id: user.id,
-          auth_email: user.email ?? null,
-          query_text: queryText,
-          is_write: true,
-          status: "error",
-          error_message: "Permission denied: Only superusers can execute write operations (INSERT, UPDATE, DELETE, etc.)",
-        });
-        return json({
-          status: "error",
-          message: "Permission denied: Only superusers can execute write operations (INSERT, UPDATE, DELETE, etc.)",
-          query_text: queryText,
-        } satisfies SqlExecuteResponse, 403);
-      }
-    }
 
     const { data, error, status: rpcStatus } = await supabaseAdmin.rpc("execute_sql_query", {
       sql_query: queryText,

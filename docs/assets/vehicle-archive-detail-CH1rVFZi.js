@@ -1,1 +1,0 @@
-import{B as e,M as t,at as n}from"./file-viewer-CCM9jSgy.js";import{t as r}from"./vehicle-archive-detail-content-DalJ5fTT.js";var i=e({name:`VehicleArchiveDetail`,__name:`index`,setup(e){return(e,i)=>(n(),t(r))}});export{i as default};

@@ -1,6 +1,6 @@
 import { useSupabase } from '@/hooks'
-import type { QueryResult } from '@/hooks/core/useSupabase'
-import { withRequestOptions, type SupabaseQueryLike } from '@/api/modules/tms/query'
+import type { QueryResult } from '@/types/api/response'
+import { withRequestOptions, type SupabaseQueryLike } from '@/api/providers/supabase/query'
 import type { ApiRequestOptions } from '@/types/api/request'
 import {
   applyOrderListFilters,

@@ -1,5 +1,5 @@
 import { useSupabase } from '@/hooks'
-import { applyCreateTimeRange, type SupabaseQueryLike } from '@/api/modules/tms/query'
+import { applyCreateTimeRange, type SupabaseQueryLike } from '@/api/providers/supabase/query'
 
 type CustomerPrice = Api.Tms.BasicData.CustomerPrice
 type CustomerPriceSearchParams = Api.Tms.BasicData.CustomerPriceSearchParams

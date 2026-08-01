@@ -48,6 +48,7 @@
   import { LocationFilled, Search } from '@element-plus/icons-vue'
   import { ElMessage } from 'element-plus'
   import { debounce, isNil, trim } from 'lodash-es'
+  import { useAmapSdk } from '@/hooks/core/useAmapSdk'
   import type { AddressMapPickResult } from '../types'
 
   defineOptions({ name: 'ArtAddressMap' })
@@ -257,6 +258,11 @@
   const amapSecurityJsCode = computed(
     () => props.amapSecurityJsCode || import.meta.env.VITE_AMAP_SECURITY_JS_CODE || ''
   )
+  const { loadAmap } = useAmapSdk<AMapConstructor>({
+    key: amapKey,
+    plugins: () => props.plugins,
+    securityJsCode: amapSecurityJsCode
+  })
 
   const getAmapErrorMessage = (result: AMapErrorLike | undefined, fallback: string): string => {
     const info = String(result?.info ?? result?.message ?? '')
@@ -371,11 +377,6 @@
     geocoderInstance?.setCity?.(props.searchScope)
   }
 
-  const getLoadedAmap = (): AMapConstructor => {
-    if (!window.AMap) throw new Error('AMap SDK is not loaded')
-    return window.AMap as unknown as AMapConstructor
-  }
-
   const initializeServices = (AMap: AMapConstructor): void => {
     placeSearchInstance = new AMap.PlaceSearch({
       city: props.searchScope,
@@ -393,41 +394,6 @@
       extensions: 'all',
       level: props.districtLevel
     })
-  }
-
-  const loadAmap = async (): Promise<AMapConstructor> => {
-    if (window.AMap) return getLoadedAmap()
-
-    if (!amapKey.value) throw new Error('请先配置 VITE_AMAP_KEY')
-
-    if (amapSecurityJsCode.value) {
-      window._AMapSecurityConfig = {
-        securityJsCode: amapSecurityJsCode.value
-      }
-    }
-
-    const existingScript = document.querySelector<HTMLScriptElement>('script[data-art-amap]')
-    if (existingScript) {
-      await new Promise<void>((resolve, reject) => {
-        existingScript.addEventListener('load', () => resolve(), { once: true })
-        existingScript.addEventListener('error', () => reject(new Error('高德地图加载失败')), {
-          once: true
-        })
-      })
-      return getLoadedAmap()
-    }
-
-    await new Promise<void>((resolve, reject) => {
-      const script = document.createElement('script')
-      script.dataset.artAmap = 'true'
-      script.src = `https://webapi.amap.com/maps?v=2.0&key=${amapKey.value}&plugin=${props.plugins.join(',')}`
-      script.async = true
-      script.onload = () => resolve()
-      script.onerror = () => reject(new Error('高德地图加载失败'))
-      document.head.appendChild(script)
-    })
-
-    return getLoadedAmap()
   }
 
   const reverseGeocode = (lng: number, lat: number): void => {
@@ -543,7 +509,7 @@
       const lat = typeof location?.getLat === 'function' ? location.getLat() : location?.lat
       if (status !== 'complete' || isNil(lng) || isNil(lat)) {
         const message = getAmapErrorMessage(result, '高德地址解析失败')
-        ElMessage.warning('当前地点缺少坐标，请换一个搜索结果或点击地图选点')
+        ElMessage.warning(message)
         return
       }
 
@@ -726,36 +692,6 @@
     getMap: () => amapInstance,
     getAMap: () => window.AMap
   })
-</script>
-
-<script lang="ts">
-  declare global {
-    interface ArtAmapBrowserNamespace {
-      AutoComplete: new (options: Record<string, unknown>) => unknown
-      DistrictSearch: new (options: Record<string, unknown>) => unknown
-      Geocoder: new (options: Record<string, unknown>) => unknown
-      LngLat: new (lng: number, lat: number) => unknown
-      Map: new (container: HTMLElement, options: Record<string, unknown>) => unknown
-      Marker: new (options: Record<string, unknown>) => unknown
-      Pixel: new (x: number, y: number) => unknown
-      PlaceSearch: new (options: Record<string, unknown>) => unknown
-      Polyline: new (options: Record<string, unknown>) => unknown
-      Scale: new () => unknown
-      ToolBar: new (options?: Record<string, unknown>) => unknown
-    }
-
-    interface Window {
-      AMap?: ArtAmapBrowserNamespace
-      _AMapSecurityConfig?: {
-        securityJsCode?: string
-      }
-    }
-
-    interface ImportMetaEnv {
-      VITE_AMAP_KEY?: string
-      VITE_AMAP_SECURITY_JS_CODE?: string
-    }
-  }
 </script>
 
 <style scoped lang="scss">

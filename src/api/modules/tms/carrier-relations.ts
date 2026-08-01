@@ -1,5 +1,5 @@
 import { useSupabase } from '@/hooks'
-import type { QueryResult } from '@/hooks/core/useSupabase'
+import type { QueryResult } from '@/types/api/response'
 
 type Carrier = Api.Tms.BasicData.Carrier
 

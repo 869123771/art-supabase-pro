@@ -1404,6 +1404,7 @@ declare namespace Api {
       interface AiOrderAnalyzeResponse {
         summary: string
         confidence: number
+        fieldConfidence?: Record<string, number>
         missingFields: string[]
         warnings: string[]
         order: AiOrderDraft
@@ -1573,6 +1574,123 @@ declare namespace Api {
         DeliveryRecord,
         'id' | 'orderStatus' | 'signedCodAmount' | 'receiptImageUrls' | 'signedAt'
       >
+    }
+
+    namespace Finance {
+      type WaybillCostType =
+        | 'carrier_freight'
+        | 'toll'
+        | 'parking'
+        | 'fuel'
+        | 'loading'
+        | 'waiting'
+        | 'driver_expense'
+        | 'cargo_damage'
+        | 'other'
+
+      type CostAuditStatus = 'draft' | 'pending_review' | 'approved' | 'rejected' | 'voided'
+
+      interface WaybillCostWaybill {
+        id: string
+        waybillNo: string
+        status: string
+        orderId?: string | null
+        carrierId?: string | null
+        driverId?: string | null
+        originCity?: string | null
+        destinationCity?: string | null
+        carrier?: Pick<BasicData.CarrierOption, 'id' | 'companyName'> | null
+        driver?: Pick<BasicData.DriverOption, 'id' | 'driverName' | 'phone'> | null
+        order?: Pick<
+          Order.OrderRecord,
+          | 'id'
+          | 'orderNo'
+          | 'dispatchPlateNo'
+          | 'dispatchDriverName'
+          | 'originStation'
+          | 'destinationStation'
+        > | null
+      }
+
+      interface WaybillCostRecord {
+        id?: string
+        tenantId?: string
+        waybillId: string
+        costType: WaybillCostType | string
+        amount: number
+        occurredOn: string
+        payeeName?: string | null
+        carrierId?: string | null
+        driverId?: string | null
+        remark?: string | null
+        attachments?: Array<Record<string, unknown>>
+        auditStatus?: CostAuditStatus
+        submittedAt?: string | null
+        submittedBy?: string | null
+        reviewedAt?: string | null
+        reviewedBy?: string | null
+        reviewRemark?: string | null
+        createBy?: string | null
+        createTime?: string
+        updateBy?: string | null
+        updateTime?: string
+        waybill?: WaybillCostWaybill | null
+      }
+
+      type WaybillCostSearchParams = Api.Common.CommonSearchParams & {
+        keyword?: string
+        costType?: string
+        auditStatus?: string
+        occurredOnRange?: string[]
+      }
+
+      interface WaybillOption extends WaybillCostWaybill {
+        completedAt?: string | null
+      }
+
+      interface WaybillOptionSearchParams extends Api.Common.CommonSearchParams {
+        keyword?: string
+      }
+
+      interface CostReviewPayload {
+        id: string
+        auditStatus: 'approved' | 'rejected'
+        reviewRemark?: string | null
+      }
+
+      interface WaybillProfitRecord {
+        id: string
+        tenantId: string
+        waybillId: string
+        orderId?: string | null
+        waybillNo: string
+        waybillStatus: string
+        orderStatus?: string | null
+        customerId?: string | null
+        customerName?: string | null
+        carrierId?: string | null
+        carrierName?: string | null
+        plateNo?: string | null
+        driverName?: string | null
+        originStation?: string | null
+        destinationStation?: string | null
+        receivableAmount: number
+        carrierPayableAmount: number
+        otherCostAmount: number
+        totalCostAmount: number
+        grossProfit: number
+        grossMargin: number
+        completedAt?: string | null
+        signedAt?: string | null
+        createTime?: string
+        updateTime?: string
+      }
+
+      type WaybillProfitSearchParams = Api.Common.CommonSearchParams & {
+        keyword?: string
+        waybillStatus?: string
+        completedAtRange?: string[]
+      }
     }
 
     namespace InTransit {

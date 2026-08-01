@@ -1,5 +1,10 @@
 import { useSupabase } from '@/hooks'
-import { withRequestOptions, type SupabaseQueryLike } from '@/api/modules/tms/query'
+import {
+  applyCreateTimeRange,
+  normalizeBooleanFilter,
+  withRequestOptions,
+  type SupabaseQueryLike
+} from '@/api/providers/supabase/query'
 import type { ApiRequestOptions } from '@/types/api/request'
 
 type Customer = Api.Tms.BasicData.Customer
@@ -15,18 +20,6 @@ interface WriteOptions {
 
 const { supabase, keysToSnakeDeep, responseHandle } = useSupabase()
 
-const normalizeBooleanFilter = (value: unknown): boolean | undefined => {
-  if (value === true || value === 'true') return true
-  if (value === false || value === 'false') return false
-  return undefined
-}
-
-const applyDateRange = (query: SupabaseQueryLike, dateRange?: string[]): SupabaseQueryLike => {
-  if (dateRange?.[0]) query = query.gte('create_time', `${dateRange[0]}T00:00:00`)
-  if (dateRange?.[1]) query = query.lte('create_time', `${dateRange[1]}T23:59:59.999`)
-  return query
-}
-
 const applyCustomerFilters = (
   query: SupabaseQueryLike,
   params: CustomerSearchParams
@@ -41,7 +34,7 @@ const applyCustomerFilters = (
       `customer_name.ilike.%${keyword}%,customer_code.ilike.%${keyword}%,contact_name.ilike.%${keyword}%,contact_phone.ilike.%${keyword}%`
     )
   }
-  return applyDateRange(query, createTimeRange)
+  return applyCreateTimeRange(query, createTimeRange)
 }
 
 export async function fetchCustomerList(params: CustomerSearchParams, options?: ApiRequestOptions) {
@@ -169,7 +162,7 @@ const applyCustomerAddressFilters = (
       `contact_name.ilike.%${keyword}%,contact_phone.ilike.%${keyword}%,address_detail.ilike.%${keyword}%`
     )
   }
-  return applyDateRange(query, createTimeRange)
+  return applyCreateTimeRange(query, createTimeRange)
 }
 
 export async function fetchCustomerAddressList(

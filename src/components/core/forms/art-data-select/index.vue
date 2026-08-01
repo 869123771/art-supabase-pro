@@ -283,7 +283,7 @@
 </template>
 
 <script setup lang="ts">
-  import { isEqual } from 'lodash-es'
+  import { get, isEqual, uniqBy } from 'lodash-es'
   import type { Component } from 'vue'
   import type { ComponentPublicInstance } from 'vue'
   import type { ElTree } from 'element-plus'
@@ -292,6 +292,7 @@
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
+  import TreeUtils from '@/utils/tree'
   import type {
     ArtDataSelectEmits,
     ArtDataSelectExpose,
@@ -377,6 +378,9 @@
   const normalizedFilterOptions = computed(() => props.filterOptions ?? [])
   const normalizedFilterKey = computed(() => props.filterKey ?? 'type')
   const shouldShowSelectedPanel = computed(() => props.showSelectedPanel ?? props.multiple)
+  const treeUtils = computed(
+    () => new TreeUtils({ childrenKey: props.childrenKey, deepClone: false })
+  )
   const selectionSummary = computed(() => {
     if (props.multiple) return `当前已选择 ${draftRows.value.length} 项`
     return `当前选择：${draftRows.value[0] ? getRowLabel(draftRows.value[0]) : '暂无'}`
@@ -404,7 +408,7 @@
   }
 
   const getColumnValue = (column: DataSelectColumn, row: DataSelectRecord) => {
-    return column.formatter?.(row) ?? getValueByPath(row, column.prop) ?? ''
+    return column.formatter?.(row) ?? get(row, column.prop) ?? ''
   }
 
   const getColumnTagType = (column: DataSelectColumn, row: DataSelectRecord) => {
@@ -413,39 +417,31 @@
 
   const getDictColumnValue = (column: DataSelectColumn, row: DataSelectRecord) => {
     if (column.dict?.value) return column.dict.value(row)
-    return getValueByPath(row, column.prop) as string | number | null | undefined
-  }
-
-  const getValueByPath = (source: unknown, path?: string): unknown => {
-    if (!path) return source
-    return path.split('.').reduce<unknown>((value, key) => {
-      if (value == null || typeof value !== 'object') return undefined
-      return (value as Record<string, unknown>)[key]
-    }, source)
+    return get(row, column.prop) as string | number | null | undefined
   }
 
   const getRowKey = (row: DataSelectRecord): DataSelectKey => {
     if (typeof props.rowKey === 'function') return props.rowKey(row)
-    return getValueByPath(row, props.rowKey) as DataSelectKey
+    return get(row, props.rowKey) as DataSelectKey
   }
 
   const getTableRowKey = (row: DataSelectRecord): string => String(getRowKey(row))
 
   const getRowLabel = (row: DataSelectRecord): string => {
     if (typeof props.labelKey === 'function') return props.labelKey(row)
-    return String(getValueByPath(row, props.labelKey) ?? '')
+    return String(get(row, props.labelKey) ?? '')
   }
 
   const getRowDescription = (row: DataSelectRecord): string => {
     if (!props.descriptionKey) return ''
     if (typeof props.descriptionKey === 'function') return props.descriptionKey(row)
-    return String(getValueByPath(row, props.descriptionKey) ?? '')
+    return String(get(row, props.descriptionKey) ?? '')
   }
 
   const isRowDisabled = (row: DataSelectRecord): boolean => {
     if (typeof props.disabledKey === 'function') return props.disabledKey(row)
     if (!props.disabledKey) return false
-    return !!getValueByPath(row, props.disabledKey)
+    return !!get(row, props.disabledKey)
   }
 
   const isRowSelectable = (row: DataSelectRecord) => !isRowDisabled(row)
@@ -457,27 +453,15 @@
 
   const flattenRows = (rows: DataSelectRecord[]): DataSelectRecord[] => {
     const result: DataSelectRecord[] = []
-    const walk = (items: DataSelectRecord[]) => {
-      items.forEach((item) => {
-        result.push(item)
-        const children = item[props.childrenKey]
-        if (Array.isArray(children)) walk(children)
-      })
-    }
-    walk(rows)
+    treeUtils.value.traverse(rows, (row) => void result.push(row))
     return result
   }
 
-  const uniqueRows = (rows: DataSelectRecord[]): DataSelectRecord[] => {
-    const map = new Map<DataSelectKey, DataSelectRecord>()
-    rows.forEach((row) => {
-      const key = getRowKey(row)
-      if (key !== undefined && key !== null && !map.has(key)) {
-        map.set(key, row)
-      }
-    })
-    return Array.from(map.values())
-  }
+  const uniqueRows = (rows: DataSelectRecord[]): DataSelectRecord[] =>
+    uniqBy(
+      rows.filter((row) => getRowKey(row) !== undefined && getRowKey(row) !== null),
+      getRowKey
+    )
 
   const normalizeModelKeys = (value: DataSelectModelValue): DataSelectKey[] => {
     if (Array.isArray(value)) return value
@@ -505,16 +489,11 @@
     return { id: key, label: String(key) }
   }
 
-  const normalizeTreeRows = (rows: DataSelectRecord[]): DataSelectRecord[] => {
-    return rows.map((row) => {
-      const children = row[props.childrenKey]
-      return {
-        ...row,
-        [treeNodeKey.value]: getRowKey(row),
-        [props.childrenKey]: Array.isArray(children) ? normalizeTreeRows(children) : children
-      }
-    })
-  }
+  const normalizeTreeRows = (rows: DataSelectRecord[]): DataSelectRecord[] =>
+    treeUtils.value.mapTree(rows, (row) => ({
+      ...row,
+      [treeNodeKey.value]: getRowKey(row)
+    }))
 
   const syncConfirmedFromProps = () => {
     const keys = normalizeModelKeys(props.modelValue)
@@ -563,7 +542,7 @@
 
   const extractListFromResult = (result: unknown): DataSelectRecord[] => {
     if (Array.isArray(result)) return result
-    const fieldValue = getValueByPath(result, props.resultField)
+    const fieldValue = props.resultField ? get(result, props.resultField) : result
     if (Array.isArray(fieldValue)) return fieldValue
     if (result && typeof result === 'object') {
       const record = result as Record<string, unknown>
@@ -574,7 +553,7 @@
   }
 
   const extractTotalFromResult = (result: unknown, list: DataSelectRecord[]): number => {
-    const totalValue = getValueByPath(result, props.totalField)
+    const totalValue = props.totalField ? get(result, props.totalField) : result
     if (typeof totalValue === 'number') return totalValue
     if (result && typeof result === 'object') {
       const record = result as Record<string, unknown>
@@ -597,7 +576,7 @@
       const matchesKeyword =
         !query ||
         normalizedColumns.value.some((column) =>
-          String(getValueByPath(row, column.prop) ?? '')
+          String(get(row, column.prop) ?? '')
             .toLowerCase()
             .includes(query)
         ) ||
@@ -605,7 +584,7 @@
       const matchesFilter =
         filterValue.value === undefined ||
         filterValue.value === '' ||
-        getValueByPath(row, normalizedFilterKey.value) === filterValue.value
+        get(row, normalizedFilterKey.value) === filterValue.value
       return matchesKeyword && matchesFilter
     })
     total.value = filteredRows.length

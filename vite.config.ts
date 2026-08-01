@@ -26,6 +26,37 @@ const matchPackages = (id: string, packages: string[]) => {
   return packages.some((packageName) => normalizedId.includes(`/node_modules/${packageName}`))
 }
 
+const matchFrameworkPackages = (id: string) => {
+  const normalizedId = normalizeModuleId(id)
+  const packageRoots = [
+    'vue',
+    'vue-router',
+    'vue-i18n',
+    'vue-demi',
+    'pinia',
+    'pinia-plugin-persistedstate'
+  ]
+
+  return (
+    packageRoots.some((packageName) => normalizedId.includes(`/node_modules/${packageName}/`)) ||
+    normalizedId.includes('/node_modules/@vue/') ||
+    normalizedId.includes('/node_modules/@vueuse/')
+  )
+}
+
+const matchBuildRuntime = (id: string) => {
+  const normalizedId = normalizeModuleId(id)
+  return (
+    matchPackages(id, ['@babel/runtime', 'tslib']) ||
+    normalizedId.includes('@oxc-project+runtime') ||
+    normalizedId.includes('@oxc-project/runtime') ||
+    normalizedId.includes('__vite-browser-external') ||
+    normalizedId.includes('commonjsHelpers') ||
+    normalizedId.includes('vite/preload-helper') ||
+    normalizedId.includes('vite/modulepreload-polyfill')
+  )
+}
+
 const getElementPlusStyleDeps = (root: string): string[] => {
   const componentsDir = path.resolve(root, 'node_modules/element-plus/es/components')
   if (!existsSync(componentsDir)) return []
@@ -103,41 +134,31 @@ export default ({ mode }: { mode: string }) => {
           codeSplitting: {
             groups: [
               {
-                name: 'file-viewer',
+                name: 'build-runtime',
+                test: matchBuildRuntime,
+                priority: 120
+              },
+              {
+                // Keep Vue's runtime out of feature chunks. Otherwise the entry imports
+                // Vue helpers from the 15 MB file-viewer chunk and preloads it on every page.
+                name: 'framework',
+                test: matchFrameworkPackages,
+                priority: 100
+              },
+              {
+                // These utilities are shared by Element Plus, tables and feature renderers.
+                // Giving them their own chunk prevents a feature chunk becoming their owner.
+                name: 'common-utils',
                 test: (id) =>
                   matchPackages(id, [
-                    '@file-viewer',
-                    '@ljheee/xmind-parser',
-                    'ag-psd',
-                    'avsc',
-                    'jszip',
-                    'libarchive.js',
-                    'rtf.js',
-                    'mermaid',
-                    '@mermaid-js/parser',
-                    'pdfjs-dist',
-                    'maplibre-gl',
-                    'heic2any',
-                    'cytoscape',
-                    'cytoscape-cose-bilkent',
-                    'cytoscape-fcose',
-                    'layout-base',
-                    'cose-base',
-                    'three',
-                    'billboard.js',
-                    'katex',
-                    'epubjs',
-                    'plantuml-encoder',
-                    '@kenjiuno/msgreader',
-                    'hyparquet',
-                    'postal-mime',
-                    '@myriaddreamin/typst-ts-renderer',
-                    'sql.js',
-                    'cfb',
-                    'dompurify',
-                    'iconv-lite'
+                    'lodash',
+                    'lodash-es',
+                    'lodash-unified',
+                    'dayjs',
+                    'sortablejs',
+                    'vue-draggable-plus'
                   ]),
-                priority: 50
+                priority: 90
               },
               {
                 name: 'media',
@@ -176,11 +197,6 @@ export default ({ mode }: { mode: string }) => {
                 test: (id) =>
                   matchPackages(id, ['xlsx', 'sql-formatter', 'node-sql-parser', 'crypto-js']),
                 priority: 20
-              },
-              {
-                name: 'vendor',
-                test: /node_modules/,
-                priority: 10
               }
             ]
           }
@@ -209,24 +225,26 @@ export default ({ mode }: { mode: string }) => {
             fileViewerRenderers({
               inject: false,
               copyAssets: enableFileViewerAssets,
-              chunkStrategy: 'renderer'
+              // Rolldown's native code splitting already preserves renderer-level lazy chunks.
+              // Disabling the plugin's Rollup manualChunks avoids an ignored-option warning.
+              chunkStrategy: 'none'
             })
           ]
         : []),
       // 自动按需导入 API
       AutoImport({
         imports: ['vue', 'vue-router', 'pinia', '@vueuse/core'],
-        dts: 'src/types/import/auto-imports.d.ts',
+        dts: isProduction ? false : 'src/types/import/auto-imports.d.ts',
         resolvers: [ElementPlusResolver({ importStyle: 'sass' })],
         eslintrc: {
-          enabled: true,
+          enabled: !isProduction,
           filepath: './.auto-import.json',
           globalsPropValue: true
         }
       }),
       // 自动按需导入组件
       Components({
-        dts: 'src/types/import/components.d.ts',
+        dts: isProduction ? false : 'src/types/import/components.d.ts',
         exclude: [/[\\/]art-data-select[\\/]preview\.vue$/],
         resolvers: [ElementPlusResolver({ importStyle: 'sass' })]
       }),
@@ -297,7 +315,7 @@ export default ({ mode }: { mode: string }) => {
         // sass variable and mixin
         scss: {
           additionalData: `
-            @use "@styles/core/el-light.scss" as *; 
+            @use "@styles/core/el-light.scss" as elementTheme;
             @use "@styles/core/mixin.scss" as *;
           `
         }

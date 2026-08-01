@@ -183,7 +183,8 @@
 <script setup lang="ts">
   import { useWindowSize } from '@vueuse/core'
   import { useI18n } from 'vue-i18n'
-  import { onMounted, toRaw, unref, watch, type Component, type Ref, type VNodeChild } from 'vue'
+  import { get, set, unset } from 'lodash-es'
+  import { onMounted, unref, watch, type Component, type Ref, type VNodeChild } from 'vue'
   import {
     ElCascader,
     ElCheckbox,
@@ -221,6 +222,12 @@
   import ArtDataSelect from '@/components/core/forms/art-data-select/index.vue'
   import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
   import { calculateResponsiveSpan, type ResponsiveBreakpoint } from '@/utils/form/responsive'
+  import {
+    cloneModelValue,
+    sanitizeFormValue,
+    type FormRecord,
+    type SanitizeOutputOptions
+  } from './model-utils'
 
   defineOptions({ name: 'ArtForm' })
 
@@ -255,13 +262,6 @@
   const formInstance = useTemplateRef<FormInstance>('formRef')
 
   type ComponentMap = typeof componentMap
-  // ArtForm is a metadata-driven wrapper; model and option payloads are owned by business pages.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  type FormRecord = Record<string, any>
-  // Deep path writes walk arbitrary object/array branches in the form model.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  type FormPathCursor = any
-
   export interface FormItemOption extends FormRecord {
     /** 选项显示文本 */
     label?: string
@@ -452,21 +452,6 @@
     sanitizeOutput?: Partial<SanitizeOutputOptions>
   }
 
-  interface SanitizeOutputOptions {
-    /** 移除空字符串 */
-    removeEmptyString: boolean
-    /** 移除空数组 */
-    removeEmptyArray: boolean
-    /** 移除清洗后为空的对象 */
-    removeEmptyObject: boolean
-    /** 移除空富文本占位内容，如 <p><br></p> */
-    removeEmptyRichText: boolean
-    /** 保留数字 0 这类有效值 */
-    keepZero: boolean
-    /** 保留 false 这类有效值 */
-    keepFalse: boolean
-  }
-
   const props = withDefaults(defineProps<ArtFormProps>(), {
     items: () => [],
     span: 6,
@@ -501,29 +486,6 @@
   const asyncOptionsMap = ref<Record<string, FormRecord[]>>({})
   const asyncLoadingMap = ref<Record<string, boolean>>({})
   const asyncRequestSignatureMap = ref<Record<string, string>>({})
-
-  // 保存组件初始化时的表单快照，用于 reset 时恢复默认值。
-  const cloneModelValue = (value: FormRecord | undefined) => {
-    if (!value) return {}
-
-    const deepClone = (source: unknown): unknown => {
-      if (Array.isArray(source)) {
-        return source.map((item) => deepClone(item))
-      }
-
-      if (source && typeof source === 'object') {
-        const rawSource = toRaw(source)
-        return Object.keys(rawSource).reduce<Record<string, unknown>>((accumulator, key) => {
-          accumulator[key] = deepClone((rawSource as Record<string, unknown>)[key])
-          return accumulator
-        }, {})
-      }
-
-      return source
-    }
-
-    return deepClone(toRaw(value)) as FormRecord
-  }
 
   initialModelValue.value = cloneModelValue(modelValue.value)
 
@@ -562,25 +524,8 @@
     ...props.sanitizeOutput
   }))
 
-  const PATH_NUMBER_RE = /^\d+$/
-
-  // 兼容 a.b、a.0.b 这类路径写法，数字段会被当作数组索引处理。
-  const parsePath = (path: string) => {
-    return path
-      .split('.')
-      .filter(Boolean)
-      .map((segment) => (PATH_NUMBER_RE.test(segment) ? Number(segment) : segment))
-  }
-
   const getFieldValue = (path: string) => {
-    return getRecordFieldValue(modelValue.value, path)
-  }
-
-  const getRecordFieldValue = (record: FormRecord | undefined, path: string) => {
-    return parsePath(path).reduce<FormPathCursor>((currentValue, segment) => {
-      if (currentValue == null) return undefined
-      return currentValue[segment]
-    }, record)
+    return get(modelValue.value, path)
   }
 
   const createModelSnapshot = () => cloneModelValue(modelValue.value)
@@ -599,23 +544,6 @@
     modelValue.value = nextValue
   }
 
-  const deleteFieldValue = (path: string, target: FormRecord) => {
-    const segments = parsePath(path)
-    if (!segments.length) return target
-
-    const lastSegment = segments.pop()
-    const parent = segments.reduce<FormPathCursor>((currentValue, segment) => {
-      if (currentValue == null) return undefined
-      return currentValue[segment]
-    }, target)
-
-    if (parent != null && lastSegment !== undefined) {
-      delete parent[lastSegment]
-    }
-
-    return target
-  }
-
   const normalizeClearedValue = (value: unknown, item: FormItem): unknown => {
     if (value !== undefined && value !== null) return value
 
@@ -628,42 +556,17 @@
 
   const setFieldValue = (path: string, value: unknown, item: FormItem) => {
     const normalizedValue = normalizeClearedValue(value, item)
-    const segments = parsePath(path)
-
-    if (!segments.length) return
+    if (!path) return
 
     const nextModelValue = createModelSnapshot()
 
     if (normalizedValue === undefined) {
-      commitModelValue(deleteFieldValue(path, nextModelValue))
+      unset(nextModelValue, path)
+      commitModelValue(nextModelValue)
       return
     }
 
-    let currentValue: FormPathCursor = nextModelValue
-
-    segments.forEach((segment, index) => {
-      const isLast = index === segments.length - 1
-
-      if (isLast) {
-        currentValue[segment] = normalizedValue
-        return
-      }
-
-      const nextSegment = segments[index + 1]
-      const nextContainer = typeof nextSegment === 'number' ? [] : {}
-
-      if (
-        currentValue[segment] === null ||
-        currentValue[segment] === undefined ||
-        typeof currentValue[segment] !== 'object'
-      ) {
-        currentValue[segment] = nextContainer
-      }
-
-      currentValue = currentValue[segment]
-    })
-
-    commitModelValue(nextModelValue)
+    commitModelValue(set(nextModelValue, path, normalizedValue))
   }
 
   const emptyStringClearTypes = ['input', 'inputTag', 'select', 'treeSelect', 'cascader']
@@ -674,7 +577,7 @@
 
     if (!item.slots && !item.render) return false
 
-    const initialValue = getRecordFieldValue(initialModelValue.value, item.key)
+    const initialValue = get(initialModelValue.value, item.key)
     return stringValueFieldKeys.value.has(item.key) || typeof initialValue === 'string'
   }
 
@@ -701,80 +604,16 @@
     return () => setFieldValue(item.key, undefined, item)
   }
 
-  const isRichTextEmpty = (value: string) => {
-    if (/<(img|video|audio|iframe|embed|object)\b/i.test(value)) {
-      return false
-    }
-
-    // 去掉编辑器常见占位标签后再判断是否还有实际内容。
-    return (
-      value
-        .replace(/&nbsp;/gi, '')
-        .replace(/<br\s*\/?>/gi, '')
-        .replace(/<[^>]*>/g, '')
-        .trim() === ''
-    )
-  }
-
-  // 提交时按配置清洗空值，但保留 0 和 false 这类有效值。
-  const sanitizeOutputValue = (value: unknown): unknown => {
-    const options = sanitizeOutputOptions.value
-
-    if (Array.isArray(value)) {
-      const sanitizedArray = value
-        .map((item) => sanitizeOutputValue(item))
-        .filter((item) => item !== undefined)
-      return sanitizedArray.length === 0 && options.removeEmptyArray ? undefined : sanitizedArray
-    }
-
-    if (value && typeof value === 'object') {
-      const rawValue = toRaw(value)
-      const sanitizedObject = Object.entries(rawValue).reduce<Record<string, unknown>>(
-        (accumulator, [key, item]) => {
-          const sanitizedItem = sanitizeOutputValue(item)
-          if (sanitizedItem !== undefined) {
-            accumulator[key] = sanitizedItem
-          }
-          return accumulator
-        },
-        {}
-      )
-      return Object.keys(sanitizedObject).length === 0 && options.removeEmptyObject
-        ? undefined
-        : sanitizedObject
-    }
-
-    if (typeof value === 'string') {
-      if (options.removeEmptyString && value.trim() === '') {
-        return undefined
-      }
-      if (options.removeEmptyRichText && isRichTextEmpty(value)) {
-        return undefined
-      }
-      return value
-    }
-
-    if (value === 0) {
-      return options.keepZero ? value : undefined
-    }
-
-    if (value === false) {
-      return options.keepFalse ? value : undefined
-    }
-
-    return value ?? undefined
-  }
-
   const getSanitizedOutput = () => {
     const outputValue = cloneModelValue(modelValue.value)
 
     props.items.forEach((item) => {
       if (isFormItemHidden(item)) {
-        deleteFieldValue(item.key, outputValue)
+        unset(outputValue, item.key)
       }
     })
 
-    return (sanitizeOutputValue(outputValue) || {}) as FormRecord
+    return (sanitizeFormValue(outputValue, sanitizeOutputOptions.value) || {}) as FormRecord
   }
 
   const optionComponentTypes = [
@@ -788,16 +627,8 @@
 
   const isOptionComponent = (item: FormItem) => optionComponentTypes.includes(String(item.type))
 
-  const getValueByPath = (source: unknown, path?: string): unknown => {
-    if (!path) return source
-    return path.split('.').reduce<unknown>((currentValue, segment) => {
-      if (currentValue == null || typeof currentValue !== 'object') return undefined
-      return (currentValue as Record<string, unknown>)[segment]
-    }, source)
-  }
-
   const extractOptionsResult = (result: unknown, resultField?: string): FormRecord[] => {
-    const target = getValueByPath(result, resultField)
+    const target = resultField ? get(result, resultField) : result
     return Array.isArray(target) ? target : []
   }
 
@@ -1208,79 +1039,4 @@
   const { span, gutter, labelPosition, labelWidth } = toRefs(props)
 </script>
 
-<style scoped lang="scss">
-  .art-form {
-    &.art-search-bar {
-      padding: 15px 20px 0;
-    }
-
-    &-item {
-      &__label {
-        display: inline-flex;
-        align-items: center;
-        min-width: 0;
-      }
-
-      &__help-icon {
-        flex: none;
-        margin-left: 4px;
-        color: var(--el-text-color-secondary);
-        cursor: help;
-      }
-
-      &__content {
-        width: 100%;
-        min-width: 0;
-      }
-
-      &__description {
-        margin-top: 6px;
-        font-size: 12px;
-        line-height: 20px;
-        color: var(--el-text-color-secondary);
-      }
-
-      &__text {
-        display: inline-flex;
-        align-items: center;
-        min-height: 32px;
-        line-height: 20px;
-        color: var(--el-text-color-primary);
-        word-break: break-all;
-      }
-    }
-
-    &__filter-toggle {
-      display: flex;
-      align-items: center;
-      margin-left: 10px;
-      line-height: 32px;
-      color: var(--theme-color);
-      cursor: pointer;
-      transition: color 0.2s ease;
-
-      &:hover {
-        color: var(--ElColor-primary);
-      }
-
-      span {
-        font-size: 14px;
-        user-select: none;
-      }
-    }
-
-    &__filter-toggle-icon {
-      display: flex;
-      align-items: center;
-      margin-left: 4px;
-      font-size: 14px;
-      transition: transform 0.2s ease;
-    }
-
-    @media (width <= 768px) {
-      &.art-search-bar {
-        padding: 16px 16px 0;
-      }
-    }
-  }
-</style>
+<style scoped lang="scss" src="./style.scss"></style>

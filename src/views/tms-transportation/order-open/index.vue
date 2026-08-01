@@ -210,11 +210,10 @@
 <script setup lang="tsx">
   import type { ComputedRef, UnwrapNestedRefs } from 'vue'
   import { useDateFormat, useNow } from '@vueuse/core'
-  import { cloneDeep, isNil, omit, round, toNumber as lodashToNumber, trim } from 'lodash-es'
+  import { cloneDeep, isNil, omit, round } from 'lodash-es'
   import type { FormRules } from 'element-plus'
   import { ElAutocomplete, ElInputNumber, ElMessage, ElOption, ElSelect } from 'element-plus'
   import { Collection, Plus } from '@element-plus/icons-vue'
-  import dayjs from 'dayjs'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
@@ -231,11 +230,25 @@
     fetchStationOptions
   } from '@/api/tms'
   import { useUserStore } from '@/store/modules/user'
+  import { clearFormRefsValidation, validateFormRefs } from '@/utils/form/validation'
   import CargoMultipleSelect from '../modules/cargo-multiple-select.vue'
   import AiOrderDrawer from './modules/ai-order-drawer.vue'
   import CustomerSelectorDialog from './modules/customer-selector-dialog.vue'
   import PrintCountDialog from './modules/print-count-dialog.vue'
   import type { AiOrderApplyPayload, AiOrderDrawerExpose } from './modules/ai-order-types'
+  import {
+    createInitialCargoItem,
+    createInitialForm,
+    formatNumber,
+    getDictLabel,
+    moneyValue,
+    normalizeCargoItems,
+    nullableNumber,
+    nullableText,
+    numericValue,
+    textValue,
+    type OrderForm
+  } from './modules/order-open-model'
 
   defineOptions({ name: 'TmsOrderOpen' })
 
@@ -307,12 +320,6 @@
     volume: number
   }
 
-  type OrderForm = OrderRecord & {
-    imageUrls: string[]
-    shippingCustomerName: string
-    receivingCustomerName: string
-  }
-
   interface FormGroup {
     data: OrderForm
     stationCaches: Record<StationMode, StationOption[]>
@@ -354,6 +361,7 @@
   const cargoSelectorRef = ref<CargoSelectorExpose>()
   const aiOrderDrawerRef = ref<AiOrderDrawerExpose>()
   const initializedOrderId = ref<string>()
+  const validatedFormRefs = [stationFormRef, shippingFormRef, receivingFormRef, paymentFormRef]
 
   const dictCodes = [
     'tmsOrderDeliveryMethod',
@@ -714,7 +722,7 @@
       fillDefaultOptions()
       initializedOrderId.value = orderId
       await nextTick()
-      clearFormsValidate()
+      clearFormRefsValidation(validatedFormRefs)
     } finally {
       page.loading = false
     }
@@ -748,61 +756,6 @@
     { immediate: true }
   )
 
-  function createInitialForm(): OrderForm {
-    return {
-      orderNo: createOrderNo(),
-      cargoNo: createCargoNo(),
-      orderStatus: 'pending_load',
-      originStationId: null,
-      destinationStationId: null,
-      transferStationId: null,
-      originStation: '',
-      destinationStation: '',
-      transferStation: '',
-      deliveryMethod: 'door',
-      shippingCustomerId: null,
-      receivingCustomerId: null,
-      shippingCustomerName: '',
-      receivingCustomerName: '',
-      shippingAddressId: null,
-      receivingAddressId: null,
-      shippingContactName: '',
-      shippingContactPhone: '',
-      shippingAddressDetail: '',
-      shippingLongitude: null,
-      shippingLatitude: null,
-      receivingContactName: '',
-      receivingContactPhone: '',
-      receivingAddressDetail: '',
-      receivingLongitude: null,
-      receivingLatitude: null,
-      cargoItems: [createInitialCargoItem()],
-      cargoQuantityTotal: 0,
-      cargoWeightTotal: 0,
-      cargoVolumeTotal: 0,
-      transportFee: 0,
-      deliveryFee: 0,
-      unloadingFee: 0,
-      collectPaymentFee: 0,
-      transferFee: 0,
-      declaredValue: 0,
-      insuranceFee: 0,
-      packageFee: 0,
-      otherFee: 0,
-      totalFee: 0,
-      paymentMethod: 'collect',
-      cashAmount: 0,
-      collectAmount: 0,
-      monthlyAmount: 0,
-      codAmount: 0,
-      handlingFee: 0,
-      paymentTotal: 0,
-      transportMode: 'road',
-      orderRemark: '',
-      imageUrls: []
-    }
-  }
-
   async function loadOrderDetail(id: string): Promise<void> {
     const { data } = await fetchOrderDetail(id)
     if (!data) {
@@ -832,25 +785,6 @@
       receivingCustomerName:
         clonedForm.receivingCustomerName || clonedForm.receivingCustomer?.customerName || ''
     })
-  }
-
-  function createInitialCargoItem(): CargoItem {
-    return {
-      cargoName: '',
-      packageType: '',
-      quantity: null,
-      unit: '',
-      weightKg: null,
-      volumeM3: null
-    }
-  }
-
-  function createOrderNo(): string {
-    return `NGSJ${dayjs().format('MMDD')}-${Math.floor(100 + Math.random() * 900)}`
-  }
-
-  function createCargoNo(): string {
-    return `A${dayjs().format('M-D')}-${Math.floor(10 + Math.random() * 90)}`
   }
 
   function fillDefaultOptions(): void {
@@ -1083,7 +1017,7 @@
         form.data.cargoItems = price.cargoItems.map(createCargoItemFromCustomerPrice)
       }
       await nextTick()
-      clearFormsValidate()
+      clearFormRefsValidation(validatedFormRefs)
       ElMessage.success('已带入客户价格维护信息')
     } catch {
       // 价格模板只是辅助回填，查询失败时保留已选择的客户基础信息。
@@ -1282,7 +1216,7 @@
     }
 
     await nextTick()
-    clearFormsValidate()
+    clearFormRefsValidation(validatedFormRefs)
     ElMessage.success('AI 识别结果已填入，请检查后保存订单')
   }
 
@@ -1347,16 +1281,8 @@
   }
 
   async function validateForms(): Promise<boolean> {
-    const formRefs = [stationFormRef, shippingFormRef, receivingFormRef, paymentFormRef]
-    for (const item of formRefs) {
-      try {
-        await item.value?.validate()
-      } catch {
-        await nextTick()
-        focusFirstInvalidField()
-        return false
-      }
-    }
+    const isFormValid = await validateFormRefs(validatedFormRefs, pageRef)
+    if (!isFormValid) return false
 
     const hasCargoName = (form.data.cargoItems ?? []).some((item) => textValue(item.cargoName))
     if (!hasCargoName) {
@@ -1402,22 +1328,6 @@
 
   function handlePrintConfirm(kind: PrintKind, count: number): void {
     ElMessage.success(`${kind === 'waybill' ? '运单' : '标签'}打印数量：${count}`)
-  }
-
-  function clearFormsValidate(): void {
-    stationFormRef.value?.clearValidate()
-    shippingFormRef.value?.clearValidate()
-    receivingFormRef.value?.clearValidate()
-    paymentFormRef.value?.clearValidate()
-  }
-
-  function focusFirstInvalidField(): void {
-    const invalidItem = pageRef.value?.querySelector<HTMLElement>('.el-form-item.is-error')
-    if (!invalidItem) return
-    invalidItem.scrollIntoView({ behavior: 'smooth', block: 'center' })
-    invalidItem
-      .querySelector<HTMLElement>('input, textarea, button, [tabindex]:not([tabindex="-1"])')
-      ?.focus()
   }
 
   function normalizePayload(): OrderRecord {
@@ -1482,331 +1392,12 @@
     return payload
   }
 
-  function normalizeCargoItems(items?: CargoItem[]): CargoItem[] {
-    return (items ?? [])
-      .map((item) => ({
-        cargoName: textValue(item.cargoName),
-        packageType: textValue(item.packageType),
-        quantity: nullableNumber(item.quantity),
-        unit: textValue(item.packageType),
-        weightKg: nullableNumber(item.weightKg),
-        volumeM3: nullableNumber(item.volumeM3)
-      }))
-      .filter(
-        (item) =>
-          item.cargoName || item.packageType || item.quantity || item.weightKg || item.volumeM3
-      )
-  }
-
   function sumFields(fields: Array<keyof OrderForm>): number {
     return round(
       fields.reduce((sum, field) => sum + numericValue(form.data[field] as number), 0),
       2
     )
   }
-
-  function numericValue(value?: number | string | null): number {
-    const parsed = lodashToNumber(value ?? 0)
-    return Number.isFinite(parsed) ? parsed : 0
-  }
-
-  function formatNumber(value?: number | string | null, precision = 2): string {
-    const numberValue = numericValue(value)
-    return numberValue
-      .toFixed(precision)
-      .replace(/\.0+$/, '')
-      .replace(/(\.\d*?)0+$/, '$1')
-  }
-
-  function textValue(value?: string | null): string {
-    return trim(String(value ?? ''))
-  }
-
-  function nullableText(value?: string | null): string | null {
-    const text = textValue(value)
-    return text || null
-  }
-
-  function nullableNumber(value?: number | string | null): number | null {
-    if (isNil(value) || value === '') return null
-    const parsed = lodashToNumber(value)
-    return Number.isFinite(parsed) ? parsed : null
-  }
-
-  function moneyValue(value?: number | string | null): number {
-    return round(nullableNumber(value) ?? 0, 2)
-  }
-
-  function getDictLabel(options: Api.DataCenter.DictListItem[], value?: string | null): string {
-    if (!value) return ''
-    return options.find((item) => item.value === value)?.label || value
-  }
 </script>
 
-<style scoped lang="scss">
-  .order-open {
-    min-height: 100%;
-    padding: 12px 18px 18px;
-    background: #f5f7fb;
-
-    &__header {
-      display: grid;
-      grid-template-columns: minmax(260px, 340px) 1fr minmax(240px, 320px);
-      gap: 20px;
-      align-items: center;
-      min-height: 64px;
-      padding: 10px 18px;
-      margin-bottom: 12px;
-    }
-
-    &__badge {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 16px;
-      align-items: center;
-      min-height: 44px;
-      padding: 8px 16px;
-      font-size: 17px;
-      font-weight: 700;
-      line-height: 1.35;
-      color: #fff;
-      background: var(--el-color-primary);
-      border-radius: var(--el-border-radius-base);
-      box-shadow: inset 0 -1px 0 rgb(0 0 0 / 8%);
-    }
-
-    &__title {
-      justify-self: center;
-      padding: 0 18px 4px;
-      font-size: 18px;
-      font-weight: 700;
-      letter-spacing: 12px;
-      white-space: nowrap;
-      border-bottom: 3px double #d8deea;
-    }
-
-    &__time {
-      display: inline-flex;
-      gap: 6px;
-      align-items: center;
-      justify-self: end;
-      font-size: 17px;
-      font-weight: 700;
-      color: var(--art-text-gray-800);
-    }
-
-    &__section {
-      padding: 20px 22px;
-      margin-bottom: 12px;
-
-      &--compact {
-        padding-top: 18px;
-        padding-bottom: 2px;
-      }
-
-      &-actions {
-        display: flex;
-      }
-    }
-
-    &__section-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 14px;
-    }
-
-    &__contact-grid {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) 48px minmax(0, 1fr);
-      gap: 28px;
-      align-items: center;
-    }
-
-    &__contact-panel {
-      min-width: 0;
-    }
-
-    &__contact-heading {
-      display: grid;
-      grid-template-columns: auto 1fr auto;
-      gap: 12px;
-      align-items: center;
-      margin-bottom: 18px;
-
-      h3 {
-        margin: 0;
-        font-size: 16px;
-        font-weight: 600;
-        color: var(--art-text-gray-800);
-      }
-    }
-
-    &__contact-mark {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 30px;
-      height: 30px;
-      font-size: 16px;
-      font-weight: 700;
-      color: #fff;
-      border-radius: var(--el-border-radius-base);
-
-      &--send {
-        background: #37c2ff;
-      }
-
-      &--receive {
-        background: #f4c430;
-      }
-    }
-
-    &__swap {
-      display: flex;
-      justify-content: center;
-      color: var(--el-color-primary);
-
-      .el-button {
-        width: 34px;
-        height: 34px;
-        background: var(--el-color-primary-light-9);
-      }
-    }
-
-    &__cargo-summary {
-      display: flex;
-      gap: 28px;
-      justify-content: flex-end;
-      padding: 14px 12px 0;
-      color: var(--art-text-gray-700);
-    }
-
-    &__upload-row {
-      display: flex;
-      gap: 18px;
-      align-items: flex-start;
-      padding-top: 4px;
-      margin-top: 6px;
-      margin-left: 14px;
-      color: var(--art-text-gray-700);
-
-      > span {
-        padding-top: 8px;
-      }
-    }
-
-    &__footer {
-      position: sticky;
-      bottom: 0;
-      z-index: 10;
-      display: flex;
-      gap: 18px;
-      align-items: center;
-      justify-content: space-between;
-      min-height: 80px;
-      padding: 14px 20px 14px 28px;
-      margin-top: 12px;
-    }
-
-    &__footer-total {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-      white-space: nowrap;
-
-      strong {
-        font-size: 28px;
-        color: var(--el-color-primary);
-      }
-    }
-
-    &__footer-actions {
-      display: flex;
-      gap: 16px;
-
-      .el-button {
-        min-width: 122px;
-        height: 46px;
-        font-weight: 600;
-      }
-    }
-
-    &__fee-detail {
-      p {
-        margin: 8px 0 12px;
-        line-height: 1.6;
-        color: var(--art-text-gray-500);
-      }
-
-      dl {
-        display: grid;
-        grid-template-columns: 1fr auto;
-        gap: 8px 12px;
-        margin: 0;
-      }
-
-      dt {
-        color: var(--art-text-gray-600);
-      }
-
-      dd {
-        margin: 0;
-        font-weight: 600;
-      }
-    }
-
-    &__fee-detail-title {
-      font-weight: 600;
-      color: var(--art-text-gray-800);
-    }
-
-    :deep(.order-open__form) {
-      padding-right: 0;
-      padding-left: 0;
-
-      .el-form-item {
-        margin-bottom: 18px;
-      }
-    }
-
-    :deep(.art-table__cell-content),
-    :deep(.art-table__cell-value) {
-      width: 100%;
-    }
-
-    :deep(.el-input),
-    :deep(.el-select),
-    :deep(.el-input-number) {
-      width: 100%;
-    }
-  }
-
-  @media (width <= 1100px) {
-    .order-open {
-      &__header {
-        grid-template-columns: 1fr;
-      }
-
-      &__badge,
-      &__title,
-      &__time {
-        justify-self: stretch;
-      }
-
-      &__contact-grid {
-        grid-template-columns: 1fr;
-      }
-
-      &__footer {
-        flex-direction: column;
-        align-items: stretch;
-      }
-
-      &__footer-actions {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
-    }
-  }
-</style>
+<style scoped lang="scss" src="./modules/order-open.scss"></style>

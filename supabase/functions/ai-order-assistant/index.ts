@@ -54,9 +54,27 @@ function numberValue(value: unknown): number | null {
   return Number.isFinite(normalized) && normalized >= 0 ? normalized : null
 }
 
+function integerValue(value: unknown, fallback: number, min: number, max: number): number {
+  const parsed = Number(value)
+  if (!Number.isFinite(parsed)) return fallback
+  return Math.min(max, Math.max(min, Math.trunc(parsed)))
+}
+
 function stringArray(value: unknown): string[] {
   if (!Array.isArray(value)) return []
   return value.map(stringValue).filter((item): item is string => Boolean(item))
+}
+
+function normalizeConfidenceMap(value: unknown): Record<string, number> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>)
+      .slice(0, 60)
+      .map(([key, confidence]) => [
+        key,
+        Math.min(1, Math.max(0, numberValue(confidence) ?? 0))
+      ])
+  )
 }
 
 function normalizeOption(value: unknown, options: AiOption[] | undefined): string | null {
@@ -201,6 +219,7 @@ function normalizeResponse(payload: Record<string, unknown>, options: AiOrderReq
   return {
     summary: stringValue(payload.summary) ?? '已根据提供的资料生成订单草稿。',
     confidence,
+    fieldConfidence: normalizeConfidenceMap(payload.fieldConfidence),
     missingFields: getRequiredMissingFields(order),
     warnings: stringArray(payload.warnings).filter((item) => {
       if (/^需要确认的信息\s*[:：]/.test(item)) return false
@@ -282,11 +301,19 @@ Deno.serve(async (req) => {
   if (req.method !== 'POST')
     return json({ code: 'method_not_allowed', message: 'Method not allowed' }, 405)
 
+  let finishRun: (
+    status: 'succeeded' | 'failed',
+    usage?: { prompt_tokens?: number; completion_tokens?: number },
+    errorCode?: string,
+    errorMessage?: string
+  ) => Promise<void> = async () => {}
+
   try {
     const authHeader = req.headers.get('Authorization')
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? ''
-    if (!authHeader || !supabaseUrl || !supabaseAnonKey) {
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    if (!authHeader || !supabaseUrl || !supabaseAnonKey || !serviceRoleKey) {
       return json({ code: 'unauthorized', message: 'Authentication required' }, 401)
     }
 
@@ -329,6 +356,74 @@ Deno.serve(async (req) => {
       return json({ code: 'missing_secret', message: 'AI provider is not configured' }, 500)
     }
 
+    const admin = createClient(supabaseUrl, serviceRoleKey, {
+      auth: { autoRefreshToken: false, persistSession: false }
+    })
+    const { data: appUser, error: appUserError } = await admin
+      .from('sys_user')
+      .select('tenant_id,user_email,status')
+      .eq('auth_user_id', user.id)
+      .maybeSingle()
+    if (appUserError || !appUser?.tenant_id || appUser.status === '0') {
+      return json({ code: 'forbidden', message: 'Active application user is required' }, 403)
+    }
+
+    const minuteAgo = new Date(Date.now() - 60_000).toISOString()
+    const dayAgo = new Date(Date.now() - 86_400_000).toISOString()
+    const perMinute = integerValue(Deno.env.get('AI_ORDER_PER_MINUTE'), 6, 1, 60)
+    const perDay = integerValue(Deno.env.get('AI_ORDER_PER_DAY'), 60, 1, 5000)
+    const feature = action === 'analyze' ? 'order_extraction' : 'order_example'
+    const [minuteResult, dayResult] = await Promise.all([
+      admin
+        .from('ai_run')
+        .select('id', { count: 'exact', head: true })
+        .eq('auth_user_id', user.id)
+        .eq('feature', feature)
+        .gte('started_at', minuteAgo),
+      admin
+        .from('ai_run')
+        .select('id', { count: 'exact', head: true })
+        .eq('auth_user_id', user.id)
+        .eq('feature', feature)
+        .gte('started_at', dayAgo)
+    ])
+    if ((minuteResult.count ?? 0) >= perMinute || (dayResult.count ?? 0) >= perDay) {
+      return json({ code: 'rate_limited', message: 'AI 填单调用次数已达到限额，请稍后再试' }, 429)
+    }
+
+    const runStartedAt = Date.now()
+    const { data: run, error: runError } = await admin
+      .from('ai_run')
+      .insert({
+        auth_user_id: user.id,
+        tenant_id: appUser.tenant_id,
+        feature,
+        model,
+        metadata: { promptLength: prompt.length, imageCount: imageUrls.length },
+        create_by: appUser.user_email,
+        update_by: appUser.user_email
+      })
+      .select('id')
+      .single()
+    if (runError) throw runError
+
+    finishRun = async (status, usage, errorCode, errorMessage) => {
+      const { error } = await admin
+        .from('ai_run')
+        .update({
+          status,
+          input_tokens: usage?.prompt_tokens ?? 0,
+          output_tokens: usage?.completion_tokens ?? 0,
+          latency_ms: Date.now() - runStartedAt,
+          error_code: errorCode ?? null,
+          error_message: errorMessage?.slice(0, 2000) ?? null,
+          finished_at: new Date().toISOString(),
+          update_by: appUser.user_email
+        })
+        .eq('id', run.id)
+      if (error) console.error('ai-order-assistant audit update failed', error.message)
+    }
+
     let systemPrompt: string
     let userContent: unknown
     let temperature: number
@@ -358,12 +453,21 @@ Deno.serve(async (req) => {
         '付款方式、配送方式、运输方式必须从 allowedOptions 中按中文标签匹配，并返回对应 value；无法匹配才返回 null。',
         '禁止编造资料；缺失或不确定的值使用 null。warnings 只写矛盾、歧义或业务风险，不要重复 missingFields。',
         '金额单位为人民币元，weightKg 为公斤，volumeM3 为立方米，所有数值均为非负数。',
-        'confidence 是 0 到 1 的整体可信度。只返回包含 summary、confidence、missingFields、warnings、order 的 JSON 对象。'
+        'confidence 是 0 到 1 的整体可信度。',
+        'fieldConfidence 必须是对象，为每个已识别的 order 字段返回 0 到 1 的可信度，键名使用 order 字段名。',
+        '只返回包含 summary、confidence、fieldConfidence、missingFields、warnings、order 的 JSON 对象。'
       ].join(' ')
 
       const expectedShape = {
         summary: '一句中文摘要',
         confidence: 0.0,
+        fieldConfidence: {
+          originStationName: 0.0,
+          destinationStationName: 0.0,
+          shippingContactName: 0.0,
+          receivingContactName: 0.0,
+          paymentMethod: 0.0
+        },
         missingFields: ['缺失字段中文名'],
         warnings: ['需要人工确认的事项'],
         order: {
@@ -467,6 +571,7 @@ Deno.serve(async (req) => {
         /response_format|json_object|unsupported|invalid request/i.test(firstError)
       if (!compatibilityError) {
         console.error('ai-order-assistant provider error', providerResponse.status, firstError)
+        await finishRun('failed', undefined, 'provider_error', firstError)
         return json({ code: 'provider_error', message: 'AI provider request failed' }, 502)
       }
 
@@ -481,6 +586,7 @@ Deno.serve(async (req) => {
         providerResponse.status,
         providerError
       )
+      await finishRun('failed', undefined, 'provider_error', providerError)
       return json({ code: 'provider_error', message: 'AI provider request failed' }, 502)
     }
 
@@ -488,14 +594,17 @@ Deno.serve(async (req) => {
     const content = extractMessageContent(providerPayload?.choices?.[0]?.message?.content)
     const parsed = content ? parseJson(content) : null
     if (!parsed) {
+      await finishRun('failed', providerPayload?.usage, 'invalid_ai_response', 'Invalid JSON response')
       return json({ code: 'invalid_ai_response', message: 'AI returned an invalid response' }, 502)
     }
 
     if (action === 'generate_example') {
       const generatedPrompt = stringValue(parsed.prompt)?.slice(0, 8000)
       if (!generatedPrompt) {
+        await finishRun('failed', providerPayload?.usage, 'invalid_ai_response', 'Empty example')
         return json({ code: 'invalid_ai_response', message: 'AI returned an empty example' }, 502)
       }
+      await finishRun('succeeded', providerPayload?.usage)
       return json({ prompt: generatedPrompt })
     }
 
@@ -504,10 +613,12 @@ Deno.serve(async (req) => {
       model,
       durationMs: Date.now() - providerStartedAt
     })
+    await finishRun('succeeded', providerPayload?.usage)
     return json(normalizeResponse(parsed, body.options))
   } catch (error) {
     if (error instanceof ProviderTimeoutError) {
       console.error('ai-order-assistant provider timeout', error.message)
+      await finishRun('failed', undefined, 'provider_timeout', error.message)
       return json(
         {
           code: 'provider_timeout',
@@ -518,6 +629,12 @@ Deno.serve(async (req) => {
     }
 
     console.error('ai-order-assistant error', error)
+    await finishRun(
+      'failed',
+      undefined,
+      'server_error',
+      error instanceof Error ? error.message : 'Unknown error'
+    )
     return json(
       {
         code: 'server_error',

@@ -1,262 +1,990 @@
-<!-- 系统聊天窗口 -->
 <template>
-  <div>
-    <ElDrawer v-model="isDrawerVisible" :size="isMobile ? '100%' : '480px'" :with-header="false">
-      <div class="mb-5 flex-cb">
-        <div>
-          <span class="text-base font-medium">Art Bot</span>
-          <div class="mt-1.5 flex-c gap-1">
-            <div
-              class="h-2 w-2 rounded-full"
-              :class="isOnline ? 'bg-success/100' : 'bg-danger/100'"
-            ></div>
-            <span class="text-xs text-g-600">{{ isOnline ? '在线' : '离线' }}</span>
+  <ArtDrawer
+    ref="drawerRef"
+    :show-footer="false"
+    :drawer-props="drawerProps"
+    @opened="scrollToBottom"
+  >
+    <template #header="{ api }">
+      <header class="art-ai-assistant__header">
+        <div class="art-ai-assistant__identity">
+          <div class="art-ai-assistant__brand-icon">
+            <ArtSvgIcon icon="ri:sparkling-2-fill" />
           </div>
-        </div>
-        <div>
-          <ElIcon class="c-p" :size="20" @click="closeChat">
-            <Close />
-          </ElIcon>
-        </div>
-      </div>
-      <div class="flex h-[calc(100%-70px)] flex-col">
-        <!-- 聊天消息区域 -->
-        <div
-          class="flex-1 overflow-y-auto border-t-d px-4 py-7.5 [&::-webkit-scrollbar]:!w-1"
-          ref="messageContainer"
-        >
-          <template v-for="(message, index) in messages" :key="index">
-            <div
-              :class="[
-                'mb-7.5 flex w-full items-start gap-2',
-                message.isMe ? 'flex-row-reverse' : 'flex-row'
-              ]"
-            >
-              <ElAvatar :size="32" :src="message.avatar" class="shrink-0" />
-              <div
-                :class="['flex max-w-[70%] flex-col', message.isMe ? 'items-end' : 'items-start']"
-              >
-                <div
-                  :class="[
-                    'mb-1 flex gap-2 text-xs',
-                    message.isMe ? 'flex-row-reverse' : 'flex-row'
-                  ]"
-                >
-                  <span class="font-medium">{{ message.sender }}</span>
-                  <span class="text-g-600">{{ message.time }}</span>
-                </div>
-                <div
-                  :class="[
-                    'rounded-md px-3.5 py-2.5 text-sm leading-[1.4] text-g-900',
-                    message.isMe ? 'message-right bg-theme/15' : 'message-left bg-g-300/50'
-                  ]"
-                  >{{ message.content }}</div
-                >
-              </div>
+          <div class="art-ai-assistant__identity-copy">
+            <div class="art-ai-assistant__title-row">
+              <strong>AI 业务助理</strong>
+              <span>只读模式</span>
             </div>
-          </template>
+            <div class="art-ai-assistant__status">
+              <i :class="{ 'is-offline': !isOnline }"></i>
+              <span>{{ isOnline ? '服务已连接' : '网络已断开' }}</span>
+              <em>·</em>
+              <span class="art-ai-assistant__page">{{ pageTitle }}</span>
+            </div>
+          </div>
         </div>
 
-        <!-- 聊天输入区域 -->
-        <div class="px-4 pt-4">
-          <ElInput
-            v-model="messageText"
-            type="textarea"
-            :rows="3"
-            placeholder="输入消息"
-            resize="none"
-            @keyup.enter.prevent="sendMessage"
-          >
-            <template #append>
-              <div class="flex gap-2 py-2">
-                <ElButton :icon="Paperclip" circle plain />
-                <ElButton :icon="Picture" circle plain />
-                <ElButton type="primary" @click="sendMessage" v-ripple>发送</ElButton>
-              </div>
-            </template>
-          </ElInput>
-          <div class="mt-3 flex-cb">
-            <div class="flex-c">
-              <ArtSvgIcon icon="ri:image-line" class="mr-5 c-p text-g-600 text-lg" />
-              <ArtSvgIcon icon="ri:emotion-happy-line" class="mr-5 c-p text-g-600 text-lg" />
+        <div class="art-ai-assistant__header-actions">
+          <ElTooltip content="新建对话" placement="bottom">
+            <ArtIconButton
+              icon="ri:chat-new-line"
+              circle
+              aria-label="新建对话"
+              class="art-ai-assistant__header-button"
+              @click="resetConversation"
+            />
+          </ElTooltip>
+          <ElTooltip content="关闭" placement="bottom">
+            <ArtIconButton
+              icon="ri:close-line"
+              circle
+              aria-label="关闭 AI 业务助理"
+              class="art-ai-assistant__header-button"
+              @click="api.handleClose()"
+            />
+          </ElTooltip>
+        </div>
+      </header>
+    </template>
+
+    <div class="art-ai-assistant">
+      <ElScrollbar ref="scrollbarRef" class="art-ai-assistant__messages">
+        <div class="art-ai-assistant__conversation">
+          <section v-if="showWelcome" class="art-ai-assistant__welcome">
+            <div class="art-ai-assistant__welcome-mark">
+              <ArtSvgIcon icon="ri:sparkling-2-fill" />
             </div>
-            <ElButton type="primary" @click="sendMessage" v-ripple class="min-w-20">发送</ElButton>
+            <span class="art-ai-assistant__eyebrow">ART BUSINESS COPILOT</span>
+            <h2>今天想了解什么？</h2>
+            <p> 我会结合当前页面和你的数据权限，查询订单、运输经营情况与车辆临期事项。 </p>
+            <div class="art-ai-assistant__context-pill">
+              <ArtSvgIcon icon="ri:focus-3-line" />
+              正在关注：{{ pageTitle }}
+            </div>
+
+            <div class="art-ai-assistant__prompt-grid">
+              <button
+                v-for="suggestion in suggestions"
+                :key="suggestion.label"
+                type="button"
+                class="art-ai-assistant__prompt-card"
+                :disabled="!isOnline"
+                @click="sendSuggestion(suggestion.label)"
+              >
+                <span class="art-ai-assistant__prompt-icon">
+                  <ArtSvgIcon :icon="suggestion.icon" />
+                </span>
+                <span>
+                  <strong>{{ suggestion.label }}</strong>
+                  <small>{{ suggestion.description }}</small>
+                </span>
+                <ArtSvgIcon icon="ri:arrow-right-up-line" />
+              </button>
+            </div>
+
+            <div class="art-ai-assistant__capabilities">
+              <span><ArtSvgIcon icon="ri:shield-check-line" /> 权限隔离</span>
+              <span><ArtSvgIcon icon="ri:database-2-line" /> 实时业务数据</span>
+              <span><ArtSvgIcon icon="ri:eye-line" /> 不修改数据</span>
+            </div>
+          </section>
+
+          <template v-else>
+            <article
+              v-for="message in state.messages"
+              :key="message.id"
+              class="art-ai-assistant__message"
+              :class="{
+                'is-user': message.role === 'user',
+                'is-error': message.isError
+              }"
+            >
+              <ElAvatar
+                v-if="message.role === 'user'"
+                :size="32"
+                :src="userAvatar"
+                class="art-ai-assistant__avatar"
+              />
+              <div v-else class="art-ai-assistant__assistant-avatar">
+                <ArtSvgIcon icon="ri:sparkling-2-fill" />
+              </div>
+
+              <div class="art-ai-assistant__message-body">
+                <div class="art-ai-assistant__message-meta">
+                  <span>{{ message.role === 'user' ? userName : 'AI 业务助理' }}</span>
+                  <time>{{ message.time }}</time>
+                </div>
+                <div class="art-ai-assistant__bubble">{{ message.content }}</div>
+
+                <div v-if="message.tools?.length" class="art-ai-assistant__tools">
+                  <span
+                    v-for="tool in message.tools"
+                    :key="tool.name"
+                    :class="{ 'is-failed': tool.status === 'failed' }"
+                  >
+                    <ArtSvgIcon
+                      :icon="
+                        tool.status === 'succeeded' ? 'ri:check-line' : 'ri:error-warning-line'
+                      "
+                    />
+                    {{ tool.status === 'succeeded' ? '已查询' : '查询失败' }} ·
+                    {{ getToolLabel(tool.name) }}
+                  </span>
+                </div>
+
+                <div v-if="message.isError" class="art-ai-assistant__retry">
+                  <ElButton
+                    size="small"
+                    plain
+                    :icon="Refresh"
+                    :disabled="state.sending || !isOnline"
+                    @click="retryMessage(message)"
+                  >
+                    重新尝试
+                  </ElButton>
+                </div>
+
+                <div
+                  v-else-if="message.role === 'assistant' && message.runId"
+                  class="art-ai-assistant__feedback"
+                >
+                  <span>回答是否有帮助？</span>
+                  <ElTooltip content="有帮助" placement="bottom">
+                    <ArtIconButton
+                      :icon="message.feedback === 1 ? 'ri:thumb-up-fill' : 'ri:thumb-up-line'"
+                      :class="{ 'is-active': message.feedback === 1 }"
+                      class="art-ai-assistant__feedback-button"
+                      @click="handleFeedback(message, 1)"
+                    />
+                  </ElTooltip>
+                  <ElTooltip content="需要改进" placement="bottom">
+                    <ArtIconButton
+                      :icon="message.feedback === -1 ? 'ri:thumb-down-fill' : 'ri:thumb-down-line'"
+                      :class="{ 'is-active is-negative': message.feedback === -1 }"
+                      class="art-ai-assistant__feedback-button"
+                      @click="handleFeedback(message, -1)"
+                    />
+                  </ElTooltip>
+                </div>
+              </div>
+            </article>
+
+            <article v-if="state.sending" class="art-ai-assistant__message">
+              <div class="art-ai-assistant__assistant-avatar">
+                <ArtSvgIcon icon="ri:sparkling-2-fill" />
+              </div>
+              <div class="art-ai-assistant__message-body">
+                <div class="art-ai-assistant__message-meta">
+                  <span>AI 业务助理</span>
+                  <span>正在处理</span>
+                </div>
+                <div class="art-ai-assistant__thinking">
+                  <ArtSvgIcon icon="ri:loader-4-line" />
+                  <span>正在查询并整理业务数据…</span>
+                </div>
+              </div>
+            </article>
+          </template>
+        </div>
+      </ElScrollbar>
+
+      <footer class="art-ai-assistant__composer">
+        <div class="art-ai-assistant__composer-box">
+          <ElInput
+            v-model="state.input"
+            type="textarea"
+            :autosize="{ minRows: 2, maxRows: 6 }"
+            :maxlength="4000"
+            resize="none"
+            placeholder="输入业务问题，Enter 发送，Shift + Enter 换行"
+            :disabled="state.sending || !isOnline"
+            @keydown.enter.exact.prevent="sendMessage"
+          />
+          <div class="art-ai-assistant__composer-actions">
+            <div class="art-ai-assistant__composer-meta">
+              <span><ArtSvgIcon icon="ri:shield-check-line" /> 只读安全模式</span>
+              <span>{{ state.input.length }} / 4000</span>
+            </div>
+            <ElButton
+              type="primary"
+              :icon="Promotion"
+              :loading="state.sending"
+              :disabled="!state.input.trim() || !isOnline"
+              @click="sendMessage"
+            >
+              发送
+            </ElButton>
           </div>
         </div>
-      </div>
-    </ElDrawer>
-  </div>
+        <p>AI 生成内容可能存在偏差，关键业务信息请以系统记录为准。</p>
+      </footer>
+    </div>
+  </ArtDrawer>
 </template>
 
 <script setup lang="ts">
-  import { Picture, Paperclip, Close } from '@element-plus/icons-vue'
+  import { Promotion, Refresh } from '@element-plus/icons-vue'
+  import { useNetwork, useWindowSize } from '@vueuse/core'
+  import { ElMessage } from 'element-plus'
+  import type { ScrollbarInstance } from 'element-plus'
+  import { useRoute } from 'vue-router'
+  import { chatWithAiAssistant, submitAiAssistantFeedback } from '@/api/ai-assistant'
+  import ArtDrawer from '@/components/core/drawers/art-drawer/index.vue'
+  import type { ArtDrawerExpose } from '@/components/core/drawers/art-drawer/types'
+  import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
+  import { useUserStore } from '@/store/modules/user'
+  import type {
+    AiAssistantMessageRole,
+    AiAssistantPageContext,
+    AiAssistantToolResult
+  } from '@/types/ai-assistant'
   import { mittBus } from '@/utils/sys'
   import meAvatar from '@/assets/images/avatar/avatar5.webp'
-  import aiAvatar from '@/assets/images/avatar/avatar10.webp'
 
   defineOptions({ name: 'ArtChatWindow' })
 
-  // 类型定义
   interface ChatMessage {
-    id: number
-    sender: string
+    id: string
+    role: AiAssistantMessageRole
     content: string
     time: string
-    isMe: boolean
-    avatar: string
+    runId?: string
+    tools?: AiAssistantToolResult[]
+    feedback?: -1 | 1
+    isError?: boolean
+    retryContent?: string
   }
 
-  // 常量定义
+  interface AssistantState {
+    sending: boolean
+    input: string
+    conversationId?: string
+    routePath?: string
+    messages: ChatMessage[]
+  }
+
+  interface PromptSuggestion {
+    label: string
+    description: string
+    icon: string
+  }
+
   const MOBILE_BREAKPOINT = 640
-  const SCROLL_DELAY = 100
-  const BOT_NAME = 'Art Bot'
-  const USER_NAME = 'Ricky'
-
-  // 响应式布局
+  const route = useRoute()
+  const userStore = useUserStore()
   const { width } = useWindowSize()
+  const { isOnline } = useNetwork()
+  const drawerRef = ref<ArtDrawerExpose<Record<string, never>>>()
+  const scrollbarRef = ref<ScrollbarInstance>()
   const isMobile = computed(() => width.value < MOBILE_BREAKPOINT)
-
-  // 组件状态
-  const isDrawerVisible = ref(false)
-  const isOnline = ref(true)
-
-  // 消息相关状态
-  const messageText = ref('')
-  const messageId = ref(10)
-  const messageContainer = ref<HTMLElement | null>(null)
-
-  // 初始化聊天消息数据
-  const initializeMessages = (): ChatMessage[] => [
-    {
-      id: 1,
-      sender: BOT_NAME,
-      content: '你好！我是你的AI助手，有什么我可以帮你的吗？',
-      time: '10:00',
-      isMe: false,
-      avatar: aiAvatar
-    },
-    {
-      id: 2,
-      sender: USER_NAME,
-      content: '我想了解一下系统的使用方法。',
-      time: '10:01',
-      isMe: true,
-      avatar: meAvatar
-    },
-    {
-      id: 3,
-      sender: BOT_NAME,
-      content: '好的，我来为您介绍系统的主要功能。首先，您可以通过左侧菜单访问不同的功能模块...',
-      time: '10:02',
-      isMe: false,
-      avatar: aiAvatar
-    },
-    {
-      id: 4,
-      sender: USER_NAME,
-      content: '听起来很不错，能具体讲讲数据分析部分吗？',
-      time: '10:05',
-      isMe: true,
-      avatar: meAvatar
-    },
-    {
-      id: 5,
-      sender: BOT_NAME,
-      content: '当然可以。数据分析模块可以帮助您实时监控关键指标，并生成详细的报表...',
-      time: '10:06',
-      isMe: false,
-      avatar: aiAvatar
-    },
-    {
-      id: 6,
-      sender: USER_NAME,
-      content: '太好了，那我如何开始使用呢？',
-      time: '10:08',
-      isMe: true,
-      avatar: meAvatar
-    },
-    {
-      id: 7,
-      sender: BOT_NAME,
-      content: '您可以先创建一个项目，然后在项目中添加相关的数据源，系统会自动进行分析。',
-      time: '10:09',
-      isMe: false,
-      avatar: aiAvatar
-    },
-    {
-      id: 8,
-      sender: USER_NAME,
-      content: '明白了，谢谢你的帮助！',
-      time: '10:10',
-      isMe: true,
-      avatar: meAvatar
-    },
-    {
-      id: 9,
-      sender: BOT_NAME,
-      content: '不客气，有任何问题随时联系我。',
-      time: '10:11',
-      isMe: false,
-      avatar: aiAvatar
-    }
-  ]
-
-  const messages = ref<ChatMessage[]>(initializeMessages())
-
-  // 工具函数
-  const formatCurrentTime = (): string => {
-    return new Date().toLocaleTimeString([], {
-      hour: '2-digit',
-      minute: '2-digit'
-    })
+  const drawerProps = {
+    appendToBody: true,
+    closeOnClickModal: false,
+    showClose: false,
+    class: 'art-ai-assistant-drawer'
   }
-
-  const scrollToBottom = (): void => {
-    nextTick(() => {
-      setTimeout(() => {
-        if (messageContainer.value) {
-          messageContainer.value.scrollTop = messageContainer.value.scrollHeight
-        }
-      }, SCROLL_DELAY)
-    })
-  }
-
-  // 消息处理方法
-  const sendMessage = (): void => {
-    const text = messageText.value.trim()
-    if (!text) return
-
-    const newMessage: ChatMessage = {
-      id: messageId.value++,
-      sender: USER_NAME,
-      content: text,
-      time: formatCurrentTime(),
-      isMe: true,
-      avatar: meAvatar
-    }
-
-    messages.value.push(newMessage)
-    messageText.value = ''
-    scrollToBottom()
-  }
-
-  // 聊天窗口控制方法
-  const openChat = (): void => {
-    isDrawerVisible.value = true
-    scrollToBottom()
-  }
-
-  const closeChat = (): void => {
-    isDrawerVisible.value = false
-  }
-
-  // 生命周期
-  onMounted(() => {
-    scrollToBottom()
-    mittBus.on('openChat', openChat)
+  const pageTitle = computed(() => {
+    const title = route.meta.title
+    if (typeof title === 'string' && title) return title
+    return typeof route.name === 'string' ? route.name : '当前页面'
+  })
+  const userName = computed(
+    () =>
+      userStore.getUserInfo.nickName ||
+      userStore.getUserInfo.userName ||
+      userStore.getUserInfo.email ||
+      '当前用户'
+  )
+  const userAvatar = computed(() => userStore.getUserInfo.avatar || meAvatar)
+  const state = reactive<AssistantState>({
+    sending: false,
+    input: '',
+    conversationId: undefined,
+    routePath: undefined,
+    messages: []
   })
 
-  onUnmounted(() => {
-    mittBus.off('openChat', openChat)
+  const suggestions = computed<PromptSuggestion[]>(() => {
+    const items: PromptSuggestion[] = [
+      {
+        label: '总结最近订单',
+        description: '查看最新订单、线路、状态和费用',
+        icon: 'ri:file-list-3-line'
+      },
+      {
+        label: '查看近 30 天运输概览',
+        description: '汇总订单量、状态分布与费用',
+        icon: 'ri:line-chart-line'
+      },
+      {
+        label: '查询 30 天内车辆到期事项',
+        description: '检查保险、年检和服务期限',
+        icon: 'ri:alarm-warning-line'
+      }
+    ]
+    if (getRecordId()) {
+      items.unshift({
+        label: '总结当前订单',
+        description: '基于当前记录提炼关键信息',
+        icon: 'ri:focus-3-line'
+      })
+    } else {
+      items.unshift({
+        label: '这个页面可以做什么？',
+        description: '了解当前页面和可用能力',
+        icon: 'ri:compass-3-line'
+      })
+    }
+    return items
   })
+  const showWelcome = computed(() => state.messages.length === 0 && !state.sending)
+
+  function formatCurrentTime(): string {
+    return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  }
+
+  function getRecordId(): string | undefined {
+    const candidate = route.params.id ?? route.query.id
+    if (Array.isArray(candidate)) return candidate[0]
+    return typeof candidate === 'string' && candidate ? candidate : undefined
+  }
+
+  function getPageContext(): AiAssistantPageContext {
+    return {
+      routeName: typeof route.name === 'string' ? route.name : undefined,
+      routePath: route.path,
+      pageTitle: pageTitle.value,
+      recordId: getRecordId(),
+      query: { ...route.query }
+    }
+  }
+
+  function scrollToBottom(): void {
+    nextTick(() => scrollbarRef.value?.setScrollTop(Number.MAX_SAFE_INTEGER))
+  }
+
+  function resetConversation(): void {
+    Object.assign(state, {
+      sending: false,
+      input: '',
+      conversationId: undefined,
+      routePath: route.fullPath,
+      messages: []
+    })
+    scrollToBottom()
+  }
+
+  function openChat(): void {
+    if (state.routePath && state.routePath !== route.fullPath) resetConversation()
+    state.routePath = route.fullPath
+    void drawerRef.value?.handleOpen(
+      {},
+      {
+        size: isMobile.value ? '100%' : '600px',
+        showFooter: false,
+        resetOnClose: false,
+        drawerProps
+      }
+    )
+  }
+
+  function sendSuggestion(suggestion: string): void {
+    state.input = suggestion
+    void sendMessage()
+  }
+
+  function retryMessage(message: ChatMessage): void {
+    if (!message.retryContent || state.sending) return
+    state.messages = state.messages.filter((item) => item.id !== message.id)
+    state.input = message.retryContent
+    void sendMessage()
+  }
+
+  async function sendMessage(): Promise<void> {
+    const content = state.input.trim()
+    if (!content || state.sending || !isOnline.value) return
+
+    state.messages.push({
+      id: crypto.randomUUID(),
+      role: 'user',
+      content,
+      time: formatCurrentTime()
+    })
+    state.input = ''
+    state.sending = true
+    scrollToBottom()
+
+    try {
+      const response = await chatWithAiAssistant({
+        conversationId: state.conversationId,
+        context: getPageContext(),
+        messages: state.messages
+          .filter((message) => !message.isError)
+          .map((message) => ({ role: message.role, content: message.content }))
+      })
+      state.conversationId = response.conversationId
+      state.messages.push({
+        id: crypto.randomUUID(),
+        role: 'assistant',
+        content: response.message,
+        time: formatCurrentTime(),
+        runId: response.runId,
+        tools: response.tools
+      })
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'AI 助手暂时不可用'
+      state.messages.push({
+        id: crypto.randomUUID(),
+        role: 'assistant',
+        content: getFriendlyErrorMessage(errorMessage),
+        time: formatCurrentTime(),
+        isError: true,
+        retryContent: content
+      })
+    } finally {
+      state.sending = false
+      scrollToBottom()
+    }
+  }
+
+  function getFriendlyErrorMessage(message: string): string {
+    if (message.includes('超时') || message.toLowerCase().includes('timeout')) {
+      return '这次请求没有在规定时间内完成。高频业务查询已启用快速通道，你可以重新尝试。'
+    }
+    return `暂时无法完成这次请求：${message}`
+  }
+
+  async function handleFeedback(message: ChatMessage, rating: -1 | 1): Promise<void> {
+    if (!message.runId || message.feedback === rating) return
+    try {
+      await submitAiAssistantFeedback({ runId: message.runId, rating })
+      message.feedback = rating
+      ElMessage.success('感谢你的反馈')
+    } catch (error) {
+      ElMessage.error(error instanceof Error ? error.message : '反馈提交失败')
+    }
+  }
+
+  function getToolLabel(name: string): string {
+    const labels: Record<string, string> = {
+      get_order_detail: '订单详情',
+      get_recent_orders: '最近订单',
+      get_transport_overview: '运输概览',
+      get_vehicle_expiries: '车辆到期'
+    }
+    return labels[name] ?? name
+  }
+
+  watch(
+    () => route.fullPath,
+    (path) => {
+      if (state.routePath && state.routePath !== path) resetConversation()
+    }
+  )
+  onMounted(() => mittBus.on('openChat', openChat))
+  onUnmounted(() => mittBus.off('openChat', openChat))
 </script>
+
+<style scoped lang="scss">
+  :global(.art-ai-assistant-drawer .el-drawer__header) {
+    padding: 0;
+    margin-bottom: 0;
+    border-bottom: 1px solid var(--el-border-color-lighter);
+  }
+
+  :global(.art-ai-assistant-drawer .el-drawer__body) {
+    padding: 0;
+  }
+
+  :global(.art-ai-assistant-drawer .art-drawer__content) {
+    height: 100%;
+  }
+
+  .art-ai-assistant {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+    background:
+      radial-gradient(circle at 88% 4%, var(--el-color-primary-light-9), transparent 24%),
+      var(--el-bg-color);
+
+    &__header {
+      display: flex;
+      gap: 18px;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      min-height: 76px;
+      padding: 14px 20px;
+    }
+
+    &__identity,
+    &__title-row,
+    &__status,
+    &__header-actions,
+    &__tools,
+    &__feedback,
+    &__composer-actions,
+    &__composer-meta,
+    &__capabilities,
+    &__context-pill,
+    &__thinking {
+      display: flex;
+      align-items: center;
+    }
+
+    &__identity {
+      gap: 12px;
+      min-width: 0;
+    }
+
+    &__brand-icon,
+    &__welcome-mark,
+    &__assistant-avatar,
+    &__prompt-icon {
+      display: grid;
+      flex-shrink: 0;
+      place-items: center;
+      color: var(--el-color-white);
+      background: linear-gradient(145deg, var(--el-color-primary), #7559e8);
+    }
+
+    &__brand-icon {
+      width: 42px;
+      height: 42px;
+      font-size: 20px;
+      border-radius: var(--el-border-radius-base);
+      box-shadow: 0 8px 22px rgb(64 116 255 / 22%);
+    }
+
+    &__identity-copy {
+      min-width: 0;
+    }
+
+    &__title-row {
+      gap: 8px;
+
+      strong {
+        font-size: 16px;
+        color: var(--el-text-color-primary);
+      }
+
+      > span {
+        padding: 2px 7px;
+        font-size: 10px;
+        color: var(--el-color-primary);
+        background: var(--el-color-primary-light-9);
+        border-radius: 999px;
+      }
+    }
+
+    &__status {
+      gap: 6px;
+      min-width: 0;
+      margin-top: 4px;
+      font-size: 12px;
+      color: var(--el-text-color-secondary);
+
+      i {
+        width: 7px;
+        height: 7px;
+        background: var(--el-color-success);
+        border-radius: 50%;
+
+        &.is-offline {
+          background: var(--el-color-danger);
+        }
+      }
+
+      em {
+        font-style: normal;
+      }
+    }
+
+    &__page {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    &__header-actions {
+      flex-shrink: 0;
+      gap: 4px;
+    }
+
+    &__header-button {
+      font-size: 18px;
+    }
+
+    &__messages {
+      flex: 1;
+      min-height: 0;
+    }
+
+    &__conversation {
+      min-height: 100%;
+      padding: 24px 22px 30px;
+    }
+
+    &__welcome {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      max-width: 520px;
+      padding-top: clamp(22px, 6vh, 70px);
+      margin: 0 auto;
+      text-align: center;
+
+      h2 {
+        margin: 12px 0 8px;
+        font-size: 25px;
+        color: var(--el-text-color-primary);
+      }
+
+      > p {
+        max-width: 430px;
+        margin: 0;
+        line-height: 1.7;
+        color: var(--el-text-color-secondary);
+      }
+    }
+
+    &__welcome-mark {
+      width: 58px;
+      height: 58px;
+      font-size: 28px;
+      border-radius: var(--el-border-radius-base);
+      box-shadow: 0 12px 30px rgb(64 116 255 / 24%);
+    }
+
+    &__eyebrow {
+      margin-top: 18px;
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--el-color-primary);
+      letter-spacing: 0.15em;
+    }
+
+    &__context-pill {
+      gap: 6px;
+      max-width: 100%;
+      padding: 6px 10px;
+      margin-top: 18px;
+      font-size: 12px;
+      color: var(--el-text-color-regular);
+      background: var(--el-fill-color-light);
+      border: 1px solid var(--el-border-color-lighter);
+      border-radius: 999px;
+    }
+
+    &__prompt-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      width: 100%;
+      margin-top: 28px;
+    }
+
+    &__prompt-card {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      gap: 11px;
+      align-items: center;
+      min-height: 88px;
+      padding: 14px;
+      font: inherit;
+      color: var(--el-text-color-primary);
+      text-align: left;
+      cursor: pointer;
+      background: color-mix(in srgb, var(--el-bg-color) 92%, var(--el-color-primary));
+      border: 1px solid var(--el-border-color-lighter);
+      border-radius: var(--el-border-radius-base);
+      transition: all 0.2s ease;
+
+      &:hover:not(:disabled) {
+        border-color: var(--el-color-primary-light-5);
+        box-shadow: 0 10px 24px rgb(31 45 61 / 8%);
+        transform: translateY(-2px);
+      }
+
+      &:disabled {
+        cursor: not-allowed;
+        opacity: 0.55;
+      }
+
+      > span:nth-child(2) {
+        display: grid;
+        gap: 4px;
+        min-width: 0;
+      }
+
+      strong {
+        font-size: 13px;
+      }
+
+      small {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        font-size: 11px;
+        color: var(--el-text-color-secondary);
+        white-space: nowrap;
+      }
+
+      > svg,
+      > :deep(svg) {
+        color: var(--el-text-color-placeholder);
+      }
+    }
+
+    &__prompt-icon {
+      width: 34px;
+      height: 34px;
+      font-size: 16px;
+      background: var(--el-color-primary-light-8);
+      border-radius: var(--el-border-radius-small);
+
+      :deep(svg) {
+        color: var(--el-color-primary);
+      }
+    }
+
+    &__capabilities {
+      flex-wrap: wrap;
+      gap: 14px;
+      justify-content: center;
+      margin-top: 22px;
+      font-size: 11px;
+      color: var(--el-text-color-placeholder);
+
+      span {
+        display: inline-flex;
+        gap: 4px;
+        align-items: center;
+      }
+    }
+
+    &__message {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      margin-bottom: 24px;
+
+      &.is-user {
+        flex-direction: row-reverse;
+
+        .art-ai-assistant__message-body {
+          align-items: flex-end;
+        }
+
+        .art-ai-assistant__bubble {
+          color: var(--el-color-primary-dark-2);
+          background: var(--el-color-primary-light-9);
+          border-color: var(--el-color-primary-light-8);
+        }
+      }
+
+      &.is-error {
+        .art-ai-assistant__bubble {
+          color: var(--el-color-danger-dark-2);
+          background: var(--el-color-danger-light-9);
+          border-color: var(--el-color-danger-light-7);
+        }
+      }
+    }
+
+    &__avatar,
+    &__assistant-avatar {
+      flex-shrink: 0;
+    }
+
+    &__assistant-avatar {
+      width: 32px;
+      height: 32px;
+      font-size: 15px;
+      border-radius: var(--el-border-radius-small);
+      box-shadow: 0 6px 16px rgb(64 116 255 / 18%);
+    }
+
+    &__message-body {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      max-width: min(84%, 470px);
+    }
+
+    &__message-meta {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 6px;
+      font-size: 11px;
+      color: var(--el-text-color-secondary);
+
+      span:first-child {
+        font-weight: 600;
+        color: var(--el-text-color-regular);
+      }
+    }
+
+    &__bubble {
+      padding: 12px 14px;
+      line-height: 1.75;
+      color: var(--el-text-color-primary);
+      overflow-wrap: anywhere;
+      white-space: pre-wrap;
+      background: var(--el-bg-color);
+      border: 1px solid var(--el-border-color-lighter);
+      border-radius: var(--el-border-radius-base);
+      box-shadow: 0 5px 18px rgb(31 45 61 / 5%);
+    }
+
+    &__tools {
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+
+      > span {
+        display: inline-flex;
+        gap: 4px;
+        align-items: center;
+        padding: 4px 8px;
+        font-size: 10px;
+        color: var(--el-color-success);
+        background: var(--el-color-success-light-9);
+        border-radius: 999px;
+
+        &.is-failed {
+          color: var(--el-color-danger);
+          background: var(--el-color-danger-light-9);
+        }
+      }
+    }
+
+    &__feedback {
+      gap: 2px;
+      margin-top: 7px;
+      font-size: 10px;
+      color: var(--el-text-color-placeholder);
+    }
+
+    &__feedback-button {
+      font-size: 13px;
+
+      &.is-active {
+        color: var(--el-color-primary);
+        background: var(--el-color-primary-light-9);
+      }
+
+      &.is-negative {
+        color: var(--el-color-danger);
+        background: var(--el-color-danger-light-9);
+      }
+    }
+
+    &__retry {
+      margin-top: 8px;
+    }
+
+    &__thinking {
+      gap: 8px;
+      padding: 11px 13px;
+      font-size: 12px;
+      color: var(--el-text-color-secondary);
+      background: var(--el-fill-color-light);
+      border-radius: var(--el-border-radius-base);
+
+      > :deep(svg) {
+        color: var(--el-color-primary);
+        animation: assistant-rotate 1s linear infinite;
+      }
+    }
+
+    &__composer {
+      padding: 14px 20px 16px;
+      background: color-mix(in srgb, var(--el-bg-color) 96%, var(--el-color-primary));
+      border-top: 1px solid var(--el-border-color-lighter);
+
+      > p {
+        margin: 9px 0 0;
+        font-size: 10px;
+        color: var(--el-text-color-placeholder);
+        text-align: center;
+      }
+    }
+
+    &__composer-box {
+      padding: 10px 10px 9px 13px;
+      background: var(--el-bg-color);
+      border: 1px solid var(--el-border-color);
+      border-radius: var(--el-border-radius-base);
+      box-shadow: 0 7px 24px rgb(31 45 61 / 7%);
+      transition: border-color 0.2s ease;
+
+      &:focus-within {
+        border-color: var(--el-color-primary-light-5);
+        box-shadow: 0 8px 26px rgb(64 116 255 / 11%);
+      }
+
+      :deep(.el-textarea__inner) {
+        padding: 2px 0 8px;
+        background: transparent;
+        border: 0;
+        box-shadow: none;
+      }
+    }
+
+    &__composer-actions {
+      gap: 12px;
+      justify-content: space-between;
+    }
+
+    &__composer-meta {
+      gap: 10px;
+      min-width: 0;
+      font-size: 10px;
+      color: var(--el-text-color-placeholder);
+
+      span {
+        display: inline-flex;
+        gap: 4px;
+        align-items: center;
+      }
+    }
+  }
+
+  @keyframes assistant-rotate {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  @media (width <= 640px) {
+    .art-ai-assistant {
+      &__header {
+        padding: 12px 14px;
+      }
+
+      &__conversation {
+        padding: 20px 14px 24px;
+      }
+
+      &__prompt-grid {
+        grid-template-columns: 1fr;
+      }
+
+      &__welcome {
+        padding-top: 18px;
+      }
+
+      &__composer {
+        padding: 12px;
+      }
+
+      &__message-body {
+        max-width: 87%;
+      }
+    }
+  }
+</style>

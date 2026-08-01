@@ -1,0 +1,1 @@
+import{Rt as e,bt as t,ft as n}from"./framework-CEL2-aXB.js";import{t as r}from"./finance-statement-list-D6WG5CX_.js";var i=t({name:`TmsCarrierSettlement`,__name:`index`,setup(t){return(t,i)=>(e(),n(r,{kind:`carrier_payable`}))}});export{i as default};

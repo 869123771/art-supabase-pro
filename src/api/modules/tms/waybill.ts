@@ -1,5 +1,5 @@
 import { useSupabase } from '@/hooks'
-import type { SupabaseQueryLike } from '@/api/modules/tms/query'
+import type { SupabaseQueryLike } from '@/api/providers/supabase/query'
 import {
   applyOrderFilters,
   mergeOrdersWithDriverWaybills,

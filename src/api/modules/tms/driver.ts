@@ -1,5 +1,10 @@
 import { useSupabase } from '@/hooks'
-import { withRequestOptions, type SupabaseQueryLike } from '@/api/modules/tms/query'
+import {
+  applyCreateTimeRange,
+  normalizeBooleanFilter,
+  withRequestOptions,
+  type SupabaseQueryLike
+} from '@/api/providers/supabase/query'
 import type { ApiRequestOptions } from '@/types/api/request'
 
 type Driver = Api.Tms.BasicData.Driver
@@ -19,18 +24,6 @@ const DRIVER_SELECT = `
   )
 `
 
-const normalizeBooleanFilter = (value: unknown): boolean | undefined => {
-  if (value === true || value === 'true') return true
-  if (value === false || value === 'false') return false
-  return undefined
-}
-
-const applyDateRange = (query: SupabaseQueryLike, dateRange?: string[]): SupabaseQueryLike => {
-  if (dateRange?.[0]) query = query.gte('create_time', `${dateRange[0]}T00:00:00`)
-  if (dateRange?.[1]) query = query.lte('create_time', `${dateRange[1]}T23:59:59.999`)
-  return query
-}
-
 const applyDriverFilters = (
   query: SupabaseQueryLike,
   params: DriverSearchParams
@@ -46,7 +39,7 @@ const applyDriverFilters = (
       `driver_name.ilike.%${keyword}%,phone.ilike.%${keyword}%,id_card_no.ilike.%${keyword}%,home_address.ilike.%${keyword}%`
     )
   }
-  return applyDateRange(query, createTimeRange)
+  return applyCreateTimeRange(query, createTimeRange)
 }
 
 export async function fetchDriverList(params: DriverSearchParams, options?: ApiRequestOptions) {

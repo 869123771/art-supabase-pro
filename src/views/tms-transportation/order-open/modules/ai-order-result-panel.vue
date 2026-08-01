@@ -7,6 +7,13 @@
 
     <ElAlert :title="analysis.summary" type="success" :closable="false" show-icon />
 
+    <div v-if="lowConfidenceFields.length" class="ai-order-result__confidence">
+      <span>建议重点核对：</span>
+      <ElTag v-for="field in lowConfidenceFields" :key="field" type="warning" effect="plain">
+        {{ field }}
+      </ElTag>
+    </div>
+
     <ElDescriptions :column="2" border class="ai-order-result__descriptions">
       <ElDescriptionsItem label="发货方">
         {{ displayText(analysis.order.shippingCustomerName) }} /
@@ -57,6 +64,28 @@
     if (confidencePercent.value >= 55) return 'warning'
     return 'danger'
   })
+  const lowConfidenceFields = computed(() => {
+    const labels: Record<string, string> = {
+      originStationName: '发货站',
+      destinationStationName: '到货站',
+      deliveryMethod: '配送方式',
+      shippingCustomerName: '发货客户',
+      shippingContactName: '发货联系人',
+      shippingContactPhone: '发货电话',
+      shippingAddressDetail: '发货地址',
+      receivingCustomerName: '收货客户',
+      receivingContactName: '收货联系人',
+      receivingContactPhone: '收货电话',
+      receivingAddressDetail: '收货地址',
+      cargoItems: '货物信息',
+      paymentMethod: '付款方式',
+      transportMode: '运输方式'
+    }
+    return Object.entries(analysis.fieldConfidence ?? {})
+      .filter(([, confidence]) => confidence < 0.65)
+      .map(([field]) => labels[field] ?? field)
+      .slice(0, 8)
+  })
   const cargoSummary = computed(() => {
     const items = analysis.order.cargoItems ?? []
     if (!items.length) return '-'
@@ -88,6 +117,16 @@
 
     &__descriptions {
       margin-top: 14px;
+    }
+
+    &__confidence {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      margin-top: 12px;
+      font-size: 12px;
+      color: var(--el-text-color-secondary);
     }
 
     &__confirm {

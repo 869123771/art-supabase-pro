@@ -1,0 +1,1 @@
+import{Rt as e,bt as t,ft as n}from"./framework-CEL2-aXB.js";import{t as r}from"./finance-ledger-list-BUrrhB75.js";var i=t({name:`TmsCashTransaction`,__name:`index`,setup(t){return(t,i)=>(e(),n(r,{module:`cash`}))}});export{i as default};

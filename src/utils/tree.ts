@@ -1,3 +1,5 @@
+import { clone as shallowClone, cloneDeep } from 'lodash-es'
+
 type ID = string | number
 
 export interface TreeNode {
@@ -31,7 +33,7 @@ export default class TreeUtils {
 
   // shallow or deep clone utility
   private clone<T>(obj: T): T {
-    return this.deepClone ? JSON.parse(JSON.stringify(obj)) : Object.assign({}, obj)
+    return this.deepClone ? cloneDeep(obj) : shallowClone(obj)
   }
 
   // is value considered root parent

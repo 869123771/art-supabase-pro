@@ -88,7 +88,7 @@
 <script setup lang="ts">
   import { useI18n } from 'vue-i18n'
   import type { FormInstance, FormItemRule, FormRules } from 'element-plus'
-  import type { QueryResult } from '@/hooks/core/useSupabase'
+  import type { QueryResult } from '@/types/api/response'
   import { register } from '@/api/auth'
   import { useSystemParam } from '@/hooks'
   import { useWebsiteConfig } from '@/hooks'

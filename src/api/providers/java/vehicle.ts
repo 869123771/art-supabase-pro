@@ -1,5 +1,5 @@
 import http from '@/utils/http'
-import type { QueryResult } from '@/hooks/core/useSupabase'
+import type { QueryResult } from '@/types/api/response'
 
 type InsuranceCompany = Api.VehicleMgtSys.BasicInfo.InsuranceCompany
 type InsuranceCompanySearchParams = Api.VehicleMgtSys.BasicInfo.InsuranceCompanySearchParams

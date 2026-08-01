@@ -1,5 +1,5 @@
 import { useSupabase } from '@/hooks'
-import { withRequestOptions, type SupabaseQueryLike } from '@/api/modules/tms/query'
+import { withRequestOptions, type SupabaseQueryLike } from '@/api/providers/supabase/query'
 import type { ApiRequestOptions } from '@/types/api/request'
 
 type Contract = Api.Tms.BasicData.Contract

@@ -1,5 +1,5 @@
 import { useSupabase } from '@/hooks'
-import type { SupabaseQueryLike } from '@/api/modules/tms/query'
+import type { SupabaseQueryLike } from '@/api/providers/supabase/query'
 import { ORDER_SELECT, uniqueStringValues } from '@/api/modules/tms/order-shared'
 import {
   createDriverWaybillPayload,

@@ -1,6 +1,7 @@
 import { useSupabase } from '@/hooks'
-import { WRITE_PERMISSION_DENIED_MESSAGE, type QueryResult } from '@/hooks/core/useSupabase'
-import type { SupabaseQueryLike } from '@/api/modules/tms/query'
+import { WRITE_PERMISSION_DENIED_MESSAGE } from '@/hooks/core/useSupabase'
+import type { QueryResult } from '@/types/api/response'
+import type { SupabaseQueryLike } from '@/api/providers/supabase/query'
 import { applyFilters, FilterSpec } from '@utils/supabase-filters'
 
 const { supabase, keysToSnakeDeep, responseHandle } = useSupabase()
@@ -290,9 +291,8 @@ export async function deleteResource(params: Api.DataCenter.Resources.ResourceLi
  */
 export async function fetchDatabaseMetadata(): Promise<Api.DataCenter.SqlConsole.DatabaseMetadata> {
   try {
-    const { data, error } = await responseHandle(() => supabase.rpc('get_database_metadata_all'), {
-      showMessage: false,
-      ignoreCheck: true
+    const { data, error } = await supabase.functions.invoke('execute-sql-with-columns', {
+      body: { action: 'metadata' }
     })
 
     if (error || !data) {

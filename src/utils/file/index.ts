@@ -1,5 +1,4 @@
-import * as XLSX from 'xlsx'
-import FileSaver from 'file-saver'
+import type { ColInfo } from 'xlsx'
 import { openFilePreview, type FilePreviewTarget } from '@/hooks/core/useFilePreview'
 
 export type ExcelCellValue = string | number | boolean | null | undefined | Date
@@ -34,7 +33,7 @@ const formatExcelCellValue = (value: unknown): string => {
 const calculateExcelColumnWidths = (
   rows: Record<string, string>[],
   columns: ExcelColumn[]
-): XLSX.ColInfo[] => {
+): ColInfo[] => {
   if (!rows.length) return []
 
   const sampleSize = Math.min(rows.length, 100)
@@ -74,9 +73,9 @@ export const buildExcelRows = <TRecord extends ExcelRecord>(
   })
 }
 
-export const exportExcel = <TRecord extends ExcelRecord>(
+export const exportExcel = async <TRecord extends ExcelRecord>(
   options: ExportExcelOptions<TRecord>
-): void => {
+): Promise<void> => {
   const {
     data,
     columns,
@@ -97,6 +96,7 @@ export const exportExcel = <TRecord extends ExcelRecord>(
     throw new Error(`导出数据不能超过 ${maxRows} 行`)
   }
 
+  const [{ default: FileSaver }, XLSX] = await Promise.all([import('file-saver'), import('xlsx')])
   const rows = buildExcelRows(data, columns, { autoIndex, indexColumnTitle })
   const worksheet = XLSX.utils.json_to_sheet(rows)
   worksheet['!cols'] = calculateExcelColumnWidths(rows, columns as ExcelColumn[])
@@ -124,6 +124,7 @@ export const exportExcel = <TRecord extends ExcelRecord>(
 }
 
 export async function importExcelFile(file: File): Promise<Array<Record<string, unknown>>> {
+  const XLSX = await import('xlsx')
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
 

@@ -23,14 +23,16 @@
       v-if="normalizedContentHeight"
       v-loading="contentLoading"
       ref="scrollbarRef"
-      :height="normalizedContentHeight"
-      :max-height="normalizedContentHeight"
       :always="options.scrollbarAlways"
       :native="options.nativeScrollbar"
       :element-loading-text="options.loadingText"
       :element-loading-background="options.loadingBackground"
       :element-loading-custom-class="options.loadingCustomClass"
       class="art-drawer__scrollbar"
+      :style="{
+        height: normalizedContentHeight,
+        maxHeight: normalizedContentHeight
+      }"
     >
       <div class="art-drawer__content">
         <component
@@ -295,19 +297,19 @@
 </script>
 
 <style scoped lang="scss">
-  :deep(.art-drawer) {
+  :global(.art-drawer) {
     max-width: 100vw;
   }
 
-  :deep(.art-drawer .el-drawer__body) {
+  :global(.art-drawer .el-drawer__body) {
     display: flex;
     flex-direction: column;
     min-height: 0;
+    overflow: hidden;
   }
 
   .art-drawer__content {
-    min-height: 1px;
-    height: 100%;
+    min-height: 100%;
   }
 
   .art-drawer__scrollbar {
@@ -317,6 +319,7 @@
 
     :deep(.el-scrollbar__view) {
       padding-right: 4px;
+      padding-bottom: 4px;
     }
   }
 

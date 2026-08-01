@@ -1,0 +1,64 @@
+import { toRaw } from 'vue'
+import { cloneDeep } from 'lodash-es'
+
+// ArtForm accepts business-owned models, including nested arrays and arbitrary records.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type FormRecord = Record<string, any>
+
+export interface SanitizeOutputOptions {
+  removeEmptyString: boolean
+  removeEmptyArray: boolean
+  removeEmptyObject: boolean
+  removeEmptyRichText: boolean
+  keepZero: boolean
+  keepFalse: boolean
+}
+
+export function cloneModelValue(value: FormRecord | undefined): FormRecord {
+  return value ? cloneDeep(toRaw(value)) : {}
+}
+
+function isRichTextEmpty(value: string): boolean {
+  if (/<(img|video|audio|iframe|embed|object)\b/i.test(value)) return false
+
+  return (
+    value
+      .replace(/&nbsp;/gi, '')
+      .replace(/<br\s*\/?>/gi, '')
+      .replace(/<[^>]*>/g, '')
+      .trim() === ''
+  )
+}
+
+export function sanitizeFormValue(value: unknown, options: SanitizeOutputOptions): unknown {
+  if (Array.isArray(value)) {
+    const sanitizedArray = value
+      .map((item) => sanitizeFormValue(item, options))
+      .filter((item) => item !== undefined)
+    return sanitizedArray.length === 0 && options.removeEmptyArray ? undefined : sanitizedArray
+  }
+
+  if (value && typeof value === 'object') {
+    const sanitizedObject = Object.entries(toRaw(value)).reduce<Record<string, unknown>>(
+      (result, [key, item]) => {
+        const sanitizedItem = sanitizeFormValue(item, options)
+        if (sanitizedItem !== undefined) result[key] = sanitizedItem
+        return result
+      },
+      {}
+    )
+    return Object.keys(sanitizedObject).length === 0 && options.removeEmptyObject
+      ? undefined
+      : sanitizedObject
+  }
+
+  if (typeof value === 'string') {
+    if (options.removeEmptyString && value.trim() === '') return undefined
+    if (options.removeEmptyRichText && isRichTextEmpty(value)) return undefined
+    return value
+  }
+
+  if (value === 0) return options.keepZero ? value : undefined
+  if (value === false) return options.keepFalse ? value : undefined
+  return value ?? undefined
+}

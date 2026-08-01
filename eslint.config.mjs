@@ -46,6 +46,9 @@ export default [
       globals: {
         // 合并从 autoImportConfig 中读取的全局变量配置
         ...autoImportConfig.globals,
+        // 生成文件只记录当前 Vite 会话扫描到的模块；常用服务 API 必须稳定可用。
+        ElLoading: 'readonly',
+        ElMessage: 'readonly',
         // TypeScript 全局命名空间
         Api: 'readonly'
       }
@@ -73,11 +76,46 @@ export default [
     }
   },
   // 忽略文件
+  // 业务视图和组件只能通过 src/api 的公开入口访问后端，禁止跨越 provider 边界。
+  {
+    files: ['src/views/**/*.{ts,tsx,vue}', 'src/components/**/*.{ts,tsx,vue}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: '@/hooks',
+              importNames: ['useSupabase'],
+              message: '业务 UI 请通过 src/api 的公开函数访问后端。'
+            },
+            {
+              name: '@/hooks/core/useSupabase',
+              message: '业务 UI 请通过 src/api 的公开函数访问后端。'
+            },
+            {
+              name: '@/plugins/supabase',
+              message: 'Supabase client 只能在 API/provider 层使用。'
+            }
+          ],
+          patterns: [
+            {
+              group: ['@/api/providers/**'],
+              message: '业务 UI 请依赖 src/api 的公开入口，不要直接依赖具体 provider。'
+            }
+          ]
+        }
+      ]
+    }
+  },
   {
     ignores: [
       'node_modules',
       'dist',
       'docs',
+      '.artifacts',
+      '.codex-build-*',
+      '.bundle-stats.html',
       'public',
       'supabase/**',
       '.vscode/**',

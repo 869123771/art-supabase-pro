@@ -1,6 +1,7 @@
 import { supabase } from '@/plugins/supabase'
 import { isBoolean } from 'lodash-es'
 import { ElMessage } from 'element-plus'
+import type { QueryResult } from '@/types/api/response'
 
 export type SupabaseAction = 'select' | 'insert' | 'update' | 'delete' | 'rpc'
 export const WRITE_PERMISSION_DENIED_MESSAGE = '当前账号没有该数据的维护权限'
@@ -26,12 +27,6 @@ export interface RunQueryOptions {
 /**
  * 标准返回类型
  */
-export type QueryResult<T> = {
-  data: T | null
-  error: unknown | null
-  total?: number
-}
-
 interface QueryResponse {
   data?: unknown
   error?: unknown

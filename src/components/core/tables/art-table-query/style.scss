@@ -1,0 +1,32 @@
+.art-table-query {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+:deep(.art-table-card) {
+  min-height: 0;
+}
+
+:deep(.art-table-card > .el-card__body) {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.art-table-query__header-left {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.art-table-query__header-top {
+  margin-bottom: 12px;
+}
+
+.art-table-query__header-action {
+  display: inline-flex;
+}

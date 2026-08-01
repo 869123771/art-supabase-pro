@@ -379,7 +379,10 @@ deno_version = 2
 verify_jwt = true
 
 [functions.ai-order-assistant]
-verify_jwt = false
+verify_jwt = true
+
+[functions.ai-assistant]
+verify_jwt = true
 
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"

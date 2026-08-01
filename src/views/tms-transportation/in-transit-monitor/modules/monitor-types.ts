@@ -91,23 +91,9 @@ export interface AlertItem {
   title: string
 }
 
-export interface MapViewState {
-  center: GeoCoord
-  zoom: number
-}
-
 export interface ScreenScaleState {
   viewportHeight: number
   viewportWidth: number
-}
-
-export interface RouteOverlayState {
-  basePath: string
-  height: number
-  passedPath: string
-  remainingPath: string
-  visible: boolean
-  width: number
 }
 
 export interface VehiclePoiState {

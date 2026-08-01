@@ -1,0 +1,1 @@
+import{Rt as e,bt as t,ft as n}from"./framework-CEL2-aXB.js";import{t as r}from"./vehicle-archive-detail-content-3K-Txopc.js";var i=t({name:`VehicleArchiveDetail`,__name:`index`,setup(t){return(t,i)=>(e(),n(r))}});export{i as default};

@@ -1,5 +1,10 @@
 import { useSupabase } from '@/hooks'
-import { withRequestOptions, type SupabaseQueryLike } from '@/api/modules/tms/query'
+import {
+  applyCreateTimeRange,
+  normalizeBooleanFilter,
+  withRequestOptions,
+  type SupabaseQueryLike
+} from '@/api/providers/supabase/query'
 import type { ApiRequestOptions } from '@/types/api/request'
 
 type Cargo = Api.Tms.BasicData.Cargo
@@ -10,12 +15,6 @@ interface WriteOptions {
 }
 
 const { supabase, keysToSnakeDeep, responseHandle } = useSupabase()
-
-const normalizeBooleanFilter = (value: unknown): boolean | undefined => {
-  if (value === true || value === 'true') return true
-  if (value === false || value === 'false') return false
-  return undefined
-}
 
 const applyCargoFilters = (
   query: SupabaseQueryLike,
@@ -30,11 +29,7 @@ const applyCargoFilters = (
       `cargo_name.ilike.%${keyword}%,cargo_code.ilike.%${keyword}%,unit.ilike.%${keyword}%,remark.ilike.%${keyword}%`
     )
   }
-  if (createTimeRange?.[0]) query = query.gte('create_time', `${createTimeRange[0]}T00:00:00`)
-  if (createTimeRange?.[1]) {
-    query = query.lte('create_time', `${createTimeRange[1]}T23:59:59.999`)
-  }
-  return query
+  return applyCreateTimeRange(query, createTimeRange)
 }
 
 export async function fetchCargoList(params: CargoSearchParams, options?: ApiRequestOptions) {

@@ -1,9 +1,10 @@
 import { useSupabase } from '@/hooks'
 import {
   applyCreateTimeRange,
+  normalizeBooleanFilter,
   withRequestOptions,
   type SupabaseQueryLike
-} from '@/api/modules/tms/query'
+} from '@/api/providers/supabase/query'
 import type { ApiRequestOptions } from '@/types/api/request'
 
 type StationRecord = Api.Tms.Station.StationRecord
@@ -15,12 +16,6 @@ interface WriteOptions {
 }
 
 const { supabase, keysToSnakeDeep, responseHandle } = useSupabase()
-
-const normalizeBooleanFilter = (value: unknown): boolean | undefined => {
-  if (value === true || value === 'true') return true
-  if (value === false || value === 'false') return false
-  return undefined
-}
 
 const applyStationFilters = (
   query: SupabaseQueryLike,

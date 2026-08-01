@@ -1,7 +1,8 @@
 import dayjs from 'dayjs'
+import { clamp, escape, uniqBy } from 'lodash-es'
 import { formatWithDayjs } from '@/utils/time'
 import type { GeoCoord, InTransitRecord, TransitStatus } from './monitor-types'
-import { INITIAL_MAP_CENTER, stationGeoPositions } from './monitor-config'
+import { INITIAL_MAP_CENTER, stationGeoPositions } from './monitor-geo-config'
 
 export const getMonitorRecordId = (row: InTransitRecord): string => String(row.id || row.waybillNo)
 
@@ -203,29 +204,9 @@ export const normalizeVehicleTypeCode = (value?: string | number | null): string
   String(value ?? '').trim()
 
 export const dedupeGeoPath = (path: GeoCoord[]): GeoCoord[] =>
-  path.reduce<GeoCoord[]>((result, point) => {
-    const previous = result[result.length - 1]
-    if (!previous || previous[0] !== point[0] || previous[1] !== point[1]) {
-      result.push(point)
-    }
-    return result
-  }, [])
+  uniqBy(path, ([longitude, latitude]) => `${longitude},${latitude}`)
 
-export const escapeHtml = (value: string): string =>
-  value.replace(
-    /[&<>"']/g,
-    (char) =>
-      ({
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#39;'
-      })[char] ?? char
-  )
-
-export const clamp = (value: number, min: number, max: number): number =>
-  Math.min(Math.max(value, min), max)
+export const escapeHtml = escape
 
 export const percentOf = (value: number, total: number): number =>
   total > 0 ? clamp(Math.round((value / total) * 100), 0, 100) : 0

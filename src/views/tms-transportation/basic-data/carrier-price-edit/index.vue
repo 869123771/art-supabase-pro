@@ -36,14 +36,13 @@
         />
       </section>
 
-      <section class="carrier-price-edit__section art-card-xs">
-        <div class="carrier-price-edit__section-header">
-          <ArtSectionTitle :show-line="false">货物信息</ArtSectionTitle>
-          <div class="carrier-price-edit__section-actions">
-            <ElButton plain :icon="Collection" @click="openCargoSelector">批量选货物</ElButton>
-            <ElButton type="primary" plain :icon="Plus" @click="addCargoItem">添加</ElButton>
-          </div>
-        </div>
+      <PriceCargoSection
+        :quantity-text="form.cargoQuantityText"
+        :volume-text="form.cargoVolumeText"
+        :weight-text="form.cargoWeightText"
+        @select-cargo="openCargoSelector"
+        @add-cargo="addCargoItem"
+      >
         <ArtTable
           :data="form.cargoItems"
           :columns="form.cargoColumns"
@@ -52,27 +51,21 @@
           table-layout="fixed"
           empty-height="160px"
         />
-        <div class="carrier-price-edit__cargo-summary">
-          <span>合计</span>
-          <div>
-            <span>总数量：{{ form.cargoQuantityText }}</span>
-            <span>总体积：{{ form.cargoVolumeText }}m³</span>
-            <span>总重量：{{ form.cargoWeightText }}kg</span>
-          </div>
-        </div>
-        <ArtForm
-          ref="feeFormRef"
-          v-model="form.data"
-          :items="form.feeItems"
-          :rules="form.rules"
-          :span="8"
-          :gutter="24"
-          label-width="98px"
-          root-class="carrier-price-edit__form carrier-price-edit__fee-form"
-          :show-reset="false"
-          :show-submit="false"
-        />
-      </section>
+        <template #after>
+          <ArtForm
+            ref="feeFormRef"
+            v-model="form.data"
+            :items="form.feeItems"
+            :rules="form.rules"
+            :span="8"
+            :gutter="24"
+            label-width="98px"
+            root-class="carrier-price-edit__form carrier-price-edit__fee-form"
+            :show-reset="false"
+            :show-submit="false"
+          />
+        </template>
+      </PriceCargoSection>
 
       <section class="carrier-price-edit__section art-card-xs">
         <ArtSectionTitle>付款方式</ArtSectionTitle>
@@ -105,7 +98,7 @@
   import { cloneDeep, omit } from 'lodash-es'
   import type { FormRules } from 'element-plus'
   import { ElButton, ElInput, ElInputNumber, ElOption, ElSelect } from 'element-plus'
-  import { Collection, Plus } from '@element-plus/icons-vue'
+  import { Plus } from '@element-plus/icons-vue'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
@@ -121,7 +114,23 @@
   } from '@/api/tms'
   import { fetchVehicleArchiveOptions } from '@/api/vehicle-manage-system'
   import { useUserStore } from '@/store/modules/user'
+  import { clearFormRefsValidation, validateFormRefs } from '@/utils/form/validation'
   import CargoMultipleSelect from '../../modules/cargo-multiple-select.vue'
+  import PriceCargoSection from '../modules/price-cargo-section.vue'
+  import {
+    calculateCargoSummary,
+    formatNumber,
+    getResponseData,
+    joinRegionPath,
+    mergeCargoSelections,
+    normalizeMoney,
+    normalizeNullableNumber,
+    normalizeText,
+    roundNumber,
+    splitRegionPath,
+    toNumber,
+    type CargoSummary
+  } from '../modules/price-form-utils'
 
   defineOptions({ name: 'TmsCarrierPriceEdit' })
 
@@ -149,12 +158,6 @@
   interface PageState {
     loading: boolean
     saving: boolean
-  }
-
-  interface CargoSummary {
-    quantity: number
-    volume: number
-    weight: number
   }
 
   interface FeeSummary {
@@ -198,6 +201,7 @@
   const feeFormRef = ref<FormExpose>()
   const paymentFormRef = ref<FormExpose>()
   const cargoSelectorRef = ref<CargoSelectorExpose>()
+  const validatedFormRefs = [baseFormRef, carrierFormRef, feeFormRef, paymentFormRef]
 
   const isEdit = computed(() => Boolean(route.params.id))
   const dictCodes = [
@@ -272,14 +276,6 @@
     }
   }
 
-  function createEmptyCargoSummary(): CargoSummary {
-    return {
-      quantity: 0,
-      volume: 0,
-      weight: 0
-    }
-  }
-
   function createEmptyFeeSummary(): FeeSummary {
     return {
       splitTransportFee: 0,
@@ -287,25 +283,6 @@
       packageFee: 0,
       totalFee: 0
     }
-  }
-
-  function toNumber(value?: number | string | null): number {
-    const numberValue = Number(value ?? 0)
-    return Number.isNaN(numberValue) ? 0 : numberValue
-  }
-
-  function roundNumber(value: number, precision = 2): number {
-    const factor = 10 ** precision
-    return Math.round((value + Number.EPSILON) * factor) / factor
-  }
-
-  function formatNumber(value?: number | string | null, precision = 2): string {
-    const numberValue = Number(value ?? 0)
-    if (Number.isNaN(numberValue)) return '0'
-    return numberValue
-      .toFixed(precision)
-      .replace(/\.0+$/, '')
-      .replace(/(\.\d*?)0+$/, '$1')
   }
 
   const page = reactive<PageState>({ loading: false, saving: false })
@@ -675,23 +652,7 @@
       }
     ]),
     cargoItems: computed(() => form.data.cargoItems ?? []),
-    cargoSummary: computed(() => {
-      const items = form.data.cargoItems ?? []
-      return {
-        quantity: roundNumber(
-          items.reduce((sum, item) => sum + toNumber(item.quantity), 0),
-          2
-        ),
-        volume: roundNumber(
-          items.reduce((sum, item) => sum + toNumber(item.volumeM3), 0),
-          3
-        ),
-        weight: roundNumber(
-          items.reduce((sum, item) => sum + toNumber(item.weightKg), 0),
-          2
-        )
-      }
-    }),
+    cargoSummary: computed(() => calculateCargoSummary(form.data.cargoItems ?? [])),
     feeSummary: computed(() => {
       const items = form.data.cargoItems ?? []
       const splitTransportFee = roundNumber(
@@ -747,7 +708,7 @@
         ...dictCodes.map((code) => userStore.ensureDictLoaded(code))
       ])
       await nextTick()
-      clearFormsValidate()
+      clearFormRefsValidation(validatedFormRefs)
     } finally {
       page.loading = false
     }
@@ -756,10 +717,9 @@
   watch(
     () => form.cargoSummary,
     (summary) => {
-      const nextSummary = summary ?? createEmptyCargoSummary()
-      form.data.cargoQuantityTotal = nextSummary.quantity
-      form.data.cargoVolumeTotal = nextSummary.volume
-      form.data.cargoWeightTotal = nextSummary.weight
+      form.data.cargoQuantityTotal = summary.quantity
+      form.data.cargoVolumeTotal = summary.volume
+      form.data.cargoWeightTotal = summary.weight
     },
     { immediate: true }
   )
@@ -803,12 +763,6 @@
 
   function replaceForm(nextForm: CarrierPriceForm): void {
     Object.assign(form.data, createInitialForm(), cloneDeep(nextForm))
-  }
-
-  function getResponseData<TRecord>(result: unknown): TRecord[] {
-    if (!result || typeof result !== 'object') return []
-    const data = (result as { data?: TRecord[] }).data
-    return Array.isArray(data) ? data : []
   }
 
   function syncCarrierOptions(result: unknown): unknown {
@@ -892,16 +846,10 @@
 
   function handleCargoSelectorConfirm(selectedCargoes: CargoMaster[]): void {
     const currentItems = form.data.cargoItems ?? []
-    const existingNames = new Set(
-      currentItems.map((item) => normalizeText(item.cargoName) ?? '').filter(Boolean)
-    )
-    const additions = selectedCargoes
-      .filter((item) => item.cargoName && !existingNames.has(item.cargoName))
-      .map(createCargoItemFromMaster)
-    if (!additions.length) return
+    const result = mergeCargoSelections(currentItems, selectedCargoes, createCargoItemFromMaster)
+    if (!result.addedCount) return
 
-    const isSingleEmptyRow = currentItems.length === 1 && !normalizeText(currentItems[0].cargoName)
-    form.data.cargoItems = isSingleEmptyRow ? additions : [...currentItems, ...additions]
+    form.data.cargoItems = result.items
   }
 
   function createCargoItemFromMaster(cargo: CargoMaster): CarrierPriceCargoItem {
@@ -924,41 +872,6 @@
     form.data.cargoItems = rows.filter((item) => item !== row)
   }
 
-  async function validateForms(): Promise<boolean> {
-    const formRefs = [baseFormRef, carrierFormRef, feeFormRef, paymentFormRef]
-
-    for (const item of formRefs) {
-      try {
-        await item.value?.validate()
-      } catch {
-        await nextTick()
-        focusFirstInvalidField()
-        return false
-      }
-    }
-
-    return true
-  }
-
-  function clearFormsValidate(): void {
-    baseFormRef.value?.clearValidate()
-    carrierFormRef.value?.clearValidate()
-    feeFormRef.value?.clearValidate()
-    paymentFormRef.value?.clearValidate()
-  }
-
-  function focusFirstInvalidField(): void {
-    const invalidItem = pageRef.value?.querySelector<HTMLElement>('.el-form-item.is-error')
-    if (!invalidItem) return
-
-    invalidItem.scrollIntoView({ behavior: 'smooth', block: 'center' })
-    invalidItem
-      .querySelector<HTMLElement>(
-        'input:not([type="hidden"]):not([disabled]), textarea:not([disabled]), button:not([disabled]), [tabindex]:not([tabindex="-1"])'
-      )
-      ?.focus()
-  }
-
   function normalizePayload(): CarrierPrice {
     const raw = cloneDeep(toRaw(form.data))
     const payload = omit(raw, [
@@ -976,8 +889,8 @@
 
     payload.originRegion = joinRegionPath(raw.originRegionPath)
     payload.destinationRegion = joinRegionPath(raw.destinationRegionPath)
-    payload.driverId = normalizeNullableText(raw.driverId)
-    payload.vehicleId = normalizeNullableText(raw.vehicleId)
+    payload.driverId = normalizeText(raw.driverId)
+    payload.vehicleId = normalizeText(raw.vehicleId)
     payload.contactName = normalizeText(raw.contactName)
     payload.contactPhone = normalizeText(raw.contactPhone)
     payload.driverName = normalizeText(raw.driverName)
@@ -1036,7 +949,7 @@
   }
 
   async function handleSave(): Promise<void> {
-    const valid = await validateForms()
+    const valid = await validateFormRefs(validatedFormRefs, pageRef)
     if (!valid) return
 
     page.saving = true
@@ -1054,37 +967,6 @@
 
   function goBack(): void {
     void router.push({ name: 'TmsCarrierPrice' })
-  }
-
-  function splitRegionPath(region?: string | null): string[] {
-    return String(region ?? '')
-      .split('/')
-      .map((item) => item.trim())
-      .filter(Boolean)
-  }
-
-  function joinRegionPath(regionPath?: string[]): string {
-    return (regionPath ?? []).filter(Boolean).join('/')
-  }
-
-  function normalizeText(value?: string | null): string | null {
-    const text = String(value ?? '').trim()
-    return text || null
-  }
-
-  function normalizeNullableText(value?: string | null): string | null {
-    return normalizeText(value)
-  }
-
-  function normalizeNullableNumber(value?: number | string | null): number | null {
-    if (value === null || value === undefined || value === '') return null
-    const numberValue = Number(value)
-    return Number.isNaN(numberValue) ? null : numberValue
-  }
-
-  function normalizeMoney(value?: number | string | null): number {
-    const numberValue = normalizeNullableNumber(value)
-    return roundNumber(numberValue ?? 0, 2)
   }
 </script>
 
@@ -1110,30 +992,6 @@
       align-items: center;
       justify-content: space-between;
       margin-bottom: 14px;
-    }
-
-    &__section-actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      justify-content: flex-end;
-    }
-
-    &__cargo-summary {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      min-height: 48px;
-      padding: 0 12px;
-      color: var(--art-text-gray-600);
-      background: var(--el-fill-color-lighter);
-
-      div {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 20px;
-        justify-content: flex-end;
-      }
     }
 
     &__fee-form {
@@ -1162,21 +1020,6 @@
 
     :deep(.art-table__cell-value) {
       width: 100%;
-    }
-  }
-
-  @media (width <= 900px) {
-    .carrier-price-edit {
-      &__cargo-summary {
-        flex-direction: column;
-        gap: 8px;
-        align-items: flex-start;
-        padding: 12px;
-
-        div {
-          justify-content: flex-start;
-        }
-      }
     }
   }
 </style>

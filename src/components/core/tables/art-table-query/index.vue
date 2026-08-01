@@ -121,16 +121,7 @@
 </template>
 
 <script setup lang="ts">
-  import {
-    computed,
-    h,
-    onMounted,
-    nextTick,
-    ref,
-    type Component,
-    type VNode,
-    type VNodeChild
-  } from 'vue'
+  import { computed, h, onMounted, ref, type Component, type VNode, type VNodeChild } from 'vue'
   import type { TableProps } from 'element-plus'
   import { ElMessage, ElMessageBox } from 'element-plus'
   import { useResizeObserver } from '@vueuse/core'
@@ -147,6 +138,7 @@
     type TableError
   } from '@/utils/table/tableUtils'
   import { exportExcel, mapExcelRowsToRecords, type ExcelColumn } from '@/utils/file'
+  import { useCrossPageSelection } from './use-cross-page-selection'
 
   defineOptions({ name: 'ArtTableQuery' })
 
@@ -210,14 +202,15 @@
   }
 
   export type ArtTableQueryTableSize = 'small' | 'default' | 'large'
-  // Core table wrapper accepts arbitrary business row shapes from many modules.
+  // Vue SFC props cannot expose a component-level row generic. Keep the dynamic boundary here;
+  // business callbacks narrow it through the exported generic helper types below.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   type TableQueryRecord = Record<string, any>
-  // API params are intentionally broad because page-level APIs own their exact search model.
+  // Page APIs own incompatible parameter models, so the non-generic SFC boundary remains broad.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   type TableQueryApiParams = any
   type TableQueryApiResponse = unknown
-  // Dynamic named slots receive payloads owned by ArtSearchBar/ArtTable internals.
+  // Vue's dynamic slot index signature must accept heterogeneous child-component payloads.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   type TableQuerySlotProps = any
 
@@ -526,8 +519,6 @@
   const tableRef = ref<ArtTableExpose | null>(null)
   const headerTopRef = ref<HTMLElement>()
   const headerTopHeight = ref(0)
-  const selectedRows = ref<TableQueryRecord[]>([])
-  const selectedRowMap = ref(new Map<string | number, TableQueryRecord>())
 
   export interface ArtTableQueryEmits {
     /** 点击查询按钮时触发。内管模式下组件会先自动 replaceSearchParams + getData。 */
@@ -649,32 +640,6 @@
     })
   })
 
-  const getRowIdentity = (row: TableQueryRecord): string | number | undefined => {
-    const rowKey = resolvedTableProps.value.rowKey
-    if (typeof rowKey === 'function') return rowKey(row)
-    const rowRecord = row as Record<string, unknown>
-    const value = typeof rowKey === 'string' ? rowRecord[rowKey] : rowRecord.id
-    return typeof value === 'string' || typeof value === 'number' ? value : undefined
-  }
-
-  const syncSelectedRows = (): void => {
-    selectedRows.value = Array.from(selectedRowMap.value.values())
-  }
-
-  const selectedRowKeys = computed(() =>
-    selectedRows.value
-      .map((row) => getRowIdentity(row))
-      .filter((key): key is string | number => key !== undefined)
-  )
-
-  const clearSelectedRows = (): void => {
-    selectedRowMap.value.clear()
-    selectedRows.value = []
-    void nextTick(() => {
-      tableRef.value?.elTableRef?.clearSelection()
-    })
-  }
-
   const resolvedColumnsModel = computed({
     get: () =>
       isManaged.value
@@ -694,6 +659,19 @@
   )
 
   const resolvedData = computed(() => (isManaged.value ? managedTable.data.value : props.data))
+
+  const {
+    selectedRows,
+    selectedRowKeys,
+    getRowIdentity,
+    clearSelectedRows,
+    handleSelectionChange
+  } = useCrossPageSelection<TableQueryRecord>({
+    data: resolvedData,
+    getRowKey: () => resolvedTableProps.value.rowKey,
+    clearTableSelection: () => tableRef.value?.elTableRef?.clearSelection(),
+    onChange: (rows) => emit('selection-change', rows)
+  })
 
   const resolvedColumns = computed(() =>
     isManaged.value ? (managedTable.columns?.value ?? props.tableColumns) : props.tableColumns
@@ -973,7 +951,7 @@
       return
     }
 
-    exportExcel({
+    await exportExcel({
       data: rows,
       columns: resolveExcelColumns(action.exportColumns, ctx),
       filename: getActionFilename(action, ctx),
@@ -1102,35 +1080,6 @@
     await managedTable.refreshRemove()
   }
 
-  const handleSelectionChange = (selection: TableQueryRecord[]): void => {
-    const currentPageKeys = new Set(
-      resolvedData.value
-        .map((row) => getRowIdentity(row))
-        .filter((key): key is string | number => key !== undefined)
-    )
-    const currentSelectionKeys = new Set(
-      selection
-        .map((row) => getRowIdentity(row))
-        .filter((key): key is string | number => key !== undefined)
-    )
-
-    currentPageKeys.forEach((key) => {
-      if (!currentSelectionKeys.has(key)) {
-        selectedRowMap.value.delete(key)
-      }
-    })
-
-    selection.forEach((row) => {
-      const key = getRowIdentity(row)
-      if (key !== undefined) {
-        selectedRowMap.value.set(key, row)
-      }
-    })
-
-    syncSelectedRows()
-    emit('selection-change', selectedRows.value)
-  }
-
   const handleRowDragStart = (payload: TableQueryRecord): void => {
     emit('row-drag-start', payload)
   }
@@ -1200,37 +1149,4 @@
   })
 </script>
 
-<style scoped lang="scss">
-  .art-table-query {
-    display: flex;
-    flex: 1;
-    flex-direction: column;
-    min-height: 0;
-  }
-
-  :deep(.art-table-card) {
-    min-height: 0;
-  }
-
-  :deep(.art-table-card > .el-card__body) {
-    display: flex;
-    flex: 1;
-    flex-direction: column;
-    min-height: 0;
-  }
-
-  .art-table-query__header-left {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    align-items: center;
-  }
-
-  .art-table-query__header-top {
-    margin-bottom: 12px;
-  }
-
-  .art-table-query__header-action {
-    display: inline-flex;
-  }
-</style>
+<style scoped lang="scss" src="./style.scss"></style>

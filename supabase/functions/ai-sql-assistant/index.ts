@@ -1,4 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from "jsr:@supabase/supabase-js@2";
 
 interface SqlAiGenerateRequest {
   prompt: string;
@@ -171,6 +172,40 @@ Deno.serve(async (req) => {
   }
 
   try {
+    const authHeader = req.headers.get("Authorization");
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+    if (!authHeader || !supabaseUrl || !supabaseAnonKey) {
+      return json({ code: "unauthorized", message: "Authentication required" }, 401);
+    }
+
+    const token = authHeader.replace(/^Bearer\s+/i, "");
+    const authClient = createClient(supabaseUrl, supabaseAnonKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+    const {
+      data: { user },
+      error: authError,
+    } = await authClient.auth.getUser(token);
+    if (authError || !user) {
+      return json({ code: "unauthorized", message: "Invalid or expired session" }, 401);
+    }
+
+    const userClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+    const { data: isSuper, error: superError } = await userClient.rpc("current_is_super");
+    if (superError) {
+      return json({ code: "permission_check_failed", message: "Failed to verify AI SQL permission" }, 500);
+    }
+    if (!isSuper) {
+      return json(
+        { code: "forbidden", message: "AI SQL is restricted to platform super administrators" },
+        403,
+      );
+    }
+
     const body = (await req.json()) as SqlAiGenerateRequest;
     const prompt = body?.prompt?.trim();
 
