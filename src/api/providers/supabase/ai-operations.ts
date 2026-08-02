@@ -116,6 +116,46 @@ export interface AiRunDetail extends AiRunListItem {
   messages: AiConversationMessage[]
 }
 
+export type AiDiagnosisSeverity = 'low' | 'medium' | 'high' | 'critical'
+export type AiDiagnosisCategory =
+  'provider' | 'configuration' | 'prompt' | 'tool' | 'data' | 'performance' | 'unknown'
+export type AiDiagnosisPriority = 'P0' | 'P1' | 'P2'
+export type AiDiagnosisOwner = 'platform' | 'tenant' | 'provider'
+
+export interface AiDiagnosisRootCause {
+  title: string
+  evidence: string
+  confidence: number
+}
+
+export interface AiDiagnosisAction {
+  priority: AiDiagnosisPriority
+  title: string
+  steps: string[]
+  owner: AiDiagnosisOwner
+}
+
+export interface AiRunDiagnosis {
+  severity: AiDiagnosisSeverity
+  category: AiDiagnosisCategory
+  confidence: number
+  summary: string
+  rootCauses: AiDiagnosisRootCause[]
+  actions: AiDiagnosisAction[]
+  prevention: string[]
+  observations: string[]
+}
+
+export interface AiRunDiagnosisResponse {
+  diagnosis: AiRunDiagnosis
+  runId: string
+  targetRunId: string
+  model: string
+  promptVersion: string
+  providerDurationMs: number
+  durationMs: number
+}
+
 const runListSelect = `
   id,
   conversation_id,
@@ -233,4 +273,31 @@ export async function fetchAiRunDetail(id: string): Promise<AiRunDetail> {
     toolCallDetails: toolResult.data ?? [],
     messages: messageResult.data ?? []
   }
+}
+
+async function normalizeFunctionError(error: unknown): Promise<Error> {
+  if (error && typeof error === 'object' && 'context' in error) {
+    const context = (error as { context?: unknown }).context
+    if (context instanceof Response) {
+      try {
+        const payload = (await context.clone().json()) as { message?: unknown }
+        if (typeof payload.message === 'string' && payload.message)
+          return new Error(payload.message)
+      } catch {
+        // Fall back to the original Edge Function error.
+      }
+    }
+  }
+  if (error instanceof Error) return error
+  return new Error('AI 运行诊断暂时不可用')
+}
+
+export async function diagnoseAiRun(id: string): Promise<AiRunDiagnosisResponse> {
+  const { data, error } = await supabase.functions.invoke<AiRunDiagnosisResponse>(
+    'ai-run-diagnosis',
+    { body: { runId: id } }
+  )
+  if (error) throw await normalizeFunctionError(error)
+  if (!data?.runId || !data.diagnosis?.summary) throw new Error('AI 运行诊断返回格式无效')
+  return data
 }

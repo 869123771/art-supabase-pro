@@ -1,0 +1,1 @@
+import{pt as e,xt as t,zt as n}from"./framework-hPFoIT7V.js";import{t as r}from"./vehicle-archive-detail-content-DPYiY31V.js";var i=t({name:`VehicleArchiveDetail`,__name:`index`,setup(t){return(t,i)=>(n(),e(r))}});export{i as default};

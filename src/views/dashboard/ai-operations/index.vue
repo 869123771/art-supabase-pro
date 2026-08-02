@@ -148,7 +148,7 @@
       />
     </section>
 
-    <AiRunDetailDrawer ref="detailDrawerRef" />
+    <AiRunDetailDrawer ref="detailDrawerRef" @diagnosed="refreshAfterDiagnosis" />
   </div>
 </template>
 
@@ -378,6 +378,10 @@
 
   function openDetail(row: AiRunListItem): void {
     void detailDrawerRef.value?.handleOpen({ id: row.id })
+  }
+
+  function refreshAfterDiagnosis(): void {
+    void Promise.all([loadOverview(), tableQueryRef.value?.refreshData()])
   }
 
   function renderFeedback(row: AiRunListItem) {

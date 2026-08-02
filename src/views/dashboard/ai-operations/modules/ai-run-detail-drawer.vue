@@ -34,6 +34,100 @@
         </div>
       </section>
 
+      <section class="ai-run-detail__diagnosis-entry">
+        <div class="ai-run-detail__diagnosis-icon">
+          <ArtSvgIcon icon="ri:stethoscope-line" />
+        </div>
+        <div>
+          <strong>AI 智能诊断</strong>
+          <span>结合错误、耗时、工具调用和运行上下文，生成分级排查建议。</span>
+        </div>
+        <ElButton
+          type="primary"
+          plain
+          :loading="diagnosis.loading"
+          :disabled="!canDiagnose"
+          @click="runDiagnosis"
+        >
+          <ArtSvgIcon v-if="!diagnosis.loading" icon="ri:sparkling-2-line" />
+          {{ diagnosisActionLabel }}
+        </ElButton>
+      </section>
+
+      <template v-if="diagnosis.data">
+        <ArtSectionTitle title="智能诊断结果" />
+        <section class="ai-run-detail__diagnosis-result">
+          <header>
+            <div>
+              <ElTag :type="severityTagType" effect="dark" round>
+                {{ severityLabel }}
+              </ElTag>
+              <ElTag effect="plain" round>{{ categoryLabel }}</ElTag>
+            </div>
+            <span>置信度 {{ diagnosis.data.confidence }}%</span>
+          </header>
+          <p>{{ diagnosis.data.summary }}</p>
+          <small>
+            诊断模型 {{ diagnosis.model }} · Prompt {{ diagnosis.promptVersion }} ·
+            {{ formatDuration(diagnosis.durationMs) }}
+          </small>
+        </section>
+
+        <div v-if="diagnosis.data.rootCauses.length" class="ai-run-detail__diagnosis-section">
+          <h3>可能根因</h3>
+          <article
+            v-for="(cause, index) in diagnosis.data.rootCauses"
+            :key="`${index}-${cause.title}`"
+          >
+            <header>
+              <strong>{{ cause.title }}</strong>
+              <span>{{ cause.confidence }}%</span>
+            </header>
+            <p>{{ cause.evidence || '当前证据有限，建议结合服务商日志进一步确认。' }}</p>
+          </article>
+        </div>
+
+        <div v-if="diagnosis.data.actions.length" class="ai-run-detail__diagnosis-section">
+          <h3>处理建议</h3>
+          <article
+            v-for="(action, index) in diagnosis.data.actions"
+            :key="`${index}-${action.title}`"
+            class="is-action"
+          >
+            <header>
+              <div>
+                <ElTag :type="priorityTagType(action.priority)" size="small" effect="light">
+                  {{ action.priority }}
+                </ElTag>
+                <strong>{{ action.title }}</strong>
+              </div>
+              <span>{{ ownerLabel(action.owner) }}</span>
+            </header>
+            <ol v-if="action.steps.length">
+              <li v-for="step in action.steps" :key="step">{{ step }}</li>
+            </ol>
+          </article>
+        </div>
+
+        <div
+          v-if="diagnosis.data.prevention.length || diagnosis.data.observations.length"
+          class="ai-run-detail__diagnosis-notes"
+        >
+          <div v-if="diagnosis.data.prevention.length">
+            <strong>预防措施</strong>
+            <ul
+              ><li v-for="item in diagnosis.data.prevention" :key="item">{{ item }}</li></ul
+            >
+          </div>
+          <div v-if="diagnosis.data.observations.length">
+            <strong>补充观察</strong>
+            <ul
+              ><li v-for="item in diagnosis.data.observations" :key="item">{{ item }}</li></ul
+            >
+          </div>
+        </div>
+      </template>
+
       <ArtSectionTitle title="运行信息" />
       <ElDescriptions :column="2" border class="ai-run-detail__descriptions">
         <ElDescriptionsItem label="功能场景">
@@ -138,11 +232,19 @@
 
 <script setup lang="ts">
   import dayjs from 'dayjs'
+  import { ElMessage } from 'element-plus'
   import ArtDrawer from '@/components/core/drawers/art-drawer/index.vue'
   import type { ArtDrawerExpose } from '@/components/core/drawers/art-drawer/types'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
-  import { fetchAiRunDetail, type AiRunDetail } from '@/api/ai-operations'
+  import {
+    diagnoseAiRun,
+    fetchAiRunDetail,
+    type AiDiagnosisOwner,
+    type AiDiagnosisPriority,
+    type AiRunDetail,
+    type AiRunDiagnosis
+  } from '@/api/ai-operations'
 
   defineOptions({ name: 'AiRunDetailDrawer' })
 
@@ -150,8 +252,27 @@
     id: string
   }
 
+  interface DiagnosisState {
+    loading: boolean
+    data?: AiRunDiagnosis
+    model: string
+    promptVersion: string
+    durationMs?: number
+  }
+
+  type TagType = 'primary' | 'success' | 'warning' | 'danger' | 'info'
+
+  const emit = defineEmits<{ diagnosed: [] }>()
+
   const drawerRef = ref<ArtDrawerExpose<OpenData>>()
   const detail = shallowRef<AiRunDetail>()
+  const diagnosis = reactive<DiagnosisState>({
+    loading: false,
+    data: undefined,
+    model: '',
+    promptVersion: '',
+    durationMs: undefined
+  })
 
   const executionMode = computed(() => {
     const value = detail.value?.metadata?.executionMode
@@ -163,9 +284,41 @@
     if (rating === -1) return '需要改进'
     return '暂无反馈'
   })
+  const canDiagnose = computed(() => detail.value?.feature !== 'operations_diagnosis')
+  const diagnosisActionLabel = computed(() => {
+    if (!canDiagnose.value) return '诊断记录不可递归分析'
+    if (diagnosis.data) return '重新诊断'
+    return detail.value?.status === 'failed' ? '诊断失败原因' : '分析运行质量'
+  })
+  const severityLabel = computed(() => {
+    const labels = { low: '低风险', medium: '中风险', high: '高风险', critical: '严重风险' }
+    return diagnosis.data ? labels[diagnosis.data.severity] : '--'
+  })
+  const severityTagType = computed<TagType>(() => {
+    const types: Record<AiRunDiagnosis['severity'], TagType> = {
+      low: 'success',
+      medium: 'warning',
+      high: 'danger',
+      critical: 'danger'
+    }
+    return diagnosis.data ? types[diagnosis.data.severity] : 'info'
+  })
+  const categoryLabel = computed(() => {
+    const labels: Record<AiRunDiagnosis['category'], string> = {
+      provider: '服务商',
+      configuration: '运行配置',
+      prompt: 'Prompt',
+      tool: '工具调用',
+      data: '数据上下文',
+      performance: '性能',
+      unknown: '待确认'
+    }
+    return diagnosis.data ? labels[diagnosis.data.category] : '--'
+  })
 
   async function handleOpen(data: OpenData): Promise<void> {
     detail.value = undefined
+    resetDiagnosis()
     await drawerRef.value?.handleOpen(data, {
       title: 'AI 运行详情',
       size: '760px',
@@ -187,8 +340,47 @@
       },
       onReset: () => {
         detail.value = undefined
+        resetDiagnosis()
       }
     })
+  }
+
+  function resetDiagnosis(): void {
+    Object.assign(diagnosis, {
+      loading: false,
+      data: undefined,
+      model: '',
+      promptVersion: '',
+      durationMs: undefined
+    })
+  }
+
+  async function runDiagnosis(): Promise<void> {
+    if (!detail.value || !canDiagnose.value || diagnosis.loading) return
+    diagnosis.loading = true
+    try {
+      const result = await diagnoseAiRun(detail.value.id)
+      Object.assign(diagnosis, {
+        data: result.diagnosis,
+        model: result.model,
+        promptVersion: result.promptVersion,
+        durationMs: result.durationMs
+      })
+      emit('diagnosed')
+      ElMessage.success('AI 运行诊断已完成')
+    } catch (error) {
+      ElMessage.error(error instanceof Error ? error.message : 'AI 运行诊断失败')
+    } finally {
+      diagnosis.loading = false
+    }
+  }
+
+  function priorityTagType(priority: AiDiagnosisPriority): TagType {
+    return priority === 'P0' ? 'danger' : priority === 'P1' ? 'warning' : 'info'
+  }
+
+  function ownerLabel(owner: AiDiagnosisOwner): string {
+    return { platform: '平台处理', tenant: '租户处理', provider: '服务商处理' }[owner]
   }
 
   function formatDuration(value?: number | null): string {
@@ -291,6 +483,153 @@
       strong {
         font-size: 17px;
         color: var(--el-text-color-primary);
+      }
+    }
+
+    &__diagnosis-entry {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      padding: 15px 16px;
+      background: linear-gradient(135deg, var(--el-color-primary-light-9), var(--el-bg-color));
+      border: 1px solid var(--el-color-primary-light-7);
+      border-radius: var(--el-border-radius-base);
+
+      > div:nth-child(2) {
+        display: grid;
+        flex: 1;
+        gap: 4px;
+        min-width: 0;
+
+        strong {
+          color: var(--el-text-color-primary);
+        }
+
+        span {
+          font-size: 12px;
+          line-height: 1.6;
+          color: var(--el-text-color-secondary);
+        }
+      }
+
+      .el-button {
+        flex-shrink: 0;
+      }
+    }
+
+    &__diagnosis-icon {
+      display: grid;
+      flex: 0 0 40px;
+      place-items: center;
+      width: 40px;
+      height: 40px;
+      font-size: 20px;
+      color: var(--el-color-primary);
+      background: var(--el-bg-color);
+      border-radius: var(--el-border-radius-base);
+      box-shadow: var(--el-box-shadow-lighter);
+    }
+
+    &__diagnosis-result {
+      padding: 16px;
+      background: var(--el-fill-color-lighter);
+      border: 1px solid var(--el-border-color-lighter);
+      border-radius: var(--el-border-radius-base);
+
+      > header,
+      > header > div {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      > header > span,
+      > small {
+        font-size: 11px;
+        color: var(--el-text-color-placeholder);
+      }
+
+      > p {
+        margin: 13px 0 9px;
+        font-size: 14px;
+        line-height: 1.8;
+        color: var(--el-text-color-primary);
+      }
+    }
+
+    &__diagnosis-section {
+      display: grid;
+      gap: 10px;
+
+      > h3 {
+        margin: 0;
+        font-size: 14px;
+        color: var(--el-text-color-primary);
+      }
+
+      > article {
+        padding: 13px 15px;
+        border: 1px solid var(--el-border-color-lighter);
+        border-radius: var(--el-border-radius-base);
+
+        > header,
+        > header > div {
+          display: flex;
+          gap: 8px;
+          align-items: center;
+          justify-content: space-between;
+        }
+
+        > header > span {
+          flex-shrink: 0;
+          font-size: 11px;
+          color: var(--el-text-color-placeholder);
+        }
+
+        > p,
+        li {
+          font-size: 12px;
+          line-height: 1.7;
+          color: var(--el-text-color-secondary);
+        }
+
+        > p {
+          margin: 8px 0 0;
+        }
+
+        ol {
+          padding-left: 20px;
+          margin: 9px 0 0;
+        }
+      }
+    }
+
+    &__diagnosis-notes {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+
+      > div {
+        padding: 14px 15px;
+        background: var(--el-fill-color-lighter);
+        border-radius: var(--el-border-radius-base);
+      }
+
+      strong {
+        color: var(--el-text-color-primary);
+      }
+
+      ul {
+        padding-left: 18px;
+        margin: 8px 0 0;
+      }
+
+      li {
+        margin-bottom: 5px;
+        font-size: 12px;
+        line-height: 1.65;
+        color: var(--el-text-color-secondary);
       }
     }
 
@@ -421,6 +760,18 @@
       &__metrics,
       &__json-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      &__diagnosis-notes {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      &__diagnosis-entry {
+        flex-wrap: wrap;
+
+        .el-button {
+          width: 100%;
+        }
       }
 
       &__descriptions {
