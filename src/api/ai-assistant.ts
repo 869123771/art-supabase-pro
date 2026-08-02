@@ -27,7 +27,7 @@ export async function submitAiAssistantFeedback(params: AiAssistantFeedbackReque
   if (error) throw await normalizeFunctionError(error)
 }
 
-async function normalizeFunctionError(error: unknown): Promise<Error> {
+export async function normalizeFunctionError(error: unknown): Promise<Error> {
   if (error && typeof error === 'object' && 'context' in error) {
     const context = (error as { context?: unknown }).context
     if (context instanceof Response) {

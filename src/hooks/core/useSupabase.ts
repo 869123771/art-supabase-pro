@@ -184,6 +184,7 @@ export function useSupabase() {
   return {
     supabase,
     responseHandle,
+    keysToCamelDeep,
     keysToSnakeDeep
   }
 }

@@ -9,11 +9,11 @@
       <header class="art-ai-assistant__header">
         <div class="art-ai-assistant__identity">
           <div class="art-ai-assistant__brand-icon">
-            <ArtSvgIcon icon="ri:sparkling-2-fill" />
+            <ArtSvgIcon :icon="assistantIcon" />
           </div>
           <div class="art-ai-assistant__identity-copy">
             <div class="art-ai-assistant__title-row">
-              <strong>AI 业务助理</strong>
+              <strong>{{ assistantTitle }}</strong>
               <span>只读模式</span>
             </div>
             <div class="art-ai-assistant__status">
@@ -26,6 +26,22 @@
         </div>
 
         <div class="art-ai-assistant__header-actions">
+          <ElSegmented
+            v-if="userStore.isPlatformSuper"
+            v-model="assistantMode"
+            :options="assistantModeOptions"
+            size="small"
+            class="art-ai-assistant__mode-switch"
+          />
+          <ElTooltip v-if="isProjectMode" content="进入 Supabase AI 工作台" placement="bottom">
+            <ArtIconButton
+              icon="ri:fullscreen-line"
+              circle
+              aria-label="进入 Supabase AI 工作台"
+              class="art-ai-assistant__header-button"
+              @click="openProjectWorkbench"
+            />
+          </ElTooltip>
           <ElTooltip content="新建对话" placement="bottom">
             <ArtIconButton
               icon="ri:chat-new-line"
@@ -39,7 +55,7 @@
             <ArtIconButton
               icon="ri:close-line"
               circle
-              aria-label="关闭 AI 业务助理"
+              :aria-label="`关闭 ${assistantTitle}`"
               class="art-ai-assistant__header-button"
               @click="api.handleClose()"
             />
@@ -53,11 +69,11 @@
         <div class="art-ai-assistant__conversation">
           <section v-if="showWelcome" class="art-ai-assistant__welcome">
             <div class="art-ai-assistant__welcome-mark">
-              <ArtSvgIcon icon="ri:sparkling-2-fill" />
+              <ArtSvgIcon :icon="assistantIcon" />
             </div>
-            <span class="art-ai-assistant__eyebrow">ART BUSINESS COPILOT</span>
-            <h2>今天想了解什么？</h2>
-            <p> 我会结合当前页面和你的数据权限，查询订单、运输经营情况与车辆临期事项。 </p>
+            <span class="art-ai-assistant__eyebrow">{{ assistantEyebrow }}</span>
+            <h2>{{ welcomeTitle }}</h2>
+            <p>{{ welcomeDescription }}</p>
             <div class="art-ai-assistant__context-pill">
               <ArtSvgIcon icon="ri:focus-3-line" />
               正在关注：{{ pageTitle }}
@@ -85,7 +101,7 @@
 
             <div class="art-ai-assistant__capabilities">
               <span><ArtSvgIcon icon="ri:shield-check-line" /> 权限隔离</span>
-              <span><ArtSvgIcon icon="ri:database-2-line" /> 实时业务数据</span>
+              <span><ArtSvgIcon icon="ri:database-2-line" /> {{ dataCapabilityLabel }}</span>
               <span><ArtSvgIcon icon="ri:eye-line" /> 不修改数据</span>
             </div>
           </section>
@@ -107,12 +123,12 @@
                 class="art-ai-assistant__avatar"
               />
               <div v-else class="art-ai-assistant__assistant-avatar">
-                <ArtSvgIcon icon="ri:sparkling-2-fill" />
+                <ArtSvgIcon :icon="assistantIcon" />
               </div>
 
               <div class="art-ai-assistant__message-body">
                 <div class="art-ai-assistant__message-meta">
-                  <span>{{ message.role === 'user' ? userName : 'AI 业务助理' }}</span>
+                  <span>{{ message.role === 'user' ? userName : assistantTitle }}</span>
                   <time>{{ message.time }}</time>
                 </div>
                 <div class="art-ai-assistant__bubble">{{ message.content }}</div>
@@ -172,16 +188,16 @@
 
             <article v-if="state.sending" class="art-ai-assistant__message">
               <div class="art-ai-assistant__assistant-avatar">
-                <ArtSvgIcon icon="ri:sparkling-2-fill" />
+                <ArtSvgIcon :icon="assistantIcon" />
               </div>
               <div class="art-ai-assistant__message-body">
                 <div class="art-ai-assistant__message-meta">
-                  <span>AI 业务助理</span>
+                  <span>{{ assistantTitle }}</span>
                   <span>正在处理</span>
                 </div>
                 <div class="art-ai-assistant__thinking">
                   <ArtSvgIcon icon="ri:loader-4-line" />
-                  <span>正在查询并整理业务数据…</span>
+                  <span>{{ thinkingText }}</span>
                 </div>
               </div>
             </article>
@@ -197,7 +213,7 @@
             :autosize="{ minRows: 2, maxRows: 6 }"
             :maxlength="4000"
             resize="none"
-            placeholder="输入业务问题，Enter 发送，Shift + Enter 换行"
+            :placeholder="composerPlaceholder"
             :disabled="state.sending || !isOnline"
             @keydown.enter.exact.prevent="sendMessage"
           />
@@ -217,7 +233,7 @@
             </ElButton>
           </div>
         </div>
-        <p>AI 生成内容可能存在偏差，关键业务信息请以系统记录为准。</p>
+        <p>{{ footerNotice }}</p>
       </footer>
     </div>
   </ArtDrawer>
@@ -228,8 +244,12 @@
   import { useNetwork, useWindowSize } from '@vueuse/core'
   import { ElMessage } from 'element-plus'
   import type { ScrollbarInstance } from 'element-plus'
-  import { useRoute } from 'vue-router'
+  import { useRoute, useRouter } from 'vue-router'
   import { chatWithAiAssistant, submitAiAssistantFeedback } from '@/api/ai-assistant'
+  import {
+    chatWithProjectAssistant,
+    submitProjectAssistantFeedback
+  } from '@/api/supabase-ai-assistant'
   import ArtDrawer from '@/components/core/drawers/art-drawer/index.vue'
   import type { ArtDrawerExpose } from '@/components/core/drawers/art-drawer/types'
   import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
@@ -272,12 +292,50 @@
 
   const MOBILE_BREAKPOINT = 640
   const route = useRoute()
+  const router = useRouter()
   const userStore = useUserStore()
   const { width } = useWindowSize()
   const { isOnline } = useNetwork()
   const drawerRef = ref<ArtDrawerExpose<Record<string, never>>>()
   const scrollbarRef = ref<ScrollbarInstance>()
   const isMobile = computed(() => width.value < MOBILE_BREAKPOINT)
+  const assistantMode = ref<'business' | 'project'>('business')
+  const assistantModeOptions = [
+    { label: '业务助手', value: 'business' },
+    { label: 'Supabase', value: 'project' }
+  ]
+  const isProjectMode = computed(() => assistantMode.value === 'project')
+  const assistantTitle = computed(() => (isProjectMode.value ? 'Supabase 管理助手' : 'AI 业务助理'))
+  const assistantIcon = computed(() =>
+    isProjectMode.value ? 'ri:database-2-line' : 'ri:sparkling-2-fill'
+  )
+  const assistantEyebrow = computed(() =>
+    isProjectMode.value ? 'SUPABASE PROJECT COPILOT' : 'ART BUSINESS COPILOT'
+  )
+  const welcomeTitle = computed(() =>
+    isProjectMode.value ? '想了解项目里的什么？' : '今天想了解什么？'
+  )
+  const welcomeDescription = computed(() =>
+    isProjectMode.value
+      ? '我可以只读查看数据库对象、DDL、外键关系和 Edge Function 元数据，并生成变更方案。'
+      : '我会结合当前页面和你的数据权限，查询订单、运输经营情况与车辆临期事项。'
+  )
+  const dataCapabilityLabel = computed(() =>
+    isProjectMode.value ? '项目实时元数据' : '实时业务数据'
+  )
+  const thinkingText = computed(() =>
+    isProjectMode.value ? '正在读取并分析项目元数据…' : '正在查询并整理业务数据…'
+  )
+  const composerPlaceholder = computed(() =>
+    isProjectMode.value
+      ? '询问数据库、函数、RLS 或 Edge Function，Enter 发送'
+      : '输入业务问题，Enter 发送，Shift + Enter 换行'
+  )
+  const footerNotice = computed(() =>
+    isProjectMode.value
+      ? '当前为只读安全模式：不会执行 DDL、DML 或任意 SQL。'
+      : 'AI 生成内容可能存在偏差，关键业务信息请以系统记录为准。'
+  )
   const drawerProps = {
     appendToBody: true,
     closeOnClickModal: false,
@@ -306,6 +364,30 @@
   })
 
   const suggestions = computed<PromptSuggestion[]>(() => {
+    if (isProjectMode.value) {
+      return [
+        {
+          label: '概览当前 Supabase 项目',
+          description: '统计数据库对象和项目能力',
+          icon: 'ri:dashboard-3-line'
+        },
+        {
+          label: '列出 public schema 的表',
+          description: '查看表、说明和对象目录',
+          icon: 'ri:table-2'
+        },
+        {
+          label: '检查 RLS 策略概况',
+          description: '查看策略对象并提示安全风险',
+          icon: 'ri:shield-keyhole-line'
+        },
+        {
+          label: '列出项目 Edge Functions',
+          description: '查看函数状态和 JWT 校验配置',
+          icon: 'ri:cloud-line'
+        }
+      ]
+    }
     const items: PromptSuggestion[] = [
       {
         label: '总结最近订单',
@@ -375,13 +457,18 @@
     scrollToBottom()
   }
 
+  async function openProjectWorkbench(): Promise<void> {
+    await drawerRef.value?.handleClose()
+    await router.push('/data-center/supabase-ai-assistant')
+  }
+
   function openChat(): void {
     if (state.routePath && state.routePath !== route.fullPath) resetConversation()
     state.routePath = route.fullPath
     void drawerRef.value?.handleOpen(
       {},
       {
-        size: isMobile.value ? '100%' : '600px',
+        size: isMobile.value ? '100%' : userStore.isPlatformSuper ? '680px' : '600px',
         showFooter: false,
         resetOnClose: false,
         drawerProps
@@ -416,7 +503,8 @@
     scrollToBottom()
 
     try {
-      const response = await chatWithAiAssistant({
+      const chat = isProjectMode.value ? chatWithProjectAssistant : chatWithAiAssistant
+      const response = await chat({
         conversationId: state.conversationId,
         context: getPageContext(),
         messages: state.messages
@@ -458,7 +546,10 @@
   async function handleFeedback(message: ChatMessage, rating: -1 | 1): Promise<void> {
     if (!message.runId || message.feedback === rating) return
     try {
-      await submitAiAssistantFeedback({ runId: message.runId, rating })
+      const submitFeedback = isProjectMode.value
+        ? submitProjectAssistantFeedback
+        : submitAiAssistantFeedback
+      await submitFeedback({ runId: message.runId, rating })
       message.feedback = rating
       ElMessage.success('感谢你的反馈')
     } catch (error) {
@@ -471,7 +562,12 @@
       get_order_detail: '订单详情',
       get_recent_orders: '最近订单',
       get_transport_overview: '运输概览',
-      get_vehicle_expiries: '车辆到期'
+      get_vehicle_expiries: '车辆到期',
+      get_project_overview: '项目概览',
+      list_database_objects: '数据库对象',
+      get_database_object_detail: '对象定义',
+      get_table_relationships: '外键关系',
+      list_edge_functions: 'Edge Functions'
     }
     return labels[name] ?? name
   }
@@ -482,6 +578,7 @@
       if (state.routePath && state.routePath !== path) resetConversation()
     }
   )
+  watch(assistantMode, resetConversation)
   onMounted(() => mittBus.on('openChat', openChat))
   onUnmounted(() => mittBus.off('openChat', openChat))
 </script>

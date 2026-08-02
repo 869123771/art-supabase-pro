@@ -8,6 +8,14 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="b8f35119-660a-46e7-82f4-53eee06863eb" name="Changes" comment="feat ai module">
+      <change beforePath="$PROJECT_DIR$/.github/workflows/frontend-quality.yml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/apps/public-admin/src/types/import/auto-imports.d.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/apps/public-admin/src/types/import/components.d.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/api/ai-assistant.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/ai-assistant.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/core/layouts/art-chat-window/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/layouts/art-chat-window/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/hooks/core/useSupabase.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/hooks/core/useSupabase.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/dashboard/ai-operations/modules/ai-run-detail-drawer.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/dashboard/ai-operations/modules/ai-run-detail-drawer.vue" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/supabase/config.toml" beforeDir="false" afterPath="$PROJECT_DIR$/supabase/config.toml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -337,7 +345,7 @@
       <workItem from="1785371501706" duration="1202000" />
       <workItem from="1785389820582" duration="7309000" />
       <workItem from="1785567883008" duration="4591000" />
-      <workItem from="1785629921611" duration="4073000" />
+      <workItem from="1785629921611" duration="6828000" />
     </task>
     <task id="LOCAL-00017" summary="feat remove netlify">
       <option name="closed" value="true" />
