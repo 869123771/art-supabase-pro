@@ -80,7 +80,7 @@ export async function uploadAttachment(
   }
 ): Promise<Api.DataCenter.Resources.ResourceListItem[]> {
   const {
-    getUserInfo: { userName, nickName }
+    getUserInfo: { userName, nickName, tenantId }
   } = useUserStore()
   const {
     bucket = 'attachments',
@@ -127,7 +127,14 @@ export async function uploadAttachment(
 
     // 2️⃣ 查重
     const { data: existed } = await responseHandle<Api.DataCenter.Resources.ResourceListItem>(
-      () => supabase.from('sys_attachment').select('*').eq('hash', hash).maybeSingle(),
+      () =>
+        supabase
+          .from('sys_attachment')
+          .select('*')
+          .eq('hash', hash)
+          .order('create_time', { ascending: false })
+          .limit(1)
+          .maybeSingle(),
       {
         ignoreCheck: true
       }
@@ -138,14 +145,16 @@ export async function uploadAttachment(
     // 3️⃣ 路径
     const suffix = file.name.split('.').pop() || ''
     const objectName = `${hash}.${suffix}`
-    const storagePath = dayjs().format('YYYY/MM/DD')
+    // Storage 对象按租户隔离，避免不同租户上传相同内容哈希时争用同一路径。
+    const storagePath = `${tenantId || 'unassigned'}/${dayjs().format('YYYY/MM/DD')}`
     const fullPath = `${storagePath}/${objectName}`
 
-    // 4️⃣ 上传
+    // 4️⃣ 上传。对象名由内容哈希生成，相同路径对应相同文件；允许覆盖可修复
+    // “Storage 已写入、附件记录写入失败”留下的孤儿对象，使重试具备幂等性。
     await responseHandle(
       () =>
         supabase.storage.from(bucket).upload(fullPath, file, {
-          upsert: false,
+          upsert: true,
           contentType: file.type
         }),
       {
@@ -164,7 +173,6 @@ export async function uploadAttachment(
 
     // 6️⃣ 写库
     const insertData = {
-      tenant_id: null,
       storage_mode: 'supabase',
       origin_name: file.name,
       object_name: objectName,

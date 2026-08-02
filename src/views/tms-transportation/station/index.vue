@@ -16,12 +16,14 @@
 
 <script setup lang="tsx">
   import { ElMessage, ElMessageBox, ElSwitch } from 'element-plus'
+  import { trim, uniq } from 'lodash-es'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type {
     ArtTableQueryExpose,
     ArtTableQueryExcelColumn,
     ArtTableQueryHeaderAction
   } from '@/components/core/tables/art-table-query/index.vue'
+  import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import { ColumnOption, DialogType } from '@/types'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
@@ -29,16 +31,17 @@
   import {
     deleteStation,
     deleteStationBatch,
-    editStation,
     exportStationList,
     fetchStationList,
-    importStations
+    importStations,
+    updateStationEnabled
   } from '@/api/tms'
   import StationDialog from './modules/station-dialog.vue'
 
   defineOptions({ name: 'TmsStation' })
 
   type Station = Api.Tms.Station.StationRecord
+  type StationSavePayload = Api.Tms.Station.StationSavePayload
   type SearchParams = Api.Tms.Station.StationSearchParams
   type TableParams = SearchParams & Pick<Api.Common.PaginationParams, 'current' | 'size'>
 
@@ -66,17 +69,6 @@
     }))
   )
 
-  const stationExcelColumns: ArtTableQueryExcelColumn[] = [
-    { key: 'stationCode', title: '编号' },
-    { key: 'stationName', title: '站名称', required: true },
-    { key: 'stationType', title: '类型', required: true },
-    { key: 'regionCode', title: '地区编码' },
-    { key: 'managerName', title: '负责人' },
-    { key: 'contactPhone', title: '联系电话' },
-    { key: 'enabled', title: '状态' },
-    { key: 'remark', title: '备注' }
-  ]
-
   const stationTypeLabelToValue = computed(() => {
     const map = new Map<string, string>()
     stationTypeOptions.value.forEach((item) => {
@@ -84,6 +76,38 @@
     })
     return map
   })
+
+  const stationTypeValueToLabel = computed(() => {
+    const map = new Map<string, string>()
+    stationTypeOptions.value.forEach((item) => {
+      if (item.label && item.value) map.set(item.value, item.label)
+    })
+    return map
+  })
+
+  const getStationTypes = (station: Station): string[] => {
+    const roleTypes = (station.stationRoles ?? []).map((item) => String(item.roleType))
+    return uniq(roleTypes.length ? roleTypes : [String(station.stationType || '')]).filter(Boolean)
+  }
+
+  const stationExcelColumns: ArtTableQueryExcelColumn[] = [
+    { key: 'stationCode', title: '编号' },
+    { key: 'stationName', title: '站名称', required: true },
+    {
+      key: 'stationTypes',
+      title: '类型',
+      required: true,
+      formatter: (_value, row) =>
+        getStationTypes(row as Station)
+          .map((type) => stationTypeValueToLabel.value.get(type) || type)
+          .join('、')
+    },
+    { key: 'regionCode', title: '地区编码' },
+    { key: 'managerName', title: '负责人' },
+    { key: 'contactPhone', title: '联系电话' },
+    { key: 'enabled', title: '状态' },
+    { key: 'remark', title: '备注' }
+  ]
 
   const searchItems = computed<SearchFormItem[]>(() => [
     {
@@ -127,10 +151,16 @@
       showOverflowTooltip: true
     },
     {
-      prop: 'stationType',
+      prop: 'stationRoles',
       label: '类型',
-      width: 110,
-      dict: { code: 'tmsStationType', display: 'tag' }
+      minWidth: 220,
+      formatter: (row) => (
+        <div class="flex flex-wrap gap-1">
+          {getStationTypes(row).map((type) => (
+            <ArtDictDisplay key={type} dictCode="tmsStationType" value={type} display="tag" />
+          ))}
+        </div>
+      )
     },
     {
       prop: 'regionCode',
@@ -186,7 +216,7 @@
       importTransformer: (rows) =>
         rows.map((row) => normalizeImportRow(row as Record<string, unknown>)),
       importApi: async (rows) => {
-        await importStations(rows as Station[])
+        await importStations(rows as StationSavePayload[])
       },
       onImportError: () => {
         ElMessage.error('导入文件解析失败')
@@ -225,14 +255,21 @@
     return true
   }
 
-  const normalizeImportRow = (row: Record<string, unknown>): Station =>
+  const normalizeStationTypes = (value: unknown): string[] =>
+    uniq(
+      String(value ?? '')
+        .split(/[、,，;；]/)
+        .map((item) => trim(item))
+        .filter(Boolean)
+        .map((item) => stationTypeLabelToValue.value.get(item) || item)
+    )
+
+  const normalizeImportRow = (row: Record<string, unknown>): StationSavePayload =>
     ({
       ...row,
-      stationType:
-        stationTypeLabelToValue.value.get(String(row.stationType ?? '')) ||
-        String(row.stationType ?? ''),
+      stationTypes: normalizeStationTypes(row.stationTypes),
       enabled: normalizeEnabled(row.enabled)
-    }) as Station
+    }) as StationSavePayload
 
   const openDialog = (row?: Station): void => {
     void dialogRef.value?.handleOpen(row)
@@ -249,7 +286,7 @@
     const previous = row.enabled
     row.enabled = enabled
     try {
-      await editStation({ ...row, enabled })
+      await updateStationEnabled(row.id, enabled)
     } catch {
       row.enabled = previous
     }

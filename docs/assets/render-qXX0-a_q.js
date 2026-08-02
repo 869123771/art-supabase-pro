@@ -1,1 +1,0 @@
-import{Ct as e}from"./framework-CEL2-aXB.js";import{t}from"./attachment-link-CLAS9e_L.js";var n=n=>e(t,{file:n});export{n as t};

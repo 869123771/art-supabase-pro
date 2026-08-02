@@ -384,6 +384,12 @@ verify_jwt = true
 [functions.ai-assistant]
 verify_jwt = true
 
+[functions.ai-provider-catalog]
+verify_jwt = true
+
+[functions.ai-sql-assistant]
+verify_jwt = true
+
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 

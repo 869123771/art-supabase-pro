@@ -106,8 +106,9 @@ html.dark .el-card {
 }
 
 // 修改 el-segmented 高度
-.el-segmented--default {
-  --el-segmented-item-selected-bg-color: var(--el-color-white);
+.el-segmented.el-segmented--default {
+  --el-segmented-item-selected-bg-color: var(--el-color-primary);
+  --el-segmented-item-selected-color: var(--el-color-white);
   height: var(--el-component-custom-height) !important;
 
   .el-segmented__item {

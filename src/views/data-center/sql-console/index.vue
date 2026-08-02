@@ -135,6 +135,7 @@
 
 <script setup lang="ts">
   import { computed, ref } from 'vue'
+  import { useMemoize } from '@vueuse/core'
   import { ElMessage } from 'element-plus'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
@@ -177,7 +178,7 @@
   const splitRatio = ref(0.6)
   const editorRef = ref<EditorInstance | null>(null)
   const aiDialogRef = ref<ArtDialogExpose>()
-  const metadataCache = ref<Api.DataCenter.SqlConsole.DatabaseMetadata | null>(null)
+  const getMetadata = useMemoize(fetchDatabaseMetadata)
   const sqlErrorLocation = ref<SqlErrorLocation | null>(null)
 
   const tabs = ref({
@@ -198,12 +199,6 @@
     if (!result.value?.queryText || !sqlErrorLocation.value) return ''
     return buildCaretDiagnostic(result.value.queryText, sqlErrorLocation.value)
   })
-
-  async function ensureMetadata() {
-    if (metadataCache.value) return metadataCache.value
-    metadataCache.value = await fetchDatabaseMetadata()
-    return metadataCache.value
-  }
 
   // 执行逻辑同时负责清空旧标记，并在失败时把错误位置重新画回 Monaco。
   const handleExecute = async (sql?: string) => {
@@ -256,6 +251,8 @@
   }
 
   const openAiDialog = (mode: 'generate' | 'fix' = 'generate') => {
+    // 用户填写提示词时并行预取 schema，生成按钮不再额外串行等待元数据。
+    void getMetadata()
     aiDialog.value.mode = mode
     aiDialog.value.summary = ''
 
@@ -288,7 +285,7 @@
     }
 
     try {
-      const metadata = await ensureMetadata()
+      const metadata = await getMetadata()
       const aiResponse = await generateSqlByAi({
         prompt: aiDialog.value.prompt,
         mode: aiDialog.value.mode,
@@ -309,7 +306,18 @@
       editorRef.value?.clearErrorMarkers()
       sqlErrorLocation.value = null
       aiDialog.value.summary = data.summary || ''
-      ElMessage.success('AI SQL 已写入编辑器')
+      const warnings = (data.warnings ?? []).filter(Boolean)
+      if (warnings.length) {
+        ElMessage.warning({
+          message: `AI SQL 已写入编辑器，请确认：${warnings.join('；')}`,
+          duration: 6000,
+          showClose: true
+        })
+      } else {
+        ElMessage.success(
+          data.model ? `AI SQL 已写入编辑器（${data.model}）` : 'AI SQL 已写入编辑器'
+        )
+      }
       return true
     } catch {
       return false

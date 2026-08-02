@@ -17,7 +17,7 @@
 <script setup lang="ts">
   import type { ComputedRef, UnwrapNestedRefs } from 'vue'
   import type { FormRules } from 'element-plus'
-  import { omit, toNumber, trim } from 'lodash-es'
+  import { omit, toNumber, trim, uniq } from 'lodash-es'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
@@ -27,7 +27,7 @@
   defineOptions({ name: 'TmsStationDialog' })
 
   type Station = Api.Tms.Station.StationRecord
-  type StationForm = Station
+  type StationForm = Api.Tms.Station.StationSavePayload
 
   interface DialogExposeForm {
     validate: () => Promise<boolean>
@@ -53,7 +53,7 @@
     id: undefined,
     stationCode: '',
     stationName: '',
-    stationType: 'shipping',
+    stationTypes: ['shipping'],
     regionCode: '',
     managerName: '',
     contactPhone: '',
@@ -66,7 +66,7 @@
     data: createInitialForm(),
     stationTypeOptions: computed(() => getDictMap.value.tmsStationType ?? []),
     rules: {
-      stationType: [{ required: true, message: '请选择站点类型', trigger: 'change' }],
+      stationTypes: [{ required: true, message: '请至少选择一个站点类型', trigger: 'change' }],
       stationName: [
         { required: true, message: '请输入站点名称', trigger: 'blur' },
         { min: 2, max: 80, message: '长度应为 2 到 80 个字符', trigger: 'blur' }
@@ -99,11 +99,14 @@
       },
       {
         label: '站点类型',
-        key: 'stationType',
+        key: 'stationTypes',
         type: 'select',
         props: {
           options: form.stationTypeOptions,
-          placeholder: '请选择站点类型'
+          multiple: true,
+          collapseTags: true,
+          collapseTagsTooltip: true,
+          placeholder: '可选择多个站点类型'
         }
       },
       {
@@ -186,20 +189,22 @@
 
   const nullableText = (value?: string | null): string | null => trim(String(value ?? '')) || null
 
-  const normalizePayload = (): Station => {
+  const normalizePayload = (): StationForm => {
     const payload = omit(structuredClone(toRaw(form.data)), [
       'tenantId',
+      'stationType',
+      'stationRoles',
       'createBy',
       'createTime',
       'updateBy',
       'updateTime'
-    ]) as Station
+    ]) as StationForm
 
     return {
       ...payload,
       stationCode: trim(String(payload.stationCode || '')) || createStationCode(),
       stationName: trim(String(payload.stationName || '')),
-      stationType: trim(String(payload.stationType || '')),
+      stationTypes: uniq(payload.stationTypes.map((item) => trim(String(item))).filter(Boolean)),
       regionCode: nullableText(payload.regionCode),
       managerName: nullableText(payload.managerName),
       contactPhone: nullableText(payload.contactPhone),
@@ -231,9 +236,13 @@
     await resetForm()
     const isEdit = Boolean(row?.id)
     if (row) {
+      const stationTypes = row.stationRoles?.length
+        ? row.stationRoles.map((item) => item.roleType)
+        : [row.stationType]
       replaceForm({
         ...createInitialForm(),
-        ...structuredClone(toRaw(row))
+        ...omit(structuredClone(toRaw(row)), ['stationType', 'stationRoles']),
+        stationTypes
       })
     }
 

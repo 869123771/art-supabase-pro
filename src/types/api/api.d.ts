@@ -1318,6 +1318,7 @@ declare namespace Api {
         stationCode: string
         stationName: string
         stationType: string
+        stationRoles?: Api.Tms.Station.StationRoleRecord[]
         regionCode?: string | null
       }
 
@@ -1691,6 +1692,530 @@ declare namespace Api {
         waybillStatus?: string
         completedAtRange?: string[]
       }
+
+      type CustomerStatementStatus =
+        'draft' | 'pending_review' | 'confirmed' | 'partially_settled' | 'settled' | 'voided'
+
+      interface CustomerStatementItem {
+        id: string
+        tenantId: string
+        statementId: string
+        customerId: string
+        waybillId: string
+        orderId: string
+        waybillNoSnapshot: string
+        orderNoSnapshot: string
+        originStationSnapshot?: string | null
+        destinationStationSnapshot?: string | null
+        completedAtSnapshot?: string | null
+        receivableAmount: number
+        adjustmentAmount: number
+        lineAmount: number
+        isActive: boolean
+        remark?: string | null
+        createBy?: string | null
+        createTime: string
+        updateBy?: string | null
+        updateTime: string
+      }
+
+      interface CustomerStatementRecord {
+        id: string
+        tenantId: string
+        statementNo: string
+        customerId: string
+        customerName: string
+        periodStart: string
+        periodEnd: string
+        status: CustomerStatementStatus
+        waybillCount: number
+        statementAmount: number
+        settledAmount: number
+        outstandingAmount: number
+        submittedAt?: string | null
+        submittedBy?: string | null
+        reviewedAt?: string | null
+        reviewedBy?: string | null
+        reviewRemark?: string | null
+        voidedAt?: string | null
+        voidedBy?: string | null
+        voidReason?: string | null
+        remark?: string | null
+        createBy?: string | null
+        createTime: string
+        updateBy?: string | null
+        updateTime: string
+        items?: CustomerStatementItem[]
+      }
+
+      type CustomerStatementSearchParams = Api.Common.CommonSearchParams & {
+        customerId?: string
+        keyword?: string
+        periodRange?: string[]
+        status?: string
+      }
+
+      interface CustomerStatementEligibleWaybill {
+        id: string
+        tenantId: string
+        waybillNo: string
+        waybillStatus: string
+        orderId: string
+        orderNo: string
+        customerId: string
+        customerName: string
+        originStation?: string | null
+        destinationStation?: string | null
+        completedAt: string
+        receivableAmount: number
+      }
+
+      interface CustomerStatementEligibleWaybillSearchParams extends Api.Common.CommonSearchParams {
+        customerId: string
+        periodStart: string
+        periodEnd: string
+        keyword?: string
+      }
+
+      interface CreateCustomerStatementPayload {
+        customerId: string
+        periodStart: string
+        periodEnd: string
+        waybillIds: string[]
+        remark?: string | null
+      }
+
+      interface CustomerStatementStatusPayload {
+        id: string
+        status: CustomerStatementStatus
+        reviewRemark?: string | null
+        voidReason?: string | null
+      }
+
+      interface CarrierStatementItem {
+        id: string
+        tenantId: string
+        statementId: string
+        carrierId: string
+        costId: string
+        waybillId: string
+        waybillNoSnapshot: string
+        costTypeSnapshot: string
+        occurredOnSnapshot: string
+        payeeNameSnapshot?: string | null
+        costAmount: number
+        adjustmentAmount: number
+        lineAmount: number
+        isActive: boolean
+        remark?: string | null
+        createBy?: string | null
+        createTime: string
+        updateBy?: string | null
+        updateTime: string
+      }
+
+      interface CarrierStatementRecord {
+        id: string
+        tenantId: string
+        statementNo: string
+        carrierId: string
+        carrierName: string
+        periodStart: string
+        periodEnd: string
+        status: CustomerStatementStatus
+        costCount: number
+        waybillCount: number
+        statementAmount: number
+        settledAmount: number
+        outstandingAmount: number
+        submittedAt?: string | null
+        submittedBy?: string | null
+        reviewedAt?: string | null
+        reviewedBy?: string | null
+        reviewRemark?: string | null
+        voidedAt?: string | null
+        voidedBy?: string | null
+        voidReason?: string | null
+        remark?: string | null
+        createBy?: string | null
+        createTime: string
+        updateBy?: string | null
+        updateTime: string
+        items?: CarrierStatementItem[]
+      }
+
+      type CarrierStatementSearchParams = Api.Common.CommonSearchParams & {
+        carrierId?: string
+        keyword?: string
+        periodRange?: string[]
+        status?: string
+      }
+
+      interface CarrierStatementEligibleCost {
+        id: string
+        tenantId: string
+        carrierId: string
+        carrierName: string
+        waybillId: string
+        waybillNo: string
+        waybillStatus: string
+        costType: string
+        costAmount: number
+        occurredOn: string
+        payeeName?: string | null
+        remark?: string | null
+        originCity?: string | null
+        destinationCity?: string | null
+      }
+
+      interface CarrierStatementEligibleCostSearchParams extends Api.Common.CommonSearchParams {
+        carrierId: string
+        periodStart: string
+        periodEnd: string
+        keyword?: string
+      }
+
+      interface CreateCarrierStatementPayload {
+        carrierId: string
+        periodStart: string
+        periodEnd: string
+        costIds: string[]
+        remark?: string | null
+      }
+
+      interface CarrierStatementStatusPayload {
+        id: string
+        status: CustomerStatementStatus
+        reviewRemark?: string | null
+        voidReason?: string | null
+      }
+
+      type CashDirection = 'receipt' | 'payment'
+      type CashPaymentMethod = 'bank_transfer' | 'cash' | 'wechat' | 'alipay' | 'other'
+      type CashTransactionStatus =
+        'pending_allocation' | 'partially_allocated' | 'allocated' | 'voided'
+
+      interface CashAllocationStatement {
+        id: string
+        statementNo: string
+        customerId: string
+        customerNameSnapshot: string
+        periodStart: string
+        periodEnd: string
+        status: CustomerStatementStatus
+        settledAmount: number
+      }
+
+      interface CashAllocationRecord {
+        id: string
+        tenantId: string
+        transactionId: string
+        statementId: string
+        customerId: string
+        allocatedAmount: number
+        isActive: boolean
+        allocatedAt: string
+        allocatedBy?: string | null
+        reversedAt?: string | null
+        reversedBy?: string | null
+        reverseReason?: string | null
+        remark?: string | null
+        createBy?: string | null
+        createTime: string
+        updateBy?: string | null
+        updateTime: string
+        statement?: CashAllocationStatement | null
+      }
+
+      interface CashTransactionRecord {
+        id: string
+        tenantId: string
+        transactionNo: string
+        direction: CashDirection
+        customerId?: string | null
+        carrierId?: string | null
+        counterpartyName: string
+        transactionDate: string
+        amount: number
+        allocatedAmount: number
+        unallocatedAmount: number
+        allocationCount: number
+        paymentMethod: CashPaymentMethod
+        bankReference?: string | null
+        voucherUrls: string[]
+        status: CashTransactionStatus
+        voidedAt?: string | null
+        voidedBy?: string | null
+        voidReason?: string | null
+        remark?: string | null
+        createBy?: string | null
+        createTime: string
+        updateBy?: string | null
+        updateTime: string
+        allocations?: Array<CashAllocationRecord | CarrierCashAllocationRecord>
+      }
+
+      type CashTransactionSearchParams = Api.Common.CommonSearchParams & {
+        customerId?: string
+        carrierId?: string
+        direction?: string
+        status?: string
+        dateRange?: string[]
+        keyword?: string
+      }
+
+      interface CustomerStatementAllocatable {
+        id: string
+        tenantId: string
+        statementNo: string
+        customerId: string
+        customerName: string
+        periodStart: string
+        periodEnd: string
+        waybillCount: number
+        statementAmount: number
+        settledAmount: number
+        outstandingAmount: number
+        status: CustomerStatementStatus
+        createTime: string
+      }
+
+      interface CustomerStatementAllocatableSearchParams extends Api.Common.CommonSearchParams {
+        customerId: string
+        keyword?: string
+      }
+
+      interface CashAllocationInput {
+        statementId: string
+        amount: number
+      }
+
+      interface CreateCustomerReceiptPayload {
+        customerId: string
+        transactionDate: string
+        amount: number
+        paymentMethod: CashPaymentMethod
+        bankReference?: string | null
+        voucherUrls?: string[]
+        remark?: string | null
+        allocations: CashAllocationInput[]
+      }
+
+      interface AllocateCustomerReceiptPayload {
+        transactionId: string
+        allocations: CashAllocationInput[]
+      }
+
+      interface CarrierStatementAllocatable {
+        id: string
+        tenantId: string
+        statementNo: string
+        carrierId: string
+        carrierName: string
+        periodStart: string
+        periodEnd: string
+        costCount: number
+        waybillCount: number
+        statementAmount: number
+        settledAmount: number
+        outstandingAmount: number
+        status: CustomerStatementStatus
+        createTime: string
+      }
+
+      interface CarrierStatementAllocatableSearchParams extends Api.Common.CommonSearchParams {
+        carrierId: string
+        keyword?: string
+      }
+
+      interface CarrierCashAllocationRecord {
+        id: string
+        tenantId: string
+        transactionId: string
+        statementId: string
+        carrierId: string
+        allocatedAmount: number
+        isActive: boolean
+        allocatedAt: string
+        allocatedBy?: string | null
+        reversedAt?: string | null
+        reversedBy?: string | null
+        reverseReason?: string | null
+        remark?: string | null
+        createBy?: string | null
+        createTime: string
+        updateBy?: string | null
+        updateTime: string
+        statement?: CarrierStatementRecord | null
+      }
+
+      interface CreateCarrierPaymentPayload {
+        carrierId: string
+        transactionDate: string
+        amount: number
+        paymentMethod: CashPaymentMethod
+        bankReference?: string | null
+        voucherUrls?: string[]
+        remark?: string | null
+        allocations: CashAllocationInput[]
+      }
+
+      interface AllocateCarrierPaymentPayload {
+        transactionId: string
+        allocations: CashAllocationInput[]
+      }
+
+      type InvoiceDirection = 'output' | 'input'
+      type InvoiceType = 'vat_special' | 'vat_ordinary' | 'electronic'
+      type InvoiceStatus = 'draft' | 'pending_review' | 'issued' | 'certified' | 'voided'
+      type InvoiceStatusAction = 'submit' | 'approve' | 'reject' | 'void'
+
+      interface InvoiceStatementLinkInput {
+        statementId: string
+        linkedAmount: number
+      }
+
+      interface InvoiceStatementLinkRecord {
+        id: string
+        tenantId: string
+        invoiceId: string
+        direction: InvoiceDirection
+        statementId: string
+        statementNo: string
+        counterpartyId: string
+        counterpartyName: string
+        periodStart: string
+        periodEnd: string
+        statementAmount: number
+        linkedAmount: number
+        createBy?: string | null
+        createTime: string
+      }
+
+      interface InvoiceRecord {
+        id: string
+        tenantId: string
+        invoiceRecordNo: string
+        direction: InvoiceDirection
+        invoiceType: InvoiceType
+        customerId?: string | null
+        carrierId?: string | null
+        counterpartyNameSnapshot: string
+        invoiceTitle?: string | null
+        taxNumber?: string | null
+        invoiceCode?: string | null
+        invoiceNo?: string | null
+        issueDate: string
+        taxRate: number
+        amountExcludingTax: number
+        taxAmount: number
+        totalAmount: number
+        status: InvoiceStatus
+        attachments: Array<Record<string, unknown>>
+        statementCount: number
+        linkedAmount: number
+        unlinkedAmount: number
+        submittedAt?: string | null
+        submittedBy?: string | null
+        reviewedAt?: string | null
+        reviewedBy?: string | null
+        reviewRemark?: string | null
+        voidedAt?: string | null
+        voidedBy?: string | null
+        voidReason?: string | null
+        remark?: string | null
+        createBy?: string | null
+        createTime: string
+        updateBy?: string | null
+        updateTime: string
+        statementLinks?: InvoiceStatementLinkRecord[]
+      }
+
+      type InvoiceSearchParams = Api.Common.CommonSearchParams & {
+        direction?: string
+        status?: string
+        invoiceType?: string
+        customerId?: string
+        carrierId?: string
+        issueDateRange?: string[]
+        keyword?: string
+      }
+
+      interface InvoiceableStatement {
+        direction: InvoiceDirection
+        statementId: string
+        tenantId: string
+        statementNo: string
+        counterpartyId: string
+        counterpartyName: string
+        periodStart: string
+        periodEnd: string
+        status: CustomerStatementStatus
+        statementAmount: number
+        invoicedAmount: number
+        uninvoicedAmount: number
+      }
+
+      interface InvoiceableStatementSearchParams extends Api.Common.CommonSearchParams {
+        direction: InvoiceDirection
+        counterpartyId: string
+        keyword?: string
+        includeFullyInvoiced?: boolean
+      }
+
+      interface SaveInvoicePayload {
+        id?: string | null
+        direction: InvoiceDirection
+        invoiceType: InvoiceType
+        customerId?: string | null
+        carrierId?: string | null
+        invoiceTitle?: string | null
+        taxNumber?: string | null
+        invoiceCode?: string | null
+        invoiceNo?: string | null
+        issueDate: string
+        taxRate: number
+        amountExcludingTax: number
+        taxAmount: number
+        totalAmount: number
+        attachments?: Array<Record<string, unknown>>
+        remark?: string | null
+        statementLinks: InvoiceStatementLinkInput[]
+      }
+
+      interface InvoiceStatusPayload {
+        id: string
+        action: InvoiceStatusAction
+        remark?: string | null
+      }
+
+      interface FinanceWorkbenchStats {
+        customerReceivableBalance: number
+        carrierPayableBalance: number
+        monthReceiptAmount: number
+        monthPaymentAmount: number
+        monthRevenueAmount: number
+        monthCostAmount: number
+        monthGrossProfit: number
+        receiptCompletionRate: number
+        paymentCompletionRate: number
+        invoiceMatchRate: number
+        costApprovalRate: number
+        pendingCustomerStatementCount: number
+        pendingCustomerStatementAmount: number
+        pendingCarrierStatementCount: number
+        pendingCarrierStatementAmount: number
+        pendingCostCount: number
+        pendingCostAmount: number
+        unallocatedReceiptCount: number
+        unallocatedReceiptAmount: number
+        unallocatedPaymentCount: number
+        unallocatedPaymentAmount: number
+        draftInvoiceCount: number
+        draftInvoiceAmount: number
+        pendingInvoiceCount: number
+        pendingInvoiceAmount: number
+      }
     }
 
     namespace InTransit {
@@ -1759,12 +2284,25 @@ declare namespace Api {
     namespace Station {
       type StationType = 'shipping' | 'transfer' | 'arrival'
 
+      interface StationRoleRecord {
+        id?: string
+        stationId?: string
+        roleType: StationType | string
+        tenantId?: string
+        createBy?: string
+        createTime?: string
+        updateBy?: string
+        updateTime?: string
+      }
+
       interface StationRecord {
         id?: string
         tenantId?: string
         stationCode?: string
         stationName: string
+        /** 兼容用主类型；完整业务能力读取 stationRoles。 */
         stationType: StationType | string
+        stationRoles?: StationRoleRecord[]
         regionCode?: string | null
         managerName?: string | null
         contactPhone?: string | null
@@ -1775,6 +2313,19 @@ declare namespace Api {
         createTime?: string
         updateBy?: string
         updateTime?: string
+      }
+
+      type StationSavePayload = Omit<
+        StationRecord,
+        | 'tenantId'
+        | 'stationType'
+        | 'stationRoles'
+        | 'createBy'
+        | 'createTime'
+        | 'updateBy'
+        | 'updateTime'
+      > & {
+        stationTypes: Array<StationType | string>
       }
 
       type StationSearchParams = Partial<
@@ -1961,6 +2512,11 @@ declare namespace Api {
         sql: string
         summary?: string
         warnings?: string[]
+        runId?: string
+        model?: string
+        promptVersion?: string
+        providerDurationMs?: number
+        durationMs?: number
       }
     }
   }

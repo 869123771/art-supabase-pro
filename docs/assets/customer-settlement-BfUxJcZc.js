@@ -1,1 +1,0 @@
-import{Rt as e,bt as t,ft as n}from"./framework-CEL2-aXB.js";import{t as r}from"./finance-statement-list-D6WG5CX_.js";var i=t({name:`TmsCustomerSettlement`,__name:`index`,setup(t){return(t,i)=>(e(),n(r,{kind:`customer_receivable`}))}});export{i as default};

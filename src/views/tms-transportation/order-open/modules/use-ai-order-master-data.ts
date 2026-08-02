@@ -89,7 +89,7 @@ export function useAiOrderMasterData() {
         {
           stationCode: createStationCode(stationSequence++),
           stationName: text(config.name),
-          stationType: config.stationType,
+          stationTypes: [config.stationType],
           enabled: true,
           sort: 0,
           remark: null

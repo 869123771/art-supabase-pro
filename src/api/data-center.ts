@@ -291,12 +291,16 @@ export async function deleteResource(params: Api.DataCenter.Resources.ResourceLi
  */
 export async function fetchDatabaseMetadata(): Promise<Api.DataCenter.SqlConsole.DatabaseMetadata> {
   try {
-    const { data, error } = await supabase.functions.invoke('execute-sql-with-columns', {
-      body: { action: 'metadata' }
-    })
+    const [{ data, error }, foreignKeys] = await Promise.all([
+      supabase.functions.invoke('execute-sql-with-columns', {
+        body: { action: 'metadata' }
+      }),
+      fetchForeignKeysMetadata()
+    ])
 
     if (error || !data) {
-      return await fetchMetadataFromInformationSchema()
+      const fallback = await fetchMetadataFromInformationSchema()
+      return { ...fallback, foreignKeys }
     }
 
     const payload = normalizeMetadataPayload(data)
@@ -339,8 +343,6 @@ export async function fetchDatabaseMetadata(): Promise<Api.DataCenter.SqlConsole
         returnType: f.returnType || ''
       })
     )
-
-    const foreignKeys = await fetchForeignKeysMetadata()
 
     return {
       schemas,

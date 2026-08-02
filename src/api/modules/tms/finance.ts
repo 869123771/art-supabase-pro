@@ -8,6 +8,7 @@ type WaybillOptionSearchParams = Api.Tms.Finance.WaybillOptionSearchParams
 type CostReviewPayload = Api.Tms.Finance.CostReviewPayload
 type WaybillProfit = Api.Tms.Finance.WaybillProfitRecord
 type WaybillProfitSearchParams = Api.Tms.Finance.WaybillProfitSearchParams
+type FinanceWorkbenchStats = Api.Tms.Finance.FinanceWorkbenchStats
 
 const { supabase, keysToSnakeDeep, responseHandle } = useSupabase()
 
@@ -271,4 +272,11 @@ export async function exportWaybillProfitList(
     ignoreCheck: true,
     showErrorMessage: true
   })
+}
+
+export async function fetchFinanceWorkbench() {
+  return await responseHandle<FinanceWorkbenchStats>(
+    () => supabase.from('tms_finance_workbench').select('*').single(),
+    { ignoreCheck: true, showErrorMessage: true }
+  )
 }

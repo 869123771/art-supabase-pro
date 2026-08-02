@@ -16,14 +16,13 @@
 </template>
 
 <script setup lang="tsx">
-  import { ElMessageBox, ElTag, ElTooltip } from 'element-plus'
+  import { ElButton, ElMessageBox } from 'element-plus'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type {
     ArtTableQueryExcelColumn,
     ArtTableQueryExpose,
     ArtTableQueryHeaderAction
   } from '@/components/core/tables/art-table-query/index.vue'
-  import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import type { ColumnOption } from '@/types'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatWithDayjs } from '@/utils/time'
@@ -106,17 +105,6 @@
       maximumFractionDigits: 2
     })}`
 
-  const renderOperationButton = (
-    content: string,
-    icon: string,
-    iconClass: string,
-    onClick: () => void
-  ) => (
-    <ElTooltip content={content} placement="top">
-      <ArtButtonTable icon={icon} iconClass={iconClass} onClick={onClick} />
-    </ElTooltip>
-  )
-
   const columnsFactory = (): ColumnOption<WaybillCost>[] => [
     { type: 'selection', width: 50, fixed: 'left', reserveSelection: true },
     { type: 'globalIndex', label: '序号', width: 72 },
@@ -171,54 +159,44 @@
     {
       prop: 'operation',
       label: '操作',
-      width: 205,
+      width: 260,
       fixed: 'right',
       formatter: (row) => {
         if (row.auditStatus === 'draft' || row.auditStatus === 'rejected') {
           return (
             <div class="flex items-center">
-              <ElTooltip content="编辑" placement="top">
-                <ArtButtonTable type="edit" onClick={() => void dialogRef.value?.handleOpen(row)} />
-              </ElTooltip>
-              {renderOperationButton(
-                '提交审核',
-                'ri:send-plane-line',
-                'bg-warning/12 text-warning',
-                () => void handleSubmitReview(row)
-              )}
-              <ElTooltip content="删除" placement="top">
-                <ArtButtonTable type="delete" onClick={() => void handleDelete(row)} />
-              </ElTooltip>
+              <ElButton link type="primary" onClick={() => void dialogRef.value?.handleOpen(row)}>
+                编辑
+              </ElButton>
+              <ElButton link type="primary" onClick={() => void handleSubmitReview(row)}>
+                提交审核
+              </ElButton>
+              <ElButton link type="danger" onClick={() => void handleDelete(row)}>
+                删除
+              </ElButton>
             </div>
           )
         }
         if (row.auditStatus === 'pending_review') {
           return (
             <div class="flex items-center">
-              {renderOperationButton(
-                '审核通过',
-                'ri:check-double-line',
-                'bg-success/12 text-success',
-                () => void handleApprove(row)
-              )}
-              {renderOperationButton(
-                '驳回',
-                'ri:close-circle-line',
-                'bg-error/12 text-error',
-                () => void handleReject(row)
-              )}
+              <ElButton link type="success" onClick={() => void handleApprove(row)}>
+                审核通过
+              </ElButton>
+              <ElButton link type="danger" onClick={() => void handleReject(row)}>
+                驳回
+              </ElButton>
             </div>
           )
         }
         if (row.auditStatus === 'approved') {
-          return renderOperationButton(
-            '作废',
-            'ri:forbid-2-line',
-            'bg-error/12 text-error',
-            () => void handleVoid(row)
+          return (
+            <ElButton link type="danger" onClick={() => void handleVoid(row)}>
+              作废
+            </ElButton>
           )
         }
-        return <ElTag type="info">已结束</ElTag>
+        return null
       }
     }
   ]

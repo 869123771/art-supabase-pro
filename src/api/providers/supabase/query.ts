@@ -12,6 +12,7 @@ interface SupabaseQueryResponse {
 export interface SupabaseQueryLike extends PromiseLike<SupabaseQueryResponse> {
   abortSignal(signal: AbortSignal): this
   eq(column: string, value: unknown): this
+  gt(column: string, value: unknown): this
   gte(column: string, value: unknown): this
   in(column: string, values: readonly unknown[]): this
   limit(count: number): this

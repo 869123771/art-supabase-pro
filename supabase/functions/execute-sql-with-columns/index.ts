@@ -55,6 +55,13 @@ function normalizeQuery(raw: string): string {
   return raw.trim().replace(/;+\s*$/g, "");
 }
 
+// WITH can contain data-modifying CTEs; EXPLAIN ANALYZE executes its child statement.
+const READ_ONLY_SQL_PATTERN = /^(SELECT|SHOW|VALUES|TABLE)\b/i;
+
+function isReadOnlyQuery(query: string): boolean {
+  return READ_ONLY_SQL_PATTERN.test(query.trimStart());
+}
+
 function mapPostgresTypeToJSType(pgType?: string | null): string {
   if (!pgType) return "string";
   const t = pgType.toLowerCase();
@@ -147,19 +154,23 @@ Deno.serve(async (req: Request) => {
       return json({ status: "error", message: "Missing authorization header" } satisfies SqlExecuteResponse, 401);
     }
 
-    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+    const authClient = createClient(supabaseUrl, supabaseAnonKey, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
     const token = authHeader.replace("Bearer ", "");
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    const { data: { user }, error: authError } = await authClient.auth.getUser(token);
 
     if (authError || !user) {
       await writeAudit({ query_text: "", is_write: false, status: "error", error_message: "Invalid or expired token" });
       return json({ status: "error", message: "Invalid or expired token" } satisfies SqlExecuteResponse, 401);
     }
 
-    const { data: isSuper, error: superError } = await supabase.rpc("current_is_super");
+    const userClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+    const { data: isSuper, error: superError } = await userClient.rpc("current_is_super");
     if (superError) {
       await writeAudit({
         auth_user_id: user.id,
@@ -170,21 +181,6 @@ Deno.serve(async (req: Request) => {
         error_message: `Failed to check superuser status: ${superError.message}`,
       });
       return json({ status: "error", message: "Failed to verify SQL console permission" } satisfies SqlExecuteResponse, 500);
-    }
-
-    if (!isSuper) {
-      await writeAudit({
-        auth_user_id: user.id,
-        auth_email: user.email ?? null,
-        query_text: "",
-        is_write: false,
-        status: "error",
-        error_message: "Permission denied: SQL console is restricted to platform super administrators",
-      });
-      return json({
-        status: "error",
-        message: "Permission denied: SQL console is restricted to platform super administrators",
-      } satisfies SqlExecuteResponse, 403);
     }
 
     const body: SqlExecuteRequest = await req.json();
@@ -223,9 +219,24 @@ Deno.serve(async (req: Request) => {
     }
 
     const startTime = Date.now();
-    const writeKeywords = ["INSERT", "UPDATE", "DELETE", "DROP", "TRUNCATE", "ALTER", "CREATE", "GRANT", "REVOKE", "COMMENT"];
-    const upperQuery = queryText.toUpperCase().trim();
-    const isWriteOperation = writeKeywords.some((keyword) => upperQuery.startsWith(keyword));
+    const isWriteOperation = !isReadOnlyQuery(queryText);
+
+    if (isWriteOperation && !isSuper) {
+      const permissionMessage = "Permission denied: write and DDL statements are restricted to platform super administrators";
+      await writeAudit({
+        auth_user_id: user.id,
+        auth_email: user.email ?? null,
+        query_text: queryText,
+        is_write: true,
+        status: "error",
+        error_message: permissionMessage,
+      });
+      return json({
+        status: "error",
+        message: permissionMessage,
+        query_text: queryText,
+      } satisfies SqlExecuteResponse, 403);
+    }
 
     const { data, error, status: rpcStatus } = await supabaseAdmin.rpc("execute_sql_query", {
       sql_query: queryText,
