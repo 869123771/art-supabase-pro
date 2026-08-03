@@ -256,9 +256,15 @@
       showAreaColor: true
     }
   ])
-  const featureChartData = computed<PieDataItem[]>(() =>
-    overview.data.featureBreakdown.map((item) => ({ name: item.feature, value: item.total }))
-  )
+  const featureChartData = computed<PieDataItem[]>(() => {
+    const featureDictionary = getDictMap.value?.aiRunFeature ?? []
+    return overview.data.featureBreakdown.map((item) => ({
+      name:
+        featureDictionary.find((dictItem) => dictItem.value === item.feature)?.label ??
+        item.feature,
+      value: item.total
+    }))
+  })
 
   const searchItems = computed<SearchFormItem[]>(() => [
     {

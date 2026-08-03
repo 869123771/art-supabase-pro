@@ -294,6 +294,7 @@
   interface FormExpose {
     validate: () => Promise<boolean>
     clearValidate: () => void
+    reloadOptions: (key?: string) => Promise<unknown>
   }
 
   interface CustomerSelectorExpose {
@@ -1204,6 +1205,7 @@
     }
 
     Object.assign(form.data, patch)
+    await stationFormRef.value?.reloadOptions()
     if (draft.cargoItems?.some((item) => textValue(item.cargoName))) {
       form.data.cargoItems = draft.cargoItems.map((item) => ({
         cargoName: textValue(item.cargoName),

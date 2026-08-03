@@ -8,15 +8,21 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="b8f35119-660a-46e7-82f4-53eee06863eb" name="Changes" comment="feat ai module">
-      <change beforePath="$PROJECT_DIR$/.github/workflows/frontend-quality.yml" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/public-admin/src/types/import/auto-imports.d.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/public-admin/src/types/import/components.d.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/api/ai-assistant.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/ai-assistant.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/index.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/api/supabase-ai-assistant.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/supabase-ai-assistant.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/components/core/layouts/art-chat-window/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/layouts/art-chat-window/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/hooks/core/useSupabase.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/hooks/core/useSupabase.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/types/ai-assistant.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/types/ai-assistant.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/types/import/components.d.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/types/import/components.d.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/types/supabase-ai-assistant.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/types/supabase-ai-assistant.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/dashboard/ai-operations/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/dashboard/ai-operations/index.vue" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/views/dashboard/ai-operations/modules/ai-run-detail-drawer.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/dashboard/ai-operations/modules/ai-run-detail-drawer.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/supabase/config.toml" beforeDir="false" afterPath="$PROJECT_DIR$/supabase/config.toml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/data-center/supabase-ai-assistant/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/data-center/supabase-ai-assistant/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/system/ai-configuration/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/system/ai-configuration/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/order-open/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/order-open/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/supabase/functions/ai-project-assistant/index.ts" beforeDir="false" afterPath="$PROJECT_DIR$/supabase/functions/ai-project-assistant/index.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/supabase/functions/ai-run-diagnosis/index.ts" beforeDir="false" afterPath="$PROJECT_DIR$/supabase/functions/ai-run-diagnosis/index.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/supabase/functions/ai-sql-assistant/index.ts" beforeDir="false" afterPath="$PROJECT_DIR$/supabase/functions/ai-sql-assistant/index.ts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -58,61 +64,61 @@
   </component>
   <component name="NextEditCompletionFeaturesState">
     <decayedCancelled>
-      <entry key="MS100" value="1.0123747022756802" />
-      <entry key="MS500" value="1.540114487104948" />
-      <entry key="S2" value="2.7171910788569287" />
-      <entry key="S5" value="4.582657612780219" />
-      <entry key="S10" value="6.193132052738616" />
-      <entry key="S30" value="7.884285747088469" />
-      <entry key="S60" value="8.41582680868674" />
-      <entry key="M2" value="8.701009185081045" />
-      <entry key="M5" value="8.878703169734528" />
-      <entry key="M10" value="8.939064462589041" />
-      <entry key="M15" value="8.959312566370556" />
-      <entry key="M30" value="8.980928646656118" />
-      <entry key="H1" value="9.071886733816855" />
-      <entry key="H2" value="9.845688282616372" />
-      <entry key="H4" value="13.88223885315472" />
-      <entry key="D1" value="100.4726947836223" />
-      <entry key="W1" value="743.7509669694241" />
+      <entry key="MS100" value="1.0021784137354819" />
+      <entry key="MS500" value="1.9245183597533388" />
+      <entry key="S2" value="4.671141769808881" />
+      <entry key="S5" value="5.919902483198748" />
+      <entry key="S10" value="6.441180818369216" />
+      <entry key="S30" value="7.975182705842687" />
+      <entry key="S60" value="10.798563502784013" />
+      <entry key="M2" value="14.066222293903527" />
+      <entry key="M5" value="17.194774452024603" />
+      <entry key="M10" value="18.513386640399663" />
+      <entry key="M15" value="18.98924465525842" />
+      <entry key="M30" value="19.485770934712704" />
+      <entry key="H1" value="19.820189315153414" />
+      <entry key="H2" value="20.711782824768825" />
+      <entry key="H4" value="24.795638866304188" />
+      <entry key="D1" value="111.38842220751656" />
+      <entry key="W1" value="754.6648098299241" />
     </decayedCancelled>
     <decayedSelected>
-      <entry key="MS100" value="1.9191799525179965E-21" />
-      <entry key="MS500" value="7.188249448211556E-5" />
-      <entry key="S2" value="0.09207798036353002" />
-      <entry key="S5" value="0.385178745148528" />
-      <entry key="S10" value="0.6206277025306942" />
-      <entry key="S30" value="0.8529895663981263" />
-      <entry key="S60" value="0.9235743426482386" />
-      <entry key="M2" value="0.9610277533184141" />
-      <entry key="M5" value="0.9842249539477511" />
-      <entry key="M10" value="0.9920811226825373" />
-      <entry key="M15" value="0.9947138243230814" />
-      <entry key="M30" value="0.99761441948136" />
-      <entry key="H1" value="1.014923358742358" />
-      <entry key="H2" value="1.1389535550374368" />
-      <entry key="H4" value="1.5207588714588618" />
-      <entry key="D1" value="5.872846325135349" />
-      <entry key="W1" value="26.266407095785027" />
+      <entry key="MS100" value="4.9E-324" />
+      <entry key="MS500" value="2.133653888318284E-65" />
+      <entry key="S2" value="6.796432263646016E-17" />
+      <entry key="S5" value="3.411240955125232E-7" />
+      <entry key="S10" value="5.840582980426894E-4" />
+      <entry key="S30" value="0.0835895651968933" />
+      <entry key="S60" value="0.2891186005723141" />
+      <entry key="M2" value="0.5376974991315413" />
+      <entry key="M5" value="0.7802166367092619" />
+      <entry key="M10" value="0.8832987245191966" />
+      <entry key="M15" value="0.9206016846427936" />
+      <entry key="M30" value="0.9597310011598719" />
+      <entry key="H1" value="0.9954665032944877" />
+      <entry key="H2" value="1.1279834196531755" />
+      <entry key="H4" value="1.513417353100866" />
+      <entry key="D1" value="5.868111562713569" />
+      <entry key="W1" value="26.26338086327443" />
     </decayedSelected>
     <decayedShown>
-      <entry key="MS100" value="0.919220633314727" />
-      <entry key="MS500" value="1.5095987035503844" />
-      <entry key="S2" value="2.7669649976649637" />
-      <entry key="S5" value="4.910081987704443" />
-      <entry key="S10" value="6.767730566064677" />
-      <entry key="S30" value="8.716140214986938" />
-      <entry key="S60" value="9.327941857843301" />
-      <entry key="M2" value="9.656069683567765" />
-      <entry key="M5" value="9.860482218786407" />
-      <entry key="M10" value="9.929912629947637" />
-      <entry key="M15" value="9.953202184818448" />
-      <entry key="M30" value="9.97812961336433" />
-      <entry key="H1" value="10.086596080877406" />
-      <entry key="H2" value="10.984507791833996" />
-      <entry key="H4" value="15.402886076440579" />
-      <entry key="D1" value="106.42172185488015" />
-      <entry key="W1" value="770.7095972434936" />
+      <entry key="MS100" value="0.010313227127593106" />
+      <entry key="MS500" value="1.3000418429879053" />
+      <entry key="S2" value="4.4499857067149415" />
+      <entry key="S5" value="5.824139542528367" />
+      <entry key="S10" value="6.392487263100077" />
+      <entry key="S30" value="8.039142438616933" />
+      <entry key="S60" value="11.074348491180206" />
+      <entry key="M2" value="14.59516728064297" />
+      <entry key="M5" value="17.970683554965103" />
+      <entry key="M10" value="19.394360913072553" />
+      <entry key="M15" value="19.908255584910002" />
+      <entry key="M30" value="20.44468492473168" />
+      <entry key="H1" value="20.815234921669017" />
+      <entry key="H2" value="21.839527651243944" />
+      <entry key="H4" value="26.308892104237543" />
+      <entry key="D1" value="117.33264425204702" />
+      <entry key="W1" value="781.620332854276" />
     </decayedShown>
   </component>
   <component name="PackageJsonUpdateNotifier">

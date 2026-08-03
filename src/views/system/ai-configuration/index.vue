@@ -114,10 +114,7 @@
   })
 
   const tenantId = computed(() => getUserInfo.value.tenantId ?? '')
-  const canManage = computed(() => {
-    const roles = getUserInfo.value.userRoles ?? []
-    return isPlatformSuper.value || roles.includes('R_ADMIN') || roles.includes('R_REGISTER')
-  })
+  const canManage = computed(() => isPlatformSuper.value)
 
   const table: UnwrapNestedRefs<TableGroup> = reactive<TableGroup>({
     searchQuery: {

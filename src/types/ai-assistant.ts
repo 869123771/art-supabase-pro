@@ -22,6 +22,7 @@ export interface AiAssistantChatRequest {
 export interface AiAssistantToolResult {
   name: string
   status: 'succeeded' | 'failed'
+  latencyMs?: number
 }
 
 export interface AiAssistantChatResponse {
@@ -33,6 +34,10 @@ export interface AiAssistantChatResponse {
     inputTokens?: number
     outputTokens?: number
   }
+  model?: string
+  promptVersion?: string
+  latencyMs?: number
+  safetyMode?: 'read_only'
 }
 
 export interface AiAssistantFeedbackRequest {

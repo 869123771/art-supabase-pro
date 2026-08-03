@@ -34,7 +34,7 @@
         </div>
       </section>
 
-      <section v-if="isPlatformSuper" class="ai-run-detail__diagnosis-entry">
+      <section class="ai-run-detail__diagnosis-entry">
         <div class="ai-run-detail__diagnosis-icon">
           <ArtSvgIcon icon="ri:stethoscope-line" />
         </div>
@@ -237,7 +237,6 @@
   import type { ArtDrawerExpose } from '@/components/core/drawers/art-drawer/types'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
-  import { useUserStore } from '@/store/modules/user'
   import {
     diagnoseAiRun,
     fetchAiRunDetail,
@@ -265,7 +264,6 @@
 
   const emit = defineEmits<{ diagnosed: [] }>()
 
-  const { isPlatformSuper } = storeToRefs(useUserStore())
   const drawerRef = ref<ArtDrawerExpose<OpenData>>()
   const detail = shallowRef<AiRunDetail>()
   const diagnosis = reactive<DiagnosisState>({
@@ -286,9 +284,7 @@
     if (rating === -1) return '需要改进'
     return '暂无反馈'
   })
-  const canDiagnose = computed(
-    () => isPlatformSuper.value && detail.value?.feature !== 'operations_diagnosis'
-  )
+  const canDiagnose = computed(() => detail.value?.feature !== 'operations_diagnosis')
   const diagnosisActionLabel = computed(() => {
     if (!canDiagnose.value) return '诊断记录不可递归分析'
     if (diagnosis.data) return '重新诊断'

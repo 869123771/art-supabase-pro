@@ -162,6 +162,12 @@ function extractSql(payload: string): string {
   return (fenced?.[1] ?? payload).trim()
 }
 
+const READ_ONLY_SQL_PATTERN = /^(SELECT|SHOW|VALUES|TABLE)\b/i
+
+function isReadOnlySql(sql: string): boolean {
+  return READ_ONLY_SQL_PATTERN.test(sql.trimStart()) && !sql.replace(/;+\s*$/g, '').includes(';')
+}
+
 function tryParseJson<T>(content: string): T | null {
   try {
     return JSON.parse(content) as T
@@ -402,9 +408,7 @@ Deno.serve(async (req) => {
     if (superResult.error) {
       throw new AiSqlError('permission_check_failed', '无法校验 AI SQL 权限。')
     }
-    if (!superResult.data) {
-      throw new AiSqlError('forbidden', 'AI SQL 仅限平台超级管理员使用。', 403)
-    }
+    const isPlatformSuper = superResult.data === true
 
     admin = createClient(supabaseUrl, serviceRoleKey, {
       auth: { autoRefreshToken: false, persistSession: false }
@@ -479,6 +483,7 @@ Deno.serve(async (req) => {
         prompt_version: publishedPrompt.version,
         metadata: {
           mode,
+          accessMode: isPlatformSuper ? 'platform_write' : 'tenant_read_only',
           promptLength: prompt.length,
           currentSqlLength: currentSql.length,
           schemaCount: metadata.schemas.length,
@@ -495,6 +500,9 @@ Deno.serve(async (req) => {
 
     const systemPrompt = [
       publishedPrompt.content,
+      isPlatformSuper
+        ? '当前用户是平台超级管理员，可以按需求生成查询或写入 SQL；涉及写入时必须在 warnings 中明确风险。'
+        : '当前用户是普通用户，只允许生成单条只读 SQL，且必须以 SELECT、SHOW、VALUES 或 TABLE 开头；禁止 WITH、EXPLAIN、DML、DDL、事务控制和任何写入操作。',
       '固定输出协议：只返回 JSON 对象，sql 为纯 SQL 字符串，summary 为一句中文说明，warnings 为中文字符串数组。'
     ].join('\n')
     const userPrompt = JSON.stringify({
@@ -514,6 +522,13 @@ Deno.serve(async (req) => {
     resolvedModel = providerResult.model
     const parsed = parseAiPayload(providerResult.content)
     if (!parsed.sql) throw new AiSqlError('invalid_payload', 'AI 服务未返回可用 SQL。')
+    if (!isPlatformSuper && !isReadOnlySql(parsed.sql)) {
+      throw new AiSqlError(
+        'read_only_required',
+        '普通用户只能生成 SELECT、SHOW、VALUES 或 TABLE 单条只读 SQL。',
+        422
+      )
+    }
 
     const latencyMs = Date.now() - startedAt
     const { error: updateError } = await admin

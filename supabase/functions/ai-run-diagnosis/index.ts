@@ -406,7 +406,7 @@ Deno.serve(async (req) => {
     const user = authResult.data.user
     if (authResult.error || !user) throw new DiagnosisError('unauthorized', 'Invalid or expired session', 401)
     if (superResult.error) throw new DiagnosisError('permission_check_failed', '无法校验 AI 诊断权限。')
-    if (!superResult.data) throw new DiagnosisError('forbidden', 'AI 运行诊断仅限平台超级管理员使用。', 403)
+    const isPlatformSuper = superResult.data === true
 
     admin = createClient(supabaseUrl, serviceRoleKey, {
       auth: { autoRefreshToken: false, persistSession: false }
@@ -448,11 +448,16 @@ Deno.serve(async (req) => {
     }
     await checkRateLimit(admin, user.id, runtimeConfig)
 
-    const { data: targetData, error: targetError } = await admin
+    let targetQuery = admin
       .from('ai_run')
       .select('id,conversation_id,tenant_id,auth_user_id,feature,model,prompt_version,status,input_tokens,output_tokens,latency_ms,tool_calls,error_code,error_message,metadata,started_at,finished_at,feedback:ai_feedback(rating,comment,create_time)')
       .eq('id', targetRunId)
-      .maybeSingle()
+    if (!isPlatformSuper) {
+      targetQuery = targetQuery
+        .eq('tenant_id', appUser.tenant_id)
+        .eq('auth_user_id', user.id)
+    }
+    const { data: targetData, error: targetError } = await targetQuery.maybeSingle()
     const target = targetData as TargetRun | null
     if (targetError || !target) throw new DiagnosisError('run_not_found', '运行记录不存在或已被删除。', 404)
     if (target.feature === FEATURE) throw new DiagnosisError('invalid_target', '诊断运行记录不能再次作为诊断目标。', 400)
