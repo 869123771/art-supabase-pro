@@ -1,0 +1,161 @@
+import { createHash } from 'node:crypto'
+import { execFileSync } from 'node:child_process'
+import { readFileSync, writeFileSync } from 'node:fs'
+import { dirname, relative, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+interface PackageManifest {
+  name?: string
+  version?: string
+  description?: string
+  scripts?: Record<string, string>
+  dependencies?: Record<string, string>
+  devDependencies?: Record<string, string>
+  repository?: { url?: string } | string
+}
+
+const scriptDirectory = dirname(fileURLToPath(import.meta.url))
+const projectRoot = resolve(scriptDirectory, '..')
+const outputPath = resolve(
+  projectRoot,
+  'supabase/functions/ai-project-planner/project-snapshot.generated.ts'
+)
+
+function runGit(args: string[], fallback = ''): string {
+  try {
+    return execFileSync('git', args, {
+      cwd: projectRoot,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore']
+    }).trim()
+  } catch {
+    return fallback
+  }
+}
+
+function readText(path: string, maxLength: number): string {
+  try {
+    return readFileSync(resolve(projectRoot, path), 'utf8').slice(0, maxLength)
+  } catch {
+    return ''
+  }
+}
+
+function isSafeProjectPath(path: string): boolean {
+  const normalized = path.replaceAll('\\', '/').toLowerCase()
+  if (
+    normalized.startsWith('docs/assets/') ||
+    normalized.startsWith('docs/vendor/') ||
+    normalized.startsWith('docs/wasm/') ||
+    normalized.startsWith('node_modules/') ||
+    normalized.startsWith('supabase/backups/') ||
+    normalized.startsWith('.git/') ||
+    normalized.includes('/.env') ||
+    normalized.endsWith('.env')
+  ) {
+    return false
+  }
+  return !/\.(png|jpe?g|gif|webp|ico|pdf|woff2?|ttf|otf|wasm|zip|7z|gz)$/i.test(normalized)
+}
+
+function countByPrefix(paths: string[], prefix: string): number {
+  return paths.filter((path) => path.startsWith(prefix)).length
+}
+
+const packageManifest = JSON.parse(readText('package.json', 80_000)) as PackageManifest
+const trackedFiles = runGit(['ls-files', '--cached', '--others', '--exclude-standard'])
+  .split(/\r?\n/)
+  .map((path) => path.replaceAll('\\', '/'))
+  .filter(Boolean)
+  .filter(isSafeProjectPath)
+
+const viewModules = [
+  ...new Set(
+    trackedFiles
+      .filter((path) => path.startsWith('src/views/'))
+      .map((path) => path.split('/')[2])
+      .filter(Boolean)
+  )
+].sort()
+
+const edgeFunctions = [
+  ...new Set(
+    trackedFiles
+      .filter((path) => /^supabase\/functions\/[^/]+\/index\.ts$/.test(path))
+      .map((path) => path.split('/')[2])
+  )
+].sort()
+
+const tests = trackedFiles.filter((path) =>
+  /(^|\/)(tests?|__tests__)(\/|$)|\.test\.[cm]?[jt]sx?$/.test(path)
+)
+const recentCommits = runGit(['log', '-8', '--pretty=format:%h %s']).split(/\r?\n/).filter(Boolean)
+const dirtyFiles = runGit(['status', '--short']).split(/\r?\n/).filter(Boolean).slice(0, 80)
+
+const repositoryUrl =
+  typeof packageManifest.repository === 'string'
+    ? packageManifest.repository
+    : packageManifest.repository?.url || runGit(['remote', 'get-url', 'origin'])
+
+const facts = {
+  project: {
+    name: packageManifest.name || 'art-supabase-pro',
+    version: packageManifest.version || null,
+    description: packageManifest.description || null,
+    repositoryUrl: repositoryUrl || null,
+    branch: runGit(['branch', '--show-current']) || null,
+    head: runGit(['rev-parse', 'HEAD']) || null
+  },
+  stack: {
+    runtimeDependencies: Object.keys(packageManifest.dependencies || {}).sort(),
+    developmentDependencies: Object.keys(packageManifest.devDependencies || {}).sort(),
+    scripts: packageManifest.scripts || {}
+  },
+  architecture: {
+    viewModules,
+    edgeFunctions,
+    tests,
+    repositoryConventions: [
+      'Vue 3 + TypeScript + Element Plus；业务页面通过 src/api 访问后端。',
+      '业务菜单由 Supabase sys_menu 与 sys_role_menu 驱动，不使用静态业务路由。',
+      '公开 schema 的业务表必须启用 RLS、租户隔离、审计字段与审计触发器。',
+      '数据库、认证、RLS、生命周期和跨系统变更必须先做影响评估。',
+      '用户界面优先复用 Art* 核心组件并使用 art-card-xs 视觉规范。'
+    ]
+  },
+  fileSignals: {
+    totalTrackedSafeFiles: trackedFiles.length,
+    srcFiles: countByPrefix(trackedFiles, 'src/'),
+    viewFiles: countByPrefix(trackedFiles, 'src/views/'),
+    apiFiles: countByPrefix(trackedFiles, 'src/api/'),
+    supabaseFunctionFiles: countByPrefix(trackedFiles, 'supabase/functions/'),
+    migrationSqlFiles: trackedFiles.filter(
+      (path) => path.startsWith('supabase/migrations/') && path.endsWith('.sql')
+    ).length,
+    testFiles: tests.length,
+    trackedPaths: trackedFiles.slice(0, 900)
+  },
+  gitSignals: {
+    recentCommits,
+    dirtyFiles
+  },
+  productSummary: readText('llms.txt', 7_000) || readText('README.md', 7_000)
+}
+
+const sourceHash = createHash('sha256').update(JSON.stringify(facts)).digest('hex')
+const snapshot = {
+  schemaVersion: '1.0.0',
+  generatedAt: new Date().toISOString(),
+  sourceHash,
+  facts
+}
+
+const generatedSource = [
+  '// This file is generated by pnpm snapshot:ai. Do not edit it manually.',
+  `export const BUNDLED_PROJECT_SNAPSHOT = ${JSON.stringify(snapshot, null, 2)} as const`,
+  ''
+].join('\n')
+
+writeFileSync(outputPath, generatedSource, 'utf8')
+console.log(`AI project snapshot written to ${relative(projectRoot, outputPath)}`)
+console.log(`Snapshot hash: ${sourceHash}`)

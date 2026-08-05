@@ -11,7 +11,7 @@
     label-key="cargoName"
     description-key="cargoCode"
     search-placeholder="请输入货物名称、编码、单位或备注"
-    dialog-width="1040px"
+    dialog-width="xl"
     show-pagination
     :page-size="10"
     @confirm="handleConfirm"
@@ -48,7 +48,12 @@
   const columns: DataSelectColumn[] = [
     { prop: 'cargoCode', label: '货物编码', width: 150 },
     { prop: 'cargoName', label: '货物名称', minWidth: 220 },
-    { prop: 'unit', label: '单位', width: 100 },
+    {
+      prop: 'unit',
+      label: '单位',
+      width: 100,
+      dict: { code: 'tmsCargoUnit', display: 'auto' }
+    },
     { prop: 'volumeM3', label: '单件体积（m³）', width: 140 },
     { prop: 'weightKg', label: '单件重量（kg）', width: 140 }
   ]

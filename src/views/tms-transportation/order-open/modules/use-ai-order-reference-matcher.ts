@@ -6,6 +6,7 @@ import {
   fetchStationOptions
 } from '@/api/tms'
 import type {
+  AiAddressReferenceMatch,
   AiCargoReferenceMatch,
   AiOrderReferenceMatches,
   AiReferenceMatch
@@ -96,7 +97,7 @@ export function useAiOrderReferenceMatcher() {
     customerId: string | undefined,
     address: string | null | undefined,
     addressType: Api.Tms.BasicData.CustomerAddressType
-  ): Promise<AiReferenceMatch> {
+  ): Promise<AiAddressReferenceMatch> {
     const source = trim(String(address ?? ''))
     if (!source) return { status: 'empty' }
     if (!customerId) return { label: source, status: 'unmatched' }
@@ -107,7 +108,20 @@ export function useAiOrderReferenceMatcher() {
       from: 0,
       to: 99
     })
-    return createMatch(source, data ?? [], (item: CustomerAddress) => item.addressDetail)
+    const matched = findUniqueMatch(
+      source,
+      data ?? [],
+      (item: CustomerAddress) => item.addressDetail
+    )
+    return matched?.id
+      ? {
+          id: matched.id,
+          label: matched.addressDetail,
+          status: 'matched',
+          longitude: matched.longitude,
+          latitude: matched.latitude
+        }
+      : { label: source, status: 'unmatched' }
   }
 
   async function fetchCargoMatch(
@@ -129,8 +143,20 @@ export function useAiOrderReferenceMatcher() {
     candidates: T[],
     labelOf: (item: T) => string
   ): AiReferenceMatch {
+    if (!normalizeMatchText(source)) return { status: 'empty' }
+    const matched = findUniqueMatch(source, candidates, labelOf)
+    return matched?.id
+      ? { id: matched.id, label: labelOf(matched), status: 'matched' }
+      : { label: String(source), status: 'unmatched' }
+  }
+
+  function findUniqueMatch<T>(
+    source: string | null | undefined,
+    candidates: T[],
+    labelOf: (item: T) => string
+  ): T | undefined {
     const normalizedSource = normalizeMatchText(source)
-    if (!normalizedSource) return { status: 'empty' }
+    if (!normalizedSource) return undefined
 
     const exact = candidates.filter(
       (item) => normalizeMatchText(labelOf(item)) === normalizedSource
@@ -139,10 +165,7 @@ export function useAiOrderReferenceMatcher() {
       const label = normalizeMatchText(labelOf(item))
       return label.includes(normalizedSource) || normalizedSource.includes(label)
     })
-    const matched = exact.length === 1 ? exact[0] : fuzzy.length === 1 ? fuzzy[0] : undefined
-    return matched?.id
-      ? { id: matched.id, label: labelOf(matched), status: 'matched' }
-      : { label: String(source), status: 'unmatched' }
+    return exact.length === 1 ? exact[0] : fuzzy.length === 1 ? fuzzy[0] : undefined
   }
 
   function normalizeMatchText(value?: string | null): string {

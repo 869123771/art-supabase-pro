@@ -1,5 +1,5 @@
 <template>
-  <ArtDialog ref="dialogRef" width="920px">
+  <ArtDialog ref="dialogRef" size="lg">
     <template #subtitle>
       维护零部件的基础属性、质保寿命和供应信息，便于后续维修、库存和采购业务复用。
     </template>

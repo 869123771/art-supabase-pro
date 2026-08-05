@@ -6,6 +6,8 @@ import type {
   ArtScrollOptions
 } from '@/hooks/core/useArtOverlay'
 
+export type ArtDialogSize = 'sm' | 'md' | 'lg' | 'xl' | 'full'
+
 export interface ArtDialogOptions<TData = unknown> extends ArtOverlayOptions<
   TData,
   ArtDialogExpose<TData>
@@ -16,6 +18,8 @@ export interface ArtDialogOptions<TData = unknown> extends ArtOverlayOptions<
   subtitle?: string
   /** 弹窗宽度 */
   width?: string | number
+  /** 响应式尺寸预设；显式 width 的优先级更高 */
+  size?: ArtDialogSize
   /** 是否全屏 */
   fullscreen?: boolean
   /** 是否显示全屏切换按钮 */

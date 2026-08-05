@@ -39,7 +39,7 @@
       width: 48px;
       height: 48px;
       font-size: 24px;
-      border-radius: 14px;
+      border-radius: var(--art-feature-radius);
       place-items: center;
 
       &.is-primary {

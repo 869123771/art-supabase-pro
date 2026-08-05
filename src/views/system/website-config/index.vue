@@ -22,13 +22,18 @@
       </div>
     </section>
 
-    <ElForm
+    <ArtForm
       ref="formRef"
+      :model-value="form"
+      :items="[]"
       class="website-config-page__form"
-      :model="form"
       :rules="rules"
       :disabled="isReadOnly"
       label-position="top"
+      custom-layout
+      :show-reset="false"
+      :show-submit="false"
+      @update:model-value="Object.assign(form, $event)"
     >
       <div class="website-config-page__body">
         <aside class="website-config-page__nav-panel">
@@ -358,12 +363,12 @@
           </footer>
         </main>
       </div>
-    </ElForm>
+    </ArtForm>
   </div>
 </template>
 
 <script setup lang="ts">
-  import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
+  import { ElMessage, type FormRules } from 'element-plus'
   import { cloneDeep, omit } from 'lodash-es'
   import { fetchWebsiteConfig, saveWebsiteConfig } from '@/api/system-manage'
   import { createWebsiteConfigDefaults } from '@/config/website-config-defaults'
@@ -371,6 +376,7 @@
   import { useUserStore } from '@/store/modules/user'
   import { formatWithDayjs } from '@/utils/time'
   import ArtUploadImage from '@/components/core/forms/art-upload-image/index.vue'
+  import ArtForm from '@/components/core/forms/art-form/index.vue'
 
   defineOptions({ name: 'WebsiteConfig' })
 
@@ -388,7 +394,12 @@
     description: string
   }
 
-  const formRef = ref<FormInstance>()
+  interface FormExpose {
+    validate: () => Promise<boolean>
+    clearValidate: () => void
+  }
+
+  const formRef = ref<FormExpose>()
   const saving = ref(false)
   const activeSection = ref<SectionKey>('identity')
   const form = reactive<WebsiteConfig>(createWebsiteConfigDefaults())
@@ -687,7 +698,7 @@
     &__actions {
       background: var(--el-bg-color);
       border: 1px solid var(--el-border-color-light);
-      border-radius: 8px;
+      border-radius: var(--art-surface-radius);
     }
 
     &__hero {
@@ -725,7 +736,7 @@
       padding: 12px 14px;
       background: var(--el-fill-color-blank);
       border: 1px solid var(--el-border-color-lighter);
-      border-radius: 6px;
+      border-radius: var(--art-control-radius);
 
       span,
       small {
@@ -818,7 +829,7 @@
       cursor: pointer;
       background: transparent;
       border: 0;
-      border-radius: 6px;
+      border-radius: var(--art-control-radius);
 
       .art-svg-icon {
         font-size: 16px;
@@ -836,7 +847,7 @@
       margin-top: 10px;
       background: var(--el-fill-color-blank);
       border: 1px solid var(--el-border-color-lighter);
-      border-radius: 6px;
+      border-radius: var(--art-control-radius);
 
       strong {
         display: block;
@@ -946,7 +957,7 @@
       padding: 12px 14px;
       background: var(--el-fill-color-blank);
       border: 1px solid var(--el-border-color-lighter);
-      border-radius: 6px;
+      border-radius: var(--art-control-radius);
 
       strong {
         display: block;
@@ -963,15 +974,15 @@
     &__preview-grid {
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 12px;
       grid-column: 1 / -1;
+      gap: 12px;
 
       div {
         min-height: 64px;
         padding: 12px 14px;
         background: var(--el-fill-color-blank);
         border: 1px solid var(--el-border-color-lighter);
-        border-radius: 6px;
+        border-radius: var(--art-control-radius);
       }
 
       span {
@@ -1029,8 +1040,8 @@
 
     &__action-buttons {
       display: flex;
-      gap: 10px;
       flex: none;
+      gap: 10px;
     }
   }
 

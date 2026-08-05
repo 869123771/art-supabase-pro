@@ -381,6 +381,27 @@ verify_jwt = true
 [functions.ai-order-assistant]
 verify_jwt = true
 
+[functions.ai-dispatch-advisor]
+verify_jwt = true
+
+[functions.ai-transport-anomaly-advisor]
+verify_jwt = true
+
+[functions.ai-waybill-cost-auditor]
+verify_jwt = true
+
+[functions.ai-waybill-profit-analyst]
+verify_jwt = true
+
+[functions.ai-receivables-collection-advisor]
+verify_jwt = true
+
+[functions.ai-vehicle-health-advisor]
+verify_jwt = true
+
+[functions.ai-carrier-performance-advisor]
+verify_jwt = true
+
 [functions.ai-assistant]
 verify_jwt = true
 
@@ -394,6 +415,9 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.ai-project-assistant]
+verify_jwt = true
+
+[functions.ai-project-planner]
 verify_jwt = true
 
 # [edge_runtime.secrets]

@@ -18,7 +18,7 @@
 </template>
 
 <script setup lang="tsx">
-  import { ElButton, ElMessageBox } from 'element-plus'
+  import { ElButton } from 'element-plus'
   import type { ComputedRef, UnwrapNestedRefs } from 'vue'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type {
@@ -37,6 +37,7 @@
   import { useUserStore } from '@/store/modules/user'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatWithDayjs } from '@/utils/time'
+  import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import CashTransactionDetailDrawer from './modules/cash-transaction-detail-drawer.vue'
   import CustomerReceiptDialog from './modules/customer-receipt-dialog.vue'
   import CarrierPaymentDialog from './modules/carrier-payment-dialog.vue'
@@ -64,6 +65,7 @@
   }
 
   const { getDictMap } = storeToRefs(useUserStore())
+  const { promptReason } = useArtFeedback()
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<DialogExpose>()
   const paymentDialogRef = ref<DialogExpose>()
@@ -300,19 +302,16 @@
 
   async function handleVoid(row: CashTransaction): Promise<void> {
     try {
-      const { value } = await ElMessageBox.prompt(
+      const reason = await promptReason(
         `作废后保留${row.direction === 'receipt' ? '收款' : '付款'}流水历史，但不能再进行核销。`,
         row.direction === 'receipt' ? '作废收款' : '作废付款',
         {
-          type: 'warning',
           confirmButtonText: '确认作废',
-          cancelButtonText: '取消',
-          inputType: 'textarea',
-          inputPlaceholder: '请填写作废原因',
-          inputValidator: (text) => Boolean(text?.trim()) || '作废原因不能为空'
+          placeholder: '请填写作废原因',
+          emptyMessage: '作废原因不能为空'
         }
       )
-      await voidCashTransaction(row.id, value.trim())
+      await voidCashTransaction(row.id, reason)
       await tableQueryRef.value?.refreshUpdate()
     } catch {
       // 用户取消时无需提示。

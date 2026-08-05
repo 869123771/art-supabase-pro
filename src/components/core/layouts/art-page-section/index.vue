@@ -1,0 +1,104 @@
+<template>
+  <section class="art-page-section" :class="{ 'art-card-xs': card, 'has-header': hasHeader }">
+    <div v-if="hasHeader" class="art-page-section__header">
+      <div class="art-page-section__identity">
+        <ArtSectionTitle :show-line="false" :show-marker="showMarker">{{ title }}</ArtSectionTitle>
+        <p v-if="subtitle">{{ subtitle }}</p>
+      </div>
+      <div v-if="$slots.actions" class="art-page-section__actions">
+        <slot name="actions" />
+      </div>
+    </div>
+    <div class="art-page-section__body">
+      <slot />
+    </div>
+  </section>
+</template>
+
+<script setup lang="ts">
+  import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
+
+  defineOptions({ name: 'ArtPageSection' })
+
+  const props = withDefaults(
+    defineProps<{
+      title?: string
+      subtitle?: string
+      card?: boolean
+      showMarker?: boolean
+    }>(),
+    {
+      title: '',
+      subtitle: '',
+      card: true,
+      showMarker: true
+    }
+  )
+
+  const slots = useSlots()
+  const hasHeader = computed(() => Boolean(props.title || props.subtitle || slots.actions))
+</script>
+
+<style scoped lang="scss">
+  .art-page-section {
+    min-width: 0;
+
+    &.art-card-xs {
+      padding: var(--art-section-padding);
+    }
+
+    &__header {
+      display: flex;
+      gap: var(--art-space-3);
+      align-items: flex-start;
+      justify-content: space-between;
+      min-width: 0;
+      margin-bottom: var(--art-space-4);
+    }
+
+    &__identity {
+      flex: 1;
+      min-width: 0;
+
+      :deep(.art-section-title) {
+        margin: 0;
+        font-size: var(--art-font-size-section-title);
+      }
+
+      p {
+        margin: var(--art-space-1) 0 0 11px;
+        font-size: var(--art-font-size-caption);
+        line-height: 20px;
+        color: var(--el-text-color-secondary);
+      }
+    }
+
+    &__actions {
+      display: flex;
+      flex: none;
+      gap: var(--art-space-2);
+      align-items: center;
+      justify-content: flex-end;
+    }
+
+    &__body {
+      min-width: 0;
+    }
+
+    @media (width <= 640px) {
+      &.art-card-xs {
+        padding: var(--art-space-4);
+      }
+
+      &__header {
+        flex-direction: column;
+      }
+
+      &__actions {
+        flex-wrap: wrap;
+        justify-content: flex-start;
+        width: 100%;
+      }
+    }
+  }
+</style>

@@ -16,9 +16,9 @@
 </template>
 
 <script setup lang="tsx">
+  import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import type { ComputedRef, UnwrapNestedRefs } from 'vue'
   import { isNil } from 'lodash-es'
-  import { ElMessageBox } from 'element-plus'
   import { storeToRefs } from 'pinia'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import ArtButtonMore, {
@@ -44,6 +44,8 @@
   import MaintenanceRecordDialog from './modules/maintenance-record-dialog.vue'
 
   defineOptions({ name: 'VehicleMaintenance' })
+
+  const { confirmAction } = useArtFeedback()
 
   type MaintenanceRecord = Api.VehicleMgtSys.VehicleManage.VehicleMaintenanceRecord
   type SearchParams = Api.VehicleMgtSys.VehicleManage.VehicleMaintenanceSearchParams
@@ -238,7 +240,7 @@
   const handleDelete = async (row: MaintenanceRecord): Promise<void> => {
     if (!row.id) return
     try {
-      await ElMessageBox.confirm(`确定删除维修单“${row.maintenanceNo}”吗？`, '删除确认', {
+      await confirmAction(`确定删除维修单“${row.maintenanceNo}”吗？`, '删除确认', {
         confirmButtonText: '删除',
         cancelButtonText: '取消',
         type: 'warning',

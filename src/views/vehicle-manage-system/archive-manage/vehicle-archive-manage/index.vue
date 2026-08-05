@@ -15,8 +15,9 @@
 </template>
 
 <script setup lang="tsx">
+  import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import type { ComputedRef, UnwrapNestedRefs } from 'vue'
-  import { ElMessage, ElMessageBox } from 'element-plus'
+  import { ElMessage } from 'element-plus'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import ArtButtonMore, {
     type ButtonMoreItem
@@ -37,6 +38,8 @@
   import { useUserStore } from '@/store/modules/user'
 
   defineOptions({ name: 'VehicleArchiveManage' })
+
+  const { confirmAction } = useArtFeedback()
 
   type VehicleArchive = Api.VehicleMgtSys.ArchiveManage.VehicleArchive
   type CarrierOption = Api.Tms.BasicData.CarrierOption
@@ -274,7 +277,7 @@
           ? `确定删除车辆档案“${row.plateNo}”吗？该车辆没有关联运单，将一并清理 ${deletePreview.relatedTotal} 条附属记录：${relatedSummary}。删除后无法恢复。`
           : `确定删除车辆档案“${row.plateNo}”吗？该车辆没有关联运单，删除后无法恢复。`
 
-      await ElMessageBox.confirm(message, '删除确认', {
+      await confirmAction(message, '删除确认', {
         confirmButtonText: deletePreview.relatedTotal > 0 ? '清理并删除' : '删除',
         cancelButtonText: '取消',
         type: 'warning',

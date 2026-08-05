@@ -1,6 +1,11 @@
 <template>
   <div class="vehicle-query-detail" v-loading="page.loading">
-    <VehicleQuerySummary v-if="page.vehicle" :vehicle="page.vehicle" :summary="page.summary" />
+    <VehicleQuerySummary
+      v-if="page.vehicle"
+      :vehicle="page.vehicle"
+      :summary="page.summary"
+      @analyze="openHealthAdvisor"
+    />
 
     <div v-if="page.vehicle" class="vehicle-query-detail__body art-card-xs">
       <VehicleQuerySideTabs v-model="page.activeTab" :tabs="tabs" />
@@ -10,6 +15,8 @@
     </div>
 
     <ElEmpty v-else-if="!page.loading" description="未找到车辆信息" />
+
+    <VehicleHealthAdvisorDrawer ref="healthAdvisorRef" />
   </div>
 </template>
 
@@ -36,6 +43,7 @@
   import RoutineInspectionPanel from '../modules/routine-inspection-panel.vue'
   import MileagePanel from '../modules/mileage-panel.vue'
   import DevicePanel from '../modules/device-panel.vue'
+  import VehicleHealthAdvisorDrawer from '../modules/vehicle-health-advisor-drawer.vue'
   import type {
     VehicleArchive,
     VehicleInspection,
@@ -58,7 +66,12 @@
     summary: VehicleSummaryData
   }
 
+  interface HealthAdvisorExpose {
+    handleOpen: (data: { vehicleId: string; plateNo: string }) => Promise<void>
+  }
+
   const route = useRoute()
+  const healthAdvisorRef = ref<HealthAdvisorExpose>()
 
   const page = reactive<PageState>({
     loading: false,
@@ -97,6 +110,13 @@
   }
 
   const activePanel = computed(() => panelMap[page.activeTab])
+
+  const openHealthAdvisor = (): void => {
+    const vehicleId = page.vehicle?.id
+    const plateNo = page.vehicle?.plateNo
+    if (!vehicleId || !plateNo) return
+    void healthAdvisorRef.value?.handleOpen({ vehicleId, plateNo })
+  }
 
   onMounted(() => {
     void loadVehicle()
@@ -195,7 +215,19 @@
     &__content {
       min-width: 0;
       padding: 28px 40px 48px;
-      overflow-x: auto;
+      overflow: hidden;
+    }
+  }
+
+  @media (width <= 900px) {
+    .vehicle-query-detail {
+      &__body {
+        grid-template-columns: 1fr;
+      }
+
+      &__content {
+        padding: 20px 16px 32px;
+      }
     }
   }
 </style>

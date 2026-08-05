@@ -16,7 +16,7 @@
 </template>
 
 <script setup lang="tsx">
-  import { ElButton, ElMessageBox } from 'element-plus'
+  import { ElButton } from 'element-plus'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type {
     ArtTableQueryExcelColumn,
@@ -34,6 +34,7 @@
   import { useUserStore } from '@/store/modules/user'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatWithDayjs } from '@/utils/time'
+  import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import CarrierStatementDialog from './modules/carrier-statement-dialog.vue'
   import CarrierStatementDetailDrawer from './modules/carrier-statement-detail-drawer.vue'
 
@@ -44,6 +45,7 @@
   type TableParams = SearchParams & Pick<Api.Common.PaginationParams, 'current' | 'size'>
 
   const { getDictMap } = storeToRefs(useUserStore())
+  const { promptReason, confirmAction } = useArtFeedback()
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<{ handleOpen: () => Promise<void> }>()
   const drawerRef = ref<{ handleOpen: (row: Statement) => Promise<void> }>()
@@ -239,7 +241,7 @@
   async function changeStatus(row: Statement, status: Api.Tms.Finance.CustomerStatementStatus) {
     const label = status === 'pending_review' ? '提交审核' : '审核通过'
     try {
-      await ElMessageBox.confirm(`确定${label}对账单 ${row.statementNo} 吗？`, label, {
+      await confirmAction(`确定${label}对账单 ${row.statementNo} 吗？`, label, {
         type: 'warning'
       })
       await updateCarrierStatementStatus({ id: row.id, status })
@@ -251,14 +253,15 @@
 
   async function handleReject(row: Statement) {
     try {
-      const { value } = await ElMessageBox.prompt('请填写驳回原因', '驳回对账单', {
-        inputType: 'textarea',
-        inputValidator: (v) => Boolean(v?.trim()) || '驳回原因不能为空'
+      const reason = await promptReason('请填写驳回原因', '驳回对账单', {
+        confirmButtonText: '确认驳回',
+        emptyMessage: '驳回原因不能为空',
+        placeholder: '请说明对账单被驳回的原因'
       })
       await updateCarrierStatementStatus({
         id: row.id,
         status: 'draft',
-        reviewRemark: value.trim()
+        reviewRemark: reason
       })
       await tableQueryRef.value?.refreshUpdate()
     } catch {
@@ -268,12 +271,12 @@
 
   async function handleVoid(row: Statement) {
     try {
-      const { value } = await ElMessageBox.prompt(
-        '作废后会释放费用，可重新生成对账单。',
-        '作废对账单',
-        { inputType: 'textarea', inputValidator: (v) => Boolean(v?.trim()) || '作废原因不能为空' }
-      )
-      await updateCarrierStatementStatus({ id: row.id, status: 'voided', voidReason: value.trim() })
+      const reason = await promptReason('作废后会释放费用，可重新生成对账单。', '作废对账单', {
+        confirmButtonText: '确认作废',
+        emptyMessage: '作废原因不能为空',
+        placeholder: '请填写作废原因'
+      })
+      await updateCarrierStatementStatus({ id: row.id, status: 'voided', voidReason: reason })
       await tableQueryRef.value?.refreshUpdate()
     } catch {
       /* 用户取消 */
@@ -282,7 +285,7 @@
 
   async function handleDelete(row: Statement) {
     try {
-      await ElMessageBox.confirm('仅草稿可删除，删除后无法恢复。', '删除对账单', {
+      await confirmAction('仅草稿可删除，删除后无法恢复。', '删除对账单', {
         type: 'warning'
       })
       await deleteCarrierStatement(row.id)

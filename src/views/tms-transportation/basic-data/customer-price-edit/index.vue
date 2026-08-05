@@ -1,6 +1,20 @@
 <template>
-  <div ref="pageRef" class="customer-price-edit" v-loading="page.loading">
-    <div class="customer-price-edit__content">
+  <ArtPageShell
+    class="customer-price-edit"
+    :loading="page.loading"
+    loading-mode="skeleton"
+    :error="page.error"
+    @retry="initializePage"
+  >
+    <ArtPageHeader
+      class="customer-price-edit__header"
+      :title="isEdit ? '编辑客户价' : '新增客户价'"
+      subtitle="维护运输路线、货物需求、车辆要求与结算费用"
+      show-back
+      @back="goBack()"
+    />
+
+    <div ref="pageRef" class="customer-price-edit__content">
       <section class="customer-price-edit__section art-card-xs">
         <ArtSectionTitle>基础信息</ArtSectionTitle>
         <ArtForm
@@ -200,10 +214,10 @@
       </section>
     </div>
 
-    <div class="customer-price-edit__footer art-card-xs">
+    <ArtStickyActionBar class="customer-price-edit__footer">
       <ElButton :disabled="page.saving" @click="goBack()">取消</ElButton>
       <ElButton type="primary" :loading="page.saving" @click="handleSave">保存</ElButton>
-    </div>
+    </ArtStickyActionBar>
 
     <ArtTableSingleSelect
       ref="addressSelectRef"
@@ -216,7 +230,7 @@
       :label-key="getAddressLabel"
       :description-key="getAddressDescription"
       search-placeholder="请输入联系人/电话/地址搜索"
-      dialog-width="1080px"
+      dialog-width="xl"
       show-pagination
       :page-size="10"
       @confirm="handleAddressSelectorConfirm"
@@ -236,14 +250,14 @@
       label-key="cargoName"
       description-key="cargoCode"
       search-placeholder="请输入货物名称、编码、单位或备注"
-      dialog-width="1040px"
+      dialog-width="xl"
       show-pagination
       :page-size="10"
       @confirm="handleCargoSelectorConfirm"
     >
       <template #trigger></template>
     </ArtTableMultipleSelect>
-  </div>
+  </ArtPageShell>
 </template>
 
 <script setup lang="tsx">
@@ -328,6 +342,7 @@
   interface PageState {
     loading: boolean
     saving: boolean
+    error: Error | null
   }
 
   interface AddressSelectorGroup {
@@ -498,7 +513,7 @@
     }
   }
 
-  const page = reactive<PageState>({ loading: false, saving: false })
+  const page = reactive<PageState>({ loading: false, saving: false, error: null })
   const addressSelector = reactive<AddressSelectorGroup>({
     mode: 'shipping',
     title: '选择发货地址',
@@ -833,8 +848,13 @@
     )
   }
 
-  onMounted(async () => {
+  onMounted(() => {
+    void initializePage()
+  })
+
+  async function initializePage(): Promise<void> {
     page.loading = true
+    page.error = null
     try {
       await Promise.all([
         loadDetail(),
@@ -842,10 +862,12 @@
       ])
       await nextTick()
       clearFormRefsValidation(validatedFormRefs)
+    } catch (error) {
+      page.error = error instanceof Error ? error : new Error('客户价信息加载失败')
     } finally {
       page.loading = false
     }
-  })
+  }
 
   watch(
     () => form.cargoSummary,
@@ -878,7 +900,7 @@
 
     const id = String(route.params.id || '')
     const { data } = await fetchCustomerPriceDetail(id)
-    if (!data) return
+    if (!data) throw new Error('客户价不存在或无权访问')
 
     replaceForm({
       ...createInitialForm(),
@@ -1319,6 +1341,10 @@
     padding: 8px;
     background: var(--art-main-bg-color);
 
+    &__header {
+      margin-bottom: 16px;
+    }
+
     &__content {
       display: flex;
       flex-direction: column;
@@ -1444,7 +1470,7 @@
         font-size: 18px;
         font-weight: 600;
         color: #fff;
-        border-radius: 4px;
+        border-radius: var(--art-control-radius-small);
       }
 
       &--send {
@@ -1469,13 +1495,6 @@
     }
 
     &__footer {
-      position: sticky;
-      bottom: 0;
-      z-index: 5;
-      display: flex;
-      gap: 10px;
-      justify-content: flex-end;
-      padding: 16px 20px;
       margin-top: 16px;
     }
 

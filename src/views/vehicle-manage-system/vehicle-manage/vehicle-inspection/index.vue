@@ -16,8 +16,9 @@
 </template>
 
 <script setup lang="tsx">
+  import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import type { ComputedRef, UnwrapNestedRefs } from 'vue'
-  import { ElMessage, ElMessageBox } from 'element-plus'
+  import { ElMessage } from 'element-plus'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import ArtButtonMore, {
     type ButtonMoreItem
@@ -41,6 +42,8 @@
   import VehicleInspectionDialog from './modules/vehicle-inspection-dialog.vue'
 
   defineOptions({ name: 'VehicleInspection' })
+
+  const { confirmAction } = useArtFeedback()
 
   type VehicleInspection = Api.VehicleMgtSys.VehicleManage.VehicleInspection
   type SearchParams = Api.VehicleMgtSys.VehicleManage.VehicleInspectionSearchParams
@@ -219,7 +222,7 @@
     if (!row.id) return
 
     try {
-      await ElMessageBox.confirm(`确定删除车辆“${row.plateNo}”的年检记录吗？`, '删除确认', {
+      await confirmAction(`确定删除车辆“${row.plateNo}”的年检记录吗？`, '删除确认', {
         confirmButtonText: '删除',
         cancelButtonText: '取消',
         type: 'warning',

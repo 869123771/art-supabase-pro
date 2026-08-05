@@ -16,8 +16,8 @@
 </template>
 
 <script setup lang="tsx">
+  import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import type { ComputedRef, UnwrapNestedRefs } from 'vue'
-  import { ElMessageBox } from 'element-plus'
   import { storeToRefs } from 'pinia'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import ArtButtonMore, {
@@ -43,6 +43,8 @@
   import RoutineInspectionDialog from './modules/routine-inspection-dialog.vue'
 
   defineOptions({ name: 'VehicleRoutineInspection' })
+
+  const { confirmAction } = useArtFeedback()
 
   type RoutineInspection = Api.VehicleMgtSys.VehicleManage.VehicleRoutineInspectionRecord
   type SearchParams = Api.VehicleMgtSys.VehicleManage.VehicleRoutineInspectionSearchParams
@@ -237,7 +239,7 @@
   const handleDelete = async (row: RoutineInspection): Promise<void> => {
     if (!row.id) return
     try {
-      await ElMessageBox.confirm(`确定删除例检记录“${row.routineInspectionNo}”吗？`, '删除确认', {
+      await confirmAction(`确定删除例检记录“${row.routineInspectionNo}”吗？`, '删除确认', {
         confirmButtonText: '删除',
         cancelButtonText: '取消',
         type: 'warning',

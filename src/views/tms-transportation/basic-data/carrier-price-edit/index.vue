@@ -1,6 +1,20 @@
 <template>
-  <div ref="pageRef" class="carrier-price-edit" v-loading="page.loading">
-    <div class="carrier-price-edit__content">
+  <ArtPageShell
+    class="carrier-price-edit"
+    :loading="page.loading"
+    loading-mode="skeleton"
+    :error="page.error"
+    @retry="initializePage"
+  >
+    <ArtPageHeader
+      class="carrier-price-edit__header"
+      :title="isEdit ? '编辑承运商价' : '新增承运商价'"
+      subtitle="维护承运路线、车辆司机、货物成本与付款方式"
+      show-back
+      @back="goBack"
+    />
+
+    <div ref="pageRef" class="carrier-price-edit__content">
       <section class="carrier-price-edit__section art-card-xs">
         <ArtSectionTitle>基础信息</ArtSectionTitle>
         <ArtForm
@@ -84,13 +98,13 @@
       </section>
     </div>
 
-    <div class="carrier-price-edit__footer art-card-xs">
+    <ArtStickyActionBar class="carrier-price-edit__footer">
       <ElButton :disabled="page.saving" @click="goBack">取消</ElButton>
       <ElButton type="primary" :loading="page.saving" @click="handleSave">保存</ElButton>
-    </div>
+    </ArtStickyActionBar>
 
     <CargoMultipleSelect ref="cargoSelectorRef" @confirm="handleCargoSelectorConfirm" />
-  </div>
+  </ArtPageShell>
 </template>
 
 <script setup lang="tsx">
@@ -158,6 +172,7 @@
   interface PageState {
     loading: boolean
     saving: boolean
+    error: Error | null
   }
 
   interface FeeSummary {
@@ -285,7 +300,7 @@
     }
   }
 
-  const page = reactive<PageState>({ loading: false, saving: false })
+  const page = reactive<PageState>({ loading: false, saving: false, error: null })
   const form: UnwrapNestedRefs<FormGroup> = reactive<FormGroup>({
     data: createInitialForm(),
     carrierOptions: [],
@@ -700,8 +715,13 @@
     )
   }
 
-  onMounted(async () => {
+  onMounted(() => {
+    void initializePage()
+  })
+
+  async function initializePage(): Promise<void> {
     page.loading = true
+    page.error = null
     try {
       await Promise.all([
         loadDetail(),
@@ -709,10 +729,12 @@
       ])
       await nextTick()
       clearFormRefsValidation(validatedFormRefs)
+    } catch (error) {
+      page.error = error instanceof Error ? error : new Error('承运商价信息加载失败')
     } finally {
       page.loading = false
     }
-  })
+  }
 
   watch(
     () => form.cargoSummary,
@@ -749,7 +771,7 @@
 
     const id = String(route.params.id || '')
     const { data } = await fetchCarrierPriceDetail(id)
-    if (!data) return
+    if (!data) throw new Error('承运商价不存在或无权访问')
 
     replaceForm({
       ...createInitialForm(),
@@ -976,6 +998,10 @@
     padding: 8px;
     background: var(--art-main-bg-color);
 
+    &__header {
+      margin-bottom: 16px;
+    }
+
     &__content {
       display: flex;
       flex-direction: column;
@@ -999,13 +1025,6 @@
     }
 
     &__footer {
-      position: sticky;
-      bottom: 0;
-      z-index: 5;
-      display: flex;
-      gap: 10px;
-      justify-content: flex-end;
-      padding: 16px 20px;
       margin-top: 16px;
     }
 

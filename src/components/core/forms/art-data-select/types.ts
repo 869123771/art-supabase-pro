@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- ArtDataSelect 是通用选择器，需要兼容没有索引签名的业务 DTO；后续可在组件泛型化时进一步收紧。 */
 import type { Component } from 'vue'
 import type { DictColumnOption } from '@/types/component'
+import type { ArtDialogSize } from '@/components/core/dialogs/art-dialog/types'
 
 export type DataSelectKey = string | number
 export type DataSelectMode = 'table' | 'tree'
@@ -74,7 +75,7 @@ export interface ArtDataSelectProps {
   childrenKey?: string
   resultField?: string
   totalField?: string
-  dialogWidth?: string | number
+  dialogWidth?: string | number | ArtDialogSize
   fullscreen?: boolean
   pageSize?: number
   pageSizes?: number[]

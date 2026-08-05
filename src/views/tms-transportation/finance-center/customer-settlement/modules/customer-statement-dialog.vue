@@ -1,5 +1,5 @@
 <template>
-  <ArtDialog ref="dialogRef" width="1080px">
+  <ArtDialog ref="dialogRef" size="xl">
     <ArtForm
       ref="formRef"
       v-model="form"
@@ -24,7 +24,7 @@
           description-key="customerCode"
           placeholder="请选择客户"
           search-placeholder="客户名称、编码、联系人或电话"
-          dialog-width="920px"
+          dialog-width="lg"
           show-pagination
           :page-size="10"
           @change="handleCriteriaChange"
@@ -45,7 +45,7 @@
           description-key="routeLabel"
           placeholder="请选择待对账运单"
           search-placeholder="运单号、订单号或运输线路"
-          dialog-width="1120px"
+          dialog-width="xl"
           show-pagination
           show-selected-panel
           :page-size="10"

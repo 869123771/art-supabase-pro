@@ -4,7 +4,12 @@ import {
   loadAiRuntimeConfig,
   type AiRuntimeConfig
 } from '../_shared/ai-runtime-config.ts'
+import {
+  resolveAiProviderEndpoints,
+  type AiProviderEndpoint
+} from '../_shared/ai-provider-endpoints.ts'
 import { loadPublishedAiPrompt } from '../_shared/ai-prompt-template.ts'
+import { detectTransportAnomalies } from '../_shared/transport-anomaly-rules.ts'
 
 const BUSINESS_ASSISTANT_DEFAULT_PROMPT = [
   '你是 Art Supabase Pro 中的运输业务副驾驶。',
@@ -19,6 +24,7 @@ type ToolName =
   | 'get_order_detail'
   | 'get_recent_orders'
   | 'get_transport_overview'
+  | 'get_transport_anomalies'
   | 'get_vehicle_expiries'
 
 interface AssistantMessage {
@@ -96,6 +102,7 @@ const toolNames = new Set<ToolName>([
   'get_order_detail',
   'get_recent_orders',
   'get_transport_overview',
+  'get_transport_anomalies',
   'get_vehicle_expiries'
 ])
 
@@ -139,6 +146,22 @@ const tools = [
         type: 'object',
         properties: {
           days: { type: 'integer', minimum: 1, maximum: 90 }
+        },
+        required: [],
+        additionalProperties: false
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_transport_anomalies',
+      description: '按确定性规则查询当前租户的到货超时、发车超时和长时间无进展订单，并按风险排序。',
+      parameters: {
+        type: 'object',
+        properties: {
+          stale_hours: { type: 'integer', minimum: 1, maximum: 168 },
+          limit: { type: 'integer', minimum: 1, maximum: 50 }
         },
         required: [],
         additionalProperties: false
@@ -235,6 +258,12 @@ function resolveDirectTool(content: string, context: AssistantContext): DirectTo
   if (/(最近|最新).*(订单)|订单.*(最近|最新)|总结最近订单/.test(normalized)) {
     return { name: 'get_recent_orders', args: { limit: 8 } }
   }
+  if (/(运输|订单|运单).*(异常|风险|延误|逾期|超时|卡住)|(异常|风险|延误|逾期|超时).*(运输|订单|运单)/.test(normalized)) {
+    return {
+      name: 'get_transport_anomalies',
+      args: { stale_hours: 24, limit: 20 }
+    }
+  }
   if (/(运输|订单).*(概览|统计|汇总)|近\d+天.*(运输|订单)/.test(normalized)) {
     return {
       name: 'get_transport_overview',
@@ -281,6 +310,15 @@ function formatCountMap(value: unknown): string {
     .filter(([, count]) => numberValue(count) > 0)
     .map(([status, count]) => `${formatStatus(status)} ${numberValue(count)} 单`)
   return items.join('、') || '暂无'
+}
+
+function formatAnomalyType(value: unknown): string {
+  const labels: Record<string, string> = {
+    arrival_overdue: '到货超时',
+    departure_overdue: '发车超时',
+    stalled: '长时间无进展'
+  }
+  return labels[stringValue(value)] || '运输异常'
 }
 
 function formatDirectToolResponse(
@@ -333,6 +371,29 @@ function formatDirectToolResponse(
     ].join('\n')
   }
 
+  if (name === 'get_transport_anomalies') {
+    const anomalies = Array.isArray(result.anomalies)
+      ? (result.anomalies as Array<Record<string, unknown>>)
+      : []
+    if (!anomalies.length) {
+      return `截至 ${stringValue(result.asOf) || '当前'}，未发现到货超时、发车超时或超过 ${numberValue(result.staleHours)} 小时无进展的运输订单。`
+    }
+    const lines = anomalies.slice(0, 20).map((item, index) => {
+      const duration =
+        numberValue(item.overdueHours) > 0
+          ? `超时 ${numberValue(item.overdueHours)} 小时`
+          : `${numberValue(item.staleHours)} 小时无进展`
+      return `${index + 1}. ${stringValue(item.orderNo)}｜${formatAnomalyType(item.type)}｜${duration}｜${stringValue(item.route)}`
+    })
+    return [
+      `当前发现 ${numberValue(result.total)} 条运输异常：`,
+      '',
+      ...lines,
+      '',
+      '建议先处理清单顶部的严重超时订单，并核实车辆、司机和预计到达时间。'
+    ].join('\n')
+  }
+
   const insurance = Array.isArray(result.insurance)
     ? (result.insurance as Array<Record<string, unknown>>)
     : []
@@ -382,13 +443,12 @@ async function fetchWithTimeout(
 }
 
 async function requestProvider(
-  baseUrl: string,
-  apiKey: string,
+  endpoint: AiProviderEndpoint,
   messages: ProviderMessage[],
   allowTools: boolean,
   config: AiRuntimeConfig
 ): Promise<ProviderResult> {
-  const models = [...new Set([config.model, config.fallbackModel].filter(Boolean))] as string[]
+  const models = [...new Set([endpoint.model, endpoint.fallbackModel].filter(Boolean))] as string[]
   let lastError: Error = new Error('AI provider request failed')
 
   for (const model of models) {
@@ -410,11 +470,11 @@ async function requestProvider(
 
       try {
         const response = await fetchWithTimeout(
-          `${baseUrl}/chat/completions`,
+          `${endpoint.baseUrl}/chat/completions`,
           {
             method: 'POST',
             headers: {
-              Authorization: `Bearer ${apiKey}`,
+              Authorization: `Bearer ${endpoint.apiKey}`,
               'Content-Type': 'application/json'
             },
             body: JSON.stringify(requestBody)
@@ -441,6 +501,27 @@ async function requestProvider(
     }
   }
 
+  throw lastError
+}
+
+async function requestProviderWithFallback(
+  endpoints: AiProviderEndpoint[],
+  messages: ProviderMessage[],
+  allowTools: boolean,
+  config: AiRuntimeConfig
+): Promise<{ endpoint: AiProviderEndpoint; result: ProviderResult }> {
+  let lastError = new Error('AI provider request failed')
+  for (const endpoint of endpoints) {
+    try {
+      return {
+        endpoint,
+        result: await requestProvider(endpoint, messages, allowTools, config)
+      }
+    } catch (error) {
+      lastError = error instanceof Error ? error : lastError
+      console.warn('ai-assistant provider fallback', endpoint.label, lastError.message)
+    }
+  }
   throw lastError
 }
 
@@ -500,6 +581,33 @@ async function executeTool(
     }
   }
 
+  if (name === 'get_transport_anomalies') {
+    const staleHours = integerValue(args.stale_hours, 24, 1, 168)
+    const limit = integerValue(args.limit, 20, 1, 50)
+    const { data, error } = await userClient
+      .from('tms_order')
+      .select(
+        'id,order_no,order_status,dispatch_status,origin_station,destination_station,planned_departure_time,planned_arrival_time,update_time'
+      )
+      .in('order_status', ['pending_load', 'pending_order', 'pending_pickup', 'transporting'])
+      .order('update_time', { ascending: true })
+      .limit(500)
+    if (error) throw error
+
+    const rows = (data ?? []) as Array<Record<string, unknown>>
+    const anomalies = detectTransportAnomalies(rows, { staleHours, limit })
+    const anomalyRows = anomalies as unknown as Array<Record<string, unknown>>
+    return {
+      asOf: new Date().toISOString(),
+      staleHours,
+      scannedOrders: rows.length,
+      total: anomalies.length,
+      severity: groupCounts(anomalyRows, 'severity'),
+      types: groupCounts(anomalyRows, 'type'),
+      anomalies
+    }
+  }
+
   const withinDays = integerValue(args.within_days, 30, 1, 180)
   const limit = integerValue(args.limit, 10, 1, 30)
   const today = new Date()
@@ -556,7 +664,11 @@ async function writeToolAudit(
     ? {
         keys: Object.keys(payload.result),
         count:
-          Array.isArray(payload.result.orders) ? payload.result.orders.length : undefined
+          Array.isArray(payload.result.orders)
+            ? payload.result.orders.length
+            : Array.isArray(payload.result.anomalies)
+              ? payload.result.anomalies.length
+              : undefined
       }
     : {}
   const { error } = await admin.from('ai_tool_call').insert({
@@ -666,15 +778,9 @@ Deno.serve(async (req) => {
       return json({ code: 'invalid_input', message: 'A user message is required' }, 400)
     }
 
-    const apiKey = Deno.env.get('OPENAI_API_KEY') || Deno.env.get('AI_API_KEY')
-    const baseUrl = (
-      Deno.env.get('OPENAI_BASE_URL') ||
-      Deno.env.get('AI_BASE_URL') ||
-      'https://api.openai.com/v1'
-    ).replace(/\/$/, '')
     const sharedModel =
-      Deno.env.get('OPENAI_MODEL') || Deno.env.get('AI_MODEL') || 'gpt-4.1-mini'
-    const isNvidia = baseUrl.includes('nvidia.com')
+      Deno.env.get('AI_MODEL') || Deno.env.get('OPENAI_MODEL') || 'gpt-4.1-mini'
+    const isNvidia = (Deno.env.get('AI_BASE_URL') || '').includes('nvidia.com')
     const configuredModel = Deno.env.get('AI_ASSISTANT_MODEL') || sharedModel
     const defaultModel =
       isNvidia && /70b/i.test(configuredModel)
@@ -707,6 +813,9 @@ Deno.serve(async (req) => {
     if (!runtimeConfig.enabled) {
       return json({ code: 'feature_disabled', message: '业务助手当前已停用' }, 503)
     }
+    const providerEndpoints = resolveAiProviderEndpoints(runtimeConfig, {
+      openAiModel: Deno.env.get('AI_ASSISTANT_OPENAI_MODEL')
+    })
     const publishedPrompt = await loadPublishedAiPrompt(
       admin,
       appUser.tenant_id,
@@ -771,7 +880,7 @@ Deno.serve(async (req) => {
       conversationId = data.id
     }
 
-    if (!apiKey && !directTool) {
+    if (!providerEndpoints.length && !directTool) {
       return json({ code: 'missing_secret', message: 'AI provider is not configured' }, 500)
     }
 
@@ -894,7 +1003,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    if (!apiKey) throw new Error('AI provider is not configured')
+    if (!providerEndpoints.length) throw new Error('AI provider is not configured')
 
     const systemPrompt = [
       publishedPrompt.content,
@@ -907,13 +1016,14 @@ Deno.serve(async (req) => {
 
     let totalInputTokens = 0
     let totalOutputTokens = 0
-    const firstResponse = await requestProvider(
-      baseUrl,
-      apiKey,
+    const initialProviderResponse = await requestProviderWithFallback(
+      providerEndpoints,
       providerMessages,
       true,
       runtimeConfig
     )
+    const activeProvider = initialProviderResponse.endpoint
+    const firstResponse = initialProviderResponse.result
     resolvedRunModel = firstResponse.model
     totalInputTokens += firstResponse.usage.prompt_tokens ?? 0
     totalOutputTokens += firstResponse.usage.completion_tokens ?? 0
@@ -976,8 +1086,7 @@ Deno.serve(async (req) => {
       }
 
       const finalResponse = await requestProvider(
-        baseUrl,
-        apiKey,
+        activeProvider,
         providerMessages,
         false,
         runtimeConfig

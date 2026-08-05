@@ -17,7 +17,7 @@
 </template>
 
 <script setup lang="tsx">
-  import { ElButton, ElMessageBox } from 'element-plus'
+  import { ElButton } from 'element-plus'
   import type { ComputedRef, UnwrapNestedRefs } from 'vue'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type {
@@ -37,6 +37,7 @@
   import { useUserStore } from '@/store/modules/user'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatWithDayjs } from '@/utils/time'
+  import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import InvoiceDialog from './modules/invoice-dialog.vue'
   import InvoiceDetailDrawer from './modules/invoice-detail-drawer.vue'
 
@@ -63,6 +64,7 @@
   }
 
   const { getDictMap } = storeToRefs(useUserStore())
+  const { promptReason, confirmAction } = useArtFeedback()
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<DialogExpose>()
   const drawerRef = ref<DrawerExpose>()
@@ -292,13 +294,9 @@
   ) {
     const label = statusAction === 'submit' ? '提交复核' : '审核通过'
     try {
-      await ElMessageBox.confirm(
-        `确定${label}发票 ${row.invoiceNo || row.invoiceRecordNo} 吗？`,
-        label,
-        {
-          type: 'warning'
-        }
-      )
+      await confirmAction(`确定${label}发票 ${row.invoiceNo || row.invoiceRecordNo} 吗？`, label, {
+        type: 'warning'
+      })
       await updateInvoiceStatus({ id: row.id, action: statusAction })
       await tableQueryRef.value?.refreshUpdate()
     } catch {
@@ -312,11 +310,11 @@
   ) {
     const label = statusAction === 'reject' ? '驳回发票' : '作废发票'
     try {
-      const { value } = await ElMessageBox.prompt(`请填写${label}原因`, label, {
-        inputType: 'textarea',
-        inputValidator: (text) => Boolean(text?.trim()) || '原因不能为空'
+      const reason = await promptReason(`请填写${label}原因`, label, {
+        confirmButtonText: statusAction === 'reject' ? '确认驳回' : '确认作废',
+        placeholder: `请填写${label}原因`
       })
-      await updateInvoiceStatus({ id: row.id, action: statusAction, remark: value.trim() })
+      await updateInvoiceStatus({ id: row.id, action: statusAction, remark: reason })
       await tableQueryRef.value?.refreshUpdate()
     } catch {
       // 用户取消或业务校验未通过
@@ -325,7 +323,7 @@
 
   async function handleDelete(row: Invoice) {
     try {
-      await ElMessageBox.confirm('仅草稿发票可以删除，删除后无法恢复。', '删除发票', {
+      await confirmAction('仅草稿发票可以删除，删除后无法恢复。', '删除发票', {
         type: 'warning'
       })
       await deleteInvoice(row.id)

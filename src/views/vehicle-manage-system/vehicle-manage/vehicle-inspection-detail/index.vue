@@ -1,44 +1,26 @@
 <template>
-  <div class="vehicle-inspection-detail" v-loading="page.loading">
-    <div class="vehicle-inspection-detail__header art-card-xs">
-      <div>
-        <h2>{{ detail.data?.inspectionNo || '车辆年检详情' }}</h2>
-        <p>{{
-          [detail.data?.plateNo, detail.data?.companyName].filter(Boolean).join(' / ') || '--'
-        }}</p>
-      </div>
-      <ElButton @click="goBack">返回</ElButton>
-    </div>
+  <ArtPageShell
+    class="vehicle-inspection-detail"
+    :loading="page.loading"
+    loading-mode="skeleton"
+    :error="page.error"
+    :empty="!detail.data"
+    empty-text="暂无车辆年检详情"
+    @retry="loadDetail"
+  >
+    <ArtPageHeader
+      :title="detail.data?.inspectionNo || '车辆年检详情'"
+      :subtitle="
+        [detail.data?.plateNo, detail.data?.companyName].filter(Boolean).join(' / ') || '--'
+      "
+      show-back
+      @back="goBack"
+    />
 
     <div class="vehicle-inspection-detail__content art-card-xs">
       <section class="vehicle-inspection-detail__section">
         <ArtSectionTitle>年检信息</ArtSectionTitle>
-        <ElDescriptions :column="2" border>
-          <ElDescriptionsItem label="车牌号">{{
-            formatValue(detail.data?.plateNo)
-          }}</ElDescriptionsItem>
-          <ElDescriptionsItem label="所属公司">{{
-            formatValue(detail.data?.companyName)
-          }}</ElDescriptionsItem>
-          <ElDescriptionsItem label="年检日期">{{
-            formatValue(detail.data?.inspectionDate)
-          }}</ElDescriptionsItem>
-          <ElDescriptionsItem label="年检号">{{
-            formatValue(detail.data?.inspectionNo)
-          }}</ElDescriptionsItem>
-          <ElDescriptionsItem label="年检金额">{{
-            formatMoney(detail.data?.inspectionAmount)
-          }}</ElDescriptionsItem>
-          <ElDescriptionsItem label="车管所">{{
-            formatValue(detail.data?.vehicleOffice)
-          }}</ElDescriptionsItem>
-          <ElDescriptionsItem label="到期日期">{{
-            formatValue(detail.data?.expireDate)
-          }}</ElDescriptionsItem>
-          <ElDescriptionsItem label="备注">{{
-            formatValue(detail.data?.remark)
-          }}</ElDescriptionsItem>
-        </ElDescriptions>
+        <ArtDescriptions :data="descriptionData" :items="descriptionItems" :columns="2" />
       </section>
 
       <section class="vehicle-inspection-detail__section">
@@ -52,12 +34,13 @@
         />
       </section>
     </div>
-  </div>
+  </ArtPageShell>
 </template>
 
 <script setup lang="tsx">
   import { isNil } from 'lodash-es'
-  import { ElButton, ElDescriptions, ElDescriptionsItem } from 'element-plus'
+  import ArtDescriptions from '@/components/core/base/art-descriptions/index.vue'
+  import type { ArtDescriptionItem } from '@/components/core/base/art-descriptions/types'
   import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
   import ArtTable from '@/components/core/tables/art-table/index.vue'
   import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
@@ -73,8 +56,24 @@
 
   const route = useRoute()
   const router = useRouter()
-  const page = reactive({ loading: false })
+  const page = reactive<{ loading: boolean; error: Error | null }>({ loading: false, error: null })
   const detail = reactive<{ data?: VehicleInspection }>({ data: undefined })
+  const descriptionData = computed<Partial<VehicleInspection>>(() => detail.data ?? {})
+  const descriptionItems: ArtDescriptionItem<Partial<VehicleInspection>>[] = [
+    { key: 'plateNo', label: '车牌号', field: 'plateNo' },
+    { key: 'companyName', label: '所属公司', field: 'companyName' },
+    { key: 'inspectionDate', label: '年检日期', field: 'inspectionDate', format: 'date' },
+    { key: 'inspectionNo', label: '年检号', field: 'inspectionNo', copyable: true },
+    {
+      key: 'inspectionAmount',
+      label: '年检金额',
+      field: 'inspectionAmount',
+      formatter: (value) => formatMoney(value as number | null | undefined)
+    },
+    { key: 'vehicleOffice', label: '车管所', field: 'vehicleOffice' },
+    { key: 'expireDate', label: '到期日期', field: 'expireDate', format: 'date' },
+    { key: 'remark', label: '备注', field: 'remark' }
+  ]
 
   const attachmentColumns: ColumnOption<Attachment>[] = [
     { type: 'globalIndex', label: '序号', width: 56 },
@@ -104,11 +103,17 @@
 
   const loadDetail = async (): Promise<void> => {
     const id = String(route.params.id || '')
-    if (!id) return
+    if (!id) {
+      page.error = new Error('缺少年检记录标识')
+      return
+    }
     page.loading = true
+    page.error = null
     try {
       const { data } = await fetchVehicleInspectionDetail(id)
       detail.data = data ? { ...data, attachments: data.attachments ?? [] } : undefined
+    } catch (error) {
+      page.error = error instanceof Error ? error : new Error('车辆年检详情加载失败')
     } finally {
       page.loading = false
     }
@@ -116,11 +121,6 @@
 
   const goBack = (): void => {
     void router.push('/vehicle-manage-system/vehicle-manage/vehicle-inspection')
-  }
-
-  const formatValue = (value?: string | number | null): string => {
-    if (isNil(value) || value === '') return '--'
-    return String(value)
   }
 
   const formatMoney = (value?: number | null): string => {
@@ -135,24 +135,6 @@
     padding: 16px;
     background: var(--art-main-bg-color);
 
-    &__header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 18px 20px;
-
-      h2 {
-        margin: 0;
-        font-size: 20px;
-        font-weight: 600;
-      }
-
-      p {
-        margin: 6px 0 0;
-        color: var(--el-text-color-secondary);
-      }
-    }
-
     &__content {
       padding: 20px;
       margin-top: 12px;
@@ -162,7 +144,7 @@
       margin-top: 22px;
     }
 
-    :deep(.el-descriptions__label) {
+    :deep(.art-descriptions .el-descriptions__label) {
       width: 128px;
       font-weight: 600;
     }

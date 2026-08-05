@@ -10,7 +10,7 @@
     :label-key="getCustomerLabel"
     :description-key="getCustomerDescription"
     search-placeholder="请输入客户名称/电话/地址搜索"
-    dialog-width="920px"
+    dialog-width="lg"
     show-pagination
     :page-size="10"
     @confirm="handleConfirm"

@@ -6,6 +6,11 @@ export interface AiReferenceMatch {
   status: AiReferenceStatus
 }
 
+export interface AiAddressReferenceMatch extends AiReferenceMatch {
+  longitude?: number | string | null
+  latitude?: number | string | null
+}
+
 export interface AiCargoReferenceMatch extends AiReferenceMatch {
   index: number
 }
@@ -16,8 +21,8 @@ export interface AiOrderReferenceMatches {
   transferStation: AiReferenceMatch
   shippingCustomer: AiReferenceMatch
   receivingCustomer: AiReferenceMatch
-  shippingAddress: AiReferenceMatch
-  receivingAddress: AiReferenceMatch
+  shippingAddress: AiAddressReferenceMatch
+  receivingAddress: AiAddressReferenceMatch
   cargoItems: AiCargoReferenceMatch[]
 }
 

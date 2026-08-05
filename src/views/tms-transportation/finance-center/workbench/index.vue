@@ -1,33 +1,37 @@
 <template>
-  <div v-loading="overview.loading" class="finance-workbench">
+  <ArtPageShell
+    :loading="overview.loading"
+    :error="loadError"
+    class="finance-workbench"
+    @retry="loadWorkbench"
+  >
+    <ArtPageHeader title="财务工作台" subtitle="集中查看应收、应付、开票、回款与费用审核进度">
+      <ElButton type="primary" @click="openCollectionAdvisor">
+        <ArtSvgIcon icon="ri:sparkling-2-line" />AI 回款风险研判
+      </ElButton>
+    </ArtPageHeader>
+
     <FinanceMetricGrid :items="overview.metrics" />
 
     <div class="finance-workbench__content">
-      <section class="art-card-xs finance-workbench__panel">
-        <ArtSectionTitle>财务待办</ArtSectionTitle>
-        <ElTable :data="overview.tasks" table-layout="fixed" empty-text="当前没有待办事项">
-          <ElTableColumn prop="title" label="待办事项" min-width="175" />
-          <ElTableColumn prop="count" label="数量" width="90" align="center">
-            <template #default="{ row }">{{ row.count }} 项</template>
-          </ElTableColumn>
-          <ElTableColumn prop="amount" label="涉及金额" min-width="135" align="right">
-            <template #default="{ row }">{{ formatMoney(row.amount) }}</template>
-          </ElTableColumn>
-          <ElTableColumn prop="urgency" label="优先级" width="90">
-            <template #default="{ row }">
-              <ElTag :type="urgencyType(row.urgency)">{{ row.urgency }}</ElTag>
-            </template>
-          </ElTableColumn>
-          <ElTableColumn label="操作" width="90" fixed="right">
-            <template #default="{ row }">
-              <ElButton link type="primary" @click="handleTask(row)">去处理</ElButton>
-            </template>
-          </ElTableColumn>
-        </ElTable>
-      </section>
+      <ArtPageSection title="财务待办" class="finance-workbench__panel">
+        <ArtTable
+          :data="overview.tasks"
+          :columns="taskColumns"
+          :pagination="false"
+          table-layout="fixed"
+          empty-text="当前没有待办事项"
+        >
+          <template #urgency="{ row }">
+            <ElTag :type="urgencyType(row.urgency)">{{ row.urgency }}</ElTag>
+          </template>
+          <template #operation="{ row }">
+            <ElButton link type="primary" @click="handleTask(row)">去处理</ElButton>
+          </template>
+        </ArtTable>
+      </ArtPageSection>
 
-      <section class="art-card-xs finance-workbench__panel">
-        <ArtSectionTitle>业务完成率</ArtSectionTitle>
+      <ArtPageSection title="业务完成率" class="finance-workbench__panel">
         <div class="finance-workbench__progress-list">
           <div
             v-for="item in overview.progressItems"
@@ -41,39 +45,18 @@
             <ElProgress :percentage="item.percent" :stroke-width="10" :color="item.color" />
           </div>
         </div>
-      </section>
+      </ArtPageSection>
     </div>
 
-    <section class="art-card-xs finance-workbench__panel">
-      <ArtSectionTitle>本月经营概览</ArtSectionTitle>
-      <ElDescriptions :column="4" border>
-        <ElDescriptionsItem label="运输收入">{{
-          formatMoney(overview.stats.monthRevenueAmount)
-        }}</ElDescriptionsItem>
-        <ElDescriptionsItem label="运输成本">{{
-          formatMoney(overview.stats.monthCostAmount)
-        }}</ElDescriptionsItem>
-        <ElDescriptionsItem label="运输毛利">{{
-          formatMoney(overview.stats.monthGrossProfit)
-        }}</ElDescriptionsItem>
-        <ElDescriptionsItem label="综合毛利率">{{ grossMargin }}%</ElDescriptionsItem>
-        <ElDescriptionsItem label="客户回款">{{
-          formatMoney(overview.stats.monthReceiptAmount)
-        }}</ElDescriptionsItem>
-        <ElDescriptionsItem label="承运商付款">{{
-          formatMoney(overview.stats.monthPaymentAmount)
-        }}</ElDescriptionsItem>
-        <ElDescriptionsItem label="未核销收款">{{
-          formatMoney(overview.stats.unallocatedReceiptAmount)
-        }}</ElDescriptionsItem>
-        <ElDescriptionsItem label="未核销付款">{{
-          formatMoney(overview.stats.unallocatedPaymentAmount)
-        }}</ElDescriptionsItem>
-      </ElDescriptions>
-    </section>
+    <ArtPageSection title="本月经营概览" class="finance-workbench__panel">
+      <ArtDescriptions :data="statsDescriptionData" :items="statsDescriptionItems" :columns="4" />
+    </ArtPageSection>
 
-    <section v-if="overview.reminders.length" class="art-card-xs finance-workbench__panel">
-      <ArtSectionTitle>结算提醒</ArtSectionTitle>
+    <ArtPageSection
+      v-if="overview.reminders.length"
+      title="结算提醒"
+      class="finance-workbench__panel"
+    >
       <ElAlert
         v-for="item in overview.reminders"
         :key="item.title"
@@ -82,15 +65,20 @@
         show-icon
         :closable="false"
       />
-    </section>
-  </div>
+    </ArtPageSection>
+
+    <ReceivablesCollectionAdvisorDrawer ref="collectionAdvisorRef" />
+  </ArtPageShell>
 </template>
 
 <script setup lang="ts">
   import type { AlertProps, TagProps } from 'element-plus'
+  import type { ColumnOption } from '@/types'
+  import type { ArtDescriptionItem } from '@/components/core/base/art-descriptions/types'
   import { fetchFinanceWorkbench } from '@/api/tms'
   import type { FinanceMetric } from '../modules/finance-types'
   import FinanceMetricGrid from '../modules/finance-metric-grid.vue'
+  import ReceivablesCollectionAdvisorDrawer from './modules/receivables-collection-advisor-drawer.vue'
 
   defineOptions({ name: 'TmsFinanceWorkbench' })
 
@@ -128,7 +116,13 @@
     reminders: ReminderItem[]
   }
 
+  interface CollectionAdvisorExpose {
+    handleOpen: () => Promise<void>
+  }
+
   const router = useRouter()
+  const loadError = ref<Error | null>(null)
+  const collectionAdvisorRef = ref<CollectionAdvisorExpose>()
 
   const createEmptyStats = (): Stats => ({
     customerReceivableBalance: 0,
@@ -166,6 +160,54 @@
     progressItems: [],
     reminders: []
   })
+
+  const taskColumns: ColumnOption<WorkbenchTask>[] = [
+    { prop: 'title', label: '待办事项', minWidth: 175 },
+    {
+      prop: 'count',
+      label: '数量',
+      width: 90,
+      align: 'center',
+      formatter: (row) => `${row.count} 项`
+    },
+    {
+      prop: 'amount',
+      label: '涉及金额',
+      minWidth: 135,
+      align: 'right',
+      formatter: (row) => formatMoney(row.amount)
+    },
+    { prop: 'urgency', label: '优先级', width: 90, useSlot: true },
+    { prop: 'operation', label: '操作', width: 90, fixed: 'right', useSlot: true }
+  ]
+
+  const statsDescriptionData = computed<Record<string, unknown>>(
+    () => overview.stats as unknown as Record<string, unknown>
+  )
+  const statsDescriptionItems: ArtDescriptionItem[] = [
+    { key: 'revenue', label: '运输收入', field: 'monthRevenueAmount', format: 'money' },
+    { key: 'cost', label: '运输成本', field: 'monthCostAmount', format: 'money' },
+    { key: 'profit', label: '运输毛利', field: 'monthGrossProfit', format: 'money' },
+    {
+      key: 'margin',
+      label: '综合毛利率',
+      value: () => `${grossMargin.value}%`
+    },
+    { key: 'receipt', label: '客户回款', field: 'monthReceiptAmount', format: 'money' },
+    { key: 'payment', label: '承运商付款', field: 'monthPaymentAmount', format: 'money' },
+    {
+      key: 'unallocatedReceipt',
+      label: '未核销收款',
+      field: 'unallocatedReceiptAmount',
+      format: 'money'
+    },
+    {
+      key: 'unallocatedPayment',
+      label: '未核销付款',
+      field: 'unallocatedPaymentAmount',
+      format: 'money'
+    }
+  ]
 
   const grossMargin = computed(() => {
     const revenue = Number(overview.stats.monthRevenueAmount || 0)
@@ -356,18 +398,24 @@
     return 'info'
   }
 
-  function handleTask(task: Record<string, unknown>): void {
-    const routeName = typeof task.routeName === 'string' ? task.routeName : ''
+  function handleTask(task: WorkbenchTask): void {
+    const routeName = task.routeName
     if (!routeName) return
-    const query = task.query as Record<string, string> | undefined
-    void router.push({ name: routeName, query })
+    void router.push({ name: routeName, query: task.query })
+  }
+
+  function openCollectionAdvisor(): void {
+    void collectionAdvisorRef.value?.handleOpen()
   }
 
   async function loadWorkbench(): Promise<void> {
     overview.loading = true
+    loadError.value = null
     try {
       const { data } = await fetchFinanceWorkbench()
       applyStats(data ?? createEmptyStats())
+    } catch (error) {
+      loadError.value = error instanceof Error ? error : new Error('财务工作台加载失败')
     } finally {
       overview.loading = false
     }
@@ -379,16 +427,16 @@
 <style scoped lang="scss">
   .finance-workbench {
     display: grid;
-    gap: 12px;
+    gap: var(--art-space-3);
 
     &__content {
       display: grid;
       grid-template-columns: 1.35fr 1fr;
-      gap: 12px;
+      gap: var(--art-space-3);
     }
 
     &__panel {
-      padding: 18px;
+      padding: var(--art-section-padding);
     }
 
     &__progress-list {

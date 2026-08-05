@@ -17,7 +17,7 @@
 </template>
 
 <script setup lang="tsx">
-  import { ElButton, ElMessageBox } from 'element-plus'
+  import { ElButton } from 'element-plus'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type {
     ArtTableQueryExcelColumn,
@@ -35,6 +35,7 @@
   import { useUserStore } from '@/store/modules/user'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatWithDayjs } from '@/utils/time'
+  import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import CustomerStatementDialog from './modules/customer-statement-dialog.vue'
   import CustomerStatementDetailDrawer from './modules/customer-statement-detail-drawer.vue'
 
@@ -53,6 +54,7 @@
   }
 
   const { getDictMap } = storeToRefs(useUserStore())
+  const { promptReason, confirmAction } = useArtFeedback()
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<DialogExpose>()
   const drawerRef = ref<DrawerExpose>()
@@ -275,7 +277,7 @@
 
   async function handleSubmitReview(row: CustomerStatement): Promise<void> {
     try {
-      await ElMessageBox.confirm(
+      await confirmAction(
         `提交后将锁定 ${row.waybillCount} 条运单明细，确定提交审核吗？`,
         '提交审核',
         {
@@ -293,7 +295,7 @@
 
   async function handleApprove(row: CustomerStatement): Promise<void> {
     try {
-      await ElMessageBox.confirm(
+      await confirmAction(
         `确认对账金额 ${formatMoney(row.statementAmount)} 无误并审核通过吗？`,
         '审核通过',
         {
@@ -311,17 +313,15 @@
 
   async function handleReject(row: CustomerStatement): Promise<void> {
     try {
-      const { value } = await ElMessageBox.prompt('请填写驳回原因', '驳回对账单', {
-        type: 'warning',
+      const reason = await promptReason('请填写驳回原因', '驳回对账单', {
         confirmButtonText: '确认驳回',
-        cancelButtonText: '取消',
-        inputType: 'textarea',
-        inputValidator: (text) => Boolean(text?.trim()) || '驳回原因不能为空'
+        emptyMessage: '驳回原因不能为空',
+        placeholder: '请说明对账单被驳回的原因'
       })
       await updateCustomerStatementStatus({
         id: row.id,
         status: 'draft',
-        reviewRemark: value.trim()
+        reviewRemark: reason
       })
       await tableQueryRef.value?.refreshUpdate()
     } catch {
@@ -331,22 +331,19 @@
 
   async function handleVoid(row: CustomerStatement): Promise<void> {
     try {
-      const { value } = await ElMessageBox.prompt(
+      const reason = await promptReason(
         '作废后会释放关联运单，可重新生成对账单；历史记录仍保留。',
         '作废对账单',
         {
-          type: 'warning',
           confirmButtonText: '确认作废',
-          cancelButtonText: '取消',
-          inputType: 'textarea',
-          inputPlaceholder: '请填写作废原因',
-          inputValidator: (text) => Boolean(text?.trim()) || '作废原因不能为空'
+          placeholder: '请填写作废原因',
+          emptyMessage: '作废原因不能为空'
         }
       )
       await updateCustomerStatementStatus({
         id: row.id,
         status: 'voided',
-        voidReason: value.trim()
+        voidReason: reason
       })
       await tableQueryRef.value?.refreshUpdate()
     } catch {
@@ -356,7 +353,7 @@
 
   async function handleDelete(row: CustomerStatement): Promise<void> {
     try {
-      await ElMessageBox.confirm('仅草稿对账单可删除，删除后无法恢复。', '删除对账单', {
+      await confirmAction('仅草稿对账单可删除，删除后无法恢复。', '删除对账单', {
         type: 'warning',
         confirmButtonText: '删除',
         cancelButtonText: '取消',

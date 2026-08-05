@@ -186,6 +186,19 @@ dialogRef.value?.handleOpen(data, {
 
 `onConfirm` 返回 `false` 时弹窗不会关闭，适合表单校验失败或接口提交失败的场景。
 
+## 响应式尺寸预设
+
+普通业务弹窗优先使用 `size`，组件会自动限制为视口宽度，避免固定像素在窄屏溢出：
+
+```vue
+<ArtDialog size="sm" />
+<ArtDialog size="md" />
+<ArtDialog size="lg" />
+<ArtDialog size="xl" />
+```
+
+对应默认宽度为 520、720、920、1120px；`size="full"` 用于接近全屏的工作流。旧的 `width` 仍然兼容并会自动套用视口上限。
+
 ## 内容滚动高度
 
 传入数字时按像素处理，传入字符串时原样使用：

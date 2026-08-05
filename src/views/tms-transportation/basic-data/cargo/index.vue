@@ -15,7 +15,8 @@
 </template>
 
 <script setup lang="tsx">
-  import { ElMessage, ElMessageBox } from 'element-plus'
+  import { useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import { ElMessage } from 'element-plus'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type {
     ArtTableQueryExpose,
@@ -37,6 +38,8 @@
   import CargoDialog from './modules/cargo-dialog.vue'
 
   defineOptions({ name: 'TmsCargo' })
+
+  const { confirmAction } = useArtFeedback()
 
   type Cargo = Api.Tms.BasicData.Cargo
   type SearchParams = Api.Tms.BasicData.CargoSearchParams
@@ -290,7 +293,7 @@
   const handleDelete = async (row: Cargo): Promise<void> => {
     if (!row.id) return
     try {
-      await ElMessageBox.confirm(`确定删除货物“${row.cargoName}”吗？删除后无法恢复。`, '删除确认', {
+      await confirmAction(`确定删除货物“${row.cargoName}”吗？删除后无法恢复。`, '删除确认', {
         confirmButtonText: '删除',
         cancelButtonText: '取消',
         type: 'warning',

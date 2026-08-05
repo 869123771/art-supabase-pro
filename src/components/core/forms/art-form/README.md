@@ -82,6 +82,7 @@
 | `showSubmit` | `boolean` | `true` | 是否显示提交按钮 |
 | `disabledSubmit` | `boolean` | `false` | 是否禁用提交按钮 |
 | `rootClass` | `string` | `''` | 根节点附加 class |
+| `customLayout` | `boolean` | `false` | 使用默认插槽接管复杂表单布局，仍复用 ArtForm 的校验和 Ref API |
 | `resetText` | `string` | i18n 默认值 | 重置按钮文字 |
 | `submitText` | `string` | i18n 默认值 | 提交按钮文字 |
 | `enableExpand` | `boolean` | `false` | 是否启用展开/收起能力 |

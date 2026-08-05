@@ -2,7 +2,13 @@
 <!-- 支持常用表单组件、自定义组件、插槽、校验、隐藏表单项 -->
 <!-- 写法同 ElementPlus 官方文档组件，把属性写在 props 里面就可以了 -->
 <template>
-  <section :class="['art-form px-4 pb-0 pt-4 md:px-4 md:pt-4', rootClass]">
+  <section
+    :class="[
+      'art-form px-4 pb-0 pt-4 md:px-4 md:pt-4',
+      { 'art-form--custom-layout': customLayout },
+      rootClass
+    ]"
+  >
     <ElForm
       ref="formRef"
       :model="modelValue"
@@ -11,7 +17,8 @@
       v-bind="{ ...$attrs }"
       @validate="handleValidate"
     >
-      <ElRow class="flex flex-wrap" :gutter="gutter">
+      <slot v-if="customLayout" :model-value="modelValue" />
+      <ElRow v-else class="flex flex-wrap" :gutter="gutter">
         <ElCol
           v-for="item in visibleFormItems"
           :key="item.key"
@@ -436,6 +443,8 @@
     disabledSubmit?: boolean
     /** 根节点附加 class */
     rootClass?: string
+    /** 使用默认插槽接管表单内部布局，校验和 Ref API 仍由 ArtForm 提供 */
+    customLayout?: boolean
     /** 重置按钮文本 */
     resetText?: string
     /** 提交按钮文本 */
@@ -463,6 +472,7 @@
     showSubmit: true,
     disabledSubmit: false,
     rootClass: '',
+    customLayout: false,
     resetText: '',
     submitText: '',
     enableExpand: false,

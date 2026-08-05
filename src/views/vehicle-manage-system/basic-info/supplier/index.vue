@@ -14,7 +14,8 @@
 </template>
 
 <script setup lang="tsx">
-  import { ElMessage, ElMessageBox } from 'element-plus'
+  import { useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import { ElMessage } from 'element-plus'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type {
     ArtTableQueryExpose,
@@ -35,6 +36,8 @@
   import SupplierDialog from './modules/supplier-dialog.vue'
 
   defineOptions({ name: 'Supplier' })
+
+  const { confirmAction } = useArtFeedback()
 
   type Supplier = Api.VehicleMgtSys.BasicInfo.Supplier
   type SearchParams = Api.VehicleMgtSys.BasicInfo.SupplierSearchParams
@@ -199,16 +202,12 @@
     if (!row.id) return
 
     try {
-      await ElMessageBox.confirm(
-        `确定删除供应厂商“${row.supplierName}”吗？删除后无法恢复。`,
-        '删除确认',
-        {
-          confirmButtonText: '删除',
-          cancelButtonText: '取消',
-          type: 'warning',
-          confirmButtonClass: 'el-button--danger'
-        }
-      )
+      await confirmAction(`确定删除供应厂商“${row.supplierName}”吗？删除后无法恢复。`, '删除确认', {
+        confirmButtonText: '删除',
+        cancelButtonText: '取消',
+        type: 'warning',
+        confirmButtonClass: 'el-button--danger'
+      })
       await deleteSupplier(row.id)
       await tableQueryRef.value?.refreshRemove()
     } catch {

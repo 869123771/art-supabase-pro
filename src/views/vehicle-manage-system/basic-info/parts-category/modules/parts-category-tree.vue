@@ -191,7 +191,7 @@
       :deep(.el-tree-node__content) {
         height: 38px;
         margin-top: 2px;
-        border-radius: 6px;
+        border-radius: var(--art-control-radius);
       }
     }
 

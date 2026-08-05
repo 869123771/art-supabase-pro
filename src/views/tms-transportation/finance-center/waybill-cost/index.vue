@@ -12,11 +12,12 @@
     />
 
     <WaybillCostDialog ref="dialogRef" @success="handleSaveSuccess" />
+    <WaybillCostAuditDrawer ref="auditDrawerRef" />
   </div>
 </template>
 
 <script setup lang="tsx">
-  import { ElButton, ElMessageBox } from 'element-plus'
+  import { ElButton } from 'element-plus'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type {
     ArtTableQueryExcelColumn,
@@ -26,6 +27,7 @@
   import type { ColumnOption } from '@/types'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatWithDayjs } from '@/utils/time'
+  import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { useUserStore } from '@/store/modules/user'
   import {
     deleteWaybillCost,
@@ -36,6 +38,7 @@
     voidWaybillCost
   } from '@/api/tms'
   import WaybillCostDialog from './modules/waybill-cost-dialog.vue'
+  import WaybillCostAuditDrawer from './modules/waybill-cost-audit-drawer.vue'
 
   defineOptions({ name: 'TmsWaybillCost' })
 
@@ -47,9 +50,15 @@
     handleOpen: (row?: WaybillCost) => Promise<void>
   }
 
+  interface AuditDrawerExpose {
+    handleOpen: (data: { costId: string; waybillNo: string }) => Promise<void>
+  }
+
   const { getDictMap } = storeToRefs(useUserStore())
+  const { promptReason, confirmAction } = useArtFeedback()
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<DialogExpose>()
+  const auditDrawerRef = ref<AuditDrawerExpose>()
   const searchQuery = reactive<SearchParams>({
     keyword: '',
     costType: '',
@@ -159,12 +168,15 @@
     {
       prop: 'operation',
       label: '操作',
-      width: 260,
+      width: 320,
       fixed: 'right',
       formatter: (row) => {
         if (row.auditStatus === 'draft' || row.auditStatus === 'rejected') {
           return (
             <div class="flex items-center">
+              <ElButton link type="primary" onClick={() => void handleAiAudit(row)}>
+                AI 审核
+              </ElButton>
               <ElButton link type="primary" onClick={() => void dialogRef.value?.handleOpen(row)}>
                 编辑
               </ElButton>
@@ -180,6 +192,9 @@
         if (row.auditStatus === 'pending_review') {
           return (
             <div class="flex items-center">
+              <ElButton link type="primary" onClick={() => void handleAiAudit(row)}>
+                AI 审核
+              </ElButton>
               <ElButton link type="success" onClick={() => void handleApprove(row)}>
                 审核通过
               </ElButton>
@@ -191,12 +206,21 @@
         }
         if (row.auditStatus === 'approved') {
           return (
-            <ElButton link type="danger" onClick={() => void handleVoid(row)}>
-              作废
-            </ElButton>
+            <div class="flex items-center">
+              <ElButton link type="primary" onClick={() => void handleAiAudit(row)}>
+                AI 复核
+              </ElButton>
+              <ElButton link type="danger" onClick={() => void handleVoid(row)}>
+                作废
+              </ElButton>
+            </div>
           )
         }
-        return null
+        return (
+          <ElButton link type="primary" onClick={() => void handleAiAudit(row)}>
+            AI 复核
+          </ElButton>
+        )
       }
     }
   ]
@@ -243,10 +267,18 @@
       : tableQueryRef.value?.refreshUpdate())
   }
 
+  const handleAiAudit = async (row: WaybillCost): Promise<void> => {
+    if (!row.id) return
+    await auditDrawerRef.value?.handleOpen({
+      costId: row.id,
+      waybillNo: row.waybill?.waybillNo || '未编号运单'
+    })
+  }
+
   const handleSubmitReview = async (row: WaybillCost): Promise<void> => {
     if (!row.id) return
     try {
-      await ElMessageBox.confirm('提交后业务字段将锁定，确定提交审核吗？', '提交审核', {
+      await confirmAction('提交后业务字段将锁定，确定提交审核吗？', '提交审核', {
         type: 'warning',
         confirmButtonText: '提交',
         cancelButtonText: '取消'
@@ -261,7 +293,7 @@
   const handleApprove = async (row: WaybillCost): Promise<void> => {
     if (!row.id) return
     try {
-      await ElMessageBox.confirm('审核通过后，该费用会立即计入运单利润。', '审核通过', {
+      await confirmAction('审核通过后，该费用会立即计入运单利润。', '审核通过', {
         type: 'success',
         confirmButtonText: '通过',
         cancelButtonText: '取消'
@@ -276,17 +308,15 @@
   const handleReject = async (row: WaybillCost): Promise<void> => {
     if (!row.id) return
     try {
-      const { value } = await ElMessageBox.prompt('请填写驳回原因', '驳回费用', {
-        type: 'warning',
+      const reason = await promptReason('请填写驳回原因', '驳回费用', {
         confirmButtonText: '确认驳回',
-        cancelButtonText: '取消',
-        inputType: 'textarea',
-        inputValidator: (text) => Boolean(text?.trim()) || '驳回原因不能为空'
+        emptyMessage: '驳回原因不能为空',
+        placeholder: '请说明费用被驳回的原因'
       })
       await reviewWaybillCost({
         id: row.id,
         auditStatus: 'rejected',
-        reviewRemark: value.trim()
+        reviewRemark: reason
       })
       await tableQueryRef.value?.refreshUpdate()
     } catch {
@@ -297,18 +327,12 @@
   const handleVoid = async (row: WaybillCost): Promise<void> => {
     if (!row.id) return
     try {
-      const { value } = await ElMessageBox.prompt(
-        '作废后该费用将从利润中扣除，请填写作废原因',
-        '作废费用',
-        {
-          type: 'warning',
-          confirmButtonText: '确认作废',
-          cancelButtonText: '取消',
-          inputType: 'textarea',
-          inputValidator: (text) => Boolean(text?.trim()) || '作废原因不能为空'
-        }
-      )
-      await voidWaybillCost(row.id, value.trim())
+      const reason = await promptReason('作废后该费用将从利润中扣除，请填写作废原因', '作废费用', {
+        confirmButtonText: '确认作废',
+        emptyMessage: '作废原因不能为空',
+        placeholder: '请说明费用作废的原因'
+      })
+      await voidWaybillCost(row.id, reason)
       await tableQueryRef.value?.refreshUpdate()
     } catch {
       // 用户取消时无需提示。
@@ -318,7 +342,7 @@
   const handleDelete = async (row: WaybillCost): Promise<void> => {
     if (!row.id) return
     try {
-      await ElMessageBox.confirm('仅草稿或已驳回费用可删除，删除后无法恢复。', '删除费用', {
+      await confirmAction('仅草稿或已驳回费用可删除，删除后无法恢复。', '删除费用', {
         type: 'warning',
         confirmButtonText: '删除',
         cancelButtonText: '取消',

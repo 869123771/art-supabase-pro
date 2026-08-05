@@ -1,4 +1,5 @@
 import { useSupabase } from '@/hooks'
+import type { QueryResult } from '@/types/api/response'
 import type { SupabaseQueryLike } from '@/api/providers/supabase/query'
 import { ORDER_SELECT, uniqueStringValues } from '@/api/modules/tms/order-shared'
 import {
@@ -211,6 +212,39 @@ export async function fetchInTransitMonitorList(
         vehicle: row.vehicleId ? (vehicleMap.get(String(row.vehicleId)) ?? null) : null
       }))
       .filter(isMonitoredTransportRow)
+  }
+}
+
+export async function analyzeTransportAnomalyByAi(
+  orderId: string
+): Promise<QueryResult<Api.Tms.InTransit.TransportAnomalyAdvisorResponse>> {
+  const { data, error } =
+    await supabase.functions.invoke<Api.Tms.InTransit.TransportAnomalyAdvisorResponse>(
+      'ai-transport-anomaly-advisor',
+      { body: { orderId } }
+    )
+
+  return {
+    data: data ?? null,
+    error: await normalizeTransportAnomalyAdvisorError(error)
+  }
+}
+
+async function normalizeTransportAnomalyAdvisorError(error: unknown): Promise<unknown | null> {
+  if (!error || typeof error !== 'object' || !('context' in error)) return error
+
+  const context = (error as { context?: unknown }).context
+  if (!(context instanceof Response)) return error
+
+  try {
+    const payload = (await context.clone().json()) as { code?: unknown; message?: unknown }
+    if (typeof payload.message !== 'string' || !payload.message) return error
+    return {
+      code: typeof payload.code === 'string' ? payload.code : undefined,
+      message: payload.message
+    }
+  } catch {
+    return error
   }
 }
 

@@ -1,53 +1,29 @@
 <template>
-  <div class="carrier-detail" v-loading="page.loading">
-    <div class="carrier-detail__header art-card-xs">
-      <div>
-        <h2>{{ detail.data?.companyName || '承运商详情' }}</h2>
-        <p>{{ detail.data?.carrierCode || '--' }}</p>
-      </div>
-      <div class="carrier-detail__actions">
-        <ElButton @click="goBack">返回</ElButton>
-      </div>
-    </div>
+  <ArtPageShell
+    class="carrier-detail"
+    :loading="page.loading"
+    loading-mode="skeleton"
+    :error="page.error"
+    :empty="!detail.data"
+    empty-text="暂无承运商详情"
+    @retry="loadPage"
+  >
+    <ArtPageHeader
+      :title="detail.data?.companyName || '承运商详情'"
+      :subtitle="detail.data?.carrierCode || '--'"
+      show-back
+      @back="goBack"
+    >
+      <ElButton type="primary" :disabled="!detail.data?.id" @click="openPerformanceAdvisor">
+        <ArtSvgIcon icon="ri:sparkling-2-line" />AI 经营评估
+      </ElButton>
+    </ArtPageHeader>
 
     <div class="carrier-detail__content">
       <section class="carrier-detail__section art-card-xs">
         <ArtSectionTitle>基础信息</ArtSectionTitle>
-        <ElDescriptions :column="4" border>
-          <ElDescriptionsItem label="承运商编码">{{
-            formatValue(detail.data?.carrierCode)
-          }}</ElDescriptionsItem>
-          <ElDescriptionsItem label="公司名称">{{
-            formatValue(detail.data?.companyName)
-          }}</ElDescriptionsItem>
-          <ElDescriptionsItem label="承运商类型">
-            <ArtDictDisplay
-              dict-code="tmsCarrierType"
-              :value="detail.data?.carrierType"
-              display="text"
-            />
-          </ElDescriptionsItem>
-          <ElDescriptionsItem label="营业执照号码">{{
-            formatValue(detail.data?.businessLicenseNo)
-          }}</ElDescriptionsItem>
-          <ElDescriptionsItem label="税务登记号码">{{
-            formatValue(detail.data?.taxRegistrationNo)
-          }}</ElDescriptionsItem>
-          <ElDescriptionsItem label="法人代表">{{
-            formatValue(detail.data?.legalRepresentative)
-          }}</ElDescriptionsItem>
-          <ElDescriptionsItem label="公司地址">{{ formatAddress(detail.data) }}</ElDescriptionsItem>
-          <ElDescriptionsItem label="邮编">{{
-            formatValue(detail.data?.postalCode)
-          }}</ElDescriptionsItem>
-          <ElDescriptionsItem label="承运商状态">
-            <ArtDictDisplay
-              dict-code="commonBoolean"
-              :value="getBooleanDictValue(detail.data?.enabled)"
-              display="tag"
-            />
-          </ElDescriptionsItem>
-          <ElDescriptionsItem label="营业执照">
+        <ArtDescriptions :data="descriptionData" :items="basicItems" :columns="4">
+          <template #item-businessLicenseUrl>
             <ElImage
               v-if="detail.data?.businessLicenseUrl"
               class="carrier-detail__image"
@@ -57,8 +33,8 @@
               preview-teleported
             />
             <span v-else>--</span>
-          </ElDescriptionsItem>
-          <ElDescriptionsItem label="司机数量">
+          </template>
+          <template #item-driverCount>
             <ElButton
               class="carrier-detail__link-value"
               link
@@ -67,8 +43,8 @@
             >
               {{ relationStats.driverCount }}
             </ElButton>
-          </ElDescriptionsItem>
-          <ElDescriptionsItem label="车辆数量">
+          </template>
+          <template #item-vehicleCount>
             <ElButton
               class="carrier-detail__link-value"
               link
@@ -77,69 +53,24 @@
             >
               {{ relationStats.vehicleCount }}
             </ElButton>
-          </ElDescriptionsItem>
-          <ElDescriptionsItem label="备注信息" :span="4">{{
-            formatValue(detail.data?.remark)
-          }}</ElDescriptionsItem>
-        </ElDescriptions>
+          </template>
+        </ArtDescriptions>
       </section>
 
       <section class="carrier-detail__section art-card-xs">
         <ArtSectionTitle>联系人信息</ArtSectionTitle>
-        <ElDescriptions :column="4" border>
-          <ElDescriptionsItem label="姓名">{{
-            formatValue(detail.data?.contactName)
-          }}</ElDescriptionsItem>
-          <ElDescriptionsItem label="手机号码">{{
-            formatValue(detail.data?.contactPhone)
-          }}</ElDescriptionsItem>
-          <ElDescriptionsItem label="部门">{{
-            formatValue(detail.data?.contactDepartment)
-          }}</ElDescriptionsItem>
-          <ElDescriptionsItem label="职位">{{
-            formatValue(detail.data?.contactPosition)
-          }}</ElDescriptionsItem>
-          <ElDescriptionsItem label="E-mail">{{
-            formatValue(detail.data?.contactEmail)
-          }}</ElDescriptionsItem>
-          <ElDescriptionsItem label="QQ">{{
-            formatValue(detail.data?.contactQq)
-          }}</ElDescriptionsItem>
-        </ElDescriptions>
+        <ArtDescriptions :data="descriptionData" :items="contactItems" :columns="4" />
       </section>
 
       <section class="carrier-detail__section art-card-xs">
         <ArtSectionTitle>财务信息</ArtSectionTitle>
-        <ElDescriptions :column="4" border>
-          <ElDescriptionsItem label="发票抬头">{{
-            formatValue(detail.data?.invoiceTitle)
-          }}</ElDescriptionsItem>
-          <ElDescriptionsItem label="纳税人识别号">{{
-            formatValue(detail.data?.taxNo)
-          }}</ElDescriptionsItem>
-          <ElDescriptionsItem label="开户行">{{
-            formatValue(detail.data?.bankName)
-          }}</ElDescriptionsItem>
-          <ElDescriptionsItem label="开户名称">{{
-            formatValue(detail.data?.bankAccountName)
-          }}</ElDescriptionsItem>
-          <ElDescriptionsItem label="银行账号">{{
-            formatValue(detail.data?.bankAccount)
-          }}</ElDescriptionsItem>
-        </ElDescriptions>
+        <ArtDescriptions :data="descriptionData" :items="financeItems" :columns="4" />
       </section>
 
       <section class="carrier-detail__section art-card-xs">
         <ArtSectionTitle>合同信息</ArtSectionTitle>
-        <ElDescriptions :column="2" border>
-          <ElDescriptionsItem label="是否签订合同">
-            <ArtDictDisplay
-              dict-code="commonBoolean"
-              :value="getBooleanDictValue(detail.data?.signedContract)"
-              display="text"
-            />
-          </ElDescriptionsItem>
-          <ElDescriptionsItem label="合同附件">
+        <ArtDescriptions :data="descriptionData" :items="contractItems" :columns="2">
+          <template #item-contractAttachmentUrl>
             <ArtAttachmentLink
               v-if="detail.data?.contractAttachmentUrl"
               :file="{
@@ -148,8 +79,8 @@
               }"
             />
             <span v-else>--</span>
-          </ElDescriptionsItem>
-        </ElDescriptions>
+          </template>
+        </ArtDescriptions>
       </section>
 
       <section class="carrier-detail__section art-card-xs">
@@ -180,13 +111,17 @@
         />
       </section>
     </div>
-  </div>
+
+    <CarrierPerformanceAdvisorDrawer ref="performanceAdvisorRef" />
+  </ArtPageShell>
 </template>
 
 <script setup lang="tsx">
   import { isNil } from 'lodash-es'
-  import { ElButton, ElDescriptions, ElDescriptionsItem, ElImage } from 'element-plus'
-  import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
+  import { ElButton, ElImage } from 'element-plus'
+  import ArtDescriptions from '@/components/core/base/art-descriptions/index.vue'
+  import type { ArtDescriptionItem } from '@/components/core/base/art-descriptions/types'
+  import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import ArtAttachmentLink from '@/components/core/media/art-file-viewer/attachment-link.vue'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
@@ -194,6 +129,7 @@
   import { fetchCarrierDetail, fetchDriverListByCarrierId } from '@/api/tms'
   import { fetchVehicleArchiveList } from '@/api/vehicle-manage-system'
   import type { ColumnOption } from '@/types'
+  import CarrierPerformanceAdvisorDrawer from './modules/carrier-performance-advisor-drawer.vue'
 
   defineOptions({ name: 'TmsCarrierDetail' })
 
@@ -203,6 +139,7 @@
 
   interface PageState {
     loading: boolean
+    error: Error | null
   }
 
   interface DetailState {
@@ -216,10 +153,15 @@
     loadingVehicles: boolean
   }
 
+  interface PerformanceAdvisorExpose {
+    handleOpen: (carrierId: string) => Promise<void>
+  }
+
   const route = useRoute()
   const router = useRouter()
+  const performanceAdvisorRef = ref<PerformanceAdvisorExpose>()
 
-  const page = reactive<PageState>({ loading: false })
+  const page = reactive<PageState>({ loading: false, error: null })
   const detail = reactive<DetailState>({ data: undefined })
   const relationData = reactive<RelationState>({
     drivers: [],
@@ -232,6 +174,59 @@
     driverCount: relationData.drivers.length,
     vehicleCount: relationData.vehicles.length
   }))
+  const descriptionData = computed<Partial<Carrier>>(() => detail.data ?? {})
+  const basicItems: ArtDescriptionItem<Partial<Carrier>>[] = [
+    { key: 'carrierCode', label: '承运商编码', field: 'carrierCode', copyable: true },
+    { key: 'companyName', label: '公司名称', field: 'companyName' },
+    {
+      key: 'carrierType',
+      label: '承运商类型',
+      field: 'carrierType',
+      dictCode: 'tmsCarrierType',
+      dictDisplay: 'text'
+    },
+    { key: 'businessLicenseNo', label: '营业执照号码', field: 'businessLicenseNo', copyable: true },
+    { key: 'taxRegistrationNo', label: '税务登记号码', field: 'taxRegistrationNo', copyable: true },
+    { key: 'legalRepresentative', label: '法人代表', field: 'legalRepresentative' },
+    { key: 'address', label: '公司地址', value: (data: Partial<Carrier>) => formatAddress(data) },
+    { key: 'postalCode', label: '邮编', field: 'postalCode' },
+    {
+      key: 'enabled',
+      label: '承运商状态',
+      value: (data: Partial<Carrier>) => getBooleanDictValue(data.enabled),
+      dictCode: 'commonBoolean',
+      dictDisplay: 'tag'
+    },
+    { key: 'businessLicenseUrl', label: '营业执照', field: 'businessLicenseUrl' },
+    { key: 'driverCount', label: '司机数量', value: () => relationStats.value.driverCount },
+    { key: 'vehicleCount', label: '车辆数量', value: () => relationStats.value.vehicleCount },
+    { key: 'remark', label: '备注信息', field: 'remark', span: 4 }
+  ]
+  const contactItems: ArtDescriptionItem<Partial<Carrier>>[] = [
+    { key: 'contactName', label: '姓名', field: 'contactName' },
+    { key: 'contactPhone', label: '手机号码', field: 'contactPhone', copyable: true },
+    { key: 'contactDepartment', label: '部门', field: 'contactDepartment' },
+    { key: 'contactPosition', label: '职位', field: 'contactPosition' },
+    { key: 'contactEmail', label: 'E-mail', field: 'contactEmail', copyable: true },
+    { key: 'contactQq', label: 'QQ', field: 'contactQq', copyable: true }
+  ]
+  const financeItems: ArtDescriptionItem<Partial<Carrier>>[] = [
+    { key: 'invoiceTitle', label: '发票抬头', field: 'invoiceTitle' },
+    { key: 'taxNo', label: '纳税人识别号', field: 'taxNo', copyable: true },
+    { key: 'bankName', label: '开户行', field: 'bankName' },
+    { key: 'bankAccountName', label: '开户名称', field: 'bankAccountName' },
+    { key: 'bankAccount', label: '银行账号', field: 'bankAccount', copyable: true }
+  ]
+  const contractItems: ArtDescriptionItem<Partial<Carrier>>[] = [
+    {
+      key: 'signedContract',
+      label: '是否签订合同',
+      value: (data: Partial<Carrier>) => getBooleanDictValue(data.signedContract),
+      dictCode: 'commonBoolean',
+      dictDisplay: 'text'
+    },
+    { key: 'contractAttachmentUrl', label: '合同附件', field: 'contractAttachmentUrl' }
+  ]
 
   const driverColumns: ColumnOption<Driver>[] = [
     { type: 'globalIndex', label: '序号', width: 70 },
@@ -292,14 +287,20 @@
 
   const loadPage = async (): Promise<void> => {
     const id = String(route.params.id || '')
-    if (!id) return
+    if (!id) {
+      page.error = new Error('缺少承运商标识')
+      return
+    }
 
     page.loading = true
+    page.error = null
     try {
       const { data } = await fetchCarrierDetail(id)
       detail.data = data ?? undefined
 
       await Promise.all([loadDrivers(id), loadVehicles(id)])
+    } catch (error) {
+      page.error = error instanceof Error ? error : new Error('承运商详情加载失败')
     } finally {
       page.loading = false
     }
@@ -331,6 +332,12 @@
 
   const goBack = (): void => {
     void router.push('/tms-transportation/basic-data/carrier')
+  }
+
+  const openPerformanceAdvisor = (): void => {
+    const carrierId = detail.data?.id
+    if (!carrierId) return
+    void performanceAdvisorRef.value?.handleOpen(carrierId)
   }
 
   const goDriverManage = (): void => {
@@ -374,12 +381,7 @@
     })
   }
 
-  const formatValue = (value?: string | number | null): string => {
-    if (isNil(value) || value === '') return '--'
-    return String(value)
-  }
-
-  const formatAddress = (row?: Carrier): string => {
+  const formatAddress = (row?: Partial<Carrier>): string => {
     if (!row) return '--'
     return [row.region, row.addressDetail].filter(Boolean).join(' ') || '--'
   }
@@ -395,30 +397,6 @@
     min-height: 100%;
     padding: 16px;
     background: var(--art-main-bg-color);
-
-    &__header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 18px 20px;
-
-      h2 {
-        margin: 0;
-        font-size: 20px;
-        font-weight: 600;
-      }
-
-      p {
-        margin: 6px 0 0;
-        color: var(--el-text-color-secondary);
-      }
-    }
-
-    &__actions {
-      display: flex;
-      gap: 10px;
-      align-items: center;
-    }
 
     &__content {
       display: flex;
@@ -442,7 +420,7 @@
     &__image {
       width: 72px;
       height: 72px;
-      border-radius: 6px;
+      border-radius: var(--art-control-radius);
     }
 
     &__link-value {
@@ -450,18 +428,12 @@
       padding: 0;
     }
 
-    :deep(.el-descriptions__label) {
+    :deep(.art-descriptions .el-descriptions__label) {
       width: 132px;
       font-weight: 600;
     }
 
     @media (max-width: 768px) {
-      &__header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 14px;
-      }
-
       &__section-header {
         flex-direction: column;
         align-items: flex-start;

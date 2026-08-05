@@ -1,14 +1,21 @@
 <template>
-  <div class="maintenance-record-detail" v-loading="page.loading">
-    <div class="maintenance-record-detail__header art-card-xs">
-      <div>
-        <h2>{{ detail.data?.maintenanceNo || '维修保养详情' }}</h2>
-        <p>{{
-          [detail.data?.plateNo, detail.data?.companyName].filter(Boolean).join(' / ') || '--'
-        }}</p>
-      </div>
-      <ElButton @click="goBack">返回</ElButton>
-    </div>
+  <ArtPageShell
+    class="maintenance-record-detail"
+    :loading="page.loading"
+    loading-mode="skeleton"
+    :error="page.error"
+    :empty="!detail.data"
+    empty-text="暂无维修保养详情"
+    @retry="loadDetail"
+  >
+    <ArtPageHeader
+      :title="detail.data?.maintenanceNo || '维修保养详情'"
+      :subtitle="
+        [detail.data?.plateNo, detail.data?.companyName].filter(Boolean).join(' / ') || '--'
+      "
+      show-back
+      @back="goBack"
+    />
 
     <section class="maintenance-record-detail__summary art-card-xs">
       <div class="maintenance-record-detail__summary-item">
@@ -34,46 +41,7 @@
     <div class="maintenance-record-detail__content art-card-xs">
       <section class="maintenance-record-detail__section">
         <ArtSectionTitle>基础信息</ArtSectionTitle>
-        <ElDescriptions :column="2" border>
-          <ElDescriptionsItem label="车牌号">{{
-            formatValue(detail.data?.plateNo)
-          }}</ElDescriptionsItem>
-          <ElDescriptionsItem label="所属公司">{{
-            formatValue(detail.data?.companyName)
-          }}</ElDescriptionsItem>
-          <ElDescriptionsItem label="维修单号">{{
-            formatValue(detail.data?.maintenanceNo)
-          }}</ElDescriptionsItem>
-          <ElDescriptionsItem label="维修类型">
-            <ArtDictDisplay
-              dict-code="vehicleMaintenanceType"
-              :value="detail.data?.maintenanceType"
-              display="text"
-            />
-          </ElDescriptionsItem>
-          <ElDescriptionsItem label="发起人">{{
-            formatValue(detail.data?.initiator)
-          }}</ElDescriptionsItem>
-          <ElDescriptionsItem label="维修厂">{{
-            formatValue(detail.data?.workshop)
-          }}</ElDescriptionsItem>
-          <ElDescriptionsItem label="开始时间">{{
-            formatValue(detail.data?.startTime)
-          }}</ElDescriptionsItem>
-          <ElDescriptionsItem label="结束时间">{{
-            formatValue(detail.data?.endTime)
-          }}</ElDescriptionsItem>
-          <ElDescriptionsItem label="费用金额">{{
-            formatMoney(detail.data?.costAmount)
-          }}</ElDescriptionsItem>
-          <ElDescriptionsItem label="外部维修">
-            <ArtDictDisplay
-              dict-code="commonBoolean"
-              :value="getBooleanDictValue(detail.data?.externalRepair)"
-              display="text"
-            />
-          </ElDescriptionsItem>
-        </ElDescriptions>
+        <ArtDescriptions :data="descriptionData" :items="descriptionItems" :columns="2" />
       </section>
 
       <section class="maintenance-record-detail__section">
@@ -103,12 +71,13 @@
         />
       </section>
     </div>
-  </div>
+  </ArtPageShell>
 </template>
 
 <script setup lang="tsx">
   import { isNil } from 'lodash-es'
-  import { ElButton, ElDescriptions, ElDescriptionsItem } from 'element-plus'
+  import ArtDescriptions from '@/components/core/base/art-descriptions/index.vue'
+  import type { ArtDescriptionItem } from '@/components/core/base/art-descriptions/types'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
   import ArtTable from '@/components/core/tables/art-table/index.vue'
@@ -126,8 +95,39 @@
 
   const route = useRoute()
   const router = useRouter()
-  const page = reactive({ loading: false })
+  const page = reactive<{ loading: boolean; error: Error | null }>({ loading: false, error: null })
   const detail = reactive<{ data?: MaintenanceRecord }>({ data: undefined })
+  const descriptionData = computed<Partial<MaintenanceRecord>>(() => detail.data ?? {})
+  const descriptionItems: ArtDescriptionItem<Partial<MaintenanceRecord>>[] = [
+    { key: 'plateNo', label: '车牌号', field: 'plateNo' },
+    { key: 'companyName', label: '所属公司', field: 'companyName' },
+    { key: 'maintenanceNo', label: '维修单号', field: 'maintenanceNo', copyable: true },
+    {
+      key: 'maintenanceType',
+      label: '维修类型',
+      field: 'maintenanceType',
+      dictCode: 'vehicleMaintenanceType',
+      dictDisplay: 'text'
+    },
+    { key: 'initiator', label: '发起人', field: 'initiator' },
+    { key: 'workshop', label: '维修厂', field: 'workshop' },
+    { key: 'startTime', label: '开始时间', field: 'startTime', format: 'datetime' },
+    { key: 'endTime', label: '结束时间', field: 'endTime', format: 'datetime' },
+    {
+      key: 'costAmount',
+      label: '费用金额',
+      field: 'costAmount',
+      formatter: (value) => formatMoney(value as number | null | undefined)
+    },
+    {
+      key: 'externalRepair',
+      label: '外部维修',
+      field: 'externalRepair',
+      dictCode: 'commonBoolean',
+      dictDisplay: 'text',
+      value: (data: Partial<MaintenanceRecord>) => getBooleanDictValue(data.externalRepair)
+    }
+  ]
 
   const itemColumns: ColumnOption<MaintenanceItem>[] = [
     { type: 'globalIndex', label: '序号', width: 80 },
@@ -183,13 +183,19 @@
 
   const loadDetail = async (): Promise<void> => {
     const id = String(route.params.id || '')
-    if (!id) return
+    if (!id) {
+      page.error = new Error('缺少维修记录标识')
+      return
+    }
     page.loading = true
+    page.error = null
     try {
       const { data } = await fetchVehicleMaintenanceDetail(id)
       detail.data = data
         ? { ...data, items: data.items ?? [], attachments: data.attachments ?? [] }
         : undefined
+    } catch (error) {
+      page.error = error instanceof Error ? error : new Error('维修保养详情加载失败')
     } finally {
       page.loading = false
     }
@@ -218,24 +224,6 @@
     min-height: 100%;
     padding: 16px;
     background: var(--art-main-bg-color);
-
-    &__header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 18px 20px;
-
-      h2 {
-        margin: 0;
-        font-size: 20px;
-        font-weight: 600;
-      }
-
-      p {
-        margin: 6px 0 0;
-        color: var(--el-text-color-secondary);
-      }
-    }
 
     &__summary {
       display: grid;
@@ -281,7 +269,7 @@
       overflow-wrap: anywhere;
     }
 
-    :deep(.el-descriptions__label) {
+    :deep(.art-descriptions .el-descriptions__label) {
       width: 128px;
       font-weight: 600;
     }

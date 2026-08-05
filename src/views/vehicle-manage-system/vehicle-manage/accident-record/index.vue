@@ -16,8 +16,8 @@
 </template>
 
 <script setup lang="tsx">
+  import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import type { ComputedRef, UnwrapNestedRefs } from 'vue'
-  import { ElMessageBox } from 'element-plus'
   import { storeToRefs } from 'pinia'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import ArtButtonMore, {
@@ -43,6 +43,8 @@
   import AccidentRecordDialog from './modules/accident-record-dialog.vue'
 
   defineOptions({ name: 'VehicleAccident' })
+
+  const { confirmAction } = useArtFeedback()
 
   type AccidentRecord = Api.VehicleMgtSys.VehicleManage.VehicleAccidentRecord
   type SearchParams = Api.VehicleMgtSys.VehicleManage.VehicleAccidentSearchParams
@@ -253,7 +255,7 @@
   const handleDelete = async (row: AccidentRecord): Promise<void> => {
     if (!row.id) return
     try {
-      await ElMessageBox.confirm(`确定删除车辆“${row.plateNo}”的事故记录吗？`, '删除确认', {
+      await confirmAction(`确定删除车辆“${row.plateNo}”的事故记录吗？`, '删除确认', {
         confirmButtonText: '删除',
         cancelButtonText: '取消',
         type: 'warning',

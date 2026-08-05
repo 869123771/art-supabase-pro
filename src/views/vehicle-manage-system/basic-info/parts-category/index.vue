@@ -34,7 +34,8 @@
 </template>
 
 <script setup lang="tsx">
-  import { ElMessage, ElMessageBox } from 'element-plus'
+  import { useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import { ElMessage } from 'element-plus'
   import { storeToRefs } from 'pinia'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type {
@@ -61,6 +62,8 @@
   import PartsCategoryDialog from './modules/parts-category-dialog.vue'
 
   defineOptions({ name: 'PartsCategory' })
+
+  const { confirmAction } = useArtFeedback()
 
   type PartsCategory = Api.VehicleMgtSys.BasicInfo.PartsCategory
   type SearchParams = Api.VehicleMgtSys.BasicInfo.PartsCategorySearchParams
@@ -272,7 +275,7 @@
     if (!row.id) return
 
     try {
-      await ElMessageBox.confirm(
+      await confirmAction(
         `确定删除零部件类别“${row.categoryName}”吗？子类别会一并删除，删除后无法恢复。`,
         '删除确认',
         {

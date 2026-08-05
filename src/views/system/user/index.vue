@@ -16,9 +16,10 @@
 </template>
 
 <script setup lang="ts">
+  import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import UserDialog from './modules/user-dialog.vue'
-  import { ElMessageBox, ElImage } from 'element-plus'
+  import { ElImage } from 'element-plus'
   import type { ColumnOption } from '@/types'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type {
@@ -35,6 +36,8 @@
   import { useSystemParam } from '@/hooks'
 
   defineOptions({ name: 'User' })
+
+  const { confirmAction } = useArtFeedback()
 
   type UserListItem = Api.SystemManage.UserListItem
 
@@ -247,7 +250,7 @@
     try {
       await loadPasswordPolicy()
       const password = createTemporaryPassword()
-      await ElMessageBox.confirm(`是否将用户密码重置为[${password}]?`, '系统提示', {
+      await confirmAction(`是否将用户密码重置为[${password}]?`, '系统提示', {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
         type: 'warning'
@@ -264,7 +267,7 @@
 
   const handleDeleteUser = async (row: UserListItem): Promise<void> => {
     try {
-      await ElMessageBox.confirm('确定要注销该用户吗?', '注销用户', {
+      await confirmAction('确定要注销该用户吗?', '注销用户', {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
         type: 'warning'
@@ -290,7 +293,7 @@
       width: 38px;
       height: 38px;
       overflow: hidden;
-      border-radius: 6px;
+      border-radius: var(--art-control-radius);
 
       .el-image__inner {
         width: 100%;

@@ -9,6 +9,7 @@
       :search-bar-props="{ span: 6, labelWidth: 86, showExpand: false }"
       :table-props="{ rowKey: 'id', tableLayout: 'fixed' }"
     />
+    <WaybillProfitAnalysisDrawer ref="profitAnalysisDrawerRef" />
   </div>
 </template>
 
@@ -20,6 +21,7 @@
     ArtTableQueryHeaderAction
   } from '@/components/core/tables/art-table-query/index.vue'
   import type { ColumnOption } from '@/types'
+  import WaybillProfitAnalysisDrawer from './modules/waybill-profit-analysis-drawer.vue'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatWithDayjs } from '@/utils/time'
   import { useUserStore } from '@/store/modules/user'
@@ -31,7 +33,12 @@
   type SearchParams = Api.Tms.Finance.WaybillProfitSearchParams
   type TableParams = SearchParams & Pick<Api.Common.PaginationParams, 'current' | 'size'>
 
+  interface ProfitAnalysisDrawerExpose {
+    handleOpen: () => Promise<void>
+  }
+
   const { getDictMap } = storeToRefs(useUserStore())
+  const profitAnalysisDrawerRef = ref<ProfitAnalysisDrawerExpose>()
   const searchQuery = reactive<SearchParams>({
     keyword: '',
     waybillStatus: '',
@@ -191,6 +198,13 @@
   ]
 
   const headerActions = computed<ArtTableQueryHeaderAction[]>(() => [
+    {
+      key: 'ai-profit-analysis',
+      label: 'AI 利润诊断',
+      icon: 'ri:sparkling-2-line',
+      buttonProps: { type: 'primary' },
+      onClick: () => void profitAnalysisDrawerRef.value?.handleOpen()
+    },
     {
       type: 'export',
       label: '导出利润明细',

@@ -1,5 +1,13 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
 import { createClient } from 'jsr:@supabase/supabase-js@2'
+import {
+  compareAiOrderPayloads,
+  validateAiOrderProviderPayload
+} from '../_shared/ai-order-contract.ts'
+import {
+  resolveAiProviderEndpoints,
+  type AiProviderEndpoint
+} from '../_shared/ai-provider-endpoints.ts'
 import { loadAiRuntimeConfig } from '../_shared/ai-runtime-config.ts'
 import { loadPublishedAiPrompt } from '../_shared/ai-prompt-template.ts'
 
@@ -34,9 +42,14 @@ interface AiOption {
 }
 
 interface AiOrderRequest {
-  action?: 'analyze' | 'generate_example'
+  action?: 'analyze' | 'generate_example' | 'review'
   prompt?: string
   imageUrls?: string[]
+  artifactId?: string
+  entityId?: string
+  outcome?: 'applied' | 'rejected'
+  finalPayload?: Record<string, unknown>
+  reviewNote?: string
   options?: {
     deliveryMethods?: AiOption[]
     paymentMethods?: AiOption[]
@@ -73,6 +86,26 @@ function stringValue(value: unknown): string | null {
   if (typeof value !== 'string') return null
   const normalized = value.trim()
   return normalized || null
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+}
+
+function isUuid(value: string | null): value is string {
+  return Boolean(
+    value && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
+  )
+}
+
+function combineUsage(
+  first: { prompt_tokens?: number; completion_tokens?: number } | undefined,
+  second: { prompt_tokens?: number; completion_tokens?: number } | undefined
+) {
+  return {
+    prompt_tokens: (first?.prompt_tokens ?? 0) + (second?.prompt_tokens ?? 0),
+    completion_tokens: (first?.completion_tokens ?? 0) + (second?.completion_tokens ?? 0)
+  }
 }
 
 function numberValue(value: unknown): number | null {
@@ -358,28 +391,8 @@ Deno.serve(async (req) => {
 
     const body = (await req.json()) as AiOrderRequest
     const action = body.action ?? 'analyze'
-    if (action !== 'analyze' && action !== 'generate_example') {
+    if (action !== 'analyze' && action !== 'generate_example' && action !== 'review') {
       return json({ code: 'invalid_action', message: 'Unsupported action' }, 400)
-    }
-
-    const prompt = stringValue(body.prompt)?.slice(0, 8000) ?? ''
-    const imageUrls = (body.imageUrls ?? [])
-      .map(stringValue)
-      .filter((item): item is string => Boolean(item))
-      .filter((item) => /^https?:\/\//i.test(item))
-      .slice(0, 4)
-    if (action === 'analyze' && !prompt && !imageUrls.length) {
-      return json({ code: 'invalid_input', message: 'Prompt or image is required' }, 400)
-    }
-
-    const apiKey = Deno.env.get('OPENAI_API_KEY') || Deno.env.get('AI_API_KEY')
-    const baseUrl = (
-      Deno.env.get('OPENAI_BASE_URL') ||
-      Deno.env.get('AI_BASE_URL') ||
-      'https://api.openai.com/v1'
-    ).replace(/\/$/, '')
-    if (!apiKey) {
-      return json({ code: 'missing_secret', message: 'AI provider is not configured' }, 500)
     }
 
     const admin = createClient(supabaseUrl, serviceRoleKey, {
@@ -394,12 +407,111 @@ Deno.serve(async (req) => {
       return json({ code: 'forbidden', message: 'Active application user is required' }, 403)
     }
 
+    if (action === 'review') {
+      const artifactId = stringValue(body.artifactId)
+      const entityId = stringValue(body.entityId)
+      const outcome = body.outcome
+      const reviewNote = stringValue(body.reviewNote)?.slice(0, 1000) ?? null
+      if (!isUuid(artifactId) || (outcome !== 'applied' && outcome !== 'rejected')) {
+        return json({ code: 'invalid_input', message: 'Invalid review request' }, 400)
+      }
+      if (outcome === 'applied' && (!isUuid(entityId) || !isRecord(body.finalPayload))) {
+        return json({ code: 'invalid_input', message: 'Applied review requires order and final payload' }, 400)
+      }
+      if (body.finalPayload && JSON.stringify(body.finalPayload).length > 50_000) {
+        return json({ code: 'invalid_input', message: 'Final payload is too large' }, 400)
+      }
+
+      const { data: artifact, error: artifactError } = await admin
+        .from('ai_artifact_review')
+        .select('id,proposed_payload')
+        .eq('id', artifactId)
+        .eq('tenant_id', appUser.tenant_id)
+        .eq('auth_user_id', user.id)
+        .eq('feature', 'order_extraction')
+        .eq('artifact_type', 'tms_order_draft')
+        .eq('status', 'pending')
+        .maybeSingle()
+      if (artifactError) throw artifactError
+      if (!artifact) {
+        return json({ code: 'artifact_not_found', message: 'AI suggestion is unavailable or already reviewed' }, 404)
+      }
+
+      let finalPayload: Record<string, unknown> = {}
+      let acceptedFields: string[] = []
+      let correctedFields: string[] = []
+      if (outcome === 'applied') {
+        const { data: order, error: orderError } = await admin
+          .from('tms_order')
+          .select('id')
+          .eq('id', entityId as string)
+          .eq('tenant_id', appUser.tenant_id)
+          .maybeSingle()
+        if (orderError) throw orderError
+        if (!order) {
+          return json({ code: 'order_not_found', message: 'Saved order was not found' }, 404)
+        }
+
+        finalPayload = body.finalPayload as Record<string, unknown>
+        const comparison = compareAiOrderPayloads(
+          isRecord(artifact.proposed_payload) ? artifact.proposed_payload : {},
+          finalPayload
+        )
+        acceptedFields = comparison.acceptedFields
+        correctedFields = comparison.correctedFields
+      }
+
+      const { data: reviewed, error: reviewError } = await admin
+        .from('ai_artifact_review')
+        .update({
+          status: outcome,
+          final_payload: finalPayload,
+          accepted_fields: acceptedFields,
+          corrected_fields: correctedFields,
+          entity_type: outcome === 'applied' ? 'tms_order' : null,
+          entity_id: outcome === 'applied' ? entityId : null,
+          review_note: reviewNote,
+          reviewed_at: new Date().toISOString(),
+          update_by: appUser.user_email
+        })
+        .eq('id', artifact.id)
+        .eq('status', 'pending')
+        .select('id,status,accepted_fields,corrected_fields')
+        .maybeSingle()
+      if (reviewError) throw reviewError
+      if (!reviewed) {
+        return json({ code: 'review_conflict', message: 'AI suggestion was reviewed by another request' }, 409)
+      }
+
+      return json({
+        artifactId: reviewed.id,
+        status: reviewed.status,
+        acceptedFields: reviewed.accepted_fields,
+        correctedFields: reviewed.corrected_fields
+      })
+    }
+
+    const prompt = stringValue(body.prompt)?.slice(0, 8000) ?? ''
+    const imageUrls = (body.imageUrls ?? [])
+      .map(stringValue)
+      .filter((item): item is string => Boolean(item))
+      .filter((item) => /^https?:\/\//i.test(item))
+      .slice(0, 4)
+    if (action === 'analyze' && !prompt && !imageUrls.length) {
+      return json({ code: 'invalid_input', message: 'Prompt or image is required' }, 400)
+    }
+
+    const compatibleBaseUrl = (Deno.env.get('AI_BASE_URL') || 'https://api.openai.com/v1').replace(
+      /\/$/,
+      ''
+    )
+
     const feature = action === 'analyze' ? 'order_extraction' : 'order_example'
     const runtimeConfig = await loadAiRuntimeConfig(admin, appUser.tenant_id, feature, {
       enabled: true,
       provider: 'openai_compatible',
-      model: getProviderModel(baseUrl, false),
-      visionModel: getProviderModel(baseUrl, true),
+      model: getProviderModel(compatibleBaseUrl, false),
+      visionModel: getProviderModel(compatibleBaseUrl, true),
       fallbackModel: Deno.env.get('AI_ORDER_FALLBACK_MODEL') || null,
       timeoutMs: getProviderTimeoutMs(),
       maxRetries: integerValue(Deno.env.get('AI_ORDER_MAX_RETRIES'), 0, 0, 2),
@@ -412,6 +524,21 @@ Deno.serve(async (req) => {
     if (!runtimeConfig.enabled) {
       return json({ code: 'feature_disabled', message: '当前 AI 填单能力已停用' }, 503)
     }
+    const compatibleModel =
+      imageUrls.length > 0 ? runtimeConfig.visionModel || runtimeConfig.model : runtimeConfig.model
+    const providerEndpoints = resolveAiProviderEndpoints(
+      { model: compatibleModel, fallbackModel: runtimeConfig.fallbackModel },
+      {
+        openAiModel:
+          imageUrls.length > 0
+            ? Deno.env.get('AI_ORDER_VISION_OPENAI_MODEL') ||
+              Deno.env.get('AI_ORDER_OPENAI_MODEL')
+            : Deno.env.get('AI_ORDER_OPENAI_MODEL')
+      }
+    )
+    if (!providerEndpoints.length) {
+      return json({ code: 'missing_secret', message: 'AI provider is not configured' }, 500)
+    }
     const publishedPrompt = await loadPublishedAiPrompt(admin, appUser.tenant_id, feature, {
       content:
         action === 'generate_example'
@@ -420,8 +547,7 @@ Deno.serve(async (req) => {
       version: runtimeConfig.promptVersion
     })
 
-    let resolvedModel =
-      imageUrls.length > 0 ? runtimeConfig.visionModel || runtimeConfig.model : runtimeConfig.model
+    let resolvedModel = providerEndpoints[0].model
     const minuteAgo = new Date(Date.now() - 60_000).toISOString()
     const dayAgo = new Date(Date.now() - 86_400_000).toISOString()
     const perMinute = runtimeConfig.rateLimitPerMinute
@@ -456,7 +582,8 @@ Deno.serve(async (req) => {
         metadata: {
           promptLength: prompt.length,
           imageCount: imageUrls.length,
-          promptSource: publishedPrompt.source
+          promptSource: publishedPrompt.source,
+          providerChain: providerEndpoints.map((item) => item.label)
         },
         create_by: appUser.user_email,
         update_by: appUser.user_email
@@ -579,15 +706,18 @@ Deno.serve(async (req) => {
     const providerTimeoutMs = runtimeConfig.timeoutMs
     const providerDeadline = Date.now() + providerTimeoutMs
     const providerStartedAt = Date.now()
-    const requestProvider = () => {
+    const requestProvider = (endpoint: AiProviderEndpoint) => {
       const remainingMs = providerDeadline - Date.now()
       if (remainingMs <= 0) throw new ProviderTimeoutError(providerTimeoutMs)
 
       return fetchWithTimeout(
-        `${baseUrl}/chat/completions`,
+        `${endpoint.baseUrl}/chat/completions`,
         {
           method: 'POST',
-          headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+          headers: {
+            Authorization: `Bearer ${endpoint.apiKey}`,
+            'Content-Type': 'application/json'
+          },
           body: JSON.stringify(requestBody)
         },
         remainingMs
@@ -595,11 +725,12 @@ Deno.serve(async (req) => {
     }
 
     const requestConfiguredModel = async (
+      endpoint: AiProviderEndpoint,
       modelName: string
     ): Promise<{ response: Response; errorText: string }> => {
       resolvedModel = modelName
       requestBody.model = modelName
-      let lastResponse = await requestProvider()
+      let lastResponse = await requestProvider(endpoint)
       let errorText = ''
 
       for (let attempt = 0; !lastResponse.ok; attempt += 1) {
@@ -610,30 +741,46 @@ Deno.serve(async (req) => {
           /response_format|json_object|unsupported|invalid request/i.test(errorText)
         if (compatibilityError) {
           delete requestBody.response_format
-          lastResponse = await requestProvider()
+          lastResponse = await requestProvider(endpoint)
           continue
         }
 
         const retryable = lastResponse.status === 429 || lastResponse.status >= 500
         if (!retryable || attempt >= runtimeConfig.maxRetries) break
-        lastResponse = await requestProvider()
+        lastResponse = await requestProvider(endpoint)
       }
 
       return { response: lastResponse, errorText }
     }
 
-    let providerResult = await requestConfiguredModel(resolvedModel)
-    if (
-      !providerResult.response.ok &&
-      runtimeConfig.fallbackModel &&
-      runtimeConfig.fallbackModel !== resolvedModel
-    ) {
-      providerResult = await requestConfiguredModel(runtimeConfig.fallbackModel)
+    let activeEndpoint = providerEndpoints[0]
+    let providerResult: { response: Response; errorText: string } | null = null
+    for (const endpoint of providerEndpoints) {
+      let endpointResult = await requestConfiguredModel(endpoint, endpoint.model)
+      if (
+        !endpointResult.response.ok &&
+        endpoint.fallbackModel &&
+        endpoint.fallbackModel !== resolvedModel
+      ) {
+        endpointResult = await requestConfiguredModel(endpoint, endpoint.fallbackModel)
+      }
+      providerResult = endpointResult
+      if (endpointResult.response.ok) {
+        activeEndpoint = endpoint
+        break
+      }
+      console.error(
+        'ai-order-assistant provider attempt failed',
+        endpoint.label,
+        endpointResult.response.status,
+        endpointResult.errorText
+      )
     }
 
-    const providerResponse = providerResult.response
+    const providerResponse = providerResult?.response
+    if (!providerResponse) throw new Error('AI provider chain produced no response')
     if (!providerResponse.ok) {
-      const providerError = providerResult.errorText || 'AI provider request failed'
+      const providerError = providerResult?.errorText || 'AI provider request failed'
       console.error(
         'ai-order-assistant provider retry error',
         providerResponse.status,
@@ -644,30 +791,91 @@ Deno.serve(async (req) => {
     }
 
     const providerPayload = await providerResponse.json()
-    const content = extractMessageContent(providerPayload?.choices?.[0]?.message?.content)
-    const parsed = content ? parseJson(content) : null
-    if (!parsed) {
-      await finishRun('failed', providerPayload?.usage, 'invalid_ai_response', 'Invalid JSON response')
+    let usage = providerPayload?.usage
+    let content = extractMessageContent(providerPayload?.choices?.[0]?.message?.content)
+    let parsed = content ? parseJson(content) : null
+
+    if (action === 'generate_example') {
+      if (!parsed) {
+        await finishRun('failed', usage, 'invalid_ai_response', 'Invalid JSON response')
+        return json({ code: 'invalid_ai_response', message: 'AI returned an invalid response' }, 502)
+      }
+      const generatedPrompt = stringValue(parsed.prompt)?.slice(0, 8000)
+      if (!generatedPrompt) {
+        await finishRun('failed', usage, 'invalid_ai_response', 'Empty example')
+        return json({ code: 'invalid_ai_response', message: 'AI returned an empty example' }, 502)
+      }
+      await finishRun('succeeded', usage)
+      return json({ prompt: generatedPrompt })
+    }
+
+    let validation = validateAiOrderProviderPayload(parsed)
+    if (!validation.valid) {
+      requestBody.temperature = 0
+      requestBody.messages = [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userContent },
+        { role: 'assistant', content: content.slice(0, 12_000) },
+        {
+          role: 'user',
+          content: [
+            '上一个响应不符合订单 JSON 契约，请修复后只返回完整 JSON 对象。',
+            `校验错误：${validation.errors.join('；')}`,
+            '不得补造原始资料中没有的信息。'
+          ].join('\n')
+        }
+      ]
+
+      const repairResult = await requestConfiguredModel(activeEndpoint, resolvedModel)
+      if (repairResult.response.ok) {
+        const repairPayload = await repairResult.response.json()
+        usage = combineUsage(usage, repairPayload?.usage)
+        content = extractMessageContent(repairPayload?.choices?.[0]?.message?.content)
+        parsed = content ? parseJson(content) : null
+        validation = validateAiOrderProviderPayload(parsed)
+      } else {
+        validation.errors.push('结构修复请求失败')
+      }
+    }
+
+    if (!parsed || !validation.valid) {
+      const errorMessage = validation.errors.join('; ').slice(0, 2000) || 'Invalid JSON response'
+      await finishRun('failed', usage, 'invalid_ai_response', errorMessage)
       return json({ code: 'invalid_ai_response', message: 'AI returned an invalid response' }, 502)
     }
 
-    if (action === 'generate_example') {
-      const generatedPrompt = stringValue(parsed.prompt)?.slice(0, 8000)
-      if (!generatedPrompt) {
-        await finishRun('failed', providerPayload?.usage, 'invalid_ai_response', 'Empty example')
-        return json({ code: 'invalid_ai_response', message: 'AI returned an empty example' }, 502)
-      }
-      await finishRun('succeeded', providerPayload?.usage)
-      return json({ prompt: generatedPrompt })
-    }
+    const normalized = normalizeResponse(parsed, body.options)
+    const { data: artifact, error: artifactError } = await admin
+      .from('ai_artifact_review')
+      .insert({
+        ai_run_id: run.id,
+        auth_user_id: user.id,
+        tenant_id: appUser.tenant_id,
+        feature: 'order_extraction',
+        artifact_type: 'tms_order_draft',
+        proposed_payload: normalized.order,
+        confidence: normalized.confidence,
+        field_confidence: normalized.fieldConfidence,
+        warnings: normalized.warnings,
+        metadata: {
+          missingFields: normalized.missingFields,
+          sourceTextLength: prompt.length,
+          imageCount: imageUrls.length
+        },
+        create_by: appUser.user_email,
+        update_by: appUser.user_email
+      })
+      .select('id')
+      .single()
+    if (artifactError) throw artifactError
 
     console.info('ai-order-assistant completed', {
       action,
       model: resolvedModel,
       durationMs: Date.now() - providerStartedAt
     })
-    await finishRun('succeeded', providerPayload?.usage)
-    return json(normalizeResponse(parsed, body.options))
+    await finishRun('succeeded', usage)
+    return json({ ...normalized, artifactId: artifact.id, runId: run.id })
   } catch (error) {
     if (error instanceof ProviderTimeoutError) {
       console.error('ai-order-assistant provider timeout', error.message)

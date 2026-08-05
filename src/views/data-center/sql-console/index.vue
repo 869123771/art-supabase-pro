@@ -73,40 +73,42 @@
               </el-tooltip>
             </div>
           </div>
-          <div class="tabs-content">
-            <div v-if="!result" class="empty-state">
-              <ArtSvgIcon
-                v-if="executing"
-                :loading="executing"
-                icon="ri-loader-2-line"
-                class="size-[30px] animate-spin duration-3000"
-              />
-              <el-empty v-else description="执行 SQL 后会在这里显示结果" />
-            </div>
-            <template v-else>
-              <div v-if="result.status === 'error'" class="error-panel">
-                <div class="error-toolbar">
-                  <el-tag type="danger" effect="light" round>执行失败</el-tag>
-                  <el-button size="small" text type="primary" @click="openAiDialog('fix')">
-                    AI 修复这条 SQL
-                  </el-button>
+          <ElScrollbar class="tabs-content">
+            <div class="tabs-content__inner">
+              <div v-if="!result" class="empty-state">
+                <ArtSvgIcon
+                  v-if="executing"
+                  :loading="executing"
+                  icon="ri-loader-2-line"
+                  class="size-[30px] animate-spin duration-3000"
+                />
+                <el-empty v-else description="执行 SQL 后会在这里显示结果" />
+              </div>
+              <template v-else>
+                <div v-if="result.status === 'error'" class="error-panel">
+                  <div class="error-toolbar">
+                    <el-tag type="danger" effect="light" round>执行失败</el-tag>
+                    <el-button size="small" text type="primary" @click="openAiDialog('fix')">
+                      AI 修复这条 SQL
+                    </el-button>
+                  </div>
+                  <pre class="error-message">{{ result.errorMessage }}</pre>
+                  <pre v-if="errorCaretPreview" class="error-caret">{{ errorCaretPreview }}</pre>
                 </div>
-                <pre class="error-message">{{ result.errorMessage }}</pre>
-                <pre v-if="errorCaretPreview" class="error-caret">{{ errorCaretPreview }}</pre>
-              </div>
 
-              <div
-                v-if="result.status === 'ok' && result.rows && result.rows.length > 0"
-                class="result-table"
-              >
-                <ResultTable :loading="executing" :data="result.rows" :columns="result.columns" />
-              </div>
+                <div
+                  v-if="result.status === 'ok' && result.rows && result.rows.length > 0"
+                  class="result-table"
+                >
+                  <ResultTable :loading="executing" :data="result.rows" :columns="result.columns" />
+                </div>
 
-              <div v-else-if="result.status === 'ok'" class="empty-result">
-                <el-empty description="语句执行成功，但没有返回数据行" />
-              </div>
-            </template>
-          </div>
+                <div v-else-if="result.status === 'ok'" class="empty-result">
+                  <el-empty description="语句执行成功，但没有返回数据行" />
+                </div>
+              </template>
+            </div>
+          </ElScrollbar>
         </div>
       </el-splitter-panel>
     </el-splitter>
@@ -271,7 +273,7 @@
   const openAiDialogRef = (mode: 'generate' | 'fix') =>
     aiDialogRef.value?.handleOpen(undefined, {
       title: 'AI SQL 助手',
-      width: '640px',
+      size: 'md',
       contentMaxHeight: '60vh',
       confirmText: mode === 'fix' ? '修复 SQL' : '生成 SQL',
       onConfirm: handleAiGenerate
@@ -394,9 +396,16 @@
 
     > .tabs-content {
       flex: 1;
-      overflow: auto;
       position: relative;
       min-height: 0;
+
+      :deep(.el-scrollbar__view) {
+        min-height: 100%;
+      }
+
+      .tabs-content__inner {
+        min-height: 100%;
+      }
 
       .empty-state {
         display: flex;

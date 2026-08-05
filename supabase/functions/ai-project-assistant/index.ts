@@ -4,6 +4,10 @@ import {
   loadAiRuntimeConfig,
   type AiRuntimeConfig
 } from '../_shared/ai-runtime-config.ts'
+import {
+  resolveAiProviderEndpoints,
+  type AiProviderEndpoint
+} from '../_shared/ai-provider-endpoints.ts'
 import { loadPublishedAiPrompt } from '../_shared/ai-prompt-template.ts'
 
 const FEATURE = 'project_assistant'
@@ -385,13 +389,12 @@ async function fetchWithTimeout(url: string, init: RequestInit, timeoutMs: numbe
 }
 
 async function requestProvider(
-  baseUrl: string,
-  apiKey: string,
+  endpoint: AiProviderEndpoint,
   messages: ProviderMessage[],
   allowTools: boolean,
   config: AiRuntimeConfig
 ): Promise<ProviderResult> {
-  const models = [...new Set([config.model, config.fallbackModel].filter(Boolean))] as string[]
+  const models = [...new Set([endpoint.model, endpoint.fallbackModel].filter(Boolean))] as string[]
   let lastError = new Error('AI provider request failed')
   for (const model of models) {
     for (let attempt = 0; attempt <= config.maxRetries; attempt += 1) {
@@ -404,9 +407,12 @@ async function requestProvider(
       }
       if (allowTools) Object.assign(body, { tools, tool_choice: 'auto', parallel_tool_calls: false })
       try {
-        const response = await fetchWithTimeout(`${baseUrl}/chat/completions`, {
+        const response = await fetchWithTimeout(`${endpoint.baseUrl}/chat/completions`, {
           method: 'POST',
-          headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+          headers: {
+            Authorization: `Bearer ${endpoint.apiKey}`,
+            'Content-Type': 'application/json'
+          },
           body: JSON.stringify(body)
         }, config.timeoutMs)
         if (!response.ok) {
@@ -425,6 +431,27 @@ async function requestProvider(
             ? error
             : lastError
       }
+    }
+  }
+  throw lastError
+}
+
+async function requestProviderWithFallback(
+  endpoints: AiProviderEndpoint[],
+  messages: ProviderMessage[],
+  allowTools: boolean,
+  config: AiRuntimeConfig
+): Promise<{ endpoint: AiProviderEndpoint; result: ProviderResult }> {
+  let lastError = new Error('AI provider request failed')
+  for (const endpoint of endpoints) {
+    try {
+      return {
+        endpoint,
+        result: await requestProvider(endpoint, messages, allowTools, config)
+      }
+    } catch (error) {
+      lastError = error instanceof Error ? error : lastError
+      console.warn('ai-project-assistant provider fallback', endpoint.label, lastError.message)
     }
   }
   throw lastError
@@ -908,10 +935,7 @@ Deno.serve(async (req) => {
     const latestUserMessage = [...messages].reverse().find((item) => item.role === 'user')
     if (!latestUserMessage) return json({ code: 'invalid_input', message: '请输入问题' }, 400)
 
-    const apiKey = Deno.env.get('OPENAI_API_KEY') || Deno.env.get('AI_API_KEY')
-    if (!apiKey) return json({ code: 'missing_secret', message: 'AI provider is not configured' }, 500)
-    const baseUrl = (Deno.env.get('OPENAI_BASE_URL') || Deno.env.get('AI_BASE_URL') || 'https://api.openai.com/v1').replace(/\/$/, '')
-    const sharedModel = Deno.env.get('OPENAI_MODEL') || Deno.env.get('AI_MODEL') || 'gpt-4.1-mini'
+    const sharedModel = Deno.env.get('AI_MODEL') || Deno.env.get('OPENAI_MODEL') || 'gpt-4.1-mini'
     const runtimeConfig = await loadAiRuntimeConfig(admin, appUser.tenant_id, FEATURE, {
       enabled: true,
       provider: 'openai_compatible',
@@ -927,6 +951,12 @@ Deno.serve(async (req) => {
       promptVersion: 'v1'
     })
     if (!runtimeConfig.enabled) return json({ code: 'feature_disabled', message: 'Supabase 管理助手当前已停用' }, 503)
+    const providerEndpoints = resolveAiProviderEndpoints(runtimeConfig, {
+      openAiModel: Deno.env.get('AI_PROJECT_ASSISTANT_OPENAI_MODEL')
+    })
+    if (!providerEndpoints.length) {
+      return json({ code: 'missing_secret', message: 'AI provider is not configured' }, 500)
+    }
     const publishedPrompt = await loadPublishedAiPrompt(admin, appUser.tenant_id, FEATURE, {
       content: DEFAULT_PROMPT,
       version: runtimeConfig.promptVersion
@@ -999,7 +1029,14 @@ Deno.serve(async (req) => {
     ]
     let inputTokens = 0
     let outputTokens = 0
-    let response = await requestProvider(baseUrl, apiKey, providerMessages, true, runtimeConfig)
+    const initialProviderResponse = await requestProviderWithFallback(
+      providerEndpoints,
+      providerMessages,
+      true,
+      runtimeConfig
+    )
+    const activeProvider = initialProviderResponse.endpoint
+    let response = initialProviderResponse.result
     resolvedModel = response.model
     inputTokens += response.usage.prompt_tokens ?? 0
     outputTokens += response.usage.completion_tokens ?? 0
@@ -1048,7 +1085,12 @@ Deno.serve(async (req) => {
       }
       toolRound += 1
       const allowMoreTools = toolRound < MAX_TOOL_ROUNDS && totalToolCalls < MAX_TOOL_CALLS
-      response = await requestProvider(baseUrl, apiKey, providerMessages, allowMoreTools, runtimeConfig)
+      response = await requestProvider(
+        activeProvider,
+        providerMessages,
+        allowMoreTools,
+        runtimeConfig
+      )
       resolvedModel = response.model
       inputTokens += response.usage.prompt_tokens ?? 0
       outputTokens += response.usage.completion_tokens ?? 0

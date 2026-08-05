@@ -151,15 +151,7 @@
   }
 
   &__footer {
-    position: sticky;
-    bottom: 0;
-    z-index: 10;
-    display: flex;
-    gap: 18px;
-    align-items: center;
-    justify-content: space-between;
     min-height: 80px;
-    padding: 14px 20px 14px 28px;
     margin-top: 12px;
   }
 

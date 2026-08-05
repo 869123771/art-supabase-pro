@@ -1,5 +1,6 @@
 export {
   addCarrier,
+  analyzeCarrierPerformanceByAi,
   deleteCarrier,
   deleteCarrierBatch,
   editCarrier,
@@ -86,7 +87,8 @@ export {
   fetchOrderDetail,
   fetchOrderList,
   fetchOrderStatusCounts,
-  generateAiOrderExample
+  generateAiOrderExample,
+  reviewAiOrderArtifact
 } from '@/api/modules/tms/order'
 export {
   cancelWaybillDispatch,
@@ -100,9 +102,11 @@ export {
   exportWaybillList,
   fetchDispatchVehicleOptions,
   fetchWaybillList,
-  fetchWaybillStatusCounts
+  fetchWaybillStatusCounts,
+  recommendDispatchResourcesByAi
 } from '@/api/modules/tms/waybill'
 export {
+  analyzeTransportAnomalyByAi,
   fetchInTransitMonitorList,
   subscribeInTransitMonitorChanges
 } from '@/api/modules/tms/in-transit'
@@ -123,6 +127,9 @@ export {
 } from '@/api/modules/tms/carrier-price'
 export {
   addWaybillCost,
+  analyzeReceivablesCollectionByAi,
+  analyzeWaybillCostByAi,
+  analyzeWaybillProfitByAi,
   deleteWaybillCost,
   editWaybillCost,
   exportWaybillCostList,

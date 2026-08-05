@@ -26,8 +26,9 @@
 </template>
 
 <script setup lang="tsx">
+  import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import type { ComputedRef, UnwrapNestedRefs } from 'vue'
-  import { ElLink, ElMessage, ElMessageBox } from 'element-plus'
+  import { ElLink, ElMessage } from 'element-plus'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type {
     ArtTableQueryExcelColumn,
@@ -55,6 +56,8 @@
   import FreightDialog from './modules/freight-dialog.vue'
 
   defineOptions({ name: 'TmsOrderList' })
+
+  const { confirmAction } = useArtFeedback()
 
   type OrderRecord = Api.Tms.Order.OrderRecord
   type SearchParams = Api.Tms.Order.OrderSearchParams
@@ -250,7 +253,7 @@
             ElMessage.warning('已签收、已完成或已取消的订单不能取消')
             return
           }
-          await ElMessageBox.confirm(
+          await confirmAction(
             `确定取消选中的 ${rows.length} 条订单及其关联运单吗？取消后大屏将不再展示。`,
             '取消订单',
             {
@@ -462,7 +465,7 @@
   async function handleCancel(row: OrderRecord): Promise<void> {
     if (!row.id || !canCancelOrder(row)) return
     try {
-      await ElMessageBox.confirm(
+      await confirmAction(
         `确定取消订单“${row.orderNo}”及其关联运单吗？取消后大屏将不再展示。`,
         '取消订单',
         {
@@ -481,7 +484,7 @@
   async function handleDelete(row: OrderRecord): Promise<void> {
     if (!row.id || !canDeleteOrder(row)) return
     try {
-      await ElMessageBox.confirm(
+      await confirmAction(
         `确定永久删除订单“${row.orderNo}”及其关联运单、轨迹和回单吗？删除后无法恢复。`,
         '删除确认',
         {

@@ -123,6 +123,7 @@
             v-if="activeMode === 'realtime'"
             class="transit-screen__right"
             :order="activeOrder"
+            @analyze-anomaly="openTransportAnomalyAdvisor"
             @contact-driver="contactDriver"
             @open-detail="openOrderDetail"
             @send-reminder="sendReminder"
@@ -130,6 +131,8 @@
         </main>
       </div>
     </div>
+
+    <TransportAnomalyAdvisorDrawer ref="transportAnomalyAdvisorRef" />
   </div>
 </template>
 
@@ -145,6 +148,7 @@
   import { useDebounceFn, useEventListener, useIntervalFn, useResizeObserver } from '@vueuse/core'
   import MonitorDetailPanel from './modules/monitor-detail-panel.vue'
   import RealtimeMonitorPanel from './modules/realtime-monitor-panel.vue'
+  import TransportAnomalyAdvisorDrawer from './modules/transport-anomaly-advisor-drawer.vue'
   import VehicleMonitorPanel from './modules/vehicle-monitor-panel.vue'
   import WaybillMonitorPanel from './modules/waybill-monitor-panel.vue'
   import {
@@ -188,6 +192,10 @@
     lat?: number
     getLng?: () => number
     getLat?: () => number
+  }
+
+  interface TransportAnomalyAdvisorExpose {
+    handleOpen: (data: { orderId: string; orderNo: string }) => Promise<void>
   }
 
   interface MonitorAmapMarkerInstance {
@@ -266,6 +274,7 @@
   const { getDictMap } = storeToRefs(userStore)
   const viewportRef = ref<HTMLDivElement>()
   const chartRef = ref<HTMLDivElement>()
+  const transportAnomalyAdvisorRef = ref<TransportAnomalyAdvisorExpose>()
   const amapSdk = shallowRef<MonitorAmapNamespace>()
   const amapInstance = shallowRef<MonitorAmapMapInstance>()
   const amapReady = ref(false)
@@ -905,6 +914,20 @@
   }
 
   function openOrderDetail(): void {}
+
+  function openTransportAnomalyAdvisor(): void {
+    const order = activeOrder.value
+    const orderId = String(order?.source.order?.id || '')
+    if (!order || !orderId) {
+      ElMessage.warning('当前运输记录缺少订单 ID，暂时无法进行异常研判')
+      return
+    }
+
+    void transportAnomalyAdvisorRef.value?.handleOpen({
+      orderId,
+      orderNo: order.orderNo
+    })
+  }
 
   function contactDriver(): void {
     if (!activeOrder.value) return

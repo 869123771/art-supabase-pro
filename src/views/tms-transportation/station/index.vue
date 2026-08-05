@@ -15,7 +15,8 @@
 </template>
 
 <script setup lang="tsx">
-  import { ElMessage, ElMessageBox, ElSwitch } from 'element-plus'
+  import { useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import { ElMessage, ElSwitch } from 'element-plus'
   import { trim, uniq } from 'lodash-es'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type {
@@ -39,6 +40,8 @@
   import StationDialog from './modules/station-dialog.vue'
 
   defineOptions({ name: 'TmsStation' })
+
+  const { confirmAction } = useArtFeedback()
 
   type Station = Api.Tms.Station.StationRecord
   type StationSavePayload = Api.Tms.Station.StationSavePayload
@@ -295,16 +298,12 @@
   const handleDelete = async (row: Station): Promise<void> => {
     if (!row.id) return
     try {
-      await ElMessageBox.confirm(
-        `确定删除站点“${row.stationName}”吗？删除后无法恢复。`,
-        '删除确认',
-        {
-          confirmButtonText: '删除',
-          cancelButtonText: '取消',
-          type: 'warning',
-          confirmButtonClass: 'el-button--danger'
-        }
-      )
+      await confirmAction(`确定删除站点“${row.stationName}”吗？删除后无法恢复。`, '删除确认', {
+        confirmButtonText: '删除',
+        cancelButtonText: '取消',
+        type: 'warning',
+        confirmButtonClass: 'el-button--danger'
+      })
       await deleteStation(row.id)
       await tableQueryRef.value?.refreshRemove()
     } catch {

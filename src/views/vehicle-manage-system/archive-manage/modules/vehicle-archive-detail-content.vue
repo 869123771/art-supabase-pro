@@ -1,14 +1,19 @@
 <template>
-  <div class="vehicle-archive-detail" v-loading="loading">
-    <div class="vehicle-archive-detail__header art-card-xs">
-      <div>
-        <h2>{{ archive?.plateNo || '车辆档案详情' }}</h2>
-        <p>{{ archive?.companyName || '--' }}</p>
-      </div>
-      <div class="vehicle-archive-detail__actions">
-        <ElButton @click="goBack">返回</ElButton>
-      </div>
-    </div>
+  <ArtPageShell
+    class="vehicle-archive-detail"
+    :loading="loading"
+    loading-mode="skeleton"
+    :error="loadError"
+    :empty="!archive"
+    empty-text="暂无车辆档案详情"
+    @retry="loadArchiveDetail"
+  >
+    <ArtPageHeader
+      :title="archive?.plateNo || '车辆档案详情'"
+      :subtitle="archive?.companyName || '--'"
+      show-back
+      @back="goBack"
+    />
 
     <ElTabs v-model="activeTab" class="vehicle-archive-detail__tabs art-card-xs">
       <ElTabPane label="基础信息" name="basic">
@@ -61,50 +66,28 @@
       <template #header>
         <span>审核状态</span>
       </template>
-      <ElForm label-width="90px">
-        <ElFormItem label="审核状态" required>
-          <ElRadioGroup v-model="auditForm.auditStatus">
-            <ElRadio v-for="option in auditStatusOptions" :key="option.value" :value="option.value">
-              {{ option.label }}
-            </ElRadio>
-          </ElRadioGroup>
-        </ElFormItem>
-        <ElFormItem label="备注">
-          <ElInput
-            v-model="auditForm.auditRemark"
-            type="textarea"
-            :rows="4"
-            maxlength="500"
-            show-word-limit
-          />
-        </ElFormItem>
-        <ElFormItem>
-          <ElButton type="primary" :loading="savingAudit" @click="handleSaveAudit">
-            保存审核
-          </ElButton>
-        </ElFormItem>
-      </ElForm>
+      <ArtForm
+        :model-value="auditForm"
+        :items="auditFormItems"
+        :span="24"
+        label-width="90px"
+        :show-reset="false"
+        submit-text="保存审核"
+        :disabled-submit="savingAudit"
+        @update:model-value="Object.assign(auditForm, $event)"
+        @submit="handleSaveAudit"
+      />
     </ElCard>
-  </div>
+  </ArtPageShell>
 </template>
 
 <script setup lang="tsx">
   import type { VNodeChild } from 'vue'
-  import {
-    ElButton,
-    ElCard,
-    ElDescriptions,
-    ElDescriptionsItem,
-    ElForm,
-    ElFormItem,
-    ElImage,
-    ElInput,
-    ElRadio,
-    ElRadioGroup,
-    ElTabPane,
-    ElTabs
-  } from 'element-plus'
+  import { ElCard, ElImage, ElTabPane, ElTabs } from 'element-plus'
+  import ArtDescriptions from '@/components/core/base/art-descriptions/index.vue'
+  import type { ArtDescriptionItem } from '@/components/core/base/art-descriptions/types'
   import ArtTable from '@/components/core/tables/art-table/index.vue'
+  import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
@@ -128,6 +111,8 @@
     suffix?: string
   }
 
+  const infoDescriptionData = Object.freeze({})
+
   const InfoDescriptions = defineComponent({
     props: {
       items: {
@@ -136,20 +121,24 @@
       }
     },
     setup(props) {
-      return () => (
-        <ElDescriptions class="vehicle-archive-detail__descriptions" column={3} border>
-          {props.items.map((item) => (
-            <ElDescriptionsItem
-              key={item.label}
-              label={item.label}
-              labelClassName="vehicle-archive-detail__description-label"
-              className="vehicle-archive-detail__description-content"
-            >
-              {formatValue(item.value, item.suffix)}
-            </ElDescriptionsItem>
-          ))}
-        </ElDescriptions>
-      )
+      return () => {
+        const descriptionItems: ArtDescriptionItem[] = props.items.map((item, index) => ({
+          key: `${item.label}-${index}`,
+          label: item.label,
+          value: item.value,
+          render: (value) => formatValue(value as InfoItem['value'], item.suffix),
+          className: 'vehicle-archive-detail__description-content'
+        }))
+
+        return (
+          <ArtDescriptions
+            class="vehicle-archive-detail__descriptions"
+            data={infoDescriptionData}
+            items={descriptionItems}
+            columns={3}
+          />
+        )
+      }
     }
   })
 
@@ -159,6 +148,7 @@
   const activeTab = ref('basic')
   const archive = ref<VehicleArchive>()
   const loading = ref(false)
+  const loadError = shallowRef<Error | null>(null)
   const savingAudit = ref(false)
   const auditForm = reactive<{
     auditStatus: Extract<AuditStatus, 'approved' | 'rejected'>
@@ -175,6 +165,26 @@
       ['approved', 'rejected'].includes(item.value)
     )
   )
+  const auditFormItems = computed<FormItem[]>(() => [
+    {
+      label: '审核状态',
+      key: 'auditStatus',
+      type: 'radioGroup',
+      props: { options: auditStatusOptions.value }
+    },
+    {
+      label: '备注',
+      key: 'auditRemark',
+      type: 'input',
+      props: {
+        type: 'textarea',
+        rows: 4,
+        maxlength: 500,
+        showWordLimit: true,
+        placeholder: '请输入审核说明'
+      }
+    }
+  ])
 
   onMounted(async () => {
     await Promise.all([
@@ -328,8 +338,12 @@
 
   const loadArchiveDetail = async (): Promise<void> => {
     const id = String(route.params.id || '')
-    if (!id) return
+    if (!id) {
+      loadError.value = new Error('缺少车辆档案标识')
+      return
+    }
     loading.value = true
+    loadError.value = null
     try {
       const { data } = await fetchVehicleArchiveDetail(id)
       if (!data) return
@@ -337,6 +351,8 @@
       archive.value = { ...data, attachments: data.attachments ?? [] }
       auditForm.auditStatus = data.auditStatus === 'rejected' ? 'rejected' : 'approved'
       auditForm.auditRemark = data.auditRemark ?? ''
+    } catch (error) {
+      loadError.value = error instanceof Error ? error : new Error('车辆档案详情加载失败')
     } finally {
       loading.value = false
     }
@@ -386,36 +402,13 @@
     padding: 16px;
     background: var(--art-main-bg-color);
 
-    &__header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 18px 20px;
-      margin-bottom: 12px;
-
-      h2 {
-        margin: 0;
-        font-size: 20px;
-        font-weight: 600;
-      }
-
-      p {
-        margin: 6px 0 0;
-        color: var(--el-text-color-secondary);
-      }
-    }
-
-    &__actions {
-      display: flex;
-      gap: 8px;
-    }
-
     &__tabs {
       padding: 16px 20px 24px;
+      margin-top: 12px;
     }
 
     &__descriptions {
-      :deep(.vehicle-archive-detail__description-label) {
+      :deep(.el-descriptions__label) {
         width: 132px;
         font-weight: 600;
         color: var(--el-text-color-regular);
@@ -467,23 +460,9 @@
       margin-top: 12px;
     }
 
-    @media (max-width: 1100px) {
+    @media (width <= 760px) {
       &__descriptions {
-        :deep(.el-descriptions__body) {
-          overflow-x: auto;
-        }
-      }
-    }
-
-    @media (max-width: 760px) {
-      &__header {
-        align-items: flex-start;
-        flex-direction: column;
-        gap: 12px;
-      }
-
-      &__descriptions {
-        :deep(.vehicle-archive-detail__description-label) {
+        :deep(.el-descriptions__label) {
           width: 108px;
         }
       }

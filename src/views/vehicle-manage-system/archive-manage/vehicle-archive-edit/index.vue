@@ -1,122 +1,133 @@
 <template>
-  <div ref="pageRef" class="vehicle-archive-edit" v-loading.lock="page.loading">
-    <div class="vehicle-archive-edit__header art-card-xs">
-      <div>
-        <h2>{{ isEdit ? '编辑车辆档案' : '新增车辆档案' }}</h2>
-        <p>维护车辆基础资料、车身参数、发动机参数和运营信息。</p>
-      </div>
-      <div class="vehicle-archive-edit__actions">
-        <ElButton @click="goBack">返回</ElButton>
-        <ElButton type="primary" :loading="page.saving" @click="handleSave">保存</ElButton>
-      </div>
+  <ArtPageShell
+    class="vehicle-archive-edit"
+    :loading="page.loading"
+    loading-mode="skeleton"
+    :error="page.error"
+    @retry="initializePage"
+  >
+    <ArtPageHeader
+      class="vehicle-archive-edit__header"
+      :title="isEdit ? '编辑车辆档案' : '新增车辆档案'"
+      subtitle="维护车辆基础资料、车身参数、发动机参数和运营信息"
+      show-back
+      @back="goBack"
+    />
+
+    <div ref="pageRef" class="vehicle-archive-edit__content">
+      <ElTabs v-model="page.activeTab" class="vehicle-archive-edit__tabs art-card-xs">
+        <ElTabPane label="基础信息" name="basic">
+          <ArtForm
+            ref="basicFormRef"
+            v-model="form"
+            :items="basicItems"
+            :rules="rules"
+            :span="8"
+            :gutter="20"
+            label-width="130px"
+            :show-reset="false"
+            :show-submit="false"
+          />
+
+          <section class="vehicle-archive-edit__section">
+            <ArtSectionTitle>车辆证件</ArtSectionTitle>
+            <div class="vehicle-archive-edit__images">
+              <div
+                v-for="item in certificateItems"
+                :key="item.key"
+                class="vehicle-archive-edit__image-item"
+              >
+                <ArtUploadImage v-model="form[item.key]" :title="item.label" :size="128" />
+                <span>{{ item.label }}</span>
+              </div>
+            </div>
+          </section>
+        </ElTabPane>
+
+        <ElTabPane label="车身参数" name="body">
+          <ArtForm
+            ref="bodyFormRef"
+            v-model="form"
+            :items="bodyItems"
+            :rules="rules"
+            :span="8"
+            :gutter="20"
+            label-width="130px"
+            :show-reset="false"
+            :show-submit="false"
+          />
+        </ElTabPane>
+
+        <ElTabPane label="发动机参数" name="engine">
+          <ArtForm
+            ref="engineFormRef"
+            v-model="form"
+            :items="engineItems"
+            :rules="rules"
+            :span="8"
+            :gutter="20"
+            label-width="130px"
+            :show-reset="false"
+            :show-submit="false"
+          />
+        </ElTabPane>
+
+        <ElTabPane label="其他信息" name="other">
+          <ArtForm
+            ref="otherFormRef"
+            v-model="form"
+            :items="otherItems"
+            :rules="rules"
+            :span="8"
+            :gutter="20"
+            label-width="130px"
+            :show-reset="false"
+            :show-submit="false"
+          />
+
+          <section class="vehicle-archive-edit__section">
+            <div class="vehicle-archive-edit__section-header">
+              <ArtSectionTitle class="vehicle-archive-edit__section-title" :show-line="false">
+                车辆档案附件
+              </ArtSectionTitle>
+              <ArtExcelImport
+                accept=""
+                :parse-excel="false"
+                :disabled="page.attachmentUploading"
+                :button-props="{
+                  type: 'primary',
+                  plain: true,
+                  loading: page.attachmentUploading
+                }"
+                @file-change="handleAttachmentUpload"
+              >
+                上传附件
+              </ArtExcelImport>
+            </div>
+            <ArtTable
+              :data="form.attachments"
+              :columns="attachmentColumns"
+              :pagination="undefined"
+              :show-table-header="false"
+              empty-height="180px"
+            />
+          </section>
+        </ElTabPane>
+      </ElTabs>
     </div>
 
-    <ElTabs v-model="page.activeTab" class="vehicle-archive-edit__tabs art-card-xs">
-      <ElTabPane label="基础信息" name="basic">
-        <ArtForm
-          ref="basicFormRef"
-          v-model="form"
-          :items="basicItems"
-          :rules="rules"
-          :span="8"
-          :gutter="20"
-          label-width="130px"
-          :show-reset="false"
-          :show-submit="false"
-        />
-
-        <section class="vehicle-archive-edit__section">
-          <ArtSectionTitle>车辆证件</ArtSectionTitle>
-          <div class="vehicle-archive-edit__images">
-            <div
-              v-for="item in certificateItems"
-              :key="item.key"
-              class="vehicle-archive-edit__image-item"
-            >
-              <ArtUploadImage v-model="form[item.key]" :title="item.label" :size="128" />
-              <span>{{ item.label }}</span>
-            </div>
-          </div>
-        </section>
-      </ElTabPane>
-
-      <ElTabPane label="车身参数" name="body">
-        <ArtForm
-          ref="bodyFormRef"
-          v-model="form"
-          :items="bodyItems"
-          :rules="rules"
-          :span="8"
-          :gutter="20"
-          label-width="130px"
-          :show-reset="false"
-          :show-submit="false"
-        />
-      </ElTabPane>
-
-      <ElTabPane label="发动机参数" name="engine">
-        <ArtForm
-          ref="engineFormRef"
-          v-model="form"
-          :items="engineItems"
-          :rules="rules"
-          :span="8"
-          :gutter="20"
-          label-width="130px"
-          :show-reset="false"
-          :show-submit="false"
-        />
-      </ElTabPane>
-
-      <ElTabPane label="其他信息" name="other">
-        <ArtForm
-          ref="otherFormRef"
-          v-model="form"
-          :items="otherItems"
-          :rules="rules"
-          :span="8"
-          :gutter="20"
-          label-width="130px"
-          :show-reset="false"
-          :show-submit="false"
-        />
-
-        <section class="vehicle-archive-edit__section">
-          <div class="vehicle-archive-edit__section-header">
-            <ArtSectionTitle class="vehicle-archive-edit__section-title" :show-line="false">
-              车辆档案附件
-            </ArtSectionTitle>
-            <ArtExcelImport
-              accept=""
-              :parse-excel="false"
-              :disabled="page.attachmentUploading"
-              :button-props="{
-                type: 'primary',
-                plain: true,
-                loading: page.attachmentUploading
-              }"
-              @file-change="handleAttachmentUpload"
-            >
-              上传附件
-            </ArtExcelImport>
-          </div>
-          <ArtTable
-            :data="form.attachments"
-            :columns="attachmentColumns"
-            :pagination="undefined"
-            :show-table-header="false"
-            empty-height="180px"
-          />
-        </section>
-      </ElTabPane>
-    </ElTabs>
-  </div>
+    <ArtStickyActionBar class="vehicle-archive-edit__footer">
+      <ElButton :disabled="page.saving" @click="goBack">取消</ElButton>
+      <ElButton type="primary" :loading="page.saving" @click="handleSave">保存</ElButton>
+    </ArtStickyActionBar>
+  </ArtPageShell>
 </template>
 
 <script setup lang="tsx">
+  import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import type { ComputedRef, Ref, UnwrapNestedRefs } from 'vue'
   import type { FormRules } from 'element-plus'
-  import { ElButton, ElMessage, ElMessageBox, ElTabPane, ElTabs } from 'element-plus'
+  import { ElButton, ElMessage, ElTabPane, ElTabs } from 'element-plus'
   import ArtForm, {
     type FormItem,
     type FormItemOption
@@ -142,6 +153,8 @@
   import { renderAttachmentLink } from '@/components/core/media/art-file-viewer/render'
 
   defineOptions({ name: 'VehicleArchiveEdit' })
+
+  const { confirmAction } = useArtFeedback()
 
   type VehicleArchive = Api.VehicleMgtSys.ArchiveManage.VehicleArchive
   type VehicleArchiveForm = VehicleArchive & {
@@ -170,6 +183,7 @@
     loading: boolean
     saving: boolean
     attachmentUploading: boolean
+    error: Error | null
   }
 
   interface FormTab {
@@ -201,7 +215,8 @@
     activeTab: 'basic',
     loading: false,
     saving: false,
-    attachmentUploading: false
+    attachmentUploading: false,
+    error: null
   })
   const pageRef = ref<HTMLElement>()
   const basicFormRef = ref<FormExpose>()
@@ -883,21 +898,33 @@
     }
   ]
 
-  onMounted(async () => {
-    await Promise.all([loadArchiveDetail(), userStore.ensureDictLoaded('FILE_EXTENSION_LABEL_MAP')])
+  onMounted(() => {
+    void initializePage()
   })
+
+  const initializePage = async (): Promise<void> => {
+    page.loading = true
+    page.error = null
+    try {
+      await Promise.all([
+        loadArchiveDetail(),
+        userStore.ensureDictLoaded('FILE_EXTENSION_LABEL_MAP')
+      ])
+      await nextTick()
+      formTabs.forEach((tab) => tab.formRef.value?.clearValidate())
+    } catch (error) {
+      page.error = error instanceof Error ? error : new Error('车辆档案加载失败')
+    } finally {
+      page.loading = false
+    }
+  }
 
   const loadArchiveDetail = async (): Promise<void> => {
     if (!isEdit.value) return
     const id = String(route.params.id)
-    page.loading = true
-    try {
-      const { data } = await fetchVehicleArchiveDetail(id)
-      if (data)
-        replaceForm({ ...createInitialForm(), ...data, attachments: data.attachments ?? [] })
-    } finally {
-      page.loading = false
-    }
+    const { data } = await fetchVehicleArchiveDetail(id)
+    if (!data) throw new Error('车辆档案不存在或无权访问')
+    replaceForm({ ...createInitialForm(), ...data, attachments: data.attachments ?? [] })
   }
 
   const replaceForm = (nextForm: VehicleArchiveForm): void => {
@@ -1080,7 +1107,7 @@
 
   const removeAttachment = async (row: ArchiveAttachment): Promise<void> => {
     try {
-      await ElMessageBox.confirm(`确定删除附件“${row.name}”吗？`, '删除确认', {
+      await confirmAction(`确定删除附件“${row.name}”吗？`, '删除确认', {
         confirmButtonText: '删除',
         cancelButtonText: '取消',
         type: 'warning',
@@ -1118,30 +1145,15 @@
     background: var(--art-main-bg-color);
 
     &__header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 18px 20px;
-      margin-bottom: 12px;
-
-      h2 {
-        margin: 0;
-        font-size: 20px;
-        font-weight: 600;
-      }
-
-      p {
-        margin: 6px 0 0;
-        color: var(--el-text-color-secondary);
-      }
-    }
-
-    &__actions {
-      display: flex;
+      margin-bottom: 16px;
     }
 
     &__tabs {
       padding: 16px 20px 24px;
+    }
+
+    &__footer {
+      margin-top: 16px;
     }
 
     &__section {

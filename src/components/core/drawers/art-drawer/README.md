@@ -157,6 +157,8 @@ drawerRef.value?.handleOpen(data, {
 
 ## 内容滚动
 
+抽屉 `size` 支持 `sm / md / lg / xl / full` 响应式预设，也兼容原有数字、像素和百分比写法。所有尺寸都会自动限制在当前视口内。
+
 ```ts
 drawerRef.value?.handleOpen(data, {
   contentHeight: 'calc(100vh - 180px)',

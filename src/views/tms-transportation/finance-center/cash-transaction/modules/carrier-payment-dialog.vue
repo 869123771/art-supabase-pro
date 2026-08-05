@@ -1,5 +1,5 @@
 <template>
-  <ArtDialog ref="dialogRef" width="1080px">
+  <ArtDialog ref="dialogRef" size="xl">
     <ArtForm
       ref="formRef"
       v-model="form"
@@ -24,7 +24,7 @@
           description-key="carrierCode"
           placeholder="请选择承运商"
           search-placeholder="承运商名称、编码或联系人"
-          dialog-width="920px"
+          dialog-width="lg"
           :disabled="dialog.mode === 'allocate'"
           @change="handleCarrierChange"
         />
@@ -43,7 +43,7 @@
           description-key="periodLabel"
           placeholder="可选择一份或多份对账单"
           search-placeholder="对账单号或承运商名称"
-          dialog-width="1080px"
+          dialog-width="xl"
           show-pagination
           show-selected-panel
           :page-size="10"

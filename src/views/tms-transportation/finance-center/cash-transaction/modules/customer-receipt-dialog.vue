@@ -1,5 +1,5 @@
 <template>
-  <ArtDialog ref="dialogRef" width="1080px">
+  <ArtDialog ref="dialogRef" size="xl">
     <ArtForm
       ref="formRef"
       v-model="form.data"
@@ -24,7 +24,7 @@
           description-key="customerCode"
           placeholder="请选择收款客户"
           search-placeholder="客户名称、编码、联系人或电话"
-          dialog-width="920px"
+          dialog-width="lg"
           show-pagination
           :page-size="10"
           :disabled="dialog.mode === 'allocate'"
@@ -57,7 +57,7 @@
             description-key="periodLabel"
             placeholder="可暂不核销，后续再分配收款"
             search-placeholder="对账单号或客户名称"
-            dialog-width="1080px"
+            dialog-width="xl"
             show-pagination
             show-selected-panel
             :page-size="10"

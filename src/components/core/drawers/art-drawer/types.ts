@@ -6,6 +6,8 @@ import type {
   ArtScrollOptions
 } from '@/hooks/core/useArtOverlay'
 
+export type ArtDrawerSizePreset = 'sm' | 'md' | 'lg' | 'xl' | 'full'
+
 export interface ArtDrawerOptions<TData = unknown> extends ArtOverlayOptions<
   TData,
   ArtDrawerExpose<TData>
@@ -13,7 +15,7 @@ export interface ArtDrawerOptions<TData = unknown> extends ArtOverlayOptions<
   /** 抽屉标题 */
   title?: string
   /** 抽屉尺寸 */
-  size?: string | number
+  size?: string | number | ArtDrawerSizePreset
   /** 抽屉打开方向 */
   direction?: 'ltr' | 'rtl' | 'ttb' | 'btt'
   /** 单次打开时额外传递给 ElDrawer 的属性 */

@@ -1,7 +1,9 @@
 # Project Instructions
 
+- Before creating, modifying, refactoring, or reviewing any user-facing frontend page or component, load and apply both the local `art-supabase-pro-conventions` skill and the local `professional-ui-quality` skill. Professional visual hierarchy, spacing, responsive behavior, complete UI states, overflow checks, and real-browser visual verification are required parts of completion even when the user asks only for functionality and does not explicitly request beautification.
 - Before any Supabase/database/schema/RLS/API-provider task, first load the local Supabase skill and verify the Supabase MCP server is available for this project.
 - This repo is scoped to Supabase project `ckbftoopuyophiebamwy` through `.mcp.json`.
 - Expected MCP URL: `https://mcp.supabase.com/mcp?project_ref=ckbftoopuyophiebamwy&features=database,debugging,development,docs`.
 - If Supabase MCP tools such as `execute_sql`, `search_docs`, or `get_advisors` are not visible, check remote reachability with `curl.exe -so NUL -w "%{http_code}" https://mcp.supabase.com/mcp`; `401` means the hosted server is reachable and the Codex session likely needs OAuth authentication or a reload.
 - Prefer MCP `search_docs`, `execute_sql`, and `get_advisors` for Supabase work when available; otherwise use the Supabase CLI or documented fallbacks from the local skill.
+- Every user-facing AI capability must be available to enabled ordinary users as well as administrators. Ordinary users are restricted to read-only, tenant-scoped/business-data-safe operations; mutation, configuration, publishing, workflow-state changes, and controlled-write modes require platform-super authorization in both the UI and the server/database boundary. AI history, telemetry, generated artifacts, and feedback may be persisted as server-managed audit data, but must not be used to bypass business-data write restrictions.

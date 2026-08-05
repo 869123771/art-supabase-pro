@@ -1,6 +1,9 @@
 import dayjs from 'dayjs'
 import { useSupabase } from '@/hooks'
 import type { SupabaseQueryLike } from '@/api/providers/supabase/query'
+import type { AiFeedbackIssueType } from '@/api/providers/supabase/ai-feedback'
+
+export type { AiFeedbackIssueType } from '@/api/providers/supabase/ai-feedback'
 
 const { supabase, responseHandle } = useSupabase()
 
@@ -26,6 +29,85 @@ export interface AiOperationsErrorStat {
   count: number
 }
 
+export interface AiQualityTrendPoint {
+  date: string
+  total: number
+  applied: number
+  rejected: number
+  acceptedFields: number
+  correctedFields: number
+}
+
+export interface AiFieldQualityStat {
+  field: string
+  total: number
+  accepted: number
+  corrected: number
+  acceptanceRate: number
+}
+
+export type AiFeedbackResolutionStatus = 'open' | 'in_progress' | 'resolved' | 'dismissed'
+
+export interface AiFeatureFeedbackQuality {
+  feature: string
+  totalRuns: number
+  successRate: number
+  feedbackCount: number
+  feedbackCoverageRate: number
+  positiveFeedback: number
+  negativeFeedback: number
+  openIssues: number
+}
+
+export interface AiFeedbackQueueItem {
+  feedbackId: number
+  runId: string
+  feature: string
+  model: string
+  comment?: string | null
+  feedbackTime: string
+  runStartedAt: string
+  status: AiFeedbackResolutionStatus
+  issueType?: AiFeedbackIssueType | null
+  resolutionNote?: string | null
+  resolvedAt?: string | null
+  handledBy?: string | null
+}
+
+export interface AiFeedbackQualityOverview {
+  days: number
+  canManageFeedback: boolean
+  totalRuns: number
+  totalFeedback: number
+  unratedRuns: number
+  feedbackCoverageRate: number
+  positiveFeedback: number
+  negativeFeedback: number
+  positiveRate: number
+  openFeedbackIssues: number
+  closedFeedbackIssues: number
+  resolutionRate: number
+  featureQuality: AiFeatureFeedbackQuality[]
+  feedbackQueue: AiFeedbackQueueItem[]
+}
+
+export interface AiQualityOverview {
+  totalArtifacts: number
+  pendingArtifacts: number
+  reviewedArtifacts: number
+  appliedArtifacts: number
+  rejectedArtifacts: number
+  supersededArtifacts: number
+  reviewCompletionRate: number
+  applicationRate: number
+  acceptedFields: number
+  correctedFields: number
+  fieldAcceptanceRate: number
+  averageConfidence: number
+  dailyTrend: AiQualityTrendPoint[]
+  fieldQuality: AiFieldQualityStat[]
+}
+
 export interface AiOperationsOverview {
   days: number
   totalRuns: number
@@ -42,6 +124,8 @@ export interface AiOperationsOverview {
   dailyTrend: AiOperationsTrendPoint[]
   featureBreakdown: AiOperationsFeatureStat[]
   topErrors: AiOperationsErrorStat[]
+  quality: AiQualityOverview
+  feedbackQuality: AiFeedbackQualityOverview
 }
 
 export interface AiRunFeedback {
@@ -156,6 +240,25 @@ export interface AiRunDiagnosisResponse {
   durationMs: number
 }
 
+export interface AiFeedbackResolutionPayload {
+  feedbackId: number
+  status: AiFeedbackResolutionStatus
+  issueType?: AiFeedbackIssueType | null
+  resolutionNote?: string | null
+}
+
+export interface AiFeedbackResolutionRecord {
+  id: string
+  feedbackId: number
+  status: AiFeedbackResolutionStatus
+  issueType?: AiFeedbackIssueType | null
+  resolutionNote?: string | null
+  handledBy: string
+  resolvedBy?: string | null
+  resolvedAt?: string | null
+  updateTime: string
+}
+
 const runListSelect = `
   id,
   conversation_id,
@@ -193,17 +296,99 @@ export function createEmptyAiOperationsOverview(days = 30): AiOperationsOverview
     negativeFeedback: 0,
     dailyTrend: [],
     featureBreakdown: [],
-    topErrors: []
+    topErrors: [],
+    quality: createEmptyAiQualityOverview(days),
+    feedbackQuality: createEmptyAiFeedbackQualityOverview(days)
+  }
+}
+
+export function createEmptyAiFeedbackQualityOverview(days = 30): AiFeedbackQualityOverview {
+  return {
+    days,
+    canManageFeedback: false,
+    totalRuns: 0,
+    totalFeedback: 0,
+    unratedRuns: 0,
+    feedbackCoverageRate: 0,
+    positiveFeedback: 0,
+    negativeFeedback: 0,
+    positiveRate: 0,
+    openFeedbackIssues: 0,
+    closedFeedbackIssues: 0,
+    resolutionRate: 100,
+    featureQuality: [],
+    feedbackQueue: []
+  }
+}
+
+export function createEmptyAiQualityOverview(days = 30): AiQualityOverview {
+  const safeDays = Math.min(Math.max(Math.trunc(days), 1), 90)
+  return {
+    totalArtifacts: 0,
+    pendingArtifacts: 0,
+    reviewedArtifacts: 0,
+    appliedArtifacts: 0,
+    rejectedArtifacts: 0,
+    supersededArtifacts: 0,
+    reviewCompletionRate: 0,
+    applicationRate: 0,
+    acceptedFields: 0,
+    correctedFields: 0,
+    fieldAcceptanceRate: 0,
+    averageConfidence: 0,
+    dailyTrend: Array.from({ length: safeDays }, (_, index) => ({
+      date: dayjs()
+        .subtract(safeDays - index - 1, 'day')
+        .format('YYYY-MM-DD'),
+      total: 0,
+      applied: 0,
+      rejected: 0,
+      acceptedFields: 0,
+      correctedFields: 0
+    })),
+    fieldQuality: []
   }
 }
 
 export async function fetchAiOperationsOverview(days = 30): Promise<AiOperationsOverview> {
   const safeDays = Math.min(Math.max(Math.trunc(days), 1), 90)
-  const { data } = await responseHandle<AiOperationsOverview>(
-    () => supabase.rpc('ai_operations_overview', { p_days: safeDays }),
+  const [operationsResult, feedbackResult] = await Promise.all([
+    responseHandle<AiOperationsOverview>(
+      () => supabase.rpc('ai_operations_overview', { p_days: safeDays }),
+      { breakReturn: true, showErrorMessage: true }
+    ),
+    responseHandle<AiFeedbackQualityOverview>(
+      () => supabase.rpc('ai_quality_feedback_overview', { p_days: safeDays }),
+      { breakReturn: true, showErrorMessage: true }
+    )
+  ])
+  const data = operationsResult.data
+  const overview = data ?? createEmptyAiOperationsOverview(safeDays)
+  return {
+    ...overview,
+    quality: overview.quality ?? createEmptyAiQualityOverview(safeDays),
+    feedbackQuality:
+      feedbackResult.data ??
+      overview.feedbackQuality ??
+      createEmptyAiFeedbackQualityOverview(safeDays)
+  }
+}
+
+export async function updateAiFeedbackResolution(
+  payload: AiFeedbackResolutionPayload
+): Promise<AiFeedbackResolutionRecord> {
+  const { data } = await responseHandle<AiFeedbackResolutionRecord>(
+    () =>
+      supabase.rpc('upsert_ai_feedback_resolution', {
+        p_feedback_id: payload.feedbackId,
+        p_status: payload.status,
+        p_issue_type: payload.issueType ?? null,
+        p_resolution_note: payload.resolutionNote?.trim() || null
+      }),
     { breakReturn: true, showErrorMessage: true }
   )
-  return data ?? createEmptyAiOperationsOverview(safeDays)
+  if (!data) throw new Error('AI 反馈处理结果未返回')
+  return data
 }
 
 export async function fetchAiRunList(params: AiRunSearchParams) {

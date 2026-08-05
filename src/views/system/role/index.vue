@@ -9,19 +9,14 @@
       :table-columns="columns"
       :pagination="pagination"
       :search-bar-props="searchBarProps"
+      :header-actions="headerActions"
       :table-props="tableProps"
       @search="handleSearch"
       @reset="resetSearchParams"
       @refresh="refreshData"
       @pagination:size-change="handleSizeChange"
       @pagination:current-change="handleCurrentChange"
-    >
-      <template #header-left>
-        <ElSpace wrap>
-          <ElButton @click="showDialog('add')" v-ripple>新增角色</ElButton>
-        </ElSpace>
-      </template>
-    </ArtTableQuery>
+    />
 
     <RoleEditDialog ref="roleEditDialogRef" @success="refreshData" />
     <RolePermissionDialog ref="rolePermissionDialogRef" @success="refreshData" />
@@ -29,24 +24,28 @@
 </template>
 
 <script setup lang="ts">
+  import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { ButtonMoreItem } from '@/components/core/forms/art-button-more/index.vue'
   import { useTable } from '@/hooks/core/useTable'
   import { deleteRole, fetchGetRoleList } from '@/api/system-manage'
   import ArtButtonMore from '@/components/core/forms/art-button-more/index.vue'
   import RoleEditDialog from './modules/role-edit-dialog.vue'
   import RolePermissionDialog from './modules/role-permission-dialog.vue'
-  import { ElTag, ElMessageBox } from 'element-plus'
+  import { ElTag } from 'element-plus'
   import { formatWithDayjs } from '@/utils/time'
   import { pageInfoHandler } from '@utils/table/tableUtils'
   import { ColumnOption } from '@/types'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type {
+    ArtTableQueryHeaderAction,
     ArtTableQuerySearchBarProps,
     ArtTableQueryTableProps
   } from '@/components/core/tables/art-table-query/index.vue'
   import { useSystemParam } from '@/hooks'
 
   defineOptions({ name: 'Role' })
+
+  const { confirmAction } = useArtFeedback()
 
   type RoleListItem = Api.SystemManage.RoleListItem
   type RoleSearchParams = Api.SystemManage.RoleSearchParams & {
@@ -123,6 +122,14 @@
   const searchBarProps = computed<ArtTableQuerySearchBarProps>(() => ({
     items: searchItems.value
   }))
+
+  const headerActions = computed<ArtTableQueryHeaderAction[]>(() => [
+    {
+      type: 'add',
+      label: '新增角色',
+      onClick: () => showDialog('add')
+    }
+  ])
 
   const tableProps: ArtTableQueryTableProps = {
     tableLayout: 'fixed'
@@ -305,7 +312,7 @@
   }
 
   const handleDeleteRole = (row: RoleListItem) => {
-    ElMessageBox.confirm(`确定删除角色"${row.roleName}"吗？此操作不可恢复！`, '删除确认', {
+    confirmAction(`确定删除角色"${row.roleName}"吗？此操作不可恢复！`, '删除确认', {
       confirmButtonText: '确定',
       cancelButtonText: '取消',
       type: 'warning'

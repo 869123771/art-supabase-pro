@@ -331,7 +331,7 @@
     childrenKey: 'children',
     resultField: 'data',
     totalField: 'total',
-    dialogWidth: '1180px',
+    dialogWidth: 'xl',
     fullscreen: false,
     pageSize: 10,
     pageSizes: () => [10, 20, 30, 50],

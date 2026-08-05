@@ -1,4 +1,5 @@
 import { useSupabase } from '@/hooks'
+import type { QueryResult } from '@/types/api/response'
 import { applyDateRange, type SupabaseQueryLike } from '@/api/providers/supabase/query'
 
 type WaybillCost = Api.Tms.Finance.WaybillCostRecord
@@ -227,6 +228,38 @@ export async function voidWaybillCost(id: string, reviewRemark?: string | null) 
   )
 }
 
+export async function analyzeWaybillCostByAi(
+  costId: string
+): Promise<QueryResult<Api.Tms.Finance.WaybillCostAuditResponse>> {
+  const { data, error } = await supabase.functions.invoke<Api.Tms.Finance.WaybillCostAuditResponse>(
+    'ai-waybill-cost-auditor',
+    { body: { costId } }
+  )
+
+  return {
+    data: data ?? null,
+    error: await normalizeFunctionInvokeError(error)
+  }
+}
+
+async function normalizeFunctionInvokeError(error: unknown): Promise<unknown | null> {
+  if (!error || typeof error !== 'object' || !('context' in error)) return error
+
+  const context = (error as { context?: unknown }).context
+  if (!(context instanceof Response)) return error
+
+  try {
+    const payload = (await context.clone().json()) as { code?: unknown; message?: unknown }
+    if (typeof payload.message !== 'string' || !payload.message) return error
+    return {
+      code: typeof payload.code === 'string' ? payload.code : undefined,
+      message: payload.message
+    }
+  } catch {
+    return error
+  }
+}
+
 const applyProfitFilters = (
   query: SupabaseQueryLike,
   params: WaybillProfitSearchParams
@@ -256,6 +289,34 @@ export async function fetchWaybillProfitList(params: WaybillProfitSearchParams) 
     ignoreCheck: true,
     showErrorMessage: true
   })
+}
+
+export async function analyzeWaybillProfitByAi(): Promise<
+  QueryResult<Api.Tms.Finance.WaybillProfitAnalysisResponse>
+> {
+  const { data, error } =
+    await supabase.functions.invoke<Api.Tms.Finance.WaybillProfitAnalysisResponse>(
+      'ai-waybill-profit-analyst'
+    )
+
+  return {
+    data: data ?? null,
+    error: await normalizeFunctionInvokeError(error)
+  }
+}
+
+export async function analyzeReceivablesCollectionByAi(): Promise<
+  QueryResult<Api.Tms.Finance.ReceivablesCollectionResponse>
+> {
+  const { data, error } =
+    await supabase.functions.invoke<Api.Tms.Finance.ReceivablesCollectionResponse>(
+      'ai-receivables-collection-advisor'
+    )
+
+  return {
+    data: data ?? null,
+    error: await normalizeFunctionInvokeError(error)
+  }
 }
 
 export async function exportWaybillProfitList(

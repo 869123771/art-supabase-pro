@@ -1,48 +1,30 @@
 <template>
-  <div v-loading="detail.loading" class="order-detail">
+  <ArtPageShell
+    class="order-detail"
+    :loading="detail.loading"
+    loading-mode="skeleton"
+    :error="detail.error"
+    :empty="!detail.data"
+    empty-text="暂无订单详情"
+    @retry="loadDetail"
+  >
+    <ArtPageHeader
+      :title="detail.data?.orderNo || '订单详情'"
+      :subtitle="
+        [detail.data?.originStation, detail.data?.destinationStation].filter(Boolean).join(' → ') ||
+        '--'
+      "
+      show-back
+      @back="goBack"
+    />
+
     <section class="order-detail__section order-detail__steps-card art-card-xs">
-      <ElPageHeader :icon="ArrowLeft" @back="goBack" />
       <OrderStatusSteps :steps="detail.statusSteps" :active-index="detail.activeStep" />
     </section>
 
     <section class="order-detail__section art-card-xs">
       <ArtSectionTitle title="基础信息" />
-      <ElDescriptions :column="4" border>
-        <ElDescriptionsItem label="订单号">{{
-          formatValue(detail.data?.orderNo)
-        }}</ElDescriptionsItem>
-        <ElDescriptionsItem label="货号">{{
-          formatValue(detail.data?.cargoNo)
-        }}</ElDescriptionsItem>
-        <ElDescriptionsItem label="开单人">{{
-          formatValue(detail.data?.createBy)
-        }}</ElDescriptionsItem>
-        <ElDescriptionsItem label="开单时间">
-          {{ formatDate(detail.data?.createTime) }}
-        </ElDescriptionsItem>
-        <ElDescriptionsItem label="发货站">
-          {{ formatValue(detail.data?.originStation) }}
-        </ElDescriptionsItem>
-        <ElDescriptionsItem label="到货站">
-          {{ formatValue(detail.data?.destinationStation) }}
-        </ElDescriptionsItem>
-        <ElDescriptionsItem label="中转站">
-          {{ formatValue(detail.data?.transferStation) }}
-        </ElDescriptionsItem>
-        <ElDescriptionsItem label="配送方式">
-          <ArtDictDisplay dict-code="tmsOrderDeliveryMethod" :value="detail.data?.deliveryMethod" />
-        </ElDescriptionsItem>
-        <ElDescriptionsItem label="当前状态">
-          <ArtDictDisplay
-            dict-code="tmsOrderStatus"
-            :value="normalizedOrderStatus"
-            display="auto"
-          />
-        </ElDescriptionsItem>
-        <ElDescriptionsItem label="运输方式">
-          <ArtDictDisplay dict-code="tmsOrderTransportMode" :value="detail.data?.transportMode" />
-        </ElDescriptionsItem>
-      </ElDescriptions>
+      <ArtDescriptions :data="descriptionData" :items="basicItems" :columns="4" />
 
       <div class="order-detail__contact-card">
         <div class="order-detail__contact-panel">
@@ -50,34 +32,24 @@
             <span class="order-detail__contact-mark order-detail__contact-mark--send">寄</span>
             <strong>发货人信息</strong>
           </div>
-          <ElDescriptions :column="1">
-            <ElDescriptionsItem label="姓名">
-              {{ formatValue(detail.data?.shippingContactName) }}
-            </ElDescriptionsItem>
-            <ElDescriptionsItem label="手机号">
-              {{ formatValue(detail.data?.shippingContactPhone) }}
-            </ElDescriptionsItem>
-            <ElDescriptionsItem label="发货地址">
-              {{ formatValue(detail.data?.shippingAddressDetail) }}
-            </ElDescriptionsItem>
-          </ElDescriptions>
+          <ArtDescriptions
+            :data="descriptionData"
+            :items="shippingItems"
+            :columns="1"
+            :border="false"
+          />
         </div>
         <div class="order-detail__contact-panel">
           <div class="order-detail__contact-heading">
             <span class="order-detail__contact-mark order-detail__contact-mark--receive">收</span>
             <strong>收货人信息</strong>
           </div>
-          <ElDescriptions :column="1">
-            <ElDescriptionsItem label="姓名">
-              {{ formatValue(detail.data?.receivingContactName) }}
-            </ElDescriptionsItem>
-            <ElDescriptionsItem label="手机号">
-              {{ formatValue(detail.data?.receivingContactPhone) }}
-            </ElDescriptionsItem>
-            <ElDescriptionsItem label="收货地址">
-              {{ formatValue(detail.data?.receivingAddressDetail) }}
-            </ElDescriptionsItem>
-          </ElDescriptions>
+          <ArtDescriptions
+            :data="descriptionData"
+            :items="receivingItems"
+            :columns="1"
+            :border="false"
+          />
         </div>
       </div>
     </section>
@@ -99,91 +71,31 @@
 
     <section class="order-detail__section art-card-xs">
       <ArtSectionTitle title="费用信息" />
-      <ElDescriptions :column="4" border>
-        <ElDescriptionsItem label="基础运费">
-          {{ formatCurrency(detail.data?.transportFee) }}
-        </ElDescriptionsItem>
-        <ElDescriptionsItem label="配送费">
-          {{ formatCurrency(detail.data?.deliveryFee) }}
-        </ElDescriptionsItem>
-        <ElDescriptionsItem label="卸货费">
-          {{ formatCurrency(detail.data?.unloadingFee) }}
-        </ElDescriptionsItem>
-        <ElDescriptionsItem label="回款费">
-          {{ formatCurrency(detail.data?.collectPaymentFee) }}
-        </ElDescriptionsItem>
-        <ElDescriptionsItem label="中转费">
-          {{ formatCurrency(detail.data?.transferFee) }}
-        </ElDescriptionsItem>
-        <ElDescriptionsItem label="声明价值">
-          {{ formatCurrency(detail.data?.declaredValue) }}
-        </ElDescriptionsItem>
-        <ElDescriptionsItem label="保费">
-          {{ formatCurrency(detail.data?.insuranceFee) }}
-        </ElDescriptionsItem>
-        <ElDescriptionsItem label="包装费">
-          {{ formatCurrency(detail.data?.packageFee) }}
-        </ElDescriptionsItem>
-        <ElDescriptionsItem label="其他费用">
-          {{ formatCurrency(detail.data?.otherFee) }}
-        </ElDescriptionsItem>
-        <ElDescriptionsItem label="运费合计">
-          <span class="order-detail__strong">{{ formatCurrency(detail.data?.totalFee) }}</span>
-        </ElDescriptionsItem>
-      </ElDescriptions>
+      <ArtDescriptions :data="descriptionData" :items="feeItems" :columns="4" />
     </section>
 
     <section class="order-detail__section art-card-xs">
       <ArtSectionTitle title="付款方式" />
-      <ElDescriptions :column="4" border>
-        <ElDescriptionsItem label="付款方式">
-          <ArtDictDisplay dict-code="tmsOrderPaymentMethod" :value="detail.data?.paymentMethod" />
-        </ElDescriptionsItem>
-        <ElDescriptionsItem label="现付">
-          {{ formatCurrency(detail.data?.cashAmount) }}
-        </ElDescriptionsItem>
-        <ElDescriptionsItem label="到付">
-          {{ formatCurrency(detail.data?.collectAmount) }}
-        </ElDescriptionsItem>
-        <ElDescriptionsItem label="月结">
-          {{ formatCurrency(detail.data?.monthlyAmount) }}
-        </ElDescriptionsItem>
-        <ElDescriptionsItem label="代收货款">
-          {{ formatCurrency(detail.data?.codAmount) }}
-        </ElDescriptionsItem>
-        <ElDescriptionsItem label="手续费">
-          {{ formatCurrency(detail.data?.handlingFee) }}
-        </ElDescriptionsItem>
-        <ElDescriptionsItem label="付款合计">
-          <span class="order-detail__strong">{{ formatCurrency(detail.data?.paymentTotal) }}</span>
-        </ElDescriptionsItem>
-      </ElDescriptions>
+      <ArtDescriptions :data="descriptionData" :items="paymentItems" :columns="4" />
     </section>
 
     <section class="order-detail__section art-card-xs">
       <ArtSectionTitle title="其他信息" />
-      <ElDescriptions :column="4" border>
-        <ElDescriptionsItem label="订单备注" :span="2">
-          {{ formatValue(detail.data?.orderRemark) }}
-        </ElDescriptionsItem>
-        <ElDescriptionsItem label="图片" :span="2">
-          {{ detail.data?.imageUrls?.length ? `${detail.data.imageUrls.length} 张` : '-' }}
-        </ElDescriptionsItem>
-      </ElDescriptions>
+      <ArtDescriptions :data="descriptionData" :items="otherItems" :columns="4" />
     </section>
 
     <section class="order-detail__section art-card-xs">
       <ArtSectionTitle title="物流信息" />
       <ElEmpty description="暂无物流跟踪信息" :image-size="80" />
     </section>
-  </div>
+  </ArtPageShell>
 </template>
 
 <script setup lang="tsx">
   import type { ComputedRef, UnwrapNestedRefs } from 'vue'
-  import { ArrowLeft } from '@element-plus/icons-vue'
-  import { toNumber, trim } from 'lodash-es'
-  import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
+  import { toNumber } from 'lodash-es'
+  import ArtDescriptions from '@/components/core/base/art-descriptions/index.vue'
+  import type { ArtDescriptionItem } from '@/components/core/base/art-descriptions/types'
   import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
   import ArtTable from '@/components/core/tables/art-table/index.vue'
   import type { ColumnOption } from '@/types'
@@ -226,6 +138,7 @@
 
   interface DetailGroup {
     loading: boolean
+    error: Error | null
     data?: OrderRecord
     statusSteps: ComputedRef<StatusStep[]>
     activeStep: ComputedRef<number>
@@ -240,6 +153,7 @@
 
   const detail: UnwrapNestedRefs<DetailGroup> = reactive<DetailGroup>({
     loading: false,
+    error: null,
     data: undefined,
     statusSteps: computed(() => {
       const values: OrderStatusValue[] =
@@ -275,18 +189,106 @@
     ])
   })
 
+  const descriptionData = computed<Partial<OrderRecord>>(() => detail.data ?? {})
+  const basicItems: ArtDescriptionItem<Partial<OrderRecord>>[] = [
+    { key: 'orderNo', label: '订单号', field: 'orderNo', copyable: true },
+    { key: 'cargoNo', label: '货号', field: 'cargoNo', copyable: true },
+    { key: 'createBy', label: '开单人', field: 'createBy' },
+    { key: 'createTime', label: '开单时间', field: 'createTime', format: 'datetime' },
+    { key: 'originStation', label: '发货站', field: 'originStation' },
+    { key: 'destinationStation', label: '到货站', field: 'destinationStation' },
+    { key: 'transferStation', label: '中转站', field: 'transferStation' },
+    {
+      key: 'deliveryMethod',
+      label: '配送方式',
+      field: 'deliveryMethod',
+      dictCode: 'tmsOrderDeliveryMethod'
+    },
+    {
+      key: 'orderStatus',
+      label: '当前状态',
+      value: (data: Partial<OrderRecord>) => normalizeOrderStatus(data.orderStatus),
+      dictCode: 'tmsOrderStatus'
+    },
+    {
+      key: 'transportMode',
+      label: '运输方式',
+      field: 'transportMode',
+      dictCode: 'tmsOrderTransportMode'
+    }
+  ]
+  const shippingItems: ArtDescriptionItem<Partial<OrderRecord>>[] = [
+    { key: 'shippingContactName', label: '姓名', field: 'shippingContactName' },
+    { key: 'shippingContactPhone', label: '手机号', field: 'shippingContactPhone', copyable: true },
+    { key: 'shippingAddressDetail', label: '发货地址', field: 'shippingAddressDetail' }
+  ]
+  const receivingItems: ArtDescriptionItem<Partial<OrderRecord>>[] = [
+    { key: 'receivingContactName', label: '姓名', field: 'receivingContactName' },
+    {
+      key: 'receivingContactPhone',
+      label: '手机号',
+      field: 'receivingContactPhone',
+      copyable: true
+    },
+    { key: 'receivingAddressDetail', label: '收货地址', field: 'receivingAddressDetail' }
+  ]
+  const feeItems = createMoneyDescriptionItems([
+    ['transportFee', '基础运费'],
+    ['deliveryFee', '配送费'],
+    ['unloadingFee', '卸货费'],
+    ['collectPaymentFee', '回款费'],
+    ['transferFee', '中转费'],
+    ['declaredValue', '声明价值'],
+    ['insuranceFee', '保费'],
+    ['packageFee', '包装费'],
+    ['otherFee', '其他费用'],
+    ['totalFee', '运费合计', true]
+  ])
+  const paymentItems: ArtDescriptionItem<Partial<OrderRecord>>[] = [
+    {
+      key: 'paymentMethod',
+      label: '付款方式',
+      field: 'paymentMethod',
+      dictCode: 'tmsOrderPaymentMethod'
+    },
+    ...createMoneyDescriptionItems([
+      ['cashAmount', '现付'],
+      ['collectAmount', '到付'],
+      ['monthlyAmount', '月结'],
+      ['codAmount', '代收货款'],
+      ['handlingFee', '手续费'],
+      ['paymentTotal', '付款合计', true]
+    ])
+  ]
+  const otherItems: ArtDescriptionItem<Partial<OrderRecord>>[] = [
+    { key: 'orderRemark', label: '订单备注', field: 'orderRemark', span: 2 },
+    {
+      key: 'imageUrls',
+      label: '图片',
+      span: 2,
+      value: (data: Partial<OrderRecord>) =>
+        data.imageUrls?.length ? `${data.imageUrls.length} 张` : undefined
+    }
+  ]
+
   onMounted(() => {
     void loadDetail()
   })
 
   async function loadDetail(): Promise<void> {
     const id = String(route.params.id || '')
-    if (!id) return
+    if (!id) {
+      detail.error = new Error('缺少订单标识')
+      return
+    }
 
     detail.loading = true
+    detail.error = null
     try {
       const { data } = await fetchOrderDetail(id)
       detail.data = data ?? undefined
+    } catch (error) {
+      detail.error = error instanceof Error ? error : new Error('订单详情加载失败')
     } finally {
       detail.loading = false
     }
@@ -342,15 +344,6 @@
     return normalizedOrderStatus.value === status ? detail.data?.updateTime : undefined
   }
 
-  function formatValue(value?: string | number | null): string {
-    const text = trim(String(value ?? ''))
-    return text || '-'
-  }
-
-  function formatDate(value?: string | null, format = 'YYYY-MM-DD HH:mm:ss'): string {
-    return formatWithDayjs(value, format) || '-'
-  }
-
   function formatStepTime(value?: string | null): string {
     const date = formatWithDayjs(value, 'YYYY-MM-DD')
     const time = formatWithDayjs(value, 'HH:mm')
@@ -372,6 +365,18 @@
     const parsed = toNumber(value ?? 0)
     return `¥${Number.isFinite(parsed) ? parsed.toFixed(2) : '0.00'}`
   }
+
+  function createMoneyDescriptionItems(
+    items: Array<[key: string, label: string, strong?: boolean]>
+  ): ArtDescriptionItem<Partial<OrderRecord>>[] {
+    return items.map(([key, label, strong]) => ({
+      key,
+      label,
+      field: key,
+      formatter: (value) => formatCurrency(value as number | string | null | undefined),
+      className: strong ? 'order-detail__strong' : undefined
+    }))
+  }
 </script>
 
 <style scoped lang="scss">
@@ -388,11 +393,7 @@
     &__steps-card {
       display: grid;
       gap: 8px;
-      :deep(.el-page-header) {
-        .el-divider {
-          display: none;
-        }
-      }
+      margin-top: var(--art-space-3);
     }
 
     &__contact-card {
@@ -445,12 +446,12 @@
       color: var(--art-text-gray-700);
     }
 
-    &__strong {
+    :deep(.order-detail__strong) {
       font-weight: 600;
       color: var(--el-color-danger);
     }
 
-    :deep(.el-descriptions) {
+    :deep(.art-descriptions) {
       margin-top: 16px;
       .el-descriptions__body {
         background: inherit;

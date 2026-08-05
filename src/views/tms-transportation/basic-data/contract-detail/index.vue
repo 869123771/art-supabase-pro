@@ -1,20 +1,25 @@
 <template>
-  <div class="contract-detail" v-loading="page.loading">
-    <div class="contract-detail__header art-card-xs">
-      <div>
-        <h2>{{ detail.data?.contractName || '合同详情' }}</h2>
-        <p>{{ detail.data?.contractNo || '--' }}</p>
-      </div>
-      <div class="contract-detail__actions">
-        <ElButton @click="goBack">返回</ElButton>
-      </div>
-    </div>
+  <ArtPageShell
+    class="contract-detail"
+    :loading="page.loading"
+    loading-mode="skeleton"
+    :error="page.error"
+    :empty="!detail.data"
+    empty-text="暂无合同详情"
+    @retry="loadPage"
+  >
+    <ArtPageHeader
+      :title="detail.data?.contractName || '合同详情'"
+      :subtitle="detail.data?.contractNo || '--'"
+      show-back
+      @back="goBack"
+    />
 
     <div class="contract-detail__content">
       <section class="contract-detail__section art-card-xs">
         <ArtSectionTitle>基础信息</ArtSectionTitle>
-        <ElDescriptions :column="4" border>
-          <ElDescriptionsItem label="合同状态">
+        <ArtDescriptions :data="descriptionData" :items="descriptionItems" :columns="4">
+          <template #item-contractStatus>
             <ElTag
               v-if="detail.data?.contractStatus"
               :type="statusMeta[detail.data.contractStatus].type"
@@ -22,42 +27,8 @@
               {{ statusMeta[detail.data.contractStatus].label }}
             </ElTag>
             <span v-else>--</span>
-          </ElDescriptionsItem>
-          <ElDescriptionsItem label="合同编号">
-            {{ formatValue(detail.data?.contractNo) }}
-          </ElDescriptionsItem>
-          <ElDescriptionsItem label="合同名称" :span="2">
-            {{ formatValue(detail.data?.contractName) }}
-          </ElDescriptionsItem>
-          <ElDescriptionsItem label="承运商名称">
-            {{ formatValue(detail.data?.carrier?.companyName) }}
-          </ElDescriptionsItem>
-          <ElDescriptionsItem label="联系人姓名">
-            {{ formatValue(detail.data?.contactName) }}
-          </ElDescriptionsItem>
-          <ElDescriptionsItem label="运单号">
-            {{ formatValue(detail.data?.waybillNo) }}
-          </ElDescriptionsItem>
-          <ElDescriptionsItem label="计费方式">
-            <ArtDictDisplay
-              dict-code="tmsContractBillingMethod"
-              :value="detail.data?.billingMethod"
-              display="text"
-            />
-          </ElDescriptionsItem>
-          <ElDescriptionsItem label="合同金额">
-            {{ formatMoney(detail.data?.contractAmount) }}
-          </ElDescriptionsItem>
-          <ElDescriptionsItem label="签订时间">
-            {{ formatDateTime(detail.data?.signTime) }}
-          </ElDescriptionsItem>
-          <ElDescriptionsItem label="经办人">
-            {{ formatValue(detail.data?.handler) }}
-          </ElDescriptionsItem>
-          <ElDescriptionsItem label="合同说明" :span="4">
-            {{ formatValue(detail.data?.contractDescription) }}
-          </ElDescriptionsItem>
-        </ElDescriptions>
+          </template>
+        </ArtDescriptions>
       </section>
 
       <section class="contract-detail__section art-card-xs">
@@ -72,17 +43,17 @@
         <span v-else>--</span>
       </section>
     </div>
-  </div>
+  </ArtPageShell>
 </template>
 
 <script setup lang="ts">
   import { isNil } from 'lodash-es'
-  import { ElButton, ElDescriptions, ElDescriptionsItem, ElTag } from 'element-plus'
-  import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
+  import { ElTag } from 'element-plus'
+  import ArtDescriptions from '@/components/core/base/art-descriptions/index.vue'
+  import type { ArtDescriptionItem } from '@/components/core/base/art-descriptions/types'
   import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
   import ArtAttachmentLink from '@/components/core/media/art-file-viewer/attachment-link.vue'
   import { fetchContractDetail } from '@/api/tms'
-  import { formatWithDayjs } from '@/utils/time'
 
   defineOptions({ name: 'TmsContractDetail' })
 
@@ -92,6 +63,7 @@
 
   interface PageState {
     loading: boolean
+    error: Error | null
   }
 
   interface DetailState {
@@ -101,8 +73,37 @@
   const route = useRoute()
   const router = useRouter()
 
-  const page = reactive<PageState>({ loading: false })
+  const page = reactive<PageState>({ loading: false, error: null })
   const detail = reactive<DetailState>({ data: undefined })
+  const descriptionData = computed<Partial<Contract>>(() => detail.data ?? {})
+  const descriptionItems: ArtDescriptionItem<Partial<Contract>>[] = [
+    { key: 'contractStatus', label: '合同状态', field: 'contractStatus' },
+    { key: 'contractNo', label: '合同编号', field: 'contractNo', copyable: true },
+    { key: 'contractName', label: '合同名称', field: 'contractName', span: 2 },
+    {
+      key: 'carrierName',
+      label: '承运商名称',
+      value: (data: Partial<Contract>) => data.carrier?.companyName
+    },
+    { key: 'contactName', label: '联系人姓名', field: 'contactName' },
+    { key: 'waybillNo', label: '运单号', field: 'waybillNo', copyable: true },
+    {
+      key: 'billingMethod',
+      label: '计费方式',
+      field: 'billingMethod',
+      dictCode: 'tmsContractBillingMethod',
+      dictDisplay: 'text'
+    },
+    {
+      key: 'contractAmount',
+      label: '合同金额',
+      field: 'contractAmount',
+      formatter: (value) => formatMoney(value as number | null | undefined)
+    },
+    { key: 'signTime', label: '签订时间', field: 'signTime', format: 'datetime' },
+    { key: 'handler', label: '经办人', field: 'handler' },
+    { key: 'contractDescription', label: '合同说明', field: 'contractDescription', span: 4 }
+  ]
 
   const statusMeta: Record<ContractStatus, { label: string; type: StatusTagType }> = {
     draft: { label: '草稿', type: 'info' },
@@ -120,12 +121,18 @@
 
   const loadPage = async (): Promise<void> => {
     const id = String(route.params.id || '')
-    if (!id) return
+    if (!id) {
+      page.error = new Error('缺少合同标识')
+      return
+    }
 
     page.loading = true
+    page.error = null
     try {
       const { data } = await fetchContractDetail(id)
       detail.data = data ?? undefined
+    } catch (error) {
+      page.error = error instanceof Error ? error : new Error('合同详情加载失败')
     } finally {
       page.loading = false
     }
@@ -135,19 +142,9 @@
     void router.push('/tms-transportation/basic-data/contract')
   }
 
-  const formatValue = (value?: string | number | null): string => {
-    if (isNil(value) || value === '') return '--'
-    return String(value)
-  }
-
   const formatMoney = (value?: number | null): string => {
     if (isNil(value) || Number.isNaN(Number(value))) return '--'
     return Number(value).toFixed(2)
-  }
-
-  const formatDateTime = (value?: string): string => {
-    if (!value) return '--'
-    return formatWithDayjs(value, 'YYYY-MM-DD HH:mm:ss') ?? '--'
   }
 </script>
 
@@ -156,30 +153,6 @@
     min-height: 100%;
     padding: 16px;
     background: var(--art-main-bg-color);
-
-    &__header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 18px 20px;
-
-      h2 {
-        margin: 0;
-        font-size: 20px;
-        font-weight: 600;
-      }
-
-      p {
-        margin: 6px 0 0;
-        color: var(--el-text-color-secondary);
-      }
-    }
-
-    &__actions {
-      display: flex;
-      gap: 10px;
-      align-items: center;
-    }
 
     &__content {
       display: flex;
@@ -198,17 +171,13 @@
       gap: 10px 16px;
     }
 
-    :deep(.el-descriptions__label) {
+    :deep(.art-descriptions .el-descriptions__label) {
       width: 132px;
       font-weight: 600;
     }
 
     @media (max-width: 768px) {
-      &__header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 14px;
-      }
+      padding: var(--art-space-3);
     }
   }
 </style>

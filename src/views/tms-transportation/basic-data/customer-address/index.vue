@@ -16,7 +16,7 @@
 </template>
 
 <script setup lang="tsx">
-  import { ElMessageBox } from 'element-plus'
+  import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type {
     ArtTableQueryExpose,
@@ -36,6 +36,8 @@
   import CustomerAddressDialog from './modules/customer-address-dialog.vue'
 
   defineOptions({ name: 'TmsCustomerAddress' })
+
+  const { confirmAction } = useArtFeedback()
 
   type CustomerAddress = Api.Tms.BasicData.CustomerAddress
   type CustomerOption = Api.Tms.BasicData.CustomerOption
@@ -225,7 +227,7 @@
   const handleDelete = async (row: CustomerAddress): Promise<void> => {
     if (!row.id) return
     try {
-      await ElMessageBox.confirm(
+      await confirmAction(
         `确定删除“${[row.region, row.addressDetail].filter(Boolean).join(' ')}”吗？`,
         '删除确认',
         {

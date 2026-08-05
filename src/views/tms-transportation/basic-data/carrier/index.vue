@@ -15,7 +15,8 @@
 </template>
 
 <script setup lang="tsx">
-  import { ElButton, ElMessage, ElMessageBox } from 'element-plus'
+  import { useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import { ElButton, ElMessage } from 'element-plus'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type {
     ArtTableQueryExpose,
@@ -40,6 +41,8 @@
   import CarrierDialog from './modules/carrier-dialog.vue'
 
   defineOptions({ name: 'TmsCarrier' })
+
+  const { confirmAction } = useArtFeedback()
 
   type Carrier = Api.Tms.BasicData.Carrier
   type SearchParams = Api.Tms.BasicData.CarrierSearchParams
@@ -284,16 +287,12 @@
   const handleDelete = async (row: Carrier): Promise<void> => {
     if (!row.id) return
     try {
-      await ElMessageBox.confirm(
-        `确定删除承运商“${row.companyName}”吗？删除后无法恢复。`,
-        '删除确认',
-        {
-          confirmButtonText: '删除',
-          cancelButtonText: '取消',
-          type: 'warning',
-          confirmButtonClass: 'el-button--danger'
-        }
-      )
+      await confirmAction(`确定删除承运商“${row.companyName}”吗？删除后无法恢复。`, '删除确认', {
+        confirmButtonText: '删除',
+        cancelButtonText: '取消',
+        type: 'warning',
+        confirmButtonClass: 'el-button--danger'
+      })
       await deleteCarrier(row.id)
       await tableQueryRef.value?.refreshRemove()
     } catch {

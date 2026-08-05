@@ -1,5 +1,5 @@
 ﻿<template>
-  <ArtDialog ref="dialogRef" width="900px">
+  <ArtDialog ref="dialogRef" size="lg">
     <div class="system-param-dialog">
       <section class="system-param-dialog__form">
         <div class="system-param-dialog__section-head">
@@ -529,7 +529,7 @@
     &__preview,
     &__tips {
       border: 1px solid var(--el-border-color-light);
-      border-radius: 8px;
+      border-radius: var(--art-surface-radius);
     }
 
     &__form {
@@ -661,7 +661,7 @@
       padding: 9px 10px;
       background: var(--el-fill-color-lighter);
       border: 1px solid var(--el-border-color-lighter);
-      border-radius: 6px;
+      border-radius: var(--art-control-radius);
     }
 
     &__tips {

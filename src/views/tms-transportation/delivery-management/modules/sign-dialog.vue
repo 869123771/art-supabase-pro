@@ -1,5 +1,5 @@
 <template>
-  <ArtDialog ref="dialogRef" width="560px">
+  <ArtDialog ref="dialogRef" size="sm">
     <div class="delivery-sign-dialog">
       <div class="delivery-sign-dialog__summary">
         <span>运单号：{{ form.data.orderNo || '-' }}</span>

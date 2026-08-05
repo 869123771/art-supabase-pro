@@ -16,7 +16,7 @@
 </template>
 
 <script setup lang="tsx">
-  import { ElMessageBox } from 'element-plus'
+  import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type {
     ArtTableQueryExpose,
@@ -37,6 +37,8 @@
   import DriverDialog from './modules/driver-dialog.vue'
 
   defineOptions({ name: 'TmsDriver' })
+
+  const { confirmAction } = useArtFeedback()
 
   type Driver = Api.Tms.BasicData.Driver
   type CarrierOption = Api.Tms.BasicData.CarrierOption
@@ -279,16 +281,12 @@
   const handleDelete = async (row: Driver): Promise<void> => {
     if (!row.id) return
     try {
-      await ElMessageBox.confirm(
-        `确定删除司机“${row.driverName}”吗？删除后无法恢复。`,
-        '删除确认',
-        {
-          confirmButtonText: '删除',
-          cancelButtonText: '取消',
-          type: 'warning',
-          confirmButtonClass: 'el-button--danger'
-        }
-      )
+      await confirmAction(`确定删除司机“${row.driverName}”吗？删除后无法恢复。`, '删除确认', {
+        confirmButtonText: '删除',
+        cancelButtonText: '取消',
+        type: 'warning',
+        confirmButtonClass: 'el-button--danger'
+      })
       await deleteDriver(row.id)
       await tableQueryRef.value?.refreshRemove()
     } catch {

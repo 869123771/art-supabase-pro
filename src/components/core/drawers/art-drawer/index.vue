@@ -214,6 +214,28 @@
     return typeof height === 'number' ? `${height}px` : height
   })
 
+  const drawerSizeMap = {
+    sm: 'var(--art-drawer-width-sm)',
+    md: 'var(--art-drawer-width-md)',
+    lg: 'var(--art-drawer-width-lg)',
+    xl: 'var(--art-drawer-width-xl)',
+    full: 'calc(100vw - 12px)'
+  } as const
+
+  const normalizedDrawerSize = computed(() => {
+    const configuredSize =
+      options.value.size ?? (attrs.size as string | number | undefined) ?? '40%'
+    const presetSize =
+      typeof configuredSize === 'string' && configuredSize in drawerSizeMap
+        ? drawerSizeMap[configuredSize as keyof typeof drawerSizeMap]
+        : configuredSize
+    const normalizedSize = typeof presetSize === 'number' ? `${presetSize}px` : presetSize
+    const viewportSize = ['ttb', 'btt'].includes(options.value.direction ?? 'rtl')
+      ? 'calc(100vh - 12px)'
+      : 'calc(100vw - 12px)'
+    return `min(${normalizedSize}, ${viewportSize})`
+  })
+
   const drawerClass = computed(() => [
     attrs.class,
     (options.value.drawerProps as Record<string, unknown> | undefined)?.class
@@ -247,7 +269,7 @@
       ...inheritedAttrs,
       ...runtimeBindings,
       title: String(options.value.title ?? inheritedAttrs.title ?? ''),
-      size: options.value.size ?? inheritedAttrs.size ?? '40%',
+      size: normalizedDrawerSize.value,
       direction: options.value.direction ?? inheritedAttrs.direction ?? 'rtl'
     }
   })
@@ -313,8 +335,8 @@
   }
 
   .art-drawer__scrollbar {
-    width: 100%;
     flex: 1;
+    width: 100%;
     min-height: 0;
 
     :deep(.el-scrollbar__view) {

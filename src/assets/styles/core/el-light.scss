@@ -24,11 +24,17 @@
     'border-color': var(--el-color-primary),
     'text-color': var(--el-color-primary)
   ),
+  $dialog: (
+    'border-radius': var(--art-modal-radius)
+  ),
   $messagebox: (
-    'border-radius': '12px'
+    'border-radius': var(--art-modal-radius)
+  ),
+  $notification: (
+    'radius': var(--art-floating-radius)
   ),
   $popover: (
     'padding': '14px',
-    'border-radius': '10px'
+    'border-radius': var(--art-floating-radius)
   )
 );

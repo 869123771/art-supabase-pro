@@ -14,7 +14,7 @@
 </template>
 
 <script setup lang="tsx">
-  import { ElMessageBox } from 'element-plus'
+  import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type {
     ArtTableQueryExpose,
@@ -35,6 +35,8 @@
   import { formatWithDayjs } from '@/utils/time'
 
   defineOptions({ name: 'TmsCustomerPrice' })
+
+  const { confirmAction } = useArtFeedback()
 
   type CustomerPrice = Api.Tms.BasicData.CustomerPrice
   type CustomerPriceCargoItem = Api.Tms.BasicData.CustomerPriceCargoItem
@@ -338,7 +340,7 @@
   const handleDelete = async (row: CustomerPrice): Promise<void> => {
     if (!row.id) return
     try {
-      await ElMessageBox.confirm(
+      await confirmAction(
         `确定删除「${row.customer?.customerName || '客户价格'}」这条价格吗？`,
         '删除确认',
         {

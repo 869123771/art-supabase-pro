@@ -5,6 +5,7 @@
     v-bind="dialogBindings"
     :class="[
       'art-dialog',
+      options.size ? `art-dialog--${options.size}` : '',
       dialogClass,
       { 'is-fullscreen-toggle-enabled': options.showFullscreenButton }
     ]"
@@ -139,7 +140,8 @@
   const props = withDefaults(defineProps<ArtDialogProps<T>>(), {
     title: '',
     subtitle: '',
-    width: '50%',
+    width: undefined,
+    size: undefined,
     fullscreen: false,
     showFullscreenButton: false,
     fullscreenText: '全屏',
@@ -174,6 +176,7 @@
     title: props.title,
     subtitle: props.subtitle,
     width: props.width,
+    size: props.size,
     fullscreen: props.fullscreen,
     showFullscreenButton: props.showFullscreenButton,
     fullscreenText: props.fullscreenText,
@@ -253,7 +256,24 @@
     return typeof value === 'number' ? `${value}px` : value
   }
 
+  const dialogSizeMap = {
+    sm: 'var(--art-dialog-width-sm)',
+    md: 'var(--art-dialog-width-md)',
+    lg: 'var(--art-dialog-width-lg)',
+    xl: 'var(--art-dialog-width-xl)',
+    full: 'calc(100vw - 24px)'
+  } as const
+
   const isFullscreen = computed(() => Boolean(options.value.fullscreen))
+
+  const normalizedDialogWidth = computed(() => {
+    const inheritedWidth = attrs.width as string | number | undefined
+    const presetWidth = options.value.size ? dialogSizeMap[options.value.size] : undefined
+    const configuredWidth = options.value.width ?? inheritedWidth
+    const width = normalizeSize(configuredWidth ?? presetWidth ?? '50%')
+    if (!width) return undefined
+    return `min(${width}, calc(100vw - 32px))`
+  })
 
   const normalizedContentHeight = computed(() => {
     if (isFullscreen.value) return undefined
@@ -322,7 +342,7 @@
       ...inheritedAttrs,
       ...runtimeBindings,
       title: dialogTitle.value,
-      width: options.value.width ?? inheritedAttrs.width ?? '50%',
+      width: normalizedDialogWidth.value,
       fullscreen: Boolean(options.value.fullscreen)
     }
   })
@@ -436,9 +456,9 @@
     &__footer-left {
       min-width: 0;
       overflow: hidden;
+      text-overflow: ellipsis;
       font-size: 14px;
       color: var(--el-text-color-secondary);
-      text-overflow: ellipsis;
       white-space: nowrap;
     }
 

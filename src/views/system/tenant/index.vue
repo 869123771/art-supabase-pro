@@ -14,7 +14,7 @@
 </template>
 
 <script setup lang="tsx">
-  import { ElMessageBox } from 'element-plus'
+  import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type {
     ArtTableQueryExpose,
@@ -32,6 +32,8 @@
   import { useSystemParam } from '@/hooks'
 
   defineOptions({ name: 'Tenant' })
+
+  const { confirmAction } = useArtFeedback()
 
   type Tenant = Api.SystemManage.TenantListItem
   type SearchParams = Api.SystemManage.TenantSearchParams
@@ -221,16 +223,12 @@
     if (!row.id) return
 
     try {
-      await ElMessageBox.confirm(
-        `确定删除租户“${row.tenantName}”吗？删除后无法恢复。`,
-        '删除确认',
-        {
-          confirmButtonText: '删除',
-          cancelButtonText: '取消',
-          type: 'warning',
-          confirmButtonClass: 'el-button--danger'
-        }
-      )
+      await confirmAction(`确定删除租户“${row.tenantName}”吗？删除后无法恢复。`, '删除确认', {
+        confirmButtonText: '删除',
+        cancelButtonText: '取消',
+        type: 'warning',
+        confirmButtonClass: 'el-button--danger'
+      })
       await deleteTenant(row.id)
       await tableQueryRef.value?.refreshRemove()
     } catch {

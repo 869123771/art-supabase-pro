@@ -1,5 +1,5 @@
 <template>
-  <ArtDialog ref="dialogRef" width="560px">
+  <ArtDialog ref="dialogRef" size="sm">
     <div class="print-count-dialog">
       <div class="print-count-dialog__row">
         <span class="print-count-dialog__label">打印数量</span>

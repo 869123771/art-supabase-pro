@@ -14,12 +14,22 @@
 
   --el-component-size: var(--el-component-custom-height) !important;
 
-  // 边框、按钮圆角...
-  --el-border-radius-base: calc(var(--custom-radius) / 3 + 2px) !important;
+  // 全局圆角层级：控件 < 浮层 < 模态框。所有值跟随系统圆角设置联动。
+  --art-control-radius: calc(var(--custom-radius) / 3 + 2px);
+  --art-control-radius-small: calc(var(--custom-radius) / 3);
+  --art-floating-radius: calc(var(--custom-radius) / 3 + 4px);
+  --art-modal-radius: calc(var(--custom-radius) / 1.2 + 2px);
+  --art-surface-radius: var(--custom-radius);
+  --art-feature-radius: calc(var(--custom-radius) * 2);
+  --art-floating-shadow: var(--el-box-shadow-light);
+  --art-modal-shadow: var(--el-box-shadow);
 
-  --el-border-radius-small: calc(var(--custom-radius) / 3 + 4px) !important;
-  --el-messagebox-border-radius: calc(var(--custom-radius) / 3 + 4px) !important;
-  --el-popover-border-radius: calc(var(--custom-radius) / 3 + 4px) !important;
+  // 对齐 Element Plus 组件变量，避免按需样式和全局覆盖各用一套圆角。
+  --el-border-radius-base: var(--art-control-radius) !important;
+  --el-border-radius-small: var(--art-control-radius-small) !important;
+  --el-messagebox-border-radius: var(--art-modal-radius) !important;
+  --el-notification-radius: var(--art-floating-radius) !important;
+  --el-popover-border-radius: var(--art-floating-radius) !important;
 
   .region .el-radio-button__original-radio:checked + .el-radio-button__inner {
     color: var(--theme-color);
@@ -125,12 +135,12 @@ html.dark .el-card {
 
 .el-popover {
   min-width: 80px;
-  border-radius: var(--el-border-radius-small) !important;
+  border-radius: var(--art-floating-radius) !important;
 }
 
 .el-dialog {
-  border-radius: 100px !important;
-  border-radius: calc(var(--custom-radius) / 1.2 + 2px) !important;
+  border-radius: var(--art-modal-radius) !important;
+  box-shadow: var(--art-modal-shadow);
   overflow: hidden;
 
   &__header {
@@ -175,19 +185,19 @@ html.dark .el-card {
   border: 1px solid var(--art-gray-300);
 
   &.rtl {
-    border-radius: calc(var(--custom-radius) / 1.2 + 2px) 0 0 calc(var(--custom-radius) / 1.2 + 2px);
+    border-radius: var(--art-modal-radius) 0 0 var(--art-modal-radius);
   }
 
   &.ltr {
-    border-radius: 0 calc(var(--custom-radius) / 1.2 + 2px) calc(var(--custom-radius) / 1.2 + 2px) 0;
+    border-radius: 0 var(--art-modal-radius) var(--art-modal-radius) 0;
   }
 
   &.ttb {
-    border-radius: 0 0 calc(var(--custom-radius) / 1.2 + 2px) calc(var(--custom-radius) / 1.2 + 2px);
+    border-radius: 0 0 var(--art-modal-radius) var(--art-modal-radius);
   }
 
   &.btt {
-    border-radius: calc(var(--custom-radius) / 1.2 + 2px) calc(var(--custom-radius) / 1.2 + 2px) 0 0;
+    border-radius: var(--art-modal-radius) var(--art-modal-radius) 0 0;
   }
 
   &__title {
@@ -209,11 +219,9 @@ html.dark .el-card {
 // el-message 样式优化
 .el-message {
   background-color: var(--default-box-color) !important;
-  border: 0 !important;
-  box-shadow:
-    0 6px 16px 0 rgba(0, 0, 0, 0.08),
-    0 3px 6px -4px rgba(0, 0, 0, 0.12),
-    0 9px 28px 8px rgba(0, 0, 0, 0.05) !important;
+  border: 1px solid var(--art-card-border) !important;
+  border-radius: var(--art-floating-radius) !important;
+  box-shadow: var(--art-floating-shadow) !important;
 
   p {
     font-size: 13px;
@@ -223,12 +231,12 @@ html.dark .el-card {
 // 修改 el-dropdown 样式
 .el-dropdown-menu {
   padding: 6px !important;
-  border-radius: 10px !important;
+  border-radius: var(--art-floating-radius) !important;
   border: none !important;
 
   .el-dropdown-menu__item {
     padding: 6px 16px !important;
-    border-radius: 6px !important;
+    border-radius: var(--art-control-radius) !important;
 
     &:hover:not(.is-disabled) {
       color: var(--art-gray-900) !important;
@@ -364,8 +372,14 @@ html.dark .el-card {
   }
 }
 
-.el-notification .el-notification__icon {
-  font-size: 22px !important;
+.el-notification {
+  border-color: var(--art-card-border);
+  border-radius: var(--art-floating-radius);
+  box-shadow: var(--art-floating-shadow);
+
+  .el-notification__icon {
+    font-size: 22px !important;
+  }
 }
 
 // 修改弹层关闭按钮样式
@@ -376,7 +390,7 @@ html.dark .el-card {
       right: 7px;
       width: 30px;
       height: 30px;
-      border-radius: 5px;
+      border-radius: var(--art-control-radius);
       transition: all 0.3s;
 
       &:hover {
@@ -395,7 +409,7 @@ html.dark .el-card {
     width: 30px;
     height: 30px;
     padding: 0;
-    border-radius: 5px;
+    border-radius: var(--art-control-radius);
     transition: all 0.3s;
 
     &:hover {
@@ -407,13 +421,17 @@ html.dark .el-card {
 
 // 修改 el-message-box 样式
 .el-message-box {
+  border: 1px solid var(--art-card-border);
+  border-radius: var(--art-modal-radius) !important;
+  box-shadow: var(--art-modal-shadow);
+
   &__headerbtn {
     .el-message-box__close {
       top: 7px;
       right: 7px;
       width: 30px;
       height: 30px;
-      border-radius: 5px;
+      border-radius: var(--art-control-radius);
       transition: all 0.3s;
 
       &:hover {
@@ -427,6 +445,35 @@ html.dark .el-card {
 
   &__title {
     font-weight: 500 !important;
+  }
+}
+
+.art-feedback-message-box {
+  width: min(460px, calc(100vw - 24px)) !important;
+  max-width: calc(100vw - 24px) !important;
+
+  .el-message-box__message {
+    line-height: 1.65;
+  }
+
+  .el-message-box__input {
+    padding-top: var(--art-space-3);
+  }
+
+  .el-message-box__btns {
+    gap: var(--art-space-2);
+    padding-top: var(--art-space-4);
+  }
+
+  &.is-multiline {
+    width: min(520px, calc(100vw - 24px)) !important;
+    max-width: calc(100vw - 24px) !important;
+
+    .el-textarea__inner {
+      min-height: 104px !important;
+      line-height: 1.65;
+      resize: vertical;
+    }
   }
 }
 
@@ -449,7 +496,7 @@ html.dark .el-card {
 
 .login-out-dialog {
   padding: 30px 20px !important;
-  border-radius: 10px !important;
+  border-radius: var(--art-modal-radius) !important;
 }
 
 // 修改 dialog 动画

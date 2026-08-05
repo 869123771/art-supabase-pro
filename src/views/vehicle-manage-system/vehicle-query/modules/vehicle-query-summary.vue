@@ -12,12 +12,24 @@
       </div>
     </div>
 
-    <VehicleQueryInfoGrid :items="summaryItems" />
+    <div class="vehicle-query-summary__main">
+      <header class="vehicle-query-summary__header">
+        <div>
+          <span>车辆综合档案</span>
+          <small>汇总车辆合规、运营和维保关键数据</small>
+        </div>
+        <ElButton type="primary" plain @click="emit('analyze')">
+          <ArtSvgIcon icon="ri:sparkling-2-line" />AI 车辆健康研判
+        </ElButton>
+      </header>
+      <VehicleQueryInfoGrid :items="summaryItems" />
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-  import { ElImage } from 'element-plus'
+  import { ElButton, ElImage } from 'element-plus'
+  import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import VehicleQueryInfoGrid from './vehicle-query-info-grid.vue'
   import type { InfoItem, VehicleArchive, VehicleQuerySummary } from './types'
   import { formatDate, formatMileage, formatNumber } from './query-format'
@@ -28,6 +40,7 @@
     vehicle: VehicleArchive
     summary: VehicleQuerySummary
   }>()
+  const emit = defineEmits<{ analyze: [] }>()
 
   const summaryItems = computed<InfoItem[]>(() => [
     { label: '车牌号', value: props.vehicle.plateNo },
@@ -83,6 +96,39 @@
       color: var(--el-text-color-placeholder);
       background: var(--el-fill-color-light);
     }
+
+    &__main {
+      display: grid;
+      gap: 14px;
+      min-width: 0;
+    }
+
+    &__header {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      justify-content: space-between;
+      min-width: 0;
+
+      > div {
+        display: grid;
+        gap: 3px;
+        min-width: 0;
+      }
+
+      span {
+        font-size: 16px;
+        font-weight: 700;
+        color: var(--el-text-color-primary);
+      }
+
+      small {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        color: var(--el-text-color-secondary);
+        white-space: nowrap;
+      }
+    }
   }
 
   @media (width <= 900px) {
@@ -92,6 +138,19 @@
       &__photo {
         width: 100%;
         max-width: 260px;
+      }
+    }
+  }
+
+  @media (width <= 640px) {
+    .vehicle-query-summary {
+      &__header {
+        flex-direction: column;
+        align-items: stretch;
+
+        :deep(.el-button) {
+          width: 100%;
+        }
       }
     }
   }

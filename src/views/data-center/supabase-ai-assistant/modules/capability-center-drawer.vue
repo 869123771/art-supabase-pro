@@ -390,7 +390,7 @@
     edgeFunctions.value = data.edgeFunctions
     await drawerRef.value?.handleOpen(data, {
       title: 'Supabase 全域能力中心',
-      size: '760px',
+      size: 'lg',
       contentHeight: 'calc(100vh - 94px)',
       showFooter: false,
       scrollbarAlways: true,

@@ -273,25 +273,13 @@
                     </ElInput>
                     <span> {{ filteredColumns.length }} / {{ detail.columns.length }} 个字段 </span>
                   </div>
-                  <ElTable :data="filteredColumns" height="calc(100% - 49px)" stripe>
-                    <ElTableColumn prop="name" label="字段" min-width="150" />
-                    <ElTableColumn prop="dataType" label="类型" min-width="160" />
-                    <ElTableColumn label="可空" width="80">
-                      <template #default="scope">{{ scope.row.nullable ? '是' : '否' }}</template>
-                    </ElTableColumn>
-                    <ElTableColumn
-                      prop="defaultValue"
-                      label="默认值"
-                      min-width="180"
-                      show-overflow-tooltip
-                    />
-                    <ElTableColumn
-                      prop="description"
-                      label="字段说明"
-                      min-width="180"
-                      show-overflow-tooltip
-                    />
-                  </ElTable>
+                  <ArtTable
+                    :data="filteredColumns"
+                    :columns="fieldColumns"
+                    :pagination="false"
+                    height="calc(100% - 49px)"
+                    stripe
+                  />
                 </div>
               </ElTabPane>
               <ElTabPane
@@ -447,28 +435,13 @@
                     <ElButton text size="small" @click="retryMessage(message.id)">
                       <ArtSvgIcon icon="ri:refresh-line" /> 重试
                     </ElButton>
-                    <template v-if="message.runId">
-                      <ElButton
-                        text
-                        circle
-                        size="small"
-                        :type="message.feedback === 1 ? 'primary' : ''"
-                        aria-label="有帮助"
-                        @click="rateMessage(message, 1)"
-                      >
-                        <ArtSvgIcon icon="ri:thumb-up-line" />
-                      </ElButton>
-                      <ElButton
-                        text
-                        circle
-                        size="small"
-                        :type="message.feedback === -1 ? 'danger' : ''"
-                        aria-label="需要改进"
-                        @click="rateMessage(message, -1)"
-                      >
-                        <ArtSvgIcon icon="ri:thumb-down-line" />
-                      </ElButton>
-                    </template>
+                    <ArtAiFeedback
+                      v-if="message.runId"
+                      :run-id="message.runId"
+                      context-label="Supabase AI 项目助手"
+                      compact
+                      @submitted="message.feedback = $event.rating"
+                    />
                   </div>
                 </div>
               </article>
@@ -542,13 +515,11 @@
       </ElSplitter>
     </section>
 
-    <ElDrawer
-      v-model="history.visible"
+    <ArtDrawer
+      ref="historyDrawerRef"
       class="project-assistant-history"
-      title="会话历史"
-      size="420px"
-      append-to-body
-      @open="loadHistory"
+      size="sm"
+      :show-footer="false"
     >
       <div class="project-assistant-history__toolbar">
         <ElInput
@@ -600,7 +571,7 @@
           <ElEmpty v-if="!history.items.length" description="暂无项目助手会话" />
         </div>
       </ElScrollbar>
-    </ElDrawer>
+    </ArtDrawer>
 
     <ProjectCapabilityCenterDrawer ref="capabilityCenterRef" @analyze="analyzePlatformCapability" />
   </div>
@@ -608,11 +579,14 @@
 
 <script setup lang="ts">
   import { useDebounceFn, useIntervalFn, useStorage } from '@vueuse/core'
-  import { ElMessage, ElMessageBox } from 'element-plus'
+  import { ElMessage } from 'element-plus'
   import type { ScrollbarInstance } from 'element-plus'
   import hljs from 'highlight.js/lib/core'
   import sqlLanguage from 'highlight.js/lib/languages/sql'
   import type { Directive } from 'vue'
+  import type { ColumnOption } from '@/types'
+  import ArtDrawer from '@/components/core/drawers/art-drawer/index.vue'
+  import type { ArtDrawerExpose } from '@/components/core/drawers/art-drawer/types'
   import {
     chatWithProjectAssistant,
     fetchProjectAssistantCapabilities,
@@ -620,9 +594,9 @@
     fetchProjectAssistantHistory,
     fetchProjectCatalog,
     renameProjectAssistantConversation,
-    submitProjectAssistantFeedback,
     updateProjectObjectDescription
   } from '@/api/supabase-ai-assistant'
+  import ArtAiFeedback from '@/components/core/base/art-ai-feedback/index.vue'
   import type { AiAssistantToolResult } from '@/types/ai-assistant'
   import type {
     ProjectAssistantCapabilities,
@@ -636,11 +610,14 @@
     ProjectOverview,
     ProjectRelationship
   } from '@/types/supabase-ai-assistant'
+  import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import ProjectCapabilityCenterDrawer from './modules/capability-center-drawer.vue'
 
   defineOptions({ name: 'SupabaseAiAssistant' })
 
   hljs.registerLanguage('sql', sqlLanguage)
+
+  const { promptText, confirmAction } = useArtFeedback()
 
   const vSqlHighlight: Directive<HTMLElement, string> = {
     mounted(element, binding) {
@@ -714,6 +691,7 @@
   const detailTab = ref('ddl')
   const fieldKeyword = ref('')
   const chatScrollbarRef = ref<ScrollbarInstance>()
+  const historyDrawerRef = ref<ArtDrawerExpose>()
   const capabilityCenterRef = ref<CapabilityCenterExpose>()
   const focusMode = useStorage('supabase-ai-assistant:focus-mode', false)
   const assistantMode = useStorage<ProjectAssistantSafetyMode>(
@@ -738,7 +716,6 @@
     messages: [] as ChatMessage[]
   })
   const history = reactive({
-    visible: false,
     loading: false,
     query: '',
     error: '',
@@ -786,6 +763,29 @@
         .some((value) => String(value).toLowerCase().includes(keyword))
     )
   })
+  const fieldColumns: ColumnOption<ProjectObjectColumn>[] = [
+    { prop: 'name', label: '字段', minWidth: 150 },
+    { prop: 'dataType', label: '类型', minWidth: 160 },
+    {
+      prop: 'nullable',
+      label: '可空',
+      width: 80,
+      align: 'center',
+      formatter: (row) => (row.nullable ? '是' : '否')
+    },
+    {
+      prop: 'defaultValue',
+      label: '默认值',
+      minWidth: 180,
+      showOverflowTooltip: true
+    },
+    {
+      prop: 'description',
+      label: '字段说明',
+      minWidth: 180,
+      showOverflowTooltip: true
+    }
+  ]
   const describedColumnCount = computed(
     () => detailColumns.value.filter((column) => column.description?.trim()).length
   )
@@ -1117,7 +1117,7 @@
       return false
     }
     try {
-      await ElMessageBox.confirm(
+      await confirmAction(
         '受控变更模式允许执行已确认的白名单操作，并会记录操作者、SQL、结果与耗时。是否继续？',
         '开启管理员受控变更',
         {
@@ -1143,20 +1143,21 @@
       if (!enabled) return
     }
     try {
-      const { value } = await ElMessageBox.prompt(
+      const description = await promptText(
         `为 ${target.schemaName}.${target.objectName} 填写数据库对象说明；留空将清除 COMMENT。`,
         '编辑对象说明',
         {
-          inputValue: detail.value?.description || target.description || '',
-          inputType: 'textarea',
-          inputPlaceholder: '请输入对象用途、数据范围或业务含义',
-          inputValidator: (value) => value.trim().length <= 500 || '对象说明不能超过 500 个字符',
+          allowEmpty: true,
+          initialValue: detail.value?.description || target.description || '',
+          maxLength: 500,
+          maxLengthMessage: '对象说明不能超过 500 个字符',
+          multiline: true,
+          placeholder: '请输入对象用途、数据范围或业务含义',
           confirmButtonText: '下一步',
-          cancelButtonText: '取消'
+          type: 'info'
         }
       )
-      const description = value.trim()
-      await ElMessageBox.confirm(
+      await confirmAction(
         `即将写入 ${target.schemaName}.${target.objectName} 的数据库 COMMENT，此操作会记录审计日志。`,
         '确认执行变更',
         {
@@ -1271,17 +1272,6 @@
     }
   }
 
-  async function rateMessage(message: ChatMessage, rating: -1 | 1): Promise<void> {
-    if (!message.runId || message.feedback === rating) return
-    try {
-      await submitProjectAssistantFeedback({ runId: message.runId, rating })
-      message.feedback = rating
-      ElMessage.success('感谢反馈，已纳入运行质量记录')
-    } catch (error) {
-      ElMessage.error(error instanceof Error ? error.message : '反馈提交失败')
-    }
-  }
-
   function exportConversation(): void {
     if (!chat.messages.length) return
     const content = [
@@ -1313,8 +1303,15 @@
     ElMessage.success('会话已导出为 Markdown')
   }
 
-  function openHistory(): void {
-    history.visible = true
+  async function openHistory(): Promise<void> {
+    await historyDrawerRef.value?.handleOpen(undefined, {
+      title: '会话历史',
+      size: 'sm',
+      showFooter: false,
+      contentHeight: 'calc(100vh - 90px)',
+      onOpen: loadHistory,
+      drawerProps: { appendToBody: true }
+    })
   }
 
   async function loadHistory(): Promise<void> {
@@ -1375,7 +1372,7 @@
           usage: message.usage
         }
       })
-      history.visible = false
+      historyDrawerRef.value?.handleClose()
       scrollChatToBottom()
       ElMessage.success('已恢复历史会话')
     } catch (error) {
@@ -1387,13 +1384,14 @@
 
   async function renameConversation(item: ProjectAssistantConversationSummary): Promise<void> {
     try {
-      const { value } = await ElMessageBox.prompt('请输入新的会话标题', '重命名会话', {
-        inputValue: item.title,
-        inputPattern: /\S+/,
-        inputErrorMessage: '会话标题不能为空',
-        inputValidator: (value) => value.trim().length <= 80 || '会话标题不能超过 80 个字符'
+      const title = await promptText('请输入新的会话标题', '重命名会话', {
+        initialValue: item.title,
+        maxLength: 80,
+        maxLengthMessage: '会话标题不能超过 80 个字符',
+        emptyMessage: '会话标题不能为空',
+        placeholder: '请输入会话标题',
+        type: 'info'
       })
-      const title = value.trim()
       await renameProjectAssistantConversation(item.id, title)
       item.title = title
       ElMessage.success('会话标题已更新')

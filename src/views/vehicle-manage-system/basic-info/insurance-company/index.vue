@@ -14,7 +14,8 @@
 </template>
 
 <script setup lang="tsx">
-  import { ElMessage, ElMessageBox } from 'element-plus'
+  import { useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import { ElMessage } from 'element-plus'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type {
     ArtTableQueryExpose,
@@ -35,6 +36,8 @@
   import InsuranceCompanyDialog from './modules/insurance-company-dialog.vue'
 
   defineOptions({ name: 'InsuranceCompany' })
+
+  const { confirmAction } = useArtFeedback()
 
   type InsuranceCompany = Api.VehicleMgtSys.BasicInfo.InsuranceCompany
   type SearchParams = Api.VehicleMgtSys.BasicInfo.InsuranceCompanySearchParams
@@ -199,16 +202,12 @@
     if (!row.id) return
 
     try {
-      await ElMessageBox.confirm(
-        `确定删除保险公司“${row.companyName}”吗？删除后无法恢复。`,
-        '删除确认',
-        {
-          confirmButtonText: '删除',
-          cancelButtonText: '取消',
-          type: 'warning',
-          confirmButtonClass: 'el-button--danger'
-        }
-      )
+      await confirmAction(`确定删除保险公司“${row.companyName}”吗？删除后无法恢复。`, '删除确认', {
+        confirmButtonText: '删除',
+        cancelButtonText: '取消',
+        type: 'warning',
+        confirmButtonClass: 'el-button--danger'
+      })
       await deleteInsuranceCompany(row.id)
       await tableQueryRef.value?.refreshRemove()
     } catch {

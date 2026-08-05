@@ -80,12 +80,15 @@
 </template>
 
 <script setup lang="ts">
+  import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import type { ElTree, NodeDropType } from 'element-plus'
-  import { ElMessage, ElMessageBox } from 'element-plus'
+  import { ElMessage } from 'element-plus'
   import { cloneDeep } from 'lodash-es'
   import TreeUtils from '@/utils/tree'
   import { deleteDictType, fetchGetDictTypeList, saveDictTypeTreeOrder } from '@/api/data-center'
   import DictTypeDialog from './dict-type-dialog.vue'
+
+  const { confirmAction } = useArtFeedback()
 
   type DictTypeItem = Api.DataCenter.DictTypeItem
   type AllowDrop = NonNullable<InstanceType<typeof ElTree>['$props']['allowDrop']>
@@ -608,7 +611,7 @@
     if (!row.id) return
 
     try {
-      await ElMessageBox.confirm(
+      await confirmAction(
         row.nodeType === 'directory'
           ? '确定删除该目录吗？目录下存在子节点时不能删除。'
           : '确定删除该字典类型吗？存在字典项时不能删除。',

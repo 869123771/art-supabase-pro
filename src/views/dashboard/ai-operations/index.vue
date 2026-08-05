@@ -47,6 +47,85 @@
       </article>
     </section>
 
+    <section class="ai-operations__quality art-card-xs" v-loading="overview.loading">
+      <header class="ai-operations__card-header ai-operations__quality-header">
+        <div>
+          <span>HUMAN-IN-THE-LOOP</span>
+          <h2>AI 填单质量闭环</h2>
+        </div>
+        <ElTag type="primary" effect="plain">
+          平均置信度 {{ overview.data.quality.averageConfidence.toFixed(1) }}%
+        </ElTag>
+      </header>
+
+      <div class="ai-operations__quality-metrics">
+        <article v-for="metric in qualityMetricCards" :key="metric.key">
+          <div :class="['ai-operations__metric-icon', `is-${metric.tone}`]">
+            <ArtSvgIcon :icon="metric.icon" />
+          </div>
+          <div>
+            <span>{{ metric.label }}</span>
+            <strong>{{ metric.value }}</strong>
+            <small>{{ metric.hint }}</small>
+          </div>
+        </article>
+      </div>
+
+      <div class="ai-operations__quality-content">
+        <article class="ai-operations__quality-trend">
+          <header>
+            <div>
+              <span>质量趋势</span>
+              <strong>草稿生成与保存采用</strong>
+            </div>
+          </header>
+          <ArtLineChart
+            height="230px"
+            :data="qualityTrendSeries"
+            :x-axis-data="qualityTrendLabels"
+            :colors="['#5b8ff9', '#36c98f']"
+            :show-area-color="true"
+            :show-axis-line="false"
+            :show-legend="true"
+            :loading="overview.loading"
+          />
+        </article>
+
+        <article class="ai-operations__field-quality">
+          <header>
+            <div>
+              <span>字段质量</span>
+              <strong>优先改进字段</strong>
+            </div>
+            <small>按人工修正次数排序</small>
+          </header>
+          <div v-if="overview.data.quality.fieldQuality.length" class="ai-operations__field-list">
+            <div v-for="item in overview.data.quality.fieldQuality" :key="item.field">
+              <div>
+                <span>{{ getAiOrderFieldLabel(item.field) }}</span>
+                <small>修正 {{ item.corrected }} / {{ item.total }}</small>
+              </div>
+              <ElProgress
+                :percentage="item.acceptanceRate"
+                :stroke-width="7"
+                :show-text="false"
+                :color="getQualityProgressColor(item.acceptanceRate)"
+              />
+              <strong>{{ item.acceptanceRate.toFixed(1) }}%</strong>
+            </div>
+          </div>
+          <ElEmpty v-else description="完成一次 AI 填单并保存后，将显示字段质量" :image-size="58" />
+        </article>
+      </div>
+    </section>
+
+    <AiFeedbackQualityPanel
+      :data="overview.data.feedbackQuality"
+      :loading="overview.loading"
+      @resolve="openFeedbackResolution"
+      @view-run="openRunById"
+    />
+
     <section class="ai-operations__insights">
       <article class="ai-operations__trend art-card-xs">
         <header class="ai-operations__card-header">
@@ -59,47 +138,70 @@
             <span class="is-danger">失败</span>
           </div>
         </header>
-        <ArtLineChart
-          height="260px"
-          :data="trendSeries"
-          :x-axis-data="trendLabels"
-          :colors="['#36c98f', '#f56c6c']"
-          :show-area-color="true"
-          :show-axis-line="false"
-          :show-legend="false"
-          :loading="overview.loading"
-        />
+        <div class="ai-operations__trend-chart">
+          <ArtLineChart
+            height="100%"
+            :data="trendSeries"
+            :x-axis-data="trendLabels"
+            :colors="['#36c98f', '#f56c6c']"
+            :show-area-color="true"
+            :show-axis-line="false"
+            :show-legend="false"
+            :loading="overview.loading"
+          />
+        </div>
       </article>
 
       <article class="ai-operations__features art-card-xs">
         <header class="ai-operations__card-header">
           <div>
-            <span>能力分布</span>
-            <h2>功能调用占比</h2>
+            <span>能力清单</span>
+            <h2>可用 AI 能力与调用情况</h2>
+            <p class="ai-operations__card-hint">
+              普通用户与管理员能力清单一致，调用数据按当前账号统计
+            </p>
           </div>
-          <strong>{{ formatNumber(overview.data.totalRuns) }} 次</strong>
+          <strong>{{ featureInventory.length }} 项可用</strong>
         </header>
         <div class="ai-operations__feature-content">
-          <ArtRingChart
-            height="210px"
-            :data="featureChartData"
-            :colors="['#5b8ff9', '#5ad8a6', '#f6bd16', '#7262fd', '#78d3f8']"
-            :center-text="`${overview.data.featureBreakdown.length} 个场景`"
-            :loading="overview.loading"
-          />
-          <div class="ai-operations__feature-list">
-            <div v-for="item in overview.data.featureBreakdown" :key="item.feature">
-              <span
-                ><i /><ArtDictDisplay dict-code="aiRunFeature" :value="item.feature" display="text"
-              /></span>
-              <strong>{{ item.total }}</strong>
-              <small>{{ formatDuration(item.averageLatencyMs) }}</small>
-            </div>
-            <ElEmpty
-              v-if="!overview.data.featureBreakdown.length"
-              description="暂无运行数据"
-              :image-size="54"
+          <div class="ai-operations__feature-chart">
+            <ArtRingChart
+              height="100%"
+              :data="featureChartData"
+              :colors="['#5b8ff9', '#5ad8a6', '#f6bd16', '#7262fd', '#78d3f8']"
+              :center-text="`${featureInventory.length} 项可用`"
+              :loading="overview.loading"
             />
+          </div>
+          <div class="ai-operations__feature-list-shell">
+            <div class="ai-operations__feature-list-header">
+              <span>能力</span>
+              <strong>调用</strong>
+              <small>平均耗时</small>
+            </div>
+            <ElScrollbar class="ai-operations__feature-scrollbar">
+              <div class="ai-operations__feature-list">
+                <div
+                  v-for="item in featureInventory"
+                  :key="item.feature"
+                  :class="{ 'is-unused': item.total === 0 }"
+                >
+                  <span
+                    ><i /><ArtDictDisplay
+                      dict-code="aiRunFeature"
+                      :value="item.feature"
+                      display="text"
+                  /></span>
+                  <strong>{{ item.total }} 次</strong>
+                  <small>{{ item.total ? formatDuration(item.averageLatencyMs) : '未调用' }}</small>
+                </div>
+                <ElEmpty
+                  v-if="!featureInventory.length"
+                  description="暂无可用 AI 能力"
+                  :image-size="54"
+                />
+              </div>
+            </ElScrollbar>
           </div>
         </div>
       </article>
@@ -149,6 +251,10 @@
     </section>
 
     <AiRunDetailDrawer ref="detailDrawerRef" @diagnosed="refreshAfterDiagnosis" />
+    <AiFeedbackResolutionDialog
+      ref="feedbackResolutionDialogRef"
+      @success="refreshAfterFeedbackResolution"
+    />
   </div>
 </template>
 
@@ -167,16 +273,24 @@
     createEmptyAiOperationsOverview,
     fetchAiOperationsOverview,
     fetchAiRunList,
+    type AiFeedbackQueueItem,
+    type AiOperationsFeatureStat,
     type AiOperationsOverview,
     type AiRunListItem,
     type AiRunSearchParams
   } from '@/api/ai-operations'
+  import AiFeedbackQualityPanel from './modules/ai-feedback-quality-panel.vue'
+  import AiFeedbackResolutionDialog from './modules/ai-feedback-resolution-dialog.vue'
   import AiRunDetailDrawer from './modules/ai-run-detail-drawer.vue'
 
   defineOptions({ name: 'AiOperations' })
 
   interface DetailDrawerExpose {
     handleOpen: (data: { id: string }) => Promise<void>
+  }
+
+  interface FeedbackResolutionDialogExpose {
+    handleOpen: (data: { item: AiFeedbackQueueItem }) => Promise<void>
   }
 
   type MetricTone = 'primary' | 'success' | 'warning' | 'purple'
@@ -194,6 +308,7 @@
   const { getDictMap } = storeToRefs(userStore)
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const detailDrawerRef = ref<DetailDrawerExpose>()
+  const feedbackResolutionDialogRef = ref<FeedbackResolutionDialogExpose>()
   const searchQuery = ref<Partial<AiRunSearchParams>>({
     feature: '',
     status: '',
@@ -241,6 +356,41 @@
     }
   ])
 
+  const qualityMetricCards = computed<MetricCard[]>(() => [
+    {
+      key: 'artifacts',
+      label: 'AI 草稿',
+      value: formatNumber(overview.data.quality.totalArtifacts),
+      hint: `${overview.data.quality.pendingArtifacts} 条等待形成最终结果`,
+      icon: 'ri:file-list-3-line',
+      tone: 'primary'
+    },
+    {
+      key: 'review',
+      label: '审查完成率',
+      value: `${overview.data.quality.reviewCompletionRate.toFixed(1)}%`,
+      hint: `${overview.data.quality.reviewedArtifacts} 条已形成闭环`,
+      icon: 'ri:user-follow-line',
+      tone: 'purple'
+    },
+    {
+      key: 'application',
+      label: '保存采用率',
+      value: `${overview.data.quality.applicationRate.toFixed(1)}%`,
+      hint: `${overview.data.quality.appliedArtifacts} 条草稿进入正式订单`,
+      icon: 'ri:save-3-line',
+      tone: 'success'
+    },
+    {
+      key: 'fields',
+      label: '字段直接采用率',
+      value: `${overview.data.quality.fieldAcceptanceRate.toFixed(1)}%`,
+      hint: `${overview.data.quality.correctedFields} 个字段被人工修正`,
+      icon: 'ri:edit-circle-line',
+      tone: 'warning'
+    }
+  ])
+
   const trendLabels = computed(() =>
     overview.data.dailyTrend.map((item) => dayjs(item.date).format('MM-DD'))
   )
@@ -256,6 +406,21 @@
       showAreaColor: true
     }
   ])
+  const qualityTrendLabels = computed(() =>
+    overview.data.quality.dailyTrend.map((item) => dayjs(item.date).format('MM-DD'))
+  )
+  const qualityTrendSeries = computed<LineDataItem[]>(() => [
+    {
+      name: 'AI 草稿',
+      data: overview.data.quality.dailyTrend.map((item) => item.total),
+      showAreaColor: true
+    },
+    {
+      name: '保存采用',
+      data: overview.data.quality.dailyTrend.map((item) => item.applied),
+      showAreaColor: true
+    }
+  ])
   const featureChartData = computed<PieDataItem[]>(() => {
     const featureDictionary = getDictMap.value?.aiRunFeature ?? []
     return overview.data.featureBreakdown.map((item) => ({
@@ -264,6 +429,28 @@
         item.feature,
       value: item.total
     }))
+  })
+  const featureInventory = computed<AiOperationsFeatureStat[]>(() => {
+    const featureDictionary = getDictMap.value?.aiRunFeature ?? []
+    const statistics = new Map(
+      overview.data.featureBreakdown.map((item) => [item.feature, item] as const)
+    )
+    const knownFeatures = new Set(featureDictionary.map((item) => item.value))
+    const availableFeatures = featureDictionary.map(
+      (item): AiOperationsFeatureStat =>
+        statistics.get(item.value) ?? {
+          feature: item.value,
+          total: 0,
+          succeeded: 0,
+          failed: 0,
+          averageLatencyMs: 0
+        }
+    )
+    const uncataloguedStatistics = overview.data.featureBreakdown.filter(
+      (item) => !knownFeatures.has(item.feature)
+    )
+
+    return [...availableFeatures, ...uncataloguedStatistics]
   })
 
   const searchItems = computed<SearchFormItem[]>(() => [
@@ -386,7 +573,19 @@
     void detailDrawerRef.value?.handleOpen({ id: row.id })
   }
 
+  function openRunById(runId: string): void {
+    void detailDrawerRef.value?.handleOpen({ id: runId })
+  }
+
+  function openFeedbackResolution(item: AiFeedbackQueueItem): void {
+    void feedbackResolutionDialogRef.value?.handleOpen({ item })
+  }
+
   function refreshAfterDiagnosis(): void {
+    void Promise.all([loadOverview(), tableQueryRef.value?.refreshData()])
+  }
+
+  function refreshAfterFeedbackResolution(): void {
     void Promise.all([loadOverview(), tableQueryRef.value?.refreshData()])
   }
 
@@ -402,6 +601,48 @@
     if (value > 15_000) return 'text-error'
     if (value > 5_000) return 'text-warning'
     return ''
+  }
+
+  function getAiOrderFieldLabel(field: string): string {
+    const labels: Record<string, string> = {
+      originStationName: '发货站',
+      destinationStationName: '到货站',
+      transferStationName: '中转站',
+      deliveryMethod: '配送方式',
+      shippingCustomerName: '发货客户',
+      shippingContactName: '发货联系人',
+      shippingContactPhone: '发货电话',
+      shippingAddressDetail: '发货地址',
+      receivingCustomerName: '收货客户',
+      receivingContactName: '收货联系人',
+      receivingContactPhone: '收货电话',
+      receivingAddressDetail: '收货地址',
+      cargoItems: '货物明细',
+      transportFee: '运费',
+      deliveryFee: '送货费',
+      unloadingFee: '卸货费',
+      collectPaymentFee: '代收货款手续费',
+      transferFee: '中转费',
+      declaredValue: '声明价值',
+      insuranceFee: '保险费',
+      packageFee: '包装费',
+      otherFee: '其他费用',
+      paymentMethod: '付款方式',
+      cashAmount: '现付金额',
+      collectAmount: '到付金额',
+      monthlyAmount: '月结金额',
+      codAmount: '代收货款',
+      handlingFee: '装卸费',
+      transportMode: '运输方式',
+      orderRemark: '订单备注'
+    }
+    return labels[field] || field
+  }
+
+  function getQualityProgressColor(rate: number): string {
+    if (rate >= 85) return 'var(--el-color-success)'
+    if (rate >= 60) return 'var(--el-color-warning)'
+    return 'var(--el-color-danger)'
   }
 
   function formatDuration(value?: number | null): string {
@@ -500,7 +741,7 @@
       font-size: 27px;
       color: #fff;
       background: linear-gradient(145deg, var(--el-color-primary), #7259e7);
-      border-radius: 17px;
+      border-radius: var(--art-feature-radius);
       box-shadow: 0 14px 30px rgb(64 116 255 / 25%);
     }
 
@@ -561,7 +802,7 @@
       width: 44px;
       height: 44px;
       font-size: 21px;
-      border-radius: 13px;
+      border-radius: var(--art-feature-radius);
     }
 
     &__metric-icon {
@@ -586,15 +827,154 @@
       }
     }
 
+    &__quality {
+      display: grid;
+      gap: 18px;
+      padding: 22px 24px;
+    }
+
+    &__quality-header {
+      margin-bottom: 0;
+
+      > div > span {
+        font-weight: 700;
+        color: var(--el-color-primary);
+        letter-spacing: 0.1em;
+      }
+    }
+
+    &__quality-metrics {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+
+      > article {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        min-width: 0;
+        padding: 14px;
+        background: var(--el-fill-color-lighter);
+        border-radius: var(--el-border-radius-base);
+
+        > div:last-child {
+          display: grid;
+          gap: 3px;
+          min-width: 0;
+        }
+
+        span,
+        small {
+          overflow: hidden;
+          text-overflow: ellipsis;
+          font-size: 11px;
+          color: var(--el-text-color-secondary);
+          white-space: nowrap;
+        }
+
+        strong {
+          font-size: 20px;
+          color: var(--el-text-color-primary);
+        }
+
+        small {
+          color: var(--el-text-color-placeholder);
+        }
+      }
+    }
+
+    &__quality-content {
+      display: grid;
+      grid-template-columns: minmax(0, 1.25fr) minmax(360px, 1fr);
+      gap: 18px;
+      min-width: 0;
+    }
+
+    &__quality-trend,
+    &__field-quality {
+      min-width: 0;
+      padding: 16px 18px;
+      border: 1px solid var(--el-border-color-lighter);
+      border-radius: var(--el-border-radius-base);
+
+      > header,
+      > header > div {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      > header {
+        margin-bottom: 8px;
+
+        span,
+        small {
+          font-size: 11px;
+          color: var(--el-text-color-secondary);
+        }
+
+        strong {
+          font-size: 14px;
+          color: var(--el-text-color-primary);
+        }
+      }
+    }
+
+    &__field-list {
+      display: grid;
+      gap: 11px;
+
+      > div {
+        display: grid;
+        grid-template-columns: minmax(130px, 1fr) minmax(90px, 0.8fr) 48px;
+        gap: 10px;
+        align-items: center;
+
+        > div:first-child {
+          display: grid;
+          min-width: 0;
+        }
+
+        span,
+        small {
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        span {
+          font-size: 12px;
+          color: var(--el-text-color-primary);
+        }
+
+        small {
+          font-size: 10px;
+          color: var(--el-text-color-placeholder);
+        }
+
+        > strong {
+          font-size: 11px;
+          color: var(--el-text-color-secondary);
+          text-align: right;
+        }
+      }
+    }
+
     &__insights {
       display: grid;
       grid-template-columns: minmax(0, 1.65fr) minmax(340px, 1fr);
       gap: 16px;
+      align-items: stretch;
     }
 
     &__trend,
     &__features {
+      display: flex;
+      flex-direction: column;
       min-width: 0;
+      height: clamp(390px, 48vh, 480px);
+      min-height: 0;
       padding: 21px 24px 14px;
     }
 
@@ -622,6 +1002,13 @@
       }
     }
 
+    &__card-hint {
+      margin: 4px 0 0;
+      font-size: 11px;
+      line-height: 1.5;
+      color: var(--el-text-color-placeholder);
+    }
+
     &__legend {
       display: flex;
       gap: 14px;
@@ -646,14 +1033,50 @@
 
     &__feature-content {
       display: grid;
-      grid-template-columns: 46% 54%;
-      align-items: center;
-      min-height: 250px;
+      flex: 1;
+      grid-template-columns: minmax(160px, 0.9fr) minmax(230px, 1.1fr);
+      gap: 14px;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    &__trend-chart,
+    &__feature-chart {
+      min-width: 0;
+      min-height: 0;
+    }
+
+    &__trend-chart {
+      flex: 1;
+    }
+
+    &__feature-chart {
+      display: grid;
+      place-items: center;
+    }
+
+    &__feature-list-shell {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      min-width: 0;
+      min-height: 0;
+      padding: 4px 0 2px;
+      overflow: hidden;
+    }
+
+    &__feature-scrollbar {
+      flex: 1;
+      min-height: 0;
+
+      :deep(.el-scrollbar__view) {
+        padding-right: 10px;
+      }
     }
 
     &__feature-list {
       display: grid;
-      gap: 12px;
+      gap: 7px;
       min-width: 0;
 
       > div:not(.el-empty) {
@@ -661,6 +1084,7 @@
         grid-template-columns: minmax(0, 1fr) auto auto;
         gap: 10px;
         align-items: center;
+        min-height: 20px;
       }
 
       span {
@@ -688,6 +1112,35 @@
         font-size: 10px;
         color: var(--el-text-color-placeholder);
         text-align: right;
+      }
+
+      .is-unused {
+        i {
+          background: transparent;
+          border: 1px solid var(--el-color-primary-light-5);
+        }
+
+        strong,
+        small {
+          color: var(--el-text-color-placeholder);
+        }
+      }
+    }
+
+    &__feature-list-header {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto auto;
+      gap: 10px;
+      align-items: center;
+      padding-bottom: 3px;
+      border-bottom: 1px solid var(--el-border-color-lighter);
+
+      span,
+      strong,
+      small {
+        font-size: 10px;
+        font-weight: 500;
+        color: var(--el-text-color-placeholder);
       }
     }
 
@@ -789,6 +1242,14 @@
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
 
+      &__quality-metrics {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      &__quality-content {
+        grid-template-columns: 1fr;
+      }
+
       &__insights {
         grid-template-columns: 1fr;
       }
@@ -822,8 +1283,33 @@
         grid-template-columns: 1fr;
       }
 
-      &__feature-content {
+      &__quality {
+        padding: 18px;
+      }
+
+      &__quality-header {
+        align-items: flex-start;
+      }
+
+      &__quality-metrics {
         grid-template-columns: 1fr;
+      }
+
+      &__field-list > div {
+        grid-template-columns: minmax(120px, 1fr) 76px 44px;
+      }
+
+      &__feature-content {
+        grid-template-rows: 210px minmax(250px, 1fr);
+        grid-template-columns: 1fr;
+      }
+
+      &__trend {
+        height: 390px;
+      }
+
+      &__features {
+        height: 610px;
       }
 
       &__health {

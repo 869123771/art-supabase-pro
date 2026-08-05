@@ -67,8 +67,9 @@
 </template>
 
 <script setup lang="tsx">
+  import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import dayjs from 'dayjs'
-  import { ElMessage, ElMessageBox, ElTooltip } from 'element-plus'
+  import { ElMessage, ElTooltip } from 'element-plus'
   import type { ComputedRef, UnwrapNestedRefs } from 'vue'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import {
@@ -93,6 +94,8 @@
   import AiPromptDialog, { type AiPromptDialogOpenData } from './modules/ai-prompt-dialog.vue'
 
   defineOptions({ name: 'AiPrompt' })
+
+  const { confirmAction } = useArtFeedback()
 
   interface DialogExpose {
     handleOpen: (data: AiPromptDialogOpenData) => Promise<void>
@@ -234,7 +237,7 @@
 
   async function handlePublish(row: AiPromptTemplate): Promise<void> {
     const isRollback = row.status === 'archived'
-    await ElMessageBox.confirm(
+    await confirmAction(
       isRollback
         ? `确认回滚到 ${row.version}？当前生效版本会自动归档，新请求将立即使用该版本。`
         : `确认发布 ${row.version}？当前生效版本会自动归档，新请求将立即使用此 Prompt。`,
@@ -251,15 +254,11 @@
   }
 
   async function handleDelete(row: AiPromptTemplate): Promise<void> {
-    await ElMessageBox.confirm(
-      `确认删除草稿 ${row.version}？此操作不可恢复。`,
-      '删除 Prompt 草稿',
-      {
-        type: 'warning',
-        confirmButtonText: '确认删除',
-        cancelButtonText: '取消'
-      }
-    )
+    await confirmAction(`确认删除草稿 ${row.version}？此操作不可恢复。`, '删除 Prompt 草稿', {
+      type: 'warning',
+      confirmButtonText: '确认删除',
+      cancelButtonText: '取消'
+    })
     await deleteAiPromptDraft(row.id)
     await Promise.all([loadOverview(), tableQueryRef.value?.refreshRemove()])
   }

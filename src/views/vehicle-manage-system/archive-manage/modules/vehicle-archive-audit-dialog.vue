@@ -118,7 +118,7 @@
 
     await dialogRef.value?.handleOpen(row, {
       title: `审核车辆档案${row.plateNo ? `：${row.plateNo}` : ''}`,
-      width: '620px',
+      size: 'md',
       onConfirm: handleSubmit,
       onReset: () => {
         form.value.data = createInitialForm()
@@ -143,7 +143,7 @@
 
     await dialogRef.value?.handleOpen(rows[0], {
       title: `批量审核车辆档案（${ids.length}条）`,
-      width: '620px',
+      size: 'md',
       onConfirm: handleSubmit,
       onReset: () => {
         form.value.data = createInitialForm()

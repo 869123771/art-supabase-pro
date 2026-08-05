@@ -1,210 +1,222 @@
 <template>
-  <div ref="pageRef" class="order-open" v-loading="page.loading">
-    <div class="order-open__header art-card-xs">
-      <div class="order-open__badge">
-        <span>运单号：{{ form.data.orderNo }}</span>
-        <span>货号：{{ form.data.cargoNo }}</span>
-      </div>
-      <div class="order-open__title">货 物 运 输 单</div>
-      <div class="order-open__time">
-        <ArtSvgIcon icon="ri:calendar-line" />
-        <span>{{ page.nowText }}</span>
-      </div>
-    </div>
-
-    <section class="order-open__section order-open__section--compact art-card-xs">
-      <ArtForm
-        ref="stationFormRef"
-        v-model="form.data"
-        :items="form.stationItems"
-        :rules="form.rules"
-        :span="6"
-        :gutter="24"
-        label-width="84px"
-        root-class="order-open__form"
-        :show-reset="false"
-        :show-submit="false"
-      />
-    </section>
-
-    <section class="order-open__section art-card-xs">
-      <div class="order-open__contact-grid">
-        <div class="order-open__contact-panel">
-          <div class="order-open__contact-heading">
-            <span class="order-open__contact-mark order-open__contact-mark--send">寄</span>
-            <h3>发货人信息</h3>
-            <ElButton size="small" @click="openCustomerSelector('shipping')">选择客户</ElButton>
-          </div>
-          <ArtForm
-            ref="shippingFormRef"
-            v-model="form.data"
-            :items="form.shippingItems"
-            :rules="form.rules"
-            :span="24"
-            label-width="88px"
-            root-class="order-open__form"
-            :show-reset="false"
-            :show-submit="false"
-          />
+  <ArtPageShell
+    class="order-open"
+    :loading="page.loading"
+    loading-mode="skeleton"
+    :error="page.error"
+    @retry="initializePage"
+  >
+    <div ref="pageRef" class="order-open__content">
+      <div class="order-open__header art-card-xs">
+        <div class="order-open__badge">
+          <span>运单号：{{ form.data.orderNo }}</span>
+          <span>货号：{{ form.data.cargoNo }}</span>
         </div>
-
-        <div class="order-open__swap">
-          <ElButton circle text @click="swapContacts">
-            <ArtSvgIcon icon="ri:arrow-left-right-line" />
-          </ElButton>
-        </div>
-
-        <div class="order-open__contact-panel">
-          <div class="order-open__contact-heading">
-            <span class="order-open__contact-mark order-open__contact-mark--receive">收</span>
-            <h3>收货人信息</h3>
-            <ElButton size="small" @click="openCustomerSelector('receiving')">选择客户</ElButton>
-          </div>
-          <ArtForm
-            ref="receivingFormRef"
-            v-model="form.data"
-            :items="form.receivingItems"
-            :rules="form.rules"
-            :span="24"
-            label-width="88px"
-            root-class="order-open__form"
-            :show-reset="false"
-            :show-submit="false"
-          />
+        <div class="order-open__title">货 物 运 输 单</div>
+        <div class="order-open__time">
+          <ArtSvgIcon icon="ri:calendar-line" />
+          <span>{{ page.nowText }}</span>
         </div>
       </div>
-    </section>
 
-    <section class="order-open__section art-card-xs">
-      <div class="order-open__section-header">
-        <ArtSectionTitle :show-line="false">货品信息</ArtSectionTitle>
-        <div class="order-open__section-actions">
-          <ElButton plain :icon="Collection" @click="openCargoSelector">批量选货物</ElButton>
-          <ElButton type="primary" plain :icon="Plus" @click="addCargoItem">添加</ElButton>
-        </div>
-      </div>
-      <ArtTable
-        :data="form.cargoItems"
-        :columns="form.cargoColumns"
-        :pagination="undefined"
-        :show-table-header="false"
-        table-layout="fixed"
-        empty-height="160px"
-      />
-      <div class="order-open__cargo-summary">
-        <span>总数量：{{ form.cargoQuantityText }}</span>
-        <span>总重量：{{ form.cargoWeightText }}kg</span>
-        <span>总体积：{{ form.cargoVolumeText }}方</span>
-      </div>
-    </section>
-
-    <section class="order-open__section art-card-xs">
-      <ArtSectionTitle>运费设置</ArtSectionTitle>
-      <ArtForm
-        ref="feeFormRef"
-        v-model="form.data"
-        :items="form.feeItems"
-        :span="5"
-        :gutter="22"
-        label-width="80px"
-        root-class="order-open__form"
-        :show-reset="false"
-        :show-submit="false"
-      />
-    </section>
-
-    <section class="order-open__section art-card-xs">
-      <ArtSectionTitle>付款设置</ArtSectionTitle>
-      <ArtForm
-        ref="paymentFormRef"
-        v-model="form.data"
-        :items="form.paymentItems"
-        :rules="form.rules"
-        :span="5"
-        :gutter="22"
-        label-width="88px"
-        root-class="order-open__form"
-        :show-reset="false"
-        :show-submit="false"
-      />
-    </section>
-
-    <section class="order-open__section art-card-xs">
-      <ArtSectionTitle>其他信息</ArtSectionTitle>
-      <ArtForm
-        ref="otherFormRef"
-        v-model="form.data"
-        :items="form.otherItems"
-        :span="8"
-        :gutter="22"
-        label-width="80px"
-        root-class="order-open__form"
-        :show-reset="false"
-        :show-submit="false"
-      />
-      <div class="order-open__upload-row">
-        <span>图片上传</span>
-        <ArtUploadImage
-          v-model="form.data.imageUrls"
-          title="上传图片"
-          :size="104"
-          :limit="3"
-          multiple
+      <section class="order-open__section order-open__section--compact art-card-xs">
+        <ArtForm
+          ref="stationFormRef"
+          v-model="form.data"
+          :items="form.stationItems"
+          :rules="form.rules"
+          :span="6"
+          :gutter="24"
+          label-width="84px"
+          root-class="order-open__form"
+          :show-reset="false"
+          :show-submit="false"
         />
-      </div>
-    </section>
+      </section>
 
-    <div class="order-open__footer art-card-xs">
-      <div class="order-open__footer-total">
-        <span>总运费：</span>
-        <strong>￥{{ form.totalFeeText }}</strong>
-        <ElPopover
-          placement="top-start"
-          width="280"
-          trigger="click"
-          popper-class="order-open-fee-popover"
-        >
-          <template #reference>
-            <ElButton link type="primary">明细 <ArtSvgIcon icon="ri:arrow-down-s-line" /></ElButton>
-          </template>
-          <div class="order-open__fee-detail">
-            <div class="order-open__fee-detail-title">
-              <span>预估费用明细</span>
+      <section class="order-open__section art-card-xs">
+        <div class="order-open__contact-grid">
+          <div class="order-open__contact-panel">
+            <div class="order-open__contact-heading">
+              <span class="order-open__contact-mark order-open__contact-mark--send">寄</span>
+              <h3>发货人信息</h3>
+              <ElButton size="small" @click="openCustomerSelector('shipping')">选择客户</ElButton>
             </div>
-            <p>实际费用按开单员揽收时称重或测量体积计算，运费四舍五入取整。</p>
-            <dl>
-              <dt>基础运费</dt>
-              <dd>￥{{ formatNumber(form.data.transportFee) }}</dd>
-              <dt>附加服务费</dt>
-              <dd>￥{{ formatNumber(form.extraServiceFee) }}</dd>
-              <dt>计费类型</dt>
-              <dd>{{ form.paymentMethodLabel }}</dd>
-              <dt>重量</dt>
-              <dd>{{ form.cargoWeightText }}kg</dd>
-            </dl>
+            <ArtForm
+              ref="shippingFormRef"
+              v-model="form.data"
+              :items="form.shippingItems"
+              :rules="form.rules"
+              :span="24"
+              label-width="88px"
+              root-class="order-open__form"
+              :show-reset="false"
+              :show-submit="false"
+            />
           </div>
-        </ElPopover>
-        <ElButton type="info" link>查看计费标准</ElButton>
-      </div>
 
-      <div class="order-open__footer-actions">
-        <ElButton size="large" :loading="page.saving" @click="handleSaveOnly">仅开单</ElButton>
-        <ElButton size="large" type="primary" plain @click="openAiOrderDrawer">
-          AI智能填单
-        </ElButton>
-        <ElButton size="large" type="primary" @click="openPrintDialog('waybill')"
-          >打印运单</ElButton
-        >
-        <ElButton size="large" type="primary" @click="openPrintDialog('label')">打印标签</ElButton>
-        <ElButton size="large" type="primary" @click="handleDoublePrint">双打</ElButton>
-      </div>
+          <div class="order-open__swap">
+            <ElButton circle text @click="swapContacts">
+              <ArtSvgIcon icon="ri:arrow-left-right-line" />
+            </ElButton>
+          </div>
+
+          <div class="order-open__contact-panel">
+            <div class="order-open__contact-heading">
+              <span class="order-open__contact-mark order-open__contact-mark--receive">收</span>
+              <h3>收货人信息</h3>
+              <ElButton size="small" @click="openCustomerSelector('receiving')">选择客户</ElButton>
+            </div>
+            <ArtForm
+              ref="receivingFormRef"
+              v-model="form.data"
+              :items="form.receivingItems"
+              :rules="form.rules"
+              :span="24"
+              label-width="88px"
+              root-class="order-open__form"
+              :show-reset="false"
+              :show-submit="false"
+            />
+          </div>
+        </div>
+      </section>
+
+      <section class="order-open__section art-card-xs">
+        <div class="order-open__section-header">
+          <ArtSectionTitle :show-line="false">货品信息</ArtSectionTitle>
+          <div class="order-open__section-actions">
+            <ElButton plain :icon="Collection" @click="openCargoSelector">批量选货物</ElButton>
+            <ElButton type="primary" plain :icon="Plus" @click="addCargoItem">添加</ElButton>
+          </div>
+        </div>
+        <ArtTable
+          :data="form.cargoItems"
+          :columns="form.cargoColumns"
+          :pagination="undefined"
+          :show-table-header="false"
+          table-layout="fixed"
+          empty-height="160px"
+        />
+        <div class="order-open__cargo-summary">
+          <span>总数量：{{ form.cargoQuantityText }}</span>
+          <span>总重量：{{ form.cargoWeightText }}kg</span>
+          <span>总体积：{{ form.cargoVolumeText }}方</span>
+        </div>
+      </section>
+
+      <section class="order-open__section art-card-xs">
+        <ArtSectionTitle>运费设置</ArtSectionTitle>
+        <ArtForm
+          ref="feeFormRef"
+          v-model="form.data"
+          :items="form.feeItems"
+          :span="5"
+          :gutter="22"
+          label-width="80px"
+          root-class="order-open__form"
+          :show-reset="false"
+          :show-submit="false"
+        />
+      </section>
+
+      <section class="order-open__section art-card-xs">
+        <ArtSectionTitle>付款设置</ArtSectionTitle>
+        <ArtForm
+          ref="paymentFormRef"
+          v-model="form.data"
+          :items="form.paymentItems"
+          :rules="form.rules"
+          :span="5"
+          :gutter="22"
+          label-width="88px"
+          root-class="order-open__form"
+          :show-reset="false"
+          :show-submit="false"
+        />
+      </section>
+
+      <section class="order-open__section art-card-xs">
+        <ArtSectionTitle>其他信息</ArtSectionTitle>
+        <ArtForm
+          ref="otherFormRef"
+          v-model="form.data"
+          :items="form.otherItems"
+          :span="8"
+          :gutter="22"
+          label-width="80px"
+          root-class="order-open__form"
+          :show-reset="false"
+          :show-submit="false"
+        />
+        <div class="order-open__upload-row">
+          <span>图片上传</span>
+          <ArtUploadImage
+            v-model="form.data.imageUrls"
+            title="上传图片"
+            :size="104"
+            :limit="3"
+            multiple
+          />
+        </div>
+      </section>
+
+      <ArtStickyActionBar class="order-open__footer">
+        <template #summary>
+          <div class="order-open__footer-total">
+            <span>总运费：</span>
+            <strong>￥{{ form.totalFeeText }}</strong>
+            <ElPopover
+              placement="top-start"
+              width="280"
+              trigger="click"
+              popper-class="order-open-fee-popover"
+            >
+              <template #reference>
+                <ElButton link type="primary">
+                  明细 <ArtSvgIcon icon="ri:arrow-down-s-line" />
+                </ElButton>
+              </template>
+              <div class="order-open__fee-detail">
+                <div class="order-open__fee-detail-title">
+                  <span>预估费用明细</span>
+                </div>
+                <p>实际费用按开单员揽收时称重或测量体积计算，运费四舍五入取整。</p>
+                <dl>
+                  <dt>基础运费</dt>
+                  <dd>￥{{ formatNumber(form.data.transportFee) }}</dd>
+                  <dt>附加服务费</dt>
+                  <dd>￥{{ formatNumber(form.extraServiceFee) }}</dd>
+                  <dt>计费类型</dt>
+                  <dd>{{ form.paymentMethodLabel }}</dd>
+                  <dt>重量</dt>
+                  <dd>{{ form.cargoWeightText }}kg</dd>
+                </dl>
+              </div>
+            </ElPopover>
+            <ElButton type="info" link>查看计费标准</ElButton>
+          </div>
+        </template>
+
+        <div class="order-open__footer-actions">
+          <ElButton size="large" type="primary" :loading="page.saving" @click="handleSaveOnly">
+            仅开单
+          </ElButton>
+          <ElButton size="large" type="primary" plain @click="openAiOrderDrawer">
+            AI智能填单
+          </ElButton>
+          <ElButton size="large" plain @click="openPrintDialog('waybill')"> 打印运单 </ElButton>
+          <ElButton size="large" plain @click="openPrintDialog('label')"> 打印标签 </ElButton>
+          <ElButton size="large" plain @click="handleDoublePrint">双打</ElButton>
+        </div>
+      </ArtStickyActionBar>
+
+      <CustomerSelectorDialog ref="customerDialogRef" @select="handleCustomerSelect" />
+      <PrintCountDialog ref="printDialogRef" @confirm="handlePrintConfirm" />
+      <CargoMultipleSelect ref="cargoSelectorRef" @confirm="handleCargoSelectorConfirm" />
+      <AiOrderDrawer ref="aiOrderDrawerRef" @apply="handleAiOrderApply" />
     </div>
-
-    <CustomerSelectorDialog ref="customerDialogRef" @select="handleCustomerSelect" />
-    <PrintCountDialog ref="printDialogRef" @confirm="handlePrintConfirm" />
-    <CargoMultipleSelect ref="cargoSelectorRef" @confirm="handleCargoSelectorConfirm" />
-    <AiOrderDrawer ref="aiOrderDrawerRef" @apply="handleAiOrderApply" />
-  </div>
+  </ArtPageShell>
 </template>
 
 <script setup lang="tsx">
@@ -219,6 +231,7 @@
   import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
   import ArtUploadImage from '@/components/core/forms/art-upload-image/index.vue'
   import ArtTable from '@/components/core/tables/art-table/index.vue'
+  import { useAmapGeocoder } from '@/hooks/core/useAmapGeocoder'
   import type { ColumnOption } from '@/types'
   import {
     addOrder,
@@ -227,15 +240,21 @@
     fetchCustomerDefaultAddress,
     fetchCustomerPriceList,
     fetchOrderDetail,
-    fetchStationOptions
+    fetchStationOptions,
+    reviewAiOrderArtifact
   } from '@/api/tms'
   import { useUserStore } from '@/store/modules/user'
   import { clearFormRefsValidation, validateFormRefs } from '@/utils/form/validation'
   import CargoMultipleSelect from '../modules/cargo-multiple-select.vue'
   import AiOrderDrawer from './modules/ai-order-drawer.vue'
+  import { buildAiOrderFinalPayload } from './modules/ai-order-review'
   import CustomerSelectorDialog from './modules/customer-selector-dialog.vue'
   import PrintCountDialog from './modules/print-count-dialog.vue'
-  import type { AiOrderApplyPayload, AiOrderDrawerExpose } from './modules/ai-order-types'
+  import type {
+    AiAddressReferenceMatch,
+    AiOrderApplyPayload,
+    AiOrderDrawerExpose
+  } from './modules/ai-order-types'
   import {
     createInitialCargoItem,
     createInitialForm,
@@ -313,12 +332,18 @@
     loading: boolean
     saving: boolean
     nowText: ComputedRef<string>
+    error: Error | null
   }
 
   interface CargoSummary {
     quantity: number
     weight: number
     volume: number
+  }
+
+  interface AiAddressCoordinateResolution {
+    patch: ContactPatch
+    failed: boolean
   }
 
   interface FormGroup {
@@ -350,6 +375,7 @@
   const route = useRoute()
   const router = useRouter()
   const userStore = useUserStore()
+  const { geocodeAddress } = useAmapGeocoder()
   const { getDictMap } = storeToRefs(userStore)
   const stationFormRef = ref<FormExpose>()
   const shippingFormRef = ref<FormExpose>()
@@ -361,6 +387,7 @@
   const printDialogRef = ref<PrintDialogExpose>()
   const cargoSelectorRef = ref<CargoSelectorExpose>()
   const aiOrderDrawerRef = ref<AiOrderDrawerExpose>()
+  const aiArtifactId = ref<string>()
   const initializedOrderId = ref<string>()
   const validatedFormRefs = [stationFormRef, shippingFormRef, receivingFormRef, paymentFormRef]
 
@@ -388,7 +415,8 @@
   const page = reactive<PageGroup>({
     loading: false,
     saving: false,
-    nowText: useDateFormat(useNow({ interval: 1000 }), 'YYYY/MM/DD HH:mm:ss')
+    nowText: useDateFormat(useNow({ interval: 1000 }), 'YYYY/MM/DD HH:mm:ss'),
+    error: null
   })
 
   const form: UnwrapNestedRefs<FormGroup> = reactive<FormGroup>({
@@ -487,7 +515,11 @@
         label: '发货地址',
         key: 'shippingAddressDetail',
         type: 'input',
-        props: { maxlength: 200, placeholder: '请输入发货地址' }
+        props: {
+          maxlength: 200,
+          placeholder: '请输入发货地址',
+          onInput: () => clearAddressCoordinates('shipping')
+        }
       }
     ]),
     receivingItems: computed<FormItem[]>(() => [
@@ -513,7 +545,11 @@
         label: '收货地址',
         key: 'receivingAddressDetail',
         type: 'input',
-        props: { maxlength: 200, placeholder: '请输入收货地址，配送上门请输入详细地址' }
+        props: {
+          maxlength: 200,
+          placeholder: '请输入收货地址，配送上门请输入详细地址',
+          onInput: () => clearAddressCoordinates('receiving')
+        }
       }
     ]),
     feeItems: computed<FormItem[]>(() => [
@@ -713,17 +749,21 @@
 
   async function initializePage(): Promise<void> {
     const orderId = getOrderId()
-    if (page.loading || initializedOrderId.value === orderId) return
+    if (page.loading || (initializedOrderId.value === orderId && !page.error)) return
 
     page.loading = true
+    page.error = null
     try {
+      aiArtifactId.value = undefined
       await Promise.all(dictCodes.map((code) => userStore.ensureDictLoaded(code)))
       if (orderId) await loadOrderDetail(orderId)
       else replaceForm(createInitialForm())
       fillDefaultOptions()
-      initializedOrderId.value = orderId
       await nextTick()
       clearFormRefsValidation(validatedFormRefs)
+      initializedOrderId.value = orderId
+    } catch (error) {
+      page.error = error instanceof Error ? error : new Error('开单信息加载失败')
     } finally {
       page.loading = false
     }
@@ -1165,6 +1205,20 @@
     applyDraftTextFields(patch, draft)
     applyDraftNumberFields(patch, draft)
 
+    const [shippingCoordinates, receivingCoordinates] = await Promise.all([
+      resolveAiAddressCoordinates(
+        'shipping',
+        draft.shippingAddressDetail,
+        references.shippingAddress
+      ),
+      resolveAiAddressCoordinates(
+        'receiving',
+        draft.receivingAddressDetail,
+        references.receivingAddress
+      )
+    ])
+    Object.assign(patch, shippingCoordinates.patch, receivingCoordinates.patch)
+
     if (references.originStation.id) {
       Object.assign(patch, {
         originStationId: references.originStation.id,
@@ -1190,18 +1244,12 @@
         shippingCustomerName: references.shippingCustomer.label || draft.shippingCustomerName || ''
       })
     }
-    if (references.shippingAddress.id) {
-      Object.assign(patch, { shippingAddressId: references.shippingAddress.id })
-    }
     if (references.receivingCustomer.id) {
       Object.assign(patch, {
         receivingCustomerId: references.receivingCustomer.id,
         receivingCustomerName:
           references.receivingCustomer.label || draft.receivingCustomerName || ''
       })
-    }
-    if (references.receivingAddress.id) {
-      Object.assign(patch, { receivingAddressId: references.receivingAddress.id })
     }
 
     Object.assign(form.data, patch)
@@ -1219,7 +1267,87 @@
 
     await nextTick()
     clearFormRefsValidation(validatedFormRefs)
+    aiArtifactId.value = payload.analysis.artifactId
     ElMessage.success('AI 识别结果已填入，请检查后保存订单')
+    const failedAddressLabels = [
+      shippingCoordinates.failed ? '发货地址' : '',
+      receivingCoordinates.failed ? '收货地址' : ''
+    ].filter(Boolean)
+    if (failedAddressLabels.length) {
+      ElMessage.warning(`${failedAddressLabels.join('、')}未能定位，请通过客户地址选择地图位置`)
+    }
+  }
+
+  async function resolveAiAddressCoordinates(
+    mode: SelectorMode,
+    address: string | null | undefined,
+    reference: AiAddressReferenceMatch
+  ): Promise<AiAddressCoordinateResolution> {
+    const normalizedAddress = textValue(address)
+    if (!normalizedAddress) return { patch: {}, failed: false }
+
+    const longitude = nullableNumber(reference.longitude)
+    const latitude = nullableNumber(reference.latitude)
+    if (isValidCoordinate(longitude, latitude)) {
+      return {
+        patch: createCoordinatePatch(mode, reference.id ?? null, longitude, latitude),
+        failed: false
+      }
+    }
+
+    try {
+      const location = await geocodeAddress(normalizedAddress)
+      return location
+        ? {
+            patch: createCoordinatePatch(
+              mode,
+              reference.id ?? null,
+              location.longitude,
+              location.latitude
+            ),
+            failed: false
+          }
+        : { patch: createCoordinatePatch(mode, reference.id ?? null, null, null), failed: true }
+    } catch {
+      return { patch: createCoordinatePatch(mode, reference.id ?? null, null, null), failed: true }
+    }
+  }
+
+  function createCoordinatePatch(
+    mode: SelectorMode,
+    addressId: string | null,
+    longitude: number | null,
+    latitude: number | null
+  ): ContactPatch {
+    return mode === 'shipping'
+      ? {
+          shippingAddressId: addressId,
+          shippingLongitude: longitude,
+          shippingLatitude: latitude
+        }
+      : {
+          receivingAddressId: addressId,
+          receivingLongitude: longitude,
+          receivingLatitude: latitude
+        }
+  }
+
+  function clearAddressCoordinates(mode: SelectorMode): void {
+    Object.assign(form.data, createCoordinatePatch(mode, null, null, null))
+  }
+
+  function isValidCoordinate(
+    longitude: number | null,
+    latitude: number | null
+  ): longitude is number {
+    return (
+      !isNil(longitude) &&
+      !isNil(latitude) &&
+      longitude >= -180 &&
+      longitude <= 180 &&
+      latitude >= -90 &&
+      latitude <= 90
+    )
   }
 
   function applyDraftTextFields(
@@ -1302,19 +1430,40 @@
     page.saving = true
     try {
       const payload = normalizePayload()
+      let savedOrderId = payload.id
       if (payload.id) {
-        await editOrder(payload)
+        const { data } = await editOrder(payload)
+        savedOrderId = data?.id || payload.id
         ElMessage.success('订单修改成功')
       } else {
-        await addOrder(payload)
+        const { data } = await addOrder(payload)
+        savedOrderId = data?.id
         ElMessage.success('开单成功')
       }
+      await recordAiOrderReview(savedOrderId)
       await router.push({ name: 'TmsPendingWaybillList' })
     } catch {
       // API 层已提示错误，页面保留当前输入。
     } finally {
       page.saving = false
     }
+  }
+
+  async function recordAiOrderReview(orderId?: string): Promise<void> {
+    if (!aiArtifactId.value || !orderId) return
+
+    const { error } = await reviewAiOrderArtifact({
+      action: 'review',
+      artifactId: aiArtifactId.value,
+      entityId: orderId,
+      outcome: 'applied',
+      finalPayload: buildAiOrderFinalPayload(form.data)
+    })
+    if (error) {
+      ElMessage.warning('订单已保存，但 AI 质量记录失败；不会影响正式订单')
+      return
+    }
+    aiArtifactId.value = undefined
   }
 
   function openPrintDialog(kind: PrintKind): void {

@@ -14,27 +14,12 @@
       </ElTag>
     </div>
 
-    <ElDescriptions :column="2" border class="ai-order-result__descriptions">
-      <ElDescriptionsItem label="发货方">
-        {{ displayText(analysis.order.shippingCustomerName) }} /
-        {{ displayText(analysis.order.shippingContactName) }}
-      </ElDescriptionsItem>
-      <ElDescriptionsItem label="收货方">
-        {{ displayText(analysis.order.receivingCustomerName) }} /
-        {{ displayText(analysis.order.receivingContactName) }}
-      </ElDescriptionsItem>
-      <ElDescriptionsItem label="运输线路">
-        {{ displayText(analysis.order.originStationName) }} →
-        {{ displayText(analysis.order.destinationStationName) }}
-      </ElDescriptionsItem>
-      <ElDescriptionsItem label="货物">{{ cargoSummary }}</ElDescriptionsItem>
-      <ElDescriptionsItem label="发货地址" :span="2">
-        {{ displayText(analysis.order.shippingAddressDetail) }}
-      </ElDescriptionsItem>
-      <ElDescriptionsItem label="收货地址" :span="2">
-        {{ displayText(analysis.order.receivingAddressDetail) }}
-      </ElDescriptionsItem>
-    </ElDescriptions>
+    <ArtDescriptions
+      :data="analysis.order"
+      :items="descriptionItems"
+      :columns="2"
+      class="ai-order-result__descriptions"
+    />
 
     <template v-if="analysis.missingFields.length || analysis.warnings.length">
       <ArtSectionTitle class="ai-order-result__confirm">需要确认</ArtSectionTitle>
@@ -47,16 +32,26 @@
         </ElTag>
       </div>
     </template>
+
+    <ArtAiFeedback
+      :run-id="analysis.runId"
+      context-label="AI 智能填单"
+      class="ai-order-result__feedback"
+    />
   </section>
 </template>
 
 <script setup lang="ts">
   import { trim } from 'lodash-es'
+  import ArtAiFeedback from '@/components/core/base/art-ai-feedback/index.vue'
+  import ArtDescriptions from '@/components/core/base/art-descriptions/index.vue'
+  import type { ArtDescriptionItem } from '@/components/core/base/art-descriptions/types'
   import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
 
   defineOptions({ name: 'TmsAiOrderResultPanel' })
 
   const { analysis } = defineProps<{ analysis: Api.Tms.Order.AiOrderAnalyzeResponse }>()
+  type AiOrder = Api.Tms.Order.AiOrderAnalyzeResponse['order']
 
   const confidencePercent = computed(() => Math.round(analysis.confidence * 100))
   const confidenceTagType = computed<'success' | 'warning' | 'danger'>(() => {
@@ -97,6 +92,29 @@
       )
       .join('、')
   })
+  const descriptionItems = computed<ArtDescriptionItem<AiOrder>[]>(() => [
+    {
+      key: 'shippingParty',
+      label: '发货方',
+      value: (data: AiOrder) =>
+        `${displayText(data.shippingCustomerName)} / ${displayText(data.shippingContactName)}`
+    },
+    {
+      key: 'receivingParty',
+      label: '收货方',
+      value: (data: AiOrder) =>
+        `${displayText(data.receivingCustomerName)} / ${displayText(data.receivingContactName)}`
+    },
+    {
+      key: 'route',
+      label: '运输线路',
+      value: (data: AiOrder) =>
+        `${displayText(data.originStationName)} → ${displayText(data.destinationStationName)}`
+    },
+    { key: 'cargo', label: '货物', value: cargoSummary.value },
+    { key: 'shippingAddress', label: '发货地址', field: 'shippingAddressDetail', span: 2 },
+    { key: 'receivingAddress', label: '收货地址', field: 'receivingAddressDetail', span: 2 }
+  ])
 
   function displayText(value?: string | null): string {
     return trim(String(value ?? '')) || '-'
@@ -138,6 +156,10 @@
       flex-wrap: wrap;
       gap: 8px;
       margin-top: 12px;
+    }
+
+    &__feedback {
+      margin-top: 16px;
     }
   }
 </style>

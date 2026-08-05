@@ -58,7 +58,8 @@
 </template>
 
 <script setup lang="tsx">
-  import { ElMessage, ElMessageBox, ElTag } from 'element-plus'
+  import { useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import { ElMessage, ElTag } from 'element-plus'
   import { omit } from 'lodash-es'
   import type { ComputedRef, UnwrapNestedRefs } from 'vue'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
@@ -82,6 +83,8 @@
   import SystemParamDialog from './modules/system-param-dialog.vue'
 
   defineOptions({ name: 'SystemParam' })
+
+  const { confirmAction } = useArtFeedback()
 
   type SystemParam = Api.SystemManage.SystemParamItem
   type SearchParams = Api.SystemManage.SystemParamSearchParams
@@ -380,7 +383,7 @@
     }
 
     try {
-      await ElMessageBox.confirm(`确定删除参数“${row.paramName}”吗？删除后无法恢复。`, '删除确认', {
+      await confirmAction(`确定删除参数“${row.paramName}”吗？删除后无法恢复。`, '删除确认', {
         confirmButtonText: '删除',
         cancelButtonText: '取消',
         type: 'warning',
@@ -444,7 +447,7 @@
       padding: 24px 28px;
       background: var(--el-bg-color);
       border: 1px solid var(--el-border-color-light);
-      border-radius: 8px;
+      border-radius: var(--art-surface-radius);
 
       h2 {
         margin: 0 0 12px;
@@ -485,7 +488,7 @@
       padding: 22px 24px;
       background: var(--el-bg-color);
       border: 1px solid var(--el-border-color-light);
-      border-radius: 8px;
+      border-radius: var(--art-surface-radius);
 
       span {
         font-size: 14px;
@@ -515,14 +518,14 @@
       height: 44px;
       font-size: 22px !important;
       background: var(--el-fill-color-lighter);
-      border-radius: 8px;
+      border-radius: var(--art-surface-radius);
     }
 
     &__groups {
       padding: 12px 16px;
       background: var(--el-bg-color);
       border: 1px solid var(--el-border-color-light);
-      border-radius: 8px;
+      border-radius: var(--art-surface-radius);
     }
 
     &__operation {

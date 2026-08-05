@@ -46,9 +46,10 @@
 </template>
 
 <script setup lang="ts">
+  import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import type { UnwrapNestedRefs } from 'vue'
   import { trim } from 'lodash-es'
-  import { ElMessage, ElMessageBox } from 'element-plus'
+  import { ElMessage } from 'element-plus'
   import ArtDrawer from '@/components/core/drawers/art-drawer/index.vue'
   import type { ArtDrawerExpose } from '@/components/core/drawers/art-drawer/types'
   import { analyzeOrderByAi, generateAiOrderExample } from '@/api/tms'
@@ -67,6 +68,8 @@
   import { useAiOrderReferenceMatcher } from './use-ai-order-reference-matcher'
 
   defineOptions({ name: 'TmsAiOrderDrawer' })
+
+  const { confirmAction } = useArtFeedback()
 
   interface FormGroup {
     data: AiOrderInputModel
@@ -113,7 +116,7 @@
     resetState(data)
     await drawerRef.value?.handleOpen(data, {
       title: 'AI 智能填单',
-      size: 'min(760px, 92vw)',
+      size: 'lg',
       contentHeight: 'calc(100vh - 132px)',
       onConfirm: handleApply,
       onReset: () => resetState(null),
@@ -163,7 +166,7 @@
 
     if (trim(form.data.prompt)) {
       try {
-        await ElMessageBox.confirm('生成新示例会替换当前输入的文字，是否继续？', '替换当前内容', {
+        await confirmAction('生成新示例会替换当前输入的文字，是否继续？', '替换当前内容', {
           type: 'warning',
           confirmButtonText: '继续生成',
           cancelButtonText: '取消'
@@ -199,7 +202,7 @@
     if (!selectedTasks.length) return
 
     try {
-      await ElMessageBox.confirm(
+      await confirmAction(
         `将创建：${selectedTasks.map((task) => task.title).join('、')}。创建后仍需确认并保存订单，是否继续？`,
         '确认 AI 一键建档',
         {

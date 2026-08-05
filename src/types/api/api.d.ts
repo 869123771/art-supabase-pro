@@ -762,6 +762,62 @@ declare namespace Api {
             createTimeRange?: string[]
           }
       >
+
+      type VehicleHealthSignalType =
+        | 'insurance_expired'
+        | 'insurance_expiring'
+        | 'inspection_expired'
+        | 'inspection_expiring'
+        | 'maintenance_overdue'
+        | 'maintenance_history_missing'
+        | 'repair_frequency_high'
+        | 'unresolved_accident'
+        | 'routine_inspection_failed'
+        | 'part_service_due'
+        | 'mileage_data_stale'
+
+      type VehicleHealthSeverity = 'critical' | 'high' | 'medium'
+      type VehicleHealthRiskLevel = VehicleHealthSeverity | 'low'
+
+      interface VehicleHealthSignal {
+        type: VehicleHealthSignalType
+        severity: VehicleHealthSeverity
+        title: string
+        detail: string
+        evidence: string[]
+      }
+
+      interface VehicleHealthAssessment {
+        vehicleId: string
+        plateNo: string
+        vehicleType: string
+        operationStatus: string
+        riskLevel: VehicleHealthRiskLevel
+        riskScore: number
+        healthScore: number
+        confidence: number
+        summary: string
+        signals: VehicleHealthSignal[]
+        recommendedActions: string[]
+        limitations: string[]
+        metrics: {
+          currentMileage: number | null
+          insuranceDaysRemaining: number | null
+          inspectionDaysRemaining: number | null
+          daysSinceMaintenance: number | null
+          repairCount90Days: number
+          unresolvedAccidentCount: number
+          failedRoutineInspectionCount: number
+          duePartCount: number
+        }
+      }
+
+      interface VehicleHealthAdvisorResponse {
+        runId: string
+        ruleVersion: string
+        generatedAt: string
+        assessment: VehicleHealthAssessment
+      }
     }
 
     namespace ReminderManage {
@@ -1132,6 +1188,78 @@ declare namespace Api {
         contactPhone?: string
       }
 
+      type CarrierPerformanceSeverity = 'critical' | 'high' | 'medium'
+      type CarrierPerformanceRiskLevel = CarrierPerformanceSeverity | 'low'
+      type CarrierCooperationStrategy =
+        | 'manual_qualification_review'
+        | 'conditional_cooperation'
+        | 'improve_and_monitor'
+        | 'preferred_partner'
+        | 'insufficient_evidence'
+
+      interface CarrierPerformanceSignal {
+        type: string
+        severity: CarrierPerformanceSeverity
+        title: string
+        detail: string
+        evidence: string[]
+      }
+
+      interface CarrierPerformanceWaybill {
+        id: string
+        waybillNo: string
+        route: string
+        status: string
+        freightAmount: number
+        plannedUnloadTime: string | null
+        arrivedAt: string | null
+        riskScore: number
+        reasons: string[]
+      }
+
+      interface CarrierPerformanceAssessment {
+        carrierId: string
+        carrierCode: string
+        companyName: string
+        riskLevel: CarrierPerformanceRiskLevel
+        riskScore: number
+        performanceScore: number
+        confidence: number
+        cooperationStrategy: CarrierCooperationStrategy
+        summary: string
+        signals: CarrierPerformanceSignal[]
+        riskWaybills: CarrierPerformanceWaybill[]
+        recommendedActions: string[]
+        limitations: string[]
+        metrics: {
+          waybillCount: number
+          completedCount: number
+          cancelledCount: number
+          activeCount: number
+          completionRate: number
+          cancellationRate: number
+          onTimeRate: number | null
+          onTimeSampleCount: number
+          routeCount: number
+          totalFreightAmount: number
+          totalCostAmount: number
+          costToFreightRate: number | null
+          pendingCostCount: number
+          rejectedCostCount: number
+          openStatementCount: number
+          driverCount: number
+          vehicleCount: number
+          daysSinceLastWaybill: number | null
+        }
+      }
+
+      interface CarrierPerformanceAdvisorResponse {
+        runId: string
+        ruleVersion: string
+        generatedAt: string
+        assessment: CarrierPerformanceAssessment
+      }
+
       interface CarrierPriceCargoItem {
         orderNo?: string | null
         originRegion?: string | null
@@ -1403,12 +1531,30 @@ declare namespace Api {
       }
 
       interface AiOrderAnalyzeResponse {
+        artifactId: string
+        runId: string
         summary: string
         confidence: number
         fieldConfidence?: Record<string, number>
         missingFields: string[]
         warnings: string[]
         order: AiOrderDraft
+      }
+
+      interface AiOrderReviewRequest {
+        action: 'review'
+        artifactId: string
+        entityId: string
+        outcome: 'applied'
+        finalPayload: AiOrderDraft
+        reviewNote?: string
+      }
+
+      interface AiOrderReviewResponse {
+        artifactId: string
+        status: 'applied' | 'rejected'
+        acceptedFields: string[]
+        correctedFields: string[]
       }
 
       interface OrderRecord {
@@ -1558,6 +1704,59 @@ declare namespace Api {
         plannedArrivalTime: string
         dispatchRemark?: string | null
       }
+
+      interface DispatchRecommendationDriver {
+        id: string
+        driverName: string
+        phone?: string | null
+        licenseType?: string | null
+        licenseExpireDate?: string | null
+      }
+
+      interface DispatchRecommendationVehicle {
+        id: string
+        carrierId?: string | null
+        plateNo: string
+        companyName?: string | null
+        vehicleType?: string | null
+        tonnageOrSeat?: string | null
+        overallLength?: number | null
+        approvedLoadMass?: number | null
+        primaryDriver: DispatchRecommendationDriver
+      }
+
+      interface DispatchRecommendation {
+        rank: number
+        score: number
+        confidence: number
+        vehicle: DispatchRecommendationVehicle
+        reasons: string[]
+        warnings: string[]
+        metrics: {
+          capacityUtilization?: number | null
+          routeTrips: number
+          historyTrips: number
+          onTimeRate?: number | null
+        }
+      }
+
+      interface DispatchRecommendationResponse {
+        runId: string
+        ruleVersion: string
+        generatedAt: string
+        order: {
+          id: string
+          orderNo: string
+          originStation: string
+          destinationStation: string
+        }
+        summary: string
+        recommendations: DispatchRecommendation[]
+        evaluatedVehicles: number
+        eligibleVehicles: number
+        rejectedVehicles: number
+        rejectedByReason: Record<string, number>
+      }
     }
 
     namespace Delivery {
@@ -1657,6 +1856,123 @@ declare namespace Api {
         id: string
         auditStatus: 'approved' | 'rejected'
         reviewRemark?: string | null
+      }
+
+      type WaybillCostAuditSignalType =
+        | 'amount_outlier'
+        | 'cost_concentration'
+        | 'duplicate_cost'
+        | 'future_occurred_date'
+        | 'missing_attachment'
+        | 'missing_payee'
+        | 'missing_remark'
+        | 'negative_margin'
+        | 'thin_margin'
+
+      type WaybillCostAuditSeverity = 'critical' | 'high' | 'medium'
+      type WaybillCostAuditRiskLevel = WaybillCostAuditSeverity | 'low'
+      type WaybillCostAuditRecommendation =
+        'block_for_verification' | 'manual_review' | 'routine_review'
+
+      interface WaybillCostAuditSignal {
+        type: WaybillCostAuditSignalType
+        severity: WaybillCostAuditSeverity
+        title: string
+        detail: string
+        evidence: string[]
+      }
+
+      interface WaybillCostAuditAssessment {
+        costId: string
+        waybillId: string
+        waybillNo: string
+        route: string
+        riskLevel: WaybillCostAuditRiskLevel
+        riskScore: number
+        confidence: number
+        recommendation: WaybillCostAuditRecommendation
+        summary: string
+        signals: WaybillCostAuditSignal[]
+        recommendedActions: string[]
+        limitations: string[]
+        metrics: {
+          amount: number
+          benchmarkMedian: number | null
+          benchmarkSampleSize: number
+          duplicateCount: number
+          projectedTotalCost: number
+          receivableAmount: number | null
+          projectedGrossMargin: number | null
+          attachmentCount: number
+        }
+      }
+
+      interface WaybillCostAuditResponse {
+        runId: string
+        ruleVersion: string
+        generatedAt: string
+        assessment: WaybillCostAuditAssessment
+      }
+
+      type WaybillProfitAnalysisRiskLevel = 'critical' | 'high' | 'medium' | 'low'
+      type WaybillProfitAnalysisSeverity = 'critical' | 'high' | 'medium'
+      type WaybillProfitAnalysisRecommendation =
+        'repair_cost_baseline' | 'manual_profit_review' | 'routine_monitoring'
+
+      interface WaybillProfitAnalysisSignal {
+        type: string
+        severity: WaybillProfitAnalysisSeverity
+        title: string
+        detail: string
+        evidence: string[]
+      }
+
+      interface WaybillProfitRiskWaybill {
+        id: string
+        waybillId: string
+        waybillNo: string
+        route: string
+        customerName: string
+        carrierName: string
+        waybillStatus: string
+        receivableAmount: number
+        totalCostAmount: number
+        grossProfit: number
+        grossMargin: number
+        riskScore: number
+        reasons: string[]
+      }
+
+      interface WaybillProfitAnalysisAssessment {
+        riskLevel: WaybillProfitAnalysisRiskLevel
+        riskScore: number
+        confidence: number
+        recommendation: WaybillProfitAnalysisRecommendation
+        summary: string
+        signals: WaybillProfitAnalysisSignal[]
+        riskWaybills: WaybillProfitRiskWaybill[]
+        recommendedActions: string[]
+        limitations: string[]
+        metrics: {
+          totalWaybills: number
+          finalizedWaybills: number
+          receivableAmount: number
+          totalCostAmount: number
+          bookGrossProfit: number
+          bookGrossMargin: number | null
+          costCoverage: number
+          finalizedCostCoverage: number
+          missingCostCount: number
+          negativeMarginCount: number
+          carrierPayableMissingCount: number
+        }
+      }
+
+      interface WaybillProfitAnalysisResponse {
+        runId: string
+        ruleVersion: string
+        generatedAt: string
+        assessment: WaybillProfitAnalysisAssessment
       }
 
       interface WaybillProfitRecord {
@@ -2216,6 +2532,80 @@ declare namespace Api {
         pendingInvoiceCount: number
         pendingInvoiceAmount: number
       }
+
+      type ReceivablesRiskLevel = 'critical' | 'high' | 'medium' | 'low'
+      type ReceivablesSignalSeverity = 'critical' | 'high' | 'medium'
+      type ReceivablesRecommendation =
+        'unblock_settlement' | 'complete_invoicing' | 'prioritize_collection' | 'routine_monitoring'
+
+      interface ReceivablesRiskSignal {
+        type: string
+        severity: ReceivablesSignalSeverity
+        title: string
+        detail: string
+        evidence: string[]
+      }
+
+      interface ReceivablesPriorityStatement {
+        id: string
+        statementNo: string
+        customerId: string
+        customerName: string
+        periodStart: string
+        periodEnd: string
+        status: string
+        ageDays: number
+        statementAmount: number
+        settledAmount: number
+        outstandingAmount: number
+        uninvoicedAmount: number
+        riskScore: number
+        reasons: string[]
+      }
+
+      interface ReceivablesRiskCustomer {
+        customerId: string
+        customerName: string
+        statementCount: number
+        outstandingAmount: number
+        maxAgeDays: number
+        riskScore: number
+        statementNos: string[]
+      }
+
+      interface ReceivablesCollectionAssessment {
+        riskLevel: ReceivablesRiskLevel
+        riskScore: number
+        confidence: number
+        recommendation: ReceivablesRecommendation
+        summary: string
+        signals: ReceivablesRiskSignal[]
+        priorityStatements: ReceivablesPriorityStatement[]
+        riskCustomers: ReceivablesRiskCustomer[]
+        recommendedActions: string[]
+        limitations: string[]
+        metrics: {
+          totalStatementCount: number
+          openStatementCount: number
+          statementAmount: number
+          settledAmount: number
+          outstandingAmount: number
+          collectionRate: number
+          aging30Amount: number
+          aging60Amount: number
+          aging90Amount: number
+          uninvoicedAmount: number
+          reviewBlockedAmount: number
+          atRiskAmount: number
+        }
+      }
+
+      interface ReceivablesCollectionResponse {
+        runId: string
+        ruleVersion: string
+        generatedAt: string
+        assessment: ReceivablesCollectionAssessment
+      }
     }
 
     namespace InTransit {
@@ -2273,6 +2663,54 @@ declare namespace Api {
         order?: Api.Tms.Order.OrderRecord | null
         vehicle?: Api.Tms.Waybill.DispatchVehicleOption | null
         driver?: Api.Tms.BasicData.DriverOption | null
+      }
+
+      type TransportAnomalyType =
+        | 'arrival_overdue'
+        | 'departure_overdue'
+        | 'data_stale'
+        | 'missing_assignment'
+        | 'missing_schedule'
+        | 'status_mismatch'
+
+      type TransportRiskLevel = 'critical' | 'high' | 'medium' | 'low'
+
+      interface TransportAnomalySignal {
+        type: TransportAnomalyType
+        severity: Exclude<TransportRiskLevel, 'low'>
+        title: string
+        detail: string
+        evidence: string[]
+      }
+
+      interface TransportAnomalyAssessment {
+        orderId: string
+        orderNo: string
+        route: string
+        orderStatus: string
+        waybillStatus: string
+        riskLevel: TransportRiskLevel
+        riskScore: number
+        confidence: number
+        summary: string
+        signals: TransportAnomalySignal[]
+        recommendedActions: string[]
+        limitations: string[]
+        metrics: {
+          overdueArrivalHours: number
+          overdueDepartureHours: number
+          staleHours: number
+          hasVehicle: boolean
+          hasDriver: boolean
+          hasSchedule: boolean
+        }
+      }
+
+      interface TransportAnomalyAdvisorResponse {
+        runId: string
+        ruleVersion: string
+        generatedAt: string
+        assessment: TransportAnomalyAssessment
       }
 
       type MonitorSearchParams = Api.Common.CommonSearchParams & {

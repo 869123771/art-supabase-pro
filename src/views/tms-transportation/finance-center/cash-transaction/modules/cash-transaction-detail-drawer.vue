@@ -1,57 +1,16 @@
 <template>
   <ArtDrawer ref="drawerRef">
-    <ElSkeleton :loading="detail.loading" animated :rows="8">
+    <ArtAsyncState
+      :loading="detail.loading"
+      loading-mode="skeleton"
+      :error="loadError"
+      :empty="!detail.data"
+      empty-text="暂无收付款详情"
+      @retry="retryLoad"
+    >
       <div v-if="detail.data" class="cash-detail">
         <ArtSectionTitle>{{ directionLabel }}概览</ArtSectionTitle>
-        <ElDescriptions :column="2" border>
-          <ElDescriptionsItem label="收款单号">{{ detail.data.transactionNo }}</ElDescriptionsItem>
-          <ElDescriptionsItem label="状态">
-            <ArtDictDisplay
-              dict-code="tmsCashTransactionStatus"
-              :value="detail.data.status"
-              display="tag"
-            />
-          </ElDescriptionsItem>
-          <ElDescriptionsItem
-            :label="detail.data.direction === 'receipt' ? '收款客户' : '付款承运商'"
-          >
-            {{ detail.data.counterpartyName }}
-          </ElDescriptionsItem>
-          <ElDescriptionsItem :label="`${directionLabel}日期`">
-            {{ detail.data.transactionDate }}
-          </ElDescriptionsItem>
-          <ElDescriptionsItem :label="`${directionLabel}金额`">
-            {{ formatMoney(detail.data.amount) }}
-          </ElDescriptionsItem>
-          <ElDescriptionsItem label="已核销金额">
-            {{ formatMoney(detail.data.allocatedAmount) }}
-          </ElDescriptionsItem>
-          <ElDescriptionsItem label="未核销金额">
-            {{ formatMoney(detail.data.unallocatedAmount) }}
-          </ElDescriptionsItem>
-          <ElDescriptionsItem :label="`${directionLabel}方式`">
-            <ArtDictDisplay
-              dict-code="tmsCashPaymentMethod"
-              :value="detail.data.paymentMethod"
-              display="text"
-            />
-          </ElDescriptionsItem>
-          <ElDescriptionsItem label="银行流水号">
-            {{ detail.data.bankReference || '-' }}
-          </ElDescriptionsItem>
-          <ElDescriptionsItem label="登记人">
-            {{ detail.data.createBy || '-' }}
-          </ElDescriptionsItem>
-          <ElDescriptionsItem label="登记时间">
-            {{ formatDateTime(detail.data.createTime) }}
-          </ElDescriptionsItem>
-          <ElDescriptionsItem label="备注">
-            {{ detail.data.remark || '-' }}
-          </ElDescriptionsItem>
-          <ElDescriptionsItem v-if="detail.data.status === 'voided'" label="作废原因" :span="2">
-            {{ detail.data.voidReason || '-' }}
-          </ElDescriptionsItem>
-        </ElDescriptions>
+        <ArtDescriptions :data="detail.data" :items="descriptionItems" :columns="2" />
 
         <template v-if="detail.data.voucherUrls?.length">
           <ArtSectionTitle class="cash-detail__section">{{ directionLabel }}凭证</ArtSectionTitle>
@@ -79,7 +38,7 @@
           border
         />
       </div>
-    </ElSkeleton>
+    </ArtAsyncState>
 
     <template #footer="{ api }">
       <ElButton @click="api.handleClose()">关闭</ElButton>
@@ -88,8 +47,9 @@
 </template>
 
 <script setup lang="tsx">
-  import { ElMessageBox, ElTag, ElTooltip } from 'element-plus'
-  import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
+  import { ElTag, ElTooltip } from 'element-plus'
+  import ArtDescriptions from '@/components/core/base/art-descriptions/index.vue'
+  import type { ArtDescriptionItem } from '@/components/core/base/art-descriptions/types'
   import ArtDrawer from '@/components/core/drawers/art-drawer/index.vue'
   import type { ArtDrawerExpose } from '@/components/core/drawers/art-drawer/types'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
@@ -102,8 +62,12 @@
     reverseCashAllocation
   } from '@/api/tms'
   import { formatWithDayjs } from '@/utils/time'
+  import { formatCurrencyValue } from '@/utils/ui'
+  import { useArtFeedback } from '@/hooks/core/useArtFeedback'
 
   defineOptions({ name: 'TmsCashTransactionDetailDrawer' })
+
+  const { promptReason } = useArtFeedback()
 
   type CashTransaction = Api.Tms.Finance.CashTransactionRecord
   interface DetailAllocation {
@@ -128,18 +92,65 @@
   const emit = defineEmits<{ changed: [] }>()
   const drawerRef = ref<ArtDrawerExpose<CashTransaction>>()
   const detail = reactive<DetailGroup>({ data: undefined, loading: false })
+  const loadError = shallowRef<Error | null>(null)
   const directionLabel = computed(() => (detail.data?.direction === 'payment' ? '付款' : '收款'))
 
   function formatMoney(value?: number | null): string {
-    return `¥${Number(value ?? 0).toLocaleString('zh-CN', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    })}`
+    return formatCurrencyValue(value ?? 0)
   }
 
   function formatDateTime(value?: string | null): string {
     return value ? (formatWithDayjs(value, 'YYYY-MM-DD HH:mm') ?? '-') : '-'
   }
+
+  const descriptionItems = computed<ArtDescriptionItem<CashTransaction>[]>(() => [
+    {
+      key: 'transactionNo',
+      label: `${directionLabel.value}单号`,
+      field: 'transactionNo',
+      copyable: true
+    },
+    {
+      key: 'status',
+      label: '状态',
+      field: 'status',
+      dictCode: 'tmsCashTransactionStatus',
+      dictDisplay: 'tag'
+    },
+    {
+      key: 'counterpartyName',
+      label: detail.data?.direction === 'receipt' ? '收款客户' : '付款承运商',
+      field: 'counterpartyName'
+    },
+    {
+      key: 'transactionDate',
+      label: `${directionLabel.value}日期`,
+      field: 'transactionDate',
+      format: 'date'
+    },
+    { key: 'amount', label: `${directionLabel.value}金额`, field: 'amount', format: 'money' },
+    { key: 'allocatedAmount', label: '已核销金额', field: 'allocatedAmount', format: 'money' },
+    { key: 'unallocatedAmount', label: '未核销金额', field: 'unallocatedAmount', format: 'money' },
+    {
+      key: 'paymentMethod',
+      label: `${directionLabel.value}方式`,
+      field: 'paymentMethod',
+      dictCode: 'tmsCashPaymentMethod',
+      dictDisplay: 'text'
+    },
+    { key: 'bankReference', label: '银行流水号', field: 'bankReference', copyable: true },
+    { key: 'createBy', label: '登记人', field: 'createBy' },
+    {
+      key: 'createTime',
+      label: '登记时间',
+      field: 'createTime',
+      formatter: (value) => formatDateTime(value as string | null | undefined)
+    },
+    { key: 'remark', label: '备注', field: 'remark' },
+    ...(detail.data?.status === 'voided'
+      ? [{ key: 'voidReason', label: '作废原因', field: 'voidReason', span: 2 }]
+      : [])
+  ])
 
   const allocationColumns: ColumnOption<DetailAllocation>[] = [
     { type: 'globalIndex', label: '序号', width: 66 },
@@ -206,32 +217,36 @@
 
   async function loadDetail(id: string): Promise<void> {
     detail.loading = true
+    loadError.value = null
     try {
       const { data } = await fetchCashTransactionDetail(id)
       detail.data = data
+    } catch (error) {
+      loadError.value = error instanceof Error ? error : new Error('收付款详情加载失败')
     } finally {
       detail.loading = false
     }
   }
 
+  function retryLoad(): void {
+    if (detail.data?.id) void loadDetail(detail.data.id)
+  }
+
   async function handleReverse(row: DetailAllocation): Promise<void> {
     try {
-      const { value } = await ElMessageBox.prompt(
+      const reason = await promptReason(
         `撤销后将释放 ${formatMoney(row.allocatedAmount)}，并自动回退收款及对账单状态。`,
         '撤销核销',
         {
-          type: 'warning',
           confirmButtonText: '确认撤销',
-          cancelButtonText: '取消',
-          inputType: 'textarea',
-          inputPlaceholder: '请填写撤销原因',
-          inputValidator: (text) => Boolean(text?.trim()) || '撤销原因不能为空'
+          placeholder: '请填写撤销原因',
+          emptyMessage: '撤销原因不能为空'
         }
       )
       if (detail.data?.direction === 'payment') {
-        await reverseCarrierCashAllocation(row.id, value.trim())
+        await reverseCarrierCashAllocation(row.id, reason)
       } else {
-        await reverseCashAllocation(row.id, value.trim())
+        await reverseCashAllocation(row.id, reason)
       }
       if (detail.data) await loadDetail(detail.data.id)
       emit('changed')
@@ -244,7 +259,7 @@
     detail.data = row
     await drawerRef.value?.handleOpen(row, {
       title: `${row.direction === 'payment' ? '付款' : '收款'}详情 · ${row.transactionNo}`,
-      size: 'min(1080px, 94vw)',
+      size: 'xl',
       contentHeight: 'calc(100vh - 132px)',
       onOpen: () => loadDetail(row.id),
       drawerProps: { appendToBody: true, resizable: true, closeOnClickModal: false }
@@ -257,13 +272,13 @@
 <style scoped lang="scss">
   .cash-detail {
     &__section {
-      margin-top: 24px;
+      margin-top: var(--art-space-6);
     }
 
     &__vouchers {
       display: flex;
       flex-wrap: wrap;
-      gap: 12px;
+      gap: var(--art-space-3);
     }
 
     &__voucher {

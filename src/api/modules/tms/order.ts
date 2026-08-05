@@ -126,6 +126,20 @@ export async function generateAiOrderExample(
   }
 }
 
+export async function reviewAiOrderArtifact(
+  params: Api.Tms.Order.AiOrderReviewRequest
+): Promise<QueryResult<Api.Tms.Order.AiOrderReviewResponse>> {
+  const { data, error } = await supabase.functions.invoke<Api.Tms.Order.AiOrderReviewResponse>(
+    'ai-order-assistant',
+    { body: params }
+  )
+
+  return {
+    data: data ?? null,
+    error: await normalizeEdgeFunctionError(error)
+  }
+}
+
 async function normalizeEdgeFunctionError(error: unknown): Promise<unknown | null> {
   if (!error || typeof error !== 'object' || !('context' in error)) return error
 

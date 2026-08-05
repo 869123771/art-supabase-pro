@@ -22,12 +22,13 @@
 </template>
 
 <script setup lang="ts">
+  import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { formatMenuTitle } from '@/utils/router'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import type { AppRouteRecord } from '@/types/router'
   import MenuDialog from './modules/menu-dialog.vue'
   import TreeUtils from '@/utils/tree'
-  import { ElMessage, ElMessageBox, ElTag } from 'element-plus'
+  import { ElMessage, ElTag } from 'element-plus'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type {
     ArtTableQueryExpose,
@@ -43,6 +44,8 @@
   import { useUserStore } from '@/store/modules/user'
 
   defineOptions({ name: 'Menus' })
+
+  const { confirmAction } = useArtFeedback()
 
   const treeUtils = new TreeUtils({
     idKey: 'id',
@@ -419,7 +422,7 @@
    */
   const handleDelete = async (row: AppRouteRecord): Promise<void> => {
     try {
-      await ElMessageBox.confirm(
+      await confirmAction(
         '确定要删除该菜单吗？删除后将同步清理所有角色的关联权限，且无法恢复。',
         '提示',
         {

@@ -1,14 +1,21 @@
 <template>
-  <div class="routine-inspection-detail" v-loading="page.loading">
-    <div class="routine-inspection-detail__header art-card-xs">
-      <div>
-        <h2>{{ detail.data?.routineInspectionNo || '例检记录详情' }}</h2>
-        <p>{{
-          [detail.data?.plateNo, detail.data?.companyName].filter(Boolean).join(' / ') || '--'
-        }}</p>
-      </div>
-      <ElButton @click="goBack">返回</ElButton>
-    </div>
+  <ArtPageShell
+    class="routine-inspection-detail"
+    :loading="page.loading"
+    loading-mode="skeleton"
+    :error="page.error"
+    :empty="!detail.data"
+    empty-text="暂无例检记录详情"
+    @retry="loadDetail"
+  >
+    <ArtPageHeader
+      :title="detail.data?.routineInspectionNo || '例检记录详情'"
+      :subtitle="
+        [detail.data?.plateNo, detail.data?.companyName].filter(Boolean).join(' / ') || '--'
+      "
+      show-back
+      @back="goBack"
+    />
 
     <section class="routine-inspection-detail__summary art-card-xs">
       <div class="routine-inspection-detail__summary-item">
@@ -40,40 +47,7 @@
     <div class="routine-inspection-detail__content art-card-xs">
       <section class="routine-inspection-detail__section">
         <ArtSectionTitle>基础信息</ArtSectionTitle>
-        <ElDescriptions :column="2" border>
-          <ElDescriptionsItem label="车牌号">{{
-            formatValue(detail.data?.plateNo)
-          }}</ElDescriptionsItem>
-          <ElDescriptionsItem label="所属公司">{{
-            formatValue(detail.data?.companyName)
-          }}</ElDescriptionsItem>
-          <ElDescriptionsItem label="例检编号">{{
-            formatValue(detail.data?.routineInspectionNo)
-          }}</ElDescriptionsItem>
-          <ElDescriptionsItem label="例检类型">
-            <ArtDictDisplay
-              dict-code="vehicleRoutineInspectionType"
-              :value="detail.data?.inspectionType"
-              display="text"
-            />
-          </ElDescriptionsItem>
-          <ElDescriptionsItem label="例检时间">{{
-            formatValue(detail.data?.inspectionTime)
-          }}</ElDescriptionsItem>
-          <ElDescriptionsItem label="检查人">{{
-            formatValue(detail.data?.inspector)
-          }}</ElDescriptionsItem>
-          <ElDescriptionsItem label="驾驶员">{{
-            formatValue(detail.data?.driverName)
-          }}</ElDescriptionsItem>
-          <ElDescriptionsItem label="检查结果">
-            <ArtDictDisplay
-              dict-code="vehicleRoutineInspectionResult"
-              :value="detail.data?.checkResult"
-              display="text"
-            />
-          </ElDescriptionsItem>
-        </ElDescriptions>
+        <ArtDescriptions :data="descriptionData" :items="descriptionItems" :columns="2" />
       </section>
 
       <section class="routine-inspection-detail__section">
@@ -106,12 +80,13 @@
         />
       </section>
     </div>
-  </div>
+  </ArtPageShell>
 </template>
 
 <script setup lang="tsx">
   import { isNil } from 'lodash-es'
-  import { ElButton, ElDescriptions, ElDescriptionsItem } from 'element-plus'
+  import ArtDescriptions from '@/components/core/base/art-descriptions/index.vue'
+  import type { ArtDescriptionItem } from '@/components/core/base/art-descriptions/types'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
   import ArtTable from '@/components/core/tables/art-table/index.vue'
@@ -128,8 +103,36 @@
 
   const route = useRoute()
   const router = useRouter()
-  const page = reactive({ loading: false })
+  const page = reactive<{ loading: boolean; error: Error | null }>({ loading: false, error: null })
   const detail = reactive<{ data?: RoutineInspection }>({ data: undefined })
+  const descriptionData = computed<Partial<RoutineInspection>>(() => detail.data ?? {})
+  const descriptionItems: ArtDescriptionItem<Partial<RoutineInspection>>[] = [
+    { key: 'plateNo', label: '车牌号', field: 'plateNo' },
+    { key: 'companyName', label: '所属公司', field: 'companyName' },
+    {
+      key: 'routineInspectionNo',
+      label: '例检编号',
+      field: 'routineInspectionNo',
+      copyable: true
+    },
+    {
+      key: 'inspectionType',
+      label: '例检类型',
+      field: 'inspectionType',
+      dictCode: 'vehicleRoutineInspectionType',
+      dictDisplay: 'text'
+    },
+    { key: 'inspectionTime', label: '例检时间', field: 'inspectionTime', format: 'datetime' },
+    { key: 'inspector', label: '检查人', field: 'inspector' },
+    { key: 'driverName', label: '驾驶员', field: 'driverName' },
+    {
+      key: 'checkResult',
+      label: '检查结果',
+      field: 'checkResult',
+      dictCode: 'vehicleRoutineInspectionResult',
+      dictDisplay: 'text'
+    }
+  ]
 
   const attachmentColumns: ColumnOption<Attachment>[] = [
     { type: 'globalIndex', label: '序号', width: 56 },
@@ -160,11 +163,17 @@
 
   const loadDetail = async (): Promise<void> => {
     const id = String(route.params.id || '')
-    if (!id) return
+    if (!id) {
+      page.error = new Error('缺少例检记录标识')
+      return
+    }
     page.loading = true
+    page.error = null
     try {
       const { data } = await fetchVehicleRoutineInspectionDetail(id)
       detail.data = data ? { ...data, attachments: data.attachments ?? [] } : undefined
+    } catch (error) {
+      page.error = error instanceof Error ? error : new Error('例检记录详情加载失败')
     } finally {
       page.loading = false
     }
@@ -185,24 +194,6 @@
     min-height: 100%;
     padding: 16px;
     background: var(--art-main-bg-color);
-
-    &__header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 18px 20px;
-
-      h2 {
-        margin: 0;
-        font-size: 20px;
-        font-weight: 600;
-      }
-
-      p {
-        margin: 6px 0 0;
-        color: var(--el-text-color-secondary);
-      }
-    }
 
     &__summary {
       display: grid;
@@ -248,7 +239,7 @@
       overflow-wrap: anywhere;
     }
 
-    :deep(.el-descriptions__label) {
+    :deep(.art-descriptions .el-descriptions__label) {
       width: 128px;
       font-weight: 600;
     }

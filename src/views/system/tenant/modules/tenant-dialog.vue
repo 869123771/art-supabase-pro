@@ -1,5 +1,5 @@
 <template>
-  <ArtDialog ref="dialogRef" width="760px">
+  <ArtDialog ref="dialogRef" size="md">
     <ArtForm
       ref="formRef"
       v-model="form"

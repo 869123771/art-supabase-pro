@@ -120,3 +120,5 @@ export const addVehiclePartUsage = supabaseVehicleApi.addVehiclePartUsage
 export const editVehiclePartUsage = supabaseVehicleApi.editVehiclePartUsage
 export const deleteVehiclePartUsage = supabaseVehicleApi.deleteVehiclePartUsage
 export const deleteVehiclePartUsageBatch = supabaseVehicleApi.deleteVehiclePartUsageBatch
+
+export const analyzeVehicleHealthByAi = supabaseVehicleApi.analyzeVehicleHealthByAi

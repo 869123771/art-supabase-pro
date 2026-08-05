@@ -6,6 +6,7 @@ import {
   type SupabaseQueryLike
 } from '@/api/providers/supabase/query'
 import type { ApiRequestOptions } from '@/types/api/request'
+import type { QueryResult } from '@/types/api/response'
 import { attachCarrierRelationCounts } from './carrier-relations'
 
 type Carrier = Api.Tms.BasicData.Carrier
@@ -73,6 +74,21 @@ export async function fetchCarrierDetail(id: string) {
   )
 }
 
+export async function analyzeCarrierPerformanceByAi(
+  carrierId: string
+): Promise<QueryResult<Api.Tms.BasicData.CarrierPerformanceAdvisorResponse>> {
+  const { data, error } =
+    await supabase.functions.invoke<Api.Tms.BasicData.CarrierPerformanceAdvisorResponse>(
+      'ai-carrier-performance-advisor',
+      { body: { carrierId } }
+    )
+
+  return {
+    data: data ?? null,
+    error: await normalizeFunctionInvokeError(error)
+  }
+}
+
 export async function fetchCarrierOptions(
   params: Partial<Pick<CarrierOption, 'carrierCode' | 'companyName'>> = {},
   options?: ApiRequestOptions
@@ -136,4 +152,22 @@ export async function importCarriers(rows: Carrier[]) {
         .upsert(keysToSnakeDeep(rows), { onConflict: 'tenant_id,carrier_code' }),
     { showMessage: true, breakReturn: true }
   )
+}
+
+async function normalizeFunctionInvokeError(error: unknown): Promise<unknown | null> {
+  if (!error || typeof error !== 'object' || !('context' in error)) return error
+
+  const context = (error as { context?: unknown }).context
+  if (!(context instanceof Response)) return error
+
+  try {
+    const payload = (await context.clone().json()) as { code?: unknown; message?: unknown }
+    if (typeof payload.message !== 'string' || !payload.message) return error
+    return {
+      code: typeof payload.code === 'string' ? payload.code : undefined,
+      message: payload.message
+    }
+  } catch {
+    return error
+  }
 }

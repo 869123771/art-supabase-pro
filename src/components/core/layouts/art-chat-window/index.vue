@@ -168,23 +168,12 @@
                   v-else-if="message.role === 'assistant' && message.runId"
                   class="art-ai-assistant__feedback"
                 >
-                  <span>回答是否有帮助？</span>
-                  <ElTooltip content="有帮助" placement="bottom">
-                    <ArtIconButton
-                      :icon="message.feedback === 1 ? 'ri:thumb-up-fill' : 'ri:thumb-up-line'"
-                      :class="{ 'is-active': message.feedback === 1 }"
-                      class="art-ai-assistant__feedback-button"
-                      @click="handleFeedback(message, 1)"
-                    />
-                  </ElTooltip>
-                  <ElTooltip content="需要改进" placement="bottom">
-                    <ArtIconButton
-                      :icon="message.feedback === -1 ? 'ri:thumb-down-fill' : 'ri:thumb-down-line'"
-                      :class="{ 'is-active is-negative': message.feedback === -1 }"
-                      class="art-ai-assistant__feedback-button"
-                      @click="handleFeedback(message, -1)"
-                    />
-                  </ElTooltip>
+                  <ArtAiFeedback
+                    :run-id="message.runId"
+                    :context-label="assistantTitle"
+                    compact
+                    @submitted="message.feedback = $event.rating"
+                  />
                 </div>
               </div>
             </article>
@@ -246,14 +235,11 @@
 <script setup lang="ts">
   import { Promotion, Refresh } from '@element-plus/icons-vue'
   import { useNetwork, useWindowSize } from '@vueuse/core'
-  import { ElMessage } from 'element-plus'
   import type { ScrollbarInstance } from 'element-plus'
   import { useRoute, useRouter } from 'vue-router'
-  import { chatWithAiAssistant, submitAiAssistantFeedback } from '@/api/ai-assistant'
-  import {
-    chatWithProjectAssistant,
-    submitProjectAssistantFeedback
-  } from '@/api/supabase-ai-assistant'
+  import { chatWithAiAssistant } from '@/api/ai-assistant'
+  import { chatWithProjectAssistant } from '@/api/supabase-ai-assistant'
+  import ArtAiFeedback from '@/components/core/base/art-ai-feedback/index.vue'
   import ArtDrawer from '@/components/core/drawers/art-drawer/index.vue'
   import type { ArtDrawerExpose } from '@/components/core/drawers/art-drawer/types'
   import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
@@ -545,20 +531,6 @@
       return '这次请求没有在规定时间内完成。高频业务查询已启用快速通道，你可以重新尝试。'
     }
     return `暂时无法完成这次请求：${message}`
-  }
-
-  async function handleFeedback(message: ChatMessage, rating: -1 | 1): Promise<void> {
-    if (!message.runId || message.feedback === rating) return
-    try {
-      const submitFeedback = isProjectMode.value
-        ? submitProjectAssistantFeedback
-        : submitAiAssistantFeedback
-      await submitFeedback({ runId: message.runId, rating })
-      message.feedback = rating
-      ElMessage.success('感谢你的反馈')
-    } catch (error) {
-      ElMessage.error(error instanceof Error ? error.message : '反馈提交失败')
-    }
   }
 
   function getToolLabel(name: string): string {

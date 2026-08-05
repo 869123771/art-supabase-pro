@@ -1,5 +1,5 @@
 <template>
-  <ArtDialog ref="dialogRef" width="1040px" show-fullscreen-button>
+  <ArtDialog ref="dialogRef" size="xl" show-fullscreen-button>
     <div class="vehicle-inspection-dialog">
       <ArtForm
         ref="formRef"
@@ -55,10 +55,11 @@
 </template>
 
 <script setup lang="tsx">
+  import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import type { ComputedRef, UnwrapNestedRefs } from 'vue'
   import { cloneDeep } from 'lodash-es'
   import type { FormRules } from 'element-plus'
-  import { ElMessage, ElMessageBox } from 'element-plus'
+  import { ElMessage } from 'element-plus'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtTableSingleSelect from '@/components/core/forms/art-data-select/table-single.vue'
@@ -83,6 +84,8 @@
   import { renderAttachmentLink } from '@/components/core/media/art-file-viewer/render'
 
   defineOptions({ name: 'VehicleInspectionDialog' })
+
+  const { confirmAction } = useArtFeedback()
 
   type VehicleInspection = Api.VehicleMgtSys.VehicleManage.VehicleInspection
   type VehicleArchive = Api.VehicleMgtSys.ArchiveManage.VehicleArchive
@@ -324,7 +327,7 @@
 
   const removeAttachment = async (row: Attachment): Promise<void> => {
     try {
-      await ElMessageBox.confirm(`确定删除附件“${row.name}”吗？`, '删除确认', {
+      await confirmAction(`确定删除附件“${row.name}”吗？`, '删除确认', {
         confirmButtonText: '删除',
         cancelButtonText: '取消',
         type: 'warning',

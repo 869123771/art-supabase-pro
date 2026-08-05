@@ -1,11 +1,13 @@
 <template>
-  <ArtDialog ref="dialogRef">
+  <ArtDialog ref="dialogRef" size="md">
     <ArtForm
       ref="formRef"
       v-model="form"
       :items="formItems"
       :rules="rules"
-      label-width="120px"
+      :span="12"
+      :gutter="20"
+      label-width="100px"
       :show-reset="false"
       :show-submit="false"
     />
@@ -159,6 +161,7 @@
       label: '描述',
       key: 'description',
       type: 'input',
+      span: 24,
       props: {
         type: 'textarea',
         rows: 3,
@@ -268,7 +271,6 @@
     await initializeForm(data)
     await dialogRef.value?.handleOpen(data, {
       title: data.type === 'add' ? '新增角色' : '编辑角色',
-      width: '35%',
       onConfirm: handleSubmit,
       onReset: () => {
         void resetForm()

@@ -1,5 +1,5 @@
 <template>
-  <ArtDialog ref="dialogRef" width="1120px" show-fullscreen-button>
+  <ArtDialog ref="dialogRef" size="xl" show-fullscreen-button>
     <div class="maintenance-record-dialog">
       <ArtForm
         ref="formRef"
@@ -59,7 +59,7 @@
     </div>
   </ArtDialog>
 
-  <ArtDialog ref="attachmentDialogRef" width="760px">
+  <ArtDialog ref="attachmentDialogRef" size="md">
     <div class="maintenance-attachment-dialog">
       <ArtForm
         ref="attachmentFormRef"
@@ -94,10 +94,11 @@
 </template>
 
 <script setup lang="tsx">
+  import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import type { ComputedRef, UnwrapNestedRefs } from 'vue'
   import { cloneDeep } from 'lodash-es'
   import type { FormRules } from 'element-plus'
-  import { ElButton, ElInput, ElInputNumber, ElMessage, ElMessageBox } from 'element-plus'
+  import { ElButton, ElInput, ElInputNumber, ElMessage } from 'element-plus'
   import { storeToRefs } from 'pinia'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
@@ -124,6 +125,8 @@
   import { useUserStore } from '@/store/modules/user'
 
   defineOptions({ name: 'MaintenanceRecordDialog' })
+
+  const { confirmAction } = useArtFeedback()
 
   type MaintenanceRecord = Api.VehicleMgtSys.VehicleManage.VehicleMaintenanceRecord
   type MaintenanceItem = Api.VehicleMgtSys.VehicleManage.VehicleMaintenanceItem
@@ -564,7 +567,7 @@
 
   const removeAttachment = async (row: Attachment): Promise<void> => {
     try {
-      await ElMessageBox.confirm(`确定删除附件“${row.name}”吗？`, '删除确认', {
+      await confirmAction(`确定删除附件“${row.name}”吗？`, '删除确认', {
         confirmButtonText: '删除',
         cancelButtonText: '取消',
         type: 'warning',

@@ -202,7 +202,7 @@
     roleData.value = data
     await dialogRef.value?.handleOpen(data, {
       title: '菜单权限',
-      width: '520px',
+      size: 'sm',
       contentHeight: '70vh',
       dialogProps: {
         class: 'el-dialog-border'

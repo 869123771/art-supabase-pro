@@ -16,8 +16,8 @@
 </template>
 
 <script setup lang="tsx">
+  import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import type { ComputedRef, UnwrapNestedRefs } from 'vue'
-  import { ElMessageBox } from 'element-plus'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import ArtButtonMore, {
     type ButtonMoreItem
@@ -42,6 +42,8 @@
   import VehiclePartUsageDialog from './modules/vehicle-part-usage-dialog.vue'
 
   defineOptions({ name: 'VehiclePartsManage' })
+
+  const { confirmAction } = useArtFeedback()
 
   type Usage = Api.VehicleMgtSys.VehicleManage.VehiclePartUsage
   type SearchParams = Api.VehicleMgtSys.VehicleManage.VehiclePartUsageSearchParams
@@ -281,7 +283,7 @@
   const handleDelete = async (row: Usage): Promise<void> => {
     if (!row.id) return
     try {
-      await ElMessageBox.confirm(
+      await confirmAction(
         `确定删除“${row.plateNo} / ${row.partName}”吗？删除后无法恢复。`,
         '删除确认',
         {

@@ -49,116 +49,44 @@
         <div class="art-card-sm">
           <h1 class="p-4 text-xl font-normal border-b border-g-300">基本设置</h1>
 
-          <ElForm
-            :model="form"
-            class="box-border p-5 [&>.el-row_.el-form-item]:w-[calc(50%-10px)] [&>.el-row_.el-input]:w-full [&>.el-row_.el-select]:w-full"
+          <ArtForm
             ref="ruleFormRef"
+            :model-value="form"
+            :items="profileFormItems"
             :rules="rules"
-            label-width="86px"
             label-position="top"
-          >
-            <ElRow>
-              <ElFormItem label="姓名" prop="userName">
-                <ElInput v-model="form.userName" :disabled="!isEdit" />
-              </ElFormItem>
-              <ElFormItem label="性别" prop="sex" class="ml-5">
-                <ElSelect v-model="form.sex" placeholder="Select" :disabled="!isEdit">
-                  <ElOption
-                    v-for="item in getDictMap.sex"
-                    :key="item.value"
-                    :label="item.label"
-                    :value="item.value"
-                  />
-                </ElSelect>
-              </ElFormItem>
-            </ElRow>
-
-            <ElRow>
-              <ElFormItem label="昵称" prop="nickName">
-                <ElInput v-model="form.nickName" :disabled="!isEdit" />
-              </ElFormItem>
-              <ElFormItem label="邮箱" prop="email" class="ml-5">
-                <ElInput v-model="form.email" :disabled="!isEdit" />
-              </ElFormItem>
-            </ElRow>
-
-            <ElRow>
-              <ElFormItem label="手机" prop="mobile">
-                <ElInput v-model="form.mobile" :disabled="!isEdit" />
-              </ElFormItem>
-              <ElFormItem label="地址" prop="address" class="ml-5">
-                <ElInput v-model="form.address" :disabled="!isEdit" />
-              </ElFormItem>
-            </ElRow>
-
-            <ElFormItem label="个人介绍" prop="des" class="h-32">
-              <ElInput type="textarea" :rows="4" v-model="form.des" :disabled="!isEdit" />
-            </ElFormItem>
-
-            <div class="flex-c justify-end [&_.el-button]:!w-27.5">
-              <ElButton
-                type="primary"
-                class="w-22.5"
-                :loading="profileLoading"
-                v-ripple
-                @click="edit"
-              >
-                {{ isEdit ? '保存' : '编辑' }}
-              </ElButton>
-            </div>
-          </ElForm>
+            :show-reset="false"
+            :show-submit="false"
+            root-class="user-center__form"
+            @update:model-value="Object.assign(form, $event)"
+          />
+          <div class="flex-c justify-end px-5 pb-5 [&_.el-button]:!w-27.5">
+            <ElButton type="primary" :loading="profileLoading" v-ripple @click="edit">
+              {{ isEdit ? '保存' : '编辑' }}
+            </ElButton>
+          </div>
         </div>
 
         <div class="art-card-sm my-5">
           <h1 class="p-4 text-xl font-normal border-b border-g-300">更改密码</h1>
 
-          <ElForm
+          <ArtForm
             ref="pwdFormRef"
-            :model="pwdForm"
+            :model-value="pwdForm"
+            :items="passwordFormItems"
             :rules="pwdRules"
-            class="box-border p-5"
-            label-width="86px"
             label-position="top"
-          >
-            <ElFormItem label="当前密码" prop="password">
-              <ElInput
-                v-model="pwdForm.password"
-                type="password"
-                :disabled="!isEditPwd"
-                show-password
-              />
-            </ElFormItem>
-
-            <ElFormItem label="新密码" prop="newPassword">
-              <ElInput
-                v-model="pwdForm.newPassword"
-                type="password"
-                :disabled="!isEditPwd"
-                show-password
-              />
-            </ElFormItem>
-
-            <ElFormItem label="确认新密码" prop="confirmPassword">
-              <ElInput
-                v-model="pwdForm.confirmPassword"
-                type="password"
-                :disabled="!isEditPwd"
-                show-password
-              />
-            </ElFormItem>
-
-            <div class="flex-c justify-end [&_.el-button]:!w-27.5">
-              <ElButton
-                type="primary"
-                class="w-22.5"
-                :loading="passwordLoading"
-                v-ripple
-                @click="editPwd"
-              >
-                {{ isEditPwd ? '保存' : '编辑' }}
-              </ElButton>
-            </div>
-          </ElForm>
+            :show-reset="false"
+            :show-submit="false"
+            :span="24"
+            root-class="user-center__form"
+            @update:model-value="Object.assign(pwdForm, $event)"
+          />
+          <div class="flex-c justify-end px-5 pb-5 [&_.el-button]:!w-27.5">
+            <ElButton type="primary" :loading="passwordLoading" v-ripple @click="editPwd">
+              {{ isEditPwd ? '保存' : '编辑' }}
+            </ElButton>
+          </div>
         </div>
       </div>
     </div>
@@ -169,7 +97,8 @@
   import { updateCurrentUserPassword, updateCurrentUserProfile } from '@/api/auth'
   import { useUserStore } from '@/store/modules/user'
   import { useSystemParam } from '@/hooks'
-  import type { FormInstance, FormItemRule, FormRules } from 'element-plus'
+  import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
+  import type { FormItemRule, FormRules } from 'element-plus'
 
   defineOptions({ name: 'UserCenter' })
 
@@ -188,8 +117,14 @@
   const profileLoading = ref(false)
   const passwordLoading = ref(false)
   const date = ref('')
-  const ruleFormRef = ref<FormInstance>()
-  const pwdFormRef = ref<FormInstance>()
+  interface FormExpose {
+    validate: () => Promise<boolean>
+    validateField: (prop: string) => Promise<boolean>
+    clearValidate: () => void
+  }
+
+  const ruleFormRef = ref<FormExpose>()
+  const pwdFormRef = ref<FormExpose>()
 
   /**
    * 用户信息表单
@@ -212,6 +147,49 @@
     newPassword: '',
     confirmPassword: ''
   })
+
+  const profileFormItems = computed<FormItem[]>(() => [
+    { label: '姓名', key: 'userName', type: 'input', span: 12, props: { disabled: !isEdit.value } },
+    {
+      label: '性别',
+      key: 'sex',
+      type: 'select',
+      span: 12,
+      props: { disabled: !isEdit.value, options: getDictMap.value.sex ?? [] }
+    },
+    { label: '昵称', key: 'nickName', type: 'input', span: 12, props: { disabled: !isEdit.value } },
+    { label: '邮箱', key: 'email', type: 'input', span: 12, props: { disabled: !isEdit.value } },
+    { label: '手机', key: 'mobile', type: 'input', span: 12, props: { disabled: !isEdit.value } },
+    { label: '地址', key: 'address', type: 'input', span: 12, props: { disabled: !isEdit.value } },
+    {
+      label: '个人介绍',
+      key: 'des',
+      type: 'input',
+      span: 24,
+      props: { type: 'textarea', rows: 4, disabled: !isEdit.value }
+    }
+  ])
+
+  const passwordFormItems = computed<FormItem[]>(() => [
+    {
+      label: '当前密码',
+      key: 'password',
+      type: 'input',
+      props: { type: 'password', showPassword: true, disabled: !isEditPwd.value }
+    },
+    {
+      label: '新密码',
+      key: 'newPassword',
+      type: 'input',
+      props: { type: 'password', showPassword: true, disabled: !isEditPwd.value }
+    },
+    {
+      label: '确认新密码',
+      key: 'confirmPassword',
+      type: 'input',
+      props: { type: 'password', showPassword: true, disabled: !isEditPwd.value }
+    }
+  ])
 
   const validateConfirmPassword: FormItemRule['validator'] = (_rule, value, callback) => {
     if (value !== pwdForm.newPassword) {

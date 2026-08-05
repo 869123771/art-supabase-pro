@@ -32,8 +32,9 @@
 </template>
 
 <script setup lang="tsx">
+  import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import type { ComputedRef, UnwrapNestedRefs } from 'vue'
-  import { ElMessage, ElMessageBox } from 'element-plus'
+  import { ElMessage } from 'element-plus'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type {
     ArtTableQueryExpose,
@@ -53,6 +54,8 @@
   import DictDialog from './modules/dict-dialog.vue'
 
   defineOptions({ name: 'Dict' })
+
+  const { confirmAction } = useArtFeedback()
 
   type DictListItem = Api.DataCenter.DictListItem
   type SearchParams = Partial<Pick<DictListItem, 'label' | 'code' | 'i18nScope' | 'status'>>
@@ -298,7 +301,7 @@
 
   const handleDelete = async (row: DictListItem): Promise<void> => {
     try {
-      await ElMessageBox.confirm('确定要删除该字典项吗？', '删除字典项', {
+      await confirmAction('确定要删除该字典项吗？', '删除字典项', {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
         type: 'warning',

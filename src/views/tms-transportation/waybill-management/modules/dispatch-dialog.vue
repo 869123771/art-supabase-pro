@@ -78,6 +78,11 @@
               </footer>
             </article>
           </div>
+          <ArtAiFeedback
+            :run-id="advisor.data.runId"
+            context-label="AI 调度推荐"
+            class="dispatch-dialog__feedback"
+          />
         </template>
 
         <p v-else class="dispatch-dialog__advisor-empty">
@@ -148,6 +153,7 @@
   import type { FormRules } from 'element-plus'
   import { trim } from 'lodash-es'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
+  import ArtAiFeedback from '@/components/core/base/art-ai-feedback/index.vue'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
@@ -298,7 +304,7 @@
     resetForm(data)
     await dialogRef.value?.handleOpen(data, {
       title: data.mode === 'batch' ? '批量配载' : '车辆配载',
-      width: '900px',
+      size: 'lg',
       contentMaxHeight: '76vh',
       confirmText: '确认',
       onOpen: async () => {

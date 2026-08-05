@@ -1,0 +1,4 @@
+interface:
+  display_name: 'רҵ UI �����Ž�'
+  short_description: 'Ϊ�����û�����ǿ��ִ��רҵ��������Ӧʽ��״̬��������������'
+  default_prompt: 'Use $professional-ui-quality to design and verify this project UI to a professional production standard.'

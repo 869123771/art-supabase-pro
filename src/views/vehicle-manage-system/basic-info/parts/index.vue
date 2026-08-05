@@ -16,7 +16,8 @@
 </template>
 
 <script setup lang="tsx">
-  import { ElMessage, ElMessageBox } from 'element-plus'
+  import { useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import { ElMessage } from 'element-plus'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type {
     ArtTableQueryExpose,
@@ -40,6 +41,8 @@
   import PartsDialog from './modules/parts-dialog.vue'
 
   defineOptions({ name: 'VehicleParts' })
+
+  const { confirmAction } = useArtFeedback()
 
   type Parts = Api.VehicleMgtSys.BasicInfo.Parts
   type SearchParams = Api.VehicleMgtSys.BasicInfo.PartsSearchParams
@@ -285,16 +288,12 @@
     if (!row.id) return
 
     try {
-      await ElMessageBox.confirm(
-        `确定删除零部件“${row.partName}”吗？删除后无法恢复。`,
-        '删除确认',
-        {
-          confirmButtonText: '删除',
-          cancelButtonText: '取消',
-          type: 'warning',
-          confirmButtonClass: 'el-button--danger'
-        }
-      )
+      await confirmAction(`确定删除零部件“${row.partName}”吗？删除后无法恢复。`, '删除确认', {
+        confirmButtonText: '删除',
+        cancelButtonText: '取消',
+        type: 'warning',
+        confirmButtonClass: 'el-button--danger'
+      })
       await deleteParts(row.id)
       await tableQueryRef.value?.refreshRemove()
     } catch {

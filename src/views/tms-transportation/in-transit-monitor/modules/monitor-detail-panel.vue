@@ -80,6 +80,15 @@
           </div>
 
           <div class="detail-actions">
+            <ElButton
+              class="detail-actions__ai"
+              type="primary"
+              plain
+              :icon="MagicStick"
+              @click="emit('analyze-anomaly')"
+            >
+              AI 异常研判
+            </ElButton>
             <ElButton type="primary" :icon="Phone" @click="emit('contact-driver')">
               联系司机
             </ElButton>
@@ -95,7 +104,7 @@
 </template>
 
 <script setup lang="ts">
-  import { MoreFilled, Phone, Warning } from '@element-plus/icons-vue'
+  import { MagicStick, MoreFilled, Phone, Warning } from '@element-plus/icons-vue'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import { formatWithDayjs } from '@/utils/time'
   import type { MonitorOrder } from './monitor-types'
@@ -107,6 +116,7 @@
   }>()
 
   const emit = defineEmits<{
+    'analyze-anomaly': []
     'contact-driver': []
     'open-detail': []
     'send-reminder': []
@@ -388,5 +398,9 @@
     gap: 8px;
     padding-bottom: 2px;
     margin-top: 16px;
+
+    &__ai {
+      grid-column: 1 / -1;
+    }
   }
 </style>

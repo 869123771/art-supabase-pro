@@ -15,7 +15,8 @@
 </template>
 
 <script setup lang="tsx">
-  import { ElMessage, ElMessageBox, ElTag } from 'element-plus'
+  import { useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import { ElMessage, ElTag } from 'element-plus'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type {
     ArtTableQueryExpose,
@@ -41,6 +42,8 @@
   import ContractDialog from './modules/contract-dialog.vue'
 
   defineOptions({ name: 'TmsContract' })
+
+  const { confirmAction } = useArtFeedback()
 
   type Contract = Api.Tms.BasicData.Contract
   type ContractStatus = Api.Tms.BasicData.ContractStatus
@@ -383,16 +386,12 @@
   const handleDelete = async (row: Contract): Promise<void> => {
     if (!row.id) return
     try {
-      await ElMessageBox.confirm(
-        `确定删除合同“${row.contractName}”吗？删除后无法恢复。`,
-        '删除确认',
-        {
-          confirmButtonText: '删除',
-          cancelButtonText: '取消',
-          type: 'warning',
-          confirmButtonClass: 'el-button--danger'
-        }
-      )
+      await confirmAction(`确定删除合同“${row.contractName}”吗？删除后无法恢复。`, '删除确认', {
+        confirmButtonText: '删除',
+        cancelButtonText: '取消',
+        type: 'warning',
+        confirmButtonClass: 'el-button--danger'
+      })
       await deleteContract(row.id)
       await tableQueryRef.value?.refreshRemove()
     } catch {

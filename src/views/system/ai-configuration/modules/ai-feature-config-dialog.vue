@@ -1,5 +1,5 @@
 <template>
-  <ArtDialog ref="dialogRef" width="860px">
+  <ArtDialog ref="dialogRef" size="lg">
     <div class="ai-config-dialog">
       <section class="ai-config-dialog__summary">
         <div class="ai-config-dialog__summary-icon">
@@ -403,7 +403,7 @@
     initializeForm(data)
     await dialogRef.value?.handleOpen(data, {
       title: '编辑 AI 运行配置',
-      width: '860px',
+      size: 'lg',
       contentMaxHeight: '72vh',
       confirmText: '保存并生效',
       onOpen: async () => {

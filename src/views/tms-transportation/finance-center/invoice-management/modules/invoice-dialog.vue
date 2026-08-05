@@ -1,5 +1,5 @@
 <template>
-  <ArtDialog ref="dialogRef" width="1120px">
+  <ArtDialog ref="dialogRef" size="xl">
     <ArtForm
       ref="formRef"
       v-model="form.data"
@@ -26,7 +26,7 @@
           description-key="partyCode"
           placeholder="请选择往来单位"
           search-placeholder="名称、编码、联系人或电话"
-          dialog-width="920px"
+          dialog-width="lg"
           show-pagination
           :page-size="10"
           @change="handlePartyChange"
@@ -47,7 +47,7 @@
           description-key="periodLabel"
           placeholder="可选择一个或多个对账单"
           search-placeholder="对账单号或往来单位"
-          dialog-width="1040px"
+          dialog-width="xl"
           show-pagination
           show-selected-panel
           :page-size="10"
@@ -66,30 +66,23 @@
 
     <section v-if="selection.statements.length" class="invoice-dialog__links art-card-xs">
       <ArtSectionTitle>对账单关联金额</ArtSectionTitle>
-      <ElTable :data="selection.statements" table-layout="fixed">
-        <ElTableColumn prop="statementNo" label="对账单号" min-width="180" />
-        <ElTableColumn label="账期" width="205">
-          <template #default="{ row }">{{ row.periodStart }} 至 {{ row.periodEnd }}</template>
-        </ElTableColumn>
-        <ElTableColumn label="对账金额" width="135" align="right">
-          <template #default="{ row }">{{ formatMoney(row.statementAmount) }}</template>
-        </ElTableColumn>
-        <ElTableColumn label="可开票金额" width="135" align="right">
-          <template #default="{ row }">{{ formatMoney(getAvailableAmount(row)) }}</template>
-        </ElTableColumn>
-        <ElTableColumn label="本次关联" width="190" align="right">
-          <template #default="{ row }">
-            <ElInputNumber
-              v-model="selection.linkAmounts[row.statementId]"
-              :min="0.01"
-              :max="getAvailableAmount(row)"
-              :precision="2"
-              :step="100"
-              controls-position="right"
-            />
-          </template>
-        </ElTableColumn>
-      </ElTable>
+      <ArtTable
+        :data="selection.statements"
+        :columns="linkedStatementColumns"
+        :pagination="false"
+        table-layout="fixed"
+      >
+        <template #linkedAmount="{ row }">
+          <ElInputNumber
+            v-model="selection.linkAmounts[row.statementId]"
+            :min="0.01"
+            :max="getAvailableAmount(row)"
+            :precision="2"
+            :step="100"
+            controls-position="right"
+          />
+        </template>
+      </ArtTable>
     </section>
   </ArtDialog>
 </template>
@@ -98,6 +91,7 @@
   import dayjs from 'dayjs'
   import type { FormRules } from 'element-plus'
   import type { ComputedRef, UnwrapNestedRefs } from 'vue'
+  import type { ColumnOption } from '@/types'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
@@ -329,6 +323,37 @@
       width: 135,
       align: 'right',
       formatter: (row) => formatMoney(getAvailableAmount(row))
+    }
+  ]
+
+  const linkedStatementColumns: ColumnOption<DataSelectRecord>[] = [
+    { prop: 'statementNo', label: '对账单号', minWidth: 180 },
+    {
+      prop: 'periodLabel',
+      label: '账期',
+      width: 205,
+      formatter: (row) => `${row.periodStart} 至 ${row.periodEnd}`
+    },
+    {
+      prop: 'statementAmount',
+      label: '对账金额',
+      width: 135,
+      align: 'right',
+      formatter: (row) => formatMoney(Number(row.statementAmount))
+    },
+    {
+      prop: 'availableAmount',
+      label: '可开票金额',
+      width: 135,
+      align: 'right',
+      formatter: (row) => formatMoney(getAvailableAmount(row))
+    },
+    {
+      prop: 'linkedAmount',
+      label: '本次关联',
+      width: 190,
+      align: 'right',
+      useSlot: true
     }
   ]
 
@@ -586,8 +611,8 @@
 <style scoped lang="scss">
   .invoice-dialog {
     &__links {
-      margin-top: 16px;
       padding: 16px;
+      margin-top: 16px;
     }
   }
 </style>
