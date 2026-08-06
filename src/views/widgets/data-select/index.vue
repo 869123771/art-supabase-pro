@@ -1,145 +1,132 @@
 <template>
-  <div class="widget-page">
-    <ElCard shadow="never" class="widget-section">
-      <template #header>
-        <div class="widget-section__header">
-          <div>
-            <h2>数据选择器</h2>
-            <p>复刻表格多选、表格单选、树形多选、树形单选四种常用弹窗选择场景。</p>
-          </div>
+  <ArtPageShell>
+    <div class="widget-page">
+      <ArtPageSection
+        class="widget-section"
+        title="数据选择器"
+        subtitle="复刻表格多选、表格单选、树形多选、树形单选四种常用弹窗选择场景。"
+      >
+        <template #actions>
           <ElTag effect="plain">Data Select Components</ElTag>
-        </div>
-      </template>
+        </template>
 
-      <ElRow :gutter="16">
-        <ElCol :xs="24" :md="12">
-          <div class="demo-field">
-            <span>表格多选</span>
-            <ArtTableMultipleSelect
-              v-model="companyMultipleValue"
-              v-model:selected-data="companyMultipleRows"
-              title="选择合作企业"
-              subtitle="可按企业名称、城市、行业或统一社会信用代码检索。"
-              row-key="id"
-              label-key="name"
-              description-key="code"
-              filter-key="industry"
-              :columns="companyColumns"
-              :api-fn="fetchCompanies"
-              :filter-options="industryOptions"
-              @change="handleChange"
-              @confirm="handleConfirm"
-              @clear="handleClear"
-            />
-          </div>
-        </ElCol>
+        <ElRow :gutter="16">
+          <ElCol :xs="24" :md="12">
+            <div class="demo-field">
+              <span>表格多选</span>
+              <ArtTableMultipleSelect
+                v-model="companyMultipleValue"
+                v-model:selected-data="companyMultipleRows"
+                title="选择合作企业"
+                subtitle="可按企业名称、城市、行业或统一社会信用代码检索。"
+                row-key="id"
+                label-key="name"
+                description-key="code"
+                filter-key="industry"
+                :columns="companyColumns"
+                :api-fn="fetchCompanies"
+                :filter-options="industryOptions"
+                @change="handleChange"
+                @confirm="handleConfirm"
+                @clear="handleClear"
+              />
+            </div>
+          </ElCol>
 
-        <ElCol :xs="24" :md="12">
-          <div class="demo-field">
-            <span>表格单选</span>
-            <ArtTableSingleSelect
-              v-model="warehouseSingleValue"
-              v-model:selected-data="warehouseSingleRows"
-              title="选择发货仓"
-              subtitle="单选模式确认后返回一条记录，可用于订单、调拨和库存业务。"
-              row-key="id"
-              label-key="name"
-              description-key="city"
-              :data="warehouseRows"
-              :columns="warehouseColumns"
-              :show-selected-panel="false"
-              :show-pagination="false"
-            />
-          </div>
-        </ElCol>
+          <ElCol :xs="24" :md="12">
+            <div class="demo-field">
+              <span>表格单选</span>
+              <ArtTableSingleSelect
+                v-model="warehouseSingleValue"
+                v-model:selected-data="warehouseSingleRows"
+                title="选择发货仓"
+                subtitle="单选模式确认后返回一条记录，可用于订单、调拨和库存业务。"
+                row-key="id"
+                label-key="name"
+                description-key="city"
+                :data="warehouseRows"
+                :columns="warehouseColumns"
+                :show-selected-panel="false"
+                :show-pagination="false"
+              />
+            </div>
+          </ElCol>
 
-        <ElCol :xs="24" :md="12">
-          <div class="demo-field">
-            <span>树形多选</span>
-            <ArtTreeMultipleSelect
-              v-model="regionMultipleValue"
-              v-model:selected-data="regionMultipleRows"
-              title="选择经营区域"
-              subtitle="支持父级和子级独立选择，已选项会在右侧聚合展示。"
-              row-key="id"
-              label-key="label"
-              description-key="manager"
-              children-key="children"
-              :data="regionRows"
-              :tree-check-strictly="true"
-              :show-pagination="false"
-            />
-          </div>
-        </ElCol>
+          <ElCol :xs="24" :md="12">
+            <div class="demo-field">
+              <span>树形多选</span>
+              <ArtTreeMultipleSelect
+                v-model="regionMultipleValue"
+                v-model:selected-data="regionMultipleRows"
+                title="选择经营区域"
+                subtitle="支持父级和子级独立选择，已选项会在右侧聚合展示。"
+                row-key="id"
+                label-key="label"
+                description-key="manager"
+                children-key="children"
+                :data="regionRows"
+                :tree-check-strictly="true"
+                :show-pagination="false"
+              />
+            </div>
+          </ElCol>
 
-        <ElCol :xs="24" :md="12">
-          <div class="demo-field">
-            <span>树形单选</span>
-            <ArtTreeSingleSelect
-              v-model="regionSingleValue"
-              v-model:selected-data="regionSingleRows"
-              title="选择默认区域"
-              subtitle="单选模式下使用高亮当前节点，确认后返回一条层级记录。"
-              row-key="id"
-              label-key="label"
-              description-key="manager"
-              children-key="children"
-              :data="regionRows"
-              :show-selected-panel="false"
-              :show-pagination="false"
-            />
-          </div>
-        </ElCol>
-      </ElRow>
+          <ElCol :xs="24" :md="12">
+            <div class="demo-field">
+              <span>树形单选</span>
+              <ArtTreeSingleSelect
+                v-model="regionSingleValue"
+                v-model:selected-data="regionSingleRows"
+                title="选择默认区域"
+                subtitle="单选模式下使用高亮当前节点，确认后返回一条层级记录。"
+                row-key="id"
+                label-key="label"
+                description-key="manager"
+                children-key="children"
+                :data="regionRows"
+                :show-selected-panel="false"
+                :show-pagination="false"
+              />
+            </div>
+          </ElCol>
+        </ElRow>
 
-      <ElDescriptions :column="2" border class="mt-4">
-        <ElDescriptionsItem label="表格多选 v-model">
-          {{ companyMultipleValue }}
-        </ElDescriptionsItem>
-        <ElDescriptionsItem label="表格单选 v-model">
-          {{ warehouseSingleValue }}
-        </ElDescriptionsItem>
-        <ElDescriptionsItem label="树形多选 v-model">
-          {{ regionMultipleValue }}
-        </ElDescriptionsItem>
-        <ElDescriptionsItem label="树形单选 v-model">
-          {{ regionSingleValue }}
-        </ElDescriptionsItem>
-      </ElDescriptions>
-    </ElCard>
+        <ElDescriptions :column="2" border class="mt-4">
+          <ElDescriptionsItem label="表格多选 v-model">
+            {{ companyMultipleValue }}
+          </ElDescriptionsItem>
+          <ElDescriptionsItem label="表格单选 v-model">
+            {{ warehouseSingleValue }}
+          </ElDescriptionsItem>
+          <ElDescriptionsItem label="树形多选 v-model">
+            {{ regionMultipleValue }}
+          </ElDescriptionsItem>
+          <ElDescriptionsItem label="树形单选 v-model">
+            {{ regionSingleValue }}
+          </ElDescriptionsItem>
+        </ElDescriptions>
+      </ArtPageSection>
 
-    <ElCard shadow="never" class="widget-section">
-      <template #header>
-        <div class="widget-section__header">
-          <div>
-            <h2>API</h2>
-            <p>四种组件共享 ArtDataSelect 的 props、事件、插槽和 expose 方法。</p>
-          </div>
-        </div>
-      </template>
-
-      <ElTabs>
-        <ElTabPane label="Props">
-          <ElTable :data="propsRows" border>
-            <ElTableColumn prop="name" label="名称" width="190" />
-            <ElTableColumn prop="type" label="类型" width="260" />
-            <ElTableColumn prop="defaultValue" label="默认值" width="150" />
-            <ElTableColumn prop="desc" label="说明" />
-          </ElTable>
-        </ElTabPane>
-        <ElTabPane label="Events / Slots / Expose">
-          <ElTable :data="eventRows" border>
-            <ElTableColumn prop="name" label="名称" width="190" />
-            <ElTableColumn prop="payload" label="参数" width="280" />
-            <ElTableColumn prop="desc" label="说明" />
-          </ElTable>
-        </ElTabPane>
-      </ElTabs>
-    </ElCard>
-  </div>
+      <ArtPageSection
+        class="widget-section"
+        title="API"
+        subtitle="四种组件共享 ArtDataSelect 的 props、事件、插槽和 expose 方法。"
+      >
+        <ElTabs>
+          <ElTabPane label="Props">
+            <ArtTable :data="propsRows" :columns="propsColumns" :pagination="false" />
+          </ElTabPane>
+          <ElTabPane label="Events / Slots / Expose">
+            <ArtTable :data="eventRows" :columns="eventColumns" :pagination="false" />
+          </ElTabPane>
+        </ElTabs>
+      </ArtPageSection>
+    </div>
+  </ArtPageShell>
 </template>
 
 <script setup lang="ts">
+  import type { ColumnOption } from '@/types'
   import type {
     DataSelectColumn,
     DataSelectFetchParams,
@@ -159,6 +146,18 @@
     payload?: string
     desc: string
   }
+
+  const propsColumns: ColumnOption<ApiRow>[] = [
+    { prop: 'name', label: '名称', width: 190 },
+    { prop: 'type', label: '类型', width: 260 },
+    { prop: 'defaultValue', label: '默认值', width: 150 },
+    { prop: 'desc', label: '说明', minWidth: 240 }
+  ]
+  const eventColumns: ColumnOption<ApiRow>[] = [
+    { prop: 'name', label: '名称', width: 190 },
+    { prop: 'payload', label: '参数', width: 280 },
+    { prop: 'desc', label: '说明', minWidth: 240 }
+  ]
 
   const companyRows = ref<DataSelectRecord[]>([
     {
@@ -484,28 +483,6 @@
     flex-direction: column;
     gap: 16px;
     padding-bottom: 16px;
-  }
-
-  .widget-section {
-    border-radius: 8px;
-  }
-
-  .widget-section__header {
-    display: flex;
-    gap: 16px;
-    align-items: flex-start;
-    justify-content: space-between;
-
-    h2 {
-      margin: 0;
-      font-size: 18px;
-      font-weight: 600;
-    }
-
-    p {
-      margin: 6px 0 0;
-      color: var(--el-text-color-secondary);
-    }
   }
 
   .demo-field {

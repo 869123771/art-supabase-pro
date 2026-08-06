@@ -85,7 +85,12 @@
               >
             </article>
           </div>
-          <ElEmpty v-else description="当前未发现明确的车辆健康风险" :image-size="72" />
+          <ArtEmptyState
+            v-else
+            title="当前未发现明确的车辆健康风险"
+            :visual-size="72"
+            size="compact"
+          />
         </section>
 
         <section class="vehicle-health-advisor__section">
@@ -124,6 +129,7 @@
 </template>
 
 <script setup lang="ts">
+  import ArtEmptyState from '@/components/core/layouts/art-empty-state/index.vue'
   import type { UnwrapNestedRefs } from 'vue'
   import ArtAiFeedback from '@/components/core/base/art-ai-feedback/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'

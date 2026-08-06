@@ -822,12 +822,15 @@ declare namespace Api {
 
     namespace ReminderManage {
       type ReminderKind = 'insurance' | 'inspection' | 'maintenance' | 'part' | 'vehicle'
+      type WorkOrderStatus = 'pending' | 'in_progress' | 'resolved' | 'closed' | 'cancelled'
+      type WorkOrderPriority = 'low' | 'normal' | 'high' | 'urgent'
 
       type InsuranceType = 'commercial' | 'compulsory'
 
       interface VehicleReminderRow {
         id: string
         sourceId?: string
+        sourceVersion?: string
         vehicleId?: string | null
         companyName?: string
         plateNo: string
@@ -850,6 +853,54 @@ declare namespace Api {
         serviceMileage?: number | null
         startUseDate?: string | null
         serviceYears?: number | null
+        workOrder?: VehicleReminderWorkOrder | null
+        workOrderStatus?: WorkOrderStatus | null
+      }
+
+      interface VehicleReminderWorkOrder {
+        id: string
+        tenantId: string
+        sourceType: ReminderKind
+        sourceKey: string
+        sourceVersion: string
+        sourceId?: string | null
+        vehicleId: string
+        plateNoSnapshot: string
+        companyNameSnapshot?: string | null
+        title: string
+        status: WorkOrderStatus
+        priority: WorkOrderPriority
+        dueDate?: string | null
+        remainingDaysSnapshot?: number | null
+        assigneeName?: string | null
+        resolution?: string | null
+        evidence?: unknown[]
+        startedAt?: string | null
+        resolvedAt?: string | null
+        closedAt?: string | null
+        createBy?: string | null
+        createTime: string
+        updateBy?: string | null
+        updateTime: string
+      }
+
+      interface VehicleReminderWorkOrderCreatePayload {
+        sourceType: ReminderKind
+        sourceKey: string
+        sourceVersion: string
+        sourceId?: string | null
+        vehicleId: string
+        plateNo: string
+        companyName?: string | null
+        title: string
+        dueDate?: string | null
+        remainingDays?: number | null
+      }
+
+      interface VehicleReminderWorkOrderTransitionPayload {
+        workOrderId: string
+        nextStatus: WorkOrderStatus
+        resolution?: string | null
       }
 
       type VehicleReminderSearchParams = Partial<
@@ -1557,6 +1608,20 @@ declare namespace Api {
         correctedFields: string[]
       }
 
+      type AiOrderMasterDataTaskKind = 'station' | 'customer' | 'address' | 'cargo'
+
+      interface AiOrderMasterDataCreateTask {
+        key: string
+        kind: AiOrderMasterDataTaskKind
+        payload: Record<string, unknown>
+      }
+
+      interface AiOrderMasterDataCreateResult {
+        key: string
+        kind: AiOrderMasterDataTaskKind
+        id: string
+      }
+
       interface OrderRecord {
         id?: string
         tenantId?: string
@@ -1774,6 +1839,115 @@ declare namespace Api {
         DeliveryRecord,
         'id' | 'orderStatus' | 'signedCodAmount' | 'receiptImageUrls' | 'signedAt'
       >
+
+      type ReceiptOcrField =
+        | 'waybillNo'
+        | 'signerName'
+        | 'signedAt'
+        | 'deliveryResult'
+        | 'signedQuantity'
+        | 'damagedQuantity'
+        | 'shortageQuantity'
+        | 'exceptionNote'
+      type ReceiptDeliveryResult =
+        'normal' | 'damaged' | 'shortage' | 'refused' | 'partial' | 'unclear'
+      type ReceiptRiskLevel = 'none' | 'medium' | 'high' | 'critical'
+
+      interface ReceiptOcrDraft {
+        waybillNo: string | null
+        signerName: string | null
+        signedAt: string | null
+        deliveryResult: ReceiptDeliveryResult
+        signedQuantity: number | null
+        damagedQuantity: number | null
+        shortageQuantity: number | null
+        exceptionNote: string | null
+      }
+
+      interface ReceiptOcrSignal {
+        type: string
+        severity: Exclude<ReceiptRiskLevel, 'none'>
+        title: string
+        detail: string
+      }
+
+      interface ReceiptOcrAssessment {
+        riskLevel: ReceiptRiskLevel
+        matched: boolean
+        signals: ReceiptOcrSignal[]
+        recommendedAction: 'normal_review' | 'manual_review' | 'block_completion'
+      }
+
+      interface ReceiptOcrAnalyzeRequest {
+        action: 'analyze'
+        imageUrls: string[]
+        orderId: string
+        orderNo: string
+        receiverName?: string | null
+        plannedArrivalTime?: string | null
+        cargoQuantityTotal?: number | null
+      }
+
+      interface ReceiptOcrAnalyzeResponse {
+        artifactId: string
+        runId: string
+        generatedAt: string
+        summary: string
+        confidence: number
+        fieldConfidence: Partial<Record<ReceiptOcrField, number>>
+        missingFields: string[]
+        warnings: string[]
+        receipt: ReceiptOcrDraft
+        assessment: ReceiptOcrAssessment
+        reviewConfidenceThreshold: number
+        order: {
+          id: string
+          orderNo: string
+          receiverName?: string | null
+          plannedArrivalTime?: string | null
+          cargoQuantityTotal?: number | null
+        }
+      }
+
+      interface ReceiptOcrReviewRequest {
+        action: 'review'
+        artifactId: string
+        entityId: string
+        outcome: 'applied'
+        finalPayload: Record<string, unknown>
+        reviewNote?: string
+      }
+
+      interface ReceiptOcrReviewResponse {
+        artifactId: string
+        status: 'applied'
+        acceptedFields: string[]
+        correctedFields: string[]
+      }
+
+      type ReceiptExceptionStatus = 'pending' | 'in_progress' | 'resolved' | 'closed' | 'cancelled'
+      type ReceiptExceptionSeverity = 'low' | 'medium' | 'high' | 'critical'
+
+      interface ReceiptExceptionWorkOrder {
+        id: string
+        tenantId: string
+        workOrderNo: string
+        orderId: string
+        aiArtifactReviewId: string
+        orderNoSnapshot: string
+        severity: ReceiptExceptionSeverity
+        status: ReceiptExceptionStatus
+        exceptionTypes: string[]
+        summary: string
+        evidenceUrls: string[]
+        assigneeId?: string | null
+        dueAt: string
+        startedAt?: string | null
+        resolutionNote?: string | null
+        createBy?: string | null
+        createTime: string
+        updateTime: string
+      }
     }
 
     namespace Finance {
@@ -2381,6 +2555,109 @@ declare namespace Api {
         allocations: CashAllocationInput[]
       }
 
+      type CashVoucherOcrField =
+        'payerName' | 'payeeName' | 'transactionDate' | 'amount' | 'bankReference' | 'paymentMethod'
+
+      interface CashVoucherOcrDraft {
+        payerName: string | null
+        payeeName: string | null
+        transactionDate: string | null
+        amount: number | null
+        bankReference: string | null
+        paymentMethod: CashPaymentMethod
+      }
+
+      interface CashVoucherStatementMatch {
+        statementId: string
+        statementNo: string
+        counterpartyId: string
+        counterpartyName: string
+        periodStart: string
+        periodEnd: string
+        statementAmount: number
+        settledAmount: number
+        outstandingAmount: number
+        score: number
+        confidence: number
+        recommendedAllocation: number
+        reasons: string[]
+      }
+
+      interface CashVoucherOcrAnalyzeRequest {
+        action: 'analyze'
+        imageUrls: string[]
+        direction: CashDirection
+      }
+
+      interface CashVoucherOcrAnalyzeResponse {
+        artifactId: string
+        runId: string
+        generatedAt: string
+        summary: string
+        confidence: number
+        fieldConfidence: Partial<Record<CashVoucherOcrField, number>>
+        missingFields: string[]
+        warnings: string[]
+        voucher: CashVoucherOcrDraft
+        matches: CashVoucherStatementMatch[]
+        evaluatedStatements: number
+        reviewConfidenceThreshold: number
+      }
+
+      interface CashVoucherOcrReviewRequest {
+        action: 'review'
+        artifactId: string
+        entityId: string
+        outcome: 'applied'
+        finalPayload: Record<string, unknown>
+        reviewNote?: string
+      }
+
+      interface CashVoucherOcrReviewResponse {
+        artifactId: string
+        status: 'applied'
+        acceptedFields: string[]
+        correctedFields: string[]
+      }
+
+      type BankBatchRowStatus = 'ready' | 'review' | 'duplicate' | 'invalid'
+
+      interface BankBatchMatchRow {
+        rowId: string
+        sourceRow: number
+        status: BankBatchRowStatus
+        direction: CashDirection | null
+        transactionDate: string | null
+        amount: number
+        bankReference: string | null
+        counterpartyName: string | null
+        counterpartyId: string | null
+        counterpartyScore: number
+        paymentMethod: CashPaymentMethod
+        remark: string | null
+        statementMatches: CashVoucherStatementMatch[]
+        allocations: CashAllocationInput[]
+        issues: string[]
+      }
+
+      interface BankBatchAnalyzeResponse {
+        artifactId: string
+        runId: string
+        generatedAt: string
+        mapping: Record<string, string>
+        usedAi: boolean
+        confidence: number
+        reviewConfidenceThreshold: number
+        summary: Record<BankBatchRowStatus, number>
+        rows: BankBatchMatchRow[]
+      }
+
+      interface BankBatchCommitResponse {
+        artifactId: string
+        committedCount: number
+        transactionIds: string[]
+      }
+
       type InvoiceDirection = 'output' | 'input'
       type InvoiceType = 'vat_special' | 'vat_ordinary' | 'electronic'
       type InvoiceStatus = 'draft' | 'pending_review' | 'issued' | 'certified' | 'voided'
@@ -2503,6 +2780,131 @@ declare namespace Api {
         id: string
         action: InvoiceStatusAction
         remark?: string | null
+      }
+
+      type InvoiceComplianceSignalType =
+        | 'amount_formula_mismatch'
+        | 'counterparty_mismatch'
+        | 'duplicate_invoice_number'
+        | 'future_issue_date'
+        | 'incomplete_statement_coverage'
+        | 'missing_attachment'
+        | 'missing_invoice_identity'
+        | 'missing_tax_identity'
+        | 'statement_amount_mismatch'
+        | 'tax_calculation_mismatch'
+      type InvoiceComplianceSeverity = 'critical' | 'high' | 'medium'
+      type InvoiceComplianceRiskLevel = InvoiceComplianceSeverity | 'low'
+      type InvoiceComplianceRecommendation =
+        'block_for_verification' | 'manual_review' | 'routine_review'
+
+      interface InvoiceComplianceSignal {
+        type: InvoiceComplianceSignalType
+        severity: InvoiceComplianceSeverity
+        title: string
+        detail: string
+        evidence: string[]
+      }
+
+      interface InvoiceComplianceAssessment {
+        invoiceId: string
+        invoiceRecordNo: string
+        invoiceNo: string
+        counterpartyName: string
+        direction: string
+        riskLevel: InvoiceComplianceRiskLevel
+        riskScore: number
+        confidence: number
+        recommendation: InvoiceComplianceRecommendation
+        summary: string
+        signals: InvoiceComplianceSignal[]
+        recommendedActions: string[]
+        limitations: string[]
+        metrics: {
+          totalAmount: number
+          calculatedTotalAmount: number
+          linkedAmount: number
+          unlinkedAmount: number
+          statementCount: number
+          duplicateCount: number
+          attachmentCount: number
+          coverageRate: number
+          taxRate: number
+        }
+      }
+
+      interface InvoiceComplianceAuditResponse {
+        runId: string
+        ruleVersion: string
+        generatedAt: string
+        assessment: InvoiceComplianceAssessment
+      }
+
+      type InvoiceOcrField =
+        | 'invoiceType'
+        | 'invoiceTitle'
+        | 'taxNumber'
+        | 'invoiceCode'
+        | 'invoiceNo'
+        | 'issueDate'
+        | 'taxRate'
+        | 'amountExcludingTax'
+        | 'taxAmount'
+        | 'totalAmount'
+        | 'buyerName'
+        | 'buyerTaxNumber'
+        | 'sellerName'
+        | 'sellerTaxNumber'
+
+      interface InvoiceOcrDraft {
+        invoiceType?: InvoiceType | null
+        invoiceTitle?: string | null
+        taxNumber?: string | null
+        invoiceCode?: string | null
+        invoiceNo?: string | null
+        issueDate?: string | null
+        taxRate?: number | null
+        amountExcludingTax?: number | null
+        taxAmount?: number | null
+        totalAmount?: number | null
+        buyerName?: string | null
+        buyerTaxNumber?: string | null
+        sellerName?: string | null
+        sellerTaxNumber?: string | null
+      }
+
+      interface InvoiceOcrAnalyzeRequest {
+        action?: 'analyze'
+        imageUrls: string[]
+        direction: InvoiceDirection
+      }
+
+      interface InvoiceOcrAnalyzeResponse {
+        runId: string
+        artifactId: string
+        generatedAt: string
+        summary: string
+        confidence: number
+        fieldConfidence: Partial<Record<InvoiceOcrField, number>>
+        missingFields: string[]
+        warnings: string[]
+        invoice: InvoiceOcrDraft
+      }
+
+      interface InvoiceOcrReviewRequest {
+        action: 'review'
+        artifactId: string
+        entityId: string
+        outcome: 'applied'
+        finalPayload: Record<string, unknown>
+        reviewNote?: string
+      }
+
+      interface InvoiceOcrReviewResponse {
+        artifactId: string
+        status: 'applied'
+        acceptedFields: string[]
+        correctedFields: string[]
       }
 
       interface FinanceWorkbenchStats {

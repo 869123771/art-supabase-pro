@@ -1,26 +1,27 @@
 ﻿<template>
-  <div class="website-config-page">
-    <section class="website-config-page__hero">
-      <div class="website-config-page__hero-main">
-        <h2>网站配置</h2>
-        <p
-          >统一维护品牌信息、登录体验、SEO
-          元信息、站点状态与对外联系资料。保存后同步影响登录页、浏览器标题、水印与系统品牌展示。</p
-        >
-      </div>
-      <div class="website-config-page__hero-aside">
-        <div class="website-config-page__hero-stat">
-          <span>最近更新</span>
-          <strong>{{ lastUpdateText }}</strong>
-          <small>{{ form.updateBy || form.createBy || 'admin' }}</small>
+  <ArtPageShell
+    :loading="page.loading"
+    :error="page.error"
+    class="website-config-page"
+    @retry="loadPage"
+  >
+    <ArtPageHeader
+      title="网站配置"
+      subtitle="统一维护品牌、登录体验、SEO、站点状态与对外联系资料，发布后同步影响所有公共品牌展示。"
+    >
+      <template #status>
+        <ElTag :type="isReadOnly ? 'info' : 'success'" effect="light">
+          {{ isReadOnly ? '只读模式' : '可发布' }}
+        </ElTag>
+      </template>
+      <template #meta>
+        <div class="website-config-page__header-meta">
+          <span>最近更新：{{ lastUpdateText }}</span>
+          <span>更新人：{{ form.updateBy || form.createBy || 'admin' }}</span>
+          <span>默认语言：{{ defaultLanguageLabel }}</span>
         </div>
-        <div class="website-config-page__hero-stat">
-          <span>默认语言</span>
-          <strong>{{ defaultLanguageLabel }}</strong>
-          <small>登录与公共展示默认语言</small>
-        </div>
-      </div>
-    </section>
+      </template>
+    </ArtPageHeader>
 
     <ArtForm
       ref="formRef"
@@ -36,14 +37,14 @@
       @update:model-value="Object.assign(form, $event)"
     >
       <div class="website-config-page__body">
-        <aside class="website-config-page__nav-panel">
+        <aside class="website-config-page__nav-panel art-card-xs">
           <div class="website-config-page__nav-title">配置分组</div>
           <button
             v-for="item in navigationItems"
             :key="item.key"
             type="button"
             class="website-config-page__nav-item"
-            :class="{ 'is-active': activeSection === item.key }"
+            :class="{ 'is-active': page.activeSection === item.key }"
             @click="scrollToSection(item.key)"
           >
             <ArtSvgIcon :icon="item.icon" />
@@ -56,12 +57,12 @@
           </div>
         </aside>
 
-        <main class="website-config-page__content">
+        <div class="website-config-page__content">
           <section id="overview" class="website-config-page__summary" aria-label="状态概览">
             <div
               v-for="item in summaryCards"
               :key="item.label"
-              class="website-config-page__summary-card"
+              class="website-config-page__summary-card art-card-xs"
             >
               <div>
                 <span>{{ item.label }}</span>
@@ -72,19 +73,17 @@
             </div>
           </section>
 
-          <section
+          <ArtPageSection
             v-for="section in formSections"
             :id="section.key"
             :key="section.key"
+            :title="section.title"
+            :subtitle="section.description"
             class="website-config-page__section"
           >
-            <header>
-              <div>
-                <h3>{{ section.title }}</h3>
-                <p>{{ section.description }}</p>
-              </div>
+            <template #actions>
               <ArtSvgIcon :icon="section.icon" />
-            </header>
+            </template>
 
             <div class="website-config-page__section-body">
               <template v-if="section.key === 'identity'">
@@ -344,27 +343,33 @@
                 </div>
               </template>
             </div>
-          </section>
+          </ArtPageSection>
 
-          <footer class="website-config-page__actions">
-            <div class="website-config-page__action-copy">
-              <div class="website-config-page__action-title">
-                <ArtSvgIcon icon="ri:pushpin-2-line" />
-                <strong>{{ form.siteName || '网站配置' }}</strong>
+          <ArtStickyActionBar class="website-config-page__actions">
+            <template #summary>
+              <div class="website-config-page__action-copy">
+                <div class="website-config-page__action-title">
+                  <ArtSvgIcon icon="ri:pushpin-2-line" />
+                  <strong>{{ form.siteName || '网站配置' }}</strong>
+                </div>
+                <p>保存后会同步影响登录页、浏览器标题与系统品牌展示。</p>
               </div>
-              <p>保存后会同步影响登录页、浏览器标题与系统品牌展示。</p>
-            </div>
+            </template>
             <div class="website-config-page__action-buttons">
               <ElButton :disabled="isReadOnly" @click="resetForm">重置当前表单</ElButton>
-              <ElButton type="primary" :disabled="isReadOnly" :loading="saving" @click="handleSave"
+              <ElButton
+                type="primary"
+                :disabled="isReadOnly"
+                :loading="page.saving"
+                @click="handleSave"
                 >保存并发布配置</ElButton
               >
             </div>
-          </footer>
-        </main>
+          </ArtStickyActionBar>
+        </div>
       </div>
     </ArtForm>
-  </div>
+  </ArtPageShell>
 </template>
 
 <script setup lang="ts">
@@ -399,9 +404,20 @@
     clearValidate: () => void
   }
 
+  interface PageGroup {
+    activeSection: SectionKey
+    loading: boolean
+    saving: boolean
+    error: Error | null
+  }
+
   const formRef = ref<FormExpose>()
-  const saving = ref(false)
-  const activeSection = ref<SectionKey>('identity')
+  const page = reactive<PageGroup>({
+    activeSection: 'identity',
+    loading: false,
+    saving: false,
+    error: null
+  })
   const form = reactive<WebsiteConfig>(createWebsiteConfigDefaults())
   const originalForm = ref<WebsiteConfig>(createWebsiteConfigDefaults())
   const { setWebsiteConfig, loadWebsiteConfig } = useWebsiteConfig()
@@ -617,7 +633,7 @@
     }
 
     await formRef.value?.validate()
-    saving.value = true
+    page.saving = true
 
     try {
       const payload = normalizePayload()
@@ -627,7 +643,7 @@
       await loadWebsiteConfig(true)
       ElMessage.success('网站配置已发布')
     } finally {
-      saving.value = false
+      page.saving = false
     }
   }
 
@@ -639,7 +655,7 @@
   const scrollToSection = (key: SectionKey): void => {
     const target = document.getElementById(key)
     if (!target) return
-    activeSection.value = key
+    page.activeSection = key
     target.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
@@ -652,7 +668,7 @@
           .filter((entry) => entry.isIntersecting)
           .sort((left, right) => right.intersectionRatio - left.intersectionRatio)[0]
         if (activeEntry?.target?.id) {
-          activeSection.value = activeEntry.target.id as SectionKey
+          page.activeSection = activeEntry.target.id as SectionKey
         }
       },
       {
@@ -673,11 +689,22 @@
 
   let stopObserver: (() => void) | undefined
 
-  onMounted(async () => {
-    await fetchConfig()
-    await nextTick()
-    stopObserver = setupSectionObserver()
-  })
+  const loadPage = async (): Promise<void> => {
+    page.loading = true
+    page.error = null
+    try {
+      await fetchConfig()
+      await nextTick()
+      stopObserver?.()
+      stopObserver = setupSectionObserver()
+    } catch (error) {
+      page.error = error instanceof Error ? error : new Error('网站配置加载失败')
+    } finally {
+      page.loading = false
+    }
+  }
+
+  onMounted(() => void loadPage())
 
   onBeforeUnmount(() => {
     stopObserver?.()
@@ -686,78 +713,30 @@
 
 <style scoped lang="scss">
   .website-config-page {
+    --website-config-sticky-top: calc(104px + var(--art-space-4));
+
     display: flex;
     flex-direction: column;
-    gap: 16px;
-    padding-bottom: 16px;
+    gap: var(--art-space-4);
+    padding-bottom: var(--art-space-4);
 
-    &__hero,
-    &__summary-card,
-    &__nav-panel,
-    &__section,
-    &__actions {
-      background: var(--el-bg-color);
-      border: 1px solid var(--el-border-color-light);
-      border-radius: var(--art-surface-radius);
-    }
-
-    &__hero {
+    :deep(> .art-async-state) {
       display: flex;
-      gap: 24px;
-      justify-content: space-between;
-      padding: 22px 24px;
+      flex-direction: column;
+      gap: var(--art-space-4);
     }
 
-    &__hero-main {
-      h2 {
-        margin: 0 0 10px;
-        font-size: 22px;
-        font-weight: 700;
-        color: var(--art-text-gray-900);
-      }
-
-      p {
-        max-width: 820px;
-        margin: 0;
-        font-size: 13px;
-        line-height: 2;
-        color: var(--art-text-gray-600);
-      }
-    }
-
-    &__hero-aside {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(130px, 1fr));
-      gap: 12px;
-      min-width: 340px;
-    }
-
-    &__hero-stat {
-      padding: 12px 14px;
-      background: var(--el-fill-color-blank);
-      border: 1px solid var(--el-border-color-lighter);
-      border-radius: var(--art-control-radius);
-
-      span,
-      small {
-        display: block;
-        font-size: 12px;
-        color: var(--el-text-color-secondary);
-      }
-
-      strong {
-        display: block;
-        margin: 8px 0 4px;
-        font-size: 15px;
-        color: var(--art-text-gray-900);
-      }
+    &__header-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--art-space-1) var(--art-space-4);
     }
 
     &__summary {
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 14px;
-      scroll-margin-top: 92px;
+      scroll-margin-top: calc(var(--website-config-sticky-top) + var(--art-space-2));
     }
 
     &__summary-card {
@@ -803,7 +782,7 @@
 
     &__nav-panel {
       position: sticky;
-      top: 84px;
+      top: var(--website-config-sticky-top);
       display: flex;
       flex-direction: column;
       gap: 8px;
@@ -872,33 +851,12 @@
     }
 
     &__section {
-      scroll-margin-top: 92px;
+      scroll-margin-top: calc(var(--website-config-sticky-top) + var(--art-space-2));
 
-      > header {
-        display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        padding: 20px 22px 18px;
-        border-bottom: 1px solid var(--el-border-color-lighter);
-
-        h3 {
-          margin: 0 0 8px;
-          font-size: 18px;
-          font-weight: 700;
-          color: var(--art-text-gray-900);
-        }
-
-        p {
-          margin: 0;
-          font-size: 13px;
-          color: var(--el-text-color-secondary);
-        }
-
-        .art-svg-icon {
-          flex: none;
-          font-size: 20px;
-          color: var(--el-text-color-placeholder);
-        }
+      .art-svg-icon {
+        flex: none;
+        font-size: 20px;
+        color: var(--el-text-color-placeholder);
       }
     }
 
@@ -906,7 +864,6 @@
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 22px 14px;
-      padding: 22px;
 
       :deep(.el-form-item) {
         display: block;
@@ -999,16 +956,7 @@
     }
 
     &__actions {
-      position: sticky;
-      bottom: 16px;
-      z-index: 90;
-      display: flex;
-      gap: 16px;
-      align-items: center;
-      justify-content: space-between;
       min-height: 64px;
-      padding: 12px 18px;
-      box-shadow: 0 8px 28px rgb(31 45 61 / 10%);
 
       .art-svg-icon {
         flex: none;
@@ -1060,14 +1008,6 @@
 
   @media (width <= 900px) {
     .website-config-page {
-      &__hero {
-        flex-direction: column;
-      }
-
-      &__hero-aside {
-        min-width: 0;
-      }
-
       &__body {
         grid-template-columns: 1fr;
       }
@@ -1080,24 +1020,15 @@
 
   @media (width <= 640px) {
     .website-config-page {
-      &__hero-aside,
       &__summary,
       &__section-body,
       &__preview-grid {
         grid-template-columns: 1fr;
       }
 
-      &__actions {
-        flex-direction: column;
-        align-items: stretch;
-      }
-
-      &__content {
-        padding-bottom: 142px;
-      }
-
       &__action-buttons {
-        justify-content: flex-end;
+        flex-wrap: wrap;
+        justify-content: flex-start;
       }
     }
   }

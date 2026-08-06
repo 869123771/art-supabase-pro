@@ -1,6 +1,6 @@
 <!-- 水平菜单 -->
 <template>
-  <div class="flex-1 overflow-hidden">
+  <div class="art-horizontal-menu flex-1 overflow-hidden">
     <ElMenu
       :ellipsis="true"
       mode="horizontal"
@@ -90,7 +90,7 @@
   }
 </script>
 
-<style scoped>
+<style scoped lang="scss">
   /* Remove el-menu bottom border */
   :deep(.el-menu) {
     border-bottom: none !important;
@@ -106,5 +106,25 @@
   :deep(.el-menu--horizontal .el-sub-menu__title) {
     padding: 0 30px 0 10px !important;
     border: 0 !important;
+  }
+
+  .art-horizontal-menu {
+    :deep(.el-menu--horizontal > .el-menu-item),
+    :deep(.el-menu--horizontal > .el-sub-menu .el-sub-menu__title) {
+      height: 40px;
+      margin: 10px 2px;
+      border-radius: var(--el-border-radius-base);
+      transition:
+        color 0.18s ease,
+        background-color 0.18s ease,
+        box-shadow 0.18s ease;
+    }
+
+    :deep(.el-menu--horizontal > .el-menu-item:hover),
+    :deep(.el-menu--horizontal > .el-sub-menu:hover .el-sub-menu__title) {
+      color: var(--theme-color) !important;
+      background: color-mix(in srgb, var(--theme-color) 8%, var(--default-box-color)) !important;
+      box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--theme-color) 11%, transparent);
+    }
   }
 </style>

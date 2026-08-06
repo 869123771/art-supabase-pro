@@ -45,7 +45,7 @@
 
   const emit = defineEmits<{
     'file-change': [file: File, uploadFile: UploadFile]
-    'import-success': [data: Array<Record<string, unknown>>]
+    'import-success': [data: Array<Record<string, unknown>>, file: File, uploadFile: UploadFile]
     'import-error': [error: Error]
   }>()
 
@@ -60,7 +60,7 @@
         return
       }
       const results = await importExcelFile(uploadFile.raw)
-      emit('import-success', results)
+      emit('import-success', results, uploadFile.raw, uploadFile)
     } catch (error) {
       emit('import-error', error as Error)
     } finally {

@@ -455,7 +455,11 @@
   }
 
   function canDeleteOrder(row: OrderRecord): boolean {
-    return Boolean(row.id)
+    return (
+      Boolean(row.id) &&
+      row.orderStatus === 'pending_load' &&
+      String(row.dispatchStatus || '') === 'pending'
+    )
   }
 
   function canCancelOrder(row: OrderRecord): boolean {
@@ -485,7 +489,7 @@
     if (!row.id || !canDeleteOrder(row)) return
     try {
       await confirmAction(
-        `确定永久删除订单“${row.orderNo}”及其关联运单、轨迹和回单吗？删除后无法恢复。`,
+        `确定永久删除待配载订单“${row.orderNo}”吗？删除后无法恢复。`,
         '删除确认',
         {
           confirmButtonText: '删除',

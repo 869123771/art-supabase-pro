@@ -1,4 +1,10 @@
 .art-form {
+  &:not(.art-form--custom-layout) {
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: clip;
+  }
+
   &--custom-layout {
     padding: 0 !important;
   }

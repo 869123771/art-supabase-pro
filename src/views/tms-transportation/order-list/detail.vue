@@ -86,7 +86,12 @@
 
     <section class="order-detail__section art-card-xs">
       <ArtSectionTitle title="物流信息" />
-      <ElEmpty description="暂无物流跟踪信息" :image-size="80" />
+      <ArtEmptyState
+        title="暂无物流跟踪信息"
+        description="产生运输节点后，轨迹会显示在这里。"
+        :visual-size="76"
+        size="compact"
+      />
     </section>
   </ArtPageShell>
 </template>
@@ -95,6 +100,7 @@
   import type { ComputedRef, UnwrapNestedRefs } from 'vue'
   import { toNumber } from 'lodash-es'
   import ArtDescriptions from '@/components/core/base/art-descriptions/index.vue'
+  import ArtEmptyState from '@/components/core/layouts/art-empty-state/index.vue'
   import type { ArtDescriptionItem } from '@/components/core/base/art-descriptions/types'
   import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
   import ArtTable from '@/components/core/tables/art-table/index.vue'
@@ -453,6 +459,7 @@
 
     :deep(.art-descriptions) {
       margin-top: 16px;
+
       .el-descriptions__body {
         background: inherit;
       }

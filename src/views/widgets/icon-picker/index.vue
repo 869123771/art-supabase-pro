@@ -1,83 +1,70 @@
 <template>
-  <div class="widget-page">
-    <ElCard shadow="never" class="widget-section">
-      <template #header>
-        <div class="widget-section__header">
-          <div>
-            <h2>图标选择器</h2>
-            <p>支持 Remix Icon 搜索、懒加载、缓存、手动输入、清空和命令式打开。</p>
-          </div>
+  <ArtPageShell>
+    <div class="widget-page">
+      <ArtPageSection
+        class="widget-section"
+        title="图标选择器"
+        subtitle="支持 Remix Icon 搜索、懒加载、缓存、手动输入、清空和命令式打开。"
+      >
+        <template #actions>
           <ElTag effect="plain">ArtIconPicker</ElTag>
-        </div>
-      </template>
+        </template>
 
-      <ElRow :gutter="16">
-        <ElCol :xs="24" :md="12">
-          <div class="demo-field">
-            <span>基础选择</span>
-            <ArtIconPicker v-model="iconValue" @select="handleSelect" @clear="handleClear" />
-          </div>
-        </ElCol>
-        <ElCol :xs="24" :md="12">
-          <div class="demo-field">
-            <span>自定义配置</span>
-            <ArtIconPicker
-              ref="customPickerRef"
-              v-model="customIconValue"
-              title="选择菜单图标"
-              placeholder="请输入或选择菜单图标"
-              :page-size="80"
-              :close-on-select="false"
-              @change="handleChange"
-            />
-          </div>
-        </ElCol>
-      </ElRow>
+        <ElRow :gutter="16">
+          <ElCol :xs="24" :md="12">
+            <div class="demo-field">
+              <span>基础选择</span>
+              <ArtIconPicker v-model="iconValue" @select="handleSelect" @clear="handleClear" />
+            </div>
+          </ElCol>
+          <ElCol :xs="24" :md="12">
+            <div class="demo-field">
+              <span>自定义配置</span>
+              <ArtIconPicker
+                ref="customPickerRef"
+                v-model="customIconValue"
+                title="选择菜单图标"
+                placeholder="请输入或选择菜单图标"
+                :page-size="80"
+                :close-on-select="false"
+                @change="handleChange"
+              />
+            </div>
+          </ElCol>
+        </ElRow>
 
-      <ElSpace wrap>
-        <ElButton type="primary" @click="openCustomPicker">handleOpen()</ElButton>
-        <ElButton @click="reloadCustomPicker">reload()</ElButton>
-        <ElButton @click="clearCustomPicker">handleClear()</ElButton>
-      </ElSpace>
+        <ElSpace wrap>
+          <ElButton type="primary" @click="openCustomPicker">handleOpen()</ElButton>
+          <ElButton @click="reloadCustomPicker">reload()</ElButton>
+          <ElButton @click="clearCustomPicker">handleClear()</ElButton>
+        </ElSpace>
 
-      <ElDescriptions :column="2" border class="mt-4">
-        <ElDescriptionsItem label="基础值">{{ iconValue }}</ElDescriptionsItem>
-        <ElDescriptionsItem label="自定义值">{{ customIconValue }}</ElDescriptionsItem>
-      </ElDescriptions>
-    </ElCard>
+        <ElDescriptions :column="2" border class="mt-4">
+          <ElDescriptionsItem label="基础值">{{ iconValue }}</ElDescriptionsItem>
+          <ElDescriptionsItem label="自定义值">{{ customIconValue }}</ElDescriptionsItem>
+        </ElDescriptions>
+      </ArtPageSection>
 
-    <ElCard shadow="never" class="widget-section">
-      <template #header>
-        <div class="widget-section__header">
-          <div>
-            <h2>API</h2>
-            <p>覆盖 ArtIconPicker 的 props、事件和 expose 方法。</p>
-          </div>
-        </div>
-      </template>
-
-      <ElTabs>
-        <ElTabPane label="Props">
-          <ElTable :data="propsRows" border>
-            <ElTableColumn prop="name" label="名称" width="180" />
-            <ElTableColumn prop="type" label="类型" width="180" />
-            <ElTableColumn prop="defaultValue" label="默认值" width="240" />
-            <ElTableColumn prop="desc" label="说明" />
-          </ElTable>
-        </ElTabPane>
-        <ElTabPane label="Events / Expose">
-          <ElTable :data="eventRows" border>
-            <ElTableColumn prop="name" label="名称" width="180" />
-            <ElTableColumn prop="payload" label="参数" width="200" />
-            <ElTableColumn prop="desc" label="说明" />
-          </ElTable>
-        </ElTabPane>
-      </ElTabs>
-    </ElCard>
-  </div>
+      <ArtPageSection
+        class="widget-section"
+        title="API"
+        subtitle="覆盖 ArtIconPicker 的 props、事件和 expose 方法。"
+      >
+        <ElTabs>
+          <ElTabPane label="Props">
+            <ArtTable :data="propsRows" :columns="propsColumns" :pagination="false" />
+          </ElTabPane>
+          <ElTabPane label="Events / Expose">
+            <ArtTable :data="eventRows" :columns="eventColumns" :pagination="false" />
+          </ElTabPane>
+        </ElTabs>
+      </ArtPageSection>
+    </div>
+  </ArtPageShell>
 </template>
 
 <script setup lang="ts">
+  import type { ColumnOption } from '@/types'
   import ArtIconPicker from '@/components/core/forms/art-icon-picker/index.vue'
 
   defineOptions({ name: 'IconPickerWidget' })
@@ -93,6 +80,18 @@
   const iconValue = ref('ri:home-line')
   const customIconValue = ref('ri:settings-3-line')
   const customPickerRef = ref<InstanceType<typeof ArtIconPicker>>()
+
+  const propsColumns: ColumnOption<ApiRow>[] = [
+    { prop: 'name', label: '名称', width: 180 },
+    { prop: 'type', label: '类型', width: 180 },
+    { prop: 'defaultValue', label: '默认值', width: 240 },
+    { prop: 'desc', label: '说明', minWidth: 240 }
+  ]
+  const eventColumns: ColumnOption<ApiRow>[] = [
+    { prop: 'name', label: '名称', width: 180 },
+    { prop: 'payload', label: '参数', width: 200 },
+    { prop: 'desc', label: '说明', minWidth: 240 }
+  ]
 
   const openCustomPicker = () => {
     void customPickerRef.value?.handleOpen()
@@ -167,28 +166,6 @@
     flex-direction: column;
     gap: 16px;
     padding-bottom: 16px;
-  }
-
-  .widget-section {
-    border-radius: 8px;
-  }
-
-  .widget-section__header {
-    display: flex;
-    gap: 16px;
-    align-items: flex-start;
-    justify-content: space-between;
-
-    h2 {
-      margin: 0;
-      font-size: 18px;
-      font-weight: 600;
-    }
-
-    p {
-      margin: 6px 0 0;
-      color: var(--el-text-color-secondary);
-    }
   }
 
   .demo-field {

@@ -436,16 +436,13 @@ export async function executeSql(
 export async function generateSqlByAi(
   params: Api.DataCenter.SqlConsole.SqlAiGenerateRequest
 ): Promise<QueryResult<Api.DataCenter.SqlConsole.SqlAiGenerateResponse>> {
-  const { data, error } =
-    await supabase.functions.invoke<Api.DataCenter.SqlConsole.SqlAiGenerateResponse>(
-      'ai-sql-assistant',
-      {
-        body: params
-      }
-    )
+  const invokeResp = () =>
+    supabase.functions.invoke<Api.DataCenter.SqlConsole.SqlAiGenerateResponse>('ai-sql-assistant', {
+      body: params
+    })
 
-  return {
-    data: data ?? null,
-    error
-  }
+  return await responseHandle(invokeResp, {
+    convertToCamelShadow: true,
+    returnRawError: true
+  })
 }

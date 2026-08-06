@@ -50,7 +50,9 @@
       </ElDropdown>
 
       <div v-if="shouldShow('fullscreen')" class="button" @click="toggleFullScreen">
-        <ArtSvgIcon :icon="isFullScreen ? 'ri:fullscreen-exit-line' : 'ri:fullscreen-line'" />
+        <ArtSvgIcon
+          :icon="isFullScreen ? 'dashicons:fullscreen-exit-alt' : 'dashicons:fullscreen-alt'"
+        />
       </div>
 
       <!-- 列设置 -->
@@ -327,22 +329,47 @@
   })
 </script>
 
-<style scoped>
-  @reference '@styles/core/tailwind.css';
-
+<style scoped lang="scss">
   .button {
-    @apply ml-2 
-    size-8 
-    flex 
-    items-center 
-    justify-center 
-    cursor-pointer 
-    rounded-md 
-    bg-g-300/55
-    dark:bg-g-300/40
-    text-g-700  
-    hover:bg-g-300 
-    md:ml-0 
-    md:mr-2.5;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    margin-right: 10px;
+    color: var(--art-gray-700);
+    cursor: pointer;
+    background: color-mix(in srgb, var(--art-gray-200) 72%, var(--default-box-color));
+    border: 1px solid transparent;
+    border-radius: var(--el-border-radius-base);
+    transition:
+      color 0.18s ease,
+      background-color 0.18s ease,
+      border-color 0.18s ease,
+      box-shadow 0.18s ease;
+
+    &:hover {
+      color: var(--theme-color);
+      background: color-mix(in srgb, var(--theme-color) 8%, var(--default-box-color));
+      border-color: transparent;
+      box-shadow: var(--art-themed-action-hover-shadow);
+    }
+
+    &:active {
+      background: color-mix(in srgb, var(--theme-color) 14%, var(--default-box-color));
+      box-shadow: var(--art-themed-action-active-shadow);
+    }
+
+    &:focus-visible {
+      outline: none;
+      box-shadow: var(--art-themed-action-focus-shadow);
+    }
+  }
+
+  @media (width <= 767px) {
+    .button {
+      margin-right: 0;
+      margin-left: 8px;
+    }
   }
 </style>

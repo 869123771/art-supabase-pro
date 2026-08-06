@@ -98,7 +98,12 @@
         </div>
       </el-scrollbar>
       <div v-else class="h-full w-full flex flex-1 items-center justify-center">
-        <el-empty />
+        <ArtEmptyState
+          title="暂无可用资源"
+          description="可以切换资源类型，或尝试更换搜索关键词"
+          size="compact"
+          :visual-size="76"
+        />
       </div>
 
       <!-- 右键菜单组件 -->
@@ -177,6 +182,7 @@
 </template>
 
 <script setup lang="ts">
+  import ArtEmptyState from '@/components/core/layouts/art-empty-state/index.vue'
   import type { FileType, Resource, ResourcePanelProps } from './type.ts'
   import ArtMenuRight from '@/components/core/others/art-menu-right/index.vue'
   import type { MenuItemType } from '@/components/core/others/art-menu-right/index.vue'

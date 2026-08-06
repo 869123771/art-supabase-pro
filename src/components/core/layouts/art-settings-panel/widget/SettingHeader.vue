@@ -1,14 +1,24 @@
 <template>
-  <div>
-    <div class="flex justify-end">
-      <div
-        @click="$emit('close')"
-        class="flex-cc c-p size-7.5 !transition-all duration-200 rounded hover:bg-g-300/80"
-      >
-        <ArtSvgIcon icon="ri:close-fill" class="block text-xl text-g-600" />
+  <header class="setting-header">
+    <div class="setting-header__identity">
+      <span class="setting-header__mark">
+        <ArtSvgIcon icon="ri:palette-line" />
+      </span>
+      <div>
+        <span>APPEARANCE STUDIO</span>
+        <h2>界面工作室</h2>
+        <p>让工作台更鲜明、更高效，也更像你的产品。</p>
       </div>
     </div>
-  </div>
+    <button
+      type="button"
+      class="setting-header__close"
+      aria-label="关闭界面设置"
+      @click="$emit('close')"
+    >
+      <ArtSvgIcon icon="ri:close-line" />
+    </button>
+  </header>
 </template>
 
 <script setup lang="ts">

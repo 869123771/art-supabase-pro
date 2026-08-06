@@ -109,19 +109,19 @@
 <style scoped>
   .color-dots {
     pointer-events: none;
-    backdrop-filter: blur(10px);
     box-shadow: 0 2px 12px var(--art-gray-300);
+    backdrop-filter: blur(10px);
+    transform: translateX(10px);
     transition:
       opacity 0.3s ease,
       transform 0.3s ease;
-    transform: translateX(10px);
   }
 
   .color-dot {
     box-shadow: 0 2px 4px rgb(0 0 0 / 15%);
+    transform: translateX(20px) scale(0.8);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     transition-delay: calc(var(--index) * 0.05s);
-    transform: translateX(20px) scale(0.8);
   }
 
   .color-dot:hover {
@@ -147,5 +147,22 @@
 
   .color-picker-expandable:hover .palette-btn :deep(.art-svg-icon) {
     color: v-bind(color);
+  }
+
+  @media (width <= 1040px) {
+    h1 {
+      color: #fff;
+    }
+
+    .btn :deep(.art-svg-icon) {
+      color: rgb(255 255 255 / 88%) !important;
+    }
+
+    .btn {
+      background: rgb(255 255 255 / 10%);
+      border: 1px solid rgb(255 255 255 / 13%);
+      border-radius: 50%;
+      backdrop-filter: blur(12px);
+    }
   }
 </style>

@@ -23,6 +23,11 @@
   --art-feature-radius: calc(var(--custom-radius) * 2);
   --art-floating-shadow: var(--el-box-shadow-light);
   --art-modal-shadow: var(--el-box-shadow);
+  --art-motion-duration-fast: 180ms;
+  --art-motion-duration-base: 260ms;
+  --art-motion-duration-slow: 320ms;
+  --art-motion-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --art-motion-ease-in: cubic-bezier(0.4, 0, 1, 1);
 
   // 对齐 Element Plus 组件变量，避免按需样式和全局覆盖各用一套圆角。
   --el-border-radius-base: var(--art-control-radius) !important;
@@ -139,19 +144,48 @@ html.dark .el-card {
 }
 
 .el-dialog {
+  overflow: hidden;
+  background: var(--default-box-color);
+  border: 1px solid var(--art-card-border);
   border-radius: var(--art-modal-radius) !important;
   box-shadow: var(--art-modal-shadow);
-  overflow: hidden;
+  transition:
+    width var(--art-motion-duration-base) var(--art-motion-ease-out),
+    height var(--art-motion-duration-base) var(--art-motion-ease-out),
+    margin var(--art-motion-duration-base) var(--art-motion-ease-out),
+    border-radius var(--art-motion-duration-base) var(--art-motion-ease-out);
 
-  &__header {
+  &.art-dialog {
+    padding: 0 !important;
+  }
+
+  &.art-dialog > .el-dialog__header {
+    display: flex;
+    align-items: center;
+    min-height: 56px;
+    padding: 16px 64px 16px 24px !important;
+    margin-right: 0;
+    background: color-mix(in srgb, var(--theme-color) 2%, var(--default-box-color));
+    border-bottom: 1px solid var(--art-card-border);
+
     .el-dialog__title {
       font-size: 16px;
+      font-weight: 650;
+      line-height: 24px;
     }
   }
 
-  &__body {
+  &.art-dialog > .el-dialog__body {
+    padding: 20px 24px 24px !important;
     // padding-top: 18px !important;
     position: relative; // 为了兼容 el-pagination 样式，需要设置 relative，不然会影响 el-pagination 的样式，比如 el-pagination__jump--small 会被影响，导致 el-pagination__jump--small 按钮无法点击，详见 URL_ADDRESS.com/element-plus/element-plus/issues/5684#issuecomment-1176299275;
+  }
+
+  &.art-dialog > .el-dialog__footer {
+    min-height: 60px;
+    padding: 12px 24px !important;
+    background: color-mix(in srgb, var(--art-gray-100) 58%, var(--default-box-color));
+    border-top: 1px solid var(--art-card-border);
   }
 
   &.el-dialog-border {
@@ -182,7 +216,9 @@ html.dark .el-card {
 // el-drawer 与 el-dialog 保持一致的弹层质感；仅给远离视口的一侧保留圆角
 .el-drawer {
   overflow: hidden;
-  border: 1px solid var(--art-gray-300);
+  background: var(--default-box-color);
+  border: 1px solid var(--art-card-border);
+  box-shadow: var(--art-modal-shadow);
 
   &.rtl {
     border-radius: var(--art-modal-radius) 0 0 var(--art-modal-radius);
@@ -207,12 +243,14 @@ html.dark .el-card {
   > .el-drawer__header {
     padding-bottom: var(--el-drawer-padding-primary);
     margin-bottom: 0;
-    border-bottom: 1px solid var(--art-gray-300);
+    background: color-mix(in srgb, var(--theme-color) 2%, var(--default-box-color));
+    border-bottom: 1px solid var(--art-card-border);
   }
 
   > .el-drawer__footer {
-    border-top: 1px solid var(--art-gray-300);
     padding-top: var(--el-drawer-padding-primary);
+    background: color-mix(in srgb, var(--art-gray-100) 58%, var(--default-box-color));
+    border-top: 1px solid var(--art-card-border);
   }
 }
 
@@ -499,12 +537,19 @@ html.dark .el-card {
   border-radius: var(--art-modal-radius) !important;
 }
 
-// 修改 dialog 动画
+// 弹窗动画：轻量缩放与位移，保持企业后台的稳定感
 .dialog-fade-enter-active {
-  .el-dialog:not(.is-draggable) {
-    animation: dialog-open 0.3s cubic-bezier(0.32, 0.14, 0.15, 0.86);
+  animation: art-overlay-in var(--art-motion-duration-fast) ease-out both !important;
 
-    // 修复 el-dialog 动画后宽度不自适应问题
+  .el-overlay-dialog {
+    animation: none !important;
+  }
+
+  .el-dialog {
+    transform-origin: center center;
+    animation: art-dialog-open var(--art-motion-duration-base) var(--art-motion-ease-out) both;
+
+    // 修复弹窗动画后 select 宽度不自适应
     .el-select__selected-item {
       display: inline-block;
     }
@@ -512,45 +557,124 @@ html.dark .el-card {
 }
 
 .dialog-fade-leave-active {
-  animation: fade-out 0.2s linear;
+  animation: art-overlay-out var(--art-motion-duration-fast) ease-in both !important;
 
-  .el-dialog:not(.is-draggable) {
-    animation: dialog-close 0.5s;
+  .el-overlay-dialog {
+    animation: none !important;
+  }
+
+  .el-dialog {
+    transform-origin: center center;
+    animation: art-dialog-close var(--art-motion-duration-fast) var(--art-motion-ease-in) both;
   }
 }
 
-@keyframes dialog-open {
+@keyframes art-dialog-open {
   0% {
     opacity: 0;
-    transform: scale(0.2);
+    transform: translateY(12px) scale(0.965);
   }
 
   100% {
     opacity: 1;
-    transform: scale(1);
+    transform: translateY(0) scale(1);
   }
 }
 
-@keyframes dialog-close {
+@keyframes art-dialog-close {
   0% {
     opacity: 1;
-    transform: scale(1);
+    transform: translateY(0) scale(1);
   }
 
   100% {
     opacity: 0;
-    transform: scale(0.2);
+    transform: translateY(6px) scale(0.985);
   }
 }
 
-// 遮罩层动画
-@keyframes fade-out {
+@keyframes art-overlay-in {
+  0% {
+    opacity: 0;
+  }
+
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes art-overlay-out {
   0% {
     opacity: 1;
   }
 
   100% {
     opacity: 0;
+  }
+}
+
+// 抽屉动画：保留方向感，同时加入轻微缩放和透明度变化
+.el-drawer-fade-enter-active,
+.el-drawer-fade-leave-active {
+  transition: background-color var(--art-motion-duration-fast) ease !important;
+
+  .el-drawer {
+    transition:
+      transform var(--art-motion-duration-slow) var(--art-motion-ease-out),
+      opacity var(--art-motion-duration-base) ease !important;
+  }
+}
+
+.el-drawer-fade-leave-active .el-drawer {
+  transition-timing-function: var(--art-motion-ease-in), ease !important;
+}
+
+.el-drawer-fade-enter-from,
+.el-drawer-fade-leave-to {
+  .el-drawer {
+    opacity: 0.64;
+
+    &.rtl {
+      transform: translateX(calc(100% + 12px)) scale(0.985) !important;
+      transform-origin: right center;
+    }
+
+    &.ltr {
+      transform: translateX(calc(-100% - 12px)) scale(0.985) !important;
+      transform-origin: left center;
+    }
+
+    &.ttb {
+      transform: translateY(calc(-100% - 12px)) scale(0.985) !important;
+      transform-origin: center top;
+    }
+
+    &.btt {
+      transform: translateY(calc(100% + 12px)) scale(0.985) !important;
+      transform-origin: center bottom;
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dialog-fade-enter-active,
+  .dialog-fade-leave-active,
+  .dialog-fade-enter-active .el-dialog,
+  .dialog-fade-leave-active .el-dialog {
+    animation: none !important;
+  }
+
+  .el-drawer-fade-enter-active,
+  .el-drawer-fade-leave-active,
+  .el-drawer-fade-enter-active .el-drawer,
+  .el-drawer-fade-leave-active .el-drawer {
+    transition: none !important;
+  }
+
+  .el-drawer-fade-enter-from .el-drawer,
+  .el-drawer-fade-leave-to .el-drawer {
+    opacity: 1;
+    transform: none !important;
   }
 }
 

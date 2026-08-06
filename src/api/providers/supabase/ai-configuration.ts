@@ -6,6 +6,8 @@ const { supabase, keysToSnakeDeep, responseHandle } = useSupabase()
 export interface AiFeatureConfig {
   id: string
   tenantId: string
+  sourceTenantId: string
+  inherited: boolean
   feature: string
   enabled: boolean
   provider: string
@@ -29,7 +31,6 @@ export interface AiFeatureConfig {
 export interface AiFeatureConfigSearchParams {
   current: number
   size: number
-  tenantId: string
   feature?: string
   enabled?: boolean | ''
   keyword?: string
@@ -121,9 +122,7 @@ export async function fetchAiFeatureConfigList(params: AiFeatureConfigSearchPara
   const to = from + size - 1
 
   let query = supabase
-    .from('ai_feature_config')
-    .select('*', { count: 'exact' })
-    .eq('tenant_id', params.tenantId)
+    .rpc('get_effective_ai_feature_configs', {}, { count: 'exact' })
     .order('feature', { ascending: true })
     .range(from, to)
 

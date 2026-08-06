@@ -14,6 +14,7 @@
     <CustomerReceiptDialog ref="dialogRef" @success="handleSaveSuccess" />
     <CarrierPaymentDialog ref="paymentDialogRef" @success="handleSaveSuccess" />
     <CashTransactionDetailDrawer ref="drawerRef" @changed="handleDetailChanged" />
+    <CashBankBatchImportDialog ref="batchImportDialogRef" @success="handleSaveSuccess" />
   </div>
 </template>
 
@@ -41,6 +42,7 @@
   import CashTransactionDetailDrawer from './modules/cash-transaction-detail-drawer.vue'
   import CustomerReceiptDialog from './modules/customer-receipt-dialog.vue'
   import CarrierPaymentDialog from './modules/carrier-payment-dialog.vue'
+  import CashBankBatchImportDialog from './modules/cash-bank-batch-import-dialog.vue'
 
   defineOptions({ name: 'TmsCashTransaction' })
 
@@ -70,6 +72,7 @@
   const dialogRef = ref<DialogExpose>()
   const paymentDialogRef = ref<DialogExpose>()
   const drawerRef = ref<DrawerExpose>()
+  const batchImportDialogRef = ref<{ handleOpen: () => Promise<void> }>()
 
   const table: UnwrapNestedRefs<TableGroup> = reactive<TableGroup>({
     searchQuery: {
@@ -140,6 +143,12 @@
       }
     ]),
     headerActions: computed<ArtTableQueryHeaderAction[]>(() => [
+      {
+        label: 'AI 批量导入流水',
+        icon: 'ri-file-excel-2-line',
+        buttonProps: { type: 'primary', plain: true },
+        onClick: () => void batchImportDialogRef.value?.handleOpen()
+      },
       {
         type: 'add',
         label: '登记客户收款',

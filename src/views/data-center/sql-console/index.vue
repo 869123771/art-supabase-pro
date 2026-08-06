@@ -82,7 +82,13 @@
                   icon="ri-loader-2-line"
                   class="size-[30px] animate-spin duration-3000"
                 />
-                <el-empty v-else description="执行 SQL 后会在这里显示结果" />
+                <ArtEmptyState
+                  v-else
+                  title="等待执行 SQL"
+                  description="执行后将在这里展示查询结果、耗时与错误信息"
+                  size="compact"
+                  :visual-size="76"
+                />
               </div>
               <template v-else>
                 <div v-if="result.status === 'error'" class="error-panel">
@@ -104,7 +110,12 @@
                 </div>
 
                 <div v-else-if="result.status === 'ok'" class="empty-result">
-                  <el-empty description="语句执行成功，但没有返回数据行" />
+                  <ArtEmptyState
+                    title="执行成功，暂无数据行"
+                    description="当前语句没有返回记录，可以调整查询条件后重新执行"
+                    size="compact"
+                    :visual-size="76"
+                  />
                 </div>
               </template>
             </div>
@@ -140,6 +151,7 @@
   import { useMemoize } from '@vueuse/core'
   import { ElMessage } from 'element-plus'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
+  import ArtEmptyState from '@/components/core/layouts/art-empty-state/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import { executeSql, fetchDatabaseMetadata, generateSqlByAi } from '@/api/data-center'
   import Editor from './modules/editor.vue'

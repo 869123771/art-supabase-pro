@@ -35,52 +35,58 @@
         </span>
       </div>
       <ElScrollbar class="monitor-list">
-        <button
-          v-for="item in filteredOrders"
-          :key="item.id"
-          type="button"
-          class="waybill-card"
-          :class="{ 'is-active': item.id === selectedId }"
-          @click="emit('select', item.id)"
+        <ArtAsyncState
+          :empty="filteredOrders.length === 0"
+          empty-text="暂无匹配运单"
+          :empty-image-size="72"
+          :min-height="540"
         >
-          <div class="waybill-card__heading">
-            <span
-              ><ElIcon><Tickets /></ElIcon
-            ></span>
-            <div>
-              <strong>{{ item.orderNo }}</strong>
-              <small>{{ item.source.order?.transportMode || '公路运输' }}</small>
+          <button
+            v-for="item in filteredOrders"
+            :key="item.id"
+            type="button"
+            class="waybill-card"
+            :class="{ 'is-active': item.id === selectedId }"
+            @click="emit('select', item.id)"
+          >
+            <div class="waybill-card__heading">
+              <span
+                ><ElIcon><Tickets /></ElIcon
+              ></span>
+              <div>
+                <strong>{{ item.orderNo }}</strong>
+                <small>{{ item.source.order?.transportMode || '公路运输' }}</small>
+              </div>
+              <em
+                :style="{
+                  color: item.statusColor,
+                  backgroundColor: withAlpha(item.statusColor, 0.18)
+                }"
+              >
+                {{ item.statusLabel }}
+              </em>
             </div>
-            <em
-              :style="{
-                color: item.statusColor,
-                backgroundColor: withAlpha(item.statusColor, 0.18)
-              }"
-            >
-              {{ item.statusLabel }}
-            </em>
-          </div>
-          <dl class="waybill-card__details">
-            <div>
-              <dt>承运单位</dt>
-              <dd>{{ item.source.vehicle?.companyName || '自营运输' }}</dd>
-            </div>
-            <div>
-              <dt>运输车辆</dt>
-              <dd>{{ item.plateNo }}</dd>
-            </div>
-            <div>
-              <dt>司机姓名</dt>
-              <dd>{{ item.driverName }}</dd>
-            </div>
-            <div>
-              <dt>手机号码</dt>
-              <dd>{{ item.driverPhone }}</dd>
-            </div>
-          </dl>
-          <MonitorRouteCard :order="item" />
-        </button>
-        <ElEmpty v-if="filteredOrders.length === 0" description="暂无匹配运单" :image-size="72" />
+            <dl class="waybill-card__details">
+              <div>
+                <dt>承运单位</dt>
+                <dd>{{ item.source.vehicle?.companyName || '自营运输' }}</dd>
+              </div>
+              <div>
+                <dt>运输车辆</dt>
+                <dd>{{ item.plateNo }}</dd>
+              </div>
+              <div>
+                <dt>司机姓名</dt>
+                <dd>{{ item.driverName }}</dd>
+              </div>
+              <div>
+                <dt>手机号码</dt>
+                <dd>{{ item.driverPhone }}</dd>
+              </div>
+            </dl>
+            <MonitorRouteCard :order="item" />
+          </button>
+        </ArtAsyncState>
       </ElScrollbar>
     </section>
   </aside>
@@ -88,6 +94,7 @@
 
 <script setup lang="ts">
   import { Search, Tickets } from '@element-plus/icons-vue'
+  import ArtAsyncState from '@/components/core/layouts/art-async-state/index.vue'
   import MonitorRouteCard from './monitor-route-card.vue'
   import type { MonitorOrder, MonitorOverview } from './monitor-types'
 
@@ -134,44 +141,12 @@
 </script>
 
 <style scoped lang="scss">
-  .monitor-sidebar {
-    display: grid;
-    grid-template-rows: auto minmax(0, 1fr);
-    gap: 12px;
-    min-width: 0;
-    min-height: 0;
-  }
+  @use './monitor-panel-foundation' as monitor;
+
+  @include monitor.panel-foundation;
+  @include monitor.summary-grid(#32d99d, #6d91ff);
 
   .monitor-panel {
-    min-width: 0;
-    min-height: 0;
-    padding: 14px;
-    background: rgb(16 31 47 / 90%);
-    border-radius: var(--el-border-radius-base);
-    box-shadow: 0 16px 38px rgb(0 0 0 / 24%);
-    backdrop-filter: blur(10px);
-
-    &__title {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 12px;
-
-      strong {
-        font-size: 15px;
-        color: #f7fbff;
-      }
-
-      span {
-        font-size: 12px;
-        color: #7da2b6;
-
-        &.is-warning {
-          color: #ffad4d;
-        }
-      }
-    }
-
     &--summary {
       :deep(.el-input__wrapper) {
         min-height: 36px;
@@ -179,52 +154,6 @@
         background: rgb(255 255 255 / 8%);
         box-shadow: none;
       }
-    }
-
-    &--list {
-      display: flex;
-      flex-direction: column;
-    }
-  }
-
-  .summary-grid {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 8px;
-
-    div {
-      min-width: 0;
-      padding: 12px 8px;
-      text-align: center;
-      background: rgb(7 16 25 / 62%);
-      border-radius: var(--el-border-radius-small);
-
-      &:nth-child(2) strong {
-        color: #32d99d;
-      }
-
-      &:nth-child(3) strong {
-        color: #6d91ff;
-      }
-    }
-
-    strong,
-    span {
-      display: block;
-    }
-
-    strong {
-      overflow: hidden;
-      text-overflow: ellipsis;
-      font-size: 22px;
-      color: #fff;
-      white-space: nowrap;
-    }
-
-    span {
-      margin-top: 5px;
-      font-size: 11px;
-      color: #82a5b7;
     }
   }
 
@@ -244,7 +173,9 @@
     background: rgb(7 16 25 / 48%);
     border: 0;
     border-radius: var(--el-border-radius-base);
-    transition: 0.18s ease;
+    transition:
+      background-color 0.18s ease,
+      box-shadow 0.18s ease;
 
     &:hover,
     &.is-active {

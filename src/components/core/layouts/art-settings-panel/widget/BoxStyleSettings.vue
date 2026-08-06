@@ -1,20 +1,17 @@
 <template>
   <div>
     <SectionTitle :title="$t('setting.box.title')" class="mt-10" />
-    <div class="box-border flex-cb p-1 mt-5 rounded-lg bg-g-200">
-      <div
+    <div class="setting-segmented">
+      <button
         v-for="option in boxStyleOptions"
         :key="option.value"
-        class="w-[calc(50%-3px)] h-8.5 leading-8.5 text-sm text-center c-p select-none rounded-md transition-all duration-200"
-        :class="
-          isActive(option.type)
-            ? 'text-g-800 bg-[var(--default-box-color)] dark:!text-white dark:bg-g-300'
-            : 'hover:text-g-800 hover:bg-black/[0.04] dark:hover:bg-black/20'
-        "
+        type="button"
+        :class="{ 'is-active': isActive(option.type) }"
+        :aria-pressed="isActive(option.type)"
         @click="boxStyleHandlers.setBoxMode(option.type)"
       >
         {{ option.label }}
-      </div>
+      </button>
     </div>
   </div>
 </template>
@@ -36,3 +33,42 @@
     return type === 'border-mode' ? boxBorderMode.value : !boxBorderMode.value
   }
 </script>
+
+<style scoped lang="scss">
+  .setting-segmented {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+    padding: 4px;
+    background: var(--art-gray-200);
+    border: 1px solid var(--art-card-border);
+    border-radius: calc(var(--custom-radius) + 4px);
+
+    button {
+      height: 36px;
+      padding: 0 10px;
+      font: inherit;
+      font-size: 11px;
+      color: var(--art-gray-600);
+      cursor: pointer;
+      background: transparent;
+      border: 0;
+      border-radius: var(--custom-radius);
+
+      &:hover {
+        color: var(--art-gray-900);
+      }
+
+      &.is-active {
+        font-weight: 650;
+        color: var(--theme-color);
+        background: var(--default-box-color);
+        box-shadow: 0 4px 12px rgb(31 41 55 / 8%);
+      }
+
+      &:focus-visible {
+        outline: 2px solid var(--theme-color);
+      }
+    }
+  }
+</style>

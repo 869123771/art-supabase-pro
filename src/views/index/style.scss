@@ -1,8 +1,16 @@
 .app-layout {
+  position: relative;
   display: flex;
   width: 100%;
   min-height: 100vh;
-  background: var(--default-bg-color);
+  background:
+    radial-gradient(
+      circle at 84% -8%,
+      color-mix(in srgb, var(--theme-color) 9%, transparent),
+      transparent 30%
+    ),
+    radial-gradient(circle at 44% 106%, rgb(34 211 238 / 5%), transparent 32%),
+    var(--default-bg-color);
 
   #app-sidebar {
     flex-shrink: 0;
@@ -22,10 +30,32 @@
       z-index: 50;
       flex-shrink: 0;
       width: 100%;
+      box-shadow: 0 8px 24px rgb(24 30 58 / 3%);
+
+      :deep(> div) {
+        background: color-mix(in srgb, var(--default-bg-color) 88%, transparent);
+      }
     }
 
     #app-content {
+      position: relative;
       flex: 1;
+
+      &::before {
+        position: fixed;
+        top: 82px;
+        right: 4%;
+        width: 320px;
+        height: 320px;
+        pointer-events: none;
+        content: '';
+        background: radial-gradient(
+          circle,
+          color-mix(in srgb, var(--theme-color) 6%, transparent),
+          transparent 68%
+        );
+        filter: blur(4px);
+      }
 
       :deep(.layout-content) {
         box-sizing: border-box;
@@ -40,10 +70,22 @@
           overflow: hidden;
           background: var(--default-box-color);
           border-radius: calc(var(--custom-radius) / 2 + 2px) !important;
+          box-shadow: 0 1px 0 rgb(255 255 255 / 38%) inset;
         }
       }
     }
   }
+}
+
+.dark .app-layout {
+  background:
+    radial-gradient(
+      circle at 84% -8%,
+      color-mix(in srgb, var(--theme-color) 12%, transparent),
+      transparent 30%
+    ),
+    radial-gradient(circle at 44% 106%, rgb(34 211 238 / 4%), transparent 32%),
+    var(--default-bg-color);
 }
 
 @media only screen and (width <= 1180px) {

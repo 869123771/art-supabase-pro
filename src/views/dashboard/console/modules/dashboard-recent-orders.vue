@@ -10,34 +10,41 @@
       ><span>运费</span><span>状态</span></div
     >
     <ElScrollbar class="recent-orders__list">
-      <button
-        v-for="item in orders"
-        :key="item.id || item.orderNo"
-        type="button"
-        class="recent-orders__row"
-        @click="emit('open-order', item.id)"
+      <ArtAsyncState
+        :empty="orders.length === 0"
+        empty-text="暂无订单数据"
+        :empty-image-size="62"
+        :min-height="190"
       >
-        <strong>{{ item.orderNo }}</strong>
-        <span :title="item.shippingCustomerName || undefined">{{
-          item.shippingCustomerName || '发货方未维护'
-        }}</span>
-        <span>{{ item.originStation || '-' }} → {{ item.destinationStation || '-' }}</span>
-        <span
-          >{{ item.dispatchPlateNo || '待配载'
-          }}<em>{{ item.dispatchDriverName || '司机待分配' }}</em></span
+        <button
+          v-for="item in orders"
+          :key="item.id || item.orderNo"
+          type="button"
+          class="recent-orders__row"
+          @click="emit('open-order', item.id)"
         >
-        <b>¥ {{ formatMoney(item.totalFee) }}</b>
-        <ElTag size="small" :type="getOrderTagType(item.orderStatus)" effect="plain">{{
-          getOrderStatusLabel(item.orderStatus)
-        }}</ElTag>
-      </button>
-      <ElEmpty v-if="orders.length === 0" description="暂无订单数据" :image-size="62" />
+          <strong>{{ item.orderNo }}</strong>
+          <span :title="item.shippingCustomerName || undefined">{{
+            item.shippingCustomerName || '发货方未维护'
+          }}</span>
+          <span>{{ item.originStation || '-' }} → {{ item.destinationStation || '-' }}</span>
+          <span
+            >{{ item.dispatchPlateNo || '待配载'
+            }}<em>{{ item.dispatchDriverName || '司机待分配' }}</em></span
+          >
+          <b>¥ {{ formatMoney(item.totalFee) }}</b>
+          <ElTag size="small" :type="getOrderTagType(item.orderStatus)" effect="plain">{{
+            getOrderStatusLabel(item.orderStatus)
+          }}</ElTag>
+        </button>
+      </ArtAsyncState>
     </ElScrollbar>
   </article>
 </template>
 
 <script setup lang="ts">
   import { ArrowRight } from '@element-plus/icons-vue'
+  import ArtAsyncState from '@/components/core/layouts/art-async-state/index.vue'
   import type { DashboardOrder } from './types'
 
   defineProps<{ orders: DashboardOrder[] }>()
@@ -69,108 +76,147 @@
 
 <style scoped lang="scss">
   .recent-orders {
+    position: relative;
     min-width: 0;
-    padding: 21px 24px 8px;
-  }
-  header {
-    display: flex;
-    gap: 12px;
-    align-items: center;
-    justify-content: space-between;
-  }
-  p {
-    margin: 0 0 4px;
-    font-size: 12px;
-    color: var(--el-text-color-secondary);
-  }
-  h2 {
-    margin: 0;
-    font-size: 17px;
-    color: var(--el-text-color-primary);
-  }
-  header button {
-    display: inline-flex;
-    gap: 2px;
-    align-items: center;
-    padding: 0;
-    font-size: 12px;
-    color: var(--el-color-primary);
-    cursor: pointer;
-    background: transparent;
-    border: 0;
-  }
-  .recent-orders__head,
-  .recent-orders__row {
-    display: grid;
-    grid-template-columns: 1.05fr 1.05fr 1.3fr 1.1fr 0.72fr 0.65fr;
-    gap: 14px;
-    align-items: center;
-  }
-  .recent-orders__head {
-    padding: 16px 8px 9px;
-    font-size: 12px;
-    color: var(--el-text-color-secondary);
-  }
-  .recent-orders__list {
-    height: 206px;
-  }
-  .recent-orders__row {
-    width: 100%;
-    min-height: 47px;
-    padding: 7px 8px;
-    text-align: left;
-    cursor: pointer;
-    background: transparent;
-    border: 0;
-    border-top: 1px solid var(--el-border-color-lighter);
-    transition: background 0.16s ease;
-  }
-  .recent-orders__row:hover {
-    background: var(--el-fill-color-light);
-  }
-  .recent-orders__row strong,
-  .recent-orders__row > span {
-    min-width: 0;
+    padding: 24px 25px 10px;
     overflow: hidden;
-    font-size: 13px;
-    color: var(--el-text-color-primary);
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .recent-orders__row > span {
-    color: var(--el-text-color-regular);
-  }
-  .recent-orders__row span em {
-    display: block;
-    overflow: hidden;
-    margin-top: 3px;
-    font-size: 11px;
-    font-style: normal;
-    color: var(--el-text-color-placeholder);
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .recent-orders__row b {
-    font-size: 12px;
-    color: var(--el-text-color-regular);
-  }
-  .recent-orders__row :deep(.el-tag) {
-    justify-self: start;
-    width: fit-content;
-    min-width: 0;
-  }
-  @media screen and (max-width: 720px) {
-    .recent-orders__head,
-    .recent-orders__row {
-      grid-template-columns: 1fr 1fr auto;
+
+    &::before {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 3px;
+      content: '';
+      background: linear-gradient(90deg, #8b5cf6, var(--el-color-primary), transparent 62%);
     }
-    .recent-orders__head span:nth-child(3),
-    .recent-orders__head span:nth-child(4),
-    .recent-orders__head span:nth-child(5),
-    .recent-orders__row > span:nth-child(3),
-    .recent-orders__row > span:nth-child(4),
-    .recent-orders__row > b {
-      display: none;
+
+    header {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      justify-content: space-between;
+
+      button {
+        display: inline-flex;
+        gap: 2px;
+        align-items: center;
+        padding: 7px 10px;
+        font-size: 11px;
+        color: var(--el-color-primary);
+        cursor: pointer;
+        background: color-mix(in srgb, var(--el-color-primary) 8%, transparent);
+        border: 0;
+        border-radius: 999px;
+      }
+    }
+
+    p {
+      margin: 0 0 5px;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--el-color-primary);
+      letter-spacing: 0.8px;
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 18px;
+      color: var(--el-text-color-primary);
+    }
+
+    &__head,
+    &__row {
+      display: grid;
+      grid-template-columns: 1.05fr 1.05fr 1.3fr 1.1fr 0.72fr 0.65fr;
+      gap: 14px;
+      align-items: center;
+    }
+
+    &__head {
+      padding: 12px;
+      margin-top: 16px;
+      font-size: 10px;
+      font-weight: 650;
+      color: var(--el-text-color-secondary);
+      letter-spacing: 0.3px;
+      background: var(--el-fill-color-light);
+      border-radius: var(--el-border-radius-small);
+    }
+
+    &__list {
+      height: 206px;
+    }
+
+    &__row {
+      width: 100%;
+      min-height: 49px;
+      padding: 7px 12px;
+      text-align: left;
+      cursor: pointer;
+      background: transparent;
+      border: 0;
+      border-bottom: 1px solid var(--el-border-color-lighter);
+      transition: background 0.16s ease;
+
+      &:hover {
+        background: color-mix(in srgb, var(--el-color-primary) 5%, var(--el-fill-color-light));
+      }
+
+      strong,
+      > span {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        font-size: 12px;
+        color: var(--el-text-color-primary);
+        white-space: nowrap;
+      }
+
+      > span {
+        color: var(--el-text-color-regular);
+      }
+
+      span em {
+        display: block;
+        margin-top: 3px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        font-size: 10px;
+        font-style: normal;
+        color: var(--el-text-color-placeholder);
+        white-space: nowrap;
+      }
+
+      b {
+        font-size: 12px;
+        color: var(--el-text-color-regular);
+      }
+
+      :deep(.el-tag) {
+        justify-self: start;
+        width: fit-content;
+        min-width: 0;
+      }
+    }
+
+    @media screen and (width <= 720px) {
+      padding-right: 18px;
+      padding-left: 18px;
+
+      &__head,
+      &__row {
+        grid-template-columns: 1fr 1fr auto;
+      }
+
+      &__head span:nth-child(3),
+      &__head span:nth-child(4),
+      &__head span:nth-child(5),
+      &__row > span:nth-child(3),
+      &__row > span:nth-child(4),
+      &__row > b {
+        display: none;
+      }
     }
   }
 </style>

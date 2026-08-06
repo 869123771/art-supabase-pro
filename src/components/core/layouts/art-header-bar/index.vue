@@ -1,7 +1,7 @@
 <!-- 顶部栏 -->
 <template>
   <div
-    class="w-full bg-[var(--default-bg-color)]"
+    class="art-header-bar w-full bg-[var(--default-bg-color)]"
     :class="[
       tabStyle === 'tab-card' || tabStyle === 'tab-google' ? 'mb-5 max-sm:mb-3 !bg-box' : ''
     ]"
@@ -81,7 +81,7 @@
         <!-- 全屏按钮 -->
         <ArtIconButton
           v-if="shouldShowFullscreen"
-          :icon="isFullscreen ? 'ri:fullscreen-exit-line' : 'ri:fullscreen-fill'"
+          :icon="isFullscreen ? 'dashicons:fullscreen-exit-alt' : 'dashicons:fullscreen-alt'"
           :class="[!isFullscreen ? 'full-screen-btn' : 'exit-full-screen-btn', 'ml-3']"
           class="max-md:!hidden"
           @click="toggleFullScreen"

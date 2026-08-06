@@ -1,13 +1,24 @@
 <template>
   <section class="ai-order-reference art-card-xs">
-    <ArtSectionTitle>主数据匹配</ArtSectionTitle>
+    <div class="ai-order-reference__heading">
+      <div>
+        <ArtSectionTitle :show-line="false">主数据匹配</ArtSectionTitle>
+        <p>系统已按当前租户检索可关联档案。</p>
+      </div>
+      <div>
+        <ElTag type="success" effect="plain">已匹配 {{ matchedCount }}</ElTag>
+        <ElTag v-if="pendingCount" type="warning" effect="plain"> 待建档 {{ pendingCount }} </ElTag>
+      </div>
+    </div>
     <div class="ai-order-reference__list">
       <div v-for="item in rows" :key="item.key">
-        <span>{{ item.label }}</span>
-        <strong>{{ item.value }}</strong>
-        <ElTag :type="tagType(item.status)" effect="light">
-          {{ statusText(item.status) }}
-        </ElTag>
+        <span class="ai-order-reference__item-label">{{ item.label }}</span>
+        <span class="ai-order-reference__item-content">
+          <strong :title="item.value">{{ item.value }}</strong>
+          <ElTag :type="tagType(item.status)" effect="light" size="small">
+            {{ statusText(item.status) }}
+          </ElTag>
+        </span>
       </div>
     </div>
     <p class="ai-order-reference__hint">
@@ -58,6 +69,10 @@
     }))
     return [...baseRows, ...cargoRows]
   })
+  const matchedCount = computed(() => rows.value.filter((item) => item.status === 'matched').length)
+  const pendingCount = computed(
+    () => rows.value.filter((item) => item.status === 'unmatched').length
+  )
 
   function createRow(key: ReferenceKey, label: string, source?: string | null): ReferenceRow {
     const match = references[key]
@@ -86,22 +101,53 @@
   .ai-order-reference {
     padding: 16px;
 
-    &__list {
-      display: grid;
-      gap: 10px;
-      margin-top: 12px;
+    &__heading {
+      display: flex;
+      gap: 16px;
+      align-items: flex-start;
+      justify-content: space-between;
 
-      > div {
-        display: grid;
-        grid-template-columns: 92px minmax(0, 1fr) auto;
-        gap: 12px;
-        align-items: center;
-        min-height: 34px;
-      }
-
-      span {
+      p {
+        margin: 6px 0 0;
         color: var(--el-text-color-secondary);
       }
+
+      > div:last-child {
+        display: flex;
+        flex: none;
+        flex-wrap: wrap;
+        gap: 6px;
+        justify-content: flex-end;
+      }
+    }
+
+    &__list {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 14px;
+
+      > div {
+        min-width: 0;
+        padding: 10px 12px;
+        background: var(--art-main-bg-color);
+        border-radius: var(--el-border-radius-base);
+      }
+    }
+
+    &__item-label {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 12px;
+      color: var(--el-text-color-secondary);
+    }
+
+    &__item-content {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      justify-content: space-between;
+      min-width: 0;
 
       strong {
         min-width: 0;
@@ -117,6 +163,20 @@
       margin: 12px 0 0;
       line-height: 1.6;
       color: var(--el-text-color-secondary);
+    }
+
+    @media (width <= 620px) {
+      &__heading {
+        flex-direction: column;
+
+        > div:last-child {
+          justify-content: flex-start;
+        }
+      }
+
+      &__list {
+        grid-template-columns: 1fr;
+      }
     }
   }
 </style>

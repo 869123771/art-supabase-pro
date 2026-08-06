@@ -487,6 +487,7 @@ export async function fetchVehicleReminderInsuranceExpiryList(
 ) {
   return await fetchVehicleReminderViewList(
     'vehicle_reminder_insurance_expiry',
+    'insurance',
     params,
     'days',
     options
@@ -499,6 +500,7 @@ export async function fetchVehicleReminderInspectionExpiryList(
 ) {
   return await fetchVehicleReminderViewList(
     'vehicle_reminder_inspection_expiry',
+    'inspection',
     params,
     'days',
     options
@@ -511,6 +513,7 @@ export async function fetchVehicleReminderVehicleServiceLifeList(
 ) {
   return await fetchVehicleReminderViewList(
     'vehicle_reminder_vehicle_service_life',
+    'vehicle',
     params,
     'days',
     options
@@ -523,6 +526,7 @@ export async function fetchVehicleReminderMaintenanceExpiryList(
 ) {
   return await fetchVehicleReminderViewList(
     'vehicle_reminder_maintenance_expiry',
+    'maintenance',
     params,
     'expired',
     options
@@ -535,6 +539,7 @@ export async function fetchVehicleReminderPartServiceLifeList(
 ) {
   return await fetchVehicleReminderViewList(
     'vehicle_reminder_part_service_life',
+    'part',
     params,
     'expired',
     options

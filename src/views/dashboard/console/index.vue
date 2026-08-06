@@ -1,5 +1,12 @@
 <template>
-  <main class="operations-dashboard" v-loading="overview.loading">
+  <ArtPageShell
+    class="operations-dashboard"
+    :loading="overview.loading"
+    :loading-mode="loadingMode"
+    :error="pageError"
+    min-height="520px"
+    @retry="refreshData"
+  >
     <DashboardHero
       :greeting="greeting"
       :user-name="userName"
@@ -50,7 +57,7 @@
       @view-orders="navigateTo('/tms-transportation/order-list')"
       @open-order="openOrder"
     />
-  </main>
+  </ArtPageShell>
 </template>
 
 <script setup lang="ts">
@@ -69,6 +76,8 @@
 
   interface OverviewState {
     loading: boolean
+    loaded: boolean
+    error: Error | null
     days: number
     data: DashboardData
   }
@@ -92,6 +101,8 @@
   })
   const overview = reactive<OverviewState>({
     loading: false,
+    loaded: false,
+    error: null,
     days: 14,
     data: createEmptyDashboard()
   })
@@ -129,6 +140,8 @@
   const reminderTotal = computed(() =>
     overview.data.reminders.reduce((total, item) => total + item.count, 0)
   )
+  const loadingMode = computed<'mask' | 'skeleton'>(() => (overview.loaded ? 'mask' : 'skeleton'))
+  const pageError = computed(() => (overview.loaded ? null : overview.error))
   const metricCards = computed<DashboardMetric[]>(() => [
     {
       key: 'today-order',
@@ -166,8 +179,12 @@
 
   async function refreshData(): Promise<void> {
     overview.loading = true
+    overview.error = null
     try {
       overview.data = await fetchDashboardData(overview.days)
+      overview.loaded = true
+    } catch (error) {
+      overview.error = error instanceof Error ? error : new Error('运营工作台加载失败')
     } finally {
       overview.loading = false
     }
@@ -197,30 +214,37 @@
 
 <style scoped lang="scss">
   .operations-dashboard {
-    display: grid;
-    gap: 16px;
     min-height: 100%;
-    padding-bottom: 20px;
-  }
-  .operations-dashboard__summary {
-    display: grid;
-    grid-template-columns: minmax(0, 1.75fr) minmax(340px, 0.85fr);
-    gap: 16px;
-  }
-  .operations-dashboard__operations {
-    display: grid;
-    grid-template-columns: minmax(0, 1.55fr) minmax(340px, 0.8fr);
-    gap: 16px;
-  }
-  @media screen and (max-width: 1080px) {
-    .operations-dashboard__summary,
-    .operations-dashboard__operations {
-      grid-template-columns: 1fr;
+
+    :deep(> .art-async-state) {
+      display: grid;
+      gap: 18px;
+      padding-bottom: var(--art-space-6);
     }
-  }
-  @media screen and (max-width: 720px) {
-    .operations-dashboard {
-      gap: 14px;
+
+    &__summary {
+      display: grid;
+      grid-template-columns: minmax(0, 1.62fr) minmax(330px, 0.72fr);
+      gap: 18px;
+    }
+
+    &__operations {
+      display: grid;
+      grid-template-columns: minmax(0, 1.48fr) minmax(330px, 0.78fr);
+      gap: 18px;
+    }
+
+    @media screen and (width <= 1080px) {
+      &__summary,
+      &__operations {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media screen and (width <= 720px) {
+      :deep(> .art-async-state) {
+        gap: var(--art-space-3);
+      }
     }
   }
 </style>

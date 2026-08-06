@@ -1,6 +1,7 @@
 <template>
   <div class="art-full-height">
     <ArtTableQuery
+      ref="tableQueryRef"
       v-model="tableState.searchQuery"
       v-model:show-search-bar="tableState.showSearchBar"
       :search-items="tableConfig.searchItems"
@@ -9,11 +10,13 @@
       :search-bar-props="tableConfig.searchBarProps"
       :table-props="tableConfig.tableProps"
     />
+    <VehicleReminderWorkOrderDrawer ref="workOrderDrawerRef" @success="handleWorkOrderSuccess" />
   </div>
 </template>
 
 <script setup lang="tsx">
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
+  import type { ArtTableQueryExpose } from '@/components/core/tables/art-table-query/index.vue'
   import type { ColumnOption } from '@/types'
   import { fetchVehicleReminderPartServiceLifeList } from '@/api/vehicle-manage-system'
   import { useUserStore } from '@/store/modules/user'
@@ -21,11 +24,13 @@
   import { isNil } from 'lodash-es'
   import {
     companySearchItem,
+    createReminderWorkOrderColumns,
     formatDate,
     formatMileage,
     renderRemainingDays,
     renderReminderStatus
   } from '../modules/reminder-table'
+  import VehicleReminderWorkOrderDrawer from '../modules/vehicle-reminder-work-order-drawer.vue'
 
   defineOptions({ name: 'VehiclePartServiceLife' })
 
@@ -46,7 +51,24 @@
     columnsFactory: () => ColumnOption<ReminderRow>[]
   }
 
-  const { getDictMap } = storeToRefs(useUserStore())
+  interface WorkOrderDrawerExpose {
+    handleOpen: (data: {
+      row: ReminderRow
+      sourceType: 'part'
+      sourceLabel: string
+    }) => Promise<void>
+  }
+
+  const tableQueryRef = ref<ArtTableQueryExpose>()
+  const workOrderDrawerRef = ref<WorkOrderDrawerExpose>()
+  const { getDictMap, getUserInfo, isPlatformSuper } = storeToRefs(useUserStore())
+  const canManageWorkOrder = computed(
+    () =>
+      isPlatformSuper.value ||
+      (getUserInfo.value.userRoles ?? []).some((role) =>
+        ['R_ADMIN', 'YQ_ADMIN', 'R_REGISTER'].includes(role)
+      )
+  )
 
   const tableState = reactive<TableState>({
     showSearchBar: false,
@@ -123,10 +145,23 @@
           minWidth: 130,
           sortable: true,
           formatter: (row) => renderRemainingDays(row.remainingDays)
-        }
+        },
+        ...createReminderWorkOrderColumns(openWorkOrder, () => canManageWorkOrder.value)
       ]
     }
   })
+
+  function openWorkOrder(row: ReminderRow): void {
+    void workOrderDrawerRef.value?.handleOpen({
+      row,
+      sourceType: 'part',
+      sourceLabel: '零部件寿命'
+    })
+  }
+
+  function handleWorkOrderSuccess(): void {
+    void tableQueryRef.value?.refreshUpdate()
+  }
 
   const fetchTableData = async (params: ReminderTableParams) => {
     const { from, to } = pageInfoHandler({ current: params.current, size: params.size })

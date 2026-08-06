@@ -1,6 +1,7 @@
 <template>
   <div class="art-full-height">
     <ArtTableQuery
+      ref="tableQueryRef"
       v-model="tableState.searchQuery"
       v-model:show-search-bar="tableState.showSearchBar"
       :search-items="tableConfig.searchItems"
@@ -9,20 +10,25 @@
       :search-bar-props="tableConfig.searchBarProps"
       :table-props="tableConfig.tableProps"
     />
+    <VehicleReminderWorkOrderDrawer ref="workOrderDrawerRef" @success="handleWorkOrderSuccess" />
   </div>
 </template>
 
 <script setup lang="tsx">
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
+  import type { ArtTableQueryExpose } from '@/components/core/tables/art-table-query/index.vue'
   import type { ColumnOption } from '@/types'
   import { fetchVehicleReminderInsuranceExpiryList } from '@/api/vehicle-manage-system'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import {
+    createReminderWorkOrderColumns,
     formatDate,
     futureReminderSearchItems,
     renderRemainingDays,
     renderReminderStatus
   } from '../modules/reminder-table'
+  import VehicleReminderWorkOrderDrawer from '../modules/vehicle-reminder-work-order-drawer.vue'
+  import { useUserStore } from '@/store/modules/user'
 
   defineOptions({ name: 'VehicleInsuranceExpiry' })
 
@@ -42,6 +48,25 @@
     tableProps: { rowKey: string; tableLayout: 'fixed' }
     columnsFactory: () => ColumnOption<ReminderRow>[]
   }
+
+  interface WorkOrderDrawerExpose {
+    handleOpen: (data: {
+      row: ReminderRow
+      sourceType: 'insurance'
+      sourceLabel: string
+    }) => Promise<void>
+  }
+
+  const tableQueryRef = ref<ArtTableQueryExpose>()
+  const workOrderDrawerRef = ref<WorkOrderDrawerExpose>()
+  const { getUserInfo, isPlatformSuper } = storeToRefs(useUserStore())
+  const canManageWorkOrder = computed(
+    () =>
+      isPlatformSuper.value ||
+      (getUserInfo.value.userRoles ?? []).some((role) =>
+        ['R_ADMIN', 'YQ_ADMIN', 'R_REGISTER'].includes(role)
+      )
+  )
 
   const tableState = reactive<TableState>({
     showSearchBar: false,
@@ -79,8 +104,21 @@
         minWidth: 130,
         sortable: true,
         formatter: (row) => renderRemainingDays(row.remainingDays)
-      }
+      },
+      ...createReminderWorkOrderColumns(openWorkOrder, () => canManageWorkOrder.value)
     ]
+  }
+
+  function openWorkOrder(row: ReminderRow): void {
+    void workOrderDrawerRef.value?.handleOpen({
+      row,
+      sourceType: 'insurance',
+      sourceLabel: '保险到期'
+    })
+  }
+
+  function handleWorkOrderSuccess(): void {
+    void tableQueryRef.value?.refreshUpdate()
   }
 
   const fetchTableData = async (params: ReminderTableParams) => {

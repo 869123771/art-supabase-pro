@@ -144,7 +144,12 @@
               <div class="message-content">{{ message.content }}</div>
             </div>
 
-            <ElEmpty v-if="messageList.length === 0" description="暂无消息记录" :image-size="100" />
+            <ArtEmptyState
+              v-if="messageList.length === 0"
+              title="暂无消息记录"
+              :visual-size="88"
+              size="compact"
+            />
           </div>
         </ElCard>
       </ElCol>
@@ -175,13 +180,19 @@
           </template>
         </ElAlert>
 
-        <ElEmpty v-if="logList.length === 0" description="暂无日志记录" :image-size="100" />
+        <ArtEmptyState
+          v-if="logList.length === 0"
+          title="暂无日志记录"
+          :visual-size="88"
+          size="compact"
+        />
       </div>
     </ElCard>
   </div>
 </template>
 
 <script setup lang="ts">
+  import ArtEmptyState from '@/components/core/layouts/art-empty-state/index.vue'
   import WebSocketClient from '@/utils/socket'
   import { ElMessage } from 'element-plus'
 

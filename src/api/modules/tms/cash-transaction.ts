@@ -1,4 +1,5 @@
 import { useSupabase } from '@/hooks'
+import type { QueryResult } from '@/types/api/response'
 import { applyDateRange, type SupabaseQueryLike } from '@/api/providers/supabase/query'
 
 type CashTransaction = Api.Tms.Finance.CashTransactionRecord
@@ -248,4 +249,64 @@ export async function voidCashTransaction(id: string, reason: string) {
       }),
     { showMessage: true, breakReturn: true }
   )
+}
+
+export async function analyzeCashVoucherByAi(
+  params: Api.Tms.Finance.CashVoucherOcrAnalyzeRequest
+): Promise<QueryResult<Api.Tms.Finance.CashVoucherOcrAnalyzeResponse>> {
+  const { data, error } =
+    await supabase.functions.invoke<Api.Tms.Finance.CashVoucherOcrAnalyzeResponse>(
+      'ai-cash-voucher-ocr',
+      { body: params }
+    )
+  return { data: data ?? null, error: await normalizeFunctionInvokeError(error) }
+}
+
+export async function reviewCashVoucherOcrArtifact(
+  params: Api.Tms.Finance.CashVoucherOcrReviewRequest
+): Promise<QueryResult<Api.Tms.Finance.CashVoucherOcrReviewResponse>> {
+  const { data, error } =
+    await supabase.functions.invoke<Api.Tms.Finance.CashVoucherOcrReviewResponse>(
+      'ai-cash-voucher-ocr',
+      { body: params }
+    )
+  return { data: data ?? null, error: await normalizeFunctionInvokeError(error) }
+}
+
+export async function analyzeBankStatementBatchByAi(params: {
+  rows: Array<Record<string, unknown>>
+  fileName: string
+}): Promise<QueryResult<Api.Tms.Finance.BankBatchAnalyzeResponse>> {
+  const { data, error } = await supabase.functions.invoke<Api.Tms.Finance.BankBatchAnalyzeResponse>(
+    'ai-bank-statement-batch-match',
+    { body: { action: 'analyze', ...params } }
+  )
+  return { data: data ?? null, error: await normalizeFunctionInvokeError(error) }
+}
+
+export async function commitBankStatementBatchByAi(params: {
+  artifactId: string
+  rows: Api.Tms.Finance.BankBatchMatchRow[]
+}): Promise<QueryResult<Api.Tms.Finance.BankBatchCommitResponse>> {
+  const { data, error } = await supabase.functions.invoke<Api.Tms.Finance.BankBatchCommitResponse>(
+    'ai-bank-statement-batch-match',
+    { body: { action: 'commit', ...params } }
+  )
+  return { data: data ?? null, error: await normalizeFunctionInvokeError(error) }
+}
+
+async function normalizeFunctionInvokeError(error: unknown): Promise<unknown | null> {
+  if (!error || typeof error !== 'object' || !('context' in error)) return error
+  const context = (error as { context?: unknown }).context
+  if (!(context instanceof Response)) return error
+  try {
+    const payload = (await context.clone().json()) as { code?: unknown; message?: unknown }
+    if (typeof payload.message !== 'string' || !payload.message) return error
+    return {
+      code: typeof payload.code === 'string' ? payload.code : undefined,
+      message: payload.message
+    }
+  } catch {
+    return error
+  }
 }

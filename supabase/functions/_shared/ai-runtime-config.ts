@@ -1,21 +1,14 @@
 import type { SupabaseClient } from 'jsr:@supabase/supabase-js@2'
+import {
+  disableAiRuntimeConfig,
+  type AiRuntimeConfig
+} from './ai-runtime-config-policy.ts'
+import { getAiConfigTenantScope } from './ai-config-tenancy.ts'
 
-export interface AiRuntimeConfig {
-  enabled: boolean
-  provider: string
-  model: string
-  visionModel: string | null
-  fallbackModel: string | null
-  timeoutMs: number
-  maxRetries: number
-  temperature: number
-  maxTokens: number
-  rateLimitPerMinute: number
-  rateLimitPerDay: number
-  promptVersion: string
-}
+export type { AiRuntimeConfig } from './ai-runtime-config-policy.ts'
 
 interface AiFeatureConfigRow {
+  tenant_id: string
   enabled: boolean
   provider: string
   model: string
@@ -52,22 +45,37 @@ export async function loadAiRuntimeConfig(
   feature: string,
   defaults: AiRuntimeConfig
 ): Promise<AiRuntimeConfig> {
+  let tenantScope: string[]
+  try {
+    tenantScope = await getAiConfigTenantScope(admin, tenantId)
+  } catch (error) {
+    console.warn(
+      'AI platform config scope lookup failed; feature disabled',
+      feature,
+      error instanceof Error ? error.message : error
+    )
+    return disableAiRuntimeConfig(defaults)
+  }
+
   const { data, error } = await admin
     .from('ai_feature_config')
     .select(
-      'enabled,provider,model,vision_model,fallback_model,timeout_ms,max_retries,temperature,max_tokens,rate_limit_per_minute,rate_limit_per_day,prompt_version'
+      'tenant_id,enabled,provider,model,vision_model,fallback_model,timeout_ms,max_retries,temperature,max_tokens,rate_limit_per_minute,rate_limit_per_day,prompt_version'
     )
-    .eq('tenant_id', tenantId)
+    .in('tenant_id', tenantScope)
     .eq('feature', feature)
-    .maybeSingle()
 
   if (error) {
-    console.warn('AI runtime config lookup failed; using environment defaults', feature, error.message)
-    return defaults
+    console.warn('AI runtime config lookup failed; feature disabled', feature, error.message)
+    return disableAiRuntimeConfig(defaults)
   }
 
-  const row = data as AiFeatureConfigRow | null
-  if (!row) return defaults
+  const rows = (data ?? []) as AiFeatureConfigRow[]
+  const row = rows.find((item) => item.tenant_id === tenantId) ?? rows[0] ?? null
+  if (!row) {
+    console.warn('AI runtime config missing; feature disabled', feature, tenantId)
+    return disableAiRuntimeConfig(defaults)
+  }
 
   return {
     enabled: row.enabled,

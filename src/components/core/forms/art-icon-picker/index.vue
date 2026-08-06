@@ -70,12 +70,24 @@
           </div>
 
           <div v-else-if="loadError" class="art-icon-picker__state">
-            <ElEmpty description="图标数据加载失败">
+            <ArtEmptyState
+              title="图标数据加载失败"
+              description="请检查网络连接后重新加载。"
+              :visual-size="82"
+              size="compact"
+            >
               <ElButton type="primary" @click="loadIcons(true)">重新加载</ElButton>
-            </ElEmpty>
+            </ArtEmptyState>
           </div>
 
-          <ElEmpty v-else description="没有匹配的图标" class="art-icon-picker__state" />
+          <ArtEmptyState
+            v-else
+            title="没有匹配的图标"
+            description="尝试使用更简短的关键词。"
+            :visual-size="82"
+            size="compact"
+            class="art-icon-picker__state"
+          />
         </ElScrollbar>
 
         <div class="art-icon-picker__summary">
@@ -95,6 +107,7 @@
 </template>
 
 <script setup lang="ts">
+  import ArtEmptyState from '@/components/core/layouts/art-empty-state/index.vue'
   import { Loading, Picture, Search } from '@element-plus/icons-vue'
   import type { ScrollbarInstance } from 'element-plus'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'

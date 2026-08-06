@@ -1,12 +1,12 @@
 <!-- 设置操作按钮 -->
 <template>
-  <div
-    class="mt-10 flex gap-8 border-t border-[var(--default-border)] bg-[var(--art-bg-color)] pt-5"
-  >
-    <ElButton type="primary" class="flex-1 !h-8" @click="handleCopyConfig">
+  <div class="setting-actions">
+    <ElButton type="primary" @click="handleCopyConfig">
+      <ArtSvgIcon icon="ri:file-copy-line" />
       {{ $t('setting.actions.copyConfig') }}
     </ElButton>
-    <ElButton type="danger" plain class="flex-1 !h-8" @click="handleResetConfig">
+    <ElButton plain @click="handleResetConfig">
+      <ArtSvgIcon icon="ri:restart-line" />
       {{ $t('setting.actions.resetConfig') }}
     </ElButton>
   </div>
@@ -233,3 +233,21 @@
     }
   }
 </script>
+
+<style scoped lang="scss">
+  .setting-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 9px;
+    padding-top: 15px;
+    margin-top: 22px;
+    border-top: 1px solid var(--art-card-border);
+
+    .el-button {
+      width: 100%;
+      height: 38px;
+      margin: 0;
+      border-radius: calc(var(--custom-radius) + 2px);
+    }
+  }
+</style>

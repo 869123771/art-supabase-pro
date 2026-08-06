@@ -1,5 +1,12 @@
 <template>
   <ArtDialog ref="dialogRef" size="xl">
+    <CashVoucherOcrPanel
+      v-if="dialog.mode === 'create'"
+      ref="ocrPanelRef"
+      v-model="form.data.voucherUrls"
+      direction="receipt"
+      @apply="handleApplyOcrResult"
+    />
     <ArtForm
       ref="formRef"
       v-model="form.data"
@@ -29,16 +36,6 @@
           :page-size="10"
           :disabled="dialog.mode === 'allocate'"
           @change="handleCustomerChange"
-        />
-      </template>
-
-      <template #voucherUrls>
-        <ArtUploadImage
-          v-model="form.data.voucherUrls"
-          title="上传凭证"
-          :size="108"
-          :limit="3"
-          multiple
         />
       </template>
 
@@ -110,17 +107,18 @@
     DataSelectRecord
   } from '@/components/core/forms/art-data-select/types'
   import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
-  import ArtUploadImage from '@/components/core/forms/art-upload-image/index.vue'
   import ArtTable from '@/components/core/tables/art-table/index.vue'
   import type { ColumnOption } from '@/types'
   import {
     allocateCustomerReceipt,
     createCustomerReceipt,
     fetchCustomerSelectorList,
-    fetchCustomerStatementAllocatableList
+    fetchCustomerStatementAllocatableList,
+    reviewCashVoucherOcrArtifact
   } from '@/api/tms'
   import { useUserStore } from '@/store/modules/user'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
+  import CashVoucherOcrPanel from './cash-voucher-ocr-panel.vue'
 
   defineOptions({ name: 'TmsCustomerReceiptDialog' })
 
@@ -162,11 +160,17 @@
     allocationAmounts: Record<string, number>
   }
 
+  interface OcrPanelExpose {
+    reset: () => void
+  }
+
   const emit = defineEmits<{ success: [] }>()
   const { getDictMap } = storeToRefs(useUserStore())
   const dialogRef = ref<ArtDialogExpose>()
   const formRef = ref<FormExpose>()
   const statementSelectRef = ref<ArtDataSelectExpose>()
+  const ocrPanelRef = ref<OcrPanelExpose>()
+  const ocrResult = ref<Api.Tms.Finance.CashVoucherOcrAnalyzeResponse>()
 
   const dialog = reactive<DialogGroup>({ mode: 'create', transaction: undefined })
   const selection = reactive<SelectionGroup>({
@@ -254,7 +258,6 @@
             span: 12,
             props: { placeholder: '选填，可用于检索和对账' }
           },
-          { label: '收款凭证', key: 'voucherUrls', span: 12 },
           {
             label: '收款备注',
             key: 'remark',
@@ -438,6 +441,64 @@
     selection.allocationAmounts = {}
   }
 
+  function handleApplyOcrResult(result: Api.Tms.Finance.CashVoucherOcrAnalyzeResponse): void {
+    ocrResult.value = result
+    const voucher = result.voucher
+    Object.assign(form.data, {
+      transactionDate: voucher.transactionDate || form.data.transactionDate,
+      amount: voucher.amount ?? form.data.amount,
+      paymentMethod: voucher.paymentMethod,
+      bankReference: voucher.bankReference || form.data.bankReference
+    })
+
+    const topMatch = result.matches[0]
+    if (topMatch) {
+      form.data.customerId = topMatch.counterpartyId
+      selection.customers = [
+        {
+          id: topMatch.counterpartyId,
+          customerName: topMatch.counterpartyName,
+          customerCode: 'AI 推荐'
+        }
+      ]
+      applyRecommendedStatements(result.matches, topMatch.counterpartyId)
+    }
+    void nextTick(() => formRef.value?.clearValidate())
+    ElMessage.success(
+      topMatch ? '识别结果和推荐对账单已填入，请确认核销金额' : '识别结果已填入，请手工选择对账单'
+    )
+  }
+
+  function applyRecommendedStatements(
+    matches: Api.Tms.Finance.CashVoucherStatementMatch[],
+    customerId: string
+  ): void {
+    clearStatementSelection()
+    let remaining = numericValue(form.data.amount)
+    const selected: DataSelectRecord[] = []
+    for (const match of matches) {
+      if (remaining <= 0 || match.counterpartyId !== customerId || match.score < 60) continue
+      const allocation = round(Math.min(remaining, numericValue(match.outstandingAmount)), 2)
+      if (allocation <= 0) continue
+      remaining = round(remaining - allocation, 2)
+      selection.allocationAmounts[match.statementId] = allocation
+      selected.push({
+        id: match.statementId,
+        statementNo: match.statementNo,
+        customerId: match.counterpartyId,
+        customerName: match.counterpartyName,
+        periodStart: match.periodStart,
+        periodEnd: match.periodEnd,
+        statementAmount: match.statementAmount,
+        settledAmount: match.settledAmount,
+        outstandingAmount: match.outstandingAmount,
+        periodLabel: `${match.periodStart} 至 ${match.periodEnd}`
+      })
+    }
+    selection.statements = selected
+    form.data.statementIds = selected.map((item) => String(item.id))
+  }
+
   function handleCustomerChange(): void {
     if (dialog.mode === 'allocate') return
     clearStatementSelection()
@@ -504,7 +565,7 @@
           allocations: buildAllocations()
         })
       } else {
-        await createCustomerReceipt({
+        const { data: transactionId } = await createCustomerReceipt({
           customerId: form.data.customerId,
           transactionDate: form.data.transactionDate,
           amount: numericValue(form.data.amount),
@@ -514,6 +575,7 @@
           remark: form.data.remark.trim() || null,
           allocations: buildAllocations()
         })
+        await recordOcrReview(transactionId)
       }
       emit('success')
       return true
@@ -527,6 +589,8 @@
     dialog.transaction = undefined
     selection.customers = []
     clearStatementSelection()
+    ocrResult.value = undefined
+    ocrPanelRef.value?.reset()
     await nextTick()
     formRef.value?.clearValidate()
   }
@@ -568,6 +632,26 @@
   }
 
   defineExpose({ handleOpen })
+
+  async function recordOcrReview(transactionId?: string | null): Promise<void> {
+    if (!ocrResult.value || !transactionId) return
+    const { error } = await reviewCashVoucherOcrArtifact({
+      action: 'review',
+      artifactId: ocrResult.value.artifactId,
+      entityId: transactionId,
+      outcome: 'applied',
+      finalPayload: {
+        payerName: selection.customers[0]?.customerName ?? null,
+        payeeName: ocrResult.value.voucher.payeeName,
+        transactionDate: form.data.transactionDate,
+        amount: numericValue(form.data.amount),
+        bankReference: form.data.bankReference.trim() || null,
+        paymentMethod: form.data.paymentMethod,
+        statementIds: [...form.data.statementIds]
+      }
+    })
+    if (error) ElMessage.warning('收款已登记，但 AI 质量记录失败；不影响正式业务数据')
+  }
 </script>
 
 <style scoped lang="scss">

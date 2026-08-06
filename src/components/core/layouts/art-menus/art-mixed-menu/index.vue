@@ -1,6 +1,6 @@
 <!-- 混合菜单 -->
 <template>
-  <div class="relative box-border flex-c w-full overflow-hidden">
+  <div class="art-mixed-menu relative box-border flex-c w-full overflow-hidden">
     <!-- 左侧滚动按钮 -->
     <div v-show="showLeftArrow" class="button-arrow" @click="scroll('left')">
       <ElIcon>
@@ -273,6 +273,20 @@
     margin: auto;
     content: '';
     background-color: var(--theme-color);
+  }
+
+  .menu-item {
+    margin: 10px 2px;
+    border-radius: var(--el-border-radius-base);
+    transition:
+      color 0.18s ease,
+      background-color 0.18s ease,
+      box-shadow 0.18s ease;
+  }
+
+  .menu-item:hover {
+    background: color-mix(in srgb, var(--theme-color) 8%, var(--default-box-color));
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--theme-color) 11%, transparent);
   }
 
   @media (width <= 1440px) {

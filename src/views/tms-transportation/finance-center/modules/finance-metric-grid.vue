@@ -24,36 +24,44 @@
   .finance-metric-grid {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 12px;
+    gap: 16px;
 
     &__item {
+      position: relative;
       display: flex;
       gap: 14px;
       align-items: center;
-      min-height: 116px;
-      padding: 18px;
+      min-width: 0;
+      min-height: 122px;
+      padding: 20px;
+      overflow: hidden;
+      border-top: 3px solid var(--el-color-primary-light-5);
     }
 
     &__icon {
       display: grid;
+      flex: none;
+      place-items: center;
       width: 48px;
       height: 48px;
       font-size: 24px;
       border-radius: var(--art-feature-radius);
-      place-items: center;
 
       &.is-primary {
         color: var(--el-color-primary);
         background: var(--el-color-primary-light-9);
       }
+
       &.is-success {
         color: var(--el-color-success);
         background: var(--el-color-success-light-9);
       }
+
       &.is-warning {
         color: var(--el-color-warning);
         background: var(--el-color-warning-light-9);
       }
+
       &.is-danger {
         color: var(--el-color-danger);
         background: var(--el-color-danger-light-9);
@@ -63,14 +71,20 @@
     &__content {
       display: grid;
       gap: 4px;
+      min-width: 0;
 
       span,
       small {
+        overflow: hidden;
+        text-overflow: ellipsis;
         color: var(--el-text-color-secondary);
+        white-space: nowrap;
       }
+
       strong {
         font-size: 23px;
         font-weight: 650;
+        font-variant-numeric: tabular-nums;
         color: var(--el-text-color-primary);
       }
     }

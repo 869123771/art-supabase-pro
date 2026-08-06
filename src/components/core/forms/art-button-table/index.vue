@@ -1,19 +1,20 @@
 <!-- 表格按钮 -->
 <template>
-  <div
+  <button
     v-auth="permission"
-    :class="[
-      'inline-flex items-center justify-center min-w-8 h-8 px-2.5 mr-2.5 text-sm c-p rounded-md align-middle',
-      buttonClass,
-      { 'cursor-not-allowed opacity-60': isDisabled }
-    ]"
-    :style="{ backgroundColor: buttonBgColor, color: iconColor }"
+    type="button"
+    class="art-button-table"
+    :class="[buttonClass, type ? `is-${type}` : '', { 'is-disabled': isDisabled }]"
+    :style="buttonStyle"
     :aria-busy="loading"
     :aria-disabled="isDisabled"
+    :disabled="isDisabled"
+    :aria-label="accessibleLabel"
+    :title="accessibleLabel"
     @click="handleClick"
   >
     <ArtSvgIcon :icon="iconContent" :class="{ 'animate-spin': loading }" />
-  </div>
+  </button>
 </template>
 
 <script setup lang="ts">
@@ -46,12 +47,12 @@
 
   // 默认按钮配置
   const defaultButtons = {
-    add: { icon: 'ri:add-fill', class: 'bg-theme/12 text-theme' },
-    edit: { icon: 'ri:pencil-line', class: 'bg-secondary/12 text-secondary' },
-    delete: { icon: 'ri:delete-bin-5-line', class: 'bg-error/12 text-error' },
-    sign: { icon: 'ri:checkbox-circle-line', class: 'bg-success/12 text-success' },
-    view: { icon: 'ri:eye-line', class: 'bg-info/12 text-info' },
-    more: { icon: 'ri:more-2-fill', class: '' }
+    add: { icon: 'ri:add-fill', label: '新增' },
+    edit: { icon: 'ri:pencil-line', label: '编辑' },
+    delete: { icon: 'ri:delete-bin-5-line', label: '删除' },
+    sign: { icon: 'ri:checkbox-circle-line', label: '确认' },
+    view: { icon: 'ri:eye-line', label: '查看' },
+    more: { icon: 'ri:more-2-fill', label: '更多操作' }
   } as const
 
   const isDisabled = computed(() => props.disabled || props.loading)
@@ -64,11 +65,130 @@
 
   // 获取按钮样式类
   const buttonClass = computed(() => {
-    return props.iconClass || (props.type ? defaultButtons[props.type]?.class : '') || ''
+    return props.iconClass || ''
   })
+
+  const accessibleLabel = computed(() =>
+    props.loading ? '处理中' : props.type ? defaultButtons[props.type]?.label : '表格操作'
+  )
+
+  const buttonStyle = computed(() => ({
+    '--art-table-button-background': props.buttonBgColor,
+    '--art-table-button-color': props.iconColor
+  }))
 
   const handleClick = () => {
     if (isDisabled.value) return
     emit('click')
   }
 </script>
+
+<style scoped lang="scss">
+  .art-button-table {
+    --art-table-button-semantic: var(--art-action-more);
+    --art-action-color: var(--art-table-button-color, var(--art-table-button-semantic));
+    --art-table-button-border-color: color-mix(
+      in srgb,
+      var(--art-table-button-semantic) 14%,
+      transparent
+    );
+    --art-table-button-hover-border-color: color-mix(
+      in srgb,
+      var(--art-table-button-semantic) 34%,
+      transparent
+    );
+    --art-table-button-rest-shadow: inset 0 1px 0 rgb(255 255 255 / 28%);
+
+    position: relative;
+    z-index: 1;
+    display: inline-grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    margin-right: 10px;
+    font: inherit;
+    font-size: 14px;
+    vertical-align: middle;
+    color: var(--art-table-button-color, var(--art-table-button-semantic));
+    cursor: pointer;
+    background: var(
+      --art-table-button-background,
+      color-mix(in srgb, var(--art-table-button-semantic) 11%, var(--default-box-color))
+    );
+    border: 1px solid var(--art-table-button-border-color);
+    border-radius: var(--el-border-radius-base);
+    box-shadow: var(--art-table-button-rest-shadow);
+    transition:
+      color 0.18s ease,
+      background-color 0.18s ease,
+      border-color 0.18s ease,
+      box-shadow 0.18s ease;
+
+    &.is-add {
+      --art-table-button-semantic: var(--art-action-add);
+    }
+
+    &.is-edit {
+      --art-table-button-semantic: var(--art-action-edit);
+    }
+
+    &.is-delete {
+      --art-table-button-semantic: var(--art-action-delete);
+    }
+
+    &.is-sign {
+      --art-table-button-semantic: var(--art-action-sign);
+    }
+
+    &.is-view {
+      --art-table-button-semantic: var(--art-action-view);
+    }
+
+    &:hover:not(.is-disabled) {
+      color: var(--art-action-color);
+      background: color-mix(
+        in srgb,
+        var(--art-table-button-semantic) 19%,
+        var(--default-box-color)
+      );
+      border-color: var(--art-table-button-hover-border-color);
+      box-shadow: var(--art-themed-action-hover-shadow);
+    }
+
+    &:active:not(.is-disabled) {
+      background: color-mix(
+        in srgb,
+        var(--art-table-button-semantic) 25%,
+        var(--default-box-color)
+      );
+      border-color: var(--art-table-button-hover-border-color);
+      box-shadow: var(--art-themed-action-active-shadow);
+    }
+
+    &:focus-visible {
+      outline: none;
+      border-color: var(--art-table-button-hover-border-color);
+      box-shadow: var(--art-themed-action-focus-shadow);
+    }
+
+    &.is-disabled {
+      cursor: not-allowed;
+      box-shadow: none;
+      opacity: 0.48;
+    }
+  }
+
+  :global([data-box-mode='shadow-mode']) .art-button-table {
+    --art-table-button-border-color: transparent;
+    --art-table-button-hover-border-color: transparent;
+    --art-table-button-rest-shadow: 0 3px 8px
+      color-mix(in srgb, var(--art-table-button-semantic) 9%, transparent);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .art-button-table {
+      transition: none;
+    }
+  }
+</style>

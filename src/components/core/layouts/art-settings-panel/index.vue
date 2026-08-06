@@ -2,24 +2,40 @@
 <template>
   <div class="layout-settings">
     <SettingDrawer v-model="showDrawer" @open="handleOpen" @close="handleClose">
-      <!-- 头部关闭按钮 -->
       <SettingHeader @close="closeDrawer" />
-      <!-- 主题风格 -->
-      <ThemeSettings />
-      <!-- 菜单布局 -->
-      <MenuLayoutSettings />
-      <!-- 菜单风格 -->
-      <MenuStyleSettings />
-      <!-- 系统主题色 -->
-      <ColorSettings />
-      <!-- 盒子样式 -->
-      <BoxStyleSettings />
-      <!-- 容器宽度 -->
-      <ContainerSettings />
-      <!-- 基础配置 -->
-      <BasicSettings />
-      <!-- 操作按钮 -->
-      <SettingActions />
+      <SmartLayoutPresets />
+
+      <section class="settings-manual">
+        <button
+          type="button"
+          class="settings-manual__toggle"
+          :aria-expanded="showManualSettings"
+          aria-controls="manual-settings-content"
+          @click="showManualSettings = !showManualSettings"
+        >
+          <span>
+            <ArtSvgIcon icon="ri:equalizer-3-line" />
+            <strong>精细配置</strong>
+            <small>逐项调整主题、导航与页面体验</small>
+          </span>
+          <ArtSvgIcon
+            icon="ri:arrow-down-s-line"
+            class="settings-manual__arrow"
+            :class="{ 'is-open': showManualSettings }"
+          />
+        </button>
+
+        <div v-show="showManualSettings" id="manual-settings-content" class="settings-manual__body">
+          <ThemeSettings />
+          <MenuLayoutSettings />
+          <MenuStyleSettings />
+          <ColorSettings />
+          <BoxStyleSettings />
+          <ContainerSettings />
+          <BasicSettings />
+          <SettingActions />
+        </div>
+      </section>
     </SettingDrawer>
   </div>
 </template>
@@ -29,6 +45,7 @@
 
   import SettingDrawer from './widget/SettingDrawer.vue'
   import SettingHeader from './widget/SettingHeader.vue'
+  import SmartLayoutPresets from './widget/SmartLayoutPresets.vue'
   import ThemeSettings from './widget/ThemeSettings.vue'
   import MenuLayoutSettings from './widget/MenuLayoutSettings.vue'
   import MenuStyleSettings from './widget/MenuStyleSettings.vue'
@@ -46,6 +63,7 @@
   }
 
   const props = defineProps<Props>()
+  const showManualSettings = ref(false)
 
   // 使用设置面板逻辑
   const settingsPanel = useSettingsPanel()

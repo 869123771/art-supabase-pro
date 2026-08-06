@@ -1,604 +1,528 @@
-<!-- 登录、注册、忘记密码左侧背景 -->
+<!-- 登录、注册与密码找回页的品牌视觉区 -->
 <template>
-  <div class="login-left-view">
-    <div class="logo">
-      <ArtLogo class="icon" size="46" />
-      <h1 class="title">{{ siteName }}</h1>
-    </div>
+  <aside class="login-vision" aria-label="运输运营平台介绍">
+    <div class="login-vision__aurora login-vision__aurora--cyan" />
+    <div class="login-vision__aurora login-vision__aurora--violet" />
+    <div class="login-vision__grid" />
 
-    <div class="left-img">
-      <ThemeSvg :src="loginIcon" size="100%" />
-    </div>
-
-    <div class="text-wrap">
-      <h1> {{ $t('login.leftView.title') }} </h1>
-      <p> {{ $t('login.leftView.subTitle') }} </p>
-    </div>
-
-    <!-- 几何装饰元素 -->
-    <div class="geometric-decorations">
-      <!-- 基础几何形状 -->
-      <div class="geo-element circle-outline animate-fade-in-up" style="animation-delay: 0s"></div>
-      <div
-        class="geo-element square-rotated animate-fade-in-left"
-        style="animation-delay: 0s"
-      ></div>
-      <div class="geo-element circle-small animate-fade-in-up" style="animation-delay: 0.3s"></div>
-
-      <div
-        class="geo-element square-bottom-right animate-fade-in-right"
-        style="animation-delay: 0s"
-      ></div>
-
-      <!-- 背景泡泡 -->
-      <div class="geo-element bg-bubble animate-scale-in" style="animation-delay: 0.5"></div>
-
-      <!-- 太阳/月亮 -->
-      <div
-        class="geo-element circle-top-right animate-fade-in-down"
-        style="animation-delay: 0.5"
-        @click="themeAnimation"
-      ></div>
-
-      <!-- 装饰点 -->
-      <div class="geo-element dot dot-top-left animate-bounce-in" style="animation-delay: 0s"></div>
-      <div
-        class="geo-element dot dot-top-right animate-bounce-in"
-        style="animation-delay: 0s"
-      ></div>
-      <div
-        class="geo-element dot dot-center-right animate-bounce-in"
-        style="animation-delay: 0s"
-      ></div>
-
-      <!-- 叠加方块组 -->
-      <div class="squares-group">
-        <i
-          class="geo-element square square-blue animate-fade-in-left-rotated-blue"
-          style="animation-delay: 0.2s"
-        ></i>
-        <i
-          class="geo-element square square-pink animate-fade-in-left-rotated-pink"
-          style="animation-delay: 0.4s"
-        ></i>
-        <i
-          class="geo-element square square-purple animate-fade-in-left-no-rotation"
-          style="animation-delay: 0.6s"
-        ></i>
+    <header class="login-vision__brand">
+      <span class="login-vision__logo"><ArtLogo size="38" /></span>
+      <div>
+        <strong>{{ siteName }}</strong>
+        <span>TRANSPORT OPERATIONS CLOUD</span>
       </div>
-    </div>
-  </div>
+    </header>
+
+    <main class="login-vision__content">
+      <div class="login-vision__copy">
+        <p class="login-vision__eyebrow"><i /> 智慧运输 · 实时协同</p>
+        <h1>{{ $t('login.leftView.title') }}</h1>
+        <p class="login-vision__description">{{ $t('login.leftView.subTitle') }}</p>
+        <div class="login-vision__features" aria-label="平台能力">
+          <span><ArtSvgIcon icon="ri:route-line" /> 全链路追踪</span>
+          <span><ArtSvgIcon icon="ri:radar-line" /> 风险预警</span>
+          <span><ArtSvgIcon icon="ri:bar-chart-box-line" /> 经营洞察</span>
+        </div>
+      </div>
+
+      <section class="operation-preview" aria-label="实时运输运营概览">
+        <header class="operation-preview__header">
+          <div>
+            <span class="operation-preview__status"><i /> LIVE</span>
+            <strong>运营态势</strong>
+          </div>
+          <span>08 / 06</span>
+        </header>
+
+        <div class="operation-preview__metrics">
+          <div>
+            <span>在途准点率</span>
+            <strong>98.6<small>%</small></strong>
+          </div>
+          <div>
+            <span>今日任务</span>
+            <strong>128<small>单</small></strong>
+          </div>
+        </div>
+
+        <div class="operation-preview__route" aria-hidden="true">
+          <span class="is-origin"><i /> 上海</span>
+          <div><i /><i /><i /></div>
+          <span class="is-destination"><i /> 广州</span>
+          <ArtSvgIcon icon="ri:truck-fill" />
+        </div>
+
+        <footer class="operation-preview__footer">
+          <span><i class="is-cyan" /> 32 票运输中</span>
+          <span><i class="is-orange" /> 5 项需关注</span>
+          <b>实时同步</b>
+        </footer>
+      </section>
+    </main>
+
+    <footer class="login-vision__footer">
+      <span>可信赖的企业级运输协同平台</span>
+      <span>SECURE · CONNECTED · INTELLIGENT</span>
+    </footer>
+  </aside>
 </template>
 
 <script setup lang="ts">
-  import loginIcon from '@imgs/svg/login_icon.svg'
-  import { themeAnimation } from '@/utils/ui/animation'
   import { useWebsiteConfig } from '@/hooks'
 
-  const { siteName } = useWebsiteConfig()
+  defineProps<{ hideContent?: boolean }>()
 
-  // 定义 props
-  defineProps<{
-    hideContent?: boolean // 是否隐藏内容，只显示 logo
-  }>()
+  const { siteName } = useWebsiteConfig()
 </script>
 
 <style lang="scss" scoped>
-  // 颜色变量定义
-  $primary-light-7: var(--el-color-primary-light-7);
-  $primary-light-8: var(--el-color-primary-light-8);
-  $primary-light-9: var(--el-color-primary-light-9);
-  $primary-base: var(--el-color-primary);
-  $main-bg: var(--default-box-color);
-
-  // 混合颜色函数
-  $bg-mix-light-9: color-mix(in srgb, $primary-light-9 100%, $main-bg);
-  $bg-mix-light-8: color-mix(in srgb, $primary-light-8 80%, $main-bg);
-  $bg-mix-light-7: color-mix(in srgb, $primary-light-7 80%, $main-bg);
-
-  .login-left-view {
+  .login-vision {
     position: relative;
-    box-sizing: border-box;
-    width: 65vw;
+    display: flex;
+    flex: 0 0 min(58vw, 1100px);
+    flex-direction: column;
+    min-width: 560px;
     height: 100%;
-    padding: 15px;
+    padding: clamp(28px, 3vw, 54px) clamp(32px, 4.2vw, 80px);
     overflow: hidden;
-    background-color: $bg-mix-light-9;
+    color: #fff;
+    background:
+      radial-gradient(circle at 6% 8%, rgb(43 221 255 / 22%), transparent 25%),
+      linear-gradient(138deg, #101b5e 0%, #3b1fa8 46%, #5c35ee 72%, #087bff 130%);
 
-    .logo {
+    &::after {
+      position: absolute;
+      right: -16%;
+      bottom: -24%;
+      width: 54vw;
+      max-width: 860px;
+      aspect-ratio: 1;
+      content: '';
+      border: 1px solid rgb(255 255 255 / 14%);
+      border-radius: 50%;
+      box-shadow:
+        0 0 0 64px rgb(255 255 255 / 3%),
+        0 0 0 128px rgb(255 255 255 / 2%);
+    }
+
+    &__aurora {
+      position: absolute;
+      pointer-events: none;
+      border-radius: 50%;
+      filter: blur(4px);
+
+      &--cyan {
+        top: 14%;
+        right: 1%;
+        width: 280px;
+        height: 280px;
+        background: rgb(0 229 255 / 20%);
+        filter: blur(70px);
+      }
+
+      &--violet {
+        bottom: -12%;
+        left: 18%;
+        width: 380px;
+        height: 380px;
+        background: rgb(236 72 153 / 17%);
+        filter: blur(90px);
+      }
+    }
+
+    &__grid {
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgb(255 255 255 / 14%) 1px, transparent 1px),
+        linear-gradient(90deg, rgb(255 255 255 / 14%) 1px, transparent 1px);
+      background-size: 54px 54px;
+      opacity: 0.13;
+      mask-image: linear-gradient(120deg, #000, transparent 72%);
+    }
+
+    &__brand,
+    &__content,
+    &__footer {
       position: relative;
-      z-index: 100;
+      z-index: 2;
+    }
+
+    &__brand {
       display: flex;
+      gap: 13px;
       align-items: center;
 
-      .title {
-        margin-left: 10px;
-        font-size: 20px;
-        font-weight: 400;
+      > div {
+        display: grid;
+        gap: 3px;
+      }
+
+      strong {
+        max-width: 360px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        font-size: 17px;
+        letter-spacing: 0.2px;
+        white-space: nowrap;
+      }
+
+      span:not(.login-vision__logo) {
+        font-size: 9px;
+        font-weight: 700;
+        color: rgb(255 255 255 / 55%);
+        letter-spacing: 1.5px;
       }
     }
 
-    .left-img {
-      position: absolute;
-      inset: 0 0 10.5%;
-      z-index: 10;
-      width: 40%;
-      margin: auto;
-      animation: slideInLeft 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+    &__logo {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 50px;
+      height: 50px;
+      background: rgb(255 255 255 / 12%);
+      border: 1px solid rgb(255 255 255 / 18%);
+      border-radius: var(--el-border-radius-base);
+      box-shadow: inset 0 1px 0 rgb(255 255 255 / 17%);
+      backdrop-filter: blur(14px);
     }
 
-    .text-wrap {
-      position: absolute;
-      bottom: 80px;
-      width: 100%;
-      text-align: center;
-      animation: slideInLeft 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+    &__content {
+      display: grid;
+      grid-template-columns: minmax(0, 0.94fr) minmax(340px, 1.06fr);
+      gap: clamp(34px, 4vw, 76px);
+      align-items: center;
+      margin: auto 0;
+    }
+
+    &__copy {
+      min-width: 0;
+      animation: vision-enter 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
 
       h1 {
-        font-size: 24px;
-        font-weight: 400;
-        color: var(--art-gray-900) !important;
-      }
-
-      p {
-        margin-top: 10px;
-        font-size: 14px;
-        color: var(--art-gray-600) !important;
+        max-width: 560px;
+        margin: 19px 0 18px;
+        font-size: clamp(38px, 3.3vw, 62px);
+        font-weight: 750;
+        line-height: 1.08;
+        letter-spacing: -1.5px;
       }
     }
 
-    .geometric-decorations {
-      .geo-element {
-        position: absolute;
-        opacity: 0;
-        animation-fill-mode: forwards;
-        animation-duration: 0.8s;
-        animation-timing-function: cubic-bezier(0.25, 0.46, 0.45, 0.94);
-      }
+    &__eyebrow {
+      display: inline-flex;
+      gap: 9px;
+      align-items: center;
+      margin: 0;
+      font-size: 12px;
+      font-weight: 700;
+      color: #79ecff;
+      letter-spacing: 1px;
 
-      // 动画 mixin
-      @mixin fadeAnimation($direction: '', $rotation: 0deg) {
-        from {
-          opacity: 0;
-
-          @if $direction == 'up' {
-            transform: translateY(30px) rotate($rotation);
-          } @else if $direction == 'down' {
-            transform: translateY(-30px) rotate($rotation);
-          } @else if $direction == 'left' {
-            transform: translateX(-30px) rotate($rotation);
-          } @else if $direction == 'right' {
-            transform: translateX(30px) rotate($rotation);
-          }
-        }
-
-        to {
-          opacity: 1;
-
-          @if $direction == 'up' or $direction == 'down' {
-            transform: translateY(0) rotate($rotation);
-          } @else {
-            transform: translateX(0) rotate($rotation);
-          }
-        }
-      }
-
-      // 动画定义
-      @keyframes fadeInUp {
-        @include fadeAnimation('up');
-      }
-
-      @keyframes fadeInDown {
-        @include fadeAnimation('down');
-      }
-
-      @keyframes fadeInLeft {
-        @include fadeAnimation('left');
-      }
-
-      @keyframes fadeInLeftRotated {
-        @include fadeAnimation('left', -25deg);
-      }
-
-      @keyframes fadeInRight {
-        @include fadeAnimation('right');
-      }
-
-      @keyframes fadeInRightRotated {
-        @include fadeAnimation('right', 45deg);
-      }
-
-      @keyframes fadeInLeftRotatedBlue {
-        @include fadeAnimation('left', -10deg);
-      }
-
-      @keyframes fadeInLeftRotatedPink {
-        @include fadeAnimation('left', 10deg);
-      }
-
-      @keyframes fadeInLeftNoRotation {
-        @include fadeAnimation('left');
-      }
-
-      @keyframes scaleIn {
-        from {
-          opacity: 0;
-          transform: scale(0.8);
-        }
-
-        to {
-          opacity: 1;
-          transform: scale(1);
-        }
-      }
-
-      @keyframes bounceIn {
-        0% {
-          opacity: 0;
-          transform: scale(0.3);
-        }
-
-        50% {
-          opacity: 1;
-          transform: scale(1.05);
-        }
-
-        70% {
-          transform: scale(0.9);
-        }
-
-        100% {
-          opacity: 1;
-          transform: scale(1);
-        }
-      }
-
-      @keyframes lineGrow {
-        from {
-          opacity: 0;
-        }
-
-        to {
-          opacity: 1;
-        }
-      }
-
-      @keyframes slideInLeft {
-        from {
-          opacity: 0;
-          transform: translateX(-30px);
-        }
-
-        to {
-          opacity: 1;
-          transform: translateX(0);
-        }
-      }
-
-      // 动画类
-      .animate-fade-in-up {
-        animation-name: fadeInUp;
-      }
-
-      .animate-fade-in-down {
-        animation-name: fadeInDown;
-      }
-
-      .animate-fade-in-left {
-        animation-name: fadeInLeft;
-      }
-
-      .animate-fade-in-right {
-        animation-name: fadeInRight;
-      }
-
-      .animate-scale-in {
-        animation-name: scaleIn;
-        animation-duration: 1.2s;
-      }
-
-      .animate-bounce-in {
-        animation-name: bounceIn;
-        animation-duration: 0.6s;
-      }
-
-      .animate-fade-in-left-rotated-blue {
-        animation-name: fadeInLeftRotatedBlue;
-      }
-
-      .animate-fade-in-left-rotated-pink {
-        animation-name: fadeInLeftRotatedPink;
-      }
-
-      .animate-fade-in-left-no-rotation {
-        animation-name: fadeInLeftNoRotation;
-      }
-
-      // 基础几何形状
-      .circle-outline {
-        top: 10%;
-        left: 25%;
-        width: 42px;
-        height: 42px;
-        border: 2px solid $primary-light-8;
+      i {
+        width: 7px;
+        height: 7px;
+        background: #34f5c5;
         border-radius: 50%;
+        box-shadow: 0 0 0 6px rgb(52 245 197 / 14%);
+      }
+    }
+
+    &__description {
+      max-width: 500px;
+      margin: 0;
+      font-size: 15px;
+      line-height: 1.8;
+      color: rgb(255 255 255 / 67%);
+    }
+
+    &__features {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 30px;
+
+      span {
+        display: inline-flex;
+        gap: 7px;
+        align-items: center;
+        padding: 8px 11px;
+        font-size: 11px;
+        color: rgb(255 255 255 / 78%);
+        background: rgb(255 255 255 / 8%);
+        border: 1px solid rgb(255 255 255 / 11%);
+        border-radius: 999px;
+      }
+    }
+
+    &__footer {
+      display: flex;
+      justify-content: space-between;
+      font-size: 10px;
+      color: rgb(255 255 255 / 43%);
+      letter-spacing: 0.6px;
+    }
+  }
+
+  .operation-preview {
+    position: relative;
+    min-width: 0;
+    padding: clamp(24px, 2vw, 34px);
+    overflow: hidden;
+    background: linear-gradient(145deg, rgb(255 255 255 / 17%), rgb(255 255 255 / 7%));
+    border: 1px solid rgb(255 255 255 / 18%);
+    border-radius: var(--art-feature-radius);
+    box-shadow: 0 34px 90px rgb(6 8 45 / 34%);
+    backdrop-filter: blur(28px);
+    transform: perspective(1100px) rotateY(-5deg) rotateX(2deg);
+    animation: preview-enter 0.8s 0.1s cubic-bezier(0.22, 1, 0.36, 1) both;
+
+    &::before {
+      position: absolute;
+      top: -80px;
+      right: -80px;
+      width: 190px;
+      height: 190px;
+      content: '';
+      background: rgb(46 228 255 / 19%);
+      border-radius: 50%;
+      filter: blur(34px);
+    }
+
+    &__header,
+    &__footer {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    &__header {
+      > div {
+        display: grid;
+        gap: 7px;
       }
 
-      .square-rotated {
-        top: 50%;
-        left: 16%;
-        width: 60px;
-        height: 60px;
-        background-color: $bg-mix-light-8;
+      > span {
+        font-size: 11px;
+        color: rgb(255 255 255 / 46%);
+        letter-spacing: 1px;
+      }
+    }
 
-        &.animate-fade-in-left {
-          animation-name: fadeInLeftRotated;
+    &__status {
+      display: inline-flex;
+      gap: 6px;
+      align-items: center;
+      font-size: 9px;
+      font-weight: 800;
+      color: #60f0ce;
+      letter-spacing: 1.4px;
+
+      i {
+        width: 6px;
+        height: 6px;
+        background: currentcolor;
+        border-radius: 50%;
+        box-shadow: 0 0 12px currentcolor;
+      }
+    }
+
+    &__metrics {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+      margin-top: 34px;
+
+      > div {
+        display: grid;
+        gap: 8px;
+        min-width: 0;
+        padding-right: 18px;
+        border-right: 1px solid rgb(255 255 255 / 12%);
+
+        &:last-child {
+          border-right: 0;
         }
       }
 
-      .circle-small {
-        bottom: 26%;
-        left: 30%;
-        width: 18px;
-        height: 18px;
-        background-color: $primary-light-8;
-        border-radius: 50%;
+      span {
+        font-size: 11px;
+        color: rgb(255 255 255 / 52%);
       }
 
-      // 太阳/月亮效果
-      .circle-top-right {
-        top: 3%;
-        right: 3%;
-        z-index: 100;
-        width: 50px;
-        height: 50px;
-        cursor: pointer;
-        background: $bg-mix-light-7;
-        border-radius: 50%;
-        transition: all 0.3s;
+      strong {
+        font-size: clamp(28px, 2.4vw, 42px);
+        line-height: 1;
+        letter-spacing: -1px;
 
-        &::after {
-          position: absolute;
-          top: 50%;
-          left: 50%;
-          width: 100%;
-          height: 100%;
-          content: '';
-          background: linear-gradient(to right, #fcbb04, #fffc00);
+        small {
+          margin-left: 3px;
+          font-size: 12px;
+          font-weight: 500;
+          color: rgb(255 255 255 / 52%);
+          letter-spacing: 0;
+        }
+      }
+    }
+
+    &__route {
+      position: relative;
+      display: grid;
+      grid-template-columns: auto minmax(80px, 1fr) auto;
+      gap: 12px;
+      align-items: center;
+      margin: 38px 0 34px;
+      font-size: 11px;
+      color: rgb(255 255 255 / 70%);
+
+      > span {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+
+        i {
+          width: 8px;
+          height: 8px;
+          border: 2px solid #fff;
           border-radius: 50%;
-          opacity: 0;
-          transition: all 0.5s;
-          transform: translate(-50%, -50%);
         }
 
-        &:hover {
-          box-shadow: 0 0 36px #fffc00;
-
-          &::after {
-            opacity: 1;
-          }
+        &.is-destination i {
+          border-color: #ffbb54;
+          box-shadow: 0 0 0 5px rgb(255 187 84 / 12%);
         }
       }
 
-      .square-bottom-right {
-        right: 10%;
-        bottom: 10%;
-        width: 50px;
-        height: 50px;
-        background-color: $primary-light-8;
+      > div {
+        display: flex;
+        align-items: center;
+        justify-content: space-around;
+        height: 1px;
+        background: linear-gradient(90deg, rgb(255 255 255 / 65%), #45e5ff, #ffbd5a);
 
-        &.animate-fade-in-right {
-          animation-name: fadeInRightRotated;
+        i {
+          width: 3px;
+          height: 3px;
+          background: #fff;
+          border-radius: 50%;
         }
       }
 
-      // 背景泡泡
-      .bg-bubble {
-        top: -120px;
-        right: -120px;
-        width: 360px;
-        height: 360px;
-        background-color: $bg-mix-light-8;
-        border-radius: 50%;
-      }
-
-      // 装饰点
-      .dot {
-        width: 14px;
-        height: 14px;
-        background-color: $primary-light-7;
-        border-radius: 50%;
-
-        &.dot-top-left {
-          top: 140px;
-          left: 100px;
-        }
-
-        &.dot-top-right {
-          top: 140px;
-          right: 120px;
-        }
-
-        &.dot-center-right {
-          top: 46%;
-          right: 22%;
-          background-color: $primary-light-8;
-        }
-      }
-
-      // 叠加方块组
-      .squares-group {
+      > .art-svg-icon {
         position: absolute;
-        bottom: 18px;
-        left: 20px;
-        width: 140px;
-        height: 140px;
-        pointer-events: none;
-
-        .square {
-          position: absolute;
-          display: block;
-          border-radius: 8px;
-          box-shadow: 0 8px 24px rgb(64 87 167 / 12%);
-
-          &.square-blue {
-            top: 12px;
-            left: 30px;
-            z-index: 2;
-            width: 50px;
-            height: 50px;
-            background-color: rgb(from $primary-base r g b / 30%);
-          }
-
-          &.square-pink {
-            top: 30px;
-            left: 48px;
-            z-index: 1;
-            width: 70px;
-            height: 70px;
-            background-color: rgb(from $primary-base r g b / 15%);
-          }
-
-          &.square-purple {
-            top: 66px;
-            left: 86px;
-            z-index: 3;
-            width: 32px;
-            height: 32px;
-            background-color: rgb(from $primary-base r g b / 45%);
-          }
-        }
-
-        // 装饰线条
-        &::after {
-          position: absolute;
-          top: 86px;
-          left: 72px;
-          width: 80px;
-          height: 1px;
-          content: '';
-          background: linear-gradient(90deg, var(--el-color-primary-light-6), transparent);
-          opacity: 0;
-          transform: rotate(50deg);
-          animation: lineGrow 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
-          animation-delay: 1.2s;
-        }
+        top: -19px;
+        left: 58%;
+        padding: 5px;
+        font-size: 18px;
+        color: #1f2674;
+        background: #55eaff;
+        border-radius: 50%;
+        box-shadow: 0 7px 18px rgb(0 0 0 / 24%);
       }
     }
 
-    @media only screen and (width <= 1600px) {
-      width: 60vw;
+    &__footer {
+      gap: 12px;
+      padding-top: 20px;
+      font-size: 10px;
+      color: rgb(255 255 255 / 58%);
+      border-top: 1px solid rgb(255 255 255 / 10%);
 
-      .text-wrap {
-        bottom: 40px;
+      span {
+        display: inline-flex;
+        gap: 6px;
+        align-items: center;
+      }
+
+      i {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+
+        &.is-cyan {
+          background: #45e5ff;
+        }
+
+        &.is-orange {
+          background: #ffac3e;
+        }
+      }
+
+      b {
+        margin-left: auto;
+        font-weight: 600;
+        color: #7ff4dc;
       }
     }
+  }
 
-    @media only screen and (width <= 1180px) {
-      width: auto;
-      height: auto;
-      padding: 0;
-      // 隐藏背景和其他内容，只保留 logo
-      background: transparent;
+  @keyframes vision-enter {
+    from {
+      opacity: 0;
+      transform: translateX(-24px);
+    }
 
-      .left-img,
-      .text-wrap,
-      .geometric-decorations {
-        display: none;
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes preview-enter {
+    from {
+      opacity: 0;
+      transform: perspective(1100px) rotateY(-5deg) rotateX(2deg) translateY(30px);
+    }
+
+    to {
+      opacity: 1;
+      transform: perspective(1100px) rotateY(-5deg) rotateX(2deg) translateY(0);
+    }
+  }
+
+  @media only screen and (width <= 1460px) {
+    .login-vision {
+      flex-basis: 54vw;
+      min-width: 520px;
+
+      &__content {
+        grid-template-columns: 1fr;
       }
 
-      .logo {
+      &__copy h1 {
+        font-size: clamp(36px, 4vw, 52px);
+      }
+
+      .operation-preview {
         display: none;
       }
     }
   }
 
-  // 暗色主题
-  .dark .login-left-view {
-    background-color: color-mix(in srgb, $primary-light-9 60%, #070707);
+  @media only screen and (width <= 1040px) {
+    .login-vision {
+      position: absolute;
+      inset: 0;
+      min-width: 0;
+      padding: 24px;
+      pointer-events: none;
+      background: linear-gradient(150deg, #161f66, #5234dd 58%, #087bff 130%);
 
-    @media only screen and (width <= 1180px) {
-      background: transparent;
-    }
-
-    .geometric-decorations {
-      // 月亮效果
-      .circle-top-right {
-        background-color: $bg-mix-light-8;
-        box-shadow: 0 0 25px #333 inset;
-        transition: all 0.3s ease-in-out 0.1s;
-        rotate: -48deg;
-
-        &::before {
-          position: absolute;
-          top: 0;
-          left: 15px;
-          width: 50px;
-          height: 50px;
-          content: '';
-          background-color: $bg-mix-light-9;
-          border-radius: 50%;
-          transition: all 0.3s ease-in-out;
-        }
-
-        &:hover {
-          background-color: transparent;
-          box-shadow: 0 40px 25px #ddd inset;
-
-          &::before {
-            left: 18px;
-          }
-
-          &::after {
-            opacity: 0;
-          }
-        }
-      }
-
-      .bg-bubble {
-        background-color: $bg-mix-light-9;
-      }
-
-      // 其他元素颜色调整
-      .square-rotated {
-        background-color: $bg-mix-light-9;
-      }
-
-      .circle-small,
-      .dot {
-        background-color: $primary-light-8;
-      }
-
-      .square-bottom-right {
-        background-color: $primary-light-9;
-      }
-
-      .dot.dot-top-right {
-        background-color: $primary-light-8;
+      &::after,
+      &__brand,
+      &__content,
+      &__footer {
+        display: none;
       }
     }
+  }
 
-    // 方块组暗色调整
-    .squares-group {
-      .square {
-        box-shadow: none;
-
-        &.square-blue {
-          background-color: rgb(from $primary-base r g b / 18%);
-        }
-
-        &.square-pink {
-          background-color: rgb(from $primary-base r g b / 10%);
-        }
-
-        &.square-purple {
-          background-color: rgb(from $primary-base r g b / 20%);
-        }
-      }
-
-      &::after {
-        background: linear-gradient(90deg, $primary-light-8, transparent);
-      }
+  @media (prefers-reduced-motion: reduce) {
+    .login-vision__copy,
+    .operation-preview {
+      animation: none;
     }
   }
 </style>

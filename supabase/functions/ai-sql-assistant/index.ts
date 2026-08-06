@@ -431,14 +431,14 @@ Deno.serve(async (req) => {
     if (!prompt) throw new AiSqlError('invalid_input', '请输入 SQL 生成或修复需求。', 400)
 
     const sharedModel =
-      Deno.env.get('OPENAI_MODEL') || Deno.env.get('AI_MODEL') || 'gpt-4.1-mini'
+      Deno.env.get('AI_MODEL') || Deno.env.get('OPENAI_MODEL') || 'gpt-4.1-mini'
     const runtimeConfig = await loadAiRuntimeConfig(admin, appUser.tenant_id, FEATURE, {
       enabled: true,
       provider: 'openai_compatible',
       model: Deno.env.get('AI_SQL_MODEL') || sharedModel,
       visionModel: null,
       fallbackModel: Deno.env.get('AI_SQL_FALLBACK_MODEL') || null,
-      timeoutMs: integerValue(Deno.env.get('AI_SQL_TIMEOUT_MS'), 30_000, 5000, 120_000),
+      timeoutMs: integerValue(Deno.env.get('AI_SQL_TIMEOUT_MS'), 90_000, 5000, 120_000),
       maxRetries: integerValue(Deno.env.get('AI_SQL_MAX_RETRIES'), 0, 0, 2),
       temperature: 0.1,
       maxTokens: integerValue(Deno.env.get('AI_SQL_MAX_TOKENS'), 900, 100, 4096),
@@ -461,10 +461,12 @@ Deno.serve(async (req) => {
       { content: DEFAULT_PROMPT, version: runtimeConfig.promptVersion }
     )
 
-    const apiKey = Deno.env.get('OPENAI_API_KEY') || Deno.env.get('AI_API_KEY')
+    // AI_* is the provider-neutral configuration documented for NVIDIA NIM and other
+    // OpenAI-compatible services. OPENAI_* remains a fallback for existing deployments.
+    const apiKey = Deno.env.get('AI_API_KEY') || Deno.env.get('OPENAI_API_KEY')
     const baseUrl = (
-      Deno.env.get('OPENAI_BASE_URL') ||
       Deno.env.get('AI_BASE_URL') ||
+      Deno.env.get('OPENAI_BASE_URL') ||
       'https://api.openai.com/v1'
     ).replace(/\/$/, '')
     if (!apiKey) {

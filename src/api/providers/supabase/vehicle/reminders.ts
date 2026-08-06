@@ -8,7 +8,13 @@ import type { ApiRequestOptions } from '@/types/api/request'
 import { applyFilters, type FilterSpec } from '@/utils/supabase-filters'
 import type { VehicleReminderRow, VehicleReminderSearchParams } from './types'
 
-const { supabase, responseHandle } = useSupabase()
+type ReminderKind = Api.VehicleMgtSys.ReminderManage.ReminderKind
+type ReminderWorkOrder = Api.VehicleMgtSys.ReminderManage.VehicleReminderWorkOrder
+type ReminderCreatePayload = Api.VehicleMgtSys.ReminderManage.VehicleReminderWorkOrderCreatePayload
+type ReminderTransitionPayload =
+  Api.VehicleMgtSys.ReminderManage.VehicleReminderWorkOrderTransitionPayload
+
+const { supabase, keysToSnakeDeep, responseHandle } = useSupabase()
 
 export const VEHICLE_REMINDER_VIEWS = [
   'vehicle_reminder_insurance_expiry',
@@ -39,6 +45,7 @@ const getVehicleReminderSearchFilters = (
 
 export async function fetchVehicleReminderViewList(
   viewName: VehicleReminderViewName,
+  sourceType: ReminderKind,
   params: VehicleReminderSearchParams,
   mode: 'days' | 'expired',
   options?: ApiRequestOptions
@@ -59,11 +66,79 @@ export async function fetchVehicleReminderViewList(
     camelToSnake: true
   })
 
-  return await responseHandle<VehicleReminderRow[]>(
+  const result = await responseHandle<VehicleReminderRow[]>(
     () => withRequestOptions(query as unknown as SupabaseQueryLike, options),
     {
       ignoreCheck: true,
       showErrorMessage: true
     }
+  )
+
+  const rows = (result.data ?? []).map((row) => ({
+    ...row,
+    sourceVersion: getReminderSourceVersion(row)
+  }))
+  if (!rows.length) return { ...result, data: rows }
+
+  const { data: workOrders } = await responseHandle<ReminderWorkOrder[]>(
+    () =>
+      supabase
+        .from('vehicle_reminder_work_order')
+        .select('*')
+        .eq('source_type', sourceType)
+        .in(
+          'source_key',
+          rows.map((row) => row.id)
+        )
+        .order('update_time', { ascending: false }),
+    { ignoreCheck: true, showErrorMessage: true }
+  )
+  const workOrderMap = new Map(
+    (workOrders ?? []).map((workOrder) => [
+      `${workOrder.sourceKey}:${workOrder.sourceVersion}`,
+      workOrder
+    ])
+  )
+
+  return {
+    ...result,
+    data: rows.map((row) => {
+      const workOrder = workOrderMap.get(`${row.id}:${row.sourceVersion}`) ?? null
+      return { ...row, workOrder, workOrderStatus: workOrder?.status ?? null }
+    })
+  }
+}
+
+export async function createVehicleReminderWorkOrder(params: ReminderCreatePayload) {
+  return await responseHandle<ReminderWorkOrder>(
+    () =>
+      supabase.rpc('get_or_create_vehicle_reminder_work_order', {
+        p_reminder: keysToSnakeDeep(params)
+      }),
+    { breakReturn: true }
+  )
+}
+
+export async function transitionVehicleReminderWorkOrder(params: ReminderTransitionPayload) {
+  return await responseHandle<ReminderWorkOrder>(
+    () =>
+      supabase.rpc('transition_vehicle_reminder_work_order', {
+        p_work_order_id: params.workOrderId,
+        p_next_status: params.nextStatus,
+        p_resolution: params.resolution || null
+      }),
+    { breakReturn: true }
+  )
+}
+
+function getReminderSourceVersion(row: VehicleReminderRow): string {
+  return (
+    row.expireDate ||
+    row.nextMaintenanceDate ||
+    [row.startUseDate, row.serviceYears].filter(Boolean).join(':') ||
+    [row.currentMileage, row.nextMaintenanceMileage]
+      .filter((value) => value !== undefined)
+      .join(':') ||
+    'current'
   )
 }

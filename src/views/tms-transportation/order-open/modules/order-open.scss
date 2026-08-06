@@ -1,7 +1,7 @@
 .order-open {
   min-height: 100%;
   padding: 12px 18px 18px;
-  background: #f5f7fb;
+  background: transparent;
 
   &__header {
     display: grid;
@@ -36,7 +36,7 @@
     font-weight: 700;
     letter-spacing: 12px;
     white-space: nowrap;
-    border-bottom: 3px double #d8deea;
+    border-bottom: 2px solid color-mix(in srgb, var(--theme-color) 28%, var(--art-card-border));
   }
 
   &__time {

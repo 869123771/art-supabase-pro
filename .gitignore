@@ -3,6 +3,9 @@ node_modules
 dist
 dist-ssr
 .artifacts/
+playwright/.auth/
+playwright-report/
+test-results/
 *.local
 .cursorrules
 

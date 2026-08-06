@@ -48,6 +48,28 @@
   display: none;
 }
 
+// 涓婚浜や簰琛ㄩ潰锛氬悓鏃惰窡闅忕郴缁熶富棰樿壊涓庣洅瀛愭牱寮?
+:root,
+[data-box-mode='border-mode'] {
+  --art-themed-action-hover-shadow: inset 0 0 0 1px
+    color-mix(in srgb, var(--art-action-color, var(--theme-color)) 20%, transparent);
+  --art-themed-action-active-shadow: inset 0 0 0 1px
+    color-mix(in srgb, var(--art-action-color, var(--theme-color)) 30%, transparent);
+  --art-themed-action-focus-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--art-action-color, var(--theme-color)) 28%, transparent),
+    0 0 0 3px color-mix(in srgb, var(--art-action-color, var(--theme-color)) 14%, transparent);
+}
+
+[data-box-mode='shadow-mode'] {
+  --art-themed-action-hover-shadow: 0 5px 14px
+    color-mix(in srgb, var(--art-action-color, var(--theme-color)) 18%, transparent);
+  --art-themed-action-active-shadow: 0 2px 8px
+    color-mix(in srgb, var(--art-action-color, var(--theme-color)) 22%, transparent);
+  --art-themed-action-focus-shadow:
+    0 0 0 3px color-mix(in srgb, var(--art-action-color, var(--theme-color)) 14%, transparent),
+    0 6px 16px color-mix(in srgb, var(--art-action-color, var(--theme-color)) 18%, transparent);
+}
+
 // 语言切换选中样式
 .langDropDownStyle {
   // 选中项背景颜色
@@ -263,25 +285,217 @@
   }
 }
 
-// 修复老机型 loading 定位问题
+// 全局路由初始化 Loading：保持老机型固定定位兼容，并承载品牌启动视觉
 .art-loading-fix {
   position: fixed !important;
-  top: 0 !important;
-  left: 0 !important;
-  right: 0 !important;
-  bottom: 0 !important;
-  width: 100vw !important;
-  height: 100vh !important;
+  inset: 0 !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  overflow: hidden;
+  background-image:
+    radial-gradient(circle at 16% 8%, rgb(34 211 238 / 13%), transparent 29%),
+    radial-gradient(circle at 88% 92%, rgb(99 91 255 / 13%), transparent 32%),
+    linear-gradient(145deg, rgb(255 255 255 / 42%), transparent 62%);
+  isolation: isolate;
+  backdrop-filter: blur(18px);
+
+  &::before,
+  &::after {
+    position: absolute;
+    pointer-events: none;
+    content: '';
+  }
+
+  &::before {
+    inset: 0;
+    z-index: -2;
+    background-image:
+      linear-gradient(rgb(99 91 255 / 4.5%) 1px, transparent 1px),
+      linear-gradient(90deg, rgb(99 91 255 / 4.5%) 1px, transparent 1px);
+    background-size: 48px 48px;
+    mask-image: radial-gradient(circle at center, #000 0%, transparent 70%);
+  }
+
+  &::after {
+    z-index: -1;
+    width: min(54vw, 680px);
+    aspect-ratio: 1;
+    border: 1px solid rgb(99 91 255 / 7%);
+    border-radius: 50%;
+    box-shadow:
+      0 0 0 68px rgb(99 91 255 / 2.8%),
+      0 0 0 136px rgb(99 91 255 / 1.8%);
+  }
+
+  .el-loading-spinner {
+    position: static !important;
+    top: auto !important;
+    left: auto !important;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: min(420px, calc(100vw - 48px));
+    padding: 34px 28px 31px;
+    color: #4338ca;
+    background: rgb(255 255 255 / 68%);
+    border: 1px solid rgb(99 91 255 / 11%);
+    border-radius: var(--art-feature-radius, 24px);
+    box-shadow:
+      0 28px 70px rgb(42 45 94 / 12%),
+      inset 0 1px 0 rgb(255 255 255 / 75%);
+    backdrop-filter: blur(24px);
+    transform: none !important;
+
+    &::before {
+      order: 0;
+      margin-bottom: 18px;
+      font-size: 10px;
+      font-weight: 750;
+      color: #635bff;
+      letter-spacing: 1.8px;
+      content: 'TRANSPORT OPERATIONS CLOUD';
+    }
+
+    &::after {
+      order: 3;
+      width: 148px;
+      height: 3px;
+      margin-top: 22px;
+      content: '';
+      background: linear-gradient(
+        90deg,
+        transparent,
+        #8b5cf6 24%,
+        #087bff 58%,
+        #22d3ee 76%,
+        transparent
+      );
+      background-size: 220% 100%;
+      border-radius: 999px;
+      animation: art-global-loading-progress 1.8s ease-in-out infinite;
+    }
+  }
+
+  .circular {
+    order: 1;
+    width: 96px;
+    height: 96px;
+    color: #635bff;
+  }
+
+  .el-loading-text {
+    order: 2;
+    max-width: 100%;
+    margin: 20px 0 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 18px;
+    font-weight: 750;
+    line-height: 1.4;
+    color: #22244a;
+    text-align: center;
+    white-space: nowrap;
+
+    &::after {
+      display: block;
+      margin-top: 7px;
+      font-size: 12px;
+      font-weight: 450;
+      line-height: 1.6;
+      color: #7a819f;
+      letter-spacing: 0.2px;
+      content: '正在连接智慧运营中心，请稍候';
+    }
+  }
 }
 
-.art-loading-fix .el-loading-spinner {
-  position: static !important;
-  top: auto !important;
-  left: auto !important;
-  transform: none !important;
+.dark .art-loading-fix {
+  background-image:
+    radial-gradient(circle at 16% 8%, rgb(34 211 238 / 12%), transparent 30%),
+    radial-gradient(circle at 88% 92%, rgb(99 91 255 / 20%), transparent 34%),
+    linear-gradient(145deg, rgb(26 28 60 / 46%), transparent 64%);
+
+  &::before {
+    background-image:
+      linear-gradient(rgb(130 124 255 / 5%) 1px, transparent 1px),
+      linear-gradient(90deg, rgb(130 124 255 / 5%) 1px, transparent 1px);
+  }
+
+  &::after {
+    border-color: rgb(139 92 246 / 10%);
+    box-shadow:
+      0 0 0 68px rgb(99 91 255 / 4%),
+      0 0 0 136px rgb(99 91 255 / 2.5%);
+  }
+
+  .el-loading-spinner {
+    color: #a5b4fc;
+    background: rgb(20 22 42 / 72%);
+    border-color: rgb(139 92 246 / 18%);
+    box-shadow:
+      0 32px 90px rgb(0 0 0 / 35%),
+      inset 0 1px 0 rgb(255 255 255 / 6%);
+
+    &::before {
+      color: #a5b4fc;
+    }
+  }
+
+  .el-loading-text {
+    color: #f5f6ff;
+
+    &::after {
+      color: #9299b7;
+    }
+  }
+}
+
+@keyframes art-global-loading-progress {
+  0%,
+  100% {
+    background-position: 100% 0;
+    opacity: 0.55;
+    transform: scaleX(0.72);
+  }
+
+  50% {
+    background-position: 0 0;
+    opacity: 1;
+    transform: scaleX(1);
+  }
+}
+
+@media (width <= 560px) {
+  .art-loading-fix {
+    &::after {
+      width: 86vw;
+      box-shadow:
+        0 0 0 46px rgb(99 91 255 / 2.8%),
+        0 0 0 92px rgb(99 91 255 / 1.8%);
+    }
+
+    .el-loading-spinner {
+      padding: 30px 22px 27px;
+    }
+
+    .circular {
+      width: 84px;
+      height: 84px;
+    }
+
+    .el-loading-text {
+      font-size: 16px;
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .art-loading-fix .el-loading-spinner::after {
+    animation: none;
+  }
 }
 
 // 去除移动端点击背景色

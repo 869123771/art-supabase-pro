@@ -1,26 +1,78 @@
 @reference '@styles/core/tailwind.css';
 
+/* 授权页基础布局 */
+.auth-page {
+  @apply relative flex w-full h-screen overflow-hidden;
+
+  background: var(--el-bg-color-page);
+}
+
+.auth-page__panel {
+  @apply relative flex-1 min-w-0;
+
+  background:
+    radial-gradient(
+      circle at 100% 0%,
+      color-mix(in srgb, var(--el-color-primary) 9%, transparent),
+      transparent 30%
+    ),
+    var(--el-bg-color);
+}
+
 /* 授权页右侧区域 */
 .auth-right-wrap {
-  @apply absolute inset-0 w-[440px] h-[650px] py-[5px] m-auto overflow-hidden
-    max-sm:px-7 max-sm:w-full
+  @apply absolute inset-0 w-[480px] max-w-[calc(100%_-_48px)] h-fit m-auto
+    max-sm:px-0 max-sm:w-[calc(100%_-_40px)]
     animate-[slideInRight_0.6s_cubic-bezier(0.25,0.46,0.45,0.94)_forwards]
     max-md:animate-none;
 
   .form {
-    @apply h-full py-[40px];
+    @apply px-[42px] py-[44px] max-sm:px-6 max-sm:py-8;
+
+    background: color-mix(in srgb, var(--el-bg-color) 92%, transparent);
+    border: 1px solid color-mix(in srgb, var(--el-border-color) 72%, transparent);
+    border-radius: var(--art-feature-radius);
+    box-shadow: 0 34px 80px rgb(26 31 63 / 12%);
+    backdrop-filter: blur(22px);
   }
 
   .title {
-    @apply text-g-900 text-4xl font-semibold max-md:text-3xl max-sm:pt-10;
+    @apply text-g-900 text-[34px] leading-tight font-bold max-md:text-3xl;
+
+    letter-spacing: -0.8px;
   }
 
   .sub-title {
-    @apply my-[10px] text-g-600 text-sm;
+    @apply mt-2.5 mb-0 text-g-600 text-sm leading-6;
   }
 
   .custom-height {
-    @apply !h-[40px];
+    @apply !h-[48px];
+  }
+}
+
+@media (width <= 1040px) {
+  .auth-page__panel {
+    background: transparent;
+  }
+
+  .auth-right-wrap {
+    top: 72px;
+    bottom: 18px;
+
+    .form {
+      box-shadow: 0 32px 90px rgb(8 11 49 / 28%);
+    }
+  }
+}
+
+@media (width <= 520px) {
+  .auth-right-wrap {
+    top: 78px;
+
+    .form {
+      border-radius: var(--custom-radius);
+    }
   }
 }
 

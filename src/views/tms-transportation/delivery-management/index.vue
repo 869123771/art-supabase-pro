@@ -22,6 +22,7 @@
     </ArtTableQuery>
 
     <SignDialog ref="signDialogRef" @success="handleSignSuccess" />
+    <ReceiptExceptionWorkOrderDrawer ref="exceptionDrawerRef" />
   </div>
 </template>
 
@@ -36,6 +37,7 @@
   import { fetchDeliveryStatusCounts } from '@/api/tms'
   import { useUserStore } from '@/store/modules/user'
   import SignDialog from './modules/sign-dialog.vue'
+  import ReceiptExceptionWorkOrderDrawer from './modules/receipt-exception-work-order-drawer.vue'
   import {
     DELIVERY_STATUS_ALL,
     createDeliveryColumns,
@@ -71,6 +73,7 @@
   const { getDictMap } = storeToRefs(useUserStore())
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const signDialogRef = ref<DeliverySignDialogExpose>()
+  const exceptionDrawerRef = ref<{ handleOpen: () => Promise<void> }>()
   const statusCountRequestId = ref(0)
   const paymentMethodOptions = computed(() => getDictMap.value.tmsOrderPaymentMethod ?? [])
 
@@ -92,12 +95,20 @@
       ]
     }),
     searchItems: createDeliverySearchItems(paymentMethodOptions, true),
-    headerActions: createDeliveryHeaderActions({
-      mode: 'delivery',
-      router,
-      tableQueryRef,
-      signDialogRef
-    }),
+    headerActions: computed<ArtTableQueryHeaderAction[]>(() => [
+      {
+        label: '签收异常工单',
+        icon: 'ri-file-warning-line',
+        buttonProps: { type: 'primary', plain: true },
+        onClick: () => void exceptionDrawerRef.value?.handleOpen()
+      },
+      ...createDeliveryHeaderActions({
+        mode: 'delivery',
+        router,
+        tableQueryRef,
+        signDialogRef
+      }).value
+    ]),
     columnsFactory: () =>
       createDeliveryColumns({
         mode: 'delivery',

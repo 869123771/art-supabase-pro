@@ -18,8 +18,12 @@
             :data="detail.statementLinks ?? []"
             :columns="statementLinkColumns"
             :pagination="false"
+            :show-table-header="false"
             table-layout="fixed"
+            empty-height="180px"
+            max-height="360px"
             empty-text="暂未关联对账单"
+            border
           />
         </section>
 

@@ -1,13 +1,13 @@
 <template>
-  <VehicleQuerySection title="例检记录">
+  <ArtPageSection :card="false" title="例检记录">
     <VehicleQueryTable :data="records" :columns="columns" :loading="loading" />
-  </VehicleQuerySection>
+  </ArtPageSection>
 </template>
 
 <script setup lang="tsx">
   import type { ColumnOption } from '@/types'
   import { fetchVehicleRoutineInspectionList } from '@/api/vehicle-manage-system'
-  import VehicleQuerySection from './vehicle-query-section.vue'
+  import ArtPageSection from '@/components/core/layouts/art-page-section/index.vue'
   import VehicleQueryTable from './vehicle-query-table.vue'
   import type { VehicleArchive, VehicleRoutineInspectionRecord } from './types'
   import { formatDateTime } from './query-format'

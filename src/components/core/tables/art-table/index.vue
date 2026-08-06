@@ -127,7 +127,7 @@
 
       <template #empty>
         <div v-if="loading"></div>
-        <ElEmpty v-else :description="emptyText" :image-size="120" />
+        <ArtEmptyState v-else :title="emptyText" :visual-size="92" size="compact" />
       </template>
     </ElTable>
 
@@ -167,6 +167,7 @@
   import { storeToRefs } from 'pinia'
   import { useDraggable, type DraggableEvent } from 'vue-draggable-plus'
   import { ColumnOption } from '@/types'
+  import ArtEmptyState from '@/components/core/layouts/art-empty-state/index.vue'
   import { useTableStore } from '@/store/modules/table'
   import { useCommon } from '@/hooks/core/useCommon'
   import { useTableHeight } from '@/hooks/core/useTableHeight'

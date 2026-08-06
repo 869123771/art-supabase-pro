@@ -64,7 +64,8 @@
         valueFormat: 'YYYY-MM-DD',
         startPlaceholder: '开始日期',
         endPlaceholder: '结束日期',
-        rangeSeparator: '至'
+        rangeSeparator: '至',
+        class: '!w-full'
       }
     },
     {

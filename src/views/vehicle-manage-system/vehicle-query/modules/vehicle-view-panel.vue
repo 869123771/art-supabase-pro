@@ -1,5 +1,5 @@
 <template>
-  <VehicleQuerySection title="车辆视图">
+  <ArtPageSection :card="false" title="车辆视图">
     <div class="vehicle-view-panel">
       <div class="vehicle-view-panel__canvas">
         <svg viewBox="0 0 980 420" role="img" aria-label="车辆视图">
@@ -35,11 +35,11 @@
         </div>
       </div>
     </div>
-  </VehicleQuerySection>
+  </ArtPageSection>
 </template>
 
 <script setup lang="ts">
-  import VehicleQuerySection from './vehicle-query-section.vue'
+  import ArtPageSection from '@/components/core/layouts/art-page-section/index.vue'
   import type { VehicleArchive } from './types'
   import { formatDate } from './query-format'
 
@@ -97,13 +97,13 @@
     &__dash {
       fill: none;
       stroke: #3ba6dd;
-      stroke-dasharray: 12 8;
       stroke-width: 3;
+      stroke-dasharray: 12 8;
     }
 
     &__point {
-      fill: #9adb6e;
       opacity: 0.85;
+      fill: #9adb6e;
     }
 
     &__tip {

@@ -1,7 +1,15 @@
 <template>
   <ArtDialog ref="dialogRef" size="xl">
+    <InvoiceOcrPanel
+      ref="ocrPanelRef"
+      v-model="attachmentUrls"
+      :direction="form.data.direction"
+      @apply="handleApplyOcrResult"
+    />
+
     <ArtForm
       ref="formRef"
+      class="invoice-dialog__form"
       v-model="form.data"
       :items="form.items"
       :rules="form.rules"
@@ -89,7 +97,7 @@
 
 <script setup lang="ts">
   import dayjs from 'dayjs'
-  import type { FormRules } from 'element-plus'
+  import { ElMessage, type FormRules } from 'element-plus'
   import type { ComputedRef, UnwrapNestedRefs } from 'vue'
   import type { ColumnOption } from '@/types'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
@@ -104,7 +112,9 @@
     DataSelectRecord
   } from '@/components/core/forms/art-data-select/types'
   import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
+  import InvoiceOcrPanel from './invoice-ocr-panel.vue'
   import {
+    reviewInvoiceOcrArtifact,
     fetchCarrierOptions,
     fetchCustomerSelectorList,
     fetchInvoiceDetail,
@@ -122,6 +132,10 @@
   interface FormExpose {
     validate: () => Promise<boolean>
     clearValidate: () => void
+  }
+
+  interface InvoiceOcrPanelExpose {
+    reset: () => void
   }
 
   interface InvoiceFormModel {
@@ -161,6 +175,8 @@
   const dialogRef = ref<ArtDialogExpose<Invoice | undefined>>()
   const formRef = ref<FormExpose>()
   const statementSelectRef = ref<ArtDataSelectExpose>()
+  const ocrPanelRef = ref<InvoiceOcrPanelExpose>()
+  const ocrArtifactId = ref<string>()
 
   const createInitialForm = (): InvoiceFormModel => ({
     id: undefined,
@@ -228,34 +244,53 @@
           max: 100,
           precision: 2,
           controlsPosition: 'right',
+          class: '!w-full',
           onChange: recalculateTax
         }
       },
-      { label: '发票抬头', key: 'invoiceTitle', type: 'input', span: 16 },
-      { label: '纳税人识别号', key: 'taxNumber', type: 'input', span: 8 },
-      { label: '发票代码', key: 'invoiceCode', type: 'input', span: 8 },
-      { label: '发票号码', key: 'invoiceNo', type: 'input', span: 16 },
+      { label: '发票抬头', key: 'invoiceTitle', type: 'input', span: 12 },
+      { label: '纳税人识别号', key: 'taxNumber', type: 'input', span: 12 },
+      { label: '发票代码', key: 'invoiceCode', type: 'input', span: 12 },
+      { label: '发票号码', key: 'invoiceNo', type: 'input', span: 12 },
       { label: '金额信息', key: 'amountSection', type: 'divider', span: 24 },
       {
         label: '不含税金额',
         key: 'amountExcludingTax',
         type: 'number',
         span: 8,
-        props: { min: 0, precision: 2, controlsPosition: 'right', onChange: recalculateTax }
+        props: {
+          min: 0,
+          precision: 2,
+          controlsPosition: 'right',
+          class: '!w-full',
+          onChange: recalculateTax
+        }
       },
       {
         label: '税额',
         key: 'taxAmount',
         type: 'number',
         span: 8,
-        props: { min: 0, precision: 2, controlsPosition: 'right', onChange: recalculateTotal }
+        props: {
+          min: 0,
+          precision: 2,
+          controlsPosition: 'right',
+          class: '!w-full',
+          onChange: recalculateTotal
+        }
       },
       {
         label: '价税合计',
         key: 'totalAmount',
         type: 'number',
         span: 8,
-        props: { min: 0.01, precision: 2, controlsPosition: 'right', disabled: true }
+        props: {
+          min: 0.01,
+          precision: 2,
+          controlsPosition: 'right',
+          class: '!w-full',
+          disabled: true
+        }
       },
       { label: '对账关联', key: 'linkSection', type: 'divider', span: 24 },
       { label: '关联对账单', key: 'statementIds', type: 'input', span: 24 },
@@ -363,6 +398,20 @@
       0
     )
   )
+
+  const attachmentUrls = computed<string[]>({
+    get: () =>
+      form.data.attachments
+        .map((item) => (typeof item.url === 'string' ? item.url : ''))
+        .filter(Boolean),
+    set: (urls) => {
+      form.data.attachments = urls.map((url) => ({
+        url,
+        name: decodeURIComponent(url.split('/').pop() || '发票附件'),
+        category: 'invoice_image'
+      }))
+    }
+  })
 
   const selectionSummary = computed(() =>
     selection.statements.length
@@ -477,6 +526,8 @@
     form.data.counterpartyId = ''
     selection.parties = []
     clearStatements()
+    ocrArtifactId.value = undefined
+    ocrPanelRef.value?.reset()
   }
 
   function handlePartyChange(): void {
@@ -493,8 +544,38 @@
     selection.statements = []
     selection.linkAmounts = {}
     selection.originalLinkAmounts = {}
+    ocrArtifactId.value = undefined
+    ocrPanelRef.value?.reset()
     await nextTick()
     formRef.value?.clearValidate()
+  }
+
+  function handleApplyOcrResult(result: Api.Tms.Finance.InvoiceOcrAnalyzeResponse): void {
+    const invoice = result.invoice
+    const patch: Partial<InvoiceFormModel> = {}
+    const textFields = [
+      'invoiceTitle',
+      'taxNumber',
+      'invoiceCode',
+      'invoiceNo',
+      'issueDate'
+    ] as const
+    const numberFields = ['taxRate', 'amountExcludingTax', 'taxAmount', 'totalAmount'] as const
+
+    if (invoice.invoiceType) patch.invoiceType = invoice.invoiceType
+    for (const field of textFields) {
+      const value = invoice[field]
+      if (value) Object.assign(patch, { [field]: value })
+    }
+    for (const field of numberFields) {
+      const value = invoice[field]
+      if (value !== null && value !== undefined) Object.assign(patch, { [field]: Number(value) })
+    }
+
+    Object.assign(form.data, patch)
+    ocrArtifactId.value = result.artifactId
+    void nextTick(() => formRef.value?.clearValidate())
+    ElMessage.success('识别结果已填入，请核对低置信字段后保存发票')
   }
 
   async function loadDetail(id: string): Promise<void> {
@@ -575,12 +656,41 @@
     }
 
     try {
-      await saveInvoice(payload)
+      const { data: savedInvoiceId } = await saveInvoice(payload)
+      await recordInvoiceOcrReview(savedInvoiceId ?? form.data.id)
       emit('success')
       return true
     } catch {
       return false
     }
+  }
+
+  async function recordInvoiceOcrReview(invoiceId?: string): Promise<void> {
+    if (!ocrArtifactId.value || !invoiceId) return
+    const finalPayload = {
+      invoiceType: form.data.invoiceType,
+      invoiceTitle: form.data.invoiceTitle.trim() || null,
+      taxNumber: form.data.taxNumber.trim() || null,
+      invoiceCode: form.data.invoiceCode.trim() || null,
+      invoiceNo: form.data.invoiceNo.trim() || null,
+      issueDate: form.data.issueDate,
+      taxRate: Number(form.data.taxRate),
+      amountExcludingTax: Number(form.data.amountExcludingTax),
+      taxAmount: Number(form.data.taxAmount),
+      totalAmount: Number(form.data.totalAmount)
+    }
+    const { error } = await reviewInvoiceOcrArtifact({
+      action: 'review',
+      artifactId: ocrArtifactId.value,
+      entityId: invoiceId,
+      outcome: 'applied',
+      finalPayload
+    })
+    if (error) {
+      ElMessage.warning('发票已保存，但 AI 识别质量记录失败；不影响正式数据')
+      return
+    }
+    ocrArtifactId.value = undefined
   }
 
   async function handleOpen(row?: Invoice): Promise<void> {
@@ -610,6 +720,12 @@
 
 <style scoped lang="scss">
   .invoice-dialog {
+    &__form {
+      :deep(.el-input-number) {
+        width: 100%;
+      }
+    }
+
     &__links {
       padding: 16px;
       margin-top: 16px;

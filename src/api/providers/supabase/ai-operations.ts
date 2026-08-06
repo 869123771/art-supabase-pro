@@ -128,6 +128,32 @@ export interface AiOperationsOverview {
   feedbackQuality: AiFeedbackQualityOverview
 }
 
+export interface AiOcrFeatureQuality {
+  feature: string
+  label: string
+  artifacts: number
+  reviewed: number
+  applied: number
+  averageConfidence: number
+  acceptedFields: number
+  correctedFields: number
+  acceptanceRate: number
+  threshold: number
+  lowConfidence: number
+  recommendedThreshold: number
+}
+
+export interface AiOcrQualityOverview {
+  days: number
+  canManage: boolean
+  totalArtifacts: number
+  reviewedArtifacts: number
+  lowConfidenceArtifacts: number
+  acceptedFields: number
+  correctedFields: number
+  features: AiOcrFeatureQuality[]
+}
+
 export interface AiRunFeedback {
   rating: -1 | 1
   comment?: string | null
@@ -389,6 +415,45 @@ export async function updateAiFeedbackResolution(
   )
   if (!data) throw new Error('AI 反馈处理结果未返回')
   return data
+}
+
+export async function fetchAiOcrQualityOverview(days = 30): Promise<AiOcrQualityOverview> {
+  const { data } = await responseHandle<AiOcrQualityOverview>(
+    () =>
+      supabase.rpc('ai_ocr_quality_overview', {
+        p_days: Math.min(Math.max(Math.trunc(days), 1), 90)
+      }),
+    { breakReturn: true, showErrorMessage: true }
+  )
+  return (
+    data ?? {
+      days,
+      canManage: false,
+      totalArtifacts: 0,
+      reviewedArtifacts: 0,
+      lowConfidenceArtifacts: 0,
+      acceptedFields: 0,
+      correctedFields: 0,
+      features: []
+    }
+  )
+}
+
+export async function applyAiOcrQualityThreshold(params: {
+  feature: string
+  threshold: number
+  reason: string
+}): Promise<number> {
+  const { data } = await responseHandle<number>(
+    () =>
+      supabase.rpc('apply_ai_ocr_quality_threshold', {
+        p_feature: params.feature,
+        p_threshold: params.threshold,
+        p_reason: params.reason.trim()
+      }),
+    { breakReturn: true, showErrorMessage: true }
+  )
+  return Number(data ?? 0)
 }
 
 export async function fetchAiRunList(params: AiRunSearchParams) {

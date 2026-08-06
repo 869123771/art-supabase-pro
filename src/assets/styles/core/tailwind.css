@@ -8,13 +8,21 @@
   --theme-color: var(--main-color);
 
   /* Theme Colors - OKLCH Format */
-  --art-primary: oklch(0.7 0.23 260);
-  --art-secondary: oklch(0.72 0.19 231.6);
-  --art-error: oklch(0.73 0.15 25.3);
-  --art-info: oklch(0.58 0.03 254.1);
-  --art-success: oklch(0.78 0.17 166.1);
-  --art-warning: oklch(0.78 0.14 75.5);
-  --art-danger: oklch(0.68 0.22 25.3);
+  --art-primary: #635bff;
+  --art-secondary: #0ea5e9;
+  --art-error: #f43f5e;
+  --art-info: #64748b;
+  --art-success: #10b981;
+  --art-warning: #f59e0b;
+  --art-danger: #ef4444;
+
+  /* Semantic action colors */
+  --art-action-add: var(--theme-color);
+  --art-action-edit: #0ea5e9;
+  --art-action-delete: #f43f5e;
+  --art-action-sign: #10b981;
+  --art-action-view: #6366f1;
+  --art-action-more: #64748b;
 
   /* Gray Scale - Light Mode */
   --art-gray-100: #f9fafb;

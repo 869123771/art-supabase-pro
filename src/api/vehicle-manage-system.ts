@@ -62,6 +62,9 @@ export const fetchVehicleReminderPartServiceLifeList =
   supabaseVehicleApi.fetchVehicleReminderPartServiceLifeList
 export const fetchVehicleReminderVehicleServiceLifeList =
   supabaseVehicleApi.fetchVehicleReminderVehicleServiceLifeList
+export const createVehicleReminderWorkOrder = supabaseVehicleApi.createVehicleReminderWorkOrder
+export const transitionVehicleReminderWorkOrder =
+  supabaseVehicleApi.transitionVehicleReminderWorkOrder
 export const fetchInsuranceCompanyOptions = supabaseVehicleApi.fetchInsuranceCompanyOptions
 
 export const fetchVehicleInsuranceList = supabaseVehicleApi.fetchVehicleInsuranceList

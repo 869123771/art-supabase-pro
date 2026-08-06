@@ -174,7 +174,7 @@
               </div>
             </article>
           </div>
-          <ElEmpty v-else description="当前未识别到明确经营风险" :image-size="76" />
+          <ArtEmptyState v-else title="当前未识别到明确经营风险" :visual-size="72" size="compact" />
         </section>
 
         <section class="profit-analyst__section">
@@ -225,7 +225,7 @@
               </div>
             </article>
           </div>
-          <ElEmpty v-else description="暂无需要优先核对的运单" :image-size="76" />
+          <ArtEmptyState v-else title="暂无需要优先核对的运单" :visual-size="72" size="compact" />
         </section>
 
         <section class="profit-analyst__section">
@@ -282,6 +282,7 @@
 </template>
 
 <script setup lang="ts">
+  import ArtEmptyState from '@/components/core/layouts/art-empty-state/index.vue'
   import type { UnwrapNestedRefs } from 'vue'
   import ArtAiFeedback from '@/components/core/base/art-ai-feedback/index.vue'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
@@ -621,8 +622,8 @@
           display: block;
           margin-top: 7px;
           overflow: hidden;
-          font-size: 11px;
           text-overflow: ellipsis;
+          font-size: 11px;
           white-space: nowrap;
         }
       }
@@ -698,16 +699,16 @@
         strong {
           margin: 3px 0;
           overflow: hidden;
+          text-overflow: ellipsis;
           font-size: 16px;
           color: var(--art-text-gray-900);
-          text-overflow: ellipsis;
           white-space: nowrap;
         }
 
         small {
           overflow: hidden;
-          font-size: 11px;
           text-overflow: ellipsis;
+          font-size: 11px;
           white-space: nowrap;
         }
 
@@ -842,9 +843,9 @@
           align-items: center;
           margin: 4px 0 0;
           overflow: hidden;
+          text-overflow: ellipsis;
           font-size: 11px;
           color: var(--art-text-gray-500);
-          text-overflow: ellipsis;
           white-space: nowrap;
         }
       }
@@ -872,9 +873,9 @@
         align-items: center;
         min-width: 0;
         overflow: hidden;
+        text-overflow: ellipsis;
         font-size: 11px;
         color: var(--art-text-gray-500);
-        text-overflow: ellipsis;
         white-space: nowrap;
       }
     }
@@ -901,9 +902,9 @@
       strong {
         margin-top: 3px;
         overflow: hidden;
+        text-overflow: ellipsis;
         font-size: 12px;
         color: var(--art-text-gray-800);
-        text-overflow: ellipsis;
         white-space: nowrap;
 
         &.is-negative {

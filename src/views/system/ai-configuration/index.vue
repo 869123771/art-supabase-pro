@@ -69,7 +69,7 @@
 
 <script setup lang="tsx">
   import dayjs from 'dayjs'
-  import { ElMessage } from 'element-plus'
+  import { ElMessage, ElTag } from 'element-plus'
   import type { ComputedRef, UnwrapNestedRefs } from 'vue'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type { ArtTableQueryExpose } from '@/components/core/tables/art-table-query/index.vue'
@@ -92,7 +92,7 @@
   }
 
   interface TableGroup {
-    searchQuery: Partial<Omit<AiFeatureConfigSearchParams, 'tenantId'>>
+    searchQuery: Partial<AiFeatureConfigSearchParams>
     searchItems: ComputedRef<SearchFormItem[]>
   }
 
@@ -105,7 +105,7 @@
   }
 
   const userStore = useUserStore()
-  const { getDictMap, getUserInfo, isPlatformSuper } = storeToRefs(userStore)
+  const { getDictMap, isPlatformSuper } = storeToRefs(userStore)
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<DialogExpose>()
   const overview = reactive<{ loading: boolean; rows: AiFeatureConfig[] }>({
@@ -113,7 +113,6 @@
     rows: []
   })
 
-  const tenantId = computed(() => getUserInfo.value.tenantId ?? '')
   const canManage = computed(() => isPlatformSuper.value)
 
   const table: UnwrapNestedRefs<TableGroup> = reactive<TableGroup>({
@@ -168,11 +167,12 @@
       (total, item) => total + Number(item.rateLimitPerDay),
       0
     )
+    const inherited = overview.rows.filter((item) => item.inherited).length
     return [
       {
         label: '能力场景',
         value: `${overview.rows.length} 项`,
-        hint: '统一纳入运行策略管理',
+        hint: inherited ? `${inherited} 项继承平台默认配置` : '统一纳入运行策略管理',
         icon: 'ri:apps-2-line',
         tone: 'primary'
       },
@@ -193,18 +193,16 @@
     ]
   })
 
-  async function fetchTableData(params: Omit<AiFeatureConfigSearchParams, 'tenantId'>) {
-    return await fetchAiFeatureConfigList({ ...params, tenantId: tenantId.value })
+  async function fetchTableData(params: AiFeatureConfigSearchParams) {
+    return await fetchAiFeatureConfigList(params)
   }
 
   async function loadOverview(): Promise<void> {
-    if (!tenantId.value) return
     overview.loading = true
     try {
       const result = await fetchAiFeatureConfigList({
         current: 1,
-        size: 100,
-        tenantId: tenantId.value
+        size: 100
       })
       overview.rows = result.data ?? []
     } finally {
@@ -238,6 +236,16 @@
         label: '能力场景',
         minWidth: 135,
         dict: { code: 'aiRunFeature', display: 'text' }
+      },
+      {
+        prop: 'inherited',
+        label: '配置来源',
+        width: 108,
+        formatter: (row: AiFeatureConfig) => (
+          <ElTag type={row.inherited ? 'info' : 'primary'} effect="plain" round>
+            {row.inherited ? '平台默认' : canManage.value ? '平台配置' : '租户配置'}
+          </ElTag>
+        )
       },
       {
         prop: 'enabled',

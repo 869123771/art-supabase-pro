@@ -126,6 +126,16 @@ export async function generateAiOrderExample(
   }
 }
 
+export async function createAiOrderMasterData(tasks: Api.Tms.Order.AiOrderMasterDataCreateTask[]) {
+  return await responseHandle<Api.Tms.Order.AiOrderMasterDataCreateResult[]>(
+    () =>
+      supabase.rpc('create_ai_order_master_data', {
+        p_tasks: keysToSnakeDeep(tasks)
+      }),
+    { breakReturn: true }
+  )
+}
+
 export async function reviewAiOrderArtifact(
   params: Api.Tms.Order.AiOrderReviewRequest
 ): Promise<QueryResult<Api.Tms.Order.AiOrderReviewResponse>> {

@@ -1,5 +1,20 @@
 <template>
-  <div class="vehicle-query-detail" v-loading="page.loading">
+  <ArtPageShell
+    class="vehicle-query-detail"
+    :loading="page.loading"
+    loading-mode="skeleton"
+    :error="page.error"
+    :empty="!page.vehicle"
+    empty-text="未找到车辆信息"
+    @retry="loadVehicle"
+  >
+    <ArtPageHeader
+      :title="page.vehicle?.plateNo || '车辆综合查询'"
+      :subtitle="vehicleSubtitle"
+      show-back
+      @back="goBack"
+    />
+
     <VehicleQuerySummary
       v-if="page.vehicle"
       :vehicle="page.vehicle"
@@ -14,14 +29,15 @@
       </main>
     </div>
 
-    <ElEmpty v-else-if="!page.loading" description="未找到车辆信息" />
-
     <VehicleHealthAdvisorDrawer ref="healthAdvisorRef" />
-  </div>
+
+    <template #empty-action>
+      <ElButton type="primary" plain @click="goBack">返回车辆查询</ElButton>
+    </template>
+  </ArtPageShell>
 </template>
 
 <script setup lang="ts">
-  import { ElEmpty } from 'element-plus'
   import {
     fetchVehicleArchiveDetail,
     fetchVehicleInspectionList,
@@ -61,6 +77,7 @@
 
   interface PageState {
     loading: boolean
+    error: Error | null
     activeTab: VehicleQueryTabKey
     vehicle?: VehicleArchive
     summary: VehicleSummaryData
@@ -71,10 +88,12 @@
   }
 
   const route = useRoute()
+  const router = useRouter()
   const healthAdvisorRef = ref<HealthAdvisorExpose>()
 
   const page = reactive<PageState>({
     loading: false,
+    error: null,
     activeTab: 'view',
     summary: {}
   })
@@ -110,6 +129,10 @@
   }
 
   const activePanel = computed(() => panelMap[page.activeTab])
+  const vehicleSubtitle = computed(() => {
+    if (!page.vehicle) return '集中查看车辆档案、合规、运营、维保与设备信息'
+    return [page.vehicle.companyName, page.vehicle.vin].filter(Boolean).join(' / ') || '--'
+  })
 
   const openHealthAdvisor = (): void => {
     const vehicleId = page.vehicle?.id
@@ -124,18 +147,35 @@
 
   const loadVehicle = async (): Promise<void> => {
     const id = String(route.params.id || '')
-    if (!id) return
+    if (!id) {
+      page.error = new Error('缺少车辆档案标识')
+      return
+    }
 
     page.loading = true
+    page.error = null
     try {
       const { data } = await fetchVehicleArchiveDetail(id)
-      if (!data) return
+      if (!data) {
+        page.vehicle = undefined
+        page.summary = {}
+        return
+      }
 
+      const summary = await loadSummary(data)
       page.vehicle = data
-      page.summary = await loadSummary(data)
+      page.summary = summary
+    } catch (error) {
+      page.vehicle = undefined
+      page.summary = {}
+      page.error = error instanceof Error ? error : new Error('车辆综合信息加载失败')
     } finally {
       page.loading = false
     }
+  }
+
+  const goBack = (): void => {
+    void router.push('/vehicle-manage-system/vehicle-query')
   }
 
   const loadSummary = async (vehicle: VehicleArchive): Promise<VehicleSummaryData> => {
@@ -202,20 +242,24 @@
 <style scoped lang="scss">
   .vehicle-query-detail {
     min-height: 100%;
-    padding: 16px;
+    padding: var(--art-space-4);
     background: var(--art-main-bg-color);
 
     &__body {
       display: grid;
       grid-template-columns: 136px minmax(0, 1fr);
       min-height: calc(100vh - 330px);
-      margin-top: 16px;
+      margin-top: var(--art-space-4);
     }
 
     &__content {
       min-width: 0;
       padding: 28px 40px 48px;
       overflow: hidden;
+    }
+
+    :deep(.vehicle-query-summary) {
+      margin-top: var(--art-space-3);
     }
   }
 

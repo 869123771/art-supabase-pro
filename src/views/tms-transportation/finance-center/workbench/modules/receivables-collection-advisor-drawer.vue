@@ -199,7 +199,12 @@
               </footer>
             </article>
           </div>
-          <ElEmpty v-else description="当前没有需要优先跟进的未结对账单" :image-size="76" />
+          <ArtEmptyState
+            v-else
+            title="当前没有需要优先跟进的未结对账单"
+            :visual-size="72"
+            size="compact"
+          />
         </section>
 
         <div class="collection-advisor__decision-grid">
@@ -230,7 +235,12 @@
                 </div>
               </article>
             </div>
-            <ElEmpty v-else description="当前未识别到明确的回款风险信号" :image-size="76" />
+            <ArtEmptyState
+              v-else
+              title="当前未识别到明确的回款风险信号"
+              :visual-size="72"
+              size="compact"
+            />
           </section>
 
           <section class="collection-advisor__section">
@@ -260,7 +270,7 @@
                 </div>
               </article>
             </div>
-            <ElEmpty v-else description="暂无高关注客户" :image-size="76" />
+            <ArtEmptyState v-else title="暂无高关注客户" :visual-size="72" size="compact" />
           </section>
         </div>
 
@@ -322,6 +332,7 @@
 </template>
 
 <script setup lang="ts">
+  import ArtEmptyState from '@/components/core/layouts/art-empty-state/index.vue'
   import type { UnwrapNestedRefs } from 'vue'
   import ArtAiFeedback from '@/components/core/base/art-ai-feedback/index.vue'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'

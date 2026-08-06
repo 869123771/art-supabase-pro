@@ -330,6 +330,46 @@
     overflow: hidden;
   }
 
+  :global(.art-drawer .el-drawer__header .art-icon-button),
+  :global(.art-drawer .el-drawer__close-btn) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    color: var(--el-text-color-secondary);
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: var(--art-control-radius);
+    transition:
+      color var(--art-motion-duration-fast) ease,
+      background-color var(--art-motion-duration-fast) ease,
+      box-shadow var(--art-motion-duration-fast) ease;
+  }
+
+  :global(.art-drawer .el-drawer__header .art-icon-button:hover),
+  :global(.art-drawer .el-drawer__close-btn:hover) {
+    color: var(--theme-color) !important;
+    background: color-mix(in srgb, var(--theme-color) 10%, transparent) !important;
+    border-color: transparent;
+    box-shadow: var(--art-themed-action-hover-shadow);
+  }
+
+  :global(.art-drawer .el-drawer__header .art-icon-button:active),
+  :global(.art-drawer .el-drawer__close-btn:active) {
+    background: color-mix(in srgb, var(--theme-color) 16%, transparent) !important;
+    box-shadow: var(--art-themed-action-active-shadow);
+  }
+
+  :global(.art-drawer .el-drawer__header .art-icon-button:focus-visible),
+  :global(.art-drawer .el-drawer__close-btn:focus-visible) {
+    color: var(--theme-color) !important;
+    outline: none;
+    background: color-mix(in srgb, var(--theme-color) 9%, transparent) !important;
+    box-shadow: var(--art-themed-action-focus-shadow);
+  }
+
   .art-drawer__content {
     min-height: 100%;
   }

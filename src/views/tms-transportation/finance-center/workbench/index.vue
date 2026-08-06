@@ -5,16 +5,24 @@
     class="finance-workbench"
     @retry="loadWorkbench"
   >
-    <ArtPageHeader title="财务工作台" subtitle="集中查看应收、应付、开票、回款与费用审核进度">
+    <ArtPageHeader
+      title="财务工作台"
+      subtitle="集中查看应收、应付、开票、回款与费用审核进度"
+      class="finance-workbench__header"
+    >
       <ElButton type="primary" @click="openCollectionAdvisor">
         <ArtSvgIcon icon="ri:sparkling-2-line" />AI 回款风险研判
       </ElButton>
     </ArtPageHeader>
 
-    <FinanceMetricGrid :items="overview.metrics" />
+    <FinanceMetricGrid :items="overview.metrics" class="finance-workbench__metrics" />
 
     <div class="finance-workbench__content">
-      <ArtPageSection title="财务待办" class="finance-workbench__panel">
+      <ArtPageSection
+        title="财务待办"
+        subtitle="按优先级集中处理当前未完成事项"
+        class="finance-workbench__panel"
+      >
         <ArtTable
           :data="overview.tasks"
           :columns="taskColumns"
@@ -31,7 +39,11 @@
         </ArtTable>
       </ArtPageSection>
 
-      <ArtPageSection title="业务完成率" class="finance-workbench__panel">
+      <ArtPageSection
+        title="业务完成率"
+        subtitle="跟踪本月关键财务流程推进情况"
+        class="finance-workbench__panel"
+      >
         <div class="finance-workbench__progress-list">
           <div
             v-for="item in overview.progressItems"
@@ -48,7 +60,11 @@
       </ArtPageSection>
     </div>
 
-    <ArtPageSection title="本月经营概览" class="finance-workbench__panel">
+    <ArtPageSection
+      title="本月经营概览"
+      subtitle="本月运输收入、成本、毛利及资金核销概况"
+      class="finance-workbench__panel"
+    >
       <ArtDescriptions :data="statsDescriptionData" :items="statsDescriptionItems" :columns="4" />
     </ArtPageSection>
 
@@ -426,13 +442,23 @@
 
 <style scoped lang="scss">
   .finance-workbench {
-    display: grid;
-    gap: var(--art-space-3);
+    min-width: 0;
+
+    :deep(> .art-async-state) {
+      display: grid;
+      gap: 20px;
+      min-width: 0;
+    }
+
+    &__header {
+      min-height: 92px;
+    }
 
     &__content {
       display: grid;
       grid-template-columns: 1.35fr 1fr;
-      gap: var(--art-space-3);
+      gap: 16px;
+      min-width: 0;
     }
 
     &__panel {
@@ -441,8 +467,8 @@
 
     &__progress-list {
       display: grid;
-      gap: 22px;
-      margin-top: 18px;
+      gap: 24px;
+      padding: 2px 0 4px;
     }
 
     &__progress-item {
@@ -451,8 +477,13 @@
 
       div {
         display: flex;
+        gap: 12px;
         justify-content: space-between;
         color: var(--el-text-color-regular);
+
+        strong {
+          font-variant-numeric: tabular-nums;
+        }
       }
     }
 

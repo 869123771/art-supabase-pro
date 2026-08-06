@@ -16,7 +16,9 @@
             :aria-label="focusMode ? '退出专注模式' : '进入专注模式'"
             @click="emit('toggle-focus')"
           >
-            <ArtSvgIcon :icon="focusMode ? 'ri:fullscreen-exit-line' : 'ri:focus-3-line'" />
+            <ArtSvgIcon
+              :icon="focusMode ? 'dashicons:fullscreen-exit-alt' : 'dashicons:fullscreen-alt'"
+            />
           </ElButton>
         </ElTooltip>
         <ElButton

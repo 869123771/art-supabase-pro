@@ -1,33 +1,31 @@
 <template>
-  <div class="widget-page">
-    <ElCard shadow="never" class="widget-section">
-      <template #header>
-        <div class="widget-section__header">
-          <div>
-            <h2>资源选择器</h2>
-            <p>基于附件资源列表，支持单选、多选、分类筛选、搜索、分页、右键预览和确认回传。</p>
-          </div>
+  <ArtPageShell>
+    <div class="widget-page">
+      <ArtPageSection
+        class="widget-section"
+        title="资源选择器"
+        subtitle="基于附件资源列表，支持单选、多选、分类筛选、搜索、分页、右键预览和确认回传。"
+      >
+        <template #actions>
           <ElTag effect="plain">ArtResourcePicker</ElTag>
-        </div>
-      </template>
+        </template>
 
-      <ElSpace wrap>
-        <ElButton type="primary" @click="singleVisible = true">打开单选</ElButton>
-        <ElButton @click="multipleVisible = true">打开多选</ElButton>
-      </ElSpace>
+        <ElSpace wrap>
+          <ElButton type="primary" @click="singleVisible = true">打开单选</ElButton>
+          <ElButton @click="multipleVisible = true">打开多选</ElButton>
+        </ElSpace>
 
-      <ElDescriptions :column="2" border class="mt-4">
-        <ElDescriptionsItem label="单选 v-model">
-          <span class="widget-section__value">{{ singleValueText }}</span>
-        </ElDescriptionsItem>
-        <ElDescriptionsItem label="多选 v-model">
-          <span class="widget-section__value">{{ multipleValueText }}</span>
-        </ElDescriptionsItem>
-      </ElDescriptions>
+        <ElDescriptions :column="2" border class="mt-4">
+          <ElDescriptionsItem label="单选 v-model">
+            <span class="widget-section__value">{{ singleValueText }}</span>
+          </ElDescriptionsItem>
+          <ElDescriptionsItem label="多选 v-model">
+            <span class="widget-section__value">{{ multipleValueText }}</span>
+          </ElDescriptionsItem>
+        </ElDescriptions>
 
-      <ElTable :data="selectedRows" border class="mt-4">
-        <ElTableColumn prop="originName" label="文件名" min-width="180">
-          <template #default="{ row }">
+        <ArtTable :data="selectedRows" :columns="selectedColumns" :pagination="false" class="mt-4">
+          <template #originName="{ row }">
             <ArtAttachmentLink
               :file="{
                 name: row.originName,
@@ -36,70 +34,53 @@
               }"
             />
           </template>
-        </ElTableColumn>
-        <ElTableColumn prop="mimeType" label="MIME" min-width="160" />
-        <ElTableColumn prop="sizeInfo" label="大小" width="100" />
-        <ElTableColumn prop="url" label="URL" min-width="260">
-          <template #default="{ row }">
+          <template #url="{ row }">
             <span class="widget-section__value">{{ row.url }}</span>
           </template>
-        </ElTableColumn>
-      </ElTable>
-    </ElCard>
+        </ArtTable>
+      </ArtPageSection>
 
-    <ElCard shadow="never" class="widget-section">
-      <template #header>
-        <div class="widget-section__header">
-          <div>
-            <h2>API</h2>
-            <p>覆盖 ArtResourcePicker / ResourcePanel 的 props 和事件。</p>
-          </div>
-        </div>
-      </template>
+      <ArtPageSection
+        class="widget-section"
+        title="API"
+        subtitle="覆盖 ArtResourcePicker / ResourcePanel 的 props 和事件。"
+      >
+        <ElTabs>
+          <ElTabPane label="Props">
+            <ArtTable :data="propsRows" :columns="propsColumns" :pagination="false" />
+          </ElTabPane>
+          <ElTabPane label="Events / Resource">
+            <ArtTable :data="eventRows" :columns="eventColumns" :pagination="false" />
+          </ElTabPane>
+        </ElTabs>
+      </ArtPageSection>
 
-      <ElTabs>
-        <ElTabPane label="Props">
-          <ElTable :data="propsRows" border>
-            <ElTableColumn prop="name" label="名称" width="180" />
-            <ElTableColumn prop="type" label="类型" width="220" />
-            <ElTableColumn prop="defaultValue" label="默认值" width="140" />
-            <ElTableColumn prop="desc" label="说明" />
-          </ElTable>
-        </ElTabPane>
-        <ElTabPane label="Events / Resource">
-          <ElTable :data="eventRows" border>
-            <ElTableColumn prop="name" label="名称" width="180" />
-            <ElTableColumn prop="payload" label="参数" width="240" />
-            <ElTableColumn prop="desc" label="说明" />
-          </ElTable>
-        </ElTabPane>
-      </ElTabs>
-    </ElCard>
+      <ArtResourcePicker
+        v-model:visible="singleVisible"
+        v-model="singleValue"
+        :multiple="false"
+        default-file-type="image"
+        @confirm="handleSingleConfirm"
+        @cancel="handleCancel"
+      />
 
-    <ArtResourcePicker
-      v-model:visible="singleVisible"
-      v-model="singleValue"
-      :multiple="false"
-      default-file-type="image"
-      @confirm="handleSingleConfirm"
-      @cancel="handleCancel"
-    />
-
-    <ArtResourcePicker
-      v-model:visible="multipleVisible"
-      v-model="multipleValue"
-      multiple
-      :limit="5"
-      :page-size="24"
-      default-file-type=""
-      @confirm="handleMultipleConfirm"
-      @cancel="handleCancel"
-    />
-  </div>
+      <ArtResourcePicker
+        v-model:visible="multipleVisible"
+        v-model="multipleValue"
+        multiple
+        :limit="5"
+        :page-size="24"
+        default-file-type=""
+        @confirm="handleMultipleConfirm"
+        @cancel="handleCancel"
+      />
+    </div>
+  </ArtPageShell>
 </template>
 
 <script setup lang="ts">
   import { ElMessage } from 'element-plus'
+  import type { ColumnOption } from '@/types'
   import ArtResourcePicker from '@/components/core/forms/art-resource-picker/index.vue'
   import ArtAttachmentLink from '@/components/core/media/art-file-viewer/attachment-link.vue'
   import type { Resource } from '@/components/core/forms/art-resource-picker/type'
@@ -119,6 +100,23 @@
   const singleValue = ref<string>()
   const multipleValue = ref<string[]>([])
   const selectedRows = ref<Resource[]>([])
+  const selectedColumns: ColumnOption<Resource>[] = [
+    { prop: 'originName', label: '文件名', minWidth: 180, useSlot: true },
+    { prop: 'mimeType', label: 'MIME', minWidth: 160 },
+    { prop: 'sizeInfo', label: '大小', width: 100 },
+    { prop: 'url', label: 'URL', minWidth: 260, useSlot: true }
+  ]
+  const propsColumns: ColumnOption<ApiRow>[] = [
+    { prop: 'name', label: '名称', width: 180 },
+    { prop: 'type', label: '类型', width: 220 },
+    { prop: 'defaultValue', label: '默认值', width: 140 },
+    { prop: 'desc', label: '说明', minWidth: 240 }
+  ]
+  const eventColumns: ColumnOption<ApiRow>[] = [
+    { prop: 'name', label: '名称', width: 180 },
+    { prop: 'payload', label: '参数', width: 240 },
+    { prop: 'desc', label: '说明', minWidth: 240 }
+  ]
   const singleValueText = computed(() => singleValue.value ?? '-')
   const multipleValueText = computed(() =>
     multipleValue.value.length ? multipleValue.value.join(', ') : '[]'
@@ -204,28 +202,8 @@
   }
 
   .widget-section {
-    border-radius: 8px;
-
     :deep(.el-descriptions__content) {
       min-width: 0;
-    }
-  }
-
-  .widget-section__header {
-    display: flex;
-    gap: 16px;
-    align-items: flex-start;
-    justify-content: space-between;
-
-    h2 {
-      margin: 0;
-      font-size: 18px;
-      font-weight: 600;
-    }
-
-    p {
-      margin: 6px 0 0;
-      color: var(--el-text-color-secondary);
     }
   }
 

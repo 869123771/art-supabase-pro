@@ -7,22 +7,1138 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="b8f35119-660a-46e7-82f4-53eee06863eb" name="Changes" comment="feat ai module">
+    <list default="true" id="b8f35119-660a-46e7-82f4-53eee06863eb" name="Changes" comment="feat theme">
+      <change afterPath="$PROJECT_DIR$/.agents/skills/web-design-guidelines/SKILL.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/3MFLoader-C3QHdaBd.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/AMFLoader-Cp3UnJce.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/ArtException-jlca_mNW.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/ArtResultPage-xR2AMLpV.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/ColladaLoader-ChY2DZh7.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/FBXLoader-Dvm4bUSg.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/FileSaver.min-EUVmb-Wp.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/GLTFLoader-DqKtjzLM.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/KMZLoader-DydjuSjR.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/LoginLeftView-Du1Dee77.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/Midi-D5WhQHXw.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/OBJLoader-JQIqY9-z.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/PCDLoader-CQUQab-_.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/PLYLoader-DgUxE3mb.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/RTFJS.bundle-B5arNaNF.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/STLLoader-Bl3bHi5N.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/TDSLoader-BXxbxamc.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/USDLoader-D9KBmWrE.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/VRMLLoader-U0aBKdJP.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/VTKLoader-Dm-fyBez.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/XYZLoader-H5oRYL2k.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/abnfDiagram-VRR7QNED-B_TpUtei.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/accident-record-dialog-GisJbzpm.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/ai-feedback-quality-panel-DJMEFuJ8.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/ai-ocr-quality-panel-dHqgi2zt.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/ai-order-drawer-D3-NL6Xx.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/ai-order-master-data-panel-CJSpbXrx.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/ai-order-master-data-panel-Jn4Fd4G6.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/ai-order-reference-panel-BFVemanM.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/ai-order-reference-panel-BSQjffmA.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/ai-order-result-panel-B-_R0In3.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/ai-order-source-panel-mL3QZ8im.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/arc-CI5L_D0Q.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/architecture-TIHT7OUA-g5JYpSKb.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/architectureDiagram-ZJ3FMSHR-BJZXa3Zc.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/archive-D2nvPCsP.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/archive-panel-3NlK_k06.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/art-address-picker-DD9UCBTu.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/art-address-picker-rSrp3dBm.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/art-async-state-B8i58vvQ.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/art-async-state-BFy83yu-.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/art-button-table-Rpn3mAdO.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/art-button-table-drXpiZJ_.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/art-chat-window-CJCf-59-.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/art-data-select-BlliuwDH.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/art-dialog-BJQdLLKi.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/art-dialog-L2ir2een.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/art-drawer-Bfv2-mJB.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/art-drawer-CakXh_vQ.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/art-empty-state-BsdwYeUd.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/art-empty-state-DOWU6Bl7.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/art-excel-import-8p9Zqfus.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/art-file-viewer-CqoJXzUp.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/art-form-0K4HIOz_.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/art-global-search-B7K8wuCp.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/art-icon-button-CHbp7652.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/art-icon-button-CSSWy_VZ.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/art-icon-picker-Cx1LNR-9.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/art-icon-picker-D-fzUzMh.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/art-logo-DwE_fA19.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/art-menu-right-D5lMP0si.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/art-page-header-DTTzY1rL.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/art-page-section-BodWZlcE.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/art-page-section-CHxzfiCW.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/art-page-shell-BowoZSbZ.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/art-section-title-Blahe9s4.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/art-settings-panel-CvHvMzbC.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/art-sticky-action-bar-CFryU1wI.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/art-svg-icon-CzYqcN1L.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/art-table-BmDi42bS.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/art-table-header-Bgeq3yH6.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/attachment-link-8ZTngu_e.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/audio-DGnrGZ64.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/avsc-D1fRymwa.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/axis-Xyj83oiS.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/base64-js-uEeREOOK.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/billboard-D9_humRo.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/blockDiagram-677ZJIJ3-BqAnNdrl.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/browser-index-BQMGopaT.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/buffer-DqE48nWF.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/build-runtime-C1VWIoEl.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/c4Diagram-LMCZKHZV-BL8rDAqL.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/cad-P90N4yZH.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/carrier-payment-dialog-DfxDl9dv.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/cash-bank-batch-import-dialog-BaovHJWx.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/cash-voucher-ocr-panel-c_EhBvaC.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/cfb--YPNa0xT.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/channel-dCJsUYZd.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/charts-DpLT0KGm.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/chunk-32BRIVSS-DWuaT85x.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/chunk-52WLFC77-3IvmidJo.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/chunk-5FCAYU7R-CB31hH1H.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/chunk-5HE753X5-BIoZexDu.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/chunk-5JV3BV7I-C8udvOtu.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/chunk-5TONJI2A-DHB4by7d.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/chunk-BIQX33UG-CaA_25-X.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/chunk-C7G6YPKG-B78yOkup.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/chunk-CQNSW5MT-erya_fqD.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/chunk-CYSBUYHQ-wdZUu7_k.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/chunk-EMLP6XTP-DQ5I87wJ.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/chunk-EX3LRPZG-a8f2M9w9.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/chunk-FWX5IMBZ-BMzYFa7Y.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/chunk-HOUHSVGY-CSJ5y5qw.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/chunk-ICXQ74PX-B-0Dai4x.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/chunk-JG7HCLWE-5rmccE0g.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/chunk-KEIR6QF5-cSSFvS3a.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/chunk-MOJQB5TN-BlgRYfsM.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/chunk-MOZMSUNE-BiGkmy65.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/chunk-OGEWGWER-CdIUrpRL.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/chunk-OSBZ3O6U-fekfil_j.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/chunk-PUDLZKDR-ClDVBtTO.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/chunk-Q4XR5HBZ-Ba_hroyz.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/chunk-QBLGF6JB-Cys725lw.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/chunk-R7FJI6CG-C30rOTEu.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/chunk-RYQCIY6F-CrEdXT_-.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/chunk-U6XO7XAA-3_pO3uJs.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/chunk-V7JOEXUC-DZU4flFG.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/chunk-VAUOI2AC-B2WXRE4l.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/chunk-VR4S4FIN-ChKlCK3G.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/chunk-WYO6CB5R-DtEBXdeq.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/chunk-XXDRQBXY-Ct0M2gRL.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/chunk-YOTPTUD7-B0wRUhPO.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/chunk-ZGVPDNZ5-DyQNxaEi.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/chunk-ZIRB5QZD-CWqviwVO.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/classDiagram-OUVF2IWQ-ddOq_EbZ.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/classDiagram-v2-EOCWNBFH-ddOq_EbZ.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/code-xnBhZLPZ.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/common-utils-v5qNbByV.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/compiler-Con6UpeL.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/console-pyjcwcNc.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/context-menu-DFfg7V1l.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/contract-dialog-B-XwvxmL.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/core-OcSRHTW3.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/cose-bilkent-JH36ORCC-Mre3JR96.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/css.worker-DwyggwXY.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/customer-receipt-dialog-BTmdhE5s.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/cynefin-VYW2F7L2-CyQjOB-e.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/cynefinDiagram-TSTJHNR4-hWUm4f18.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/cytoscape.esm-cSjTgVXT.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/dagre-BZlkoFWE.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/dagre-VKFMJZFB-zisjkuKd.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/dashboard-fleet-risk-DZrN2G3K.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/dashboard-fleet-risk-ERv0Skpo.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/dashboard-hero-AQ3COh8r.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/dashboard-hero-BnoYpFXg.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/dashboard-metric-cards-D7SLWJxy.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/dashboard-metric-cards-uUgzPRQZ.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/dashboard-order-flow-BTc7-_jc.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/dashboard-order-flow-ByOazbvn.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/dashboard-recent-orders-3y9ALhxL.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/dashboard-recent-orders-C8Tt40OW.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/dashboard-transit-BQd0j9F7.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/dashboard-transit-DOxBYrOc.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/dashboard-trend-8jLgP9SK.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/data-aFpiyA3H.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/data-select-CWhjBehE.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/data-tools-BfMF1jjo.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/delivery-management-BN48dd9o.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/detail-8eGXEvAE.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/detail-CKFgpZwY.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/diagram-C8EG07sF.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/diagram-FQU43EPY-EXzsqtgm.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/diagram-G47NLZAW-ByH8v2pt.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/diagram-NH7WQ7WH-DI90k64i.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/diagram-OA4YK3LP-DbGi3xs0.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/diagram-WEI45ONY-CgL9Xfiz.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/dist-B7vaQ4XP.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/dist-Dr6qRSPx.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/dist-PJIabnZ-.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/dist-z4bDc8Wn.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/docx-preview-BCsb1Czc.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/drawing-CWwTB2cL.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/ebnfDiagram-CCIWWBDH-BTVwP3pq.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/eda-D59BPjsE.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/edaParser-Cx7z_gOY.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/editor.worker-C0ntJRns.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/element-plus-DXmI-Wsm.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/element-plus-dRGO7Zkd.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/email-DmolAbRm.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/epub-BnTk1Nz9.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/erDiagram-Q63AITRT-DLBX3dtr.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/eventmodeling-45OFAUF4-D2__XOnY.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/fail-BEX82P0R.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/fflate.module-BIQmJeC9.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/file-sBC14pc0.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/finance-metric-grid-0ypmxxH8.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/finance-metric-grid-BiE9tn8a.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/flowDiagram-23GEKE2U-DqtCBQtu.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/forget-password-UOyJ7BZZ.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/framework-BFjC6kHl.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/ganttDiagram-NO4QXBWP-B0ByCDEC.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/geo-BJ-kmoUg.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/gitBundle-CgyJtebB.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/gitGraph-TEB2WS4Q-Djkw2bvJ.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/gitGraphDiagram-IHSO6WYX-DCBMhUR9.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/graphlib-yHYL-zmc.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/heic2any-DLetSwNY.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/html.worker-CNduzD9A.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/icon-picker-DNEuupAp.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/image-BYSmzCQJ.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/image-CXiNi1J1.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/in-transit-monitor-CfSuoQJ5.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/index-CeUWHi-1.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/index-SMIB3Sjs.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/index.es-CwBPvmpC.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/info-DKCQHKI2-BsTDFt1T.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/infoDiagram-FWYZ7A6U-BqoTJWU4.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/init-CoTvnqlg.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/init-D6jRqBbL.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/invoice-compliance-audit-drawer-BHGE92Ib.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/invoice-detail-drawer-CJudyAc8.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/invoice-dialog-DFGyYeU9.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/invoice-ocr-panel-BS86d6Kv.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/ishikawaDiagram-FXEZZL3T-BvR_u4CL.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/journeyDiagram-5HDEW3XC-C2VHynyu.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/json.worker-DLHC9W-G.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/kanban-definition-HUTT4EX6-CXq9J5tM.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/katex-DYiUYqIJ.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/largeText-7Ll6zdWB.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/lib-B44eX2Zi.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/lib-BdkBixVI.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/lib-C4004flH.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/lib-CFlEEIRI.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/lib-DZ-2fuoK.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/line-DC63l0Cr.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/linear-hY0Ceofi.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/login-Da6q4Wtp.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/maintenance-record-dialog-DLeWO3Qe.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/maplibre-gl-D4dmwXY8.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/markdown-wDDzrNZA.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/media-rvpWsScZ.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/mermaid-parser.core-DNvA847P.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/mermaid.core-CkMRw_bN.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/mindmap-definition-LN4V7U3C-DSRSaMgM.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/model-DgCvKs_R.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/monaco-BH9HxCf3.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/monitor-detail-panel-BYofmg7m.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/monitor-route-card-BiBe_CS2.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/ofd-4E_F87-c.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/ofd-DX7F27qe.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/openDocument-DQBngxeg.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/order-list-BJnupVBM.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/order-open-B7mFO8l7.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/ordinal-hYBb2elL.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/packet-7NZHBO7P-Bo56JEii.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/pako.esm-DVB6YA5T.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/panel-CfhSLzDc.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/parser--ZYNPoGU.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/patch-D6cbMdsT.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/path-DdI2OVsN.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/pdf-C5kiYXxj.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/pdf.worker-6izG13TV.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/pdfIdentityFontRepair-B-fvr5j2.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/pegDiagram-2B236MQR-IVEerlDk.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/pgsql.worker-DqJSRY1o.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/pie-DMuufHLU.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/pie-RZYD4A2V-xPvaUplZ.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/pieDiagram-ENE6RG2P-DadC9iH4.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/postal-mime-5jBxfe9D.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/pptx-Mmwm8Pfm.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/price-cargo-section-BG8ElTZd.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/price-form-utils-DDp4hv82.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/print-count-dialog-C_RYe5Pc.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/printMaskLoader-BtN0au0z.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/project-assistant-history-drawer-BKKw6Vr3.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/project-assistant-history-drawer-DdYIVH5q.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/project-assistant-object-browser-BK_SSm8c.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/project-assistant-object-browser-Dg94gzgb.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/psd-CnYQ1eYv.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/quadrantDiagram-ABIIQ3AL-e4lIBWQY.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/query-format-BQn545wu.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/radar-I7S5WNFK-BmCBKwY4.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/railroad-3IZDKUUU-BLgjWcpO.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/railroad-abnf-AHOZXSZD-ddOtZ6T0.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/railroad-ebnf-EBAXGLYW-Dq1Dnbrq.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/railroad-peg-LSFZ7HO6-D0HnTrwh.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/railroadDiagram-RFXS5EU6-aPAIth3o.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/realtime-monitor-panel-DcaU6WeG.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/receipt-exception-work-order-drawer-BvRSwtEP.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/receivables-collection-advisor-drawer-9XWsW4u5.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/register-cvYPx48R.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/render-m1LKSNuB.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/renderer-aMlrBUEw.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/requirementDiagram-TGXJPOKE-ChWiqAhq.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/reset-password-SqUcuilR.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/resource-picker-DORGJ5V-.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/rich-editor-_Lw9VNQt.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/rolldown-runtime-DAXXjFlN.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/rough.esm-BX6A5xQY.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/routine-inspection-dialog-CLLWf1w3.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/sankeyDiagram-HTMAVEWB-CtV2KpWb.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/sequenceDiagram-DBY2YBRQ-ChMbKjmW.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/sign-dialog-CXCdVWk5.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/socket-O-WhwHlY.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/socket-chat-BPQVws9h.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/socket-chat-C4ngik1Z.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/spreadsheet-73rXkdNu.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/sql-BnqHSOqx.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/sql-console-Bf4ybgca.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/sql-wasm-browser-txcBX92o.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/src-BrEj2Uet.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/src-C4wAo7yd.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/src-C50sfzrJ.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/src-Ck3CTTBM.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/src-zAPMFk_b.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/stateDiagram-2N3HPSRC-CwYBZ8LW.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/stateDiagram-v2-6OUMAXLB-tJHfufzA.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/step-DW_xClEf.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/success-DAT1DBz4.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/supabase-ai-assistant-CfNdsp11.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/swimlanes-5IMT3BWC-R6faRkhd.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/swimlanesDiagram-G3AALYLV-DaueTTjd.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/table-query-RSWf15uJ.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/tables-BEgjAMXO.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/three.core-PPco_wix.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/time-Dx79Gjzm.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/timeline-definition-FHXFAJF6-BvqMQdqO.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/tinycolor-DqJl3xJr.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/transport-anomaly-advisor-drawer-Brk5nMCz.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/treeView-QDETBFTQ-BJayyf49.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/treemap-6X3UGDF4-Bpi-2Na1.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/ts.worker-BpLxBkkc.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/typst-CevLOug2.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/umd-DUeqa6Rm.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/use-vehicle-panel-list-nBipQqUv.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/useAmapSdk-B2RJj1sD.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/useArtFeedback-Dk4blqQv.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/useArtOverlay-CsXKDv3p.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/validation-DhFFWEhV.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/vehicle-health-advisor-drawer-BvKqPQmF.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/vehicle-inspection-dialog-TpqO8a1k.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/vehicle-insurance-dialog-jiT70PVF.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/vehicle-monitor-panel-CycyCo6K.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/vehicle-monitor-panel-o6sr3GxF.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/vehicle-query-side-tabs-BetMnw7E.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/vehicle-query-side-tabs-D9WyMvpJ.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/vehicle-query-summary-CigqzE0C.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/vehicle-reminder-work-order-drawer-KfVDO1Ox.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/vehicle-view-panel-CrKrrdD6.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/vehicle-view-panel-CwM56HiG.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/vennDiagram-L72KCM5P-BAdnx7gx.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/video-Cj2yXVZC.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/wardley-OPB4EBWU-BcUHN2ae.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/wardleyDiagram-EHGQE667-DrNEVrOz.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/wasm-pack-shim-BShYmbRf.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/wasm-pack-shim-BnuNh1z7.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/waybill-cost-audit-drawer-CVXiaYKk.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/waybill-monitor-panel-BzbtRswY.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/waybill-monitor-panel-DkvO_hUs.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/waybill-profit-analysis-drawer-D3Cugrkq.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/waybill-receipt-ocr-panel-DB0K7Xx2.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/website-config-qABSlldt.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/wordDoc-i1alxO-h.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/wordDocx-BpFicjgM.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/workbench-BtEYFY7z.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/xmind-DsvgFnAW.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/xychartDiagram-FW5EYKEG-gkawoY9c.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/assets/zoom-seVWT4gk.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/playwright.config.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/scripts/serve-e2e.mjs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/components/core/layouts/art-empty-state/index.vue" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/components/core/layouts/art-settings-panel/widget/SmartLayoutPresets.vue" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/views/dashboard/ai-operations/modules/ai-ocr-quality-panel.vue" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/views/data-center/supabase-ai-assistant/modules/project-assistant-history-drawer.vue" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/views/data-center/supabase-ai-assistant/modules/project-assistant-object-browser.vue" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/views/tms-transportation/delivery-management/modules/receipt-exception-work-order-drawer.vue" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/views/tms-transportation/delivery-management/modules/waybill-receipt-ocr-panel.vue" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/views/tms-transportation/finance-center/cash-transaction/modules/cash-bank-batch-import-dialog.vue" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/views/tms-transportation/finance-center/cash-transaction/modules/cash-voucher-ocr-panel.vue" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/views/tms-transportation/finance-center/invoice-management/modules/invoice-compliance-audit-drawer.vue" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/views/tms-transportation/finance-center/invoice-management/modules/invoice-ocr-panel.vue" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/views/tms-transportation/in-transit-monitor/modules/_monitor-panel-foundation.scss" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/views/vehicle-manage-system/reminder-manage/modules/vehicle-reminder-work-order-drawer.vue" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/supabase/functions/_shared/ai-bank-statement-batch-contract.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/supabase/functions/_shared/ai-cash-voucher-ocr-contract.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/supabase/functions/_shared/ai-invoice-ocr-contract.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/supabase/functions/_shared/ai-runtime-config-policy.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/supabase/functions/_shared/ai-vision-ocr-runtime.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/supabase/functions/_shared/ai-waybill-receipt-ocr-contract.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/supabase/functions/_shared/invoice-compliance-audit-rules.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/supabase/functions/ai-bank-statement-batch-match/index.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/supabase/functions/ai-cash-voucher-ocr/index.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/supabase/functions/ai-invoice-compliance-auditor/index.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/supabase/functions/ai-invoice-ocr/index.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/supabase/functions/ai-waybill-receipt-ocr/index.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/tests/e2e/README.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/tests/e2e/__screenshots__/core-pages.visual.spec.ts/desktop-1280/dashboard-console.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/tests/e2e/__screenshots__/core-pages.visual.spec.ts/desktop-1280/in-transit-monitor.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/tests/e2e/__screenshots__/core-pages.visual.spec.ts/desktop-1280/invoice-management.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/tests/e2e/__screenshots__/core-pages.visual.spec.ts/desktop-1280/supabase-ai-assistant.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/tests/e2e/__screenshots__/core-pages.visual.spec.ts/desktop-1280/table-query-widget.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/tests/e2e/__screenshots__/core-pages.visual.spec.ts/desktop-1440/dashboard-console.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/tests/e2e/__screenshots__/core-pages.visual.spec.ts/desktop-1440/in-transit-monitor.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/tests/e2e/__screenshots__/core-pages.visual.spec.ts/desktop-1440/invoice-management.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/tests/e2e/__screenshots__/core-pages.visual.spec.ts/desktop-1440/supabase-ai-assistant.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/tests/e2e/__screenshots__/core-pages.visual.spec.ts/desktop-1440/table-query-widget.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/tests/e2e/__screenshots__/core-pages.visual.spec.ts/mobile-390/dashboard-console.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/tests/e2e/__screenshots__/core-pages.visual.spec.ts/mobile-390/in-transit-monitor.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/tests/e2e/__screenshots__/core-pages.visual.spec.ts/mobile-390/invoice-management.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/tests/e2e/__screenshots__/core-pages.visual.spec.ts/mobile-390/supabase-ai-assistant.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/tests/e2e/__screenshots__/core-pages.visual.spec.ts/mobile-390/table-query-widget.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/tests/e2e/ai-order-drawer.smoke.spec.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/tests/e2e/auth.setup.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/tests/e2e/core-pages.visual.spec.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/tests/e2e/reminder-work-order.smoke.spec.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/tests/e2e/visual-stability.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/tests/unit/ai-bank-statement-batch-contract.test.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/tests/unit/ai-cash-voucher-ocr-contract.test.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/tests/unit/ai-invoice-ocr-contract.test.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/tests/unit/ai-runtime-config-policy.test.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/tests/unit/ai-waybill-receipt-ocr-contract.test.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/tests/unit/invoice-compliance-audit-rules.test.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.agents/skills/professional-ui-quality/SKILL.md" beforeDir="false" afterPath="$PROJECT_DIR$/.agents/skills/professional-ui-quality/SKILL.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/index.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/api/supabase-ai-assistant.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/supabase-ai-assistant.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/3MFLoader-DpNTMTLO.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/403-DfnkOsnS.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/404-DXdvZx06.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/500-BbNtPiHs.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/AMFLoader-B-zjXKx1.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/ArtException-kUd8BAQz.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/ArtResultPage-DmOxsHgw.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/ColladaLoader-ChmnqDUm.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/FBXLoader-D9O87lOg.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/FileSaver.min-DJSjhI2c.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/GLTFLoader-CMIwAbm_.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/Iframe-DR17XnR2.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/KMZLoader-BqalUSf2.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/LoginLeftView-BhSPDM_1.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/LoginLeftView-C4b0cqym.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/Midi-fl14P9xK.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/OBJLoader-xQpL1qjr.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/PCDLoader-_MOtTpeV.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/PLYLoader-CLdX5D28.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/RTFJS.bundle-DVwDdpFG.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/STLLoader-k9rtsFA9.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/TDSLoader-DiYwA7ad.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/USDLoader-OJprQm4S.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/VRMLLoader-CDSU4oba.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/VTKLoader-BCBBUNOJ.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/XYZLoader-DB8D08Yi.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/abnfDiagram-VRR7QNED-CCgmbU7m.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/accident-panel-DwlIKfES.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/accident-record-DTkFX9ew.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/accident-record-detail-D8B6EVPg.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/accident-record-dialog-AW8-G1JK.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/accident-record-dialog-BXMSYOzm.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/ai-assistant-C0rwDmZh.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/ai-configuration-8QwsYLRg.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/ai-configuration-BMxuBxGr.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/ai-feature-config-dialog-DSE8X1J-.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/ai-feedback-quality-panel-C3YJ0QMC.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/ai-feedback-quality-panel-Ck5yVeG5.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/ai-feedback-resolution-dialog-B82A0XR-.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/ai-operations-CJCL1p-S.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/ai-operations-Cks8PE70.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/ai-operations-CsP0v-I4.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/ai-order-drawer-Coz2erHB.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/ai-order-drawer-Doo1RhWY.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/ai-order-master-data-panel-CV0X7AHP.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/ai-order-master-data-panel-bg4pMK1j.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/ai-order-reference-panel-DKL82m2X.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/ai-order-reference-panel-IkD7WrNN.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/ai-order-result-panel-CsjAgmTf.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/ai-order-result-panel-rcMZKPTM.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/ai-order-source-panel-B85krKfV.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/ai-order-source-panel-nJiqZSTx.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/ai-project-planner-GHYe9kWS.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/ai-prompt-BzAu80HZ.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/ai-prompt-dialog-CCHdkRgN.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/ai-run-detail-drawer-CImdEkHk.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/animation-H6OPX3bs.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/arc-A67ek8Xt.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/architecture-TIHT7OUA-CB8fsvHe.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/architectureDiagram-ZJ3FMSHR-C9LKzaXO.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/archive-BQG-iCH5.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/archive-panel-CbfxTLjt.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/archive-panel-D1uTcWhd.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/art-address-picker-C8WZ76yE.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/art-address-picker-w0YXWrTb.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/art-ai-feedback-Csm5qRX5.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/art-async-state-BYmufR5a.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/art-async-state-BmsWvGav.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/art-button-more-C0qzCSzy.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/art-button-table-CD7u4kfb.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/art-chat-window-DhGPxEIJ.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/art-chat-window-c_h7nlBe.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/art-data-select-BWWDkbE4.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/art-data-select-CfIGt460.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/art-descriptions-EJuhq9H7.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/art-dialog-DDL7ZRV6.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/art-dialog-Dlz26YQ2.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/art-dict-display-DKhJzkit.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/art-drawer-BY49hRh5.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/art-drawer-SgnfcZ5a.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/art-excel-import-DLXcksW3.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/art-file-viewer-D4QXEaPu.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/art-fireworks-effect-X76gKfpo.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/art-form-BAWZOyXM.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/art-form-Klk0bO7d.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/art-global-search-DzSHhUXr.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/art-global-search-FkM633Fb.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/art-icon-button-Csyvahe0.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/art-icon-picker-Cbkz8lxn.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/art-icon-picker-MN3e2Fxe.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/art-line-chart-CRToY-3t.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/art-logo-BQGTwR2E.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/art-menu-right-UUgw7Spn.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/art-page-header-BH2YcgEY.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/art-page-shell-B9NE7gDw.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/art-resource-picker-DgiQFI6I.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/art-screen-lock-DR8UUJMu.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/art-search-bar-Dv6cQNsg.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/art-section-title-3x78tFqE.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/art-settings-panel-8goj80A8.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/art-settings-panel-uCLQCZiO.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/art-sticky-action-bar-DLALq1w6.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/art-svg-icon-B_Wx0rkB.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/art-table-B4EuuVCG.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/art-table-CeHRXeom.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/art-table-header-CeWXujx-.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/art-table-header-HdF-ZiXY.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/art-table-query-CY2SKsoO.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/art-upload-image-BqL6pw_t.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/art-watermark-DdECow3j.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/attachment-B5z3Svza.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/attachment-link-D0LwLWAV.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/audio-DYnZrAxK.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/avsc-5A7dva_w.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/axis-CLy8P13O.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/base64-js-e_ScUrle.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/basic-CYeJtCdi.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/billboard-Bsa-A35Y.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/blockDiagram-677ZJIJ3-CbLL2l7J.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/browser-index-BMH0hzZu.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/buffer-DrofDEAL.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/build-runtime-CAK0ANN9.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/button-auth-CTjb-jWk.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/c4Diagram-LMCZKHZV-D6_stfFu.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/cad-DNtvUp62.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/capability-center-drawer-CB-O6jbP.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/cargo-BIJ3ltiM.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/cargo-dialog-BP4RK1gG.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/cargo-multiple-select-BpJuUo_M.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/carrier-detail-6QuzjfrG.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/carrier-dialog-DBS9VJg_.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/carrier-p1FPVWlJ.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/carrier-payment-dialog-DWVozxkl.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/carrier-payment-dialog-PKerr1Nr.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/carrier-performance-advisor-drawer-Celc-2mg.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/carrier-price-DaIyHckm.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/carrier-price-edit-HXG4gZ57.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/carrier-settlement-Bj1HHy1p.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/carrier-statement-detail-drawer-DhI6QQ_8.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/carrier-statement-dialog-rGVYNdIk.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/cash-transaction-HHEgXc6E.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/cash-transaction-detail-drawer-a1H7I2D3.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/cell-content-view-DrdFl1pr.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/cfb-D4_e28Vx.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/channel-Cx-HsOc_.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/charts-B0yaxLF6.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/chunk-32BRIVSS-BBRkY_Rp.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/chunk-52WLFC77-BkOpRRLj.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/chunk-5FCAYU7R-CDH4CLC8.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/chunk-5HE753X5-BJhMh-rO.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/chunk-5JV3BV7I-e5Q5fSRI.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/chunk-5TONJI2A-BgGxmaKE.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/chunk-BIQX33UG-Dqr_yHFY.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/chunk-C7G6YPKG-DqIm5VmW.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/chunk-CQNSW5MT-B9eFhXXp.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/chunk-CYSBUYHQ-CfBq8ZR1.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/chunk-EMLP6XTP-D0bg4jUS.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/chunk-EX3LRPZG-BMvSq3Hc.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/chunk-FWX5IMBZ-CiSCuz5o.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/chunk-HOUHSVGY-CNCWRFus.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/chunk-ICXQ74PX-BVEx936V.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/chunk-JG7HCLWE-h9yU_aoR.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/chunk-KEIR6QF5-BLenPJl3.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/chunk-MOJQB5TN-hhBMHJMI.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/chunk-MOZMSUNE-CmBlT06Z.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/chunk-OGEWGWER-BLyikmZ_.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/chunk-OSBZ3O6U-CcRnNTcC.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/chunk-PUDLZKDR-C71dofkX.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/chunk-Q4XR5HBZ-C9rNf63J.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/chunk-QBLGF6JB-C0PFhFF4.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/chunk-R7FJI6CG-D_MF6102.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/chunk-RYQCIY6F-xczFnXF6.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/chunk-U6XO7XAA-B_qo_4Ay.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/chunk-V7JOEXUC-CSCPfbPW.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/chunk-VAUOI2AC-DH5X-Nxq.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/chunk-VR4S4FIN-DAQtWZHs.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/chunk-WYO6CB5R-f0zCp2u3.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/chunk-XXDRQBXY-DVvG6dvm.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/chunk-YOTPTUD7-DOTITl2U.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/chunk-ZGVPDNZ5-DNz2FVId.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/chunk-ZIRB5QZD-D_c9UUZf.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/classDiagram-OUVF2IWQ-COJlp8mK.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/classDiagram-v2-EOCWNBFH-COJlp8mK.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/code-BLZOwhoS.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/common-utils-IIDn9RQ6.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/compiler-zWgB1uW5.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/console-DAOhZzNY.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/console-DVMCYc6j.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/context-menu-CRUWpqFY.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/context-menu-DTXlB3qv.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/contract-CF4Ke_fe.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/contract-detail-Ijzkp983.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/contract-dialog-BiOdxSKs.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/contract-dialog-CX0rWdmT.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/core-BByk96pm.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/cose-bilkent-JH36ORCC-CDI7_UHG.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/css.worker-DzDOIxCK.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/customer-DBUYKKw8.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/customer-address-BzULAKdn.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/customer-address-dialog-Bmti1J8H.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/customer-dialog-CEH4ZJ3L.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/customer-price-BbMO1f4f.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/customer-price-edit-ZN8FzDM-.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/customer-receipt-dialog-C1_TzqoN.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/customer-receipt-dialog-DVbmCqpr.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/customer-selector-dialog-D15WHl_q.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/customer-settlement-DYEBkACy.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/customer-statement-detail-drawer-Dh4NktDn.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/customer-statement-dialog-D5gpeU9c.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/cynefin-VYW2F7L2-D15V_mfo.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/cynefinDiagram-TSTJHNR4-BU0H-DFW.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/cytoscape.esm-DhKRVSk3.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/dagre-CPq9fmmr.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/dagre-VKFMJZFB-eR6xsVW8.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/dashboard-fleet-risk-CrVBgcU4.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/dashboard-fleet-risk-W9Dhv4CG.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/dashboard-hero-BYonsopM.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/dashboard-hero-CMK7-lJ7.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/dashboard-metric-cards-BVM3aE3b.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/dashboard-metric-cards-BwxV_9Pq.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/dashboard-order-flow-CSW1_dTt.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/dashboard-order-flow-CadA8zfz.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/dashboard-recent-orders-BgDMrhWF.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/dashboard-recent-orders-C8DS5M5m.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/dashboard-transit-AuJ6Wri_.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/dashboard-transit-DE83_PoX.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/dashboard-trend-BiELgSAv.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/dashboard-trend-lTx0tIO3.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/data-D38SL_4X.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/data-select-BEDl7peL.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/data-select-BoB4YOKN.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/data-tools-Dwqeczfg.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/delivery-management-7ltVfwML.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/delivery-management-BnbkfOW_.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/detail-BgIvA1p4.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/detail-D_-JahjO.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/detail-DtT0GwzR.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/detail-xY28KMQS.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/device-panel-BZyxyKbA.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/diagram-CS6vKeC7.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/diagram-FQU43EPY-CJpw1Y_y.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/diagram-G47NLZAW-BGjqMhk5.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/diagram-NH7WQ7WH-DdvZf0_4.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/diagram-OA4YK3LP-Dwi7eSTZ.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/diagram-WEI45ONY-7M4yrCn_.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/dict-B0IMkA0q.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/dict-dialog-CLf_2SYw.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/dict-type-dialog-CuLGaPX6.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/dispatch-dialog-CreRyeOo.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/dist-B1WPoXKQ.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/dist-B7OHp69Q.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/dist-DCFzLxHK.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/dist-c7yf6fnc.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/docx-preview-zgt1P5V1.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/drawing-BPUR9o21.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/driver-BRM1AxsY.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/driver-dialog-CGSuuwu9.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/driver-panel-CPcnEfln.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/ebnfDiagram-CCIWWBDH-DvKi-_pT.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/eda-DXPjoSjO.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/edaParser-Bd7CTtuc.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/editor-B0l6zEld.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/editor.worker-C4eoekrM.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/element-plus-Cnx18gk1.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/element-plus-DP0OnYnL.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/email-i52Lj9K5.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/epub-BJY4FrPu.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/erDiagram-Q63AITRT-DD2WUHna.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/eventmodeling-45OFAUF4-DEx9lMtj.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/fail-EYOifz3s.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/fflate.module-DXbirBWY.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/file-CAnFskG4.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/finance-metric-grid-C4vH8W1k.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/finance-metric-grid-DSJ1w6t0.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/flowDiagram-23GEKE2U-qINBoJjk.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/forget-password-Bh-pA4Hd.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/forget-password-Dv6u8vw5.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/forms-CwMIC4OQ.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/framework-udzZBz3w.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/freight-dialog-BDjI8a9g.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/ganttDiagram-NO4QXBWP-4kZiaTiK.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/geo-BzvRAwYl.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/gitBundle-CUV4z3sl.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/gitGraph-TEB2WS4Q-DnKEpb7A.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/gitGraphDiagram-IHSO6WYX-CxVh7riN.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/graphlib-RgFJXXHO.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/heic2any-Bvo-ivw6.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/html.worker-DmOF1pGZ.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/icon-picker-3aRwjGlo.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/icon-picker-BoR5nKjo.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/image-8V1veydf.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/image-BWwYEC4Q.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/in-transit-monitor-Be5dYNc2.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/in-transit-monitor-CiY439d7.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/index-B9pLpRsp.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/index-BivOXN1-.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/index-CQzJGMAL.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/index-DE8TGe8a.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/index.es-Gk0N5WXe.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/info-DKCQHKI2-BuOyBmIh.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/infoDiagram-FWYZ7A6U-DnRxgvmI.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/init-C-OQMol4.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/init-DbUxKlmk.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/inspection-expiry-aPvIDNe6.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/inspection-panel-DE-u_Bov.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/insurance-company-HhfRIOpD.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/insurance-company-dialog-C00-k41G.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/insurance-expiry-DMy9hHSC.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/insurance-panel-Dk_kGSmu.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/invoice-detail-drawer-BKDpKE_a.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/invoice-detail-drawer-I4Wp_ZAg.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/invoice-dialog-B-D0AZRR.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/invoice-dialog-Dfq7OaYq.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/invoice-management-CrIzN1zY.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/ishikawaDiagram-FXEZZL3T-CHfnJiSP.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/journeyDiagram-5HDEW3XC-Bp4yge6a.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/json.worker-BKCvP91t.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/kanban-definition-HUTT4EX6-B0AIa1jo.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/katex-B7afMu0X.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/largeText-CEyTxQQZ.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/lib-BrFvyf5R.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/lib-C6MX--gN.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/lib-CLjh-jtt.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/lib-CObRO2L1.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/lib-tZwzHVrV.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/line-oKrOyVFE.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/linear-Bz9i-iTf.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/loaded-CxSI5oMf.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/login-B4yMVPOE.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/login-DQhW45eX.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/login_icon-C4TVlUS8.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/maintenance-expiry-tXFMV-jx.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/maintenance-panel-CZHn5nSZ.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/maintenance-record-CZP63Eyi.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/maintenance-record-detail-s_G5qhyq.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/maintenance-record-dialog-3umXylJr.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/maintenance-record-dialog-D_Pacm_v.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/maplibre-gl-lUJ-c3WX.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/markdown-0PTy0aoJ.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/media-CnReYhgY.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/menu-561YiRJ7.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/menu-dialog-CYyB8L_F.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/mermaid-parser.core-PT6tbr1j.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/mermaid.core-C_TOVmhF.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/mileage-panel-BUS1QUAR.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/mileage-record-CMfPZPZ5.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/mindmap-definition-LN4V7U3C-DEI8BbEr.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/model-BNT2rJW9.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/monaco-C-ONo7IW.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/monitor-detail-panel-CZCwHn17.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/monitor-detail-panel-lwJnjxL7.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/monitor-route-card-DPbHBQCG.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/ofd-B03F9cZ1.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/ofd-yuYzXZu_.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/openDocument-BTToDY1S.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/order-list-B_k7O2NF.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/order-list-D4OWVk0f.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/order-open-B5qCV7qU.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/order-open-CPKZ_Arv.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/order-status-steps-BzZD3Mp-.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/ordinal-DtR4qwUh.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/packet-7NZHBO7P-CdhVlasT.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/page-visibility-BwH5XoI4.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/pako-5y88JgN2.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/pako.esm-ZKK7fUHk.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/panel-B8azTzJ7.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/panel-CWsjL98f.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/parser-BHGdP1Uz.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/part-manage-CQ-U9zzk.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/part-manage-detail-CW0XmPzo.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/part-service-life-CMp71VF5.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/parts-DROSr_-X.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/parts-category-Hei3SvXK.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/parts-category-dialog-CNdvTHe1.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/parts-category-tree-D9_uUZoO.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/parts-dialog-DAyqL8Kp.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/parts-panel-CbOIMnVG.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/patch-DT1KG8_1.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/path-BVIkjy7o.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/pdf-_LaraGeT.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/pdf.worker-vLuR4Fud.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/pdfIdentityFontRepair-BFvD-qqn.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/pegDiagram-2B236MQR-V0Ak0ZvN.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/pending-BpWkqfb1.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/pgsql.worker-DwTgRPVg.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/pie-BSK8fJ_8.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/pie-RZYD4A2V-CtLzQHfp.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/pieDiagram-ENE6RG2P-CEJzCYil.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/postal-mime-BWTs3mUF.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/pptx-B_1aeeAA.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/price-cargo-section-C8LJsjvm.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/price-form-utils-BCL9QtPj.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/print-count-dialog-BkkU7_mB.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/printMaskLoader-CaJ-Wxrm.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/psd-BfuqrmD2.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/quadrantDiagram-ABIIQ3AL-Dvnw6JmN.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/query-format-CUpdG-ev.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/radar-I7S5WNFK-Dz6cp7YU.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/railroad-3IZDKUUU-B2K2YiU_.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/railroad-abnf-AHOZXSZD-jPmQVFHG.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/railroad-ebnf-EBAXGLYW-x_rNUEdN.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/railroad-peg-LSFZ7HO6-EoOJsyJR.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/railroadDiagram-RFXS5EU6-BNNtE36q.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/realtime-monitor-panel-AFQdcfZh.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/realtime-monitor-panel-OpMQO69m.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/receivables-collection-advisor-drawer-C0PEwf6o.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/receivables-collection-advisor-drawer-C74yUERw.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/register-895jmqey.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/register-DHdRiM42.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/reminder-table-Dcg0JjPc.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/render-lvrNLzCN.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/renderer-DmHDvcf8.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/requirementDiagram-TGXJPOKE-CL6L-F5k.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/reset-password-DjvdllWl.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/reset-password-suEYr7Q6.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/resource-picker-BmzCH-oP.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/resource-picker-njHvOeGx.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/result-table-CbLANBC3.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/rich-editor-D0DF9OT4.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/role-CWzhJQ39.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/role-edit-dialog-Bapc5aZX.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/role-permission-dialog-BdWMUWsD.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/rolldown-runtime-C0FnF6B9.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/rough.esm-CvKjfTpl.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/routine-inspection-CSE2f2M1.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/routine-inspection-detail-DPvVIY1s.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/routine-inspection-dialog-Cjib7OIg.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/routine-inspection-dialog-CnFSRRVG.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/routine-inspection-panel-CBCd1FRK.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/sankeyDiagram-HTMAVEWB-CBej6PJP.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/search-bar-DIOWCfQA.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/sequenceDiagram-DBY2YBRQ-pizzXYrF.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/sign-dialog-C2l-42mW.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/sign-dialog-DjnTcDr7.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/socket-OfWov6xv.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/socket-chat-C6OGW-xk.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/socket-chat-CezCmImD.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/spreadsheet-BAigfOdb.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/sql-Bqxq0ebf.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/sql-console-C0S1BvGf.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/sql-console-DfUsIAND.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/sql-wasm-browser-LmTKtaSu.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/src-4BELJqCK.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/src-A6JBNuXZ.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/src-Bh5zVVju.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/src-C4Nkgtla.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/src-CN8Cq_Ur.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/stateDiagram-2N3HPSRC-BsaZQRpc.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/stateDiagram-v2-6OUMAXLB-CVwUMhrP.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/station-CZWbikQj.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/station-dialog-BOR-OAQ8.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/step-L1PnjVkV.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/success-IwcUiwF8.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/supabase-ai-assistant-BJm3XK5x.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/supabase-ai-assistant-CuHHX_H8.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/supabase-ai-assistant-Dp-2CjEo.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/supplier-dialog-BoK0Um7L.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/supplier-ogOu33uh.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/swimlanes-5IMT3BWC-BVeX5Xcx.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/swimlanesDiagram-G3AALYLV-Bbsir-jY.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/switch-role-DhppqllB.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/system-param-B7sbI_k-.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/system-param-dialog-aUGCZONs.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/table-multiple-DvnOGt0a.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/table-query-BlBlTxNX.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/table-query-yz5K6NWk.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/table-single-BwDtxzbu.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/tables-C5-wKZkd.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/tables-DrHgRjE6.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/tabs-TmpZJq2s.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/tenant-BNYTUpd9.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/tenant-dialog-DKX3uwu_.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/theme-svg-DrTwWl-u.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/theme-svg-jlca_mNW.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/three.core-wIx5wayK.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/time-s-lZ-ofU.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/timeline-definition-FHXFAJF6-DYB9A_qp.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/tinycolor-BfAKX6K5.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/tms-CAeGV8-Q.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/transport-anomaly-advisor-drawer-BsgKhUzF.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/transport-anomaly-advisor-drawer-DSvObK0c.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/treeView-QDETBFTQ-yNMd7U8D.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/treemap-6X3UGDF4-C0mue7qe.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/ts.worker-DdFS-Gtg.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/type-tree-50DTDm5P.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/typst-Ce7yEx5R.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/umd-Bul5FfL-.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/use-vehicle-panel-list-Ch02Ayrv.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/useAmapSdk-pEXO3E8-.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/useArtFeedback-DmVN-VBc.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/useArtOverlay-CTmST_8x.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/user-DMS8ZzBk.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/user-DotiqtlQ.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/user-center-BX2DZ8Hc.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/user-dialog-CyVraz20.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/user-role-dialog-DDiT7iQX.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/validation-D6TlCsSS.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/vehicle-archive-audit-dialog-D57ewCoR.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/vehicle-archive-detail-6I0ONyD0.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/vehicle-archive-detail-content-jaYMbwIS.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/vehicle-archive-edit-CSk9ookV.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/vehicle-archive-entry-DVTx2kWy.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/vehicle-archive-manage-B0RX0pgX.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/vehicle-health-advisor-drawer-CW20kTeN.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/vehicle-health-advisor-drawer-DMHtSVXi.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/vehicle-inspection-detail-CcmlYJ9f.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/vehicle-inspection-dialog-B0DmGwYC.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/vehicle-inspection-dialog-DW-T45tr.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/vehicle-inspection-fLxFmoYi.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/vehicle-insurance-D3ilFKpR.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/vehicle-insurance-detail-CF1GiEVX.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/vehicle-insurance-dialog-BMqE6hhB.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/vehicle-insurance-dialog-KmbB8Ldf.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/vehicle-manage-system-DPfn_yN4.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/vehicle-monitor-panel-BbINUTLC.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/vehicle-monitor-panel-DNJbGUpM.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/vehicle-part-usage-dialog-BpYBD-Wg.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/vehicle-query-B2NidtYZ.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/vehicle-query-info-grid-BdGoaSG3.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/vehicle-query-info-grid-CNAx5Amg.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/vehicle-query-section-CslOuuvT.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/vehicle-query-section-Dx92NVQs.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/vehicle-query-side-tabs-BOUWWALs.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/vehicle-query-side-tabs-DKS3Bo2r.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/vehicle-query-summary-C6XAInm7.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/vehicle-query-summary-CuruYNns.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/vehicle-query-table-BzhAHQj6.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/vehicle-service-life-DYCn0_zt.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/vehicle-view-panel-C4Eu6r-3.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/vehicle-view-panel-Dtc9Svqw.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/vehicle-violation-BNuw0LL6.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/vennDiagram-L72KCM5P-GZQ7kR72.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/video-BTuU-NmQ.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/violation-panel-DtFBgsTs.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/wardley-OPB4EBWU-D9VuXfBh.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/wardleyDiagram-EHGQE667-B8lt2ds2.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/wasm-pack-shim-CWHZNUiP.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/wasm-pack-shim-CXnGUaQF.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/waybill-cost-BCm3O1n7.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/waybill-cost-audit-drawer-BxsKXdry.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/waybill-cost-audit-drawer-CuvP4_C3.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/waybill-cost-dialog-Dx6naBW0.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/waybill-monitor-panel-DnUQiR6D.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/waybill-monitor-panel-KN6hqwnv.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/waybill-profit-B_6ecm3_.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/waybill-profit-analysis-drawer-CLTTgHwS.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/waybill-profit-analysis-drawer-CTRYxWU2.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/waybill-shared-BQtu5MgE.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/website-config-UXoi-lX9.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/website-config-xqG-M4Ly.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/wordDoc-B60vm-Mz.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/wordDocx-CclnnEhZ.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/workbench-D-5VlFCg.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/workbench-HyHbE0At.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/xmind-Dx8k45nI.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/xychartDiagram-FW5EYKEG-DiJKcSfr.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/assets/zoom-Bas2YuFX.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/flyfish-viewer-assets.json" beforeDir="false" afterPath="$PROJECT_DIR$/docs/flyfish-viewer-assets.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/docs/index.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/vendor/docx/docx.worker.js" beforeDir="false" afterPath="$PROJECT_DIR$/docs/vendor/docx/docx.worker.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pnpm-lock.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/pnpm-lock.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/skills-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/skills-lock.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/api/data-center.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/data-center.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/api/modules/tms/cash-transaction.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/modules/tms/cash-transaction.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/api/modules/tms/delivery.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/modules/tms/delivery.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/api/modules/tms/invoice.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/modules/tms/invoice.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/api/modules/tms/order.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/modules/tms/order.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/api/modules/tms/waybill.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/modules/tms/waybill.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/api/providers/supabase/ai-configuration.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/providers/supabase/ai-configuration.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/api/providers/supabase/ai-operations.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/providers/supabase/ai-operations.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/api/providers/supabase/vehicle.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/providers/supabase/vehicle.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/api/providers/supabase/vehicle/archive.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/providers/supabase/vehicle/archive.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/api/providers/supabase/vehicle/reminders.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/providers/supabase/vehicle/reminders.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/api/tms.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/tms.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/api/vehicle-manage-system.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/vehicle-manage-system.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/assets/styles/core/app.scss" beforeDir="false" afterPath="$PROJECT_DIR$/src/assets/styles/core/app.scss" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/assets/styles/core/el-ui.scss" beforeDir="false" afterPath="$PROJECT_DIR$/src/assets/styles/core/el-ui.scss" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/assets/styles/core/tailwind.css" beforeDir="false" afterPath="$PROJECT_DIR$/src/assets/styles/core/tailwind.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/assets/svg/loading.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/assets/svg/loading.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/core/dialogs/art-dialog/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/dialogs/art-dialog/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/core/drawers/art-drawer/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/drawers/art-drawer/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/core/forms/art-address-picker/modules/map.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/forms/art-address-picker/modules/map.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/core/forms/art-button-table/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/forms/art-button-table/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/core/forms/art-data-select/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/forms/art-data-select/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/core/forms/art-excel-import/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/forms/art-excel-import/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/core/forms/art-form/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/forms/art-form/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/core/forms/art-form/style.scss" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/forms/art-form/style.scss" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/core/forms/art-icon-picker/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/forms/art-icon-picker/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/core/forms/art-resource-picker/panel.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/forms/art-resource-picker/panel.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/core/layouts/art-async-state/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/layouts/art-async-state/index.vue" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/components/core/layouts/art-chat-window/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/layouts/art-chat-window/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/types/ai-assistant.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/types/ai-assistant.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/core/layouts/art-global-search/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/layouts/art-global-search/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/core/layouts/art-header-bar/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/layouts/art-header-bar/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/core/layouts/art-menus/art-horizontal-menu/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/layouts/art-menus/art-horizontal-menu/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/core/layouts/art-menus/art-mixed-menu/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/layouts/art-menus/art-mixed-menu/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/core/layouts/art-menus/art-sidebar-menu/style.scss" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/layouts/art-menus/art-sidebar-menu/style.scss" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/core/layouts/art-menus/art-sidebar-menu/theme.scss" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/layouts/art-menus/art-sidebar-menu/theme.scss" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/core/layouts/art-settings-panel/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/layouts/art-settings-panel/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/core/layouts/art-settings-panel/style.scss" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/layouts/art-settings-panel/style.scss" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/core/layouts/art-settings-panel/widget/BoxStyleSettings.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/layouts/art-settings-panel/widget/BoxStyleSettings.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/core/layouts/art-settings-panel/widget/ColorSettings.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/layouts/art-settings-panel/widget/ColorSettings.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/core/layouts/art-settings-panel/widget/ContainerSettings.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/layouts/art-settings-panel/widget/ContainerSettings.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/core/layouts/art-settings-panel/widget/MenuLayoutSettings.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/layouts/art-settings-panel/widget/MenuLayoutSettings.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/core/layouts/art-settings-panel/widget/MenuStyleSettings.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/layouts/art-settings-panel/widget/MenuStyleSettings.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/core/layouts/art-settings-panel/widget/SectionTitle.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/layouts/art-settings-panel/widget/SectionTitle.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/core/layouts/art-settings-panel/widget/SettingActions.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/layouts/art-settings-panel/widget/SettingActions.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/core/layouts/art-settings-panel/widget/SettingDrawer.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/layouts/art-settings-panel/widget/SettingDrawer.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/core/layouts/art-settings-panel/widget/SettingHeader.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/layouts/art-settings-panel/widget/SettingHeader.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/core/layouts/art-settings-panel/widget/SettingItem.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/layouts/art-settings-panel/widget/SettingItem.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/core/layouts/art-settings-panel/widget/ThemeSettings.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/layouts/art-settings-panel/widget/ThemeSettings.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/core/layouts/art-work-tab/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/layouts/art-work-tab/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/core/tables/art-table-header/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/tables/art-table-header/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/core/tables/art-table/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/tables/art-table/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/core/tables/art-table/style.scss" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/tables/art-table/style.scss" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/core/views/login/AuthTopBar.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/views/login/AuthTopBar.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/core/views/login/LoginLeftView.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/views/login/LoginLeftView.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/core/widget/art-icon-button/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/widget/art-icon-button/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/config/index.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/config/index.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/types/api/api.d.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/types/api/api.d.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/types/import/components.d.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/types/import/components.d.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/types/supabase-ai-assistant.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/types/supabase-ai-assistant.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/utils/ui/loading.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/ui/loading.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/auth/login/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/auth/login/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/auth/login/style.css" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/auth/login/style.css" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/views/dashboard/ai-operations/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/dashboard/ai-operations/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/dashboard/ai-operations/modules/ai-run-detail-drawer.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/dashboard/ai-operations/modules/ai-run-detail-drawer.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/dashboard/ai-operations/modules/ai-feedback-quality-panel.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/dashboard/ai-operations/modules/ai-feedback-quality-panel.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/dashboard/console/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/dashboard/console/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/dashboard/console/modules/dashboard-fleet-risk.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/dashboard/console/modules/dashboard-fleet-risk.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/dashboard/console/modules/dashboard-hero.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/dashboard/console/modules/dashboard-hero.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/dashboard/console/modules/dashboard-metric-cards.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/dashboard/console/modules/dashboard-metric-cards.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/dashboard/console/modules/dashboard-order-flow.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/dashboard/console/modules/dashboard-order-flow.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/dashboard/console/modules/dashboard-recent-orders.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/dashboard/console/modules/dashboard-recent-orders.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/dashboard/console/modules/dashboard-transit.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/dashboard/console/modules/dashboard-transit.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/dashboard/console/modules/dashboard-trend.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/dashboard/console/modules/dashboard-trend.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/data-center/sql-console/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/data-center/sql-console/index.vue" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/views/data-center/supabase-ai-assistant/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/data-center/supabase-ai-assistant/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/examples/socket-chat/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/examples/socket-chat/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/examples/tables/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/examples/tables/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/index/style.scss" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/index/style.scss" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/views/system/ai-configuration/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/system/ai-configuration/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/order-open/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/order-open/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/supabase/functions/ai-project-assistant/index.ts" beforeDir="false" afterPath="$PROJECT_DIR$/supabase/functions/ai-project-assistant/index.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/supabase/functions/ai-run-diagnosis/index.ts" beforeDir="false" afterPath="$PROJECT_DIR$/supabase/functions/ai-run-diagnosis/index.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/system/website-config/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/system/website-config/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/basic-data/contract/modules/contract-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/basic-data/contract/modules/contract-dialog.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/delivery-management/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/delivery-management/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/delivery-management/modules/sign-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/delivery-management/modules/sign-dialog.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/finance-center/cash-transaction/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/finance-center/cash-transaction/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/finance-center/cash-transaction/modules/carrier-payment-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/finance-center/cash-transaction/modules/carrier-payment-dialog.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/finance-center/cash-transaction/modules/customer-receipt-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/finance-center/cash-transaction/modules/customer-receipt-dialog.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/finance-center/invoice-management/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/finance-center/invoice-management/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/finance-center/invoice-management/modules/invoice-detail-drawer.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/finance-center/invoice-management/modules/invoice-detail-drawer.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/finance-center/invoice-management/modules/invoice-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/finance-center/invoice-management/modules/invoice-dialog.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/finance-center/modules/finance-metric-grid.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/finance-center/modules/finance-metric-grid.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/finance-center/waybill-cost/modules/waybill-cost-audit-drawer.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/finance-center/waybill-cost/modules/waybill-cost-audit-drawer.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/finance-center/waybill-profit/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/finance-center/waybill-profit/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/finance-center/waybill-profit/modules/waybill-profit-analysis-drawer.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/finance-center/waybill-profit/modules/waybill-profit-analysis-drawer.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/finance-center/workbench/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/finance-center/workbench/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/finance-center/workbench/modules/receivables-collection-advisor-drawer.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/finance-center/workbench/modules/receivables-collection-advisor-drawer.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/in-transit-monitor/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/in-transit-monitor/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/in-transit-monitor/modules/in-transit-monitor.scss" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/in-transit-monitor/modules/in-transit-monitor.scss" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/in-transit-monitor/modules/monitor-detail-panel.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/in-transit-monitor/modules/monitor-detail-panel.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/in-transit-monitor/modules/monitor-types.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/in-transit-monitor/modules/monitor-types.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/in-transit-monitor/modules/realtime-monitor-panel.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/in-transit-monitor/modules/realtime-monitor-panel.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/in-transit-monitor/modules/transport-anomaly-advisor-drawer.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/in-transit-monitor/modules/transport-anomaly-advisor-drawer.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/in-transit-monitor/modules/vehicle-monitor-panel.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/in-transit-monitor/modules/vehicle-monitor-panel.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/in-transit-monitor/modules/waybill-monitor-panel.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/in-transit-monitor/modules/waybill-monitor-panel.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/order-list/detail.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/order-list/detail.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/order-list/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/order-list/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/order-open/modules/ai-order-drawer.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/order-open/modules/ai-order-drawer.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/order-open/modules/ai-order-master-data-panel.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/order-open/modules/ai-order-master-data-panel.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/order-open/modules/ai-order-reference-panel.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/order-open/modules/ai-order-reference-panel.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/order-open/modules/ai-order-result-panel.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/order-open/modules/ai-order-result-panel.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/order-open/modules/ai-order-source-panel.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/order-open/modules/ai-order-source-panel.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/order-open/modules/order-open.scss" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/order-open/modules/order-open.scss" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/order-open/modules/use-ai-order-master-data.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/order-open/modules/use-ai-order-master-data.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/vehicle-manage-system/reminder-manage/inspection-expiry/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-manage-system/reminder-manage/inspection-expiry/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/vehicle-manage-system/reminder-manage/insurance-expiry/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-manage-system/reminder-manage/insurance-expiry/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/vehicle-manage-system/reminder-manage/maintenance-expiry/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-manage-system/reminder-manage/maintenance-expiry/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/vehicle-manage-system/reminder-manage/modules/reminder-table.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-manage-system/reminder-manage/modules/reminder-table.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/vehicle-manage-system/reminder-manage/part-service-life/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-manage-system/reminder-manage/part-service-life/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/vehicle-manage-system/reminder-manage/vehicle-service-life/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-manage-system/reminder-manage/vehicle-service-life/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-manage/accident-record/modules/accident-record-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-manage/accident-record/modules/accident-record-dialog.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-manage/maintenance-record/modules/maintenance-record-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-manage/maintenance-record/modules/maintenance-record-dialog.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-manage/routine-inspection/modules/routine-inspection-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-manage/routine-inspection/modules/routine-inspection-dialog.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-manage/vehicle-inspection/modules/vehicle-inspection-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-manage/vehicle-inspection/modules/vehicle-inspection-dialog.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-manage/vehicle-insurance/modules/vehicle-insurance-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-manage/vehicle-insurance/modules/vehicle-insurance-dialog.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-query/detail/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-query/detail/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-query/modules/accident-panel.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-query/modules/accident-panel.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-query/modules/archive-panel.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-query/modules/archive-panel.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-query/modules/device-panel.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-query/modules/device-panel.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-query/modules/driver-panel.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-query/modules/driver-panel.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-query/modules/inspection-panel.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-query/modules/inspection-panel.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-query/modules/insurance-panel.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-query/modules/insurance-panel.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-query/modules/maintenance-panel.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-query/modules/maintenance-panel.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-query/modules/mileage-panel.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-query/modules/mileage-panel.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-query/modules/parts-panel.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-query/modules/parts-panel.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-query/modules/query-format.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-query/modules/query-format.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-query/modules/routine-inspection-panel.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-query/modules/routine-inspection-panel.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-query/modules/vehicle-health-advisor-drawer.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-query/modules/vehicle-health-advisor-drawer.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-query/modules/vehicle-query-info-grid.vue" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-query/modules/vehicle-query-section.vue" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-query/modules/vehicle-query-side-tabs.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-query/modules/vehicle-query-side-tabs.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-query/modules/vehicle-query-summary.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-query/modules/vehicle-query-summary.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-query/modules/vehicle-view-panel.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-query/modules/vehicle-view-panel.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-query/modules/violation-panel.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-query/modules/violation-panel.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/widgets/context-menu/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/widgets/context-menu/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/widgets/data-select/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/widgets/data-select/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/widgets/icon-picker/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/widgets/icon-picker/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/widgets/resource-picker/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/widgets/resource-picker/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/widgets/table-query/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/widgets/table-query/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/supabase/config.toml" beforeDir="false" afterPath="$PROJECT_DIR$/supabase/config.toml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/supabase/functions/_shared/ai-runtime-config.ts" beforeDir="false" afterPath="$PROJECT_DIR$/supabase/functions/_shared/ai-runtime-config.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/supabase/functions/ai-project-planner/project-snapshot.generated.ts" beforeDir="false" afterPath="$PROJECT_DIR$/supabase/functions/ai-project-planner/project-snapshot.generated.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/supabase/functions/ai-provider-catalog/index.ts" beforeDir="false" afterPath="$PROJECT_DIR$/supabase/functions/ai-provider-catalog/index.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/supabase/functions/ai-sql-assistant/index.ts" beforeDir="false" afterPath="$PROJECT_DIR$/supabase/functions/ai-sql-assistant/index.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/supabase/functions/sync-driver-waybills/index.ts" beforeDir="false" afterPath="$PROJECT_DIR$/supabase/functions/sync-driver-waybills/index.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/vite.config.ts" beforeDir="false" afterPath="$PROJECT_DIR$/vite.config.ts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -30,7 +1146,7 @@
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="EmbeddingIndexingInfo">
-    <option name="cachedIndexableFilesCount" value="1966" />
+    <option name="cachedIndexableFilesCount" value="1710" />
   </component>
   <component name="FileTemplateManagerImpl">
     <option name="RECENT_TEMPLATES">
@@ -64,61 +1180,61 @@
   </component>
   <component name="NextEditCompletionFeaturesState">
     <decayedCancelled>
-      <entry key="MS100" value="1.0021784137354819" />
-      <entry key="MS500" value="1.9245183597533388" />
-      <entry key="S2" value="4.671141769808881" />
-      <entry key="S5" value="5.919902483198748" />
-      <entry key="S10" value="6.441180818369216" />
-      <entry key="S30" value="7.975182705842687" />
-      <entry key="S60" value="10.798563502784013" />
-      <entry key="M2" value="14.066222293903527" />
-      <entry key="M5" value="17.194774452024603" />
-      <entry key="M10" value="18.513386640399663" />
-      <entry key="M15" value="18.98924465525842" />
-      <entry key="M30" value="19.485770934712704" />
-      <entry key="H1" value="19.820189315153414" />
-      <entry key="H2" value="20.711782824768825" />
-      <entry key="H4" value="24.795638866304188" />
-      <entry key="D1" value="111.38842220751656" />
-      <entry key="W1" value="754.6648098299241" />
+      <entry key="MS100" value="1.6471445072933009" />
+      <entry key="MS500" value="3.3917326782357478" />
+      <entry key="S2" value="5.513205551315694" />
+      <entry key="S5" value="6.3279299640723545" />
+      <entry key="S10" value="6.649317751462263" />
+      <entry key="S30" value="6.879667666785583" />
+      <entry key="S60" value="6.9393920288240745" />
+      <entry key="M2" value="6.969584639376254" />
+      <entry key="M5" value="6.987807167985739" />
+      <entry key="M10" value="6.994465483576092" />
+      <entry key="M15" value="7.0045514293812605" />
+      <entry key="M30" value="7.129589158856938" />
+      <entry key="H1" value="7.537984349665317" />
+      <entry key="H2" value="8.327015169915871" />
+      <entry key="H4" value="9.813839172055863" />
+      <entry key="D1" value="51.82633027335801" />
+      <entry key="W1" value="652.3521850081013" />
     </decayedCancelled>
     <decayedSelected>
-      <entry key="MS100" value="4.9E-324" />
-      <entry key="MS500" value="2.133653888318284E-65" />
-      <entry key="S2" value="6.796432263646016E-17" />
-      <entry key="S5" value="3.411240955125232E-7" />
-      <entry key="S10" value="5.840582980426894E-4" />
-      <entry key="S30" value="0.0835895651968933" />
-      <entry key="S60" value="0.2891186005723141" />
-      <entry key="M2" value="0.5376974991315413" />
-      <entry key="M5" value="0.7802166367092619" />
-      <entry key="M10" value="0.8832987245191966" />
-      <entry key="M15" value="0.9206016846427936" />
-      <entry key="M30" value="0.9597310011598719" />
-      <entry key="H1" value="0.9954665032944877" />
-      <entry key="H2" value="1.1279834196531755" />
-      <entry key="H4" value="1.513417353100866" />
-      <entry key="D1" value="5.868111562713569" />
-      <entry key="W1" value="26.26338086327443" />
+      <entry key="MS100" value="0.0" />
+      <entry key="MS500" value="0.0" />
+      <entry key="S2" value="0.0" />
+      <entry key="S5" value="0.0" />
+      <entry key="S10" value="0.0" />
+      <entry key="S30" value="0.0" />
+      <entry key="S60" value="0.0" />
+      <entry key="M2" value="0.0" />
+      <entry key="M5" value="4.3442986106673845E-175" />
+      <entry key="M10" value="6.591129349866674E-88" />
+      <entry key="M15" value="7.573673110277704E-59" />
+      <entry key="M30" value="8.702728189931723E-30" />
+      <entry key="H1" value="2.9566875902820363E-15" />
+      <entry key="H2" value="5.7230961274809056E-8" />
+      <entry key="H4" value="3.100128769639446E-4" />
+      <entry key="D1" value="1.3775591329222197" />
+      <entry key="W1" value="21.574281652759822" />
     </decayedSelected>
     <decayedShown>
-      <entry key="MS100" value="0.010313227127593106" />
-      <entry key="MS500" value="1.3000418429879053" />
-      <entry key="S2" value="4.4499857067149415" />
-      <entry key="S5" value="5.824139542528367" />
-      <entry key="S10" value="6.392487263100077" />
-      <entry key="S30" value="8.039142438616933" />
-      <entry key="S60" value="11.074348491180206" />
-      <entry key="M2" value="14.59516728064297" />
-      <entry key="M5" value="17.970683554965103" />
-      <entry key="M10" value="19.394360913072553" />
-      <entry key="M15" value="19.908255584910002" />
-      <entry key="M30" value="20.44468492473168" />
-      <entry key="H1" value="20.815234921669017" />
-      <entry key="H2" value="21.839527651243944" />
-      <entry key="H4" value="26.308892104237543" />
-      <entry key="D1" value="117.33264425204702" />
-      <entry key="W1" value="781.620332854276" />
+      <entry key="MS100" value="1.5568011342558292" />
+      <entry key="MS500" value="3.3371680283190814" />
+      <entry key="S2" value="5.485319546636994" />
+      <entry key="S5" value="6.314536166964625" />
+      <entry key="S10" value="6.642177583347306" />
+      <entry key="S30" value="6.8771815661173505" />
+      <entry key="S60" value="6.938135222254083" />
+      <entry key="M2" value="6.968952758323351" />
+      <entry key="M5" value="6.987553575652001" />
+      <entry key="M10" value="6.994338109843087" />
+      <entry key="M15" value="7.0044623039193645" />
+      <entry key="M30" value="7.1295125049004735" />
+      <entry key="H1" value="7.537893648760401" />
+      <entry key="H2" value="8.326914323299464" />
+      <entry key="H4" value="9.814041109278996" />
+      <entry key="D1" value="53.2184752704957" />
+      <entry key="W1" value="674.4734221101002" />
     </decayedShown>
   </component>
   <component name="PackageJsonUpdateNotifier">
@@ -352,6 +1468,7 @@
       <workItem from="1785389820582" duration="7309000" />
       <workItem from="1785567883008" duration="4591000" />
       <workItem from="1785629921611" duration="6828000" />
+      <workItem from="1785803439329" duration="28433000" />
     </task>
     <task id="LOCAL-00017" summary="feat remove netlify">
       <option name="closed" value="true" />
@@ -781,7 +1898,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="feat : parts&#10;pref : system" />
     <MESSAGE value="feat : tenant" />
     <MESSAGE value="feat : dict support multi level" />
     <MESSAGE value="feat : vehicle archive" />
@@ -806,14 +1922,15 @@
     <MESSAGE value="feat remove monorepo" />
     <MESSAGE value="performance optimization" />
     <MESSAGE value="feat ai module" />
-    <option name="LAST_COMMIT_MESSAGE" value="feat ai module" />
+    <MESSAGE value="feat theme" />
+    <option name="LAST_COMMIT_MESSAGE" value="feat theme" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
       <breakpoints>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/src/views/tms-transportation/order-list/index.vue</url>
-          <line>149</line>
+          <line>152</line>
           <option name="timeStamp" value="1" />
         </line-breakpoint>
       </breakpoints>

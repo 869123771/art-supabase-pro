@@ -1,17 +1,20 @@
 <template>
   <SectionTitle :title="$t('setting.theme.title')" />
   <div class="setting-box-wrap">
-    <div
+    <button
+      type="button"
       class="setting-item"
       v-for="(item, index) in configOptions.themeList"
       :key="item.theme"
+      :aria-label="`${$t(`setting.theme.list[${index}]`)}主题`"
+      :aria-pressed="item.theme === systemThemeMode"
       @click="switchThemeStyles(item.theme)"
     >
       <div class="box" :class="{ 'is-active': item.theme === systemThemeMode }">
-        <img :src="item.img" />
+        <img :src="item.img" alt="" />
       </div>
       <p class="name">{{ $t(`setting.theme.list[${index}]`) }}</p>
-    </div>
+    </button>
   </div>
 </template>
 

@@ -1,5 +1,7 @@
 import dayjs from 'dayjs'
 import { isEmpty, isNil } from 'lodash-es'
+import type { ArtDescriptionItem } from '@/components/core/base/art-descriptions/types'
+import type { InfoItem } from './types'
 
 export const EMPTY_TEXT = '--'
 
@@ -38,6 +40,15 @@ export const formatBoolean = (value?: boolean | null): string => {
   if (isNil(value)) return EMPTY_TEXT
   return value ? '是' : '否'
 }
+
+export const createDescriptionItems = (items: InfoItem[]): ArtDescriptionItem[] =>
+  items.map((item, index) => ({
+    key: `${item.label}-${index}`,
+    label: item.label,
+    value: item.value,
+    dictCode: item.dictCode,
+    formatter: item.dictCode ? undefined : () => formatValue(item.value, item.suffix)
+  }))
 
 export const getLatestByDate = <TRecord>(
   records: TRecord[],

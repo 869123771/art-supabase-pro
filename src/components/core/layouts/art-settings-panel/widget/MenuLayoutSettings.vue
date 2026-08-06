@@ -2,17 +2,20 @@
   <div v-if="width > 1000">
     <SectionTitle :title="$t('setting.menuType.title')" />
     <div class="setting-box-wrap">
-      <div
+      <button
+        type="button"
         class="setting-item"
         v-for="(item, index) in configOptions.menuLayoutList"
         :key="item.value"
+        :aria-label="`${$t(`setting.menuType.list[${index}]`)}布局`"
+        :aria-pressed="item.value === menuType"
         @click="switchMenuLayouts(item.value)"
       >
         <div class="box" :class="{ 'is-active': item.value === menuType, 'mt-16': index > 2 }">
-          <img :src="item.img" />
+          <img :src="item.img" alt="" />
         </div>
         <p class="name">{{ $t(`setting.menuType.list[${index}]`) }}</p>
-      </div>
+      </button>
     </div>
   </div>
 </template>

@@ -22,17 +22,17 @@
           <ArtSvgIcon icon="ri:sparkling-2-line" />AI 车辆健康研判
         </ElButton>
       </header>
-      <VehicleQueryInfoGrid :items="summaryItems" />
+      <ArtDescriptions :data="descriptionData" :items="descriptionItems" />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
   import { ElButton, ElImage } from 'element-plus'
+  import ArtDescriptions from '@/components/core/base/art-descriptions/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
-  import VehicleQueryInfoGrid from './vehicle-query-info-grid.vue'
   import type { InfoItem, VehicleArchive, VehicleQuerySummary } from './types'
-  import { formatDate, formatMileage, formatNumber } from './query-format'
+  import { createDescriptionItems, formatDate, formatMileage, formatNumber } from './query-format'
 
   defineOptions({ name: 'VehicleQuerySummary' })
 
@@ -41,24 +41,31 @@
     summary: VehicleQuerySummary
   }>()
   const emit = defineEmits<{ analyze: [] }>()
+  const descriptionData = Object.freeze({})
 
-  const summaryItems = computed<InfoItem[]>(() => [
-    { label: '车牌号', value: props.vehicle.plateNo },
-    { label: '所属机构', value: props.vehicle.companyName },
-    { label: '车型', value: props.vehicle.vehicleType, dictCode: 'vehicleType' },
-    { label: '车型厂商', value: props.vehicle.manufacturer },
-    { label: '车架号', value: props.vehicle.vin },
-    { label: '购入开票日期', value: formatDate(props.vehicle.invoiceDate) },
-    { label: '启用日期', value: formatDate(props.vehicle.startUseDate) },
-    { label: '运营状态', value: props.vehicle.operationStatus, dictCode: 'vehicleOperationStatus' },
-    { label: '运营时长', value: getOperationYears(), suffix: '年' },
-    { label: '运营行驶里程', value: formatMileage(props.summary.runningMileage) },
-    { label: '商业险到期', value: formatDate(props.summary.commercialExpireDate) },
-    { label: '交强险到期', value: formatDate(props.summary.compulsoryExpireDate) },
-    { label: '年检到期', value: formatDate(props.summary.inspectionExpireDate) },
-    { label: '下次保养里程', value: formatMileage(props.summary.nextMaintenanceMileage) },
-    { label: '下次保养时间', value: formatDate(props.summary.nextMaintenanceDate) }
-  ])
+  const descriptionItems = computed(() =>
+    createDescriptionItems([
+      { label: '车牌号', value: props.vehicle.plateNo },
+      { label: '所属机构', value: props.vehicle.companyName },
+      { label: '车型', value: props.vehicle.vehicleType, dictCode: 'vehicleType' },
+      { label: '车型厂商', value: props.vehicle.manufacturer },
+      { label: '车架号', value: props.vehicle.vin },
+      { label: '购入开票日期', value: formatDate(props.vehicle.invoiceDate) },
+      { label: '启用日期', value: formatDate(props.vehicle.startUseDate) },
+      {
+        label: '运营状态',
+        value: props.vehicle.operationStatus,
+        dictCode: 'vehicleOperationStatus'
+      },
+      { label: '运营时长', value: getOperationYears(), suffix: '年' },
+      { label: '运营行驶里程', value: formatMileage(props.summary.runningMileage) },
+      { label: '商业险到期', value: formatDate(props.summary.commercialExpireDate) },
+      { label: '交强险到期', value: formatDate(props.summary.compulsoryExpireDate) },
+      { label: '年检到期', value: formatDate(props.summary.inspectionExpireDate) },
+      { label: '下次保养里程', value: formatMileage(props.summary.nextMaintenanceMileage) },
+      { label: '下次保养时间', value: formatDate(props.summary.nextMaintenanceDate) }
+    ] satisfies InfoItem[])
+  )
 
   const getOperationYears = (): string => {
     if (!props.vehicle.startUseDate) return '--'
@@ -101,6 +108,19 @@
       display: grid;
       gap: 14px;
       min-width: 0;
+    }
+
+    :deep(.art-descriptions .el-descriptions__label) {
+      width: 128px;
+      font-weight: 600;
+      color: var(--el-text-color-primary);
+      background: var(--el-fill-color-lighter);
+    }
+
+    :deep(.art-descriptions .el-descriptions__content) {
+      min-width: 180px;
+      color: var(--el-text-color-secondary);
+      overflow-wrap: anywhere;
     }
 
     &__header {

@@ -1,6 +1,6 @@
 <template>
-  <VehicleQuerySection title="维修保养记录">
-    <template #extra>
+  <ArtPageSection :card="false" title="维修保养记录">
+    <template #actions>
       <ElSelect
         v-model="panel.maintenanceType"
         clearable
@@ -12,14 +12,14 @@
       </ElSelect>
     </template>
     <VehicleQueryTable :data="filteredRecords" :columns="columns" :loading="loading" />
-  </VehicleQuerySection>
+  </ArtPageSection>
 </template>
 
 <script setup lang="tsx">
   import { ElOption, ElSelect } from 'element-plus'
   import type { ColumnOption } from '@/types'
   import { fetchVehicleMaintenanceList } from '@/api/vehicle-manage-system'
-  import VehicleQuerySection from './vehicle-query-section.vue'
+  import ArtPageSection from '@/components/core/layouts/art-page-section/index.vue'
   import VehicleQueryTable from './vehicle-query-table.vue'
   import type { VehicleArchive, VehicleMaintenanceRecord } from './types'
   import { formatDateTime, formatMoney } from './query-format'

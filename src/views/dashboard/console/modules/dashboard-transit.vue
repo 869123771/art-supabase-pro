@@ -7,35 +7,42 @@
       ></button>
     </header>
     <ElScrollbar class="dashboard-transit__list">
-      <button
-        v-for="item in orders"
-        :key="item.id || item.orderNo"
-        type="button"
-        class="transit-row"
-        @click="emit('open-order', item.id)"
+      <ArtAsyncState
+        :empty="orders.length === 0"
+        empty-text="暂无运输中的运单"
+        :empty-image-size="62"
+        :min-height="260"
       >
-        <span class="transit-row__truck"><ArtSvgIcon icon="ri:truck-line" /></span>
-        <div class="transit-row__main"
-          ><strong>{{ item.dispatchPlateNo || '待分配车辆' }}</strong
-          ><span>{{ item.orderNo }}</span></div
+        <button
+          v-for="item in orders"
+          :key="item.id || item.orderNo"
+          type="button"
+          class="transit-row"
+          @click="emit('open-order', item.id)"
         >
-        <div class="transit-row__route"
-          ><b>{{ item.originStation || '始发站' }}</b
-          ><i /><b>{{ item.destinationStation || '目的站' }}</b></div
-        >
-        <span class="transit-row__customer" :title="item.shippingCustomerName || undefined">{{
-          item.shippingCustomerName || '发货方未维护'
-        }}</span>
-        <span class="transit-row__driver">{{ item.dispatchDriverName || '司机待分配' }}</span>
-        <ElTag size="small" type="success" effect="light">运输中</ElTag>
-      </button>
-      <ElEmpty v-if="orders.length === 0" description="暂无运输中的运单" :image-size="62" />
+          <span class="transit-row__truck"><ArtSvgIcon icon="ri:truck-line" /></span>
+          <div class="transit-row__main"
+            ><strong>{{ item.dispatchPlateNo || '待分配车辆' }}</strong
+            ><span>{{ item.orderNo }}</span></div
+          >
+          <div class="transit-row__route"
+            ><b>{{ item.originStation || '始发站' }}</b
+            ><i /><b>{{ item.destinationStation || '目的站' }}</b></div
+          >
+          <span class="transit-row__customer" :title="item.shippingCustomerName || undefined">{{
+            item.shippingCustomerName || '发货方未维护'
+          }}</span>
+          <span class="transit-row__driver">{{ item.dispatchDriverName || '司机待分配' }}</span>
+          <ElTag size="small" type="success" effect="light">运输中</ElTag>
+        </button>
+      </ArtAsyncState>
     </ElScrollbar>
   </article>
 </template>
 
 <script setup lang="ts">
   import { ArrowRight } from '@element-plus/icons-vue'
+  import ArtAsyncState from '@/components/core/layouts/art-async-state/index.vue'
   import type { DashboardOrder } from './types'
 
   defineProps<{ orders: DashboardOrder[] }>()
@@ -44,118 +51,171 @@
 
 <style scoped lang="scss">
   .dashboard-transit {
+    position: relative;
     min-width: 0;
-    padding: 21px 24px 9px;
-  }
-  header {
-    display: flex;
-    gap: 12px;
-    align-items: center;
-    justify-content: space-between;
-  }
-  p {
-    margin: 0 0 4px;
-    font-size: 12px;
-    color: var(--el-text-color-secondary);
-  }
-  h2 {
-    margin: 0;
-    font-size: 17px;
-    color: var(--el-text-color-primary);
-  }
-  header button {
-    display: inline-flex;
-    gap: 2px;
-    align-items: center;
-    padding: 0;
-    font-size: 12px;
-    color: var(--el-color-primary);
-    cursor: pointer;
-    background: transparent;
-    border: 0;
-  }
-  .dashboard-transit__list {
-    height: 282px;
-    margin-top: 14px;
-  }
-  .transit-row {
-    display: grid;
-    grid-template-columns: 33px 104px minmax(120px, 1fr) minmax(96px, 0.6fr) 82px auto;
-    gap: 9px;
-    align-items: center;
-    width: 100%;
-    min-height: 54px;
-    padding: 7px 4px;
-    text-align: left;
-    cursor: pointer;
-    background: transparent;
-    border: 0;
-    border-bottom: 1px solid var(--el-border-color-lighter);
-    transition: background 0.16s ease;
-  }
-  .transit-row:hover {
-    background: var(--el-fill-color-light);
-  }
-  .transit-row__truck {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 31px;
-    height: 31px;
-    color: var(--el-color-primary);
-    background: color-mix(in srgb, var(--el-color-primary) 15%, var(--el-bg-color));
-    border-radius: var(--el-border-radius-small);
-  }
-  .transit-row__main {
-    display: grid;
-    min-width: 0;
-    gap: 3px;
-  }
-  .transit-row__main strong {
+    padding: 24px 25px 10px;
     overflow: hidden;
-    font-size: 13px;
-    color: var(--el-text-color-primary);
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .transit-row__main span,
-  .transit-row__customer,
-  .transit-row__driver {
-    overflow: hidden;
-    font-size: 11px;
-    color: var(--el-text-color-placeholder);
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .transit-row__route {
-    display: flex;
-    gap: 6px;
-    align-items: center;
-    min-width: 0;
-    overflow: hidden;
-  }
-  .transit-row__route b {
-    min-width: 0;
-    overflow: hidden;
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--el-text-color-regular);
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .transit-row__route i {
-    flex: 0 0 15px;
-    height: 1px;
-    background: var(--el-border-color);
-  }
-  @media screen and (max-width: 720px) {
-    .transit-row {
-      grid-template-columns: 33px minmax(0, 1fr) auto;
+
+    &::before {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 3px;
+      content: '';
+      background: linear-gradient(90deg, #06b6d4, var(--el-color-success), transparent 66%);
     }
-    .transit-row__route,
-    .transit-row__customer,
-    .transit-row__driver {
-      display: none;
+
+    header {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      justify-content: space-between;
+
+      button {
+        display: inline-flex;
+        gap: 2px;
+        align-items: center;
+        padding: 7px 10px;
+        font-size: 11px;
+        color: var(--el-color-primary);
+        cursor: pointer;
+        background: color-mix(in srgb, var(--el-color-primary) 8%, transparent);
+        border: 0;
+        border-radius: 999px;
+      }
+    }
+
+    p {
+      margin: 0 0 5px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #079db6;
+      letter-spacing: 0.8px;
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 18px;
+      color: var(--el-text-color-primary);
+    }
+
+    &__list {
+      height: 282px;
+      margin-top: 16px;
+    }
+
+    .transit-row {
+      display: grid;
+      grid-template-columns: 38px 108px minmax(120px, 1fr) minmax(96px, 0.6fr) 82px auto;
+      gap: 10px;
+      align-items: center;
+      width: 100%;
+      min-height: 58px;
+      padding: 8px;
+      text-align: left;
+      cursor: pointer;
+      background: transparent;
+      border: 0;
+      border-bottom: 1px solid var(--el-border-color-lighter);
+      transition: background 0.16s ease;
+
+      &:hover {
+        background: color-mix(in srgb, #06b6d4 5%, var(--el-fill-color-light));
+      }
+
+      &__truck {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        color: #079db6;
+        background: color-mix(in srgb, #06b6d4 12%, var(--el-bg-color));
+        border-radius: var(--el-border-radius-small);
+      }
+
+      &__main {
+        display: grid;
+        gap: 4px;
+        min-width: 0;
+
+        strong {
+          overflow: hidden;
+          text-overflow: ellipsis;
+          font-size: 12px;
+          color: var(--el-text-color-primary);
+          white-space: nowrap;
+        }
+
+        span {
+          overflow: hidden;
+          text-overflow: ellipsis;
+          font-size: 10px;
+          color: var(--el-text-color-placeholder);
+          white-space: nowrap;
+        }
+      }
+
+      &__customer,
+      &__driver {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        font-size: 11px;
+        color: var(--el-text-color-placeholder);
+        white-space: nowrap;
+      }
+
+      &__route {
+        display: flex;
+        gap: 7px;
+        align-items: center;
+        min-width: 0;
+        overflow: hidden;
+
+        b {
+          min-width: 0;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          font-size: 11px;
+          font-weight: 550;
+          color: var(--el-text-color-regular);
+          white-space: nowrap;
+        }
+
+        i {
+          position: relative;
+          flex: 0 0 18px;
+          height: 1px;
+          background: linear-gradient(90deg, #06b6d4, var(--el-color-primary));
+
+          &::after {
+            position: absolute;
+            top: -2px;
+            right: 0;
+            width: 5px;
+            height: 5px;
+            content: '';
+            background: var(--el-color-primary);
+            border-radius: 50%;
+          }
+        }
+      }
+    }
+
+    @media screen and (width <= 720px) {
+      padding-right: 18px;
+      padding-left: 18px;
+
+      .transit-row {
+        grid-template-columns: 38px minmax(0, 1fr) auto;
+
+        &__route,
+        &__customer,
+        &__driver {
+          display: none;
+        }
+      }
     }
   }
 </style>

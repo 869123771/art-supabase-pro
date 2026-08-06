@@ -1,101 +1,84 @@
 <template>
-  <div class="widget-page">
-    <ElCard shadow="never" class="widget-section">
-      <template #header>
-        <div class="widget-section__header">
-          <div>
-            <h2>右键菜单</h2>
-            <p>ArtMenuRight 支持普通项、分割线、禁用项、子菜单、自定义尺寸和命令式打开。</p>
-          </div>
+  <ArtPageShell>
+    <div class="widget-page">
+      <ArtPageSection
+        class="widget-section"
+        title="右键菜单"
+        subtitle="ArtMenuRight 支持普通项、分割线、禁用项、子菜单、自定义尺寸和命令式打开。"
+      >
+        <template #actions>
           <ElTag effect="plain">ArtMenuRight</ElTag>
-        </div>
-      </template>
+        </template>
 
-      <div class="context-menu-demo">
-        <div class="context-menu-demo__surface" @contextmenu.prevent="showMainMenu">
-          <ArtSvgIcon icon="ri:cursor-line" />
-          <strong>在这里右键</strong>
-          <span>菜单会自动根据视口边界调整位置</span>
-        </div>
+        <div class="context-menu-demo">
+          <div class="context-menu-demo__surface" @contextmenu.prevent="showMainMenu">
+            <ArtSvgIcon icon="ri:cursor-line" />
+            <strong>在这里右键</strong>
+            <span>菜单会自动根据视口边界调整位置</span>
+          </div>
 
-        <div class="context-menu-demo__actions">
-          <ElButton type="primary" @click="showMainMenuByButton">打开完整菜单</ElButton>
-          <ElButton @contextmenu.prevent="showCompactMenu">右键打开紧凑菜单</ElButton>
-          <ElAlert
-            v-if="lastAction"
-            :title="`最近选择：${lastAction}`"
-            type="success"
-            show-icon
-            :closable="false"
-          />
-        </div>
-      </div>
-    </ElCard>
-
-    <ElCard shadow="never" class="widget-section">
-      <template #header>
-        <div class="widget-section__header">
-          <div>
-            <h2>API</h2>
-            <p>包含组件 props、菜单项字段、事件和 expose 方法。</p>
+          <div class="context-menu-demo__actions">
+            <ElButton type="primary" @click="showMainMenuByButton">打开完整菜单</ElButton>
+            <ElButton @contextmenu.prevent="showCompactMenu">右键打开紧凑菜单</ElButton>
+            <ElAlert
+              v-if="lastAction"
+              :title="`最近选择：${lastAction}`"
+              type="success"
+              show-icon
+              :closable="false"
+            />
           </div>
         </div>
-      </template>
+      </ArtPageSection>
 
-      <ElTabs>
-        <ElTabPane label="Props">
-          <ElTable :data="propsRows" border>
-            <ElTableColumn prop="name" label="名称" width="170" />
-            <ElTableColumn prop="type" label="类型" width="180" />
-            <ElTableColumn prop="defaultValue" label="默认值" width="140" />
-            <ElTableColumn prop="desc" label="说明" />
-          </ElTable>
-        </ElTabPane>
-        <ElTabPane label="MenuItemType">
-          <ElTable :data="itemRows" border>
-            <ElTableColumn prop="name" label="字段" width="170" />
-            <ElTableColumn prop="type" label="类型" width="190" />
-            <ElTableColumn prop="desc" label="说明" />
-          </ElTable>
-        </ElTabPane>
-        <ElTabPane label="Events / Expose">
-          <ElTable :data="eventRows" border>
-            <ElTableColumn prop="name" label="名称" width="170" />
-            <ElTableColumn prop="payload" label="参数" width="220" />
-            <ElTableColumn prop="desc" label="说明" />
-          </ElTable>
-        </ElTabPane>
-      </ElTabs>
-    </ElCard>
+      <ArtPageSection
+        class="widget-section"
+        title="API"
+        subtitle="包含组件 props、菜单项字段、事件和 expose 方法。"
+      >
+        <ElTabs>
+          <ElTabPane label="Props">
+            <ArtTable :data="propsRows" :columns="propsColumns" :pagination="false" />
+          </ElTabPane>
+          <ElTabPane label="MenuItemType">
+            <ArtTable :data="itemRows" :columns="itemColumns" :pagination="false" />
+          </ElTabPane>
+          <ElTabPane label="Events / Expose">
+            <ArtTable :data="eventRows" :columns="eventColumns" :pagination="false" />
+          </ElTabPane>
+        </ElTabs>
+      </ArtPageSection>
 
-    <ArtMenuRight
-      ref="mainMenuRef"
-      :menu-items="mainMenuItems"
-      :menu-width="190"
-      :submenu-width="160"
-      :item-height="34"
-      :boundary-distance="12"
-      :menu-padding="6"
-      :item-padding-x="10"
-      :border-radius="8"
-      @select="handleSelect"
-      @show="handleMenuShow"
-      @hide="handleMenuHide"
-    />
+      <ArtMenuRight
+        ref="mainMenuRef"
+        :menu-items="mainMenuItems"
+        :menu-width="190"
+        :submenu-width="160"
+        :item-height="34"
+        :boundary-distance="12"
+        :menu-padding="6"
+        :item-padding-x="10"
+        :border-radius="8"
+        @select="handleSelect"
+        @show="handleMenuShow"
+        @hide="handleMenuHide"
+      />
 
-    <ArtMenuRight
-      ref="compactMenuRef"
-      :menu-items="compactMenuItems"
-      :menu-width="140"
-      :item-height="30"
-      :menu-padding="4"
-      @select="handleSelect"
-    />
-  </div>
+      <ArtMenuRight
+        ref="compactMenuRef"
+        :menu-items="compactMenuItems"
+        :menu-width="140"
+        :item-height="30"
+        :menu-padding="4"
+        @select="handleSelect"
+      />
+    </div>
+  </ArtPageShell>
 </template>
 
 <script setup lang="ts">
   import { nextTick } from 'vue'
+  import type { ColumnOption } from '@/types'
   import ArtMenuRight from '@/components/core/others/art-menu-right/index.vue'
   import type { MenuItemType } from '@/components/core/others/art-menu-right/index.vue'
 
@@ -145,6 +128,23 @@
     { key: 'pin', label: '固定', icon: 'ri:pushpin-line' },
     { key: 'close', label: '关闭', icon: 'ri:close-line' }
   ])
+
+  const propsColumns: ColumnOption<ApiRow>[] = [
+    { prop: 'name', label: '名称', width: 170 },
+    { prop: 'type', label: '类型', width: 180 },
+    { prop: 'defaultValue', label: '默认值', width: 140 },
+    { prop: 'desc', label: '说明', minWidth: 240 }
+  ]
+  const itemColumns: ColumnOption<ApiRow>[] = [
+    { prop: 'name', label: '字段', width: 170 },
+    { prop: 'type', label: '类型', width: 190 },
+    { prop: 'desc', label: '说明', minWidth: 240 }
+  ]
+  const eventColumns: ColumnOption<ApiRow>[] = [
+    { prop: 'name', label: '名称', width: 170 },
+    { prop: 'payload', label: '参数', width: 220 },
+    { prop: 'desc', label: '说明', minWidth: 240 }
+  ]
 
   const propsRows: ApiRow[] = [
     { name: 'menuItems', type: 'MenuItemType[]', defaultValue: '-', desc: '菜单项配置数组。' },
@@ -220,29 +220,6 @@
     padding-bottom: 16px;
   }
 
-  .widget-section {
-    border-radius: 8px;
-  }
-
-  .widget-section__header {
-    display: flex;
-    gap: 16px;
-    align-items: flex-start;
-    justify-content: space-between;
-
-    h2 {
-      margin: 0;
-      font-size: 18px;
-      font-weight: 600;
-      color: var(--el-text-color-primary);
-    }
-
-    p {
-      margin: 6px 0 0;
-      color: var(--el-text-color-secondary);
-    }
-  }
-
   .context-menu-demo {
     display: grid;
     grid-template-columns: minmax(260px, 1fr) minmax(260px, 360px);
@@ -259,10 +236,10 @@
     color: var(--el-text-color-primary);
     cursor: context-menu;
     background:
-      linear-gradient(135deg, rgba(64, 158, 255, 0.08), rgba(103, 194, 58, 0.08)),
+      linear-gradient(135deg, rgb(64 158 255 / 8%), rgb(103 194 58 / 8%)),
       var(--el-fill-color-lighter);
     border: 1px dashed var(--el-border-color);
-    border-radius: 8px;
+    border-radius: var(--art-surface-radius);
 
     .art-svg-icon {
       font-size: 40px;

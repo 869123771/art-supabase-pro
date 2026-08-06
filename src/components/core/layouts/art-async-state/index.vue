@@ -26,20 +26,24 @@
       </template>
     </ElResult>
 
-    <ElEmpty
+    <ArtEmptyState
       v-else-if="empty"
-      :description="emptyText"
-      :image-size="emptyImageSize"
+      :title="emptyText"
+      :description="emptyDescription"
+      :visual-size="emptyImageSize"
+      :size="emptyImageSize <= 72 ? 'compact' : 'default'"
       class="art-async-state__empty"
     >
       <slot name="empty-action" />
-    </ElEmpty>
+    </ArtEmptyState>
 
     <slot v-else />
   </div>
 </template>
 
 <script setup lang="ts">
+  import ArtEmptyState from '@/components/core/layouts/art-empty-state/index.vue'
+
   defineOptions({ name: 'ArtAsyncState' })
 
   interface Props {
@@ -51,6 +55,7 @@
     retryable?: boolean
     empty?: boolean
     emptyText?: string
+    emptyDescription?: string
     emptyImageSize?: number
     fullHeight?: boolean
     minHeight?: string | number
@@ -65,6 +70,7 @@
     retryable: true,
     empty: false,
     emptyText: '暂无数据',
+    emptyDescription: '',
     emptyImageSize: 96,
     fullHeight: false,
     minHeight: 180
@@ -95,11 +101,14 @@
       padding: var(--art-space-4);
     }
 
-    &__result,
-    &__empty {
+    &__result {
       display: flex;
       align-items: center;
       justify-content: center;
+      min-height: inherit;
+    }
+
+    &__empty {
       min-height: inherit;
     }
   }

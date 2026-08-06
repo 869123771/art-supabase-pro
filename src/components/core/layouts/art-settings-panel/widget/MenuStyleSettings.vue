@@ -1,10 +1,14 @@
 <template>
   <SectionTitle :title="$t('setting.menu.title')" />
   <div class="setting-box-wrap">
-    <div
+    <button
+      type="button"
       class="setting-item"
       v-for="item in menuThemeList"
       :key="item.theme"
+      :disabled="disabled"
+      :aria-label="`${item.theme}菜单风格`"
+      :aria-pressed="item.theme === menuThemeType"
       @click="switchMenuStyles(item.theme)"
     >
       <div
@@ -14,9 +18,9 @@
           cursor: disabled ? 'no-drop' : 'pointer'
         }"
       >
-        <img :src="item.img" />
+        <img :src="item.img" alt="" />
       </div>
-    </div>
+    </button>
   </div>
 </template>
 

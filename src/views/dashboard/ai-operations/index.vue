@@ -1,5 +1,12 @@
 <template>
-  <div class="ai-operations">
+  <ArtPageShell
+    class="ai-operations"
+    :loading="overview.loading"
+    :loading-mode="loadingMode"
+    :error="pageError"
+    min-height="560px"
+    @retry="loadOverview"
+  >
     <section class="ai-operations__hero art-card-xs">
       <div class="ai-operations__hero-main">
         <div class="ai-operations__brand">
@@ -23,6 +30,7 @@
           <ArtIconButton
             icon="ri:refresh-line"
             circle
+            aria-label="刷新运行数据"
             :class="{ 'ai-operations__refreshing': overview.loading }"
             @click="refreshAll"
           />
@@ -30,7 +38,7 @@
       </div>
     </section>
 
-    <section class="ai-operations__metrics" v-loading="overview.loading">
+    <section class="ai-operations__metrics">
       <article
         v-for="metric in metricCards"
         :key="metric.key"
@@ -47,7 +55,7 @@
       </article>
     </section>
 
-    <section class="ai-operations__quality art-card-xs" v-loading="overview.loading">
+    <section class="ai-operations__quality art-card-xs">
       <header class="ai-operations__card-header ai-operations__quality-header">
         <div>
           <span>HUMAN-IN-THE-LOOP</span>
@@ -80,7 +88,8 @@
             </div>
           </header>
           <ArtLineChart
-            height="230px"
+            v-if="qualityTrendLabels.length"
+            height="100%"
             :data="qualityTrendSeries"
             :x-axis-data="qualityTrendLabels"
             :colors="['#5b8ff9', '#36c98f']"
@@ -88,6 +97,15 @@
             :show-axis-line="false"
             :show-legend="true"
             :loading="overview.loading"
+            class="ai-operations__quality-trend-chart"
+          />
+          <ArtEmptyState
+            v-else
+            title="暂无质量趋势"
+            description="完成 AI 填单并保存后，这里会展示草稿生成与保存采用趋势。"
+            :visual-size="88"
+            size="compact"
+            class="ai-operations__quality-chart-empty"
           />
         </article>
 
@@ -99,29 +117,39 @@
             </div>
             <small>按人工修正次数排序</small>
           </header>
-          <div v-if="overview.data.quality.fieldQuality.length" class="ai-operations__field-list">
-            <div v-for="item in overview.data.quality.fieldQuality" :key="item.field">
-              <div>
-                <span>{{ getAiOrderFieldLabel(item.field) }}</span>
-                <small>修正 {{ item.corrected }} / {{ item.total }}</small>
+          <ArtAsyncState
+            :empty="!overview.data.quality.fieldQuality.length"
+            empty-text="完成一次 AI 填单并保存后，将显示字段质量"
+            :empty-image-size="58"
+            :min-height="0"
+            class="ai-operations__field-state"
+          >
+            <ElScrollbar always class="ai-operations__field-scrollbar">
+              <div class="ai-operations__field-list">
+                <div v-for="item in overview.data.quality.fieldQuality" :key="item.field">
+                  <div>
+                    <span>{{ getAiOrderFieldLabel(item.field) }}</span>
+                    <small>修正 {{ item.corrected }} / {{ item.total }}</small>
+                  </div>
+                  <ElProgress
+                    :percentage="item.acceptanceRate"
+                    :stroke-width="7"
+                    :show-text="false"
+                    :color="getQualityProgressColor(item.acceptanceRate)"
+                  />
+                  <strong>{{ item.acceptanceRate.toFixed(1) }}%</strong>
+                </div>
               </div>
-              <ElProgress
-                :percentage="item.acceptanceRate"
-                :stroke-width="7"
-                :show-text="false"
-                :color="getQualityProgressColor(item.acceptanceRate)"
-              />
-              <strong>{{ item.acceptanceRate.toFixed(1) }}%</strong>
-            </div>
-          </div>
-          <ElEmpty v-else description="完成一次 AI 填单并保存后，将显示字段质量" :image-size="58" />
+            </ElScrollbar>
+          </ArtAsyncState>
         </article>
       </div>
     </section>
 
+    <AiOcrQualityPanel ref="ocrQualityPanelRef" :days="overview.days" />
+
     <AiFeedbackQualityPanel
       :data="overview.data.feedbackQuality"
-      :loading="overview.loading"
       @resolve="openFeedbackResolution"
       @view-run="openRunById"
     />
@@ -140,6 +168,7 @@
         </header>
         <div class="ai-operations__trend-chart">
           <ArtLineChart
+            v-if="trendLabels.length"
             height="100%"
             :data="trendSeries"
             :x-axis-data="trendLabels"
@@ -148,6 +177,14 @@
             :show-axis-line="false"
             :show-legend="false"
             :loading="overview.loading"
+          />
+          <ArtEmptyState
+            v-else
+            title="暂无运行趋势"
+            description="当前周期产生 AI 运行记录后，这里会展示每日成功与失败趋势。"
+            :visual-size="88"
+            size="compact"
+            class="ai-operations__chart-empty"
           />
         </div>
       </article>
@@ -180,27 +217,31 @@
               <small>平均耗时</small>
             </div>
             <ElScrollbar class="ai-operations__feature-scrollbar">
-              <div class="ai-operations__feature-list">
-                <div
-                  v-for="item in featureInventory"
-                  :key="item.feature"
-                  :class="{ 'is-unused': item.total === 0 }"
-                >
-                  <span
-                    ><i /><ArtDictDisplay
-                      dict-code="aiRunFeature"
-                      :value="item.feature"
-                      display="text"
-                  /></span>
-                  <strong>{{ item.total }} 次</strong>
-                  <small>{{ item.total ? formatDuration(item.averageLatencyMs) : '未调用' }}</small>
+              <ArtAsyncState
+                :empty="!featureInventory.length"
+                empty-text="暂无可用 AI 能力"
+                :empty-image-size="54"
+                :min-height="250"
+              >
+                <div class="ai-operations__feature-list">
+                  <div
+                    v-for="item in featureInventory"
+                    :key="item.feature"
+                    :class="{ 'is-unused': item.total === 0 }"
+                  >
+                    <span
+                      ><i /><ArtDictDisplay
+                        dict-code="aiRunFeature"
+                        :value="item.feature"
+                        display="text"
+                    /></span>
+                    <strong>{{ item.total }} 次</strong>
+                    <small>{{
+                      item.total ? formatDuration(item.averageLatencyMs) : '未调用'
+                    }}</small>
+                  </div>
                 </div>
-                <ElEmpty
-                  v-if="!featureInventory.length"
-                  description="暂无可用 AI 能力"
-                  :image-size="54"
-                />
-              </div>
+              </ArtAsyncState>
             </ElScrollbar>
           </div>
         </div>
@@ -255,7 +296,7 @@
       ref="feedbackResolutionDialogRef"
       @success="refreshAfterFeedbackResolution"
     />
-  </div>
+  </ArtPageShell>
 </template>
 
 <script setup lang="tsx">
@@ -264,6 +305,8 @@
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type { ArtTableQueryExpose } from '@/components/core/tables/art-table-query/index.vue'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
+  import ArtAsyncState from '@/components/core/layouts/art-async-state/index.vue'
+  import ArtEmptyState from '@/components/core/layouts/art-empty-state/index.vue'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import type { ColumnOption } from '@/types'
@@ -280,6 +323,7 @@
     type AiRunSearchParams
   } from '@/api/ai-operations'
   import AiFeedbackQualityPanel from './modules/ai-feedback-quality-panel.vue'
+  import AiOcrQualityPanel from './modules/ai-ocr-quality-panel.vue'
   import AiFeedbackResolutionDialog from './modules/ai-feedback-resolution-dialog.vue'
   import AiRunDetailDrawer from './modules/ai-run-detail-drawer.vue'
 
@@ -309,17 +353,29 @@
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const detailDrawerRef = ref<DetailDrawerExpose>()
   const feedbackResolutionDialogRef = ref<FeedbackResolutionDialogExpose>()
+  const ocrQualityPanelRef = ref<{ loadData: () => Promise<void> }>()
   const searchQuery = ref<Partial<AiRunSearchParams>>({
     feature: '',
     status: '',
     model: '',
     timeRange: undefined
   })
-  const overview = reactive<{ days: number; loading: boolean; data: AiOperationsOverview }>({
+  const overview = reactive<{
+    days: number
+    loading: boolean
+    loaded: boolean
+    error: Error | null
+    data: AiOperationsOverview
+  }>({
     days: 30,
     loading: false,
+    loaded: false,
+    error: null,
     data: createEmptyAiOperationsOverview(30)
   })
+
+  const loadingMode = computed<'mask' | 'skeleton'>(() => (overview.loaded ? 'mask' : 'skeleton'))
+  const pageError = computed(() => (overview.loaded ? null : overview.error))
 
   const metricCards = computed<MetricCard[]>(() => [
     {
@@ -552,8 +608,12 @@
 
   async function loadOverview(): Promise<void> {
     overview.loading = true
+    overview.error = null
     try {
       overview.data = await fetchAiOperationsOverview(overview.days)
+      overview.loaded = true
+    } catch (error) {
+      overview.error = error instanceof Error ? error : new Error('AI 运行中心加载失败')
     } finally {
       overview.loading = false
     }
@@ -562,7 +622,11 @@
   async function refreshAll(): Promise<void> {
     if (overview.loading) return
     try {
-      await Promise.all([loadOverview(), tableQueryRef.value?.refreshData()])
+      await Promise.all([
+        loadOverview(),
+        tableQueryRef.value?.refreshData(),
+        ocrQualityPanelRef.value?.loadData()
+      ])
       ElMessage.success('AI 运行数据已刷新')
     } catch {
       // 接口层已统一展示错误信息。
@@ -672,9 +736,11 @@
 
 <style scoped lang="scss">
   .ai-operations {
-    display: grid;
-    gap: 16px;
-    padding-bottom: 20px;
+    :deep(> .art-async-state) {
+      display: grid;
+      gap: var(--art-space-4);
+      padding-bottom: var(--art-space-5);
+    }
 
     &__hero {
       position: relative;
@@ -892,8 +958,13 @@
 
     &__quality-trend,
     &__field-quality {
+      display: flex;
+      flex-direction: column;
       min-width: 0;
+      height: clamp(300px, 32vh, 328px);
+      min-height: 0;
       padding: 16px 18px;
+      overflow: hidden;
       border: 1px solid var(--el-border-color-lighter);
       border-radius: var(--el-border-radius-base);
 
@@ -918,6 +989,26 @@
           font-size: 14px;
           color: var(--el-text-color-primary);
         }
+      }
+    }
+
+    &__quality-trend-chart,
+    &__quality-chart-empty {
+      flex: 1;
+      min-height: 0;
+    }
+
+    &__field-state {
+      flex: 1;
+      min-height: 0 !important;
+      overflow: hidden;
+    }
+
+    &__field-scrollbar {
+      height: 100%;
+
+      :deep(.el-scrollbar__view) {
+        padding-right: 12px;
       }
     }
 
@@ -1048,6 +1139,10 @@
 
     &__trend-chart {
       flex: 1;
+    }
+
+    &__chart-empty {
+      min-height: 210px;
     }
 
     &__feature-chart {

@@ -1,136 +1,171 @@
 <template>
-  <div class="transit-screen" v-loading="screen.loading">
-    <div
-      ref="viewportRef"
-      class="transit-screen__viewport"
-      @wheel.capture="handleScreenWheelCapture"
+  <div class="transit-screen">
+    <ArtAsyncState
+      class="transit-screen__state"
+      :loading="screen.loading"
+      :error="pageError"
+      :min-height="0"
+      full-height
+      @retry="loadMonitorData"
     >
-      <div class="transit-screen__stage" :style="screenStageStyle">
-        <header class="transit-screen__header">
-          <h1>TMS 运输在途监控</h1>
-          <nav class="screen-tabs">
-            <button
-              v-for="item in monitorTabs"
-              :key="item.value"
-              type="button"
-              :class="{ 'is-active': activeMode === item.value }"
-              @click="activeMode = item.value"
-            >
-              {{ item.label }}
-            </button>
-          </nav>
-          <div class="header-status">
-            <strong>{{ headerTimeText }}</strong>
-            <span><i />系统运行正常</span>
+      <div
+        ref="viewportRef"
+        class="transit-screen__viewport"
+        :class="{ 'is-compact': isCompactScreen }"
+        @wheel.capture="handleScreenWheelCapture"
+      >
+        <ElScrollbar class="transit-screen__scrollbar">
+          <div
+            class="transit-screen__stage"
+            :class="{ 'is-compact': isCompactScreen }"
+            :style="screenStageStyle"
+          >
+            <header class="transit-screen__header">
+              <h1>TMS 运输在途监控</h1>
+              <nav class="screen-tabs" aria-label="监控模式">
+                <button
+                  v-for="item in monitorTabs"
+                  :key="item.value"
+                  type="button"
+                  :class="{ 'is-active': activeMode === item.value }"
+                  :aria-current="activeMode === item.value ? 'page' : undefined"
+                  @click="activeMode = item.value"
+                >
+                  {{ item.label }}
+                </button>
+              </nav>
+              <div class="header-status">
+                <strong>{{ headerTimeText }}</strong>
+                <span><i />系统运行正常</span>
+              </div>
+            </header>
+
+            <main class="transit-screen__body">
+              <section class="monitor-map">
+                <div ref="chartRef" class="monitor-map__chart" />
+                <div class="monitor-map__heading">
+                  <strong>{{ monitorHeadingTitle }}</strong>
+                  <span>{{ activeOrder?.routeName || '暂无线路' }}</span>
+                </div>
+                <div v-if="activeOrder" class="monitor-map__track-chip">
+                  {{ activeOrder.plateNo }} · {{ activeOrder.orderNo }}
+                </div>
+                <div class="monitor-map__tools" :class="{ 'is-wide': activeMode !== 'realtime' }">
+                  <ElButton
+                    circle
+                    :icon="ZoomIn"
+                    title="放大地图"
+                    aria-label="放大地图"
+                    @click="zoomMap('in')"
+                  />
+                  <ElButton
+                    circle
+                    :icon="ZoomOut"
+                    title="缩小地图"
+                    aria-label="缩小地图"
+                    @click="zoomMap('out')"
+                  />
+                  <ElButton
+                    circle
+                    :icon="RefreshRight"
+                    title="定位当前车辆"
+                    aria-label="定位当前车辆"
+                    @click="resetMapView"
+                  />
+                </div>
+
+                <section
+                  v-if="activeMode === 'realtime'"
+                  class="screen-panel map-float map-float--overview"
+                >
+                  <div class="screen-panel__title">
+                    <strong>运输概况</strong>
+                    <span>{{ formatRefreshTime(screen.lastRefreshTime) }}</span>
+                  </div>
+                  <div class="progress-lines">
+                    <div v-for="item in overviewBars" :key="item.label" class="progress-line">
+                      <div>
+                        <span>{{ item.label }}</span>
+                        <strong>{{ item.value }}</strong>
+                      </div>
+                      <i>
+                        <b :style="{ width: `${item.percent}%`, background: item.color }" />
+                      </i>
+                    </div>
+                  </div>
+                </section>
+
+                <section
+                  v-if="activeMode === 'realtime' && alertItems.length > 0"
+                  class="screen-panel map-float map-float--alerts"
+                >
+                  <div class="screen-panel__title">
+                    <strong>实时报警</strong>
+                    <span>{{ alertItems.length }} 条</span>
+                  </div>
+                  <ElScrollbar class="alert-list">
+                    <div v-for="item in alertItems" :key="item.key" class="alert-item">
+                      <i :class="`alert-item__level alert-item__level--${item.level}`" />
+                      <div>
+                        <strong>{{ item.title }}</strong>
+                        <p>{{ item.content }}</p>
+                      </div>
+                      <span>{{ item.time }}</span>
+                    </div>
+                  </ElScrollbar>
+                </section>
+              </section>
+
+              <RealtimeMonitorPanel
+                v-if="activeMode === 'realtime'"
+                v-model:keyword="screen.keyword"
+                v-model:region="screen.region"
+                v-model:status="screen.status"
+                class="transit-screen__left"
+                :get-poi-text="getVehiclePoiText"
+                :is-poi-loading="isVehiclePoiLoading"
+                :orders="filteredOrders"
+                :overview="overview"
+                :region-options="regionOptions"
+                :selected-id="screen.selectedOrderId"
+                :status-options="monitorStatusOptions"
+                :total-count="realtimeOrders.length"
+                @refresh-poi="handleVehiclePoiRefresh"
+                @select="selectOrder"
+              />
+              <WaybillMonitorPanel
+                v-else-if="activeMode === 'waybill'"
+                v-model:keyword="monitorKeywords.waybill"
+                class="transit-screen__left"
+                :orders="monitorOrders"
+                :overview="overview"
+                :selected-id="screen.selectedOrderId"
+                @select="selectOrder"
+              />
+              <VehicleMonitorPanel
+                v-else
+                v-model:keyword="monitorKeywords.vehicle"
+                class="transit-screen__left"
+                :orders="monitorOrders"
+                :overview="overview"
+                :selected-id="screen.selectedOrderId"
+                @select="selectOrder"
+              />
+
+              <MonitorDetailPanel
+                v-if="activeMode === 'realtime'"
+                class="transit-screen__right"
+                :order="activeOrder"
+                @analyze-anomaly="openTransportAnomalyAdvisor"
+                @contact-driver="contactDriver"
+                @open-detail="openOrderDetail"
+                @send-reminder="sendReminder"
+              />
+            </main>
           </div>
-        </header>
-
-        <main class="transit-screen__body">
-          <section class="monitor-map">
-            <div ref="chartRef" class="monitor-map__chart" />
-            <div class="monitor-map__heading">
-              <strong>{{ monitorHeadingTitle }}</strong>
-              <span>{{ activeOrder?.routeName || '暂无线路' }}</span>
-            </div>
-            <div v-if="activeOrder" class="monitor-map__track-chip">
-              {{ activeOrder.plateNo }} · {{ activeOrder.orderNo }}
-            </div>
-            <div class="monitor-map__tools" :class="{ 'is-wide': activeMode !== 'realtime' }">
-              <ElButton circle :icon="ZoomIn" title="放大地图" @click="zoomMap('in')" />
-              <ElButton circle :icon="ZoomOut" title="缩小地图" @click="zoomMap('out')" />
-              <ElButton circle :icon="RefreshRight" title="定位当前车辆" @click="resetMapView" />
-            </div>
-
-            <section
-              v-if="activeMode === 'realtime'"
-              class="screen-panel map-float map-float--overview"
-            >
-              <div class="screen-panel__title">
-                <strong>运输概况</strong>
-                <span>{{ formatRefreshTime(screen.lastRefreshTime) }}</span>
-              </div>
-              <div class="progress-lines">
-                <div v-for="item in overviewBars" :key="item.label" class="progress-line">
-                  <div>
-                    <span>{{ item.label }}</span>
-                    <strong>{{ item.value }}</strong>
-                  </div>
-                  <i>
-                    <b :style="{ width: `${item.percent}%`, background: item.color }" />
-                  </i>
-                </div>
-              </div>
-            </section>
-
-            <section
-              v-if="activeMode === 'realtime' && alertItems.length > 0"
-              class="screen-panel map-float map-float--alerts"
-            >
-              <div class="screen-panel__title">
-                <strong>实时报警</strong>
-                <span>{{ alertItems.length }} 条</span>
-              </div>
-              <ElScrollbar class="alert-list">
-                <div v-for="item in alertItems" :key="item.key" class="alert-item">
-                  <i :class="`alert-item__level alert-item__level--${item.level}`" />
-                  <div>
-                    <strong>{{ item.title }}</strong>
-                    <p>{{ item.content }}</p>
-                  </div>
-                  <span>{{ item.time }}</span>
-                </div>
-              </ElScrollbar>
-            </section>
-          </section>
-
-          <RealtimeMonitorPanel
-            v-if="activeMode === 'realtime'"
-            v-model:keyword="screen.keyword"
-            v-model:region="screen.region"
-            v-model:status="screen.status"
-            class="transit-screen__left"
-            :get-poi-text="getVehiclePoiText"
-            :is-poi-loading="isVehiclePoiLoading"
-            :orders="filteredOrders"
-            :overview="overview"
-            :region-options="regionOptions"
-            :selected-id="screen.selectedOrderId"
-            :status-options="monitorStatusOptions"
-            :total-count="realtimeOrders.length"
-            @refresh-poi="handleVehiclePoiRefresh"
-            @select="selectOrder"
-          />
-          <WaybillMonitorPanel
-            v-else-if="activeMode === 'waybill'"
-            v-model:keyword="monitorKeywords.waybill"
-            class="transit-screen__left"
-            :orders="monitorOrders"
-            :overview="overview"
-            :selected-id="screen.selectedOrderId"
-            @select="selectOrder"
-          />
-          <VehicleMonitorPanel
-            v-else
-            v-model:keyword="monitorKeywords.vehicle"
-            class="transit-screen__left"
-            :orders="monitorOrders"
-            :overview="overview"
-            :selected-id="screen.selectedOrderId"
-            @select="selectOrder"
-          />
-
-          <MonitorDetailPanel
-            v-if="activeMode === 'realtime'"
-            class="transit-screen__right"
-            :order="activeOrder"
-            @analyze-anomaly="openTransportAnomalyAdvisor"
-            @contact-driver="contactDriver"
-            @open-detail="openOrderDetail"
-            @send-reminder="sendReminder"
-          />
-        </main>
+        </ElScrollbar>
       </div>
-    </div>
+    </ArtAsyncState>
 
     <TransportAnomalyAdvisorDrawer ref="transportAnomalyAdvisorRef" />
   </div>
@@ -141,6 +176,7 @@
   import { storeToRefs } from 'pinia'
   import { ElMessage } from 'element-plus'
   import { RefreshRight, ZoomIn, ZoomOut } from '@element-plus/icons-vue'
+  import ArtAsyncState from '@/components/core/layouts/art-async-state/index.vue'
   import { fetchInTransitMonitorList, subscribeInTransitMonitorChanges } from '@/api/tms'
   import { useAmapSdk } from '@/hooks/core/useAmapSdk'
   import { useUserStore } from '@/store/modules/user'
@@ -304,6 +340,8 @@
   const screen: UnwrapNestedRefs<ScreenState> = reactive<ScreenState>({
     keyword: '',
     loading: false,
+    loaded: false,
+    error: null,
     orders: [],
     region: '',
     selectedOrderId: undefined,
@@ -319,7 +357,18 @@
     return Number.isFinite(scale) && scale > 0 ? scale : 1
   })
 
+  const isCompactScreen = computed(() => screenScale.viewportWidth <= 900)
+
   const screenStageStyle = computed(() => {
+    if (isCompactScreen.value) {
+      return {
+        width: '100%',
+        height: 'auto',
+        minHeight: `${screenScale.viewportHeight}px`,
+        transform: 'none'
+      }
+    }
+
     const scale = screenBaseScale.value
     const width = DEFAULT_SCREEN_DESIGN_WIDTH * scale
     const height = DEFAULT_SCREEN_DESIGN_HEIGHT * scale
@@ -336,6 +385,7 @@
   const headerTimeText = computed(() =>
     formatWithDayjs(currentTime.value, 'YYYY年MM月DD日 HH:mm:ss')
   )
+  const pageError = computed(() => (screen.loaded ? null : screen.error))
   const monitorHeadingTitle = computed(
     () =>
       ({
@@ -415,6 +465,7 @@
 
   async function loadMonitorData(showLoading = true): Promise<void> {
     if (showLoading) screen.loading = true
+    screen.error = null
     try {
       const { data } = await fetchInTransitMonitorList({
         from: 0,
@@ -422,6 +473,7 @@
       })
 
       screen.orders = data ?? []
+      screen.loaded = true
       screen.lastRefreshTime = new Date().toISOString()
       if (!screen.orders.some((row) => getMonitorRecordId(row) === screen.selectedOrderId)) {
         screen.selectedOrderId = getPreferredMonitorRecordId(screen.orders)
@@ -433,10 +485,8 @@
           fitSelectedMapView(true)
         })
       }
-    } catch {
-      screen.orders = []
-      screen.lastRefreshTime = new Date().toISOString()
-      screen.selectedOrderId = undefined
+    } catch (error) {
+      screen.error = error instanceof Error ? error : new Error('在途监控数据加载失败')
     } finally {
       screen.loading = false
     }
@@ -772,7 +822,7 @@
     if (!map || !AMap) return marker
 
     const content = options.image
-      ? `<div class="transit-vehicle-marker" style="--marker-color:${color}"><i></i><img src="${options.image}" alt="${escapeHtml(options.subtitle || title)}" /><span>${escapeHtml(title)}</span></div>`
+      ? `<div class="transit-vehicle-marker" style="--marker-color:${color}"><i></i><img src="${options.image}" alt="${escapeHtml(options.subtitle || title)}" width="42" height="28" /><span>${escapeHtml(title)}</span></div>`
       : `<div class="transit-amap-marker" style="--marker-color:${color}"><b>${escapeHtml(label)}</b><span>${escapeHtml(title)}</span>${options.subtitle ? `<em>${escapeHtml(options.subtitle)}</em>` : ''}</div>`
     if (!marker) {
       const nextMarker = new AMap.Marker({

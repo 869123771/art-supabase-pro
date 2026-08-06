@@ -252,7 +252,11 @@
       formatter: (row) => (
         <div class="flex items-center">
           <ArtIconButton icon="ri:download-2-line" onClick={() => downloadAttachment(row)} />
-          <ArtIconButton icon="ri:delete-bin-5-line" onClick={() => void removeAttachment(row)} />
+          <ArtIconButton
+            icon="ri:delete-bin-5-line"
+            tone="danger"
+            onClick={() => void removeAttachment(row)}
+          />
         </div>
       )
     }
@@ -408,8 +412,8 @@
 <style scoped lang="scss">
   .vehicle-insurance-dialog {
     &__section {
-      margin-top: 8px;
       padding: 0 16px;
+      margin-top: 8px;
     }
 
     &__section-header {

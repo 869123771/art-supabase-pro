@@ -1,7 +1,7 @@
 <template>
   <div class="setting-drawer">
     <ElDrawer
-      size="300px"
+      :size="drawerSize"
       v-model="visible"
       :lock-scroll="true"
       :with-header="false"
@@ -11,9 +11,11 @@
       @open="handleOpen"
       @close="handleDrawerClose"
     >
-      <div class="drawer-con">
-        <slot />
-      </div>
+      <ElScrollbar class="setting-drawer__scrollbar">
+        <div class="drawer-con">
+          <slot />
+        </div>
+      </ElScrollbar>
     </ElDrawer>
   </div>
 </template>
@@ -31,6 +33,8 @@
 
   const props = defineProps<Props>()
   const emit = defineEmits<Emits>()
+  const { width } = useWindowSize()
+  const drawerSize = computed(() => (width.value <= 640 ? '100%' : '420px'))
 
   const visible = computed({
     get: () => props.modelValue,

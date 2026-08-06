@@ -79,6 +79,7 @@ export {
 export {
   addOrder,
   analyzeOrderByAi,
+  createAiOrderMasterData,
   deleteOrder,
   deleteOrderBatch,
   editOrder,
@@ -111,10 +112,15 @@ export {
   subscribeInTransitMonitorChanges
 } from '@/api/modules/tms/in-transit'
 export {
+  analyzeWaybillReceiptByAi,
+  createReceiptExceptionWorkOrder,
   exportDeliveryList,
   fetchDeliveryList,
+  fetchReceiptExceptionWorkOrders,
   fetchDeliveryStatusCounts,
-  signDeliveryOrder
+  reviewWaybillReceiptOcrArtifact,
+  signDeliveryOrder,
+  transitionReceiptExceptionWorkOrder
 } from '@/api/modules/tms/delivery'
 export {
   addCarrierPrice,
@@ -143,11 +149,14 @@ export {
   voidWaybillCost
 } from '@/api/modules/tms/finance'
 export {
+  analyzeInvoiceAttachmentByAi,
+  analyzeInvoiceComplianceByAi,
   deleteInvoice,
   exportInvoiceList,
   fetchInvoiceDetail,
   fetchInvoiceList,
   fetchInvoiceableStatementList,
+  reviewInvoiceOcrArtifact,
   saveInvoice,
   updateInvoiceStatus
 } from '@/api/modules/tms/invoice'
@@ -172,6 +181,9 @@ export {
 export {
   allocateCarrierPayment,
   allocateCustomerReceipt,
+  analyzeCashVoucherByAi,
+  analyzeBankStatementBatchByAi,
+  commitBankStatementBatchByAi,
   createCarrierPayment,
   createCustomerReceipt,
   exportCashTransactionList,
@@ -181,5 +193,6 @@ export {
   fetchCustomerStatementAllocatableList,
   reverseCarrierCashAllocation,
   reverseCashAllocation,
+  reviewCashVoucherOcrArtifact,
   voidCashTransaction
 } from '@/api/modules/tms/cash-transaction'

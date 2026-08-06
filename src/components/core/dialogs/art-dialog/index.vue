@@ -39,9 +39,7 @@
           :title="fullscreenLabel"
           @click.stop="toggleFullscreen"
         >
-          <ElIcon class="el-dialog__close">
-            <ArtSvgIcon :icon="fullscreenIcon" />
-          </ElIcon>
+          <ArtSvgIcon :icon="fullscreenIcon" class="art-dialog__action-icon" />
         </button>
       </div>
     </template>
@@ -299,7 +297,7 @@
   const dialogSubtitle = computed(() => String(options.value.subtitle ?? ''))
   const hasSubtitle = computed(() => Boolean(slots.subtitle || dialogSubtitle.value))
   const fullscreenIcon = computed(() =>
-    isFullscreen.value ? 'ri:fullscreen-exit-line' : 'ri:fullscreen-line'
+    isFullscreen.value ? 'dashicons:fullscreen-exit-alt' : 'dashicons:fullscreen-alt'
   )
   const fullscreenLabel = computed(() =>
     isFullscreen.value
@@ -418,8 +416,24 @@
   }
 
   .art-dialog {
+    &__header {
+      display: flex;
+      align-items: center;
+      min-width: 0;
+      min-height: 24px;
+    }
+
+    &__header-main {
+      min-width: 0;
+    }
+
     &__fullscreen-button {
-      right: 32px;
+      right: 52px !important;
+    }
+
+    &__action-icon {
+      width: 18px;
+      height: 18px;
     }
 
     &__content {
@@ -427,10 +441,13 @@
     }
 
     &__subtitle {
-      margin: 0 0 16px;
-      font-size: 14px;
-      line-height: 22px;
+      margin-top: 3px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-size: 13px;
+      line-height: 20px;
       color: var(--el-text-color-secondary);
+      white-space: nowrap;
     }
 
     &__scrollbar {
@@ -465,6 +482,56 @@
     &__footer-actions {
       display: flex;
       flex: none;
+      gap: 8px;
     }
+  }
+
+  :global(.art-dialog > .el-dialog__header .el-dialog__headerbtn) {
+    top: 12px;
+    right: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    color: var(--el-text-color-secondary);
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: var(--art-control-radius);
+    transition:
+      color var(--art-motion-duration-fast) ease,
+      background-color var(--art-motion-duration-fast) ease,
+      border-color var(--art-motion-duration-fast) ease,
+      box-shadow var(--art-motion-duration-fast) ease;
+  }
+
+  :global(.art-dialog > .el-dialog__header .el-dialog__headerbtn:hover) {
+    color: var(--theme-color);
+    background: color-mix(in srgb, var(--theme-color) 9%, transparent);
+    border-color: transparent;
+    box-shadow: var(--art-themed-action-hover-shadow);
+  }
+
+  :global(.art-dialog > .el-dialog__header .el-dialog__headerbtn:focus-visible) {
+    color: var(--theme-color);
+    outline: none;
+    box-shadow: var(--art-themed-action-focus-shadow);
+  }
+
+  :global(.art-dialog > .el-dialog__header .el-dialog__headerbtn .el-dialog__close) {
+    position: static;
+    width: 18px;
+    height: 18px;
+    color: currentcolor;
+    background: transparent !important;
+    border-radius: 0;
+  }
+
+  :global(.art-dialog > .el-dialog__body > .art-dialog__content > .art-form),
+  :global(
+    .art-dialog > .el-dialog__body > .art-dialog__scrollbar .art-dialog__content > .art-form
+  ) {
+    padding: 0 !important;
   }
 </style>

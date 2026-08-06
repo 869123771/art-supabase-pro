@@ -1,12 +1,12 @@
 <template>
-  <VehicleQuerySection title="司机管理">
+  <ArtPageSection :card="false" title="司机管理">
     <VehicleQueryTable :data="drivers" :columns="columns" />
-  </VehicleQuerySection>
+  </ArtPageSection>
 </template>
 
 <script setup lang="ts">
   import type { ColumnOption } from '@/types'
-  import VehicleQuerySection from './vehicle-query-section.vue'
+  import ArtPageSection from '@/components/core/layouts/art-page-section/index.vue'
   import VehicleQueryTable from './vehicle-query-table.vue'
   import type { VehicleArchive, VehicleDriver } from './types'
 

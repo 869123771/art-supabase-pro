@@ -1,5 +1,12 @@
 <template>
   <ArtDialog ref="dialogRef" size="xl">
+    <CashVoucherOcrPanel
+      v-if="dialog.mode === 'create'"
+      ref="ocrPanelRef"
+      v-model="form.voucherUrls"
+      direction="payment"
+      @apply="handleApplyOcrResult"
+    />
     <ArtForm
       ref="formRef"
       v-model="form"
@@ -96,10 +103,12 @@
     allocateCarrierPayment,
     createCarrierPayment,
     fetchCarrierOptions,
-    fetchCarrierStatementAllocatableList
+    fetchCarrierStatementAllocatableList,
+    reviewCashVoucherOcrArtifact
   } from '@/api/tms'
   import { useUserStore } from '@/store/modules/user'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
+  import CashVoucherOcrPanel from './cash-voucher-ocr-panel.vue'
 
   defineOptions({ name: 'TmsCarrierPaymentDialog' })
   type CashTransaction = Api.Tms.Finance.CashTransactionRecord
@@ -112,6 +121,7 @@
     bankReference: string
     remark: string
     statementIds: string[]
+    voucherUrls: string[]
   }
   interface AllocationRow extends Statement {
     allocationAmount: number
@@ -120,12 +130,17 @@
     validate: () => Promise<boolean>
     clearValidate: () => void
   }
+  interface OcrPanelExpose {
+    reset: () => void
+  }
 
   const emit = defineEmits<{ success: [] }>()
   const { getDictMap } = storeToRefs(useUserStore())
   const dialogRef = ref<ArtDialogExpose>()
   const formRef = ref<FormExpose>()
   const statementSelectRef = ref<ArtDataSelectExpose>()
+  const ocrPanelRef = ref<OcrPanelExpose>()
+  const ocrResult = ref<Api.Tms.Finance.CashVoucherOcrAnalyzeResponse>()
   const dialog = reactive<{ mode: 'create' | 'allocate'; transaction?: CashTransaction }>({
     mode: 'create'
   })
@@ -141,7 +156,8 @@
     paymentMethod: 'bank_transfer',
     bankReference: '',
     remark: '',
-    statementIds: []
+    statementIds: [],
+    voucherUrls: []
   })
   const form = reactive<PaymentForm>(initialForm())
 
@@ -329,6 +345,61 @@
     selection.statements = []
     selection.amounts = {}
   }
+  function handleApplyOcrResult(result: Api.Tms.Finance.CashVoucherOcrAnalyzeResponse) {
+    ocrResult.value = result
+    const voucher = result.voucher
+    Object.assign(form, {
+      transactionDate: voucher.transactionDate || form.transactionDate,
+      amount: voucher.amount ?? form.amount,
+      paymentMethod: voucher.paymentMethod,
+      bankReference: voucher.bankReference || form.bankReference
+    })
+    const topMatch = result.matches[0]
+    if (topMatch) {
+      form.carrierId = topMatch.counterpartyId
+      selection.carriers = [
+        {
+          id: topMatch.counterpartyId,
+          companyName: topMatch.counterpartyName,
+          carrierCode: 'AI 推荐'
+        }
+      ]
+      applyRecommendedStatements(result.matches, topMatch.counterpartyId)
+    }
+    void nextTick(() => formRef.value?.clearValidate())
+    ElMessage.success(
+      topMatch ? '识别结果和推荐对账单已填入，请确认核销金额' : '识别结果已填入，请手工选择对账单'
+    )
+  }
+  function applyRecommendedStatements(
+    matches: Api.Tms.Finance.CashVoucherStatementMatch[],
+    carrierId: string
+  ) {
+    clearStatements()
+    let remaining = Number(form.amount || 0)
+    const selected: DataSelectRecord[] = []
+    for (const match of matches) {
+      if (remaining <= 0 || match.counterpartyId !== carrierId || match.score < 60) continue
+      const allocation = round(Math.min(remaining, Number(match.outstandingAmount || 0)))
+      if (allocation <= 0) continue
+      remaining = round(remaining - allocation)
+      selection.amounts[match.statementId] = allocation
+      selected.push({
+        id: match.statementId,
+        statementNo: match.statementNo,
+        carrierId: match.counterpartyId,
+        carrierName: match.counterpartyName,
+        periodStart: match.periodStart,
+        periodEnd: match.periodEnd,
+        statementAmount: match.statementAmount,
+        settledAmount: match.settledAmount,
+        outstandingAmount: match.outstandingAmount,
+        periodLabel: `${match.periodStart} 至 ${match.periodEnd}`
+      })
+    }
+    selection.statements = selected
+    form.statementIds = selected.map((item) => String(item.id))
+  }
   function handleCarrierChange() {
     if (dialog.mode === 'allocate') return
     clearStatements()
@@ -374,16 +445,19 @@
           transactionId: dialog.transaction.id,
           allocations: allocations()
         })
-      else
-        await createCarrierPayment({
+      else {
+        const { data: transactionId } = await createCarrierPayment({
           carrierId: form.carrierId,
           transactionDate: form.transactionDate,
           amount: Number(form.amount),
           paymentMethod: form.paymentMethod,
           bankReference: form.bankReference.trim() || null,
+          voucherUrls: [...form.voucherUrls],
           remark: form.remark.trim() || null,
           allocations: allocations()
         })
+        await recordOcrReview(transactionId)
+      }
       emit('success')
       return true
     } catch {
@@ -395,6 +469,8 @@
     dialog.transaction = undefined
     selection.carriers = []
     clearStatements()
+    ocrResult.value = undefined
+    ocrPanelRef.value?.reset()
     await nextTick()
     formRef.value?.clearValidate()
   }
@@ -408,7 +484,8 @@
         transactionDate: transaction.transactionDate,
         amount: transaction.amount,
         paymentMethod: transaction.paymentMethod,
-        bankReference: transaction.bankReference ?? ''
+        bankReference: transaction.bankReference ?? '',
+        voucherUrls: [...(transaction.voucherUrls ?? [])]
       })
       selection.carriers = [
         {
@@ -431,11 +508,32 @@
     })
   }
   defineExpose({ handleOpen })
+
+  async function recordOcrReview(transactionId?: string | null): Promise<void> {
+    if (!ocrResult.value || !transactionId) return
+    const { error } = await reviewCashVoucherOcrArtifact({
+      action: 'review',
+      artifactId: ocrResult.value.artifactId,
+      entityId: transactionId,
+      outcome: 'applied',
+      finalPayload: {
+        payerName: ocrResult.value.voucher.payerName,
+        payeeName: selection.carriers[0]?.companyName ?? null,
+        transactionDate: form.transactionDate,
+        amount: Number(form.amount),
+        bankReference: form.bankReference.trim() || null,
+        paymentMethod: form.paymentMethod,
+        statementIds: [...form.statementIds]
+      }
+    })
+    if (error) ElMessage.warning('付款已登记，但 AI 质量记录失败；不影响正式业务数据')
+  }
 </script>
 
 <style scoped lang="scss">
   .payment-allocation {
     margin-top: 16px;
+
     &__header {
       display: flex;
       align-items: center;

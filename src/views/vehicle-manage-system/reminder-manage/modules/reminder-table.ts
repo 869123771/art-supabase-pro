@@ -3,7 +3,9 @@ import { ElTag } from 'element-plus'
 import dayjs from 'dayjs'
 import { isNil } from 'lodash-es'
 import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
+import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
 import { fetchCarrierOptions } from '@/api/tms'
+import type { ColumnOption } from '@/types'
 
 type ReminderRow = Api.VehicleMgtSys.ReminderManage.VehicleReminderRow
 
@@ -64,3 +66,28 @@ export const renderReminderStatus = (row: ReminderRow): VNodeChild => {
   if (days <= 30) return h(ElTag, { type: 'warning', effect: 'light' }, () => '临期')
   return h(ElTag, { type: 'success', effect: 'plain' }, () => '正常')
 }
+
+export const createReminderWorkOrderColumns = (
+  onOpen: (row: ReminderRow) => void,
+  canManage: () => boolean
+): ColumnOption<ReminderRow>[] => [
+  {
+    prop: 'workOrderStatus',
+    label: '处置状态',
+    width: 112,
+    dict: { code: 'vehicleReminderWorkOrderStatus', display: 'auto' }
+  },
+  {
+    prop: 'operation',
+    label: '处置',
+    width: 82,
+    fixed: 'right',
+    formatter: (row) =>
+      h(ArtButtonTable, {
+        type: 'view',
+        icon: row.workOrder ? 'ri:file-list-3-line' : 'ri:add-circle-line',
+        disabled: !row.workOrder && !canManage(),
+        onClick: () => onOpen(row)
+      })
+  }
+]

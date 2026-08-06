@@ -19,6 +19,17 @@ Use a modern enterprise logistics style: calm, precise, trustworthy, information
 - Use icons to improve scanning, not to decorate every label.
 - Preserve consistent radii, card treatment, shadows, control heights, and density across neighboring pages.
 
+## Theme And Box-Mode Coupling
+
+Interactive surfaces must follow both the active theme color and the configured box style. Do not implement a theme-colored hover state without also respecting the root `data-box-mode` value.
+
+- Derive hover, active, and focus colors from `--theme-color`; never hardcode a product accent color.
+- In `border-mode`, use a theme-tinted background plus a visible theme-colored border or inset ring. Do not add elevation shadows.
+- In `shadow-mode`, use a theme-tinted background plus a soft theme-colored outer shadow. Keep the border transparent and do not add an inset border ring.
+- Prefer shared CSS tokens for these mode-dependent treatments so headers, `ArtDialog`, `ArtDrawer`, table tools, and other icon actions remain consistent.
+- Preserve keyboard focus visibility in both modes. The focus treatment may be stronger than hover, but it must retain the selected box-mode language.
+- When changing a shared interactive pattern, verify both `border-mode` and `shadow-mode` in a real browser before handoff.
+
 ## Required Workflow
 
 ### 1. Inspect Before Designing

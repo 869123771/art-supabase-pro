@@ -303,6 +303,7 @@ const formItems = computed<FormItem[]>(() => [
 
 ## 使用建议
 
+- 标准栅格布局会在 `ArtForm` 根节点约束横向溢出，用于吸收 `ElRow gutter` 产生的负 margin，避免放入 `ArtDialog`、`ArtDrawer` 或其他滚动容器后出现无意义的横向滚动条。`customLayout` 模式不应用该约束，自定义内容需要自行管理横向滚动区域。
 - 父组件使用 `ref` 承接 `v-model`，不要把 `reactive` 常量对象直接传给 `ArtForm`，因为组件会整体回写新对象。
 - 普通字段优先用 `items` 描述；复杂字段用同名插槽。
 - 业务弹窗中配合 `ArtDialog` 使用时，通常设置 `show-reset=false`、`show-submit=false`，把提交交给弹窗 Footer。

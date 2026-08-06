@@ -1,103 +1,173 @@
 <template>
-  <ArtDrawer ref="drawerRef" :loading="state.loading" :show-footer="false">
+  <ArtDrawer ref="drawerRef" :show-footer="false">
+    <template #header>
+      <div class="transport-advisor__drawer-title">
+        <span><ArtSvgIcon icon="ri:shield-flash-line" /></span>
+        <div>
+          <strong>AI 运输异常研判</strong>
+          <small>{{ state.openData?.orderNo || '在途运输风险分析' }} · 只读分析</small>
+        </div>
+      </div>
+    </template>
+
     <div class="transport-advisor">
-      <template v-if="state.data">
-        <section class="transport-advisor__hero art-card-xs">
-          <div class="transport-advisor__hero-main">
-            <span class="transport-advisor__icon">
-              <ArtSvgIcon icon="ri:shield-flash-line" />
-            </span>
-            <div>
-              <div class="transport-advisor__title-row">
-                <strong>{{ state.data.assessment.orderNo }}</strong>
-                <ElTag :type="riskTagType" effect="dark">{{ riskLabel }}</ElTag>
-              </div>
-              <p>{{ state.data.assessment.route }}</p>
-            </div>
-          </div>
-          <ElButton type="primary" plain :loading="state.loading" @click="loadAssessment">
-            重新研判
-          </ElButton>
-          <div class="transport-advisor__score">
-            <div>
-              <span>风险评分</span>
-              <strong>{{ state.data.assessment.riskScore }}</strong>
-            </div>
-            <div>
-              <span>研判置信度</span>
-              <strong>{{ Math.round(state.data.assessment.confidence * 100) }}%</strong>
-            </div>
-          </div>
-          <p class="transport-advisor__summary">{{ state.data.assessment.summary }}</p>
-        </section>
-
-        <section class="transport-advisor__section">
-          <ArtSectionTitle>异常信号</ArtSectionTitle>
-          <div v-if="state.data.assessment.signals.length" class="transport-advisor__signals">
-            <article
-              v-for="signal in state.data.assessment.signals"
-              :key="signal.type"
-              class="transport-advisor__signal art-card-xs"
-            >
-              <header>
-                <div>
-                  <ArtSvgIcon :icon="signalIcon(signal.severity)" />
-                  <strong>{{ signal.title }}</strong>
-                </div>
-                <ElTag :type="severityTagType(signal.severity)" effect="light">
-                  {{ severityLabel(signal.severity) }}
-                </ElTag>
-              </header>
-              <p>{{ signal.detail }}</p>
-              <ul>
-                <li v-for="item in signal.evidence" :key="item">{{ item }}</li>
-              </ul>
-            </article>
-          </div>
-          <ElEmpty v-else description="当前未识别到明确异常" :image-size="76" />
-        </section>
-
-        <section class="transport-advisor__section">
-          <ArtSectionTitle>建议处置顺序</ArtSectionTitle>
-          <ol class="transport-advisor__actions art-card-xs">
-            <li v-for="(action, index) in state.data.assessment.recommendedActions" :key="action">
-              <span>{{ index + 1 }}</span>
-              <p>{{ action }}</p>
-            </li>
-          </ol>
-        </section>
-
-        <section class="transport-advisor__section">
-          <ArtSectionTitle>数据边界</ArtSectionTitle>
-          <ElAlert
-            v-for="item in state.data.assessment.limitations"
-            :key="item"
-            type="info"
-            :closable="false"
-            show-icon
-            :title="item"
-          />
-        </section>
-
-        <ArtAiFeedback :run-id="state.data.runId" context-label="AI 运输异常研判" />
-
-        <footer class="transport-advisor__meta">
-          <span>规则版本：{{ state.data.ruleVersion }}</span>
-          <span>生成时间：{{ formatTime(state.data.generatedAt) }}</span>
-          <span>本次结果只提供建议，不会自动改变订单或运单状态。</span>
-        </footer>
-      </template>
-
-      <ElResult
-        v-else-if="state.error"
-        icon="warning"
-        title="异常研判失败"
-        :sub-title="state.error"
+      <ArtAsyncState
+        :loading="state.loading"
+        :loading-mode="state.data ? 'mask' : 'skeleton'"
+        :error="state.error"
+        min-height="420px"
+        @retry="loadAssessment"
       >
-        <template #extra>
-          <ElButton type="primary" @click="loadAssessment">重新研判</ElButton>
+        <template v-if="state.data">
+          <section
+            :class="[
+              'transport-advisor__hero art-card-xs',
+              `is-${state.data.assessment.riskLevel}`
+            ]"
+          >
+            <header class="transport-advisor__hero-header">
+              <div class="transport-advisor__hero-main">
+                <span class="transport-advisor__icon">
+                  <ArtSvgIcon icon="ri:route-line" />
+                </span>
+                <div>
+                  <span class="transport-advisor__eyebrow"><i />AI TRANSPORT RISK CONTROL</span>
+                  <div class="transport-advisor__title-row">
+                    <strong>{{ state.data.assessment.orderNo }}</strong>
+                    <ElTag :type="riskTagType" effect="dark" round>{{ riskLabel }}</ElTag>
+                  </div>
+                  <p>{{ state.data.assessment.route }}</p>
+                </div>
+              </div>
+              <ElButton type="primary" plain :loading="state.loading" @click="loadAssessment">
+                <ArtSvgIcon icon="ri:refresh-line" />重新研判
+              </ElButton>
+            </header>
+
+            <div class="transport-advisor__score">
+              <article>
+                <header>
+                  <span>运输风险评分</span>
+                  <strong>{{ state.data.assessment.riskScore }}</strong>
+                </header>
+                <ElProgress
+                  :percentage="state.data.assessment.riskScore"
+                  :show-text="false"
+                  :stroke-width="6"
+                  :color="riskProgressColor"
+                />
+                <small>结合时效、轨迹与业务更新时间</small>
+              </article>
+              <article>
+                <header>
+                  <span>研判置信度</span>
+                  <strong>{{ confidencePercent }}%</strong>
+                </header>
+                <ElProgress :percentage="confidencePercent" :show-text="false" :stroke-width="6" />
+                <small>基于当前可获取的运输业务证据</small>
+              </article>
+              <article>
+                <header>
+                  <span>异常信号</span>
+                  <strong>{{ state.data.assessment.signals.length }}</strong>
+                </header>
+                <ElProgress
+                  :percentage="Math.min(state.data.assessment.signals.length * 25, 100)"
+                  :show-text="false"
+                  :stroke-width="6"
+                  color="var(--el-color-warning)"
+                />
+                <small>按风险严重程度聚合展示</small>
+              </article>
+            </div>
+
+            <div class="transport-advisor__summary">
+              <span><ArtSvgIcon icon="ri:brain-line" /></span>
+              <div>
+                <small>AI 研判结论</small>
+                <p>{{ state.data.assessment.summary }}</p>
+              </div>
+            </div>
+          </section>
+
+          <section class="transport-advisor__section">
+            <ArtSectionTitle>
+              <span class="transport-advisor__section-label">
+                <ArtSvgIcon icon="ri:alarm-warning-line" />异常信号
+              </span>
+            </ArtSectionTitle>
+            <ArtAsyncState
+              :empty="!state.data.assessment.signals.length"
+              empty-text="当前未识别到明确异常"
+              min-height="160px"
+            >
+              <div class="transport-advisor__signals">
+                <article
+                  v-for="signal in state.data.assessment.signals"
+                  :key="signal.type"
+                  :class="['transport-advisor__signal art-card-xs', `is-${signal.severity}`]"
+                >
+                  <header>
+                    <div>
+                      <ArtSvgIcon :icon="signalIcon(signal.severity)" />
+                      <strong>{{ signal.title }}</strong>
+                    </div>
+                    <ElTag :type="severityTagType(signal.severity)" effect="light">
+                      {{ severityLabel(signal.severity) }}
+                    </ElTag>
+                  </header>
+                  <p>{{ signal.detail }}</p>
+                  <div class="transport-advisor__evidence">
+                    <span v-for="item in signal.evidence" :key="item">
+                      <i />{{ formatEvidence(item) }}
+                    </span>
+                  </div>
+                </article>
+              </div>
+            </ArtAsyncState>
+          </section>
+
+          <section class="transport-advisor__section">
+            <ArtSectionTitle>
+              <span class="transport-advisor__section-label">
+                <ArtSvgIcon icon="ri:list-check-3" />建议处置顺序
+              </span>
+            </ArtSectionTitle>
+            <ol class="transport-advisor__actions art-card-xs">
+              <li v-for="(action, index) in state.data.assessment.recommendedActions" :key="action">
+                <span>{{ index + 1 }}</span>
+                <div>
+                  <small>处置步骤 {{ String(index + 1).padStart(2, '0') }}</small>
+                  <p>{{ action }}</p>
+                </div>
+              </li>
+            </ol>
+          </section>
+
+          <section class="transport-advisor__section">
+            <ArtSectionTitle>
+              <span class="transport-advisor__section-label">
+                <ArtSvgIcon icon="ri:information-2-line" />判断边界
+              </span>
+            </ArtSectionTitle>
+            <div class="transport-advisor__limitations art-card-xs">
+              <p v-for="item in state.data.assessment.limitations" :key="item">
+                <ArtSvgIcon icon="ri:checkbox-circle-line" /><span>{{ item }}</span>
+              </p>
+            </div>
+          </section>
+
+          <ArtAiFeedback :run-id="state.data.runId" context-label="AI 运输异常研判" />
+
+          <footer class="transport-advisor__meta">
+            <span><ArtSvgIcon icon="ri:git-commit-line" />{{ state.data.ruleVersion }}</span>
+            <span><ArtSvgIcon icon="ri:time-line" />{{ formatTime(state.data.generatedAt) }}</span>
+            <span>
+              <ArtSvgIcon icon="ri:shield-check-line" />本次结果只提供建议，不会自动改变业务状态
+            </span>
+          </footer>
         </template>
-      </ElResult>
+      </ArtAsyncState>
     </div>
   </ArtDrawer>
 </template>
@@ -158,13 +228,25 @@
   const riskTagType = computed(() =>
     state.data ? tagTypeMap[state.data.assessment.riskLevel] : 'info'
   )
+  const confidencePercent = computed(() =>
+    state.data ? Math.round(state.data.assessment.confidence * 100) : 0
+  )
+  const riskProgressColor = computed(() => {
+    if (!state.data) return 'var(--el-color-primary)'
+    return {
+      critical: 'var(--el-color-danger)',
+      high: 'var(--el-color-danger)',
+      medium: 'var(--el-color-warning)',
+      low: 'var(--el-color-success)'
+    }[state.data.assessment.riskLevel]
+  })
 
   async function handleOpen(data: DrawerOpenData): Promise<void> {
     Object.assign(state, { data: null, error: '', loading: false, openData: data })
     await drawerRef.value?.handleOpen(data, {
       title: `AI 运输异常研判 · ${data.orderNo}`,
-      size: 'lg',
-      contentHeight: 'calc(100vh - 132px)',
+      size: 'xl',
+      contentHeight: 'calc(100vh - 116px)',
       showFooter: false,
       onOpen: loadAssessment,
       onReset: () =>
@@ -212,6 +294,25 @@
     return formatWithDayjs(value, 'YYYY-MM-DD HH:mm:ss') || '-'
   }
 
+  function formatEvidence(value: string): string {
+    const statusLabels: Record<string, string> = {
+      transporting: '运输中',
+      pending: '待发运',
+      completed: '已完成',
+      cancelled: '已取消'
+    }
+    return value
+      .replace(
+        /\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?/g,
+        (date) => formatWithDayjs(date, 'YYYY-MM-DD HH:mm') || date
+      )
+      .replace(
+        /\b(transporting|pending|completed|cancelled)\b/gi,
+        (status) => statusLabels[status.toLowerCase()] || status
+      )
+      .replace(/：\s+/g, '：')
+  }
+
   function getErrorMessage(error: unknown): string {
     if (error instanceof Error && error.message) return error.message
     if (error && typeof error === 'object' && 'message' in error) {
@@ -226,14 +327,88 @@
 
 <style scoped lang="scss">
   .transport-advisor {
-    display: grid;
-    gap: 20px;
+    min-width: 0;
+
+    :deep(> .art-async-state) {
+      display: grid;
+      gap: 22px;
+    }
+
+    &__drawer-title {
+      display: flex;
+      gap: 11px;
+      align-items: center;
+
+      > span {
+        display: grid;
+        flex: none;
+        place-items: center;
+        width: 38px;
+        height: 38px;
+        font-size: 19px;
+        color: var(--el-color-primary);
+        background: var(--el-color-primary-light-9);
+        border-radius: var(--el-border-radius-base);
+      }
+
+      strong,
+      small {
+        display: block;
+      }
+
+      strong {
+        font-size: 16px;
+        color: var(--el-text-color-primary);
+      }
+
+      small {
+        margin-top: 3px;
+        font-size: 12px;
+        color: var(--el-text-color-secondary);
+      }
+    }
 
     &__hero {
+      position: relative;
       display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 18px;
+      padding: 20px;
+      overflow: hidden;
+      border-top: 3px solid var(--el-color-primary);
+
+      &::after {
+        position: absolute;
+        top: -80px;
+        right: -55px;
+        width: 210px;
+        height: 210px;
+        pointer-events: none;
+        content: '';
+        background: radial-gradient(circle, var(--el-color-primary-light-8), transparent 70%);
+        border-radius: 50%;
+        opacity: 0.55;
+      }
+
+      &.is-critical,
+      &.is-high {
+        border-top-color: var(--el-color-danger);
+      }
+
+      &.is-medium {
+        border-top-color: var(--el-color-warning);
+      }
+
+      &.is-low {
+        border-top-color: var(--el-color-success);
+      }
+    }
+
+    &__hero-header {
+      z-index: 1;
+      display: flex;
       gap: 16px;
-      padding: 18px;
+      align-items: flex-start;
+      justify-content: space-between;
     }
 
     &__hero-main {
@@ -250,6 +425,7 @@
         margin: 5px 0 0;
         overflow: hidden;
         text-overflow: ellipsis;
+        font-size: 13px;
         color: var(--el-text-color-secondary);
         white-space: nowrap;
       }
@@ -261,10 +437,28 @@
       place-items: center;
       width: 44px;
       height: 44px;
-      font-size: 23px;
+      font-size: 22px;
       color: var(--el-color-primary);
       background: var(--el-color-primary-light-9);
       border-radius: var(--el-border-radius-base);
+    }
+
+    &__eyebrow {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      margin-bottom: 4px;
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--el-color-primary);
+      letter-spacing: 0.9px;
+
+      i {
+        width: 5px;
+        height: 5px;
+        background: currentcolor;
+        border-radius: 50%;
+      }
     }
 
     &__title-row {
@@ -274,60 +468,117 @@
       align-items: center;
 
       strong {
-        font-size: 17px;
+        font-size: 18px;
       }
     }
 
     &__score {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      grid-column: 1 / -1;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 12px;
 
-      div {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 12px 14px;
+      article {
+        min-width: 0;
+        padding: 13px 14px;
         background: var(--el-fill-color-lighter);
+        border: 1px solid var(--el-border-color-extra-light);
         border-radius: var(--el-border-radius-base);
       }
 
-      span {
-        color: var(--el-text-color-secondary);
+      header {
+        display: flex;
+        gap: 10px;
+        align-items: baseline;
+        justify-content: space-between;
+        margin-bottom: 9px;
+
+        span {
+          font-size: 12px;
+          color: var(--el-text-color-secondary);
+        }
+
+        strong {
+          font-size: 23px;
+          line-height: 1;
+          color: var(--el-text-color-primary);
+        }
       }
 
-      strong {
-        font-size: 22px;
-        color: var(--el-color-primary);
+      small {
+        display: block;
+        margin-top: 8px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        font-size: 11px;
+        color: var(--el-text-color-placeholder);
+        white-space: nowrap;
       }
     }
 
     &__summary {
-      grid-column: 1 / -1;
-      margin: 0;
-      line-height: 1.7;
-      color: var(--el-text-color-regular);
+      display: flex;
+      gap: 11px;
+      align-items: flex-start;
+      padding: 13px 15px;
+      background: linear-gradient(90deg, var(--el-color-primary-light-9), transparent);
+      border: 1px solid var(--el-color-primary-light-8);
+      border-radius: var(--el-border-radius-base);
+
+      > span {
+        display: grid;
+        flex: none;
+        place-items: center;
+        width: 28px;
+        height: 28px;
+        color: var(--el-color-primary);
+        background: var(--el-bg-color);
+        border-radius: 50%;
+      }
+
+      small {
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--el-color-primary);
+      }
+
+      p {
+        margin: 3px 0 0;
+        line-height: 1.65;
+        color: var(--el-text-color-regular);
+      }
     }
 
     &__section {
       display: grid;
       gap: 12px;
+    }
 
-      :deep(.el-alert + .el-alert) {
-        margin-top: 8px;
+    &__section-label {
+      display: inline-flex;
+      gap: 7px;
+      align-items: center;
+
+      .art-svg-icon {
+        color: var(--el-color-primary);
       }
     }
 
     &__signals {
       display: grid;
-      gap: 10px;
+      grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
+      gap: 12px;
     }
 
     &__signal {
       display: grid;
-      gap: 10px;
-      padding: 15px;
+      gap: 11px;
+      padding: 16px;
+      border-left: 3px solid var(--el-color-warning);
+
+      &.is-critical,
+      &.is-high {
+        border-left-color: var(--el-color-danger);
+      }
 
       header {
         display: flex;
@@ -346,70 +597,145 @@
         }
       }
 
+      &.is-critical header .art-svg-icon,
+      &.is-high header .art-svg-icon {
+        color: var(--el-color-danger);
+      }
+
       p {
         margin: 0;
         line-height: 1.6;
         color: var(--el-text-color-regular);
       }
+    }
 
-      ul {
-        display: grid;
-        gap: 5px;
-        padding-left: 20px;
-        margin: 0;
-        font-size: 13px;
+    &__evidence {
+      display: grid;
+      gap: 7px;
+
+      span {
+        display: flex;
+        gap: 8px;
+        align-items: flex-start;
+        padding: 7px 9px;
+        font-size: 12px;
+        line-height: 1.5;
         color: var(--el-text-color-secondary);
+        background: var(--el-fill-color-extra-light);
+        border-radius: var(--el-border-radius-small);
+
+        i {
+          flex: none;
+          width: 5px;
+          height: 5px;
+          margin-top: 6px;
+          background: var(--el-color-warning);
+          border-radius: 50%;
+        }
       }
     }
 
     &__actions {
       display: grid;
-      gap: 12px;
-      padding: 16px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      padding: 14px;
       margin: 0;
       list-style: none;
 
       li {
         display: flex;
-        gap: 10px;
+        gap: 11px;
         align-items: flex-start;
+        min-width: 0;
+        padding: 12px;
+        background: var(--el-fill-color-extra-light);
+        border: 1px solid var(--el-border-color-extra-light);
+        border-radius: var(--el-border-radius-base);
       }
 
-      span {
+      > li > span {
         display: grid;
         flex: none;
         place-items: center;
-        width: 24px;
-        height: 24px;
+        width: 27px;
+        height: 27px;
         font-weight: 700;
         color: var(--el-color-primary);
         background: var(--el-color-primary-light-9);
         border-radius: 50%;
       }
 
+      li > div {
+        min-width: 0;
+
+        small {
+          font-size: 10px;
+          font-weight: 600;
+          color: var(--el-color-primary);
+          letter-spacing: 0.3px;
+        }
+
+        p {
+          margin: 4px 0 0;
+          line-height: 1.6;
+          color: var(--el-text-color-primary);
+        }
+      }
+    }
+
+    &__limitations {
+      display: grid;
+      gap: 9px;
+      padding: 14px 16px;
+
       p {
-        margin: 1px 0 0;
-        line-height: 1.65;
+        display: flex;
+        gap: 9px;
+        align-items: flex-start;
+        margin: 0;
+        font-size: 13px;
+        line-height: 1.6;
+        color: var(--el-text-color-secondary);
+
+        .art-svg-icon {
+          flex: none;
+          margin-top: 3px;
+          color: var(--el-color-primary);
+        }
       }
     }
 
     &__meta {
       display: flex;
       flex-wrap: wrap;
-      gap: 7px 18px;
-      padding-top: 4px;
+      gap: 8px 18px;
+      align-items: center;
+      padding: 4px 2px 8px;
       font-size: 12px;
       color: var(--el-text-color-secondary);
+
+      span {
+        display: inline-flex;
+        gap: 5px;
+        align-items: center;
+      }
     }
   }
 
-  @media (width <= 640px) {
+  @media (width <= 760px) {
     .transport-advisor {
-      &__hero {
-        grid-template-columns: 1fr;
+      &__hero-header {
+        flex-direction: column;
+
+        .el-button {
+          width: 100%;
+        }
       }
 
-      &__score {
+      &__score,
+      &__signals,
+      &__actions {
         grid-template-columns: 1fr;
       }
     }

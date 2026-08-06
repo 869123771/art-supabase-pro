@@ -1,12 +1,11 @@
 import { trim } from 'lodash-es'
-import { addCargo, addCustomer, addCustomerAddress, addStation } from '@/api/tms'
+import { createAiOrderMasterData } from '@/api/tms'
 import type { AiOrderMasterDataTask, AiOrderReferenceMatches } from './ai-order-types'
 
 type Draft = Api.Tms.Order.AiOrderDraft
 type AddressType = Api.Tms.BasicData.CustomerAddressType
 type StationType = Api.Tms.Station.StationType
-type Customer = Api.Tms.BasicData.Customer
-type CustomerAddress = Api.Tms.BasicData.CustomerAddress
+type CreateTask = Api.Tms.Order.AiOrderMasterDataCreateTask
 
 const PHONE_PATTERN = /^(?:1[3-9]\d{9}|0\d{2,3}-?\d{7,8})$/
 const CARGO_UNITS = new Set(['piece', 'box', 'bottle', 'item', 'set'])
@@ -80,54 +79,62 @@ export function useAiOrderMasterData() {
     selectedKeys: string[]
   ): Promise<number> {
     const selected = new Set(selectedKeys)
-    let createdCount = 0
-    let stationSequence = 0
+    const tasks: CreateTask[] = []
 
     for (const config of getStationConfigs(draft)) {
       if (!selected.has(config.key)) continue
-      await addStation(
-        {
-          stationCode: createStationCode(stationSequence++),
-          stationName: text(config.name),
-          stationTypes: [config.stationType],
-          enabled: true,
-          sort: 0,
-          remark: null
-        },
-        { showMessage: false }
-      )
-      createdCount += 1
+      tasks.push({
+        key: config.key,
+        kind: 'station',
+        payload: {
+          station: {
+            stationName: text(config.name),
+            enabled: true,
+            sort: 0,
+            remark: null
+          },
+          roleTypes: [config.stationType]
+        }
+      })
     }
 
     for (const side of ['shipping', 'receiving'] as const) {
       const config = getCustomerConfig(side, draft)
       if (selected.has(config.customerKey)) {
-        await createCustomerBundle(config)
-        createdCount += 1
+        tasks.push(createCustomerTask(config))
       } else if (selected.has(config.addressKey)) {
         const customerId = references[config.customerKey].id
         if (!customerId) throw new Error(`${config.customerTitle}尚未匹配，无法创建地址`)
-        await createAddress(customerId, config)
-        createdCount += 1
+        tasks.push({
+          key: config.addressKey,
+          kind: 'address',
+          payload: {
+            customerId,
+            address: createAddressPayload(config)
+          }
+        })
       }
     }
 
     for (const reference of references.cargoItems) {
       if (!selected.has(`cargo:${reference.index}`)) continue
       const cargo = draft.cargoItems?.[reference.index]
-      await addCargo(
-        {
-          cargoName: text(cargo?.cargoName),
-          unit: normalizeCargoUnit(cargo?.unit || cargo?.packageType),
-          enabled: true,
-          remark: null
-        },
-        { showMessage: false }
-      )
-      createdCount += 1
+      tasks.push({
+        key: `cargo:${reference.index}`,
+        kind: 'cargo',
+        payload: {
+          cargo: {
+            cargoName: text(cargo?.cargoName),
+            unit: normalizeCargoUnit(cargo?.unit || cargo?.packageType),
+            enabled: true,
+            remark: null
+          }
+        }
+      })
     }
 
-    return createdCount
+    const { data } = await createAiOrderMasterData(tasks)
+    return data?.length ?? 0
   }
 
   function pushStationTask(
@@ -197,40 +204,42 @@ export function useAiOrderMasterData() {
     }
   }
 
-  async function createCustomerBundle(config: CustomerSideConfig): Promise<void> {
-    const region = inferRegion(config.addressDetail)
-    const customer: Customer = {
-      customerName: text(config.customerName),
-      tags: [],
-      region,
-      addressDetail: text(config.addressDetail),
-      enabled: true,
-      contactName: text(config.contactName),
-      contactPhone: text(config.contactPhone),
-      coordinateSystem: 'gcj02',
-      coordinateStatus: 'pending'
-    }
-    const { data } = await addCustomer(customer, { showMessage: false })
-    if (!data?.id) throw new Error(`${config.customerTitle}创建后未返回编号`)
-    if (text(config.addressDetail)) await createAddress(data.id, config)
-  }
-
-  async function createAddress(customerId: string, config: CustomerSideConfig): Promise<void> {
-    const address: CustomerAddress = {
-      customerId,
-      addressType: config.addressType,
-      contactName: text(config.contactName),
-      contactPhone: text(config.contactPhone),
-      region: inferRegion(config.addressDetail),
-      addressDetail: text(config.addressDetail),
-      coordinateSystem: 'gcj02',
-      coordinateStatus: 'pending',
-      isDefault: true
-    }
-    await addCustomerAddress(address, { showMessage: false })
-  }
-
   return { buildTasks, createTasks }
+}
+
+function createCustomerTask(config: CustomerSideConfig): CreateTask {
+  const addressDetail = text(config.addressDetail)
+  return {
+    key: config.customerKey,
+    kind: 'customer',
+    payload: {
+      customer: {
+        customerName: text(config.customerName),
+        tags: [],
+        region: inferRegion(config.addressDetail),
+        addressDetail,
+        enabled: true,
+        contactName: text(config.contactName),
+        contactPhone: text(config.contactPhone),
+        coordinateSystem: 'gcj02',
+        coordinateStatus: 'pending'
+      },
+      ...(addressDetail ? { address: createAddressPayload(config) } : {})
+    }
+  }
+}
+
+function createAddressPayload(config: CustomerSideConfig): Record<string, unknown> {
+  return {
+    addressType: config.addressType,
+    contactName: text(config.contactName),
+    contactPhone: text(config.contactPhone),
+    region: inferRegion(config.addressDetail),
+    addressDetail: text(config.addressDetail),
+    coordinateSystem: 'gcj02',
+    coordinateStatus: 'pending',
+    isDefault: true
+  }
 }
 
 function getStationConfigs(draft: Draft) {
@@ -307,10 +316,6 @@ function inferRegion(value: string | null | undefined): string {
   const cityDistrict = address.match(/^(.+?市)(.+?(?:区|县|旗))/)
   if (cityDistrict) return [cityDistrict[1], cityDistrict[2]].join('/')
   return ''
-}
-
-function createStationCode(sequence: number): string {
-  return `ST${Date.now().toString(36).toUpperCase()}${String(sequence).padStart(2, '0')}`
 }
 
 function normalizeCargoUnit(value: string | null | undefined): string {

@@ -6,6 +6,7 @@
       width="600"
       :show-close="false"
       :lock-scroll="false"
+      class="art-global-search-dialog"
       modal-class="search-modal"
       @close="closeSearchDialog"
     >
@@ -16,7 +17,7 @@
         @blur="searchBlur"
         ref="searchInput"
         :prefix-icon="Search"
-        class="h-12"
+        class="art-global-search__input h-12"
       >
         <template #suffix>
           <div
@@ -26,7 +27,12 @@
           </div>
         </template>
       </ElInput>
-      <ElScrollbar class="mt-5" max-height="370px" ref="searchResultScrollbar" always>
+      <ElScrollbar
+        class="art-global-search__results mt-5"
+        max-height="370px"
+        ref="searchResultScrollbar"
+        always
+      >
         <div class="result w-full" v-show="searchResult.length">
           <div
             class="box !mt-0 c-p text-base leading-none"
@@ -45,7 +51,10 @@
           </div>
         </div>
 
-        <div v-show="!searchVal && searchResult.length === 0 && historyResult.length > 0">
+        <div
+          v-show="!searchVal && searchResult.length === 0 && historyResult.length > 0"
+          class="history-result"
+        >
           <p class="text-xs text-g-500">{{ $t('search.historyTitle') }}</p>
           <div class="mt-1.5 w-full">
             <div
@@ -73,7 +82,7 @@
       </ElScrollbar>
 
       <template #footer>
-        <div class="dialog-footer box-border flex-c border-t-d pt-4.5 pb-1">
+        <div class="dialog-footer box-border flex-c">
           <div class="flex-cc">
             <ArtSvgIcon icon="fluent:arrow-enter-left-20-filled" class="keyboard" />
             <span class="mr-3.5 text-xs text-g-700">{{ $t('search.selectKeydown') }}</span>
@@ -366,49 +375,105 @@
     }
   }
 </script>
-<style lang="scss" scoped>
-  .layout-search {
-    :deep(.search-modal) {
-      background-color: rgb(0 0 0 / 20%);
+<style lang="scss">
+  .search-modal {
+    background-color: rgb(15 23 42 / 30%);
+  }
+
+  .art-global-search-dialog {
+    width: min(600px, calc(100vw - 24px));
+    padding: 0 !important;
+    border-color: transparent;
+
+    .el-dialog__header {
+      display: none;
     }
 
-    :deep(.el-dialog__body) {
-      padding: 5px 0 0 !important;
+    .el-dialog__body {
+      padding: 16px 18px 10px !important;
     }
 
-    :deep(.el-dialog__header) {
-      padding: 0;
+    .el-dialog__footer {
+      min-height: 50px;
+      padding: 11px 18px 12px !important;
+      background: color-mix(in srgb, var(--art-gray-100) 52%, var(--default-box-color));
+      border-top: 1px solid var(--art-card-border);
     }
 
-    .el-input {
-      :deep(.el-input__wrapper) {
-        background-color: var(--art-gray-200);
-        border: 1px solid var(--default-border-dashed);
-        border-radius: calc(var(--custom-radius) / 2 + 2px) !important;
-        box-shadow: none;
+    .art-global-search__results {
+      margin-top: 12px !important;
+
+      .el-scrollbar__bar.is-vertical {
+        right: 1px;
+      }
+    }
+
+    .result .box > div,
+    .history-result .box {
+      height: 44px;
+      margin-top: 6px !important;
+      color: var(--art-text-gray-700);
+      background: color-mix(in srgb, var(--art-gray-200) 72%, transparent);
+      border: 1px solid transparent;
+      transition:
+        color var(--art-motion-duration-fast) ease,
+        background-color var(--art-motion-duration-fast) ease,
+        box-shadow var(--art-motion-duration-fast) ease;
+
+      &:hover {
+        color: var(--theme-color);
+        background: color-mix(in srgb, var(--theme-color) 8%, transparent);
       }
 
-      :deep(.el-input__inner) {
-        color: var(--art-gray-800) !important;
+      &.highlighted {
+        color: var(--theme-color) !important;
+        background: color-mix(in srgb, var(--theme-color) 12%, transparent) !important;
+        border-color: transparent;
+        box-shadow: var(--art-themed-action-hover-shadow);
       }
+    }
+
+    .dialog-footer {
+      flex-wrap: wrap;
+      gap: 2px 0;
+      min-width: 0;
+    }
+
+    .art-global-search__input .el-input__wrapper {
+      padding: 0 14px;
+      background-color: color-mix(in srgb, var(--art-gray-100) 68%, var(--default-box-color));
+      border: 1px solid var(--art-card-border);
+      border-radius: var(--art-control-radius) !important;
+      box-shadow: none;
+      transition:
+        border-color var(--art-motion-duration-fast) ease,
+        box-shadow var(--art-motion-duration-fast) ease;
+
+      &.is-focus {
+        border-color: color-mix(in srgb, var(--theme-color) 38%, transparent);
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--theme-color) 10%, transparent);
+      }
+    }
+
+    .art-global-search__input .el-input__inner {
+      color: var(--art-gray-800) !important;
     }
   }
 
-  .dark .layout-search {
-    .el-input {
-      :deep(.el-input__wrapper) {
-        background-color: #333;
-        border: 1px solid #4c4d50;
+  html.dark .search-modal {
+    background-color: rgb(2 6 23 / 62%);
+    backdrop-filter: none;
+  }
+
+  @media (width <= 640px) {
+    .art-global-search-dialog {
+      .el-dialog__body {
+        padding: 14px 14px 8px !important;
       }
-    }
 
-    :deep(.search-modal) {
-      background-color: rgb(23 23 26 / 60%);
-      backdrop-filter: none;
-    }
-
-    :deep(.el-dialog) {
-      background-color: #252526;
+      .el-dialog__footer {
+        padding: 10px 14px 11px !important;
+      }
     }
   }
 </style>

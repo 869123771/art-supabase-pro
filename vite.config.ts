@@ -76,12 +76,14 @@ export default ({ mode }: { mode: string }) => {
   const { VITE_VERSION, VITE_PORT, VITE_BASE_URL, VITE_API_URL, VITE_API_PROXY_URL, VITE_OUT_DIR } =
     env
   const isProduction = mode === 'production'
+  const isE2E = mode === 'e2e'
+  const enableGeneratedDeclarations = !isProduction && !isE2E
   const enableBuildCompression = env.VITE_BUILD_COMPRESS === 'true'
   const enableBundleAnalyzer =
     env.VITE_BUILD_ANALYZE === 'true' || process.env.VITE_BUILD_ANALYZE === 'true'
   const enableVueDevTools = env.VITE_DEVTOOLS === 'true'
-  const enableFileViewerPlugin = isProduction || env.VITE_FILE_VIEWER === 'true'
-  const enableFileViewerAssets = isProduction || env.VITE_FILE_VIEWER_ASSETS === 'true'
+  const enableFileViewerPlugin = !isE2E && (isProduction || env.VITE_FILE_VIEWER === 'true')
+  const enableFileViewerAssets = !isE2E && (isProduction || env.VITE_FILE_VIEWER_ASSETS === 'true')
   const outDir = process.env.VITE_OUT_DIR || VITE_OUT_DIR || 'dist'
   const elementPlusStyleDeps = getElementPlusStyleDeps(root)
 
@@ -234,17 +236,17 @@ export default ({ mode }: { mode: string }) => {
       // 自动按需导入 API
       AutoImport({
         imports: ['vue', 'vue-router', 'pinia', '@vueuse/core'],
-        dts: isProduction ? false : 'src/types/import/auto-imports.d.ts',
+        dts: enableGeneratedDeclarations ? 'src/types/import/auto-imports.d.ts' : false,
         resolvers: [ElementPlusResolver({ importStyle: 'sass' })],
         eslintrc: {
-          enabled: !isProduction,
+          enabled: enableGeneratedDeclarations,
           filepath: './.auto-import.json',
           globalsPropValue: true
         }
       }),
       // 自动按需导入组件
       Components({
-        dts: isProduction ? false : 'src/types/import/components.d.ts',
+        dts: enableGeneratedDeclarations ? 'src/types/import/components.d.ts' : false,
         exclude: [/[\\/]art-data-select[\\/]preview\.vue$/],
         resolvers: [ElementPlusResolver({ importStyle: 'sass' })]
       }),
@@ -265,7 +267,7 @@ export default ({ mode }: { mode: string }) => {
             })
           ]
         : []),
-      ...(!isProduction && enableVueDevTools ? [vueDevTools()] : []),
+      ...(!isProduction && !isE2E && enableVueDevTools ? [vueDevTools()] : []),
       // 创建 .nojekyll 文件，禁用 Jekyll 处理
       createNoJekyllPlugin(outDir),
       ...(enableBundleAnalyzer

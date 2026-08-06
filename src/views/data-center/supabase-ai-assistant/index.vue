@@ -1,580 +1,498 @@
 <template>
-  <div class="project-assistant art-full-height" :class="{ 'is-focus-mode': focusMode }">
-    <header v-if="!focusMode" class="project-assistant__hero art-card-xs">
-      <div>
-        <div class="project-assistant__eyebrow">
-          <ArtSvgIcon icon="ri:database-2-line" />
-          SUPABASE PROJECT COPILOT
+  <ArtPageShell
+    class="project-assistant-shell"
+    :loading="initialLoading"
+    loading-mode="skeleton"
+    :error="pageError"
+    min-height="720px"
+    @retry="loadInitialData"
+  >
+    <div class="project-assistant art-full-height" :class="{ 'is-focus-mode': focusMode }">
+      <header v-if="!focusMode" class="project-assistant__hero art-card-xs">
+        <div>
+          <div class="project-assistant__eyebrow">
+            <ArtSvgIcon icon="ri:database-2-line" />
+            SUPABASE PROJECT COPILOT
+          </div>
+          <h1>Supabase AI 助手</h1>
+          <p>
+            统一洞察 Database、RLS、Auth、Storage、Realtime 与 Edge
+            Functions，并生成可审计的治理方案。
+          </p>
         </div>
-        <h2>Supabase AI 助手</h2>
-        <p>
-          统一洞察 Database、RLS、Auth、Storage、Realtime 与 Edge
-          Functions，并生成可审计的治理方案。
-        </p>
-      </div>
-      <div class="project-assistant__safety">
-        <div class="project-assistant__hero-actions">
-          <ElButton plain type="primary" @click="openCapabilityCenter">
-            <ArtSvgIcon icon="ri:radar-line" /> 全域能力
-          </ElButton>
-          <ElTag
-            :type="assistantMode === 'controlled_write' ? 'warning' : 'success'"
-            effect="light"
-            round
-          >
-            <ArtSvgIcon
-              :icon="
-                assistantMode === 'controlled_write' ? 'ri:admin-line' : 'ri:shield-check-line'
-              "
-            />
-            {{ assistantMode === 'controlled_write' ? '管理员受控变更' : '只读安全模式' }}
-          </ElTag>
-        </div>
-        <span>项目：{{ overview?.projectRef || 'ckbftoopuyophiebamwy' }}</span>
-      </div>
-    </header>
-
-    <section v-if="!focusMode" class="project-assistant__stats art-card-xs">
-      <button
-        v-for="stat in stats"
-        :key="stat.type"
-        type="button"
-        :class="{ 'is-active': filters.objectType === stat.type }"
-        @click="selectStat(stat.type)"
-      >
-        <span><ArtSvgIcon :icon="stat.icon" /></span>
-        <div
-          ><strong>{{ stat.value }}</strong
-          ><small>{{ stat.label }}</small></div
-        >
-      </button>
-    </section>
-
-    <section class="project-assistant__workspace">
-      <ElSplitter class="project-assistant__splitter" lazy>
-        <ElSplitterPanel size="280px" min="240px" max="400px" collapsible>
-          <aside class="project-assistant__catalog art-card-xs">
-            <div class="project-assistant__panel-title">
-              <div>
-                <strong>项目对象</strong>
-                <small>{{ objects.length }} 条结果</small>
-              </div>
-              <div class="project-assistant__panel-actions">
-                <ElTooltip
-                  :content="focusMode ? '退出专注模式' : '进入专注模式'"
-                  placement="bottom"
-                >
-                  <ElButton
-                    class="project-assistant__focus-toggle"
-                    :class="{ 'is-active': focusMode }"
-                    text
-                    circle
-                    :type="focusMode ? 'primary' : undefined"
-                    :title="focusMode ? '退出专注模式' : '进入专注模式'"
-                    :aria-label="focusMode ? '退出专注模式' : '进入专注模式'"
-                    @click="toggleFocusMode"
-                  >
-                    <ArtSvgIcon :icon="focusMode ? 'ri:fullscreen-exit-line' : 'ri:focus-3-line'" />
-                  </ElButton>
-                </ElTooltip>
-                <ElButton
-                  class="project-assistant__refresh"
-                  :class="{
-                    'is-refreshing': loading.objects && objectLoadSource === 'refresh'
-                  }"
-                  text
-                  circle
-                  type="primary"
-                  title="刷新项目对象"
-                  aria-label="刷新项目对象"
-                  :disabled="loading.objects"
-                  @click="loadObjects('refresh')"
-                >
-                  <ArtSvgIcon class="project-assistant__refresh-icon" icon="ri:refresh-line" />
-                </ElButton>
-              </div>
-            </div>
-            <div class="project-assistant__filters">
-              <ElInput
-                v-model="filters.keyword"
-                class="project-assistant__search"
-                clearable
-                placeholder="搜索对象名称"
-                @keyup.enter="loadObjects('filter')"
-                @clear="loadObjects('filter')"
-              >
-                <template #prefix><ArtSvgIcon icon="ri:search-line" /></template>
-              </ElInput>
-              <div class="project-assistant__filter-selects">
-                <ElSelect v-model="filters.schema" @change="loadObjects('filter')">
-                  <ElOption label="全部 Schema" value="all" />
-                  <ElOption
-                    v-for="schema in schemas"
-                    :key="schema"
-                    :label="schema"
-                    :value="schema"
-                  />
-                </ElSelect>
-                <ElSelect v-model="filters.objectType" @change="loadObjects('filter')">
-                  <ElOption
-                    v-for="option in objectTypeOptions"
-                    :key="option.value"
-                    :label="option.label"
-                    :value="option.value"
-                  />
-                </ElSelect>
-              </div>
-            </div>
-            <ElScrollbar
-              v-loading="showObjectListLoading"
-              element-loading-text="正在加载项目对象…"
-              class="project-assistant__object-list"
+        <div class="project-assistant__safety">
+          <div class="project-assistant__hero-actions">
+            <ElButton plain type="primary" @click="openCapabilityCenter">
+              <ArtSvgIcon icon="ri:radar-line" /> 全域能力
+            </ElButton>
+            <ElTag
+              :type="assistantMode === 'controlled_write' ? 'warning' : 'success'"
+              effect="light"
+              round
             >
-              <button
-                v-for="item in objects"
-                :key="`${item.objectType}:${item.schemaName}:${item.objectName}`"
-                type="button"
-                :class="{ 'is-active': isSelected(item) }"
-                @click="selectObject(item)"
-              >
-                <span class="project-assistant__object-icon">
-                  <ArtSvgIcon :icon="getObjectIcon(item.objectType)" />
-                </span>
-                <span>
-                  <strong>{{ item.objectName }}</strong>
-                  <small :title="item.description || '暂无对象说明'">
-                    {{ item.description || '暂无对象说明' }}
-                  </small>
-                </span>
-              </button>
-              <ElEmpty
-                v-if="!loading.objects && !objects.length"
-                description="没有匹配的项目对象"
+              <ArtSvgIcon
+                :icon="
+                  assistantMode === 'controlled_write' ? 'ri:admin-line' : 'ri:shield-check-line'
+                "
               />
-            </ElScrollbar>
-          </aside>
-        </ElSplitterPanel>
+              {{ assistantMode === 'controlled_write' ? '管理员受控变更' : '只读安全模式' }}
+            </ElTag>
+          </div>
+          <span>项目：{{ overview?.projectRef || 'ckbftoopuyophiebamwy' }}</span>
+        </div>
+      </header>
 
-        <ElSplitterPanel min="380px">
-          <main class="project-assistant__detail art-card-xs">
-            <div class="project-assistant__panel-title">
-              <div>
-                <strong>{{ selectedObject?.objectName || '对象详情' }}</strong>
-                <small
-                  v-if="selectedObject"
-                  class="project-assistant__detail-description"
-                  :title="detail?.description || selectedObject.description || '暂无对象说明'"
-                >
-                  {{ detail?.description || selectedObject.description || '暂无对象说明' }}
-                </small>
-                <small v-else>从左侧选择数据库对象</small>
-              </div>
-              <div class="project-assistant__detail-actions">
-                <ElButton
-                  v-if="selectedObject"
-                  text
-                  type="primary"
-                  :disabled="chat.sending"
-                  @click="runObjectAnalysis(objectAiActions[0])"
-                >
-                  <ArtSvgIcon icon="ri:sparkling-2-line" /> AI 解读
-                </ElButton>
-                <ElButton
-                  v-if="canEditSelectedDescription"
-                  text
-                  :type="assistantMode === 'controlled_write' ? 'warning' : 'primary'"
-                  @click="editObjectDescription"
-                >
-                  <ArtSvgIcon icon="ri:edit-2-line" /> 编辑说明
-                </ElButton>
-                <ElButton v-if="detail?.ddl" text type="primary" @click="copyDdl">
-                  <ArtSvgIcon icon="ri:file-copy-line" /> 复制 DDL
-                </ElButton>
-              </div>
-            </div>
+      <section v-if="!focusMode" class="project-assistant__stats art-card-xs">
+        <button
+          v-for="stat in stats"
+          :key="stat.type"
+          type="button"
+          :class="{ 'is-active': filters.objectType === stat.type }"
+          :aria-pressed="filters.objectType === stat.type"
+          @click="selectStat(stat.type)"
+        >
+          <span><ArtSvgIcon :icon="stat.icon" /></span>
+          <div
+            ><strong>{{ stat.value }}</strong
+            ><small>{{ stat.label }}</small></div
+          >
+        </button>
+      </section>
 
-            <ElTabs
-              v-if="selectedObject"
-              v-model="detailTab"
-              class="project-assistant__detail-tabs"
-            >
-              <ElTabPane label="智能概览" name="insights">
-                <ElScrollbar v-loading="loading.detail" class="project-assistant__insights-scroll">
-                  <div class="project-assistant__insights">
-                    <section>
-                      <ArtSectionTitle :show-line="false">对象画像</ArtSectionTitle>
-                      <div class="project-assistant__insight-grid">
-                        <article v-for="metric in objectInsightMetrics" :key="metric.label">
-                          <span><ArtSvgIcon :icon="metric.icon" /></span>
-                          <div>
-                            <small>{{ metric.label }}</small>
-                            <strong>{{ metric.value }}</strong>
-                            <p>{{ metric.helper }}</p>
-                          </div>
-                        </article>
-                      </div>
-                    </section>
+      <section class="project-assistant__workspace">
+        <ElSplitter class="project-assistant__splitter" lazy>
+          <ElSplitterPanel size="280px" min="240px" max="400px" collapsible>
+            <ProjectAssistantObjectBrowser
+              :focus-mode="focusMode"
+              :schemas="schemas"
+              :objects="objects"
+              :selected-object="selectedObject"
+              :filters="filters"
+              :loading="loading.objects"
+              :load-source="objectLoadSource"
+              :error="errors.objects"
+              @toggle-focus="toggleFocusMode"
+              @refresh="loadObjects('refresh')"
+              @filter="loadObjects('filter')"
+              @select="selectObject"
+              @update:keyword="filters.keyword = $event"
+              @update:schema="filters.schema = $event"
+              @update:object-type="filters.objectType = $event"
+            />
+          </ElSplitterPanel>
 
-                    <section>
-                      <ArtSectionTitle :show-line="false">治理检查</ArtSectionTitle>
-                      <div class="project-assistant__governance-list">
-                        <article v-for="item in objectGovernanceChecks" :key="item.label">
-                          <span :class="`is-${item.status}`">
-                            <ArtSvgIcon :icon="item.icon" />
-                          </span>
-                          <div>
-                            <strong>{{ item.label }}</strong>
-                            <small>{{ item.detail }}</small>
-                          </div>
-                          <ElTag :type="item.status" size="small" effect="light" round>
-                            {{ item.statusLabel }}
-                          </ElTag>
-                        </article>
-                      </div>
-                    </section>
-
-                    <section>
-                      <ArtSectionTitle :show-line="false">AI 分析动作</ArtSectionTitle>
-                      <div class="project-assistant__analysis-actions">
-                        <button
-                          v-for="action in objectAiActions"
-                          :key="action.label"
-                          type="button"
-                          :disabled="chat.sending"
-                          @click="runObjectAnalysis(action)"
-                        >
-                          <span><ArtSvgIcon :icon="action.icon" /></span>
-                          <span>
-                            <strong>{{ action.label }}</strong>
-                            <small>{{ action.description }}</small>
-                          </span>
-                          <ArtSvgIcon icon="ri:arrow-right-up-line" />
-                        </button>
-                      </div>
-                    </section>
-                  </div>
-                </ElScrollbar>
-              </ElTabPane>
-              <ElTabPane label="对象定义" name="ddl">
-                <ElScrollbar v-loading="loading.detail" class="project-assistant__code-scroll">
-                  <pre
-                    v-if="detail?.ddl"
-                    class="project-assistant__code"
-                    aria-label="SQL 对象定义"
-                  ><code v-sql-highlight="detail.ddl" class="language-sql"></code></pre>
-                  <ElEmpty v-else description="当前对象没有可显示的定义" />
-                </ElScrollbar>
-              </ElTabPane>
-              <ElTabPane v-if="detail?.columns?.length" label="字段" name="columns">
-                <div class="project-assistant__fields-panel">
-                  <div class="project-assistant__fields-toolbar">
-                    <ElInput v-model="fieldKeyword" clearable placeholder="搜索字段、类型或说明">
-                      <template #prefix><ArtSvgIcon icon="ri:search-line" /></template>
-                    </ElInput>
-                    <span> {{ filteredColumns.length }} / {{ detail.columns.length }} 个字段 </span>
-                  </div>
-                  <ArtTable
-                    :data="filteredColumns"
-                    :columns="fieldColumns"
-                    :pagination="false"
-                    height="calc(100% - 49px)"
-                    stripe
-                  />
-                </div>
-              </ElTabPane>
-              <ElTabPane
-                v-if="selectedObject.objectType === 'table'"
-                label="外键关系"
-                name="relations"
-              >
-                <ElScrollbar
-                  v-loading="loading.relationships"
-                  class="project-assistant__relation-list"
-                >
-                  <article v-for="relation in relationships" :key="relation.constraintName">
-                    <strong>{{ relation.constraintName }}</strong>
-                    <span>
-                      {{ relation.sourceSchema }}.{{ relation.sourceTable }} →
-                      {{ relation.targetSchema }}.{{ relation.targetTable }}
-                    </span>
-                    <code>{{ relation.definition }}</code>
-                  </article>
-                  <ElEmpty v-if="!relationships.length" description="没有关联此外键的记录" />
-                </ElScrollbar>
-              </ElTabPane>
-            </ElTabs>
-            <div v-else class="project-assistant__detail-empty">
-              <div class="project-assistant__empty-icon">
-                <ArtSvgIcon icon="ri:code-box-line" />
-              </div>
-              <h3>选择对象查看定义</h3>
-              <p>支持表、视图、函数、触发器、RLS 策略和索引。</p>
-            </div>
-          </main>
-        </ElSplitterPanel>
-
-        <ElSplitterPanel size="390px" min="320px" max="540px" collapsible>
-          <aside class="project-assistant__chat art-card-xs">
-            <div class="project-assistant__panel-title project-assistant__chat-header">
-              <div class="project-assistant__assistant-heading">
-                <span class="project-assistant__assistant-avatar">
-                  <ArtSvgIcon icon="ri:sparkling-2-fill" />
-                </span>
-                <span>
-                  <strong>项目助手</strong>
-                  <small>
-                    <i :class="{ 'is-offline': !assistantStatus.online }"></i>
-                    {{ assistantStatusLabel }}
+          <ElSplitterPanel min="380px">
+            <main class="project-assistant__detail art-card-xs">
+              <div class="project-assistant__panel-title">
+                <div>
+                  <strong>{{ selectedObject?.objectName || '对象详情' }}</strong>
+                  <small
+                    v-if="selectedObject"
+                    class="project-assistant__detail-description"
+                    :title="detail?.description || selectedObject.description || '暂无对象说明'"
+                  >
+                    {{ detail?.description || selectedObject.description || '暂无对象说明' }}
                   </small>
-                </span>
-              </div>
-              <div class="project-assistant__chat-actions">
-                <ElTooltip content="会话历史" placement="bottom">
-                  <ElButton text circle aria-label="会话历史" @click="openHistory">
-                    <ArtSvgIcon icon="ri:history-line" />
-                  </ElButton>
-                </ElTooltip>
-                <ElTooltip content="导出当前会话" placement="bottom">
+                  <small v-else>从左侧选择数据库对象</small>
+                </div>
+                <div class="project-assistant__detail-actions">
                   <ElButton
+                    v-if="selectedObject"
                     text
-                    circle
-                    aria-label="导出当前会话"
-                    :disabled="!chat.messages.length"
-                    @click="exportConversation"
+                    type="primary"
+                    :disabled="chat.sending"
+                    @click="runObjectAnalysis(objectAiActions[0])"
                   >
-                    <ArtSvgIcon icon="ri:download-2-line" />
+                    <ArtSvgIcon icon="ri:sparkling-2-line" /> AI 解读
                   </ElButton>
-                </ElTooltip>
-                <ElButton text type="primary" @click="resetChat">
-                  <ArtSvgIcon icon="ri:chat-new-line" /> 新对话
-                </ElButton>
-              </div>
-            </div>
-            <div v-if="activeChatObject" class="project-assistant__chat-context">
-              <ArtSvgIcon :icon="getObjectIcon(activeChatObject.objectType)" />
-              <span>正在分析</span>
-              <strong>{{ activeChatObject.schemaName }}.{{ activeChatObject.objectName }}</strong>
-              <ElTooltip :content="chat.contextLocked ? '解除上下文锁定' : '锁定当前对象上下文'">
-                <ElButton
-                  text
-                  circle
-                  size="small"
-                  :type="chat.contextLocked ? 'primary' : ''"
-                  :aria-label="chat.contextLocked ? '解除上下文锁定' : '锁定当前对象上下文'"
-                  @click="toggleContextLock"
-                >
-                  <ArtSvgIcon :icon="chat.contextLocked ? 'ri:pushpin-fill' : 'ri:pushpin-line'" />
-                </ElButton>
-              </ElTooltip>
-            </div>
-            <ElScrollbar ref="chatScrollbarRef" class="project-assistant__messages">
-              <div v-if="!chat.messages.length" class="project-assistant__chat-welcome">
-                <div class="project-assistant__welcome-mark">
-                  <span><ArtSvgIcon icon="ri:sparkling-2-fill" /></span>
+                  <ElButton
+                    v-if="canEditSelectedDescription"
+                    text
+                    :type="assistantMode === 'controlled_write' ? 'warning' : 'primary'"
+                    @click="editObjectDescription"
+                  >
+                    <ArtSvgIcon icon="ri:edit-2-line" /> 编辑说明
+                  </ElButton>
+                  <ElButton v-if="detail?.ddl" text type="primary" @click="copyDdl">
+                    <ArtSvgIcon icon="ri:file-copy-line" /> 复制 DDL
+                  </ElButton>
                 </div>
-                <small>PROJECT INTELLIGENCE</small>
-                <h3>询问这个 Supabase 项目</h3>
-                <p>
-                  {{
-                    assistantMode === 'controlled_write'
-                      ? '超级管理员受控变更已开启；执行前仍需明确确认，并记录完整审计。'
-                      : '基于项目实时元数据提供分析建议，全程只读，不执行 SQL 或修改项目。'
-                  }}
-                </p>
-                <ElButton
-                  v-for="suggestion in chatSuggestions"
-                  :key="suggestion"
-                  text
-                  @click="sendSuggestion(suggestion)"
-                >
-                  <span>{{ suggestion }}</span>
-                  <ArtSvgIcon icon="ri:arrow-right-up-line" />
-                </ElButton>
               </div>
-              <article
-                v-for="message in chat.messages"
-                :key="message.id"
-                :class="['project-assistant__message', `is-${message.role}`]"
+
+              <ArtAsyncState
+                v-if="selectedObject"
+                class="project-assistant__detail-state"
+                :loading="loading.detail"
+                :loading-mode="detail ? 'mask' : 'skeleton'"
+                :error="errors.detail"
+                full-height
+                min-height="0"
+                @retry="selectObject(selectedObject)"
               >
-                <span>
-                  <ArtSvgIcon
-                    :icon="message.role === 'assistant' ? 'ri:sparkling-2-fill' : 'ri:user-3-line'"
-                  />
-                </span>
-                <div>
-                  <div class="project-assistant__message-content">{{ message.content }}</div>
-                  <div
-                    v-if="message.role === 'assistant' && (message.runId || message.tools?.length)"
-                    class="project-assistant__message-trace"
-                  >
-                    <span v-if="message.model">{{ message.model }}</span>
-                    <span v-if="message.latencyMs != null">{{
-                      formatDuration(message.latencyMs)
-                    }}</span>
-                    <span v-if="message.usage">
-                      {{ (message.usage.inputTokens || 0) + (message.usage.outputTokens || 0) }}
-                      tokens
-                    </span>
-                    <ElTag
-                      v-for="tool in message.tools"
-                      :key="`${message.id}:${tool.name}`"
-                      size="small"
-                      :type="tool.status === 'succeeded' ? 'success' : 'danger'"
-                      effect="plain"
+                <ElTabs v-model="detailTab" class="project-assistant__detail-tabs">
+                  <ElTabPane label="智能概览" name="insights">
+                    <ElScrollbar class="project-assistant__insights-scroll">
+                      <div class="project-assistant__insights">
+                        <section>
+                          <ArtSectionTitle :show-line="false">对象画像</ArtSectionTitle>
+                          <div class="project-assistant__insight-grid">
+                            <article v-for="metric in objectInsightMetrics" :key="metric.label">
+                              <span><ArtSvgIcon :icon="metric.icon" /></span>
+                              <div>
+                                <small>{{ metric.label }}</small>
+                                <strong>{{ metric.value }}</strong>
+                                <p>{{ metric.helper }}</p>
+                              </div>
+                            </article>
+                          </div>
+                        </section>
+
+                        <section>
+                          <ArtSectionTitle :show-line="false">治理检查</ArtSectionTitle>
+                          <div class="project-assistant__governance-list">
+                            <article v-for="item in objectGovernanceChecks" :key="item.label">
+                              <span :class="`is-${item.status}`">
+                                <ArtSvgIcon :icon="item.icon" />
+                              </span>
+                              <div>
+                                <strong>{{ item.label }}</strong>
+                                <small>{{ item.detail }}</small>
+                              </div>
+                              <ElTag :type="item.status" size="small" effect="light" round>
+                                {{ item.statusLabel }}
+                              </ElTag>
+                            </article>
+                          </div>
+                        </section>
+
+                        <section>
+                          <ArtSectionTitle :show-line="false">AI 分析动作</ArtSectionTitle>
+                          <div class="project-assistant__analysis-actions">
+                            <button
+                              v-for="action in objectAiActions"
+                              :key="action.label"
+                              type="button"
+                              :disabled="chat.sending"
+                              @click="runObjectAnalysis(action)"
+                            >
+                              <span><ArtSvgIcon :icon="action.icon" /></span>
+                              <span>
+                                <strong>{{ action.label }}</strong>
+                                <small>{{ action.description }}</small>
+                              </span>
+                              <ArtSvgIcon icon="ri:arrow-right-up-line" />
+                            </button>
+                          </div>
+                        </section>
+                      </div>
+                    </ElScrollbar>
+                  </ElTabPane>
+                  <ElTabPane label="对象定义" name="ddl">
+                    <ArtAsyncState
+                      :empty="!detail?.ddl"
+                      empty-text="当前对象没有可显示的定义"
+                      full-height
+                      min-height="0"
                     >
-                      {{ getToolLabel(tool.name) }}
-                    </ElTag>
-                  </div>
-                  <div
-                    v-if="message.role === 'assistant'"
-                    class="project-assistant__message-actions"
+                      <ElScrollbar class="project-assistant__code-scroll">
+                        <pre
+                          class="project-assistant__code"
+                          aria-label="SQL 对象定义"
+                        ><code v-sql-highlight="detail?.ddl || ''" class="language-sql"></code></pre>
+                      </ElScrollbar>
+                    </ArtAsyncState>
+                  </ElTabPane>
+                  <ElTabPane v-if="detail?.columns?.length" label="字段" name="columns">
+                    <div class="project-assistant__fields-panel">
+                      <div class="project-assistant__fields-toolbar">
+                        <ElInput
+                          v-model="fieldKeyword"
+                          clearable
+                          placeholder="搜索字段、类型或说明"
+                        >
+                          <template #prefix><ArtSvgIcon icon="ri:search-line" /></template>
+                        </ElInput>
+                        <span>
+                          {{ filteredColumns.length }} / {{ detail.columns.length }} 个字段
+                        </span>
+                      </div>
+                      <ArtTable
+                        :data="filteredColumns"
+                        :columns="fieldColumns"
+                        :pagination="false"
+                        height="calc(100% - 49px)"
+                        stripe
+                      />
+                    </div>
+                  </ElTabPane>
+                  <ElTabPane
+                    v-if="selectedObject.objectType === 'table'"
+                    label="外键关系"
+                    name="relations"
                   >
-                    <ElButton text size="small" @click="copyMessage(message.content)">
-                      <ArtSvgIcon icon="ri:file-copy-line" /> 复制
-                    </ElButton>
-                    <ElButton text size="small" @click="retryMessage(message.id)">
-                      <ArtSvgIcon icon="ri:refresh-line" /> 重试
-                    </ElButton>
-                    <ArtAiFeedback
-                      v-if="message.runId"
-                      :run-id="message.runId"
-                      context-label="Supabase AI 项目助手"
-                      compact
-                      @submitted="message.feedback = $event.rating"
-                    />
-                  </div>
-                </div>
-              </article>
-              <article v-if="chat.sending" class="project-assistant__message is-assistant">
-                <span><ArtSvgIcon icon="ri:sparkling-2-fill" /></span>
-                <div class="project-assistant__typing">
-                  <i></i><i></i><i></i>
-                  <small>{{ chatPhase }} · {{ formatDuration(chat.elapsedMs) }}</small>
-                </div>
-              </article>
-            </ElScrollbar>
-            <footer class="project-assistant__composer">
-              <div v-if="chat.messages.length" class="project-assistant__quick-actions">
-                <button
-                  v-for="action in quickActions"
-                  :key="action.label"
-                  type="button"
-                  :disabled="chat.sending"
-                  @click="sendSuggestion(action.prompt)"
-                >
-                  <ArtSvgIcon :icon="action.icon" /> {{ action.label }}
-                </button>
-              </div>
-              <div class="project-assistant__composer-box">
-                <ElInput
-                  v-model="chat.input"
-                  type="textarea"
-                  resize="none"
-                  :autosize="{ minRows: 3, maxRows: 6 }"
-                  maxlength="4000"
-                  placeholder="向项目助手提问…"
-                  @keydown.enter.exact.prevent="sendMessage"
-                />
-                <div>
-                  <button
-                    v-if="canUseControlledWrite"
-                    type="button"
-                    class="project-assistant__safety-toggle"
-                    :class="{ 'is-write-mode': assistantMode === 'controlled_write' }"
-                    @click="toggleAssistantMode"
-                  >
-                    <ArtSvgIcon
-                      :icon="
-                        assistantMode === 'controlled_write'
-                          ? 'ri:admin-fill'
-                          : 'ri:shield-check-line'
+                    <ArtAsyncState
+                      :loading="loading.relationships"
+                      :loading-mode="relationships.length ? 'mask' : 'skeleton'"
+                      :error="errors.relationships"
+                      :empty="
+                        !loading.relationships && !errors.relationships && !relationships.length
                       "
-                    />
-                    {{ assistantMode === 'controlled_write' ? '受控变更模式' : '只读安全模式' }}
-                  </button>
-                  <span v-else><ArtSvgIcon icon="ri:shield-check-line" /> 只读安全模式</span>
-                  <span class="project-assistant__send-actions">
-                    <small>Enter 发送</small>
-                    <ElButton
-                      type="primary"
-                      circle
-                      :class="{ 'is-stopping': chat.sending }"
-                      :disabled="!chat.sending && !chat.input.trim()"
-                      :aria-label="chat.sending ? '停止等待' : '发送消息'"
-                      :title="chat.sending ? '停止等待' : '发送消息'"
-                      @click="chat.sending ? stopGeneration() : sendMessage()"
+                      empty-text="没有关联此外键的记录"
+                      full-height
+                      min-height="0"
+                      @retry="selectObject(selectedObject)"
                     >
-                      <ArtSvgIcon :icon="chat.sending ? 'ri:stop-fill' : 'ri:arrow-up-line'" />
-                    </ElButton>
+                      <ElScrollbar class="project-assistant__relation-list">
+                        <article v-for="relation in relationships" :key="relation.constraintName">
+                          <strong>{{ relation.constraintName }}</strong>
+                          <span>
+                            {{ relation.sourceSchema }}.{{ relation.sourceTable }} →
+                            {{ relation.targetSchema }}.{{ relation.targetTable }}
+                          </span>
+                          <code>{{ relation.definition }}</code>
+                        </article>
+                      </ElScrollbar>
+                    </ArtAsyncState>
+                  </ElTabPane>
+                </ElTabs>
+              </ArtAsyncState>
+              <div v-else class="project-assistant__detail-empty">
+                <div class="project-assistant__empty-icon">
+                  <ArtSvgIcon icon="ri:code-box-line" />
+                </div>
+                <h3>选择对象查看定义</h3>
+                <p>支持表、视图、函数、触发器、RLS 策略和索引。</p>
+              </div>
+            </main>
+          </ElSplitterPanel>
+
+          <ElSplitterPanel size="390px" min="320px" max="540px" collapsible>
+            <aside class="project-assistant__chat art-card-xs">
+              <div class="project-assistant__panel-title project-assistant__chat-header">
+                <div class="project-assistant__assistant-heading">
+                  <span class="project-assistant__assistant-avatar">
+                    <ArtSvgIcon icon="ri:sparkling-2-fill" />
+                  </span>
+                  <span>
+                    <strong>项目助手</strong>
+                    <small>
+                      <i :class="{ 'is-offline': !assistantStatus.online }"></i>
+                      {{ assistantStatusLabel }}
+                    </small>
                   </span>
                 </div>
+                <div class="project-assistant__chat-actions">
+                  <ElTooltip content="会话历史" placement="bottom">
+                    <ElButton text circle aria-label="会话历史" @click="openHistory">
+                      <ArtSvgIcon icon="ri:history-line" />
+                    </ElButton>
+                  </ElTooltip>
+                  <ElTooltip content="导出当前会话" placement="bottom">
+                    <ElButton
+                      text
+                      circle
+                      aria-label="导出当前会话"
+                      :disabled="!chat.messages.length"
+                      @click="exportConversation"
+                    >
+                      <ArtSvgIcon icon="ri:download-2-line" />
+                    </ElButton>
+                  </ElTooltip>
+                  <ElButton text type="primary" @click="resetChat">
+                    <ArtSvgIcon icon="ri:chat-new-line" /> 新对话
+                  </ElButton>
+                </div>
               </div>
-            </footer>
-          </aside>
-        </ElSplitterPanel>
-      </ElSplitter>
-    </section>
+              <div v-if="activeChatObject" class="project-assistant__chat-context">
+                <ArtSvgIcon :icon="getObjectIcon(activeChatObject.objectType)" />
+                <span>正在分析</span>
+                <strong>{{ activeChatObject.schemaName }}.{{ activeChatObject.objectName }}</strong>
+                <ElTooltip :content="chat.contextLocked ? '解除上下文锁定' : '锁定当前对象上下文'">
+                  <ElButton
+                    text
+                    circle
+                    size="small"
+                    :type="chat.contextLocked ? 'primary' : ''"
+                    :aria-label="chat.contextLocked ? '解除上下文锁定' : '锁定当前对象上下文'"
+                    @click="toggleContextLock"
+                  >
+                    <ArtSvgIcon
+                      :icon="chat.contextLocked ? 'ri:pushpin-fill' : 'ri:pushpin-line'"
+                    />
+                  </ElButton>
+                </ElTooltip>
+              </div>
+              <ElScrollbar ref="chatScrollbarRef" class="project-assistant__messages">
+                <div v-if="!chat.messages.length" class="project-assistant__chat-welcome">
+                  <div class="project-assistant__welcome-mark">
+                    <span><ArtSvgIcon icon="ri:sparkling-2-fill" /></span>
+                  </div>
+                  <small>PROJECT INTELLIGENCE</small>
+                  <h3>询问这个 Supabase 项目</h3>
+                  <p>
+                    {{
+                      assistantMode === 'controlled_write'
+                        ? '超级管理员受控变更已开启；执行前仍需明确确认，并记录完整审计。'
+                        : '基于项目实时元数据提供分析建议，全程只读，不执行 SQL 或修改项目。'
+                    }}
+                  </p>
+                  <ElButton
+                    v-for="suggestion in chatSuggestions"
+                    :key="suggestion"
+                    text
+                    @click="sendSuggestion(suggestion)"
+                  >
+                    <span>{{ suggestion }}</span>
+                    <ArtSvgIcon icon="ri:arrow-right-up-line" />
+                  </ElButton>
+                </div>
+                <article
+                  v-for="message in chat.messages"
+                  :key="message.id"
+                  :class="['project-assistant__message', `is-${message.role}`]"
+                >
+                  <span>
+                    <ArtSvgIcon
+                      :icon="
+                        message.role === 'assistant' ? 'ri:sparkling-2-fill' : 'ri:user-3-line'
+                      "
+                    />
+                  </span>
+                  <div>
+                    <div class="project-assistant__message-content">{{ message.content }}</div>
+                    <div
+                      v-if="
+                        message.role === 'assistant' && (message.runId || message.tools?.length)
+                      "
+                      class="project-assistant__message-trace"
+                    >
+                      <span v-if="message.model">{{ message.model }}</span>
+                      <span v-if="message.latencyMs != null">{{
+                        formatDuration(message.latencyMs)
+                      }}</span>
+                      <span v-if="message.usage">
+                        {{ (message.usage.inputTokens || 0) + (message.usage.outputTokens || 0) }}
+                        tokens
+                      </span>
+                      <ElTag
+                        v-for="tool in message.tools"
+                        :key="`${message.id}:${tool.name}`"
+                        size="small"
+                        :type="tool.status === 'succeeded' ? 'success' : 'danger'"
+                        effect="plain"
+                      >
+                        {{ getToolLabel(tool.name) }}
+                      </ElTag>
+                    </div>
+                    <div
+                      v-if="message.role === 'assistant'"
+                      class="project-assistant__message-actions"
+                    >
+                      <ElButton text size="small" @click="copyMessage(message.content)">
+                        <ArtSvgIcon icon="ri:file-copy-line" /> 复制
+                      </ElButton>
+                      <ElButton text size="small" @click="retryMessage(message.id)">
+                        <ArtSvgIcon icon="ri:refresh-line" /> 重试
+                      </ElButton>
+                      <ArtAiFeedback
+                        v-if="message.runId"
+                        :run-id="message.runId"
+                        context-label="Supabase AI 项目助手"
+                        compact
+                        @submitted="message.feedback = $event.rating"
+                      />
+                    </div>
+                  </div>
+                </article>
+                <article v-if="chat.sending" class="project-assistant__message is-assistant">
+                  <span><ArtSvgIcon icon="ri:sparkling-2-fill" /></span>
+                  <div class="project-assistant__typing">
+                    <i></i><i></i><i></i>
+                    <small>{{ chatPhase }} · {{ formatDuration(chat.elapsedMs) }}</small>
+                  </div>
+                </article>
+              </ElScrollbar>
+              <footer class="project-assistant__composer">
+                <div v-if="chat.messages.length" class="project-assistant__quick-actions">
+                  <button
+                    v-for="action in quickActions"
+                    :key="action.label"
+                    type="button"
+                    :disabled="chat.sending"
+                    @click="sendSuggestion(action.prompt)"
+                  >
+                    <ArtSvgIcon :icon="action.icon" /> {{ action.label }}
+                  </button>
+                </div>
+                <div class="project-assistant__composer-box">
+                  <ElInput
+                    v-model="chat.input"
+                    type="textarea"
+                    resize="none"
+                    :autosize="{ minRows: 3, maxRows: 6 }"
+                    maxlength="4000"
+                    placeholder="向项目助手提问…"
+                    @keydown.enter.exact.prevent="sendMessage"
+                  />
+                  <div>
+                    <button
+                      v-if="canUseControlledWrite"
+                      type="button"
+                      class="project-assistant__safety-toggle"
+                      :class="{ 'is-write-mode': assistantMode === 'controlled_write' }"
+                      @click="toggleAssistantMode"
+                    >
+                      <ArtSvgIcon
+                        :icon="
+                          assistantMode === 'controlled_write'
+                            ? 'ri:admin-fill'
+                            : 'ri:shield-check-line'
+                        "
+                      />
+                      {{ assistantMode === 'controlled_write' ? '受控变更模式' : '只读安全模式' }}
+                    </button>
+                    <span v-else><ArtSvgIcon icon="ri:shield-check-line" /> 只读安全模式</span>
+                    <span class="project-assistant__send-actions">
+                      <small>Enter 发送</small>
+                      <ElButton
+                        type="primary"
+                        circle
+                        :class="{ 'is-stopping': chat.sending }"
+                        :disabled="!chat.sending && !chat.input.trim()"
+                        :aria-label="chat.sending ? '停止等待' : '发送消息'"
+                        :title="chat.sending ? '停止等待' : '发送消息'"
+                        @click="chat.sending ? stopGeneration() : sendMessage()"
+                      >
+                        <ArtSvgIcon :icon="chat.sending ? 'ri:stop-fill' : 'ri:arrow-up-line'" />
+                      </ElButton>
+                    </span>
+                  </div>
+                </div>
+              </footer>
+            </aside>
+          </ElSplitterPanel>
+        </ElSplitter>
+      </section>
 
-    <ArtDrawer
-      ref="historyDrawerRef"
-      class="project-assistant-history"
-      size="sm"
-      :show-footer="false"
-    >
-      <div class="project-assistant-history__toolbar">
-        <ElInput
-          v-model="history.query"
-          clearable
-          placeholder="搜索会话标题"
-          @input="scheduleHistorySearch"
-        >
-          <template #prefix><ArtSvgIcon icon="ri:search-line" /></template>
-        </ElInput>
-      </div>
-      <ElAlert
-        v-if="history.error"
-        type="error"
-        show-icon
-        :closable="false"
-        title="历史会话暂时不可用"
-        :description="history.error"
+      <ProjectAssistantHistoryDrawer
+        ref="historyDrawerRef"
+        v-model:query="history.query"
+        :loading="history.loading"
+        :error="history.error"
+        :items="history.items"
+        :active-id="chat.conversationId"
+        @search="scheduleHistorySearch"
+        @retry="loadHistory"
+        @select="restoreConversation"
+        @rename="renameConversation"
       />
-      <ElSkeleton v-if="history.loading && !history.items.length" :rows="5" animated />
-      <ElScrollbar v-else class="project-assistant-history__scroll">
-        <div class="project-assistant-history__list">
-          <article
-            v-for="item in history.items"
-            :key="item.id"
-            :class="{ 'is-active': item.id === chat.conversationId }"
-            @click="restoreConversation(item.id)"
-          >
-            <header>
-              <strong>{{ item.title || '未命名会话' }}</strong>
-              <ElButton
-                text
-                circle
-                size="small"
-                aria-label="重命名会话"
-                @click.stop="renameConversation(item)"
-              >
-                <ArtSvgIcon icon="ri:edit-line" />
-              </ElButton>
-            </header>
-            <p>{{ item.lastMessage?.content || '暂无消息摘要' }}</p>
-            <footer>
-              <span>{{ formatHistoryTime(item.updateTime) }}</span>
-              <span v-if="item.lastRun">
-                {{ item.lastRun.model }} · {{ formatDuration(item.lastRun.latencyMs) }}
-              </span>
-            </footer>
-          </article>
-          <ElEmpty v-if="!history.items.length" description="暂无项目助手会话" />
-        </div>
-      </ElScrollbar>
-    </ArtDrawer>
 
-    <ProjectCapabilityCenterDrawer ref="capabilityCenterRef" @analyze="analyzePlatformCapability" />
-  </div>
+      <ProjectCapabilityCenterDrawer
+        ref="capabilityCenterRef"
+        @analyze="analyzePlatformCapability"
+      />
+    </div>
+  </ArtPageShell>
 </template>
 
 <script setup lang="ts">
@@ -585,8 +503,6 @@
   import sqlLanguage from 'highlight.js/lib/languages/sql'
   import type { Directive } from 'vue'
   import type { ColumnOption } from '@/types'
-  import ArtDrawer from '@/components/core/drawers/art-drawer/index.vue'
-  import type { ArtDrawerExpose } from '@/components/core/drawers/art-drawer/types'
   import {
     chatWithProjectAssistant,
     fetchProjectAssistantCapabilities,
@@ -612,6 +528,8 @@
   } from '@/types/supabase-ai-assistant'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import ProjectCapabilityCenterDrawer from './modules/capability-center-drawer.vue'
+  import ProjectAssistantHistoryDrawer from './modules/project-assistant-history-drawer.vue'
+  import ProjectAssistantObjectBrowser from './modules/project-assistant-object-browser.vue'
 
   defineOptions({ name: 'SupabaseAiAssistant' })
 
@@ -672,15 +590,11 @@
     handleOpen: (data: { edgeFunctions: ProjectEdgeFunctionResult | null }) => Promise<void>
   }
 
-  const objectTypeOptions: Array<{ label: string; value: ProjectObjectType }> = [
-    { label: '全部对象', value: 'all' },
-    { label: '数据表', value: 'table' },
-    { label: '视图', value: 'view' },
-    { label: '函数', value: 'function' },
-    { label: '触发器', value: 'trigger' },
-    { label: 'RLS 策略', value: 'policy' },
-    { label: '索引', value: 'index' }
-  ]
+  interface HistoryDrawerExpose {
+    handleOpen: () => Promise<void>
+    handleClose: () => void
+  }
+
   const overview = ref<ProjectOverview | null>(null)
   const schemas = ref<string[]>(['public'])
   const objects = ref<ProjectDatabaseObject[]>([])
@@ -691,7 +605,7 @@
   const detailTab = ref('ddl')
   const fieldKeyword = ref('')
   const chatScrollbarRef = ref<ScrollbarInstance>()
-  const historyDrawerRef = ref<ArtDrawerExpose>()
+  const historyDrawerRef = ref<HistoryDrawerExpose>()
   const capabilityCenterRef = ref<CapabilityCenterExpose>()
   const focusMode = useStorage('supabase-ai-assistant:focus-mode', false)
   const assistantMode = useStorage<ProjectAssistantSafetyMode>(
@@ -700,6 +614,13 @@
   )
   const objectLoadSource = ref<'initial' | 'filter' | 'refresh' | null>(null)
   const loading = reactive({ overview: false, objects: false, detail: false, relationships: false })
+  const errors = reactive({
+    overview: null as Error | null,
+    objects: null as Error | null,
+    detail: null as Error | null,
+    relationships: null as Error | null
+  })
+  const initialSettled = ref(false)
   const filters = reactive<{ schema: string; objectType: ProjectObjectType; keyword: string }>({
     schema: 'public',
     objectType: 'table',
@@ -742,9 +663,13 @@
   const activeChatObject = computed(() =>
     chat.contextLocked ? chat.contextObject : selectedObject.value
   )
-  const showObjectListLoading = computed(
-    () => loading.objects && objectLoadSource.value !== 'refresh'
+  const initialLoading = computed(
+    () => !initialSettled.value && (loading.overview || loading.objects)
   )
+  const pageError = computed(() => {
+    if (!initialSettled.value || overview.value || objects.value.length) return null
+    return errors.overview || errors.objects
+  })
   const canUseControlledWrite = computed(
     () => assistantStatus.capabilities?.access?.controlledWrite === true
   )
@@ -1014,16 +939,9 @@
     }[type]
   }
 
-  function isSelected(item: ProjectDatabaseObject): boolean {
-    return (
-      selectedObject.value?.schemaName === item.schemaName &&
-      selectedObject.value?.objectName === item.objectName &&
-      selectedObject.value?.objectType === item.objectType
-    )
-  }
-
   async function loadOverview(): Promise<void> {
     loading.overview = true
+    errors.overview = null
     try {
       const [overviewResult, schemaResult, edgeResult] = await Promise.all([
         fetchProjectCatalog<ProjectOverview>({ catalogAction: 'overview' }),
@@ -1034,6 +952,7 @@
       schemas.value = schemaResult
       edgeFunctions.value = edgeResult
     } catch (error) {
+      errors.overview = error instanceof Error ? error : new Error('项目概览加载失败')
       ElMessage.error(error instanceof Error ? error.message : '项目概览加载失败')
     } finally {
       loading.overview = false
@@ -1044,6 +963,7 @@
     const requestId = ++activeObjectRequest
     objectLoadSource.value = source
     loading.objects = true
+    errors.objects = null
     try {
       const result = await fetchProjectCatalog<ProjectDatabaseObject[]>({
         catalogAction: 'list_objects',
@@ -1053,7 +973,7 @@
       objects.value = result
     } catch (error) {
       if (requestId !== activeObjectRequest) return
-      ElMessage.error(error instanceof Error ? error.message : '数据库对象加载失败')
+      errors.objects = error instanceof Error ? error : new Error('数据库对象加载失败')
     } finally {
       if (requestId === activeObjectRequest) {
         loading.objects = false
@@ -1069,6 +989,8 @@
     detailTab.value = 'ddl'
     fieldKeyword.value = ''
     loading.detail = true
+    errors.detail = null
+    errors.relationships = null
     try {
       const requests: [Promise<ProjectObjectDetail>, Promise<ProjectRelationship[]>?] = [
         fetchProjectCatalog<ProjectObjectDetail>({
@@ -1089,11 +1011,18 @@
       detail.value = detailResult
       relationships.value = relationResult ?? []
     } catch (error) {
-      ElMessage.error(error instanceof Error ? error.message : '对象详情加载失败')
+      errors.detail = error instanceof Error ? error : new Error('对象详情加载失败')
+      if (item.objectType === 'table') errors.relationships = errors.detail
     } finally {
       loading.detail = false
       loading.relationships = false
     }
+  }
+
+  async function loadInitialData(): Promise<void> {
+    initialSettled.value = false
+    await Promise.all([loadOverview(), loadObjects('initial')])
+    initialSettled.value = true
   }
 
   function selectStat(type: ProjectObjectType): void {
@@ -1246,16 +1175,6 @@
     return value < 1000 ? `${value}ms` : `${(value / 1000).toFixed(1)}s`
   }
 
-  function formatHistoryTime(value?: string): string {
-    if (!value) return '-'
-    return new Intl.DateTimeFormat('zh-CN', {
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit'
-    }).format(new Date(value))
-  }
-
   async function copyMessage(content: string): Promise<void> {
     await navigator.clipboard.writeText(content)
     ElMessage.success('回答已复制')
@@ -1304,14 +1223,8 @@
   }
 
   async function openHistory(): Promise<void> {
-    await historyDrawerRef.value?.handleOpen(undefined, {
-      title: '会话历史',
-      size: 'sm',
-      showFooter: false,
-      contentHeight: 'calc(100vh - 90px)',
-      onOpen: loadHistory,
-      drawerProps: { appendToBody: true }
-    })
+    await historyDrawerRef.value?.handleOpen()
+    await loadHistory()
   }
 
   async function loadHistory(): Promise<void> {
@@ -1513,11 +1426,20 @@
   })
 
   onMounted(async () => {
-    await Promise.all([loadOverview(), loadObjects('initial'), loadAssistantCapabilities()])
+    await Promise.all([loadInitialData(), loadAssistantCapabilities()])
   })
 </script>
 
 <style scoped lang="scss">
+  .project-assistant-shell {
+    height: var(--art-full-height);
+    min-height: 720px;
+
+    :deep(> .art-async-state) {
+      height: 100%;
+    }
+  }
+
   .project-assistant {
     display: flex;
     flex-direction: column;
@@ -1550,11 +1472,12 @@
         border-radius: 50%;
       }
 
-      h2 {
+      h1 {
         margin: 4px 0;
         font-size: 22px;
         line-height: 1.35;
         letter-spacing: -0.3px;
+        text-wrap: balance;
       }
 
       p {
@@ -1612,6 +1535,7 @@
         align-items: center;
         padding: 10px 13px;
         text-align: left;
+        touch-action: manipulation;
         cursor: pointer;
         background: transparent;
         border: 0;
@@ -1624,6 +1548,11 @@
         &:hover {
           background: var(--el-color-primary-light-9);
           transform: translateY(-1px);
+        }
+
+        &:focus-visible {
+          outline: 2px solid var(--el-color-primary-light-3);
+          outline-offset: 1px;
         }
 
         &.is-active {
@@ -1659,6 +1588,7 @@
 
         strong {
           font-size: 17px;
+          font-variant-numeric: tabular-nums;
         }
 
         small {
@@ -1762,7 +1692,6 @@
       }
     }
 
-    &__catalog,
     &__detail,
     &__chat {
       display: flex;
@@ -1794,13 +1723,6 @@
       }
     }
 
-    &__panel-actions {
-      display: flex;
-      flex: 0 0 auto;
-      gap: 2px;
-      align-items: center;
-    }
-
     &__detail-actions {
       display: flex;
       flex: 0 0 auto;
@@ -1814,119 +1736,9 @@
       white-space: nowrap;
     }
 
-    &__focus-toggle {
-      transition:
-        color 0.18s ease,
-        background-color 0.18s ease;
-
-      &.is-active {
-        color: var(--el-color-primary);
-        background: var(--el-color-primary-light-9);
-      }
-    }
-
-    &__refresh {
-      flex: 0 0 auto;
-
-      &.is-refreshing {
-        opacity: 1;
-
-        .project-assistant__refresh-icon {
-          animation: project-assistant-spin 0.75s linear infinite;
-        }
-      }
-    }
-
-    &__filters {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      padding: 12px;
-      border-bottom: 1px solid var(--el-border-color-lighter);
-    }
-
-    &__search {
-      width: 100% !important;
-
-      --el-input-width: 100%;
-    }
-
-    &__filter-selects {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-
-      .el-select {
-        width: 100%;
-        min-width: 0;
-      }
-    }
-
-    &__object-list {
+    &__detail-state {
       flex: 1;
       min-height: 0;
-      padding: 7px;
-    }
-
-    &__object-list button {
-      display: flex;
-      gap: 10px;
-      align-items: center;
-      width: 100%;
-      padding: 10px;
-      text-align: left;
-      cursor: pointer;
-      background: transparent;
-      border: 0;
-      border-radius: var(--el-border-radius-base);
-      transition:
-        background-color 0.18s ease,
-        transform 0.18s ease;
-
-      &:hover {
-        background: var(--el-color-primary-light-9);
-        transform: translateX(2px);
-      }
-
-      &.is-active {
-        background: linear-gradient(90deg, var(--el-color-primary-light-9), transparent);
-        box-shadow: inset 3px 0 0 var(--el-color-primary);
-      }
-
-      &.is-active strong,
-      .project-assistant__object-icon {
-        color: var(--el-color-primary);
-      }
-
-      > span:not(.project-assistant__object-icon) {
-        flex: 1;
-        min-width: 0;
-      }
-
-      strong,
-      small {
-        display: block;
-        width: 100%;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-
-      small {
-        margin-top: 2px;
-        font-size: 11px;
-        color: var(--el-text-color-secondary);
-      }
-    }
-
-    &__object-icon {
-      display: grid;
-      flex: 0 0 auto;
-      place-items: center;
-      width: 30px;
-      height: 30px;
-      background: var(--el-fill-color-light);
-      border-radius: var(--el-border-radius-base);
     }
 
     &__detail-tabs {
@@ -2621,7 +2433,10 @@
         background: var(--el-fill-color-extra-light);
         border: 1px solid var(--el-border-color-extra-light);
         border-radius: 999px;
-        transition: all 0.18s ease;
+        transition:
+          color 0.18s ease,
+          background-color 0.18s ease,
+          border-color 0.18s ease;
 
         &:hover:not(:disabled) {
           color: var(--el-color-primary);
@@ -2718,11 +2533,21 @@
       overflow: visible;
 
       &__hero {
+        flex-direction: column;
+        gap: var(--art-space-3);
         align-items: flex-start;
       }
 
       &__safety {
-        display: none;
+        align-items: flex-start;
+
+        > span {
+          display: none;
+        }
+      }
+
+      &__stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
       }
 
       &__workspace {
@@ -2743,99 +2568,90 @@
         :deep(.el-splitter-bar) {
           display: none;
         }
+
+        :deep(.el-splitter-panel:has(.project-assistant-object-browser)) {
+          height: 420px;
+        }
+
+        :deep(.el-splitter-panel:has(.project-assistant__detail)) {
+          height: 600px;
+        }
+
+        :deep(.el-splitter-panel:has(.project-assistant__chat)) {
+          height: 680px;
+        }
+      }
+    }
+
+    @media (width <= 640px) {
+      gap: var(--art-space-3);
+
+      &__hero {
+        min-height: auto;
+        padding: var(--art-space-4);
+
+        h1 {
+          font-size: 20px;
+        }
+
+        p {
+          font-size: 13px;
+        }
+      }
+
+      &__stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: var(--art-space-1);
+        padding: var(--art-space-2);
+
+        button {
+          min-width: 0;
+          min-height: 64px;
+          padding-inline: var(--art-space-2);
+
+          > span {
+            flex: 0 0 auto;
+          }
+
+          > div {
+            min-width: 0;
+
+            small {
+              overflow: hidden;
+              text-overflow: ellipsis;
+              white-space: nowrap;
+            }
+          }
+        }
+      }
+
+      &__safety,
+      &__hero-actions {
+        width: 100%;
+      }
+
+      &__hero-actions {
+        flex-wrap: wrap;
+      }
+
+      &__detail-actions,
+      &__chat-actions {
+        flex-wrap: wrap;
+        justify-content: flex-end;
       }
     }
   }
 
-  :global(.project-assistant-history .el-drawer__header) {
-    padding: 20px 20px 14px;
-    margin-bottom: 0;
-    border-bottom: 1px solid var(--el-border-color-lighter);
+  @media (width <= 640px) {
+    .project-assistant-shell {
+      height: auto;
+      min-height: 0;
+    }
   }
 
-  :global(.project-assistant-history .el-drawer__body) {
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-    padding: 16px;
-    background:
-      radial-gradient(circle at 100% 0, var(--el-color-primary-light-9), transparent 26%),
-      var(--el-bg-color);
-  }
-
-  :global(.project-assistant-history__toolbar) {
-    display: flex;
-    flex: 0 0 auto;
-    gap: 8px;
-  }
-
-  :global(.project-assistant-history__list) {
-    display: flex;
-    flex-direction: column;
-    gap: 9px;
-    padding-right: 4px;
-  }
-
-  :global(.project-assistant-history__scroll) {
-    flex: 1;
-    min-height: 0;
-  }
-
-  :global(.project-assistant-history__list article) {
-    padding: 13px;
-    cursor: pointer;
-    background: var(--el-bg-color);
-    border: 1px solid var(--el-border-color-lighter);
-    border-radius: var(--el-border-radius-base);
-    box-shadow: 0 5px 16px rgb(0 0 0 / 3%);
-    transition: all 0.18s ease;
-  }
-
-  :global(.project-assistant-history__list article:hover),
-  :global(.project-assistant-history__list article.is-active) {
-    border-color: var(--el-color-primary-light-6);
-    box-shadow: 0 9px 24px rgb(64 128 255 / 10%);
-    transform: translateY(-1px);
-  }
-
-  :global(.project-assistant-history__list article.is-active) {
-    background: linear-gradient(120deg, var(--el-color-primary-light-9), var(--el-bg-color));
-  }
-
-  :global(.project-assistant-history__list article header),
-  :global(.project-assistant-history__list article footer) {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-    justify-content: space-between;
-  }
-
-  :global(.project-assistant-history__list article header strong) {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  :global(.project-assistant-history__list article p) {
-    display: -webkit-box;
-    margin: 8px 0 10px;
-    overflow: hidden;
-    -webkit-line-clamp: 2;
-    font-size: 12px;
-    line-height: 1.6;
-    color: var(--el-text-color-secondary);
-    -webkit-box-orient: vertical;
-  }
-
-  :global(.project-assistant-history__list article footer) {
-    font-size: 10px;
-    color: var(--el-text-color-placeholder);
-  }
-
-  @keyframes project-assistant-spin {
-    to {
-      transform: rotate(360deg);
+  @media (prefers-reduced-motion: reduce) {
+    .project-assistant__typing i {
+      animation: none;
     }
   }
 

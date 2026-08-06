@@ -14,7 +14,7 @@
           <div class="art-ai-assistant__identity-copy">
             <div class="art-ai-assistant__title-row">
               <strong>{{ assistantTitle }}</strong>
-              <span>只读模式</span>
+              <span>{{ assistantModeLabel }}</span>
             </div>
             <div class="art-ai-assistant__status">
               <span class="art-ai-assistant__connection">
@@ -29,17 +29,29 @@
 
         <div class="art-ai-assistant__header-actions">
           <ElSegmented
-            v-if="userStore.isPlatformSuper"
             v-model="assistantMode"
             :options="assistantModeOptions"
             size="small"
             class="art-ai-assistant__mode-switch"
           />
-          <ElTooltip v-if="isProjectMode" content="进入 Supabase AI 工作台" placement="bottom">
+          <ElTooltip
+            v-if="!isMobile"
+            :content="isExpanded ? '退出放大' : '放大对话'"
+            placement="bottom"
+          >
             <ArtIconButton
-              icon="ri:fullscreen-line"
+              :icon="isExpanded ? 'dashicons:fullscreen-exit-alt' : 'dashicons:fullscreen-alt'"
               circle
-              aria-label="进入 Supabase AI 工作台"
+              :aria-label="isExpanded ? '退出放大' : '放大对话'"
+              class="art-ai-assistant__header-button"
+              @click="toggleExpanded"
+            />
+          </ElTooltip>
+          <ElTooltip v-if="isProjectMode" content="打开 Supabase AI 工作台" placement="bottom">
+            <ArtIconButton
+              icon="ri:dashboard-line"
+              circle
+              aria-label="打开 Supabase AI 工作台"
               class="art-ai-assistant__header-button"
               @click="openProjectWorkbench"
             />
@@ -66,7 +78,10 @@
       </header>
     </template>
 
-    <div class="art-ai-assistant" :class="{ 'is-project-mode': isProjectMode }">
+    <div
+      class="art-ai-assistant"
+      :class="{ 'is-project-mode': isProjectMode, 'is-expanded': isExpanded }"
+    >
       <ElScrollbar ref="scrollbarRef" class="art-ai-assistant__messages">
         <div class="art-ai-assistant__conversation">
           <section v-if="showWelcome" class="art-ai-assistant__welcome">
@@ -134,22 +149,36 @@
                   <span>{{ message.role === 'user' ? userName : assistantTitle }}</span>
                   <time>{{ message.time }}</time>
                 </div>
-                <div class="art-ai-assistant__bubble">{{ message.content }}</div>
-
-                <div v-if="message.tools?.length" class="art-ai-assistant__tools">
-                  <span
-                    v-for="tool in message.tools"
-                    :key="tool.name"
-                    :class="{ 'is-failed': tool.status === 'failed' }"
+                <div class="art-ai-assistant__bubble">
+                  <div class="art-ai-assistant__message-content">{{ message.content }}</div>
+                  <div
+                    v-if="message.role === 'assistant' && hasMessageTrace(message)"
+                    class="art-ai-assistant__trace"
+                    aria-label="回答运行信息"
                   >
-                    <ArtSvgIcon
-                      :icon="
-                        tool.status === 'succeeded' ? 'ri:check-line' : 'ri:error-warning-line'
-                      "
-                    />
-                    {{ tool.status === 'succeeded' ? '已查询' : '查询失败' }} ·
-                    {{ getToolLabel(tool.name) }}
-                  </span>
+                    <span v-if="message.model">
+                      <ArtSvgIcon icon="ri:cpu-line" /> {{ message.model }}
+                    </span>
+                    <span v-if="message.latencyMs != null">
+                      <ArtSvgIcon icon="ri:timer-line" /> {{ formatDuration(message.latencyMs) }}
+                    </span>
+                    <span v-if="message.usage">
+                      <ArtSvgIcon icon="ri:braces-line" /> {{ getTokenTotal(message) }} tokens
+                    </span>
+                    <span
+                      v-for="tool in message.tools"
+                      :key="tool.name"
+                      class="art-ai-assistant__tool-chip"
+                      :class="{ 'is-failed': tool.status === 'failed' }"
+                    >
+                      <ArtSvgIcon
+                        :icon="
+                          tool.status === 'succeeded' ? 'ri:check-line' : 'ri:error-warning-line'
+                        "
+                      />
+                      {{ getToolLabel(tool.name) }}
+                    </span>
+                  </div>
                 </div>
 
                 <div v-if="message.isError" class="art-ai-assistant__retry">
@@ -165,10 +194,22 @@
                 </div>
 
                 <div
-                  v-else-if="message.role === 'assistant' && message.runId"
-                  class="art-ai-assistant__feedback"
+                  v-else-if="message.role === 'assistant'"
+                  class="art-ai-assistant__message-actions"
                 >
+                  <ElButton text size="small" @click="copyMessage(message.content)">
+                    <ArtSvgIcon icon="ri:file-copy-line" /> 复制
+                  </ElButton>
+                  <ElButton
+                    text
+                    size="small"
+                    :disabled="state.sending || !isOnline"
+                    @click="retryMessage(message)"
+                  >
+                    <ArtSvgIcon icon="ri:refresh-line" /> 重试
+                  </ElButton>
                   <ArtAiFeedback
+                    v-if="message.runId"
                     :run-id="message.runId"
                     :context-label="assistantTitle"
                     compact
@@ -188,8 +229,11 @@
                   <span>正在处理</span>
                 </div>
                 <div class="art-ai-assistant__thinking">
-                  <ArtSvgIcon icon="ri:loader-4-line" />
+                  <span class="art-ai-assistant__typing-dots" aria-hidden="true">
+                    <i></i><i></i><i></i>
+                  </span>
                   <span>{{ thinkingText }}</span>
+                  <small>{{ formatDuration(state.elapsedMs) }}</small>
                 </div>
               </div>
             </article>
@@ -198,44 +242,61 @@
       </ElScrollbar>
 
       <footer class="art-ai-assistant__composer">
-        <div class="art-ai-assistant__composer-box">
-          <ElInput
-            v-model="state.input"
-            type="textarea"
-            :autosize="{ minRows: 2, maxRows: 6 }"
-            :maxlength="4000"
-            resize="none"
-            :placeholder="composerPlaceholder"
-            :disabled="state.sending || !isOnline"
-            @keydown.enter.exact.prevent="sendMessage"
-          />
-          <div class="art-ai-assistant__composer-actions">
-            <div class="art-ai-assistant__composer-meta">
-              <span><ArtSvgIcon icon="ri:shield-check-line" /> 只读安全模式</span>
-              <span>{{ state.input.length }} / 4000</span>
-              <span class="art-ai-assistant__keyboard-hint">Shift + Enter 换行</span>
-            </div>
-            <ElButton
-              type="primary"
-              :icon="Promotion"
-              :loading="state.sending"
-              :disabled="!state.input.trim() || !isOnline"
-              @click="sendMessage"
+        <div class="art-ai-assistant__composer-content">
+          <div v-if="state.messages.length" class="art-ai-assistant__quick-actions">
+            <button
+              v-for="action in quickActions"
+              :key="action.label"
+              type="button"
+              :disabled="state.sending || !isOnline"
+              @click="sendSuggestion(action.prompt)"
             >
-              发送
-            </ElButton>
+              <ArtSvgIcon :icon="action.icon" /> {{ action.label }}
+            </button>
           </div>
+          <div class="art-ai-assistant__composer-box">
+            <ElInput
+              v-model="state.input"
+              type="textarea"
+              :autosize="{ minRows: 2, maxRows: 6 }"
+              :maxlength="4000"
+              resize="none"
+              :placeholder="composerPlaceholder"
+              :disabled="state.sending || !isOnline"
+              @keydown.enter.exact.prevent="sendMessage"
+            />
+            <div class="art-ai-assistant__composer-actions">
+              <div class="art-ai-assistant__composer-meta">
+                <span><ArtSvgIcon icon="ri:shield-check-line" /> {{ assistantModeLabel }}</span>
+                <span>{{ state.input.length }} / 4000</span>
+                <span class="art-ai-assistant__keyboard-hint">Shift + Enter 换行</span>
+              </div>
+              <span class="art-ai-assistant__send-actions">
+                <small>Enter 发送</small>
+                <ElButton
+                  type="primary"
+                  circle
+                  :loading="state.sending"
+                  :disabled="!state.input.trim() || !isOnline"
+                  aria-label="发送消息"
+                  @click="sendMessage"
+                >
+                  <ArtSvgIcon icon="ri:arrow-up-line" />
+                </ElButton>
+              </span>
+            </div>
+          </div>
+          <p>{{ footerNotice }}</p>
         </div>
-        <p>{{ footerNotice }}</p>
       </footer>
     </div>
   </ArtDrawer>
 </template>
 
 <script setup lang="ts">
-  import { Promotion, Refresh } from '@element-plus/icons-vue'
-  import { useNetwork, useWindowSize } from '@vueuse/core'
-  import type { ScrollbarInstance } from 'element-plus'
+  import { Refresh } from '@element-plus/icons-vue'
+  import { useIntervalFn, useNetwork, useWindowSize } from '@vueuse/core'
+  import { ElMessage, type ScrollbarInstance } from 'element-plus'
   import { useRoute, useRouter } from 'vue-router'
   import { chatWithAiAssistant } from '@/api/ai-assistant'
   import { chatWithProjectAssistant } from '@/api/supabase-ai-assistant'
@@ -261,6 +322,13 @@
     time: string
     runId?: string
     tools?: AiAssistantToolResult[]
+    model?: string
+    promptVersion?: string
+    latencyMs?: number
+    usage?: {
+      inputTokens?: number
+      outputTokens?: number
+    }
     feedback?: -1 | 1
     isError?: boolean
     retryContent?: string
@@ -271,12 +339,20 @@
     input: string
     conversationId?: string
     routePath?: string
+    startedAt: number
+    elapsedMs: number
     messages: ChatMessage[]
   }
 
   interface PromptSuggestion {
     label: string
     description: string
+    icon: string
+  }
+
+  interface QuickAction {
+    label: string
+    prompt: string
     icon: string
   }
 
@@ -289,12 +365,14 @@
   const drawerRef = ref<ArtDrawerExpose<Record<string, never>>>()
   const scrollbarRef = ref<ScrollbarInstance>()
   const isMobile = computed(() => width.value < MOBILE_BREAKPOINT)
+  const isExpanded = ref(false)
   const assistantMode = ref<'business' | 'project'>('business')
   const assistantModeOptions = [
     { label: '业务助手', value: 'business' },
     { label: 'Supabase', value: 'project' }
   ]
   const isProjectMode = computed(() => assistantMode.value === 'project')
+  const assistantModeLabel = computed(() => (isProjectMode.value ? '只读安全模式' : '权限内只读'))
   const assistantTitle = computed(() => (isProjectMode.value ? 'Supabase 管理助手' : 'AI 业务助理'))
   const assistantIcon = computed(() =>
     isProjectMode.value ? 'ri:database-2-line' : 'ri:sparkling-2-fill'
@@ -332,6 +410,18 @@
     showClose: false,
     class: 'art-ai-assistant-drawer'
   }
+  const drawerSize = computed(() => {
+    if (isMobile.value) return '100%'
+    if (isExpanded.value) return 'full'
+    return '680px'
+  })
+
+  function getDrawerProps(): typeof drawerProps {
+    return {
+      ...drawerProps,
+      class: `art-ai-assistant-drawer${isExpanded.value ? ' is-expanded' : ''}`
+    }
+  }
   const pageTitle = computed(() => {
     const title = route.meta.title
     if (typeof title === 'string' && title) return title
@@ -350,8 +440,17 @@
     input: '',
     conversationId: undefined,
     routePath: undefined,
+    startedAt: 0,
+    elapsedMs: 0,
     messages: []
   })
+  const { pause: pauseElapsedTimer, resume: resumeElapsedTimer } = useIntervalFn(
+    () => {
+      if (state.startedAt) state.elapsedMs = Date.now() - state.startedAt
+    },
+    100,
+    { immediate: false }
+  )
 
   const suggestions = computed<PromptSuggestion[]>(() => {
     if (isProjectMode.value) {
@@ -411,6 +510,43 @@
     return items
   })
   const showWelcome = computed(() => state.messages.length === 0 && !state.sending)
+  const quickActions = computed<QuickAction[]>(() =>
+    isProjectMode.value
+      ? [
+          {
+            label: '安全审计',
+            prompt: '检查当前项目的 RLS 与安全配置，并按风险等级给出改进建议',
+            icon: 'ri:shield-check-line'
+          },
+          {
+            label: '影响分析',
+            prompt: '分析当前数据库对象之间的依赖关系与潜在变更影响',
+            icon: 'ri:git-branch-line'
+          },
+          {
+            label: '变更方案',
+            prompt: '基于当前项目状态，生成一份只读的数据库优化与变更方案',
+            icon: 'ri:file-list-3-line'
+          }
+        ]
+      : [
+          {
+            label: '经营摘要',
+            prompt: '总结当前页面相关的核心业务数据与变化趋势',
+            icon: 'ri:bar-chart-box-line'
+          },
+          {
+            label: '风险提醒',
+            prompt: '检查当前业务范围内需要关注的风险与临期事项',
+            icon: 'ri:alarm-warning-line'
+          },
+          {
+            label: '下一步建议',
+            prompt: '根据当前数据给出清晰、可执行的下一步建议',
+            icon: 'ri:route-line'
+          }
+        ]
+  )
 
   function formatCurrentTime(): string {
     return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -437,12 +573,24 @@
   }
 
   function resetConversation(): void {
+    pauseElapsedTimer()
     Object.assign(state, {
       sending: false,
       input: '',
       conversationId: undefined,
       routePath: route.fullPath,
+      startedAt: 0,
+      elapsedMs: 0,
       messages: []
+    })
+    scrollToBottom()
+  }
+
+  function toggleExpanded(): void {
+    isExpanded.value = !isExpanded.value
+    drawerRef.value?.setOptions({
+      size: drawerSize.value,
+      drawerProps: getDrawerProps()
     })
     scrollToBottom()
   }
@@ -455,13 +603,14 @@
   function openChat(): void {
     if (state.routePath && state.routePath !== route.fullPath) resetConversation()
     state.routePath = route.fullPath
+    isExpanded.value = false
     void drawerRef.value?.handleOpen(
       {},
       {
-        size: isMobile.value ? '100%' : userStore.isPlatformSuper ? '680px' : '600px',
+        size: drawerSize.value,
         showFooter: false,
         resetOnClose: false,
-        drawerProps
+        drawerProps: getDrawerProps()
       }
     )
   }
@@ -472,10 +621,41 @@
   }
 
   function retryMessage(message: ChatMessage): void {
-    if (!message.retryContent || state.sending) return
-    state.messages = state.messages.filter((item) => item.id !== message.id)
-    state.input = message.retryContent
-    void sendMessage()
+    if (state.sending) return
+    if (message.retryContent) {
+      state.messages = state.messages.filter((item) => item.id !== message.id)
+      state.input = message.retryContent
+      void sendMessage()
+      return
+    }
+    const messageIndex = state.messages.findIndex((item) => item.id === message.id)
+    for (let index = messageIndex - 1; index >= 0; index -= 1) {
+      if (state.messages[index].role === 'user') {
+        state.input = state.messages[index].content
+        void sendMessage()
+        return
+      }
+    }
+  }
+
+  async function copyMessage(content: string): Promise<void> {
+    await navigator.clipboard.writeText(content)
+    ElMessage.success('回答已复制')
+  }
+
+  function hasMessageTrace(message: ChatMessage): boolean {
+    return Boolean(
+      message.model || message.latencyMs != null || message.usage || message.tools?.length
+    )
+  }
+
+  function getTokenTotal(message: ChatMessage): number {
+    return (message.usage?.inputTokens || 0) + (message.usage?.outputTokens || 0)
+  }
+
+  function formatDuration(value?: number | null): string {
+    if (value == null) return '-'
+    return value < 1000 ? `${value}ms` : `${(value / 1000).toFixed(1)}s`
   }
 
   async function sendMessage(): Promise<void> {
@@ -490,6 +670,9 @@
     })
     state.input = ''
     state.sending = true
+    state.startedAt = Date.now()
+    state.elapsedMs = 0
+    resumeElapsedTimer()
     scrollToBottom()
 
     try {
@@ -508,7 +691,11 @@
         content: response.message,
         time: formatCurrentTime(),
         runId: response.runId,
-        tools: response.tools
+        tools: response.tools,
+        model: response.model,
+        promptVersion: response.promptVersion,
+        latencyMs: response.latencyMs,
+        usage: response.usage
       })
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'AI 助手暂时不可用'
@@ -521,13 +708,18 @@
         retryContent: content
       })
     } finally {
+      pauseElapsedTimer()
       state.sending = false
+      state.startedAt = 0
       scrollToBottom()
     }
   }
 
   function getFriendlyErrorMessage(message: string): string {
     if (message.includes('超时') || message.toLowerCase().includes('timeout')) {
+      if (isProjectMode.value) {
+        return '这次项目分析没有在规定时间内完成。你可以重新尝试；本次请求未修改任何项目数据。'
+      }
       return '这次请求没有在规定时间内完成。高频业务查询已启用快速通道，你可以重新尝试。'
     }
     return `暂时无法完成这次请求：${message}`
@@ -556,7 +748,10 @@
   )
   watch(assistantMode, resetConversation)
   onMounted(() => mittBus.on('openChat', openChat))
-  onUnmounted(() => mittBus.off('openChat', openChat))
+  onUnmounted(() => {
+    pauseElapsedTimer()
+    mittBus.off('openChat', openChat)
+  })
 </script>
 
 <style scoped lang="scss">
@@ -580,6 +775,16 @@
   :global(.art-ai-assistant-drawer) {
     border-left: 1px solid var(--el-border-color-extra-light);
     box-shadow: -18px 0 55px rgb(22 34 51 / 16%) !important;
+  }
+
+  :global(.art-ai-assistant-drawer.is-expanded) {
+    top: 6px;
+    right: 6px;
+    height: calc(100vh - 12px);
+    overflow: hidden;
+    border: 1px solid var(--el-border-color-lighter);
+    border-radius: var(--el-border-radius-base);
+    box-shadow: 0 20px 70px rgb(22 34 51 / 22%) !important;
   }
 
   .art-ai-assistant {
@@ -625,10 +830,12 @@
     &__title-row,
     &__status,
     &__header-actions,
-    &__tools,
-    &__feedback,
+    &__trace,
+    &__message-actions,
     &__composer-actions,
     &__composer-meta,
+    &__quick-actions,
+    &__send-actions,
     &__capabilities,
     &__context-pill,
     &__thinking {
@@ -752,11 +959,16 @@
     &__messages {
       flex: 1;
       min-height: 0;
+      background:
+        radial-gradient(circle at 100% 0, var(--el-color-primary-light-9), transparent 34%),
+        color-mix(in srgb, var(--el-fill-color-extra-light) 78%, transparent);
     }
 
     &__conversation {
+      width: 100%;
       min-height: 100%;
       padding: 26px 24px 34px;
+      margin: 0 auto;
     }
 
     &__welcome {
@@ -1039,6 +1251,8 @@
     }
 
     &__bubble {
+      width: fit-content;
+      max-width: 100%;
       padding: 12px 14px;
       line-height: 1.75;
       color: var(--el-text-color-primary);
@@ -1050,47 +1264,71 @@
       box-shadow: 0 5px 18px rgb(31 45 61 / 5%);
     }
 
-    &__tools {
+    &__message-content {
+      overflow-wrap: anywhere;
+      white-space: pre-wrap;
+    }
+
+    &__trace {
       flex-wrap: wrap;
-      gap: 6px;
-      margin-top: 8px;
+      gap: 5px;
+      padding-top: 9px;
+      margin-top: 9px;
+      font-size: 10px;
+      color: var(--el-text-color-secondary);
+      border-top: 1px solid var(--el-border-color-extra-light);
 
       > span {
         display: inline-flex;
         gap: 4px;
         align-items: center;
-        padding: 4px 8px;
-        font-size: 10px;
-        color: var(--el-color-success);
-        background: var(--el-color-success-light-9);
+        padding: 3px 7px;
+        background: var(--el-fill-color-light);
         border-radius: 999px;
 
-        &.is-failed {
-          color: var(--el-color-danger);
-          background: var(--el-color-danger-light-9);
+        > svg {
+          color: var(--el-text-color-placeholder);
+        }
+
+        &.art-ai-assistant__tool-chip {
+          color: var(--el-color-success-dark-2);
+          background: var(--el-color-success-light-9);
+
+          > svg {
+            color: var(--el-color-success);
+          }
+
+          &.is-failed {
+            color: var(--el-color-danger-dark-2);
+            background: var(--el-color-danger-light-9);
+
+            > svg {
+              color: var(--el-color-danger);
+            }
+          }
         }
       }
     }
 
-    &__feedback {
-      gap: 2px;
-      margin-top: 7px;
-      font-size: 10px;
-      color: var(--el-text-color-placeholder);
+    &__message-actions {
+      min-height: 28px;
+      margin: 5px -6px -5px;
+      color: var(--el-text-color-secondary);
+      opacity: 0.72;
+      transition: opacity 0.18s ease;
+
+      .el-button {
+        padding-inline: 6px;
+
+        + .el-button {
+          margin-left: 0;
+        }
+      }
     }
 
-    &__feedback-button {
-      font-size: 13px;
-
-      &.is-active {
-        color: var(--el-color-primary);
-        background: var(--el-color-primary-light-9);
-      }
-
-      &.is-negative {
-        color: var(--el-color-danger);
-        background: var(--el-color-danger-light-9);
-      }
+    &__message:hover &__message-actions,
+    &__message:focus-within &__message-actions {
+      opacity: 1;
     }
 
     &__retry {
@@ -1106,9 +1344,31 @@
       border: 1px solid var(--el-color-primary-light-8);
       border-radius: var(--el-border-radius-base);
 
-      > :deep(svg) {
-        color: var(--el-color-primary);
-        animation: assistant-rotate 1s linear infinite;
+      small {
+        margin-left: 3px;
+        color: var(--el-text-color-placeholder);
+      }
+    }
+
+    &__typing-dots {
+      display: inline-flex;
+      gap: 3px;
+      align-items: center;
+
+      i {
+        width: 5px;
+        height: 5px;
+        background: var(--el-color-primary-light-3);
+        border-radius: 50%;
+        animation: assistant-typing 1.2s ease-in-out infinite;
+
+        &:nth-child(2) {
+          animation-delay: 0.16s;
+        }
+
+        &:nth-child(3) {
+          animation-delay: 0.32s;
+        }
       }
     }
 
@@ -1131,11 +1391,62 @@
         background: linear-gradient(transparent, var(--el-bg-color));
       }
 
-      > p {
+      p {
         margin: 9px 0 0;
         font-size: 10px;
         color: var(--el-text-color-placeholder);
         text-align: center;
+      }
+    }
+
+    &__composer-content {
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    &__quick-actions {
+      gap: 6px;
+      padding-bottom: 9px;
+      overflow-x: auto;
+      scrollbar-width: none;
+
+      &::-webkit-scrollbar {
+        display: none;
+      }
+
+      button {
+        display: inline-flex;
+        flex: 0 0 auto;
+        gap: 5px;
+        align-items: center;
+        padding: 5px 9px;
+        font: inherit;
+        font-size: 11px;
+        color: var(--el-text-color-secondary);
+        cursor: pointer;
+        background: var(--el-fill-color-extra-light);
+        border: 1px solid var(--el-border-color-extra-light);
+        border-radius: 999px;
+        transition:
+          color 0.18s ease,
+          background-color 0.18s ease,
+          border-color 0.18s ease;
+
+        &:hover:not(:disabled) {
+          color: var(--el-color-primary);
+          background: var(--el-color-primary-light-9);
+          border-color: var(--el-color-primary-light-7);
+        }
+
+        &:focus-visible {
+          outline: 2px solid var(--el-color-primary-light-5);
+          outline-offset: 2px;
+        }
+
+        &:disabled {
+          cursor: not-allowed;
+          opacity: 0.55;
+        }
       }
     }
 
@@ -1169,15 +1480,6 @@
     &__composer-actions {
       gap: 12px;
       justify-content: space-between;
-
-      > .el-button {
-        min-width: 82px;
-        height: 36px;
-        margin: 0;
-        font-weight: 600;
-        border-radius: var(--el-border-radius-base);
-        box-shadow: 0 7px 16px rgb(64 116 255 / 20%);
-      }
     }
 
     &__composer-meta {
@@ -1196,11 +1498,57 @@
     &__keyboard-hint {
       color: var(--el-text-color-placeholder);
     }
+
+    &__send-actions {
+      flex: 0 0 auto;
+      gap: 8px;
+
+      small {
+        font-size: 10px;
+        color: var(--el-text-color-placeholder);
+      }
+
+      .el-button {
+        width: 36px;
+        height: 36px;
+        margin: 0;
+        box-shadow: 0 7px 16px rgb(64 116 255 / 22%);
+      }
+    }
+
+    &.is-expanded {
+      background: var(--art-main-bg-color);
+
+      .art-ai-assistant__conversation {
+        max-width: 980px;
+        padding: 32px 40px 46px;
+      }
+
+      .art-ai-assistant__welcome {
+        max-width: 760px;
+      }
+
+      .art-ai-assistant__message-body {
+        max-width: min(82%, 760px);
+      }
+
+      .art-ai-assistant__composer-content {
+        max-width: 980px;
+      }
+    }
   }
 
-  @keyframes assistant-rotate {
-    to {
-      transform: rotate(360deg);
+  @keyframes assistant-typing {
+    0%,
+    60%,
+    100% {
+      opacity: 0.35;
+      transform: translateY(0);
+    }
+
+    30% {
+      opacity: 1;
+      transform: translateY(-3px);
     }
   }
 
@@ -1228,6 +1576,10 @@
 
       &__keyboard-hint {
         display: none !important;
+      }
+
+      &__send-actions small {
+        display: none;
       }
 
       &__message-body {

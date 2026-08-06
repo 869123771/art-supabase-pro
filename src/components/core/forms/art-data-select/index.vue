@@ -251,7 +251,12 @@
               </ElButton>
             </div>
             <ElScrollbar class="art-data-select-dialog__selected-scrollbar">
-              <ElEmpty v-if="!draftRows.length" description="暂无数据" :image-size="72" />
+              <ArtEmptyState
+                v-if="!draftRows.length"
+                title="暂未选择数据"
+                :visual-size="68"
+                size="compact"
+              />
               <div
                 v-for="row in draftRows"
                 :key="getRowKey(row)"
@@ -283,6 +288,7 @@
 </template>
 
 <script setup lang="ts">
+  import ArtEmptyState from '@/components/core/layouts/art-empty-state/index.vue'
   import { get, isEqual, uniqBy } from 'lodash-es'
   import type { Component } from 'vue'
   import type { ComponentPublicInstance } from 'vue'

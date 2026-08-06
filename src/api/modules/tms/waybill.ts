@@ -7,10 +7,7 @@ import {
   ORDER_SELECT,
   uniqueStringValues
 } from '@/api/modules/tms/order-shared'
-import {
-  createDriverWaybillPayload,
-  DISPATCH_VEHICLE_SELECT
-} from '@/api/modules/tms/waybill-shared'
+import { DISPATCH_VEHICLE_SELECT } from '@/api/modules/tms/waybill-shared'
 
 type WaybillRecord = Api.Tms.Waybill.WaybillRecord
 type WaybillSearchParams = Api.Tms.Waybill.WaybillSearchParams
@@ -128,9 +125,7 @@ export async function fetchWaybillStatusCounts(
   return { total, counts: Object.fromEntries(countEntries) }
 }
 
-const createDispatchUpdatePayload = (params: WaybillDispatchPayload) => ({
-  orderStatus: 'pending_order',
-  dispatchStatus: 'loaded',
+const createDispatchRpcPayload = (params: WaybillDispatchPayload) => ({
   dispatchVehicleId: params.dispatchVehicleId,
   dispatchDriverId: params.dispatchDriverId || null,
   dispatchPlateNo: params.dispatchPlateNo,
@@ -140,48 +135,8 @@ const createDispatchUpdatePayload = (params: WaybillDispatchPayload) => ({
   dispatchDriverPhone: params.dispatchDriverPhone || null,
   plannedDepartureTime: params.plannedDepartureTime,
   plannedArrivalTime: params.plannedArrivalTime,
-  dispatchRemark: params.dispatchRemark || null,
-  dispatchedAt: new Date().toISOString()
+  dispatchRemark: params.dispatchRemark || null
 })
-
-const createCancelDispatchPayload = () => ({
-  orderStatus: 'pending_load',
-  dispatchStatus: 'pending',
-  dispatchVehicleId: null,
-  dispatchDriverId: null,
-  dispatchPlateNo: null,
-  dispatchVehicleType: null,
-  dispatchVehicleLength: null,
-  dispatchDriverName: null,
-  dispatchDriverPhone: null,
-  plannedDepartureTime: null,
-  plannedArrivalTime: null,
-  dispatchRemark: null,
-  dispatchedAt: null,
-  dispatchBy: null
-})
-
-const upsertDriverWaybillFromOrder = async (order: WaybillRecord): Promise<void> => {
-  await responseHandle(
-    () =>
-      supabase.from('tms_waybill').upsert(keysToSnakeDeep(createDriverWaybillPayload(order)), {
-        onConflict: 'tenant_id,waybill_no'
-      }),
-    { breakReturn: true }
-  )
-}
-
-const cancelDriverWaybillFromOrder = async (order: WaybillRecord): Promise<void> => {
-  await responseHandle(
-    () =>
-      supabase
-        .from('tms_waybill')
-        .update(keysToSnakeDeep({ status: 'cancelled', cancelledAt: new Date().toISOString() }))
-        .eq('tenant_id', order.tenantId)
-        .eq('waybill_no', order.orderNo),
-    { breakReturn: true }
-  )
-}
 
 export async function fetchWaybillList(
   params: WaybillSearchParams & Api.Common.CommonSearchParams
@@ -230,18 +185,15 @@ export async function dispatchWaybill(params: WaybillDispatchPayload) {
   const id = params.id
   if (!id) throw new Error('缺少运单ID')
 
-  const result = await responseHandle<WaybillRecord>(
+  const result = await responseHandle<WaybillRecord[]>(
     () =>
-      supabase
-        .from('tms_order')
-        .update(keysToSnakeDeep(createDispatchUpdatePayload(params)))
-        .eq('id', id)
-        .select(ORDER_SELECT)
-        .single(),
+      supabase.rpc('tms_dispatch_orders', {
+        p_order_ids: [id],
+        p_dispatch: keysToSnakeDeep(createDispatchRpcPayload(params))
+      }),
     { showMessage: true, breakReturn: true }
   )
-  if (result.data) await upsertDriverWaybillFromOrder(result.data)
-  return result
+  return { ...result, data: result.data?.[0] ?? null }
 }
 
 export async function dispatchWaybillBatch(params: WaybillDispatchPayload) {
@@ -250,44 +202,28 @@ export async function dispatchWaybillBatch(params: WaybillDispatchPayload) {
 
   const result = await responseHandle<WaybillRecord[]>(
     () =>
-      supabase
-        .from('tms_order')
-        .update(keysToSnakeDeep(createDispatchUpdatePayload(params)))
-        .in('id', ids)
-        .select(ORDER_SELECT),
+      supabase.rpc('tms_dispatch_orders', {
+        p_order_ids: ids,
+        p_dispatch: keysToSnakeDeep(createDispatchRpcPayload(params))
+      }),
     { showMessage: true, breakReturn: true }
   )
-  await Promise.all((result.data ?? []).map((order) => upsertDriverWaybillFromOrder(order)))
   return result
 }
 
 export async function cancelWaybillDispatch(id: string) {
-  const result = await responseHandle<WaybillRecord>(
-    () =>
-      supabase
-        .from('tms_order')
-        .update(keysToSnakeDeep(createCancelDispatchPayload()))
-        .eq('id', id)
-        .select(ORDER_SELECT)
-        .single(),
+  const result = await responseHandle<WaybillRecord[]>(
+    () => supabase.rpc('tms_revoke_order_dispatch', { p_order_ids: [id] }),
     { showMessage: true, breakReturn: true }
   )
-  if (result.data) await cancelDriverWaybillFromOrder(result.data)
-  return result
+  return { ...result, data: result.data?.[0] ?? null }
 }
 
 export async function cancelWaybillDispatchBatch(ids: string[]) {
-  const result = await responseHandle<WaybillRecord[]>(
-    () =>
-      supabase
-        .from('tms_order')
-        .update(keysToSnakeDeep(createCancelDispatchPayload()))
-        .in('id', ids)
-        .select(ORDER_SELECT),
+  return await responseHandle<WaybillRecord[]>(
+    () => supabase.rpc('tms_revoke_order_dispatch', { p_order_ids: ids }),
     { showMessage: true, breakReturn: true }
   )
-  await Promise.all((result.data ?? []).map((order) => cancelDriverWaybillFromOrder(order)))
-  return result
 }
 
 export async function cancelWaybillOrder(id: string) {

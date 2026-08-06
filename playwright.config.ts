@@ -1,6 +1,8 @@
 import { defineConfig } from '@playwright/test'
 
-const baseURL = process.env.E2E_BASE_URL || 'http://127.0.0.1:41737'
+const useDevServer = process.env.E2E_USE_DEV_SERVER === 'true'
+const baseURL =
+  process.env.E2E_BASE_URL || (useDevServer ? 'http://127.0.0.1:41738' : 'http://127.0.0.1:41737')
 const browserChannel = process.env.E2E_BROWSER_CHANNEL as 'chrome' | 'msedge' | undefined
 
 export default defineConfig({
@@ -72,6 +74,9 @@ export default defineConfig({
     ? undefined
     : {
         command: 'node scripts/serve-e2e.mjs',
+        ...(useDevServer
+          ? { command: 'pnpm dev --mode e2e --host 127.0.0.1 --port 41738 --strictPort' }
+          : {}),
         url: baseURL,
         reuseExistingServer: !process.env.CI,
         timeout: 120_000

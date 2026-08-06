@@ -1,17 +1,17 @@
 <template>
-  <VehicleQuerySection title="零部件管理">
-    <template #extra>
+  <ArtPageSection :card="false" title="零部件管理">
+    <template #actions>
       <ElInput v-model="panel.keyword" clearable placeholder="零部件名称" style="width: 220px" />
     </template>
     <VehicleQueryTable :data="filteredRecords" :columns="columns" :loading="loading" />
-  </VehicleQuerySection>
+  </ArtPageSection>
 </template>
 
 <script setup lang="tsx">
   import { ElInput } from 'element-plus'
   import type { ColumnOption } from '@/types'
   import { fetchVehiclePartUsageList } from '@/api/vehicle-manage-system'
-  import VehicleQuerySection from './vehicle-query-section.vue'
+  import ArtPageSection from '@/components/core/layouts/art-page-section/index.vue'
   import VehicleQueryTable from './vehicle-query-table.vue'
   import type { VehicleArchive, VehiclePartUsage } from './types'
   import { formatDate, formatValue } from './query-format'

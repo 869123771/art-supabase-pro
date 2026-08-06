@@ -1,4 +1,5 @@
 import { useSupabase } from '@/hooks'
+import type { QueryResult } from '@/types/api/response'
 import { applyDateRange, type SupabaseQueryLike } from '@/api/providers/supabase/query'
 
 type Invoice = Api.Tms.Finance.InvoiceRecord
@@ -146,4 +147,67 @@ export async function deleteInvoice(id: string) {
     () => supabase.from('tms_invoice').delete({ count: 'exact' }).eq('id', id),
     { showMessage: true, breakReturn: true, requireAffected: true }
   )
+}
+
+export async function analyzeInvoiceComplianceByAi(
+  invoiceId: string
+): Promise<QueryResult<Api.Tms.Finance.InvoiceComplianceAuditResponse>> {
+  const { data, error } =
+    await supabase.functions.invoke<Api.Tms.Finance.InvoiceComplianceAuditResponse>(
+      'ai-invoice-compliance-auditor',
+      { body: { invoiceId } }
+    )
+
+  return {
+    data: data ?? null,
+    error: await normalizeFunctionInvokeError(error)
+  }
+}
+
+export async function analyzeInvoiceAttachmentByAi(
+  params: Api.Tms.Finance.InvoiceOcrAnalyzeRequest
+): Promise<QueryResult<Api.Tms.Finance.InvoiceOcrAnalyzeResponse>> {
+  const { data, error } =
+    await supabase.functions.invoke<Api.Tms.Finance.InvoiceOcrAnalyzeResponse>('ai-invoice-ocr', {
+      body: params
+    })
+
+  return {
+    data: data ?? null,
+    error: await normalizeFunctionInvokeError(error)
+  }
+}
+
+export async function reviewInvoiceOcrArtifact(
+  params: Api.Tms.Finance.InvoiceOcrReviewRequest
+): Promise<QueryResult<Api.Tms.Finance.InvoiceOcrReviewResponse>> {
+  const { data, error } = await supabase.functions.invoke<Api.Tms.Finance.InvoiceOcrReviewResponse>(
+    'ai-invoice-ocr',
+    {
+      body: params
+    }
+  )
+
+  return {
+    data: data ?? null,
+    error: await normalizeFunctionInvokeError(error)
+  }
+}
+
+async function normalizeFunctionInvokeError(error: unknown): Promise<unknown | null> {
+  if (!error || typeof error !== 'object' || !('context' in error)) return error
+
+  const context = (error as { context?: unknown }).context
+  if (!(context instanceof Response)) return error
+
+  try {
+    const payload = (await context.clone().json()) as { code?: unknown; message?: unknown }
+    if (typeof payload.message !== 'string' || !payload.message) return error
+    return {
+      code: typeof payload.code === 'string' ? payload.code : undefined,
+      message: payload.message
+    }
+  } catch {
+    return error
+  }
 }

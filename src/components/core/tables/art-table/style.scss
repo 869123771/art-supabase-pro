@@ -9,9 +9,9 @@
 
   &__cell-content {
     display: inline-flex;
-    max-width: 100%;
     gap: 6px;
     align-items: center;
+    max-width: 100%;
     vertical-align: middle;
   }
 
@@ -23,8 +23,10 @@
   }
 
   &__drag-handle {
-    flex: 0 0 auto;
     display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
     width: 26px;
     height: 26px;
     padding: 0;
@@ -34,8 +36,6 @@
     background: var(--el-fill-color-blank);
     border: 1px solid var(--el-border-color-lighter);
     border-radius: 6px;
-    align-items: center;
-    justify-content: center;
     transition:
       color 0.2s,
       background 0.2s,
@@ -63,8 +63,8 @@
   }
 
   :deep(.art-table__drag-ghost) {
-    opacity: 0.55;
     background-color: var(--el-fill-color-light);
+    opacity: 0.55;
   }
 
   :deep(.art-table__drag-chosen) {
@@ -77,6 +77,10 @@
 
   :deep(.el-table__body tr.is-art-selected-row.hover-row > td.el-table__cell) {
     background-color: var(--el-table-row-hover-bg-color);
+  }
+
+  :deep(.el-table__body tr:hover > td.el-table__cell) {
+    background: color-mix(in srgb, var(--theme-color) 4%, var(--default-box-color));
   }
 
   &.is-row-selection-dragging {

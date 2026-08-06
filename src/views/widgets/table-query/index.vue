@@ -1,174 +1,167 @@
 <template>
-  <div class="table-query-widget">
-    <ElCard shadow="never" class="table-query-widget__section">
-      <template #header>
-        <div class="table-query-widget__header">
-          <div>
-            <h2>ArtTableQuery 综合示例</h2>
-            <p>
-              覆盖内管模式、受控模式、查询插槽、列插槽、headerActions、导入导出、缓存、分页字段映射、响应适配、行拖拽和
-              Expose API。
-            </p>
-          </div>
-          <ElTag effect="plain">/widgets/table-query</ElTag>
-        </div>
-      </template>
-
-      <div class="table-query-widget__toolbar">
-        <ElSpace wrap>
-          <ElButton @click="callExpose('getData')">getData</ElButton>
-          <ElButton @click="callExpose('refreshData')">refreshData</ElButton>
-          <ElButton @click="callExpose('refreshCreate')">refreshCreate</ElButton>
-          <ElButton @click="callExpose('refreshUpdate')">refreshUpdate</ElButton>
-          <ElButton @click="callExpose('refreshRemove')">refreshRemove</ElButton>
-          <ElButton @click="callExpose('resetSearchParams')">resetSearchParams</ElButton>
-        </ElSpace>
-        <ElSwitch v-model="showSearchBar" active-text="显示搜索区" inactive-text="隐藏搜索区" />
-      </div>
-
-      <ArtTableQuery
-        ref="managedTableRef"
-        v-model="managedSearch"
-        v-model:show-search-bar="showSearchBar"
-        :search-items="managedSearchItems"
-        :api-fn="fetchManagedRows"
-        :api-params="managedApiParams"
-        :pagination-key="{ current: 'page', size: 'pageSize' }"
-        :exclude-params="['clientOnly']"
-        :enable-cache="true"
-        :cache-time="60000"
-        :max-cache-size="12"
-        :debounce-time="120"
-        :response-adapter="managedResponseAdapter"
-        :data-transformer="managedDataTransformer"
-        :on-success="handleManagedSuccess"
-        :on-cache-hit="handleManagedCacheHit"
-        :on-error="handleManagedError"
-        :columns-factory="managedColumnsFactory"
-        :header-actions="managedHeaderActions"
-        :search-bar-props="managedSearchBarProps"
-        :table-header-props="managedTableHeaderProps"
-        :table-props="managedTableProps"
-        @search="handleManagedSearch"
-        @reset="logEvent('managed reset')"
-        @refresh="logEvent('managed refresh')"
-        @header-search="logEvent('managed toggle search')"
-        @selection-change="handleManagedSelectionChange"
-        @header-action-click="handleHeaderActionClick"
-        @row-drag-start="handleRowDragStart"
-        @row-drag-update="handleRowDragUpdate"
-        @row-drag-end="handleRowDragEnd"
-        @pagination:size-change="(size) => logEvent(`managed page size -> ${size}`)"
-        @pagination:current-change="(page) => logEvent(`managed current page -> ${page}`)"
+  <ArtPageShell>
+    <div class="table-query-widget">
+      <ArtPageSection
+        class="table-query-widget__section"
+        title="ArtTableQuery 综合示例"
+        subtitle="覆盖内管模式、受控模式、查询插槽、列插槽、headerActions、导入导出、缓存、分页字段映射、响应适配、行拖拽和 Expose API。"
       >
-        <template #search-priority="{ modelValue }">
-          <ElSegmented
-            :model-value="modelValue.priority"
-            :options="priorityOptions"
-            block
-            @update:model-value="modelValue.priority = $event"
-          />
+        <template #actions>
+          <ElTag effect="plain">/widgets/table-query</ElTag>
         </template>
 
-        <template #custom-action="{ selectedCount, api }">
-          <ElButton :disabled="!selectedCount" @click="markSelected(api)">
-            标记已选 {{ selectedCount }}
-          </ElButton>
-        </template>
-
-        <template #header-left="{ selectedCount }">
-          <ElTag type="info" effect="plain">已选 {{ selectedCount }} 行</ElTag>
-        </template>
-
-        <template #header-right>
-          <ElTooltip content="header-right 插槽：业务侧可追加轻量工具">
-            <ElTag effect="plain" type="success">header-right slot</ElTag>
-          </ElTooltip>
-        </template>
-
-        <template #status="{ row }">
-          <ElTag :type="getStatusMeta(toDemoOrder(row).status).type" effect="light">
-            {{ getStatusMeta(toDemoOrder(row).status).label }}
-          </ElTag>
-        </template>
-
-        <template #priority="{ row }">
-          <ElTag :type="getPriorityMeta(toDemoOrder(row).priority).type" effect="plain">
-            {{ getPriorityMeta(toDemoOrder(row).priority).label }}
-          </ElTag>
-        </template>
-
-        <template #operation="{ row }">
-          <ElSpace>
-            <ElButton link type="primary" @click="simulateUpdate(toDemoOrder(row))">编辑</ElButton>
-            <ElButton link type="danger" @click="simulateRemove(toDemoOrder(row))">删除</ElButton>
+        <div class="table-query-widget__toolbar">
+          <ElSpace wrap>
+            <ElButton @click="callExpose('getData')">getData</ElButton>
+            <ElButton @click="callExpose('refreshData')">refreshData</ElButton>
+            <ElButton @click="callExpose('refreshCreate')">refreshCreate</ElButton>
+            <ElButton @click="callExpose('refreshUpdate')">refreshUpdate</ElButton>
+            <ElButton @click="callExpose('refreshRemove')">refreshRemove</ElButton>
+            <ElButton @click="callExpose('resetSearchParams')">resetSearchParams</ElButton>
           </ElSpace>
-        </template>
-      </ArtTableQuery>
-    </ElCard>
-
-    <div class="table-query-widget__grid">
-      <ElCard shadow="never" class="table-query-widget__section">
-        <template #header>
-          <div class="table-query-widget__header">
-            <div>
-              <h2>受控模式</h2>
-              <p
-                >不传 apiFn，由页面维护 loading、data、columns、pagination，并响应 ArtTableQuery
-                事件。</p
-              >
-            </div>
-            <ElTag effect="plain" type="warning">controlled</ElTag>
-          </div>
-        </template>
+          <ElSwitch v-model="showSearchBar" active-text="显示搜索区" inactive-text="隐藏搜索区" />
+        </div>
 
         <ArtTableQuery
-          v-model="controlledSearch"
-          v-model:columns="controlledColumnChecks"
-          v-model:show-search-bar="controlledShowSearchBar"
-          :loading="controlledLoading"
-          :data="controlledData"
-          :table-columns="controlledColumns"
-          :pagination="controlledPagination"
-          :search-items="controlledSearchItems"
-          :table-props="controlledTableProps"
-          :table-header-props="{ layout: 'search,refresh,size,columns,settings' }"
-          @search="handleControlledSearch"
-          @reset="handleControlledReset"
-          @refresh="loadControlledData"
-          @selection-change="(rows) => logEvent(`controlled selection -> ${rows.length}`)"
-          @pagination:size-change="handleControlledSizeChange"
-          @pagination:current-change="handleControlledCurrentChange"
+          ref="managedTableRef"
+          v-model="managedSearch"
+          v-model:show-search-bar="showSearchBar"
+          :search-items="managedSearchItems"
+          :api-fn="fetchManagedRows"
+          :api-params="managedApiParams"
+          :pagination-key="{ current: 'page', size: 'pageSize' }"
+          :exclude-params="['clientOnly']"
+          :enable-cache="true"
+          :cache-time="60000"
+          :max-cache-size="12"
+          :debounce-time="120"
+          :response-adapter="managedResponseAdapter"
+          :data-transformer="managedDataTransformer"
+          :on-success="handleManagedSuccess"
+          :on-cache-hit="handleManagedCacheHit"
+          :on-error="handleManagedError"
+          :columns-factory="managedColumnsFactory"
+          :header-actions="managedHeaderActions"
+          :search-bar-props="managedSearchBarProps"
+          :table-header-props="managedTableHeaderProps"
+          :table-props="managedTableProps"
+          @search="handleManagedSearch"
+          @reset="logEvent('managed reset')"
+          @refresh="logEvent('managed refresh')"
+          @header-search="logEvent('managed toggle search')"
+          @selection-change="handleManagedSelectionChange"
+          @header-action-click="handleHeaderActionClick"
+          @row-drag-start="handleRowDragStart"
+          @row-drag-update="handleRowDragUpdate"
+          @row-drag-end="handleRowDragEnd"
+          @pagination:size-change="(size) => logEvent(`managed page size -> ${size}`)"
+          @pagination:current-change="(page) => logEvent(`managed current page -> ${page}`)"
         >
+          <template #search-priority="{ modelValue }">
+            <ElSegmented
+              :model-value="modelValue.priority"
+              :options="priorityOptions"
+              block
+              @update:model-value="modelValue.priority = $event"
+            />
+          </template>
+
+          <template #custom-action="{ selectedCount, api }">
+            <ElButton :disabled="!selectedCount" @click="markSelected(api)">
+              标记已选 {{ selectedCount }}
+            </ElButton>
+          </template>
+
+          <template #header-left="{ selectedCount }">
+            <ElTag type="info" effect="plain">已选 {{ selectedCount }} 行</ElTag>
+          </template>
+
+          <template #header-right>
+            <ElTooltip content="header-right 插槽：业务侧可追加轻量工具">
+              <ElTag effect="plain" type="success">header-right slot</ElTag>
+            </ElTooltip>
+          </template>
+
           <template #status="{ row }">
             <ElTag :type="getStatusMeta(toDemoOrder(row).status).type" effect="light">
               {{ getStatusMeta(toDemoOrder(row).status).label }}
             </ElTag>
           </template>
+
+          <template #priority="{ row }">
+            <ElTag :type="getPriorityMeta(toDemoOrder(row).priority).type" effect="plain">
+              {{ getPriorityMeta(toDemoOrder(row).priority).label }}
+            </ElTag>
+          </template>
+
+          <template #operation="{ row }">
+            <ElSpace>
+              <ElButton link type="primary" @click="simulateUpdate(toDemoOrder(row))"
+                >编辑</ElButton
+              >
+              <ElButton link type="danger" @click="simulateRemove(toDemoOrder(row))">删除</ElButton>
+            </ElSpace>
+          </template>
         </ArtTableQuery>
-      </ElCard>
+      </ArtPageSection>
 
-      <ElCard shadow="never" class="table-query-widget__section table-query-widget__log">
-        <template #header>
-          <div class="table-query-widget__header">
-            <div>
-              <h2>事件日志</h2>
-              <p>展示 search、reset、refresh、分页、header action、缓存命中和行拖拽等回调。</p>
-            </div>
+      <div class="table-query-widget__grid">
+        <ArtPageSection
+          class="table-query-widget__section"
+          title="受控模式"
+          subtitle="不传 apiFn，由页面维护 loading、data、columns、pagination，并响应 ArtTableQuery 事件。"
+        >
+          <template #actions>
+            <ElTag effect="plain" type="warning">controlled</ElTag>
+          </template>
+
+          <ArtTableQuery
+            v-model="controlledSearch"
+            v-model:columns="controlledColumnChecks"
+            v-model:show-search-bar="controlledShowSearchBar"
+            :loading="controlledLoading"
+            :data="controlledData"
+            :table-columns="controlledColumns"
+            :pagination="controlledPagination"
+            :search-items="controlledSearchItems"
+            :table-props="controlledTableProps"
+            :table-header-props="{ layout: 'search,refresh,size,columns,settings' }"
+            @search="handleControlledSearch"
+            @reset="handleControlledReset"
+            @refresh="loadControlledData"
+            @selection-change="(rows) => logEvent(`controlled selection -> ${rows.length}`)"
+            @pagination:size-change="handleControlledSizeChange"
+            @pagination:current-change="handleControlledCurrentChange"
+          >
+            <template #status="{ row }">
+              <ElTag :type="getStatusMeta(toDemoOrder(row).status).type" effect="light">
+                {{ getStatusMeta(toDemoOrder(row).status).label }}
+              </ElTag>
+            </template>
+          </ArtTableQuery>
+        </ArtPageSection>
+
+        <ArtPageSection
+          class="table-query-widget__section table-query-widget__log"
+          title="事件日志"
+          subtitle="展示 search、reset、refresh、分页、header action、缓存命中和行拖拽等回调。"
+        >
+          <template #actions>
             <ElButton text type="primary" @click="eventLogs = []">清空</ElButton>
-          </div>
-        </template>
+          </template>
 
-        <ElScrollbar height="420px">
-          <ElEmpty v-if="!eventLogs.length" description="暂无事件" :image-size="80" />
-          <div v-for="item in eventLogs" :key="item.id" class="table-query-widget__log-item">
-            <span>{{ item.time }}</span>
-            <strong>{{ item.text }}</strong>
-          </div>
-        </ElScrollbar>
-      </ElCard>
+          <ArtAsyncState :empty="!eventLogs.length" empty-text="暂无事件" min-height="420px">
+            <ElScrollbar height="420px">
+              <div v-for="item in eventLogs" :key="item.id" class="table-query-widget__log-item">
+                <span>{{ item.time }}</span>
+                <strong>{{ item.text }}</strong>
+              </div>
+            </ElScrollbar>
+          </ArtAsyncState>
+        </ArtPageSection>
+      </div>
     </div>
-  </div>
+  </ArtPageShell>
 </template>
 
 <script setup lang="tsx">
@@ -836,29 +829,6 @@
     gap: 16px;
     min-height: 100%;
 
-    &__section {
-      border-radius: 8px;
-    }
-
-    &__header {
-      display: flex;
-      gap: 16px;
-      align-items: flex-start;
-      justify-content: space-between;
-
-      h2 {
-        margin: 0;
-        font-size: 18px;
-        font-weight: 600;
-      }
-
-      p {
-        max-width: 920px;
-        margin: 6px 0 0;
-        color: var(--el-text-color-secondary);
-      }
-    }
-
     &__toolbar {
       display: flex;
       gap: 16px;
@@ -909,7 +879,6 @@
     }
 
     @media (width <= 768px) {
-      &__header,
       &__toolbar {
         flex-direction: column;
         align-items: stretch;

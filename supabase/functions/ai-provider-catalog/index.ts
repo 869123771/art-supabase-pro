@@ -1,5 +1,6 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
 import { createClient } from 'jsr:@supabase/supabase-js@2'
+import { getAiConfigTenantScope } from '../_shared/ai-config-tenancy.ts'
 
 interface CatalogRequest {
   forceRefresh?: boolean
@@ -246,10 +247,11 @@ Deno.serve(async (req) => {
   const sharedModel = Deno.env.get('OPENAI_MODEL') || Deno.env.get('AI_MODEL')
   const body = (await req.json().catch(() => ({}))) as CatalogRequest
 
+  const configTenantScope = await getAiConfigTenantScope(admin, appUser.tenant_id)
   const { data: configuredData } = await admin
     .from('ai_feature_config')
     .select('model,vision_model,fallback_model')
-    .eq('tenant_id', appUser.tenant_id)
+    .in('tenant_id', configTenantScope)
   const configuredRows = (configuredData ?? []) as ConfiguredModelRow[]
   const environmentModels = [
     sharedModel,

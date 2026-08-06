@@ -1,13 +1,17 @@
 <!-- 登录页面 -->
 <template>
-  <div class="flex w-full h-screen">
+  <div class="auth-page auth-login-page">
     <LoginLeftView />
 
-    <div class="relative flex-1">
+    <div class="auth-page__panel">
       <AuthTopBar />
 
       <div class="auth-right-wrap">
         <div class="form">
+          <div class="form__eyebrow">
+            <span><ArtSvgIcon icon="ri:shield-check-line" /></span>
+            安全工作区
+          </div>
           <h3 class="title">{{ loginTitle }}</h3>
           <p class="sub-title">{{ loginSubtitle || $t('login.subTitle') }}</p>
           <ElAlert
@@ -31,7 +35,11 @@
                 class="custom-height"
                 :placeholder="$t('login.placeholder.email')"
                 v-model.trim="formData.email"
-              />
+                autocomplete="email"
+                aria-label="登录邮箱"
+              >
+                <template #prefix><ArtSvgIcon icon="ri:mail-line" /></template>
+              </ElInput>
             </ElFormItem>
             <ElFormItem prop="password">
               <ElInput
@@ -39,12 +47,19 @@
                 :placeholder="$t('login.placeholder.password')"
                 v-model.trim="formData.password"
                 type="password"
-                autocomplete="off"
+                autocomplete="current-password"
                 show-password
-              />
+                aria-label="登录密码"
+              >
+                <template #prefix><ArtSvgIcon icon="ri:lock-2-line" /></template>
+              </ElInput>
             </ElFormItem>
 
-            <ElFormItem v-if="showTurnstile" class="turnstile-form-item mt-6">
+            <ElFormItem
+              v-if="showTurnstile"
+              class="turnstile-form-item mt-6"
+              :class="{ 'is-interaction-only': turnstileAppearance === 'interaction-only' }"
+            >
               <ArtTurnstileCaptcha
                 ref="turnstileRef"
                 :sitekey="turnstileSiteKey"
@@ -76,7 +91,8 @@
                 :loading="loading"
                 v-ripple
               >
-                {{ $t('login.btnText') }}
+                <span>{{ $t('login.btnText') }}</span>
+                <ArtSvgIcon icon="ri:arrow-right-line" />
               </ElButton>
             </div>
 
@@ -87,6 +103,12 @@
               }}</RouterLink>
             </div>
           </ElForm>
+
+          <div class="form__trust">
+            <span><ArtSvgIcon icon="ri:lock-line" /> TLS 安全连接</span>
+            <i />
+            <span>企业级权限隔离</span>
+          </div>
         </div>
       </div>
     </div>
@@ -165,7 +187,7 @@
   )
 
   const rules = computed<FormRules>(() => ({
-    username: [{ required: true, message: t('login.placeholder.username'), trigger: 'blur' }],
+    email: [{ required: true, message: t('login.placeholder.email'), trigger: 'blur' }],
     password: [{ required: true, message: t('login.placeholder.password'), trigger: 'blur' }]
   }))
 
@@ -304,11 +326,108 @@
 </style>
 
 <style lang="scss" scoped>
-  :deep(.el-select__wrapper) {
-    height: 40px !important;
+  .auth-login-page {
+    .form {
+      &__eyebrow {
+        display: inline-flex;
+        gap: 8px;
+        align-items: center;
+        margin-bottom: 18px;
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--el-color-primary);
+        letter-spacing: 1px;
+
+        > span {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 28px;
+          height: 28px;
+          font-size: 15px;
+          background: color-mix(in srgb, var(--el-color-primary) 12%, var(--el-bg-color));
+          border-radius: 50%;
+        }
+      }
+
+      &__trust {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        justify-content: center;
+        margin-top: 28px;
+        font-size: 10px;
+        color: var(--el-text-color-placeholder);
+
+        span {
+          display: inline-flex;
+          gap: 5px;
+          align-items: center;
+        }
+
+        i {
+          width: 3px;
+          height: 3px;
+          background: var(--el-border-color);
+          border-radius: 50%;
+        }
+      }
+    }
+
+    :deep(.el-select__wrapper) {
+      height: 48px !important;
+    }
+
+    :deep(.el-input__wrapper) {
+      padding: 0 15px;
+      background: color-mix(in srgb, var(--el-fill-color-light) 64%, transparent);
+      border: 1px solid transparent;
+      box-shadow: none;
+      transition:
+        border-color 0.2s ease,
+        background 0.2s ease,
+        box-shadow 0.2s ease;
+
+      &:hover {
+        background: var(--el-fill-color-light);
+        border-color: var(--el-border-color);
+      }
+
+      &.is-focus {
+        background: var(--el-bg-color);
+        border-color: color-mix(in srgb, var(--el-color-primary) 72%, transparent);
+        box-shadow: 0 0 0 4px color-mix(in srgb, var(--el-color-primary) 10%, transparent);
+      }
+    }
+
+    :deep(.el-input__prefix) {
+      margin-right: 7px;
+      font-size: 17px;
+      color: var(--el-text-color-placeholder);
+    }
+
+    :deep(.el-button--primary) {
+      justify-content: space-between;
+      padding: 0 18px 0 22px;
+      font-weight: 700;
+      background: linear-gradient(100deg, #4f46e5, var(--el-color-primary), #087bff);
+      border: 0;
+      box-shadow: 0 14px 28px color-mix(in srgb, var(--el-color-primary) 28%, transparent);
+
+      &:hover {
+        box-shadow: 0 17px 34px color-mix(in srgb, var(--el-color-primary) 36%, transparent);
+        transform: translateY(-1px);
+      }
+    }
   }
 
   :deep(.turnstile-form-item .el-form-item__content) {
     width: 100%;
+  }
+
+  :deep(.turnstile-form-item.is-interaction-only) {
+    height: 0;
+    margin: 0;
+    overflow: hidden;
   }
 </style>

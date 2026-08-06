@@ -5,7 +5,13 @@
       <ElTag :type="confidenceTagType">可信度 {{ confidencePercent }}%</ElTag>
     </div>
 
-    <ElAlert :title="analysis.summary" type="success" :closable="false" show-icon />
+    <div class="ai-order-result__summary">
+      <ArtSvgIcon icon="ri:checkbox-circle-line" />
+      <div>
+        <strong>识别完成</strong>
+        <p>{{ analysis.summary }}</p>
+      </div>
+    </div>
 
     <div v-if="lowConfidenceFields.length" class="ai-order-result__confidence">
       <span>建议重点核对：</span>
@@ -135,6 +141,35 @@
 
     &__descriptions {
       margin-top: 14px;
+    }
+
+    &__summary {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      padding: 12px 14px;
+      color: var(--el-color-success-dark-2);
+      background: color-mix(in srgb, var(--el-color-success) 8%, var(--default-box-color));
+      border-left: 3px solid var(--el-color-success);
+      border-radius: var(--el-border-radius-base);
+
+      > svg {
+        flex: none;
+        margin-top: 2px;
+        font-size: 18px;
+      }
+
+      strong,
+      p {
+        display: block;
+      }
+
+      p {
+        margin: 4px 0 0;
+        line-height: 1.55;
+        color: var(--el-text-color-regular);
+        overflow-wrap: anywhere;
+      }
     }
 
     &__confidence {

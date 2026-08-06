@@ -13,6 +13,7 @@
 
     <InvoiceDialog ref="dialogRef" @success="handleSaveSuccess" />
     <InvoiceDetailDrawer ref="drawerRef" />
+    <InvoiceComplianceAuditDrawer ref="auditDrawerRef" />
   </div>
 </template>
 
@@ -39,6 +40,7 @@
   import { formatWithDayjs } from '@/utils/time'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import InvoiceDialog from './modules/invoice-dialog.vue'
+  import InvoiceComplianceAuditDrawer from './modules/invoice-compliance-audit-drawer.vue'
   import InvoiceDetailDrawer from './modules/invoice-detail-drawer.vue'
 
   defineOptions({ name: 'TmsInvoiceManagement' })
@@ -55,6 +57,10 @@
     handleOpen: (row: Invoice) => Promise<void>
   }
 
+  interface AuditDrawerExpose {
+    handleOpen: (data: { invoiceId: string; invoiceRecordNo: string }) => Promise<void>
+  }
+
   interface TableGroup {
     searchQuery: SearchParams
     searchItems: ComputedRef<SearchFormItem[]>
@@ -68,6 +74,7 @@
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<DialogExpose>()
   const drawerRef = ref<DrawerExpose>()
+  const auditDrawerRef = ref<AuditDrawerExpose>()
 
   const table: UnwrapNestedRefs<TableGroup> = reactive<TableGroup>({
     searchQuery: {
@@ -253,13 +260,27 @@
     {
       prop: 'operation',
       label: '操作',
-      width: 260,
+      width: 320,
       fixed: 'right',
       formatter: (row) => (
         <div class="flex items-center">
           <ElButton link type="primary" onClick={() => void drawerRef.value?.handleOpen(row)}>
             查看
           </ElButton>
+          {row.status !== 'voided' ? (
+            <ElButton
+              link
+              type="primary"
+              onClick={() =>
+                void auditDrawerRef.value?.handleOpen({
+                  invoiceId: row.id,
+                  invoiceRecordNo: row.invoiceNo || row.invoiceRecordNo
+                })
+              }
+            >
+              AI审核
+            </ElButton>
+          ) : null}
           {renderStatusActions(row)}
         </div>
       )

@@ -194,7 +194,7 @@
               </div>
             </article>
           </div>
-          <ElEmpty v-else description="当前未识别到明确费用异常" :image-size="76" />
+          <ArtEmptyState v-else title="当前未识别到明确费用异常" :visual-size="72" size="compact" />
         </section>
 
         <section class="cost-auditor__section">
@@ -252,6 +252,7 @@
 </template>
 
 <script setup lang="ts">
+  import ArtEmptyState from '@/components/core/layouts/art-empty-state/index.vue'
   import type { UnwrapNestedRefs } from 'vue'
   import ArtAiFeedback from '@/components/core/base/art-ai-feedback/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
@@ -461,15 +462,15 @@
 
       strong {
         overflow: hidden;
-        font-size: 16px;
         text-overflow: ellipsis;
+        font-size: 16px;
         white-space: nowrap;
       }
 
       small {
         overflow: hidden;
-        color: var(--el-text-color-secondary);
         text-overflow: ellipsis;
+        color: var(--el-text-color-secondary);
         white-space: nowrap;
       }
     }
@@ -536,8 +537,8 @@
         align-items: center;
         margin: 6px 0 0;
         overflow: hidden;
-        font-size: 13px;
         text-overflow: ellipsis;
+        font-size: 13px;
         color: var(--el-text-color-secondary);
         white-space: nowrap;
       }
@@ -623,8 +624,8 @@
 
           strong {
             overflow: hidden;
-            font-size: 20px;
             text-overflow: ellipsis;
+            font-size: 20px;
             color: var(--el-color-primary);
             white-space: nowrap;
           }
@@ -632,8 +633,8 @@
 
         small {
           overflow: hidden;
-          font-size: 11px;
           text-overflow: ellipsis;
+          font-size: 11px;
           color: var(--el-text-color-placeholder);
           white-space: nowrap;
         }
@@ -734,16 +735,16 @@
         > div > span,
         small {
           overflow: hidden;
-          font-size: 12px;
           text-overflow: ellipsis;
+          font-size: 12px;
           color: var(--el-text-color-secondary);
           white-space: nowrap;
         }
 
         strong {
           overflow: hidden;
-          font-size: 17px;
           text-overflow: ellipsis;
+          font-size: 17px;
           color: var(--el-text-color-primary);
           white-space: nowrap;
         }

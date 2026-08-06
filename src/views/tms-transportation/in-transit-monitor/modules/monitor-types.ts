@@ -69,9 +69,11 @@ export interface StationGeoPosition {
 }
 
 export interface ScreenState {
+  error: Error | null
   keyword: string
   lastRefreshTime?: string
   loading: boolean
+  loaded: boolean
   orders: InTransitRecord[]
   region: string
   selectedOrderId?: string

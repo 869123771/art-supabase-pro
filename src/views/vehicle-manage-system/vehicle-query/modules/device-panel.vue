@@ -1,12 +1,12 @@
 <template>
-  <VehicleQuerySection title="绑定设备">
+  <ArtPageSection :card="false" title="绑定设备">
     <VehicleQueryTable :data="records" :columns="columns" />
-  </VehicleQuerySection>
+  </ArtPageSection>
 </template>
 
 <script setup lang="tsx">
   import type { ColumnOption } from '@/types'
-  import VehicleQuerySection from './vehicle-query-section.vue'
+  import ArtPageSection from '@/components/core/layouts/art-page-section/index.vue'
   import VehicleQueryTable from './vehicle-query-table.vue'
   import type { VehicleArchive } from './types'
   import { formatValue } from './query-format'

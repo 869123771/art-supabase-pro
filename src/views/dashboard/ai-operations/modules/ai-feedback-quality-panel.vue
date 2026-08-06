@@ -1,5 +1,5 @@
 <template>
-  <section class="ai-feedback-quality art-card-xs" v-loading="loading">
+  <section class="ai-feedback-quality art-card-xs">
     <header class="ai-feedback-quality__header">
       <div class="ai-feedback-quality__identity">
         <div class="ai-feedback-quality__identity-icon">
@@ -51,31 +51,37 @@
           <small>优先治理低覆盖或存在未关闭问题的能力</small>
         </header>
         <ElScrollbar max-height="360px">
-          <div v-if="data.featureQuality.length" class="ai-feedback-quality__feature-list">
-            <div v-for="item in data.featureQuality" :key="item.feature">
-              <div class="ai-feedback-quality__feature-title">
-                <ArtDictDisplay dict-code="aiRunFeature" :value="item.feature" display="text" />
-                <ElTag v-if="item.openIssues" type="danger" effect="light" size="small">
-                  {{ item.openIssues }} 个待处理
-                </ElTag>
-                <span v-else>运行成功率 {{ item.successRate.toFixed(1) }}%</span>
+          <ArtAsyncState
+            :empty="!data.featureQuality.length"
+            empty-text="当前周期暂无 AI 运行数据"
+            :empty-image-size="64"
+            :min-height="220"
+          >
+            <div class="ai-feedback-quality__feature-list">
+              <div v-for="item in data.featureQuality" :key="item.feature">
+                <div class="ai-feedback-quality__feature-title">
+                  <ArtDictDisplay dict-code="aiRunFeature" :value="item.feature" display="text" />
+                  <ElTag v-if="item.openIssues" type="danger" effect="light" size="small">
+                    {{ item.openIssues }} 个待处理
+                  </ElTag>
+                  <span v-else>运行成功率 {{ item.successRate.toFixed(1) }}%</span>
+                </div>
+                <div class="ai-feedback-quality__feature-progress">
+                  <ElProgress
+                    :percentage="item.feedbackCoverageRate"
+                    :stroke-width="8"
+                    :show-text="false"
+                    :color="progressColor(item.feedbackCoverageRate)"
+                  />
+                  <strong>{{ item.feedbackCoverageRate.toFixed(1) }}%</strong>
+                </div>
+                <small>
+                  {{ item.feedbackCount }} / {{ item.totalRuns }} 次获得评价 · 正向
+                  {{ item.positiveFeedback }} · 负向 {{ item.negativeFeedback }}
+                </small>
               </div>
-              <div class="ai-feedback-quality__feature-progress">
-                <ElProgress
-                  :percentage="item.feedbackCoverageRate"
-                  :stroke-width="8"
-                  :show-text="false"
-                  :color="progressColor(item.feedbackCoverageRate)"
-                />
-                <strong>{{ item.feedbackCoverageRate.toFixed(1) }}%</strong>
-              </div>
-              <small>
-                {{ item.feedbackCount }} / {{ item.totalRuns }} 次获得评价 · 正向
-                {{ item.positiveFeedback }} · 负向 {{ item.negativeFeedback }}
-              </small>
             </div>
-          </div>
-          <ElEmpty v-else description="当前周期暂无 AI 运行数据" :image-size="64" />
+          </ArtAsyncState>
         </ElScrollbar>
       </article>
 
@@ -90,40 +96,42 @@
           </ElTag>
         </header>
         <ElScrollbar max-height="360px">
-          <div v-if="data.feedbackQueue.length" class="ai-feedback-quality__queue-list">
-            <article v-for="item in data.feedbackQueue" :key="item.feedbackId">
-              <div class="ai-feedback-quality__queue-main">
-                <div>
-                  <ArtDictDisplay dict-code="aiRunFeature" :value="item.feature" display="text" />
-                  <ArtDictDisplay
-                    dict-code="aiFeedbackResolutionStatus"
-                    :value="item.status"
-                    display="tag"
-                  />
+          <ArtAsyncState
+            :empty="!data.feedbackQueue.length"
+            empty-text="当前周期没有负面反馈，继续关注评价覆盖率是否足够。"
+            :empty-image-size="64"
+            :min-height="220"
+          >
+            <div class="ai-feedback-quality__queue-list">
+              <article v-for="item in data.feedbackQueue" :key="item.feedbackId">
+                <div class="ai-feedback-quality__queue-main">
+                  <div>
+                    <ArtDictDisplay dict-code="aiRunFeature" :value="item.feature" display="text" />
+                    <ArtDictDisplay
+                      dict-code="aiFeedbackResolutionStatus"
+                      :value="item.status"
+                      display="tag"
+                    />
+                  </div>
+                  <strong>{{ item.comment || '用户未填写具体说明' }}</strong>
+                  <span>{{ item.model }} · {{ formatDateTime(item.feedbackTime) }}</span>
+                  <p v-if="item.resolutionNote">处理记录：{{ item.resolutionNote }}</p>
                 </div>
-                <strong>{{ item.comment || '用户未填写具体说明' }}</strong>
-                <span>{{ item.model }} · {{ formatDateTime(item.feedbackTime) }}</span>
-                <p v-if="item.resolutionNote">处理记录：{{ item.resolutionNote }}</p>
-              </div>
-              <div class="ai-feedback-quality__queue-actions">
-                <ElButton link @click="emit('viewRun', item.runId)">查看运行</ElButton>
-                <ElButton
-                  v-if="data.canManageFeedback"
-                  type="primary"
-                  plain
-                  size="small"
-                  @click="emit('resolve', item)"
-                >
-                  {{ isClosed(item.status) ? '查看 / 重开' : '处理反馈' }}
-                </ElButton>
-              </div>
-            </article>
-          </div>
-          <ElEmpty v-else description="当前周期没有负面反馈" :image-size="64">
-            <template #description>
-              <span>当前周期没有负面反馈，继续关注评价覆盖率是否足够。</span>
-            </template>
-          </ElEmpty>
+                <div class="ai-feedback-quality__queue-actions">
+                  <ElButton link @click="emit('viewRun', item.runId)">查看运行</ElButton>
+                  <ElButton
+                    v-if="data.canManageFeedback"
+                    type="primary"
+                    plain
+                    size="small"
+                    @click="emit('resolve', item)"
+                  >
+                    {{ isClosed(item.status) ? '查看 / 重开' : '处理反馈' }}
+                  </ElButton>
+                </div>
+              </article>
+            </div>
+          </ArtAsyncState>
         </ElScrollbar>
       </article>
     </div>
@@ -134,6 +142,7 @@
   import dayjs from 'dayjs'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
+  import ArtAsyncState from '@/components/core/layouts/art-async-state/index.vue'
   import type {
     AiFeedbackQualityOverview,
     AiFeedbackQueueItem,
@@ -155,7 +164,6 @@
 
   const props = defineProps<{
     data: AiFeedbackQualityOverview
-    loading?: boolean
   }>()
 
   const emit = defineEmits<{
@@ -265,13 +273,13 @@
     &__identity-icon {
       display: grid;
       flex: 0 0 44px;
+      place-items: center;
       width: 44px;
       height: 44px;
       font-size: 21px;
       color: var(--el-color-primary);
       background: var(--el-color-primary-light-9);
       border-radius: var(--el-border-radius-base);
-      place-items: center;
     }
 
     &__header-status {
@@ -307,9 +315,9 @@
         span,
         small {
           overflow: hidden;
+          text-overflow: ellipsis;
           font-size: 11px;
           color: var(--el-text-color-secondary);
-          text-overflow: ellipsis;
           white-space: nowrap;
         }
 
@@ -327,11 +335,11 @@
     &__metric-icon {
       display: grid;
       flex: 0 0 40px;
+      place-items: center;
       width: 40px;
       height: 40px;
       font-size: 19px;
       border-radius: var(--el-border-radius-base);
-      place-items: center;
 
       &.is-primary {
         color: var(--el-color-primary);
@@ -410,9 +418,9 @@
 
       > small {
         overflow: hidden;
+        text-overflow: ellipsis;
         font-size: 10px;
         color: var(--el-text-color-placeholder);
-        text-overflow: ellipsis;
         white-space: nowrap;
       }
     }
@@ -467,10 +475,10 @@
 
       strong,
       p {
-        overflow-wrap: anywhere;
         font-size: 12px;
         line-height: 1.55;
         color: var(--el-text-color-primary);
+        overflow-wrap: anywhere;
       }
 
       > span,
@@ -501,8 +509,8 @@
 
       &__header,
       &__queue-list > article {
-        align-items: flex-start;
         flex-direction: column;
+        align-items: flex-start;
       }
 
       &__header-status {

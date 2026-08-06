@@ -390,6 +390,12 @@ verify_jwt = true
 [functions.ai-waybill-cost-auditor]
 verify_jwt = true
 
+[functions.ai-invoice-compliance-auditor]
+verify_jwt = true
+
+[functions.ai-invoice-ocr]
+verify_jwt = true
+
 [functions.ai-waybill-profit-analyst]
 verify_jwt = true
 
@@ -418,6 +424,9 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.ai-project-planner]
+verify_jwt = true
+
+[functions.ai-bank-statement-batch-match]
 verify_jwt = true
 
 # [edge_runtime.secrets]

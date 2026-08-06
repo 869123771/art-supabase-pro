@@ -33,7 +33,13 @@
               <small>{{ getPoiDisplayText(poi) }}</small>
             </span>
           </button>
-          <ElEmpty v-if="!poiList.length" description="暂无搜索结果" :image-size="92" />
+          <ArtEmptyState
+            v-if="!poiList.length"
+            title="暂无搜索结果"
+            description="尝试输入更完整的地址或更换关键词。"
+            :visual-size="82"
+            size="compact"
+          />
         </ElScrollbar>
       </div>
     </section>
@@ -45,6 +51,7 @@
 </template>
 
 <script setup lang="ts">
+  import ArtEmptyState from '@/components/core/layouts/art-empty-state/index.vue'
   import { LocationFilled, Search } from '@element-plus/icons-vue'
   import { ElMessage } from 'element-plus'
   import { debounce, isNil, trim } from 'lodash-es'
@@ -793,8 +800,8 @@
       align-items: center;
       justify-content: center;
       padding: 24px;
-      pointer-events: none;
       color: var(--el-text-color-secondary);
+      pointer-events: none;
       background: var(--el-fill-color-lighter);
     }
   }

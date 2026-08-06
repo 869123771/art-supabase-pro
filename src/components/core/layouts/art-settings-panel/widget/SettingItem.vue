@@ -1,5 +1,5 @@
 <template>
-  <div class="flex-cb mb-4 last:mb-2" :class="{ 'mobile-hide': config.mobileHide }">
+  <div class="setting-item-row flex-cb" :class="{ 'mobile-hide': config.mobileHide }">
     <span class="text-sm">{{ config.label }}</span>
 
     <!-- 开关类型 -->
