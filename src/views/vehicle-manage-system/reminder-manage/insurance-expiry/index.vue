@@ -1,5 +1,12 @@
 <template>
   <div class="art-full-height">
+    <VehicleReminderRiskOverview
+      title="保险到期"
+      description="优先处理已逾期与 7 天内到期车辆，提前安排续保资料与报价确认。"
+      :filters="tableState.searchQuery"
+      :fetch-fn="fetchVehicleReminderInsuranceRiskOverview"
+      @select="handleRiskBandChange"
+    />
     <ArtTableQuery
       ref="tableQueryRef"
       v-model="tableState.searchQuery"
@@ -18,7 +25,10 @@
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type { ArtTableQueryExpose } from '@/components/core/tables/art-table-query/index.vue'
   import type { ColumnOption } from '@/types'
-  import { fetchVehicleReminderInsuranceExpiryList } from '@/api/vehicle-manage-system'
+  import {
+    fetchVehicleReminderInsuranceExpiryList,
+    fetchVehicleReminderInsuranceRiskOverview
+  } from '@/api/vehicle-manage-system'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import {
     createReminderWorkOrderColumns,
@@ -28,12 +38,15 @@
     renderReminderStatus
   } from '../modules/reminder-table'
   import VehicleReminderWorkOrderDrawer from '../modules/vehicle-reminder-work-order-drawer.vue'
+  import VehicleReminderRiskOverview from '../modules/vehicle-reminder-risk-overview.vue'
+  import { getReminderRiskRowClassName } from '../modules/reminder-risk'
   import { useUserStore } from '@/store/modules/user'
 
   defineOptions({ name: 'VehicleInsuranceExpiry' })
 
   type ReminderRow = Api.VehicleMgtSys.ReminderManage.VehicleReminderRow
   type ReminderSearchParams = Api.VehicleMgtSys.ReminderManage.VehicleReminderSearchParams
+  type RiskBand = Api.VehicleMgtSys.ReminderManage.VehicleReminderRiskBand
   type ReminderTableParams = ReminderSearchParams &
     Pick<Api.Common.PaginationParams, 'current' | 'size'>
 
@@ -45,7 +58,11 @@
   interface TableConfig {
     searchItems: SearchFormItem[]
     searchBarProps: { span: number; labelWidth: number; showExpand: boolean }
-    tableProps: { rowKey: string; tableLayout: 'fixed' }
+    tableProps: {
+      rowKey: string
+      tableLayout: 'fixed'
+      rowClassName: typeof getReminderRiskRowClassName
+    }
     columnsFactory: () => ColumnOption<ReminderRow>[]
   }
 
@@ -80,7 +97,11 @@
   const tableConfig: TableConfig = {
     searchItems: futureReminderSearchItems,
     searchBarProps: { span: 6, labelWidth: 100, showExpand: false },
-    tableProps: { rowKey: 'id', tableLayout: 'fixed' },
+    tableProps: {
+      rowKey: 'id',
+      tableLayout: 'fixed',
+      rowClassName: getReminderRiskRowClassName
+    },
     columnsFactory: () => [
       { type: 'globalIndex', label: '序号', width: 72 },
       { prop: 'companyName', label: '所属公司', minWidth: 170 },
@@ -121,12 +142,18 @@
     void tableQueryRef.value?.refreshUpdate()
   }
 
+  function handleRiskBandChange(riskBand: RiskBand): void {
+    tableState.searchQuery.riskBand = riskBand === 'all' ? undefined : riskBand
+    void nextTick(() => tableQueryRef.value?.getData())
+  }
+
   const fetchTableData = async (params: ReminderTableParams) => {
     const { from, to } = pageInfoHandler({ current: params.current, size: params.size })
     return await fetchVehicleReminderInsuranceExpiryList({
       companyName: params.companyName,
       plateNo: params.plateNo,
       reminderDays: params.reminderDays,
+      riskBand: params.riskBand,
       from,
       to
     })

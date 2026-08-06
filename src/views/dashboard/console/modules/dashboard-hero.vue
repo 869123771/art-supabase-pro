@@ -286,13 +286,13 @@
 
     &__route {
       display: grid;
-      grid-template-columns: 8px 1fr 26px 1fr 8px;
+      grid-template-columns: 7px 1fr 22px 1fr 7px;
       align-items: center;
       margin-top: 19px;
 
       > i {
-        width: 8px;
-        height: 8px;
+        width: 7px;
+        height: 7px;
         border: 2px solid #fff;
         border-radius: 50%;
 
@@ -311,11 +311,17 @@
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        width: 26px;
-        height: 26px;
+        width: 22px;
+        height: 22px;
         color: #302b8d;
         background: #70e8ff;
         border-radius: 50%;
+        box-shadow: 0 3px 10px rgb(26 22 100 / 20%);
+
+        > svg {
+          width: 9px;
+          height: 9px;
+        }
       }
     }
   }

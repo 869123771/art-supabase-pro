@@ -55,7 +55,20 @@
       </article>
     </section>
 
-    <section class="ai-operations__quality art-card-xs">
+    <section class="ai-operations__workspace-nav art-card-xs">
+      <div>
+        <span>OBSERVABILITY WORKSPACE</span>
+        <strong>{{ activeSectionMeta.title }}</strong>
+        <small>{{ activeSectionMeta.description }}</small>
+      </div>
+      <ElSegmented
+        v-model="activeSection"
+        :options="sectionOptions"
+        aria-label="AI 运行中心工作区"
+      />
+    </section>
+
+    <section v-show="activeSection === 'forms'" class="ai-operations__quality art-card-xs">
       <header class="ai-operations__card-header ai-operations__quality-header">
         <div>
           <span>HUMAN-IN-THE-LOOP</span>
@@ -86,6 +99,12 @@
               <span>质量趋势</span>
               <strong>草稿生成与保存采用</strong>
             </div>
+            <ElSegmented
+              v-model="trendWindow"
+              :options="trendWindowOptions"
+              size="small"
+              aria-label="质量趋势时间窗口"
+            />
           </header>
           <ArtLineChart
             v-if="qualityTrendLabels.length"
@@ -146,24 +165,37 @@
       </div>
     </section>
 
-    <AiOcrQualityPanel ref="ocrQualityPanelRef" :days="overview.days" />
+    <AiOcrQualityPanel
+      v-if="activeSection === 'ocr'"
+      ref="ocrQualityPanelRef"
+      :days="overview.days"
+    />
 
     <AiFeedbackQualityPanel
+      v-if="activeSection === 'feedback'"
       :data="overview.data.feedbackQuality"
       @resolve="openFeedbackResolution"
       @view-run="openRunById"
     />
 
-    <section class="ai-operations__insights">
+    <section v-show="activeSection === 'overview'" class="ai-operations__insights">
       <article class="ai-operations__trend art-card-xs">
         <header class="ai-operations__card-header">
           <div>
             <span>运行趋势</span>
             <h2>每日执行质量</h2>
           </div>
-          <div class="ai-operations__legend">
-            <span class="is-success">成功</span>
-            <span class="is-danger">失败</span>
+          <div class="ai-operations__trend-actions">
+            <ElSegmented
+              v-model="trendWindow"
+              :options="trendWindowOptions"
+              size="small"
+              aria-label="运行趋势时间窗口"
+            />
+            <div class="ai-operations__legend">
+              <span class="is-success">成功</span>
+              <span class="is-danger">失败</span>
+            </div>
           </div>
         </header>
         <div class="ai-operations__trend-chart">
@@ -248,7 +280,7 @@
       </article>
     </section>
 
-    <section class="ai-operations__health art-card-xs">
+    <section v-show="activeSection === 'overview'" class="ai-operations__health art-card-xs">
       <div class="ai-operations__health-title">
         <div class="ai-operations__health-icon"><ArtSvgIcon icon="ri:heart-pulse-line" /></div>
         <div>
@@ -279,7 +311,7 @@
       </div>
     </section>
 
-    <section class="ai-operations__table">
+    <section v-if="activeSection === 'runs'" class="ai-operations__table">
       <ArtTableQuery
         ref="tableQueryRef"
         v-model="searchQuery"
@@ -338,6 +370,8 @@
   }
 
   type MetricTone = 'primary' | 'success' | 'warning' | 'purple'
+  type OperationsSection = 'overview' | 'forms' | 'ocr' | 'feedback' | 'runs'
+  type TrendWindow = 'recent' | 'period'
 
   interface MetricCard {
     key: string
@@ -348,17 +382,87 @@
     tone: MetricTone
   }
 
+  interface SectionOption {
+    label: string
+    value: OperationsSection
+    title: string
+    description: string
+  }
+
   const userStore = useUserStore()
+  const route = useRoute()
+  const router = useRouter()
   const { getDictMap } = storeToRefs(userStore)
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const detailDrawerRef = ref<DetailDrawerExpose>()
   const feedbackResolutionDialogRef = ref<FeedbackResolutionDialogExpose>()
   const ocrQualityPanelRef = ref<{ loadData: () => Promise<void> }>()
+  const sectionOptions: SectionOption[] = [
+    {
+      label: '运行总览',
+      value: 'overview',
+      title: '运行健康与能力分布',
+      description: '聚合执行趋势、能力调用、用户反馈与异常信号。'
+    },
+    {
+      label: '填单质量',
+      value: 'forms',
+      title: '人机协同填单质量',
+      description: '跟踪草稿采用率、字段修正与人工审查闭环。'
+    },
+    {
+      label: 'OCR 质量',
+      value: 'ocr',
+      title: '票据识别质量',
+      description: '集中查看识别准确率、字段表现与失败样本。'
+    },
+    {
+      label: '反馈闭环',
+      value: 'feedback',
+      title: '用户反馈与问题处置',
+      description: '定位低质量结果并跟进反馈解决状态。'
+    },
+    {
+      label: '运行明细',
+      value: 'runs',
+      title: 'AI 运行明细',
+      description: '按功能、模型、状态和时间范围追踪每次执行。'
+    }
+  ]
+  const sectionValues = new Set<OperationsSection>(sectionOptions.map((item) => item.value))
+  const requestedSection = Array.isArray(route.query.section)
+    ? route.query.section[0]
+    : route.query.section
+  const activeSection = ref<OperationsSection>(
+    requestedSection && sectionValues.has(requestedSection as OperationsSection)
+      ? (requestedSection as OperationsSection)
+      : 'overview'
+  )
+  const trendWindowOptions = [
+    { label: '近 14 天', value: 'recent' },
+    { label: '全周期', value: 'period' }
+  ]
+  const requestedTrendWindow = Array.isArray(route.query.window)
+    ? route.query.window[0]
+    : route.query.window
+  const trendWindow = ref<TrendWindow>(requestedTrendWindow === 'period' ? 'period' : 'recent')
+  const activeSectionMeta = computed(
+    () => sectionOptions.find((item) => item.value === activeSection.value) ?? sectionOptions[0]
+  )
   const searchQuery = ref<Partial<AiRunSearchParams>>({
     feature: '',
     status: '',
     model: '',
     timeRange: undefined
+  })
+
+  watch([activeSection, trendWindow], ([section, window]) => {
+    const query = { ...route.query }
+    if (section === 'overview') delete query.section
+    else query.section = section
+    if (window === 'recent') delete query.window
+    else query.window = window
+    void router.replace({ query })
   })
   const overview = reactive<{
     days: number
@@ -447,33 +551,41 @@
     }
   ])
 
+  const visibleRunTrend = computed(() =>
+    trendWindow.value === 'period' ? overview.data.dailyTrend : overview.data.dailyTrend.slice(-14)
+  )
+  const visibleQualityTrend = computed(() =>
+    trendWindow.value === 'period'
+      ? overview.data.quality.dailyTrend
+      : overview.data.quality.dailyTrend.slice(-14)
+  )
   const trendLabels = computed(() =>
-    overview.data.dailyTrend.map((item) => dayjs(item.date).format('MM-DD'))
+    visibleRunTrend.value.map((item) => dayjs(item.date).format('MM-DD'))
   )
   const trendSeries = computed<LineDataItem[]>(() => [
     {
       name: '成功',
-      data: overview.data.dailyTrend.map((item) => item.succeeded),
+      data: visibleRunTrend.value.map((item) => item.succeeded),
       showAreaColor: true
     },
     {
       name: '失败',
-      data: overview.data.dailyTrend.map((item) => item.failed),
+      data: visibleRunTrend.value.map((item) => item.failed),
       showAreaColor: true
     }
   ])
   const qualityTrendLabels = computed(() =>
-    overview.data.quality.dailyTrend.map((item) => dayjs(item.date).format('MM-DD'))
+    visibleQualityTrend.value.map((item) => dayjs(item.date).format('MM-DD'))
   )
   const qualityTrendSeries = computed<LineDataItem[]>(() => [
     {
       name: 'AI 草稿',
-      data: overview.data.quality.dailyTrend.map((item) => item.total),
+      data: visibleQualityTrend.value.map((item) => item.total),
       showAreaColor: true
     },
     {
       name: '保存采用',
-      data: overview.data.quality.dailyTrend.map((item) => item.applied),
+      data: visibleQualityTrend.value.map((item) => item.applied),
       showAreaColor: true
     }
   ])
@@ -827,6 +939,56 @@
       gap: 16px;
     }
 
+    &__workspace-nav {
+      position: sticky;
+      top: 8px;
+      z-index: 5;
+      display: flex;
+      gap: 20px;
+      align-items: center;
+      justify-content: space-between;
+      min-width: 0;
+      padding: 13px 16px;
+      background:
+        linear-gradient(
+          90deg,
+          color-mix(in srgb, var(--theme-color) 6%, transparent),
+          transparent 44%
+        ),
+        var(--art-main-bg-color);
+      box-shadow: var(--el-box-shadow-lighter);
+
+      > div:first-child {
+        display: grid;
+        gap: 2px;
+        min-width: 0;
+
+        span {
+          font-size: 9px;
+          font-weight: 700;
+          color: var(--theme-color);
+          letter-spacing: 0.12em;
+        }
+
+        strong {
+          font-size: 14px;
+          color: var(--el-text-color-primary);
+        }
+
+        small {
+          overflow: hidden;
+          text-overflow: ellipsis;
+          font-size: 11px;
+          color: var(--el-text-color-secondary);
+          white-space: nowrap;
+        }
+      }
+
+      :deep(.el-segmented) {
+        flex: 0 0 auto;
+      }
+    }
+
     &__metric {
       display: flex;
       gap: 14px;
@@ -1122,6 +1284,12 @@
       }
     }
 
+    &__trend-actions {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+    }
+
     &__feature-content {
       display: grid;
       flex: 1;
@@ -1357,6 +1525,14 @@
         grid-column: 1 / -1;
         justify-content: flex-start;
       }
+
+      &__workspace-nav {
+        align-items: flex-start;
+
+        :deep(.el-segmented) {
+          max-width: 68%;
+        }
+      }
     }
 
     @media (width <= 720px) {
@@ -1378,12 +1554,35 @@
         grid-template-columns: 1fr;
       }
 
+      &__workspace-nav {
+        position: static;
+        flex-direction: column;
+
+        :deep(.el-segmented) {
+          width: 100%;
+          max-width: none;
+          overflow-x: auto;
+        }
+      }
+
       &__quality {
         padding: 18px;
       }
 
       &__quality-header {
         align-items: flex-start;
+      }
+
+      &__trend .ai-operations__card-header,
+      &__quality-trend > header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      &__trend-actions {
+        flex-wrap: wrap;
+        justify-content: space-between;
+        width: 100%;
       }
 
       &__quality-metrics {

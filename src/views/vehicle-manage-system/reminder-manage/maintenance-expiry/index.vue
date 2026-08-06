@@ -1,5 +1,12 @@
 <template>
   <div class="art-full-height">
+    <VehicleReminderRiskOverview
+      title="保养到期"
+      description="结合日期与里程风险安排进场，优先消化已逾期和本周临期车辆。"
+      :filters="tableState.searchQuery"
+      :fetch-fn="fetchVehicleReminderMaintenanceRiskOverview"
+      @select="handleRiskBandChange"
+    />
     <ArtTableQuery
       ref="tableQueryRef"
       v-model="tableState.searchQuery"
@@ -18,7 +25,10 @@
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type { ArtTableQueryExpose } from '@/components/core/tables/art-table-query/index.vue'
   import type { ColumnOption } from '@/types'
-  import { fetchVehicleReminderMaintenanceExpiryList } from '@/api/vehicle-manage-system'
+  import {
+    fetchVehicleReminderMaintenanceExpiryList,
+    fetchVehicleReminderMaintenanceRiskOverview
+  } from '@/api/vehicle-manage-system'
   import { useUserStore } from '@/store/modules/user'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { isNil } from 'lodash-es'
@@ -31,11 +41,14 @@
     renderReminderStatus
   } from '../modules/reminder-table'
   import VehicleReminderWorkOrderDrawer from '../modules/vehicle-reminder-work-order-drawer.vue'
+  import VehicleReminderRiskOverview from '../modules/vehicle-reminder-risk-overview.vue'
+  import { getReminderRiskRowClassName } from '../modules/reminder-risk'
 
   defineOptions({ name: 'VehicleMaintenanceExpiry' })
 
   type ReminderRow = Api.VehicleMgtSys.ReminderManage.VehicleReminderRow
   type ReminderSearchParams = Api.VehicleMgtSys.ReminderManage.VehicleReminderSearchParams
+  type RiskBand = Api.VehicleMgtSys.ReminderManage.VehicleReminderRiskBand
   type ReminderTableParams = ReminderSearchParams &
     Pick<Api.Common.PaginationParams, 'current' | 'size'>
 
@@ -47,7 +60,11 @@
   interface TableConfig {
     searchItems: SearchFormItem[]
     searchBarProps: { span: number; labelWidth: number; showExpand: boolean }
-    tableProps: { rowKey: string; tableLayout: 'fixed' }
+    tableProps: {
+      rowKey: string
+      tableLayout: 'fixed'
+      rowClassName: typeof getReminderRiskRowClassName
+    }
     columnsFactory: () => ColumnOption<ReminderRow>[]
   }
 
@@ -99,7 +116,11 @@
         }
       ],
       searchBarProps: { span: 6, labelWidth: 100, showExpand: false },
-      tableProps: { rowKey: 'id', tableLayout: 'fixed' },
+      tableProps: {
+        rowKey: 'id',
+        tableLayout: 'fixed',
+        rowClassName: getReminderRiskRowClassName
+      },
       columnsFactory: () => [
         { type: 'globalIndex', label: '序号', width: 72 },
         { prop: 'companyName', label: '所属公司', minWidth: 170 },
@@ -158,12 +179,18 @@
     void tableQueryRef.value?.refreshUpdate()
   }
 
+  function handleRiskBandChange(riskBand: RiskBand): void {
+    tableState.searchQuery.riskBand = riskBand === 'all' ? undefined : riskBand
+    void nextTick(() => tableQueryRef.value?.getData())
+  }
+
   const fetchTableData = async (params: ReminderTableParams) => {
     const { from, to } = pageInfoHandler({ current: params.current, size: params.size })
     return await fetchVehicleReminderMaintenanceExpiryList({
       companyName: params.companyName,
       plateNo: params.plateNo,
       expired: params.expired,
+      riskBand: params.riskBand,
       from,
       to
     })

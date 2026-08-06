@@ -261,6 +261,7 @@ export interface AiRunDiagnosisResponse {
   runId: string
   targetRunId: string
   model: string
+  provider: string
   promptVersion: string
   providerDurationMs: number
   durationMs: number

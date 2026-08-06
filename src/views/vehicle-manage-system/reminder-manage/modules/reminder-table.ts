@@ -79,15 +79,27 @@ export const createReminderWorkOrderColumns = (
   },
   {
     prop: 'operation',
-    label: '处置',
+    label: '操作',
     width: 82,
     fixed: 'right',
-    formatter: (row) =>
-      h(ArtButtonTable, {
-        type: 'view',
-        icon: row.workOrder ? 'ri:file-list-3-line' : 'ri:add-circle-line',
-        disabled: !row.workOrder && !canManage(),
+    formatter: (row) => {
+      const hasWorkOrder = Boolean(row.workOrder)
+      const isTerminal = row.workOrder
+        ? ['closed', 'cancelled'].includes(row.workOrder.status)
+        : false
+      const actionLabel = hasWorkOrder
+        ? canManage() && !isTerminal
+          ? '查看并处置'
+          : '查看处置单'
+        : '发起处置'
+
+      return h(ArtButtonTable, {
+        type: hasWorkOrder ? 'view' : 'add',
+        icon: hasWorkOrder ? 'ri:eye-line' : 'ri:play-circle-line',
+        label: actionLabel,
+        disabled: !hasWorkOrder && !canManage(),
         onClick: () => onOpen(row)
       })
+    }
   }
 ]

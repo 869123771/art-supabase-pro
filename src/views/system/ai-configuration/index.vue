@@ -1,56 +1,62 @@
 <template>
   <div class="ai-configuration">
-    <section class="ai-configuration__hero art-card-xs">
-      <div class="ai-configuration__hero-main">
-        <div class="ai-configuration__brand">
-          <ArtSvgIcon icon="ri:equalizer-2-line" />
+    <section class="ai-configuration__control-plane art-card-xs">
+      <header class="ai-configuration__hero">
+        <div class="ai-configuration__hero-main">
+          <div class="ai-configuration__brand">
+            <ArtSvgIcon icon="ri:equalizer-2-line" />
+          </div>
+          <div>
+            <span>AI CONTROL PLANE</span>
+            <h1>AI 配置中心</h1>
+            <p>集中管理能力开关、模型路由、生成参数、超时策略与调用配额，修改后新请求即时生效。</p>
+          </div>
         </div>
-        <div>
-          <span>AI CONTROL PLANE</span>
-          <h1>AI 配置中心</h1>
-          <p>集中管理能力开关、模型路由、生成参数、超时策略与调用配额，修改后新请求即时生效。</p>
+        <div class="ai-configuration__hero-actions">
+          <ElTag :type="canManage ? 'success' : 'info'" round effect="light">
+            {{ canManage ? '可维护' : '只读模式' }}
+          </ElTag>
+          <ElTooltip content="刷新配置" placement="bottom">
+            <ArtIconButton
+              icon="ri:refresh-line"
+              circle
+              :class="{ 'ai-configuration__refreshing': overview.loading }"
+              @click="refreshAll"
+            />
+          </ElTooltip>
         </div>
-      </div>
-      <div class="ai-configuration__hero-actions">
-        <ElTag :type="canManage ? 'success' : 'info'" round effect="light">
-          {{ canManage ? '可维护' : '只读模式' }}
-        </ElTag>
-        <ElTooltip content="刷新配置" placement="bottom">
-          <ArtIconButton
-            icon="ri:refresh-line"
-            circle
-            :class="{ 'ai-configuration__refreshing': overview.loading }"
-            @click="refreshAll"
-          />
-        </ElTooltip>
-      </div>
-    </section>
+      </header>
 
-    <section class="ai-configuration__metrics">
-      <article v-for="item in metricCards" :key="item.label" class="art-card-xs">
-        <div :class="['ai-configuration__metric-icon', `is-${item.tone}`]">
-          <ArtSvgIcon :icon="item.icon" />
-        </div>
-        <div>
-          <span>{{ item.label }}</span>
-          <strong>{{ item.value }}</strong>
-          <small>{{ item.hint }}</small>
-        </div>
-      </article>
-    </section>
+      <div class="ai-configuration__control-body">
+        <section class="ai-configuration__metrics" aria-label="AI 配置状态">
+          <article v-for="item in metricCards" :key="item.label">
+            <div :class="['ai-configuration__metric-icon', `is-${item.tone}`]">
+              <ArtSvgIcon :icon="item.icon" />
+            </div>
+            <div>
+              <span>{{ item.label }}</span>
+              <strong>{{ item.value }}</strong>
+              <small>{{ item.hint }}</small>
+            </div>
+          </article>
+        </section>
 
-    <section class="ai-configuration__governance art-card-xs">
-      <div>
-        <ArtSvgIcon icon="ri:shield-keyhole-line" />
         <div>
-          <strong>密钥与策略分离</strong>
-          <span
-            >数据库只保存非敏感运行参数；API Key 与服务地址继续由 Supabase Edge Function Secrets
-            托管。</span
-          >
+          <section class="ai-configuration__governance">
+            <div>
+              <ArtSvgIcon icon="ri:shield-keyhole-line" />
+              <div>
+                <strong>密钥与策略分离</strong>
+                <span
+                  >数据库只保存非敏感运行参数；API Key 与服务地址由 Supabase Edge Function Secrets
+                  托管。</span
+                >
+              </div>
+            </div>
+            <ElTag type="warning" effect="plain" round>不存储任何 API Key</ElTag>
+          </section>
         </div>
       </div>
-      <ElTag type="warning" effect="plain" round>不存储任何 API Key</ElTag>
     </section>
 
     <ArtTableQuery
@@ -363,12 +369,25 @@
       align-items: center;
     }
 
+    &__control-plane {
+      display: grid;
+      overflow: hidden;
+      background:
+        linear-gradient(
+          115deg,
+          color-mix(in srgb, var(--theme-color) 5%, transparent),
+          transparent 42%
+        ),
+        var(--art-main-bg-color);
+    }
+
     &__hero {
       position: relative;
       justify-content: space-between;
-      min-height: 122px;
+      min-height: 108px;
       padding: 22px 26px;
       overflow: hidden;
+      border-bottom: 1px solid var(--el-border-color-lighter);
 
       &::after {
         position: absolute;
@@ -439,12 +458,13 @@
     &__metrics {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 16px;
+      min-width: 0;
 
       article {
         gap: 14px;
         min-width: 0;
-        padding: 18px 20px;
+        padding: 17px 18px;
+        border-right: 1px solid var(--el-border-color-lighter);
 
         > div:last-child {
           display: grid;
@@ -470,6 +490,12 @@
           font-size: 11px;
         }
       }
+    }
+
+    &__control-body {
+      display: grid;
+      grid-template-columns: minmax(0, 1.45fr) minmax(320px, 0.55fr);
+      min-width: 0;
     }
 
     &__metric-icon {
@@ -498,9 +524,11 @@
     }
 
     &__governance {
+      height: 100%;
       justify-content: space-between;
       min-width: 0;
-      padding: 15px 18px;
+      padding: 16px 18px;
+      background: color-mix(in srgb, var(--art-main-bg-color) 96%, var(--el-color-warning));
 
       > div {
         gap: 12px;
@@ -563,7 +591,26 @@
       }
 
       &__metrics {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      &__control-body {
         grid-template-columns: 1fr;
+      }
+
+      &__governance {
+        border-top: 1px solid var(--el-border-color-lighter);
+      }
+    }
+
+    @media (width <= 680px) {
+      &__metrics {
+        grid-template-columns: 1fr;
+
+        article {
+          border-right: 0;
+          border-bottom: 1px solid var(--el-border-color-lighter);
+        }
       }
 
       &__governance {

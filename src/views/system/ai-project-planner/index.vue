@@ -59,135 +59,147 @@
       :closable="false"
     />
 
-    <section class="ai-planner__metrics">
-      <article v-for="metric in metrics" :key="metric.label" class="art-card-xs">
-        <div :class="['ai-planner__metric-icon', `is-${metric.tone}`]">
-          <ArtSvgIcon :icon="metric.icon" />
+    <section class="ai-planner__decision-grid" :class="{ 'has-priority': prioritySuggestion }">
+      <section v-if="prioritySuggestion" class="ai-planner__priority art-card-xs">
+        <div class="ai-planner__priority-main">
+          <div class="ai-planner__priority-icon"><ArtSvgIcon icon="ri:focus-3-line" /></div>
+          <div>
+            <span class="ai-planner__priority-eyebrow">AI PRIORITY</span>
+            <strong>建议优先推进：{{ prioritySuggestion.title }}</strong>
+            <p>{{ prioritySuggestion.summary }}</p>
+          </div>
         </div>
-        <div>
-          <span>{{ metric.label }}</span>
-          <strong>{{ metric.value }}</strong>
-          <small>{{ metric.hint }}</small>
+        <div class="ai-planner__priority-score">
+          <div>
+            <span>影响力</span>
+            <strong>{{ prioritySuggestion.impact }}/5</strong>
+          </div>
+          <div>
+            <span>置信度</span>
+            <strong>{{ Math.round(prioritySuggestion.confidence * 100) }}%</strong>
+          </div>
+          <div>
+            <span>投入</span>
+            <strong>{{ dictLabel('aiSuggestionEffort', prioritySuggestion.effort) }}</strong>
+          </div>
         </div>
-      </article>
+        <div class="ai-planner__priority-actions">
+          <ElButton
+            :loading="isActionPending(prioritySuggestion.id, 'copied')"
+            :disabled="isSuggestionPending(prioritySuggestion.id)"
+            @click="handleCopy(prioritySuggestion)"
+          >
+            <ArtSvgIcon icon="ri:file-copy-line" />复制 Prompt
+          </ElButton>
+          <ElButton
+            v-if="canManageWorkflow"
+            type="primary"
+            :loading="isActionPending(prioritySuggestion.id, 'accepted')"
+            :disabled="isSuggestionPending(prioritySuggestion.id)"
+            @click="handleWorkflow(prioritySuggestion, 'accepted')"
+          >
+            <ArtSvgIcon icon="ri:check-line" />采纳优先建议
+          </ElButton>
+        </div>
+      </section>
+
+      <section class="ai-planner__metrics">
+        <article v-for="metric in metrics" :key="metric.label" class="art-card-xs">
+          <div :class="['ai-planner__metric-icon', `is-${metric.tone}`]">
+            <ArtSvgIcon :icon="metric.icon" />
+          </div>
+          <div>
+            <span>{{ metric.label }}</span>
+            <strong>{{ metric.value }}</strong>
+            <small>{{ metric.hint }}</small>
+          </div>
+        </article>
+      </section>
     </section>
 
-    <section v-if="prioritySuggestion" class="ai-planner__priority art-card-xs">
-      <div class="ai-planner__priority-main">
-        <div class="ai-planner__priority-icon"><ArtSvgIcon icon="ri:focus-3-line" /></div>
+    <section class="ai-planner__control-panel art-card-xs">
+      <header class="ai-planner__toolbar">
         <div>
-          <span class="ai-planner__priority-eyebrow">AI PRIORITY</span>
-          <strong>建议优先推进：{{ prioritySuggestion.title }}</strong>
-          <p>{{ prioritySuggestion.summary }}</p>
+          <strong>建议池</strong>
+          <span v-if="latestBatchHasSuggestions && state.latestBatch">
+            最近由 {{ state.latestBatch.model }} 生成 ·
+            {{ formatTime(state.latestBatch.createTime) }}
+          </span>
+          <span v-else-if="latestAvailableSuggestions.length">
+            最近可用建议 · {{ formatTime(latestAvailableSuggestions[0].createTime) }}
+          </span>
+          <span v-else-if="capabilities?.providerConfigured">
+            已连接 {{ capabilities.provider }} · {{ capabilities.model }}
+          </span>
+          <span v-else>生成后会根据反馈持续调整排序</span>
         </div>
-      </div>
-      <div class="ai-planner__priority-score">
-        <div>
-          <span>影响力</span>
-          <strong>{{ prioritySuggestion.impact }}/5</strong>
+        <div class="ai-planner__toolbar-actions">
+          <ElSegmented v-model="filters.status" :options="statusFilterOptions" />
+          <ElTooltip content="刷新建议" placement="bottom">
+            <ArtIconButton
+              icon="ri:refresh-line"
+              circle
+              :loading="loading.state"
+              @click="loadState(true)"
+            />
+          </ElTooltip>
         </div>
-        <div>
-          <span>置信度</span>
-          <strong>{{ Math.round(prioritySuggestion.confidence * 100) }}%</strong>
-        </div>
-        <div>
-          <span>投入</span>
-          <strong>{{ dictLabel('aiSuggestionEffort', prioritySuggestion.effort) }}</strong>
-        </div>
-      </div>
-      <div class="ai-planner__priority-actions">
-        <ElButton
-          :loading="isActionPending(prioritySuggestion.id, 'copied')"
-          :disabled="isSuggestionPending(prioritySuggestion.id)"
-          @click="handleCopy(prioritySuggestion)"
-        >
-          <ArtSvgIcon icon="ri:file-copy-line" />复制 Prompt
-        </ElButton>
-        <ElButton
-          v-if="canManageWorkflow"
-          type="primary"
-          :loading="isActionPending(prioritySuggestion.id, 'accepted')"
-          :disabled="isSuggestionPending(prioritySuggestion.id)"
-          @click="handleWorkflow(prioritySuggestion, 'accepted')"
-        >
-          <ArtSvgIcon icon="ri:check-line" />采纳优先建议
-        </ElButton>
-      </div>
-    </section>
+      </header>
 
-    <section class="ai-planner__toolbar art-card-xs">
-      <div>
-        <strong>建议池</strong>
-        <span v-if="state.latestBatch">
-          最近由 {{ state.latestBatch.model }} 生成 · {{ formatTime(state.latestBatch.createTime) }}
-        </span>
-        <span v-else-if="capabilities?.providerConfigured">
-          已连接 {{ capabilities.provider }} · {{ capabilities.model }}
-        </span>
-        <span v-else>生成后会根据反馈持续调整排序</span>
-      </div>
-      <div class="ai-planner__toolbar-actions">
-        <ElSegmented v-model="filters.status" :options="statusFilterOptions" />
-        <ElTooltip content="刷新建议" placement="bottom">
-          <ArtIconButton
-            icon="ri:refresh-line"
-            circle
-            :loading="loading.state"
-            @click="loadState(true)"
+      <section v-if="state.suggestions.length" class="ai-planner__filters">
+        <ElSelect v-model="filters.batchId" class="ai-planner__batch-select" placeholder="生成批次">
+          <ElOption
+            v-for="item in batchOptions"
+            :key="item.value"
+            :label="item.label"
+            :value="item.value"
           />
-        </ElTooltip>
-      </div>
-    </section>
-
-    <section v-if="state.suggestions.length" class="ai-planner__filters art-card-xs">
-      <ElSelect v-model="filters.batchId" class="ai-planner__batch-select" placeholder="生成批次">
-        <ElOption
-          v-for="item in batchOptions"
-          :key="item.value"
-          :label="item.label"
-          :value="item.value"
-        />
-      </ElSelect>
-      <ElInput
-        v-model="filters.keyword"
-        clearable
-        class="ai-planner__filter-search"
-        placeholder="搜索标题、说明、证据或风险"
-      >
-        <template #prefix><ArtSvgIcon icon="ri:search-line" /></template>
-      </ElInput>
-      <ElSelect v-model="filters.category" class="ai-planner__filter-select" placeholder="能力类别">
-        <ElOption label="全部类别" value="all" />
-        <ElOption
-          v-for="item in categoryOptions"
-          :key="String(item.value)"
-          :label="String(item.label)"
-          :value="String(item.value)"
-        />
-      </ElSelect>
-      <ElSelect v-model="filters.effort" class="ai-planner__filter-select" placeholder="工作量">
-        <ElOption label="全部工作量" value="all" />
-        <ElOption
-          v-for="item in effortFilterOptions"
-          :key="String(item.value)"
-          :label="String(item.label)"
-          :value="String(item.value)"
-        />
-      </ElSelect>
-      <ElSelect v-model="filters.sort" class="ai-planner__filter-sort" placeholder="排序方式">
-        <ElOption
-          v-for="item in sortOptions"
-          :key="item.value"
-          :label="item.label"
-          :value="item.value"
-        />
-      </ElSelect>
-      <div class="ai-planner__filter-result">
-        <span>显示 {{ filteredSuggestions.length }} / {{ scopedSuggestions.length }} 条</span>
-        <ElButton v-if="hasActiveFilters" link type="primary" @click="resetFilters">
-          <ArtSvgIcon icon="ri:filter-off-line" />清除筛选
-        </ElButton>
-      </div>
+        </ElSelect>
+        <ElInput
+          v-model="filters.keyword"
+          clearable
+          class="ai-planner__filter-search"
+          placeholder="搜索标题、说明、证据或风险"
+        >
+          <template #prefix><ArtSvgIcon icon="ri:search-line" /></template>
+        </ElInput>
+        <ElSelect
+          v-model="filters.category"
+          class="ai-planner__filter-select"
+          placeholder="能力类别"
+        >
+          <ElOption label="全部类别" value="all" />
+          <ElOption
+            v-for="item in categoryOptions"
+            :key="String(item.value)"
+            :label="String(item.label)"
+            :value="String(item.value)"
+          />
+        </ElSelect>
+        <ElSelect v-model="filters.effort" class="ai-planner__filter-select" placeholder="工作量">
+          <ElOption label="全部工作量" value="all" />
+          <ElOption
+            v-for="item in effortFilterOptions"
+            :key="String(item.value)"
+            :label="String(item.label)"
+            :value="String(item.value)"
+          />
+        </ElSelect>
+        <ElSelect v-model="filters.sort" class="ai-planner__filter-sort" placeholder="排序方式">
+          <ElOption
+            v-for="item in sortOptions"
+            :key="item.value"
+            :label="item.label"
+            :value="item.value"
+          />
+        </ElSelect>
+        <div class="ai-planner__filter-result">
+          <span>显示 {{ filteredSuggestions.length }} / {{ scopedSuggestions.length }} 条</span>
+          <ElButton v-if="hasActiveFilters" link type="primary" @click="resetFilters">
+            <ArtSvgIcon icon="ri:filter-off-line" />清除筛选
+          </ElButton>
+        </div>
+      </section>
     </section>
 
     <div v-loading="loading.state" class="ai-planner__list">
@@ -602,11 +614,22 @@
       ['desc']
     )
   )
-  const latestBatchId = computed(() => state.latestBatch?.id ?? suggestionBatches.value[0]?.[0])
-  const batchOptions = computed<BatchOption[]>(() => {
-    const latestSuggestions = latestBatchId.value
+  const latestAvailableBatchId = computed(() => suggestionBatches.value[0]?.[0])
+  const latestBatchHasSuggestions = computed(() =>
+    state.latestBatch?.id
+      ? state.suggestions.some((suggestion) => suggestion.batchId === state.latestBatch?.id)
+      : false
+  )
+  const latestBatchId = computed(() =>
+    latestBatchHasSuggestions.value ? state.latestBatch?.id : latestAvailableBatchId.value
+  )
+  const latestAvailableSuggestions = computed(() =>
+    latestBatchId.value
       ? (groupBy(state.suggestions, (suggestion) => suggestion.batchId)[latestBatchId.value] ?? [])
       : []
+  )
+  const batchOptions = computed<BatchOption[]>(() => {
+    const latestSuggestions = latestAvailableSuggestions.value
     const historyOptions = suggestionBatches.value
       .filter(([batchId]) => batchId !== latestBatchId.value)
       .map(([batchId, suggestions], index) => {
@@ -620,8 +643,8 @@
       {
         value: LATEST_BATCH,
         label: latestSuggestions.length
-          ? `最新批次 · ${formatTime(latestSuggestions[0].createTime)} · ${latestSuggestions.length} 条`
-          : '最新生成批次'
+          ? `${latestBatchHasSuggestions.value ? '最新批次' : '最新可用批次'} · ${formatTime(latestSuggestions[0].createTime)} · ${latestSuggestions.length} 条`
+          : '暂无可用批次'
       },
       { value: ALL_BATCHES, label: `全部历史批次 · ${state.suggestions.length} 条` },
       ...historyOptions
@@ -1017,6 +1040,28 @@
       margin: 0;
     }
 
+    &__decision-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 16px;
+      min-width: 0;
+
+      &.has-priority {
+        grid-template-columns: minmax(0, 1.45fr) minmax(360px, 0.75fr);
+
+        .ai-planner__priority {
+          grid-column: 1;
+          grid-row: 1;
+        }
+
+        .ai-planner__metrics {
+          grid-column: 2;
+          grid-row: 1;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+    }
+
     &__metrics {
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1090,6 +1135,18 @@
         radial-gradient(circle at 78% 0%, rgb(99 102 241 / 10%), transparent 34%),
         linear-gradient(110deg, var(--el-color-primary-light-9), var(--art-main-bg-color) 46%);
       border-color: var(--el-color-primary-light-8);
+    }
+
+    &__decision-grid.has-priority &__priority {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 15px;
+      align-content: center;
+
+      .ai-planner__priority-score {
+        padding: 13px 0;
+        border-top: 1px solid var(--el-border-color-lighter);
+        border-bottom: 1px solid var(--el-border-color-lighter);
+      }
     }
 
     &__priority-main,
@@ -1183,14 +1240,25 @@
       }
     }
 
+    &__control-panel {
+      position: sticky;
+      top: 8px;
+      z-index: 4;
+      overflow: hidden;
+      box-shadow: var(--el-box-shadow-lighter);
+    }
+
     &__toolbar {
       display: flex;
       gap: 16px;
       align-items: center;
       justify-content: space-between;
       padding: 14px 18px;
-      background:
-        linear-gradient(90deg, rgb(99 102 241 / 4%), transparent 36%), var(--art-main-bg-color);
+      background: linear-gradient(
+        90deg,
+        color-mix(in srgb, var(--theme-color) 5%, transparent),
+        transparent 36%
+      );
 
       > div:first-child {
         display: flex;
@@ -1204,6 +1272,7 @@
       gap: 10px;
       align-items: center;
       padding: 12px 14px;
+      border-top: 1px solid var(--el-border-color-lighter);
     }
 
     &__filter-search {
@@ -1789,6 +1858,23 @@
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
 
+      &__decision-grid.has-priority {
+        grid-template-columns: 1fr;
+
+        .ai-planner__priority,
+        .ai-planner__metrics {
+          grid-column: 1;
+        }
+
+        .ai-planner__priority {
+          grid-row: 1;
+        }
+
+        .ai-planner__metrics {
+          grid-row: 2;
+        }
+      }
+
       &__priority {
         grid-template-columns: minmax(0, 1fr);
         gap: 14px;
@@ -1858,6 +1944,14 @@
       }
 
       &__metrics {
+        grid-template-columns: 1fr;
+      }
+
+      &__control-panel {
+        position: static;
+      }
+
+      &__decision-grid.has-priority .ai-planner__metrics {
         grid-template-columns: 1fr;
       }
 

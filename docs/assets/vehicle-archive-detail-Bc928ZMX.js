@@ -1,0 +1,1 @@
+import{Ct as e,Vt as t,ht as n}from"./framework-EG-p7PXV.js";import{t as r}from"./vehicle-archive-detail-content-DBfrDvqg.js";var i=e({name:`VehicleArchiveDetail`,__name:`index`,setup(e){return(e,i)=>(t(),n(r))}});export{i as default};

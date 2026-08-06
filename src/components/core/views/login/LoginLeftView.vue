@@ -25,37 +25,47 @@
         </div>
       </div>
 
-      <section class="operation-preview" aria-label="实时运输运营概览">
-        <header class="operation-preview__header">
-          <div>
-            <span class="operation-preview__status"><i /> LIVE</span>
-            <strong>运营态势</strong>
+      <section class="capability-map" aria-label="运输业务协同能力概览">
+        <header class="capability-map__header">
+          <div class="capability-map__heading">
+            <span class="capability-map__heading-icon">
+              <ArtSvgIcon icon="ri:node-tree" />
+            </span>
+            <div>
+              <span>PLATFORM WORKFLOW</span>
+              <strong>运输业务协同链路</strong>
+            </div>
           </div>
-          <span>08 / 06</span>
+          <span class="capability-map__badge">能力概览</span>
         </header>
 
-        <div class="operation-preview__metrics">
-          <div>
-            <span>在途准点率</span>
-            <strong>98.6<small>%</small></strong>
-          </div>
-          <div>
-            <span>今日任务</span>
-            <strong>128<small>单</small></strong>
-          </div>
+        <div class="capability-map__workflow">
+          <article>
+            <span class="capability-map__step">01</span>
+            <span class="capability-map__icon"><ArtSvgIcon icon="ri:file-list-3-line" /></span>
+            <div><strong>订单协同</strong><span>统一承接业务需求</span></div>
+          </article>
+          <article>
+            <span class="capability-map__step">02</span>
+            <span class="capability-map__icon"><ArtSvgIcon icon="ri:route-line" /></span>
+            <div><strong>智能调度</strong><span>连接运力与执行计划</span></div>
+          </article>
+          <article>
+            <span class="capability-map__step">03</span>
+            <span class="capability-map__icon"><ArtSvgIcon icon="ri:map-pin-time-line" /></span>
+            <div><strong>在途可视</strong><span>持续掌握运输进程</span></div>
+          </article>
+          <article>
+            <span class="capability-map__step">04</span>
+            <span class="capability-map__icon"><ArtSvgIcon icon="ri:line-chart-line" /></span>
+            <div><strong>经营洞察</strong><span>汇聚运营决策信息</span></div>
+          </article>
         </div>
 
-        <div class="operation-preview__route" aria-hidden="true">
-          <span class="is-origin"><i /> 上海</span>
-          <div><i /><i /><i /></div>
-          <span class="is-destination"><i /> 广州</span>
-          <ArtSvgIcon icon="ri:truck-fill" />
-        </div>
-
-        <footer class="operation-preview__footer">
-          <span><i class="is-cyan" /> 32 票运输中</span>
-          <span><i class="is-orange" /> 5 项需关注</span>
-          <b>实时同步</b>
+        <footer class="capability-map__footer">
+          <span><ArtSvgIcon icon="ri:shield-keyhole-line" /> 权限隔离</span>
+          <span><ArtSvgIcon icon="ri:git-merge-line" /> 流程联动</span>
+          <span><ArtSvgIcon icon="ri:history-line" /> 数据可溯</span>
         </footer>
       </section>
     </main>
@@ -265,7 +275,7 @@
     }
   }
 
-  .operation-preview {
+  .capability-map {
     position: relative;
     min-width: 0;
     padding: clamp(24px, 2vw, 34px);
@@ -299,132 +309,149 @@
     }
 
     &__header {
-      > div {
-        display: grid;
-        gap: 7px;
-      }
-
-      > span {
-        font-size: 11px;
-        color: rgb(255 255 255 / 46%);
-        letter-spacing: 1px;
-      }
-    }
-
-    &__status {
-      display: inline-flex;
-      gap: 6px;
-      align-items: center;
-      font-size: 9px;
-      font-weight: 800;
-      color: #60f0ce;
-      letter-spacing: 1.4px;
-
-      i {
-        width: 6px;
-        height: 6px;
-        background: currentcolor;
-        border-radius: 50%;
-        box-shadow: 0 0 12px currentcolor;
-      }
-    }
-
-    &__metrics {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 18px;
-      margin-top: 34px;
-
-      > div {
-        display: grid;
-        gap: 8px;
-        min-width: 0;
-        padding-right: 18px;
-        border-right: 1px solid rgb(255 255 255 / 12%);
-
-        &:last-child {
-          border-right: 0;
-        }
-      }
-
-      span {
-        font-size: 11px;
-        color: rgb(255 255 255 / 52%);
-      }
-
-      strong {
-        font-size: clamp(28px, 2.4vw, 42px);
-        line-height: 1;
-        letter-spacing: -1px;
-
-        small {
-          margin-left: 3px;
-          font-size: 12px;
-          font-weight: 500;
-          color: rgb(255 255 255 / 52%);
-          letter-spacing: 0;
-        }
-      }
     }
 
-    &__route {
-      position: relative;
-      display: grid;
-      grid-template-columns: auto minmax(80px, 1fr) auto;
+    &__heading {
+      display: flex;
       gap: 12px;
       align-items: center;
-      margin: 38px 0 34px;
-      font-size: 11px;
-      color: rgb(255 255 255 / 70%);
-
-      > span {
-        display: flex;
-        gap: 6px;
-        align-items: center;
-
-        i {
-          width: 8px;
-          height: 8px;
-          border: 2px solid #fff;
-          border-radius: 50%;
-        }
-
-        &.is-destination i {
-          border-color: #ffbb54;
-          box-shadow: 0 0 0 5px rgb(255 187 84 / 12%);
-        }
-      }
+      min-width: 0;
 
       > div {
-        display: flex;
-        align-items: center;
-        justify-content: space-around;
-        height: 1px;
-        background: linear-gradient(90deg, rgb(255 255 255 / 65%), #45e5ff, #ffbd5a);
+        display: grid;
+        gap: 4px;
+        min-width: 0;
 
-        i {
-          width: 3px;
-          height: 3px;
-          background: #fff;
-          border-radius: 50%;
+        > span {
+          font-size: 8px;
+          font-weight: 800;
+          color: #78f0df;
+          letter-spacing: 1.4px;
+        }
+
+        strong {
+          overflow: hidden;
+          font-size: 15px;
+          text-overflow: ellipsis;
+          white-space: nowrap;
         }
       }
+    }
 
-      > .art-svg-icon {
+    &__heading-icon {
+      display: inline-flex;
+      flex: 0 0 auto;
+      align-items: center;
+      justify-content: center;
+      width: 38px;
+      height: 38px;
+      font-size: 19px;
+      color: #132163;
+      background: linear-gradient(145deg, #7bf5e0, #58d7ff);
+      border-radius: var(--el-border-radius-base);
+      box-shadow: 0 10px 24px rgb(0 15 55 / 24%);
+    }
+
+    &__badge {
+      flex: 0 0 auto;
+      padding: 6px 9px;
+      font-size: 9px;
+      font-weight: 700;
+      color: rgb(255 255 255 / 68%);
+      background: rgb(255 255 255 / 8%);
+      border: 1px solid rgb(255 255 255 / 12%);
+      border-radius: 999px;
+    }
+
+    &__workflow {
+      position: relative;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin: 26px 0;
+
+      &::before,
+      &::after {
         position: absolute;
-        top: -19px;
-        left: 58%;
-        padding: 5px;
-        font-size: 18px;
-        color: #1f2674;
-        background: #55eaff;
-        border-radius: 50%;
-        box-shadow: 0 7px 18px rgb(0 0 0 / 24%);
+        z-index: -1;
+        content: '';
       }
+
+      &::before {
+        top: 50%;
+        right: 16%;
+        left: 16%;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, rgb(103 229 255 / 44%), transparent);
+      }
+
+      &::after {
+        top: 18%;
+        bottom: 18%;
+        left: 50%;
+        width: 1px;
+        background: linear-gradient(transparent, rgb(103 229 255 / 36%), transparent);
+      }
+
+      article {
+        position: relative;
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        gap: 11px;
+        align-items: center;
+        min-width: 0;
+        padding: 16px;
+        background: rgb(18 22 85 / 27%);
+        border: 1px solid rgb(255 255 255 / 11%);
+        border-radius: var(--el-border-radius-base);
+        box-shadow: inset 0 1px 0 rgb(255 255 255 / 6%);
+
+        > div {
+          display: grid;
+          gap: 5px;
+          min-width: 0;
+
+          strong {
+            font-size: 12px;
+          }
+
+          span {
+            overflow: hidden;
+            font-size: 9px;
+            color: rgb(255 255 255 / 48%);
+            text-overflow: ellipsis;
+            white-space: nowrap;
+          }
+        }
+      }
+    }
+
+    &__step {
+      position: absolute;
+      top: 8px;
+      right: 9px;
+      font-size: 8px;
+      font-weight: 800;
+      color: rgb(255 255 255 / 22%);
+      letter-spacing: 1px;
+    }
+
+    &__icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 34px;
+      height: 34px;
+      font-size: 16px;
+      color: #71eced;
+      background: rgb(78 225 255 / 10%);
+      border: 1px solid rgb(109 231 255 / 14%);
+      border-radius: var(--el-border-radius-base);
     }
 
     &__footer {
-      gap: 12px;
+      gap: 8px;
       padding-top: 20px;
       font-size: 10px;
       color: rgb(255 255 255 / 58%);
@@ -432,28 +459,12 @@
 
       span {
         display: inline-flex;
-        gap: 6px;
+        gap: 5px;
         align-items: center;
-      }
 
-      i {
-        width: 6px;
-        height: 6px;
-        border-radius: 50%;
-
-        &.is-cyan {
-          background: #45e5ff;
+        + span {
+          margin-left: auto;
         }
-
-        &.is-orange {
-          background: #ffac3e;
-        }
-      }
-
-      b {
-        margin-left: auto;
-        font-weight: 600;
-        color: #7ff4dc;
       }
     }
   }
@@ -495,7 +506,7 @@
         font-size: clamp(36px, 4vw, 52px);
       }
 
-      .operation-preview {
+      .capability-map {
         display: none;
       }
     }
@@ -521,7 +532,7 @@
 
   @media (prefers-reduced-motion: reduce) {
     .login-vision__copy,
-    .operation-preview {
+    .capability-map {
       animation: none;
     }
   }

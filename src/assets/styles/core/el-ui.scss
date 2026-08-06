@@ -564,7 +564,7 @@ html.dark .el-card {
   }
 
   .el-dialog {
-    transform-origin: center center;
+    // 关闭时保留 Element Plus 拖拽写入的内联 transform，避免弹窗先跳回中心再消失。
     animation: art-dialog-close var(--art-motion-duration-fast) var(--art-motion-ease-in) both;
   }
 }
@@ -584,12 +584,10 @@ html.dark .el-card {
 @keyframes art-dialog-close {
   0% {
     opacity: 1;
-    transform: translateY(0) scale(1);
   }
 
   100% {
     opacity: 0;
-    transform: translateY(6px) scale(0.985);
   }
 }
 

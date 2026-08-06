@@ -857,6 +857,16 @@ declare namespace Api {
         workOrderStatus?: WorkOrderStatus | null
       }
 
+      interface VehicleReminderRiskOverview {
+        total: number
+        overdue: number
+        dueWithin7Days: number
+        dueWithin30Days: number
+        stable: number
+      }
+
+      type VehicleReminderRiskBand = 'all' | 'overdue' | 'due_7' | 'due_30'
+
       interface VehicleReminderWorkOrder {
         id: string
         tenantId: string
@@ -907,6 +917,7 @@ declare namespace Api {
         Pick<VehicleReminderRow, 'companyName' | 'plateNo' | 'expired'> &
           Api.Common.CommonSearchParams & {
             reminderDays?: number | null
+            riskBand?: VehicleReminderRiskBand
           } & Api.Common.PaginationParams
       >
     }

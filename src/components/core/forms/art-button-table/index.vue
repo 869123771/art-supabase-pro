@@ -37,6 +37,8 @@
     loading?: boolean
     /** 是否禁用点击 */
     disabled?: boolean
+    /** 业务动作名称，用于按钮标题和无障碍文本 */
+    label?: string
   }
 
   const props = withDefaults(defineProps<Props>(), {})
@@ -68,9 +70,10 @@
     return props.iconClass || ''
   })
 
-  const accessibleLabel = computed(() =>
-    props.loading ? '处理中' : props.type ? defaultButtons[props.type]?.label : '表格操作'
-  )
+  const accessibleLabel = computed(() => {
+    if (props.loading) return '处理中'
+    return props.label || (props.type ? defaultButtons[props.type]?.label : '表格操作')
+  })
 
   const buttonStyle = computed(() => ({
     '--art-table-button-background': props.buttonBgColor,

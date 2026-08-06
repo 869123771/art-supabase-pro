@@ -6,7 +6,11 @@ import {
 } from '@/api/providers/supabase/query'
 import type { ApiRequestOptions } from '@/types/api/request'
 import { applyFilters, type FilterSpec } from '@/utils/supabase-filters'
-import { VEHICLE_REMINDER_VIEWS, fetchVehicleReminderViewList } from './reminders'
+import {
+  VEHICLE_REMINDER_VIEWS,
+  fetchVehicleReminderViewList,
+  fetchVehicleReminderViewRiskOverview
+} from './reminders'
 import {
   type VehicleArchive,
   type VehicleArchiveSearchParams,
@@ -494,6 +498,17 @@ export async function fetchVehicleReminderInsuranceExpiryList(
   )
 }
 
+export async function fetchVehicleReminderInsuranceRiskOverview(
+  params: VehicleReminderSearchParams,
+  options?: ApiRequestOptions
+) {
+  return await fetchVehicleReminderViewRiskOverview(
+    'vehicle_reminder_insurance_expiry',
+    params,
+    options
+  )
+}
+
 export async function fetchVehicleReminderInspectionExpiryList(
   params: VehicleReminderSearchParams,
   options?: ApiRequestOptions
@@ -503,6 +518,17 @@ export async function fetchVehicleReminderInspectionExpiryList(
     'inspection',
     params,
     'days',
+    options
+  )
+}
+
+export async function fetchVehicleReminderInspectionRiskOverview(
+  params: VehicleReminderSearchParams,
+  options?: ApiRequestOptions
+) {
+  return await fetchVehicleReminderViewRiskOverview(
+    'vehicle_reminder_inspection_expiry',
+    params,
     options
   )
 }
@@ -520,6 +546,17 @@ export async function fetchVehicleReminderVehicleServiceLifeList(
   )
 }
 
+export async function fetchVehicleReminderVehicleServiceLifeRiskOverview(
+  params: VehicleReminderSearchParams,
+  options?: ApiRequestOptions
+) {
+  return await fetchVehicleReminderViewRiskOverview(
+    'vehicle_reminder_vehicle_service_life',
+    params,
+    options
+  )
+}
+
 export async function fetchVehicleReminderMaintenanceExpiryList(
   params: VehicleReminderSearchParams,
   options?: ApiRequestOptions
@@ -533,6 +570,17 @@ export async function fetchVehicleReminderMaintenanceExpiryList(
   )
 }
 
+export async function fetchVehicleReminderMaintenanceRiskOverview(
+  params: VehicleReminderSearchParams,
+  options?: ApiRequestOptions
+) {
+  return await fetchVehicleReminderViewRiskOverview(
+    'vehicle_reminder_maintenance_expiry',
+    params,
+    options
+  )
+}
+
 export async function fetchVehicleReminderPartServiceLifeList(
   params: VehicleReminderSearchParams,
   options?: ApiRequestOptions
@@ -542,6 +590,17 @@ export async function fetchVehicleReminderPartServiceLifeList(
     'part',
     params,
     'expired',
+    options
+  )
+}
+
+export async function fetchVehicleReminderPartServiceLifeRiskOverview(
+  params: VehicleReminderSearchParams,
+  options?: ApiRequestOptions
+) {
+  return await fetchVehicleReminderViewRiskOverview(
+    'vehicle_reminder_part_service_life',
+    params,
     options
   )
 }

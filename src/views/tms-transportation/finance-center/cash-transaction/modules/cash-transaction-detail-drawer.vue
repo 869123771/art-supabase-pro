@@ -34,7 +34,10 @@
           :columns="allocationColumns"
           :pagination="false"
           :show-table-header="false"
+          table-layout="fixed"
+          empty-height="180px"
           max-height="430px"
+          empty-text="暂无核销记录"
           border
         />
       </div>

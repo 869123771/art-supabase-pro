@@ -63,36 +63,49 @@
         row-key="cargoName"
       />
       <div class="order-detail__summary">
-        <span>总数量：{{ formatNumber(detail.data?.cargoQuantityTotal, 0) }}</span>
-        <span>总重量：{{ formatNumber(detail.data?.cargoWeightTotal) }}kg</span>
-        <span>总体积：{{ formatNumber(detail.data?.cargoVolumeTotal, 3) }}方</span>
+        <div>
+          <span>总数量</span>
+          <strong>{{ formatNumber(detail.data?.cargoQuantityTotal, 0) }}</strong>
+        </div>
+        <div>
+          <span>总重量</span>
+          <strong>{{ formatNumber(detail.data?.cargoWeightTotal) }} kg</strong>
+        </div>
+        <div>
+          <span>总体积</span>
+          <strong>{{ formatNumber(detail.data?.cargoVolumeTotal, 3) }} 方</strong>
+        </div>
       </div>
     </section>
 
-    <section class="order-detail__section art-card-xs">
-      <ArtSectionTitle title="费用信息" />
-      <ArtDescriptions :data="descriptionData" :items="feeItems" :columns="4" />
-    </section>
+    <div class="order-detail__finance-grid">
+      <section class="order-detail__section art-card-xs">
+        <ArtSectionTitle title="费用信息" />
+        <ArtDescriptions :data="descriptionData" :items="feeItems" :columns="2" />
+      </section>
 
-    <section class="order-detail__section art-card-xs">
-      <ArtSectionTitle title="付款方式" />
-      <ArtDescriptions :data="descriptionData" :items="paymentItems" :columns="4" />
-    </section>
+      <section class="order-detail__section art-card-xs">
+        <ArtSectionTitle title="付款方式" />
+        <ArtDescriptions :data="descriptionData" :items="paymentItems" :columns="2" />
+      </section>
+    </div>
 
-    <section class="order-detail__section art-card-xs">
-      <ArtSectionTitle title="其他信息" />
-      <ArtDescriptions :data="descriptionData" :items="otherItems" :columns="4" />
-    </section>
+    <div class="order-detail__support-grid">
+      <section class="order-detail__section art-card-xs">
+        <ArtSectionTitle title="其他信息" />
+        <ArtDescriptions :data="descriptionData" :items="otherItems" :columns="2" />
+      </section>
 
-    <section class="order-detail__section art-card-xs">
-      <ArtSectionTitle title="物流信息" />
-      <ArtEmptyState
-        title="暂无物流跟踪信息"
-        description="产生运输节点后，轨迹会显示在这里。"
-        :visual-size="76"
-        size="compact"
-      />
-    </section>
+      <section class="order-detail__section art-card-xs">
+        <ArtSectionTitle title="物流信息" />
+        <ArtEmptyState
+          title="暂无物流跟踪信息"
+          description="产生运输节点后，轨迹会显示在这里。"
+          :visual-size="76"
+          size="compact"
+        />
+      </section>
+    </div>
   </ArtPageShell>
 </template>
 
@@ -156,7 +169,6 @@
   const router = useRouter()
   const { getDictMap } = storeToRefs(useUserStore())
   const normalizedOrderStatus = computed(() => normalizeOrderStatus(detail.data?.orderStatus))
-
   const detail: UnwrapNestedRefs<DetailGroup> = reactive<DetailGroup>({
     loading: false,
     error: null,
@@ -402,6 +414,26 @@
       margin-top: var(--art-space-3);
     }
 
+    &__finance-grid,
+    &__support-grid {
+      display: grid;
+      gap: 12px;
+      margin-bottom: 12px;
+
+      > .order-detail__section {
+        min-width: 0;
+        margin-bottom: 0;
+      }
+    }
+
+    &__finance-grid {
+      grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+    }
+
+    &__support-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
     &__contact-card {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -446,10 +478,30 @@
 
     &__summary {
       display: flex;
-      gap: 28px;
+      gap: 10px;
       justify-content: flex-end;
       padding-top: 14px;
-      color: var(--art-text-gray-700);
+
+      > div {
+        display: grid;
+        gap: 2px;
+        min-width: 128px;
+        padding: 10px 12px;
+        text-align: right;
+        background: var(--el-fill-color-lighter);
+        border-radius: var(--el-border-radius-base);
+
+        span {
+          font-size: 10px;
+          color: var(--el-text-color-secondary);
+        }
+
+        strong {
+          font-size: 13px;
+          color: var(--el-text-color-primary);
+          font-variant-numeric: tabular-nums;
+        }
+      }
     }
 
     :deep(.order-detail__strong) {
@@ -468,8 +520,26 @@
 
   @media (width <= 992px) {
     .order-detail {
+      &__finance-grid,
+      &__support-grid,
       &__contact-card {
         grid-template-columns: 1fr;
+      }
+    }
+  }
+
+  @media (width <= 640px) {
+    .order-detail {
+      padding-inline: 10px;
+
+      &__summary {
+        display: grid;
+        grid-template-columns: 1fr;
+
+        > div {
+          min-width: 0;
+          text-align: left;
+        }
       }
     }
   }

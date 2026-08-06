@@ -20,7 +20,8 @@ function value(name: string): string | null {
 }
 
 export function resolveAiProviderEndpoints(
-  config: Pick<AiRuntimeConfig, 'model' | 'fallbackModel'>,
+  config: Pick<AiRuntimeConfig, 'model' | 'fallbackModel'> &
+    Partial<Pick<AiRuntimeConfig, 'provider'>>,
   options: ResolveAiProviderOptions = {}
 ): AiProviderEndpoint[] {
   const endpoints: AiProviderEndpoint[] = []
@@ -53,7 +54,7 @@ export function resolveAiProviderEndpoints(
     })
   }
 
-  return endpoints.filter(
+  const uniqueEndpoints = endpoints.filter(
     (endpoint, index, source) =>
       source.findIndex(
         (candidate) =>
@@ -61,5 +62,16 @@ export function resolveAiProviderEndpoints(
           candidate.baseUrl === endpoint.baseUrl &&
           candidate.model === endpoint.model
       ) === index
+  )
+
+  const preferredProvider =
+    config.provider === 'openai' || config.provider === 'openai_compatible'
+      ? config.provider
+      : null
+  if (!preferredProvider) return uniqueEndpoints
+
+  return uniqueEndpoints.sort(
+    (left, right) =>
+      Number(right.id === preferredProvider) - Number(left.id === preferredProvider)
   )
 }

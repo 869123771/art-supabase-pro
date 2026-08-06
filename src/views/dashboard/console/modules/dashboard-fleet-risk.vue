@@ -23,18 +23,21 @@
         v-for="item in reminders"
         :key="item.key"
         type="button"
+        :class="`is-${item.severity}`"
         @click="emit('view-reminder')"
       >
-        <i :class="`is-${item.severity}`" /><span>{{ item.label }}</span
-        ><strong>{{ item.count }}</strong
-        ><ElIcon><ArrowRight /></ElIcon>
+        <i class="fleet-risk__severity" />
+        <span>{{ item.label }}</span>
+        <strong>{{ item.count }} <small>项</small></strong>
+        <span class="fleet-risk__action" aria-hidden="true">
+          <ArtSvgIcon icon="ri:arrow-right-s-line" />
+        </span>
       </button>
     </div>
   </article>
 </template>
 
 <script setup lang="ts">
-  import { ArrowRight } from '@element-plus/icons-vue'
   import type { DashboardReminder } from './types'
 
   defineProps<{
@@ -133,42 +136,52 @@
 
     &__reminders {
       display: grid;
-      gap: 2px;
+      gap: 7px;
       margin-top: 16px;
 
       button {
+        --risk-tone: var(--el-color-warning);
+
         display: grid;
-        grid-template-columns: 7px minmax(0, 1fr) auto auto;
-        gap: 8px;
+        grid-template-columns: 8px minmax(0, 1fr) auto 32px;
+        gap: 10px;
         align-items: center;
         width: 100%;
-        padding: 7px 3px;
+        min-height: 44px;
+        padding: 6px 8px 6px 11px;
         text-align: left;
         cursor: pointer;
-        background: transparent;
-        border: 0;
-        border-radius: var(--el-border-radius-small);
-
-        &:hover {
-          background: var(--el-fill-color-light);
-        }
-      }
-
-      i {
-        width: 6px;
-        height: 6px;
-        border-radius: 50%;
+        background: color-mix(in srgb, var(--risk-tone) 4%, var(--el-fill-color-lighter));
+        border: 1px solid transparent;
+        border-radius: var(--el-border-radius-base);
+        transition:
+          background 0.18s ease,
+          border-color 0.18s ease,
+          box-shadow 0.18s ease,
+          transform 0.18s ease;
 
         &.is-danger {
-          background: var(--el-color-danger);
+          --risk-tone: var(--el-color-danger);
         }
 
-        &.is-warning {
-          background: var(--el-color-warning);
+        &:hover,
+        &:focus-visible {
+          background: color-mix(in srgb, var(--risk-tone) 8%, var(--default-box-color));
+
+          .fleet-risk__action {
+            color: var(--el-color-white);
+            background: var(--risk-tone);
+            transform: translateX(2px);
+          }
+        }
+
+        &:focus-visible {
+          outline: 2px solid color-mix(in srgb, var(--risk-tone) 55%, transparent);
+          outline-offset: 2px;
         }
       }
 
-      span {
+      button > span:not(.fleet-risk__action) {
         overflow: hidden;
         text-overflow: ellipsis;
         font-size: 12px;
@@ -179,12 +192,38 @@
       strong {
         font-size: 12px;
         color: var(--el-text-color-primary);
-      }
 
-      .el-icon {
-        font-size: 13px;
-        color: var(--el-text-color-placeholder);
+        small {
+          font-size: 9px;
+          font-weight: 500;
+          color: var(--el-text-color-placeholder);
+        }
       }
+    }
+
+    &__severity {
+      width: 7px;
+      height: 7px;
+      background: var(--risk-tone);
+      border-radius: 50%;
+      box-shadow: 0 0 0 4px color-mix(in srgb, var(--risk-tone) 10%, transparent);
+    }
+
+    &__action {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      overflow: visible;
+      font-size: 22px;
+      color: var(--risk-tone);
+      background: color-mix(in srgb, var(--risk-tone) 10%, var(--el-bg-color));
+      border-radius: 50%;
+      transition:
+        color 0.18s ease,
+        background 0.18s ease,
+        transform 0.18s ease;
     }
 
     &__empty {
@@ -196,5 +235,17 @@
       font-size: 12px;
       color: var(--el-color-success);
     }
+  }
+
+  :global([data-box-mode='border-mode'] .fleet-risk__reminders button:hover),
+  :global([data-box-mode='border-mode'] .fleet-risk__reminders button:focus-visible) {
+    border-color: color-mix(in srgb, var(--risk-tone) 30%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--risk-tone) 8%, transparent);
+  }
+
+  :global([data-box-mode='shadow-mode'] .fleet-risk__reminders button:hover),
+  :global([data-box-mode='shadow-mode'] .fleet-risk__reminders button:focus-visible) {
+    border-color: transparent;
+    box-shadow: 0 7px 17px color-mix(in srgb, var(--risk-tone) 15%, transparent);
   }
 </style>

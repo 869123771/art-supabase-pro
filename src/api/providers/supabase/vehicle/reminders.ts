@@ -26,6 +26,8 @@ export const VEHICLE_REMINDER_VIEWS = [
 
 export type VehicleReminderViewName = (typeof VEHICLE_REMINDER_VIEWS)[number]
 
+type ReminderRiskOverview = Api.VehicleMgtSys.ReminderManage.VehicleReminderRiskOverview
+
 const getVehicleReminderSearchFilters = (
   params: VehicleReminderSearchParams,
   mode: 'days' | 'expired'
@@ -39,9 +41,77 @@ const getVehicleReminderSearchFilters = (
   {
     col: 'expired',
     op: 'eq',
-    val: mode === 'expired' ? normalizeBooleanFilter(params.expired) : undefined
+    val:
+      (!params.riskBand || params.riskBand === 'all') && mode === 'expired'
+        ? normalizeBooleanFilter(params.expired)
+        : undefined
   }
 ]
+
+const applyReminderRiskBand = (
+  query: SupabaseQueryLike,
+  riskBand?: VehicleReminderSearchParams['riskBand']
+): SupabaseQueryLike => {
+  if (riskBand === 'overdue') return query.eq('expired', true)
+  if (riskBand === 'due_7') {
+    return query.eq('expired', false).gte('remaining_days', 0).lte('remaining_days', 7)
+  }
+  if (riskBand === 'due_30') {
+    return query.eq('expired', false).gt('remaining_days', 7).lte('remaining_days', 30)
+  }
+  return query
+}
+
+const fetchReminderCount = async (
+  viewName: VehicleReminderViewName,
+  params: VehicleReminderSearchParams,
+  configure?: (query: SupabaseQueryLike) => SupabaseQueryLike,
+  options?: ApiRequestOptions
+): Promise<number> => {
+  let builder = supabase.from(viewName).select('id', { count: 'exact', head: true })
+  if (params.companyName) builder = builder.ilike('company_name', `%${params.companyName}%`)
+  if (params.plateNo) builder = builder.ilike('plate_no', `%${params.plateNo}%`)
+
+  let query = builder as unknown as SupabaseQueryLike
+  if (configure) query = configure(query)
+
+  const result = await responseHandle<never[]>(() => withRequestOptions(query, options), {
+    ignoreCheck: true,
+    showErrorMessage: true
+  })
+  return result.total ?? 0
+}
+
+export async function fetchVehicleReminderViewRiskOverview(
+  viewName: VehicleReminderViewName,
+  params: VehicleReminderSearchParams,
+  options?: ApiRequestOptions
+) {
+  const [total, overdue, dueWithin7Days, dueWithin30Days] = await Promise.all([
+    fetchReminderCount(viewName, params, undefined, options),
+    fetchReminderCount(viewName, params, (query) => query.eq('expired', true), options),
+    fetchReminderCount(
+      viewName,
+      params,
+      (query) => query.eq('expired', false).gte('remaining_days', 0).lte('remaining_days', 7),
+      options
+    ),
+    fetchReminderCount(
+      viewName,
+      params,
+      (query) => query.eq('expired', false).gt('remaining_days', 7).lte('remaining_days', 30),
+      options
+    )
+  ])
+  const overview: ReminderRiskOverview = {
+    total,
+    overdue,
+    dueWithin7Days,
+    dueWithin30Days,
+    stable: Math.max(total - overdue - dueWithin7Days - dueWithin30Days, 0)
+  }
+  return { data: overview, error: null }
+}
 
 export async function fetchVehicleReminderViewList(
   viewName: VehicleReminderViewName,
@@ -57,7 +127,12 @@ export async function fetchVehicleReminderViewList(
     .order('remaining_days', { ascending: true })
     .range(from, to)
 
-  if (mode === 'days' && params.reminderDays !== null && params.reminderDays !== undefined) {
+  if (
+    (!params.riskBand || params.riskBand === 'all') &&
+    mode === 'days' &&
+    params.reminderDays !== null &&
+    params.reminderDays !== undefined
+  ) {
     query = query.lte('remaining_days', Number(params.reminderDays))
   }
 
@@ -65,9 +140,13 @@ export async function fetchVehicleReminderViewList(
     skipEmpty: true,
     camelToSnake: true
   })
+  const filteredQuery = applyReminderRiskBand(
+    query as unknown as SupabaseQueryLike,
+    params.riskBand
+  )
 
   const result = await responseHandle<VehicleReminderRow[]>(
-    () => withRequestOptions(query as unknown as SupabaseQueryLike, options),
+    () => withRequestOptions(filteredQuery, options),
     {
       ignoreCheck: true,
       showErrorMessage: true

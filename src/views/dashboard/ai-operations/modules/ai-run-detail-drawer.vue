@@ -76,7 +76,8 @@
             </header>
             <p>{{ diagnosis.data.summary }}</p>
             <small>
-              诊断模型 {{ diagnosis.model }} · Prompt {{ diagnosis.promptVersion }} ·
+              诊断服务 {{ diagnosis.provider }} · 模型 {{ diagnosis.model }} · Prompt
+              {{ diagnosis.promptVersion }} ·
               {{ formatDuration(diagnosis.durationMs) }}
             </small>
           </section>
@@ -252,6 +253,7 @@
   interface DiagnosisState {
     loading: boolean
     data?: AiRunDiagnosis
+    provider: string
     model: string
     promptVersion: string
     durationMs?: number
@@ -269,6 +271,7 @@
   const diagnosis = reactive<DiagnosisState>({
     loading: false,
     data: undefined,
+    provider: '',
     model: '',
     promptVersion: '',
     durationMs: undefined
@@ -399,6 +402,7 @@
     Object.assign(diagnosis, {
       loading: false,
       data: undefined,
+      provider: '',
       model: '',
       promptVersion: '',
       durationMs: undefined
@@ -412,6 +416,7 @@
       const result = await diagnoseAiRun(detail.value.id)
       Object.assign(diagnosis, {
         data: result.diagnosis,
+        provider: result.provider,
         model: result.model,
         promptVersion: result.promptVersion,
         durationMs: result.durationMs

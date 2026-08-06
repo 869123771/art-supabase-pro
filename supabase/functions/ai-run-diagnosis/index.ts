@@ -4,6 +4,10 @@ import {
   loadAiRuntimeConfig,
   type AiRuntimeConfig
 } from '../_shared/ai-runtime-config.ts'
+import {
+  resolveAiProviderEndpoints,
+  type AiProviderEndpoint
+} from '../_shared/ai-provider-endpoints.ts'
 import { loadPublishedAiPrompt } from '../_shared/ai-prompt-template.ts'
 
 const FEATURE = 'operations_diagnosis'
@@ -86,6 +90,7 @@ interface DiagnosisResult {
 interface ProviderResult {
   content: string
   model: string
+  provider: string
   usage: { prompt_tokens?: number; completion_tokens?: number }
 }
 
@@ -277,13 +282,12 @@ async function fetchWithTimeout(url: string, init: RequestInit, timeoutMs: numbe
 }
 
 async function requestProvider(
-  baseUrl: string,
-  apiKey: string,
+  endpoint: AiProviderEndpoint,
   systemPrompt: string,
   userPrompt: string,
   config: AiRuntimeConfig
 ): Promise<ProviderResult> {
-  const models = [...new Set([config.model, config.fallbackModel].filter(Boolean))] as string[]
+  const models = [...new Set([endpoint.model, endpoint.fallbackModel].filter(Boolean))] as string[]
   let lastError = new DiagnosisError('provider_error', providerErrorMessage('provider_error'))
 
   for (const model of models) {
@@ -301,10 +305,13 @@ async function requestProvider(
         }
         const send = (structured: boolean) =>
           fetchWithTimeout(
-            `${baseUrl}/chat/completions`,
+            `${endpoint.baseUrl}/chat/completions`,
             {
               method: 'POST',
-              headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+              headers: {
+                Authorization: `Bearer ${endpoint.apiKey}`,
+                'Content-Type': 'application/json'
+              },
               body: JSON.stringify(
                 structured
                   ? { ...providerBody, response_format: { type: 'json_object' } }
@@ -337,7 +344,7 @@ async function requestProvider(
         const payload = await response.json()
         const content = extractMessageContent(payload?.choices?.[0]?.message?.content)
         if (!content) throw new DiagnosisError('empty_response', 'AI 服务返回了空诊断。')
-        return { content, model, usage: payload?.usage ?? {} }
+        return { content, model, provider: endpoint.label, usage: payload?.usage ?? {} }
       } catch (error) {
         if (error instanceof DOMException && error.name === 'AbortError') {
           lastError = new DiagnosisError('provider_timeout', providerErrorMessage('provider_timeout'), 504)
@@ -348,6 +355,34 @@ async function requestProvider(
         }
         if (attempt >= config.maxRetries) break
       }
+    }
+  }
+
+  throw lastError
+}
+
+async function requestProviderWithFallback(
+  endpoints: AiProviderEndpoint[],
+  systemPrompt: string,
+  userPrompt: string,
+  config: AiRuntimeConfig
+): Promise<ProviderResult> {
+  let lastError = new DiagnosisError('provider_error', providerErrorMessage('provider_error'))
+
+  for (const endpoint of endpoints) {
+    try {
+      return await requestProvider(endpoint, systemPrompt, userPrompt, config)
+    } catch (error) {
+      lastError =
+        error instanceof DiagnosisError
+          ? error
+          : new DiagnosisError('provider_error', providerErrorMessage('provider_error'))
+      console.warn(
+        'ai-run-diagnosis provider fallback',
+        endpoint.label,
+        lastError.code,
+        lastError.message
+      )
     }
   }
 
@@ -488,9 +523,10 @@ Deno.serve(async (req) => {
       FEATURE,
       { content: DEFAULT_PROMPT, version: runtimeConfig.promptVersion }
     )
-    const apiKey = Deno.env.get('OPENAI_API_KEY') || Deno.env.get('AI_API_KEY')
-    const baseUrl = (Deno.env.get('OPENAI_BASE_URL') || Deno.env.get('AI_BASE_URL') || 'https://api.openai.com/v1').replace(/\/$/, '')
-    if (!apiKey) throw new DiagnosisError('missing_api_key', 'AI 服务尚未配置 API Key。', 503)
+    const providerEndpoints = resolveAiProviderEndpoints(runtimeConfig)
+    if (!providerEndpoints.length) {
+      throw new DiagnosisError('missing_api_key', 'AI 服务尚未配置 API Key。', 503)
+    }
 
     let resolvedModel = runtimeConfig.model
     const { data: run, error: runError } = await admin
@@ -507,7 +543,8 @@ Deno.serve(async (req) => {
           targetFeature: target.feature,
           targetStatus: target.status,
           targetLatencyMs: target.latency_ms,
-          promptSource: publishedPrompt.source
+          promptSource: publishedPrompt.source,
+          providerChain: providerEndpoints.map((endpoint) => endpoint.label)
         },
         create_by: appUser.user_email,
         update_by: appUser.user_email
@@ -545,7 +582,12 @@ Deno.serve(async (req) => {
       })
     )
     const providerStartedAt = Date.now()
-    const provider = await requestProvider(baseUrl, apiKey, systemPrompt, userPrompt, runtimeConfig)
+    const provider = await requestProviderWithFallback(
+      providerEndpoints,
+      systemPrompt,
+      userPrompt,
+      runtimeConfig
+    )
     resolvedModel = provider.model
     const diagnosis = parseDiagnosis(provider.content)
     const latencyMs = Date.now() - startedAt
@@ -565,6 +607,8 @@ Deno.serve(async (req) => {
           targetStatus: target.status,
           targetLatencyMs: target.latency_ms,
           promptSource: publishedPrompt.source,
+          provider: provider.provider,
+          providerChain: providerEndpoints.map((endpoint) => endpoint.label),
           diagnosis
         },
         update_by: appUser.user_email
@@ -577,6 +621,7 @@ Deno.serve(async (req) => {
       runId: diagnosisRunId,
       targetRunId: target.id,
       model: resolvedModel,
+      provider: provider.provider,
       promptVersion: publishedPrompt.version,
       providerDurationMs: Date.now() - providerStartedAt,
       durationMs: latencyMs
