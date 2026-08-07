@@ -6,12 +6,18 @@
     </aside>
 
     <main id="app-main">
-      <div id="app-header">
-        <ArtHeaderBar />
-      </div>
-      <div id="app-content">
-        <ArtPageContent />
-      </div>
+      <ElScrollbar
+        class="app-main__scrollbar"
+        wrap-class="app-main__scroll-wrap"
+        view-class="app-main__scroll-view"
+      >
+        <div id="app-header">
+          <ArtHeaderBar />
+        </div>
+        <div id="app-content">
+          <ArtPageContent />
+        </div>
+      </ElScrollbar>
     </main>
 
     <div id="app-global">

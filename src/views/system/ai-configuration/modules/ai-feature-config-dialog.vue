@@ -38,7 +38,50 @@
         :show-reset="false"
         :show-submit="false"
         :validate-on-rule-change="false"
-      />
+      >
+        <template #model>
+          <AiModelSelector
+            :model-value="form.model.model"
+            :models="catalog.models"
+            :benchmark-results="benchmark.results"
+            :benchmark-errors="benchmark.errors"
+            :testing-model-id="benchmark.testingModelId"
+            :loading="catalog.loading"
+            show-details
+            placeholder="请选择或输入主模型"
+            @update:model-value="updateMainModel"
+            @benchmark="runBenchmark"
+          />
+        </template>
+
+        <template #visionModel>
+          <AiModelSelector
+            :model-value="form.model.visionModel"
+            :models="visionModels"
+            :benchmark-results="benchmark.results"
+            :benchmark-errors="benchmark.errors"
+            :testing-model-id="benchmark.testingModelId"
+            :loading="catalog.loading"
+            placeholder="请选择或输入视觉模型"
+            @update:model-value="updateOptionalModel('visionModel', $event)"
+            @benchmark="runBenchmark"
+          />
+        </template>
+
+        <template #fallbackModel>
+          <AiModelSelector
+            :model-value="form.model.fallbackModel"
+            :models="catalog.models"
+            :benchmark-results="benchmark.results"
+            :benchmark-errors="benchmark.errors"
+            :testing-model-id="benchmark.testingModelId"
+            :loading="catalog.loading"
+            placeholder="请选择或输入备用模型"
+            @update:model-value="updateOptionalModel('fallbackModel', $event)"
+            @benchmark="runBenchmark"
+          />
+        </template>
+      </ArtForm>
     </div>
   </ArtDialog>
 </template>
@@ -55,12 +98,16 @@
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import { useUserStore } from '@/store/modules/user'
   import {
+    benchmarkAiProviderModel,
     fetchAiProviderCatalog,
     updateAiFeatureConfig,
     type AiFeatureConfig,
     type AiFeatureConfigWritePayload,
+    type AiModelBenchmark,
+    type AiProviderModel,
     type AiProviderCatalog
   } from '@/api/ai-configuration'
+  import AiModelSelector from './ai-model-selector.vue'
 
   interface DialogOpenData {
     editData: AiFeatureConfig
@@ -69,7 +116,6 @@
   interface ArtFormExpose {
     validate: () => Promise<boolean | void>
     clearValidate: () => void
-    reloadOptions: (key?: string) => Promise<unknown>
   }
 
   interface AiConfigFormModel extends AiFeatureConfigWritePayload {
@@ -87,6 +133,13 @@
     count: number
     source: AiProviderCatalog['source'] | null
     warning: string | null
+    models: AiProviderModel[]
+  }
+
+  interface BenchmarkGroup {
+    testingModelId: string | null
+    results: Map<string, AiModelBenchmark>
+    errors: Map<string, string>
   }
 
   const emit = defineEmits<{ success: [] }>()
@@ -98,16 +151,27 @@
     loading: false,
     count: 0,
     source: null,
-    warning: null
+    warning: null,
+    models: []
+  })
+  const benchmark = reactive<BenchmarkGroup>({
+    testingModelId: null,
+    results: new Map<string, AiModelBenchmark>(),
+    errors: new Map<string, string>()
+  })
+
+  const visionModels = computed(() => {
+    const models = catalog.models.filter((item) => item.kind === 'vision')
+    return models.length ? models : catalog.models
   })
 
   const catalogNotice = computed(() => {
     if (catalog.loading) return '正在通过 Edge Function 安全读取远端模型目录…'
     if (catalog.warning) return catalog.warning
     if (catalog.source === 'remote') {
-      return `已从远端服务读取 ${catalog.count} 个模型；API Key 与服务地址仍由 Edge Function Secrets 管理。`
+      return `已从远端服务读取 ${catalog.count} 个模型；可对候选模型逐个测速，结果按首包延迟自动排序。`
     }
-    return '模型目录由 Edge Function 代为读取，浏览器不会接触 API Key 或服务地址。'
+    return '模型目录与测速均由 Edge Function 代为执行，浏览器不会接触 API Key 或服务地址。'
   })
 
   const createInitialForm = (): AiConfigFormModel => ({
@@ -157,20 +221,8 @@
         key: 'model',
         type: 'select',
         span: 24,
-        api: loadModelCatalog,
-        immediate: false,
-        resultField: 'models',
-        labelField: 'label',
-        valueField: 'id',
         description:
-          '模型来自远端服务目录，选项后附厂商与用途说明；目录未包含目标模型时仍可直接输入模型 ID。',
-        props: {
-          clearable: true,
-          filterable: true,
-          allowCreate: true,
-          defaultFirstOption: true,
-          placeholder: '请选择或输入主模型'
-        }
+          '优先按任务能力筛选，再用当前线路实测延迟比较候选模型；目录未包含目标模型时仍可直接输入模型 ID。'
       },
       {
         label: '视觉模型',
@@ -179,37 +231,14 @@
         span: 24,
         hidden: form.model.feature !== 'order_extraction',
         description: '仅在智能填单包含图片时使用；留空则回退到主模型。',
-        api: loadModelCatalog,
-        immediate: false,
-        afterFetch: (response: unknown) => filterVisionModels(response),
-        labelField: 'label',
-        valueField: 'id',
-        props: {
-          clearable: true,
-          filterable: true,
-          allowCreate: true,
-          defaultFirstOption: true,
-          placeholder: '请选择或输入视觉模型'
-        }
+        help: '下拉列表优先展示识别为视觉或文档解析能力的模型。'
       },
       {
         label: '备用模型',
         key: 'fallbackModel',
         type: 'select',
         span: 24,
-        description: '主模型暂时不可用时的备用路由；留空表示不启用。',
-        api: loadModelCatalog,
-        immediate: false,
-        resultField: 'models',
-        labelField: 'label',
-        valueField: 'id',
-        props: {
-          clearable: true,
-          filterable: true,
-          allowCreate: true,
-          defaultFirstOption: true,
-          placeholder: '请选择或输入备用模型'
-        }
+        description: '主模型暂时不可用时的备用路由；留空表示不启用。'
       },
       { label: '生成与稳定性', key: 'generationSection', type: 'divider', span: 24 },
       {
@@ -323,14 +352,15 @@
     Object.assign(catalog, {
       count: data.models.length,
       source: data.source,
-      warning: data.warning ?? null
+      warning: data.warning ?? null,
+      models: data.models
     })
   }
 
-  async function loadModelCatalog(): Promise<AiProviderCatalog> {
+  async function loadModelCatalog(forceRefresh = false): Promise<AiProviderCatalog> {
     catalog.loading = true
     try {
-      const data = await fetchAiProviderCatalog()
+      const data = await fetchAiProviderCatalog({ forceRefresh })
       applyCatalog(data)
       return data
     } finally {
@@ -338,25 +368,37 @@
     }
   }
 
-  function filterVisionModels(response: unknown) {
-    const data = response as AiProviderCatalog
-    const visionModels = data.models.filter((item) => item.kind === 'vision')
-    return visionModels.length ? visionModels : data.models
+  function updateMainModel(value: string | null): void {
+    form.model.model = value ?? ''
   }
 
-  async function reloadModelOptions(): Promise<void> {
-    await Promise.all(
-      ['model', 'visionModel', 'fallbackModel'].map((key) => formRef.value?.reloadOptions(key))
-    )
+  function updateOptionalModel(field: 'visionModel' | 'fallbackModel', value: string | null): void {
+    form.model[field] = value
+  }
+
+  async function runBenchmark(modelId: string): Promise<void> {
+    if (benchmark.testingModelId) return
+    benchmark.testingModelId = modelId
+    benchmark.errors.delete(modelId)
+    try {
+      const result = await benchmarkAiProviderModel(modelId)
+      benchmark.results.set(result.model, result)
+      ElMessage.success(
+        `${result.model} 测速完成：首包 ${result.firstResponseMs} ms，总耗时 ${result.totalMs} ms`
+      )
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '模型测速失败'
+      benchmark.errors.set(modelId, message)
+      ElMessage.error({ message, duration: 5000 })
+    } finally {
+      benchmark.testingModelId = null
+    }
   }
 
   async function refreshModelCatalog(): Promise<void> {
     if (catalog.loading) return
-    catalog.loading = true
     try {
-      const data = await fetchAiProviderCatalog({ forceRefresh: true })
-      applyCatalog(data)
-      await reloadModelOptions()
+      const data = await loadModelCatalog(true)
       if (data.source === 'remote') {
         ElMessage.success(`已读取 ${data.models.length} 个远端模型`)
       } else {
@@ -408,7 +450,7 @@
       confirmText: '保存并生效',
       onOpen: async () => {
         try {
-          await reloadModelOptions()
+          await loadModelCatalog()
         } catch (error) {
           catalog.warning = error instanceof Error ? error.message : '远端模型目录暂时不可用'
         }

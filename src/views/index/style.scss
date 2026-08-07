@@ -17,12 +17,24 @@
   }
 
   #app-main {
-    display: flex;
     flex: 1;
-    flex-direction: column;
     min-width: 0;
     height: 100vh;
-    overflow: auto;
+    overflow: hidden;
+
+    .app-main__scrollbar {
+      height: 100%;
+
+      :deep(.app-main__scroll-wrap) {
+        overflow-x: hidden;
+      }
+
+      :deep(.app-main__scroll-view) {
+        display: flex;
+        flex-direction: column;
+        min-height: 100%;
+      }
+    }
 
     #app-header {
       position: sticky;
@@ -110,8 +122,7 @@
 
     #app-main {
       width: 100%;
-      height: auto;
-      overflow: visible;
+      height: 100dvh;
 
       #app-content {
         :deep(.layout-content) {

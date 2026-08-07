@@ -19,6 +19,14 @@ import { computed } from 'vue'
 import { useMenuStore } from '@/store/modules/menu'
 import { useSettingStore } from '@/store/modules/setting'
 
+export function getPageScrollContainer(): HTMLElement | null {
+  return (
+    document.querySelector<HTMLElement>(
+      '#app-main > .app-main__scrollbar > .app-main__scroll-wrap'
+    ) ?? document.getElementById('app-main')
+  )
+}
+
 export function useCommon() {
   const menuStore = useMenuStore()
   const settingStore = useSettingStore()
@@ -42,7 +50,7 @@ export function useCommon() {
    * 查找主内容区域并将其滚动位置重置为顶部
    */
   const scrollToTop = () => {
-    const scrollContainer = document.getElementById('app-main')
+    const scrollContainer = getPageScrollContainer()
     if (scrollContainer) {
       scrollContainer.scrollTop = 0
     }
@@ -53,7 +61,7 @@ export function useCommon() {
    * 使用 smooth 行为实现平滑滚动效果
    */
   const smoothScrollToTop = () => {
-    const scrollContainer = document.getElementById('app-main')
+    const scrollContainer = getPageScrollContainer()
     if (scrollContainer) {
       scrollContainer.scrollTo({
         top: 0,
@@ -68,7 +76,7 @@ export function useCommon() {
    * @param smooth 是否使用平滑滚动
    */
   const scrollTo = (top: number, smooth: boolean = false) => {
-    const scrollContainer = document.getElementById('app-main')
+    const scrollContainer = getPageScrollContainer()
     if (scrollContainer) {
       scrollContainer.scrollTo({
         top,

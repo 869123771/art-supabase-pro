@@ -1,9 +1,12 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { getAiConfigTenantScope } from '../_shared/ai-config-tenancy.ts'
+import { resolveAiProviderEndpoints } from '../_shared/ai-provider-endpoints.ts'
 
 interface CatalogRequest {
+  action?: 'catalog' | 'benchmark'
   forceRefresh?: boolean
+  model?: string
 }
 
 interface AppUser {
@@ -22,7 +25,32 @@ interface ProviderModel {
   label: string
   ownedBy: string | null
   kind: 'text' | 'vision' | 'unknown'
+  capability: string
+  strengths: string[]
+  recommendedFor: string[]
+  performanceProfile: 'speed' | 'balanced' | 'quality' | 'specialized' | 'unknown'
+  performanceHint: string
+  parameterScale: string | null
+  benchmarkable: boolean
   description: string
+}
+
+interface ModelProfile {
+  kind: ProviderModel['kind']
+  capability: string
+  strengths: string[]
+  recommendedFor: string[]
+  benchmarkable: boolean
+}
+
+interface ModelBenchmark {
+  model: string
+  connectionMs: number
+  firstResponseMs: number
+  totalMs: number
+  responseBytes: number
+  streaming: boolean
+  measuredAt: string
 }
 
 interface RemoteCatalogCache {
@@ -39,6 +67,7 @@ const corsHeaders = {
 
 const CATALOG_CACHE_TTL_MS = 5 * 60_000
 const CATALOG_TIMEOUT_MS = 10_000
+const BENCHMARK_TIMEOUT_MS = 30_000
 let remoteCatalogCache: RemoteCatalogCache | null = null
 
 function json(body: unknown, status = 200) {
@@ -90,35 +119,185 @@ function resolveOwnerLabel(id: string, ownedBy: string | null): string {
   return prefix || '远端服务'
 }
 
-function resolveModelCapability(id: string): {
-  kind: ProviderModel['kind']
-  label: string
-} {
+function resolveModelProfile(id: string): ModelProfile {
+  if (/(parse|deplot)/i.test(id)) {
+    return {
+      kind: 'vision',
+      capability: '文档解析',
+      strengths: ['表格图表理解', '文档结构提取'],
+      recommendedFor: ['票据识别', '文档抽取'],
+      benchmarkable: true
+    }
+  }
   if (/(embed|embedding|bge|retriever|e5)/i.test(id)) {
-    return { kind: 'unknown', label: '向量嵌入' }
+    return {
+      kind: 'unknown',
+      capability: '向量嵌入',
+      strengths: ['语义检索', '知识库向量化'],
+      recommendedFor: ['检索增强', '相似度搜索'],
+      benchmarkable: false
+    }
   }
-  if (/rerank/i.test(id)) return { kind: 'unknown', label: '文本重排' }
-  if (/(guard|safety|moderation)/i.test(id)) return { kind: 'unknown', label: '内容安全' }
-  if (/(speech|audio|whisper|tts)/i.test(id)) return { kind: 'unknown', label: '语音音频' }
-  if (/(translate)/i.test(id)) return { kind: 'text', label: '机器翻译' }
-  if (/(parse|deplot)/i.test(id)) return { kind: 'vision', label: '文档解析' }
-  if (/(reward)/i.test(id)) return { kind: 'unknown', label: '奖励模型' }
-  if (/(detector|detect)/i.test(id)) return { kind: 'unknown', label: '内容检测' }
-  if (/(code|coder|starcoder|codestral)/i.test(id)) return { kind: 'text', label: '代码生成' }
+  if (/rerank/i.test(id)) {
+    return {
+      kind: 'unknown',
+      capability: '文本重排',
+      strengths: ['搜索结果重排', '相关性评分'],
+      recommendedFor: ['知识库检索', '搜索优化'],
+      benchmarkable: false
+    }
+  }
+  if (/(guard|safety|moderation)/i.test(id)) {
+    return {
+      kind: 'unknown',
+      capability: '内容安全',
+      strengths: ['内容审核', '风险识别'],
+      recommendedFor: ['输入输出安全检查'],
+      benchmarkable: false
+    }
+  }
+  if (/(speech|audio|whisper|tts)/i.test(id)) {
+    return {
+      kind: 'unknown',
+      capability: '语音音频',
+      strengths: ['语音识别', '语音生成'],
+      recommendedFor: ['音频处理'],
+      benchmarkable: false
+    }
+  }
   if (/(^|[-_.\/])(vision|vl|vlm|image|omni)([-_.\/]|$)|fuyu|kosmos|neva|vila/i.test(id)) {
-    return { kind: 'vision', label: '视觉理解' }
+    return {
+      kind: 'vision',
+      capability: '视觉理解',
+      strengths: ['图片理解', 'OCR 与文档识别'],
+      recommendedFor: ['智能填单', '图片问答'],
+      benchmarkable: true
+    }
   }
-  return { kind: 'text', label: '文本生成' }
+  if (/(code|coder|starcoder|codestral|codellama)/i.test(id)) {
+    return {
+      kind: 'text',
+      capability: '代码与 SQL',
+      strengths: ['代码生成', 'SQL 编写', '调试重构'],
+      recommendedFor: ['SQL 助手', '代码审查', '研发问答'],
+      benchmarkable: true
+    }
+  }
+  if (/(reason|thinking|deepseek-r1|qwq|(^|[-_/])o[134]([-_/]|$))/i.test(id)) {
+    return {
+      kind: 'text',
+      capability: '深度推理',
+      strengths: ['复杂分析', '多步推理', '方案规划'],
+      recommendedFor: ['运行诊断', '项目规划', '复杂决策'],
+      benchmarkable: true
+    }
+  }
+  if (/(translate)/i.test(id)) {
+    return {
+      kind: 'text',
+      capability: '机器翻译',
+      strengths: ['多语言翻译', '术语转换'],
+      recommendedFor: ['跨语言文本处理'],
+      benchmarkable: true
+    }
+  }
+  if (/(reward)/i.test(id)) {
+    return {
+      kind: 'unknown',
+      capability: '奖励模型',
+      strengths: ['回答质量评分'],
+      recommendedFor: ['模型评测'],
+      benchmarkable: false
+    }
+  }
+  if (/(detector|detect)/i.test(id)) {
+    return {
+      kind: 'unknown',
+      capability: '内容检测',
+      strengths: ['内容分类', '异常检测'],
+      recommendedFor: ['安全检测'],
+      benchmarkable: false
+    }
+  }
+  return {
+    kind: 'text',
+    capability: '通用文本',
+    strengths: ['文本生成', '摘要改写', '通用问答'],
+    recommendedFor: ['业务问答', '内容生成'],
+    benchmarkable: true
+  }
+}
+
+class ProviderBenchmarkError extends Error {
+  constructor(
+    readonly code: string,
+    message: string,
+    readonly status = 502
+  ) {
+    super(message)
+    this.name = 'ProviderBenchmarkError'
+  }
+}
+
+function resolveParameterScale(id: string): { label: string | null; billions: number | null } {
+  const match = id.match(/(?:^|[-_.\/])(\d+(?:\.\d+)?)([bm])(?=[-_.\/]|$)/i)
+  if (!match) return { label: null, billions: null }
+  const value = Number(match[1])
+  if (!Number.isFinite(value)) return { label: null, billions: null }
+  const unit = match[2].toUpperCase()
+  return {
+    label: `${match[1]}${unit}`,
+    billions: unit === 'B' ? value : value / 1000
+  }
+}
+
+function resolvePerformanceProfile(
+  id: string,
+  parameterBillions: number | null,
+  benchmarkable: boolean
+): Pick<ProviderModel, 'performanceProfile' | 'performanceHint'> {
+  if (!benchmarkable) {
+    return {
+      performanceProfile: 'specialized',
+      performanceHint: '专用模型，不能通过对话生成接口比较响应速度'
+    }
+  }
+  if (/(flash|turbo|mini|nano|lite|small|fast)/i.test(id) || (parameterBillions ?? 99) <= 4) {
+    return {
+      performanceProfile: 'speed',
+      performanceHint: '偏轻量，通常更容易获得低延迟；实际速度取决于部署硬件与负载'
+    }
+  }
+  if (/(large|xl|xxl|max)/i.test(id) || (parameterBillions ?? 0) >= 30) {
+    return {
+      performanceProfile: 'quality',
+      performanceHint: '偏质量与复杂任务，延迟通常高于轻量模型；请以当前线路实测为准'
+    }
+  }
+  return {
+    performanceProfile: 'balanced',
+    performanceHint: '质量与速度相对均衡；请使用测速结果确认当前线路表现'
+  }
 }
 
 function createProviderModel(id: string, ownedBy: string | null): ProviderModel {
-  const capability = resolveModelCapability(id)
-  const description = `${resolveOwnerLabel(id, ownedBy)} · ${capability.label}`
+  const owner = resolveOwnerLabel(id, ownedBy)
+  const profile = resolveModelProfile(id)
+  const parameterScale = resolveParameterScale(id)
+  const performance = resolvePerformanceProfile(id, parameterScale.billions, profile.benchmarkable)
+  const description = `${owner} · ${profile.capability}；${performance.performanceHint}`
   return {
     id,
-    label: `${id}  ·  ${description}`,
+    label: `${id} · ${owner} · ${profile.capability}`,
     ownedBy,
-    kind: capability.kind,
+    kind: profile.kind,
+    capability: profile.capability,
+    strengths: profile.strengths,
+    recommendedFor: profile.recommendedFor,
+    performanceProfile: performance.performanceProfile,
+    performanceHint: performance.performanceHint,
+    parameterScale: parameterScale.label,
+    benchmarkable: profile.benchmarkable,
     description
   }
 }
@@ -201,6 +380,120 @@ async function fetchRemoteCatalog(
   }
 }
 
+async function readProviderError(response: Response): Promise<string> {
+  const raw = (await response.text().catch(() => '')).slice(0, 1200)
+  if (!raw) return `上游服务返回 HTTP ${response.status}`
+  try {
+    const payload = JSON.parse(raw) as {
+      message?: unknown
+      error?: { message?: unknown } | string
+    }
+    if (typeof payload.message === 'string') return payload.message
+    if (typeof payload.error === 'string') return payload.error
+    if (payload.error && typeof payload.error.message === 'string') return payload.error.message
+  } catch {
+    // Non-JSON provider errors fall back to the bounded response text.
+  }
+  return raw
+}
+
+function createProviderBenchmarkError(status: number, providerMessage: string): ProviderBenchmarkError {
+  if (status === 401 || status === 403) {
+    return new ProviderBenchmarkError(
+      'provider_auth_failed',
+      '当前 AI 兼容服务鉴权失败，请检查 AI_API_KEY 与 AI_BASE_URL 是否属于同一服务商'
+    )
+  }
+  if (status === 404 || /model.*(not found|unknown)|unknown model/i.test(providerMessage)) {
+    return new ProviderBenchmarkError(
+      'model_not_found',
+      '当前模型在服务商侧不可用，请选择其他模型后重试'
+    )
+  }
+  if (status === 429) {
+    return new ProviderBenchmarkError('provider_rate_limited', '服务商请求过于频繁，请稍后再测速')
+  }
+  if (status === 400 || status === 422) {
+    return new ProviderBenchmarkError(
+      'provider_rejected_request',
+      `服务商拒绝了测速请求（HTTP ${status}）：${providerMessage}`
+    )
+  }
+  return new ProviderBenchmarkError(
+    'provider_request_failed',
+    `模型测速请求失败（HTTP ${status}）：${providerMessage}`
+  )
+}
+
+async function benchmarkModel(
+  baseUrl: string,
+  apiKey: string,
+  model: string
+): Promise<ModelBenchmark> {
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), BENCHMARK_TIMEOUT_MS)
+  const startedAt = performance.now()
+
+  try {
+    const response = await fetch(`${baseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+        Accept: 'text/event-stream, application/json'
+      },
+      body: JSON.stringify({
+        model,
+        messages: [{ role: 'user', content: 'Reply with only OK.' }],
+        max_tokens: 8,
+        stream: true
+      }),
+      signal: controller.signal
+    })
+
+    const connectionMs = Math.max(0, Math.round(performance.now() - startedAt))
+    if (!response.ok) {
+      const providerMessage = await readProviderError(response)
+      throw createProviderBenchmarkError(response.status, providerMessage)
+    }
+
+    const streaming = response.headers.get('content-type')?.includes('text/event-stream') ?? false
+    let firstResponseMs: number | null = null
+    let responseBytes = 0
+
+    if (response.body) {
+      const reader = response.body.getReader()
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        if (!value?.byteLength) continue
+        responseBytes += value.byteLength
+        if (firstResponseMs === null) {
+          firstResponseMs = Math.max(0, Math.round(performance.now() - startedAt))
+        }
+      }
+    }
+
+    const totalMs = Math.max(connectionMs, Math.round(performance.now() - startedAt))
+    return {
+      model,
+      connectionMs,
+      firstResponseMs: firstResponseMs ?? connectionMs,
+      totalMs,
+      responseBytes,
+      streaming,
+      measuredAt: new Date().toISOString()
+    }
+  } catch (error) {
+    if (controller.signal.aborted) {
+      throw new ProviderBenchmarkError('provider_timeout', '模型测速超过 30 秒，请稍后重试', 504)
+    }
+    throw error
+  } finally {
+    clearTimeout(timeoutId)
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
   if (req.method !== 'POST') return json({ code: 'method_not_allowed', message: 'Method not allowed' }, 405)
@@ -238,14 +531,39 @@ Deno.serve(async (req) => {
     return json({ code: 'forbidden', message: 'Active application user is required' }, 403)
   }
 
-  const apiKey = Deno.env.get('OPENAI_API_KEY') || Deno.env.get('AI_API_KEY')
-  const baseUrl = (
-    Deno.env.get('OPENAI_BASE_URL') ||
-    Deno.env.get('AI_BASE_URL') ||
-    'https://api.openai.com/v1'
-  ).replace(/\/$/, '')
-  const sharedModel = Deno.env.get('OPENAI_MODEL') || Deno.env.get('AI_MODEL')
+  const sharedModel = Deno.env.get('AI_MODEL') || Deno.env.get('OPENAI_MODEL') || ''
+  const [providerEndpoint] = resolveAiProviderEndpoints({
+    provider: 'openai_compatible',
+    model: sharedModel,
+    fallbackModel: null
+  })
+  const apiKey = providerEndpoint?.apiKey ?? null
+  const baseUrl = providerEndpoint?.baseUrl ?? 'https://api.openai.com/v1'
   const body = (await req.json().catch(() => ({}))) as CatalogRequest
+
+  if (body.action === 'benchmark') {
+    const model = stringValue(body.model)
+    if (!model || model.length > 256 || /[\u0000-\u001f\u007f]/.test(model)) {
+      return json({ code: 'invalid_model', message: '请选择有效的模型 ID' }, 400)
+    }
+    if (!apiKey) {
+      return json({ code: 'provider_not_configured', message: 'AI 服务密钥尚未配置，无法测速' }, 503)
+    }
+    try {
+      return json(await benchmarkModel(baseUrl, apiKey, model))
+    } catch (error) {
+      const normalized =
+        error instanceof ProviderBenchmarkError
+          ? error
+          : new ProviderBenchmarkError('benchmark_failed', '模型测速暂时不可用')
+      console.error('ai-provider-catalog benchmark failed', {
+        code: normalized.code,
+        model,
+        provider: providerEndpoint?.label ?? 'unconfigured'
+      })
+      return json({ code: normalized.code, message: normalized.message }, normalized.status)
+    }
+  }
 
   const configTenantScope = await getAiConfigTenantScope(admin, appUser.tenant_id)
   const { data: configuredData } = await admin

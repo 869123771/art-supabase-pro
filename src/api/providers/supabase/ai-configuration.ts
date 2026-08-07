@@ -47,7 +47,24 @@ export interface AiProviderModel {
   label: string
   ownedBy?: string | null
   kind: 'text' | 'vision' | 'unknown'
+  capability: string
+  strengths: string[]
+  recommendedFor: string[]
+  performanceProfile: 'speed' | 'balanced' | 'quality' | 'specialized' | 'unknown'
+  performanceHint: string
+  parameterScale?: string | null
+  benchmarkable: boolean
   description: string
+}
+
+export interface AiModelBenchmark {
+  model: string
+  connectionMs: number
+  firstResponseMs: number
+  totalMs: number
+  responseBytes: number
+  streaming: boolean
+  measuredAt: string
 }
 
 export interface AiProviderCatalog {
@@ -78,7 +95,87 @@ export type AiFeatureConfigWritePayload = Pick<
 
 let providerCatalogPromise: Promise<AiProviderCatalog> | null = null
 
-async function normalizeFunctionError(error: unknown): Promise<Error> {
+function inferLegacyModelMetadata(model: AiProviderModel) {
+  const parameterMatch = model.id.match(/(?:^|[-_./])(\d+(?:\.\d+)?)([bm])(?=[-_./]|$)/i)
+  const parameterValue = parameterMatch ? Number(parameterMatch[1]) : null
+  const parameterBillions =
+    parameterValue == null
+      ? null
+      : parameterMatch?.[2].toLowerCase() === 'm'
+        ? parameterValue / 1000
+        : parameterValue
+  const parameterScale = parameterMatch
+    ? `${parameterMatch[1]}${parameterMatch[2].toUpperCase()}`
+    : null
+  const performanceProfile: AiProviderModel['performanceProfile'] =
+    model.kind === 'unknown'
+      ? 'specialized'
+      : parameterBillions == null
+        ? 'unknown'
+        : parameterBillions <= 4
+          ? 'speed'
+          : parameterBillions >= 30
+            ? 'quality'
+            : 'balanced'
+  const performanceHint =
+    performanceProfile === 'specialized'
+      ? '专用模型，不能通过对话生成接口比较响应速度'
+      : performanceProfile === 'speed'
+        ? '偏轻量，通常更容易获得低延迟；实际速度取决于部署硬件与负载'
+        : performanceProfile === 'quality'
+          ? '偏质量与复杂任务，延迟通常高于轻量模型；请以当前线路实测为准'
+          : '远端目录暂未提供性能倾向，请以当前线路实测为准'
+
+  if (/(code|coder|starcoder|codestral|codellama)/i.test(model.id)) {
+    return {
+      capability: '代码与 SQL',
+      strengths: ['代码生成', 'SQL 编写', '调试重构'],
+      recommendedFor: ['SQL 助手', '代码审查', '研发问答'],
+      parameterScale,
+      performanceProfile,
+      performanceHint
+    }
+  }
+  if (model.kind === 'vision') {
+    return {
+      capability: '视觉理解',
+      strengths: ['图片理解', 'OCR 与文档识别'],
+      recommendedFor: ['智能填单', '图片问答'],
+      parameterScale,
+      performanceProfile,
+      performanceHint
+    }
+  }
+  return {
+    capability: model.description?.split('·').at(-1)?.trim() || '通用文本',
+    strengths: ['文本生成', '摘要改写', '通用问答'],
+    recommendedFor: ['业务问答', '内容生成'],
+    parameterScale,
+    performanceProfile,
+    performanceHint
+  }
+}
+
+function normalizeProviderModel(model: AiProviderModel): AiProviderModel {
+  const inferred = inferLegacyModelMetadata(model)
+  return {
+    ...model,
+    capability: model.capability || inferred.capability,
+    strengths: Array.isArray(model.strengths) ? model.strengths : inferred.strengths,
+    recommendedFor: Array.isArray(model.recommendedFor)
+      ? model.recommendedFor
+      : inferred.recommendedFor,
+    performanceProfile: model.performanceProfile || inferred.performanceProfile,
+    performanceHint: model.performanceHint || inferred.performanceHint,
+    parameterScale: model.parameterScale ?? inferred.parameterScale,
+    benchmarkable: model.benchmarkable ?? model.kind !== 'unknown'
+  }
+}
+
+async function normalizeFunctionError(
+  error: unknown,
+  fallbackMessage = '远端模型目录暂时不可用'
+): Promise<Error> {
   if (error && typeof error === 'object' && 'context' in error) {
     const context = (error as { context?: unknown }).context
     if (context instanceof Response) {
@@ -92,7 +189,7 @@ async function normalizeFunctionError(error: unknown): Promise<Error> {
     }
   }
   if (error instanceof Error) return error
-  return new Error('远端模型目录暂时不可用')
+  return new Error(fallbackMessage)
 }
 
 export async function fetchAiProviderCatalog(params?: {
@@ -106,13 +203,27 @@ export async function fetchAiProviderCatalog(params?: {
       )
       if (error) throw await normalizeFunctionError(error)
       if (!data || !Array.isArray(data.models)) throw new Error('远端模型目录返回格式无效')
-      return data
+      return { ...data, models: data.models.map(normalizeProviderModel) }
     })()
     providerCatalogPromise.catch(() => {
       providerCatalogPromise = null
     })
   }
   return await providerCatalogPromise
+}
+
+export async function benchmarkAiProviderModel(model: string): Promise<AiModelBenchmark> {
+  const normalizedModel = model.trim()
+  if (!normalizedModel) throw new Error('请先选择需要测速的模型')
+
+  const { data, error } = await supabase.functions.invoke<AiModelBenchmark>('ai-provider-catalog', {
+    body: { action: 'benchmark', model: normalizedModel }
+  })
+  if (error) throw await normalizeFunctionError(error, '模型测速暂时不可用')
+  if (!data || data.model !== normalizedModel || !Number.isFinite(data.totalMs)) {
+    throw new Error('模型测速返回格式无效')
+  }
+  return data
 }
 
 export async function fetchAiFeatureConfigList(params: AiFeatureConfigSearchParams) {

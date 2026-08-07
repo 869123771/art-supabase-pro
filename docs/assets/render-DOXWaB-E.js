@@ -1,1 +1,0 @@
-import{Et as e}from"./framework-EG-p7PXV.js";import{t}from"./attachment-link-K2Bjw252.js";var n=n=>e(t,{file:n});export{n as t};

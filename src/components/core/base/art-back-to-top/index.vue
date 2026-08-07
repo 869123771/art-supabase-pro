@@ -19,7 +19,7 @@
 </template>
 
 <script setup lang="ts">
-  import { useCommon } from '@/hooks/core/useCommon'
+  import { getPageScrollContainer, useCommon } from '@/hooks/core/useCommon'
 
   defineOptions({ name: 'ArtBackToTop' })
 
@@ -29,7 +29,7 @@
   const scrollThreshold = 300
 
   onMounted(() => {
-    const scrollContainer = document.getElementById('app-main')
+    const scrollContainer = getPageScrollContainer()
     if (scrollContainer) {
       const { y } = useScroll(scrollContainer)
       watch(y, (newY: number) => {
