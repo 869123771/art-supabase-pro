@@ -244,7 +244,11 @@
       await confirmAction(`确定${label}对账单 ${row.statementNo} 吗？`, label, {
         type: 'warning'
       })
-      await updateCarrierStatementStatus({ id: row.id, status })
+      await updateCarrierStatementStatus({
+        id: row.id,
+        status,
+        businessTitle: `承运商对账单 ${row.statementNo}`
+      })
       await tableQueryRef.value?.refreshUpdate()
     } catch {
       /* 用户取消 */
@@ -261,7 +265,8 @@
       await updateCarrierStatementStatus({
         id: row.id,
         status: 'draft',
-        reviewRemark: reason
+        reviewRemark: reason,
+        businessTitle: `承运商对账单 ${row.statementNo}`
       })
       await tableQueryRef.value?.refreshUpdate()
     } catch {

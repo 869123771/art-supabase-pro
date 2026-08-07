@@ -116,7 +116,10 @@
           class="notice-button relative"
           @click="visibleNotice"
         >
-          <div class="absolute top-2 right-2 size-1.5 !bg-danger rounded-full"></div>
+          <div
+            v-if="notificationUnreadCount > 0"
+            class="absolute top-2 right-2 size-1.5 !bg-danger rounded-full"
+          ></div>
         </ArtIconButton>
 
         <!-- 聊天按钮 -->
@@ -164,7 +167,7 @@
     <ArtWorkTab />
 
     <!-- 通知 -->
-    <ArtNotification v-model:value="showNotice" ref="notice" />
+    <ArtNotification v-model:value="showNotice" @unread-change="handleUnreadChange" />
   </div>
 </template>
 
@@ -221,7 +224,7 @@
   const { menuList } = storeToRefs(menuStore)
 
   const showNotice = ref(false)
-  const notice = ref(null)
+  const notificationUnreadCount = ref(0)
 
   // 菜单类型判断
   const isLeftMenu = computed(() => menuType.value === MenuTypeEnum.LEFT)
@@ -335,6 +338,10 @@
    */
   const visibleNotice = (): void => {
     showNotice.value = !showNotice.value
+  }
+
+  const handleUnreadChange = (count: number): void => {
+    notificationUnreadCount.value = Math.max(0, count)
   }
 
   /**

@@ -318,7 +318,11 @@
       await confirmAction(`确定${label}发票 ${row.invoiceNo || row.invoiceRecordNo} 吗？`, label, {
         type: 'warning'
       })
-      await updateInvoiceStatus({ id: row.id, action: statusAction })
+      await updateInvoiceStatus({
+        id: row.id,
+        action: statusAction,
+        businessTitle: `发票 ${row.invoiceNo || row.invoiceRecordNo}`
+      })
       await tableQueryRef.value?.refreshUpdate()
     } catch {
       // 用户取消或业务校验未通过
@@ -335,7 +339,12 @@
         confirmButtonText: statusAction === 'reject' ? '确认驳回' : '确认作废',
         placeholder: `请填写${label}原因`
       })
-      await updateInvoiceStatus({ id: row.id, action: statusAction, remark: reason })
+      await updateInvoiceStatus({
+        id: row.id,
+        action: statusAction,
+        remark: reason,
+        businessTitle: `发票 ${row.invoiceNo || row.invoiceRecordNo}`
+      })
       await tableQueryRef.value?.refreshUpdate()
     } catch {
       // 用户取消或业务校验未通过

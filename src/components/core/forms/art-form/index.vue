@@ -227,6 +227,7 @@
   } from '@element-plus/icons-vue'
   import ArtIconPicker from '@/components/core/forms/art-icon-picker/index.vue'
   import ArtDataSelect from '@/components/core/forms/art-data-select/index.vue'
+  import ArtUserSelect from '@/components/core/forms/art-user-select/index.vue'
   import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
   import { calculateResponsiveSpan, type ResponsiveBreakpoint } from '@/utils/form/responsive'
   import {
@@ -256,7 +257,8 @@
     timeSelect: ElTimeSelect, // 时间选择
     treeSelect: ElTreeSelect, // 树选择器
     iconPicker: ArtIconPicker, // 图标选择器
-    dataSelect: ArtDataSelect // 数据选择器
+    dataSelect: ArtDataSelect, // 数据选择器
+    userSelect: ArtUserSelect // 用户选择器
   }
 
   const dividerType = 'divider'
@@ -632,7 +634,8 @@
     'checkboxGroup',
     'radioGroup',
     'cascader',
-    'treeSelect'
+    'treeSelect',
+    'userSelect'
   ]
 
   const isOptionComponent = (item: FormItem) => optionComponentTypes.includes(String(item.type))
@@ -779,7 +782,8 @@
         'date',
         'timePicker',
         'timeSelect',
-        'dataSelect'
+        'dataSelect',
+        'userSelect'
       ].includes(String(item.type))
     ) {
       return `请选择${label}`
@@ -808,6 +812,7 @@
         'select',
         'cascader',
         'treeSelect',
+        'userSelect',
         'date',
         'timePicker',
         'timeSelect',
@@ -817,7 +822,7 @@
       defaults.clearable = true
     }
 
-    if (['select', 'cascader', 'treeSelect'].includes(itemType)) {
+    if (['select', 'cascader', 'treeSelect', 'userSelect'].includes(itemType)) {
       defaults.filterable = true
     }
 
@@ -865,6 +870,9 @@
     }
     if (String(item.type) === 'treeSelect') {
       props.data = props.data ?? options
+    }
+    if (String(item.type) === 'userSelect') {
+      props.options = options
     }
     if (String(item.type) === 'dataSelect') {
       if (item.api && !props.apiFn) {

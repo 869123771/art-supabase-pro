@@ -28,7 +28,6 @@
   --art-motion-duration-slow: 320ms;
   --art-motion-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --art-motion-ease-in: cubic-bezier(0.4, 0, 1, 1);
-
   // 对齐 Element Plus 组件变量，避免按需样式和全局覆盖各用一套圆角。
   --el-border-radius-base: var(--art-control-radius) !important;
   --el-border-radius-small: var(--art-control-radius-small) !important;
@@ -129,6 +128,14 @@ html.dark .el-card {
   .el-segmented__item {
     line-height: calc(var(--el-component-custom-height) - 4px);
   }
+}
+
+// 标准顶部页签保持 Element Plus 原生外观，仅加强激活指示线。
+.el-tabs.el-tabs--top:not(.el-tabs--card):not(.el-tabs--border-card)
+  > .el-tabs__header
+  .el-tabs__active-bar {
+  height: 3px;
+  background-color: var(--theme-color);
 }
 // -------------------------------- 修改 el-size=default 组件默认高度 end --------------------------------
 

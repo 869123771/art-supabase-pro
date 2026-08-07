@@ -1,456 +1,568 @@
-<!-- 通知组件 -->
 <template>
-  <div
-    class="art-notification-panel art-card-sm !shadow-xl"
-    :style="{
-      transform: show ? 'scaleY(1)' : 'scaleY(0.9)',
-      opacity: show ? 1 : 0
-    }"
+  <aside
     v-show="visible"
+    class="art-notification-panel art-card-sm"
+    :class="{ 'is-show': show }"
+    aria-label="通知中心"
     @click.stop
   >
-    <div class="flex-cb px-3.5 mt-3.5">
-      <span class="text-base font-medium text-g-800">{{ $t('notice.title') }}</span>
-      <span class="text-xs text-g-800 px-1.5 py-1 c-p select-none rounded hover:bg-g-200">
-        {{ $t('notice.btnRead') }}
-      </span>
-    </div>
+    <header class="art-notification-panel__header">
+      <div>
+        <span>通知中心</span>
+        <small>审批动态与待办实时汇总</small>
+      </div>
+      <ElButton
+        link
+        type="primary"
+        :loading="state.marking"
+        :disabled="activeCategory !== 'todo' && activeUnreadCount === 0"
+        @click="handleHeaderAction"
+      >
+        {{ activeCategory === 'todo' ? '刷新待办' : '全部已读' }}
+      </ElButton>
+    </header>
 
-    <ul class="box-border flex items-end w-full h-12.5 px-3.5 border-b-d">
-      <li
-        v-for="(item, index) in barList"
-        :key="index"
-        class="h-12 leading-12 mr-5 overflow-hidden text-[13px] text-g-700 c-p select-none"
-        :class="{ 'bar-active': barActiveIndex === index }"
+    <div class="art-notification-panel__tabs" role="tablist" aria-label="通知分类">
+      <button
+        v-for="(item, index) in tabs"
+        :key="item.category"
+        type="button"
+        role="tab"
+        :aria-selected="barActiveIndex === index"
+        :class="{ 'is-active': barActiveIndex === index }"
         @click="changeBar(index)"
       >
-        {{ item.name }} ({{ item.num }})
-      </li>
-    </ul>
-
-    <div class="w-full h-[calc(100%-95px)]">
-      <div class="h-[calc(100%-60px)] overflow-y-scroll scrollbar-thin">
-        <!-- 通知 -->
-        <ul v-show="barActiveIndex === 0">
-          <li
-            v-for="(item, index) in noticeList"
-            :key="index"
-            class="box-border flex-c px-3.5 py-3.5 c-p last:border-b-0 hover:bg-g-200/60"
-          >
-            <div
-              class="size-9 leading-9 text-center rounded-lg flex-cc"
-              :class="[getNoticeStyle(item.type).iconClass]"
-            >
-              <ArtSvgIcon class="text-lg !bg-transparent" :icon="getNoticeStyle(item.type).icon" />
-            </div>
-            <div class="w-[calc(100%-45px)] ml-3.5">
-              <h4 class="text-sm font-normal leading-5.5 text-g-900">{{ item.title }}</h4>
-              <p class="mt-1.5 text-xs text-g-500">{{ item.time }}</p>
-            </div>
-          </li>
-        </ul>
-
-        <!-- 消息 -->
-        <ul v-show="barActiveIndex === 1">
-          <li
-            v-for="(item, index) in msgList"
-            :key="index"
-            class="box-border flex-c px-3.5 py-3.5 c-p last:border-b-0 hover:bg-g-200/60"
-          >
-            <div class="w-9 h-9">
-              <img :src="item.avatar" class="w-full h-full rounded-lg" />
-            </div>
-            <div class="w-[calc(100%-45px)] ml-3.5">
-              <h4 class="text-xs font-normal leading-5.5">{{ item.title }}</h4>
-              <p class="mt-1.5 text-xs text-g-500">{{ item.time }}</p>
-            </div>
-          </li>
-        </ul>
-
-        <!-- 待办 -->
-        <ul v-show="barActiveIndex === 2">
-          <li
-            v-for="(item, index) in pendingList"
-            :key="index"
-            class="box-border px-5 py-3.5 last:border-b-0"
-          >
-            <h4>{{ item.title }}</h4>
-            <p class="text-xs text-g-500">{{ item.time }}</p>
-          </li>
-        </ul>
-
-        <!-- 空状态 -->
-        <div
-          v-show="currentTabIsEmpty"
-          class="relative top-25 h-full text-g-500 text-center !bg-transparent"
-        >
-          <ArtSvgIcon icon="system-uicons:inbox" class="text-5xl" />
-          <p class="mt-3.5 text-xs !bg-transparent"
-            >{{ $t('notice.text[0]') }}{{ barList[barActiveIndex].name }}</p
-          >
-        </div>
-      </div>
-
-      <div class="relative box-border w-full px-3.5">
-        <ElButton class="w-full mt-3" @click="handleViewAll" v-ripple>
-          {{ $t('notice.viewAll') }}
-        </ElButton>
-      </div>
+        <span>{{ item.label }}</span>
+        <em v-if="item.count">{{ item.count > 99 ? '99+' : item.count }}</em>
+      </button>
     </div>
 
-    <div class="h-25"></div>
-  </div>
+    <div v-loading="state.loading" class="art-notification-panel__body">
+      <ElScrollbar class="art-notification-panel__scrollbar" always>
+        <div v-if="state.error" class="art-notification-panel__error">
+          <ArtSvgIcon icon="ri:wifi-off-line" />
+          <strong>通知加载失败</strong>
+          <p>{{ state.error }}</p>
+          <ElButton size="small" @click="loadNotificationCenter(true)">重新加载</ElButton>
+        </div>
+
+        <div v-else-if="currentList.length" class="art-notification-panel__list">
+          <button
+            v-for="item in currentList"
+            :key="item.id"
+            type="button"
+            class="art-notification-panel__item"
+            :class="[{ 'is-unread': !item.isRead }, `is-${item.severity}`]"
+            @click="handleItemClick(item)"
+          >
+            <span class="art-notification-panel__icon">
+              <ArtSvgIcon :icon="getNotificationIcon(item)" />
+            </span>
+            <span class="art-notification-panel__item-copy">
+              <strong>{{ item.title }}</strong>
+              <span v-if="item.content">{{ item.content }}</span>
+              <time>{{ formatNotificationTime(item.createdAt) }}</time>
+            </span>
+            <i v-if="!item.isRead" aria-label="未读"></i>
+          </button>
+        </div>
+
+        <ArtEmptyState
+          v-else
+          size="compact"
+          :visual-size="64"
+          :title="emptyState.title"
+          :description="emptyState.description"
+          class="art-notification-panel__empty"
+        />
+      </ElScrollbar>
+    </div>
+
+    <footer class="art-notification-panel__footer">
+      <ElButton @click="handleViewAll">
+        {{ activeCategory === 'todo' ? '进入审批工作台' : '查看全部动态' }}
+        <ArtSvgIcon icon="ri:arrow-right-line" />
+      </ElButton>
+    </footer>
+  </aside>
 </template>
 
 <script setup lang="ts">
-  import { computed, ref, watch, type Ref, type ComputedRef } from 'vue'
-  import { useI18n } from 'vue-i18n'
-
-  // 导入头像图片
-  import avatar1 from '@/assets/images/avatar/avatar1.webp'
-  import avatar2 from '@/assets/images/avatar/avatar2.webp'
-  import avatar3 from '@/assets/images/avatar/avatar3.webp'
-  import avatar4 from '@/assets/images/avatar/avatar4.webp'
-  import avatar5 from '@/assets/images/avatar/avatar5.webp'
-  import avatar6 from '@/assets/images/avatar/avatar6.webp'
+  import { useIntervalFn } from '@vueuse/core'
+  import { useRouter, type LocationQueryRaw } from 'vue-router'
+  import { formatWithDayjs } from '@/utils/time'
+  import { fetchHeaderNotificationCenter, markHeaderNotificationsRead } from '@/api/notification'
+  import ArtEmptyState from '@/components/core/layouts/art-empty-state/index.vue'
 
   defineOptions({ name: 'ArtNotification' })
 
-  interface NoticeItem {
-    /** 标题 */
-    title: string
-    /** 时间 */
-    time: string
-    /** 类型 */
-    type: NoticeType
+  type NotificationItem = Api.Notification.HeaderNotificationItem
+  type NotificationCategory = Api.Notification.NotificationCategory
+
+  interface NotificationTab {
+    category: NotificationCategory
+    label: string
+    count: number
   }
 
-  interface MessageItem {
-    /** 标题 */
-    title: string
-    /** 时间 */
-    time: string
-    /** 头像 */
-    avatar: string
+  interface NotificationPanelState {
+    loading: boolean
+    marking: boolean
+    error: string
+    data: Api.Notification.HeaderNotificationCenter
   }
 
-  interface PendingItem {
-    /** 标题 */
-    title: string
-    /** 时间 */
-    time: string
-  }
-
-  interface BarItem {
-    /** 名称 */
-    name: ComputedRef<string>
-    /** 数量 */
-    num: number
-  }
-
-  interface NoticeStyle {
-    /** 图标 */
-    icon: string
-    /** icon 样式 */
-    iconClass: string
-  }
-
-  type NoticeType = 'email' | 'message' | 'collection' | 'user' | 'notice'
-
-  const { t } = useI18n()
-
-  const props = defineProps<{
-    value: boolean
-  }>()
-
+  const props = defineProps<{ value: boolean }>()
   const emit = defineEmits<{
     'update:value': [value: boolean]
+    'unread-change': [count: number]
   }>()
 
+  const router = useRouter()
   const show = ref(false)
   const visible = ref(false)
   const barActiveIndex = ref(0)
+  let animationTimer: ReturnType<typeof setTimeout> | undefined
 
-  const useNotificationData = () => {
-    // 通知数据
-    const noticeList = ref<NoticeItem[]>([
-      {
-        title: '新增国际化',
-        time: '2024-6-13 0:10',
-        type: 'notice'
-      },
-      {
-        title: '冷月呆呆给你发了一条消息',
-        time: '2024-4-21 8:05',
-        type: 'message'
-      },
-      {
-        title: '小肥猪关注了你',
-        time: '2020-3-17 21:12',
-        type: 'collection'
-      },
-      {
-        title: '新增使用文档',
-        time: '2024-02-14 0:20',
-        type: 'notice'
-      },
-      {
-        title: '小肥猪给你发了一封邮件',
-        time: '2024-1-20 0:15',
-        type: 'email'
-      },
-      {
-        title: '菜单mock本地真实数据',
-        time: '2024-1-17 22:06',
-        type: 'notice'
-      }
-    ])
+  const createEmptyCenter = (): Api.Notification.HeaderNotificationCenter => ({
+    notices: [],
+    messages: [],
+    todos: [],
+    unreadNoticeCount: 0,
+    unreadMessageCount: 0,
+    pendingTodoCount: 0,
+    totalUnreadCount: 0
+  })
 
-    // 消息数据
-    const msgList = ref<MessageItem[]>([
-      {
-        title: '池不胖 关注了你',
-        time: '2021-2-26 23:50',
-        avatar: avatar1
-      },
-      {
-        title: '唐不苦 关注了你',
-        time: '2021-2-21 8:05',
-        avatar: avatar2
-      },
-      {
-        title: '中小鱼 关注了你',
-        time: '2020-1-17 21:12',
-        avatar: avatar3
-      },
-      {
-        title: '何小荷 关注了你',
-        time: '2021-01-14 0:20',
-        avatar: avatar4
-      },
-      {
-        title: '誶誶淰 关注了你',
-        time: '2020-12-20 0:15',
-        avatar: avatar5
-      },
-      {
-        title: '冷月呆呆 关注了你',
-        time: '2020-12-17 22:06',
-        avatar: avatar6
-      }
-    ])
+  const state = reactive<NotificationPanelState>({
+    loading: false,
+    marking: false,
+    error: '',
+    data: createEmptyCenter()
+  })
 
-    // 待办数据
-    const pendingList = ref<PendingItem[]>([])
+  const tabs = computed<NotificationTab[]>(() => [
+    {
+      category: 'notice',
+      label: '通知',
+      count: state.data.unreadNoticeCount
+    },
+    {
+      category: 'message',
+      label: '消息',
+      count: state.data.unreadMessageCount
+    },
+    {
+      category: 'todo',
+      label: '待办',
+      count: state.data.pendingTodoCount
+    }
+  ])
 
-    // 标签栏数据
-    const barList = computed<BarItem[]>(() => [
-      {
-        name: computed(() => t('notice.bar[0]')),
-        num: noticeList.value.length
-      },
-      {
-        name: computed(() => t('notice.bar[1]')),
-        num: msgList.value.length
-      },
-      {
-        name: computed(() => t('notice.bar[2]')),
-        num: pendingList.value.length
-      }
-    ])
+  const activeCategory = computed<NotificationCategory>(
+    () => tabs.value[barActiveIndex.value]?.category ?? 'notice'
+  )
+  const activeUnreadCount = computed(() => tabs.value[barActiveIndex.value]?.count ?? 0)
+  const currentList = computed<NotificationItem[]>(() => {
+    if (activeCategory.value === 'message') return state.data.messages
+    if (activeCategory.value === 'todo') return state.data.todos
+    return state.data.notices
+  })
+  const emptyState = computed(() => {
+    if (activeCategory.value === 'todo') {
+      return { title: '暂无待办', description: '新的审批任务会自动出现在这里。' }
+    }
+    if (activeCategory.value === 'message') {
+      return { title: '暂无消息', description: '审批节点处理后会在这里留下动态。' }
+    }
+    return { title: '暂无通知', description: '流程完成、驳回或取消后会通知你。' }
+  })
 
-    return {
-      noticeList,
-      msgList,
-      pendingList,
-      barList
+  function getNotificationIcon(item: NotificationItem): string {
+    if (item.category === 'todo') return 'ri:todo-line'
+    if (item.category === 'message') return 'ri:message-3-line'
+    if (item.severity === 'success') return 'ri:checkbox-circle-line'
+    if (item.severity === 'danger') return 'ri:error-warning-line'
+    if (item.severity === 'warning') return 'ri:alarm-warning-line'
+    return 'ri:notification-3-line'
+  }
+
+  function formatNotificationTime(value: string): string {
+    return formatWithDayjs(value, 'YYYY-MM-DD HH:mm') ?? '--'
+  }
+
+  function changeBar(index: number): void {
+    barActiveIndex.value = index
+  }
+
+  function normalizeRouteQuery(query: NotificationItem['routeQuery']): LocationQueryRaw {
+    return Object.fromEntries(
+      Object.entries(query ?? {})
+        .filter(([, value]) => value !== null && value !== undefined)
+        .map(([key, value]) => [key, String(value)])
+    )
+  }
+
+  async function loadNotificationCenter(showLoading = false): Promise<void> {
+    if (showLoading) state.loading = true
+    try {
+      const response = await fetchHeaderNotificationCenter()
+      Object.assign(state.data, response.data ?? createEmptyCenter())
+      state.error = ''
+      emit('unread-change', state.data.totalUnreadCount)
+    } catch (error) {
+      state.error = error instanceof Error ? error.message : '通知服务暂时不可用'
+    } finally {
+      state.loading = false
     }
   }
 
-  // 样式管理
-  const useNotificationStyles = () => {
-    const noticeStyleMap: Record<NoticeType, NoticeStyle> = {
-      email: {
-        icon: 'ri:mail-line',
-        iconClass: 'bg-warning/12 text-warning'
-      },
-      message: {
-        icon: 'ri:volume-down-line',
-        iconClass: 'bg-success/12 text-success'
-      },
-      collection: {
-        icon: 'ri:heart-3-line',
-        iconClass: 'bg-danger/12 text-danger'
-      },
-      user: {
-        icon: 'ri:volume-down-line',
-        iconClass: 'bg-info/12 text-info'
-      },
-      notice: {
-        icon: 'ri:notification-3-line',
-        iconClass: 'bg-theme/12 text-theme'
-      }
-    }
-
-    const getNoticeStyle = (type: NoticeType): NoticeStyle => {
-      const defaultStyle: NoticeStyle = {
-        icon: 'ri:arrow-right-circle-line',
-        iconClass: 'bg-theme/12 text-theme'
-      }
-
-      return noticeStyleMap[type] || defaultStyle
-    }
-
-    return {
-      getNoticeStyle
+  async function markCurrentCategoryRead(): Promise<void> {
+    if (activeCategory.value === 'todo' || activeUnreadCount.value === 0) return
+    state.marking = true
+    try {
+      await markHeaderNotificationsRead({ category: activeCategory.value })
+      await loadNotificationCenter()
+    } finally {
+      state.marking = false
     }
   }
 
-  // 动画管理
-  const useNotificationAnimation = () => {
-    const showNotice = (open: boolean) => {
-      if (open) {
-        visible.value = true
-        setTimeout(() => {
-          show.value = true
-        }, 5)
-      } else {
-        show.value = false
-        setTimeout(() => {
-          visible.value = false
-        }, 350)
-      }
+  async function handleHeaderAction(): Promise<void> {
+    if (activeCategory.value === 'todo') {
+      await loadNotificationCenter(true)
+      return
     }
-
-    return {
-      showNotice
-    }
+    await markCurrentCategoryRead()
   }
 
-  // 标签页管理
-  const useTabManagement = (
-    noticeList: Ref<NoticeItem[]>,
-    msgList: Ref<MessageItem[]>,
-    pendingList: Ref<PendingItem[]>,
-    businessHandlers: {
-      handleNoticeAll: () => void
-      handleMsgAll: () => void
-      handlePendingAll: () => void
+  async function handleItemClick(item: NotificationItem): Promise<void> {
+    if (!item.isRead && item.category !== 'todo') {
+      await markHeaderNotificationsRead({ notificationIds: [item.id] })
+      await loadNotificationCenter()
     }
-  ) => {
-    const changeBar = (index: number) => {
-      barActiveIndex.value = index
-    }
-
-    // 检查当前标签页是否为空
-    const currentTabIsEmpty = computed(() => {
-      const tabDataMap = [noticeList.value, msgList.value, pendingList.value]
-
-      const currentData = tabDataMap[barActiveIndex.value]
-      return currentData && currentData.length === 0
+    emit('update:value', false)
+    await router.push({
+      path: item.routePath || '/workflow/workbench',
+      query: normalizeRouteQuery(item.routeQuery)
     })
-
-    const handleViewAll = () => {
-      // 查看全部处理器映射
-      const viewAllHandlers: Record<number, () => void> = {
-        0: businessHandlers.handleNoticeAll,
-        1: businessHandlers.handleMsgAll,
-        2: businessHandlers.handlePendingAll
-      }
-
-      const handler = viewAllHandlers[barActiveIndex.value]
-      handler?.()
-
-      // 关闭通知面板
-      emit('update:value', false)
-    }
-
-    return {
-      changeBar,
-      currentTabIsEmpty,
-      handleViewAll
-    }
   }
 
-  // 业务逻辑处理
-  const useBusinessLogic = () => {
-    const handleNoticeAll = () => {
-      // 处理查看全部通知
-      console.log('查看全部通知')
-    }
-
-    const handleMsgAll = () => {
-      // 处理查看全部消息
-      console.log('查看全部消息')
-    }
-
-    const handlePendingAll = () => {
-      // 处理查看全部待办
-      console.log('查看全部待办')
-    }
-
-    return {
-      handleNoticeAll,
-      handleMsgAll,
-      handlePendingAll
-    }
+  async function handleViewAll(): Promise<void> {
+    emit('update:value', false)
+    await router.push({
+      path: '/workflow/workbench',
+      query: { tab: activeCategory.value === 'todo' ? 'pending' : 'initiated' }
+    })
   }
 
-  // 组合所有逻辑
-  const { noticeList, msgList, pendingList, barList } = useNotificationData()
-  const { getNoticeStyle } = useNotificationStyles()
-  const { showNotice } = useNotificationAnimation()
-  const { handleNoticeAll, handleMsgAll, handlePendingAll } = useBusinessLogic()
-  const { changeBar, currentTabIsEmpty, handleViewAll } = useTabManagement(
-    noticeList,
-    msgList,
-    pendingList,
-    { handleNoticeAll, handleMsgAll, handlePendingAll }
-  )
-
-  // 监听属性变化
-  watch(
-    () => props.value,
-    (newValue) => {
-      showNotice(newValue)
+  function showPanel(open: boolean): void {
+    if (animationTimer) clearTimeout(animationTimer)
+    if (open) {
+      visible.value = true
+      animationTimer = setTimeout(() => {
+        show.value = true
+      }, 5)
+      void loadNotificationCenter(true)
+      return
     }
-  )
+    show.value = false
+    animationTimer = setTimeout(() => {
+      visible.value = false
+    }, 250)
+  }
+
+  watch(() => props.value, showPanel)
+  useIntervalFn(() => void loadNotificationCenter(), 60_000)
+
+  onMounted(() => void loadNotificationCenter())
+  onUnmounted(() => {
+    if (animationTimer) clearTimeout(animationTimer)
+  })
 </script>
 
-<style scoped>
-  @reference '@styles/core/tailwind.css';
-
+<style scoped lang="scss">
   .art-notification-panel {
-    @apply absolute 
-    top-14.5 
-    right-5 
-    w-90 
-    h-125 
-    overflow-hidden 
-    transition-all 
-    duration-300
-    origin-top 
-    will-change-[top,left] 
-    max-[640px]:top-[65px]
-    max-[640px]:right-0
-    max-[640px]:w-full 
-    max-[640px]:h-[80vh];
-  }
+    position: absolute;
+    top: 58px;
+    right: 20px;
+    z-index: 2300;
+    display: flex;
+    flex-direction: column;
+    width: 380px;
+    height: min(540px, calc(100vh - 82px));
+    overflow: hidden;
+    visibility: hidden;
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+    transform-origin: top right;
+    box-shadow: 0 16px 40px rgb(15 23 42 / 16%) !important;
+    transition:
+      opacity 180ms ease,
+      transform 180ms ease,
+      visibility 180ms ease;
 
-  .bar-active {
-    color: var(--theme-color) !important;
-    border-bottom: 2px solid var(--theme-color);
-  }
+    &.is-show {
+      visibility: visible;
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
 
-  .scrollbar-thin::-webkit-scrollbar {
-    width: 5px !important;
-  }
+    &__header {
+      display: flex;
+      flex: none;
+      align-items: flex-start;
+      justify-content: space-between;
+      padding: 16px 16px 12px;
 
-  .dark .scrollbar-thin::-webkit-scrollbar-track {
-    background-color: var(--default-box-color);
-  }
+      > div {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+      }
 
-  .dark .scrollbar-thin::-webkit-scrollbar-thumb {
-    background-color: #222 !important;
+      span {
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--el-text-color-primary);
+      }
+
+      small {
+        font-size: 12px;
+        color: var(--el-text-color-secondary);
+      }
+    }
+
+    &__tabs {
+      position: relative;
+      display: flex;
+      flex: none;
+      gap: 22px;
+      height: 46px;
+      padding: 0 16px;
+      border-bottom: 1px solid var(--el-border-color-lighter);
+
+      button {
+        position: relative;
+        display: inline-flex;
+        gap: 6px;
+        align-items: center;
+        padding: 0;
+        font-size: 13px;
+        color: var(--el-text-color-regular);
+        cursor: pointer;
+        background: transparent;
+        border: 0;
+
+        &::after {
+          position: absolute;
+          right: 0;
+          bottom: -1px;
+          left: 0;
+          height: 3px;
+          content: '';
+          background: transparent;
+        }
+
+        &.is-active {
+          font-weight: 600;
+          color: var(--theme-color);
+
+          &::after {
+            background: var(--theme-color);
+          }
+        }
+
+        &:focus-visible {
+          outline: 2px solid color-mix(in srgb, var(--theme-color) 45%, transparent);
+          outline-offset: 3px;
+        }
+      }
+
+      em {
+        min-width: 18px;
+        height: 18px;
+        padding: 0 5px;
+        font-size: 11px;
+        font-style: normal;
+        line-height: 18px;
+        color: var(--el-color-danger);
+        text-align: center;
+        background: var(--el-color-danger-light-9);
+        border-radius: 999px;
+      }
+    }
+
+    &__body {
+      flex: 1;
+      min-height: 0;
+    }
+
+    &__scrollbar {
+      height: 100%;
+
+      :deep(.el-scrollbar__wrap) {
+        overflow-x: hidden;
+      }
+    }
+
+    &__list {
+      padding: 6px 0;
+    }
+
+    &__item {
+      position: relative;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      width: 100%;
+      padding: 13px 16px;
+      font: inherit;
+      text-align: left;
+      cursor: pointer;
+      background: transparent;
+      border: 0;
+      transition: background-color 160ms ease;
+
+      &:hover,
+      &:focus-visible {
+        background: var(--el-fill-color-light);
+      }
+
+      &:focus-visible {
+        outline: 2px solid color-mix(in srgb, var(--theme-color) 40%, transparent);
+        outline-offset: -2px;
+      }
+
+      &.is-unread {
+        background: color-mix(in srgb, var(--theme-color) 4%, transparent);
+      }
+
+      > i {
+        position: absolute;
+        top: 18px;
+        right: 14px;
+        width: 7px;
+        height: 7px;
+        background: var(--el-color-danger);
+        border-radius: 50%;
+      }
+
+      &.is-success .art-notification-panel__icon {
+        color: var(--el-color-success);
+        background: var(--el-color-success-light-9);
+      }
+
+      &.is-warning .art-notification-panel__icon {
+        color: var(--el-color-warning);
+        background: var(--el-color-warning-light-9);
+      }
+
+      &.is-danger .art-notification-panel__icon {
+        color: var(--el-color-danger);
+        background: var(--el-color-danger-light-9);
+      }
+    }
+
+    &__icon {
+      display: grid;
+      flex: none;
+      width: 38px;
+      height: 38px;
+      font-size: 18px;
+      color: var(--theme-color);
+      background: color-mix(in srgb, var(--theme-color) 10%, transparent);
+      border-radius: var(--art-control-radius);
+      place-items: center;
+    }
+
+    &__item-copy {
+      display: flex;
+      flex: 1;
+      flex-direction: column;
+      min-width: 0;
+      padding-right: 10px;
+
+      strong,
+      > span {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      strong {
+        font-size: 13px;
+        font-weight: 600;
+        line-height: 20px;
+        color: var(--el-text-color-primary);
+      }
+
+      > span {
+        margin-top: 3px;
+        font-size: 12px;
+        line-height: 18px;
+        color: var(--el-text-color-regular);
+      }
+
+      time {
+        margin-top: 5px;
+        font-size: 11px;
+        color: var(--el-text-color-placeholder);
+      }
+    }
+
+    &__empty,
+    &__error {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 300px;
+      padding: 24px;
+      text-align: center;
+    }
+
+    &__error {
+      color: var(--el-text-color-secondary);
+
+      > svg {
+        margin-bottom: 12px;
+        font-size: 34px;
+        color: var(--el-color-danger);
+      }
+
+      strong {
+        color: var(--el-text-color-primary);
+      }
+
+      p {
+        max-width: 280px;
+        margin: 6px 0 14px;
+        font-size: 12px;
+        line-height: 18px;
+      }
+    }
+
+    &__footer {
+      flex: none;
+      padding: 12px 16px 16px;
+      border-top: 1px solid var(--el-border-color-lighter);
+
+      .el-button {
+        width: 100%;
+
+        svg {
+          margin-left: 6px;
+        }
+      }
+    }
+
+    @media (width <= 640px) {
+      top: 65px;
+      right: 8px;
+      left: 8px;
+      width: auto;
+      height: min(72vh, 540px);
+    }
   }
 </style>

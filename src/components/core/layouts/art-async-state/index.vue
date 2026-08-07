@@ -31,7 +31,7 @@
       :title="emptyText"
       :description="emptyDescription"
       :visual-size="emptyImageSize"
-      :size="emptyImageSize <= 72 ? 'compact' : 'default'"
+      :size="emptyStateSize"
       class="art-async-state__empty"
     >
       <slot name="empty-action" />
@@ -61,6 +61,8 @@
     minHeight?: string | number
   }
 
+  type EmptyStateSize = 'compact' | 'default'
+
   const props = withDefaults(defineProps<Props>(), {
     loading: false,
     loadingMode: 'mask',
@@ -85,6 +87,10 @@
 
   const normalizedMinHeight = computed(() =>
     typeof props.minHeight === 'number' ? `${props.minHeight}px` : props.minHeight
+  )
+
+  const emptyStateSize = computed<EmptyStateSize>(() =>
+    props.emptyImageSize <= 72 ? 'compact' : 'default'
   )
 </script>
 

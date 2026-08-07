@@ -1,5 +1,6 @@
 import { useSupabase } from '@/hooks'
 import { applyDateRange, type SupabaseQueryLike } from '@/api/providers/supabase/query'
+import { actWorkflowByBusiness, startWorkflow } from '@/api/workflow'
 
 type Statement = Api.Tms.Finance.CarrierStatementRecord
 type StatementItem = Api.Tms.Finance.CarrierStatementItem
@@ -7,7 +8,7 @@ type SearchParams = Api.Tms.Finance.CarrierStatementSearchParams
 type EligibleCost = Api.Tms.Finance.CarrierStatementEligibleCost
 type EligibleSearchParams = Api.Tms.Finance.CarrierStatementEligibleCostSearchParams
 type CreatePayload = Api.Tms.Finance.CreateCarrierStatementPayload
-type StatusPayload = Api.Tms.Finance.CarrierStatementStatusPayload
+type StatusPayload = Api.Tms.Finance.CarrierStatementStatusPayload & { businessTitle?: string }
 
 const { supabase, responseHandle } = useSupabase()
 
@@ -113,6 +114,21 @@ export async function createCarrierStatement(params: CreatePayload) {
 }
 
 export async function updateCarrierStatementStatus(params: StatusPayload) {
+  if (params.status === 'pending_review') {
+    return await startWorkflow({
+      businessType: 'tms_carrier_statement',
+      businessId: params.id,
+      businessTitle: params.businessTitle || `承运商对账单 ${params.id}`
+    })
+  }
+  if (params.status === 'confirmed' || params.status === 'draft') {
+    return await actWorkflowByBusiness({
+      businessType: 'tms_carrier_statement',
+      businessId: params.id,
+      action: params.status === 'confirmed' ? 'approve' : 'reject',
+      comment: params.reviewRemark
+    })
+  }
   const payload: Record<string, string> = { status: params.status }
   if (params.reviewRemark) payload.review_remark = params.reviewRemark
   if (params.voidReason) payload.void_reason = params.voidReason

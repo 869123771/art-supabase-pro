@@ -1,13 +1,14 @@
 import { useSupabase } from '@/hooks'
 import type { QueryResult } from '@/types/api/response'
 import { applyDateRange, type SupabaseQueryLike } from '@/api/providers/supabase/query'
+import { actWorkflowByBusiness, startWorkflow } from '@/api/workflow'
 
 type Invoice = Api.Tms.Finance.InvoiceRecord
 type InvoiceSearchParams = Api.Tms.Finance.InvoiceSearchParams
 type InvoiceableStatement = Api.Tms.Finance.InvoiceableStatement
 type InvoiceableSearchParams = Api.Tms.Finance.InvoiceableStatementSearchParams
 type SaveInvoicePayload = Api.Tms.Finance.SaveInvoicePayload
-type InvoiceStatusPayload = Api.Tms.Finance.InvoiceStatusPayload
+type InvoiceStatusPayload = Api.Tms.Finance.InvoiceStatusPayload & { businessTitle?: string }
 type InvoiceStatementLink = Api.Tms.Finance.InvoiceStatementLinkRecord
 
 const { supabase, responseHandle } = useSupabase()
@@ -131,6 +132,21 @@ export async function saveInvoice(params: SaveInvoicePayload) {
 }
 
 export async function updateInvoiceStatus(params: InvoiceStatusPayload) {
+  if (params.action === 'submit') {
+    return await startWorkflow({
+      businessType: 'tms_invoice',
+      businessId: params.id,
+      businessTitle: params.businessTitle || `发票 ${params.id}`
+    })
+  }
+  if (params.action === 'approve' || params.action === 'reject') {
+    return await actWorkflowByBusiness({
+      businessType: 'tms_invoice',
+      businessId: params.id,
+      action: params.action,
+      comment: params.remark
+    })
+  }
   return await responseHandle<string>(
     () =>
       supabase.rpc('update_tms_invoice_status', {

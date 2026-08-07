@@ -23,10 +23,11 @@ interface DeleteUserSyncPayload {
 // 获取用户列表
 export async function fetchGetUserList(params: Api.SystemManage.UserSearchParams) {
   const { userName, userPhone, userGender, userEmail, status, from = 0, to = 9 } = params
-  // 想要：userName 使用 ilike 模糊匹配，其它字段精确匹配
+  // 用户名和邮箱使用不区分大小写的包含匹配，其它字段保持精确匹配。
   // opsMap 使用 snake_case keys（buildSpecsFromMap 会内部 convertKeysToSnake，所以可以用 camelCase）
   const opsMap = {
-    userName: 'ilike' // will be mapped to user_name internally
+    userName: 'ilike', // will be mapped to user_name internally
+    userEmail: 'ilike'
     // userPhone 默认 eq
   } as Record<string, Op>
 
@@ -36,7 +37,7 @@ export async function fetchGetUserList(params: Api.SystemManage.UserSearchParams
     {
       userName: userName ? `%${userName}%` : undefined, // 包裹 % 以用于 ilike
       userPhone,
-      userEmail,
+      userEmail: userEmail?.trim() ? `%${userEmail.trim()}%` : undefined,
       userGender,
       status
     },

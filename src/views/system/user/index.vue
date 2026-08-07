@@ -86,7 +86,7 @@
       label: '邮箱',
       key: 'userEmail',
       type: 'input',
-      props: { placeholder: '请输入邮箱' }
+      props: { placeholder: '支持输入完整或部分邮箱', clearable: true }
     },
     {
       label: '状态',

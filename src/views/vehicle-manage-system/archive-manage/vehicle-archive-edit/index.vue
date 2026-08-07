@@ -4,6 +4,7 @@
     :loading="page.loading"
     loading-mode="skeleton"
     :error="page.error"
+    full-height
     @retry="initializePage"
   >
     <ArtPageHeader
@@ -1141,11 +1142,22 @@
 <style scoped lang="scss">
   .vehicle-archive-edit {
     min-height: 100%;
-    padding: 16px;
+    padding: var(--art-space-4) var(--art-space-4) 0;
     background: var(--art-main-bg-color);
+
+    :deep(> .art-async-state) {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
 
     &__header {
       margin-bottom: 16px;
+    }
+
+    &__content {
+      flex: 1 0 auto;
+      min-width: 0;
     }
 
     &__tabs {
@@ -1153,7 +1165,9 @@
     }
 
     &__footer {
-      margin-top: 16px;
+      flex: none;
+      // Sticky 向上偏移时会压缩视觉间距，提前补偿以稳定保持 16px 卡片间隔。
+      margin-top: calc(var(--art-space-4) + var(--art-sticky-offset));
     }
 
     &__section {

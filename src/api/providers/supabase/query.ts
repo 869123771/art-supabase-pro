@@ -14,6 +14,7 @@ export interface SupabaseQueryLike extends PromiseLike<SupabaseQueryResponse> {
   eq(column: string, value: unknown): this
   gt(column: string, value: unknown): this
   gte(column: string, value: unknown): this
+  ilike(column: string, pattern: string): this
   in(column: string, values: readonly unknown[]): this
   limit(count: number): this
   lte(column: string, value: unknown): this

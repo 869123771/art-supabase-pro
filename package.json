@@ -16,6 +16,7 @@
     "lint": "eslint",
     "typecheck": "vue-tsc --noEmit --pretty false",
     "test:unit": "tsx --test tests/unit/*.test.ts",
+    "test:db": "supabase db query --linked --file supabase/tests/workflow_engine_test.sql",
     "test:e2e": "playwright test",
     "test:e2e:update": "playwright test --update-snapshots",
     "test:e2e:report": "playwright show-report",

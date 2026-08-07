@@ -1,0 +1,302 @@
+declare namespace Api {
+  namespace Workflow {
+    type DefinitionStatus = 'draft' | 'published' | 'disabled'
+    type VersionStatus = 'draft' | 'published' | 'retired'
+    type InstanceStatus = 'running' | 'approved' | 'rejected' | 'withdrawn' | 'cancelled'
+    type TaskStatus = 'pending' | 'approved' | 'rejected' | 'cancelled'
+    type ApprovalMode = 'any' | 'all' | 'percentage'
+    type AssigneeType = 'users' | 'roles' | 'initiator'
+    type ConditionOperator =
+      'always' | 'eq' | 'ne' | 'gt' | 'gte' | 'lt' | 'lte' | 'in' | 'contains' | 'not_empty'
+    type ActionType = 'submit' | 'approve' | 'reject' | 'withdraw' | 'cancel' | 'auto_skip'
+
+    interface WorkflowCondition {
+      field?: string
+      operator: ConditionOperator
+      value?: unknown
+    }
+
+    interface WorkflowAssignee {
+      type: AssigneeType
+      userIds?: string[]
+      roleCodes?: string[]
+    }
+
+    interface WorkflowNode {
+      key: string
+      name: string
+      order: number
+      approvalMode: ApprovalMode
+      approvalThresholdPercent: number
+      rejectVetoEnabled: boolean
+      allowSelfApproval: boolean
+      dueHours: number
+      reminderBeforeMinutes: number
+      escalationEnabled: boolean
+      escalateAfterHours: number
+      assignee: WorkflowAssignee
+      condition: WorkflowCondition
+    }
+
+    interface WorkflowConfig {
+      nodes: WorkflowNode[]
+    }
+
+    interface WorkflowVersionRecord {
+      id: string
+      definitionId: string
+      versionNo: number
+      status: VersionStatus
+      config: WorkflowConfig
+      changeNote?: string | null
+      publishedAt?: string | null
+      publishedBy?: string | null
+      createBy?: string | null
+      createTime: string
+      updateBy?: string | null
+      updateTime: string
+      tenantId: string
+    }
+
+    interface WorkflowDefinitionRecord {
+      id: string
+      code: string
+      name: string
+      businessType: string
+      description?: string | null
+      status: DefinitionStatus
+      currentVersionId?: string | null
+      publishedAt?: string | null
+      publishedBy?: string | null
+      createBy?: string | null
+      createTime: string
+      updateBy?: string | null
+      updateTime: string
+      tenantId: string
+      tenant?: WorkflowTenantOption
+      versions?: WorkflowVersionRecord[]
+    }
+
+    interface WorkflowDefinitionSearchParams {
+      keyword?: string
+      businessType?: string
+      status?: DefinitionStatus | ''
+      tenantId?: string
+      from?: number
+      to?: number
+    }
+
+    interface WorkflowDefinitionSavePayload {
+      id?: string
+      code: string
+      name: string
+      businessType: string
+      description?: string | null
+      changeNote?: string | null
+      tenantId?: string
+      config: WorkflowConfig
+    }
+
+    interface WorkflowInstanceRecord {
+      id: string
+      definitionId: string
+      versionId: string
+      businessType: string
+      businessId: string
+      businessTitle: string
+      initiatorUserId: string
+      initiatorNameSnapshot: string
+      status: InstanceStatus
+      currentNodeKey?: string | null
+      currentNodeName?: string | null
+      contextSnapshot: Record<string, unknown>
+      rowVersion: number
+      startedAt: string
+      finishedAt?: string | null
+      finishComment?: string | null
+      createTime: string
+      definition?: Pick<WorkflowDefinitionRecord, 'id' | 'code' | 'name' | 'businessType'>
+      version?: Pick<WorkflowVersionRecord, 'id' | 'versionNo'>
+      tasks?: WorkflowTaskRecord[]
+      actions?: WorkflowActionRecord[]
+    }
+
+    interface WorkflowTaskRecord {
+      id: string
+      instanceId: string
+      nodeKey: string
+      nodeName: string
+      nodeOrder: number
+      approvalMode: ApprovalMode
+      approvalThresholdPercent: number
+      rejectVetoEnabled: boolean
+      assigneeUserId: string
+      assigneeNameSnapshot: string
+      status: TaskStatus
+      handledAt?: string | null
+      comment?: string | null
+      dueAt?: string | null
+      createTime: string
+      instance?: WorkflowInstanceRecord
+      tenant?: WorkflowTenantOption
+    }
+
+    interface WorkflowActionRecord {
+      id: string
+      instanceId: string
+      taskId?: string | null
+      nodeKey?: string | null
+      nodeName?: string | null
+      action: ActionType
+      actorUserId?: string | null
+      actorNameSnapshot: string
+      comment?: string | null
+      metadata: Record<string, unknown>
+      createTime: string
+      actor?: WorkflowActorProfile | null
+    }
+
+    interface WorkflowActorProfile {
+      id: string
+      userName?: string | null
+      nickName?: string | null
+      userEmail: string
+      avatar?: string | null
+    }
+
+    interface WorkflowTaskSearchParams {
+      keyword?: string
+      businessType?: string
+      status?: TaskStatus | ''
+      assigneeUserId: string
+      from?: number
+      to?: number
+    }
+
+    interface PlatformGlobalWorkflowTaskSearchParams {
+      keyword?: string
+      businessType?: string
+      tenantId?: string
+      from?: number
+      to?: number
+    }
+
+    interface WorkflowTaskPage {
+      records: WorkflowTaskRecord[]
+      total: number
+    }
+
+    interface WorkflowInstanceSearchParams {
+      keyword?: string
+      businessType?: string
+      status?: InstanceStatus | ''
+      initiatorUserId: string
+      from?: number
+      to?: number
+    }
+
+    interface WorkflowWorkbenchSummary {
+      pendingCount: number
+      handledCount: number
+      initiatedRunningCount: number
+      initiatedCompletedCount: number
+    }
+
+    type WorkflowSlaStatus = 'normal' | 'overdue'
+
+    interface WorkflowMonitorRecord extends WorkflowInstanceRecord {
+      definitionName: string
+      definitionCode: string
+      versionNo: number
+      pendingTaskCount: number
+      nearestDueAt?: string | null
+      isOverdue: boolean
+      durationHours: number
+    }
+
+    interface WorkflowMonitorSearchParams {
+      keyword?: string
+      businessType?: string
+      status?: InstanceStatus | ''
+      slaStatus?: WorkflowSlaStatus | ''
+      from?: number
+      to?: number
+    }
+
+    interface WorkflowMonitorPage {
+      records: WorkflowMonitorRecord[]
+      total: number
+    }
+
+    interface WorkflowMonitorSummary {
+      runningCount: number
+      overdueCount: number
+      approved30dCount: number
+      rejected30dCount: number
+      cancelled30dCount: number
+      averageDurationHours: number
+    }
+
+    type WorkflowCallbackStatus =
+      'pending' | 'processing' | 'retry_wait' | 'succeeded' | 'dead_letter'
+
+    interface WorkflowCallbackSummary {
+      pending: number
+      processing: number
+      retryWait: number
+      succeeded: number
+      deadLetter: number
+    }
+
+    interface WorkflowCallbackRecord {
+      id: string
+      eventNo: number
+      tenantId: string
+      tenantName?: string | null
+      instanceId: string
+      businessTitle: string
+      businessType: string
+      businessId: string
+      targetStatus: InstanceStatus
+      status: WorkflowCallbackStatus
+      attemptCount: number
+      maxAttempts: number
+      totalAttempts: number
+      manualRetryCount: number
+      nextAttemptAt: string
+      processedAt?: string | null
+      lastErrorCode?: string | null
+      lastError?: string | null
+      createTime: string
+    }
+
+    interface WorkflowCallbackOutbox {
+      summary: WorkflowCallbackSummary
+      items: WorkflowCallbackRecord[]
+    }
+
+    interface WorkflowUserOption {
+      id: string
+      userName?: string | null
+      nickName?: string | null
+      userEmail: string
+      avatar?: string | null
+    }
+
+    interface WorkflowRoleOption {
+      id: string
+      roleCode: string
+      roleName: string
+    }
+
+    interface WorkflowTenantOption {
+      id: string
+      tenantCode: string
+      tenantName: string
+    }
+
+    interface WorkflowOptionSearchParams {
+      tenantId?: string
+    }
+  }
+}

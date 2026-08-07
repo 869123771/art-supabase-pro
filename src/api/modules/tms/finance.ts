@@ -1,6 +1,7 @@
 import { useSupabase } from '@/hooks'
 import type { QueryResult } from '@/types/api/response'
 import { applyDateRange, type SupabaseQueryLike } from '@/api/providers/supabase/query'
+import { actWorkflowByBusiness, startWorkflow } from '@/api/workflow'
 
 type WaybillCost = Api.Tms.Finance.WaybillCostRecord
 type WaybillCostSearchParams = Api.Tms.Finance.WaybillCostSearchParams
@@ -188,31 +189,20 @@ export async function deleteWaybillCost(id: string) {
 }
 
 export async function submitWaybillCost(id: string) {
-  return await responseHandle(
-    () =>
-      supabase
-        .from('tms_waybill_cost')
-        .update({ audit_status: 'pending_review' }, { count: 'exact' })
-        .eq('id', id),
-    { showMessage: true, breakReturn: true, requireAffected: true }
-  )
+  return await startWorkflow({
+    businessType: 'tms_waybill_cost',
+    businessId: id,
+    businessTitle: `运单费用审批 · ${id.slice(0, 8)}`
+  })
 }
 
 export async function reviewWaybillCost(params: CostReviewPayload) {
-  return await responseHandle(
-    () =>
-      supabase
-        .from('tms_waybill_cost')
-        .update(
-          keysToSnakeDeep({
-            auditStatus: params.auditStatus,
-            reviewRemark: params.reviewRemark || null
-          }),
-          { count: 'exact' }
-        )
-        .eq('id', params.id),
-    { showMessage: true, breakReturn: true, requireAffected: true }
-  )
+  return await actWorkflowByBusiness({
+    businessType: 'tms_waybill_cost',
+    businessId: params.id,
+    action: params.auditStatus === 'approved' ? 'approve' : 'reject',
+    comment: params.reviewRemark || null
+  })
 }
 
 export async function voidWaybillCost(id: string, reviewRemark?: string | null) {
