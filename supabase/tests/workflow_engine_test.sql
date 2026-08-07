@@ -3,7 +3,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions, pg_catalog;
 
-select plan(65);
+select plan(83);
 
 -- Structural and authorization contract.
 select has_table('public', 'wf_definition', 'workflow definition table exists');
@@ -12,6 +12,24 @@ select has_table('public', 'wf_instance', 'workflow instance table exists');
 select has_table('public', 'wf_task', 'workflow task table exists');
 select has_table('public', 'wf_action', 'workflow action table exists');
 select has_table('public', 'wf_task_reminder_event', 'workflow reminder ledger exists');
+select has_table('public', 'wf_delegation', 'workflow delegation table exists');
+
+select ok(
+  (select relrowsecurity from pg_class where oid='public.wf_delegation'::regclass),
+  'workflow delegations enforce RLS'
+);
+select has_column(
+  'public', 'wf_task', 'original_assignee_user_id',
+  'workflow tasks preserve the original approval seat'
+);
+select has_column(
+  'public', 'wf_task', 'assignment_source',
+  'workflow tasks record how the effective assignee was selected'
+);
+select has_column(
+  'public', 'wf_task', 'delegation_id',
+  'workflow tasks link back to their delegation'
+);
 
 select ok(
   not exists (
@@ -47,6 +65,24 @@ select ok(
   'anonymous users cannot cancel workflow instances'
 );
 select ok(
+  not has_function_privilege(
+    'anon', 'public.create_workflow_delegation(uuid,timestamptz,timestamptz,text)', 'execute'
+  ),
+  'anonymous users cannot create workflow delegations'
+);
+select ok(
+  not has_function_privilege(
+    'anon', 'public.revoke_workflow_delegation(uuid,text)', 'execute'
+  ),
+  'anonymous users cannot revoke workflow delegations'
+);
+select ok(
+  not has_function_privilege(
+    'anon', 'public.transfer_workflow_task(uuid,uuid,text,text)', 'execute'
+  ),
+  'anonymous users cannot transfer workflow tasks'
+);
+select ok(
   has_function_privilege(
     'authenticated', 'public.start_workflow(text,uuid,text,jsonb,text)', 'execute'
   ),
@@ -57,6 +93,26 @@ select ok(
     'authenticated', 'public.act_workflow_task(uuid,text,text,text)', 'execute'
   ),
   'authenticated users can call the task action boundary'
+);
+select ok(
+  has_function_privilege(
+    'authenticated',
+    'public.create_workflow_delegation(uuid,timestamptz,timestamptz,text)',
+    'execute'
+  ),
+  'authenticated users can create their own workflow delegations'
+);
+select ok(
+  has_function_privilege(
+    'authenticated', 'public.transfer_workflow_task(uuid,uuid,text,text)', 'execute'
+  ),
+  'authenticated users can call the audited task transfer boundary'
+);
+select ok(
+  has_function_privilege(
+    'authenticated', 'public.get_workflow_operational_analytics(integer)', 'execute'
+  ),
+  'authenticated users can read tenant-safe workflow analytics'
 );
 select ok(
   not has_function_privilege(
@@ -108,7 +164,7 @@ select throws_ok(
     )
   $$,
   'P0001',
-  '鑺傜偣 Review 鐨勫鎵规椂闄愬繀椤诲湪 1 鍒?720 灏忔椂涔嬮棿',
+  '节点 Review 的审批时限必须在 1 到 720 小时之间',
   'invalid zero-hour task SLA is rejected'
 );
 select throws_ok(
@@ -118,8 +174,46 @@ select throws_ok(
     )
   $$,
   'P0001',
-  '鑺傜偣 Review 鐨勫埌鏈熷墠鎻愰啋涓嶈兘瓒呰繃瀹℃壒鏃堕檺',
+  '节点 Review 的到期前提醒不能超过审批时限',
   'reminder lead time cannot exceed the task SLA'
+);
+
+select lives_ok(
+  format(
+    'select app_private.validate_workflow_business_config(%L,%L::jsonb)',
+    contract.business_type,
+    jsonb_build_object(
+      'nodes', jsonb_build_array(jsonb_build_object(
+        'key','review','name','Review','order',1,
+        'approvalMode','any','approvalThresholdPercent',1,'rejectVetoEnabled',true,
+        'allowSelfApproval',false,'dueHours',24,'reminderBeforeMinutes',60,
+        'escalationEnabled',true,'escalateAfterHours',4,
+        'assignee',jsonb_build_object('type','initiator'),
+        'condition',jsonb_build_object('field',contract.field_name,'operator','not_empty')
+      ))
+    )::text
+  ),
+  contract.business_type || ' accepts its server-owned condition field'
+)
+from (values
+  ('tms_waybill_cost','amount'),
+  ('tms_invoice','totalAmount'),
+  ('tms_carrier_statement','statementAmount'),
+  ('tms_customer_statement','statementAmount'),
+  ('tms_contract','contractAmount'),
+  ('vehicle_archive','plateNo')
+) contract(business_type,field_name);
+
+select throws_ok(
+  $$
+    select app_private.validate_workflow_business_config(
+      'tms_contract',
+      '{"nodes":[{"key":"review","name":"Review","order":1,"approvalMode":"any","approvalThresholdPercent":1,"rejectVetoEnabled":true,"allowSelfApproval":false,"dueHours":24,"reminderBeforeMinutes":60,"escalationEnabled":true,"escalateAfterHours":4,"assignee":{"type":"initiator"},"condition":{"field":"clientInjectedField","operator":"not_empty"}}]}'::jsonb
+    )
+  $$,
+  'P0001',
+  '节点“Review”使用了业务类型 tms_contract 不支持的条件字段 clientInjectedField',
+  'business workflow conditions reject fields that are not server owned'
 );
 
 -- Isolated tenant, auth, user, definition, and version fixtures.
@@ -328,7 +422,7 @@ select throws_ok(
     'reject','', 'act-reject-empty'
   )$$,
   'P0001',
-  '椹冲洖鏃跺繀椤诲～鍐欏師鍥?,
+  '驳回时必须填写原因',
   'rejecting without a reason is blocked'
 );
 select lives_ok(
@@ -384,15 +478,13 @@ select throws_ok(
     (select id from public.wf_task where tenant_id='a1000000-0000-4000-8000-000000000001' limit 1),
     'approve','cross tenant attack','cross-tenant-act'
   )$$,
-  'P0001',
-  '寰呭姙涓嶅瓨鍦ㄦ垨褰撳墠鐢ㄦ埛涓嶆槸瀹℃壒浜?,
+  '42501',
+  '待办不存在或当前用户不是审批人',
   'cross-tenant users cannot act on another tenant task'
 );
-select throws_ok(
+select lives_ok(
   $$select public.get_workflow_monitor_summary()$$,
-  '42501',
-  '褰撳墠璐﹀彿娌℃湁瀹℃壒鐩戞帶鏉冮檺',
-  'ordinary users cannot access approval operations monitoring'
+  'ordinary users can access tenant-scoped read-only approval monitoring'
 );
 
 -- Control-plane writes and workflow-state overrides require platform-super authorization.
@@ -403,7 +495,7 @@ select throws_ok(
     '{"code":"tenant_admin_must_not_write","name":"Blocked admin definition","businessType":"blocked_admin_business","config":{"nodes":[{"key":"review","name":"Review","order":1,"approvalMode":"any","allowSelfApproval":false,"dueHours":24,"assignee":{"type":"initiator"},"condition":{"operator":"always"}}]}}'::jsonb
   )$$,
   '42501',
-  '褰撳墠璐﹀彿娌℃湁娴佺▼閰嶇疆鏉冮檺',
+  '当前账号没有流程配置权限',
   'tenant administrators cannot create workflow definitions'
 );
 
@@ -420,7 +512,7 @@ select throws_ok(
     'tenant admin must not cancel', 'admin-cancel-blocked'
   )$$,
   '42501',
-  '褰撳墠璐﹀彿娌℃湁缁堟瀹℃壒娴佺▼鐨勬潈闄?,
+  '仅平台超级管理员可以终止审批流程',
   'tenant administrators cannot force-cancel workflow instances'
 );
 
@@ -513,13 +605,13 @@ select is(
 select throws_ok(
   $$update public.wf_action set comment='tampered' where idempotency_key='super-cancel-1'$$,
   'P0001',
-  '瀹℃壒鍔ㄤ綔璁板綍涓嶅彲淇敼鎴栧垹闄?,
+  '审批动作记录不可修改或删除',
   'workflow audit actions are immutable'
 );
 select throws_ok(
   $$update public.wf_version set config='{"nodes":[]}'::jsonb where id='a5000000-0000-4000-8000-000000000001'$$,
   'P0001',
-  '宸插彂甯冩垨宸插綊妗ｇ殑娴佺▼鐗堟湰涓嶅彲淇敼',
+  '已发布或已归档的流程版本不可修改',
   'published workflow versions are immutable'
 );
 
@@ -556,11 +648,9 @@ select is(
   0::bigint,
   'ordinary users cannot read callback operations data'
 );
-select throws_ok(
+select lives_ok(
   $$select public.get_workflow_callback_outbox(null, 20)$$,
-  '42501',
-  '褰撳墠璐﹀彿娌℃湁瀹℃壒鍥炶皟鐩戞帶鏉冮檺',
-  'ordinary users cannot access callback operations RPCs'
+  'ordinary users can access tenant-scoped read-only callback monitoring'
 );
 
 reset role;
@@ -654,7 +744,7 @@ select throws_ok(
         and target_status='approved'
     )$$,
   'P0001',
-  '瀹℃壒涓氬姟鍥炶皟鎶曢€掕褰曚笉鍙慨鏀规垨鍒犻櫎',
+  '审批业务回调投递记录不可修改或删除',
   'callback delivery audit is immutable'
 );
 

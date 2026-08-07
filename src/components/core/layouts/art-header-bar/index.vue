@@ -30,6 +30,7 @@
         <ArtIconButton
           v-if="isLeftMenu && shouldShowMenuButton"
           icon="ri:menu-2-fill"
+          label="展开或收起侧边菜单"
           class="ml-3 max-sm:ml-[7px]"
           @click="visibleMenu"
         />
@@ -38,6 +39,7 @@
         <ArtIconButton
           v-if="shouldShowRefreshButton"
           icon="ri:refresh-line"
+          label="刷新当前页面"
           class="!ml-3 refresh-btn max-sm:!hidden"
           :style="{ marginLeft: !isLeftMenu ? '10px' : '0' }"
           @click="() => reload()"
@@ -45,7 +47,7 @@
 
         <!-- 快速入口 -->
         <ArtFastEnter v-if="shouldShowFastEnter && width >= headerBarFastEnterMinWidth">
-          <ArtIconButton icon="ri:function-line" class="ml-3" />
+          <ArtIconButton icon="ri:function-line" label="打开快捷入口" class="ml-3" />
         </ArtFastEnter>
 
         <!-- 面包屑 -->
@@ -62,8 +64,10 @@
 
       <div class="flex-c gap-2.5">
         <!-- 搜索 -->
-        <div
+        <button
           v-if="shouldShowGlobalSearch"
+          type="button"
+          aria-label="打开全局搜索"
           class="flex-cb w-40 h-9 px-2.5 c-p border border-g-400 rounded-custom-sm max-md:!hidden"
           @click="openSearchDialog"
         >
@@ -76,12 +80,13 @@
             <ArtSvgIcon v-else icon="ri:command-fill" class="text-xs" />
             <span class="ml-0.5 text-xs">k</span>
           </div>
-        </div>
+        </button>
 
         <!-- 全屏按钮 -->
         <ArtIconButton
           v-if="shouldShowFullscreen"
           :icon="isFullscreen ? 'dashicons:fullscreen-exit-alt' : 'dashicons:fullscreen-alt'"
+          :label="isFullscreen ? '退出全屏' : '进入全屏'"
           :class="[!isFullscreen ? 'full-screen-btn' : 'exit-full-screen-btn', 'ml-3']"
           class="max-md:!hidden"
           @click="toggleFullScreen"
@@ -93,7 +98,7 @@
           popper-class="langDropDownStyle"
           v-if="shouldShowLanguage"
         >
-          <ArtIconButton icon="ri:translate-2" class="language-btn text-[19px]" />
+          <ArtIconButton icon="ri:translate-2" label="切换语言" class="language-btn text-[19px]" />
           <template #dropdown>
             <ElDropdownMenu>
               <div v-for="item in languageOptions" :key="item.value" class="lang-btn-item">
@@ -113,6 +118,7 @@
         <ArtIconButton
           v-if="shouldShowNotification"
           icon="ri:notification-2-line"
+          label="打开通知中心"
           class="notice-button relative"
           @click="visibleNotice"
         >
@@ -126,6 +132,7 @@
         <ArtIconButton
           v-if="shouldShowChat"
           icon="ri:message-3-line"
+          label="打开智能助手"
           class="chat-button relative"
           @click="openChat"
         >
@@ -137,16 +144,28 @@
           <ElPopover :visible="showSettingGuide" placement="bottom-start" :width="190" :offset="0">
             <template #reference>
               <div class="flex-cc">
-                <ArtIconButton icon="ri:settings-line" class="setting-btn" @click="openSetting" />
+                <ArtIconButton
+                  icon="ri:settings-line"
+                  label="打开界面设置"
+                  class="setting-btn"
+                  @click="openSetting"
+                />
               </div>
             </template>
             <template #default>
-              <p
-                >{{ $t('topBar.guide.title')
-                }}<span :style="{ color: systemThemeColor }"> {{ $t('topBar.guide.theme') }} </span
-                >、 <span :style="{ color: systemThemeColor }"> {{ $t('topBar.guide.menu') }} </span
-                >{{ $t('topBar.guide.description') }}
-              </p>
+              <div class="setting-guide">
+                <p
+                  >{{ $t('topBar.guide.title')
+                  }}<span :style="{ color: systemThemeColor }">
+                    {{ $t('topBar.guide.theme') }} </span
+                  >、<span :style="{ color: systemThemeColor }">
+                    {{ $t('topBar.guide.menu') }} </span
+                  >{{ $t('topBar.guide.description') }}
+                </p>
+                <ElButton size="small" type="primary" link @click="settingStore.hideSettingGuide()">
+                  知道了
+                </ElButton>
+              </div>
             </template>
           </ElPopover>
         </div>
@@ -156,6 +175,7 @@
           v-if="shouldShowThemeToggle"
           @click="themeAnimation"
           :icon="isDark ? 'ri:sun-fill' : 'ri:moon-line'"
+          :label="isDark ? '切换浅色模式' : '切换深色模式'"
         />
 
         <!-- 用户头像、菜单 -->
@@ -225,6 +245,7 @@
 
   const showNotice = ref(false)
   const notificationUnreadCount = ref(0)
+  let settingGuideTimer: ReturnType<typeof setTimeout> | undefined
 
   // 菜单类型判断
   const isLeftMenu = computed(() => menuType.value === MenuTypeEnum.LEFT)
@@ -237,10 +258,15 @@
   onMounted(() => {
     initLanguage()
     document.addEventListener('click', bodyCloseNotice)
+
+    if (showSettingGuide.value) {
+      settingGuideTimer = setTimeout(() => settingStore.hideSettingGuide(), 8000)
+    }
   })
 
   onUnmounted(() => {
     document.removeEventListener('click', bodyCloseNotice)
+    if (settingGuideTimer) clearTimeout(settingGuideTimer)
   })
 
   /**
@@ -353,6 +379,24 @@
 </script>
 
 <style lang="scss" scoped>
+  .setting-guide {
+    display: grid;
+    gap: 6px;
+
+    p {
+      margin: 0;
+      font-size: 13px;
+      line-height: 1.65;
+      color: var(--art-gray-700);
+    }
+
+    .el-button {
+      justify-self: end;
+      min-height: 28px;
+      padding-inline: 6px;
+    }
+  }
+
   /* Custom animations */
   @keyframes rotate180 {
     0% {

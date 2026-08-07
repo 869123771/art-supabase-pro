@@ -6,6 +6,8 @@
     class="art-icon-button size-8.5 inline-flex flex-cc c-p border-0 bg-transparent text-g-600 dark:text-g-800 text-xl rounded tad-300 hover:bg-hover-color"
     :class="[`art-icon-button--${tone}`, { 'rounded-full': circle }]"
     :disabled="disabled"
+    :aria-label="accessibleLabel"
+    :title="accessibleLabel"
     @click="handleClick"
   >
     <ArtSvgIcon :icon="icon"></ArtSvgIcon>
@@ -25,6 +27,8 @@
     disabled?: boolean
     tone?: 'theme' | 'danger'
     permission?: string
+    /** 按钮动作名称，用于无障碍文本和悬停提示 */
+    label?: string
   }
 
   const props = withDefaults(defineProps<Props>(), {
@@ -34,6 +38,23 @@
   const emit = defineEmits<{
     (e: 'click', event: MouseEvent): void
   }>()
+
+  const defaultIconLabels: Record<string, string> = {
+    'ri:menu-2-fill': '展开或收起菜单',
+    'ri:refresh-line': '刷新当前页面',
+    'ri:function-line': '打开快捷入口',
+    'dashicons:fullscreen-alt': '进入全屏',
+    'dashicons:fullscreen-exit-alt': '退出全屏',
+    'ri:translate-2': '切换语言',
+    'ri:notification-2-line': '打开通知中心',
+    'ri:message-3-line': '打开智能助手',
+    'ri:settings-line': '打开界面设置',
+    'ri:moon-line': '切换深色模式',
+    'ri:sun-fill': '切换浅色模式',
+    'ri:more-2-fill': '更多操作'
+  }
+
+  const accessibleLabel = computed(() => props.label || defaultIconLabels[props.icon] || '图标操作')
 
   const handleClick = (event: MouseEvent): void => {
     if (props.disabled) return

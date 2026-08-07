@@ -63,7 +63,8 @@ export {
   exportContractList,
   fetchContractDetail,
   fetchContractList,
-  importContracts
+  importContracts,
+  submitContractForApproval
 } from '@/api/modules/tms/contract'
 export {
   addStation,

@@ -266,11 +266,13 @@ export async function fetchVehicleArchiveDetail(id: string) {
 }
 
 export async function addVehicleArchive(params: VehicleArchiveWritePayload) {
-  return await responseHandle(
+  return await responseHandle<Pick<VehicleArchive, 'id'>>(
     () =>
       supabase
         .from(VEHICLE_ARCHIVE_TABLE)
-        .insert(keysToSnakeDeep(params)) as unknown as SupabaseProviderQueryLike,
+        .insert(keysToSnakeDeep(params))
+        .select('id')
+        .single() as unknown as SupabaseProviderQueryLike,
     {
       showMessage: true,
       breakReturn: true

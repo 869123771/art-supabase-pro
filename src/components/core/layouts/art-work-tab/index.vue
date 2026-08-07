@@ -5,9 +5,22 @@
     class="art-work-tab box-border flex-b w-full px-5 mb-3 select-none max-sm:px-[15px]"
     :class="[tabStyle === 'tab-card' ? 'py-1' : '', tabStyle === 'tab-google' ? 'pt-1 pb-0' : '']"
   >
-    <div class="w-full overflow-hidden" ref="scrollRef">
+    <button
+      v-show="hasOverflow"
+      type="button"
+      class="art-work-tab__scroll-button art-card-xs"
+      :disabled="!canScrollLeft"
+      aria-label="向左滚动已打开页面"
+      @click="scrollTabs('left')"
+    >
+      <ArtSvgIcon icon="ri:arrow-left-s-line" />
+    </button>
+
+    <div class="min-w-0 flex-1 overflow-hidden" ref="scrollRef">
       <ul
         class="float-left whitespace-nowrap !bg-transparent flex"
+        role="tablist"
+        aria-label="已打开页面"
         :class="[tabStyle === 'tab-google' ? 'pl-1' : '']"
         ref="tabsRef"
         :style="{
@@ -32,7 +45,12 @@
           :key="item.path"
           :ref="item.path"
           :id="`scroll-li-${index}`"
+          role="tab"
+          :aria-selected="item.path === activeTab"
+          :tabindex="item.path === activeTab ? 0 : -1"
           @click="clickTab(item)"
+          @keydown.enter.prevent="clickTab(item)"
+          @keydown.space.prevent="clickTab(item)"
           @contextmenu.prevent="(e: MouseEvent) => showMenu(e, item.path)"
         >
           <ArtSvgIcon
@@ -42,13 +60,16 @@
             :class="item.path === activeTab ? 'text-theme' : 'text-g-600'"
           />
           {{ item.customTitle || formatMenuTitle(item.title) }}
-          <span
+          <button
             v-if="list.length > 1 && !item.fixedTab"
+            type="button"
             class="inline-flex flex-cc relative ml-0.5 p-1 rounded-full tad-200 hover:bg-g-200"
+            :aria-label="`关闭${item.customTitle || formatMenuTitle(item.title)}`"
+            :title="`关闭${item.customTitle || formatMenuTitle(item.title)}`"
             @click.stop="closeWorktab('current', item.path)"
           >
             <ArtSvgIcon icon="ri:close-large-fill" class="text-[10px] text-g-600" />
-          </span>
+          </button>
           <div
             v-if="tabStyle === 'tab-google'"
             class="line absolute top-0 bottom-0 left-0 w-px h-4 my-auto bg-g-400 transition-opacity duration-150"
@@ -57,8 +78,22 @@
       </ul>
     </div>
 
+    <button
+      v-show="hasOverflow"
+      type="button"
+      class="art-work-tab__scroll-button art-card-xs"
+      :disabled="!canScrollRight"
+      aria-label="向右滚动已打开页面"
+      @click="scrollTabs('right')"
+    >
+      <ArtSvgIcon icon="ri:arrow-right-s-line" />
+    </button>
+
     <div class="flex">
-      <div
+      <button
+        type="button"
+        aria-label="管理已打开页面"
+        title="管理已打开页面"
         class="flex-cc art-card-xs relative top-0 size-8 leading-8 text-center c-p tad-200 hover:!bg-hover-color"
         :style="{
           borderRadius: 'calc(var(--custom-radius) / 2.5 + 0px)',
@@ -67,7 +102,7 @@
         @click="(e: MouseEvent) => showMenu(e, activeTab)"
       >
         <ArtSvgIcon icon="iconamoon:arrow-down-2-thin" class="text-2xl text-g-700" />
-      </div>
+      </button>
     </div>
 
     <ArtMenuRight
@@ -85,6 +120,7 @@
   import { LocationQueryRaw, useRoute, useRouter } from 'vue-router'
   import { useI18n } from 'vue-i18n'
   import { storeToRefs } from 'pinia'
+  import { useResizeObserver } from '@vueuse/core'
 
   import { useWorktabStore } from '@/store/modules/worktab'
   import { useUserStore } from '@/store/modules/user'
@@ -136,6 +172,23 @@
   })
 
   const clickedPath = ref('')
+  const hasOverflow = ref(false)
+  const canScrollLeft = ref(false)
+  const canScrollRight = ref(false)
+
+  const updateScrollAffordances = (): void => {
+    if (!scrollRef.value || !tabsRef.value) return
+
+    const viewportWidth = scrollRef.value.offsetWidth
+    const tabsWidth = tabsRef.value.offsetWidth
+    const minTranslate = Math.min(viewportWidth - tabsWidth, 0)
+    const translateX = Math.min(Math.max(scrollState.value.translateX, minTranslate), 0)
+
+    scrollState.value.translateX = translateX
+    hasOverflow.value = tabsWidth > viewportWidth + 1
+    canScrollLeft.value = translateX < -1
+    canScrollRight.value = translateX > minTranslate + 1
+  }
 
   // 计算属性
   const list = computed(() => store.opened)
@@ -446,10 +499,25 @@
   const { clickTab, closeWorktab, showMenu, handleSelect } =
     useTabOperations(adjustPositionAfterClose)
 
+  const scrollTabs = (direction: 'left' | 'right'): void => {
+    if (!scrollRef.value || !tabsRef.value) return
+
+    const minTranslate = Math.min(scrollRef.value.offsetWidth - tabsRef.value.offsetWidth, 0)
+    const step = Math.max(180, Math.round(scrollRef.value.offsetWidth * 0.45))
+    const nextTranslate =
+      direction === 'left'
+        ? scrollState.value.translateX + step
+        : scrollState.value.translateX - step
+
+    setTransition()
+    scrollState.value.translateX = Math.min(Math.max(nextTranslate, minTranslate), 0)
+  }
+
   // 生命周期
   onMounted(() => {
     setupEventListeners()
     autoPositionTab()
+    nextTick(updateScrollAffordances)
   })
 
   onUnmounted(() => {
@@ -462,7 +530,13 @@
     () => {
       setTransition()
       autoPositionTab()
+      nextTick(updateScrollAffordances)
     }
+  )
+
+  watch(
+    () => scrollState.value.translateX,
+    () => updateScrollAffordances()
   )
 
   watch(
@@ -471,13 +545,77 @@
       scrollState.value.translateX = 0
       nextTick(() => {
         autoPositionTab()
+        updateScrollAffordances()
       })
     }
   )
+
+  useResizeObserver(scrollRef, updateScrollAffordances)
+  useResizeObserver(tabsRef, updateScrollAffordances)
 </script>
 
 <style scoped lang="scss">
   .art-work-tab {
+    gap: 6px;
+
+    &__scroll-button {
+      display: inline-grid;
+      flex: 0 0 auto;
+      place-items: center;
+      width: 32px;
+      height: 32px;
+      padding: 0;
+      font: inherit;
+      font-size: 18px;
+      color: var(--art-gray-700);
+      touch-action: manipulation;
+      cursor: pointer;
+      background: var(--default-box-color);
+      border: 1px solid var(--art-card-border);
+      border-radius: var(--el-border-radius-base);
+
+      &:hover:not(:disabled) {
+        color: var(--theme-color);
+        background: color-mix(in srgb, var(--theme-color) 7%, var(--default-box-color));
+        box-shadow: var(--art-themed-action-hover-shadow);
+      }
+
+      &:focus-visible {
+        color: var(--theme-color);
+        outline: none;
+        box-shadow: var(--art-themed-action-focus-shadow);
+      }
+
+      &:disabled {
+        cursor: not-allowed;
+        opacity: 0.38;
+      }
+    }
+
+    li[role='tab'] {
+      &:focus-visible {
+        outline: none;
+        box-shadow: var(--art-themed-action-focus-shadow) !important;
+      }
+
+      > button {
+        padding: 4px;
+        font: inherit;
+        color: inherit;
+        touch-action: manipulation;
+        cursor: pointer;
+        background: transparent;
+        border: 0;
+
+        &:focus-visible {
+          color: var(--theme-color);
+          outline: none;
+          background: color-mix(in srgb, var(--theme-color) 9%, transparent);
+          box-shadow: var(--art-themed-action-focus-shadow);
+        }
+      }
+    }
+
     .activ-tab:not(.google-tab) {
       font-weight: 620;
       background: color-mix(in srgb, var(--theme-color) 9%, var(--default-box-color));

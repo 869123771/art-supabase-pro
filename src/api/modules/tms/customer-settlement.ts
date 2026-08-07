@@ -1,5 +1,6 @@
 import { useSupabase } from '@/hooks'
 import { applyDateRange, type SupabaseQueryLike } from '@/api/providers/supabase/query'
+import { actWorkflowByBusiness, startWorkflow } from '@/api/workflow'
 
 type CustomerStatement = Api.Tms.Finance.CustomerStatementRecord
 type CustomerStatementItem = Api.Tms.Finance.CustomerStatementItem
@@ -119,6 +120,31 @@ export async function createCustomerStatement(params: CreateCustomerStatementPay
 }
 
 export async function updateCustomerStatementStatus(params: CustomerStatementStatusPayload) {
+  if (params.status === 'pending_review') {
+    const statement = await responseHandle<Pick<CustomerStatement, 'statementNo' | 'customerName'>>(
+      () =>
+        supabase
+          .from('tms_customer_statement_summary')
+          .select('statement_no, customer_name')
+          .eq('id', params.id)
+          .single(),
+      { breakReturn: true, showErrorMessage: true }
+    )
+    if (!statement.data) throw new Error('客户对账单不存在')
+    return await startWorkflow({
+      businessType: 'tms_customer_statement',
+      businessId: params.id,
+      businessTitle: `客户对账单 ${statement.data.statementNo} · ${statement.data.customerName}`
+    })
+  }
+  if (params.status === 'confirmed' || params.status === 'draft') {
+    return await actWorkflowByBusiness({
+      businessType: 'tms_customer_statement',
+      businessId: params.id,
+      action: params.status === 'confirmed' ? 'approve' : 'reject',
+      comment: params.reviewRemark || null
+    })
+  }
   const payload: Record<string, string> = { status: params.status }
   if (params.reviewRemark) payload.review_remark = params.reviewRemark
   if (params.voidReason) payload.void_reason = params.voidReason

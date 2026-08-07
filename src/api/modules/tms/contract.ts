@@ -1,6 +1,7 @@
 import { useSupabase } from '@/hooks'
 import { withRequestOptions, type SupabaseQueryLike } from '@/api/providers/supabase/query'
 import type { ApiRequestOptions } from '@/types/api/request'
+import { startWorkflow } from '@/api/workflow'
 
 type Contract = Api.Tms.BasicData.Contract
 type ContractSearchParams = Api.Tms.BasicData.ContractSearchParams
@@ -76,9 +77,18 @@ export async function fetchContractDetail(id: string) {
 }
 
 export async function addContract(params: Contract) {
-  return await responseHandle(() => supabase.from('tms_contract').insert(keysToSnakeDeep(params)), {
-    showMessage: true,
-    breakReturn: true
+  return await responseHandle<Pick<Contract, 'id'>>(
+    () => supabase.from('tms_contract').insert(keysToSnakeDeep(params)).select('id').single(),
+    { showMessage: true, breakReturn: true }
+  )
+}
+
+export async function submitContractForApproval(contract: Contract) {
+  if (!contract.id) throw new Error('合同 ID 不能为空')
+  return await startWorkflow({
+    businessType: 'tms_contract',
+    businessId: contract.id,
+    businessTitle: `合同 ${contract.contractNo || contract.contractName || contract.id}`
   })
 }
 

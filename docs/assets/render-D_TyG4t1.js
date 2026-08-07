@@ -1,1 +1,0 @@
-import{Et as e}from"./framework-ChXToL1x.js";import{t}from"./attachment-link-CHy-TWAL.js";var n=n=>e(t,{file:n});export{n as t};

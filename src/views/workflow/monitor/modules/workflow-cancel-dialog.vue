@@ -125,19 +125,19 @@
       > span {
         display: grid;
         flex: 0 0 auto;
+        place-items: center;
         width: 40px;
         height: 40px;
+        font-size: 21px;
         color: var(--el-color-danger);
         background: var(--default-box-color);
         border-radius: 50%;
-        place-items: center;
-        font-size: 21px;
       }
 
       > div {
         display: grid;
-        min-width: 0;
         gap: 3px;
+        min-width: 0;
       }
 
       strong {
@@ -146,8 +146,8 @@
 
       small {
         overflow: hidden;
-        color: var(--art-gray-500);
         text-overflow: ellipsis;
+        color: var(--art-gray-500);
         white-space: nowrap;
       }
     }
@@ -157,9 +157,9 @@
       gap: 8px;
       align-items: flex-start;
       padding: 11px 12px;
-      color: var(--el-color-danger-dark-2);
       font-size: 12px;
       line-height: 1.6;
+      color: var(--el-color-danger-dark-2);
       background: var(--el-color-danger-light-9);
       border-radius: var(--el-border-radius-base);
 

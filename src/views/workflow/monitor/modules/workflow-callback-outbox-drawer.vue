@@ -1,5 +1,5 @@
 <template>
-  <ArtDrawer ref="drawerRef" size="xl" :show-footer="false">
+  <ArtDrawer ref="drawerRef" size="min(1240px, 82vw)" :show-footer="false">
     <div class="workflow-callback-outbox">
       <section class="workflow-callback-outbox__intro art-card-xs">
         <span><ArtSvgIcon icon="ri:inbox-archive-line" /></span>
@@ -7,7 +7,12 @@
           <strong>业务状态回写保障</strong>
           <p>审批结果先可靠入队，回写失败自动重试；死信需核对业务单据后人工补偿。</p>
         </div>
-        <ElTag v-if="!isPlatformSuper" type="info" effect="plain" round>本租户只读</ElTag>
+        <div class="workflow-callback-outbox__intro-meta">
+          <ElTag :type="unresolvedCount ? 'warning' : 'success'" effect="plain" round>
+            {{ unresolvedCount ? `${unresolvedCount} 条待处理` : '队列运行正常' }}
+          </ElTag>
+          <small>{{ isPlatformSuper ? '平台全局队列' : '本租户只读' }}</small>
+        </div>
       </section>
 
       <ElAlert
@@ -24,20 +29,31 @@
       </ElAlert>
 
       <section v-loading="state.loading" class="workflow-callback-outbox__metrics">
-        <article v-for="metric in metricCards" :key="metric.key" class="art-card-xs">
+        <button
+          v-for="metric in metricCards"
+          :key="metric.key"
+          type="button"
+          class="workflow-callback-outbox__metric art-card-xs"
+          :class="[`is-${metric.tone}`, { 'is-active': state.status === metric.filter }]"
+          :aria-pressed="state.status === metric.filter"
+          :aria-label="`筛选${metric.label}，共 ${metric.value} 条`"
+          @click="handleMetricFilter(metric.filter)"
+        >
           <span :class="`is-${metric.tone}`"><ArtSvgIcon :icon="metric.icon" /></span>
           <div>
             <small>{{ metric.label }}</small>
             <strong>{{ metric.value }}</strong>
           </div>
-        </article>
+          <ArtSvgIcon class="workflow-callback-outbox__metric-arrow" icon="ri:arrow-right-s-line" />
+        </button>
       </section>
 
       <section class="workflow-callback-outbox__table art-card-xs">
         <header>
-          <div>
+          <div class="workflow-callback-outbox__table-heading">
             <ArtSectionTitle :show-line="false">投递事件</ArtSectionTitle>
             <p>同一审批实例严格按事件顺序回写，失败事件会阻塞后续状态，避免业务状态倒退。</p>
+            <small>当前展示 {{ visibleItems.length }} 条，最多加载最近 100 条事件</small>
           </div>
           <div class="workflow-callback-outbox__tools">
             <ElSelect
@@ -61,14 +77,14 @@
         </header>
 
         <ArtTable
-          :data="state.items"
+          :data="visibleItems"
           :columns="columns"
           :loading="state.loading"
           :pagination="false"
           row-key="id"
           table-layout="fixed"
           height="100%"
-          empty-text="当前筛选条件下没有回调事件"
+          :empty-text="emptyText"
         />
       </section>
     </div>
@@ -76,7 +92,7 @@
 </template>
 
 <script setup lang="tsx">
-  import { ElMessageBox } from 'element-plus'
+  import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { storeToRefs } from 'pinia'
   import type { ColumnOption } from '@/types'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
@@ -92,14 +108,19 @@
 
   defineOptions({ name: 'WorkflowCallbackOutboxDrawer' })
 
+  const { confirmAction } = useArtFeedback()
+
   type CallbackRow = Api.Workflow.WorkflowCallbackRecord
+  type CallbackFilter = Api.Workflow.WorkflowCallbackStatus | 'unresolved' | ''
+  type CallbackTone = 'success' | 'warning' | 'danger' | 'info'
+
   interface DrawerOpenData {
     focusFailures?: boolean
   }
   interface CallbackState {
     loading: boolean
     error: Error | null
-    status: Api.Workflow.WorkflowCallbackStatus | ''
+    status: CallbackFilter
     items: CallbackRow[]
     summary: Api.Workflow.WorkflowCallbackSummary
     retryingId: string
@@ -117,9 +138,20 @@
     retryingId: ''
   })
 
-  const statusOptions = computed(() => getDictMap.value.workflowCallbackStatus ?? [])
+  const statusOptions = computed(() => [
+    { label: '全部处理中', value: 'unresolved' },
+    ...(getDictMap.value.workflowCallbackStatus ?? [])
+  ])
   const unresolvedCount = computed(
     () => state.summary.pending + state.summary.processing + state.summary.retryWait
+  )
+  const visibleItems = computed(() =>
+    state.status === 'unresolved'
+      ? state.items.filter((item) => ['pending', 'processing', 'retry_wait'].includes(item.status))
+      : state.items
+  )
+  const emptyText = computed(() =>
+    state.status ? '当前筛选条件下没有回调事件' : '暂时没有业务回调事件'
   )
   const metricCards = computed(() => [
     {
@@ -127,28 +159,32 @@
       label: '处理中',
       value: unresolvedCount.value,
       icon: 'ri:loader-4-line',
-      tone: unresolvedCount.value ? 'warning' : 'success'
+      tone: (unresolvedCount.value ? 'warning' : 'success') as CallbackTone,
+      filter: 'unresolved' as const
     },
     {
       key: 'retry',
       label: '等待重试',
       value: state.summary.retryWait,
       icon: 'ri:restart-line',
-      tone: state.summary.retryWait ? 'warning' : 'info'
+      tone: (state.summary.retryWait ? 'warning' : 'info') as CallbackTone,
+      filter: 'retry_wait' as const
     },
     {
       key: 'dead',
       label: '死信事件',
       value: state.summary.deadLetter,
       icon: 'ri:error-warning-line',
-      tone: state.summary.deadLetter ? 'danger' : 'success'
+      tone: (state.summary.deadLetter ? 'danger' : 'success') as CallbackTone,
+      filter: 'dead_letter' as const
     },
     {
       key: 'success',
       label: '已成功',
       value: state.summary.succeeded,
       icon: 'ri:checkbox-circle-line',
-      tone: 'success'
+      tone: 'success' as CallbackTone,
+      filter: 'succeeded' as const
     }
   ])
 
@@ -156,19 +192,39 @@
   const canRetry = (row: CallbackRow) =>
     isPlatformSuper.value && (row.status === 'retry_wait' || row.status === 'dead_letter')
 
+  const compactIdentifier = (value: string): string =>
+    value.length > 20 ? `${value.slice(0, 10)}…${value.slice(-6)}` : value
+
   const createBusinessCell = (row: CallbackRow) => (
     <div class="workflow-callback-outbox__business-cell">
       <strong>{row.businessTitle}</strong>
-      <small>{row.businessId}</small>
+      <small title={row.businessId}>
+        <span>{compactIdentifier(row.businessId)}</span>
+        {row.tenantName ? <span>{row.tenantName}</span> : null}
+      </small>
+    </div>
+  )
+  const createStatusCell = (row: CallbackRow) => (
+    <div class="workflow-callback-outbox__status-cell">
+      <ArtDictDisplay dictCode="workflowCallbackStatus" value={row.status} display="tag" />
+      <small>
+        目标：
+        <ArtDictDisplay dictCode="workflowInstanceStatus" value={row.targetStatus} display="text" />
+      </small>
     </div>
   )
   const createDeliveryCell = (row: CallbackRow) => (
     <div class="workflow-callback-outbox__delivery-cell">
-      <span>
-        本轮 {row.attemptCount}/{row.maxAttempts}
-      </span>
+      <strong>
+        本轮 <em>{row.attemptCount}</em>/{row.maxAttempts}
+      </strong>
       <small>
         累计 {row.totalAttempts} 次 · 人工 {row.manualRetryCount} 次
+      </small>
+      <small>
+        {row.status === 'succeeded'
+          ? `完成于 ${formatDate(row.processedAt)}`
+          : `下次执行 ${formatDate(row.nextAttemptAt)}`}
       </small>
     </div>
   )
@@ -183,49 +239,31 @@
     {
       prop: 'businessTitle',
       label: '业务单据',
-      minWidth: 230,
+      minWidth: 270,
       fixed: 'left',
       formatter: createBusinessCell
     },
     {
-      prop: 'tenantName',
-      label: '所属租户',
-      minWidth: 135,
-      formatter: (row) => row.tenantName || '--'
-    },
-    {
-      prop: 'targetStatus',
-      label: '目标状态',
-      width: 105,
-      formatter: (row) => (
-        <ArtDictDisplay dictCode="workflowInstanceStatus" value={row.targetStatus} display="tag" />
-      )
-    },
-    {
       prop: 'status',
-      label: '投递状态',
-      width: 110,
-      formatter: (row) => (
-        <ArtDictDisplay dictCode="workflowCallbackStatus" value={row.status} display="tag" />
-      )
+      label: '状态',
+      width: 145,
+      formatter: createStatusCell
     },
-    { prop: 'attemptCount', label: '投递次数', minWidth: 155, formatter: createDeliveryCell },
-    { prop: 'lastError', label: '最近结果', minWidth: 220, formatter: createErrorCell },
     {
-      prop: 'nextAttemptAt',
-      label: '下次执行',
-      width: 165,
-      formatter: (row) =>
-        row.status === 'succeeded' ? formatDate(row.processedAt) : formatDate(row.nextAttemptAt)
+      prop: 'attemptCount',
+      label: '投递进度',
+      minWidth: 230,
+      formatter: createDeliveryCell
     },
+    { prop: 'lastError', label: '最近结果', minWidth: 240, formatter: createErrorCell },
     {
       prop: 'operation',
       label: '操作',
-      width: 94,
+      width: 108,
       fixed: 'right',
       formatter: (row) =>
         !isPlatformSuper.value ? (
-          <span class="workflow-callback-outbox__operation-placeholder">只读</span>
+          <span class="workflow-callback-outbox__operation-placeholder">—</span>
         ) : canRetry(row) ? (
           <ArtButtonTable
             type="edit"
@@ -235,7 +273,7 @@
             onClick={() => handleRetry(row)}
           />
         ) : (
-          <span class="workflow-callback-outbox__operation-placeholder">无需处理</span>
+          <span class="workflow-callback-outbox__operation-placeholder">—</span>
         )
     }
   ]
@@ -244,7 +282,8 @@
     state.loading = true
     state.error = null
     try {
-      const result = await fetchWorkflowCallbackOutbox(state.status || null, 100)
+      const fetchStatus = state.status === 'unresolved' ? null : state.status || null
+      const result = await fetchWorkflowCallbackOutbox(fetchStatus, 100)
       state.items = result.items
       Object.assign(state.summary, result.summary)
     } catch (error) {
@@ -254,14 +293,19 @@
     }
   }
 
+  function handleMetricFilter(filter: Exclude<CallbackFilter, ''>): void {
+    state.status = state.status === filter ? '' : filter
+    void loadData()
+  }
+
   async function handleRetry(row: CallbackRow): Promise<void> {
     if (!isPlatformSuper.value) return
 
     try {
-      await ElMessageBox.confirm(
+      await confirmAction(
         `将立即重新回写“${row.businessTitle}”的审批状态。请先确认业务单据仍允许变更。`,
-        '确认人工补偿',
         {
+          title: '确认人工补偿',
           type: 'warning',
           confirmButtonText: '确认重试',
           cancelButtonText: '暂不处理'
@@ -303,23 +347,23 @@
 
     &__intro {
       display: flex;
-      gap: 14px;
+      gap: 12px;
       align-items: center;
-      padding: 16px 18px;
+      padding: 13px 16px;
 
       > span {
         display: grid;
         flex: 0 0 auto;
         place-items: center;
-        width: 44px;
-        height: 44px;
-        font-size: 22px;
+        width: 40px;
+        height: 40px;
+        font-size: 20px;
         color: var(--el-color-primary);
         background: var(--el-color-primary-light-9);
         border-radius: var(--el-border-radius-base);
       }
 
-      > div {
+      > div:first-of-type {
         flex: 1;
         min-width: 0;
       }
@@ -330,10 +374,22 @@
       }
 
       p {
-        margin: 4px 0 0;
+        margin: 3px 0 0;
         font-size: 12px;
         line-height: 1.6;
         color: var(--art-gray-500);
+      }
+    }
+
+    &__intro-meta {
+      display: grid;
+      flex: 0 0 auto;
+      gap: 4px;
+      justify-items: end;
+
+      small {
+        font-size: 10px;
+        color: var(--art-gray-400);
       }
     }
 
@@ -342,12 +398,45 @@
       grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 10px;
 
-      article {
+      button {
+        position: relative;
         display: flex;
         gap: 10px;
         align-items: center;
+        width: 100%;
         min-width: 0;
-        padding: 13px 14px;
+        padding: 11px 13px;
+        color: inherit;
+        text-align: left;
+        cursor: pointer;
+        transition:
+          background-color 0.18s ease,
+          border-color 0.18s ease,
+          box-shadow 0.18s ease,
+          transform 0.18s ease;
+
+        &:hover {
+          background: color-mix(in srgb, var(--theme-color) 6%, var(--default-box-color));
+          border-color: color-mix(in srgb, var(--theme-color) 28%, var(--art-card-border));
+          box-shadow: var(--art-themed-action-hover-shadow);
+
+          .workflow-callback-outbox__metric-arrow {
+            opacity: 1;
+            transform: translateX(2px);
+          }
+        }
+
+        &:focus-visible {
+          outline: none;
+          border-color: color-mix(in srgb, var(--theme-color) 34%, var(--art-card-border));
+          box-shadow: var(--art-themed-action-focus-shadow);
+        }
+
+        &.is-active {
+          background: color-mix(in srgb, var(--theme-color) 9%, var(--default-box-color));
+          border-color: color-mix(in srgb, var(--theme-color) 38%, var(--art-card-border));
+          box-shadow: var(--art-themed-action-active-shadow);
+        }
 
         > span {
           display: grid;
@@ -380,6 +469,7 @@
 
         > div {
           display: grid;
+          flex: 1;
           min-width: 0;
         }
 
@@ -389,11 +479,22 @@
         }
 
         strong {
-          font-size: 20px;
+          font-size: 19px;
+          font-variant-numeric: tabular-nums;
           line-height: 1.3;
           color: var(--art-gray-900);
         }
       }
+    }
+
+    &__metric-arrow {
+      flex: 0 0 auto;
+      font-size: 18px;
+      color: var(--theme-color);
+      opacity: 0.45;
+      transition:
+        opacity 0.18s ease,
+        transform 0.18s ease;
     }
 
     &__table {
@@ -434,49 +535,127 @@
       align-items: center;
     }
 
+    &__table-heading {
+      > small {
+        display: block;
+        margin-top: 5px;
+        font-size: 10px;
+        color: var(--art-gray-400);
+      }
+    }
+
     &__status-filter {
       width: 150px;
     }
 
-    &__business-cell,
-    &__delivery-cell,
-    &__error-cell {
+    :deep(.workflow-callback-outbox__business-cell),
+    :deep(.workflow-callback-outbox__status-cell),
+    :deep(.workflow-callback-outbox__delivery-cell),
+    :deep(.workflow-callback-outbox__error-cell) {
       display: grid;
       gap: 3px;
       min-width: 0;
+    }
 
-      strong,
-      small {
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
+    :deep(.workflow-callback-outbox__business-cell strong),
+    :deep(.workflow-callback-outbox__business-cell small),
+    :deep(.workflow-callback-outbox__status-cell strong),
+    :deep(.workflow-callback-outbox__status-cell small),
+    :deep(.workflow-callback-outbox__delivery-cell strong),
+    :deep(.workflow-callback-outbox__delivery-cell small),
+    :deep(.workflow-callback-outbox__error-cell strong),
+    :deep(.workflow-callback-outbox__error-cell small) {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
 
-      strong {
-        font-weight: 600;
-        color: var(--art-gray-900);
-      }
+    :deep(.workflow-callback-outbox__business-cell strong),
+    :deep(.workflow-callback-outbox__status-cell strong),
+    :deep(.workflow-callback-outbox__delivery-cell strong),
+    :deep(.workflow-callback-outbox__error-cell strong) {
+      font-weight: 600;
+      color: var(--art-gray-900);
+    }
 
-      small {
-        font-size: 11px;
-        color: var(--art-gray-500);
+    :deep(.workflow-callback-outbox__business-cell small),
+    :deep(.workflow-callback-outbox__status-cell small),
+    :deep(.workflow-callback-outbox__delivery-cell small),
+    :deep(.workflow-callback-outbox__error-cell small) {
+      font-size: 11px;
+      color: var(--art-gray-500);
+    }
+
+    :deep(.workflow-callback-outbox__business-cell small) {
+      display: flex;
+      gap: 7px;
+      min-width: 0;
+    }
+
+    :deep(.workflow-callback-outbox__business-cell small span) {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+
+      &:first-child {
+        font-variant-numeric: tabular-nums;
       }
     }
 
-    &__error-cell {
-      strong {
-        font-size: 11px;
-        color: var(--el-color-danger);
-      }
-
-      &.is-empty strong {
-        color: var(--el-color-success);
-      }
+    :deep(.workflow-callback-outbox__business-cell small span + span::before) {
+      margin-right: 7px;
+      color: var(--art-gray-300);
+      content: '·';
     }
 
-    &__operation-placeholder {
+    :deep(.workflow-callback-outbox__status-cell) {
+      align-content: center;
+    }
+
+    :deep(.workflow-callback-outbox__status-cell small) {
+      display: flex;
+      gap: 2px;
+      align-items: center;
+    }
+
+    :deep(.workflow-callback-outbox__delivery-cell) {
+      font-variant-numeric: tabular-nums;
+    }
+
+    :deep(.workflow-callback-outbox__delivery-cell strong) {
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    :deep(.workflow-callback-outbox__delivery-cell strong em) {
+      font-size: 14px;
+      font-style: normal;
+      font-weight: 700;
+      color: var(--theme-color);
+    }
+
+    :deep(.workflow-callback-outbox__error-cell strong) {
+      font-size: 11px;
+      color: var(--el-color-danger);
+    }
+
+    :deep(.workflow-callback-outbox__error-cell.is-empty strong) {
+      color: var(--el-color-success);
+    }
+
+    :deep(.workflow-callback-outbox__operation-placeholder) {
       font-size: 12px;
       color: var(--art-gray-400);
+    }
+
+    :deep(.el-table .cell) {
+      min-width: 0;
+    }
+
+    :global([data-box-mode='shadow-mode']) &__metric:hover,
+    :global([data-box-mode='shadow-mode']) &__metric:focus-visible,
+    :global([data-box-mode='shadow-mode']) &__metric.is-active {
+      border-color: transparent;
     }
 
     @media screen and (width <= 900px) {
@@ -497,11 +676,26 @@
         flex: 1;
         min-width: 0;
       }
+
+      &__intro {
+        align-items: flex-start;
+      }
+
+      &__intro-meta {
+        display: none;
+      }
     }
 
     @media screen and (width <= 560px) {
       &__metrics {
         grid-template-columns: 1fr;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      &__metric,
+      &__metric-arrow {
+        transition: none;
       }
     }
   }

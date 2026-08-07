@@ -2,22 +2,34 @@
   <ElCard class="tree-card art-card-xs flex flex-col h-full mt-0" shadow="never">
     <template #header>
       <div class="dict-type-tree__header">
+        <div class="dict-type-tree__titlebar">
+          <div>
+            <strong>字典目录</strong>
+            <span>{{ directoryCount }} 个目录 · {{ dictionaryCount }} 个类型</span>
+          </div>
+          <ElTooltip content="新增根节点" placement="top">
+            <ElButton type="primary" aria-label="新增根节点" @click="handleAdd()">
+              <ArtSvgIcon icon="ri:add-fill" />
+              <span>新增</span>
+            </ElButton>
+          </ElTooltip>
+        </div>
         <ElInput
           v-model="tree.keyword"
-          placeholder="搜索目录或字典类型"
+          placeholder="搜索目录名称或字典编码"
           clearable
           @input="handleFilter"
-        />
-        <ElTooltip content="新增根节点" placement="top">
-          <ElButton type="primary" @click="handleAdd()">
-            <ArtSvgIcon icon="ri:add-fill" />
-          </ElButton>
-        </ElTooltip>
+        >
+          <template #prefix>
+            <ArtSvgIcon icon="ri:search-line" />
+          </template>
+        </ElInput>
       </div>
     </template>
 
     <ElScrollbar v-loading="tree.loading">
       <ElTree
+        v-if="tree.data.length"
         ref="treeRef"
         :data="tree.data"
         :props="tree.props"
@@ -47,7 +59,7 @@
                 class="dict-type-tree__node-icon"
                 :icon="data.nodeType === 'directory' ? 'ri:folder-3-line' : 'ri:book-2-line'"
               />
-              <span>{{ data.name }}</span>
+              <span class="dict-type-tree__name">{{ data.name }}</span>
               <ElTag v-if="data.nodeType === 'dictionary'" size="small" type="info">
                 {{ data.code }}
               </ElTag>
@@ -55,17 +67,37 @@
 
             <div class="dict-type-tree__actions" @click.stop>
               <ElTooltip v-if="data.nodeType === 'directory'" content="新增下级" placement="top">
-                <ElButton size="small" circle type="primary" @click="handleAdd(data)">
+                <ElButton
+                  size="small"
+                  circle
+                  text
+                  type="primary"
+                  :aria-label="`在${data.name}下新增`"
+                  @click="handleAdd(data)"
+                >
                   <ArtSvgIcon icon="ri:add-line" />
                 </ElButton>
               </ElTooltip>
               <ElTooltip content="编辑" placement="top">
-                <ElButton size="small" circle type="success" @click="handleEdit(data)">
+                <ElButton
+                  size="small"
+                  circle
+                  text
+                  :aria-label="`编辑${data.name}`"
+                  @click="handleEdit(data)"
+                >
                   <ArtSvgIcon icon="ri:pencil-line" />
                 </ElButton>
               </ElTooltip>
               <ElTooltip content="删除" placement="top">
-                <ElButton size="small" circle type="danger" @click="handleDelete(data)">
+                <ElButton
+                  size="small"
+                  circle
+                  text
+                  type="danger"
+                  :aria-label="`删除${data.name}`"
+                  @click="handleDelete(data)"
+                >
                   <ArtSvgIcon icon="ri:delete-bin-5-line" />
                 </ElButton>
               </ElTooltip>
@@ -73,7 +105,38 @@
           </div>
         </template>
       </ElTree>
+
+      <ArtEmptyState
+        v-else-if="!tree.loading"
+        title="暂无字典目录"
+        description="新建根节点后，可继续添加目录或字典类型。"
+        size="compact"
+        :visual-size="76"
+      >
+        <ElButton type="primary" @click="handleAdd()">新增根节点</ElButton>
+      </ArtEmptyState>
     </ElScrollbar>
+
+    <div class="dict-type-tree__footer" role="note">
+      <div class="dict-type-tree__footer-hint">
+        <span class="dict-type-tree__footer-icon" aria-hidden="true">
+          <ArtSvgIcon icon="ri:drag-move-2-line" />
+        </span>
+        <span class="dict-type-tree__footer-copy">
+          <strong>{{ tree.keyword.trim() ? '排序已暂停' : '拖拽排序' }}</strong>
+          <small>
+            {{ tree.keyword.trim() ? '清空搜索后可继续拖拽' : '调整目录层级与节点顺序' }}
+          </small>
+        </span>
+      </div>
+      <span
+        v-if="tree.selectedKeys.length"
+        class="dict-type-tree__footer-selection"
+        aria-live="polite"
+      >
+        {{ tree.selectedKeys.length }} 项
+      </span>
+    </div>
   </ElCard>
 
   <DictTypeDialog ref="dictTypeDialogRef" @success="handleSuccess" />
@@ -85,6 +148,7 @@
   import { ElMessage } from 'element-plus'
   import { cloneDeep } from 'lodash-es'
   import TreeUtils from '@/utils/tree'
+  import ArtEmptyState from '@/components/core/layouts/art-empty-state/index.vue'
   import { deleteDictType, fetchGetDictTypeList, saveDictTypeTreeOrder } from '@/api/data-center'
   import DictTypeDialog from './dict-type-dialog.vue'
 
@@ -166,6 +230,13 @@
       class: getNodeClass
     }
   })
+
+  const directoryCount = computed(
+    () => treeUtils.treeToList(tree.data).filter((item) => item.nodeType === 'directory').length
+  )
+  const dictionaryCount = computed(
+    () => treeUtils.treeToList(tree.data).filter((item) => item.nodeType === 'dictionary').length
+  )
 
   const getCurrentDictType = computed<DictTypeItem | undefined>(() => {
     return (treeRef.value?.getCurrentNode() as DictTypeItem | null | undefined) ?? undefined
@@ -668,14 +739,21 @@
 <style scoped lang="scss">
   .tree-card {
     :deep(.el-card__header) {
-      padding: 12px;
-      border-bottom: 0;
+      padding: 14px 14px 12px;
+      border-bottom: 1px solid var(--el-border-color-lighter);
     }
 
     :deep(.el-card__body) {
+      display: flex;
+      flex: 1;
+      flex-direction: column;
+      min-height: 0;
+      padding: 8px 10px 0;
+    }
+
+    :deep(.el-scrollbar) {
       flex: 1;
       min-height: 0;
-      padding: 0 12px 12px;
     }
 
     :deep(.el-tree-node__content) {
@@ -710,8 +788,35 @@
 
   .dict-type-tree {
     &__header {
+      display: grid;
+      gap: 12px;
+    }
+
+    &__titlebar {
       display: flex;
-      gap: 8px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+
+      > div {
+        display: grid;
+        min-width: 0;
+        gap: 2px;
+
+        strong {
+          font-size: 15px;
+          color: var(--el-text-color-primary);
+        }
+
+        span {
+          font-size: 12px;
+          color: var(--el-text-color-secondary);
+        }
+      }
+
+      .el-button {
+        flex: none;
+      }
     }
 
     &__node {
@@ -728,7 +833,8 @@
         background: var(--el-color-primary-light-9);
       }
 
-      &:hover {
+      &:hover,
+      &:focus-within {
         .dict-type-tree__actions {
           display: flex;
         }
@@ -741,10 +847,18 @@
       min-width: 0;
       gap: 6px;
 
-      > span {
+      .dict-type-tree__name {
+        min-width: 0;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
+      }
+
+      .el-tag {
+        flex: none;
+        max-width: 92px;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
     }
 
@@ -761,8 +875,83 @@
       align-items: center;
 
       .el-button + .el-button {
-        margin-left: 4px;
+        margin-left: 0;
       }
+    }
+
+    &__footer {
+      display: flex;
+      flex: none;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 52px;
+      padding: 8px 4px 8px 2px;
+      color: var(--el-text-color-secondary);
+      background: var(--el-bg-color);
+      border-top: 1px solid var(--el-border-color-lighter);
+      gap: 10px;
+
+      &-hint {
+        display: flex;
+        min-width: 0;
+        align-items: center;
+        gap: 8px;
+      }
+
+      &-icon {
+        display: grid;
+        flex: 0 0 28px;
+        width: 28px;
+        height: 28px;
+        font-size: 14px;
+        color: var(--el-color-primary);
+        background: var(--el-color-primary-light-9);
+        border: 1px solid var(--el-color-primary-light-8);
+        border-radius: var(--el-border-radius-small);
+        place-items: center;
+      }
+
+      &-copy {
+        display: grid;
+        min-width: 0;
+        line-height: 1.35;
+        gap: 1px;
+
+        strong,
+        small {
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        strong {
+          font-size: 12px;
+          font-weight: 600;
+          color: var(--el-text-color-regular);
+        }
+
+        small {
+          font-size: 10px;
+          color: var(--el-text-color-placeholder);
+        }
+      }
+
+      &-selection {
+        flex: none;
+        padding: 2px 7px;
+        font-size: 11px;
+        line-height: 18px;
+        color: var(--el-color-primary);
+        background: var(--el-color-primary-light-9);
+        border: 1px solid var(--el-color-primary-light-8);
+        border-radius: 999px;
+      }
+    }
+  }
+
+  @media (hover: none) {
+    .dict-type-tree__actions {
+      display: flex;
     }
   }
 </style>

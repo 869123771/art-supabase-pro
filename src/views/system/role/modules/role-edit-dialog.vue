@@ -1,5 +1,12 @@
 <template>
   <ArtDialog ref="dialogRef" size="md">
+    <div v-if="isSystemBuiltinRole" class="role-edit-dialog__notice art-card-xs">
+      <span aria-hidden="true"><ArtSvgIcon icon="ri:shield-check-line" /></span>
+      <div>
+        <strong>系统内置角色</strong>
+        <p>角色编码与启用状态受系统保护，仅允许调整名称和描述。</p>
+      </div>
+    </div>
     <ArtForm
       ref="formRef"
       v-model="form"
@@ -126,6 +133,12 @@
 
   const formItems = computed<FormItem[]>(() => [
     {
+      label: '角色定义',
+      key: 'identitySection',
+      type: 'divider',
+      span: 24
+    },
+    {
       label: '所属租户',
       key: 'tenantId',
       type: 'select',
@@ -138,15 +151,17 @@
           value: tenant.id
         })),
         onChange: handleTenantChange
-      }
+      },
+      help: '角色编码在同一租户内必须唯一。'
     },
     {
       label: '角色名称',
       key: 'roleName',
       type: 'input',
       props: {
-        placeholder: '请输入角色名称'
-      }
+        placeholder: '如：财务审核员'
+      },
+      description: '建议使用能够直接体现职责范围的名称。'
     },
     {
       label: '角色编码',
@@ -154,8 +169,9 @@
       type: 'input',
       props: {
         disabled: isSystemBuiltinRole.value,
-        placeholder: '请输入角色编码'
-      }
+        placeholder: '如：R_FINANCE_AUDITOR'
+      },
+      help: '建议使用大写字母、数字与下划线，保存后应谨慎修改。'
     },
     {
       label: '描述',
@@ -165,8 +181,17 @@
       props: {
         type: 'textarea',
         rows: 3,
-        placeholder: '请输入角色描述'
-      }
+        maxlength: 300,
+        showWordLimit: true,
+        placeholder: '说明该角色的职责边界和适用成员'
+      },
+      description: '清晰的职责说明有助于后续权限审计。'
+    },
+    {
+      label: '状态控制',
+      key: 'statusSection',
+      type: 'divider',
+      span: 24
     },
     {
       label: '启用',
@@ -174,7 +199,11 @@
       type: 'switch',
       props: {
         disabled: isSystemBuiltinRole.value
-      }
+      },
+      span: 24,
+      description: isSystemBuiltinRole.value
+        ? '系统内置角色始终保持启用。'
+        : '停用后请同步检查已关联用户的访问安排。'
     }
   ])
 
@@ -271,6 +300,7 @@
     await initializeForm(data)
     await dialogRef.value?.handleOpen(data, {
       title: data.type === 'add' ? '新增角色' : '编辑角色',
+      contentMaxHeight: '68vh',
       onConfirm: handleSubmit,
       onReset: () => {
         void resetForm()
@@ -284,3 +314,39 @@
     handleClose: () => dialogRef.value?.handleClose()
   })
 </script>
+
+<style scoped lang="scss">
+  .role-edit-dialog {
+    &__notice {
+      display: flex;
+      align-items: flex-start;
+      padding: 12px 14px;
+      margin: 4px 16px 0;
+      gap: 10px;
+
+      > span {
+        display: grid;
+        flex: 0 0 32px;
+        width: 32px;
+        height: 32px;
+        font-size: 16px;
+        color: var(--el-color-warning-dark-2);
+        background: var(--el-color-warning-light-9);
+        border-radius: var(--art-control-radius);
+        place-items: center;
+      }
+
+      strong {
+        font-size: 13px;
+        color: var(--el-text-color-primary);
+      }
+
+      p {
+        margin: 2px 0 0;
+        font-size: 12px;
+        line-height: 1.5;
+        color: var(--el-text-color-secondary);
+      }
+    }
+  }
+</style>

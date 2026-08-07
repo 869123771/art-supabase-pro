@@ -21,6 +21,7 @@
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import { addTenant, editTenant } from '@/api/system-manage'
   import { useUserStore } from '@/store/modules/user'
+  import { omit } from 'lodash-es'
 
   type Tenant = Api.SystemManage.TenantListItem
 
@@ -41,7 +42,11 @@
     tenantCode: '',
     tenantName: '',
     status: '1',
-    remark: ''
+    remark: '',
+    createBy: undefined,
+    createTime: undefined,
+    updateBy: undefined,
+    updateTime: undefined
   })
 
   const form = reactive<Tenant>(createInitialForm())
@@ -65,21 +70,38 @@
 
   const items = computed<FormItem[]>(() => [
     {
+      label: '租户身份',
+      key: 'identitySection',
+      type: 'divider',
+      span: 24
+    },
+    {
       label: '租户编码',
       key: 'tenantCode',
       type: 'input',
       props: {
         maxlength: 50,
-        disabled: !!form.id
-      }
+        disabled: !!form.id,
+        placeholder: '如：north_china_ops'
+      },
+      help: '租户编码用于系统隔离与内部识别，创建后不可修改。',
+      description: form.id ? '该租户编码已锁定。' : '建议使用简短、稳定的英文编码。'
     },
     {
       label: '租户名称',
       key: 'tenantName',
       type: 'input',
       props: {
-        maxlength: 100
-      }
+        maxlength: 100,
+        placeholder: '请输入组织或业务主体名称'
+      },
+      description: '名称将用于租户识别与后台管理展示。'
+    },
+    {
+      label: '状态与说明',
+      key: 'statusSection',
+      type: 'divider',
+      span: 24
     },
     {
       label: '状态',
@@ -87,7 +109,9 @@
       type: 'radioGroup',
       props: {
         options: getDictMap.value.status ?? []
-      }
+      },
+      span: 24,
+      description: '停用前请确认租户内账号及业务安排已妥善处理。'
     },
     {
       label: '备注',
@@ -98,8 +122,10 @@
         type: 'textarea',
         rows: 3,
         maxlength: 500,
-        showWordLimit: true
-      }
+        showWordLimit: true,
+        placeholder: '补充租户用途、负责人或管理说明（选填）'
+      },
+      description: '建议记录该租户的业务范围，便于后续运维识别。'
     }
   ])
 
@@ -124,7 +150,7 @@
     }
 
     try {
-      const payload = toRaw(form)
+      const payload = omit(toRaw(form), ['createBy', 'createTime', 'updateBy', 'updateTime'])
       if (form.id) {
         await editTenant(payload)
       } else {
@@ -146,6 +172,7 @@
 
     await dialogRef.value?.handleOpen(row, {
       title: isEdit ? '编辑租户' : '新增租户',
+      contentMaxHeight: '68vh',
       onConfirm: handleSubmit,
       onReset: () => void resetForm()
     })

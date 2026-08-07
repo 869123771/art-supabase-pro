@@ -310,6 +310,8 @@
     emptyHeight?: string
     /** 空数据文案 */
     emptyText?: string
+    /** 空数据辅助说明 */
+    emptyDescription?: string
     /** 是否启用表头高度参与表格高度计算，默认 true */
     showTableHeader?: boolean
     /** 工具栏上方额外内容占用的高度 */

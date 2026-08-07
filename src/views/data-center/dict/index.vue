@@ -2,7 +2,7 @@
   <div class="art-full-height">
     <div class="dict-layout">
       <ElSplitter class="dict-splitter">
-        <ElSplitterPanel size="340px" min="340px" max="420px">
+        <ElSplitterPanel size="316px" min="288px" max="380px">
           <div class="dict-tree-panel">
             <TypeTree @tree-node-click="handleTreeNodeClick" />
           </div>
@@ -10,7 +10,25 @@
 
         <ElSplitterPanel>
           <div class="dict-table-panel">
+            <div v-if="isDictionarySelected" class="dict-selection-context art-card-xs">
+              <div class="dict-selection-context__icon" aria-hidden="true">
+                <ArtSvgIcon icon="ri:book-2-line" />
+              </div>
+              <div class="dict-selection-context__copy">
+                <div class="dict-selection-context__heading">
+                  <strong>{{ table.currentDictType?.name }}</strong>
+                  <span>{{ table.currentDictType?.code }}</span>
+                </div>
+                <p>
+                  {{
+                    table.currentDictType?.remark || '维护该类型下的字典项、层级关系与展示样式。'
+                  }}
+                </p>
+              </div>
+            </div>
+
             <ArtTableQuery
+              v-if="isDictionarySelected"
               ref="tableQueryRef"
               v-model="table.searchQuery"
               :search-items="table.searchItems"
@@ -22,6 +40,14 @@
               :search-bar-props="table.searchBarProps"
               :table-props="table.props"
             />
+
+            <div v-else class="dict-selection-empty art-card-xs">
+              <ArtEmptyState
+                :title="selectionEmptyTitle"
+                :description="selectionEmptyDescription"
+                :visual-size="104"
+              />
+            </div>
           </div>
         </ElSplitterPanel>
       </ElSplitter>
@@ -46,6 +72,7 @@
     type ButtonMoreItem
   } from '@/components/core/forms/art-button-more/index.vue'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
+  import ArtEmptyState from '@/components/core/layouts/art-empty-state/index.vue'
   import { ColumnOption } from '@/types'
   import TreeUtils from '@/utils/tree'
   import { useUserStore } from '@/store/modules/user'
@@ -84,6 +111,8 @@
       treeProps: {
         children: string
       }
+      emptyText: string
+      emptyDescription: string
     }
   }
 
@@ -165,42 +194,52 @@
         reserveSelection: true
       },
       {
-        prop: 'label',
-        label: '字典名称'
-      },
-      {
-        prop: 'code',
-        label: '字典编码'
+        prop: 'identity',
+        label: '字典项',
+        minWidth: 220,
+        formatter: (row) => (
+          <div class="dict-identity-cell">
+            <strong title={row.label || row.name}>{row.label || row.name || '--'}</strong>
+            <span title={row.code}>{row.code || '未设置编码'}</span>
+          </div>
+        )
       },
       {
         prop: 'value',
-        label: '字典值'
+        label: '字典值',
+        minWidth: 140,
+        showOverflowTooltip: true
       },
       {
         prop: 'status',
         label: '状态',
+        width: 90,
         dict: { code: 'status', display: 'auto' }
       },
       {
-        prop: 'color',
-        label: '文字颜色',
-        formatter: (row) =>
-          row.color ? <ArtDictDisplay item={row} display="badge" /> : <span>--</span>
-      },
-      {
-        prop: 'tagType',
-        label: '标签样式',
-        formatter: (row) =>
-          row.tagType ? <ArtDictDisplay item={row} display="tag" /> : <span>--</span>
+        prop: 'appearance',
+        label: '呈现方式',
+        minWidth: 170,
+        formatter: (row) => (
+          <div class="dict-appearance-cell">
+            {row.color ? <ArtDictDisplay item={row} display="badge" /> : null}
+            {row.tagType ? <ArtDictDisplay item={row} display="tag" /> : null}
+            {!row.color && !row.tagType ? (
+              <span class="dict-cell-placeholder">默认文本</span>
+            ) : null}
+          </div>
+        )
       },
       {
         prop: 'sort',
-        label: '排序'
+        label: '排序',
+        width: 72,
+        align: 'center'
       },
       {
         prop: 'operation',
         label: '操作',
-        width: 120,
+        width: 104,
         fixed: 'right',
         formatter: (row) => (
           <div class="flex items-center">
@@ -223,9 +262,23 @@
       defaultExpandAll: true,
       treeProps: {
         children: 'children'
-      }
+      },
+      emptyText: '该类型下暂无字典项',
+      emptyDescription: '可新增首个字典项，或调整筛选条件后重新查询。'
     }
   })
+
+  const isDictionarySelected = computed(
+    () => table.currentDictType?.nodeType === 'dictionary' && Boolean(table.currentDictType.id)
+  )
+  const selectionEmptyTitle = computed(() =>
+    table.currentDictType?.nodeType === 'directory' ? '请选择具体的字典类型' : '先选择一个字典类型'
+  )
+  const selectionEmptyDescription = computed(() =>
+    table.currentDictType?.nodeType === 'directory'
+      ? `「${table.currentDictType.name}」是目录，请从其下级选择需要维护的字典类型。`
+      : '从左侧目录中选择字典类型后，可查看并维护对应字典项。'
+  )
 
   const fetchTableData = (params: TableParams) => {
     if (table.currentDictType?.nodeType !== 'dictionary' || !table.currentDictType.id) {
@@ -249,9 +302,12 @@
       (a, b) => Number(a.sort || 0) - Number(b.sort || 0)
     ) as DictListItem[]
 
-  const handleTreeNodeClick = (node: DictTypeItem): void => {
+  const handleTreeNodeClick = async (node: DictTypeItem): Promise<void> => {
     table.currentDictType = node
-    void tableQueryRef.value?.getData()
+    if (node.nodeType !== 'dictionary') return
+
+    await nextTick()
+    await tableQueryRef.value?.getData()
   }
 
   const handleAdd = (parent?: DictListItem): void => {
@@ -346,6 +402,125 @@
       }
     }
 
+    .dict-selection-context {
+      position: relative;
+      display: flex;
+      flex: none;
+      min-width: 0;
+      overflow: hidden;
+      padding: 14px 16px;
+      margin-bottom: 12px;
+      gap: 12px;
+
+      &::before {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        content: '';
+        background: linear-gradient(110deg, var(--el-color-primary-light-9), transparent 60%);
+      }
+
+      > * {
+        position: relative;
+      }
+
+      &__icon {
+        display: grid;
+        flex: 0 0 38px;
+        width: 38px;
+        height: 38px;
+        font-size: 18px;
+        color: var(--el-color-primary);
+        background: var(--el-color-primary-light-9);
+        border: 1px solid var(--el-color-primary-light-7);
+        border-radius: var(--art-control-radius);
+        place-items: center;
+      }
+
+      &__copy {
+        min-width: 0;
+
+        p {
+          margin: 4px 0 0;
+          overflow: hidden;
+          font-size: 12px;
+          line-height: 1.5;
+          color: var(--el-text-color-secondary);
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+      }
+
+      &__heading {
+        display: flex;
+        min-width: 0;
+        align-items: center;
+        gap: 8px;
+
+        strong {
+          overflow: hidden;
+          font-size: 15px;
+          color: var(--el-text-color-primary);
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        span {
+          flex: none;
+          padding: 2px 7px;
+          font-size: 11px;
+          line-height: 18px;
+          color: var(--el-text-color-secondary);
+          background: var(--el-fill-color-light);
+          border: 1px solid var(--el-border-color-lighter);
+          border-radius: 999px;
+        }
+      }
+    }
+
+    .dict-selection-empty {
+      display: grid;
+      flex: 1;
+      min-height: 360px;
+      place-items: center;
+    }
+
+    :deep(.dict-identity-cell) {
+      display: grid;
+      min-width: 0;
+      line-height: 20px;
+
+      strong,
+      span {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      strong {
+        font-weight: 600;
+        color: var(--el-text-color-primary);
+      }
+
+      span {
+        font-size: 12px;
+        color: var(--el-text-color-secondary);
+      }
+    }
+
+    :deep(.dict-appearance-cell) {
+      display: flex;
+      min-width: 0;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    :deep(.dict-cell-placeholder) {
+      font-size: 12px;
+      color: var(--el-text-color-placeholder);
+    }
+
     .dict-splitter {
       :deep(.el-splitter-panel) {
         overflow: hidden;
@@ -375,7 +550,7 @@
         width: 16px;
         height: 56px;
         border-radius: 999px;
-        opacity: 0;
+        opacity: 0.28;
         transition:
           opacity 0.18s ease,
           background-color 0.18s ease,
@@ -401,7 +576,7 @@
       }
     }
 
-    @media (width <= 768px) {
+    @media (width <= 960px) {
       height: auto;
 
       .dict-splitter {

@@ -10,22 +10,42 @@
     <list default="true" id="b8f35119-660a-46e7-82f4-53eee06863eb" name="Changes" comment="feat theme">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/api/modules/tms/carrier-settlement.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/modules/tms/carrier-settlement.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/api/modules/tms/finance.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/modules/tms/finance.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/api/modules/tms/invoice.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/modules/tms/invoice.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/api/providers/supabase/query.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/providers/supabase/query.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/api/system-manage.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/system-manage.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/assets/styles/core/el-ui.scss" beforeDir="false" afterPath="$PROJECT_DIR$/src/assets/styles/core/el-ui.scss" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/components/core/forms/art-form/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/forms/art-form/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/components/core/layouts/art-async-state/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/layouts/art-async-state/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pnpm-lock.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/pnpm-lock.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/api/modules/tms/contract.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/modules/tms/contract.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/api/modules/tms/customer-settlement.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/modules/tms/customer-settlement.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/api/providers/supabase/vehicle/archive.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/providers/supabase/vehicle/archive.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/api/tms.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/tms.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/api/vehicle-manage-system.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/vehicle-manage-system.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/api/workflow.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/workflow.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/assets/styles/core/global.scss" beforeDir="false" afterPath="$PROJECT_DIR$/src/assets/styles/core/global.scss" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/core/forms/art-button-more/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/forms/art-button-more/index.vue" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/components/core/layouts/art-header-bar/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/layouts/art-header-bar/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/components/core/layouts/art-notification/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/layouts/art-notification/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/core/layouts/art-work-tab/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/layouts/art-work-tab/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/core/tables/art-table-query/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/tables/art-table-query/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/core/tables/art-table/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/tables/art-table/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/core/widget/art-icon-button/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/widget/art-icon-button/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/types/api/workflow.d.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/types/api/workflow.d.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/types/import/components.d.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/types/import/components.d.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/data-center/dict/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/data-center/dict/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/data-center/dict/modules/type-tree.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/data-center/dict/modules/type-tree.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/system/role/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/system/role/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/system/role/modules/role-edit-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/system/role/modules/role-edit-dialog.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/system/role/modules/role-permission-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/system/role/modules/role-permission-dialog.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/system/tenant/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/system/tenant/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/system/tenant/modules/tenant-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/system/tenant/modules/tenant-dialog.vue" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/views/system/user/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/system/user/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/finance-center/carrier-settlement/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/finance-center/carrier-settlement/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/finance-center/invoice-management/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/finance-center/invoice-management/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/finance-center/invoice-management/modules/invoice-detail-drawer.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/finance-center/invoice-management/modules/invoice-detail-drawer.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/basic-data/contract/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/basic-data/contract/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/basic-data/contract/modules/contract-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/basic-data/contract/modules/contract-dialog.vue" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/views/vehicle-manage-system/archive-manage/vehicle-archive-edit/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-manage-system/archive-manage/vehicle-archive-edit/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/workflow/definition/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/workflow/definition/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/workflow/definition/modules/workflow-designer-drawer.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/workflow/definition/modules/workflow-designer-drawer.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/workflow/monitor/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/workflow/monitor/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/workflow/monitor/modules/workflow-callback-outbox-drawer.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/workflow/monitor/modules/workflow-callback-outbox-drawer.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/workflow/monitor/modules/workflow-cancel-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/workflow/monitor/modules/workflow-cancel-dialog.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/workflow/workbench/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/workflow/workbench/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/workflow/workbench/modules/workflow-action-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/workflow/workbench/modules/workflow-action-dialog.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/workflow/workbench/modules/workflow-instance-drawer.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/workflow/workbench/modules/workflow-instance-drawer.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/supabase/tests/workflow_engine_test.sql" beforeDir="false" afterPath="$PROJECT_DIR$/supabase/tests/workflow_engine_test.sql" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -33,7 +53,7 @@
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="EmbeddingIndexingInfo">
-    <option name="cachedIndexableFilesCount" value="1710" />
+    <option name="cachedIndexableFilesCount" value="2190" />
   </component>
   <component name="FileTemplateManagerImpl">
     <option name="RECENT_TEMPLATES">
@@ -67,23 +87,23 @@
   </component>
   <component name="NextEditCompletionFeaturesState">
     <decayedCancelled>
-      <entry key="MS100" value="1.4013655673492882" />
-      <entry key="MS500" value="3.096739660676287" />
-      <entry key="S2" value="4.3632591282906485" />
-      <entry key="S5" value="4.72842291728169" />
-      <entry key="S10" value="4.8612117220434" />
-      <entry key="S30" value="4.956482877150508" />
-      <entry key="S60" value="5.13131391140142" />
-      <entry key="M2" value="6.029259256548251" />
-      <entry key="M5" value="8.261410135439807" />
-      <entry key="M10" value="9.779130607450698" />
-      <entry key="M15" value="10.42770952316146" />
-      <entry key="M30" value="11.168847714913015" />
-      <entry key="H1" value="11.697852364026057" />
-      <entry key="H2" value="12.980370311002883" />
-      <entry key="H4" value="16.955032160470715" />
-      <entry key="D1" value="61.34388033648913" />
-      <entry key="W1" value="648.9426964767092" />
+      <entry key="MS100" value="1.0234478245516443" />
+      <entry key="MS500" value="2.6673034844979733" />
+      <entry key="S2" value="5.7670669462928785" />
+      <entry key="S5" value="6.989727416517768" />
+      <entry key="S10" value="7.472800021152059" />
+      <entry key="S30" value="7.822458010035182" />
+      <entry key="S60" value="8.062139294944418" />
+      <entry key="M2" value="8.989873452375768" />
+      <entry key="M5" value="11.24093877543684" />
+      <entry key="M10" value="12.767293298373058" />
+      <entry key="M15" value="13.419361750445647" />
+      <entry key="M30" value="14.164413166968847" />
+      <entry key="H1" value="14.695542119617551" />
+      <entry key="H2" value="15.979102664663808" />
+      <entry key="H4" value="19.95422403395204" />
+      <entry key="D1" value="64.34342123023649" />
+      <entry key="W1" value="651.942017392477" />
     </decayedCancelled>
     <decayedSelected>
       <entry key="MS100" value="0.0" />
@@ -91,37 +111,37 @@
       <entry key="S2" value="0.0" />
       <entry key="S5" value="0.0" />
       <entry key="S10" value="0.0" />
-      <entry key="S30" value="1.4388846110802358E-143" />
-      <entry key="S60" value="3.7932632535591794E-72" />
-      <entry key="M2" value="1.9476301634445843E-36" />
-      <entry key="M5" value="5.197596924543008E-15" />
-      <entry key="M10" value="7.209436126001725E-8" />
-      <entry key="M15" value="1.7322116435772998E-5" />
-      <entry key="M30" value="0.004163856885150625" />
-      <entry key="H1" value="0.06588188363285147" />
-      <entry key="H2" value="0.2909874142910861" />
-      <entry key="H4" value="0.6963539019293332" />
-      <entry key="D1" value="2.633354436620609" />
-      <entry key="W1" value="22.49978852599012" />
+      <entry key="S30" value="1.4089146672189952E-143" />
+      <entry key="S60" value="3.753551208148087E-72" />
+      <entry key="M2" value="1.9374083741297512E-36" />
+      <entry key="M5" value="5.186668232295641E-15" />
+      <entry key="M10" value="7.201852701382136E-8" />
+      <entry key="M15" value="1.7309967172692876E-5" />
+      <entry key="M30" value="0.004162396420828842" />
+      <entry key="H1" value="0.06587032865129099" />
+      <entry key="H2" value="0.29096189512356796" />
+      <entry key="H4" value="0.6963233666542175" />
+      <entry key="D1" value="2.6333351907383102" />
+      <entry key="W1" value="22.499765034516273" />
     </decayedSelected>
     <decayedShown>
-      <entry key="MS100" value="1.1645154133273516" />
-      <entry key="MS500" value="3.0219609861065324" />
-      <entry key="S2" value="4.339292998522811" />
-      <entry key="S5" value="4.718214384055677" />
-      <entry key="S10" value="4.855993711149064" />
-      <entry key="S30" value="4.954716506594336" />
-      <entry key="S60" value="5.130410867437409" />
-      <entry key="M2" value="6.028758613743113" />
-      <entry key="M5" value="8.261161200853278" />
-      <entry key="M10" value="9.778989673916984" />
-      <entry key="M15" value="10.427628105691714" />
-      <entry key="M30" value="11.172956541400117" />
-      <entry key="H1" value="11.763683847077692" />
-      <entry key="H2" value="13.271291141040749" />
-      <entry key="H4" value="17.651304702859896" />
-      <entry key="D1" value="63.98760226096329" />
-      <entry key="W1" value="671.9635815658075" />
+      <entry key="MS100" value="0.11302743256855188" />
+      <entry key="MS500" value="2.189785074870104" />
+      <entry key="S2" value="5.591442889884652" />
+      <entry key="S5" value="6.9124114985942375" />
+      <entry key="S10" value="7.432821053433949" />
+      <entry key="S30" value="7.80882253979386" />
+      <entry key="S60" value="8.055265697157218" />
+      <entry key="M2" value="8.986378629123495" />
+      <entry key="M5" value="11.23949000316548" />
+      <entry key="M10" value="12.766552059132582" />
+      <entry key="M15" value="13.418880026659922" />
+      <entry key="M30" value="14.168320340182847" />
+      <entry key="H1" value="14.76126194287048" />
+      <entry key="H2" value="16.269947922644487" />
+      <entry key="H4" value="20.650441014794065" />
+      <entry key="D1" value="66.98711966135158" />
+      <entry key="W1" value="674.9628778500779" />
     </decayedShown>
   </component>
   <component name="PackageJsonUpdateNotifier">

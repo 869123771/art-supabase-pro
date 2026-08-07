@@ -1,5 +1,5 @@
 <template>
-  <ArtDrawer ref="drawerRef" size="lg" :show-footer="false">
+  <ArtDrawer ref="drawerRef" size="xl" :show-footer="false">
     <template #header>
       <div class="workflow-instance__title">
         <span><ArtSvgIcon icon="ri:file-history-line" /></span>
@@ -30,30 +30,56 @@
               <p>{{ state.detail.businessType }} · {{ state.detail.businessId }}</p>
             </div>
           </div>
-          <ArtDictDisplay
-            dict-code="workflowInstanceStatus"
-            :value="state.detail.status"
-            display="tag"
-          />
+          <div class="workflow-instance__hero-status">
+            <small>当前状态</small>
+            <ArtDictDisplay
+              dict-code="workflowInstanceStatus"
+              :value="state.detail.status"
+              display="tag"
+            />
+          </div>
         </section>
 
+        <ArtAsyncState
+          v-if="state.snapshotLoading || state.snapshotError"
+          :loading="state.snapshotLoading"
+          loading-mode="skeleton"
+          :skeleton-rows="3"
+          :error="state.snapshotError"
+          error-title="业务资料暂时不可用"
+          :min-height="132"
+          @retry="loadSnapshot"
+        />
+        <WorkflowBusinessSnapshot v-else-if="state.snapshot" :snapshot="state.snapshot" />
+
         <section class="workflow-instance__section art-card-xs">
-          <ArtSectionTitle>实例概览</ArtSectionTitle>
+          <div class="workflow-instance__section-heading">
+            <ArtSectionTitle>实例概览</ArtSectionTitle>
+            <span>流程身份与当前进度</span>
+          </div>
           <ArtDescriptions :data="state.detail" :items="descriptionItems" :columns="2" />
+        </section>
+
+        <section
+          v-if="state.detail.version?.config?.nodes?.length"
+          class="workflow-instance__section art-card-xs"
+        >
+          <ArtSectionTitle>流程图</ArtSectionTitle>
+          <WorkflowFlowMap
+            :nodes="state.detail.version.config.nodes"
+            :tasks="state.detail.tasks"
+            :skipped-node-keys="skippedNodeKeys"
+            :current-node-key="state.detail.currentNodeKey"
+            :instance-status="state.detail.status"
+          />
         </section>
 
         <section class="workflow-instance__section art-card-xs">
           <div class="workflow-instance__section-heading">
             <ArtSectionTitle>审批任务</ArtSectionTitle>
-            <span>{{ sortedTasks.length }} 条任务</span>
+            <span>{{ taskNodeCount }} 个节点 · {{ sortedTasks.length }} 位审批人</span>
           </div>
-          <ArtTable
-            :data="sortedTasks"
-            :columns="taskColumns"
-            :pagination="false"
-            table-layout="fixed"
-            stripe
-          />
+          <WorkflowTaskBoard :tasks="sortedTasks" />
         </section>
 
         <section class="workflow-instance__section art-card-xs">
@@ -71,7 +97,7 @@
   </ArtDrawer>
 </template>
 
-<script setup lang="tsx">
+<script setup lang="ts">
   import ArtDrawer from '@/components/core/drawers/art-drawer/index.vue'
   import type { ArtDrawerExpose } from '@/components/core/drawers/art-drawer/types'
   import ArtAsyncState from '@/components/core/layouts/art-async-state/index.vue'
@@ -85,10 +111,11 @@
   import type { ArtDescriptionItem } from '@/components/core/base/art-descriptions/types'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
-  import ArtTable from '@/components/core/tables/art-table/index.vue'
-  import type { ColumnOption } from '@/types'
+  import WorkflowBusinessSnapshot from '../../modules/workflow-business-snapshot.vue'
+  import WorkflowFlowMap from '../../modules/workflow-flow-map.vue'
+  import WorkflowTaskBoard from '../../modules/workflow-task-board.vue'
   import { formatWithDayjs } from '@/utils/time'
-  import { fetchWorkflowInstanceDetail } from '@/api/workflow'
+  import { fetchWorkflowBusinessSnapshot, fetchWorkflowInstanceDetail } from '@/api/workflow'
 
   defineOptions({ name: 'WorkflowInstanceDrawer' })
 
@@ -98,15 +125,33 @@
     loading: boolean
     error: Error | null
     detail: Api.Workflow.WorkflowInstanceRecord | null
-  }>({ instanceId: '', loading: false, error: null, detail: null })
+    snapshot: Api.Workflow.WorkflowBusinessSnapshot | null
+    snapshotLoading: boolean
+    snapshotError: Error | null
+  }>({
+    instanceId: '',
+    loading: false,
+    error: null,
+    detail: null,
+    snapshot: null,
+    snapshotLoading: false,
+    snapshotError: null
+  })
+  let snapshotRequestId = 0
 
   const sortedTasks = computed(() =>
     [...(state.detail?.tasks || [])].sort(
       (a, b) => a.nodeOrder - b.nodeOrder || a.createTime.localeCompare(b.createTime)
     )
   )
+  const taskNodeCount = computed(() => new Set(sortedTasks.value.map((task) => task.nodeKey)).size)
   const sortedActions = computed(() =>
     [...(state.detail?.actions || [])].sort((a, b) => b.createTime.localeCompare(a.createTime))
+  )
+  const skippedNodeKeys = computed(() =>
+    sortedActions.value
+      .filter((action) => action.action === 'auto_skip' && action.nodeKey)
+      .map((action) => String(action.nodeKey))
   )
   const getActionAuditDescription = (action: Api.Workflow.WorkflowActionRecord) => {
     const isPlatformOverride = action.metadata?.operatorType === 'platform_super_override'
@@ -139,30 +184,6 @@
 
   const formatDate = (value?: string | null): string =>
     value ? String(formatWithDayjs(value) ?? '--') : '--'
-  const createDecisionRuleCell = (row: Api.Workflow.WorkflowTaskRecord) => {
-    const label =
-      row.approvalMode === 'all'
-        ? '全员会签'
-        : row.approvalMode === 'percentage'
-          ? '比例会签'
-          : '或签'
-    const threshold =
-      row.approvalMode === 'percentage'
-        ? `${row.approvalThresholdPercent ?? 100}% 通过 · `
-        : row.approvalMode === 'any'
-          ? '一人通过 · '
-          : '全员通过 · '
-
-    return (
-      <div class="workflow-instance__decision-rule">
-        <strong>{label}</strong>
-        <small>
-          {threshold}
-          {row.rejectVetoEnabled === false ? '容错计算' : '一票否决'}
-        </small>
-      </div>
-    )
-  }
   const descriptionItems = computed<ArtDescriptionItem<Api.Workflow.WorkflowInstanceRecord>[]>(
     () => [
       { key: 'initiator', label: '发起人', field: 'initiatorNameSnapshot' },
@@ -190,35 +211,6 @@
       }
     ]
   )
-  const taskColumns: ColumnOption<Api.Workflow.WorkflowTaskRecord>[] = [
-    { prop: 'nodeName', label: '审批节点', minWidth: 135 },
-    { prop: 'assigneeNameSnapshot', label: '审批人', minWidth: 115 },
-    {
-      prop: 'approvalMode',
-      label: '决策规则',
-      minWidth: 150,
-      formatter: createDecisionRuleCell
-    },
-    {
-      prop: 'status',
-      label: '状态',
-      width: 105,
-      dict: { code: 'workflowTaskStatus', display: 'tag' }
-    },
-    {
-      prop: 'handledAt',
-      label: '处理时间',
-      width: 160,
-      formatter: (row) => formatDate(row.handledAt)
-    },
-    {
-      prop: 'comment',
-      label: '审批意见',
-      minWidth: 150,
-      showOverflowTooltip: true,
-      formatter: (row) => row.comment || '--'
-    }
-  ]
   const getActionTone = (action: Api.Workflow.ActionType): ArtProcessTimelineTone => {
     if (action === 'approve') return 'success'
     if (action === 'reject' || action === 'cancel') return 'danger'
@@ -230,9 +222,10 @@
     if (!state.instanceId) return
     state.loading = true
     state.error = null
+    void loadSnapshot()
     try {
-      const response = await fetchWorkflowInstanceDetail(state.instanceId)
-      state.detail = response.data
+      const detailResponse = await fetchWorkflowInstanceDetail(state.instanceId)
+      state.detail = detailResponse.data
     } catch (error) {
       state.error = error instanceof Error ? error : new Error('审批实例加载失败')
     } finally {
@@ -240,9 +233,36 @@
     }
   }
 
+  async function loadSnapshot(): Promise<void> {
+    const instanceId = state.instanceId
+    if (!instanceId) return
+    const requestId = ++snapshotRequestId
+    state.snapshotLoading = true
+    state.snapshotError = null
+    try {
+      const response = await fetchWorkflowBusinessSnapshot(instanceId, {
+        showErrorMessage: false
+      })
+      if (requestId !== snapshotRequestId || state.instanceId !== instanceId) return
+      if (!response.data) throw new Error('业务资料暂时无法加载')
+      state.snapshot = response.data
+    } catch {
+      if (requestId !== snapshotRequestId || state.instanceId !== instanceId) return
+      state.snapshot = null
+      state.snapshotError = new Error(
+        '业务资料暂时无法加载，审批记录与流程图仍可正常查看。请稍后重试。'
+      )
+    } finally {
+      if (requestId === snapshotRequestId) state.snapshotLoading = false
+    }
+  }
+
   async function handleOpen(instanceId: string): Promise<void> {
     state.instanceId = instanceId
     state.detail = null
+    state.snapshot = null
+    state.snapshotLoading = false
+    state.snapshotError = null
     state.error = null
     await drawerRef.value?.handleOpen(instanceId, {
       title: '审批实例详情',
@@ -281,8 +301,8 @@
     }
 
     small {
-      font-size: 11px;
-      color: var(--art-gray-500);
+      font-size: 12px;
+      color: var(--art-gray-600);
     }
   }
 
@@ -347,9 +367,21 @@
         margin: 0;
         overflow: hidden;
         text-overflow: ellipsis;
-        font-size: 11px;
-        color: var(--art-gray-500);
+        font-size: 12px;
+        color: var(--art-gray-600);
         white-space: nowrap;
+      }
+    }
+
+    &__hero-status {
+      display: grid;
+      flex: 0 0 auto;
+      gap: 6px;
+      justify-items: end;
+
+      > small {
+        font-size: 12px;
+        color: var(--art-gray-600);
       }
     }
 
@@ -367,27 +399,43 @@
     }
 
     &__section-heading > span {
-      font-size: 11px;
-      color: var(--art-gray-500);
+      flex: 0 0 auto;
+      font-size: 12px;
+      color: var(--art-gray-600);
+      white-space: nowrap;
     }
+  }
 
-    &__decision-rule {
-      display: grid;
-      gap: 3px;
-      min-width: 0;
+  @media (width <= 720px) {
+    .workflow-instance {
+      gap: 10px;
 
-      strong {
-        font-size: 13px;
-        font-weight: 600;
-        color: var(--art-gray-800);
+      &__hero {
+        align-items: flex-start;
+        padding: 16px;
       }
 
-      small {
-        overflow: hidden;
-        text-overflow: ellipsis;
-        font-size: 11px;
-        color: var(--art-gray-500);
-        white-space: nowrap;
+      &__hero-main {
+        align-items: flex-start;
+
+        h2,
+        p {
+          overflow-wrap: anywhere;
+          white-space: normal;
+        }
+      }
+
+      &__hero-status {
+        justify-items: start;
+      }
+
+      &__section {
+        padding: 14px;
+      }
+
+      &__section-heading {
+        flex-wrap: wrap;
+        gap: 6px;
       }
     }
   }

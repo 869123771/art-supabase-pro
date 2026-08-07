@@ -145,7 +145,8 @@
   import {
     addVehicleArchive,
     editVehicleArchive,
-    fetchVehicleArchiveDetail
+    fetchVehicleArchiveDetail,
+    submitVehicleArchiveForApproval
   } from '@/api/vehicle-manage-system'
   import { fetchCarrierOptions, fetchDriverOptions } from '@/api/tms'
   import { uploadAttachment } from '@/api/common'
@@ -1050,7 +1051,12 @@
       if (isEdit.value) {
         await editVehicleArchive(payload)
       } else {
-        await addVehicleArchive(payload)
+        const response = await addVehicleArchive(payload)
+        if (!response.data?.id) throw new Error('车辆档案创建成功，但未返回档案 ID')
+        await submitVehicleArchiveForApproval(
+          response.data.id,
+          String(payload.plateNo || '未编号车辆')
+        )
       }
       goBack()
     } finally {

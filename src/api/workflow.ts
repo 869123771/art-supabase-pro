@@ -14,14 +14,14 @@ const TASK_SELECT = `
   instance:wf_instance!wf_task_instance_id_fkey!inner(
     *,
     definition:wf_definition!wf_instance_definition_id_fkey(id, code, name, business_type),
-    version:wf_version!wf_instance_version_id_fkey(id, version_no)
+    version:wf_version!wf_instance_version_id_fkey(id, version_no, config)
   )
 `
 
 const INSTANCE_SELECT = `
   *,
   definition:wf_definition!wf_instance_definition_id_fkey(id, code, name, business_type),
-  version:wf_version!wf_instance_version_id_fkey(id, version_no),
+  version:wf_version!wf_instance_version_id_fkey(id, version_no, config),
   tasks:wf_task(*),
   actions:wf_action(
     *,
@@ -123,6 +123,72 @@ export async function fetchWorkflowRoleOptions(
   })
 }
 
+export async function fetchWorkflowDelegations(userId: string) {
+  return await responseHandle<Api.Workflow.WorkflowDelegationRecord[]>(
+    () =>
+      supabase
+        .from('wf_delegation')
+        .select(
+          `*,
+          delegator:sys_user!wf_delegation_delegator_user_id_fkey(
+            id, user_name, nick_name, user_email, avatar
+          ),
+          delegate:sys_user!wf_delegation_delegate_user_id_fkey(
+            id, user_name, nick_name, user_email, avatar
+          )`
+        )
+        .or(`delegator_user_id.eq.${userId},delegate_user_id.eq.${userId}`)
+        .order('create_time', { ascending: false }),
+    { showErrorMessage: true }
+  )
+}
+
+export async function createWorkflowDelegation(params: {
+  delegateUserId: string
+  startsAt: string
+  endsAt: string
+  reason: string
+}) {
+  return await responseHandle<string>(
+    () =>
+      supabase.rpc('create_workflow_delegation', {
+        p_delegate_user_id: params.delegateUserId,
+        p_starts_at: params.startsAt,
+        p_ends_at: params.endsAt,
+        p_reason: params.reason
+      }),
+    { showMessage: true, breakReturn: true, message: '审批委托已生效' }
+  )
+}
+
+export async function revokeWorkflowDelegation(delegationId: string, reason: string) {
+  return await responseHandle<string>(
+    () =>
+      supabase.rpc('revoke_workflow_delegation', {
+        p_delegation_id: delegationId,
+        p_reason: reason
+      }),
+    { showMessage: true, breakReturn: true, message: '审批委托已撤销' }
+  )
+}
+
+export async function transferWorkflowTask(params: {
+  taskId: string
+  assigneeUserId: string
+  reason: string
+}) {
+  return await responseHandle<string>(
+    () =>
+      supabase.rpc('transfer_workflow_task', {
+        p_task_id: params.taskId,
+        p_assignee_user_id: params.assigneeUserId,
+        p_reason: params.reason,
+        p_idempotency_key: crypto.randomUUID()
+      }),
+    { showMessage: true, breakReturn: true, message: '审批待办已转交' }
+  )
+}
+
 export async function fetchPendingWorkflowTasks(params: Api.Workflow.WorkflowTaskSearchParams) {
   const { from = 0, to = 9, keyword, businessType, assigneeUserId } = params
   let query = supabase
@@ -143,7 +209,7 @@ export async function fetchPlatformGlobalPendingWorkflowTasks(
   params: Api.Workflow.PlatformGlobalWorkflowTaskSearchParams
 ) {
   const { from = 0, to = 19, keyword, businessType, tenantId } = params
-  return await responseHandle<Api.Workflow.WorkflowTaskPage>(
+  return await responseHandle<Api.Workflow.WorkflowNodeTaskPage>(
     () =>
       supabase.rpc('search_platform_global_pending_workflow_tasks', {
         p_keyword: keyword?.trim() || null,
@@ -198,6 +264,16 @@ export async function fetchWorkflowInstanceDetail(id: string) {
   return await responseHandle<Api.Workflow.WorkflowInstanceRecord>(
     () => supabase.from('wf_instance').select(INSTANCE_SELECT).eq('id', id).single(),
     { showErrorMessage: true, breakReturn: true }
+  )
+}
+
+export async function fetchWorkflowBusinessSnapshot(
+  instanceId: string,
+  options: { showErrorMessage?: boolean } = {}
+) {
+  return await responseHandle<Api.Workflow.WorkflowBusinessSnapshot>(
+    () => supabase.rpc('get_workflow_business_snapshot', { p_instance_id: instanceId }),
+    { showErrorMessage: options.showErrorMessage ?? true, breakReturn: true }
   )
 }
 
@@ -258,6 +334,17 @@ export async function fetchWorkflowMonitorSummary(): Promise<Api.Workflow.Workfl
     { breakReturn: true }
   )
   if (!result.data) throw new Error('审批运营概览加载失败')
+  return result.data
+}
+
+export async function fetchWorkflowOperationalAnalytics(
+  days = 30
+): Promise<Api.Workflow.WorkflowOperationalAnalytics> {
+  const result = await responseHandle<Api.Workflow.WorkflowOperationalAnalytics>(
+    () => supabase.rpc('get_workflow_operational_analytics', { p_days: days }),
+    { breakReturn: true }
+  )
+  if (!result.data) throw new Error('审批运营分析加载失败')
   return result.data
 }
 

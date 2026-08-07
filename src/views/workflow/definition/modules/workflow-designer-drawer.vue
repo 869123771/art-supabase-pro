@@ -26,19 +26,56 @@
         />
       </section>
 
+      <section class="workflow-designer__preview art-card-xs">
+        <div class="workflow-designer__section-header">
+          <div>
+            <ArtSectionTitle>流程图预览</ArtSectionTitle>
+            <p>当前引擎按从左到右顺序执行；分支条件不满足时跳过该节点。</p>
+          </div>
+          <div class="workflow-designer__preview-actions">
+            <ElTag :type="form.data.config.allowAutoApprove ? 'warning' : 'success'" effect="plain">
+              {{
+                form.data.config.allowAutoApprove ? '允许全跳过后自动通过' : '全条件不命中时阻断'
+              }}
+            </ElTag>
+            <ElButton
+              type="primary"
+              plain
+              :disabled="!form.data.config.nodes.length"
+              @click="openSimulator"
+            >
+              <ArtSvgIcon icon="ri:test-tube-line" />试跑与体检
+            </ElButton>
+          </div>
+        </div>
+        <WorkflowFlowMap :nodes="form.data.config.nodes" compact />
+      </section>
+
       <section class="workflow-designer__canvas art-card-xs">
         <header class="workflow-designer__section-header">
           <div>
             <ArtSectionTitle>审批节点</ArtSectionTitle>
             <p>拖拽调整执行顺序；条件不满足的节点会自动跳过。</p>
           </div>
-          <ElButton type="primary" plain @click="addNode">
-            <ArtSvgIcon icon="ri:add-line" />新增节点
-          </ElButton>
+          <div class="workflow-designer__canvas-actions">
+            <span>
+              已配置 {{ configuredNodeCount }}/{{ form.data.config.nodes.length }} 个节点
+              <template v-if="conditionalNodeCount">
+                · {{ conditionalNodeCount }} 个条件节点</template
+              >
+            </span>
+            <ElButton type="primary" plain @click="addNode">
+              <ArtSvgIcon icon="ri:add-line" />新增节点
+            </ElButton>
+          </div>
         </header>
 
         <div class="workflow-designer__workspace">
           <aside class="workflow-designer__nodes">
+            <div class="workflow-designer__nodes-header">
+              <span>执行顺序</span>
+              <small>{{ form.data.config.nodes.length }} 个节点</small>
+            </div>
             <ElScrollbar always>
               <div class="workflow-designer__nodes-content">
                 <VueDraggable
@@ -47,30 +84,36 @@
                   :animation="180"
                   @end="normalizeNodeOrder"
                 >
-                  <button
+                  <article
                     v-for="(node, index) in form.data.config.nodes"
                     :key="node.key"
-                    type="button"
                     :class="['workflow-designer__node', { 'is-active': selectedIndex === index }]"
-                    @click="selectedIndex = index"
                   >
-                    <span class="workflow-designer__drag" title="拖拽排序">
-                      <ArtSvgIcon icon="ri:draggable" />
-                    </span>
-                    <i>{{ index + 1 }}</i>
-                    <span>
-                      <strong>{{ node.name || `审批节点 ${index + 1}` }}</strong>
-                      <small>{{ getAssigneeSummary(node) }}</small>
-                    </span>
+                    <button
+                      type="button"
+                      class="workflow-designer__node-select"
+                      :aria-label="`选择${node.name || `审批节点 ${index + 1}`}`"
+                      :aria-pressed="selectedIndex === index"
+                      @click="selectedIndex = index"
+                    >
+                      <span class="workflow-designer__drag" title="拖拽排序">
+                        <ArtSvgIcon icon="ri:draggable" />
+                      </span>
+                      <i>{{ index + 1 }}</i>
+                      <span>
+                        <strong>{{ node.name || `审批节点 ${index + 1}` }}</strong>
+                        <small>{{ getAssigneeSummary(node) }}</small>
+                      </span>
+                    </button>
                     <ElButton
                       text
                       type="danger"
-                      aria-label="删除节点"
-                      @click.stop="removeNode(index)"
+                      :aria-label="`删除${node.name || `审批节点 ${index + 1}`}`"
+                      @click="removeNode(index)"
                     >
                       <ArtSvgIcon icon="ri:delete-bin-6-line" />
                     </ElButton>
-                  </button>
+                  </article>
                 </VueDraggable>
 
                 <ArtEmptyState
@@ -126,6 +169,7 @@
       </section>
     </div>
   </ArtDrawer>
+  <WorkflowSimulatorDialog ref="simulatorDialogRef" />
 </template>
 
 <script setup lang="ts">
@@ -138,6 +182,9 @@
   import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import ArtEmptyState from '@/components/core/layouts/art-empty-state/index.vue'
+  import WorkflowFlowMap from '../../modules/workflow-flow-map.vue'
+  import WorkflowSimulatorDialog from './workflow-simulator-dialog.vue'
+  import { getWorkflowBusinessContract } from '../../modules/workflow-business-contracts'
   import { useUserStore } from '@/store/modules/user'
   import { fetchGetEnableTenantList } from '@/api/system-manage'
   import {
@@ -159,11 +206,20 @@
     reloadOptions: (key?: string) => Promise<void>
   }
 
+  interface SimulatorDialogExpose {
+    handleOpen: (data: {
+      businessType: string
+      businessTypeLabel: string
+      config: Api.Workflow.WorkflowConfig
+    }) => Promise<void>
+  }
+
   const emit = defineEmits<{ (event: 'success'): void }>()
   const { getDictMap, isPlatformSuper } = storeToRefs(useUserStore())
   const drawerRef = ref<ArtDrawerExpose<Api.Workflow.WorkflowDefinitionRecord | undefined>>()
   const baseFormRef = ref<FormExpose>()
   const nodeFormRef = ref<FormExpose>()
+  const simulatorDialogRef = ref<SimulatorDialogExpose>()
   const selectedIndex = ref(0)
   const identityLocked = ref(false)
 
@@ -190,7 +246,7 @@
     businessType: 'tms_waybill_cost',
     description: '',
     changeNote: '',
-    config: { nodes: [createNode(0)] }
+    config: { nodes: [createNode(0)], allowAutoApprove: false }
   })
 
   const form = reactive<{ data: DesignerForm }>({ data: createInitialForm() })
@@ -200,12 +256,40 @@
       if (value) form.data.config.nodes[selectedIndex.value] = value
     }
   })
+  const configuredNodeCount = computed(
+    () =>
+      form.data.config.nodes.filter((node) => {
+        const assigneeCount =
+          node.assignee.type === 'users'
+            ? node.assignee.userIds?.length
+            : node.assignee.roleCodes?.length
+        return (
+          Boolean(trim(node.name)) && (node.assignee.type === 'initiator' || Boolean(assigneeCount))
+        )
+      }).length
+  )
+  const conditionalNodeCount = computed(
+    () => form.data.config.nodes.filter((node) => node.condition.operator !== 'always').length
+  )
 
   const dictOptions = (code: string) => computed(() => getDictMap.value[code] ?? [])
   const businessTypeOptions = dictOptions('workflowBusinessType')
   const approvalModeOptions = dictOptions('workflowApprovalMode')
   const assigneeTypeOptions = dictOptions('workflowAssigneeType')
   const conditionOperatorOptions = dictOptions('workflowConditionOperator')
+  const contextFields = computed(() => getWorkflowBusinessContract(form.data.businessType).fields)
+  const businessTypeLabel = computed(
+    () =>
+      businessTypeOptions.value.find((item) => item.value === form.data.businessType)?.label ||
+      form.data.businessType ||
+      '通用审批'
+  )
+  const contextFieldOptions = computed(() =>
+    contextFields.value.map((field) => ({
+      label: `${field.label}（${field.key}）`,
+      value: field.key
+    }))
+  )
 
   const baseRules = computed<FormRules<DesignerForm>>(() => ({
     tenantId: isPlatformSuper.value
@@ -268,7 +352,8 @@
       props: {
         options: businessTypeOptions.value,
         placeholder: '选择可复用的业务场景',
-        disabled: identityLocked.value
+        disabled: identityLocked.value,
+        onChange: handleBusinessTypeChange
       }
     },
     {
@@ -283,6 +368,14 @@
       type: 'input',
       span: 24,
       props: { type: 'textarea', rows: 2, maxlength: 500, showWordLimit: true }
+    },
+    {
+      label: '全条件未命中策略',
+      key: 'config.allowAutoApprove',
+      type: 'switch',
+      span: 24,
+      help: '默认阻断并报错，防止条件字段缺失导致业务单据被静默自动通过。仅明确需要“无节点命中即通过”时开启。',
+      props: { activeText: '自动通过', inactiveText: '安全阻断', inlinePrompt: true }
     }
   ])
 
@@ -420,9 +513,10 @@
       {
         label: '上下文字段',
         key: 'condition.field',
-        type: 'input',
+        type: 'select',
         hidden: conditionOperator === 'always',
-        props: { placeholder: '例如 amount 或 customer.level' }
+        help: '字段来自当前业务的受控上下文契约，运行时由服务端从业务原单生成。',
+        props: { options: contextFieldOptions.value, filterable: true, placeholder: '选择业务字段' }
       },
       {
         label: '比较值',
@@ -456,6 +550,15 @@
     void reloadAssigneeOptions()
   }
 
+  function handleBusinessTypeChange(): void {
+    const allowedFields = new Set(contextFields.value.map((field) => field.key))
+    form.data.config.nodes.forEach((node) => {
+      if (node.condition.field && !allowedFields.has(node.condition.field)) {
+        node.condition = { operator: 'always' }
+      }
+    })
+  }
+
   function addNode(): void {
     form.data.config.nodes.push(createNode(form.data.config.nodes.length))
     selectedIndex.value = form.data.config.nodes.length - 1
@@ -469,6 +572,14 @@
       Math.min(selectedIndex.value, form.data.config.nodes.length - 1)
     )
     normalizeNodeOrder()
+  }
+
+  function openSimulator(): void {
+    void simulatorDialogRef.value?.handleOpen({
+      businessType: form.data.businessType,
+      businessTypeLabel: String(businessTypeLabel.value),
+      config: cloneDeep(toRaw(form.data.config))
+    })
   }
 
   function getAssigneeSummary(node: Api.Workflow.WorkflowNode): string {
@@ -509,7 +620,23 @@
       node.escalateAfterHours = Number(node.escalateAfterHours || 4)
       node.assignee.userIds = node.assignee.type === 'users' ? node.assignee.userIds || [] : []
       node.assignee.roleCodes = node.assignee.type === 'roles' ? node.assignee.roleCodes || [] : []
-      if (node.condition.operator === 'always') node.condition = { operator: 'always' }
+      if (node.condition.operator === 'always') {
+        node.condition = { operator: 'always' }
+      } else if (node.condition.operator === 'not_empty') {
+        delete node.condition.value
+      } else if (node.condition.operator === 'in') {
+        node.condition.value = Array.isArray(node.condition.value)
+          ? node.condition.value
+          : String(node.condition.value ?? '')
+              .split(',')
+              .map((value) => value.trim())
+              .filter(Boolean)
+      } else {
+        const field = contextFields.value.find((item) => item.key === node.condition.field)
+        if (field?.valueType === 'number' && node.condition.value !== '') {
+          node.condition.value = Number(node.condition.value)
+        }
+      }
     })
     return payload
   }
@@ -519,6 +646,7 @@
       ElMessage.warning('请至少添加一个审批节点')
       return false
     }
+    const allowedFields = new Set(contextFields.value.map((field) => field.key))
     for (const [index, node] of form.data.config.nodes.entries()) {
       if (!trim(node.name)) {
         ElMessage.warning(`请填写第 ${index + 1} 个节点的名称`)
@@ -534,6 +662,11 @@
         selectedIndex.value = index
         return false
       }
+      if (node.assignee.type === 'initiator' && !node.allowSelfApproval) {
+        ElMessage.warning(`“${node.name}”指定发起人审批时，必须允许发起人自审`)
+        selectedIndex.value = index
+        return false
+      }
       if (
         node.approvalMode === 'percentage' &&
         (!Number.isInteger(Number(node.approvalThresholdPercent)) ||
@@ -546,6 +679,21 @@
       }
       if (node.condition.operator !== 'always' && !trim(node.condition.field || '')) {
         ElMessage.warning(`请配置“${node.name}”的条件字段`)
+        selectedIndex.value = index
+        return false
+      }
+      if (node.condition.field && !allowedFields.has(node.condition.field)) {
+        ElMessage.warning(`“${node.name}”使用了当前业务不支持的条件字段`)
+        selectedIndex.value = index
+        return false
+      }
+      if (
+        node.condition.operator === 'in' &&
+        !String(node.condition.value ?? '')
+          .split(',')
+          .filter(Boolean).length
+      ) {
+        ElMessage.warning(`请为“${node.name}”填写至少一个匹配值`)
         selectedIndex.value = index
         return false
       }
@@ -601,8 +749,9 @@
         businessType: detail.businessType,
         description: detail.description || '',
         changeNote: editableVersion?.changeNote || '',
-        config: cloneDeep(editableVersion?.config || { nodes: [] })
+        config: cloneDeep(editableVersion?.config || { nodes: [], allowAutoApprove: false })
       }
+      form.data.config.allowAutoApprove = form.data.config.allowAutoApprove ?? false
       form.data.config.nodes = form.data.config.nodes.map((node) => ({
         ...node,
         approvalThresholdPercent: node.approvalThresholdPercent ?? 67,
@@ -660,6 +809,7 @@
     padding: 2px;
 
     &__base,
+    &__preview,
     &__canvas {
       padding: 18px;
     }
@@ -678,6 +828,26 @@
       }
     }
 
+    &__preview-actions {
+      display: flex;
+      flex: 0 0 auto;
+      gap: 10px;
+      align-items: center;
+    }
+
+    &__canvas-actions {
+      display: flex;
+      flex: 0 0 auto;
+      gap: 12px;
+      align-items: center;
+
+      > span {
+        font-size: 12px;
+        color: var(--art-gray-600);
+        white-space: nowrap;
+      }
+    }
+
     &__workspace {
       display: grid;
       grid-template-columns: minmax(240px, 30%) minmax(0, 1fr);
@@ -688,9 +858,31 @@
     }
 
     &__nodes {
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
       min-height: 0;
       background: var(--art-gray-50);
       border-right: 1px solid var(--art-gray-200);
+    }
+
+    &__nodes-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 14px;
+      background: color-mix(in srgb, var(--theme-color) 4%, var(--el-bg-color));
+      border-bottom: 1px solid var(--art-gray-200);
+
+      span {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--art-gray-800);
+      }
+
+      small {
+        font-size: 12px;
+        color: var(--art-gray-600);
+      }
     }
 
     &__nodes-content {
@@ -699,28 +891,43 @@
 
     &__node {
       display: grid;
-      grid-template-columns: 20px 28px minmax(0, 1fr) 30px;
-      gap: 8px;
+      grid-template-columns: minmax(0, 1fr) 30px;
+      gap: 4px;
       align-items: center;
       width: 100%;
-      padding: 11px 8px;
+      padding: 5px 6px 5px 0;
       margin-bottom: 9px;
       color: var(--art-gray-700);
       text-align: left;
-      cursor: pointer;
       background: var(--art-main-bg-color);
       border: 1px solid var(--art-gray-200);
       border-radius: var(--el-border-radius-base);
       transition: 0.2s ease;
 
-      &:hover,
-      &.is-active {
-        border-color: var(--el-color-primary-light-5);
-        box-shadow: 0 7px 18px rgb(31 60 105 / 8%);
-      }
-
       &.is-active {
         background: var(--el-color-primary-light-9);
+      }
+
+      > .el-button {
+        margin: 0;
+      }
+    }
+
+    &__node-select {
+      display: grid;
+      grid-template-columns: 20px 28px minmax(0, 1fr);
+      gap: 8px;
+      align-items: center;
+      min-width: 0;
+      padding: 6px 4px 6px 8px;
+      color: inherit;
+      text-align: left;
+      cursor: pointer;
+      background: transparent;
+      border: 0;
+
+      &:focus-visible {
+        outline: 0;
       }
 
       > i {
@@ -748,8 +955,8 @@
       }
 
       small {
-        font-size: 11px;
-        color: var(--art-gray-500);
+        font-size: 12px;
+        color: var(--art-gray-600);
       }
     }
 
@@ -795,12 +1002,39 @@
       }
 
       small {
-        color: var(--art-gray-500);
+        font-size: 12px;
+        color: var(--art-gray-600);
       }
+    }
+
+    :global([data-box-mode='border-mode']) &__node:hover,
+    :global([data-box-mode='border-mode']) &__node:focus-within,
+    :global([data-box-mode='border-mode']) &__node.is-active {
+      border-color: var(--theme-color);
+      box-shadow: var(--art-themed-action-active-shadow);
+    }
+
+    :global([data-box-mode='shadow-mode']) &__node:hover,
+    :global([data-box-mode='shadow-mode']) &__node:focus-within,
+    :global([data-box-mode='shadow-mode']) &__node.is-active {
+      border-color: transparent;
+      box-shadow: var(--art-themed-action-hover-shadow);
     }
   }
 
   @media (width <= 860px) {
+    .workflow-designer__section-header {
+      flex-wrap: wrap;
+    }
+
+    .workflow-designer__preview-actions {
+      flex-wrap: wrap;
+    }
+
+    .workflow-designer__canvas-actions {
+      flex-wrap: wrap;
+    }
+
     .workflow-designer__workspace {
       grid-template-columns: 1fr;
     }

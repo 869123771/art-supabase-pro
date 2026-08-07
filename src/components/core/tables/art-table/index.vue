@@ -127,7 +127,13 @@
 
       <template #empty>
         <div v-if="loading"></div>
-        <ArtEmptyState v-else :title="emptyText" :visual-size="92" size="compact" />
+        <ArtEmptyState
+          v-else
+          :title="emptyText"
+          :description="emptyDescription"
+          :visual-size="92"
+          size="compact"
+        />
       </template>
     </ElTable>
 
@@ -255,6 +261,8 @@
     emptyHeight?: string
     /** 空数据时显示的文本 */
     emptyText?: string
+    /** 空数据时的辅助说明 */
+    emptyDescription?: string
     /** 是否开启 ArtTableHeader，解决表格高度自适应问题 */
     showTableHeader?: boolean
     /** 工具栏上方额外内容占用的高度 */
@@ -270,8 +278,9 @@
     stripe: undefined,
     border: undefined,
     size: undefined,
-    emptyHeight: '100%',
+    emptyHeight: '190px',
     emptyText: '暂无数据',
+    emptyDescription: '',
     showTableHeader: true,
     additionalHeightOffset: 0,
     selectedRowKeys: () => []

@@ -9,9 +9,14 @@
           <p>统一处理跨业务审批任务，跟踪我发起的流程，并通过完整轨迹快速还原每次决策。</p>
         </div>
       </div>
-      <ElButton :loading="summary.loading" @click="refreshCurrent">
-        <ArtSvgIcon icon="ri:refresh-line" />刷新数据
-      </ElButton>
+      <div class="workflow-workbench__hero-actions">
+        <ElButton type="primary" plain @click="openDelegation">
+          <ArtSvgIcon icon="ri:user-shared-line" />离岗委托
+        </ElButton>
+        <ElButton :loading="summary.loading" @click="refreshCurrent">
+          <ArtSvgIcon icon="ri:refresh-line" />刷新数据
+        </ElButton>
+      </div>
     </section>
 
     <section v-loading="summary.loading" class="workflow-workbench__metrics">
@@ -113,6 +118,8 @@
     </section>
 
     <WorkflowActionDialog ref="actionDialogRef" @success="handleActionSuccess" />
+    <WorkflowTransferDialog ref="transferDialogRef" @success="handleActionSuccess" />
+    <WorkflowDelegationDialog ref="delegationDialogRef" @success="handleActionSuccess" />
     <WorkflowInstanceDrawer ref="instanceDrawerRef" />
   </div>
 </template>
@@ -142,12 +149,15 @@
     withdrawWorkflow
   } from '@/api/workflow'
   import WorkflowActionDialog from './modules/workflow-action-dialog.vue'
+  import WorkflowTransferDialog from './modules/workflow-transfer-dialog.vue'
+  import WorkflowDelegationDialog from './modules/workflow-delegation-dialog.vue'
   import WorkflowInstanceDrawer from './modules/workflow-instance-drawer.vue'
 
   defineOptions({ name: 'WorkflowWorkbench' })
 
   type ActiveTab = 'pending' | 'global' | 'handled' | 'initiated'
   type Task = Api.Workflow.WorkflowTaskRecord
+  type NodeTask = Api.Workflow.WorkflowNodeTaskRecord
   type Instance = Api.Workflow.WorkflowInstanceRecord
   interface TaskSearch {
     keyword: string
@@ -171,13 +181,20 @@
   interface InstanceDrawerExpose {
     handleOpen: (instanceId: string) => Promise<void>
   }
+  interface TransferDialogExpose {
+    handleOpen: (task: Task) => Promise<void>
+  }
+  interface DelegationDialogExpose {
+    handleOpen: (userId: string, tenantId: string) => Promise<void>
+  }
   interface TableGroup<TSearch, TRow> {
     searchQuery: TSearch
     searchItems: ComputedRef<SearchFormItem[]>
     columnsFactory: () => ColumnOption<TRow>[]
   }
 
-  const { getUserInfo, getDictMap, isPlatformSuper } = storeToRefs(useUserStore())
+  const userStore = useUserStore()
+  const { getUserInfo, getDictMap, isPlatformSuper } = storeToRefs(userStore)
   const { confirmAction, promptReason } = useArtFeedback()
   const route = useRoute()
   const activeTab = ref<ActiveTab>('pending')
@@ -186,9 +203,16 @@
   const handledTableRef = ref<ArtTableQueryExpose>()
   const initiatedTableRef = ref<ArtTableQueryExpose>()
   const actionDialogRef = ref<ActionDialogExpose>()
+  const transferDialogRef = ref<TransferDialogExpose>()
+  const delegationDialogRef = ref<DelegationDialogExpose>()
   const instanceDrawerRef = ref<InstanceDrawerExpose>()
   const searchBarProps = { span: 8, labelWidth: 88 }
-  const tableProps = { rowKey: 'id', tableLayout: 'fixed' as const }
+  const tableProps = {
+    rowKey: 'id',
+    tableLayout: 'fixed' as const,
+    emptyText: '当前视图暂无审批记录',
+    emptyDescription: '可以调整筛选条件，或切换到“我已处理”“我发起的”继续查看。'
+  }
 
   const summary = reactive({
     loading: false,
@@ -253,6 +277,23 @@
       },
       { prop: 'nodeName', label: '当前节点', minWidth: 140 },
       {
+        prop: 'assignmentSource',
+        label: '任务来源',
+        width: 118,
+        formatter: (row) =>
+          row.assignmentSource === 'delegation' ? (
+            <ElTag type="warning" effect="light" size="small" round>
+              委托给我
+            </ElTag>
+          ) : row.assignmentSource === 'transfer' ? (
+            <ElTag type="info" effect="light" size="small" round>
+              转交给我
+            </ElTag>
+          ) : (
+            <span>直接分配</span>
+          )
+      },
+      {
         prop: 'initiator',
         label: '发起人',
         width: 115,
@@ -286,7 +327,7 @@
       {
         prop: 'operation',
         label: '操作',
-        width: 160,
+        width: 210,
         fixed: 'right',
         formatter: (row) => (
           <div class="workflow-workbench__actions">
@@ -302,6 +343,12 @@
               onClick={() => actionDialogRef.value?.handleOpen(row, 'reject')}
             />
             <ArtButtonTable
+              type="edit"
+              icon="ri:user-received-2-line"
+              label="转交"
+              onClick={() => transferDialogRef.value?.handleOpen(row)}
+            />
+            <ArtButtonTable
               type="view"
               label="查看详情"
               onClick={() => openInstance(row.instanceId)}
@@ -312,8 +359,8 @@
     ]
   })
 
-  const globalTable: UnwrapNestedRefs<TableGroup<TaskSearch, Task>> = reactive<
-    TableGroup<TaskSearch, Task>
+  const globalTable: UnwrapNestedRefs<TableGroup<TaskSearch, NodeTask>> = reactive<
+    TableGroup<TaskSearch, NodeTask>
   >({
     searchQuery: { keyword: '', businessType: '' },
     searchItems: computed(() => [keywordSearchItem, businessTypeSearchItem()]),
@@ -333,12 +380,22 @@
           )
         },
         personalColumns[1],
-        { prop: 'assigneeNameSnapshot', label: '原审批人', minWidth: 120 },
+        {
+          prop: 'assigneeNames',
+          label: '审批席位',
+          minWidth: 170,
+          formatter: (row) => (
+            <div class="workflow-workbench__assignee-cell">
+              <strong>{row.pendingAssigneeCount} 个待处理席位</strong>
+              <small>{row.assigneeNames.join('、') || '--'}</small>
+            </div>
+          )
+        },
         ...personalColumns.slice(2, -1),
         {
           prop: 'operation',
           label: '代审批操作',
-          width: 185,
+          width: 220,
           fixed: 'right',
           formatter: (row) => (
             <div class="workflow-workbench__actions">
@@ -358,6 +415,12 @@
                 }
               />
               <ArtButtonTable
+                type="edit"
+                icon="ri:user-received-2-line"
+                label="转交"
+                onClick={() => transferDialogRef.value?.handleOpen(row)}
+              />
+              <ArtButtonTable
                 type="view"
                 label="查看详情"
                 onClick={() => openInstance(row.instanceId)}
@@ -365,7 +428,7 @@
             </div>
           )
         }
-      ] as ColumnOption<Task>[]
+      ] as ColumnOption<NodeTask>[]
     }
   })
 
@@ -561,6 +624,9 @@
     if (!currentUserId.value) throw new Error('当前用户信息尚未就绪')
     return currentUserId.value
   }
+  function openDelegation(): void {
+    delegationDialogRef.value?.handleOpen(requireUserId(), String(getUserInfo.value.tenantId || ''))
+  }
   function fetchPendingData(params: TaskTableParams) {
     const { from, to } = pageInfoHandler(params)
     return fetchPendingWorkflowTasks({ ...params, assigneeUserId: requireUserId(), from, to })
@@ -666,6 +732,7 @@
     void syncRouteContext()
   })
   onMounted(() => {
+    void userStore.fetchDictList()
     void loadSummary()
     void syncRouteContext()
   })
@@ -688,40 +755,53 @@
         radial-gradient(circle at 88% 10%, rgb(103 88 246 / 14%), transparent 30%),
         var(--default-box-color);
     }
+
+    &__hero-actions {
+      display: flex;
+      flex: 0 0 auto;
+      gap: 8px;
+      align-items: center;
+    }
+
     &__welcome {
       display: flex;
       gap: 15px;
       align-items: center;
       min-width: 0;
     }
+
     &__welcome > span {
       display: grid;
       flex: 0 0 auto;
+      place-items: center;
       width: 52px;
       height: 52px;
+      font-size: 26px;
       color: #fff;
       background: linear-gradient(145deg, var(--el-color-primary), #7868f8);
       border-radius: calc(var(--el-border-radius-base) + 8px);
       box-shadow: 0 12px 25px rgb(76 91 220 / 23%);
-      place-items: center;
-      font-size: 26px;
     }
+
     &__welcome > div > span {
-      color: var(--el-color-primary);
       font-size: 11px;
       font-weight: 700;
+      color: var(--el-color-primary);
       letter-spacing: 0.12em;
     }
+
     &__welcome h1 {
       margin: 4px 0 5px;
-      color: var(--art-gray-900);
       font-size: 24px;
+      font-weight: 600;
+      color: var(--art-gray-900);
     }
+
     &__welcome p {
       margin: 0;
-      color: var(--art-gray-500);
       font-size: 13px;
       line-height: 1.55;
+      color: var(--art-gray-500);
     }
 
     &__metrics {
@@ -730,60 +810,70 @@
       gap: 12px;
       min-height: 102px;
     }
+
     &__metrics article {
       display: flex;
       gap: 13px;
       align-items: center;
-      padding: 17px;
       min-width: 0;
+      padding: 17px;
     }
+
     &__metrics article > span {
       display: grid;
       flex: 0 0 auto;
+      place-items: center;
       width: 43px;
       height: 43px;
-      border-radius: calc(var(--el-border-radius-base) + 5px);
-      place-items: center;
       font-size: 21px;
+      border-radius: calc(var(--el-border-radius-base) + 5px);
     }
+
     &__metrics article > span.is-primary {
       color: var(--el-color-primary);
       background: var(--el-color-primary-light-9);
     }
+
     &__metrics article > span.is-success {
       color: var(--el-color-success);
       background: var(--el-color-success-light-9);
     }
+
     &__metrics article > span.is-warning {
       color: var(--el-color-warning);
       background: var(--el-color-warning-light-9);
     }
+
     &__metrics article > span.is-info {
       color: var(--el-color-info);
       background: var(--el-color-info-light-9);
     }
+
     &__metrics article div {
       display: grid;
-      min-width: 0;
       grid-template-columns: 1fr auto;
-      align-items: baseline;
       column-gap: 8px;
+      align-items: baseline;
+      min-width: 0;
     }
+
     &__metrics small {
-      color: var(--art-gray-500);
       font-size: 12px;
+      color: var(--art-gray-500);
     }
+
     &__metrics strong {
-      color: var(--art-gray-900);
       font-size: 25px;
+      color: var(--art-gray-900);
     }
+
     &__metrics p {
       grid-column: 1 / -1;
       margin: 4px 0 0;
       overflow: hidden;
-      color: var(--art-gray-400);
-      font-size: 10px;
       text-overflow: ellipsis;
+      font-size: 12px;
+      color: var(--art-gray-600);
       white-space: nowrap;
     }
 
@@ -792,41 +882,48 @@
       min-height: 0;
       padding: 18px;
     }
+
     &__workspace-header {
       display: flex;
       align-items: flex-start;
       justify-content: space-between;
       margin-bottom: 2px;
     }
+
     &__workspace-header p {
       margin: 5px 0 0;
-      color: var(--art-gray-500);
       font-size: 12px;
+      color: var(--art-gray-500);
     }
+
     &__tabs {
       min-height: 0;
     }
+
     &__tab-label {
       display: inline-flex;
       gap: 7px;
       align-items: center;
     }
+
     &__tab-label :deep(.el-badge__content) {
       transform: translateY(-1px) scale(0.82);
     }
+
     &__override-guidance {
       display: flex;
       gap: 8px;
       align-items: flex-start;
-      margin: 2px 0 12px;
       padding: 10px 12px;
-      color: var(--el-color-warning-dark-2);
+      margin: 2px 0 12px;
       font-size: 12px;
       line-height: 1.55;
+      color: var(--el-color-warning-dark-2);
       background: var(--el-color-warning-light-9);
       border: 1px solid var(--el-color-warning-light-7);
       border-radius: var(--el-border-radius-base);
     }
+
     &__override-guidance svg {
       flex: 0 0 auto;
       margin-top: 2px;
@@ -834,35 +931,45 @@
     }
 
     :deep(.workflow-workbench__business-cell),
-    :deep(.workflow-workbench__tenant-cell) {
+    :deep(.workflow-workbench__tenant-cell),
+    :deep(.workflow-workbench__assignee-cell) {
       display: grid;
-      min-width: 0;
       gap: 3px;
+      min-width: 0;
     }
+
     :deep(.workflow-workbench__business-cell strong),
     :deep(.workflow-workbench__business-cell small),
     :deep(.workflow-workbench__tenant-cell strong),
-    :deep(.workflow-workbench__tenant-cell small) {
+    :deep(.workflow-workbench__tenant-cell small),
+    :deep(.workflow-workbench__assignee-cell strong),
+    :deep(.workflow-workbench__assignee-cell small) {
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
     }
+
     :deep(.workflow-workbench__business-cell small),
-    :deep(.workflow-workbench__tenant-cell small) {
-      color: var(--art-gray-500);
-      font-size: 11px;
+    :deep(.workflow-workbench__tenant-cell small),
+    :deep(.workflow-workbench__assignee-cell small) {
+      font-size: 12px;
+      color: var(--art-gray-600);
     }
+
     :deep(.workflow-workbench__actions) {
       display: flex;
       align-items: center;
     }
+
     :deep(.workflow-workbench__due.is-overdue) {
-      color: var(--el-color-danger);
       font-weight: 600;
+      color: var(--el-color-danger);
     }
+
     :deep(.art-table-query) {
       min-width: 0;
     }
+
     :deep(.art-table-card) {
       border: 1px solid var(--art-gray-200);
     }
@@ -873,33 +980,53 @@
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
   }
+
   @media (width <= 720px) {
     .workflow-workbench__hero {
       align-items: flex-start;
       padding: 18px;
     }
-    .workflow-workbench__hero > button {
-      flex: 0 0 auto;
-      padding: 8px;
+
+    .workflow-workbench__hero-actions {
+      flex-direction: column;
+      align-items: stretch;
+
+      > button {
+        width: 36px;
+        padding: 8px;
+        margin: 0;
+      }
+
+      > button :deep(span) {
+        gap: 0;
+        font-size: 0;
+      }
+
+      > button :deep(svg) {
+        font-size: 16px;
+      }
     }
-    .workflow-workbench__hero > button :deep(span) {
-      display: none;
-    }
+
     .workflow-workbench__welcome {
       align-items: flex-start;
     }
+
     .workflow-workbench__welcome h1 {
       font-size: 20px;
     }
+
     .workflow-workbench__metrics {
       grid-template-columns: 1fr;
     }
+
     .workflow-workbench__metrics article {
       padding: 14px;
     }
+
     .workflow-workbench__workspace {
       padding: 14px;
     }
+
     .workflow-workbench__workspace-header > .el-tag {
       display: none;
     }

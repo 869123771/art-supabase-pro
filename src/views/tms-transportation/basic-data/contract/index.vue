@@ -325,7 +325,7 @@
           contractNo: getImportValue(row, 'contractNo', '合同编号') || undefined,
           contractName: getImportValue(row, 'contractName', '合同名称'),
           contractStatus:
-            statusValueMap.get(getImportValue(row, 'contractStatus', '合同状态')) || 'pending',
+            statusValueMap.get(getImportValue(row, 'contractStatus', '合同状态')) || 'draft',
           carrierId: carrier?.id || '',
           contactName: getImportValue(row, 'contactName', '联系人姓名') || null,
           waybillNo: getImportValue(row, 'waybillNo', '运单号') || null,

@@ -1,5 +1,5 @@
 <template>
-  <div class="art-full-height">
+  <div class="role-page art-full-height">
     <ArtTableQuery
       v-model="searchForm"
       v-model:columns="columnChecks"
@@ -31,7 +31,6 @@
   import ArtButtonMore from '@/components/core/forms/art-button-more/index.vue'
   import RoleEditDialog from './modules/role-edit-dialog.vue'
   import RolePermissionDialog from './modules/role-permission-dialog.vue'
-  import { ElTag } from 'element-plus'
   import { formatWithDayjs } from '@/utils/time'
   import { pageInfoHandler } from '@utils/table/tableUtils'
   import { ColumnOption } from '@/types'
@@ -42,6 +41,7 @@
     ArtTableQueryTableProps
   } from '@/components/core/tables/art-table-query/index.vue'
   import { useSystemParam } from '@/hooks'
+  import { useUserStore } from '@/store/modules/user'
 
   defineOptions({ name: 'Role' })
 
@@ -61,10 +61,13 @@
   })
 
   const showSearchBar = ref(false)
-  const statusOptions = [
-    { label: '启用', value: true },
-    { label: '禁用', value: false }
-  ]
+  const { getDictMap } = storeToRefs(useUserStore())
+  const statusOptions = computed(() =>
+    (getDictMap.value.commonBoolean ?? []).map((item) => ({
+      ...item,
+      value: item.value === 'true'
+    }))
+  )
 
   const searchItems = computed<SearchFormItem[]>(() => [
     {
@@ -89,12 +92,12 @@
       clearable: true
     },
     {
-      label: '角色状态',
+      label: '是否启用',
       key: 'enabled',
       type: 'select',
       props: {
-        placeholder: '请选择状态',
-        options: statusOptions,
+        placeholder: '请选择是否启用',
+        options: statusOptions.value,
         clearable: true
       }
     },
@@ -132,7 +135,10 @@
   ])
 
   const tableProps: ArtTableQueryTableProps = {
-    tableLayout: 'fixed'
+    rowKey: 'id',
+    tableLayout: 'fixed',
+    emptyText: '暂无符合条件的角色',
+    emptyDescription: '可调整筛选条件，或新增角色后再配置菜单权限。'
   }
 
   interface RoleEditDialogExpose {
@@ -189,7 +195,7 @@
         key: 'delete',
         label: '删除角色',
         icon: 'ri:delete-bin-4-line',
-        color: '#f56c6c'
+        color: 'var(--el-color-danger)'
       }
     ]
 
@@ -218,61 +224,81 @@
       excludeParams: ['daterange'],
       columnsFactory: (): ColumnOption<RoleListItem>[] => [
         {
-          prop: 'roleName',
-          label: '角色名称',
-          minWidth: 120
+          prop: 'roleIdentity',
+          label: '角色身份',
+          minWidth: 230,
+          formatter: (row: RoleListItem) =>
+            h('div', { class: 'role-identity-cell' }, [
+              h(
+                'span',
+                {
+                  class: [
+                    'role-identity-cell__icon',
+                    { 'is-protected': isSuperRole(row) || isDefaultRegisterRole(row) }
+                  ],
+                  'aria-hidden': 'true'
+                },
+                (row.roleName || '角').slice(0, 1)
+              ),
+              h('div', { class: 'role-identity-cell__copy' }, [
+                h('div', { class: 'role-identity-cell__heading' }, [
+                  h('strong', { title: row.roleName }, row.roleName),
+                  isSuperRole(row) || isDefaultRegisterRole(row)
+                    ? h('span', { class: 'role-identity-cell__builtin' }, '系统内置')
+                    : null
+                ]),
+                h('span', { class: 'role-identity-cell__code', title: row.roleCode }, row.roleCode)
+              ])
+            ])
         },
         {
-          prop: 'roleCode',
-          label: '角色编码',
-          minWidth: 120
+          prop: 'tenant',
+          label: '所属租户',
+          minWidth: 180,
+          formatter: (row: RoleListItem) =>
+            h('div', { class: 'role-tenant-cell' }, [
+              h('strong', { title: row.tenant?.tenantName }, row.tenant?.tenantName || '当前租户'),
+              row.tenant?.tenantCode
+                ? h('span', { title: row.tenant.tenantCode }, row.tenant.tenantCode)
+                : null
+            ])
         },
         {
           prop: 'description',
           label: '角色描述',
-          minWidth: 150,
+          minWidth: 220,
           showOverflowTooltip: true
         },
         {
           prop: 'enabled',
-          label: '角色状态',
-          width: 100,
-          formatter: (row: RoleListItem) => {
-            const statusConfig = row.enabled
-              ? { type: 'success', text: '启用' }
-              : { type: 'warning', text: '禁用' }
-            return h(
-              ElTag,
-              { type: statusConfig.type as 'success' | 'warning' },
-              () => statusConfig.text
-            )
-          }
-        },
-        {
-          prop: 'createBy',
-          label: '创建人',
-          width: 180
+          label: '是否启用',
+          width: 96,
+          dict: { code: 'commonBoolean', display: 'tag', value: (row) => String(row.enabled) }
         },
         {
           prop: 'createTime',
-          label: '创建日期',
-          width: 180,
+          label: '创建信息',
+          minWidth: 190,
           sortable: true,
-          formatter: (row: RoleListItem) => formatWithDayjs(row.createTime)
+          formatter: (row: RoleListItem) =>
+            h('div', { class: 'role-created-cell' }, [
+              h('span', null, formatWithDayjs(row.createTime) || '--'),
+              h('small', null, row.createBy || '系统创建')
+            ])
         },
         {
           prop: 'operation',
           label: '操作',
-          width: 80,
+          width: 104,
           fixed: 'right',
           formatter: (row: RoleListItem) =>
-            h('div', [
+            h('div', { class: 'role-operation-cell' }, [
               getRoleActions(row).length
                 ? h(ArtButtonMore, {
                     list: getRoleActions(row),
                     onClick: (item: ButtonMoreItem) => buttonMoreClick(item, row)
                   })
-                : null
+                : h('span', { class: 'role-operation-cell__protected' }, '受保护')
             ])
         }
       ]
@@ -311,19 +337,23 @@
     void rolePermissionDialogRef.value?.handleOpen(row)
   }
 
-  const handleDeleteRole = (row: RoleListItem) => {
-    confirmAction(`确定删除角色"${row.roleName}"吗？此操作不可恢复！`, '删除确认', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    })
-      .then(async () => {
-        await deleteRole(row)
-        await refreshData()
-      })
-      .catch(() => {
-        ElMessage.info('已取消删除')
-      })
+  const handleDeleteRole = async (row: RoleListItem): Promise<void> => {
+    try {
+      await confirmAction(
+        `删除后，已关联该角色的用户将失去对应菜单权限。确认删除「${row.roleName}」吗？`,
+        '删除角色',
+        {
+          confirmButtonText: '确认删除',
+          cancelButtonText: '取消',
+          type: 'warning',
+          confirmButtonClass: 'el-button--danger'
+        }
+      )
+      await deleteRole(row)
+      await refreshData()
+    } catch {
+      // 用户取消删除时无需额外提示。
+    }
   }
 
   const handleGetRoleList = async () => {
@@ -342,3 +372,108 @@
     })
   }
 </script>
+
+<style scoped lang="scss">
+  .role-page {
+    :deep(.role-identity-cell) {
+      display: flex;
+      min-width: 0;
+      align-items: center;
+      gap: 10px;
+
+      .role-identity-cell__icon {
+        display: grid;
+        flex: 0 0 36px;
+        width: 36px;
+        height: 36px;
+        font-size: 14px;
+        font-weight: 700;
+        color: var(--el-color-primary);
+        background: var(--el-color-primary-light-9);
+        border: 1px solid var(--el-color-primary-light-7);
+        border-radius: var(--art-control-radius);
+        place-items: center;
+
+        &.is-protected {
+          color: var(--el-color-warning-dark-2);
+          background: var(--el-color-warning-light-9);
+          border-color: var(--el-color-warning-light-7);
+        }
+      }
+
+      .role-identity-cell__copy,
+      .role-identity-cell__heading {
+        min-width: 0;
+      }
+
+      .role-identity-cell__heading {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+
+        strong {
+          overflow: hidden;
+          font-weight: 600;
+          color: var(--el-text-color-primary);
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+      }
+
+      .role-identity-cell__code {
+        display: block;
+        overflow: hidden;
+        font-size: 12px;
+        color: var(--el-text-color-secondary);
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .role-identity-cell__builtin {
+        flex: none;
+        padding: 1px 6px;
+        font-size: 10px;
+        line-height: 17px;
+        color: var(--el-color-warning-dark-2);
+        background: var(--el-color-warning-light-9);
+        border-radius: 999px;
+      }
+    }
+
+    :deep(.role-tenant-cell),
+    :deep(.role-created-cell) {
+      display: grid;
+      min-width: 0;
+      line-height: 20px;
+
+      strong,
+      span,
+      small {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      strong,
+      span {
+        font-weight: 500;
+        color: var(--el-text-color-primary);
+      }
+
+      small {
+        font-size: 12px;
+        color: var(--el-text-color-secondary);
+      }
+    }
+
+    :deep(.role-operation-cell) {
+      display: flex;
+      align-items: center;
+
+      .role-operation-cell__protected {
+        font-size: 12px;
+        color: var(--el-text-color-placeholder);
+      }
+    }
+  }
+</style>

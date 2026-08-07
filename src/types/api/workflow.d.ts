@@ -8,7 +8,17 @@ declare namespace Api {
     type AssigneeType = 'users' | 'roles' | 'initiator'
     type ConditionOperator =
       'always' | 'eq' | 'ne' | 'gt' | 'gte' | 'lt' | 'lte' | 'in' | 'contains' | 'not_empty'
-    type ActionType = 'submit' | 'approve' | 'reject' | 'withdraw' | 'cancel' | 'auto_skip'
+    type ActionType =
+      | 'submit'
+      | 'approve'
+      | 'reject'
+      | 'withdraw'
+      | 'cancel'
+      | 'auto_skip'
+      | 'delegate'
+      | 'delegation_revoke'
+      | 'transfer'
+    type WorkflowAssignmentSource = 'direct' | 'delegation' | 'transfer'
 
     interface WorkflowCondition {
       field?: string
@@ -40,6 +50,47 @@ declare namespace Api {
 
     interface WorkflowConfig {
       nodes: WorkflowNode[]
+      allowAutoApprove?: boolean
+    }
+
+    interface WorkflowContextField {
+      key: string
+      label: string
+      valueType: 'text' | 'number' | 'boolean' | 'date'
+      help?: string
+    }
+
+    interface WorkflowBusinessMetric {
+      label: string
+      value: string
+      tone?: 'primary' | 'success' | 'warning' | 'danger' | 'info'
+    }
+
+    interface WorkflowBusinessField {
+      label: string
+      value: string
+    }
+
+    interface WorkflowBusinessAttachment {
+      name: string
+      url: string
+      fileType?: string | null
+      fileSize?: string | null
+    }
+
+    interface WorkflowBusinessSnapshot {
+      instanceId: string
+      businessType: string
+      businessId: string
+      title: string
+      subtitle?: string | null
+      businessNo?: string | null
+      status?: string | null
+      routePath?: string | null
+      metrics: WorkflowBusinessMetric[]
+      fields: WorkflowBusinessField[]
+      warnings: string[]
+      attachments: WorkflowBusinessAttachment[]
     }
 
     interface WorkflowVersionRecord {
@@ -116,7 +167,7 @@ declare namespace Api {
       finishComment?: string | null
       createTime: string
       definition?: Pick<WorkflowDefinitionRecord, 'id' | 'code' | 'name' | 'businessType'>
-      version?: Pick<WorkflowVersionRecord, 'id' | 'versionNo'>
+      version?: Pick<WorkflowVersionRecord, 'id' | 'versionNo' | 'config'>
       tasks?: WorkflowTaskRecord[]
       actions?: WorkflowActionRecord[]
     }
@@ -132,6 +183,13 @@ declare namespace Api {
       rejectVetoEnabled: boolean
       assigneeUserId: string
       assigneeNameSnapshot: string
+      originalAssigneeUserId: string
+      originalAssigneeNameSnapshot: string
+      assignmentSource: WorkflowAssignmentSource
+      delegationId?: string | null
+      lastAssignedBy?: string | null
+      assignmentReason?: string | null
+      tenantId: string
       status: TaskStatus
       handledAt?: string | null
       comment?: string | null
@@ -164,6 +222,23 @@ declare namespace Api {
       avatar?: string | null
     }
 
+    interface WorkflowDelegationRecord {
+      id: string
+      tenantId: string
+      delegatorUserId: string
+      delegateUserId: string
+      startsAt: string
+      endsAt: string
+      reason: string
+      revokedAt?: string | null
+      revokedBy?: string | null
+      revokeReason?: string | null
+      createTime: string
+      updateTime: string
+      delegator?: WorkflowActorProfile | null
+      delegate?: WorkflowActorProfile | null
+    }
+
     interface WorkflowTaskSearchParams {
       keyword?: string
       businessType?: string
@@ -184,6 +259,18 @@ declare namespace Api {
     interface WorkflowTaskPage {
       records: WorkflowTaskRecord[]
       total: number
+    }
+
+    interface WorkflowNodeTaskRecord extends WorkflowTaskRecord {
+      assigneeCount: number
+      pendingAssigneeCount: number
+      assigneeNames: string[]
+    }
+
+    interface WorkflowNodeTaskPage {
+      records: WorkflowNodeTaskRecord[]
+      total: number
+      taskTotal: number
     }
 
     interface WorkflowInstanceSearchParams {
@@ -235,6 +322,36 @@ declare namespace Api {
       rejected30dCount: number
       cancelled30dCount: number
       averageDurationHours: number
+    }
+
+    interface WorkflowOperationalSummary {
+      totalCount: number
+      runningCount: number
+      approvedCount: number
+      rejectedCount: number
+      interruptedCount: number
+      overdueCount: number
+      averageDurationHours: number
+    }
+
+    interface WorkflowBusinessAnalytics extends WorkflowOperationalSummary {
+      businessType: string
+      approvalRate: number
+    }
+
+    interface WorkflowDailyAnalytics {
+      date: string
+      startedCount: number
+      approvedCount: number
+      rejectedCount: number
+    }
+
+    interface WorkflowOperationalAnalytics {
+      periodDays: number
+      generatedAt: string
+      summary: WorkflowOperationalSummary
+      businessTypes: WorkflowBusinessAnalytics[]
+      daily: WorkflowDailyAnalytics[]
     }
 
     type WorkflowCallbackStatus =

@@ -13,6 +13,9 @@
         <ElTag :type="isPlatformSuper ? 'primary' : 'info'" effect="plain" round>
           {{ isPlatformSuper ? '平台全局视角' : '本租户只读视角' }}
         </ElTag>
+        <ElButton type="primary" plain @click="analyticsDialogRef?.handleOpen()">
+          <ArtSvgIcon icon="ri:bar-chart-box-line" />运营分析
+        </ElButton>
         <ElButton :loading="overview.loading" @click="refreshAll">
           <ArtSvgIcon icon="ri:refresh-line" />刷新数据
         </ElButton>
@@ -95,6 +98,7 @@
     <WorkflowInstanceDrawer ref="instanceDrawerRef" />
     <WorkflowCancelDialog ref="cancelDialogRef" @success="handleCancelSuccess" />
     <WorkflowCallbackOutboxDrawer ref="callbackOutboxDrawerRef" @change="loadCallbackHealth" />
+    <WorkflowAnalyticsDialog ref="analyticsDialogRef" />
   </div>
 </template>
 
@@ -121,6 +125,7 @@
   import WorkflowInstanceDrawer from '../workbench/modules/workflow-instance-drawer.vue'
   import WorkflowCancelDialog from './modules/workflow-cancel-dialog.vue'
   import WorkflowCallbackOutboxDrawer from './modules/workflow-callback-outbox-drawer.vue'
+  import WorkflowAnalyticsDialog from './modules/workflow-analytics-dialog.vue'
 
   defineOptions({ name: 'WorkflowMonitor' })
 
@@ -138,6 +143,9 @@
     columnsFactory: () => ColumnOption<MonitorRow>[]
     searchBarProps: { span: number; labelWidth: number }
     tableProps: { rowKey: string; tableLayout: 'fixed'; emptyText: string }
+  }
+  interface AnalyticsDialogExpose {
+    handleOpen: () => Promise<void>
   }
   interface OverviewGroup {
     loading: boolean
@@ -162,6 +170,7 @@
 
   const { getDictMap, isPlatformSuper } = storeToRefs(useUserStore())
   const tableRef = ref<ArtTableQueryExpose>()
+  const analyticsDialogRef = ref<AnalyticsDialogExpose>()
   const instanceDrawerRef = ref<InstanceDrawerExpose>()
   const cancelDialogRef = ref<CancelDialogExpose>()
   const callbackOutboxDrawerRef = ref<CallbackOutboxDrawerExpose>()
@@ -194,8 +203,13 @@
 
   const createBusinessCell = (row: MonitorRow) => (
     <div class="workflow-monitor__business-cell">
-      <strong>{row.businessTitle}</strong>
-      <small>{row.businessId}</small>
+      <strong title={row.businessTitle}>{row.businessTitle}</strong>
+      <span class="workflow-monitor__business-meta">
+        <ArtDictDisplay dictCode="workflowBusinessType" value={row.businessType} display="text" />
+        <i>·</i>
+        <span>{row.initiatorNameSnapshot || '--'}</span>
+      </span>
+      <small title={row.businessId}>{row.businessId}</small>
     </div>
   )
   const createDefinitionCell = (row: MonitorRow) => (
@@ -204,6 +218,13 @@
       <small>
         {row.definitionCode} · V{row.versionNo}
       </small>
+      <span class="workflow-monitor__node-name">{row.currentNodeName || '流程已结束'}</span>
+    </div>
+  )
+  const createTimelineCell = (row: MonitorRow) => (
+    <div class="workflow-monitor__timeline-cell">
+      <strong>{formatDuration(Number(row.durationHours || 0))}</strong>
+      <small>{formatDate(row.startedAt)}</small>
     </div>
   )
   const createSlaCell = (row: MonitorRow) => (
@@ -263,37 +284,22 @@
       {
         prop: 'businessTitle',
         label: '业务单据',
-        minWidth: 230,
+        minWidth: 250,
         fixed: 'left',
         formatter: createBusinessCell
       },
       {
-        prop: 'businessType',
-        label: '业务类型',
-        minWidth: 125,
-        formatter: (row) => (
-          <ArtDictDisplay dictCode="workflowBusinessType" value={row.businessType} display="text" />
-        )
-      },
-      {
         prop: 'definitionName',
-        label: '流程定义',
-        minWidth: 205,
+        label: '流程与节点',
+        minWidth: 220,
         formatter: createDefinitionCell
       },
       {
         prop: 'status',
         label: '流程状态',
-        width: 105,
+        width: 100,
         dict: { code: 'workflowInstanceStatus', display: 'tag' }
       },
-      {
-        prop: 'currentNodeName',
-        label: '当前节点',
-        minWidth: 130,
-        formatter: (row) => row.currentNodeName || '流程已结束'
-      },
-      { prop: 'initiatorNameSnapshot', label: '发起人', width: 110 },
       {
         prop: 'isOverdue',
         label: '节点时效',
@@ -302,15 +308,9 @@
       },
       {
         prop: 'durationHours',
-        label: '流转耗时',
-        width: 105,
-        formatter: (row) => formatDuration(Number(row.durationHours || 0))
-      },
-      {
-        prop: 'startedAt',
-        label: '发起时间',
+        label: '流转时间',
         width: 165,
-        formatter: (row) => formatDate(row.startedAt)
+        formatter: createTimelineCell
       },
       {
         prop: 'operation',
@@ -496,6 +496,7 @@
       h1 {
         margin: 3px 0 5px;
         font-size: 24px;
+        font-weight: 600;
         line-height: 1.25;
         color: var(--art-gray-900);
       }
@@ -675,15 +676,17 @@
       }
     }
 
-    &__business-cell,
-    &__definition-cell,
-    &__sla-cell {
+    :deep(.workflow-monitor__business-cell),
+    :deep(.workflow-monitor__definition-cell),
+    :deep(.workflow-monitor__sla-cell),
+    :deep(.workflow-monitor__timeline-cell) {
       display: grid;
       gap: 3px;
       min-width: 0;
 
       strong,
-      small {
+      small,
+      > span {
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
@@ -695,12 +698,43 @@
       }
 
       small {
-        font-size: 11px;
-        color: var(--art-gray-500);
+        font-size: 12px;
+        color: var(--art-gray-600);
       }
     }
 
-    &__sla-cell {
+    :deep(.workflow-monitor__business-meta) {
+      display: flex;
+      gap: 5px;
+      align-items: center;
+      min-width: 0;
+      font-size: 12px;
+      color: var(--art-gray-600);
+
+      i {
+        flex: 0 0 auto;
+        font-style: normal;
+        color: var(--art-gray-500);
+      }
+
+      > span:last-child {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+    }
+
+    :deep(.workflow-monitor__node-name) {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--art-gray-700);
+    }
+
+    :deep(.workflow-monitor__timeline-cell strong) {
+      font-size: 13px;
+    }
+
+    :deep(.workflow-monitor__sla-cell) {
       justify-items: start;
 
       &.is-overdue small {
@@ -708,7 +742,7 @@
       }
     }
 
-    &__actions {
+    :deep(.workflow-monitor__actions) {
       display: flex;
       flex-wrap: wrap;
       gap: 2px 8px;

@@ -72,7 +72,12 @@
   import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
   import { renderAttachmentLink } from '@/components/core/media/art-file-viewer/render'
   import type { ColumnOption } from '@/types'
-  import { addContract, editContract, fetchCarrierOptions } from '@/api/tms'
+  import {
+    addContract,
+    editContract,
+    fetchCarrierOptions,
+    submitContractForApproval
+  } from '@/api/tms'
   import { uploadAttachment } from '@/api/common'
   import { useUserStore } from '@/store/modules/user'
   import { downloadAttachment, getFileExtension } from '@/utils/file'
@@ -82,7 +87,6 @@
   const { confirmAction } = useArtFeedback()
 
   type Contract = Api.Tms.BasicData.Contract
-  type ContractStatus = Api.Tms.BasicData.ContractStatus
   type ContractAttachment = Api.Tms.BasicData.ContractAttachment
   type CarrierOption = Api.Tms.BasicData.CarrierOption
   type SubmitMode = 'save' | 'submit'
@@ -366,18 +370,13 @@
     if (!payload.contractNo) delete payload.contractNo
     return {
       ...payload,
-      contractStatus: resolveNextStatus(payload.contractStatus),
+      contractStatus: payload.contractStatus || 'draft',
       contactName: normalizeText(payload.contactName),
       waybillNo: normalizeText(payload.waybillNo),
       contractAmount: normalizeNumber(payload.contractAmount),
       contractDescription: normalizeText(payload.contractDescription),
       attachments: payload.attachments ?? []
     }
-  }
-
-  const resolveNextStatus = (currentStatus?: ContractStatus): ContractStatus => {
-    if (submitMode.value === 'submit') return 'pending'
-    return currentStatus || 'draft'
   }
 
   const handleSubmit = async (): Promise<boolean> => {
@@ -390,8 +389,13 @@
     try {
       const payload = normalizePayload()
       const type = form.data.id ? 'edit' : 'add'
-      if (type === 'edit') await editContract(payload)
-      else await addContract(payload)
+      if (type === 'edit') {
+        await editContract(payload)
+      } else {
+        const response = await addContract(payload)
+        payload.id = response.data?.id
+      }
+      if (submitMode.value === 'submit') await submitContractForApproval(payload)
       emit('success', type)
       return true
     } catch {

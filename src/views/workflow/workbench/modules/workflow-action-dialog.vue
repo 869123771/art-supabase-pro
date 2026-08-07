@@ -1,5 +1,5 @@
 <template>
-  <ArtDialog ref="dialogRef" size="sm">
+  <ArtDialog ref="dialogRef" size="md">
     <div :class="['workflow-action', `is-${state.action}`]">
       <div class="workflow-action__summary">
         <span
@@ -37,6 +37,38 @@
           </span>
         </div>
       </div>
+      <div class="workflow-action__context" aria-label="本次审批决策上下文">
+        <article>
+          <span><ArtSvgIcon icon="ri:node-tree" /></span>
+          <div
+            ><small>当前节点</small><strong>{{ state.task?.nodeName || '--' }}</strong></div
+          >
+        </article>
+        <article>
+          <span><ArtSvgIcon icon="ri:user-follow-line" /></span>
+          <div>
+            <small>审批席位</small>
+            <strong>{{ state.task?.assigneeNameSnapshot || '--' }}</strong>
+          </div>
+        </article>
+        <article>
+          <span><ArtSvgIcon icon="ri:git-branch-line" /></span>
+          <div
+            ><small>决策规则</small><strong>{{ decisionRuleText }}</strong></div
+          >
+        </article>
+      </div>
+      <ArtAsyncState
+        v-if="state.snapshotLoading || state.snapshotError"
+        :loading="state.snapshotLoading"
+        loading-mode="skeleton"
+        :skeleton-rows="3"
+        :error="state.snapshotError"
+        error-title="业务资料暂时不可用"
+        :min-height="132"
+        @retry="loadSnapshot"
+      />
+      <WorkflowBusinessSnapshot v-else-if="state.snapshot" :snapshot="state.snapshot" />
       <ArtForm
         ref="formRef"
         v-model="form"
@@ -46,11 +78,27 @@
         :show-submit="false"
         label-position="top"
       />
-      <div class="workflow-action__notice">
-        <ArtSvgIcon icon="ri:information-line" />
+      <div :class="['workflow-action__notice', { 'is-danger': state.action === 'reject' }]">
+        <ArtSvgIcon :icon="state.action === 'reject' ? 'ri:alert-line' : 'ri:information-line'" />
         <span>{{ actionNotice }}</span>
       </div>
     </div>
+
+    <template #footer="{ loading, api }">
+      <div class="workflow-action__footer">
+        <span><ArtSvgIcon icon="ri:history-line" />本次决定将写入审批审计轨迹</span>
+        <div>
+          <ElButton @click="api.handleClose()">取消</ElButton>
+          <ElButton
+            :type="state.action === 'reject' ? 'danger' : 'primary'"
+            :loading="loading"
+            @click="api.handleConfirm()"
+          >
+            {{ confirmText }}
+          </ElButton>
+        </div>
+      </div>
+    </template>
   </ArtDialog>
 </template>
 
@@ -60,7 +108,9 @@
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
-  import { actWorkflowTask } from '@/api/workflow'
+  import ArtAsyncState from '@/components/core/layouts/art-async-state/index.vue'
+  import WorkflowBusinessSnapshot from '../../modules/workflow-business-snapshot.vue'
+  import { actWorkflowTask, fetchWorkflowBusinessSnapshot } from '@/api/workflow'
 
   defineOptions({ name: 'WorkflowActionDialog' })
 
@@ -70,19 +120,28 @@
     clearValidate: () => void
   }
 
-  const emit = defineEmits<{ (event: 'success', action: WorkflowAction): void }>()
-  const dialogRef = ref<ArtDialogExpose>()
-  const formRef = ref<FormExpose>()
-  const state = reactive<{
+  interface ActionDialogState {
     task?: Api.Workflow.WorkflowTaskRecord
     action: WorkflowAction
     platformOverride: boolean
-  }>({
+    snapshot: Api.Workflow.WorkflowBusinessSnapshot | null
+    snapshotLoading: boolean
+    snapshotError: Error | null
+  }
+
+  const emit = defineEmits<{ (event: 'success', action: WorkflowAction): void }>()
+  const dialogRef = ref<ArtDialogExpose>()
+  const formRef = ref<FormExpose>()
+  const state = reactive<ActionDialogState>({
     task: undefined,
     action: 'approve',
-    platformOverride: false
+    platformOverride: false,
+    snapshot: null,
+    snapshotLoading: false,
+    snapshotError: null
   })
   const form = reactive({ comment: '' })
+  let snapshotRequestId = 0
 
   const formItems = computed<FormItem[]>(() => [
     {
@@ -137,6 +196,12 @@
       ? '本节点已开启一票否决；确认驳回后流程立即结束，并同步业务单据为驳回状态。'
       : '本节点采用容错计算；本次驳回会保留审计记录，仅在剩余审批人已无法达到通过条件时结束流程。'
   })
+  const confirmText = computed(() => {
+    if (state.platformOverride) {
+      return state.action === 'approve' ? '确认代为通过' : '确认代为驳回'
+    }
+    return state.action === 'approve' ? '确认通过' : '确认驳回'
+  })
 
   async function handleSubmit(): Promise<boolean> {
     try {
@@ -154,6 +219,43 @@
     return true
   }
 
+  async function loadSnapshot(): Promise<void> {
+    const instanceId = state.task?.instanceId
+    if (!instanceId) return
+    const requestId = ++snapshotRequestId
+    state.snapshotLoading = true
+    state.snapshotError = null
+    try {
+      const response = await fetchWorkflowBusinessSnapshot(instanceId, {
+        showErrorMessage: false
+      })
+      if (requestId !== snapshotRequestId || state.task?.instanceId !== instanceId) return
+      if (!response.data) throw new Error('业务资料暂时无法加载')
+      state.snapshot = response.data
+    } catch {
+      if (requestId !== snapshotRequestId || state.task?.instanceId !== instanceId) return
+      state.snapshot = null
+      state.snapshotError = new Error(
+        '业务资料暂时无法加载，不影响当前审批操作。请根据单据信息谨慎确认，或稍后重试。'
+      )
+    } finally {
+      if (requestId === snapshotRequestId) state.snapshotLoading = false
+    }
+  }
+
+  function resetDialogState(): void {
+    snapshotRequestId += 1
+    Object.assign(state, {
+      task: undefined,
+      action: 'approve',
+      platformOverride: false,
+      snapshot: null,
+      snapshotLoading: false,
+      snapshotError: null
+    } satisfies ActionDialogState)
+    form.comment = ''
+  }
+
   async function handleOpen(
     task: Api.Workflow.WorkflowTaskRecord,
     action: WorkflowAction,
@@ -162,6 +264,9 @@
     state.task = task
     state.action = action
     state.platformOverride = Boolean(options.platformOverride)
+    state.snapshot = null
+    state.snapshotLoading = true
+    state.snapshotError = null
     form.comment = ''
     await dialogRef.value?.handleOpen(undefined, {
       title: state.platformOverride
@@ -171,17 +276,16 @@
         : action === 'approve'
           ? '通过审批'
           : '驳回申请',
-      confirmText: state.platformOverride
-        ? action === 'approve'
-          ? '确认代为通过'
-          : '确认代为驳回'
-        : action === 'approve'
-          ? '确认通过'
-          : '确认驳回',
-      onConfirm: handleSubmit
+      confirmText: confirmText.value,
+      contentMaxHeight: '70vh',
+      onOpen: async () => {
+        await nextTick()
+        formRef.value?.clearValidate()
+        void loadSnapshot()
+      },
+      onConfirm: handleSubmit,
+      onReset: resetDialogState
     })
-    await nextTick()
-    formRef.value?.clearValidate()
   }
 
   defineExpose({ handleOpen })
@@ -203,26 +307,29 @@
 
       > span {
         display: grid;
+        place-items: center;
         width: 38px;
         height: 38px;
+        font-size: 20px;
         color: var(--el-color-success);
         background: var(--default-box-color);
         border-radius: 50%;
-        place-items: center;
-        font-size: 20px;
       }
+
       div {
         display: grid;
-        min-width: 0;
         gap: 3px;
+        min-width: 0;
       }
+
       strong {
         color: var(--art-gray-900);
       }
+
       small {
         overflow: hidden;
-        color: var(--art-gray-500);
         text-overflow: ellipsis;
+        color: var(--art-gray-600);
         white-space: nowrap;
       }
     }
@@ -231,6 +338,7 @@
       background: var(--el-color-danger-light-9);
       border-color: var(--el-color-danger-light-7);
     }
+
     &.is-reject &__summary > span {
       color: var(--el-color-danger);
     }
@@ -250,17 +358,72 @@
         margin-top: 2px;
         font-size: 18px;
       }
+
       > div {
         display: grid;
         gap: 4px;
       }
+
       strong {
-        color: var(--art-gray-900);
         font-size: 13px;
+        color: var(--art-gray-900);
       }
+
       span {
         font-size: 12px;
         line-height: 1.55;
+      }
+    }
+
+    &__context {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+
+      article {
+        display: flex;
+        gap: 9px;
+        align-items: center;
+        min-width: 0;
+        padding: 11px 12px;
+        background: var(--art-gray-50);
+        border: 1px solid var(--art-gray-200);
+        border-radius: var(--el-border-radius-base);
+
+        > span {
+          display: grid;
+          flex: 0 0 auto;
+          place-items: center;
+          width: 30px;
+          height: 30px;
+          font-size: 16px;
+          color: var(--theme-color);
+          background: color-mix(in srgb, var(--theme-color) 9%, var(--el-bg-color));
+          border-radius: var(--el-border-radius-small);
+        }
+
+        > div {
+          display: grid;
+          gap: 2px;
+          min-width: 0;
+        }
+
+        small,
+        strong {
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        small {
+          font-size: 12px;
+          color: var(--art-gray-600);
+        }
+
+        strong {
+          font-size: 13px;
+          color: var(--art-gray-900);
+        }
       }
     }
 
@@ -269,9 +432,9 @@
       gap: 7px;
       align-items: flex-start;
       padding: 10px 12px;
-      color: var(--art-gray-500);
       font-size: 12px;
       line-height: 1.55;
+      color: var(--art-gray-500);
       background: var(--art-gray-50);
       border-radius: var(--el-border-radius-base);
 
@@ -279,6 +442,67 @@
         flex: 0 0 auto;
         margin-top: 2px;
         color: var(--el-color-primary);
+      }
+
+      &.is-danger {
+        color: var(--el-color-danger-dark-2);
+        background: var(--el-color-danger-light-9);
+        border: 1px solid var(--el-color-danger-light-7);
+
+        svg {
+          color: var(--el-color-danger);
+        }
+      }
+    }
+
+    &__footer {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+
+      > span {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        font-size: 12px;
+        color: var(--art-gray-600);
+      }
+
+      > div {
+        display: flex;
+        gap: 10px;
+      }
+    }
+  }
+
+  @media (width <= 640px) {
+    .workflow-action {
+      &__summary {
+        align-items: flex-start;
+
+        small {
+          overflow-wrap: anywhere;
+          white-space: normal;
+        }
+      }
+
+      &__context {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      &__footer {
+        flex-wrap: wrap;
+
+        > span {
+          width: 100%;
+        }
+
+        > div {
+          justify-content: flex-end;
+          width: 100%;
+        }
       }
     }
   }
