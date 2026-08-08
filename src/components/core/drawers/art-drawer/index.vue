@@ -15,8 +15,16 @@
     @resize="(...args) => emit('resize', ...args)"
     @resize-end="(...args) => emit('resize-end', ...args)"
   >
-    <template v-if="$slots.header" #header>
-      <slot name="header" :data="openData" :api="exposedApi" />
+    <template v-if="$slots.header || hasSubtitle" #header="{ titleId, titleClass }">
+      <div class="art-drawer__header-main">
+        <slot v-if="$slots.header" name="header" :data="openData" :api="exposedApi" />
+        <span v-else :id="titleId" :class="titleClass">{{ drawerTitle }}</span>
+        <div v-if="hasSubtitle" class="art-drawer__subtitle">
+          <slot name="subtitle" :data="openData" :api="exposedApi">
+            {{ drawerSubtitle }}
+          </slot>
+        </div>
+      </div>
     </template>
 
     <ElScrollbar
@@ -108,6 +116,7 @@
 
   const props = withDefaults(defineProps<ArtDrawerProps<T>>(), {
     title: '',
+    subtitle: '',
     size: '40%',
     direction: 'rtl',
     loading: false,
@@ -129,7 +138,7 @@
   })
 
   const emit = defineEmits<ArtDrawerEmits<T>>()
-  defineSlots<ArtDrawerSlots<T>>()
+  const slots = defineSlots<ArtDrawerSlots<T>>()
 
   const attrs = useAttrs()
   const drawerRef = shallowRef<unknown>()
@@ -137,6 +146,7 @@
 
   const getDefaultOptions = (): ArtDrawerOptions<T> => ({
     title: props.title,
+    subtitle: props.subtitle,
     size: props.size,
     direction: props.direction,
     loading: props.loading,
@@ -240,6 +250,9 @@
     attrs.class,
     (options.value.drawerProps as Record<string, unknown> | undefined)?.class
   ])
+  const drawerTitle = computed(() => String(options.value.title ?? attrs.title ?? ''))
+  const drawerSubtitle = computed(() => String(options.value.subtitle ?? ''))
+  const hasSubtitle = computed(() => Boolean(slots.subtitle || drawerSubtitle.value))
 
   watch(
     () => props.loading,
@@ -328,6 +341,20 @@
     flex-direction: column;
     min-height: 0;
     overflow: hidden;
+  }
+
+  .art-drawer__header-main {
+    min-width: 0;
+  }
+
+  .art-drawer__subtitle {
+    margin-top: 3px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 13px;
+    line-height: 20px;
+    color: var(--el-text-color-secondary);
+    white-space: nowrap;
   }
 
   :global(.art-drawer .el-drawer__header .art-icon-button),

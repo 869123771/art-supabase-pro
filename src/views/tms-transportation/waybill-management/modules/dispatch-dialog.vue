@@ -304,6 +304,7 @@
     resetForm(data)
     await dialogRef.value?.handleOpen(data, {
       title: data.mode === 'batch' ? '批量配载' : '车辆配载',
+      subtitle: '核对运单任务并匹配车辆、司机与发车计划，确认后进入运输执行',
       size: 'lg',
       contentMaxHeight: '76vh',
       confirmText: '确认',
@@ -486,8 +487,8 @@
     &__order {
       display: flex;
       flex-wrap: wrap;
-      margin: 0 6px;
       gap: 12px 24px;
+      margin: 0 6px;
       color: var(--art-text-gray-700);
     }
 

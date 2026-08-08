@@ -103,6 +103,22 @@
       : '层级和租户变更会影响成员、角色与菜单权限的治理视图，请谨慎调整。'
   )
 
+  const normalizeUserIdentity = (value: unknown): string => {
+    const text = String(value ?? '').trim()
+    return /^(null|undefined)$/i.test(text) ? '' : text
+  }
+
+  const getOrganizationUserLabel = (item: Record<string, unknown>): string => {
+    const email = normalizeUserIdentity(item.userEmail)
+    const displayName =
+      normalizeUserIdentity(item.nickName) ||
+      normalizeUserIdentity(item.userName) ||
+      email ||
+      '未命名用户'
+
+    return email && email !== displayName ? `${displayName}（${email}）` : displayName
+  }
+
   const createInitialForm = (): FormModel => ({
     id: undefined,
     tenantId: undefined,
@@ -253,7 +269,7 @@
     {
       label: '组织负责人',
       key: 'leaderUserId',
-      type: 'select',
+      type: 'userSelect',
       span: 24,
       api: fetchGetEnableOrganizationUserList,
       immediate: false,
@@ -261,12 +277,14 @@
       resultField: 'data',
       labelField: 'nickName',
       valueField: 'id',
-      labelFn: (item) => `${item.nickName || item.userName}（${item.userEmail}）`,
+      labelFn: getOrganizationUserLabel,
       props: {
         disabled: !form.tenantId,
         clearable: true,
         filterable: true,
-        placeholder: form.tenantId ? '请选择负责人' : '请先选择租户'
+        placeholder: form.tenantId ? '请选择负责人' : '请先选择租户',
+        noDataText: '当前租户暂无启用用户',
+        noMatchText: '未找到匹配用户'
       },
       description: '负责人必须属于同一租户，可与成员的直接所属组织不同。'
     },

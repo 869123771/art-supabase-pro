@@ -113,6 +113,25 @@ export {
   subscribeInTransitMonitorChanges
 } from '@/api/modules/tms/in-transit'
 export {
+  addInTransitExpense,
+  analyzeInTransitExpenseByAi,
+  createExpenseReimbursement,
+  deleteExpenseReimbursement,
+  deleteInTransitExpense,
+  editInTransitExpense,
+  executeExpenseReimbursement,
+  fetchExpenseReimbursementDetail,
+  fetchExpenseReimbursementList,
+  fetchInTransitExpenseList,
+  fetchInTransitExpenseOcrEnabled,
+  fetchInTransitExpenseOcrRunList,
+  fetchInTransitExpenseOverview,
+  fetchInTransitWaybillOptions,
+  reviewInTransitExpenseOcrArtifact,
+  submitExpenseReimbursement,
+  submitInTransitExpense
+} from '@/api/modules/tms/in-transit-expense'
+export {
   analyzeWaybillReceiptByAi,
   createReceiptExceptionWorkOrder,
   exportDeliveryList,

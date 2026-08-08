@@ -1,5 +1,16 @@
 <template>
-  <div class="art-full-height">
+  <div class="tms-workspace-page art-full-height">
+    <TmsWorkspaceHeader
+      eyebrow="CARRIER NETWORK"
+      title="承运商资料"
+      description="集中管理承运主体、合作类型、资质与履约关系，让调度选择和经营评估更高效。"
+      icon="ri:truck-line"
+      :tags="[
+        { label: '运力伙伴', type: 'primary' },
+        { label: '资质可追踪', type: 'info' }
+      ]"
+    />
+
     <ArtTableQuery
       ref="tableQueryRef"
       v-model="tableState.searchQuery"
@@ -8,6 +19,11 @@
       :columns-factory="columnsFactory"
       :header-actions="headerActions"
       :search-bar-props="{ span: 6, labelWidth: 86, showExpand: false }"
+      :table-props="{
+        emptyText: '暂无承运商资料',
+        emptyDescription: '可新增承运商，或调整类型、状态、创建时间和关键字后重新查询。'
+      }"
+      focusable
     />
 
     <CarrierDialog ref="dialogRef" @success="handleSaveSuccess" />
@@ -39,6 +55,7 @@
     importCarriers
   } from '@/api/tms'
   import CarrierDialog from './modules/carrier-dialog.vue'
+  import TmsWorkspaceHeader from '@/views/tms-transportation/modules/tms-workspace-header.vue'
 
   defineOptions({ name: 'TmsCarrier' })
 

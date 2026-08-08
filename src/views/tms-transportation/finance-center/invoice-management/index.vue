@@ -1,5 +1,16 @@
 <template>
-  <div class="art-full-height">
+  <div class="tms-workspace-page art-full-height">
+    <TmsWorkspaceHeader
+      eyebrow="INVOICE OPERATIONS"
+      title="发票管理"
+      description="统一管理销项与进项发票、业务关联、识别校验和状态流转，提升票据合规性。"
+      icon="ri:receipt-line"
+      :tags="[
+        { label: '票据台账', type: 'primary' },
+        { label: '合规校验', type: 'success' }
+      ]"
+    />
+
     <ArtTableQuery
       ref="tableQueryRef"
       v-model="table.searchQuery"
@@ -8,7 +19,13 @@
       :columns-factory="columnsFactory"
       :header-actions="table.headerActions"
       :search-bar-props="{ span: 6, labelWidth: 86, showExpand: true }"
-      :table-props="{ rowKey: 'id', tableLayout: 'fixed' }"
+      :table-props="{
+        rowKey: 'id',
+        tableLayout: 'fixed',
+        emptyText: '暂无发票记录',
+        emptyDescription: '可新增或识别发票，或调整类型、状态、往来单位和日期后查询。'
+      }"
+      focusable
     />
 
     <InvoiceDialog ref="dialogRef" @success="handleSaveSuccess" />
@@ -40,6 +57,7 @@
   import { formatWithDayjs } from '@/utils/time'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { fetchRecognitionArtifactDetail } from '@/api/intelligent-recognition'
+  import TmsWorkspaceHeader from '@/views/tms-transportation/modules/tms-workspace-header.vue'
   import { toInvoiceOcrAnalyzeResponse } from '@/utils/intelligent-recognition'
   import InvoiceDialog from './modules/invoice-dialog.vue'
   import InvoiceComplianceAuditDrawer from './modules/invoice-compliance-audit-drawer.vue'

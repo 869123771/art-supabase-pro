@@ -1,6 +1,6 @@
 <template>
   <div
-    v-loading="loading && loadingMode === 'mask'"
+    v-loading="isMaskLoading"
     class="art-async-state"
     :class="{ 'is-full-height': fullHeight }"
     :style="{ minHeight: normalizedMinHeight }"
@@ -80,6 +80,7 @@
 
   const emit = defineEmits<{ retry: [] }>()
 
+  const isMaskLoading = computed(() => Boolean(props.loading && props.loadingMode === 'mask'))
   const errorMessage = computed(() => {
     if (props.error instanceof Error) return props.error.message
     return props.error ?? ''

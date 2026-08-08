@@ -1,5 +1,9 @@
 <template>
   <ArtDialog ref="dialogRef" size="xl" show-fullscreen-button>
+    <template #subtitle
+      >记录维修保养项目、工期、费用、承修机构与附件，沉淀车辆完整维保履历。</template
+    >
+
     <div class="maintenance-record-dialog">
       <ArtForm
         ref="formRef"

@@ -41,7 +41,7 @@
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import { cloneDeep } from 'lodash-es'
   import type { FormRules } from 'element-plus'
-  import { editUser, fetchGetEnableRoleList } from '@/api/system-manage'
+  import { assignUserRoles, fetchGetEnableRoleList } from '@/api/system-manage'
   import { useUserStore } from '@/store/modules/user'
 
   type UserListItem = Api.SystemManage.UserListItem
@@ -119,7 +119,7 @@
       if (!isSuper.value) {
         params.tenantId = currentTenantId.value
       }
-      await editUser(params)
+      await assignUserRoles(params)
       emit('success')
       return true
     } catch {
@@ -213,7 +213,7 @@
       }
     }
 
-    @media (max-width: 640px) {
+    @media (width <= 640px) {
       &__context {
         grid-template-columns: auto minmax(0, 1fr);
 

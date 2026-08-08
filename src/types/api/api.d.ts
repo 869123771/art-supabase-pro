@@ -148,8 +148,21 @@ declare namespace Api {
 
     /** 用户搜索参数 */
     type UserSearchParams = Partial<
-      Pick<UserListItem, 'id' | 'userName' | 'userGender' | 'userPhone' | 'userEmail' | 'status'> &
-        Api.Common.CommonSearchParams
+      Pick<
+        UserListItem,
+        | 'id'
+        | 'tenantId'
+        | 'organizationId'
+        | 'userName'
+        | 'userGender'
+        | 'userPhone'
+        | 'userEmail'
+        | 'status'
+      > &
+        Api.Common.CommonSearchParams & {
+          organizationIds: string[]
+          organizationUnassigned: boolean
+        }
     >
 
     /** 角色列表 */
@@ -180,11 +193,21 @@ declare namespace Api {
     type RoleSearchParams = Partial<
       Pick<
         RoleListItem,
-        'roleId' | 'roleName' | 'roleCode' | 'description' | 'enabled' | 'startTime' | 'endTime'
+        | 'roleId'
+        | 'tenantId'
+        | 'organizationId'
+        | 'roleName'
+        | 'roleCode'
+        | 'description'
+        | 'enabled'
+        | 'startTime'
+        | 'endTime'
       > &
         Api.Common.CommonSearchParams & {
           startTime: string | null
           endTime: string | null
+          organizationIds: string[]
+          organizationUnassigned: boolean
         }
     >
 
@@ -244,6 +267,22 @@ declare namespace Api {
       createTime?: string
       updateBy?: string
       updateTime?: string
+    }
+
+    type OrganizationScopeFilterItem = Pick<
+      OrganizationListItem,
+      | 'id'
+      | 'tenantId'
+      | 'parentId'
+      | 'organizationCode'
+      | 'organizationName'
+      | 'organizationType'
+      | 'status'
+      | 'sort'
+      | 'isSystem'
+    > & {
+      scopeCount?: number
+      children?: OrganizationScopeFilterItem[]
     }
 
     type OrganizationSearchParams = Partial<
@@ -2052,6 +2091,248 @@ declare namespace Api {
     }
 
     namespace Finance {
+      type InTransitExpenseType = 'energy' | 'charging' | 'gas' | 'other'
+      type InTransitExpenseReportStatus =
+        'draft' | 'pending_review' | 'approved' | 'rejected' | 'cancelled'
+      type ExpenseReimbursementStatus = 'not_converted' | 'converted'
+      type ExpensePaymentStatus = 'unpaid' | 'paid'
+      type ExpenseOcrStatus = 'not_started' | 'processing' | 'succeeded' | 'failed'
+      type ReimbursementApprovalStatus =
+        'draft' | 'pending_review' | 'approved' | 'rejected' | 'paid' | 'cancelled'
+
+      interface InTransitExpenseRecord {
+        id?: string
+        tenantId?: string
+        expenseNo?: string
+        waybillId: string
+        orderId?: string | null
+        driverId?: string | null
+        expenseType: InTransitExpenseType | string
+        amount: number
+        occurredAt: string
+        quantity?: number | null
+        unitPrice?: number | null
+        providerName?: string | null
+        payeeName?: string | null
+        paymentChannel?: string | null
+        invoiceNo?: string | null
+        meterNo?: string | null
+        expenseLocation?: string | null
+        description?: string | null
+        attachments: string[]
+        waybillNoSnapshot?: string
+        orderNoSnapshot?: string | null
+        plateNoSnapshot?: string | null
+        driverNameSnapshot?: string | null
+        driverPhoneSnapshot?: string | null
+        routeSnapshot?: string | null
+        latestOcrRunId?: string | null
+        ocrArtifactId?: string | null
+        ocrStatus?: ExpenseOcrStatus
+        reportStatus?: InTransitExpenseReportStatus
+        reimbursementStatus?: ExpenseReimbursementStatus
+        paymentStatus?: ExpensePaymentStatus
+        costId?: string | null
+        reimbursementId?: string | null
+        reimbursementNo?: string | null
+        reimbursementApprovalStatus?: ReimbursementApprovalStatus | null
+        paymentNo?: string | null
+        paymentDate?: string | null
+        bankReference?: string | null
+        waybillStatus?: string | null
+        submittedAt?: string | null
+        submittedBy?: string | null
+        reviewedAt?: string | null
+        reviewedBy?: string | null
+        reviewRemark?: string | null
+        createBy?: string | null
+        createTime?: string
+        updateBy?: string | null
+        updateTime?: string
+      }
+
+      type InTransitExpenseSearchParams = Api.Common.CommonSearchParams & {
+        keyword?: string
+        expenseType?: string
+        reportStatus?: string
+        reimbursementStatus?: string
+        paymentStatus?: string
+        occurredAtRange?: string[]
+      }
+
+      interface InTransitWaybillOption {
+        id: string
+        waybillNo: string
+        status: string
+        orderId?: string | null
+        driverId?: string | null
+        carrierId?: string | null
+        originCity?: string | null
+        destinationCity?: string | null
+        driver?: Pick<BasicData.DriverOption, 'id' | 'driverName' | 'phone'> | null
+        order?: Pick<
+          Order.OrderRecord,
+          | 'id'
+          | 'orderNo'
+          | 'dispatchPlateNo'
+          | 'dispatchDriverName'
+          | 'dispatchDriverPhone'
+          | 'originStation'
+          | 'destinationStation'
+        > | null
+      }
+
+      interface InTransitWaybillOptionSearchParams extends Api.Common.CommonSearchParams {
+        keyword?: string
+        orderId?: string
+      }
+
+      interface ExpenseReimbursementItem {
+        id: string
+        tenantId: string
+        reimbursementId: string
+        expenseId: string
+        waybillId: string
+        expenseNoSnapshot: string
+        waybillNoSnapshot: string
+        expenseTypeSnapshot: string
+        amountSnapshot: number
+        occurredAtSnapshot: string
+        createTime: string
+      }
+
+      interface ExpenseReimbursementRecord {
+        id: string
+        tenantId: string
+        reimbursementNo: string
+        applicantUserId?: string | null
+        applicantNameSnapshot: string
+        payeeName: string
+        payeeBank?: string | null
+        payeeAccount?: string | null
+        plannedPaymentDate: string
+        paymentMethod: CashPaymentMethod
+        totalAmount: number
+        basisUrls: string[]
+        status: ReimbursementApprovalStatus
+        submittedAt?: string | null
+        submittedBy?: string | null
+        reviewedAt?: string | null
+        reviewedBy?: string | null
+        reviewRemark?: string | null
+        paidAt?: string | null
+        paidBy?: string | null
+        paymentReference?: string | null
+        paymentVoucherUrls: string[]
+        remark?: string | null
+        itemCount: number
+        waybillCount: number
+        waybillNos?: string | null
+        paymentId?: string | null
+        paymentNo?: string | null
+        createBy?: string | null
+        createTime: string
+        updateBy?: string | null
+        updateTime: string
+        items?: ExpenseReimbursementItem[]
+      }
+
+      type ExpenseReimbursementSearchParams = Api.Common.CommonSearchParams & {
+        keyword?: string
+        status?: string
+        paymentMethod?: string
+        plannedPaymentDateRange?: string[]
+      }
+
+      interface CreateExpenseReimbursementPayload {
+        expenseIds: string[]
+        payeeName: string
+        payeeBank?: string | null
+        payeeAccount?: string | null
+        plannedPaymentDate: string
+        paymentMethod: CashPaymentMethod
+        basisUrls?: string[]
+        remark?: string | null
+      }
+
+      interface ExecuteExpenseReimbursementPayload {
+        reimbursementId: string
+        paymentDate: string
+        bankReference?: string | null
+        voucherUrls?: string[]
+        remark?: string | null
+      }
+
+      interface InTransitExpenseOverview {
+        totalCount: number
+        pendingReviewCount: number
+        approvedUnconvertedCount: number
+        pendingPaymentAmount: number
+        paidAmount: number
+      }
+
+      type InTransitExpenseOcrField =
+        | 'expenseType'
+        | 'amount'
+        | 'occurredAt'
+        | 'quantity'
+        | 'unitPrice'
+        | 'providerName'
+        | 'payeeName'
+        | 'paymentChannel'
+        | 'invoiceNo'
+        | 'meterNo'
+        | 'expenseLocation'
+        | 'description'
+
+      interface InTransitExpenseOcrDraft {
+        expenseType: InTransitExpenseType
+        amount: number | null
+        occurredAt: string | null
+        quantity: number | null
+        unitPrice: number | null
+        providerName: string | null
+        payeeName: string | null
+        paymentChannel: string | null
+        invoiceNo: string | null
+        meterNo: string | null
+        expenseLocation: string | null
+        description: string | null
+      }
+
+      interface InTransitExpenseOcrAnalyzeResponse {
+        artifactId: string
+        runId: string
+        generatedAt: string
+        summary: string
+        confidence: number
+        fieldConfidence: Partial<Record<InTransitExpenseOcrField, number>>
+        missingFields: string[]
+        warnings: string[]
+        expense: InTransitExpenseOcrDraft
+        reviewConfidenceThreshold: number
+      }
+
+      interface InTransitExpenseOcrRunRecord {
+        id: string
+        feature: string
+        model: string
+        status: 'pending' | 'running' | 'succeeded' | 'failed'
+        latencyMs?: number | null
+        errorCode?: string | null
+        errorMessage?: string | null
+        metadata?: Record<string, unknown>
+        startedAt: string
+        finishedAt?: string | null
+        createBy?: string | null
+      }
+
+      type InTransitExpenseOcrRunSearchParams = Api.Common.CommonSearchParams & {
+        status?: string
+        keyword?: string
+        createTimeRange?: string[]
+      }
+
       type WaybillCostType =
         | 'carrier_freight'
         | 'toll'

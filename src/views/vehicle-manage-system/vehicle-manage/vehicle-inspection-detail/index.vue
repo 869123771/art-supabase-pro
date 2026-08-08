@@ -17,6 +17,25 @@
       @back="goBack"
     />
 
+    <section class="vehicle-inspection-detail__summary art-card-xs">
+      <div class="vehicle-inspection-detail__summary-item">
+        <span>年检日期</span>
+        <strong>{{ detail.data?.inspectionDate || '--' }}</strong>
+      </div>
+      <div class="vehicle-inspection-detail__summary-item">
+        <span>到期日期</span>
+        <strong>{{ detail.data?.expireDate || '--' }}</strong>
+      </div>
+      <div class="vehicle-inspection-detail__summary-item">
+        <span>年检金额</span>
+        <strong>{{ formatMoney(detail.data?.inspectionAmount) }}</strong>
+      </div>
+      <div class="vehicle-inspection-detail__summary-item">
+        <span>附件数量</span>
+        <strong>{{ detail.data?.attachments?.length ?? 0 }}</strong>
+      </div>
+    </section>
+
     <div class="vehicle-inspection-detail__content art-card-xs">
       <section class="vehicle-inspection-detail__section">
         <ArtSectionTitle>年检信息</ArtSectionTitle>
@@ -140,6 +159,37 @@
       margin-top: 12px;
     }
 
+    &__summary {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      margin-top: 12px;
+    }
+
+    &__summary-item {
+      display: grid;
+      gap: 4px;
+      min-width: 0;
+      padding: 16px 20px;
+
+      &:not(:last-child) {
+        border-right: 1px solid var(--el-border-color-lighter);
+      }
+
+      span {
+        font-size: 12px;
+        color: var(--el-text-color-secondary);
+      }
+
+      strong {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        font-size: 18px;
+        font-variant-numeric: tabular-nums;
+        color: var(--el-text-color-primary);
+        white-space: nowrap;
+      }
+    }
+
     &__section + &__section {
       margin-top: 22px;
     }
@@ -147,6 +197,20 @@
     :deep(.art-descriptions .el-descriptions__label) {
       width: 128px;
       font-weight: 600;
+    }
+
+    @media (width <= 720px) {
+      &__summary {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      &__summary-item:nth-child(2) {
+        border-right: 0;
+      }
+
+      &__summary-item:nth-child(-n + 2) {
+        border-bottom: 1px solid var(--el-border-color-lighter);
+      }
     }
   }
 </style>

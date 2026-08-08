@@ -40,7 +40,12 @@ export async function fetchRecognitionArtifactList(params: SearchParams) {
   let query = supabase
     .from('ai_artifact_review')
     .select(ARTIFACT_SELECT, { count: 'exact' })
-    .in('feature', ['invoice_ocr', 'waybill_receipt_ocr', 'cash_voucher_ocr'])
+    .in('feature', [
+      'invoice_ocr',
+      'waybill_receipt_ocr',
+      'cash_voucher_ocr',
+      'in_transit_expense_ocr'
+    ])
   if (params.sort === 'risk') {
     query = query.order('confidence', { ascending: true, nullsFirst: true })
   }

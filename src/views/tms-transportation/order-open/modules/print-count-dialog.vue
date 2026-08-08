@@ -67,6 +67,10 @@
 
     await dialogRef.value?.handleOpen(data, {
       title: data.kind === 'waybill' ? '打印运单' : '打印标签',
+      subtitle:
+        data.kind === 'waybill'
+          ? '确认运单打印份数，便于交接、留档和随车携带'
+          : '按货物数量或自定义份数生成标签',
       onConfirm: (openData) => {
         const count = resolveCount(openData)
         if (count < 1) {

@@ -15,6 +15,39 @@
       @back="goBack"
     />
 
+    <section class="vehicle-archive-detail__summary art-card-xs">
+      <div class="vehicle-archive-detail__summary-item">
+        <span>车辆类型</span>
+        <strong>
+          <ArtDictDisplay dict-code="vehicleType" :value="archive?.vehicleType" display="auto" />
+        </strong>
+      </div>
+      <div class="vehicle-archive-detail__summary-item">
+        <span>营运状态</span>
+        <strong>
+          <ArtDictDisplay
+            dict-code="vehicleOperationStatus"
+            :value="archive?.operationStatus"
+            display="auto"
+          />
+        </strong>
+      </div>
+      <div class="vehicle-archive-detail__summary-item">
+        <span>审核状态</span>
+        <strong>
+          <ArtDictDisplay
+            dict-code="vehicleAuditStatus"
+            :value="archive?.auditStatus"
+            display="auto"
+          />
+        </strong>
+      </div>
+      <div class="vehicle-archive-detail__summary-item">
+        <span>附件数量</span>
+        <strong>{{ archive?.attachments?.length ?? 0 }}</strong>
+      </div>
+    </section>
+
     <ElTabs v-model="activeTab" class="vehicle-archive-detail__tabs art-card-xs">
       <ElTabPane label="基础信息" name="basic">
         <InfoDescriptions :items="basicInfoItems" />
@@ -407,6 +440,35 @@
       margin-top: 12px;
     }
 
+    &__summary {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      margin-top: 12px;
+    }
+
+    &__summary-item {
+      display: grid;
+      gap: 4px;
+      min-width: 0;
+      padding: 16px 20px;
+
+      &:not(:last-child) {
+        border-right: 1px solid var(--el-border-color-lighter);
+      }
+
+      span {
+        font-size: 12px;
+        color: var(--el-text-color-secondary);
+      }
+
+      strong {
+        min-width: 0;
+        font-size: 18px;
+        font-variant-numeric: tabular-nums;
+        color: var(--el-text-color-primary);
+      }
+    }
+
     &__descriptions {
       :deep(.el-descriptions__label) {
         width: 132px;
@@ -461,6 +523,18 @@
     }
 
     @media (width <= 760px) {
+      &__summary {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      &__summary-item:nth-child(2) {
+        border-right: 0;
+      }
+
+      &__summary-item:nth-child(-n + 2) {
+        border-bottom: 1px solid var(--el-border-color-lighter);
+      }
+
       &__descriptions {
         :deep(.el-descriptions__label) {
           width: 108px;

@@ -1,5 +1,17 @@
 <template>
-  <div class="art-full-height">
+  <div class="mileage-record-page art-full-height">
+    <VehicleWorkspaceHeader
+      eyebrow="MILEAGE LEDGER"
+      title="车辆里程"
+      description="按行程沉淀车辆起止时间与里程数据，为维保周期、成本分析和车辆利用率提供依据。"
+      icon="ri:speed-up-line"
+      :tags="[
+        { label: '行程自动沉淀', type: 'primary' },
+        { label: '只读运营数据', type: 'info' }
+      ]"
+      :metrics="workspaceMetrics"
+    />
+
     <ArtTableQuery
       ref="tableQueryRef"
       v-model="table.searchQuery"
@@ -8,7 +20,14 @@
       :columns-factory="table.columnsFactory"
       :header-actions="table.headerActions"
       :search-bar-props="{ span: 6, labelWidth: 90 }"
-      :table-props="{ rowKey: 'id', tableLayout: 'fixed' }"
+      :table-props="{
+        rowKey: 'id',
+        tableLayout: 'fixed',
+        emptyText: '暂无车辆里程记录',
+        emptyDescription: '可调整所属公司、车牌号或行驶时间范围后重新查询。'
+      }"
+      :on-success="handleTableSuccess"
+      focusable
     />
   </div>
 </template>
@@ -19,12 +38,16 @@
   import type {
     ArtTableQueryExpose,
     ArtTableQueryExcelColumn,
-    ArtTableQueryHeaderAction
+    ArtTableQueryHeaderAction,
+    ArtTableQueryProps
   } from '@/components/core/tables/art-table-query/index.vue'
   import type { ColumnOption } from '@/types'
   import { exportVehicleMileageList, fetchVehicleMileageList } from '@/api/vehicle-manage-system'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatWithDayjs } from '@/utils/time'
+  import VehicleWorkspaceHeader, {
+    type VehicleWorkspaceMetric
+  } from '@/views/vehicle-manage-system/modules/vehicle-workspace-header.vue'
 
   defineOptions({ name: 'VehicleMileage' })
 
@@ -40,6 +63,29 @@
   }
 
   const tableQueryRef = ref<ArtTableQueryExpose>()
+  const overview = reactive<{ total: number; rows: MileageRecord[] }>({ total: 0, rows: [] })
+  const workspaceMetrics = computed<VehicleWorkspaceMetric[]>(() => [
+    {
+      label: '里程记录',
+      value: overview.total,
+      description: '当前筛选条件下的行程数量',
+      icon: 'ri:road-map-line'
+    },
+    {
+      label: '本页累计行驶',
+      value: `${overview.rows.reduce((sum, row) => sum + Number(row.runningMileage || 0), 0).toFixed(0)} km`,
+      description: '当前页行驶里程合计',
+      icon: 'ri:speed-up-line',
+      tone: 'success'
+    },
+    {
+      label: '本页未结束行程',
+      value: overview.rows.filter((row) => !row.endTime).length,
+      description: '尚未登记结束时间',
+      icon: 'ri:timer-flash-line',
+      tone: 'warning'
+    }
+  ])
 
   const createInitialSearch = (): SearchParams => ({
     companyName: '',
@@ -133,8 +179,20 @@
     return fetchVehicleMileageList({ ...params, from, to })
   }
 
+  const handleTableSuccess: NonNullable<ArtTableQueryProps['onSuccess']> = (rows, response) => {
+    overview.rows = rows as MileageRecord[]
+    overview.total = response.total ?? rows.length
+  }
+
   const formatMileage = (value?: number | null): string => {
     if (value === undefined || value === null) return '--'
     return `${Number(value).toFixed(2)} km`
   }
 </script>
+
+<style scoped lang="scss">
+  .mileage-record-page {
+    gap: 12px;
+    min-width: 0;
+  }
+</style>

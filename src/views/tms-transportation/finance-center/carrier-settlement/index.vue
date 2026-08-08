@@ -1,5 +1,16 @@
 <template>
-  <div class="art-full-height">
+  <div class="tms-workspace-page art-full-height">
+    <TmsWorkspaceHeader
+      eyebrow="CARRIER SETTLEMENT"
+      title="承运商对账"
+      description="归集承运成本与结算周期，跟踪账单确认、付款申请和供应商结算进度。"
+      icon="ri:hand-coin-line"
+      :tags="[
+        { label: '应付对账', type: 'primary' },
+        { label: '成本核验', type: 'warning' }
+      ]"
+    />
+
     <ArtTableQuery
       ref="tableQueryRef"
       v-model="searchQuery"
@@ -8,7 +19,13 @@
       :columns-factory="columnsFactory"
       :header-actions="headerActions"
       :search-bar-props="{ span: 6, labelWidth: 86, showExpand: false }"
-      :table-props="{ rowKey: 'id', tableLayout: 'fixed' }"
+      :table-props="{
+        rowKey: 'id',
+        tableLayout: 'fixed',
+        emptyText: '暂无承运商对账单',
+        emptyDescription: '可创建承运商对账单，或调整承运商、状态、周期和单号后查询。'
+      }"
+      focusable
     />
     <CarrierStatementDialog ref="dialogRef" @success="handleCreateSuccess" />
     <CarrierStatementDetailDrawer ref="drawerRef" />
@@ -37,6 +54,7 @@
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import CarrierStatementDialog from './modules/carrier-statement-dialog.vue'
   import CarrierStatementDetailDrawer from './modules/carrier-statement-detail-drawer.vue'
+  import TmsWorkspaceHeader from '@/views/tms-transportation/modules/tms-workspace-header.vue'
 
   defineOptions({ name: 'TmsCarrierSettlement' })
 

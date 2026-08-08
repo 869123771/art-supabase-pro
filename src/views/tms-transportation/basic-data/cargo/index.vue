@@ -1,5 +1,16 @@
 <template>
-  <div class="art-full-height">
+  <div class="tms-workspace-page art-full-height">
+    <TmsWorkspaceHeader
+      eyebrow="CARGO CATALOG"
+      title="货物资料"
+      description="沉淀货物名称、计量单位、体积重量与启用状态，提升开单录入和计价准确性。"
+      icon="ri:archive-stack-line"
+      :tags="[
+        { label: '货品标准化', type: 'primary' },
+        { label: '计量一致性', type: 'success' }
+      ]"
+    />
+
     <ArtTableQuery
       ref="tableQueryRef"
       v-model="tableState.searchQuery"
@@ -8,6 +19,11 @@
       :columns-factory="columnsFactory"
       :header-actions="headerActions"
       :search-bar-props="{ span: 6, labelWidth: 86, showExpand: false }"
+      :table-props="{
+        emptyText: '暂无货物资料',
+        emptyDescription: '可新增常用货物，或调整计量单位、状态、时间和关键字后重新查询。'
+      }"
+      focusable
     />
 
     <CargoDialog ref="dialogRef" @success="handleSaveSuccess" />
@@ -36,6 +52,7 @@
     importCargoes
   } from '@/api/tms'
   import CargoDialog from './modules/cargo-dialog.vue'
+  import TmsWorkspaceHeader from '@/views/tms-transportation/modules/tms-workspace-header.vue'
 
   defineOptions({ name: 'TmsCargo' })
 

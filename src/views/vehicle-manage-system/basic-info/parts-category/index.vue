@@ -1,5 +1,17 @@
 <template>
-  <div class="art-full-height">
+  <div class="parts-category-page art-full-height">
+    <VehicleWorkspaceHeader
+      eyebrow="PARTS TAXONOMY"
+      title="零部件类别"
+      description="以清晰的层级结构治理零部件分类、编码与启用状态，提升维保数据的一致性。"
+      icon="ri:node-tree"
+      :tags="[
+        { label: '树形分类', type: 'primary' },
+        { label: currentCategory?.categoryName || '全部顶级类别', type: 'info' }
+      ]"
+      :metrics="workspaceMetrics"
+    />
+
     <div class="parts-category-layout">
       <ElSplitter class="parts-category-splitter">
         <ElSplitterPanel size="400px" min="400px" max="640px">
@@ -22,7 +34,13 @@
               :columns-factory="columnsFactory"
               :header-actions="headerActions"
               :search-bar-props="{ span: 8, labelWidth: 90 }"
-              :table-props="{ rowKey: 'id', tableLayout: 'fixed' }"
+              :table-props="{
+                rowKey: 'id',
+                tableLayout: 'fixed',
+                emptyText: '当前层级暂无零部件类别',
+                emptyDescription: '可新增当前层级类别，或调整名称、编码和状态后重新查询。'
+              }"
+              :on-success="handleTableSuccess"
             />
           </div>
         </ElSplitterPanel>
@@ -42,7 +60,8 @@
     ArtTableQueryExpose,
     ArtTableQueryExcelColumn,
     ArtTableQueryHeaderAction,
-    ArtTableQueryHeaderActionContext
+    ArtTableQueryHeaderActionContext,
+    ArtTableQueryProps
   } from '@/components/core/tables/art-table-query/index.vue'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import ArtButtonMore, {
@@ -60,6 +79,9 @@
   import { useUserStore } from '@/store/modules/user'
   import PartsCategoryTree from './modules/parts-category-tree.vue'
   import PartsCategoryDialog from './modules/parts-category-dialog.vue'
+  import VehicleWorkspaceHeader, {
+    type VehicleWorkspaceMetric
+  } from '@/views/vehicle-manage-system/modules/vehicle-workspace-header.vue'
 
   defineOptions({ name: 'PartsCategory' })
 
@@ -83,6 +105,31 @@
   const dialogRef = ref<DialogExpose>()
   const currentCategory = shallowRef<PartsCategory>()
   const { getDictMap } = storeToRefs(useUserStore())
+  const overview = reactive<{ total: number; rows: PartsCategory[] }>({ total: 0, rows: [] })
+  const workspaceMetrics = computed<VehicleWorkspaceMetric[]>(() => [
+    {
+      label: '当前层级结果',
+      value: overview.total,
+      description: currentCategory.value
+        ? `属于“${currentCategory.value.categoryName}”`
+        : '全部顶级类别',
+      icon: 'ri:folder-chart-line'
+    },
+    {
+      label: '本页启用',
+      value: overview.rows.filter((row) => row.status === '1').length,
+      description: '可用于零部件归类',
+      icon: 'ri:checkbox-circle-line',
+      tone: 'success'
+    },
+    {
+      label: '本页停用',
+      value: overview.rows.filter((row) => row.status !== '1').length,
+      description: '当前不可用于业务选择',
+      icon: 'ri:forbid-2-line',
+      tone: 'warning'
+    }
+  ])
 
   const searchQuery = ref<SearchParams>({
     categoryName: '',
@@ -227,6 +274,11 @@
     }
   ]
 
+  const handleTableSuccess: NonNullable<ArtTableQueryProps['onSuccess']> = (rows, response) => {
+    overview.rows = rows as PartsCategory[]
+    overview.total = response.total ?? rows.length
+  }
+
   const openDialog = (row?: PartsCategory, parent?: PartsCategory): void => {
     void dialogRef.value?.handleOpen(row, parent)
   }
@@ -299,107 +351,114 @@
 </script>
 
 <style scoped lang="scss">
-  .parts-category-layout {
-    width: 100%;
-    height: 100%;
-    min-height: 0;
+  .parts-category-page {
+    gap: 12px;
+    min-width: 0;
 
-    .parts-category-tree-panel,
-    .parts-category-table-panel {
-      display: flex;
-      flex-direction: column;
-      height: 100%;
-      min-width: 0;
+    .parts-category-layout {
+      flex: 1;
+      width: 100%;
       min-height: 0;
-    }
 
-    .parts-category-tree-panel {
-      padding-right: 8px;
-    }
-
-    .parts-category-table-panel {
-      padding-left: 8px;
-    }
-
-    .parts-category-splitter {
-      :deep(.el-splitter-panel) {
-        overflow: hidden;
-      }
-
-      :deep(.el-splitter-bar) {
-        width: 16px;
-        cursor: col-resize;
-      }
-
-      :deep(.el-splitter-bar::before) {
-        position: absolute;
-        top: 0;
-        bottom: 0;
-        left: 50%;
-        width: 1px;
-        content: '';
-        background: var(--el-border-color);
-        opacity: 0;
-        transform: translateX(-50%);
-        transition:
-          opacity 0.18s ease,
-          background-color 0.18s ease;
-      }
-
-      :deep(.el-splitter-bar__dragger) {
-        width: 16px;
-        height: 56px;
-        border-radius: 999px;
-        opacity: 0;
-        transition:
-          opacity 0.18s ease,
-          background-color 0.18s ease,
-          box-shadow 0.18s ease;
-      }
-
-      :deep(.el-splitter-bar__dragger::before) {
-        width: 3px;
-        height: 32px;
-        border-radius: 999px;
-        background: var(--el-color-primary);
-      }
-
-      :deep(.el-splitter-bar:hover::before),
-      :deep(.el-splitter-bar:has(.el-splitter-bar__dragger-active)::before) {
-        opacity: 1;
-        background: var(--el-color-primary-light-7);
-      }
-
-      :deep(.el-splitter-bar:hover .el-splitter-bar__dragger),
-      :deep(.el-splitter-bar__dragger-active) {
-        opacity: 1;
-      }
-    }
-
-    @media (width <= 768px) {
-      height: auto;
-
-      .parts-category-splitter {
-        display: block;
-
-        :deep(.el-splitter-panel) {
-          width: 100% !important;
-          height: auto;
-          overflow: visible;
-        }
-
-        :deep(.el-splitter-bar) {
-          display: none;
-        }
+      .parts-category-tree-panel,
+      .parts-category-table-panel {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        height: 100%;
+        min-height: 0;
       }
 
       .parts-category-tree-panel {
-        padding-right: 0;
-        margin-bottom: 20px;
+        padding-right: 8px;
       }
 
       .parts-category-table-panel {
-        padding-left: 0;
+        padding-left: 8px;
+      }
+
+      .parts-category-splitter {
+        height: 100%;
+
+        :deep(.el-splitter-panel) {
+          overflow: hidden;
+        }
+
+        :deep(.el-splitter-bar) {
+          width: 16px;
+          cursor: col-resize;
+        }
+
+        :deep(.el-splitter-bar::before) {
+          position: absolute;
+          top: 0;
+          bottom: 0;
+          left: 50%;
+          width: 1px;
+          content: '';
+          background: var(--el-border-color);
+          opacity: 0;
+          transform: translateX(-50%);
+          transition:
+            opacity 0.18s ease,
+            background-color 0.18s ease;
+        }
+
+        :deep(.el-splitter-bar__dragger) {
+          width: 16px;
+          height: 56px;
+          border-radius: 999px;
+          opacity: 0;
+          transition:
+            opacity 0.18s ease,
+            background-color 0.18s ease,
+            box-shadow 0.18s ease;
+        }
+
+        :deep(.el-splitter-bar__dragger::before) {
+          width: 3px;
+          height: 32px;
+          background: var(--el-color-primary);
+          border-radius: 999px;
+        }
+
+        :deep(.el-splitter-bar:hover::before),
+        :deep(.el-splitter-bar:has(.el-splitter-bar__dragger-active)::before) {
+          background: var(--el-color-primary-light-7);
+          opacity: 1;
+        }
+
+        :deep(.el-splitter-bar:hover .el-splitter-bar__dragger),
+        :deep(.el-splitter-bar__dragger-active) {
+          opacity: 1;
+        }
+      }
+
+      @media (width <= 768px) {
+        height: auto;
+
+        .parts-category-splitter {
+          display: block;
+
+          :deep(.el-splitter-panel) {
+            width: 100% !important;
+            height: auto;
+            overflow: visible;
+          }
+
+          :deep(.el-splitter-bar) {
+            display: none;
+          }
+        }
+
+        .parts-category-tree-panel {
+          padding-right: 0;
+          margin-bottom: 20px;
+        }
+
+        .parts-category-table-panel {
+          padding-left: 0;
+        }
       }
     }
   }

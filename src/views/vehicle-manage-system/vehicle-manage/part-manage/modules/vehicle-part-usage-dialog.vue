@@ -1,5 +1,9 @@
 <template>
   <ArtDialog ref="dialogRef" size="xl" show-fullscreen-button>
+    <template #subtitle
+      >登记零部件装车、质保、使用基线和 RFID 信息，持续跟踪部件寿命状态。</template
+    >
+
     <ArtForm
       ref="formRef"
       v-model="form.data"
@@ -663,12 +667,12 @@
       }
     }
 
-    @media (max-width: 768px) {
+    @media (width <= 768px) {
       :deep(.el-col-8),
       :deep(.el-col-12),
       :deep(.el-col-16) {
-        max-width: 100%;
         flex: 0 0 100%;
+        max-width: 100%;
       }
     }
   }

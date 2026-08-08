@@ -1,5 +1,16 @@
 <template>
-  <div class="art-full-height">
+  <div class="tms-workspace-page art-full-height">
+    <TmsWorkspaceHeader
+      eyebrow="CASH OPERATIONS"
+      title="收付款管理"
+      description="集中登记客户回款、承运商付款、银行流水与核销关系，让资金去向清晰可追踪。"
+      icon="ri:exchange-cny-line"
+      :tags="[
+        { label: '资金流水', type: 'primary' },
+        { label: '核销可追踪', type: 'success' }
+      ]"
+    />
+
     <ArtTableQuery
       ref="tableQueryRef"
       v-model="table.searchQuery"
@@ -8,7 +19,13 @@
       :columns-factory="columnsFactory"
       :header-actions="table.headerActions"
       :search-bar-props="{ span: 6, labelWidth: 86, showExpand: false }"
-      :table-props="{ rowKey: 'id', tableLayout: 'fixed' }"
+      :table-props="{
+        rowKey: 'id',
+        tableLayout: 'fixed',
+        emptyText: '暂无收付款记录',
+        emptyDescription: '可登记回款或付款，或调整交易类型、状态、往来单位和日期后查询。'
+      }"
+      focusable
     />
 
     <CustomerReceiptDialog ref="dialogRef" @success="handleSaveSuccess" />
@@ -40,6 +57,7 @@
   import { formatWithDayjs } from '@/utils/time'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { fetchRecognitionArtifactDetail } from '@/api/intelligent-recognition'
+  import TmsWorkspaceHeader from '@/views/tms-transportation/modules/tms-workspace-header.vue'
   import { toCashVoucherOcrAnalyzeResponse } from '@/utils/intelligent-recognition'
   import CashTransactionDetailDrawer from './modules/cash-transaction-detail-drawer.vue'
   import CustomerReceiptDialog from './modules/customer-receipt-dialog.vue'

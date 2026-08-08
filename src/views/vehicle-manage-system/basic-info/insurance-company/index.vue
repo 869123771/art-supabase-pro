@@ -1,5 +1,14 @@
 <template>
-  <div class="art-full-height">
+  <div class="insurance-company-page art-full-height">
+    <VehicleWorkspaceHeader
+      eyebrow="RISK PARTNER DIRECTORY"
+      title="保险公司"
+      description="集中维护车辆保险合作机构与关键联络信息，保障投保、续保与理赔协同顺畅。"
+      icon="ri:shield-check-line"
+      :tags="[{ label: '合作机构档案', type: 'primary' }]"
+      :metrics="workspaceMetrics"
+    />
+
     <ArtTableQuery
       ref="tableQueryRef"
       v-model="searchQuery"
@@ -7,6 +16,14 @@
       :api-fn="fetchTableData"
       :columns-factory="columnsFactory"
       :header-actions="headerActions"
+      :on-success="handleTableSuccess"
+      :table-props="{
+        rowKey: 'id',
+        tableLayout: 'fixed',
+        emptyText: '暂无保险公司',
+        emptyDescription: '可新增保险合作机构，或调整名称、联系人和电话后重新查询。'
+      }"
+      focusable
     />
 
     <InsuranceCompanyDialog ref="dialogRef" @success="handleSaveSuccess" />
@@ -21,7 +38,8 @@
     ArtTableQueryExpose,
     ArtTableQueryExcelColumn,
     ArtTableQueryHeaderAction,
-    ArtTableQueryHeaderActionContext
+    ArtTableQueryHeaderActionContext,
+    ArtTableQueryProps
   } from '@/components/core/tables/art-table-query/index.vue'
   import { ColumnOption, DialogType } from '@/types'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
@@ -34,6 +52,9 @@
     importInsuranceCompanies
   } from '@/api/vehicle-manage-system'
   import InsuranceCompanyDialog from './modules/insurance-company-dialog.vue'
+  import VehicleWorkspaceHeader, {
+    type VehicleWorkspaceMetric
+  } from '@/views/vehicle-manage-system/modules/vehicle-workspace-header.vue'
 
   defineOptions({ name: 'InsuranceCompany' })
 
@@ -49,6 +70,29 @@
 
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<DialogExpose>()
+  const overview = reactive<{ total: number; rows: InsuranceCompany[] }>({ total: 0, rows: [] })
+  const workspaceMetrics = computed<VehicleWorkspaceMetric[]>(() => [
+    {
+      label: '合作机构',
+      value: overview.total,
+      description: '当前筛选条件下的机构总数',
+      icon: 'ri:building-4-line'
+    },
+    {
+      label: '本页联络信息完整',
+      value: overview.rows.filter((row) => row.contactPerson && row.contactPhone).length,
+      description: '联系人与联系电话均已维护',
+      icon: 'ri:contacts-book-2-line',
+      tone: 'success'
+    },
+    {
+      label: '本页待完善',
+      value: overview.rows.filter((row) => !row.contactPerson || !row.contactPhone).length,
+      description: '至少缺少一项关键联络信息',
+      icon: 'ri:user-search-line',
+      tone: 'warning'
+    }
+  ])
 
   const searchQuery = ref<SearchParams>({
     companyName: '',
@@ -180,13 +224,18 @@
       width: 120,
       fixed: 'right',
       formatter: (row) => (
-        <div>
+        <div class="insurance-company-page__operation">
           <ArtButtonTable type="edit" onClick={() => openDialog(row)} />
           <ArtButtonTable type="delete" onClick={() => handleDelete(row)} />
         </div>
       )
     }
   ]
+
+  const handleTableSuccess: NonNullable<ArtTableQueryProps['onSuccess']> = (rows, response) => {
+    overview.rows = rows as InsuranceCompany[]
+    overview.total = response.total ?? rows.length
+  }
 
   const openDialog = (row?: InsuranceCompany): void => {
     void dialogRef.value?.handleOpen(row)
@@ -219,3 +268,20 @@
     ElMessage.error('导入文件解析失败')
   }
 </script>
+
+<style scoped lang="scss">
+  .insurance-company-page {
+    gap: 12px;
+    min-width: 0;
+
+    :deep(.insurance-company-page__operation) {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+
+      .art-button-table {
+        margin-right: 0;
+      }
+    }
+  }
+</style>

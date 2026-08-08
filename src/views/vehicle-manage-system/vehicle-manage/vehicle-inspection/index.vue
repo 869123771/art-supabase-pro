@@ -1,5 +1,17 @@
 <template>
-  <div class="art-full-height">
+  <div class="vehicle-inspection-page art-full-height">
+    <VehicleWorkspaceHeader
+      eyebrow="REGULATORY INSPECTION"
+      title="车辆年检"
+      description="统一维护年检编号、检测机构、费用与有效期，确保车辆持续满足上路合规要求。"
+      icon="ri:file-search-line"
+      :tags="[
+        { label: '年检合规', type: 'primary' },
+        { label: '有效期管理', type: 'info' }
+      ]"
+      :metrics="workspaceMetrics"
+    />
+
     <ArtTableQuery
       ref="tableQueryRef"
       v-model="table.searchQuery"
@@ -8,7 +20,14 @@
       :columns-factory="table.columnsFactory"
       :header-actions="table.headerActions"
       :search-bar-props="{ span: 6, labelWidth: 90 }"
-      :table-props="{ rowKey: 'id', tableLayout: 'fixed' }"
+      :table-props="{
+        rowKey: 'id',
+        tableLayout: 'fixed',
+        emptyText: '暂无车辆年检记录',
+        emptyDescription: '可新增年检记录，或调整车辆、年检号和到期日期后重新查询。'
+      }"
+      :on-success="handleTableSuccess"
+      focusable
     />
 
     <VehicleInspectionDialog ref="dialogRef" @success="handleSaveSuccess" />
@@ -28,7 +47,8 @@
     ArtTableQueryExpose,
     ArtTableQueryExcelColumn,
     ArtTableQueryHeaderAction,
-    ArtTableQueryHeaderActionContext
+    ArtTableQueryHeaderActionContext,
+    ArtTableQueryProps
   } from '@/components/core/tables/art-table-query/index.vue'
   import type { ColumnOption, DialogType } from '@/types'
   import {
@@ -40,6 +60,9 @@
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatWithDayjs } from '@/utils/time'
   import VehicleInspectionDialog from './modules/vehicle-inspection-dialog.vue'
+  import VehicleWorkspaceHeader, {
+    type VehicleWorkspaceMetric
+  } from '@/views/vehicle-manage-system/modules/vehicle-workspace-header.vue'
 
   defineOptions({ name: 'VehicleInspection' })
 
@@ -63,6 +86,29 @@
   const router = useRouter()
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<DialogExpose>()
+  const overview = reactive<{ total: number; rows: VehicleInspection[] }>({ total: 0, rows: [] })
+  const workspaceMetrics = computed<VehicleWorkspaceMetric[]>(() => [
+    {
+      label: '年检记录',
+      value: overview.total,
+      description: '当前筛选条件下的记录总数',
+      icon: 'ri:file-list-3-line'
+    },
+    {
+      label: '本页信息完整',
+      value: overview.rows.filter((row) => row.inspectionNo && row.expireDate).length,
+      description: '年检号与到期日均已维护',
+      icon: 'ri:file-check-line',
+      tone: 'success'
+    },
+    {
+      label: '本页有效期待补',
+      value: overview.rows.filter((row) => !row.expireDate).length,
+      description: '缺少年检到期日期',
+      icon: 'ri:calendar-close-line',
+      tone: 'warning'
+    }
+  ])
 
   const dateRangeProps = {
     type: 'daterange',
@@ -180,6 +226,11 @@
     return fetchVehicleInspectionList({ ...params, from, to })
   }
 
+  const handleTableSuccess: NonNullable<ArtTableQueryProps['onSuccess']> = (rows, response) => {
+    overview.rows = rows as VehicleInspection[]
+    overview.total = response.total ?? rows.length
+  }
+
   const openDialog = (row?: VehicleInspection): void => {
     void dialogRef.value?.handleOpen(row)
   }
@@ -245,3 +296,10 @@
     return false
   })
 </script>
+
+<style scoped lang="scss">
+  .vehicle-inspection-page {
+    gap: 12px;
+    min-width: 0;
+  }
+</style>

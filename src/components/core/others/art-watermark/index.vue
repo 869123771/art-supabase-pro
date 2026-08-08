@@ -9,8 +9,8 @@
       :content="watermarkContent"
       :font="{ fontSize: fontSize, color: fontColor }"
       :rotate="rotate"
-      :gap="[gapX, gapY]"
-      :offset="[offsetX, offsetY]"
+      :gap="watermarkGap"
+      :offset="watermarkOffset"
     >
       <div style="height: 100vh"></div>
     </ElWatermark>
@@ -77,6 +77,11 @@
   const watermarkContent = computed(
     () => props.content || resolveWatermarkContent(userStore.getUserInfo)
   )
+  const watermarkGap = computed<[number, number]>(() => [props.gapX ?? 100, props.gapY ?? 100])
+  const watermarkOffset = computed<[number, number]>(() => [
+    props.offsetX ?? 50,
+    props.offsetY ?? 50
+  ])
 
   onMounted(() => {
     void loadWebsiteConfig()

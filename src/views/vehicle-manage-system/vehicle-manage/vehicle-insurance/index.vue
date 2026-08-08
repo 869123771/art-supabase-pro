@@ -1,5 +1,17 @@
 <template>
-  <div class="art-full-height">
+  <div class="vehicle-insurance-page art-full-height">
+    <VehicleWorkspaceHeader
+      eyebrow="INSURANCE COMPLIANCE"
+      title="车辆保险"
+      description="集中管理商业险与交强险保单、保费和到期信息，持续掌握车队保险覆盖情况。"
+      icon="ri:shield-check-line"
+      :tags="[
+        { label: '双险协同', type: 'primary' },
+        { label: '到期可追踪', type: 'info' }
+      ]"
+      :metrics="workspaceMetrics"
+    />
+
     <ArtTableQuery
       ref="tableQueryRef"
       v-model="table.searchQuery"
@@ -8,7 +20,14 @@
       :columns-factory="table.columnsFactory"
       :header-actions="table.headerActions"
       :search-bar-props="{ span: 6, labelWidth: 110 }"
-      :table-props="{ rowKey: 'id', tableLayout: 'fixed' }"
+      :table-props="{
+        rowKey: 'id',
+        tableLayout: 'fixed',
+        emptyText: '暂无车辆保险记录',
+        emptyDescription: '可新增保单，或调整车辆、保单号和到期日期后重新查询。'
+      }"
+      :on-success="handleTableSuccess"
+      focusable
     />
 
     <VehicleInsuranceDialog ref="dialogRef" @success="handleSaveSuccess" />
@@ -28,7 +47,8 @@
     ArtTableQueryExpose,
     ArtTableQueryExcelColumn,
     ArtTableQueryHeaderAction,
-    ArtTableQueryHeaderActionContext
+    ArtTableQueryHeaderActionContext,
+    ArtTableQueryProps
   } from '@/components/core/tables/art-table-query/index.vue'
   import type { ColumnOption, DialogType } from '@/types'
   import {
@@ -40,6 +60,9 @@
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatWithDayjs } from '@/utils/time'
   import VehicleInsuranceDialog from './modules/vehicle-insurance-dialog.vue'
+  import VehicleWorkspaceHeader, {
+    type VehicleWorkspaceMetric
+  } from '@/views/vehicle-manage-system/modules/vehicle-workspace-header.vue'
 
   defineOptions({ name: 'VehicleInsurance' })
 
@@ -63,6 +86,30 @@
   const router = useRouter()
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<DialogExpose>()
+  const overview = reactive<{ total: number; rows: VehicleInsurance[] }>({ total: 0, rows: [] })
+  const workspaceMetrics = computed<VehicleWorkspaceMetric[]>(() => [
+    {
+      label: '保险记录',
+      value: overview.total,
+      description: '当前筛选条件下的保单记录',
+      icon: 'ri:file-list-3-line'
+    },
+    {
+      label: '本页双险完整',
+      value: overview.rows.filter((row) => row.commercialPolicyNo && row.compulsoryPolicyNo).length,
+      description: '商业险与交强险均已登记',
+      icon: 'ri:shield-star-line',
+      tone: 'success'
+    },
+    {
+      label: '本页保单待补',
+      value: overview.rows.filter((row) => !row.commercialPolicyNo || !row.compulsoryPolicyNo)
+        .length,
+      description: '至少缺少一个险种的保单号',
+      icon: 'ri:file-warning-line',
+      tone: 'warning'
+    }
+  ])
 
   const createInitialSearch = (): SearchParams => ({
     companyName: '',
@@ -222,6 +269,11 @@
     return fetchVehicleInsuranceList({ ...params, from, to })
   }
 
+  const handleTableSuccess: NonNullable<ArtTableQueryProps['onSuccess']> = (rows, response) => {
+    overview.rows = rows as VehicleInsurance[]
+    overview.total = response.total ?? rows.length
+  }
+
   const openDialog = (row?: VehicleInsurance): void => {
     void dialogRef.value?.handleOpen(row)
   }
@@ -290,3 +342,10 @@
     return false
   })
 </script>
+
+<style scoped lang="scss">
+  .vehicle-insurance-page {
+    gap: 12px;
+    min-width: 0;
+  }
+</style>

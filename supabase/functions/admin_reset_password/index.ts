@@ -7,8 +7,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type'
 }
 
-const ADMIN_ROLE_CODES = new Set(['R_SUPER', 'R_ADMIN'])
-
 interface UserProfile {
   auth_user_id: string
   tenant_id: string
@@ -24,9 +22,6 @@ const getTenantCode = (profile: UserProfile): string | null => {
 
 const isPlatformSuper = (profile: UserProfile): boolean =>
   getTenantCode(profile) === 'platform' && profile.user_roles.includes('R_SUPER')
-
-const canResetPasswords = (profile: UserProfile): boolean =>
-  profile.status === '1' && profile.user_roles.some((role) => ADMIN_ROLE_CODES.has(role))
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -60,7 +55,10 @@ serve(async (req) => {
     }
 
     const token = authHeader.slice('Bearer '.length)
-    const authClient = createClient(supabaseUrl, anonKey, { auth: { persistSession: false } })
+    const authClient = createClient(supabaseUrl, anonKey, {
+      auth: { persistSession: false },
+      global: { headers: { Authorization: `Bearer ${token}` } }
+    })
     const { data: authData, error: authError } = await authClient.auth.getUser(token)
     if (authError || !authData.user) {
       return new Response(JSON.stringify({ error: 'Invalid or expired token' }), {
@@ -85,11 +83,22 @@ serve(async (req) => {
       .eq('auth_user_id', authData.user.id)
       .maybeSingle<UserProfile>()
 
-    if (operatorError || !operator || !canResetPasswords(operator)) {
-      return new Response(JSON.stringify({ error: 'Administrator permission is required' }), {
+    if (operatorError || !operator || operator.status !== '1') {
+      return new Response(JSON.stringify({ error: 'Operator account is unavailable' }), {
         status: 403,
         headers: corsHeaders
       })
+    }
+
+    const { data: canResetPassword, error: permissionError } = await authClient.rpc(
+      'current_has_permission',
+      { p_permission: 'System:User:ResetPassword' }
+    )
+    if (permissionError || canResetPassword !== true) {
+      return new Response(
+        JSON.stringify({ error: 'Missing permission: System:User:ResetPassword' }),
+        { status: 403, headers: corsHeaders }
+      )
     }
 
     const { data: target, error: targetError } = await adminClient

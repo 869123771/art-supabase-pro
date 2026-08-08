@@ -97,6 +97,8 @@
           :show-table-header="false"
           table-layout="fixed"
           empty-height="160px"
+          empty-text="尚未添加货物"
+          empty-description="可选择常用货物或手动添加货物明细"
         />
         <div class="order-open__cargo-summary">
           <span>总数量：{{ form.cargoQuantityText }}</span>

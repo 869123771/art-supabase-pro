@@ -29,7 +29,19 @@ interface DeleteUserSyncPayload {
 
 // 获取用户列表
 export async function fetchGetUserList(params: Api.SystemManage.UserSearchParams) {
-  const { userName, userPhone, userGender, userEmail, status, from = 0, to = 9 } = params
+  const {
+    tenantId,
+    organizationId,
+    organizationIds,
+    organizationUnassigned,
+    userName,
+    userPhone,
+    userGender,
+    userEmail,
+    status,
+    from = 0,
+    to = 9
+  } = params
   // 用户名和邮箱使用不区分大小写的包含匹配，其它字段保持精确匹配。
   // opsMap 使用 snake_case keys（buildSpecsFromMap 会内部 convertKeysToSnake，所以可以用 camelCase）
   const opsMap = {
@@ -46,7 +58,9 @@ export async function fetchGetUserList(params: Api.SystemManage.UserSearchParams
       userPhone,
       userEmail: userEmail?.trim() ? `%${userEmail.trim()}%` : undefined,
       userGender,
-      status
+      status,
+      tenantId,
+      organizationId: organizationUnassigned ? undefined : organizationId
     },
     opsMap
   )
@@ -68,6 +82,12 @@ export async function fetchGetUserList(params: Api.SystemManage.UserSearchParams
 
   // applyFilters 支持传入 FilterSpec[]（这里 specs 已为 snake_case）
   query = applyFilters(query, specs, { skipEmpty: true, camelToSnake: false })
+
+  if (organizationUnassigned) {
+    query = query.is('organization_id', null)
+  } else if (organizationIds?.length) {
+    query = query.in('organization_id', organizationIds)
+  }
 
   return await responseHandle(() => query, { ignoreCheck: true })
 }
@@ -193,6 +213,88 @@ export async function fetchGetEnableOrganizationTree(
     : response.data
 
   return { ...response, data }
+}
+
+export async function fetchGetUserOrganizationTree(params: { tenantId?: string } = {}) {
+  if (!params.tenantId) {
+    return { data: [], error: null }
+  }
+
+  const query = supabase
+    .from('sys_organization')
+    .select(
+      `
+        id, tenant_id, parent_id, organization_code, organization_name,
+        organization_type, status, sort, is_system,
+        members:sys_user!sys_user_organization_id_fkey(id, status)
+      `
+    )
+    .eq('tenant_id', params.tenantId)
+    .eq('status', '1')
+    .order('sort', { ascending: true })
+    .order('organization_name', { ascending: true })
+
+  const response = await responseHandle<
+    Array<Api.SystemManage.OrganizationScopeFilterItem & { members?: Array<{ id: string }> }>
+  >(() => query, {
+    ignoreCheck: true,
+    showErrorMessage: true
+  })
+
+  return {
+    ...response,
+    data: organizationTreeUtils.listToTree(
+      (response.data ?? []).map(({ members, ...organization }) => ({
+        ...organization,
+        scopeCount: members?.length ?? 0
+      })),
+      (a, b) => {
+        const sortDiff = (a.sort ?? 0) - (b.sort ?? 0)
+        return sortDiff || a.organizationName.localeCompare(b.organizationName, 'zh-CN')
+      }
+    )
+  }
+}
+
+export async function fetchGetRoleOrganizationTree(params: { tenantId?: string } = {}) {
+  if (!params.tenantId) {
+    return { data: [], error: null }
+  }
+
+  const query = supabase
+    .from('sys_organization')
+    .select(
+      `
+        id, tenant_id, parent_id, organization_code, organization_name,
+        organization_type, status, sort, is_system,
+        roles:sys_role!sys_role_organization_id_fkey(id, enabled)
+      `
+    )
+    .eq('tenant_id', params.tenantId)
+    .eq('status', '1')
+    .order('sort', { ascending: true })
+    .order('organization_name', { ascending: true })
+
+  const response = await responseHandle<
+    Array<Api.SystemManage.OrganizationScopeFilterItem & { roles?: Array<{ id: string }> }>
+  >(() => query, {
+    ignoreCheck: true,
+    showErrorMessage: true
+  })
+
+  return {
+    ...response,
+    data: organizationTreeUtils.listToTree(
+      (response.data ?? []).map(({ roles, ...organization }) => ({
+        ...organization,
+        scopeCount: roles?.length ?? 0
+      })),
+      (a, b) => {
+        const sortDiff = (a.sort ?? 0) - (b.sort ?? 0)
+        return sortDiff || a.organizationName.localeCompare(b.organizationName, 'zh-CN')
+      }
+    )
+  }
 }
 
 export async function fetchGetEnableOrganizationUserList(params: { tenantId?: string } = {}) {
@@ -629,6 +731,24 @@ export async function editUser(params: Api.SystemManage.UserListItem) {
   })
 }
 
+/*分配用户角色*/
+export async function assignUserRoles(params: Api.SystemManage.UserListItem) {
+  const { id, tenantId, userRoles } = params
+  const payload = {
+    action: 'assign_roles',
+    id,
+    appUserData: { tenantId, userRoles }
+  }
+  const invokeResp = () =>
+    supabase.functions.invoke('sync-user', {
+      body: JSON.stringify(keysToSnakeDeep(payload))
+    })
+  await responseHandle(invokeResp, {
+    showMessage: true,
+    breakReturn: true
+  })
+}
+
 // 获取所有用户可分配的角色
 export async function fetchGetEnableRoleList(params: { tenantId?: string } = {}) {
   const { tenantId } = params
@@ -652,6 +772,10 @@ export async function fetchGetEnableRoleList(params: { tenantId?: string } = {})
 // 获取角色列表
 export async function fetchGetRoleList(params: Api.SystemManage.RoleSearchParams) {
   const {
+    tenantId,
+    organizationId,
+    organizationIds,
+    organizationUnassigned,
     roleName,
     roleCode,
     description,
@@ -666,6 +790,12 @@ export async function fetchGetRoleList(params: Api.SystemManage.RoleSearchParams
     { col: 'role_code', op: 'eq', val: roleCode },
     { col: 'description', op: 'ilike', val: description ? `%${description}%` : undefined },
     { col: 'enabled', op: 'eq', val: enabled },
+    { col: 'tenant_id', op: 'eq', val: tenantId },
+    {
+      col: 'organization_id',
+      op: 'eq',
+      val: organizationUnassigned ? undefined : organizationId
+    },
     { col: 'create_time', op: 'gte', val: toStartOfDayUTC(startTime) },
     { col: 'create_time', op: 'lte', val: toNextDayStartUTC(endTime) }
   ]
@@ -688,6 +818,13 @@ export async function fetchGetRoleList(params: Api.SystemManage.RoleSearchParams
 
   // applyFilters 支持传入 FilterSpec[]（这里 specs 已为 snake_case）
   query = applyFilters(query, specs, { skipEmpty: true, camelToSnake: false })
+
+  if (organizationUnassigned) {
+    query = query.is('organization_id', null)
+  } else if (organizationIds?.length) {
+    query = query.in('organization_id', organizationIds)
+  }
+
   return await responseHandle(() => query, { ignoreCheck: true })
 }
 
@@ -834,10 +971,7 @@ export async function editMenu(params: AppRouteRecord) {
   )
 }
 
-/*拖拽保存菜单父级与排序*/
-export async function saveMenuDragSort(
-  params: Array<{ id: string; parentId: string | null; sort: number }>
-) {
+export async function saveMenuSort(params: Array<{ id: string; sort: number }>) {
   const results = await Promise.all(
     params.map(({ id, ...data }) =>
       supabase.from('sys_menu').update(keysToSnakeDeep(data), { count: 'exact' }).eq('id', id)
@@ -852,6 +986,22 @@ export async function saveMenuDragSort(
   }
 
   return { data: null, error: null }
+}
+
+/*原子保存完整菜单树的父级关系和同级顺序*/
+export async function saveMenuTreeOrder(
+  updates: Array<{ id: string; parentId: string | null; sort: number }>
+) {
+  return await responseHandle(
+    () =>
+      supabase.rpc('save_menu_tree_order', {
+        p_updates: updates
+      }),
+    {
+      breakReturn: true,
+      showMessage: false
+    }
+  )
 }
 
 /*获取当前用户的菜单权限*/

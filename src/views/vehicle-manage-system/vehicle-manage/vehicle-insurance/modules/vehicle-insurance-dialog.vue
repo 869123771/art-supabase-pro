@@ -1,5 +1,9 @@
 <template>
   <ArtDialog ref="dialogRef" size="xl" show-fullscreen-button>
+    <template #subtitle
+      >维护商业险与交强险保单、保费、有效期和附件，确保车辆保险资料完整。</template
+    >
+
     <div class="vehicle-insurance-dialog">
       <ArtForm
         ref="formRef"

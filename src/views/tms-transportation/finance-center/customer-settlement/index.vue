@@ -1,5 +1,16 @@
 <template>
-  <div class="art-full-height">
+  <div class="tms-workspace-page art-full-height">
+    <TmsWorkspaceHeader
+      eyebrow="CUSTOMER SETTLEMENT"
+      title="客户对账"
+      description="按客户汇总运输应收、对账周期与单据状态，推动确认、开票和回款流程衔接。"
+      icon="ri:bill-line"
+      :tags="[
+        { label: '应收对账', type: 'primary' },
+        { label: '回款前置', type: 'success' }
+      ]"
+    />
+
     <ArtTableQuery
       ref="tableQueryRef"
       v-model="searchQuery"
@@ -8,7 +19,13 @@
       :columns-factory="columnsFactory"
       :header-actions="headerActions"
       :search-bar-props="{ span: 6, labelWidth: 86, showExpand: false }"
-      :table-props="{ rowKey: 'id', tableLayout: 'fixed' }"
+      :table-props="{
+        rowKey: 'id',
+        tableLayout: 'fixed',
+        emptyText: '暂无客户对账单',
+        emptyDescription: '可创建客户对账单，或调整客户、状态、周期和单号后重新查询。'
+      }"
+      focusable
     />
 
     <CustomerStatementDialog ref="dialogRef" @success="handleCreateSuccess" />
@@ -38,6 +55,7 @@
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import CustomerStatementDialog from './modules/customer-statement-dialog.vue'
   import CustomerStatementDetailDrawer from './modules/customer-statement-detail-drawer.vue'
+  import TmsWorkspaceHeader from '@/views/tms-transportation/modules/tms-workspace-header.vue'
 
   defineOptions({ name: 'TmsCustomerSettlement' })
 

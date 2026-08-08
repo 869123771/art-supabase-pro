@@ -14,8 +14,8 @@
           </div>
         </div>
         <div class="menu-page__hero-status">
-          <ElTag :type="isSuper ? 'success' : 'info'" effect="light" round>
-            {{ isSuper ? '可拖拽排序' : '排序只读' }}
+          <ElTag :type="canSortMenu ? 'success' : 'info'" effect="light" round>
+            {{ canSortMenu ? '专业树形排序' : '排序只读' }}
           </ElTag>
           <ElTag type="primary" effect="plain" round>树形权限结构</ElTag>
         </div>
@@ -48,11 +48,11 @@
       :header-actions="headerActions"
       :table-header-props="tableHeaderProps"
       :table-props="tableProps"
-      @row-drag-end="handleMenuDragEnd"
     />
 
     <!-- 菜单弹窗 -->
     <MenuDialog ref="menuDialogRef" @submit="handleSubmit" />
+    <MenuSortDialog ref="menuSortDialogRef" @submit="handleSubmit" />
   </div>
 </template>
 
@@ -64,6 +64,7 @@
   import type { ButtonMoreItem } from '@/components/core/forms/art-button-more/index.vue'
   import type { AppRouteRecord } from '@/types/router'
   import MenuDialog from './modules/menu-dialog.vue'
+  import MenuSortDialog from './modules/menu-sort-dialog.vue'
   import TreeUtils from '@/utils/tree'
   import { ElMessage, ElTag } from 'element-plus'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
@@ -77,8 +78,8 @@
   import type { ApiResponse } from '@/utils/table/tableCache'
 
   import { formatWithDayjs } from '@/utils/time'
-  import { deleteMenu, fetchGetMenuList, saveMenuDragSort } from '@/api/system-manage'
-  import { useUserStore } from '@/store/modules/user'
+  import { deleteMenu, fetchGetMenuList } from '@/api/system-manage'
+  import { useAuth } from '@/hooks/core/useAuth'
 
   defineOptions({ name: 'Menus' })
 
@@ -104,17 +105,8 @@
     handleOpen: (data: MenuDialogOpenData) => Promise<void>
   }
 
-  interface MenuRowDragPayload {
-    row?: AppRouteRecord
-    targetRow?: AppRouteRecord
-    oldIndex?: number
-    newIndex?: number
-  }
-
-  interface MenuDragSortUpdate {
-    id: string
-    parentId: string | null
-    sort: number
+  interface MenuSortDialogExpose {
+    handleOpen: (menuTree: AppRouteRecord[]) => Promise<void>
   }
 
   interface MenuOverviewCard {
@@ -125,7 +117,8 @@
     tone: 'primary' | 'success' | 'warning' | 'info'
   }
 
-  const { isSuper } = storeToRefs(useUserStore())
+  const { hasAuth } = useAuth()
+  const canSortMenu = computed(() => hasAuth('System:Menu:Edit'))
 
   const isExpanded = ref(false)
   const expandRowKeys = ref<string[]>([])
@@ -134,6 +127,7 @@
   // 弹窗相关
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const menuDialogRef = ref<MenuDialogExpose>()
+  const menuSortDialogRef = ref<MenuSortDialogExpose>()
 
   const openMenuDialog = async (data: MenuDialogOpenData): Promise<void> => {
     await menuDialogRef.value?.handleOpen(data)
@@ -175,6 +169,7 @@
     tableLayout: 'fixed',
     stripe: false,
     treeProps: { children: 'children', hasChildren: 'hasChildren' },
+    rowClassName: () => 'menu-tree-row',
     defaultExpandAll: false,
     expandRowKeys: expandRowKeys.value,
     emptyText: '暂无符合条件的菜单',
@@ -190,6 +185,14 @@
       label: '添加菜单',
       permission: 'System:Menu:Add',
       onClick: () => handleAdd('menu')
+    },
+    {
+      key: 'tree-sort',
+      label: '树形排序',
+      icon: 'ri:drag-move-2-line',
+      permission: 'System:Menu:Edit',
+      buttonProps: { plain: true },
+      onClick: () => void menuSortDialogRef.value?.handleOpen(tableData.value)
     },
     {
       key: 'toggle-expand',
@@ -258,7 +261,6 @@
       prop: 'meta.title',
       label: '菜单信息',
       minWidth: 230,
-      draggable: (row: AppRouteRecord) => isSuper.value && row.type !== 'button',
       formatter: (row: AppRouteRecord) => {
         const permissionCount = getDirectPermissionCount(row)
         return h('div', { class: 'menu-identity-cell' }, [
@@ -487,90 +489,6 @@
     void tableQueryRef.value?.refreshData()
   }
 
-  const normalizeParentId = (parentId: AppRouteRecord['parentId']): string | null => {
-    return parentId || null
-  }
-
-  const getSiblingMenus = (parentId: string | null): AppRouteRecord[] => {
-    if (parentId == null) return tableData.value
-    const parent = treeUtils.findNode(tableData.value, parentId) as AppRouteRecord | null
-    return parent?.children ?? []
-  }
-
-  const hasDescendant = (row: AppRouteRecord, targetId: string | null): boolean => {
-    if (!targetId || !row.id) return false
-    return treeUtils
-      .getDescendants(tableData.value, row.id, false)
-      .some((item) => item.id === targetId)
-  }
-
-  const reindexSiblingMenus = (
-    parentId: string | null,
-    rows: AppRouteRecord[]
-  ): MenuDragSortUpdate[] => {
-    return rows
-      .filter((item): item is AppRouteRecord & { id: string } => !!item.id)
-      .map((item, index) => ({
-        id: item.id,
-        parentId,
-        sort: index + 1
-      }))
-  }
-
-  const buildMenuDragUpdates = (
-    row: AppRouteRecord,
-    targetRow: AppRouteRecord,
-    targetParentId: string | null,
-    oldIndex = 0,
-    newIndex = 0
-  ): MenuDragSortUpdate[] => {
-    const sourceParentId = normalizeParentId(row.parentId)
-    const sourceSiblings = getSiblingMenus(sourceParentId).filter((item) => item.id !== row.id)
-    const targetSiblings = getSiblingMenus(targetParentId).filter((item) => item.id !== row.id)
-    const targetIndex = targetSiblings.findIndex((item) => item.id === targetRow.id)
-    if (targetIndex < 0) {
-      targetSiblings.push(row)
-    } else {
-      const insertIndex = oldIndex < newIndex ? targetIndex + 1 : targetIndex
-      targetSiblings.splice(insertIndex, 0, row)
-    }
-
-    const updates = new Map<string, MenuDragSortUpdate>()
-    if (sourceParentId !== targetParentId) {
-      reindexSiblingMenus(sourceParentId, sourceSiblings).forEach((item) =>
-        updates.set(item.id, item)
-      )
-    }
-    reindexSiblingMenus(targetParentId, targetSiblings).forEach((item) =>
-      updates.set(item.id, item)
-    )
-    return Array.from(updates.values())
-  }
-
-  const handleMenuDragEnd = async (payload: MenuRowDragPayload): Promise<void> => {
-    const { row, targetRow, oldIndex, newIndex } = payload
-    if (!row?.id || !targetRow?.id || oldIndex === newIndex) return
-
-    const targetParentId = normalizeParentId(targetRow.parentId)
-    if (row.id === targetRow.id || hasDescendant(row, targetParentId)) {
-      ElMessage.warning('不能拖拽到自身或子级菜单下')
-      await tableQueryRef.value?.refreshData()
-      return
-    }
-
-    try {
-      const updates = buildMenuDragUpdates(row, targetRow, targetParentId, oldIndex, newIndex)
-      if (!updates.length) return
-
-      await saveMenuDragSort(updates)
-      ElMessage.success('菜单排序已保存')
-      await tableQueryRef.value?.refreshData()
-    } catch (error) {
-      ElMessage.error(error instanceof Error ? error.message : '菜单拖拽保存失败')
-      await tableQueryRef.value?.refreshData()
-    }
-  }
-
   /**
    * 删除菜单
    */
@@ -637,8 +555,8 @@
     }
 
     &__hero {
-      justify-content: space-between;
       gap: 20px;
+      justify-content: space-between;
       padding: 20px 24px 18px;
       background: radial-gradient(
         circle at 92% 0%,
@@ -673,16 +591,16 @@
 
       p {
         margin: 0;
-        overflow-wrap: anywhere;
         font-size: 13px;
         line-height: 1.6;
         color: var(--el-text-color-secondary);
+        overflow-wrap: anywhere;
       }
     }
 
     &__brand {
-      justify-content: center;
       flex: 0 0 50px;
+      justify-content: center;
       width: 50px;
       height: 50px;
       margin-right: 16px;
@@ -707,8 +625,8 @@
       border-top: 1px solid var(--el-border-color-lighter);
 
       article {
-        min-width: 0;
         gap: 12px;
+        min-width: 0;
         padding: 14px 20px;
 
         &:not(:last-child) {
@@ -723,8 +641,8 @@
         span,
         small {
           overflow: hidden;
-          color: var(--el-text-color-secondary);
           text-overflow: ellipsis;
+          color: var(--el-text-color-secondary);
           white-space: nowrap;
         }
 
@@ -747,8 +665,8 @@
     }
 
     &__metric-icon {
-      justify-content: center;
       flex: 0 0 38px;
+      justify-content: center;
       width: 38px;
       height: 38px;
       border-radius: var(--el-border-radius-base);
@@ -781,13 +699,15 @@
 
     :deep(.menu-identity-cell) {
       display: flex;
-      min-width: 0;
-      align-items: center;
+      flex: 1;
       gap: 10px;
+      align-items: center;
+      min-width: 0;
 
       .menu-identity-cell__icon {
         display: grid;
         flex: 0 0 34px;
+        place-items: center;
         width: 34px;
         height: 34px;
         font-size: 16px;
@@ -795,7 +715,6 @@
         background: var(--el-color-primary-light-9);
         border: 1px solid var(--el-color-primary-light-7);
         border-radius: var(--art-control-radius);
-        place-items: center;
 
         &.is-folder {
           color: var(--el-color-warning-dark-2);
@@ -817,14 +736,14 @@
 
       .menu-identity-cell__heading {
         display: flex;
-        align-items: center;
         gap: 6px;
+        align-items: center;
 
         strong {
           overflow: hidden;
+          text-overflow: ellipsis;
           font-weight: 600;
           color: var(--el-text-color-primary);
-          text-overflow: ellipsis;
           white-space: nowrap;
         }
       }
@@ -832,10 +751,10 @@
       small {
         display: block;
         overflow: hidden;
+        text-overflow: ellipsis;
         font-size: 12px;
         line-height: 18px;
         color: var(--el-text-color-secondary);
-        text-overflow: ellipsis;
         white-space: nowrap;
       }
 
@@ -848,6 +767,24 @@
         background: var(--el-color-primary-light-9);
         border-radius: 999px;
       }
+    }
+
+    :deep(.menu-tree-row > td:first-child .cell) {
+      display: flex;
+      align-items: center;
+    }
+
+    :deep(.menu-tree-row .el-table__expand-icon) {
+      display: inline-flex;
+      flex: none;
+      align-items: center;
+      align-self: center;
+      justify-content: center;
+      margin-right: 6px;
+    }
+
+    :deep(.menu-tree-row .el-table__placeholder) {
+      flex: none;
     }
 
     :deep(.menu-access-cell) {
@@ -877,7 +814,7 @@
       color: var(--el-text-color-secondary);
     }
 
-    @media (max-width: 1080px) {
+    @media (width <= 1080px) {
       &__metrics {
         grid-template-columns: repeat(2, minmax(0, 1fr));
 
@@ -891,7 +828,7 @@
       }
     }
 
-    @media (max-width: 720px) {
+    @media (width <= 720px) {
       &__hero {
         flex-direction: column;
         align-items: flex-start;

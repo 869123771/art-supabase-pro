@@ -59,7 +59,7 @@
         </div>
       </div>
 
-      <div v-else class="recognition-runner__context">
+      <div v-else-if="feature === 'waybill_receipt_ocr'" class="recognition-runner__context">
         <span><ArtSvgIcon icon="ri:route-line" /></span>
         <div>
           <small>需绑定运单上下文</small>
@@ -69,6 +69,18 @@
           </p>
           <ElButton type="primary" @click="goDelivery">
             前往配送管理<ArtSvgIcon icon="ri:arrow-right-line" />
+          </ElButton>
+        </div>
+      </div>
+
+      <div v-else class="recognition-runner__context">
+        <span><ArtSvgIcon icon="ri:gas-station-line" /></span>
+        <div>
+          <small>需绑定运单或在途车辆</small>
+          <h3>在途票据从费用申报单识别</h3>
+          <p>进入在途费用后选择运单并上传票据，识别结果会自动回填金额、日期、服务商和票据信息。</p>
+          <ElButton type="primary" @click="goInTransitExpense">
+            前往在途费用<ArtSvgIcon icon="ri:arrow-right-line" />
           </ElButton>
         </div>
       </div>
@@ -131,6 +143,11 @@
     void router.push('/tms-transportation/finance-center/payment-application')
   }
 
+  function goInTransitExpense(): void {
+    void drawerRef.value?.handleClose()
+    void router.push('/tms-transportation/finance-center/in-transit-expense')
+  }
+
   async function handleOpen(initialFeature: RecognitionFeature = 'invoice_ocr'): Promise<void> {
     feature.value = initialFeature
     await drawerRef.value?.handleOpen(initialFeature, {
@@ -155,7 +172,7 @@
   .recognition-runner {
     &__switcher {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 9px;
       margin-bottom: 16px;
 

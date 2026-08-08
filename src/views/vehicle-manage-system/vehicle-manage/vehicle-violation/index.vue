@@ -1,5 +1,17 @@
 <template>
-  <div class="art-full-height">
+  <div class="vehicle-violation-page art-full-height">
+    <VehicleWorkspaceHeader
+      eyebrow="TRAFFIC COMPLIANCE"
+      title="车辆违章"
+      description="汇总车辆违章行为、扣分、罚款与处理进度，帮助车队及时闭环交通合规风险。"
+      icon="ri:traffic-light-line"
+      :tags="[
+        { label: '交通合规', type: 'primary' },
+        { label: '只读业务台账', type: 'info' }
+      ]"
+      :metrics="workspaceMetrics"
+    />
+
     <ArtTableQuery
       ref="tableQueryRef"
       v-model="table.searchQuery"
@@ -8,7 +20,14 @@
       :columns-factory="table.columnsFactory"
       :header-actions="table.headerActions"
       :search-bar-props="{ span: 6, labelWidth: 100 }"
-      :table-props="{ rowKey: 'id', tableLayout: 'fixed' }"
+      :table-props="{
+        rowKey: 'id',
+        tableLayout: 'fixed',
+        emptyText: '暂无车辆违章记录',
+        emptyDescription: '可调整车辆、驾驶员、违章行为、处理状态和时间后重新查询。'
+      }"
+      :on-success="handleTableSuccess"
+      focusable
     />
   </div>
 </template>
@@ -21,7 +40,8 @@
   import type {
     ArtTableQueryExpose,
     ArtTableQueryExcelColumn,
-    ArtTableQueryHeaderAction
+    ArtTableQueryHeaderAction,
+    ArtTableQueryProps
   } from '@/components/core/tables/art-table-query/index.vue'
   import type { ColumnOption } from '@/types'
   import {
@@ -31,6 +51,9 @@
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatWithDayjs } from '@/utils/time'
   import { useUserStore } from '@/store/modules/user'
+  import VehicleWorkspaceHeader, {
+    type VehicleWorkspaceMetric
+  } from '@/views/vehicle-manage-system/modules/vehicle-workspace-header.vue'
 
   defineOptions({ name: 'VehicleViolation' })
 
@@ -47,6 +70,29 @@
 
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const { getDictMap } = storeToRefs(useUserStore())
+  const overview = reactive<{ total: number; rows: ViolationRecord[] }>({ total: 0, rows: [] })
+  const workspaceMetrics = computed<VehicleWorkspaceMetric[]>(() => [
+    {
+      label: '违章记录',
+      value: overview.total,
+      description: '当前筛选条件下的违章数量',
+      icon: 'ri:file-list-3-line'
+    },
+    {
+      label: '本页已处理',
+      value: overview.rows.filter((row) => row.processed).length,
+      description: '已完成违章处置',
+      icon: 'ri:checkbox-circle-line',
+      tone: 'success'
+    },
+    {
+      label: '本页待处理',
+      value: overview.rows.filter((row) => !row.processed).length,
+      description: '需要及时处理的违章',
+      icon: 'ri:alarm-warning-line',
+      tone: 'danger'
+    }
+  ])
 
   const createInitialSearch = (): SearchParams => ({
     companyName: '',
@@ -152,6 +198,11 @@
     return fetchVehicleViolationList({ ...params, from, to })
   }
 
+  const handleTableSuccess: NonNullable<ArtTableQueryProps['onSuccess']> = (rows, response) => {
+    overview.rows = rows as ViolationRecord[]
+    overview.total = response.total ?? rows.length
+  }
+
   const getProcessedDictOptions = () =>
     (getDictMap.value.vehicleRecordProcessed ?? []).map((item) => ({
       ...item,
@@ -163,3 +214,10 @@
     return `${Number(value).toFixed(2)} 元`
   }
 </script>
+
+<style scoped lang="scss">
+  .vehicle-violation-page {
+    gap: 12px;
+    min-width: 0;
+  }
+</style>

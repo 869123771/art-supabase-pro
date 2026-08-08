@@ -36,6 +36,7 @@
         <ArtAsyncState
           :empty="filteredOrders.length === 0"
           empty-text="暂无匹配车辆"
+          empty-description="可调整车辆状态、区域或关键字后重新筛选"
           :empty-image-size="72"
           :min-height="540"
         >

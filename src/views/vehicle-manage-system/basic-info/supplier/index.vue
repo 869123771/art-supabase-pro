@@ -1,5 +1,14 @@
 <template>
-  <div class="art-full-height">
+  <div class="supplier-page art-full-height">
+    <VehicleWorkspaceHeader
+      eyebrow="SUPPLY NETWORK"
+      title="供应厂商"
+      description="统一管理车辆零部件供应网络与联系人信息，为采购、维保和追溯提供可靠基础数据。"
+      icon="ri:store-2-line"
+      :tags="[{ label: '供应链主数据', type: 'primary' }]"
+      :metrics="workspaceMetrics"
+    />
+
     <ArtTableQuery
       ref="tableQueryRef"
       v-model="searchQuery"
@@ -7,6 +16,14 @@
       :api-fn="fetchTableData"
       :columns-factory="columnsFactory"
       :header-actions="headerActions"
+      :on-success="handleTableSuccess"
+      :table-props="{
+        rowKey: 'id',
+        tableLayout: 'fixed',
+        emptyText: '暂无供应厂商',
+        emptyDescription: '可新增合作厂商，或调整名称、联系人和电话后重新查询。'
+      }"
+      focusable
     />
 
     <SupplierDialog ref="dialogRef" @success="handleSaveSuccess" />
@@ -21,7 +38,8 @@
     ArtTableQueryExpose,
     ArtTableQueryExcelColumn,
     ArtTableQueryHeaderAction,
-    ArtTableQueryHeaderActionContext
+    ArtTableQueryHeaderActionContext,
+    ArtTableQueryProps
   } from '@/components/core/tables/art-table-query/index.vue'
   import { ColumnOption, DialogType } from '@/types'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
@@ -34,6 +52,9 @@
     importSuppliers
   } from '@/api/vehicle-manage-system'
   import SupplierDialog from './modules/supplier-dialog.vue'
+  import VehicleWorkspaceHeader, {
+    type VehicleWorkspaceMetric
+  } from '@/views/vehicle-manage-system/modules/vehicle-workspace-header.vue'
 
   defineOptions({ name: 'Supplier' })
 
@@ -49,6 +70,29 @@
 
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<DialogExpose>()
+  const overview = reactive<{ total: number; rows: Supplier[] }>({ total: 0, rows: [] })
+  const workspaceMetrics = computed<VehicleWorkspaceMetric[]>(() => [
+    {
+      label: '供应厂商',
+      value: overview.total,
+      description: '当前筛选条件下的厂商总数',
+      icon: 'ri:store-3-line'
+    },
+    {
+      label: '本页联络信息完整',
+      value: overview.rows.filter((row) => row.contactPerson && row.contactPhone).length,
+      description: '联系人与联系电话均已维护',
+      icon: 'ri:contacts-book-2-line',
+      tone: 'success'
+    },
+    {
+      label: '本页待完善',
+      value: overview.rows.filter((row) => !row.contactPerson || !row.contactPhone).length,
+      description: '至少缺少一项关键联络信息',
+      icon: 'ri:user-search-line',
+      tone: 'warning'
+    }
+  ])
 
   const searchQuery = ref<SearchParams>({
     supplierName: '',
@@ -180,13 +224,18 @@
       width: 120,
       fixed: 'right',
       formatter: (row) => (
-        <div>
+        <div class="supplier-page__operation">
           <ArtButtonTable type="edit" onClick={() => openDialog(row)} />
           <ArtButtonTable type="delete" onClick={() => handleDelete(row)} />
         </div>
       )
     }
   ]
+
+  const handleTableSuccess: NonNullable<ArtTableQueryProps['onSuccess']> = (rows, response) => {
+    overview.rows = rows as Supplier[]
+    overview.total = response.total ?? rows.length
+  }
 
   const openDialog = (row?: Supplier): void => {
     void dialogRef.value?.handleOpen(row)
@@ -219,3 +268,20 @@
     ElMessage.error('导入文件解析失败')
   }
 </script>
+
+<style scoped lang="scss">
+  .supplier-page {
+    gap: 12px;
+    min-width: 0;
+
+    :deep(.supplier-page__operation) {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+
+      .art-button-table {
+        margin-right: 0;
+      }
+    }
+  }
+</style>

@@ -15,6 +15,31 @@
       @back="goBack"
     />
 
+    <section class="vehicle-part-usage-detail__summary art-card-xs">
+      <div class="vehicle-part-usage-detail__summary-item">
+        <span>零部件状态</span>
+        <strong>
+          <ArtDictDisplay
+            dict-code="vehiclePartUsageStatus"
+            :value="detail.data?.status"
+            display="auto"
+          />
+        </strong>
+      </div>
+      <div class="vehicle-part-usage-detail__summary-item">
+        <span>RFID 标签</span>
+        <strong>{{ detail.data?.rfidTag || '待绑定' }}</strong>
+      </div>
+      <div class="vehicle-part-usage-detail__summary-item">
+        <span>启用日期</span>
+        <strong>{{ detail.data?.enableDate || '--' }}</strong>
+      </div>
+      <div class="vehicle-part-usage-detail__summary-item">
+        <span>已使用里程</span>
+        <strong>{{ formatMileage(detail.data?.usedMileage) }}</strong>
+      </div>
+    </section>
+
     <div class="vehicle-part-usage-detail__content art-card-xs">
       <section>
         <ArtSectionTitle>零部件信息</ArtSectionTitle>
@@ -31,6 +56,7 @@
 
 <script setup lang="ts">
   import ArtDescriptions from '@/components/core/base/art-descriptions/index.vue'
+  import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import type { ArtDescriptionItem } from '@/components/core/base/art-descriptions/types'
   import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
   import { fetchVehiclePartUsageDetail } from '@/api/vehicle-manage-system'
@@ -44,6 +70,9 @@
   const page = reactive<{ loading: boolean; error: Error | null }>({ loading: false, error: null })
   const detail = reactive<{ data?: Usage }>({ data: undefined })
   const descriptionData = computed<Partial<Usage>>(() => detail.data ?? {})
+
+  const formatMileage = (value?: number | null): string =>
+    value === undefined || value === null ? '--' : `${Number(value).toLocaleString()} km`
 
   const partItems: ArtDescriptionItem<Partial<Usage>>[] = [
     { key: 'plateNo', label: '车牌号', field: 'plateNo' },
@@ -178,14 +207,59 @@
       }
     }
 
+    &__summary {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      margin-top: 12px;
+    }
+
+    &__summary-item {
+      display: grid;
+      gap: 4px;
+      min-width: 0;
+      padding: 16px 20px;
+
+      &:not(:last-child) {
+        border-right: 1px solid var(--el-border-color-lighter);
+      }
+
+      span {
+        font-size: 12px;
+        color: var(--el-text-color-secondary);
+      }
+
+      strong {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        font-size: 18px;
+        font-variant-numeric: tabular-nums;
+        color: var(--el-text-color-primary);
+        white-space: nowrap;
+      }
+    }
+
     :deep(.art-descriptions .el-descriptions__label) {
       width: 138px;
       font-weight: 600;
     }
 
-    @media (max-width: 900px) {
+    @media (width <= 900px) {
       :deep(.art-descriptions .el-descriptions__body .el-descriptions__table) {
         table-layout: auto;
+      }
+    }
+
+    @media (width <= 720px) {
+      &__summary {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      &__summary-item:nth-child(2) {
+        border-right: 0;
+      }
+
+      &__summary-item:nth-child(-n + 2) {
+        border-bottom: 1px solid var(--el-border-color-lighter);
       }
     }
   }

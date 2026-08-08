@@ -1,5 +1,9 @@
 <template>
   <ArtDialog ref="dialogRef" size="xl" show-fullscreen-button>
+    <template #subtitle
+      >完整记录事故事实、损失、责任、处置状态与证据附件，支持后续安全复盘。</template
+    >
+
     <div class="accident-record-dialog">
       <ArtForm
         ref="formRef"

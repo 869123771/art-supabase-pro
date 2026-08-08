@@ -119,6 +119,7 @@
     })
     await dialogRef.value?.handleOpen(row, {
       title: '修改运费',
+      subtitle: `调整运单 ${row.orderNo || '--'} 的费用构成与应收总额`,
       onConfirm: handleSubmit,
       onClose: resetForm
     })

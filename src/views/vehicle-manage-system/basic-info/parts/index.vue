@@ -1,5 +1,17 @@
 <template>
-  <div class="art-full-height">
+  <div class="parts-page art-full-height">
+    <VehicleWorkspaceHeader
+      eyebrow="PARTS MASTER DATA"
+      title="零部件资料"
+      description="维护零部件编码、类别、品牌与供应关系，为车辆维保和寿命管理建立统一数据底座。"
+      icon="ri:settings-3-line"
+      :tags="[
+        { label: '分类可追溯', type: 'primary' },
+        { label: '供应关系联动', type: 'info' }
+      ]"
+      :metrics="workspaceMetrics"
+    />
+
     <ArtTableQuery
       ref="tableQueryRef"
       v-model="searchQuery"
@@ -8,7 +20,14 @@
       :columns-factory="columnsFactory"
       :header-actions="headerActions"
       :search-bar-props="{ span: 8, labelWidth: 90 }"
-      :table-props="{ rowKey: 'id', tableLayout: 'fixed' }"
+      :table-props="{
+        rowKey: 'id',
+        tableLayout: 'fixed',
+        emptyText: '暂无零部件资料',
+        emptyDescription: '可新增零部件，或调整名称、编码、类别、品牌和状态后重新查询。'
+      }"
+      :on-success="handleTableSuccess"
+      focusable
     />
 
     <PartsDialog ref="dialogRef" @success="handleSaveSuccess" />
@@ -23,7 +42,8 @@
     ArtTableQueryExpose,
     ArtTableQueryExcelColumn,
     ArtTableQueryHeaderAction,
-    ArtTableQueryHeaderActionContext
+    ArtTableQueryHeaderActionContext,
+    ArtTableQueryProps
   } from '@/components/core/tables/art-table-query/index.vue'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import { ColumnOption, DialogType } from '@/types'
@@ -39,6 +59,9 @@
     importParts
   } from '@/api/vehicle-manage-system'
   import PartsDialog from './modules/parts-dialog.vue'
+  import VehicleWorkspaceHeader, {
+    type VehicleWorkspaceMetric
+  } from '@/views/vehicle-manage-system/modules/vehicle-workspace-header.vue'
 
   defineOptions({ name: 'VehicleParts' })
 
@@ -62,6 +85,29 @@
     parentKey: 'parentId',
     childrenKey: 'children'
   })
+  const overview = reactive<{ total: number; rows: Parts[] }>({ total: 0, rows: [] })
+  const workspaceMetrics = computed<VehicleWorkspaceMetric[]>(() => [
+    {
+      label: '零部件总数',
+      value: overview.total,
+      description: '当前筛选条件下的主数据',
+      icon: 'ri:database-2-line'
+    },
+    {
+      label: '本页分类完整',
+      value: overview.rows.filter((row) => row.category?.categoryName).length,
+      description: '已关联标准零部件类别',
+      icon: 'ri:git-branch-line',
+      tone: 'success'
+    },
+    {
+      label: '本页供应关系待补',
+      value: overview.rows.filter((row) => !row.supplier?.supplierName).length,
+      description: '尚未关联供应厂商',
+      icon: 'ri:link-unlink-m',
+      tone: 'warning'
+    }
+  ])
 
   const searchQuery = ref<SearchParams>({
     partName: '',
@@ -266,13 +312,18 @@
       width: 120,
       fixed: 'right',
       formatter: (row) => (
-        <div>
+        <div class="parts-page__operation">
           <ArtButtonTable type="edit" onClick={() => openDialog(row)} />
           <ArtButtonTable type="delete" onClick={() => handleDelete(row)} />
         </div>
       )
     }
   ]
+
+  const handleTableSuccess: NonNullable<ArtTableQueryProps['onSuccess']> = (rows, response) => {
+    overview.rows = rows as Parts[]
+    overview.total = response.total ?? rows.length
+  }
 
   const openDialog = (row?: Parts): void => {
     void dialogRef.value?.handleOpen(row)
@@ -305,3 +356,20 @@
     ElMessage.error('导入文件解析失败')
   }
 </script>
+
+<style scoped lang="scss">
+  .parts-page {
+    gap: 12px;
+    min-width: 0;
+
+    :deep(.parts-page__operation) {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+
+      .art-button-table {
+        margin-right: 0;
+      }
+    }
+  }
+</style>

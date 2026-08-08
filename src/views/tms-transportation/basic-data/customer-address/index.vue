@@ -1,5 +1,16 @@
 <template>
-  <div class="art-full-height">
+  <div class="tms-workspace-page art-full-height">
+    <TmsWorkspaceHeader
+      eyebrow="ADDRESS DIRECTORY"
+      title="客户地址簿"
+      description="维护客户常用收发货地址、联系人与地址类型，减少重复录入并提升开单效率。"
+      icon="ri:map-pin-user-line"
+      :tags="[
+        { label: '地址资产', type: 'primary' },
+        { label: '快速开单', type: 'success' }
+      ]"
+    />
+
     <ArtTableQuery
       ref="tableQueryRef"
       v-model="tableState.searchQuery"
@@ -9,6 +20,11 @@
       :columns-factory="columnsFactory"
       :header-actions="headerActions"
       :search-bar-props="{ span: 6, labelWidth: 82, showExpand: false }"
+      :table-props="{
+        emptyText: '暂无客户地址',
+        emptyDescription: '可新增常用地址，或调整客户、地址类型、时间和关键字后重新查询。'
+      }"
+      focusable
     />
 
     <CustomerAddressDialog ref="dialogRef" @success="handleSaveSuccess" />
@@ -34,6 +50,7 @@
     fetchCustomerOptions
   } from '@/api/tms'
   import CustomerAddressDialog from './modules/customer-address-dialog.vue'
+  import TmsWorkspaceHeader from '@/views/tms-transportation/modules/tms-workspace-header.vue'
 
   defineOptions({ name: 'TmsCustomerAddress' })
 
@@ -217,6 +234,15 @@
     await nextTick()
     await tableQueryRef.value?.getData()
   })
+
+  watch(
+    () => tableState.searchQuery.addressType,
+    async () => {
+      await nextTick()
+      await tableQueryRef.value?.getData()
+    },
+    { flush: 'post' }
+  )
 
   const handleSaveSuccess = (type: DialogType): void => {
     void (type === 'add'

@@ -1,5 +1,16 @@
 <template>
-  <div class="art-full-height">
+  <div class="tms-workspace-page art-full-height">
+    <TmsWorkspaceHeader
+      eyebrow="CUSTOMER MASTER DATA"
+      title="客户资料"
+      description="统一维护客户主体、行业等级、结算联系人与业务状态，为开单和对账提供可信主数据。"
+      icon="ri:user-star-line"
+      :tags="[
+        { label: '客户主数据', type: 'primary' },
+        { label: '业务可用性', type: 'success' }
+      ]"
+    />
+
     <ArtTableQuery
       ref="tableQueryRef"
       v-model="tableState.searchQuery"
@@ -8,6 +19,11 @@
       :columns-factory="columnsFactory"
       :header-actions="headerActions"
       :search-bar-props="{ span: 6, labelWidth: 86, showExpand: false }"
+      :table-props="{
+        emptyText: '暂无客户资料',
+        emptyDescription: '可新增客户，或调整客户等级、行业、状态和关键字后重新查询。'
+      }"
+      focusable
     />
 
     <CustomerDialog ref="dialogRef" @success="handleSaveSuccess" />
@@ -37,6 +53,7 @@
     importCustomers
   } from '@/api/tms'
   import CustomerDialog from './modules/customer-dialog.vue'
+  import TmsWorkspaceHeader from '@/views/tms-transportation/modules/tms-workspace-header.vue'
 
   defineOptions({ name: 'TmsCustomer' })
 

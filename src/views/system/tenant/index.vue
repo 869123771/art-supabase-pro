@@ -14,9 +14,7 @@
         </div>
         <div class="tenant-page__hero-status">
           <ElTag type="success" effect="light" round>数据隔离已启用</ElTag>
-          <ElTag :type="canManageTenant ? 'primary' : 'info'" effect="plain" round>
-            {{ canManageTenant ? '可维护' : '只读模式' }}
-          </ElTag>
+          <ElTag type="primary" effect="plain" round>权限按角色授权</ElTag>
         </div>
       </header>
 
@@ -91,6 +89,7 @@
   import TenantDialog from './modules/tenant-dialog.vue'
   import { useUserStore } from '@/store/modules/user'
   import { useSystemParam } from '@/hooks'
+  import { useAuth } from '@/hooks/core/useAuth'
 
   defineOptions({ name: 'Tenant' })
 
@@ -108,7 +107,8 @@
     status?: unknown
   }
   const userStore = useUserStore()
-  const { getDictMap, isSuper } = storeToRefs(userStore)
+  const { getDictMap } = storeToRefs(userStore)
+  const { hasAuth } = useAuth()
   const { defaultRegisterTenantCode, loadRoleBuiltinCodes } = useSystemParam()
 
   const tableQueryRef = ref<ArtTableQueryExpose>()
@@ -120,7 +120,6 @@
   const systemTenantCodes = computed(
     () => new Set(['platform', defaultRegisterTenantCode.value.toLowerCase()])
   )
-  const canManageTenant = computed(() => Boolean(isSuper.value))
   const enabledTenantCount = computed(
     () => overview.rows.filter((row) => String(row.status) === '1').length
   )
@@ -162,33 +161,27 @@
     rowKey: 'id',
     tableLayout: 'fixed',
     emptyText: '暂无符合条件的租户',
-    emptyDescription: canManageTenant.value
-      ? '可调整筛选条件，或新增租户后再查看。'
-      : '当前账号仅能查看已授权的租户信息。'
+    emptyDescription: '可调整筛选条件；拥有新增权限的角色也可以创建租户。'
   }
 
-  const headerActions = computed<ArtTableQueryHeaderAction[]>(() =>
-    canManageTenant.value
-      ? [
-          {
-            type: 'add',
-            permission: 'System:Tenant:Add',
-            onClick: () => openDialog()
-          },
-          {
-            type: 'delete',
-            permission: 'System:Tenant:Delete',
-            content: ({ selectedCount }: ArtTableQueryHeaderActionContext) =>
-              `确定删除选中的 ${selectedCount} 个租户吗？删除后无法恢复。`,
-            onClick: async ({ selectedRows }) => {
-              const ids = selectedRows.map((row) => row.id).filter(Boolean)
-              await deleteTenantBatch(ids)
-              await tableQueryRef.value?.refreshRemove()
-            }
-          }
-        ]
-      : []
-  )
+  const headerActions = computed<ArtTableQueryHeaderAction[]>(() => [
+    {
+      type: 'add',
+      permission: 'System:Tenant:Add',
+      onClick: () => openDialog()
+    },
+    {
+      type: 'delete',
+      permission: 'System:Tenant:Delete',
+      content: ({ selectedCount }: ArtTableQueryHeaderActionContext) =>
+        `确定删除选中的 ${selectedCount} 个租户吗？删除后无法恢复。`,
+      onClick: async ({ selectedRows }) => {
+        const ids = selectedRows.map((row) => row.id).filter(Boolean)
+        await deleteTenantBatch(ids)
+        await tableQueryRef.value?.refreshRemove()
+      }
+    }
+  ])
 
   const fetchTableData = (params: TableParams) => {
     const { from, to } = pageInfoHandler({
@@ -208,7 +201,7 @@
       width: 50,
       fixed: 'left',
       reserveSelection: true,
-      selectable: (row: Tenant) => canManageTenant.value && !isSystemTenant(row)
+      selectable: (row: Tenant) => hasAuth('System:Tenant:Delete') && !isSystemTenant(row)
     },
     {
       type: 'globalIndex',
@@ -275,20 +268,21 @@
       label: '操作',
       width: 112,
       fixed: 'right',
-      formatter: (row) =>
-        canManageTenant.value ? (
-          <div class="tenant-row-actions">
-            <ArtButtonTable type="edit" onClick={() => openDialog(row)} />
-            {!isSystemTenant(row) ? (
-              <ArtButtonMore
-                list={getTenantMoreActions(row)}
-                onClick={(item: ButtonMoreItem) => handleTenantAction(item, row)}
-              />
-            ) : null}
-          </div>
-        ) : (
-          <span class="tenant-readonly-cell">只读</span>
-        )
+      formatter: (row) => (
+        <div class="tenant-row-actions">
+          <ArtButtonTable
+            type="edit"
+            permission="System:Tenant:Edit"
+            onClick={() => openDialog(row)}
+          />
+          {!isSystemTenant(row) ? (
+            <ArtButtonMore
+              list={getTenantMoreActions(row)}
+              onClick={(item: ButtonMoreItem) => handleTenantAction(item, row)}
+            />
+          ) : null}
+        </div>
+      )
     }
   ]
 
@@ -380,8 +374,8 @@
     }
 
     &__hero {
-      justify-content: space-between;
       gap: 20px;
+      justify-content: space-between;
       padding: 20px 24px 18px;
       background: radial-gradient(
         circle at 92% 0%,
@@ -415,16 +409,16 @@
 
       p {
         margin: 0;
-        overflow-wrap: anywhere;
         font-size: 13px;
         line-height: 1.6;
         color: var(--el-text-color-secondary);
+        overflow-wrap: anywhere;
       }
     }
 
     &__brand {
-      justify-content: center;
       flex: 0 0 50px;
+      justify-content: center;
       width: 50px;
       height: 50px;
       margin-right: 16px;
@@ -449,8 +443,8 @@
       border-top: 1px solid var(--el-border-color-lighter);
 
       article {
-        min-width: 0;
         gap: 12px;
+        min-width: 0;
         padding: 14px 24px;
 
         &:not(:last-child) {
@@ -465,8 +459,8 @@
         span,
         small {
           overflow: hidden;
-          color: var(--el-text-color-secondary);
           text-overflow: ellipsis;
+          color: var(--el-text-color-secondary);
           white-space: nowrap;
         }
 
@@ -488,8 +482,8 @@
     }
 
     &__metric-icon {
-      justify-content: center;
       flex: 0 0 38px;
+      justify-content: center;
       width: 38px;
       height: 38px;
       border-radius: var(--el-border-radius-base);
@@ -523,13 +517,14 @@
 
     :deep(.tenant-identity-cell) {
       display: flex;
-      min-width: 0;
-      align-items: center;
       gap: 10px;
+      align-items: center;
+      min-width: 0;
 
       .tenant-identity-cell__icon {
         display: grid;
         flex: 0 0 36px;
+        place-items: center;
         width: 36px;
         height: 36px;
         font-size: 14px;
@@ -538,7 +533,6 @@
         background: var(--el-color-primary-light-9);
         border: 1px solid var(--el-color-primary-light-7);
         border-radius: var(--art-control-radius);
-        place-items: center;
 
         &.is-system {
           color: var(--el-color-warning-dark-2);
@@ -554,14 +548,14 @@
 
       .tenant-identity-cell__heading {
         display: flex;
-        align-items: center;
         gap: 6px;
+        align-items: center;
 
         strong {
           overflow: hidden;
+          text-overflow: ellipsis;
           font-weight: 600;
           color: var(--el-text-color-primary);
-          text-overflow: ellipsis;
           white-space: nowrap;
         }
       }
@@ -569,9 +563,9 @@
       .tenant-identity-cell__code {
         display: block;
         overflow: hidden;
+        text-overflow: ellipsis;
         font-size: 12px;
         color: var(--el-text-color-secondary);
-        text-overflow: ellipsis;
         white-space: nowrap;
       }
 
@@ -618,7 +612,7 @@
       }
     }
 
-    @media (max-width: 900px) {
+    @media (width <= 900px) {
       &__hero {
         align-items: flex-start;
       }
@@ -633,7 +627,7 @@
       }
     }
 
-    @media (max-width: 640px) {
+    @media (width <= 640px) {
       &__hero {
         flex-direction: column;
         padding: 18px;

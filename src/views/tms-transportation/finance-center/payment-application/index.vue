@@ -1,5 +1,16 @@
 <template>
-  <div class="art-full-height">
+  <div class="tms-workspace-page art-full-height">
+    <TmsWorkspaceHeader
+      eyebrow="PAYMENT APPROVAL"
+      title="付款申请"
+      description="管理承运商付款申请、审核流转与执行结果，保障付款依据、金额和状态一致。"
+      icon="ri:secure-payment-line"
+      :tags="[
+        { label: '付款审批', type: 'primary' },
+        { label: '执行可追踪', type: 'warning' }
+      ]"
+    />
+
     <ArtTableQuery
       ref="tableQueryRef"
       v-model="table.searchQuery"
@@ -8,7 +19,13 @@
       :columns-factory="columnsFactory"
       :header-actions="table.headerActions"
       :search-bar-props="{ span: 6, labelWidth: 92, showExpand: false }"
-      :table-props="{ rowKey: 'id', tableLayout: 'fixed' }"
+      :table-props="{
+        rowKey: 'id',
+        tableLayout: 'fixed',
+        emptyText: '暂无付款申请',
+        emptyDescription: '可新建付款申请，或调整承运商、状态、申请人和日期后查询。'
+      }"
+      focusable
     />
 
     <PaymentApplicationDialog ref="dialogRef" @success="handleSaveSuccess" />
@@ -40,6 +57,7 @@
   import { formatWithDayjs } from '@/utils/time'
   import { formatCurrencyValue } from '@/utils/ui'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import TmsWorkspaceHeader from '@/views/tms-transportation/modules/tms-workspace-header.vue'
   import PaymentApplicationDialog from './modules/payment-application-dialog.vue'
   import PaymentApplicationExecuteDialog from './modules/payment-application-execute-dialog.vue'
   import PaymentApplicationDetailDrawer from './modules/payment-application-detail-drawer.vue'

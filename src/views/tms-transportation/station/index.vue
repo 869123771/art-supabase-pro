@@ -1,5 +1,16 @@
 <template>
-  <div class="art-full-height">
+  <div class="tms-workspace-page art-full-height">
+    <TmsWorkspaceHeader
+      eyebrow="STATION NETWORK"
+      title="运输站点"
+      description="维护运输网络中的站点类型、区域位置、联系人与可用状态，为线路规划提供基础。"
+      icon="ri:global-line"
+      :tags="[
+        { label: '运输网络', type: 'primary' },
+        { label: '区域覆盖', type: 'info' }
+      ]"
+    />
+
     <ArtTableQuery
       ref="tableQueryRef"
       v-model="tableState.searchQuery"
@@ -8,6 +19,11 @@
       :columns-factory="columnsFactory"
       :header-actions="headerActions"
       :search-bar-props="{ span: 6, labelWidth: 86, showExpand: false }"
+      :table-props="{
+        emptyText: '暂无运输站点',
+        emptyDescription: '可新增站点，或调整站点类型、状态和关键字后重新查询。'
+      }"
+      focusable
     />
 
     <StationDialog ref="dialogRef" @success="handleSaveSuccess" />
@@ -38,6 +54,7 @@
     updateStationEnabled
   } from '@/api/tms'
   import StationDialog from './modules/station-dialog.vue'
+  import TmsWorkspaceHeader from '@/views/tms-transportation/modules/tms-workspace-header.vue'
 
   defineOptions({ name: 'TmsStation' })
 

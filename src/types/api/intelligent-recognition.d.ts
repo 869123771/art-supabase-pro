@@ -1,6 +1,7 @@
 declare namespace Api {
   namespace IntelligentRecognition {
-    type Feature = 'invoice_ocr' | 'waybill_receipt_ocr' | 'cash_voucher_ocr'
+    type Feature =
+      'invoice_ocr' | 'waybill_receipt_ocr' | 'cash_voucher_ocr' | 'in_transit_expense_ocr'
     type ArtifactStatus = 'pending' | 'applied' | 'rejected' | 'superseded'
 
     interface RecognitionRun {

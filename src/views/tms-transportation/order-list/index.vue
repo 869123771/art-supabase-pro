@@ -1,5 +1,17 @@
 <template>
-  <div class="art-full-height order-list">
+  <div class="tms-workspace-page art-full-height order-list">
+    <TmsWorkspaceHeader
+      eyebrow="ORDER COMMAND CENTER"
+      title="运输订单"
+      description="集中跟踪订单状态、运输线路、客户需求与费用进度，快速识别待处理业务。"
+      icon="ri:file-list-3-line"
+      :tags="[
+        { label: '全流程订单', type: 'primary' },
+        { label: '状态可追踪', type: 'success' }
+      ]"
+      :metrics="workspaceMetrics"
+    />
+
     <ArtTableQuery
       ref="tableQueryRef"
       v-model="table.searchQuery"
@@ -8,7 +20,13 @@
       :columns-factory="table.columnsFactory"
       :header-actions="table.headerActions"
       :search-bar-props="{ span: 6, labelWidth: 86 }"
-      :table-props="{ rowKey: 'id', tableLayout: 'fixed' }"
+      :table-props="{
+        rowKey: 'id',
+        tableLayout: 'fixed',
+        emptyText: '暂无运输订单',
+        emptyDescription: '可前往开单创建订单，或调整状态、线路、客户和时间条件后重新查询。'
+      }"
+      focusable
     >
       <template #table-header-top>
         <div class="order-list__status-tabs">
@@ -54,6 +72,9 @@
     fetchStationOptions
   } from '@/api/tms'
   import FreightDialog from './modules/freight-dialog.vue'
+  import TmsWorkspaceHeader, {
+    type TmsWorkspaceMetric
+  } from '@/views/tms-transportation/modules/tms-workspace-header.vue'
 
   defineOptions({ name: 'TmsOrderList' })
 
@@ -354,6 +375,35 @@
     ]
   })
 
+  const workspaceMetrics = computed<TmsWorkspaceMetric[]>(() => [
+    {
+      label: '订单总量',
+      value: orderStatusTabValues.reduce(
+        (sum, status) => sum + (table.statusCounts[status] ?? 0),
+        0
+      ),
+      description: '当前筛选范围内的运输订单',
+      icon: 'ri:file-list-3-line'
+    },
+    {
+      label: '待执行',
+      value: ['pending_load', 'pending_order', 'pending_pickup'].reduce(
+        (sum, status) => sum + (table.statusCounts[status] ?? 0),
+        0
+      ),
+      description: '等待装载、调度或提货',
+      icon: 'ri:timer-line',
+      tone: 'warning'
+    },
+    {
+      label: '运输中',
+      value: table.statusCounts.transporting ?? 0,
+      description: '正在执行运输任务',
+      icon: 'ri:truck-line',
+      tone: 'success'
+    }
+  ])
+
   onActivated(() => {
     void tableQueryRef.value?.getData()
   })
@@ -400,6 +450,12 @@
   function getMoreActions(row: OrderRecord): ButtonMoreItem[] {
     return [
       {
+        key: 'inTransitExpense',
+        label: '上报在途费用',
+        icon: 'ri:gas-station-line',
+        disabled: !canReportInTransitExpense(row)
+      },
+      {
         key: 'edit',
         label: '编辑',
         icon: 'ri:edit-line',
@@ -430,6 +486,7 @@
 
   function handleMoreAction(item: ButtonMoreItem, row: OrderRecord): void {
     const actionMap: Record<string, () => void> = {
+      inTransitExpense: () => openInTransitExpense(row),
       edit: () => openOrderEdit(row),
       freight: () => openFreight(row),
       cancel: () => void handleCancel(row),
@@ -437,6 +494,18 @@
     }
 
     actionMap[String(item.key)]?.()
+  }
+
+  function openInTransitExpense(row: OrderRecord): void {
+    if (!row.id || !canReportInTransitExpense(row)) return
+    void router.push({ name: 'TmsInTransitExpense', query: { orderId: row.id } })
+  }
+
+  function canReportInTransitExpense(row: OrderRecord): boolean {
+    return (
+      Boolean(row.id) &&
+      !['pending_load', 'pending_order', 'cancelled'].includes(String(row.orderStatus || ''))
+    )
   }
 
   function handleFreightSuccess(): void {

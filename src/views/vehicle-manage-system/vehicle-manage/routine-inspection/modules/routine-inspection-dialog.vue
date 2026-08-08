@@ -1,5 +1,9 @@
 <template>
   <ArtDialog ref="dialogRef" size="xl" show-fullscreen-button>
+    <template #subtitle
+      >记录检查类型、人员、检查结果和处置方式，形成可复核的车辆安全检查记录。</template
+    >
+
     <div class="routine-inspection-dialog">
       <ArtForm
         ref="formRef"

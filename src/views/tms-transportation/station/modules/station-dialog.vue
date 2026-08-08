@@ -247,7 +247,8 @@
     }
 
     await dialogRef.value?.handleOpen(row, {
-      title: isEdit ? '编辑站点' : '新增',
+      title: isEdit ? '编辑站点' : '新增站点',
+      subtitle: '维护站点类型、区域位置、联系人和运输网络可用状态',
       contentMaxHeight: '70vh',
       onConfirm: handleSubmit,
       onReset: () => void resetForm()

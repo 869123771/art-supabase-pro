@@ -14,6 +14,8 @@ export interface ArtDrawerOptions<TData = unknown> extends ArtOverlayOptions<
 > {
   /** 抽屉标题 */
   title?: string
+  /** 标题下方的辅助说明 */
+  subtitle?: string
   /** 抽屉尺寸 */
   size?: string | number | ArtDrawerSizePreset
   /** 抽屉打开方向 */
@@ -73,6 +75,7 @@ export interface ArtDrawerSlotProps<TData = unknown> {
 export interface ArtDrawerSlots<TData = unknown> {
   default?: (props: ArtDrawerSlotProps<TData> & { loading: boolean }) => VNodeChild
   header?: (props: ArtDrawerSlotProps<TData>) => VNodeChild
+  subtitle?: (props: ArtDrawerSlotProps<TData>) => VNodeChild
   footer?: (props: ArtDrawerSlotProps<TData> & { loading: boolean }) => VNodeChild
 }
 

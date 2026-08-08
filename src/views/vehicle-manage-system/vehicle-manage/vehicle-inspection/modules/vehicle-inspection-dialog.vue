@@ -1,5 +1,7 @@
 <template>
   <ArtDialog ref="dialogRef" size="xl" show-fullscreen-button>
+    <template #subtitle>登记车辆年检编号、检测日期、到期日期、机构费用与证明附件。</template>
+
     <div class="vehicle-inspection-dialog">
       <ArtForm
         ref="formRef"

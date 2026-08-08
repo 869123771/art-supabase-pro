@@ -1,5 +1,5 @@
 <template>
-  <div class="transit-screen">
+  <div class="transit-screen" aria-label="TMS 运输在途监控工作台">
     <ArtAsyncState
       class="transit-screen__state"
       :loading="screen.loading"

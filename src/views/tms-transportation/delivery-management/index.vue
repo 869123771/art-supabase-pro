@@ -1,5 +1,17 @@
 <template>
-  <div class="art-full-height delivery-list">
+  <div class="tms-workspace-page art-full-height delivery-list">
+    <TmsWorkspaceHeader
+      eyebrow="DELIVERY CONTROL"
+      title="配送与签收"
+      description="集中处理待签收、回单和异常工单，确保运输交付凭证完整并形成闭环。"
+      icon="ri:package-check-line"
+      :tags="[
+        { label: '签收闭环', type: 'success' },
+        { label: '异常可处置', type: 'warning' }
+      ]"
+      :metrics="workspaceMetrics"
+    />
+
     <ArtTableQuery
       ref="tableQueryRef"
       v-model="table.searchQuery"
@@ -8,7 +20,13 @@
       :columns-factory="table.columnsFactory"
       :header-actions="table.headerActions"
       :search-bar-props="{ span: 6, labelWidth: 86 }"
-      :table-props="{ rowKey: 'id', tableLayout: 'fixed' }"
+      :table-props="{
+        rowKey: 'id',
+        tableLayout: 'fixed',
+        emptyText: '暂无配送任务',
+        emptyDescription: '当前状态下没有配送记录，可切换签收状态或调整查询条件。'
+      }"
+      focusable
     >
       <template #table-header-top>
         <div class="delivery-list__status-tabs">
@@ -38,6 +56,9 @@
   import { useUserStore } from '@/store/modules/user'
   import SignDialog from './modules/sign-dialog.vue'
   import ReceiptExceptionWorkOrderDrawer from './modules/receipt-exception-work-order-drawer.vue'
+  import TmsWorkspaceHeader, {
+    type TmsWorkspaceMetric
+  } from '@/views/tms-transportation/modules/tms-workspace-header.vue'
   import {
     DELIVERY_STATUS_ALL,
     createDeliveryColumns,
@@ -117,6 +138,29 @@
         signDialogRef
       })
   })
+
+  const workspaceMetrics = computed<TmsWorkspaceMetric[]>(() => [
+    {
+      label: '交付任务',
+      value: table.statusTotal,
+      description: '当前筛选范围内的配送记录',
+      icon: 'ri:inbox-archive-line'
+    },
+    {
+      label: '已签收',
+      value: table.statusCounts.signed ?? 0,
+      description: '已完成签收、待归档记录',
+      icon: 'ri:signature-line',
+      tone: 'warning'
+    },
+    {
+      label: '已完成',
+      value: table.statusCounts.completed ?? 0,
+      description: '交付凭证已形成闭环',
+      icon: 'ri:checkbox-circle-line',
+      tone: 'success'
+    }
+  ])
 
   function fetchTableData(params: TableParams) {
     void loadStatusCounts(params)

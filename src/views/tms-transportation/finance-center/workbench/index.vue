@@ -10,9 +10,14 @@
       subtitle="集中查看应收、应付、开票、回款与费用审核进度"
       class="finance-workbench__header"
     >
-      <ElButton type="primary" @click="openCollectionAdvisor">
-        <ArtSvgIcon icon="ri:sparkling-2-line" />AI 回款风险研判
-      </ElButton>
+      <div class="finance-workbench__header-actions">
+        <ElTag type="success" effect="plain" round>
+          <ArtSvgIcon icon="ri:pulse-line" />经营数据实时汇总
+        </ElTag>
+        <ElButton type="primary" @click="openCollectionAdvisor">
+          <ArtSvgIcon icon="ri:sparkling-2-line" />AI 回款风险研判
+        </ElButton>
+      </div>
     </ArtPageHeader>
 
     <FinanceMetricGrid :items="overview.metrics" class="finance-workbench__metrics" />
@@ -519,6 +524,17 @@
 
     &__header {
       min-height: 92px;
+    }
+
+    &__header-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+
+      :deep(.el-tag) {
+        gap: 5px;
+      }
     }
 
     &__content {

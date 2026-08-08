@@ -1,5 +1,16 @@
 <template>
-  <div class="art-full-height">
+  <div class="tms-workspace-page art-full-height">
+    <TmsWorkspaceHeader
+      eyebrow="COST GOVERNANCE"
+      title="运单成本"
+      description="归集运单成本项目、承运商费用与审核状态，为利润核算和结算付款建立可靠依据。"
+      icon="ri:funds-box-line"
+      :tags="[
+        { label: '成本台账', type: 'primary' },
+        { label: '审核闭环', type: 'warning' }
+      ]"
+    />
+
     <ArtTableQuery
       ref="tableQueryRef"
       v-model="searchQuery"
@@ -8,7 +19,13 @@
       :columns-factory="columnsFactory"
       :header-actions="headerActions"
       :search-bar-props="{ span: 6, labelWidth: 86, showExpand: false }"
-      :table-props="{ rowKey: 'id', tableLayout: 'fixed' }"
+      :table-props="{
+        rowKey: 'id',
+        tableLayout: 'fixed',
+        emptyText: '暂无运单成本',
+        emptyDescription: '可新增成本记录，或调整运单号、状态、费用类型和日期后查询。'
+      }"
+      focusable
     />
 
     <WaybillCostDialog ref="dialogRef" @success="handleSaveSuccess" />
@@ -39,6 +56,7 @@
   } from '@/api/tms'
   import WaybillCostDialog from './modules/waybill-cost-dialog.vue'
   import WaybillCostAuditDrawer from './modules/waybill-cost-audit-drawer.vue'
+  import TmsWorkspaceHeader from '@/views/tms-transportation/modules/tms-workspace-header.vue'
 
   defineOptions({ name: 'TmsWaybillCost' })
 

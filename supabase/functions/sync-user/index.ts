@@ -39,7 +39,20 @@ async function getCallerProfile(callerAuthUserId: string | null): Promise<Caller
   return { id: data.id, auth_user_id: data.auth_user_id, user_email: String(data.user_email || "").toLowerCase().trim(), tenant_id: data.tenant_id, tenant_code: tenant?.tenant_code ?? null, user_roles: data.user_roles || [], status: data.status ?? null }
 }
 function isPlatformSuper(profile: CallerProfile | null) { return Boolean(profile && profile.user_email === "869123771@qq.com" && profile.tenant_code?.toLowerCase() === "platform" && profile.user_roles.includes("R_SUPER") && profile.status === "1") }
-function isTenantAdmin(profile: CallerProfile | null) { return Boolean(profile && profile.user_roles.includes("R_ADMIN") && profile.status === "1") }
+async function hasPermission(
+  callerSupabase: ReturnType<typeof createClient> | null,
+  permission: string,
+): Promise<boolean> {
+  if (!callerSupabase) return false
+  const { data, error } = await callerSupabase.rpc("current_has_permission", {
+    p_permission: permission,
+  })
+  if (error) {
+    console.error("permission check failed", permission, error.message)
+    return false
+  }
+  return data === true
+}
 async function canAccessTargetUser(id: string, profile: CallerProfile | null, callerIsSuper: boolean) {
   if (callerIsSuper) return true
   if (!profile) return false
@@ -62,18 +75,28 @@ Deno.serve(async (req: Request) => {
   const origin = req.headers.get("origin")
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders(origin) })
   const requestId = uuidv4(); const body = await json(req); const auditId = uuidv4(); const action = (body.action || "").toLowerCase()
-  if (!["create", "update", "delete"].includes(action)) return new Response(JSON.stringify({ ok: false, error: "invalid action" }), { status: 400, headers: corsHeaders(origin) })
+  if (!["create", "update", "assign_roles", "delete"].includes(action)) return new Response(JSON.stringify({ ok: false, error: "invalid action" }), { status: 400, headers: corsHeaders(origin) })
   await insertAudit(auditId, requestId, action, body)
 
   const authHeader = req.headers.get("authorization") || req.headers.get("Authorization")
   const bearer = authHeader && authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null
   let callerAuthUserId: string | null = null; let callerEmail: string | null = null
+  let callerSupabase: ReturnType<typeof createClient> | null = null
   if (bearer) {
-    const parsed = parseJWT(bearer); callerAuthUserId = parsed.userId; callerEmail = parsed.email; const callerSupabase = createClientWithToken(bearer)
+    const parsed = parseJWT(bearer); callerAuthUserId = parsed.userId; callerEmail = parsed.email; callerSupabase = createClientWithToken(bearer)
     try { const { data: user, error: userErr } = await callerSupabase.auth.getUser(); if (!userErr && user?.user) { callerAuthUserId = user.user.id; callerEmail = (user.user.email || "").toLowerCase().trim() || null } } catch (e) { console.error("getUser error (non-fatal):", e) }
   }
   const callerProfile = await getCallerProfile(callerAuthUserId); const callerIsSuper = isPlatformSuper(callerProfile)
-  if (!callerIsSuper && !isTenantAdmin(callerProfile)) return new Response(JSON.stringify({ ok: false, error: "仅平台超级管理员或租户管理员可以维护用户" }), { status: 403, headers: corsHeaders(origin) })
+  const permissionByAction: Record<string, string> = {
+    create: "System:User:Add",
+    update: "System:User:Edit",
+    assign_roles: "System:User:AssignRole",
+    delete: "System:User:Delete",
+  }
+  const requiredPermission = permissionByAction[action]
+  if (!(await hasPermission(callerSupabase, requiredPermission))) {
+    return new Response(JSON.stringify({ ok: false, error: `缺少权限：${requiredPermission}` }), { status: 403, headers: corsHeaders(origin) })
+  }
 
   try {
     if (action === "create") {
@@ -95,13 +118,20 @@ Deno.serve(async (req: Request) => {
       const result = { ok: true, auth_user_id: authUserId, app_user: created }; await updateAudit(auditId, result); return new Response(JSON.stringify(result), { status: 200, headers: corsHeaders(origin) })
     }
 
-    if (action === "update") {
+    if (action === "update" || action === "assign_roles") {
       const { id, auth_user_id, email, password, app_user_data } = body
       if (!id) return new Response(JSON.stringify({ ok: false, error: "id required for update" }), { status: 400, headers: corsHeaders(origin) })
       if (!(await canAccessTargetUser(id, callerProfile, callerIsSuper))) return new Response(JSON.stringify({ ok: false, error: "不能编辑当前租户之外的用户" }), { status: 403, headers: corsHeaders(origin) })
-      const cleanedAppUserData = cleanAppUserData(app_user_data)
+      const normalizedAppUserData = cleanAppUserData(app_user_data)
+      const cleanedAppUserData: Record<string, unknown> = action === "assign_roles"
+        ? { user_roles: normalizedAppUserData.user_roles }
+        : { ...normalizedAppUserData }
+      if (action === "update") delete cleanedAppUserData.user_roles
+      if (action === "assign_roles" && !Array.isArray(cleanedAppUserData.user_roles)) {
+        return new Response(JSON.stringify({ ok: false, error: "user_roles must be an array" }), { status: 400, headers: corsHeaders(origin) })
+      }
       if (!callerIsSuper && cleanedAppUserData.tenant_id && cleanedAppUserData.tenant_id !== callerProfile?.tenant_id) return new Response(JSON.stringify({ ok: false, error: "不能把用户分配到当前租户之外" }), { status: 403, headers: corsHeaders(origin) })
-      if (auth_user_id) {
+      if (action === "update" && auth_user_id) {
         const updateAuthData: Record<string, string> = {}; const emailForAuth = email || cleanedAppUserData.user_email; const passwordForAuth = password || (app_user_data && app_user_data.password)
         if (typeof emailForAuth === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailForAuth)) updateAuthData.email = emailForAuth
         if (typeof passwordForAuth === "string" && passwordForAuth.trim().length >= 6) updateAuthData.password = passwordForAuth
@@ -117,7 +147,12 @@ Deno.serve(async (req: Request) => {
       const id = body.id; const auth_user_id = body.auth_user_id || body.authUserId
       if (!id) return new Response(JSON.stringify({ ok: false, error: "id required" }), { status: 400, headers: corsHeaders(origin) })
       if (!(await canAccessTargetUser(id, callerProfile, callerIsSuper))) return new Response(JSON.stringify({ ok: false, error: "不能删除当前租户之外的用户" }), { status: 403, headers: corsHeaders(origin) })
-      const { data: snapshot } = await supabaseDB.from("sys_user").select("*").eq("id", id).single(); const { error: delErr } = await supabaseDB.from("sys_user").delete().eq("id", id)
+      const { data: snapshot } = await supabaseDB.from("sys_user").select("*").eq("id", id).single()
+      if (!snapshot) return new Response(JSON.stringify({ ok: false, error: "用户不存在" }), { status: 404, headers: corsHeaders(origin) })
+      const isProtectedSuper = String(snapshot.user_email || "").toLowerCase() === "869123771@qq.com" || (snapshot.user_roles || []).includes("R_SUPER")
+      if (isProtectedSuper) return new Response(JSON.stringify({ ok: false, error: "平台超级管理员账号受系统保护，不能删除" }), { status: 403, headers: corsHeaders(origin) })
+      if (snapshot.auth_user_id === callerAuthUserId) return new Response(JSON.stringify({ ok: false, error: "不能删除当前登录账号" }), { status: 403, headers: corsHeaders(origin) })
+      const { error: delErr } = await supabaseDB.from("sys_user").delete().eq("id", id)
       if (delErr) return new Response(JSON.stringify({ ok: false, error: getFriendlyErrorMessage(delErr, action) }), { status: 500, headers: corsHeaders(origin) })
       if (auth_user_id) { const { error: delAuthErr } = await supabaseAdmin.auth.admin.deleteUser(auth_user_id); if (delAuthErr) { await restoreSnapshot(snapshot); throw delAuthErr } }
       const result = auth_user_id ? { ok: true, deleted_app_user_id: id, deleted_auth_user_id: auth_user_id } : { ok: true, deleted_app_user_id: id }

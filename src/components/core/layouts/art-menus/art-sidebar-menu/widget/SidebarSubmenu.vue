@@ -5,8 +5,8 @@
         <div class="menu-icon flex-cc">
           <ArtSvgIcon
             :icon="item.meta.icon || ''"
-            :color="theme?.iconColor"
-            :style="{ color: theme.iconColor }"
+            :color="menuIconColor"
+            :style="{ color: menuIconColor }"
           />
         </div>
         <span class="menu-name">
@@ -18,7 +18,7 @@
       <SidebarSubmenu
         :list="item.children"
         :is-mobile="isMobile"
-        :level="level + 1"
+        :level="menuLevel + 1"
         :theme="theme"
         @close="closeMenu"
       />
@@ -27,19 +27,19 @@
     <ElMenuItem
       v-else
       :index="isExternalLink(item) ? '' : item.path || item.meta.title"
-      :level-item="level + 1"
+      :level-item="menuLevel + 1"
       @mouseenter="preloadMenuRoute(item)"
       @click="goPage(item)"
     >
       <div class="menu-icon flex-cc">
         <ArtSvgIcon
           :icon="item.meta.icon || ''"
-          :color="theme?.iconColor"
-          :style="{ color: theme.iconColor }"
+          :color="menuIconColor"
+          :style="{ color: menuIconColor }"
         />
       </div>
       <div
-        v-show="item.meta.showBadge && level === 0 && !menuOpen"
+        v-show="item.meta.showBadge && menuLevel === 0 && !menuOpen"
         class="art-badge"
         style="right: 5px"
       />
@@ -49,7 +49,7 @@
           {{ formatMenuTitle(item.meta.title) }}
         </span>
         <div v-if="item.meta.showBadge" class="art-badge" />
-        <div v-if="item.meta.showTextBadge && (level > 0 || menuOpen)" class="art-text-badge">
+        <div v-if="item.meta.showTextBadge && (menuLevel > 0 || menuOpen)" class="art-text-badge">
           {{ item.meta.showTextBadge }}
         </div>
       </template>
@@ -99,6 +99,8 @@
   const settingStore = useSettingStore()
 
   const { menuOpen } = storeToRefs(settingStore)
+  const menuIconColor = computed(() => props.theme?.iconColor)
+  const menuLevel = computed(() => props.level ?? 0)
 
   /**
    * 过滤后的菜单项列表

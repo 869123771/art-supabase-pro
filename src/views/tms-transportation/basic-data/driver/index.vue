@@ -1,5 +1,16 @@
 <template>
-  <div class="art-full-height">
+  <div class="tms-workspace-page art-full-height">
+    <TmsWorkspaceHeader
+      eyebrow="DRIVER ROSTER"
+      title="司机资料"
+      description="统一维护司机归属、从业类型、证照与可用状态，为车辆调度提供清晰的人力视图。"
+      icon="ri:steering-2-line"
+      :tags="[
+        { label: '司机名册', type: 'primary' },
+        { label: '调度可用', type: 'success' }
+      ]"
+    />
+
     <ArtTableQuery
       ref="tableQueryRef"
       v-model="tableState.searchQuery"
@@ -9,6 +20,11 @@
       :header-actions="headerActions"
       :search-bar-props="{ span: 6, labelWidth: 86, showExpand: false }"
       :immediate="tableImmediate"
+      :table-props="{
+        emptyText: '暂无司机资料',
+        emptyDescription: '可新增司机，或调整承运商、司机类型、状态和关键字后重新查询。'
+      }"
+      focusable
     />
 
     <DriverDialog ref="dialogRef" @success="handleSaveSuccess" />
@@ -35,6 +51,7 @@
     fetchDriverList
   } from '@/api/tms'
   import DriverDialog from './modules/driver-dialog.vue'
+  import TmsWorkspaceHeader from '@/views/tms-transportation/modules/tms-workspace-header.vue'
 
   defineOptions({ name: 'TmsDriver' })
 

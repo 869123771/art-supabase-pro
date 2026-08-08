@@ -55,10 +55,14 @@
 
       <!-- background image -->
       <img
-        v-if="imageConfig.src"
+        v-if="resolvedImageConfig.src"
         class="basic-banner__background-image"
-        :src="imageConfig.src"
-        :style="{ width: imageConfig.width, bottom: imageConfig.bottom, right: imageConfig.right }"
+        :src="resolvedImageConfig.src"
+        :style="{
+          width: resolvedImageConfig.width,
+          bottom: resolvedImageConfig.bottom,
+          right: resolvedImageConfig.right
+        }"
         loading="lazy"
         alt="背景图片"
       />
@@ -170,6 +174,9 @@
   const buttonColor = computed(() => props.buttonConfig?.color ?? '#fff')
   const buttonTextColor = computed(() => props.buttonConfig?.textColor ?? '#333')
   const buttonRadius = computed(() => props.buttonConfig?.radius ?? '6px')
+  const resolvedImageConfig = computed<ImageConfig>(
+    () => props.imageConfig ?? { src: '', width: '12rem', bottom: '-3rem', right: '0' }
+  )
 
   // 流星数据初始化
   const meteors = ref<Meteor[]>([])

@@ -1,5 +1,16 @@
 <template>
-  <div class="art-full-height">
+  <div class="tms-workspace-page art-full-height">
+    <TmsWorkspaceHeader
+      eyebrow="WAYBILL PROFITABILITY"
+      title="运单利润"
+      description="对比运输收入、直接成本与毛利表现，定位低毛利线路和经营改善机会。"
+      icon="ri:line-chart-line"
+      :tags="[
+        { label: '单票经营', type: 'primary' },
+        { label: '毛利洞察', type: 'success' }
+      ]"
+    />
+
     <ArtTableQuery
       v-model="searchQuery"
       :search-items="searchItems"
@@ -7,7 +18,13 @@
       :columns-factory="columnsFactory"
       :header-actions="headerActions"
       :search-bar-props="{ span: 6, labelWidth: 86, showExpand: false }"
-      :table-props="{ rowKey: 'id', tableLayout: 'fixed' }"
+      :table-props="{
+        rowKey: 'id',
+        tableLayout: 'fixed',
+        emptyText: '暂无运单利润数据',
+        emptyDescription: '可调整客户、承运商、利润区间、线路和日期范围后重新查询。'
+      }"
+      focusable
     />
     <WaybillProfitAnalysisDrawer ref="profitAnalysisDrawerRef" />
   </div>
@@ -26,6 +43,7 @@
   import { formatWithDayjs } from '@/utils/time'
   import { useUserStore } from '@/store/modules/user'
   import { exportWaybillProfitList, fetchWaybillProfitList } from '@/api/tms'
+  import TmsWorkspaceHeader from '@/views/tms-transportation/modules/tms-workspace-header.vue'
 
   defineOptions({ name: 'TmsWaybillProfit' })
 

@@ -1,26 +1,50 @@
 <template>
   <div class="vehicle-archive-list art-full-height">
-    <ElTabs
-      v-model="auditTab"
-      class="vehicle-archive-list__tabs"
-      @tab-change="handleAuditTabChange"
-    >
-      <ElTabPane label="待审核" name="pending" />
-      <ElTabPane label="已审核" name="approved" />
-    </ElTabs>
-
-    <ArtTableQuery
-      :key="auditTab"
-      ref="tableQueryRef"
-      v-model="searchQuery"
-      class="vehicle-archive-list__query"
-      :search-items="searchItems"
-      :api-fn="fetchTableData"
-      :columns-factory="columnsFactory"
-      :header-actions="headerActions"
-      :search-bar-props="{ span: 6, labelWidth: 90 }"
-      :table-props="{ rowKey: 'id', tableLayout: 'fixed' }"
+    <VehicleWorkspaceHeader
+      eyebrow="ARCHIVE GOVERNANCE"
+      title="车辆档案录入与审核"
+      description="统一受理车辆建档、资料复核与审核留痕，确保进入业务体系的车辆数据真实完整。"
+      icon="ri:file-shield-2-line"
+      :tags="[
+        { label: auditTab === 'pending' ? '待审核工作区' : '审核结果', type: 'primary' },
+        { label: '全过程留痕', type: 'info' }
+      ]"
+      :metrics="workspaceMetrics"
     />
+
+    <div class="vehicle-archive-list__workspace">
+      <ElTabs
+        v-model="auditTab"
+        class="vehicle-archive-list__tabs"
+        @tab-change="handleAuditTabChange"
+      >
+        <ElTabPane label="待审核" name="pending" />
+        <ElTabPane label="已审核" name="approved" />
+      </ElTabs>
+
+      <ArtTableQuery
+        :key="auditTab"
+        ref="tableQueryRef"
+        v-model="searchQuery"
+        class="vehicle-archive-list__query"
+        :search-items="searchItems"
+        :api-fn="fetchTableData"
+        :columns-factory="columnsFactory"
+        :header-actions="headerActions"
+        :search-bar-props="{ span: 6, labelWidth: 90 }"
+        :table-props="{
+          rowKey: 'id',
+          tableLayout: 'fixed',
+          emptyText: auditTab === 'pending' ? '暂无待审核车辆档案' : '暂无审核结果',
+          emptyDescription:
+            auditTab === 'pending'
+              ? '新增车辆档案后会进入此工作区等待复核。'
+              : '可调整公司、车牌号、车型或创建时间后重新查询。'
+        }"
+        :on-success="handleTableSuccess"
+        focusable
+      />
+    </div>
 
     <VehicleArchiveAuditDialog ref="auditDialogRef" @success="handleAuditSuccess" />
   </div>
@@ -38,7 +62,8 @@
     ArtTableQueryExpose,
     ArtTableQueryExcelColumn,
     ArtTableQueryHeaderAction,
-    ArtTableQueryHeaderActionContext
+    ArtTableQueryHeaderActionContext,
+    ArtTableQueryProps
   } from '@/components/core/tables/art-table-query/index.vue'
   import type { ColumnOption } from '@/types'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
@@ -46,6 +71,9 @@
   import { exportVehicleArchiveList, fetchVehicleArchiveList } from '@/api/vehicle-manage-system'
   import { useUserStore } from '@/store/modules/user'
   import VehicleArchiveAuditDialog from '../modules/vehicle-archive-audit-dialog.vue'
+  import VehicleWorkspaceHeader, {
+    type VehicleWorkspaceMetric
+  } from '@/views/vehicle-manage-system/modules/vehicle-workspace-header.vue'
 
   defineOptions({ name: 'VehicleArchiveEntry' })
 
@@ -71,6 +99,29 @@
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const auditDialogRef = ref<AuditDialogExpose>()
   const auditTab = ref<AuditTab>('pending')
+  const overview = reactive<{ total: number; rows: VehicleArchive[] }>({ total: 0, rows: [] })
+  const workspaceMetrics = computed<VehicleWorkspaceMetric[]>(() => [
+    {
+      label: auditTab.value === 'pending' ? '待审核档案' : '审核结果',
+      value: overview.total,
+      description: '当前筛选条件下的档案数量',
+      icon: 'ri:file-list-3-line'
+    },
+    {
+      label: '本页资料完整',
+      value: overview.rows.filter((row) => row.companyName && row.plateNo && row.vin).length,
+      description: '公司、车牌与 VIN 均已维护',
+      icon: 'ri:file-check-line',
+      tone: 'success'
+    },
+    {
+      label: '本页资料待补',
+      value: overview.rows.filter((row) => !row.companyName || !row.plateNo || !row.vin).length,
+      description: '至少缺少一项核心身份信息',
+      icon: 'ri:file-warning-line',
+      tone: 'warning'
+    }
+  ])
   const options: UnwrapNestedRefs<OptionGroup> = reactive<OptionGroup>({
     vehicleType: computed(() => getDictMap.value.vehicleType ?? []),
     operationStatus: computed(() => getDictMap.value.vehicleOperationStatus ?? [])
@@ -291,6 +342,11 @@
     Object.assign(searchQuery.value, getAuditSearchParams())
   }
 
+  const handleTableSuccess: NonNullable<ArtTableQueryProps['onSuccess']> = (rows, response) => {
+    overview.rows = rows as VehicleArchive[]
+    overview.total = response.total ?? rows.length
+  }
+
   const handleAdd = (): void => {
     const path = '/vehicle-manage-system/archive-manage/vehicle-archive-edit'
     void router.push(path)
@@ -335,6 +391,15 @@
 
     display: flex;
     flex-direction: column;
+    gap: 12px;
+    min-width: 0;
+
+    &__workspace {
+      display: flex;
+      flex: 1;
+      flex-direction: column;
+      min-height: 0;
+    }
 
     &__tabs {
       padding: 0 16px;

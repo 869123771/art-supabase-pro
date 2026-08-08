@@ -38,8 +38,14 @@
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import { useWindowSize } from '@vueuse/core'
 
-  import { addRMenu, editMenu } from '@/api/system-manage'
+  import { addRMenu, editMenu, saveMenuSort } from '@/api/system-manage'
   import { useUserStore } from '@/store/modules/user'
+  import {
+    buildMenuEditOrderUpdates,
+    filterMenuParentTree,
+    isMenuParentAvailable,
+    normalizeMenuParentId
+  } from './menu-order'
 
   const { width } = useWindowSize()
 
@@ -116,6 +122,9 @@
   })
 
   const form = ref<MenuFormModel>(createInitialForm())
+  const sourceMenuTree = shallowRef<AppRouteRecord[]>([])
+  const originalParentId = ref<string | null>(null)
+  const originalSort = ref(1)
 
   const menuTypeMeta = computed(() => {
     const metaMap: Record<MenuType, { label: string; description: string; icon: string }> = {
@@ -507,22 +516,45 @@
 
     try {
       const { id, parentId, path, component = '', name, type, sort, ...rest } = toRaw(form.value)
+      const normalizedParentId = normalizeMenuParentId(parentId)
+      if (!isMenuParentAvailable(sourceMenuTree.value, id, normalizedParentId)) {
+        ElMessage.error('父级菜单无效，不能选择当前菜单或其下级')
+        return false
+      }
       const submitPath = type === 'button' ? '' : path
       const submitComponent =
-        type === 'folder' ? resolveFolderComponent(parentId) : type === 'button' ? '' : component
+        type === 'folder'
+          ? resolveFolderComponent(normalizedParentId)
+          : type === 'button'
+            ? ''
+            : component
+      const parentChanged = originalParentId.value !== normalizedParentId
+      const targetSort =
+        parentChanged && sort === originalSort.value ? Number.MAX_SAFE_INTEGER : sort
+      const sortUpdates = id
+        ? buildMenuEditOrderUpdates({
+            tree: sourceMenuTree.value,
+            id,
+            sourceParentId: originalParentId.value,
+            targetParentId: normalizedParentId,
+            targetSort
+          })
+        : []
+      const normalizedSort = sortUpdates.find((item) => item.id === id)?.sort ?? sort
       const params: AppRouteRecord = {
-        parentId: parentId ?? null,
+        parentId: normalizedParentId,
         path: submitPath,
         component: submitComponent,
         name,
         type,
-        sort,
+        sort: normalizedSort,
         meta: { ...rest }
       }
       if (id == null) {
         await addRMenu(params)
       } else {
         await editMenu({ ...params, id })
+        await saveMenuSort(sortUpdates)
       }
       emit('submit', { ...form.value })
       return true
@@ -541,11 +573,15 @@
 
   const initializeForm = async (data: MenuDialogOpenData = {}): Promise<void> => {
     Object.assign(form.value, createInitialForm())
+    sourceMenuTree.value = data.menuTree ?? []
+    originalParentId.value = normalizeMenuParentId(data.row?.parentId)
+    originalSort.value = data.row?.sort ?? 1
     handleSetParent({
       ...(data.parent ?? {}),
       menuTree: data.menuTree ?? []
     } as MenuFormData)
     loadFormData(data.row ?? {}, data.type ?? 'menu')
+    select.value.menuTree = filterMenuParentTree(sourceMenuTree.value, form.value.id)
     syncComponentByType()
     await handleResetFields()
   }
@@ -553,6 +589,9 @@
   const handleReset = async (): Promise<void> => {
     Object.assign(form.value, createInitialForm())
     select.value = { menuTree: [] }
+    sourceMenuTree.value = []
+    originalParentId.value = null
+    originalSort.value = 1
     await handleResetFields()
   }
 
@@ -609,6 +648,7 @@
     &__context-icon {
       display: grid;
       flex: 0 0 38px;
+      place-items: center;
       width: 38px;
       height: 38px;
       font-size: 18px;
@@ -616,7 +656,6 @@
       background: var(--el-color-primary-light-9);
       border: 1px solid var(--el-color-primary-light-7);
       border-radius: var(--art-control-radius);
-      place-items: center;
     }
 
     :deep(.art-form) {

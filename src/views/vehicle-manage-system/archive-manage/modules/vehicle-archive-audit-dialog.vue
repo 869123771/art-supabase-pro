@@ -1,5 +1,13 @@
 <template>
   <ArtDialog ref="dialogRef">
+    <template #subtitle>
+      {{
+        isBatch
+          ? '批量确认车辆档案的审核结论，所有选择将应用相同意见。'
+          : '确认档案是否可进入车辆业务体系，并留下审核依据。'
+      }}
+    </template>
+
     <ArtForm
       ref="formRef"
       v-model="form.data"
@@ -70,22 +78,28 @@
         type: 'radioGroup',
         props: {
           options: auditStatusOptions.value
-        }
+        },
+        description: '驳回后档案需要修改并重新提交审核。'
       },
       {
-        label: '备注',
+        label: '审核意见',
         key: 'auditRemark',
         type: 'input',
         props: {
           type: 'textarea',
           rows: 5,
           maxlength: 500,
-          showWordLimit: true
+          showWordLimit: true,
+          placeholder: '通过时可填写补充说明；驳回时请说明需要修改的内容'
         }
       }
     ]),
     rules: computed<FormRules<AuditForm>>(() => ({
-      auditStatus: [{ required: true, message: '请选择审核状态', trigger: 'change' }]
+      auditStatus: [{ required: true, message: '请选择审核状态', trigger: 'change' }],
+      auditRemark:
+        form.value.data.auditStatus === 'rejected'
+          ? [{ required: true, message: '驳回档案时请填写审核意见', trigger: 'blur' }]
+          : []
     }))
   })
 

@@ -24,7 +24,7 @@
             <strong>模型目录</strong>
             <span>{{ sortedModels.length }} 个可选模型</span>
           </div>
-          <span v-if="benchmarkResults.size">已测速 {{ benchmarkResults.size }} 个</span>
+          <span v-if="benchmarkCount">已测速 {{ benchmarkCount }} 个</span>
           <span v-else>输入关键词可快速筛选</span>
         </div>
       </template>
@@ -222,6 +222,7 @@
     benchmark: [modelId: string]
   }>()
 
+  const benchmarkCount = computed(() => props.benchmarkResults?.size ?? 0)
   const selectedCatalogModel = computed(() =>
     props.models.find((item) => item.id === props.modelValue)
   )

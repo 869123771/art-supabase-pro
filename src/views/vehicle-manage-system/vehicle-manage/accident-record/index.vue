@@ -1,5 +1,17 @@
 <template>
-  <div class="art-full-height">
+  <div class="accident-record-page art-full-height">
+    <VehicleWorkspaceHeader
+      eyebrow="SAFETY INCIDENT CONTROL"
+      title="车辆事故"
+      description="集中记录事故时间、地点、损失、责任和处置状态，为安全复盘与风险治理提供证据。"
+      icon="ri:alarm-warning-line"
+      :tags="[
+        { label: '事故闭环', type: 'primary' },
+        { label: '证据可追溯', type: 'info' }
+      ]"
+      :metrics="workspaceMetrics"
+    />
+
     <ArtTableQuery
       ref="tableQueryRef"
       v-model="table.searchQuery"
@@ -8,7 +20,14 @@
       :columns-factory="table.columnsFactory"
       :header-actions="table.headerActions"
       :search-bar-props="{ span: 6, labelWidth: 100 }"
-      :table-props="{ rowKey: 'id', tableLayout: 'fixed' }"
+      :table-props="{
+        rowKey: 'id',
+        tableLayout: 'fixed',
+        emptyText: '暂无车辆事故记录',
+        emptyDescription: '可新增事故记录，或调整车辆、驾驶员、处理状态和事故时间后重新查询。'
+      }"
+      :on-success="handleTableSuccess"
+      focusable
     />
 
     <AccidentRecordDialog ref="dialogRef" @success="handleSaveSuccess" />
@@ -28,7 +47,8 @@
     ArtTableQueryExpose,
     ArtTableQueryExcelColumn,
     ArtTableQueryHeaderAction,
-    ArtTableQueryHeaderActionContext
+    ArtTableQueryHeaderActionContext,
+    ArtTableQueryProps
   } from '@/components/core/tables/art-table-query/index.vue'
   import type { ColumnOption, DialogType } from '@/types'
   import {
@@ -41,6 +61,9 @@
   import { formatWithDayjs } from '@/utils/time'
   import { useUserStore } from '@/store/modules/user'
   import AccidentRecordDialog from './modules/accident-record-dialog.vue'
+  import VehicleWorkspaceHeader, {
+    type VehicleWorkspaceMetric
+  } from '@/views/vehicle-manage-system/modules/vehicle-workspace-header.vue'
 
   defineOptions({ name: 'VehicleAccident' })
 
@@ -65,6 +88,29 @@
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<DialogExpose>()
   const { getDictMap } = storeToRefs(useUserStore())
+  const overview = reactive<{ total: number; rows: AccidentRecord[] }>({ total: 0, rows: [] })
+  const workspaceMetrics = computed<VehicleWorkspaceMetric[]>(() => [
+    {
+      label: '事故记录',
+      value: overview.total,
+      description: '当前筛选条件下的事故数量',
+      icon: 'ri:file-list-3-line'
+    },
+    {
+      label: '本页已处理',
+      value: overview.rows.filter((row) => row.processed).length,
+      description: '已完成事故处置闭环',
+      icon: 'ri:checkbox-circle-line',
+      tone: 'success'
+    },
+    {
+      label: '本页待处理',
+      value: overview.rows.filter((row) => !row.processed).length,
+      description: '需要持续跟进处置',
+      icon: 'ri:alarm-warning-line',
+      tone: 'danger'
+    }
+  ])
 
   const createInitialSearch = (): SearchParams => ({
     companyName: '',
@@ -216,6 +262,11 @@
     return fetchVehicleAccidentList({ ...params, from, to })
   }
 
+  const handleTableSuccess: NonNullable<ArtTableQueryProps['onSuccess']> = (rows, response) => {
+    overview.rows = rows as AccidentRecord[]
+    overview.total = response.total ?? rows.length
+  }
+
   const openDialog = (row?: AccidentRecord): void => {
     void dialogRef.value?.handleOpen(row)
   }
@@ -274,3 +325,10 @@
       value: item.value === 'true'
     }))
 </script>
+
+<style scoped lang="scss">
+  .accident-record-page {
+    gap: 12px;
+    min-width: 0;
+  }
+</style>

@@ -1,5 +1,17 @@
 <template>
-  <div class="art-full-height">
+  <div class="maintenance-record-page art-full-height">
+    <VehicleWorkspaceHeader
+      eyebrow="MAINTENANCE CONTROL"
+      title="维修保养记录"
+      description="统一跟踪车辆维修、保养、工期、费用与承修机构，沉淀完整的车辆健康履历。"
+      icon="ri:tools-line"
+      :tags="[
+        { label: '维保闭环', type: 'primary' },
+        { label: '成本可追踪', type: 'info' }
+      ]"
+      :metrics="workspaceMetrics"
+    />
+
     <ArtTableQuery
       ref="tableQueryRef"
       v-model="table.searchQuery"
@@ -8,7 +20,14 @@
       :columns-factory="table.columnsFactory"
       :header-actions="table.headerActions"
       :search-bar-props="{ span: 6, labelWidth: 100 }"
-      :table-props="{ rowKey: 'id', tableLayout: 'fixed' }"
+      :table-props="{
+        rowKey: 'id',
+        tableLayout: 'fixed',
+        emptyText: '暂无维修保养记录',
+        emptyDescription: '可新增维保记录，或调整车辆、维修单号、类型和创建时间后重新查询。'
+      }"
+      :on-success="handleTableSuccess"
+      focusable
     />
 
     <MaintenanceRecordDialog ref="dialogRef" @success="handleSaveSuccess" />
@@ -29,7 +48,8 @@
     ArtTableQueryExpose,
     ArtTableQueryExcelColumn,
     ArtTableQueryHeaderAction,
-    ArtTableQueryHeaderActionContext
+    ArtTableQueryHeaderActionContext,
+    ArtTableQueryProps
   } from '@/components/core/tables/art-table-query/index.vue'
   import type { ColumnOption, DialogType } from '@/types'
   import {
@@ -42,6 +62,9 @@
   import { formatWithDayjs } from '@/utils/time'
   import { useUserStore } from '@/store/modules/user'
   import MaintenanceRecordDialog from './modules/maintenance-record-dialog.vue'
+  import VehicleWorkspaceHeader, {
+    type VehicleWorkspaceMetric
+  } from '@/views/vehicle-manage-system/modules/vehicle-workspace-header.vue'
 
   defineOptions({ name: 'VehicleMaintenance' })
 
@@ -66,6 +89,29 @@
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<DialogExpose>()
   const { getDictMap } = storeToRefs(useUserStore())
+  const overview = reactive<{ total: number; rows: MaintenanceRecord[] }>({ total: 0, rows: [] })
+  const workspaceMetrics = computed<VehicleWorkspaceMetric[]>(() => [
+    {
+      label: '维保记录',
+      value: overview.total,
+      description: '当前筛选条件下的维修保养记录',
+      icon: 'ri:file-list-3-line'
+    },
+    {
+      label: '本页已完工',
+      value: overview.rows.filter((row) => row.endTime).length,
+      description: '已登记结束时间',
+      icon: 'ri:checkbox-circle-line',
+      tone: 'success'
+    },
+    {
+      label: '本页费用待核',
+      value: overview.rows.filter((row) => isNil(row.costAmount)).length,
+      description: '尚未登记维保费用',
+      icon: 'ri:money-cny-circle-line',
+      tone: 'warning'
+    }
+  ])
 
   const createInitialSearch = (): SearchParams => ({
     companyName: '',
@@ -204,6 +250,11 @@
     return fetchVehicleMaintenanceList({ ...params, from, to })
   }
 
+  const handleTableSuccess: NonNullable<ArtTableQueryProps['onSuccess']> = (rows, response) => {
+    overview.rows = rows as MaintenanceRecord[]
+    overview.total = response.total ?? rows.length
+  }
+
   const openDialog = (row?: MaintenanceRecord): void => {
     void dialogRef.value?.handleOpen(row)
   }
@@ -258,3 +309,10 @@
     return `${Number(value).toFixed(2)} 元`
   }
 </script>
+
+<style scoped lang="scss">
+  .maintenance-record-page {
+    gap: 12px;
+    min-width: 0;
+  }
+</style>

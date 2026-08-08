@@ -1,5 +1,7 @@
 <template>
   <ArtDialog ref="dialogRef" size="md">
+    <template #subtitle>维护供应厂商、联系人与服务地址，确保采购和维保协同信息准确可用。</template>
+
     <ArtForm
       ref="formRef"
       v-model="form"
@@ -84,6 +86,7 @@
   }
 
   const items = computed<FormItem[]>(() => [
+    { label: '厂商信息', key: 'organizationSection', type: 'divider', span: 24 },
     {
       label: '供应厂商名称',
       key: 'supplierName',
@@ -93,6 +96,7 @@
         maxlength: 100
       }
     },
+    { label: '联络与地址', key: 'contactSection', type: 'divider', span: 24 },
     {
       label: '联系人',
       key: 'contactPerson',

@@ -1,5 +1,16 @@
 <template>
-  <div class="art-full-height carrier-price">
+  <div class="tms-workspace-page art-full-height carrier-price">
+    <TmsWorkspaceHeader
+      eyebrow="CARRIER RATE CARD"
+      title="承运商报价"
+      description="维护承运线路、运输模式与结算计价规则，为调度决策和成本测算提供依据。"
+      icon="ri:money-cny-circle-line"
+      :tags="[
+        { label: '采购运价', type: 'primary' },
+        { label: '成本基线', type: 'warning' }
+      ]"
+    />
+
     <ArtTableQuery
       ref="tableQueryRef"
       v-model="table.searchQuery"
@@ -8,7 +19,14 @@
       :columns-factory="table.columnsFactory"
       :header-actions="table.headerActions"
       :search-bar-props="{ span: 6, labelWidth: 86, showExpand: false }"
-      :table-props="{ tableLayout: 'fixed', fit: false, showOverflowTooltip: false }"
+      :table-props="{
+        tableLayout: 'fixed',
+        fit: false,
+        showOverflowTooltip: false,
+        emptyText: '暂无承运商报价',
+        emptyDescription: '可新增承运商价，或调整线路、运输模式、计费方式和日期后查询。'
+      }"
+      focusable
     />
   </div>
 </template>
@@ -34,6 +52,7 @@
   import { useUserStore } from '@/store/modules/user'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatWithDayjs } from '@/utils/time'
+  import TmsWorkspaceHeader from '@/views/tms-transportation/modules/tms-workspace-header.vue'
 
   defineOptions({ name: 'TmsCarrierPrice' })
 

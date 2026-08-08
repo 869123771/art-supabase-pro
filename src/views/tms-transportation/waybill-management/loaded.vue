@@ -1,5 +1,17 @@
 <template>
-  <div class="art-full-height waybill-list">
+  <div class="tms-workspace-page art-full-height waybill-list">
+    <TmsWorkspaceHeader
+      eyebrow="WAYBILL EXECUTION"
+      title="运输运单"
+      description="跟踪装货、运输、卸货与完成状态，统一掌握车辆、司机、线路和执行进度。"
+      icon="ri:truck-line"
+      :tags="[
+        { label: '运输执行', type: 'primary' },
+        { label: '节点可追踪', type: 'success' }
+      ]"
+      :metrics="workspaceMetrics"
+    />
+
     <ArtTableQuery
       ref="tableQueryRef"
       v-model="table.searchQuery"
@@ -8,7 +20,13 @@
       :columns-factory="table.columnsFactory"
       :header-actions="table.headerActions"
       :search-bar-props="{ span: 6, labelWidth: 86 }"
-      :table-props="{ rowKey: 'id', tableLayout: 'fixed' }"
+      :table-props="{
+        rowKey: 'id',
+        tableLayout: 'fixed',
+        emptyText: '暂无运输运单',
+        emptyDescription: '当前状态下没有运单，可切换执行状态或调整查询条件。'
+      }"
+      focusable
     >
       <template #table-header-top>
         <div class="waybill-list__status-tabs">
@@ -33,6 +51,9 @@
   import type { ColumnOption } from '@/types'
   import { fetchWaybillStatusCounts } from '@/api/tms'
   import { useUserStore } from '@/store/modules/user'
+  import TmsWorkspaceHeader, {
+    type TmsWorkspaceMetric
+  } from '@/views/tms-transportation/modules/tms-workspace-header.vue'
   import {
     WAYBILL_STATUS_ALL,
     createInitialWaybillSearch,
@@ -112,6 +133,32 @@
         dispatchDialogRef
       })
   })
+
+  const workspaceMetrics = computed<TmsWorkspaceMetric[]>(() => [
+    {
+      label: '执行运单',
+      value: table.statusTotal,
+      description: '当前筛选范围内的运输运单',
+      icon: 'ri:file-list-2-line'
+    },
+    {
+      label: '作业中',
+      value: ['loading', 'transporting', 'unloading'].reduce(
+        (sum, status) => sum + (table.statusCounts[status] ?? 0),
+        0
+      ),
+      description: '装货、运输或卸货中的运单',
+      icon: 'ri:route-line',
+      tone: 'warning'
+    },
+    {
+      label: '已完成',
+      value: table.statusCounts.completed ?? 0,
+      description: '已结束运输执行',
+      icon: 'ri:checkbox-circle-line',
+      tone: 'success'
+    }
+  ])
 
   function fetchTableData(params: TableParams) {
     void loadStatusCounts(params)

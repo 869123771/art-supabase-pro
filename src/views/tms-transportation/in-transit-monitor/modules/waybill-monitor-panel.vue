@@ -38,6 +38,7 @@
         <ArtAsyncState
           :empty="filteredOrders.length === 0"
           empty-text="暂无匹配运单"
+          empty-description="可调整运单状态、车牌号或关键字后重新筛选"
           :empty-image-size="72"
           :min-height="540"
         >

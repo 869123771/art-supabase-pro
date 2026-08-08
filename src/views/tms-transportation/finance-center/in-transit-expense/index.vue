@@ -1,0 +1,922 @@
+<template>
+  <div class="in-transit-expense art-full-height" :class="{ 'is-focus-mode': focusMode }">
+    <header v-if="!focusMode" class="in-transit-expense__hero art-card-xs">
+      <div class="in-transit-expense__hero-copy">
+        <span class="in-transit-expense__hero-icon"><ArtSvgIcon icon="ri:gas-station-line" /></span>
+        <div>
+          <span>运单成本闭环</span>
+          <h2>在途费用申报与报销</h2>
+          <p>从票据上报、财务审核到报销付款，按运单逐笔沉淀成本并完成核销。</p>
+        </div>
+      </div>
+      <div class="in-transit-expense__hero-actions">
+        <ElButton plain @click="void ocrLogDrawerRef?.handleOpen()">
+          <ArtSvgIcon icon="ri:file-search-line" /> OCR 识别记录
+        </ElButton>
+        <ElButton type="primary" @click="openExpenseDialog()">
+          <ArtSvgIcon icon="ri:add-line" /> 上报在途费用
+        </ElButton>
+      </div>
+    </header>
+
+    <section v-if="!focusMode" class="in-transit-expense__metrics">
+      <article v-for="metric in metrics" :key="metric.label" class="art-card-xs">
+        <span :class="metric.tone"><ArtSvgIcon :icon="metric.icon" /></span>
+        <div>
+          <small>{{ metric.label }}</small>
+          <strong>{{ metric.value }}</strong>
+          <p>{{ metric.hint }}</p>
+        </div>
+      </article>
+    </section>
+
+    <nav v-if="!focusMode" class="in-transit-expense__workflow art-card-xs">
+      <div v-for="(step, index) in workflowSteps" :key="step.title">
+        <span>{{ index + 1 }}</span>
+        <div
+          ><strong>{{ step.title }}</strong
+          ><small>{{ step.description }}</small></div
+        >
+        <ArtSvgIcon v-if="index < workflowSteps.length - 1" icon="ri:arrow-right-s-line" />
+      </div>
+    </nav>
+
+    <ElTabs v-if="!focusMode" v-model="activeTab" class="in-transit-expense__tabs">
+      <ElTabPane label="费用申报" name="expense" />
+      <ElTabPane label="报销与支付" name="reimbursement" />
+    </ElTabs>
+
+    <ArtTableQuery
+      v-show="activeTab === 'expense'"
+      ref="expenseTableRef"
+      v-model="expenseTable.search"
+      v-model:focus-mode="focusMode"
+      :search-items="expenseTable.searchItems"
+      :api-fn="fetchExpenseTableData"
+      :columns-factory="expenseColumnsFactory"
+      :header-actions="expenseTable.headerActions"
+      :search-bar-props="{ span: 6, labelWidth: 86, showExpand: false }"
+      :table-props="{ rowKey: 'id', tableLayout: 'fixed' }"
+      focusable
+    />
+
+    <ArtTableQuery
+      v-show="activeTab === 'reimbursement'"
+      ref="reimbursementTableRef"
+      v-model="reimbursementTable.search"
+      v-model:focus-mode="focusMode"
+      :search-items="reimbursementTable.searchItems"
+      :api-fn="fetchReimbursementTableData"
+      :columns-factory="reimbursementColumnsFactory"
+      :header-actions="reimbursementTable.headerActions"
+      :search-bar-props="{ span: 6, labelWidth: 86, showExpand: false }"
+      :table-props="{ rowKey: 'id', tableLayout: 'fixed' }"
+      focusable
+    />
+
+    <ExpenseDialog ref="expenseDialogRef" @success="handleExpenseSaved" />
+    <ReimbursementDialog ref="reimbursementDialogRef" @success="handleReimbursementCreated" />
+    <PaymentDialog ref="paymentDialogRef" @success="handlePaymentSuccess" />
+    <ReimbursementDetailDrawer ref="reimbursementDetailRef" />
+    <OcrLogDrawer ref="ocrLogDrawerRef" />
+  </div>
+</template>
+
+<script setup lang="tsx">
+  import { ElButton } from 'element-plus'
+  import type { ComputedRef } from 'vue'
+  import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
+  import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
+  import ArtButtonMore from '@/components/core/forms/art-button-more/index.vue'
+  import type { ButtonMoreItem } from '@/components/core/forms/art-button-more/index.vue'
+  import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
+  import type {
+    ArtTableQueryExpose,
+    ArtTableQueryHeaderAction
+  } from '@/components/core/tables/art-table-query/index.vue'
+  import type { ColumnOption } from '@/types'
+  import {
+    deleteExpenseReimbursement,
+    deleteInTransitExpense,
+    fetchExpenseReimbursementList,
+    fetchInTransitExpenseList,
+    fetchInTransitExpenseOverview,
+    submitExpenseReimbursement,
+    submitInTransitExpense
+  } from '@/api/tms'
+  import { pageInfoHandler } from '@/utils/table/tableUtils'
+  import { formatWithDayjs } from '@/utils/time'
+  import { formatCurrencyValue } from '@/utils/ui'
+  import { useUserStore } from '@/store/modules/user'
+  import { useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import ExpenseDialog from './modules/expense-dialog.vue'
+  import ReimbursementDialog from './modules/reimbursement-dialog.vue'
+  import PaymentDialog from './modules/payment-dialog.vue'
+  import ReimbursementDetailDrawer from './modules/reimbursement-detail-drawer.vue'
+  import OcrLogDrawer from './modules/ocr-log-drawer.vue'
+
+  defineOptions({ name: 'TmsInTransitExpense' })
+
+  type Expense = Api.Tms.Finance.InTransitExpenseRecord
+  type ExpenseSearch = Api.Tms.Finance.InTransitExpenseSearchParams
+  type ExpenseTableParams = ExpenseSearch & Pick<Api.Common.PaginationParams, 'current' | 'size'>
+  type Reimbursement = Api.Tms.Finance.ExpenseReimbursementRecord
+  type ReimbursementSearch = Api.Tms.Finance.ExpenseReimbursementSearchParams
+  type ReimbursementTableParams = ReimbursementSearch &
+    Pick<Api.Common.PaginationParams, 'current' | 'size'>
+
+  interface ExpenseTableGroup {
+    search: ExpenseSearch
+    searchItems: ComputedRef<SearchFormItem[]>
+    headerActions: ComputedRef<ArtTableQueryHeaderAction[]>
+  }
+
+  interface ReimbursementTableGroup {
+    search: ReimbursementSearch
+    searchItems: ComputedRef<SearchFormItem[]>
+    headerActions: ComputedRef<ArtTableQueryHeaderAction[]>
+  }
+
+  interface ExpenseDialogExpose {
+    handleOpen: (data?: { row?: Expense; orderId?: string }) => Promise<void>
+  }
+
+  interface ReimbursementDialogExpose {
+    handleOpen: (expenses: Expense[]) => Promise<void>
+  }
+
+  interface PaymentDialogExpose {
+    handleOpen: (row: Reimbursement) => Promise<void>
+  }
+
+  interface ReimbursementDetailExpose {
+    handleOpen: (row: Reimbursement) => Promise<void>
+  }
+
+  const route = useRoute()
+  const router = useRouter()
+  const userStore = useUserStore()
+  const { getDictMap } = storeToRefs(userStore)
+  const { confirmAction } = useArtFeedback()
+  const activeTab = ref<'expense' | 'reimbursement'>('expense')
+  const focusMode = ref(false)
+  const expenseTableRef = ref<ArtTableQueryExpose>()
+  const reimbursementTableRef = ref<ArtTableQueryExpose>()
+  const expenseDialogRef = ref<ExpenseDialogExpose>()
+  const reimbursementDialogRef = ref<ReimbursementDialogExpose>()
+  const paymentDialogRef = ref<PaymentDialogExpose>()
+  const reimbursementDetailRef = ref<ReimbursementDetailExpose>()
+  const ocrLogDrawerRef = ref<{ handleOpen: () => Promise<void> }>()
+  const overview = reactive<Api.Tms.Finance.InTransitExpenseOverview>({
+    totalCount: 0,
+    pendingReviewCount: 0,
+    approvedUnconvertedCount: 0,
+    pendingPaymentAmount: 0,
+    paidAmount: 0
+  })
+
+  const workflowSteps = [
+    { title: '费用上报', description: '绑定运单并上传票据' },
+    { title: '财务审核', description: '按配置流程审批' },
+    { title: '转报销单', description: '可合并多笔已审费用' },
+    { title: '出纳支付', description: '登记凭证并逐笔核销' }
+  ]
+  const metrics = computed(() => [
+    {
+      label: '累计申报',
+      value: `${overview.totalCount} 笔`,
+      hint: '所有在途费用申报',
+      icon: 'ri:file-list-3-line',
+      tone: 'is-primary'
+    },
+    {
+      label: '待财务审核',
+      value: `${overview.pendingReviewCount} 笔`,
+      hint: '等待审批中心处理',
+      icon: 'ri:time-line',
+      tone: 'is-warning'
+    },
+    {
+      label: '待转报销',
+      value: `${overview.approvedUnconvertedCount} 笔`,
+      hint: '已通过但未生成报销单',
+      icon: 'ri:exchange-cny-line',
+      tone: 'is-success'
+    },
+    {
+      label: '待支付金额',
+      value: money(overview.pendingPaymentAmount),
+      hint: `已核销 ${money(overview.paidAmount)}`,
+      icon: 'ri:secure-payment-line',
+      tone: 'is-danger'
+    }
+  ])
+
+  const expenseTable = reactive<ExpenseTableGroup>({
+    search: {
+      keyword: '',
+      expenseType: '',
+      reportStatus: '',
+      reimbursementStatus: '',
+      paymentStatus: '',
+      occurredAtRange: []
+    },
+    searchItems: computed<SearchFormItem[]>(() => [
+      {
+        label: '费用场景',
+        key: 'expenseType',
+        type: 'select',
+        props: { options: getDictMap.value.tmsInTransitExpenseType ?? [], clearable: true }
+      },
+      {
+        label: '审核状态',
+        key: 'reportStatus',
+        type: 'select',
+        props: { options: getDictMap.value.tmsInTransitExpenseReportStatus ?? [], clearable: true }
+      },
+      {
+        label: '报销状态',
+        key: 'reimbursementStatus',
+        type: 'select',
+        props: { options: getDictMap.value.tmsExpenseReimbursementStatus ?? [], clearable: true }
+      },
+      {
+        label: '支付状态',
+        key: 'paymentStatus',
+        type: 'select',
+        props: { options: getDictMap.value.tmsExpensePaymentStatus ?? [], clearable: true }
+      },
+      {
+        label: '发生日期',
+        key: 'occurredAtRange',
+        type: 'date',
+        props: {
+          type: 'daterange',
+          valueFormat: 'YYYY-MM-DD',
+          startPlaceholder: '开始日期',
+          endPlaceholder: '结束日期'
+        }
+      },
+      {
+        label: '关键词',
+        key: 'keyword',
+        type: 'input',
+        props: { clearable: true, placeholder: '申报单、运单、车牌、司机、票号' }
+      }
+    ]),
+    headerActions: computed<ArtTableQueryHeaderAction[]>(() => [
+      { type: 'add', label: '上报费用', onClick: () => openExpenseDialog() },
+      {
+        key: 'convert',
+        label: '转费用报销',
+        selectionRequired: true,
+        buttonProps: { type: 'primary', plain: true },
+        disabled: ({ selectedRows }) => (selectedRows as Expense[]).some((row) => !canConvert(row)),
+        onClick: ({ selectedRows }) =>
+          void reimbursementDialogRef.value?.handleOpen(selectedRows as Expense[])
+      },
+      {
+        key: 'ocrLogs',
+        label: 'OCR 记录',
+        buttonProps: { plain: true },
+        onClick: () => void ocrLogDrawerRef.value?.handleOpen()
+      }
+    ])
+  })
+
+  const reimbursementTable = reactive<ReimbursementTableGroup>({
+    search: { keyword: '', status: '', paymentMethod: '', plannedPaymentDateRange: [] },
+    searchItems: computed<SearchFormItem[]>(() => [
+      {
+        label: '审批状态',
+        key: 'status',
+        type: 'select',
+        props: { options: getDictMap.value.tmsReimbursementApprovalStatus ?? [], clearable: true }
+      },
+      {
+        label: '付款方式',
+        key: 'paymentMethod',
+        type: 'select',
+        props: { options: getDictMap.value.tmsCashPaymentMethod ?? [], clearable: true }
+      },
+      {
+        label: '计划付款日',
+        key: 'plannedPaymentDateRange',
+        type: 'date',
+        props: {
+          type: 'daterange',
+          valueFormat: 'YYYY-MM-DD',
+          startPlaceholder: '开始日期',
+          endPlaceholder: '结束日期'
+        }
+      },
+      {
+        label: '关键词',
+        key: 'keyword',
+        type: 'input',
+        props: { clearable: true, placeholder: '报销单、收款人、运单、付款单或流水号' }
+      }
+    ]),
+    headerActions: computed<ArtTableQueryHeaderAction[]>(() => [
+      {
+        key: 'backToExpense',
+        label: '从已审费用生成',
+        buttonProps: { type: 'primary', plain: true },
+        onClick: () => {
+          activeTab.value = 'expense'
+          expenseTable.search.reportStatus = 'approved'
+          expenseTable.search.reimbursementStatus = 'not_converted'
+          void nextTick(() => expenseTableRef.value?.getData())
+        }
+      }
+    ])
+  })
+
+  const expenseColumnsFactory = (): ColumnOption<Expense>[] => [
+    { type: 'selection', width: 50, fixed: 'left', reserveSelection: true },
+    { prop: 'expenseNo', label: '申报单号', width: 195, fixed: 'left' },
+    { prop: 'waybillNoSnapshot', label: '运单号', width: 180, fixed: 'left' },
+    {
+      prop: 'plateNoSnapshot',
+      label: '车牌号',
+      width: 120,
+      formatter: (row) => emptyText(row.plateNoSnapshot)
+    },
+    {
+      prop: 'driverNameSnapshot',
+      label: '司机',
+      width: 110,
+      formatter: (row) => emptyText(row.driverNameSnapshot)
+    },
+    {
+      prop: 'expenseType',
+      label: '费用场景',
+      width: 135,
+      dict: { code: 'tmsInTransitExpenseType', display: 'tag' }
+    },
+    {
+      prop: 'amount',
+      label: '申报金额',
+      width: 130,
+      align: 'right',
+      formatter: (row) => money(row.amount)
+    },
+    {
+      prop: 'occurredAt',
+      label: '发生日期',
+      width: 115,
+      formatter: (row) => formatWithDayjs(row.occurredAt, 'YYYY-MM-DD')
+    },
+    {
+      prop: 'providerName',
+      label: '服务商',
+      minWidth: 150,
+      showOverflowTooltip: true,
+      formatter: (row) => emptyText(row.providerName)
+    },
+    {
+      prop: 'reportStatus',
+      label: '审核状态',
+      width: 110,
+      dict: { code: 'tmsInTransitExpenseReportStatus', display: 'tag' }
+    },
+    {
+      prop: 'reimbursementStatus',
+      label: '报销状态',
+      width: 110,
+      dict: { code: 'tmsExpenseReimbursementStatus', display: 'tag' }
+    },
+    {
+      prop: 'paymentStatus',
+      label: '支付状态',
+      width: 105,
+      dict: { code: 'tmsExpensePaymentStatus', display: 'tag' }
+    },
+    {
+      prop: 'ocrStatus',
+      label: 'OCR',
+      width: 105,
+      dict: { code: 'tmsExpenseOcrStatus', display: 'tag' }
+    },
+    {
+      prop: 'operation',
+      label: '操作',
+      width: 150,
+      fixed: 'right',
+      formatter: (row) => (
+        <div class="flex items-center">
+          <ArtButtonTable
+            type="edit"
+            disabled={!canEditExpense(row)}
+            onClick={() => openExpenseDialog(row)}
+          />
+          <ArtButtonMore
+            list={expenseMoreActions(row)}
+            onClick={(item: ButtonMoreItem) => handleExpenseAction(item, row)}
+          />
+        </div>
+      )
+    }
+  ]
+
+  const reimbursementColumnsFactory = (): ColumnOption<Reimbursement>[] => [
+    { prop: 'reimbursementNo', label: '报销单号', width: 200, fixed: 'left' },
+    { prop: 'applicantNameSnapshot', label: '申请人', width: 115 },
+    { prop: 'payeeName', label: '收款人', minWidth: 150, showOverflowTooltip: true },
+    { prop: 'waybillNos', label: '关联运单', minWidth: 210, showOverflowTooltip: true },
+    { prop: 'itemCount', label: '费用笔数', width: 95, align: 'center' },
+    {
+      prop: 'totalAmount',
+      label: '报销金额',
+      width: 135,
+      align: 'right',
+      formatter: (row) => money(row.totalAmount)
+    },
+    {
+      prop: 'paymentMethod',
+      label: '付款方式',
+      width: 115,
+      dict: { code: 'tmsCashPaymentMethod', display: 'tag' }
+    },
+    { prop: 'plannedPaymentDate', label: '计划付款日', width: 120 },
+    {
+      prop: 'status',
+      label: '审批/支付状态',
+      width: 135,
+      dict: { code: 'tmsReimbursementApprovalStatus', display: 'tag' }
+    },
+    {
+      prop: 'paymentNo',
+      label: '付款单号',
+      width: 195,
+      formatter: (row) => emptyText(row.paymentNo)
+    },
+    {
+      prop: 'createTime',
+      label: '创建时间',
+      width: 165,
+      formatter: (row) => formatWithDayjs(row.createTime, 'YYYY-MM-DD HH:mm')
+    },
+    {
+      prop: 'operation',
+      label: '操作',
+      width: 160,
+      fixed: 'right',
+      formatter: (row) => (
+        <div class="flex items-center">
+          <ArtButtonTable
+            type="view"
+            onClick={() => void reimbursementDetailRef.value?.handleOpen(row)}
+          />
+          <ArtButtonMore
+            list={reimbursementMoreActions(row)}
+            onClick={(item: ButtonMoreItem) => handleReimbursementAction(item, row)}
+          />
+        </div>
+      )
+    }
+  ]
+
+  function fetchExpenseTableData(params: ExpenseTableParams) {
+    const { from, to } = pageInfoHandler({ current: params.current, size: params.size })
+    return fetchInTransitExpenseList({ ...params, from, to })
+  }
+
+  function fetchReimbursementTableData(params: ReimbursementTableParams) {
+    const { from, to } = pageInfoHandler({ current: params.current, size: params.size })
+    return fetchExpenseReimbursementList({ ...params, from, to })
+  }
+
+  function emptyText(value: unknown): string {
+    return String(value || '--')
+  }
+
+  function money(value?: number | null): string {
+    return formatCurrencyValue(Number(value ?? 0))
+  }
+
+  function canEditExpense(row: Expense): boolean {
+    return (
+      ['draft', 'rejected'].includes(String(row.reportStatus)) &&
+      row.reimbursementStatus === 'not_converted'
+    )
+  }
+
+  function canConvert(row: Expense): boolean {
+    return (
+      Boolean(row.id) &&
+      row.reportStatus === 'approved' &&
+      row.reimbursementStatus === 'not_converted' &&
+      row.paymentStatus === 'unpaid'
+    )
+  }
+
+  function expenseMoreActions(row: Expense): ButtonMoreItem[] {
+    const actions: ButtonMoreItem[] = []
+    if (canEditExpense(row)) {
+      actions.push({ key: 'submit', label: '提交财务审核', icon: 'ri:send-plane-line' })
+      actions.push({
+        key: 'delete',
+        label: '删除草稿',
+        icon: 'ri:delete-bin-line',
+        color: 'var(--el-color-danger)'
+      })
+    }
+    if (canConvert(row)) {
+      actions.push({ key: 'convert', label: '转费用报销', icon: 'ri:exchange-cny-line' })
+    }
+    return actions
+  }
+
+  function reimbursementMoreActions(row: Reimbursement): ButtonMoreItem[] {
+    const actions: ButtonMoreItem[] = []
+    if (['draft', 'rejected'].includes(row.status)) {
+      actions.push({ key: 'submit', label: '提交报销审批', icon: 'ri:send-plane-line' })
+      actions.push({
+        key: 'delete',
+        label: '删除并退回费用',
+        icon: 'ri:delete-bin-line',
+        color: 'var(--el-color-danger)'
+      })
+    }
+    if (row.status === 'approved') {
+      actions.push({ key: 'pay', label: '出纳付款', icon: 'ri:secure-payment-line' })
+    }
+    return actions
+  }
+
+  function handleExpenseAction(item: ButtonMoreItem, row: Expense): void {
+    const actions: Record<string, () => void> = {
+      submit: () => void handleExpenseSubmit(row),
+      delete: () => void handleExpenseDelete(row),
+      convert: () => void reimbursementDialogRef.value?.handleOpen([row])
+    }
+    actions[String(item.key)]?.()
+  }
+
+  function handleReimbursementAction(item: ButtonMoreItem, row: Reimbursement): void {
+    const actions: Record<string, () => void> = {
+      submit: () => void handleReimbursementSubmit(row),
+      delete: () => void handleReimbursementDelete(row),
+      pay: () => void paymentDialogRef.value?.handleOpen(row)
+    }
+    actions[String(item.key)]?.()
+  }
+
+  function openExpenseDialog(row?: Expense): void {
+    if (row && !canEditExpense(row)) return
+    void expenseDialogRef.value?.handleOpen({ row })
+  }
+
+  async function handleExpenseSubmit(row: Expense): Promise<void> {
+    if (!row.id) return
+    try {
+      await confirmAction('提交后费用内容将锁定，并进入配置的财务审批流程。', '提交费用审核', {
+        type: 'warning',
+        confirmButtonText: '提交审核',
+        cancelButtonText: '取消'
+      })
+      await submitInTransitExpense(row)
+      await Promise.all([expenseTableRef.value?.refreshUpdate(), loadOverview()])
+    } catch {
+      // User cancelled the confirmation.
+    }
+  }
+
+  async function handleExpenseDelete(row: Expense): Promise<void> {
+    if (!row.id) return
+    try {
+      await confirmAction('删除后票据与草稿关联将无法恢复。', '删除在途费用草稿', {
+        type: 'warning',
+        confirmButtonText: '确认删除',
+        cancelButtonText: '取消',
+        confirmButtonClass: 'el-button--danger'
+      })
+      await deleteInTransitExpense(row.id)
+      await Promise.all([expenseTableRef.value?.refreshRemove(), loadOverview()])
+    } catch {
+      // User cancelled the confirmation.
+    }
+  }
+
+  async function handleReimbursementSubmit(row: Reimbursement): Promise<void> {
+    try {
+      await confirmAction('提交后报销内容将锁定，并进入配置的报销审批流程。', '提交报销审批', {
+        type: 'warning',
+        confirmButtonText: '提交审批',
+        cancelButtonText: '取消'
+      })
+      await submitExpenseReimbursement(row)
+      await reimbursementTableRef.value?.refreshUpdate()
+    } catch {
+      // User cancelled the confirmation.
+    }
+  }
+
+  async function handleReimbursementDelete(row: Reimbursement): Promise<void> {
+    try {
+      await confirmAction('删除后，明细费用会退回“未转报销”状态。', '删除费用报销单', {
+        type: 'warning',
+        confirmButtonText: '删除并退回',
+        cancelButtonText: '取消',
+        confirmButtonClass: 'el-button--danger'
+      })
+      await deleteExpenseReimbursement(row.id)
+      await Promise.all([
+        reimbursementTableRef.value?.refreshRemove(),
+        expenseTableRef.value?.refreshUpdate(),
+        loadOverview()
+      ])
+    } catch {
+      // User cancelled the confirmation.
+    }
+  }
+
+  function handleExpenseSaved(type: 'add' | 'edit'): void {
+    void Promise.all([
+      type === 'add'
+        ? expenseTableRef.value?.refreshCreate()
+        : expenseTableRef.value?.refreshUpdate(),
+      loadOverview()
+    ])
+  }
+
+  function handleReimbursementCreated(): void {
+    activeTab.value = 'reimbursement'
+    void nextTick(() =>
+      Promise.all([
+        reimbursementTableRef.value?.refreshCreate(),
+        expenseTableRef.value?.refreshUpdate(),
+        loadOverview()
+      ])
+    )
+  }
+
+  function handlePaymentSuccess(): void {
+    void Promise.all([
+      reimbursementTableRef.value?.refreshUpdate(),
+      expenseTableRef.value?.refreshUpdate(),
+      loadOverview()
+    ])
+  }
+
+  async function loadOverview(): Promise<void> {
+    const { data } = await fetchInTransitExpenseOverview()
+    if (data) Object.assign(overview, data)
+  }
+
+  async function openFromOrderQuery(): Promise<void> {
+    const orderId = typeof route.query.orderId === 'string' ? route.query.orderId : ''
+    if (!orderId) return
+    await nextTick()
+    await expenseDialogRef.value?.handleOpen({ orderId })
+    const query = { ...route.query }
+    delete query.orderId
+    await router.replace({ query })
+  }
+
+  onMounted(() => {
+    void Promise.all([userStore.fetchDictList(), loadOverview()])
+  })
+
+  watch(
+    () => route.query.orderId,
+    (orderId) => {
+      if (typeof orderId === 'string' && orderId) void openFromOrderQuery()
+    },
+    { immediate: true }
+  )
+
+  watch(activeTab, async (value) => {
+    await nextTick()
+    if (value === 'reimbursement') await reimbursementTableRef.value?.getData()
+  })
+</script>
+
+<style scoped lang="scss">
+  .in-transit-expense {
+    display: flex;
+    flex-direction: column;
+    gap: var(--art-space-4);
+    min-width: 0;
+
+    &.is-focus-mode {
+      gap: 0;
+    }
+
+    &__hero {
+      display: flex;
+      gap: var(--art-space-5);
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--art-space-5);
+    }
+
+    &__hero-copy,
+    &__hero-actions,
+    &__workflow,
+    &__workflow > div {
+      display: flex;
+      align-items: center;
+    }
+
+    &__hero-copy {
+      gap: var(--art-space-4);
+      min-width: 0;
+
+      > div {
+        min-width: 0;
+
+        > span {
+          font-size: 12px;
+          font-weight: 700;
+          color: rgb(var(--ui-primary));
+          letter-spacing: 0.05em;
+        }
+      }
+
+      h2 {
+        margin: 2px 0 4px;
+        font-size: 22px;
+        color: var(--art-text-gray-900);
+      }
+
+      p {
+        margin: 0;
+        line-height: 1.6;
+        color: var(--art-text-gray-500);
+      }
+    }
+
+    &__hero-icon {
+      display: grid;
+      flex: 0 0 52px;
+      place-items: center;
+      width: 52px;
+      height: 52px;
+      font-size: 25px;
+      color: rgb(var(--ui-primary));
+      background: rgb(var(--ui-primary) / 10%);
+      border-radius: var(--el-border-radius-base);
+    }
+
+    &__hero-actions {
+      flex: 0 0 auto;
+      gap: var(--art-space-3);
+    }
+
+    &__metrics {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: var(--art-space-3);
+
+      > article {
+        display: flex;
+        gap: var(--art-space-3);
+        align-items: center;
+        min-width: 0;
+        padding: var(--art-space-4);
+
+        > span {
+          display: grid;
+          flex: 0 0 38px;
+          place-items: center;
+          width: 38px;
+          height: 38px;
+          border-radius: var(--el-border-radius-base);
+
+          &.is-primary {
+            color: var(--el-color-primary);
+            background: var(--el-color-primary-light-9);
+          }
+
+          &.is-warning {
+            color: var(--el-color-warning);
+            background: var(--el-color-warning-light-9);
+          }
+
+          &.is-success {
+            color: var(--el-color-success);
+            background: var(--el-color-success-light-9);
+          }
+
+          &.is-danger {
+            color: var(--el-color-danger);
+            background: var(--el-color-danger-light-9);
+          }
+        }
+
+        > div {
+          min-width: 0;
+        }
+
+        small,
+        p {
+          color: var(--art-text-gray-500);
+        }
+
+        strong {
+          display: block;
+          margin: 2px 0;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          font-size: 19px;
+          color: var(--art-text-gray-900);
+          white-space: nowrap;
+        }
+
+        p {
+          margin: 0;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          font-size: 11px;
+          white-space: nowrap;
+        }
+      }
+    }
+
+    &__workflow {
+      gap: 0;
+      padding: var(--art-space-3) var(--art-space-4);
+
+      > div {
+        flex: 1;
+        gap: var(--art-space-2);
+        min-width: 0;
+
+        > span {
+          display: grid;
+          flex: 0 0 26px;
+          place-items: center;
+          width: 26px;
+          height: 26px;
+          font-size: 12px;
+          font-weight: 700;
+          color: rgb(var(--ui-primary));
+          background: rgb(var(--ui-primary) / 10%);
+          border-radius: 50%;
+        }
+
+        > div {
+          display: flex;
+          flex-direction: column;
+          min-width: 0;
+
+          strong {
+            font-size: 13px;
+            color: var(--art-text-gray-800);
+          }
+
+          small {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            color: var(--art-text-gray-500);
+            white-space: nowrap;
+          }
+        }
+
+        > svg {
+          margin-left: auto;
+          color: var(--art-text-gray-300);
+        }
+      }
+    }
+
+    &__tabs {
+      margin-bottom: calc(var(--art-space-4) * -1);
+    }
+
+    @media (width <= 1100px) {
+      &__metrics {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      &__workflow {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: var(--art-space-3);
+
+        > div > svg {
+          display: none;
+        }
+      }
+    }
+
+    @media (width <= 720px) {
+      &__hero,
+      &__hero-actions {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      &__hero-actions > button {
+        width: 100%;
+      }
+
+      &__metrics,
+      &__workflow {
+        grid-template-columns: 1fr;
+      }
+    }
+  }
+</style>

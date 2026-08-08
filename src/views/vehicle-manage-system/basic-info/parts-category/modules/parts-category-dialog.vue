@@ -1,5 +1,7 @@
 <template>
   <ArtDialog ref="dialogRef" size="md">
+    <template #subtitle>维护类别层级、业务编码与可用状态，避免零部件分类重复或失序。</template>
+
     <ArtForm
       ref="formRef"
       v-model="form"
@@ -93,6 +95,7 @@
   }
 
   const items = computed<FormItem[]>(() => [
+    { label: '层级与编码', key: 'structureSection', type: 'divider', span: 24 },
     {
       label: '上级类别',
       key: 'parentId',
@@ -145,6 +148,7 @@
         class: '!w-full'
       }
     },
+    { label: '使用设置', key: 'usageSection', type: 'divider', span: 24 },
     {
       label: '状态',
       key: 'status',

@@ -1,5 +1,17 @@
 <template>
   <div class="vehicle-part-usage-page art-full-height">
+    <VehicleWorkspaceHeader
+      eyebrow="PARTS LIFECYCLE"
+      title="车辆零部件"
+      description="跟踪零部件装车、RFID、质保、使用年限与里程状态，让关键部件全生命周期可追溯。"
+      icon="ri:settings-5-line"
+      :tags="[
+        { label: '一件一档', type: 'primary' },
+        { label: '寿命可追踪', type: 'info' }
+      ]"
+      :metrics="workspaceMetrics"
+    />
+
     <ArtTableQuery
       ref="tableQueryRef"
       v-model="table.searchQuery"
@@ -8,7 +20,14 @@
       :columns-factory="table.columnsFactory"
       :header-actions="table.headerActions"
       :search-bar-props="{ span: 6, labelWidth: 90 }"
-      :table-props="{ rowKey: 'id', tableLayout: 'fixed' }"
+      :table-props="{
+        rowKey: 'id',
+        tableLayout: 'fixed',
+        emptyText: '暂无车辆零部件记录',
+        emptyDescription: '可新增装车零部件，或调整车辆、类别、名称、RFID 和状态后重新查询。'
+      }"
+      :on-success="handleTableSuccess"
+      focusable
     />
 
     <VehiclePartUsageDialog ref="dialogRef" @success="handleSaveSuccess" />
@@ -26,7 +45,8 @@
   import type {
     ArtTableQueryExpose,
     ArtTableQueryHeaderAction,
-    ArtTableQueryHeaderActionContext
+    ArtTableQueryHeaderActionContext,
+    ArtTableQueryProps
   } from '@/components/core/tables/art-table-query/index.vue'
   import type { ColumnOption, DialogType } from '@/types'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
@@ -40,6 +60,9 @@
   import { useUserStore } from '@/store/modules/user'
   import TreeUtils from '@/utils/tree'
   import VehiclePartUsageDialog from './modules/vehicle-part-usage-dialog.vue'
+  import VehicleWorkspaceHeader, {
+    type VehicleWorkspaceMetric
+  } from '@/views/vehicle-manage-system/modules/vehicle-workspace-header.vue'
 
   defineOptions({ name: 'VehiclePartsManage' })
 
@@ -70,6 +93,29 @@
     parentKey: 'parentId',
     childrenKey: 'children'
   })
+  const overview = reactive<{ total: number; rows: Usage[] }>({ total: 0, rows: [] })
+  const workspaceMetrics = computed<VehicleWorkspaceMetric[]>(() => [
+    {
+      label: '装车零部件',
+      value: overview.total,
+      description: '当前筛选条件下的使用记录',
+      icon: 'ri:settings-5-line'
+    },
+    {
+      label: '本页 RFID 已绑定',
+      value: overview.rows.filter((row) => row.rfidTag).length,
+      description: '可通过标签快速识别追踪',
+      icon: 'ri:rfid-line',
+      tone: 'success'
+    },
+    {
+      label: '本页 RFID 待绑定',
+      value: overview.rows.filter((row) => !row.rfidTag).length,
+      description: '尚未登记零部件标签',
+      icon: 'ri:link-unlink-m',
+      tone: 'warning'
+    }
+  ])
 
   const table: UnwrapNestedRefs<TableGroup> = reactive<TableGroup>({
     searchQuery: {
@@ -222,6 +268,11 @@
     return fetchVehiclePartUsageList({ ...params, from, to })
   }
 
+  const handleTableSuccess: NonNullable<ArtTableQueryProps['onSuccess']> = (rows, response) => {
+    overview.rows = rows as Usage[]
+    overview.total = response.total ?? rows.length
+  }
+
   const formatWarranty = (row: Usage): string => {
     if (row.warrantyMode === 'vehicle') return '随整车质保'
     const values = [
@@ -300,3 +351,10 @@
     }
   }
 </script>
+
+<style scoped lang="scss">
+  .vehicle-part-usage-page {
+    gap: 12px;
+    min-width: 0;
+  }
+</style>

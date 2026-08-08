@@ -1,5 +1,16 @@
 <template>
-  <div class="art-full-height customer-price">
+  <div class="tms-workspace-page art-full-height customer-price">
+    <TmsWorkspaceHeader
+      eyebrow="CUSTOMER RATE CARD"
+      title="客户报价"
+      description="按运输线路、货物与计费方式维护客户价格方案，支撑快速报价与运费核算。"
+      icon="ri:price-tag-3-line"
+      :tags="[
+        { label: '销售报价', type: 'primary' },
+        { label: '线路计价', type: 'info' }
+      ]"
+    />
+
     <ArtTableQuery
       ref="tableQueryRef"
       v-model="table.searchQuery"
@@ -8,7 +19,14 @@
       :columns-factory="columnsFactory"
       :header-actions="headerActions"
       :search-bar-props="{ span: 6, labelWidth: 86, showExpand: false }"
-      :table-props="{ tableLayout: 'fixed', fit: false, showOverflowTooltip: false }"
+      :table-props="{
+        tableLayout: 'fixed',
+        fit: false,
+        showOverflowTooltip: false,
+        emptyText: '暂无客户报价',
+        emptyDescription: '可新增客户价，或调整线路、客户、运输类型和日期后重新查询。'
+      }"
+      focusable
     />
   </div>
 </template>
@@ -33,6 +51,7 @@
   import { useUserStore } from '@/store/modules/user'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatWithDayjs } from '@/utils/time'
+  import TmsWorkspaceHeader from '@/views/tms-transportation/modules/tms-workspace-header.vue'
 
   defineOptions({ name: 'TmsCustomerPrice' })
 

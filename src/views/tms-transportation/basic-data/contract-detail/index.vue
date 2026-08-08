@@ -15,6 +15,38 @@
       @back="goBack"
     />
 
+    <section class="contract-detail__summary art-card-xs" aria-label="合同概览">
+      <article>
+        <span>合同状态</span>
+        <ElTag
+          v-if="detail.data?.contractStatus"
+          :type="statusMeta[detail.data.contractStatus].type"
+          effect="light"
+        >
+          {{ statusMeta[detail.data.contractStatus].label }}
+        </ElTag>
+        <strong v-else>--</strong>
+      </article>
+      <article>
+        <span>合同金额</span>
+        <strong>¥ {{ formatMoney(detail.data?.contractAmount) }}</strong>
+      </article>
+      <article>
+        <span>计费方式</span>
+        <ArtDictDisplay
+          v-if="detail.data?.billingMethod"
+          dict-code="tmsContractBillingMethod"
+          :value="detail.data.billingMethod"
+          display="text"
+        />
+        <strong v-else>--</strong>
+      </article>
+      <article>
+        <span>合同附件</span>
+        <strong>{{ attachments.length }} 份</strong>
+      </article>
+    </section>
+
     <div class="contract-detail__content">
       <section class="contract-detail__section art-card-xs">
         <ArtSectionTitle>基础信息</ArtSectionTitle>
@@ -53,6 +85,7 @@
   import type { ArtDescriptionItem } from '@/components/core/base/art-descriptions/types'
   import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
   import ArtAttachmentLink from '@/components/core/media/art-file-viewer/attachment-link.vue'
+  import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import { fetchContractDetail } from '@/api/tms'
 
   defineOptions({ name: 'TmsContractDetail' })
@@ -161,6 +194,42 @@
       margin-top: 12px;
     }
 
+    &__summary {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      margin-top: 12px;
+      overflow: hidden;
+
+      article {
+        display: grid;
+        gap: 6px;
+        min-width: 0;
+        padding: 16px 20px;
+
+        &:not(:last-child) {
+          border-right: 1px solid var(--el-border-color-lighter);
+        }
+
+        > span {
+          font-size: 12px;
+          color: var(--el-text-color-secondary);
+        }
+
+        > strong {
+          overflow: hidden;
+          text-overflow: ellipsis;
+          font-size: 18px;
+          font-variant-numeric: tabular-nums;
+          color: var(--el-text-color-primary);
+          white-space: nowrap;
+        }
+
+        :deep(.el-tag) {
+          width: fit-content;
+        }
+      }
+    }
+
     &__section {
       padding: 20px;
     }
@@ -176,8 +245,34 @@
       font-weight: 600;
     }
 
-    @media (max-width: 768px) {
+    @media (width <= 768px) {
       padding: var(--art-space-3);
+
+      &__summary {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+
+        article:nth-child(2) {
+          border-right: 0;
+        }
+
+        article:nth-child(-n + 2) {
+          border-bottom: 1px solid var(--el-border-color-lighter);
+        }
+      }
+    }
+
+    @media (width <= 520px) {
+      &__summary {
+        grid-template-columns: 1fr;
+
+        article {
+          border-right: 0 !important;
+
+          &:not(:last-child) {
+            border-bottom: 1px solid var(--el-border-color-lighter);
+          }
+        }
+      }
     }
   }
 </style>

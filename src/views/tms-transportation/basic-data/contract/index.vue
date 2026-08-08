@@ -1,5 +1,16 @@
 <template>
-  <div class="art-full-height">
+  <div class="tms-workspace-page art-full-height">
+    <TmsWorkspaceHeader
+      eyebrow="CONTRACT GOVERNANCE"
+      title="运输合同"
+      description="集中管理承运合同、计费方式、生效周期与审核状态，确保运输合作有据可循。"
+      icon="ri:file-shield-2-line"
+      :tags="[
+        { label: '合同治理', type: 'primary' },
+        { label: '周期可追踪', type: 'warning' }
+      ]"
+    />
+
     <ArtTableQuery
       ref="tableQueryRef"
       v-model="table.searchQuery"
@@ -8,6 +19,11 @@
       :columns-factory="columnsFactory"
       :header-actions="headerActions"
       :search-bar-props="{ span: 6, labelWidth: 86, showExpand: false }"
+      :table-props="{
+        emptyText: '暂无运输合同',
+        emptyDescription: '可新增合同，或调整状态、承运商、计费方式和关键字后重新查询。'
+      }"
+      focusable
     />
 
     <ContractDialog ref="dialogRef" @success="handleSaveSuccess" />
@@ -40,6 +56,7 @@
     importContracts
   } from '@/api/tms'
   import ContractDialog from './modules/contract-dialog.vue'
+  import TmsWorkspaceHeader from '@/views/tms-transportation/modules/tms-workspace-header.vue'
 
   defineOptions({ name: 'TmsContract' })
 

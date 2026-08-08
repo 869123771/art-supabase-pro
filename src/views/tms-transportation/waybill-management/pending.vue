@@ -1,5 +1,16 @@
 <template>
-  <div class="art-full-height waybill-list">
+  <div class="tms-workspace-page art-full-height waybill-list">
+    <TmsWorkspaceHeader
+      eyebrow="DISPATCH QUEUE"
+      title="待调度运单"
+      description="聚合尚未完成派车的运输需求，统一核对线路、货物、付款方式与调度条件。"
+      icon="ri:route-line"
+      :tags="[
+        { label: '待调度队列', type: 'warning' },
+        { label: '运力匹配', type: 'primary' }
+      ]"
+    />
+
     <ArtTableQuery
       ref="tableQueryRef"
       v-model="table.searchQuery"
@@ -8,7 +19,13 @@
       :columns-factory="table.columnsFactory"
       :header-actions="table.headerActions"
       :search-bar-props="{ span: 6, labelWidth: 86 }"
-      :table-props="{ rowKey: 'id', tableLayout: 'fixed' }"
+      :table-props="{
+        rowKey: 'id',
+        tableLayout: 'fixed',
+        emptyText: '暂无待调度运单',
+        emptyDescription: '当前没有待派车任务，可调整客户、线路、付款方式和时间条件后重新查询。'
+      }"
+      focusable
     />
 
     <DispatchDialog ref="dispatchDialogRef" @success="handleDispatchSuccess" />
@@ -25,6 +42,7 @@
   import type { ColumnOption } from '@/types'
   import { useUserStore } from '@/store/modules/user'
   import DispatchDialog from './modules/dispatch-dialog.vue'
+  import TmsWorkspaceHeader from '@/views/tms-transportation/modules/tms-workspace-header.vue'
   import {
     createInitialWaybillSearch,
     createWaybillColumns,

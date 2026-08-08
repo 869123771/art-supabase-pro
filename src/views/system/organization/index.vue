@@ -13,9 +13,7 @@
           </div>
         </div>
         <div class="organization-page__hero-status">
-          <ElTag :type="canManageOrganization ? 'success' : 'info'" effect="light" round>
-            {{ canManageOrganization ? '组织管理员模式' : '租户内只读模式' }}
-          </ElTag>
+          <ElTag type="success" effect="light" round>权限按角色授权</ElTag>
           <ElTag type="primary" effect="plain" round>用户 · 角色 · 菜单联动</ElTag>
         </div>
       </header>
@@ -130,22 +128,18 @@
 
   const { confirmAction } = useArtFeedback()
   const userStore = useUserStore()
-  const { getDictMap, getUserInfo, isPlatformSuper } = storeToRefs(userStore)
+  const { getDictMap } = storeToRefs(userStore)
   const treeUtils = new TreeUtils({ idKey: 'id', parentKey: 'parentId', childrenKey: 'children' })
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const organizationDialogRef = ref<OrganizationDialogExpose>()
   const organizationDetailDrawerRef = ref<OrganizationDetailDrawerExpose>()
+  const organizationDepthMap = shallowRef(new Map<string, number>())
   const overview = reactive<OverviewState>({
     organizations: 0,
     members: 0,
     roles: 0,
     menus: 0
   })
-
-  const canManageOrganization = computed(
-    () =>
-      Boolean(isPlatformSuper.value) || Boolean(getUserInfo.value.userRoles?.includes('R_ADMIN'))
-  )
 
   const searchForm = ref<OrganizationSearchParams>({
     keyword: '',
@@ -187,24 +181,31 @@
     }
   ])
 
-  const headerActions = computed<ArtTableQueryHeaderAction[]>(() =>
-    canManageOrganization.value
-      ? [
-          {
-            type: 'add',
-            label: '新增组织',
-            permission: 'System:Organization:Add',
-            onClick: () => openOrganizationDialog('add')
-          }
-        ]
-      : []
-  )
+  const headerActions = computed<ArtTableQueryHeaderAction[]>(() => [
+    {
+      type: 'add',
+      label: '新增组织',
+      permission: 'System:Organization:Add',
+      onClick: () => openOrganizationDialog('add')
+    }
+  ])
 
   const tableProps: ArtTableQueryTableProps = {
     rowKey: 'id',
     tableLayout: 'fixed',
     treeProps: { children: 'children', hasChildren: 'hasChildren' },
+    indent: 18,
     defaultExpandAll: true,
+    rowClassName: ({ row }) => {
+      const organization = row as Organization
+      const depth = organization.id ? (organizationDepthMap.value.get(organization.id) ?? 0) : 0
+      return [
+        'organization-tree-row',
+        depth === 0 ? 'is-root' : 'is-child',
+        `is-depth-${Math.min(depth, 6)}`,
+        organization.children?.length ? 'has-children' : 'is-leaf'
+      ].join(' ')
+    },
     emptyText: '暂无符合条件的组织',
     emptyDescription: '可调整筛选条件；组织管理员也可以新增组织节点。',
     paginationOptions: {
@@ -231,13 +232,18 @@
     return menuIds.size
   }
 
+  const getOrganizationDepth = (row: Organization): number =>
+    row.id ? (organizationDepthMap.value.get(row.id) ?? 0) : 0
+
   const columnsFactory = (): ColumnOption<Organization>[] => [
     {
       prop: 'organizationIdentity',
-      label: '组织信息',
-      minWidth: 250,
-      formatter: (row) =>
-        h('div', { class: 'organization-identity-cell' }, [
+      label: '组织层级',
+      minWidth: 340,
+      formatter: (row) => {
+        const depth = getOrganizationDepth(row)
+        const childCount = row.children?.length ?? 0
+        return h('div', { class: 'organization-identity-cell' }, [
           h(
             'span',
             {
@@ -253,20 +259,31 @@
                 ? h('span', { class: 'organization-identity-cell__system' }, '根组织')
                 : null
             ]),
-            h('small', { title: row.organizationCode, translate: 'no' }, row.organizationCode)
+            h('div', { class: 'organization-identity-cell__meta' }, [
+              h('small', { title: row.organizationCode, translate: 'no' }, row.organizationCode),
+              h('i', { 'aria-hidden': 'true' }),
+              h('span', { class: 'organization-identity-cell__level' }, `第 ${depth + 1} 级`),
+              childCount
+                ? h('span', { class: 'organization-identity-cell__children' }, [
+                    h(ArtSvgIcon, { icon: 'ri:git-branch-line' }),
+                    `${childCount} 个直属下级`
+                  ])
+                : null
+            ])
           ])
         ])
+      }
     },
     {
       prop: 'organizationType',
       label: '组织类型',
-      width: 104,
+      width: 110,
       dict: { code: 'organizationType', display: 'auto' }
     },
     {
       prop: 'tenant',
       label: '所属租户',
-      minWidth: 168,
+      minWidth: 160,
       formatter: (row) =>
         h('div', { class: 'organization-tenant-cell' }, [
           h('span', { title: row.tenant?.tenantName }, row.tenant?.tenantName || '当前租户'),
@@ -278,7 +295,7 @@
     {
       prop: 'leader',
       label: '负责人',
-      minWidth: 160,
+      minWidth: 150,
       formatter: (row) =>
         row.leader
           ? h('div', { class: 'organization-leader-cell' }, [
@@ -293,9 +310,18 @@
       minWidth: 190,
       formatter: (row) =>
         h('div', { class: 'organization-access-cell' }, [
-          h('span', null, [h('strong', null, String(row.members?.length ?? 0)), ' 名成员']),
-          h('span', null, [h('strong', null, String(row.roles?.length ?? 0)), ' 个角色']),
-          h('span', null, [h('strong', null, String(getMenuCoverage(row))), ' 项菜单'])
+          h('span', null, [
+            h('strong', null, String(row.members?.length ?? 0)),
+            h('small', null, '成员')
+          ]),
+          h('span', null, [
+            h('strong', null, String(row.roles?.length ?? 0)),
+            h('small', null, '角色')
+          ]),
+          h('span', null, [
+            h('strong', null, String(getMenuCoverage(row))),
+            h('small', null, '菜单')
+          ])
         ])
     },
     {
@@ -313,7 +339,7 @@
     {
       prop: 'operation',
       label: '操作',
-      width: canManageOrganization.value ? 186 : 88,
+      width: 112,
       fixed: 'right',
       formatter: (row) =>
         h('div', { class: 'organization-operation-cell' }, [
@@ -322,12 +348,10 @@
             label: '治理详情',
             onClick: () => organizationDetailDrawerRef.value?.handleOpen(row)
           }),
-          canManageOrganization.value
-            ? h(ArtButtonMore, {
-                list: getOrganizationActions(row),
-                onClick: (item: ButtonMoreItem) => handleOrganizationAction(item, row)
-              })
-            : null
+          h(ArtButtonMore, {
+            list: getOrganizationActions(row),
+            onClick: (item: ButtonMoreItem) => handleOrganizationAction(item, row)
+          })
         ])
     }
   ]
@@ -382,6 +406,12 @@
   }
 
   const handleTableSuccess: NonNullable<ArtTableQueryProps['onSuccess']> = (rows) => {
+    const depthMap = new Map<string, number>()
+    treeUtils.traverse(rows as Organization[], (organization, depth) => {
+      if (organization.id) depthMap.set(organization.id, depth)
+    })
+    organizationDepthMap.value = depthMap
+
     const organizations = treeUtils.treeToList(rows as Organization[])
     const menuIds = new Set<string>()
     let members = 0
@@ -591,17 +621,82 @@
 
     :deep(.organization-identity-cell) {
       display: flex;
-      gap: 10px;
+      gap: 12px;
       align-items: center;
       min-width: 0;
+      min-height: 44px;
+    }
+
+    :deep(.organization-tree-row > td:first-child) {
+      position: relative;
+    }
+
+    :deep(.organization-tree-row.is-root > td:first-child) {
+      box-shadow: inset 3px 0 0 var(--theme-color);
+    }
+
+    :deep(.organization-tree-row.is-root > td) {
+      background: color-mix(in srgb, var(--theme-color) 3%, var(--el-bg-color));
+    }
+
+    :deep(.organization-tree-row.is-child > td) {
+      background: var(--el-bg-color);
+    }
+
+    :deep(.organization-tree-row.is-depth-1 > td) {
+      background: color-mix(in srgb, var(--theme-color) 1.2%, var(--el-bg-color));
+    }
+
+    :deep(.organization-tree-row > td:first-child .cell) {
+      position: relative;
+      overflow: hidden;
+    }
+
+    :deep(.organization-tree-row .el-table__expand-icon) {
+      display: inline-flex;
+      flex: 0 0 22px;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 22px;
+      margin-right: 6px;
+      color: var(--theme-color);
+      background: color-mix(in srgb, var(--theme-color) 8%, var(--el-bg-color));
+      border: 1px solid color-mix(in srgb, var(--theme-color) 18%, var(--el-border-color));
+      border-radius: var(--el-border-radius-small);
+
+      &:hover,
+      &:focus-visible {
+        background: color-mix(in srgb, var(--theme-color) 13%, var(--el-bg-color));
+      }
+    }
+
+    :deep(.organization-tree-row .el-table__placeholder) {
+      flex: 0 0 28px;
+      width: 28px;
+    }
+
+    :deep(.organization-tree-row.is-child .el-table__indent) {
+      position: relative;
+      align-self: stretch;
+      min-height: 44px;
+
+      &::after {
+        position: absolute;
+        top: 50%;
+        right: 5px;
+        width: 10px;
+        content: '';
+        border-top: 1px solid color-mix(in srgb, var(--theme-color) 24%, var(--el-border-color));
+      }
     }
 
     :deep(.organization-identity-cell__icon) {
       display: grid;
-      flex: 0 0 36px;
+      flex: 0 0 34px;
       place-items: center;
-      width: 36px;
-      height: 36px;
+      width: 34px;
+      height: 34px;
       color: var(--el-color-primary);
       background: var(--el-color-primary-light-9);
       border: 1px solid var(--el-color-primary-light-7);
@@ -622,7 +717,8 @@
     }
 
     :deep(.organization-identity-cell__copy),
-    :deep(.organization-identity-cell__heading) {
+    :deep(.organization-identity-cell__heading),
+    :deep(.organization-identity-cell__meta) {
       min-width: 0;
     }
 
@@ -632,15 +728,32 @@
       align-items: center;
 
       strong {
+        flex: 0 1 auto;
         overflow: hidden;
         text-overflow: ellipsis;
         font-weight: 600;
+        line-height: 20px;
         color: var(--el-text-color-primary);
         white-space: nowrap;
       }
     }
 
-    :deep(.organization-identity-cell__copy small),
+    :deep(.organization-identity-cell__meta) {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 3px 7px;
+      align-items: center;
+      min-height: 18px;
+
+      > i {
+        width: 3px;
+        height: 3px;
+        background: var(--el-border-color-darker);
+        border-radius: 50%;
+      }
+    }
+
+    :deep(.organization-identity-cell__meta small),
     :deep(.organization-tenant-cell small),
     :deep(.organization-leader-cell small) {
       display: block;
@@ -651,14 +764,37 @@
       white-space: nowrap;
     }
 
-    :deep(.organization-identity-cell__system) {
+    :deep(.organization-identity-cell__system),
+    :deep(.organization-identity-cell__children) {
       flex: none;
-      padding: 1px 6px;
+      padding: 0 6px;
       font-size: 10px;
       line-height: 17px;
+      border-radius: 999px;
+    }
+
+    :deep(.organization-identity-cell__system) {
       color: var(--el-color-primary);
       background: var(--el-color-primary-light-9);
-      border-radius: 999px;
+    }
+
+    :deep(.organization-identity-cell__level) {
+      flex: none;
+      font-size: 11px;
+      color: var(--el-text-color-secondary);
+    }
+
+    :deep(.organization-identity-cell__children) {
+      display: inline-flex;
+      gap: 3px;
+      align-items: center;
+      color: var(--el-text-color-secondary);
+      background: var(--el-fill-color-light);
+
+      svg {
+        width: 11px;
+        height: 11px;
+      }
     }
 
     :deep(.organization-tenant-cell),
@@ -677,20 +813,35 @@
     }
 
     :deep(.organization-access-cell) {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 5px;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      align-items: center;
+      min-width: 0;
 
       span {
-        padding: 2px 7px;
-        font-size: 11px;
-        color: var(--el-text-color-secondary);
-        background: var(--el-fill-color-light);
-        border-radius: 999px;
+        display: grid;
+        gap: 1px;
+        justify-items: center;
+        min-width: 0;
+
+        &:not(:last-child) {
+          border-right: 1px solid var(--el-border-color-lighter);
+        }
       }
 
       strong {
+        font-size: 13px;
+        font-variant-numeric: tabular-nums;
+        line-height: 18px;
         color: var(--el-text-color-primary);
+      }
+
+      small {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        font-size: 10px;
+        color: var(--el-text-color-secondary);
+        white-space: nowrap;
       }
     }
 
@@ -749,5 +900,31 @@
         }
       }
     }
+  }
+
+  :global([data-box-mode='border-mode'])
+    .organization-page
+    :deep(.organization-tree-row .el-table__expand-icon:hover),
+  :global([data-box-mode='border-mode'])
+    .organization-page
+    :deep(.organization-tree-row .el-table__expand-icon:focus-visible) {
+    border-color: color-mix(in srgb, var(--theme-color) 48%, var(--el-border-color));
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--theme-color) 20%, transparent);
+  }
+
+  :global([data-box-mode='shadow-mode'])
+    .organization-page
+    :deep(.organization-tree-row .el-table__expand-icon) {
+    border-color: transparent;
+  }
+
+  :global([data-box-mode='shadow-mode'])
+    .organization-page
+    :deep(.organization-tree-row .el-table__expand-icon:hover),
+  :global([data-box-mode='shadow-mode'])
+    .organization-page
+    :deep(.organization-tree-row .el-table__expand-icon:focus-visible) {
+    border-color: transparent;
+    box-shadow: 0 4px 12px color-mix(in srgb, var(--theme-color) 18%, transparent);
   }
 </style>

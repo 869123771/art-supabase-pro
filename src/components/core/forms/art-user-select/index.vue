@@ -37,7 +37,7 @@
         </ElAvatar>
         <span class="art-user-select__identity">
           <strong>{{ getDisplayName(option) }}</strong>
-          <small>{{ option.userEmail || '未设置邮箱' }}</small>
+          <small v-if="getSecondaryIdentity(option)">{{ getSecondaryIdentity(option) }}</small>
         </span>
       </div>
     </ElOption>
@@ -113,13 +113,28 @@
   })
 
   function normalizeSearchText(value: string | null | undefined): string {
-    return String(value ?? '')
-      .trim()
-      .toLocaleLowerCase()
+    return normalizeIdentityText(value).toLocaleLowerCase()
+  }
+
+  function normalizeIdentityText(value: string | null | undefined): string {
+    const text = String(value ?? '').trim()
+    return /^(null|undefined)$/i.test(text) ? '' : text
   }
 
   function getDisplayName(option: ArtUserSelectOption): string {
-    return option.nickName || option.userName || option.label || option.userEmail || '未命名用户'
+    return (
+      normalizeIdentityText(option.nickName) ||
+      normalizeIdentityText(option.userName) ||
+      normalizeIdentityText(option.label) ||
+      normalizeIdentityText(option.userEmail) ||
+      '未命名用户'
+    )
+  }
+
+  function getSecondaryIdentity(option: ArtUserSelectOption): string {
+    const email = normalizeIdentityText(option.userEmail)
+    if (!email) return '未设置邮箱'
+    return email === getDisplayName(option) ? '' : email
   }
 
   function getInitial(option: ArtUserSelectOption): string {

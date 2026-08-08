@@ -68,6 +68,7 @@ onOpen: async (_data, api) => {
 ```ts
 drawerRef.value?.handleOpen(data, {
   title: '订单详情',
+  subtitle: '展示订单状态、金额与履约信息',
   size: 720,
   drawerProps: {
     class: 'order-drawer',
@@ -194,11 +195,12 @@ drawerRef.value?.scrollTo({ top: 500, behavior: 'smooth' })
 </ArtDrawer>
 ```
 
-| 插槽      | 参数                     | 说明       |
-| --------- | ------------------------ | ---------- |
-| `default` | `data`, `api`            | 默认内容   |
-| `header`  | `data`, `api`            | 自定义头部 |
-| `footer`  | `data`, `loading`, `api` | 自定义底部 |
+| 插槽       | 参数                     | 说明         |
+| ---------- | ------------------------ | ------------ |
+| `default`  | `data`, `api`            | 默认内容     |
+| `header`   | `data`, `api`            | 自定义头部   |
+| `subtitle` | `data`, `api`            | 自定义副标题 |
+| `footer`   | `data`, `loading`, `api` | 自定义底部   |
 
 ## 动态组件
 
@@ -220,6 +222,7 @@ drawerRef.value?.handleOpen(order, {
 | 属性                  | 类型                             | 默认值      | 说明                   |
 | --------------------- | -------------------------------- | ----------- | ---------------------- |
 | `title`               | `string`                         | `''`        | 标题                   |
+| `subtitle`            | `string`                         | `''`        | 标题下方的辅助说明     |
 | `size`                | `string \| number`               | `'40%'`     | 抽屉尺寸               |
 | `direction`           | `ltr \| rtl \| ttb \| btt`       | `'rtl'`     | 展开方向               |
 | `contentHeight`       | `string \| number`               | `undefined` | 固定内容高度           |

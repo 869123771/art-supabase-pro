@@ -52,27 +52,81 @@
       </div>
     </section>
 
-    <ArtTableQuery
-      ref="tableQueryRef"
-      v-model="searchForm"
-      :search-items="searchItems"
-      :api-fn="fetchTableData"
-      :columns-factory="columnsFactory"
-      :header-actions="headerActions"
-      :table-props="tableProps"
-      :on-success="handleTableSuccess"
-      focusable
-    />
+    <div class="user-page__workspace">
+      <aside v-if="isDesktopOrganizationLayout" class="user-page__organization-panel">
+        <OrganizationScopeFilter
+          :data="organizationTree"
+          :loading="organizationFilterLoading"
+          :selected-key="selectedOrganizationKey"
+          :include-descendants="includeDescendantOrganizations"
+          :tenant-id="selectedTenantId"
+          :tenant-options="tenantOptions"
+          :show-tenant-select="isPlatformSuper"
+          @select="handleOrganizationSelect"
+          @refresh="handleOrganizationRefresh"
+          @update:include-descendants="handleIncludeDescendantsChange"
+          @update:tenant-id="handleTenantChange"
+        />
+      </aside>
+
+      <div class="user-page__table-workspace">
+        <section v-if="!isDesktopOrganizationLayout" class="user-page__mobile-scope art-card-xs">
+          <span class="user-page__mobile-scope-icon" aria-hidden="true">
+            <ArtSvgIcon icon="ri:node-tree" />
+          </span>
+          <div>
+            <small>当前组织范围</small>
+            <strong>{{ selectedOrganizationLabel }}</strong>
+          </div>
+          <ElButton type="primary" plain @click="openOrganizationDrawer">
+            <ArtSvgIcon icon="ri:filter-3-line" />
+            组织筛选
+          </ElButton>
+        </section>
+
+        <ArtTableQuery
+          ref="tableQueryRef"
+          v-model="searchForm"
+          :search-items="searchItems"
+          :api-fn="fetchTableData"
+          :columns-factory="columnsFactory"
+          :header-actions="headerActions"
+          :table-props="tableProps"
+          :on-success="handleTableSuccess"
+          focusable
+        />
+      </div>
+    </div>
 
     <UserDialog ref="userDialogRef" @success="handleSaveSuccess" />
     <UserRoleDialog ref="userRoleRef" @success="tableQueryRef?.refreshUpdate()" />
+    <ArtDrawer ref="organizationDrawerRef">
+      <OrganizationScopeFilter
+        class="user-page__drawer-filter"
+        :data="organizationTree"
+        :loading="organizationFilterLoading"
+        :selected-key="selectedOrganizationKey"
+        :include-descendants="includeDescendantOrganizations"
+        :tenant-id="selectedTenantId"
+        :tenant-options="tenantOptions"
+        :show-tenant-select="isPlatformSuper"
+        @select="handleOrganizationSelect"
+        @refresh="handleOrganizationRefresh"
+        @update:include-descendants="handleIncludeDescendantsChange"
+        @update:tenant-id="handleTenantChange"
+      />
+    </ArtDrawer>
   </div>
 </template>
 
 <script setup lang="ts">
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import { useMediaQuery } from '@vueuse/core'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
+  import ArtDrawer from '@/components/core/drawers/art-drawer/index.vue'
+  import type { ArtDrawerExpose } from '@/components/core/drawers/art-drawer/types'
   import UserDialog from './modules/user-dialog.vue'
+  import OrganizationScopeFilter from '../shared/organization-scope-filter.vue'
   import { ElAvatar } from 'element-plus'
   import type { ColumnOption } from '@/types'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
@@ -85,21 +139,38 @@
   import { formatWithDayjs } from '@/utils/time'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { useUserStore } from '@/store/modules/user'
-  import { deleteUser, fetchGetUserList, resetUser } from '@/api/system-manage'
+  import {
+    deleteUser,
+    fetchGetEnableTenantList,
+    fetchGetUserList,
+    fetchGetUserOrganizationTree,
+    resetUser
+  } from '@/api/system-manage'
   import ArtButtonMore, { ButtonMoreItem } from '@/components/core/forms/art-button-more/index.vue'
   import UserRoleDialog from '@views/system/user/modules/user-role-dialog.vue'
   import { useSystemParam } from '@/hooks'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
+  import TreeUtils from '@/utils/tree'
 
   defineOptions({ name: 'User' })
 
   const { confirmAction } = useArtFeedback()
 
   type UserListItem = Api.SystemManage.UserListItem
+  type OrganizationFilterItem = Api.SystemManage.OrganizationScopeFilterItem
+  type TenantListItem = Api.SystemManage.TenantListItem
+
+  const ALL_ORGANIZATIONS_KEY = '__all_organizations__'
+  const UNASSIGNED_ORGANIZATION_KEY = '__unassigned_organization__'
 
   const userStore = useUserStore()
-  const { getDictMap, getUserInfo } = storeToRefs(userStore)
+  const { getDictMap, getUserInfo, isPlatformSuper } = storeToRefs(userStore)
   const { loadPasswordPolicy, createTemporaryPassword } = useSystemParam()
+  const organizationTreeUtils = new TreeUtils({
+    idKey: 'id',
+    parentKey: 'parentId',
+    childrenKey: 'children'
+  })
 
   interface UserDialogExpose {
     handleOpen: (row?: Partial<UserListItem>) => Promise<void>
@@ -118,6 +189,14 @@
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const userDialogRef = ref<UserDialogExpose>()
   const userRoleRef = ref<UserRoleDialogExpose>()
+  const organizationDrawerRef = ref<ArtDrawerExpose<Record<string, never>>>()
+  const isDesktopOrganizationLayout = useMediaQuery('(min-width: 1201px)')
+  const organizationTree = ref<OrganizationFilterItem[]>([])
+  const tenantOptions = ref<TenantListItem[]>([])
+  const organizationFilterLoading = ref(false)
+  const selectedTenantId = ref(getUserInfo.value.tenantId ?? '')
+  const selectedOrganizationKey = ref(ALL_ORGANIZATIONS_KEY)
+  const includeDescendantOrganizations = ref(true)
   const overview = reactive<{ total: number; rows: UserOverviewRow[] }>({
     total: 0,
     rows: []
@@ -131,6 +210,27 @@
         (row) => String(row.userPhone ?? '').trim() && String(row.userEmail ?? '').trim()
       ).length
   )
+  const selectedOrganization = computed(() =>
+    selectedOrganizationKey.value === ALL_ORGANIZATIONS_KEY ||
+    selectedOrganizationKey.value === UNASSIGNED_ORGANIZATION_KEY
+      ? null
+      : organizationTreeUtils.findNode(organizationTree.value, selectedOrganizationKey.value)
+  )
+  const selectedOrganizationLabel = computed(() => {
+    if (selectedOrganizationKey.value === UNASSIGNED_ORGANIZATION_KEY) return '待归属用户'
+    if (selectedOrganizationKey.value === ALL_ORGANIZATIONS_KEY) return '全部用户'
+    return selectedOrganization.value?.organizationName ?? '全部用户'
+  })
+  const selectedOrganizationIds = computed(() => {
+    const organization = selectedOrganization.value
+    if (!organization?.id) return []
+    if (!includeDescendantOrganizations.value) return [organization.id]
+
+    return organizationTreeUtils
+      .getDescendants(organizationTree.value, organization.id, true)
+      .map((item) => item.id)
+      .filter((id): id is string => Boolean(id))
+  })
 
   type SearchParams = Api.SystemManage.UserSearchParams
   type TableParams = SearchParams & Pick<Api.Common.PaginationParams, 'current' | 'size'>
@@ -186,6 +286,7 @@
     {
       type: 'add',
       label: '新增用户',
+      permission: 'System:User:Add',
       onClick: () => openDialog()
     }
   ])
@@ -204,9 +305,89 @@
     })
     return fetchGetUserList({
       ...params,
+      tenantId: selectedTenantId.value || getUserInfo.value.tenantId,
+      organizationIds: selectedOrganizationIds.value,
+      organizationUnassigned: selectedOrganizationKey.value === UNASSIGNED_ORGANIZATION_KEY,
       from,
       to
     })
+  }
+
+  const loadTenantOptions = async (): Promise<void> => {
+    if (!isPlatformSuper.value) return
+    const response = await fetchGetEnableTenantList()
+    tenantOptions.value = response.data ?? []
+    if (
+      !selectedTenantId.value ||
+      !tenantOptions.value.some((item) => item.id === selectedTenantId.value)
+    ) {
+      selectedTenantId.value = tenantOptions.value[0]?.id ?? ''
+    }
+  }
+
+  const loadOrganizationTree = async (): Promise<void> => {
+    organizationFilterLoading.value = true
+    try {
+      const response = await fetchGetUserOrganizationTree({
+        tenantId: selectedTenantId.value || getUserInfo.value.tenantId
+      })
+      organizationTree.value = response.data ?? []
+
+      if (
+        selectedOrganizationKey.value !== ALL_ORGANIZATIONS_KEY &&
+        selectedOrganizationKey.value !== UNASSIGNED_ORGANIZATION_KEY &&
+        !organizationTreeUtils.findNode(organizationTree.value, selectedOrganizationKey.value)
+      ) {
+        selectedOrganizationKey.value = ALL_ORGANIZATIONS_KEY
+      }
+    } finally {
+      organizationFilterLoading.value = false
+    }
+  }
+
+  const refreshUsersFromOrganization = async (): Promise<void> => {
+    await tableQueryRef.value?.getData()
+  }
+
+  const handleOrganizationSelect = async (key: string): Promise<void> => {
+    if (selectedOrganizationKey.value === key) return
+    selectedOrganizationKey.value = key
+    await refreshUsersFromOrganization()
+  }
+
+  const handleIncludeDescendantsChange = async (value: boolean): Promise<void> => {
+    includeDescendantOrganizations.value = value
+    if (selectedOrganization.value) await refreshUsersFromOrganization()
+  }
+
+  const handleTenantChange = async (tenantId: string): Promise<void> => {
+    if (!tenantId || selectedTenantId.value === tenantId) return
+    selectedTenantId.value = tenantId
+    selectedOrganizationKey.value = ALL_ORGANIZATIONS_KEY
+    await loadOrganizationTree()
+    await refreshUsersFromOrganization()
+  }
+
+  const handleOrganizationRefresh = async (): Promise<void> => {
+    await loadOrganizationTree()
+    await refreshUsersFromOrganization()
+  }
+
+  const openOrganizationDrawer = async (): Promise<void> => {
+    await organizationDrawerRef.value?.handleOpen(
+      {},
+      {
+        title: '筛选组织范围',
+        subtitle: '按组织节点快速定位用户；可选择是否包含全部下级组织。',
+        size: 'sm',
+        contentHeight: 'calc(100vh - 118px)',
+        showFooter: false,
+        drawerProps: {
+          appendToBody: true,
+          bodyClass: 'user-organization-filter-drawer__body'
+        }
+      }
+    )
   }
 
   const columnsFactory = (): ColumnOption<UserListItem>[] => [
@@ -329,13 +510,15 @@
         h('div', { class: 'user-operation-cell' }, [
           h(ArtButtonTable, {
             type: 'edit',
+            permission: 'System:User:Edit',
             onClick: () => openDialog(row)
           }),
-          !isCurrentUser(row)
+          !isCurrentUser(row) && !isProtectedUser(row)
             ? h(ArtButtonTable, {
                 type: 'view',
                 icon: 'ri:user-add-line',
                 label: '分配角色',
+                permission: 'System:User:AssignRole',
                 onClick: () => userRoleRef.value?.handleOpen(row)
               })
             : null,
@@ -353,17 +536,19 @@
       {
         key: 'reset',
         label: '初始化密码',
-        icon: 'ri-user-received-line'
+        icon: 'ri-user-received-line',
+        auth: 'System:User:ResetPassword'
       },
       {
         key: 'delete',
         label: '删除用户',
         icon: 'ri:delete-bin-4-line',
-        color: 'var(--el-color-danger)'
+        color: 'var(--el-color-danger)',
+        auth: 'System:User:Delete'
       }
     ]
 
-    if (!isCurrentUser(row)) return buttonList
+    if (!isCurrentUser(row) && !isProtectedUser(row)) return buttonList
     return buttonList.filter((item) => !selfExcludeButtonKeys.includes(item.key as string))
   }
 
@@ -381,6 +566,13 @@
       return getUserInfo.value.userId === row.authUserId
     }
     return Boolean(getUserInfo.value.email && getUserInfo.value.email === row.userEmail)
+  }
+
+  const isProtectedUser = (row: Pick<UserListItem, 'userEmail' | 'userRoles'>): boolean => {
+    return (
+      String(row.userEmail ?? '').toLowerCase() === '869123771@qq.com' ||
+      Boolean(row.userRoles?.includes('R_SUPER'))
+    )
   }
 
   const handleSaveSuccess = (type: 'add' | 'edit'): void => {
@@ -450,6 +642,11 @@
       // 用户取消时无需额外提示。
     }
   }
+
+  onMounted(async () => {
+    await loadTenantOptions()
+    await loadOrganizationTree()
+  })
 </script>
 
 <style scoped lang="scss">
@@ -463,6 +660,83 @@
       overflow: hidden;
     }
 
+    &__workspace {
+      display: grid;
+      flex: 1 1 auto;
+      grid-template-columns: 264px minmax(0, 1fr);
+      gap: 12px;
+      min-width: 0;
+      min-height: 0;
+    }
+
+    &__organization-panel,
+    &__table-workspace {
+      min-width: 0;
+      min-height: 0;
+    }
+
+    &__organization-panel {
+      overflow: hidden;
+    }
+
+    &__table-workspace {
+      display: flex;
+      flex-direction: column;
+    }
+
+    &__mobile-scope {
+      display: flex;
+      flex: none;
+      gap: 11px;
+      align-items: center;
+      min-width: 0;
+      padding: 12px 14px;
+      margin-bottom: 12px;
+      background: linear-gradient(145deg, var(--el-color-primary-light-9), var(--el-bg-color) 76%);
+
+      > div {
+        display: grid;
+        flex: 1;
+        min-width: 0;
+      }
+
+      small,
+      strong {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      small {
+        font-size: 11px;
+        color: var(--el-text-color-secondary);
+      }
+
+      strong {
+        font-size: 14px;
+        color: var(--el-text-color-primary);
+      }
+    }
+
+    &__mobile-scope-icon {
+      display: inline-flex;
+      flex: 0 0 36px;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      color: var(--el-color-primary);
+      background: var(--el-bg-color);
+      border: 1px solid var(--el-color-primary-light-7);
+      border-radius: var(--custom-radius);
+    }
+
+    &__drawer-filter {
+      height: 100%;
+      border: 0;
+      border-radius: 0;
+    }
+
     &__hero,
     &__identity,
     &__hero-status,
@@ -474,8 +748,8 @@
     }
 
     &__hero {
-      justify-content: space-between;
       gap: 20px;
+      justify-content: space-between;
       padding: 20px 24px 18px;
       background: radial-gradient(
         circle at 92% 0%,
@@ -509,16 +783,16 @@
 
       p {
         margin: 0;
-        overflow-wrap: anywhere;
         font-size: 13px;
         line-height: 1.6;
         color: var(--el-text-color-secondary);
+        overflow-wrap: anywhere;
       }
     }
 
     &__brand {
-      justify-content: center;
       flex: 0 0 50px;
+      justify-content: center;
       width: 50px;
       height: 50px;
       margin-right: 16px;
@@ -543,8 +817,8 @@
       border-top: 1px solid var(--el-border-color-lighter);
 
       article {
-        min-width: 0;
         gap: 12px;
+        min-width: 0;
         padding: 14px 24px;
 
         &:not(:last-child) {
@@ -559,8 +833,8 @@
         span,
         small {
           overflow: hidden;
-          color: var(--el-text-color-secondary);
           text-overflow: ellipsis;
+          color: var(--el-text-color-secondary);
           white-space: nowrap;
         }
 
@@ -582,8 +856,8 @@
     }
 
     &__metric-icon {
-      justify-content: center;
       flex: 0 0 38px;
+      justify-content: center;
       width: 38px;
       height: 38px;
       border-radius: var(--el-border-radius-base);
@@ -611,8 +885,8 @@
 
     :deep(.user-info-cell) {
       display: flex;
-      min-width: 0;
       align-items: center;
+      min-width: 0;
     }
 
     :deep(.user-info-cell__avatar) {
@@ -632,9 +906,9 @@
 
     :deep(.user-info-cell__heading) {
       display: flex;
-      min-width: 0;
-      align-items: center;
       gap: 6px;
+      align-items: center;
+      min-width: 0;
     }
 
     :deep(.user-info-cell__name),
@@ -719,15 +993,21 @@
 
     :deep(.user-operation-cell) {
       display: flex;
-      align-items: center;
       gap: 8px;
+      align-items: center;
     }
 
     :deep(.user-operation-cell .art-button-table) {
       margin-right: 0;
     }
 
-    @media (max-width: 900px) {
+    @media (width <= 1200px) {
+      &__workspace {
+        grid-template-columns: minmax(0, 1fr);
+      }
+    }
+
+    @media (width <= 900px) {
       &__hero {
         align-items: flex-start;
       }
@@ -742,7 +1022,7 @@
       }
     }
 
-    @media (max-width: 640px) {
+    @media (width <= 640px) {
       &__hero {
         flex-direction: column;
         padding: 18px;
@@ -762,6 +1042,28 @@
           border-bottom: 1px solid var(--el-border-color-lighter);
         }
       }
+
+      &__mobile-scope {
+        .el-button {
+          flex: none;
+          padding-inline: 10px;
+        }
+      }
     }
+  }
+
+  :global(.user-organization-filter-drawer__body) {
+    padding: 0 !important;
+    overflow: hidden !important;
+  }
+
+  :global(.art-table-focus-page .user-page__workspace) {
+    display: grid !important;
+    grid-template-columns: 264px minmax(0, 1fr) !important;
+    gap: 12px !important;
+  }
+
+  :global(.art-table-focus-page .user-page__organization-panel.art-table-focus-hidden) {
+    display: block !important;
   }
 </style>

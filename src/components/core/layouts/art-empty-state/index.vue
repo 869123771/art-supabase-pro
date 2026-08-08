@@ -2,7 +2,10 @@
   <div class="art-empty-state" :class="`art-empty-state--${size}`" role="status" aria-live="polite">
     <div
       class="art-empty-state__visual"
-      :style="{ width: `${visualSize}px`, height: `${Math.round(visualSize * 0.72)}px` }"
+      :style="{
+        width: `${resolvedVisualSize}px`,
+        height: `${Math.round(resolvedVisualSize * 0.72)}px`
+      }"
       aria-hidden="true"
     >
       <svg viewBox="0 0 160 116" width="160" height="116" fill="none">
@@ -37,7 +40,7 @@
 <script setup lang="ts">
   defineOptions({ name: 'ArtEmptyState' })
 
-  withDefaults(
+  const props = withDefaults(
     defineProps<{
       title?: string
       description?: string
@@ -51,6 +54,8 @@
       visualSize: 112
     }
   )
+
+  const resolvedVisualSize = computed(() => props.visualSize ?? 112)
 </script>
 
 <style scoped lang="scss">

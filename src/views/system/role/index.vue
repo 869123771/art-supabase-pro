@@ -52,35 +52,95 @@
       </div>
     </section>
 
-    <ArtTableQuery
-      focusable
-      v-model="searchForm"
-      v-model:columns="columnChecks"
-      v-model:show-search-bar="showSearchBar"
-      :loading="loading"
-      :data="data"
-      :table-columns="columns"
-      :pagination="pagination"
-      :search-bar-props="searchBarProps"
-      :header-actions="headerActions"
-      :table-props="tableProps"
-      @search="handleSearch"
-      @reset="resetSearchParams"
-      @refresh="refreshData"
-      @pagination:size-change="handleSizeChange"
-      @pagination:current-change="handleCurrentChange"
-    />
+    <div class="role-page__workspace">
+      <aside v-if="isDesktopOrganizationLayout" class="role-page__organization-panel">
+        <OrganizationScopeFilter
+          scope-type="role"
+          :data="organizationTree"
+          :loading="organizationFilterLoading"
+          :selected-key="selectedOrganizationKey"
+          :include-descendants="includeDescendantOrganizations"
+          :tenant-id="selectedTenantId"
+          :tenant-options="tenantOptions"
+          :show-tenant-select="isPlatformSuper"
+          @select="handleOrganizationSelect"
+          @refresh="handleOrganizationRefresh"
+          @update:include-descendants="handleIncludeDescendantsChange"
+          @update:tenant-id="handleTenantChange"
+        />
+      </aside>
+
+      <div class="role-page__table-workspace">
+        <section v-if="!isDesktopOrganizationLayout" class="role-page__mobile-scope art-card-xs">
+          <span class="role-page__mobile-scope-icon" aria-hidden="true">
+            <ArtSvgIcon icon="ri:node-tree" />
+          </span>
+          <div>
+            <small>当前组织范围</small>
+            <strong>{{ selectedOrganizationLabel }}</strong>
+          </div>
+          <ElButton type="primary" plain @click="openOrganizationDrawer">
+            <ArtSvgIcon icon="ri:filter-3-line" />
+            组织筛选
+          </ElButton>
+        </section>
+
+        <ArtTableQuery
+          focusable
+          v-model="searchForm"
+          v-model:columns="columnChecks"
+          v-model:show-search-bar="showSearchBar"
+          :loading="loading"
+          :data="data"
+          :table-columns="columns"
+          :pagination="pagination"
+          :search-bar-props="searchBarProps"
+          :header-actions="headerActions"
+          :table-props="tableProps"
+          @search="handleSearch"
+          @reset="resetSearchParams"
+          @refresh="refreshData"
+          @pagination:size-change="handleSizeChange"
+          @pagination:current-change="handleCurrentChange"
+        />
+      </div>
+    </div>
 
     <RoleEditDialog ref="roleEditDialogRef" @success="refreshData" />
     <RolePermissionDialog ref="rolePermissionDialogRef" @success="refreshData" />
+    <ArtDrawer ref="organizationDrawerRef">
+      <OrganizationScopeFilter
+        scope-type="role"
+        class="role-page__drawer-filter"
+        :data="organizationTree"
+        :loading="organizationFilterLoading"
+        :selected-key="selectedOrganizationKey"
+        :include-descendants="includeDescendantOrganizations"
+        :tenant-id="selectedTenantId"
+        :tenant-options="tenantOptions"
+        :show-tenant-select="isPlatformSuper"
+        @select="handleOrganizationSelect"
+        @refresh="handleOrganizationRefresh"
+        @update:include-descendants="handleIncludeDescendantsChange"
+        @update:tenant-id="handleTenantChange"
+      />
+    </ArtDrawer>
   </div>
 </template>
 
 <script setup lang="ts">
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import { useMediaQuery } from '@vueuse/core'
   import { ButtonMoreItem } from '@/components/core/forms/art-button-more/index.vue'
   import { useTable } from '@/hooks/core/useTable'
-  import { deleteRole, fetchGetRoleList } from '@/api/system-manage'
+  import {
+    deleteRole,
+    fetchGetEnableTenantList,
+    fetchGetRoleList,
+    fetchGetRoleOrganizationTree
+  } from '@/api/system-manage'
+  import ArtDrawer from '@/components/core/drawers/art-drawer/index.vue'
+  import type { ArtDrawerExpose } from '@/components/core/drawers/art-drawer/types'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import ArtButtonMore from '@/components/core/forms/art-button-more/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
@@ -97,12 +157,16 @@
   } from '@/components/core/tables/art-table-query/index.vue'
   import { useSystemParam } from '@/hooks'
   import { useUserStore } from '@/store/modules/user'
+  import TreeUtils from '@/utils/tree'
+  import OrganizationScopeFilter from '../shared/organization-scope-filter.vue'
 
   defineOptions({ name: 'Role' })
 
   const { confirmAction } = useArtFeedback()
 
   type RoleListItem = Api.SystemManage.RoleListItem
+  type OrganizationFilterItem = Api.SystemManage.OrganizationScopeFilterItem
+  type TenantListItem = Api.SystemManage.TenantListItem
   type RoleSearchParams = Api.SystemManage.RoleSearchParams & {
     daterange?: [string, string] | null
   }
@@ -116,7 +180,43 @@
   })
 
   const showSearchBar = ref(false)
-  const { getDictMap } = storeToRefs(useUserStore())
+  const { getDictMap, getUserInfo, isPlatformSuper } = storeToRefs(useUserStore())
+  const ALL_ORGANIZATIONS_KEY = '__all_organizations__'
+  const UNASSIGNED_ORGANIZATION_KEY = '__unassigned_organization__'
+  const organizationTreeUtils = new TreeUtils({
+    idKey: 'id',
+    parentKey: 'parentId',
+    childrenKey: 'children'
+  })
+  const organizationDrawerRef = ref<ArtDrawerExpose<Record<string, never>>>()
+  const isDesktopOrganizationLayout = useMediaQuery('(min-width: 1201px)')
+  const organizationTree = ref<OrganizationFilterItem[]>([])
+  const tenantOptions = ref<TenantListItem[]>([])
+  const organizationFilterLoading = ref(false)
+  const selectedTenantId = ref(getUserInfo.value.tenantId ?? '')
+  const selectedOrganizationKey = ref(ALL_ORGANIZATIONS_KEY)
+  const includeDescendantOrganizations = ref(true)
+  const selectedOrganization = computed(() =>
+    selectedOrganizationKey.value === ALL_ORGANIZATIONS_KEY ||
+    selectedOrganizationKey.value === UNASSIGNED_ORGANIZATION_KEY
+      ? null
+      : organizationTreeUtils.findNode(organizationTree.value, selectedOrganizationKey.value)
+  )
+  const selectedOrganizationLabel = computed(() => {
+    if (selectedOrganizationKey.value === UNASSIGNED_ORGANIZATION_KEY) return '待归属角色'
+    if (selectedOrganizationKey.value === ALL_ORGANIZATIONS_KEY) return '全部角色'
+    return selectedOrganization.value?.organizationName ?? '全部角色'
+  })
+  const selectedOrganizationIds = computed(() => {
+    const organization = selectedOrganization.value
+    if (!organization?.id) return []
+    if (!includeDescendantOrganizations.value) return [organization.id]
+
+    return organizationTreeUtils
+      .getDescendants(organizationTree.value, organization.id, true)
+      .map((item) => item.id)
+      .filter((id): id is string => Boolean(id))
+  })
   const statusOptions = computed(() =>
     (getDictMap.value.commonBoolean ?? []).map((item) => ({
       ...item,
@@ -185,6 +285,7 @@
     {
       type: 'add',
       label: '新增角色',
+      permission: 'System:Role:Add',
       onClick: () => showDialog('add')
     }
   ])
@@ -226,10 +327,6 @@
   const isSuperRole = (row: RoleListItem): boolean =>
     normalizeRoleCode(row.roleCode) === normalizeRoleCode(superRoleCode.value)
 
-  onMounted(() => {
-    void loadRoleBuiltinCodes()
-  })
-
   const getRoleMoreActions = (row: RoleListItem): ButtonMoreItem[] => {
     if (isSuperRole(row)) {
       return []
@@ -239,13 +336,15 @@
       {
         key: 'edit',
         label: '编辑角色',
-        icon: 'ri:edit-2-line'
+        icon: 'ri:edit-2-line',
+        auth: 'System:Role:Edit'
       },
       {
         key: 'delete',
         label: '删除角色',
         icon: 'ri:delete-bin-4-line',
-        color: 'var(--el-color-danger)'
+        color: 'var(--el-color-danger)',
+        auth: 'System:Role:Delete'
       }
     ]
 
@@ -367,12 +466,15 @@
             }
 
             return h('div', { class: 'role-operation-cell' }, [
-              h(ArtButtonTable, {
-                type: 'view',
-                icon: 'ri:shield-keyhole-line',
-                label: '配置菜单权限',
-                onClick: () => showPermissionDialog(row)
-              }),
+              !isDefaultRegisterRole(row) || isPlatformSuper.value
+                ? h(ArtButtonTable, {
+                    type: 'view',
+                    icon: 'ri:shield-keyhole-line',
+                    label: '配置菜单权限',
+                    permission: 'System:Role:AssignPermission',
+                    onClick: () => showPermissionDialog(row)
+                  })
+                : null,
               h(ArtButtonMore, {
                 list: getRoleMoreActions(row),
                 onClick: (item: ButtonMoreItem) => buttonMoreClick(item, row)
@@ -445,6 +547,9 @@
       searchParams as RoleSearchParams
     const { from, to } = pageInfoHandler(pagination)
     return await fetchGetRoleList({
+      tenantId: selectedTenantId.value || getUserInfo.value.tenantId,
+      organizationIds: selectedOrganizationIds.value,
+      organizationUnassigned: selectedOrganizationKey.value === UNASSIGNED_ORGANIZATION_KEY,
       roleName,
       roleCode,
       description,
@@ -455,6 +560,85 @@
       to
     })
   }
+
+  const loadTenantOptions = async (): Promise<void> => {
+    if (!isPlatformSuper.value) return
+    const response = await fetchGetEnableTenantList()
+    tenantOptions.value = response.data ?? []
+    if (
+      !selectedTenantId.value ||
+      !tenantOptions.value.some((item) => item.id === selectedTenantId.value)
+    ) {
+      selectedTenantId.value = tenantOptions.value[0]?.id ?? ''
+    }
+  }
+
+  const loadOrganizationTree = async (): Promise<void> => {
+    organizationFilterLoading.value = true
+    try {
+      const response = await fetchGetRoleOrganizationTree({
+        tenantId: selectedTenantId.value || getUserInfo.value.tenantId
+      })
+      organizationTree.value = response.data ?? []
+
+      if (
+        selectedOrganizationKey.value !== ALL_ORGANIZATIONS_KEY &&
+        selectedOrganizationKey.value !== UNASSIGNED_ORGANIZATION_KEY &&
+        !organizationTreeUtils.findNode(organizationTree.value, selectedOrganizationKey.value)
+      ) {
+        selectedOrganizationKey.value = ALL_ORGANIZATIONS_KEY
+      }
+    } finally {
+      organizationFilterLoading.value = false
+    }
+  }
+
+  const handleOrganizationSelect = async (key: string): Promise<void> => {
+    if (selectedOrganizationKey.value === key) return
+    selectedOrganizationKey.value = key
+    await getData()
+  }
+
+  const handleIncludeDescendantsChange = async (value: boolean): Promise<void> => {
+    includeDescendantOrganizations.value = value
+    if (selectedOrganization.value) await getData()
+  }
+
+  const handleTenantChange = async (tenantId: string): Promise<void> => {
+    if (!tenantId || selectedTenantId.value === tenantId) return
+    selectedTenantId.value = tenantId
+    selectedOrganizationKey.value = ALL_ORGANIZATIONS_KEY
+    await loadOrganizationTree()
+    await getData()
+  }
+
+  const handleOrganizationRefresh = async (): Promise<void> => {
+    await loadOrganizationTree()
+    await refreshData()
+  }
+
+  const openOrganizationDrawer = async (): Promise<void> => {
+    await organizationDrawerRef.value?.handleOpen(
+      {},
+      {
+        title: '筛选组织范围',
+        subtitle: '按组织节点快速定位角色；可选择是否包含全部下级组织。',
+        size: 'sm',
+        contentHeight: 'calc(100vh - 118px)',
+        showFooter: false,
+        drawerProps: {
+          appendToBody: true,
+          bodyClass: 'role-organization-filter-drawer__body'
+        }
+      }
+    )
+  }
+
+  onMounted(async () => {
+    await loadRoleBuiltinCodes()
+    await loadTenantOptions()
+    await loadOrganizationTree()
+  })
 </script>
 
 <style scoped lang="scss">
@@ -468,6 +652,83 @@
       overflow: hidden;
     }
 
+    &__workspace {
+      display: grid;
+      flex: 1 1 auto;
+      grid-template-columns: 264px minmax(0, 1fr);
+      gap: 12px;
+      min-width: 0;
+      min-height: 0;
+    }
+
+    &__organization-panel,
+    &__table-workspace {
+      min-width: 0;
+      min-height: 0;
+    }
+
+    &__organization-panel {
+      overflow: hidden;
+    }
+
+    &__table-workspace {
+      display: flex;
+      flex-direction: column;
+    }
+
+    &__mobile-scope {
+      display: flex;
+      flex: none;
+      gap: 11px;
+      align-items: center;
+      min-width: 0;
+      padding: 12px 14px;
+      margin-bottom: 12px;
+      background: linear-gradient(145deg, var(--el-color-primary-light-9), var(--el-bg-color) 76%);
+
+      > div {
+        display: grid;
+        flex: 1;
+        min-width: 0;
+      }
+
+      small,
+      strong {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      small {
+        font-size: 11px;
+        color: var(--el-text-color-secondary);
+      }
+
+      strong {
+        font-size: 14px;
+        color: var(--el-text-color-primary);
+      }
+    }
+
+    &__mobile-scope-icon {
+      display: inline-flex;
+      flex: 0 0 36px;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      color: var(--el-color-primary);
+      background: var(--el-bg-color);
+      border: 1px solid var(--el-color-primary-light-7);
+      border-radius: var(--custom-radius);
+    }
+
+    &__drawer-filter {
+      height: 100%;
+      border: 0;
+      border-radius: 0;
+    }
+
     &__hero,
     &__identity,
     &__hero-status,
@@ -479,8 +740,8 @@
     }
 
     &__hero {
-      justify-content: space-between;
       gap: 20px;
+      justify-content: space-between;
       padding: 20px 24px 18px;
       background: radial-gradient(
         circle at 92% 0%,
@@ -514,16 +775,16 @@
 
       p {
         margin: 0;
-        overflow-wrap: anywhere;
         font-size: 13px;
         line-height: 1.6;
         color: var(--el-text-color-secondary);
+        overflow-wrap: anywhere;
       }
     }
 
     &__brand {
-      justify-content: center;
       flex: 0 0 50px;
+      justify-content: center;
       width: 50px;
       height: 50px;
       margin-right: 16px;
@@ -548,8 +809,8 @@
       border-top: 1px solid var(--el-border-color-lighter);
 
       article {
-        min-width: 0;
         gap: 12px;
+        min-width: 0;
         padding: 14px 24px;
 
         &:not(:last-child) {
@@ -564,8 +825,8 @@
         span,
         small {
           overflow: hidden;
-          color: var(--el-text-color-secondary);
           text-overflow: ellipsis;
+          color: var(--el-text-color-secondary);
           white-space: nowrap;
         }
 
@@ -587,8 +848,8 @@
     }
 
     &__metric-icon {
-      justify-content: center;
       flex: 0 0 38px;
+      justify-content: center;
       width: 38px;
       height: 38px;
       border-radius: var(--el-border-radius-base);
@@ -616,13 +877,14 @@
 
     :deep(.role-identity-cell) {
       display: flex;
-      min-width: 0;
-      align-items: center;
       gap: 10px;
+      align-items: center;
+      min-width: 0;
 
       .role-identity-cell__icon {
         display: grid;
         flex: 0 0 36px;
+        place-items: center;
         width: 36px;
         height: 36px;
         font-size: 14px;
@@ -631,7 +893,6 @@
         background: var(--el-color-primary-light-9);
         border: 1px solid var(--el-color-primary-light-7);
         border-radius: var(--art-control-radius);
-        place-items: center;
 
         &.is-protected {
           color: var(--el-color-warning-dark-2);
@@ -647,14 +908,14 @@
 
       .role-identity-cell__heading {
         display: flex;
-        align-items: center;
         gap: 6px;
+        align-items: center;
 
         strong {
           overflow: hidden;
+          text-overflow: ellipsis;
           font-weight: 600;
           color: var(--el-text-color-primary);
-          text-overflow: ellipsis;
           white-space: nowrap;
         }
       }
@@ -662,9 +923,9 @@
       .role-identity-cell__code {
         display: block;
         overflow: hidden;
+        text-overflow: ellipsis;
         font-size: 12px;
         color: var(--el-text-color-secondary);
-        text-overflow: ellipsis;
         white-space: nowrap;
       }
 
@@ -722,7 +983,7 @@
       }
     }
 
-    @media (max-width: 900px) {
+    @media (width <= 900px) {
       &__hero {
         align-items: flex-start;
       }
@@ -737,7 +998,13 @@
       }
     }
 
-    @media (max-width: 640px) {
+    @media (width <= 1200px) {
+      &__workspace {
+        grid-template-columns: minmax(0, 1fr);
+      }
+    }
+
+    @media (width <= 640px) {
       &__hero {
         flex-direction: column;
         padding: 18px;
@@ -757,6 +1024,28 @@
           border-bottom: 1px solid var(--el-border-color-lighter);
         }
       }
+
+      &__mobile-scope {
+        .el-button {
+          flex: none;
+          padding-inline: 10px;
+        }
+      }
     }
+  }
+
+  :global(.role-organization-filter-drawer__body) {
+    padding: 0 !important;
+    overflow: hidden !important;
+  }
+
+  :global(.art-table-focus-page .role-page__workspace) {
+    display: grid !important;
+    grid-template-columns: 264px minmax(0, 1fr) !important;
+    gap: 12px !important;
+  }
+
+  :global(.art-table-focus-page .role-page__organization-panel.art-table-focus-hidden) {
+    display: block !important;
   }
 </style>
