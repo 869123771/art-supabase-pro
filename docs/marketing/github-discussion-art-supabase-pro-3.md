@@ -1,6 +1,6 @@
 # GitHub Discussions publishing card
 
-**Recommended category:** Show and tell  
+**Recommended category:** Show and tell
 **Title:** Art Supabase Pro: a production-oriented Vue 3 + Supabase platform for TMS, workflows, fleet operations, finance, and governed AI
 
 ---
