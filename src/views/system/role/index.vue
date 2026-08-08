@@ -1,6 +1,59 @@
 <template>
   <div class="role-page art-full-height">
+    <section class="role-page__overview art-card-xs">
+      <header class="role-page__hero">
+        <div class="role-page__identity">
+          <div class="role-page__brand" aria-hidden="true">
+            <ArtSvgIcon icon="ri:shield-user-line" />
+          </div>
+          <div>
+            <span>ACCESS GOVERNANCE</span>
+            <h1>角色与权限</h1>
+            <p>按租户维护职责角色与菜单访问边界，让权限配置清晰、可追踪、可审计。</p>
+          </div>
+        </div>
+        <div class="role-page__hero-status">
+          <ElTag type="success" effect="light" round>权限按租户隔离</ElTag>
+          <ElTag type="primary" effect="plain" round>遵循最小权限原则</ElTag>
+        </div>
+      </header>
+
+      <div class="role-page__metrics" aria-label="角色治理概览">
+        <article>
+          <div class="role-page__metric-icon is-primary">
+            <ArtSvgIcon icon="ri:team-line" />
+          </div>
+          <div>
+            <span>当前结果</span>
+            <strong>{{ pagination.total }}</strong>
+            <small>随筛选条件实时更新</small>
+          </div>
+        </article>
+        <article>
+          <div class="role-page__metric-icon is-success">
+            <ArtSvgIcon icon="ri:checkbox-circle-line" />
+          </div>
+          <div>
+            <span>本页启用</span>
+            <strong>{{ enabledRoleCount }}</strong>
+            <small>当前页可正常授权</small>
+          </div>
+        </article>
+        <article>
+          <div class="role-page__metric-icon is-warning">
+            <ArtSvgIcon icon="ri:shield-keyhole-line" />
+          </div>
+          <div>
+            <span>受保护角色</span>
+            <strong>{{ protectedRoleCount }}</strong>
+            <small>内置角色限制关键操作</small>
+          </div>
+        </article>
+      </div>
+    </section>
+
     <ArtTableQuery
+      focusable
       v-model="searchForm"
       v-model:columns="columnChecks"
       v-model:show-search-bar="showSearchBar"
@@ -28,7 +81,9 @@
   import { ButtonMoreItem } from '@/components/core/forms/art-button-more/index.vue'
   import { useTable } from '@/hooks/core/useTable'
   import { deleteRole, fetchGetRoleList } from '@/api/system-manage'
+  import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import ArtButtonMore from '@/components/core/forms/art-button-more/index.vue'
+  import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import RoleEditDialog from './modules/role-edit-dialog.vue'
   import RolePermissionDialog from './modules/role-permission-dialog.vue'
   import { formatWithDayjs } from '@/utils/time'
@@ -175,17 +230,12 @@
     void loadRoleBuiltinCodes()
   })
 
-  const getRoleActions = (row: RoleListItem): ButtonMoreItem[] => {
+  const getRoleMoreActions = (row: RoleListItem): ButtonMoreItem[] => {
     if (isSuperRole(row)) {
       return []
     }
 
     const actions: ButtonMoreItem[] = [
-      {
-        key: 'permission',
-        label: '菜单权限',
-        icon: 'ri:user-3-line'
-      },
       {
         key: 'edit',
         label: '编辑角色',
@@ -264,6 +314,26 @@
             ])
         },
         {
+          prop: 'organization',
+          label: '适用组织',
+          minWidth: 180,
+          formatter: (row: RoleListItem) =>
+            row.organization
+              ? h('div', { class: 'role-organization-cell' }, [
+                  h(
+                    'strong',
+                    { title: row.organization.organizationName },
+                    row.organization.organizationName
+                  ),
+                  h(
+                    'small',
+                    { title: row.organization.organizationCode },
+                    row.organization.organizationCode
+                  )
+                ])
+              : h('span', { class: 'role-organization-cell__empty' }, '待归入组织')
+        },
+        {
           prop: 'description',
           label: '角色描述',
           minWidth: 220,
@@ -289,21 +359,35 @@
         {
           prop: 'operation',
           label: '操作',
-          width: 104,
+          width: 120,
           fixed: 'right',
-          formatter: (row: RoleListItem) =>
-            h('div', { class: 'role-operation-cell' }, [
-              getRoleActions(row).length
-                ? h(ArtButtonMore, {
-                    list: getRoleActions(row),
-                    onClick: (item: ButtonMoreItem) => buttonMoreClick(item, row)
-                  })
-                : h('span', { class: 'role-operation-cell__protected' }, '受保护')
+          formatter: (row: RoleListItem) => {
+            if (isSuperRole(row)) {
+              return h('span', { class: 'role-operation-cell__protected' }, '受保护')
+            }
+
+            return h('div', { class: 'role-operation-cell' }, [
+              h(ArtButtonTable, {
+                type: 'view',
+                icon: 'ri:shield-keyhole-line',
+                label: '配置菜单权限',
+                onClick: () => showPermissionDialog(row)
+              }),
+              h(ArtButtonMore, {
+                list: getRoleMoreActions(row),
+                onClick: (item: ButtonMoreItem) => buttonMoreClick(item, row)
+              })
             ])
+          }
         }
       ]
     }
   })
+
+  const enabledRoleCount = computed(() => data.value.filter((row) => row.enabled).length)
+  const protectedRoleCount = computed(
+    () => data.value.filter((row) => isSuperRole(row) || isDefaultRegisterRole(row)).length
+  )
 
   const showDialog = (type: 'add' | 'edit', row?: RoleListItem) => {
     void roleEditDialogRef.value?.handleOpen({
@@ -375,6 +459,161 @@
 
 <style scoped lang="scss">
   .role-page {
+    gap: 12px;
+    min-width: 0;
+
+    &__overview {
+      flex: 0 0 auto;
+      min-width: 0;
+      overflow: hidden;
+    }
+
+    &__hero,
+    &__identity,
+    &__hero-status,
+    &__metrics article,
+    &__brand,
+    &__metric-icon {
+      display: flex;
+      align-items: center;
+    }
+
+    &__hero {
+      justify-content: space-between;
+      gap: 20px;
+      padding: 20px 24px 18px;
+      background: radial-gradient(
+        circle at 92% 0%,
+        var(--el-color-primary-light-9),
+        transparent 32%
+      );
+    }
+
+    &__identity {
+      min-width: 0;
+
+      > div:last-child {
+        min-width: 0;
+      }
+
+      span {
+        display: block;
+        margin-bottom: 3px;
+        font-size: 10px;
+        font-weight: 700;
+        color: var(--el-color-primary);
+        letter-spacing: 0.14em;
+      }
+
+      h1 {
+        margin: 0 0 3px;
+        font-size: 22px;
+        line-height: 1.35;
+        color: var(--el-text-color-primary);
+      }
+
+      p {
+        margin: 0;
+        overflow-wrap: anywhere;
+        font-size: 13px;
+        line-height: 1.6;
+        color: var(--el-text-color-secondary);
+      }
+    }
+
+    &__brand {
+      justify-content: center;
+      flex: 0 0 50px;
+      width: 50px;
+      height: 50px;
+      margin-right: 16px;
+      color: white;
+      background: linear-gradient(145deg, var(--el-color-primary), var(--el-color-primary-dark-2));
+      border-radius: var(--custom-radius);
+
+      :deep(svg) {
+        width: 23px;
+        height: 23px;
+      }
+    }
+
+    &__hero-status {
+      flex: 0 0 auto;
+      gap: 8px;
+    }
+
+    &__metrics {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      border-top: 1px solid var(--el-border-color-lighter);
+
+      article {
+        min-width: 0;
+        gap: 12px;
+        padding: 14px 24px;
+
+        &:not(:last-child) {
+          border-right: 1px solid var(--el-border-color-lighter);
+        }
+
+        > div:last-child {
+          display: grid;
+          min-width: 0;
+        }
+
+        span,
+        small {
+          overflow: hidden;
+          color: var(--el-text-color-secondary);
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        span {
+          font-size: 12px;
+        }
+
+        strong {
+          margin: 1px 0;
+          font-size: 20px;
+          line-height: 1.25;
+          color: var(--el-text-color-primary);
+        }
+
+        small {
+          font-size: 11px;
+        }
+      }
+    }
+
+    &__metric-icon {
+      justify-content: center;
+      flex: 0 0 38px;
+      width: 38px;
+      height: 38px;
+      border-radius: var(--el-border-radius-base);
+
+      :deep(svg) {
+        width: 18px;
+        height: 18px;
+      }
+
+      &.is-primary {
+        color: var(--el-color-primary);
+        background: var(--el-color-primary-light-9);
+      }
+
+      &.is-success {
+        color: var(--el-color-success);
+        background: var(--el-color-success-light-9);
+      }
+
+      &.is-warning {
+        color: var(--el-color-warning-dark-2);
+        background: var(--el-color-warning-light-9);
+      }
+    }
+
     :deep(.role-identity-cell) {
       display: flex;
       min-width: 0;
@@ -441,6 +680,7 @@
     }
 
     :deep(.role-tenant-cell),
+    :deep(.role-organization-cell),
     :deep(.role-created-cell) {
       display: grid;
       min-width: 0;
@@ -466,13 +706,56 @@
       }
     }
 
+    :deep(.role-organization-cell__empty) {
+      font-size: 12px;
+      color: var(--el-text-color-placeholder);
+    }
+
     :deep(.role-operation-cell) {
       display: flex;
+      gap: 4px;
       align-items: center;
 
       .role-operation-cell__protected {
         font-size: 12px;
         color: var(--el-text-color-placeholder);
+      }
+    }
+
+    @media (max-width: 900px) {
+      &__hero {
+        align-items: flex-start;
+      }
+
+      &__hero-status {
+        flex-direction: column;
+        align-items: flex-end;
+      }
+
+      &__metrics article {
+        padding-inline: 16px;
+      }
+    }
+
+    @media (max-width: 640px) {
+      &__hero {
+        flex-direction: column;
+        padding: 18px;
+      }
+
+      &__hero-status {
+        flex-direction: row;
+        align-items: center;
+        margin-left: 66px;
+      }
+
+      &__metrics {
+        grid-template-columns: 1fr;
+
+        article:not(:last-child) {
+          border-right: 0;
+          border-bottom: 1px solid var(--el-border-color-lighter);
+        }
       }
     }
   }

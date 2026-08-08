@@ -24,7 +24,12 @@
         </div>
       </section>
 
-      <ElAlert :title="catalogNotice" type="info" :closable="false" show-icon />
+      <ElAlert
+        :title="catalogNotice"
+        :type="catalog.warning ? 'warning' : 'info'"
+        :closable="false"
+        show-icon
+      />
 
       <ArtForm
         ref="formRef"

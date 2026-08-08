@@ -54,7 +54,7 @@
             >
             <ElTag type="info" effect="plain" round>候选 {{ result.matches.length }} 条</ElTag>
           </div>
-          <ElButton type="primary" plain @click="emit('apply', result)">应用识别与推荐</ElButton>
+          <ElButton type="primary" plain @click="emit('apply', result)">{{ applyLabel }}</ElButton>
         </div>
         <p>{{ result.summary }}</p>
         <div class="voucher-ocr__fields">
@@ -100,7 +100,9 @@
   const props = defineProps<{
     modelValue: string[]
     direction: Api.Tms.Finance.CashDirection
+    applyLabel?: string
   }>()
+  const applyLabel = computed(() => props.applyLabel || '应用识别与推荐')
   const emit = defineEmits<{
     'update:modelValue': [value: string[]]
     apply: [result: Api.Tms.Finance.CashVoucherOcrAnalyzeResponse]

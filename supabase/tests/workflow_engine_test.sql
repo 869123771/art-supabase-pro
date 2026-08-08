@@ -3,7 +3,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions, pg_catalog;
 
-select plan(83);
+select plan(92);
 
 -- Structural and authorization contract.
 select has_table('public', 'wf_definition', 'workflow definition table exists');
@@ -116,6 +116,38 @@ select ok(
 );
 select ok(
   not has_function_privilege(
+    'anon', 'public.get_workflow_business_snapshot(uuid)', 'execute'
+  ),
+  'anonymous users cannot read workflow business snapshots'
+);
+select ok(
+  has_function_privilege(
+    'authenticated', 'public.get_workflow_business_snapshot(uuid)', 'execute'
+  ),
+  'authenticated users can call the guarded business snapshot boundary'
+);
+select ok(
+  not (
+    select p.prosecdef
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.proname = 'get_workflow_business_snapshot'
+  ),
+  'the exposed business snapshot wrapper is security invoker'
+);
+select ok(
+  (
+    select p.prosecdef
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'app_private'
+      and p.proname = 'get_workflow_business_snapshot'
+  ),
+  'the elevated business snapshot implementation stays private'
+);
+select ok(
+  not has_function_privilege(
     'authenticated', 'app_private.process_workflow_task_reminders(integer)', 'execute'
   ),
   'authenticated users cannot invoke the private scheduler'
@@ -133,6 +165,47 @@ select ok(
     where schemaname = 'public' and indexname = 'wf_action_idempotency_idx'
   ),
   'workflow action idempotency index exists'
+);
+select ok(
+  exists (
+    select 1 from pg_indexes
+    where schemaname = 'public' and indexname = 'wf_delegation_delegate_user_id_idx'
+  ),
+  'workflow delegation delegate lookup is indexed'
+);
+select ok(
+  exists (
+    select 1 from pg_indexes
+    where schemaname = 'public' and indexname = 'wf_delegation_delegator_user_id_idx'
+  ),
+  'workflow delegation delegator lookup is indexed'
+);
+select ok(
+  exists (
+    select 1 from pg_indexes
+    where schemaname = 'public' and indexname = 'wf_delegation_revoked_by_idx'
+  ),
+  'workflow delegation revoker lookup is indexed'
+);
+select ok(
+  exists (
+    select 1 from pg_indexes
+    where schemaname = 'public' and indexname = 'wf_task_last_assigned_by_idx'
+  ),
+  'workflow task reassignment operator lookup is indexed'
+);
+select ok(
+  position(
+    $transition$old.audit_status = 'pending_review' and new.audit_status in ('approved', 'rejected', 'draft')$transition$
+    in (
+      select lower(p.prosrc)
+      from pg_proc p
+      join pg_namespace n on n.oid = p.pronamespace
+      where n.nspname = 'public'
+        and p.proname = 'trg_validate_tms_waybill_cost'
+    )
+  ) > 0,
+  'workflow cancellation can restore a pending waybill cost to draft'
 );
 select ok(
   not exists (

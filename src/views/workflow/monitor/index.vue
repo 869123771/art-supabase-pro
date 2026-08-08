@@ -86,6 +86,7 @@
 
       <ArtTableQuery
         ref="tableRef"
+        focusable
         v-model="table.searchQuery"
         :search-items="table.searchItems"
         :api-fn="fetchTableData"

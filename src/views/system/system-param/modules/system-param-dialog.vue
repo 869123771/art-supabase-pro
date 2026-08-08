@@ -1,10 +1,10 @@
 ﻿<template>
   <ArtDialog ref="dialogRef" size="lg">
     <div class="system-param-dialog">
-      <section class="system-param-dialog__form">
+      <section class="system-param-dialog__form art-card-xs">
         <div class="system-param-dialog__section-head">
           <div>
-            <h3>参数信息</h3>
+            <ArtSectionTitle :show-line="false">参数信息</ArtSectionTitle>
             <p>配置键名、分组和值内容，保存后可刷新缓存使新值生效。</p>
           </div>
           <ElTag round :type="formState.model.builtin ? 'warning' : 'info'" effect="light">
@@ -12,7 +12,7 @@
           </ElTag>
         </div>
 
-        <ElScrollbar class="system-param-dialog__form-body">
+        <div class="system-param-dialog__form-body">
           <ArtForm
             ref="formRef"
             v-model="formState.model"
@@ -26,18 +26,6 @@
             :show-submit="false"
             :validate-on-rule-change="false"
           >
-            <template #basicInfoTitle>
-              <div class="system-param-dialog__divider">
-                <span>基础信息</span>
-              </div>
-            </template>
-
-            <template #statusContentTitle>
-              <div class="system-param-dialog__divider">
-                <span>状态与内容</span>
-              </div>
-            </template>
-
             <template #paramValue>
               <ElInput
                 v-if="formState.model.paramType === 'single_text'"
@@ -67,8 +55,12 @@
                 placeholder="请选择布尔值"
                 class="system-param-dialog__full-control"
               >
-                <ElOption label="true / 开启" value="true" />
-                <ElOption label="false / 关闭" value="false" />
+                <ElOption
+                  v-for="option in booleanOptions"
+                  :key="String(option.value)"
+                  :label="option.label"
+                  :value="String(option.value)"
+                />
               </ElSelect>
               <ElInput
                 v-else
@@ -81,16 +73,16 @@
               />
             </template>
           </ArtForm>
-        </ElScrollbar>
+        </div>
       </section>
 
-      <ElScrollbar class="system-param-dialog__side">
-        <section class="system-param-dialog__preview">
-          <h3>配置预览</h3>
+      <aside class="system-param-dialog__side" aria-label="参数配置辅助信息">
+        <section class="system-param-dialog__preview art-card-xs">
+          <ArtSectionTitle :show-line="false">配置预览</ArtSectionTitle>
           <dl>
             <div>
               <dt>键名</dt>
-              <dd>{{ formState.model.paramKey || '-' }}</dd>
+              <dd translate="no">{{ formState.model.paramKey || '-' }}</dd>
             </div>
             <div>
               <dt>分组</dt>
@@ -99,22 +91,30 @@
             <div class="system-param-dialog__preview-grid">
               <div>
                 <dt>类型</dt>
-                <dd>{{ typeLabel || '-' }}</dd>
+                <dd
+                  ><ElTag effect="plain">{{ typeLabel || '-' }}</ElTag></dd
+                >
               </div>
               <div>
                 <dt>状态</dt>
-                <dd>{{ formState.model.enabled ? '启用' : '停用' }}</dd>
+                <dd>
+                  <ElTag :type="formState.model.enabled ? 'success' : 'info'" effect="light">
+                    {{ formState.model.enabled ? '启用' : '停用' }}
+                  </ElTag>
+                </dd>
               </div>
             </div>
             <div>
               <dt>值预览</dt>
-              <dd class="system-param-dialog__value-preview">{{ previewValue }}</dd>
+              <dd class="system-param-dialog__value-preview" translate="no">
+                {{ previewValue }}
+              </dd>
             </div>
           </dl>
         </section>
 
-        <section class="system-param-dialog__tips">
-          <h3>维护建议</h3>
+        <section class="system-param-dialog__tips art-card-xs">
+          <ArtSectionTitle :show-line="false">维护建议</ArtSectionTitle>
           <ul>
             <li>键名建议采用“业务域.模块.字段”的层级命名。</li>
             <li>内置参数用于平台底层策略，建议限制删除和变更范围。</li>
@@ -122,7 +122,7 @@
             <li>修改完成后建议执行一次缓存刷新，确保新值及时生效。</li>
           </ul>
         </section>
-      </ElScrollbar>
+      </aside>
     </div>
   </ArtDialog>
 </template>
@@ -133,6 +133,7 @@
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
+  import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
   import { addSystemParam, editSystemParam } from '@/api/system-manage'
   import { useUserStore } from '@/store/modules/user'
   import { uniqueValidator } from '@/utils/form/validator'
@@ -182,6 +183,7 @@
 
   const groupOptions = computed(() => getDictMap.value.systemParamGroup ?? [])
   const typeOptions = computed(() => getDictMap.value.systemParamType ?? [])
+  const booleanOptions = computed(() => getDictMap.value.commonBoolean ?? [])
 
   const formModel = reactive<SystemParamForm>(createInitialForm())
 
@@ -192,10 +194,7 @@
         label: '基础信息',
         key: 'basicInfoTitle',
         type: 'divider',
-        span: 24,
-        props: {
-          showLine: false
-        }
+        span: 24
       },
       {
         label: '参数名称',
@@ -204,7 +203,8 @@
         props: {
           maxlength: 100,
           placeholder: '例如：密码最小长度'
-        }
+        },
+        description: '使用业务人员能够理解的名称，方便检索与审计。'
       },
       {
         label: '参数键名',
@@ -214,7 +214,8 @@
           maxlength: 150,
           disabled: !!formModel.id,
           placeholder: '例如：security.password.min_length'
-        }
+        },
+        description: '保存后不可修改，建议采用“业务域.模块.字段”的稳定命名。'
       },
       {
         label: '分组',
@@ -246,22 +247,21 @@
           options: typeOptions.value,
           placeholder: '请选择参数类型',
           onChange: handleTypeChange
-        }
+        },
+        description: '切换类型会重置当前参数值，请确认后操作。'
       },
       {
         label: '状态与内容',
         key: 'statusContentTitle',
         type: 'divider',
-        span: 24,
-        props: {
-          showLine: false
-        }
+        span: 24
       },
       {
         label: '状态',
         key: 'enabled',
         type: 'switch',
-        span: 6
+        span: 6,
+        description: '停用后不再参与有效参数读取。'
       },
       {
         label: '内置参数',
@@ -270,7 +270,8 @@
         span: 6,
         props: {
           disabled: formState.model.id && formState.model.builtin
-        }
+        },
+        description: '内置参数受平台保护，不能删除。'
       },
       {
         label: '默认值',
@@ -350,7 +351,7 @@
   const previewValue = computed(() => {
     if (formState.model.paramValue === '') return '-'
     return formState.model.paramValue.length > 120
-      ? `${formState.model.paramValue.slice(0, 120)}...`
+      ? `${formState.model.paramValue.slice(0, 120)}…`
       : formState.model.paramValue
   })
   const numberParamValue = computed<number | undefined>({
@@ -502,9 +503,8 @@
 
     await dialogRef.value?.handleOpen(row, {
       title: row?.id ? '编辑参数' : '新增参数',
-      dialogProps: {
-        class: 'system-param-dialog-shell'
-      },
+      contentMaxHeight: '72vh',
+      confirmText: row?.id ? '保存修改' : '创建参数',
       onConfirm: handleSubmit,
       onReset: () => void resetForm()
     })
@@ -519,26 +519,12 @@
   .system-param-dialog {
     position: relative;
     display: flex;
+    align-items: flex-start;
     gap: 12px;
-    height: 72vh;
-    max-height: 620px;
-    min-height: 0;
-    overflow: hidden;
-
-    &__form,
-    &__preview,
-    &__tips {
-      border: 1px solid var(--el-border-color-light);
-      border-radius: var(--art-surface-radius);
-    }
 
     &__form {
-      display: flex;
-      flex-direction: column;
       flex: 1;
       min-width: 0;
-      min-height: 0;
-      overflow: hidden;
     }
 
     &__section-head {
@@ -549,11 +535,8 @@
       padding: 16px 16px 12px;
       border-bottom: 1px solid var(--el-border-color-lighter);
 
-      h3 {
-        margin: 0 0 6px;
-        font-size: 14px;
-        font-weight: 700;
-        color: var(--art-text-gray-900);
+      :deep(.art-section-title) {
+        margin: 0 0 4px;
       }
 
       p {
@@ -565,17 +548,8 @@
     }
 
     &__form-body {
-      flex: 1;
-      height: 100%;
-      min-height: 0;
-      overscroll-behavior: contain;
-
       :deep(.art-form) {
         padding: 12px 16px 4px !important;
-      }
-
-      :deep(.el-scrollbar__view) {
-        min-height: 100%;
       }
 
       :deep(.el-form-item) {
@@ -590,43 +564,23 @@
       }
     }
 
-    &__divider {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      padding-top: 2px;
-
-      span {
-        margin: 0;
-        font-size: 12px;
-        font-weight: 400;
-        line-height: 1.6;
-        color: var(--art-text-gray-500);
-      }
-    }
-
     &__side {
-      flex: 0 0 210px;
-      width: 210px;
-      height: 100%;
-      min-height: 0;
-
-      :deep(.el-scrollbar__view) {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-      }
+      position: sticky;
+      top: 0;
+      display: flex;
+      flex: 0 0 230px;
+      flex-direction: column;
+      gap: 12px;
+      width: 230px;
+      align-self: flex-start;
     }
 
     &__preview,
     &__tips {
       padding: 14px;
 
-      h3 {
+      :deep(.art-section-title) {
         margin: 0 0 14px;
-        font-size: 14px;
-        font-weight: 700;
-        color: var(--art-text-gray-900);
       }
     }
 
@@ -647,6 +601,10 @@
         overflow-wrap: anywhere;
         font-size: 13px;
         color: var(--art-text-gray-800);
+
+        .el-tag {
+          max-width: 100%;
+        }
       }
     }
 
@@ -686,20 +644,9 @@
 
   @media (max-width: 900px) {
     .system-param-dialog {
-      height: 72vh;
-      max-height: 620px;
-
-      &__form {
-        min-height: 0;
-      }
-
       &__side {
         display: none;
       }
     }
-  }
-
-  :global(.system-param-dialog-shell > .el-dialog__body) {
-    overflow: hidden;
   }
 </style>

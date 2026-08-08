@@ -39,6 +39,8 @@
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatWithDayjs } from '@/utils/time'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import { fetchRecognitionArtifactDetail } from '@/api/intelligent-recognition'
+  import { toInvoiceOcrAnalyzeResponse } from '@/utils/intelligent-recognition'
   import InvoiceDialog from './modules/invoice-dialog.vue'
   import InvoiceComplianceAuditDrawer from './modules/invoice-compliance-audit-drawer.vue'
   import InvoiceDetailDrawer from './modules/invoice-detail-drawer.vue'
@@ -51,6 +53,10 @@
 
   interface DialogExpose {
     handleOpen: (row?: Invoice) => Promise<void>
+    handleOpenFromOcr: (
+      result: Api.Tms.Finance.InvoiceOcrAnalyzeResponse,
+      direction: Api.Tms.Finance.InvoiceDirection
+    ) => Promise<void>
   }
 
   interface DrawerExpose {
@@ -71,6 +77,7 @@
 
   const { getDictMap } = storeToRefs(useUserStore())
   const { promptReason, confirmAction } = useArtFeedback()
+  const route = useRoute()
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<DialogExpose>()
   const drawerRef = ref<DrawerExpose>()
@@ -382,5 +389,25 @@
     void tableQueryRef.value?.refreshCreate()
   }
 
-  onMounted(() => void loadCounterpartyOptions())
+  async function restoreRecognitionDraft(): Promise<void> {
+    const artifactId = typeof route.query.aiArtifactId === 'string' ? route.query.aiArtifactId : ''
+    if (!artifactId) return
+
+    const { data, error } = await fetchRecognitionArtifactDetail(artifactId)
+    if (error || !data || data.feature !== 'invoice_ocr') return
+    if (data.status !== 'pending') {
+      ElMessage.info('该识别任务已处理，已为你保留发票台账页面')
+      return
+    }
+
+    const metadataDirection = data.metadata?.direction
+    const direction: Api.Tms.Finance.InvoiceDirection =
+      metadataDirection === 'input' ? 'input' : 'output'
+    await dialogRef.value?.handleOpenFromOcr(toInvoiceOcrAnalyzeResponse(data), direction)
+  }
+
+  onMounted(() => {
+    void loadCounterpartyOptions()
+    void restoreRecognitionDraft()
+  })
 </script>

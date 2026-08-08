@@ -1,23 +1,44 @@
 <template>
   <ArtDialog ref="dialogRef" size="md">
-    <div v-if="isSystemBuiltinRole" class="role-edit-dialog__notice art-card-xs">
-      <span aria-hidden="true"><ArtSvgIcon icon="ri:shield-check-line" /></span>
-      <div>
-        <strong>系统内置角色</strong>
-        <p>角色编码与启用状态受系统保护，仅允许调整名称和描述。</p>
-      </div>
+    <div class="role-edit-dialog">
+      <section class="role-edit-dialog__context">
+        <div class="role-edit-dialog__context-icon" aria-hidden="true">
+          <ArtSvgIcon :icon="dialogType === 'add' ? 'ri:user-add-line' : 'ri:shield-user-line'" />
+        </div>
+        <div>
+          <strong>{{ contextTitle }}</strong>
+          <p>{{ contextDescription }}</p>
+        </div>
+        <ElTag
+          :type="isSystemBuiltinRole ? 'warning' : dialogType === 'add' ? 'success' : 'primary'"
+          effect="light"
+          round
+        >
+          {{ isSystemBuiltinRole ? '系统内置' : dialogType === 'add' ? '新增角色' : '编辑模式' }}
+        </ElTag>
+      </section>
+
+      <ElAlert
+        v-if="isSystemBuiltinRole"
+        class="role-edit-dialog__notice"
+        title="该角色承担系统级职责，角色编码与启用状态受保护，仅允许调整名称和描述。"
+        type="warning"
+        :closable="false"
+        show-icon
+      />
+
+      <ArtForm
+        ref="formRef"
+        v-model="form"
+        :items="formItems"
+        :rules="rules"
+        :span="12"
+        :gutter="20"
+        label-width="100px"
+        :show-reset="false"
+        :show-submit="false"
+      />
     </div>
-    <ArtForm
-      ref="formRef"
-      v-model="form"
-      :items="formItems"
-      :rules="rules"
-      :span="12"
-      :gutter="20"
-      label-width="100px"
-      :show-reset="false"
-      :show-submit="false"
-    />
   </ArtDialog>
 </template>
 
@@ -26,7 +47,13 @@
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
-  import { addRole, editRole, fetchGetEnableTenantList } from '@/api/system-manage'
+  import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
+  import {
+    addRole,
+    editRole,
+    fetchGetEnableOrganizationTree,
+    fetchGetEnableTenantList
+  } from '@/api/system-manage'
   import { uniqueValidator } from '@/utils'
   import { useUserStore } from '@/store/modules/user'
   import { useSystemParam } from '@/hooks'
@@ -44,6 +71,7 @@
     validate: () => Promise<boolean>
     clearValidate: () => void
     validateField: (prop: string) => void
+    reloadOptions: (key?: string) => Promise<void>
   }
 
   interface Emits {
@@ -90,10 +118,19 @@
   })
 
   const isSystemBuiltinRole = computed(() => isDefaultRegisterRole.value || isSuperRole.value)
+  const contextTitle = computed(() =>
+    dialogType.value === 'add' ? '创建新的职责角色' : '调整角色定义与可用状态'
+  )
+  const contextDescription = computed(() =>
+    dialogType.value === 'add'
+      ? '角色编码用于权限关联，建议采用稳定、清晰的职责命名。'
+      : '角色定义会影响关联用户的权限识别，保存前请确认职责边界。'
+  )
 
   const createInitialForm = (): RoleListItem => ({
     id: undefined,
     tenantId: undefined,
+    organizationId: null,
     roleName: '',
     roleCode: '',
     description: '',
@@ -164,6 +201,30 @@
       description: '建议使用能够直接体现职责范围的名称。'
     },
     {
+      label: '适用组织',
+      key: 'organizationId',
+      type: 'treeSelect',
+      span: 24,
+      api: fetchGetEnableOrganizationTree,
+      immediate: false,
+      beforeFetch: () => ({ tenantId: form.tenantId }),
+      resultField: 'data',
+      labelField: 'organizationName',
+      valueField: 'id',
+      childrenField: 'children',
+      props: {
+        disabled: !form.tenantId || isSystemBuiltinRole.value,
+        clearable: true,
+        checkStrictly: true,
+        defaultExpandAll: true,
+        renderAfterExpand: false,
+        placeholder: form.tenantId ? '请选择角色主要适用组织' : '请先选择租户'
+      },
+      description: isSystemBuiltinRole.value
+        ? '系统内置角色固定归入租户根组织。'
+        : '用于组织治理与职责审计，不改变角色菜单权限的独立配置。'
+    },
+    {
       label: '角色编码',
       key: 'roleCode',
       type: 'input',
@@ -219,11 +280,13 @@
     dialogType.value = data.type
 
     if (data.roleData) {
-      const { id, tenantId, roleName, roleCode, description, enabled, createBy } = data.roleData
+      const { id, tenantId, organizationId, roleName, roleCode, description, enabled, createBy } =
+        data.roleData
       currentTenantCode.value = data.roleData.tenant?.tenantCode ?? ''
       Object.assign(form, {
         id,
         tenantId,
+        organizationId,
         roleName,
         roleCode,
         description,
@@ -290,17 +353,28 @@
   }
 
   const handleTenantChange = (): void => {
+    form.organizationId = null
+    void formRef.value?.reloadOptions('organizationId')
     if (form.roleCode) {
       void formRef.value?.validateField('roleCode')
     }
   }
 
   const handleOpen = async (data: RoleEditDialogOpenData): Promise<void> => {
-    await Promise.all([loadRoleBuiltinCodes(), loadTenantOptions()])
     await initializeForm(data)
     await dialogRef.value?.handleOpen(data, {
       title: data.type === 'add' ? '新增角色' : '编辑角色',
       contentMaxHeight: '68vh',
+      loading: true,
+      onOpen: async (_openData, api) => {
+        try {
+          await Promise.all([loadRoleBuiltinCodes(), loadTenantOptions()])
+          await initializeForm(data)
+          await formRef.value?.reloadOptions('organizationId')
+        } finally {
+          api.setLoading(false)
+        }
+      },
       onConfirm: handleSubmit,
       onReset: () => {
         void resetForm()
@@ -317,35 +391,75 @@
 
 <style scoped lang="scss">
   .role-edit-dialog {
-    &__notice {
-      display: flex;
-      align-items: flex-start;
-      padding: 12px 14px;
-      margin: 4px 16px 0;
-      gap: 10px;
+    display: grid;
+    gap: 16px;
+    min-width: 0;
 
-      > span {
-        display: grid;
-        flex: 0 0 32px;
-        width: 32px;
-        height: 32px;
-        font-size: 16px;
-        color: var(--el-color-warning-dark-2);
-        background: var(--el-color-warning-light-9);
-        border-radius: var(--art-control-radius);
-        place-items: center;
+    &__context {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: center;
+      padding: 14px 16px;
+      background: var(--el-color-primary-light-9);
+      border: 1px solid var(--el-color-primary-light-8);
+      border-radius: var(--custom-radius);
+
+      > div:nth-child(2) {
+        min-width: 0;
       }
 
       strong {
-        font-size: 13px;
+        display: block;
+        margin-bottom: 3px;
+        font-size: 14px;
         color: var(--el-text-color-primary);
       }
 
       p {
-        margin: 2px 0 0;
+        margin: 0;
+        overflow-wrap: anywhere;
         font-size: 12px;
-        line-height: 1.5;
+        line-height: 1.6;
         color: var(--el-text-color-secondary);
+      }
+    }
+
+    &__context-icon {
+      display: grid;
+      width: 38px;
+      height: 38px;
+      color: var(--el-color-primary);
+      background: var(--el-bg-color);
+      border-radius: var(--el-border-radius-base);
+      place-items: center;
+
+      :deep(svg) {
+        width: 19px;
+        height: 19px;
+      }
+    }
+
+    &__notice {
+      align-items: flex-start;
+
+      :deep(.el-alert__content) {
+        min-width: 0;
+      }
+
+      :deep(.el-alert__title) {
+        line-height: 1.6;
+      }
+    }
+
+    @media (max-width: 640px) {
+      &__context {
+        grid-template-columns: auto minmax(0, 1fr);
+
+        > :deep(.el-tag) {
+          grid-column: 2;
+          justify-self: start;
+        }
       }
     }
   }

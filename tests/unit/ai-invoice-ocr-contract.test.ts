@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
+  coerceAiInvoiceOcrProviderPayload,
   compareAiInvoiceOcrPayloads,
   normalizeAiInvoiceOcrResponse,
   validateAiInvoiceOcrProviderPayload
@@ -37,6 +38,56 @@ test('AI invoice OCR contract accepts a valid provider payload', () => {
     valid: true,
     errors: []
   })
+})
+
+test('AI invoice OCR contract adapts flat provider fields for manual review', () => {
+  const payload = coerceAiInvoiceOcrProviderPayload({
+    invoiceNo: '12345678',
+    issueDate: '2026-08-05',
+    totalAmount: '109.00'
+  })
+
+  assert.ok(payload)
+  assert.deepEqual(validateAiInvoiceOcrProviderPayload(payload), { valid: true, errors: [] })
+  const normalized = normalizeAiInvoiceOcrResponse(payload)
+  assert.equal(normalized.invoice.invoiceNo, '12345678')
+  assert.equal(normalized.invoice.totalAmount, 109)
+  assert.equal(normalized.confidence, 0)
+  assert.ok(normalized.warnings.some((warning) => warning.includes('人工复核')))
+})
+
+test('AI invoice OCR contract unwraps provider result envelopes', () => {
+  const payload = coerceAiInvoiceOcrProviderPayload({
+    result: {
+      confidence: '0.95',
+      fieldConfidence: { invoiceNo: '0.98' },
+      invoice: { invoiceNo: '87654321', totalAmount: '88.50' }
+    }
+  })
+
+  assert.ok(payload)
+  assert.deepEqual(validateAiInvoiceOcrProviderPayload(payload), { valid: true, errors: [] })
+  assert.equal(normalizeAiInvoiceOcrResponse(payload).invoice.totalAmount, 88.5)
+})
+
+test('AI invoice OCR contract unwraps a filled expectedShape echo', () => {
+  const payload = coerceAiInvoiceOcrProviderPayload({
+    direction: 'output',
+    expectedShape: {
+      confidence: 0.88,
+      fieldConfidence: { taxRate: 0.8 },
+      warnings: [],
+      invoice: { invoiceNo: '12345678', taxRate: '9%', totalAmount: '436.00' }
+    },
+    visionExtraction: 'untrusted OCR text'
+  })
+
+  assert.ok(payload)
+  assert.deepEqual(validateAiInvoiceOcrProviderPayload(payload), { valid: true, errors: [] })
+  const normalized = normalizeAiInvoiceOcrResponse(payload)
+  assert.equal(normalized.invoice.invoiceNo, '12345678')
+  assert.equal(normalized.invoice.taxRate, 9)
+  assert.equal(normalized.invoice.totalAmount, 436)
 })
 
 test('AI invoice OCR contract rejects unsafe values', () => {

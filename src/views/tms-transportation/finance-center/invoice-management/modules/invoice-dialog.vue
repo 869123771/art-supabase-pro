@@ -20,25 +20,59 @@
       :show-submit="false"
     >
       <template #counterpartyId>
-        <ArtTableSingleSelect
-          v-model="form.data.counterpartyId"
-          v-model:selected-data="selection.parties"
-          :api-fn="fetchPartySelectorData"
-          :columns="partyColumns"
-          :title="form.data.direction === 'output' ? '选择开票客户' : '选择来票承运商'"
-          :subtitle="
-            form.data.direction === 'output' ? '销项发票关联客户对账单' : '进项发票关联承运商对账单'
-          "
-          row-key="id"
-          label-key="partyName"
-          description-key="partyCode"
-          placeholder="请选择往来单位"
-          search-placeholder="名称、编码、联系人或电话"
-          dialog-width="lg"
-          show-pagination
-          :page-size="10"
-          @change="handlePartyChange"
-        />
+        <div class="invoice-dialog__counterparty-field">
+          <ArtTableSingleSelect
+            v-model="form.data.counterpartyId"
+            v-model:selected-data="selection.parties"
+            :api-fn="fetchPartySelectorData"
+            :columns="partyColumns"
+            :title="form.data.direction === 'output' ? '选择开票客户' : '选择来票承运商'"
+            :subtitle="
+              form.data.direction === 'output'
+                ? '销项发票关联客户对账单'
+                : '进项发票关联承运商对账单'
+            "
+            row-key="id"
+            label-key="partyName"
+            description-key="partyCode"
+            placeholder="请选择往来单位"
+            search-placeholder="名称、编码、联系人或电话"
+            dialog-width="lg"
+            show-pagination
+            :page-size="10"
+            @change="handlePartyChange"
+          />
+
+          <div
+            v-if="counterpartyResolution.status !== 'idle'"
+            class="invoice-dialog__counterparty-resolution"
+            aria-live="polite"
+          >
+            <ElAlert
+              class="invoice-dialog__counterparty-alert"
+              :type="counterpartyResolutionAlertType"
+              :closable="false"
+              show-icon
+              :title="counterpartyResolution.message"
+              :description="counterpartyResolutionDescription"
+            />
+            <ElButton
+              v-if="showCreateCounterpartyAction"
+              type="primary"
+              plain
+              @click="handleOpenCounterpartyCreate"
+            >
+              建档并带入
+            </ElButton>
+            <ElButton
+              v-else-if="counterpartyResolution.status === 'error'"
+              plain
+              @click="retryCounterpartyResolution"
+            >
+              重新匹配
+            </ElButton>
+          </div>
+        </div>
       </template>
 
       <template #statementIds>
@@ -93,6 +127,11 @@
       </ArtTable>
     </section>
   </ArtDialog>
+
+  <InvoiceCounterpartyCreateDialog
+    ref="counterpartyCreateDialogRef"
+    @success="handleCounterpartyCreated"
+  />
 </template>
 
 <script setup lang="ts">
@@ -112,6 +151,7 @@
     DataSelectRecord
   } from '@/components/core/forms/art-data-select/types'
   import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
+  import InvoiceCounterpartyCreateDialog from './invoice-counterparty-create-dialog.vue'
   import InvoiceOcrPanel from './invoice-ocr-panel.vue'
   import {
     reviewInvoiceOcrArtifact,
@@ -119,6 +159,7 @@
     fetchCustomerSelectorList,
     fetchInvoiceDetail,
     fetchInvoiceableStatementList,
+    resolveInvoiceCounterparty,
     saveInvoice
   } from '@/api/tms'
   import { useUserStore } from '@/store/modules/user'
@@ -128,6 +169,8 @@
 
   type Invoice = Api.Tms.Finance.InvoiceRecord
   type InvoiceableStatement = Api.Tms.Finance.InvoiceableStatement
+  type CounterpartyResolutionStatus =
+    Api.Tms.Finance.InvoiceCounterpartyResolutionStatus | 'idle' | 'loading' | 'error'
 
   interface FormExpose {
     validate: () => Promise<boolean>
@@ -136,6 +179,16 @@
 
   interface InvoiceOcrPanelExpose {
     reset: () => void
+  }
+
+  interface CounterpartyCreateDialogExpose {
+    handleOpen: (data: {
+      artifactId: string
+      direction: Api.Tms.Finance.InvoiceDirection
+      name: string
+      taxNo?: string | null
+      requiresReview: boolean
+    }) => Promise<void>
   }
 
   interface InvoiceFormModel {
@@ -170,12 +223,25 @@
     originalLinkAmounts: Record<string, number>
   }
 
+  interface CounterpartyResolutionGroup {
+    status: CounterpartyResolutionStatus
+    message: string
+    artifactId?: string
+    result?: Api.Tms.Finance.InvoiceCounterpartyResolution | null
+  }
+
+  interface InvoiceOcrContext {
+    direction: Api.Tms.Finance.InvoiceDirection
+    result: Api.Tms.Finance.InvoiceOcrAnalyzeResponse
+  }
+
   const emit = defineEmits<{ success: [] }>()
   const { getDictMap } = storeToRefs(useUserStore())
   const dialogRef = ref<ArtDialogExpose<Invoice | undefined>>()
   const formRef = ref<FormExpose>()
   const statementSelectRef = ref<ArtDataSelectExpose>()
   const ocrPanelRef = ref<InvoiceOcrPanelExpose>()
+  const counterpartyCreateDialogRef = ref<CounterpartyCreateDialogExpose>()
   const ocrArtifactId = ref<string>()
 
   const createInitialForm = (): InvoiceFormModel => ({
@@ -202,6 +268,13 @@
     statements: [],
     linkAmounts: {},
     originalLinkAmounts: {}
+  })
+
+  const counterpartyResolution = reactive<CounterpartyResolutionGroup>({
+    status: 'idle',
+    message: '',
+    artifactId: undefined,
+    result: null
   })
 
   const form: UnwrapNestedRefs<FormGroup> = reactive<FormGroup>({
@@ -421,6 +494,33 @@
         : '请先选择发票方向和往来单位，再关联对账单'
   )
 
+  const counterpartyResolutionAlertType = computed<'success' | 'warning' | 'error' | 'info'>(() => {
+    if (counterpartyResolution.status === 'matched') return 'success'
+    if (
+      counterpartyResolution.status === 'conflict' ||
+      counterpartyResolution.status === 'ambiguous' ||
+      counterpartyResolution.status === 'disabled' ||
+      counterpartyResolution.status === 'invalid' ||
+      counterpartyResolution.status === 'error'
+    ) {
+      return 'error'
+    }
+    return counterpartyResolution.status === 'unmatched' ? 'warning' : 'info'
+  })
+
+  const counterpartyResolutionDescription = computed(() => {
+    if (counterpartyResolution.status === 'loading') return '正在租户内按税号和完整名称查重'
+    const result = counterpartyResolution.result
+    if (!result?.name && !result?.taxNo) return ''
+    return [`识别主体：${result.name || '未识别'}`, `税号：${result.taxNo || '未识别'}`].join('；')
+  })
+
+  const showCreateCounterpartyAction = computed(
+    () =>
+      counterpartyResolution.status === 'unmatched' &&
+      Boolean(counterpartyResolution.result?.canCreate)
+  )
+
   watch(
     () => selection.statements.map((row) => String(row.statementId)),
     (statementIds) => {
@@ -522,16 +622,27 @@
     void statementSelectRef.value?.reload()
   }
 
+  function resetCounterpartyResolution(): void {
+    Object.assign(counterpartyResolution, {
+      status: 'idle',
+      message: '',
+      artifactId: undefined,
+      result: null
+    } satisfies CounterpartyResolutionGroup)
+  }
+
   function handleDirectionChange(): void {
     form.data.counterpartyId = ''
     selection.parties = []
     clearStatements()
+    resetCounterpartyResolution()
     ocrArtifactId.value = undefined
     ocrPanelRef.value?.reset()
   }
 
   function handlePartyChange(): void {
     clearStatements()
+    if (form.data.counterpartyId) resetCounterpartyResolution()
   }
 
   function replaceForm(nextForm: InvoiceFormModel): void {
@@ -544,25 +655,28 @@
     selection.statements = []
     selection.linkAmounts = {}
     selection.originalLinkAmounts = {}
+    resetCounterpartyResolution()
     ocrArtifactId.value = undefined
     ocrPanelRef.value?.reset()
     await nextTick()
     formRef.value?.clearValidate()
   }
 
-  function handleApplyOcrResult(result: Api.Tms.Finance.InvoiceOcrAnalyzeResponse): void {
+  async function handleApplyOcrResult(
+    result: Api.Tms.Finance.InvoiceOcrAnalyzeResponse
+  ): Promise<void> {
     const invoice = result.invoice
     const patch: Partial<InvoiceFormModel> = {}
-    const textFields = [
-      'invoiceTitle',
-      'taxNumber',
-      'invoiceCode',
-      'invoiceNo',
-      'issueDate'
-    ] as const
+    const recognizedCounterpartyName =
+      form.data.direction === 'output' ? invoice.buyerName : invoice.sellerName
+    const recognizedCounterpartyTaxNo =
+      form.data.direction === 'output' ? invoice.buyerTaxNumber : invoice.sellerTaxNumber
+    const textFields = ['invoiceCode', 'invoiceNo', 'issueDate'] as const
     const numberFields = ['taxRate', 'amountExcludingTax', 'taxAmount', 'totalAmount'] as const
 
     if (invoice.invoiceType) patch.invoiceType = invoice.invoiceType
+    patch.invoiceTitle = invoice.invoiceTitle || recognizedCounterpartyName || ''
+    patch.taxNumber = invoice.taxNumber || recognizedCounterpartyTaxNo || ''
     for (const field of textFields) {
       const value = invoice[field]
       if (value) Object.assign(patch, { [field]: value })
@@ -573,9 +687,100 @@
     }
 
     Object.assign(form.data, patch)
+    form.data.counterpartyId = ''
+    selection.parties = []
+    clearStatements()
     ocrArtifactId.value = result.artifactId
+    await resolveRecognizedCounterparty(result.artifactId)
+    await nextTick(() => formRef.value?.clearValidate())
+    ElMessage.success(
+      counterpartyResolution.status === 'matched'
+        ? '识别结果已填入，往来单位已自动匹配'
+        : '识别结果已填入，请继续核对往来单位和低置信字段'
+    )
+  }
+
+  async function resolveRecognizedCounterparty(artifactId: string): Promise<void> {
+    Object.assign(counterpartyResolution, {
+      status: 'loading',
+      message: '正在匹配往来单位',
+      artifactId,
+      result: null
+    } satisfies CounterpartyResolutionGroup)
+
+    try {
+      const { data, error } = await resolveInvoiceCounterparty(artifactId)
+      if (error || !data) throw error || new Error('往来单位匹配结果为空')
+
+      Object.assign(counterpartyResolution, {
+        status: data.status,
+        message: data.message,
+        artifactId,
+        result: data
+      } satisfies CounterpartyResolutionGroup)
+
+      if (data.status === 'matched' && data.party) {
+        applyCounterparty(data.party)
+      }
+    } catch {
+      Object.assign(counterpartyResolution, {
+        status: 'error',
+        message: '往来单位自动匹配失败，可重试或手动选择',
+        artifactId,
+        result: null
+      } satisfies CounterpartyResolutionGroup)
+    }
+  }
+
+  function applyCounterparty(party: Api.Tms.Finance.InvoiceCounterpartyOption): void {
+    form.data.counterpartyId = party.id
+    selection.parties = [
+      {
+        id: party.id,
+        partyName: party.partyName,
+        partyCode: party.partyCode ?? '',
+        taxNo: party.taxNo ?? ''
+      }
+    ]
+    clearStatements()
     void nextTick(() => formRef.value?.clearValidate())
-    ElMessage.success('识别结果已填入，请核对低置信字段后保存发票')
+  }
+
+  function handleOpenCounterpartyCreate(): void {
+    const result = counterpartyResolution.result
+    const artifactId = counterpartyResolution.artifactId
+    if (!artifactId || !result?.name || !showCreateCounterpartyAction.value) return
+    void counterpartyCreateDialogRef.value?.handleOpen({
+      artifactId,
+      direction: result.direction,
+      name: result.name,
+      taxNo: result.taxNo,
+      requiresReview: result.requiresReview
+    })
+  }
+
+  function handleCounterpartyCreated(
+    result: Api.Tms.Finance.CreateInvoiceCounterpartyFromOcrResponse
+  ): void {
+    applyCounterparty(result.party)
+    Object.assign(counterpartyResolution, {
+      status: 'matched',
+      message: result.created ? '往来单位已建档并自动带入' : '已复用现有往来单位并自动带入',
+      artifactId: counterpartyResolution.artifactId,
+      result: {
+        ...(counterpartyResolution.result as Api.Tms.Finance.InvoiceCounterpartyResolution),
+        status: 'matched',
+        canCreate: false,
+        matchMethod: result.created ? null : 'name',
+        party: result.party,
+        message: result.created ? '往来单位已建档并自动带入' : '已复用现有往来单位并自动带入'
+      }
+    } satisfies CounterpartyResolutionGroup)
+  }
+
+  function retryCounterpartyResolution(): void {
+    if (!counterpartyResolution.artifactId) return
+    void resolveRecognizedCounterparty(counterpartyResolution.artifactId)
   }
 
   async function loadDetail(id: string): Promise<void> {
@@ -693,15 +898,22 @@
     ocrArtifactId.value = undefined
   }
 
-  async function handleOpen(row?: Invoice): Promise<void> {
+  async function handleOpen(row?: Invoice, ocrContext?: InvoiceOcrContext): Promise<void> {
     await resetForm()
+    if (ocrContext) form.data.direction = ocrContext.direction
     await dialogRef.value?.handleOpen(row, {
-      title: row ? '编辑发票' : '登记发票',
-      subtitle: '发票可以关联一个或多个已确认对账单，未关联金额会进入财务工作台待办',
+      title: row ? '编辑发票' : ocrContext ? '复核识别发票' : '登记发票',
+      subtitle: ocrContext
+        ? '识别结果已恢复，请重点核对低置信字段、往来单位和金额勾稽关系'
+        : '发票可以关联一个或多个已确认对账单，未关联金额会进入财务工作台待办',
       confirmText: row ? '保存修改' : '保存草稿',
       contentMaxHeight: '76vh',
       loading: Boolean(row),
       onOpen: async (_data, api) => {
+        if (ocrContext) {
+          await handleApplyOcrResult(ocrContext.result)
+          return
+        }
         if (!row) return
         try {
           await loadDetail(row.id)
@@ -715,7 +927,14 @@
     })
   }
 
-  defineExpose({ handleOpen })
+  function handleOpenFromOcr(
+    result: Api.Tms.Finance.InvoiceOcrAnalyzeResponse,
+    direction: Api.Tms.Finance.InvoiceDirection
+  ): Promise<void> {
+    return handleOpen(undefined, { result, direction })
+  }
+
+  defineExpose({ handleOpen, handleOpenFromOcr })
 </script>
 
 <style scoped lang="scss">
@@ -726,9 +945,66 @@
       }
     }
 
+    &__counterparty-field {
+      display: grid;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    &__counterparty-resolution {
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+      min-width: 0;
+
+      > .el-button {
+        flex: 0 0 auto;
+        height: 34px;
+        margin-top: 1px;
+      }
+    }
+
+    &__counterparty-alert {
+      min-width: 0;
+      flex: 1;
+      padding: 7px 10px;
+
+      :deep(.el-alert__icon) {
+        width: 18px;
+        margin-right: 8px;
+        font-size: 16px;
+      }
+
+      :deep(.el-alert__content) {
+        min-width: 0;
+      }
+
+      :deep(.el-alert__title) {
+        font-size: 13px;
+        font-weight: 600;
+        line-height: 1.4;
+      }
+
+      :deep(.el-alert__description) {
+        margin-top: 2px;
+        font-size: 12px;
+        line-height: 1.45;
+      }
+    }
+
     &__links {
       padding: 16px;
       margin-top: 16px;
+    }
+
+    @media (width <= 768px) {
+      &__counterparty-resolution {
+        flex-direction: column;
+
+        > .el-button {
+          width: 100%;
+        }
+      }
     }
   }
 </style>

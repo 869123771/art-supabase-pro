@@ -1,15 +1,23 @@
 <template>
   <div class="system-param-page">
-    <section class="system-param-page__hero">
-      <div>
-        <h2>参数设置</h2>
-        <p>
-          统一管理系统运行参数、登录体验、安全策略与审计策略。支持分组维护、内置保护、缓存刷新与按键名读取，便于后续业务模块复用。
-        </p>
+    <section class="system-param-page__hero art-card-xs">
+      <div class="system-param-page__hero-identity">
+        <span class="system-param-page__hero-icon" aria-hidden="true">
+          <ArtSvgIcon icon="ri:settings-4-line" />
+        </span>
+        <div>
+          <span class="system-param-page__eyebrow">SYSTEM GOVERNANCE</span>
+          <h1>参数设置</h1>
+          <p>
+            统一管理系统运行参数、登录体验、安全策略与审计策略。支持分组维护、内置保护、缓存刷新与按键名读取，便于后续业务模块复用。
+          </p>
+        </div>
       </div>
       <div class="system-param-page__hero-tags">
+        <ElTag :type="isPlatformSuper ? 'primary' : 'info'" round>
+          {{ isPlatformSuper ? '平台维护视图' : '安全只读视图' }}
+        </ElTag>
         <ElTag round>缓存项：{{ overview.stats.total }}</ElTag>
-        <ElTag round>分组数：{{ overview.stats.groups }}</ElTag>
         <ElTag round>最近刷新：{{ overview.lastRefreshText }}</ElTag>
       </div>
     </section>
@@ -18,7 +26,7 @@
       <div
         v-for="item in overview.statCards"
         :key="item.label"
-        class="system-param-page__stat-card"
+        class="system-param-page__stat-card art-card-xs"
       >
         <div>
           <span>{{ item.label }}</span>
@@ -28,13 +36,14 @@
         <span
           class="system-param-page__stat-icon"
           :style="{ color: item.color, backgroundColor: item.backgroundColor }"
+          aria-hidden="true"
         >
           <ArtSvgIcon :icon="item.icon" />
         </span>
       </div>
     </section>
 
-    <div class="system-param-page__groups">
+    <div class="system-param-page__groups art-card-xs">
       <ElSegmented
         :model-value="table.searchQuery.groupCode"
         :options="groupSegmentOptions"
@@ -44,13 +53,14 @@
 
     <ArtTableQuery
       ref="tableQueryRef"
+      focusable
       v-model="table.searchQuery"
       :search-items="table.searchItems"
       :api-fn="fetchTableData"
       :columns-factory="columnsFactory"
       :header-actions="table.headerActions"
       :table-header-props="{ layout: 'refresh,size,fullscreen,columns,settings' }"
-      :table-props="{ height: '100%', showOverflowTooltip: true }"
+      :table-props="tableProps"
     />
 
     <SystemParamDialog ref="dialogRef" @success="handleSaveSuccess" />
@@ -64,10 +74,13 @@
   import type { ComputedRef, UnwrapNestedRefs } from 'vue'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
+  import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
+  import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import type {
     ArtTableQueryExpose,
     ArtTableQueryHeaderAction,
-    ArtTableQueryHeaderActionContext
+    ArtTableQueryHeaderActionContext,
+    ArtTableQueryTableProps
   } from '@/components/core/tables/art-table-query/index.vue'
   import type { ColumnOption, DialogType } from '@/types'
   import {
@@ -140,7 +153,7 @@
         value: overview.stats.total,
         description: '包括内置参数与业务扩展参数',
         icon: 'ri:database-2-line',
-        color: '#3b82f6',
+        color: 'var(--el-color-primary)',
         backgroundColor: 'var(--el-color-primary-light-9)'
       },
       {
@@ -148,7 +161,7 @@
         value: overview.stats.enabled,
         description: '当前会参与读取和缓存的有效参数',
         icon: 'ri:checkbox-circle-line',
-        color: '#14b8a6',
+        color: 'var(--el-color-success)',
         backgroundColor: 'var(--el-color-success-light-9)'
       },
       {
@@ -156,7 +169,7 @@
         value: overview.stats.builtin,
         description: '平台基础参数，建议谨慎修改',
         icon: 'ri:shield-keyhole-line',
-        color: '#f59e0b',
+        color: 'var(--el-color-warning)',
         backgroundColor: 'var(--el-color-warning-light-9)'
       },
       {
@@ -164,7 +177,7 @@
         value: overview.stats.groups,
         description: '可按业务域划分不同配置命名空间',
         icon: 'ri:folder-settings-line',
-        color: '#64748b',
+        color: 'var(--el-color-info)',
         backgroundColor: 'var(--default-bg-color)'
       }
     ])
@@ -196,17 +209,8 @@
         key: 'keyword',
         type: 'input',
         props: {
-          placeholder: '请输入参数名称、键名或备注'
-        }
-      },
-      {
-        label: '分组',
-        key: 'groupCode',
-        type: 'select',
-        props: {
           clearable: true,
-          placeholder: '请选择分组',
-          options: groupOptions.value
+          placeholder: '搜索参数名称、键名或说明'
         }
       },
       {
@@ -267,6 +271,15 @@
     )
   })
 
+  const tableProps: ArtTableQueryTableProps = {
+    rowKey: 'id',
+    tableLayout: 'fixed',
+    height: '100%',
+    showOverflowTooltip: true,
+    emptyText: '暂无符合条件的系统参数',
+    emptyDescription: '可调整分组或筛选条件；平台管理员也可以新增业务扩展参数。'
+  }
+
   const fetchTableData = (params: TableParams) => {
     const { from, to } = pageInfoHandler({
       current: params.current,
@@ -290,67 +303,83 @@
           selectable: (row: SystemParam) => isPlatformSuper.value && !row.builtin
         },
         {
-          type: 'globalIndex',
-          label: '序号',
-          width: 80
-        },
-        {
-          prop: 'paramName',
-          label: '参数名称',
-          minWidth: 180
-        },
-        {
-          prop: 'paramKey',
-          label: '参数键名',
-          minWidth: 240
-        },
-        {
-          prop: 'groupCode',
-          label: '分组',
-          width: 120,
-          dict: { code: 'systemParamGroup', display: 'text' }
-        },
-        {
-          prop: 'paramType',
-          label: '类型',
-          width: 120,
-          dict: { code: 'systemParamType', display: 'auto' }
-        },
-        {
-          prop: 'paramValue',
-          label: '当前值',
-          minWidth: 160
-        },
-        {
-          prop: 'enabled',
-          label: '状态',
-          width: 100,
+          prop: 'paramIdentity',
+          label: '参数定义',
+          minWidth: 270,
           formatter: (row) => (
-            <ElTag type={row.enabled ? 'success' : 'info'} effect="light">
-              {row.enabled ? '启用' : '停用'}
-            </ElTag>
+            <div class="system-param-identity-cell">
+              <span
+                class={['system-param-identity-cell__icon', { 'is-builtin': row.builtin }]}
+                aria-hidden="true"
+              >
+                <ArtSvgIcon icon={row.builtin ? 'ri:shield-keyhole-line' : 'ri:settings-3-line'} />
+              </span>
+              <div class="system-param-identity-cell__copy">
+                <div class="system-param-identity-cell__heading">
+                  <strong title={row.paramName}>{row.paramName}</strong>
+                  <span
+                    class={['system-param-identity-cell__badge', { 'is-builtin': row.builtin }]}
+                  >
+                    {row.builtin ? '内置' : '自定义'}
+                  </span>
+                </div>
+                <code title={row.paramKey} translate="no">
+                  {row.paramKey}
+                </code>
+              </div>
+            </div>
           )
         },
         {
-          prop: 'builtin',
-          label: '属性',
-          width: 100,
+          prop: 'classification',
+          label: '分类',
+          minWidth: 156,
           formatter: (row) => (
-            <ElTag type={row.builtin ? 'warning' : 'info'} effect="light">
-              {row.builtin ? '内置' : '自定义'}
-            </ElTag>
+            <div class="system-param-class-cell">
+              <ArtDictDisplay dictCode="systemParamGroup" value={row.groupCode} display="text" />
+              <ArtDictDisplay dictCode="systemParamType" value={row.paramType} display="tag" />
+            </div>
+          )
+        },
+        {
+          prop: 'paramValue',
+          label: '当前值与说明',
+          minWidth: 220,
+          formatter: (row) => (
+            <div class="system-param-value-cell">
+              {row.paramType === 'boolean' ? (
+                <ArtDictDisplay
+                  dictCode="commonBoolean"
+                  value={String(row.paramValue === 'true')}
+                  display="tag"
+                />
+              ) : (
+                <code title={row.paramValue} translate="no">
+                  {row.paramValue || '--'}
+                </code>
+              )}
+              <small title={row.remark || ''}>{row.remark || '暂无补充说明'}</small>
+            </div>
+          )
+        },
+        {
+          prop: 'enabled',
+          label: '是否启用',
+          width: 92,
+          formatter: (row) => (
+            <ArtDictDisplay dictCode="commonBoolean" value={String(row.enabled)} display="tag" />
           )
         },
         {
           prop: 'updateTime',
-          label: '最后更新',
-          width: 180,
-          formatter: (row) => formatWithDayjs(row.updateTime)
-        },
-        {
-          prop: 'updateBy',
-          label: '最后更新人',
-          width: 180
+          label: '更新信息',
+          minWidth: 174,
+          formatter: (row) => (
+            <div class="system-param-update-cell">
+              <span>{formatWithDayjs(row.updateTime) || '--'}</span>
+              <small>{row.updateBy || '系统维护'}</small>
+            </div>
+          )
         },
         {
           prop: 'operation',
@@ -370,7 +399,10 @@
             ) : null
         }
       ] as ColumnOption<SystemParam>[]
-    ).filter((column) => isPlatformSuper.value || column.prop !== 'operation')
+    ).filter(
+      (column) =>
+        isPlatformSuper.value || (column.prop !== 'operation' && column.type !== 'selection')
+    )
 
   const openDialog = (row?: SystemParam): void => {
     void dialogRef.value?.handleOpen(row ? (omit(row, []) as SystemParam) : undefined)
@@ -436,7 +468,7 @@
   .system-param-page {
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 12px;
     min-height: 100%;
 
     &__hero {
@@ -444,14 +476,11 @@
       gap: 16px;
       align-items: flex-start;
       justify-content: space-between;
-      padding: 24px 28px;
-      background: var(--el-bg-color);
-      border: 1px solid var(--el-border-color-light);
-      border-radius: var(--art-surface-radius);
+      padding: 16px 20px;
 
-      h2 {
-        margin: 0 0 12px;
-        font-size: 24px;
+      h1 {
+        margin: 0 0 6px;
+        font-size: 22px;
         font-weight: 700;
         line-height: 1.2;
         color: var(--art-text-gray-900);
@@ -461,9 +490,38 @@
         max-width: 780px;
         margin: 0;
         font-size: 14px;
-        line-height: 1.9;
+        line-height: 1.55;
         color: var(--art-text-gray-600);
       }
+    }
+
+    &__hero-identity {
+      display: flex;
+      min-width: 0;
+      gap: 16px;
+      align-items: flex-start;
+    }
+
+    &__hero-icon {
+      display: grid;
+      flex: 0 0 46px;
+      width: 46px;
+      height: 46px;
+      font-size: 21px;
+      color: var(--el-color-primary);
+      background: var(--el-color-primary-light-9);
+      border: 1px solid var(--el-color-primary-light-7);
+      border-radius: var(--art-surface-radius);
+      place-items: center;
+    }
+
+    &__eyebrow {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      color: var(--el-color-primary);
     }
 
     &__hero-tags {
@@ -472,23 +530,24 @@
       gap: 10px;
       justify-content: flex-end;
       min-width: 360px;
+
+      :deep(.el-tag) {
+        font-variant-numeric: tabular-nums;
+      }
     }
 
     &__stats {
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 16px;
+      gap: 12px;
     }
 
     &__stat-card {
       display: flex;
       align-items: flex-start;
       justify-content: space-between;
-      min-height: 112px;
-      padding: 22px 24px;
-      background: var(--el-bg-color);
-      border: 1px solid var(--el-border-color-light);
-      border-radius: var(--art-surface-radius);
+      min-height: 84px;
+      padding: 14px 16px;
 
       span {
         font-size: 14px;
@@ -497,14 +556,15 @@
 
       strong {
         display: block;
-        margin-top: 10px;
-        font-size: 30px;
+        margin-top: 6px;
+        font-size: 23px;
+        font-variant-numeric: tabular-nums;
         line-height: 1;
         color: var(--art-text-gray-900);
       }
 
       p {
-        margin: 14px 0 0;
+        margin: 6px 0 0;
         font-size: 13px;
         color: var(--art-text-gray-500);
       }
@@ -514,24 +574,136 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 44px;
-      height: 44px;
-      font-size: 22px !important;
+      width: 38px;
+      height: 38px;
+      font-size: 19px !important;
       background: var(--el-fill-color-lighter);
       border-radius: var(--art-surface-radius);
     }
 
     &__groups {
-      padding: 12px 16px;
-      background: var(--el-bg-color);
-      border: 1px solid var(--el-border-color-light);
-      border-radius: var(--art-surface-radius);
+      padding: 8px 12px;
     }
 
     &__operation {
       display: inline-flex;
       gap: 8px;
       align-items: center;
+    }
+
+    :deep(.system-param-identity-cell) {
+      display: flex;
+      min-width: 0;
+      align-items: center;
+      gap: 10px;
+
+      .system-param-identity-cell__icon {
+        display: grid;
+        flex: 0 0 34px;
+        width: 34px;
+        height: 34px;
+        font-size: 16px;
+        color: var(--el-color-primary);
+        background: var(--el-color-primary-light-9);
+        border: 1px solid var(--el-color-primary-light-7);
+        border-radius: var(--art-control-radius);
+        place-items: center;
+
+        &.is-builtin {
+          color: var(--el-color-warning-dark-2);
+          background: var(--el-color-warning-light-9);
+          border-color: var(--el-color-warning-light-7);
+        }
+      }
+
+      .system-param-identity-cell__copy,
+      .system-param-identity-cell__heading {
+        min-width: 0;
+      }
+
+      .system-param-identity-cell__heading {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+
+        strong {
+          overflow: hidden;
+          font-weight: 600;
+          color: var(--el-text-color-primary);
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+      }
+
+      code {
+        display: block;
+        overflow: hidden;
+        font-size: 12px;
+        color: var(--el-text-color-secondary);
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .system-param-identity-cell__badge {
+        flex: none;
+        padding: 1px 6px;
+        font-size: 10px;
+        line-height: 17px;
+        color: var(--el-text-color-secondary);
+        background: var(--el-fill-color-light);
+        border-radius: 999px;
+
+        &.is-builtin {
+          color: var(--el-color-warning-dark-2);
+          background: var(--el-color-warning-light-9);
+        }
+      }
+    }
+
+    :deep(.system-param-class-cell),
+    :deep(.system-param-value-cell),
+    :deep(.system-param-update-cell) {
+      display: grid;
+      min-width: 0;
+      gap: 3px;
+      align-items: start;
+    }
+
+    :deep(.system-param-class-cell) {
+      justify-items: start;
+    }
+
+    :deep(.system-param-value-cell) {
+      code,
+      small {
+        display: block;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      code {
+        color: var(--el-text-color-primary);
+      }
+
+      small {
+        font-size: 12px;
+        color: var(--el-text-color-secondary);
+      }
+    }
+
+    :deep(.system-param-update-cell) {
+      span,
+      small {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      small {
+        font-size: 12px;
+        color: var(--el-text-color-secondary);
+      }
     }
 
     :deep(.art-table-query) {
@@ -571,6 +743,10 @@
     .system-param-page {
       &__hero {
         flex-direction: column;
+      }
+
+      &__hero-identity {
+        width: 100%;
       }
 
       &__hero-tags {

@@ -78,6 +78,68 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
 }
 
+function numericValue(value: unknown): unknown {
+  if (typeof value !== 'string' || !value.trim()) return value
+  const parsed = Number(value.trim().replace(/[￥¥,，\s]/g, '').replace(/%$/, ''))
+  return Number.isFinite(parsed) ? parsed : value
+}
+
+function hasInvoiceField(value: Record<string, unknown>): boolean {
+  return AI_INVOICE_OCR_FIELDS.some((field) => field in value)
+}
+
+function unwrapInvoicePayload(payload: Record<string, unknown>): Record<string, unknown> {
+  for (const key of ['result', 'data', 'output', 'response', 'expectedShape']) {
+    const candidate = payload[key]
+    if (isRecord(candidate) && (isRecord(candidate.invoice) || hasInvoiceField(candidate))) {
+      return candidate
+    }
+  }
+  return payload
+}
+
+export function coerceAiInvoiceOcrProviderPayload(
+  payload: unknown
+): Record<string, unknown> | null {
+  if (!isRecord(payload)) return null
+  const source = unwrapInvoicePayload(payload)
+  const invoiceSource = isRecord(source.invoice)
+    ? source.invoice
+    : hasInvoiceField(source)
+      ? source
+      : null
+  if (!invoiceSource) return source
+
+  const invoice: Record<string, unknown> = {}
+  for (const field of AI_INVOICE_OCR_FIELDS) {
+    if (field in invoiceSource) invoice[field] = invoiceSource[field]
+  }
+  for (const field of MONEY_FIELDS) {
+    if (field in invoice) invoice[field] = numericValue(invoice[field])
+  }
+
+  const fieldConfidence: Record<string, number> = {}
+  if (isRecord(source.fieldConfidence)) {
+    for (const field of AI_INVOICE_OCR_FIELDS) {
+      const value = numericValue(source.fieldConfidence[field])
+      if (typeof value === 'number') fieldConfidence[field] = value
+    }
+  }
+  const confidence = numericValue(source.confidence)
+  const warnings = Array.isArray(source.warnings) ? source.warnings : []
+  const confidenceMissing = typeof confidence !== 'number'
+
+  return {
+    ...source,
+    invoice,
+    confidence: confidenceMissing ? 0 : confidence,
+    fieldConfidence,
+    warnings: confidenceMissing
+      ? ['AI 服务未返回置信度，识别结果必须人工复核。', ...warnings]
+      : warnings
+  }
+}
+
 function textValue(value: unknown, maxLength = 300): string | null {
   if (typeof value !== 'string') return null
   const normalized = value.trim()

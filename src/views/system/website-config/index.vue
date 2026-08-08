@@ -10,8 +10,11 @@
       subtitle="统一维护品牌、登录体验、SEO、站点状态与对外联系资料，发布后同步影响所有公共品牌展示。"
     >
       <template #status>
-        <ElTag :type="isReadOnly ? 'info' : 'success'" effect="light">
-          {{ isReadOnly ? '只读模式' : '可发布' }}
+        <ElTag
+          :type="isReadOnly ? 'info' : hasUnsavedChanges ? 'warning' : 'success'"
+          effect="light"
+        >
+          {{ isReadOnly ? '只读模式' : hasUnsavedChanges ? '存在待发布变更' : '配置已同步' }}
         </ElTag>
       </template>
       <template #meta>
@@ -147,64 +150,6 @@
                     />
                   </ElSelect>
                 </ElFormItem>
-                <ElFormItem label="验证码类型" prop="captchaType">
-                  <ElSelect v-model="form.captchaType">
-                    <ElOption
-                      v-for="option in captchaOptions"
-                      :key="option.value"
-                      :label="option.label"
-                      :value="option.value"
-                    />
-                  </ElSelect>
-                  <p
-                    >Turnstile 用于 Supabase Auth 机器人防护，需在 Supabase 后台配置 Secret key。</p
-                  >
-                </ElFormItem>
-                <ElFormItem label="Turnstile Site Key" prop="turnstileSiteKey">
-                  <ElInput
-                    v-model.trim="form.turnstileSiteKey"
-                    maxlength="120"
-                    placeholder="请输入 Turnstile Site Key"
-                  />
-                  <p>前端组件使用 Sitekey；Secret key 请只配置在 Supabase Auth 防护后台。</p>
-                </ElFormItem>
-                <ElFormItem label="Turnstile 尺寸">
-                  <ElSelect v-model="form.turnstileSize">
-                    <ElOption
-                      v-for="option in turnstileSizeOptions"
-                      :key="option.value"
-                      :label="option.label"
-                      :value="option.value"
-                    />
-                  </ElSelect>
-                </ElFormItem>
-                <ElFormItem label="Turnstile 主题">
-                  <ElSelect v-model="form.turnstileTheme">
-                    <ElOption
-                      v-for="option in turnstileThemeOptions"
-                      :key="option.value"
-                      :label="option.label"
-                      :value="option.value"
-                    />
-                  </ElSelect>
-                </ElFormItem>
-                <ElFormItem label="最大重试次数" prop="captchaMaxAttempts">
-                  <ElInputNumber
-                    v-model="form.captchaMaxAttempts"
-                    :min="0"
-                    :max="20"
-                    controls-position="right"
-                  />
-                  <p>留空或 0 表示不限制。</p>
-                </ElFormItem>
-                <ElFormItem label="锁定时间（分钟）" prop="captchaLockMinutes">
-                  <ElInputNumber
-                    v-model="form.captchaLockMinutes"
-                    :min="0"
-                    :max="1440"
-                    controls-position="right"
-                  />
-                </ElFormItem>
                 <ElFormItem label="登录欢迎描述" prop="loginDescription" class="is-wide">
                   <ElInput
                     v-model="form.loginDescription"
@@ -215,18 +160,16 @@
                     :rows="3"
                   />
                 </ElFormItem>
-                <ElFormItem label="验证码" prop="captchaEnabled" class="is-wide">
+                <ElFormItem label="登录验证" prop="captchaEnabled">
                   <div class="website-config-page__switch-row">
                     <div>
-                      <strong>验证码</strong>
-                      <p
-                        >开启后，登录页会显示 Turnstile，并将验证 token 交给 Supabase Auth 校验。</p
-                      >
+                      <strong>登录验证</strong>
+                      <p>开启后显示 Turnstile，并由 Supabase Auth 校验验证结果。</p>
                     </div>
                     <ElSwitch v-model="form.captchaEnabled" />
                   </div>
                 </ElFormItem>
-                <ElFormItem label="开放注册" prop="registerEnabled" class="is-wide">
+                <ElFormItem label="开放注册" prop="registerEnabled">
                   <div class="website-config-page__switch-row">
                     <div>
                       <strong>开放注册</strong>
@@ -235,7 +178,7 @@
                     <ElSwitch v-model="form.registerEnabled" />
                   </div>
                 </ElFormItem>
-                <ElFormItem label="维护模式" prop="maintenanceEnabled" class="is-wide">
+                <ElFormItem label="维护模式" prop="maintenanceEnabled">
                   <div class="website-config-page__switch-row">
                     <div>
                       <strong>维护模式</strong>
@@ -244,20 +187,79 @@
                     <ElSwitch v-model="form.maintenanceEnabled" />
                   </div>
                 </ElFormItem>
+
+                <template v-if="form.captchaEnabled">
+                  <ElFormItem label="验证码类型" prop="captchaType">
+                    <ElSelect v-model="form.captchaType">
+                      <ElOption
+                        v-for="option in captchaOptions"
+                        :key="option.value"
+                        :label="option.label"
+                        :value="option.value"
+                      />
+                    </ElSelect>
+                    <p>Turnstile 用于拦截机器人登录请求。</p>
+                  </ElFormItem>
+                  <ElFormItem label="Turnstile Site Key" prop="turnstileSiteKey">
+                    <ElInput
+                      v-model.trim="form.turnstileSiteKey"
+                      maxlength="120"
+                      placeholder="请输入 Turnstile Site Key"
+                    />
+                    <p>Secret Key 仅配置在 Supabase Auth 后台，请勿填写在此处。</p>
+                  </ElFormItem>
+                  <ElFormItem label="组件尺寸">
+                    <ElSelect v-model="form.turnstileSize">
+                      <ElOption
+                        v-for="option in turnstileSizeOptions"
+                        :key="option.value"
+                        :label="option.label"
+                        :value="option.value"
+                      />
+                    </ElSelect>
+                  </ElFormItem>
+                  <ElFormItem label="显示主题">
+                    <ElSelect v-model="form.turnstileTheme">
+                      <ElOption
+                        v-for="option in turnstileThemeOptions"
+                        :key="option.value"
+                        :label="option.label"
+                        :value="option.value"
+                      />
+                    </ElSelect>
+                  </ElFormItem>
+                  <ElFormItem label="最大失败次数" prop="captchaMaxAttempts">
+                    <ElInputNumber
+                      v-model="form.captchaMaxAttempts"
+                      :min="0"
+                      :max="20"
+                      controls-position="right"
+                    />
+                    <p>设置为 0 表示不限制。</p>
+                  </ElFormItem>
+                  <ElFormItem label="锁定时间（分钟）" prop="captchaLockMinutes">
+                    <ElInputNumber
+                      v-model="form.captchaLockMinutes"
+                      :min="0"
+                      :max="1440"
+                      controls-position="right"
+                    />
+                  </ElFormItem>
+                </template>
+
                 <ElFormItem
+                  v-if="form.maintenanceEnabled"
                   label="维护提示文案"
                   prop="maintenanceMessage"
                   class="is-wide"
-                  :class="{ 'is-error-lite': form.maintenanceEnabled && !form.maintenanceMessage }"
+                  :class="{ 'is-error-lite': !form.maintenanceMessage }"
                 >
                   <ElInput
                     v-model.trim="form.maintenanceMessage"
                     maxlength="160"
                     placeholder="维护模式开启时建议填写，例如：系统今晚 23:00-24:00 升级维护"
                   />
-                  <p v-if="form.maintenanceEnabled && !form.maintenanceMessage"
-                    >开启维护模式后，请填写维护提示文案</p
-                  >
+                  <p v-if="!form.maintenanceMessage">开启维护模式后，请填写维护提示文案</p>
                 </ElFormItem>
               </template>
 
@@ -345,25 +347,37 @@
             </div>
           </ArtPageSection>
 
-          <ArtStickyActionBar class="website-config-page__actions">
+          <ArtStickyActionBar
+            class="website-config-page__actions"
+            :class="{
+              'is-readonly': isReadOnly,
+              'is-dirty': hasUnsavedChanges
+            }"
+          >
             <template #summary>
               <div class="website-config-page__action-copy">
                 <div class="website-config-page__action-title">
-                  <ArtSvgIcon icon="ri:pushpin-2-line" />
-                  <strong>{{ form.siteName || '网站配置' }}</strong>
+                  <ArtSvgIcon :icon="publishState.icon" />
+                  <strong>{{ publishState.title }}</strong>
                 </div>
-                <p>保存后会同步影响登录页、浏览器标题与系统品牌展示。</p>
+                <p>{{ publishState.description }}</p>
               </div>
             </template>
-            <div class="website-config-page__action-buttons">
-              <ElButton :disabled="isReadOnly" @click="resetForm">重置当前表单</ElButton>
+            <div v-if="!isReadOnly" class="website-config-page__action-buttons">
+              <ElButton :disabled="!hasUnsavedChanges || page.saving" @click="resetForm">
+                撤销未发布修改
+              </ElButton>
               <ElButton
                 type="primary"
-                :disabled="isReadOnly"
+                :disabled="!hasUnsavedChanges"
                 :loading="page.saving"
                 @click="handleSave"
                 >保存并发布配置</ElButton
               >
+            </div>
+            <div v-else class="website-config-page__readonly-badge">
+              <ArtSvgIcon icon="ri:lock-2-line" />
+              <span>仅平台超级管理员可发布</span>
             </div>
           </ArtStickyActionBar>
         </div>
@@ -374,10 +388,11 @@
 
 <script setup lang="ts">
   import { ElMessage, type FormRules } from 'element-plus'
-  import { cloneDeep, omit } from 'lodash-es'
+  import { cloneDeep, isEqual, omit } from 'lodash-es'
   import { fetchWebsiteConfig, saveWebsiteConfig } from '@/api/system-manage'
   import { createWebsiteConfigDefaults } from '@/config/website-config-defaults'
   import { useWebsiteConfig } from '@/hooks'
+  import { getPageScrollContainer } from '@/hooks/core/useCommon'
   import { useUserStore } from '@/store/modules/user'
   import { formatWithDayjs } from '@/utils/time'
   import ArtUploadImage from '@/components/core/forms/art-upload-image/index.vue'
@@ -424,9 +439,31 @@
   const userStore = useUserStore()
   const { isPlatformSuper } = storeToRefs(userStore)
   const isReadOnly = computed(() => !isPlatformSuper.value)
+  const hasUnsavedChanges = computed(() => !isEqual(toRaw(form), originalForm.value))
+  const publishState = computed(() => {
+    if (isReadOnly.value) {
+      return {
+        title: '当前为只读查看',
+        description: '你可以浏览全部站点配置，但发布权限仅向平台超级管理员开放。',
+        icon: 'ri:shield-keyhole-line'
+      }
+    }
+    if (hasUnsavedChanges.value) {
+      return {
+        title: '存在未发布修改',
+        description: '请检查发布预览；保存后会同步影响登录页、浏览器标题与系统品牌展示。',
+        icon: 'ri:draft-line'
+      }
+    }
+    return {
+      title: `${form.siteName || '网站配置'}已同步`,
+      description: '当前表单与线上配置一致，可继续编辑后再统一发布。',
+      icon: 'ri:checkbox-circle-line'
+    }
+  })
 
   const navigationItems: NavigationItem[] = [
-    { key: 'overview', label: '状态概', icon: 'ri:pulse-line' },
+    { key: 'overview', label: '状态概览', icon: 'ri:pulse-line' },
     { key: 'identity', label: '系统标识', icon: 'ri:dashboard-line' },
     { key: 'login', label: '登录体验', icon: 'ri:shield-user-line' },
     { key: 'seo', label: 'SEO 展现', icon: 'ri:search-eye-line' },
@@ -473,15 +510,15 @@
   ]
 
   const languageOptions = [
-    { label: '简体中', value: 'zh' },
+    { label: '简体中文', value: 'zh' },
     { label: 'English', value: 'en' }
   ]
 
   const watermarkOptions = [
-    { label: '用户', value: 'username' },
+    { label: '当前用户名', value: 'username' },
     { label: '用户名 + 时间', value: 'username_time' },
     { label: '站点名称', value: 'site_name' },
-    { label: '自定义文', value: 'custom' }
+    { label: '自定义文本', value: 'custom' }
   ]
 
   const captchaOptions = [{ label: 'Turnstile', value: 'turnstile' }]
@@ -494,15 +531,15 @@
 
   const turnstileThemeOptions = [
     { label: '浅色', value: 'light' },
-    { label: 'Dark', value: 'dark' },
-    { label: 'Auto', value: 'auto' }
+    { label: '深色', value: 'dark' },
+    { label: '跟随系统', value: 'auto' }
   ]
 
   const rules: FormRules<WebsiteConfig> = {
-    siteName: [{ required: true, message: '请输入系统名', trigger: 'blur' }],
-    loginTitle: [{ required: true, message: '请输入登录欢迎标', trigger: 'blur' }],
+    siteName: [{ required: true, message: '请输入系统名称', trigger: 'blur' }],
+    loginTitle: [{ required: true, message: '请输入登录欢迎标题', trigger: 'blur' }],
     watermarkContentType: [{ required: true, message: '请选择水印内容', trigger: 'change' }],
-    captchaType: [{ required: true, message: '请选择验证码类', trigger: 'change' }],
+    captchaType: [{ required: true, message: '请选择验证码类型', trigger: 'change' }],
     turnstileSiteKey: [
       {
         validator: (_rule, value, callback) => {
@@ -562,9 +599,9 @@
       icon: 'ri:user-add-line'
     },
     {
-      label: '验证',
+      label: '登录验证',
       value: form.captchaEnabled ? captchaLabel.value : '未启用',
-      description: form.captchaEnabled ? '登录失败次数过多时建议启用。' : '登录页不会显示验证码。',
+      description: form.captchaEnabled ? '登录页将要求完成人机验证。' : '登录页不会显示验证码。',
       icon: 'ri:shield-check-line'
     },
     {
@@ -631,6 +668,10 @@
       ElMessage.warning('当前账号只有查看权限，不能保存网站配置')
       return
     }
+    if (!hasUnsavedChanges.value) {
+      ElMessage.info('当前配置没有需要发布的变更')
+      return
+    }
 
     await formRef.value?.validate()
     page.saving = true
@@ -656,7 +697,19 @@
     const target = document.getElementById(key)
     if (!target) return
     page.activeSection = key
-    target.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    const scrollContainer = getPageScrollContainer()
+    if (!scrollContainer) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      return
+    }
+
+    const targetTop = target.getBoundingClientRect().top
+    const containerTop = scrollContainer.getBoundingClientRect().top
+    const scrollMarginTop = Number.parseFloat(getComputedStyle(target).scrollMarginTop) || 0
+    scrollContainer.scrollTo({
+      top: Math.max(scrollContainer.scrollTop + targetTop - containerTop - scrollMarginTop, 0),
+      behavior: 'smooth'
+    })
   }
 
   const setupSectionObserver = (): (() => void) | undefined => {
@@ -990,6 +1043,32 @@
       display: flex;
       flex: none;
       gap: 10px;
+    }
+
+    &__readonly-badge {
+      display: inline-flex;
+      flex: none;
+      gap: 7px;
+      align-items: center;
+      min-height: 32px;
+      padding: 0 12px;
+      font-size: 12px;
+      color: var(--el-text-color-secondary);
+      background: var(--el-fill-color-light);
+      border: 1px solid var(--el-border-color-lighter);
+      border-radius: 999px;
+
+      .art-svg-icon {
+        color: var(--el-text-color-secondary);
+      }
+    }
+
+    &__actions.is-dirty {
+      border-color: color-mix(in srgb, var(--el-color-warning) 26%, transparent) !important;
+
+      .website-config-page__action-title .art-svg-icon {
+        color: var(--el-color-warning-dark-2);
+      }
     }
   }
 

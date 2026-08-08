@@ -65,6 +65,8 @@ Do not use raw placeholder text, unstyled fallback blocks, or blank regions when
 
 - Keep labels concise and make helper text explain consequences or next actions.
 - Make clickable regions and button hierarchy visually obvious.
+- On table pages with a persistent identity, governance, overview, or explanatory header above `ArtTableQuery`, enable the shared focus mode. Verify that entering focus mode hides non-table context, preserves the query/table/pagination workflow, supports Escape to exit, and restores the prior layout and search-panel state.
+- Size fixed operation columns from the rendered controls, cell padding, and intentional gaps. When several compact actions are valid, preserve them and remove compounded child margins instead of compressing the controls or hiding useful actions solely for aesthetics.
 - Preserve keyboard focus visibility and sufficient color contrast.
 - Do not communicate status by color alone; pair color with text or iconography.
 - Prevent accidental horizontal scrolling. Use `min-width: 0`, wrapping, truncation, or responsive grids deliberately.

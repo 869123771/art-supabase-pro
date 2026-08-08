@@ -326,8 +326,19 @@ export async function exportWaybillProfitList(
 }
 
 export async function fetchFinanceWorkbench() {
-  return await responseHandle<FinanceWorkbenchStats>(
-    () => supabase.from('tms_finance_workbench').select('*').single(),
-    { ignoreCheck: true, showErrorMessage: true }
-  )
+  const [workbenchResponse, exceptionResponse] = await Promise.all([
+    responseHandle<FinanceWorkbenchStats>(
+      () => supabase.from('tms_finance_workbench').select('*').single(),
+      { ignoreCheck: true, showErrorMessage: true }
+    ),
+    responseHandle<Partial<FinanceWorkbenchStats>>(
+      () => supabase.from('tms_finance_exception_summary').select('*').single(),
+      { ignoreCheck: true, showErrorMessage: true }
+    )
+  ])
+  return {
+    data: workbenchResponse.data
+      ? { ...workbenchResponse.data, ...(exceptionResponse.data ?? {}) }
+      : undefined
+  }
 }

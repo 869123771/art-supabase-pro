@@ -39,6 +39,8 @@
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatWithDayjs } from '@/utils/time'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import { fetchRecognitionArtifactDetail } from '@/api/intelligent-recognition'
+  import { toCashVoucherOcrAnalyzeResponse } from '@/utils/intelligent-recognition'
   import CashTransactionDetailDrawer from './modules/cash-transaction-detail-drawer.vue'
   import CustomerReceiptDialog from './modules/customer-receipt-dialog.vue'
   import CarrierPaymentDialog from './modules/carrier-payment-dialog.vue'
@@ -52,6 +54,7 @@
 
   interface DialogExpose {
     handleOpen: (transaction?: CashTransaction) => Promise<void>
+    handleOpenFromOcr?: (result: Api.Tms.Finance.CashVoucherOcrAnalyzeResponse) => Promise<void>
   }
 
   interface DrawerExpose {
@@ -68,6 +71,8 @@
 
   const { getDictMap } = storeToRefs(useUserStore())
   const { promptReason } = useArtFeedback()
+  const route = useRoute()
+  const router = useRouter()
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<DialogExpose>()
   const paymentDialogRef = ref<DialogExpose>()
@@ -78,10 +83,10 @@
     searchQuery: {
       customerId: '',
       carrierId: '',
-      direction: '',
-      status: '',
+      direction: typeof route.query.direction === 'string' ? route.query.direction : '',
+      status: typeof route.query.status === 'string' ? route.query.status : '',
       dateRange: [],
-      keyword: ''
+      keyword: typeof route.query.keyword === 'string' ? route.query.keyword : ''
     },
     customerOptions: [],
     carrierOptions: [],
@@ -156,8 +161,8 @@
       },
       {
         type: 'add',
-        label: '登记承运商付款',
-        onClick: () => void paymentDialogRef.value?.handleOpen()
+        label: '发起承运商付款申请',
+        onClick: () => void router.push({ name: 'TmsCarrierPaymentApplication' })
       },
       {
         type: 'export',
@@ -343,8 +348,22 @@
     }))
   }
 
+  async function restoreRecognitionDraft(): Promise<void> {
+    const artifactId = typeof route.query.aiArtifactId === 'string' ? route.query.aiArtifactId : ''
+    if (!artifactId || route.query.direction === 'payment') return
+
+    const { data, error } = await fetchRecognitionArtifactDetail(artifactId)
+    if (error || !data || data.feature !== 'cash_voucher_ocr') return
+    if (data.status !== 'pending') {
+      ElMessage.info('该识别任务已处理，已为你保留收付款台账页面')
+      return
+    }
+    await dialogRef.value?.handleOpenFromOcr?.(toCashVoucherOcrAnalyzeResponse(data))
+  }
+
   onMounted(() => {
     void loadCustomerOptions()
     void loadCarrierOptions()
+    void restoreRecognitionDraft()
   })
 </script>

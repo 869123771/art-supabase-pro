@@ -9,6 +9,7 @@
     />
     <ArtTableQuery
       ref="tableQueryRef"
+      focusable
       v-model="tableState.searchQuery"
       v-model:show-search-bar="tableState.showSearchBar"
       :search-items="tableConfig.searchItems"

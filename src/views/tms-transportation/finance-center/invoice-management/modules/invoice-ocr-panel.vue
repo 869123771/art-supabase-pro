@@ -53,11 +53,11 @@
             </ElTag>
           </div>
           <ElButton type="primary" plain @click="handleApply">
-            应用识别结果
+            {{ applyLabel }}
             <ArtSvgIcon icon="ri-arrow-right-line" />
           </ElButton>
         </div>
-        <p class="invoice-ocr-panel__summary">{{ result.summary }}</p>
+        <p v-if="result.summary" class="invoice-ocr-panel__summary">{{ result.summary }}</p>
         <ElProgress
           :percentage="confidencePercent"
           :stroke-width="6"
@@ -108,7 +108,10 @@
   const props = defineProps<{
     modelValue: string[]
     direction: Api.Tms.Finance.InvoiceDirection
+    applyLabel?: string
   }>()
+
+  const applyLabel = computed(() => props.applyLabel || '应用识别结果')
 
   const emit = defineEmits<{
     'update:modelValue': [value: string[]]
@@ -247,7 +250,7 @@
 
 <style scoped lang="scss">
   .invoice-ocr-panel {
-    padding: 16px;
+    padding: 14px 16px;
     margin-bottom: 16px;
     overflow: hidden;
     box-shadow: inset 3px 0 0 rgb(var(--ui-primary) / 72%);
@@ -307,17 +310,25 @@
 
     &__body {
       display: grid;
-      grid-template-columns: minmax(260px, 0.85fr) minmax(0, 2fr);
-      gap: 12px;
+      grid-template-columns: minmax(300px, 0.78fr) minmax(0, 2.22fr);
+      gap: 16px;
+      align-items: start;
       padding-top: 12px;
       margin-top: 12px;
       border-top: 1px solid var(--art-border-dashed-color);
     }
 
     &__upload {
-      gap: 10px;
-      align-items: center;
+      flex-direction: column;
+      gap: 8px;
+      align-items: flex-start;
+      align-self: start;
       min-width: 0;
+      width: 100%;
+      padding: 10px;
+      background: var(--art-main-bg-color);
+      border: 1px solid var(--art-card-border);
+      border-radius: var(--custom-radius, 8px);
     }
 
     &__upload-copy,
@@ -330,16 +341,19 @@
 
     &__upload-copy {
       min-width: 0;
+      width: 100%;
 
       strong {
         font-size: 13px;
         color: var(--art-text-gray-800);
+        white-space: nowrap;
       }
 
       span {
         font-size: 12px;
         line-height: 1.55;
         color: var(--art-text-gray-500);
+        overflow-wrap: anywhere;
       }
     }
 
@@ -401,9 +415,9 @@
     }
 
     &__summary {
-      margin: 9px 0;
-      font-size: 13px;
-      line-height: 1.6;
+      margin: 8px 0;
+      font-size: 12px;
+      line-height: 1.5;
       color: var(--art-text-gray-600);
     }
 
@@ -411,13 +425,14 @@
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 8px;
-      margin-top: 12px;
+      margin-top: 10px;
     }
 
     &__field {
       position: relative;
       min-width: 0;
-      padding: 10px 11px;
+      min-height: 70px;
+      padding: 9px 10px;
       background: var(--art-main-bg-color);
       border: 1px solid var(--art-card-border);
       border-radius: var(--custom-radius, 8px);
@@ -472,8 +487,8 @@
     &__notice {
       gap: 9px;
       align-items: flex-start;
-      padding: 11px 12px;
-      margin-top: 10px;
+      padding: 9px 11px;
+      margin-top: 8px;
       color: var(--el-color-warning-dark-2);
       background: var(--el-color-warning-light-9);
       border: 1px solid var(--el-color-warning-light-7);
@@ -496,6 +511,10 @@
     .invoice-ocr-panel {
       &__body {
         grid-template-columns: 1fr;
+      }
+
+      &__upload {
+        min-height: auto;
       }
 
       &__fields {

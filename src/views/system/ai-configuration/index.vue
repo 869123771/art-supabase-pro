@@ -61,12 +61,18 @@
 
     <ArtTableQuery
       ref="tableQueryRef"
+      focusable
       v-model="table.searchQuery"
       :search-items="table.searchItems"
       :api-fn="fetchTableData"
       :columns-factory="columnsFactory"
       :table-header-props="{ layout: 'refresh,size,fullscreen,columns,settings' }"
-      :table-props="{ rowKey: 'id', tableLayout: 'fixed' }"
+      :table-props="{
+        rowKey: 'id',
+        tableLayout: 'fixed',
+        emptyText: '暂无匹配的 AI 运行配置',
+        emptyDescription: '可调整能力场景、启用状态或模型名称后重新查询。'
+      }"
     />
 
     <AiFeatureConfigDialog ref="dialogRef" @success="handleSaveSuccess" />
@@ -234,6 +240,14 @@
     return `${(Number(value) / 1000).toFixed(Number(value) % 1000 === 0 ? 0 : 1)} 秒`
   }
 
+  function getSecondaryRouteSummary(row: AiFeatureConfig): string {
+    const routes = [
+      row.visionModel ? `视觉：${row.visionModel}` : '',
+      row.fallbackModel ? `备用：${row.fallbackModel}` : ''
+    ].filter(Boolean)
+    return routes.length ? routes.join(' · ') : '单模型路由'
+  }
+
   const columnsFactory = (): ColumnOption<AiFeatureConfig>[] =>
     [
       { type: 'globalIndex', label: '序号', width: 76 },
@@ -275,8 +289,8 @@
         minWidth: 235,
         formatter: (row: AiFeatureConfig) => (
           <div class="ai-configuration__model-cell">
-            <strong>{row.model}</strong>
-            <span>{row.visionModel ? `视觉：${row.visionModel}` : '单模型路由'}</span>
+            <strong title={row.model}>{row.model}</strong>
+            <span title={getSecondaryRouteSummary(row)}>{getSecondaryRouteSummary(row)}</span>
           </div>
         )
       },

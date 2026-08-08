@@ -1,16 +1,44 @@
 <template>
   <ArtDialog ref="dialogRef" size="md">
-    <ArtForm
-      ref="formRef"
-      v-model="form"
-      :items="items"
-      :rules="rules"
-      :span="12"
-      :gutter="20"
-      label-width="100px"
-      :show-reset="false"
-      :show-submit="false"
-    />
+    <div class="tenant-dialog">
+      <section class="tenant-dialog__context">
+        <div class="tenant-dialog__context-icon" aria-hidden="true">
+          <ArtSvgIcon :icon="isEdit ? 'ri:building-2-line' : 'ri:add-circle-line'" />
+        </div>
+        <div>
+          <strong>{{ contextTitle }}</strong>
+          <p>{{ contextDescription }}</p>
+        </div>
+        <ElTag
+          :type="isSystemTenant ? 'warning' : isEdit ? 'primary' : 'success'"
+          effect="light"
+          round
+        >
+          {{ isSystemTenant ? '系统租户' : isEdit ? '编辑模式' : '新增租户' }}
+        </ElTag>
+      </section>
+
+      <ElAlert
+        v-if="isSystemTenant"
+        class="tenant-dialog__alert"
+        title="该租户承担平台级或注册入口职责，不支持删除；调整状态前请确认系统访问影响。"
+        type="warning"
+        :closable="false"
+        show-icon
+      />
+
+      <ArtForm
+        ref="formRef"
+        v-model="form"
+        :items="items"
+        :rules="rules"
+        :span="12"
+        :gutter="20"
+        label-width="100px"
+        :show-reset="false"
+        :show-submit="false"
+      />
+    </div>
   </ArtDialog>
 </template>
 
@@ -19,8 +47,10 @@
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
+  import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import { addTenant, editTenant } from '@/api/system-manage'
   import { useUserStore } from '@/store/modules/user'
+  import { useSystemParam } from '@/hooks'
   import { omit } from 'lodash-es'
 
   type Tenant = Api.SystemManage.TenantListItem
@@ -31,6 +61,7 @@
 
   const emit = defineEmits<Emits>()
   const { getDictMap } = storeToRefs(useUserStore())
+  const { defaultRegisterTenantCode } = useSystemParam()
   const dialogRef = ref<ArtDialogExpose<Tenant | undefined>>()
   const formRef = ref<{
     validate: () => Promise<boolean>
@@ -50,6 +81,19 @@
   })
 
   const form = reactive<Tenant>(createInitialForm())
+  const isEdit = computed(() => Boolean(form.id))
+  const isSystemTenant = computed(() => {
+    const tenantCode = String(form.tenantCode ?? '').toLowerCase()
+    return ['platform', defaultRegisterTenantCode.value.toLowerCase()].includes(tenantCode)
+  })
+  const contextTitle = computed(() =>
+    isEdit.value ? '核对租户身份与访问状态' : '创建新的业务隔离空间'
+  )
+  const contextDescription = computed(() =>
+    isEdit.value
+      ? '租户编码已锁定；名称、状态和用途说明的调整会立即影响后台识别。'
+      : '租户编码将作为稳定的隔离标识，创建成功后不可修改。'
+  )
 
   const rules: FormRules<Tenant> = {
     tenantCode: [
@@ -183,3 +227,83 @@
     handleClose: () => dialogRef.value?.handleClose()
   })
 </script>
+
+<style scoped lang="scss">
+  .tenant-dialog {
+    display: grid;
+    gap: 16px;
+    min-width: 0;
+
+    &__context {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: center;
+      padding: 14px 16px;
+      background: var(--el-color-primary-light-9);
+      border: 1px solid var(--el-color-primary-light-8);
+      border-radius: var(--custom-radius);
+
+      > div:nth-child(2) {
+        min-width: 0;
+      }
+
+      strong,
+      p {
+        overflow-wrap: anywhere;
+      }
+
+      strong {
+        display: block;
+        margin-bottom: 3px;
+        font-size: 14px;
+        color: var(--el-text-color-primary);
+      }
+
+      p {
+        margin: 0;
+        font-size: 12px;
+        line-height: 1.6;
+        color: var(--el-text-color-secondary);
+      }
+    }
+
+    &__context-icon {
+      display: grid;
+      width: 38px;
+      height: 38px;
+      color: var(--el-color-primary);
+      background: var(--el-bg-color);
+      border-radius: var(--el-border-radius-base);
+      place-items: center;
+
+      :deep(svg) {
+        width: 19px;
+        height: 19px;
+      }
+    }
+
+    &__alert {
+      align-items: flex-start;
+
+      :deep(.el-alert__content) {
+        min-width: 0;
+      }
+
+      :deep(.el-alert__title) {
+        line-height: 1.6;
+      }
+    }
+
+    @media (max-width: 640px) {
+      &__context {
+        grid-template-columns: auto minmax(0, 1fr);
+
+        > :deep(.el-tag) {
+          grid-column: 2;
+          justify-self: start;
+        }
+      }
+    }
+  }
+</style>

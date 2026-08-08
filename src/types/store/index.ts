@@ -168,6 +168,7 @@ export interface DictMap extends Record<string, Api.DataCenter.DictListItem[] | 
   tmsCashDirection?: Api.DataCenter.DictListItem[]
   tmsCashTransactionStatus?: Api.DataCenter.DictListItem[]
   tmsCashPaymentMethod?: Api.DataCenter.DictListItem[]
+  tmsCarrierPaymentApplicationStatus?: Api.DataCenter.DictListItem[]
   tmsInvoiceDirection?: Api.DataCenter.DictListItem[]
   tmsInvoiceStatus?: Api.DataCenter.DictListItem[]
   tmsInvoiceType?: Api.DataCenter.DictListItem[]

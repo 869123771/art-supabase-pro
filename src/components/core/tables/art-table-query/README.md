@@ -60,6 +60,7 @@
 - `ArtTableHeader`：工具栏、刷新、搜索区显隐、列设置、表格设置
 - `ArtTable`：表格主体、分页、列渲染、行拖拽事件
 - `useTable`：可选的内管数据生命周期
+- 专注模式：只保留当前查询条件、工具栏、表格与分页，退出后恢复页面原布局
 
 标准 CRUD 列表页优先使用 `ArtTableQuery`，不要重复手写 `ArtSearchBar + ArtTableHeader + ArtTable`。
 
@@ -188,6 +189,7 @@ const load = () => {
 | `searchBarProps` | `ArtTableQuerySearchBarProps` | 两种 | `{}` | 透传给 `ArtSearchBar`。 |
 | `tableHeaderProps` | `ArtTableQueryTableHeaderProps` | 两种 | `{}` | 透传给 `ArtTableHeader`。 |
 | `tableProps` | `ArtTableQueryTableProps` | 两种 | `{}` | 透传给 `ArtTable` / `ElTable`。 |
+| `focusable` | `boolean` | 两种 | `false` | 是否显示专注模式按钮。仅在页面存在可隐藏的头部介绍、指标概览等内容时显式开启。 |
 
 ### searchBarProps
 
@@ -305,6 +307,7 @@ const load = () => {
 | `v-model` | `Record<string, unknown>` | 查询表单模型。常用于默认查询值和外部联动。 |
 | `v-model:columns` | `ColumnOption[]` | 列显隐和排序配置。受控模式常用，内管模式通常不用传。 |
 | `v-model:show-search-bar` | `boolean` | 搜索区域显隐状态。 |
+| `v-model:focus-mode` | `boolean` | 专注模式状态；进入时搜索区会自动展开，退出后恢复原显隐状态。 |
 
 ## Events
 
@@ -316,6 +319,7 @@ const load = () => {
 | `reset` | 无 | 点击重置后触发。内管模式先恢复初始查询模型并重置查询参数。 |
 | `refresh` | 无 | 点击工具栏刷新后触发。内管模式先刷新数据。 |
 | `header-search` | 无 | 点击工具栏搜索区显隐按钮后触发。 |
+| `focus-change` | `boolean` | 进入或退出专注模式后触发。 |
 | `selection-change` | `Record<string, any>[]` | 表格选择变化。组件会维护跨页选中缓存。 |
 | `row-drag-start` | `ArtTableRowDragPayload` | 行拖拽开始。 |
 | `row-drag-update` | `ArtTableRowDragPayload` | 行拖拽位置更新。 |

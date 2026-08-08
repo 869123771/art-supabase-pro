@@ -49,6 +49,22 @@ const contracts: Record<string, WorkflowBusinessContract> = {
     ],
     routePath: () => '/tms-transportation/finance-center/invoice-management'
   },
+  tms_carrier_payment_application: {
+    businessType: 'tms_carrier_payment_application',
+    label: '承运商付款申请',
+    domain: 'finance',
+    riskLevel: 'high',
+    owner: '应付结算',
+    fields: [
+      { key: 'amount', label: '申请付款金额', valueType: 'number' },
+      { key: 'applicationNo', label: '付款申请单号', valueType: 'text' },
+      { key: 'carrierId', label: '承运商ID', valueType: 'text' },
+      { key: 'carrierName', label: '承运商名称', valueType: 'text' },
+      { key: 'plannedPaymentDate', label: '计划付款日期', valueType: 'date' },
+      { key: 'statementCount', label: '对账单数量', valueType: 'number' }
+    ],
+    routePath: () => '/tms-transportation/finance-center/payment-application'
+  },
   tms_carrier_statement: {
     businessType: 'tms_carrier_statement',
     label: '承运商结算',

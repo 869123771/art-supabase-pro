@@ -8,44 +8,67 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="b8f35119-660a-46e7-82f4-53eee06863eb" name="Changes" comment="feat theme">
+      <change beforePath="$PROJECT_DIR$/.agents/skills/professional-ui-quality/SKILL.md" beforeDir="false" afterPath="$PROJECT_DIR$/.agents/skills/professional-ui-quality/SKILL.md" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/pnpm-lock.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/pnpm-lock.yaml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/api/modules/tms/contract.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/modules/tms/contract.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/api/modules/tms/customer-settlement.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/modules/tms/customer-settlement.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/api/providers/supabase/vehicle/archive.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/providers/supabase/vehicle/archive.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/api/modules/tms/finance.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/modules/tms/finance.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/api/modules/tms/invoice.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/modules/tms/invoice.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/api/providers/supabase/query.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/providers/supabase/query.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/api/system-manage.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/system-manage.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/api/tms.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/tms.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/api/vehicle-manage-system.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/vehicle-manage-system.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/api/workflow.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/workflow.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/assets/styles/core/global.scss" beforeDir="false" afterPath="$PROJECT_DIR$/src/assets/styles/core/global.scss" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/components/core/forms/art-button-more/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/forms/art-button-more/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/components/core/layouts/art-header-bar/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/layouts/art-header-bar/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/components/core/layouts/art-work-tab/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/layouts/art-work-tab/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/core/forms/art-resource-picker/panel.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/forms/art-resource-picker/panel.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/core/forms/art-resource-picker/type.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/forms/art-resource-picker/type.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/core/tables/art-table-header/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/tables/art-table-header/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/core/tables/art-table-query/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/tables/art-table-query/README.md" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/components/core/tables/art-table-query/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/tables/art-table-query/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/components/core/tables/art-table/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/tables/art-table/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/components/core/widget/art-icon-button/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/widget/art-icon-button/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/core/tables/art-table-query/style.scss" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/tables/art-table-query/style.scss" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/types/api/api.d.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/types/api/api.d.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/types/api/workflow.d.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/types/api/workflow.d.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/types/import/components.d.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/types/import/components.d.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/data-center/dict/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/data-center/dict/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/data-center/dict/modules/type-tree.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/data-center/dict/modules/type-tree.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/types/store/index.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/types/store/index.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/dashboard/ai-operations/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/dashboard/ai-operations/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/data-center/attachment/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/data-center/attachment/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/system/ai-configuration/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/system/ai-configuration/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/system/ai-configuration/modules/ai-feature-config-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/system/ai-configuration/modules/ai-feature-config-dialog.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/system/ai-prompt/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/system/ai-prompt/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/system/menu/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/system/menu/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/system/menu/modules/menu-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/system/menu/modules/menu-dialog.vue" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/views/system/role/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/system/role/index.vue" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/views/system/role/modules/role-edit-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/system/role/modules/role-edit-dialog.vue" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/views/system/role/modules/role-permission-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/system/role/modules/role-permission-dialog.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/system/system-param/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/system/system-param/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/system/system-param/modules/system-param-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/system/system-param/modules/system-param-dialog.vue" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/views/system/tenant/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/system/tenant/index.vue" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/views/system/tenant/modules/tenant-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/system/tenant/modules/tenant-dialog.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/system/user-center/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/system/user-center/index.vue" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/views/system/user/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/system/user/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/basic-data/contract/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/basic-data/contract/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/basic-data/contract/modules/contract-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/basic-data/contract/modules/contract-dialog.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/vehicle-manage-system/archive-manage/vehicle-archive-edit/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-manage-system/archive-manage/vehicle-archive-edit/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/system/user/modules/user-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/system/user/modules/user-dialog.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/system/user/modules/user-role-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/system/user/modules/user-role-dialog.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/system/website-config/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/system/website-config/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/finance-center/cash-transaction/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/finance-center/cash-transaction/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/finance-center/cash-transaction/modules/cash-voucher-ocr-panel.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/finance-center/cash-transaction/modules/cash-voucher-ocr-panel.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/finance-center/cash-transaction/modules/customer-receipt-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/finance-center/cash-transaction/modules/customer-receipt-dialog.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/finance-center/invoice-management/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/finance-center/invoice-management/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/finance-center/invoice-management/modules/invoice-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/finance-center/invoice-management/modules/invoice-dialog.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/finance-center/invoice-management/modules/invoice-ocr-panel.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/finance-center/invoice-management/modules/invoice-ocr-panel.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/tms-transportation/finance-center/workbench/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/tms-transportation/finance-center/workbench/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/vehicle-manage-system/reminder-manage/inspection-expiry/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-manage-system/reminder-manage/inspection-expiry/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/vehicle-manage-system/reminder-manage/insurance-expiry/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-manage-system/reminder-manage/insurance-expiry/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/vehicle-manage-system/reminder-manage/maintenance-expiry/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-manage-system/reminder-manage/maintenance-expiry/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/vehicle-manage-system/reminder-manage/part-service-life/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-manage-system/reminder-manage/part-service-life/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/vehicle-manage-system/reminder-manage/vehicle-service-life/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-manage-system/reminder-manage/vehicle-service-life/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-query/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/vehicle-manage-system/vehicle-query/index.vue" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/views/workflow/definition/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/workflow/definition/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/workflow/definition/modules/workflow-designer-drawer.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/workflow/definition/modules/workflow-designer-drawer.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/workflow/modules/workflow-business-contracts.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/workflow/modules/workflow-business-contracts.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/views/workflow/monitor/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/workflow/monitor/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/workflow/monitor/modules/workflow-callback-outbox-drawer.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/workflow/monitor/modules/workflow-callback-outbox-drawer.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/workflow/monitor/modules/workflow-cancel-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/workflow/monitor/modules/workflow-cancel-dialog.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/workflow/monitor/modules/workflow-analytics-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/workflow/monitor/modules/workflow-analytics-dialog.vue" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/views/workflow/workbench/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/workflow/workbench/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/workflow/workbench/modules/workflow-action-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/workflow/workbench/modules/workflow-action-dialog.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/workflow/workbench/modules/workflow-instance-drawer.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/workflow/workbench/modules/workflow-instance-drawer.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/supabase/functions/_shared/ai-invoice-ocr-contract.ts" beforeDir="false" afterPath="$PROJECT_DIR$/supabase/functions/_shared/ai-invoice-ocr-contract.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/supabase/functions/_shared/ai-vision-ocr-runtime.ts" beforeDir="false" afterPath="$PROJECT_DIR$/supabase/functions/_shared/ai-vision-ocr-runtime.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/supabase/functions/ai-invoice-ocr/index.ts" beforeDir="false" afterPath="$PROJECT_DIR$/supabase/functions/ai-invoice-ocr/index.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/supabase/functions/sync-user/index.ts" beforeDir="false" afterPath="$PROJECT_DIR$/supabase/functions/sync-user/index.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/supabase/tests/workflow_engine_test.sql" beforeDir="false" afterPath="$PROJECT_DIR$/supabase/tests/workflow_engine_test.sql" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/unit/ai-invoice-ocr-contract.test.ts" beforeDir="false" afterPath="$PROJECT_DIR$/tests/unit/ai-invoice-ocr-contract.test.ts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -53,7 +76,7 @@
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="EmbeddingIndexingInfo">
-    <option name="cachedIndexableFilesCount" value="2190" />
+    <option name="cachedIndexableFilesCount" value="2269" />
   </component>
   <component name="FileTemplateManagerImpl">
     <option name="RECENT_TEMPLATES">
@@ -87,23 +110,23 @@
   </component>
   <component name="NextEditCompletionFeaturesState">
     <decayedCancelled>
-      <entry key="MS100" value="1.0234478245516443" />
-      <entry key="MS500" value="2.6673034844979733" />
-      <entry key="S2" value="5.7670669462928785" />
-      <entry key="S5" value="6.989727416517768" />
-      <entry key="S10" value="7.472800021152059" />
-      <entry key="S30" value="7.822458010035182" />
-      <entry key="S60" value="8.062139294944418" />
-      <entry key="M2" value="8.989873452375768" />
-      <entry key="M5" value="11.24093877543684" />
-      <entry key="M10" value="12.767293298373058" />
-      <entry key="M15" value="13.419361750445647" />
-      <entry key="M30" value="14.164413166968847" />
-      <entry key="H1" value="14.695542119617551" />
-      <entry key="H2" value="15.979102664663808" />
-      <entry key="H4" value="19.95422403395204" />
-      <entry key="D1" value="64.34342123023649" />
-      <entry key="W1" value="651.942017392477" />
+      <entry key="MS100" value="1.0078143716395078" />
+      <entry key="MS500" value="2.2017944735396044" />
+      <entry key="S2" value="6.66331845800697" />
+      <entry key="S5" value="9.353032476318441" />
+      <entry key="S10" value="10.570149206401442" />
+      <entry key="S30" value="11.500605589065065" />
+      <entry key="S60" value="11.895965278359341" />
+      <entry key="M2" value="12.898707252325318" />
+      <entry key="M5" value="15.19684156849061" />
+      <entry key="M10" value="16.74266717705937" />
+      <entry key="M15" value="17.40221066363477" />
+      <entry key="M30" value="18.155418570811946" />
+      <entry key="H1" value="18.690895649533438" />
+      <entry key="H2" value="19.976599740506444" />
+      <entry key="H4" value="23.952694517573008" />
+      <entry key="D1" value="68.34264887305582" />
+      <entry key="W1" value="655.9409285577805" />
     </decayedCancelled>
     <decayedSelected>
       <entry key="MS100" value="0.0" />
@@ -111,37 +134,37 @@
       <entry key="S2" value="0.0" />
       <entry key="S5" value="0.0" />
       <entry key="S10" value="0.0" />
-      <entry key="S30" value="1.4089146672189952E-143" />
-      <entry key="S60" value="3.753551208148087E-72" />
-      <entry key="M2" value="1.9374083741297512E-36" />
-      <entry key="M5" value="5.186668232295641E-15" />
-      <entry key="M10" value="7.201852701382136E-8" />
-      <entry key="M15" value="1.7309967172692876E-5" />
-      <entry key="M30" value="0.004162396420828842" />
-      <entry key="H1" value="0.06587032865129099" />
-      <entry key="H2" value="0.29096189512356796" />
-      <entry key="H4" value="0.6963233666542175" />
-      <entry key="D1" value="2.6333351907383102" />
-      <entry key="W1" value="22.499765034516273" />
+      <entry key="S30" value="1.3624005308129583E-143" />
+      <entry key="S60" value="3.69107102453063E-72" />
+      <entry key="M2" value="1.921216027554067E-36" />
+      <entry key="M5" value="5.169285041406489E-15" />
+      <entry key="M10" value="7.189774017553124E-8" />
+      <entry key="M15" value="1.7290607329528836E-5" />
+      <entry key="M30" value="0.004160068112368224" />
+      <entry key="H1" value="0.06585190322023654" />
+      <entry key="H2" value="0.2909211979431712" />
+      <entry key="H4" value="0.6962746671696066" />
+      <entry key="D1" value="2.6333044947977986" />
+      <entry key="W1" value="22.499727566826643" />
     </decayedSelected>
     <decayedShown>
-      <entry key="MS100" value="0.11302743256855188" />
-      <entry key="MS500" value="2.189785074870104" />
-      <entry key="S2" value="5.591442889884652" />
-      <entry key="S5" value="6.9124114985942375" />
-      <entry key="S10" value="7.432821053433949" />
-      <entry key="S30" value="7.80882253979386" />
-      <entry key="S60" value="8.055265697157218" />
-      <entry key="M2" value="8.986378629123495" />
-      <entry key="M5" value="11.23949000316548" />
-      <entry key="M10" value="12.766552059132582" />
-      <entry key="M15" value="13.418880026659922" />
-      <entry key="M30" value="14.168320340182847" />
-      <entry key="H1" value="14.76126194287048" />
-      <entry key="H2" value="16.269947922644487" />
-      <entry key="H4" value="20.650441014794065" />
-      <entry key="D1" value="66.98711966135158" />
-      <entry key="W1" value="674.9628778500779" />
+      <entry key="MS100" value="0.05016256036125539" />
+      <entry key="MS500" value="1.5777715596263933" />
+      <entry key="S2" value="6.326945508764489" />
+      <entry key="S5" value="9.184903388863708" />
+      <entry key="S10" value="10.479067352993848" />
+      <entry key="S30" value="11.468523979759567" />
+      <entry key="S60" value="11.879682456301452" />
+      <entry key="M2" value="12.890460766348754" />
+      <entry key="M5" value="15.193480707567739" />
+      <entry key="M10" value="16.740967941004225" />
+      <entry key="M15" value="17.401089814506378" />
+      <entry key="M30" value="18.15900364099661" />
+      <entry key="H1" value="18.756437109349164" />
+      <entry key="H2" value="20.267324322226152" />
+      <entry key="H4" value="24.648822807337915" />
+      <entry key="D1" value="70.98630982073847" />
+      <entry key="W1" value="678.9617497275497" />
     </decayedShown>
   </component>
   <component name="PackageJsonUpdateNotifier">
@@ -376,6 +399,7 @@
       <workItem from="1785567883008" duration="4591000" />
       <workItem from="1785629921611" duration="6828000" />
       <workItem from="1785803439329" duration="38959000" />
+      <workItem from="1786141922687" duration="5823000" />
     </task>
     <task id="LOCAL-00018" summary="feat build file">
       <option name="closed" value="true" />

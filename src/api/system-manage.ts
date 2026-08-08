@@ -4,7 +4,14 @@ import { WRITE_PERMISSION_DENIED_MESSAGE } from '@/hooks/core/useSupabase'
 import { buildSpecsFromMap, applyFilters, type Op } from '@utils/supabase-filters'
 import { toNextDayStartUTC, toStartOfDayUTC } from '@/utils'
 import { omit } from 'lodash-es'
+import TreeUtils from '@/utils/tree'
 const { supabase, keysToSnakeDeep, responseHandle } = useSupabase()
+
+const organizationTreeUtils = new TreeUtils({
+  idKey: 'id',
+  parentKey: 'parentId',
+  childrenKey: 'children'
+})
 
 type TenantListItem = Api.SystemManage.TenantListItem
 type TenantSearchParams = Api.SystemManage.TenantSearchParams
@@ -52,7 +59,10 @@ export async function fetchGetUserList(params: Api.SystemManage.UserSearchParams
   // 构建查询
   let query = supabase
     .from('sys_user')
-    .select('*', { count: 'exact' })
+    .select(
+      '*, organization:sys_organization!sys_user_organization_id_fkey(id, organization_code, organization_name)',
+      { count: 'exact' }
+    )
     .order('create_time', { ascending: false }) // 按创建时间倒序
     .range(from, to)
 
@@ -96,6 +106,149 @@ export async function fetchGetEnableTenantList() {
     ignoreCheck: true,
     showErrorMessage: true
   })
+}
+
+export async function fetchGetOrganizationList(
+  params: Api.SystemManage.OrganizationSearchParams = {}
+) {
+  const { keyword, tenantId, organizationType, status } = params
+  const specs = [
+    { col: 'tenant_id', op: 'eq', val: tenantId },
+    { col: 'organization_type', op: 'eq', val: organizationType },
+    { col: 'status', op: 'eq', val: status }
+  ]
+
+  let query = supabase
+    .from('sys_organization')
+    .select(
+      `
+        *,
+        tenant:sys_tenant!sys_organization_tenant_id_fkey(tenant_code, tenant_name),
+        leader:sys_user!sys_organization_leader_user_id_fkey(
+          id, avatar, user_name, nick_name, user_email
+        ),
+        members:sys_user!sys_user_organization_id_fkey(
+          id, avatar, user_name, nick_name, user_email, status, user_roles
+        ),
+        roles:sys_role!sys_role_organization_id_fkey(
+          id, role_name, role_code, enabled,
+          role_menus:sys_role_menu!sys_role_menu_role_id_fkey(
+            menu_id,
+            menu:sys_menu!sys_role_menu_menu_id_fkey(name, type, meta)
+          )
+        )
+      `,
+      { count: 'exact' }
+    )
+    .order('sort', { ascending: true })
+    .order('organization_name', { ascending: true })
+
+  const trimmedKeyword = keyword?.trim()
+  if (trimmedKeyword) {
+    query = query.or(
+      `organization_name.ilike.%${trimmedKeyword}%,organization_code.ilike.%${trimmedKeyword}%,description.ilike.%${trimmedKeyword}%`
+    )
+  }
+
+  query = applyFilters(query, specs, { skipEmpty: true, camelToSnake: false })
+  return await responseHandle<Api.SystemManage.OrganizationListItem[]>(() => query, {
+    ignoreCheck: true,
+    showErrorMessage: true
+  })
+}
+
+export async function fetchGetOrganizationTree(
+  params: Api.SystemManage.OrganizationSearchParams = {}
+) {
+  const response = await fetchGetOrganizationList(params)
+  const records = response.data ?? []
+  return {
+    ...response,
+    data: organizationTreeUtils.listToTree(records, (a, b) => {
+      const sortDiff = (a.sort ?? 0) - (b.sort ?? 0)
+      return sortDiff || a.organizationName.localeCompare(b.organizationName, 'zh-CN')
+    })
+  }
+}
+
+export async function fetchGetEnableOrganizationTree(
+  params: {
+    tenantId?: string
+    excludeId?: string
+  } = {}
+) {
+  if (!params?.tenantId) {
+    return { data: [], error: null }
+  }
+
+  const response = await fetchGetOrganizationTree({
+    tenantId: params.tenantId,
+    status: '1'
+  })
+  const data = params.excludeId
+    ? organizationTreeUtils.removeNodesByCondition(
+        response.data ?? [],
+        (node) => node.id === params.excludeId
+      ).tree
+    : response.data
+
+  return { ...response, data }
+}
+
+export async function fetchGetEnableOrganizationUserList(params: { tenantId?: string } = {}) {
+  if (!params?.tenantId) {
+    return { data: [], error: null }
+  }
+
+  const query = supabase
+    .from('sys_user')
+    .select('id, avatar, user_name, nick_name, user_email, status, tenant_id')
+    .eq('tenant_id', params.tenantId)
+    .eq('status', '1')
+    .order('nick_name', { ascending: true })
+
+  return await responseHandle<Api.SystemManage.OrganizationMember[]>(() => query, {
+    ignoreCheck: true,
+    showErrorMessage: true
+  })
+}
+
+export async function addOrganization(params: Api.SystemManage.OrganizationSavePayload) {
+  return await responseHandle(
+    () => supabase.from('sys_organization').insert(keysToSnakeDeep(params)),
+    {
+      showMessage: true,
+      breakReturn: true
+    }
+  )
+}
+
+export async function editOrganization(params: Api.SystemManage.OrganizationSavePayload) {
+  const { id, ...payload } = params
+  return await responseHandle(
+    () =>
+      supabase
+        .from('sys_organization')
+        .update(keysToSnakeDeep(payload), { count: 'exact' })
+        .eq('id', id),
+    {
+      showMessage: true,
+      breakReturn: true,
+      requireAffected: true,
+      noAffectedMessage: WRITE_PERMISSION_DENIED_MESSAGE
+    }
+  )
+}
+
+export async function deleteOrganization(id: string) {
+  return await responseHandle(
+    () => supabase.from('sys_organization').delete({ count: 'exact' }).eq('id', id),
+    {
+      showMessage: true,
+      requireAffected: true,
+      noAffectedMessage: WRITE_PERMISSION_DENIED_MESSAGE
+    }
+  )
 }
 
 // 新增租户
@@ -520,9 +673,16 @@ export async function fetchGetRoleList(params: Api.SystemManage.RoleSearchParams
   // 构建查询
   let query = supabase
     .from('sys_role')
-    .select('*, tenant:sys_tenant!sys_role_tenant_id_fkey(tenant_code, tenant_name)', {
-      count: 'exact'
-    })
+    .select(
+      `
+        *,
+        tenant:sys_tenant!sys_role_tenant_id_fkey(tenant_code, tenant_name),
+        organization:sys_organization!sys_role_organization_id_fkey(
+          id, organization_code, organization_name
+        )
+      `,
+      { count: 'exact' }
+    )
     .order('create_time', { ascending: false }) // 按创建时间倒序
     .range(from, to)
 
@@ -549,9 +709,9 @@ export async function addRole(params: Api.SystemManage.RoleListItem) {
 
 /*编辑角色*/
 export async function editRole(params: Api.SystemManage.RoleListItem) {
-  const { id } = params
+  const { id, ...payload } = params
   return await responseHandle(
-    () => supabase.from('sys_role').update(keysToSnakeDeep(params)).eq('id', id),
+    () => supabase.from('sys_role').update(keysToSnakeDeep(payload)).eq('id', id),
     {
       showMessage: true,
       breakReturn: true

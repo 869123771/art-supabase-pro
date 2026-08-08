@@ -631,7 +631,14 @@
     })
   }
 
-  defineExpose({ handleOpen })
+  async function handleOpenFromOcr(
+    result: Api.Tms.Finance.CashVoucherOcrAnalyzeResponse
+  ): Promise<void> {
+    await handleOpen()
+    handleApplyOcrResult(result)
+  }
+
+  defineExpose({ handleOpen, handleOpenFromOcr })
 
   async function recordOcrReview(transactionId?: string | null): Promise<void> {
     if (!ocrResult.value || !transactionId) return

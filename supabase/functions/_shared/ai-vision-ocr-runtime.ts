@@ -4,6 +4,7 @@ import {
   resolveAiProviderEndpoints,
   type AiProviderEndpoint
 } from './ai-provider-endpoints.ts'
+import { extractAiProviderJson, extractAiProviderText } from './ai-provider-json.ts'
 import { loadAiRuntimeConfig } from './ai-runtime-config.ts'
 import { loadPublishedAiPrompt } from './ai-prompt-template.ts'
 
@@ -111,33 +112,6 @@ function isUuid(value: string | null): value is string {
 function integerValue(value: unknown, fallback: number, min: number, max: number): number {
   const parsed = Number(value)
   return Number.isFinite(parsed) ? Math.min(max, Math.max(min, Math.trunc(parsed))) : fallback
-}
-
-function parseJson(content: string): Record<string, unknown> | null {
-  const source = content.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim()
-  try {
-    return JSON.parse(source) as Record<string, unknown>
-  } catch {
-    const match = source.match(/\{[\s\S]*\}/)
-    if (!match) return null
-    try {
-      return JSON.parse(match[0]) as Record<string, unknown>
-    } catch {
-      return null
-    }
-  }
-}
-
-function extractMessageContent(content: unknown): string {
-  if (typeof content === 'string') return content
-  if (!Array.isArray(content)) return ''
-  return content
-    .map((item) => {
-      if (typeof item === 'string') return item
-      return isRecord(item) && typeof item.text === 'string' ? item.text : ''
-    })
-    .join('\n')
-    .trim()
 }
 
 async function fetchWithTimeout(url: string, init: RequestInit, timeoutMs: number) {
@@ -480,8 +454,9 @@ export function createVisionOcrHandler<TInput, TResult extends VisionOcrNormaliz
 
       let providerPayload = await providerResult.response.json()
       let usage = providerPayload?.usage
-      let content = extractMessageContent(providerPayload?.choices?.[0]?.message?.content)
-      let parsed = content ? parseJson(content) : null
+      let providerMessage = providerPayload?.choices?.[0]?.message
+      let content = extractAiProviderText(providerMessage)
+      let parsed = extractAiProviderJson(providerMessage)
       let validation = config.validate(parsed)
       if (!validation.valid) {
         requestBody.temperature = 0
@@ -502,8 +477,9 @@ export function createVisionOcrHandler<TInput, TResult extends VisionOcrNormaliz
             completion_tokens:
               (usage?.completion_tokens ?? 0) + (providerPayload?.usage?.completion_tokens ?? 0)
           }
-          content = extractMessageContent(providerPayload?.choices?.[0]?.message?.content)
-          parsed = content ? parseJson(content) : null
+          providerMessage = providerPayload?.choices?.[0]?.message
+          content = extractAiProviderText(providerMessage)
+          parsed = extractAiProviderJson(providerMessage)
           validation = config.validate(parsed)
         }
       }

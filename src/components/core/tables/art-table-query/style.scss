@@ -3,6 +3,31 @@
   flex: 1;
   flex-direction: column;
   min-height: 0;
+
+  &.is-focus-mode {
+    height: 100%;
+  }
+}
+
+:global(.art-table-focus-hidden) {
+  display: none !important;
+}
+
+:global(.art-table-focus-page) {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0 !important;
+  height: var(--art-full-height) !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+
+:global(.art-table-focus-path) {
+  display: flex !important;
+  flex: 1 1 auto !important;
+  flex-direction: column !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
 }
 
 :deep(.art-table-card) {

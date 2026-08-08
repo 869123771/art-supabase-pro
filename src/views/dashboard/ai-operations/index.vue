@@ -314,6 +314,7 @@
     <section v-if="activeSection === 'runs'" class="ai-operations__table">
       <ArtTableQuery
         ref="tableQueryRef"
+        focusable
         v-model="searchQuery"
         :search-items="searchItems"
         :api-fn="fetchAiRunList"

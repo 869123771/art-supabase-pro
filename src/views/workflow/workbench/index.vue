@@ -51,6 +51,7 @@
           ></template>
           <ArtTableQuery
             ref="pendingTableRef"
+            focusable
             v-model="pendingTable.searchQuery"
             :search-items="pendingTable.searchItems"
             :api-fn="fetchPendingData"
@@ -74,6 +75,7 @@
           </div>
           <ArtTableQuery
             ref="globalTableRef"
+            focusable
             v-model="globalTable.searchQuery"
             :search-items="globalTable.searchItems"
             :api-fn="fetchGlobalPendingData"
@@ -90,6 +92,7 @@
           >
           <ArtTableQuery
             ref="handledTableRef"
+            focusable
             v-model="handledTable.searchQuery"
             :search-items="handledTable.searchItems"
             :api-fn="fetchHandledData"
@@ -106,6 +109,7 @@
           >
           <ArtTableQuery
             ref="initiatedTableRef"
+            focusable
             v-model="initiatedTable.searchQuery"
             :search-items="initiatedTable.searchItems"
             :api-fn="fetchInitiatedData"

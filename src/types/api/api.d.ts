@@ -121,6 +121,11 @@ declare namespace Api {
       id?: string
       tenantId?: string
       tenant?: Pick<TenantListItem, 'tenantCode' | 'tenantName'>
+      organizationId?: string | null
+      organization?: Pick<
+        OrganizationListItem,
+        'id' | 'organizationCode' | 'organizationName'
+      > | null
       avatar?: string | null
       status?: string
       password: string
@@ -155,6 +160,11 @@ declare namespace Api {
       id?: string
       tenantId?: string
       tenant?: Pick<TenantListItem, 'tenantCode' | 'tenantName'>
+      organizationId?: string | null
+      organization?: Pick<
+        OrganizationListItem,
+        'id' | 'organizationCode' | 'organizationName'
+      > | null
       roleId?: number
       roleName: string
       roleCode: string
@@ -177,6 +187,86 @@ declare namespace Api {
           endTime: string | null
         }
     >
+
+    type OrganizationType = 'company' | 'division' | 'department' | 'team'
+
+    interface OrganizationMember {
+      id: string
+      avatar?: string | null
+      userName: string
+      nickName?: string | null
+      userEmail: string
+      status?: string
+      userRoles?: string[]
+    }
+
+    interface OrganizationRoleMenu {
+      menuId: string
+      menu?: {
+        name?: string
+        type?: string
+        meta?: Record<string, unknown>
+      } | null
+    }
+
+    interface OrganizationRole {
+      id: string
+      roleName: string
+      roleCode: string
+      enabled?: boolean
+      roleMenus?: OrganizationRoleMenu[]
+    }
+
+    interface OrganizationListItem {
+      id?: string
+      tenantId?: string
+      tenant?: Pick<TenantListItem, 'tenantCode' | 'tenantName'>
+      parentId?: string | null
+      organizationCode: string
+      organizationName: string
+      organizationType: OrganizationType
+      leaderUserId?: string | null
+      leader?: Pick<
+        OrganizationMember,
+        'id' | 'avatar' | 'userName' | 'nickName' | 'userEmail'
+      > | null
+      status: Api.Common.EnableStatus
+      sort: number
+      phone?: string | null
+      email?: string | null
+      address?: string | null
+      description?: string | null
+      isSystem?: boolean
+      members?: OrganizationMember[]
+      roles?: OrganizationRole[]
+      children?: OrganizationListItem[]
+      createBy?: string
+      createTime?: string
+      updateBy?: string
+      updateTime?: string
+    }
+
+    type OrganizationSearchParams = Partial<
+      Pick<OrganizationListItem, 'tenantId' | 'organizationType' | 'status'> & {
+        keyword: string
+      }
+    >
+
+    type OrganizationSavePayload = Pick<
+      OrganizationListItem,
+      | 'tenantId'
+      | 'parentId'
+      | 'organizationCode'
+      | 'organizationName'
+      | 'organizationType'
+      | 'leaderUserId'
+      | 'status'
+      | 'sort'
+      | 'phone'
+      | 'email'
+      | 'address'
+      | 'description'
+    > & { id?: string }
 
     /** 租户列表项 */
     interface TenantListItem {
@@ -2453,6 +2543,7 @@ declare namespace Api {
         createTime: string
         updateBy?: string | null
         updateTime: string
+        paymentApplicationId?: string | null
         allocations?: Array<CashAllocationRecord | CarrierCashAllocationRecord>
       }
 
@@ -2520,6 +2611,8 @@ declare namespace Api {
         statementAmount: number
         settledAmount: number
         outstandingAmount: number
+        statementOutstandingAmount?: number
+        reservedAmount?: number
         status: CustomerStatementStatus
         createTime: string
       }
@@ -2564,6 +2657,84 @@ declare namespace Api {
       interface AllocateCarrierPaymentPayload {
         transactionId: string
         allocations: CashAllocationInput[]
+      }
+
+      type CarrierPaymentApplicationStatus =
+        'draft' | 'pending_review' | 'approved' | 'rejected' | 'paid' | 'cancelled'
+
+      interface CarrierPaymentApplicationItem {
+        id: string
+        tenantId: string
+        applicationId: string
+        statementId: string
+        carrierId: string
+        statementNoSnapshot: string
+        statementAmountSnapshot: number
+        outstandingAmountSnapshot: number
+        appliedAmount: number
+        remark?: string | null
+        createBy?: string | null
+        createTime: string
+        updateBy?: string | null
+        updateTime: string
+      }
+
+      interface CarrierPaymentApplicationRecord {
+        id: string
+        tenantId: string
+        applicationNo: string
+        carrierId: string
+        carrierName: string
+        plannedPaymentDate: string
+        amount: number
+        paymentMethod: CashPaymentMethod
+        basisUrls: string[]
+        status: CarrierPaymentApplicationStatus
+        paidTransactionId?: string | null
+        paidTransactionNo?: string | null
+        statementCount: number
+        statementNos: string
+        submittedAt?: string | null
+        submittedBy?: string | null
+        reviewedAt?: string | null
+        reviewedBy?: string | null
+        reviewRemark?: string | null
+        paidAt?: string | null
+        paidBy?: string | null
+        cancelledAt?: string | null
+        cancelledBy?: string | null
+        cancelReason?: string | null
+        remark?: string | null
+        createBy?: string | null
+        createTime: string
+        updateBy?: string | null
+        updateTime: string
+        items?: CarrierPaymentApplicationItem[]
+      }
+
+      type CarrierPaymentApplicationSearchParams = Api.Common.CommonSearchParams & {
+        carrierId?: string
+        status?: string
+        plannedPaymentDateRange?: string[]
+        keyword?: string
+      }
+
+      interface SaveCarrierPaymentApplicationPayload {
+        id?: string
+        carrierId: string
+        plannedPaymentDate: string
+        amount: number
+        paymentMethod: CashPaymentMethod
+        basisUrls?: string[]
+        remark?: string | null
+        allocations: CashAllocationInput[]
+      }
+
+      interface ExecuteCarrierPaymentApplicationPayload {
+        applicationId: string
+        transactionDate: string
+        bankReference?: string | null
+        voucherUrls?: string[]
       }
 
       type CashVoucherOcrField =
@@ -2902,6 +3073,44 @@ declare namespace Api {
         invoice: InvoiceOcrDraft
       }
 
+      type InvoiceCounterpartyResolutionStatus =
+        'matched' | 'unmatched' | 'ambiguous' | 'conflict' | 'disabled' | 'invalid'
+
+      interface InvoiceCounterpartyOption {
+        id: string
+        partyName: string
+        partyCode?: string | null
+        taxNo?: string | null
+        enabled: boolean
+      }
+
+      interface InvoiceCounterpartyResolution {
+        status: InvoiceCounterpartyResolutionStatus
+        direction: InvoiceDirection
+        partyKind: 'customer' | 'carrier'
+        name?: string | null
+        taxNo?: string | null
+        confidence: number
+        matchMethod?: 'tax_no' | 'name' | null
+        canCreate: boolean
+        requiresReview: boolean
+        message: string
+        party?: InvoiceCounterpartyOption | null
+      }
+
+      interface CreateInvoiceCounterpartyFromOcrPayload {
+        artifactId: string
+        name: string
+        taxNo?: string | null
+        carrierType?: string | null
+      }
+
+      interface CreateInvoiceCounterpartyFromOcrResponse {
+        created: boolean
+        direction: InvoiceDirection
+        party: InvoiceCounterpartyOption
+      }
+
       interface InvoiceOcrReviewRequest {
         action: 'review'
         artifactId: string
@@ -2944,6 +3153,16 @@ declare namespace Api {
         draftInvoiceAmount: number
         pendingInvoiceCount: number
         pendingInvoiceAmount: number
+        pendingPaymentApplicationCount: number
+        pendingPaymentApplicationAmount: number
+        approvedUnpaidPaymentCount: number
+        approvedUnpaidPaymentAmount: number
+        unapprovedPaymentCount: number
+        unapprovedPaymentAmount: number
+        overdueReceivableCount: number
+        overdueReceivableAmount: number
+        uninvoicedReceivableCount: number
+        uninvoicedReceivableAmount: number
       }
 
       type ReceivablesRiskLevel = 'critical' | 'high' | 'medium' | 'low'

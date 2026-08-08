@@ -348,6 +348,17 @@ export async function fetchWorkflowOperationalAnalytics(
   return result.data
 }
 
+export async function fetchWorkflowBottleneckAnalytics(
+  days = 30
+): Promise<Api.Workflow.WorkflowBottleneckAnalytics> {
+  const result = await responseHandle<Api.Workflow.WorkflowBottleneckAnalytics>(
+    () => supabase.rpc('get_workflow_bottleneck_analytics', { p_days: days }),
+    { breakReturn: true }
+  )
+  if (!result.data) throw new Error('审批瓶颈分析加载失败')
+  return result.data
+}
+
 export async function fetchWorkflowCallbackOutbox(
   status: Api.Workflow.WorkflowCallbackStatus | null = null,
   limit = 50

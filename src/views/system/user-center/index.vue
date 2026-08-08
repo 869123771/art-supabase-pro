@@ -1,106 +1,226 @@
 <!-- 个人中心页面 -->
 <template>
-  <div class="w-full h-full p-0 bg-transparent border-none shadow-none">
-    <div class="relative flex-b mt-2.5 max-md:block max-md:mt-1">
-      <div class="w-112 mr-5 max-md:w-full max-md:mr-0">
-        <div class="art-card-sm relative p-9 pb-6 overflow-hidden text-center">
-          <img class="absolute top-0 left-0 w-full h-50 object-cover" src="@imgs/user/bg.webp" />
-          <img
-            class="relative z-10 w-20 h-20 mt-30 mx-auto object-cover border-2 border-white rounded-full"
-            :src="userInfo.avatar || '@imgs/user/avatar.webp'"
-          />
-          <h2 class="mt-5 text-xl font-normal">{{ userInfo.userName }}</h2>
-          <p class="mt-5 text-sm">专注于用户体验跟视觉设计</p>
-
-          <div class="w-75 mx-auto mt-7.5 text-left">
-            <div class="mt-2.5">
-              <ArtSvgIcon icon="ri:mail-line" class="text-g-700" />
-              <span class="ml-2 text-sm">{{ userInfo.email }}</span>
-            </div>
-            <div class="mt-2.5">
-              <ArtSvgIcon icon="ri:user-3-line" class="text-g-700" />
-              <span class="ml-2 text-sm">交互专家</span>
-            </div>
-            <div class="mt-2.5">
-              <ArtSvgIcon icon="ri:map-pin-line" class="text-g-700" />
-              <span class="ml-2 text-sm">广东省深圳市</span>
-            </div>
-            <div class="mt-2.5">
-              <ArtSvgIcon icon="ri:dribbble-fill" class="text-g-700" />
-              <span class="ml-2 text-sm">字节跳动－某某平台部－UED</span>
-            </div>
+  <div class="user-center art-full-height">
+    <div class="user-center__layout">
+      <aside class="user-center__profile art-card-xs">
+        <div class="user-center__profile-hero">
+          <div class="user-center__profile-glow" aria-hidden="true"></div>
+          <div class="user-center__avatar-wrap">
+            <ElAvatar
+              :size="88"
+              :src="userInfo.avatar || defaultAvatar"
+              :alt="`${displayName}的头像`"
+            >
+              {{ avatarFallback }}
+            </ElAvatar>
+            <span class="user-center__online-dot" aria-label="当前在线"></span>
           </div>
+          <h1>{{ displayName }}</h1>
+          <p class="user-center__account-name">@{{ accountName }}</p>
+          <div class="user-center__profile-tags">
+            <span><ArtSvgIcon icon="ri:shield-check-line" />当前登录</span>
+            <span><ArtSvgIcon icon="ri:building-4-line" />{{ tenantName }}</span>
+          </div>
+        </div>
 
-          <div class="mt-10">
-            <h3 class="text-sm font-medium">标签</h3>
-            <div class="flex flex-wrap justify-center mt-3.5">
-              <div
-                v-for="item in labelList"
-                :key="item"
-                class="py-1 px-1.5 mr-2.5 mb-2.5 text-xs border border-g-300 rounded"
-              >
-                {{ item }}
+        <section class="user-center__completion" aria-label="资料完整度">
+          <div class="user-center__completion-head">
+            <div>
+              <strong>资料完整度</strong>
+              <p>{{ profileCompletionHint }}</p>
+            </div>
+            <span>{{ profileCompletion }}%</span>
+          </div>
+          <ElProgress
+            :percentage="profileCompletion"
+            :stroke-width="7"
+            :show-text="false"
+            :status="profileCompletion === 100 ? 'success' : undefined"
+          />
+        </section>
+
+        <section class="user-center__account-summary">
+          <ArtSectionTitle :show-line="false">账户摘要</ArtSectionTitle>
+          <ul>
+            <li v-for="item in accountSummary" :key="item.label">
+              <span class="user-center__summary-icon" aria-hidden="true">
+                <ArtSvgIcon :icon="item.icon" />
+              </span>
+              <div>
+                <small>{{ item.label }}</small>
+                <span :class="{ 'is-placeholder': item.placeholder }" :title="item.value">
+                  {{ item.value }}
+                </span>
               </div>
+            </li>
+          </ul>
+        </section>
+      </aside>
+
+      <main class="user-center__settings art-card-xs">
+        <header class="user-center__settings-header">
+          <div class="user-center__settings-title">
+            <span aria-hidden="true"><ArtSvgIcon icon="ri:user-settings-line" /></span>
+            <div>
+              <p>ACCOUNT SETTINGS</p>
+              <h2>账户设置</h2>
+              <small>维护个人资料与登录凭据，让账户信息保持准确和安全。</small>
             </div>
           </div>
-        </div>
-      </div>
-      <div class="flex-1 overflow-hidden max-md:w-full max-md:mt-3.5">
-        <div class="art-card-sm">
-          <h1 class="p-4 text-xl font-normal border-b border-g-300">基本设置</h1>
-
-          <ArtForm
-            ref="ruleFormRef"
-            :model-value="form"
-            :items="profileFormItems"
-            :rules="rules"
-            label-position="top"
-            :show-reset="false"
-            :show-submit="false"
-            root-class="user-center__form"
-            @update:model-value="Object.assign(form, $event)"
-          />
-          <div class="flex-c justify-end px-5 pb-5 [&_.el-button]:!w-27.5">
-            <ElButton type="primary" :loading="profileLoading" v-ripple @click="edit">
-              {{ isEdit ? '保存' : '编辑' }}
-            </ElButton>
+          <div class="user-center__security-badge">
+            <ArtSvgIcon icon="ri:verified-badge-line" />
+            安全可控
           </div>
-        </div>
+        </header>
 
-        <div class="art-card-sm my-5">
-          <h1 class="p-4 text-xl font-normal border-b border-g-300">更改密码</h1>
+        <ElTabs v-model="activeTab" class="user-center__tabs">
+          <ElTabPane name="profile">
+            <template #label>
+              <span class="user-center__tab-label">
+                <ArtSvgIcon icon="ri:id-card-line" />
+                个人资料
+              </span>
+            </template>
 
-          <ArtForm
-            ref="pwdFormRef"
-            :model-value="pwdForm"
-            :items="passwordFormItems"
-            :rules="pwdRules"
-            label-position="top"
-            :show-reset="false"
-            :show-submit="false"
-            :span="24"
-            root-class="user-center__form"
-            @update:model-value="Object.assign(pwdForm, $event)"
-          />
-          <div class="flex-c justify-end px-5 pb-5 [&_.el-button]:!w-27.5">
-            <ElButton type="primary" :loading="passwordLoading" v-ripple @click="editPwd">
-              {{ isEditPwd ? '保存' : '编辑' }}
-            </ElButton>
-          </div>
-        </div>
-      </div>
+            <section class="user-center__pane">
+              <div class="user-center__pane-head">
+                <div>
+                  <ArtSectionTitle :show-line="false">基本信息</ArtSectionTitle>
+                  <p>用于账号识别、业务联系和个性化展示。</p>
+                </div>
+                <div class="user-center__pane-actions">
+                  <template v-if="isEdit">
+                    <ElButton @click="cancelProfileEdit">取消</ElButton>
+                    <ElButton
+                      type="primary"
+                      :loading="profileLoading"
+                      v-ripple
+                      @click="saveProfile"
+                    >
+                      保存资料
+                    </ElButton>
+                  </template>
+                  <ElButton v-else type="primary" plain @click="startProfileEdit">
+                    <ArtSvgIcon icon="ri:edit-2-line" />
+                    编辑资料
+                  </ElButton>
+                </div>
+              </div>
+
+              <ArtForm
+                ref="ruleFormRef"
+                v-model="form"
+                :items="profileFormItems"
+                :rules="rules"
+                :disabled="!isEdit"
+                label-position="top"
+                :show-reset="false"
+                :show-submit="false"
+                root-class="user-center__form"
+              />
+            </section>
+          </ElTabPane>
+
+          <ElTabPane name="security">
+            <template #label>
+              <span class="user-center__tab-label">
+                <ArtSvgIcon icon="ri:lock-password-line" />
+                密码安全
+              </span>
+            </template>
+
+            <section class="user-center__pane">
+              <div class="user-center__pane-head">
+                <div>
+                  <ArtSectionTitle :show-line="false">修改登录密码</ArtSectionTitle>
+                  <p>定期更新密码，并避免与其他网站重复使用。</p>
+                </div>
+                <div class="user-center__pane-actions">
+                  <template v-if="isEditPwd">
+                    <ElButton @click="cancelPasswordEdit">取消</ElButton>
+                    <ElButton
+                      type="primary"
+                      :loading="passwordLoading"
+                      v-ripple
+                      @click="savePassword"
+                    >
+                      更新密码
+                    </ElButton>
+                  </template>
+                  <ElButton v-else type="primary" plain @click="startPasswordEdit">
+                    <ArtSvgIcon icon="ri:key-2-line" />
+                    修改密码
+                  </ElButton>
+                </div>
+              </div>
+
+              <div class="user-center__security-notice">
+                <span aria-hidden="true"><ArtSvgIcon icon="ri:shield-keyhole-line" /></span>
+                <div>
+                  <strong>当前密码策略</strong>
+                  <p>至少 {{ passwordMinLength }} 位；{{ passwordComplexityHint }}</p>
+                </div>
+              </div>
+
+              <ArtForm
+                ref="pwdFormRef"
+                v-model="pwdForm"
+                :items="passwordFormItems"
+                :rules="pwdRules"
+                :disabled="!isEditPwd"
+                label-position="top"
+                :show-reset="false"
+                :show-submit="false"
+                :span="24"
+                root-class="user-center__form user-center__password-form"
+              />
+            </section>
+          </ElTabPane>
+        </ElTabs>
+      </main>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
   import { updateCurrentUserPassword, updateCurrentUserProfile } from '@/api/auth'
-  import { useUserStore } from '@/store/modules/user'
-  import { useSystemParam } from '@/hooks'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
+  import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
+  import { useSystemParam } from '@/hooks'
+  import { useUserStore } from '@/store/modules/user'
+  import defaultAvatar from '@imgs/user/avatar.webp'
   import type { FormItemRule, FormRules } from 'element-plus'
 
   defineOptions({ name: 'UserCenter' })
+
+  interface FormExpose {
+    validate: () => Promise<boolean>
+    validateField: (prop: string) => Promise<boolean>
+    clearValidate: () => void
+  }
+
+  interface ProfileFormModel {
+    userName: string
+    nickName: string
+    email: string
+    mobile: string
+    address: string
+    sex: string
+    des: string
+  }
+
+  interface PasswordFormModel {
+    password: string
+    newPassword: string
+    confirmPassword: string
+  }
+
+  interface AccountSummaryItem {
+    label: string
+    value: string
+    icon: string
+    placeholder?: boolean
+  }
 
   const userStore = useUserStore()
   const { getDictMap, getUserInfo: userInfo } = storeToRefs(userStore)
@@ -112,61 +232,152 @@
     validatePasswordComplexity
   } = useSystemParam()
 
+  const activeTab = ref<'profile' | 'security'>('profile')
   const isEdit = ref(false)
   const isEditPwd = ref(false)
   const profileLoading = ref(false)
   const passwordLoading = ref(false)
-  const date = ref('')
-  interface FormExpose {
-    validate: () => Promise<boolean>
-    validateField: (prop: string) => Promise<boolean>
-    clearValidate: () => void
-  }
-
   const ruleFormRef = ref<FormExpose>()
   const pwdFormRef = ref<FormExpose>()
 
-  /**
-   * 用户信息表单
-   */
-  const form = reactive({
-    userName: userInfo.value.userName,
-    nickName: userInfo.value.nickName,
-    email: userInfo.value.email,
-    mobile: userInfo.value.userPhone,
+  const createProfileForm = (): ProfileFormModel => ({
+    userName: userInfo.value.userName ?? '',
+    nickName: userInfo.value.nickName ?? '',
+    email: userInfo.value.email ?? '',
+    mobile: userInfo.value.userPhone ?? '',
     address: typeof userInfo.value.extra?.address === 'string' ? userInfo.value.extra.address : '',
-    sex: userInfo.value.userGender,
-    des: userInfo.value.remark
+    sex: userInfo.value.userGender ?? '',
+    des: userInfo.value.remark ?? ''
   })
 
-  /**
-   * 密码修改表单
-   */
-  const pwdForm = reactive({
+  const createPasswordForm = (): PasswordFormModel => ({
     password: '',
     newPassword: '',
     confirmPassword: ''
   })
 
+  const form = ref<ProfileFormModel>(createProfileForm())
+  const pwdForm = ref<PasswordFormModel>(createPasswordForm())
+
+  const displayName = computed(
+    () => userInfo.value.nickName || userInfo.value.userName || '未命名用户'
+  )
+  const accountName = computed(() => userInfo.value.userName || 'account')
+  const avatarFallback = computed(() => displayName.value.slice(0, 1).toUpperCase() || 'U')
+  const tenantName = computed(() => userInfo.value.tenant?.tenantName || '当前组织')
+  const builtInRoleLabels: Record<string, string> = {
+    R_SUPER: '超级管理员',
+    R_ADMIN: '管理员',
+    R_REGISTER: '注册用户',
+    R_USER: '普通用户'
+  }
+  const formatRoleName = (role: string): string =>
+    builtInRoleLabels[role.toUpperCase()] || role.replace(/^R_/, '').replaceAll('_', ' ')
+  const roleSummary = computed(() => {
+    const roles = userInfo.value.userRoles?.filter(Boolean) ?? []
+    return roles.length ? roles.map(formatRoleName).join('、') : '普通用户'
+  })
+
+  const profileCompletion = computed(() => {
+    const fields = [
+      userInfo.value.userName,
+      userInfo.value.nickName,
+      userInfo.value.email,
+      userInfo.value.userPhone,
+      userInfo.value.userGender,
+      userInfo.value.extra?.address,
+      userInfo.value.remark
+    ]
+    const completed = fields.filter((value) => String(value ?? '').trim()).length
+    return Math.round((completed / fields.length) * 100)
+  })
+
+  const profileCompletionHint = computed(() =>
+    profileCompletion.value === 100 ? '账号资料已完善' : '补充资料有助于团队识别'
+  )
+
+  const passwordComplexityHint = computed(() => getPasswordComplexityMessage())
+
+  const accountSummary = computed<AccountSummaryItem[]>(() => [
+    {
+      label: '登录邮箱',
+      value: userInfo.value.email || '未绑定邮箱',
+      icon: 'ri:mail-line',
+      placeholder: !userInfo.value.email
+    },
+    {
+      label: '手机号码',
+      value: userInfo.value.userPhone || '未绑定手机',
+      icon: 'ri:smartphone-line',
+      placeholder: !userInfo.value.userPhone
+    },
+    {
+      label: '所属角色',
+      value: roleSummary.value,
+      icon: 'ri:user-star-line'
+    },
+    {
+      label: '所属组织',
+      value: tenantName.value,
+      icon: 'ri:building-line'
+    }
+  ])
+
   const profileFormItems = computed<FormItem[]>(() => [
-    { label: '姓名', key: 'userName', type: 'input', span: 12, props: { disabled: !isEdit.value } },
+    {
+      label: '姓名',
+      key: 'userName',
+      type: 'input',
+      span: 12,
+      props: { placeholder: '请输入姓名', maxlength: 50, clearable: true }
+    },
     {
       label: '性别',
       key: 'sex',
       type: 'select',
       span: 12,
-      props: { disabled: !isEdit.value, options: getDictMap.value.sex ?? [] }
+      props: { placeholder: '请选择性别', options: getDictMap.value.sex ?? [], clearable: true }
     },
-    { label: '昵称', key: 'nickName', type: 'input', span: 12, props: { disabled: !isEdit.value } },
-    { label: '邮箱', key: 'email', type: 'input', span: 12, props: { disabled: !isEdit.value } },
-    { label: '手机', key: 'mobile', type: 'input', span: 12, props: { disabled: !isEdit.value } },
-    { label: '地址', key: 'address', type: 'input', span: 12, props: { disabled: !isEdit.value } },
+    {
+      label: '昵称',
+      key: 'nickName',
+      type: 'input',
+      span: 12,
+      props: { placeholder: '请输入昵称', maxlength: 50, clearable: true }
+    },
+    {
+      label: '邮箱',
+      key: 'email',
+      type: 'input',
+      span: 12,
+      props: { placeholder: '请输入邮箱', clearable: true }
+    },
+    {
+      label: '手机',
+      key: 'mobile',
+      type: 'input',
+      span: 12,
+      props: { placeholder: '请输入手机号码', maxlength: 20, clearable: true }
+    },
+    {
+      label: '地址',
+      key: 'address',
+      type: 'input',
+      span: 12,
+      props: { placeholder: '请输入联系地址', maxlength: 120, clearable: true }
+    },
     {
       label: '个人介绍',
       key: 'des',
       type: 'input',
       span: 24,
-      props: { type: 'textarea', rows: 4, disabled: !isEdit.value }
+      props: {
+        type: 'textarea',
+        rows: 4,
+        maxlength: 300,
+        showWordLimit: true,
+        placeholder: '简单介绍你的职责、专长或工作范围'
+      }
     }
   ])
 
@@ -175,24 +386,39 @@
       label: '当前密码',
       key: 'password',
       type: 'input',
-      props: { type: 'password', showPassword: true, disabled: !isEditPwd.value }
+      props: {
+        type: 'password',
+        showPassword: true,
+        autocomplete: 'current-password',
+        placeholder: '请输入当前密码'
+      }
     },
     {
       label: '新密码',
       key: 'newPassword',
       type: 'input',
-      props: { type: 'password', showPassword: true, disabled: !isEditPwd.value }
+      props: {
+        type: 'password',
+        showPassword: true,
+        autocomplete: 'new-password',
+        placeholder: '请输入符合策略的新密码'
+      }
     },
     {
       label: '确认新密码',
       key: 'confirmPassword',
       type: 'input',
-      props: { type: 'password', showPassword: true, disabled: !isEditPwd.value }
+      props: {
+        type: 'password',
+        showPassword: true,
+        autocomplete: 'new-password',
+        placeholder: '请再次输入新密码'
+      }
     }
   ])
 
   const validateConfirmPassword: FormItemRule['validator'] = (_rule, value, callback) => {
-    if (value !== pwdForm.newPassword) {
+    if (value !== pwdForm.value.newPassword) {
       callback(new Error('两次输入的新密码不一致'))
       return
     }
@@ -207,10 +433,7 @@
     callback()
   }
 
-  /**
-   * 表单验证规则
-   */
-  const rules = reactive<FormRules>({
+  const rules: FormRules<ProfileFormModel> = {
     userName: [
       { required: true, message: '请输入姓名', trigger: 'blur' },
       { min: 2, max: 50, message: '长度在 2 到 50 个字符', trigger: 'blur' }
@@ -219,13 +442,16 @@
       { required: true, message: '请输入昵称', trigger: 'blur' },
       { min: 2, max: 50, message: '长度在 2 到 50 个字符', trigger: 'blur' }
     ],
-    email: [{ required: true, message: '请输入邮箱', trigger: 'blur' }],
+    email: [
+      { required: true, message: '请输入邮箱', trigger: 'blur' },
+      { type: 'email', message: '请输入有效的邮箱地址', trigger: 'blur' }
+    ],
     mobile: [{ required: true, message: '请输入手机号码', trigger: 'blur' }],
     address: [{ required: true, message: '请输入地址', trigger: 'blur' }],
-    sex: [{ required: true, message: '请选择性别', trigger: 'blur' }]
-  })
+    sex: [{ required: true, message: '请选择性别', trigger: 'change' }]
+  }
 
-  const pwdRules = computed<FormRules>(() => ({
+  const pwdRules = computed<FormRules<PasswordFormModel>>(() => ({
     password: [{ required: true, message: '请输入当前密码', trigger: 'blur' }],
     newPassword: [
       { required: true, message: '请输入新密码', trigger: 'blur' },
@@ -242,48 +468,35 @@
     ]
   }))
 
-  /**
-   * 用户标签列表
-   */
-  const labelList: Array<string> = ['专注设计', '很有想法', '辣~', '大长腿', '川妹子', '海纳百川']
-
-  onMounted(() => {
-    getDate()
-    void loadPasswordPolicy().then(() => {
-      if (pwdForm.newPassword) {
-        void pwdFormRef.value?.validateField('newPassword')
-      }
-    })
-  })
-
-  /**
-   * 根据当前时间获取问候语
-   */
-  const getDate = () => {
-    const h = new Date().getHours()
-
-    if (h >= 6 && h < 9) date.value = '早上好'
-    else if (h >= 9 && h < 11) date.value = '上午好'
-    else if (h >= 11 && h < 13) date.value = '中午好'
-    else if (h >= 13 && h < 18) date.value = '下午好'
-    else if (h >= 18 && h < 24) date.value = '晚上好'
-    else date.value = '很晚了，早点睡'
+  const startProfileEdit = (): void => {
+    form.value = createProfileForm()
+    isEdit.value = true
   }
 
-  /**
-   * 切换用户信息编辑状态
-   */
-  const edit = async () => {
-    if (!isEdit.value) {
-      isEdit.value = true
-      return
-    }
+  const cancelProfileEdit = (): void => {
+    form.value = createProfileForm()
+    ruleFormRef.value?.clearValidate()
+    isEdit.value = false
+  }
 
+  const startPasswordEdit = (): void => {
+    pwdForm.value = createPasswordForm()
+    isEditPwd.value = true
+  }
+
+  const cancelPasswordEdit = (): void => {
+    pwdForm.value = createPasswordForm()
+    pwdFormRef.value?.clearValidate()
+    isEditPwd.value = false
+  }
+
+  const saveProfile = async (): Promise<void> => {
     try {
       await ruleFormRef.value?.validate()
     } catch {
       return
     }
+
     const { userId, extra } = unref(userInfo)
     const {
       userName,
@@ -292,7 +505,8 @@
       mobile: userPhone,
       email: userEmail,
       des: remark
-    } = form
+    } = form.value
+
     profileLoading.value = true
     try {
       await updateCurrentUserProfile({
@@ -305,27 +519,18 @@
         remark,
         extra: {
           ...extra,
-          address: form.address
+          address: form.value.address
         }
       } as Api.Auth.UserInfo)
       await userStore.fetchUserInfo()
+      form.value = createProfileForm()
       isEdit.value = false
-    } catch {
-      return
     } finally {
       profileLoading.value = false
     }
   }
 
-  /**
-   * 切换密码编辑状态
-   */
-  const editPwd = async () => {
-    if (!isEditPwd.value) {
-      isEditPwd.value = true
-      return
-    }
-
+  const savePassword = async (): Promise<void> => {
     try {
       await pwdFormRef.value?.validate()
     } catch {
@@ -334,18 +539,497 @@
 
     passwordLoading.value = true
     try {
-      await updateCurrentUserPassword(pwdForm.password, pwdForm.newPassword)
-      Object.assign(pwdForm, {
-        password: '',
-        newPassword: '',
-        confirmPassword: ''
-      })
-      pwdFormRef.value?.clearValidate()
-      isEditPwd.value = false
-    } catch {
-      return
+      await updateCurrentUserPassword(pwdForm.value.password, pwdForm.value.newPassword)
+      cancelPasswordEdit()
     } finally {
       passwordLoading.value = false
     }
   }
+
+  watch(
+    userInfo,
+    () => {
+      if (!isEdit.value) form.value = createProfileForm()
+    },
+    { deep: true }
+  )
+
+  onMounted(() => {
+    void loadPasswordPolicy().then(() => {
+      if (pwdForm.value.newPassword) {
+        void pwdFormRef.value?.validateField('newPassword')
+      }
+    })
+  })
 </script>
+
+<style scoped lang="scss">
+  .user-center {
+    min-width: 0;
+    padding: 16px;
+
+    &__layout {
+      display: grid;
+      grid-template-columns: minmax(288px, 328px) minmax(0, 1fr);
+      gap: 16px;
+      width: 100%;
+      max-width: 1480px;
+      margin: 0 auto;
+    }
+
+    &__profile {
+      align-self: start;
+      min-width: 0;
+      overflow: hidden;
+    }
+
+    &__profile-hero {
+      position: relative;
+      padding: 36px 24px 26px;
+      overflow: hidden;
+      text-align: center;
+      background:
+        linear-gradient(145deg, var(--el-color-primary-light-9), transparent 72%),
+        var(--default-box-color);
+      border-bottom: 1px solid var(--el-border-color-lighter);
+
+      h1 {
+        position: relative;
+        margin: 16px 0 0;
+        overflow: hidden;
+        font-size: 22px;
+        font-weight: 650;
+        line-height: 30px;
+        color: var(--el-text-color-primary);
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+    }
+
+    &__profile-glow {
+      position: absolute;
+      top: -96px;
+      right: -72px;
+      width: 210px;
+      height: 210px;
+      pointer-events: none;
+      background: var(--el-color-primary-light-8);
+      border-radius: 50%;
+      opacity: 0.5;
+      filter: blur(12px);
+    }
+
+    &__avatar-wrap {
+      position: relative;
+      display: inline-flex;
+      padding: 4px;
+      background: var(--default-box-color);
+      border: 1px solid var(--el-border-color-lighter);
+      border-radius: 50%;
+      box-shadow: 0 10px 28px rgba(31, 35, 48, 0.1);
+
+      :deep(.el-avatar) {
+        font-size: 24px;
+        font-weight: 700;
+        color: var(--el-color-primary);
+        background: var(--el-color-primary-light-9);
+      }
+    }
+
+    &__online-dot {
+      position: absolute;
+      right: 7px;
+      bottom: 7px;
+      width: 14px;
+      height: 14px;
+      background: var(--el-color-success);
+      border: 3px solid var(--default-box-color);
+      border-radius: 50%;
+    }
+
+    &__account-name {
+      position: relative;
+      margin: 2px 0 0;
+      font-size: 13px;
+      color: var(--el-text-color-secondary);
+    }
+
+    &__profile-tags {
+      position: relative;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 18px;
+
+      span {
+        display: inline-flex;
+        max-width: 100%;
+        align-items: center;
+        gap: 5px;
+        padding: 5px 9px;
+        overflow: hidden;
+        font-size: 12px;
+        color: var(--el-text-color-regular);
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        background: color-mix(in srgb, var(--default-box-color) 82%, transparent);
+        border: 1px solid var(--el-border-color-lighter);
+        border-radius: 999px;
+      }
+    }
+
+    &__completion {
+      padding: 20px 22px;
+      border-bottom: 1px solid var(--el-border-color-lighter);
+    }
+
+    &__completion-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+
+      strong {
+        font-size: 14px;
+        color: var(--el-text-color-primary);
+      }
+
+      p {
+        margin: 3px 0 0;
+        font-size: 12px;
+        color: var(--el-text-color-secondary);
+      }
+
+      > span {
+        flex: none;
+        font-size: 18px;
+        font-weight: 700;
+        color: var(--el-color-primary);
+        font-variant-numeric: tabular-nums;
+      }
+    }
+
+    &__account-summary {
+      padding: 18px 22px 22px;
+
+      ul {
+        display: grid;
+        gap: 14px;
+        padding: 0;
+        margin: 0;
+        list-style: none;
+      }
+
+      li {
+        display: flex;
+        min-width: 0;
+        align-items: center;
+        gap: 11px;
+
+        > div {
+          display: grid;
+          min-width: 0;
+          gap: 1px;
+
+          small {
+            font-size: 11px;
+            color: var(--el-text-color-secondary);
+          }
+
+          span {
+            overflow: hidden;
+            font-size: 13px;
+            color: var(--el-text-color-primary);
+            text-overflow: ellipsis;
+            white-space: nowrap;
+
+            &.is-placeholder {
+              color: var(--el-text-color-placeholder);
+            }
+          }
+        }
+      }
+    }
+
+    &__summary-icon {
+      display: grid;
+      flex: 0 0 34px;
+      width: 34px;
+      height: 34px;
+      font-size: 16px;
+      color: var(--el-color-primary);
+      background: var(--el-color-primary-light-9);
+      border: 1px solid var(--el-color-primary-light-8);
+      border-radius: var(--art-control-radius);
+      place-items: center;
+    }
+
+    &__settings {
+      min-width: 0;
+      overflow: hidden;
+    }
+
+    &__settings-header {
+      display: flex;
+      min-width: 0;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 24px 26px;
+      background: linear-gradient(110deg, var(--el-color-primary-light-9), transparent 62%);
+      border-bottom: 1px solid var(--el-border-color-lighter);
+    }
+
+    &__settings-title {
+      display: flex;
+      min-width: 0;
+      align-items: center;
+      gap: 14px;
+
+      > span {
+        display: grid;
+        flex: 0 0 48px;
+        width: 48px;
+        height: 48px;
+        font-size: 23px;
+        color: var(--el-color-primary);
+        background: var(--default-box-color);
+        border: 1px solid var(--el-color-primary-light-7);
+        border-radius: var(--custom-radius);
+        box-shadow: 0 8px 24px color-mix(in srgb, var(--el-color-primary) 13%, transparent);
+        place-items: center;
+      }
+
+      > div {
+        min-width: 0;
+      }
+
+      p,
+      h2,
+      small {
+        margin: 0;
+      }
+
+      p {
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        color: var(--el-color-primary);
+      }
+
+      h2 {
+        margin-top: 2px;
+        font-size: 22px;
+        line-height: 30px;
+        color: var(--el-text-color-primary);
+      }
+
+      small {
+        display: block;
+        margin-top: 2px;
+        overflow: hidden;
+        font-size: 13px;
+        color: var(--el-text-color-secondary);
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+    }
+
+    &__security-badge {
+      display: inline-flex;
+      flex: none;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      font-size: 12px;
+      color: var(--el-color-success-dark-2);
+      background: var(--el-color-success-light-9);
+      border: 1px solid var(--el-color-success-light-7);
+      border-radius: 999px;
+    }
+
+    &__tabs {
+      :deep(.el-tabs__header) {
+        padding: 0 26px;
+        margin: 0;
+        border-bottom: 1px solid var(--el-border-color-lighter);
+      }
+
+      :deep(.el-tabs__nav-wrap::after) {
+        display: none;
+      }
+
+      :deep(.el-tabs__item) {
+        height: 52px;
+        padding: 0 20px;
+        font-weight: 500;
+      }
+    }
+
+    &__tab-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    &__pane {
+      padding: 24px 26px 28px;
+    }
+
+    &__pane-head {
+      display: flex;
+      min-width: 0;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 20px;
+      margin-bottom: 22px;
+
+      :deep(.art-section-title) {
+        margin: 0;
+      }
+
+      p {
+        margin: 3px 0 0 11px;
+        font-size: 13px;
+        color: var(--el-text-color-secondary);
+      }
+    }
+
+    &__pane-actions {
+      display: flex;
+      flex: none;
+      align-items: center;
+      gap: 8px;
+
+      .el-button + .el-button {
+        margin-left: 0;
+      }
+    }
+
+    &__form {
+      :deep(.el-form-item) {
+        margin-bottom: 20px;
+      }
+
+      :deep(.el-form-item__label) {
+        padding-bottom: 7px;
+        font-weight: 500;
+        color: var(--el-text-color-regular);
+      }
+
+      :deep(.el-textarea__inner) {
+        min-height: 104px !important;
+      }
+    }
+
+    &__password-form {
+      max-width: 620px;
+    }
+
+    &__security-notice {
+      display: flex;
+      max-width: 720px;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 14px 16px;
+      margin-bottom: 22px;
+      background: var(--el-color-primary-light-9);
+      border: 1px solid var(--el-color-primary-light-8);
+      border-radius: var(--custom-radius);
+
+      > span {
+        display: grid;
+        flex: 0 0 34px;
+        width: 34px;
+        height: 34px;
+        font-size: 17px;
+        color: var(--el-color-primary);
+        background: var(--default-box-color);
+        border-radius: var(--art-control-radius);
+        place-items: center;
+      }
+
+      strong {
+        font-size: 13px;
+        color: var(--el-text-color-primary);
+      }
+
+      p {
+        margin: 3px 0 0;
+        font-size: 12px;
+        line-height: 20px;
+        color: var(--el-text-color-secondary);
+      }
+    }
+
+    @media (max-width: 1100px) {
+      padding: 12px;
+
+      &__layout {
+        grid-template-columns: 280px minmax(0, 1fr);
+        gap: 12px;
+      }
+
+      &__settings-header,
+      &__pane {
+        padding-right: 20px;
+        padding-left: 20px;
+      }
+    }
+
+    @media (max-width: 820px) {
+      &__layout {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      &__account-summary ul {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 600px) {
+      padding: 8px;
+
+      &__settings-header,
+      &__pane-head {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      &__settings-header,
+      &__pane {
+        padding: 18px 16px 22px;
+      }
+
+      &__settings-title {
+        align-items: flex-start;
+
+        small {
+          white-space: normal;
+        }
+      }
+
+      &__security-badge {
+        margin-left: 62px;
+      }
+
+      &__tabs :deep(.el-tabs__header) {
+        padding: 0 16px;
+      }
+
+      &__pane-actions {
+        width: 100%;
+
+        .el-button {
+          flex: 1;
+        }
+      }
+
+      &__account-summary ul {
+        grid-template-columns: minmax(0, 1fr);
+      }
+    }
+  }
+</style>

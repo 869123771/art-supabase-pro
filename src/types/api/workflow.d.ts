@@ -354,6 +354,63 @@ declare namespace Api {
       daily: WorkflowDailyAnalytics[]
     }
 
+    type WorkflowAnalyticsRiskLevel = 'normal' | 'warning' | 'critical'
+
+    interface WorkflowBottleneckSummary {
+      taskCount: number
+      pendingCount: number
+      overduePendingCount: number
+      handledCount: number
+      slaMeasuredCount: number
+      slaBreachedCount: number
+      slaComplianceRate: number
+      delegatedCount: number
+      transferredCount: number
+      averageHandleHours: number
+      p90HandleHours: number
+    }
+
+    interface WorkflowNodeBottleneck {
+      tenantId: string
+      tenantName: string
+      definitionId: string
+      definitionName: string
+      businessType: string
+      nodeKey: string
+      nodeName: string
+      taskCount: number
+      pendingCount: number
+      overduePendingCount: number
+      handledCount: number
+      approvedCount: number
+      rejectedCount: number
+      slaMeasuredCount: number
+      slaBreachedCount: number
+      slaComplianceRate: number
+      averageHandleHours: number
+      p90HandleHours: number
+      riskLevel: WorkflowAnalyticsRiskLevel
+    }
+
+    interface WorkflowApproverWorkload extends WorkflowBottleneckSummary {
+      tenantId: string
+      tenantName: string
+      assigneeUserId: string
+      assigneeName?: string | null
+      approvedCount: number
+      rejectedCount: number
+      riskLevel: WorkflowAnalyticsRiskLevel
+    }
+
+    interface WorkflowBottleneckAnalytics {
+      periodDays: number
+      generatedAt: string
+      minimumSampleSize: number
+      summary: WorkflowBottleneckSummary
+      nodes: WorkflowNodeBottleneck[]
+      approvers: WorkflowApproverWorkload[]
+    }
+
     type WorkflowCallbackStatus =
       'pending' | 'processing' | 'retry_wait' | 'succeeded' | 'dead_letter'
 

@@ -120,6 +120,18 @@
         </div>
       </ElPopover>
       <slot name="right"></slot>
+      <button
+        v-if="focusMode != null"
+        type="button"
+        class="button focus-button"
+        :class="{ active: focusMode }"
+        :aria-label="focusMode ? '退出专注模式' : '进入专注模式'"
+        :aria-pressed="focusMode"
+        @click="toggleFocusMode"
+      >
+        <ArtSvgIcon :icon="focusMode ? 'ri:contract-left-right-line' : 'ri:focus-3-line'" />
+        <span>{{ focusMode ? '退出专注' : '专注模式' }}</span>
+      </button>
     </div>
   </div>
 </template>
@@ -154,6 +166,8 @@
     loading?: boolean
     /** 搜索栏显示状态 */
     showSearchBar?: boolean
+    /** 专注模式状态；未传时不显示专注模式按钮 */
+    focusMode?: boolean
   }
 
   const props = withDefaults(defineProps<Props>(), {
@@ -162,7 +176,8 @@
     showHeaderBackground: true,
     fullClass: 'art-page-view',
     layout: 'search,refresh,size,fullscreen,columns,settings',
-    showSearchBar: undefined
+    showSearchBar: undefined,
+    focusMode: undefined
   })
 
   const columns = defineModel<ColumnOption[]>('columns', {
@@ -174,6 +189,7 @@
     (e: 'refresh'): void
     (e: 'search'): void
     (e: 'update:showSearchBar', value: boolean): void
+    (e: 'update:focusMode', value: boolean): void
   }>()
 
   /**
@@ -251,6 +267,11 @@
   const refresh = () => {
     isManualRefresh.value = true
     emit('refresh')
+  }
+
+  /** 切换专注模式，仅负责工具栏交互，页面聚焦范围由 ArtTableQuery 管理。 */
+  const toggleFocusMode = (): void => {
+    emit('update:focusMode', !props.focusMode)
   }
 
   /**
@@ -364,6 +385,22 @@
       outline: none;
       box-shadow: var(--art-themed-action-focus-shadow);
     }
+
+    &.active {
+      color: var(--theme-color);
+      background: color-mix(in srgb, var(--theme-color) 10%, var(--default-box-color));
+      box-shadow: var(--art-themed-action-active-shadow);
+    }
+  }
+
+  .focus-button {
+    gap: 4px;
+    width: auto;
+    padding: 0 8px;
+    margin-right: 0;
+    font-size: 12px;
+    line-height: 1;
+    white-space: nowrap;
   }
 
   @media (width <= 767px) {

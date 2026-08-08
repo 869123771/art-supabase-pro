@@ -1,17 +1,29 @@
 <template>
-  <ArtDialog size="lg" ref="dialogRef" show-fullscreen-button>
-    <ArtForm
-      ref="formRef"
-      v-model="form"
-      :items="formItems"
-      :rules="rules"
-      :span="width > 640 ? 12 : 24"
-      :gutter="20"
-      label-width="100px"
-      :validate-on-rule-change="false"
-      :show-reset="false"
-      :show-submit="false"
-    />
+  <ArtDialog size="lg" ref="dialogRef" show-fullscreen-button @opened="handleDialogOpened">
+    <div class="menu-dialog-content">
+      <section class="menu-dialog-content__context art-card-xs">
+        <span class="menu-dialog-content__context-icon" aria-hidden="true">
+          <ArtSvgIcon :icon="menuTypeMeta.icon" />
+        </span>
+        <div>
+          <strong>{{ menuTypeMeta.label }}</strong>
+          <p>{{ menuTypeMeta.description }}</p>
+        </div>
+      </section>
+
+      <ArtForm
+        ref="formRef"
+        v-model="form"
+        :items="formItems"
+        :rules="rules"
+        :span="width > 640 ? 12 : 24"
+        :gutter="20"
+        label-width="100px"
+        :validate-on-rule-change="false"
+        :show-reset="false"
+        :show-submit="false"
+      />
+    </div>
   </ArtDialog>
 </template>
 
@@ -21,6 +33,7 @@
   import type { AppRouteRecord } from '@/types/router'
   import type { FormItem } from '@/components/core/forms/art-form/index.vue'
   import ArtForm from '@/components/core/forms/art-form/index.vue'
+  import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import { useWindowSize } from '@vueuse/core'
@@ -104,6 +117,30 @@
 
   const form = ref<MenuFormModel>(createInitialForm())
 
+  const menuTypeMeta = computed(() => {
+    const metaMap: Record<MenuType, { label: string; description: string; icon: string }> = {
+      folder: {
+        label: '目录负责组织导航层级',
+        description: '用于承载下级菜单，本身通常不对应具体业务页面。',
+        icon: 'ri:folder-3-line'
+      },
+      menu: {
+        label: '菜单对应可访问页面',
+        description: '请同时确认路由、组件路径和可见性，避免产生无法访问的入口。',
+        icon: 'ri:file-list-3-line'
+      },
+      button: {
+        label: '权限控制页面内操作',
+        description: '按钮权限必须挂在具体菜单下，并使用稳定、唯一的权限标识。',
+        icon: 'ri:cursor-line'
+      }
+    }
+    return metaMap[form.value.type]
+  })
+  const menuTypeLabel = computed(
+    () => ({ folder: '目录', menu: '菜单', button: '权限' })[form.value.type]
+  )
+
   const select = ref<MenuFormSelectData>({
     menuTree: []
   })
@@ -125,24 +162,25 @@
     }
   }
 
-  const rules = computed<FormRules>(() => {
-    const titleMessage = {
-      button: '输入权限标识',
-      menu: '输入菜单名称',
-      folder: '输入目录名称'
-    }
-    return {
-      name: [
-        { required: true, message: '请输入名称', trigger: 'blur' },
-        { min: 2, max: 50, message: '长度在 2 到 50 个字符', trigger: 'blur' }
-      ],
-      path:
-        form.value.type === 'button'
-          ? []
-          : [{ required: true, message: '请输入路由地址', trigger: 'blur' }],
-      title: [{ required: true, message: titleMessage[form.value.type], trigger: 'blur' }]
-    }
-  })
+  const rules: FormRules = {
+    name: [
+      { required: true, message: '请输入权限标识', trigger: 'blur' },
+      { min: 2, max: 50, message: '长度在 2 到 50 个字符', trigger: 'blur' }
+    ],
+    path: [
+      {
+        validator: (_rule, value, callback) => {
+          if (form.value.type !== 'button' && !String(value ?? '').trim()) {
+            callback(new Error('请输入路由地址'))
+            return
+          }
+          callback()
+        },
+        trigger: 'blur'
+      }
+    ],
+    title: [{ required: true, message: '请输入显示名称', trigger: 'blur' }]
+  }
 
   /**
    * 表单项配置
@@ -154,9 +192,12 @@
         key: 'type',
         type: 'radioGroup',
         span: 24,
-        description: '新建时可直接选择类型。按钮权限仍需挂在具体菜单下。',
+        description: form.value.id
+          ? '菜单类型创建后不建议变更，避免影响现有路由和授权。'
+          : '请选择目录、菜单或按钮权限。按钮权限需挂在具体菜单下。',
         props: {
           optionType: 'button',
+          disabled: !!form.value.id,
           validateEvent: false,
           onChange: handleMenuTypeChange,
           options: getDictMap.value.menuType ?? []
@@ -168,6 +209,7 @@
     if (['folder'].includes(form.value.type)) {
       return [
         ...baseItems,
+        { label: '基础定义', key: 'basicSection', type: 'divider', span: 24 },
         {
           label: '父级菜单',
           key: 'parentId',
@@ -185,7 +227,15 @@
             }
           }
         },
-        { label: '目录名称', key: 'title', type: 'input', props: { placeholder: '目录名称' } },
+        {
+          label: '目录名称',
+          key: 'title',
+          type: 'input',
+          props: { placeholder: '如：系统管理' },
+          description: '用于侧边导航展示，建议简短明确。'
+        },
+        { label: '权限标识', key: 'name', type: 'input', props: { placeholder: '如：System' } },
+        { label: '路由与展示', key: 'routeSection', type: 'divider', span: 24 },
         {
           label: '路由地址',
           help: () =>
@@ -197,7 +247,6 @@
           type: 'input',
           props: { placeholder: '如：/dashboard 或 console' }
         },
-        { label: '权限标识', key: 'name', type: 'input', props: { placeholder: '如：User' } },
         {
           label: '组件路径',
           help: () =>
@@ -231,6 +280,7 @@
           type: 'input',
           props: { placeholder: '如：New、Hot' }
         },
+        { label: '可见性控制', key: 'visibilitySection', type: 'divider', span: 24 },
         { label: '是否启用', key: 'isEnable', type: 'switch', span: switchSpan },
         { label: '隐藏菜单', key: 'isHide', type: 'switch', span: switchSpan },
         { label: '显示徽章', key: 'showBadge', type: 'switch', span: switchSpan }
@@ -239,6 +289,7 @@
     if (['menu'].includes(form.value.type)) {
       return [
         ...baseItems,
+        { label: '基础定义', key: 'basicSection', type: 'divider', span: 24 },
         {
           label: '父级菜单',
           key: 'parentId',
@@ -255,7 +306,15 @@
             }
           }
         },
-        { label: '菜单名称', key: 'title', type: 'input', props: { placeholder: '菜单名称' } },
+        {
+          label: '菜单名称',
+          key: 'title',
+          type: 'input',
+          props: { placeholder: '如：用户管理' },
+          description: '用于导航与页面标签展示。'
+        },
+        { label: '权限标识', key: 'name', type: 'input', props: { placeholder: '如：User' } },
+        { label: '路由配置', key: 'routeSection', type: 'divider', span: 24 },
         {
           label: '路由地址',
           help: () =>
@@ -267,7 +326,6 @@
           type: 'input',
           props: { placeholder: '如：/dashboard 或 console' }
         },
-        { label: '权限标识', key: 'name', type: 'input', props: { placeholder: '如：User' } },
         {
           label: '组件路径',
           help: () =>
@@ -326,6 +384,7 @@
           type: 'input',
           props: { placeholder: '如：/system/user' }
         },
+        { label: '页面行为', key: 'behaviorSection', type: 'divider', span: 24 },
         { label: '是否启用', key: 'isEnable', type: 'switch', span: switchSpan },
         { label: '页面缓存', key: 'keepAlive', type: 'switch', span: switchSpan },
         { label: '隐藏菜单', key: 'isHide', type: 'switch', span: switchSpan },
@@ -338,17 +397,20 @@
     } else {
       return [
         ...baseItems,
+        { label: '权限定义', key: 'permissionSection', type: 'divider', span: 24 },
         {
           label: '权限名称',
           key: 'title',
           type: 'input',
-          props: { placeholder: '如：新增、编辑、删除' }
+          props: { placeholder: '如：新增用户' },
+          description: '用于权限配置树和操作入口展示。'
         },
         {
           label: '权限标识',
           key: 'name',
           type: 'input',
-          props: { placeholder: '如：add、edit、delete' }
+          props: { placeholder: '如：System:User:Add' },
+          description: '建议采用“模块:资源:动作”的稳定命名方式。'
         },
         {
           label: '权限排序',
@@ -379,6 +441,11 @@
    * 重置表单数据
    */
   const handleResetFields = async (): Promise<void> => {
+    await nextTick()
+    formRef.value?.clearValidate()
+  }
+
+  const handleDialogOpened = async (): Promise<void> => {
     await nextTick()
     formRef.value?.clearValidate()
   }
@@ -492,12 +559,12 @@
   const handleOpen = async (data: MenuDialogOpenData = {}): Promise<void> => {
     await initializeForm(data)
     await dialogRef.value?.handleOpen(data, {
-      title: `${data.row?.id != null ? '编辑' : '新增'}${
-        { folder: '目录', menu: '菜单', button: '权限' }[form.value.type]
-      }`,
+      title: `${data.row?.id != null ? '编辑' : '新增'}${menuTypeLabel.value}`,
       dialogProps: {
         class: 'menu-dialog'
       },
+      contentMaxHeight: '72vh',
+      confirmText: data.row?.id != null ? '保存修改' : `创建${menuTypeLabel.value}`,
       onConfirm: handleSubmit,
       onReset: () => {
         handleReset()
@@ -512,3 +579,48 @@
     handleSetParent
   })
 </script>
+
+<style scoped lang="scss">
+  .menu-dialog-content {
+    overscroll-behavior: contain;
+
+    &__context {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      padding: 14px 16px;
+      margin-bottom: 18px;
+
+      strong {
+        display: block;
+        margin-bottom: 4px;
+        font-size: 14px;
+        color: var(--el-text-color-primary);
+      }
+
+      p {
+        margin: 0;
+        font-size: 12px;
+        line-height: 1.6;
+        color: var(--el-text-color-secondary);
+      }
+    }
+
+    &__context-icon {
+      display: grid;
+      flex: 0 0 38px;
+      width: 38px;
+      height: 38px;
+      font-size: 18px;
+      color: var(--el-color-primary);
+      background: var(--el-color-primary-light-9);
+      border: 1px solid var(--el-color-primary-light-7);
+      border-radius: var(--art-control-radius);
+      place-items: center;
+    }
+
+    :deep(.art-form) {
+      padding-bottom: 4px !important;
+    }
+  }
+</style>

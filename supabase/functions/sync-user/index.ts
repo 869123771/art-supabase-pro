@@ -2,7 +2,7 @@ import { createClient } from "npm:@supabase/supabase-js@2.35.0"
 import { v4 as uuidv4 } from "npm:uuid@9.0.0"
 
 const allowedOrigins = ["http://localhost:3006", "http://localhost:3007", "http://localhost:4173", "https://ckbftoopuyophiebamwy.supabase.co"]
-const SYS_USER_COLUMNS = new Set(["user_name", "nick_name", "user_gender", "user_phone", "user_email", "status", "create_by", "update_by", "update_time", "extra", "user_roles", "create_time", "auth_user_id", "id", "user_type", "remark", "avatar", "tenant_id"])
+const SYS_USER_COLUMNS = new Set(["user_name", "nick_name", "user_gender", "user_phone", "user_email", "status", "create_by", "update_by", "update_time", "extra", "user_roles", "create_time", "auth_user_id", "id", "user_type", "remark", "avatar", "tenant_id", "organization_id"])
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
@@ -39,6 +39,14 @@ async function getCallerProfile(callerAuthUserId: string | null): Promise<Caller
   return { id: data.id, auth_user_id: data.auth_user_id, user_email: String(data.user_email || "").toLowerCase().trim(), tenant_id: data.tenant_id, tenant_code: tenant?.tenant_code ?? null, user_roles: data.user_roles || [], status: data.status ?? null }
 }
 function isPlatformSuper(profile: CallerProfile | null) { return Boolean(profile && profile.user_email === "869123771@qq.com" && profile.tenant_code?.toLowerCase() === "platform" && profile.user_roles.includes("R_SUPER") && profile.status === "1") }
+function isTenantAdmin(profile: CallerProfile | null) { return Boolean(profile && profile.user_roles.includes("R_ADMIN") && profile.status === "1") }
+async function canAccessTargetUser(id: string, profile: CallerProfile | null, callerIsSuper: boolean) {
+  if (callerIsSuper) return true
+  if (!profile) return false
+  const { data, error } = await supabaseDB.from("sys_user").select("tenant_id").eq("id", id).maybeSingle()
+  if (error || !data) return false
+  return data.tenant_id === profile.tenant_id
+}
 function getFriendlyErrorMessage(error: any, action: string): string {
   const errorMsg = error?.message || String(error); const errorCode = error?.code || ""
   const isPermissionError = errorMsg.toLowerCase().includes("permission denied") || errorMsg.toLowerCase().includes("row-level security") || errorMsg.toLowerCase().includes("policy") || errorMsg.toLowerCase().includes("violates") || errorCode === "42501" || errorCode === "PGRST301" || errorCode === "PGRST116"
@@ -65,6 +73,7 @@ Deno.serve(async (req: Request) => {
     try { const { data: user, error: userErr } = await callerSupabase.auth.getUser(); if (!userErr && user?.user) { callerAuthUserId = user.user.id; callerEmail = (user.user.email || "").toLowerCase().trim() || null } } catch (e) { console.error("getUser error (non-fatal):", e) }
   }
   const callerProfile = await getCallerProfile(callerAuthUserId); const callerIsSuper = isPlatformSuper(callerProfile)
+  if (!callerIsSuper && !isTenantAdmin(callerProfile)) return new Response(JSON.stringify({ ok: false, error: "仅平台超级管理员或租户管理员可以维护用户" }), { status: 403, headers: corsHeaders(origin) })
 
   try {
     if (action === "create") {
@@ -89,6 +98,7 @@ Deno.serve(async (req: Request) => {
     if (action === "update") {
       const { id, auth_user_id, email, password, app_user_data } = body
       if (!id) return new Response(JSON.stringify({ ok: false, error: "id required for update" }), { status: 400, headers: corsHeaders(origin) })
+      if (!(await canAccessTargetUser(id, callerProfile, callerIsSuper))) return new Response(JSON.stringify({ ok: false, error: "不能编辑当前租户之外的用户" }), { status: 403, headers: corsHeaders(origin) })
       const cleanedAppUserData = cleanAppUserData(app_user_data)
       if (!callerIsSuper && cleanedAppUserData.tenant_id && cleanedAppUserData.tenant_id !== callerProfile?.tenant_id) return new Response(JSON.stringify({ ok: false, error: "不能把用户分配到当前租户之外" }), { status: 403, headers: corsHeaders(origin) })
       if (auth_user_id) {
@@ -106,6 +116,7 @@ Deno.serve(async (req: Request) => {
     if (action === "delete") {
       const id = body.id; const auth_user_id = body.auth_user_id || body.authUserId
       if (!id) return new Response(JSON.stringify({ ok: false, error: "id required" }), { status: 400, headers: corsHeaders(origin) })
+      if (!(await canAccessTargetUser(id, callerProfile, callerIsSuper))) return new Response(JSON.stringify({ ok: false, error: "不能删除当前租户之外的用户" }), { status: 403, headers: corsHeaders(origin) })
       const { data: snapshot } = await supabaseDB.from("sys_user").select("*").eq("id", id).single(); const { error: delErr } = await supabaseDB.from("sys_user").delete().eq("id", id)
       if (delErr) return new Response(JSON.stringify({ ok: false, error: getFriendlyErrorMessage(delErr, action) }), { status: 500, headers: corsHeaders(origin) })
       if (auth_user_id) { const { error: delAuthErr } = await supabaseAdmin.auth.admin.deleteUser(auth_user_id); if (delAuthErr) { await restoreSnapshot(snapshot); throw delAuthErr } }

@@ -1,6 +1,6 @@
 <!-- 查询表格组合组件：整合 ArtSearchBar + ArtTableHeader + ArtTable -->
 <template>
-  <div class="art-table-query">
+  <div ref="rootRef" class="art-table-query" :class="{ 'is-focus-mode': focusMode }">
     <ArtSearchBar
       v-if="hasSearchBar"
       v-show="showSearchBar"
@@ -31,7 +31,9 @@
         v-model:columns="resolvedColumnsModel"
         v-bind="mergedTableHeaderProps"
         :show-search-bar="hasSearchBar ? showSearchBar : undefined"
+        :focus-mode="focusable ? focusMode : undefined"
         @update:show-search-bar="handleShowSearchBarChange"
+        @update:focus-mode="handleFocusModeChange"
         @refresh="handleRefresh"
         @search="emit('header-search')"
       >
@@ -121,7 +123,19 @@
 </template>
 
 <script setup lang="ts">
-  import { computed, h, onMounted, ref, type Component, type VNode, type VNodeChild } from 'vue'
+  import {
+    computed,
+    h,
+    nextTick,
+    onBeforeUnmount,
+    onDeactivated,
+    onMounted,
+    ref,
+    watch,
+    type Component,
+    type VNode,
+    type VNodeChild
+  } from 'vue'
   import type { TableProps } from 'element-plus'
   import { ElMessage, ElMessageBox } from 'element-plus'
   import { useResizeObserver } from '@vueuse/core'
@@ -493,6 +507,8 @@
     tableHeaderProps?: ArtTableQueryTableHeaderProps
     /** 透传给 ArtTable 的额外配置，默认已内置 rowKey: 'id'、tableLayout: 'fixed'。 */
     tableProps?: ArtTableQueryTableProps
+    /** 是否允许进入专注模式；关闭后工具栏不显示专注模式按钮。 */
+    focusable?: boolean
   }
 
   const props = withDefaults(defineProps<ArtTableQueryProps>(), {
@@ -511,13 +527,16 @@
     debug: false,
     searchBarProps: () => ({}),
     tableHeaderProps: () => ({}),
-    tableProps: () => ({})
+    tableProps: () => ({}),
+    focusable: false
   })
 
   const searchModel = defineModel<Record<string, unknown>>({ default: () => ({}) })
   const columnsModel = defineModel<ColumnOption[]>('columns', { default: () => [] })
   const showSearchBar = defineModel<boolean>('showSearchBar', { default: true })
+  const focusMode = defineModel<boolean>('focusMode', { default: false })
   const initialSearchModel = ref<Record<string, unknown>>({})
+  const rootRef = ref<HTMLElement>()
   const tableRef = ref<ArtTableExpose | null>(null)
   const headerTopRef = ref<HTMLElement>()
   const headerTopHeight = ref(0)
@@ -531,6 +550,8 @@
     refresh: []
     /** 点击表格头部搜索显隐按钮时触发。 */
     'header-search': []
+    /** 专注模式状态变化时触发。 */
+    'focus-change': [boolean]
     /** ElTable selection-change 透传。 */
     'selection-change': [TableQueryRecord[]]
     /** 行拖拽开始透传。 */
@@ -1111,6 +1132,106 @@
   const handleShowSearchBarChange = (value: boolean): void => {
     showSearchBar.value = value
   }
+
+  const focusHiddenClass = 'art-table-focus-hidden'
+  const focusPathClass = 'art-table-focus-path'
+  const focusPageClass = 'art-table-focus-page'
+  const focusHiddenElements = new Set<HTMLElement>()
+  const focusPathElements = new Set<HTMLElement>()
+  let focusPageElement: HTMLElement | undefined
+  let showSearchBarBeforeFocus = true
+
+  const addManagedClass = (
+    element: HTMLElement,
+    className: string,
+    collection: Set<HTMLElement>
+  ): void => {
+    if (element.classList.contains(className)) return
+    element.classList.add(className)
+    collection.add(element)
+  }
+
+  /** 恢复进入专注模式前的页面结构，不影响页面自身已有的 class。 */
+  const restoreFocusLayout = (): void => {
+    focusHiddenElements.forEach((element) => element.classList.remove(focusHiddenClass))
+    focusPathElements.forEach((element) => element.classList.remove(focusPathClass))
+    focusPageElement?.classList.remove(focusPageClass)
+    focusHiddenElements.clear()
+    focusPathElements.clear()
+    focusPageElement = undefined
+  }
+
+  /**
+   * 只保留当前查询表格到路由页面根节点之间的 DOM 路径。
+   * 这样页面级概览、指标、说明等区域会隐藏，而搜索、工具栏、表格和分页保持完整。
+   */
+  const applyFocusLayout = (): void => {
+    restoreFocusLayout()
+    const tableQueryElement = rootRef.value
+    if (!tableQueryElement) return
+
+    const pageElement = tableQueryElement.closest<HTMLElement>('.art-page-view')
+    if (!pageElement) return
+
+    focusPageElement = pageElement
+    pageElement.classList.add(focusPageClass)
+
+    let currentElement = tableQueryElement
+    while (currentElement !== pageElement) {
+      const parentElement: HTMLElement | null = currentElement.parentElement
+      if (!parentElement || !pageElement.contains(parentElement)) break
+
+      Array.from(parentElement.children).forEach((sibling) => {
+        if (sibling instanceof HTMLElement && sibling !== currentElement) {
+          addManagedClass(sibling, focusHiddenClass, focusHiddenElements)
+        }
+      })
+
+      if (parentElement !== pageElement) {
+        addManagedClass(parentElement, focusPathClass, focusPathElements)
+      }
+      currentElement = parentElement
+    }
+  }
+
+  const handleFocusModeChange = (value: boolean): void => {
+    if (!props.focusable) return
+    focusMode.value = value
+    emit('focus-change', value)
+  }
+
+  watch(
+    focusMode,
+    (value, previousValue) => {
+      if (value && props.focusable) {
+        if (!previousValue) {
+          showSearchBarBeforeFocus = showSearchBar.value
+          if (hasSearchBar.value) showSearchBar.value = true
+        }
+        void nextTick(applyFocusLayout)
+      } else {
+        if (previousValue && hasSearchBar.value) {
+          showSearchBar.value = showSearchBarBeforeFocus
+        }
+        restoreFocusLayout()
+      }
+    },
+    { flush: 'post' }
+  )
+
+  const handleFocusEscape = (event: KeyboardEvent): void => {
+    if (event.key === 'Escape' && focusMode.value) handleFocusModeChange(false)
+  }
+
+  onMounted(() => document.addEventListener('keydown', handleFocusEscape))
+  onDeactivated(() => {
+    if (focusMode.value) handleFocusModeChange(false)
+    restoreFocusLayout()
+  })
+  onBeforeUnmount(() => {
+    document.removeEventListener('keydown', handleFocusEscape)
+    restoreFocusLayout()
+  })
 
   export interface ArtTableQueryExpose {
     /** 全量刷新，适用于工具栏手动刷新。 */

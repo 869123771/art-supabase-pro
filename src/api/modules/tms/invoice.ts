@@ -194,6 +194,31 @@ export async function analyzeInvoiceAttachmentByAi(
   }
 }
 
+export async function resolveInvoiceCounterparty(artifactId: string) {
+  return await responseHandle<Api.Tms.Finance.InvoiceCounterpartyResolution>(
+    () =>
+      supabase.rpc('resolve_tms_invoice_counterparty', {
+        p_artifact_id: artifactId
+      }),
+    { ignoreCheck: true, showErrorMessage: false }
+  )
+}
+
+export async function createInvoiceCounterpartyFromOcr(
+  params: Api.Tms.Finance.CreateInvoiceCounterpartyFromOcrPayload
+) {
+  return await responseHandle<Api.Tms.Finance.CreateInvoiceCounterpartyFromOcrResponse>(
+    () =>
+      supabase.rpc('create_tms_invoice_counterparty_from_ocr', {
+        p_artifact_id: params.artifactId,
+        p_name: params.name,
+        p_tax_no: params.taxNo || null,
+        p_carrier_type: params.carrierType || null
+      }),
+    { showMessage: false, breakReturn: true }
+  )
+}
+
 export async function reviewInvoiceOcrArtifact(
   params: Api.Tms.Finance.InvoiceOcrReviewRequest
 ): Promise<QueryResult<Api.Tms.Finance.InvoiceOcrReviewResponse>> {

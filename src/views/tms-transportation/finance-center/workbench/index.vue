@@ -165,7 +165,17 @@
     draftInvoiceCount: 0,
     draftInvoiceAmount: 0,
     pendingInvoiceCount: 0,
-    pendingInvoiceAmount: 0
+    pendingInvoiceAmount: 0,
+    pendingPaymentApplicationCount: 0,
+    pendingPaymentApplicationAmount: 0,
+    approvedUnpaidPaymentCount: 0,
+    approvedUnpaidPaymentAmount: 0,
+    unapprovedPaymentCount: 0,
+    unapprovedPaymentAmount: 0,
+    overdueReceivableCount: 0,
+    overdueReceivableAmount: 0,
+    uninvoicedReceivableCount: 0,
+    uninvoicedReceivableAmount: 0
   })
 
   const overview = reactive<OverviewGroup>({
@@ -279,6 +289,51 @@
   function buildTasks(stats: Stats): WorkbenchTask[] {
     const tasks: WorkbenchTask[] = [
       {
+        id: 'payment-application-review',
+        title: '待审批承运商付款申请',
+        count: stats.pendingPaymentApplicationCount,
+        amount: stats.pendingPaymentApplicationAmount,
+        urgency: '紧急',
+        routeName: 'TmsCarrierPaymentApplication',
+        query: { status: 'pending_review' }
+      },
+      {
+        id: 'approved-payment-execution',
+        title: '已批准待执行付款',
+        count: stats.approvedUnpaidPaymentCount,
+        amount: stats.approvedUnpaidPaymentAmount,
+        urgency: '紧急',
+        routeName: 'TmsCarrierPaymentApplication',
+        query: { status: 'approved' }
+      },
+      {
+        id: 'unapproved-payment-review',
+        title: '未关联审批付款待复核',
+        count: stats.unapprovedPaymentCount,
+        amount: stats.unapprovedPaymentAmount,
+        urgency: '紧急',
+        routeName: 'TmsCashTransaction',
+        query: { direction: 'payment' }
+      },
+      {
+        id: 'overdue-receivable',
+        title: '账期结束超 30 天未回款',
+        count: stats.overdueReceivableCount,
+        amount: stats.overdueReceivableAmount,
+        urgency: '关注',
+        routeName: 'TmsCustomerSettlement',
+        query: { status: 'confirmed' }
+      },
+      {
+        id: 'uninvoiced-receivable',
+        title: '已确认对账未完成开票',
+        count: stats.uninvoicedReceivableCount,
+        amount: stats.uninvoicedReceivableAmount,
+        urgency: '关注',
+        routeName: 'TmsInvoiceManagement',
+        query: { direction: 'output' }
+      },
+      {
         id: 'customer-statement-review',
         title: '待审核客户对账单',
         count: stats.pendingCustomerStatementCount,
@@ -376,6 +431,18 @@
 
   function buildReminders(stats: Stats): ReminderItem[] {
     const reminders: ReminderItem[] = []
+    if (stats.approvedUnpaidPaymentCount > 0) {
+      reminders.push({
+        title: `有 ${stats.approvedUnpaidPaymentCount} 笔付款申请已审批但尚未付款，金额 ${formatMoney(stats.approvedUnpaidPaymentAmount)}`,
+        type: 'warning'
+      })
+    }
+    if (stats.unapprovedPaymentCount > 0) {
+      reminders.push({
+        title: `发现 ${stats.unapprovedPaymentCount} 笔未关联付款审批的实际付款，金额 ${formatMoney(stats.unapprovedPaymentAmount)}；请复核存量或平台批量入账记录`,
+        type: 'error'
+      })
+    }
     if (stats.unallocatedReceiptCount > 0) {
       reminders.push({
         title: `有 ${stats.unallocatedReceiptCount} 笔客户收款尚未完全核销，金额 ${formatMoney(stats.unallocatedReceiptAmount)}`,

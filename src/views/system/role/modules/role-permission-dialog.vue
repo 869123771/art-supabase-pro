@@ -262,7 +262,8 @@
       size: 'md',
       contentHeight: '66vh',
       dialogProps: {
-        class: 'el-dialog-border'
+        class: 'el-dialog-border',
+        bodyClass: 'role-permission-dialog-shell'
       },
       onOpen: loadPermission,
       onConfirm: savePermission,
@@ -277,6 +278,10 @@
 </script>
 
 <style scoped lang="scss">
+  :global(.role-permission-dialog-shell) {
+    overflow-x: hidden;
+  }
+
   .role-permission-dialog {
     min-width: 0;
 

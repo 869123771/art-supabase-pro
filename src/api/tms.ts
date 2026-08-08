@@ -152,11 +152,13 @@ export {
 export {
   analyzeInvoiceAttachmentByAi,
   analyzeInvoiceComplianceByAi,
+  createInvoiceCounterpartyFromOcr,
   deleteInvoice,
   exportInvoiceList,
   fetchInvoiceDetail,
   fetchInvoiceList,
   fetchInvoiceableStatementList,
+  resolveInvoiceCounterparty,
   reviewInvoiceOcrArtifact,
   saveInvoice,
   updateInvoiceStatus
@@ -197,3 +199,13 @@ export {
   reviewCashVoucherOcrArtifact,
   voidCashTransaction
 } from '@/api/modules/tms/cash-transaction'
+export {
+  cancelCarrierPaymentApplication,
+  deleteCarrierPaymentApplication,
+  executeCarrierPaymentApplication,
+  exportCarrierPaymentApplicationList,
+  fetchCarrierPaymentApplicationDetail,
+  fetchCarrierPaymentApplicationList,
+  saveCarrierPaymentApplication,
+  submitCarrierPaymentApplication
+} from '@/api/modules/tms/payment-application'
