@@ -19,7 +19,7 @@
     <img src="https://img.shields.io/badge/TypeScript-6.x-3178c6" alt="TypeScript 6" />
     <img src="https://img.shields.io/badge/Element_Plus-2.14-409eff" alt="Element Plus" />
     <img src="https://img.shields.io/badge/Supabase-PostgreSQL-3ecf8e" alt="Supabase" />
-    <img src="https://img.shields.io/badge/License-MIT-blue" alt="MIT License" />
+    <img src="https://img.shields.io/badge/License-MulanPSL--2.0-blue" alt="MulanPSL-2.0 License" />
   </p>
 </div>
 
@@ -256,6 +256,6 @@ art-supabase-pro/
 
 ## 开源与贡献
 
-项目采用 [MIT License](LICENSE) 开源。欢迎提交 Issue、Pull Request，也欢迎分享你的 Supabase、TMS、车辆管理和 AI 业务实践。
+项目采用 [木兰宽松许可证第 2 版（MulanPSL-2.0）](LICENSE) 开源。欢迎提交 Issue、Pull Request，也欢迎分享你的 Supabase、TMS、车辆管理和 AI 业务实践。
 
 本项目基于优秀的 [Art Design Pro](https://gitee.com/lingchen163/art-design-pro) 继续演进，感谢原项目及其社区。

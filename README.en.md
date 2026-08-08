@@ -123,6 +123,6 @@ pnpm build
 
 ## License and Credits
 
-Art Supabase Pro is released under the [MIT License](LICENSE).
+Art Supabase Pro is released under the [Mulan Permissive Software License, Version 2 (MulanPSL-2.0)](LICENSE).
 
 The project continues to evolve from the excellent [Art Design Pro](https://gitee.com/lingchen163/art-design-pro) project. Thanks to its maintainers and community.
