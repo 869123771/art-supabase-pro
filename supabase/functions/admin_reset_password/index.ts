@@ -10,18 +10,8 @@ const corsHeaders = {
 interface UserProfile {
   auth_user_id: string
   tenant_id: string
-  user_roles: string[]
   status: string | null
-  sys_tenant: { tenant_code: string | null } | { tenant_code: string | null }[] | null
 }
-
-const getTenantCode = (profile: UserProfile): string | null => {
-  const tenant = Array.isArray(profile.sys_tenant) ? profile.sys_tenant[0] : profile.sys_tenant
-  return tenant?.tenant_code?.toLowerCase() ?? null
-}
-
-const isPlatformSuper = (profile: UserProfile): boolean =>
-  getTenantCode(profile) === 'platform' && profile.user_roles.includes('R_SUPER')
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -79,7 +69,7 @@ serve(async (req) => {
     const adminClient = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false } })
     const { data: operator, error: operatorError } = await adminClient
       .from('sys_user')
-      .select('auth_user_id, tenant_id, user_roles, status, sys_tenant:tenant_id(tenant_code)')
+      .select('auth_user_id, tenant_id, status')
       .eq('auth_user_id', authData.user.id)
       .maybeSingle<UserProfile>()
 
@@ -101,6 +91,8 @@ serve(async (req) => {
       )
     }
 
+    const { data: operatorIsPlatformSuper } = await authClient.rpc('current_is_super')
+
     const { data: target, error: targetError } = await adminClient
       .from('sys_user')
       .select('auth_user_id, tenant_id, status')
@@ -114,7 +106,7 @@ serve(async (req) => {
       })
     }
 
-    if (!isPlatformSuper(operator) && target.tenant_id !== operator.tenant_id) {
+    if (operatorIsPlatformSuper !== true && target.tenant_id !== operator.tenant_id) {
       return new Response(JSON.stringify({ error: 'Cannot reset a user in another tenant' }), {
         status: 403,
         headers: corsHeaders

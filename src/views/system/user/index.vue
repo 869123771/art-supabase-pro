@@ -510,7 +510,7 @@
     {
       prop: 'operation',
       label: '操作',
-      width: 186,
+      width: 146,
       fixed: 'right',
       formatter: (row: UserListItem) =>
         h('div', { class: 'user-operation-cell' }, [

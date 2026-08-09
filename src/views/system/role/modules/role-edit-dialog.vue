@@ -56,7 +56,6 @@
   } from '@/api/system-manage'
   import { uniqueValidator } from '@/utils'
   import { useUserStore } from '@/store/modules/user'
-  import { useSystemParam } from '@/hooks'
 
   type RoleListItem = Api.SystemManage.RoleListItem
   type TenantListItem = Api.SystemManage.TenantListItem
@@ -84,16 +83,7 @@
   const dialogRef = ref<ArtDialogExpose<RoleEditDialogOpenData>>()
   const formRef = ref<ArtFormExpose>()
   const dialogType = ref<DialogType>('add')
-  const currentTenantCode = ref('')
   const tenantOptions = shallowRef<TenantListItem[]>([])
-  const {
-    defaultRegisterTenantCode,
-    defaultRegisterRoleCode,
-    superRoleCode,
-    loadRoleBuiltinCodes
-  } = useSystemParam()
-
-  const normalizeRoleCode = (roleCode?: string): string => String(roleCode ?? '').toUpperCase()
   const canSelectTenant = computed(() => Boolean(isSuper.value))
   const currentTenantId = computed(() => getUserInfo.value.tenantId)
   const selectableTenantOptions = computed(() =>
@@ -102,20 +92,13 @@
     )
   )
 
-  const isDefaultRegisterRole = computed(() => {
-    return (
-      dialogType.value === 'edit' &&
-      currentTenantCode.value.toLowerCase() === defaultRegisterTenantCode.value.toLowerCase() &&
-      normalizeRoleCode(form.roleCode) === normalizeRoleCode(defaultRegisterRoleCode.value)
-    )
-  })
+  const isDefaultRegisterRole = computed(
+    () => dialogType.value === 'edit' && form.builtinType === 'default_register'
+  )
 
-  const isSuperRole = computed(() => {
-    return (
-      dialogType.value === 'edit' &&
-      normalizeRoleCode(form.roleCode) === normalizeRoleCode(superRoleCode.value)
-    )
-  })
+  const isSuperRole = computed(
+    () => dialogType.value === 'edit' && form.builtinType === 'platform_super'
+  )
 
   const isSystemBuiltinRole = computed(() => isDefaultRegisterRole.value || isSuperRole.value)
   const contextTitle = computed(() =>
@@ -133,6 +116,7 @@
     organizationId: null,
     roleName: '',
     roleCode: '',
+    builtinType: null,
     description: '',
     enabled: true,
     createBy: undefined
@@ -211,6 +195,7 @@
       resultField: 'data',
       labelField: 'organizationName',
       valueField: 'id',
+      labelFn: (item) => `${item.organizationName}（${item.organizationCode}）`,
       childrenField: 'children',
       props: {
         disabled: !form.tenantId || isSystemBuiltinRole.value,
@@ -270,7 +255,6 @@
 
   const resetForm = async (): Promise<void> => {
     Object.assign(form, createInitialForm())
-    currentTenantCode.value = ''
     await nextTick()
     formRef.value?.clearValidate()
   }
@@ -280,15 +264,24 @@
     dialogType.value = data.type
 
     if (data.roleData) {
-      const { id, tenantId, organizationId, roleName, roleCode, description, enabled, createBy } =
-        data.roleData
-      currentTenantCode.value = data.roleData.tenant?.tenantCode ?? ''
+      const {
+        id,
+        tenantId,
+        organizationId,
+        roleName,
+        roleCode,
+        builtinType,
+        description,
+        enabled,
+        createBy
+      } = data.roleData
       Object.assign(form, {
         id,
         tenantId,
         organizationId,
         roleName,
         roleCode,
+        builtinType,
         description,
         enabled,
         createBy
@@ -304,18 +297,13 @@
   const buildRolePayload = (): Omit<RoleListItem, 'id'> => {
     const payload = { ...toRaw(form) }
     delete payload.id
+    delete payload.builtinType
 
     if (!canSelectTenant.value) {
       payload.tenantId = currentTenantId.value
     }
 
-    if (isDefaultRegisterRole.value) {
-      payload.roleCode = defaultRegisterRoleCode.value
-      payload.enabled = true
-    }
-
-    if (isSuperRole.value) {
-      payload.roleCode = superRoleCode.value
+    if (isSystemBuiltinRole.value) {
       payload.enabled = true
     }
 
@@ -368,7 +356,7 @@
       loading: true,
       onOpen: async (_openData, api) => {
         try {
-          await Promise.all([loadRoleBuiltinCodes(), loadTenantOptions()])
+          await loadTenantOptions()
           await initializeForm(data)
           await formRef.value?.reloadOptions('organizationId')
         } finally {

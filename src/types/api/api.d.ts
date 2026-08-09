@@ -107,6 +107,7 @@ declare namespace Api {
       Omit<UserListItem, 'id' | 'userEmail'> & {
         userId: string
         email: string
+        platformSuper: boolean
       }
     >
   }
@@ -120,7 +121,7 @@ declare namespace Api {
     interface UserListItem {
       id?: string
       tenantId?: string
-      tenant?: Pick<TenantListItem, 'tenantCode' | 'tenantName'>
+      tenant?: Pick<TenantListItem, 'tenantCode' | 'tenantName' | 'builtinType'>
       organizationId?: string | null
       organization?: Pick<
         OrganizationListItem,
@@ -142,6 +143,8 @@ declare namespace Api {
       createTime?: string
       updateBy?: string
       updateTime?: string
+      deletedAt?: string | null
+      deletedBy?: string | null
       authUserId?: string
       extra?: Record<string, unknown>
     }
@@ -169,10 +172,12 @@ declare namespace Api {
     type RoleList = Api.Common.PaginatedResponse<RoleListItem>
 
     /** 角色列表项 */
+    type RoleBuiltinType = 'platform_super' | 'default_register'
+
     interface RoleListItem {
       id?: string
       tenantId?: string
-      tenant?: Pick<TenantListItem, 'tenantCode' | 'tenantName'>
+      tenant?: Pick<TenantListItem, 'tenantCode' | 'tenantName' | 'builtinType'>
       organizationId?: string | null
       organization?: Pick<
         OrganizationListItem,
@@ -181,6 +186,7 @@ declare namespace Api {
       roleId?: number
       roleName: string
       roleCode: string
+      builtinType?: RoleBuiltinType | null
       description?: string
       enabled?: boolean
       createTime?: string
@@ -310,10 +316,13 @@ declare namespace Api {
     > & { id?: string }
 
     /** 租户列表项 */
+    type TenantBuiltinType = 'platform' | 'public_register'
+
     interface TenantListItem {
       id?: string
       tenantCode: string
       tenantName: string
+      builtinType?: TenantBuiltinType | null
       status?: Api.Common.EnableStatus
       remark?: string
       createBy?: string
@@ -366,6 +375,13 @@ declare namespace Api {
       groups: number
       groupCounts: Record<string, number>
       lastRefreshTime?: string
+    }
+
+    interface RegistrationRoleOption {
+      id: string
+      roleName: string
+      roleCode: string
+      builtinType?: RoleBuiltinType | null
     }
 
     type DocumentNumberCategory = 'business_document' | 'master_data' | 'vehicle'

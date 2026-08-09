@@ -159,7 +159,6 @@
     ArtTableQuerySearchBarProps,
     ArtTableQueryTableProps
   } from '@/components/core/tables/art-table-query/index.vue'
-  import { useSystemParam } from '@/hooks'
   import { useUserStore } from '@/store/modules/user'
   import TreeUtils from '@/utils/tree'
   import OrganizationScopeFilter from '../shared/organization-scope-filter.vue'
@@ -321,25 +320,10 @@
 
   const roleEditDialogRef = ref<RoleEditDialogExpose>()
   const rolePermissionDialogRef = ref<RolePermissionDialogExpose>()
-  const {
-    defaultRegisterTenantCode,
-    defaultRegisterRoleCode,
-    superRoleCode,
-    loadRoleBuiltinCodes
-  } = useSystemParam()
+  const isDefaultRegisterRole = (row: RoleListItem): boolean =>
+    row.builtinType === 'default_register'
 
-  const normalizeRoleCode = (roleCode?: string): string => String(roleCode ?? '').toUpperCase()
-
-  const isDefaultRegisterRole = (row: RoleListItem): boolean => {
-    return (
-      String(row.tenant?.tenantCode ?? '').toLowerCase() ===
-        defaultRegisterTenantCode.value.toLowerCase() &&
-      normalizeRoleCode(row.roleCode) === normalizeRoleCode(defaultRegisterRoleCode.value)
-    )
-  }
-
-  const isSuperRole = (row: RoleListItem): boolean =>
-    normalizeRoleCode(row.roleCode) === normalizeRoleCode(superRoleCode.value)
+  const isSuperRole = (row: RoleListItem): boolean => row.builtinType === 'platform_super'
 
   const getRoleMoreActions = (row: RoleListItem): ButtonMoreItem[] => {
     if (isSuperRole(row)) {
@@ -538,7 +522,7 @@
   }
 
   const handleDeleteRole = async (row: RoleListItem): Promise<void> => {
-    if (!row.id) return
+    if (!row.id || row.builtinType) return
     try {
       const blocked = await deleteGuardRef.value?.inspect({
         resourceType: 'role',
@@ -658,7 +642,6 @@
   }
 
   onMounted(async () => {
-    await loadRoleBuiltinCodes()
     await loadTenantOptions()
     await loadOrganizationTree()
   })

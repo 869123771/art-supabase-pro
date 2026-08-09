@@ -47,7 +47,7 @@ import type { DictMap } from '@/types/store'
 import { fetchGetUserInfo, logout } from '@/api/auth'
 import { fetchGetDictList } from '@/api/data-center'
 import { groupBy } from 'lodash-es'
-import { useSystemParam } from '@/hooks/core/system-param'
+import { SYSTEM_PARAM_DEFAULTS } from '@/config/system-param-defaults'
 /**
  * 用户状态管理
  * 管理用户登录状态、个人信息、语言设置、搜索历史、锁屏状态等
@@ -82,13 +82,10 @@ export const useUserStore = defineStore(
     // 计算属性：获取工作台状态
     const getWorktabState = computed(() => useWorktabStore().$state)
     // 当前用户是否为超级管理员
-    const { superRoleCode, loadRoleBuiltinCodes } = useSystemParam()
     const isSuper = computed(() =>
-      Boolean(getUserInfo.value.userRoles?.includes(superRoleCode.value))
+      Boolean(getUserInfo.value.userRoles?.includes(SYSTEM_PARAM_DEFAULTS.SUPER_ROLE_CODE))
     )
-    const isPlatformSuper = computed(
-      () => isSuper.value && getUserInfo.value.tenant?.tenantCode?.toLowerCase() === 'platform'
-    )
+    const isPlatformSuper = computed(() => getUserInfo.value.platformSuper === true)
     /**
      * 设置用户字典
      * @param data 字典信息
@@ -255,14 +252,16 @@ export const useUserStore = defineStore(
     }
 
     const fetchUserInfo = async () => {
-      await loadRoleBuiltinCodes()
       const { data } = await fetchGetUserInfo()
+      if (!data) return false
+
       const { id: userId, userEmail: email, ...res } = data ?? {}
       setUserInfo({
         userId,
         email,
         ...res
       })
+      return true
     }
 
     const fetchDictList = async () => {

@@ -45,8 +45,8 @@
           </div>
           <div>
             <span>受保护身份</span>
-            <strong>{{ systemTenantCodes.size }}</strong>
-            <small>平台与注册租户不可删除</small>
+            <strong>{{ systemTenantCount }}</strong>
+            <small>平台与注册租户不可停用</small>
           </div>
         </article>
       </div>
@@ -88,7 +88,6 @@
   import { deactivateTenant, deactivateTenantBatch, fetchGetTenantList } from '@/api/system-manage'
   import TenantDialog from './modules/tenant-dialog.vue'
   import { useUserStore } from '@/store/modules/user'
-  import { useSystemParam } from '@/hooks'
   import { useAuth } from '@/hooks/core/useAuth'
 
   defineOptions({ name: 'Tenant' })
@@ -105,11 +104,11 @@
 
   interface TenantOverviewRow {
     status?: unknown
+    builtinType?: Api.SystemManage.TenantBuiltinType | null
   }
   const userStore = useUserStore()
   const { getDictMap } = storeToRefs(userStore)
   const { hasAuth } = useAuth()
-  const { defaultRegisterTenantCode, loadRoleBuiltinCodes } = useSystemParam()
 
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<DialogExpose>()
@@ -117,16 +116,12 @@
     total: 0,
     rows: []
   })
-  const systemTenantCodes = computed(
-    () => new Set(['platform', defaultRegisterTenantCode.value.toLowerCase()])
+  const systemTenantCount = computed(
+    () => overview.rows.filter((row) => Boolean(row.builtinType)).length
   )
   const enabledTenantCount = computed(
     () => overview.rows.filter((row) => String(row.status) === '1').length
   )
-
-  onMounted(() => {
-    void loadRoleBuiltinCodes()
-  })
 
   const searchQuery = ref<SearchParams>({
     tenantCode: '',
@@ -291,9 +286,7 @@
     void dialogRef.value?.handleOpen(row)
   }
 
-  const isSystemTenant = (row: Pick<Tenant, 'tenantCode'>): boolean => {
-    return systemTenantCodes.value.has(String(row.tenantCode ?? '').toLowerCase())
-  }
+  const isSystemTenant = (row: Pick<Tenant, 'builtinType'>): boolean => Boolean(row.builtinType)
 
   const getTenantMoreActions = (row: Tenant): ButtonMoreItem[] => {
     return isSystemTenant(row)
@@ -327,7 +320,10 @@
   }
 
   const handleTableSuccess: NonNullable<ArtTableQueryProps['onSuccess']> = (rows, response) => {
-    overview.rows = rows.map((row) => ({ status: row.status }))
+    overview.rows = rows.map((row) => ({
+      status: row.status,
+      builtinType: row.builtinType
+    }))
     overview.total = response.total ?? rows.length
   }
 

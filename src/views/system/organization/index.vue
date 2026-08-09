@@ -250,6 +250,8 @@
   const getOrganizationDepth = (row: Organization): number =>
     row.id ? (organizationDepthMap.value.get(row.id) ?? 0) : 0
 
+  const isProtectedOrganization = (row: Organization): boolean => Boolean(row.isSystem)
+
   const columnsFactory = (): ColumnOption<Organization>[] => [
     {
       prop: 'organizationIdentity',
@@ -270,8 +272,8 @@
           h('div', { class: 'organization-identity-cell__copy' }, [
             h('div', { class: 'organization-identity-cell__heading' }, [
               h('strong', { title: row.organizationName }, row.organizationName),
-              row.isSystem
-                ? h('span', { class: 'organization-identity-cell__system' }, '根组织')
+              isProtectedOrganization(row)
+                ? h('span', { class: 'organization-identity-cell__system' }, '系统预置')
                 : null
             ]),
             h('div', { class: 'organization-identity-cell__meta' }, [
@@ -374,7 +376,7 @@
   const fetchTableData = (params: OrganizationSearchParams) => fetchGetOrganizationTree(params)
 
   const getOrganizationActions = (row: Organization): ButtonMoreItem[] => {
-    return [
+    const actions: ButtonMoreItem[] = [
       {
         key: 'addChild',
         label: '新增下级组织',
@@ -392,10 +394,11 @@
         label: '删除组织',
         icon: 'ri:delete-bin-4-line',
         color: 'var(--el-color-danger)',
-        auth: 'System:Organization:Delete',
-        disabled: row.isSystem
+        auth: 'System:Organization:Delete'
       }
     ]
+
+    return isProtectedOrganization(row) ? actions.filter((item) => item.key !== 'delete') : actions
   }
 
   const handleOrganizationAction = (item: ButtonMoreItem, row: Organization): void => {
@@ -454,7 +457,7 @@
   }
 
   const handleDelete = async (row: Organization): Promise<void> => {
-    if (!row.id) return
+    if (!row.id || isProtectedOrganization(row)) return
     try {
       const blocked = await deleteGuardRef.value?.inspect({
         resourceType: 'organization',

@@ -20,11 +20,12 @@ Deno.serve(async (req: Request) => {
     if (!supabaseUrl || !serviceRoleKey) return new Response(JSON.stringify({ error: "Server not configured" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } })
 
     const admin = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false } })
-    const { data, error } = await admin.from("sys_user").select("user_email, status").eq("user_email", email).maybeSingle()
+    const { data, error } = await admin.from("sys_user").select("user_email, status, deleted_at").eq("user_email", email).maybeSingle()
 
     if (error) return new Response(JSON.stringify({ error: "Database query failed", detail: error.message }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } })
     if (!data) return new Response(JSON.stringify({ allowed: true, error: "not_found" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } })
-    if (String(data.status) === "2") return new Response(JSON.stringify({ allowed: false, error: "账号已被禁用" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } })
+    if (data.deleted_at) return new Response(JSON.stringify({ allowed: false, code: "user_deactivated", error: "账号已注销，请联系管理员", message: "账号已注销，请联系管理员" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } })
+    if (["0", "2"].includes(String(data.status))) return new Response(JSON.stringify({ allowed: false, code: "user_banned", error: "账号已被禁用，请联系管理员", message: "账号已被禁用，请联系管理员" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } })
 
     return new Response(JSON.stringify({ allowed: true }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } })
   } catch (err) {

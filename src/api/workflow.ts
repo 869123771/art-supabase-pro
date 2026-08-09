@@ -97,6 +97,7 @@ export async function fetchWorkflowUserOptions(
     .from('sys_user')
     .select('id, user_name, nick_name, user_email, avatar')
     .eq('status', '1')
+    .is('deleted_at', null)
     .order('user_name')
     .limit(1000) as unknown as SupabaseQueryLike
   if (tenantId) query = query.eq('tenant_id', tenantId)

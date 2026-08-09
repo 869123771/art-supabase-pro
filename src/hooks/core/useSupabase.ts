@@ -17,6 +17,7 @@ export interface RunQueryOptions {
   returnRawError?: boolean // 是否返回原生错误字段，默认 false
   message?: string
   noAffectedMessage?: string
+  formatErrorMessage?: (error: unknown, responseBody?: unknown) => string
   action?: SupabaseAction
   breakReturn?: boolean //打断返回
   requireAffected?: boolean // 写操作是否要求至少影响一行，用于识别 RLS 导致的 0 行更新/删除
@@ -136,10 +137,12 @@ export function useSupabase() {
       const responseJson = await response?.json?.()
       const responseError = isPlainObject(responseJson) ? responseJson : undefined
       const queryError = isPlainObject(error) ? error : undefined
-      const message = String(
-        (responseError?.message || queryError?.message || responseError?.error) ??
-          JSON.stringify(error)
-      )
+      const message =
+        options.formatErrorMessage?.(error, responseJson) ||
+        String(
+          (responseError?.message || responseError?.error || queryError?.message) ??
+            JSON.stringify(error)
+        )
       if (showMessage || showErrorMessage) {
         ElMessage.error(message)
       }

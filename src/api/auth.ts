@@ -1,4 +1,5 @@
 import { useSupabase } from '@/hooks'
+import { getSupabaseAuthErrorMessage } from '@/utils/supabase-auth-error'
 const { supabase, keysToSnakeDeep, responseHandle } = useSupabase()
 
 interface AuthSessionResponse {
@@ -47,7 +48,8 @@ export async function login(params: Api.Auth.RegisterParams) {
     {
       showMessage: true,
       message: '登录成功',
-      ignoreCheck: true
+      ignoreCheck: true,
+      formatErrorMessage: getSupabaseAuthErrorMessage
     }
   )
 }
@@ -63,7 +65,8 @@ export async function forgetPassword(params: Api.Auth.ForgetPwdParams) {
     {
       ignoreCheck: true,
       breakReturn: true,
-      showErrorMessage: true
+      showErrorMessage: true,
+      formatErrorMessage: getSupabaseAuthErrorMessage
     }
   )
 }
@@ -86,7 +89,8 @@ export async function resetPassword(params: Api.Auth.ResetPwdParams) {
     {
       ignoreCheck: true,
       breakReturn: true,
-      showErrorMessage: true
+      showErrorMessage: true,
+      formatErrorMessage: getSupabaseAuthErrorMessage
     }
   )
 }
@@ -99,17 +103,33 @@ export async function fetchGetUserInfo() {
   const session = await supabase.auth.getSession()
   const uid = session?.data?.session?.user?.id
 
-  return await responseHandle<Api.SystemManage.UserListItem>(
-    () =>
-      supabase
-        .from('sys_user')
-        .select('*, tenant:sys_tenant!sys_user_tenant_id_fkey(tenant_code, tenant_name)')
-        .eq('auth_user_id', uid)
-        .single(),
-    {
+  const [profileResult, superResult] = await Promise.all([
+    responseHandle<Api.SystemManage.UserListItem>(
+      () =>
+        supabase
+          .from('sys_user')
+          .select(
+            '*, tenant:sys_tenant!sys_user_tenant_id_fkey(tenant_code, tenant_name, builtin_type)'
+          )
+          .eq('auth_user_id', uid)
+          .is('deleted_at', null)
+          .single(),
+      {
+        ignoreCheck: true
+      }
+    ),
+    responseHandle<boolean>(() => supabase.rpc('current_is_super'), {
       ignoreCheck: true
-    }
-  )
+    })
+  ])
+
+  if (profileResult.data) {
+    Object.assign(profileResult.data, {
+      platformSuper: superResult.data === true
+    })
+  }
+
+  return profileResult
 }
 
 export async function updateCurrentUserProfile(params: Api.Auth.UserInfo) {
@@ -137,7 +157,8 @@ export async function updateCurrentUserPassword(currentPassword: string, newPass
     {
       showErrorMessage: true,
       breakReturn: true,
-      ignoreCheck: true
+      ignoreCheck: true,
+      formatErrorMessage: getSupabaseAuthErrorMessage
     }
   )
 
@@ -145,7 +166,8 @@ export async function updateCurrentUserPassword(currentPassword: string, newPass
     showMessage: true,
     message: '密码修改成功',
     breakReturn: true,
-    ignoreCheck: true
+    ignoreCheck: true,
+    formatErrorMessage: getSupabaseAuthErrorMessage
   })
 }
 

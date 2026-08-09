@@ -259,6 +259,8 @@ async function handleDynamicRoutes(
   to: RouteLocationNormalized,
   router: Router
 ): Promise<NavigationGuardReturn> {
+  const userStore = useUserStore()
+
   // 标记初始化进行中
   routeInitInProgress = true
 
@@ -267,8 +269,8 @@ async function handleDynamicRoutes(
   loadingService.showLoading()
 
   try {
-    /*// 1. 获取用户信息
-    await userStore.fetchUserInfo()*/
+    // 1. 每次应用启动都刷新一次持久化用户资料，确保租户、角色与内置身份变更及时生效
+    await userStore.fetchUserInfo()
     // 2. 获取菜单数据
     const menuList = await menuProcessor.getMenuList()
 

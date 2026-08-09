@@ -27,8 +27,28 @@
             :validate-on-rule-change="false"
           >
             <template #paramValue>
+              <ElSelect
+                v-if="isRegistrationRoleParam"
+                v-model="formState.model.paramValue"
+                class="system-param-dialog__full-control"
+                filterable
+                :loading="registrationRoleLoading"
+                placeholder="请选择新用户注册后的默认角色"
+              >
+                <ElOption
+                  v-for="role in registrationRoleOptions"
+                  :key="role.id"
+                  :label="`${role.roleName}（${role.roleCode}）`"
+                  :value="role.id"
+                >
+                  <div class="system-param-dialog__role-option">
+                    <span>{{ role.roleName }}</span>
+                    <small>{{ role.roleCode }}</small>
+                  </div>
+                </ElOption>
+              </ElSelect>
               <ElInput
-                v-if="formState.model.paramType === 'single_text'"
+                v-else-if="formState.model.paramType === 'single_text'"
                 v-model="formState.model.paramValue"
                 maxlength="500"
                 show-word-limit
@@ -134,7 +154,11 @@
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
-  import { addSystemParam, editSystemParam } from '@/api/system-manage'
+  import {
+    addSystemParam,
+    editSystemParam,
+    fetchRegistrationRoleOptions
+  } from '@/api/system-manage'
   import { useUserStore } from '@/store/modules/user'
   import { uniqueValidator } from '@/utils/form/validator'
 
@@ -162,6 +186,8 @@
 
   const dialogRef = ref<ArtDialogExpose<SystemParam | undefined>>()
   const formRef = ref<ArtFormExpose>()
+  const registrationRoleLoading = ref(false)
+  const registrationRoleOptions = shallowRef<Api.SystemManage.RegistrationRoleOption[]>([])
   const userStore = useUserStore()
   const { getDictMap } = storeToRefs(userStore)
 
@@ -186,6 +212,9 @@
   const booleanOptions = computed(() => getDictMap.value.commonBoolean ?? [])
 
   const formModel = reactive<SystemParamForm>(createInitialForm())
+  const isRegistrationRoleParam = computed(
+    () => formModel.paramKey === 'registration.default_role_id'
+  )
 
   const formState: SystemParamFormState = {
     model: formModel,
@@ -350,6 +379,12 @@
   )
   const previewValue = computed(() => {
     if (formState.model.paramValue === '') return '-'
+    if (isRegistrationRoleParam.value) {
+      const role = registrationRoleOptions.value.find(
+        (item) => item.id === formState.model.paramValue
+      )
+      return role ? `${role.roleName}（${role.roleCode}）` : '正在读取角色信息…'
+    }
     return formState.model.paramValue.length > 120
       ? `${formState.model.paramValue.slice(0, 120)}…`
       : formState.model.paramValue
@@ -501,6 +536,16 @@
       handleGroupChange(formState.model.groupCode)
     }
 
+    if (isRegistrationRoleParam.value) {
+      registrationRoleLoading.value = true
+      try {
+        const { data } = await fetchRegistrationRoleOptions()
+        registrationRoleOptions.value = data ?? []
+      } finally {
+        registrationRoleLoading.value = false
+      }
+    }
+
     await dialogRef.value?.handleOpen(row, {
       title: row?.id ? '编辑参数' : '新增参数',
       contentMaxHeight: '72vh',
@@ -561,6 +606,21 @@
         height: auto;
         margin-bottom: 6px;
         line-height: 1.4;
+      }
+    }
+
+    &__full-control {
+      width: 100%;
+    }
+
+    &__role-option {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      justify-content: space-between;
+
+      small {
+        color: var(--el-text-color-secondary);
       }
     }
 

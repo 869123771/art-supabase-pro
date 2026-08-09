@@ -1,7 +1,14 @@
 import { createClient } from "npm:@supabase/supabase-js@2.35.0"
 import { v4 as uuidv4 } from "npm:uuid@9.0.0"
 
-const allowedOrigins = ["http://localhost:3006", "http://localhost:3007", "http://localhost:4173", "https://ckbftoopuyophiebamwy.supabase.co"]
+const allowedOrigins = [
+  "http://localhost:3006",
+  "http://localhost:3007",
+  "http://localhost:4173",
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+  "https://ckbftoopuyophiebamwy.supabase.co",
+]
 const SYS_USER_COLUMNS = new Set(["user_name", "nick_name", "user_gender", "user_phone", "user_email", "status", "create_by", "update_by", "update_time", "extra", "user_roles", "create_time", "auth_user_id", "id", "user_type", "remark", "avatar", "tenant_id", "organization_id"])
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!
@@ -10,7 +17,7 @@ const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!
 const supabaseAdmin = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } })
 const supabaseDB = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } })
 
-type CallerProfile = { id: string; auth_user_id: string; user_email: string; tenant_id: string; tenant_code: string | null; user_roles: string[]; status: string | null }
+type CallerProfile = { id: string; auth_user_id: string; user_email: string; tenant_id: string; tenant_builtin_type: string | null; user_roles: string[]; builtin_roles: string[]; status: string | null }
 
 function getOriginAllowed(origin: string | null) { if (!origin) return null; if (allowedOrigins.includes(origin)) return origin; return null }
 function corsHeaders(origin: string | null) {
@@ -33,12 +40,24 @@ function createClientWithToken(token: string) { return createClient(SUPABASE_URL
 
 async function getCallerProfile(callerAuthUserId: string | null): Promise<CallerProfile | null> {
   if (!callerAuthUserId) return null
-  const { data, error } = await supabaseDB.from("sys_user").select("id, auth_user_id, user_email, tenant_id, user_roles, status, sys_tenant:tenant_id(tenant_code)").eq("auth_user_id", callerAuthUserId).maybeSingle()
+  const { data, error } = await supabaseDB.from("sys_user").select("id, auth_user_id, user_email, tenant_id, user_roles, status, sys_tenant:tenant_id(builtin_type)").eq("auth_user_id", callerAuthUserId).is("deleted_at", null).maybeSingle()
   if (error || !data) { if (error) console.error("getCallerProfile error", error.message); return null }
   const tenant = Array.isArray(data.sys_tenant) ? data.sys_tenant[0] : data.sys_tenant
-  return { id: data.id, auth_user_id: data.auth_user_id, user_email: String(data.user_email || "").toLowerCase().trim(), tenant_id: data.tenant_id, tenant_code: tenant?.tenant_code ?? null, user_roles: data.user_roles || [], status: data.status ?? null }
+  const roleCodes = data.user_roles || []
+  const { data: builtinRoleRows } = roleCodes.length
+    ? await supabaseDB.from("sys_role").select("builtin_type").eq("tenant_id", data.tenant_id).in("role_code", roleCodes).not("builtin_type", "is", null)
+    : { data: [] }
+  return { id: data.id, auth_user_id: data.auth_user_id, user_email: String(data.user_email || "").toLowerCase().trim(), tenant_id: data.tenant_id, tenant_builtin_type: tenant?.builtin_type ?? null, user_roles: roleCodes, builtin_roles: (builtinRoleRows || []).map((role) => role.builtin_type).filter(Boolean), status: data.status ?? null }
 }
-function isPlatformSuper(profile: CallerProfile | null) { return Boolean(profile && profile.user_email === "869123771@qq.com" && profile.tenant_code?.toLowerCase() === "platform" && profile.user_roles.includes("R_SUPER") && profile.status === "1") }
+function isPlatformSuper(profile: CallerProfile | null) { return Boolean(profile && profile.user_email === "869123771@qq.com" && profile.tenant_builtin_type === "platform" && profile.builtin_roles.includes("platform_super") && profile.status === "1") }
+
+async function isProtectedPlatformSuperUser(snapshot: Record<string, any>): Promise<boolean> {
+  if (String(snapshot.user_email || "").toLowerCase() === "869123771@qq.com") return true
+  const roleCodes = Array.isArray(snapshot.user_roles) ? snapshot.user_roles : []
+  if (!roleCodes.length) return false
+  const { data } = await supabaseDB.from("sys_role").select("id").eq("tenant_id", snapshot.tenant_id).eq("builtin_type", "platform_super").in("role_code", roleCodes).limit(1)
+  return Boolean(data?.length)
+}
 async function hasPermission(
   callerSupabase: ReturnType<typeof createClient> | null,
   permission: string,
@@ -106,12 +125,14 @@ Deno.serve(async (req: Request) => {
       if (!emailRegex.test(emailFromBody)) return new Response(JSON.stringify({ ok: false, error: "Invalid email format" }), { status: 400, headers: corsHeaders(origin) })
       if (!callerProfile || !callerEmail) return new Response(JSON.stringify({ ok: false, error: "需要登录用户才能创建新用户" }), { status: 401, headers: corsHeaders(origin) })
       const password = appUserData.password || body.password || uuidv4().slice(0, 12)
+      const requestedStatus = String(appUserData.status ?? "1")
+      const normalizedStatus = requestedStatus === "0" ? "2" : requestedStatus
       if (String(password).length < 6) return new Response(JSON.stringify({ ok: false, error: "Password must be at least 6 characters" }), { status: 400, headers: corsHeaders(origin) })
       try { const { data: existingAuth } = await supabaseAdmin.auth.admin.listUsers(); const existingUser = existingAuth?.users?.find((u) => u.email?.toLowerCase() === emailFromBody); if (existingUser) return new Response(JSON.stringify({ ok: false, error: "该邮箱已被注册" }), { status: 400, headers: corsHeaders(origin) }) } catch (e) { console.warn("check existing auth user error (non-fatal)", e) }
-      const { data: authUser, error: authErr } = await supabaseAdmin.auth.admin.createUser({ email: emailFromBody, password, email_confirm: true })
+      const { data: authUser, error: authErr } = await supabaseAdmin.auth.admin.createUser({ email: emailFromBody, password, email_confirm: true, ban_duration: normalizedStatus === "2" ? "876000h" : "none" })
       if (authErr) { const duplicateErrors = ["user_already_exists", "duplicate key", "Email already registered", "already exists"]; const isDuplicate = duplicateErrors.some((keyword) => authErr.code === keyword || (authErr.message || "").includes(keyword)); return new Response(JSON.stringify({ ok: false, error: isDuplicate ? "Email already registered" : `Failed to create user: ${authErr.message}` }), { status: isDuplicate ? 400 : 500, headers: corsHeaders(origin) }) }
       const authUserId = authUser.user.id
-      const insertData: Record<string, unknown> = { ...cleanAppUserData(appUserData), auth_user_id: authUserId, user_email: emailFromBody, create_by: callerEmail }
+      const insertData: Record<string, unknown> = { ...cleanAppUserData(appUserData), auth_user_id: authUserId, user_email: emailFromBody, status: normalizedStatus, create_by: callerEmail }
       if (!callerIsSuper) insertData.tenant_id = callerProfile.tenant_id; else if (!insertData.tenant_id) insertData.tenant_id = callerProfile.tenant_id
       const { data: created, error: insertErr } = await supabaseDB.from("sys_user").insert(insertData).select().single()
       if (insertErr) { await deleteAuthUser(authUserId); return new Response(JSON.stringify({ ok: false, error: getFriendlyErrorMessage(insertErr, action) }), { status: 500, headers: corsHeaders(origin) }) }
@@ -126,6 +147,7 @@ Deno.serve(async (req: Request) => {
       const cleanedAppUserData: Record<string, unknown> = action === "assign_roles"
         ? { user_roles: normalizedAppUserData.user_roles }
         : { ...normalizedAppUserData }
+      if (action === "update" && cleanedAppUserData.status === "0") cleanedAppUserData.status = "2"
       if (action === "update") delete cleanedAppUserData.user_roles
       if (action === "assign_roles" && !Array.isArray(cleanedAppUserData.user_roles)) {
         return new Response(JSON.stringify({ ok: false, error: "user_roles must be an array" }), { status: 400, headers: corsHeaders(origin) })
@@ -136,7 +158,7 @@ Deno.serve(async (req: Request) => {
         if (typeof emailForAuth === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailForAuth)) updateAuthData.email = emailForAuth
         if (typeof passwordForAuth === "string" && passwordForAuth.trim().length >= 6) updateAuthData.password = passwordForAuth
         if (cleanedAppUserData.status === "1") updateAuthData.ban_duration = "none"
-        if (cleanedAppUserData.status === "0") updateAuthData.ban_duration = "876000h"
+        if (cleanedAppUserData.status === "2") updateAuthData.ban_duration = "876000h"
         if (Object.keys(updateAuthData).length > 0) { const { error: updateAuthErr } = await supabaseAdmin.auth.admin.updateUserById(auth_user_id, updateAuthData); if (updateAuthErr) return new Response(JSON.stringify({ ok: false, error: `Failed to update auth user: ${updateAuthErr.message}` }), { status: 500, headers: corsHeaders(origin) }) }
       }
       if (Object.keys(cleanedAppUserData).length === 0) { const { data: existingUser, error: selectErr } = await supabaseDB.from("sys_user").select("*").eq("id", id).single(); if (selectErr) return new Response(JSON.stringify({ ok: false, error: getFriendlyErrorMessage(selectErr, action) }), { status: 500, headers: corsHeaders(origin) }); const result = { ok: true, app_user: existingUser }; await updateAudit(auditId, result); return new Response(JSON.stringify(result), { status: 200, headers: corsHeaders(origin) }) }
@@ -151,15 +173,17 @@ Deno.serve(async (req: Request) => {
       if (!(await canAccessTargetUser(id, callerProfile, callerIsSuper))) return new Response(JSON.stringify({ ok: false, error: "不能注销当前租户之外的用户" }), { status: 403, headers: corsHeaders(origin) })
       const { data: snapshot } = await supabaseDB.from("sys_user").select("*").eq("id", id).single()
       if (!snapshot) return new Response(JSON.stringify({ ok: false, error: "用户不存在" }), { status: 404, headers: corsHeaders(origin) })
-      const isProtectedSuper = String(snapshot.user_email || "").toLowerCase() === "869123771@qq.com" || (snapshot.user_roles || []).includes("R_SUPER")
+      const isProtectedSuper = await isProtectedPlatformSuperUser(snapshot)
       if (isProtectedSuper) return new Response(JSON.stringify({ ok: false, error: "平台超级管理员账号受系统保护，不能注销" }), { status: 403, headers: corsHeaders(origin) })
       if (snapshot.auth_user_id === callerAuthUserId) return new Response(JSON.stringify({ ok: false, error: "不能注销当前登录账号" }), { status: 403, headers: corsHeaders(origin) })
-      const { error: deactivateErr } = await supabaseDB.from("sys_user").update({ status: "0", user_roles: [], update_time: new Date().toISOString(), update_by: callerEmail }).eq("id", id)
+      const deactivatedAt = new Date().toISOString()
+      const deactivatedBy = callerEmail || callerProfile?.user_email || "system"
+      const { error: deactivateErr } = await supabaseDB.from("sys_user").update({ status: "2", user_roles: [], deleted_at: deactivatedAt, deleted_by: deactivatedBy, update_time: deactivatedAt, update_by: deactivatedBy }).eq("id", id)
       if (deactivateErr) return new Response(JSON.stringify({ ok: false, error: getFriendlyErrorMessage(deactivateErr, action) }), { status: 500, headers: corsHeaders(origin) })
       if (snapshot.auth_user_id) {
         const { error: banErr } = await supabaseAdmin.auth.admin.updateUserById(snapshot.auth_user_id, { ban_duration: "876000h" })
         if (banErr) {
-          await supabaseDB.from("sys_user").update({ status: snapshot.status, user_roles: snapshot.user_roles, update_time: snapshot.update_time, update_by: snapshot.update_by }).eq("id", id)
+          await supabaseDB.from("sys_user").update({ status: snapshot.status, user_roles: snapshot.user_roles, deleted_at: snapshot.deleted_at, deleted_by: snapshot.deleted_by, update_time: snapshot.update_time, update_by: snapshot.update_by }).eq("id", id)
           throw banErr
         }
       }

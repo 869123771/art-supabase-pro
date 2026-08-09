@@ -193,6 +193,7 @@
       resultField: 'data',
       labelField: 'organizationName',
       valueField: 'id',
+      labelFn: (item) => `${item.organizationName}（${item.organizationCode}）`,
       childrenField: 'children',
       props: {
         disabled: !formData.value.tenantId,

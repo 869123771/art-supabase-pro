@@ -21,7 +21,7 @@
       <ElAlert
         v-if="isSystemTenant"
         class="tenant-dialog__alert"
-        title="该租户承担平台级或注册入口职责，不支持删除；调整状态前请确认系统访问影响。"
+        title="该租户承担平台级或注册入口职责，编码与启用状态由系统保护。"
         type="warning"
         :closable="false"
         show-icon
@@ -50,7 +50,6 @@
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import { addTenant, editTenant } from '@/api/system-manage'
   import { useUserStore } from '@/store/modules/user'
-  import { useSystemParam } from '@/hooks'
   import { omit } from 'lodash-es'
 
   type Tenant = Api.SystemManage.TenantListItem
@@ -61,7 +60,6 @@
 
   const emit = defineEmits<Emits>()
   const { getDictMap } = storeToRefs(useUserStore())
-  const { defaultRegisterTenantCode } = useSystemParam()
   const dialogRef = ref<ArtDialogExpose<Tenant | undefined>>()
   const formRef = ref<{
     validate: () => Promise<boolean>
@@ -77,15 +75,13 @@
     createBy: undefined,
     createTime: undefined,
     updateBy: undefined,
-    updateTime: undefined
+    updateTime: undefined,
+    builtinType: null
   })
 
   const form = reactive<Tenant>(createInitialForm())
   const isEdit = computed(() => Boolean(form.id))
-  const isSystemTenant = computed(() => {
-    const tenantCode = String(form.tenantCode ?? '').toLowerCase()
-    return ['platform', defaultRegisterTenantCode.value.toLowerCase()].includes(tenantCode)
-  })
+  const isSystemTenant = computed(() => Boolean(form.builtinType))
   const contextTitle = computed(() =>
     isEdit.value ? '核对租户身份与访问状态' : '创建新的业务隔离空间'
   )
@@ -152,10 +148,13 @@
       key: 'status',
       type: 'radioGroup',
       props: {
-        options: getDictMap.value.status ?? []
+        options: getDictMap.value.status ?? [],
+        disabled: isSystemTenant.value
       },
       span: 24,
-      description: '停用前请确认租户内账号及业务安排已妥善处理。'
+      description: isSystemTenant.value
+        ? '系统预置租户必须保持启用。'
+        : '停用前请确认租户内账号及业务安排已妥善处理。'
     },
     {
       label: '备注',
@@ -194,7 +193,13 @@
     }
 
     try {
-      const payload = omit(toRaw(form), ['createBy', 'createTime', 'updateBy', 'updateTime'])
+      const payload = omit(toRaw(form), [
+        'createBy',
+        'createTime',
+        'updateBy',
+        'updateTime',
+        'builtinType'
+      ])
       if (form.id) {
         await editTenant(payload)
       } else {

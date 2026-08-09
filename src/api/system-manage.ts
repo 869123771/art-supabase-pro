@@ -79,6 +79,7 @@ export async function fetchGetUserList(params: Api.SystemManage.UserSearchParams
       '*, organization:sys_organization!sys_user_organization_id_fkey(id, organization_code, organization_name)',
       { count: 'exact' }
     )
+    .is('deleted_at', null)
     .order('create_time', { ascending: false }) // 按创建时间倒序
     .range(from, to)
 
@@ -120,7 +121,7 @@ export async function fetchGetTenantList(params: TenantSearchParams) {
 export async function fetchGetEnableTenantList() {
   const query = supabase
     .from('sys_tenant')
-    .select('id, tenant_code, tenant_name, status')
+    .select('id, tenant_code, tenant_name, status, builtin_type')
     .eq('status', '1')
     .order('tenant_code', { ascending: true })
 
@@ -310,6 +311,7 @@ export async function fetchGetEnableOrganizationUserList(params: { tenantId?: st
     .select('id, avatar, user_name, nick_name, user_email, status, tenant_id')
     .eq('tenant_id', params.tenantId)
     .eq('status', '1')
+    .is('deleted_at', null)
     .order('nick_name', { ascending: true })
 
   return await responseHandle<Api.SystemManage.OrganizationMember[]>(() => query, {
@@ -347,11 +349,16 @@ export async function editOrganization(params: Api.SystemManage.OrganizationSave
 
 export async function deleteOrganization(id: string) {
   return await responseHandle(
-    () => supabase.from('sys_organization').delete({ count: 'exact' }).eq('id', id),
+    () =>
+      supabase
+        .from('sys_organization')
+        .delete({ count: 'exact' })
+        .eq('id', id)
+        .eq('is_system', false),
     {
       showMessage: true,
       requireAffected: true,
-      noAffectedMessage: WRITE_PERMISSION_DENIED_MESSAGE
+      noAffectedMessage: '系统预置根组织不可删除，或当前账号没有删除权限'
     }
   )
 }
@@ -379,13 +386,19 @@ export async function editTenant(params: TenantListItem) {
 // 停用租户：保留组织、账号和业务历史，阻止继续作为有效租户使用。
 export async function deactivateTenant(id: string) {
   return await responseHandle(
-    () => supabase.from('sys_tenant').update({ status: '0' }).eq('id', id).select('id'),
+    () =>
+      supabase
+        .from('sys_tenant')
+        .update({ status: '0' })
+        .eq('id', id)
+        .is('builtin_type', null)
+        .select('id'),
     {
       showMessage: true,
       message: '租户已停用，历史数据已保留',
       breakReturn: true,
       requireAffected: true,
-      noAffectedMessage: WRITE_PERMISSION_DENIED_MESSAGE
+      noAffectedMessage: '系统预置租户不可停用，或当前账号没有操作权限'
     }
   )
 }
@@ -393,13 +406,19 @@ export async function deactivateTenant(id: string) {
 // 批量停用租户
 export async function deactivateTenantBatch(ids: string[]) {
   return await responseHandle(
-    () => supabase.from('sys_tenant').update({ status: '0' }).in('id', ids).select('id'),
+    () =>
+      supabase
+        .from('sys_tenant')
+        .update({ status: '0' })
+        .in('id', ids)
+        .is('builtin_type', null)
+        .select('id'),
     {
       showMessage: true,
       message: '所选租户已停用，历史数据已保留',
       breakReturn: true,
       requireAffected: true,
-      noAffectedMessage: WRITE_PERMISSION_DENIED_MESSAGE
+      noAffectedMessage: '所选记录均为系统预置租户，或当前账号没有操作权限'
     }
   )
 }
@@ -485,6 +504,16 @@ export async function fetchSystemParamByKey(paramKey: string): Promise<{
     {
       ignoreCheck: true,
       showErrorMessage: false
+    }
+  )
+}
+
+export async function fetchRegistrationRoleOptions() {
+  return await responseHandle<Api.SystemManage.RegistrationRoleOption[]>(
+    () => supabase.rpc('get_registration_role_options'),
+    {
+      ignoreCheck: true,
+      showErrorMessage: true
     }
   )
 }
@@ -775,7 +804,7 @@ export async function fetchGetEnableRoleList(params: { tenantId?: string } = {})
 
   const query = supabase
     .from('sys_role')
-    .select('id, role_name, role_code, enabled, tenant_id')
+    .select('id, role_name, role_code, enabled, tenant_id, builtin_type')
     .eq('tenant_id', tenantId)
     .eq('enabled', true)
     .order('role_code', { ascending: true })
@@ -824,7 +853,7 @@ export async function fetchGetRoleList(params: Api.SystemManage.RoleSearchParams
     .select(
       `
         *,
-        tenant:sys_tenant!sys_role_tenant_id_fkey(tenant_code, tenant_name),
+        tenant:sys_tenant!sys_role_tenant_id_fkey(tenant_code, tenant_name, builtin_type),
         organization:sys_organization!sys_role_organization_id_fkey(
           id, organization_code, organization_name
         )
@@ -850,12 +879,13 @@ export async function fetchGetRoleList(params: Api.SystemManage.RoleSearchParams
 export async function deleteRole(params: Api.SystemManage.RoleListItem) {
   const { id } = params
   return await responseHandle(
-    () => supabase.from('sys_role').delete({ count: 'exact' }).eq('id', id),
+    () =>
+      supabase.from('sys_role').delete({ count: 'exact' }).eq('id', id).is('builtin_type', null),
     {
       showMessage: true,
       breakReturn: true,
       requireAffected: true,
-      noAffectedMessage: WRITE_PERMISSION_DENIED_MESSAGE
+      noAffectedMessage: '系统预置角色不可删除，或当前账号没有删除权限'
     }
   )
 }

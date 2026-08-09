@@ -160,7 +160,8 @@
   }
 
   .log-out {
-    @apply py-1.5
+    @apply w-full
+    py-1.5
     mt-5
     text-xs
     text-center

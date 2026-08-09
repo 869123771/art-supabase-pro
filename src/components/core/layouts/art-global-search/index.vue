@@ -41,7 +41,7 @@
           >
             <button
               type="button"
-              class="mt-2 h-12 flex-cb rounded-custom-sm bg-g-200/80 px-4 text-sm text-g-700"
+              class="mt-2 h-12 w-full flex-cb rounded-custom-sm bg-g-200/80 px-4 text-sm text-g-700"
               :class="isHighlighted(index) ? 'highlighted !bg-theme/70 !text-white' : ''"
               @click="searchGoPage(item)"
               @mouseenter="highlightOnHover(index)"
