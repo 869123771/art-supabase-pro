@@ -12,6 +12,7 @@
 
     <div
       ref="contentRef"
+      data-ui-audit-allow="delegated-content-links"
       class="whitespace-nowrap inline-block transition-opacity duration-600 [&_a]:text-danger [&_a:hover]:underline [&_a:hover]:text-danger/80 px-9"
       :class="[contentClass, { 'opacity-0': !isReady, 'opacity-100': isReady }]"
       :style="contentStyle"
@@ -31,14 +32,16 @@
       </span>
     </div>
 
-    <div
+    <button
       v-if="showClose"
+      type="button"
+      aria-label="关闭公告"
       class="flex-cc absolute right-0 h-full w-9 c-p"
       :style="{ backgroundColor: bgColor }"
       @click="handleClose"
     >
       <ArtSvgIcon icon="ri:close-fill" class="text-lg" />
-    </div>
+    </button>
   </div>
 </template>
 

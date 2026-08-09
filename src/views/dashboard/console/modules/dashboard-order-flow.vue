@@ -12,7 +12,7 @@
         ><strong>{{ total }}</strong
         ><span>近 {{ days }} 天订单</span></div
       >
-      <b><i />运输中 {{ inTransitCount }} 单</b>
+      <b><i />当前运输中 {{ inTransitCount }} 单</b>
     </div>
 
     <div class="order-flow__distribution">

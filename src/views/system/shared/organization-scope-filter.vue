@@ -166,7 +166,14 @@
           <small>当前范围</small>
           <strong>{{ selectedLabel }}</strong>
         </div>
-        <ElTag v-if="selectedScopeCount !== null" size="small" effect="plain" round>
+        <ElTag
+          v-if="selectedScopeCount !== null"
+          class="user-organization-filter__count-tag"
+          type="primary"
+          size="small"
+          effect="plain"
+          round
+        >
           {{ selectedScopeCount }}{{ scopeCopy.countUnit }}
         </ElTag>
       </div>
@@ -727,13 +734,15 @@
         font-size: 12px;
         color: var(--el-text-color-primary);
       }
+    }
 
-      :deep(.el-tag) {
-        flex: none;
-        min-width: 46px;
-        padding-inline: 8px;
-        white-space: nowrap;
-      }
+    &__count-tag.el-tag {
+      flex: none;
+      justify-content: center;
+      min-width: 46px;
+      padding-inline: 8px;
+      white-space: nowrap;
+      border-radius: 999px;
     }
   }
 

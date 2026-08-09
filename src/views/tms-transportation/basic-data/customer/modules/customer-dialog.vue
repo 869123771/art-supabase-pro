@@ -37,6 +37,7 @@
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtAddressPicker from '@/components/core/forms/art-address-picker/index.vue'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
+  import { useDocumentNumberRule } from '@/hooks/core/useDocumentNumberRule'
   import { addCustomer, editCustomer } from '@/api/tms'
   import { fetchRegionOptions } from '@/api/common'
   import { useUserStore } from '@/store/modules/user'
@@ -98,13 +99,23 @@
   })
 
   const form = reactive<CustomerForm>(createInitialForm())
+  const customerNumber = useDocumentNumberRule('master.customer')
 
   const formRules: FormRules<CustomerForm> = {
     customerName: [
       { required: true, message: '请输入客户名称', trigger: 'blur' },
       { min: 2, max: 100, message: '长度应为 2 到 100 个字符', trigger: 'blur' }
     ],
-    customerCode: [{ max: 30, message: '客户编号不能超过 30 个字符', trigger: 'blur' }],
+    customerCode: [
+      {
+        validator: (_rule, value, callback) =>
+          customerNumber.manualRequired(Boolean(form.id)) && !String(value || '').trim()
+            ? callback(new Error('请输入客户编号'))
+            : callback(),
+        trigger: 'blur'
+      },
+      { max: 30, message: '客户编号不能超过 30 个字符', trigger: 'blur' }
+    ],
     contactPhone: [
       {
         pattern: /^(?:1[3-9]\d{9}|0\d{2,3}-?\d{7,8})$/,
@@ -123,7 +134,11 @@
       label: '客户编号',
       key: 'customerCode',
       type: 'input',
-      props: { maxlength: 30, placeholder: '不填则自动生成' }
+      props: {
+        maxlength: 30,
+        ...customerNumber.inputProps(Boolean(form.id), '请输入客户编号')
+      },
+      description: customerNumber.description.value
     },
     {
       label: '客户名称',
@@ -334,7 +349,7 @@
   }
 
   const handleOpen = async (row?: Customer): Promise<void> => {
-    await resetForm()
+    await Promise.all([resetForm(), customerNumber.loadRule()])
     const isEdit = Boolean(row?.id)
     if (row) {
       replaceForm({

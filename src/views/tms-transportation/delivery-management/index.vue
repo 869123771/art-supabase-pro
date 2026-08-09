@@ -1,5 +1,8 @@
 <template>
   <div class="tms-workspace-page art-full-height delivery-list">
+    <MasterDeleteProcessingNotice
+      action-hint="关联异常工单已自动打开并精确过滤；请完成处置后返回。"
+    />
     <TmsWorkspaceHeader
       eyebrow="DELIVERY CONTROL"
       title="配送与签收"
@@ -59,6 +62,7 @@
   import TmsWorkspaceHeader, {
     type TmsWorkspaceMetric
   } from '@/views/tms-transportation/modules/tms-workspace-header.vue'
+  import MasterDeleteProcessingNotice from '@/components/business/master-delete-processing-notice/index.vue'
   import {
     DELIVERY_STATUS_ALL,
     createDeliveryColumns,
@@ -91,10 +95,11 @@
   }
 
   const router = useRouter()
+  const route = useRoute()
   const { getDictMap } = storeToRefs(useUserStore())
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const signDialogRef = ref<DeliverySignDialogExpose>()
-  const exceptionDrawerRef = ref<{ handleOpen: () => Promise<void> }>()
+  const exceptionDrawerRef = ref<{ handleOpen: (recordId?: string) => Promise<void> }>()
   const statusCountRequestId = ref(0)
   const paymentMethodOptions = computed(() => getDictMap.value.tmsOrderPaymentMethod ?? [])
 
@@ -184,6 +189,14 @@
   function handleSignSuccess(): void {
     void tableQueryRef.value?.refreshUpdate()
   }
+
+  const openMasterDeleteWorkOrder = (): void => {
+    if (route.query.fromMasterDelete !== '1') return
+    const recordId = typeof route.query.recordId === 'string' ? route.query.recordId : ''
+    if (recordId) void nextTick().then(() => exceptionDrawerRef.value?.handleOpen(recordId))
+  }
+
+  watch(() => route.fullPath, openMasterDeleteWorkOrder, { immediate: true, flush: 'post' })
 </script>
 
 <style scoped lang="scss">

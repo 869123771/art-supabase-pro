@@ -11,6 +11,13 @@
       ]"
     />
 
+    <CustomerDeleteProcessingNotice
+      v-if="customerDeleteContext.active"
+      :customer-id="customerDeleteContext.customerId"
+      :customer-name="customerDeleteContext.customerName"
+      action-hint="已定位到关联客户报价。确认不再使用后，可直接在表格右侧删除该价格方案。"
+    />
+
     <ArtTableQuery
       ref="tableQueryRef"
       v-model="table.searchQuery"
@@ -52,6 +59,8 @@
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatWithDayjs } from '@/utils/time'
   import TmsWorkspaceHeader from '@/views/tms-transportation/modules/tms-workspace-header.vue'
+  import CustomerDeleteProcessingNotice from '@/views/tms-transportation/modules/customer-delete-processing-notice.vue'
+  import { useCustomerDeleteProcessingContext } from '@/views/tms-transportation/modules/use-customer-delete-processing'
 
   defineOptions({ name: 'TmsCustomerPrice' })
 
@@ -72,6 +81,7 @@
 
   const router = useRouter()
   const route = useRoute()
+  const customerDeleteContext = useCustomerDeleteProcessingContext()
   const { getDictMap } = storeToRefs(useUserStore())
   const tableQueryRef = ref<ArtTableQueryExpose>()
 
@@ -80,7 +90,9 @@
       originRegionPath: [],
       destinationRegionPath: [],
       createTimeRange: [],
-      keyword: ''
+      customerId: customerDeleteContext.value.customerId,
+      keyword: '',
+      recordId: customerDeleteContext.value.recordId
     }
   })
 
@@ -317,10 +329,32 @@
   }
 
   onActivated(() => {
+    syncCustomerDeleteRoute(true)
     if (!route.query.refresh) return
     const refreshType = String(route.query.refreshType || '')
     void refreshAfterEdit(refreshType)
   })
+
+  const syncCustomerDeleteRoute = (forceRefresh = false): void => {
+    const context = customerDeleteContext.value
+    if (!context.active) return
+    const changed =
+      table.searchQuery.customerId !== context.customerId ||
+      table.searchQuery.recordId !== context.recordId
+    Object.assign(table.searchQuery, {
+      customerId: context.customerId,
+      recordId: context.recordId
+    })
+    if (changed || forceRefresh) {
+      void nextTick().then(() => tableQueryRef.value?.getData())
+    }
+  }
+
+  watch(
+    () => route.fullPath,
+    () => syncCustomerDeleteRoute(),
+    { flush: 'post' }
+  )
 
   async function refreshAfterEdit(refreshType: string): Promise<void> {
     if (refreshType === 'create') {

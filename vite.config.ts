@@ -124,6 +124,16 @@ export default ({ mode }: { mode: string }) => {
     build: {
       target: 'es2020',
       outDir, //dist
+      modulePreload: {
+        polyfill: false,
+        resolveDependencies: (_filename, dependencies, context) => {
+          if (context.hostType !== 'html') return dependencies
+          return dependencies.filter(
+            (dependency) =>
+              !/(?:media|monaco|rich-editor|data-tools|file-viewer)[.-]/.test(dependency)
+          )
+        }
+      },
       chunkSizeWarningLimit: 7000,
       minify: 'oxc',
       reportCompressedSize: false,

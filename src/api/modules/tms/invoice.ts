@@ -10,14 +10,53 @@ type InvoiceableSearchParams = Api.Tms.Finance.InvoiceableStatementSearchParams
 type SaveInvoicePayload = Api.Tms.Finance.SaveInvoicePayload
 type InvoiceStatusPayload = Api.Tms.Finance.InvoiceStatusPayload & { businessTitle?: string }
 type InvoiceStatementLink = Api.Tms.Finance.InvoiceStatementLinkRecord
+type InvoiceDuplicateRecord = Api.Tms.Finance.InvoiceDuplicateRecord
 
 const { supabase, responseHandle } = useSupabase()
+const ACTIVE_LEGAL_NO_CONSTRAINT = 'tms_invoice_active_legal_no_key'
+
+export class InvoiceLegalNumberConflictError extends Error {
+  constructor() {
+    super('同方向下该发票号码已登记，请核对已有发票后再处理')
+    this.name = 'InvoiceLegalNumberConflictError'
+  }
+}
+
+export function isInvoiceLegalNumberConflict(error: unknown): boolean {
+  if (error instanceof InvoiceLegalNumberConflictError) return true
+  if (!error || typeof error !== 'object') return false
+  const candidate = error as { code?: unknown; constraint?: unknown; message?: unknown }
+  return (
+    candidate.code === '23505' &&
+    (candidate.constraint === ACTIVE_LEGAL_NO_CONSTRAINT ||
+      String(candidate.message ?? '').includes(ACTIVE_LEGAL_NO_CONSTRAINT))
+  )
+}
+
+function toError(error: unknown): Error {
+  if (error instanceof Error) return error
+  if (error && typeof error === 'object' && 'message' in error) {
+    const message = (error as { message?: unknown }).message
+    if (typeof message === 'string' && message) return new Error(message)
+  }
+  return new Error('发票保存失败，请稍后重试')
+}
 
 function applyInvoiceFilters(
   query: SupabaseQueryLike,
   params: InvoiceSearchParams
 ): SupabaseQueryLike {
-  const { carrierId, customerId, direction, invoiceType, issueDateRange, keyword, status } = params
+  const {
+    carrierId,
+    customerId,
+    direction,
+    invoiceType,
+    issueDateRange,
+    keyword,
+    recordId,
+    status
+  } = params
+  if (recordId) query = query.eq('id', recordId)
   if (direction) query = query.eq('direction', direction)
   if (invoiceType) query = query.eq('invoice_type', invoiceType)
   if (status) query = query.eq('status', status)
@@ -105,8 +144,31 @@ export async function fetchInvoiceDetail(id: string) {
   }
 }
 
+export async function fetchActiveInvoiceByLegalNo(params: {
+  direction: Api.Tms.Finance.InvoiceDirection
+  invoiceNo: string
+  excludeId?: string
+}) {
+  let query = supabase
+    .from('tms_invoice_summary')
+    .select(
+      'id,invoice_record_no,direction,invoice_no,status,counterparty_name_snapshot,issue_date,total_amount'
+    )
+    .eq('direction', params.direction)
+    .eq('invoice_no', params.invoiceNo.trim())
+    .neq('status', 'voided')
+    .limit(1)
+
+  if (params.excludeId) query = query.neq('id', params.excludeId)
+
+  return await responseHandle<InvoiceDuplicateRecord | null>(() => query.maybeSingle(), {
+    ignoreCheck: true,
+    showErrorMessage: false
+  })
+}
+
 export async function saveInvoice(params: SaveInvoicePayload) {
-  return await responseHandle<string>(
+  const result = await responseHandle<string>(
     () =>
       supabase.rpc('save_tms_invoice', {
         p_invoice_id: params.id || null,
@@ -125,10 +187,17 @@ export async function saveInvoice(params: SaveInvoicePayload) {
         p_total_amount: params.totalAmount,
         p_attachments: params.attachments ?? [],
         p_remark: params.remark || null,
-        p_statement_links: params.statementLinks
+        p_statement_links: params.statementLinks,
+        p_invoice_record_no: params.invoiceRecordNo || null
       }),
-    { showMessage: true, breakReturn: true }
+    { returnRawError: true }
   )
+
+  if (result.error) {
+    if (isInvoiceLegalNumberConflict(result.error)) throw new InvoiceLegalNumberConflictError()
+    throw toError(result.error)
+  }
+  return result
 }
 
 export async function updateInvoiceStatus(params: InvoiceStatusPayload) {

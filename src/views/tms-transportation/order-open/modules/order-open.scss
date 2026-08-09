@@ -27,6 +27,41 @@
     background: var(--el-color-primary);
     border-radius: var(--el-border-radius-base);
     box-shadow: inset 0 -1px 0 rgb(0 0 0 / 8%);
+
+    label {
+      display: grid;
+      min-width: 0;
+      gap: 2px;
+      align-content: center;
+    }
+
+    label > span {
+      flex: 0 0 auto;
+    }
+
+    strong {
+      display: block;
+      min-width: 0;
+      white-space: nowrap;
+    }
+
+    :deep(.el-input) {
+      min-width: 130px;
+    }
+
+    :deep(.el-input__wrapper) {
+      background: rgb(255 255 255 / 16%);
+      box-shadow: 0 0 0 1px rgb(255 255 255 / 45%) inset;
+    }
+
+    :deep(.el-input__inner) {
+      font-weight: 700;
+      color: #fff;
+
+      &::placeholder {
+        color: rgb(255 255 255 / 72%);
+      }
+    }
   }
 
   &__title {

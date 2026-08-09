@@ -20,7 +20,8 @@ const applyCargoFilters = (
   query: SupabaseQueryLike,
   params: CargoSearchParams
 ): SupabaseQueryLike => {
-  const { unit, enabled, keyword, createTimeRange } = params
+  const { unit, enabled, keyword, createTimeRange, recordId } = params
+  if (recordId) query = query.eq('id', recordId)
   if (unit) query = query.eq('unit', unit)
   const enabledValue = normalizeBooleanFilter(enabled)
   if (enabledValue !== undefined) query = query.eq('enabled', enabledValue)
@@ -78,15 +79,17 @@ export async function editCargo(params: Cargo) {
 }
 
 export async function deleteCargo(id: string) {
-  return await responseHandle(() => supabase.from('tms_cargo').delete().eq('id', id), {
-    showMessage: true
-  })
+  return await responseHandle(
+    () => supabase.from('tms_cargo').delete({ count: 'exact' }).eq('id', id),
+    { showMessage: true, breakReturn: true, requireAffected: true }
+  )
 }
 
 export async function deleteCargoBatch(ids: string[]) {
-  return await responseHandle(() => supabase.from('tms_cargo').delete().in('id', ids), {
-    showMessage: true
-  })
+  return await responseHandle(
+    () => supabase.from('tms_cargo').delete({ count: 'exact' }).in('id', ids),
+    { showMessage: true, breakReturn: true, requireAffected: true }
+  )
 }
 
 export async function importCargoes(rows: Cargo[]) {

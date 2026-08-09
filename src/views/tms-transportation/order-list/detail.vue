@@ -20,6 +20,26 @@
 
     <section class="order-detail__section order-detail__steps-card art-card-xs">
       <OrderStatusSteps :steps="detail.statusSteps" :active-index="detail.activeStep" />
+      <div
+        v-if="deliveryAudit.visible"
+        class="order-detail__delivery-audit"
+        :class="{ 'is-warning': deliveryAudit.missingSignature }"
+      >
+        <span class="order-detail__delivery-audit-icon">
+          <ArtSvgIcon
+            :icon="deliveryAudit.missingSignature ? 'ri:alert-line' : 'ri:verified-badge-line'"
+          />
+        </span>
+        <div class="order-detail__delivery-audit-copy">
+          <strong>{{ deliveryAudit.title }}</strong>
+          <span>{{ deliveryAudit.description }}</span>
+        </div>
+        <div v-if="!deliveryAudit.missingSignature" class="order-detail__delivery-audit-meta">
+          <span>{{ deliveryAudit.operator }}</span>
+          <span>{{ deliveryAudit.proofCount }} 张回单</span>
+          <span>{{ deliveryAudit.time }}</span>
+        </div>
+      </div>
     </section>
 
     <section class="order-detail__section art-card-xs">
@@ -208,6 +228,51 @@
   })
 
   const descriptionData = computed<Partial<OrderRecord>>(() => detail.data ?? {})
+  const deliveryAudit = computed(() => {
+    const data = detail.data
+    const status = normalizedOrderStatus.value
+    const signatureTime = data?.signedAt ?? data?.driverWaybillSignedAt
+    const proofCount = data?.driverWaybillSignatureProofCount ?? data?.receiptImageUrls?.length ?? 0
+    const reachedDelivery = status === 'signed' || status === 'completed'
+    const missingSignature = status === 'completed' && !signatureTime
+
+    if (!reachedDelivery) {
+      return {
+        visible: false,
+        missingSignature: false,
+        title: '',
+        description: '',
+        operator: '',
+        proofCount,
+        time: ''
+      }
+    }
+
+    if (missingSignature) {
+      return {
+        visible: true,
+        missingSignature: true,
+        title: '签收记录缺失',
+        description: proofCount
+          ? `该订单已完成并发现 ${proofCount} 张回单，但没有独立的确认签收记录，请核对交付凭证。`
+          : '该订单已完成，但没有签收时间、操作人或回单凭证，请尽快核对交付过程。',
+        operator: '',
+        proofCount,
+        time: ''
+      }
+    }
+
+    return {
+      visible: true,
+      missingSignature: false,
+      title: '签收凭证已归档',
+      description:
+        status === 'completed' ? '交付与完成节点记录完整' : '已完成签收，等待最终确认完成运单',
+      operator: data?.driverWaybillSignedBy || data?.dispatchDriverName || '系统记录',
+      proofCount,
+      time: formatWithDayjs(signatureTime, 'YYYY-MM-DD HH:mm') || '-'
+    }
+  })
   const basicItems: ArtDescriptionItem<Partial<OrderRecord>>[] = [
     { key: 'orderNo', label: '订单号', field: 'orderNo', copyable: true },
     { key: 'cargoNo', label: '货号', field: 'cargoNo', copyable: true },
@@ -339,14 +404,18 @@
       created: detail.data?.createTime,
       pending_load: detail.data?.createTime,
       pending_order: detail.data?.dispatchedAt,
-      pending_pickup: detail.data?.driverWaybillLoadedAt ?? detail.data?.driverWaybillDepartedAt,
+      pending_pickup: detail.data?.driverWaybillAcceptedAt,
       transporting: detail.data?.driverWaybillDepartedAt ?? detail.data?.driverWaybillLoadedAt,
-      signed: detail.data?.signedAt ?? getCurrentStatusFallbackTime('signed'),
-      completed: detail.data?.signedAt,
+      signed: detail.data?.signedAt ?? detail.data?.driverWaybillSignedAt,
+      completed: detail.data?.driverWaybillCompletedAt,
       cancelled: detail.data?.updateTime
     }
 
-    return formatStepTime(statusTimeMap[status] ?? getCurrentStatusFallbackTime(status))
+    const value = statusTimeMap[status] ?? getCurrentStatusFallbackTime(status)
+    if (status === 'signed' && normalizedOrderStatus.value === 'completed' && !value) {
+      return '记录缺失'
+    }
+    return formatStepTime(value)
   }
 
   function isOrderStatusReached(status: OrderStatusValue): boolean {
@@ -410,8 +479,70 @@
 
     &__steps-card {
       display: grid;
-      gap: 8px;
+      gap: 16px;
       margin-top: var(--art-space-3);
+    }
+
+    &__delivery-audit {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: center;
+      padding: 14px 16px;
+      margin-inline: 12px;
+      color: var(--el-color-success-dark-2);
+      background: var(--el-color-success-light-9);
+      border: 1px solid var(--el-color-success-light-7);
+      border-radius: var(--el-border-radius-base);
+
+      &.is-warning {
+        color: var(--el-color-warning-dark-2);
+        background: var(--el-color-warning-light-9);
+        border-color: var(--el-color-warning-light-7);
+      }
+    }
+
+    &__delivery-audit-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 34px;
+      height: 34px;
+      font-size: 19px;
+      background: color-mix(in srgb, currentColor 10%, transparent);
+      border-radius: 10px;
+    }
+
+    &__delivery-audit-copy {
+      display: grid;
+      gap: 3px;
+      min-width: 0;
+
+      strong {
+        color: currentcolor;
+      }
+
+      span {
+        font-size: 12px;
+        line-height: 1.5;
+        color: var(--el-text-color-secondary);
+      }
+    }
+
+    &__delivery-audit-meta {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      color: var(--el-text-color-regular);
+      font-size: 12px;
+
+      span {
+        padding: 5px 8px;
+        white-space: nowrap;
+        background: var(--el-bg-color);
+        border: 1px solid var(--el-border-color-lighter);
+        border-radius: 999px;
+      }
     }
 
     &__finance-grid,
@@ -520,6 +651,15 @@
 
   @media (width <= 992px) {
     .order-detail {
+      &__delivery-audit {
+        grid-template-columns: auto minmax(0, 1fr);
+      }
+
+      &__delivery-audit-meta {
+        grid-column: 2;
+        flex-wrap: wrap;
+      }
+
       &__finance-grid,
       &__support-grid,
       &__contact-card {
@@ -540,6 +680,10 @@
           min-width: 0;
           text-align: left;
         }
+      }
+
+      &__delivery-audit {
+        margin-inline: 0;
       }
     }
   }

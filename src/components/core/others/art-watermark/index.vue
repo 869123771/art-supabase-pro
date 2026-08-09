@@ -57,12 +57,12 @@
     content: '',
     visible: false,
     fontSize: 16,
-    fontColor: 'rgba(128, 128, 128, 0.2)',
+    fontColor: 'rgba(100, 116, 139, 0.08)',
     rotate: -22,
-    gapX: 100,
-    gapY: 100,
-    offsetX: 50,
-    offsetY: 50,
+    gapX: 220,
+    gapY: 190,
+    offsetX: 110,
+    offsetY: 95,
     zIndex: 3100
   })
 
@@ -77,10 +77,10 @@
   const watermarkContent = computed(
     () => props.content || resolveWatermarkContent(userStore.getUserInfo)
   )
-  const watermarkGap = computed<[number, number]>(() => [props.gapX ?? 100, props.gapY ?? 100])
+  const watermarkGap = computed<[number, number]>(() => [props.gapX ?? 220, props.gapY ?? 190])
   const watermarkOffset = computed<[number, number]>(() => [
-    props.offsetX ?? 50,
-    props.offsetY ?? 50
+    props.offsetX ?? 110,
+    props.offsetY ?? 95
   ])
 
   onMounted(() => {

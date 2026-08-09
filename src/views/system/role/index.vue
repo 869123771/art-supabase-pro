@@ -1,5 +1,8 @@
 <template>
   <div class="role-page art-full-height">
+    <MasterDeleteProcessingNotice
+      action-hint="当前角色已自动定位；可先解除用户或菜单授权后返回。"
+    />
     <section class="role-page__overview art-card-xs">
       <header class="role-page__hero">
         <div class="role-page__identity">
@@ -108,6 +111,7 @@
 
     <RoleEditDialog ref="roleEditDialogRef" @success="refreshData" />
     <RolePermissionDialog ref="rolePermissionDialogRef" @success="refreshData" />
+    <MasterDataDeleteGuard ref="deleteGuardRef" @cleared="refreshData" />
     <ArtDrawer ref="organizationDrawerRef">
       <OrganizationScopeFilter
         scope-type="role"
@@ -159,16 +163,25 @@
   import { useUserStore } from '@/store/modules/user'
   import TreeUtils from '@/utils/tree'
   import OrganizationScopeFilter from '../shared/organization-scope-filter.vue'
+  import MasterDataDeleteGuard, {
+    type MasterDataDeleteGuardOpenOptions
+  } from '@/components/business/master-data-delete-guard/index.vue'
+  import MasterDeleteProcessingNotice from '@/components/business/master-delete-processing-notice/index.vue'
 
   defineOptions({ name: 'Role' })
 
   const { confirmAction } = useArtFeedback()
+  const route = useRoute()
 
   type RoleListItem = Api.SystemManage.RoleListItem
   type OrganizationFilterItem = Api.SystemManage.OrganizationScopeFilterItem
   type TenantListItem = Api.SystemManage.TenantListItem
   type RoleSearchParams = Api.SystemManage.RoleSearchParams & {
     daterange?: [string, string] | null
+  }
+
+  interface MasterDataDeleteGuardExpose {
+    inspect: (options: MasterDataDeleteGuardOpenOptions) => Promise<boolean>
   }
 
   const searchForm = ref({
@@ -189,6 +202,7 @@
     childrenKey: 'children'
   })
   const organizationDrawerRef = ref<ArtDrawerExpose<Record<string, never>>>()
+  const deleteGuardRef = ref<MasterDataDeleteGuardExpose>()
   const isDesktopOrganizationLayout = useMediaQuery('(min-width: 1201px)')
   const organizationTree = ref<OrganizationFilterItem[]>([])
   const tenantOptions = ref<TenantListItem[]>([])
@@ -524,7 +538,15 @@
   }
 
   const handleDeleteRole = async (row: RoleListItem): Promise<void> => {
+    if (!row.id) return
     try {
+      const blocked = await deleteGuardRef.value?.inspect({
+        resourceType: 'role',
+        resourceLabel: '角色',
+        resources: [{ id: row.id, label: row.roleName }]
+      })
+      if (blocked) return
+
       await confirmAction(
         `删除后，已关联该角色的用户将失去对应菜单权限。确认删除「${row.roleName}」吗？`,
         '删除角色',
@@ -556,6 +578,7 @@
       enabled,
       startTime,
       endTime,
+      recordId: typeof route.query.recordId === 'string' ? route.query.recordId : undefined,
       from,
       to
     })
@@ -639,6 +662,13 @@
     await loadTenantOptions()
     await loadOrganizationTree()
   })
+
+  watch(
+    () => route.query.recordId,
+    () => {
+      void refreshData()
+    }
+  )
 </script>
 
 <style scoped lang="scss">

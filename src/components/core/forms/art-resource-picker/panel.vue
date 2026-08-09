@@ -40,9 +40,12 @@
         <div class="flex flex-wrap px-[2px] pt-[2px]">
           <el-space fill wrap :fill-ratio="9">
             <template v-for="resource in resources" :key="resource.id">
-              <div
+              <button
+                type="button"
                 class="resource-item"
                 :class="{ active: isSelected(resource) }"
+                :aria-pressed="isSelected(resource)"
+                :aria-label="`选择资源 ${resource.originName}`"
                 @click="handleClick(resource)"
                 @dblclick="handleDbClick(resource)"
                 @contextmenu.prevent="(e: MouseEvent) => executeContextmenu(e, resource)"
@@ -79,7 +82,7 @@
                 <div class="resource-item__selected">
                   <ArtSvgIcon icon="ri-checkbox-circle-fill" class="resource-item__selected-icon" />
                 </div>
-              </div>
+              </button>
             </template>
             <template v-if="resources.length === 0">
               <el-skeleton
@@ -178,6 +181,7 @@
         </div>
       </template>
     </div>
+    <MasterDataDeleteGuard ref="deleteGuardRef" @cleared="handleGetResourceList" />
   </div>
 </template>
 
@@ -191,6 +195,9 @@
   import useResourceStore from '@/store/modules/resource'
   import { pageInfoHandler } from '@utils/table/tableUtils'
   import { openFilePreview } from '@/hooks/core/useFilePreview'
+  import MasterDataDeleteGuard, {
+    type MasterDataDeleteGuardOpenOptions
+  } from '@/components/business/master-data-delete-guard/index.vue'
 
   defineOptions({ name: 'ArtResourcePanel' })
 
@@ -210,6 +217,10 @@
   const modelValue = defineModel<string | string[] | undefined>()
 
   const resourceStore = useResourceStore()
+  interface MasterDataDeleteGuardExpose {
+    inspect: (options: MasterDataDeleteGuardOpenOptions) => Promise<boolean>
+  }
+  const deleteGuardRef = ref<MasterDataDeleteGuardExpose>()
 
   const menuRef = ref<InstanceType<typeof ArtMenuRight>>()
 
@@ -342,7 +353,7 @@
       }
       if (item.key === 'delete') {
         if (resource?.id) {
-          handleDelete(resource.id)
+          void handleDelete(resource)
         }
       }
     }
@@ -481,14 +492,23 @@
   /**
    * 删除选中
    */
-  async function handleDelete(id: number): Promise<void> {
-    ElMessageBox.confirm(`确定要删除这条数据吗？`, '系统提示', {
+  async function handleDelete(resource: Resource): Promise<void> {
+    if (!resource.id) return
+    const blocked = await deleteGuardRef.value?.inspect({
+      resourceType: 'attachment',
+      resourceLabel: '附件资源',
+      resources: [{ id: String(resource.id), label: resource.originName || '未命名附件' }]
+    })
+    if (blocked) return
+
+    ElMessageBox.confirm(`确定要删除“${resource.originName || '未命名附件'}”吗？`, '删除附件', {
       confirmButtonText: '确定',
       cancelButtonText: '取消',
-      type: 'error'
+      type: 'warning',
+      confirmButtonClass: 'el-button--danger'
     }).then(async () => {
       const params = {
-        id
+        id: resource.id
       }
       try {
         loading.value = true
@@ -725,7 +745,10 @@
           inset 0 4px 6px -1px rgba(0, 0, 0, 0.1),
           inset 0 2px 4px -2px rgba(0, 0, 0, 0.1);
 
-        transition: all 0.3s;
+        transition:
+          background-color 0.3s,
+          box-shadow 0.3s,
+          transform 0.3s;
 
         /* dark-bg-dark-4 dark-shadow-dark-9 */
         :root.dark & {
@@ -748,7 +771,9 @@
         color: #111827;
         cursor: pointer;
 
-        transition: all 0.3s;
+        transition:
+          color 0.3s,
+          background-color 0.3s;
 
         :root.dark & {
           color: #e5e7eb;

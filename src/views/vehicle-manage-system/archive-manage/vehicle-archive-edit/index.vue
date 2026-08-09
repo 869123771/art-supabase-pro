@@ -151,6 +151,7 @@
   import { fetchCarrierOptions, fetchDriverOptions } from '@/api/tms'
   import { uploadAttachment } from '@/api/common'
   import { useUserStore } from '@/store/modules/user'
+  import { useDocumentNumberRule } from '@/hooks/core/useDocumentNumberRule'
   import { downloadAttachment, getFileExtension, viewAttachment } from '@/utils/file'
   import { renderAttachmentLink } from '@/components/core/media/art-file-viewer/render'
 
@@ -361,6 +362,7 @@
   })
 
   const form = reactive<VehicleArchiveForm>(createInitialForm())
+  const archiveNumber = useDocumentNumberRule('vehicle.archive_self')
 
   const rules: FormRules<VehicleArchiveForm> = {
     plateNo: [{ required: true, message: '请输入车牌号', trigger: 'blur' }],
@@ -437,7 +439,16 @@
       }
     },
     { label: '所属公司', key: 'companyName', type: 'input', props: { readonly: true } },
-    { label: '自编号', key: 'selfNo', type: 'input' },
+    {
+      label: '自编号',
+      key: 'selfNo',
+      type: 'input',
+      props: {
+        maxlength: 50,
+        ...archiveNumber.inputProps(Boolean(form.id), '可手工填写车辆自编号', true)
+      },
+      description: archiveNumber.description.value
+    },
     { label: '车型', key: 'vehicleType', type: 'select', props: { options: options.vehicleType } },
     {
       label: '国产/进口',
@@ -910,6 +921,7 @@
     try {
       await Promise.all([
         loadArchiveDetail(),
+        archiveNumber.loadRule(),
         userStore.ensureDictLoaded('FILE_EXTENSION_LABEL_MAP')
       ])
       await nextTick()

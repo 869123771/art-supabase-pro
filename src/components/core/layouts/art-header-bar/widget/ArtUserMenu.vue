@@ -12,11 +12,13 @@
     popper-style="padding: 5px 16px;"
   >
     <template #reference>
-      <img
-        class="size-8.5 mr-5 c-p rounded-full max-sm:w-6.5 max-sm:h-6.5 max-sm:mr-[16px]"
-        :src="userInfo.avatar || defaultAvatar"
-        alt="avatar"
-      />
+      <button type="button" class="mr-5 rounded-full max-sm:mr-[16px]" aria-label="打开用户菜单">
+        <img
+          class="size-8.5 c-p rounded-full max-sm:w-6.5 max-sm:h-6.5"
+          :src="userInfo.avatar || defaultAvatar"
+          alt="用户头像"
+        />
+      </button>
     </template>
     <template #default>
       <div class="pt-3">
@@ -54,9 +56,9 @@
             <span>{{ $t('topBar.user.lockScreen') }}</span>
           </li>
           <div class="w-full h-px my-2 bg-g-300/80"></div>
-          <div class="log-out c-p" @click="loginOut">
+          <button type="button" class="log-out c-p" @click="loginOut">
             {{ $t('topBar.user.logout') }}
-          </div>
+          </button>
         </ul>
       </div>
     </template>

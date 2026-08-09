@@ -47,15 +47,65 @@
                 <ElIcon><Location /></ElIcon>
               </template>
               <template #append>
-                <ElButton :icon="MapLocation" :disabled="disabled" @click="handleOpenPicker">
-                  地图选择
-                </ElButton>
+                <div class="art-address-picker__actions">
+                  <ElButton
+                    v-if="showLocateButton"
+                    class="art-address-picker__action"
+                    :disabled="disabled || locating"
+                    aria-label="定位当前位置"
+                    title="定位当前位置"
+                    @click="() => void locateCurrent()"
+                  >
+                    <span class="art-address-picker__action-content">
+                      <ElIcon v-if="locating" class="is-loading"><Loading /></ElIcon>
+                      <ElIcon v-else><Aim /></ElIcon>
+                      <span>当前位置</span>
+                    </span>
+                  </ElButton>
+                  <ElButton
+                    class="art-address-picker__action"
+                    :disabled="disabled"
+                    aria-label="打开地图选择地址"
+                    title="打开地图选择地址"
+                    @click="handleOpenPicker"
+                  >
+                    <span class="art-address-picker__action-content">
+                      <ElIcon><MapLocation /></ElIcon>
+                      <span>地图选择</span>
+                    </span>
+                  </ElButton>
+                </div>
               </template>
             </ElInput>
 
+            <div class="art-address-picker__mobile-actions">
+              <ElButton
+                v-if="showLocateButton"
+                :disabled="disabled || locating"
+                aria-label="定位当前位置"
+                @click="() => void locateCurrent()"
+              >
+                <span class="art-address-picker__action-content">
+                  <ElIcon v-if="locating" class="is-loading"><Loading /></ElIcon>
+                  <ElIcon v-else><Aim /></ElIcon>
+                  <span>当前位置</span>
+                </span>
+              </ElButton>
+              <ElButton
+                :disabled="disabled"
+                aria-label="打开地图选择地址"
+                @click="handleOpenPicker"
+              >
+                <span class="art-address-picker__action-content">
+                  <ElIcon><MapLocation /></ElIcon>
+                  <span>地图选择</span>
+                </span>
+              </ElButton>
+            </div>
+
             <div v-if="showCoordinateHint" class="art-address-picker__hint">
               <ElTag :type="statusMeta.type" effect="light" round>{{ statusMeta.label }}</ElTag>
-              <span v-if="hasCoordinate">{{ longitude }}, {{ latitude }}</span>
+              <span v-if="hasCoordinate">经度 {{ longitude }} · 纬度 {{ latitude }}</span>
               <span v-else>地图选择后自动回填地址和坐标</span>
             </div>
           </div>
@@ -124,15 +174,18 @@
 </template>
 
 <script setup lang="ts">
-  import { Location, MapLocation } from '@element-plus/icons-vue'
+  import { Aim, Loading, Location, MapLocation } from '@element-plus/icons-vue'
+  import { ElMessage } from 'element-plus'
   import { isNil, trim } from 'lodash-es'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
+  import { useAmapSdk } from '@/hooks/core/useAmapSdk'
   import ArtAddressMap from './modules/map.vue'
   import type {
     AddressCoordinateSource,
     AddressCoordinateStatus,
     AddressCoordinateSystem,
+    AddressLocateOptions,
     AddressLocationPayload,
     AddressMapPickResult,
     AddressRegionOption
@@ -164,7 +217,38 @@
     cascaderProps?: Record<string, unknown>
     openPickerOnFocus?: boolean
     showCoordinateHint?: boolean
+    showLocateButton?: boolean
     hideRegionSelector?: boolean
+  }
+
+  interface AMapLngLatLike {
+    lng?: number
+    lat?: number
+    getLng?: () => number
+    getLat?: () => number
+  }
+
+  interface AMapLocationAddressComponent {
+    province?: string
+    city?: string | string[]
+    district?: string
+    adcode?: string
+  }
+
+  interface AMapGeolocationResult {
+    position?: AMapLngLatLike
+    formattedAddress?: string
+    addressComponent?: AMapLocationAddressComponent
+    info?: string
+    message?: string
+  }
+
+  interface AMapGeolocationInstance {
+    getCurrentPosition: (callback: (status: string, result: AMapGeolocationResult) => void) => void
+  }
+
+  interface AMapLocationNamespace {
+    Geolocation: new (options: Record<string, unknown>) => AMapGeolocationInstance
   }
 
   interface MapExpose {
@@ -206,11 +290,14 @@
     cascaderProps: () => ({}),
     openPickerOnFocus: false,
     showCoordinateHint: true,
+    showLocateButton: false,
     hideRegionSelector: false
   })
 
   const emit = defineEmits<{
     (event: 'address-change', payload: AddressLocationPayload): void
+    (event: 'locate-error', message: string): void
+    (event: 'locate-success', payload: AddressLocationPayload): void
     (event: 'pick-confirm', payload: AddressLocationPayload): void
   }>()
 
@@ -257,6 +344,12 @@
   const draftRegionPath = ref<string[]>([])
   const draftRegionAdcode = ref<string>()
   const mapMessage = ref('')
+  const locating = ref(false)
+  const { loadAmap: loadLocationAmap } = useAmapSdk<AMapLocationNamespace>({
+    key: () => props.amapKey || import.meta.env.VITE_AMAP_KEY,
+    plugins: ['AMap.Geolocation'],
+    securityJsCode: () => props.amapSecurityJsCode || import.meta.env.VITE_AMAP_SECURITY_JS_CODE
+  })
 
   const resolvedRegionOptions = computed(() =>
     props.regionOptions.length ? props.regionOptions : loadedRegionOptions.value
@@ -302,6 +395,7 @@
   const regionText = computed(() => currentRegionPath.value.filter(Boolean).join('/'))
 
   const fullAddress = computed(() => {
+    if (props.hideRegionSelector) return trim(addressDetail.value)
     const region = currentRegionPath.value.filter(Boolean).join('')
     return trim([region, addressDetail.value].filter(Boolean).join(' '))
   })
@@ -326,6 +420,7 @@
   })
 
   const statusMeta = computed(() => {
+    if (locating.value) return { label: '定位中…', type: 'info' as const }
     const statusMap: Record<
       string,
       { label: string; type: 'success' | 'warning' | 'info' | 'danger' }
@@ -432,6 +527,132 @@
       .sort((first, second) => second.length - first.length)
     const matchedPrefix = prefixes.find((prefix) => normalizedAddress.startsWith(prefix))
     return trim(matchedPrefix ? normalizedAddress.slice(matchedPrefix.length) : normalizedAddress)
+  }
+
+  const normalizeLocatedRegionPath = (component?: AMapLocationAddressComponent): string[] => {
+    const city = Array.isArray(component?.city) ? component?.city[0] : component?.city
+    return [component?.province, city, component?.district]
+      .map((value) => trim(String(value ?? '')))
+      .filter(Boolean)
+  }
+
+  const readPosition = (
+    position?: AMapLngLatLike
+  ): { longitude: number; latitude: number } | undefined => {
+    const longitude = typeof position?.getLng === 'function' ? position.getLng() : position?.lng
+    const latitude = typeof position?.getLat === 'function' ? position.getLat() : position?.lat
+    const parsedLongitude = Number(longitude)
+    const parsedLatitude = Number(latitude)
+    if (
+      !Number.isFinite(parsedLongitude) ||
+      !Number.isFinite(parsedLatitude) ||
+      parsedLongitude < -180 ||
+      parsedLongitude > 180 ||
+      parsedLatitude < -90 ||
+      parsedLatitude > 90
+    ) {
+      return undefined
+    }
+    return {
+      longitude: Number(parsedLongitude.toFixed(7)),
+      latitude: Number(parsedLatitude.toFixed(7))
+    }
+  }
+
+  const getLocationErrorMessage = (result?: AMapGeolocationResult): string => {
+    const message = String(result?.message || result?.info || '')
+    if (/permission|denied|拒绝|权限/i.test(message)) {
+      return '定位权限未开启，请在浏览器设置中允许访问位置，或改用地图选点'
+    }
+    if (/timeout|超时/i.test(message)) {
+      return '定位超时，请移动到信号较好的位置后重试，或改用地图选点'
+    }
+    return message ? `当前位置获取失败：${message}` : '暂时无法获取当前位置，请重试或改用地图选点'
+  }
+
+  const applyLocatedAddress = (payload: AddressMapPickResult): AddressLocationPayload => {
+    const nextRegionPath = resolveRegionPath(payload)
+    addressDetail.value = props.hideRegionSelector
+      ? trim(payload.address)
+      : stripRegionPrefix(payload.address, nextRegionPath)
+    regionPath.value = nextRegionPath
+    regionAdcode.value =
+      payload.regionAdcode ?? findRegionAdcode(resolvedRegionOptions.value, nextRegionPath)
+    longitude.value = payload.longitude
+    latitude.value = payload.latitude
+    coordinateSystem.value = 'gcj02'
+    coordinateSource.value = 'device_geolocation'
+    coordinateStatus.value = 'located'
+    geocodeProvider.value = 'amap'
+    geocodedAt.value = new Date().toISOString()
+    setDraftLocation(payload)
+    mapRef.value?.setPickedLocation(payload)
+    mapRef.value?.setZoomAndCenter(17, [Number(payload.longitude), Number(payload.latitude)])
+    const result = createPayload()
+    void nextTick(() => {
+      regionFormItemRef.value?.clearValidate()
+      detailFormItemRef.value?.clearValidate()
+    })
+    emit('address-change', result)
+    emit('locate-success', result)
+    return result
+  }
+
+  const locateCurrent = async (
+    options: AddressLocateOptions = {}
+  ): Promise<AddressLocationPayload | undefined> => {
+    if (props.disabled || locating.value) return undefined
+    locating.value = true
+    try {
+      if (
+        !window.isSecureContext &&
+        !['localhost', '127.0.0.1'].includes(window.location.hostname)
+      ) {
+        throw new Error('浏览器仅允许在 HTTPS 页面使用精确定位')
+      }
+      const AMap = await loadLocationAmap()
+      const result = await new Promise<AMapGeolocationResult>((resolve, reject) => {
+        const geolocation = new AMap.Geolocation({
+          convert: true,
+          enableHighAccuracy: true,
+          extensions: 'all',
+          needAddress: true,
+          showButton: false,
+          showCircle: false,
+          showMarker: false,
+          timeout: 12000
+        })
+        geolocation.getCurrentPosition((status, value) => {
+          if (status === 'complete') {
+            resolve(value)
+            return
+          }
+          reject(new Error(getLocationErrorMessage(value)))
+        })
+      })
+      const position = readPosition(result.position)
+      if (!position) throw new Error('定位结果缺少有效经纬度，请重试或改用地图选点')
+      const regionPath = normalizeLocatedRegionPath(result.addressComponent)
+      const address = trim(result.formattedAddress || '')
+      const payload: AddressMapPickResult = {
+        address: address || `${position.longitude}, ${position.latitude}`,
+        longitude: position.longitude,
+        latitude: position.latitude,
+        regionPath,
+        regionAdcode: result.addressComponent?.adcode
+      }
+      const located = applyLocatedAddress(payload)
+      if (!options.silent) ElMessage.success('当前位置已回填，请核对地址与坐标')
+      return located
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '当前位置获取失败'
+      if (!hasCoordinate.value) coordinateStatus.value = 'failed'
+      emit('locate-error', message)
+      if (!options.silent) ElMessage.warning(message)
+      return undefined
+    } finally {
+      locating.value = false
+    }
   }
 
   const markCoordinateUnconfirmed = (): void => {
@@ -574,7 +795,9 @@
     const nextRegionPath = draftRegionPath.value.length
       ? draftRegionPath.value
       : currentRegionPath.value
-    addressDetail.value = stripRegionPrefix(draftAddress.value, nextRegionPath)
+    addressDetail.value = props.hideRegionSelector
+      ? trim(draftAddress.value)
+      : stripRegionPrefix(draftAddress.value, nextRegionPath)
     longitude.value = draftLongitude.value
     latitude.value = draftLatitude.value
     coordinateSystem.value = 'gcj02'
@@ -642,6 +865,11 @@
     window.removeEventListener('resize', handleViewportResize)
     window.visualViewport?.removeEventListener('resize', handleViewportResize)
   })
+
+  defineExpose({
+    locateCurrent,
+    openPicker: handleOpenPicker
+  })
 </script>
 
 <style scoped lang="scss">
@@ -655,6 +883,66 @@
     &__detail {
       width: 100%;
       min-width: 0;
+    }
+
+    &__actions {
+      display: inline-flex;
+      align-items: stretch;
+      height: 100%;
+    }
+
+    &__action {
+      height: 100%;
+      min-height: var(--el-component-size);
+      padding-inline: 20px;
+      margin: 0 !important;
+      border: 0;
+      border-radius: 0;
+    }
+
+    &__action-content {
+      display: inline-flex;
+      gap: 4px;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      min-height: 16px;
+      line-height: 1;
+    }
+
+    :deep(.art-address-picker__action > span) {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+    }
+
+    &__action-content :deep(.el-icon) {
+      display: inline-flex;
+      flex: none;
+      align-items: center;
+      justify-content: center;
+      width: 16px;
+      height: 16px;
+      margin: 0;
+      font-size: 16px;
+      line-height: 1;
+    }
+
+    &__action-content :deep(svg) {
+      display: block;
+    }
+
+    &__action-content > span {
+      display: inline-flex;
+      align-items: center;
+      height: 16px;
+      margin-left: 0 !important;
+      line-height: 16px;
+    }
+
+    &__mobile-actions {
+      display: none;
     }
 
     &__hint {
@@ -746,6 +1034,41 @@
     .art-address-picker-map {
       &__footer {
         grid-template-columns: minmax(0, 1fr);
+      }
+    }
+  }
+
+  @media (width <= 600px) {
+    :deep(.el-form-item) {
+      display: block;
+    }
+
+    :deep(.el-form-item__label) {
+      justify-content: flex-start;
+      width: 100% !important;
+      height: auto;
+      margin-bottom: 8px;
+      line-height: 20px;
+    }
+
+    :deep(.el-form-item__content) {
+      width: 100%;
+      margin-left: 0 !important;
+    }
+
+    :deep(.el-input-group__append) {
+      display: none;
+    }
+
+    .art-address-picker__mobile-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+
+      :deep(.el-button) {
+        flex: 1;
+        min-width: 0;
+        margin: 0;
       }
     }
   }

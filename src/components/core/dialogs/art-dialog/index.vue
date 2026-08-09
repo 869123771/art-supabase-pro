@@ -335,6 +335,7 @@
 
     return {
       alignCenter: true,
+      appendToBody: true,
       destroyOnClose: true,
       draggable: true,
       ...inheritedAttrs,

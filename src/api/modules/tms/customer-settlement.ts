@@ -16,7 +16,8 @@ const applyStatementFilters = (
   query: SupabaseQueryLike,
   params: CustomerStatementSearchParams
 ): SupabaseQueryLike => {
-  const { customerId, keyword, periodRange, status } = params
+  const { customerId, keyword, periodRange, recordId, status } = params
+  if (recordId) query = query.eq('id', recordId)
   if (customerId) query = query.eq('customer_id', customerId)
   if (status) query = query.eq('status', status)
   if (keyword) {
@@ -113,7 +114,8 @@ export async function createCustomerStatement(params: CreateCustomerStatementPay
         p_period_start: params.periodStart,
         p_period_end: params.periodEnd,
         p_waybill_ids: params.waybillIds,
-        p_remark: params.remark || null
+        p_remark: params.remark || null,
+        p_statement_no: params.statementNo || null
       }),
     { showMessage: true, breakReturn: true }
   )

@@ -1,6 +1,15 @@
 <!-- 图片卡片 -->
 <template>
-  <div class="w-full c-p" @click="handleClick">
+  <article
+    class="w-full c-p"
+    role="button"
+    tabindex="0"
+    data-ui-audit-allow="interactive-card"
+    :aria-label="`查看${props.title}`"
+    @click="handleClick"
+    @keydown.enter="handleClick"
+    @keydown.space.prevent="handleClick"
+  >
     <div class="art-card overflow-hidden">
       <div class="relative w-full aspect-[16/10] overflow-hidden">
         <ElImage
@@ -44,7 +53,7 @@
         </div>
       </div>
     </div>
-  </div>
+  </article>
 </template>
 
 <script setup lang="ts">

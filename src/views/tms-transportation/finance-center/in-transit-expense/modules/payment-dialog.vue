@@ -39,12 +39,14 @@
   import ArtUploadImage from '@/components/core/forms/art-upload-image/index.vue'
   import { executeExpenseReimbursement } from '@/api/tms'
   import { formatCurrencyValue } from '@/utils/ui'
+  import { useDocumentNumberRule } from '@/hooks/core/useDocumentNumberRule'
 
   defineOptions({ name: 'TmsExpensePaymentDialog' })
 
   type Reimbursement = Api.Tms.Finance.ExpenseReimbursementRecord
 
   interface PaymentForm {
+    paymentNo: string
     paymentDate: string
     bankReference: string
     voucherUrls: string[]
@@ -66,7 +68,9 @@
   const dialogRef = ref<ArtDialogExpose<Reimbursement>>()
   const formRef = ref<FormExpose>()
   const state = reactive<{ reimbursement?: Reimbursement }>({ reimbursement: undefined })
+  const paymentNumber = useDocumentNumberRule('tms.expense_payment')
   const createInitialForm = (): PaymentForm => ({
+    paymentNo: '',
     paymentDate: dayjs().format('YYYY-MM-DD'),
     bankReference: '',
     voucherUrls: [],
@@ -75,6 +79,15 @@
   const form = reactive<FormGroup>({
     data: createInitialForm(),
     rules: {
+      paymentNo: [
+        {
+          validator: (_rule, value, callback) =>
+            paymentNumber.manualRequired(false) && !String(value || '').trim()
+              ? callback(new Error('请输入费用付款单号'))
+              : callback(),
+          trigger: 'blur'
+        }
+      ],
       paymentDate: [{ required: true, message: '请选择实际付款日期', trigger: 'change' }],
       bankReference: [
         {
@@ -87,6 +100,13 @@
       ]
     },
     items: computed<FormItem[]>(() => [
+      {
+        label: '付款单号',
+        key: 'paymentNo',
+        type: 'input',
+        props: { maxlength: 50, ...paymentNumber.inputProps(false, '请输入费用付款单号') },
+        description: paymentNumber.description.value
+      },
       {
         label: '付款日期',
         key: 'paymentDate',
@@ -125,6 +145,7 @@
     if (!state.reimbursement) return false
     try {
       await executeExpenseReimbursement({
+        paymentNo: form.data.paymentNo.trim() || null,
         reimbursementId: state.reimbursement.id,
         paymentDate: form.data.paymentDate,
         bankReference: form.data.bankReference.trim() || null,
@@ -146,7 +167,7 @@
   }
 
   async function handleOpen(row: Reimbursement): Promise<void> {
-    await resetForm()
+    await Promise.all([resetForm(), paymentNumber.loadRule()])
     state.reimbursement = structuredClone(toRaw(row))
     await dialogRef.value?.handleOpen(row, {
       title: '出纳登记付款',

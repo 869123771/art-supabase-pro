@@ -99,6 +99,7 @@
   } from '@/components/core/forms/art-data-select/types'
   import ArtExcelImport from '@/components/core/forms/art-excel-import/index.vue'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
+  import { useDocumentNumberRule } from '@/hooks/core/useDocumentNumberRule'
   import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
   import ArtTable from '@/components/core/tables/art-table/index.vue'
   import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
@@ -159,6 +160,7 @@
   const dialogRef = ref<ArtDialogExpose<RoutineInspection | undefined>>()
   const attachmentDialogRef = ref<ArtDialogExpose<void>>()
   const formRef = ref<FormExpose>()
+  const routineNumber = useDocumentNumberRule('vehicle.routine_inspection')
   const attachmentFormRef = ref<FormExpose>()
 
   const createInitialForm = (): RoutineInspection => ({
@@ -200,7 +202,16 @@
       { label: '基础信息', key: 'baseSection', type: 'divider', span: 24 },
       { label: '车牌号', key: 'vehicleId', span: 12 },
       { label: '所属公司', key: 'companyName', type: 'input', props: { disabled: true } },
-      { label: '例检编号', key: 'routineInspectionNo', type: 'input', props: { maxlength: 80 } },
+      {
+        label: '例检编号',
+        key: 'routineInspectionNo',
+        type: 'input',
+        props: {
+          maxlength: 80,
+          ...routineNumber.inputProps(Boolean(form.data.id), '请输入例检编号', true)
+        },
+        description: routineNumber.description.value
+      },
       {
         label: '例检类型',
         key: 'inspectionType',
@@ -240,7 +251,9 @@
     ]),
     rules: computed<FormRules<RoutineInspection>>(() => ({
       vehicleId: [{ required: true, message: '请选择车辆', trigger: 'change' }],
-      routineInspectionNo: [{ required: true, message: '请输入例检编号', trigger: 'blur' }],
+      routineInspectionNo: routineNumber.manualRequired(Boolean(form.data.id))
+        ? [{ required: true, message: '请输入例检编号', trigger: 'blur' }]
+        : [],
       inspectionType: [{ required: true, message: '请选择例检类型', trigger: 'change' }],
       inspectionTime: [{ required: true, message: '请选择例检时间', trigger: 'change' }],
       inspector: [{ required: true, message: '请输入检查人', trigger: 'blur' }],
@@ -454,7 +467,7 @@
   }
 
   const handleOpen = async (row?: RoutineInspection): Promise<void> => {
-    await resetForm()
+    await Promise.all([resetForm(), routineNumber.loadRule()])
     if (row?.id) replaceForm(row)
 
     await dialogRef.value?.handleOpen(row, {

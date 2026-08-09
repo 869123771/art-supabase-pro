@@ -1,5 +1,8 @@
 <template>
   <div class="organization-page art-full-height">
+    <MasterDeleteProcessingNotice
+      action-hint="当前组织已自动定位；请先处理成员、角色或下级组织。"
+    />
     <section class="organization-page__overview art-card-xs">
       <header class="organization-page__hero">
         <div class="organization-page__identity">
@@ -77,6 +80,7 @@
 
     <OrganizationDialog ref="organizationDialogRef" @success="handleSaveSuccess" />
     <OrganizationDetailDrawer ref="organizationDetailDrawerRef" />
+    <MasterDataDeleteGuard ref="deleteGuardRef" @cleared="handleDeleteDependenciesCleared" />
   </div>
 </template>
 
@@ -101,6 +105,10 @@
   import TreeUtils from '@/utils/tree'
   import OrganizationDialog from './modules/organization-dialog.vue'
   import OrganizationDetailDrawer from './modules/organization-detail-drawer.vue'
+  import MasterDataDeleteGuard, {
+    type MasterDataDeleteGuardOpenOptions
+  } from '@/components/business/master-data-delete-guard/index.vue'
+  import MasterDeleteProcessingNotice from '@/components/business/master-delete-processing-notice/index.vue'
 
   defineOptions({ name: 'Organization' })
 
@@ -119,6 +127,10 @@
     handleOpen: (row: Organization) => Promise<void>
   }
 
+  interface MasterDataDeleteGuardExpose {
+    inspect: (options: MasterDataDeleteGuardOpenOptions) => Promise<boolean>
+  }
+
   interface OverviewState {
     organizations: number
     members: number
@@ -127,12 +139,14 @@
   }
 
   const { confirmAction } = useArtFeedback()
+  const route = useRoute()
   const userStore = useUserStore()
   const { getDictMap } = storeToRefs(userStore)
   const treeUtils = new TreeUtils({ idKey: 'id', parentKey: 'parentId', childrenKey: 'children' })
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const organizationDialogRef = ref<OrganizationDialogExpose>()
   const organizationDetailDrawerRef = ref<OrganizationDetailDrawerExpose>()
+  const deleteGuardRef = ref<MasterDataDeleteGuardExpose>()
   const organizationDepthMap = shallowRef(new Map<string, number>())
   const overview = reactive<OverviewState>({
     organizations: 0,
@@ -142,6 +156,7 @@
   })
 
   const searchForm = ref<OrganizationSearchParams>({
+    recordId: typeof route.query.recordId === 'string' ? route.query.recordId : '',
     keyword: '',
     organizationType: undefined,
     status: undefined
@@ -359,9 +374,6 @@
   const fetchTableData = (params: OrganizationSearchParams) => fetchGetOrganizationTree(params)
 
   const getOrganizationActions = (row: Organization): ButtonMoreItem[] => {
-    const hasDependencies = Boolean(
-      row.children?.length || row.members?.length || row.roles?.length
-    )
     return [
       {
         key: 'addChild',
@@ -377,11 +389,11 @@
       },
       {
         key: 'delete',
-        label: hasDependencies ? '存在关联，不能删除' : '删除组织',
-        icon: hasDependencies ? 'ri:lock-line' : 'ri:delete-bin-4-line',
-        color: hasDependencies ? 'var(--el-text-color-disabled)' : 'var(--el-color-danger)',
+        label: '删除组织',
+        icon: 'ri:delete-bin-4-line',
+        color: 'var(--el-color-danger)',
         auth: 'System:Organization:Delete',
-        disabled: row.isSystem || hasDependencies
+        disabled: row.isSystem
       }
     ]
   }
@@ -444,6 +456,13 @@
   const handleDelete = async (row: Organization): Promise<void> => {
     if (!row.id) return
     try {
+      const blocked = await deleteGuardRef.value?.inspect({
+        resourceType: 'organization',
+        resourceLabel: '组织',
+        resources: [{ id: row.id, label: row.organizationName }]
+      })
+      if (blocked) return
+
       await confirmAction(
         `删除「${row.organizationName}」后无法恢复。仅无下级组织、无成员且无角色的节点可以删除。`,
         '删除组织',
@@ -460,6 +479,18 @@
       // 用户取消或数据库阻止删除时，反馈由统一请求层处理。
     }
   }
+
+  const handleDeleteDependenciesCleared = (): void => {
+    void tableQueryRef.value?.refreshData()
+  }
+
+  watch(
+    () => route.query.recordId,
+    (recordId) => {
+      searchForm.value.recordId = typeof recordId === 'string' ? recordId : ''
+      void tableQueryRef.value?.refreshData()
+    }
+  )
 </script>
 
 <style scoped lang="scss">

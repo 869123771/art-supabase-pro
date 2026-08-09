@@ -6,30 +6,37 @@
     </div>
 
     <div class="flex-c md:justify-end max-md:mt-3 max-sm:!hidden">
-      <div
+      <button
         v-if="showSearchBar != null"
+        type="button"
         class="button"
         @click="search"
         :class="showSearchBar ? 'active !bg-theme hover:!bg-theme/80' : ''"
+        :aria-label="showSearchBar ? '收起搜索条件' : '展开搜索条件'"
+        :title="showSearchBar ? '收起搜索条件' : '展开搜索条件'"
+        :aria-pressed="showSearchBar"
       >
         <ArtSvgIcon icon="ri:search-line" :class="showSearchBar ? 'text-white' : 'text-g-700'" />
-      </div>
-      <div
+      </button>
+      <button
         v-if="shouldShow('refresh')"
+        type="button"
         class="button"
         @click="refresh"
         :class="{ loading: loading && isManualRefresh }"
+        aria-label="刷新表格"
+        title="刷新表格"
       >
         <ArtSvgIcon
           icon="ri:refresh-line"
           :class="loading && isManualRefresh ? 'animate-spin text-g-600' : ''"
         />
-      </div>
+      </button>
 
       <ElDropdown v-if="shouldShow('size')" @command="handleTableSizeChange">
-        <div class="button">
+        <button type="button" class="button" aria-label="调整表格密度" title="调整表格密度">
           <ArtSvgIcon icon="ri:arrow-up-down-fill" />
-        </div>
+        </button>
         <template #dropdown>
           <ElDropdownMenu>
             <div
@@ -49,20 +56,32 @@
         </template>
       </ElDropdown>
 
-      <div v-if="shouldShow('fullscreen')" class="button" @click="toggleFullScreen">
+      <button
+        v-if="shouldShow('fullscreen')"
+        type="button"
+        class="button"
+        :aria-label="isFullScreen ? '退出全屏' : '表格全屏'"
+        :title="isFullScreen ? '退出全屏' : '表格全屏'"
+        :aria-pressed="isFullScreen"
+        @click="toggleFullScreen"
+      >
         <ArtSvgIcon
           :icon="isFullScreen ? 'dashicons:fullscreen-exit-alt' : 'dashicons:fullscreen-alt'"
         />
-      </div>
+      </button>
 
       <!-- 列设置 -->
       <ElPopover v-if="shouldShow('columns')" placement="bottom" trigger="click">
         <template #reference>
-          <div class="button">
+          <button type="button" class="button" aria-label="设置显示列" title="设置显示列">
             <ArtSvgIcon icon="ri:align-right" />
-          </div>
+          </button>
         </template>
         <div>
+          <div class="column-presets" aria-label="列显示预设">
+            <button type="button" @click="applyColumnPreset('compact')">精简视图</button>
+            <button type="button" @click="applyColumnPreset('all')">完整视图</button>
+          </div>
           <ElScrollbar max-height="380px">
             <VueDraggable
               v-model="columns"
@@ -103,9 +122,9 @@
       <!-- 其他设置 -->
       <ElPopover v-if="shouldShow('settings')" placement="bottom" trigger="click">
         <template #reference>
-          <div class="button">
+          <button type="button" class="button" aria-label="表格显示设置" title="表格显示设置">
             <ArtSvgIcon icon="ri:settings-line" />
-          </div>
+          </button>
         </template>
         <div>
           <ElCheckbox v-if="showZebra" v-model="isZebra" :value="true">{{
@@ -211,6 +230,20 @@
     const boolValue = !!value
     col.checked = boolValue
     col.visible = boolValue
+  }
+
+  const applyColumnPreset = (preset: 'compact' | 'all'): void => {
+    let visibleBusinessColumns = 0
+    columns.value.forEach((column) => {
+      const isStructural =
+        Boolean(column.fixed || column.disabled) ||
+        ['selection', 'index', 'globalIndex'].includes(String(column.type)) ||
+        column.prop === 'operation'
+      const visible = preset === 'all' || isStructural || visibleBusinessColumns < 5
+
+      if (!isStructural) visibleBusinessColumns += 1
+      updateColumnVisibility(column, visible)
+    })
   }
 
   /** 表格大小选项配置 */
@@ -401,6 +434,32 @@
     font-size: 12px;
     line-height: 1;
     white-space: nowrap;
+  }
+
+  .column-presets {
+    display: flex;
+    gap: 8px;
+    padding-bottom: 10px;
+    margin-bottom: 8px;
+    border-bottom: 1px solid var(--el-border-color-lighter);
+
+    button {
+      flex: 1;
+      min-height: 30px;
+      padding: 0 10px;
+      font-size: 12px;
+      color: var(--el-text-color-regular);
+      cursor: pointer;
+      background: var(--el-fill-color-light);
+      border: 1px solid var(--el-border-color-light);
+      border-radius: var(--el-border-radius-small);
+
+      &:hover,
+      &:focus-visible {
+        color: var(--el-color-primary);
+        border-color: var(--el-color-primary-light-5);
+      }
+    }
   }
 
   @media (width <= 767px) {

@@ -25,6 +25,8 @@
       :on-success="handleTableSuccess"
       focusable
     />
+
+    <MasterDataDeleteGuard ref="deleteGuardRef" @cleared="handleDeleteGuardCleared" />
   </div>
 </template>
 
@@ -45,11 +47,10 @@
   import type { ColumnOption } from '@/types'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatWithDayjs } from '@/utils/time'
-  import {
-    deleteVehicleArchive,
-    fetchVehicleArchiveDeletePreview,
-    fetchVehicleArchiveList
-  } from '@/api/vehicle-manage-system'
+  import { deleteVehicleArchive, fetchVehicleArchiveList } from '@/api/vehicle-manage-system'
+  import MasterDataDeleteGuard, {
+    type MasterDataDeleteGuardOpenOptions
+  } from '@/components/business/master-data-delete-guard/index.vue'
   import { fetchCarrierDetail, fetchCarrierOptions } from '@/api/tms'
   import { useUserStore } from '@/store/modules/user'
   import VehicleWorkspaceHeader, {
@@ -64,6 +65,10 @@
   type CarrierOption = Api.Tms.BasicData.CarrierOption
   type SearchParams = Api.VehicleMgtSys.ArchiveManage.VehicleArchiveSearchParams
   type TableParams = SearchParams & Pick<Api.Common.PaginationParams, 'current' | 'size'>
+
+  interface MasterDataDeleteGuardExpose {
+    inspect: (options: MasterDataDeleteGuardOpenOptions) => Promise<boolean>
+  }
 
   interface TableGroup {
     searchQuery: SearchParams
@@ -88,7 +93,9 @@
   const userStore = useUserStore()
   const { getDictMap } = storeToRefs(userStore)
   const tableQueryRef = ref<ArtTableQueryExpose>()
+  const deleteGuardRef = ref<MasterDataDeleteGuardExpose>()
   const initialCarrierId = String(route.query.carrierId || '')
+  const initialRecordId = String(route.query.recordId || '')
   const overview = reactive<{ total: number; rows: VehicleArchive[] }>({
     total: 0,
     rows: []
@@ -147,6 +154,7 @@
   const table: UnwrapNestedRefs<TableGroup> = reactive<TableGroup>({
     searchQuery: {
       carrierId: initialCarrierId,
+      recordId: initialRecordId,
       companyName: '',
       plateNo: '',
       manufacturer: '',
@@ -189,7 +197,7 @@
       }
     ]),
     headerActions: computed<ArtTableQueryHeaderAction[]>(() => []),
-    immediate: !initialCarrierId,
+    immediate: !initialCarrierId && !initialRecordId,
     columnsFactory: (): ColumnOption<VehicleArchive>[] => [
       { type: 'globalIndex', label: '序号', width: 64 },
       {
@@ -261,22 +269,27 @@
   })
 
   onMounted(async () => {
-    if (!initialCarrierId) return
+    if (!initialCarrierId && !initialRecordId) return
     await nextTick()
     await tableQueryRef.value?.getData()
   })
 
   watch(
-    () => route.query.carrierId,
-    async (value) => {
-      const carrierId = String(value || '')
-      if (table.searchQuery.carrierId === carrierId) return
-
-      table.searchQuery.carrierId = carrierId
+    () => route.fullPath,
+    async () => {
+      const carrierId = String(route.query.carrierId || '')
+      const recordId = String(route.query.recordId || '')
+      if (table.searchQuery.carrierId === carrierId && table.searchQuery.recordId === recordId) {
+        return
+      }
+      Object.assign(table.searchQuery, { carrierId, recordId })
       await nextTick()
       await tableQueryRef.value?.getData()
-    }
+    },
+    { flush: 'post' }
   )
+
+  onActivated(() => void tableQueryRef.value?.getData())
 
   const fetchTableData = (params: TableParams) => {
     const { from, to } = pageInfoHandler({
@@ -364,28 +377,17 @@
     if (!row.id) return
 
     try {
-      const preview = await fetchVehicleArchiveDeletePreview(row.id)
-      const deletePreview = preview.data
-      if (!deletePreview) return
-
-      if (deletePreview.waybillCount > 0) {
-        ElMessage.warning(
-          `车辆“${row.plateNo}”已关联 ${deletePreview.waybillCount} 条运单，禁止删除`
-        )
+      if (
+        await deleteGuardRef.value?.inspect({
+          resourceType: 'vehicle',
+          resourceLabel: '车辆档案',
+          resources: [{ id: String(row.id), label: row.plateNo }]
+        })
+      ) {
         return
       }
-
-      const relatedSummary = deletePreview.relatedCounts
-        .filter((item) => item.count > 0)
-        .map((item) => `${item.label} ${item.count} 条`)
-        .join('，')
-      const message =
-        deletePreview.relatedTotal > 0
-          ? `确定删除车辆档案“${row.plateNo}”吗？该车辆没有关联运单，将一并清理 ${deletePreview.relatedTotal} 条附属记录：${relatedSummary}。删除后无法恢复。`
-          : `确定删除车辆档案“${row.plateNo}”吗？该车辆没有关联运单，删除后无法恢复。`
-
-      await confirmAction(message, '删除确认', {
-        confirmButtonText: deletePreview.relatedTotal > 0 ? '清理并删除' : '删除',
+      await confirmAction(`确定删除车辆档案“${row.plateNo}”吗？删除后无法恢复。`, '删除确认', {
+        confirmButtonText: '删除',
         cancelButtonText: '取消',
         type: 'warning',
         confirmButtonClass: 'el-button--danger'
@@ -396,6 +398,10 @@
       if (error === 'cancel' || error === 'close') return
       ElMessage.error(error instanceof Error ? error.message : '删除失败')
     }
+  }
+
+  const handleDeleteGuardCleared = (): void => {
+    void tableQueryRef.value?.getData()
   }
 </script>
 

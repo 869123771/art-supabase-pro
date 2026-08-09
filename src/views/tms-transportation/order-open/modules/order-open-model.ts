@@ -1,4 +1,3 @@
-import dayjs from 'dayjs'
 import { isNil, round, toNumber, trim } from 'lodash-es'
 
 export type OrderRecord = Api.Tms.Order.OrderRecord
@@ -21,18 +20,10 @@ export function createInitialCargoItem(): CargoItem {
   }
 }
 
-export function createOrderNo(): string {
-  return `NGSJ${dayjs().format('MMDD')}-${Math.floor(100 + Math.random() * 900)}`
-}
-
-export function createCargoNo(): string {
-  return `A${dayjs().format('M-D')}-${Math.floor(10 + Math.random() * 90)}`
-}
-
 export function createInitialForm(): OrderForm {
   return {
-    orderNo: createOrderNo(),
-    cargoNo: createCargoNo(),
+    orderNo: '',
+    cargoNo: '',
     orderStatus: 'pending_load',
     originStationId: null,
     destinationStationId: null,

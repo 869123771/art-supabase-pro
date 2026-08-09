@@ -125,10 +125,12 @@ export async function saveDictTypeTreeOrder(
 
 // 根据类型 ID 查询字典项
 export async function fetchGetDictListByTypeId(
-  params: Partial<Api.DataCenter.DictListItem> & Api.Common.CommonSearchParams
+  params: Partial<Api.DataCenter.DictListItem> &
+    Api.Common.CommonSearchParams & { recordId?: string }
 ) {
-  const { typeId, label = '', code, i18nScope, status } = params
+  const { typeId, label = '', code, i18nScope, status, recordId } = params
   const specs = [
+    { col: 'id', op: 'eq', val: recordId },
     { col: 'typeId', op: 'eq', val: typeId },
     { col: 'label', op: 'ilike', val: `%${label}%` },
     { col: 'code', op: 'eq', val: code },
@@ -144,6 +146,14 @@ export async function fetchGetDictListByTypeId(
 
   query = applyFilters(query, specs, { skipEmpty: true, camelToSnake: true })
   return await responseHandle(() => query as unknown as SupabaseQueryLike, { ignoreCheck: true })
+}
+
+export async function fetchDictTypeIdByDictionaryId(id: string): Promise<string | undefined> {
+  const { data } = await responseHandle<{ typeId?: string } | null>(
+    () => supabase.from('sys_dictionary').select('type_id').eq('id', id).maybeSingle(),
+    { ignoreCheck: true }
+  )
+  return data?.typeId
 }
 
 // 字典项列表

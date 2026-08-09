@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
   compareAiOrderPayloads,
+  normalizeAiOrderProviderMetadata,
   validateAiOrderProviderPayload
 } from '../../supabase/functions/_shared/ai-order-contract'
 
@@ -47,6 +48,25 @@ test('AI order contract rejects unsafe numeric and confidence values', () => {
   assert.ok(result.errors.some((error) => error.includes('confidence')))
   assert.ok(result.errors.some((error) => error.includes('transportFee')))
   assert.ok(result.errors.some((error) => error.includes('quantity')))
+})
+
+test('AI order metadata normalizer accepts nested cargo confidence without rejecting the order', () => {
+  const payload = createValidPayload()
+  payload.fieldConfidence = {
+    originStationName: '0.98',
+    cargoItems: [{ cargoName: 0.91, quantity: 0.86 }]
+  }
+
+  const normalized = normalizeAiOrderProviderMetadata(payload)
+  assert.deepEqual((normalized as typeof payload).fieldConfidence, {
+    originStationName: 0.98,
+    'cargoItems.0.cargoName': 0.91,
+    'cargoItems.0.quantity': 0.86
+  })
+  assert.deepEqual(validateAiOrderProviderPayload(normalized), {
+    valid: true,
+    errors: []
+  })
 })
 
 test('AI order comparison only scores fields actually proposed by AI', () => {

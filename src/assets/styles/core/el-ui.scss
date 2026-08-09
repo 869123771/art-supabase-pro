@@ -347,7 +347,7 @@ html.dark .el-card {
 // 修改el-tag样式
 .el-tag {
   font-weight: 500;
-  transition: all 0s !important;
+  transition: none !important;
 
   &.el-tag--default {
     height: 26px !important;
@@ -436,7 +436,9 @@ html.dark .el-card {
       width: 30px;
       height: 30px;
       border-radius: var(--art-control-radius);
-      transition: all 0.3s;
+      transition:
+        color 0.3s,
+        background-color 0.3s;
 
       &:hover {
         color: var(--art-gray-900) !important;
@@ -455,7 +457,9 @@ html.dark .el-card {
     height: 30px;
     padding: 0;
     border-radius: var(--art-control-radius);
-    transition: all 0.3s;
+    transition:
+      color 0.3s,
+      background-color 0.3s;
 
     &:hover {
       color: var(--art-gray-900) !important;
@@ -477,7 +481,9 @@ html.dark .el-card {
       width: 30px;
       height: 30px;
       border-radius: var(--art-control-radius);
-      transition: all 0.3s;
+      transition:
+        color 0.3s,
+        background-color 0.3s;
 
       &:hover {
         color: var(--art-gray-900) !important;

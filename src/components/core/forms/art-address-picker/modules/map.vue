@@ -805,4 +805,15 @@
       background: var(--el-fill-color-lighter);
     }
   }
+
+  @media (width <= 600px) {
+    .art-address-map__panel {
+      top: 12px;
+      left: 12px;
+      width: calc(100% - 24px);
+      height: min(260px, 46%);
+      max-height: calc(100% - 24px);
+      padding: 10px;
+    }
+  }
 </style>

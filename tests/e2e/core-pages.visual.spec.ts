@@ -67,7 +67,20 @@ async function resetScrollPositions(page: Page): Promise<void> {
   await page.waitForTimeout(100)
 }
 
-test('核心页面布局稳定', async ({ page }) => {
+async function applyVisualMode(page: Page, projectName: string): Promise<void> {
+  await page.evaluate(
+    ({ dark, boxMode }) => {
+      document.documentElement.classList.toggle('dark', dark)
+      document.documentElement.dataset.boxMode = boxMode
+    },
+    {
+      dark: projectName.includes('dark'),
+      boxMode: projectName.includes('shadow') ? 'shadow-mode' : 'border-mode'
+    }
+  )
+}
+
+test('核心页面布局稳定', async ({ page }, testInfo) => {
   test.setTimeout(180_000)
   const pageErrors: string[] = []
   page.on('pageerror', (error) => pageErrors.push(error.message))
@@ -86,6 +99,7 @@ test('核心页面布局稳定', async ({ page }) => {
       await expect(page).toHaveURL(new RegExp(`#${visualPage.path.replaceAll('/', '\\/')}$`))
 
       const root = await waitForPageReady(page, visualPage.root)
+      await applyVisualMode(page, testInfo.project.name)
       await expectNoHorizontalOverflow(page)
       await resetScrollPositions(page)
 

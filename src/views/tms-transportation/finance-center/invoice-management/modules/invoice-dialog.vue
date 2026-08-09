@@ -98,13 +98,42 @@
       </template>
     </ArtForm>
 
-    <ElAlert
-      class="mt-4"
-      :type="selection.statements.length ? 'success' : 'info'"
-      :closable="false"
-      show-icon
-      :title="selectionSummary"
-    />
+    <div class="invoice-dialog__feedback-stack">
+      <ElAlert
+        v-if="ocrInvoiceNoWarning"
+        class="invoice-dialog__notice"
+        type="warning"
+        :closable="false"
+        show-icon
+        title="识别出的发票号码未自动填入"
+        :description="ocrInvoiceNoWarning"
+      />
+
+      <div
+        v-if="duplicateCheckPending"
+        class="invoice-dialog__checking"
+        role="status"
+        aria-live="polite"
+      >
+        正在核验发票号码是否重复…
+      </div>
+      <ElAlert
+        v-else-if="effectiveDuplicateInvoice"
+        class="invoice-dialog__notice"
+        :type="canMergeDuplicate ? 'warning' : 'error'"
+        :closable="false"
+        show-icon
+        :title="duplicateAlertTitle"
+        :description="duplicateAlertDescription"
+      />
+
+      <ElAlert
+        :type="selection.statements.length ? 'success' : 'info'"
+        :closable="false"
+        show-icon
+        :title="selectionSummary"
+      />
+    </div>
 
     <section v-if="selection.statements.length" class="invoice-dialog__links art-card-xs">
       <ArtSectionTitle>对账单关联金额</ArtSectionTitle>
@@ -157,13 +186,18 @@
     reviewInvoiceOcrArtifact,
     fetchCarrierOptions,
     fetchCustomerSelectorList,
+    fetchActiveInvoiceByLegalNo,
     fetchInvoiceDetail,
     fetchInvoiceableStatementList,
+    isInvoiceLegalNumberConflict,
     resolveInvoiceCounterparty,
     saveInvoice
   } from '@/api/tms'
+  import { fetchRecognitionArtifactDetail } from '@/api/intelligent-recognition'
   import { useUserStore } from '@/store/modules/user'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
+  import { toInvoiceOcrAnalyzeResponse } from '@/utils/intelligent-recognition'
+  import { useDocumentNumberRule } from '@/hooks/core/useDocumentNumberRule'
 
   defineOptions({ name: 'TmsInvoiceDialog' })
 
@@ -193,6 +227,7 @@
 
   interface InvoiceFormModel {
     id?: string
+    invoiceRecordNo: string
     direction: Api.Tms.Finance.InvoiceDirection
     counterpartyId: string
     invoiceType: Api.Tms.Finance.InvoiceType
@@ -243,9 +278,18 @@
   const ocrPanelRef = ref<InvoiceOcrPanelExpose>()
   const counterpartyCreateDialogRef = ref<CounterpartyCreateDialogExpose>()
   const ocrArtifactId = ref<string>()
+  const ocrInvoiceNoWarning = ref('')
+  const duplicateInvoice = ref<Api.Tms.Finance.InvoiceDuplicateRecord>()
+  const ocrSourceDuplicateInvoice = ref<Api.Tms.Finance.InvoiceDuplicateRecord>()
+  const duplicateCheckPending = ref(false)
+  const invoiceRecordNumber = useDocumentNumberRule('tms.invoice_record')
+  let duplicateCheckSequence = 0
+
+  const INVOICE_NO_PATTERN = /^[A-Z0-9]{6,30}$/
 
   const createInitialForm = (): InvoiceFormModel => ({
     id: undefined,
+    invoiceRecordNo: '',
     direction: 'output',
     counterpartyId: '',
     invoiceType: 'vat_special',
@@ -281,6 +325,17 @@
     data: reactive<InvoiceFormModel>(createInitialForm()),
     items: computed(() => [
       { label: '基本信息', key: 'baseSection', type: 'divider', span: 24 },
+      {
+        label: '登记单号',
+        key: 'invoiceRecordNo',
+        type: 'input',
+        span: 8,
+        props: {
+          maxlength: 50,
+          ...invoiceRecordNumber.inputProps(Boolean(form.data.id), '请输入开票登记号', true)
+        },
+        description: invoiceRecordNumber.description.value
+      },
       {
         label: '发票方向',
         key: 'direction',
@@ -324,7 +379,18 @@
       { label: '发票抬头', key: 'invoiceTitle', type: 'input', span: 12 },
       { label: '纳税人识别号', key: 'taxNumber', type: 'input', span: 12 },
       { label: '发票代码', key: 'invoiceCode', type: 'input', span: 12 },
-      { label: '发票号码', key: 'invoiceNo', type: 'input', span: 12 },
+      {
+        label: '发票号码',
+        key: 'invoiceNo',
+        type: 'input',
+        span: 12,
+        props: {
+          maxlength: 30,
+          placeholder: '请输入 6–30 位数字或字母',
+          onInput: clearInvoiceDuplicate,
+          onBlur: handleInvoiceNoBlur
+        }
+      },
       { label: '金额信息', key: 'amountSection', type: 'divider', span: 24 },
       {
         label: '不含税金额',
@@ -382,11 +448,23 @@
       }
     ]),
     rules: {
+      invoiceRecordNo: [
+        {
+          validator: (_rule, value, callback) =>
+            invoiceRecordNumber.manualRequired(Boolean(form.data.id)) && !String(value || '').trim()
+              ? callback(new Error('请输入开票登记号'))
+              : callback(),
+          trigger: 'blur'
+        }
+      ],
       direction: [{ required: true, message: '请选择发票方向', trigger: 'change' }],
       counterpartyId: [{ required: true, message: '请选择往来单位', trigger: 'change' }],
       invoiceType: [{ required: true, message: '请选择发票类型', trigger: 'change' }],
       issueDate: [{ required: true, message: '请选择开票日期', trigger: 'change' }],
-      invoiceNo: [{ required: true, message: '请输入发票号码', trigger: 'blur' }],
+      invoiceNo: [
+        { required: true, message: '请输入发票号码', trigger: 'blur' },
+        { validator: validateInvoiceNo, trigger: 'blur' }
+      ],
       amountExcludingTax: [
         { required: true, type: 'number', min: 0, message: '不含税金额不能小于 0', trigger: 'blur' }
       ],
@@ -472,6 +550,45 @@
     )
   )
 
+  const effectiveDuplicateInvoice = computed(
+    () => duplicateInvoice.value ?? ocrSourceDuplicateInvoice.value
+  )
+
+  const canMergeDuplicate = computed(
+    () =>
+      Boolean(ocrArtifactId.value) &&
+      !form.data.id &&
+      effectiveDuplicateInvoice.value?.status === 'draft'
+  )
+
+  const duplicateStatusLabel = computed(() => {
+    const status = effectiveDuplicateInvoice.value?.status
+    if (!status) return ''
+    return (
+      getDictMap.value.tmsInvoiceStatus?.find((item) => item.value === status)?.label ??
+      {
+        draft: '草稿',
+        pending_review: '待审核',
+        issued: '已开票',
+        certified: '已认证',
+        voided: '已作废'
+      }[status]
+    )
+  })
+
+  const duplicateAlertTitle = computed(() =>
+    canMergeDuplicate.value ? '已发现关联草稿，本次保存将安全归并' : '该票据已登记'
+  )
+
+  const duplicateAlertDescription = computed(() => {
+    const invoice = effectiveDuplicateInvoice.value
+    if (!invoice) return ''
+    const identity = `${invoice.invoiceRecordNo}（${duplicateStatusLabel.value}）`
+    return canMergeDuplicate.value
+      ? `识别来源已对应记录 ${identity}。补正票号并保存时将更新该草稿，同时保留原有关联，避免重复建单。`
+      : `已有记录 ${identity}，不能重复创建。请修改发票号码，或返回台账处理已有记录。`
+  })
+
   const attachmentUrls = computed<string[]>({
     get: () =>
       form.data.attachments
@@ -539,6 +656,86 @@
 
   function roundMoney(value: number): number {
     return Math.round((Number(value) + Number.EPSILON) * 100) / 100
+  }
+
+  function normalizeInvoiceNo(value: unknown): string {
+    return String(value ?? '')
+      .trim()
+      .replace(/\s+/g, '')
+      .toUpperCase()
+  }
+
+  function validateInvoiceNo(
+    _rule: unknown,
+    value: unknown,
+    callback: (error?: Error) => void
+  ): void {
+    const normalized = normalizeInvoiceNo(value)
+    if (!normalized || INVOICE_NO_PATTERN.test(normalized)) {
+      callback()
+      return
+    }
+    callback(new Error('发票号码应为 6–30 位数字或字母，不能包含小数点或金额符号'))
+  }
+
+  function clearInvoiceDuplicate(): void {
+    duplicateCheckSequence += 1
+    duplicateInvoice.value = undefined
+    duplicateCheckPending.value = false
+  }
+
+  async function handleInvoiceNoBlur(): Promise<void> {
+    form.data.invoiceNo = normalizeInvoiceNo(form.data.invoiceNo)
+    if (INVOICE_NO_PATTERN.test(form.data.invoiceNo)) ocrInvoiceNoWarning.value = ''
+    await checkDuplicateInvoice()
+  }
+
+  async function checkDuplicateInvoice(): Promise<
+    Api.Tms.Finance.InvoiceDuplicateRecord | undefined
+  > {
+    const invoiceNo = normalizeInvoiceNo(form.data.invoiceNo)
+    const sequence = ++duplicateCheckSequence
+    duplicateInvoice.value = undefined
+    if (!INVOICE_NO_PATTERN.test(invoiceNo)) {
+      duplicateCheckPending.value = false
+      return undefined
+    }
+
+    duplicateCheckPending.value = true
+    try {
+      const { data, error } = await fetchActiveInvoiceByLegalNo({
+        direction: form.data.direction,
+        invoiceNo,
+        excludeId: form.data.id
+      })
+      if (sequence !== duplicateCheckSequence) return duplicateInvoice.value
+      if (error) return undefined
+      duplicateInvoice.value = data ?? undefined
+      return duplicateInvoice.value
+    } finally {
+      if (sequence === duplicateCheckSequence) duplicateCheckPending.value = false
+    }
+  }
+
+  async function checkOcrSourceDuplicate(invoiceNo?: string | null): Promise<void> {
+    ocrSourceDuplicateInvoice.value = undefined
+    const sourceInvoiceNo = String(invoiceNo ?? '').trim()
+    if (!sourceInvoiceNo) return
+    const { data } = await fetchActiveInvoiceByLegalNo({
+      direction: form.data.direction,
+      invoiceNo: sourceInvoiceNo,
+      excludeId: form.data.id
+    })
+    ocrSourceDuplicateInvoice.value = data ?? undefined
+  }
+
+  function errorMessage(error: unknown): string {
+    if (error instanceof Error && error.message) return error.message
+    if (error && typeof error === 'object' && 'message' in error) {
+      const message = (error as { message?: unknown }).message
+      if (typeof message === 'string' && message) return message
+    }
+    return '发票保存失败，请稍后重试'
   }
 
   function recalculateTax(): void {
@@ -636,6 +833,8 @@
     selection.parties = []
     clearStatements()
     resetCounterpartyResolution()
+    clearInvoiceDuplicate()
+    ocrSourceDuplicateInvoice.value = undefined
     ocrArtifactId.value = undefined
     ocrPanelRef.value?.reset()
   }
@@ -657,6 +856,9 @@
     selection.originalLinkAmounts = {}
     resetCounterpartyResolution()
     ocrArtifactId.value = undefined
+    ocrInvoiceNoWarning.value = ''
+    clearInvoiceDuplicate()
+    ocrSourceDuplicateInvoice.value = undefined
     ocrPanelRef.value?.reset()
     await nextTick()
     formRef.value?.clearValidate()
@@ -671,7 +873,7 @@
       form.data.direction === 'output' ? invoice.buyerName : invoice.sellerName
     const recognizedCounterpartyTaxNo =
       form.data.direction === 'output' ? invoice.buyerTaxNumber : invoice.sellerTaxNumber
-    const textFields = ['invoiceCode', 'invoiceNo', 'issueDate'] as const
+    const textFields = ['invoiceCode', 'issueDate'] as const
     const numberFields = ['taxRate', 'amountExcludingTax', 'taxAmount', 'totalAmount'] as const
 
     if (invoice.invoiceType) patch.invoiceType = invoice.invoiceType
@@ -680,6 +882,14 @@
     for (const field of textFields) {
       const value = invoice[field]
       if (value) Object.assign(patch, { [field]: value })
+    }
+    const recognizedInvoiceNo = normalizeInvoiceNo(invoice.invoiceNo)
+    if (invoice.invoiceNo && !INVOICE_NO_PATTERN.test(recognizedInvoiceNo)) {
+      patch.invoiceNo = ''
+      ocrInvoiceNoWarning.value = `识别值“${String(invoice.invoiceNo).slice(0, 40)}”不像有效票号，请对照票面手工补录后再保存。`
+    } else if (recognizedInvoiceNo) {
+      patch.invoiceNo = recognizedInvoiceNo
+      ocrInvoiceNoWarning.value = ''
     }
     for (const field of numberFields) {
       const value = invoice[field]
@@ -691,7 +901,11 @@
     selection.parties = []
     clearStatements()
     ocrArtifactId.value = result.artifactId
-    await resolveRecognizedCounterparty(result.artifactId)
+    await Promise.all([
+      resolveRecognizedCounterparty(result.artifactId),
+      checkDuplicateInvoice(),
+      checkOcrSourceDuplicate(invoice.invoiceNo)
+    ])
     await nextTick(() => formRef.value?.clearValidate())
     ElMessage.success(
       counterpartyResolution.status === 'matched'
@@ -793,6 +1007,7 @@
     )
     replaceForm({
       id: data.id,
+      invoiceRecordNo: data.invoiceRecordNo,
       direction: data.direction,
       counterpartyId: counterpartyId ?? '',
       invoiceType: data.invoiceType,
@@ -827,21 +1042,49 @@
   }
 
   async function handleSubmit(): Promise<boolean> {
+    form.data.invoiceNo = normalizeInvoiceNo(form.data.invoiceNo)
     try {
       await formRef.value?.validate()
     } catch {
       return false
     }
 
-    const statementLinks = selection.statements.map((row) => ({
+    const activeDuplicate = (await checkDuplicateInvoice()) ?? ocrSourceDuplicateInvoice.value
+    const shouldMergeDuplicate =
+      Boolean(ocrArtifactId.value) && !form.data.id && activeDuplicate?.status === 'draft'
+    if (activeDuplicate && !shouldMergeDuplicate) {
+      ElMessage.warning('该发票号码已登记，请处理已有记录或修改票号')
+      return false
+    }
+
+    let statementLinks = selection.statements.map((row) => ({
       statementId: String(row.statementId),
       linkedAmount: Number(selection.linkAmounts[String(row.statementId)] ?? 0)
     }))
+    if (shouldMergeDuplicate && activeDuplicate && !statementLinks.length) {
+      const { data: existingInvoice } = await fetchInvoiceDetail(activeDuplicate.id)
+      if (!existingInvoice) {
+        ElMessage.error('已有草稿读取失败，为避免覆盖原有关联，本次未保存')
+        return false
+      }
+      statementLinks = (existingInvoice.statementLinks ?? []).map((item) => ({
+        statementId: item.statementId,
+        linkedAmount: Number(item.linkedAmount)
+      }))
+    }
     if (statementLinks.some((item) => item.linkedAmount <= 0)) return false
-    if (selectedLinkedAmount.value > form.data.totalAmount + 0.01) return false
+    const linkedAmountTotal = statementLinks.reduce((total, item) => total + item.linkedAmount, 0)
+    if (linkedAmountTotal > form.data.totalAmount + 0.01) {
+      ElMessage.warning('关联对账金额不能超过发票价税合计')
+      return false
+    }
 
     const payload: Api.Tms.Finance.SaveInvoicePayload = {
-      id: form.data.id,
+      id: activeDuplicate?.id ?? form.data.id,
+      invoiceRecordNo:
+        (shouldMergeDuplicate
+          ? activeDuplicate?.invoiceRecordNo
+          : form.data.invoiceRecordNo.trim()) || null,
       direction: form.data.direction,
       invoiceType: form.data.invoiceType,
       customerId: form.data.direction === 'output' ? form.data.counterpartyId : null,
@@ -862,10 +1105,22 @@
 
     try {
       const { data: savedInvoiceId } = await saveInvoice(payload)
+      form.data.id = savedInvoiceId ?? payload.id ?? undefined
       await recordInvoiceOcrReview(savedInvoiceId ?? form.data.id)
+      ElMessage.success(
+        shouldMergeDuplicate
+          ? `已归并更新草稿 ${activeDuplicate?.invoiceRecordNo ?? ''}`
+          : '发票草稿保存成功'
+      )
       emit('success')
       return true
-    } catch {
+    } catch (error) {
+      if (isInvoiceLegalNumberConflict(error)) {
+        await checkDuplicateInvoice()
+        ElMessage.warning('该发票号码刚刚被登记，请核对已有记录后再保存')
+        return false
+      }
+      ElMessage.error(errorMessage(error))
       return false
     }
   }
@@ -899,7 +1154,7 @@
   }
 
   async function handleOpen(row?: Invoice, ocrContext?: InvoiceOcrContext): Promise<void> {
-    await resetForm()
+    await Promise.all([resetForm(), invoiceRecordNumber.loadRule()])
     if (ocrContext) form.data.direction = ocrContext.direction
     await dialogRef.value?.handleOpen(row, {
       title: row ? '编辑发票' : ocrContext ? '复核识别发票' : '登记发票',
@@ -934,7 +1189,61 @@
     return handleOpen(undefined, { result, direction })
   }
 
-  defineExpose({ handleOpen, handleOpenFromOcr })
+  async function handleOpenFromArtifact(artifactId: string): Promise<boolean> {
+    let restored = false
+    let closeAfterLoad = false
+
+    await dialogRef.value?.handleOpen(undefined, {
+      title: '复核识别发票',
+      subtitle: '正在恢复识别结果与原始票据，请稍候',
+      confirmText: '保存草稿',
+      contentMaxHeight: '76vh',
+      loading: true,
+      loadingText: '正在恢复识别结果…',
+      onOpen: async (_data, api) => {
+        try {
+          await Promise.all([resetForm(), invoiceRecordNumber.loadRule()])
+          const { data, error } = await fetchRecognitionArtifactDetail(artifactId)
+          if (error || !data || data.feature !== 'invoice_ocr') {
+            ElMessage.error('识别任务恢复失败，请返回待复核后重试')
+            closeAfterLoad = true
+            return
+          }
+          if (data.status !== 'pending') {
+            ElMessage.info('该识别任务已处理，已为你保留发票台账页面')
+            closeAfterLoad = true
+            return
+          }
+
+          form.data.direction = data.metadata?.direction === 'input' ? 'input' : 'output'
+          const retainedImageUrls = data.metadata?.imageUrls
+          if (Array.isArray(retainedImageUrls)) {
+            attachmentUrls.value = retainedImageUrls.filter(
+              (url): url is string => typeof url === 'string' && /^https?:\/\//i.test(url)
+            )
+          }
+          await handleApplyOcrResult(toInvoiceOcrAnalyzeResponse(data))
+          api.setOptions({
+            subtitle: '识别结果已恢复，请重点核对低置信字段、往来单位和金额勾稽关系'
+          })
+          restored = true
+        } catch {
+          ElMessage.error('识别任务恢复失败，请返回待复核后重试')
+          closeAfterLoad = true
+        } finally {
+          api.setLoading(false)
+          if (closeAfterLoad) await api.handleClose(true)
+        }
+      },
+      onConfirm: handleSubmit,
+      onReset: () => void resetForm(),
+      dialogProps: { appendToBody: true, closeOnClickModal: false }
+    })
+
+    return restored
+  }
+
+  defineExpose({ handleOpen, handleOpenFromOcr, handleOpenFromArtifact })
 </script>
 
 <style scoped lang="scss">
@@ -965,8 +1274,8 @@
     }
 
     &__counterparty-alert {
-      min-width: 0;
       flex: 1;
+      min-width: 0;
       padding: 7px 10px;
 
       :deep(.el-alert__icon) {
@@ -995,6 +1304,31 @@
     &__links {
       padding: 16px;
       margin-top: 16px;
+    }
+
+    &__feedback-stack {
+      display: grid;
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    &__notice {
+      :deep(.el-alert__title) {
+        font-weight: 650;
+      }
+
+      :deep(.el-alert__description) {
+        line-height: 1.55;
+      }
+    }
+
+    &__checking {
+      padding: 9px 12px;
+      font-size: 13px;
+      color: var(--el-text-color-secondary);
+      background: var(--el-fill-color-lighter);
+      border: 1px solid var(--el-border-color-lighter);
+      border-radius: 8px;
     }
 
     @media (width <= 768px) {

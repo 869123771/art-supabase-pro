@@ -22,6 +22,7 @@
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
+  import { useDocumentNumberRule } from '@/hooks/core/useDocumentNumberRule'
   import {
     addPartsCategory,
     editPartsCategory,
@@ -77,13 +78,17 @@
     return roots
   }
 
-  const rules: FormRules<PartsCategoryForm> = {
+  const categoryNumber = useDocumentNumberRule('vehicle.part_category')
+
+  const rules = computed<FormRules<PartsCategoryForm>>(() => ({
     categoryName: [
       { required: true, message: '请输入类别名称', trigger: 'blur' },
       { min: 2, max: 80, message: '长度应为 2 到 80 个字符', trigger: 'blur' }
     ],
     categoryCode: [
-      { required: true, message: '请输入类别编码', trigger: 'blur' },
+      ...(categoryNumber.manualRequired(Boolean(form.id))
+        ? [{ required: true, message: '请输入类别编码', trigger: 'blur' as const }]
+        : []),
       {
         pattern: /^[A-Za-z0-9_-]{2,50}$/,
         message: '编码仅支持字母、数字、下划线和中横线，长度 2 到 50',
@@ -92,7 +97,7 @@
     ],
     sort: [{ type: 'number', min: 0, max: 9999, message: '排序范围为 0 到 9999', trigger: 'blur' }],
     remark: [{ max: 500, message: '备注不能超过 500 个字符', trigger: 'blur' }]
-  }
+  }))
 
   const items = computed<FormItem[]>(() => [
     { label: '层级与编码', key: 'structureSection', type: 'divider', span: 24 },
@@ -133,8 +138,9 @@
       span: 14,
       props: {
         maxlength: 50,
-        placeholder: '如 engine_part'
-      }
+        ...categoryNumber.inputProps(Boolean(form.id), '如 engine_part', true)
+      },
+      description: categoryNumber.description.value
     },
     {
       label: '排序',
@@ -208,7 +214,7 @@
   }
 
   const handleOpen = async (row?: PartsCategory, parent?: PartsCategory): Promise<void> => {
-    await resetForm()
+    await Promise.all([resetForm(), categoryNumber.loadRule()])
     const isEdit = !!row?.id
 
     if (isEdit) {

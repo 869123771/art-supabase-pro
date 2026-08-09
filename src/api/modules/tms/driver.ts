@@ -28,7 +28,8 @@ const applyDriverFilters = (
   query: SupabaseQueryLike,
   params: DriverSearchParams
 ): SupabaseQueryLike => {
-  const { carrierId, driverType, gender, enabled, keyword, createTimeRange } = params
+  const { carrierId, driverType, gender, enabled, keyword, createTimeRange, recordId } = params
+  if (recordId) query = query.eq('id', recordId)
   if (carrierId) query = query.eq('carrier_id', carrierId)
   if (driverType) query = query.eq('driver_type', driverType)
   if (gender) query = query.eq('gender', gender)
@@ -133,13 +134,15 @@ export async function editDriver(params: Driver) {
 }
 
 export async function deleteDriver(id: string) {
-  return await responseHandle(() => supabase.from('tms_driver').delete().eq('id', id), {
-    showMessage: true
-  })
+  return await responseHandle(
+    () => supabase.from('tms_driver').delete({ count: 'exact' }).eq('id', id),
+    { showMessage: true, breakReturn: true, requireAffected: true }
+  )
 }
 
 export async function deleteDriverBatch(ids: string[]) {
-  return await responseHandle(() => supabase.from('tms_driver').delete().in('id', ids), {
-    showMessage: true
-  })
+  return await responseHandle(
+    () => supabase.from('tms_driver').delete({ count: 'exact' }).in('id', ids),
+    { showMessage: true, breakReturn: true, requireAffected: true }
+  )
 }

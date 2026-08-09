@@ -39,7 +39,8 @@
             v-for="(item, index) in searchResult"
             :key="index"
           >
-            <div
+            <button
+              type="button"
               class="mt-2 h-12 flex-cb rounded-custom-sm bg-g-200/80 px-4 text-sm text-g-700"
               :class="isHighlighted(index) ? 'highlighted !bg-theme/70 !text-white' : ''"
               @click="searchGoPage(item)"
@@ -47,7 +48,7 @@
             >
               {{ formatMenuTitle(item.meta.title) }}
               <ArtSvgIcon v-show="isHighlighted(index)" icon="fluent:arrow-enter-left-20-filled" />
-            </div>
+            </button>
           </div>
         </div>
 
@@ -58,6 +59,9 @@
           <p class="text-xs text-g-500">{{ $t('search.historyTitle') }}</p>
           <div class="mt-1.5 w-full">
             <div
+              role="button"
+              tabindex="0"
+              data-ui-audit-allow="composite-history-item"
               class="box mt-2 h-12 c-p flex-cb rounded-custom-sm bg-g-200/80 px-4 text-sm text-g-800"
               v-for="(item, index) in historyResult"
               :key="index"
@@ -67,15 +71,19 @@
                   : ''
               "
               @click="searchGoPage(item)"
+              @keydown.enter="searchGoPage(item)"
+              @keydown.space.prevent="searchGoPage(item)"
               @mouseenter="highlightOnHoverHistory(index)"
             >
               {{ formatMenuTitle(item.meta.title) }}
-              <div
+              <button
+                type="button"
+                :aria-label="`删除搜索历史：${formatMenuTitle(item.meta.title)}`"
                 class="size-5 selected-icon select-none rounded-full text-g-500 flex-cc c-p"
                 @click.stop="deleteHistory(index)"
               >
                 <ArtSvgIcon icon="ri:close-large-fill" class="text-xs" />
-              </div>
+              </button>
             </div>
           </div>
         </div>

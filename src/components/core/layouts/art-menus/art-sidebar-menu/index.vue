@@ -67,8 +67,10 @@
       :style="{ background: getMenuTheme.background }"
     >
       <!-- Logo、系统名称 -->
-      <div
+      <button
+        type="button"
         class="header"
+        aria-label="返回首页"
         @click="navigateToHome"
         :style="{
           background: getMenuTheme.background
@@ -76,7 +78,7 @@
       >
         <ArtLogo v-if="!isDualMenu" class="logo" />
 
-        <p
+        <span
           :class="{ 'is-dual-menu-name': isDualMenu }"
           :style="{
             color: getMenuTheme.systemNameColor,
@@ -84,8 +86,8 @@
           }"
         >
           {{ siteName }}
-        </p>
-      </div>
+        </span>
+      </button>
       <ElScrollbar :style="scrollbarStyle">
         <ElMenu
           :class="'el-menu-' + getMenuTheme.theme"
@@ -109,21 +111,30 @@
       </ElScrollbar>
 
       <!-- 双列菜单右侧折叠按钮 -->
-      <div class="dual-menu-collapse-btn" v-if="isDualMenu" @click="toggleMenuVisibility">
+      <button
+        v-if="isDualMenu"
+        type="button"
+        class="dual-menu-collapse-btn"
+        :aria-label="menuOpen ? '收起侧边菜单' : '展开侧边菜单'"
+        :aria-expanded="menuOpen"
+        @click="toggleMenuVisibility"
+      >
         <ArtSvgIcon
           class="text-g-500/70"
           :icon="menuOpen ? 'ri:arrow-left-wide-fill' : 'ri:arrow-right-wide-fill'"
         />
-      </div>
+      </button>
 
-      <div
+      <button
+        type="button"
+        aria-label="切换侧边菜单"
         class="menu-model"
         @click="toggleMenuVisibility"
         :style="{
           opacity: !menuOpen ? 0 : 1,
           transform: showMobileModal ? 'scale(1)' : 'scale(0)'
         }"
-      />
+      ></button>
     </div>
   </div>
 </template>

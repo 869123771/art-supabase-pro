@@ -40,12 +40,14 @@
   import ArtUploadImage from '@/components/core/forms/art-upload-image/index.vue'
   import { executeCarrierPaymentApplication } from '@/api/tms'
   import { formatCurrencyValue } from '@/utils/ui'
+  import { useDocumentNumberRule } from '@/hooks/core/useDocumentNumberRule'
 
   defineOptions({ name: 'TmsPaymentApplicationExecuteDialog' })
 
   type Application = Api.Tms.Finance.CarrierPaymentApplicationRecord
 
   interface ExecuteForm {
+    transactionNo: string
     transactionDate: string
     bankReference: string
     voucherUrls: string[]
@@ -66,8 +68,10 @@
   const dialogRef = ref<ArtDialogExpose<Application>>()
   const formRef = ref<FormExpose>()
   const application = shallowRef<Application>()
+  const transactionNumber = useDocumentNumberRule('tms.cash_transaction')
 
   const createInitialForm = (): ExecuteForm => ({
+    transactionNo: '',
     transactionDate: dayjs().format('YYYY-MM-DD'),
     bankReference: '',
     voucherUrls: []
@@ -76,6 +80,15 @@
   const form = reactive<FormGroup>({
     data: createInitialForm(),
     rules: {
+      transactionNo: [
+        {
+          validator: (_rule, value, callback) =>
+            transactionNumber.manualRequired(false) && !String(value || '').trim()
+              ? callback(new Error('请输入付款流水号'))
+              : callback(),
+          trigger: 'blur'
+        }
+      ],
       transactionDate: [{ required: true, message: '请选择实际付款日期', trigger: 'change' }],
       bankReference: [
         {
@@ -95,6 +108,14 @@
     },
     items: computed<FormItem[]>(() => [
       { label: '付款登记', key: 'base', type: 'divider', span: 24 },
+      {
+        label: '付款流水号',
+        key: 'transactionNo',
+        type: 'input',
+        span: 24,
+        props: { maxlength: 50, ...transactionNumber.inputProps(false, '请输入付款流水号') },
+        description: transactionNumber.description.value
+      },
       {
         label: '实际付款日期',
         key: 'transactionDate',
@@ -135,6 +156,7 @@
     }
     try {
       const { data } = await executeCarrierPaymentApplication({
+        transactionNo: form.data.transactionNo.trim() || null,
         applicationId: application.value.id,
         transactionDate: form.data.transactionDate,
         bankReference: form.data.bankReference.trim() || null,
@@ -155,7 +177,7 @@
   }
 
   async function handleOpen(row: Application): Promise<void> {
-    await resetForm()
+    await Promise.all([resetForm(), transactionNumber.loadRule()])
     application.value = row
     await dialogRef.value?.handleOpen(row, {
       title: `登记付款 · ${row.applicationNo}`,

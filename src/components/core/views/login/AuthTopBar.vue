@@ -13,16 +13,19 @@
         <div
           class="color-dots absolute right-0 rounded-full flex-c gap-2 rounded-5 px-2.5 py-2 pr-9 pl-2.5 opacity-0"
         >
-          <div
+          <button
             v-for="(color, index) in mainColors"
             :key="color"
+            type="button"
             class="color-dot relative size-5 c-p flex-cc rounded-full opacity-0"
             :class="{ active: color === systemThemeColor }"
             :style="{ background: color, '--index': index }"
+            :aria-label="`切换主题色 ${color}`"
+            :aria-pressed="color === systemThemeColor"
             @click="changeThemeColor(color)"
           >
             <ArtSvgIcon v-if="color === systemThemeColor" icon="ri:check-fill" class="text-white" />
-          </div>
+          </button>
         </div>
         <div class="btn palette-btn relative z-[2] h-8 w-8 c-p flex-cc tad-300">
           <ArtSvgIcon
@@ -36,12 +39,16 @@
         @command="changeLanguage"
         popper-class="langDropDownStyle"
       >
-        <div class="btn language-btn h-8 w-8 c-p flex-cc tad-300">
+        <button
+          type="button"
+          class="btn language-btn h-8 w-8 c-p flex-cc tad-300"
+          aria-label="切换语言"
+        >
           <ArtSvgIcon
             icon="ri:translate-2"
             class="text-[19px] text-g-800 transition-colors duration-300"
           />
-        </div>
+        </button>
         <template #dropdown>
           <ElDropdownMenu>
             <div v-for="lang in languageOptions" :key="lang.value" class="lang-btn-item">
@@ -56,16 +63,19 @@
           </ElDropdownMenu>
         </template>
       </ElDropdown>
-      <div
+      <button
         v-if="shouldShowThemeToggle"
+        type="button"
         class="btn theme-btn h-8 w-8 c-p flex-cc tad-300"
+        :aria-label="isDark ? '切换到浅色模式' : '切换到深色模式'"
+        :aria-pressed="isDark"
         @click="themeAnimation"
       >
         <ArtSvgIcon
           :icon="isDark ? 'ri:sun-fill' : 'ri:moon-line'"
           class="text-xl text-g-800 transition-colors duration-300"
         />
-      </div>
+      </button>
     </div>
   </div>
 </template>
@@ -120,7 +130,10 @@
   .color-dot {
     box-shadow: 0 2px 4px rgb(0 0 0 / 15%);
     transform: translateX(20px) scale(0.8);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition:
+      opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+      transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+      box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     transition-delay: calc(var(--index) * 0.05s);
   }
 

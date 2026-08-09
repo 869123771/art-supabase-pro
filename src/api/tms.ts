@@ -23,6 +23,7 @@ export {
 export {
   addCustomer,
   addCustomerAddress,
+  cleanupCustomerDeleteSafeDependencies,
   deleteCustomer,
   deleteCustomerAddress,
   deleteCustomerAddressBatch,
@@ -32,10 +33,21 @@ export {
   exportCustomerList,
   fetchCustomerAddressList,
   fetchCustomerDefaultAddress,
+  fetchCustomerDeleteDependencyDetails,
+  fetchCustomerDeleteDependencies,
+  fetchCustomerDeleteSafeCleanupCandidates,
   fetchCustomerList,
   fetchCustomerOptions,
   fetchCustomerSelectorList,
   importCustomers
+} from '@/api/modules/tms/customer'
+export type {
+  CustomerDeleteDependency,
+  CustomerDeleteDependencyDetail,
+  CustomerDeleteDependencyCode,
+  CustomerDeleteSafeCleanupCandidate,
+  CustomerDeleteSafeCleanupCode,
+  CustomerDeleteSafeCleanupResult
 } from '@/api/modules/tms/customer'
 export {
   addCustomerPrice,
@@ -174,12 +186,14 @@ export {
   createInvoiceCounterpartyFromOcr,
   deleteInvoice,
   exportInvoiceList,
+  fetchActiveInvoiceByLegalNo,
   fetchInvoiceDetail,
   fetchInvoiceList,
   fetchInvoiceableStatementList,
   resolveInvoiceCounterparty,
   reviewInvoiceOcrArtifact,
   saveInvoice,
+  isInvoiceLegalNumberConflict,
   updateInvoiceStatus
 } from '@/api/modules/tms/invoice'
 export {

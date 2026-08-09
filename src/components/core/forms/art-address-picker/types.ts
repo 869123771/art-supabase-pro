@@ -1,6 +1,7 @@
 export type AddressCoordinateSystem = 'gcj02' | 'wgs84' | 'bd09' | (string & {})
 
-export type AddressCoordinateSource = 'geocode' | 'map_pick' | 'import' | (string & {})
+export type AddressCoordinateSource =
+  'device_geolocation' | 'geocode' | 'map_pick' | 'import' | (string & {})
 
 export type AddressCoordinateStatus =
   'pending' | 'located' | 'failed' | 'unconfirmed' | (string & {})
@@ -59,3 +60,12 @@ export interface AddressGeocodeResult {
 export type AddressGeocodeFn = (
   payload: AddressLocationPayload
 ) => Promise<AddressGeocodeResult | null | undefined>
+
+export interface AddressLocateOptions {
+  silent?: boolean
+}
+
+export interface ArtAddressPickerExpose {
+  locateCurrent: (options?: AddressLocateOptions) => Promise<AddressLocationPayload | undefined>
+  openPicker: () => Promise<void>
+}

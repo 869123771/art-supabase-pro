@@ -16,8 +16,9 @@
   .monitor-panel {
     min-width: 0;
     min-height: 0;
-    padding: 14px;
+    padding: 16px;
     background: $panel-background;
+    border: 1px solid var(--transit-panel-border);
     border-radius: var(--el-border-radius-base);
     box-shadow: 0 16px 38px $panel-shadow;
     backdrop-filter: blur(10px);
@@ -26,7 +27,8 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 12px;
+      min-height: 24px;
+      margin-bottom: 14px;
 
       strong {
         font-size: 15px;
@@ -58,9 +60,11 @@
 
     div {
       min-width: 0;
+      min-height: 78px;
       padding: 12px 8px;
       text-align: center;
       background: rgb(7 16 25 / 62%);
+      border: 1px solid rgb(255 255 255 / 4%);
       border-radius: var(--el-border-radius-small);
 
       &:nth-child(2) strong {
@@ -81,6 +85,7 @@
       overflow: hidden;
       text-overflow: ellipsis;
       font-size: 22px;
+      font-variant-numeric: tabular-nums;
       color: #fff;
       white-space: nowrap;
     }

@@ -133,20 +133,6 @@ const assertVehicleArchiveNoWaybill = async (ids: string[]): Promise<void> => {
   }
 }
 
-const deleteRowsByVehicleIds = async (tableName: string, ids: string[]): Promise<void> => {
-  if (!ids.length) return
-
-  const query =
-    ids.length === 1
-      ? supabase.from(tableName).delete({ count: 'exact' }).eq('vehicle_id', ids[0])
-      : supabase.from(tableName).delete({ count: 'exact' }).in('vehicle_id', ids)
-
-  await responseHandle(() => query as unknown as SupabaseProviderQueryLike, {
-    showErrorMessage: true,
-    breakReturn: true
-  })
-}
-
 const refreshCarrierVehicleCounts = async (carrierIds: string[]): Promise<void> => {
   const uniqueCarrierIds = Array.from(new Set(carrierIds.filter(Boolean)))
   if (!uniqueCarrierIds.length) return
@@ -171,6 +157,7 @@ const refreshCarrierVehicleCounts = async (carrierIds: string[]): Promise<void> 
 }
 
 const getVehicleArchiveSearchFilters = (params: VehicleArchiveSearchParams): FilterSpec[] => [
+  { col: 'id', op: 'eq', val: params.recordId },
   { col: 'carrierId', op: 'eq', val: params.carrierId },
   { col: 'plateNo', op: 'ilike', val: params.plateNo ? `%${params.plateNo}%` : undefined },
   {
@@ -319,15 +306,7 @@ export async function fetchVehicleArchiveDeletePreview(id: string) {
 export async function deleteVehicleArchive(id: string) {
   const ids = [id]
   const carrierIds = await fetchVehicleArchiveCarrierIds(ids)
-  const preview = await fetchVehicleArchiveDeletePreview(id)
-
-  if (preview.data.waybillCount > 0) {
-    throw new Error(`该车辆已关联 ${preview.data.waybillCount} 条运单，禁止删除`)
-  }
-
-  await Promise.all(
-    VEHICLE_ARCHIVE_RELATED_DELETE_ITEMS.map((item) => deleteRowsByVehicleIds(item.tableName, ids))
-  )
+  await assertVehicleArchiveNoWaybill(ids)
 
   return await responseHandle(
     () =>
@@ -337,10 +316,7 @@ export async function deleteVehicleArchive(id: string) {
         .eq('id', id) as unknown as SupabaseProviderQueryLike,
     {
       showMessage: true,
-      message:
-        preview.data.relatedTotal > 0
-          ? `删除成功，已清理 ${preview.data.relatedTotal} 条关联附属记录`
-          : '删除成功',
+      message: '删除成功',
       breakReturn: true,
       requireAffected: true,
       noAffectedMessage: WRITE_PERMISSION_DENIED_MESSAGE
@@ -351,10 +327,6 @@ export async function deleteVehicleArchive(id: string) {
 export async function deleteVehicleArchiveBatch(ids: string[]) {
   await assertVehicleArchiveNoWaybill(ids)
   const carrierIds = await fetchVehicleArchiveCarrierIds(ids)
-
-  await Promise.all(
-    VEHICLE_ARCHIVE_RELATED_DELETE_ITEMS.map((item) => deleteRowsByVehicleIds(item.tableName, ids))
-  )
 
   return await responseHandle(
     () =>

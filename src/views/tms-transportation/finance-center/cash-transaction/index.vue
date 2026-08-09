@@ -11,6 +11,13 @@
       ]"
     />
 
+    <CustomerDeleteProcessingNotice
+      v-if="customerDeleteContext.active"
+      :customer-id="customerDeleteContext.customerId"
+      :customer-name="customerDeleteContext.customerName"
+      action-hint="请先查看该流水的核销关系。财务流水仅支持按业务规则撤销核销或作废，不支持直接物理删除。"
+    />
+
     <ArtTableQuery
       ref="tableQueryRef"
       v-model="table.searchQuery"
@@ -58,6 +65,8 @@
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { fetchRecognitionArtifactDetail } from '@/api/intelligent-recognition'
   import TmsWorkspaceHeader from '@/views/tms-transportation/modules/tms-workspace-header.vue'
+  import CustomerDeleteProcessingNotice from '@/views/tms-transportation/modules/customer-delete-processing-notice.vue'
+  import { useCustomerDeleteProcessingContext } from '@/views/tms-transportation/modules/use-customer-delete-processing'
   import { toCashVoucherOcrAnalyzeResponse } from '@/utils/intelligent-recognition'
   import CashTransactionDetailDrawer from './modules/cash-transaction-detail-drawer.vue'
   import CustomerReceiptDialog from './modules/customer-receipt-dialog.vue'
@@ -91,6 +100,7 @@
   const { promptReason } = useArtFeedback()
   const route = useRoute()
   const router = useRouter()
+  const customerDeleteContext = useCustomerDeleteProcessingContext()
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<DialogExpose>()
   const paymentDialogRef = ref<DialogExpose>()
@@ -99,12 +109,13 @@
 
   const table: UnwrapNestedRefs<TableGroup> = reactive<TableGroup>({
     searchQuery: {
-      customerId: '',
-      carrierId: '',
+      customerId: customerDeleteContext.value.customerId,
+      carrierId: customerDeleteContext.value.carrierId,
       direction: typeof route.query.direction === 'string' ? route.query.direction : '',
       status: typeof route.query.status === 'string' ? route.query.status : '',
       dateRange: [],
-      keyword: typeof route.query.keyword === 'string' ? route.query.keyword : ''
+      keyword: typeof route.query.keyword === 'string' ? route.query.keyword : '',
+      recordId: customerDeleteContext.value.recordId
     },
     customerOptions: [],
     carrierOptions: [],
@@ -378,6 +389,31 @@
     }
     await dialogRef.value?.handleOpenFromOcr?.(toCashVoucherOcrAnalyzeResponse(data))
   }
+
+  function syncCustomerDeleteRoute(forceRefresh = false): void {
+    const context = customerDeleteContext.value
+    if (!context.active) return
+    const changed =
+      table.searchQuery.customerId !== context.customerId ||
+      table.searchQuery.carrierId !== context.carrierId ||
+      table.searchQuery.recordId !== context.recordId
+    Object.assign(table.searchQuery, {
+      customerId: context.customerId,
+      carrierId: context.carrierId,
+      recordId: context.recordId
+    })
+    if (changed || forceRefresh) {
+      void nextTick().then(() => tableQueryRef.value?.getData())
+    }
+  }
+
+  watch(
+    () => route.fullPath,
+    () => syncCustomerDeleteRoute(),
+    { flush: 'post' }
+  )
+
+  onActivated(() => syncCustomerDeleteRoute(true))
 
   onMounted(() => {
     void loadCustomerOptions()

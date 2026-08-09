@@ -1,8 +1,14 @@
 <template>
   <aside class="monitor-sidebar">
     <section class="monitor-panel monitor-panel--filters">
-      <ElInput v-model="keyword" :prefix-icon="Search" clearable placeholder="请输入车辆或运单号" />
-      <ElSelect v-model="status" clearable placeholder="所有状态">
+      <ElInput
+        v-model="keyword"
+        :prefix-icon="Search"
+        aria-label="搜索车辆或运单"
+        clearable
+        placeholder="请输入车辆或运单号"
+      />
+      <ElSelect v-model="status" aria-label="筛选运输状态" clearable placeholder="所有状态">
         <ElOption
           v-for="item in statusOptions"
           :key="String(item.value)"
@@ -10,7 +16,7 @@
           :value="String(item.value)"
         />
       </ElSelect>
-      <ElSelect v-model="region" clearable placeholder="所有区域">
+      <ElSelect v-model="region" aria-label="筛选运输区域" clearable placeholder="所有区域">
         <ElOption
           v-for="item in regionOptions"
           :key="item.value"
@@ -110,17 +116,17 @@
                   </span>
                 </span>
               </span>
-              <span
+              <button
+                type="button"
                 class="vehicle-card__poi-refresh"
                 :class="{ 'is-loading': isPoiLoading(item) }"
-                role="button"
-                tabindex="0"
+                aria-label="刷新当前位置"
                 title="刷新当前位置"
                 @click.stop="emit('refresh-poi', item)"
                 @keydown.enter.stop.prevent="emit('refresh-poi', item)"
               >
                 <ElIcon><RefreshRight /></ElIcon>
-              </span>
+              </button>
             </div>
             <div class="vehicle-card__order">
               <span>
@@ -210,8 +216,8 @@
     &--filters {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 10px 8px;
-      padding: 12px;
+      gap: 10px;
+      padding: 16px;
 
       :deep(.el-input) {
         grid-column: 1 / -1;
@@ -219,10 +225,20 @@
 
       :deep(.el-input__wrapper),
       :deep(.el-select__wrapper) {
-        min-height: 34px;
+        min-height: 38px;
         background: rgb(255 255 255 / 8%);
-        border: 0;
+        border: 1px solid rgb(255 255 255 / 6%);
         box-shadow: none;
+
+        &:hover {
+          background: rgb(255 255 255 / 11%);
+          border-color: rgb(126 159 255 / 26%);
+        }
+
+        &.is-focus {
+          border-color: rgb(126 159 255 / 68%);
+          box-shadow: 0 0 0 2px rgb(49 92 255 / 14%);
+        }
       }
     }
   }
@@ -238,6 +254,7 @@
     min-width: 0;
     padding: 14px;
     background: rgb(7 16 25 / 60%);
+    border: 1px solid rgb(255 255 255 / 4%);
     border-radius: var(--el-border-radius-base);
 
     span,
@@ -252,6 +269,7 @@
       display: block;
       margin: 8px 0 4px;
       font-size: 28px;
+      font-variant-numeric: tabular-nums;
       line-height: 1;
     }
 

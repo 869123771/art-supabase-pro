@@ -16,6 +16,11 @@ declare namespace Api {
       finishedAt?: string | null
     }
 
+    interface RecognitionArtifactMetadata extends Record<string, unknown> {
+      imageCount?: number
+      imageUrls?: string[]
+    }
+
     interface RecognitionArtifact {
       id: string
       aiRunId: string
@@ -35,7 +40,7 @@ declare namespace Api {
       entityId?: string | null
       reviewNote?: string | null
       reviewedAt?: string | null
-      metadata?: Record<string, unknown> | null
+      metadata?: RecognitionArtifactMetadata | null
       createBy?: string | null
       createTime: string
       updateBy?: string | null

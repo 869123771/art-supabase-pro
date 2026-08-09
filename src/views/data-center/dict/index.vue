@@ -1,10 +1,13 @@
 <template>
   <div class="art-full-height">
+    <MasterDeleteProcessingNotice
+      action-hint="字典类型和关联字典项已自动定位；处理完成后可返回继续删除。"
+    />
     <div class="dict-layout">
       <ElSplitter class="dict-splitter">
         <ElSplitterPanel size="316px" min="288px" max="380px">
           <div class="dict-tree-panel">
-            <TypeTree @tree-node-click="handleTreeNodeClick" />
+            <TypeTree :target-node-id="deleteTargetTypeId" @tree-node-click="handleTreeNodeClick" />
           </div>
         </ElSplitterPanel>
 
@@ -54,6 +57,7 @@
     </div>
 
     <DictDialog ref="dictDialogRef" @success="handleSaveSuccess" />
+    <MasterDataDeleteGuard ref="deleteGuardRef" @cleared="handleSaveSuccess" />
   </div>
 </template>
 
@@ -76,13 +80,23 @@
   import { ColumnOption } from '@/types'
   import TreeUtils from '@/utils/tree'
   import { useUserStore } from '@/store/modules/user'
-  import { deleteDict, deleteDictBatch, fetchGetDictListByTypeId } from '@/api/data-center'
+  import {
+    deleteDict,
+    deleteDictBatch,
+    fetchDictTypeIdByDictionaryId,
+    fetchGetDictListByTypeId
+  } from '@/api/data-center'
   import TypeTree from './modules/type-tree.vue'
   import DictDialog from './modules/dict-dialog.vue'
+  import MasterDataDeleteGuard, {
+    type MasterDataDeleteGuardOpenOptions
+  } from '@/components/business/master-data-delete-guard/index.vue'
+  import MasterDeleteProcessingNotice from '@/components/business/master-delete-processing-notice/index.vue'
 
   defineOptions({ name: 'Dict' })
 
   const { confirmAction } = useArtFeedback()
+  const route = useRoute()
 
   type DictListItem = Api.DataCenter.DictListItem
   type SearchParams = Partial<Pick<DictListItem, 'label' | 'code' | 'i18nScope' | 'status'>>
@@ -92,6 +106,10 @@
 
   interface DictDialogExpose {
     handleOpen: (data?: DictDialogOpenData) => Promise<void>
+  }
+
+  interface MasterDataDeleteGuardExpose {
+    inspect: (options: MasterDataDeleteGuardOpenOptions) => Promise<boolean>
   }
 
   interface TableGroup {
@@ -121,11 +139,13 @@
 
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const dictDialogRef = ref<DictDialogExpose>()
+  const deleteGuardRef = ref<MasterDataDeleteGuardExpose>()
   const dictTreeUtils = new TreeUtils({
     idKey: 'id',
     parentKey: 'parentId',
     childrenKey: 'children'
   })
+  const deleteTargetTypeId = ref('')
 
   const table: UnwrapNestedRefs<TableGroup> = reactive<TableGroup>({
     searchQuery: {
@@ -181,6 +201,14 @@
           const ids = selectedRows
             .map((row) => row.id)
             .filter((id): id is string => typeof id === 'string')
+          const blocked = await deleteGuardRef.value?.inspect({
+            resourceType: 'dictionary',
+            resourceLabel: '字典项',
+            resources: (selectedRows as DictListItem[])
+              .filter((row) => Boolean(row.id))
+              .map((row) => ({ id: String(row.id), label: row.label || row.name || row.code }))
+          })
+          if (blocked) return
           await deleteDictBatch(ids)
           await tableQueryRef.value?.refreshRemove()
         }
@@ -292,6 +320,7 @@
 
     return fetchGetDictListByTypeId({
       typeId: table.currentDictType.id,
+      recordId: typeof route.query.recordId === 'string' ? route.query.recordId : undefined,
       ...params
     })
   }
@@ -357,6 +386,14 @@
 
   const handleDelete = async (row: DictListItem): Promise<void> => {
     try {
+      if (!row.id) return
+      const blocked = await deleteGuardRef.value?.inspect({
+        resourceType: 'dictionary',
+        resourceLabel: '字典项',
+        resources: [{ id: row.id, label: row.label || row.name || row.code }]
+      })
+      if (blocked) return
+
       await confirmAction('确定要删除该字典项吗？', '删除字典项', {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
@@ -373,6 +410,29 @@
   const handleSaveSuccess = (): void => {
     void tableQueryRef.value?.refreshData()
   }
+
+  const syncDeleteRouteTarget = async (): Promise<void> => {
+    const dependencyCode = String(route.query.dependencyCode || '')
+    const recordId = String(route.query.recordId || '')
+    if (dependencyCode === 'dict_type_child') {
+      deleteTargetTypeId.value = recordId
+      return
+    }
+    if (typeof route.query.dictTypeId === 'string') {
+      deleteTargetTypeId.value = route.query.dictTypeId
+      return
+    }
+    deleteTargetTypeId.value = recordId ? (await fetchDictTypeIdByDictionaryId(recordId)) || '' : ''
+  }
+
+  watch(
+    () => route.fullPath,
+    async () => {
+      await syncDeleteRouteTarget()
+      if (table.currentDictType?.id) await tableQueryRef.value?.getData()
+    },
+    { immediate: true }
+  )
 </script>
 
 <style scoped lang="scss">

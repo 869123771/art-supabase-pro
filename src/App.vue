@@ -7,7 +7,10 @@
       shadow: 'never'
     }"
   >
-    <RouterView></RouterView>
+    <a class="app-skip-link" href="#main-content">跳至主要内容</a>
+    <RouterView v-slot="{ Component }">
+      <component :is="Component" id="main-content" tabindex="-1" />
+    </RouterView>
   </ElConfigProvider>
 </template>
 
@@ -59,3 +62,24 @@
     systemUpgrade()
   })
 </script>
+
+<style>
+  .app-skip-link {
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    z-index: 10000;
+    padding: 9px 14px;
+    color: var(--el-color-white);
+    text-decoration: none;
+    background: var(--el-color-primary);
+    border-radius: var(--el-border-radius-base);
+    box-shadow: var(--el-box-shadow-light);
+    transform: translateY(-160%);
+    transition: transform 0.18s ease;
+  }
+
+  .app-skip-link:focus {
+    transform: translateY(0);
+  }
+</style>

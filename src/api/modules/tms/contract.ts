@@ -23,7 +23,8 @@ const applyContractFilters = (
   query: SupabaseQueryLike,
   params: ContractSearchParams
 ): SupabaseQueryLike => {
-  const { contractStatus, carrierId, billingMethod, keyword, createTimeRange } = params
+  const { contractStatus, carrierId, billingMethod, keyword, createTimeRange, recordId } = params
+  if (recordId) query = query.eq('id', recordId)
   if (contractStatus) query = query.eq('contract_status', contractStatus)
   if (carrierId) query = query.eq('carrier_id', carrierId)
   if (billingMethod) query = query.eq('billing_method', billingMethod)

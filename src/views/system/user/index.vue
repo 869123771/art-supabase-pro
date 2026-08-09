@@ -1,5 +1,8 @@
 <template>
   <div class="user-page art-full-height">
+    <MasterDeleteProcessingNotice
+      action-hint="当前用户已自动定位；可调整组织归属或角色授权后返回。"
+    />
     <section class="user-page__overview art-card-xs">
       <header class="user-page__hero">
         <div class="user-page__identity">
@@ -140,7 +143,7 @@
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { useUserStore } from '@/store/modules/user'
   import {
-    deleteUser,
+    deactivateUser,
     fetchGetEnableTenantList,
     fetchGetUserList,
     fetchGetUserOrganizationTree,
@@ -151,10 +154,12 @@
   import { useSystemParam } from '@/hooks'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import TreeUtils from '@/utils/tree'
+  import MasterDeleteProcessingNotice from '@/components/business/master-delete-processing-notice/index.vue'
 
   defineOptions({ name: 'User' })
 
   const { confirmAction } = useArtFeedback()
+  const route = useRoute()
 
   type UserListItem = Api.SystemManage.UserListItem
   type OrganizationFilterItem = Api.SystemManage.OrganizationScopeFilterItem
@@ -236,6 +241,7 @@
   type TableParams = SearchParams & Pick<Api.Common.PaginationParams, 'current' | 'size'>
 
   const searchForm = ref<SearchParams>({
+    id: typeof route.query.recordId === 'string' ? route.query.recordId : undefined,
     userName: undefined,
     userGender: undefined,
     userPhone: undefined,
@@ -541,8 +547,8 @@
       },
       {
         key: 'delete',
-        label: '删除用户',
-        icon: 'ri:delete-bin-4-line',
+        label: '注销用户',
+        icon: 'ri:logout-box-r-line',
         color: 'var(--el-color-danger)',
         auth: 'System:User:Delete'
       }
@@ -636,8 +642,8 @@
           confirmButtonClass: 'el-button--danger'
         }
       )
-      await deleteUser(row)
-      await tableQueryRef.value?.refreshRemove()
+      await deactivateUser(row)
+      await tableQueryRef.value?.refreshUpdate()
     } catch {
       // 用户取消时无需额外提示。
     }
@@ -647,6 +653,14 @@
     await loadTenantOptions()
     await loadOrganizationTree()
   })
+
+  watch(
+    () => route.query.recordId,
+    (recordId) => {
+      searchForm.value.id = typeof recordId === 'string' ? recordId : undefined
+      void tableQueryRef.value?.refreshData()
+    }
+  )
 </script>
 
 <style scoped lang="scss">

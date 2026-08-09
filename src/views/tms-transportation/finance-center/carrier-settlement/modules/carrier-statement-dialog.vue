@@ -80,10 +80,12 @@
     fetchCarrierStatementEligibleCosts
   } from '@/api/tms'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
+  import { useDocumentNumberRule } from '@/hooks/core/useDocumentNumberRule'
 
   defineOptions({ name: 'TmsCarrierStatementDialog' })
   type EligibleCost = Api.Tms.Finance.CarrierStatementEligibleCost
   interface StatementForm {
+    statementNo: string
     carrierId: string
     periodRange: string[]
     costIds: string[]
@@ -100,7 +102,9 @@
   const costSelectRef = ref<ArtDataSelectExpose>()
   const selectedCarriers = ref<DataSelectRecord[]>([])
   const selectedCosts = ref<DataSelectRecord[]>([])
+  const statementNumber = useDocumentNumberRule('tms.carrier_statement')
   const createInitialForm = (): StatementForm => ({
+    statementNo: '',
     carrierId: '',
     periodRange: [dayjs().startOf('month').format('YYYY-MM-DD'), dayjs().format('YYYY-MM-DD')],
     costIds: [],
@@ -149,6 +153,15 @@
     }
   ]
   const formRules: FormRules<StatementForm> = {
+    statementNo: [
+      {
+        validator: (_rule, value, callback) =>
+          statementNumber.manualRequired(false) && !String(value || '').trim()
+            ? callback(new Error('请输入承运商对账单号'))
+            : callback(),
+        trigger: 'blur'
+      }
+    ],
     carrierId: [{ required: true, message: '请选择对账承运商', trigger: 'change' }],
     periodRange: [{ required: true, message: '请选择对账账期', trigger: 'change' }],
     costIds: [
@@ -162,6 +175,14 @@
   }
   const formItems = computed<FormItem[]>(() => [
     { label: '对账范围', key: 'baseSection', type: 'divider', span: 24 },
+    {
+      label: '对账单号',
+      key: 'statementNo',
+      type: 'input',
+      span: 12,
+      props: { maxlength: 50, ...statementNumber.inputProps(false, '请输入承运商对账单号') },
+      description: statementNumber.description.value
+    },
     { label: '对账承运商', key: 'carrierId', type: 'input', span: 12 },
     {
       label: '对账账期',
@@ -237,6 +258,7 @@
     }
     try {
       await createCarrierStatement({
+        statementNo: form.statementNo.trim() || null,
         carrierId: form.carrierId,
         periodStart: form.periodRange[0],
         periodEnd: form.periodRange[1],
@@ -250,7 +272,7 @@
     }
   }
   async function handleOpen() {
-    await resetForm()
+    await Promise.all([resetForm(), statementNumber.loadRule()])
     await dialogRef.value?.handleOpen(undefined, {
       title: '生成承运商对账单',
       subtitle: '按承运商和账期归集已审核费用，生成后可提交财务审核',

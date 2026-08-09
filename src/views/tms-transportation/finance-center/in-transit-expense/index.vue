@@ -1,11 +1,18 @@
 <template>
   <div class="in-transit-expense art-full-height" :class="{ 'is-focus-mode': focusMode }">
-    <header v-if="!focusMode" class="in-transit-expense__hero art-card-xs">
+    <MasterDeleteProcessingNotice
+      action-hint="当前费用已自动定位；请按审核、报销或支付状态完成处理。"
+    />
+    <header
+      v-if="!focusMode"
+      class="in-transit-expense__hero art-card-xs"
+      aria-labelledby="in-transit-expense-title"
+    >
       <div class="in-transit-expense__hero-copy">
         <span class="in-transit-expense__hero-icon"><ArtSvgIcon icon="ri:gas-station-line" /></span>
         <div>
           <span>运单成本闭环</span>
-          <h2>在途费用申报与报销</h2>
+          <h1 id="in-transit-expense-title">在途费用申报与报销</h1>
           <p>从票据上报、财务审核到报销付款，按运单逐笔沉淀成本并完成核销。</p>
         </div>
       </div>
@@ -19,7 +26,7 @@
       </div>
     </header>
 
-    <section v-if="!focusMode" class="in-transit-expense__metrics">
+    <section v-if="!focusMode" class="in-transit-expense__metrics" aria-label="费用处理概览">
       <article v-for="metric in metrics" :key="metric.label" class="art-card-xs">
         <span :class="metric.tone"><ArtSvgIcon :icon="metric.icon" /></span>
         <div>
@@ -30,7 +37,11 @@
       </article>
     </section>
 
-    <nav v-if="!focusMode" class="in-transit-expense__workflow art-card-xs">
+    <nav
+      v-if="!focusMode"
+      class="in-transit-expense__workflow art-card-xs"
+      aria-label="在途费用处理流程"
+    >
       <div v-for="(step, index) in workflowSteps" :key="step.title">
         <span>{{ index + 1 }}</span>
         <div
@@ -50,13 +61,19 @@
       v-show="activeTab === 'expense'"
       ref="expenseTableRef"
       v-model="expenseTable.search"
-      v-model:focus-mode="focusMode"
+      v-model:focus-mode="expenseFocusMode"
       :search-items="expenseTable.searchItems"
       :api-fn="fetchExpenseTableData"
       :columns-factory="expenseColumnsFactory"
       :header-actions="expenseTable.headerActions"
-      :search-bar-props="{ span: 6, labelWidth: 86, showExpand: false }"
-      :table-props="{ rowKey: 'id', tableLayout: 'fixed' }"
+      :search-bar-props="{ span: 6, labelWidth: 86, showExpand: true }"
+      :table-props="{
+        rowKey: 'id',
+        tableLayout: 'fixed',
+        emptyHeight: '224px',
+        emptyText: '暂无在途费用申报',
+        emptyDescription: '可上报首笔费用，或调整费用场景、审核和报销条件后查询。'
+      }"
       focusable
     />
 
@@ -64,13 +81,19 @@
       v-show="activeTab === 'reimbursement'"
       ref="reimbursementTableRef"
       v-model="reimbursementTable.search"
-      v-model:focus-mode="focusMode"
+      v-model:focus-mode="reimbursementFocusMode"
       :search-items="reimbursementTable.searchItems"
       :api-fn="fetchReimbursementTableData"
       :columns-factory="reimbursementColumnsFactory"
       :header-actions="reimbursementTable.headerActions"
-      :search-bar-props="{ span: 6, labelWidth: 86, showExpand: false }"
-      :table-props="{ rowKey: 'id', tableLayout: 'fixed' }"
+      :search-bar-props="{ span: 6, labelWidth: 86, showExpand: true }"
+      :table-props="{
+        rowKey: 'id',
+        tableLayout: 'fixed',
+        emptyHeight: '224px',
+        emptyText: '暂无费用报销单',
+        emptyDescription: '已审核费用转为报销单后，将在这里继续完成审批与支付。'
+      }"
       focusable
     />
 
@@ -114,6 +137,7 @@
   import PaymentDialog from './modules/payment-dialog.vue'
   import ReimbursementDetailDrawer from './modules/reimbursement-detail-drawer.vue'
   import OcrLogDrawer from './modules/ocr-log-drawer.vue'
+  import MasterDeleteProcessingNotice from '@/components/business/master-delete-processing-notice/index.vue'
 
   defineOptions({ name: 'TmsInTransitExpense' })
 
@@ -159,7 +183,11 @@
   const { getDictMap } = storeToRefs(userStore)
   const { confirmAction } = useArtFeedback()
   const activeTab = ref<'expense' | 'reimbursement'>('expense')
-  const focusMode = ref(false)
+  const expenseFocusMode = ref(false)
+  const reimbursementFocusMode = ref(false)
+  const focusMode = computed(() =>
+    activeTab.value === 'expense' ? expenseFocusMode.value : reimbursementFocusMode.value
+  )
   const expenseTableRef = ref<ArtTableQueryExpose>()
   const reimbursementTableRef = ref<ArtTableQueryExpose>()
   const expenseDialogRef = ref<ExpenseDialogExpose>()
@@ -214,6 +242,14 @@
 
   const expenseTable = reactive<ExpenseTableGroup>({
     search: {
+      recordId:
+        route.query.fromMasterDelete === '1' && typeof route.query.recordId === 'string'
+          ? route.query.recordId
+          : '',
+      orderId:
+        route.query.fromMasterDelete === '1' && typeof route.query.orderId === 'string'
+          ? route.query.orderId
+          : '',
       keyword: '',
       expenseType: '',
       reportStatus: '',
@@ -668,6 +704,14 @@
   async function openFromOrderQuery(): Promise<void> {
     const orderId = typeof route.query.orderId === 'string' ? route.query.orderId : ''
     if (!orderId) return
+    if (route.query.fromMasterDelete === '1') {
+      expenseTable.search.orderId = orderId
+      expenseTable.search.recordId =
+        typeof route.query.recordId === 'string' ? route.query.recordId : ''
+      await nextTick()
+      await expenseTableRef.value?.getData()
+      return
+    }
     await nextTick()
     await expenseDialogRef.value?.handleOpen({ orderId })
     const query = { ...route.query }
@@ -680,7 +724,7 @@
   })
 
   watch(
-    () => route.query.orderId,
+    () => route.fullPath,
     (orderId) => {
       if (typeof orderId === 'string' && orderId) void openFromOrderQuery()
     },
@@ -699,6 +743,10 @@
     flex-direction: column;
     gap: var(--art-space-4);
     min-width: 0;
+
+    > .art-table-query {
+      min-height: 0;
+    }
 
     &.is-focus-mode {
       gap: 0;
@@ -735,9 +783,10 @@
         }
       }
 
-      h2 {
+      h1 {
         margin: 2px 0 4px;
         font-size: 22px;
+        line-height: 1.35;
         color: var(--art-text-gray-900);
       }
 
@@ -762,7 +811,9 @@
 
     &__hero-actions {
       flex: 0 0 auto;
+      flex-wrap: wrap;
       gap: var(--art-space-3);
+      justify-content: flex-end;
     }
 
     &__metrics {
@@ -821,6 +872,7 @@
           overflow: hidden;
           text-overflow: ellipsis;
           font-size: 19px;
+          font-variant-numeric: tabular-nums;
           color: var(--art-text-gray-900);
           white-space: nowrap;
         }

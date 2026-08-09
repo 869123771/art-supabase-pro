@@ -27,6 +27,7 @@
     />
 
     <CargoDialog ref="dialogRef" @success="handleSaveSuccess" />
+    <MasterDataDeleteGuard ref="deleteGuardRef" @cleared="handleDeleteGuardCleared" />
   </div>
 </template>
 
@@ -52,6 +53,9 @@
     importCargoes
   } from '@/api/tms'
   import CargoDialog from './modules/cargo-dialog.vue'
+  import MasterDataDeleteGuard, {
+    type MasterDataDeleteGuardOpenOptions
+  } from '@/components/business/master-data-delete-guard/index.vue'
   import TmsWorkspaceHeader from '@/views/tms-transportation/modules/tms-workspace-header.vue'
 
   defineOptions({ name: 'TmsCargo' })
@@ -66,15 +70,22 @@
     handleOpen: (row?: Cargo) => Promise<void>
   }
 
+  interface MasterDataDeleteGuardExpose {
+    inspect: (options: MasterDataDeleteGuardOpenOptions) => Promise<boolean>
+  }
+
   const { getDictMap } = storeToRefs(useUserStore())
+  const route = useRoute()
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<CargoDialogExpose>()
+  const deleteGuardRef = ref<MasterDataDeleteGuardExpose>()
 
   const tableState = reactive<{ searchQuery: SearchParams }>({
     searchQuery: {
       unit: '',
       enabled: undefined,
       createTimeRange: [],
+      recordId: typeof route.query.recordId === 'string' ? route.query.recordId : '',
       keyword: ''
     }
   })
@@ -257,7 +268,9 @@
       content: ({ selectedCount }: { selectedCount: number }) =>
         `确定删除选中的 ${selectedCount} 条货物资料吗？删除后无法恢复。`,
       onClick: async ({ selectedRows }) => {
-        await deleteCargoBatch(selectedRows.map((row) => String(row.id)).filter(Boolean))
+        const rows = selectedRows as Cargo[]
+        if (await inspectDeleteDependencies(rows)) return
+        await deleteCargoBatch(rows.map((row) => String(row.id)).filter(Boolean))
         await tableQueryRef.value?.refreshRemove()
       }
     }
@@ -307,9 +320,43 @@
       : tableQueryRef.value?.refreshUpdate())
   }
 
+  const inspectDeleteDependencies = async (rows: Cargo[]): Promise<boolean> => {
+    const resources = rows
+      .filter((item) => item.id)
+      .map((item) => ({ id: String(item.id), label: item.cargoName }))
+    if (!resources.length) return false
+    return (
+      (await deleteGuardRef.value?.inspect({
+        resourceType: 'cargo',
+        resourceLabel: '货物',
+        resources
+      })) ?? false
+    )
+  }
+
+  const handleDeleteGuardCleared = (): void => {
+    void tableQueryRef.value?.getData()
+  }
+
+  const syncMasterDeleteReturn = (forceRefresh = false): void => {
+    if (route.query.resumeMasterDelete !== '1') return
+    const recordId = typeof route.query.recordId === 'string' ? route.query.recordId : ''
+    const changed = tableState.searchQuery.recordId !== recordId
+    Object.assign(tableState.searchQuery, { recordId, keyword: '' })
+    if (changed || forceRefresh) void nextTick().then(() => tableQueryRef.value?.getData())
+  }
+
+  watch(
+    () => route.fullPath,
+    () => syncMasterDeleteReturn(),
+    { flush: 'post' }
+  )
+  onActivated(() => syncMasterDeleteReturn(true))
+
   const handleDelete = async (row: Cargo): Promise<void> => {
     if (!row.id) return
     try {
+      if (await inspectDeleteDependencies([row])) return
       await confirmAction(`确定删除货物“${row.cargoName}”吗？删除后无法恢复。`, '删除确认', {
         confirmButtonText: '删除',
         cancelButtonText: '取消',

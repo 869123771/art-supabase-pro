@@ -167,9 +167,11 @@
                 {{ submitText || t('table.form.submit') }}
               </ElButton>
             </div>
-            <div
+            <button
               v-if="shouldShowExpandToggle"
+              type="button"
               class="art-form__filter-toggle"
+              :aria-expanded="isExpanded"
               @click="toggleExpand"
             >
               <span>{{ expandToggleText }}</span>
@@ -179,7 +181,7 @@
                   <ArrowDownBold v-else />
                 </ElIcon>
               </div>
-            </div>
+            </button>
           </div>
         </ElCol>
       </ElRow>

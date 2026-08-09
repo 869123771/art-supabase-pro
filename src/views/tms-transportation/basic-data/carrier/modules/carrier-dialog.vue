@@ -34,6 +34,7 @@
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtAddressPicker from '@/components/core/forms/art-address-picker/index.vue'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
+  import { useDocumentNumberRule } from '@/hooks/core/useDocumentNumberRule'
   import ArtUploadImage from '@/components/core/forms/art-upload-image/index.vue'
   import { addCarrier, editCarrier } from '@/api/tms'
   import { fetchRegionOptions } from '@/api/common'
@@ -89,6 +90,7 @@
   })
 
   const form = reactive<CarrierForm>(createInitialForm())
+  const carrierNumber = useDocumentNumberRule('master.carrier')
 
   const formRules: FormRules<CarrierForm> = {
     companyName: [
@@ -96,7 +98,16 @@
       { min: 2, max: 100, message: '长度应为 2 到 100 个字符', trigger: 'blur' }
     ],
     carrierType: [{ required: true, message: '请选择承运商类型', trigger: 'change' }],
-    carrierCode: [{ max: 30, message: '承运商编码不能超过 30 个字符', trigger: 'blur' }],
+    carrierCode: [
+      {
+        validator: (_rule, value, callback) =>
+          carrierNumber.manualRequired(Boolean(form.id)) && !String(value || '').trim()
+            ? callback(new Error('请输入承运商编码'))
+            : callback(),
+        trigger: 'blur'
+      },
+      { max: 30, message: '承运商编码不能超过 30 个字符', trigger: 'blur' }
+    ],
     businessLicenseNo: [{ max: 50, message: '营业执照号码不能超过 50 个字符', trigger: 'blur' }],
     taxRegistrationNo: [{ max: 50, message: '税务登记号码不能超过 50 个字符', trigger: 'blur' }],
     legalRepresentative: [{ max: 50, message: '法人代表不能超过 50 个字符', trigger: 'blur' }],
@@ -118,7 +129,11 @@
       label: '承运商编码',
       key: 'carrierCode',
       type: 'input',
-      props: { maxlength: 30, placeholder: '不填则自动生成' }
+      props: {
+        maxlength: 30,
+        ...carrierNumber.inputProps(Boolean(form.id), '请输入承运商编码')
+      },
+      description: carrierNumber.description.value
     },
     {
       label: '公司名称',
@@ -312,7 +327,7 @@
   }
 
   const handleOpen = async (row?: Carrier): Promise<void> => {
-    await resetForm()
+    await Promise.all([resetForm(), carrierNumber.loadRule()])
     const isEdit = Boolean(row?.id)
     if (row) {
       replaceForm({

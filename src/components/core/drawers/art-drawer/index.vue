@@ -278,6 +278,7 @@
     delete inheritedAttrs.onResizeEnd
 
     return {
+      appendToBody: true,
       destroyOnClose: true,
       ...inheritedAttrs,
       ...runtimeBindings,

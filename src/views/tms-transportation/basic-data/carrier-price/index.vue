@@ -1,5 +1,11 @@
 <template>
   <div class="tms-workspace-page art-full-height carrier-price">
+    <CustomerDeleteProcessingNotice
+      v-if="deleteContext.active"
+      :customer-id="deleteContext.customerId"
+      :customer-name="deleteContext.customerName"
+      action-hint="已自动定位关联报价；处理完成后可返回原主数据页面继续删除。"
+    />
     <TmsWorkspaceHeader
       eyebrow="CARRIER RATE CARD"
       title="承运商报价"
@@ -53,6 +59,8 @@
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatWithDayjs } from '@/utils/time'
   import TmsWorkspaceHeader from '@/views/tms-transportation/modules/tms-workspace-header.vue'
+  import CustomerDeleteProcessingNotice from '@/views/tms-transportation/modules/customer-delete-processing-notice.vue'
+  import { useCustomerDeleteProcessingContext } from '@/views/tms-transportation/modules/use-customer-delete-processing'
 
   defineOptions({ name: 'TmsCarrierPrice' })
 
@@ -77,11 +85,15 @@
   }
 
   const router = useRouter()
+  const route = useRoute()
+  const deleteContext = useCustomerDeleteProcessingContext()
   const { getDictMap } = storeToRefs(useUserStore())
   const tableQueryRef = ref<ArtTableQueryExpose>()
 
   const table: UnwrapNestedRefs<TableGroup> = reactive<TableGroup>({
     searchQuery: {
+      carrierId: typeof route.query.carrierId === 'string' ? route.query.carrierId : '',
+      recordId: typeof route.query.recordId === 'string' ? route.query.recordId : '',
       originRegionPath: [],
       destinationRegionPath: [],
       createTimeRange: [],
@@ -403,4 +415,21 @@
   function formatDateTime(value?: string | null): string {
     return value ? (formatWithDayjs(value, 'YYYY-MM-DD HH:mm:ss') ?? '-') : '-'
   }
+
+  function syncMasterDeleteRoute(forceRefresh = false): void {
+    if (route.query.fromMasterDelete !== '1') return
+    const carrierId = typeof route.query.carrierId === 'string' ? route.query.carrierId : ''
+    const recordId = typeof route.query.recordId === 'string' ? route.query.recordId : ''
+    const changed =
+      table.searchQuery.carrierId !== carrierId || table.searchQuery.recordId !== recordId
+    Object.assign(table.searchQuery, { carrierId, recordId, keyword: '' })
+    if (changed || forceRefresh) void nextTick().then(() => tableQueryRef.value?.getData())
+  }
+
+  watch(
+    () => route.fullPath,
+    () => syncMasterDeleteRoute(),
+    { flush: 'post' }
+  )
+  onActivated(() => syncMasterDeleteRoute(true))
 </script>

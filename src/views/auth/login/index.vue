@@ -35,6 +35,7 @@
                 class="custom-height"
                 :placeholder="$t('login.placeholder.email')"
                 v-model.trim="formData.email"
+                name="email"
                 autocomplete="email"
                 aria-label="登录邮箱"
               >
@@ -47,6 +48,7 @@
                 :placeholder="$t('login.placeholder.password')"
                 v-model.trim="formData.password"
                 type="password"
+                name="password"
                 autocomplete="current-password"
                 show-password
                 aria-label="登录密码"

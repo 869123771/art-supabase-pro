@@ -4,7 +4,7 @@
       <div class="workflow-definition__hero-copy">
         <span class="workflow-definition__hero-icon"><ArtSvgIcon icon="ri:git-merge-line" /></span>
         <div>
-          <span>WORKFLOW GOVERNANCE</span>
+          <span>流程治理</span>
           <div class="workflow-definition__heading">
             <h1>审批流程设计</h1>
             <ElTag v-if="!isPlatformSuper" type="info" effect="plain" round>租户只读</ElTag>

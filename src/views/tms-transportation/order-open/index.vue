@@ -9,8 +9,32 @@
     <div ref="pageRef" class="order-open__content">
       <div class="order-open__header art-card-xs">
         <div class="order-open__badge">
-          <span>运单号：{{ form.data.orderNo }}</span>
-          <span>货号：{{ form.data.cargoNo }}</span>
+          <label>
+            <span>运单号：</span>
+            <ElInput
+              v-if="isNewOrder && orderNumberRule && !orderNumberRule.autoEnabled"
+              v-model="form.data.orderNo"
+              size="small"
+              maxlength="50"
+              placeholder="请手工填写运单号"
+            />
+            <strong v-else>{{
+              form.data.orderNo || orderNumberRule?.preview || '保存后自动生成'
+            }}</strong>
+          </label>
+          <label>
+            <span>货号：</span>
+            <ElInput
+              v-if="isNewOrder && cargoNumberRule && !cargoNumberRule.autoEnabled"
+              v-model="form.data.cargoNo"
+              size="small"
+              maxlength="50"
+              placeholder="可手工填写货号"
+            />
+            <strong v-else>{{
+              form.data.cargoNo || cargoNumberRule?.preview || '保存后自动生成'
+            }}</strong>
+          </label>
         </div>
         <div class="order-open__title">货 物 运 输 单</div>
         <div class="order-open__time">
@@ -245,6 +269,7 @@
     fetchStationOptions,
     reviewAiOrderArtifact
   } from '@/api/tms'
+  import { fetchDocumentNumberRulesByKeys } from '@/api/document-number'
   import { useUserStore } from '@/store/modules/user'
   import { clearFormRefsValidation, validateFormRefs } from '@/utils/form/validation'
   import CargoMultipleSelect from '../modules/cargo-multiple-select.vue'
@@ -391,6 +416,7 @@
   const aiOrderDrawerRef = ref<AiOrderDrawerExpose>()
   const aiArtifactId = ref<string>()
   const initializedOrderId = ref<string>()
+  const numberRules = ref<Record<string, Api.SystemManage.DocumentNumberRuleItem>>({})
   const validatedFormRefs = [stationFormRef, shippingFormRef, receivingFormRef, paymentFormRef]
 
   const dictCodes = [
@@ -399,6 +425,10 @@
     'tmsOrderTransportMode',
     'tmsCargoUnit'
   ]
+
+  const isNewOrder = computed(() => !getOrderId())
+  const orderNumberRule = computed(() => numberRules.value['tms.order'])
+  const cargoNumberRule = computed(() => numberRules.value['tms.order_cargo'])
 
   const moneyProps = {
     min: 0,
@@ -757,7 +787,10 @@
     page.error = null
     try {
       aiArtifactId.value = undefined
-      await Promise.all(dictCodes.map((code) => userStore.ensureDictLoaded(code)))
+      await Promise.all([
+        ...dictCodes.map((code) => userStore.ensureDictLoaded(code)),
+        loadNumberRules()
+      ])
       if (orderId) await loadOrderDetail(orderId)
       else replaceForm(createInitialForm())
       fillDefaultOptions()
@@ -769,6 +802,11 @@
     } finally {
       page.loading = false
     }
+  }
+
+  async function loadNumberRules(): Promise<void> {
+    const { data } = await fetchDocumentNumberRulesByKeys(['tms.order', 'tms.order_cargo'])
+    numberRules.value = Object.fromEntries((data ?? []).map((rule) => [rule.ruleKey, rule]))
   }
 
   watch(
@@ -1422,6 +1460,16 @@
       return false
     }
 
+    if (
+      isNewOrder.value &&
+      orderNumberRule.value &&
+      !orderNumberRule.value.autoEnabled &&
+      !textValue(form.data.orderNo)
+    ) {
+      ElMessage.warning('当前运单号规则为手工填写，请输入运单号')
+      return false
+    }
+
     return true
   }
 
@@ -1539,6 +1587,7 @@
       nullableText(raw.transferStation)
     payload.transportMode = textValue(raw.transportMode)
     payload.orderRemark = textValue(raw.orderRemark)
+    payload.orderNo = textValue(raw.orderNo)
     payload.cargoNo = textValue(raw.cargoNo)
     payload.imageUrls = raw.imageUrls ?? []
 

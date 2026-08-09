@@ -21,6 +21,7 @@
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
+  import { useDocumentNumberRule } from '@/hooks/core/useDocumentNumberRule'
   import { addStation, editStation } from '@/api/tms'
   import { useUserStore } from '@/store/modules/user'
 
@@ -48,6 +49,7 @@
   const { getDictMap } = storeToRefs(useUserStore())
   const dialogRef = ref<ArtDialogExpose<Station | undefined>>()
   const formRef = ref<DialogExposeForm>()
+  const stationNumber = useDocumentNumberRule('master.station')
 
   const createInitialForm = (): StationForm => ({
     id: undefined,
@@ -71,7 +73,16 @@
         { required: true, message: '请输入站点名称', trigger: 'blur' },
         { min: 2, max: 80, message: '长度应为 2 到 80 个字符', trigger: 'blur' }
       ],
-      stationCode: [{ max: 30, message: '站点编码不能超过 30 个字符', trigger: 'blur' }],
+      stationCode: [
+        {
+          validator: (_rule, value, callback) =>
+            stationNumber.manualRequired(Boolean(form.data.id)) && !String(value || '').trim()
+              ? callback(new Error('请输入站点编码'))
+              : callback(),
+          trigger: 'blur'
+        },
+        { max: 30, message: '站点编码不能超过 30 个字符', trigger: 'blur' }
+      ],
       regionCode: [{ max: 30, message: '地区编码不能超过 30 个字符', trigger: 'blur' }],
       managerName: [{ max: 50, message: '负责人不能超过 50 个字符', trigger: 'blur' }],
       contactPhone: [{ max: 20, message: '联系电话不能超过 20 个字符', trigger: 'blur' }],
@@ -85,8 +96,9 @@
         type: 'input',
         props: {
           maxlength: 30,
-          placeholder: '不填则自动生成'
-        }
+          ...stationNumber.inputProps(Boolean(form.data.id), '请输入站点编码')
+        },
+        description: stationNumber.description.value
       },
       {
         label: '站点名称',
@@ -185,8 +197,6 @@
     formRef.value?.clearValidate()
   }
 
-  const createStationCode = (): string => `ST${Date.now().toString().slice(-8)}`
-
   const nullableText = (value?: string | null): string | null => trim(String(value ?? '')) || null
 
   const normalizePayload = (): StationForm => {
@@ -202,7 +212,7 @@
 
     return {
       ...payload,
-      stationCode: trim(String(payload.stationCode || '')) || createStationCode(),
+      stationCode: trim(String(payload.stationCode || '')),
       stationName: trim(String(payload.stationName || '')),
       stationTypes: uniq(payload.stationTypes.map((item) => trim(String(item))).filter(Boolean)),
       regionCode: nullableText(payload.regionCode),
@@ -233,7 +243,7 @@
   }
 
   const handleOpen = async (row?: Station): Promise<void> => {
-    await resetForm()
+    await Promise.all([resetForm(), stationNumber.loadRule()])
     const isEdit = Boolean(row?.id)
     if (row) {
       const stationTypes = row.stationRoles?.length

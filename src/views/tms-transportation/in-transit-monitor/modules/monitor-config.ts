@@ -8,8 +8,8 @@ import type { MonitorMode, RegionOption } from './monitor-types'
 export const INITIAL_MAP_ZOOM = 5
 export const MAP_MIN_ZOOM = 4
 export const MAP_MAX_ZOOM = 18
-export const DEFAULT_SCREEN_DESIGN_WIDTH = 1920
-export const DEFAULT_SCREEN_DESIGN_HEIGHT = 1080
+export const DEFAULT_SCREEN_DESIGN_WIDTH = 1440
+export const DEFAULT_SCREEN_DESIGN_HEIGHT = 810
 export const AMAP_PLUGINS = ['AMap.Scale', 'AMap.Driving', 'AMap.Geocoder']
 export const INITIAL_POI_CONCURRENCY = 4
 export const VEHICLE_TYPE_DICT_CODE = 'vehicleType'

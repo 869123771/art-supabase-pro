@@ -66,9 +66,11 @@ export const applyOrderFilters = (
     originStationId,
     destinationStationId,
     transferStationId,
-    createTimeRange
+    createTimeRange,
+    recordId
   } = params
 
+  if (recordId) query = query.eq('id', recordId)
   if (orderStatus) {
     query = query.eq('order_status', orderStatus)
   }
@@ -99,7 +101,7 @@ export const applyOrderListFilters = (
 ): SupabaseQueryLike => applyOrderFilters(query.neq('order_status', 'created'), params)
 
 const DRIVER_WAYBILL_SELECT =
-  'id, tenant_id, waybill_no, status, loaded_at, departed_at, unloaded_at, cancelled_at, update_time'
+  'id, tenant_id, waybill_no, status, accepted_at, loaded_at, departed_at, unloaded_at, completed_at, cancelled_at, update_time'
 
 const fetchDriverWaybillMap = async (
   orderNos: string[]
@@ -122,9 +124,11 @@ const mergeDriverWaybillStatus = (
 
   return {
     ...order,
+    driverWaybillAcceptedAt: driverWaybill.acceptedAt ?? order.driverWaybillAcceptedAt,
     driverWaybillLoadedAt: driverWaybill.loadedAt ?? order.driverWaybillLoadedAt,
     driverWaybillDepartedAt: driverWaybill.departedAt ?? order.driverWaybillDepartedAt,
     driverWaybillUnloadedAt: driverWaybill.unloadedAt ?? order.driverWaybillUnloadedAt,
+    driverWaybillCompletedAt: driverWaybill.completedAt ?? order.driverWaybillCompletedAt,
     waybillStatus: driverWaybill.status ?? null,
     updateTime: driverWaybill.updateTime || order.updateTime
   }

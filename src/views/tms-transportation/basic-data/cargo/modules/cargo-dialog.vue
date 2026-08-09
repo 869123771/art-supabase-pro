@@ -20,6 +20,7 @@
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
+  import { useDocumentNumberRule } from '@/hooks/core/useDocumentNumberRule'
   import { addCargo, editCargo } from '@/api/tms'
   import { useUserStore } from '@/store/modules/user'
 
@@ -40,6 +41,7 @@
   const { getDictMap } = storeToRefs(useUserStore())
   const dialogRef = ref<ArtDialogExpose<Cargo | undefined>>()
   const formRef = ref<DialogExposeForm>()
+  const cargoNumber = useDocumentNumberRule('master.cargo')
 
   const cargoUnitOptions = computed(() => getDictMap.value.tmsCargoUnit ?? [])
 
@@ -61,6 +63,15 @@
   const form = reactive<CargoForm>(createInitialForm())
 
   const formRules: FormRules<CargoForm> = {
+    cargoCode: [
+      {
+        validator: (_rule, value, callback) =>
+          cargoNumber.manualRequired(Boolean(form.id)) && !String(value || '').trim()
+            ? callback(new Error('请输入货物编码'))
+            : callback(),
+        trigger: 'blur'
+      }
+    ],
     cargoName: [
       { required: true, message: '请输入货物名称', trigger: 'blur' },
       { min: 2, max: 80, message: '长度应为 2 到 80 个字符', trigger: 'blur' }
@@ -79,10 +90,19 @@
   const formItems = computed<FormItem[]>(() => [
     { label: '基础信息', key: 'baseSection', type: 'divider', span: 24 },
     {
+      label: '货物编码',
+      key: 'cargoCode',
+      type: 'input',
+      props: {
+        maxlength: 30,
+        ...cargoNumber.inputProps(Boolean(form.id), '请输入货物编码', true)
+      },
+      description: cargoNumber.description.value
+    },
+    {
       label: '货物名称',
       key: 'cargoName',
       type: 'input',
-      span: 16,
       props: { maxlength: 80, placeholder: '请输入货物名称' }
     },
     {
@@ -178,7 +198,6 @@
   const normalizePayload = (): Cargo => {
     const payload = omit(structuredClone(toRaw(form)), [
       'tenantId',
-      'cargoCode',
       'createBy',
       'createTime',
       'updateBy',
@@ -217,7 +236,7 @@
   }
 
   const handleOpen = async (row?: Cargo): Promise<void> => {
-    await resetForm()
+    await Promise.all([resetForm(), cargoNumber.loadRule()])
     const isEdit = Boolean(row?.id)
     if (row) {
       replaceForm({

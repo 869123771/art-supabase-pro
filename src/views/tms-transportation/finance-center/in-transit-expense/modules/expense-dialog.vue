@@ -37,6 +37,32 @@
           :page-size="10"
         />
       </template>
+
+      <template #locationPicker>
+        <ArtAddressPicker
+          ref="addressPickerRef"
+          v-model:region-path="form.data.expenseRegionPath"
+          v-model:address-detail="expenseLocationModel"
+          v-model:region-adcode="form.data.expenseRegionAdcode"
+          v-model:longitude="form.data.expenseLongitude"
+          v-model:latitude="form.data.expenseLatitude"
+          v-model:coordinate-system="form.data.expenseCoordinateSystem"
+          v-model:coordinate-source="form.data.expenseCoordinateSource"
+          v-model:coordinate-status="form.data.expenseCoordinateStatus"
+          v-model:geocode-provider="form.data.expenseGeocodeProvider"
+          v-model:geocoded-at="form.data.expenseGeocodedAt"
+          :region-api="fetchRegionOptions"
+          detail-label="发生地点"
+          detail-placeholder="定位当前位置，或搜索/点击地图选择加油站等消费地点"
+          address-detail-prop="expenseLocation"
+          label-width="104px"
+          hide-region-selector
+          show-locate-button
+          @address-change="syncExpenseLocation"
+          @locate-success="syncExpenseLocation"
+          @pick-confirm="syncExpenseLocation"
+        />
+      </template>
     </ArtForm>
 
     <ElAlert
@@ -55,8 +81,14 @@
   import { useMediaQuery } from '@vueuse/core'
   import type { ComputedRef } from 'vue'
   import type { FormRules } from 'element-plus'
+  import { fetchRegionOptions } from '@/api/common'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
+  import ArtAddressPicker from '@/components/core/forms/art-address-picker/index.vue'
+  import type {
+    AddressLocationPayload,
+    ArtAddressPickerExpose
+  } from '@/components/core/forms/art-address-picker/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import ArtTableSingleSelect from '@/components/core/forms/art-data-select/table-single.vue'
   import type {
@@ -73,11 +105,16 @@
   } from '@/api/tms'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { useUserStore } from '@/store/modules/user'
+  import { useDocumentNumberRule } from '@/hooks/core/useDocumentNumberRule'
   import ExpenseOcrPanel from './expense-ocr-panel.vue'
 
   defineOptions({ name: 'TmsInTransitExpenseDialog' })
 
   type Expense = Api.Tms.Finance.InTransitExpenseRecord
+  type ExpenseForm = Expense & {
+    expenseRegionPath: string[]
+    locationPicker?: string
+  }
   type Waybill = Api.Tms.Finance.InTransitWaybillOption
 
   interface ExpenseDialogOpenData {
@@ -86,9 +123,9 @@
   }
 
   interface ExpenseFormGroup {
-    data: Expense
+    data: ExpenseForm
     items: ComputedRef<FormItem[]>
-    rules: FormRules<Expense>
+    rules: FormRules<ExpenseForm>
   }
 
   interface FormExpose {
@@ -101,12 +138,15 @@
   const { getDictMap } = storeToRefs(useUserStore())
   const dialogRef = ref<ArtDialogExpose<ExpenseDialogOpenData>>()
   const formRef = ref<FormExpose>()
+  const addressPickerRef = ref<ArtAddressPickerExpose>()
   const ocrPanelRef = ref<{ reset: () => void }>()
   const selection = reactive<{ waybills: DataSelectRecord[] }>({ waybills: [] })
-  const state = reactive({ ocrEnabled: true })
+  const state = reactive({ autoLocateArmed: false, ocrEnabled: true })
+  const expenseNumber = useDocumentNumberRule('tms.in_transit_expense')
 
-  const createInitialForm = (): Expense => ({
+  const createInitialForm = (): ExpenseForm => ({
     id: undefined,
+    expenseNo: '',
     waybillId: '',
     expenseType: 'energy',
     amount: 0,
@@ -119,6 +159,16 @@
     invoiceNo: '',
     meterNo: '',
     expenseLocation: '',
+    expenseRegion: '',
+    expenseRegionPath: [],
+    expenseRegionAdcode: '',
+    expenseLongitude: null,
+    expenseLatitude: null,
+    expenseCoordinateSystem: 'gcj02',
+    expenseCoordinateSource: '',
+    expenseCoordinateStatus: 'pending',
+    expenseGeocodeProvider: '',
+    expenseGeocodedAt: null,
     description: '',
     attachments: [],
     latestOcrRunId: null,
@@ -129,9 +179,19 @@
     paymentStatus: 'unpaid'
   })
 
+  const formData = reactive<ExpenseForm>(createInitialForm())
   const form = reactive<ExpenseFormGroup>({
-    data: createInitialForm(),
+    data: formData,
     rules: {
+      expenseNo: [
+        {
+          validator: (_rule, value, callback) =>
+            expenseNumber.manualRequired(Boolean(formData.id)) && !String(value || '').trim()
+              ? callback(new Error('请输入在途费用单号'))
+              : callback(),
+          trigger: 'blur'
+        }
+      ],
       waybillId: [{ required: true, message: '请选择关联运单', trigger: 'change' }],
       expenseType: [{ required: true, message: '请选择费用类型', trigger: 'change' }],
       amount: [
@@ -141,10 +201,39 @@
           trigger: 'change'
         }
       ],
-      occurredAt: [{ required: true, message: '请选择费用发生日期', trigger: 'change' }]
+      occurredAt: [{ required: true, message: '请选择费用发生日期', trigger: 'change' }],
+      expenseLocation: [
+        {
+          validator: (_rule, value, callback) => {
+            if (!String(value || '').trim()) {
+              callback(new Error('请定位当前位置或通过地图选择发生地点'))
+              return
+            }
+            if (
+              !hasValidExpenseCoordinate.value ||
+              formData.expenseCoordinateStatus !== 'located'
+            ) {
+              callback(new Error('请确认发生地点并获取有效经纬度'))
+              return
+            }
+            callback()
+          },
+          trigger: 'change'
+        }
+      ]
     },
     items: computed<FormItem[]>(() => [
       { label: '业务关联', key: 'relationSection', type: 'divider', span: 24 },
+      {
+        label: '费用单号',
+        key: 'expenseNo',
+        type: 'input',
+        props: {
+          maxlength: 50,
+          ...expenseNumber.inputProps(Boolean(formData.id), '请输入在途费用单号', true)
+        },
+        description: expenseNumber.description.value
+      },
       { label: '运单/车牌', key: 'waybillId', type: 'input', span: 24 },
       { label: '费用信息', key: 'expenseSection', type: 'divider', span: 24 },
       {
@@ -210,13 +299,7 @@
         type: 'input',
         props: { maxlength: 120, placeholder: '油枪号、充电桩号或设备号' }
       },
-      {
-        label: '发生地点',
-        key: 'expenseLocation',
-        type: 'input',
-        span: 24,
-        props: { maxlength: 300, placeholder: '填写或核对票据中的消费地点' }
-      },
+      { label: '', key: 'locationPicker', type: 'input', span: 24, labelWidth: 0 },
       {
         label: '费用说明',
         key: 'description',
@@ -233,6 +316,34 @@
   })
 
   const selectedWaybill = computed(() => selection.waybills[0] as Waybill | undefined)
+  const expenseLocationModel = computed({
+    get: () => form.data.expenseLocation || '',
+    set: (value: string) => {
+      form.data.expenseLocation = value
+    }
+  })
+  const hasValidExpenseCoordinate = computed(() => {
+    if (
+      form.data.expenseLongitude === null ||
+      form.data.expenseLongitude === undefined ||
+      form.data.expenseLongitude === '' ||
+      form.data.expenseLatitude === null ||
+      form.data.expenseLatitude === undefined ||
+      form.data.expenseLatitude === ''
+    ) {
+      return false
+    }
+    const longitude = Number(form.data.expenseLongitude)
+    const latitude = Number(form.data.expenseLatitude)
+    return (
+      Number.isFinite(longitude) &&
+      Number.isFinite(latitude) &&
+      longitude >= -180 &&
+      longitude <= 180 &&
+      latitude >= -90 &&
+      latitude <= 90
+    )
+  })
   const waybillSummary = computed(() => {
     const waybill = selectedWaybill.value
     if (!waybill) return ''
@@ -278,6 +389,8 @@
 
   function applyOcrResult(result: Api.Tms.Finance.InTransitExpenseOcrAnalyzeResponse): void {
     const value = result.expense
+    const ocrLocation = value.expenseLocation?.trim()
+    const shouldApplyOcrLocation = Boolean(ocrLocation) && !hasValidExpenseCoordinate.value
     Object.assign(form.data, {
       expenseType: value.expenseType,
       amount: value.amount ?? form.data.amount,
@@ -289,11 +402,34 @@
       paymentChannel: value.paymentChannel ?? form.data.paymentChannel,
       invoiceNo: value.invoiceNo ?? form.data.invoiceNo,
       meterNo: value.meterNo ?? form.data.meterNo,
-      expenseLocation: value.expenseLocation ?? form.data.expenseLocation,
+      expenseLocation: shouldApplyOcrLocation ? ocrLocation : form.data.expenseLocation,
       description: value.description ?? form.data.description,
       latestOcrRunId: result.runId,
       ocrArtifactId: result.artifactId,
       ocrStatus: 'succeeded'
+    })
+    if (shouldApplyOcrLocation) clearExpenseCoordinate()
+  }
+
+  function clearExpenseCoordinate(): void {
+    Object.assign(form.data, {
+      expenseRegion: '',
+      expenseRegionPath: [],
+      expenseRegionAdcode: '',
+      expenseLongitude: null,
+      expenseLatitude: null,
+      expenseCoordinateSystem: 'gcj02',
+      expenseCoordinateSource: '',
+      expenseCoordinateStatus: 'pending',
+      expenseGeocodeProvider: '',
+      expenseGeocodedAt: null
+    })
+  }
+
+  function syncExpenseLocation(payload: AddressLocationPayload): void {
+    form.data.expenseRegion = payload.region || form.data.expenseRegionPath.join('/')
+    void nextTick(() => {
+      form.data.expenseRegion = form.data.expenseRegionPath.join('/')
     })
   }
 
@@ -310,11 +446,30 @@
       invoiceNo: form.data.invoiceNo || null,
       meterNo: form.data.meterNo || null,
       expenseLocation: form.data.expenseLocation || null,
+      expenseRegion: form.data.expenseRegion || null,
+      expenseRegionAdcode: form.data.expenseRegionAdcode || null,
+      expenseLongitude: form.data.expenseLongitude ?? null,
+      expenseLatitude: form.data.expenseLatitude ?? null,
+      expenseCoordinateSystem: form.data.expenseCoordinateSystem || null,
+      expenseCoordinateSource: form.data.expenseCoordinateSource || null,
+      expenseCoordinateStatus: form.data.expenseCoordinateStatus || 'pending',
+      expenseGeocodeProvider: form.data.expenseGeocodeProvider || null,
+      expenseGeocodedAt: form.data.expenseGeocodedAt || null,
       description: form.data.description || null
     }
   }
 
+  function buildExpensePayload(): Expense {
+    const payload = structuredClone(toRaw(form.data)) as unknown as Record<string, unknown>
+    delete payload.expenseRegionPath
+    delete payload.locationPicker
+    return payload as unknown as Expense
+  }
+
   async function handleSubmit(): Promise<boolean> {
+    if (isCompact.value && !hasValidExpenseCoordinate.value) {
+      await addressPickerRef.value?.locateCurrent()
+    }
     try {
       await formRef.value?.validate()
     } catch {
@@ -323,8 +478,8 @@
     try {
       const type = form.data.id ? 'edit' : 'add'
       const response = form.data.id
-        ? await editInTransitExpense(structuredClone(toRaw(form.data)))
-        : await addInTransitExpense(structuredClone(toRaw(form.data)))
+        ? await editInTransitExpense(buildExpensePayload())
+        : await addInTransitExpense(buildExpensePayload())
       const entityId = form.data.id || response.data?.id
       if (form.data.ocrArtifactId && entityId) {
         await reviewInTransitExpenseOcrArtifact({
@@ -341,6 +496,7 @@
   }
 
   async function resetForm(): Promise<void> {
+    state.autoLocateArmed = false
     Object.assign(form.data, createInitialForm())
     selection.waybills = []
     ocrPanelRef.value?.reset()
@@ -357,8 +513,15 @@
   }
 
   async function handleOpen(data: ExpenseDialogOpenData = {}): Promise<void> {
-    await resetForm()
-    if (data.row) Object.assign(form.data, createInitialForm(), structuredClone(toRaw(data.row)))
+    await Promise.all([resetForm(), expenseNumber.loadRule()])
+    if (data.row) {
+      Object.assign(form.data, createInitialForm(), structuredClone(toRaw(data.row)))
+      form.data.expenseRegionPath = String(form.data.expenseRegion || '')
+        .split('/')
+        .map((item) => item.trim())
+        .filter(Boolean)
+      form.data.expenseLocation = form.data.expenseLocation || ''
+    }
     await dialogRef.value?.handleOpen(data, {
       title: data.row ? `编辑在途费用 · ${data.row.expenseNo}` : '上报在途费用',
       subtitle: '按运单归集票据，审核通过后自动进入运单成本台账',
@@ -373,14 +536,33 @@
           ])
           state.ocrEnabled = enabled
         } finally {
+          state.autoLocateArmed = true
           api.setLoading(false)
         }
       },
       onConfirm: handleSubmit,
-      onReset: () => void resetForm(),
+      onReset: async () => {
+        await resetForm()
+        state.autoLocateArmed = true
+      },
       dialogProps: { appendToBody: true, closeOnClickModal: false }
     })
   }
+
+  watch(
+    () => form.data.attachments.length,
+    (count, previousCount) => {
+      if (
+        !state.autoLocateArmed ||
+        !isCompact.value ||
+        count <= previousCount ||
+        hasValidExpenseCoordinate.value
+      ) {
+        return
+      }
+      void nextTick(() => addressPickerRef.value?.locateCurrent())
+    }
+  )
 
   defineExpose({ handleOpen })
 </script>

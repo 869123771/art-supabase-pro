@@ -390,7 +390,9 @@
   /* 动画样式 */
   .context-menu-enter-active,
   .context-menu-leave-active {
-    transition: all v-bind('props.animationDuration + "ms"') ease-out;
+    transition:
+      opacity v-bind('props.animationDuration + "ms"') ease-out,
+      transform v-bind('props.animationDuration + "ms"') ease-out;
   }
 
   .context-menu-enter-from,

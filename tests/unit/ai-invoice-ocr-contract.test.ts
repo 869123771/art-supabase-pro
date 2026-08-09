@@ -111,6 +111,16 @@ test('AI invoice OCR normalization standardizes dates and flags amount mismatch'
   assert.ok(result.warnings.some((warning) => warning.includes('金额勾稽不一致')))
 })
 
+test('AI invoice OCR normalization rejects an amount-like invoice number', () => {
+  const payload = createValidPayload()
+  payload.invoice.invoiceNo = '215.841584158416'
+
+  const result = normalizeAiInvoiceOcrResponse(payload)
+  assert.equal(result.invoice.invoiceNo, null)
+  assert.ok(result.missingFields.includes('发票号码'))
+  assert.ok(result.warnings.some((warning) => warning.includes('发票号码格式异常')))
+})
+
 test('AI invoice OCR comparison records accepted and corrected fields', () => {
   const proposed = createValidPayload().invoice
   assert.deepEqual(compareAiInvoiceOcrPayloads(proposed, { ...proposed, invoiceNo: '87654321' }), {

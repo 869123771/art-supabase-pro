@@ -43,6 +43,7 @@ import { router } from '@/router'
 import { LocationQueryRaw, Router } from 'vue-router'
 import { WorkTab } from '@/types'
 import { useCommon } from '@/hooks/core/useCommon'
+import { limitWorktabs } from './worktab-policy'
 
 interface WorktabState {
   current: Partial<WorkTab>
@@ -60,6 +61,7 @@ export const useWorktabStore = defineStore(
     const current = ref<Partial<WorkTab>>({})
     const opened = ref<WorkTab[]>([])
     const keepAliveExclude = ref<string[]>([])
+    let recentTabPaths: string[] = []
 
     // 计算属性
     const hasOpenedTabs = computed(() => opened.value.length > 0)
@@ -161,6 +163,35 @@ export const useWorktabStore = defineStore(
 
         current.value = opened.value[existingIndex]
       }
+
+      touchRecentTab(tab.path)
+      enforceWorktabLimit()
+    }
+
+    /** 记录标签的最近使用顺序，数组末尾为最近使用。 */
+    const touchRecentTab = (path: string): void => {
+      const persistedPaths = opened.value.map((item) => item.path)
+      const knownPaths = new Set(recentTabPaths)
+
+      persistedPaths.forEach((itemPath) => {
+        if (!knownPaths.has(itemPath)) recentTabPaths.push(itemPath)
+      })
+
+      recentTabPaths = recentTabPaths.filter(
+        (itemPath) => itemPath !== path && persistedPaths.includes(itemPath)
+      )
+      recentTabPaths.push(path)
+    }
+
+    /** 限制标签总量，并让被淘汰页面退出 KeepAlive。 */
+    const enforceWorktabLimit = (): void => {
+      const result = limitWorktabs(opened.value, recentTabPaths, current.value.path)
+      if (result.removed.length === 0) return
+
+      markTabsToRemove(result.removed)
+      opened.value = result.kept
+      const retainedPaths = new Set(result.kept.map((item) => item.path))
+      recentTabPaths = recentTabPaths.filter((path) => retainedPaths.has(path))
     }
 
     /**
@@ -197,6 +228,7 @@ export const useWorktabStore = defineStore(
 
       // 从标签页列表中移除
       opened.value.splice(targetIndex, 1)
+      recentTabPaths = recentTabPaths.filter((itemPath) => itemPath !== path)
 
       // 处理缓存排除
       if (targetTab?.name) {
@@ -460,7 +492,11 @@ export const useWorktabStore = defineStore(
         if (validTabs.length !== opened.value.length) {
           console.warn('发现无效的标签页路由，已自动清理')
           opened.value = validTabs
+          const validPaths = new Set(validTabs.map((tab) => tab.path))
+          recentTabPaths = recentTabPaths.filter((path) => validPaths.has(path))
         }
+
+        enforceWorktabLimit()
 
         // 验证当前激活标签的有效性
         const isCurrentValid = current.value && isTabRouteValid(current.value)
@@ -483,6 +519,7 @@ export const useWorktabStore = defineStore(
       current.value = {}
       opened.value = []
       keepAliveExclude.value = []
+      recentTabPaths = []
     }
 
     /**

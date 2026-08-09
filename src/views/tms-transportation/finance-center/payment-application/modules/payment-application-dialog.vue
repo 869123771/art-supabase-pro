@@ -118,6 +118,7 @@
   import { useUserStore } from '@/store/modules/user'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatCurrencyValue } from '@/utils/ui'
+  import { useDocumentNumberRule } from '@/hooks/core/useDocumentNumberRule'
 
   defineOptions({ name: 'TmsPaymentApplicationDialog' })
 
@@ -126,6 +127,7 @@
 
   interface PaymentApplicationForm {
     id?: string
+    applicationNo: string
     carrierId: string
     plannedPaymentDate: string
     amount: number
@@ -162,9 +164,11 @@
   const dialogRef = ref<ArtDialogExpose<Application>>()
   const formRef = ref<FormExpose>()
   const statementSelectRef = ref<ArtDataSelectExpose>()
+  const applicationNumber = useDocumentNumberRule('tms.carrier_payment_application')
 
   const createInitialForm = (): PaymentApplicationForm => ({
     id: undefined,
+    applicationNo: '',
     carrierId: '',
     plannedPaymentDate: dayjs().format('YYYY-MM-DD'),
     amount: 0,
@@ -175,9 +179,19 @@
   })
 
   const selection = reactive<SelectionGroup>({ carriers: [], statements: [], amounts: {} })
+  const formData = reactive<PaymentApplicationForm>(createInitialForm())
   const form = reactive<FormGroup>({
-    data: createInitialForm(),
+    data: formData,
     rules: {
+      applicationNo: [
+        {
+          validator: (_rule, value, callback) =>
+            applicationNumber.manualRequired(Boolean(formData.id)) && !String(value || '').trim()
+              ? callback(new Error('请输入付款申请号'))
+              : callback(),
+          trigger: 'blur'
+        }
+      ],
       carrierId: [{ required: true, message: '请选择付款承运商', trigger: 'change' }],
       plannedPaymentDate: [{ required: true, message: '请选择计划付款日期', trigger: 'change' }],
       amount: [
@@ -191,6 +205,17 @@
     },
     items: computed<FormItem[]>(() => [
       { label: '申请信息', key: 'base', type: 'divider', span: 24 },
+      {
+        label: '申请单号',
+        key: 'applicationNo',
+        type: 'input',
+        span: isCompact.value ? 24 : 12,
+        props: {
+          maxlength: 50,
+          ...applicationNumber.inputProps(Boolean(formData.id), '请输入付款申请号', true)
+        },
+        description: applicationNumber.description.value
+      },
       { label: '付款承运商', key: 'carrierId', type: 'input', span: isCompact.value ? 24 : 12 },
       {
         label: '计划付款日期',
@@ -407,6 +432,7 @@
     try {
       await saveCarrierPaymentApplication({
         id: form.data.id,
+        applicationNo: form.data.applicationNo.trim() || null,
         carrierId: form.data.carrierId,
         plannedPaymentDate: form.data.plannedPaymentDate,
         amount: Number(form.data.amount),
@@ -435,6 +461,7 @@
     if (!data) throw new Error('付款申请不存在')
     Object.assign(form.data, {
       id: data.id,
+      applicationNo: data.applicationNo,
       carrierId: data.carrierId,
       plannedPaymentDate: data.plannedPaymentDate,
       amount: Number(data.amount),
@@ -470,7 +497,7 @@
   }
 
   async function handleOpen(row?: Application): Promise<void> {
-    await resetForm()
+    await Promise.all([resetForm(), applicationNumber.loadRule()])
     await dialogRef.value?.handleOpen(row, {
       title: row ? `编辑付款申请 · ${row.applicationNo}` : '新建承运商付款申请',
       subtitle: '审批通过前锁定可付款额度，通过后再登记实际付款凭证并自动核销',

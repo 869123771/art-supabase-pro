@@ -23,9 +23,10 @@
       <div>
         <div class="grid grid-cols-2 gap-1.5">
           <!-- 应用列表 -->
-          <div
+          <button
             v-for="application in enabledApplications"
             :key="application.name"
+            type="button"
             class="mr-3 c-p flex-c gap-3 rounded-lg p-2 hover:bg-g-200/70 dark:hover:bg-g-200/90 hover:[&_.app-icon]:!bg-transparent"
             @click="handleApplicationClick(application)"
           >
@@ -40,7 +41,7 @@
               <h3 class="m-0 text-sm font-medium text-g-800">{{ application.name }}</h3>
               <p class="mt-1 text-xs text-g-600">{{ application.description }}</p>
             </div>
-          </div>
+          </button>
         </div>
       </div>
 

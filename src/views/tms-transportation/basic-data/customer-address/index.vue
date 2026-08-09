@@ -28,6 +28,7 @@
     />
 
     <CustomerAddressDialog ref="dialogRef" @success="handleSaveSuccess" />
+    <MasterDataDeleteGuard ref="deleteGuardRef" @cleared="handleDeleteGuardCleared" />
   </div>
 </template>
 
@@ -50,6 +51,9 @@
     fetchCustomerOptions
   } from '@/api/tms'
   import CustomerAddressDialog from './modules/customer-address-dialog.vue'
+  import MasterDataDeleteGuard, {
+    type MasterDataDeleteGuardOpenOptions
+  } from '@/components/business/master-data-delete-guard/index.vue'
   import TmsWorkspaceHeader from '@/views/tms-transportation/modules/tms-workspace-header.vue'
 
   defineOptions({ name: 'TmsCustomerAddress' })
@@ -68,6 +72,10 @@
     ) => Promise<void>
   }
 
+  interface MasterDataDeleteGuardExpose {
+    inspect: (options: MasterDataDeleteGuardOpenOptions) => Promise<boolean>
+  }
+
   interface TableState {
     searchQuery: SearchParams
   }
@@ -76,6 +84,7 @@
   const { getDictMap } = storeToRefs(useUserStore())
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<AddressDialogExpose>()
+  const deleteGuardRef = ref<MasterDataDeleteGuardExpose>()
 
   const routeCustomerId = computed(() => String(route.query.customerId ?? ''))
   const customerName = computed(() => String(route.query.customerName ?? ''))
@@ -89,6 +98,7 @@
       customerId: routeCustomerId.value,
       addressType: undefined,
       createTimeRange: [],
+      recordId: typeof route.query.recordId === 'string' ? route.query.recordId : '',
       keyword: ''
     }
   })
@@ -207,7 +217,9 @@
       content: ({ selectedCount }: { selectedCount: number }) =>
         `确定删除选中的 ${selectedCount} 条地址吗？`,
       onClick: async ({ selectedRows }) => {
-        await deleteCustomerAddressBatch(selectedRows.map((row) => String(row.id)).filter(Boolean))
+        const rows = selectedRows as CustomerAddress[]
+        if (await inspectDeleteDependencies(rows)) return
+        await deleteCustomerAddressBatch(rows.map((row) => String(row.id)).filter(Boolean))
         await tableQueryRef.value?.refreshRemove()
       }
     }
@@ -250,9 +262,46 @@
       : tableQueryRef.value?.refreshUpdate())
   }
 
+  const inspectDeleteDependencies = async (rows: CustomerAddress[]): Promise<boolean> => {
+    const resources = rows
+      .filter((item) => item.id)
+      .map((item) => ({
+        id: String(item.id),
+        label: [item.region, item.addressDetail].filter(Boolean).join(' ') || '未命名地址'
+      }))
+    if (!resources.length) return false
+    return (
+      (await deleteGuardRef.value?.inspect({
+        resourceType: 'customer_address',
+        resourceLabel: '客户地址',
+        resources
+      })) ?? false
+    )
+  }
+
+  const handleDeleteGuardCleared = (): void => {
+    void tableQueryRef.value?.getData()
+  }
+
+  const syncMasterDeleteReturn = (forceRefresh = false): void => {
+    if (route.query.resumeMasterDelete !== '1') return
+    const recordId = typeof route.query.recordId === 'string' ? route.query.recordId : ''
+    const changed = tableState.searchQuery.recordId !== recordId
+    Object.assign(tableState.searchQuery, { recordId, keyword: '' })
+    if (changed || forceRefresh) void nextTick().then(() => tableQueryRef.value?.getData())
+  }
+
+  watch(
+    () => route.fullPath,
+    () => syncMasterDeleteReturn(),
+    { flush: 'post' }
+  )
+  onActivated(() => syncMasterDeleteReturn(true))
+
   const handleDelete = async (row: CustomerAddress): Promise<void> => {
     if (!row.id) return
     try {
+      if (await inspectDeleteDependencies([row])) return
       await confirmAction(
         `确定删除“${[row.region, row.addressDetail].filter(Boolean).join(' ')}”吗？`,
         '删除确认',

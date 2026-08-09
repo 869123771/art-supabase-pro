@@ -200,6 +200,7 @@ function mapReceiptException(row: ReceiptExceptionRow): Api.Tms.Delivery.Receipt
 }
 
 export async function fetchReceiptExceptionWorkOrders(params: {
+  recordId?: string
   status?: Api.Tms.Delivery.ReceiptExceptionStatus | ''
   keyword?: string
 }) {
@@ -207,6 +208,7 @@ export async function fetchReceiptExceptionWorkOrders(params: {
     .from('tms_receipt_exception_work_order')
     .select(RECEIPT_EXCEPTION_SELECT)
     .order('create_time', { ascending: false })
+  if (params.recordId) query = query.eq('id', params.recordId)
   if (params.status) query = query.eq('status', params.status)
   if (params.keyword?.trim()) {
     const keyword = params.keyword.trim().replace(/[%_,()]/g, '')
@@ -225,13 +227,15 @@ export async function createReceiptExceptionWorkOrder(params: {
   artifactId: string
   orderId: string
   evidenceUrls: string[]
+  workOrderNo?: string | null
 }) {
   const result = await responseHandle<ReceiptExceptionRow>(
     () =>
       supabase.rpc('create_ai_receipt_exception_work_order', {
         p_artifact_id: params.artifactId,
         p_order_id: params.orderId,
-        p_evidence_urls: params.evidenceUrls
+        p_evidence_urls: params.evidenceUrls,
+        p_work_order_no: params.workOrderNo || null
       }),
     { breakReturn: true, showErrorMessage: true }
   )

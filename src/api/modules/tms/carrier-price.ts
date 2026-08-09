@@ -38,6 +38,7 @@ const applyCarrierPriceFilters = (
 ): SupabaseQueryLike => {
   const {
     carrierId,
+    recordId,
     originRegion,
     destinationRegion,
     transportMode,
@@ -46,6 +47,7 @@ const applyCarrierPriceFilters = (
     createTimeRange
   } = params
 
+  if (recordId) query = query.eq('id', recordId)
   if (carrierId) query = query.eq('carrier_id', carrierId)
   if (originRegion) query = query.eq('origin_region', originRegion)
   if (destinationRegion) query = query.eq('destination_region', destinationRegion)

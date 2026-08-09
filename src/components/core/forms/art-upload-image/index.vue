@@ -319,7 +319,11 @@
     border-style: dashed;
     border-radius: 0.375rem;
     border-color: var(--color-g-300); /* b-gray-3 默认值 */
-    transition: all 300ms ease;
+    transition:
+      color 300ms ease,
+      background-color 300ms ease,
+      border-color 300ms ease,
+      box-shadow 300ms ease;
     color: #6b7280; /* text-gray-5 默认值 */
     position: relative;
 
@@ -338,7 +342,10 @@
       border-width: 1px;
       border-style: dashed;
       border-color: var(--default-border-dashed); /* b-gray-3 默认值 */
-      transition: all 300ms ease;
+      transition:
+        color 300ms ease,
+        background-color 300ms ease,
+        border-color 300ms ease;
       border-top-left-radius: 0.375rem;
       border-top-right-radius: 0.375rem;
       width: calc(100%);
@@ -365,7 +372,9 @@
       width: 100%;
       height: 100%;
       border-radius: 0.375rem;
-      transition: all 300ms ease;
+      transition:
+        opacity 300ms ease,
+        background-color 300ms ease;
       display: flex;
       align-items: center;
       justify-content: center;

@@ -13,7 +13,8 @@ type StatusPayload = Api.Tms.Finance.CarrierStatementStatusPayload & { businessT
 const { supabase, responseHandle } = useSupabase()
 
 function applyFilters(query: SupabaseQueryLike, params: SearchParams): SupabaseQueryLike {
-  const { carrierId, keyword, periodRange, status } = params
+  const { carrierId, keyword, periodRange, recordId, status } = params
+  if (recordId) query = query.eq('id', recordId)
   if (carrierId) query = query.eq('carrier_id', carrierId)
   if (status) query = query.eq('status', status)
   if (keyword) {
@@ -107,7 +108,8 @@ export async function createCarrierStatement(params: CreatePayload) {
         p_period_start: params.periodStart,
         p_period_end: params.periodEnd,
         p_cost_ids: params.costIds,
-        p_remark: params.remark || null
+        p_remark: params.remark || null,
+        p_statement_no: params.statementNo || null
       }),
     { showMessage: true, breakReturn: true }
   )

@@ -109,11 +109,13 @@
   import { useUserStore } from '@/store/modules/user'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import CashVoucherOcrPanel from './cash-voucher-ocr-panel.vue'
+  import { useDocumentNumberRule } from '@/hooks/core/useDocumentNumberRule'
 
   defineOptions({ name: 'TmsCarrierPaymentDialog' })
   type CashTransaction = Api.Tms.Finance.CashTransactionRecord
   type Statement = Api.Tms.Finance.CarrierStatementAllocatable
   interface PaymentForm {
+    transactionNo: string
     carrierId: string
     transactionDate: string
     amount: number
@@ -141,6 +143,7 @@
   const statementSelectRef = ref<ArtDataSelectExpose>()
   const ocrPanelRef = ref<OcrPanelExpose>()
   const ocrResult = ref<Api.Tms.Finance.CashVoucherOcrAnalyzeResponse>()
+  const transactionNumber = useDocumentNumberRule('tms.cash_transaction')
   const dialog = reactive<{ mode: 'create' | 'allocate'; transaction?: CashTransaction }>({
     mode: 'create'
   })
@@ -150,6 +153,7 @@
     amounts: Record<string, number>
   }>({ carriers: [], statements: [], amounts: {} })
   const initialForm = (): PaymentForm => ({
+    transactionNo: '',
     carrierId: '',
     transactionDate: dayjs().format('YYYY-MM-DD'),
     amount: 0,
@@ -257,6 +261,16 @@
   ]
 
   const formRules: FormRules<PaymentForm> = {
+    transactionNo: [
+      {
+        validator: (_rule, value, callback) =>
+          transactionNumber.manualRequired(dialog.mode === 'allocate') &&
+          !String(value || '').trim()
+            ? callback(new Error('请输入付款流水号'))
+            : callback(),
+        trigger: 'blur'
+      }
+    ],
     carrierId: [{ required: true, message: '请选择付款承运商', trigger: 'change' }],
     transactionDate: [{ required: true, message: '请选择付款日期', trigger: 'change' }],
     amount: [
@@ -269,6 +283,17 @@
   }
   const formItems = computed<FormItem[]>(() => [
     { label: '付款信息', key: 'base', type: 'divider', span: 24 },
+    {
+      label: '付款流水号',
+      key: 'transactionNo',
+      type: 'input',
+      span: 12,
+      props: {
+        maxlength: 50,
+        ...transactionNumber.inputProps(dialog.mode === 'allocate', '请输入付款流水号', true)
+      },
+      description: transactionNumber.description.value
+    },
     { label: '付款承运商', key: 'carrierId', type: 'input', span: 12 },
     {
       label: '付款日期',
@@ -447,6 +472,7 @@
         })
       else {
         const { data: transactionId } = await createCarrierPayment({
+          transactionNo: form.transactionNo.trim() || null,
           carrierId: form.carrierId,
           transactionDate: form.transactionDate,
           amount: Number(form.amount),
@@ -475,11 +501,12 @@
     formRef.value?.clearValidate()
   }
   async function handleOpen(transaction?: CashTransaction) {
-    await resetForm()
+    await Promise.all([resetForm(), transactionNumber.loadRule()])
     dialog.mode = transaction ? 'allocate' : 'create'
     dialog.transaction = transaction
     if (transaction) {
       Object.assign(form, {
+        transactionNo: transaction.transactionNo,
         carrierId: transaction.carrierId ?? '',
         transactionDate: transaction.transactionDate,
         amount: transaction.amount,

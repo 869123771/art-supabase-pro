@@ -11,7 +11,8 @@ type ExecutePayload = Api.Tms.Finance.ExecuteCarrierPaymentApplicationPayload
 const { supabase, responseHandle } = useSupabase()
 
 function applyFilters(query: SupabaseQueryLike, params: SearchParams): SupabaseQueryLike {
-  const { carrierId, keyword, plannedPaymentDateRange, status } = params
+  const { carrierId, keyword, plannedPaymentDateRange, recordId, status } = params
+  if (recordId) query = query.eq('id', recordId)
   if (carrierId) query = query.eq('carrier_id', carrierId)
   if (status) query = query.eq('status', status)
   if (keyword) {
@@ -87,7 +88,8 @@ export async function saveCarrierPaymentApplication(params: SavePayload) {
         p_payment_method: params.paymentMethod,
         p_basis_urls: params.basisUrls ?? [],
         p_remark: params.remark || null,
-        p_allocations: params.allocations
+        p_allocations: params.allocations,
+        p_application_no: params.applicationNo || null
       }),
     { showMessage: true, breakReturn: true }
   )
@@ -123,7 +125,8 @@ export async function executeCarrierPaymentApplication(params: ExecutePayload) {
         p_application_id: params.applicationId,
         p_transaction_date: params.transactionDate,
         p_bank_reference: params.bankReference || null,
-        p_voucher_urls: params.voucherUrls ?? []
+        p_voucher_urls: params.voucherUrls ?? [],
+        p_transaction_no: params.transactionNo || null
       }),
     { showMessage: true, breakReturn: true, message: '付款已登记并完成自动核销' }
   )

@@ -21,27 +21,39 @@
             :style="screenStageStyle"
           >
             <header class="transit-screen__header">
-              <h1>TMS 运输在途监控</h1>
-              <nav class="screen-tabs" aria-label="监控模式">
+              <div class="transit-screen__title">
                 <button
-                  v-for="item in monitorTabs"
-                  :key="item.value"
                   type="button"
-                  :class="{ 'is-active': activeMode === item.value }"
-                  :aria-current="activeMode === item.value ? 'page' : undefined"
-                  @click="activeMode = item.value"
+                  aria-label="返回运营工作台"
+                  title="返回运营工作台"
+                  @click="exitMonitor"
                 >
-                  {{ item.label }}
+                  <ArtSvgIcon icon="ri:arrow-left-line" />
                 </button>
-              </nav>
+                <h1>TMS 运输在途监控</h1>
+              </div>
+              <ElScrollbar class="screen-tabs-scrollbar">
+                <nav class="screen-tabs" aria-label="监控模式">
+                  <button
+                    v-for="item in monitorTabs"
+                    :key="item.value"
+                    type="button"
+                    :class="{ 'is-active': activeMode === item.value }"
+                    :aria-current="activeMode === item.value ? 'page' : undefined"
+                    @click="activeMode = item.value"
+                  >
+                    {{ item.label }}
+                  </button>
+                </nav>
+              </ElScrollbar>
               <div class="header-status">
-                <strong>{{ headerTimeText }}</strong>
+                <time :datetime="currentTime">{{ headerTimeText }}</time>
                 <span><i />系统运行正常</span>
               </div>
             </header>
 
             <main class="transit-screen__body">
-              <section class="monitor-map">
+              <section class="monitor-map" :class="`monitor-map--${activeMode}`">
                 <div ref="chartRef" class="monitor-map__chart" />
                 <div class="monitor-map__heading">
                   <strong>{{ monitorHeadingTitle }}</strong>
@@ -301,6 +313,7 @@
     [key: string]: unknown
   }
 
+  const router = useRouter()
   const userStore = useUserStore()
   const { loadAmap } = useAmapSdk<MonitorAmapNamespace>({
     key: import.meta.env.VITE_AMAP_KEY,
@@ -357,7 +370,7 @@
     return Number.isFinite(scale) && scale > 0 ? scale : 1
   })
 
-  const isCompactScreen = computed(() => screenScale.viewportWidth <= 900)
+  const isCompactScreen = computed(() => screenScale.viewportWidth <= 1100)
 
   const screenStageStyle = computed(() => {
     if (isCompactScreen.value) {
@@ -982,6 +995,14 @@
   function contactDriver(): void {
     if (!activeOrder.value) return
     ElMessage.success(`已打开 ${activeOrder.value.driverName} 的联系流程`)
+  }
+
+  function exitMonitor(): void {
+    if (window.history.length > 1) {
+      router.back()
+      return
+    }
+    void router.push('/dashboard/console')
   }
 
   function sendReminder(): void {

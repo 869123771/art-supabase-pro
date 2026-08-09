@@ -1,5 +1,11 @@
 <template>
   <div class="tms-workspace-page art-full-height">
+    <CustomerDeleteProcessingNotice
+      v-if="deleteContext.active"
+      :customer-id="deleteContext.customerId"
+      :customer-name="deleteContext.customerName"
+      action-hint="已自动定位关联司机；请先调整归属或处理司机资料。"
+    />
     <TmsWorkspaceHeader
       eyebrow="DRIVER ROSTER"
       title="司机资料"
@@ -28,6 +34,7 @@
     />
 
     <DriverDialog ref="dialogRef" @success="handleSaveSuccess" />
+    <MasterDataDeleteGuard ref="deleteGuardRef" @cleared="handleDeleteGuardCleared" />
   </div>
 </template>
 
@@ -51,7 +58,12 @@
     fetchDriverList
   } from '@/api/tms'
   import DriverDialog from './modules/driver-dialog.vue'
+  import MasterDataDeleteGuard, {
+    type MasterDataDeleteGuardOpenOptions
+  } from '@/components/business/master-data-delete-guard/index.vue'
   import TmsWorkspaceHeader from '@/views/tms-transportation/modules/tms-workspace-header.vue'
+  import CustomerDeleteProcessingNotice from '@/views/tms-transportation/modules/customer-delete-processing-notice.vue'
+  import { useCustomerDeleteProcessingContext } from '@/views/tms-transportation/modules/use-customer-delete-processing'
 
   defineOptions({ name: 'TmsDriver' })
 
@@ -66,16 +78,24 @@
     handleOpen: (row?: Driver) => Promise<void>
   }
 
+  interface MasterDataDeleteGuardExpose {
+    inspect: (options: MasterDataDeleteGuardOpenOptions) => Promise<boolean>
+  }
+
   const { getDictMap } = storeToRefs(useUserStore())
   const route = useRoute()
+  const deleteContext = useCustomerDeleteProcessingContext()
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<DriverDialogExpose>()
+  const deleteGuardRef = ref<MasterDataDeleteGuardExpose>()
   const initialCarrierId = String(route.query.carrierId || '')
-  const tableImmediate = !initialCarrierId
+  const initialRecordId = String(route.query.recordId || '')
+  const tableImmediate = !initialCarrierId && !initialRecordId
 
   const tableState = reactive<{ searchQuery: SearchParams }>({
     searchQuery: {
       carrierId: initialCarrierId,
+      recordId: initialRecordId,
       driverType: undefined,
       gender: '',
       enabled: undefined,
@@ -85,22 +105,30 @@
   })
 
   onMounted(async () => {
-    if (!initialCarrierId) return
+    if (!initialCarrierId && !initialRecordId) return
     await nextTick()
     await tableQueryRef.value?.getData()
   })
 
   watch(
-    () => route.query.carrierId,
-    async (value) => {
-      const carrierId = String(value || '')
-      if (tableState.searchQuery.carrierId === carrierId) return
-
-      tableState.searchQuery.carrierId = carrierId
+    () => route.fullPath,
+    async () => {
+      const carrierId = String(route.query.carrierId || '')
+      const recordId = String(route.query.recordId || '')
+      if (
+        tableState.searchQuery.carrierId === carrierId &&
+        tableState.searchQuery.recordId === recordId
+      ) {
+        return
+      }
+      Object.assign(tableState.searchQuery, { carrierId, recordId, keyword: '' })
       await nextTick()
       await tableQueryRef.value?.getData()
-    }
+    },
+    { flush: 'post' }
   )
+
+  onActivated(() => void tableQueryRef.value?.getData())
 
   const genderOptions = computed(() => getDictMap.value.sex ?? [])
   const driverTypeOptions = computed(() => getDictMap.value.tmsDriverType ?? [])
@@ -274,7 +302,9 @@
       content: ({ selectedCount }: { selectedCount: number }) =>
         `确定删除选中的 ${selectedCount} 个司机吗？删除后无法恢复。`,
       onClick: async ({ selectedRows }) => {
-        await deleteDriverBatch(selectedRows.map((row) => String(row.id)).filter(Boolean))
+        const rows = selectedRows as Driver[]
+        if (await inspectDeleteDependencies(rows)) return
+        await deleteDriverBatch(rows.map((row) => String(row.id)).filter(Boolean))
         await tableQueryRef.value?.refreshRemove()
       }
     }
@@ -295,9 +325,28 @@
       : tableQueryRef.value?.refreshUpdate())
   }
 
+  const inspectDeleteDependencies = async (rows: Driver[]): Promise<boolean> => {
+    const resources = rows
+      .filter((item) => item.id)
+      .map((item) => ({ id: String(item.id), label: item.driverName }))
+    if (!resources.length) return false
+    return (
+      (await deleteGuardRef.value?.inspect({
+        resourceType: 'driver',
+        resourceLabel: '司机',
+        resources
+      })) ?? false
+    )
+  }
+
+  const handleDeleteGuardCleared = (): void => {
+    void tableQueryRef.value?.getData()
+  }
+
   const handleDelete = async (row: Driver): Promise<void> => {
     if (!row.id) return
     try {
+      if (await inspectDeleteDependencies([row])) return
       await confirmAction(`确定删除司机“${row.driverName}”吗？删除后无法恢复。`, '删除确认', {
         confirmButtonText: '删除',
         cancelButtonText: '取消',

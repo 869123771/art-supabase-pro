@@ -108,6 +108,7 @@
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtExcelImport from '@/components/core/forms/art-excel-import/index.vue'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
+  import { useDocumentNumberRule } from '@/hooks/core/useDocumentNumberRule'
   import ArtTableSingleSelect from '@/components/core/forms/art-data-select/table-single.vue'
   import type {
     DataSelectColumn,
@@ -174,6 +175,7 @@
   const dialogRef = ref<ArtDialogExpose<MaintenanceRecord | undefined>>()
   const attachmentDialogRef = ref<ArtDialogExpose<void>>()
   const formRef = ref<FormExpose>()
+  const maintenanceNumber = useDocumentNumberRule('vehicle.maintenance')
   const attachmentFormRef = ref<FormExpose>()
 
   const createInitialItem = (): MaintenanceItem => ({
@@ -232,7 +234,16 @@
       { label: '基础信息', key: 'baseSection', type: 'divider', span: 24 },
       { label: '车牌号', key: 'vehicleId', span: 12 },
       { label: '所属公司', key: 'companyName', type: 'input', props: { disabled: true } },
-      { label: '维修单号', key: 'maintenanceNo', type: 'input', props: { maxlength: 80 } },
+      {
+        label: '维修单号',
+        key: 'maintenanceNo',
+        type: 'input',
+        props: {
+          maxlength: 80,
+          ...maintenanceNumber.inputProps(Boolean(form.data.id), '请输入维修单号', true)
+        },
+        description: maintenanceNumber.description.value
+      },
       {
         label: '维修类型',
         key: 'maintenanceType',
@@ -260,7 +271,9 @@
     ]),
     rules: computed<FormRules<MaintenanceRecord>>(() => ({
       vehicleId: [{ required: true, message: '请选择车辆', trigger: 'change' }],
-      maintenanceNo: [{ required: true, message: '请输入维修单号', trigger: 'blur' }],
+      maintenanceNo: maintenanceNumber.manualRequired(Boolean(form.data.id))
+        ? [{ required: true, message: '请输入维修单号', trigger: 'blur' }]
+        : [],
       maintenanceType: [{ required: true, message: '请选择维修类型', trigger: 'change' }],
       startTime: [{ required: true, message: '请选择开始时间', trigger: 'change' }]
     }))
@@ -562,7 +575,7 @@
   }
 
   const handleOpen = async (row?: MaintenanceRecord): Promise<void> => {
-    await resetForm()
+    await Promise.all([resetForm(), maintenanceNumber.loadRule()])
     if (row?.id) replaceForm(row)
 
     await dialogRef.value?.handleOpen(row, {

@@ -49,7 +49,8 @@ const applyTransactionFilters = (
   query: SupabaseQueryLike,
   params: CashTransactionSearchParams
 ): SupabaseQueryLike => {
-  const { carrierId, customerId, dateRange, direction, keyword, status } = params
+  const { carrierId, customerId, dateRange, direction, keyword, recordId, status } = params
+  if (recordId) query = query.eq('id', recordId)
   if (customerId) query = query.eq('customer_id', customerId)
   if (carrierId) query = query.eq('carrier_id', carrierId)
   if (direction) query = query.eq('direction', direction)
@@ -173,7 +174,8 @@ export async function createCarrierPayment(params: CreateCarrierPaymentPayload) 
         p_bank_reference: params.bankReference || null,
         p_voucher_urls: params.voucherUrls ?? [],
         p_remark: params.remark || null,
-        p_allocations: params.allocations
+        p_allocations: params.allocations,
+        p_transaction_no: params.transactionNo || null
       }),
     { showMessage: true, breakReturn: true }
   )
@@ -212,7 +214,8 @@ export async function createCustomerReceipt(params: CreateReceiptPayload) {
         p_bank_reference: params.bankReference || null,
         p_voucher_urls: params.voucherUrls ?? [],
         p_remark: params.remark || null,
-        p_allocations: params.allocations
+        p_allocations: params.allocations,
+        p_transaction_no: params.transactionNo || null
       }),
     { showMessage: true, breakReturn: true }
   )

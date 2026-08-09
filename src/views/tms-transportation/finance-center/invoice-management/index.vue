@@ -11,6 +11,13 @@
       ]"
     />
 
+    <CustomerDeleteProcessingNotice
+      v-if="customerDeleteContext.active"
+      :customer-id="customerDeleteContext.customerId"
+      :customer-name="customerDeleteContext.customerName"
+      action-hint="已定位到关联发票。草稿可直接删除；已复核、已开具或已作废发票属于财务历史，应保留并停用客户。"
+    />
+
     <ArtTableQuery
       ref="tableQueryRef"
       v-model="table.searchQuery"
@@ -56,9 +63,9 @@
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatWithDayjs } from '@/utils/time'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
-  import { fetchRecognitionArtifactDetail } from '@/api/intelligent-recognition'
   import TmsWorkspaceHeader from '@/views/tms-transportation/modules/tms-workspace-header.vue'
-  import { toInvoiceOcrAnalyzeResponse } from '@/utils/intelligent-recognition'
+  import CustomerDeleteProcessingNotice from '@/views/tms-transportation/modules/customer-delete-processing-notice.vue'
+  import { useCustomerDeleteProcessingContext } from '@/views/tms-transportation/modules/use-customer-delete-processing'
   import InvoiceDialog from './modules/invoice-dialog.vue'
   import InvoiceComplianceAuditDrawer from './modules/invoice-compliance-audit-drawer.vue'
   import InvoiceDetailDrawer from './modules/invoice-detail-drawer.vue'
@@ -75,6 +82,7 @@
       result: Api.Tms.Finance.InvoiceOcrAnalyzeResponse,
       direction: Api.Tms.Finance.InvoiceDirection
     ) => Promise<void>
+    handleOpenFromArtifact: (artifactId: string) => Promise<boolean>
   }
 
   interface DrawerExpose {
@@ -96,18 +104,22 @@
   const { getDictMap } = storeToRefs(useUserStore())
   const { promptReason, confirmAction } = useArtFeedback()
   const route = useRoute()
+  const customerDeleteContext = useCustomerDeleteProcessingContext()
+  const invoiceManagementPath = '/tms-transportation/finance-center/invoice-management'
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<DialogExpose>()
   const drawerRef = ref<DrawerExpose>()
   const auditDrawerRef = ref<AuditDrawerExpose>()
+  let openedRouteArtifactId = ''
 
   const table: UnwrapNestedRefs<TableGroup> = reactive<TableGroup>({
     searchQuery: {
       direction: '',
       status: '',
       invoiceType: '',
-      customerId: '',
-      carrierId: '',
+      customerId: customerDeleteContext.value.customerId,
+      carrierId: customerDeleteContext.value.carrierId,
+      recordId: customerDeleteContext.value.recordId,
       issueDateRange: [],
       keyword: ''
     },
@@ -407,25 +419,66 @@
     void tableQueryRef.value?.refreshCreate()
   }
 
-  async function restoreRecognitionDraft(): Promise<void> {
-    const artifactId = typeof route.query.aiArtifactId === 'string' ? route.query.aiArtifactId : ''
-    if (!artifactId) return
+  function getRouteArtifactId(): string {
+    return typeof route.query.aiArtifactId === 'string' ? route.query.aiArtifactId : ''
+  }
 
-    const { data, error } = await fetchRecognitionArtifactDetail(artifactId)
-    if (error || !data || data.feature !== 'invoice_ocr') return
-    if (data.status !== 'pending') {
-      ElMessage.info('该识别任务已处理，已为你保留发票台账页面')
+  function isCurrentRecognitionRoute(artifactId: string): boolean {
+    return route.path === invoiceManagementPath && getRouteArtifactId() === artifactId
+  }
+
+  async function restoreRecognitionDraft(artifactId: string): Promise<void> {
+    openedRouteArtifactId = artifactId
+    await nextTick()
+    if (!isCurrentRecognitionRoute(artifactId)) return
+    const restored = await dialogRef.value?.handleOpenFromArtifact(artifactId)
+    if (!restored && isCurrentRecognitionRoute(artifactId)) openedRouteArtifactId = ''
+  }
+
+  function syncRecognitionRouteContext(): void {
+    if (route.path !== invoiceManagementPath) {
+      openedRouteArtifactId = ''
       return
     }
 
-    const metadataDirection = data.metadata?.direction
-    const direction: Api.Tms.Finance.InvoiceDirection =
-      metadataDirection === 'input' ? 'input' : 'output'
-    await dialogRef.value?.handleOpenFromOcr(toInvoiceOcrAnalyzeResponse(data), direction)
+    const artifactId = getRouteArtifactId()
+    if (!artifactId || artifactId === openedRouteArtifactId) return
+    void restoreRecognitionDraft(artifactId)
   }
+
+  function syncCustomerDeleteRoute(forceRefresh = false): void {
+    const context = customerDeleteContext.value
+    if (!context.active) return
+    const changed =
+      table.searchQuery.customerId !== context.customerId ||
+      table.searchQuery.carrierId !== context.carrierId ||
+      table.searchQuery.recordId !== context.recordId
+    Object.assign(table.searchQuery, {
+      customerId: context.customerId,
+      carrierId: context.carrierId,
+      recordId: context.recordId
+    })
+    if (changed || forceRefresh) {
+      void nextTick().then(() => tableQueryRef.value?.getData())
+    }
+  }
+
+  watch(
+    () => route.fullPath,
+    () => {
+      syncRecognitionRouteContext()
+      syncCustomerDeleteRoute()
+    },
+    { flush: 'post' }
+  )
+
+  onActivated(() => {
+    syncRecognitionRouteContext()
+    syncCustomerDeleteRoute(true)
+  })
 
   onMounted(() => {
     void loadCounterpartyOptions()
-    void restoreRecognitionDraft()
+    syncRecognitionRouteContext()
   })
 </script>

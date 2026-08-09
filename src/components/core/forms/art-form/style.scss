@@ -11,6 +11,16 @@
 
   &.art-search-bar {
     padding: 15px 20px 0;
+
+    :deep(.el-row) {
+      width: 100%;
+      margin-right: 0 !important;
+      margin-left: 0 !important;
+    }
+
+    :deep(.el-col) {
+      min-width: 0;
+    }
   }
 
   &-item {
@@ -56,6 +66,8 @@
     line-height: 32px;
     color: var(--theme-color);
     cursor: pointer;
+    background: transparent;
+    border: 0;
     transition: color 0.2s ease;
 
     &:hover {

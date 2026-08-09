@@ -11,6 +11,13 @@
       ]"
     />
 
+    <CustomerDeleteProcessingNotice
+      v-if="customerDeleteContext.active"
+      :customer-id="customerDeleteContext.customerId"
+      :customer-name="customerDeleteContext.customerName"
+      action-hint="已定位到关联对账单。草稿可直接删除；其他状态请先按现有审核、驳回或作废规则处理。"
+    />
+
     <ArtTableQuery
       ref="tableQueryRef"
       v-model="searchQuery"
@@ -56,6 +63,8 @@
   import CustomerStatementDialog from './modules/customer-statement-dialog.vue'
   import CustomerStatementDetailDrawer from './modules/customer-statement-detail-drawer.vue'
   import TmsWorkspaceHeader from '@/views/tms-transportation/modules/tms-workspace-header.vue'
+  import CustomerDeleteProcessingNotice from '@/views/tms-transportation/modules/customer-delete-processing-notice.vue'
+  import { useCustomerDeleteProcessingContext } from '@/views/tms-transportation/modules/use-customer-delete-processing'
 
   defineOptions({ name: 'TmsCustomerSettlement' })
 
@@ -73,14 +82,17 @@
 
   const { getDictMap } = storeToRefs(useUserStore())
   const { promptReason, confirmAction } = useArtFeedback()
+  const route = useRoute()
+  const customerDeleteContext = useCustomerDeleteProcessingContext()
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<DialogExpose>()
   const drawerRef = ref<DrawerExpose>()
   const customerOptions = ref<Array<{ label: string; value: string }>>([])
   const searchQuery = reactive<SearchParams>({
-    customerId: '',
+    customerId: customerDeleteContext.value.customerId,
     keyword: '',
     periodRange: [],
+    recordId: customerDeleteContext.value.recordId,
     status: ''
   })
 
@@ -383,6 +395,28 @@
       // 用户取消时无需提示。
     }
   }
+
+  function syncCustomerDeleteRoute(forceRefresh = false): void {
+    const context = customerDeleteContext.value
+    if (!context.active) return
+    const changed =
+      searchQuery.customerId !== context.customerId || searchQuery.recordId !== context.recordId
+    Object.assign(searchQuery, {
+      customerId: context.customerId,
+      recordId: context.recordId
+    })
+    if (changed || forceRefresh) {
+      void nextTick().then(() => tableQueryRef.value?.getData())
+    }
+  }
+
+  watch(
+    () => route.fullPath,
+    () => syncCustomerDeleteRoute(),
+    { flush: 'post' }
+  )
+
+  onActivated(() => syncCustomerDeleteRoute(true))
 
   onMounted(() => void loadCustomerOptions())
 </script>

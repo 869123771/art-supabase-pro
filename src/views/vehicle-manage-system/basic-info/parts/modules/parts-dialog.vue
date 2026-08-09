@@ -23,6 +23,7 @@
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
+  import { useDocumentNumberRule } from '@/hooks/core/useDocumentNumberRule'
   import TreeUtils from '@/utils/tree'
   import { useUserStore } from '@/store/modules/user'
   import {
@@ -74,14 +75,17 @@
   })
 
   const form = reactive<Parts>(createInitialForm())
+  const partNumber = useDocumentNumberRule('vehicle.part')
 
-  const rules: FormRules<Parts> = {
+  const rules = computed<FormRules<Parts>>(() => ({
     partName: [
       { required: true, message: '请输入零部件名称', trigger: 'blur' },
       { min: 2, max: 100, message: '长度应为 2 到 100 个字符', trigger: 'blur' }
     ],
     partCode: [
-      { required: true, message: '请输入零部件编码', trigger: 'blur' },
+      ...(partNumber.manualRequired(Boolean(form.id))
+        ? [{ required: true, message: '请输入零部件编码', trigger: 'blur' as const }]
+        : []),
       {
         pattern: /^[A-Za-z0-9_-]{2,60}$/,
         message: '编码仅支持字母、数字、下划线和中横线，长度 2 到 60',
@@ -95,7 +99,7 @@
     manufacturer: [{ max: 100, message: '生产厂商不能超过 100 个字符', trigger: 'blur' }],
     supplierContact: [{ max: 100, message: '供应商联系人不能超过 100 个字符', trigger: 'blur' }],
     remark: [{ max: 500, message: '备注不能超过 500 个字符', trigger: 'blur' }]
-  }
+  }))
 
   const items = computed<FormItem[]>(() => [
     {
@@ -118,8 +122,9 @@
       type: 'input',
       props: {
         maxlength: 60,
-        placeholder: '如 ENG-IN-001'
-      }
+        ...partNumber.inputProps(Boolean(form.id), '如 ENG-IN-001', true)
+      },
+      description: partNumber.description.value
     },
     {
       label: '零部件类别',
@@ -342,7 +347,7 @@
   }
 
   const handleOpen = async (row?: Parts): Promise<void> => {
-    await resetForm()
+    await Promise.all([resetForm(), partNumber.loadRule()])
     const isEdit = !!row?.id
     if (isEdit) {
       replaceForm({

@@ -151,7 +151,10 @@
         bottom: 0;
         left: -4px;
         margin: auto;
-        transition: all 0.3s;
+        transition:
+          color 0.3s,
+          background-color 0.3s,
+          transform 0.3s;
       }
     }
   }
@@ -171,7 +174,7 @@
       margin-left: 22px;
     }
 
-    p {
+    > span {
       position: absolute;
       top: 0;
       bottom: 0;

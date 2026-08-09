@@ -43,6 +43,7 @@
   import type { ArtTableQueryExpose } from '@/components/core/tables/art-table-query/index.vue'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
+  import RecognitionSourceGallery from './recognition-source-gallery.vue'
   import type { ColumnOption } from '@/types'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatWithDayjs } from '@/utils/time'
@@ -50,6 +51,7 @@
   import { useUserStore } from '@/store/modules/user'
   import {
     confidencePercent,
+    getArtifactImageUrls,
     getArtifactTitle,
     getRecognitionRiskLevel
   } from './recognition-config'
@@ -148,6 +150,18 @@
             <small>{row.id}</small>
           </div>
         </button>
+      )
+    },
+    {
+      prop: 'sourceImages',
+      label: '原始票据',
+      width: 126,
+      formatter: (row) => (
+        <RecognitionSourceGallery
+          compact
+          urls={getArtifactImageUrls(row)}
+          expectedCount={Number(row.metadata?.imageCount ?? 0)}
+        />
       )
     },
     {

@@ -1,5 +1,6 @@
 <template>
   <div class="tms-workspace-page art-full-height order-list">
+    <MasterDeleteProcessingNotice action-hint="当前订单已自动定位；业务历史需按流程处理或保留。" />
     <TmsWorkspaceHeader
       eyebrow="ORDER COMMAND CENTER"
       title="运输订单"
@@ -40,6 +41,7 @@
     </ArtTableQuery>
 
     <FreightDialog ref="freightDialogRef" @success="handleFreightSuccess" />
+    <MasterDataDeleteGuard ref="deleteGuardRef" @cleared="handleDeleteDependenciesCleared" />
   </div>
 </template>
 
@@ -75,6 +77,10 @@
   import TmsWorkspaceHeader, {
     type TmsWorkspaceMetric
   } from '@/views/tms-transportation/modules/tms-workspace-header.vue'
+  import MasterDataDeleteGuard, {
+    type MasterDataDeleteGuardOpenOptions
+  } from '@/components/business/master-data-delete-guard/index.vue'
+  import MasterDeleteProcessingNotice from '@/components/business/master-delete-processing-notice/index.vue'
 
   defineOptions({ name: 'TmsOrderList' })
 
@@ -86,6 +92,10 @@
 
   interface FreightDialogExpose {
     handleOpen: (row: OrderRecord) => Promise<void>
+  }
+
+  interface MasterDataDeleteGuardExpose {
+    inspect: (options: MasterDataDeleteGuardOpenOptions) => Promise<boolean>
   }
 
   interface StatusTab {
@@ -115,9 +125,11 @@
   }
 
   const router = useRouter()
+  const route = useRoute()
   const { getDictMap } = storeToRefs(useUserStore())
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const freightDialogRef = ref<FreightDialogExpose>()
+  const deleteGuardRef = ref<MasterDataDeleteGuardExpose>()
   const statusCountRequestId = ref(0)
 
   const orderExcelColumns: ArtTableQueryExcelColumn[] = [
@@ -139,6 +151,7 @@
 
   const table: UnwrapNestedRefs<TableGroup> = reactive<TableGroup>({
     searchQuery: {
+      recordId: typeof route.query.recordId === 'string' ? route.query.recordId : '',
       cargoKeyword: '',
       shippingKeyword: '',
       receivingKeyword: '',
@@ -294,9 +307,16 @@
         disabled: ({ selectedRows }) =>
           (selectedRows as OrderRecord[]).some((row) => !canDeleteOrder(row)),
         onClick: async ({ selectedRows }) => {
-          await deleteOrderBatch(
-            (selectedRows as OrderRecord[]).map((row) => String(row.id)).filter(Boolean)
-          )
+          const rows = selectedRows as OrderRecord[]
+          const blocked = await deleteGuardRef.value?.inspect({
+            resourceType: 'order',
+            resourceLabel: '运输订单',
+            resources: rows
+              .filter((row) => Boolean(row.id))
+              .map((row) => ({ id: String(row.id), label: row.orderNo }))
+          })
+          if (blocked) return
+          await deleteOrderBatch(rows.map((row) => String(row.id)).filter(Boolean))
           await tableQueryRef.value?.refreshRemove()
         }
       }
@@ -407,6 +427,14 @@
   onActivated(() => {
     void tableQueryRef.value?.getData()
   })
+
+  watch(
+    () => route.query.recordId,
+    (recordId) => {
+      table.searchQuery.recordId = typeof recordId === 'string' ? recordId : ''
+      void tableQueryRef.value?.getData()
+    }
+  )
 
   function fetchTableData(params: TableParams) {
     const { from, to } = pageInfoHandler({ current: params.current, size: params.size })
@@ -557,6 +585,13 @@
   async function handleDelete(row: OrderRecord): Promise<void> {
     if (!row.id || !canDeleteOrder(row)) return
     try {
+      const blocked = await deleteGuardRef.value?.inspect({
+        resourceType: 'order',
+        resourceLabel: '运输订单',
+        resources: [{ id: row.id, label: row.orderNo }]
+      })
+      if (blocked) return
+
       await confirmAction(
         `确定永久删除待配载订单“${row.orderNo}”吗？删除后无法恢复。`,
         '删除确认',
@@ -572,6 +607,10 @@
     } catch {
       // 用户取消删除时不需要提示。
     }
+  }
+
+  function handleDeleteDependenciesCleared(): void {
+    void tableQueryRef.value?.refreshData()
   }
 
   function formatMoney(value?: number | string | null): string {

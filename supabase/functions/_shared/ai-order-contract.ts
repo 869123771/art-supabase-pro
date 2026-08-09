@@ -45,6 +45,46 @@ function isNullableNonNegativeNumber(value: unknown): boolean {
   return value === null || (typeof value === 'number' && Number.isFinite(value) && value >= 0)
 }
 
+function flattenFieldConfidence(
+  value: unknown,
+  path: string,
+  result: Record<string, number>,
+  depth = 0
+): void {
+  if (Object.keys(result).length >= 60 || depth > 4) return
+
+  const confidence = typeof value === 'number' ? value : Number(value)
+  if (value !== '' && Number.isFinite(confidence)) {
+    if (path) result[path] = confidence
+    return
+  }
+
+  if (Array.isArray(value)) {
+    value.slice(0, 20).forEach((item, index) => {
+      flattenFieldConfidence(item, path ? `${path}.${index}` : String(index), result, depth + 1)
+    })
+    return
+  }
+
+  if (!isRecord(value)) return
+  Object.entries(value).forEach(([field, item]) => {
+    flattenFieldConfidence(item, path ? `${path}.${field}` : field, result, depth + 1)
+  })
+}
+
+/**
+ * Provider models occasionally return nested confidence metadata for cargo items.
+ * Keep the business payload strict while flattening this non-critical metadata into
+ * the Record<string, number> shape consumed by the review UI and audit table.
+ */
+export function normalizeAiOrderProviderMetadata(payload: unknown): unknown {
+  if (!isRecord(payload) || !isRecord(payload.fieldConfidence)) return payload
+
+  const fieldConfidence: Record<string, number> = {}
+  flattenFieldConfidence(payload.fieldConfidence, '', fieldConfidence)
+  return { ...payload, fieldConfidence }
+}
+
 export interface AiOrderContractValidation {
   valid: boolean
   errors: string[]

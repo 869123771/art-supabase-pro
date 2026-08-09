@@ -2,6 +2,7 @@ import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 import {
   compareAiOrderPayloads,
+  normalizeAiOrderProviderMetadata,
   validateAiOrderProviderPayload
 } from '../_shared/ai-order-contract.ts'
 import {
@@ -10,6 +11,10 @@ import {
 } from '../_shared/ai-provider-endpoints.ts'
 import { loadAiRuntimeConfig } from '../_shared/ai-runtime-config.ts'
 import { loadPublishedAiPrompt } from '../_shared/ai-prompt-template.ts'
+import {
+  extractAiProviderJson,
+  extractAiProviderText
+} from '../_shared/ai-provider-json.ts'
 
 const ORDER_EXAMPLE_DEFAULT_PROMPT = [
   'Generate one fictional but realistic Chinese less-than-truckload logistics order message for product demonstration.',
@@ -218,24 +223,6 @@ function getRequiredMissingFields(order: {
   return missingFields
 }
 
-function parseJson(content: string): Record<string, unknown> | null {
-  const unfenced = content
-    .replace(/^```(?:json)?\s*/i, '')
-    .replace(/\s*```$/i, '')
-    .trim()
-  try {
-    return JSON.parse(unfenced) as Record<string, unknown>
-  } catch {
-    const objectMatch = unfenced.match(/\{[\s\S]*\}/)
-    if (!objectMatch) return null
-    try {
-      return JSON.parse(objectMatch[0]) as Record<string, unknown>
-    } catch {
-      return null
-    }
-  }
-}
-
 function normalizeResponse(payload: Record<string, unknown>, options: AiOrderRequest['options']) {
   const rawOrder =
     payload.order && typeof payload.order === 'object'
@@ -301,21 +288,6 @@ function normalizeResponse(payload: Record<string, unknown>, options: AiOrderReq
     }),
     order
   }
-}
-
-function extractMessageContent(content: unknown): string {
-  if (typeof content === 'string') return content
-  if (!Array.isArray(content)) return ''
-  return content
-    .map((item) => {
-      if (typeof item === 'string') return item
-      if (item && typeof item === 'object' && 'text' in item && typeof item.text === 'string') {
-        return item.text
-      }
-      return ''
-    })
-    .join('\n')
-    .trim()
 }
 
 function getProviderTimeoutMs(): number {
@@ -792,30 +764,43 @@ Deno.serve(async (req) => {
 
     const providerPayload = await providerResponse.json()
     let usage = providerPayload?.usage
-    let content = extractMessageContent(providerPayload?.choices?.[0]?.message?.content)
-    let parsed = content ? parseJson(content) : null
+    let providerMessage = providerPayload?.choices?.[0]?.message
+    let content = extractAiProviderText(providerMessage)
+    let parsed = extractAiProviderJson(providerMessage)
 
     if (action === 'generate_example') {
       if (!parsed) {
+        console.warn('ai-order-assistant example response could not be parsed', {
+          model: resolvedModel,
+          contentType: Array.isArray(providerMessage?.content)
+            ? 'array'
+            : typeof providerMessage?.content,
+          contentLength: content.length,
+          hasParsedPayload: isRecord(providerMessage?.parsed)
+        })
         await finishRun('failed', usage, 'invalid_ai_response', 'Invalid JSON response')
-        return json({ code: 'invalid_ai_response', message: 'AI returned an invalid response' }, 502)
+        return json({ code: 'invalid_ai_response', message: 'AI 返回格式异常，请重试' }, 502)
       }
       const generatedPrompt = stringValue(parsed.prompt)?.slice(0, 8000)
       if (!generatedPrompt) {
         await finishRun('failed', usage, 'invalid_ai_response', 'Empty example')
-        return json({ code: 'invalid_ai_response', message: 'AI returned an empty example' }, 502)
+        return json({ code: 'invalid_ai_response', message: 'AI 未生成有效示例，请重试' }, 502)
       }
       await finishRun('succeeded', usage)
       return json({ prompt: generatedPrompt })
     }
 
+    parsed = normalizeAiOrderProviderMetadata(parsed) as Record<string, unknown> | null
     let validation = validateAiOrderProviderPayload(parsed)
     if (!validation.valid) {
       requestBody.temperature = 0
       requestBody.messages = [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userContent },
-        { role: 'assistant', content: content.slice(0, 12_000) },
+        {
+          role: 'assistant',
+          content: (content || JSON.stringify(parsed ?? {})).slice(0, 12_000)
+        },
         {
           role: 'user',
           content: [
@@ -830,8 +815,10 @@ Deno.serve(async (req) => {
       if (repairResult.response.ok) {
         const repairPayload = await repairResult.response.json()
         usage = combineUsage(usage, repairPayload?.usage)
-        content = extractMessageContent(repairPayload?.choices?.[0]?.message?.content)
-        parsed = content ? parseJson(content) : null
+        providerMessage = repairPayload?.choices?.[0]?.message
+        content = extractAiProviderText(providerMessage)
+        parsed = extractAiProviderJson(providerMessage)
+        parsed = normalizeAiOrderProviderMetadata(parsed) as Record<string, unknown> | null
         validation = validateAiOrderProviderPayload(parsed)
       } else {
         validation.errors.push('结构修复请求失败')
@@ -840,8 +827,17 @@ Deno.serve(async (req) => {
 
     if (!parsed || !validation.valid) {
       const errorMessage = validation.errors.join('; ').slice(0, 2000) || 'Invalid JSON response'
+      console.warn('ai-order-assistant response contract rejected', {
+        model: resolvedModel,
+        contentType: Array.isArray(providerMessage?.content)
+          ? 'array'
+          : typeof providerMessage?.content,
+        contentLength: content.length,
+        hasParsedPayload: isRecord(providerMessage?.parsed),
+        validationErrors: validation.errors.slice(0, 8)
+      })
       await finishRun('failed', usage, 'invalid_ai_response', errorMessage)
-      return json({ code: 'invalid_ai_response', message: 'AI returned an invalid response' }, 502)
+      return json({ code: 'invalid_ai_response', message: 'AI 识别结果结构异常，请重试' }, 502)
     }
 
     const normalized = normalizeResponse(parsed, body.options)

@@ -37,6 +37,8 @@ const WAYBILL_OPTION_SELECT = `
 
 function applyExpenseFilters(query: SupabaseQueryLike, params: ExpenseSearch): SupabaseQueryLike {
   const {
+    recordId,
+    orderId,
     expenseType,
     keyword,
     paymentStatus,
@@ -44,6 +46,8 @@ function applyExpenseFilters(query: SupabaseQueryLike, params: ExpenseSearch): S
     reportStatus,
     occurredAtRange
   } = params
+  if (recordId) query = query.eq('id', recordId)
+  if (orderId) query = query.eq('order_id', orderId)
   if (expenseType) query = query.eq('expense_type', expenseType)
   if (reportStatus) query = query.eq('report_status', reportStatus)
   if (reimbursementStatus) query = query.eq('reimbursement_status', reimbursementStatus)
@@ -78,6 +82,7 @@ function applyReimbursementFilters(
 
 function createExpensePayload(params: Expense) {
   return {
+    expenseNo: params.expenseNo?.trim() || '',
     waybillId: params.waybillId,
     expenseType: params.expenseType,
     amount: Number(params.amount),
@@ -92,6 +97,21 @@ function createExpensePayload(params: Expense) {
     invoiceNo: params.invoiceNo?.trim() || null,
     meterNo: params.meterNo?.trim() || null,
     expenseLocation: params.expenseLocation?.trim() || null,
+    expenseRegion: params.expenseRegion?.trim() || null,
+    expenseRegionAdcode: params.expenseRegionAdcode?.trim() || null,
+    expenseLongitude:
+      params.expenseLongitude === null || params.expenseLongitude === undefined
+        ? null
+        : Number(params.expenseLongitude),
+    expenseLatitude:
+      params.expenseLatitude === null || params.expenseLatitude === undefined
+        ? null
+        : Number(params.expenseLatitude),
+    expenseCoordinateSystem: params.expenseCoordinateSystem?.trim() || null,
+    expenseCoordinateSource: params.expenseCoordinateSource?.trim() || null,
+    expenseCoordinateStatus: params.expenseCoordinateStatus?.trim() || 'pending',
+    expenseGeocodeProvider: params.expenseGeocodeProvider?.trim() || null,
+    expenseGeocodedAt: params.expenseGeocodedAt || null,
     description: params.description?.trim() || null,
     attachments: [...(params.attachments ?? [])],
     latestOcrRunId: params.latestOcrRunId || null,
@@ -259,7 +279,8 @@ export async function createExpenseReimbursement(
         p_planned_payment_date: params.plannedPaymentDate,
         p_payment_method: params.paymentMethod,
         p_basis_urls: params.basisUrls ?? [],
-        p_remark: params.remark || null
+        p_remark: params.remark || null,
+        p_reimbursement_no: params.reimbursementNo || null
       }),
     { showMessage: true, breakReturn: true, message: '费用已转换为报销单' }
   )
@@ -298,7 +319,8 @@ export async function executeExpenseReimbursement(
         p_payment_date: params.paymentDate,
         p_bank_reference: params.bankReference || null,
         p_voucher_urls: params.voucherUrls ?? [],
-        p_remark: params.remark || null
+        p_remark: params.remark || null,
+        p_payment_no: params.paymentNo || null
       }),
     { showMessage: true, breakReturn: true, message: '付款已登记，关联费用已逐笔核销' }
   )

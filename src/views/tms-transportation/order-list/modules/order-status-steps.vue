@@ -67,7 +67,7 @@
     pending_order: 'ri:hourglass-line',
     pending_pickup: 'ri:archive-drawer-line',
     transporting: 'ri:truck-line',
-    signed: 'ri:time-line',
+    signed: 'ri:verified-badge-line',
     completed: 'ri:checkbox-circle-fill',
     cancelled: 'ri:close-circle-line'
   }

@@ -1,6 +1,9 @@
 <!-- 菜单管理页面 -->
 <template>
   <div class="menu-page art-full-height">
+    <MasterDeleteProcessingNotice
+      action-hint="当前菜单已自动定位；可先解除角色授权或处理编号场景后返回。"
+    />
     <section class="menu-page__overview art-card-xs">
       <header class="menu-page__hero">
         <div class="menu-page__identity">
@@ -53,6 +56,7 @@
     <!-- 菜单弹窗 -->
     <MenuDialog ref="menuDialogRef" @submit="handleSubmit" />
     <MenuSortDialog ref="menuSortDialogRef" @submit="handleSubmit" />
+    <MasterDataDeleteGuard ref="deleteGuardRef" @cleared="handleSubmit" />
   </div>
 </template>
 
@@ -80,10 +84,15 @@
   import { formatWithDayjs } from '@/utils/time'
   import { deleteMenu, fetchGetMenuList } from '@/api/system-manage'
   import { useAuth } from '@/hooks/core/useAuth'
+  import MasterDataDeleteGuard, {
+    type MasterDataDeleteGuardOpenOptions
+  } from '@/components/business/master-data-delete-guard/index.vue'
+  import MasterDeleteProcessingNotice from '@/components/business/master-delete-processing-notice/index.vue'
 
   defineOptions({ name: 'Menus' })
 
   const { confirmAction } = useArtFeedback()
+  const route = useRoute()
 
   const treeUtils = new TreeUtils({
     idKey: 'id',
@@ -109,6 +118,10 @@
     handleOpen: (menuTree: AppRouteRecord[]) => Promise<void>
   }
 
+  interface MasterDataDeleteGuardExpose {
+    inspect: (options: MasterDataDeleteGuardOpenOptions) => Promise<boolean>
+  }
+
   interface MenuOverviewCard {
     label: string
     value: number
@@ -128,6 +141,7 @@
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const menuDialogRef = ref<MenuDialogExpose>()
   const menuSortDialogRef = ref<MenuSortDialogExpose>()
+  const deleteGuardRef = ref<MasterDataDeleteGuardExpose>()
 
   const openMenuDialog = async (data: MenuDialogOpenData): Promise<void> => {
     await menuDialogRef.value?.handleOpen(data)
@@ -440,7 +454,10 @@
   }
 
   const fetchTableData = (params: AppRouteRecord) => {
-    return fetchGetMenuList(params)
+    return fetchGetMenuList({
+      ...params,
+      recordId: typeof route.query.recordId === 'string' ? route.query.recordId : undefined
+    })
   }
 
   const responseAdapter = (response: { data: AppRouteRecord[] }): ApiResponse<AppRouteRecord> => {
@@ -494,6 +511,20 @@
    */
   const handleDelete = async (row: AppRouteRecord): Promise<void> => {
     try {
+      const ids = treeUtils
+        .getDescendants(tableData.value, row.id as string, true)
+        ?.map((item) => String(item.id))
+      const descendants = treeUtils.getDescendants(tableData.value, row.id as string, true)
+      const blocked = await deleteGuardRef.value?.inspect({
+        resourceType: 'menu',
+        resourceLabel: '菜单',
+        resources: descendants.map((item) => ({
+          id: String(item.id),
+          label: formatMenuTitle(item.meta?.title)
+        }))
+      })
+      if (blocked) return
+
       await confirmAction(
         `删除「${formatMenuTitle(row.meta?.title)}」后，其下级菜单与按钮权限会一并移除，关联角色也将失去对应访问权限。确认继续吗？`,
         '删除菜单',
@@ -504,9 +535,6 @@
           confirmButtonClass: 'el-button--danger'
         }
       )
-      const ids = treeUtils
-        .getDescendants(tableData.value, row.id as string, true)
-        ?.map((item) => String(item.id))
       await deleteMenu({ ids })
       ElMessage.success('菜单删除成功')
       await tableQueryRef.value?.refreshRemove()
@@ -531,6 +559,13 @@
       .map((row) => row.id)
       .filter((id): id is string => id != null)
   }
+
+  watch(
+    () => route.query.recordId,
+    () => {
+      void tableQueryRef.value?.refreshData()
+    }
+  )
 </script>
 
 <style scoped lang="scss">

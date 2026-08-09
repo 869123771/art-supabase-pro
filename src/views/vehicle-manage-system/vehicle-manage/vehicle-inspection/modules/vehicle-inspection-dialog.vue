@@ -71,6 +71,7 @@
   } from '@/components/core/forms/art-data-select/types'
   import ArtExcelImport from '@/components/core/forms/art-excel-import/index.vue'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
+  import { useDocumentNumberRule } from '@/hooks/core/useDocumentNumberRule'
   import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
   import ArtTable from '@/components/core/tables/art-table/index.vue'
   import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
@@ -113,6 +114,7 @@
   const emit = defineEmits<Emits>()
   const dialogRef = ref<ArtDialogExpose<VehicleInspection | undefined>>()
   const formRef = ref<FormExpose>()
+  const inspectionNumber = useDocumentNumberRule('vehicle.inspection')
 
   const createInitialForm = (): VehicleInspection => ({
     id: undefined,
@@ -155,7 +157,16 @@
         props: { disabled: true, placeholder: '选择车辆后自动带出' }
       },
       { label: '年检日期', key: 'inspectionDate', type: 'date', props: dateProps },
-      { label: '年检号', key: 'inspectionNo', type: 'input', props: { maxlength: 80 } },
+      {
+        label: '年检号',
+        key: 'inspectionNo',
+        type: 'input',
+        props: {
+          maxlength: 80,
+          ...inspectionNumber.inputProps(Boolean(form.data.id), '请输入年检号', true)
+        },
+        description: inspectionNumber.description.value
+      },
       { label: '年检金额', key: 'inspectionAmount', type: 'number', props: moneyProps },
       { label: '车管所', key: 'vehicleOffice', type: 'input', props: { maxlength: 100 } },
       { label: '到期日期', key: 'expireDate', type: 'date', props: dateProps },
@@ -168,6 +179,9 @@
       }
     ]),
     rules: computed<FormRules<VehicleInspection>>(() => ({
+      inspectionNo: inspectionNumber.manualRequired(Boolean(form.data.id))
+        ? [{ required: true, message: '请输入年检号', trigger: 'blur' }]
+        : [],
       vehicleId: [{ required: true, message: '请选择车辆', trigger: 'change' }],
       inspectionDate: [{ required: true, message: '请选择年检日期', trigger: 'change' }],
       inspectionAmount: [{ required: true, message: '请输入年检金额', trigger: 'blur' }],
@@ -298,7 +312,7 @@
   }
 
   const handleOpen = async (row?: VehicleInspection): Promise<void> => {
-    await resetForm()
+    await Promise.all([resetForm(), inspectionNumber.loadRule()])
     if (row?.id) replaceForm(row)
 
     await dialogRef.value?.handleOpen(row, {

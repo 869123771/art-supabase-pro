@@ -88,7 +88,50 @@ export async function fetchOrderDetail(id: string) {
     showErrorMessage: true
   })
   const rows = result.data ? await mergeOrdersWithDriverWaybills([result.data]) : []
-  return { ...result, data: rows[0] ?? null }
+  const order = rows[0] ?? null
+  if (!order?.id) return { ...result, data: order }
+
+  const audit = await fetchDriverDeliveryAudit(order.id)
+  return { ...result, data: { ...order, ...audit } }
+}
+
+async function fetchDriverDeliveryAudit(orderId: string): Promise<Partial<OrderRecord>> {
+  const { data: waybill, error: waybillError } = await supabase
+    .from('tms_waybill')
+    .select('id, completed_at')
+    .eq('order_id', orderId)
+    .order('create_time', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (waybillError || !waybill) return {}
+
+  const [eventResult, proofResult] = await Promise.all([
+    supabase
+      .from('tms_waybill_event')
+      .select('event_type, event_time, operator_name, payload')
+      .eq('waybill_id', waybill.id)
+      .in('event_type', ['signed', 'completed'])
+      .order('event_time', { ascending: true }),
+    supabase
+      .from('tms_waybill_proof')
+      .select('id, proof_type')
+      .eq('waybill_id', waybill.id)
+      .in('proof_type', ['delivery_photo', 'receipt'])
+  ])
+
+  const signedEvent = (eventResult.data ?? []).find(
+    (event) =>
+      event.event_type === 'signed' ||
+      String((event.payload as Record<string, unknown> | null)?.action ?? '') === 'submit_signature'
+  )
+
+  return {
+    driverWaybillCompletedAt: waybill.completed_at,
+    driverWaybillSignedAt: signedEvent?.event_time ?? null,
+    driverWaybillSignedBy: signedEvent?.operator_name ?? null,
+    driverWaybillSignatureProofCount: proofResult.data?.length ?? 0
+  }
 }
 
 export async function addOrder(params: OrderRecord) {
@@ -177,9 +220,15 @@ export async function editOrder(params: OrderRecord) {
   delete data.transferStationRef
   delete data.dispatchVehicle
   delete data.dispatchDriver
+  delete data.driverWaybillAcceptedAt
   delete data.driverWaybillLoadedAt
   delete data.driverWaybillDepartedAt
   delete data.driverWaybillUnloadedAt
+  delete data.driverWaybillCompletedAt
+  delete data.driverWaybillSignedAt
+  delete data.driverWaybillSignedBy
+  delete data.driverWaybillSignatureProofCount
+  delete data.waybillStatus
 
   return await responseHandle<OrderRecord>(
     () =>

@@ -18,13 +18,56 @@ interface WriteOptions {
   showMessage?: boolean
 }
 
+export type CustomerDeleteDependencyCode =
+  | 'cash_allocation'
+  | 'cash_transaction'
+  | 'customer_price'
+  | 'customer_statement'
+  | 'customer_statement_item'
+  | 'invoice'
+
+export interface CustomerDeleteDependency {
+  customerId: string
+  dependencyCode: CustomerDeleteDependencyCode
+  dependencyCount: number
+}
+
+export interface CustomerDeleteDependencyDetail {
+  customerId: string
+  dependencyCode: CustomerDeleteDependencyCode
+  recordId: string
+  targetId: string
+  recordNo: string
+  recordSummary?: string | null
+  recordStatus?: string | null
+  recordAmount?: number | null
+  createdAt: string
+}
+
+export type CustomerDeleteSafeCleanupCode = Extract<
+  CustomerDeleteDependencyCode,
+  'customer_price' | 'customer_statement' | 'invoice'
+>
+
+export interface CustomerDeleteSafeCleanupCandidate {
+  customerId: string
+  dependencyCode: CustomerDeleteSafeCleanupCode
+  recordId: string
+}
+
+export interface CustomerDeleteSafeCleanupResult {
+  dependencyCode: CustomerDeleteSafeCleanupCode
+  deletedCount: number
+}
+
 const { supabase, keysToSnakeDeep, responseHandle } = useSupabase()
 
 const applyCustomerFilters = (
   query: SupabaseQueryLike,
   params: CustomerSearchParams
 ): SupabaseQueryLike => {
-  const { customerLevel, industry, enabled, keyword, createTimeRange } = params
+  const { customerId, customerLevel, industry, enabled, keyword, createTimeRange } = params
+  if (customerId) query = query.eq('id', customerId)
   if (customerLevel) query = query.eq('customer_level', customerLevel)
   if (industry) query = query.eq('industry', industry)
   const enabledValue = normalizeBooleanFilter(enabled)
@@ -128,16 +171,81 @@ export async function editCustomer(params: Customer) {
   )
 }
 
+export async function fetchCustomerDeleteDependencies(
+  customerIds: string[]
+): Promise<CustomerDeleteDependency[]> {
+  if (!customerIds.length) return []
+  const { data } = await responseHandle<CustomerDeleteDependency[]>(
+    () => supabase.rpc('get_tms_customer_delete_dependencies', { p_customer_ids: customerIds }),
+    { breakReturn: true }
+  )
+  return (data ?? []).map((item) => ({
+    ...item,
+    dependencyCount: Number(item.dependencyCount) || 0
+  }))
+}
+
+export async function fetchCustomerDeleteDependencyDetails(
+  customerIds: string[]
+): Promise<CustomerDeleteDependencyDetail[]> {
+  if (!customerIds.length) return []
+  const { data } = await responseHandle<CustomerDeleteDependencyDetail[]>(
+    () =>
+      supabase.rpc('get_tms_customer_delete_dependency_details', { p_customer_ids: customerIds }),
+    { breakReturn: true }
+  )
+  return (data ?? []).map((item) => ({
+    ...item,
+    recordAmount:
+      item.recordAmount === null || item.recordAmount === undefined
+        ? null
+        : Number(item.recordAmount)
+  }))
+}
+
+export async function fetchCustomerDeleteSafeCleanupCandidates(
+  customerIds: string[]
+): Promise<CustomerDeleteSafeCleanupCandidate[]> {
+  if (!customerIds.length) return []
+  const { data } = await responseHandle<CustomerDeleteSafeCleanupCandidate[]>(
+    () =>
+      supabase.rpc('get_tms_customer_delete_safe_cleanup_candidates', {
+        p_customer_ids: customerIds
+      }),
+    { breakReturn: true }
+  )
+  return data ?? []
+}
+
+export async function cleanupCustomerDeleteSafeDependencies(
+  customerIds: string[]
+): Promise<CustomerDeleteSafeCleanupResult[]> {
+  if (!customerIds.length) return []
+  const { data } = await responseHandle<CustomerDeleteSafeCleanupResult[]>(
+    () =>
+      supabase.rpc('cleanup_tms_customer_safe_delete_dependencies', {
+        p_customer_ids: customerIds
+      }),
+    { breakReturn: true }
+  )
+  return (data ?? []).map((item) => ({
+    ...item,
+    deletedCount: Number(item.deletedCount) || 0
+  }))
+}
+
 export async function deleteCustomer(id: string) {
-  return await responseHandle(() => supabase.from('tms_customer').delete().eq('id', id), {
-    showMessage: true
-  })
+  return await responseHandle(
+    () => supabase.from('tms_customer').delete({ count: 'exact' }).eq('id', id),
+    { breakReturn: true, requireAffected: true }
+  )
 }
 
 export async function deleteCustomerBatch(ids: string[]) {
-  return await responseHandle(() => supabase.from('tms_customer').delete().in('id', ids), {
-    showMessage: true
-  })
+  return await responseHandle(
+    () => supabase.from('tms_customer').delete({ count: 'exact' }).in('id', ids),
+    { breakReturn: true, requireAffected: true }
+  )
 }
 
 export async function importCustomers(rows: Customer[]) {
@@ -154,7 +262,8 @@ const applyCustomerAddressFilters = (
   query: SupabaseQueryLike,
   params: CustomerAddressSearchParams
 ): SupabaseQueryLike => {
-  const { customerId, addressType, keyword, createTimeRange } = params
+  const { customerId, addressType, keyword, createTimeRange, recordId } = params
+  if (recordId) query = query.eq('id', recordId)
   if (customerId) query = query.eq('customer_id', customerId)
   if (addressType) query = query.eq('address_type', addressType)
   if (keyword) {
@@ -231,13 +340,15 @@ export async function editCustomerAddress(params: CustomerAddress) {
 }
 
 export async function deleteCustomerAddress(id: string) {
-  return await responseHandle(() => supabase.from('tms_customer_address').delete().eq('id', id), {
-    showMessage: true
-  })
+  return await responseHandle(
+    () => supabase.from('tms_customer_address').delete({ count: 'exact' }).eq('id', id),
+    { showMessage: true, breakReturn: true, requireAffected: true }
+  )
 }
 
 export async function deleteCustomerAddressBatch(ids: string[]) {
-  return await responseHandle(() => supabase.from('tms_customer_address').delete().in('id', ids), {
-    showMessage: true
-  })
+  return await responseHandle(
+    () => supabase.from('tms_customer_address').delete({ count: 'exact' }).in('id', ids),
+    { showMessage: true, breakReturn: true, requireAffected: true }
+  )
 }

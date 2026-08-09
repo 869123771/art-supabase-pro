@@ -190,6 +190,12 @@ function normalizeInvoiceType(value: unknown): string | null {
   return INVOICE_TYPES.has(normalized) ? normalized : null
 }
 
+function normalizeInvoiceNo(value: unknown): string | null {
+  const source = textValue(value, 100)?.replace(/\s+/g, '').toUpperCase()
+  if (!source) return null
+  return /^[A-Z0-9]{6,30}$/.test(source) ? source : null
+}
+
 export function validateAiInvoiceOcrProviderPayload(payload: unknown): ContractValidationResult {
   const errors: string[] = []
   if (!isRecord(payload)) return { valid: false, errors: ['payload must be an object'] }
@@ -234,12 +240,13 @@ export function normalizeAiInvoiceOcrResponse(
   payload: Record<string, unknown>
 ): AiInvoiceOcrNormalizedResponse {
   const source = isRecord(payload.invoice) ? payload.invoice : {}
+  const sourceInvoiceNo = textValue(source.invoiceNo, 100)
   const invoice = {
     invoiceType: normalizeInvoiceType(source.invoiceType),
     invoiceTitle: textValue(source.invoiceTitle),
     taxNumber: textValue(source.taxNumber, 100),
     invoiceCode: textValue(source.invoiceCode, 100),
-    invoiceNo: textValue(source.invoiceNo, 100),
+    invoiceNo: normalizeInvoiceNo(source.invoiceNo),
     issueDate: normalizeDate(source.issueDate),
     taxRate: numberValue(source.taxRate),
     amountExcludingTax: numberValue(source.amountExcludingTax),
@@ -271,6 +278,9 @@ export function normalizeAiInvoiceOcrResponse(
   }
 
   const warnings = stringArray(payload.warnings)
+  if (sourceInvoiceNo && !invoice.invoiceNo) {
+    warnings.unshift('识别到的发票号码格式异常，已留空，请根据票面补录。')
+  }
   const calculatedTotal =
     invoice.amountExcludingTax !== null && invoice.taxAmount !== null
       ? Math.round((invoice.amountExcludingTax + invoice.taxAmount) * 100) / 100

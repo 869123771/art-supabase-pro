@@ -119,6 +119,7 @@
   import { useUserStore } from '@/store/modules/user'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import CashVoucherOcrPanel from './cash-voucher-ocr-panel.vue'
+  import { useDocumentNumberRule } from '@/hooks/core/useDocumentNumberRule'
 
   defineOptions({ name: 'TmsCustomerReceiptDialog' })
 
@@ -128,6 +129,7 @@
   type DialogMode = 'create' | 'allocate'
 
   interface ReceiptForm {
+    transactionNo: string
     customerId: string
     transactionDate: string
     amount: number | undefined
@@ -171,6 +173,7 @@
   const statementSelectRef = ref<ArtDataSelectExpose>()
   const ocrPanelRef = ref<OcrPanelExpose>()
   const ocrResult = ref<Api.Tms.Finance.CashVoucherOcrAnalyzeResponse>()
+  const transactionNumber = useDocumentNumberRule('tms.cash_transaction')
 
   const dialog = reactive<DialogGroup>({ mode: 'create', transaction: undefined })
   const selection = reactive<SelectionGroup>({
@@ -180,6 +183,7 @@
   })
 
   const createInitialForm = (): ReceiptForm => ({
+    transactionNo: '',
     customerId: '',
     transactionDate: dayjs().format('YYYY-MM-DD'),
     amount: undefined,
@@ -200,6 +204,16 @@
   const form: UnwrapNestedRefs<FormGroup> = reactive<FormGroup>({
     data: createInitialForm(),
     rules: {
+      transactionNo: [
+        {
+          validator: (_rule, value, callback) =>
+            transactionNumber.manualRequired(dialog.mode === 'allocate') &&
+            !String(value || '').trim()
+              ? callback(new Error('请输入收款流水号'))
+              : callback(),
+          trigger: 'blur'
+        }
+      ],
       customerId: [{ required: true, message: '请选择收款客户', trigger: 'change' }],
       transactionDate: [{ required: true, message: '请选择收款日期', trigger: 'change' }],
       amount: [
@@ -217,6 +231,17 @@
     items: computed<FormItem[]>(() => {
       const baseItems: FormItem[] = [
         { label: '收款信息', key: 'baseSection', type: 'divider', span: 24 },
+        {
+          label: '收款流水号',
+          key: 'transactionNo',
+          type: 'input',
+          span: 12,
+          props: {
+            maxlength: 50,
+            ...transactionNumber.inputProps(dialog.mode === 'allocate', '请输入收款流水号', true)
+          },
+          description: transactionNumber.description.value
+        },
         { label: '收款客户', key: 'customerId', type: 'input', span: 12 },
         {
           label: '收款日期',
@@ -566,6 +591,7 @@
         })
       } else {
         const { data: transactionId } = await createCustomerReceipt({
+          transactionNo: form.data.transactionNo.trim() || null,
           customerId: form.data.customerId,
           transactionDate: form.data.transactionDate,
           amount: numericValue(form.data.amount),
@@ -596,12 +622,13 @@
   }
 
   async function handleOpen(transaction?: CashTransaction): Promise<void> {
-    await resetForm()
+    await Promise.all([resetForm(), transactionNumber.loadRule()])
     dialog.mode = transaction ? 'allocate' : 'create'
     dialog.transaction = transaction
 
     if (transaction) {
       Object.assign(form.data, {
+        transactionNo: transaction.transactionNo,
         customerId: transaction.customerId ?? '',
         transactionDate: transaction.transactionDate,
         amount: transaction.amount,

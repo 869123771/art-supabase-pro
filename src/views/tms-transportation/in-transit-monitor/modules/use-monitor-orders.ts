@@ -16,6 +16,13 @@ import type {
   ScreenState,
   TransitStatus
 } from './monitor-types'
+
+const maskPhone = (value?: string | null): string => {
+  const phone = String(value ?? '').trim()
+  if (!phone) return '未登记电话'
+  if (phone.length <= 7) return `${phone.slice(0, 2)}***${phone.slice(-2)}`
+  return `${phone.slice(0, 3)}****${phone.slice(-4)}`
+}
 import {
   estimateDistanceKm,
   formatDateTime,
@@ -246,7 +253,7 @@ export function useMonitorOrders(options: UseMonitorOrdersOptions) {
       destination,
       destinationGeo,
       driverName: formatText(row.driver?.driverName || order?.dispatchDriverName, '未派司机'),
-      driverPhone: formatText(row.driver?.phone || order?.dispatchDriverPhone, '未登记电话'),
+      driverPhone: maskPhone(row.driver?.phone || order?.dispatchDriverPhone),
       id,
       latitude: currentGeo[1],
       longitude: currentGeo[0],

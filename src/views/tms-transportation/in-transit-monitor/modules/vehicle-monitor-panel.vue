@@ -22,6 +22,7 @@
       <ElInput
         v-model="keyword"
         :prefix-icon="Search"
+        aria-label="搜索车辆"
         clearable
         placeholder="请输入车牌号、司机或运单号"
       />
@@ -46,6 +47,7 @@
             type="button"
             class="vehicle-monitor-card"
             :class="{ 'is-active': item.id === selectedId }"
+            :aria-pressed="item.id === selectedId"
             @click="emit('select', item.id)"
           >
             <div class="vehicle-monitor-card__heading">
@@ -163,10 +165,16 @@
   .monitor-panel {
     &--summary {
       :deep(.el-input__wrapper) {
-        min-height: 36px;
-        margin-top: 12px;
+        min-height: 38px;
+        margin-top: 14px;
         background: rgb(255 255 255 / 8%);
+        border: 1px solid rgb(255 255 255 / 6%);
         box-shadow: none;
+
+        &:hover {
+          background: rgb(255 255 255 / 11%);
+          border-color: rgb(126 159 255 / 26%);
+        }
       }
     }
   }
@@ -195,6 +203,11 @@
     &.is-active {
       background: rgb(29 49 78 / 88%);
       box-shadow: inset 0 0 0 1px rgb(76 125 255 / 70%);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--transit-focus);
+      outline-offset: -2px;
     }
 
     &__heading {

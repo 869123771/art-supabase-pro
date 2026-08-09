@@ -140,6 +140,7 @@
   </ElCard>
 
   <DictTypeDialog ref="dictTypeDialogRef" @success="handleSuccess" />
+  <MasterDataDeleteGuard ref="deleteGuardRef" @cleared="handleSuccess" />
 </template>
 
 <script setup lang="ts">
@@ -151,8 +152,15 @@
   import ArtEmptyState from '@/components/core/layouts/art-empty-state/index.vue'
   import { deleteDictType, fetchGetDictTypeList, saveDictTypeTreeOrder } from '@/api/data-center'
   import DictTypeDialog from './dict-type-dialog.vue'
+  import MasterDataDeleteGuard, {
+    type MasterDataDeleteGuardOpenOptions
+  } from '@/components/business/master-data-delete-guard/index.vue'
 
   const { confirmAction } = useArtFeedback()
+
+  const props = defineProps<{
+    targetNodeId?: string
+  }>()
 
   type DictTypeItem = Api.DataCenter.DictTypeItem
   type AllowDrop = NonNullable<InstanceType<typeof ElTree>['$props']['allowDrop']>
@@ -162,6 +170,10 @@
       data?: DictTypeItem,
       options?: { parentId?: string; treeData: DictTypeItem[] }
     ) => Promise<void>
+  }
+
+  interface MasterDataDeleteGuardExpose {
+    inspect: (options: MasterDataDeleteGuardOpenOptions) => Promise<boolean>
   }
 
   interface TreeState {
@@ -180,6 +192,8 @@
       class: (data: unknown) => Record<string, boolean>
     }
   }
+
+  const deleteGuardRef = ref<MasterDataDeleteGuardExpose>()
 
   interface ElementTreeNode {
     data?: unknown
@@ -682,6 +696,13 @@
     if (!row.id) return
 
     try {
+      const blocked = await deleteGuardRef.value?.inspect({
+        resourceType: 'dict_type',
+        resourceLabel: row.nodeType === 'directory' ? '字典目录' : '字典类型',
+        resources: [{ id: row.id, label: row.name }]
+      })
+      if (blocked) return
+
       await confirmAction(
         row.nodeType === 'directory'
           ? '确定删除该目录吗？目录下存在子节点时不能删除。'
@@ -721,11 +742,28 @@
       if (currentKey) {
         treeRef.value?.setCurrentKey(currentKey)
       }
+      focusTargetNode()
       treeRef.value?.filter(tree.keyword)
     } finally {
       tree.loading = false
     }
   }
+
+  const focusTargetNode = (): void => {
+    if (!props.targetNodeId) return
+    const target = treeUtils.findNode(tree.data, props.targetNodeId) as DictTypeItem | undefined
+    if (!target) return
+    treeRef.value?.setCurrentKey(props.targetNodeId)
+    emit('tree-node-click', target)
+  }
+
+  watch(
+    () => props.targetNodeId,
+    async () => {
+      await nextTick()
+      focusTargetNode()
+    }
+  )
 
   onMounted(() => {
     void handleGetDictTypeList()

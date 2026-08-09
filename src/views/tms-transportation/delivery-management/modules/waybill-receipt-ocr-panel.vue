@@ -65,6 +65,18 @@
             <ElTag type="info" effect="plain" round>可信度 {{ confidencePercent }}%</ElTag>
           </div>
           <div class="receipt-ocr__result-actions">
+            <ElInput
+              v-if="
+                result.assessment.signals.length &&
+                isPlatformSuper &&
+                workOrderNumber.rule.value &&
+                !workOrderNumber.automatic.value &&
+                !workOrder
+              "
+              v-model="manualWorkOrderNo"
+              maxlength="50"
+              placeholder="请输入异常工单号"
+            />
             <ElButton
               v-if="result.assessment.signals.length && isPlatformSuper"
               type="warning"
@@ -117,6 +129,7 @@
   import ArtUploadImage from '@/components/core/forms/art-upload-image/index.vue'
   import { analyzeWaybillReceiptByAi, createReceiptExceptionWorkOrder } from '@/api/tms'
   import { useUserStore } from '@/store/modules/user'
+  import { useDocumentNumberRule } from '@/hooks/core/useDocumentNumberRule'
 
   defineOptions({ name: 'TmsWaybillReceiptOcrPanel' })
 
@@ -144,6 +157,8 @@
   const analyzing = ref(false)
   const creatingWorkOrder = ref(false)
   const workOrder = ref<Api.Tms.Delivery.ReceiptExceptionWorkOrder>()
+  const manualWorkOrderNo = ref('')
+  const workOrderNumber = useDocumentNumberRule('tms.receipt_exception')
   const { isPlatformSuper } = storeToRefs(useUserStore())
   const result = ref<Api.Tms.Delivery.ReceiptOcrAnalyzeResponse>()
   const imageUrls = computed<string[]>({
@@ -239,12 +254,17 @@
 
   async function handleCreateWorkOrder(): Promise<void> {
     if (!result.value?.assessment.signals.length || creatingWorkOrder.value) return
+    if (workOrderNumber.manualRequired(false) && !manualWorkOrderNo.value.trim()) {
+      ElMessage.warning('当前异常工单号规则为手工填写，请输入工单号')
+      return
+    }
     creatingWorkOrder.value = true
     try {
       const created = await createReceiptExceptionWorkOrder({
         artifactId: result.value.artifactId,
         orderId: props.order.id,
-        evidenceUrls: imageUrls.value
+        evidenceUrls: imageUrls.value,
+        workOrderNo: manualWorkOrderNo.value.trim() || null
       })
       if (!created) throw new Error('异常工单创建结果未返回')
       workOrder.value = created
@@ -256,6 +276,10 @@
       creatingWorkOrder.value = false
     }
   }
+
+  onMounted(() => {
+    void workOrderNumber.loadRule()
+  })
 
   function reset(): void {
     result.value = undefined

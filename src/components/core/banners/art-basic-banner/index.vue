@@ -1,10 +1,16 @@
 <!-- 基础横幅组件 -->
 <template>
   <div
+    role="button"
+    tabindex="0"
+    data-ui-audit-allow="interactive-card"
+    :aria-label="title || '查看横幅详情'"
     class="art-card basic-banner"
     :class="[{ 'has-decoration': decoration }, boxStyle]"
     :style="{ height }"
     @click="emit('click')"
+    @keydown.enter="emit('click')"
+    @keydown.space.prevent="emit('click')"
   >
     <!-- 流星效果 -->
     <div v-if="meteorConfig?.enabled && isDark" class="basic-banner__meteors">
@@ -36,8 +42,9 @@
 
       <!-- button slot -->
       <slot name="button">
-        <div
+        <button
           v-if="buttonConfig?.show"
+          type="button"
           class="basic-banner__button"
           :style="{
             backgroundColor: buttonColor,
@@ -47,7 +54,7 @@
           @click.stop="emit('buttonClick')"
         >
           {{ buttonConfig?.text }}
-        </div>
+        </button>
       </slot>
 
       <!-- default slot -->
@@ -251,7 +258,7 @@
       text-align: center;
       cursor: pointer;
       user-select: none;
-      transition: all 0.3s;
+      transition: opacity 0.3s;
 
       &:hover {
         opacity: 0.8;

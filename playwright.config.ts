@@ -54,7 +54,35 @@ export default defineConfig({
       dependencies: ['setup'],
       testIgnore: /auth\.setup\.ts/,
       use: {
-        viewport: { width: 1280, height: 800 },
+        viewport: { width: 1280, height: 720 },
+        storageState: 'playwright/.auth/user.json'
+      }
+    },
+    {
+      name: 'tablet-1024',
+      dependencies: ['setup'],
+      testIgnore: /auth\.setup\.ts/,
+      use: {
+        viewport: { width: 1024, height: 768 },
+        storageState: 'playwright/.auth/user.json'
+      }
+    },
+    {
+      name: 'desktop-dark-1440',
+      dependencies: ['setup'],
+      testIgnore: /auth\.setup\.ts/,
+      use: {
+        viewport: { width: 1440, height: 900 },
+        colorScheme: 'dark',
+        storageState: 'playwright/.auth/user.json'
+      }
+    },
+    {
+      name: 'desktop-shadow-1280',
+      dependencies: ['setup'],
+      testIgnore: /auth\.setup\.ts/,
+      use: {
+        viewport: { width: 1280, height: 720 },
         storageState: 'playwright/.auth/user.json'
       }
     },

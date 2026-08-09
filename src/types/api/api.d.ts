@@ -204,6 +204,7 @@ declare namespace Api {
         | 'endTime'
       > &
         Api.Common.CommonSearchParams & {
+          recordId: string
           startTime: string | null
           endTime: string | null
           organizationIds: string[]
@@ -288,6 +289,7 @@ declare namespace Api {
     type OrganizationSearchParams = Partial<
       Pick<OrganizationListItem, 'tenantId' | 'organizationType' | 'status'> & {
         keyword: string
+        recordId: string
       }
     >
 
@@ -364,6 +366,105 @@ declare namespace Api {
       groups: number
       groupCounts: Record<string, number>
       lastRefreshTime?: string
+    }
+
+    type DocumentNumberCategory = 'business_document' | 'master_data' | 'vehicle'
+    type DocumentNumberResetCycle = 'none' | 'year' | 'month' | 'day'
+
+    interface DocumentNumberCounterItem {
+      id?: string
+      ruleId: string
+      tenantId: string
+      ruleVersion: number
+      periodKey: string
+      currentValue: number
+      updateTime?: string
+    }
+
+    interface DocumentNumberRuleItem {
+      id?: string
+      tenantId: string
+      tenant?: Pick<TenantListItem, 'tenantCode' | 'tenantName'> | null
+      ruleKey: string
+      ruleName: string
+      category: DocumentNumberCategory
+      targetTable: string
+      targetColumn: string
+      autoEnabled: boolean
+      template: string
+      resetCycle: DocumentNumberResetCycle
+      sequenceStart: number
+      timezone: string
+      ruleVersion: number
+      manualRequired: boolean
+      builtin: boolean
+      enabled: boolean
+      remark?: string | null
+      createBy?: string
+      createTime?: string
+      updateBy?: string
+      updateTime?: string
+      counters?: DocumentNumberCounterItem[]
+      currentValue?: number | null
+      currentPeriodKey?: string
+      nextValue?: number
+      preview?: string
+      scene?: DocumentNumberSceneItem | null
+    }
+
+    interface DocumentNumberSceneItem {
+      ruleKey: string
+      ruleName: string
+      fieldLabel: string
+      category: DocumentNumberCategory
+      menuId: string
+      menu?: Pick<AppRouteRecord, 'id' | 'name' | 'path' | 'component' | 'parentId' | 'meta'> | null
+      targetTable: string
+      targetColumn: string
+      defaultTemplate: string
+      defaultResetCycle: DocumentNumberResetCycle
+      manualRequired: boolean
+      enabled: boolean
+      remark?: string | null
+    }
+
+    type DocumentNumberRuleSearchParams = Partial<
+      Pick<DocumentNumberRuleItem, 'tenantId' | 'category' | 'autoEnabled'> &
+        Api.Common.CommonSearchParams & {
+          keyword?: string
+          ruleKeys?: string[]
+        }
+    >
+
+    type DocumentNumberRuleUpdatePayload = Pick<
+      DocumentNumberRuleItem,
+      'id' | 'autoEnabled' | 'template' | 'resetCycle' | 'sequenceStart' | 'timezone' | 'remark'
+    >
+
+    interface DocumentNumberRuleCreatePayload {
+      tenantIds: string[]
+      scene: DocumentNumberSceneItem
+      autoEnabled: boolean
+      template: string
+      resetCycle: DocumentNumberResetCycle
+      sequenceStart: number
+      timezone: string
+      remark?: string | null
+    }
+
+    interface DocumentNumberRuleBatchResult {
+      created: number
+      updated: number
+      assigned: number
+    }
+
+    interface DocumentNumberRuleStats {
+      total: number
+      automatic: number
+      manual: number
+      tenantCount: number
+      categoryCounts: Record<DocumentNumberCategory, number>
+      lastUpdateTime?: string
     }
 
     type WebsiteWatermarkContentType = 'username' | 'username_time' | 'site_name' | 'custom'
@@ -565,6 +666,7 @@ declare namespace Api {
           Api.Common.CommonSearchParams & {
             createTimeRange?: string[]
             auditStatuses?: AuditStatus[]
+            recordId?: string
           }
       >
     }
@@ -1194,6 +1296,7 @@ declare namespace Api {
       type CustomerSearchParams = Partial<
         Pick<Customer, 'customerLevel' | 'industry' | 'enabled'> &
           Api.Common.CommonSearchParams & {
+            customerId?: string
             keyword?: string
             createTimeRange?: string[]
           }
@@ -1250,6 +1353,7 @@ declare namespace Api {
           Api.Common.CommonSearchParams & {
             keyword?: string
             createTimeRange?: string[]
+            recordId?: string
           }
       >
 
@@ -1324,6 +1428,7 @@ declare namespace Api {
           Api.Common.CommonSearchParams & {
             keyword?: string
             createTimeRange?: string[]
+            recordId?: string
           }
       >
 
@@ -1368,6 +1473,7 @@ declare namespace Api {
           Api.Common.CommonSearchParams & {
             keyword?: string
             createTimeRange?: string[]
+            recordId?: string
           }
       >
 
@@ -1515,6 +1621,7 @@ declare namespace Api {
           Api.Common.CommonSearchParams & {
             keyword?: string
             createTimeRange?: string[]
+            recordId?: string
           }
       >
 
@@ -1550,6 +1657,7 @@ declare namespace Api {
           Api.Common.CommonSearchParams & {
             keyword?: string
             createTimeRange?: string[]
+            recordId?: string
           }
       >
 
@@ -1588,6 +1696,7 @@ declare namespace Api {
           Api.Common.CommonSearchParams & {
             keyword?: string
             createTimeRange?: string[]
+            recordId?: string
           }
       >
 
@@ -1627,6 +1736,7 @@ declare namespace Api {
           Api.Common.CommonSearchParams & {
             keyword?: string
             createTimeRange?: string[]
+            recordId?: string
           }
       >
     }
@@ -1821,9 +1931,14 @@ declare namespace Api {
         signedCodAmount?: number | null
         receiptImageUrls?: string[]
         signedAt?: string | null
+        driverWaybillAcceptedAt?: string | null
         driverWaybillLoadedAt?: string | null
         driverWaybillDepartedAt?: string | null
         driverWaybillUnloadedAt?: string | null
+        driverWaybillCompletedAt?: string | null
+        driverWaybillSignedAt?: string | null
+        driverWaybillSignedBy?: string | null
+        driverWaybillSignatureProofCount?: number
         waybillStatus?: string | null
         dispatchStatus?: string
         dispatchVehicleId?: string | null
@@ -1855,6 +1970,7 @@ declare namespace Api {
           | 'destinationStationId'
           | 'transferStationId'
         > & {
+          recordId?: string
           cargoKeyword?: string
           shippingKeyword?: string
           receivingKeyword?: string
@@ -2118,6 +2234,15 @@ declare namespace Api {
         invoiceNo?: string | null
         meterNo?: string | null
         expenseLocation?: string | null
+        expenseRegion?: string | null
+        expenseRegionAdcode?: string | null
+        expenseLongitude?: number | string | null
+        expenseLatitude?: number | string | null
+        expenseCoordinateSystem?: string | null
+        expenseCoordinateSource?: string | null
+        expenseCoordinateStatus?: string | null
+        expenseGeocodeProvider?: string | null
+        expenseGeocodedAt?: string | null
         description?: string | null
         attachments: string[]
         waybillNoSnapshot?: string
@@ -2152,6 +2277,8 @@ declare namespace Api {
       }
 
       type InTransitExpenseSearchParams = Api.Common.CommonSearchParams & {
+        recordId?: string
+        orderId?: string
         keyword?: string
         expenseType?: string
         reportStatus?: string
@@ -2245,6 +2372,7 @@ declare namespace Api {
       }
 
       interface CreateExpenseReimbursementPayload {
+        reimbursementNo?: string | null
         expenseIds: string[]
         payeeName: string
         payeeBank?: string | null
@@ -2256,6 +2384,7 @@ declare namespace Api {
       }
 
       interface ExecuteExpenseReimbursementPayload {
+        paymentNo?: string | null
         reimbursementId: string
         paymentDate: string
         bankReference?: string | null
@@ -2624,6 +2753,7 @@ declare namespace Api {
         customerId?: string
         keyword?: string
         periodRange?: string[]
+        recordId?: string
         status?: string
       }
 
@@ -2650,6 +2780,7 @@ declare namespace Api {
       }
 
       interface CreateCustomerStatementPayload {
+        statementNo?: string | null
         customerId: string
         periodStart: string
         periodEnd: string
@@ -2720,6 +2851,7 @@ declare namespace Api {
         carrierId?: string
         keyword?: string
         periodRange?: string[]
+        recordId?: string
         status?: string
       }
 
@@ -2748,6 +2880,7 @@ declare namespace Api {
       }
 
       interface CreateCarrierStatementPayload {
+        statementNo?: string | null
         carrierId: string
         periodStart: string
         periodEnd: string
@@ -2832,6 +2965,7 @@ declare namespace Api {
         customerId?: string
         carrierId?: string
         direction?: string
+        recordId?: string
         status?: string
         dateRange?: string[]
         keyword?: string
@@ -2864,6 +2998,7 @@ declare namespace Api {
       }
 
       interface CreateCustomerReceiptPayload {
+        transactionNo?: string | null
         customerId: string
         transactionDate: string
         amount: number
@@ -2925,6 +3060,7 @@ declare namespace Api {
       }
 
       interface CreateCarrierPaymentPayload {
+        transactionNo?: string | null
         carrierId: string
         transactionDate: string
         amount: number
@@ -2998,9 +3134,11 @@ declare namespace Api {
         status?: string
         plannedPaymentDateRange?: string[]
         keyword?: string
+        recordId?: string
       }
 
       interface SaveCarrierPaymentApplicationPayload {
+        applicationNo?: string | null
         id?: string
         carrierId: string
         plannedPaymentDate: string
@@ -3012,6 +3150,7 @@ declare namespace Api {
       }
 
       interface ExecuteCarrierPaymentApplicationPayload {
+        transactionNo?: string | null
         applicationId: string
         transactionDate: string
         bankReference?: string | null
@@ -3187,12 +3326,24 @@ declare namespace Api {
         statementLinks?: InvoiceStatementLinkRecord[]
       }
 
+      interface InvoiceDuplicateRecord {
+        id: string
+        invoiceRecordNo: string
+        direction: InvoiceDirection
+        invoiceNo: string
+        status: InvoiceStatus
+        counterpartyNameSnapshot: string
+        issueDate: string
+        totalAmount: number
+      }
+
       type InvoiceSearchParams = Api.Common.CommonSearchParams & {
         direction?: string
         status?: string
         invoiceType?: string
         customerId?: string
         carrierId?: string
+        recordId?: string
         issueDateRange?: string[]
         keyword?: string
       }
@@ -3220,6 +3371,7 @@ declare namespace Api {
       }
 
       interface SaveInvoicePayload {
+        invoiceRecordNo?: string | null
         id?: string | null
         direction: InvoiceDirection
         invoiceType: InvoiceType
@@ -3555,9 +3707,11 @@ declare namespace Api {
         receiverLatitude?: number | string | null
         plannedLoadTime?: string | null
         plannedUnloadTime?: string | null
+        acceptedAt?: string | null
         loadedAt?: string | null
         departedAt?: string | null
         unloadedAt?: string | null
+        completedAt?: string | null
         currentLongitude?: number | string | null
         currentLatitude?: number | string | null
         speedKmh?: number | string | null

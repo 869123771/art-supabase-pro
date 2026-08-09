@@ -85,6 +85,7 @@
   } from '@/api/tms'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatWithDayjs } from '@/utils/time'
+  import { useDocumentNumberRule } from '@/hooks/core/useDocumentNumberRule'
 
   defineOptions({ name: 'TmsCustomerStatementDialog' })
 
@@ -97,6 +98,7 @@
   }
 
   interface StatementForm {
+    statementNo: string
     customerId: string
     periodRange: string[]
     waybillIds: string[]
@@ -109,8 +111,10 @@
   const waybillSelectRef = ref<ArtDataSelectExpose>()
   const selectedCustomers = ref<DataSelectRecord[]>([])
   const selectedWaybills = ref<DataSelectRecord[]>([])
+  const statementNumber = useDocumentNumberRule('tms.customer_statement')
 
   const createInitialForm = (): StatementForm => ({
+    statementNo: '',
     customerId: '',
     periodRange: [dayjs().startOf('month').format('YYYY-MM-DD'), dayjs().format('YYYY-MM-DD')],
     waybillIds: [],
@@ -181,6 +185,15 @@
   ]
 
   const formRules: FormRules<StatementForm> = {
+    statementNo: [
+      {
+        validator: (_rule, value, callback) =>
+          statementNumber.manualRequired(false) && !String(value || '').trim()
+            ? callback(new Error('请输入客户对账单号'))
+            : callback(),
+        trigger: 'blur'
+      }
+    ],
     customerId: [{ required: true, message: '请选择对账客户', trigger: 'change' }],
     periodRange: [{ required: true, message: '请选择对账账期', trigger: 'change' }],
     waybillIds: [
@@ -197,6 +210,14 @@
 
   const formItems = computed<FormItem[]>(() => [
     { label: '对账范围', key: 'baseSection', type: 'divider', span: 24 },
+    {
+      label: '对账单号',
+      key: 'statementNo',
+      type: 'input',
+      span: 12,
+      props: { maxlength: 50, ...statementNumber.inputProps(false, '请输入客户对账单号') },
+      description: statementNumber.description.value
+    },
     { label: '对账客户', key: 'customerId', type: 'input', span: 12 },
     {
       label: '对账账期',
@@ -284,6 +305,7 @@
     }
 
     const payload: CreatePayload = {
+      statementNo: form.statementNo.trim() || null,
       customerId: form.customerId,
       periodStart: form.periodRange[0],
       periodEnd: form.periodRange[1],
@@ -301,7 +323,7 @@
   }
 
   async function handleOpen(): Promise<void> {
-    await resetForm()
+    await Promise.all([resetForm(), statementNumber.loadRule()])
     await dialogRef.value?.handleOpen(undefined, {
       title: '生成客户对账单',
       subtitle: '按客户和账期归集已完成运单，生成后可提交财务审核',

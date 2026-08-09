@@ -55,12 +55,14 @@
   import { createExpenseReimbursement } from '@/api/tms'
   import { useUserStore } from '@/store/modules/user'
   import { formatCurrencyValue } from '@/utils/ui'
+  import { useDocumentNumberRule } from '@/hooks/core/useDocumentNumberRule'
 
   defineOptions({ name: 'TmsExpenseReimbursementDialog' })
 
   type Expense = Api.Tms.Finance.InTransitExpenseRecord
 
   interface ReimbursementForm {
+    reimbursementNo: string
     payeeName: string
     payeeBank: string
     payeeAccount: string
@@ -87,8 +89,10 @@
   const dialogRef = ref<ArtDialogExpose<{ expenses: Expense[] }>>()
   const formRef = ref<FormExpose>()
   const state = reactive<{ expenses: Expense[] }>({ expenses: [] })
+  const reimbursementNumber = useDocumentNumberRule('tms.expense_reimbursement')
 
   const createInitialForm = (): ReimbursementForm => ({
+    reimbursementNo: '',
     payeeName: '',
     payeeBank: '',
     payeeAccount: '',
@@ -101,12 +105,31 @@
   const form = reactive<FormGroup>({
     data: createInitialForm(),
     rules: {
+      reimbursementNo: [
+        {
+          validator: (_rule, value, callback) =>
+            reimbursementNumber.manualRequired(false) && !String(value || '').trim()
+              ? callback(new Error('请输入费用报销单号'))
+              : callback(),
+          trigger: 'blur'
+        }
+      ],
       payeeName: [{ required: true, message: '请填写实际收款人', trigger: 'blur' }],
       plannedPaymentDate: [{ required: true, message: '请选择计划付款日期', trigger: 'change' }],
       paymentMethod: [{ required: true, message: '请选择付款方式', trigger: 'change' }]
     },
     items: computed<FormItem[]>(() => [
       { label: '报销收款', key: 'payeeSection', type: 'divider', span: 24 },
+      {
+        label: '报销单号',
+        key: 'reimbursementNo',
+        type: 'input',
+        props: {
+          maxlength: 50,
+          ...reimbursementNumber.inputProps(false, '请输入费用报销单号')
+        },
+        description: reimbursementNumber.description.value
+      },
       {
         label: '收款人',
         key: 'payeeName',
@@ -190,6 +213,7 @@
     }
     try {
       await createExpenseReimbursement({
+        reimbursementNo: form.data.reimbursementNo.trim() || null,
         expenseIds: state.expenses.flatMap((item) => (item.id ? [item.id] : [])),
         payeeName: form.data.payeeName.trim(),
         payeeBank: form.data.payeeBank.trim() || null,
@@ -214,7 +238,7 @@
   }
 
   async function handleOpen(expenses: Expense[]): Promise<void> {
-    await resetForm()
+    await Promise.all([resetForm(), reimbursementNumber.loadRule()])
     state.expenses = structuredClone(toRaw(expenses))
     const suggestedPayee =
       expenses.find((item) => item.payeeName)?.payeeName ||

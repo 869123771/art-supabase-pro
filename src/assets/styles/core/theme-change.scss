@@ -6,6 +6,10 @@
 
   .el-switch__core,
   .el-switch__action {
-    transition: all 0.3s !important;
+    transition:
+      background-color 0.3s,
+      border-color 0.3s,
+      color 0.3s,
+      transform 0.3s !important;
   }
 }

@@ -5,6 +5,8 @@
       <div class="dashboard-hero__meta">
         <span class="dashboard-hero__pulse" /> 运输运营中心 <i />
         <span>{{ dateText }}</span>
+        <i v-if="userContext" />
+        <span v-if="userContext">{{ userContext }}</span>
       </div>
       <h1
         >{{ greeting }}，<strong>{{ userName }}</strong></h1
@@ -22,7 +24,7 @@
 
     <div class="dashboard-hero__live">
       <header>
-        <span><i /> LIVE COMMAND</span>
+        <span><i /> 实时调度</span>
         <button type="button" aria-label="刷新工作台数据" @click="emit('refresh')">
           <ElIcon><RefreshRight /></ElIcon>
         </button>
@@ -51,6 +53,7 @@
   defineProps<{
     greeting: string
     userName: string
+    userContext: string
     dateText: string
     todayOrderCount: number
     inTransitCount: number
@@ -65,6 +68,10 @@
 
 <style scoped lang="scss">
   .dashboard-hero {
+    --dashboard-hero-cyan: #70e8ff;
+    --dashboard-hero-mint: #4df3c4;
+    --dashboard-hero-indigo: #3730a3;
+
     position: relative;
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(260px, 0.36fr);
@@ -138,7 +145,7 @@
     &__pulse {
       width: 8px;
       height: 8px;
-      background: #4df3c4;
+      background: var(--dashboard-hero-mint);
       border-radius: 50%;
       box-shadow: 0 0 0 6px rgb(77 243 196 / 14%);
     }
@@ -166,7 +173,7 @@
     }
 
     p strong {
-      color: #87f5ff;
+      color: var(--dashboard-hero-cyan);
     }
 
     &__actions {
@@ -183,7 +190,7 @@
     }
 
     &__actions :deep(.el-button--primary) {
-      color: #3730a3;
+      color: var(--dashboard-hero-indigo);
       background: var(--el-color-white);
       border-color: var(--el-color-white);
       box-shadow: 0 10px 24px rgb(16 23 73 / 24%);
@@ -304,7 +311,7 @@
 
       > span {
         height: 1px;
-        background: linear-gradient(90deg, rgb(255 255 255 / 65%), #70e8ff);
+        background: linear-gradient(90deg, rgb(255 255 255 / 65%), var(--dashboard-hero-cyan));
       }
 
       > b {
@@ -313,8 +320,8 @@
         justify-content: center;
         width: 22px;
         height: 22px;
-        color: #302b8d;
-        background: #70e8ff;
+        color: var(--dashboard-hero-indigo);
+        background: var(--dashboard-hero-cyan);
         border-radius: 50%;
         box-shadow: 0 3px 10px rgb(26 22 100 / 20%);
 

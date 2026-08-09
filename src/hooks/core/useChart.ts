@@ -248,7 +248,7 @@ export function useChart(options: UseChartOptions = {}) {
     if (!styleCache.axisLine) {
       styleCache.axisLine = {
         show,
-        lineStyle: createLineStyle(isDark.value ? '#444' : '#EDEDED')
+        lineStyle: createLineStyle(getCssVar('--el-border-color'))
       }
     }
     return styleCache.axisLine
@@ -262,7 +262,7 @@ export function useChart(options: UseChartOptions = {}) {
     if (!styleCache.splitLine) {
       styleCache.splitLine = {
         show,
-        lineStyle: createLineStyle(isDark.value ? '#444' : '#EDEDED', 1, 'dashed')
+        lineStyle: createLineStyle(getCssVar('--el-border-color-light'), 1, 'dashed')
       }
     }
     return styleCache.splitLine
@@ -274,10 +274,10 @@ export function useChart(options: UseChartOptions = {}) {
       clearStyleCache()
     }
     if (!styleCache.axisLabel) {
-      const { fontColor, fontSize } = useChartOps()
+      const { fontSize } = useChartOps()
       styleCache.axisLabel = {
         show,
-        color: fontColor,
+        color: getCssVar('--el-text-color-secondary'),
         fontSize
       }
     }

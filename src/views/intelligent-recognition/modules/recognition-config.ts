@@ -134,6 +134,18 @@ export function getArtifactTitle(artifact: Api.IntelligentRecognition.Recognitio
   return typeof title === 'string' && title ? title : `识别任务 ${artifact.id.slice(0, 8)}`
 }
 
+export function getArtifactImageUrls(
+  artifact: Api.IntelligentRecognition.RecognitionArtifact
+): string[] {
+  const urls = artifact.metadata?.imageUrls
+  if (!Array.isArray(urls)) return []
+
+  return urls
+    .filter((url): url is string => typeof url === 'string' && /^https?:\/\//i.test(url.trim()))
+    .map((url) => url.trim())
+    .slice(0, 5)
+}
+
 export function confidencePercent(value?: number | null): number {
   return Math.round((value ?? 0) * 100)
 }

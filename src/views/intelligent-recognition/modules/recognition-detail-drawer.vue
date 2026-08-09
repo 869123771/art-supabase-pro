@@ -46,6 +46,9 @@
           </div>
         </section>
 
+        <ArtSectionTitle class="recognition-detail__section">原始票据</ArtSectionTitle>
+        <RecognitionSourceGallery :urls="sourceImageUrls" :expected-count="sourceImageCount" />
+
         <ArtSectionTitle class="recognition-detail__section">处理进度</ArtSectionTitle>
         <div class="recognition-detail__progress" aria-label="处理进度">
           <article
@@ -111,6 +114,7 @@
   import ArtDrawer from '@/components/core/drawers/art-drawer/index.vue'
   import type { ArtDrawerExpose } from '@/components/core/drawers/art-drawer/types'
   import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
+  import RecognitionSourceGallery from './recognition-source-gallery.vue'
   import { fetchRecognitionArtifactDetail } from '@/api/intelligent-recognition'
   import { formatWithDayjs } from '@/utils/time'
   import { buildRecognitionBusinessRoute } from '@/utils/intelligent-recognition'
@@ -118,6 +122,7 @@
     confidencePercent,
     featureLabels,
     fieldLabels,
+    getArtifactImageUrls,
     getArtifactTitle,
     getArtifactPayload,
     getPayloadRecord
@@ -154,6 +159,8 @@
   const confidenceClass = computed(() =>
     confidence.value >= 85 ? 'is-high' : confidence.value >= 65 ? 'is-medium' : 'is-low'
   )
+  const sourceImageUrls = computed(() => (detail.data ? getArtifactImageUrls(detail.data) : []))
+  const sourceImageCount = computed(() => Number(detail.data?.metadata?.imageCount ?? 0))
   const progressItems = computed<ProgressItem[]>(() => {
     const status = detail.data?.status
     const isApplied = Boolean(detail.data?.entityId) || status === 'applied'

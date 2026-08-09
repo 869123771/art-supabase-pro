@@ -1,5 +1,11 @@
 <template>
   <div class="tms-workspace-page art-full-height waybill-list">
+    <CustomerDeleteProcessingNotice
+      v-if="deleteContext.active"
+      :customer-id="deleteContext.customerId"
+      :customer-name="deleteContext.customerName"
+      action-hint="已按运单号精确定位；运单属于履约历史，请保留记录并返回停用主数据。"
+    />
     <TmsWorkspaceHeader
       eyebrow="WAYBILL EXECUTION"
       title="运输运单"
@@ -68,6 +74,8 @@
     type WaybillRecord,
     type WaybillSearchParams
   } from './modules/waybill-shared'
+  import CustomerDeleteProcessingNotice from '@/views/tms-transportation/modules/customer-delete-processing-notice.vue'
+  import { useCustomerDeleteProcessingContext } from '@/views/tms-transportation/modules/use-customer-delete-processing'
 
   defineOptions({ name: 'TmsLoadedWaybillList' })
 
@@ -87,6 +95,8 @@
   }
 
   const router = useRouter()
+  const route = useRoute()
+  const deleteContext = useCustomerDeleteProcessingContext()
   const { getDictMap } = storeToRefs(useUserStore())
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const dispatchDialogRef = ref<WaybillDialogExpose>()
@@ -102,7 +112,14 @@
   }
 
   const table: UnwrapNestedRefs<TableGroup> = reactive<TableGroup>({
-    searchQuery: createInitialWaybillSearch(),
+    searchQuery: {
+      ...createInitialWaybillSearch(),
+      recordId:
+        route.query.fromMasterDelete === '1' && typeof route.query.recordId === 'string'
+          ? route.query.recordId
+          : '',
+      cargoKeyword: typeof route.query.recordNo === 'string' ? route.query.recordNo : ''
+    },
     statusCounts: {},
     statusTotal: 0,
     statusTabs: computed<StatusTab[]>(() => {
@@ -180,9 +197,27 @@
     void tableQueryRef.value?.getData()
   }
 
-  onActivated(() => {
-    void tableQueryRef.value?.getData()
-  })
+  function syncMasterDeleteRoute(forceRefresh = false): void {
+    if (route.query.fromMasterDelete !== '1') {
+      if (forceRefresh) void tableQueryRef.value?.getData()
+      return
+    }
+    const recordId = typeof route.query.recordId === 'string' ? route.query.recordId : ''
+    const changed = table.searchQuery.recordId !== recordId
+    Object.assign(table.searchQuery, {
+      recordId,
+      cargoKeyword: '',
+      waybillStatus: WAYBILL_STATUS_ALL
+    })
+    if (changed || forceRefresh) void nextTick().then(() => tableQueryRef.value?.getData())
+  }
+
+  watch(
+    () => route.fullPath,
+    () => syncMasterDeleteRoute(),
+    { flush: 'post' }
+  )
+  onActivated(() => syncMasterDeleteRoute(true))
 </script>
 
 <style scoped lang="scss">

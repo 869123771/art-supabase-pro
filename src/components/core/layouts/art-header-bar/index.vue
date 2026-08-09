@@ -16,10 +16,16 @@
     >
       <div class="flex-c flex-1 min-w-0 leading-15" style="display: flex">
         <!-- 系统信息  -->
-        <div class="flex-c c-p" @click="toHome" v-if="isTopMenu">
+        <button
+          v-if="isTopMenu"
+          type="button"
+          class="flex-c c-p border-0 bg-transparent"
+          aria-label="返回首页"
+          @click="toHome"
+        >
           <ArtLogo class="pl-4.5" />
           <p v-if="width >= 1400" class="my-0 mx-2 ml-2 text-lg">{{ siteName }}</p>
-        </div>
+        </button>
 
         <ArtLogo
           class="!hidden pl-3.5 overflow-hidden align-[-0.15em] fill-current"

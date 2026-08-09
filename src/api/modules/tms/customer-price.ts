@@ -29,9 +29,11 @@ const applyCustomerPriceFilters = (
     cargoType,
     billingMethod,
     keyword,
-    createTimeRange
+    createTimeRange,
+    recordId
   } = params
 
+  if (recordId) query = query.eq('id', recordId)
   if (customerId) query = query.eq('customer_id', customerId)
   if (originRegion) query = query.eq('origin_region', originRegion)
   if (destinationRegion) query = query.eq('destination_region', destinationRegion)

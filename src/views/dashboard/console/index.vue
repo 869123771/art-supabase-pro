@@ -10,6 +10,7 @@
     <DashboardHero
       :greeting="greeting"
       :user-name="userName"
+      :user-context="userContext"
       :date-text="dateText"
       :today-order-count="overview.data.todayOrderCount"
       :in-transit-count="overview.data.inTransitCount"
@@ -61,7 +62,6 @@
 </template>
 
 <script setup lang="ts">
-  import dayjs from 'dayjs'
   import { storeToRefs } from 'pinia'
   import { fetchDashboardData, type DashboardData } from '@/api/dashboard'
   import { useUserStore } from '@/store/modules/user'
@@ -83,7 +83,7 @@
   }
 
   const router = useRouter()
-  const { info } = storeToRefs(useUserStore())
+  const { info, language } = storeToRefs(useUserStore())
   const createEmptyDashboard = (): DashboardData => ({
     todayOrderCount: 0,
     todayFreightAmount: 0,
@@ -113,11 +113,41 @@
     { key: 'signed', label: '待结案', color: 'var(--el-color-warning)' },
     { key: 'completed', label: '已完成', color: 'var(--el-text-color-secondary)' }
   ]
-  const greeting = computed(() =>
-    dayjs().hour() < 12 ? '早上好' : dayjs().hour() < 18 ? '下午好' : '晚上好'
+  const locale = computed(() =>
+    String(language.value).toLowerCase().startsWith('en') ? 'en-US' : 'zh-CN'
   )
-  const userName = computed(() => info.value?.userName || '管理员')
-  const dateText = computed(() => dayjs().format('YYYY年MM月DD日 dddd'))
+  const greeting = computed(() => {
+    const hour = new Date().getHours()
+    return hour < 12 ? '早上好' : hour < 18 ? '下午好' : '晚上好'
+  })
+  const userName = computed(() => {
+    const candidates = [
+      info.value?.nickName,
+      info.value?.organization?.organizationName,
+      info.value?.userName
+    ]
+    return (
+      candidates.find((value) => value && !/^\d+$/.test(String(value).trim()))?.trim() || '用户'
+    )
+  })
+  const userContext = computed(() => {
+    const organization = info.value?.organization?.organizationName
+    const role = info.value?.userRoles?.[0]
+    const roleLabels: Record<string, string> = {
+      R_SUPER: '平台管理员',
+      R_ADMIN: '管理员',
+      R_REGISTER: '注册用户'
+    }
+    return [organization, role ? roleLabels[role] : ''].filter(Boolean).join(' · ')
+  })
+  const dateText = computed(() =>
+    new Intl.DateTimeFormat(locale.value, {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      weekday: 'long'
+    }).format(new Date())
+  )
   const trendData = computed<DashboardTrendData>(() => ({
     labels: overview.data.trend.map((item) => item.label),
     values: overview.data.trend.map((item) => item.orderCount),
@@ -203,7 +233,7 @@
   function formatMoney(value?: number | string | null): string {
     const amount = Number(value ?? 0)
     return Number.isFinite(amount)
-      ? amount.toLocaleString('zh-CN', { maximumFractionDigits: 2 })
+      ? new Intl.NumberFormat(locale.value, { maximumFractionDigits: 2 }).format(amount)
       : '0'
   }
   onMounted(() => {
@@ -214,6 +244,7 @@
 
 <style scoped lang="scss">
   .operations-dashboard {
+    font-variant-numeric: tabular-nums;
     min-height: 100%;
 
     :deep(> .art-async-state) {

@@ -63,19 +63,18 @@ async function canAccessTargetUser(id: string, profile: CallerProfile | null, ca
 function getFriendlyErrorMessage(error: any, action: string): string {
   const errorMsg = error?.message || String(error); const errorCode = error?.code || ""
   const isPermissionError = errorMsg.toLowerCase().includes("permission denied") || errorMsg.toLowerCase().includes("row-level security") || errorMsg.toLowerCase().includes("policy") || errorMsg.toLowerCase().includes("violates") || errorCode === "42501" || errorCode === "PGRST301" || errorCode === "PGRST116"
-  if (isPermissionError) { const actionMap: Record<string, string> = { create: "创建", update: "编辑", delete: "删除" }; return `当前用户角色没有${actionMap[action] || action}权限，无法执行此操作` }
+  if (isPermissionError) { const actionMap: Record<string, string> = { create: "创建", update: "编辑", delete: "注销", deactivate: "注销" }; return `当前用户角色没有${actionMap[action] || action}权限，无法执行此操作` }
   return errorMsg
 }
 async function insertAudit(auditId: string, requestId: string, action: string, input: unknown) { try { const { error } = await supabaseDB.from("sync_user_audit").insert([{ id: auditId, request_id: requestId, action, input }]); if (error) console.warn("Audit insert skipped:", error.message) } catch (e) { console.warn("Audit insert skipped:", e) } }
 async function updateAudit(auditId: string, result: unknown) { try { const { error } = await supabaseDB.from("sync_user_audit").update({ result }).eq("id", auditId); if (error) console.warn("Audit update skipped:", error.message) } catch (e) { console.warn("Audit update skipped:", e) } }
 async function deleteAuthUser(authUserId: string) { try { const { error } = await supabaseAdmin.auth.admin.deleteUser(authUserId); if (error) console.error("Delete auth user failed:", error.message) } catch (e) { console.error("Delete auth user failed:", e) } }
-async function restoreSnapshot(snapshot: unknown) { if (!snapshot) return; try { const { error } = await supabaseDB.from("sys_user").insert(snapshot); if (error) console.error("Restore sys_user snapshot failed:", error.message) } catch (e) { console.error("Restore sys_user snapshot failed:", e) } }
 
 Deno.serve(async (req: Request) => {
   const origin = req.headers.get("origin")
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders(origin) })
   const requestId = uuidv4(); const body = await json(req); const auditId = uuidv4(); const action = (body.action || "").toLowerCase()
-  if (!["create", "update", "assign_roles", "delete"].includes(action)) return new Response(JSON.stringify({ ok: false, error: "invalid action" }), { status: 400, headers: corsHeaders(origin) })
+  if (!["create", "update", "assign_roles", "deactivate", "delete"].includes(action)) return new Response(JSON.stringify({ ok: false, error: "invalid action" }), { status: 400, headers: corsHeaders(origin) })
   await insertAudit(auditId, requestId, action, body)
 
   const authHeader = req.headers.get("authorization") || req.headers.get("Authorization")
@@ -91,6 +90,7 @@ Deno.serve(async (req: Request) => {
     create: "System:User:Add",
     update: "System:User:Edit",
     assign_roles: "System:User:AssignRole",
+    deactivate: "System:User:Delete",
     delete: "System:User:Delete",
   }
   const requiredPermission = permissionByAction[action]
@@ -135,6 +135,8 @@ Deno.serve(async (req: Request) => {
         const updateAuthData: Record<string, string> = {}; const emailForAuth = email || cleanedAppUserData.user_email; const passwordForAuth = password || (app_user_data && app_user_data.password)
         if (typeof emailForAuth === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailForAuth)) updateAuthData.email = emailForAuth
         if (typeof passwordForAuth === "string" && passwordForAuth.trim().length >= 6) updateAuthData.password = passwordForAuth
+        if (cleanedAppUserData.status === "1") updateAuthData.ban_duration = "none"
+        if (cleanedAppUserData.status === "0") updateAuthData.ban_duration = "876000h"
         if (Object.keys(updateAuthData).length > 0) { const { error: updateAuthErr } = await supabaseAdmin.auth.admin.updateUserById(auth_user_id, updateAuthData); if (updateAuthErr) return new Response(JSON.stringify({ ok: false, error: `Failed to update auth user: ${updateAuthErr.message}` }), { status: 500, headers: corsHeaders(origin) }) }
       }
       if (Object.keys(cleanedAppUserData).length === 0) { const { data: existingUser, error: selectErr } = await supabaseDB.from("sys_user").select("*").eq("id", id).single(); if (selectErr) return new Response(JSON.stringify({ ok: false, error: getFriendlyErrorMessage(selectErr, action) }), { status: 500, headers: corsHeaders(origin) }); const result = { ok: true, app_user: existingUser }; await updateAudit(auditId, result); return new Response(JSON.stringify(result), { status: 200, headers: corsHeaders(origin) }) }
@@ -143,19 +145,25 @@ Deno.serve(async (req: Request) => {
       const result = { ok: true, app_user: updatedUser }; await updateAudit(auditId, result); return new Response(JSON.stringify(result), { status: 200, headers: corsHeaders(origin) })
     }
 
-    if (action === "delete") {
-      const id = body.id; const auth_user_id = body.auth_user_id || body.authUserId
+    if (action === "deactivate" || action === "delete") {
+      const id = body.id
       if (!id) return new Response(JSON.stringify({ ok: false, error: "id required" }), { status: 400, headers: corsHeaders(origin) })
-      if (!(await canAccessTargetUser(id, callerProfile, callerIsSuper))) return new Response(JSON.stringify({ ok: false, error: "不能删除当前租户之外的用户" }), { status: 403, headers: corsHeaders(origin) })
+      if (!(await canAccessTargetUser(id, callerProfile, callerIsSuper))) return new Response(JSON.stringify({ ok: false, error: "不能注销当前租户之外的用户" }), { status: 403, headers: corsHeaders(origin) })
       const { data: snapshot } = await supabaseDB.from("sys_user").select("*").eq("id", id).single()
       if (!snapshot) return new Response(JSON.stringify({ ok: false, error: "用户不存在" }), { status: 404, headers: corsHeaders(origin) })
       const isProtectedSuper = String(snapshot.user_email || "").toLowerCase() === "869123771@qq.com" || (snapshot.user_roles || []).includes("R_SUPER")
-      if (isProtectedSuper) return new Response(JSON.stringify({ ok: false, error: "平台超级管理员账号受系统保护，不能删除" }), { status: 403, headers: corsHeaders(origin) })
-      if (snapshot.auth_user_id === callerAuthUserId) return new Response(JSON.stringify({ ok: false, error: "不能删除当前登录账号" }), { status: 403, headers: corsHeaders(origin) })
-      const { error: delErr } = await supabaseDB.from("sys_user").delete().eq("id", id)
-      if (delErr) return new Response(JSON.stringify({ ok: false, error: getFriendlyErrorMessage(delErr, action) }), { status: 500, headers: corsHeaders(origin) })
-      if (auth_user_id) { const { error: delAuthErr } = await supabaseAdmin.auth.admin.deleteUser(auth_user_id); if (delAuthErr) { await restoreSnapshot(snapshot); throw delAuthErr } }
-      const result = auth_user_id ? { ok: true, deleted_app_user_id: id, deleted_auth_user_id: auth_user_id } : { ok: true, deleted_app_user_id: id }
+      if (isProtectedSuper) return new Response(JSON.stringify({ ok: false, error: "平台超级管理员账号受系统保护，不能注销" }), { status: 403, headers: corsHeaders(origin) })
+      if (snapshot.auth_user_id === callerAuthUserId) return new Response(JSON.stringify({ ok: false, error: "不能注销当前登录账号" }), { status: 403, headers: corsHeaders(origin) })
+      const { error: deactivateErr } = await supabaseDB.from("sys_user").update({ status: "0", user_roles: [], update_time: new Date().toISOString(), update_by: callerEmail }).eq("id", id)
+      if (deactivateErr) return new Response(JSON.stringify({ ok: false, error: getFriendlyErrorMessage(deactivateErr, action) }), { status: 500, headers: corsHeaders(origin) })
+      if (snapshot.auth_user_id) {
+        const { error: banErr } = await supabaseAdmin.auth.admin.updateUserById(snapshot.auth_user_id, { ban_duration: "876000h" })
+        if (banErr) {
+          await supabaseDB.from("sys_user").update({ status: snapshot.status, user_roles: snapshot.user_roles, update_time: snapshot.update_time, update_by: snapshot.update_by }).eq("id", id)
+          throw banErr
+        }
+      }
+      const result = { ok: true, deactivated_app_user_id: id, auth_user_id: snapshot.auth_user_id || null, history_preserved: true }
       await updateAudit(auditId, result); return new Response(JSON.stringify(result), { status: 200, headers: corsHeaders(origin) })
     }
   } catch (e) { const errorMsg = (e as Error).message || String(e); await updateAudit(auditId, { ok: false, error: errorMsg }); return new Response(JSON.stringify({ ok: false, error: errorMsg }), { status: 500, headers: corsHeaders(origin) }) }

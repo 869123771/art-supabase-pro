@@ -199,7 +199,11 @@
   const drawerRef = ref<ArtDrawerExpose>()
   const { isPlatformSuper } = storeToRefs(useUserStore())
   const { promptReason } = useArtFeedback()
-  const filters = reactive<{ keyword: string; status: Status | '' }>({ keyword: '', status: '' })
+  const filters = reactive<{ recordId: string; keyword: string; status: Status | '' }>({
+    recordId: '',
+    keyword: '',
+    status: ''
+  })
   const state = reactive<{ loading: boolean; error: Error | null; rows: WorkOrder[] }>({
     loading: false,
     error: null,
@@ -307,14 +311,15 @@
     }
   }
 
-  async function handleOpen() {
+  async function handleOpen(recordId = '') {
+    filters.recordId = recordId
     await drawerRef.value?.handleOpen(undefined, {
       title: '签收异常工单',
       size: 'xl',
       contentHeight: 'calc(100vh - 116px)',
       onOpen: loadData,
       onReset: () => {
-        Object.assign(filters, { keyword: '', status: '' })
+        Object.assign(filters, { recordId: '', keyword: '', status: '' })
         Object.assign(state, { loading: false, error: null, rows: [] })
       },
       drawerProps: {

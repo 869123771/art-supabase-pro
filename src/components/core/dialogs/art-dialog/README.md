@@ -42,6 +42,7 @@ onOpen: async (_data, api) => {
 ## 默认行为
 
 - 默认启用 `align-center`
+- 默认启用 `append-to-body`，避免弹窗被专注模式、祖先层叠上下文或裁剪容器遮挡
 - 默认启用 `destroy-on-close`
 - 默认启用 `draggable`
 - 默认宽度为 `50%`

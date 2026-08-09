@@ -7,19 +7,22 @@
         :key="item.path"
         class="box-border flex-c h-7 text-sm leading-7"
       >
-        <div
-          :class="
-            isClickable(item, index)
-              ? 'c-p py-1 rounded tad-200 hover:bg-active-color hover:[&_span]:text-g-600'
-              : ''
-          "
+        <button
+          v-if="isClickable(item, index)"
+          type="button"
+          class="c-p border-0 bg-transparent py-1 rounded tad-200 hover:bg-active-color hover:[&_span]:text-g-600"
           @click="handleBreadcrumbClick(item, index)"
         >
           <span
             class="block max-w-46 overflow-hidden text-ellipsis whitespace-nowrap px-1.5 text-sm text-g-600 dark:text-g-800"
             >{{ formatMenuTitle(item.meta?.title as string) }}</span
           >
-        </div>
+        </button>
+        <span
+          v-else
+          class="block max-w-46 overflow-hidden text-ellipsis whitespace-nowrap px-1.5 text-sm text-g-600 dark:text-g-800"
+          >{{ formatMenuTitle(item.meta?.title as string) }}</span
+        >
         <div
           v-if="!isLastItem(index) && item.meta?.title"
           class="mx-1 text-sm not-italic text-g-500"

@@ -22,7 +22,7 @@ type WebsiteConfigParamMeta = Api.SystemManage.WebsiteConfigParamMeta
 const WEBSITE_CONFIG_PARAM_KEY = 'website.config'
 
 interface DeleteUserSyncPayload {
-  action: 'delete'
+  action: 'deactivate'
   id: string
   auth_user_id?: string
 }
@@ -30,6 +30,7 @@ interface DeleteUserSyncPayload {
 // 获取用户列表
 export async function fetchGetUserList(params: Api.SystemManage.UserSearchParams) {
   const {
+    id,
     tenantId,
     organizationId,
     organizationIds,
@@ -54,6 +55,7 @@ export async function fetchGetUserList(params: Api.SystemManage.UserSearchParams
   // 它默认 op 为 'eq'，但会把 opsMap 中指定的替换为对应 op
   const specs = buildSpecsFromMap(
     {
+      id,
       userName: userName ? `%${userName}%` : undefined, // 包裹 % 以用于 ilike
       userPhone,
       userEmail: userEmail?.trim() ? `%${userEmail.trim()}%` : undefined,
@@ -131,8 +133,9 @@ export async function fetchGetEnableTenantList() {
 export async function fetchGetOrganizationList(
   params: Api.SystemManage.OrganizationSearchParams = {}
 ) {
-  const { keyword, tenantId, organizationType, status } = params
+  const { keyword, tenantId, organizationType, status, recordId } = params
   const specs = [
+    { col: 'id', op: 'eq', val: recordId },
     { col: 'tenant_id', op: 'eq', val: tenantId },
     { col: 'organization_type', op: 'eq', val: organizationType },
     { col: 'status', op: 'eq', val: status }
@@ -373,18 +376,32 @@ export async function editTenant(params: TenantListItem) {
   )
 }
 
-// 删除租户
-export async function deleteTenant(id: string) {
-  return await responseHandle(() => supabase.from('sys_tenant').delete().eq('id', id), {
-    showMessage: true
-  })
+// 停用租户：保留组织、账号和业务历史，阻止继续作为有效租户使用。
+export async function deactivateTenant(id: string) {
+  return await responseHandle(
+    () => supabase.from('sys_tenant').update({ status: '0' }).eq('id', id).select('id'),
+    {
+      showMessage: true,
+      message: '租户已停用，历史数据已保留',
+      breakReturn: true,
+      requireAffected: true,
+      noAffectedMessage: WRITE_PERMISSION_DENIED_MESSAGE
+    }
+  )
 }
 
-// 批量删除租户
-export async function deleteTenantBatch(ids: string[]) {
-  return await responseHandle(() => supabase.from('sys_tenant').delete().in('id', ids), {
-    showMessage: true
-  })
+// 批量停用租户
+export async function deactivateTenantBatch(ids: string[]) {
+  return await responseHandle(
+    () => supabase.from('sys_tenant').update({ status: '0' }).in('id', ids).select('id'),
+    {
+      showMessage: true,
+      message: '所选租户已停用，历史数据已保留',
+      breakReturn: true,
+      requireAffected: true,
+      noAffectedMessage: WRITE_PERMISSION_DENIED_MESSAGE
+    }
+  )
 }
 
 export async function fetchGetSystemParamList(params: SystemParamSearchParams) {
@@ -671,14 +688,13 @@ export async function resetUser(params: Api.SystemManage.UserListItem) {
   })
 }
 
-/*删除用户*/
-export async function deleteUser(params: Api.SystemManage.UserListItem) {
+/*注销用户：保留业务资料，只撤销登录与角色授权。*/
+export async function deactivateUser(params: Api.SystemManage.UserListItem) {
   const { id, authUserId } = params
   if (!id) {
-    throw new Error('未找到需要删除的用户')
+    throw new Error('未找到需要注销的用户')
   }
-  //删除auth.usres 表对应记录
-  const payload: DeleteUserSyncPayload = { action: 'delete', id: id }
+  const payload: DeleteUserSyncPayload = { action: 'deactivate', id: id }
   if (authUserId) {
     payload.auth_user_id = authUserId
   }
@@ -782,10 +798,12 @@ export async function fetchGetRoleList(params: Api.SystemManage.RoleSearchParams
     enabled,
     startTime = '',
     endTime = '',
+    recordId,
     from = 0,
     to = 9
   } = params
   const specs = [
+    { col: 'id', op: 'eq', val: recordId },
     { col: 'role_name', op: 'ilike', val: roleName ? `%${roleName}%` : undefined },
     { col: 'role_code', op: 'eq', val: roleCode },
     { col: 'description', op: 'ilike', val: description ? `%${description}%` : undefined },
@@ -831,9 +849,15 @@ export async function fetchGetRoleList(params: Api.SystemManage.RoleSearchParams
 /*删除角色*/
 export async function deleteRole(params: Api.SystemManage.RoleListItem) {
   const { id } = params
-  return await responseHandle(() => supabase.from('sys_role').delete().eq('id', id), {
-    showMessage: true
-  })
+  return await responseHandle(
+    () => supabase.from('sys_role').delete({ count: 'exact' }).eq('id', id),
+    {
+      showMessage: true,
+      breakReturn: true,
+      requireAffected: true,
+      noAffectedMessage: WRITE_PERMISSION_DENIED_MESSAGE
+    }
+  )
 }
 
 /*新增角色*/
@@ -887,10 +911,11 @@ export async function saveRoleMenuList(params: { p_role_id: string; p_menu_ids: 
 }
 
 // 获取菜单列表
-export async function fetchGetMenuList(params: AppRouteRecord) {
-  const { name, path } = params
+export async function fetchGetMenuList(params: AppRouteRecord & { recordId?: string }) {
+  const { name, path, recordId } = params
   const specs = buildSpecsFromMap({
-    path
+    path,
+    id: recordId
   })
 
   // 构建查询
@@ -910,32 +935,7 @@ export async function deleteMenu(params: { ids: string[] }) {
   const { ids } = params
   if (!ids.length) throw new Error('未找到需要删除的菜单')
 
-  try {
-    return await deleteMenuRows(ids)
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
-    if (message.includes('sys_role_menu_menu_id_fkey')) {
-      await responseHandle(
-        () => supabase.from('sys_role_menu').delete({ count: 'exact' }).in('menu_id', ids),
-        {
-          breakReturn: true,
-          requireAffected: true,
-          noAffectedMessage: '当前账号没有清理角色菜单关联权限'
-        }
-      )
-
-      try {
-        return await deleteMenuRows(ids)
-      } catch (retryError) {
-        throw new Error('角色菜单关联已清理，但菜单删除仍然失败', { cause: retryError })
-      }
-    }
-
-    if (message.includes('foreign key')) {
-      throw new Error('该菜单仍被其他业务数据引用，暂时不能删除。', { cause: error })
-    }
-    throw error
-  }
+  return await deleteMenuRows(ids)
 }
 
 async function deleteMenuRows(ids: string[]) {

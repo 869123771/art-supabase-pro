@@ -67,6 +67,7 @@
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtExcelImport from '@/components/core/forms/art-excel-import/index.vue'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
+  import { useDocumentNumberRule } from '@/hooks/core/useDocumentNumberRule'
   import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
   import ArtTable from '@/components/core/tables/art-table/index.vue'
   import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
@@ -114,6 +115,7 @@
   const { getDictMap } = storeToRefs(useUserStore())
   const dialogRef = ref<ArtDialogExpose<Contract | undefined>>()
   const formRef = ref<FormExpose>()
+  const contractNumber = useDocumentNumberRule('tms.contract')
   const submitMode = ref<SubmitMode>('save')
 
   const billingMethodOptions = computed(() => getDictMap.value.tmsContractBillingMethod ?? [])
@@ -159,9 +161,9 @@
         type: 'input',
         props: {
           maxlength: 40,
-          disabled: Boolean(form.data.id),
-          placeholder: '不填则系统自动生成'
-        }
+          ...contractNumber.inputProps(Boolean(form.data.id), '请输入合同编号', true)
+        },
+        description: contractNumber.description.value
       },
       {
         label: '合同名称',
@@ -250,6 +252,9 @@
       }
     ]),
     rules: computed<FormRules<Contract>>(() => ({
+      contractNo: contractNumber.manualRequired(Boolean(form.data.id))
+        ? [{ required: true, message: '请输入合同编号', trigger: 'blur' }]
+        : [],
       contractName: [
         { required: true, message: '请输入合同名称', trigger: 'blur' },
         { min: 2, max: 120, message: '长度应为 2 到 120 个字符', trigger: 'blur' }
@@ -409,7 +414,7 @@
   }
 
   const handleOpen = async (row?: Contract): Promise<void> => {
-    await resetForm()
+    await Promise.all([resetForm(), contractNumber.loadRule()])
     if (row?.id) replaceForm(row)
 
     await dialogRef.value?.handleOpen(row, {

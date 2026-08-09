@@ -523,6 +523,7 @@ export function createVisionOcrHandler<TInput, TResult extends VisionOcrNormaliz
           warnings: result.warnings,
           metadata: {
             imageCount: imageUrls.length,
+            imageUrls,
             ...inputMetadata,
             ...artifactMetadata,
             reviewConfidenceThreshold

@@ -85,7 +85,7 @@
   import ArtButtonMore from '@/components/core/forms/art-button-more/index.vue'
   import type { ButtonMoreItem } from '@/components/core/forms/art-button-more/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
-  import { deleteTenant, deleteTenantBatch, fetchGetTenantList } from '@/api/system-manage'
+  import { deactivateTenant, deactivateTenantBatch, fetchGetTenantList } from '@/api/system-manage'
   import TenantDialog from './modules/tenant-dialog.vue'
   import { useUserStore } from '@/store/modules/user'
   import { useSystemParam } from '@/hooks'
@@ -172,13 +172,14 @@
     },
     {
       type: 'delete',
+      label: '批量停用',
       permission: 'System:Tenant:Delete',
       content: ({ selectedCount }: ArtTableQueryHeaderActionContext) =>
-        `确定删除选中的 ${selectedCount} 个租户吗？删除后无法恢复。`,
+        `确定停用选中的 ${selectedCount} 个租户吗？账号将不能继续使用，历史数据仍会保留。`,
       onClick: async ({ selectedRows }) => {
         const ids = selectedRows.map((row) => row.id).filter(Boolean)
-        await deleteTenantBatch(ids)
-        await tableQueryRef.value?.refreshRemove()
+        await deactivateTenantBatch(ids)
+        await tableQueryRef.value?.refreshUpdate()
       }
     }
   ])
@@ -300,8 +301,8 @@
       : [
           {
             key: 'delete',
-            label: '删除租户',
-            icon: 'ri:delete-bin-4-line',
+            label: '停用租户',
+            icon: 'ri:pause-circle-line',
             color: 'var(--el-color-danger)',
             auth: 'System:Tenant:Delete'
           }
@@ -335,17 +336,17 @@
 
     try {
       await confirmAction(
-        `删除「${row.tenantName}」后，其账号、角色及业务数据关联可能受到影响。确认继续吗？`,
-        '删除租户',
+        `停用「${row.tenantName}」后，该租户账号将无法继续使用；组织、角色及业务历史均会保留。`,
+        '停用租户',
         {
-          confirmButtonText: '确认删除',
+          confirmButtonText: '确认停用',
           cancelButtonText: '取消',
           type: 'warning',
           confirmButtonClass: 'el-button--danger'
         }
       )
-      await deleteTenant(row.id)
-      await tableQueryRef.value?.refreshRemove()
+      await deactivateTenant(row.id)
+      await tableQueryRef.value?.refreshUpdate()
     } catch {
       // 用户取消删除时无需额外提示。
     }

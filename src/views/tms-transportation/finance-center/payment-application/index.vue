@@ -1,5 +1,11 @@
 <template>
   <div class="tms-workspace-page art-full-height">
+    <CustomerDeleteProcessingNotice
+      v-if="deleteContext.active"
+      :customer-id="deleteContext.customerId"
+      :customer-name="deleteContext.customerName"
+      action-hint="已自动定位付款申请；请按审批和财务规则处理后返回。"
+    />
     <TmsWorkspaceHeader
       eyebrow="PAYMENT APPROVAL"
       title="付款申请"
@@ -61,6 +67,8 @@
   import PaymentApplicationDialog from './modules/payment-application-dialog.vue'
   import PaymentApplicationExecuteDialog from './modules/payment-application-execute-dialog.vue'
   import PaymentApplicationDetailDrawer from './modules/payment-application-detail-drawer.vue'
+  import { useCustomerDeleteProcessingContext } from '@/views/tms-transportation/modules/use-customer-delete-processing'
+  import CustomerDeleteProcessingNotice from '@/views/tms-transportation/modules/customer-delete-processing-notice.vue'
 
   defineOptions({ name: 'TmsCarrierPaymentApplication' })
 
@@ -91,6 +99,7 @@
   const router = useRouter()
   const { getDictMap } = storeToRefs(useUserStore())
   const { confirmAction, confirmDelete, promptReason } = useArtFeedback()
+  const deleteContext = useCustomerDeleteProcessingContext()
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<DialogExpose>()
   const executeDialogRef = ref<ExecuteDialogExpose>()
@@ -98,7 +107,8 @@
 
   const table: UnwrapNestedRefs<TableGroup> = reactive<TableGroup>({
     searchQuery: {
-      carrierId: '',
+      carrierId: deleteContext.value.carrierId,
+      recordId: deleteContext.value.recordId,
       status: typeof route.query.status === 'string' ? route.query.status : '',
       plannedPaymentDateRange: [],
       keyword: ''
@@ -355,6 +365,27 @@
       value: item.id
     }))
   }
+
+  function syncMasterDeleteRoute(forceRefresh = false): void {
+    const context = deleteContext.value
+    if (!context.active || !context.carrierId) return
+    const changed =
+      table.searchQuery.carrierId !== context.carrierId ||
+      table.searchQuery.recordId !== context.recordId
+    Object.assign(table.searchQuery, {
+      carrierId: context.carrierId,
+      recordId: context.recordId,
+      keyword: ''
+    })
+    if (changed || forceRefresh) void nextTick().then(() => tableQueryRef.value?.getData())
+  }
+
+  watch(
+    () => route.fullPath,
+    () => syncMasterDeleteRoute(),
+    { flush: 'post' }
+  )
+  onActivated(() => syncMasterDeleteRoute(true))
 
   onMounted(() => void loadCarrierOptions())
 </script>

@@ -16,8 +16,24 @@
 ::-webkit-scrollbar-thumb {
   border-radius: 5px;
   background-color: #cccccc !important;
-  transition: all 0.2s;
-  -webkit-transition: all 0.2s;
+  transition: background-color 0.2s;
+  -webkit-transition: background-color 0.2s;
+}
+
+:focus-visible {
+  outline: 2px solid var(--el-color-primary);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 ::-webkit-scrollbar-thumb:hover {

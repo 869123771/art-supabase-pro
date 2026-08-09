@@ -19,7 +19,8 @@ const applyCarrierFilters = (
   query: SupabaseQueryLike,
   params: CarrierSearchParams
 ): SupabaseQueryLike => {
-  const { carrierType, enabled, signedContract, keyword, createTimeRange } = params
+  const { carrierType, enabled, signedContract, keyword, createTimeRange, recordId } = params
+  if (recordId) query = query.eq('id', recordId)
   if (carrierType) query = query.eq('carrier_type', carrierType)
   const enabledValue = normalizeBooleanFilter(enabled)
   if (enabledValue !== undefined) query = query.eq('enabled', enabledValue)
@@ -133,15 +134,17 @@ export async function editCarrier(params: Carrier) {
 }
 
 export async function deleteCarrier(id: string) {
-  return await responseHandle(() => supabase.from('tms_carrier').delete().eq('id', id), {
-    showMessage: true
-  })
+  return await responseHandle(
+    () => supabase.from('tms_carrier').delete({ count: 'exact' }).eq('id', id),
+    { showMessage: true, breakReturn: true, requireAffected: true }
+  )
 }
 
 export async function deleteCarrierBatch(ids: string[]) {
-  return await responseHandle(() => supabase.from('tms_carrier').delete().in('id', ids), {
-    showMessage: true
-  })
+  return await responseHandle(
+    () => supabase.from('tms_carrier').delete({ count: 'exact' }).in('id', ids),
+    { showMessage: true, breakReturn: true, requireAffected: true }
+  )
 }
 
 export async function importCarriers(rows: Carrier[]) {
