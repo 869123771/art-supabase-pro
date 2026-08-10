@@ -134,6 +134,7 @@
 </template>
 
 <script setup lang="ts">
+  import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import type { UnwrapNestedRefs } from 'vue'
   import { trim } from 'lodash-es'
@@ -181,7 +182,7 @@
   }>()
 
   const drawerRef = ref<ArtDrawerExpose<AiOrderDrawerOpenData>>()
-  const { getUserInfo, isPlatformSuper } = storeToRefs(useUserStore())
+  const { isPlatformSuper } = storeToRefs(useUserStore())
   const { resolveReferences } = useAiOrderReferenceMatcher()
   const { buildTasks, createTasks } = useAiOrderMasterData()
 
@@ -204,13 +205,7 @@
     if (!state.analysis) return []
     return buildTasks(state.analysis.order, state.references)
   })
-  const canCreateMasterData = computed(
-    () =>
-      isPlatformSuper.value ||
-      (getUserInfo.value.userRoles ?? []).some((role) =>
-        ['R_ADMIN', 'YQ_ADMIN', 'R_REGISTER'].includes(role)
-      )
-  )
+  const canCreateMasterData = computed(() => isPlatformSuper.value)
   const inputSummary = computed(() => {
     const characterCount = trim(form.data.prompt).length
     const imageCount = form.data.imageUrls.filter(Boolean).length
@@ -258,7 +253,7 @@
         options: state.openData?.options
       })
       if (error || !data?.order) {
-        ElMessage.error(getErrorMessage(error))
+        ElMessage.error(getFriendlySupabaseErrorMessage(error, 'AI 识别失败，请稍后重试'))
         return
       }
 
@@ -308,7 +303,7 @@
 
   async function handleCreateMasterData(keys: string[]): Promise<void> {
     if (!canCreateMasterData.value) {
-      ElMessage.warning('当前角色无权维护开单基础资料')
+      ElMessage.warning('仅平台超级管理员可执行 AI 主数据建档')
       return
     }
     if (!state.analysis || !keys.length || state.creatingMasterData) return
@@ -337,7 +332,9 @@
       ElMessage.success(`已创建 ${createdCount} 项基础资料，可继续填入订单`)
     } catch (error) {
       state.references = await resolveReferences(state.analysis.order)
-      ElMessage.error(getErrorMessage(error, '建档失败，本次未创建任何资料，请检查后重试'))
+      ElMessage.error(
+        getFriendlySupabaseErrorMessage(error, '建档失败，本次未创建任何资料，请检查后重试')
+      )
     } finally {
       state.creatingMasterData = false
     }
@@ -354,15 +351,6 @@
       references: state.references
     })
     return true
-  }
-
-  function getErrorMessage(error: unknown, fallback = 'AI 识别失败，请稍后重试'): string {
-    if (error instanceof Error && error.message) return error.message
-    if (error && typeof error === 'object' && 'message' in error) {
-      const message = (error as { message?: unknown }).message
-      if (typeof message === 'string' && message) return message
-    }
-    return fallback
   }
 
   function createInitialInput(): AiOrderInputModel {
@@ -438,8 +426,8 @@
       > span {
         font-size: 11px;
         font-weight: 700;
-        letter-spacing: 0.12em;
         color: var(--theme-color);
+        letter-spacing: 0.12em;
       }
 
       h2 {
@@ -553,9 +541,9 @@
 
         strong {
           overflow: hidden;
+          text-overflow: ellipsis;
           font-weight: 600;
           color: var(--el-text-color-primary);
-          text-overflow: ellipsis;
           white-space: nowrap;
         }
       }
