@@ -44,7 +44,11 @@
 
   type CustomerAddress = Api.Tms.BasicData.CustomerAddress
   type CustomerOption = Api.Tms.BasicData.CustomerOption
-  type CustomerAddressForm = CustomerAddress & { addressPicker?: undefined; regionPath: string[] }
+  type CustomerAddressForm = Omit<CustomerAddress, 'customerId'> & {
+    customerId: string
+    addressPicker?: undefined
+    regionPath: string[]
+  }
 
   interface CustomerContext {
     customerId?: string
@@ -93,7 +97,6 @@
   const form = reactive<CustomerAddressForm>(createInitialForm())
 
   const formRules: FormRules<CustomerAddressForm> = {
-    customerId: [{ required: true, message: '请选择客户', trigger: 'change' }],
     addressType: [{ required: true, message: '请选择地址类型', trigger: 'change' }],
     contactName: [{ required: true, message: '请输入联系人', trigger: 'blur' }],
     contactPhone: [
@@ -267,6 +270,7 @@
 
     return {
       ...rest,
+      customerId: normalizeNullableText(rest.customerId),
       region: regionPath.join('/'),
       regionAdcode: normalizeNullableText(rest.regionAdcode),
       longitude,
@@ -322,6 +326,7 @@
       replaceForm({
         ...createInitialForm(),
         ...structuredClone(toRaw(row)),
+        customerId: row.customerId ?? '',
         regionPath: row.region?.split('/').filter(Boolean) ?? []
       })
     }
