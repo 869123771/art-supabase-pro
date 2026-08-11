@@ -26,6 +26,8 @@
 }
 
 .monitor-map__chart canvas,
-.monitor-map__chart img {
+.monitor-map__chart img,
+.monitor-map__chart .amap-markers,
+.monitor-map__chart .amap-labels {
   visibility: hidden !important;
 }

@@ -1,101 +1,88 @@
 <template>
-  <div class="art-upload-field">
-    <el-upload
-      ref="uploadRef"
-      v-model:file-list="fileList"
-      class="art-upload"
-      :before-upload="beforeUpload"
-      :http-request="handleUpload"
-      :on-success="handleSuccess"
-      :on-exceed="handleExceed"
-      :on-error="handleError"
-      :multiple="multiple"
-      :limit="limit"
-      :accept="fileType"
-      v-bind="$attrs"
-    >
-      <slot name="default">
-        <component :is="btnRender()" v-show="fileList.length === 0" ref="uploadBtnRef" />
-      </slot>
-      <template #file="{ file, index }">
-        <div class="preview-list upload-container relative" :style="getSize">
-          <template v-if="file.url">
-            <div class="preview-mask">
-              <button
-                type="button"
-                class="preview-action"
-                aria-label="预览图片"
-                title="预览图片"
-                @click="handleView(index)"
-              >
-                <ArtSvgIcon icon="ri-eye-line" aria-hidden="true" />
-              </button>
-              <button
-                type="button"
-                class="preview-action preview-action--danger"
-                aria-label="删除图片"
-                title="删除图片"
-                @click="handleRemove(index)"
-              >
-                <ArtSvgIcon icon="ri-delete-bin-2-line" aria-hidden="true" />
-              </button>
-            </div>
-            <el-image
-              ref="ElImageRefs"
-              :src="file.url"
-              class="absolute rounded-md"
-              :style="getSize"
-              fit="cover"
-              :zoom-rate="1.2"
-              :max-scale="7"
-              :min-scale="0.2"
-              :preview-src-list="previewList"
-              :initial-index="index"
-              :preview-teleported="true"
-              :z-index="10000"
-            />
-          </template>
-          <div v-else-if="file.status === 'fail'" class="upload-state">加载失败</div>
-          <div v-else class="upload-state upload-state--loading">
-            <ArtSvgIcon icon="ri:loader-4-line" class="upload-state__spinner" />
-            <span>上传中</span>
+  <el-upload
+    ref="uploadRef"
+    v-model:file-list="fileList"
+    class="art-upload"
+    :class="{ 'is-readonly': readonly }"
+    :before-upload="beforeUpload"
+    :http-request="handleUpload"
+    :on-success="handleSuccess"
+    :on-exceed="handleExceed"
+    :on-error="handleError"
+    :multiple="multiple"
+    :limit="limit"
+    :accept="fileType"
+    v-bind="$attrs"
+  >
+    <slot name="default">
+      <component :is="btnRender()" v-show="!readonly && fileList.length === 0" ref="uploadBtnRef" />
+    </slot>
+    <template #file="{ file, index }">
+      <div class="preview-list upload-container relative" :style="getSize">
+        <template v-if="file.url">
+          <div class="preview-mask">
+            <button
+              type="button"
+              class="preview-action"
+              aria-label="预览图片"
+              title="预览图片"
+              @click="handleView(index)"
+            >
+              <ArtSvgIcon icon="ri-eye-line" aria-hidden="true" />
+            </button>
+            <button
+              v-if="!readonly"
+              type="button"
+              class="preview-action preview-action--danger"
+              aria-label="删除图片"
+              title="删除图片"
+              @click="handleRemove(index)"
+            >
+              <ArtSvgIcon icon="ri-delete-bin-2-line" aria-hidden="true" />
+            </button>
           </div>
+          <el-image
+            ref="ElImageRefs"
+            :src="file.url"
+            class="absolute rounded-md"
+            :style="getSize"
+            fit="cover"
+            :zoom-rate="1.2"
+            :max-scale="7"
+            :min-scale="0.2"
+            :preview-src-list="previewList"
+            :initial-index="index"
+            :preview-teleported="true"
+            :z-index="10000"
+          />
+        </template>
+        <div v-else-if="file.status === 'fail'" class="upload-state">加载失败</div>
+        <div v-else class="upload-state upload-state--loading">
+          <ArtSvgIcon icon="ri:loader-4-line" class="upload-state__spinner" />
+          <span>上传中</span>
         </div>
-        <component
-          :is="btnRender()"
-          v-if="index === fileList.length - 1 && multiple && fileList.length < limit"
-          class="cursor-pointer"
-          @click="() => uploadBtnRef?.click?.()"
-        />
-      </template>
-      <template #tip>
-        <div v-if="fileList.length < 1" class="pt-1 text-sm text-dark-50 dark-text-gray-3">
-          <slot name="tip">
-            {{ $attrs?.tip }}
-          </slot>
-        </div>
-      </template>
-    </el-upload>
-
-    <button
-      v-if="fileList.length < limit"
-      type="button"
-      class="resource-library-action"
-      aria-label="从资源库选择图片"
-      title="从资源库选择图片"
-      @click="isOpenResource = true"
-    >
-      <ArtSvgIcon icon="ri-folder-open-line" aria-hidden="true" />
-      <span>资源库</span>
-    </button>
-
+      </div>
+      <component
+        :is="btnRender()"
+        v-if="!readonly && index === fileList.length - 1 && multiple && fileList.length < limit"
+        class="cursor-pointer"
+        @click="() => uploadBtnRef?.click?.()"
+      />
+    </template>
+    <template #tip>
+      <div v-if="fileList.length < 1" class="pt-1 text-sm text-dark-50 dark-text-gray-3">
+        <slot name="tip">
+          {{ $attrs?.tip }}
+        </slot>
+      </div>
+    </template>
     <ArtResourcePicker
       v-model:visible="isOpenResource"
       :multiple="multiple"
       :limit="limit"
       @confirm="handleConfirm"
     />
-  </div>
+  </el-upload>
 </template>
 
 <script setup lang="tsx">
@@ -116,7 +103,8 @@
     fileSize = 10 * 1024 * 1024,
     fileType = 'image/*',
     limit = 5,
-    multiple = false
+    multiple = false,
+    readonly = false
   } = defineProps<{
     modelValue?: string | string[] | null
     title?: string
@@ -125,6 +113,7 @@
     fileType?: string
     limit?: number
     multiple?: boolean
+    readonly?: boolean
   }>()
 
   const emit = defineEmits<{
@@ -147,7 +136,21 @@
   function btnRender() {
     return (
       <div class="upload-container" style={getSize.value}>
-        <div class="flex flex-col items-center">
+        <el-tooltip content="打开资源选择器">
+          <button
+            type="button"
+            class="resource-btn"
+            aria-label="从资源库选择图片"
+            onClick={(event: MouseEvent) => {
+              event.preventDefault()
+              event.stopPropagation()
+              isOpenResource.value = true
+            }}
+          >
+            <ArtSvgIcon icon="ri-folder-open-line" class="text-[18px]" />
+          </button>
+        </el-tooltip>
+        <div class="mt-[18%] flex flex-col items-center">
           <ArtSvgIcon icon="ri-add-line" class="text-[20px]" />
           <span class="mt-1 text-[14px]">{title ?? '上传图片'}</span>
         </div>
@@ -284,14 +287,6 @@
 </script>
 
 <style scoped lang="scss">
-  .art-upload-field {
-    display: inline-flex;
-    flex-direction: column;
-    align-items: flex-start;
-    max-width: 100%;
-    vertical-align: top;
-  }
-
   :deep(.el-upload) {
     display: inline-flex;
     width: auto;
@@ -345,6 +340,40 @@
       background-color 300ms ease,
       border-color 300ms ease,
       box-shadow 300ms ease;
+
+    .resource-btn {
+      position: absolute;
+      top: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 20%;
+      padding: 0;
+      margin-inline: auto;
+      color: var(--color-g-500);
+      cursor: pointer;
+      outline: none;
+      background-color: var(--art-gray-200);
+      border-color: var(--default-border-dashed);
+      border-style: dashed;
+      border-width: 0 0 1px;
+      border-radius: 0.375rem 0.375rem 0 0;
+      transition:
+        color 300ms ease,
+        background-color 300ms ease,
+        border-color 300ms ease;
+
+      &:hover,
+      &:focus-visible {
+        color: var(--el-color-primary);
+        border-color: var(--el-color-primary);
+      }
+
+      &:focus-visible {
+        box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--theme-color) 28%, transparent);
+      }
+    }
 
     .preview-mask {
       position: absolute;
@@ -441,39 +470,6 @@
       // @apply text-[rgb(var(--ui-primary))] b-[rgb(var(--ui-primary))];
       color: var(--el-color-primary);
       border-color: var(--el-color-primary);
-    }
-  }
-
-  .resource-library-action {
-    display: inline-flex;
-    gap: 5px;
-    align-items: center;
-    justify-content: center;
-    min-height: 28px;
-    padding: 4px 9px;
-    margin-top: 6px;
-    font-size: 12px;
-    color: var(--el-text-color-secondary);
-    cursor: pointer;
-    background: var(--default-box-color);
-    border: 1px solid var(--art-card-border);
-    border-radius: var(--el-border-radius-base);
-    transition:
-      color 0.18s ease,
-      background-color 0.18s ease,
-      border-color 0.18s ease,
-      box-shadow 0.18s ease;
-
-    &:hover,
-    &:focus-visible {
-      color: var(--theme-color);
-      background: color-mix(in srgb, var(--theme-color) 7%, var(--default-box-color));
-      border-color: color-mix(in srgb, var(--theme-color) 22%, var(--art-card-border));
-    }
-
-    &:focus-visible {
-      outline: none;
-      box-shadow: var(--art-themed-action-focus-shadow);
     }
   }
 

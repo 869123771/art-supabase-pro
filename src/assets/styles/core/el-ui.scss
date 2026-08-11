@@ -130,12 +130,17 @@ html.dark .el-card {
   }
 }
 
-// 标准顶部页签保持 Element Plus 原生外观，仅加强激活指示线。
-.el-tabs.el-tabs--top:not(.el-tabs--card):not(.el-tabs--border-card)
-  > .el-tabs__header
+// 标准顶部页签统一采用紧凑高度，让文字与激活指示线保持清晰、稳定的视觉关联。
+.el-tabs.el-tabs--top:not(.el-tabs--card):not(.el-tabs--border-card) > .el-tabs__header {
+  .el-tabs__item {
+    height: 40px;
+    line-height: 40px;
+  }
+
   .el-tabs__active-bar {
-  height: 3px;
-  background-color: var(--theme-color);
+    height: 3px;
+    background-color: var(--theme-color);
+  }
 }
 // -------------------------------- 修改 el-size=default 组件默认高度 end --------------------------------
 

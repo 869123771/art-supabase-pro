@@ -1,4 +1,5 @@
 import type { SupabaseClient } from 'jsr:@supabase/supabase-js@2'
+import { resolveAiConfigTenantScope } from './ai-runtime-config-policy.ts'
 
 interface PlatformTenantRow {
   id: string
@@ -32,5 +33,5 @@ export async function getAiConfigTenantScope(
   }
 
   const platformTenantId = await platformTenantIdPromise
-  return tenantId === platformTenantId ? [tenantId] : [tenantId, platformTenantId]
+  return resolveAiConfigTenantScope(tenantId, platformTenantId)
 }

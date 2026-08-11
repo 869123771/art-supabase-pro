@@ -224,6 +224,13 @@
     ScreenState,
     VehiclePoiState
   } from './modules/monitor-types'
+  import type {
+    MonitorAmapMapInstance,
+    MonitorAmapMarkerInstance,
+    MonitorAmapNamespace,
+    MonitorAmapOverlay,
+    MonitorAmapPolylineInstance
+  } from './modules/monitor-amap-types'
   import {
     dedupeGeoPath,
     escapeHtml,
@@ -236,82 +243,8 @@
 
   defineOptions({ name: 'TmsInTransitMonitor' })
 
-  interface MonitorAmapLngLatLike {
-    lng?: number
-    lat?: number
-    getLng?: () => number
-    getLat?: () => number
-  }
-
   interface TransportAnomalyAdvisorExpose {
     handleOpen: (data: { orderId: string; orderNo: string }) => Promise<void>
-  }
-
-  interface MonitorAmapMarkerInstance {
-    setContent: (content: string) => void
-    setPosition: (position: GeoCoord) => void
-    setzIndex?: (zIndex: number) => void
-  }
-
-  interface MonitorAmapPolylineInstance {
-    setOptions?: (options: Record<string, unknown>) => void
-    setPath: (path: MonitorAmapLngLatLike[]) => void
-  }
-
-  type MonitorAmapOverlay = MonitorAmapMarkerInstance | MonitorAmapPolylineInstance
-
-  interface MonitorAmapMapInstance {
-    add: (overlay: MonitorAmapOverlay | unknown) => void
-    addControl: (control: unknown) => void
-    destroy?: () => void
-    getZoom?: () => number
-    on: (event: string, handler: () => void) => void
-    remove?: (overlay: MonitorAmapOverlay) => void
-    resize?: () => void
-    setCenter?: (center: GeoCoord) => void
-    setStatus?: (status: Record<string, boolean>) => void
-    setZoom?: (zoom: number) => void
-    setZoomAndCenter?: (zoom: number, center: GeoCoord) => void
-    zoomIn?: () => void
-    zoomOut?: () => void
-  }
-
-  interface MonitorAmapGeocoderInstance {
-    getAddress: (
-      position: GeoCoord,
-      callback: (status: string, result: ReverseGeocodeResult) => void
-    ) => void
-  }
-
-  interface MonitorAmapDrivingResult {
-    routes?: Array<{
-      steps?: Array<{
-        path?: MonitorAmapLngLatLike[]
-      }>
-    }>
-  }
-
-  interface MonitorAmapDrivingInstance {
-    search: (
-      origin: MonitorAmapLngLatLike,
-      destination: MonitorAmapLngLatLike,
-      callback: (status: string, result: MonitorAmapDrivingResult) => void
-    ) => void
-  }
-
-  interface MonitorAmapNamespace {
-    Driving: new (options: Record<string, unknown>) => MonitorAmapDrivingInstance
-    DrivingPolicy?: {
-      LEAST_TIME?: unknown
-    }
-    Geocoder: new (options: Record<string, unknown>) => MonitorAmapGeocoderInstance
-    LngLat: new (lng: number, lat: number) => MonitorAmapLngLatLike
-    Map: new (container: HTMLElement, options: Record<string, unknown>) => MonitorAmapMapInstance
-    Marker: new (options: Record<string, unknown>) => MonitorAmapMarkerInstance
-    Pixel: new (x: number, y: number) => unknown
-    Polyline: new (options: Record<string, unknown>) => MonitorAmapPolylineInstance
-    Scale: new () => unknown
-    [key: string]: unknown
   }
 
   const router = useRouter()

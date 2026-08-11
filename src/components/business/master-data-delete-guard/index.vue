@@ -175,9 +175,9 @@
       order: 10
     },
     contract: {
-      label: '承运合同',
+      label: '关联合同',
       unit: '份',
-      description: '合同属于经营与审批历史，应先作废或保留并停用承运商。',
+      description: '合同属于经营与审批历史，应先终止或保留合同，并停用对应客户或承运商。',
       actionLabel: '去处理合同',
       routeName: 'TmsContract',
       order: 20

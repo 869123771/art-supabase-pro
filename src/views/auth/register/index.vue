@@ -22,6 +22,12 @@
               <ElInput
                 class="custom-height"
                 v-model.trim="formData.email"
+                name="email"
+                type="email"
+                inputmode="email"
+                autocomplete="email"
+                :aria-label="$t('register.placeholder.email')"
+                :spellcheck="false"
                 :placeholder="$t('register.placeholder.email')"
               />
             </ElFormItem>
@@ -30,9 +36,11 @@
               <ElInput
                 class="custom-height"
                 v-model.trim="formData.password"
+                name="password"
                 :placeholder="$t('register.placeholder.password')"
                 type="password"
-                autocomplete="off"
+                autocomplete="new-password"
+                :aria-label="$t('register.placeholder.password')"
                 show-password
               />
             </ElFormItem>
@@ -41,10 +49,12 @@
               <ElInput
                 class="custom-height"
                 v-model.trim="formData.confirmPassword"
+                name="confirmPassword"
                 :placeholder="$t('register.placeholder.confirmPassword')"
                 type="password"
-                autocomplete="off"
-                @keyup.enter="register"
+                autocomplete="new-password"
+                :aria-label="$t('register.placeholder.confirmPassword')"
+                @keyup.enter="handleRegister"
                 show-password
               />
             </ElFormItem>

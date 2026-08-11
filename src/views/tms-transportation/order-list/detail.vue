@@ -141,6 +141,7 @@
   import { formatWithDayjs } from '@/utils/time'
   import { useUserStore } from '@/store/modules/user'
   import { fetchOrderDetail } from '@/api/tms'
+  import OrderImageGallery from './modules/order-image-gallery.vue'
   import OrderStatusSteps from './modules/order-status-steps.vue'
 
   defineOptions({ name: 'TmsOrderDetail' })
@@ -349,8 +350,8 @@
       key: 'imageUrls',
       label: '图片',
       span: 2,
-      value: (data: Partial<OrderRecord>) =>
-        data.imageUrls?.length ? `${data.imageUrls.length} 张` : undefined
+      value: (data: Partial<OrderRecord>) => data.imageUrls,
+      render: (value) => <OrderImageGallery urls={value as string[] | undefined} />
     }
   ]
 

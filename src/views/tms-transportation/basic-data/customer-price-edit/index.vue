@@ -262,7 +262,7 @@
 
 <script setup lang="tsx">
   import type { ComputedRef, UnwrapNestedRefs } from 'vue'
-  import { cloneDeep, omit } from 'lodash-es'
+  import { cloneDeep } from 'lodash-es'
   import type { FormRules } from 'element-plus'
   import {
     ElAutocomplete,
@@ -303,22 +303,23 @@
     calculateCargoSummary,
     formatNumber,
     getResponseData,
-    joinRegionPath,
     mergeCargoSelections,
-    normalizeMoney,
-    normalizeNullableNumber,
-    normalizeRequiredText,
-    normalizeText,
     roundNumber,
     splitRegionPath,
     toNumber,
     type CargoSummary
   } from '../modules/price-form-utils'
+  import {
+    createInitialCustomerPriceCargoItem,
+    createInitialCustomerPriceForm,
+    normalizeCustomerPricePayload,
+    type CustomerPrice,
+    type CustomerPriceCargoItem,
+    type CustomerPriceForm
+  } from './modules/customer-price-model'
 
   defineOptions({ name: 'TmsCustomerPriceEdit' })
 
-  type CustomerPrice = Api.Tms.BasicData.CustomerPrice
-  type CustomerPriceCargoItem = Api.Tms.BasicData.CustomerPriceCargoItem
   type CargoMaster = Api.Tms.BasicData.Cargo
   type CustomerOption = Api.Tms.BasicData.CustomerOption
   type CustomerAddress = Api.Tms.BasicData.CustomerAddress
@@ -327,11 +328,6 @@
 
   interface CargoSuggestion extends CargoMaster {
     value: string
-  }
-  type CustomerPriceForm = CustomerPrice & {
-    customerCode?: string
-    originRegionPath: string[]
-    destinationRegionPath: string[]
   }
 
   interface FormExpose {
@@ -455,64 +451,8 @@
     ]
   })
 
-  function createInitialCargoItem(): CustomerPriceCargoItem {
-    return {
-      cargoName: '',
-      quantity: null,
-      unit: '',
-      volumeM3: null,
-      weightKg: null
-    }
-  }
-
-  function createInitialForm(): CustomerPriceForm {
-    return {
-      id: undefined,
-      customerId: '',
-      customerCode: '',
-      originRegion: '',
-      destinationRegion: '',
-      originRegionPath: [],
-      destinationRegionPath: [],
-      transportType: '',
-      cargoType: '',
-      shippingAddressId: null,
-      receivingAddressId: null,
-      shippingContactName: '',
-      shippingContactPhone: '',
-      shippingAddressDetail: '',
-      shippingLongitude: null,
-      shippingLatitude: null,
-      receivingContactName: '',
-      receivingContactPhone: '',
-      receivingAddressDetail: '',
-      receivingLongitude: null,
-      receivingLatitude: null,
-      cargoItems: [createInitialCargoItem()],
-      cargoQuantityTotal: 0,
-      cargoVolumeTotal: 0,
-      cargoWeightTotal: 0,
-      vehicleType: '',
-      vehicleLength: '',
-      vehicleCount: null,
-      billingMethod: '',
-      transportFee: 0,
-      insuranceFee: 0,
-      packageFee: 0,
-      loadingFee: 0,
-      transferFee: 0,
-      fuelFee: 0,
-      serviceFee: 0,
-      otherFee: 0,
-      totalFee: 0,
-      cashAmount: 0,
-      prepaidAmount: 0,
-      collectAmount: 0,
-      periodicAmount: 0,
-      paymentTotal: 0,
-      remark: ''
-    }
-  }
+  const createInitialCargoItem = createInitialCustomerPriceCargoItem
+  const createInitialForm = createInitialCustomerPriceForm
 
   const page = reactive<PageState>({ loading: false, saving: false, error: null })
   const addressSelector = reactive<AddressSelectorGroup>({
@@ -1239,74 +1179,7 @@
   }
 
   function normalizePayload(): CustomerPrice {
-    const raw = cloneDeep(toRaw(form.data))
-    const payload = omit(raw, [
-      'tenantId',
-      'customer',
-      'customerCode',
-      'originRegionPath',
-      'destinationRegionPath',
-      'createBy',
-      'createTime',
-      'updateBy',
-      'updateTime'
-    ]) as CustomerPrice
-
-    payload.originRegion = joinRegionPath(raw.originRegionPath)
-    payload.destinationRegion = joinRegionPath(raw.destinationRegionPath)
-    payload.cargoItems = normalizeCargoItems(raw.cargoItems)
-    payload.cargoQuantityTotal = form.cargoSummary.quantity
-    payload.cargoVolumeTotal = form.cargoSummary.volume
-    payload.cargoWeightTotal = form.cargoSummary.weight
-    payload.vehicleType = normalizeText(raw.vehicleType)
-    payload.vehicleLength = normalizeText(raw.vehicleLength)
-    payload.vehicleCount = normalizeNullableNumber(raw.vehicleCount)
-    payload.cargoType = normalizeText(raw.cargoType)
-    payload.remark = normalizeText(raw.remark)
-    payload.transportFee = normalizeMoney(raw.transportFee)
-    payload.insuranceFee = normalizeMoney(raw.insuranceFee)
-    payload.packageFee = normalizeMoney(raw.packageFee)
-    payload.loadingFee = normalizeMoney(raw.loadingFee)
-    payload.transferFee = normalizeMoney(raw.transferFee)
-    payload.fuelFee = normalizeMoney(raw.fuelFee)
-    payload.serviceFee = normalizeMoney(raw.serviceFee)
-    payload.otherFee = normalizeMoney(raw.otherFee)
-    payload.totalFee = sumFields(feeFields)
-    payload.cashAmount = normalizeMoney(raw.cashAmount)
-    payload.prepaidAmount = normalizeMoney(raw.prepaidAmount)
-    payload.collectAmount = normalizeMoney(raw.collectAmount)
-    payload.periodicAmount = normalizeMoney(raw.periodicAmount)
-    payload.paymentTotal = sumFields(paymentFields)
-    payload.shippingAddressId = normalizeText(raw.shippingAddressId)
-    payload.receivingAddressId = normalizeText(raw.receivingAddressId)
-    payload.shippingContactName = normalizeRequiredText(raw.shippingContactName)
-    payload.shippingContactPhone = normalizeRequiredText(raw.shippingContactPhone)
-    payload.shippingAddressDetail = normalizeRequiredText(raw.shippingAddressDetail)
-    payload.shippingLongitude = normalizeNullableNumber(raw.shippingLongitude)
-    payload.shippingLatitude = normalizeNullableNumber(raw.shippingLatitude)
-    payload.receivingContactName = normalizeRequiredText(raw.receivingContactName)
-    payload.receivingContactPhone = normalizeRequiredText(raw.receivingContactPhone)
-    payload.receivingAddressDetail = normalizeRequiredText(raw.receivingAddressDetail)
-    payload.receivingLongitude = normalizeNullableNumber(raw.receivingLongitude)
-    payload.receivingLatitude = normalizeNullableNumber(raw.receivingLatitude)
-
-    return payload
-  }
-
-  function normalizeCargoItems(
-    items: CustomerPriceCargoItem[] | undefined
-  ): CustomerPriceCargoItem[] {
-    return (items ?? [])
-      .map((item) => ({
-        cargoName: normalizeText(item.cargoName),
-        quantity: normalizeNullableNumber(item.quantity),
-        unit: normalizeText(item.unit),
-        volumeM3: normalizeNullableNumber(item.volumeM3),
-        weightKg: normalizeNullableNumber(item.weightKg)
-      }))
-      .filter(
-        (item) => item.cargoName || item.quantity || item.unit || item.volumeM3 || item.weightKg
-      )
+    return normalizeCustomerPricePayload(toRaw(form.data))
   }
 
   async function handleSave(): Promise<void> {

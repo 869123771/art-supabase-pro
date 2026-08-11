@@ -52,15 +52,27 @@ const visualPages: VisualPage[] = [
   }
 ]
 
+const VISUAL_TEST_TIME = new Date('2026-08-10T10:26:52.000Z')
+
 async function waitForPageReady(page: Page, rootSelector: string): Promise<Locator> {
   const root = page.locator(rootSelector).first()
   await expect(root).toBeVisible({ timeout: 60_000 })
-  await page
-    .locator('.el-loading-mask')
-    .waitFor({ state: 'hidden', timeout: 20_000 })
-    .catch(() => {})
+  await expect(page.locator('.el-loading-mask:visible')).toHaveCount(0, { timeout: 60_000 })
   await page.waitForTimeout(500)
   return root
+}
+
+async function dismissSettingGuide(page: Page): Promise<void> {
+  const guide = page.locator('.setting-guide')
+  const becameVisible = await guide
+    .waitFor({ state: 'visible', timeout: 2_000 })
+    .then(() => true)
+    .catch(() => false)
+
+  if (becameVisible) {
+    await guide.getByRole('button', { name: '知道了' }).click()
+    await expect(guide).toBeHidden()
+  }
 }
 
 async function expectNoHorizontalOverflow(page: Page): Promise<void> {
@@ -115,10 +127,12 @@ for (const visualPage of visualPages) {
     const pageErrors: string[] = []
     page.on('pageerror', (error) => pageErrors.push(error.message))
 
+    await page.clock.setFixedTime(VISUAL_TEST_TIME)
     await page.goto(`/#${visualPage.path}`, { waitUntil: 'domcontentloaded' })
     await expect(page).not.toHaveURL(/#\/auth\/login/)
 
     await waitForPageReady(page, visualPage.root)
+    await dismissSettingGuide(page)
     await applyVisualMode(page, testInfo.project.name)
     await expectNoHorizontalOverflow(page)
     await resetScrollPositions(page)

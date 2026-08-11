@@ -7,17 +7,19 @@
 
       <div class="auth-right-wrap">
         <div class="form">
-          <h3 class="title">{{ $t('forgetPassword.title') }}</h3>
-          <p class="sub-title">{{ '输入您的新密码来完成密码重置' }}</p>
+          <h3 class="title">{{ $t('resetPassword.title') }}</h3>
+          <p class="sub-title">{{ $t('resetPassword.subTitle') }}</p>
           <div class="mt-5">
             <ElForm ref="formRef" :model="form" :rules="rules">
               <ElFormItem prop="password">
                 <ElInput
                   class="custom-height"
                   v-model.trim="form.password"
+                  name="password"
                   :placeholder="$t('register.placeholder.password')"
                   type="password"
-                  autocomplete="off"
+                  autocomplete="new-password"
+                  :aria-label="$t('register.placeholder.password')"
                   show-password
                 />
               </ElFormItem>
@@ -26,9 +28,11 @@
                 <ElInput
                   class="custom-height"
                   v-model.trim="form.confirmPassword"
+                  name="confirmPassword"
                   :placeholder="$t('register.placeholder.confirmPassword')"
                   type="password"
-                  autocomplete="off"
+                  autocomplete="new-password"
+                  :aria-label="$t('register.placeholder.confirmPassword')"
                   @keyup.enter="handleSubmit"
                   show-password
                 />
@@ -44,13 +48,13 @@
               :loading="loading"
               v-ripple
             >
-              {{ $t('forgetPassword.submitBtnText') }}
+              {{ $t('resetPassword.submitBtnText') }}
             </ElButton>
           </div>
 
           <div class="mt-[15px]">
             <ElButton class="w-full custom-height" plain @click="toLogin">
-              {{ $t('forgetPassword.backBtnText') }}
+              {{ $t('resetPassword.backBtnText') }}
             </ElButton>
           </div>
         </div>
@@ -65,7 +69,7 @@
   import { resetPassword } from '@/api/auth'
   import { useSystemParam } from '@/hooks'
 
-  defineOptions({ name: 'ForgetPassword' })
+  defineOptions({ name: 'ResetPassword' })
 
   const { t } = useI18n()
   const router = useRouter()

@@ -1717,6 +1717,7 @@ declare namespace Api {
       >
 
       type ContractStatus = 'draft' | 'pending' | 'approved' | 'rejected' | 'terminated'
+      type ContractBusinessType = 'customer' | 'carrier'
 
       interface ContractAttachment {
         name: string
@@ -1725,20 +1726,52 @@ declare namespace Api {
         fileSize?: string
       }
 
+      interface ContractTransportDetail {
+        cargoId?: string | null
+        cargoDescription: string
+        cargoCode: string
+        contractQuantity: number
+        unit: string
+        transportUnitPrice: number
+        freight: number
+      }
+
       interface Contract {
         id?: string
         tenantId?: string
         contractNo?: string
         contractName: string
         contractStatus?: ContractStatus
-        carrierId: string
+        paperContractNo?: string | null
+        mnemonicCode?: string | null
+        contractCategory: string
+        transportMode: string
+        businessContractType: ContractBusinessType
+        customerId?: string | null
+        customer?: CustomerOption | null
+        carrierId?: string | null
         contactName?: string | null
         waybillNo?: string | null
+        customerSignatory?: string | null
         billingMethod: string
         contractAmount?: number | null
+        transportUnitPrice?: number | null
+        roadConsumptionRate?: number | null
+        lossDeductionPrice?: number | null
         signTime: string
+        effectiveDate?: string | null
+        expiryDate?: string | null
+        isCompleted: boolean
+        agreedTransportQuantity?: number | null
+        transportRoute?: string | null
+        shipperName?: string | null
+        payerName?: string | null
+        consigneeName?: string | null
+        specialTransportRequirements?: string | null
+        otherDeductionTerms?: string | null
         handler: string
         contractDescription?: string | null
+        transportDetails: ContractTransportDetail[]
         attachments?: ContractAttachment[]
         carrier?: CarrierOption | null
         createBy?: string
@@ -1748,7 +1781,15 @@ declare namespace Api {
       }
 
       type ContractSearchParams = Partial<
-        Pick<Contract, 'contractStatus' | 'carrierId' | 'billingMethod'> &
+        Pick<
+          Contract,
+          | 'contractStatus'
+          | 'businessContractType'
+          | 'contractCategory'
+          | 'customerId'
+          | 'carrierId'
+          | 'billingMethod'
+        > &
           Api.Common.CommonSearchParams & {
             keyword?: string
             createTimeRange?: string[]

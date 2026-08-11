@@ -165,7 +165,6 @@
 
 <script setup lang="ts">
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
-  import dayjs from 'dayjs'
   import { ElMessage, type FormRules } from 'element-plus'
   import type { ComputedRef, UnwrapNestedRefs } from 'vue'
   import type { ColumnOption } from '@/types'
@@ -199,10 +198,18 @@
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { toInvoiceOcrAnalyzeResponse } from '@/utils/intelligent-recognition'
   import { useDocumentNumberRule } from '@/hooks/core/useDocumentNumberRule'
+  import {
+    buildInvoicePayload,
+    createInitialInvoiceForm,
+    INVOICE_NO_PATTERN,
+    normalizeInvoiceNo,
+    roundInvoiceMoney,
+    type Invoice,
+    type InvoiceFormModel
+  } from './invoice-dialog-model'
 
   defineOptions({ name: 'TmsInvoiceDialog' })
 
-  type Invoice = Api.Tms.Finance.InvoiceRecord
   type InvoiceableStatement = Api.Tms.Finance.InvoiceableStatement
   type CounterpartyResolutionStatus =
     Api.Tms.Finance.InvoiceCounterpartyResolutionStatus | 'idle' | 'loading' | 'error'
@@ -224,26 +231,6 @@
       taxNo?: string | null
       requiresReview: boolean
     }) => Promise<void>
-  }
-
-  interface InvoiceFormModel {
-    id?: string
-    invoiceRecordNo: string
-    direction: Api.Tms.Finance.InvoiceDirection
-    counterpartyId: string
-    invoiceType: Api.Tms.Finance.InvoiceType
-    invoiceTitle: string
-    taxNumber: string
-    invoiceCode: string
-    invoiceNo: string
-    issueDate: string
-    taxRate: number
-    amountExcludingTax: number
-    taxAmount: number
-    totalAmount: number
-    statementIds: string[]
-    attachments: Array<Record<string, unknown>>
-    remark: string
   }
 
   interface FormGroup {
@@ -286,27 +273,7 @@
   const invoiceRecordNumber = useDocumentNumberRule('tms.invoice_record')
   let duplicateCheckSequence = 0
 
-  const INVOICE_NO_PATTERN = /^[A-Z0-9]{6,30}$/
-
-  const createInitialForm = (): InvoiceFormModel => ({
-    id: undefined,
-    invoiceRecordNo: '',
-    direction: 'output',
-    counterpartyId: '',
-    invoiceType: 'vat_special',
-    invoiceTitle: '',
-    taxNumber: '',
-    invoiceCode: '',
-    invoiceNo: '',
-    issueDate: dayjs().format('YYYY-MM-DD'),
-    taxRate: 9,
-    amountExcludingTax: 0,
-    taxAmount: 0,
-    totalAmount: 0,
-    statementIds: [],
-    attachments: [],
-    remark: ''
-  })
+  const createInitialForm = createInitialInvoiceForm
 
   const selection = reactive<SelectionGroup>({
     parties: [],
@@ -656,14 +623,7 @@
   )
 
   function roundMoney(value: number): number {
-    return Math.round((Number(value) + Number.EPSILON) * 100) / 100
-  }
-
-  function normalizeInvoiceNo(value: unknown): string {
-    return String(value ?? '')
-      .trim()
-      .replace(/\s+/g, '')
-      .toUpperCase()
+    return roundInvoiceMoney(value)
   }
 
   function validateInvoiceNo(
@@ -1071,29 +1031,12 @@
       return false
     }
 
-    const payload: Api.Tms.Finance.SaveInvoicePayload = {
-      id: activeDuplicate?.id ?? form.data.id,
-      invoiceRecordNo:
-        (shouldMergeDuplicate
-          ? activeDuplicate?.invoiceRecordNo
-          : form.data.invoiceRecordNo.trim()) || null,
-      direction: form.data.direction,
-      invoiceType: form.data.invoiceType,
-      customerId: form.data.direction === 'output' ? form.data.counterpartyId : null,
-      carrierId: form.data.direction === 'input' ? form.data.counterpartyId : null,
-      invoiceTitle: form.data.invoiceTitle.trim() || null,
-      taxNumber: form.data.taxNumber.trim() || null,
-      invoiceCode: form.data.invoiceCode.trim() || null,
-      invoiceNo: form.data.invoiceNo.trim() || null,
-      issueDate: form.data.issueDate,
-      taxRate: Number(form.data.taxRate),
-      amountExcludingTax: Number(form.data.amountExcludingTax),
-      taxAmount: Number(form.data.taxAmount),
-      totalAmount: Number(form.data.totalAmount),
-      attachments: form.data.attachments,
-      remark: form.data.remark.trim() || null,
-      statementLinks
-    }
+    const payload = buildInvoicePayload({
+      form: form.data,
+      statementLinks,
+      duplicate: activeDuplicate,
+      mergeDuplicate: shouldMergeDuplicate
+    })
 
     try {
       const { data: savedInvoiceId } = await saveInvoice(payload)

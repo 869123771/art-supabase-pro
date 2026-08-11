@@ -9,65 +9,90 @@
     @retry="loadArchiveDetail"
   >
     <ArtPageHeader
+      class="vehicle-archive-detail__header"
       :title="archive?.plateNo || '车辆档案详情'"
-      :subtitle="archive?.companyName || '--'"
       show-back
       @back="goBack"
-    />
-
-    <section class="vehicle-archive-detail__summary art-card-xs">
-      <div class="vehicle-archive-detail__summary-item">
-        <span>车辆类型</span>
-        <strong>
-          <ArtDictDisplay dict-code="vehicleType" :value="archive?.vehicleType" display="auto" />
-        </strong>
-      </div>
-      <div class="vehicle-archive-detail__summary-item">
-        <span>营运状态</span>
-        <strong>
-          <ArtDictDisplay
-            dict-code="vehicleOperationStatus"
-            :value="archive?.operationStatus"
-            display="auto"
+    >
+      <template #title>
+        <div class="vehicle-archive-detail__identity">
+          <ArtUploadImage
+            v-if="archive?.vehiclePhotoUrl"
+            class="vehicle-archive-detail__vehicle-photo"
+            :model-value="archive.vehiclePhotoUrl"
+            :size="88"
+            :limit="1"
+            readonly
           />
-        </strong>
-      </div>
-      <div class="vehicle-archive-detail__summary-item">
-        <span>审核状态</span>
-        <strong>
-          <ArtDictDisplay
-            dict-code="vehicleAuditStatus"
-            :value="archive?.auditStatus"
-            display="auto"
-          />
-        </strong>
-      </div>
-      <div class="vehicle-archive-detail__summary-item">
-        <span>附件数量</span>
-        <strong>{{ archive?.attachments?.length ?? 0 }}</strong>
-      </div>
-    </section>
+          <span v-else class="vehicle-archive-detail__vehicle-photo-empty" aria-hidden="true">
+            <ArtSvgIcon icon="ri:truck-line" />
+          </span>
+          <div class="vehicle-archive-detail__identity-copy">
+            <div class="vehicle-archive-detail__identity-primary">
+              <h1>{{ archive?.plateNo || '车辆档案详情' }}</h1>
+              <div v-if="archive" class="vehicle-archive-detail__header-statuses">
+                <ArtDictDisplay
+                  dict-code="vehicleOperationStatus"
+                  :value="archive.operationStatus"
+                  display="tag"
+                />
+                <ArtDictDisplay
+                  dict-code="vehicleAuditStatus"
+                  :value="archive.auditStatus"
+                  display="tag"
+                />
+              </div>
+            </div>
+            <p>{{ archive?.companyName || '--' }}</p>
+          </div>
+        </div>
+      </template>
+    </ArtPageHeader>
 
     <ElTabs v-model="activeTab" class="vehicle-archive-detail__tabs art-card-xs">
       <ElTabPane label="基础信息" name="basic">
         <InfoDescriptions :items="basicInfoItems" />
-        <section class="vehicle-archive-detail__section">
-          <ArtSectionTitle>车辆证件</ArtSectionTitle>
+        <section class="vehicle-archive-detail__section vehicle-archive-detail__certificate-panel">
+          <header class="vehicle-archive-detail__section-heading">
+            <div>
+              <ArtSectionTitle :show-line="false">车辆证件</ArtSectionTitle>
+              <p>车辆证件影像归档，点击已上传图片可查看原图</p>
+            </div>
+            <span>{{ certificatePreviewUrls.length }}/{{ certificateItems.length }} 已归档</span>
+          </header>
           <div class="vehicle-archive-detail__images">
-            <div
+            <article
               v-for="item in certificateItems"
               :key="item.key"
               class="vehicle-archive-detail__image-item"
             >
+              <header>
+                <strong>{{ item.label }}</strong>
+                <span :class="{ 'is-ready': archive?.[item.key] }">
+                  {{ archive?.[item.key] ? '已上传' : '待补充' }}
+                </span>
+              </header>
               <ElImage
                 v-if="archive?.[item.key]"
                 :src="archive[item.key]"
-                fit="cover"
-                :preview-src-list="[archive[item.key] || '']"
-              />
-              <div v-else class="vehicle-archive-detail__image-empty">--</div>
-              <span>{{ item.label }}</span>
-            </div>
+                :alt="item.label"
+                fit="contain"
+                :initial-index="certificatePreviewUrls.indexOf(archive[item.key] || '')"
+                :preview-src-list="certificatePreviewUrls"
+                preview-teleported
+              >
+                <template #error>
+                  <span class="vehicle-archive-detail__image-empty is-error">
+                    <ArtSvgIcon icon="ri:image-line" />
+                    图片加载失败
+                  </span>
+                </template>
+              </ElImage>
+              <div v-else class="vehicle-archive-detail__image-empty">
+                <ArtSvgIcon icon="ri:file-image-line" />
+                <span>暂无{{ item.label }}</span>
+              </div>
+            </article>
           </div>
         </section>
       </ElTabPane>
@@ -123,6 +148,7 @@
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
+  import ArtUploadImage from '@/components/core/forms/art-upload-image/index.vue'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import type { ColumnOption } from '@/types'
   import { auditVehicleArchive, fetchVehicleArchiveDetail } from '@/api/vehicle-manage-system'
@@ -135,8 +161,7 @@
   type VehicleArchive = Api.VehicleMgtSys.ArchiveManage.VehicleArchive
   type ArchiveAttachment = Api.VehicleMgtSys.ArchiveManage.VehicleArchiveAttachment
   type AuditStatus = Api.VehicleMgtSys.ArchiveManage.AuditStatus
-  type ImageKey =
-    'vehiclePhotoUrl' | 'drivingLicenseFrontUrl' | 'drivingLicenseBackUrl' | 'operationLicenseUrl'
+  type ImageKey = 'drivingLicenseFrontUrl' | 'drivingLicenseBackUrl' | 'operationLicenseUrl'
 
   interface InfoItem {
     label: string
@@ -336,11 +361,16 @@
   ])
 
   const certificateItems: Array<{ key: ImageKey; label: string }> = [
-    { key: 'vehiclePhotoUrl', label: '车辆照片' },
     { key: 'drivingLicenseFrontUrl', label: '行驶证正页' },
     { key: 'drivingLicenseBackUrl', label: '行驶证副页' },
     { key: 'operationLicenseUrl', label: '运营证照片' }
   ]
+
+  const certificatePreviewUrls = computed(() =>
+    certificateItems
+      .map((item) => archive.value?.[item.key])
+      .filter((url): url is string => Boolean(url))
+  )
 
   const attachmentColumns: ColumnOption<ArchiveAttachment>[] = [
     { type: 'globalIndex', label: '序号', width: 80 },
@@ -435,41 +465,95 @@
     padding: 16px;
     background: var(--art-main-bg-color);
 
-    &__tabs {
-      padding: 16px 20px 24px;
-      margin-top: 12px;
+    &__header {
+      :deep(.art-page-header__title-row) {
+        width: 100%;
+      }
     }
 
-    &__summary {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      margin-top: 12px;
-    }
-
-    &__summary-item {
-      display: grid;
-      gap: 4px;
+    &__identity {
+      display: flex;
+      gap: 14px;
+      align-items: center;
       min-width: 0;
-      padding: 16px 20px;
+    }
 
-      &:not(:last-child) {
-        border-right: 1px solid var(--el-border-color-lighter);
-      }
+    &__identity-copy {
+      display: grid;
+      gap: 8px;
+      min-width: 0;
 
-      span {
-        font-size: 12px;
+      > p {
+        margin: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        font-size: 13px;
         color: var(--el-text-color-secondary);
+        white-space: nowrap;
       }
+    }
 
-      strong {
-        min-width: 0;
-        font-size: 18px;
-        font-variant-numeric: tabular-nums;
-        color: var(--el-text-color-primary);
+    &__identity-primary {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      min-width: 0;
+    }
+
+    &__vehicle-photo {
+      flex: none;
+
+      :deep(.upload-container) {
+        box-shadow: 0 4px 12px rgb(15 23 42 / 8%);
+      }
+    }
+
+    &__vehicle-photo-empty {
+      display: inline-flex;
+      flex: none;
+      align-items: center;
+      justify-content: center;
+      width: 88px;
+      height: 88px;
+      font-size: 28px;
+      color: var(--theme-color);
+      background: var(--el-fill-color-lighter);
+      border: 1px dashed var(--el-border-color);
+      border-radius: var(--el-border-radius-base);
+    }
+
+    h1 {
+      min-width: 0;
+      margin: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-size: var(--art-font-size-page-title);
+      font-weight: 650;
+      line-height: var(--art-line-height-title);
+      color: var(--el-text-color-primary);
+      white-space: nowrap;
+    }
+
+    &__header-statuses {
+      display: inline-flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    &__tabs {
+      padding: 0 20px 24px;
+      margin-top: 12px;
+
+      :deep(.el-tabs__header) {
+        margin-bottom: 20px;
       }
     }
 
     &__descriptions {
+      overflow: hidden;
+      border-radius: var(--el-border-radius-base);
+
       :deep(.el-descriptions__label) {
         width: 132px;
         font-weight: 600;
@@ -488,34 +572,116 @@
       margin-top: 24px;
     }
 
+    &__certificate-panel {
+      padding: 18px;
+      background: var(--el-fill-color-extra-light);
+      border: 1px solid var(--el-border-color-lighter);
+      border-radius: var(--el-border-radius-base);
+    }
+
+    &__section-heading {
+      display: flex;
+      gap: 16px;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 16px;
+
+      > div {
+        min-width: 0;
+
+        :deep(.art-section-title) {
+          margin: 0;
+        }
+
+        p {
+          margin: 4px 0 0;
+          font-size: 12px;
+          color: var(--el-text-color-secondary);
+        }
+      }
+
+      > span {
+        flex: none;
+        padding: 5px 10px;
+        font-size: 12px;
+        color: var(--theme-color);
+        background: color-mix(in srgb, var(--theme-color) 9%, var(--el-bg-color));
+        border-radius: 999px;
+      }
+    }
+
     &__images {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 16px;
-      max-width: 760px;
     }
 
     &__image-item {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      align-items: center;
+      min-width: 0;
+      overflow: hidden;
+      background: var(--el-bg-color);
+      border: 1px solid var(--el-border-color-lighter);
+      border-radius: var(--el-border-radius-base);
+
+      > header {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        justify-content: space-between;
+        padding: 11px 12px;
+        border-bottom: 1px solid var(--el-border-color-lighter);
+
+        strong {
+          min-width: 0;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          font-size: 13px;
+          color: var(--el-text-color-primary);
+          white-space: nowrap;
+        }
+
+        span {
+          flex: none;
+          font-size: 11px;
+          color: var(--el-text-color-placeholder);
+
+          &.is-ready {
+            color: var(--el-color-success);
+          }
+        }
+      }
 
       :deep(.el-image),
       .vehicle-archive-detail__image-empty {
-        width: 128px;
-        height: 128px;
-        border: 1px solid var(--el-border-color);
-        border-radius: var(--el-border-radius-base);
+        width: 100%;
+        height: 180px;
+      }
+
+      :deep(.el-image) {
+        display: block;
+        cursor: zoom-in;
+        background: var(--el-fill-color-lighter);
       }
     }
 
     &__image-empty {
       display: flex;
+      flex-direction: column;
+      gap: 8px;
       align-items: center;
       justify-content: center;
+      font-size: 12px;
       color: var(--el-text-color-placeholder);
       background: var(--el-fill-color-lighter);
+
+      .art-svg-icon {
+        font-size: 28px;
+      }
+
+      &.is-error {
+        color: var(--el-color-danger);
+        background: var(--el-color-danger-light-9);
+      }
     }
 
     &__audit {
@@ -523,22 +689,27 @@
     }
 
     @media (width <= 760px) {
-      &__summary {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
-
-      &__summary-item:nth-child(2) {
-        border-right: 0;
-      }
-
-      &__summary-item:nth-child(-n + 2) {
-        border-bottom: 1px solid var(--el-border-color-lighter);
-      }
+      padding: 12px;
 
       &__descriptions {
         :deep(.el-descriptions__label) {
           width: 108px;
         }
+      }
+
+      &__images {
+        grid-template-columns: 1fr;
+      }
+
+      &__image-item {
+        :deep(.el-image),
+        .vehicle-archive-detail__image-empty {
+          height: clamp(180px, 52vw, 260px);
+        }
+      }
+
+      &__section-heading {
+        align-items: center;
       }
     }
   }

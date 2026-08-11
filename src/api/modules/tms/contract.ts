@@ -5,6 +5,7 @@ import { startWorkflow } from '@/api/workflow'
 
 type Contract = Api.Tms.BasicData.Contract
 type ContractSearchParams = Api.Tms.BasicData.ContractSearchParams
+type ContractTransportDetail = Api.Tms.BasicData.ContractTransportDetail
 
 const { supabase, keysToSnakeDeep, responseHandle } = useSupabase()
 
@@ -16,21 +17,81 @@ const CONTRACT_SELECT = `
     company_name,
     contact_name,
     contact_phone
+  ),
+  customer:tms_customer!tms_contract_customer_id_fkey(
+    id,
+    customer_code,
+    customer_name,
+    contact_name,
+    contact_phone
   )
 `
+
+const normalizeTransportDetail = (value: unknown): ContractTransportDetail | null => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null
+  const detail = value as Record<string, unknown>
+  const cargoDescription = String(detail.cargoDescription ?? '').trim()
+  const cargoCode = String(detail.cargoCode ?? '').trim()
+  const unit = String(detail.unit ?? '').trim()
+  if (!cargoDescription || !cargoCode || !unit) return null
+
+  const contractQuantity = Number(detail.contractQuantity)
+  const transportUnitPrice = Number(detail.transportUnitPrice)
+  const freight = Number(detail.freight)
+  if (
+    [contractQuantity, transportUnitPrice, freight].some(
+      (item) => !Number.isFinite(item) || item < 0
+    )
+  ) {
+    return null
+  }
+
+  return {
+    cargoId: detail.cargoId ? String(detail.cargoId) : null,
+    cargoDescription,
+    cargoCode,
+    contractQuantity,
+    unit,
+    transportUnitPrice,
+    freight
+  }
+}
+
+const normalizeContractRecord = (record: Contract): Contract => ({
+  ...record,
+  transportDetails: Array.isArray(record.transportDetails)
+    ? record.transportDetails
+        .map((item: unknown) => normalizeTransportDetail(item))
+        .filter((item): item is ContractTransportDetail => item !== null)
+    : [],
+  attachments: Array.isArray(record.attachments) ? record.attachments : []
+})
 
 const applyContractFilters = <TQuery extends SupabaseQueryLike>(
   query: TQuery,
   params: ContractSearchParams
 ): TQuery => {
-  const { contractStatus, carrierId, billingMethod, keyword, createTimeRange, recordId } = params
+  const {
+    contractStatus,
+    businessContractType,
+    contractCategory,
+    customerId,
+    carrierId,
+    billingMethod,
+    keyword,
+    createTimeRange,
+    recordId
+  } = params
   if (recordId) query = query.eq('id', recordId)
   if (contractStatus) query = query.eq('contract_status', contractStatus)
+  if (businessContractType) query = query.eq('business_contract_type', businessContractType)
+  if (contractCategory) query = query.eq('contract_category', contractCategory)
+  if (customerId) query = query.eq('customer_id', customerId)
   if (carrierId) query = query.eq('carrier_id', carrierId)
   if (billingMethod) query = query.eq('billing_method', billingMethod)
   if (keyword) {
     query = query.or(
-      `contract_name.ilike.%${keyword}%,contract_no.ilike.%${keyword}%,contact_name.ilike.%${keyword}%,waybill_no.ilike.%${keyword}%,handler.ilike.%${keyword}%`
+      `contract_name.ilike.%${keyword}%,contract_no.ilike.%${keyword}%,paper_contract_no.ilike.%${keyword}%,mnemonic_code.ilike.%${keyword}%,contact_name.ilike.%${keyword}%,transport_route.ilike.%${keyword}%,handler.ilike.%${keyword}%`
     )
   }
   if (createTimeRange?.[0]) query = query.gte('create_time', `${createTimeRange[0]}T00:00:00`)
@@ -48,10 +109,11 @@ export async function fetchContractList(params: ContractSearchParams, options?: 
     .order('create_time', { ascending: false })
     .range(from, to)
   query = applyContractFilters(query, params)
-  return await responseHandle<Contract[]>(() => withRequestOptions(query, options), {
+  const result = await responseHandle<Contract[]>(() => withRequestOptions(query, options), {
     ignoreCheck: true,
     showErrorMessage: true
   })
+  return { ...result, data: (result.data ?? []).map(normalizeContractRecord) }
 }
 
 export async function exportContractList(
@@ -64,17 +126,19 @@ export async function exportContractList(
     .order('create_time', { ascending: false })
     .limit(maxRows)
   query = ids?.length ? query.in('id', ids) : applyContractFilters(query, params)
-  return await responseHandle<Contract[]>(() => query, {
+  const result = await responseHandle<Contract[]>(() => query, {
     ignoreCheck: true,
     showErrorMessage: true
   })
+  return { ...result, data: (result.data ?? []).map(normalizeContractRecord) }
 }
 
 export async function fetchContractDetail(id: string) {
-  return await responseHandle<Contract | null>(
+  const result = await responseHandle<Contract | null>(
     () => supabase.from('tms_contract').select(CONTRACT_SELECT).eq('id', id).maybeSingle(),
     { ignoreCheck: true, showErrorMessage: true }
   )
+  return { ...result, data: result.data ? normalizeContractRecord(result.data) : null }
 }
 
 export async function addContract(params: Contract) {
@@ -98,6 +162,7 @@ export async function editContract(params: Contract) {
   const data = { ...params }
   delete data.id
   delete data.carrier
+  delete data.customer
   return await responseHandle(
     () => supabase.from('tms_contract').update(keysToSnakeDeep(data)).eq('id', id),
     { showMessage: true, breakReturn: true }

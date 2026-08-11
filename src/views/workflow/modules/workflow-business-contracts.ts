@@ -137,11 +137,19 @@ const contracts: Record<string, WorkflowBusinessContract> = {
     riskLevel: 'high',
     owner: '合同管理',
     fields: [
+      { key: 'businessContractType', label: '业务合同分类', valueType: 'text' },
+      { key: 'contractCategory', label: '合同类别', valueType: 'text' },
+      { key: 'transportMode', label: '运输方式', valueType: 'text' },
       { key: 'contractAmount', label: '合同金额', valueType: 'number' },
       { key: 'contractNo', label: '合同编号', valueType: 'text' },
       { key: 'carrierId', label: '承运商ID', valueType: 'text' },
+      { key: 'customerId', label: '客户ID', valueType: 'text' },
+      { key: 'partyName', label: '合同相对方', valueType: 'text' },
       { key: 'billingMethod', label: '计费方式', valueType: 'text' },
       { key: 'signTime', label: '签订时间', valueType: 'date' },
+      { key: 'effectiveDate', label: '生效日期', valueType: 'date' },
+      { key: 'expiryDate', label: '到期日期', valueType: 'date' },
+      { key: 'isCompleted', label: '是否完成', valueType: 'boolean' },
       { key: 'handler', label: '经办人', valueType: 'text' }
     ],
     routePath: (businessId) => `/tms-transportation/basic-data/contract-detail/${businessId}`

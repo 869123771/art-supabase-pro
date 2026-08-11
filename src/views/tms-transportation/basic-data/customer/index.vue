@@ -146,13 +146,21 @@
       routeName: 'TmsInvoiceManagement',
       order: 5
     },
+    contract: {
+      label: '运输合同',
+      unit: '份',
+      action: '合同属于经营与审批历史，应先终止或保留合同，并改为停用客户。',
+      actionLabel: '去处理合同',
+      routeName: 'TmsContract',
+      order: 6
+    },
     customer_price: {
       label: '客户价格方案',
       unit: '条',
       action: '报价配置可一键清理，也可以到“客户报价”逐条确认后删除。',
       actionLabel: '去删除报价',
       routeName: 'TmsCustomerPrice',
-      order: 6
+      order: 7
     }
   }
 
@@ -457,6 +465,10 @@
     partially_allocated: '部分核销',
     fully_allocated: '已核销',
     draft: '草稿',
+    pending: '待审核',
+    approved: '已审核',
+    rejected: '已驳回',
+    terminated: '已终止',
     pending_review: '待审核',
     confirmed: '已确认',
     issued: '已开具',

@@ -13,6 +13,7 @@ import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
 import tailwindcss from '@tailwindcss/vite'
 import { fileViewerRenderers } from '@file-viewer/vite-plugin'
 import { visualizer } from 'rollup-plugin-visualizer'
+import { getKnownFileViewerExternalization } from './scripts/build-log-policy'
 
 // 添加插件用于生成 .nojekyll 文件
 import { createNoJekyllPlugin } from './src/plugins/nojekyll'
@@ -86,6 +87,7 @@ export default ({ mode }: { mode: string }) => {
   const enableFileViewerAssets = !isE2E && (isProduction || env.VITE_FILE_VIEWER_ASSETS === 'true')
   const outDir = process.env.VITE_OUT_DIR || VITE_OUT_DIR || 'dist'
   const elementPlusStyleDeps = getElementPlusStyleDeps(root)
+  const knownFileViewerExternalizations = new Set<string>()
 
   console.log(`[vite] API_URL=${VITE_API_URL}`)
   console.log(`[vite] VERSION=${VITE_VERSION}`)
@@ -138,6 +140,15 @@ export default ({ mode }: { mode: string }) => {
       minify: 'oxc',
       reportCompressedSize: false,
       rolldownOptions: {
+        onLog(level, log, defaultHandler) {
+          const knownExternalization =
+            level === 'warn' ? getKnownFileViewerExternalization(log) : null
+          if (knownExternalization) {
+            knownFileViewerExternalizations.add(knownExternalization)
+            return
+          }
+          defaultHandler(level, log)
+        },
         checks: {
           invalidAnnotation: false,
           pluginTimings: false
@@ -243,6 +254,18 @@ export default ({ mode }: { mode: string }) => {
             })
           ]
         : []),
+      {
+        name: 'known-file-viewer-browser-external-summary',
+        apply: 'build',
+        closeBundle() {
+          if (!knownFileViewerExternalizations.size) return
+          console.warn(
+            `[vite] file-viewer 使用 ${knownFileViewerExternalizations.size} 个已知浏览器 external shim：${[
+              ...knownFileViewerExternalizations
+            ].join(', ')}`
+          )
+        }
+      },
       // 自动按需导入 API
       AutoImport({
         imports: ['vue', 'vue-router', 'pinia', '@vueuse/core'],

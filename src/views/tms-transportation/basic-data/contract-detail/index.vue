@@ -32,25 +32,19 @@
         <strong>¥ {{ formatMoney(detail.data?.contractAmount) }}</strong>
       </article>
       <article>
-        <span>计费方式</span>
-        <ArtDictDisplay
-          v-if="detail.data?.billingMethod"
-          dict-code="tmsContractBillingMethod"
-          :value="detail.data.billingMethod"
-          display="text"
-        />
-        <strong v-else>--</strong>
+        <span>合同相对方</span>
+        <strong>{{ partyName }}</strong>
       </article>
       <article>
-        <span>合同附件</span>
-        <strong>{{ attachments.length }} 份</strong>
+        <span>运输明细</span>
+        <strong>{{ transportDetails.length }} 行</strong>
       </article>
     </section>
 
     <div class="contract-detail__content">
       <section class="contract-detail__section art-card-xs">
         <ArtSectionTitle>基础信息</ArtSectionTitle>
-        <ArtDescriptions :data="descriptionData" :items="descriptionItems" :columns="4">
+        <ArtDescriptions :data="descriptionData" :items="baseDescriptionItems" :columns="4">
           <template #item-contractStatus>
             <ElTag
               v-if="detail.data?.contractStatus"
@@ -61,6 +55,32 @@
             <span v-else>--</span>
           </template>
         </ArtDescriptions>
+      </section>
+
+      <section class="contract-detail__section art-card-xs">
+        <ArtSectionTitle>计费与履约</ArtSectionTitle>
+        <ArtDescriptions
+          :data="descriptionData"
+          :items="fulfillmentDescriptionItems"
+          :columns="4"
+        />
+      </section>
+
+      <section class="contract-detail__section art-card-xs">
+        <ArtSectionTitle>运输合同明细</ArtSectionTitle>
+        <ArtTable
+          :data="transportDetails"
+          :columns="transportDetailColumns"
+          :pagination="undefined"
+          empty-text="暂无运输合同明细"
+          empty-description="当前合同尚未维护按货物拆分的数量和价格。"
+          empty-height="160px"
+        />
+      </section>
+
+      <section class="contract-detail__section art-card-xs">
+        <ArtSectionTitle>运输路线与合同约定</ArtSectionTitle>
+        <ArtDescriptions :data="descriptionData" :items="termsDescriptionItems" :columns="4" />
       </section>
 
       <section class="contract-detail__section art-card-xs">
@@ -84,8 +104,9 @@
   import ArtDescriptions from '@/components/core/base/art-descriptions/index.vue'
   import type { ArtDescriptionItem } from '@/components/core/base/art-descriptions/types'
   import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
+  import ArtTable from '@/components/core/tables/art-table/index.vue'
   import ArtAttachmentLink from '@/components/core/media/art-file-viewer/attachment-link.vue'
-  import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
+  import type { ColumnOption } from '@/types'
   import { fetchContractDetail } from '@/api/tms'
 
   defineOptions({ name: 'TmsContractDetail' })
@@ -109,17 +130,41 @@
   const page = reactive<PageState>({ loading: false, error: null })
   const detail = reactive<DetailState>({ data: undefined })
   const descriptionData = computed<Partial<Contract>>(() => detail.data ?? {})
-  const descriptionItems: ArtDescriptionItem<Partial<Contract>>[] = [
+  const baseDescriptionItems: ArtDescriptionItem<Partial<Contract>>[] = [
     { key: 'contractStatus', label: '合同状态', field: 'contractStatus' },
     { key: 'contractNo', label: '合同编号', field: 'contractNo', copyable: true },
-    { key: 'contractName', label: '合同名称', field: 'contractName', span: 2 },
+    { key: 'paperContractNo', label: '纸质合同编号', field: 'paperContractNo', copyable: true },
+    { key: 'mnemonicCode', label: '助记码', field: 'mnemonicCode' },
+    { key: 'contractName', label: '合同名称', field: 'contractName', span: 3 },
     {
-      key: 'carrierName',
-      label: '承运商名称',
-      value: (data: Partial<Contract>) => data.carrier?.companyName
+      key: 'contractCategory',
+      label: '合同类别',
+      field: 'contractCategory',
+      dictCode: 'tmsContractCategory',
+      dictDisplay: 'text'
     },
+    {
+      key: 'businessContractType',
+      label: '业务合同分类',
+      field: 'businessContractType',
+      dictCode: 'tmsContractBusinessType',
+      dictDisplay: 'text'
+    },
+    {
+      key: 'transportMode',
+      label: '运输方式',
+      field: 'transportMode',
+      dictCode: 'tmsContractTransportMode',
+      dictDisplay: 'text'
+    },
+    { key: 'partyName', label: '合同相对方', value: () => partyName.value },
     { key: 'contactName', label: '联系人姓名', field: 'contactName' },
+    { key: 'customerSignatory', label: '客户签约人', field: 'customerSignatory' },
     { key: 'waybillNo', label: '运单号', field: 'waybillNo', copyable: true },
+    { key: 'handler', label: '经办人', field: 'handler' }
+  ]
+
+  const fulfillmentDescriptionItems: ArtDescriptionItem<Partial<Contract>>[] = [
     {
       key: 'billingMethod',
       label: '计费方式',
@@ -133,9 +178,54 @@
       field: 'contractAmount',
       formatter: (value) => formatMoney(value as number | null | undefined)
     },
+    {
+      key: 'transportUnitPrice',
+      label: '运输单价',
+      field: 'transportUnitPrice',
+      formatter: (value) => formatMoney(value as number | null | undefined)
+    },
+    {
+      key: 'roadConsumptionRate',
+      label: '路耗标准',
+      field: 'roadConsumptionRate',
+      formatter: (value) => formatRate(value as number | null | undefined)
+    },
+    {
+      key: 'lossDeductionPrice',
+      label: '亏扣价',
+      field: 'lossDeductionPrice',
+      formatter: (value) => formatMoney(value as number | null | undefined)
+    },
     { key: 'signTime', label: '签订时间', field: 'signTime', format: 'datetime' },
-    { key: 'handler', label: '经办人', field: 'handler' },
-    { key: 'contractDescription', label: '合同说明', field: 'contractDescription', span: 4 }
+    { key: 'effectiveDate', label: '生效日期', field: 'effectiveDate', format: 'date' },
+    { key: 'expiryDate', label: '到期日期', field: 'expiryDate', format: 'date' },
+    {
+      key: 'isCompleted',
+      label: '是否完成',
+      field: 'isCompleted',
+      formatter: (value) => (value === true ? '是' : '否')
+    },
+    {
+      key: 'agreedTransportQuantity',
+      label: '合同约定运输量',
+      field: 'agreedTransportQuantity',
+      formatter: (value) => formatNumber(value as number | null | undefined)
+    }
+  ]
+
+  const termsDescriptionItems: ArtDescriptionItem<Partial<Contract>>[] = [
+    { key: 'transportRoute', label: '运输路线', field: 'transportRoute', span: 2 },
+    { key: 'shipperName', label: '发货方', field: 'shipperName' },
+    { key: 'consigneeName', label: '收货方', field: 'consigneeName' },
+    { key: 'payerName', label: '付款方', field: 'payerName' },
+    {
+      key: 'specialTransportRequirements',
+      label: '运输特殊要求',
+      field: 'specialTransportRequirements',
+      span: 3
+    },
+    { key: 'otherDeductionTerms', label: '其他扣款约定', field: 'otherDeductionTerms', span: 4 },
+    { key: 'contractDescription', label: '合同说明摘要', field: 'contractDescription', span: 4 }
   ]
 
   const statusMeta: Record<ContractStatus, { label: string; type: StatusTagType }> = {
@@ -147,6 +237,37 @@
   }
 
   const attachments = computed(() => detail.data?.attachments ?? [])
+  const transportDetails = computed(() => detail.data?.transportDetails ?? [])
+  const partyName = computed(
+    () => detail.data?.customer?.customerName || detail.data?.carrier?.companyName || '--'
+  )
+  const transportDetailColumns: ColumnOption<Api.Tms.BasicData.ContractTransportDetail>[] = [
+    { type: 'globalIndex', label: '行号', width: 68 },
+    { prop: 'cargoDescription', label: '货物描述', minWidth: 180, showOverflowTooltip: true },
+    { prop: 'cargoCode', label: '货物编码', minWidth: 130 },
+    {
+      prop: 'contractQuantity',
+      label: '合同数量',
+      minWidth: 120,
+      align: 'right',
+      formatter: (row) => formatNumber(row.contractQuantity)
+    },
+    { prop: 'unit', label: '计量单位', minWidth: 110, dict: { code: 'tmsCargoUnit' } },
+    {
+      prop: 'transportUnitPrice',
+      label: '运输单价(元)',
+      minWidth: 140,
+      align: 'right',
+      formatter: (row) => formatMoney(row.transportUnitPrice)
+    },
+    {
+      prop: 'freight',
+      label: '运费(元)',
+      minWidth: 130,
+      align: 'right',
+      formatter: (row) => formatMoney(row.freight)
+    }
+  ]
 
   onMounted(() => {
     void loadPage()
@@ -179,6 +300,14 @@
     if (isNil(value) || Number.isNaN(Number(value))) return '--'
     return Number(value).toFixed(2)
   }
+
+  const formatNumber = (value?: number | null): string => {
+    if (isNil(value) || Number.isNaN(Number(value))) return '--'
+    return Number(value).toLocaleString('zh-CN', { maximumFractionDigits: 4 })
+  }
+
+  const formatRate = (value?: number | null): string =>
+    formatNumber(value) === '--' ? '--' : `${formatNumber(value)}%`
 </script>
 
 <style scoped lang="scss">

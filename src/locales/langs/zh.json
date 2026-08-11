@@ -166,6 +166,12 @@
     "submitBtnText": "提交",
     "backBtnText": "返回"
   },
+  "resetPassword": {
+    "title": "重置密码",
+    "subTitle": "输入新密码并再次确认，完成密码重置",
+    "submitBtnText": "确认重置",
+    "backBtnText": "返回登录"
+  },
   "register": {
     "title": "创建账号",
     "subTitle": "欢迎加入我们，请填写以下信息完成注册",

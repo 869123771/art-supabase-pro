@@ -9,7 +9,7 @@
     <TmsWorkspaceHeader
       eyebrow="CONTRACT GOVERNANCE"
       title="运输合同"
-      description="集中管理承运合同、计费方式、生效周期与审核状态，确保运输合作有据可循。"
+      description="集中管理客户/货主与承运商合同、计费方式、生效周期及审核状态，确保运输合作有据可循。"
       icon="ri:file-shield-2-line"
       :tags="[
         { label: '合同治理', type: 'primary' },
@@ -24,7 +24,7 @@
       :api-fn="fetchTableData"
       :columns-factory="columnsFactory"
       :header-actions="headerActions"
-      :search-bar-props="{ span: 6, labelWidth: 86, showExpand: false }"
+      :search-bar-props="{ span: 6, labelWidth: 86, showExpand: true }"
       :table-props="{
         emptyText: '暂无运输合同',
         emptyDescription: '可新增合同，或调整状态、承运商、计费方式和关键字后重新查询。'
@@ -60,6 +60,7 @@
     exportContractList,
     fetchCarrierOptions,
     fetchContractList,
+    fetchCustomerOptions,
     importContracts
   } from '@/api/tms'
   import ContractDialog from './modules/contract-dialog.vue'
@@ -73,8 +74,10 @@
 
   type Contract = Api.Tms.BasicData.Contract
   type ContractStatus = Api.Tms.BasicData.ContractStatus
+  type ContractBusinessType = Api.Tms.BasicData.ContractBusinessType
   type SearchParams = Api.Tms.BasicData.ContractSearchParams
   type CarrierOption = Api.Tms.BasicData.CarrierOption
+  type CustomerOption = Api.Tms.BasicData.CustomerOption
   type TableParams = SearchParams & Pick<Api.Common.PaginationParams, 'current' | 'size'>
   type StatusTagType = 'success' | 'warning' | 'danger' | 'info'
 
@@ -96,6 +99,9 @@
   const table = reactive<TableGroup>({
     searchQuery: {
       contractStatus: undefined,
+      businessContractType: undefined,
+      contractCategory: undefined,
+      customerId: '',
       carrierId: typeof route.query.carrierId === 'string' ? route.query.carrierId : '',
       recordId: typeof route.query.recordId === 'string' ? route.query.recordId : '',
       billingMethod: '',
@@ -121,6 +127,10 @@
   }
 
   const billingMethodOptions = computed(() => getDictMap.value.tmsContractBillingMethod ?? [])
+  const contractCategoryOptions = computed(() => getDictMap.value.tmsContractCategory ?? [])
+  const businessTypeOptions = computed(() => getDictMap.value.tmsContractBusinessType ?? [])
+  const transportModeOptions = computed(() => getDictMap.value.tmsContractTransportMode ?? [])
+  const booleanOptions = computed(() => getDictMap.value.commonBoolean ?? [])
   const billingLabelMap = computed(() => {
     const map = new Map<string, string>()
     billingMethodOptions.value.forEach((item) => {
@@ -137,24 +147,68 @@
     })
     return map
   })
+  const contractCategoryLabelMap = computed(() => createDictLabelMap(contractCategoryOptions.value))
+  const businessTypeLabelMap = computed(() => createDictLabelMap(businessTypeOptions.value))
+  const transportModeLabelMap = computed(() => createDictLabelMap(transportModeOptions.value))
+  const contractCategoryValueMap = computed(() => createDictValueMap(contractCategoryOptions.value))
+  const businessTypeValueMap = computed(() => createDictValueMap(businessTypeOptions.value))
+  const transportModeValueMap = computed(() => createDictValueMap(transportModeOptions.value))
+  const booleanValueMap = computed(() => createDictValueMap(booleanOptions.value))
+  const booleanLabelMap = computed(() => createDictLabelMap(booleanOptions.value))
 
   const contractExcelColumns: ArtTableQueryExcelColumn[] = [
     { key: 'contractName', title: '合同名称', required: true },
     { key: 'contractNo', title: '合同编号' },
+    { key: 'paperContractNo', title: '纸质合同编号' },
+    { key: 'mnemonicCode', title: '助记码' },
     { key: 'contractStatus', title: '合同状态', formatter: (value) => formatStatus(value) },
+    {
+      key: 'businessContractType',
+      title: '业务合同分类',
+      required: true,
+      formatter: (value) => formatDictValue(value, businessTypeLabelMap.value)
+    },
+    {
+      key: 'contractCategory',
+      title: '合同类别',
+      required: true,
+      formatter: (value) => formatDictValue(value, contractCategoryLabelMap.value)
+    },
+    {
+      key: 'transportMode',
+      title: '运输方式',
+      required: true,
+      formatter: (value) => formatDictValue(value, transportModeLabelMap.value)
+    },
     {
       key: 'carrierName',
       title: '承运商名称',
-      required: true,
       formatter: (_value, row) => (row as Contract).carrier?.companyName || ''
     },
+    {
+      key: 'customerName',
+      title: '客户/货主名称',
+      formatter: (_value, row) => (row as Contract).customer?.customerName || ''
+    },
     { key: 'contractAmount', title: '合同金额' },
+    { key: 'transportUnitPrice', title: '运输单价' },
+    { key: 'roadConsumptionRate', title: '路耗标准%' },
+    { key: 'lossDeductionPrice', title: '亏扣价' },
+    { key: 'agreedTransportQuantity', title: '合同约定运输量' },
     { key: 'handler', title: '经办人', required: true },
     {
       key: 'signTime',
       title: '签订时间',
       required: true,
       formatter: (value) => formatDateTime(value)
+    },
+    { key: 'effectiveDate', title: '生效日期' },
+    { key: 'expiryDate', title: '到期日期' },
+    {
+      key: 'isCompleted',
+      title: '是否完成',
+      formatter: (value) =>
+        formatDictValue(toBooleanValue(value) ? 'true' : 'false', booleanLabelMap.value)
     },
     {
       key: 'billingMethod',
@@ -163,7 +217,15 @@
       formatter: (value) => formatBillingMethod(value)
     },
     { key: 'contactName', title: '联系人姓名' },
-    { key: 'waybillNo', title: '运单号' }
+    { key: 'customerSignatory', title: '客户签约人' },
+    { key: 'waybillNo', title: '运单号' },
+    { key: 'transportRoute', title: '运输路线' },
+    { key: 'shipperName', title: '发货方' },
+    { key: 'payerName', title: '付款方' },
+    { key: 'consigneeName', title: '收货方' },
+    { key: 'specialTransportRequirements', title: '运输特殊要求' },
+    { key: 'otherDeductionTerms', title: '其他扣款约定' },
+    { key: 'contractDescription', title: '合同说明摘要' }
   ]
 
   const searchItems = computed<SearchFormItem[]>(() => [
@@ -172,6 +234,18 @@
       key: 'contractStatus',
       type: 'select',
       props: { options: statusOptions, clearable: true }
+    },
+    {
+      label: '业务分类',
+      key: 'businessContractType',
+      type: 'select',
+      props: { options: businessTypeOptions.value, clearable: true }
+    },
+    {
+      label: '合同类别',
+      key: 'contractCategory',
+      type: 'select',
+      props: { options: contractCategoryOptions.value, clearable: true }
     },
     {
       label: '承运商',
@@ -183,6 +257,17 @@
       valueField: 'id',
       labelFn: formatCarrierOption,
       props: { clearable: true, filterable: true, placeholder: '请选择承运商' }
+    },
+    {
+      label: '客户/货主',
+      key: 'customerId',
+      type: 'select',
+      api: fetchCustomerOptions,
+      resultField: 'data',
+      labelField: 'customerName',
+      valueField: 'id',
+      labelFn: formatCustomerOption,
+      props: { clearable: true, filterable: true, placeholder: '请选择客户或货主' }
     },
     {
       label: '创建日期',
@@ -200,7 +285,7 @@
       label: '关键字',
       key: 'keyword',
       type: 'input',
-      props: { clearable: true, placeholder: '合同名称、编号、联系人、运单号或经办人' }
+      props: { clearable: true, placeholder: '名称、编号、纸质编号、助记码、联系人或路线' }
     }
   ])
 
@@ -215,11 +300,17 @@
       formatter: (row) => renderStatus(row.contractStatus)
     },
     {
-      prop: 'carrierName',
-      label: '承运商名称',
+      prop: 'businessContractType',
+      label: '业务分类',
+      width: 145,
+      dict: { code: 'tmsContractBusinessType', display: 'auto' }
+    },
+    {
+      prop: 'partyName',
+      label: '合同相对方',
       minWidth: 190,
       showOverflowTooltip: true,
-      formatter: (row) => row.carrier?.companyName || '-'
+      formatter: (row) => row.customer?.customerName || row.carrier?.companyName || '-'
     },
     {
       prop: 'contractAmount',
@@ -230,10 +321,10 @@
     },
     { prop: 'handler', label: '经办人', width: 110 },
     {
-      prop: 'signTime',
-      label: '签订时间',
-      width: 170,
-      formatter: (row) => formatDateTime(row.signTime)
+      prop: 'expiryDate',
+      label: '到期日期',
+      width: 120,
+      formatter: (row) => row.expiryDate || '-'
     },
     {
       prop: 'operation',
@@ -297,6 +388,33 @@
     return formatNameCodeOption(option, 'companyName', 'carrierCode')
   }
 
+  function formatCustomerOption(option: Record<string, unknown>): string {
+    return formatNameCodeOption(option, 'customerName', 'customerCode')
+  }
+
+  const createDictLabelMap = (options: Api.DataCenter.DictListItem[]): Map<string, string> => {
+    const map = new Map<string, string>()
+    options.forEach((item) => {
+      if (item.value) map.set(item.value, item.label || item.name || item.value)
+    })
+    return map
+  }
+
+  const createDictValueMap = (options: Api.DataCenter.DictListItem[]): Map<string, string> => {
+    const map = new Map<string, string>()
+    options.forEach((item) => {
+      if (item.value) map.set(item.value, item.value)
+      if (item.label) map.set(item.label, item.value)
+      if (item.name) map.set(item.name, item.value)
+    })
+    return map
+  }
+
+  const formatDictValue = (value: unknown, labels: Map<string, string>): string => {
+    const key = String(value ?? '')
+    return labels.get(key) || key
+  }
+
   const renderStatus = (status?: ContractStatus) => {
     if (!status) return '-'
     const meta = statusMeta[status] ?? statusMeta.draft
@@ -327,14 +445,41 @@
     return String(row[title] ?? row[key] ?? '').trim()
   }
 
+  const parseImportNumber = (
+    row: Record<string, unknown>,
+    key: string,
+    title: string
+  ): number | null => {
+    const rawValue = getImportValue(row, key, title)
+    if (!rawValue) return null
+    const value = Number(rawValue)
+    return Number.isFinite(value) ? value : null
+  }
+
+  const toBooleanValue = (value: unknown): boolean => {
+    if (typeof value === 'boolean') return value
+    const normalized = String(value ?? '').trim()
+    return booleanValueMap.value.get(normalized) === 'true' || normalized === 'true'
+  }
+
   const transformImportRows = async (rows: Array<Record<string, unknown>>): Promise<Contract[]> => {
-    const { data: carriers } = await fetchCarrierOptions()
+    const [{ data: carriers }, { data: customers }] = await Promise.all([
+      fetchCarrierOptions(),
+      fetchCustomerOptions()
+    ])
     const carrierMap = new Map<string, CarrierOption>()
     ;(carriers ?? []).forEach((carrier) => {
       carrierMap.set(carrier.companyName, carrier)
       if (carrier.carrierCode) carrierMap.set(carrier.carrierCode, carrier)
       if (carrier.carrierCode)
         carrierMap.set(`${carrier.companyName}（${carrier.carrierCode}）`, carrier)
+    })
+    const customerMap = new Map<string, CustomerOption>()
+    ;(customers ?? []).forEach((customer) => {
+      customerMap.set(customer.customerName, customer)
+      if (customer.customerCode) customerMap.set(customer.customerCode, customer)
+      if (customer.customerCode)
+        customerMap.set(`${customer.customerName}（${customer.customerCode}）`, customer)
     })
 
     const statusValueMap = new Map<string, ContractStatus>()
@@ -346,27 +491,73 @@
     return rows
       .map((row) => {
         const carrierName = getImportValue(row, 'carrierName', '承运商名称')
+        const customerName = getImportValue(row, 'customerName', '客户/货主名称')
         const carrier = carrierMap.get(carrierName)
+        const customer = customerMap.get(customerName)
+        const importedBusinessType = businessTypeValueMap.value.get(
+          getImportValue(row, 'businessContractType', '业务合同分类')
+        )
+        const businessContractType: ContractBusinessType =
+          importedBusinessType === 'customer' || importedBusinessType === 'carrier'
+            ? importedBusinessType
+            : customer
+              ? 'customer'
+              : 'carrier'
         return {
           contractNo: getImportValue(row, 'contractNo', '合同编号') || undefined,
           contractName: getImportValue(row, 'contractName', '合同名称'),
+          paperContractNo: getImportValue(row, 'paperContractNo', '纸质合同编号') || null,
+          mnemonicCode: getImportValue(row, 'mnemonicCode', '助记码') || null,
           contractStatus:
             statusValueMap.get(getImportValue(row, 'contractStatus', '合同状态')) || 'draft',
-          carrierId: carrier?.id || '',
+          businessContractType,
+          contractCategory:
+            contractCategoryValueMap.value.get(
+              getImportValue(row, 'contractCategory', '合同类别')
+            ) || 'annual_framework',
+          transportMode:
+            transportModeValueMap.value.get(getImportValue(row, 'transportMode', '运输方式')) ||
+            'road',
+          carrierId: businessContractType === 'carrier' ? carrier?.id || null : null,
+          customerId: businessContractType === 'customer' ? customer?.id || null : null,
           contactName: getImportValue(row, 'contactName', '联系人姓名') || null,
+          customerSignatory: getImportValue(row, 'customerSignatory', '客户签约人') || null,
           waybillNo: getImportValue(row, 'waybillNo', '运单号') || null,
           billingMethod:
             billingValueMap.value.get(getImportValue(row, 'billingMethod', '计费方式')) || '',
-          contractAmount: Number(getImportValue(row, 'contractAmount', '合同金额')) || null,
+          contractAmount: parseImportNumber(row, 'contractAmount', '合同金额'),
+          transportUnitPrice: parseImportNumber(row, 'transportUnitPrice', '运输单价'),
+          roadConsumptionRate: parseImportNumber(row, 'roadConsumptionRate', '路耗标准%'),
+          lossDeductionPrice: parseImportNumber(row, 'lossDeductionPrice', '亏扣价'),
+          agreedTransportQuantity: parseImportNumber(
+            row,
+            'agreedTransportQuantity',
+            '合同约定运输量'
+          ),
           signTime: getImportValue(row, 'signTime', '签订时间'),
+          effectiveDate: getImportValue(row, 'effectiveDate', '生效日期') || null,
+          expiryDate: getImportValue(row, 'expiryDate', '到期日期') || null,
+          isCompleted: toBooleanValue(getImportValue(row, 'isCompleted', '是否完成')),
           handler: getImportValue(row, 'handler', '经办人'),
-          contractDescription: null,
+          transportRoute: getImportValue(row, 'transportRoute', '运输路线') || null,
+          shipperName: getImportValue(row, 'shipperName', '发货方') || null,
+          payerName: getImportValue(row, 'payerName', '付款方') || null,
+          consigneeName: getImportValue(row, 'consigneeName', '收货方') || null,
+          specialTransportRequirements:
+            getImportValue(row, 'specialTransportRequirements', '运输特殊要求') || null,
+          otherDeductionTerms: getImportValue(row, 'otherDeductionTerms', '其他扣款约定') || null,
+          contractDescription: getImportValue(row, 'contractDescription', '合同说明摘要') || null,
+          transportDetails: [],
           attachments: []
         }
       })
       .filter(
         (row) =>
-          row.contractName && row.carrierId && row.billingMethod && row.signTime && row.handler
+          row.contractName &&
+          (row.businessContractType === 'customer' ? row.customerId : row.carrierId) &&
+          row.billingMethod &&
+          row.signTime &&
+          row.handler
       )
   }
 
@@ -426,12 +617,15 @@
   }
 
   const syncMasterDeleteRoute = (forceRefresh = false): void => {
-    if (route.query.fromMasterDelete !== '1') return
+    if (route.query.fromMasterDelete !== '1' && route.query.fromCustomerDelete !== '1') return
     const carrierId = typeof route.query.carrierId === 'string' ? route.query.carrierId : ''
+    const customerId = typeof route.query.customerId === 'string' ? route.query.customerId : ''
     const recordId = typeof route.query.recordId === 'string' ? route.query.recordId : ''
     const changed =
-      table.searchQuery.carrierId !== carrierId || table.searchQuery.recordId !== recordId
-    Object.assign(table.searchQuery, { carrierId, recordId, keyword: '' })
+      table.searchQuery.carrierId !== carrierId ||
+      table.searchQuery.customerId !== customerId ||
+      table.searchQuery.recordId !== recordId
+    Object.assign(table.searchQuery, { carrierId, customerId, recordId, keyword: '' })
     if (changed || forceRefresh) void nextTick().then(() => tableQueryRef.value?.getData())
   }
 

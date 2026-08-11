@@ -30,17 +30,23 @@
             :show-submit="false"
           />
 
-          <section class="vehicle-archive-edit__section">
-            <ArtSectionTitle>车辆证件</ArtSectionTitle>
+          <section class="vehicle-archive-edit__section vehicle-archive-edit__certificate-panel">
+            <header class="vehicle-archive-edit__certificate-heading">
+              <div>
+                <ArtSectionTitle :show-line="false">车辆证件影像</ArtSectionTitle>
+                <p>可直接上传或从资源库选择，上传后支持预览、替换和删除</p>
+              </div>
+              <span>{{ certificateFilledCount }}/{{ certificateItems.length }} 已完成</span>
+            </header>
             <div class="vehicle-archive-edit__images">
-              <div
+              <ArtUploadImage
                 v-for="item in certificateItems"
                 :key="item.key"
-                class="vehicle-archive-edit__image-item"
-              >
-                <ArtUploadImage v-model="form[item.key]" :title="item.label" :size="128" />
-                <span>{{ item.label }}</span>
-              </div>
+                v-model="form[item.key]"
+                :title="item.label"
+                :size="120"
+                :limit="1"
+              />
             </div>
           </section>
         </ElTabPane>
@@ -155,23 +161,21 @@
   import { useDocumentNumberRule } from '@/hooks/core/useDocumentNumberRule'
   import { downloadAttachment, getFileExtension, viewAttachment } from '@/utils/file'
   import { renderAttachmentLink } from '@/components/core/media/art-file-viewer/render'
+  import {
+    createInitialVehicleArchiveForm,
+    sanitizeVehicleArchivePayload,
+    type VehicleArchive,
+    type VehicleArchiveForm
+  } from './modules/vehicle-archive-model'
 
   defineOptions({ name: 'VehicleArchiveEdit' })
 
   const { confirmAction } = useArtFeedback()
 
-  type VehicleArchive = Api.VehicleMgtSys.ArchiveManage.VehicleArchive
-  type VehicleArchiveForm = VehicleArchive & {
-    primaryDriverName: string
-    primaryDriverPhone: string
-    secondaryDriverName: string
-    secondaryDriverPhone: string
-  }
   type ArchiveAttachment = Api.VehicleMgtSys.ArchiveManage.VehicleArchiveAttachment
   type CarrierOption = Api.Tms.BasicData.CarrierOption
   type DriverOption = Api.Tms.BasicData.DriverOption
   type ArchiveTabName = 'basic' | 'body' | 'engine' | 'other'
-  type VehicleArchiveWritePayload = Record<string, unknown> & { id?: string }
   type BooleanDictOption = Omit<Api.DataCenter.DictListItem, 'value'> & { value: boolean }
   type ImageKey =
     'vehiclePhotoUrl' | 'drivingLicenseFrontUrl' | 'drivingLicenseBackUrl' | 'operationLicenseUrl'
@@ -267,100 +271,7 @@
     )
   })
 
-  const createInitialForm = (): VehicleArchiveForm => ({
-    id: undefined,
-    plateNo: '',
-    carrierId: null,
-    carrier: null,
-    companyName: '',
-    selfNo: '',
-    vehicleType: '',
-    originType: 'domestic',
-    vin: '',
-    manufacturer: '',
-    brandModel: '',
-    operationCertNo: '',
-    purchaseCertNo: '',
-    registrationCertNo: '',
-    vehicleColor: '',
-    chassisNo: '',
-    acCode: '',
-    gearboxSerialNo: '',
-    registerDate: '',
-    issueDate: '',
-    invoiceDate: '',
-    startUseDate: '',
-    serviceYears: null,
-    approvedPassengerCount: null,
-    seatCount: null,
-    businessType: '',
-    isAirConditioned: false,
-    operationStatus: 'operating',
-    operationStatusChangeDate: '',
-    purchaseStatus: '',
-    purchaseStatusChangeDate: '',
-    inspectionStartDate: '',
-    vehicleLevel: '',
-    isNewEnergy: false,
-    threeGuaranteeMileage: null,
-    threeGuaranteeDuration: null,
-    warrantyMileage: null,
-    warrantyDuration: null,
-    remark: '',
-    grossMass: null,
-    curbWeight: null,
-    approvedLoadMass: null,
-    overallLength: null,
-    overallWidth: null,
-    overallHeight: null,
-    platform: '',
-    frontTrack: null,
-    rearTrack: null,
-    wheelbase: null,
-    axleCount: null,
-    tireCount: null,
-    leafSpringCount: null,
-    isDoubleDeck: false,
-    engineNo: '',
-    engineModel: '',
-    fuelType: '',
-    displacement: null,
-    emissionStandard: '',
-    enginePower: null,
-    ratedTorqueSpeed: null,
-    engineTorque: null,
-    plateColor: '',
-    transportIndustry: '',
-    operationType: '',
-    ownerId: '',
-    ownerName: '',
-    ownerPhone: '',
-    terminalPhone: '',
-    ownerGender: '',
-    idCardNo: '',
-    mailingAddress: '',
-    tonnageOrSeat: '',
-    primaryDriverId: null,
-    primaryDriver: null,
-    primaryDriverName: '',
-    primaryDriverPhone: '',
-    secondaryDriverId: null,
-    secondaryDriver: null,
-    secondaryDriverName: '',
-    secondaryDriverPhone: '',
-    operationRoute: '',
-    licensePlateCode: '',
-    serviceStartTime: '',
-    serviceEndTime: '',
-    supportPhoto: false,
-    vehiclePhotoUrl: '',
-    drivingLicenseFrontUrl: '',
-    drivingLicenseBackUrl: '',
-    operationLicenseUrl: '',
-    attachments: [],
-    auditStatus: 'pending',
-    auditRemark: ''
-  })
+  const createInitialForm = createInitialVehicleArchiveForm
 
   const form = reactive<VehicleArchiveForm>(createInitialForm())
   const archiveNumber = useDocumentNumberRule('vehicle.archive_self')
@@ -880,6 +791,9 @@
     { key: 'drivingLicenseBackUrl', label: '行驶证副页' },
     { key: 'operationLicenseUrl', label: '运营证照片' }
   ]
+  const certificateFilledCount = computed(
+    () => certificateItems.filter((item) => Boolean(form[item.key])).length
+  )
 
   const attachmentColumns: ColumnOption<ArchiveAttachment>[] = [
     { type: 'globalIndex', label: '序号', width: 80 },
@@ -990,68 +904,6 @@
     }
 
     return true
-  }
-
-  const sanitizeVehicleArchivePayload = (
-    params: VehicleArchiveForm
-  ): VehicleArchiveWritePayload => {
-    const {
-      id,
-      tenantId,
-      createBy,
-      createTime,
-      updateBy,
-      updateTime,
-      auditBy,
-      auditTime,
-      carrier,
-      primaryDriver,
-      secondaryDriver,
-      primaryDriverName,
-      primaryDriverPhone,
-      secondaryDriverName,
-      secondaryDriverPhone,
-      driverOneName,
-      driverOnePhone,
-      driverTwoName,
-      driverTwoPhone,
-      ...formPayload
-    } = params
-    const payload = {
-      ...formPayload,
-      attachments: formPayload.attachments ?? [],
-      auditStatus: formPayload.auditStatus ?? 'pending',
-      isAirConditioned: formPayload.isAirConditioned ?? false,
-      isNewEnergy: formPayload.isNewEnergy ?? false,
-      isDoubleDeck: formPayload.isDoubleDeck ?? false,
-      supportPhoto: formPayload.supportPhoto ?? false
-    }
-
-    void tenantId
-    void createBy
-    void createTime
-    void updateBy
-    void updateTime
-    void auditBy
-    void auditTime
-    void carrier
-    void primaryDriver
-    void secondaryDriver
-    void primaryDriverName
-    void primaryDriverPhone
-    void secondaryDriverName
-    void secondaryDriverPhone
-    void driverOneName
-    void driverOnePhone
-    void driverTwoName
-    void driverTwoPhone
-
-    return {
-      ...(id ? { id } : {}),
-      ...Object.fromEntries(
-        Object.entries(payload).map(([key, value]) => [key, value === '' ? null : value])
-      )
-    }
   }
 
   const handleSave = async (): Promise<void> => {
@@ -1180,7 +1032,15 @@
     }
 
     &__tabs {
-      padding: 16px 20px 24px;
+      padding: 0 20px 24px;
+
+      :deep(.el-tabs__header) {
+        margin-bottom: 22px;
+      }
+
+      :deep(.el-form-item) {
+        margin-bottom: 22px;
+      }
     }
 
     &__footer {
@@ -1190,7 +1050,7 @@
     }
 
     &__section {
-      margin-top: 16px;
+      margin-top: 20px;
 
       h3 {
         margin: 0 0 14px;
@@ -1211,27 +1071,61 @@
       margin: 0 !important;
     }
 
-    &__images {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-      gap: 16px;
-      max-width: 760px;
+    &__certificate-panel {
+      padding: 18px;
+      background: var(--el-fill-color-extra-light);
+      border: 1px solid var(--el-border-color-lighter);
+      border-radius: var(--el-border-radius-base);
     }
 
-    &__image-item {
+    &__certificate-heading {
       display: flex;
-      flex-direction: column;
-      gap: 8px;
-      align-items: center;
-      color: var(--el-text-color-regular);
+      gap: 16px;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 18px;
 
-      .art-upload {
-        display: flex;
+      > div {
+        min-width: 0;
+
+        p {
+          margin: 4px 0 0;
+          font-size: 12px;
+          color: var(--el-text-color-secondary);
+        }
       }
+
+      > span {
+        flex: none;
+        padding: 5px 10px;
+        font-size: 12px;
+        color: var(--theme-color);
+        background: color-mix(in srgb, var(--theme-color) 9%, var(--el-bg-color));
+        border-radius: 999px;
+      }
+    }
+
+    &__images {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(120px, 1fr));
+      gap: 16px;
+      justify-items: center;
     }
 
     :deep(.el-tabs__content) {
       padding-top: 8px;
+    }
+
+    @media (width <= 760px) {
+      &__images {
+        grid-template-columns: repeat(2, minmax(120px, 1fr));
+      }
+    }
+
+    @media (width <= 420px) {
+      &__images {
+        grid-template-columns: 1fr;
+      }
     }
   }
 </style>

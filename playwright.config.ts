@@ -1,6 +1,8 @@
 import { defineConfig } from '@playwright/test'
 
-const useDevServer = process.env.E2E_USE_DEV_SERVER === 'true'
+const useDevServer =
+  process.env.E2E_USE_DEV_SERVER === 'true' ||
+  (!process.env.CI && process.env.E2E_USE_DEV_SERVER !== 'false')
 const baseURL =
   process.env.E2E_BASE_URL || (useDevServer ? 'http://127.0.0.1:41738' : 'http://127.0.0.1:41737')
 const browserChannel = (process.env.E2E_BROWSER_CHANNEL ||
@@ -42,9 +44,25 @@ export default defineConfig({
       testMatch: /auth\.setup\.ts/
     },
     {
+      name: 'public-desktop-1440',
+      testMatch: /auth-pages\.accessibility\.spec\.ts/,
+      use: {
+        viewport: { width: 1440, height: 900 }
+      }
+    },
+    {
+      name: 'public-mobile-390',
+      testMatch: /auth-pages\.accessibility\.spec\.ts/,
+      use: {
+        viewport: { width: 390, height: 844 },
+        isMobile: true,
+        hasTouch: true
+      }
+    },
+    {
       name: 'desktop-1440',
       dependencies: ['setup'],
-      testIgnore: /auth\.setup\.ts/,
+      testIgnore: /auth\.setup\.ts|auth-pages\.accessibility\.spec\.ts/,
       use: {
         viewport: { width: 1440, height: 900 },
         storageState: 'playwright/.auth/user.json'
@@ -53,7 +71,7 @@ export default defineConfig({
     {
       name: 'desktop-1280',
       dependencies: ['setup'],
-      testIgnore: /auth\.setup\.ts/,
+      testIgnore: /auth\.setup\.ts|auth-pages\.accessibility\.spec\.ts/,
       use: {
         viewport: { width: 1280, height: 720 },
         storageState: 'playwright/.auth/user.json'
@@ -62,7 +80,7 @@ export default defineConfig({
     {
       name: 'tablet-1024',
       dependencies: ['setup'],
-      testIgnore: /auth\.setup\.ts/,
+      testIgnore: /auth\.setup\.ts|auth-pages\.accessibility\.spec\.ts/,
       use: {
         viewport: { width: 1024, height: 768 },
         storageState: 'playwright/.auth/user.json'
@@ -71,7 +89,7 @@ export default defineConfig({
     {
       name: 'desktop-dark-1440',
       dependencies: ['setup'],
-      testIgnore: /auth\.setup\.ts/,
+      testIgnore: /auth\.setup\.ts|auth-pages\.accessibility\.spec\.ts/,
       use: {
         viewport: { width: 1440, height: 900 },
         colorScheme: 'dark',
@@ -81,7 +99,7 @@ export default defineConfig({
     {
       name: 'desktop-shadow-1280',
       dependencies: ['setup'],
-      testIgnore: /auth\.setup\.ts/,
+      testIgnore: /auth\.setup\.ts|auth-pages\.accessibility\.spec\.ts/,
       use: {
         viewport: { width: 1280, height: 720 },
         storageState: 'playwright/.auth/user.json'
@@ -90,7 +108,7 @@ export default defineConfig({
     {
       name: 'mobile-390',
       dependencies: ['setup'],
-      testIgnore: /auth\.setup\.ts/,
+      testIgnore: /auth\.setup\.ts|auth-pages\.accessibility\.spec\.ts/,
       use: {
         viewport: { width: 390, height: 844 },
         isMobile: true,
@@ -108,6 +126,6 @@ export default defineConfig({
           : {}),
         url: baseURL,
         reuseExistingServer: !process.env.CI,
-        timeout: 120_000
+        timeout: useDevServer ? 300_000 : 120_000
       }
 })

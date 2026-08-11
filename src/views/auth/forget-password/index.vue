@@ -16,6 +16,12 @@
                   class="custom-height"
                   :placeholder="$t('forgetPassword.placeholder')"
                   v-model.trim="form.email"
+                  name="email"
+                  type="email"
+                  inputmode="email"
+                  autocomplete="email"
+                  :aria-label="$t('forgetPassword.placeholder')"
+                  :spellcheck="false"
                 />
               </ElFormItem>
             </ElForm>

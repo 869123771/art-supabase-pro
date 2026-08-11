@@ -36,8 +36,8 @@ setup('登录并保存视觉回归会话', async ({ page }) => {
   await mkdir(path.dirname(authFile), { recursive: true })
 
   const env = loadEnv('development', process.cwd(), '')
-  const supabaseUrl = env.VITE_SUPABASE_URL
-  const supabaseKey = env.VITE_SUPABASE_KEY
+  const supabaseUrl = process.env.VITE_SUPABASE_URL || env.VITE_SUPABASE_URL
+  const supabaseKey = process.env.VITE_SUPABASE_KEY || env.VITE_SUPABASE_KEY
   if (!supabaseUrl || !supabaseKey) {
     throw new Error('缺少 VITE_SUPABASE_URL 或 VITE_SUPABASE_KEY')
   }
@@ -79,9 +79,16 @@ setup('登录并保存视觉回归会话', async ({ page }) => {
     (item) => item.dictTypeTable.code
   )
   const projectRef = new URL(supabaseUrl).hostname.split('.')[0]
-  await page.goto('/#/auth/login')
-  await page.evaluate(
-    ({ storageKey, userStoreKey, sessionData, hydratedUserInfo, hydratedDictionaryMap }) => {
+  await page.addInitScript(
+    ({
+      appVersion,
+      storageKey,
+      userStoreKey,
+      sessionData,
+      hydratedUserInfo,
+      hydratedDictionaryMap
+    }) => {
+      localStorage.setItem('sys-version', appVersion)
       localStorage.setItem(storageKey, JSON.stringify(sessionData))
       localStorage.setItem(
         userStoreKey,
@@ -108,6 +115,7 @@ setup('登录并保存视觉回归会话', async ({ page }) => {
       }
     },
     {
+      appVersion: env.VITE_VERSION || packageVersion,
       storageKey: `sb-${projectRef}-auth-token`,
       userStoreKey: `sys-v${env.VITE_VERSION || packageVersion}-user`,
       sessionData: session,
@@ -116,8 +124,8 @@ setup('登录并保存视觉回归会话', async ({ page }) => {
     }
   )
 
-  await page.reload({ waitUntil: 'domcontentloaded' })
+  await page.goto('/#/auth/login', { waitUntil: 'domcontentloaded' })
   await page.goto('/#/dashboard/console')
-  await expect(page).not.toHaveURL(/#\/auth\/login/, { timeout: 30_000 })
+  await expect(page).not.toHaveURL(/#\/(?:auth\/)?login/, { timeout: 30_000 })
   await page.context().storageState({ path: authFile })
 })

@@ -1,4 +1,4 @@
-import { isNil, round, toNumber, trim } from 'lodash-es'
+import { cloneDeep, isNil, omit, round, toNumber, trim } from 'lodash-es'
 
 export type OrderRecord = Api.Tms.Order.OrderRecord
 export type CargoItem = Api.Tms.Order.CargoItem
@@ -8,6 +8,40 @@ export type OrderForm = OrderRecord & {
   shippingCustomerName: string
   receivingCustomerName: string
 }
+
+export interface OrderCargoSummary {
+  quantity: number
+  weight: number
+  volume: number
+}
+
+interface NormalizeOrderPayloadOptions {
+  form: OrderForm
+  stationNames: {
+    origin?: string
+    destination?: string
+    transfer?: string
+  }
+}
+
+const feeFields: Array<keyof OrderForm> = [
+  'transportFee',
+  'deliveryFee',
+  'unloadingFee',
+  'collectPaymentFee',
+  'transferFee',
+  'insuranceFee',
+  'packageFee',
+  'otherFee'
+]
+
+const paymentFields: Array<keyof OrderForm> = [
+  'cashAmount',
+  'collectAmount',
+  'monthlyAmount',
+  'codAmount',
+  'handlingFee'
+]
 
 export function createInitialCargoItem(): CargoItem {
   return {
@@ -120,6 +154,95 @@ export function normalizeCargoItems(items?: CargoItem[]): CargoItem[] {
       (item) =>
         item.cargoName || item.packageType || item.quantity || item.weightKg || item.volumeM3
     )
+}
+
+export function calculateOrderCargoSummary(items?: CargoItem[]): OrderCargoSummary {
+  return {
+    quantity: round(
+      (items ?? []).reduce((sum, item) => sum + numericValue(item.quantity), 0),
+      0
+    ),
+    weight: round(
+      (items ?? []).reduce((sum, item) => sum + numericValue(item.weightKg), 0),
+      2
+    ),
+    volume: round(
+      (items ?? []).reduce((sum, item) => sum + numericValue(item.volumeM3), 0),
+      3
+    )
+  }
+}
+
+function sumOrderFields(form: OrderForm, fields: Array<keyof OrderForm>): number {
+  return round(
+    fields.reduce((sum, field) => sum + numericValue(form[field] as number), 0),
+    2
+  )
+}
+
+export function normalizeOrderPayload({
+  form,
+  stationNames
+}: NormalizeOrderPayloadOptions): OrderRecord {
+  const raw = cloneDeep(form)
+  const payload = omit(raw, [
+    'tenantId',
+    'shippingCustomer',
+    'receivingCustomer',
+    'shippingCustomerName',
+    'receivingCustomerName',
+    'originStationRef',
+    'destinationStationRef',
+    'transferStationRef',
+    'createBy',
+    'createTime',
+    'updateBy',
+    'updateTime'
+  ]) as OrderRecord
+  const cargoItems = normalizeCargoItems(raw.cargoItems)
+  const cargoSummary = calculateOrderCargoSummary(cargoItems)
+
+  Object.assign(payload, {
+    cargoItems,
+    cargoQuantityTotal: cargoSummary.quantity,
+    cargoWeightTotal: cargoSummary.weight,
+    cargoVolumeTotal: cargoSummary.volume,
+    transportFee: moneyValue(raw.transportFee),
+    deliveryFee: moneyValue(raw.deliveryFee),
+    unloadingFee: moneyValue(raw.unloadingFee),
+    collectPaymentFee: moneyValue(raw.collectPaymentFee),
+    transferFee: moneyValue(raw.transferFee),
+    declaredValue: moneyValue(raw.declaredValue),
+    insuranceFee: moneyValue(raw.insuranceFee),
+    packageFee: moneyValue(raw.packageFee),
+    otherFee: moneyValue(raw.otherFee),
+    totalFee: sumOrderFields(raw, feeFields),
+    cashAmount: moneyValue(raw.cashAmount),
+    collectAmount: moneyValue(raw.collectAmount),
+    monthlyAmount: moneyValue(raw.monthlyAmount),
+    codAmount: moneyValue(raw.codAmount),
+    handlingFee: moneyValue(raw.handlingFee),
+    paymentTotal: sumOrderFields(raw, paymentFields),
+    originStationId: nullableText(raw.originStationId),
+    destinationStationId: nullableText(raw.destinationStationId),
+    transferStationId: nullableText(raw.transferStationId),
+    shippingAddressId: nullableText(raw.shippingAddressId),
+    receivingAddressId: nullableText(raw.receivingAddressId),
+    shippingLongitude: nullableNumber(raw.shippingLongitude),
+    shippingLatitude: nullableNumber(raw.shippingLatitude),
+    receivingLongitude: nullableNumber(raw.receivingLongitude),
+    receivingLatitude: nullableNumber(raw.receivingLatitude),
+    originStation: stationNames.origin || textValue(raw.originStation),
+    destinationStation: stationNames.destination || textValue(raw.destinationStation),
+    transferStation: stationNames.transfer || nullableText(raw.transferStation),
+    transportMode: textValue(raw.transportMode),
+    orderRemark: textValue(raw.orderRemark),
+    orderNo: textValue(raw.orderNo),
+    cargoNo: textValue(raw.cargoNo),
+    imageUrls: raw.imageUrls ?? []
+  })
+
+  return payload
 }
 
 export function getDictLabel(

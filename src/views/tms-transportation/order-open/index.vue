@@ -268,7 +268,7 @@
 <script setup lang="tsx">
   import type { ComputedRef, UnwrapNestedRefs } from 'vue'
   import { useDateFormat, useNow } from '@vueuse/core'
-  import { cloneDeep, isNil, omit, round } from 'lodash-es'
+  import { cloneDeep, isNil, round } from 'lodash-es'
   import type { FormRules } from 'element-plus'
   import { ElAutocomplete, ElInputNumber, ElMessage, ElOption, ElSelect } from 'element-plus'
   import { Collection, Plus } from '@element-plus/icons-vue'
@@ -306,12 +306,12 @@
   import {
     createInitialCargoItem,
     createInitialForm,
+    calculateOrderCargoSummary,
     formatNumber,
     getDictLabel,
     moneyValue,
-    normalizeCargoItems,
     nullableNumber,
-    nullableText,
+    normalizeOrderPayload,
     numericValue,
     textValue,
     type OrderForm
@@ -735,20 +735,7 @@
       }
     ]),
     cargoItems: computed(() => form.data.cargoItems ?? []),
-    cargoSummary: computed(() => ({
-      quantity: round(
-        (form.data.cargoItems ?? []).reduce((sum, item) => sum + numericValue(item.quantity), 0),
-        0
-      ),
-      weight: round(
-        (form.data.cargoItems ?? []).reduce((sum, item) => sum + numericValue(item.weightKg), 0),
-        2
-      ),
-      volume: round(
-        (form.data.cargoItems ?? []).reduce((sum, item) => sum + numericValue(item.volumeM3), 0),
-        3
-      )
-    })),
+    cargoSummary: computed(() => calculateOrderCargoSummary(form.data.cargoItems)),
     extraServiceFee: computed(() =>
       round(
         numericValue(form.data.deliveryFee) +
@@ -1564,66 +1551,14 @@
   }
 
   function normalizePayload(): OrderRecord {
-    const raw = cloneDeep(toRaw(form.data))
-    const payload = omit(raw, [
-      'tenantId',
-      'shippingCustomer',
-      'receivingCustomer',
-      'shippingCustomerName',
-      'receivingCustomerName',
-      'originStationRef',
-      'destinationStationRef',
-      'transferStationRef',
-      'createBy',
-      'createTime',
-      'updateBy',
-      'updateTime'
-    ]) as OrderRecord
-
-    payload.cargoItems = normalizeCargoItems(raw.cargoItems)
-    payload.cargoQuantityTotal = form.cargoSummary.quantity
-    payload.cargoWeightTotal = form.cargoSummary.weight
-    payload.cargoVolumeTotal = form.cargoSummary.volume
-    payload.transportFee = moneyValue(raw.transportFee)
-    payload.deliveryFee = moneyValue(raw.deliveryFee)
-    payload.unloadingFee = moneyValue(raw.unloadingFee)
-    payload.collectPaymentFee = moneyValue(raw.collectPaymentFee)
-    payload.transferFee = moneyValue(raw.transferFee)
-    payload.declaredValue = moneyValue(raw.declaredValue)
-    payload.insuranceFee = moneyValue(raw.insuranceFee)
-    payload.packageFee = moneyValue(raw.packageFee)
-    payload.otherFee = moneyValue(raw.otherFee)
-    payload.totalFee = sumFields(feeFields)
-    payload.cashAmount = moneyValue(raw.cashAmount)
-    payload.collectAmount = moneyValue(raw.collectAmount)
-    payload.monthlyAmount = moneyValue(raw.monthlyAmount)
-    payload.codAmount = moneyValue(raw.codAmount)
-    payload.handlingFee = moneyValue(raw.handlingFee)
-    payload.paymentTotal = sumFields(paymentFields)
-    payload.originStationId = nullableText(raw.originStationId)
-    payload.destinationStationId = nullableText(raw.destinationStationId)
-    payload.transferStationId = nullableText(raw.transferStationId)
-    payload.shippingAddressId = nullableText(raw.shippingAddressId)
-    payload.receivingAddressId = nullableText(raw.receivingAddressId)
-    payload.shippingLongitude = nullableNumber(raw.shippingLongitude)
-    payload.shippingLatitude = nullableNumber(raw.shippingLatitude)
-    payload.receivingLongitude = nullableNumber(raw.receivingLongitude)
-    payload.receivingLatitude = nullableNumber(raw.receivingLatitude)
-    payload.originStation =
-      findStationOption('origin', raw.originStationId)?.stationName || textValue(raw.originStation)
-    payload.destinationStation =
-      findStationOption('destination', raw.destinationStationId)?.stationName ||
-      textValue(raw.destinationStation)
-    payload.transferStation =
-      findStationOption('transfer', raw.transferStationId)?.stationName ||
-      nullableText(raw.transferStation)
-    payload.transportMode = textValue(raw.transportMode)
-    payload.orderRemark = textValue(raw.orderRemark)
-    payload.orderNo = textValue(raw.orderNo)
-    payload.cargoNo = textValue(raw.cargoNo)
-    payload.imageUrls = raw.imageUrls ?? []
-
-    return payload
+    return normalizeOrderPayload({
+      form: toRaw(form.data),
+      stationNames: {
+        origin: findStationOption('origin', form.data.originStationId)?.stationName,
+        destination: findStationOption('destination', form.data.destinationStationId)?.stationName,
+        transfer: findStationOption('transfer', form.data.transferStationId)?.stationName
+      }
+    })
   }
 
   function sumFields(fields: Array<keyof OrderForm>): number {

@@ -21,6 +21,7 @@ interface WriteOptions {
 export type CustomerDeleteDependencyCode =
   | 'cash_allocation'
   | 'cash_transaction'
+  | 'contract'
   | 'customer_price'
   | 'customer_statement'
   | 'customer_statement_item'
