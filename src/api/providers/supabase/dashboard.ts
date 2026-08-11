@@ -152,9 +152,7 @@ async function fetchRows<T>(query: SupabaseQueryLike): Promise<T[]> {
 async function fetchReminderCounts(): Promise<DashboardReminder[]> {
   return await Promise.all(
     reminderConfigs.map(async (item) => {
-      let query = supabase
-        .from(item.table)
-        .select('*', { count: 'exact', head: true }) as unknown as SupabaseQueryLike
+      let query = supabase.from(item.table).select('*', { count: 'exact', head: true })
       query =
         item.field === 'remaining_days'
           ? query.lte('remaining_days', 30)

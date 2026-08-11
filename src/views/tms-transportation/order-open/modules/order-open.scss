@@ -30,9 +30,9 @@
 
     label {
       display: grid;
-      min-width: 0;
       gap: 2px;
       align-content: center;
+      min-width: 0;
     }
 
     label > span {
@@ -211,6 +211,10 @@
       height: 46px;
       font-weight: 600;
     }
+
+    &--mobile {
+      display: none;
+    }
   }
 
   &__fee-detail {
@@ -287,6 +291,43 @@
     &__footer-actions {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+}
+
+@media (width <= 640px) {
+  .order-open {
+    padding: var(--art-space-3);
+    padding-bottom: var(--art-space-4);
+
+    &__footer {
+      min-height: 0;
+    }
+
+    &__footer-total {
+      flex-wrap: wrap;
+
+      strong {
+        font-size: 24px;
+      }
+    }
+
+    &__footer-actions {
+      &--desktop {
+        display: none;
+      }
+
+      &--mobile {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: var(--art-space-2);
+
+        :deep(.el-dropdown),
+        :deep(.el-button) {
+          width: 100%;
+          min-width: 0;
+        }
+      }
     }
   }
 }

@@ -112,8 +112,8 @@
     }
 
     &__example-button {
-      font-weight: 500;
       flex: none;
+      font-weight: 500;
     }
 
     &__input-area {
@@ -177,8 +177,8 @@
     @media (width <= 520px) {
       &__heading,
       &__actions {
-        align-items: stretch;
         flex-direction: column;
+        align-items: stretch;
       }
 
       &__input-area {

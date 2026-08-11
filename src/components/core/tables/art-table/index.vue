@@ -157,17 +157,7 @@
 </template>
 
 <script setup lang="ts">
-  import {
-    ref,
-    computed,
-    nextTick,
-    watch,
-    watchEffect,
-    getCurrentInstance,
-    useAttrs,
-    onMounted,
-    onBeforeUnmount
-  } from 'vue'
+  import { ref, computed, nextTick, watch, watchEffect, getCurrentInstance, useAttrs } from 'vue'
   import type { ComponentPublicInstance } from 'vue'
   import type { TableProps } from 'element-plus'
   import { storeToRefs } from 'pinia'
@@ -177,8 +167,9 @@
   import { useTableStore } from '@/store/modules/table'
   import { useCommon } from '@/hooks/core/useCommon'
   import { useTableHeight } from '@/hooks/core/useTableHeight'
-  import { useResizeObserver, useWindowSize } from '@vueuse/core'
+  import { useEventListener, useResizeObserver, useWindowSize } from '@vueuse/core'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
+  import TreeUtils from '@/utils/tree'
 
   defineOptions({ name: 'ArtTable' })
 
@@ -662,27 +653,16 @@
     dragSelectedRowKeys.clear()
   }
 
-  onMounted(() => {
-    window.addEventListener('mouseup', endRowSelectionDrag)
-    window.addEventListener('blur', endRowSelectionDrag)
-  })
+  useEventListener(window, 'mouseup', endRowSelectionDrag)
+  useEventListener(window, 'blur', endRowSelectionDrag)
 
-  onBeforeUnmount(() => {
-    window.removeEventListener('mouseup', endRowSelectionDrag)
-    window.removeEventListener('blur', endRowSelectionDrag)
-  })
+  const rowTreeUtils = new TreeUtils({ deepClone: false })
 
   const flattenRows = (rows: ArtTableRow[] = []): ArtTableRow[] => {
     const result: ArtTableRow[] = []
-    const walk = (items: ArtTableRow[]) => {
-      items.forEach((item) => {
-        result.push(item)
-        if (Array.isArray(item.children)) {
-          walk(item.children)
-        }
-      })
-    }
-    walk(rows)
+    rowTreeUtils.traverse(rows, (row) => {
+      result.push(row)
+    })
     return result
   }
 

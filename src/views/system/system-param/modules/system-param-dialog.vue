@@ -564,8 +564,8 @@
   .system-param-dialog {
     position: relative;
     display: flex;
-    align-items: flex-start;
     gap: 12px;
+    align-items: flex-start;
 
     &__form {
       flex: 1;
@@ -631,8 +631,8 @@
       flex: 0 0 230px;
       flex-direction: column;
       gap: 12px;
-      width: 230px;
       align-self: flex-start;
+      width: 230px;
     }
 
     &__preview,
@@ -658,9 +658,9 @@
       dd {
         min-width: 0;
         margin: 0 0 12px;
-        overflow-wrap: anywhere;
         font-size: 13px;
         color: var(--art-text-gray-800);
+        overflow-wrap: anywhere;
 
         .el-tag {
           max-width: 100%;
@@ -702,7 +702,7 @@
     }
   }
 
-  @media (max-width: 900px) {
+  @media (width <= 900px) {
     .system-param-dialog {
       &__side {
         display: none;

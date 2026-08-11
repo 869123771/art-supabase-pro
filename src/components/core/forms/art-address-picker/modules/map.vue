@@ -253,6 +253,7 @@
   const displayMessage = computed(() => props.message || mapMessage.value)
 
   let amapInstance: AMapMapInstance | undefined
+  let amapNamespace: AMapConstructor | undefined
   let markerInstance: AMapMarkerInstance | undefined
   let placeSearchInstance: AMapPlaceSearchInstance | undefined
   let autoCompleteInstance: AMapAutoCompleteInstance | undefined
@@ -596,6 +597,7 @@
 
     const AMap = await loadAmap()
     destroyMap()
+    amapNamespace = AMap
     amapInstance = new AMap.Map(mapRef.value, {
       zoom: options.zoom ?? 11,
       center: options.center,
@@ -620,12 +622,11 @@
   }
 
   const setMarker = (longitude: number | string, latitude: number | string): void => {
-    if (!amapInstance || !window.AMap) return
+    if (!amapInstance || !amapNamespace) return
 
     const position: [number, number] = [Number(longitude), Number(latitude)]
     if (!markerInstance) {
-      const AMap = window.AMap as unknown as AMapConstructor
-      markerInstance = new AMap.Marker({ position })
+      markerInstance = new amapNamespace.Marker({ position })
       amapInstance.add(markerInstance)
     } else {
       markerInstance.setPosition(position)
@@ -657,6 +658,7 @@
   const destroyMap = (): void => {
     amapInstance?.destroy?.()
     amapInstance = undefined
+    amapNamespace = undefined
     markerInstance = undefined
   }
 
@@ -697,7 +699,7 @@
     clearPoi,
     destroy,
     getMap: () => amapInstance,
-    getAMap: () => window.AMap
+    getAMap: () => amapNamespace
   })
 </script>
 

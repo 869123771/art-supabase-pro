@@ -88,6 +88,7 @@
 </template>
 
 <script setup lang="ts">
+  import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import { useIntervalFn } from '@vueuse/core'
   import { useRouter, type LocationQueryRaw } from 'vue-router'
   import { formatWithDayjs } from '@/utils/time'
@@ -211,7 +212,7 @@
       state.error = ''
       emit('unread-change', state.data.totalUnreadCount)
     } catch (error) {
-      state.error = error instanceof Error ? error.message : '通知服务暂时不可用'
+      state.error = getFriendlySupabaseErrorMessage(error, '通知服务暂时不可用')
     } finally {
       state.loading = false
     }
@@ -288,15 +289,15 @@
     right: 20px;
     z-index: 2300;
     display: flex;
+    visibility: hidden;
     flex-direction: column;
     width: 380px;
     height: min(540px, calc(100vh - 82px));
     overflow: hidden;
-    visibility: hidden;
+    box-shadow: 0 16px 40px rgb(15 23 42 / 16%) !important;
     opacity: 0;
     transform: translateY(-8px) scale(0.98);
     transform-origin: top right;
-    box-shadow: 0 16px 40px rgb(15 23 42 / 16%) !important;
     transition:
       opacity 180ms ease,
       transform 180ms ease,
@@ -467,13 +468,13 @@
     &__icon {
       display: grid;
       flex: none;
+      place-items: center;
       width: 38px;
       height: 38px;
       font-size: 18px;
       color: var(--theme-color);
       background: color-mix(in srgb, var(--theme-color) 10%, transparent);
       border-radius: var(--art-control-radius);
-      place-items: center;
     }
 
     &__item-copy {

@@ -52,8 +52,16 @@
         />
 
         <!-- 快速入口 -->
-        <ArtFastEnter v-if="shouldShowFastEnter && width >= headerBarFastEnterMinWidth">
-          <ArtIconButton icon="ri:function-line" label="打开快捷入口" class="ml-3" />
+        <ArtFastEnter
+          v-if="shouldShowFastEnter && width >= headerBarFastEnterMinWidth"
+          v-slot="{ onTriggerClick }"
+        >
+          <ArtIconButton
+            icon="ri:function-line"
+            label="打开快捷入口"
+            class="ml-3"
+            @click="onTriggerClick"
+          />
         </ArtFastEnter>
 
         <!-- 面包屑 -->

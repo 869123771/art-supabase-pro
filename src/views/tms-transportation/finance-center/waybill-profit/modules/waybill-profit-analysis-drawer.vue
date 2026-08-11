@@ -282,6 +282,7 @@
 </template>
 
 <script setup lang="ts">
+  import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import ArtEmptyState from '@/components/core/layouts/art-empty-state/index.vue'
   import type { UnwrapNestedRefs } from 'vue'
   import ArtAiFeedback from '@/components/core/base/art-ai-feedback/index.vue'
@@ -393,7 +394,7 @@
       state.data = data
     } catch (error) {
       state.data = null
-      state.error = getErrorMessage(error)
+      state.error = getFriendlySupabaseErrorMessage(error, '利润诊断服务暂时不可用，请稍后重试')
     } finally {
       state.loading = false
     }
@@ -428,15 +429,6 @@
 
   function formatTime(value: string): string {
     return formatWithDayjs(value, 'YYYY-MM-DD HH:mm:ss') ?? '--'
-  }
-
-  function getErrorMessage(error: unknown): string {
-    if (error instanceof Error) return error.message
-    if (error && typeof error === 'object' && 'message' in error) {
-      const message = (error as { message?: unknown }).message
-      if (typeof message === 'string' && message) return message
-    }
-    return '利润诊断服务暂时不可用，请稍后重试'
   }
 
   defineExpose({ handleOpen })

@@ -218,8 +218,8 @@
 
       strong {
         font-size: 24px;
-        color: var(--el-color-success);
         font-variant-numeric: tabular-nums;
+        color: var(--el-color-success);
       }
 
       small {
@@ -240,12 +240,12 @@
         min-width: 0;
         min-height: 74px;
         padding: 13px 14px;
-        background: color-mix(in srgb, var(--art-main-bg-color) 95%, var(--theme-color));
-        border: 1px solid var(--el-border-color-lighter);
-        border-radius: var(--el-border-radius-base);
         font: inherit;
         text-align: left;
         cursor: pointer;
+        background: color-mix(in srgb, var(--art-main-bg-color) 95%, var(--theme-color));
+        border: 1px solid var(--el-border-color-lighter);
+        border-radius: var(--el-border-radius-base);
         transition:
           border-color 160ms ease,
           background-color 160ms ease,
@@ -287,8 +287,8 @@
 
         strong {
           font-size: 21px;
-          color: var(--el-text-color-primary);
           font-variant-numeric: tabular-nums;
+          color: var(--el-text-color-primary);
         }
 
         small {

@@ -495,7 +495,7 @@ async function cleanLanguageFiles() {
 
 // 清理快速入口组件
 async function cleanFastEnterComponent() {
-  const fastEnterPath = path.resolve(process.cwd(), 'src/config/fastEnter.ts')
+  const fastEnterPath = path.resolve(process.cwd(), 'src/config/modules/fastEnter.ts')
 
   try {
     const cleanedFastEnter = `/**

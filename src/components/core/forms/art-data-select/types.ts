@@ -46,7 +46,7 @@ export interface DataSelectFetchResult {
   list?: DataSelectRecord[]
   records?: DataSelectRecord[]
   total?: number
-  [key: string]: any
+  [key: string]: unknown
 }
 
 export type DataSelectApiFn = (

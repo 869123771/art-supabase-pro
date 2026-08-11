@@ -71,6 +71,8 @@
           right: resolvedImageConfig.right
         }"
         loading="lazy"
+        width="192"
+        height="192"
         alt="背景图片"
       />
     </div>

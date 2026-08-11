@@ -98,6 +98,7 @@
 </template>
 
 <script setup lang="ts">
+  import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import { ElMessage } from 'element-plus'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import ArtUploadImage from '@/components/core/forms/art-upload-image/index.vue'
@@ -207,15 +208,6 @@
     return 'is-low'
   }
 
-  function errorMessage(error: unknown): string {
-    if (error instanceof Error && error.message) return error.message
-    if (error && typeof error === 'object' && 'message' in error) {
-      const message = (error as { message?: unknown }).message
-      if (typeof message === 'string' && message) return message
-    }
-    return 'AI 发票识别失败，请稍后重试'
-  }
-
   async function handleAnalyze(): Promise<void> {
     if (!imageUrls.value.length || analyzing.value) return
     analyzing.value = true
@@ -229,7 +221,7 @@
       result.value = response.data
       ElMessage.success('发票识别完成，请核对后应用')
     } catch (error) {
-      ElMessage.error(errorMessage(error))
+      ElMessage.error(getFriendlySupabaseErrorMessage(error, 'AI 发票识别失败，请稍后重试'))
     } finally {
       analyzing.value = false
     }
@@ -323,8 +315,8 @@
       gap: 8px;
       align-items: flex-start;
       align-self: start;
-      min-width: 0;
       width: 100%;
+      min-width: 0;
       padding: 10px;
       background: var(--art-main-bg-color);
       border: 1px solid var(--art-card-border);
@@ -340,8 +332,8 @@
     }
 
     &__upload-copy {
-      min-width: 0;
       width: 100%;
+      min-width: 0;
 
       strong {
         font-size: 13px;

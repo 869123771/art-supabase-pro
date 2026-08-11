@@ -675,6 +675,7 @@
     from {
       opacity: 0;
     }
+
     to {
       opacity: 1;
     }
@@ -682,21 +683,21 @@
 
   .resource-panel {
     position: relative;
+
     --resource-item-size: 120px;
 
     .resource-dock {
       position: absolute;
-      background-color: rgba(229, 231, 235, 1); /* bg-gray-2 */
-      border-radius: 12px;
-      padding: 4px;
+      bottom: 0;
+      left: 50%;
       display: flex;
+      column-gap: 0.125rem;
       align-items: center;
       justify-content: center;
-      column-gap: 0.125rem;
-
-      left: 50%;
+      padding: 4px;
+      background-color: rgb(229 231 235 / 100%); /* bg-gray-2 */
+      border-radius: 12px;
       transform: translate(-50%);
-      bottom: 0;
 
       /* dark-bg-dark-9 */
       :root.dark & {
@@ -705,46 +706,38 @@
 
       .res-app-container {
         position: relative;
-        height: 40px;
         display: flex;
         align-items: center;
+        height: 40px;
       }
 
       /* 白色圆点 */
       .activate::after {
-        content: '';
-        display: block;
         position: absolute;
-
-        width: 0;
-        height: 0;
-
-        border-width: 2px;
-        border-style: solid;
-        border-color: #ffffff;
-        border-radius: 9999px;
-
         bottom: 2px;
         left: 50%;
+        display: block;
+        width: 0;
+        height: 0;
+        content: '';
+        border-color: #fff;
+        border-style: solid;
+        border-width: 2px;
+        border-radius: 9999px;
         transform: translateX(-50%);
       }
 
       .res-app {
-        width: 40px;
-        height: 40px;
-
         display: flex;
         align-items: center;
         justify-content: center;
-
+        width: 40px;
+        height: 40px;
+        background-color: rgb(209 213 219 / 100%); /* bg-gray-3 */
         border-radius: 10px;
-
-        background-color: rgba(209, 213, 219, 1); /* bg-gray-3 */
-
         box-shadow:
-          inset 0 4px 6px -1px rgba(0, 0, 0, 0.1),
-          inset 0 2px 4px -2px rgba(0, 0, 0, 0.1);
-
+          inset 0 4px 6px -1px rgb(0 0 0 / 10%),
+          inset 0 2px 4px -2px rgb(0 0 0 / 10%);
         transition:
           background-color 0.3s,
           box-shadow 0.3s,
@@ -754,23 +747,21 @@
         :root.dark & {
           background-color: #374151;
           box-shadow:
-            inset 0 1px 2px rgba(0, 0, 0, 0.6),
-            0 4px 6px rgba(0, 0, 0, 0.6);
+            inset 0 1px 2px rgb(0 0 0 / 60%),
+            0 4px 6px rgb(0 0 0 / 60%);
         }
       }
 
       .res-app-icon {
         display: inline-flex;
-        justify-content: center;
         align-items: center;
+        justify-content: center;
         width: 55px;
         height: 55px;
         font-size: 1.5rem !important;
         line-height: 2rem !important;
-
         color: #111827;
         cursor: pointer;
-
         transition:
           color 0.3s,
           background-color 0.3s;
@@ -823,14 +814,12 @@
 
   .resource-item {
     position: relative;
+    box-sizing: border-box;
     min-width: var(--resource-item-size);
     padding-bottom: 100%;
     overflow: hidden;
-
-    border-radius: 4px;
-    box-sizing: border-box;
-
     background-color: #f9fafb;
+    border-radius: 4px;
     animation: fadeIn 0.38s ease-out forwards;
 
     :root.dark & {
@@ -845,32 +834,26 @@
 
   .resource-item__name {
     position: absolute;
+    right: 0;
     bottom: 0;
     left: 0;
-    right: 0;
     height: 24px;
-
     padding: 0 10px;
-
-    font-size: 12px;
-    line-height: 24px;
-
-    white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-
-    background-color: rgba(156, 163, 175, 0.6);
-    color: #ffffff;
+    font-size: 12px;
+    line-height: 24px;
+    color: #fff;
+    white-space: nowrap;
+    background-color: rgb(156 163 175 / 60%);
   }
 
   .resource-item__selected {
     position: absolute;
     top: -30px;
     right: -30px;
-
     width: 40px;
     height: 40px;
-
     background-image: linear-gradient(to top right, transparent 50%, var(--main-color) 50%);
   }
 
@@ -879,8 +862,8 @@
     top: 0;
     right: 0;
     padding: 2px;
-    color: #ffffff;
     font-size: 22px;
+    color: #fff;
   }
 
   .resource-item.active .resource-item__selected {

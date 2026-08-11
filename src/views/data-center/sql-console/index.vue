@@ -348,30 +348,30 @@
     border-radius: var(--el-border-radius-base);
 
     .sql-editor-section {
-      width: 100%;
-      height: 100%;
       display: flex;
       flex-direction: column;
+      width: 100%;
+      height: 100%;
       min-height: 0;
     }
   }
 
   .result-section {
+    position: relative;
+    display: flex;
+    flex-direction: column;
     width: 100%;
     height: 100%;
     background: var(--el-bg-color);
-    display: flex;
-    flex-direction: column;
-    position: relative;
 
     > .tabs-header {
-      flex-shrink: 0;
       display: flex;
+      flex-shrink: 0;
       align-items: center;
       justify-content: space-between;
+      height: 40px;
       padding-right: 16px;
       border-bottom: 1px solid var(--el-border-color);
-      height: 40px;
 
       .result-tabs {
         flex: 1;
@@ -395,8 +395,8 @@
 
       .tabs-actions {
         display: flex;
-        align-items: center;
         gap: 8px;
+        align-items: center;
 
         .execution-info {
           margin-right: 12px;
@@ -407,8 +407,8 @@
     }
 
     > .tabs-content {
-      flex: 1;
       position: relative;
+      flex: 1;
       min-height: 0;
 
       :deep(.el-scrollbar__view) {
@@ -427,8 +427,8 @@
         padding: 40px;
 
         :deep(.el-empty) {
-          padding: 0;
           height: 100%;
+          padding: 0;
 
           .el-empty__image {
             height: 80%;
@@ -448,19 +448,19 @@
 
         .error-message,
         .error-caret {
-          white-space: pre-wrap;
-          word-break: break-word;
-          color: var(--el-color-error);
           margin: 0;
           font-family: Consolas, 'Courier New', monospace;
           line-height: 1.6;
+          color: var(--el-color-error);
+          overflow-wrap: anywhere;
+          white-space: pre-wrap;
         }
 
         .error-caret {
-          margin-top: 12px;
           padding: 12px;
-          border-radius: var(--el-border-radius-base);
+          margin-top: 12px;
           background: color-mix(in srgb, var(--el-color-error) 6%, transparent);
+          border-radius: var(--el-border-radius-base);
         }
       }
 
@@ -504,10 +504,10 @@
 
     .ai-summary {
       padding: 12px 14px;
-      border-radius: var(--el-border-radius-base);
-      background: var(--el-fill-color-light);
-      color: var(--el-text-color-secondary);
       line-height: 1.6;
+      color: var(--el-text-color-secondary);
+      background: var(--el-fill-color-light);
+      border-radius: var(--el-border-radius-base);
     }
   }
 </style>

@@ -406,21 +406,21 @@
 
       p {
         margin: 0;
-        overflow-wrap: anywhere;
         font-size: 12px;
         line-height: 1.6;
         color: var(--el-text-color-secondary);
+        overflow-wrap: anywhere;
       }
     }
 
     &__context-icon {
       display: grid;
+      place-items: center;
       width: 38px;
       height: 38px;
       color: var(--el-color-primary);
       background: var(--el-bg-color);
       border-radius: var(--el-border-radius-base);
-      place-items: center;
 
       :deep(svg) {
         width: 19px;
@@ -440,7 +440,7 @@
       }
     }
 
-    @media (max-width: 640px) {
+    @media (width <= 640px) {
       &__context {
         grid-template-columns: auto minmax(0, 1fr);
 

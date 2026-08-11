@@ -1,12 +1,8 @@
 import { useSupabase } from '@/hooks'
 import { WRITE_PERMISSION_DENIED_MESSAGE } from '@/hooks/core/useSupabase'
-import {
-  applyDateRange,
-  withRequestOptions,
-  type SupabaseQueryLike as SupabaseProviderQueryLike
-} from '@/api/providers/supabase/query'
+import { applyDateRange, withRequestOptions } from '@/api/providers/supabase/query'
 import type { ApiRequestOptions } from '@/types/api/request'
-import { applyFilters, type FilterSpec } from '@/utils/supabase-filters'
+import { applyFilters, type FilterSpec } from '@/utils/supabase'
 import {
   type VehicleInsurance,
   type VehicleInsuranceSearchParams,
@@ -65,13 +61,10 @@ export async function fetchVehicleInsuranceList(
     camelToSnake: true
   })
 
-  return await responseHandle<VehicleInsurance[]>(
-    () => withRequestOptions(query as unknown as SupabaseProviderQueryLike, options),
-    {
-      ignoreCheck: true,
-      showErrorMessage: true
-    }
-  )
+  return await responseHandle<VehicleInsurance[]>(() => withRequestOptions(query, options), {
+    ignoreCheck: true,
+    showErrorMessage: true
+  })
 }
 
 export async function exportVehicleInsuranceList(
@@ -102,23 +95,15 @@ export async function exportVehicleInsuranceList(
     })
   }
 
-  return await responseHandle<VehicleInsurance[]>(
-    () => query as unknown as SupabaseProviderQueryLike,
-    {
-      ignoreCheck: true,
-      showErrorMessage: true
-    }
-  )
+  return await responseHandle<VehicleInsurance[]>(() => query, {
+    ignoreCheck: true,
+    showErrorMessage: true
+  })
 }
 
 export async function fetchVehicleInsuranceDetail(id: string) {
   return await responseHandle<VehicleInsurance>(
-    () =>
-      supabase
-        .from(VEHICLE_INSURANCE_TABLE)
-        .select('*')
-        .eq('id', id)
-        .single() as unknown as SupabaseProviderQueryLike,
+    () => supabase.from(VEHICLE_INSURANCE_TABLE).select('*').eq('id', id).single(),
     {
       ignoreCheck: true,
       showErrorMessage: true
@@ -128,10 +113,7 @@ export async function fetchVehicleInsuranceDetail(id: string) {
 
 export async function addVehicleInsurance(params: VehicleInsurance) {
   return await responseHandle(
-    () =>
-      supabase
-        .from(VEHICLE_INSURANCE_TABLE)
-        .insert(keysToSnakeDeep(params)) as unknown as SupabaseProviderQueryLike,
+    () => supabase.from(VEHICLE_INSURANCE_TABLE).insert(keysToSnakeDeep(params)),
     { showMessage: true, breakReturn: true }
   )
 }
@@ -143,7 +125,7 @@ export async function editVehicleInsurance(params: VehicleInsurance) {
       supabase
         .from(VEHICLE_INSURANCE_TABLE)
         .update(keysToSnakeDeep(data), { count: 'exact' })
-        .eq('id', id) as unknown as SupabaseProviderQueryLike,
+        .eq('id', id),
     {
       showMessage: true,
       breakReturn: true,
@@ -155,11 +137,7 @@ export async function editVehicleInsurance(params: VehicleInsurance) {
 
 export async function deleteVehicleInsurance(id: string) {
   return await responseHandle(
-    () =>
-      supabase
-        .from(VEHICLE_INSURANCE_TABLE)
-        .delete({ count: 'exact' })
-        .eq('id', id) as unknown as SupabaseProviderQueryLike,
+    () => supabase.from(VEHICLE_INSURANCE_TABLE).delete({ count: 'exact' }).eq('id', id),
     {
       showMessage: true,
       breakReturn: true,
@@ -171,11 +149,7 @@ export async function deleteVehicleInsurance(id: string) {
 
 export async function deleteVehicleInsuranceBatch(ids: string[]) {
   return await responseHandle(
-    () =>
-      supabase
-        .from(VEHICLE_INSURANCE_TABLE)
-        .delete({ count: 'exact' })
-        .in('id', ids) as unknown as SupabaseProviderQueryLike,
+    () => supabase.from(VEHICLE_INSURANCE_TABLE).delete({ count: 'exact' }).in('id', ids),
     {
       showMessage: true,
       breakReturn: true,
@@ -220,13 +194,10 @@ export async function fetchVehicleInspectionList(
     camelToSnake: true
   })
 
-  return await responseHandle<VehicleInspection[]>(
-    () => withRequestOptions(query as unknown as SupabaseProviderQueryLike, options),
-    {
-      ignoreCheck: true,
-      showErrorMessage: true
-    }
-  )
+  return await responseHandle<VehicleInspection[]>(() => withRequestOptions(query, options), {
+    ignoreCheck: true,
+    showErrorMessage: true
+  })
 }
 
 export async function exportVehicleInspectionList(
@@ -250,23 +221,15 @@ export async function exportVehicleInspectionList(
     })
   }
 
-  return await responseHandle<VehicleInspection[]>(
-    () => query as unknown as SupabaseProviderQueryLike,
-    {
-      ignoreCheck: true,
-      showErrorMessage: true
-    }
-  )
+  return await responseHandle<VehicleInspection[]>(() => query, {
+    ignoreCheck: true,
+    showErrorMessage: true
+  })
 }
 
 export async function fetchVehicleInspectionDetail(id: string) {
   return await responseHandle<VehicleInspection>(
-    () =>
-      supabase
-        .from(VEHICLE_INSPECTION_TABLE)
-        .select('*')
-        .eq('id', id)
-        .single() as unknown as SupabaseProviderQueryLike,
+    () => supabase.from(VEHICLE_INSPECTION_TABLE).select('*').eq('id', id).single(),
     {
       ignoreCheck: true,
       showErrorMessage: true
@@ -275,10 +238,7 @@ export async function fetchVehicleInspectionDetail(id: string) {
 }
 export async function addVehicleInspection(params: VehicleInspection) {
   return await responseHandle(
-    () =>
-      supabase
-        .from(VEHICLE_INSPECTION_TABLE)
-        .insert(keysToSnakeDeep(params)) as unknown as SupabaseProviderQueryLike,
+    () => supabase.from(VEHICLE_INSPECTION_TABLE).insert(keysToSnakeDeep(params)),
     { showMessage: true, breakReturn: true }
   )
 }
@@ -290,7 +250,7 @@ export async function editVehicleInspection(params: VehicleInspection) {
       supabase
         .from(VEHICLE_INSPECTION_TABLE)
         .update(keysToSnakeDeep(data), { count: 'exact' })
-        .eq('id', id) as unknown as SupabaseProviderQueryLike,
+        .eq('id', id),
     {
       showMessage: true,
       breakReturn: true,
@@ -302,11 +262,7 @@ export async function editVehicleInspection(params: VehicleInspection) {
 
 export async function deleteVehicleInspection(id: string) {
   return await responseHandle(
-    () =>
-      supabase
-        .from(VEHICLE_INSPECTION_TABLE)
-        .delete({ count: 'exact' })
-        .eq('id', id) as unknown as SupabaseProviderQueryLike,
+    () => supabase.from(VEHICLE_INSPECTION_TABLE).delete({ count: 'exact' }).eq('id', id),
     {
       showMessage: true,
       breakReturn: true,
@@ -318,11 +274,7 @@ export async function deleteVehicleInspection(id: string) {
 
 export async function deleteVehicleInspectionBatch(ids: string[]) {
   return await responseHandle(
-    () =>
-      supabase
-        .from(VEHICLE_INSPECTION_TABLE)
-        .delete({ count: 'exact' })
-        .in('id', ids) as unknown as SupabaseProviderQueryLike,
+    () => supabase.from(VEHICLE_INSPECTION_TABLE).delete({ count: 'exact' }).in('id', ids),
     {
       showMessage: true,
       breakReturn: true,
@@ -367,7 +319,7 @@ export async function fetchVehicleRoutineInspectionList(
   })
 
   return await responseHandle<VehicleRoutineInspectionRecord[]>(
-    () => withRequestOptions(query as unknown as SupabaseProviderQueryLike, options),
+    () => withRequestOptions(query, options),
     {
       ignoreCheck: true,
       showErrorMessage: true
@@ -396,23 +348,15 @@ export async function exportVehicleRoutineInspectionList(
     })
   }
 
-  return await responseHandle<VehicleRoutineInspectionRecord[]>(
-    () => query as unknown as SupabaseProviderQueryLike,
-    {
-      ignoreCheck: true,
-      showErrorMessage: true
-    }
-  )
+  return await responseHandle<VehicleRoutineInspectionRecord[]>(() => query, {
+    ignoreCheck: true,
+    showErrorMessage: true
+  })
 }
 
 export async function fetchVehicleRoutineInspectionDetail(id: string) {
   return await responseHandle<VehicleRoutineInspectionRecord>(
-    () =>
-      supabase
-        .from(VEHICLE_ROUTINE_INSPECTION_TABLE)
-        .select('*')
-        .eq('id', id)
-        .single() as unknown as SupabaseProviderQueryLike,
+    () => supabase.from(VEHICLE_ROUTINE_INSPECTION_TABLE).select('*').eq('id', id).single(),
     {
       ignoreCheck: true,
       showErrorMessage: true
@@ -422,10 +366,7 @@ export async function fetchVehicleRoutineInspectionDetail(id: string) {
 
 export async function addVehicleRoutineInspection(params: VehicleRoutineInspectionRecord) {
   return await responseHandle(
-    () =>
-      supabase
-        .from(VEHICLE_ROUTINE_INSPECTION_TABLE)
-        .insert(keysToSnakeDeep(params)) as unknown as SupabaseProviderQueryLike,
+    () => supabase.from(VEHICLE_ROUTINE_INSPECTION_TABLE).insert(keysToSnakeDeep(params)),
     { showMessage: true, breakReturn: true }
   )
 }
@@ -437,7 +378,7 @@ export async function editVehicleRoutineInspection(params: VehicleRoutineInspect
       supabase
         .from(VEHICLE_ROUTINE_INSPECTION_TABLE)
         .update(keysToSnakeDeep(data), { count: 'exact' })
-        .eq('id', id) as unknown as SupabaseProviderQueryLike,
+        .eq('id', id),
     {
       showMessage: true,
       breakReturn: true,
@@ -449,11 +390,7 @@ export async function editVehicleRoutineInspection(params: VehicleRoutineInspect
 
 export async function deleteVehicleRoutineInspection(id: string) {
   return await responseHandle(
-    () =>
-      supabase
-        .from(VEHICLE_ROUTINE_INSPECTION_TABLE)
-        .delete({ count: 'exact' })
-        .eq('id', id) as unknown as SupabaseProviderQueryLike,
+    () => supabase.from(VEHICLE_ROUTINE_INSPECTION_TABLE).delete({ count: 'exact' }).eq('id', id),
     {
       showMessage: true,
       breakReturn: true,
@@ -465,11 +402,7 @@ export async function deleteVehicleRoutineInspection(id: string) {
 
 export async function deleteVehicleRoutineInspectionBatch(ids: string[]) {
   return await responseHandle(
-    () =>
-      supabase
-        .from(VEHICLE_ROUTINE_INSPECTION_TABLE)
-        .delete({ count: 'exact' })
-        .in('id', ids) as unknown as SupabaseProviderQueryLike,
+    () => supabase.from(VEHICLE_ROUTINE_INSPECTION_TABLE).delete({ count: 'exact' }).in('id', ids),
     {
       showMessage: true,
       breakReturn: true,

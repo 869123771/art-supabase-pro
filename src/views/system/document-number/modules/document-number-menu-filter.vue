@@ -145,7 +145,7 @@
   const keyword = ref('')
   const treeProps = {
     children: 'children',
-    label: (data: TreeNodeData) => resolveLabel(data as unknown as AppRouteRecord)
+    label: (data: TreeNodeData) => resolveLabel(data)
   }
 
   const sceneMap = computed(() => {
@@ -209,7 +209,7 @@
   )
   const selectedSceneCount = computed(() => selectedNode.value?.sceneCount ?? sceneCount.value)
 
-  function resolveLabel(menu: AppRouteRecord): string {
+  function resolveLabel(menu: { meta?: { title?: unknown }; name?: unknown }): string {
     return String(menu.meta?.title || menu.name || '未命名菜单')
   }
 

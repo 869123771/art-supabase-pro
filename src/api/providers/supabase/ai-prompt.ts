@@ -1,5 +1,4 @@
 import { useSupabase } from '@/hooks'
-import type { SupabaseQueryLike } from '@/api/providers/supabase/query'
 import { omit } from 'lodash-es'
 
 const { supabase, keysToSnakeDeep, responseHandle } = useSupabase()
@@ -69,7 +68,7 @@ export async function fetchAiPromptList(params: AiPromptSearchParams) {
     )
   }
 
-  return await responseHandle<AiPromptTemplate[]>(() => query as unknown as SupabaseQueryLike, {
+  return await responseHandle<AiPromptTemplate[]>(() => query, {
     ignoreCheck: true,
     showErrorMessage: true
   })
@@ -78,10 +77,7 @@ export async function fetchAiPromptList(params: AiPromptSearchParams) {
 export async function createAiPromptDraft(params: AiPromptWritePayload): Promise<void> {
   const writeData = omit(params, ['id'])
   await responseHandle(
-    () =>
-      supabase
-        .from('ai_prompt_template')
-        .insert(keysToSnakeDeep(writeData)) as unknown as SupabaseQueryLike,
+    () => supabase.from('ai_prompt_template').insert(keysToSnakeDeep(writeData)),
     { breakReturn: true, showMessage: true }
   )
 }
@@ -95,7 +91,7 @@ export async function updateAiPromptDraft(params: AiPromptWritePayload): Promise
         .from('ai_prompt_template')
         .update(keysToSnakeDeep(writeData))
         .eq('id', id)
-        .eq('status', 'draft') as unknown as SupabaseQueryLike,
+        .eq('status', 'draft'),
     { breakReturn: true, showMessage: true }
   )
 }
@@ -110,12 +106,7 @@ export async function publishAiPrompt(id: string): Promise<AiPromptTemplate | nu
 
 export async function deleteAiPromptDraft(id: string): Promise<void> {
   await responseHandle(
-    () =>
-      supabase
-        .from('ai_prompt_template')
-        .delete()
-        .eq('id', id)
-        .eq('status', 'draft') as unknown as SupabaseQueryLike,
+    () => supabase.from('ai_prompt_template').delete().eq('id', id).eq('status', 'draft'),
     { breakReturn: true, showMessage: true }
   )
 }

@@ -16,10 +16,10 @@ interface WriteOptions {
 
 const { supabase, keysToSnakeDeep, responseHandle } = useSupabase()
 
-const applyCargoFilters = (
-  query: SupabaseQueryLike,
+const applyCargoFilters = <TQuery extends SupabaseQueryLike>(
+  query: TQuery,
   params: CargoSearchParams
-): SupabaseQueryLike => {
+): TQuery => {
   const { unit, enabled, keyword, createTimeRange, recordId } = params
   if (recordId) query = query.eq('id', recordId)
   if (unit) query = query.eq('unit', unit)
@@ -39,7 +39,7 @@ export async function fetchCargoList(params: CargoSearchParams, options?: ApiReq
     .from('tms_cargo')
     .select('*', { count: 'exact' })
     .order('create_time', { ascending: false })
-    .range(from, to) as unknown as SupabaseQueryLike
+    .range(from, to)
   query = applyCargoFilters(query, params)
   return await responseHandle<Cargo[]>(() => withRequestOptions(query, options), {
     ignoreCheck: true,
@@ -55,7 +55,7 @@ export async function exportCargoList(
     .from('tms_cargo')
     .select('*')
     .order('create_time', { ascending: false })
-    .limit(maxRows) as unknown as SupabaseQueryLike
+    .limit(maxRows)
   query = ids?.length ? query.in('id', ids) : applyCargoFilters(query, params)
   return await responseHandle<Cargo[]>(() => query, {
     ignoreCheck: true,

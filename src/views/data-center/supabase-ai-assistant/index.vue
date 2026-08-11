@@ -496,6 +496,7 @@
 </template>
 
 <script setup lang="ts">
+  import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import { useDebounceFn, useIntervalFn, useStorage } from '@vueuse/core'
   import { ElMessage } from 'element-plus'
   import type { ScrollbarInstance } from 'element-plus'
@@ -953,7 +954,7 @@
       edgeFunctions.value = edgeResult
     } catch (error) {
       errors.overview = error instanceof Error ? error : new Error('项目概览加载失败')
-      ElMessage.error(error instanceof Error ? error.message : '项目概览加载失败')
+      ElMessage.error(getFriendlySupabaseErrorMessage(error, '项目概览加载失败'))
     } finally {
       loading.overview = false
     }
@@ -1108,7 +1109,7 @@
       ElMessage.success('对象说明已写入数据库并记录审计')
     } catch (error) {
       if (error !== 'cancel' && error !== 'close') {
-        ElMessage.error(error instanceof Error ? error.message : '对象说明更新失败')
+        ElMessage.error(getFriendlySupabaseErrorMessage(error, '对象说明更新失败'))
       }
     }
   }
@@ -1237,7 +1238,7 @@
       history.items = result.conversations
     } catch (error) {
       if (requestId !== activeHistoryRequest) return
-      history.error = error instanceof Error ? error.message : '会话历史加载失败'
+      history.error = getFriendlySupabaseErrorMessage(error, '会话历史加载失败，请稍后重试')
     } finally {
       if (requestId === activeHistoryRequest) history.loading = false
     }
@@ -1289,7 +1290,7 @@
       scrollChatToBottom()
       ElMessage.success('已恢复历史会话')
     } catch (error) {
-      ElMessage.error(error instanceof Error ? error.message : '会话恢复失败')
+      ElMessage.error(getFriendlySupabaseErrorMessage(error, '会话恢复失败'))
     } finally {
       history.loading = false
     }
@@ -1310,7 +1311,7 @@
       ElMessage.success('会话标题已更新')
     } catch (error) {
       if (error !== 'cancel' && error !== 'close') {
-        ElMessage.error(error instanceof Error ? error.message : '会话重命名失败')
+        ElMessage.error(getFriendlySupabaseErrorMessage(error, '会话重命名失败'))
       }
     }
   }
@@ -1402,7 +1403,7 @@
       })
     } catch (error) {
       if (controller.signal.aborted || requestId !== activeChatRequest) return
-      const errorMessage = error instanceof Error ? error.message : '未知错误'
+      const errorMessage = getFriendlySupabaseErrorMessage(error, '操作失败，请稍后重试')
       const friendlyMessage = /aborted|aborterror|signal|timeout|timed out/i.test(errorMessage)
         ? '模型响应超时，请稍后重试；本次请求未修改任何项目数据。'
         : errorMessage

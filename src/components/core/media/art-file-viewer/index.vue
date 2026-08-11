@@ -87,15 +87,15 @@
 
       strong {
         overflow: hidden;
-        font-size: 16px;
         text-overflow: ellipsis;
+        font-size: 16px;
         white-space: nowrap;
       }
 
       span {
         margin-top: 4px;
-        color: var(--el-text-color-secondary);
         font-size: 13px;
+        color: var(--el-text-color-secondary);
       }
     }
 
@@ -109,7 +109,7 @@
       }
     }
 
-    @media (max-width: 768px) {
+    @media (width <= 768px) {
       &__header {
         padding: 8px 12px;
       }

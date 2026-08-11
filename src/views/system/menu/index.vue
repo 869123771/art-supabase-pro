@@ -61,6 +61,7 @@
 </template>
 
 <script setup lang="ts">
+  import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { formatMenuTitle } from '@/utils/router'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
@@ -540,7 +541,7 @@
       await tableQueryRef.value?.refreshRemove()
     } catch (error) {
       if (error !== 'cancel') {
-        ElMessage.error(error instanceof Error ? error.message : '删除失败')
+        ElMessage.error(getFriendlySupabaseErrorMessage(error, '删除失败'))
       }
     }
   }

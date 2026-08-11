@@ -236,8 +236,8 @@
 
   const openDialog = (row?: CustomerAddress): void => {
     void dialogRef.value?.handleOpen(row, {
-      customerId: tableState.searchQuery.customerId,
-      customerName: customerName.value
+      customerId: tableState.searchQuery.customerId ?? undefined,
+      customerName: customerName.value ?? undefined
     })
   }
 

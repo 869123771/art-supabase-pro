@@ -27,7 +27,6 @@
                 placeholder="请输入或选择菜单图标"
                 :page-size="80"
                 :close-on-select="false"
-                @change="handleChange"
               />
             </div>
           </ElCol>
@@ -107,10 +106,6 @@
 
   const handleSelect = (value: string) => {
     ElMessage.success(`已选择：${value}`)
-  }
-
-  const handleChange = (value: string) => {
-    console.info('ArtIconPicker change', value)
   }
 
   const handleClear = () => {

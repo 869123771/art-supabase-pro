@@ -92,6 +92,7 @@
 </template>
 
 <script setup lang="tsx">
+  import { createFriendlySupabaseError } from '@/utils/supabase'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { storeToRefs } from 'pinia'
   import type { ColumnOption } from '@/types'
@@ -287,7 +288,7 @@
       state.items = result.items
       Object.assign(state.summary, result.summary)
     } catch (error) {
-      state.error = error instanceof Error ? error : new Error('业务回调队列加载失败')
+      state.error = createFriendlySupabaseError(error, '业务回调队列加载失败，请稍后重试')
     } finally {
       state.loading = false
     }

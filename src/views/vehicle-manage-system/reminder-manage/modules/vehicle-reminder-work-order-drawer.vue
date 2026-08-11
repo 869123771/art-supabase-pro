@@ -105,12 +105,7 @@
       </section>
 
       <section v-else-if="state.workOrder" class="reminder-work-order__action art-card-xs">
-        <ElAlert
-          :title="terminalStatus ? '该处置单已结束，仅保留审计查看。' : '当前角色为只读模式。'"
-          type="info"
-          :closable="false"
-          show-icon
-        />
+        <ElAlert title="该处置单已结束，仅保留审计查看。" type="info" :closable="false" show-icon />
       </section>
     </div>
   </ArtDrawer>
@@ -171,13 +166,7 @@
   const emit = defineEmits<{ success: [] }>()
   const drawerRef = ref<ArtDrawerExpose<OpenData>>()
   const formRef = ref<{ validate: () => Promise<boolean>; clearValidate: () => void }>()
-  const { getUserInfo, getDictMap, isPlatformSuper } = storeToRefs(useUserStore())
-
-  const canManage = computed(() => {
-    if (isPlatformSuper.value) return true
-    const roles = getUserInfo.value.userRoles ?? []
-    return roles.some((role) => ['R_ADMIN', 'YQ_ADMIN', 'R_REGISTER'].includes(role))
-  })
+  const { getDictMap } = storeToRefs(useUserStore())
 
   const state = reactive<DrawerState>({ openData: null, workOrder: null })
   const form: UnwrapNestedRefs<FormGroup> = reactive<FormGroup>({
@@ -250,9 +239,7 @@
   const terminalStatus = computed(() =>
     state.workOrder ? ['closed', 'cancelled'].includes(state.workOrder.status) : false
   )
-  const canTransition = computed(
-    () => canManage.value && Boolean(state.workOrder) && !terminalStatus.value
-  )
+  const canTransition = computed(() => Boolean(state.workOrder) && !terminalStatus.value)
   const remainingText = computed(() => {
     const days = state.openData?.row.remainingDays
     if (days === null || days === undefined) return '未配置'
@@ -358,10 +345,8 @@
     state.workOrder = data.row.workOrder ?? null
     resetForm()
 
-    if (!state.workOrder && !canManage.value) return
-
     const isReadOnly = state.workOrder
-      ? ['closed', 'cancelled'].includes(state.workOrder.status) || !canManage.value
+      ? ['closed', 'cancelled'].includes(state.workOrder.status)
       : false
     await drawerRef.value?.handleOpen(data, {
       title: `${data.sourceLabel}处置单`,
@@ -443,8 +428,8 @@
     &__eyebrow {
       font-size: 12px;
       font-weight: 700;
-      letter-spacing: 0.04em;
       color: var(--el-color-primary);
+      letter-spacing: 0.04em;
     }
 
     &__facts {
@@ -476,9 +461,9 @@
 
       strong {
         overflow: hidden;
+        text-overflow: ellipsis;
         font-weight: 600;
         color: var(--art-text-gray-800);
-        text-overflow: ellipsis;
         white-space: nowrap;
       }
 

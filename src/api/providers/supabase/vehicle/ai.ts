@@ -1,3 +1,4 @@
+import { normalizeSupabaseFunctionError } from '@/utils/supabase'
 import { useSupabase } from '@/hooks'
 import type { QueryResult } from '@/types/api/response'
 
@@ -14,24 +15,6 @@ export async function analyzeVehicleHealthByAi(
 
   return {
     data: data ?? null,
-    error: await normalizeFunctionInvokeError(error)
-  }
-}
-
-async function normalizeFunctionInvokeError(error: unknown): Promise<unknown | null> {
-  if (!error || typeof error !== 'object' || !('context' in error)) return error
-
-  const context = (error as { context?: unknown }).context
-  if (!(context instanceof Response)) return error
-
-  try {
-    const payload = (await context.clone().json()) as { code?: unknown; message?: unknown }
-    if (typeof payload.message !== 'string' || !payload.message) return error
-    return {
-      code: typeof payload.code === 'string' ? payload.code : undefined,
-      message: payload.message
-    }
-  } catch {
-    return error
+    error: await normalizeSupabaseFunctionError(error)
   }
 }

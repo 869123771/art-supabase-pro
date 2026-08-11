@@ -1,3 +1,4 @@
+import { normalizeSupabaseFunctionError } from '@/utils/supabase'
 import { useSupabase } from '@/hooks'
 import type { QueryResult } from '@/types/api/response'
 import { applyDateRange, type SupabaseQueryLike } from '@/api/providers/supabase/query'
@@ -75,11 +76,11 @@ const fetchMatchingWaybillIds = async (keyword: string): Promise<string[]> => {
   return (data ?? []).map((item) => item.id)
 }
 
-const applyCostFilters = (
-  query: SupabaseQueryLike,
+const applyCostFilters = <TQuery extends SupabaseQueryLike>(
+  query: TQuery,
   params: WaybillCostSearchParams,
   waybillIds: string[]
-): SupabaseQueryLike => {
+): TQuery => {
   const { auditStatus, costType, keyword, occurredOnRange } = params
   if (auditStatus) query = query.eq('audit_status', auditStatus)
   if (costType) query = query.eq('cost_type', costType)
@@ -111,7 +112,7 @@ export async function fetchWaybillCostList(params: WaybillCostSearchParams) {
     .select(WAYBILL_COST_SELECT, { count: 'exact' })
     .order('occurred_on', { ascending: false })
     .order('create_time', { ascending: false })
-    .range(from, to) as unknown as SupabaseQueryLike
+    .range(from, to)
   query = applyCostFilters(query, params, waybillIds)
   return await responseHandle<WaybillCost[]>(() => query, {
     ignoreCheck: true,
@@ -128,7 +129,7 @@ export async function exportWaybillCostList(
     .from('tms_waybill_cost')
     .select(WAYBILL_COST_SELECT)
     .order('occurred_on', { ascending: false })
-    .limit(maxRows) as unknown as SupabaseQueryLike
+    .limit(maxRows)
   query = ids?.length ? query.in('id', ids) : applyCostFilters(query, params, waybillIds)
   return await responseHandle<WaybillCost[]>(() => query, {
     ignoreCheck: true,
@@ -143,7 +144,7 @@ export async function fetchFinanceWaybillOptions(params: WaybillOptionSearchPara
     .select(WAYBILL_OPTION_SELECT, { count: 'exact' })
     .neq('status', 'cancelled')
     .order('create_time', { ascending: false })
-    .range(from, to) as unknown as SupabaseQueryLike
+    .range(from, to)
   if (keyword) {
     query = query.or(
       `waybill_no.ilike.%${keyword}%,origin_city.ilike.%${keyword}%,destination_city.ilike.%${keyword}%`
@@ -228,32 +229,14 @@ export async function analyzeWaybillCostByAi(
 
   return {
     data: data ?? null,
-    error: await normalizeFunctionInvokeError(error)
+    error: await normalizeSupabaseFunctionError(error)
   }
 }
 
-async function normalizeFunctionInvokeError(error: unknown): Promise<unknown | null> {
-  if (!error || typeof error !== 'object' || !('context' in error)) return error
-
-  const context = (error as { context?: unknown }).context
-  if (!(context instanceof Response)) return error
-
-  try {
-    const payload = (await context.clone().json()) as { code?: unknown; message?: unknown }
-    if (typeof payload.message !== 'string' || !payload.message) return error
-    return {
-      code: typeof payload.code === 'string' ? payload.code : undefined,
-      message: payload.message
-    }
-  } catch {
-    return error
-  }
-}
-
-const applyProfitFilters = (
-  query: SupabaseQueryLike,
+const applyProfitFilters = <TQuery extends SupabaseQueryLike>(
+  query: TQuery,
   params: WaybillProfitSearchParams
-): SupabaseQueryLike => {
+): TQuery => {
   const { keyword, waybillStatus, completedAtRange } = params
   if (waybillStatus) query = query.eq('waybill_status', waybillStatus)
   if (keyword) {
@@ -273,7 +256,7 @@ export async function fetchWaybillProfitList(params: WaybillProfitSearchParams) 
     .from('tms_waybill_profit')
     .select('*', { count: 'exact' })
     .order('create_time', { ascending: false })
-    .range(from, to) as unknown as SupabaseQueryLike
+    .range(from, to)
   query = applyProfitFilters(query, params)
   return await responseHandle<WaybillProfit[]>(() => query, {
     ignoreCheck: true,
@@ -291,7 +274,7 @@ export async function analyzeWaybillProfitByAi(): Promise<
 
   return {
     data: data ?? null,
-    error: await normalizeFunctionInvokeError(error)
+    error: await normalizeSupabaseFunctionError(error)
   }
 }
 
@@ -305,7 +288,7 @@ export async function analyzeReceivablesCollectionByAi(): Promise<
 
   return {
     data: data ?? null,
-    error: await normalizeFunctionInvokeError(error)
+    error: await normalizeSupabaseFunctionError(error)
   }
 }
 
@@ -317,7 +300,7 @@ export async function exportWaybillProfitList(
     .from('tms_waybill_profit')
     .select('*')
     .order('create_time', { ascending: false })
-    .limit(maxRows) as unknown as SupabaseQueryLike
+    .limit(maxRows)
   query = ids?.length ? query.in('id', ids) : applyProfitFilters(query, params)
   return await responseHandle<WaybillProfit[]>(() => query, {
     ignoreCheck: true,

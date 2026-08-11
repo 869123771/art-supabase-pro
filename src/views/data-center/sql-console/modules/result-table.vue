@@ -185,11 +185,10 @@
 
       .cell {
         overflow: visible;
-        line-height: 1.5;
         text-overflow: initial;
-        white-space: normal;
+        line-height: 1.5;
         overflow-wrap: anywhere;
-        word-break: break-word;
+        white-space: normal;
       }
 
       // Add selection style if needed
@@ -198,9 +197,9 @@
       }
 
       .selected-cell {
-        box-shadow: inset 0 0 0 2px var(--el-color-primary);
-        z-index: 1;
         position: relative;
+        z-index: 1;
+        box-shadow: inset 0 0 0 2px var(--el-color-primary);
       }
     }
   }

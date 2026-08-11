@@ -1,5 +1,6 @@
 # Project Instructions
 
+- Before creating, modifying, refactoring, or reviewing any source code, load and apply the local `project-code-quality` skill. Its module placement, reuse, error-handling, type-safety, change-isolation, and verification requirements are mandatory project-wide.
 - Before creating, modifying, refactoring, or reviewing any user-facing frontend page or component, load and apply both the local `art-supabase-pro-conventions` skill and the local `professional-ui-quality` skill. Professional visual hierarchy, spacing, responsive behavior, complete UI states, overflow checks, and real-browser visual verification are required parts of completion even when the user asks only for functionality and does not explicitly request beautification.
 - Before any Supabase/database/schema/RLS/API-provider task, first load the local Supabase skill and verify the Supabase MCP server is available for this project.
 - This repo is scoped to Supabase project `ckbftoopuyophiebamwy` through `.mcp.json`.

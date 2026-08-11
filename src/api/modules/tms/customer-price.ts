@@ -17,10 +17,10 @@ const CUSTOMER_PRICE_SELECT = `
   )
 `
 
-const applyCustomerPriceFilters = (
-  query: SupabaseQueryLike,
+const applyCustomerPriceFilters = <TQuery extends SupabaseQueryLike>(
+  query: TQuery,
   params: CustomerPriceSearchParams
-): SupabaseQueryLike => {
+): TQuery => {
   const {
     customerId,
     originRegion,
@@ -55,7 +55,7 @@ export async function fetchCustomerPriceList(params: CustomerPriceSearchParams) 
     .from('tms_customer_price')
     .select(CUSTOMER_PRICE_SELECT, { count: 'exact' })
     .order('create_time', { ascending: false })
-    .range(from, to) as unknown as SupabaseQueryLike
+    .range(from, to)
 
   query = applyCustomerPriceFilters(query, params)
   return await responseHandle<CustomerPrice[]>(() => query, {
@@ -72,7 +72,7 @@ export async function exportCustomerPriceList(
     .from('tms_customer_price')
     .select(CUSTOMER_PRICE_SELECT)
     .order('create_time', { ascending: false })
-    .limit(maxRows) as unknown as SupabaseQueryLike
+    .limit(maxRows)
 
   query = ids?.length ? query.in('id', ids) : applyCustomerPriceFilters(query, params)
   return await responseHandle<CustomerPrice[]>(() => query, {

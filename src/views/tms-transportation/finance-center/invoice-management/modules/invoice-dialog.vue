@@ -164,6 +164,7 @@
 </template>
 
 <script setup lang="ts">
+  import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import dayjs from 'dayjs'
   import { ElMessage, type FormRules } from 'element-plus'
   import type { ComputedRef, UnwrapNestedRefs } from 'vue'
@@ -729,15 +730,6 @@
     ocrSourceDuplicateInvoice.value = data ?? undefined
   }
 
-  function errorMessage(error: unknown): string {
-    if (error instanceof Error && error.message) return error.message
-    if (error && typeof error === 'object' && 'message' in error) {
-      const message = (error as { message?: unknown }).message
-      if (typeof message === 'string' && message) return message
-    }
-    return '发票保存失败，请稍后重试'
-  }
-
   function recalculateTax(): void {
     form.data.taxAmount = roundMoney(
       Number(form.data.amountExcludingTax || 0) * (Number(form.data.taxRate || 0) / 100)
@@ -1120,7 +1112,7 @@
         ElMessage.warning('该发票号码刚刚被登记，请核对已有记录后再保存')
         return false
       }
-      ElMessage.error(errorMessage(error))
+      ElMessage.error(getFriendlySupabaseErrorMessage(error, '发票保存失败，请稍后重试'))
       return false
     }
   }

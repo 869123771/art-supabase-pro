@@ -138,7 +138,8 @@
   } from 'vue'
   import type { TableProps } from 'element-plus'
   import { ElMessage, ElMessageBox } from 'element-plus'
-  import { useResizeObserver } from '@vueuse/core'
+  import { useEventListener, useResizeObserver } from '@vueuse/core'
+  import { cloneDeep } from 'lodash-es'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import ArtExcelImport from '@/components/core/forms/art-excel-import/index.vue'
   import ArtTable from '@/components/core/tables/art-table/index.vue'
@@ -1062,7 +1063,7 @@
 
   const cloneSearchModel = (value: Record<string, unknown> | undefined) => {
     if (!value) return {}
-    return JSON.parse(JSON.stringify(value)) as Record<string, unknown>
+    return cloneDeep(value)
   }
 
   const resetSearchModel = (): void => {
@@ -1223,13 +1224,12 @@
     if (event.key === 'Escape' && focusMode.value) handleFocusModeChange(false)
   }
 
-  onMounted(() => document.addEventListener('keydown', handleFocusEscape))
+  useEventListener(document, 'keydown', handleFocusEscape)
   onDeactivated(() => {
     if (focusMode.value) handleFocusModeChange(false)
     restoreFocusLayout()
   })
   onBeforeUnmount(() => {
-    document.removeEventListener('keydown', handleFocusEscape)
     restoreFocusLayout()
   })
 

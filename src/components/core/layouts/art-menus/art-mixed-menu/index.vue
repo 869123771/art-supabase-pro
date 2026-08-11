@@ -255,11 +255,14 @@
     text-g-600 
     cursor-pointer
     rounded 
-    transition-all
-    duration-300
     -translate-y-1/2 
     hover:text-g-900 
     hover:bg-g-200;
+
+    transition:
+      color 300ms ease,
+      background-color 300ms ease,
+      transform 300ms ease;
   }
 </style>
 

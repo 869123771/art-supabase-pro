@@ -22,7 +22,10 @@ const ARTIFACT_SELECT = `
   )
 `
 
-function applyArtifactFilters(query: SupabaseQueryLike, params: SearchParams): SupabaseQueryLike {
+function applyArtifactFilters<TQuery extends SupabaseQueryLike>(
+  query: TQuery,
+  params: SearchParams
+): TQuery {
   if (params.artifactId) query = query.eq('id', params.artifactId)
   if (params.feature) query = query.eq('feature', params.feature)
   if (params.status) query = query.eq('status', params.status)
@@ -50,7 +53,7 @@ export async function fetchRecognitionArtifactList(params: SearchParams) {
     query = query.order('confidence', { ascending: true, nullsFirst: true })
   }
   query = query.order('create_time', { ascending: false }).range(from, to)
-  const filterableQuery = query as unknown as SupabaseQueryLike
+  const filterableQuery = query
   const filteredQuery = applyArtifactFilters(filterableQuery, params)
   return await responseHandle<Artifact[]>(() => filteredQuery, {
     ignoreCheck: true,

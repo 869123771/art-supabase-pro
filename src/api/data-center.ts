@@ -1,8 +1,7 @@
 import { useSupabase } from '@/hooks'
 import { WRITE_PERMISSION_DENIED_MESSAGE } from '@/hooks/core/useSupabase'
 import type { QueryResult } from '@/types/api/response'
-import type { SupabaseQueryLike } from '@/api/providers/supabase/query'
-import { applyFilters, FilterSpec } from '@utils/supabase-filters'
+import { applyFilters, FilterSpec } from '@/utils/supabase'
 
 const { supabase, keysToSnakeDeep, responseHandle } = useSupabase()
 
@@ -63,7 +62,7 @@ export async function fetchGetDictTypeList(params: Partial<Api.DataCenter.DictTy
     .order('name', { ascending: true })
 
   query = applyFilters(query, specs, { skipEmpty: true, camelToSnake: false })
-  return await responseHandle(() => query as unknown as SupabaseQueryLike, { ignoreCheck: true })
+  return await responseHandle(() => query, { ignoreCheck: true })
 }
 
 // 删除字典类型
@@ -145,7 +144,7 @@ export async function fetchGetDictListByTypeId(
     .order('label', { ascending: true })
 
   query = applyFilters(query, specs, { skipEmpty: true, camelToSnake: true })
-  return await responseHandle(() => query as unknown as SupabaseQueryLike, { ignoreCheck: true })
+  return await responseHandle(() => query, { ignoreCheck: true })
 }
 
 export async function fetchDictTypeIdByDictionaryId(id: string): Promise<string | undefined> {
@@ -262,13 +261,10 @@ export async function fetchGetResourceList(params: Api.DataCenter.Resources.Reso
     .range(from, to)
 
   query = applyFilters(query, specs, { skipEmpty: true, camelToSnake: true })
-  return await responseHandle<Api.DataCenter.Resources.ResourceListItem[]>(
-    () => query as unknown as SupabaseQueryLike,
-    {
-      ignoreCheck: true,
-      showErrorMessage: true
-    }
-  )
+  return await responseHandle<Api.DataCenter.Resources.ResourceListItem[]>(() => query, {
+    ignoreCheck: true,
+    showErrorMessage: true
+  })
 }
 
 // 删除资源，同时清理 Storage 对象

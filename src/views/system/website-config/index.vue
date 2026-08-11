@@ -1093,12 +1093,31 @@
 
       &__nav-panel {
         position: static;
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      &__nav-title,
+      &__publish-tip {
+        grid-column: 1 / -1;
       }
     }
   }
 
   @media (width <= 640px) {
     .website-config-page {
+      &__nav-panel {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      &__nav-title {
+        padding-bottom: 0;
+      }
+
+      &__publish-tip {
+        display: none;
+      }
+
       &__summary,
       &__section-body,
       &__preview-grid {

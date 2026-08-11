@@ -1,5 +1,5 @@
 import { useSupabase } from '@/hooks'
-import type { SupabaseQueryLike } from '@/api/providers/supabase/query'
+import { createFriendlySupabaseError } from '@/utils/supabase'
 
 const { supabase, responseHandle } = useSupabase()
 
@@ -37,7 +37,7 @@ export async function fetchWorkflowDefinitionList(
     .from('wf_definition')
     .select(DEFINITION_SELECT, { count: 'exact' })
     .order('update_time', { ascending: false })
-    .range(from, to) as unknown as SupabaseQueryLike
+    .range(from, to)
 
   if (keyword) query = query.or(`code.ilike.%${keyword}%,name.ilike.%${keyword}%`)
   if (businessType) query = query.eq('business_type', businessType)
@@ -99,7 +99,7 @@ export async function fetchWorkflowUserOptions(
     .eq('status', '1')
     .is('deleted_at', null)
     .order('user_name')
-    .limit(1000) as unknown as SupabaseQueryLike
+    .limit(1000)
   if (tenantId) query = query.eq('tenant_id', tenantId)
 
   return await responseHandle<Api.Workflow.WorkflowUserOption[]>(() => query, {
@@ -116,7 +116,7 @@ export async function fetchWorkflowRoleOptions(
     .select('id, role_code, role_name')
     .eq('enabled', true)
     .order('role_name')
-    .limit(500) as unknown as SupabaseQueryLike
+    .limit(500)
   if (tenantId) query = query.eq('tenant_id', tenantId)
 
   return await responseHandle<Api.Workflow.WorkflowRoleOption[]>(() => query, {
@@ -198,7 +198,7 @@ export async function fetchPendingWorkflowTasks(params: Api.Workflow.WorkflowTas
     .eq('assignee_user_id', assigneeUserId)
     .eq('status', 'pending')
     .order('create_time', { ascending: false })
-    .range(from, to) as unknown as SupabaseQueryLike
+    .range(from, to)
   if (keyword) query = query.ilike('instance.business_title', `%${keyword}%`)
   if (businessType) query = query.eq('instance.business_type', businessType)
   return await responseHandle<Api.Workflow.WorkflowTaskRecord[]>(() => query, {
@@ -231,7 +231,7 @@ export async function fetchHandledWorkflowTasks(params: Api.Workflow.WorkflowTas
     .eq('assignee_user_id', assigneeUserId)
     .neq('status', 'pending')
     .order('handled_at', { ascending: false })
-    .range(from, to) as unknown as SupabaseQueryLike
+    .range(from, to)
   if (keyword) query = query.ilike('instance.business_title', `%${keyword}%`)
   if (businessType) query = query.eq('instance.business_type', businessType)
   if (status) query = query.eq('status', status)
@@ -252,7 +252,7 @@ export async function fetchInitiatedWorkflowInstances(
     )
     .eq('initiator_user_id', initiatorUserId)
     .order('started_at', { ascending: false })
-    .range(from, to) as unknown as SupabaseQueryLike
+    .range(from, to)
   if (keyword) query = query.ilike('business_title', `%${keyword}%`)
   if (businessType) query = query.eq('business_type', businessType)
   if (status) query = query.eq('status', status)
@@ -304,7 +304,7 @@ export async function fetchWorkflowWorkbenchSummary(
       .neq('status', 'running')
   ])
   const error = pending.error || handled.error || initiatedRunning.error || initiatedCompleted.error
-  if (error) throw new Error(error.message)
+  if (error) throw createFriendlySupabaseError(error, '审批统计加载失败，请稍后重试')
   return {
     pendingCount: pending.count ?? 0,
     handledCount: handled.count ?? 0,

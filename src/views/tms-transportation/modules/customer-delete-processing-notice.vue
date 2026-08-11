@@ -86,8 +86,8 @@
       justify-content: center;
       width: 36px;
       height: 36px;
-      color: var(--el-color-warning-dark-2);
       font-size: 19px;
+      color: var(--el-color-warning-dark-2);
       background: var(--el-color-warning-light-9);
       border-radius: 50%;
     }
@@ -98,9 +98,9 @@
 
       p {
         margin: 4px 0 0;
-        color: var(--el-text-color-secondary);
         font-size: 13px;
         line-height: 1.5;
+        color: var(--el-text-color-secondary);
       }
     }
 
@@ -112,8 +112,8 @@
 
       strong {
         overflow: hidden;
-        color: var(--el-text-color-primary);
         text-overflow: ellipsis;
+        color: var(--el-text-color-primary);
         white-space: nowrap;
       }
     }
@@ -131,8 +131,8 @@
       }
 
       &__title {
-        align-items: flex-start;
         flex-direction: column;
+        align-items: flex-start;
       }
 
       &__back {

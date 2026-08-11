@@ -118,6 +118,7 @@
   import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
   import ArtTable from '@/components/core/tables/art-table/index.vue'
   import type { ColumnOption } from '@/types'
+  import { formatNameCodeOption } from '@/utils/form'
   import { fetchRegionOptions } from '@/api/common'
   import {
     addCarrierPrice,
@@ -818,10 +819,7 @@
   }
 
   function formatCarrierOption(option: Record<string, unknown>): string {
-    const carrier = option as unknown as CarrierOption
-    return carrier.carrierCode
-      ? `${carrier.companyName}（${carrier.carrierCode}）`
-      : carrier.companyName
+    return formatNameCodeOption(option, 'companyName', 'carrierCode')
   }
 
   function handleCarrierChange(carrierId?: string): void {

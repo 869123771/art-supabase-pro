@@ -86,9 +86,9 @@
     &__badge {
       display: inline-flex;
       flex-direction: row-reverse;
+      gap: 6px;
       align-items: center;
       max-width: 100%;
-      gap: 6px;
 
       :deep(.el-badge__content.is-fixed.is-dot) {
         position: static;

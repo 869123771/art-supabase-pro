@@ -50,6 +50,7 @@
     type ButtonMoreItem
   } from '@/components/core/forms/art-button-more/index.vue'
   import { ColumnOption, DialogType } from '@/types'
+  import { formatNameCodeOption } from '@/utils/form'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatWithDayjs } from '@/utils/time'
   import { useUserStore } from '@/store/modules/user'
@@ -293,10 +294,7 @@
   }
 
   function formatCarrierOption(option: Record<string, unknown>): string {
-    const carrier = option as unknown as CarrierOption
-    return carrier.carrierCode
-      ? `${carrier.companyName}（${carrier.carrierCode}）`
-      : carrier.companyName
+    return formatNameCodeOption(option, 'companyName', 'carrierCode')
   }
 
   const renderStatus = (status?: ContractStatus) => {

@@ -90,6 +90,7 @@
 </template>
 
 <script setup lang="ts">
+  import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import { ElMessage } from 'element-plus'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import ArtUploadImage from '@/components/core/forms/art-upload-image/index.vue'
@@ -161,14 +162,6 @@
     })}`
   }
 
-  function errorMessage(error: unknown): string {
-    if (error && typeof error === 'object' && 'message' in error) {
-      const message = (error as { message?: unknown }).message
-      if (typeof message === 'string' && message) return message
-    }
-    return 'AI 凭证识别失败，请稍后重试'
-  }
-
   async function handleAnalyze(): Promise<void> {
     if (!imageUrls.value.length || analyzing.value) return
     analyzing.value = true
@@ -182,7 +175,7 @@
       result.value = response.data
       ElMessage.success('凭证识别和对账单匹配完成，请核对后应用')
     } catch (error) {
-      ElMessage.error(errorMessage(error))
+      ElMessage.error(getFriendlySupabaseErrorMessage(error, 'AI 凭证识别失败，请稍后重试'))
     } finally {
       analyzing.value = false
     }

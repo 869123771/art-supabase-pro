@@ -39,6 +39,12 @@
     muted: false
   })
 
+  const emit = defineEmits<{
+    play: []
+    pause: []
+    error: [error: unknown]
+  }>()
+
   // 设置属性默认值
 
   // 播放器实例引用
@@ -88,17 +94,17 @@
 
     // 播放事件监听器
     playerInstance.value.on('play', () => {
-      console.log('Video is playing')
+      emit('play')
     })
 
     // 暂停事件监听器
     playerInstance.value.on('pause', () => {
-      console.log('Video is paused')
+      emit('pause')
     })
 
     // 错误事件监听器
     playerInstance.value.on('error', (error) => {
-      console.error('Error occurred:', error)
+      emit('error', error)
     })
   })
 

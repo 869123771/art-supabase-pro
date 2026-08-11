@@ -10,7 +10,10 @@ type ExecutePayload = Api.Tms.Finance.ExecuteCarrierPaymentApplicationPayload
 
 const { supabase, responseHandle } = useSupabase()
 
-function applyFilters(query: SupabaseQueryLike, params: SearchParams): SupabaseQueryLike {
+function applyFilters<TQuery extends SupabaseQueryLike>(
+  query: TQuery,
+  params: SearchParams
+): TQuery {
   const { carrierId, keyword, plannedPaymentDateRange, recordId, status } = params
   if (recordId) query = query.eq('id', recordId)
   if (carrierId) query = query.eq('carrier_id', carrierId)
@@ -29,7 +32,7 @@ export async function fetchCarrierPaymentApplicationList(params: SearchParams) {
     .from('tms_carrier_payment_application_summary')
     .select('*', { count: 'exact' })
     .order('create_time', { ascending: false })
-    .range(from, to) as unknown as SupabaseQueryLike
+    .range(from, to)
   query = applyFilters(query, params)
   return await responseHandle<PaymentApplication[]>(() => query, {
     ignoreCheck: true,
@@ -45,7 +48,7 @@ export async function exportCarrierPaymentApplicationList(
     .from('tms_carrier_payment_application_summary')
     .select('*')
     .order('create_time', { ascending: false })
-    .limit(maxRows) as unknown as SupabaseQueryLike
+    .limit(maxRows)
   query = ids?.length ? query.in('id', ids) : applyFilters(query, params)
   return await responseHandle<PaymentApplication[]>(() => query, {
     ignoreCheck: true,

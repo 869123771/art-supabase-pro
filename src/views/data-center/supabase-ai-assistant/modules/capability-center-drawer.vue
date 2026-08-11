@@ -147,6 +147,7 @@
 </template>
 
 <script setup lang="ts">
+  import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import { ElMessage } from 'element-plus'
   import { fetchProjectCatalog } from '@/api/supabase-ai-assistant'
   import ArtDrawer from '@/components/core/drawers/art-drawer/index.vue'
@@ -374,7 +375,7 @@
         catalogAction: 'capability_snapshot'
       })
     } catch (error) {
-      ElMessage.error(error instanceof Error ? error.message : 'Supabase 能力快照加载失败')
+      ElMessage.error(getFriendlySupabaseErrorMessage(error, 'Supabase 能力快照加载失败'))
     } finally {
       loading.value = false
       drawerRef.value?.setLoading(false)

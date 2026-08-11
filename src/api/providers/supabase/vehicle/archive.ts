@@ -1,11 +1,9 @@
 import { useSupabase } from '@/hooks'
+import { compact, uniq } from 'lodash-es'
 import { WRITE_PERMISSION_DENIED_MESSAGE } from '@/hooks/core/useSupabase'
-import {
-  withRequestOptions,
-  type SupabaseQueryLike as SupabaseProviderQueryLike
-} from '@/api/providers/supabase/query'
+import { withRequestOptions } from '@/api/providers/supabase/query'
 import type { ApiRequestOptions } from '@/types/api/request'
-import { applyFilters, type FilterSpec } from '@/utils/supabase-filters'
+import { applyFilters, type FilterSpec } from '@/utils/supabase'
 import {
   VEHICLE_REMINDER_VIEWS,
   fetchVehicleReminderViewList,
@@ -81,7 +79,7 @@ const countRowsByVehicleIds = async (
       ? supabase.from(tableName).select('id', { count: 'exact', head: true }).eq(columnName, ids[0])
       : supabase.from(tableName).select('id', { count: 'exact', head: true }).in(columnName, ids)
 
-  const result = await responseHandle(() => query as unknown as SupabaseProviderQueryLike, {
+  const result = await responseHandle(() => query, {
     ignoreCheck: true,
     showErrorMessage: true,
     breakReturn: true
@@ -111,14 +109,11 @@ const fetchVehicleArchiveCarrierIds = async (ids: string[]): Promise<string[]> =
       ? supabase.from(VEHICLE_ARCHIVE_TABLE).select('carrier_id').eq('id', ids[0])
       : supabase.from(VEHICLE_ARCHIVE_TABLE).select('carrier_id').in('id', ids)
 
-  const result = await responseHandle<VehicleArchiveDeleteBase[]>(
-    () => query as unknown as SupabaseProviderQueryLike,
-    {
-      ignoreCheck: true,
-      showErrorMessage: true,
-      breakReturn: true
-    }
-  )
+  const result = await responseHandle<VehicleArchiveDeleteBase[]>(() => query, {
+    ignoreCheck: true,
+    showErrorMessage: true,
+    breakReturn: true
+  })
 
   return Array.from(
     new Set((result.data ?? []).map((item) => item.carrierId).filter((id): id is string => !!id))
@@ -134,7 +129,7 @@ const assertVehicleArchiveNoWaybill = async (ids: string[]): Promise<void> => {
 }
 
 const refreshCarrierVehicleCounts = async (carrierIds: string[]): Promise<void> => {
-  const uniqueCarrierIds = Array.from(new Set(carrierIds.filter(Boolean)))
+  const uniqueCarrierIds = uniq(compact(carrierIds))
   if (!uniqueCarrierIds.length) return
 
   await Promise.all(
@@ -146,7 +141,7 @@ const refreshCarrierVehicleCounts = async (carrierIds: string[]): Promise<void> 
           supabase
             .from('tms_carrier')
             .update({ vehicle_count: count }, { count: 'exact' })
-            .eq('id', carrierId) as unknown as SupabaseProviderQueryLike,
+            .eq('id', carrierId),
         {
           showErrorMessage: true,
           breakReturn: true
@@ -197,13 +192,10 @@ export async function fetchVehicleArchiveList(
     camelToSnake: true
   })
 
-  return await responseHandle<VehicleArchive[]>(
-    () => withRequestOptions(query as unknown as SupabaseProviderQueryLike, options),
-    {
-      ignoreCheck: true,
-      showErrorMessage: true
-    }
-  )
+  return await responseHandle<VehicleArchive[]>(() => withRequestOptions(query, options), {
+    ignoreCheck: true,
+    showErrorMessage: true
+  })
 }
 
 export async function exportVehicleArchiveList(
@@ -228,23 +220,15 @@ export async function exportVehicleArchiveList(
     })
   }
 
-  return await responseHandle<VehicleArchive[]>(
-    () => query as unknown as SupabaseProviderQueryLike,
-    {
-      ignoreCheck: true,
-      showErrorMessage: true
-    }
-  )
+  return await responseHandle<VehicleArchive[]>(() => query, {
+    ignoreCheck: true,
+    showErrorMessage: true
+  })
 }
 
 export async function fetchVehicleArchiveDetail(id: string) {
   return await responseHandle<VehicleArchive>(
-    () =>
-      supabase
-        .from(VEHICLE_ARCHIVE_TABLE)
-        .select(VEHICLE_ARCHIVE_SELECT)
-        .eq('id', id)
-        .single() as unknown as SupabaseProviderQueryLike,
+    () => supabase.from(VEHICLE_ARCHIVE_TABLE).select(VEHICLE_ARCHIVE_SELECT).eq('id', id).single(),
     {
       ignoreCheck: true,
       showErrorMessage: true
@@ -255,11 +239,7 @@ export async function fetchVehicleArchiveDetail(id: string) {
 export async function addVehicleArchive(params: VehicleArchiveWritePayload) {
   return await responseHandle<Pick<VehicleArchive, 'id'>>(
     () =>
-      supabase
-        .from(VEHICLE_ARCHIVE_TABLE)
-        .insert(keysToSnakeDeep(params))
-        .select('id')
-        .single() as unknown as SupabaseProviderQueryLike,
+      supabase.from(VEHICLE_ARCHIVE_TABLE).insert(keysToSnakeDeep(params)).select('id').single(),
     {
       showMessage: true,
       breakReturn: true
@@ -274,7 +254,7 @@ export async function editVehicleArchive(params: VehicleArchiveWritePayload) {
       supabase
         .from(VEHICLE_ARCHIVE_TABLE)
         .update(keysToSnakeDeep(payload), { count: 'exact' })
-        .eq('id', id) as unknown as SupabaseProviderQueryLike,
+        .eq('id', id),
     {
       showMessage: true,
       breakReturn: true,
@@ -309,11 +289,7 @@ export async function deleteVehicleArchive(id: string) {
   await assertVehicleArchiveNoWaybill(ids)
 
   return await responseHandle(
-    () =>
-      supabase
-        .from(VEHICLE_ARCHIVE_TABLE)
-        .delete({ count: 'exact' })
-        .eq('id', id) as unknown as SupabaseProviderQueryLike,
+    () => supabase.from(VEHICLE_ARCHIVE_TABLE).delete({ count: 'exact' }).eq('id', id),
     {
       showMessage: true,
       message: '删除成功',
@@ -329,11 +305,7 @@ export async function deleteVehicleArchiveBatch(ids: string[]) {
   const carrierIds = await fetchVehicleArchiveCarrierIds(ids)
 
   return await responseHandle(
-    () =>
-      supabase
-        .from(VEHICLE_ARCHIVE_TABLE)
-        .delete({ count: 'exact' })
-        .in('id', ids) as unknown as SupabaseProviderQueryLike,
+    () => supabase.from(VEHICLE_ARCHIVE_TABLE).delete({ count: 'exact' }).in('id', ids),
     {
       showMessage: true,
       breakReturn: true,
@@ -361,7 +333,7 @@ export async function auditVehicleArchive(params: {
           }),
           { count: 'exact' }
         )
-        .eq('id', id) as unknown as SupabaseProviderQueryLike,
+        .eq('id', id),
     {
       showMessage: true,
       breakReturn: true,
@@ -389,7 +361,7 @@ export async function auditVehicleArchiveBatch(params: {
           }),
           { count: 'exact' }
         )
-        .in('id', ids) as unknown as SupabaseProviderQueryLike,
+        .in('id', ids),
     {
       showMessage: true,
       breakReturn: true,
@@ -419,7 +391,7 @@ export async function fetchVehicleArchiveOptions(
 
   query = applyFilters(query, filters, { skipEmpty: true, camelToSnake: true })
   return await responseHandle<Api.VehicleMgtSys.VehicleManage.VehicleOption[]>(
-    () => withRequestOptions(query as unknown as SupabaseProviderQueryLike, options),
+    () => withRequestOptions(query, options),
     {
       ignoreCheck: true,
       showErrorMessage: true
@@ -437,7 +409,7 @@ export async function fetchVehicleReminderCompanyOptions() {
             .select('company_name')
             .not('company_name', 'is', null)
             .neq('company_name', '')
-            .order('company_name', { ascending: true }) as unknown as SupabaseProviderQueryLike,
+            .order('company_name', { ascending: true }),
         { ignoreCheck: true, showErrorMessage: true }
       )
     )
@@ -587,7 +559,7 @@ export async function fetchInsuranceCompanyOptions(_params?: unknown, options?: 
     .limit(200)
 
   return await responseHandle<Api.VehicleMgtSys.VehicleManage.InsuranceCompanyOption[]>(
-    () => withRequestOptions(query as unknown as SupabaseProviderQueryLike, options),
+    () => withRequestOptions(query, options),
     {
       ignoreCheck: true,
       showErrorMessage: true

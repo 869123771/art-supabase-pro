@@ -127,6 +127,7 @@
 </template>
 
 <script setup lang="ts">
+  import { createFriendlySupabaseError } from '@/utils/supabase'
   import { ElMessage } from 'element-plus'
   import ArtAsyncState from '@/components/core/layouts/art-async-state/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
@@ -232,7 +233,7 @@
     try {
       state.data = await fetchAiOcrQualityOverview(props.days)
     } catch (error) {
-      state.error = error instanceof Error ? error : new Error('OCR 质量数据加载失败')
+      state.error = createFriendlySupabaseError(error, 'OCR 质量数据加载失败，请稍后重试')
     } finally {
       state.loading = false
     }

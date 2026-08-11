@@ -35,7 +35,14 @@
           height: `${cutterProps.cutHeight}px`
         }"
       >
-        <img class="preview-img" :src="temImgPath" alt="预览图" v-if="temImgPath" />
+        <img
+          v-if="temImgPath"
+          class="preview-img"
+          :src="temImgPath"
+          :width="cutterProps.cutWidth"
+          :height="cutterProps.cutHeight"
+          alt="裁剪结果预览"
+        />
       </div>
       <ElButton class="download-btn" @click="downloadImg" :disabled="!temImgPath" v-ripple
         >下载图片</ElButton
@@ -196,7 +203,6 @@
         })
       } catch (error) {
         emit('error', error)
-        console.error('图片加载失败:', error)
       }
     }
   }
@@ -248,7 +254,6 @@
 
   // 下载图片
   function downloadImg() {
-    console.log('下载图片')
     const a = document.createElement('a')
     a.href = temImgPath.value
     a.download = 'image.png'

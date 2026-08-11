@@ -31,6 +31,7 @@
 </template>
 
 <script setup lang="tsx">
+  import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import type { ComputedRef, UnwrapNestedRefs } from 'vue'
   import { ElMessage } from 'element-plus'
@@ -396,7 +397,7 @@
       await tableQueryRef.value?.refreshRemove()
     } catch (error) {
       if (error === 'cancel' || error === 'close') return
-      ElMessage.error(error instanceof Error ? error.message : '删除失败')
+      ElMessage.error(getFriendlySupabaseErrorMessage(error, '删除失败'))
     }
   }
 

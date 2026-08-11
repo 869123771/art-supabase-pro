@@ -173,6 +173,7 @@
 </template>
 
 <script setup lang="ts">
+  import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import type { UnwrapNestedRefs } from 'vue'
   import ArtAiFeedback from '@/components/core/base/art-ai-feedback/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
@@ -272,7 +273,7 @@
       state.data = data
     } catch (error) {
       state.data = null
-      state.error = getErrorMessage(error)
+      state.error = getFriendlySupabaseErrorMessage(error, 'AI 运输异常研判失败，请稍后重试')
     } finally {
       state.loading = false
     }
@@ -311,15 +312,6 @@
         (status) => statusLabels[status.toLowerCase()] || status
       )
       .replace(/：\s+/g, '：')
-  }
-
-  function getErrorMessage(error: unknown): string {
-    if (error instanceof Error && error.message) return error.message
-    if (error && typeof error === 'object' && 'message' in error) {
-      const message = (error as { message?: unknown }).message
-      if (typeof message === 'string' && message.trim()) return message.trim()
-    }
-    return 'AI 运输异常研判失败，请稍后重试'
   }
 
   defineExpose({ handleOpen })

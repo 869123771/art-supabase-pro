@@ -174,6 +174,7 @@
 </template>
 
 <script setup lang="ts">
+  import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import { Aim, Loading, Location, MapLocation } from '@element-plus/icons-vue'
   import { ElMessage } from 'element-plus'
   import { isNil, trim } from 'lodash-es'
@@ -645,7 +646,7 @@
       if (!options.silent) ElMessage.success('当前位置已回填，请核对地址与坐标')
       return located
     } catch (error) {
-      const message = error instanceof Error ? error.message : '当前位置获取失败'
+      const message = getFriendlySupabaseErrorMessage(error, '当前位置获取失败，请重试')
       if (!hasCoordinate.value) coordinateStatus.value = 'failed'
       emit('locate-error', message)
       if (!options.silent) ElMessage.warning(message)
@@ -781,7 +782,10 @@
         mapRef.value?.searchPoi({ silent: true, fallbackKeyword: fullAddress.value })
       }
     } catch (error) {
-      mapMessage.value = error instanceof Error ? error.message : '高德地图加载失败'
+      mapMessage.value = getFriendlySupabaseErrorMessage(
+        error,
+        '地图加载失败，请稍后重试或手动填写地址'
+      )
     }
   }
 
@@ -996,8 +1000,8 @@
     &__coordinate strong {
       min-width: 0;
       overflow: hidden;
-      color: var(--el-text-color-primary);
       text-overflow: ellipsis;
+      color: var(--el-text-color-primary);
       white-space: nowrap;
     }
   }

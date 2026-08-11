@@ -3,11 +3,10 @@ import { WRITE_PERMISSION_DENIED_MESSAGE } from '@/hooks/core/useSupabase'
 import {
   applyDateRange,
   normalizeBooleanFilter,
-  withRequestOptions,
-  type SupabaseQueryLike as SupabaseProviderQueryLike
+  withRequestOptions
 } from '@/api/providers/supabase/query'
 import type { ApiRequestOptions } from '@/types/api/request'
-import { applyFilters, type FilterSpec } from '@/utils/supabase-filters'
+import { applyFilters, type FilterSpec } from '@/utils/supabase'
 import {
   type VehicleMileageRecord,
   type VehicleMileageSearchParams,
@@ -48,13 +47,10 @@ export async function fetchVehicleMileageList(
     camelToSnake: true
   })
 
-  return await responseHandle<VehicleMileageRecord[]>(
-    () => withRequestOptions(query as unknown as SupabaseProviderQueryLike, options),
-    {
-      ignoreCheck: true,
-      showErrorMessage: true
-    }
-  )
+  return await responseHandle<VehicleMileageRecord[]>(() => withRequestOptions(query, options), {
+    ignoreCheck: true,
+    showErrorMessage: true
+  })
 }
 
 export async function exportVehicleMileageList(
@@ -77,13 +73,10 @@ export async function exportVehicleMileageList(
     })
   }
 
-  return await responseHandle<VehicleMileageRecord[]>(
-    () => query as unknown as SupabaseProviderQueryLike,
-    {
-      ignoreCheck: true,
-      showErrorMessage: true
-    }
-  )
+  return await responseHandle<VehicleMileageRecord[]>(() => query, {
+    ignoreCheck: true,
+    showErrorMessage: true
+  })
 }
 
 // 车辆违章
@@ -122,13 +115,10 @@ export async function fetchVehicleViolationList(
     camelToSnake: true
   })
 
-  return await responseHandle<VehicleViolationRecord[]>(
-    () => withRequestOptions(query as unknown as SupabaseProviderQueryLike, options),
-    {
-      ignoreCheck: true,
-      showErrorMessage: true
-    }
-  )
+  return await responseHandle<VehicleViolationRecord[]>(() => withRequestOptions(query, options), {
+    ignoreCheck: true,
+    showErrorMessage: true
+  })
 }
 
 export async function exportVehicleViolationList(
@@ -151,13 +141,10 @@ export async function exportVehicleViolationList(
     })
   }
 
-  return await responseHandle<VehicleViolationRecord[]>(
-    () => query as unknown as SupabaseProviderQueryLike,
-    {
-      ignoreCheck: true,
-      showErrorMessage: true
-    }
-  )
+  return await responseHandle<VehicleViolationRecord[]>(() => query, {
+    ignoreCheck: true,
+    showErrorMessage: true
+  })
 }
 
 // 车辆事故
@@ -193,13 +180,10 @@ export async function fetchVehicleAccidentList(
     camelToSnake: true
   })
 
-  return await responseHandle<VehicleAccidentRecord[]>(
-    () => withRequestOptions(query as unknown as SupabaseProviderQueryLike, options),
-    {
-      ignoreCheck: true,
-      showErrorMessage: true
-    }
-  )
+  return await responseHandle<VehicleAccidentRecord[]>(() => withRequestOptions(query, options), {
+    ignoreCheck: true,
+    showErrorMessage: true
+  })
 }
 
 export async function exportVehicleAccidentList(
@@ -223,23 +207,15 @@ export async function exportVehicleAccidentList(
     })
   }
 
-  return await responseHandle<VehicleAccidentRecord[]>(
-    () => query as unknown as SupabaseProviderQueryLike,
-    {
-      ignoreCheck: true,
-      showErrorMessage: true
-    }
-  )
+  return await responseHandle<VehicleAccidentRecord[]>(() => query, {
+    ignoreCheck: true,
+    showErrorMessage: true
+  })
 }
 
 export async function fetchVehicleAccidentDetail(id: string) {
   return await responseHandle<VehicleAccidentRecord>(
-    () =>
-      supabase
-        .from(VEHICLE_ACCIDENT_TABLE)
-        .select('*')
-        .eq('id', id)
-        .single() as unknown as SupabaseProviderQueryLike,
+    () => supabase.from(VEHICLE_ACCIDENT_TABLE).select('*').eq('id', id).single(),
     {
       ignoreCheck: true,
       showErrorMessage: true
@@ -249,10 +225,7 @@ export async function fetchVehicleAccidentDetail(id: string) {
 
 export async function addVehicleAccident(params: VehicleAccidentRecord) {
   return await responseHandle(
-    () =>
-      supabase
-        .from(VEHICLE_ACCIDENT_TABLE)
-        .insert(keysToSnakeDeep(params)) as unknown as SupabaseProviderQueryLike,
+    () => supabase.from(VEHICLE_ACCIDENT_TABLE).insert(keysToSnakeDeep(params)),
     { showMessage: true, breakReturn: true }
   )
 }
@@ -264,7 +237,7 @@ export async function editVehicleAccident(params: VehicleAccidentRecord) {
       supabase
         .from(VEHICLE_ACCIDENT_TABLE)
         .update(keysToSnakeDeep(data), { count: 'exact' })
-        .eq('id', id) as unknown as SupabaseProviderQueryLike,
+        .eq('id', id),
     {
       showMessage: true,
       breakReturn: true,
@@ -276,11 +249,7 @@ export async function editVehicleAccident(params: VehicleAccidentRecord) {
 
 export async function deleteVehicleAccident(id: string) {
   return await responseHandle(
-    () =>
-      supabase
-        .from(VEHICLE_ACCIDENT_TABLE)
-        .delete({ count: 'exact' })
-        .eq('id', id) as unknown as SupabaseProviderQueryLike,
+    () => supabase.from(VEHICLE_ACCIDENT_TABLE).delete({ count: 'exact' }).eq('id', id),
     {
       showMessage: true,
       breakReturn: true,
@@ -292,11 +261,7 @@ export async function deleteVehicleAccident(id: string) {
 
 export async function deleteVehicleAccidentBatch(ids: string[]) {
   return await responseHandle(
-    () =>
-      supabase
-        .from(VEHICLE_ACCIDENT_TABLE)
-        .delete({ count: 'exact' })
-        .in('id', ids) as unknown as SupabaseProviderQueryLike,
+    () => supabase.from(VEHICLE_ACCIDENT_TABLE).delete({ count: 'exact' }).in('id', ids),
     {
       showMessage: true,
       breakReturn: true,

@@ -327,7 +327,7 @@
     getData,
     getDrawerInstance,
     scrollTo
-  } as unknown as ArtDrawerExpose<T>
+  }
 
   defineExpose(exposedApi)
 </script>
@@ -342,6 +342,7 @@
     flex-direction: column;
     min-height: 0;
     overflow: hidden;
+    overscroll-behavior: contain;
   }
 
   .art-drawer__header-main {
@@ -406,6 +407,10 @@
     flex: 1;
     width: 100%;
     min-height: 0;
+
+    :deep(.el-scrollbar__wrap) {
+      overscroll-behavior: contain;
+    }
 
     :deep(.el-scrollbar__view) {
       padding-right: 4px;

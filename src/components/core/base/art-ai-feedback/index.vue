@@ -345,12 +345,12 @@
     &__icon {
       display: grid;
       flex: 0 0 34px;
+      place-items: center;
       width: 34px;
       height: 34px;
       color: var(--el-color-primary);
       background: var(--el-color-primary-light-9);
       border-radius: var(--el-border-radius-base);
-      place-items: center;
     }
 
     &__actions {
@@ -378,8 +378,8 @@
     }
 
     @media (width <= 640px) {
-      align-items: flex-start;
       flex-direction: column;
+      align-items: flex-start;
 
       &__actions {
         width: 100%;
@@ -410,12 +410,12 @@
       > span {
         display: grid;
         flex: 0 0 36px;
+        place-items: center;
         width: 36px;
         height: 36px;
         color: var(--el-color-primary);
         background: var(--el-bg-color);
         border-radius: var(--el-border-radius-base);
-        place-items: center;
       }
 
       > div {

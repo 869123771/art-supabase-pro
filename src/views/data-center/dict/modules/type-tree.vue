@@ -144,10 +144,11 @@
 </template>
 
 <script setup lang="ts">
+  import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import type { ElTree, NodeDropType } from 'element-plus'
   import { ElMessage } from 'element-plus'
-  import { cloneDeep } from 'lodash-es'
+  import { cloneDeep, uniq } from 'lodash-es'
   import TreeUtils from '@/utils/tree'
   import ArtEmptyState from '@/components/core/layouts/art-empty-state/index.vue'
   import { deleteDictType, fetchGetDictTypeList, saveDictTypeTreeOrder } from '@/api/data-center'
@@ -355,7 +356,7 @@
   }
 
   const replaceSelectedKeys = (keys: string[], anchorKey?: string): void => {
-    tree.selectedKeys = Array.from(new Set(keys))
+    tree.selectedKeys = uniq(keys)
     tree.selectionAnchorKey = anchorKey ?? tree.selectedKeys[tree.selectedKeys.length - 1]
   }
 
@@ -441,8 +442,7 @@
       const key = getNodeKey(node)
       if (!key) return
 
-      const elTreeNode = treeRef.value?.getNode(key) as unknown as
-        { expanded?: boolean } | undefined
+      const elTreeNode = treeRef.value?.getNode(key)
       if (elTreeNode) {
         elTreeNode.expanded = expandedKeySet.has(key)
       }
@@ -453,7 +453,7 @@
     const key = getNodeKey(data)
     if (!key) return
 
-    tree.expandedKeys = Array.from(new Set([...tree.expandedKeys, key]))
+    tree.expandedKeys = uniq([...tree.expandedKeys, key])
   }
 
   const handleNodeCollapse = (data: DictTypeItem): void => {
@@ -654,7 +654,7 @@
       if (batchKeys.length > 1 && dropNodeKey) {
         tree.data = moveSelectedLeaves(dragSourceData, batchKeys, dropNodeKey, dropType)
         if (dropType === 'inner') {
-          tree.expandedKeys = Array.from(new Set([...tree.expandedKeys, dropNodeKey]))
+          tree.expandedKeys = uniq([...tree.expandedKeys, dropNodeKey])
         }
         replaceSelectedKeys(batchKeys, batchKeys[0])
         await nextTick()
@@ -667,7 +667,7 @@
         batchKeys.length > 1 ? `已移动 ${batchKeys.length} 个字典类型` : '目录位置和排序已保存'
       )
     } catch (error) {
-      ElMessage.error(error instanceof Error ? error.message : '目录拖拽保存失败')
+      ElMessage.error(getFriendlySupabaseErrorMessage(error, '目录拖拽保存失败'))
     } finally {
       tree.draggingBatchKeys = []
       tree.dragSourceData = []
@@ -832,14 +832,14 @@
 
     &__titlebar {
       display: flex;
+      gap: 12px;
       align-items: center;
       justify-content: space-between;
-      gap: 12px;
 
       > div {
         display: grid;
-        min-width: 0;
         gap: 2px;
+        min-width: 0;
 
         strong {
           font-size: 15px;
@@ -881,9 +881,9 @@
 
     &__label {
       display: flex;
+      gap: 6px;
       align-items: center;
       min-width: 0;
-      gap: 6px;
 
       .dict-type-tree__name {
         min-width: 0;
@@ -901,9 +901,9 @@
     }
 
     &__node-icon {
+      flex: 0 0 1em;
       width: 1em;
       height: 1em;
-      flex: 0 0 1em;
       font-size: 16px;
     }
 
@@ -920,6 +920,7 @@
     &__footer {
       display: flex;
       flex: none;
+      gap: 10px;
       align-items: center;
       justify-content: space-between;
       min-height: 52px;
@@ -927,18 +928,18 @@
       color: var(--el-text-color-secondary);
       background: var(--el-bg-color);
       border-top: 1px solid var(--el-border-color-lighter);
-      gap: 10px;
 
       &-hint {
         display: flex;
-        min-width: 0;
-        align-items: center;
         gap: 8px;
+        align-items: center;
+        min-width: 0;
       }
 
       &-icon {
         display: grid;
         flex: 0 0 28px;
+        place-items: center;
         width: 28px;
         height: 28px;
         font-size: 14px;
@@ -946,14 +947,13 @@
         background: var(--el-color-primary-light-9);
         border: 1px solid var(--el-color-primary-light-8);
         border-radius: var(--el-border-radius-small);
-        place-items: center;
       }
 
       &-copy {
         display: grid;
+        gap: 1px;
         min-width: 0;
         line-height: 1.35;
-        gap: 1px;
 
         strong,
         small {

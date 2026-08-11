@@ -239,6 +239,7 @@
 </template>
 
 <script setup lang="ts">
+  import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import type { UnwrapNestedRefs } from 'vue'
   import ArtAiFeedback from '@/components/core/base/art-ai-feedback/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
@@ -352,7 +353,7 @@
       state.data = data
     } catch (error) {
       state.data = null
-      state.error = getErrorMessage(error)
+      state.error = getFriendlySupabaseErrorMessage(error, 'AI 发票合规审核失败，请稍后重试')
     } finally {
       state.loading = false
     }
@@ -376,15 +377,6 @@
 
   function formatTime(value: string): string {
     return formatWithDayjs(value, 'YYYY-MM-DD HH:mm:ss') || '-'
-  }
-
-  function getErrorMessage(error: unknown): string {
-    if (error instanceof Error && error.message) return error.message
-    if (error && typeof error === 'object' && 'message' in error) {
-      const message = (error as { message?: unknown }).message
-      if (typeof message === 'string' && message.trim()) return message.trim()
-    }
-    return 'AI 发票合规审核失败，请稍后重试'
   }
 
   defineExpose({ handleOpen })
@@ -501,8 +493,8 @@
         align-items: center;
         margin: 6px 0 0;
         overflow: hidden;
-        font-size: 13px;
         text-overflow: ellipsis;
+        font-size: 13px;
         color: var(--el-text-color-secondary);
         white-space: nowrap;
       }
@@ -574,8 +566,8 @@
 
         strong {
           overflow: hidden;
-          font-size: 20px;
           text-overflow: ellipsis;
+          font-size: 20px;
           color: var(--el-color-primary);
           white-space: nowrap;
 

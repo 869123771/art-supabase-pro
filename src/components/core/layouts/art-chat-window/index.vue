@@ -294,6 +294,7 @@
 </template>
 
 <script setup lang="ts">
+  import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import { Refresh } from '@element-plus/icons-vue'
   import { useIntervalFn, useNetwork, useWindowSize } from '@vueuse/core'
   import { ElMessage, type ScrollbarInstance } from 'element-plus'
@@ -698,7 +699,7 @@
         usage: response.usage
       })
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'AI 助手暂时不可用'
+      const errorMessage = getFriendlySupabaseErrorMessage(error, 'AI 助手暂时不可用')
       state.messages.push({
         id: crypto.randomUUID(),
         role: 'assistant',

@@ -285,6 +285,7 @@
   import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
   import ArtTable from '@/components/core/tables/art-table/index.vue'
   import type { ColumnOption } from '@/types'
+  import { formatNameCodeOption } from '@/utils/form'
   import { fetchRegionOptions } from '@/api/common'
   import {
     addCustomerPrice,
@@ -924,10 +925,7 @@
   }
 
   function formatCustomerOption(option: Record<string, unknown>): string {
-    const customer = option as unknown as CustomerOption
-    return customer.customerCode
-      ? `${customer.customerName}（${customer.customerCode}）`
-      : customer.customerName
+    return formatNameCodeOption(option, 'customerName', 'customerCode')
   }
 
   function handleCustomerChange(customerId?: string): void {
@@ -1200,7 +1198,13 @@
   }
 
   function handleCargoSelect(row: CustomerPriceCargoItem, item: Record<string, unknown>): void {
-    Object.assign(row, createCargoItemFromMaster(item as unknown as CargoSuggestion), {
+    const cargo: CargoMaster = {
+      cargoName: String(item.cargoName ?? item.value ?? ''),
+      unit: String(item.unit ?? ''),
+      weightKg: typeof item.weightKg === 'number' ? item.weightKg : null,
+      volumeM3: typeof item.volumeM3 === 'number' ? item.volumeM3 : null
+    }
+    Object.assign(row, createCargoItemFromMaster(cargo), {
       quantity: row.quantity
     })
   }
@@ -1216,7 +1220,7 @@
   }
 
   function formatCargoUnit(row: DataSelectRecord): string {
-    const unit = String((row as CargoMaster).unit ?? '')
+    const unit = String(row.unit ?? '')
     return form.cargoUnitOptions.find((item) => String(item.value) === unit)?.label || unit || '-'
   }
 

@@ -1,7 +1,14 @@
 <!-- 系统logo -->
 <template>
   <div class="flex-cc">
-    <img :style="logoStyle" src="@imgs/common/logo.webp" alt="logo" class="w-full h-full" />
+    <img
+      :style="logoStyle"
+      src="@imgs/common/logo.webp"
+      width="36"
+      height="36"
+      alt="系统 Logo"
+      class="w-full h-full"
+    />
   </div>
 </template>
 

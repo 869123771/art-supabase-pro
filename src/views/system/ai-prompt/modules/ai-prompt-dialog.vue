@@ -336,10 +336,10 @@
     position: relative;
     display: flex;
     gap: 12px;
-    height: 72vh;
-    max-height: 620px;
     min-width: 0;
+    height: 72vh;
     min-height: 0;
+    max-height: 620px;
     overflow: hidden;
 
     :deep(.el-tag) {
@@ -465,9 +465,9 @@
 
       dd {
         margin: 0;
-        overflow-wrap: anywhere;
         font-size: 13px;
         color: var(--art-text-gray-800);
+        overflow-wrap: anywhere;
       }
 
       ul {
@@ -512,7 +512,7 @@
     }
   }
 
-  @media (max-width: 900px) {
+  @media (width <= 900px) {
     .ai-prompt-dialog {
       height: 72vh;
       max-height: 620px;

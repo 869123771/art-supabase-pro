@@ -11,11 +11,13 @@
       class="dual-menu-left"
       :style="{ width: dualMenuShowText ? '80px' : '64px', background: getMenuTheme.background }"
     >
-      <ArtLogo class="logo" @click="navigateToHome" />
+      <button type="button" class="dual-menu-home" aria-label="返回首页" @click="navigateToHome">
+        <ArtLogo class="logo" />
+      </button>
 
       <ElScrollbar style="height: calc(100% - 135px)">
         <ul>
-          <li v-for="menu in firstLevelMenus" :key="menu.path" @click="handleMenuJump(menu, true)">
+          <li v-for="menu in firstLevelMenus" :key="menu.path">
             <ElTooltip
               class="box-item"
               effect="dark"
@@ -25,15 +27,18 @@
               :hide-after="0"
               :disabled="dualMenuShowText"
             >
-              <div
+              <button
+                type="button"
+                class="dual-menu-item"
                 :class="{
-                  'is-active': menu.meta.isFirstLevel
-                    ? menu.path === route.path
-                    : menu.path === firstLevelMenuPath
+                  'is-active': isFirstLevelMenuActive(menu)
                 }"
+                :aria-current="isFirstLevelMenuActive(menu) ? 'page' : undefined"
+                :aria-label="$t(menu.meta.title)"
                 :style="{
                   height: dualMenuShowText ? '60px' : '46px'
                 }"
+                @click="handleMenuJump(menu, true)"
               >
                 <ArtSvgIcon
                   class="menu-icon text-g-700 dark:text-g-800"
@@ -46,7 +51,7 @@
                   {{ $t(menu.meta.title) }}
                 </span>
                 <div v-if="menu.meta.showBadge" class="art-badge art-badge-dual" />
-              </div>
+              </button>
             </ElTooltip>
           </li>
         </ul>
@@ -55,6 +60,8 @@
       <ArtIconButton
         class="switch-btn size-10"
         icon="ri:arrow-left-right-fill"
+        aria-label="切换双栏菜单显示模式"
+        title="切换双栏菜单显示模式"
         @click="toggleDualMenuMode"
       />
     </div>
@@ -195,6 +202,12 @@
   const firstLevelMenus = computed(() => {
     return useMenuStore().menuList.filter((menu) => !menu.meta.isHide)
   })
+
+  const isFirstLevelMenuActive = (menu: AppRouteRecord): boolean => {
+    return menu.meta.isFirstLevel
+      ? menu.path === route.path
+      : menu.path === firstLevelMenuPath.value
+  }
 
   const menuList = computed(() => {
     const menuStore = useMenuStore()

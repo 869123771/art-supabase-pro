@@ -68,8 +68,7 @@ export const renderReminderStatus = (row: ReminderRow): VNodeChild => {
 }
 
 export const createReminderWorkOrderColumns = (
-  onOpen: (row: ReminderRow) => void,
-  canManage: () => boolean
+  onOpen: (row: ReminderRow) => void
 ): ColumnOption<ReminderRow>[] => [
   {
     prop: 'workOrderStatus',
@@ -87,17 +86,13 @@ export const createReminderWorkOrderColumns = (
       const isTerminal = row.workOrder
         ? ['closed', 'cancelled'].includes(row.workOrder.status)
         : false
-      const actionLabel = hasWorkOrder
-        ? canManage() && !isTerminal
-          ? '查看并处置'
-          : '查看处置单'
-        : '发起处置'
+      const actionLabel =
+        hasWorkOrder && !isTerminal ? '查看并处置' : hasWorkOrder ? '查看处置单' : '发起处置'
 
       return h(ArtButtonTable, {
         type: hasWorkOrder ? 'view' : 'add',
         icon: hasWorkOrder ? 'ri:eye-line' : 'ri:play-circle-line',
         label: actionLabel,
-        disabled: !hasWorkOrder && !canManage(),
         onClick: () => onOpen(row)
       })
     }

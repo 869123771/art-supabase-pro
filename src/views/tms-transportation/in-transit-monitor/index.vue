@@ -184,6 +184,7 @@
 </template>
 
 <script setup lang="ts">
+  import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import type { UnwrapNestedRefs } from 'vue'
   import { storeToRefs } from 'pinia'
   import { ElMessage } from 'element-plus'
@@ -538,7 +539,7 @@
       if (routeOrder) void ensureDrivingRoute(routeOrder)
     } catch (error) {
       amapReady.value = false
-      ElMessage.warning(error instanceof Error ? error.message : '高德地图加载失败')
+      ElMessage.warning(getFriendlySupabaseErrorMessage(error, '地图加载失败，请稍后重试'))
     }
 
     updateChinaMap()

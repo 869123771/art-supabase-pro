@@ -104,6 +104,7 @@
 </template>
 
 <script setup lang="tsx">
+  import { createFriendlySupabaseError } from '@/utils/supabase'
   import dayjs from 'dayjs'
   import { ElTag } from 'element-plus'
   import { storeToRefs } from 'pinia'
@@ -396,7 +397,7 @@
       Object.assign(overview.data, await fetchWorkflowMonitorSummary())
       overview.loaded = true
     } catch (error) {
-      overview.error = error instanceof Error ? error : new Error('审批运营概览加载失败')
+      overview.error = createFriendlySupabaseError(error, '审批运营概览加载失败，请稍后重试')
     } finally {
       overview.loading = false
     }
@@ -409,7 +410,10 @@
       const result = await fetchWorkflowCallbackOutbox(null, 1)
       Object.assign(callbackHealth.data, result.summary)
     } catch (error) {
-      callbackHealth.error = error instanceof Error ? error : new Error('业务回调健康度加载失败')
+      callbackHealth.error = createFriendlySupabaseError(
+        error,
+        '业务回调健康度加载失败，请稍后重试'
+      )
     } finally {
       callbackHealth.loading = false
     }

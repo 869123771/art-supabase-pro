@@ -181,6 +181,7 @@
 </template>
 
 <script setup lang="ts">
+  import { createFriendlySupabaseError } from '@/utils/supabase'
   import dayjs from 'dayjs'
   import { ElMessage } from 'element-plus'
   import ArtDrawer from '@/components/core/drawers/art-drawer/index.vue'
@@ -283,7 +284,7 @@
       if (error) throw error
       state.rows = data ?? []
     } catch (error) {
-      state.error = error instanceof Error ? error : new Error('异常工单加载失败')
+      state.error = createFriendlySupabaseError(error, '异常工单加载失败，请稍后重试')
     } finally {
       state.loading = false
     }

@@ -16,19 +16,26 @@
  */
 
 import { computed } from 'vue'
+import { useRouter } from 'vue-router'
 import appConfig from '@/config'
-import type { FastEnterApplication, FastEnterQuickLink } from '@/types/config'
+import type { FastEnterApplication, FastEnterBaseItem, FastEnterQuickLink } from '@/types/config'
 
 export function useFastEnter() {
+  const router = useRouter()
+
   // 获取快速入口配置
   const fastEnterConfig = computed(() => appConfig.fastEnter)
+
+  const isAvailableTarget = (item: FastEnterBaseItem): boolean => {
+    return Boolean(item.link || (item.routeName && router.hasRoute(item.routeName)))
+  }
 
   // 获取启用的应用列表（按排序权重排序）
   const enabledApplications = computed<FastEnterApplication[]>(() => {
     if (!fastEnterConfig.value?.applications) return []
 
     return fastEnterConfig.value.applications
-      .filter((app) => app.enabled !== false)
+      .filter((app) => app.enabled !== false && isAvailableTarget(app))
       .sort((a, b) => (a.order || 0) - (b.order || 0))
   })
 
@@ -37,7 +44,7 @@ export function useFastEnter() {
     if (!fastEnterConfig.value?.quickLinks) return []
 
     return fastEnterConfig.value.quickLinks
-      .filter((link) => link.enabled !== false)
+      .filter((link) => link.enabled !== false && isAvailableTarget(link))
       .sort((a, b) => (a.order || 0) - (b.order || 0))
   })
 

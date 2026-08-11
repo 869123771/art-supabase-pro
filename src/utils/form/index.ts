@@ -10,3 +10,6 @@ export * from './validator'
 
 // 响应式布局
 export * from './responsive'
+
+// 表单选项显示
+export * from './option'

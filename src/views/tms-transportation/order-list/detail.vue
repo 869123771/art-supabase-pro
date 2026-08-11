@@ -509,7 +509,7 @@
       width: 34px;
       height: 34px;
       font-size: 19px;
-      background: color-mix(in srgb, currentColor 10%, transparent);
+      background: color-mix(in srgb, currentcolor 10%, transparent);
       border-radius: 10px;
     }
 
@@ -533,8 +533,8 @@
       display: flex;
       gap: 8px;
       align-items: center;
-      color: var(--el-text-color-regular);
       font-size: 12px;
+      color: var(--el-text-color-regular);
 
       span {
         padding: 5px 8px;
@@ -629,8 +629,8 @@
 
         strong {
           font-size: 13px;
-          color: var(--el-text-color-primary);
           font-variant-numeric: tabular-nums;
+          color: var(--el-text-color-primary);
         }
       }
     }
@@ -656,8 +656,8 @@
       }
 
       &__delivery-audit-meta {
-        grid-column: 2;
         flex-wrap: wrap;
+        grid-column: 2;
       }
 
       &__finance-grid,

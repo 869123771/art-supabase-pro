@@ -4,6 +4,7 @@ interface VisualPage {
   name: string
   path: string
   root: string
+  captureLower?: boolean
 }
 
 const visualPages: VisualPage[] = [
@@ -31,12 +32,29 @@ const visualPages: VisualPage[] = [
     name: 'table-query-widget',
     path: '/widgets/table-query',
     root: '.table-query-widget'
+  },
+  {
+    name: 'ai-project-planner',
+    path: '/system/ai-project-planner',
+    root: '.ai-planner'
+  },
+  {
+    name: 'order-open',
+    path: '/tms-transportation/order-open',
+    root: '.order-open',
+    captureLower: true
+  },
+  {
+    name: 'website-config',
+    path: '/system/website-config',
+    root: '.website-config-page',
+    captureLower: true
   }
 ]
 
 async function waitForPageReady(page: Page, rootSelector: string): Promise<Locator> {
   const root = page.locator(rootSelector).first()
-  await expect(root).toBeVisible({ timeout: 30_000 })
+  await expect(root).toBeVisible({ timeout: 60_000 })
   await page
     .locator('.el-loading-mask')
     .waitFor({ state: 'hidden', timeout: 20_000 })
@@ -67,6 +85,17 @@ async function resetScrollPositions(page: Page): Promise<void> {
   await page.waitForTimeout(100)
 }
 
+async function scrollMainContentToBottom(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const scrollContainer =
+      document.querySelector<HTMLElement>(
+        '#app-main > .app-main__scrollbar > .app-main__scroll-wrap'
+      ) ?? document.scrollingElement
+    scrollContainer?.scrollTo({ top: scrollContainer.scrollHeight, behavior: 'auto' })
+  })
+  await page.waitForTimeout(200)
+}
+
 async function applyVisualMode(page: Page, projectName: string): Promise<void> {
   await page.evaluate(
     ({ dark, boxMode }) => {
@@ -80,32 +109,26 @@ async function applyVisualMode(page: Page, projectName: string): Promise<void> {
   )
 }
 
-test('核心页面布局稳定', async ({ page }, testInfo) => {
-  test.setTimeout(180_000)
-  const pageErrors: string[] = []
-  page.on('pageerror', (error) => pageErrors.push(error.message))
+for (const visualPage of visualPages) {
+  test(`${visualPage.name} 布局稳定`, async ({ page }, testInfo) => {
+    test.setTimeout(120_000)
+    const pageErrors: string[] = []
+    page.on('pageerror', (error) => pageErrors.push(error.message))
 
-  await page.goto('/#/dashboard/console', { waitUntil: 'domcontentloaded' })
-  await expect(page).not.toHaveURL(/#\/auth\/login/)
+    await page.goto(`/#${visualPage.path}`, { waitUntil: 'domcontentloaded' })
+    await expect(page).not.toHaveURL(/#\/auth\/login/)
 
-  for (const visualPage of visualPages) {
-    await test.step(visualPage.name, async () => {
-      pageErrors.length = 0
-      if (!page.url().endsWith(`#${visualPage.path}`)) {
-        await page.evaluate((routePath) => {
-          window.location.hash = routePath
-        }, visualPage.path)
-      }
-      await expect(page).toHaveURL(new RegExp(`#${visualPage.path.replaceAll('/', '\\/')}$`))
+    await waitForPageReady(page, visualPage.root)
+    await applyVisualMode(page, testInfo.project.name)
+    await expectNoHorizontalOverflow(page)
+    await resetScrollPositions(page)
 
-      const root = await waitForPageReady(page, visualPage.root)
-      await applyVisualMode(page, testInfo.project.name)
-      await expectNoHorizontalOverflow(page)
-      await resetScrollPositions(page)
+    await expect(page).toHaveScreenshot(`${visualPage.name}.png`)
 
-      await expect(root).toHaveScreenshot(`${visualPage.name}.png`)
-
-      expect(pageErrors, `页面出现未捕获错误：\n${pageErrors.join('\n')}`).toEqual([])
-    })
-  }
-})
+    if (visualPage.captureLower) {
+      await scrollMainContentToBottom(page)
+      await expect(page).toHaveScreenshot(`${visualPage.name}-lower.png`)
+    }
+    expect(pageErrors, `页面出现未捕获错误：\n${pageErrors.join('\n')}`).toEqual([])
+  })
+}

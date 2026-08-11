@@ -332,8 +332,8 @@
 
         strong {
           overflow: hidden;
-          font-size: 15px;
           text-overflow: ellipsis;
+          font-size: 15px;
           white-space: nowrap;
         }
       }
@@ -418,9 +418,9 @@
 
           span {
             overflow: hidden;
+            text-overflow: ellipsis;
             font-size: 9px;
             color: rgb(255 255 255 / 48%);
-            text-overflow: ellipsis;
             white-space: nowrap;
           }
         }

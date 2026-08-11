@@ -3,7 +3,13 @@
   <div class="art-card-sm flex-c flex-col pb-6" :style="{ height: height }">
     <div class="flex-c flex-col gap-4 text-center">
       <div class="w-45">
-        <img :src="image" :alt="title" class="w-full h-full object-contain" />
+        <img
+          :src="image"
+          :alt="title"
+          width="180"
+          height="180"
+          class="w-full h-full object-contain"
+        />
       </div>
       <div class="box-border px-4">
         <p class="mb-2 text-lg font-semibold text-g-800">{{ title }}</p>

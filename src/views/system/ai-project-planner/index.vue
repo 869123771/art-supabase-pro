@@ -476,6 +476,7 @@
 </template>
 
 <script setup lang="ts">
+  import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import dayjs from 'dayjs'
   import { countBy, groupBy, orderBy } from 'lodash-es'
   import { ElMessage } from 'element-plus'
@@ -834,7 +835,7 @@
       assignState(await fetchAiPlannerState())
       if (showMessage) ElMessage.success('建议已刷新')
     } catch (error) {
-      ElMessage.error(error instanceof Error ? error.message : '加载建议失败')
+      ElMessage.error(getFriendlySupabaseErrorMessage(error, '加载建议失败'))
     } finally {
       loading.state = false
     }
@@ -844,7 +845,7 @@
     try {
       capabilities.value = await fetchAiPlannerCapabilities()
     } catch (error) {
-      ElMessage.error(error instanceof Error ? error.message : '读取 AI 能力失败')
+      ElMessage.error(getFriendlySupabaseErrorMessage(error, '读取 AI 能力失败'))
     }
   }
 
@@ -856,7 +857,7 @@
       resetFilters()
       ElMessage.success('新一批项目建议已生成')
     } catch (error) {
-      ElMessage.error(error instanceof Error ? error.message : '生成建议失败')
+      ElMessage.error(getFriendlySupabaseErrorMessage(error, '生成建议失败'))
     } finally {
       loading.generate = false
     }
@@ -872,7 +873,7 @@
       ElMessage.success('提示词已复制，可以直接粘贴到 Codex')
       void syncStateSilently()
     } catch (error) {
-      ElMessage.error(error instanceof Error ? error.message : '复制失败')
+      ElMessage.error(getFriendlySupabaseErrorMessage(error, '复制失败'))
     } finally {
       delete pendingActions[suggestion.id]
     }
@@ -891,7 +892,7 @@
       ElMessage.success(eventType === 'liked' ? '已记住你的偏好' : '已记录，本类建议会降低权重')
       void syncStateSilently()
     } catch (error) {
-      ElMessage.error(error instanceof Error ? error.message : '反馈提交失败')
+      ElMessage.error(getFriendlySupabaseErrorMessage(error, '反馈提交失败'))
     } finally {
       delete pendingActions[suggestion.id]
     }
@@ -926,7 +927,7 @@
       ElMessage.success(messages[eventType])
       void syncStateSilently()
     } catch (error) {
-      ElMessage.error(error instanceof Error ? error.message : '状态更新失败')
+      ElMessage.error(getFriendlySupabaseErrorMessage(error, '状态更新失败'))
     } finally {
       delete pendingActions[suggestion.id]
     }
@@ -1050,14 +1051,14 @@
         grid-template-columns: minmax(0, 1.45fr) minmax(360px, 0.75fr);
 
         .ai-planner__priority {
-          grid-column: 1;
           grid-row: 1;
+          grid-column: 1;
         }
 
         .ai-planner__metrics {
-          grid-column: 2;
-          grid-row: 1;
           grid-template-columns: repeat(2, minmax(0, 1fr));
+          grid-row: 1;
+          grid-column: 2;
         }
       }
     }

@@ -438,6 +438,7 @@
       :deep(.art-section-title) {
         margin: 0 0 4px;
       }
+
       p {
         margin: 0;
         font-size: 12px;
@@ -454,6 +455,7 @@
       flex-wrap: wrap;
       gap: 6px;
       margin-top: 8px;
+
       .el-button + .el-button {
         margin-left: 0;
       }
@@ -472,14 +474,15 @@
     &__preview {
       padding: 14px;
     }
+
     &__preview > code {
       display: block;
       padding: 13px 10px;
-      overflow-wrap: anywhere;
       font-size: 15px;
       font-weight: 700;
       color: var(--el-color-primary);
       text-align: center;
+      overflow-wrap: anywhere;
       background: var(--el-color-primary-light-9);
       border: 1px solid var(--el-color-primary-light-7);
       border-radius: var(--art-control-radius);
@@ -488,17 +491,21 @@
     dl {
       margin: 12px 0 0;
     }
+
     dl div {
       padding: 8px 0;
       border-bottom: 1px solid var(--el-border-color-lighter);
     }
+
     dl div:last-child {
       border-bottom: 0;
     }
+
     dt {
       font-size: 11px;
       color: var(--art-text-gray-500);
     }
+
     dd {
       margin: 4px 0 0;
       line-height: 1.5;
@@ -506,7 +513,7 @@
     }
   }
 
-  @media (max-width: 900px) {
+  @media (width <= 900px) {
     .number-rule-create {
       &__summary {
         display: none;

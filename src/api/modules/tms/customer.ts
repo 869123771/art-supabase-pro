@@ -62,10 +62,10 @@ export interface CustomerDeleteSafeCleanupResult {
 
 const { supabase, keysToSnakeDeep, responseHandle } = useSupabase()
 
-const applyCustomerFilters = (
-  query: SupabaseQueryLike,
+const applyCustomerFilters = <TQuery extends SupabaseQueryLike>(
+  query: TQuery,
   params: CustomerSearchParams
-): SupabaseQueryLike => {
+): TQuery => {
   const { customerId, customerLevel, industry, enabled, keyword, createTimeRange } = params
   if (customerId) query = query.eq('id', customerId)
   if (customerLevel) query = query.eq('customer_level', customerLevel)
@@ -86,7 +86,7 @@ export async function fetchCustomerList(params: CustomerSearchParams, options?: 
     .from('tms_customer')
     .select('*', { count: 'exact' })
     .order('create_time', { ascending: false })
-    .range(from, to) as unknown as SupabaseQueryLike
+    .range(from, to)
   query = applyCustomerFilters(query, params)
   return await responseHandle<Customer[]>(() => withRequestOptions(query, options), {
     ignoreCheck: true,
@@ -102,7 +102,7 @@ export async function exportCustomerList(
     .from('tms_customer')
     .select('*')
     .order('create_time', { ascending: false })
-    .limit(maxRows) as unknown as SupabaseQueryLike
+    .limit(maxRows)
   query = ids?.length ? query.in('id', ids) : applyCustomerFilters(query, params)
   return await responseHandle<Customer[]>(() => query, {
     ignoreCheck: true,
@@ -121,7 +121,7 @@ export async function fetchCustomerOptions(_params?: unknown, options?: ApiReque
           )
           .eq('enabled', true)
           .order('customer_name', { ascending: true })
-          .limit(1000) as unknown as SupabaseQueryLike,
+          .limit(1000),
         options
       ),
     { ignoreCheck: true, showErrorMessage: true }
@@ -147,13 +147,10 @@ export async function fetchCustomerSelectorList(
       `customer_name.ilike.%${keyword}%,customer_code.ilike.%${keyword}%,contact_name.ilike.%${keyword}%,contact_phone.ilike.%${keyword}%,address_detail.ilike.%${keyword}%`
     )
   }
-  return await responseHandle<CustomerSelectorItem[]>(
-    () => withRequestOptions(query as unknown as SupabaseQueryLike, options),
-    {
-      ignoreCheck: true,
-      showErrorMessage: true
-    }
-  )
+  return await responseHandle<CustomerSelectorItem[]>(() => withRequestOptions(query, options), {
+    ignoreCheck: true,
+    showErrorMessage: true
+  })
 }
 
 export async function addCustomer(params: Customer, options: WriteOptions = {}) {
@@ -258,10 +255,10 @@ export async function importCustomers(rows: Customer[]) {
   )
 }
 
-const applyCustomerAddressFilters = (
-  query: SupabaseQueryLike,
+const applyCustomerAddressFilters = <TQuery extends SupabaseQueryLike>(
+  query: TQuery,
   params: CustomerAddressSearchParams
-): SupabaseQueryLike => {
+): TQuery => {
   const { customerId, addressType, keyword, createTimeRange, recordId } = params
   if (recordId) query = query.eq('id', recordId)
   if (customerId) query = query.eq('customer_id', customerId)
@@ -287,7 +284,7 @@ export async function fetchCustomerAddressList(
     )
     .order('update_time', { ascending: false, nullsFirst: false })
     .order('create_time', { ascending: false, nullsFirst: false })
-    .range(from, to) as unknown as SupabaseQueryLike
+    .range(from, to)
   query = applyCustomerAddressFilters(query, params)
   return await responseHandle<CustomerAddress[]>(() => withRequestOptions(query, options), {
     ignoreCheck: true,

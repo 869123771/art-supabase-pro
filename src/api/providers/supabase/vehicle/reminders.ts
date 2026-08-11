@@ -5,7 +5,7 @@ import {
   type SupabaseQueryLike
 } from '@/api/providers/supabase/query'
 import type { ApiRequestOptions } from '@/types/api/request'
-import { applyFilters, type FilterSpec } from '@/utils/supabase-filters'
+import { applyFilters, type FilterSpec } from '@/utils/supabase'
 import type { VehicleReminderRow, VehicleReminderSearchParams } from './types'
 
 type ReminderKind = Api.VehicleMgtSys.ReminderManage.ReminderKind
@@ -48,10 +48,10 @@ const getVehicleReminderSearchFilters = (
   }
 ]
 
-const applyReminderRiskBand = (
-  query: SupabaseQueryLike,
+const applyReminderRiskBand = <TQuery extends SupabaseQueryLike>(
+  query: TQuery,
   riskBand?: VehicleReminderSearchParams['riskBand']
-): SupabaseQueryLike => {
+): TQuery => {
   if (riskBand === 'overdue') return query.eq('expired', true)
   if (riskBand === 'due_7') {
     return query.eq('expired', false).gte('remaining_days', 0).lte('remaining_days', 7)
@@ -72,7 +72,10 @@ const fetchReminderCount = async (
   if (params.companyName) builder = builder.ilike('company_name', `%${params.companyName}%`)
   if (params.plateNo) builder = builder.ilike('plate_no', `%${params.plateNo}%`)
 
+  // The dynamic view-name union exceeds TypeScript's instantiation depth when assigned
+  // directly to the shared query contract. Keep this single documented compatibility cast.
   let query = builder as unknown as SupabaseQueryLike
+
   if (configure) query = configure(query)
 
   const result = await responseHandle<never[]>(() => withRequestOptions(query, options), {
@@ -140,10 +143,7 @@ export async function fetchVehicleReminderViewList(
     skipEmpty: true,
     camelToSnake: true
   })
-  const filteredQuery = applyReminderRiskBand(
-    query as unknown as SupabaseQueryLike,
-    params.riskBand
-  )
+  const filteredQuery = applyReminderRiskBand(query, params.riskBand)
 
   const result = await responseHandle<VehicleReminderRow[]>(
     () => withRequestOptions(filteredQuery, options),

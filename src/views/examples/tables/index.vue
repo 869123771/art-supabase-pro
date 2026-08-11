@@ -144,7 +144,7 @@
         <div class="flex-cb">
           <h4 class="m-0">用户数据表格</h4>
           <div class="flex gap-2">
-            <ElTag v-if="error" type="danger">{{ error.message }}</ElTag>
+            <ElTag v-if="error" type="danger">{{ tableErrorMessage }}</ElTag>
             <ElTag v-else-if="loading" type="warning">加载中...</ElTag>
             <ElTag v-else type="success">{{ data.length }} 条数据</ElTag>
           </div>
@@ -171,8 +171,8 @@
 
             <!-- 导出导入功能 -->
             <ArtExcelExport
-              :data="data as any"
-              :columns="exportColumns as any"
+              :data="data"
+              :columns="exportColumns"
               filename="用户数据"
               :auto-index="true"
               button-text="导出"
@@ -425,7 +425,8 @@
 </template>
 
 <script setup lang="ts">
-  import { ref, computed, watch, nextTick } from 'vue'
+  import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
+  import { ref, computed, watch } from 'vue'
   import {
     Plus,
     Delete,
@@ -599,7 +600,7 @@
     status: {
       title: '状态',
       width: 10,
-      formatter: (value: string) => getUserStatusConfig(value).text
+      formatter: (value: unknown) => getUserStatusConfig(String(value)).text
     }
   }))
 
@@ -718,9 +719,7 @@
     // 核心配置
     core: {
       apiFn: (params) => {
-        // 在API调用前添加调试信息
         const requestKey = JSON.stringify(params)
-        console.log('🚀 API 请求参数:', params)
         addCacheLog(`🚀 API 请求: current=${params.current}, size=${params.size}`)
         addCacheLog(`🔑 请求键: ${requestKey.substring(0, 100)}...`)
 
@@ -847,7 +846,6 @@
     // 生命周期钩子
     hooks: {
       onSuccess: (data, response) => {
-        console.log('📊 响应详情:', response)
         addCacheLog(`✅ 网络请求成功: ${data.length} 条数据`)
         addCacheLog(
           `📝 响应信息: total=${response.total}, current=${response.current}, size=${response.size}`
@@ -856,18 +854,15 @@
       onError: (error) => {
         console.error('❌ 数据加载失败:', error)
         addCacheLog(`❌ 请求失败: ${error.message}`)
-        ElMessage.error(error.message)
+        ElMessage.error(getFriendlySupabaseErrorMessage(error, '数据加载失败，请稍后重试'))
       },
       onCacheHit: (data, response) => {
-        console.log('🎯 缓存命中:', data.length, '条')
-        console.log('🔑 缓存来源:', response)
         addCacheLog(
           `🎯 缓存命中: ${data.length} 条数据 (current=${response.current}, size=${response.size})`
         )
         ElMessage.info('数据来自缓存')
       },
       resetFormCallback: () => {
-        console.log('🔄 表单已重置')
         addCacheLog('🔄 表单已重置')
       }
     },
@@ -879,14 +874,17 @@
     }
   })
 
+  const tableErrorMessage = computed(() =>
+    error.value ? getFriendlySupabaseErrorMessage(error.value, '数据加载失败，请稍后重试') : ''
+  )
+
   // 事件处理函数
   const handleSelectionChange = (selection: UserListItem[]) => {
     selectedRows.value = selection
-    console.log('选择变更:', selection)
+    logEvent('选择变更', `已选择 ${selection.length} 行`)
   }
 
   const handleRowClick = (row: UserListItem) => {
-    console.log('行点击:', row)
     logEvent('行点击', `点击了用户: ${row.userName}`)
   }
 
@@ -895,7 +893,6 @@
    * @param column 列信息
    */
   const handleHeaderClick = (column: { label: string; property: string }) => {
-    console.log('表头点击:', column)
     logEvent('表头点击', `点击了 ${column.label} 列表头`)
   }
 
@@ -912,9 +909,6 @@
    * @param sortInfo 排序信息
    */
   const handleSortChange = (sortInfo: SortInfo) => {
-    console.log('排序事件:', sortInfo)
-    console.log('排序字段:', sortInfo.prop)
-    console.log('排序方向:', sortInfo.order)
     logEvent('排序变更', `字段: ${sortInfo.prop}, 方向: ${sortInfo.order}`)
   }
 
@@ -989,14 +983,12 @@
       总条数: pagination.total
     }
 
-    console.log('表格信息:', info)
-    ElMessage.info(`表格信息已输出到控制台，当前 ${info.数据条数} 条数据`)
+    ElMessage.info(`当前 ${info.数据条数} 条数据，已选 ${info.选中条数} 条，共 ${info.列数} 列`)
   }
 
   const handleSearch = async () => {
     await searchBarRef.value.validate()
 
-    console.log('搜索参数:', searchFormState.value)
     replaceSearchParams(buildSearchParams(searchFormState.value))
     getData()
   }
@@ -1092,7 +1084,7 @@
   }
 
   const handleImportError = (error: Error) => {
-    ElMessage.error(`导入失败：${error.message}`)
+    ElMessage.error(getFriendlySupabaseErrorMessage(error, '导入失败，请检查文件后重试'))
   }
 
   // 调试功能
@@ -1202,10 +1194,6 @@
     if (currentStats.total === 0) {
       cacheKeys.value = []
     }
-
-    nextTick(() => {
-      console.log('当前缓存统计:', cacheInfo.value)
-    })
   }
 
   // 监听分页和搜索状态变化

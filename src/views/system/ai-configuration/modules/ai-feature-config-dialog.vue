@@ -92,6 +92,7 @@
 </template>
 
 <script setup lang="ts">
+  import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import { ElMessage, type FormRules } from 'element-plus'
   import { cloneDeep } from 'lodash-es'
   import type { ComputedRef } from 'vue'
@@ -392,7 +393,7 @@
         `${result.model} 测速完成：首包 ${result.firstResponseMs} ms，总耗时 ${result.totalMs} ms`
       )
     } catch (error) {
-      const message = error instanceof Error ? error.message : '模型测速失败'
+      const message = getFriendlySupabaseErrorMessage(error, '模型测速失败，请稍后重试')
       benchmark.errors.set(modelId, message)
       ElMessage.error({ message, duration: 5000 })
     } finally {
@@ -410,7 +411,7 @@
         ElMessage.warning(data.warning ?? '已刷新当前配置模型')
       }
     } catch (error) {
-      ElMessage.error(error instanceof Error ? error.message : '刷新远端模型失败')
+      ElMessage.error(getFriendlySupabaseErrorMessage(error, '刷新远端模型失败'))
     } finally {
       catalog.loading = false
     }
@@ -457,7 +458,7 @@
         try {
           await loadModelCatalog()
         } catch (error) {
-          catalog.warning = error instanceof Error ? error.message : '远端模型目录暂时不可用'
+          catalog.warning = getFriendlySupabaseErrorMessage(error, '远端模型目录暂时不可用')
         }
       },
       onConfirm: handleSubmit,

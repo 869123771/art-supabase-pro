@@ -48,8 +48,8 @@ export const preloadMenuRoute = (item: AppRouteRecord): Promise<void> => {
 }
 
 // 打开外部链接
-export const openExternalLink = (link: string) => {
-  window.open(link, '_blank')
+export const openExternalLink = (link: string): void => {
+  window.open(link, '_blank', 'noopener,noreferrer')
 }
 
 /**

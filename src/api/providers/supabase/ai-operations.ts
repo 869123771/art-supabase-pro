@@ -1,6 +1,5 @@
 import dayjs from 'dayjs'
 import { useSupabase } from '@/hooks'
-import type { SupabaseQueryLike } from '@/api/providers/supabase/query'
 import type { AiFeedbackIssueType } from '@/api/providers/supabase/ai-feedback'
 
 export type { AiFeedbackIssueType } from '@/api/providers/supabase/ai-feedback'
@@ -479,7 +478,7 @@ export async function fetchAiRunList(params: AiRunSearchParams) {
     query = query.lte('started_at', dayjs(params.timeRange[1]).endOf('day').toISOString())
   }
 
-  return await responseHandle<AiRunListItem[]>(() => query as unknown as SupabaseQueryLike, {
+  return await responseHandle<AiRunListItem[]>(() => query, {
     ignoreCheck: true,
     showErrorMessage: true
   })

@@ -234,21 +234,21 @@
 
 <style scoped lang="scss">
   .editor-wrapper {
+    position: relative;
     flex: 1;
+    height: 100%;
     min-height: 0;
     overflow: hidden;
-    position: relative;
-    height: 100%;
 
     .editor-placeholder {
       position: absolute;
       top: 0;
       left: 63px;
-      color: #6e7681;
+      z-index: 10;
       font-family: Consolas, 'Courier New', monospace;
       font-size: 13px;
+      color: #6e7681;
       pointer-events: none;
-      z-index: 10;
     }
   }
 </style>
@@ -262,8 +262,8 @@
 
     .monaco-list {
       .monaco-list-row.focused {
-        background-color: var(--el-color-primary-light-9) !important;
         color: var(--el-text-color-primary) !important;
+        background-color: var(--el-color-primary-light-9) !important;
 
         .monaco-highlighted-label {
           color: var(--el-color-primary);
@@ -275,8 +275,8 @@
           width: 100% !important;
 
           .monaco-icon-label-container {
-            width: 100% !important;
             display: flex !important;
+            width: 100% !important;
 
             .monaco-icon-name-container {
               flex: 0 1 auto !important;
@@ -286,11 +286,11 @@
 
             .monaco-icon-description-container {
               flex: 1 0 auto !important;
-              text-align: right !important;
-              margin-left: auto !important;
               padding-left: 10px;
-              opacity: 0.6;
+              margin-left: auto !important;
+              text-align: right !important;
               white-space: nowrap;
+              opacity: 0.6;
             }
           }
         }
@@ -299,8 +299,8 @@
 
     .details {
       z-index: 99999 !important;
-      border: 1px solid var(--el-border-color-lighter) !important;
       background-color: var(--el-bg-color-overlay) !important;
+      border: 1px solid var(--el-border-color-lighter) !important;
       box-shadow: var(--el-box-shadow-light) !important;
     }
   }

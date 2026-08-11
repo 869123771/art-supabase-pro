@@ -122,8 +122,8 @@
       z-index: 1;
       display: flex;
       flex-direction: column;
-      align-items: center;
       gap: 8px;
+      align-items: center;
     }
 
     &__icon {

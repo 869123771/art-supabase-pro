@@ -140,8 +140,8 @@
 
       > small {
         overflow: hidden;
-        color: var(--el-text-color-secondary);
         text-overflow: ellipsis;
+        color: var(--el-text-color-secondary);
         white-space: nowrap;
       }
 
@@ -169,9 +169,9 @@
       strong {
         min-width: 0;
         overflow: hidden;
+        text-overflow: ellipsis;
         font-weight: 600;
         color: var(--el-text-color-primary);
-        text-overflow: ellipsis;
         white-space: nowrap;
       }
 

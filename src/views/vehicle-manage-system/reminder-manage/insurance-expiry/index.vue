@@ -41,7 +41,6 @@
   import VehicleReminderWorkOrderDrawer from '../modules/vehicle-reminder-work-order-drawer.vue'
   import VehicleReminderRiskOverview from '../modules/vehicle-reminder-risk-overview.vue'
   import { getReminderRiskRowClassName } from '../modules/reminder-risk'
-  import { useUserStore } from '@/store/modules/user'
 
   defineOptions({ name: 'VehicleInsuranceExpiry' })
 
@@ -77,14 +76,6 @@
 
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const workOrderDrawerRef = ref<WorkOrderDrawerExpose>()
-  const { getUserInfo, isPlatformSuper } = storeToRefs(useUserStore())
-  const canManageWorkOrder = computed(
-    () =>
-      isPlatformSuper.value ||
-      (getUserInfo.value.userRoles ?? []).some((role) =>
-        ['R_ADMIN', 'YQ_ADMIN', 'R_REGISTER'].includes(role)
-      )
-  )
 
   const tableState = reactive<TableState>({
     showSearchBar: false,
@@ -127,7 +118,7 @@
         sortable: true,
         formatter: (row) => renderRemainingDays(row.remainingDays)
       },
-      ...createReminderWorkOrderColumns(openWorkOrder, () => canManageWorkOrder.value)
+      ...createReminderWorkOrderColumns(openWorkOrder)
     ]
   }
 

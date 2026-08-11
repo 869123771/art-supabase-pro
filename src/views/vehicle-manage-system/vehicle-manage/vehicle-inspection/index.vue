@@ -35,6 +35,7 @@
 </template>
 
 <script setup lang="tsx">
+  import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import type { ComputedRef, UnwrapNestedRefs } from 'vue'
   import { ElMessage } from 'element-plus'
@@ -292,7 +293,7 @@
   }
 
   onErrorCaptured((error) => {
-    ElMessage.error(error instanceof Error ? error.message : '车辆年检页面异常')
+    ElMessage.error(getFriendlySupabaseErrorMessage(error, '车辆年检页面异常'))
     return false
   })
 </script>

@@ -1,7 +1,7 @@
 import { AppRouteRecord } from '@/types/router'
 import { useSupabase } from '@/hooks'
 import { WRITE_PERMISSION_DENIED_MESSAGE } from '@/hooks/core/useSupabase'
-import { buildSpecsFromMap, applyFilters, type Op } from '@utils/supabase-filters'
+import { buildSpecsFromMap, applyFilters, type Op } from '@/utils/supabase'
 import { toNextDayStartUTC, toStartOfDayUTC } from '@/utils'
 import { omit } from 'lodash-es'
 import TreeUtils from '@/utils/tree'

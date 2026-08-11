@@ -79,14 +79,7 @@
 
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const workOrderDrawerRef = ref<WorkOrderDrawerExpose>()
-  const { getDictMap, getUserInfo, isPlatformSuper } = storeToRefs(useUserStore())
-  const canManageWorkOrder = computed(
-    () =>
-      isPlatformSuper.value ||
-      (getUserInfo.value.userRoles ?? []).some((role) =>
-        ['R_ADMIN', 'YQ_ADMIN', 'R_REGISTER'].includes(role)
-      )
-  )
+  const { getDictMap } = storeToRefs(useUserStore())
 
   const tableState = reactive<TableState>({
     showSearchBar: false,
@@ -168,7 +161,7 @@
           sortable: true,
           formatter: (row) => renderRemainingDays(row.remainingDays)
         },
-        ...createReminderWorkOrderColumns(openWorkOrder, () => canManageWorkOrder.value)
+        ...createReminderWorkOrderColumns(openWorkOrder)
       ]
     }
   })

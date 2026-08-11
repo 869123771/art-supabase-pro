@@ -445,8 +445,8 @@
     .dict-table-panel {
       display: flex;
       flex-direction: column;
-      height: 100%;
       min-width: 0;
+      height: 100%;
       min-height: 0;
     }
 
@@ -466,11 +466,11 @@
       position: relative;
       display: flex;
       flex: none;
+      gap: 12px;
       min-width: 0;
-      overflow: hidden;
       padding: 14px 16px;
       margin-bottom: 12px;
-      gap: 12px;
+      overflow: hidden;
 
       &::before {
         position: absolute;
@@ -487,6 +487,7 @@
       &__icon {
         display: grid;
         flex: 0 0 38px;
+        place-items: center;
         width: 38px;
         height: 38px;
         font-size: 18px;
@@ -494,7 +495,6 @@
         background: var(--el-color-primary-light-9);
         border: 1px solid var(--el-color-primary-light-7);
         border-radius: var(--art-control-radius);
-        place-items: center;
       }
 
       &__copy {
@@ -503,25 +503,25 @@
         p {
           margin: 4px 0 0;
           overflow: hidden;
+          text-overflow: ellipsis;
           font-size: 12px;
           line-height: 1.5;
           color: var(--el-text-color-secondary);
-          text-overflow: ellipsis;
           white-space: nowrap;
         }
       }
 
       &__heading {
         display: flex;
-        min-width: 0;
-        align-items: center;
         gap: 8px;
+        align-items: center;
+        min-width: 0;
 
         strong {
           overflow: hidden;
+          text-overflow: ellipsis;
           font-size: 15px;
           color: var(--el-text-color-primary);
-          text-overflow: ellipsis;
           white-space: nowrap;
         }
 
@@ -541,8 +541,8 @@
     .dict-selection-empty {
       display: grid;
       flex: 1;
-      min-height: 360px;
       place-items: center;
+      min-height: 360px;
     }
 
     :deep(.dict-identity-cell) {
@@ -570,10 +570,10 @@
 
     :deep(.dict-appearance-cell) {
       display: flex;
-      min-width: 0;
-      align-items: center;
       flex-wrap: wrap;
       gap: 6px;
+      align-items: center;
+      min-width: 0;
     }
 
     :deep(.dict-cell-placeholder) {
@@ -620,14 +620,14 @@
       :deep(.el-splitter-bar__dragger::before) {
         width: 3px;
         height: 32px;
-        border-radius: 999px;
         background: var(--el-color-primary);
+        border-radius: 999px;
       }
 
       :deep(.el-splitter-bar:hover::before),
       :deep(.el-splitter-bar:has(.el-splitter-bar__dragger-active)::before) {
-        opacity: 1;
         background: var(--el-color-primary-light-7);
+        opacity: 1;
       }
 
       :deep(.el-splitter-bar:hover .el-splitter-bar__dragger),

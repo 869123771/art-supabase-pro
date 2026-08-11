@@ -63,7 +63,7 @@
 </template>
 
 <script setup lang="ts">
-  import { ElInput } from 'element-plus'
+  import { ElInput, ElMessage } from 'element-plus'
   import type { FormItem } from '@/components/core/forms/art-form/index.vue'
 
   interface Emits {
@@ -103,6 +103,7 @@
 
   const searchBarBasicRef = ref()
   const searchBarAdvancedRef = ref()
+  const eventFeedback = ref('等待输入')
 
   /**
    * 基础示例表单数据
@@ -554,17 +555,20 @@
       key: 'event',
       type: 'input',
       props: {
-        placeholder: '输入内容触发事件，控制台查看',
+        placeholder: '输入内容触发事件，右侧显示反馈',
         clearable: true,
         prefixIcon: 'Search',
         // prefix: () => h('span', {}, '123'),
         // 事件必须以 on 开头，然后驼峰式命名拼接 ElementPlus 事件名
         onInput(val: string) {
-          console.log('输入事件', val)
+          eventFeedback.value = val ? `已输入 ${val.length} 字` : '等待输入'
         },
         onClear() {
-          console.log('清空事件')
+          eventFeedback.value = '已清空'
         }
+      },
+      slots: {
+        append: () => h('span', { class: 'text-xs text-g-500' }, eventFeedback.value)
       }
     },
 
@@ -643,14 +647,14 @@
     type: string
   ) => ({
     reset: () => {
-      console.log(`重置${type}表单`)
+      eventFeedback.value = '等待输入'
       emit('reset')
     },
     search: async () => {
       if (!ref.value) return
       await ref.value.validate()
       emit('search', formData.value as Record<string, unknown>)
-      console.log(`${type}表单数据`, formData.value)
+      ElMessage.success(`${type}搜索条件校验通过`)
     },
     validate: () => ref.value?.validate()
   })

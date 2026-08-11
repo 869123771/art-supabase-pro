@@ -24,6 +24,7 @@
 import { AxiosError } from 'axios'
 import { ApiStatus } from './status'
 import { $t } from '@/locales'
+import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
 
 // 错误响应接口
 export interface ErrorResponse {
@@ -155,7 +156,9 @@ export function handleError(error: AxiosError<ErrorResponse>): never {
  */
 export function showError(error: HttpError, showMessage: boolean = true): void {
   if (showMessage) {
-    ElMessage.error(error.message)
+    ElMessage.error(
+      getFriendlySupabaseErrorMessage([{ status: error.code }, error], $t('httpMsg.requestFailed'))
+    )
   }
   // 记录错误日志
   console.error('[HTTP Error]', error.toLogData())

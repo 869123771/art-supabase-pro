@@ -59,7 +59,7 @@
   const props = withDefaults(defineProps<Props>(), {
     height: '500px',
     mode: 'default',
-    placeholder: '请输入内容...',
+    placeholder: '请输入内容…',
     excludeKeys: () => ['fontFamily'],
     isCustomUpload: false
   })
@@ -173,11 +173,6 @@
   // 编辑器创建回调
   const onCreateEditor = (editor: IDomEditor) => {
     editorRef.value = editor
-
-    // 监听全屏事件
-    editor.on('fullScreen', () => {
-      console.log('编辑器进入全屏模式')
-    })
 
     // 确保在编辑器创建后应用自定义图标
     applyCustomIcons()

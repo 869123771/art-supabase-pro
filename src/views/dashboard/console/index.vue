@@ -244,8 +244,8 @@
 
 <style scoped lang="scss">
   .operations-dashboard {
-    font-variant-numeric: tabular-nums;
     min-height: 100%;
+    font-variant-numeric: tabular-nums;
 
     :deep(> .art-async-state) {
       display: grid;

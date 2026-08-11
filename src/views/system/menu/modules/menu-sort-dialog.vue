@@ -93,10 +93,11 @@
 </template>
 
 <script setup lang="ts">
+  import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import type { ElTree } from 'element-plus'
   import type { NodeDropType } from 'element-plus'
   import { ElMessage } from 'element-plus'
-  import { cloneDeep } from 'lodash-es'
+  import { cloneDeep, uniq } from 'lodash-es'
   import type { AppRouteRecord } from '@/types/router'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
@@ -204,7 +205,7 @@
   const handleNodeExpand = (data: AppRouteRecord): void => {
     const key = getNodeKey(data)
     if (!key) return
-    tree.expandedKeys = Array.from(new Set([...tree.expandedKeys, key]))
+    tree.expandedKeys = uniq([...tree.expandedKeys, key])
   }
 
   const handleNodeCollapse = (data: AppRouteRecord): void => {
@@ -255,7 +256,7 @@
     try {
       tree.loading = true
       if (dropType === 'inner' && dropKey) {
-        tree.expandedKeys = Array.from(new Set([...tree.expandedKeys, dropKey]))
+        tree.expandedKeys = uniq([...tree.expandedKeys, dropKey])
       }
       await nextTick()
       await saveMenuTreeOrder(buildMenuTreeOrderUpdates(tree.data))
@@ -264,7 +265,7 @@
       emit('submit')
     } catch (error) {
       await restoreTree()
-      ElMessage.error(error instanceof Error ? error.message : '菜单树保存失败')
+      ElMessage.error(getFriendlySupabaseErrorMessage(error, '菜单树保存失败'))
     } finally {
       tree.loading = false
     }

@@ -24,10 +24,10 @@ const stationSelect = (withRoleFilter: boolean, fields = '*'): string => `
   ${withRoleFilter ? ', stationRoleFilter:tms_station_role!inner(role_type)' : ''}
 `
 
-const applyStationFilters = (
-  query: SupabaseQueryLike,
+const applyStationFilters = <TQuery extends SupabaseQueryLike>(
+  query: TQuery,
   params: StationSearchParams
-): SupabaseQueryLike => {
+): TQuery => {
   const { stationType, enabled, keyword, createTimeRange } = params
   if (stationType) query = query.eq('stationRoleFilter.role_type', stationType)
   const enabledValue = normalizeBooleanFilter(enabled)
@@ -47,7 +47,7 @@ export async function fetchStationList(params: StationSearchParams, options?: Ap
     .select(stationSelect(Boolean(params.stationType)), { count: 'exact' })
     .order('sort', { ascending: true })
     .order('station_code', { ascending: true })
-    .range(from, to) as unknown as SupabaseQueryLike
+    .range(from, to)
 
   query = applyStationFilters(query, params)
   return await responseHandle<StationRecord[]>(() => withRequestOptions(query, options), {
@@ -66,7 +66,7 @@ export async function exportStationList(
     .select(stationSelect(withRoleFilter))
     .order('sort', { ascending: true })
     .order('station_code', { ascending: true })
-    .limit(maxRows) as unknown as SupabaseQueryLike
+    .limit(maxRows)
 
   query = ids?.length ? query.in('id', ids) : applyStationFilters(query, params)
   return await responseHandle<StationRecord[]>(() => query, {
@@ -88,7 +88,7 @@ export async function fetchStationOptions(
     .eq('enabled', true)
     .order('sort', { ascending: true })
     .order('station_code', { ascending: true })
-    .limit(1000) as unknown as SupabaseQueryLike
+    .limit(1000)
 
   if (params.stationType) query = query.eq('stationRoleFilter.role_type', params.stationType)
   if (params.keyword) {

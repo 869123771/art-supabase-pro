@@ -46,17 +46,17 @@
     align-items: center;
     width: 100%;
     margin: 4px 0 14px;
-    color: var(--el-text-color-primary);
     font-weight: 600;
     line-height: 24px;
+    color: var(--el-text-color-primary);
 
     &--with-marker::before {
       width: 3px;
       height: 14px;
       margin-right: 8px;
       content: '';
-      border-radius: 999px;
       background: var(--el-color-primary);
+      border-radius: 999px;
     }
 
     &--with-line::after {

@@ -177,11 +177,11 @@
 }
 
 .screen-tabs-scrollbar {
+  justify-self: center;
   width: 304px;
-  height: 46px;
   min-width: 0;
   max-width: 100%;
-  justify-self: center;
+  height: 46px;
 
   :deep(.el-scrollbar__wrap) {
     display: flex;
@@ -261,8 +261,8 @@
   time {
     font-size: 14px;
     font-weight: 700;
-    color: #fff;
     font-variant-numeric: tabular-nums;
+    color: #fff;
     white-space: nowrap;
   }
 
@@ -756,8 +756,8 @@
     grid-row: 2;
     grid-column: 1 / -1;
     width: 100%;
-    height: 46px;
     max-width: none;
+    height: 46px;
   }
 
   .screen-tabs {

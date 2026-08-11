@@ -37,28 +37,80 @@ function excerptAt(content: string, offset: number): string {
 
 function scanFile(file: string, content: string): Finding[] {
   const findings: Finding[] = []
+  const relativeFile = path.relative(projectRoot, file).replaceAll('\\', '/')
+
+  const addFinding = (offset: number, rule: string): void => {
+    findings.push({
+      file: relativeFile,
+      line: lineAt(content, offset),
+      rule,
+      excerpt: excerptAt(content, offset)
+    })
+  }
+
   const rules = [
     {
       name: 'motion/no-transition-all',
-      pattern: /(?:-webkit-)?transition\s*:\s*all\b/g
+      pattern: /(?:-webkit-)?transition\s*:\s*all\b|\btransition-all\b/g
     },
     {
       name: 'a11y/no-static-element-click',
-      pattern: /<(?:div|span)\b[^>]*@click(?:\.[\w-]+)*\s*=/gs
+      pattern: /<(?:div|span|li|p|i)\b[^>]*@click(?:\.[\w-]+)*\s*=/gs
     }
   ]
 
   rules.forEach(({ name, pattern }) => {
     for (const match of content.matchAll(pattern)) {
       if (match.index == null || match[0].includes('data-ui-audit-allow')) continue
-      findings.push({
-        file: path.relative(projectRoot, file).replaceAll('\\', '/'),
-        line: lineAt(content, match.index),
-        rule: name,
-        excerpt: excerptAt(content, match.index)
-      })
+      addFinding(match.index, name)
     }
   })
+
+  if (path.extname(file) === '.vue') {
+    for (const match of content.matchAll(/<img\b[^>]*>/gs)) {
+      if (match.index == null || match[0].includes('data-ui-audit-allow')) continue
+      const hasWidth = /\s:?width\s*=/.test(match[0])
+      const hasHeight = /\s:?height\s*=/.test(match[0])
+      if (!hasWidth || !hasHeight) addFinding(match.index, 'images/require-intrinsic-size')
+    }
+
+    for (const match of content.matchAll(/<a\b[^>]*target\s*=\s*["']_blank["'][^>]*>/gs)) {
+      if (match.index == null || match[0].includes('data-ui-audit-allow')) continue
+      if (!/rel\s*=\s*["'][^"']*noopener[^"']*["']/.test(match[0])) {
+        addFinding(match.index, 'security/external-link-noopener')
+      }
+    }
+
+    const uploadButtonPatterns = [
+      /<ElUpload\b[\s\S]*?<ElButton\b[\s\S]*?<\/ElUpload>/g,
+      /h\(\s*ElUpload[\s\S]{0,2000}?h\(\s*ElButton/g
+    ]
+    uploadButtonPatterns.forEach((pattern) => {
+      for (const match of content.matchAll(pattern)) {
+        if (match.index != null) addFinding(match.index, 'a11y/no-nested-upload-button')
+      }
+    })
+
+    if (relativeFile.startsWith('src/views/')) {
+      for (const match of content.matchAll(/<(?:ElDialog|el-dialog|ElDrawer|el-drawer)\b/g)) {
+        if (match.index != null) addFinding(match.index, 'architecture/use-art-overlay')
+      }
+
+      for (const match of content.matchAll(/console\.(?:log|debug)\s*\(/g)) {
+        if (match.index != null) addFinding(match.index, 'quality/no-view-debug-log')
+      }
+
+      const rawErrorPatterns = [
+        /\bString\(\s*(?:error|err)\s*\)/g,
+        /\bJSON\.stringify\(\s*(?:error|err)\b[^)]*\)/g
+      ]
+      rawErrorPatterns.forEach((pattern) => {
+        for (const match of content.matchAll(pattern)) {
+          if (match.index != null) addFinding(match.index, 'quality/no-raw-error-render')
+        }
+      })
+    }
+  }
 
   return findings
 }

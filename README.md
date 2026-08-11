@@ -214,13 +214,19 @@ pnpm build
 
 常用命令：
 
-| 命令                 | 说明                                    |
-| -------------------- | --------------------------------------- |
-| `pnpm dev`           | 启动开发服务器                          |
-| `pnpm check`         | 运行 UI 审计、类型检查、Lint 与单元测试 |
-| `pnpm test:e2e`      | 运行 Playwright 端到端测试              |
-| `pnpm build`         | 构建生产版本                            |
-| `pnpm build:analyze` | 生成构建体积分析                        |
+| 命令                      | 说明                                               |
+| ------------------------- | -------------------------------------------------- |
+| `pnpm dev`                | 启动开发服务器                                     |
+| `pnpm check:fast`         | 运行 UI 审计、类型检查、ESLint 与单元测试          |
+| `pnpm check`              | 在快速检查基础上增加 Stylelint                     |
+| `pnpm check:ci`           | 运行完整静态检查、快照校验、生产构建与核心视觉回归 |
+| `pnpm lint:stylelint:fix` | 自动修复可安全处理的样式规范问题                   |
+| `pnpm test:e2e`           | 运行完整 Playwright 端到端测试                     |
+| `pnpm test:e2e:core`      | 运行 1440 桌面与 390 移动端核心页面视觉回归        |
+| `pnpm test:e2e:install`   | 安装 CI 所需的 Playwright Chromium                 |
+| `pnpm snapshot:check`     | 校验 AI 项目快照是否与当前代码一致                 |
+| `pnpm build`              | 构建生产版本                                       |
+| `pnpm build:analyze`      | 生成构建体积分析                                   |
 
 ## 项目结构
 

@@ -194,6 +194,7 @@
 <script setup lang="ts">
   import ArtEmptyState from '@/components/core/layouts/art-empty-state/index.vue'
   import WebSocketClient from '@/utils/socket'
+  import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import { ElMessage } from 'element-plus'
 
   defineOptions({ name: 'WidgetsSocketChat' })
@@ -347,7 +348,10 @@
       )
     } catch (error) {
       isConnecting.value = false
-      const errorMessage = error instanceof Error ? error.message : String(error)
+      const errorMessage = getFriendlySupabaseErrorMessage(
+        error,
+        '无法连接到 WebSocket 服务，请检查地址后重试'
+      )
       addLog('error', `连接失败: ${errorMessage}`)
       ElMessage.error('连接失败，请检查服务器地址')
     }
@@ -419,7 +423,10 @@
       addLog('info', `发送消息: ${message}`)
       ElMessage.success('消息发送成功')
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error)
+      const errorMessage = getFriendlySupabaseErrorMessage(
+        error,
+        '消息发送失败，请检查连接状态后重试'
+      )
       addLog('error', `发送失败: ${errorMessage}`)
       ElMessage.error('发送消息失败')
     }

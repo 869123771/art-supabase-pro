@@ -2,6 +2,7 @@ import { supabase } from '@/plugins/supabase'
 import { isBoolean } from 'lodash-es'
 import { ElMessage } from 'element-plus'
 import type { QueryResult } from '@/types/api/response'
+import { getFriendlySupabaseErrorMessage, normalizeSupabaseFunctionError } from '@/utils/supabase'
 
 export type SupabaseAction = 'select' | 'insert' | 'update' | 'delete' | 'rpc'
 export const WRITE_PERMISSION_DENIED_MESSAGE = '当前账号没有该数据的维护权限'
@@ -16,6 +17,7 @@ export interface RunQueryOptions {
   convertToCamelShadow?: boolean // 是否只转换最外层的驼峰命名，默认 false（深层转换）
   returnRawError?: boolean // 是否返回原生错误字段，默认 false
   message?: string
+  errorMessage?: string // 未识别技术异常的用户友好兜底提示
   noAffectedMessage?: string
   formatErrorMessage?: (error: unknown, responseBody?: unknown) => string
   action?: SupabaseAction
@@ -54,49 +56,55 @@ export function useSupabase() {
     return x !== null && typeof x === 'object' && x.constructor === Object
   }
 
+  // Key conversion preserves values but TypeScript cannot derive the transformed key shape.
+  // Keep the unavoidable generic assertion at this single serialization boundary.
+  function asKeyTransformResult<T>(value: unknown): T {
+    return value as T
+  }
+
   /** Recursively convert object keys to camelCase */
   function keysToCamelDeep<T>(obj: unknown): T {
     if (Array.isArray(obj)) {
-      return obj.map(keysToCamelDeep) as unknown as T
+      return asKeyTransformResult<T>(obj.map(keysToCamelDeep))
     }
     if (isPlainObject(obj)) {
       const res: Record<string, unknown> = {}
       for (const [k, v] of Object.entries(obj)) {
         res[toCamel(k)] = keysToCamelDeep(v)
       }
-      return res as T
+      return asKeyTransformResult<T>(res)
     }
-    return obj as T
+    return asKeyTransformResult<T>(obj)
   }
 
   /** Only convert top-level object keys to camelCase */
   function keysToCamelShallow<T>(obj: unknown): T {
     if (Array.isArray(obj)) {
-      return obj as unknown as T
+      return asKeyTransformResult<T>(obj)
     }
     if (isPlainObject(obj)) {
       const res: Record<string, unknown> = {}
       for (const [k, v] of Object.entries(obj)) {
         res[toCamel(k)] = v
       }
-      return res as T
+      return asKeyTransformResult<T>(res)
     }
-    return obj as T
+    return asKeyTransformResult<T>(obj)
   }
 
   /** Recursively convert object keys to snake_case */
   function keysToSnakeDeep<T>(obj: T): T {
     if (Array.isArray(obj)) {
-      return obj.map(keysToSnakeDeep) as unknown as T
+      return asKeyTransformResult<T>(obj.map(keysToSnakeDeep))
     }
     if (isPlainObject(obj)) {
       const res: Record<string, unknown> = {}
       for (const [k, v] of Object.entries(obj)) {
         res[toSnake(k)] = keysToSnakeDeep(v)
       }
-      return res as T
+      return asKeyTransformResult<T>(res)
     }
-    return obj as T
+    return asKeyTransformResult<T>(obj)
   }
 
   /**
@@ -134,24 +142,31 @@ export function useSupabase() {
 
     const { data, error, count, response } = await queryFactory()
     if (error) {
-      const responseJson = await response?.json?.()
-      const responseError = isPlainObject(responseJson) ? responseJson : undefined
+      let responseJson: unknown
+      try {
+        responseJson = await response?.json?.()
+      } catch {
+        // 部分 SDK 响应体已被消费；继续从异常 context 中读取。
+      }
+      const normalizedError = await normalizeSupabaseFunctionError(error)
+      const responseBody = responseJson ?? (normalizedError !== error ? normalizedError : undefined)
+      const responseError = isPlainObject(responseBody) ? responseBody : undefined
       const queryError = isPlainObject(error) ? error : undefined
       const message =
-        options.formatErrorMessage?.(error, responseJson) ||
-        String(
-          (responseError?.message || responseError?.error || queryError?.message) ??
-            JSON.stringify(error)
+        options.formatErrorMessage?.(error, responseBody) ||
+        getFriendlySupabaseErrorMessage(
+          [responseError, queryError, normalizedError, error],
+          options.errorMessage
         )
       if (showMessage || showErrorMessage) {
         ElMessage.error(message)
       }
       if (breakReturn) {
-        throw new Error(message)
+        throw new Error(message, { cause: error })
       }
       return {
         data: null,
-        error: returnRawError && responseJson ? keysToCamelDeep(responseJson) : error
+        error: returnRawError && responseBody ? keysToCamelDeep(responseBody) : normalizedError
       }
     }
 

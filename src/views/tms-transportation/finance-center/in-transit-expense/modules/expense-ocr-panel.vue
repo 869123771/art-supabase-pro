@@ -56,6 +56,7 @@
 </template>
 
 <script setup lang="ts">
+  import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import { ElMessage } from 'element-plus'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import ArtUploadImage from '@/components/core/forms/art-upload-image/index.vue'
@@ -91,14 +92,6 @@
     confidencePercent.value >= 85 ? 'success' : confidencePercent.value >= 65 ? 'warning' : 'danger'
   )
 
-  function errorMessage(error: unknown): string {
-    if (error && typeof error === 'object' && 'message' in error) {
-      const message = (error as { message?: unknown }).message
-      if (typeof message === 'string' && message) return message
-    }
-    return '票据识别失败，请稍后重试或改为手工填写'
-  }
-
   async function handleAnalyze(): Promise<void> {
     if (!props.enabled || !imageUrls.value.length || state.analyzing) return
     state.analyzing = true
@@ -109,7 +102,9 @@
       ElMessage.success('票据识别完成，请核对后应用')
     } catch (error) {
       emit('failed')
-      ElMessage.error(errorMessage(error))
+      ElMessage.error(
+        getFriendlySupabaseErrorMessage(error, '票据识别失败，请稍后重试或改为手工填写')
+      )
     } finally {
       state.analyzing = false
     }

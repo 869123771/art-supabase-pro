@@ -264,9 +264,9 @@
       padding: 12px 14px;
       line-height: 1.7;
       color: var(--el-text-color-regular);
+      overflow-wrap: anywhere;
       background: var(--el-fill-color-lighter);
       border-radius: var(--el-border-radius-base);
-      overflow-wrap: anywhere;
     }
 
     :deep(.art-descriptions .el-descriptions__label) {
@@ -274,7 +274,7 @@
       font-weight: 600;
     }
 
-    @media (max-width: 900px) {
+    @media (width <= 900px) {
       &__summary {
         grid-template-columns: 1fr;
       }

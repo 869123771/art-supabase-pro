@@ -52,20 +52,15 @@
         <ElButton @click="labelPosition = 'top'"> label 顶部对齐 </ElButton>
       </ElSpace>
     </div>
-
-    <!-- 图片预览对话框 -->
-    <ElDialog v-model="dialogVisible">
-      <img w-full :src="dialogImageUrl" alt="Preview Image" class="w-full h-auto" />
-    </ElDialog>
   </div>
 </template>
 
 <script setup lang="ts">
+  import ArtUploadImage from '@/components/core/forms/art-upload-image/index.vue'
   import ArtWangEditor from '@/components/core/forms/art-wang-editor/index.vue'
   import type { FormItem } from '@/components/core/forms/art-form/index.vue'
-  import { ElMessage, ElUpload, ElButton, ElIcon, ElInput } from 'element-plus'
+  import { ElMessage, ElUpload, ElButton, ElInput } from 'element-plus'
   import type { UploadFile, UploadFiles, UploadUserFile } from 'element-plus'
-  import { Plus } from '@element-plus/icons-vue'
 
   interface Emits {
     (e: 'update:modelValue', value: Record<string, unknown>): void
@@ -93,8 +88,7 @@
     iconSelector?: string
     status?: boolean
     systemName?: string
-    fileUpload: UploadUserFile[]
-    imageUpload: UploadUserFile[]
+    imageUpload: string[]
     multipleFiles: UploadUserFile[]
     richTextContent: string
   }
@@ -104,8 +98,7 @@
   const FETCH_DELAY = 500
 
   const formRef = ref()
-  const dialogVisible = ref(false)
-  const dialogImageUrl = ref('')
+  const eventFeedback = ref('等待输入')
 
   /**
    * 表单数据
@@ -124,7 +117,6 @@
     iconSelector: undefined,
     status: undefined,
     systemName: undefined,
-    fileUpload: [],
     imageUpload: [],
     multipleFiles: [],
     richTextContent: ''
@@ -520,17 +512,20 @@
       key: 'event',
       type: 'input',
       props: {
-        placeholder: '输入内容触发事件，控制台查看',
+        placeholder: '输入内容触发事件，右侧显示反馈',
         clearable: true,
         prefixIcon: 'Search',
         // prefix: () => h('span', {}, '123'),
         // 事件必须以 on 开头，然后驼峰式命名拼接 ElementPlus 事件名
         onInput(val: string) {
-          console.log('输入事件', val)
+          eventFeedback.value = val ? `已输入 ${val.length} 字` : '等待输入'
         },
         onClear() {
-          console.log('清空事件')
+          eventFeedback.value = '已清空'
         }
+      },
+      slots: {
+        append: () => h('span', { class: 'text-xs text-g-500' }, eventFeedback.value)
       }
     },
 
@@ -606,16 +601,10 @@
             autoUpload: false,
             showFileList: true,
             // accept: '.pdf,.doc,.docx,.txt',
-            beforeUpload: (file: File) => {
-              console.log('准备上传文件:', file.name)
-              return true
-            },
-            onChange: (file: UploadFile, fileList: UploadFiles) => {
-              console.log('多文件变化:', file, fileList)
+            onChange: (_file: UploadFile, fileList: UploadFiles) => {
               formData.value.multipleFiles = fileList as UploadUserFile[]
             },
-            onRemove: (file: UploadFile, fileList: UploadFiles) => {
-              console.log('删除文件:', file, fileList)
+            onRemove: (_file: UploadFile, fileList: UploadFiles) => {
               formData.value.multipleFiles = fileList as UploadUserFile[]
             },
             onExceed: (files: File[], fileList: UploadUserFile[]) => {
@@ -625,7 +614,7 @@
             }
           },
           {
-            default: () => [h(ElButton, { type: 'primary' }, () => '点击上传')]
+            default: () => [h('span', { class: 'el-button el-button--primary' }, '点击上传')]
           }
         )
     },
@@ -635,45 +624,16 @@
       key: 'imageUpload',
       span: 12,
       render: () =>
-        h(
-          ElUpload,
-          {
-            accept: '.jpg,.jpeg,.png,.gif,.webp',
-            limit: 4,
-            action: '#',
-            autoUpload: false,
-            showFileList: true,
-            listType: 'picture-card',
-            beforeUpload: (file: File) => {
-              const isImage = file.type.startsWith('image/')
-              const isLt2M = file.size / 1024 / 1024 < 2
-              if (!isImage) {
-                ElMessage.error('只能上传图片文件!')
-                return false
-              }
-              if (!isLt2M) {
-                ElMessage.error('图片大小不能超过 2MB!')
-                return false
-              }
-              return true
-            },
-            onChange: (file: UploadFile, fileList: UploadFiles) => {
-              console.log('图片变化:', file, fileList)
-              formData.value.imageUpload = fileList as UploadUserFile[]
-            },
-            onRemove: (file: UploadFile, fileList: UploadFiles) => {
-              console.log('删除图片:', file, fileList)
-              formData.value.imageUpload = fileList as UploadUserFile[]
-            },
-            onPreview: (file: UploadFile) => {
-              dialogImageUrl.value = file.url || ''
-              dialogVisible.value = true
-            }
-          },
-          {
-            default: () => [h(ElIcon, { type: 'primary' }, () => h(Plus))]
+        h(ArtUploadImage, {
+          modelValue: formData.value.imageUpload,
+          title: '上传图片',
+          multiple: true,
+          limit: 4,
+          fileSize: 2 * 1024 * 1024,
+          'onUpdate:modelValue': (value: string | string[]) => {
+            formData.value.imageUpload = Array.isArray(value) ? value : value ? [value] : []
           }
-        )
+        })
     },
     // 富文本编辑器示例 - 使用 render 函数渲染
     {
@@ -684,10 +644,9 @@
         h(ArtWangEditor, {
           modelValue: formData.value.richTextContent,
           height: '300px',
-          placeholder: '请输入富文本内容...',
+          placeholder: '请输入富文本内容…',
           'onUpdate:modelValue': (value: string) => {
             formData.value.richTextContent = value
-            console.log('富文本内容变化:', value)
           },
           toolbarKeys: [
             'headerSelect',
@@ -712,7 +671,7 @@
    * 处理表单重置事件
    */
   const handleReset = (): void => {
-    console.log('重置表单')
+    eventFeedback.value = '等待输入'
     emit('reset')
   }
 
@@ -722,7 +681,7 @@
   const handleSubmit = async (params: Record<string, unknown>): Promise<void> => {
     await formRef.value.validate()
     emit('search', params)
-    console.log('表单数据', params)
+    ElMessage.success('表单校验通过，可以继续提交')
   }
 
   /**

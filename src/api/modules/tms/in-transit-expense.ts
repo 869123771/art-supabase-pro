@@ -1,3 +1,4 @@
+import { normalizeSupabaseFunctionError } from '@/utils/supabase'
 import { useSupabase } from '@/hooks'
 import type { QueryResult } from '@/types/api/response'
 import { applyDateRange, type SupabaseQueryLike } from '@/api/providers/supabase/query'
@@ -35,7 +36,10 @@ const WAYBILL_OPTION_SELECT = `
   )
 `
 
-function applyExpenseFilters(query: SupabaseQueryLike, params: ExpenseSearch): SupabaseQueryLike {
+function applyExpenseFilters<TQuery extends SupabaseQueryLike>(
+  query: TQuery,
+  params: ExpenseSearch
+): TQuery {
   const {
     recordId,
     orderId,
@@ -64,10 +68,10 @@ function applyExpenseFilters(query: SupabaseQueryLike, params: ExpenseSearch): S
   })
 }
 
-function applyReimbursementFilters(
-  query: SupabaseQueryLike,
+function applyReimbursementFilters<TQuery extends SupabaseQueryLike>(
+  query: TQuery,
   params: ReimbursementSearch
-): SupabaseQueryLike {
+): TQuery {
   const { keyword, paymentMethod, plannedPaymentDateRange, status } = params
   if (status) query = query.eq('status', status)
   if (paymentMethod) query = query.eq('payment_method', paymentMethod)
@@ -127,7 +131,7 @@ export async function fetchInTransitExpenseList(params: ExpenseSearch) {
     .select('*', { count: 'exact' })
     .order('occurred_at', { ascending: false })
     .order('create_time', { ascending: false })
-    .range(from, to) as unknown as SupabaseQueryLike
+    .range(from, to)
   query = applyExpenseFilters(query, params)
   return await responseHandle<Expense[]>(() => query, {
     ignoreCheck: true,
@@ -237,7 +241,7 @@ export async function fetchExpenseReimbursementList(params: ReimbursementSearch)
     .from('tms_expense_reimbursement_summary')
     .select('*', { count: 'exact' })
     .order('create_time', { ascending: false })
-    .range(from, to) as unknown as SupabaseQueryLike
+    .range(from, to)
   query = applyReimbursementFilters(query, params)
   return await responseHandle<Reimbursement[]>(() => query, {
     ignoreCheck: true,
@@ -343,7 +347,7 @@ export async function analyzeInTransitExpenseByAi(
       'ai-in-transit-expense-ocr',
       { body: { action: 'analyze', imageUrls } }
     )
-  return { data: data ?? null, error: await normalizeFunctionInvokeError(error) }
+  return { data: data ?? null, error: await normalizeSupabaseFunctionError(error) }
 }
 
 export async function reviewInTransitExpenseOcrArtifact(params: {
@@ -369,7 +373,7 @@ export async function fetchInTransitExpenseOcrRunList(params: OcrRunSearch) {
     .select('*', { count: 'exact' })
     .eq('feature', 'in_transit_expense_ocr')
     .order('started_at', { ascending: false })
-    .range(from, to) as unknown as SupabaseQueryLike
+    .range(from, to)
   if (status) query = query.eq('status', status)
   if (keyword) {
     const value = keyword.trim()
@@ -385,20 +389,4 @@ export async function fetchInTransitExpenseOcrRunList(params: OcrRunSearch) {
     ignoreCheck: true,
     showErrorMessage: true
   })
-}
-
-async function normalizeFunctionInvokeError(error: unknown): Promise<unknown | null> {
-  if (!error || typeof error !== 'object' || !('context' in error)) return error
-  const context = (error as { context?: unknown }).context
-  if (!(context instanceof Response)) return error
-  try {
-    const payload = (await context.clone().json()) as { code?: unknown; message?: unknown }
-    if (typeof payload.message !== 'string' || !payload.message) return error
-    return {
-      code: typeof payload.code === 'string' ? payload.code : undefined,
-      message: payload.message
-    }
-  } catch {
-    return error
-  }
 }

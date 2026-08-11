@@ -125,6 +125,7 @@
 </template>
 
 <script setup lang="tsx">
+  import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import type { ComputedRef, Ref, UnwrapNestedRefs } from 'vue'
   import type { FormRules } from 'element-plus'
@@ -1118,7 +1119,7 @@
       form.attachments = [...(form.attachments ?? []), nextAttachment]
       ElMessage.success('附件上传成功')
     } catch (error) {
-      ElMessage.error(error instanceof Error ? error.message : '附件上传失败')
+      ElMessage.error(getFriendlySupabaseErrorMessage(error, '附件上传失败'))
     } finally {
       page.attachmentUploading = false
     }

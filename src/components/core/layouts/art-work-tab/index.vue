@@ -46,6 +46,7 @@
           :ref="item.path"
           :id="`scroll-li-${index}`"
           role="tab"
+          data-ui-audit-allow="aria-tab"
           :aria-selected="item.path === activeTab"
           :tabindex="item.path === activeTab ? 0 : -1"
           @click="clickTab(item)"

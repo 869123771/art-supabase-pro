@@ -1,5 +1,6 @@
 import { useSupabase } from '@/hooks'
 import { applyCreateTimeRange, type SupabaseQueryLike } from '@/api/providers/supabase/query'
+import { compact, uniq } from 'lodash-es'
 
 type OrderRecord = Api.Tms.Order.OrderRecord
 type OrderSearchParams = Api.Tms.Order.OrderSearchParams
@@ -51,12 +52,12 @@ export const ORDER_SELECT = `
 `
 
 export const uniqueStringValues = (values: Array<string | null | undefined>): string[] =>
-  Array.from(new Set(values.map((value) => String(value ?? '').trim()).filter(Boolean)))
+  uniq(compact(values.map((value) => String(value ?? '').trim())))
 
-export const applyOrderFilters = (
-  query: SupabaseQueryLike,
+export const applyOrderFilters = <TQuery extends SupabaseQueryLike>(
+  query: TQuery,
   params: OrderSearchParams
-): SupabaseQueryLike => {
+): TQuery => {
   const {
     cargoKeyword,
     shippingKeyword,
@@ -95,10 +96,10 @@ export const applyOrderFilters = (
   return applyCreateTimeRange(query, createTimeRange)
 }
 
-export const applyOrderListFilters = (
-  query: SupabaseQueryLike,
+export const applyOrderListFilters = <TQuery extends SupabaseQueryLike>(
+  query: TQuery,
   params: OrderSearchParams
-): SupabaseQueryLike => applyOrderFilters(query.neq('order_status', 'created'), params)
+): TQuery => applyOrderFilters(query.neq('order_status', 'created'), params)
 
 const DRIVER_WAYBILL_SELECT =
   'id, tenant_id, waybill_no, status, accepted_at, loaded_at, departed_at, unloaded_at, completed_at, cancelled_at, update_time'

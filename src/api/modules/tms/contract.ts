@@ -19,10 +19,10 @@ const CONTRACT_SELECT = `
   )
 `
 
-const applyContractFilters = (
-  query: SupabaseQueryLike,
+const applyContractFilters = <TQuery extends SupabaseQueryLike>(
+  query: TQuery,
   params: ContractSearchParams
-): SupabaseQueryLike => {
+): TQuery => {
   const { contractStatus, carrierId, billingMethod, keyword, createTimeRange, recordId } = params
   if (recordId) query = query.eq('id', recordId)
   if (contractStatus) query = query.eq('contract_status', contractStatus)
@@ -46,7 +46,7 @@ export async function fetchContractList(params: ContractSearchParams, options?: 
     .from('tms_contract')
     .select(CONTRACT_SELECT, { count: 'exact' })
     .order('create_time', { ascending: false })
-    .range(from, to) as unknown as SupabaseQueryLike
+    .range(from, to)
   query = applyContractFilters(query, params)
   return await responseHandle<Contract[]>(() => withRequestOptions(query, options), {
     ignoreCheck: true,
@@ -62,7 +62,7 @@ export async function exportContractList(
     .from('tms_contract')
     .select(CONTRACT_SELECT)
     .order('create_time', { ascending: false })
-    .limit(maxRows) as unknown as SupabaseQueryLike
+    .limit(maxRows)
   query = ids?.length ? query.in('id', ids) : applyContractFilters(query, params)
   return await responseHandle<Contract[]>(() => query, {
     ignoreCheck: true,

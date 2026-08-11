@@ -45,42 +45,44 @@
           description="需要离岗时，可在上方创建审批委托。"
           icon="ri:user-shared-line"
         />
-        <div v-else class="workflow-delegation__list">
-          <article v-for="record in state.records" :key="record.id">
-            <div class="workflow-delegation__record-icon">
-              <ArtSvgIcon
-                :icon="
-                  record.delegatorUserId === state.userId
-                    ? 'ri:share-forward-line'
-                    : 'ri:inbox-unarchive-line'
-                "
-              />
-            </div>
-            <div class="workflow-delegation__record-main">
-              <div>
-                <strong>
-                  {{ record.delegatorUserId === state.userId ? '委托给' : '来自' }}
-                  {{ counterpartName(record) }}
-                </strong>
-                <ElTag :type="statusOf(record).type" size="small" effect="light" round>
-                  {{ statusOf(record).label }}
-                </ElTag>
+        <ElScrollbar v-else max-height="280px">
+          <div class="workflow-delegation__list">
+            <article v-for="record in state.records" :key="record.id">
+              <div class="workflow-delegation__record-icon">
+                <ArtSvgIcon
+                  :icon="
+                    record.delegatorUserId === state.userId
+                      ? 'ri:share-forward-line'
+                      : 'ri:inbox-unarchive-line'
+                  "
+                />
               </div>
-              <span>{{ formatPeriod(record) }}</span>
-              <p>{{ record.reason }}</p>
-              <small v-if="record.revokeReason">撤销原因：{{ record.revokeReason }}</small>
-            </div>
-            <ElButton
-              v-if="canRevoke(record)"
-              type="danger"
-              plain
-              size="small"
-              @click="handleRevoke(record)"
-            >
-              撤销
-            </ElButton>
-          </article>
-        </div>
+              <div class="workflow-delegation__record-main">
+                <div>
+                  <strong>
+                    {{ record.delegatorUserId === state.userId ? '委托给' : '来自' }}
+                    {{ counterpartName(record) }}
+                  </strong>
+                  <ElTag :type="statusOf(record).type" size="small" effect="light" round>
+                    {{ statusOf(record).label }}
+                  </ElTag>
+                </div>
+                <span>{{ formatPeriod(record) }}</span>
+                <p>{{ record.reason }}</p>
+                <small v-if="record.revokeReason">撤销原因：{{ record.revokeReason }}</small>
+              </div>
+              <ElButton
+                v-if="canRevoke(record)"
+                type="danger"
+                plain
+                size="small"
+                @click="handleRevoke(record)"
+              >
+                撤销
+              </ElButton>
+            </article>
+          </div>
+        </ElScrollbar>
       </section>
     </div>
   </ArtDialog>
@@ -387,8 +389,7 @@
     &__list {
       display: grid;
       gap: 10px;
-      max-height: 280px;
-      overflow: auto;
+      padding-right: 8px;
     }
 
     &__list article {

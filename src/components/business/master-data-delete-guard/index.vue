@@ -113,7 +113,8 @@
 </template>
 
 <script setup lang="ts">
-  import { groupBy } from 'lodash-es'
+  import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
+  import { groupBy, uniq } from 'lodash-es'
   import { ElMessage } from 'element-plus'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
@@ -411,7 +412,7 @@
 
   const toggleRecordSelection = (recordId: string, checked: boolean): void => {
     selectedRecordIds.value = checked
-      ? Array.from(new Set([...selectedRecordIds.value, recordId]))
+      ? uniq([...selectedRecordIds.value, recordId])
       : selectedRecordIds.value.filter((id) => id !== recordId)
   }
 
@@ -436,7 +437,7 @@
   const toggleGroupSelection = (group: DependencyGroup, checked: boolean): void => {
     const groupRecordIds = getGroupSafeRecords(group).map((record) => record.recordId)
     selectedRecordIds.value = checked
-      ? Array.from(new Set([...selectedRecordIds.value, ...groupRecordIds]))
+      ? uniq([...selectedRecordIds.value, ...groupRecordIds])
       : selectedRecordIds.value.filter((recordId) => !groupRecordIds.includes(recordId))
   }
 
@@ -507,7 +508,7 @@
       ElMessage.success(`已清理 ${deletedCount} 项，其余业务历史仍需保留或处理`)
     } catch (error) {
       if (error !== 'cancel' && error !== 'close') {
-        ElMessage.error(error instanceof Error ? error.message : '清理失败，请稍后重试')
+        ElMessage.error(getFriendlySupabaseErrorMessage(error, '清理失败，请稍后重试'))
       }
     } finally {
       cleanupLoading.value = false
@@ -570,16 +571,16 @@
 
       p {
         margin: 0;
-        color: var(--el-text-color-primary);
         line-height: 1.6;
+        color: var(--el-text-color-primary);
       }
 
       span {
         display: block;
         margin-top: 2px;
-        color: var(--el-text-color-secondary);
         font-size: 13px;
         line-height: 1.5;
+        color: var(--el-text-color-secondary);
       }
 
       .el-tag {
@@ -625,9 +626,9 @@
         justify-content: center;
         width: 22px;
         height: 22px;
-        color: var(--el-color-warning-dark-2);
         font-size: 12px;
         font-weight: 700;
+        color: var(--el-color-warning-dark-2);
         background: var(--el-color-warning-light-9);
         border-radius: 50%;
       }
@@ -639,9 +640,9 @@
 
     &__group-help {
       margin: 5px 0 0 30px;
-      color: var(--el-text-color-secondary);
       font-size: 13px;
       line-height: 1.5;
+      color: var(--el-text-color-secondary);
     }
 
     &__records {
@@ -678,14 +679,14 @@
       }
 
       strong {
-        color: var(--el-text-color-primary);
         font-size: 13px;
+        color: var(--el-text-color-primary);
       }
 
       span {
         margin-top: 2px;
-        color: var(--el-text-color-secondary);
         font-size: 12px;
+        color: var(--el-text-color-secondary);
       }
     }
 
@@ -699,9 +700,9 @@
     &__notice {
       align-items: flex-start;
       padding: 10px 12px;
-      color: var(--el-color-warning-dark-2);
       font-size: 13px;
       line-height: 1.5;
+      color: var(--el-color-warning-dark-2);
       background: var(--el-color-warning-light-9);
       border-radius: var(--el-border-radius-base);
 
@@ -718,9 +719,9 @@
       > span {
         min-width: 0;
         overflow: hidden;
-        color: var(--el-text-color-secondary);
-        font-size: 13px;
         text-overflow: ellipsis;
+        font-size: 13px;
+        color: var(--el-text-color-secondary);
         white-space: nowrap;
       }
     }
@@ -729,8 +730,8 @@
       &__lead,
       &__record,
       &__footer {
-        align-items: stretch;
         flex-direction: column;
+        align-items: stretch;
       }
 
       &__record-actions,

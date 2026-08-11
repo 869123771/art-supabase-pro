@@ -78,6 +78,7 @@
 
 <script setup lang="ts">
   import dayjs from 'dayjs'
+  import { omit } from 'lodash-es'
   import { useMediaQuery } from '@vueuse/core'
   import type { ComputedRef } from 'vue'
   import type { FormRules } from 'element-plus'
@@ -460,10 +461,7 @@
   }
 
   function buildExpensePayload(): Expense {
-    const payload = structuredClone(toRaw(form.data)) as unknown as Record<string, unknown>
-    delete payload.expenseRegionPath
-    delete payload.locationPicker
-    return payload as unknown as Expense
+    return omit(structuredClone(toRaw(form.data)), ['expenseRegionPath', 'locationPicker'])
   }
 
   async function handleSubmit(): Promise<boolean> {

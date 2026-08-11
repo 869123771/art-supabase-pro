@@ -538,9 +538,9 @@
     }
 
     &__governance {
-      height: 100%;
       justify-content: space-between;
       min-width: 0;
+      height: 100%;
       padding: 16px 18px;
       background: color-mix(in srgb, var(--art-main-bg-color) 96%, var(--el-color-warning));
 

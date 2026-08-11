@@ -95,6 +95,7 @@
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import { formatMenuTitle } from '@/utils/router'
   import TreeUtils from '@utils/tree'
+  import { uniq } from 'lodash-es'
   import type { AppRouteRecord } from '@/types'
   import {
     fetchGetEnableMenuList,
@@ -241,7 +242,7 @@
       return getCheckedKeys.value
     }
 
-    return [...new Set([...getCheckedKeys.value, ...getHalfCheckedKeys.value])]
+    return uniq([...getCheckedKeys.value, ...getHalfCheckedKeys.value])
   }
 
   const handleCascadeCheckChange = async (): Promise<void> => {
@@ -287,16 +288,17 @@
 
     &__context {
       display: flex;
-      min-width: 0;
+      gap: 10px;
       align-items: center;
+      min-width: 0;
       padding: 12px 14px;
       margin-bottom: 12px;
-      gap: 10px;
     }
 
     &__context-icon {
       display: grid;
       flex: 0 0 38px;
+      place-items: center;
       width: 38px;
       height: 38px;
       font-size: 18px;
@@ -304,7 +306,6 @@
       background: var(--el-color-primary-light-9);
       border: 1px solid var(--el-color-primary-light-7);
       border-radius: var(--art-control-radius);
-      place-items: center;
     }
 
     &__context-copy {
@@ -312,15 +313,15 @@
 
       > div {
         display: flex;
-        min-width: 0;
-        align-items: center;
         gap: 8px;
+        align-items: center;
+        min-width: 0;
 
         strong {
           overflow: hidden;
+          text-overflow: ellipsis;
           font-size: 15px;
           color: var(--el-text-color-primary);
-          text-overflow: ellipsis;
           white-space: nowrap;
         }
 
@@ -352,13 +353,13 @@
 
     &__toolbar {
       display: flex;
+      gap: 12px;
       align-items: center;
       justify-content: space-between;
       padding: 10px 12px;
       margin-bottom: 8px;
       background: var(--el-fill-color-extra-light);
       border-radius: var(--el-border-radius-base);
-      gap: 12px;
 
       .el-input {
         width: min(320px, 100%);
@@ -382,9 +383,9 @@
 
     &__node {
       display: flex;
-      min-width: 0;
-      align-items: center;
       gap: 7px;
+      align-items: center;
+      min-width: 0;
 
       > span {
         overflow: hidden;
@@ -401,9 +402,9 @@
 
     &__footer {
       display: flex;
+      gap: 12px;
       align-items: center;
       justify-content: space-between;
-      gap: 12px;
     }
 
     &__footer-actions {
@@ -414,8 +415,8 @@
 
     @media (width <= 640px) {
       &__context {
-        align-items: flex-start;
         flex-wrap: wrap;
+        align-items: flex-start;
       }
 
       &__selection-count {
@@ -423,8 +424,8 @@
       }
 
       &__toolbar {
-        align-items: stretch;
         flex-direction: column;
+        align-items: stretch;
 
         .el-input {
           width: 100%;
@@ -436,8 +437,8 @@
       }
 
       &__footer {
-        align-items: stretch;
         flex-direction: column;
+        align-items: stretch;
       }
 
       &__footer-actions {

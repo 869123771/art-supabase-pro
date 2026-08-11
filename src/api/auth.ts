@@ -1,5 +1,5 @@
 import { useSupabase } from '@/hooks'
-import { getSupabaseAuthErrorMessage } from '@/utils/supabase-auth-error'
+import { formatSupabaseAuthErrorMessage } from '@/utils/supabase'
 const { supabase, keysToSnakeDeep, responseHandle } = useSupabase()
 
 interface AuthSessionResponse {
@@ -49,7 +49,7 @@ export async function login(params: Api.Auth.RegisterParams) {
       showMessage: true,
       message: '登录成功',
       ignoreCheck: true,
-      formatErrorMessage: getSupabaseAuthErrorMessage
+      formatErrorMessage: formatSupabaseAuthErrorMessage
     }
   )
 }
@@ -66,7 +66,7 @@ export async function forgetPassword(params: Api.Auth.ForgetPwdParams) {
       ignoreCheck: true,
       breakReturn: true,
       showErrorMessage: true,
-      formatErrorMessage: getSupabaseAuthErrorMessage
+      formatErrorMessage: formatSupabaseAuthErrorMessage
     }
   )
 }
@@ -90,7 +90,7 @@ export async function resetPassword(params: Api.Auth.ResetPwdParams) {
       ignoreCheck: true,
       breakReturn: true,
       showErrorMessage: true,
-      formatErrorMessage: getSupabaseAuthErrorMessage
+      formatErrorMessage: formatSupabaseAuthErrorMessage
     }
   )
 }
@@ -158,7 +158,7 @@ export async function updateCurrentUserPassword(currentPassword: string, newPass
       showErrorMessage: true,
       breakReturn: true,
       ignoreCheck: true,
-      formatErrorMessage: getSupabaseAuthErrorMessage
+      formatErrorMessage: formatSupabaseAuthErrorMessage
     }
   )
 
@@ -167,7 +167,7 @@ export async function updateCurrentUserPassword(currentPassword: string, newPass
     message: '密码修改成功',
     breakReturn: true,
     ignoreCheck: true,
-    formatErrorMessage: getSupabaseAuthErrorMessage
+    formatErrorMessage: formatSupabaseAuthErrorMessage
   })
 }
 

@@ -84,6 +84,7 @@
 </template>
 
 <script setup lang="tsx">
+  import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import type { ComputedRef, UnwrapNestedRefs } from 'vue'
   import { cloneDeep } from 'lodash-es'
@@ -434,7 +435,7 @@
       attachmentFormRef.value?.clearValidate()
       ElMessage.success('附件上传成功')
     } catch (error) {
-      ElMessage.error(error instanceof Error ? error.message : '附件上传失败')
+      ElMessage.error(getFriendlySupabaseErrorMessage(error, '附件上传失败'))
     } finally {
       attachment.uploading = false
     }

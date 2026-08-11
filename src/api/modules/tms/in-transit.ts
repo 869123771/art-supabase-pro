@@ -1,6 +1,5 @@
 import { useSupabase } from '@/hooks'
 import type { QueryResult } from '@/types/api/response'
-import type { SupabaseQueryLike } from '@/api/providers/supabase/query'
 import { ORDER_SELECT, uniqueStringValues } from '@/api/modules/tms/order-shared'
 import {
   createDriverWaybillPayload,
@@ -83,10 +82,7 @@ const fetchInTransitVehicleMap = async (
 ): Promise<Map<string, DispatchVehicleOption>> => {
   if (!ids.length) return new Map()
 
-  const query = supabase
-    .from('vehicle_archive')
-    .select(DISPATCH_VEHICLE_SELECT)
-    .in('id', ids) as unknown as SupabaseQueryLike
+  const query = supabase.from('vehicle_archive').select(DISPATCH_VEHICLE_SELECT).in('id', ids)
 
   const { data } = await responseHandle<DispatchVehicleOption[]>(() => query, {
     ignoreCheck: true
@@ -103,7 +99,7 @@ const fetchInTransitDriverMap = async (
   const query = supabase
     .from('tms_driver')
     .select('id, carrier_id, driver_name, phone')
-    .in('id', ids) as unknown as SupabaseQueryLike
+    .in('id', ids)
 
   const { data } = await responseHandle<Api.Tms.BasicData.DriverOption[]>(() => query, {
     ignoreCheck: true
@@ -115,10 +111,7 @@ const fetchInTransitDriverMap = async (
 const fetchInTransitOrderMap = async (waybillNos: string[]): Promise<Map<string, OrderRecord>> => {
   if (!waybillNos.length) return new Map()
 
-  const query = supabase
-    .from('tms_order')
-    .select(ORDER_SELECT)
-    .in('order_no', waybillNos) as unknown as SupabaseQueryLike
+  const query = supabase.from('tms_order').select(ORDER_SELECT).in('order_no', waybillNos)
 
   const { data } = await responseHandle<OrderRecord[]>(() => query, {
     ignoreCheck: true
@@ -138,7 +131,7 @@ const fetchInTransitOrderMonitorRows = async (
     .in('order_status', MONITORED_ORDER_STATUSES)
     .order('update_time', { ascending: false, nullsFirst: false })
     .order('create_time', { ascending: false, nullsFirst: false })
-    .limit(to + 1) as unknown as SupabaseQueryLike
+    .limit(to + 1)
 
   if (keyword) {
     query = query.or(
@@ -175,7 +168,7 @@ export async function fetchInTransitMonitorList(
     .not('order_id', 'is', null)
     .order('update_time', { ascending: false, nullsFirst: false })
     .order('create_time', { ascending: false, nullsFirst: false })
-    .range(from, to) as unknown as SupabaseQueryLike
+    .range(from, to)
 
   if (statuses.length) query = query.in('status', statuses)
   if (keyword) {

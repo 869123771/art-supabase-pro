@@ -497,14 +497,15 @@
 
     &__hero-identity {
       display: flex;
-      min-width: 0;
       gap: 16px;
       align-items: flex-start;
+      min-width: 0;
     }
 
     &__hero-icon {
       display: grid;
       flex: 0 0 46px;
+      place-items: center;
       width: 46px;
       height: 46px;
       font-size: 21px;
@@ -512,7 +513,6 @@
       background: var(--el-color-primary-light-9);
       border: 1px solid var(--el-color-primary-light-7);
       border-radius: var(--art-surface-radius);
-      place-items: center;
     }
 
     &__eyebrow {
@@ -520,8 +520,8 @@
       margin-bottom: 6px;
       font-size: 11px;
       font-weight: 700;
-      letter-spacing: 0.12em;
       color: var(--el-color-primary);
+      letter-spacing: 0.12em;
     }
 
     &__hero-tags {
@@ -593,13 +593,14 @@
 
     :deep(.system-param-identity-cell) {
       display: flex;
-      min-width: 0;
-      align-items: center;
       gap: 10px;
+      align-items: center;
+      min-width: 0;
 
       .system-param-identity-cell__icon {
         display: grid;
         flex: 0 0 34px;
+        place-items: center;
         width: 34px;
         height: 34px;
         font-size: 16px;
@@ -607,7 +608,6 @@
         background: var(--el-color-primary-light-9);
         border: 1px solid var(--el-color-primary-light-7);
         border-radius: var(--art-control-radius);
-        place-items: center;
 
         &.is-builtin {
           color: var(--el-color-warning-dark-2);
@@ -623,14 +623,14 @@
 
       .system-param-identity-cell__heading {
         display: flex;
-        align-items: center;
         gap: 6px;
+        align-items: center;
 
         strong {
           overflow: hidden;
+          text-overflow: ellipsis;
           font-weight: 600;
           color: var(--el-text-color-primary);
-          text-overflow: ellipsis;
           white-space: nowrap;
         }
       }
@@ -638,9 +638,9 @@
       code {
         display: block;
         overflow: hidden;
+        text-overflow: ellipsis;
         font-size: 12px;
         color: var(--el-text-color-secondary);
-        text-overflow: ellipsis;
         white-space: nowrap;
       }
 
@@ -664,9 +664,9 @@
     :deep(.system-param-value-cell),
     :deep(.system-param-update-cell) {
       display: grid;
-      min-width: 0;
       gap: 3px;
       align-items: start;
+      min-width: 0;
     }
 
     :deep(.system-param-class-cell) {

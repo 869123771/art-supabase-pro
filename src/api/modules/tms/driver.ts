@@ -24,10 +24,10 @@ const DRIVER_SELECT = `
   )
 `
 
-const applyDriverFilters = (
-  query: SupabaseQueryLike,
+const applyDriverFilters = <TQuery extends SupabaseQueryLike>(
+  query: TQuery,
   params: DriverSearchParams
-): SupabaseQueryLike => {
+): TQuery => {
   const { carrierId, driverType, gender, enabled, keyword, createTimeRange, recordId } = params
   if (recordId) query = query.eq('id', recordId)
   if (carrierId) query = query.eq('carrier_id', carrierId)
@@ -49,7 +49,7 @@ export async function fetchDriverList(params: DriverSearchParams, options?: ApiR
     .from('tms_driver')
     .select(DRIVER_SELECT, { count: 'exact' })
     .order('create_time', { ascending: false })
-    .range(from, to) as unknown as SupabaseQueryLike
+    .range(from, to)
 
   query = applyDriverFilters(query, params)
   return await responseHandle<Driver[]>(() => withRequestOptions(query, options), {
@@ -66,7 +66,7 @@ export async function exportDriverList(
     .from('tms_driver')
     .select(DRIVER_SELECT)
     .order('create_time', { ascending: false })
-    .limit(maxRows) as unknown as SupabaseQueryLike
+    .limit(maxRows)
 
   query = ids?.length ? query.in('id', ids) : applyDriverFilters(query, params)
   return await responseHandle<Driver[]>(() => query, {
@@ -93,13 +93,10 @@ export async function fetchDriverOptions(
     query = query.or(`driver_name.ilike.%${driverName}%,phone.ilike.%${driverName}%`)
   }
 
-  return await responseHandle<DriverOption[]>(
-    () => withRequestOptions(query as unknown as SupabaseQueryLike, options),
-    {
-      ignoreCheck: true,
-      showErrorMessage: true
-    }
-  )
+  return await responseHandle<DriverOption[]>(() => withRequestOptions(query, options), {
+    ignoreCheck: true,
+    showErrorMessage: true
+  })
 }
 
 export async function fetchDriverListByCarrierId(carrierId: string) {

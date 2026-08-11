@@ -18,7 +18,7 @@
           cursor: disabled ? 'no-drop' : 'pointer'
         }"
       >
-        <img :src="item.img" alt="" />
+        <img :src="item.img" width="120" height="72" alt="" />
       </div>
     </button>
   </div>

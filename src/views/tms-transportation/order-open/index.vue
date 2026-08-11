@@ -224,7 +224,7 @@
           </div>
         </template>
 
-        <div class="order-open__footer-actions">
+        <div class="order-open__footer-actions order-open__footer-actions--desktop">
           <ElButton size="large" type="primary" :loading="page.saving" @click="handleSaveOnly">
             仅开单
           </ElButton>
@@ -234,6 +234,26 @@
           <ElButton size="large" plain @click="openPrintDialog('waybill')"> 打印运单 </ElButton>
           <ElButton size="large" plain @click="openPrintDialog('label')"> 打印标签 </ElButton>
           <ElButton size="large" plain @click="handleDoublePrint">双打</ElButton>
+        </div>
+
+        <div class="order-open__footer-actions order-open__footer-actions--mobile">
+          <ElButton size="large" type="primary" :loading="page.saving" @click="handleSaveOnly">
+            仅开单
+          </ElButton>
+          <ElDropdown trigger="click" @command="handleFooterCommand">
+            <ElButton size="large" plain>
+              更多操作
+              <ArtSvgIcon icon="ri:arrow-down-s-line" />
+            </ElButton>
+            <template #dropdown>
+              <ElDropdownMenu>
+                <ElDropdownItem command="ai">AI 智能填单</ElDropdownItem>
+                <ElDropdownItem command="print-waybill">打印运单</ElDropdownItem>
+                <ElDropdownItem command="print-label">打印标签</ElDropdownItem>
+                <ElDropdownItem command="double-print">双打</ElDropdownItem>
+              </ElDropdownMenu>
+            </template>
+          </ElDropdown>
         </div>
       </ArtStickyActionBar>
 
@@ -259,6 +279,7 @@
   import ArtTable from '@/components/core/tables/art-table/index.vue'
   import { useAmapGeocoder } from '@/hooks/core/useAmapGeocoder'
   import type { ColumnOption } from '@/types'
+  import { formatNameCodeOption } from '@/utils/form'
   import {
     addOrder,
     editOrder,
@@ -309,6 +330,7 @@
   type SelectorMode = 'shipping' | 'receiving'
   type StationMode = 'origin' | 'destination' | 'transfer'
   type PrintKind = 'waybill' | 'label'
+  type FooterCommand = 'ai' | 'print-waybill' | 'print-label' | 'double-print'
   type CargoSuggestionCallback = (items: CargoSuggestion[]) => void
 
   interface CargoSuggestion extends CargoMaster {
@@ -893,10 +915,7 @@
   }
 
   function formatStationOption(option: Record<string, unknown>): string {
-    const station = option as unknown as StationOption
-    return station.regionCode
-      ? `${station.stationName}（${station.regionCode}）`
-      : station.stationName
+    return formatNameCodeOption(option, 'stationName', 'regionCode')
   }
 
   function findStationOption(
@@ -1004,14 +1023,17 @@
   }
 
   function handleCargoSelect(row: CargoItem, item: Record<string, unknown>): void {
-    const cargo = item as unknown as CargoSuggestion
+    const cargoName = String(item.cargoName ?? item.value ?? '')
+    const unit = String(item.unit ?? '')
+    const weightKg = typeof item.weightKg === 'number' ? item.weightKg : null
+    const volumeM3 = typeof item.volumeM3 === 'number' ? item.volumeM3 : null
     const patch: Partial<CargoItem> = {
-      cargoName: cargo.cargoName,
-      packageType: cargo.unit || row.packageType || '',
-      unit: cargo.unit || row.unit || '',
+      cargoName,
+      packageType: unit || row.packageType || '',
+      unit: unit || row.unit || '',
       quantity: row.quantity ?? 1,
-      weightKg: cargo.weightKg ?? row.weightKg ?? null,
-      volumeM3: cargo.volumeM3 ?? row.volumeM3 ?? null
+      weightKg: weightKg ?? row.weightKg ?? null,
+      volumeM3: volumeM3 ?? row.volumeM3 ?? null
     }
     Object.assign(row, patch)
   }
@@ -1525,6 +1547,16 @@
 
   function handleDoublePrint(): void {
     openPrintDialog('waybill')
+  }
+
+  function handleFooterCommand(command: FooterCommand): void {
+    const handlers: Record<FooterCommand, () => void> = {
+      ai: openAiOrderDrawer,
+      'print-waybill': () => openPrintDialog('waybill'),
+      'print-label': () => openPrintDialog('label'),
+      'double-print': handleDoublePrint
+    }
+    handlers[command]()
   }
 
   function handlePrintConfirm(kind: PrintKind, count: number): void {

@@ -6,9 +6,13 @@
         <strong>{{ snapshot.title }}</strong>
         <small>{{ snapshot.subtitle || snapshot.businessNo || snapshot.businessId }}</small>
       </div>
-      <ElButton v-if="snapshot.routePath" text type="primary" @click="openBusiness">
-        查看业务原单<ArtSvgIcon icon="ri:arrow-right-up-line" />
-      </ElButton>
+      <RouterLink
+        v-if="snapshot.routePath"
+        class="workflow-business-snapshot__source-link"
+        :to="snapshot.routePath"
+      >
+        查看业务原单<ArtSvgIcon icon="ri:arrow-right-up-line" aria-hidden="true" />
+      </RouterLink>
     </header>
 
     <div v-if="snapshot.warnings.length" class="workflow-business-snapshot__warnings">
@@ -36,7 +40,7 @@
     <dl v-if="snapshot.fields.length">
       <div v-for="field in snapshot.fields" :key="field.label">
         <dt>{{ field.label }}</dt>
-        <dd>{{ field.value || '--' }}</dd>
+        <dd>{{ field.value || '—' }}</dd>
       </div>
     </dl>
 
@@ -47,9 +51,9 @@
         :key="`${attachment.name}-${attachment.url}`"
         :href="attachment.url"
         target="_blank"
-        rel="noreferrer"
+        rel="noopener noreferrer"
       >
-        <ArtSvgIcon icon="ri:attachment-2" />
+        <ArtSvgIcon icon="ri:attachment-2" aria-hidden="true" />
         <span>{{ attachment.name }}</span>
         <small>{{ attachment.fileSize || attachment.fileType || '' }}</small>
       </a>
@@ -62,12 +66,7 @@
 
   defineOptions({ name: 'WorkflowBusinessSnapshot' })
 
-  const props = defineProps<{ snapshot: Api.Workflow.WorkflowBusinessSnapshot }>()
-  const router = useRouter()
-
-  function openBusiness(): void {
-    if (props.snapshot.routePath) void router.push(props.snapshot.routePath)
-  }
+  defineProps<{ snapshot: Api.Workflow.WorkflowBusinessSnapshot }>()
 </script>
 
 <style scoped lang="scss">
@@ -109,6 +108,32 @@
     &__warnings {
       display: grid;
       gap: 8px;
+    }
+
+    &__source-link {
+      display: inline-flex;
+      flex: none;
+      gap: 4px;
+      align-items: center;
+      padding: 5px 7px;
+      font-size: 13px;
+      color: var(--theme-color);
+      text-decoration: none;
+      border-radius: var(--el-border-radius-small);
+      transition:
+        color 0.18s ease,
+        background-color 0.18s ease,
+        box-shadow 0.18s ease;
+
+      &:hover,
+      &:focus-visible {
+        background: color-mix(in srgb, var(--theme-color) 8%, transparent);
+      }
+
+      &:focus-visible {
+        outline: none;
+        box-shadow: var(--art-themed-action-focus-shadow);
+      }
     }
 
     &__metrics {
@@ -192,7 +217,23 @@
         padding: 9px 10px;
         color: var(--el-color-primary);
         background: var(--el-bg-color);
+        border: 1px solid transparent;
         border-radius: var(--el-border-radius-base);
+        transition:
+          background-color 0.18s ease,
+          border-color 0.18s ease,
+          box-shadow 0.18s ease;
+
+        &:hover,
+        &:focus-visible {
+          background: color-mix(in srgb, var(--theme-color) 6%, var(--el-bg-color));
+          border-color: color-mix(in srgb, var(--theme-color) 18%, transparent);
+        }
+
+        &:focus-visible {
+          outline: none;
+          box-shadow: var(--art-themed-action-focus-shadow);
+        }
 
         span {
           flex: 1;

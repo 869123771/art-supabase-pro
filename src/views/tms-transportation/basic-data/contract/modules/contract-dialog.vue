@@ -58,6 +58,7 @@
 </template>
 
 <script setup lang="tsx">
+  import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import type { ComputedRef, UnwrapNestedRefs } from 'vue'
   import { cloneDeep, omit } from 'lodash-es'
@@ -73,6 +74,7 @@
   import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
   import { renderAttachmentLink } from '@/components/core/media/art-file-viewer/render'
   import type { ColumnOption } from '@/types'
+  import { formatNameCodeOption } from '@/utils/form'
   import {
     addContract,
     editContract,
@@ -327,10 +329,7 @@
   }
 
   const formatCarrierOption = (option: Record<string, unknown>): string => {
-    const carrier = option as unknown as CarrierOption
-    return carrier.carrierCode
-      ? `${carrier.companyName}（${carrier.carrierCode}）`
-      : carrier.companyName
+    return formatNameCodeOption(option, 'companyName', 'carrierCode')
   }
 
   const handleCarrierChange = (carrierId?: string): void => {
@@ -450,7 +449,7 @@
       ]
       ElMessage.success('附件上传成功')
     } catch (error) {
-      ElMessage.error(error instanceof Error ? error.message : '附件上传失败')
+      ElMessage.error(getFriendlySupabaseErrorMessage(error, '附件上传失败'))
     } finally {
       form.attachmentUploading = false
     }

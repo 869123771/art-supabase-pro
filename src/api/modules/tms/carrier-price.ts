@@ -32,10 +32,10 @@ const CARRIER_PRICE_SELECT = `
   )
 `
 
-const applyCarrierPriceFilters = (
-  query: SupabaseQueryLike,
+const applyCarrierPriceFilters = <TQuery extends SupabaseQueryLike>(
+  query: TQuery,
   params: CarrierPriceSearchParams
-): SupabaseQueryLike => {
+): TQuery => {
   const {
     carrierId,
     recordId,
@@ -68,7 +68,7 @@ export async function fetchCarrierPriceList(params: CarrierPriceSearchParams) {
     .from('tms_carrier_price')
     .select(CARRIER_PRICE_SELECT, { count: 'exact' })
     .order('create_time', { ascending: false })
-    .range(from, to) as unknown as SupabaseQueryLike
+    .range(from, to)
 
   query = applyCarrierPriceFilters(query, params)
   return await responseHandle<CarrierPrice[]>(() => query, {
@@ -85,7 +85,7 @@ export async function exportCarrierPriceList(
     .from('tms_carrier_price')
     .select(CARRIER_PRICE_SELECT)
     .order('create_time', { ascending: false })
-    .limit(maxRows) as unknown as SupabaseQueryLike
+    .limit(maxRows)
 
   query = ids?.length ? query.in('id', ids) : applyCarrierPriceFilters(query, params)
   return await responseHandle<CarrierPrice[]>(() => query, {

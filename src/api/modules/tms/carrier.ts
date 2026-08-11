@@ -1,3 +1,4 @@
+import { normalizeSupabaseFunctionError } from '@/utils/supabase'
 import { useSupabase } from '@/hooks'
 import {
   applyCreateTimeRange,
@@ -15,10 +16,10 @@ type CarrierOption = Api.Tms.BasicData.CarrierOption
 
 const { supabase, keysToSnakeDeep, responseHandle } = useSupabase()
 
-const applyCarrierFilters = (
-  query: SupabaseQueryLike,
+const applyCarrierFilters = <TQuery extends SupabaseQueryLike>(
+  query: TQuery,
   params: CarrierSearchParams
-): SupabaseQueryLike => {
+): TQuery => {
   const { carrierType, enabled, signedContract, keyword, createTimeRange, recordId } = params
   if (recordId) query = query.eq('id', recordId)
   if (carrierType) query = query.eq('carrier_type', carrierType)
@@ -40,7 +41,7 @@ export async function fetchCarrierList(params: CarrierSearchParams, options?: Ap
     .from('tms_carrier')
     .select('*', { count: 'exact' })
     .order('create_time', { ascending: false })
-    .range(from, to) as unknown as SupabaseQueryLike
+    .range(from, to)
 
   query = applyCarrierFilters(query, params)
   const result = await responseHandle<Carrier[]>(() => withRequestOptions(query, options), {
@@ -59,7 +60,7 @@ export async function exportCarrierList(
     .from('tms_carrier')
     .select('*')
     .order('create_time', { ascending: false })
-    .limit(maxRows) as unknown as SupabaseQueryLike
+    .limit(maxRows)
 
   query = ids?.length ? query.in('id', ids) : applyCarrierFilters(query, params)
   return await responseHandle<Carrier[]>(() => query, {
@@ -86,7 +87,7 @@ export async function analyzeCarrierPerformanceByAi(
 
   return {
     data: data ?? null,
-    error: await normalizeFunctionInvokeError(error)
+    error: await normalizeSupabaseFunctionError(error)
   }
 }
 
@@ -109,13 +110,10 @@ export async function fetchCarrierOptions(
     )
   }
 
-  return await responseHandle<CarrierOption[]>(
-    () => withRequestOptions(query as unknown as SupabaseQueryLike, options),
-    {
-      ignoreCheck: true,
-      showErrorMessage: true
-    }
-  )
+  return await responseHandle<CarrierOption[]>(() => withRequestOptions(query, options), {
+    ignoreCheck: true,
+    showErrorMessage: true
+  })
 }
 
 export async function addCarrier(params: Carrier) {
@@ -155,22 +153,4 @@ export async function importCarriers(rows: Carrier[]) {
         .upsert(keysToSnakeDeep(rows), { onConflict: 'tenant_id,carrier_code' }),
     { showMessage: true, breakReturn: true }
   )
-}
-
-async function normalizeFunctionInvokeError(error: unknown): Promise<unknown | null> {
-  if (!error || typeof error !== 'object' || !('context' in error)) return error
-
-  const context = (error as { context?: unknown }).context
-  if (!(context instanceof Response)) return error
-
-  try {
-    const payload = (await context.clone().json()) as { code?: unknown; message?: unknown }
-    if (typeof payload.message !== 'string' || !payload.message) return error
-    return {
-      code: typeof payload.code === 'string' ? payload.code : undefined,
-      message: payload.message
-    }
-  } catch {
-    return error
-  }
 }

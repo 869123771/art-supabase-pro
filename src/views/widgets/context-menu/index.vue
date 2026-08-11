@@ -60,8 +60,6 @@
         :item-padding-x="10"
         :border-radius="8"
         @select="handleSelect"
-        @show="handleMenuShow"
-        @hide="handleMenuHide"
       />
 
       <ArtMenuRight
@@ -201,14 +199,6 @@
   const handleSelect = (item: MenuItemType) => {
     lastAction.value = `${item.label} (${item.key})`
     ElMessage.success(`已选择：${item.label}`)
-  }
-
-  const handleMenuShow = () => {
-    console.info('ArtMenuRight show')
-  }
-
-  const handleMenuHide = () => {
-    console.info('ArtMenuRight hide')
   }
 </script>
 

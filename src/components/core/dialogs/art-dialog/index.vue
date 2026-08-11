@@ -388,7 +388,7 @@
     getData,
     getDialogInstance,
     scrollTo
-  } as unknown as ArtDialogExpose<T>
+  }
 
   defineExpose(exposedApi)
 </script>
@@ -396,6 +396,10 @@
 <style scoped lang="scss">
   :global(.art-dialog) {
     max-width: calc(100vw - 32px);
+  }
+
+  :global(.art-dialog > .el-dialog__body) {
+    overscroll-behavior: contain;
   }
 
   :global(.art-dialog.is-fullscreen) {
@@ -453,6 +457,10 @@
 
     &__scrollbar {
       width: 100%;
+
+      :deep(.el-scrollbar__wrap) {
+        overscroll-behavior: contain;
+      }
 
       :deep(.el-scrollbar__view) {
         padding-right: 4px;

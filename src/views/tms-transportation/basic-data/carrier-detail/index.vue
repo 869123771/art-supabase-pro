@@ -411,9 +411,9 @@
 
     &__section-header {
       display: flex;
+      gap: 12px;
       align-items: center;
       justify-content: space-between;
-      gap: 12px;
       margin-bottom: 12px;
     }
 
@@ -424,8 +424,8 @@
     }
 
     &__link-value {
-      font-weight: 600;
       padding: 0;
+      font-weight: 600;
     }
 
     :deep(.art-descriptions .el-descriptions__label) {
@@ -433,7 +433,7 @@
       font-weight: 600;
     }
 
-    @media (max-width: 768px) {
+    @media (width <= 768px) {
       &__section-header {
         flex-direction: column;
         align-items: flex-start;

@@ -205,7 +205,9 @@
 </template>
 
 <script setup lang="tsx">
+  import { createFriendlySupabaseError, getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import { ElCheckbox, ElMessage, ElTag } from 'element-plus'
+  import { uniq } from 'lodash-es'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtAsyncState from '@/components/core/layouts/art-async-state/index.vue'
@@ -364,15 +366,9 @@
   }
   function toggleRow(row: Row, selected: boolean) {
     selectedRowIds.value = selected
-      ? [...new Set([...selectedRowIds.value, row.rowId])]
+      ? uniq([...selectedRowIds.value, row.rowId])
       : selectedRowIds.value.filter((id) => id !== row.rowId)
   }
-  function errorMessage(error: unknown) {
-    return error && typeof error === 'object' && 'message' in error
-      ? String((error as { message?: unknown }).message)
-      : '银行流水分析失败'
-  }
-
   async function handleImport(rows: Array<Record<string, unknown>>, file: File) {
     state.analyzing = true
     state.error = null
@@ -386,15 +382,15 @@
       selectedRowIds.value = response.data.rows.filter(isSelectable).map((row) => row.rowId)
       ElMessage.success(`已完成 ${response.data.rows.length} 条流水匹配`)
     } catch (error) {
-      state.error = new Error(errorMessage(error))
+      state.error = createFriendlySupabaseError(error, '银行流水分析失败')
       ElMessage.error(state.error.message)
     } finally {
       state.analyzing = false
     }
   }
   function handleImportError(error: Error) {
-    state.error = error
-    ElMessage.error(`文件解析失败：${error.message}`)
+    state.error = createFriendlySupabaseError(error, '文件解析失败，请检查文件格式后重试')
+    ElMessage.error(getFriendlySupabaseErrorMessage(error, '文件解析失败，请检查文件格式后重试'))
   }
 
   async function handleCommit() {
@@ -418,7 +414,9 @@
       emit('success')
       dialogRef.value?.handleClose()
     } catch (error) {
-      if (error !== 'cancel' && error !== 'close') ElMessage.error(errorMessage(error))
+      if (error !== 'cancel' && error !== 'close') {
+        ElMessage.error(getFriendlySupabaseErrorMessage(error, '银行流水入账失败，请稍后重试'))
+      }
     } finally {
       state.committing = false
     }

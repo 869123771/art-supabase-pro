@@ -347,7 +347,7 @@ export function uniqueValidator(options: {
         callback()
       }
     } catch (error: unknown) {
-      callback(new Error(error instanceof Error ? error.message : '校验失败'))
+      callback(new Error(getFriendlySupabaseErrorMessage(error, '校验失败，请稍后重试')))
     }
   }, delay)
 
@@ -360,3 +360,4 @@ export function uniqueValidator(options: {
     debouncedCheck(value, callback)
   }
 }
+import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'

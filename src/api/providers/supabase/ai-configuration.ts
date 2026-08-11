@@ -1,5 +1,4 @@
 import { useSupabase } from '@/hooks'
-import type { SupabaseQueryLike } from '@/api/providers/supabase/query'
 
 const { supabase, keysToSnakeDeep, responseHandle } = useSupabase()
 
@@ -246,7 +245,7 @@ export async function fetchAiFeatureConfigList(params: AiFeatureConfigSearchPara
     )
   }
 
-  return await responseHandle<AiFeatureConfig[]>(() => query as unknown as SupabaseQueryLike, {
+  return await responseHandle<AiFeatureConfig[]>(() => query, {
     ignoreCheck: true,
     showErrorMessage: true
   })
@@ -255,11 +254,7 @@ export async function fetchAiFeatureConfigList(params: AiFeatureConfigSearchPara
 export async function updateAiFeatureConfig(params: AiFeatureConfigWritePayload): Promise<void> {
   const { id, ...writeData } = params
   await responseHandle(
-    () =>
-      supabase
-        .from('ai_feature_config')
-        .update(keysToSnakeDeep(writeData))
-        .eq('id', id) as unknown as SupabaseQueryLike,
+    () => supabase.from('ai_feature_config').update(keysToSnakeDeep(writeData)).eq('id', id),
     { breakReturn: true, showMessage: true }
   )
 }

@@ -129,6 +129,7 @@
 </template>
 
 <script setup lang="tsx">
+  import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import dayjs from 'dayjs'
   import { ElMessage, ElTag } from 'element-plus'
   import { useRoute } from 'vue-router'
@@ -668,7 +669,7 @@
       Object.assign(summary.data, personalSummary)
       globalPendingCount.value = globalPending?.data?.total ?? 0
     } catch (error) {
-      ElMessage.error(error instanceof Error ? error.message : '审批统计加载失败')
+      ElMessage.error(getFriendlySupabaseErrorMessage(error, '审批统计加载失败'))
     } finally {
       summary.loading = false
     }

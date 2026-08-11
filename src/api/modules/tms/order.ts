@@ -1,6 +1,6 @@
 import { useSupabase } from '@/hooks'
 import type { QueryResult } from '@/types/api/response'
-import { withRequestOptions, type SupabaseQueryLike } from '@/api/providers/supabase/query'
+import { withRequestOptions } from '@/api/providers/supabase/query'
 import type { ApiRequestOptions } from '@/types/api/request'
 import {
   applyOrderListFilters,
@@ -23,7 +23,7 @@ export async function fetchOrderList(
     .from('tms_order')
     .select(ORDER_SELECT, { count: 'exact' })
     .order('create_time', { ascending: false })
-    .range(from, to) as unknown as SupabaseQueryLike
+    .range(from, to)
 
   query = applyOrderListFilters(query, params)
   const result = await responseHandle<OrderRecord[]>(() => withRequestOptions(query, options), {
@@ -49,9 +49,7 @@ export async function fetchOrderStatusCounts(
   const sharedFilters = { ...params, orderStatus: undefined }
   const countEntries = await Promise.all(
     ORDER_STATUS_COUNT_VALUES.map(async (orderStatus) => {
-      let query = supabase
-        .from('tms_order')
-        .select('id', { count: 'exact', head: true }) as unknown as SupabaseQueryLike
+      let query = supabase.from('tms_order').select('id', { count: 'exact', head: true })
 
       query = applyOrderListFilters(query, { ...sharedFilters, orderStatus })
       const { total } = await responseHandle<null>(() => query, { ignoreCheck: true })
@@ -70,7 +68,7 @@ export async function exportOrderList(
     .from('tms_order')
     .select(ORDER_SELECT)
     .order('create_time', { ascending: false })
-    .limit(maxRows) as unknown as SupabaseQueryLike
+    .limit(maxRows)
 
   query = ids?.length ? query.in('id', ids) : applyOrderListFilters(query, params)
   const result = await responseHandle<OrderRecord[]>(() => query, {

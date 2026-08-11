@@ -123,6 +123,7 @@
 </template>
 
 <script setup lang="ts">
+  import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import dayjs from 'dayjs'
   import { ElMessage } from 'element-plus'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
@@ -219,14 +220,6 @@
     return value && dayjs(value).isValid() ? dayjs(value).format('YYYY-MM-DD HH:mm') : '未识别'
   }
 
-  function errorMessage(error: unknown): string {
-    if (error && typeof error === 'object' && 'message' in error) {
-      const message = (error as { message?: unknown }).message
-      if (typeof message === 'string' && message) return message
-    }
-    return 'AI 回单识别失败，请稍后重试'
-  }
-
   async function handleAnalyze(): Promise<void> {
     if (!imageUrls.value.length || analyzing.value) return
     analyzing.value = true
@@ -246,7 +239,7 @@
       emit('analyzed', response.data)
       ElMessage.success('回单核验完成，请确认异常信息')
     } catch (error) {
-      ElMessage.error(errorMessage(error))
+      ElMessage.error(getFriendlySupabaseErrorMessage(error, 'AI 回单识别失败，请稍后重试'))
     } finally {
       analyzing.value = false
     }
@@ -271,7 +264,7 @@
       emit('work-order-created', created)
       ElMessage.success(`异常工单 ${created.workOrderNo} 已生成`)
     } catch (error) {
-      ElMessage.error(errorMessage(error))
+      ElMessage.error(getFriendlySupabaseErrorMessage(error, 'AI 回单识别失败，请稍后重试'))
     } finally {
       creatingWorkOrder.value = false
     }

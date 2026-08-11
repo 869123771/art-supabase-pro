@@ -26,7 +26,6 @@
                 :columns="companyColumns"
                 :api-fn="fetchCompanies"
                 :filter-options="industryOptions"
-                @change="handleChange"
                 @confirm="handleConfirm"
                 @clear="handleClear"
               />
@@ -337,10 +336,6 @@
       data: rows.slice(start, start + params.pageSize),
       total: rows.length
     }
-  }
-
-  const handleChange = (value: unknown) => {
-    console.info('ArtDataSelect change', value)
   }
 
   const handleConfirm = (value: unknown) => {

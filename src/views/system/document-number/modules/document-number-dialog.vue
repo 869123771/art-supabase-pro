@@ -363,9 +363,9 @@
       code {
         display: block;
         overflow: hidden;
+        text-overflow: ellipsis;
         font-size: 13px;
         color: var(--art-text-gray-900);
-        text-overflow: ellipsis;
         white-space: nowrap;
       }
     }
@@ -411,11 +411,11 @@
     &__preview > code {
       display: block;
       padding: 13px 10px;
-      overflow-wrap: anywhere;
       font-size: 15px;
       font-weight: 700;
       color: var(--el-color-primary);
       text-align: center;
+      overflow-wrap: anywhere;
       background: var(--el-color-primary-light-9);
       border: 1px solid var(--el-color-primary-light-7);
       border-radius: var(--art-control-radius);
@@ -439,10 +439,10 @@
       dd {
         margin: 3px 0 0;
         overflow: hidden;
+        text-overflow: ellipsis;
         font-size: 12px;
         font-weight: 600;
         color: var(--art-text-gray-800);
-        text-overflow: ellipsis;
         white-space: nowrap;
       }
     }
@@ -462,7 +462,7 @@
     }
   }
 
-  @media (max-width: 900px) {
+  @media (width <= 900px) {
     .number-rule-dialog {
       &__side {
         display: none;

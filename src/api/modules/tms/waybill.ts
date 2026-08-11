@@ -26,10 +26,10 @@ interface WaybillStatusCountResult {
 
 const { supabase, keysToSnakeDeep, responseHandle } = useSupabase()
 
-const applyPlannedTimeRange = (
-  query: SupabaseQueryLike,
+const applyPlannedTimeRange = <TQuery extends SupabaseQueryLike>(
+  query: TQuery,
   plannedTimeRange?: string[]
-): SupabaseQueryLike => {
+): TQuery => {
   if (plannedTimeRange?.[0]) {
     query = query.gte('planned_departure_time', `${plannedTimeRange[0]}T00:00:00`)
   }
@@ -39,10 +39,10 @@ const applyPlannedTimeRange = (
   return query
 }
 
-const applyWaybillFilters = (
-  query: SupabaseQueryLike,
+const applyWaybillFilters = <TQuery extends SupabaseQueryLike>(
+  query: TQuery,
   params: WaybillSearchParams
-): SupabaseQueryLike => {
+): TQuery => {
   const { dispatchStatus, dispatchStatuses, dispatchVehicleId, vehicleKeyword, plannedTimeRange } =
     params
 
@@ -78,9 +78,7 @@ const countWaybillOrders = async (
 ): Promise<number> => {
   if (orderIds !== null && orderIds !== undefined && !orderIds.length) return 0
 
-  let query = supabase
-    .from('tms_order')
-    .select('id', { count: 'exact', head: true }) as unknown as SupabaseQueryLike
+  let query = supabase.from('tms_order').select('id', { count: 'exact', head: true })
   query = applyWaybillFilters(query, params)
   if (orderIds?.length) query = query.in('id', orderIds)
 
@@ -149,7 +147,7 @@ export async function fetchWaybillList(
     .from('tms_order')
     .select(ORDER_SELECT, { count: 'exact' })
     .order('create_time', { ascending: false })
-    .range(from, to) as unknown as SupabaseQueryLike
+    .range(from, to)
 
   query = applyWaybillFilters(query, params)
   if (orderIds) query = query.in('id', orderIds)
@@ -171,7 +169,7 @@ export async function exportWaybillList(
     .from('tms_order')
     .select(ORDER_SELECT)
     .order('create_time', { ascending: false })
-    .limit(maxRows) as unknown as SupabaseQueryLike
+    .limit(maxRows)
   query = ids?.length ? query.in('id', ids) : applyWaybillFilters(query, params)
   if (orderIds) query = query.in('id', orderIds)
   const result = await responseHandle<WaybillRecord[]>(() => query, {
@@ -260,7 +258,7 @@ export async function fetchDispatchVehicleOptions(params: DispatchVehicleSearchP
     .from('vehicle_archive')
     .select(DISPATCH_VEHICLE_SELECT, { count: 'exact' })
     .order('plate_no', { ascending: true })
-    .range(from, to) as unknown as SupabaseQueryLike
+    .range(from, to)
 
   if (keyword) {
     const { data: driverRows } = await responseHandle<Array<{ id?: string }>>(

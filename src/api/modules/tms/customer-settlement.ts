@@ -12,10 +12,10 @@ type CustomerStatementStatusPayload = Api.Tms.Finance.CustomerStatementStatusPay
 
 const { supabase, responseHandle } = useSupabase()
 
-const applyStatementFilters = (
-  query: SupabaseQueryLike,
+const applyStatementFilters = <TQuery extends SupabaseQueryLike>(
+  query: TQuery,
   params: CustomerStatementSearchParams
-): SupabaseQueryLike => {
+): TQuery => {
   const { customerId, keyword, periodRange, recordId, status } = params
   if (recordId) query = query.eq('id', recordId)
   if (customerId) query = query.eq('customer_id', customerId)
@@ -36,7 +36,7 @@ export async function fetchCustomerStatementList(params: CustomerStatementSearch
     .from('tms_customer_statement_summary')
     .select('*', { count: 'exact' })
     .order('create_time', { ascending: false })
-    .range(from, to) as unknown as SupabaseQueryLike
+    .range(from, to)
   query = applyStatementFilters(query, params)
   return await responseHandle<CustomerStatement[]>(() => query, {
     ignoreCheck: true,
@@ -52,7 +52,7 @@ export async function exportCustomerStatementList(
     .from('tms_customer_statement_summary')
     .select('*')
     .order('create_time', { ascending: false })
-    .limit(maxRows) as unknown as SupabaseQueryLike
+    .limit(maxRows)
   query = ids?.length ? query.in('id', ids) : applyStatementFilters(query, params)
   return await responseHandle<CustomerStatement[]>(() => query, {
     ignoreCheck: true,
@@ -67,7 +67,7 @@ export async function fetchCustomerStatementEligibleWaybills(params: EligibleWay
     .select('*', { count: 'exact' })
     .eq('customer_id', customerId)
     .order('completed_at', { ascending: false })
-    .range(from, to) as unknown as SupabaseQueryLike
+    .range(from, to)
   if (keyword) {
     query = query.or(
       `waybill_no.ilike.%${keyword}%,order_no.ilike.%${keyword}%,origin_station.ilike.%${keyword}%,destination_station.ilike.%${keyword}%`

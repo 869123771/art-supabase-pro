@@ -156,7 +156,8 @@
 </template>
 
 <script lang="ts" setup>
-  import { computed, ref, onMounted, onUnmounted } from 'vue'
+  import { computed, ref, onUnmounted } from 'vue'
+  import { useEventListener } from '@vueuse/core'
   import { storeToRefs } from 'pinia'
   import { TableSizeEnum } from '@/enums/formEnum'
   import { useTableStore } from '@/store/modules/table'
@@ -358,16 +359,10 @@
     }
   }
 
-  /** 组件挂载时注册全局事件监听器 */
-  onMounted(() => {
-    document.addEventListener('keydown', handleEscapeKey)
-  })
+  useEventListener(document, 'keydown', handleEscapeKey)
 
   /** 组件卸载时清理资源 */
   onUnmounted(() => {
-    // 移除事件监听器
-    document.removeEventListener('keydown', handleEscapeKey)
-
     // 如果组件在全屏状态下被卸载，恢复页面滚动状态
     if (isFullScreen.value) {
       document.body.style.overflow = originalOverflow.value

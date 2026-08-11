@@ -42,6 +42,7 @@
 
 <script setup lang="tsx">
   import dayjs from 'dayjs'
+  import { uniq } from 'lodash-es'
   import { useMediaQuery } from '@vueuse/core'
   import type { ComputedRef } from 'vue'
   import type { FormRules } from 'element-plus'
@@ -245,10 +246,7 @@
       expenses.find((item) => item.driverNameSnapshot)?.driverNameSnapshot ||
       ''
     form.data.payeeName = suggestedPayee ?? ''
-    form.data.basisUrls = [...new Set(expenses.flatMap((item) => item.attachments ?? []))].slice(
-      0,
-      5
-    )
+    form.data.basisUrls = uniq(expenses.flatMap((item) => item.attachments ?? [])).slice(0, 5)
     await dialogRef.value?.handleOpen(
       { expenses },
       {

@@ -212,9 +212,7 @@
     { prop: 'operation', label: '操作', width: 90, fixed: 'right', useSlot: true }
   ]
 
-  const statsDescriptionData = computed<Record<string, unknown>>(
-    () => overview.stats as unknown as Record<string, unknown>
-  )
+  const statsDescriptionData = computed<Record<string, unknown>>(() => ({ ...overview.stats }))
   const statsDescriptionItems: ArtDescriptionItem[] = [
     { key: 'revenue', label: '运输收入', field: 'monthRevenueAmount', format: 'money' },
     { key: 'cost', label: '运输成本', field: 'monthCostAmount', format: 'money' },

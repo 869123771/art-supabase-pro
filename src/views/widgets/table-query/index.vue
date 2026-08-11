@@ -165,6 +165,7 @@
 </template>
 
 <script setup lang="tsx">
+  import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import { ElMessage, ElMessageBox, ElTag } from 'element-plus'
   import type { TagProps } from 'element-plus'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
@@ -468,7 +469,7 @@
         ElMessage.success(`导入成功：${rows.length} 行`)
       },
       onImportError: (error) => {
-        ElMessage.error(error.message || '导入失败')
+        ElMessage.error(getFriendlySupabaseErrorMessage(error, '导入失败，请检查文件后重试'))
       }
     },
     {
@@ -649,7 +650,7 @@
   }
 
   const handleManagedSelectionChange = (rows: Record<string, unknown>[]): void => {
-    selectedRows.value = rows as unknown as DemoOrder[]
+    selectedRows.value = rows.map(toDemoOrder)
     logEvent(`managed selection -> ${rows.length}`)
   }
 

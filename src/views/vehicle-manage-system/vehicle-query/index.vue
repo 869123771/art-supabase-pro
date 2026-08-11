@@ -408,8 +408,8 @@
     }
 
     &__hero {
-      justify-content: space-between;
       gap: 20px;
+      justify-content: space-between;
       padding: 20px 24px 18px;
       background: radial-gradient(
         circle at 92% 0%,
@@ -451,8 +451,8 @@
     }
 
     &__brand {
-      justify-content: center;
       flex: 0 0 50px;
+      justify-content: center;
       width: 50px;
       height: 50px;
       margin-right: 16px;
@@ -477,8 +477,8 @@
       border-top: 1px solid var(--el-border-color-lighter);
 
       article {
-        min-width: 0;
         gap: 12px;
+        min-width: 0;
         padding: 14px 24px;
 
         &:not(:last-child) {
@@ -493,8 +493,8 @@
         span,
         small {
           overflow: hidden;
-          color: var(--el-text-color-secondary);
           text-overflow: ellipsis;
+          color: var(--el-text-color-secondary);
           white-space: nowrap;
         }
 
@@ -516,8 +516,8 @@
     }
 
     &__metric-icon {
-      justify-content: center;
       flex: 0 0 38px;
+      justify-content: center;
       width: 38px;
       height: 38px;
       border-radius: var(--el-border-radius-base);
@@ -552,9 +552,9 @@
 
     :deep(.vehicle-query-page__vehicle-cell > div) {
       display: flex;
-      min-width: 0;
-      align-items: center;
       gap: 8px;
+      align-items: center;
+      min-width: 0;
     }
 
     :deep(.vehicle-query-page__vehicle-cell strong) {
@@ -571,16 +571,16 @@
     :deep(.vehicle-query-page__vehicle-cell small),
     :deep(.vehicle-query-page__lifecycle small) {
       overflow: hidden;
+      text-overflow: ellipsis;
       font-size: 12px;
       color: var(--el-text-color-secondary);
-      text-overflow: ellipsis;
       white-space: nowrap;
     }
 
     :deep(.vehicle-query-page__lifecycle p) {
       display: flex;
-      margin: 0;
       gap: 6px;
+      margin: 0;
 
       span {
         color: var(--el-text-color-secondary);
@@ -592,21 +592,21 @@
     }
 
     :deep(.vehicle-query-page__mileage) {
-      font-variant-numeric: tabular-nums;
       font-weight: 600;
+      font-variant-numeric: tabular-nums;
       color: var(--el-text-color-primary);
     }
 
     :deep(.vehicle-query-page__document-status) {
       display: flex;
       flex-wrap: wrap;
-      align-items: center;
       gap: 6px;
+      align-items: center;
 
       span {
         display: inline-flex;
-        align-items: center;
         gap: 5px;
+        align-items: center;
         padding: 2px 7px;
         font-size: 12px;
         line-height: 20px;
@@ -640,15 +640,15 @@
 
     :deep(.vehicle-query-page__operation) {
       display: flex;
-      align-items: center;
       gap: 8px;
+      align-items: center;
 
       .art-button-table {
         margin-right: 0;
       }
     }
 
-    @media (max-width: 900px) {
+    @media (width <= 900px) {
       &__hero {
         align-items: flex-start;
       }
@@ -663,7 +663,7 @@
       }
     }
 
-    @media (max-width: 640px) {
+    @media (width <= 640px) {
       &__hero {
         flex-direction: column;
         padding: 18px;

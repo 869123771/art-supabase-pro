@@ -18,7 +18,7 @@
   </ElButton>
 </template>
 
-<script setup lang="ts">
+<script setup lang="ts" generic="TRow extends object = Record<string, unknown>">
   import * as XLSX from 'xlsx'
   import FileSaver from 'file-saver'
   import { ref, computed, nextTick } from 'vue'
@@ -29,11 +29,7 @@
   defineOptions({ name: 'ArtExcelExport' })
 
   /** 导出数据类型 */
-  type ExportValue = string | number | boolean | null | undefined | Date
-
-  interface ExportData {
-    [key: string]: ExportValue
-  }
+  type ExportValue = unknown
 
   /** 列配置 */
   interface ColumnConfig {
@@ -42,13 +38,13 @@
     /** 列宽度 */
     width?: number
     /** 数据格式化函数 */
-    formatter?: (value: ExportValue, row: ExportData, index: number) => string
+    formatter?: (value: ExportValue, row: TRow, index: number) => string
   }
 
   /** 导出配置选项 */
   interface ExportOptions {
     /** 数据源 */
-    data: ExportData[]
+    data: TRow[]
     /** 文件名（不含扩展名） */
     filename?: string
     /** 工作表名称 */
@@ -109,7 +105,7 @@
   })
 
   const emit = defineEmits<{
-    'before-export': [data: ExportData[]]
+    'before-export': [data: TRow[]]
     'export-success': [filename: string, rowCount: number]
     'export-error': [error: ExportError]
     'export-progress': [progress: number]
@@ -133,7 +129,7 @@
   const hasData = computed(() => Array.isArray(props.data) && props.data.length > 0)
 
   /** 验证导出数据 */
-  const validateData = (data: ExportData[]): void => {
+  const validateData = (data: TRow[]): void => {
     if (!Array.isArray(data)) {
       throw new ExportError('数据必须是数组格式', 'INVALID_DATA_TYPE')
     }
@@ -151,12 +147,7 @@
   }
 
   /** 格式化单元格值 */
-  const formatCellValue = (
-    value: ExportValue,
-    key: string,
-    row: ExportData,
-    index: number
-  ): string => {
+  const formatCellValue = (value: ExportValue, key: string, row: TRow, index: number): string => {
     // 使用列配置的格式化函数
     const column = props.columns[key]
     if (column?.formatter) {
@@ -180,7 +171,7 @@
   }
 
   /** 处理数据 */
-  const processData = (data: ExportData[]): Record<string, string>[] => {
+  const processData = (data: TRow[]): Record<string, string>[] => {
     const processedData = data.map((item, index) => {
       const processedItem: Record<string, string> = {}
 
@@ -238,7 +229,7 @@
 
   /** 导出到 Excel */
   const exportToExcel = async (
-    data: ExportData[],
+    data: TRow[],
     filename: string,
     sheetName: string
   ): Promise<void> => {
@@ -356,8 +347,6 @@
           duration: 5000
         })
       }
-
-      console.error('Excel 导出错误:', exportError)
     } finally {
       isExporting.value = false
       emit('export-progress', 0)

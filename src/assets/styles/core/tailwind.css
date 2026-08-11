@@ -194,11 +194,13 @@
 
   /* Transition Utilities */
   .tad-200 {
-    @apply transition-all duration-200;
+    transition-property: color, background-color, border-color, box-shadow, opacity, transform;
+    transition-duration: 200ms;
   }
 
   .tad-300 {
-    @apply transition-all duration-300;
+    transition-property: color, background-color, border-color, box-shadow, opacity, transform;
+    transition-duration: 300ms;
   }
 
   /* Border Utilities */

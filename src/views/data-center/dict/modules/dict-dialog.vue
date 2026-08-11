@@ -340,9 +340,9 @@
 <style scoped lang="scss">
   .dict-tag-style-field {
     display: flex;
+    gap: 8px;
     align-items: center;
     width: 100%;
-    gap: 8px;
 
     .el-select {
       flex: 1;
@@ -355,19 +355,19 @@
 
     &__option {
       display: flex;
+      gap: 12px;
       align-items: center;
       justify-content: space-between;
       width: 100%;
       min-width: 0;
-      gap: 12px;
     }
 
     &__value {
       overflow: hidden;
+      text-overflow: ellipsis;
       font-family:
         ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
       color: var(--el-text-color-regular);
-      text-overflow: ellipsis;
       white-space: nowrap;
     }
   }

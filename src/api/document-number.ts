@@ -1,7 +1,7 @@
 import { useSupabase } from '@/hooks'
 import { WRITE_PERMISSION_DENIED_MESSAGE } from '@/hooks/core/useSupabase'
 import { getDocumentNumberPeriodKey, renderDocumentNumber } from '@/utils/document-number'
-import { applyFilters } from '@/utils/supabase-filters'
+import { applyFilters } from '@/utils/supabase'
 
 const { supabase, keysToSnakeDeep, responseHandle } = useSupabase()
 

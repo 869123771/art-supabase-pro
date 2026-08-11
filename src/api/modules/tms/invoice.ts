@@ -1,3 +1,4 @@
+import { createFriendlySupabaseError, normalizeSupabaseFunctionError } from '@/utils/supabase'
 import { useSupabase } from '@/hooks'
 import type { QueryResult } from '@/types/api/response'
 import { applyDateRange, type SupabaseQueryLike } from '@/api/providers/supabase/query'
@@ -34,18 +35,13 @@ export function isInvoiceLegalNumberConflict(error: unknown): boolean {
 }
 
 function toError(error: unknown): Error {
-  if (error instanceof Error) return error
-  if (error && typeof error === 'object' && 'message' in error) {
-    const message = (error as { message?: unknown }).message
-    if (typeof message === 'string' && message) return new Error(message)
-  }
-  return new Error('发票保存失败，请稍后重试')
+  return createFriendlySupabaseError(error, '发票保存失败，请稍后重试')
 }
 
-function applyInvoiceFilters(
-  query: SupabaseQueryLike,
+function applyInvoiceFilters<TQuery extends SupabaseQueryLike>(
+  query: TQuery,
   params: InvoiceSearchParams
-): SupabaseQueryLike {
+): TQuery {
   const {
     carrierId,
     customerId,
@@ -77,7 +73,7 @@ export async function fetchInvoiceList(params: InvoiceSearchParams) {
     .select('*', { count: 'exact' })
     .order('issue_date', { ascending: false })
     .order('create_time', { ascending: false })
-    .range(from, to) as unknown as SupabaseQueryLike
+    .range(from, to)
   query = applyInvoiceFilters(query, params)
   return await responseHandle<Invoice[]>(() => query, {
     ignoreCheck: true,
@@ -94,7 +90,7 @@ export async function exportInvoiceList(
     .select('*')
     .order('issue_date', { ascending: false })
     .order('create_time', { ascending: false })
-    .limit(maxRows) as unknown as SupabaseQueryLike
+    .limit(maxRows)
   query = ids?.length ? query.in('id', ids) : applyInvoiceFilters(query, params)
   return await responseHandle<Invoice[]>(() => query, {
     ignoreCheck: true,
@@ -110,7 +106,7 @@ export async function fetchInvoiceableStatementList(params: InvoiceableSearchPar
     .eq('direction', direction)
     .eq('counterparty_id', counterpartyId)
     .order('period_end', { ascending: true })
-    .range(from, to) as unknown as SupabaseQueryLike
+    .range(from, to)
   if (!includeFullyInvoiced) query = query.gt('uninvoiced_amount', 0)
   if (keyword) {
     query = query.or(`statement_no.ilike.%${keyword}%,counterparty_name.ilike.%${keyword}%`)
@@ -245,7 +241,7 @@ export async function analyzeInvoiceComplianceByAi(
 
   return {
     data: data ?? null,
-    error: await normalizeFunctionInvokeError(error)
+    error: await normalizeSupabaseFunctionError(error)
   }
 }
 
@@ -259,7 +255,7 @@ export async function analyzeInvoiceAttachmentByAi(
 
   return {
     data: data ?? null,
-    error: await normalizeFunctionInvokeError(error)
+    error: await normalizeSupabaseFunctionError(error)
   }
 }
 
@@ -300,24 +296,6 @@ export async function reviewInvoiceOcrArtifact(
 
   return {
     data: data ?? null,
-    error: await normalizeFunctionInvokeError(error)
-  }
-}
-
-async function normalizeFunctionInvokeError(error: unknown): Promise<unknown | null> {
-  if (!error || typeof error !== 'object' || !('context' in error)) return error
-
-  const context = (error as { context?: unknown }).context
-  if (!(context instanceof Response)) return error
-
-  try {
-    const payload = (await context.clone().json()) as { code?: unknown; message?: unknown }
-    if (typeof payload.message !== 'string' || !payload.message) return error
-    return {
-      code: typeof payload.code === 'string' ? payload.code : undefined,
-      message: payload.message
-    }
-  } catch {
-    return error
+    error: await normalizeSupabaseFunctionError(error)
   }
 }

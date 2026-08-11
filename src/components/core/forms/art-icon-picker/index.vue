@@ -113,6 +113,7 @@
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
+  import { uniq } from 'lodash-es'
 
   defineOptions({ name: 'ArtIconPicker' })
 
@@ -235,7 +236,7 @@
   })
 
   const normalizeIcons = (names: string[]): string[] => {
-    return [...new Set(names)]
+    return uniq(names)
       .filter(Boolean)
       .sort((left, right) => left.localeCompare(right))
       .map((name) => `${props.prefix}:${name}`)

@@ -1340,7 +1340,7 @@ declare namespace Api {
       interface CustomerAddress {
         id?: string
         tenantId?: string
-        customerId: string
+        customerId: string | null
         addressType: CustomerAddressType
         contactName: string
         contactPhone: string

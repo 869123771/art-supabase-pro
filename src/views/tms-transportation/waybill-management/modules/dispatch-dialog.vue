@@ -149,6 +149,7 @@
 </template>
 
 <script setup lang="ts">
+  import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import type { ComputedRef, UnwrapNestedRefs } from 'vue'
   import type { FormRules } from 'element-plus'
   import { trim } from 'lodash-es'
@@ -375,7 +376,7 @@
       if (!data) throw new Error('推荐服务未返回结果')
       advisor.data = data
     } catch (error) {
-      advisor.error = getErrorMessage(error)
+      advisor.error = getFriendlySupabaseErrorMessage(error, 'AI 调度推荐生成失败，请稍后重试')
     } finally {
       advisor.loading = false
     }
@@ -402,14 +403,6 @@
     form.selectedVehicles = [vehicle as DataSelectRecord]
     applyVehicle(vehicle)
     ElMessage.success(`已采用 ${vehicle.plateNo}，请确认计划时间后提交配载`)
-  }
-
-  function getErrorMessage(error: unknown): string {
-    if (error && typeof error === 'object' && 'message' in error) {
-      const message = (error as { message?: unknown }).message
-      if (typeof message === 'string' && message.trim()) return message.trim()
-    }
-    return 'AI 调度推荐生成失败，请稍后重试'
   }
 
   function createInitialForm(): DispatchPayload {

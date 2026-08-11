@@ -98,6 +98,7 @@
 </template>
 
 <script setup lang="ts">
+  import { createFriendlySupabaseError } from '@/utils/supabase'
   import ArtDrawer from '@/components/core/drawers/art-drawer/index.vue'
   import type { ArtDrawerExpose } from '@/components/core/drawers/art-drawer/types'
   import ArtAsyncState from '@/components/core/layouts/art-async-state/index.vue'
@@ -227,7 +228,7 @@
       const detailResponse = await fetchWorkflowInstanceDetail(state.instanceId)
       state.detail = detailResponse.data
     } catch (error) {
-      state.error = error instanceof Error ? error : new Error('审批实例加载失败')
+      state.error = createFriendlySupabaseError(error, '审批实例加载失败，请稍后重试')
     } finally {
       state.loading = false
     }

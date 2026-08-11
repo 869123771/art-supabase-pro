@@ -21,7 +21,13 @@
     <div v-if="!isLock">
       <ElDialog v-model="visible" :width="370" :show-close="false" @open="handleDialogOpen">
         <div class="flex-c flex-col">
-          <img class="w-16 h-16 rounded-full" src="@imgs/user/avatar.webp" alt="用户头像" />
+          <img
+            class="w-16 h-16 rounded-full"
+            src="@imgs/user/avatar.webp"
+            width="64"
+            height="64"
+            alt="用户头像"
+          />
           <div class="mt-7.5 mb-3.5 text-base font-medium">{{ userInfo.userName }}</div>
           <ElForm
             ref="formRef"
@@ -42,9 +48,15 @@
                 @keyup.enter="handleLock"
               >
                 <template #suffix>
-                  <ElIcon class="c-p" @click="handleLock">
-                    <Lock />
-                  </ElIcon>
+                  <button
+                    type="button"
+                    class="lock-action"
+                    aria-label="锁定系统"
+                    title="锁定系统"
+                    @click="handleLock"
+                  >
+                    <ElIcon><Lock /></ElIcon>
+                  </button>
                 </template>
               </ElInput>
             </ElFormItem>
@@ -59,7 +71,13 @@
     <!-- 解锁界面 -->
     <div v-else class="unlock-content">
       <div class="flex-c flex-col w-80">
-        <img class="w-16 h-16 mt-5 rounded-full" src="@imgs/user/avatar.webp" alt="用户头像" />
+        <img
+          class="w-16 h-16 mt-5 rounded-full"
+          src="@imgs/user/avatar.webp"
+          width="64"
+          height="64"
+          alt="用户头像"
+        />
         <div class="mt-3 mb-3.5 text-base font-medium">
           {{ userInfo.userName }}
         </div>
@@ -81,9 +99,15 @@
               class="mt-5"
             >
               <template #suffix>
-                <ElIcon class="c-p" @click="handleUnlock">
-                  <Unlock />
-                </ElIcon>
+                <button
+                  type="button"
+                  class="lock-action"
+                  aria-label="解锁系统"
+                  title="解锁系统"
+                  @click="handleUnlock"
+                >
+                  <ElIcon><Unlock /></ElIcon>
+                </button>
               </template>
             </ElInput>
           </ElFormItem>
@@ -456,6 +480,30 @@
 <style lang="scss" scoped>
   .layout-lock-screen :deep(.el-dialog) {
     border-radius: 10px;
+  }
+
+  .lock-action {
+    display: inline-grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    color: var(--el-text-color-secondary);
+    cursor: pointer;
+    background: transparent;
+    border: 0;
+    border-radius: var(--el-border-radius-base);
+
+    &:hover,
+    &:focus-visible {
+      color: var(--theme-color);
+      background: color-mix(in srgb, var(--theme-color) 8%, transparent);
+    }
+
+    &:focus-visible {
+      outline: none;
+      box-shadow: var(--art-themed-action-focus-shadow);
+    }
   }
 
   .unlock-content {

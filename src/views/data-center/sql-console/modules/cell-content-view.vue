@@ -90,8 +90,8 @@
       flex-direction: column;
       height: auto;
       min-height: 0;
-      overflow: hidden;
       padding: 0;
+      overflow: hidden;
     }
 
     .art-drawer__content {

@@ -12,7 +12,10 @@ type StatusPayload = Api.Tms.Finance.CarrierStatementStatusPayload & { businessT
 
 const { supabase, responseHandle } = useSupabase()
 
-function applyFilters(query: SupabaseQueryLike, params: SearchParams): SupabaseQueryLike {
+function applyFilters<TQuery extends SupabaseQueryLike>(
+  query: TQuery,
+  params: SearchParams
+): TQuery {
   const { carrierId, keyword, periodRange, recordId, status } = params
   if (recordId) query = query.eq('id', recordId)
   if (carrierId) query = query.eq('carrier_id', carrierId)
@@ -33,7 +36,7 @@ export async function fetchCarrierStatementList(params: SearchParams) {
     .from('tms_carrier_statement_summary')
     .select('*', { count: 'exact' })
     .order('create_time', { ascending: false })
-    .range(from, to) as unknown as SupabaseQueryLike
+    .range(from, to)
   query = applyFilters(query, params)
   return await responseHandle<Statement[]>(() => query, {
     ignoreCheck: true,
@@ -49,7 +52,7 @@ export async function exportCarrierStatementList(
     .from('tms_carrier_statement_summary')
     .select('*')
     .order('create_time', { ascending: false })
-    .limit(maxRows) as unknown as SupabaseQueryLike
+    .limit(maxRows)
   query = ids?.length ? query.in('id', ids) : applyFilters(query, params)
   return await responseHandle<Statement[]>(() => query, {
     ignoreCheck: true,
@@ -64,7 +67,7 @@ export async function fetchCarrierStatementEligibleCosts(params: EligibleSearchP
     .select('*', { count: 'exact' })
     .eq('carrier_id', carrierId)
     .order('occurred_on', { ascending: false })
-    .range(from, to) as unknown as SupabaseQueryLike
+    .range(from, to)
   if (keyword) {
     query = query.or(
       `waybill_no.ilike.%${keyword}%,payee_name.ilike.%${keyword}%,origin_city.ilike.%${keyword}%,destination_city.ilike.%${keyword}%`

@@ -7,38 +7,50 @@
         :style="menuStyle"
         class="context-menu art-card-xs !shadow-xl min-w-[var(--menu-width)] w-[var(--menu-width)]"
       >
-        <ul class="menu-list m-0 list-none" :style="menuListStyle">
+        <ul class="menu-list m-0 list-none" :style="menuListStyle" role="menu">
           <template v-for="item in menuItems" :key="item.key">
             <!-- 普通菜单项 -->
             <li
               v-if="!item.children"
-              class="menu-item relative flex-c c-p select-none rounded text-xs transition-colors duration-150 hover:bg-g-200"
+              role="none"
+              class="menu-entry relative"
               :class="{ 'is-disabled': item.disabled, 'has-line': item.showLine }"
-              :style="menuItemStyle"
-              @click="handleMenuClick(item)"
             >
-              <ArtSvgIcon
-                v-if="item.icon"
-                class="mr-2 shrink-0 text-base text-g-800"
-                :icon="item.icon"
-              />
-              <span
-                class="menu-label flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-g-800"
-                >{{ item.label }}</span
+              <button
+                type="button"
+                role="menuitem"
+                class="menu-item relative flex-c w-full c-p select-none rounded text-xs transition-colors duration-150 hover:bg-g-200"
+                :style="menuItemStyle"
+                :disabled="item.disabled"
+                @click="handleMenuClick(item)"
               >
-            </li>
-
-            <!-- 子菜单 -->
-            <li
-              v-else
-              class="menu-item submenu relative flex-c c-p select-none rounded text-xs transition-colors duration-150 hover:bg-g-200"
-              :style="menuItemStyle"
-            >
-              <div class="submenu-title flex-c w-full">
                 <ArtSvgIcon
                   v-if="item.icon"
                   class="mr-2 shrink-0 text-base text-g-800"
                   :icon="item.icon"
+                  aria-hidden="true"
+                />
+                <span
+                  class="menu-label flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-g-800"
+                  >{{ item.label }}</span
+                >
+              </button>
+            </li>
+
+            <!-- 子菜单 -->
+            <li v-else role="none" class="menu-entry submenu relative">
+              <button
+                type="button"
+                role="menuitem"
+                aria-haspopup="menu"
+                class="menu-item submenu-title flex-c w-full c-p select-none rounded text-xs transition-colors duration-150 hover:bg-g-200"
+                :style="menuItemStyle"
+              >
+                <ArtSvgIcon
+                  v-if="item.icon"
+                  class="mr-2 shrink-0 text-base text-g-800"
+                  :icon="item.icon"
+                  aria-hidden="true"
                 />
                 <span
                   class="menu-label flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-g-800"
@@ -46,30 +58,41 @@
                 >
                 <ArtSvgIcon
                   icon="ri:arrow-right-s-line"
-                  class="ubmenu-arrow ml-auto mr-0 text-base text-g-500 transition-transform duration-150"
+                  class="submenu-arrow ml-auto mr-0 text-base text-g-500 transition-transform duration-150"
+                  aria-hidden="true"
                 />
-              </div>
+              </button>
               <ul
                 class="submenu-list art-card-xs absolute left-full top-0 z-[2001] hidden w-max min-w-max list-none !shadow-xl"
                 :style="submenuListStyle"
+                role="menu"
               >
                 <li
                   v-for="child in item.children"
                   :key="child.key"
-                  class="menu-item relative mx-1.5 flex-c c-p select-none rounded text-xs transition-colors duration-150 hover:bg-g-200"
+                  role="none"
+                  class="menu-entry relative mx-1.5"
                   :class="{ 'is-disabled': child.disabled, 'has-line': child.showLine }"
-                  :style="menuItemStyle"
-                  @click="handleMenuClick(child)"
                 >
-                  <ArtSvgIcon
-                    v-if="child.icon"
-                    class="r-2 shrink-0 text-base text-g-800 mr-1"
-                    :icon="child.icon"
-                  />
-                  <span
-                    class="menu-label flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-g-800"
-                    >{{ child.label }}</span
+                  <button
+                    type="button"
+                    role="menuitem"
+                    class="menu-item relative flex-c w-full c-p select-none rounded text-xs transition-colors duration-150 hover:bg-g-200"
+                    :style="menuItemStyle"
+                    :disabled="child.disabled"
+                    @click="handleMenuClick(child)"
                   >
+                    <ArtSvgIcon
+                      v-if="child.icon"
+                      class="shrink-0 text-base text-g-800 mr-1"
+                      :icon="child.icon"
+                      aria-hidden="true"
+                    />
+                    <span
+                      class="menu-label flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-g-800"
+                      >{{ child.label }}</span
+                    >
+                  </button>
                 </li>
               </ul>
             </li>
@@ -347,11 +370,26 @@
     --border-radius: v-bind('props.borderRadius + "px"');
   }
 
-  .menu-item.has-line {
+  .menu-item {
+    font: inherit;
+    color: inherit;
+    text-align: left;
+    background: transparent;
+    border: 0;
+
+    &:focus-visible {
+      color: var(--theme-color);
+      outline: none;
+      background: color-mix(in srgb, var(--theme-color) 8%, var(--default-box-color));
+      box-shadow: var(--art-themed-action-focus-shadow);
+    }
+  }
+
+  .menu-entry.has-line {
     margin-bottom: 10px;
   }
 
-  .menu-item.has-line::after {
+  .menu-entry.has-line::after {
     position: absolute;
     right: 0;
     bottom: -5px;
@@ -361,29 +399,31 @@
     background-color: var(--art-gray-300);
   }
 
-  .menu-item.is-disabled {
+  .menu-entry.is-disabled {
     color: var(--el-text-color-disabled);
     cursor: not-allowed;
   }
 
-  .menu-item.is-disabled:hover {
+  .menu-entry.is-disabled:hover .menu-item {
     background-color: transparent !important;
   }
 
-  .menu-item.is-disabled i:not(.submenu-arrow),
-  .menu-item.is-disabled :deep(.art-svg-icon) {
+  .menu-entry.is-disabled i:not(.submenu-arrow),
+  .menu-entry.is-disabled :deep(.art-svg-icon) {
     color: var(--el-text-color-disabled) !important;
   }
 
-  .menu-item.is-disabled .menu-label {
+  .menu-entry.is-disabled .menu-label {
     color: var(--el-text-color-disabled) !important;
   }
 
-  .menu-item.submenu:hover .submenu-list {
+  .menu-entry.submenu:hover .submenu-list,
+  .menu-entry.submenu:focus-within .submenu-list {
     display: block;
   }
 
-  .menu-item.submenu:hover .submenu-title .submenu-arrow {
+  .menu-entry.submenu:hover .submenu-title .submenu-arrow,
+  .menu-entry.submenu:focus-within .submenu-title .submenu-arrow {
     transform: rotate(90deg);
   }
 

@@ -1,3 +1,4 @@
+import { normalizeSupabaseFunctionError } from '@/utils/supabase'
 import { useSupabase } from '@/hooks'
 import type { QueryResult } from '@/types/api/response'
 import { withRequestOptions, type SupabaseQueryLike } from '@/api/providers/supabase/query'
@@ -11,19 +12,19 @@ type DeliverySignPayload = Api.Tms.Delivery.DeliverySignPayload
 const { supabase, responseHandle } = useSupabase()
 
 // 配送签收 / 在途监控
-const applySignedTimeRange = (
-  query: SupabaseQueryLike,
+const applySignedTimeRange = <TQuery extends SupabaseQueryLike>(
+  query: TQuery,
   signedTimeRange?: string[]
-): SupabaseQueryLike => {
+): TQuery => {
   if (signedTimeRange?.[0]) query = query.gte('signed_at', `${signedTimeRange[0]}T00:00:00`)
   if (signedTimeRange?.[1]) query = query.lte('signed_at', `${signedTimeRange[1]}T23:59:59.999`)
   return query
 }
 
-const applyDeliveryFilters = (
-  query: SupabaseQueryLike,
+const applyDeliveryFilters = <TQuery extends SupabaseQueryLike>(
+  query: TQuery,
   params: DeliverySearchParams
-): SupabaseQueryLike => {
+): TQuery => {
   const { orderStatuses, signedTimeRange } = params
 
   query = applyOrderFilters(query, params)
@@ -40,9 +41,7 @@ interface DeliveryStatusCountResult {
 const DELIVERY_STATUS_COUNT_VALUES = ['signed', 'completed'] as const
 
 const countDeliveryOrders = async (params: DeliverySearchParams): Promise<number> => {
-  let query = supabase
-    .from('tms_order')
-    .select('id', { count: 'exact', head: true }) as unknown as SupabaseQueryLike
+  let query = supabase.from('tms_order').select('id', { count: 'exact', head: true })
 
   query = applyDeliveryFilters(query, params)
 
@@ -84,7 +83,7 @@ export async function fetchDeliveryList(
     .from('tms_order')
     .select(ORDER_SELECT, { count: 'exact' })
     .order('create_time', { ascending: false })
-    .range(from, to) as unknown as SupabaseQueryLike
+    .range(from, to)
 
   query = applyDeliveryFilters(query, params)
   return await responseHandle<DeliveryRecord[]>(() => withRequestOptions(query, options), {
@@ -101,7 +100,7 @@ export async function exportDeliveryList(
     .from('tms_order')
     .select(ORDER_SELECT)
     .order('create_time', { ascending: false })
-    .limit(maxRows) as unknown as SupabaseQueryLike
+    .limit(maxRows)
 
   query = ids?.length ? query.in('id', ids) : applyDeliveryFilters(query, params)
   return await responseHandle<DeliveryRecord[]>(() => query, {
@@ -119,7 +118,7 @@ export async function signDeliveryOrder(params: DeliverySignPayload) {
     p_signed_cod_amount: data.signedCodAmount ?? 0,
     p_receipt_image_urls: data.receiptImageUrls ?? [],
     p_signed_at: data.signedAt ?? new Date().toISOString()
-  }) as unknown as PromiseLike<QueryResult<unknown>>
+  })
 
   return await responseHandle(() => query, {
     showMessage: true,
@@ -135,7 +134,7 @@ export async function analyzeWaybillReceiptByAi(
       'ai-waybill-receipt-ocr',
       { body: params }
     )
-  return { data: data ?? null, error: await normalizeFunctionInvokeError(error) }
+  return { data: data ?? null, error: await normalizeSupabaseFunctionError(error) }
 }
 
 export async function reviewWaybillReceiptOcrArtifact(
@@ -146,7 +145,7 @@ export async function reviewWaybillReceiptOcrArtifact(
       'ai-waybill-receipt-ocr',
       { body: params }
     )
-  return { data: data ?? null, error: await normalizeFunctionInvokeError(error) }
+  return { data: data ?? null, error: await normalizeSupabaseFunctionError(error) }
 }
 
 const RECEIPT_EXCEPTION_SELECT = `
@@ -257,20 +256,4 @@ export async function transitionReceiptExceptionWorkOrder(
     { breakReturn: true, showErrorMessage: true }
   )
   return result.data ? mapReceiptException(result.data) : null
-}
-
-async function normalizeFunctionInvokeError(error: unknown): Promise<unknown | null> {
-  if (!error || typeof error !== 'object' || !('context' in error)) return error
-  const context = (error as { context?: unknown }).context
-  if (!(context instanceof Response)) return error
-  try {
-    const payload = (await context.clone().json()) as { code?: unknown; message?: unknown }
-    if (typeof payload.message !== 'string' || !payload.message) return error
-    return {
-      code: typeof payload.code === 'string' ? payload.code : undefined,
-      message: payload.message
-    }
-  } catch {
-    return error
-  }
 }

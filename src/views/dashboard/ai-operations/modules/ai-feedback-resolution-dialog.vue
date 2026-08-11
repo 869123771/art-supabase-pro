@@ -233,12 +233,12 @@
     &__summary-icon {
       display: grid;
       flex: 0 0 42px;
+      place-items: center;
       width: 42px;
       height: 42px;
       color: var(--el-color-danger);
       background: var(--el-color-danger-light-9);
       border-radius: var(--el-border-radius-base);
-      place-items: center;
 
       :deep(svg) {
         width: 20px;
@@ -260,17 +260,17 @@
       }
 
       strong {
-        overflow-wrap: anywhere;
         font-size: 14px;
         line-height: 1.6;
         color: var(--el-text-color-primary);
+        overflow-wrap: anywhere;
       }
 
       span {
         overflow: hidden;
+        text-overflow: ellipsis;
         font-size: 12px;
         color: var(--el-text-color-secondary);
-        text-overflow: ellipsis;
         white-space: nowrap;
       }
     }
@@ -282,8 +282,8 @@
 
     @media (width <= 560px) {
       &__summary-main > div {
-        align-items: flex-start;
         flex-direction: column;
+        align-items: flex-start;
       }
     }
   }

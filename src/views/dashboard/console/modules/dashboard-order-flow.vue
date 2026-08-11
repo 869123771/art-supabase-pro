@@ -187,8 +187,8 @@
 
     &__chart {
       display: grid;
-      min-width: 0;
       place-items: center;
+      min-width: 0;
 
       .art-ring-chart,
       > div {
@@ -196,8 +196,8 @@
       }
 
       > span {
-        margin-top: -3px;
         padding: 0;
+        margin-top: -3px;
         font-size: 10px;
         color: var(--el-text-color-placeholder);
       }
@@ -273,8 +273,8 @@
 
       i {
         display: block;
-        height: 100%;
         min-width: 0;
+        height: 100%;
         border-radius: inherit;
         transition: width 0.3s ease;
       }

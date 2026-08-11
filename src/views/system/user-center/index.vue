@@ -597,11 +597,11 @@
         position: relative;
         margin: 16px 0 0;
         overflow: hidden;
+        text-overflow: ellipsis;
         font-size: 22px;
         font-weight: 650;
         line-height: 30px;
         color: var(--el-text-color-primary);
-        text-overflow: ellipsis;
         white-space: nowrap;
       }
     }
@@ -626,7 +626,7 @@
       background: var(--default-box-color);
       border: 1px solid var(--el-border-color-lighter);
       border-radius: 50%;
-      box-shadow: 0 10px 28px rgba(31, 35, 48, 0.1);
+      box-shadow: 0 10px 28px rgb(31 35 48 / 10%);
 
       :deep(.el-avatar) {
         font-size: 24px;
@@ -658,20 +658,20 @@
       position: relative;
       display: flex;
       flex-wrap: wrap;
-      justify-content: center;
       gap: 8px;
+      justify-content: center;
       margin-top: 18px;
 
       span {
         display: inline-flex;
-        max-width: 100%;
-        align-items: center;
         gap: 5px;
+        align-items: center;
+        max-width: 100%;
         padding: 5px 9px;
         overflow: hidden;
+        text-overflow: ellipsis;
         font-size: 12px;
         color: var(--el-text-color-regular);
-        text-overflow: ellipsis;
         white-space: nowrap;
         background: color-mix(in srgb, var(--default-box-color) 82%, transparent);
         border: 1px solid var(--el-border-color-lighter);
@@ -686,9 +686,9 @@
 
     &__completion-head {
       display: flex;
+      gap: 12px;
       align-items: flex-start;
       justify-content: space-between;
-      gap: 12px;
       margin-bottom: 12px;
 
       strong {
@@ -706,8 +706,8 @@
         flex: none;
         font-size: 18px;
         font-weight: 700;
-        color: var(--el-color-primary);
         font-variant-numeric: tabular-nums;
+        color: var(--el-color-primary);
       }
     }
 
@@ -724,14 +724,14 @@
 
       li {
         display: flex;
-        min-width: 0;
-        align-items: center;
         gap: 11px;
+        align-items: center;
+        min-width: 0;
 
         > div {
           display: grid;
-          min-width: 0;
           gap: 1px;
+          min-width: 0;
 
           small {
             font-size: 11px;
@@ -740,9 +740,9 @@
 
           span {
             overflow: hidden;
+            text-overflow: ellipsis;
             font-size: 13px;
             color: var(--el-text-color-primary);
-            text-overflow: ellipsis;
             white-space: nowrap;
 
             &.is-placeholder {
@@ -756,6 +756,7 @@
     &__summary-icon {
       display: grid;
       flex: 0 0 34px;
+      place-items: center;
       width: 34px;
       height: 34px;
       font-size: 16px;
@@ -763,7 +764,6 @@
       background: var(--el-color-primary-light-9);
       border: 1px solid var(--el-color-primary-light-8);
       border-radius: var(--art-control-radius);
-      place-items: center;
     }
 
     &__settings {
@@ -773,10 +773,10 @@
 
     &__settings-header {
       display: flex;
-      min-width: 0;
+      gap: 20px;
       align-items: center;
       justify-content: space-between;
-      gap: 20px;
+      min-width: 0;
       padding: 24px 26px;
       background: linear-gradient(110deg, var(--el-color-primary-light-9), transparent 62%);
       border-bottom: 1px solid var(--el-border-color-lighter);
@@ -784,13 +784,14 @@
 
     &__settings-title {
       display: flex;
-      min-width: 0;
-      align-items: center;
       gap: 14px;
+      align-items: center;
+      min-width: 0;
 
       > span {
         display: grid;
         flex: 0 0 48px;
+        place-items: center;
         width: 48px;
         height: 48px;
         font-size: 23px;
@@ -799,7 +800,6 @@
         border: 1px solid var(--el-color-primary-light-7);
         border-radius: var(--custom-radius);
         box-shadow: 0 8px 24px color-mix(in srgb, var(--el-color-primary) 13%, transparent);
-        place-items: center;
       }
 
       > div {
@@ -815,8 +815,8 @@
       p {
         font-size: 11px;
         font-weight: 700;
-        letter-spacing: 0.12em;
         color: var(--el-color-primary);
+        letter-spacing: 0.12em;
       }
 
       h2 {
@@ -830,9 +830,9 @@
         display: block;
         margin-top: 2px;
         overflow: hidden;
+        text-overflow: ellipsis;
         font-size: 13px;
         color: var(--el-text-color-secondary);
-        text-overflow: ellipsis;
         white-space: nowrap;
       }
     }
@@ -840,8 +840,8 @@
     &__security-badge {
       display: inline-flex;
       flex: none;
-      align-items: center;
       gap: 6px;
+      align-items: center;
       padding: 6px 10px;
       font-size: 12px;
       color: var(--el-color-success-dark-2);
@@ -870,8 +870,8 @@
 
     &__tab-label {
       display: inline-flex;
-      align-items: center;
       gap: 7px;
+      align-items: center;
     }
 
     &__pane {
@@ -880,10 +880,10 @@
 
     &__pane-head {
       display: flex;
-      min-width: 0;
+      gap: 20px;
       align-items: flex-start;
       justify-content: space-between;
-      gap: 20px;
+      min-width: 0;
       margin-bottom: 22px;
 
       :deep(.art-section-title) {
@@ -900,8 +900,8 @@
     &__pane-actions {
       display: flex;
       flex: none;
-      align-items: center;
       gap: 8px;
+      align-items: center;
 
       .el-button + .el-button {
         margin-left: 0;
@@ -930,9 +930,9 @@
 
     &__security-notice {
       display: flex;
-      max-width: 720px;
-      align-items: flex-start;
       gap: 12px;
+      align-items: flex-start;
+      max-width: 720px;
       padding: 14px 16px;
       margin-bottom: 22px;
       background: var(--el-color-primary-light-9);
@@ -942,13 +942,13 @@
       > span {
         display: grid;
         flex: 0 0 34px;
+        place-items: center;
         width: 34px;
         height: 34px;
         font-size: 17px;
         color: var(--el-color-primary);
         background: var(--default-box-color);
         border-radius: var(--art-control-radius);
-        place-items: center;
       }
 
       strong {
@@ -964,7 +964,7 @@
       }
     }
 
-    @media (max-width: 1100px) {
+    @media (width <= 1100px) {
       padding: 12px;
 
       &__layout {
@@ -979,7 +979,7 @@
       }
     }
 
-    @media (max-width: 820px) {
+    @media (width <= 820px) {
       &__layout {
         grid-template-columns: minmax(0, 1fr);
       }
@@ -989,13 +989,13 @@
       }
     }
 
-    @media (max-width: 600px) {
+    @media (width <= 600px) {
       padding: 8px;
 
       &__settings-header,
       &__pane-head {
-        align-items: flex-start;
         flex-direction: column;
+        align-items: flex-start;
       }
 
       &__settings-header,

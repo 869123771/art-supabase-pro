@@ -1,5 +1,13 @@
 @charset "UTF-8";
 
+:root {
+  color-scheme: light;
+}
+
+html.dark {
+  color-scheme: dark;
+}
+
 /*滚动条*/
 /*滚动条整体部分,必须要设置*/
 ::-webkit-scrollbar {

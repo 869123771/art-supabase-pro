@@ -222,6 +222,7 @@
 </template>
 
 <script setup lang="ts">
+  import { createFriendlySupabaseError } from '@/utils/supabase'
   import dayjs from 'dayjs'
   import { ElMessage } from 'element-plus'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
@@ -356,7 +357,7 @@
       state.data = operational
       state.bottleneck = bottleneck
     } catch (error) {
-      state.error = error instanceof Error ? error : new Error('审批运营分析加载失败')
+      state.error = createFriendlySupabaseError(error, '审批运营分析加载失败，请稍后重试')
     } finally {
       state.loading = false
     }

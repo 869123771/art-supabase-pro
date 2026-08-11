@@ -4,10 +4,22 @@
     class="art-async-state"
     :class="{ 'is-full-height': fullHeight }"
     :style="{ minHeight: normalizedMinHeight }"
+    :aria-busy="loading"
   >
+    <span
+      v-if="statusAnnouncement"
+      class="sr-only"
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+    >
+      {{ statusAnnouncement }}
+    </span>
+
     <ElSkeleton
       v-if="loading && loadingMode === 'skeleton'"
       animated
+      aria-hidden="true"
       :rows="skeletonRows"
       class="art-async-state__skeleton"
     />
@@ -43,6 +55,7 @@
 
 <script setup lang="ts">
   import ArtEmptyState from '@/components/core/layouts/art-empty-state/index.vue'
+  import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
 
   defineOptions({ name: 'ArtAsyncState' })
 
@@ -82,13 +95,19 @@
 
   const isMaskLoading = computed(() => Boolean(props.loading && props.loadingMode === 'mask'))
   const errorMessage = computed(() => {
-    if (props.error instanceof Error) return props.error.message
-    return props.error ?? ''
+    if (!props.error) return ''
+    return getFriendlySupabaseErrorMessage(props.error, '内容加载失败，请稍后重试')
   })
 
   const normalizedMinHeight = computed(() =>
     typeof props.minHeight === 'number' ? `${props.minHeight}px` : props.minHeight
   )
+
+  const statusAnnouncement = computed(() => {
+    if (props.loading) return '正在加载…'
+    if (errorMessage.value) return `${props.errorTitle}：${errorMessage.value}`
+    return ''
+  })
 
   const emptyStateSize = computed<EmptyStateSize>(() =>
     props.emptyImageSize <= 72 ? 'compact' : 'default'

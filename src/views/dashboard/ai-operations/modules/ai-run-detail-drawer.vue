@@ -227,6 +227,7 @@
 </template>
 
 <script setup lang="ts">
+  import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import dayjs from 'dayjs'
   import { ElMessage } from 'element-plus'
   import ArtDrawer from '@/components/core/drawers/art-drawer/index.vue'
@@ -424,7 +425,7 @@
       emit('diagnosed')
       ElMessage.success('AI 运行诊断已完成')
     } catch (error) {
-      ElMessage.error(error instanceof Error ? error.message : 'AI 运行诊断失败')
+      ElMessage.error(getFriendlySupabaseErrorMessage(error, 'AI 运行诊断失败'))
     } finally {
       diagnosis.loading = false
     }
@@ -801,8 +802,7 @@
       max-width: 100%;
       padding: 12px;
       margin: 0;
-      overflow-x: auto;
-      overflow-y: hidden;
+      overflow: auto hidden;
       font-family: Consolas, monospace;
       font-size: 11px;
       line-height: 1.6;

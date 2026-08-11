@@ -483,16 +483,16 @@
 
       p {
         margin: 0;
-        overflow-wrap: anywhere;
         font-size: 13px;
         line-height: 1.7;
         color: var(--art-text-gray-500);
+        overflow-wrap: anywhere;
       }
     }
 
     &__brand {
-      justify-content: center;
       flex: 0 0 58px;
+      justify-content: center;
       width: 58px;
       height: 58px;
       margin-right: 18px;
@@ -536,8 +536,8 @@
         span,
         small {
           overflow: hidden;
-          color: var(--art-text-gray-500);
           text-overflow: ellipsis;
+          color: var(--art-text-gray-500);
           white-space: nowrap;
         }
 
@@ -558,8 +558,8 @@
     }
 
     &__metric-icon {
-      justify-content: center;
       flex: 0 0 42px;
+      justify-content: center;
       width: 42px;
       height: 42px;
       margin-right: 14px;
@@ -593,8 +593,8 @@
     }
 
     &__governance {
-      justify-content: space-between;
       gap: 20px;
+      justify-content: space-between;
       padding: 17px 22px;
 
       > div {
@@ -622,10 +622,10 @@
       }
 
       span {
-        overflow-wrap: anywhere;
         font-size: 12px;
         line-height: 1.6;
         color: var(--art-text-gray-500);
+        overflow-wrap: anywhere;
       }
 
       > :deep(.el-tag) {
@@ -652,9 +652,9 @@
 
       > div {
         display: flex;
-        min-width: 0;
         gap: 8px;
         align-items: center;
+        min-width: 0;
       }
 
       strong {
@@ -685,12 +685,12 @@
       width: 100%;
       min-width: 0;
       overflow: hidden;
+      -webkit-line-clamp: 2;
       line-height: 1.65;
       color: var(--art-text-gray-600);
       overflow-wrap: anywhere;
       white-space: normal;
       -webkit-box-orient: vertical;
-      -webkit-line-clamp: 2;
     }
 
     :deep(.ai-prompt__publish-cell) {
@@ -733,7 +733,7 @@
     }
   }
 
-  @media (max-width: 1200px) {
+  @media (width <= 1200px) {
     .ai-prompt {
       &__metrics {
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -741,12 +741,12 @@
     }
   }
 
-  @media (max-width: 768px) {
+  @media (width <= 768px) {
     .ai-prompt {
       &__hero,
       &__governance {
-        align-items: flex-start;
         flex-direction: column;
+        align-items: flex-start;
       }
 
       &__hero-actions {

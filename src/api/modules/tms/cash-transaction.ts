@@ -1,3 +1,4 @@
+import { normalizeSupabaseFunctionError } from '@/utils/supabase'
 import { useSupabase } from '@/hooks'
 import type { QueryResult } from '@/types/api/response'
 import { applyDateRange, type SupabaseQueryLike } from '@/api/providers/supabase/query'
@@ -45,10 +46,10 @@ const CARRIER_CASH_ALLOCATION_SELECT = `
   )
 `
 
-const applyTransactionFilters = (
-  query: SupabaseQueryLike,
+const applyTransactionFilters = <TQuery extends SupabaseQueryLike>(
+  query: TQuery,
   params: CashTransactionSearchParams
-): SupabaseQueryLike => {
+): TQuery => {
   const { carrierId, customerId, dateRange, direction, keyword, recordId, status } = params
   if (recordId) query = query.eq('id', recordId)
   if (customerId) query = query.eq('customer_id', customerId)
@@ -70,7 +71,7 @@ export async function fetchCashTransactionList(params: CashTransactionSearchPara
     .select('*', { count: 'exact' })
     .order('transaction_date', { ascending: false })
     .order('create_time', { ascending: false })
-    .range(from, to) as unknown as SupabaseQueryLike
+    .range(from, to)
   query = applyTransactionFilters(query, params)
   return await responseHandle<CashTransaction[]>(() => query, {
     ignoreCheck: true,
@@ -87,7 +88,7 @@ export async function exportCashTransactionList(
     .select('*')
     .order('transaction_date', { ascending: false })
     .order('create_time', { ascending: false })
-    .limit(maxRows) as unknown as SupabaseQueryLike
+    .limit(maxRows)
   query = ids?.length ? query.in('id', ids) : applyTransactionFilters(query, params)
   return await responseHandle<CashTransaction[]>(() => query, {
     ignoreCheck: true,
@@ -105,7 +106,7 @@ export async function fetchCustomerStatementAllocatableList(
     .eq('customer_id', customerId)
     .order('period_end', { ascending: true })
     .order('create_time', { ascending: true })
-    .range(from, to) as unknown as SupabaseQueryLike
+    .range(from, to)
   if (keyword) {
     query = query.or(`statement_no.ilike.%${keyword}%,customer_name.ilike.%${keyword}%`)
   }
@@ -123,7 +124,7 @@ export async function fetchCarrierStatementAllocatableList(params: CarrierAlloca
     .eq('carrier_id', carrierId)
     .order('period_end', { ascending: true })
     .order('create_time', { ascending: true })
-    .range(from, to) as unknown as SupabaseQueryLike
+    .range(from, to)
   if (keyword) query = query.or(`statement_no.ilike.%${keyword}%,carrier_name.ilike.%${keyword}%`)
   return await responseHandle<CarrierAllocatableStatement[]>(() => query, {
     ignoreCheck: true,
@@ -262,7 +263,7 @@ export async function analyzeCashVoucherByAi(
       'ai-cash-voucher-ocr',
       { body: params }
     )
-  return { data: data ?? null, error: await normalizeFunctionInvokeError(error) }
+  return { data: data ?? null, error: await normalizeSupabaseFunctionError(error) }
 }
 
 export async function reviewCashVoucherOcrArtifact(
@@ -273,7 +274,7 @@ export async function reviewCashVoucherOcrArtifact(
       'ai-cash-voucher-ocr',
       { body: params }
     )
-  return { data: data ?? null, error: await normalizeFunctionInvokeError(error) }
+  return { data: data ?? null, error: await normalizeSupabaseFunctionError(error) }
 }
 
 export async function analyzeBankStatementBatchByAi(params: {
@@ -284,7 +285,7 @@ export async function analyzeBankStatementBatchByAi(params: {
     'ai-bank-statement-batch-match',
     { body: { action: 'analyze', ...params } }
   )
-  return { data: data ?? null, error: await normalizeFunctionInvokeError(error) }
+  return { data: data ?? null, error: await normalizeSupabaseFunctionError(error) }
 }
 
 export async function commitBankStatementBatchByAi(params: {
@@ -295,21 +296,5 @@ export async function commitBankStatementBatchByAi(params: {
     'ai-bank-statement-batch-match',
     { body: { action: 'commit', ...params } }
   )
-  return { data: data ?? null, error: await normalizeFunctionInvokeError(error) }
-}
-
-async function normalizeFunctionInvokeError(error: unknown): Promise<unknown | null> {
-  if (!error || typeof error !== 'object' || !('context' in error)) return error
-  const context = (error as { context?: unknown }).context
-  if (!(context instanceof Response)) return error
-  try {
-    const payload = (await context.clone().json()) as { code?: unknown; message?: unknown }
-    if (typeof payload.message !== 'string' || !payload.message) return error
-    return {
-      code: typeof payload.code === 'string' ? payload.code : undefined,
-      message: payload.message
-    }
-  } catch {
-    return error
-  }
+  return { data: data ?? null, error: await normalizeSupabaseFunctionError(error) }
 }

@@ -201,15 +201,15 @@
       align-items: center;
       justify-content: space-between;
       width: 100%;
-      height: 100%;
       min-width: 0;
+      height: 100%;
       padding-right: 8px;
 
       .label {
         display: flex;
+        column-gap: 8px;
         align-items: center;
         min-width: 0;
-        column-gap: 8px;
 
         .name {
           overflow: hidden;

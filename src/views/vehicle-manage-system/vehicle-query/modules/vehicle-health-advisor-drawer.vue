@@ -129,6 +129,7 @@
 </template>
 
 <script setup lang="ts">
+  import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import ArtEmptyState from '@/components/core/layouts/art-empty-state/index.vue'
   import type { UnwrapNestedRefs } from 'vue'
   import ArtAiFeedback from '@/components/core/base/art-ai-feedback/index.vue'
@@ -251,7 +252,7 @@
       state.data = data
     } catch (error) {
       state.data = null
-      state.error = getErrorMessage(error)
+      state.error = getFriendlySupabaseErrorMessage(error, 'AI 车辆健康研判失败，请稍后重试')
     } finally {
       state.loading = false
     }
@@ -272,22 +273,6 @@
   }
   function formatTime(value: string): string {
     return formatWithDayjs(value, 'YYYY-MM-DD HH:mm:ss') || '-'
-  }
-  function getErrorMessage(error: unknown): string {
-    if (error instanceof Error && error.message) return normalizeErrorMessage(error.message)
-    if (error && typeof error === 'object' && 'message' in error) {
-      const message = (error as { message?: unknown }).message
-      if (typeof message === 'string' && message.trim()) return normalizeErrorMessage(message)
-    }
-    return 'AI 车辆健康研判失败，请稍后重试'
-  }
-
-  function normalizeErrorMessage(message: string): string {
-    const normalized = message.trim()
-    if (/failed to send a request|failed to fetch|networkerror/i.test(normalized)) {
-      return 'AI 车辆健康研判服务尚未部署或暂时不可用，请联系管理员检查服务状态。'
-    }
-    return normalized
   }
 
   defineExpose({ handleOpen })
