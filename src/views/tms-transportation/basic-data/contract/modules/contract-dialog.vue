@@ -92,6 +92,7 @@
   import { uploadAttachment } from '@/api/common'
   import { useUserStore } from '@/store/modules/user'
   import { downloadAttachment, getFileExtension } from '@/utils/file'
+  import { usesCarrierParty } from './contract-business-type'
   import ContractTransportDetails from './contract-transport-details.vue'
 
   defineOptions({ name: 'TmsContractDialog' })
@@ -262,7 +263,7 @@
         label: '承运商',
         key: 'carrierId',
         type: 'select',
-        hidden: () => form.data.businessContractType !== 'carrier',
+        hidden: () => !usesCarrierParty(form.data.businessContractType),
         api: fetchCarrierOptions,
         immediate: false,
         resultField: 'data',
@@ -281,7 +282,7 @@
         label: '客户/货主',
         key: 'customerId',
         type: 'select',
-        hidden: () => form.data.businessContractType !== 'customer',
+        hidden: () => usesCarrierParty(form.data.businessContractType),
         api: fetchCustomerOptions,
         immediate: false,
         resultField: 'data',
@@ -482,7 +483,7 @@
       carrierId: [
         {
           validator: (_rule, value, callback) => {
-            if (form.data.businessContractType === 'carrier' && !value) {
+            if (usesCarrierParty(form.data.businessContractType) && !value) {
               callback(new Error('请选择承运商'))
               return
             }
@@ -494,7 +495,7 @@
       customerId: [
         {
           validator: (_rule, value, callback) => {
-            if (form.data.businessContractType === 'customer' && !value) {
+            if (!usesCarrierParty(form.data.businessContractType) && !value) {
               callback(new Error('请选择客户或货主'))
               return
             }
@@ -611,10 +612,9 @@
   }
 
   const handleBusinessTypeChange = (businessType: ContractBusinessType): void => {
-    const partyPatch: Partial<Contract> =
-      businessType === 'carrier'
-        ? { customerId: null, customer: null, customerSignatory: '', contactName: '' }
-        : { carrierId: null, carrier: null, contactName: '' }
+    const partyPatch: Partial<Contract> = usesCarrierParty(businessType)
+      ? { customerId: null, customer: null, customerSignatory: '', contactName: '' }
+      : { carrierId: null, carrier: null, contactName: '' }
     Object.assign(form.data, partyPatch)
     void nextTick(() => formRef.value?.clearValidate(['carrierId', 'customerId']))
   }
@@ -673,12 +673,12 @@
     ]) as Contract
 
     if (!payload.contractNo) delete payload.contractNo
-    const isCarrierContract = payload.businessContractType === 'carrier'
+    const hasCarrierParty = usesCarrierParty(payload.businessContractType)
     return {
       ...payload,
       contractStatus: payload.contractStatus || 'draft',
-      customerId: isCarrierContract ? null : normalizeText(payload.customerId),
-      carrierId: isCarrierContract ? normalizeText(payload.carrierId) : null,
+      customerId: hasCarrierParty ? null : normalizeText(payload.customerId),
+      carrierId: hasCarrierParty ? normalizeText(payload.carrierId) : null,
       paperContractNo: normalizeText(payload.paperContractNo),
       mnemonicCode: normalizeText(payload.mnemonicCode),
       contactName: normalizeText(payload.contactName),

@@ -5,10 +5,16 @@
         <ArtSectionTitle :show-line="false">运输合同明细</ArtSectionTitle>
         <p>按货物维护合同数量、计量单位和运输价格，运费自动按数量与单价计算。</p>
       </div>
-      <ElButton type="primary" plain @click="addDetail">
-        <template #icon><ArtSvgIcon icon="ri:add-line" /></template>
-        新增明细
-      </ElButton>
+      <div class="contract-transport-details__actions">
+        <ElButton plain @click="openCargoSelector">
+          <template #icon><ArtSvgIcon icon="ri:archive-stack-line" /></template>
+          批量选货物
+        </ElButton>
+        <ElButton type="primary" plain @click="addDetail">
+          <template #icon><ArtSvgIcon icon="ri:add-line" /></template>
+          新增明细
+        </ElButton>
+      </div>
     </div>
 
     <ArtTable
@@ -19,6 +25,8 @@
       empty-description="点击“新增明细”维护合同约定的货物、数量和价格。"
       empty-height="180px"
     />
+
+    <CargoMultipleSelect ref="cargoSelectorRef" @confirm="handleCargoSelectorConfirm" />
   </section>
 </template>
 
@@ -39,6 +47,8 @@
   import ArtTable from '@/components/core/tables/art-table/index.vue'
   import type { ColumnOption } from '@/types'
   import { fetchCargoList } from '@/api/tms'
+  import CargoMultipleSelect from '@/views/tms-transportation/modules/cargo-multiple-select.vue'
+  import { mergeContractCargoSelections } from './contract-cargo-selection'
 
   defineOptions({ name: 'ContractTransportDetails' })
 
@@ -49,12 +59,17 @@
     value: string
   }
 
+  interface CargoSelectorExpose {
+    open: () => Promise<void>
+  }
+
   interface Props {
     modelValue: ContractTransportDetail[]
     unitOptions: Api.DataCenter.DictListItem[]
   }
 
   const props = defineProps<Props>()
+  const cargoSelectorRef = ref<CargoSelectorExpose>()
   const emit = defineEmits<{
     'update:modelValue': [value: ContractTransportDetail[]]
   }>()
@@ -204,6 +219,15 @@
     emit('update:modelValue', [...props.modelValue, createInitialDetail()])
   }
 
+  const openCargoSelector = async (): Promise<void> => {
+    await cargoSelectorRef.value?.open()
+  }
+
+  const handleCargoSelectorConfirm = (selectedCargoes: Cargo[]): void => {
+    const result = mergeContractCargoSelections(props.modelValue, selectedCargoes)
+    if (result.addedCount) emit('update:modelValue', result.items)
+  }
+
   const removeDetail = (row: ContractTransportDetail): void => {
     emit(
       'update:modelValue',
@@ -260,9 +284,19 @@
         line-height: 1.5;
         color: var(--el-text-color-secondary);
       }
+    }
 
-      .el-button {
+    &__actions {
+      display: flex;
+      flex: none;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: flex-end;
+
+      :deep(.el-button) {
         flex: none;
+        margin-left: 0;
+        white-space: nowrap;
       }
     }
 
@@ -275,8 +309,12 @@
       &__header {
         flex-direction: column;
 
-        .el-button {
+        .contract-transport-details__actions {
           width: 100%;
+
+          :deep(.el-button) {
+            flex: 1 1 160px;
+          }
         }
       }
     }

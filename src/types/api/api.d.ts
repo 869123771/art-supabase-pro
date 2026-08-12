@@ -1796,6 +1796,19 @@ declare namespace Api {
             recordId?: string
           }
       >
+
+      interface ContractDetailSelectorItem extends ContractTransportDetail {
+        key: string
+        contractId: string
+        contractNo: string
+        contractName: string
+        effectiveDate?: string | null
+        expiryDate?: string | null
+      }
+
+      interface ContractDetailSelectorSearchParams extends Api.Common.CommonSearchParams {
+        keyword?: string
+      }
     }
 
     namespace Order {
@@ -1822,12 +1835,20 @@ declare namespace Api {
       }
 
       interface CargoItem {
+        cargoId?: string | null
         cargoName?: string | null
+        cargoCode?: string | null
         packageType?: string | null
         quantity?: number | null
         unit?: string | null
         weightKg?: number | null
         volumeM3?: number | null
+        unitPrice?: number | null
+        freight?: number | null
+        sourceContractId?: string | null
+        sourceContractNo?: string | null
+        sourceContractName?: string | null
+        sourceContractDetailKey?: string | null
       }
 
       interface AiOrderOption {

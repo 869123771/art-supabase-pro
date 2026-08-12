@@ -6,6 +6,8 @@ import { startWorkflow } from '@/api/workflow'
 type Contract = Api.Tms.BasicData.Contract
 type ContractSearchParams = Api.Tms.BasicData.ContractSearchParams
 type ContractTransportDetail = Api.Tms.BasicData.ContractTransportDetail
+type ContractDetailSelectorItem = Api.Tms.BasicData.ContractDetailSelectorItem
+type ContractDetailSelectorSearchParams = Api.Tms.BasicData.ContractDetailSelectorSearchParams
 
 const { supabase, keysToSnakeDeep, responseHandle } = useSupabase()
 
@@ -114,6 +116,27 @@ export async function fetchContractList(params: ContractSearchParams, options?: 
     showErrorMessage: true
   })
   return { ...result, data: (result.data ?? []).map(normalizeContractRecord) }
+}
+
+export async function fetchAvailableContractDetailList(
+  params: ContractDetailSelectorSearchParams,
+  options?: ApiRequestOptions
+) {
+  const { from = 0, to = 9 } = params
+  const keyword = String(params.keyword ?? '').trim()
+  const query = supabase.rpc('tms_list_available_contract_details', {
+    p_keyword: keyword || null
+  })
+  const result = await responseHandle<ContractDetailSelectorItem[]>(
+    () => withRequestOptions(query, options),
+    { ignoreCheck: true, showErrorMessage: true }
+  )
+  const details = result.data ?? []
+  return {
+    ...result,
+    data: details.slice(from, to + 1),
+    total: details.length
+  }
 }
 
 export async function exportContractList(

@@ -30,7 +30,19 @@ test('合同新增弹窗展示扩展字段和运输明细', async ({ page }) => 
   await expect(dialog.getByText('合同附件', { exact: true })).toBeVisible()
   await expect(dialog.locator('.el-form-item__error')).toHaveCount(0)
 
+  await dialog.getByRole('button', { name: '批量选货物', exact: true }).click()
+  const cargoDialog = page.getByRole('dialog', { name: '批量选择货物' })
+  await expect(cargoDialog).toBeVisible()
+  await expect(cargoDialog.getByPlaceholder('请输入货物名称、编码、单位或备注')).toBeVisible()
+  await cargoDialog.getByRole('button', { name: '取消', exact: true }).click()
+  await expect(cargoDialog).toBeHidden()
+
   await dialog.getByRole('radio', { name: '企业/货主端合同', exact: true }).click()
+  await expect(dialog.getByText('承运商', { exact: true })).toBeVisible()
+  await expect(dialog.getByText('客户/货主', { exact: true })).toBeHidden()
+  await expect(dialog.locator('.el-form-item__error')).toHaveCount(0)
+
+  await dialog.getByRole('radio', { name: '承运商合同', exact: true }).click()
   await expect(dialog.getByText('客户/货主', { exact: true })).toBeVisible()
   await expect(dialog.getByText('承运商', { exact: true })).toBeHidden()
   await expect(dialog.locator('.el-form-item__error')).toHaveCount(0)

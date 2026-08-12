@@ -26,7 +26,7 @@
               class="preview-action"
               aria-label="预览图片"
               title="预览图片"
-              @click="handleView(index)"
+              @click.stop="handleView(index)"
             >
               <ArtSvgIcon icon="ri-eye-line" aria-hidden="true" />
             </button>
@@ -36,7 +36,7 @@
               class="preview-action preview-action--danger"
               aria-label="删除图片"
               title="删除图片"
-              @click="handleRemove(index)"
+              @click.stop="handleRemove(index)"
             >
               <ArtSvgIcon icon="ri-delete-bin-2-line" aria-hidden="true" />
             </button>

@@ -73,6 +73,7 @@ export {
   deleteContractBatch,
   editContract,
   exportContractList,
+  fetchAvailableContractDetailList,
   fetchContractDetail,
   fetchContractList,
   importContracts,

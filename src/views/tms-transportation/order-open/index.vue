@@ -110,6 +110,10 @@
         <div class="order-open__section-header">
           <ArtSectionTitle :show-line="false">货品信息</ArtSectionTitle>
           <div class="order-open__section-actions">
+            <ElButton plain @click="openContractDetailSelector">
+              <template #icon><ArtSvgIcon icon="ri:file-list-3-line" /></template>
+              批量选合同明细
+            </ElButton>
             <ElButton plain :icon="Collection" @click="openCargoSelector">批量选货物</ElButton>
             <ElButton type="primary" plain :icon="Plus" @click="addCargoItem">添加</ElButton>
           </div>
@@ -259,6 +263,10 @@
 
       <CustomerSelectorDialog ref="customerDialogRef" @select="handleCustomerSelect" />
       <PrintCountDialog ref="printDialogRef" @confirm="handlePrintConfirm" />
+      <ContractDetailMultipleSelect
+        ref="contractDetailSelectorRef"
+        @confirm="handleContractDetailSelectorConfirm"
+      />
       <CargoMultipleSelect ref="cargoSelectorRef" @confirm="handleCargoSelectorConfirm" />
       <AiOrderDrawer ref="aiOrderDrawerRef" @apply="handleAiOrderApply" />
     </div>
@@ -294,6 +302,12 @@
   import { useUserStore } from '@/store/modules/user'
   import { clearFormRefsValidation, validateFormRefs } from '@/utils/form/validation'
   import CargoMultipleSelect from '../modules/cargo-multiple-select.vue'
+  import ContractDetailMultipleSelect from './modules/contract-detail-multiple-select.vue'
+  import {
+    calculateContractCargoFreight,
+    calculateContractTransportFee,
+    mergeOrderContractDetails
+  } from './modules/order-contract-detail'
   import AiOrderDrawer from './modules/ai-order-drawer.vue'
   import { buildAiOrderFinalPayload } from './modules/ai-order-review'
   import CustomerSelectorDialog from './modules/customer-selector-dialog.vue'
@@ -322,6 +336,7 @@
   type OrderRecord = Api.Tms.Order.OrderRecord
   type CargoItem = Api.Tms.Order.CargoItem
   type CargoMaster = Api.Tms.BasicData.Cargo
+  type ContractDetail = Api.Tms.BasicData.ContractDetailSelectorItem
   type CustomerItem = Api.Tms.Order.CustomerSelectorItem
   type CustomerAddress = Api.Tms.BasicData.CustomerAddress
   type CustomerPrice = Api.Tms.BasicData.CustomerPrice
@@ -374,6 +389,10 @@
   }
 
   interface CargoSelectorExpose {
+    open: () => Promise<void>
+  }
+
+  interface ContractDetailSelectorExpose {
     open: () => Promise<void>
   }
 
@@ -435,6 +454,7 @@
   const customerDialogRef = ref<CustomerSelectorExpose>()
   const printDialogRef = ref<PrintDialogExpose>()
   const cargoSelectorRef = ref<CargoSelectorExpose>()
+  const contractDetailSelectorRef = ref<ContractDetailSelectorExpose>()
   const aiOrderDrawerRef = ref<AiOrderDrawerExpose>()
   const aiArtifactId = ref<string>()
   const initializedOrderId = ref<string>()
@@ -680,8 +700,14 @@
         )
       },
       {
+        prop: 'cargoCode',
+        label: '货物编码',
+        width: 130,
+        formatter: (row) => row.cargoCode || '-'
+      },
+      {
         prop: 'packageType',
-        label: '包装',
+        label: '计量单位',
         width: 150,
         formatter: (row) => (
           <ElSelect v-model={row.packageType} class="w-full!" clearable placeholder="请选择">
@@ -698,6 +724,26 @@
         formatter: (row) => (
           <ElInputNumber v-model={row.quantity} {...countProps} controls={false} />
         )
+      },
+      {
+        prop: 'unitPrice',
+        label: '合同单价(元)',
+        width: 145,
+        formatter: (row) =>
+          row.sourceContractId ? `¥ ${numericValue(row.unitPrice).toFixed(2)}` : '-'
+      },
+      {
+        prop: 'freight',
+        label: '行运费(元)',
+        width: 135,
+        formatter: (row) =>
+          row.sourceContractId ? `¥ ${calculateContractCargoFreight(row).toFixed(2)}` : '-'
+      },
+      {
+        prop: 'sourceContractNo',
+        label: '来源合同',
+        minWidth: 150,
+        formatter: (row) => row.sourceContractNo || '-'
       },
       {
         prop: 'weightKg',
@@ -831,6 +877,25 @@
   )
 
   watch(
+    () =>
+      (form.data.cargoItems ?? []).map((item) => [
+        item.sourceContractDetailKey,
+        item.quantity,
+        item.unitPrice
+      ]),
+    () => {
+      const cargoItems = form.data.cargoItems ?? []
+      cargoItems.forEach((item) => {
+        if (item.sourceContractId) item.freight = calculateContractCargoFreight(item)
+      })
+      if (cargoItems.some((item) => item.sourceContractId)) {
+        form.data.transportFee = calculateContractTransportFee(cargoItems)
+      }
+    },
+    { deep: true, immediate: true }
+  )
+
+  watch(
     () => feeFields.map((field) => form.data[field]),
     () => {
       form.data.totalFee = sumFields(feeFields)
@@ -951,6 +1016,17 @@
     await cargoSelectorRef.value?.open()
   }
 
+  async function openContractDetailSelector(): Promise<void> {
+    await contractDetailSelectorRef.value?.open()
+  }
+
+  function handleContractDetailSelectorConfirm(selectedDetails: ContractDetail[]): void {
+    const result = mergeOrderContractDetails(form.data.cargoItems ?? [], selectedDetails)
+    if (!result.addedCount) return
+    form.data.cargoItems = result.items
+    form.data.transportFee = calculateContractTransportFee(result.items)
+  }
+
   function handleCargoSelectorConfirm(selectedCargoes: CargoMaster[]): void {
     const currentItems = form.data.cargoItems ?? []
     const existingNames = new Set(
@@ -972,6 +1048,9 @@
       return
     }
     form.data.cargoItems = rows.filter((item) => item !== row)
+    if (row.sourceContractId) {
+      form.data.transportFee = calculateContractTransportFee(form.data.cargoItems)
+    }
   }
 
   async function fetchCargoSuggestions(
@@ -1000,7 +1079,10 @@
 
   function createCargoItemFromMaster(cargo: CargoMaster): CargoItem {
     return {
+      ...createInitialCargoItem(),
+      cargoId: cargo.id ?? null,
       cargoName: cargo.cargoName,
+      cargoCode: cargo.cargoCode ?? '',
       packageType: cargo.unit || '',
       quantity: 1,
       unit: cargo.unit || '',
@@ -1015,12 +1097,20 @@
     const weightKg = typeof item.weightKg === 'number' ? item.weightKg : null
     const volumeM3 = typeof item.volumeM3 === 'number' ? item.volumeM3 : null
     const patch: Partial<CargoItem> = {
+      cargoId: item.id ? String(item.id) : null,
       cargoName,
+      cargoCode: String(item.cargoCode ?? ''),
       packageType: unit || row.packageType || '',
       unit: unit || row.unit || '',
       quantity: row.quantity ?? 1,
       weightKg: weightKg ?? row.weightKg ?? null,
-      volumeM3: volumeM3 ?? row.volumeM3 ?? null
+      volumeM3: volumeM3 ?? row.volumeM3 ?? null,
+      unitPrice: null,
+      freight: null,
+      sourceContractId: null,
+      sourceContractNo: null,
+      sourceContractName: null,
+      sourceContractDetailKey: null
     }
     Object.assign(row, patch)
   }

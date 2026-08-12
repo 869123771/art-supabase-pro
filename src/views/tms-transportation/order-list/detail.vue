@@ -136,12 +136,12 @@
   import ArtEmptyState from '@/components/core/layouts/art-empty-state/index.vue'
   import type { ArtDescriptionItem } from '@/components/core/base/art-descriptions/types'
   import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
+  import ArtUploadImage from '@/components/core/forms/art-upload-image/index.vue'
   import ArtTable from '@/components/core/tables/art-table/index.vue'
   import type { ColumnOption } from '@/types'
   import { formatWithDayjs } from '@/utils/time'
   import { useUserStore } from '@/store/modules/user'
   import { fetchOrderDetail } from '@/api/tms'
-  import OrderImageGallery from './modules/order-image-gallery.vue'
   import OrderStatusSteps from './modules/order-status-steps.vue'
 
   defineOptions({ name: 'TmsOrderDetail' })
@@ -351,7 +351,19 @@
       label: '图片',
       span: 2,
       value: (data: Partial<OrderRecord>) => data.imageUrls,
-      render: (value) => <OrderImageGallery urls={value as string[] | undefined} />
+      render: (value) => {
+        const imageUrls = (value as string[] | undefined) ?? []
+        if (!imageUrls.length) return '--'
+        return (
+          <ArtUploadImage
+            modelValue={imageUrls}
+            size={88}
+            limit={Math.max(imageUrls.length, 1)}
+            multiple
+            readonly
+          />
+        )
+      }
     }
   ]
 

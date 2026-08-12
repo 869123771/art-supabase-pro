@@ -45,12 +45,20 @@ const paymentFields: Array<keyof OrderForm> = [
 
 export function createInitialCargoItem(): CargoItem {
   return {
+    cargoId: null,
     cargoName: '',
+    cargoCode: '',
     packageType: '',
     quantity: null,
     unit: '',
     weightKg: null,
-    volumeM3: null
+    volumeM3: null,
+    unitPrice: null,
+    freight: null,
+    sourceContractId: null,
+    sourceContractNo: null,
+    sourceContractName: null,
+    sourceContractDetailKey: null
   }
 }
 
@@ -143,12 +151,20 @@ export function moneyValue(value?: number | string | null): number {
 export function normalizeCargoItems(items?: CargoItem[]): CargoItem[] {
   return (items ?? [])
     .map((item) => ({
+      cargoId: nullableText(item.cargoId),
       cargoName: textValue(item.cargoName),
+      cargoCode: nullableText(item.cargoCode),
       packageType: textValue(item.packageType),
       quantity: nullableNumber(item.quantity),
       unit: textValue(item.unit),
       weightKg: nullableNumber(item.weightKg),
-      volumeM3: nullableNumber(item.volumeM3)
+      volumeM3: nullableNumber(item.volumeM3),
+      unitPrice: nullableNumber(item.unitPrice),
+      freight: nullableNumber(item.freight),
+      sourceContractId: nullableText(item.sourceContractId),
+      sourceContractNo: nullableText(item.sourceContractNo),
+      sourceContractName: nullableText(item.sourceContractName),
+      sourceContractDetailKey: nullableText(item.sourceContractDetailKey)
     }))
     .filter(
       (item) =>

@@ -18,11 +18,19 @@ test('order payload normalizes monetary totals, stations and cargo summary', () 
     cargoItems: [
       {
         cargoName: ' 配件 ',
+        cargoId: ' cargo-1 ',
+        cargoCode: ' HW001 ',
         packageType: ' 箱装 ',
         quantity: '2',
         unit: '箱',
         weightKg: '3.25',
-        volumeM3: '1.125'
+        volumeM3: '1.125',
+        unitPrice: '10.50',
+        freight: '21',
+        sourceContractId: ' contract-1 ',
+        sourceContractNo: ' HT-001 ',
+        sourceContractName: ' 年度合同 ',
+        sourceContractDetailKey: ' contract-1:cargo-1 '
       }
     ]
   })
@@ -40,5 +48,7 @@ test('order payload normalizes monetary totals, stations and cargo summary', () 
   assert.equal(payload.cargoQuantityTotal, 2)
   assert.equal(payload.cargoWeightTotal, 3.25)
   assert.equal(payload.cargoVolumeTotal, 1.125)
+  assert.equal(payload.cargoItems?.[0].sourceContractNo, 'HT-001')
+  assert.equal(payload.cargoItems?.[0].unitPrice, 10.5)
   assert.equal('shippingCustomerName' in payload, false)
 })

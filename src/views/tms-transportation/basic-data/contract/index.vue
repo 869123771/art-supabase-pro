@@ -67,6 +67,7 @@
   import TmsWorkspaceHeader from '@/views/tms-transportation/modules/tms-workspace-header.vue'
   import CustomerDeleteProcessingNotice from '@/views/tms-transportation/modules/customer-delete-processing-notice.vue'
   import { useCustomerDeleteProcessingContext } from '@/views/tms-transportation/modules/use-customer-delete-processing'
+  import { usesCarrierParty } from './modules/contract-business-type'
 
   defineOptions({ name: 'TmsContract' })
 
@@ -501,8 +502,8 @@
           importedBusinessType === 'customer' || importedBusinessType === 'carrier'
             ? importedBusinessType
             : customer
-              ? 'customer'
-              : 'carrier'
+              ? 'carrier'
+              : 'customer'
         return {
           contractNo: getImportValue(row, 'contractNo', '合同编号') || undefined,
           contractName: getImportValue(row, 'contractName', '合同名称'),
@@ -518,8 +519,8 @@
           transportMode:
             transportModeValueMap.value.get(getImportValue(row, 'transportMode', '运输方式')) ||
             'road',
-          carrierId: businessContractType === 'carrier' ? carrier?.id || null : null,
-          customerId: businessContractType === 'customer' ? customer?.id || null : null,
+          carrierId: usesCarrierParty(businessContractType) ? carrier?.id || null : null,
+          customerId: usesCarrierParty(businessContractType) ? null : customer?.id || null,
           contactName: getImportValue(row, 'contactName', '联系人姓名') || null,
           customerSignatory: getImportValue(row, 'customerSignatory', '客户签约人') || null,
           waybillNo: getImportValue(row, 'waybillNo', '运单号') || null,
@@ -554,7 +555,7 @@
       .filter(
         (row) =>
           row.contractName &&
-          (row.businessContractType === 'customer' ? row.customerId : row.carrierId) &&
+          (usesCarrierParty(row.businessContractType) ? row.carrierId : row.customerId) &&
           row.billingMethod &&
           row.signTime &&
           row.handler

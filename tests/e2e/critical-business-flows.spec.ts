@@ -26,6 +26,13 @@ test('订单录入可添加货品且保持非提交状态', async ({ page }) => 
   const cargoSection = page.locator('.order-open__section').filter({ hasText: '货品信息' })
   const cargoRows = cargoSection.locator('.el-table__body-wrapper tbody tr')
   await expect(cargoRows).toHaveCount(1, { timeout: 30_000 })
+  await cargoSection.getByRole('button', { name: '批量选合同明细', exact: true }).click()
+  const contractDetailDialog = page.locator('.el-dialog').filter({ hasText: '批量选择合同明细' })
+  await expect(contractDetailDialog).toBeVisible({ timeout: 30_000 })
+  await expect(contractDetailDialog.getByText('合同编号', { exact: true })).toBeVisible()
+  await expect(contractDetailDialog.getByText('货物名称', { exact: true })).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(contractDetailDialog).toBeHidden()
   await cargoSection.getByRole('button', { name: '添加', exact: true }).click()
   await expect(cargoRows).toHaveCount(2)
 
