@@ -10,7 +10,7 @@
     <ArtPageHeader
       class="vehicle-archive-edit__header"
       :title="isEdit ? '编辑车辆档案' : '新增车辆档案'"
-      subtitle="维护车辆基础资料、车身参数、发动机参数和运营信息"
+      :subtitle="pageSubtitle"
       show-back
       @back="goBack"
     />
@@ -125,7 +125,9 @@
 
     <ArtStickyActionBar class="vehicle-archive-edit__footer">
       <ElButton :disabled="page.saving" @click="goBack">取消</ElButton>
-      <ElButton type="primary" :loading="page.saving" @click="handleSave">保存</ElButton>
+      <ElButton type="primary" :loading="page.saving" @click="handleSave">
+        {{ saveButtonLabel }}
+      </ElButton>
     </ArtStickyActionBar>
   </ArtPageShell>
 </template>
@@ -163,6 +165,7 @@
   import { renderAttachmentLink } from '@/components/core/media/art-file-viewer/render'
   import {
     createInitialVehicleArchiveForm,
+    requiresVehicleArchiveResubmission,
     sanitizeVehicleArchivePayload,
     type VehicleArchive,
     type VehicleArchiveForm
@@ -179,6 +182,17 @@
   type BooleanDictOption = Omit<Api.DataCenter.DictListItem, 'value'> & { value: boolean }
   type ImageKey =
     'vehiclePhotoUrl' | 'drivingLicenseFrontUrl' | 'drivingLicenseBackUrl' | 'operationLicenseUrl'
+
+  const originalAuditStatus = ref<VehicleArchive['auditStatus']>()
+  const shouldResubmit = computed(
+    () => isEdit.value && requiresVehicleArchiveResubmission(originalAuditStatus.value)
+  )
+  const pageSubtitle = computed(() =>
+    shouldResubmit.value
+      ? '修正驳回问题；保存成功后将自动重新提交审批'
+      : '维护车辆基础资料、车身参数、发动机参数和运营信息'
+  )
+  const saveButtonLabel = computed(() => (shouldResubmit.value ? '保存并重新提交' : '保存'))
 
   interface FormExpose {
     validate: () => Promise<boolean>
@@ -853,6 +867,7 @@
     const id = String(route.params.id)
     const { data } = await fetchVehicleArchiveDetail(id)
     if (!data) throw new Error('车辆档案不存在或无权访问')
+    originalAuditStatus.value = data.auditStatus
     replaceForm({ ...createInitialForm(), ...data, attachments: data.attachments ?? [] })
   }
 
@@ -914,9 +929,15 @@
     try {
       const payload = sanitizeVehicleArchivePayload(toRaw(form))
       if (isEdit.value) {
-        await editVehicleArchive(payload)
+        await editVehicleArchive(payload, { showMessage: !shouldResubmit.value })
+        if (shouldResubmit.value) {
+          await submitVehicleArchiveForApproval(
+            String(payload.id),
+            String(payload.plateNo || '未编号车辆')
+          )
+        }
       } else {
-        const response = await addVehicleArchive(payload)
+        const response = await addVehicleArchive(payload, { showMessage: false })
         if (!response.data?.id) throw new Error('车辆档案创建成功，但未返回档案 ID')
         await submitVehicleArchiveForApproval(
           response.data.id,

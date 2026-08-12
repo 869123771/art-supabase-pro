@@ -43,11 +43,9 @@
         </section>
 
         <section class="payment-application-detail__section">
-          <ArtProcessTimeline
-            :items="processTimelineItems"
-            title="处理记录"
-            summary="申请、审批与付款执行全程留痕"
-            empty-description="付款申请发生业务动作后，记录会自动展示在这里。"
+          <WorkflowBusinessHistory
+            business-type="tms_carrier_payment_application"
+            :business-id="detail.id"
           />
         </section>
       </div>
@@ -62,8 +60,7 @@
   import ArtDrawer from '@/components/core/drawers/art-drawer/index.vue'
   import type { ArtDrawerExpose } from '@/components/core/drawers/art-drawer/types'
   import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
-  import ArtProcessTimeline from '@/components/core/layouts/art-process-timeline/index.vue'
-  import type { ArtProcessTimelineItem } from '@/components/core/layouts/art-process-timeline/types'
+  import WorkflowBusinessHistory from '@/components/business/workflow-business-history/index.vue'
   import { fetchCarrierPaymentApplicationDetail } from '@/api/tms'
   import { formatCurrencyValue } from '@/utils/ui'
 
@@ -140,71 +137,6 @@
       formatter: (row) => formatCurrencyValue(row.appliedAmount)
     }
   ]
-
-  const processTimelineItems = computed<ArtProcessTimelineItem[]>(() => {
-    if (!detail.value) return []
-    const row = detail.value
-    const items: ArtProcessTimelineItem[] = [
-      {
-        id: `${row.id}-created`,
-        actorName: row.createBy || '系统用户',
-        actionLabel: '创建',
-        title: '创建付款申请',
-        time: row.createTime,
-        tone: 'primary',
-        system: !row.createBy
-      }
-    ]
-    if (row.submittedAt) {
-      items.push({
-        id: `${row.id}-submitted`,
-        actorName: row.submittedBy || '系统用户',
-        actionLabel: '提交审批',
-        title: '发起付款审批',
-        time: row.submittedAt,
-        tone: 'warning',
-        system: !row.submittedBy
-      })
-    }
-    if (row.reviewedAt) {
-      const approved = ['approved', 'paid'].includes(row.status)
-      items.push({
-        id: `${row.id}-reviewed`,
-        actorName: row.reviewedBy || '系统用户',
-        actionLabel: approved ? '审批通过' : '审批处理',
-        title: approved ? '付款申请审批通过' : '付款申请审批结束',
-        description: row.reviewRemark,
-        time: row.reviewedAt,
-        tone: approved ? 'success' : 'danger',
-        system: !row.reviewedBy
-      })
-    }
-    if (row.paidAt) {
-      items.push({
-        id: `${row.id}-paid`,
-        actorName: row.paidBy || '系统用户',
-        actionLabel: '付款登记',
-        title: `生成付款流水 ${row.paidTransactionNo || ''}`.trim(),
-        description: '付款流水与审批明细已自动核销',
-        time: row.paidAt,
-        tone: 'success',
-        system: !row.paidBy
-      })
-    }
-    if (row.cancelledAt) {
-      items.push({
-        id: `${row.id}-cancelled`,
-        actorName: row.cancelledBy || '系统用户',
-        actionLabel: '取消',
-        title: '取消付款申请',
-        description: row.cancelReason,
-        time: row.cancelledAt,
-        tone: 'danger',
-        system: !row.cancelledBy
-      })
-    }
-    return items
-  })
 
   async function loadDetail(id: string): Promise<void> {
     loading.value = true

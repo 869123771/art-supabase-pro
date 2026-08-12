@@ -28,12 +28,7 @@
         </section>
 
         <section class="invoice-detail__section">
-          <ArtProcessTimeline
-            :items="processTimelineItems"
-            title="处理记录"
-            summary="完整业务操作轨迹"
-            empty-description="发票发生登记、复核或作废动作后，记录会自动展示在这里。"
-          />
+          <WorkflowBusinessHistory business-type="tms_invoice" :business-id="detail.id" />
         </section>
       </div>
     </ArtAsyncState>
@@ -47,8 +42,7 @@
   import ArtDrawer from '@/components/core/drawers/art-drawer/index.vue'
   import type { ArtDrawerExpose } from '@/components/core/drawers/art-drawer/types'
   import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
-  import ArtProcessTimeline from '@/components/core/layouts/art-process-timeline/index.vue'
-  import type { ArtProcessTimelineItem } from '@/components/core/layouts/art-process-timeline/types'
+  import WorkflowBusinessHistory from '@/components/business/workflow-business-history/index.vue'
   import { fetchInvoiceDetail } from '@/api/tms'
   import { formatCurrencyValue } from '@/utils/ui'
 
@@ -61,64 +55,6 @@
   const detail = shallowRef<Invoice>()
   const loading = ref(false)
   const loadError = shallowRef<Error | null>(null)
-
-  const processTimelineItems = computed<ArtProcessTimelineItem[]>(() => {
-    if (!detail.value) return []
-
-    const invoice = detail.value
-    const items: ArtProcessTimelineItem[] = [
-      {
-        id: `${invoice.id}-created`,
-        actorName: invoice.createBy || '系统用户',
-        actionLabel: '登记',
-        title: '登记发票',
-        time: invoice.createTime,
-        tone: 'primary',
-        system: !invoice.createBy
-      }
-    ]
-
-    if (invoice.submittedAt) {
-      items.push({
-        id: `${invoice.id}-submitted`,
-        actorName: invoice.submittedBy || '系统用户',
-        actionLabel: '提交复核',
-        title: '发起财务复核',
-        time: invoice.submittedAt,
-        tone: 'warning',
-        system: !invoice.submittedBy
-      })
-    }
-
-    if (invoice.reviewedAt) {
-      const rejected = invoice.status === 'draft'
-      items.push({
-        id: `${invoice.id}-reviewed`,
-        actorName: invoice.reviewedBy || '系统用户',
-        actionLabel: rejected ? '复核驳回' : '复核通过',
-        title: rejected ? '财务复核未通过' : '完成财务复核',
-        description: invoice.reviewRemark,
-        time: invoice.reviewedAt,
-        tone: rejected ? 'danger' : 'success',
-        system: !invoice.reviewedBy
-      })
-    }
-
-    if (invoice.voidedAt) {
-      items.push({
-        id: `${invoice.id}-voided`,
-        actorName: invoice.voidedBy || '系统用户',
-        actionLabel: '作废',
-        title: '作废发票',
-        description: invoice.voidReason,
-        time: invoice.voidedAt,
-        tone: 'danger',
-        system: !invoice.voidedBy
-      })
-    }
-
-    return items
-  })
 
   const descriptionItems: ArtDescriptionItem<Invoice>[] = [
     { key: 'invoiceRecordNo', label: '登记单号', field: 'invoiceRecordNo', copyable: true },

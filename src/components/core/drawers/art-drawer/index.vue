@@ -3,7 +3,14 @@
     ref="drawerRef"
     :model-value="visible"
     v-bind="drawerBindings"
-    :class="['art-drawer', drawerClass]"
+    :class="[
+      'art-drawer',
+      drawerClass,
+      {
+        'is-fullscreen': isFullscreen,
+        'is-fullscreen-toggle-enabled': options.showFullscreenButton
+      }
+    ]"
     @update:model-value="handleModelValueChange"
     @open="handleOpenedStart"
     @opened="handleOpened"
@@ -15,15 +22,30 @@
     @resize="(...args) => emit('resize', ...args)"
     @resize-end="(...args) => emit('resize-end', ...args)"
   >
-    <template v-if="$slots.header || hasSubtitle" #header="{ titleId, titleClass }">
-      <div class="art-drawer__header-main">
-        <slot v-if="$slots.header" name="header" :data="openData" :api="exposedApi" />
-        <span v-else :id="titleId" :class="titleClass">{{ drawerTitle }}</span>
-        <div v-if="hasSubtitle" class="art-drawer__subtitle">
-          <slot name="subtitle" :data="openData" :api="exposedApi">
-            {{ drawerSubtitle }}
-          </slot>
+    <template
+      v-if="$slots.header || hasSubtitle || options.showFullscreenButton"
+      #header="{ titleId, titleClass }"
+    >
+      <div class="art-drawer__header">
+        <div class="art-drawer__header-main">
+          <slot v-if="$slots.header" name="header" :data="openData" :api="exposedApi" />
+          <span v-else :id="titleId" :class="titleClass">{{ drawerTitle }}</span>
+          <div v-if="hasSubtitle" class="art-drawer__subtitle">
+            <slot name="subtitle" :data="openData" :api="exposedApi">
+              {{ drawerSubtitle }}
+            </slot>
+          </div>
         </div>
+        <button
+          v-if="options.showFullscreenButton"
+          type="button"
+          class="art-icon-button art-drawer__fullscreen-button"
+          :aria-label="fullscreenLabel"
+          :title="fullscreenLabel"
+          @click.stop="toggleFullscreen"
+        >
+          <ArtSvgIcon :icon="fullscreenIcon" />
+        </button>
       </div>
     </template>
 
@@ -118,6 +140,10 @@
     title: '',
     subtitle: '',
     size: '40%',
+    fullscreen: false,
+    showFullscreenButton: false,
+    fullscreenText: '全屏',
+    exitFullscreenText: '退出全屏',
     direction: 'rtl',
     loading: false,
     loadingText: '',
@@ -148,6 +174,10 @@
     title: props.title,
     subtitle: props.subtitle,
     size: props.size,
+    fullscreen: props.fullscreen,
+    showFullscreenButton: props.showFullscreenButton,
+    fullscreenText: props.fullscreenText,
+    exitFullscreenText: props.exitFullscreenText,
     direction: props.direction,
     loading: props.loading,
     loadingText: props.loadingText,
@@ -220,6 +250,7 @@
   } = overlay
 
   const normalizedContentHeight = computed(() => {
+    if (isFullscreen.value) return 'calc(100vh - 86px)'
     const height = options.value.contentHeight
     return typeof height === 'number' ? `${height}px` : height
   })
@@ -233,8 +264,9 @@
   } as const
 
   const normalizedDrawerSize = computed(() => {
-    const configuredSize =
-      options.value.size ?? (attrs.size as string | number | undefined) ?? '40%'
+    const configuredSize = isFullscreen.value
+      ? 'full'
+      : (options.value.size ?? (attrs.size as string | number | undefined) ?? '40%')
     const presetSize =
       typeof configuredSize === 'string' && configuredSize in drawerSizeMap
         ? drawerSizeMap[configuredSize as keyof typeof drawerSizeMap]
@@ -253,6 +285,22 @@
   const drawerTitle = computed(() => String(options.value.title ?? attrs.title ?? ''))
   const drawerSubtitle = computed(() => String(options.value.subtitle ?? ''))
   const hasSubtitle = computed(() => Boolean(slots.subtitle || drawerSubtitle.value))
+  const isFullscreen = computed(() => Boolean(options.value.fullscreen))
+  const fullscreenIcon = computed(() =>
+    isFullscreen.value ? 'dashicons:fullscreen-exit-alt' : 'dashicons:fullscreen-alt'
+  )
+  const fullscreenLabel = computed(() =>
+    isFullscreen.value
+      ? String(options.value.exitFullscreenText ?? '退出全屏')
+      : String(options.value.fullscreenText ?? '全屏')
+  )
+
+  const setFullscreen = (value: boolean) => {
+    setOptions({ fullscreen: value } as Partial<ArtDrawerOptions<T>>)
+    void nextTick(() => window.dispatchEvent(new Event('resize')))
+  }
+
+  const toggleFullscreen = () => setFullscreen(!isFullscreen.value)
 
   watch(
     () => props.loading,
@@ -315,6 +363,7 @@
     options: readonly(options) as Readonly<Ref<ArtDrawerOptions<T>>>,
     drawerRef: readonly(drawerRef),
     scrollbarRef: readonly(scrollbarRef),
+    fullscreen: readonly(isFullscreen),
     handleOpen,
     handleClose,
     handleConfirm,
@@ -326,6 +375,8 @@
     updateData,
     getData,
     getDrawerInstance,
+    setFullscreen,
+    toggleFullscreen,
     scrollTo
   }
 
@@ -337,6 +388,11 @@
     max-width: 100vw;
   }
 
+  :global(.art-drawer.is-fullscreen) {
+    width: calc(100vw - 12px) !important;
+    max-width: calc(100vw - 12px);
+  }
+
   :global(.art-drawer .el-drawer__body) {
     display: flex;
     flex-direction: column;
@@ -346,7 +402,21 @@
   }
 
   .art-drawer__header-main {
+    flex: 1;
     min-width: 0;
+  }
+
+  .art-drawer__header {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .art-drawer__fullscreen-button {
+    flex: 0 0 auto;
+    font-size: 18px;
   }
 
   .art-drawer__subtitle {

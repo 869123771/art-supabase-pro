@@ -94,6 +94,10 @@
         </div>
         <span v-else>--</span>
       </section>
+
+      <section v-if="detail.data?.id" class="contract-detail__section art-card-xs">
+        <WorkflowBusinessHistory business-type="tms_contract" :business-id="detail.data.id" />
+      </section>
     </div>
   </ArtPageShell>
 </template>
@@ -106,6 +110,7 @@
   import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
   import ArtTable from '@/components/core/tables/art-table/index.vue'
   import ArtAttachmentLink from '@/components/core/media/art-file-viewer/attachment-link.vue'
+  import WorkflowBusinessHistory from '@/components/business/workflow-business-history/index.vue'
   import type { ColumnOption } from '@/types'
   import { fetchContractDetail } from '@/api/tms'
 

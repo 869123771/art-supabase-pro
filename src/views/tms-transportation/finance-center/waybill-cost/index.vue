@@ -30,6 +30,7 @@
 
     <WaybillCostDialog ref="dialogRef" @success="handleSaveSuccess" />
     <WaybillCostAuditDrawer ref="auditDrawerRef" />
+    <WorkflowBusinessHistoryDrawer ref="approvalHistoryRef" />
   </div>
 </template>
 
@@ -56,6 +57,8 @@
   } from '@/api/tms'
   import WaybillCostDialog from './modules/waybill-cost-dialog.vue'
   import WaybillCostAuditDrawer from './modules/waybill-cost-audit-drawer.vue'
+  import WorkflowBusinessHistoryDrawer from '@/components/business/workflow-business-history/workflow-business-history-drawer.vue'
+  import type { WorkflowBusinessHistoryDrawerExpose } from '@/components/business/workflow-business-history/types'
   import TmsWorkspaceHeader from '@/views/tms-transportation/modules/tms-workspace-header.vue'
 
   defineOptions({ name: 'TmsWaybillCost' })
@@ -77,6 +80,7 @@
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<DialogExpose>()
   const auditDrawerRef = ref<AuditDrawerExpose>()
+  const approvalHistoryRef = ref<WorkflowBusinessHistoryDrawerExpose>()
   const searchQuery = reactive<SearchParams>({
     keyword: '',
     costType: '',
@@ -186,12 +190,15 @@
     {
       prop: 'operation',
       label: '操作',
-      width: 320,
+      width: 360,
       fixed: 'right',
       formatter: (row) => {
         if (row.auditStatus === 'draft' || row.auditStatus === 'rejected') {
           return (
             <div class="flex items-center">
+              <ElButton link type="primary" onClick={() => void openApprovalHistory(row)}>
+                审批记录
+              </ElButton>
               <ElButton link type="primary" onClick={() => void handleAiAudit(row)}>
                 AI 审核
               </ElButton>
@@ -210,6 +217,9 @@
         if (row.auditStatus === 'pending_review') {
           return (
             <div class="flex items-center">
+              <ElButton link type="primary" onClick={() => void openApprovalHistory(row)}>
+                审批记录
+              </ElButton>
               <ElButton link type="primary" onClick={() => void handleAiAudit(row)}>
                 AI 审核
               </ElButton>
@@ -225,6 +235,9 @@
         if (row.auditStatus === 'approved') {
           return (
             <div class="flex items-center">
+              <ElButton link type="primary" onClick={() => void openApprovalHistory(row)}>
+                审批记录
+              </ElButton>
               <ElButton link type="primary" onClick={() => void handleAiAudit(row)}>
                 AI 复核
               </ElButton>
@@ -235,9 +248,14 @@
           )
         }
         return (
-          <ElButton link type="primary" onClick={() => void handleAiAudit(row)}>
-            AI 复核
-          </ElButton>
+          <div class="flex items-center">
+            <ElButton link type="primary" onClick={() => void openApprovalHistory(row)}>
+              审批记录
+            </ElButton>
+            <ElButton link type="primary" onClick={() => void handleAiAudit(row)}>
+              AI 复核
+            </ElButton>
+          </div>
         )
       }
     }
@@ -290,6 +308,15 @@
     await auditDrawerRef.value?.handleOpen({
       costId: row.id,
       waybillNo: row.waybill?.waybillNo || '未编号运单'
+    })
+  }
+
+  const openApprovalHistory = async (row: WaybillCost): Promise<void> => {
+    if (!row.id) return
+    await approvalHistoryRef.value?.handleOpen({
+      businessType: 'tms_waybill_cost',
+      businessId: row.id,
+      businessTitle: row.waybill?.waybillNo || '运单费用'
     })
   }
 

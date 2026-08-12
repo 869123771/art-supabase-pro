@@ -1,5 +1,5 @@
 <template>
-  <ArtDrawer ref="drawerRef" size="xl" :show-footer="false">
+  <ArtDrawer ref="drawerRef" size="xl" :show-footer="false" show-fullscreen-button>
     <template #header>
       <div class="workflow-instance__title">
         <span><ArtSvgIcon icon="ri:file-history-line" /></span>
@@ -103,19 +103,16 @@
   import type { ArtDrawerExpose } from '@/components/core/drawers/art-drawer/types'
   import ArtAsyncState from '@/components/core/layouts/art-async-state/index.vue'
   import ArtProcessTimeline from '@/components/core/layouts/art-process-timeline/index.vue'
-  import type {
-    ArtProcessTimelineItem,
-    ArtProcessTimelineTone
-  } from '@/components/core/layouts/art-process-timeline/types'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import ArtDescriptions from '@/components/core/base/art-descriptions/index.vue'
   import type { ArtDescriptionItem } from '@/components/core/base/art-descriptions/types'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
   import WorkflowBusinessSnapshot from '../../modules/workflow-business-snapshot.vue'
-  import WorkflowFlowMap from '../../modules/workflow-flow-map.vue'
+  import WorkflowFlowMap from '@/components/business/workflow-flow-map/index.vue'
   import WorkflowTaskBoard from '../../modules/workflow-task-board.vue'
   import { formatWithDayjs } from '@/utils/time'
+  import { createWorkflowActionTimelineItems } from '@/utils/workflow-display'
   import { fetchWorkflowBusinessSnapshot, fetchWorkflowInstanceDetail } from '@/api/workflow'
 
   defineOptions({ name: 'WorkflowInstanceDrawer' })
@@ -154,33 +151,8 @@
       .filter((action) => action.action === 'auto_skip' && action.nodeKey)
       .map((action) => String(action.nodeKey))
   )
-  const getActionAuditDescription = (action: Api.Workflow.WorkflowActionRecord) => {
-    const isPlatformOverride = action.metadata?.operatorType === 'platform_super_override'
-    if (!isPlatformOverride) return action.comment
-    const originalAssignee = String(action.metadata.originalAssigneeName || '原审批人')
-    return [`平台超管代审批 · 原审批人：${originalAssignee}`, action.comment]
-      .filter(Boolean)
-      .join('；')
-  }
-  const actionTimelineItems = computed<ArtProcessTimelineItem[]>(() =>
-    sortedActions.value.map((action) => ({
-      id: action.id,
-      actorName:
-        action.actor?.nickName ||
-        action.actor?.userName ||
-        action.actor?.userEmail ||
-        action.actorNameSnapshot,
-      actorAvatar: action.actor?.avatar,
-      actionValue: action.action,
-      title:
-        action.metadata?.operatorType === 'platform_super_override'
-          ? `${action.nodeName || '流程'} · 平台超管代审批`
-          : action.nodeName || '流程',
-      description: getActionAuditDescription(action),
-      time: action.createTime,
-      tone: getActionTone(action.action),
-      system: !action.actorUserId
-    }))
+  const actionTimelineItems = computed(() =>
+    createWorkflowActionTimelineItems(state.detail?.actions)
   )
 
   const formatDate = (value?: string | null): string =>
@@ -212,13 +184,6 @@
       }
     ]
   )
-  const getActionTone = (action: Api.Workflow.ActionType): ArtProcessTimelineTone => {
-    if (action === 'approve') return 'success'
-    if (action === 'reject' || action === 'cancel') return 'danger'
-    if (action === 'withdraw') return 'warning'
-    return 'primary'
-  }
-
   async function loadDetail(): Promise<void> {
     if (!state.instanceId) return
     state.loading = true

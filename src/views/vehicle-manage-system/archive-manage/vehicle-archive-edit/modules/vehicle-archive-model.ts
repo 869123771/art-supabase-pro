@@ -9,6 +9,12 @@ export type VehicleArchiveForm = VehicleArchive & {
 
 export type VehicleArchiveWritePayload = Record<string, unknown> & { id?: string }
 
+export function requiresVehicleArchiveResubmission(
+  auditStatus: VehicleArchive['auditStatus']
+): boolean {
+  return auditStatus === 'rejected'
+}
+
 export function createInitialVehicleArchiveForm(): VehicleArchiveForm {
   return {
     id: undefined,
@@ -118,6 +124,8 @@ export function sanitizeVehicleArchivePayload(
     updateTime,
     auditBy,
     auditTime,
+    auditStatus,
+    auditRemark,
     carrier,
     primaryDriver,
     secondaryDriver,
@@ -134,7 +142,6 @@ export function sanitizeVehicleArchivePayload(
   const payload = {
     ...formPayload,
     attachments: formPayload.attachments ?? [],
-    auditStatus: formPayload.auditStatus ?? 'pending',
     isAirConditioned: formPayload.isAirConditioned ?? false,
     isNewEnergy: formPayload.isNewEnergy ?? false,
     isDoubleDeck: formPayload.isDoubleDeck ?? false,
@@ -148,6 +155,8 @@ export function sanitizeVehicleArchivePayload(
   void updateTime
   void auditBy
   void auditTime
+  void auditStatus
+  void auditRemark
   void carrier
   void primaryDriver
   void secondaryDriver

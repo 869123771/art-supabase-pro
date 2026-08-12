@@ -189,6 +189,9 @@ declare module 'vue' {
     ThemeSvg: typeof import('./../../components/core/theme/theme-svg/index.vue')['default']
     TreeMultiple: typeof import('./../../components/core/forms/art-data-select/tree-multiple.vue')['default']
     TreeSingle: typeof import('./../../components/core/forms/art-data-select/tree-single.vue')['default']
+    WorkflowBusinessHistory: typeof import('./../../components/business/workflow-business-history/index.vue')['default']
+    WorkflowBusinessHistoryDrawer: typeof import('./../../components/business/workflow-business-history/workflow-business-history-drawer.vue')['default']
+    WorkflowFlowMap: typeof import('./../../components/business/workflow-flow-map/index.vue')['default']
   }
   export interface GlobalDirectives {
     vLoading: typeof import('element-plus/es')['ElLoadingDirective']
@@ -374,4 +377,7 @@ declare global {
   const ThemeSvg: typeof import('./../../components/core/theme/theme-svg/index.vue')['default']
   const TreeMultiple: typeof import('./../../components/core/forms/art-data-select/tree-multiple.vue')['default']
   const TreeSingle: typeof import('./../../components/core/forms/art-data-select/tree-single.vue')['default']
+  const WorkflowBusinessHistory: typeof import('./../../components/business/workflow-business-history/index.vue')['default']
+  const WorkflowBusinessHistoryDrawer: typeof import('./../../components/business/workflow-business-history/workflow-business-history-drawer.vue')['default']
+  const WorkflowFlowMap: typeof import('./../../components/business/workflow-flow-map/index.vue')['default']
 }

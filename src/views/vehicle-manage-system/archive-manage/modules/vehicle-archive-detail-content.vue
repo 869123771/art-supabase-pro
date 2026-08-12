@@ -118,6 +118,13 @@
           />
         </section>
       </ElTabPane>
+      <ElTabPane label="审批历程" name="approvalHistory" lazy>
+        <WorkflowBusinessHistory
+          v-if="archive?.id"
+          business-type="vehicle_archive"
+          :business-id="archive.id"
+        />
+      </ElTabPane>
     </ElTabs>
 
     <ElCard v-if="showAuditPanel" class="vehicle-archive-detail__audit art-card-xs" shadow="never">
@@ -148,6 +155,7 @@
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
+  import WorkflowBusinessHistory from '@/components/business/workflow-business-history/index.vue'
   import ArtUploadImage from '@/components/core/forms/art-upload-image/index.vue'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import type { ColumnOption } from '@/types'

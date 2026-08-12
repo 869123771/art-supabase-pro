@@ -34,6 +34,13 @@
         table-layout="fixed"
         border
       />
+
+      <section class="reimbursement-detail__history">
+        <WorkflowBusinessHistory
+          business-type="tms_expense_reimbursement"
+          :business-id="state.detail.id"
+        />
+      </section>
     </template>
     <ElEmpty v-else description="报销单不存在或无权查看" />
   </ArtDrawer>
@@ -47,6 +54,7 @@
   import type { ArtDescriptionItem } from '@/components/core/base/art-descriptions/types'
   import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
   import ArtTable from '@/components/core/tables/art-table/index.vue'
+  import WorkflowBusinessHistory from '@/components/business/workflow-business-history/index.vue'
   import type { ColumnOption } from '@/types'
   import { fetchExpenseReimbursementDetail } from '@/api/tms'
   import { formatCurrencyValue } from '@/utils/ui'
@@ -183,6 +191,10 @@
 
     &__descriptions {
       margin-bottom: var(--art-space-5);
+    }
+
+    &__history {
+      margin-top: var(--art-space-6);
     }
 
     @media (width <= 640px) {

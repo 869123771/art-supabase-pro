@@ -22,34 +22,12 @@
           border
         />
 
-        <ArtSectionTitle class="statement-detail__section">审核记录</ArtSectionTitle>
-        <ElTimeline class="statement-detail__timeline">
-          <ElTimelineItem :timestamp="formatDateTime(detail.createTime)" type="primary">
-            {{ detail.createBy || '系统用户' }} 创建对账单
-          </ElTimelineItem>
-          <ElTimelineItem
-            v-if="detail.submittedAt"
-            :timestamp="formatDateTime(detail.submittedAt)"
-            type="warning"
-          >
-            {{ detail.submittedBy || '系统用户' }} 提交审核
-          </ElTimelineItem>
-          <ElTimelineItem
-            v-if="detail.reviewedAt"
-            :timestamp="formatDateTime(detail.reviewedAt)"
-            :type="detail.status === 'draft' ? 'danger' : 'success'"
-          >
-            {{ detail.reviewedBy || '系统用户' }}
-            {{ detail.status === 'draft' ? '驳回对账单' : '完成审核' }}
-          </ElTimelineItem>
-          <ElTimelineItem
-            v-if="detail.voidedAt"
-            :timestamp="formatDateTime(detail.voidedAt)"
-            type="danger"
-          >
-            {{ detail.voidedBy || '系统用户' }} 作废对账单
-          </ElTimelineItem>
-        </ElTimeline>
+        <section class="statement-detail__section">
+          <WorkflowBusinessHistory
+            business-type="tms_customer_statement"
+            :business-id="detail.id"
+          />
+        </section>
       </div>
     </ArtAsyncState>
 
@@ -65,6 +43,7 @@
   import ArtDrawer from '@/components/core/drawers/art-drawer/index.vue'
   import type { ArtDrawerExpose } from '@/components/core/drawers/art-drawer/types'
   import ArtTable from '@/components/core/tables/art-table/index.vue'
+  import WorkflowBusinessHistory from '@/components/business/workflow-business-history/index.vue'
   import type { ColumnOption } from '@/types'
   import { fetchCustomerStatementDetail } from '@/api/tms'
   import { formatWithDayjs } from '@/utils/time'
@@ -202,10 +181,6 @@
   .statement-detail {
     &__section {
       margin-top: var(--art-space-6);
-    }
-
-    &__timeline {
-      padding: var(--art-space-2) var(--art-space-2) 0;
     }
   }
 </style>

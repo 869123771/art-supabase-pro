@@ -27,6 +27,7 @@
     />
 
     <MasterDataDeleteGuard ref="deleteGuardRef" @cleared="handleDeleteGuardCleared" />
+    <WorkflowBusinessHistoryDrawer ref="approvalHistoryRef" />
   </div>
 </template>
 
@@ -52,6 +53,8 @@
   import MasterDataDeleteGuard, {
     type MasterDataDeleteGuardOpenOptions
   } from '@/components/business/master-data-delete-guard/index.vue'
+  import WorkflowBusinessHistoryDrawer from '@/components/business/workflow-business-history/workflow-business-history-drawer.vue'
+  import type { WorkflowBusinessHistoryDrawerExpose } from '@/components/business/workflow-business-history/types'
   import { fetchCarrierDetail, fetchCarrierOptions } from '@/api/tms'
   import { useUserStore } from '@/store/modules/user'
   import VehicleWorkspaceHeader, {
@@ -95,6 +98,7 @@
   const { getDictMap } = storeToRefs(userStore)
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const deleteGuardRef = ref<MasterDataDeleteGuardExpose>()
+  const approvalHistoryRef = ref<WorkflowBusinessHistoryDrawerExpose>()
   const initialCarrierId = String(route.query.carrierId || '')
   const initialRecordId = String(route.query.recordId || '')
   const overview = reactive<{ total: number; rows: VehicleArchive[] }>({
@@ -160,7 +164,8 @@
       plateNo: '',
       manufacturer: '',
       vin: '',
-      operationStatus: ''
+      operationStatus: '',
+      auditStatus: undefined
     },
     searchItems: computed<SearchFormItem[]>(() => [
       {
@@ -193,6 +198,15 @@
         type: 'select',
         props: {
           options: getDictMap.value.vehicleOperationStatus ?? [],
+          clearable: true
+        }
+      },
+      {
+        label: '审核状态',
+        key: 'auditStatus',
+        type: 'select',
+        props: {
+          options: getDictMap.value.vehicleAuditStatus ?? [],
           clearable: true
         }
       }
@@ -265,7 +279,7 @@
       rowKey: 'id',
       tableLayout: 'fixed',
       emptyText: '暂无符合条件的车辆档案',
-      emptyDescription: '可调整承运商、车牌号、厂商、VIN 或营运状态后重新查询。'
+      emptyDescription: '可调整承运商、车牌号、厂商、VIN、营运状态或审核状态后重新查询。'
     }
   })
 
@@ -356,6 +370,12 @@
       auth: 'VehicleArchive:View'
     },
     {
+      key: 'approvalHistory',
+      label: '审批记录',
+      icon: 'ri:file-history-line',
+      auth: 'VehicleArchive:View'
+    },
+    {
       key: 'delete',
       label: '删除',
       icon: 'ri:delete-bin-5-line',
@@ -369,9 +389,22 @@
       openDetailPage(row)
       return
     }
+    if (item.key === 'approvalHistory') {
+      void openApprovalHistory(row)
+      return
+    }
     if (item.key === 'delete') {
       void handleDelete(row)
     }
+  }
+
+  const openApprovalHistory = async (row: VehicleArchive): Promise<void> => {
+    if (!row.id) return
+    await approvalHistoryRef.value?.handleOpen({
+      businessType: 'vehicle_archive',
+      businessId: row.id,
+      businessTitle: row.plateNo || '车辆档案'
+    })
   }
 
   const handleDelete = async (row: VehicleArchive): Promise<void> => {

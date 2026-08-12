@@ -182,7 +182,7 @@
   import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import ArtEmptyState from '@/components/core/layouts/art-empty-state/index.vue'
-  import WorkflowFlowMap from '../../modules/workflow-flow-map.vue'
+  import WorkflowFlowMap from '@/components/business/workflow-flow-map/index.vue'
   import WorkflowSimulatorDialog from './workflow-simulator-dialog.vue'
   import { getWorkflowBusinessContract } from '../../modules/workflow-business-contracts'
   import { useUserStore } from '@/store/modules/user'

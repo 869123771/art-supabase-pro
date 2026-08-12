@@ -102,6 +102,7 @@
     <PaymentDialog ref="paymentDialogRef" @success="handlePaymentSuccess" />
     <ReimbursementDetailDrawer ref="reimbursementDetailRef" />
     <OcrLogDrawer ref="ocrLogDrawerRef" />
+    <WorkflowBusinessHistoryDrawer ref="approvalHistoryRef" />
   </div>
 </template>
 
@@ -138,6 +139,8 @@
   import ReimbursementDetailDrawer from './modules/reimbursement-detail-drawer.vue'
   import OcrLogDrawer from './modules/ocr-log-drawer.vue'
   import MasterDeleteProcessingNotice from '@/components/business/master-delete-processing-notice/index.vue'
+  import WorkflowBusinessHistoryDrawer from '@/components/business/workflow-business-history/workflow-business-history-drawer.vue'
+  import type { WorkflowBusinessHistoryDrawerExpose } from '@/components/business/workflow-business-history/types'
 
   defineOptions({ name: 'TmsInTransitExpense' })
 
@@ -195,6 +198,7 @@
   const paymentDialogRef = ref<PaymentDialogExpose>()
   const reimbursementDetailRef = ref<ReimbursementDetailExpose>()
   const ocrLogDrawerRef = ref<{ handleOpen: () => Promise<void> }>()
+  const approvalHistoryRef = ref<WorkflowBusinessHistoryDrawerExpose>()
   const overview = reactive<Api.Tms.Finance.InTransitExpenseOverview>({
     totalCount: 0,
     pendingReviewCount: 0,
@@ -548,7 +552,9 @@
   }
 
   function expenseMoreActions(row: Expense): ButtonMoreItem[] {
-    const actions: ButtonMoreItem[] = []
+    const actions: ButtonMoreItem[] = [
+      { key: 'approvalHistory', label: '审批记录', icon: 'ri:file-history-line' }
+    ]
     if (canEditExpense(row)) {
       actions.push({ key: 'submit', label: '提交财务审核', icon: 'ri:send-plane-line' })
       actions.push({
@@ -565,7 +571,9 @@
   }
 
   function reimbursementMoreActions(row: Reimbursement): ButtonMoreItem[] {
-    const actions: ButtonMoreItem[] = []
+    const actions: ButtonMoreItem[] = [
+      { key: 'approvalHistory', label: '审批记录', icon: 'ri:file-history-line' }
+    ]
     if (['draft', 'rejected'].includes(row.status)) {
       actions.push({ key: 'submit', label: '提交报销审批', icon: 'ri:send-plane-line' })
       actions.push({
@@ -585,7 +593,9 @@
     const actions: Record<string, () => void> = {
       submit: () => void handleExpenseSubmit(row),
       delete: () => void handleExpenseDelete(row),
-      convert: () => void reimbursementDialogRef.value?.handleOpen([row])
+      convert: () => void reimbursementDialogRef.value?.handleOpen([row]),
+      approvalHistory: () =>
+        void openApprovalHistory('tms_in_transit_expense', row.id, row.expenseNo || '在途费用')
     }
     actions[String(item.key)]?.()
   }
@@ -594,9 +604,20 @@
     const actions: Record<string, () => void> = {
       submit: () => void handleReimbursementSubmit(row),
       delete: () => void handleReimbursementDelete(row),
-      pay: () => void paymentDialogRef.value?.handleOpen(row)
+      pay: () => void paymentDialogRef.value?.handleOpen(row),
+      approvalHistory: () =>
+        void openApprovalHistory('tms_expense_reimbursement', row.id, row.reimbursementNo)
     }
     actions[String(item.key)]?.()
+  }
+
+  async function openApprovalHistory(
+    businessType: 'tms_in_transit_expense' | 'tms_expense_reimbursement',
+    businessId: string | undefined,
+    businessTitle: string
+  ): Promise<void> {
+    if (!businessId) return
+    await approvalHistoryRef.value?.handleOpen({ businessType, businessId, businessTitle })
   }
 
   function openExpenseDialog(row?: Expense): void {

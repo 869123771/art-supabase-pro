@@ -29,6 +29,17 @@ const INSTANCE_SELECT = `
   )
 `
 
+const BUSINESS_HISTORY_SELECT = `
+  *,
+  definition:wf_definition!wf_instance_definition_id_fkey(id, code, name, business_type),
+  version:wf_version!wf_instance_version_id_fkey(id, version_no, config),
+  tasks:wf_task(*),
+  actions:wf_action(
+    *,
+    actor:sys_user!wf_action_actor_user_id_fkey(id, user_name, nick_name, user_email, avatar)
+  )
+`
+
 export async function fetchWorkflowDefinitionList(
   params: Api.Workflow.WorkflowDefinitionSearchParams
 ) {
@@ -265,6 +276,26 @@ export async function fetchWorkflowInstanceDetail(id: string) {
   return await responseHandle<Api.Workflow.WorkflowInstanceRecord>(
     () => supabase.from('wf_instance').select(INSTANCE_SELECT).eq('id', id).single(),
     { showErrorMessage: true, breakReturn: true }
+  )
+}
+
+export async function fetchWorkflowBusinessHistory(params: {
+  businessType: string
+  businessId: string
+}) {
+  return await responseHandle<Api.Workflow.WorkflowInstanceRecord[]>(
+    () =>
+      supabase
+        .from('wf_instance')
+        .select(BUSINESS_HISTORY_SELECT)
+        .eq('business_type', params.businessType)
+        .eq('business_id', params.businessId)
+        .order('started_at', { ascending: false }),
+    {
+      showErrorMessage: false,
+      breakReturn: true,
+      errorMessage: '审批历程加载失败，请稍后重试'
+    }
   )
 }
 

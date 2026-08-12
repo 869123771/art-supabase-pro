@@ -397,6 +397,11 @@
   }
 
   function assigneeText(node: Api.Workflow.WorkflowNode): string {
+    const assignedNames = (taskMap.value.get(node.key) ?? [])
+      .map((task) => task.assigneeNameSnapshot?.trim())
+      .filter((name): name is string => Boolean(name))
+    const uniqueNames = [...new Set(assignedNames)]
+    if (uniqueNames.length) return uniqueNames.join('、')
     if (node.assignee.type === 'initiator') return '发起人'
     const count =
       node.assignee.type === 'users'

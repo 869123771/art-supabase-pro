@@ -20,6 +20,9 @@
           max-height="430px"
           border
         />
+        <section class="statement-detail__section">
+          <WorkflowBusinessHistory business-type="tms_carrier_statement" :business-id="detail.id" />
+        </section>
       </div>
     </ArtAsyncState>
     <template #footer="{ api }"><ElButton @click="api.handleClose()">关闭</ElButton></template>
@@ -32,6 +35,7 @@
   import ArtDrawer from '@/components/core/drawers/art-drawer/index.vue'
   import type { ArtDrawerExpose } from '@/components/core/drawers/art-drawer/types'
   import ArtTable from '@/components/core/tables/art-table/index.vue'
+  import WorkflowBusinessHistory from '@/components/business/workflow-business-history/index.vue'
   import type { ColumnOption } from '@/types'
   import { fetchCarrierStatementDetail } from '@/api/tms'
   import { formatWithDayjs } from '@/utils/time'

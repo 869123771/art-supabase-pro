@@ -26,6 +26,10 @@ const { supabase, keysToSnakeDeep, responseHandle } = useSupabase()
 // 车辆档案
 const VEHICLE_ARCHIVE_TABLE = 'vehicle_archive'
 
+interface VehicleArchiveWriteOptions {
+  showMessage?: boolean
+}
+
 const VEHICLE_ARCHIVE_SELECT = `
   *,
   carrier:tms_carrier!vehicle_archive_carrier_id_fkey(
@@ -236,18 +240,24 @@ export async function fetchVehicleArchiveDetail(id: string) {
   )
 }
 
-export async function addVehicleArchive(params: VehicleArchiveWritePayload) {
+export async function addVehicleArchive(
+  params: VehicleArchiveWritePayload,
+  options: VehicleArchiveWriteOptions = {}
+) {
   return await responseHandle<Pick<VehicleArchive, 'id'>>(
     () =>
       supabase.from(VEHICLE_ARCHIVE_TABLE).insert(keysToSnakeDeep(params)).select('id').single(),
     {
-      showMessage: true,
+      showMessage: options.showMessage ?? true,
       breakReturn: true
     }
   )
 }
 
-export async function editVehicleArchive(params: VehicleArchiveWritePayload) {
+export async function editVehicleArchive(
+  params: VehicleArchiveWritePayload,
+  options: VehicleArchiveWriteOptions = {}
+) {
   const { id, ...payload } = params
   return await responseHandle(
     () =>
@@ -256,7 +266,7 @@ export async function editVehicleArchive(params: VehicleArchiveWritePayload) {
         .update(keysToSnakeDeep(payload), { count: 'exact' })
         .eq('id', id),
     {
-      showMessage: true,
+      showMessage: options.showMessage ?? true,
       breakReturn: true,
       requireAffected: true,
       noAffectedMessage: WRITE_PERMISSION_DENIED_MESSAGE
