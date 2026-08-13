@@ -15,8 +15,8 @@
 
       <ElAlert
         class="execution-dialog__alert"
-        :title="actionMeta.alert"
-        type="info"
+        :title="flowAlert"
+        :type="context?.needsReturnCompletion && currentRow?.waybillStatus === 'completed' ? 'warning' : 'info'"
         :closable="false"
         show-icon
       />
@@ -69,6 +69,7 @@
   import dayjs from 'dayjs'
   import type { ComputedRef } from 'vue'
   import type { FormRules } from 'element-plus'
+  import { ElMessage } from 'element-plus'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
@@ -146,6 +147,19 @@
   } as const
 
   const actionMeta = computed(() => actionMetaMap[action.value])
+  const flowAlert = computed(() => {
+    if (
+      action.value === 'completion' &&
+      context.value?.needsReturnCompletion &&
+      currentRow.value?.waybillStatus === 'completed'
+    ) {
+      return '检测到历史完成状态缺少回场档案。本次提交将补齐回场时间、里程、照片和车辆里程记录。'
+    }
+    if (action.value === 'completion' && context.value?.record?.departureOdometerKm != null) {
+      return `${actionMeta.value.alert} 本次出车里程为 ${context.value.record.departureOdometerKm} 公里。`
+    }
+    return actionMeta.value.alert
+  })
 
   const createInitialForm = (): ExecutionForm => ({
     occurredAt: dayjs().format('YYYY-MM-DD HH:mm:ss'),
@@ -281,10 +295,30 @@
     const waybillId = currentRow.value?.driverWaybillId
     if (!waybillId) return false
 
+    const occurredAt = dayjs(form.data.occurredAt)
+    if (!occurredAt.isValid()) {
+      ElMessage.warning('业务时间格式无效，请重新选择')
+      return false
+    }
+    const occurredAtIso = occurredAt.toISOString()
+
+    if (action.value === 'completion') {
+      const departureOdometer = Number(context.value?.record?.departureOdometerKm ?? 0)
+      if (Number(form.data.odometerKm) < departureOdometer) {
+        ElMessage.warning(`收车里程不能小于出车里程 ${departureOdometer} 公里`)
+        return false
+      }
+      const signedAt = context.value?.record?.signedAt
+      if (signedAt && occurredAt.isBefore(dayjs(signedAt))) {
+        ElMessage.warning('收车时间不能早于签收时间')
+        return false
+      }
+    }
+
     if (action.value === 'departure') {
       await recordWaybillDeparture({
         waybillId,
-        departureTime: form.data.occurredAt,
+        departureTime: occurredAtIso,
         odometerKm: Number(form.data.odometerKm),
         photoUrls: [...form.data.photoUrls],
         remark: form.data.remark.trim() || null
@@ -292,7 +326,7 @@
     } else if (action.value === 'signature') {
       await signWaybill({
         waybillId,
-        signedAt: form.data.occurredAt,
+        signedAt: occurredAtIso,
         signerName: form.data.signerName.trim(),
         receiptUrls: [...form.data.receiptUrls],
         signatureUrls: [...form.data.signatureUrls],
@@ -301,7 +335,7 @@
     } else {
       await completeWaybillExecution({
         waybillId,
-        returnTime: form.data.occurredAt,
+        returnTime: occurredAtIso,
         returnOdometerKm: Number(form.data.odometerKm),
         photoUrls: [...form.data.photoUrls],
         remark: form.data.remark.trim() || null
@@ -326,6 +360,7 @@
     await dialogRef.value?.handleOpen(data, {
       title: actionMeta.value.title,
       subtitle: actionMeta.value.description,
+      confirmText: action.value === 'completion' ? '确认回场并完成' : '确认提交',
       contentMaxHeight: '78vh',
       loading: true,
       onOpen: async (_data, api) => {

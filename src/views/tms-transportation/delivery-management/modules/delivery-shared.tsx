@@ -20,7 +20,7 @@ export type DeliverySearchParams = Api.Tms.Delivery.DeliverySearchParams
 export type TableParams = DeliverySearchParams &
   Pick<Api.Common.PaginationParams, 'current' | 'size'>
 
-export interface DeliverySignDialogExpose {
+export interface DeliveryReceiptArchiveDialogExpose {
   handleOpen: (row: DeliveryRecord) => Promise<void>
 }
 
@@ -30,7 +30,7 @@ export interface DeliveryListContext {
   tableQueryRef: Ref<
     { refreshData: () => Promise<void>; refreshUpdate: () => Promise<void> } | undefined
   >
-  signDialogRef?: Ref<DeliverySignDialogExpose | undefined>
+  receiptArchiveDialogRef?: Ref<DeliveryReceiptArchiveDialogExpose | undefined>
 }
 
 export const DELIVERY_STATUS_ALL = '__all__'
@@ -282,20 +282,23 @@ function openDetail(context: DeliveryListContext, row: DeliveryRecord): void {
   })
 }
 
-function openSignDialog(context: DeliveryListContext, row: DeliveryRecord): void {
-  if (row.orderStatus !== 'signed') return
-  void context.signDialogRef?.value?.handleOpen(row)
+function openReceiptArchiveDialog(context: DeliveryListContext, row: DeliveryRecord): void {
+  if (!['signed', 'completed'].includes(String(row.orderStatus))) return
+  void context.receiptArchiveDialogRef?.value?.handleOpen(row)
 }
 
 function getMoreActions(context: DeliveryListContext, row: DeliveryRecord): ButtonMoreItem[] {
-  if (context.mode !== 'delivery' || row.orderStatus !== 'signed') return []
+  if (context.mode !== 'delivery') return []
+
+  const canArchiveReceipt = ['signed', 'completed'].includes(String(row.orderStatus))
+  if (!canArchiveReceipt) return []
 
   return [
     {
-      key: 'sign',
-      label: '签收',
-      icon: 'ri:checkbox-circle-line',
-      color: 'var(--el-color-success)'
+      key: 'archive-receipt',
+      label: row.receiptImageUrls?.length ? '复核回单' : '归档回单',
+      icon: 'ri:archive-2-line',
+      color: 'var(--el-color-primary)'
     }
   ]
 }
@@ -305,7 +308,7 @@ function handleMoreAction(
   row: DeliveryRecord,
   item: ButtonMoreItem
 ): void {
-  if (item.key === 'sign') openSignDialog(context, row)
+  if (item.key === 'archive-receipt') openReceiptArchiveDialog(context, row)
 }
 
 function formatCargoType(row: DeliveryRecord): string {

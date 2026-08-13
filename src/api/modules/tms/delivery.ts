@@ -7,7 +7,7 @@ import type { ApiRequestOptions } from '@/types/api/request'
 
 type DeliveryRecord = Api.Tms.Delivery.DeliveryRecord
 type DeliverySearchParams = Api.Tms.Delivery.DeliverySearchParams
-type DeliverySignPayload = Api.Tms.Delivery.DeliverySignPayload
+type DeliveryReceiptArchivePayload = Api.Tms.Delivery.DeliveryReceiptArchivePayload
 
 const { supabase, responseHandle } = useSupabase()
 
@@ -109,11 +109,11 @@ export async function exportDeliveryList(
   })
 }
 
-export async function signDeliveryOrder(params: DeliverySignPayload) {
+export async function archiveDeliveryReceipt(params: DeliveryReceiptArchivePayload) {
   const { id, ...data } = params
   if (!id) throw new Error('缺少运单 ID')
 
-  const query = supabase.rpc('tms_complete_order_with_waybill', {
+  const query = supabase.rpc('tms_archive_order_delivery_receipt', {
     p_order_id: id,
     p_signed_cod_amount: data.signedCodAmount ?? 0,
     p_receipt_image_urls: data.receiptImageUrls ?? [],

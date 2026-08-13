@@ -5,11 +5,12 @@
     />
     <TmsWorkspaceHeader
       eyebrow="DELIVERY CONTROL"
-      title="配送与签收"
-      description="集中处理待签收、回单和异常工单，确保运输交付凭证完整并形成闭环。"
+      title="配送回单中心"
+      description="集中复核签收回单与异常工单；运输完成统一由回场记录驱动，避免回单归档误结束运单。"
       icon="ri:package-check-line"
       :tags="[
-        { label: '签收闭环', type: 'success' },
+        { label: '回单可追溯', type: 'success' },
+        { label: '回场独立闭环', type: 'primary' },
         { label: '异常可处置', type: 'warning' }
       ]"
       :metrics="workspaceMetrics"
@@ -42,7 +43,7 @@
       </template>
     </ArtTableQuery>
 
-    <SignDialog ref="signDialogRef" @success="handleSignSuccess" />
+    <ReceiptArchiveDialog ref="receiptArchiveDialogRef" @success="handleArchiveSuccess" />
     <ReceiptExceptionWorkOrderDrawer ref="exceptionDrawerRef" />
   </div>
 </template>
@@ -57,7 +58,7 @@
   import type { ColumnOption } from '@/types'
   import { fetchDeliveryStatusCounts } from '@/api/tms'
   import { useUserStore } from '@/store/modules/user'
-  import SignDialog from './modules/sign-dialog.vue'
+  import ReceiptArchiveDialog from './modules/sign-dialog.vue'
   import ReceiptExceptionWorkOrderDrawer from './modules/receipt-exception-work-order-drawer.vue'
   import TmsWorkspaceHeader, {
     type TmsWorkspaceMetric
@@ -73,7 +74,7 @@
     deliveryOrderStatuses,
     type DeliveryRecord,
     type DeliverySearchParams,
-    type DeliverySignDialogExpose,
+    type DeliveryReceiptArchiveDialogExpose,
     type TableParams
   } from './modules/delivery-shared'
 
@@ -98,7 +99,7 @@
   const route = useRoute()
   const { getDictMap } = storeToRefs(useUserStore())
   const tableQueryRef = ref<ArtTableQueryExpose>()
-  const signDialogRef = ref<DeliverySignDialogExpose>()
+  const receiptArchiveDialogRef = ref<DeliveryReceiptArchiveDialogExpose>()
   const exceptionDrawerRef = ref<{ handleOpen: (recordId?: string) => Promise<void> }>()
   const statusCountRequestId = ref(0)
   const paymentMethodOptions = computed(() => getDictMap.value.tmsOrderPaymentMethod ?? [])
@@ -132,7 +133,7 @@
         mode: 'delivery',
         router,
         tableQueryRef,
-        signDialogRef
+        receiptArchiveDialogRef
       }).value
     ]),
     columnsFactory: () =>
@@ -140,7 +141,7 @@
         mode: 'delivery',
         router,
         tableQueryRef,
-        signDialogRef
+        receiptArchiveDialogRef
       })
   })
 
@@ -154,14 +155,14 @@
     {
       label: '已签收',
       value: table.statusCounts.signed ?? 0,
-      description: '已完成签收、待归档记录',
+      description: '已签收，等待回单复核或车辆回场',
       icon: 'ri:signature-line',
       tone: 'warning'
     },
     {
       label: '已完成',
       value: table.statusCounts.completed ?? 0,
-      description: '交付凭证已形成闭环',
+      description: '运输已回场并完成（历史缺档会提示补录）',
       icon: 'ri:checkbox-circle-line',
       tone: 'success'
     }
@@ -186,7 +187,7 @@
     void tableQueryRef.value?.getData()
   }
 
-  function handleSignSuccess(): void {
+  function handleArchiveSuccess(): void {
     void tableQueryRef.value?.refreshUpdate()
   }
 

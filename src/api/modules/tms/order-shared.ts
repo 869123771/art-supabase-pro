@@ -115,6 +115,9 @@ interface ExecutionStatusRow {
   signedAt?: string | null
   signerName?: string | null
   signatureUrls?: string[] | null
+  returnTime?: string | null
+  returnOdometerKm?: number | null
+  returnPhotoUrls?: string[] | null
 }
 
 const fetchDriverWaybillMap = async (
@@ -152,6 +155,11 @@ const mergeDriverWaybillStatus = (
     driverWaybillSignedBy: executionStatus?.signerName ?? order.driverWaybillSignedBy,
     driverWaybillSignatureProofCount:
       executionStatus?.signatureUrls?.length ?? order.driverWaybillSignatureProofCount,
+    driverWaybillReturnTime: executionStatus?.returnTime ?? order.driverWaybillReturnTime,
+    driverWaybillReturnOdometerKm:
+      executionStatus?.returnOdometerKm ?? order.driverWaybillReturnOdometerKm,
+    driverWaybillReturnPhotoCount:
+      executionStatus?.returnPhotoUrls?.length ?? order.driverWaybillReturnPhotoCount,
     waybillStatus: driverWaybill.status ?? null,
     updateTime: driverWaybill.updateTime || order.updateTime
   }
@@ -180,7 +188,9 @@ export const mergeOrdersWithDriverWaybills = async <T extends OrderRecord>(
           () =>
             supabase
               .from('tms_waybill_execution_record')
-              .select('waybill_id, signed_at, signer_name, signature_urls')
+              .select(
+                'waybill_id, signed_at, signer_name, signature_urls, return_time, return_odometer_km, return_photo_urls'
+              )
               .in('waybill_id', waybillIds),
           { ignoreCheck: true }
         )

@@ -587,11 +587,17 @@ function getMoreActions(context: WaybillListContext, row: WaybillRecord): Button
   ) {
     actions.push({ key: 'signature-operation', label: '签收', icon: 'ri:signature-line' })
   }
-  if (context.canComplete && row.waybillStatus === 'signed' && row.driverWaybillSignedAt) {
+  if (
+    context.canComplete &&
+    ['signed', 'completed'].includes(String(row.waybillStatus)) &&
+    row.driverWaybillSignedAt &&
+    !row.driverWaybillReturnTime
+  ) {
     actions.push({
       key: 'completion-operation',
-      label: '确认完成',
-      icon: 'ri:checkbox-circle-line'
+      label: row.waybillStatus === 'completed' ? '补录回场' : '确认回场',
+      icon: row.waybillStatus === 'completed' ? 'ri:history-line' : 'ri:home-4-line',
+      color: row.waybillStatus === 'completed' ? 'var(--el-color-warning)' : undefined
     })
   }
   if (row.dispatchStatus === 'loaded') {

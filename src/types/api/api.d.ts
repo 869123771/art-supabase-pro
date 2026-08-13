@@ -2082,6 +2082,9 @@ declare namespace Api {
         driverWaybillSignedAt?: string | null
         driverWaybillSignedBy?: string | null
         driverWaybillSignatureProofCount?: number
+        driverWaybillReturnTime?: string | null
+        driverWaybillReturnOdometerKm?: number | null
+        driverWaybillReturnPhotoCount?: number
         driverWaybillUnloadingStatus?: Waybill.CargoOperationStatus | null
         driverWaybillId?: string | null
         waybillStatus?: string | null
@@ -2431,6 +2434,7 @@ declare namespace Api {
         canSign: boolean
         canComplete: boolean
         canCancel: boolean
+        needsReturnCompletion: boolean
         record?: ExecutionRecord | null
       }
 
@@ -2524,9 +2528,9 @@ declare namespace Api {
         }
       >
 
-      type DeliverySignPayload = Pick<
+      type DeliveryReceiptArchivePayload = Pick<
         DeliveryRecord,
-        'id' | 'orderStatus' | 'signedCodAmount' | 'receiptImageUrls' | 'signedAt'
+        'id' | 'signedCodAmount' | 'receiptImageUrls' | 'signedAt'
       >
 
       type ReceiptOcrField =

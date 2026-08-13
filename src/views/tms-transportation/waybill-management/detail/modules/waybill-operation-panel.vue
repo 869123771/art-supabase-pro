@@ -94,6 +94,14 @@
 
     <section class="waybill-operation-panel__section art-card-xs">
       <ArtSectionTitle title="司机执行记录" />
+      <ElAlert
+        v-if="returnArchiveMismatch"
+        class="waybill-operation-panel__archive-alert"
+        type="warning"
+        :closable="false"
+        show-icon
+        title="运单已显示完成，但回场档案缺失。请由原司机或具备完成权限的调度人员补录回场时间、里程和照片。"
+      />
       <div v-if="waybill.execution" class="waybill-operation-panel__execution-grid">
         <article v-for="stage in executionStages" :key="stage.key">
           <div class="waybill-operation-panel__stage-icon">
@@ -102,7 +110,7 @@
           <div class="waybill-operation-panel__stage-content">
             <div>
               <strong>{{ stage.title }}</strong>
-              <ElTag :type="stage.time ? 'success' : 'info'" size="small">
+              <ElTag :type="stage.time ? 'success' : stage.key === 'return' ? 'warning' : 'info'" size="small">
                 {{ stage.time ? '已记录' : '待补录' }}
               </ElTag>
             </div>
@@ -227,6 +235,27 @@
     ]
   })
 
+  const executionArchiveComplete = computed(() => {
+    const record = props.waybill.execution
+    return Boolean(
+      record?.departureTime &&
+        record.departureOdometerKm != null &&
+        record.departurePhotoUrls.length &&
+        record.signedAt &&
+        record.signerName &&
+        record.receiptUrls.length &&
+        record.signatureUrls.length &&
+        record.returnTime &&
+        record.returnOdometerKm != null &&
+        record.returnPhotoUrls.length &&
+        record.completionRecordedAt
+    )
+  })
+
+  const returnArchiveMismatch = computed(
+    () => props.waybill.status === 'completed' && !executionArchiveComplete.value
+  )
+
   const integrityItems = computed(() => [
     {
       label: '装货作业档案',
@@ -244,10 +273,10 @@
     },
     {
       label: '司机执行档案',
-      complete: Boolean(props.waybill.execution),
-      description: props.waybill.execution
-        ? '司机扩展执行字段已归档'
-        : '里程、签收、回场字段尚未形成记录'
+      complete: executionArchiveComplete.value,
+      description: executionArchiveComplete.value
+        ? '发车、签收、回场与里程字段均已归档'
+        : '发车、签收或回场档案仍有缺失，请按节点补齐'
     },
     {
       label: '流程事件审计',
@@ -303,6 +332,10 @@
     &__section {
       min-width: 0;
       padding: var(--art-section-padding);
+    }
+
+    &__archive-alert {
+      margin-bottom: var(--art-space-3);
     }
 
     &__operation-grid,

@@ -1,10 +1,17 @@
 <template>
   <ArtDialog ref="dialogRef" size="xl">
-    <div class="delivery-sign-dialog">
-      <div class="delivery-sign-dialog__summary">
+    <div class="delivery-receipt-dialog">
+      <div class="delivery-receipt-dialog__summary">
         <span>运单号：{{ form.data.orderNo || '-' }}</span>
         <span>货号：{{ form.data.cargoNo || '-' }}</span>
       </div>
+      <ElAlert
+        class="delivery-receipt-dialog__flow-alert"
+        type="info"
+        :closable="false"
+        show-icon
+        title="本操作只归档和复核回单，不会结束运输运单；司机仍需提交回场时间、里程与照片。"
+      />
       <WaybillReceiptOcrPanel
         ref="ocrPanelRef"
         v-model="form.data.receiptImageUrls"
@@ -25,16 +32,16 @@
       />
       <ElAlert
         v-if="ocrResult?.assessment.signals.length"
-        class="delivery-sign-dialog__review-alert"
+        class="delivery-receipt-dialog__review-alert"
         :type="ocrResult.assessment.riskLevel === 'critical' ? 'error' : 'warning'"
         :closable="false"
         show-icon
       >
         <template #title>
-          AI 检测到 {{ ocrResult.assessment.signals.length }} 项异常，完成签收前必须人工复核
+          AI 检测到 {{ ocrResult.assessment.signals.length }} 项异常，回单归档前必须人工复核
         </template>
         <ElCheckbox v-model="anomalyAcknowledged">
-          我已核对原始回单和运单，确认按当前信息完成签收
+          我已核对原始回单和运单，确认按当前信息归档
         </ElCheckbox>
       </ElAlert>
     </div>
@@ -50,13 +57,13 @@
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
-  import { reviewWaybillReceiptOcrArtifact, signDeliveryOrder } from '@/api/tms'
+  import { archiveDeliveryReceipt, reviewWaybillReceiptOcrArtifact } from '@/api/tms'
   import WaybillReceiptOcrPanel from './waybill-receipt-ocr-panel.vue'
 
-  defineOptions({ name: 'TmsDeliverySignDialog' })
+  defineOptions({ name: 'TmsDeliveryReceiptArchiveDialog' })
 
   type DeliveryRecord = Api.Tms.Delivery.DeliveryRecord
-  type SignForm = Api.Tms.Delivery.DeliverySignPayload & {
+  type ReceiptArchiveForm = Api.Tms.Delivery.DeliveryReceiptArchivePayload & {
     orderNo?: string
     cargoNo?: string | null
   }
@@ -67,9 +74,9 @@
   }
 
   interface FormGroup {
-    data: SignForm
+    data: ReceiptArchiveForm
     items: ComputedRef<FormItem[]>
-    rules: FormRules<SignForm>
+    rules: FormRules<ReceiptArchiveForm>
   }
 
   interface OcrPanelExpose {
@@ -100,7 +107,7 @@
       signedAt: [{ required: true, message: '请选择签收时间', trigger: 'change' }]
     },
     items: computed<FormItem[]>(() => [
-      { label: '签收确认', key: 'signSection', type: 'divider', span: 24 },
+      { label: '回单归档', key: 'receiptSection', type: 'divider', span: 24 },
       { label: '代收货款', key: 'signedCodAmount', type: 'number', span: 12, props: moneyProps },
       {
         label: '签收时间',
@@ -125,12 +132,11 @@
     cargoQuantityTotal: currentRow.value?.cargoQuantityTotal
   }))
 
-  function createInitialForm(): SignForm {
+  function createInitialForm(): ReceiptArchiveForm {
     return {
       id: undefined,
       orderNo: '',
       cargoNo: '',
-      orderStatus: 'completed',
       signedCodAmount: 0,
       receiptImageUrls: [],
       signedAt: dayjs().format('YYYY-MM-DD HH:mm:ss')
@@ -142,13 +148,13 @@
     return Number.isFinite(numericValue) ? numericValue : 0
   }
 
-  function normalizePayload(): Api.Tms.Delivery.DeliverySignPayload {
+  function normalizePayload(): Api.Tms.Delivery.DeliveryReceiptArchivePayload {
+    const parsedSignedAt = dayjs(form.data.signedAt)
     return {
       id: form.data.id,
-      orderStatus: 'completed',
       signedCodAmount: moneyValue(form.data.signedCodAmount),
       receiptImageUrls: [...(form.data.receiptImageUrls ?? [])],
-      signedAt: form.data.signedAt || new Date().toISOString()
+      signedAt: parsedSignedAt.isValid() ? parsedSignedAt.toISOString() : new Date().toISOString()
     }
   }
 
@@ -169,7 +175,7 @@
     }
 
     try {
-      await signDeliveryOrder(normalizePayload())
+      await archiveDeliveryReceipt(normalizePayload())
       await recordOcrReview()
       emit('success')
       return true
@@ -190,7 +196,7 @@
 
   async function handleOpen(row: DeliveryRecord): Promise<void> {
     if (!row.id) {
-      ElMessage.warning('缺少运单 ID，无法完成签收')
+      ElMessage.warning('缺少订单 ID，无法归档回单')
       return
     }
     currentRow.value = row
@@ -205,8 +211,9 @@
         : dayjs().format('YYYY-MM-DD HH:mm:ss')
     })
     await dialogRef.value?.handleOpen(row, {
-      title: '签收',
-      subtitle: '上传回单后可用 AI 识别签收信息并检测破损、少货和拒收风险',
+      title: '回单复核与归档',
+      subtitle: '核对签收凭证与代收款信息；运输完成仍以回场记录为准',
+      confirmText: '确认归档',
       contentMaxHeight: '76vh',
       onConfirm: handleSubmit,
       onClose: resetForm
@@ -243,14 +250,14 @@
       outcome: 'applied',
       finalPayload
     })
-    if (error) ElMessage.warning('签收已完成，但 AI 质量记录失败；不影响正式业务数据')
+    if (error) ElMessage.warning('回单已归档，但 AI 质量记录失败；不影响正式业务数据')
   }
 
   defineExpose({ handleOpen })
 </script>
 
 <style scoped lang="scss">
-  .delivery-sign-dialog {
+  .delivery-receipt-dialog {
     &__summary {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -273,6 +280,10 @@
         margin-top: 8px;
         white-space: normal;
       }
+    }
+
+    &__flow-alert {
+      margin-bottom: 16px;
     }
   }
 </style>

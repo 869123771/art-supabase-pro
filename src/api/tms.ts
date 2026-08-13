@@ -168,7 +168,7 @@ export {
   fetchReceiptExceptionWorkOrders,
   fetchDeliveryStatusCounts,
   reviewWaybillReceiptOcrArtifact,
-  signDeliveryOrder,
+  archiveDeliveryReceipt,
   transitionReceiptExceptionWorkOrder
 } from '@/api/modules/tms/delivery'
 export {
