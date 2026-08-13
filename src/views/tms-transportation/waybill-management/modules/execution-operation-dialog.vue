@@ -16,7 +16,11 @@
       <ElAlert
         class="execution-dialog__alert"
         :title="flowAlert"
-        :type="context?.needsReturnCompletion && currentRow?.waybillStatus === 'completed' ? 'warning' : 'info'"
+        :type="
+          context?.needsReturnCompletion && currentRow?.waybillStatus === 'completed'
+            ? 'warning'
+            : 'info'
+        "
         :closable="false"
         show-icon
       />

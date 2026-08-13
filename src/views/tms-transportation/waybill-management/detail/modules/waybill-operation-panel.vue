@@ -110,7 +110,10 @@
           <div class="waybill-operation-panel__stage-content">
             <div>
               <strong>{{ stage.title }}</strong>
-              <ElTag :type="stage.time ? 'success' : stage.key === 'return' ? 'warning' : 'info'" size="small">
+              <ElTag
+                :type="stage.time ? 'success' : stage.key === 'return' ? 'warning' : 'info'"
+                size="small"
+              >
                 {{ stage.time ? '已记录' : '待补录' }}
               </ElTag>
             </div>
@@ -239,16 +242,16 @@
     const record = props.waybill.execution
     return Boolean(
       record?.departureTime &&
-        record.departureOdometerKm != null &&
-        record.departurePhotoUrls.length &&
-        record.signedAt &&
-        record.signerName &&
-        record.receiptUrls.length &&
-        record.signatureUrls.length &&
-        record.returnTime &&
-        record.returnOdometerKm != null &&
-        record.returnPhotoUrls.length &&
-        record.completionRecordedAt
+      record.departureOdometerKm != null &&
+      record.departurePhotoUrls.length &&
+      record.signedAt &&
+      record.signerName &&
+      record.receiptUrls.length &&
+      record.signatureUrls.length &&
+      record.returnTime &&
+      record.returnOdometerKm != null &&
+      record.returnPhotoUrls.length &&
+      record.completionRecordedAt
     )
   })
 
