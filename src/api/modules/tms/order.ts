@@ -11,6 +11,12 @@ import {
 type OrderRecord = Api.Tms.Order.OrderRecord
 type OrderSearchParams = Api.Tms.Order.OrderSearchParams
 type OrderFreightPayload = Api.Tms.Order.OrderFreightPayload
+type RelatedWaybillSummary = Api.Tms.Waybill.RelatedWaybillSummary
+
+interface RelatedWaybillRow extends RelatedWaybillSummary {
+  driver?: { driverName?: string | null; phone?: string | null } | null
+  vehicle?: { plateNo?: string | null } | null
+}
 
 const { supabase, keysToSnakeDeep, responseHandle } = useSupabase()
 
@@ -89,8 +95,51 @@ export async function fetchOrderDetail(id: string) {
   const order = rows[0] ?? null
   if (!order?.id) return { ...result, data: order }
 
-  const audit = await fetchDriverDeliveryAudit(order.id)
-  return { ...result, data: { ...order, ...audit } }
+  const [audit, relatedWaybills] = await Promise.all([
+    fetchDriverDeliveryAudit(order.id),
+    fetchRelatedWaybills(order.id)
+  ])
+  return { ...result, data: { ...order, ...audit, relatedWaybills } }
+}
+
+async function fetchRelatedWaybills(orderId: string): Promise<RelatedWaybillSummary[]> {
+  const { data } = await responseHandle<RelatedWaybillRow[]>(
+    () =>
+      supabase
+        .from('tms_waybill')
+        .select(
+          `
+            id,
+            waybill_no,
+            status,
+            accepted_at,
+            departed_at,
+            completed_at,
+            driver:tms_driver!tms_waybill_driver_id_fkey(driver_name, phone),
+            vehicle:vehicle_archive!tms_waybill_vehicle_id_fkey(plate_no)
+          `
+        )
+        .eq('order_id', orderId)
+        .order('create_time', { ascending: false }),
+    {
+      breakReturn: true,
+      errorMessage: '关联运单加载失败，请稍后重试'
+    }
+  )
+
+  return (data ?? []).map((item) => {
+    return {
+      id: item.id,
+      waybillNo: item.waybillNo,
+      status: item.status,
+      acceptedAt: item.acceptedAt,
+      departedAt: item.departedAt,
+      completedAt: item.completedAt,
+      driverName: item.driver?.driverName ?? null,
+      driverPhone: item.driver?.phone ?? null,
+      plateNo: item.vehicle?.plateNo ?? null
+    }
+  })
 }
 
 async function fetchDriverDeliveryAudit(orderId: string): Promise<Partial<OrderRecord>> {

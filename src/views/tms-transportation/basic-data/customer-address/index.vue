@@ -7,7 +7,8 @@
       icon="ri:map-pin-user-line"
       :tags="[
         { label: '地址资产', type: 'primary' },
-        { label: '快速开单', type: 'success' }
+        { label: '快速开单', type: 'success' },
+        { label: '到离场围栏', type: 'info' }
       ]"
     />
 
@@ -28,6 +29,7 @@
     />
 
     <CustomerAddressDialog ref="dialogRef" @success="handleSaveSuccess" />
+    <AddressGeofenceDialog ref="geofenceDialogRef" @success="handleGeofenceSuccess" />
     <MasterDataDeleteGuard ref="deleteGuardRef" @cleared="handleDeleteGuardCleared" />
   </div>
 </template>
@@ -51,6 +53,7 @@
     fetchCustomerOptions
   } from '@/api/tms'
   import CustomerAddressDialog from './modules/customer-address-dialog.vue'
+  import AddressGeofenceDialog from './modules/address-geofence-dialog.vue'
   import MasterDataDeleteGuard, {
     type MasterDataDeleteGuardOpenOptions
   } from '@/components/business/master-data-delete-guard/index.vue'
@@ -76,6 +79,10 @@
     inspect: (options: MasterDataDeleteGuardOpenOptions) => Promise<boolean>
   }
 
+  interface GeofenceDialogExpose {
+    handleOpen: (row: CustomerAddress) => Promise<void>
+  }
+
   interface TableState {
     searchQuery: SearchParams
   }
@@ -84,6 +91,7 @@
   const { getDictMap } = storeToRefs(useUserStore())
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<AddressDialogExpose>()
+  const geofenceDialogRef = ref<GeofenceDialogExpose>()
   const deleteGuardRef = ref<MasterDataDeleteGuardExpose>()
 
   const routeCustomerId = computed(() => String(route.query.customerId ?? ''))
@@ -189,6 +197,24 @@
       width: 90,
       dict: { code: 'commonBoolean', display: 'tag', value: (row) => String(row.isDefault) }
     },
+    {
+      prop: 'geofenceEnabled',
+      label: '电子围栏',
+      width: 140,
+      formatter: (row) => (
+        <div class="customer-address-page__geofence-cell">
+          <span
+            class={['customer-address-page__geofence-dot', { 'is-active': row.geofenceEnabled }]}
+          />
+          <div>
+            <strong>{row.geofenceEnabled ? '已启用' : '未启用'}</strong>
+            <small>
+              {row.geofenceEnabled ? `${row.geofenceRadiusM ?? '-'} 米` : '不参与定位校验'}
+            </small>
+          </div>
+        </div>
+      )
+    },
     { prop: 'remark', label: '备注', minWidth: 150, showOverflowTooltip: true },
     {
       prop: 'createTime',
@@ -199,10 +225,15 @@
     {
       prop: 'operation',
       label: '操作',
-      width: 120,
+      width: 164,
       fixed: 'right',
       formatter: (row) => (
-        <div>
+        <div class="customer-address-page__operation">
+          <ArtButtonTable
+            icon="ri:radar-line"
+            label={row.geofenceEnabled ? '查看或修改围栏' : '设置围栏'}
+            onClick={() => void geofenceDialogRef.value?.handleOpen(row)}
+          />
           <ArtButtonTable type="edit" onClick={() => openDialog(row)} />
           <ArtButtonTable type="delete" onClick={() => handleDelete(row)} />
         </div>
@@ -262,6 +293,10 @@
       : tableQueryRef.value?.refreshUpdate())
   }
 
+  const handleGeofenceSuccess = (): void => {
+    void tableQueryRef.value?.refreshUpdate()
+  }
+
   const inspectDeleteDependencies = async (rows: CustomerAddress[]): Promise<boolean> => {
     const resources = rows
       .filter((item) => item.id)
@@ -319,3 +354,58 @@
     }
   }
 </script>
+
+<style scoped lang="scss">
+  .customer-address-page {
+    &__operation {
+      display: inline-flex;
+      gap: 8px;
+      align-items: center;
+
+      :deep(.art-button-table) {
+        margin-right: 0;
+      }
+    }
+
+    &__geofence-cell {
+      display: flex;
+      gap: 9px;
+      align-items: center;
+      min-width: 0;
+
+      > div {
+        display: grid;
+        min-width: 0;
+      }
+
+      strong,
+      small {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      strong {
+        font-size: 13px;
+        color: var(--el-text-color-primary);
+      }
+
+      small {
+        color: var(--el-text-color-secondary);
+      }
+    }
+
+    &__geofence-dot {
+      flex: 0 0 8px;
+      width: 8px;
+      height: 8px;
+      background: var(--el-color-info-light-5);
+      border-radius: 50%;
+
+      &.is-active {
+        background: var(--el-color-success);
+        box-shadow: 0 0 0 4px var(--el-color-success-light-9);
+      }
+    }
+  }
+</style>

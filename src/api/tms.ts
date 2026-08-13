@@ -16,6 +16,7 @@ export {
   deleteDriverBatch,
   editDriver,
   exportDriverList,
+  fetchDriverAssignedVehicles,
   fetchDriverList,
   fetchDriverListByCarrierId,
   fetchDriverOptions
@@ -23,15 +24,20 @@ export {
 export {
   addCustomer,
   addCustomerAddress,
+  addFavoriteRoute,
   cleanupCustomerDeleteSafeDependencies,
   deleteCustomer,
   deleteCustomerAddress,
   deleteCustomerAddressBatch,
+  deleteFavoriteRoute,
+  deleteFavoriteRouteBatch,
   deleteCustomerBatch,
   editCustomer,
   editCustomerAddress,
+  editFavoriteRoute,
   exportCustomerList,
   fetchCustomerAddressList,
+  fetchCustomerAddressOptions,
   fetchCustomerDefaultAddress,
   fetchCustomerDeleteDependencyDetails,
   fetchCustomerDeleteDependencies,
@@ -39,6 +45,8 @@ export {
   fetchCustomerList,
   fetchCustomerOptions,
   fetchCustomerSelectorList,
+  fetchFavoriteRouteList,
+  updateCustomerAddressGeofence,
   importCustomers
 } from '@/api/modules/tms/customer'
 export type {
@@ -108,17 +116,25 @@ export {
 export {
   cancelWaybillDispatch,
   cancelWaybillDispatchBatch,
+  cancelAssignedWaybill,
   cancelWaybillOrder,
   cancelWaybillOrderBatch,
+  checkInWaybillCargoOperation,
+  completeWaybillExecution,
+  completeWaybillCargoOperation,
   confirmWaybillAcceptance,
-  confirmWaybillDeparture,
   dispatchWaybill,
   dispatchWaybillBatch,
   exportWaybillList,
   fetchDispatchVehicleOptions,
+  fetchWaybillCargoOperationContext,
+  fetchWaybillDetail,
+  fetchWaybillExecutionContext,
   fetchWaybillList,
   fetchWaybillStatusCounts,
-  recommendDispatchResourcesByAi
+  recommendDispatchResourcesByAi,
+  recordWaybillDeparture,
+  signWaybill
 } from '@/api/modules/tms/waybill'
 export {
   analyzeTransportAnomalyByAi,

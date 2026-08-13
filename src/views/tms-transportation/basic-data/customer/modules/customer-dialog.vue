@@ -38,7 +38,7 @@
   import ArtAddressPicker from '@/components/core/forms/art-address-picker/index.vue'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import { useDocumentNumberRule } from '@/hooks/core/useDocumentNumberRule'
-  import { addCustomer, editCustomer } from '@/api/tms'
+  import { addCustomer, editCustomer, fetchCustomerOptions } from '@/api/tms'
   import { fetchRegionOptions } from '@/api/common'
   import { useUserStore } from '@/store/modules/user'
 
@@ -50,6 +50,7 @@
   interface DialogExposeForm {
     validate: () => Promise<boolean>
     clearValidate: () => void
+    reloadOptions: (key?: string) => Promise<unknown>
   }
 
   const emit = defineEmits<{
@@ -66,6 +67,7 @@
 
   const createInitialForm = (): CustomerForm => ({
     id: undefined,
+    parentUnitId: null,
     customerCode: '',
     customerName: '',
     industry: '',
@@ -155,6 +157,29 @@
         clearable: true,
         placeholder: '请选择所属行业'
       }
+    },
+    {
+      label: '上级单位',
+      key: 'parentUnitId',
+      type: 'select',
+      api: fetchCustomerOptions,
+      immediate: false,
+      beforeFetch: () => ({ excludeId: form.id, includeDisabled: true }),
+      resultField: 'data',
+      labelField: 'customerName',
+      valueField: 'id',
+      labelFn: (option) => {
+        const customer = option as Api.Tms.BasicData.CustomerOption
+        const code = customer.customerCode ? `（${customer.customerCode}）` : ''
+        const status = customer.enabled === false ? ' · 已停用' : ''
+        return `${customer.customerName}${code}${status}`
+      },
+      props: {
+        clearable: true,
+        filterable: true,
+        placeholder: '请选择上级客户单位'
+      },
+      description: '选填；不选择则作为一级客户单位。'
     },
     {
       label: '客户级别',
@@ -304,6 +329,7 @@
 
     const payload: Customer = {
       ...rawPayload,
+      parentUnitId: rawPayload.parentUnitId || null,
       region: regionPath.join('/'),
       regionAdcode: normalizeNullableText(rawPayload.regionAdcode),
       longitude,
@@ -364,6 +390,14 @@
       title: isEdit ? '编辑客户' : '新增客户',
       subtitle: '维护客户基础、联系人和财务信息',
       contentMaxHeight: '72vh',
+      loading: true,
+      onOpen: async (_openData, api) => {
+        try {
+          await formRef.value?.reloadOptions('parentUnitId')
+        } finally {
+          api.setLoading(false)
+        }
+      },
       onConfirm: handleSubmit,
       onReset: () => void resetForm()
     })

@@ -35,7 +35,7 @@
 </template>
 
 <script setup lang="tsx">
-  import { ElButton } from 'element-plus'
+  import { ElButton, ElImage } from 'element-plus'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type {
     ArtTableQueryExcelColumn,
@@ -125,7 +125,7 @@
       type: 'input',
       props: {
         clearable: true,
-        placeholder: '运单号、路线、收款方或说明'
+        placeholder: '运单号、收款方、填报人或部门'
       }
     }
   ])
@@ -167,6 +167,45 @@
       width: 130,
       align: 'right',
       formatter: (row) => formatMoney(row.amount)
+    },
+    {
+      prop: 'reporterNameSnapshot',
+      label: '填报人',
+      width: 132,
+      showOverflowTooltip: true,
+      formatter: (row) => row.reporterNameSnapshot || row.createBy || '-'
+    },
+    {
+      prop: 'reporterDepartmentSnapshot',
+      label: '填报人所属部门',
+      minWidth: 160,
+      showOverflowTooltip: true,
+      formatter: (row) => row.reporterDepartmentSnapshot || '-'
+    },
+    {
+      prop: 'attachments',
+      label: '图片凭证',
+      width: 144,
+      formatter: (row) => {
+        const urls = row.attachments ?? []
+        if (!urls.length) return '-'
+        return (
+          <div class="waybill-cost__evidence">
+            {urls.slice(0, 3).map((url, index) => (
+              <ElImage
+                key={url}
+                src={url}
+                previewSrcList={urls}
+                initialIndex={index}
+                previewTeleported
+                fit="cover"
+                class="waybill-cost__evidence-image"
+              />
+            ))}
+            {urls.length > 3 ? <span>+{urls.length - 3}</span> : null}
+          </div>
+        )
+      }
     },
     {
       prop: 'auditStatus',
@@ -267,6 +306,9 @@
     { key: 'payeeName', title: '收款方' },
     { key: 'occurredOn', title: '发生日期' },
     { key: 'amount', title: '费用金额' },
+    { key: 'reporterNameSnapshot', title: '填报人' },
+    { key: 'reporterDepartmentSnapshot', title: '填报人所属部门' },
+    { key: 'attachments', title: '图片凭证' },
     { key: 'auditStatus', title: '审核状态' },
     { key: 'remark', title: '费用说明' },
     { key: 'reviewRemark', title: '审核意见' }
@@ -400,3 +442,25 @@
     }
   }
 </script>
+
+<style scoped lang="scss">
+  :deep(.waybill-cost__evidence) {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+
+    > span {
+      font-size: 12px;
+      color: var(--art-text-gray-500);
+    }
+  }
+
+  :deep(.waybill-cost__evidence-image) {
+    width: 30px;
+    height: 30px;
+    overflow: hidden;
+    cursor: zoom-in;
+    border: 1px solid var(--art-border-dashed-color);
+    border-radius: var(--el-border-radius-small);
+  }
+</style>

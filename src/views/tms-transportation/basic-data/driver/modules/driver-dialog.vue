@@ -44,8 +44,12 @@
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import ArtUploadImage from '@/components/core/forms/art-upload-image/index.vue'
-  import { addDriver, editDriver, fetchCarrierOptions } from '@/api/tms'
-  import { fetchVehicleArchiveOptions } from '@/api/vehicle-manage-system'
+  import {
+    addDriver,
+    editDriver,
+    fetchCarrierOptions,
+    fetchDriverAssignedVehicles
+  } from '@/api/tms'
   import { useUserStore } from '@/store/modules/user'
 
   defineOptions({ name: 'TmsDriverDialog' })
@@ -66,6 +70,7 @@
   const { getDictMap } = storeToRefs(useUserStore())
   const dialogRef = ref<ArtDialogExpose<Driver | undefined>>()
   const formRef = ref<DialogExposeForm>()
+  const vehicleState = reactive({ loading: false, error: '', requestId: 0 })
 
   const genderOptions = computed(() => getDictMap.value.sex ?? [])
   const licenseTypeOptions = computed(() => getDictMap.value.tmsDriverLicenseType ?? [])
@@ -208,7 +213,10 @@
         filterable: true,
         clearable: true,
         placeholder: '公司名称/承运商编码',
-        onChange: (carrierId?: string) => void loadCarrierVehiclePlates(carrierId)
+        onChange: () => {
+          form.carrierVehiclePlates = []
+          void reloadAssignedVehicles()
+        }
       }
     },
     {
@@ -216,11 +224,16 @@
       key: 'carrierVehiclePlates',
       type: 'inputTag',
       span: 16,
+      hidden: () => !form.id,
       props: {
         disabled: true,
         tagType: 'primary',
         tagEffect: 'light',
-        placeholder: '选择承运商后自动展示名下车辆'
+        placeholder: vehicleState.loading
+          ? '正在加载关联车辆'
+          : vehicleState.error
+            ? '关联车辆加载失败'
+            : '暂无关联车辆'
       }
     },
     {
@@ -290,6 +303,9 @@
   }
 
   const resetForm = async (): Promise<void> => {
+    vehicleState.requestId += 1
+    vehicleState.loading = false
+    vehicleState.error = ''
     replaceForm(createInitialForm())
     await nextTick()
     formRef.value?.clearValidate()
@@ -303,6 +319,7 @@
       'updateBy',
       'updateTime',
       'carrier',
+      'assignedVehicles',
       'carrierVehiclePlates'
     ]) as Driver
 
@@ -339,9 +356,11 @@
     await resetForm()
     const isEdit = Boolean(row?.id)
     if (row) {
+      const editData = omit(structuredClone(toRaw(row)), ['assignedVehicles'])
       replaceForm({
         ...createInitialForm(),
-        ...structuredClone(toRaw(row))
+        ...editData,
+        carrierVehiclePlates: (row.assignedVehicles ?? []).map((vehicle) => vehicle.plateNo)
       })
     }
 
@@ -350,21 +369,41 @@
       subtitle: '维护司机基础资料与证件信息',
       contentMaxHeight: '72vh',
       onOpen: async () => {
-        await loadCarrierVehiclePlates(form.carrierId)
+        await reloadAssignedVehicles()
       },
       onConfirm: handleSubmit,
       onReset: () => void resetForm()
     })
   }
 
-  const loadCarrierVehiclePlates = async (carrierId?: string): Promise<void> => {
-    if (!carrierId) {
+  const reloadAssignedVehicles = async (): Promise<void> => {
+    const driverId = form.id
+    const carrierId = form.carrierId
+    const requestId = ++vehicleState.requestId
+    vehicleState.error = ''
+
+    if (!driverId || !carrierId) {
       form.carrierVehiclePlates = []
+      vehicleState.loading = false
       return
     }
 
-    const { data } = await fetchVehicleArchiveOptions({ carrierId })
-    form.carrierVehiclePlates = (data ?? []).map((vehicle) => vehicle.plateNo)
+    vehicleState.loading = true
+    try {
+      const result = await fetchDriverAssignedVehicles({ driverId, carrierId })
+      if (requestId !== vehicleState.requestId) return
+      if (result.error) {
+        vehicleState.error = '关联车辆加载失败，请重试'
+        return
+      }
+      form.carrierVehiclePlates = (result.data ?? []).map((vehicle) => vehicle.plateNo)
+    } catch {
+      if (requestId !== vehicleState.requestId) return
+      form.carrierVehiclePlates = []
+      vehicleState.error = '关联车辆加载失败，请重试'
+    } finally {
+      if (requestId === vehicleState.requestId) vehicleState.loading = false
+    }
   }
 
   defineExpose({

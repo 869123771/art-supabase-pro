@@ -50,6 +50,7 @@
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatWithDayjs } from '@/utils/time'
   import { useUserStore } from '@/store/modules/user'
+  import { RouterLink } from 'vue-router'
   import {
     deleteDriver,
     deleteDriverBatch,
@@ -243,6 +244,12 @@
       width: 100,
       dict: { code: 'tmsDriverType', display: 'tag' }
     },
+    {
+      prop: 'assignedVehicles',
+      label: '车牌号',
+      minWidth: 200,
+      formatter: (row) => renderAssignedVehicles(row)
+    },
     { prop: 'phone', label: '手机号码', width: 150 },
     {
       prop: 'gender',
@@ -315,6 +322,29 @@
     return fetchDriverList({ ...params, from, to })
   }
 
+  const renderAssignedVehicles = (row: Driver) => {
+    const vehicles = row.assignedVehicles ?? []
+    if (!vehicles.length) return <span class="tms-driver__vehicle-empty">-</span>
+
+    return (
+      <div class="tms-driver__vehicle-links">
+        {vehicles.map((vehicle) => (
+          <RouterLink
+            key={vehicle.id}
+            class="tms-driver__vehicle-link"
+            to={{
+              path: `/vehicle-manage-system/archive-manage/vehicle-archive-detail/${vehicle.id}`,
+              query: { source: 'driver' }
+            }}
+            title={`查看车辆 ${vehicle.plateNo} 详情`}
+          >
+            {vehicle.plateNo}
+          </RouterLink>
+        ))}
+      </div>
+    )
+  }
+
   const openDialog = (row?: Driver): void => {
     void dialogRef.value?.handleOpen(row)
   }
@@ -360,3 +390,39 @@
     }
   }
 </script>
+
+<style lang="scss">
+  .tms-driver {
+    &__vehicle-links {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      align-items: flex-start;
+      min-width: 0;
+      padding: 4px 0;
+    }
+
+    &__vehicle-link {
+      font-weight: 600;
+      line-height: 22px;
+      color: var(--el-color-primary);
+      white-space: nowrap;
+      text-decoration: none;
+
+      &:hover {
+        text-decoration: underline;
+        text-underline-offset: 3px;
+      }
+
+      &:focus-visible {
+        outline: 2px solid var(--el-color-primary);
+        outline-offset: 2px;
+        border-radius: var(--el-border-radius-small);
+      }
+    }
+
+    &__vehicle-empty {
+      color: var(--el-text-color-placeholder);
+    }
+  }
+</style>

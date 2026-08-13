@@ -11,11 +11,18 @@ type Customer = Api.Tms.BasicData.Customer
 type CustomerSearchParams = Api.Tms.BasicData.CustomerSearchParams
 type CustomerAddress = Api.Tms.BasicData.CustomerAddress
 type CustomerAddressSearchParams = Api.Tms.BasicData.CustomerAddressSearchParams
+type FavoriteRoute = Api.Tms.BasicData.FavoriteRoute
+type FavoriteRouteSearchParams = Api.Tms.BasicData.FavoriteRouteSearchParams
 type CustomerSelectorItem = Api.Tms.Order.CustomerSelectorItem
 type CustomerSelectorSearchParams = Api.Tms.Order.CustomerSelectorSearchParams
 
 interface WriteOptions {
   showMessage?: boolean
+}
+
+interface CustomerOptionParams {
+  excludeId?: string
+  includeDisabled?: boolean
 }
 
 export type CustomerDeleteDependencyCode =
@@ -111,20 +118,24 @@ export async function exportCustomerList(
   })
 }
 
-export async function fetchCustomerOptions(_params?: unknown, options?: ApiRequestOptions) {
+export async function fetchCustomerOptions(
+  params: CustomerOptionParams = {},
+  options?: ApiRequestOptions
+) {
+  const { excludeId, includeDisabled = false } = params
+  let query = supabase
+    .from('tms_customer')
+    .select(
+      'id, customer_code, customer_name, enabled, contact_name, contact_phone, region, region_adcode, address_detail, longitude, latitude, coordinate_system, coordinate_source, coordinate_status, geocode_provider, geocoded_at, postal_code'
+    )
+    .order('customer_name', { ascending: true })
+    .limit(1000)
+
+  if (!includeDisabled) query = query.eq('enabled', true)
+  if (excludeId) query = query.neq('id', excludeId)
+
   return await responseHandle<Api.Tms.BasicData.CustomerOption[]>(
-    () =>
-      withRequestOptions(
-        supabase
-          .from('tms_customer')
-          .select(
-            'id, customer_code, customer_name, contact_name, contact_phone, region, region_adcode, address_detail, longitude, latitude, coordinate_system, coordinate_source, coordinate_status, geocode_provider, geocoded_at, postal_code'
-          )
-          .eq('enabled', true)
-          .order('customer_name', { ascending: true })
-          .limit(1000),
-        options
-      ),
+    () => withRequestOptions(query, options),
     { ignoreCheck: true, showErrorMessage: true }
   )
 }
@@ -347,6 +358,109 @@ export async function deleteCustomerAddress(id: string) {
 export async function deleteCustomerAddressBatch(ids: string[]) {
   return await responseHandle(
     () => supabase.from('tms_customer_address').delete({ count: 'exact' }).in('id', ids),
+    { showMessage: true, breakReturn: true, requireAffected: true }
+  )
+}
+
+export async function updateCustomerAddressGeofence(
+  id: string,
+  payload: Pick<CustomerAddress, 'geofenceEnabled' | 'geofenceRadiusM' | 'geofenceUpdatedAt'>
+) {
+  return await responseHandle<CustomerAddress>(
+    () =>
+      supabase
+        .from('tms_customer_address')
+        .update(keysToSnakeDeep(payload), { count: 'exact' })
+        .eq('id', id)
+        .select()
+        .single(),
+    { showMessage: true, breakReturn: true, requireAffected: true }
+  )
+}
+
+export async function fetchCustomerAddressOptions(
+  params: {
+    customerId?: string
+    addressType?: CustomerAddress['addressType']
+  } = {}
+) {
+  let query = supabase
+    .from('tms_customer_address')
+    .select('*')
+    .order('is_default', { ascending: false })
+    .order('update_time', { ascending: false, nullsFirst: false })
+  if (params.customerId) query = query.eq('customer_id', params.customerId)
+  if (params.addressType) query = query.eq('address_type', params.addressType)
+  return await responseHandle<CustomerAddress[]>(() => query, {
+    ignoreCheck: true,
+    showErrorMessage: true
+  })
+}
+
+export async function fetchFavoriteRouteList(
+  params: FavoriteRouteSearchParams,
+  options?: ApiRequestOptions
+) {
+  const { from = 0, to = 9, customerId, enabled, keyword } = params
+  let query = supabase
+    .from('tms_favorite_route')
+    .select(
+      `
+        *,
+        customer:tms_customer!tms_favorite_route_customer_id_fkey(
+          id, customer_code, customer_name
+        ),
+        origin_address:tms_customer_address!tms_favorite_route_origin_address_id_fkey(*),
+        destination_address:tms_customer_address!tms_favorite_route_destination_address_id_fkey(*)
+      `,
+      { count: 'exact' }
+    )
+    .order('enabled', { ascending: false })
+    .order('update_time', { ascending: false, nullsFirst: false })
+    .range(from, to)
+  if (customerId) query = query.eq('customer_id', customerId)
+  if (enabled !== undefined) query = query.eq('enabled', enabled)
+  if (keyword?.trim()) {
+    const trimmedKeyword = keyword.trim()
+    query = query.or(`route_name.ilike.%${trimmedKeyword}%,remark.ilike.%${trimmedKeyword}%`)
+  }
+  return await responseHandle<FavoriteRoute[]>(() => withRequestOptions(query, options), {
+    ignoreCheck: true,
+    showErrorMessage: true
+  })
+}
+
+export async function addFavoriteRoute(params: FavoriteRoute) {
+  return await responseHandle<FavoriteRoute>(
+    () => supabase.from('tms_favorite_route').insert(keysToSnakeDeep(params)).select().single(),
+    { showMessage: true, breakReturn: true }
+  )
+}
+
+export async function editFavoriteRoute(params: FavoriteRoute) {
+  const { id, ...payload } = params
+  return await responseHandle<FavoriteRoute>(
+    () =>
+      supabase
+        .from('tms_favorite_route')
+        .update(keysToSnakeDeep(payload), { count: 'exact' })
+        .eq('id', id)
+        .select()
+        .single(),
+    { showMessage: true, breakReturn: true, requireAffected: true }
+  )
+}
+
+export async function deleteFavoriteRoute(id: string) {
+  return await responseHandle(
+    () => supabase.from('tms_favorite_route').delete({ count: 'exact' }).eq('id', id),
+    { showMessage: true, breakReturn: true, requireAffected: true }
+  )
+}
+
+export async function deleteFavoriteRouteBatch(ids: string[]) {
+  return await responseHandle(
+    () => supabase.from('tms_favorite_route').delete({ count: 'exact' }).in('id', ids),
     { showMessage: true, breakReturn: true, requireAffected: true }
   )
 }

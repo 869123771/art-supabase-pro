@@ -133,8 +133,11 @@
 
   function getSecondaryIdentity(option: ArtUserSelectOption): string {
     const email = normalizeIdentityText(option.userEmail)
-    if (!email) return '未设置邮箱'
-    return email === getDisplayName(option) ? '' : email
+    const departmentName = normalizeIdentityText(option.departmentName)
+    const identities = [departmentName, email === getDisplayName(option) ? '' : email].filter(
+      Boolean
+    )
+    return identities.join(' · ') || '未设置邮箱'
   }
 
   function getInitial(option: ArtUserSelectOption): string {

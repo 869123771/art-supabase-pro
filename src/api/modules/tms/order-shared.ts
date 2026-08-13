@@ -104,6 +104,19 @@ export const applyOrderListFilters = <TQuery extends SupabaseQueryLike>(
 const DRIVER_WAYBILL_SELECT =
   'id, tenant_id, waybill_no, status, accepted_at, loaded_at, departed_at, unloaded_at, completed_at, cancelled_at, update_time'
 
+interface CargoStatusRow {
+  waybillId: string
+  operationType: Api.Tms.Waybill.CargoOperationType
+  operationStatus: Api.Tms.Waybill.CargoOperationStatus
+}
+
+interface ExecutionStatusRow {
+  waybillId: string
+  signedAt?: string | null
+  signerName?: string | null
+  signatureUrls?: string[] | null
+}
+
 const fetchDriverWaybillMap = async (
   orderNos: string[]
 ): Promise<Map<string, InTransitMonitorRecord>> => {
@@ -119,17 +132,26 @@ const fetchDriverWaybillMap = async (
 
 const mergeDriverWaybillStatus = (
   order: OrderRecord,
-  driverWaybill?: InTransitMonitorRecord
+  driverWaybill?: InTransitMonitorRecord,
+  unloadingStatus?: Api.Tms.Waybill.CargoOperationStatus,
+  executionStatus?: ExecutionStatusRow
 ): OrderRecord => {
   if (!driverWaybill) return order
 
   return {
     ...order,
+    waybillNo: driverWaybill.waybillNo ?? order.waybillNo ?? order.orderNo,
+    driverWaybillId: driverWaybill.id ?? order.driverWaybillId,
     driverWaybillAcceptedAt: driverWaybill.acceptedAt ?? order.driverWaybillAcceptedAt,
     driverWaybillLoadedAt: driverWaybill.loadedAt ?? order.driverWaybillLoadedAt,
     driverWaybillDepartedAt: driverWaybill.departedAt ?? order.driverWaybillDepartedAt,
     driverWaybillUnloadedAt: driverWaybill.unloadedAt ?? order.driverWaybillUnloadedAt,
     driverWaybillCompletedAt: driverWaybill.completedAt ?? order.driverWaybillCompletedAt,
+    driverWaybillUnloadingStatus: unloadingStatus ?? order.driverWaybillUnloadingStatus,
+    driverWaybillSignedAt: executionStatus?.signedAt ?? order.driverWaybillSignedAt,
+    driverWaybillSignedBy: executionStatus?.signerName ?? order.driverWaybillSignedBy,
+    driverWaybillSignatureProofCount:
+      executionStatus?.signatureUrls?.length ?? order.driverWaybillSignatureProofCount,
     waybillStatus: driverWaybill.status ?? null,
     updateTime: driverWaybill.updateTime || order.updateTime
   }
@@ -140,5 +162,46 @@ export const mergeOrdersWithDriverWaybills = async <T extends OrderRecord>(
 ): Promise<T[]> => {
   const rows = orders ?? []
   const waybillMap = await fetchDriverWaybillMap(uniqueStringValues(rows.map((row) => row.orderNo)))
-  return rows.map((row) => mergeDriverWaybillStatus(row, waybillMap.get(String(row.orderNo))) as T)
+  const waybillIds = [...waybillMap.values()]
+    .map((item) => item.id)
+    .filter((id): id is string => Boolean(id))
+  const [cargoResult, executionResult] = waybillIds.length
+    ? await Promise.all([
+        responseHandle<CargoStatusRow[]>(
+          () =>
+            supabase
+              .from('tms_waybill_cargo_operation')
+              .select('waybill_id, operation_type, operation_status')
+              .in('waybill_id', waybillIds)
+              .eq('operation_type', 'unloading'),
+          { ignoreCheck: true }
+        ),
+        responseHandle<ExecutionStatusRow[]>(
+          () =>
+            supabase
+              .from('tms_waybill_execution_record')
+              .select('waybill_id, signed_at, signer_name, signature_urls')
+              .in('waybill_id', waybillIds),
+          { ignoreCheck: true }
+        )
+      ])
+    : [{ data: [] as CargoStatusRow[] }, { data: [] as ExecutionStatusRow[] }]
+  const cargoRows = cargoResult.data
+  const executionRows = executionResult.data
+  const unloadingStatusMap = new Map(
+    (cargoRows ?? []).map((item) => [String(item.waybillId), item.operationStatus])
+  )
+  const executionStatusMap = new Map(
+    (executionRows ?? []).map((item) => [String(item.waybillId), item])
+  )
+
+  return rows.map((row) => {
+    const driverWaybill = waybillMap.get(String(row.orderNo))
+    return mergeDriverWaybillStatus(
+      row,
+      driverWaybill,
+      unloadingStatusMap.get(String(driverWaybill?.id)),
+      executionStatusMap.get(String(driverWaybill?.id))
+    ) as T
+  })
 }

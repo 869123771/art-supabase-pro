@@ -42,6 +42,37 @@
       </div>
     </section>
 
+    <section
+      v-if="detail.relatedWaybills.length"
+      class="order-detail__section order-detail__waybills art-card-xs"
+    >
+      <div class="order-detail__waybill-heading">
+        <ArtSectionTitle title="关联运单" />
+        <span>共 {{ detail.relatedWaybills.length }} 张执行运单</span>
+      </div>
+      <div class="order-detail__waybill-list">
+        <button
+          v-for="waybill in detail.relatedWaybills"
+          :key="waybill.id"
+          type="button"
+          class="order-detail__waybill-card"
+          @click="openWaybillDetail(waybill.id)"
+        >
+          <span class="order-detail__waybill-icon"
+            ><ArtSvgIcon icon="ri:truck-line" aria-hidden="true"
+          /></span>
+          <span class="order-detail__waybill-copy">
+            <strong>{{ waybill.waybillNo }}</strong>
+            <small>{{
+              [waybill.driverName, waybill.plateNo].filter(Boolean).join(' · ') || '待分配承运资源'
+            }}</small>
+          </span>
+          <ArtDictDisplay dict-code="tmsWaybillStatus" :value="waybill.status" display="tag" />
+          <ArtSvgIcon icon="ri:arrow-right-s-line" aria-hidden="true" />
+        </button>
+      </div>
+    </section>
+
     <section class="order-detail__section art-card-xs">
       <ArtSectionTitle title="基础信息" />
       <ArtDescriptions :data="descriptionData" :items="basicItems" :columns="4" />
@@ -133,6 +164,7 @@
   import type { ComputedRef, UnwrapNestedRefs } from 'vue'
   import { toNumber } from 'lodash-es'
   import ArtDescriptions from '@/components/core/base/art-descriptions/index.vue'
+  import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import ArtEmptyState from '@/components/core/layouts/art-empty-state/index.vue'
   import type { ArtDescriptionItem } from '@/components/core/base/art-descriptions/types'
   import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
@@ -184,6 +216,7 @@
     activeStep: ComputedRef<number>
     cargoItems: ComputedRef<CargoItem[]>
     cargoColumns: ComputedRef<ColumnOption<CargoItem>[]>
+    relatedWaybills: ComputedRef<Api.Tms.Waybill.RelatedWaybillSummary[]>
   }
 
   const route = useRoute()
@@ -213,6 +246,7 @@
       return index < 0 ? 0 : index
     }),
     cargoItems: computed(() => detail.data?.cargoItems ?? []),
+    relatedWaybills: computed(() => detail.data?.relatedWaybills ?? []),
     cargoColumns: computed<ColumnOption<CargoItem>[]>(() => [
       { type: 'globalIndex', label: '序号', width: 70 },
       { prop: 'cargoName', label: '货物名称', minWidth: 180 },
@@ -394,6 +428,10 @@
     void router.back()
   }
 
+  function openWaybillDetail(waybillId: string): void {
+    void router.push({ name: 'TmsWaybillDetail', params: { id: waybillId } })
+  }
+
   function normalizeOrderStatus(status?: string): OrderStatusValue | undefined {
     if (!status) return undefined
     if (status === 'loaded') return 'pending_order'
@@ -494,6 +532,84 @@
       display: grid;
       gap: 16px;
       margin-top: var(--art-space-3);
+    }
+
+    &__waybill-heading {
+      display: flex;
+      gap: var(--art-space-3);
+      align-items: flex-start;
+      justify-content: space-between;
+
+      > span {
+        margin-top: 7px;
+        font-size: 11px;
+        color: var(--el-text-color-secondary);
+      }
+    }
+
+    &__waybill-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: var(--art-space-3);
+      margin-top: var(--art-space-4);
+    }
+
+    &__waybill-card {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto auto;
+      gap: var(--art-space-3);
+      align-items: center;
+      min-width: 0;
+      padding: var(--art-space-3);
+      color: inherit;
+      text-align: left;
+      cursor: pointer;
+      background: var(--el-fill-color-lighter);
+      border: 1px solid var(--el-border-color-lighter);
+      border-radius: var(--el-border-radius-base);
+      transition:
+        background-color 0.18s ease,
+        border-color 0.18s ease,
+        box-shadow 0.18s ease;
+
+      &:hover,
+      &:focus-visible {
+        outline: none;
+        background: color-mix(in srgb, var(--theme-color) 7%, var(--el-bg-color));
+        border-color: var(--theme-color);
+      }
+
+      &:focus-visible {
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--theme-color) 22%, transparent);
+      }
+    }
+
+    &__waybill-icon {
+      display: grid;
+      place-items: center;
+      width: 38px;
+      height: 38px;
+      font-size: 19px;
+      color: var(--theme-color);
+      background: color-mix(in srgb, var(--theme-color) 10%, var(--el-bg-color));
+      border-radius: var(--el-border-radius-base);
+    }
+
+    &__waybill-copy {
+      display: grid;
+      gap: 3px;
+      min-width: 0;
+
+      strong,
+      small {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      small {
+        color: var(--el-text-color-secondary);
+      }
     }
 
     &__delivery-audit {

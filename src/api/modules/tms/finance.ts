@@ -85,7 +85,12 @@ const applyCostFilters = <TQuery extends SupabaseQueryLike>(
   if (auditStatus) query = query.eq('audit_status', auditStatus)
   if (costType) query = query.eq('cost_type', costType)
   if (keyword) {
-    const filters = [`payee_name.ilike.%${keyword}%`, `remark.ilike.%${keyword}%`]
+    const filters = [
+      `payee_name.ilike.%${keyword}%`,
+      `remark.ilike.%${keyword}%`,
+      `reporter_name_snapshot.ilike.%${keyword}%`,
+      `reporter_department_snapshot.ilike.%${keyword}%`
+    ]
     if (waybillIds.length) filters.push(`waybill_id.in.(${waybillIds.join(',')})`)
     query = query.or(filters.join(','))
   }
@@ -101,7 +106,8 @@ const createCostWritePayload = (params: WaybillCost) => ({
   carrierId: params.carrierId || null,
   driverId: params.driverId || null,
   remark: params.remark || null,
-  attachments: params.attachments ?? []
+  attachments: params.attachments ?? [],
+  reporterUserId: params.reporterUserId || null
 })
 
 export async function fetchWaybillCostList(params: WaybillCostSearchParams) {

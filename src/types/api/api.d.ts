@@ -222,6 +222,12 @@ declare namespace Api {
 
     interface OrganizationMember {
       id: string
+      tenantId?: string
+      organizationId?: string | null
+      organization?: Pick<
+        OrganizationListItem,
+        'id' | 'organizationCode' | 'organizationName'
+      > | null
       avatar?: string | null
       userName: string
       nickName?: string | null
@@ -539,6 +545,22 @@ declare namespace Api {
       icpRecord?: string | null
       policeRecord?: string | null
       enabled: boolean
+      createBy?: string
+      createTime?: string
+      updateBy?: string
+      updateTime?: string
+    }
+
+    interface GeofenceConfigItem {
+      id?: string
+      tenantId?: string
+      enabled: boolean
+      loadingRadiusM: number
+      unloadingRadiusM: number
+      loadingAllowOutsideCheckIn: boolean
+      unloadingAllowOutsideCheckIn: boolean
+      autoConfirmLoading: boolean
+      autoConfirmUnloading: boolean
       createBy?: string
       createTime?: string
       updateBy?: string
@@ -1275,6 +1297,7 @@ declare namespace Api {
       interface Customer {
         id?: string
         tenantId?: string
+        parentUnitId?: string | null
         customerCode?: string
         customerName: string
         industry?: string
@@ -1322,6 +1345,7 @@ declare namespace Api {
         id: string
         customerCode?: string
         customerName: string
+        enabled?: boolean
         contactName?: string
         contactPhone?: string
         region?: string
@@ -1354,6 +1378,9 @@ declare namespace Api {
         coordinateStatus?: string | null
         geocodeProvider?: string | null
         geocodedAt?: string | null
+        geofenceEnabled?: boolean
+        geofenceRadiusM?: number | null
+        geofenceUpdatedAt?: string | null
         postalCode?: string
         isDefault?: boolean
         remark?: string
@@ -1370,6 +1397,33 @@ declare namespace Api {
             keyword?: string
             createTimeRange?: string[]
             recordId?: string
+          }
+      >
+
+      interface FavoriteRoute {
+        id?: string
+        tenantId?: string
+        routeName: string
+        customerId: string
+        customer?: CustomerOption | null
+        originAddressId: string
+        originAddress?: CustomerAddress | null
+        destinationAddressId: string
+        destinationAddress?: CustomerAddress | null
+        distanceKm?: number | string | null
+        estimatedMinutes?: number | null
+        enabled: boolean
+        remark?: string | null
+        createBy?: string
+        createTime?: string
+        updateBy?: string
+        updateTime?: string
+      }
+
+      type FavoriteRouteSearchParams = Partial<
+        Pick<FavoriteRoute, 'customerId' | 'enabled'> &
+          Api.Common.CommonSearchParams & {
+            keyword?: string
           }
       >
 
@@ -1451,6 +1505,7 @@ declare namespace Api {
       interface Carrier {
         id?: string
         tenantId?: string
+        parentUnitId?: string | null
         carrierCode?: string
         companyName: string
         carrierType: string
@@ -1497,6 +1552,7 @@ declare namespace Api {
         id: string
         carrierCode?: string
         companyName: string
+        enabled?: boolean
         contactName?: string
         contactPhone?: string
       }
@@ -1662,10 +1718,17 @@ declare namespace Api {
         driverLicenseBackUrl?: string | null
         remark?: string
         carrier?: CarrierOption | null
+        assignedVehicles?: DriverAssignedVehicle[]
         createBy?: string
         createTime?: string
         updateBy?: string
         updateTime?: string
+      }
+
+      interface DriverAssignedVehicle {
+        id: string
+        carrierId?: string | null
+        plateNo: string
       }
 
       type DriverSearchParams = Partial<
@@ -1954,6 +2017,7 @@ declare namespace Api {
         id?: string
         tenantId?: string
         orderNo: string
+        waybillNo?: string | null
         cargoNo?: string | null
         orderStatus?: string
         originStationId?: string | null
@@ -2009,6 +2073,7 @@ declare namespace Api {
         signedCodAmount?: number | null
         receiptImageUrls?: string[]
         signedAt?: string | null
+        relatedWaybills?: Waybill.RelatedWaybillSummary[]
         driverWaybillAcceptedAt?: string | null
         driverWaybillLoadedAt?: string | null
         driverWaybillDepartedAt?: string | null
@@ -2017,6 +2082,8 @@ declare namespace Api {
         driverWaybillSignedAt?: string | null
         driverWaybillSignedBy?: string | null
         driverWaybillSignatureProofCount?: number
+        driverWaybillUnloadingStatus?: Waybill.CargoOperationStatus | null
+        driverWaybillId?: string | null
         waybillStatus?: string | null
         dispatchStatus?: string
         dispatchVehicleId?: string | null
@@ -2065,7 +2132,154 @@ declare namespace Api {
 
     namespace Waybill {
       type DispatchStatus = 'pending' | 'loaded' | 'transporting' | 'completed' | 'cancelled'
+      type WaybillStatus =
+        | 'pending'
+        | 'accepted'
+        | 'loading'
+        | 'transporting'
+        | 'unloading'
+        | 'signed'
+        | 'completed'
+        | 'cancelled'
       type WaybillRecord = Api.Tms.Order.OrderRecord
+
+      interface RelatedWaybillSummary {
+        id: string
+        waybillNo: string
+        status: WaybillStatus | string
+        driverName?: string | null
+        driverPhone?: string | null
+        plateNo?: string | null
+        acceptedAt?: string | null
+        departedAt?: string | null
+        completedAt?: string | null
+      }
+
+      interface WaybillRoutePoint {
+        name?: string | null
+        address?: string | null
+        type?: string | null
+        longitude: number
+        latitude: number
+      }
+
+      interface WaybillDriverSummary {
+        id: string
+        driverName: string
+        phone?: string | null
+        licenseType?: string | null
+      }
+
+      interface WaybillVehicleSummary {
+        id: string
+        plateNo: string
+        vehicleType?: string | null
+        brandModel?: string | null
+        approvedLoadMass?: number | null
+        vehiclePhotoUrl?: string | null
+      }
+
+      interface WaybillCarrierSummary {
+        id: string
+        companyName: string
+        contactName?: string | null
+        contactPhone?: string | null
+      }
+
+      interface WaybillCargoSummary {
+        id: string
+        cargoCode?: string | null
+        cargoName: string
+        unit?: string | null
+      }
+
+      interface WaybillEventRecord {
+        id: string
+        waybillId: string
+        eventType: string
+        eventTime: string
+        operatorName?: string | null
+        locationText?: string | null
+        longitude?: number | null
+        latitude?: number | null
+        payload: Record<string, unknown>
+        remark?: string | null
+        createBy?: string | null
+        createTime: string
+      }
+
+      interface WaybillProofRecord {
+        id: string
+        waybillId: string
+        proofType: string
+        attachmentId?: string | null
+        fileUrl: string
+        fileName?: string | null
+        mimeType?: string | null
+        fileSize?: number | null
+        uploadedAt?: string | null
+        uploaderName?: string | null
+        remark?: string | null
+      }
+
+      interface WaybillDetailRecord {
+        id: string
+        tenantId: string
+        waybillNo: string
+        status: WaybillStatus | string
+        orderId?: string | null
+        carrierId?: string | null
+        driverId?: string | null
+        vehicleId?: string | null
+        cargoId?: string | null
+        originCity?: string | null
+        destinationCity?: string | null
+        shipperName?: string | null
+        shipperPhone?: string | null
+        shipperAddress?: string | null
+        receiverName?: string | null
+        receiverPhone?: string | null
+        receiverAddress?: string | null
+        shipperLongitude?: number | null
+        shipperLatitude?: number | null
+        receiverLongitude?: number | null
+        receiverLatitude?: number | null
+        plannedLoadTime?: string | null
+        plannedUnloadTime?: string | null
+        acceptedAt?: string | null
+        loadedAt?: string | null
+        departedAt?: string | null
+        arrivedAt?: string | null
+        unloadedAt?: string | null
+        completedAt?: string | null
+        cancelledAt?: string | null
+        cargoName?: string | null
+        cargoType?: string | null
+        cargoWeightTon?: number | null
+        cargoVolumeM3?: number | null
+        cargoQuantity?: number | null
+        freightAmount?: number | null
+        estimatedDurationMin?: number | null
+        remainingDistanceKm?: number | null
+        routePoints: unknown
+        pickupPhotos: string[]
+        deliveryPhotos: string[]
+        receiptAttachments: string[]
+        remark?: string | null
+        createBy?: string | null
+        createTime: string
+        updateBy?: string | null
+        updateTime: string
+        order?: Api.Tms.Order.OrderRecord | null
+        driver?: WaybillDriverSummary | null
+        vehicle?: WaybillVehicleSummary | null
+        carrier?: WaybillCarrierSummary | null
+        cargo?: WaybillCargoSummary | null
+        events: WaybillEventRecord[]
+        proofs: WaybillProofRecord[]
+        cargoOperations: CargoOperationRecord[]
+        execution?: ExecutionRecord | null
+      }
 
       interface DispatchVehicleOption extends Api.VehicleMgtSys.VehicleManage.VehicleOption {
         primaryDriverId?: string | null
@@ -2102,6 +2316,147 @@ declare namespace Api {
         plannedDepartureTime: string
         plannedArrivalTime: string
         dispatchRemark?: string | null
+      }
+
+      type CargoOperationType = 'loading' | 'unloading'
+      type CargoOperationStatus = 'checked_in' | 'completed'
+      type CargoOperationCheckinMode = 'manual' | 'automatic' | 'admin'
+
+      interface CargoOperationRecord {
+        id: string
+        tenantId: string
+        waybillId: string
+        operationType: CargoOperationType
+        operationStatus: CargoOperationStatus
+        checkinTime: string
+        checkinMode: CargoOperationCheckinMode
+        operatorName?: string | null
+        longitude: number
+        latitude: number
+        locationAccuracyM?: number | null
+        locationText?: string | null
+        geofenceCenterLongitude: number
+        geofenceCenterLatitude: number
+        geofenceRadiusM: number
+        distanceM: number
+        insideGeofence: boolean
+        outsideReason?: string | null
+        weightTon?: number | null
+        photoUrls: string[]
+        weighbridgeTicketUrls: string[]
+        completedAt?: string | null
+        remark?: string | null
+        createBy?: string | null
+        createTime: string
+        updateBy?: string | null
+        updateTime: string
+      }
+
+      interface CargoOperationContext {
+        waybillId: string
+        operationType: CargoOperationType
+        waybillStatus: string
+        centerLongitude?: number | null
+        centerLatitude?: number | null
+        radiusM: number
+        allowOutsideCheckIn: boolean
+        autoCheckIn: boolean
+        geofenceEnabled: boolean
+        canManage: boolean
+        operation?: CargoOperationRecord | null
+      }
+
+      interface CargoOperationCheckinPayload {
+        waybillId: string
+        operationType: CargoOperationType
+        longitude: number
+        latitude: number
+        accuracyM?: number | null
+        locationText?: string | null
+        outsideReason?: string | null
+        automatic?: boolean
+      }
+
+      interface CargoOperationCompletePayload {
+        waybillId: string
+        operationType: CargoOperationType
+        weightTon: number
+        photoUrls: string[]
+        weighbridgeTicketUrls: string[]
+        remark?: string | null
+      }
+
+      type ExecutionAction = 'departure' | 'signature' | 'completion'
+
+      interface ExecutionRecord {
+        id: string
+        tenantId: string
+        waybillId: string
+        departureTime?: string | null
+        departureOdometerKm?: number | null
+        departurePhotoUrls: string[]
+        departureRemark?: string | null
+        departureOperatorName?: string | null
+        departureRecordedAt?: string | null
+        signedAt?: string | null
+        signerName?: string | null
+        receiptUrls: string[]
+        signatureUrls: string[]
+        signatureRemark?: string | null
+        signatureOperatorName?: string | null
+        signatureRecordedAt?: string | null
+        returnTime?: string | null
+        returnOdometerKm?: number | null
+        returnPhotoUrls: string[]
+        completionRemark?: string | null
+        completionOperatorName?: string | null
+        completionRecordedAt?: string | null
+        createTime: string
+        updateTime: string
+      }
+
+      interface ExecutionContext {
+        waybillId: string
+        waybillStatus: string
+        loadingStatus?: CargoOperationStatus | null
+        unloadingStatus?: CargoOperationStatus | null
+        arrivalTime?: string | null
+        arrivalAddress?: string | null
+        arrivalLongitude?: number | null
+        arrivalLatitude?: number | null
+        canAccept: boolean
+        canDepart: boolean
+        canArrive: boolean
+        canUnload: boolean
+        canSign: boolean
+        canComplete: boolean
+        canCancel: boolean
+        record?: ExecutionRecord | null
+      }
+
+      interface ExecutionDeparturePayload {
+        waybillId: string
+        departureTime: string
+        odometerKm: number
+        photoUrls: string[]
+        remark?: string | null
+      }
+
+      interface ExecutionSignaturePayload {
+        waybillId: string
+        signedAt: string
+        signerName: string
+        receiptUrls: string[]
+        signatureUrls: string[]
+        remark?: string | null
+      }
+
+      interface ExecutionCompletionPayload {
+        waybillId: string
+        returnTime: string
+        returnOdometerKm: number
+        photoUrls: string[]
+        remark?: string | null
       }
 
       interface DispatchRecommendationDriver {
@@ -2586,7 +2941,10 @@ declare namespace Api {
         carrierId?: string | null
         driverId?: string | null
         remark?: string | null
-        attachments?: Array<Record<string, unknown>>
+        attachments?: string[]
+        reporterUserId?: string | null
+        reporterNameSnapshot?: string | null
+        reporterDepartmentSnapshot?: string | null
         auditStatus?: CostAuditStatus
         submittedAt?: string | null
         submittedBy?: string | null

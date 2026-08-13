@@ -123,10 +123,8 @@ export async function fetchGetUserInfo() {
     })
   ])
 
-  if (profileResult.data) {
-    Object.assign(profileResult.data, {
-      platformSuper: superResult.data === true
-    })
+  if (profileResult.data && typeof superResult.data === 'boolean') {
+    Object.assign(profileResult.data, { platformSuper: superResult.data })
   }
 
   return profileResult

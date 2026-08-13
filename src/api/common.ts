@@ -194,7 +194,7 @@ export async function uploadAttachment(
       () => query,
       {
         ignoreCheck: true,
-        showMessage: true,
+        showMessage: false,
         breakReturn: true
       }
     )

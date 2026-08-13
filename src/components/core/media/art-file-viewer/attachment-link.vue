@@ -4,7 +4,7 @@
     type="primary"
     :href="file.url || '#'"
     :title="file.url ? `预览 ${displayName}` : `${displayName}（无可用地址）`"
-    :underline="false"
+    underline="never"
     @click.prevent.stop="handlePreview"
   >
     {{ displayName }}

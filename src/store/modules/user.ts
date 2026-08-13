@@ -48,6 +48,7 @@ import { fetchGetUserInfo, logout } from '@/api/auth'
 import { fetchGetDictList } from '@/api/data-center'
 import { groupBy } from 'lodash-es'
 import { SYSTEM_PARAM_DEFAULTS } from '@/config/system-param-defaults'
+import { hasPlatformSuperAccess } from '@/utils/platform-super-access'
 /**
  * 用户状态管理
  * 管理用户登录状态、个人信息、语言设置、搜索历史、锁屏状态等
@@ -85,7 +86,7 @@ export const useUserStore = defineStore(
     const isSuper = computed(() =>
       Boolean(getUserInfo.value.userRoles?.includes(SYSTEM_PARAM_DEFAULTS.SUPER_ROLE_CODE))
     )
-    const isPlatformSuper = computed(() => getUserInfo.value.platformSuper === true)
+    const isPlatformSuper = computed(() => hasPlatformSuperAccess(getUserInfo.value))
     /**
      * 设置用户字典
      * @param data 字典信息

@@ -1,4 +1,5 @@
 import { useSupabase } from '@/hooks'
+import { uniqBy } from 'lodash-es'
 import {
   applyCreateTimeRange,
   normalizeBooleanFilter,
@@ -10,6 +11,12 @@ import type { ApiRequestOptions } from '@/types/api/request'
 type Driver = Api.Tms.BasicData.Driver
 type DriverSearchParams = Api.Tms.BasicData.DriverSearchParams
 type DriverOption = Api.Tms.BasicData.DriverOption
+type DriverAssignedVehicle = Api.Tms.BasicData.DriverAssignedVehicle
+
+interface DriverRecord extends Driver {
+  primaryVehicles?: DriverAssignedVehicle[]
+  secondaryVehicles?: DriverAssignedVehicle[]
+}
 
 const { supabase, keysToSnakeDeep, responseHandle } = useSupabase()
 
@@ -21,8 +28,32 @@ const DRIVER_SELECT = `
     company_name,
     contact_name,
     contact_phone
+  ),
+  primary_vehicles:vehicle_archive!vehicle_archive_primary_driver_id_fkey(
+    id,
+    carrier_id,
+    plate_no
+  ),
+  secondary_vehicles:vehicle_archive!vehicle_archive_secondary_driver_id_fkey(
+    id,
+    carrier_id,
+    plate_no
   )
 `
+
+const UUID_PATTERN = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i
+
+const normalizeDriverRecord = (record: DriverRecord): Driver => {
+  const { primaryVehicles = [], secondaryVehicles = [], ...driver } = record
+  const assignedVehicles = uniqBy([...primaryVehicles, ...secondaryVehicles], 'id')
+    .filter((vehicle) => vehicle.carrierId === record.carrierId)
+    .sort((first, second) => first.plateNo.localeCompare(second.plateNo, 'zh-CN'))
+
+  return { ...driver, assignedVehicles }
+}
+
+const normalizeDriverRecords = (records: DriverRecord[] | null): Driver[] | null =>
+  records?.map(normalizeDriverRecord) ?? null
 
 const applyDriverFilters = <TQuery extends SupabaseQueryLike>(
   query: TQuery,
@@ -52,10 +83,12 @@ export async function fetchDriverList(params: DriverSearchParams, options?: ApiR
     .range(from, to)
 
   query = applyDriverFilters(query, params)
-  return await responseHandle<Driver[]>(() => withRequestOptions(query, options), {
+  const result = await responseHandle<DriverRecord[]>(() => withRequestOptions(query, options), {
     ignoreCheck: true,
     showErrorMessage: true
   })
+
+  return { ...result, data: normalizeDriverRecords(result.data) }
 }
 
 export async function exportDriverList(
@@ -69,10 +102,12 @@ export async function exportDriverList(
     .limit(maxRows)
 
   query = ids?.length ? query.in('id', ids) : applyDriverFilters(query, params)
-  return await responseHandle<Driver[]>(() => query, {
+  const result = await responseHandle<DriverRecord[]>(() => query, {
     ignoreCheck: true,
     showErrorMessage: true
   })
+
+  return { ...result, data: normalizeDriverRecords(result.data) }
 }
 
 export async function fetchDriverOptions(
@@ -100,7 +135,7 @@ export async function fetchDriverOptions(
 }
 
 export async function fetchDriverListByCarrierId(carrierId: string) {
-  return await responseHandle<Driver[]>(
+  const result = await responseHandle<DriverRecord[]>(
     () =>
       supabase
         .from('tms_driver')
@@ -110,6 +145,31 @@ export async function fetchDriverListByCarrierId(carrierId: string) {
         .limit(1000),
     { ignoreCheck: true, showErrorMessage: true }
   )
+
+  return { ...result, data: normalizeDriverRecords(result.data) }
+}
+
+export async function fetchDriverAssignedVehicles(
+  params: { driverId: string; carrierId: string },
+  options?: ApiRequestOptions
+) {
+  const { driverId, carrierId } = params
+  if (!UUID_PATTERN.test(driverId)) {
+    throw new Error('司机标识无效，请刷新页面后重试')
+  }
+
+  const query = supabase
+    .from('vehicle_archive')
+    .select('id, carrier_id, plate_no')
+    .eq('carrier_id', carrierId)
+    .or(`primary_driver_id.eq.${driverId},secondary_driver_id.eq.${driverId}`)
+    .order('plate_no', { ascending: true })
+    .limit(200)
+
+  return await responseHandle<DriverAssignedVehicle[]>(() => withRequestOptions(query, options), {
+    ignoreCheck: true,
+    showErrorMessage: true
+  })
 }
 
 export async function addDriver(params: Driver) {

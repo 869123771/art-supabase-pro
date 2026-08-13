@@ -36,7 +36,7 @@
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import { useDocumentNumberRule } from '@/hooks/core/useDocumentNumberRule'
   import ArtUploadImage from '@/components/core/forms/art-upload-image/index.vue'
-  import { addCarrier, editCarrier } from '@/api/tms'
+  import { addCarrier, editCarrier, fetchCarrierOptions } from '@/api/tms'
   import { fetchRegionOptions } from '@/api/common'
   import { useUserStore } from '@/store/modules/user'
 
@@ -48,6 +48,7 @@
   interface DialogExposeForm {
     validate: () => Promise<boolean>
     clearValidate: () => void
+    reloadOptions: (key?: string) => Promise<unknown>
   }
 
   const emit = defineEmits<{
@@ -62,6 +63,7 @@
 
   const createInitialForm = (): CarrierForm => ({
     id: undefined,
+    parentUnitId: null,
     carrierCode: '',
     companyName: '',
     carrierType: '',
@@ -150,6 +152,33 @@
         clearable: true,
         placeholder: '请选择承运商类型'
       }
+    },
+    {
+      label: '上级单位',
+      key: 'parentUnitId',
+      type: 'select',
+      api: fetchCarrierOptions,
+      immediate: false,
+      beforeFetch: () => ({
+        excludeId: form.id,
+        includeDisabled: true,
+        maxRows: 1000
+      }),
+      resultField: 'data',
+      labelField: 'companyName',
+      valueField: 'id',
+      labelFn: (option) => {
+        const carrier = option as Api.Tms.BasicData.CarrierOption
+        const code = carrier.carrierCode ? `（${carrier.carrierCode}）` : ''
+        const status = carrier.enabled === false ? ' · 已停用' : ''
+        return `${carrier.companyName}${code}${status}`
+      },
+      props: {
+        clearable: true,
+        filterable: true,
+        placeholder: '请选择上级承运商单位'
+      },
+      description: '选填；不选择则作为一级承运商单位。'
     },
     {
       label: '营业执照号码',
@@ -302,6 +331,7 @@
       'contractAttachmentUrl',
       'addressPicker'
     ]) as Carrier
+    payload.parentUnitId = payload.parentUnitId || null
     payload.region = regionPath.join('/')
     if (!payload.carrierCode) delete payload.carrierCode
     return payload
@@ -341,6 +371,14 @@
       title: isEdit ? '编辑承运商' : '新增承运商',
       subtitle: '维护承运商基础、联系人和财务信息',
       contentMaxHeight: '72vh',
+      loading: true,
+      onOpen: async (_openData, api) => {
+        try {
+          await formRef.value?.reloadOptions('parentUnitId')
+        } finally {
+          api.setLoading(false)
+        }
+      },
       onConfirm: handleSubmit,
       onReset: () => void resetForm()
     })

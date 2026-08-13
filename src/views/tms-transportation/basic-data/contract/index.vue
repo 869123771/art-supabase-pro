@@ -501,7 +501,7 @@
         const businessContractType: ContractBusinessType =
           importedBusinessType === 'customer' || importedBusinessType === 'carrier'
             ? importedBusinessType
-            : customer
+            : carrier
               ? 'carrier'
               : 'customer'
         return {

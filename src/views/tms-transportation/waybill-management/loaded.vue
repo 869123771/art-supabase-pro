@@ -44,6 +44,12 @@
         </div>
       </template>
     </ArtTableQuery>
+
+    <CargoOperationDialog ref="cargoOperationDialogRef" @success="handleCargoOperationSuccess" />
+    <ExecutionOperationDialog
+      ref="executionOperationDialogRef"
+      @success="handleCargoOperationSuccess"
+    />
   </div>
 </template>
 
@@ -57,6 +63,7 @@
   import type { ColumnOption } from '@/types'
   import { fetchWaybillStatusCounts } from '@/api/tms'
   import { useUserStore } from '@/store/modules/user'
+  import { useAuth } from '@/hooks/core/useAuth'
   import TmsWorkspaceHeader, {
     type TmsWorkspaceMetric
   } from '@/views/tms-transportation/modules/tms-workspace-header.vue'
@@ -70,12 +77,16 @@
     fetchWaybillTableData,
     loadedWaybillStatusTabValues,
     type TableParams,
+    type CargoOperationDialogExpose,
+    type ExecutionOperationDialogExpose,
     type WaybillDialogExpose,
     type WaybillRecord,
     type WaybillSearchParams
   } from './modules/waybill-shared'
   import CustomerDeleteProcessingNotice from '@/views/tms-transportation/modules/customer-delete-processing-notice.vue'
   import { useCustomerDeleteProcessingContext } from '@/views/tms-transportation/modules/use-customer-delete-processing'
+  import CargoOperationDialog from './modules/cargo-operation-dialog.vue'
+  import ExecutionOperationDialog from './modules/execution-operation-dialog.vue'
 
   defineOptions({ name: 'TmsLoadedWaybillList' })
 
@@ -98,15 +109,20 @@
   const route = useRoute()
   const deleteContext = useCustomerDeleteProcessingContext()
   const { getDictMap } = storeToRefs(useUserStore())
+  const { hasAuth } = useAuth()
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const dispatchDialogRef = ref<WaybillDialogExpose>()
+  const cargoOperationDialogRef = ref<CargoOperationDialogExpose>()
+  const executionOperationDialogRef = ref<ExecutionOperationDialogExpose>()
   const statusCountRequestId = ref(0)
   const paymentMethodOptions = computed(() => getDictMap.value.tmsOrderPaymentMethod ?? [])
   const loadedStatusFallbackLabels: Record<string, string> = {
-    pending: '待装货',
+    pending: '待接单',
+    accepted: '待装货',
     loading: '装货中',
     transporting: '运输中',
     unloading: '卸货中',
+    signed: '已签收',
     completed: '已完成',
     cancelled: '已取消'
   }
@@ -147,7 +163,17 @@
         mode: 'loaded',
         router,
         tableQueryRef,
-        dispatchDialogRef
+        dispatchDialogRef,
+        cargoOperationDialogRef,
+        executionOperationDialogRef,
+        canAccept: hasAuth('TmsWaybill:Accept'),
+        canLoading: hasAuth('TmsWaybill:Loading'),
+        canDepart: hasAuth('TmsWaybill:Depart'),
+        canArrive: hasAuth('TmsWaybill:Arrive'),
+        canUnloading: hasAuth('TmsWaybill:Unloading'),
+        canSign: hasAuth('TmsWaybill:Sign'),
+        canComplete: hasAuth('TmsWaybill:Complete'),
+        canCancel: hasAuth('TmsWaybill:Cancel')
       })
   })
 
@@ -195,6 +221,10 @@
   function handleStatusTabChange(status: string | number | boolean): void {
     table.searchQuery.waybillStatus = String(status)
     void tableQueryRef.value?.getData()
+  }
+
+  async function handleCargoOperationSuccess(): Promise<void> {
+    await tableQueryRef.value?.refreshUpdate()
   }
 
   function syncMasterDeleteRoute(forceRefresh = false): void {

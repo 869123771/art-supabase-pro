@@ -5,6 +5,7 @@ export interface ArtUserSelectOption {
   userName?: string | null
   nickName?: string | null
   userEmail?: string | null
+  departmentName?: string | null
   disabled?: boolean
 }
 

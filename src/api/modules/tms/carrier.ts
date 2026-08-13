@@ -14,6 +14,12 @@ type Carrier = Api.Tms.BasicData.Carrier
 type CarrierSearchParams = Api.Tms.BasicData.CarrierSearchParams
 type CarrierOption = Api.Tms.BasicData.CarrierOption
 
+interface CarrierOptionParams extends Partial<Pick<CarrierOption, 'carrierCode' | 'companyName'>> {
+  excludeId?: string
+  includeDisabled?: boolean
+  maxRows?: number
+}
+
 const { supabase, keysToSnakeDeep, responseHandle } = useSupabase()
 
 const applyCarrierFilters = <TQuery extends SupabaseQueryLike>(
@@ -92,16 +98,18 @@ export async function analyzeCarrierPerformanceByAi(
 }
 
 export async function fetchCarrierOptions(
-  params: Partial<Pick<CarrierOption, 'carrierCode' | 'companyName'>> = {},
+  params: CarrierOptionParams = {},
   options?: ApiRequestOptions
 ) {
-  const { carrierCode, companyName } = params
+  const { carrierCode, companyName, excludeId, includeDisabled = false, maxRows = 200 } = params
   let query = supabase
     .from('tms_carrier')
-    .select('id, carrier_code, company_name, contact_name, contact_phone')
-    .eq('enabled', true)
+    .select('id, carrier_code, company_name, enabled, contact_name, contact_phone')
     .order('company_name', { ascending: true })
-    .limit(200)
+    .limit(maxRows)
+
+  if (!includeDisabled) query = query.eq('enabled', true)
+  if (excludeId) query = query.neq('id', excludeId)
 
   const keyword = companyName || carrierCode
   if (keyword) {

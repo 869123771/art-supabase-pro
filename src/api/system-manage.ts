@@ -20,6 +20,8 @@ type SystemParamSearchParams = Api.SystemManage.SystemParamSearchParams
 type WebsiteConfigItem = Api.SystemManage.WebsiteConfigItem
 type WebsiteConfigParamMeta = Api.SystemManage.WebsiteConfigParamMeta
 const WEBSITE_CONFIG_PARAM_KEY = 'website.config'
+type GeofenceConfigItem = Api.SystemManage.GeofenceConfigItem
+const GEOFENCE_CONFIG_PARAM_KEY = 'tms.geofence.config'
 
 interface DeleteUserSyncPayload {
   action: 'deactivate'
@@ -308,7 +310,23 @@ export async function fetchGetEnableOrganizationUserList(params: { tenantId?: st
 
   const query = supabase
     .from('sys_user')
-    .select('id, avatar, user_name, nick_name, user_email, status, tenant_id')
+    .select(
+      `
+        id,
+        tenant_id,
+        organization_id,
+        avatar,
+        user_name,
+        nick_name,
+        user_email,
+        status,
+        organization:sys_organization!sys_user_organization_id_fkey(
+          id,
+          organization_code,
+          organization_name
+        )
+      `
+    )
     .eq('tenant_id', params.tenantId)
     .eq('status', '1')
     .is('deleted_at', null)
@@ -699,6 +717,63 @@ export async function saveWebsiteConfig(params: WebsiteConfigItem) {
       requireAffected: true,
       noAffectedMessage: WRITE_PERMISSION_DENIED_MESSAGE
     }
+  )
+}
+
+const parseGeofenceConfig = (row: SystemParamItem | null): GeofenceConfigItem | null => {
+  if (!row?.paramValue) return null
+
+  try {
+    const parsed = JSON.parse(row.paramValue) as Partial<GeofenceConfigItem>
+    return {
+      id: row.id,
+      tenantId: row.tenantId,
+      enabled: parsed.enabled !== false,
+      loadingRadiusM: Number(parsed.loadingRadiusM) || 1000,
+      unloadingRadiusM: Number(parsed.unloadingRadiusM) || 1000,
+      loadingAllowOutsideCheckIn: parsed.loadingAllowOutsideCheckIn === true,
+      unloadingAllowOutsideCheckIn: parsed.unloadingAllowOutsideCheckIn === true,
+      autoConfirmLoading: parsed.autoConfirmLoading === true,
+      autoConfirmUnloading: parsed.autoConfirmUnloading === true,
+      createBy: row.createBy,
+      createTime: row.createTime,
+      updateBy: row.updateBy,
+      updateTime: row.updateTime
+    }
+  } catch {
+    return null
+  }
+}
+
+export async function fetchGeofenceConfig(): Promise<{
+  data: GeofenceConfigItem | null
+  error: unknown | null
+}> {
+  const { data, error } = await responseHandle<SystemParamItem | null>(
+    () =>
+      supabase
+        .from('sys_param')
+        .select('*')
+        .eq('param_key', GEOFENCE_CONFIG_PARAM_KEY)
+        .eq('enabled', true)
+        .maybeSingle(),
+    { ignoreCheck: true, showErrorMessage: true }
+  )
+  return { data: parseGeofenceConfig(data), error }
+}
+
+export async function saveGeofenceConfig(params: GeofenceConfigItem) {
+  const config = omit(params, [
+    'id',
+    'tenantId',
+    'createBy',
+    'createTime',
+    'updateBy',
+    'updateTime'
+  ])
+  return await responseHandle<GeofenceConfigItem>(
+    () => supabase.rpc('tms_save_geofence_config', { p_config: config }),
+    { showMessage: true, breakReturn: true }
   )
 }
 

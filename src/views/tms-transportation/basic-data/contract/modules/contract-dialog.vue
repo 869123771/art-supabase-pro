@@ -790,6 +790,12 @@
     try {
       const [resource] = await uploadAttachment(file)
       if (!resource?.url) throw new Error('附件上传失败')
+
+      if ((form.data.attachments ?? []).some((attachment) => attachment.url === resource.url)) {
+        ElMessage.info('该附件已在当前合同中，无需重复添加')
+        return
+      }
+
       form.data.attachments = [
         ...(form.data.attachments ?? []),
         {
