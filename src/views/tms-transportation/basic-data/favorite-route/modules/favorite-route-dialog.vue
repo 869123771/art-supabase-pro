@@ -17,8 +17,16 @@
             <span><ArtSvgIcon icon="ri:login-circle-line" /></span>
             <div>
               <small>装货地</small>
-              <strong>{{ originAddress?.addressDetail || '请选择发货地址' }}</strong>
-              <p>{{ originAddress?.region || '从发货地址中选择' }}</p>
+              <strong :title="getAddressCustomerName(originAddress, '请选择发货地址')">
+                {{ getAddressCustomerName(originAddress, '请选择发货地址') }}
+              </strong>
+              <p v-if="originAddress" class="favorite-route-dialog__contact">
+                <span>{{ originAddress.contactName || '未维护联系人' }}</span>
+                <span>{{ originAddress.contactPhone || '未维护手机号' }}</span>
+              </p>
+              <p :title="getFullAddress(originAddress)">
+                {{ originAddress ? getFullAddress(originAddress) : '从发货地址中选择' }}
+              </p>
             </div>
           </div>
           <div class="favorite-route-dialog__path" aria-hidden="true">
@@ -28,9 +36,34 @@
             <span><ArtSvgIcon icon="ri:logout-circle-r-line" /></span>
             <div>
               <small>卸货地</small>
-              <strong>{{ destinationAddress?.addressDetail || '请选择收货地址' }}</strong>
-              <p>{{ destinationAddress?.region || '从收货地址中选择' }}</p>
+              <strong :title="getAddressCustomerName(destinationAddress, '请选择收货地址')">
+                {{ getAddressCustomerName(destinationAddress, '请选择收货地址') }}
+              </strong>
+              <p v-if="destinationAddress" class="favorite-route-dialog__contact">
+                <span>{{ destinationAddress.contactName || '未维护联系人' }}</span>
+                <span>{{ destinationAddress.contactPhone || '未维护手机号' }}</span>
+              </p>
+              <p :title="getFullAddress(destinationAddress)">
+                {{ destinationAddress ? getFullAddress(destinationAddress) : '从收货地址中选择' }}
+              </p>
             </div>
+          </div>
+          <div
+            v-if="estimateNote"
+            class="favorite-route-dialog__estimate"
+            :class="`is-${estimate.status}`"
+            aria-live="polite"
+          >
+            <ArtSvgIcon :icon="estimateIcon" aria-hidden="true" />
+            <span>{{ estimateNote }}</span>
+            <ElButton
+              v-if="canEstimate && estimate.status !== 'loading'"
+              type="primary"
+              link
+              @click="calculateRouteEstimate"
+            >
+              重新估算
+            </ElButton>
           </div>
         </section>
       </template>
@@ -41,21 +74,29 @@
 <script setup lang="ts">
   import type { FormRules } from 'element-plus'
   import { cloneDeep, omit } from 'lodash-es'
+  import { storeToRefs } from 'pinia'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
+  import {
+    useAmapDrivingEstimate,
+    type AmapRouteCoordinate
+  } from '@/hooks/core/useAmapDrivingEstimate'
   import {
     addFavoriteRoute,
     editFavoriteRoute,
     fetchCustomerAddressOptions,
     fetchCustomerOptions
   } from '@/api/tms'
+  import { fetchGetTenantList } from '@/api/system-manage'
+  import { useUserStore } from '@/store/modules/user'
 
   defineOptions({ name: 'TmsFavoriteRouteDialog' })
 
   type FavoriteRoute = Api.Tms.BasicData.FavoriteRoute
   type CustomerAddress = Api.Tms.BasicData.CustomerAddress
   type CustomerOption = Api.Tms.BasicData.CustomerOption
+  type TenantOption = Api.SystemManage.TenantListItem
   type FavoriteRouteForm = Omit<FavoriteRoute, 'distanceKm' | 'estimatedMinutes'> & {
     distanceKm: number | null
     estimatedMinutes: number | null
@@ -68,19 +109,30 @@
     reloadOptions: (key?: string) => Promise<unknown>
   }
 
+  type EstimateStatus = 'idle' | 'loading' | 'ready' | 'unavailable'
+
+  interface EstimateGroup {
+    status: EstimateStatus
+  }
+
   const emit = defineEmits<{
     (event: 'success', type: 'add' | 'edit'): void
   }>()
 
   const dialogRef = ref<ArtDialogExpose<FavoriteRoute | undefined>>()
   const formRef = ref<FormExpose>()
+  const { estimateDrivingRoute } = useAmapDrivingEstimate()
+  const { getUserInfo, isPlatformSuper } = storeToRefs(useUserStore())
   const addressOptions = reactive<{
     origin: CustomerAddress[]
     destination: CustomerAddress[]
   }>({ origin: [], destination: [] })
+  const estimate = reactive<EstimateGroup>({ status: 'idle' })
+  let estimateRequestId = 0
 
   const createInitialForm = (): FavoriteRouteForm => ({
     id: undefined,
+    tenantId: '',
     routeName: '',
     customerId: '',
     originAddressId: '',
@@ -98,8 +150,35 @@
   const destinationAddress = computed(() =>
     addressOptions.destination.find((item) => item.id === form.destinationAddressId)
   )
+  const canEstimate = computed(() =>
+    Boolean(toRouteCoordinate(originAddress.value) && toRouteCoordinate(destinationAddress.value))
+  )
+  const estimateNote = computed(() => {
+    if (!form.originAddressId || !form.destinationAddressId) return ''
+    const notes: Record<EstimateStatus, string> = {
+      idle: canEstimate.value
+        ? '可按当前装卸地址估算驾车里程和正常路况时长。'
+        : '所选地址缺少有效经纬度，请手动填写里程和预计时长。',
+      loading: '正在根据当前装卸地址估算驾车路线…',
+      ready: '已自动填入参考里程和预计时长，仍可按实际运营经验调整。',
+      unavailable: '路线估算暂不可用，请稍后重试或手动填写。'
+    }
+    return notes[estimate.status]
+  })
+  const estimateIcon = computed(() => {
+    const icons: Record<EstimateStatus, string> = {
+      idle: 'ri:route-line',
+      loading: 'ri:loader-4-line',
+      ready: 'ri:checkbox-circle-line',
+      unavailable: 'ri:information-line'
+    }
+    return icons[estimate.status]
+  })
 
-  const formRules: FormRules<FavoriteRouteForm> = {
+  const formRules = computed<FormRules<FavoriteRouteForm>>(() => ({
+    tenantId: isPlatformSuper.value
+      ? [{ required: true, message: '请选择所属租户', trigger: 'change' }]
+      : [],
     routeName: [{ required: true, message: '请输入线路名称', trigger: 'blur' }],
     customerId: [{ required: true, message: '请选择所属客户', trigger: 'change' }],
     originAddressId: [{ required: true, message: '请选择装货地址', trigger: 'change' }],
@@ -107,13 +186,25 @@
     distanceKm: [{ type: 'number', min: 0.01, message: '线路里程应大于 0 公里' }],
     estimatedMinutes: [{ type: 'number', min: 1, message: '预计时长应大于 0 分钟' }],
     remark: [{ max: 500, message: '备注不能超过 500 个字符', trigger: 'blur' }]
-  }
+  }))
 
   const getAddressLabel = (option: unknown): string => {
     const address = option as CustomerAddress
     const label = [address.region, address.addressDetail].filter(Boolean).join(' ')
-    return `${address.isDefault ? '【默认】' : ''}${label || '未命名地址'}`
+    const ownership = address.customer?.customerName
+      ? `【${address.customer.customerName}】`
+      : '【公共地址】'
+    const contact = [address.contactName, address.contactPhone].filter(Boolean).join(' / ')
+    return `${address.isDefault ? '【默认】' : ''}${ownership}${contact ? `【${contact}】` : ''}${label || '未命名地址'}`
   }
+
+  const getAddressCustomerName = (
+    address: CustomerAddress | undefined,
+    emptyText: string
+  ): string => address?.customer?.customerName || (address ? '公共地址' : emptyText)
+
+  const getFullAddress = (address?: CustomerAddress): string =>
+    [address?.region, address?.addressDetail].filter(Boolean).join(' ') || '未维护详细地址'
 
   const syncAddressOptions = (target: 'origin' | 'destination', result: unknown): unknown => {
     if (result && typeof result === 'object' && 'data' in result) {
@@ -123,8 +214,35 @@
     return result
   }
 
+  const fetchTenantOptions = () => fetchGetTenantList({ from: 0, to: 999 })
+
   const formItems = computed<FormItem[]>(() => [
     { label: '线路信息', key: 'baseSection', type: 'divider', span: 24 },
+    ...(isPlatformSuper.value
+      ? [
+          {
+            label: '所属租户',
+            key: 'tenantId',
+            type: 'select' as const,
+            span: 24,
+            api: fetchTenantOptions,
+            resultField: 'data',
+            valueField: 'id',
+            labelField: 'tenantName',
+            labelFn: (option: unknown) => {
+              const tenant = option as TenantOption
+              return `${tenant.tenantName}（${tenant.tenantCode}）`
+            },
+            props: {
+              disabled: Boolean(form.id),
+              filterable: true,
+              clearable: !form.id,
+              onChange: handleTenantChange,
+              placeholder: '请选择本次维护的数据租户'
+            }
+          }
+        ]
+      : []),
     {
       label: '线路名称',
       key: 'routeName',
@@ -145,7 +263,10 @@
           ? `${customer.customerName}（${customer.customerCode}）`
           : customer.customerName
       },
+      immediate: false,
+      beforeFetch: () => ({ tenantId: form.tenantId }),
       props: {
+        disabled: isPlatformSuper.value && !form.tenantId,
         filterable: true,
         clearable: true,
         placeholder: '请选择客户'
@@ -167,11 +288,14 @@
       valueField: 'id',
       labelFn: getAddressLabel,
       immediate: false,
-      beforeFetch: () => ({ addressType: 'shipping' }),
+      beforeFetch: () => ({ tenantId: form.tenantId, addressType: 'shipping' }),
       afterFetch: (result) => syncAddressOptions('origin', result),
       props: {
+        disabled: isPlatformSuper.value && !form.tenantId,
         filterable: true,
         clearable: true,
+        onChange: handleEndpointChange,
+        noDataText: '暂无可用装货地址',
         placeholder: '请选择发货地址'
       }
     },
@@ -184,11 +308,14 @@
       valueField: 'id',
       labelFn: getAddressLabel,
       immediate: false,
-      beforeFetch: () => ({ addressType: 'receiving' }),
+      beforeFetch: () => ({ tenantId: form.tenantId, addressType: 'receiving' }),
       afterFetch: (result) => syncAddressOptions('destination', result),
       props: {
+        disabled: isPlatformSuper.value && !form.tenantId,
         filterable: true,
         clearable: true,
+        onChange: handleEndpointChange,
+        noDataText: '暂无可用卸货地址',
         placeholder: '请选择收货地址'
       }
     },
@@ -197,15 +324,28 @@
       label: '线路里程',
       key: 'distanceKm',
       type: 'number',
-      description: '用于报价和计划参考，不替代实际轨迹里程。',
-      props: { min: 0.01, max: 99999999, precision: 2, step: 1, controlsPosition: 'right' }
+      description: '选择装卸地址后自动估算，可手动调整；不替代实际轨迹里程。',
+      props: {
+        disabled: estimate.status === 'loading',
+        min: 0.01,
+        max: 99999999,
+        precision: 2,
+        step: 1,
+        controlsPosition: 'right'
+      }
     },
     {
       label: '预计时长',
       key: 'estimatedMinutes',
       type: 'number',
-      description: '以分钟记录正常路况下的计划时长。',
-      props: { min: 1, max: 999999, step: 10, controlsPosition: 'right' }
+      description: '按正常路况自动估算，以分钟记录并允许人工调整。',
+      props: {
+        disabled: estimate.status === 'loading',
+        min: 1,
+        max: 999999,
+        step: 10,
+        controlsPosition: 'right'
+      }
     },
     {
       label: '启用线路',
@@ -228,20 +368,87 @@
     }
   ])
 
-  const reloadAddressOptions = async (): Promise<void> => {
+  const reloadTenantScopedOptions = async (): Promise<void> => {
+    if (isPlatformSuper.value && !form.tenantId) {
+      Object.assign(addressOptions, { origin: [], destination: [] })
+      return
+    }
     await Promise.all([
+      formRef.value?.reloadOptions('customerId'),
       formRef.value?.reloadOptions('originAddressId'),
       formRef.value?.reloadOptions('destinationAddressId')
     ])
   }
 
+  const resetEstimate = (): void => {
+    estimateRequestId += 1
+    estimate.status = 'idle'
+  }
+
+  const handleTenantChange = async (): Promise<void> => {
+    Object.assign(form, {
+      customerId: '',
+      originAddressId: '',
+      destinationAddressId: '',
+      distanceKm: null,
+      estimatedMinutes: null
+    })
+    Object.assign(addressOptions, { origin: [], destination: [] })
+    resetEstimate()
+    await nextTick()
+    await reloadTenantScopedOptions()
+  }
+
+  const handleEndpointChange = async (): Promise<void> => {
+    resetEstimate()
+    if (!form.originAddressId || !form.destinationAddressId) return
+    await nextTick()
+    await calculateRouteEstimate()
+  }
+
+  const calculateRouteEstimate = async (): Promise<void> => {
+    const origin = toRouteCoordinate(originAddress.value)
+    const destination = toRouteCoordinate(destinationAddress.value)
+    if (!origin || !destination) {
+      estimate.status = 'idle'
+      return
+    }
+
+    const requestId = ++estimateRequestId
+    estimate.status = 'loading'
+    try {
+      const result = await estimateDrivingRoute(origin, destination)
+      if (requestId !== estimateRequestId) return
+      Object.assign(form, result)
+      estimate.status = 'ready'
+    } catch {
+      if (requestId === estimateRequestId) estimate.status = 'unavailable'
+    }
+  }
+
+  const toRouteCoordinate = (address?: CustomerAddress): AmapRouteCoordinate | null => {
+    const longitude = Number(address?.longitude)
+    const latitude = Number(address?.latitude)
+    if (
+      !Number.isFinite(longitude) ||
+      !Number.isFinite(latitude) ||
+      longitude < -180 ||
+      longitude > 180 ||
+      latitude < -90 ||
+      latitude > 90
+    ) {
+      return null
+    }
+    return { longitude, latitude }
+  }
+
   const buildPayload = (): FavoriteRoute => {
     const payload = omit(cloneDeep(toRaw(form)), [
       'routePreview',
+      'tenant',
       'customer',
       'originAddress',
       'destinationAddress',
-      'tenantId',
       'createBy',
       'createTime',
       'updateBy',
@@ -251,6 +458,7 @@
     payload.distanceKm = form.distanceKm || null
     payload.estimatedMinutes = form.estimatedMinutes || null
     payload.remark = form.remark?.trim() || null
+    if (!isPlatformSuper.value || payload.id) delete payload.tenantId
     return payload
   }
 
@@ -273,9 +481,12 @@
     }
   }
 
-  const handleOpen = async (row?: FavoriteRoute): Promise<void> => {
-    Object.assign(form, createInitialForm(), row ? cloneDeep(toRaw(row)) : {})
+  const handleOpen = async (row?: FavoriteRoute, tenantId?: string): Promise<void> => {
+    Object.assign(form, createInitialForm(), row ? cloneDeep(toRaw(row)) : {}, {
+      tenantId: row?.tenantId || tenantId || getUserInfo.value.tenantId || ''
+    })
     Object.assign(addressOptions, { origin: [], destination: [] })
+    resetEstimate()
 
     await dialogRef.value?.handleOpen(row, {
       title: row?.id ? '编辑常用线路' : '新增常用线路',
@@ -284,7 +495,7 @@
       loading: true,
       onOpen: async (_data, api) => {
         try {
-          await reloadAddressOptions()
+          await reloadTenantScopedOptions()
           await nextTick()
           formRef.value?.clearValidate()
         } finally {
@@ -360,6 +571,22 @@
         margin: 0;
         font-size: 12px;
       }
+
+      p.favorite-route-dialog__contact {
+        display: flex;
+        gap: 8px;
+
+        span {
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        span + span::before {
+          margin-right: 8px;
+          color: var(--el-border-color);
+          content: '·';
+        }
+      }
     }
 
     &__path {
@@ -378,6 +605,48 @@
           width: 28px;
           height: 2px;
           border-radius: 999px;
+        }
+      }
+    }
+
+    &__estimate {
+      display: flex;
+      grid-column: 1 / -1;
+      gap: 8px;
+      align-items: center;
+      min-width: 0;
+      padding-top: 12px;
+      font-size: 13px;
+      color: var(--el-text-color-secondary);
+      border-top: 1px dashed var(--el-border-color-lighter);
+
+      > svg {
+        flex: 0 0 auto;
+        color: var(--el-color-primary);
+      }
+
+      > span {
+        min-width: 0;
+      }
+
+      .el-button {
+        flex: 0 0 auto;
+        margin-left: auto;
+      }
+
+      &.is-ready {
+        color: var(--el-color-success);
+
+        > svg {
+          color: currentcolor;
+        }
+      }
+
+      &.is-unavailable {
+        color: var(--el-color-warning);
+
+        > svg {
+          color: currentcolor;
         }
       }
     }

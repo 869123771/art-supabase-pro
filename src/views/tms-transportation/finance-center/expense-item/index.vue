@@ -49,6 +49,7 @@
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { useUserStore } from '@/store/modules/user'
   import { deleteExpenseItem, fetchExpenseItemTree } from '@/api/tms'
+  import { fetchGetTenantList } from '@/api/system-manage'
   import TmsWorkspaceHeader from '@/views/tms-transportation/modules/tms-workspace-header.vue'
   import ExpenseItemDialog from './modules/expense-item-dialog.vue'
 
@@ -62,10 +63,11 @@
   }
 
   const { confirmAction } = useArtFeedback()
-  const { getDictMap } = storeToRefs(useUserStore())
+  const { getDictMap, isPlatformSuper } = storeToRefs(useUserStore())
   const tableRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<DialogExpose>()
-  const search = ref<SearchParams>({ keyword: '', isEnabled: undefined })
+  const search = ref<SearchParams>({ keyword: '', tenantId: undefined, isEnabled: undefined })
+  const tenantOptions = ref<Array<{ label: string; value: string }>>([])
 
   const commonBooleanOptions = computed(() =>
     (getDictMap.value.commonBoolean ?? []).map((item) => ({
@@ -75,6 +77,21 @@
   )
 
   const searchItems = computed<SearchFormItem[]>(() => [
+    ...(isPlatformSuper.value
+      ? [
+          {
+            label: '所属租户',
+            key: 'tenantId',
+            type: 'select' as const,
+            props: {
+              clearable: true,
+              filterable: true,
+              options: tenantOptions.value,
+              placeholder: '全部租户'
+            }
+          }
+        ]
+      : []),
     {
       label: '启用状态',
       key: 'isEnabled',
@@ -100,6 +117,25 @@
 
   const columnsFactory = (): ColumnOption<ExpenseItem>[] => [
     { prop: 'itemName', label: '费用项目', minWidth: 220, fixed: 'left' },
+    ...(isPlatformSuper.value
+      ? [
+          {
+            prop: 'tenant',
+            label: '所属租户',
+            minWidth: 190,
+            formatter: (row: ExpenseItem) => (
+              <div class="expense-item-tenant">
+                <strong title={row.tenant?.tenantName || '未识别租户'}>
+                  {row.tenant?.tenantName || '未识别租户'}
+                </strong>
+                <small title={row.tenant?.tenantCode || row.tenantId || '--'} translate="no">
+                  {row.tenant?.tenantCode || row.tenantId || '--'}
+                </small>
+              </div>
+            )
+          } satisfies ColumnOption<ExpenseItem>
+        ]
+      : []),
     { prop: 'itemCode', label: '项目编码', width: 170 },
     {
       prop: 'businessCategory',
@@ -112,19 +148,23 @@
       prop: 'isSelectable',
       label: '可记账',
       width: 95,
-      dict: { code: 'commonBoolean', display: 'tag' }
+      dict: { code: 'commonBoolean', display: 'tag', value: (row) => String(row.isSelectable) }
     },
     {
       prop: 'reimbursementAllowed',
       label: '可报销',
       width: 95,
-      dict: { code: 'commonBoolean', display: 'tag' }
+      dict: {
+        code: 'commonBoolean',
+        display: 'tag',
+        value: (row) => String(row.reimbursementAllowed)
+      }
     },
     {
       prop: 'isEnabled',
       label: '启用状态',
       width: 105,
-      dict: { code: 'commonBoolean', display: 'tag' }
+      dict: { code: 'commonBoolean', display: 'tag', value: (row) => String(row.isEnabled) }
     },
     { prop: 'sort', label: '排序', width: 80, align: 'center' },
     { prop: 'remark', label: '备注', minWidth: 180, showOverflowTooltip: true },
@@ -166,9 +206,10 @@
 
   async function handleDelete(row: ExpenseItem): Promise<void> {
     if (!row.id) return
+    const tenantContext = isPlatformSuper.value ? `所属租户：${resolveTenantLabel(row)}。` : ''
     try {
       await confirmAction(
-        `确定删除费用项目“${row.itemName}”吗？存在下级项目或费用引用时系统会阻止删除。`,
+        `确定删除费用项目“${row.itemName}”吗？${tenantContext}删除后不可撤销；存在下级项目或费用引用时系统会阻止删除。`,
         '删除费用项目',
         {
           type: 'warning',
@@ -187,4 +228,44 @@
   function handleSaved(type: 'add' | 'edit'): void {
     void (type === 'add' ? tableRef.value?.refreshCreate() : tableRef.value?.refreshUpdate())
   }
+
+  function resolveTenantLabel(row: ExpenseItem): string {
+    const tenantName = row.tenant?.tenantName?.trim()
+    const tenantCode = row.tenant?.tenantCode?.trim()
+    if (tenantName && tenantCode) return `${tenantName}（${tenantCode}）`
+    return tenantName || tenantCode || row.tenantId || '未识别租户'
+  }
+
+  async function loadTenantOptions(): Promise<void> {
+    if (!isPlatformSuper.value) return
+    const { data } = await fetchGetTenantList({ from: 0, to: 999 })
+    tenantOptions.value = (data ?? [])
+      .filter((tenant) => tenant.id)
+      .map((tenant) => ({
+        label: `${tenant.tenantName}（${tenant.tenantCode}）`,
+        value: String(tenant.id)
+      }))
+  }
+
+  onMounted(() => void loadTenantOptions())
 </script>
+
+<style scoped lang="scss">
+  :deep(.expense-item-tenant) {
+    min-width: 0;
+
+    strong,
+    small {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    small {
+      margin-top: 3px;
+      font-size: 12px;
+      color: var(--el-text-color-secondary);
+    }
+  }
+</style>

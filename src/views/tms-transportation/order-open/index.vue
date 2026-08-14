@@ -64,7 +64,15 @@
             <div class="order-open__contact-heading">
               <span class="order-open__contact-mark order-open__contact-mark--send">寄</span>
               <h3>发货人信息</h3>
-              <ElButton size="small" @click="openCustomerSelector('shipping')">选择客户</ElButton>
+              <div class="order-open__contact-actions">
+                <ElButton size="small" type="primary" plain @click="openFavoriteRouteSelector">
+                  <ArtSvgIcon icon="ri:route-line" />
+                  选择线路
+                </ElButton>
+                <ElButton size="small" @click="openCustomerSelector('shipping')">
+                  选择地址
+                </ElButton>
+              </div>
             </div>
             <ArtForm
               ref="shippingFormRef"
@@ -89,7 +97,7 @@
             <div class="order-open__contact-heading">
               <span class="order-open__contact-mark order-open__contact-mark--receive">收</span>
               <h3>收货人信息</h3>
-              <ElButton size="small" @click="openCustomerSelector('receiving')">选择客户</ElButton>
+              <ElButton size="small" @click="openCustomerSelector('receiving')">选择地址</ElButton>
             </div>
             <ArtForm
               ref="receivingFormRef"
@@ -262,6 +270,10 @@
       </ArtStickyActionBar>
 
       <CustomerSelectorDialog ref="customerDialogRef" @select="handleCustomerSelect" />
+      <FavoriteRouteSelectorDialog
+        ref="favoriteRouteDialogRef"
+        @select="handleFavoriteRouteSelect"
+      />
       <PrintCountDialog ref="printDialogRef" @confirm="handlePrintConfirm" />
       <ContractDetailMultipleSelect
         ref="contractDetailSelectorRef"
@@ -311,6 +323,7 @@
   import AiOrderDrawer from './modules/ai-order-drawer.vue'
   import { buildAiOrderFinalPayload } from './modules/ai-order-review'
   import CustomerSelectorDialog from './modules/customer-selector-dialog.vue'
+  import FavoriteRouteSelectorDialog from './modules/favorite-route-selector-dialog.vue'
   import PrintCountDialog from './modules/print-count-dialog.vue'
   import type {
     AiAddressReferenceMatch,
@@ -320,8 +333,11 @@
   import {
     createInitialCargoItem,
     createInitialForm,
+    createCustomerPriceBusinessPatch,
+    createFavoriteRouteContactPatch,
     calculateOrderCargoSummary,
     formatNumber,
+    formatOrderAddress,
     getDictLabel,
     moneyValue,
     nullableNumber,
@@ -339,8 +355,8 @@
   type ContractDetail = Api.Tms.BasicData.ContractDetailSelectorItem
   type CustomerItem = Api.Tms.Order.CustomerSelectorItem
   type CustomerAddress = Api.Tms.BasicData.CustomerAddress
-  type CustomerPrice = Api.Tms.BasicData.CustomerPrice
   type CustomerPriceCargoItem = Api.Tms.BasicData.CustomerPriceCargoItem
+  type FavoriteRoute = Api.Tms.BasicData.FavoriteRoute
   type StationOption = Api.Tms.Order.StationOption
   type SelectorMode = 'shipping' | 'receiving'
   type StationMode = 'origin' | 'destination' | 'transfer'
@@ -382,6 +398,10 @@
 
   interface CustomerSelectorExpose {
     handleOpen: (mode: SelectorMode) => Promise<void>
+  }
+
+  interface FavoriteRouteSelectorExpose {
+    handleOpen: () => Promise<void>
   }
 
   interface PrintDialogExpose {
@@ -452,6 +472,7 @@
   const paymentFormRef = ref<FormExpose>()
   const otherFormRef = ref<FormExpose>()
   const customerDialogRef = ref<CustomerSelectorExpose>()
+  const favoriteRouteDialogRef = ref<FavoriteRouteSelectorExpose>()
   const printDialogRef = ref<PrintDialogExpose>()
   const cargoSelectorRef = ref<CargoSelectorExpose>()
   const contractDetailSelectorRef = ref<ContractDetailSelectorExpose>()
@@ -726,26 +747,6 @@
         )
       },
       {
-        prop: 'unitPrice',
-        label: '合同单价(元)',
-        width: 145,
-        formatter: (row) =>
-          row.sourceContractId ? `¥ ${numericValue(row.unitPrice).toFixed(2)}` : '-'
-      },
-      {
-        prop: 'freight',
-        label: '行运费(元)',
-        width: 135,
-        formatter: (row) =>
-          row.sourceContractId ? `¥ ${calculateContractCargoFreight(row).toFixed(2)}` : '-'
-      },
-      {
-        prop: 'sourceContractNo',
-        label: '来源合同',
-        minWidth: 150,
-        formatter: (row) => row.sourceContractNo || '-'
-      },
-      {
         prop: 'weightKg',
         label: '重量(kg)',
         width: 150,
@@ -772,6 +773,26 @@
             class="w-full!"
           />
         )
+      },
+      {
+        prop: 'unitPrice',
+        label: '合同单价(元)',
+        width: 145,
+        formatter: (row) =>
+          row.sourceContractId ? `¥ ${numericValue(row.unitPrice).toFixed(2)}` : '-'
+      },
+      {
+        prop: 'freight',
+        label: '行运费(元)',
+        width: 135,
+        formatter: (row) =>
+          row.sourceContractId ? `¥ ${calculateContractCargoFreight(row).toFixed(2)}` : '-'
+      },
+      {
+        prop: 'sourceContractNo',
+        label: '来源合同',
+        minWidth: 150,
+        formatter: (row) => row.sourceContractNo || '-'
       },
       {
         prop: 'operation',
@@ -1119,9 +1140,20 @@
     void customerDialogRef.value?.handleOpen(mode)
   }
 
+  function openFavoriteRouteSelector(): void {
+    void favoriteRouteDialogRef.value?.handleOpen()
+  }
+
+  async function handleFavoriteRouteSelect(route: FavoriteRoute): Promise<void> {
+    Object.assign(form.data, createFavoriteRouteContactPatch(route))
+    await nextTick()
+    clearFormRefsValidation(validatedFormRefs)
+    ElMessage.success(`已带入常用线路“${route.routeName}”的发货与收货信息`)
+  }
+
   async function handleCustomerSelect(mode: SelectorMode, row: CustomerItem): Promise<void> {
     Object.assign(form.data, await createCustomerContactPatch(mode, row))
-    await applyCustomerPriceTemplate(row.id, row)
+    await applyCustomerPriceTemplate(row.id)
   }
 
   async function createCustomerContactPatch(
@@ -1147,7 +1179,7 @@
   ): ContactPatch {
     const contactName = address?.contactName || customer.contactName || customer.customerName
     const contactPhone = address?.contactPhone || customer.contactPhone || ''
-    const addressText = formatFullAddress(
+    const addressText = formatOrderAddress(
       address?.region || customer.region,
       address?.addressDetail || customer.addressDetail
     )
@@ -1178,10 +1210,7 @@
     return patchMap[mode]
   }
 
-  async function applyCustomerPriceTemplate(
-    customerId: string,
-    customer: CustomerItem
-  ): Promise<void> {
+  async function applyCustomerPriceTemplate(customerId: string): Promise<void> {
     try {
       const { data } = await fetchCustomerPriceList({
         customerId,
@@ -1191,75 +1220,15 @@
       const price = data?.[0]
       if (!price) return
 
-      Object.assign(form.data, createCustomerPricePatch(price, customer))
-      await applyDefaultAddressesForPriceCustomer(customer)
+      Object.assign(form.data, createCustomerPriceBusinessPatch(price, form.data.orderRemark))
       if (price.cargoItems?.length) {
         form.data.cargoItems = price.cargoItems.map(createCargoItemFromCustomerPrice)
       }
       await nextTick()
       clearFormRefsValidation(validatedFormRefs)
-      ElMessage.success('已带入客户价格维护信息')
+      ElMessage.success('已带入客户价格维护中的费用与货物信息')
     } catch {
       // 价格模板只是辅助回填，查询失败时保留已选择的客户基础信息。
-    }
-  }
-
-  async function applyDefaultAddressesForPriceCustomer(customer: CustomerItem): Promise<void> {
-    const [shippingAddress, receivingAddress] = await Promise.all([
-      fetchDefaultAddress(customer.id, 'shipping'),
-      fetchDefaultAddress(customer.id, 'receiving')
-    ])
-
-    const patch: ContactPatch = {}
-    if (shippingAddress && !form.data.shippingAddressId)
-      Object.assign(patch, createAddressPatch('shipping', customer, shippingAddress))
-    if (receivingAddress && !form.data.receivingAddressId)
-      Object.assign(patch, createAddressPatch('receiving', customer, receivingAddress))
-    Object.assign(form.data, patch)
-  }
-
-  function createCustomerPricePatch(
-    price: CustomerPrice,
-    customer: CustomerItem
-  ): Partial<OrderForm> {
-    const shippingAddressDetail = formatFullAddress(
-      price.originRegion || customer.region,
-      price.shippingAddressDetail || form.data.shippingAddressDetail
-    )
-    const receivingAddressDetail = formatFullAddress(
-      price.destinationRegion || customer.region,
-      price.receivingAddressDetail || form.data.receivingAddressDetail
-    )
-
-    return {
-      shippingCustomerId: price.customerId,
-      receivingCustomerId: price.customerId,
-      shippingCustomerName: customer.customerName || form.data.shippingCustomerName,
-      receivingCustomerName: customer.customerName || form.data.receivingCustomerName,
-      shippingAddressId: price.shippingAddressId || form.data.shippingAddressId || null,
-      receivingAddressId: price.receivingAddressId || form.data.receivingAddressId || null,
-      shippingContactName: textValue(price.shippingContactName) || form.data.shippingContactName,
-      shippingContactPhone: textValue(price.shippingContactPhone) || form.data.shippingContactPhone,
-      shippingAddressDetail,
-      shippingLongitude: price.shippingLongitude ?? form.data.shippingLongitude ?? null,
-      shippingLatitude: price.shippingLatitude ?? form.data.shippingLatitude ?? null,
-      receivingContactName: textValue(price.receivingContactName) || form.data.receivingContactName,
-      receivingContactPhone:
-        textValue(price.receivingContactPhone) || form.data.receivingContactPhone,
-      receivingAddressDetail,
-      receivingLongitude: price.receivingLongitude ?? form.data.receivingLongitude ?? null,
-      receivingLatitude: price.receivingLatitude ?? form.data.receivingLatitude ?? null,
-      transportFee: moneyValue(price.transportFee),
-      unloadingFee: moneyValue(price.loadingFee),
-      transferFee: moneyValue(price.transferFee),
-      insuranceFee: moneyValue(price.insuranceFee),
-      packageFee: moneyValue(price.packageFee),
-      otherFee:
-        moneyValue(price.otherFee) + moneyValue(price.fuelFee) + moneyValue(price.serviceFee),
-      cashAmount: moneyValue(price.cashAmount) + moneyValue(price.prepaidAmount),
-      collectAmount: moneyValue(price.collectAmount),
-      monthlyAmount: moneyValue(price.periodicAmount),
-      orderRemark: price.remark ? textValue(price.remark) : form.data.orderRemark
     }
   }
 
@@ -1272,25 +1241,6 @@
       weightKg: nullableNumber(item.weightKg),
       volumeM3: nullableNumber(item.volumeM3)
     }
-  }
-
-  function formatFullAddress(region?: string | null, address?: string | null): string {
-    const regionText = textValue(region)
-    const addressText = textValue(address)
-    if (!regionText) return addressText
-    if (!addressText) return regionText
-    if (isAddressRegionIncluded(regionText, addressText)) return addressText
-    return `${regionText} ${addressText}`
-  }
-
-  function isAddressRegionIncluded(region: string, address: string): boolean {
-    const normalizedRegion = normalizeAddressForCompare(region)
-    const normalizedAddress = normalizeAddressForCompare(address)
-    return Boolean(normalizedRegion && normalizedAddress.startsWith(normalizedRegion))
-  }
-
-  function normalizeAddressForCompare(value: string): string {
-    return value.replace(/[\s,，/／]+/g, '')
   }
 
   function swapContacts(): void {

@@ -1346,6 +1346,7 @@ declare namespace Api {
 
       interface CustomerOption {
         id: string
+        tenantId?: string
         customerCode?: string
         customerName: string
         enabled?: boolean
@@ -1406,6 +1407,7 @@ declare namespace Api {
       interface FavoriteRoute {
         id?: string
         tenantId?: string
+        tenant?: Pick<Api.SystemManage.TenantListItem, 'id' | 'tenantCode' | 'tenantName'> | null
         routeName: string
         customerId: string
         customer?: CustomerOption | null
@@ -1424,7 +1426,7 @@ declare namespace Api {
       }
 
       type FavoriteRouteSearchParams = Partial<
-        Pick<FavoriteRoute, 'customerId' | 'enabled'> &
+        Pick<FavoriteRoute, 'tenantId' | 'customerId' | 'enabled'> &
           Api.Common.CommonSearchParams & {
             keyword?: string
           }
@@ -1892,6 +1894,8 @@ declare namespace Api {
         id: string
         customerCode?: string
         customerName: string
+        addressId?: string | null
+        addressType?: Api.Tms.BasicData.CustomerAddressType
         contactName?: string
         contactPhone?: string
         region?: string
@@ -2134,6 +2138,7 @@ declare namespace Api {
 
       type CustomerSelectorSearchParams = Api.Common.CommonSearchParams & {
         keyword?: string
+        addressType?: Api.Tms.BasicData.CustomerAddressType
       }
     }
 
@@ -2819,6 +2824,7 @@ declare namespace Api {
       interface ExpenseItem {
         id?: string
         tenantId?: string
+        tenant?: Pick<Api.SystemManage.TenantListItem, 'id' | 'tenantCode' | 'tenantName'> | null
         parentId?: string | null
         itemCode: string
         itemName: string
@@ -2837,6 +2843,7 @@ declare namespace Api {
 
       type ExpenseItemSearchParams = Api.Common.CommonSearchParams & {
         keyword?: string
+        tenantId?: string
         parentId?: string | null
         isEnabled?: boolean
       }

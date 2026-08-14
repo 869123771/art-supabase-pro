@@ -314,6 +314,11 @@ html.dark .el-card {
   outline: none !important;
 }
 
+// ElSelect 的可搜索内层 input 由外层 wrapper 统一呈现焦点态，避免生产构建中出现双层焦点框。
+.el-select__input:focus-visible {
+  outline: none;
+}
+
 // 处理移动端组件兼容性
 @media screen and (max-width: 640px) {
   .el-message-box,

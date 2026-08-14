@@ -183,6 +183,7 @@ export {
   fetchExpenseReimbursementList,
   fetchFinanceWorkbench,
   fetchFinanceWaybillOptions,
+  fetchWaybillCostDetail,
   fetchWaybillCostOverview,
   fetchWaybillCostList,
   fetchWaybillExpenseOcrEnabled,

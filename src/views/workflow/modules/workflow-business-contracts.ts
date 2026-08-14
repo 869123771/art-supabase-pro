@@ -31,7 +31,8 @@ const contracts: Record<string, WorkflowBusinessContract> = {
       { key: 'waybillNo', label: '运单号', valueType: 'text' },
       { key: 'occurredOn', label: '发生日期', valueType: 'date' }
     ],
-    routePath: () => '/tms-transportation/finance-center/waybill-cost'
+    routePath: (businessId) =>
+      `/tms-transportation/finance-center/waybill-cost/detail/${businessId}`
   },
   tms_expense_reimbursement: {
     businessType: 'tms_expense_reimbursement',
@@ -47,7 +48,7 @@ const contracts: Record<string, WorkflowBusinessContract> = {
       { key: 'paymentMethod', label: '付款方式', valueType: 'text' },
       { key: 'plannedPaymentDate', label: '计划付款日期', valueType: 'date' }
     ],
-    routePath: () => '/tms-transportation/finance-center/waybill-cost'
+    routePath: () => '/tms-transportation/finance-center/expense-reimbursement'
   },
   tms_invoice: {
     businessType: 'tms_invoice',

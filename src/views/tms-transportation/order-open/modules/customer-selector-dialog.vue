@@ -9,7 +9,7 @@
     row-key="id"
     :label-key="getCustomerLabel"
     :description-key="getCustomerDescription"
-    search-placeholder="请输入客户名称/电话/地址搜索"
+    search-placeholder="请输入客户名称、联系人、电话或地址"
     dialog-width="lg"
     show-pagination
     :page-size="10"
@@ -51,7 +51,7 @@
 
   const selector = reactive<SelectorGroup>({
     mode: 'shipping',
-    title: '选择发货人客户',
+    title: '选择发货地址',
     value: undefined,
     selectedRows: [],
     columns: [
@@ -67,6 +67,7 @@
     const { from, to } = pageInfoHandler({ current: params.page, size: params.pageSize })
     const { data, total } = await fetchCustomerSelectorList({
       keyword: params.keyword,
+      addressType: selector.mode,
       from,
       to
     })
@@ -94,7 +95,7 @@
   async function handleOpen(mode: SelectorMode): Promise<void> {
     Object.assign(selector, {
       mode,
-      title: mode === 'shipping' ? '选择发货人客户' : '选择收货人客户',
+      title: mode === 'shipping' ? '选择发货地址' : '选择收货地址',
       value: undefined,
       selectedRows: []
     })

@@ -16,6 +16,23 @@ type FavoriteRouteSearchParams = Api.Tms.BasicData.FavoriteRouteSearchParams
 type CustomerSelectorItem = Api.Tms.Order.CustomerSelectorItem
 type CustomerSelectorSearchParams = Api.Tms.Order.CustomerSelectorSearchParams
 
+type CustomerSelectorAddress = Pick<
+  CustomerAddress,
+  | 'id'
+  | 'addressType'
+  | 'contactName'
+  | 'contactPhone'
+  | 'region'
+  | 'regionAdcode'
+  | 'addressDetail'
+  | 'longitude'
+  | 'latitude'
+>
+
+interface CustomerSelectorRecord extends CustomerSelectorItem {
+  addresses?: CustomerSelectorAddress[]
+}
+
 interface WriteOptions {
   showMessage?: boolean
 }
@@ -23,6 +40,7 @@ interface WriteOptions {
 interface CustomerOptionParams {
   excludeId?: string
   includeDisabled?: boolean
+  tenantId?: string
 }
 
 export type CustomerDeleteDependencyCode =
@@ -122,17 +140,18 @@ export async function fetchCustomerOptions(
   params: CustomerOptionParams = {},
   options?: ApiRequestOptions
 ) {
-  const { excludeId, includeDisabled = false } = params
+  const { excludeId, includeDisabled = false, tenantId } = params
   let query = supabase
     .from('tms_customer')
     .select(
-      'id, customer_code, customer_name, enabled, contact_name, contact_phone, region, region_adcode, address_detail, longitude, latitude, coordinate_system, coordinate_source, coordinate_status, geocode_provider, geocoded_at, postal_code'
+      'id, tenant_id, customer_code, customer_name, enabled, contact_name, contact_phone, region, region_adcode, address_detail, longitude, latitude, coordinate_system, coordinate_source, coordinate_status, geocode_provider, geocoded_at, postal_code'
     )
     .order('customer_name', { ascending: true })
     .limit(1000)
 
   if (!includeDisabled) query = query.eq('enabled', true)
   if (excludeId) query = query.neq('id', excludeId)
+  if (tenantId) query = query.eq('tenant_id', tenantId)
 
   return await responseHandle<Api.Tms.BasicData.CustomerOption[]>(
     () => withRequestOptions(query, options),
@@ -144,25 +163,77 @@ export async function fetchCustomerSelectorList(
   params: CustomerSelectorSearchParams,
   options?: ApiRequestOptions
 ) {
-  const { from = 0, to = 9, keyword } = params
+  const { from = 0, to = 9, keyword, addressType } = params
+  const addressSelect = addressType
+    ? `,
+      addresses:tms_customer_address!tms_customer_address_customer_id_fkey(
+        id,
+        address_type,
+        contact_name,
+        contact_phone,
+        region,
+        region_adcode,
+        address_detail,
+        longitude,
+        latitude
+      )`
+    : ''
   let query = supabase
     .from('tms_customer')
     .select(
-      'id, customer_code, customer_name, contact_name, contact_phone, region, region_adcode, address_detail, longitude, latitude',
+      `id, customer_code, customer_name, contact_name, contact_phone, region, region_adcode, address_detail, longitude, latitude${addressSelect}`,
       { count: 'exact' }
     )
     .eq('enabled', true)
     .order('create_time', { ascending: false })
     .range(from, to)
+  if (addressType) {
+    query = query
+      .eq('addresses.address_type', addressType)
+      .order('is_default', { ascending: false, referencedTable: 'addresses' })
+      .order('update_time', {
+        ascending: false,
+        nullsFirst: false,
+        referencedTable: 'addresses'
+      })
+      .order('create_time', {
+        ascending: false,
+        nullsFirst: false,
+        referencedTable: 'addresses'
+      })
+      .limit(1, { referencedTable: 'addresses' })
+  }
   if (keyword) {
     query = query.or(
       `customer_name.ilike.%${keyword}%,customer_code.ilike.%${keyword}%,contact_name.ilike.%${keyword}%,contact_phone.ilike.%${keyword}%,address_detail.ilike.%${keyword}%`
     )
   }
-  return await responseHandle<CustomerSelectorItem[]>(() => withRequestOptions(query, options), {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
+  const result = await responseHandle<CustomerSelectorRecord[]>(
+    () => withRequestOptions(query, options),
+    {
+      ignoreCheck: true,
+      showErrorMessage: true
+    }
+  )
+  return {
+    ...result,
+    data: result.data?.map(({ addresses, ...customer }) => {
+      const address = addresses?.[0]
+      if (!address) return customer
+      return {
+        ...customer,
+        addressId: address.id ?? null,
+        addressType: address.addressType,
+        contactName: address.contactName,
+        contactPhone: address.contactPhone,
+        region: address.region,
+        regionAdcode: address.regionAdcode,
+        addressDetail: address.addressDetail,
+        longitude: address.longitude,
+        latitude: address.latitude
+      } satisfies CustomerSelectorItem
+    })
+  }
 }
 
 export async function addCustomer(params: Customer, options: WriteOptions = {}) {
@@ -381,15 +452,19 @@ export async function updateCustomerAddressGeofence(
 export async function fetchCustomerAddressOptions(
   params: {
     customerId?: string
+    tenantId?: string
     addressType?: CustomerAddress['addressType']
   } = {}
 ) {
   let query = supabase
     .from('tms_customer_address')
-    .select('*')
+    .select(
+      '*, customer:tms_customer!tms_customer_address_customer_id_fkey(id, customer_code, customer_name)'
+    )
     .order('is_default', { ascending: false })
     .order('update_time', { ascending: false, nullsFirst: false })
   if (params.customerId) query = query.eq('customer_id', params.customerId)
+  if (params.tenantId) query = query.eq('tenant_id', params.tenantId)
   if (params.addressType) query = query.eq('address_type', params.addressType)
   return await responseHandle<CustomerAddress[]>(() => query, {
     ignoreCheck: true,
@@ -401,17 +476,28 @@ export async function fetchFavoriteRouteList(
   params: FavoriteRouteSearchParams,
   options?: ApiRequestOptions
 ) {
-  const { from = 0, to = 9, customerId, enabled, keyword } = params
+  const { from = 0, to = 9, tenantId, customerId, enabled, keyword } = params
   let query = supabase
     .from('tms_favorite_route')
     .select(
       `
         *,
+        tenant:sys_tenant!tms_favorite_route_tenant_id_fkey(id, tenant_code, tenant_name),
         customer:tms_customer!tms_favorite_route_customer_id_fkey(
           id, customer_code, customer_name
         ),
-        origin_address:tms_customer_address!tms_favorite_route_origin_address_id_fkey(*),
-        destination_address:tms_customer_address!tms_favorite_route_destination_address_id_fkey(*)
+        origin_address:tms_customer_address!tms_favorite_route_origin_address_id_fkey(
+          *,
+          customer:tms_customer!tms_customer_address_customer_id_fkey(
+            id, customer_code, customer_name
+          )
+        ),
+        destination_address:tms_customer_address!tms_favorite_route_destination_address_id_fkey(
+          *,
+          customer:tms_customer!tms_customer_address_customer_id_fkey(
+            id, customer_code, customer_name
+          )
+        )
       `,
       { count: 'exact' }
     )
@@ -419,6 +505,7 @@ export async function fetchFavoriteRouteList(
     .order('update_time', { ascending: false, nullsFirst: false })
     .range(from, to)
   if (customerId) query = query.eq('customer_id', customerId)
+  if (tenantId) query = query.eq('tenant_id', tenantId)
   if (enabled !== undefined) query = query.eq('enabled', enabled)
   if (keyword?.trim()) {
     const trimmedKeyword = keyword.trim()

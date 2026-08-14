@@ -131,6 +131,14 @@
     }
   }
 
+  &__contact-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    justify-content: flex-end;
+    min-width: 0;
+  }
+
   &__contact-mark {
     display: inline-flex;
     align-items: center;

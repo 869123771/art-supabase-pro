@@ -132,7 +132,7 @@
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import dayjs from 'dayjs'
   import { ElMessage, ElTag } from 'element-plus'
-  import { useRoute } from 'vue-router'
+  import { useRoute, useRouter } from 'vue-router'
   import type { ComputedRef, UnwrapNestedRefs } from 'vue'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type { ArtTableQueryExpose } from '@/components/core/tables/art-table-query/index.vue'
@@ -157,6 +157,7 @@
   import WorkflowTransferDialog from './modules/workflow-transfer-dialog.vue'
   import WorkflowDelegationDialog from './modules/workflow-delegation-dialog.vue'
   import WorkflowInstanceDrawer from './modules/workflow-instance-drawer.vue'
+  import { getWorkflowBusinessContract } from '../modules/workflow-business-contracts'
 
   defineOptions({ name: 'WorkflowWorkbench' })
 
@@ -202,6 +203,7 @@
   const { getUserInfo, getDictMap, isPlatformSuper } = storeToRefs(userStore)
   const { confirmAction, promptReason } = useArtFeedback()
   const route = useRoute()
+  const router = useRouter()
   const activeTab = ref<ActiveTab>('pending')
   const pendingTableRef = ref<ArtTableQueryExpose>()
   const globalTableRef = ref<ArtTableQueryExpose>()
@@ -248,12 +250,37 @@
   const openInstance = (instanceId?: string) =>
     instanceId && instanceDrawerRef.value?.handleOpen(instanceId)
 
-  const createBusinessCell = (instance?: Instance) => (
-    <div class="workflow-workbench__business-cell">
-      <strong>{instance?.businessTitle || '--'}</strong>
-      <small>{instance?.definition?.name || instance?.businessId || '--'}</small>
-    </div>
-  )
+  const createBusinessCell = (instance?: Instance) => {
+    const contract = getWorkflowBusinessContract(instance?.businessType || '')
+    const routePath =
+      instance?.businessId && contract.businessType !== 'generic'
+        ? contract.routePath(instance.businessId)
+        : ''
+
+    return (
+      <div class="workflow-workbench__business-cell">
+        {routePath ? (
+          <a
+            class="workflow-workbench__business-link"
+            href={router.resolve(routePath).href}
+            title={`查看${instance?.businessTitle || '业务单据'}详情`}
+            onClick={(event: MouseEvent) => navigateToBusinessDocument(event, routePath)}
+          >
+            {instance?.businessTitle || '--'}
+          </a>
+        ) : (
+          <strong>{instance?.businessTitle || '--'}</strong>
+        )}
+        <small>{instance?.definition?.name || instance?.businessId || '--'}</small>
+      </div>
+    )
+  }
+
+  const navigateToBusinessDocument = (event: MouseEvent, routePath: string): void => {
+    event.preventDefault()
+    event.stopPropagation()
+    window.location.assign(router.resolve(routePath).href)
+  }
 
   const pendingTable: UnwrapNestedRefs<TableGroup<TaskSearch, Task>> = reactive<
     TableGroup<TaskSearch, Task>
@@ -959,6 +986,26 @@
     :deep(.workflow-workbench__assignee-cell small) {
       font-size: 12px;
       color: var(--art-gray-600);
+    }
+
+    :deep(.workflow-workbench__business-link) {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-weight: 600;
+      color: var(--theme-color);
+      white-space: nowrap;
+      text-decoration: none;
+
+      &:hover {
+        text-decoration: underline;
+        text-underline-offset: 3px;
+      }
+
+      &:focus-visible {
+        outline: 2px solid var(--theme-color);
+        outline-offset: 2px;
+        border-radius: var(--el-border-radius-small);
+      }
     }
 
     :deep(.workflow-workbench__actions) {

@@ -33,6 +33,7 @@
 
 <script setup lang="tsx">
   import { ElMessage } from 'element-plus'
+  import { storeToRefs } from 'pinia'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type {
     ArtTableQueryExpose,
@@ -43,6 +44,7 @@
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import TmsWorkspaceHeader from '@/views/tms-transportation/modules/tms-workspace-header.vue'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import { useUserStore } from '@/store/modules/user'
   import { ColumnOption, DialogType } from '@/types'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatWithDayjs } from '@/utils/time'
@@ -52,6 +54,7 @@
     fetchCustomerOptions,
     fetchFavoriteRouteList
   } from '@/api/tms'
+  import { fetchGetTenantList } from '@/api/system-manage'
   import FavoriteRouteDialog from './modules/favorite-route-dialog.vue'
 
   defineOptions({ name: 'TmsFavoriteRoute' })
@@ -67,21 +70,40 @@
   }
 
   interface DialogExpose {
-    handleOpen: (row?: FavoriteRoute) => Promise<void>
+    handleOpen: (row?: FavoriteRoute, tenantId?: string) => Promise<void>
   }
 
   const { confirmAction } = useArtFeedback()
+  const { isPlatformSuper } = storeToRefs(useUserStore())
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<DialogExpose>()
-  const table = reactive<TableGroup>({ searchQuery: { keyword: '', customerId: undefined } })
+  const tenantOptions = ref<Array<{ label: string; value: string }>>([])
+  const table = reactive<TableGroup>({
+    searchQuery: { keyword: '', tenantId: undefined, customerId: undefined }
+  })
 
-  const searchItems: SearchFormItem[] = [
+  const searchItems = computed<SearchFormItem[]>(() => [
     {
       label: '关键字',
       key: 'keyword',
       type: 'input',
       props: { clearable: true, placeholder: '线路名称或备注' }
     },
+    ...(isPlatformSuper.value
+      ? [
+          {
+            label: '所属租户',
+            key: 'tenantId',
+            type: 'select' as const,
+            props: {
+              clearable: true,
+              filterable: true,
+              options: tenantOptions.value,
+              placeholder: '全部租户'
+            }
+          }
+        ]
+      : []),
     {
       label: '客户',
       key: 'customerId',
@@ -110,7 +132,7 @@
         ]
       }
     }
-  ]
+  ])
 
   const getFullAddress = (address?: Api.Tms.BasicData.CustomerAddress | null): string =>
     [address?.region, address?.addressDetail].filter(Boolean).join(' ') || '-'
@@ -142,6 +164,25 @@
         </div>
       )
     },
+    ...(isPlatformSuper.value
+      ? [
+          {
+            prop: 'tenant',
+            label: '所属租户',
+            minWidth: 180,
+            formatter: (row: FavoriteRoute) => (
+              <div class="favorite-route-page__tenant">
+                <strong title={row.tenant?.tenantName || '未识别租户'}>
+                  {row.tenant?.tenantName || '未识别租户'}
+                </strong>
+                <small title={row.tenant?.tenantCode || row.tenantId || '--'} translate="no">
+                  {row.tenant?.tenantCode || row.tenantId || '--'}
+                </small>
+              </div>
+            )
+          } satisfies ColumnOption<FavoriteRoute>
+        ]
+      : []),
     {
       prop: 'routeEndpoints',
       label: '装卸线路',
@@ -204,8 +245,12 @@
     }
   ]
 
-  const headerActions: ArtTableQueryHeaderAction[] = [
-    { type: 'add', label: '新增线路', onClick: () => openDialog() },
+  const headerActions = computed<ArtTableQueryHeaderAction[]>(() => [
+    {
+      type: 'add',
+      label: '新增线路',
+      onClick: () => openDialog(undefined, table.searchQuery.tenantId)
+    },
     {
       type: 'delete',
       content: ({ selectedCount }: { selectedCount: number }) =>
@@ -222,15 +267,15 @@
         await tableQueryRef.value?.refreshRemove()
       }
     }
-  ]
+  ])
 
   const fetchTableData = (params: TableParams) => {
     const { from, to } = pageInfoHandler({ current: params.current, size: params.size })
     return fetchFavoriteRouteList({ ...params, from, to })
   }
 
-  const openDialog = (row?: FavoriteRoute): void => {
-    void dialogRef.value?.handleOpen(row)
+  const openDialog = (row?: FavoriteRoute, tenantId?: string): void => {
+    void dialogRef.value?.handleOpen(row, tenantId)
   }
 
   const handleSaveSuccess = (type: DialogType): void => {
@@ -241,8 +286,9 @@
 
   const handleDelete = async (row: FavoriteRoute): Promise<void> => {
     if (!row.id) return
+    const tenantContext = isPlatformSuper.value ? `所属租户：${resolveTenantLabel(row)}。` : ''
     try {
-      await confirmAction(`确定删除常用线路“${row.routeName}”吗？`, '删除确认', {
+      await confirmAction(`确定删除常用线路“${row.routeName}”吗？${tenantContext}`, '删除确认', {
         confirmButtonText: '删除',
         cancelButtonText: '取消',
         type: 'warning',
@@ -254,6 +300,26 @@
       // 用户取消删除时无需提示。
     }
   }
+
+  const resolveTenantLabel = (row: FavoriteRoute): string => {
+    const tenantName = row.tenant?.tenantName?.trim()
+    const tenantCode = row.tenant?.tenantCode?.trim()
+    if (tenantName && tenantCode) return `${tenantName}（${tenantCode}）`
+    return tenantName || tenantCode || row.tenantId || '未识别租户'
+  }
+
+  const loadTenantOptions = async (): Promise<void> => {
+    if (!isPlatformSuper.value) return
+    const { data } = await fetchGetTenantList({ from: 0, to: 999 })
+    tenantOptions.value = (data ?? [])
+      .filter((tenant) => tenant.id)
+      .map((tenant) => ({
+        label: `${tenant.tenantName}（${tenant.tenantCode}）`,
+        value: String(tenant.id)
+      }))
+  }
+
+  onMounted(() => void loadTenantOptions())
 </script>
 
 <style scoped lang="scss">
@@ -336,6 +402,24 @@
         height: 6px;
         margin-left: 10px;
         background: var(--el-border-color);
+      }
+    }
+
+    :deep(.favorite-route-page__tenant) {
+      min-width: 0;
+
+      strong,
+      small {
+        display: block;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      small {
+        margin-top: 3px;
+        font-size: 12px;
+        color: var(--el-text-color-secondary);
       }
     }
 

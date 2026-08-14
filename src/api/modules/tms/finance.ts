@@ -205,10 +205,12 @@ const createExpenseItemWritePayload = (params: ExpenseItem) => ({
 })
 
 export async function fetchExpenseItemList(params: ExpenseItemSearchParams = {}) {
-  const { from = 0, to = 999, keyword, isEnabled, parentId } = params
+  const { from = 0, to = 999, keyword, tenantId, isEnabled, parentId } = params
   let query = supabase
     .from('tms_expense_item')
-    .select('*', { count: 'exact' })
+    .select('*, tenant:sys_tenant!tms_expense_item_tenant_id_fkey(id, tenant_code, tenant_name)', {
+      count: 'exact'
+    })
     .order('sort', { ascending: true })
     .order('item_code', { ascending: true })
     .range(from, to)
@@ -218,6 +220,7 @@ export async function fetchExpenseItemList(params: ExpenseItemSearchParams = {})
       `item_code.ilike.%${value}%,item_name.ilike.%${value}%,remark.ilike.%${value}%`
     )
   }
+  if (tenantId) query = query.eq('tenant_id', tenantId)
   if (typeof isEnabled === 'boolean') query = query.eq('is_enabled', isEnabled)
   if (parentId === null) query = query.is('parent_id', null)
   else if (parentId) query = query.eq('parent_id', parentId)
@@ -302,6 +305,13 @@ export async function fetchWaybillCostList(params: WaybillCostSearchParams) {
     ignoreCheck: true,
     showErrorMessage: true
   })
+}
+
+export async function fetchWaybillCostDetail(id: string) {
+  return await responseHandle<WaybillCost | null>(
+    () => supabase.from('tms_waybill_cost').select(WAYBILL_COST_SELECT).eq('id', id).maybeSingle(),
+    { ignoreCheck: true, showErrorMessage: true }
+  )
 }
 
 export async function exportWaybillCostList(

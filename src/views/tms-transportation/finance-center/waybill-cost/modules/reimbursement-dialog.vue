@@ -45,7 +45,7 @@
   import { uniq } from 'lodash-es'
   import { useMediaQuery } from '@vueuse/core'
   import type { ComputedRef } from 'vue'
-  import type { FormRules } from 'element-plus'
+  import { ElMessage, type FormRules } from 'element-plus'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
@@ -57,6 +57,10 @@
   import { useUserStore } from '@/store/modules/user'
   import { formatCurrencyValue } from '@/utils/ui'
   import { useDocumentNumberRule } from '@/hooks/core/useDocumentNumberRule'
+  import {
+    cloneReimbursementExpenses,
+    validateReimbursementSelection
+  } from './reimbursement-selection'
 
   defineOptions({ name: 'TmsWaybillExpenseReimbursementDialog' })
 
@@ -239,8 +243,14 @@
   }
 
   async function handleOpen(expenses: Expense[]): Promise<void> {
+    const validation = validateReimbursementSelection(expenses)
+    if (!validation.valid) {
+      ElMessage.warning(validation.message)
+      return
+    }
+
     await Promise.all([resetForm(), reimbursementNumber.loadRule()])
-    state.expenses = structuredClone(toRaw(expenses))
+    state.expenses = cloneReimbursementExpenses(expenses)
     const suggestedPayee =
       expenses.find((item) => item.payeeName)?.payeeName ||
       expenses.find((item) => item.driverNameSnapshot)?.driverNameSnapshot ||

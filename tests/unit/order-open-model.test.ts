@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
+  createCustomerPriceBusinessPatch,
+  createFavoriteRouteContactPatch,
   createInitialForm,
+  formatOrderAddress,
   normalizeOrderPayload
 } from '../../src/views/tms-transportation/order-open/modules/order-open-model'
 
@@ -51,4 +54,107 @@ test('order payload normalizes monetary totals, stations and cargo summary', () 
   assert.equal(payload.cargoItems?.[0].sourceContractNo, 'HT-001')
   assert.equal(payload.cargoItems?.[0].unitPrice, 10.5)
   assert.equal('shippingCustomerName' in payload, false)
+})
+
+test('customer price patch updates commercial values without touching either contact side', () => {
+  const price: Api.Tms.BasicData.CustomerPrice = {
+    customerId: 'customer-1',
+    originRegion: '发货区域',
+    destinationRegion: '收货区域',
+    transportType: 'road',
+    billingMethod: 'fixed',
+    shippingContactName: '模板发货人',
+    shippingContactPhone: '13000000001',
+    shippingAddressDetail: '模板发货地址',
+    receivingContactName: '模板收货人',
+    receivingContactPhone: '13000000002',
+    receivingAddressDetail: '模板收货地址',
+    transportFee: 100,
+    loadingFee: 20,
+    fuelFee: 3,
+    serviceFee: 2,
+    otherFee: 5,
+    collectAmount: 130,
+    remark: '价格备注'
+  }
+
+  const patch = createCustomerPriceBusinessPatch(price, '原备注')
+
+  assert.deepEqual(patch, {
+    transportFee: 100,
+    unloadingFee: 20,
+    transferFee: 0,
+    insuranceFee: 0,
+    packageFee: 0,
+    otherFee: 10,
+    cashAmount: 0,
+    collectAmount: 130,
+    monthlyAmount: 0,
+    orderRemark: '价格备注'
+  })
+  assert.equal('shippingCustomerId' in patch, false)
+  assert.equal('shippingContactName' in patch, false)
+  assert.equal('shippingAddressDetail' in patch, false)
+  assert.equal('receivingCustomerId' in patch, false)
+  assert.equal('receivingContactName' in patch, false)
+  assert.equal('receivingAddressDetail' in patch, false)
+})
+
+test('favorite route patch fills both endpoint customers, contacts and addresses independently', () => {
+  const route: Api.Tms.BasicData.FavoriteRoute = {
+    id: 'route-1',
+    routeName: '矿区到仓库',
+    customerId: 'route-owner',
+    customer: { id: 'route-owner', customerName: '线路所属客户' },
+    originAddressId: 'origin-address',
+    destinationAddressId: 'destination-address',
+    enabled: true,
+    originAddress: {
+      id: 'origin-address',
+      customerId: 'shipper-1',
+      customer: { id: 'shipper-1', customerName: '发货客户' },
+      addressType: 'shipping',
+      contactName: '发货联系人',
+      contactPhone: '13000000001',
+      region: '河南省/许昌市/禹州市',
+      addressDetail: '矿区一号门',
+      longitude: 113.4,
+      latitude: 34.1
+    },
+    destinationAddress: {
+      id: 'destination-address',
+      customerId: 'receiver-1',
+      customer: { id: 'receiver-1', customerName: '收货客户' },
+      addressType: 'receiving',
+      contactName: '收货联系人',
+      contactPhone: '13000000002',
+      region: '山西省/长治市/潞州区',
+      addressDetail: '仓库二号门',
+      longitude: 113.1,
+      latitude: 36.2
+    }
+  }
+
+  assert.deepEqual(createFavoriteRouteContactPatch(route), {
+    shippingCustomerId: 'shipper-1',
+    shippingCustomerName: '发货客户',
+    shippingAddressId: 'origin-address',
+    shippingContactName: '发货联系人',
+    shippingContactPhone: '13000000001',
+    shippingAddressDetail: '河南省/许昌市/禹州市 矿区一号门',
+    shippingLongitude: 113.4,
+    shippingLatitude: 34.1,
+    receivingCustomerId: 'receiver-1',
+    receivingCustomerName: '收货客户',
+    receivingAddressId: 'destination-address',
+    receivingContactName: '收货联系人',
+    receivingContactPhone: '13000000002',
+    receivingAddressDetail: '山西省/长治市/潞州区 仓库二号门',
+    receivingLongitude: 113.1,
+    receivingLatitude: 36.2
+  })
+  assert.equal(
+    formatOrderAddress('河南省/许昌市/禹州市', '河南省许昌市禹州市矿区一号门'),
+    '河南省许昌市禹州市矿区一号门'
+  )
 })

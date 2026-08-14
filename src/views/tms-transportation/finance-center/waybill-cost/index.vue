@@ -9,19 +9,22 @@
       aria-labelledby="waybill-cost-title"
     >
       <div class="waybill-cost__hero-copy">
-        <span class="waybill-cost__hero-icon"><ArtSvgIcon icon="ri:money-cny-circle-line" /></span>
+        <span class="waybill-cost__hero-icon"><ArtSvgIcon :icon="pageIdentity.icon" /></span>
         <div>
-          <span>运单成本闭环</span>
-          <h1 id="waybill-cost-title">运单费用</h1>
-          <p>统一登记承运、在途与其他项目费用，从票据识别、审核到报销付款形成完整成本台账。</p>
+          <span>{{ pageIdentity.eyebrow }}</span>
+          <h1 id="waybill-cost-title">{{ pageIdentity.title }}</h1>
+          <p>{{ pageIdentity.description }}</p>
         </div>
       </div>
       <div class="waybill-cost__hero-actions">
-        <ElButton plain @click="void ocrLogDrawerRef?.handleOpen()">
+        <ElButton v-if="activeTab === 'expense'" plain @click="void ocrLogDrawerRef?.handleOpen()">
           <ArtSvgIcon icon="ri:file-search-line" /> OCR 识别记录
         </ElButton>
-        <ElButton type="primary" @click="openExpenseDialog()">
+        <ElButton v-if="activeTab === 'expense'" type="primary" @click="openExpenseDialog()">
           <ArtSvgIcon icon="ri:add-line" /> 新增运单费用
+        </ElButton>
+        <ElButton v-else type="primary" @click="openApprovedExpenses">
+          <ArtSvgIcon icon="ri:exchange-cny-line" /> 选择已审费用
         </ElButton>
       </div>
     </header>
@@ -104,7 +107,7 @@
 </template>
 
 <script setup lang="tsx">
-  import { ElButton } from 'element-plus'
+  import { ElButton, ElMessage } from 'element-plus'
   import type { ComputedRef } from 'vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
@@ -140,6 +143,7 @@
   import MasterDeleteProcessingNotice from '@/components/business/master-delete-processing-notice/index.vue'
   import WorkflowBusinessHistoryDrawer from '@/components/business/workflow-business-history/workflow-business-history-drawer.vue'
   import type { WorkflowBusinessHistoryDrawerExpose } from '@/components/business/workflow-business-history/types'
+  import { validateReimbursementSelection } from './modules/reimbursement-selection'
 
   defineOptions({ name: 'TmsWaybillCost' })
 
@@ -184,7 +188,9 @@
   const userStore = useUserStore()
   const { getDictMap } = storeToRefs(userStore)
   const { confirmAction } = useArtFeedback()
-  const activeTab = ref<'expense' | 'reimbursement'>('expense')
+  const activeTab = ref<'expense' | 'reimbursement'>(
+    route.name === 'TmsExpenseReimbursement' ? 'reimbursement' : 'expense'
+  )
   const expenseFocusMode = ref(false)
   const reimbursementFocusMode = ref(false)
   const focusMode = computed(() =>
@@ -208,6 +214,22 @@
     pendingPaymentAmount: 0,
     paidAmount: 0
   })
+  const pageIdentity = computed(() =>
+    activeTab.value === 'expense'
+      ? {
+          eyebrow: '运单成本闭环',
+          title: '运单费用',
+          description:
+            '统一登记承运、在途与其他项目费用，从票据识别、审核到报销付款形成完整成本台账。',
+          icon: 'ri:money-cny-circle-line'
+        }
+      : {
+          eyebrow: '费用报销闭环',
+          title: '费用报销单',
+          description: '汇总同一运单的已审费用，集中完成报销审批、出纳付款与逐笔核销。',
+          icon: 'ri:refund-2-line'
+        }
+  )
 
   const workflowSteps = [
     { title: '费用上报', description: '绑定运单并上传票据' },
@@ -309,10 +331,12 @@
         key: 'convert',
         label: '转费用报销',
         selectionRequired: true,
-        buttonProps: { type: 'primary', plain: true },
-        disabled: ({ selectedRows }) => (selectedRows as Expense[]).some((row) => !canConvert(row)),
-        onClick: ({ selectedRows }) =>
-          void reimbursementDialogRef.value?.handleOpen(selectedRows as Expense[])
+        buttonProps: {
+          type: 'primary',
+          plain: true,
+          title: '支持单选，或多选同一个运单下的已审费用'
+        },
+        onClick: ({ selectedRows }) => handleReimbursementSelection(selectedRows as Expense[])
       },
       {
         key: 'ocrLogs',
@@ -361,19 +385,32 @@
         key: 'backToExpense',
         label: '从已审费用生成',
         buttonProps: { type: 'primary', plain: true },
-        onClick: () => {
-          activeTab.value = 'expense'
-          expenseTable.search.auditStatus = 'approved'
-          expenseTable.search.settlementStatus = 'unsettled'
-          void nextTick(() => expenseTableRef.value?.getData())
-        }
+        onClick: openApprovedExpenses
       }
     ])
   })
 
   const expenseColumnsFactory = (): ColumnOption<Expense>[] => [
     { type: 'selection', width: 50, fixed: 'left', reserveSelection: true },
-    { prop: 'costNo', label: '费用单号', width: 195, fixed: 'left' },
+    {
+      prop: 'costNo',
+      label: '费用单号',
+      width: 195,
+      fixed: 'left',
+      formatter: (row) =>
+        row.id ? (
+          <a
+            class="waybill-cost__document-link"
+            href={router.resolve(expenseDetailPath(row.id)).href}
+            title={`查看费用单 ${row.costNo || row.id} 详情`}
+            onClick={(event: MouseEvent) => navigateToExpenseDetail(event, row.id as string)}
+          >
+            {row.costNo || '--'}
+          </a>
+        ) : (
+          <span>{row.costNo || '--'}</span>
+        )
+    },
     { prop: 'waybillNoSnapshot', label: '运单号', width: 180, fixed: 'left' },
     {
       prop: 'plateNoSnapshot',
@@ -520,6 +557,16 @@
     return fetchExpenseReimbursementList({ ...params, from, to })
   }
 
+  function expenseDetailPath(id: string): string {
+    return `/tms-transportation/finance-center/waybill-cost/detail/${id}`
+  }
+
+  function navigateToExpenseDetail(event: MouseEvent, id: string): void {
+    event.preventDefault()
+    event.stopPropagation()
+    window.location.assign(router.resolve(expenseDetailPath(id)).href)
+  }
+
   function emptyText(value: unknown): string {
     return String(value || '--')
   }
@@ -542,6 +589,22 @@
       row.settlementStatus === 'unsettled' &&
       row.expenseItem?.reimbursementAllowed !== false
     )
+  }
+
+  function handleReimbursementSelection(expenses: Expense[]): void {
+    const validation = validateReimbursementSelection(expenses)
+    if (!validation.valid) {
+      ElMessage.warning(validation.message)
+      return
+    }
+    void reimbursementDialogRef.value?.handleOpen(expenses)
+  }
+
+  function openApprovedExpenses(): void {
+    activeTab.value = 'expense'
+    expenseTable.search.auditStatus = 'approved'
+    expenseTable.search.settlementStatus = 'unsettled'
+    void nextTick(() => expenseTableRef.value?.getData())
   }
 
   function expenseMoreActions(row: Expense): ButtonMoreItem[] {
@@ -587,7 +650,7 @@
     const actions: Record<string, () => void> = {
       submit: () => void handleExpenseSubmit(row),
       delete: () => void handleExpenseDelete(row),
-      convert: () => void reimbursementDialogRef.value?.handleOpen([row]),
+      convert: () => handleReimbursementSelection([row]),
       aiAudit: () =>
         row.id
           ? void costAuditDrawerRef.value?.handleOpen({
@@ -743,6 +806,21 @@
 
   onMounted(() => {
     void Promise.all([userStore.fetchDictList(), loadOverview()])
+  })
+
+  watch(
+    () => route.name,
+    (name) => {
+      if (name === 'TmsWaybillCost') activeTab.value = 'expense'
+      if (name === 'TmsExpenseReimbursement') activeTab.value = 'reimbursement'
+    }
+  )
+
+  watch(activeTab, (tab) => {
+    if (!['TmsWaybillCost', 'TmsExpenseReimbursement'].includes(String(route.name))) return
+    const targetName = tab === 'expense' ? 'TmsWaybillCost' : 'TmsExpenseReimbursement'
+    if (route.name === targetName || !router.hasRoute(targetName)) return
+    void router.replace({ name: targetName, query: route.query })
   })
 
   watch(
@@ -953,6 +1031,28 @@
           margin-left: auto;
           color: var(--art-text-gray-300);
         }
+      }
+    }
+
+    :deep(.waybill-cost__document-link) {
+      display: inline-block;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-weight: 600;
+      color: var(--theme-color);
+      white-space: nowrap;
+      text-decoration: none;
+
+      &:hover {
+        text-decoration: underline;
+        text-underline-offset: 3px;
+      }
+
+      &:focus-visible {
+        outline: 2px solid var(--theme-color);
+        outline-offset: 2px;
+        border-radius: var(--el-border-radius-small);
       }
     }
 

@@ -2,6 +2,9 @@ import { cloneDeep, isNil, omit, round, toNumber, trim } from 'lodash-es'
 
 export type OrderRecord = Api.Tms.Order.OrderRecord
 export type CargoItem = Api.Tms.Order.CargoItem
+export type CustomerPrice = Api.Tms.BasicData.CustomerPrice
+export type FavoriteRoute = Api.Tms.BasicData.FavoriteRoute
+export type CustomerAddress = Api.Tms.BasicData.CustomerAddress
 
 export type OrderForm = OrderRecord & {
   imageUrls: string[]
@@ -133,6 +136,53 @@ export function textValue(value?: string | null): string {
   return trim(String(value ?? ''))
 }
 
+export function formatOrderAddress(region?: string | null, address?: string | null): string {
+  const regionText = textValue(region)
+  const addressText = textValue(address)
+  if (!regionText) return addressText
+  if (!addressText) return regionText
+  const normalizedRegion = regionText.replace(/[\s,，/／]+/g, '')
+  const normalizedAddress = addressText.replace(/[\s,，/／]+/g, '')
+  if (normalizedRegion && normalizedAddress.startsWith(normalizedRegion)) return addressText
+  return `${regionText} ${addressText}`
+}
+
+function resolveEndpointCustomer(
+  route: FavoriteRoute,
+  address?: CustomerAddress | null
+): Api.Tms.BasicData.CustomerOption | null {
+  if (address?.customer) return address.customer
+  if (!address?.customerId || address.customerId === route.customerId) return route.customer ?? null
+  return null
+}
+
+export function createFavoriteRouteContactPatch(route: FavoriteRoute): Partial<OrderForm> {
+  const origin = route.originAddress
+  const destination = route.destinationAddress
+  const originCustomer = resolveEndpointCustomer(route, origin)
+  const destinationCustomer = resolveEndpointCustomer(route, destination)
+
+  return {
+    shippingCustomerId: origin?.customerId || route.customerId || null,
+    shippingCustomerName: originCustomer?.customerName || '',
+    shippingAddressId: origin?.id || route.originAddressId || null,
+    shippingContactName: textValue(origin?.contactName) || originCustomer?.customerName || '',
+    shippingContactPhone: textValue(origin?.contactPhone),
+    shippingAddressDetail: formatOrderAddress(origin?.region, origin?.addressDetail),
+    shippingLongitude: origin?.longitude ?? null,
+    shippingLatitude: origin?.latitude ?? null,
+    receivingCustomerId: destination?.customerId || route.customerId || null,
+    receivingCustomerName: destinationCustomer?.customerName || '',
+    receivingAddressId: destination?.id || route.destinationAddressId || null,
+    receivingContactName:
+      textValue(destination?.contactName) || destinationCustomer?.customerName || '',
+    receivingContactPhone: textValue(destination?.contactPhone),
+    receivingAddressDetail: formatOrderAddress(destination?.region, destination?.addressDetail),
+    receivingLongitude: destination?.longitude ?? null,
+    receivingLatitude: destination?.latitude ?? null
+  }
+}
+
 export function nullableText(value?: string | null): string | null {
   const text = textValue(value)
   return text || null
@@ -146,6 +196,24 @@ export function nullableNumber(value?: number | string | null): number | null {
 
 export function moneyValue(value?: number | string | null): number {
   return round(nullableNumber(value) ?? 0, 2)
+}
+
+export function createCustomerPriceBusinessPatch(
+  price: CustomerPrice,
+  currentRemark?: string | null
+): Partial<OrderForm> {
+  return {
+    transportFee: moneyValue(price.transportFee),
+    unloadingFee: moneyValue(price.loadingFee),
+    transferFee: moneyValue(price.transferFee),
+    insuranceFee: moneyValue(price.insuranceFee),
+    packageFee: moneyValue(price.packageFee),
+    otherFee: moneyValue(price.otherFee) + moneyValue(price.fuelFee) + moneyValue(price.serviceFee),
+    cashAmount: moneyValue(price.cashAmount) + moneyValue(price.prepaidAmount),
+    collectAmount: moneyValue(price.collectAmount),
+    monthlyAmount: moneyValue(price.periodicAmount),
+    orderRemark: price.remark ? textValue(price.remark) : textValue(currentRemark)
+  }
 }
 
 export function normalizeCargoItems(items?: CargoItem[]): CargoItem[] {
