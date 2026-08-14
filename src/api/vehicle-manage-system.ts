@@ -1,7 +1,7 @@
 import { isJavaApi } from '@/config/api-provider'
 import * as javaVehicleApi from '@/api/providers/java/vehicle'
 import * as supabaseVehicleApi from '@/api/providers/supabase/vehicle'
-import { actWorkflowByBusiness, startWorkflow } from '@/api/workflow'
+import { startWorkflow } from '@/api/workflow'
 
 const vehicleApi = isJavaApi ? javaVehicleApi : supabaseVehicleApi
 
@@ -53,25 +53,6 @@ export async function submitVehicleArchiveForApproval(id: string, plateNo: strin
     businessId: id,
     businessTitle: `车辆档案 ${plateNo}`
   })
-}
-export async function auditVehicleArchive(params: {
-  id: string
-  auditStatus: 'approved' | 'rejected'
-  auditRemark?: string
-}) {
-  return await actWorkflowByBusiness({
-    businessType: 'vehicle_archive',
-    businessId: params.id,
-    action: params.auditStatus === 'approved' ? 'approve' : 'reject',
-    comment: params.auditRemark || null
-  })
-}
-export async function auditVehicleArchiveBatch(params: {
-  ids: string[]
-  auditStatus: 'approved' | 'rejected'
-  auditRemark?: string
-}) {
-  return await Promise.all(params.ids.map((id) => auditVehicleArchive({ ...params, id })))
 }
 
 export const fetchVehicleArchiveOptions = supabaseVehicleApi.fetchVehicleArchiveOptions

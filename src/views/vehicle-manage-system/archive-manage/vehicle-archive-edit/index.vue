@@ -190,9 +190,14 @@
   const pageSubtitle = computed(() =>
     shouldResubmit.value
       ? '修正驳回问题；保存成功后将自动重新提交审批'
-      : '维护车辆基础资料、车身参数、发动机参数和运营信息'
+      : isEdit.value
+        ? '维护车辆基础资料、车身参数、发动机参数和运营信息'
+        : '填写完整车辆资料；提交后将自动进入配置的审批流程'
   )
-  const saveButtonLabel = computed(() => (shouldResubmit.value ? '保存并重新提交' : '保存'))
+  const saveButtonLabel = computed(() => {
+    if (!isEdit.value) return '提交审核'
+    return shouldResubmit.value ? '保存并重新提交' : '保存'
+  })
 
   interface FormExpose {
     validate: () => Promise<boolean>
@@ -1013,9 +1018,7 @@
   }
 
   const goBack = (): void => {
-    const source =
-      route.query.source === 'manage' ? 'vehicle-archive-manage' : 'vehicle-archive-entry'
-    void router.push(`/vehicle-manage-system/archive-manage/${source}`)
+    void router.push('/vehicle-manage-system/vehicle-archive-manage')
   }
 
   const dateProps = {

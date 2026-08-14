@@ -9,7 +9,6 @@ export type PartsSearchParams = Api.VehicleMgtSys.BasicInfo.PartsSearchParams
 
 export type VehicleArchive = Api.VehicleMgtSys.ArchiveManage.VehicleArchive
 export type VehicleArchiveSearchParams = Api.VehicleMgtSys.ArchiveManage.VehicleArchiveSearchParams
-export type VehicleArchiveAuditStatus = Api.VehicleMgtSys.ArchiveManage.AuditStatus
 export type VehicleArchiveWritePayload = Record<string, unknown> & { id?: string }
 
 export interface VehicleArchiveDeleteRelatedCount {

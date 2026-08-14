@@ -90,6 +90,7 @@
   } from '@/api/tms'
   import { fetchGetTenantList } from '@/api/system-manage'
   import { useUserStore } from '@/store/modules/user'
+  import FavoriteRouteAddressOption from './favorite-route-address-option.vue'
 
   defineOptions({ name: 'TmsFavoriteRouteDialog' })
 
@@ -190,12 +191,9 @@
 
   const getAddressLabel = (option: unknown): string => {
     const address = option as CustomerAddress
-    const label = [address.region, address.addressDetail].filter(Boolean).join(' ')
-    const ownership = address.customer?.customerName
-      ? `【${address.customer.customerName}】`
-      : '【公共地址】'
-    const contact = [address.contactName, address.contactPhone].filter(Boolean).join(' / ')
-    return `${address.isDefault ? '【默认】' : ''}${ownership}${contact ? `【${contact}】` : ''}${label || '未命名地址'}`
+    const ownership = address.customer?.customerName || '公共地址'
+    const addressSummary = address.addressDetail || address.region || '未命名地址'
+    return `${address.isDefault ? '默认 · ' : ''}${ownership} · ${addressSummary}`
   }
 
   const getAddressCustomerName = (
@@ -287,6 +285,7 @@
       resultField: 'data',
       valueField: 'id',
       labelFn: getAddressLabel,
+      optionComponent: FavoriteRouteAddressOption,
       immediate: false,
       beforeFetch: () => ({ tenantId: form.tenantId, addressType: 'shipping' }),
       afterFetch: (result) => syncAddressOptions('origin', result),
@@ -294,6 +293,8 @@
         disabled: isPlatformSuper.value && !form.tenantId,
         filterable: true,
         clearable: true,
+        class: 'favorite-route-dialog__address-select',
+        popperClass: 'favorite-route-address-popper',
         onChange: handleEndpointChange,
         noDataText: '暂无可用装货地址',
         placeholder: '请选择发货地址'
@@ -307,6 +308,7 @@
       resultField: 'data',
       valueField: 'id',
       labelFn: getAddressLabel,
+      optionComponent: FavoriteRouteAddressOption,
       immediate: false,
       beforeFetch: () => ({ tenantId: form.tenantId, addressType: 'receiving' }),
       afterFetch: (result) => syncAddressOptions('destination', result),
@@ -314,6 +316,8 @@
         disabled: isPlatformSuper.value && !form.tenantId,
         filterable: true,
         clearable: true,
+        class: 'favorite-route-dialog__address-select',
+        popperClass: 'favorite-route-address-popper',
         onChange: handleEndpointChange,
         noDataText: '暂无可用卸货地址',
         placeholder: '请选择收货地址'
@@ -650,6 +654,34 @@
         }
       }
     }
+
+    &__address-select {
+      min-width: 0;
+
+      :deep(.el-select__selected-item) {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+    }
+  }
+
+  :global(.favorite-route-address-popper) {
+    width: min(560px, calc(100vw - 32px)) !important;
+    max-width: calc(100vw - 32px);
+  }
+
+  :global(.favorite-route-address-popper .el-select-dropdown__wrap) {
+    max-height: 360px;
+  }
+
+  :global(.favorite-route-address-popper .el-select-dropdown__item) {
+    height: auto;
+    min-height: 84px;
+    padding: 0 12px;
+    line-height: normal;
+    white-space: normal;
   }
 
   :deep(.art-form-item__content > .el-input-number) {

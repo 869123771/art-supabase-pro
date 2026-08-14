@@ -12,7 +12,6 @@ import {
 import {
   type VehicleArchive,
   type VehicleArchiveSearchParams,
-  type VehicleArchiveAuditStatus,
   type VehicleArchiveWritePayload,
   type VehicleArchiveDeleteRelatedCount,
   type VehicleArchiveDeletePreview,
@@ -323,62 +322,6 @@ export async function deleteVehicleArchiveBatch(ids: string[]) {
       noAffectedMessage: WRITE_PERMISSION_DENIED_MESSAGE
     }
   ).finally(() => refreshCarrierVehicleCounts(carrierIds))
-}
-
-export async function auditVehicleArchive(params: {
-  id: string
-  auditStatus: VehicleArchiveAuditStatus
-  auditRemark?: string
-}) {
-  const { id, auditStatus, auditRemark = '' } = params
-  return await responseHandle(
-    () =>
-      supabase
-        .from(VEHICLE_ARCHIVE_TABLE)
-        .update(
-          keysToSnakeDeep({
-            auditStatus,
-            auditRemark,
-            auditTime: new Date().toISOString()
-          }),
-          { count: 'exact' }
-        )
-        .eq('id', id),
-    {
-      showMessage: true,
-      breakReturn: true,
-      requireAffected: true,
-      noAffectedMessage: WRITE_PERMISSION_DENIED_MESSAGE
-    }
-  )
-}
-
-export async function auditVehicleArchiveBatch(params: {
-  ids: string[]
-  auditStatus: VehicleArchiveAuditStatus
-  auditRemark?: string
-}) {
-  const { ids, auditStatus, auditRemark = '' } = params
-  return await responseHandle(
-    () =>
-      supabase
-        .from(VEHICLE_ARCHIVE_TABLE)
-        .update(
-          keysToSnakeDeep({
-            auditStatus,
-            auditRemark,
-            auditTime: new Date().toISOString()
-          }),
-          { count: 'exact' }
-        )
-        .in('id', ids),
-    {
-      showMessage: true,
-      breakReturn: true,
-      requireAffected: true,
-      noAffectedMessage: WRITE_PERMISSION_DENIED_MESSAGE
-    }
-  )
 }
 
 // 车辆管理选项

@@ -42,6 +42,7 @@
   import type { ComputedRef, UnwrapNestedRefs } from 'vue'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
+  import { ElButton } from 'element-plus'
   import type {
     ArtTableQueryExcelColumn,
     ArtTableQueryExpose,
@@ -262,7 +263,23 @@
   function createColumns(): ColumnOption<CarrierPrice>[] {
     return [
       { type: 'selection', width: 50, fixed: 'left', reserveSelection: true },
-      { prop: 'quoteNo', label: '报价单号', width: 180, fixed: 'left' },
+      {
+        prop: 'quoteNo',
+        label: '报价单号',
+        width: 180,
+        fixed: 'left',
+        formatter: (row) => (
+          <ElButton
+            class="carrier-price__detail-link"
+            link
+            type="primary"
+            disabled={!row.id}
+            onClick={() => openDetailPage(row)}
+          >
+            {row.quoteNo || '-'}
+          </ElButton>
+        )
+      },
       { prop: 'originRegion', label: '始发地', width: 170 },
       { prop: 'destinationRegion', label: '目的地', width: 170 },
       {
@@ -358,6 +375,11 @@
     void router.push({ name: 'TmsCarrierPriceEdit' })
   }
 
+  function openDetailPage(row: CarrierPrice): void {
+    if (!row.id) return
+    void router.push({ name: 'TmsCarrierPriceDetail', params: { id: row.id } })
+  }
+
   async function handleDelete(row: CarrierPrice): Promise<void> {
     if (!row.id) return
     try {
@@ -435,3 +457,18 @@
   )
   onActivated(() => syncMasterDeleteRoute(true))
 </script>
+
+<style scoped lang="scss">
+  .carrier-price {
+    :deep(.carrier-price__detail-link) {
+      max-width: 100%;
+      justify-content: flex-start;
+      font-weight: 500;
+
+      > span {
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+    }
+  }
+</style>

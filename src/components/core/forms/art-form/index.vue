@@ -88,13 +88,22 @@
                 >
                   <!-- 下拉选择 -->
                   <template v-if="item.type === 'select' && getOptions(item).length">
-                    <ElOption
-                      v-for="option in getOptions(item)"
-                      v-bind="option"
-                      :key="option.value"
-                      :label="option.label"
-                      :value="option.value"
-                    />
+                    <template v-for="option in getOptions(item)" :key="option.value">
+                      <ElOption
+                        v-if="item.optionComponent"
+                        v-bind="option"
+                        :label="option.label"
+                        :value="option.value"
+                      >
+                        <component :is="item.optionComponent" :option="option" />
+                      </ElOption>
+                      <ElOption
+                        v-else
+                        v-bind="option"
+                        :label="option.label"
+                        :value="option.value"
+                      />
+                    </template>
                   </template>
 
                   <!-- 复选框组 -->
@@ -408,6 +417,8 @@
     valueField?: string
     /** 自定义选项 label */
     labelFn?: ApiComponentLabelFn
+    /** select 下拉选项内容组件，组件通过 option Prop 接收规范化后的选项 */
+    optionComponent?: Component
     /** 子级字段名，默认 children，适用于 cascader/treeSelect */
     childrenField?: string
     /** 自动选择策略：first 首项，last 末项，one 仅一项时选中，函数自定义，false 不自动选择 */
@@ -525,6 +536,7 @@
     'labelField',
     'valueField',
     'labelFn',
+    'optionComponent',
     'childrenField',
     'autoSelect'
   ]

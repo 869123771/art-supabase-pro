@@ -3,11 +3,11 @@
     <VehicleWorkspaceHeader
       eyebrow="FLEET ASSET CONTROL"
       title="车辆档案管理"
-      description="统一维护车辆身份、资产归属与营运状态，让每一台车都清晰可追溯。"
+      description="统一完成车辆档案录入、维护与审批状态跟踪；审批处理集中在审批工作台。"
       icon="ri:truck-line"
       :tags="[
-        { label: '一车一档', type: 'primary' },
-        { label: '跨承运商管理', type: 'info' }
+        { label: '录入管理一体', type: 'primary' },
+        { label: '流程统一处理', type: 'info' }
       ]"
       :metrics="workspaceMetrics"
     />
@@ -36,6 +36,7 @@
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import type { ComputedRef, UnwrapNestedRefs } from 'vue'
   import { ElMessage } from 'element-plus'
+  import { RouterLink } from 'vue-router'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import ArtButtonMore, {
     type ButtonMoreItem
@@ -43,13 +44,18 @@
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type {
     ArtTableQueryExpose,
+    ArtTableQueryExcelColumn,
     ArtTableQueryHeaderAction,
     ArtTableQueryProps
   } from '@/components/core/tables/art-table-query/index.vue'
   import type { ColumnOption } from '@/types'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatWithDayjs } from '@/utils/time'
-  import { deleteVehicleArchive, fetchVehicleArchiveList } from '@/api/vehicle-manage-system'
+  import {
+    deleteVehicleArchive,
+    exportVehicleArchiveList,
+    fetchVehicleArchiveList
+  } from '@/api/vehicle-manage-system'
   import MasterDataDeleteGuard, {
     type MasterDataDeleteGuardOpenOptions
   } from '@/components/business/master-data-delete-guard/index.vue'
@@ -137,6 +143,19 @@
     }
   ])
 
+  const archiveExcelColumns: ArtTableQueryExcelColumn[] = [
+    { key: 'companyName', title: '所属公司' },
+    { key: 'plateNo', title: '车牌号', required: true },
+    { key: 'vehicleType', title: '车型', required: true },
+    { key: 'manufacturer', title: '车辆厂商' },
+    { key: 'chassisNo', title: '底盘号' },
+    { key: 'vin', title: '车架号（VIN）', required: true },
+    { key: 'operationStatus', title: '营运状态' },
+    { key: 'auditStatus', title: '审核状态' },
+    { key: 'createTime', title: '创建时间' },
+    { key: 'createBy', title: '创建人' }
+  ]
+
   const withSelectedCarrierOption = async (result: unknown) => {
     const carrierResult = result as Awaited<ReturnType<typeof fetchCarrierOptions>>
     const selectedCarrierId = table.searchQuery.carrierId
@@ -211,7 +230,25 @@
         }
       }
     ]),
-    headerActions: computed<ArtTableQueryHeaderAction[]>(() => []),
+    headerActions: computed<ArtTableQueryHeaderAction[]>(() => [
+      {
+        type: 'add',
+        permission: 'VehicleArchive:Add',
+        onClick: () => openCreatePage()
+      },
+      {
+        type: 'export',
+        exportFilename: '车辆档案',
+        exportSheetName: '车辆档案',
+        exportColumns: archiveExcelColumns,
+        exportApi: ({ selectedIds, searchParams, maxRows }) =>
+          exportVehicleArchiveList({
+            ...(searchParams as SearchParams),
+            ids: selectedIds.map(String),
+            maxRows
+          })
+      }
+    ]),
     immediate: !initialCarrierId && !initialRecordId,
     columnsFactory: (): ColumnOption<VehicleArchive>[] => [
       { type: 'globalIndex', label: '序号', width: 64 },
@@ -279,7 +316,7 @@
       rowKey: 'id',
       tableLayout: 'fixed',
       emptyText: '暂无符合条件的车辆档案',
-      emptyDescription: '可调整承运商、车牌号、厂商、VIN、营运状态或审核状态后重新查询。'
+      emptyDescription: '可调整筛选条件，或新增车辆档案并提交审核。'
     }
   })
 
@@ -326,7 +363,17 @@
   const renderVehicleIdentity = (row: VehicleArchive) => (
     <div class="vehicle-archive-manage__vehicle-cell">
       <div>
-        <strong>{row.plateNo || '未录入车牌'}</strong>
+        {row.id ? (
+          <RouterLink
+            class="vehicle-archive-manage__plate-link"
+            to={`/vehicle-manage-system/vehicle-archive-detail/${row.id}`}
+            title={`查看车辆 ${row.plateNo || '未录入车牌'} 详情`}
+          >
+            {row.plateNo || '未录入车牌'}
+          </RouterLink>
+        ) : (
+          <strong>{row.plateNo || '未录入车牌'}</strong>
+        )}
         <span>{row.manufacturer || '厂商待补充'}</span>
       </div>
       <small title={row.vin}>{row.vin || 'VIN 待补充'}</small>
@@ -346,20 +393,18 @@
     </div>
   )
 
+  const openCreatePage = (): void => {
+    void router.push('/vehicle-manage-system/vehicle-archive-edit')
+  }
+
   const openDetailPage = (row: VehicleArchive): void => {
     if (!row.id) return
-    void router.push({
-      path: `/vehicle-manage-system/archive-manage/vehicle-archive-detail/${row.id}`,
-      query: { source: 'manage' }
-    })
+    void router.push(`/vehicle-manage-system/vehicle-archive-detail/${row.id}`)
   }
 
   const openEditPage = (row: VehicleArchive): void => {
     if (!row.id) return
-    void router.push({
-      path: `/vehicle-manage-system/archive-manage/vehicle-archive-edit/${row.id}`,
-      query: { source: 'manage' }
-    })
+    void router.push(`/vehicle-manage-system/vehicle-archive-edit/${row.id}`)
   }
 
   const getMoreActions = (): ButtonMoreItem[] => [
@@ -458,14 +503,31 @@
       min-width: 0;
     }
 
+    :deep(.vehicle-archive-manage__plate-link),
     :deep(.vehicle-archive-manage__vehicle-cell strong) {
       flex: none;
+      max-width: 128px;
       padding: 1px 8px;
+      overflow: hidden;
+      text-overflow: ellipsis;
       font-weight: 700;
       color: var(--el-color-primary);
+      white-space: nowrap;
+      text-decoration: none;
       background: var(--el-color-primary-light-9);
       border: 1px solid var(--el-color-primary-light-7);
       border-radius: var(--el-border-radius-small);
+    }
+
+    :deep(.vehicle-archive-manage__plate-link:hover) {
+      color: var(--el-color-primary-dark-2);
+      background: var(--el-color-primary-light-8);
+      border-color: var(--el-color-primary-light-5);
+    }
+
+    :deep(.vehicle-archive-manage__plate-link:focus-visible) {
+      outline: 2px solid var(--el-color-primary);
+      outline-offset: 2px;
     }
 
     :deep(.vehicle-archive-manage__vehicle-cell span),

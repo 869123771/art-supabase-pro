@@ -152,8 +152,7 @@ const contracts: Record<string, WorkflowBusinessContract> = {
       { key: 'operationType', label: '营运类型', valueType: 'text' },
       { key: 'isNewEnergy', label: '新能源车辆', valueType: 'boolean' }
     ],
-    routePath: (businessId) =>
-      `/vehicle-manage-system/archive-manage/vehicle-archive-detail/${businessId}`
+    routePath: (businessId) => `/vehicle-manage-system/vehicle-archive-detail/${businessId}`
   }
 }
 

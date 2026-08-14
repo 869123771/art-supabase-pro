@@ -47,6 +47,7 @@
     ArtTableQueryHeaderAction
   } from '@/components/core/tables/art-table-query/index.vue'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
+  import { ElButton } from 'element-plus'
   import { ColumnOption } from '@/types'
   import { fetchRegionOptions } from '@/api/common'
   import {
@@ -218,7 +219,17 @@
       prop: 'customerName',
       label: '客户名称',
       width: 190,
-      formatter: (row) => row.customer?.customerName || '-'
+      formatter: (row) => (
+        <ElButton
+          class="customer-price__detail-link"
+          link
+          type="primary"
+          disabled={!row.id}
+          onClick={() => openDetailPage(row)}
+        >
+          {row.customer?.customerName || '-'}
+        </ElButton>
+      )
     },
     {
       prop: 'shippingInfo',
@@ -390,6 +401,11 @@
     void router.push({ name: 'TmsCustomerPriceEdit' })
   }
 
+  const openDetailPage = (row: CustomerPrice): void => {
+    if (!row.id) return
+    void router.push({ name: 'TmsCustomerPriceDetail', params: { id: row.id } })
+  }
+
   const handleDelete = async (row: CustomerPrice): Promise<void> => {
     if (!row.id) return
     try {
@@ -492,6 +508,17 @@
 
 <style scoped lang="scss">
   .customer-price {
+    :deep(.customer-price__detail-link) {
+      max-width: 100%;
+      justify-content: flex-start;
+      font-weight: 500;
+
+      > span {
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+    }
+
     :deep(.customer-price__info) {
       display: flex;
       flex-direction: column;

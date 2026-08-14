@@ -9,45 +9,130 @@
     <ArtPageHeader
       class="carrier-price-edit__header"
       :title="isEdit ? '编辑承运商价' : '新增承运商价'"
-      subtitle="维护承运路线、车辆司机、货物成本与付款方式"
+      subtitle="先维护运输路线和承运主体，再完善车辆司机、货物成本与付款方式"
       show-back
       @back="goBack"
     />
 
     <div ref="pageRef" class="carrier-price-edit__content">
       <section class="carrier-price-edit__section art-card-xs">
-        <ArtSectionTitle>基础信息</ArtSectionTitle>
+        <ArtSectionTitle>路线与运输条件</ArtSectionTitle>
+
+        <ol class="carrier-price-edit__workflow" aria-label="承运商价格维护步骤">
+          <li
+            v-for="(step, index) in workflowSteps"
+            :key="step.key"
+            class="carrier-price-edit__workflow-step"
+            :class="{ 'is-complete': step.complete, 'is-active': step.active }"
+            :aria-current="step.active ? 'step' : undefined"
+          >
+            <span class="carrier-price-edit__workflow-index" aria-hidden="true">
+              <ElIcon v-if="step.complete"><Check /></ElIcon>
+              <template v-else>{{ index + 1 }}</template>
+            </span>
+            <span class="carrier-price-edit__workflow-copy">
+              <strong>{{ step.label }}</strong>
+              <small>{{ step.description }}</small>
+            </span>
+            <span class="carrier-price-edit__workflow-status">
+              {{ step.complete ? '已完成' : step.active ? '当前步骤' : '待处理' }}
+            </span>
+          </li>
+        </ol>
+
         <ArtForm
           ref="baseFormRef"
           v-model="form.data"
           :items="form.baseItems"
           :rules="form.rules"
-          :span="8"
+          :span="12"
           :gutter="24"
           label-width="98px"
           root-class="carrier-price-edit__form"
           :show-reset="false"
           :show-submit="false"
         />
+
+        <div
+          class="carrier-price-edit__route-preview"
+          :class="{ 'is-ready': routeReady }"
+          aria-label="当前承运路线"
+        >
+          <div class="carrier-price-edit__route-point">
+            <span>始发地</span>
+            <strong>{{ getRegionText('origin') || '待选择' }}</strong>
+          </div>
+          <span class="carrier-price-edit__route-arrow" aria-hidden="true">→</span>
+          <div class="carrier-price-edit__route-point">
+            <span>目的地</span>
+            <strong>{{ getRegionText('destination') || '待选择' }}</strong>
+          </div>
+          <ElTag :type="routeReady ? 'success' : 'info'" effect="plain" size="small">
+            {{ getTransportModeText() || '待选择运输方式' }}
+          </ElTag>
+        </div>
       </section>
 
       <section class="carrier-price-edit__section art-card-xs">
-        <div class="carrier-price-edit__section-header">
-          <ArtSectionTitle :show-line="false">承运商</ArtSectionTitle>
-          <ElButton type="primary" plain :icon="Plus" @click="resetCarrierInfo">添加</ElButton>
+        <ArtSectionTitle>承运商与运力</ArtSectionTitle>
+
+        <div class="carrier-price-edit__carrier-grid">
+          <div class="carrier-price-edit__carrier-panel">
+            <div class="carrier-price-edit__panel-heading">
+              <span class="carrier-price-edit__panel-icon" aria-hidden="true">承</span>
+              <div class="carrier-price-edit__panel-copy">
+                <strong>承运主体</strong>
+                <span>选择后自动带入联系人和联系电话</span>
+              </div>
+              <ElTag :type="form.data.carrierId ? 'success' : 'info'" effect="plain" size="small">
+                {{ form.data.carrierId ? '已选择' : '待选择' }}
+              </ElTag>
+            </div>
+
+            <ArtForm
+              ref="carrierFormRef"
+              v-model="form.data"
+              :items="form.carrierItems"
+              :rules="form.rules"
+              :span="24"
+              label-position="top"
+              root-class="carrier-price-edit__form"
+              :show-reset="false"
+              :show-submit="false"
+            />
+          </div>
+
+          <div class="carrier-price-edit__carrier-panel">
+            <div class="carrier-price-edit__panel-heading">
+              <span
+                class="carrier-price-edit__panel-icon carrier-price-edit__panel-icon--capacity"
+                aria-hidden="true"
+              >
+                运
+              </span>
+              <div class="carrier-price-edit__panel-copy">
+                <strong>司机与车辆</strong>
+                <span>先选承运商，再选择其名下司机和车辆</span>
+              </div>
+              <ElTag :type="capacityReady ? 'success' : 'info'" effect="plain" size="small">
+                {{ capacityReady ? '已配置' : '选填' }}
+              </ElTag>
+            </div>
+
+            <ArtForm
+              ref="capacityFormRef"
+              v-model="form.data"
+              :items="form.capacityItems"
+              :rules="form.rules"
+              :span="12"
+              :gutter="16"
+              label-position="top"
+              root-class="carrier-price-edit__form"
+              :show-reset="false"
+              :show-submit="false"
+            />
+          </div>
         </div>
-        <ArtForm
-          ref="carrierFormRef"
-          v-model="form.data"
-          :items="form.carrierItems"
-          :rules="form.rules"
-          :span="8"
-          :gutter="24"
-          label-width="98px"
-          root-class="carrier-price-edit__form"
-          :show-reset="false"
-          :show-submit="false"
-        />
       </section>
 
       <PriceCargoSection
@@ -66,6 +151,16 @@
           empty-height="160px"
         />
         <template #after>
+          <div class="carrier-price-edit__cost-header">
+            <div>
+              <ArtSectionTitle :show-line="false">成本与计费</ArtSectionTitle>
+              <p>货物明细中的分摊运费、装卸费和包装费会自动汇总。</p>
+            </div>
+            <div class="carrier-price-edit__cost-total">
+              <span>预计总成本</span>
+              <strong>¥ {{ form.feeTotalText }}</strong>
+            </div>
+          </div>
           <ArtForm
             ref="feeFormRef"
             v-model="form.data"
@@ -82,7 +177,10 @@
       </PriceCargoSection>
 
       <section class="carrier-price-edit__section art-card-xs">
-        <ArtSectionTitle>付款方式</ArtSectionTitle>
+        <div class="carrier-price-edit__payment-header">
+          <ArtSectionTitle :show-line="false">付款方式</ArtSectionTitle>
+          <span>支持拆分多种付款方式，付款合计会自动计算。</span>
+        </div>
         <ArtForm
           ref="paymentFormRef"
           v-model="form.data"
@@ -100,7 +198,7 @@
 
     <ArtStickyActionBar class="carrier-price-edit__footer">
       <ElButton :disabled="page.saving" @click="goBack">取消</ElButton>
-      <ElButton type="primary" :loading="page.saving" @click="handleSave">保存</ElButton>
+      <ElButton type="primary" :loading="page.saving" @click="handleSave"> 保存承运商价 </ElButton>
     </ArtStickyActionBar>
 
     <CargoMultipleSelect ref="cargoSelectorRef" @confirm="handleCargoSelectorConfirm" />
@@ -111,8 +209,8 @@
   import type { ComputedRef, UnwrapNestedRefs } from 'vue'
   import { cloneDeep, omit } from 'lodash-es'
   import type { FormRules } from 'element-plus'
-  import { ElButton, ElInput, ElInputNumber, ElOption, ElSelect } from 'element-plus'
-  import { Plus } from '@element-plus/icons-vue'
+  import { ElButton, ElIcon, ElInput, ElInputNumber, ElOption, ElSelect, ElTag } from 'element-plus'
+  import { Check } from '@element-plus/icons-vue'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
@@ -156,6 +254,7 @@
   type CarrierOption = Api.Tms.BasicData.CarrierOption
   type DriverOption = Api.Tms.BasicData.DriverOption
   type VehicleOption = Api.VehicleMgtSys.VehicleManage.VehicleOption
+  type RegionMode = 'origin' | 'destination'
   type CarrierPriceForm = CarrierPrice & {
     originRegionPath: string[]
     destinationRegionPath: string[]
@@ -196,6 +295,7 @@
     billingMethodOptions: ComputedRef<Api.DataCenter.DictListItem[]>
     baseItems: ComputedRef<FormItem[]>
     carrierItems: ComputedRef<FormItem[]>
+    capacityItems: ComputedRef<FormItem[]>
     feeItems: ComputedRef<FormItem[]>
     paymentItems: ComputedRef<FormItem[]>
     rules: ComputedRef<FormRules<CarrierPriceForm>>
@@ -206,6 +306,15 @@
     cargoQuantityText: ComputedRef<string>
     cargoVolumeText: ComputedRef<string>
     cargoWeightText: ComputedRef<string>
+    feeTotalText: ComputedRef<string>
+  }
+
+  interface WorkflowStep {
+    key: string
+    label: string
+    description: string
+    complete: boolean
+    active: boolean
   }
 
   const route = useRoute()
@@ -215,10 +324,17 @@
   const { getDictMap } = storeToRefs(userStore)
   const baseFormRef = ref<FormExpose>()
   const carrierFormRef = ref<FormExpose>()
+  const capacityFormRef = ref<FormExpose>()
   const feeFormRef = ref<FormExpose>()
   const paymentFormRef = ref<FormExpose>()
   const cargoSelectorRef = ref<CargoSelectorExpose>()
-  const validatedFormRefs = [baseFormRef, carrierFormRef, feeFormRef, paymentFormRef]
+  const validatedFormRefs = [
+    baseFormRef,
+    carrierFormRef,
+    capacityFormRef,
+    feeFormRef,
+    paymentFormRef
+  ]
   const quoteNumber = useDocumentNumberRule('tms.carrier_price')
 
   const isEdit = computed(() => Boolean(route.params.id))
@@ -320,6 +436,7 @@
         label: '报价单号',
         key: 'quoteNo',
         type: 'input',
+        span: 12,
         props: {
           maxlength: 50,
           ...quoteNumber.inputProps(Boolean(form.data.id), '请输入报价单号', true)
@@ -327,9 +444,21 @@
         description: quoteNumber.description.value
       },
       {
+        label: '运输方式',
+        key: 'transportMode',
+        type: 'select',
+        span: 12,
+        props: {
+          options: form.transportModeOptions,
+          clearable: true,
+          placeholder: '请选择运输方式'
+        }
+      },
+      {
         label: '始发地',
         key: 'originRegionPath',
         type: 'cascader',
+        span: 12,
         api: fetchRegionOptions,
         labelField: 'name',
         valueField: 'name',
@@ -338,7 +467,7 @@
           class: 'w-full',
           clearable: true,
           filterable: true,
-          placeholder: '请选择',
+          placeholder: '请选择始发地',
           props: {
             label: 'name',
             value: 'name',
@@ -352,6 +481,7 @@
         label: '目的地',
         key: 'destinationRegionPath',
         type: 'cascader',
+        span: 12,
         api: fetchRegionOptions,
         labelField: 'name',
         valueField: 'name',
@@ -360,7 +490,7 @@
           class: 'w-full',
           clearable: true,
           filterable: true,
-          placeholder: '请选择',
+          placeholder: '请选择目的地',
           props: {
             label: 'name',
             value: 'name',
@@ -369,12 +499,6 @@
             checkStrictly: true
           }
         }
-      },
-      {
-        label: '运输方式',
-        key: 'transportMode',
-        type: 'select',
-        props: { options: form.transportModeOptions, clearable: true, placeholder: '请选择' }
       }
     ]),
     carrierItems: computed<FormItem[]>(() => [
@@ -382,6 +506,8 @@
         label: '承运商名称',
         key: 'carrierId',
         type: 'select',
+        span: 24,
+        description: '更换承运商会清空已选司机和车辆，请重新确认运力。',
         api: fetchCarrierOptions,
         resultField: 'data',
         labelField: 'companyName',
@@ -391,7 +517,7 @@
         props: {
           clearable: true,
           filterable: true,
-          placeholder: '请选择',
+          placeholder: '搜索并选择承运商',
           onChange: handleCarrierChange
         }
       },
@@ -399,18 +525,23 @@
         label: '联系人姓名',
         key: 'contactName',
         type: 'input',
+        span: 12,
         props: { disabled: true, placeholder: '选择承运商后自动带出' }
       },
       {
         label: '手机号码',
         key: 'contactPhone',
         type: 'input',
+        span: 12,
         props: { disabled: true, placeholder: '选择承运商后自动带出' }
-      },
+      }
+    ]),
+    capacityItems: computed<FormItem[]>(() => [
       {
         label: '司机姓名',
         key: 'driverId',
         type: 'select',
+        span: 12,
         api: fetchDriverOptions,
         resultField: 'data',
         labelField: 'driverName',
@@ -422,9 +553,10 @@
           clearable: true,
           filterable: true,
           disabled: !form.data.carrierId,
-          placeholder: form.data.carrierId ? '请选择' : '请先选择承运商',
+          placeholder: form.data.carrierId ? '请选择司机' : '请先选择承运商',
           onVisibleChange: (visible: boolean) => {
-            if (visible && form.data.carrierId) void carrierFormRef.value?.reloadOptions('driverId')
+            if (visible && form.data.carrierId)
+              void capacityFormRef.value?.reloadOptions('driverId')
           },
           onChange: handleDriverChange
         }
@@ -433,12 +565,14 @@
         label: '手机号码',
         key: 'driverPhone',
         type: 'input',
+        span: 12,
         props: { disabled: true, placeholder: '选择司机后自动带出' }
       },
       {
         label: '车牌号',
         key: 'vehicleId',
         type: 'select',
+        span: 12,
         api: fetchVehicleArchiveOptions,
         resultField: 'data',
         labelField: 'plateNo',
@@ -450,10 +584,10 @@
           clearable: true,
           filterable: true,
           disabled: !form.data.carrierId,
-          placeholder: form.data.carrierId ? '请选择' : '请先选择承运商',
+          placeholder: form.data.carrierId ? '请选择车辆' : '请先选择承运商',
           onVisibleChange: (visible: boolean) => {
             if (visible && form.data.carrierId)
-              void carrierFormRef.value?.reloadOptions('vehicleId')
+              void capacityFormRef.value?.reloadOptions('vehicleId')
           },
           onChange: handleVehicleChange
         }
@@ -462,41 +596,30 @@
         label: '车型',
         key: 'vehicleType',
         type: 'select',
-        props: { options: form.vehicleTypeOptions, clearable: true, placeholder: '请选择' }
+        span: 12,
+        props: { options: form.vehicleTypeOptions, clearable: true, placeholder: '请选择车型' }
       },
       {
         label: '车长',
         key: 'vehicleLength',
         type: 'select',
-        props: { options: form.vehicleLengthOptions, clearable: true, placeholder: '请选择' }
+        span: 12,
+        props: { options: form.vehicleLengthOptions, clearable: true, placeholder: '请选择车长' }
       }
     ]),
     feeItems: computed<FormItem[]>(() => [
       {
-        label: '总数量',
-        key: 'cargoQuantityTotal',
-        type: 'number',
-        props: { ...moneyProps, precision: 0, disabled: true }
-      },
-      {
-        label: '总体积',
-        key: 'cargoVolumeTotal',
-        type: 'number',
-        props: { ...moneyProps, precision: 3, disabled: true }
-      },
-      {
-        label: '总重量',
-        key: 'cargoWeightTotal',
-        type: 'number',
-        props: { ...moneyProps, disabled: true }
-      },
-      {
         label: '计费方式',
         key: 'billingMethod',
         type: 'select',
-        props: { options: form.billingMethodOptions, clearable: true, placeholder: '请选择' }
+        props: {
+          options: form.billingMethodOptions,
+          clearable: true,
+          placeholder: '请选择计费方式'
+        }
       },
       { label: '运费成本', key: 'transportCost', type: 'number', props: moneyProps },
+      { label: '其他费用', key: 'otherFee', type: 'number', props: moneyProps },
       {
         label: '分摊运费',
         key: 'splitTransportFee',
@@ -515,7 +638,6 @@
         type: 'number',
         props: { ...moneyProps, disabled: true }
       },
-      { label: '其他费用', key: 'otherFee', type: 'number', props: moneyProps },
       {
         label: '运费合计',
         key: 'totalFee',
@@ -719,7 +841,57 @@
     }),
     cargoQuantityText: computed(() => formatNumber(form.cargoSummary.quantity, 0)),
     cargoVolumeText: computed(() => formatNumber(form.cargoSummary.volume, 3)),
-    cargoWeightText: computed(() => formatNumber(form.cargoSummary.weight, 2))
+    cargoWeightText: computed(() => formatNumber(form.cargoSummary.weight, 2)),
+    feeTotalText: computed(() => formatNumber(form.feeSummary.totalFee, 2))
+  })
+
+  const routeReady = computed(
+    () =>
+      Boolean(form.data.originRegionPath.length) &&
+      Boolean(form.data.destinationRegionPath.length) &&
+      Boolean(form.data.transportMode)
+  )
+  const capacityReady = computed(() =>
+    Boolean(
+      form.data.driverId || form.data.vehicleId || form.data.vehicleType || form.data.vehicleLength
+    )
+  )
+  const workflowSteps = computed<WorkflowStep[]>(() => {
+    const hasCargoCost = Boolean(
+      form.data.cargoItems?.some((item) => item.cargoName) && form.data.billingMethod
+    )
+    const steps = [
+      {
+        key: 'route',
+        label: '维护运输路线',
+        description: '始发地、目的地与方式',
+        complete: routeReady.value
+      },
+      {
+        key: 'carrier',
+        label: '选择承运商',
+        description: '带入联系人信息',
+        complete: Boolean(form.data.carrierId)
+      },
+      {
+        key: 'capacity',
+        label: '配置运力与货物',
+        description: '司机、车辆与货物成本',
+        complete: hasCargoCost
+      },
+      {
+        key: 'payment',
+        label: '核对成本付款',
+        description: '确认总成本与付款拆分',
+        complete: hasCargoCost && form.feeSummary.totalFee > 0
+      }
+    ]
+    const activeIndex = steps.findIndex((step) => !step.complete)
+
+    return steps.map((step, index) => ({
+      ...step,
+      active: index === (activeIndex === -1 ? steps.length - 1 : activeIndex)
+    }))
   })
 
   const paymentFields: Array<keyof CarrierPriceForm> = [
@@ -734,6 +906,18 @@
       fields.reduce((sum, field) => sum + toNumber(form.data[field] as number), 0),
       2
     )
+  }
+
+  function getRegionText(mode: RegionMode): string {
+    const path = mode === 'origin' ? form.data.originRegionPath : form.data.destinationRegionPath
+    return path.filter(Boolean).join(' / ')
+  }
+
+  function getTransportModeText(): string {
+    const option = form.transportModeOptions.find(
+      (item) => String(item.value) === form.data.transportMode
+    )
+    return String(option?.label || option?.name || option?.value || '')
   }
 
   onMounted(() => {
@@ -858,36 +1042,37 @@
 
   function handleCarrierChange(carrierId?: string): void {
     const carrier = form.carrierOptions.find((item) => item.id === carrierId)
-    form.data.contactName = carrier?.contactName ?? ''
-    form.data.contactPhone = carrier?.contactPhone ?? ''
-    form.data.driverId = null
-    form.data.driver = null
-    form.data.driverName = ''
-    form.data.driverPhone = ''
-    form.data.vehicleId = null
-    form.data.vehicle = null
-    form.data.plateNo = ''
+    Object.assign(form.data, {
+      contactName: carrier?.contactName ?? '',
+      contactPhone: carrier?.contactPhone ?? '',
+      driverId: null,
+      driver: null,
+      driverName: '',
+      driverPhone: '',
+      vehicleId: null,
+      vehicle: null,
+      plateNo: ''
+    })
     void nextTick(() => {
-      void carrierFormRef.value?.reloadOptions('driverId')
-      void carrierFormRef.value?.reloadOptions('vehicleId')
+      void capacityFormRef.value?.reloadOptions('driverId')
+      void capacityFormRef.value?.reloadOptions('vehicleId')
     })
   }
 
   function handleDriverChange(driverId?: string): void {
     const driver = form.driverOptions.find((item) => item.id === driverId)
-    form.data.driverName = driver?.driverName ?? ''
-    form.data.driverPhone = driver?.phone ?? ''
+    Object.assign(form.data, {
+      driverName: driver?.driverName ?? '',
+      driverPhone: driver?.phone ?? ''
+    })
   }
 
   function handleVehicleChange(vehicleId?: string): void {
     const vehicle = form.vehicleOptions.find((item) => item.id === vehicleId)
-    form.data.plateNo = vehicle?.plateNo ?? ''
-    form.data.vehicleType = vehicle?.vehicleType ?? form.data.vehicleType ?? ''
-  }
-
-  function resetCarrierInfo(): void {
-    form.data.carrierId = ''
-    handleCarrierChange('')
+    Object.assign(form.data, {
+      plateNo: vehicle?.plateNo ?? '',
+      vehicleType: vehicle?.vehicleType ?? form.data.vehicleType ?? ''
+    })
   }
 
   function addCargoItem(): void {
@@ -1044,12 +1229,261 @@
       padding: 18px 20px 24px;
     }
 
-    &__section-header {
+    &__workflow {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      padding: 0;
+      margin: 16px 0 24px;
+      overflow: hidden;
+      list-style: none;
+      background: var(--el-fill-color-extra-light);
+      border: 1px solid var(--el-border-color-lighter);
+      border-radius: var(--el-border-radius-base);
+    }
+
+    &__workflow-step {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      gap: 4px 10px;
+      align-items: center;
+      min-width: 0;
+      padding: 14px 16px;
+
+      & + & {
+        border-left: 1px solid var(--el-border-color-lighter);
+      }
+
+      &.is-active {
+        background: var(--el-color-primary-light-9);
+
+        .carrier-price-edit__workflow-index {
+          color: var(--theme-color);
+          background: var(--el-bg-color);
+          border-color: var(--theme-color);
+        }
+
+        .carrier-price-edit__workflow-status {
+          color: var(--theme-color);
+        }
+      }
+
+      &.is-complete {
+        .carrier-price-edit__workflow-index {
+          color: #fff;
+          background: var(--theme-color);
+          border-color: var(--theme-color);
+        }
+      }
+    }
+
+    &__workflow-index {
+      display: inline-flex;
+      grid-row: 1 / 3;
+      align-items: center;
+      justify-content: center;
+      width: 30px;
+      height: 30px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--el-text-color-secondary);
+      background: var(--el-bg-color);
+      border: 1px solid var(--el-border-color);
+      border-radius: 50%;
+    }
+
+    &__workflow-copy {
       display: flex;
-      gap: 12px;
+      flex-direction: column;
+      min-width: 0;
+
+      strong,
+      small {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      strong {
+        font-size: 14px;
+        font-weight: 600;
+        line-height: 20px;
+        color: var(--el-text-color-primary);
+      }
+
+      small {
+        font-size: 12px;
+        line-height: 18px;
+        color: var(--el-text-color-secondary);
+        white-space: normal;
+      }
+    }
+
+    &__workflow-status {
+      align-self: start;
+      font-size: 12px;
+      line-height: 20px;
+      color: var(--el-text-color-placeholder);
+      white-space: nowrap;
+    }
+
+    &__route-preview {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto;
+      gap: 14px;
+      align-items: center;
+      min-width: 0;
+      padding: 14px 16px;
+      margin-top: 8px;
+      background: var(--el-fill-color-extra-light);
+      border: 1px dashed var(--el-border-color);
+      border-radius: var(--el-border-radius-base);
+
+      &.is-ready {
+        background: var(--el-color-primary-light-9);
+        border-color: var(--theme-color);
+        border-style: solid;
+      }
+    }
+
+    &__route-point {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+
+      span {
+        font-size: 12px;
+        line-height: 18px;
+        color: var(--el-text-color-secondary);
+      }
+
+      strong {
+        overflow: hidden;
+        font-size: 14px;
+        font-weight: 600;
+        line-height: 22px;
+        color: var(--el-text-color-primary);
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+    }
+
+    &__route-arrow {
+      font-size: 18px;
+      color: var(--theme-color);
+    }
+
+    &__carrier-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+      margin-top: 16px;
+    }
+
+    &__carrier-panel {
+      min-width: 0;
+      padding: 16px;
+      background: var(--el-fill-color-extra-light);
+      border: 1px solid var(--el-border-color-lighter);
+      border-radius: var(--el-border-radius-base);
+    }
+
+    &__panel-heading {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    &__panel-icon {
+      display: inline-flex;
+      flex: none;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      font-size: 16px;
+      font-weight: 600;
+      color: #fff;
+      background: var(--theme-color);
+      border-radius: var(--el-border-radius-base);
+
+      &--capacity {
+        background: var(--el-color-success);
+      }
+    }
+
+    &__panel-copy {
+      display: flex;
+      flex: 1;
+      flex-direction: column;
+      min-width: 0;
+
+      strong {
+        font-size: 15px;
+        font-weight: 600;
+        line-height: 22px;
+        color: var(--el-text-color-primary);
+      }
+
+      span {
+        overflow: hidden;
+        font-size: 12px;
+        line-height: 18px;
+        color: var(--el-text-color-secondary);
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+    }
+
+    &__cost-header {
+      display: flex;
+      gap: 16px;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 14px;
+      padding-top: 18px;
+      margin-top: 20px;
+      border-top: 1px solid var(--el-border-color-lighter);
+
+      p {
+        margin: 4px 0 0;
+        font-size: 12px;
+        line-height: 18px;
+        color: var(--el-text-color-secondary);
+      }
+    }
+
+    &__cost-total {
+      display: flex;
+      flex: none;
+      gap: 12px;
+      align-items: baseline;
+      padding: 10px 14px;
+      background: var(--el-color-primary-light-9);
+      border-radius: var(--el-border-radius-base);
+
+      span {
+        font-size: 12px;
+        color: var(--el-text-color-secondary);
+      }
+
+      strong {
+        font-size: 20px;
+        font-weight: 600;
+        color: var(--theme-color);
+      }
+    }
+
+    &__payment-header {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      justify-content: space-between;
+
+      > span {
+        font-size: 12px;
+        line-height: 18px;
+        color: var(--el-text-color-secondary);
+      }
     }
 
     &__fee-form {
@@ -1071,6 +1505,81 @@
 
     :deep(.art-table__cell-value) {
       width: 100%;
+    }
+  }
+
+  @media (width <= 900px) {
+    .carrier-price-edit {
+      &__workflow {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      &__workflow-step {
+        &:nth-child(3) {
+          border-left: 0;
+        }
+
+        &:nth-child(n + 3) {
+          border-top: 1px solid var(--el-border-color-lighter);
+        }
+      }
+
+      &__carrier-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  }
+
+  @media (width <= 600px) {
+    .carrier-price-edit {
+      padding: 0;
+
+      &__section {
+        padding: 16px 12px 20px;
+      }
+
+      &__workflow {
+        grid-template-columns: 1fr;
+      }
+
+      &__workflow-step {
+        & + & {
+          border-top: 1px solid var(--el-border-color-lighter);
+          border-left: 0;
+        }
+      }
+
+      &__route-preview {
+        grid-template-columns: 1fr;
+      }
+
+      &__route-arrow {
+        transform: rotate(90deg);
+      }
+
+      &__carrier-panel {
+        padding: 14px 12px;
+      }
+
+      &__panel-copy span {
+        white-space: normal;
+      }
+
+      &__cost-header,
+      &__payment-header {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      &__cost-total {
+        justify-content: space-between;
+      }
+
+      :deep(.carrier-price-edit__form .el-col-xs-8),
+      :deep(.carrier-price-edit__form .el-col-xs-12) {
+        flex: 0 0 100%;
+        max-width: 100%;
+      }
     }
   }
 </style>

@@ -247,7 +247,7 @@
     {
       prop: 'assignedVehicles',
       label: '车牌号',
-      minWidth: 200,
+      minWidth: 240,
       formatter: (row) => renderAssignedVehicles(row)
     },
     { prop: 'phone', label: '手机号码', width: 150 },
@@ -327,14 +327,19 @@
     if (!vehicles.length) return <span class="tms-driver__vehicle-empty">-</span>
 
     return (
-      <div class="tms-driver__vehicle-links">
+      <div
+        class="tms-driver__vehicle-links"
+        title={vehicles
+          .map((vehicle) => vehicle.plateNo)
+          .filter(Boolean)
+          .join('、')}
+      >
         {vehicles.map((vehicle) => (
           <RouterLink
             key={vehicle.id}
             class="tms-driver__vehicle-link"
             to={{
-              path: `/vehicle-manage-system/archive-manage/vehicle-archive-detail/${vehicle.id}`,
-              query: { source: 'driver' }
+              path: `/vehicle-manage-system/vehicle-archive-detail/${vehicle.id}`
             }}
             title={`查看车辆 ${vehicle.plateNo} 详情`}
           >
@@ -395,23 +400,33 @@
   .tms-driver {
     &__vehicle-links {
       display: flex;
-      flex-direction: column;
-      gap: 2px;
-      align-items: flex-start;
+      gap: 4px;
+      align-items: center;
       min-width: 0;
       padding: 4px 0;
+      overflow: hidden;
+      white-space: nowrap;
     }
 
     &__vehicle-link {
-      font-weight: 600;
-      line-height: 22px;
+      flex: none;
+      max-width: 112px;
+      padding: 1px 3px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-weight: 700;
+      line-height: 20px;
       color: var(--el-color-primary);
       white-space: nowrap;
       text-decoration: none;
+      background: var(--el-color-primary-light-9);
+      border: 1px solid var(--el-color-primary-light-7);
+      border-radius: var(--el-border-radius-small);
 
       &:hover {
-        text-decoration: underline;
-        text-underline-offset: 3px;
+        color: var(--el-color-primary-dark-2);
+        background: var(--el-color-primary-light-8);
+        border-color: var(--el-color-primary-light-5);
       }
 
       &:focus-visible {

@@ -1,5 +1,5 @@
 <template>
-  <div class="tms-workspace-page art-full-height">
+  <div class="tms-carrier tms-workspace-page art-full-height">
     <TmsWorkspaceHeader
       eyebrow="CARRIER NETWORK"
       title="承运商资料"
@@ -34,6 +34,7 @@
 <script setup lang="tsx">
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { ElButton, ElMessage } from 'element-plus'
+  import { RouterLink } from 'vue-router'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type {
     ArtTableQueryExpose,
@@ -152,13 +153,23 @@
     { type: 'selection', width: 50, fixed: 'left', reserveSelection: true },
     { type: 'globalIndex', label: '序号', width: 72 },
     {
-      prop: 'createTime',
-      label: '创建时间',
-      width: 170,
-      formatter: (row) => formatWithDayjs(row.createTime, 'YYYY-MM-DD HH:mm')
+      prop: 'carrierCode',
+      label: '承运商编码',
+      width: 165,
+      formatter: (row) =>
+        row.id ? (
+          <RouterLink
+            class="tms-carrier__code-link"
+            to={`/tms-transportation/basic-data/carrier-detail/${row.id}`}
+            title={`查看承运商 ${row.carrierCode || row.companyName} 详情`}
+          >
+            {row.carrierCode || '-'}
+          </RouterLink>
+        ) : (
+          row.carrierCode || '-'
+        )
     },
-    { prop: 'companyName', label: '公司名称', minWidth: 190, showOverflowTooltip: true },
-    { prop: 'carrierCode', label: '承运商编码', width: 140 },
+    { prop: 'companyName', label: '公司名称', minWidth: 210, showOverflowTooltip: true },
     {
       prop: 'carrierType',
       label: '承运商类型',
@@ -199,6 +210,12 @@
       label: '状态',
       width: 90,
       dict: { code: 'commonBoolean', display: 'tag', value: (row) => String(row.enabled) }
+    },
+    {
+      prop: 'createTime',
+      label: '创建时间',
+      width: 170,
+      formatter: (row) => formatWithDayjs(row.createTime, 'YYYY-MM-DD HH:mm')
     },
     {
       prop: 'operation',
@@ -279,7 +296,7 @@
   const goVehicleManage = (row: Carrier): void => {
     if (!row.id) return
     void router.push({
-      path: '/vehicle-manage-system/archive-manage/vehicle-archive-manage',
+      path: '/vehicle-manage-system/vehicle-archive-manage',
       query: { carrierId: row.id }
     })
   }
@@ -364,3 +381,31 @@
     }
   }
 </script>
+
+<style scoped lang="scss">
+  .tms-carrier {
+    :deep(.tms-carrier__code-link) {
+      display: inline-block;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-weight: 600;
+      vertical-align: middle;
+      color: var(--el-color-primary);
+      white-space: nowrap;
+      text-decoration: none;
+
+      &:hover {
+        color: var(--el-color-primary-dark-2);
+        text-decoration: underline;
+        text-underline-offset: 3px;
+      }
+
+      &:focus-visible {
+        outline: 2px solid var(--el-color-primary);
+        outline-offset: 2px;
+        border-radius: var(--el-border-radius-small);
+      }
+    }
+  }
+</style>

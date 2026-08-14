@@ -351,7 +351,7 @@
   const goVehicleManage = (): void => {
     const carrierId = detail.data?.id
     void router.push({
-      path: '/vehicle-manage-system/archive-manage/vehicle-archive-manage',
+      path: '/vehicle-manage-system/vehicle-archive-manage',
       query: carrierId ? { carrierId } : undefined
     })
   }
@@ -375,10 +375,7 @@
       goVehicleManage()
       return
     }
-    void router.push({
-      path: `/vehicle-manage-system/archive-manage/vehicle-archive-edit/${row.id}`,
-      query: { source: 'carrier-detail' }
-    })
+    void router.push(`/vehicle-manage-system/vehicle-archive-edit/${row.id}`)
   }
 
   const formatAddress = (row?: Partial<Carrier>): string => {

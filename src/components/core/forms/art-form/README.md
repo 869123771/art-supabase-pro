@@ -192,6 +192,7 @@
 | `labelField` | `string` | `'label'` | 选项标签字段 |
 | `valueField` | `string` | `'value'` | 选项值字段 |
 | `labelFn` | `(option) => string` | `undefined` | 自定义选项标签 |
+| `optionComponent` | `Component` | `undefined` | `select` 下拉选项内容组件，通过 `option` Prop 接收规范化后的选项 |
 | `childrenField` | `string` | `'children'` | 子级字段名 |
 | `autoSelect` | `'first' \| 'last' \| 'one' \| false \| fn` | `false` | 异步选项加载后自动选择 |
 
@@ -277,6 +278,25 @@ const formItems = computed<FormItem[]>(() => [
     }
   }
 ])
+```
+
+长文本或复合信息选项可以用 `optionComponent` 自定义下拉内容，`labelFn` 仍负责选中态文本与筛选文本：
+
+```ts
+import AddressOption from './address-option.vue'
+
+const items: FormItem[] = [
+  {
+    label: '地址',
+    key: 'addressId',
+    type: 'select',
+    api: fetchAddressOptions,
+    resultField: 'data',
+    valueField: 'id',
+    labelFn: (option) => String(option.addressDetail ?? ''),
+    optionComponent: AddressOption
+  }
+]
 ```
 
 ## 提交输出清洗

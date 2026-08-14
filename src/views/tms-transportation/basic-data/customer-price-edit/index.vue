@@ -9,20 +9,43 @@
     <ArtPageHeader
       class="customer-price-edit__header"
       :title="isEdit ? '编辑客户价' : '新增客户价'"
-      subtitle="维护运输路线、货物需求、车辆要求与结算费用"
+      subtitle="先选择客户和收发货地址，再完善货物、车辆与结算费用"
       show-back
       @back="goBack()"
     />
 
     <div ref="pageRef" class="customer-price-edit__content">
       <section class="customer-price-edit__section art-card-xs">
-        <ArtSectionTitle>基础信息</ArtSectionTitle>
+        <ArtSectionTitle>客户与运输路线</ArtSectionTitle>
+
+        <ol class="customer-price-edit__workflow" aria-label="客户价格维护步骤">
+          <li
+            v-for="(step, index) in workflowSteps"
+            :key="step.key"
+            class="customer-price-edit__workflow-step"
+            :class="{ 'is-complete': step.complete, 'is-active': step.active }"
+            :aria-current="step.active ? 'step' : undefined"
+          >
+            <span class="customer-price-edit__workflow-index" aria-hidden="true">
+              <ElIcon v-if="step.complete"><Check /></ElIcon>
+              <template v-else>{{ index + 1 }}</template>
+            </span>
+            <span class="customer-price-edit__workflow-copy">
+              <strong>{{ step.label }}</strong>
+              <small>{{ step.description }}</small>
+            </span>
+            <span class="customer-price-edit__workflow-status">
+              {{ step.complete ? '已完成' : step.active ? '当前步骤' : '待处理' }}
+            </span>
+          </li>
+        </ol>
+
         <ArtForm
           ref="baseFormRef"
           v-model="form.data"
           :items="form.baseItems"
           :rules="form.rules"
-          :span="8"
+          :span="12"
           :gutter="24"
           label-width="98px"
           root-class="customer-price-edit__form"
@@ -32,11 +55,31 @@
 
         <div class="customer-price-edit__contact-grid">
           <div class="customer-price-edit__contact-panel">
-            <div
-              class="customer-price-edit__contact-title customer-price-edit__contact-title--send"
-            >
-              <span>发</span>
+            <div class="customer-price-edit__contact-heading">
+              <span class="customer-price-edit__contact-icon" aria-hidden="true">发</span>
+              <div class="customer-price-edit__contact-copy">
+                <strong>发货信息</strong>
+                <span>选择客户后，自动带入默认发货地址</span>
+              </div>
+              <ElTag :type="getAddressStatusType('shipping')" effect="plain" size="small">
+                {{ getAddressStatusText('shipping') }}
+              </ElTag>
             </div>
+
+            <ElAlert
+              v-if="page.shippingAddressError"
+              class="customer-price-edit__address-alert"
+              type="error"
+              :closable="false"
+              show-icon
+            >
+              <template #title>
+                <span>{{ page.shippingAddressError }}</span>
+                <ElButton link type="primary" @click="retryShippingAddressLoad">
+                  重新加载
+                </ElButton>
+              </template>
+            </ElAlert>
             <ArtForm
               ref="shippingFormRef"
               v-model="form.data"
@@ -51,17 +94,19 @@
               <template #shippingAddressDetail>
                 <div
                   class="customer-price-edit__address-card"
-                  :class="{ 'is-empty': !form.data.shippingAddressDetail }"
+                  :class="{
+                    'is-empty': !form.data.shippingAddressDetail,
+                    'is-disabled': !form.data.customerId || page.shippingAddressLoading
+                  }"
                 >
                   <div class="customer-price-edit__address-main">
                     <div class="customer-price-edit__address-text">
-                      {{ form.data.shippingAddressDetail || '选择客户后自动带出默认发货地址' }}
+                      {{ form.data.shippingAddressDetail || getAddressEmptyText('shipping') }}
                     </div>
                     <div
                       v-if="form.data.shippingAddressDetail"
                       class="customer-price-edit__address-meta"
                     >
-                      <span>{{ getAddressContactText('shipping') }}</span>
                       <span
                         :class="{
                           'is-warning': !getAddressCoordinateText('shipping')
@@ -72,7 +117,13 @@
                     </div>
                   </div>
                   <div class="customer-price-edit__address-actions">
-                    <ElButton type="primary" plain @click="openAddressSelector('shipping')">
+                    <ElButton
+                      type="primary"
+                      plain
+                      :loading="page.shippingAddressLoading"
+                      :disabled="!form.data.customerId"
+                      @click="openAddressSelector('shipping')"
+                    >
                       {{ form.data.shippingAddressDetail ? '更换' : '选择地址' }}
                     </ElButton>
                     <ElButton
@@ -85,14 +136,36 @@
                   </div>
                 </div>
               </template>
+
+              <template #originRegionPath>
+                <div
+                  class="customer-price-edit__region-field"
+                  :class="{ 'is-empty': !form.data.originRegionPath.length }"
+                >
+                  <span>{{ getRegionText('shipping') || '选择发货地址后自动生成始发地' }}</span>
+                  <ElTag v-if="form.data.originRegionPath.length" effect="plain" size="small">
+                    自动生成
+                  </ElTag>
+                </div>
+              </template>
             </ArtForm>
           </div>
 
           <div class="customer-price-edit__contact-panel">
-            <div
-              class="customer-price-edit__contact-title customer-price-edit__contact-title--receive"
-            >
-              <span>收</span>
+            <div class="customer-price-edit__contact-heading">
+              <span
+                class="customer-price-edit__contact-icon customer-price-edit__contact-icon--receive"
+                aria-hidden="true"
+              >
+                收
+              </span>
+              <div class="customer-price-edit__contact-copy">
+                <strong>收货信息</strong>
+                <span>选择收货地址后，自动更新目的地</span>
+              </div>
+              <ElTag :type="getAddressStatusType('receiving')" effect="plain" size="small">
+                {{ getAddressStatusText('receiving') }}
+              </ElTag>
             </div>
             <ArtForm
               ref="receivingFormRef"
@@ -112,13 +185,12 @@
                 >
                   <div class="customer-price-edit__address-main">
                     <div class="customer-price-edit__address-text">
-                      {{ form.data.receivingAddressDetail || '请选择收货地址' }}
+                      {{ form.data.receivingAddressDetail || getAddressEmptyText('receiving') }}
                     </div>
                     <div
                       v-if="form.data.receivingAddressDetail"
                       class="customer-price-edit__address-meta"
                     >
-                      <span>{{ getAddressContactText('receiving') }}</span>
                       <span
                         :class="{
                           'is-warning': !getAddressCoordinateText('receiving')
@@ -140,6 +212,18 @@
                       清空
                     </ElButton>
                   </div>
+                </div>
+              </template>
+
+              <template #destinationRegionPath>
+                <div
+                  class="customer-price-edit__region-field"
+                  :class="{ 'is-empty': !form.data.destinationRegionPath.length }"
+                >
+                  <span>{{ getRegionText('receiving') || '选择收货地址后自动生成目的地' }}</span>
+                  <ElTag v-if="form.data.destinationRegionPath.length" effect="plain" size="small">
+                    自动生成
+                  </ElTag>
                 </div>
               </template>
             </ArtForm>
@@ -216,7 +300,7 @@
 
     <ArtStickyActionBar class="customer-price-edit__footer">
       <ElButton :disabled="page.saving" @click="goBack()">取消</ElButton>
-      <ElButton type="primary" :loading="page.saving" @click="handleSave">保存</ElButton>
+      <ElButton type="primary" :loading="page.saving" @click="handleSave"> 保存客户价 </ElButton>
     </ArtStickyActionBar>
 
     <ArtTableSingleSelect
@@ -226,6 +310,7 @@
       :api-fn="fetchAddressSelectorData"
       :columns="addressSelector.columns"
       :title="addressSelector.title"
+      :subtitle="addressSelector.subtitle"
       row-key="id"
       :label-key="getAddressLabel"
       :description-key="getAddressDescription"
@@ -263,15 +348,19 @@
 <script setup lang="tsx">
   import type { ComputedRef, UnwrapNestedRefs } from 'vue'
   import { cloneDeep } from 'lodash-es'
-  import type { FormRules } from 'element-plus'
+  import type { FormRules, TagProps } from 'element-plus'
   import {
+    ElAlert,
     ElAutocomplete,
     ElButton,
+    ElIcon,
     ElInputNumber,
     ElMessage,
     ElOption,
-    ElSelect
+    ElSelect,
+    ElTag
   } from 'element-plus'
+  import { Check } from '@element-plus/icons-vue'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import ArtTableMultipleSelect from '@/components/core/forms/art-data-select/table-multiple.vue'
   import ArtTableSingleSelect from '@/components/core/forms/art-data-select/table-single.vue'
@@ -286,7 +375,6 @@
   import ArtTable from '@/components/core/tables/art-table/index.vue'
   import type { ColumnOption } from '@/types'
   import { formatNameCodeOption } from '@/utils/form'
-  import { fetchRegionOptions } from '@/api/common'
   import {
     addCustomerPrice,
     editCustomerPrice,
@@ -339,12 +427,16 @@
   interface PageState {
     loading: boolean
     saving: boolean
+    shippingAddressLoading: boolean
+    shippingAddressLoaded: boolean
+    shippingAddressError: string
     error: Error | null
   }
 
   interface AddressSelectorGroup {
     mode: AddressMode
     title: string
+    subtitle: string
     value?: string | number
     selectedRows: DataSelectRecord[]
     columns: DataSelectColumn[]
@@ -379,6 +471,14 @@
     cargoQuantityText: ComputedRef<string>
     cargoVolumeText: ComputedRef<string>
     cargoWeightText: ComputedRef<string>
+  }
+
+  interface WorkflowStep {
+    key: string
+    label: string
+    description: string
+    complete: boolean
+    active: boolean
   }
 
   const route = useRoute()
@@ -454,10 +554,19 @@
   const createInitialCargoItem = createInitialCustomerPriceCargoItem
   const createInitialForm = createInitialCustomerPriceForm
 
-  const page = reactive<PageState>({ loading: false, saving: false, error: null })
+  const page = reactive<PageState>({
+    loading: false,
+    saving: false,
+    shippingAddressLoading: false,
+    shippingAddressLoaded: false,
+    shippingAddressError: '',
+    error: null
+  })
+  let addressLoadRequestId = 0
   const addressSelector = reactive<AddressSelectorGroup>({
     mode: 'shipping',
     title: '选择发货地址',
+    subtitle: '仅展示当前客户的发货地址，选择后会同步联系人与始发地。',
     value: undefined,
     selectedRows: [],
     columns: [
@@ -484,6 +593,8 @@
         label: '客户名称',
         key: 'customerId',
         type: 'select',
+        span: 12,
+        description: '更换客户会重新读取默认发货地址，并清空原收货信息。',
         api: fetchCustomerOptions,
         resultField: 'data',
         labelField: 'customerName',
@@ -493,7 +604,7 @@
         props: {
           clearable: true,
           filterable: true,
-          placeholder: '请选择',
+          placeholder: '搜索并选择客户',
           onChange: handleCustomerChange
         }
       },
@@ -501,105 +612,88 @@
         label: '客户编码',
         key: 'customerCode',
         type: 'input',
-        props: { disabled: true, placeholder: '请输入内容' }
-      },
-      {
-        label: '始发地',
-        key: 'originRegionPath',
-        type: 'cascader',
-        api: fetchRegionOptions,
-        labelField: 'name',
-        valueField: 'name',
-        childrenField: 'children',
-        props: {
-          class: 'w-full',
-          clearable: true,
-          disabled: true,
-          filterable: true,
-          placeholder: '请选择',
-          props: {
-            label: 'name',
-            value: 'name',
-            children: 'children',
-            emitPath: true,
-            checkStrictly: true
-          }
-        }
-      },
-      {
-        label: '目的地',
-        key: 'destinationRegionPath',
-        type: 'cascader',
-        api: fetchRegionOptions,
-        labelField: 'name',
-        valueField: 'name',
-        childrenField: 'children',
-        props: {
-          class: 'w-full',
-          clearable: true,
-          disabled: true,
-          filterable: true,
-          placeholder: '请选择',
-          props: {
-            label: 'name',
-            value: 'name',
-            children: 'children',
-            emitPath: true,
-            checkStrictly: true
-          }
-        }
+        span: 12,
+        props: { disabled: true, placeholder: '选择客户后自动带入' }
       },
       {
         label: '运输类型',
         key: 'transportType',
         type: 'select',
-        props: { options: form.transportTypeOptions, clearable: true, placeholder: '请选择' }
+        span: 12,
+        props: {
+          options: form.transportTypeOptions,
+          clearable: true,
+          placeholder: '请选择运输类型'
+        }
       },
       {
         label: '货物类型',
         key: 'cargoType',
         type: 'select',
-        props: { options: form.cargoTypeOptions, clearable: true, placeholder: '请选择' }
+        span: 12,
+        props: {
+          options: form.cargoTypeOptions,
+          clearable: true,
+          placeholder: '请选择货物类型'
+        }
       }
     ]),
     shippingItems: computed<FormItem[]>(() => [
       {
+        label: '发货地址',
+        key: 'shippingAddressDetail',
+        type: 'input',
+        span: 24,
+        props: { maxlength: 200, placeholder: '请选择发货地址' }
+      },
+      {
+        label: '始发地',
+        key: 'originRegionPath',
+        type: 'input',
+        span: 24
+      },
+      {
         label: '联系人',
         key: 'shippingContactName',
         type: 'input',
+        span: 12,
         props: { disabled: true, maxlength: 50, placeholder: '选择发货地址后带出' }
       },
       {
         label: '联系电话',
         key: 'shippingContactPhone',
         type: 'input',
+        span: 12,
         props: { disabled: true, maxlength: 20, placeholder: '选择发货地址后带出' }
-      },
-      {
-        label: '详细地址',
-        key: 'shippingAddressDetail',
-        type: 'input',
-        props: { maxlength: 200, placeholder: '请输入内容' }
       }
     ]),
     receivingItems: computed<FormItem[]>(() => [
       {
+        label: '收货地址',
+        key: 'receivingAddressDetail',
+        type: 'input',
+        span: 24,
+        props: { maxlength: 200, placeholder: '请选择收货地址' }
+      },
+      {
+        label: '目的地',
+        key: 'destinationRegionPath',
+        type: 'input',
+        span: 24
+      },
+      {
         label: '联系人',
         key: 'receivingContactName',
         type: 'input',
+        span: 12,
         props: { disabled: true, maxlength: 50, placeholder: '选择收货地址后带出' }
       },
       {
         label: '联系电话',
         key: 'receivingContactPhone',
         type: 'input',
+        span: 12,
         props: { disabled: true, maxlength: 20, placeholder: '选择收货地址后带出' }
-      },
-      {
-        label: '详细地址',
-        key: 'receivingAddressDetail',
-        type: 'input',
-        props: { maxlength: 200, placeholder: '请输入内容' }
       }
     ]),
     vehicleItems: computed<FormItem[]>(() => [
@@ -764,6 +858,47 @@
     cargoWeightText: computed(() => formatNumber(form.cargoSummary.weight, 2))
   })
 
+  const workflowSteps = computed<WorkflowStep[]>(() => {
+    const steps = [
+      {
+        key: 'customer',
+        label: '选择客户',
+        description: '识别客户编码',
+        complete: Boolean(form.data.customerId)
+      },
+      {
+        key: 'shipping',
+        label: '确认发货信息',
+        description: '默认地址自动带入',
+        complete: Boolean(form.data.shippingAddressDetail && form.data.originRegionPath.length)
+      },
+      {
+        key: 'receiving',
+        label: '选择收货地址',
+        description: '目的地自动更新',
+        complete: Boolean(
+          form.data.receivingAddressDetail && form.data.destinationRegionPath.length
+        )
+      },
+      {
+        key: 'pricing',
+        label: '完善价格',
+        description: '货物、车辆与费用',
+        complete: Boolean(
+          form.data.transportType &&
+          form.data.billingMethod &&
+          form.data.cargoItems?.some((item) => item.cargoName)
+        )
+      }
+    ]
+    const activeIndex = steps.findIndex((step) => !step.complete)
+
+    return steps.map((step, index) => ({
+      ...step,
+      active: index === (activeIndex === -1 ? steps.length - 1 : activeIndex)
+    }))
+  })
+
   const feeFields: Array<keyof CustomerPriceForm> = [
     'transportFee',
     'insuranceFee',
@@ -888,42 +1023,54 @@
 
   async function loadCustomerAddressOptions(
     customerId: string,
-    applyDefault: boolean
+    applyDefault: boolean,
+    clearReceiving = applyDefault
   ): Promise<void> {
+    const requestId = ++addressLoadRequestId
+
+    if (applyDefault) {
+      applyAddressPatch('shipping')
+    }
+    if (clearReceiving) {
+      applyAddressPatch('receiving')
+    }
+
     if (!customerId) {
       form.shippingAddressOptions = []
-      if (applyDefault) {
-        Object.assign(form.data, {
-          shippingAddressId: null,
-          receivingAddressId: null,
-          shippingContactName: '',
-          shippingContactPhone: '',
-          shippingAddressDetail: '',
-          shippingLongitude: null,
-          shippingLatitude: null,
-          receivingContactName: '',
-          receivingContactPhone: '',
-          receivingAddressDetail: '',
-          receivingLongitude: null,
-          receivingLatitude: null,
-          originRegionPath: [],
-          destinationRegionPath: []
-        })
-      }
+      Object.assign(page, {
+        shippingAddressLoading: false,
+        shippingAddressLoaded: false,
+        shippingAddressError: ''
+      })
       return
     }
 
-    const shippingResult = await fetchCustomerAddressList({
-      customerId,
-      addressType: 'shipping',
-      from: 0,
-      to: 99
+    Object.assign(page, {
+      shippingAddressLoading: true,
+      shippingAddressLoaded: false,
+      shippingAddressError: ''
     })
-    form.shippingAddressOptions = shippingResult.data ?? []
 
-    if (applyDefault) {
-      applyAddressPatch('shipping', findDefaultAddress(form.shippingAddressOptions))
-      applyAddressPatch('receiving')
+    try {
+      const shippingResult = await fetchCustomerAddressList({
+        customerId,
+        addressType: 'shipping',
+        from: 0,
+        to: 99
+      })
+      if (requestId !== addressLoadRequestId) return
+
+      form.shippingAddressOptions = shippingResult.data ?? []
+      page.shippingAddressLoaded = true
+      if (applyDefault) {
+        applyAddressPatch('shipping', findDefaultAddress(form.shippingAddressOptions))
+      }
+    } catch {
+      if (requestId !== addressLoadRequestId) return
+      form.shippingAddressOptions = []
+      page.shippingAddressError = '发货地址读取失败，请检查网络后重试。'
+    } finally {
+      if (requestId === addressLoadRequestId) page.shippingAddressLoading = false
     }
   }
 
@@ -937,9 +1084,18 @@
       return
     }
 
+    if (mode === 'shipping' && page.shippingAddressLoading) {
+      ElMessage.info('正在读取该客户的发货地址，请稍候')
+      return
+    }
+
     Object.assign(addressSelector, {
       mode,
       title: mode === 'shipping' ? '选择发货地址' : '选择收货地址',
+      subtitle:
+        mode === 'shipping'
+          ? '仅展示当前客户的发货地址，选择后会同步联系人与始发地。'
+          : '选择后会同步收货联系人、详细地址与目的地。',
       value:
         mode === 'shipping'
           ? (form.data.shippingAddressId ?? undefined)
@@ -952,6 +1108,11 @@
 
   function handleAddressClear(mode: AddressMode): void {
     applyAddressPatch(mode)
+  }
+
+  function retryShippingAddressLoad(): void {
+    if (!form.data.customerId) return
+    void loadCustomerAddressOptions(form.data.customerId, true, false)
   }
 
   async function fetchAddressSelectorData(params: DataSelectFetchParams) {
@@ -1066,20 +1227,50 @@
       .join(' / ')
   }
 
-  function getAddressContactText(mode: AddressMode): string {
-    const name =
-      mode === 'shipping' ? form.data.shippingContactName : form.data.receivingContactName
-    const phone =
-      mode === 'shipping' ? form.data.shippingContactPhone : form.data.receivingContactPhone
-    return [name, phone].filter(Boolean).join(' / ') || '暂无联系人'
-  }
-
   function getAddressCoordinateText(mode: AddressMode): string {
     const longitude =
       mode === 'shipping' ? form.data.shippingLongitude : form.data.receivingLongitude
     const latitude = mode === 'shipping' ? form.data.shippingLatitude : form.data.receivingLatitude
     if (!hasCoordinate(longitude, latitude)) return ''
     return `${longitude}, ${latitude}`
+  }
+
+  function getAddressEmptyText(mode: AddressMode): string {
+    if (mode === 'receiving') return '请选择收货地址，系统会自动更新目的地'
+    if (!form.data.customerId) return '请先选择客户，系统会读取默认发货地址'
+    if (page.shippingAddressLoading) return '正在读取该客户的默认发货地址…'
+    if (page.shippingAddressError) return '发货地址读取失败，请重新加载'
+    if (page.shippingAddressLoaded && !form.shippingAddressOptions.length) {
+      return '该客户暂无发货地址，请先在地址管理中维护'
+    }
+    return '请选择该客户的发货地址'
+  }
+
+  function getRegionText(mode: AddressMode): string {
+    const path = mode === 'shipping' ? form.data.originRegionPath : form.data.destinationRegionPath
+    return path.filter(Boolean).join(' / ')
+  }
+
+  function getAddressStatusText(mode: AddressMode): string {
+    if (mode === 'shipping' && page.shippingAddressLoading) return '读取中'
+    const hasAddress =
+      mode === 'shipping'
+        ? Boolean(form.data.shippingAddressDetail)
+        : Boolean(form.data.receivingAddressDetail)
+    if (hasAddress) return mode === 'shipping' ? '已带入' : '已选择'
+    if (mode === 'shipping' && page.shippingAddressLoaded && !form.shippingAddressOptions.length) {
+      return '待维护'
+    }
+    return '待选择'
+  }
+
+  function getAddressStatusType(mode: AddressMode): TagProps['type'] {
+    if (mode === 'shipping' && page.shippingAddressLoading) return 'warning'
+    const hasAddress =
+      mode === 'shipping'
+        ? Boolean(form.data.shippingAddressDetail)
+        : Boolean(form.data.receivingAddressDetail)
+    return hasAddress ? 'success' : 'info'
   }
 
   function addCargoItem(): void {
@@ -1232,6 +1423,102 @@
       padding: 18px 20px 24px;
     }
 
+    &__workflow {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      padding: 0;
+      margin: 16px 0 24px;
+      overflow: hidden;
+      list-style: none;
+      background: var(--el-fill-color-extra-light);
+      border: 1px solid var(--el-border-color-lighter);
+      border-radius: var(--el-border-radius-base);
+    }
+
+    &__workflow-step {
+      position: relative;
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      gap: 4px 10px;
+      align-items: center;
+      min-width: 0;
+      padding: 14px 16px;
+
+      & + & {
+        border-left: 1px solid var(--el-border-color-lighter);
+      }
+
+      &.is-active {
+        background: var(--el-color-primary-light-9);
+
+        .customer-price-edit__workflow-index {
+          color: var(--theme-color);
+          background: var(--el-bg-color);
+          border-color: var(--theme-color);
+        }
+
+        .customer-price-edit__workflow-status {
+          color: var(--theme-color);
+        }
+      }
+
+      &.is-complete {
+        .customer-price-edit__workflow-index {
+          color: #fff;
+          background: var(--theme-color);
+          border-color: var(--theme-color);
+        }
+      }
+    }
+
+    &__workflow-index {
+      display: inline-flex;
+      grid-row: 1 / 3;
+      align-items: center;
+      justify-content: center;
+      width: 30px;
+      height: 30px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--el-text-color-secondary);
+      background: var(--el-bg-color);
+      border: 1px solid var(--el-border-color);
+      border-radius: 50%;
+    }
+
+    &__workflow-copy {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+
+      strong {
+        overflow: hidden;
+        font-size: 14px;
+        font-weight: 600;
+        line-height: 20px;
+        color: var(--el-text-color-primary);
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      small {
+        overflow: hidden;
+        font-size: 12px;
+        line-height: 18px;
+        color: var(--el-text-color-secondary);
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+    }
+
+    &__workflow-status {
+      align-self: start;
+      font-size: 12px;
+      line-height: 20px;
+      color: var(--el-text-color-placeholder);
+      white-space: nowrap;
+    }
+
     &__section-header {
       display: flex;
       gap: 12px;
@@ -1244,18 +1531,80 @@
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 16px;
-      margin-top: 8px;
+      margin-top: 20px;
     }
 
     &__contact-panel {
       min-width: 0;
+      padding: 16px;
+      background: var(--el-fill-color-extra-light);
+      border: 1px solid var(--el-border-color-lighter);
+      border-radius: var(--el-border-radius-base);
+    }
+
+    &__contact-heading {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    &__contact-icon {
+      display: inline-flex;
+      flex: none;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      font-size: 16px;
+      font-weight: 600;
+      color: #fff;
+      background: var(--theme-color);
+      border-radius: var(--el-border-radius-base);
+
+      &--receive {
+        background: var(--el-color-success);
+      }
+    }
+
+    &__contact-copy {
+      display: flex;
+      flex: 1;
+      flex-direction: column;
+      min-width: 0;
+
+      strong {
+        font-size: 15px;
+        font-weight: 600;
+        line-height: 22px;
+        color: var(--el-text-color-primary);
+      }
+
+      span {
+        overflow: hidden;
+        font-size: 12px;
+        line-height: 18px;
+        color: var(--el-text-color-secondary);
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+    }
+
+    &__address-alert {
+      margin-bottom: 12px;
+
+      :deep(.el-alert__title) {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
     }
 
     &__address-card {
       display: flex;
       gap: 12px;
       align-items: center;
-      min-height: 72px;
+      min-height: 84px;
       padding: 10px 12px;
       background: var(--el-fill-color-blank);
       border: 1px solid var(--el-border-color);
@@ -1268,6 +1617,10 @@
           font-weight: 400;
           color: var(--el-text-color-placeholder);
         }
+      }
+
+      &.is-disabled {
+        background: var(--el-fill-color-light);
       }
     }
 
@@ -1325,49 +1678,31 @@
       align-items: center;
     }
 
-    &__contact-title {
+    &__region-field {
       display: flex;
+      gap: 10px;
       align-items: center;
-      height: 40px;
-      padding-left: 0;
-      margin: 0 0 12px;
+      justify-content: space-between;
+      min-height: 40px;
+      padding: 0 12px;
+      color: var(--el-text-color-regular);
+      background: var(--el-fill-color-light);
+      border: 1px solid var(--el-border-color-lighter);
+      border-radius: var(--el-border-radius-base);
 
-      &::after {
+      > span:first-child {
         flex: 1;
-        height: 100%;
-        content: '';
+        min-width: 0;
+        overflow: hidden;
+        font-size: 13px;
+        line-height: 20px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
 
-      span {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 40px;
-        height: 40px;
-        font-size: 18px;
-        font-weight: 600;
-        color: #fff;
-        border-radius: var(--art-control-radius-small);
-      }
-
-      &--send {
-        &::after {
-          background: #fff4ec;
-        }
-
-        span {
-          background: #ff8a2a;
-        }
-      }
-
-      &--receive {
-        &::after {
-          background: #eafaf1;
-        }
-
-        span {
-          background: #2fca72;
-        }
+      &.is-empty {
+        color: var(--el-text-color-placeholder);
+        border-style: dashed;
       }
     }
 
@@ -1391,6 +1726,20 @@
 
   @media (width <= 900px) {
     .customer-price-edit {
+      &__workflow {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      &__workflow-step {
+        &:nth-child(3) {
+          border-left: 0;
+        }
+
+        &:nth-child(n + 3) {
+          border-top: 1px solid var(--el-border-color-lighter);
+        }
+      }
+
       &__contact-grid {
         grid-template-columns: 1fr;
       }
@@ -1402,6 +1751,41 @@
 
       &__address-actions {
         justify-content: flex-end;
+      }
+    }
+  }
+
+  @media (width <= 600px) {
+    .customer-price-edit {
+      padding: 0;
+
+      &__section {
+        padding: 16px 12px 20px;
+      }
+
+      &__workflow {
+        grid-template-columns: 1fr;
+      }
+
+      &__workflow-step {
+        & + & {
+          border-top: 1px solid var(--el-border-color-lighter);
+          border-left: 0;
+        }
+      }
+
+      &__contact-panel {
+        padding: 14px 12px;
+      }
+
+      &__contact-copy span {
+        white-space: normal;
+      }
+
+      :deep(.customer-price-edit__form .el-col-12),
+      :deep(.customer-price-edit__form .el-col-xs-12) {
+        flex: 0 0 100%;
+        max-width: 100%;
       }
     }
   }

@@ -1,5 +1,5 @@
 <template>
-  <div class="tms-workspace-page art-full-height">
+  <div class="tms-contract tms-workspace-page art-full-height">
     <CustomerDeleteProcessingNotice
       v-if="deleteContext.active"
       :customer-id="deleteContext.customerId"
@@ -39,6 +39,7 @@
 <script setup lang="tsx">
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { ElMessage, ElTag } from 'element-plus'
+  import { RouterLink } from 'vue-router'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type {
     ArtTableQueryExpose,
@@ -292,8 +293,24 @@
 
   const columnsFactory = (): ColumnOption<Contract>[] => [
     { type: 'selection', width: 50, fixed: 'left', reserveSelection: true },
-    { prop: 'contractName', label: '合同名称', minWidth: 190, showOverflowTooltip: true },
-    { prop: 'contractNo', label: '合同编号', width: 150 },
+    {
+      prop: 'contractNo',
+      label: '合同编号',
+      width: 165,
+      formatter: (row) =>
+        row.id ? (
+          <RouterLink
+            class="tms-contract__code-link"
+            to={`/tms-transportation/basic-data/contract-detail/${row.id}`}
+            title={`查看合同 ${row.contractNo || row.contractName} 详情`}
+          >
+            {row.contractNo || '-'}
+          </RouterLink>
+        ) : (
+          row.contractNo || '-'
+        )
+    },
+    { prop: 'contractName', label: '合同名称', minWidth: 210, showOverflowTooltip: true },
     {
       prop: 'contractStatus',
       label: '合同状态',
@@ -637,3 +654,31 @@
   )
   onActivated(() => syncMasterDeleteRoute(true))
 </script>
+
+<style scoped lang="scss">
+  .tms-contract {
+    :deep(.tms-contract__code-link) {
+      display: inline-block;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-weight: 600;
+      vertical-align: middle;
+      color: var(--el-color-primary);
+      white-space: nowrap;
+      text-decoration: none;
+
+      &:hover {
+        color: var(--el-color-primary-dark-2);
+        text-decoration: underline;
+        text-underline-offset: 3px;
+      }
+
+      &:focus-visible {
+        outline: 2px solid var(--el-color-primary);
+        outline-offset: 2px;
+        border-radius: var(--el-border-radius-small);
+      }
+    }
+  }
+</style>

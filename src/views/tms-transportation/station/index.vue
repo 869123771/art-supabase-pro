@@ -163,7 +163,7 @@
 
   const columnsFactory = (): ColumnOption<Station>[] => [
     { type: 'selection', width: 50, fixed: 'left', reserveSelection: true },
-    { prop: 'stationCode', label: '编号', width: 120 },
+    { prop: 'stationCode', label: '编号', width: 140 },
     {
       prop: 'stationName',
       label: '站名称',

@@ -126,40 +126,22 @@
         />
       </ElTabPane>
     </ElTabs>
-
-    <ElCard v-if="showAuditPanel" class="vehicle-archive-detail__audit art-card-xs" shadow="never">
-      <template #header>
-        <span>审核状态</span>
-      </template>
-      <ArtForm
-        :model-value="auditForm"
-        :items="auditFormItems"
-        :span="24"
-        label-width="90px"
-        :show-reset="false"
-        submit-text="保存审核"
-        :disabled-submit="savingAudit"
-        @update:model-value="Object.assign(auditForm, $event)"
-        @submit="handleSaveAudit"
-      />
-    </ElCard>
   </ArtPageShell>
 </template>
 
 <script setup lang="tsx">
   import type { VNodeChild } from 'vue'
-  import { ElCard, ElImage, ElTabPane, ElTabs } from 'element-plus'
+  import { ElImage, ElTabPane, ElTabs } from 'element-plus'
   import ArtDescriptions from '@/components/core/base/art-descriptions/index.vue'
   import type { ArtDescriptionItem } from '@/components/core/base/art-descriptions/types'
   import ArtTable from '@/components/core/tables/art-table/index.vue'
-  import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
   import WorkflowBusinessHistory from '@/components/business/workflow-business-history/index.vue'
   import ArtUploadImage from '@/components/core/forms/art-upload-image/index.vue'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import type { ColumnOption } from '@/types'
-  import { auditVehicleArchive, fetchVehicleArchiveDetail } from '@/api/vehicle-manage-system'
+  import { fetchVehicleArchiveDetail } from '@/api/vehicle-manage-system'
   import { useUserStore } from '@/store/modules/user'
   import { viewAttachment } from '@/utils/file'
   import { renderAttachmentLink } from '@/components/core/media/art-file-viewer/render'
@@ -168,7 +150,6 @@
 
   type VehicleArchive = Api.VehicleMgtSys.ArchiveManage.VehicleArchive
   type ArchiveAttachment = Api.VehicleMgtSys.ArchiveManage.VehicleArchiveAttachment
-  type AuditStatus = Api.VehicleMgtSys.ArchiveManage.AuditStatus
   type ImageKey = 'drivingLicenseFrontUrl' | 'drivingLicenseBackUrl' | 'operationLicenseUrl'
 
   interface InfoItem {
@@ -215,42 +196,6 @@
   const archive = ref<VehicleArchive>()
   const loading = ref(false)
   const loadError = shallowRef<Error | null>(null)
-  const savingAudit = ref(false)
-  const auditForm = reactive<{
-    auditStatus: Extract<AuditStatus, 'approved' | 'rejected'>
-    auditRemark: string
-  }>({
-    auditStatus: 'approved',
-    auditRemark: ''
-  })
-  const showAuditPanel = computed(
-    () => route.query.source !== 'manage' && archive.value?.auditStatus === 'pending'
-  )
-  const auditStatusOptions = computed(() =>
-    (userStore.getDictMap.vehicleAuditStatus ?? []).filter((item) =>
-      ['approved', 'rejected'].includes(item.value)
-    )
-  )
-  const auditFormItems = computed<FormItem[]>(() => [
-    {
-      label: '审核状态',
-      key: 'auditStatus',
-      type: 'radioGroup',
-      props: { options: auditStatusOptions.value }
-    },
-    {
-      label: '备注',
-      key: 'auditRemark',
-      type: 'input',
-      props: {
-        type: 'textarea',
-        rows: 4,
-        maxlength: 500,
-        showWordLimit: true,
-        placeholder: '请输入审核说明'
-      }
-    }
-  ])
 
   onMounted(async () => {
     await Promise.all([
@@ -420,8 +365,6 @@
       if (!data) return
 
       archive.value = { ...data, attachments: data.attachments ?? [] }
-      auditForm.auditStatus = data.auditStatus === 'rejected' ? 'rejected' : 'approved'
-      auditForm.auditRemark = data.auditRemark ?? ''
     } catch (error) {
       loadError.value = error instanceof Error ? error : new Error('车辆档案详情加载失败')
     } finally {
@@ -429,26 +372,8 @@
     }
   }
 
-  const handleSaveAudit = async (): Promise<void> => {
-    if (!archive.value?.id) return
-
-    savingAudit.value = true
-    try {
-      await auditVehicleArchive({
-        id: archive.value.id,
-        auditStatus: auditForm.auditStatus,
-        auditRemark: auditForm.auditRemark
-      })
-      await goBack()
-    } finally {
-      savingAudit.value = false
-    }
-  }
-
   const goBack = async (): Promise<void> => {
-    const source =
-      route.query.source === 'manage' ? 'vehicle-archive-manage' : 'vehicle-archive-entry'
-    await router.push(`/vehicle-manage-system/archive-manage/${source}`)
+    await router.push('/vehicle-manage-system/vehicle-archive-manage')
   }
 
   const formatValue = (value: InfoItem['value'], suffix = ''): VNodeChild => {
@@ -690,10 +615,6 @@
         color: var(--el-color-danger);
         background: var(--el-color-danger-light-9);
       }
-    }
-
-    &__audit {
-      margin-top: 12px;
     }
 
     @media (width <= 760px) {
