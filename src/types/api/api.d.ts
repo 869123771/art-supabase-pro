@@ -900,8 +900,11 @@ declare namespace Api {
         plateNo: string
         companyName?: string
         driverName?: string
+        driverPhone?: string
         accidentTime: string
         accidentLocation?: string
+        accidentLongitude?: number | null
+        accidentLatitude?: number | null
         accidentSummary: string
         damageLevel?: string
         responsibilityType?: VehicleAccidentResponsibility | string
@@ -1646,6 +1649,7 @@ declare namespace Api {
       interface CarrierPrice {
         id?: string
         tenantId?: string
+        quoteNo: string
         carrierId: string
         carrier?: CarrierOption | null
         driverId?: string | null
@@ -2644,124 +2648,21 @@ declare namespace Api {
     }
 
     namespace Finance {
-      type InTransitExpenseType = 'energy' | 'charging' | 'gas' | 'other'
-      type InTransitExpenseReportStatus =
-        'draft' | 'pending_review' | 'approved' | 'rejected' | 'cancelled'
-      type ExpenseReimbursementStatus = 'not_converted' | 'converted'
-      type ExpensePaymentStatus = 'unpaid' | 'paid'
       type ExpenseOcrStatus = 'not_started' | 'processing' | 'succeeded' | 'failed'
       type ReimbursementApprovalStatus =
         'draft' | 'pending_review' | 'approved' | 'rejected' | 'paid' | 'cancelled'
-
-      interface InTransitExpenseRecord {
-        id?: string
-        tenantId?: string
-        expenseNo?: string
-        waybillId: string
-        orderId?: string | null
-        driverId?: string | null
-        expenseType: InTransitExpenseType | string
-        amount: number
-        occurredAt: string
-        quantity?: number | null
-        unitPrice?: number | null
-        providerName?: string | null
-        payeeName?: string | null
-        paymentChannel?: string | null
-        invoiceNo?: string | null
-        meterNo?: string | null
-        expenseLocation?: string | null
-        expenseRegion?: string | null
-        expenseRegionAdcode?: string | null
-        expenseLongitude?: number | string | null
-        expenseLatitude?: number | string | null
-        expenseCoordinateSystem?: string | null
-        expenseCoordinateSource?: string | null
-        expenseCoordinateStatus?: string | null
-        expenseGeocodeProvider?: string | null
-        expenseGeocodedAt?: string | null
-        description?: string | null
-        attachments: string[]
-        waybillNoSnapshot?: string
-        orderNoSnapshot?: string | null
-        plateNoSnapshot?: string | null
-        driverNameSnapshot?: string | null
-        driverPhoneSnapshot?: string | null
-        routeSnapshot?: string | null
-        latestOcrRunId?: string | null
-        ocrArtifactId?: string | null
-        ocrStatus?: ExpenseOcrStatus
-        reportStatus?: InTransitExpenseReportStatus
-        reimbursementStatus?: ExpenseReimbursementStatus
-        paymentStatus?: ExpensePaymentStatus
-        costId?: string | null
-        reimbursementId?: string | null
-        reimbursementNo?: string | null
-        reimbursementApprovalStatus?: ReimbursementApprovalStatus | null
-        paymentNo?: string | null
-        paymentDate?: string | null
-        bankReference?: string | null
-        waybillStatus?: string | null
-        submittedAt?: string | null
-        submittedBy?: string | null
-        reviewedAt?: string | null
-        reviewedBy?: string | null
-        reviewRemark?: string | null
-        createBy?: string | null
-        createTime?: string
-        updateBy?: string | null
-        updateTime?: string
-      }
-
-      type InTransitExpenseSearchParams = Api.Common.CommonSearchParams & {
-        recordId?: string
-        orderId?: string
-        keyword?: string
-        expenseType?: string
-        reportStatus?: string
-        reimbursementStatus?: string
-        paymentStatus?: string
-        occurredAtRange?: string[]
-      }
-
-      interface InTransitWaybillOption {
-        id: string
-        waybillNo: string
-        status: string
-        orderId?: string | null
-        driverId?: string | null
-        carrierId?: string | null
-        originCity?: string | null
-        destinationCity?: string | null
-        driver?: Pick<BasicData.DriverOption, 'id' | 'driverName' | 'phone'> | null
-        order?: Pick<
-          Order.OrderRecord,
-          | 'id'
-          | 'orderNo'
-          | 'dispatchPlateNo'
-          | 'dispatchDriverName'
-          | 'dispatchDriverPhone'
-          | 'originStation'
-          | 'destinationStation'
-        > | null
-      }
-
-      interface InTransitWaybillOptionSearchParams extends Api.Common.CommonSearchParams {
-        keyword?: string
-        orderId?: string
-      }
 
       interface ExpenseReimbursementItem {
         id: string
         tenantId: string
         reimbursementId: string
-        expenseId: string
+        costId: string
         waybillId: string
-        expenseNoSnapshot: string
+        costNoSnapshot: string
         waybillNoSnapshot: string
-        expenseTypeSnapshot: string
+        expenseItemNameSnapshot: string
         amountSnapshot: number
-        occurredAtSnapshot: string
+        occurredOnSnapshot: string
         createTime: string
       }
 
@@ -2810,7 +2711,7 @@ declare namespace Api {
 
       interface CreateExpenseReimbursementPayload {
         reimbursementNo?: string | null
-        expenseIds: string[]
+        costIds: string[]
         payeeName: string
         payeeBank?: string | null
         payeeAccount?: string | null
@@ -2829,7 +2730,7 @@ declare namespace Api {
         remark?: string | null
       }
 
-      interface InTransitExpenseOverview {
+      interface WaybillCostOverview {
         totalCount: number
         pendingReviewCount: number
         approvedUnconvertedCount: number
@@ -2837,10 +2738,9 @@ declare namespace Api {
         paidAmount: number
       }
 
-      type InTransitExpenseOcrField =
-        | 'expenseType'
+      type WaybillExpenseOcrField =
         | 'amount'
-        | 'occurredAt'
+        | 'occurredOn'
         | 'quantity'
         | 'unitPrice'
         | 'providerName'
@@ -2849,12 +2749,11 @@ declare namespace Api {
         | 'invoiceNo'
         | 'meterNo'
         | 'expenseLocation'
-        | 'description'
+        | 'remark'
 
-      interface InTransitExpenseOcrDraft {
-        expenseType: InTransitExpenseType
+      interface WaybillExpenseOcrDraft {
         amount: number | null
-        occurredAt: string | null
+        occurredOn: string | null
         quantity: number | null
         unitPrice: number | null
         providerName: string | null
@@ -2863,23 +2762,23 @@ declare namespace Api {
         invoiceNo: string | null
         meterNo: string | null
         expenseLocation: string | null
-        description: string | null
+        remark: string | null
       }
 
-      interface InTransitExpenseOcrAnalyzeResponse {
+      interface WaybillExpenseOcrAnalyzeResponse {
         artifactId: string
         runId: string
         generatedAt: string
         summary: string
         confidence: number
-        fieldConfidence: Partial<Record<InTransitExpenseOcrField, number>>
+        fieldConfidence: Partial<Record<WaybillExpenseOcrField, number>>
         missingFields: string[]
         warnings: string[]
-        expense: InTransitExpenseOcrDraft
+        expense: WaybillExpenseOcrDraft
         reviewConfidenceThreshold: number
       }
 
-      interface InTransitExpenseOcrRunRecord {
+      interface WaybillExpenseOcrRunRecord {
         id: string
         feature: string
         model: string
@@ -2893,7 +2792,7 @@ declare namespace Api {
         createBy?: string | null
       }
 
-      type InTransitExpenseOcrRunSearchParams = Api.Common.CommonSearchParams & {
+      type WaybillExpenseOcrRunSearchParams = Api.Common.CommonSearchParams & {
         status?: string
         keyword?: string
         createTimeRange?: string[]
@@ -2909,8 +2808,38 @@ declare namespace Api {
         | 'driver_expense'
         | 'cargo_damage'
         | 'other'
+        | 'in_transit_energy'
+        | 'in_transit_charging'
+        | 'in_transit_gas'
+        | 'in_transit_other'
 
       type CostAuditStatus = 'draft' | 'pending_review' | 'approved' | 'rejected' | 'voided'
+      type CostSettlementStatus = 'unsettled' | 'pending_payment' | 'paid'
+
+      interface ExpenseItem {
+        id?: string
+        tenantId?: string
+        parentId?: string | null
+        itemCode: string
+        itemName: string
+        businessCategory?: WaybillCostType | null
+        isSelectable: boolean
+        reimbursementAllowed: boolean
+        isEnabled: boolean
+        sort: number
+        remark?: string | null
+        createBy?: string | null
+        createTime?: string
+        updateBy?: string | null
+        updateTime?: string
+        children?: ExpenseItem[]
+      }
+
+      type ExpenseItemSearchParams = Api.Common.CommonSearchParams & {
+        keyword?: string
+        parentId?: string | null
+        isEnabled?: boolean
+      }
 
       interface WaybillCostWaybill {
         id: string
@@ -2929,6 +2858,7 @@ declare namespace Api {
           | 'orderNo'
           | 'dispatchPlateNo'
           | 'dispatchDriverName'
+          | 'dispatchDriverPhone'
           | 'originStation'
           | 'destinationStation'
         > | null
@@ -2937,11 +2867,29 @@ declare namespace Api {
       interface WaybillCostRecord {
         id?: string
         tenantId?: string
+        costNo?: string
         waybillId: string
+        expenseItemId: string
         costType: WaybillCostType | string
         amount: number
         occurredOn: string
+        quantity?: number | null
+        unitPrice?: number | null
+        providerName?: string | null
         payeeName?: string | null
+        paymentChannel?: string | null
+        invoiceNo?: string | null
+        meterNo?: string | null
+        expenseLocation?: string | null
+        expenseRegion?: string | null
+        expenseRegionAdcode?: string | null
+        expenseLongitude?: number | string | null
+        expenseLatitude?: number | string | null
+        expenseCoordinateSystem?: string | null
+        expenseCoordinateSource?: string | null
+        expenseCoordinateStatus?: string | null
+        expenseGeocodeProvider?: string | null
+        expenseGeocodedAt?: string | null
         carrierId?: string | null
         driverId?: string | null
         remark?: string | null
@@ -2950,6 +2898,19 @@ declare namespace Api {
         reporterNameSnapshot?: string | null
         reporterDepartmentSnapshot?: string | null
         auditStatus?: CostAuditStatus
+        settlementStatus?: CostSettlementStatus
+        reimbursementId?: string | null
+        expensePaymentId?: string | null
+        paidAt?: string | null
+        waybillNoSnapshot?: string | null
+        orderNoSnapshot?: string | null
+        plateNoSnapshot?: string | null
+        driverNameSnapshot?: string | null
+        driverPhoneSnapshot?: string | null
+        routeSnapshot?: string | null
+        latestOcrRunId?: string | null
+        ocrArtifactId?: string | null
+        ocrStatus?: ExpenseOcrStatus
         submittedAt?: string | null
         submittedBy?: string | null
         reviewedAt?: string | null
@@ -2959,13 +2920,25 @@ declare namespace Api {
         createTime?: string
         updateBy?: string | null
         updateTime?: string
+        expenseItem?: ExpenseItem | null
+        reimbursement?: Pick<ExpenseReimbursementRecord, 'id' | 'reimbursementNo' | 'status'> | null
+        expensePayment?: {
+          id: string
+          paymentNo: string
+          paymentDate?: string | null
+          bankReference?: string | null
+        } | null
         waybill?: WaybillCostWaybill | null
       }
 
       type WaybillCostSearchParams = Api.Common.CommonSearchParams & {
+        recordId?: string
+        orderId?: string
         keyword?: string
+        expenseItemId?: string
         costType?: string
         auditStatus?: string
+        settlementStatus?: string
         occurredOnRange?: string[]
       }
 
@@ -2975,6 +2948,7 @@ declare namespace Api {
 
       interface WaybillOptionSearchParams extends Api.Common.CommonSearchParams {
         keyword?: string
+        orderId?: string
       }
 
       interface CostReviewPayload {

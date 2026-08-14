@@ -55,7 +55,7 @@ const applyCarrierPriceFilters = <TQuery extends SupabaseQueryLike>(
   if (billingMethod) query = query.eq('billing_method', billingMethod)
   if (keyword) {
     query = query.or(
-      `contact_name.ilike.%${keyword}%,contact_phone.ilike.%${keyword}%,driver_name.ilike.%${keyword}%,driver_phone.ilike.%${keyword}%,plate_no.ilike.%${keyword}%,remark.ilike.%${keyword}%`
+      `quote_no.ilike.%${keyword}%,contact_name.ilike.%${keyword}%,contact_phone.ilike.%${keyword}%,driver_name.ilike.%${keyword}%,driver_phone.ilike.%${keyword}%,plate_no.ilike.%${keyword}%,remark.ilike.%${keyword}%`
     )
   }
 

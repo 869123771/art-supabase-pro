@@ -117,6 +117,7 @@
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
   import ArtTable from '@/components/core/tables/art-table/index.vue'
+  import { useDocumentNumberRule } from '@/hooks/core/useDocumentNumberRule'
   import type { ColumnOption } from '@/types'
   import { formatNameCodeOption } from '@/utils/form'
   import { fetchRegionOptions } from '@/api/common'
@@ -218,6 +219,7 @@
   const paymentFormRef = ref<FormExpose>()
   const cargoSelectorRef = ref<CargoSelectorExpose>()
   const validatedFormRefs = [baseFormRef, carrierFormRef, feeFormRef, paymentFormRef]
+  const quoteNumber = useDocumentNumberRule('tms.carrier_price')
 
   const isEdit = computed(() => Boolean(route.params.id))
   const dictCodes = [
@@ -254,6 +256,7 @@
   function createInitialForm(): CarrierPriceForm {
     return {
       id: undefined,
+      quoteNo: '',
       carrierId: '',
       carrier: null,
       driverId: null,
@@ -313,6 +316,16 @@
     vehicleLengthOptions: computed(() => getDictMap.value.tmsCustomerPriceVehicleLength ?? []),
     billingMethodOptions: computed(() => getDictMap.value.tmsCustomerPriceBillingMethod ?? []),
     baseItems: computed<FormItem[]>(() => [
+      {
+        label: '报价单号',
+        key: 'quoteNo',
+        type: 'input',
+        props: {
+          maxlength: 50,
+          ...quoteNumber.inputProps(Boolean(form.data.id), '请输入报价单号', true)
+        },
+        description: quoteNumber.description.value
+      },
       {
         label: '始发地',
         key: 'originRegionPath',
@@ -399,7 +412,6 @@
         key: 'driverId',
         type: 'select',
         api: fetchDriverOptions,
-        immediate: false,
         resultField: 'data',
         labelField: 'driverName',
         valueField: 'id',
@@ -428,7 +440,6 @@
         key: 'vehicleId',
         type: 'select',
         api: fetchVehicleArchiveOptions,
-        immediate: false,
         resultField: 'data',
         labelField: 'plateNo',
         valueField: 'id',
@@ -525,6 +536,15 @@
       }
     ]),
     rules: computed<FormRules<CarrierPriceForm>>(() => ({
+      quoteNo: [
+        {
+          validator: (_rule, value, callback) =>
+            quoteNumber.manualRequired(Boolean(form.data.id)) && !String(value || '').trim()
+              ? callback(new Error('请输入报价单号'))
+              : callback(),
+          trigger: 'blur'
+        }
+      ],
       originRegionPath: [
         { required: true, type: 'array', message: '请选择始发地', trigger: 'change' }
       ],
@@ -726,6 +746,7 @@
     try {
       await Promise.all([
         loadDetail(),
+        quoteNumber.loadRule(),
         ...dictCodes.map((code) => userStore.ensureDictLoaded(code))
       ])
       await nextTick()
@@ -767,8 +788,21 @@
     { immediate: true }
   )
 
+  watch(
+    () => route.params.id,
+    (id, previousId) => {
+      if (route.name !== 'TmsCarrierPriceEdit' || id === previousId) return
+      void initializePage()
+    }
+  )
+
   async function loadDetail(): Promise<void> {
-    if (!isEdit.value) return
+    if (!isEdit.value) {
+      replaceForm(createInitialForm())
+      form.driverOptions = []
+      form.vehicleOptions = []
+      return
+    }
 
     const id = String(route.params.id || '')
     const { data } = await fetchCarrierPriceDetail(id)

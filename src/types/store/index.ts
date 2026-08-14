@@ -177,6 +177,7 @@ export interface DictMap extends Record<string, Api.DataCenter.DictListItem[] | 
   tmsInvoiceType?: Api.DataCenter.DictListItem[]
   tmsWaybillCostType?: Api.DataCenter.DictListItem[]
   tmsCostAuditStatus?: Api.DataCenter.DictListItem[]
+  tmsWaybillCostSettlementStatus?: Api.DataCenter.DictListItem[]
 }
 
 // 设置Store状态

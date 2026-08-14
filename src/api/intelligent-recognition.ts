@@ -47,7 +47,7 @@ export async function fetchRecognitionArtifactList(params: SearchParams) {
       'invoice_ocr',
       'waybill_receipt_ocr',
       'cash_voucher_ocr',
-      'in_transit_expense_ocr'
+      'waybill_expense_ocr'
     ])
   if (params.sort === 'risk') {
     query = query.order('confidence', { ascending: true, nullsFirst: true })

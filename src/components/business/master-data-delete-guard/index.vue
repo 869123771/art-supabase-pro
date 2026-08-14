@@ -305,11 +305,11 @@
     ),
     order_waybill: createWaybillMeta('订单关联运单', 10),
     order_expense: createGovernanceMeta(
-      '订单在途费用',
+      '订单运单费用',
       '笔',
       '费用属于经营与财务历史，不允许随订单物理删除。',
       '去处理费用',
-      'TmsInTransitExpense',
+      'TmsWaybillCost',
       20
     ),
     order_receipt_work_order: createGovernanceMeta(

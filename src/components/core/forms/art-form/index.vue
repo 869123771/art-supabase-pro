@@ -14,6 +14,7 @@
       :model="modelValue"
       :rules="props.rules"
       :label-position="labelPosition"
+      :validate-on-rule-change="props.validateOnRuleChange"
       v-bind="{ ...$attrs }"
       @validate="handleValidate"
     >

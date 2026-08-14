@@ -142,25 +142,6 @@ export {
   subscribeInTransitMonitorChanges
 } from '@/api/modules/tms/in-transit'
 export {
-  addInTransitExpense,
-  analyzeInTransitExpenseByAi,
-  createExpenseReimbursement,
-  deleteExpenseReimbursement,
-  deleteInTransitExpense,
-  editInTransitExpense,
-  executeExpenseReimbursement,
-  fetchExpenseReimbursementDetail,
-  fetchExpenseReimbursementList,
-  fetchInTransitExpenseList,
-  fetchInTransitExpenseOcrEnabled,
-  fetchInTransitExpenseOcrRunList,
-  fetchInTransitExpenseOverview,
-  fetchInTransitWaybillOptions,
-  reviewInTransitExpenseOcrArtifact,
-  submitExpenseReimbursement,
-  submitInTransitExpense
-} from '@/api/modules/tms/in-transit-expense'
-export {
   analyzeWaybillReceiptByAi,
   createReceiptExceptionWorkOrder,
   exportDeliveryList,
@@ -181,19 +162,35 @@ export {
   fetchCarrierPriceList
 } from '@/api/modules/tms/carrier-price'
 export {
+  addExpenseItem,
   addWaybillCost,
   analyzeReceivablesCollectionByAi,
+  analyzeWaybillExpenseByAi,
   analyzeWaybillCostByAi,
   analyzeWaybillProfitByAi,
+  createExpenseReimbursement,
+  deleteExpenseItem,
+  deleteExpenseReimbursement,
   deleteWaybillCost,
+  editExpenseItem,
   editWaybillCost,
+  executeExpenseReimbursement,
   exportWaybillCostList,
   exportWaybillProfitList,
+  fetchExpenseItemList,
+  fetchExpenseItemTree,
+  fetchExpenseReimbursementDetail,
+  fetchExpenseReimbursementList,
   fetchFinanceWorkbench,
   fetchFinanceWaybillOptions,
+  fetchWaybillCostOverview,
   fetchWaybillCostList,
+  fetchWaybillExpenseOcrEnabled,
+  fetchWaybillExpenseOcrRunList,
   fetchWaybillProfitList,
   reviewWaybillCost,
+  reviewWaybillExpenseOcrArtifact,
+  submitExpenseReimbursement,
   submitWaybillCost,
   voidWaybillCost
 } from '@/api/modules/tms/finance'

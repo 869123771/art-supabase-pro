@@ -13,29 +13,14 @@
       :user-context="userContext"
       :date-text="dateText"
       :today-order-count="overview.data.todayOrderCount"
+      :pending-dispatch-count="overview.data.pendingDispatchCount"
       :in-transit-count="overview.data.inTransitCount"
       @create-order="navigateTo('/tms-transportation/order-open')"
       @dispatch="navigateTo('/tms-transportation/waybill-management/pending')"
       @refresh="refreshData"
     />
 
-    <DashboardMetricCards :items="metricCards" />
-
-    <section class="operations-dashboard__summary">
-      <DashboardTrend
-        :days="overview.days"
-        :data="trendData"
-        :loading="overview.loading"
-        @update:days="handleTrendDaysChange"
-      />
-      <DashboardOrderFlow
-        :days="overview.days"
-        :total="statusTotal"
-        :in-transit-count="overview.data.inTransitCount"
-        :status-items="statusItems"
-        @view-orders="navigateTo('/tms-transportation/order-list')"
-      />
-    </section>
+    <DashboardMetricCards :items="metricCards" @select="navigateTo" />
 
     <section class="operations-dashboard__operations">
       <DashboardTransit
@@ -50,6 +35,22 @@
         :reminder-total="reminderTotal"
         :reminders="overview.data.reminders"
         @view-reminder="navigateTo('/vehicle-manage-system/reminder-manage')"
+      />
+    </section>
+
+    <section class="operations-dashboard__summary">
+      <DashboardTrend
+        :days="overview.days"
+        :data="trendData"
+        :loading="overview.loading"
+        @update:days="handleTrendDaysChange"
+      />
+      <DashboardOrderFlow
+        :days="overview.days"
+        :total="statusTotal"
+        :in-transit-count="overview.data.inTransitCount"
+        :status-items="statusItems"
+        @view-orders="navigateTo('/tms-transportation/order-list')"
       />
     </section>
 
@@ -176,34 +177,61 @@
     {
       key: 'today-order',
       label: '今日开单',
-      value: `${overview.data.todayOrderCount} 单`,
-      hint: `开单运费 ¥ ${formatMoney(overview.data.todayFreightAmount)}`,
+      value: formatNumber(overview.data.todayOrderCount),
+      unit: '单',
+      hint: '今日新增运输订单',
       icon: 'ri:file-list-3-line',
-      tone: 'blue'
+      tone: 'primary',
+      route: '/tms-transportation/order-list'
+    },
+    {
+      key: 'today-freight',
+      label: '今日运费',
+      value: `¥ ${formatMoney(overview.data.todayFreightAmount)}`,
+      hint: '按今日开单金额汇总',
+      icon: 'ri:money-cny-circle-line',
+      tone: 'info',
+      route: '/tms-transportation/order-list'
     },
     {
       key: 'pending-dispatch',
-      label: '待配载',
-      value: `${overview.data.pendingDispatchCount} 单`,
+      label: '待调度',
+      value: formatNumber(overview.data.pendingDispatchCount),
+      unit: '单',
       hint: '待安排车辆与司机',
       icon: 'ri:truck-line',
-      tone: 'orange'
+      tone: 'warning',
+      route: '/tms-transportation/waybill-management/pending'
     },
     {
       key: 'in-transit',
       label: '运输中',
-      value: `${overview.data.inTransitCount} 单`,
+      value: formatNumber(overview.data.inTransitCount),
+      unit: '单',
       hint: '实时关注运输进度',
       icon: 'ri:route-line',
-      tone: 'green'
+      tone: 'success',
+      route: '/tms-transportation/in-transit-monitor'
+    },
+    {
+      key: 'completed-today',
+      label: '今日完成',
+      value: formatNumber(overview.data.completedTodayCount),
+      unit: '单',
+      hint: '今日完成签收结案',
+      icon: 'ri:checkbox-circle-line',
+      tone: 'success',
+      route: '/tms-transportation/order-list'
     },
     {
       key: 'risk',
       label: '风险待处理',
-      value: `${reminderTotal.value} 项`,
+      value: formatNumber(reminderTotal.value),
+      unit: '项',
       hint: `${overview.data.pendingAuditVehicleCount} 台车辆待审核`,
       icon: 'ri:alarm-warning-line',
-      tone: 'red'
+      tone: 'danger',
+      route: '/vehicle-manage-system/reminder-manage'
     }
   ])
 
@@ -236,6 +264,9 @@
       ? new Intl.NumberFormat(locale.value, { maximumFractionDigits: 2 }).format(amount)
       : '0'
   }
+  function formatNumber(value: number): string {
+    return new Intl.NumberFormat(locale.value, { maximumFractionDigits: 0 }).format(value)
+  }
   onMounted(() => {
     void refreshData()
   })
@@ -249,20 +280,20 @@
 
     :deep(> .art-async-state) {
       display: grid;
-      gap: 18px;
+      gap: var(--art-space-4);
       padding-bottom: var(--art-space-6);
     }
 
     &__summary {
       display: grid;
       grid-template-columns: minmax(0, 1.62fr) minmax(330px, 0.72fr);
-      gap: 18px;
+      gap: var(--art-space-4);
     }
 
     &__operations {
       display: grid;
       grid-template-columns: minmax(0, 1.48fr) minmax(330px, 0.78fr);
-      gap: 18px;
+      gap: var(--art-space-4);
     }
 
     @media screen and (width <= 1080px) {

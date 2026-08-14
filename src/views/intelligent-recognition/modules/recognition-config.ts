@@ -39,13 +39,13 @@ export const recognitionCapabilities: RecognitionCapability[] = [
     businessRoute: '/tms-transportation/finance-center/cash-transaction'
   },
   {
-    feature: 'in_transit_expense_ocr',
-    title: '在途票据识别',
-    description: '识别能源、充电、充气及其它在途票据，并回填绑定运单的费用草稿。',
+    feature: 'waybill_expense_ocr',
+    title: '运单费用票据识别',
+    description: '识别能源、路桥、装卸及其他费用票据，并回填绑定运单的费用草稿。',
     icon: 'ri:gas-station-line',
     accent: 'violet',
-    businessLabel: '在途费用',
-    businessRoute: '/tms-transportation/finance-center/in-transit-expense'
+    businessLabel: '运单费用',
+    businessRoute: '/tms-transportation/finance-center/waybill-cost'
   }
 ]
 
@@ -53,7 +53,7 @@ export const featureLabels: Record<RecognitionFeature, string> = {
   invoice_ocr: '发票识别',
   waybill_receipt_ocr: '回单识别',
   cash_voucher_ocr: '收付款凭证',
-  in_transit_expense_ocr: '在途票据'
+  waybill_expense_ocr: '运单费用票据'
 }
 
 export const artifactStatusLabels: Record<Api.IntelligentRecognition.ArtifactStatus, string> = {

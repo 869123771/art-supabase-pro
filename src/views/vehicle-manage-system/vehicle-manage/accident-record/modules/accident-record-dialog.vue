@@ -31,6 +31,19 @@
             @change="handleVehicleChange"
           />
         </template>
+        <template #accidentLocation>
+          <ArtAddressPicker
+            v-model:address-detail="form.data.accidentLocation"
+            v-model:longitude="form.data.accidentLongitude"
+            v-model:latitude="form.data.accidentLatitude"
+            hide-region-selector
+            detail-label="事故地点"
+            detail-placeholder="输入事故地点，或使用地图搜索并选点"
+            address-detail-prop="accidentLocation"
+            label-width="120px"
+            @address-change="handleLocationChange"
+          />
+        </template>
       </ArtForm>
 
       <section class="accident-record-dialog__section">
@@ -94,6 +107,8 @@
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtExcelImport from '@/components/core/forms/art-excel-import/index.vue'
+  import ArtAddressPicker from '@/components/core/forms/art-address-picker/index.vue'
+  import type { AddressLocationPayload } from '@/components/core/forms/art-address-picker/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import ArtTableSingleSelect from '@/components/core/forms/art-data-select/table-single.vue'
   import type {
@@ -168,8 +183,11 @@
     plateNo: '',
     companyName: '',
     driverName: '',
+    driverPhone: '',
     accidentTime: '',
     accidentLocation: '',
+    accidentLongitude: null,
+    accidentLatitude: null,
     accidentSummary: '',
     damageLevel: '',
     responsibilityType: '',
@@ -213,14 +231,25 @@
       { label: '基础信息', key: 'baseSection', type: 'divider', span: 24 },
       { label: '车牌号', key: 'vehicleId', span: 12 },
       { label: '所属公司', key: 'companyName', type: 'input', props: { disabled: true } },
-      { label: '驾驶员', key: 'driverName', type: 'input', props: { maxlength: 50 } },
+      {
+        label: '驾驶员',
+        key: 'driverName',
+        type: 'input',
+        props: { maxlength: 50, placeholder: '选择车辆后自动带出，可按实际情况修改' }
+      },
+      {
+        label: '联系方式',
+        key: 'driverPhone',
+        type: 'input',
+        props: { maxlength: 30, placeholder: '选择车辆后自动带出，可按实际情况修改' }
+      },
       { label: '事故时间', key: 'accidentTime', type: 'date', props: dateTimeProps },
       {
-        label: '事故地点',
+        label: '',
         key: 'accidentLocation',
         type: 'input',
         span: 24,
-        props: { maxlength: 200 }
+        labelWidth: 0
       },
       {
         label: '事故概述',
@@ -314,6 +343,17 @@
     { prop: 'companyName', label: '所属公司', minWidth: 180 },
     { prop: 'plateNo', label: '车牌号', width: 140 },
     {
+      prop: 'primaryDriver',
+      label: '主司机',
+      minWidth: 180,
+      formatter: (row) => {
+        const vehicle = row as VehicleArchive
+        const driverName = vehicle.primaryDriver?.driverName || vehicle.driverOneName
+        const driverPhone = vehicle.primaryDriver?.phone || vehicle.driverOnePhone
+        return [driverName, driverPhone].filter(Boolean).join(' / ') || '--'
+      }
+    },
+    {
       prop: 'operationStatus',
       label: '营运状态',
       width: 120,
@@ -377,9 +417,21 @@
 
   const handleVehicleChange = (_value: unknown, rows: DataSelectRecord[]): void => {
     const vehicle = rows[0] as VehicleArchive | undefined
-    form.data.vehicleId = vehicle?.id ?? null
-    form.data.plateNo = vehicle?.plateNo ?? ''
-    form.data.companyName = vehicle?.companyName ?? ''
+    Object.assign(form.data, {
+      vehicleId: vehicle?.id ?? null,
+      plateNo: vehicle?.plateNo ?? '',
+      companyName: vehicle?.companyName ?? '',
+      driverName: vehicle?.primaryDriver?.driverName || vehicle?.driverOneName || '',
+      driverPhone: vehicle?.primaryDriver?.phone || vehicle?.driverOnePhone || ''
+    })
+  }
+
+  const handleLocationChange = (location: AddressLocationPayload): void => {
+    if (location.coordinateStatus !== 'unconfirmed') return
+    Object.assign(form.data, {
+      accidentLongitude: null,
+      accidentLatitude: null
+    })
   }
 
   const replaceForm = (data: AccidentRecord): void => {
@@ -467,11 +519,25 @@
     delete payload.createTime
     delete payload.updateBy
     delete payload.updateTime
+    const accidentLongitude = normalizeNullableNumber(payload.accidentLongitude)
+    const accidentLatitude = normalizeNullableNumber(payload.accidentLatitude)
+    const hasCoordinate = accidentLongitude !== null && accidentLatitude !== null
     return {
       ...payload,
       vehicleId: payload.vehicleId || null,
+      driverName: payload.driverName?.trim() || '',
+      driverPhone: payload.driverPhone?.trim() || '',
+      accidentLocation: payload.accidentLocation?.trim() || '',
+      accidentLongitude: hasCoordinate ? accidentLongitude : null,
+      accidentLatitude: hasCoordinate ? accidentLatitude : null,
       attachments: payload.attachments ?? []
     }
+  }
+
+  const normalizeNullableNumber = (value: unknown): number | null => {
+    if (value === null || value === undefined || value === '') return null
+    const numberValue = Number(value)
+    return Number.isFinite(numberValue) ? numberValue : null
   }
 
   const handleSubmit = async (): Promise<boolean> => {

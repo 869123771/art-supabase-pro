@@ -4,9 +4,11 @@ export interface DashboardMetric {
   key: string
   label: string
   value: string
+  unit?: string
   hint: string
   icon: string
-  tone: 'blue' | 'orange' | 'green' | 'red'
+  tone: 'primary' | 'info' | 'warning' | 'success' | 'danger'
+  route: string
 }
 
 export interface DashboardStatusItem {

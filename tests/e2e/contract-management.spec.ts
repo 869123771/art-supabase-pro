@@ -38,13 +38,13 @@ test('合同新增弹窗展示扩展字段和运输明细', async ({ page }) => 
   await expect(cargoDialog).toBeHidden()
 
   await dialog.getByRole('radio', { name: '企业/货主端合同', exact: true }).click()
-  await expect(dialog.getByText('客户/货主', { exact: true })).toBeVisible()
-  await expect(dialog.getByText('承运商', { exact: true })).toBeHidden()
+  await expect(dialog.getByText('承运商', { exact: true })).toBeVisible()
+  await expect(dialog.getByText('客户/货主', { exact: true })).toBeHidden()
   await expect(dialog.locator('.el-form-item__error')).toHaveCount(0)
 
   await dialog.getByRole('radio', { name: '承运商合同', exact: true }).click()
-  await expect(dialog.getByText('承运商', { exact: true })).toBeVisible()
-  await expect(dialog.getByText('客户/货主', { exact: true })).toBeHidden()
+  await expect(dialog.getByText('客户/货主', { exact: true })).toBeVisible()
+  await expect(dialog.getByText('承运商', { exact: true })).toBeHidden()
   await expect(dialog.locator('.el-form-item__error')).toHaveCount(0)
 
   await dialog.getByRole('button', { name: '新增明细', exact: true }).click()

@@ -478,10 +478,10 @@
   function getMoreActions(row: OrderRecord): ButtonMoreItem[] {
     return [
       {
-        key: 'inTransitExpense',
-        label: '上报在途费用',
+        key: 'waybillExpense',
+        label: '新增运单费用',
         icon: 'ri:gas-station-line',
-        disabled: !canReportInTransitExpense(row)
+        disabled: !canAddWaybillExpense(row)
       },
       {
         key: 'edit',
@@ -514,7 +514,7 @@
 
   function handleMoreAction(item: ButtonMoreItem, row: OrderRecord): void {
     const actionMap: Record<string, () => void> = {
-      inTransitExpense: () => openInTransitExpense(row),
+      waybillExpense: () => openWaybillExpense(row),
       edit: () => openOrderEdit(row),
       freight: () => openFreight(row),
       cancel: () => void handleCancel(row),
@@ -524,12 +524,12 @@
     actionMap[String(item.key)]?.()
   }
 
-  function openInTransitExpense(row: OrderRecord): void {
-    if (!row.id || !canReportInTransitExpense(row)) return
-    void router.push({ name: 'TmsInTransitExpense', query: { orderId: row.id } })
+  function openWaybillExpense(row: OrderRecord): void {
+    if (!row.id || !canAddWaybillExpense(row)) return
+    void router.push({ name: 'TmsWaybillCost', query: { orderId: row.id } })
   }
 
-  function canReportInTransitExpense(row: OrderRecord): boolean {
+  function canAddWaybillExpense(row: OrderRecord): boolean {
     return (
       Boolean(row.id) &&
       !['pending_load', 'pending_order', 'cancelled'].includes(String(row.orderStatus || ''))

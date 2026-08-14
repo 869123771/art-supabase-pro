@@ -117,6 +117,7 @@
 
   function createExcelColumns(): ArtTableQueryExcelColumn[] {
     return [
+      { key: 'quoteNo', title: '报价单号' },
       { key: 'originRegion', title: '始发地' },
       { key: 'destinationRegion', title: '目的地' },
       { key: 'transportMode', title: '运输方式', formatter: (value) => formatTransportMode(value) },
@@ -261,6 +262,7 @@
   function createColumns(): ColumnOption<CarrierPrice>[] {
     return [
       { type: 'selection', width: 50, fixed: 'left', reserveSelection: true },
+      { prop: 'quoteNo', label: '报价单号', width: 180, fixed: 'left' },
       { prop: 'originRegion', label: '始发地', width: 170 },
       { prop: 'destinationRegion', label: '目的地', width: 170 },
       {

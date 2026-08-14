@@ -26,29 +26,12 @@ const contracts: Record<string, WorkflowBusinessContract> = {
     owner: '运输财务',
     fields: [
       { key: 'amount', label: '费用金额', valueType: 'number', help: '本次费用金额' },
-      { key: 'costType', label: '费用类型', valueType: 'text' },
+      { key: 'expenseItemName', label: '费用项目', valueType: 'text' },
       { key: 'payeeName', label: '收款方', valueType: 'text' },
       { key: 'waybillNo', label: '运单号', valueType: 'text' },
       { key: 'occurredOn', label: '发生日期', valueType: 'date' }
     ],
     routePath: () => '/tms-transportation/finance-center/waybill-cost'
-  },
-  tms_in_transit_expense: {
-    businessType: 'tms_in_transit_expense',
-    label: '在途费用申报',
-    domain: 'finance',
-    riskLevel: 'high',
-    owner: '运输财务',
-    fields: [
-      { key: 'amount', label: '申报金额', valueType: 'number' },
-      { key: 'expenseType', label: '费用场景', valueType: 'text' },
-      { key: 'waybillNo', label: '运单号', valueType: 'text' },
-      { key: 'plateNo', label: '车牌号', valueType: 'text' },
-      { key: 'driverName', label: '司机', valueType: 'text' },
-      { key: 'occurredAt', label: '发生日期', valueType: 'date' },
-      { key: 'ocrStatus', label: 'OCR 状态', valueType: 'text' }
-    ],
-    routePath: () => '/tms-transportation/finance-center/in-transit-expense'
   },
   tms_expense_reimbursement: {
     businessType: 'tms_expense_reimbursement',
@@ -64,7 +47,7 @@ const contracts: Record<string, WorkflowBusinessContract> = {
       { key: 'paymentMethod', label: '付款方式', valueType: 'text' },
       { key: 'plannedPaymentDate', label: '计划付款日期', valueType: 'date' }
     ],
-    routePath: () => '/tms-transportation/finance-center/in-transit-expense'
+    routePath: () => '/tms-transportation/finance-center/waybill-cost'
   },
   tms_invoice: {
     businessType: 'tms_invoice',

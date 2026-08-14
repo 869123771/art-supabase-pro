@@ -1,48 +1,35 @@
 <template>
   <section class="dashboard-hero art-card-xs">
-    <div class="dashboard-hero__mesh" aria-hidden="true" />
-    <div class="dashboard-hero__copy">
-      <div class="dashboard-hero__meta">
-        <span class="dashboard-hero__pulse" /> 运输运营中心 <i />
+    <div class="dashboard-hero__identity">
+      <span class="dashboard-hero__eyebrow">
+        <i aria-hidden="true" />
+        运输运营中心
+      </span>
+
+      <div class="dashboard-hero__heading">
+        <h1>{{ greeting }}，{{ userName }}</h1>
         <span>{{ dateText }}</span>
-        <i v-if="userContext" />
-        <span v-if="userContext">{{ userContext }}</span>
       </div>
-      <h1
-        >{{ greeting }}，<strong>{{ userName }}</strong></h1
-      >
-      <p
-        >今天有
-        <strong>{{ todayOrderCount }}</strong>
-        张订单进入运输链路，关键任务已汇总，准备开始高效调度。</p
-      >
-      <div class="dashboard-hero__actions">
-        <ElButton type="primary" :icon="EditPen" @click="emit('create-order')">立即开单</ElButton>
-        <ElButton :icon="Van" @click="emit('dispatch')">处理配载</ElButton>
+
+      <p>
+        今日开单 <strong>{{ todayOrderCount }}</strong> 单，待调度
+        <strong>{{ pendingDispatchCount }}</strong> 单，运输中
+        <strong>{{ inTransitCount }}</strong> 单。优先处理调度任务与车辆风险。
+      </p>
+
+      <div class="dashboard-hero__context">
+        <span v-if="userContext">
+          <ArtSvgIcon icon="ri:building-4-line" />
+          {{ userContext }}
+        </span>
+        <span><i aria-hidden="true" />运营数据已同步</span>
       </div>
     </div>
 
-    <div class="dashboard-hero__live">
-      <header>
-        <span><i /> 实时调度</span>
-        <button type="button" aria-label="刷新工作台数据" @click="emit('refresh')">
-          <ElIcon><RefreshRight /></ElIcon>
-        </button>
-      </header>
-      <div class="dashboard-hero__live-metric">
-        <div
-          ><strong>{{ inTransitCount }}</strong
-          ><em>单</em></div
-        >
-        <span>实时运输中</span>
-      </div>
-      <div class="dashboard-hero__route" aria-hidden="true">
-        <i class="is-start" /><span /><b><Van /></b><span /><i class="is-end" />
-      </div>
-      <footer>
-        <span>运力网络在线</span>
-        <strong>状态正常</strong>
-      </footer>
+    <div class="dashboard-hero__actions" aria-label="工作台快捷操作">
+      <ElButton :icon="RefreshRight" @click="emit('refresh')">刷新数据</ElButton>
+      <ElButton :icon="Van" @click="emit('dispatch')">处理调度</ElButton>
+      <ElButton type="primary" :icon="EditPen" @click="emit('create-order')">立即开单</ElButton>
     </div>
   </section>
 </template>
@@ -56,6 +43,7 @@
     userContext: string
     dateText: string
     todayOrderCount: number
+    pendingDispatchCount: number
     inTransitCount: number
   }>()
 
@@ -68,297 +56,149 @@
 
 <style scoped lang="scss">
   .dashboard-hero {
-    --dashboard-hero-cyan: #70e8ff;
-    --dashboard-hero-mint: #4df3c4;
-    --dashboard-hero-indigo: #3730a3;
-
     position: relative;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(260px, 0.36fr);
-    gap: clamp(32px, 5vw, 84px);
-    align-items: stretch;
+    display: flex;
+    gap: var(--art-space-6);
+    align-items: center;
     justify-content: space-between;
-    min-height: 224px;
-    padding: 30px 34px;
+    min-height: 132px;
+    padding: 22px 24px;
     overflow: hidden;
-    color: var(--el-color-white);
-    background:
-      radial-gradient(circle at 70% -20%, rgb(55 229 255 / 34%), transparent 31%),
-      linear-gradient(116deg, #25206f 0%, #4f46e5 48%, var(--el-color-primary) 78%, #087bff 120%);
-    border: 0;
-    box-shadow: 0 18px 42px color-mix(in srgb, var(--el-color-primary) 24%, transparent);
+    background: var(--default-box-color);
 
-    &::after {
+    &::before {
       position: absolute;
-      top: -198px;
-      right: -96px;
-      width: 420px;
-      height: 420px;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      width: 4px;
       content: '';
-      border: 1px solid color-mix(in srgb, var(--el-color-white) 14%, transparent);
-      border-radius: 50%;
-      box-shadow:
-        0 0 0 54px color-mix(in srgb, var(--el-color-white) 4%, transparent),
-        0 0 0 108px color-mix(in srgb, var(--el-color-white) 2.5%, transparent);
+      background: var(--theme-color);
     }
 
-    &__mesh {
-      position: absolute;
-      inset: 0;
-      pointer-events: none;
-      background-image:
-        linear-gradient(rgb(255 255 255 / 16%) 1px, transparent 1px),
-        linear-gradient(90deg, rgb(255 255 255 / 16%) 1px, transparent 1px);
-      background-size: 46px 46px;
-      opacity: 0.16;
-      mask-image: linear-gradient(90deg, #000, transparent 73%);
-    }
-
-    &__copy,
-    &__live {
-      position: relative;
-      z-index: 1;
-    }
-
-    &__copy {
-      align-self: center;
+    &__identity {
       min-width: 0;
     }
 
-    &__meta {
-      display: flex;
-      gap: 8px;
+    &__eyebrow {
+      display: inline-flex;
+      gap: 7px;
       align-items: center;
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 700;
-      color: color-mix(in srgb, var(--el-color-white) 72%, transparent);
-      text-transform: uppercase;
-      letter-spacing: 1px;
+      color: var(--theme-color);
+      letter-spacing: 0.08em;
 
       i {
-        width: 1px;
-        height: 12px;
-        background: color-mix(in srgb, var(--el-color-white) 34%, transparent);
+        width: 7px;
+        height: 7px;
+        background: var(--el-color-success);
+        border-radius: 50%;
+        box-shadow: 0 0 0 4px color-mix(in srgb, var(--el-color-success) 12%, transparent);
       }
     }
 
-    &__pulse {
-      width: 8px;
-      height: 8px;
-      background: var(--dashboard-hero-mint);
-      border-radius: 50%;
-      box-shadow: 0 0 0 6px rgb(77 243 196 / 14%);
-    }
+    &__heading {
+      display: flex;
+      gap: 14px;
+      align-items: baseline;
+      margin-top: 7px;
 
-    h1 {
-      margin: 19px 0 9px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      font-size: clamp(28px, 2.1vw, 40px);
-      font-weight: 500;
-      line-height: 1.15;
-      letter-spacing: -0.7px;
-      white-space: nowrap;
+      h1 {
+        min-width: 0;
+        margin: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        font-size: clamp(22px, 1.6vw, 28px);
+        line-height: 1.3;
+        color: var(--el-text-color-primary);
+        white-space: nowrap;
+      }
 
-      strong {
-        font-weight: 800;
+      > span {
+        flex: none;
+        font-size: 12px;
+        color: var(--el-text-color-placeholder);
       }
     }
 
     p {
-      margin: 0;
-      font-size: 14px;
-      line-height: 1.7;
-      color: color-mix(in srgb, var(--el-color-white) 68%, transparent);
+      margin: 5px 0 0;
+      font-size: 13px;
+      line-height: 1.6;
+      color: var(--el-text-color-secondary);
+
+      strong {
+        color: var(--el-text-color-primary);
+      }
     }
 
-    p strong {
-      color: var(--dashboard-hero-cyan);
+    &__context {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      align-items: center;
+      margin-top: 10px;
+
+      span {
+        display: inline-flex;
+        gap: 5px;
+        align-items: center;
+        font-size: 11px;
+        color: var(--el-text-color-placeholder);
+      }
+
+      span > i {
+        width: 6px;
+        height: 6px;
+        background: var(--el-color-success);
+        border-radius: 50%;
+      }
     }
 
     &__actions {
       display: flex;
-      gap: 10px;
-      margin-top: 23px;
-    }
+      flex: none;
+      gap: 8px;
 
-    &__actions :deep(.el-button) {
-      height: 38px;
-      padding: 0 17px;
-      font-weight: 600;
-      border-color: rgb(255 255 255 / 20%);
-    }
-
-    &__actions :deep(.el-button--primary) {
-      color: var(--dashboard-hero-indigo);
-      background: var(--el-color-white);
-      border-color: var(--el-color-white);
-      box-shadow: 0 10px 24px rgb(16 23 73 / 24%);
-    }
-
-    &__actions :deep(.el-button:not(.el-button--primary)) {
-      color: #fff;
-      background: rgb(255 255 255 / 10%);
-    }
-
-    &__live {
-      align-self: stretch;
-      min-width: 0;
-      padding: 18px 20px;
-      background: linear-gradient(145deg, rgb(255 255 255 / 17%), rgb(255 255 255 / 8%));
-      border: 1px solid rgb(255 255 255 / 18%);
-      border-radius: var(--art-feature-radius);
-      box-shadow: inset 0 1px 0 rgb(255 255 255 / 12%);
-      backdrop-filter: blur(18px);
-
-      header,
-      footer {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
+      :deep(.el-button) {
+        height: 36px;
+        margin-left: 0;
       }
+    }
 
-      header > span {
-        display: inline-flex;
-        gap: 6px;
-        align-items: center;
-        font-size: 9px;
-        font-weight: 800;
-        color: #72f0d2;
-        letter-spacing: 1px;
+    @media screen and (width <= 900px) {
+      align-items: flex-start;
 
-        i {
-          width: 6px;
-          height: 6px;
-          background: currentcolor;
-          border-radius: 50%;
-          box-shadow: 0 0 10px currentcolor;
+      &__actions {
+        flex-direction: column-reverse;
+        align-items: stretch;
+      }
+    }
+
+    @media screen and (width <= 680px) {
+      flex-direction: column;
+      gap: var(--art-space-4);
+      padding: 20px;
+
+      &__heading {
+        display: block;
+
+        > span {
+          display: block;
+          margin-top: 3px;
         }
-      }
-
-      header button {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 28px;
-        height: 28px;
-        padding: 0;
-        color: rgb(255 255 255 / 70%);
-        cursor: pointer;
-        background: rgb(255 255 255 / 10%);
-        border: 0;
-        border-radius: 50%;
-      }
-
-      footer {
-        padding-top: 13px;
-        margin-top: 14px;
-        font-size: 10px;
-        color: rgb(255 255 255 / 50%);
-        border-top: 1px solid rgb(255 255 255 / 10%);
-
-        strong {
-          font-size: 10px;
-          color: #6ef1ce;
-        }
-      }
-    }
-
-    &__live-metric {
-      display: flex;
-      align-items: end;
-      justify-content: space-between;
-      margin-top: 15px;
-
-      > div {
-        display: flex;
-        gap: 5px;
-        align-items: end;
-      }
-
-      strong {
-        font-size: 40px;
-        line-height: 1;
-        letter-spacing: -1.5px;
-      }
-
-      em,
-      span {
-        padding-bottom: 4px;
-        font-size: 10px;
-        font-style: normal;
-        color: rgb(255 255 255 / 55%);
-      }
-    }
-
-    &__route {
-      display: grid;
-      grid-template-columns: 7px 1fr 22px 1fr 7px;
-      align-items: center;
-      margin-top: 19px;
-
-      > i {
-        width: 7px;
-        height: 7px;
-        border: 2px solid #fff;
-        border-radius: 50%;
-
-        &.is-end {
-          border-color: #ffbf5a;
-          box-shadow: 0 0 0 5px rgb(255 191 90 / 13%);
-        }
-      }
-
-      > span {
-        height: 1px;
-        background: linear-gradient(90deg, rgb(255 255 255 / 65%), var(--dashboard-hero-cyan));
-      }
-
-      > b {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 22px;
-        height: 22px;
-        color: var(--dashboard-hero-indigo);
-        background: var(--dashboard-hero-cyan);
-        border-radius: 50%;
-        box-shadow: 0 3px 10px rgb(26 22 100 / 20%);
-
-        > svg {
-          width: 9px;
-          height: 9px;
-        }
-      }
-    }
-  }
-
-  @media screen and (width <= 860px) {
-    .dashboard-hero {
-      grid-template-columns: 1fr;
-      min-height: 0;
-      padding: 26px;
-
-      &__live {
-        display: none;
-      }
-    }
-  }
-
-  @media screen and (width <= 560px) {
-    .dashboard-hero {
-      padding: 23px 20px;
-
-      h1 {
-        font-size: 27px;
-      }
-
-      &__meta > span:last-child {
-        display: none;
       }
 
       &__actions {
+        flex-direction: row;
         flex-wrap: wrap;
+        width: 100%;
+
+        :deep(.el-button) {
+          flex: 1;
+          min-width: 104px;
+        }
       }
     }
   }

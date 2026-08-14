@@ -76,11 +76,13 @@
       <div v-else class="recognition-runner__context">
         <span><ArtSvgIcon icon="ri:gas-station-line" /></span>
         <div>
-          <small>需绑定运单或在途车辆</small>
-          <h3>在途票据从费用申报单识别</h3>
-          <p>进入在途费用后选择运单并上传票据，识别结果会自动回填金额、日期、服务商和票据信息。</p>
-          <ElButton type="primary" @click="goInTransitExpense">
-            前往在途费用<ArtSvgIcon icon="ri:arrow-right-line" />
+          <small>需绑定具体运单</small>
+          <h3>票据从运单费用中识别</h3>
+          <p
+            >进入运单费用后选择费用项目和运单并上传票据，识别结果会自动回填金额、日期、服务商和票据信息。</p
+          >
+          <ElButton type="primary" @click="goWaybillExpense">
+            前往运单费用<ArtSvgIcon icon="ri:arrow-right-line" />
           </ElButton>
         </div>
       </div>
@@ -143,9 +145,9 @@
     void router.push('/tms-transportation/finance-center/payment-application')
   }
 
-  function goInTransitExpense(): void {
+  function goWaybillExpense(): void {
     void drawerRef.value?.handleClose()
-    void router.push('/tms-transportation/finance-center/in-transit-expense')
+    void router.push('/tms-transportation/finance-center/waybill-cost')
   }
 
   async function handleOpen(initialFeature: RecognitionFeature = 'invoice_ocr'): Promise<void> {

@@ -18,7 +18,7 @@
             <div>
               <small>装货地</small>
               <strong>{{ originAddress?.addressDetail || '请选择发货地址' }}</strong>
-              <p>{{ originAddress?.region || '从客户发货地址中选择' }}</p>
+              <p>{{ originAddress?.region || '从发货地址中选择' }}</p>
             </div>
           </div>
           <div class="favorite-route-dialog__path" aria-hidden="true">
@@ -29,7 +29,7 @@
             <div>
               <small>卸货地</small>
               <strong>{{ destinationAddress?.addressDetail || '请选择收货地址' }}</strong>
-              <p>{{ destinationAddress?.region || '从客户收货地址中选择' }}</p>
+              <p>{{ destinationAddress?.region || '从收货地址中选择' }}</p>
             </div>
           </div>
         </section>
@@ -148,8 +148,7 @@
       props: {
         filterable: true,
         clearable: true,
-        placeholder: '请选择客户',
-        onChange: handleCustomerChange
+        placeholder: '请选择客户'
       }
     },
     {
@@ -168,14 +167,12 @@
       valueField: 'id',
       labelFn: getAddressLabel,
       immediate: false,
-      beforeFetch: () => ({ customerId: form.customerId, addressType: 'shipping' }),
-      shouldFetch: () => Boolean(form.customerId),
+      beforeFetch: () => ({ addressType: 'shipping' }),
       afterFetch: (result) => syncAddressOptions('origin', result),
       props: {
         filterable: true,
         clearable: true,
-        disabled: !form.customerId,
-        placeholder: form.customerId ? '请选择客户发货地址' : '请先选择客户'
+        placeholder: '请选择发货地址'
       }
     },
     {
@@ -187,14 +184,12 @@
       valueField: 'id',
       labelFn: getAddressLabel,
       immediate: false,
-      beforeFetch: () => ({ customerId: form.customerId, addressType: 'receiving' }),
-      shouldFetch: () => Boolean(form.customerId),
+      beforeFetch: () => ({ addressType: 'receiving' }),
       afterFetch: (result) => syncAddressOptions('destination', result),
       props: {
         filterable: true,
         clearable: true,
-        disabled: !form.customerId,
-        placeholder: form.customerId ? '请选择客户收货地址' : '请先选择客户'
+        placeholder: '请选择收货地址'
       }
     },
     { label: '运输参考', key: 'referenceSection', type: 'divider', span: 24 },
@@ -233,14 +228,7 @@
     }
   ])
 
-  const handleCustomerChange = (): void => {
-    Object.assign(form, { originAddressId: '', destinationAddressId: '' })
-    Object.assign(addressOptions, { origin: [], destination: [] })
-    void reloadAddressOptions()
-  }
-
   const reloadAddressOptions = async (): Promise<void> => {
-    if (!form.customerId) return
     await Promise.all([
       formRef.value?.reloadOptions('originAddressId'),
       formRef.value?.reloadOptions('destinationAddressId')
@@ -291,9 +279,9 @@
 
     await dialogRef.value?.handleOpen(row, {
       title: row?.id ? '编辑常用线路' : '新增常用线路',
-      subtitle: '常用线路引用客户地址簿，开单与调度可复用同一份标准路线',
+      subtitle: '常用线路引用地址簿，开单与调度可复用同一份标准路线',
       contentMaxHeight: '72vh',
-      loading: Boolean(row?.customerId),
+      loading: true,
       onOpen: async (_data, api) => {
         try {
           await reloadAddressOptions()

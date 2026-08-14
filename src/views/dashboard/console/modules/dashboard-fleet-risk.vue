@@ -53,6 +53,7 @@
 <style scoped lang="scss">
   .fleet-risk {
     position: relative;
+    container-type: inline-size;
     min-width: 0;
     padding: 24px 25px;
     overflow: hidden;
@@ -136,6 +137,7 @@
 
     &__reminders {
       display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 7px;
       margin-top: 16px;
 
@@ -228,12 +230,19 @@
 
     &__empty {
       display: flex;
+      grid-column: 1 / -1;
       gap: 8px;
       align-items: center;
       justify-content: center;
       min-height: 88px;
       font-size: 12px;
       color: var(--el-color-success);
+    }
+
+    @container (width <= 420px) {
+      &__reminders {
+        grid-template-columns: 1fr;
+      }
     }
   }
 

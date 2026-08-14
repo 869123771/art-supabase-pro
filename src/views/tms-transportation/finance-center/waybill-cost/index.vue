@@ -1,211 +1,417 @@
 <template>
-  <div class="tms-workspace-page art-full-height">
-    <TmsWorkspaceHeader
-      eyebrow="COST GOVERNANCE"
-      title="运单成本"
-      description="归集运单成本项目、承运商费用与审核状态，为利润核算和结算付款建立可靠依据。"
-      icon="ri:funds-box-line"
-      :tags="[
-        { label: '成本台账', type: 'primary' },
-        { label: '审核闭环', type: 'warning' }
-      ]"
+  <div class="waybill-cost art-full-height" :class="{ 'is-focus-mode': focusMode }">
+    <MasterDeleteProcessingNotice
+      action-hint="当前费用已自动定位；请按审核、报销或支付状态完成处理。"
     />
+    <header
+      v-if="!focusMode"
+      class="waybill-cost__hero art-card-xs"
+      aria-labelledby="waybill-cost-title"
+    >
+      <div class="waybill-cost__hero-copy">
+        <span class="waybill-cost__hero-icon"><ArtSvgIcon icon="ri:money-cny-circle-line" /></span>
+        <div>
+          <span>运单成本闭环</span>
+          <h1 id="waybill-cost-title">运单费用</h1>
+          <p>统一登记承运、在途与其他项目费用，从票据识别、审核到报销付款形成完整成本台账。</p>
+        </div>
+      </div>
+      <div class="waybill-cost__hero-actions">
+        <ElButton plain @click="void ocrLogDrawerRef?.handleOpen()">
+          <ArtSvgIcon icon="ri:file-search-line" /> OCR 识别记录
+        </ElButton>
+        <ElButton type="primary" @click="openExpenseDialog()">
+          <ArtSvgIcon icon="ri:add-line" /> 新增运单费用
+        </ElButton>
+      </div>
+    </header>
+
+    <section v-if="!focusMode" class="waybill-cost__metrics" aria-label="费用处理概览">
+      <article v-for="metric in metrics" :key="metric.label" class="art-card-xs">
+        <span :class="metric.tone"><ArtSvgIcon :icon="metric.icon" /></span>
+        <div>
+          <small>{{ metric.label }}</small>
+          <strong>{{ metric.value }}</strong>
+          <p>{{ metric.hint }}</p>
+        </div>
+      </article>
+    </section>
+
+    <nav v-if="!focusMode" class="waybill-cost__workflow art-card-xs" aria-label="运单费用处理流程">
+      <div v-for="(step, index) in workflowSteps" :key="step.title">
+        <span>{{ index + 1 }}</span>
+        <div
+          ><strong>{{ step.title }}</strong
+          ><small>{{ step.description }}</small></div
+        >
+        <ArtSvgIcon v-if="index < workflowSteps.length - 1" icon="ri:arrow-right-s-line" />
+      </div>
+    </nav>
+
+    <ElTabs v-if="!focusMode" v-model="activeTab" class="waybill-cost__tabs">
+      <ElTabPane label="费用台账" name="expense" />
+      <ElTabPane label="报销与支付" name="reimbursement" />
+    </ElTabs>
 
     <ArtTableQuery
-      ref="tableQueryRef"
-      v-model="searchQuery"
-      :search-items="searchItems"
-      :api-fn="fetchTableData"
-      :columns-factory="columnsFactory"
-      :header-actions="headerActions"
-      :search-bar-props="{ span: 6, labelWidth: 86, showExpand: false }"
+      v-show="activeTab === 'expense'"
+      ref="expenseTableRef"
+      v-model="expenseTable.search"
+      v-model:focus-mode="expenseFocusMode"
+      :search-items="expenseTable.searchItems"
+      :api-fn="fetchExpenseTableData"
+      :columns-factory="expenseColumnsFactory"
+      :header-actions="expenseTable.headerActions"
+      :search-bar-props="{ span: 6, labelWidth: 86, showExpand: true }"
       :table-props="{
         rowKey: 'id',
         tableLayout: 'fixed',
-        emptyText: '暂无运单成本',
-        emptyDescription: '可新增成本记录，或调整运单号、状态、费用类型和日期后查询。'
+        emptyHeight: '224px',
+        emptyText: '暂无运单费用',
+        emptyDescription: '可新增首笔费用，或调整费用项目、审核和核销条件后查询。'
       }"
       focusable
     />
 
-    <WaybillCostDialog ref="dialogRef" @success="handleSaveSuccess" />
-    <WaybillCostAuditDrawer ref="auditDrawerRef" />
+    <ArtTableQuery
+      v-show="activeTab === 'reimbursement'"
+      ref="reimbursementTableRef"
+      v-model="reimbursementTable.search"
+      v-model:focus-mode="reimbursementFocusMode"
+      :search-items="reimbursementTable.searchItems"
+      :api-fn="fetchReimbursementTableData"
+      :columns-factory="reimbursementColumnsFactory"
+      :header-actions="reimbursementTable.headerActions"
+      :search-bar-props="{ span: 6, labelWidth: 86, showExpand: true }"
+      :table-props="{
+        rowKey: 'id',
+        tableLayout: 'fixed',
+        emptyHeight: '224px',
+        emptyText: '暂无费用报销单',
+        emptyDescription: '已审核费用转为报销单后，将在这里继续完成审批与支付。'
+      }"
+      focusable
+    />
+
+    <WaybillExpenseDialog ref="expenseDialogRef" @success="handleExpenseSaved" />
+    <ReimbursementDialog ref="reimbursementDialogRef" @success="handleReimbursementCreated" />
+    <PaymentDialog ref="paymentDialogRef" @success="handlePaymentSuccess" />
+    <ReimbursementDetailDrawer ref="reimbursementDetailRef" />
+    <OcrLogDrawer ref="ocrLogDrawerRef" />
+    <WaybillCostAuditDrawer ref="costAuditDrawerRef" />
     <WorkflowBusinessHistoryDrawer ref="approvalHistoryRef" />
   </div>
 </template>
 
 <script setup lang="tsx">
-  import { ElButton, ElImage } from 'element-plus'
+  import { ElButton } from 'element-plus'
+  import type { ComputedRef } from 'vue'
+  import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
+  import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
+  import ArtButtonMore from '@/components/core/forms/art-button-more/index.vue'
+  import type { ButtonMoreItem } from '@/components/core/forms/art-button-more/index.vue'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type {
-    ArtTableQueryExcelColumn,
     ArtTableQueryExpose,
     ArtTableQueryHeaderAction
   } from '@/components/core/tables/art-table-query/index.vue'
   import type { ColumnOption } from '@/types'
+  import {
+    deleteExpenseReimbursement,
+    deleteWaybillCost,
+    fetchExpenseReimbursementList,
+    fetchExpenseItemTree,
+    fetchWaybillCostList,
+    fetchWaybillCostOverview,
+    submitExpenseReimbursement,
+    submitWaybillCost
+  } from '@/api/tms'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatWithDayjs } from '@/utils/time'
-  import { useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import { formatCurrencyValue } from '@/utils/ui'
   import { useUserStore } from '@/store/modules/user'
-  import {
-    deleteWaybillCost,
-    exportWaybillCostList,
-    fetchWaybillCostList,
-    reviewWaybillCost,
-    submitWaybillCost,
-    voidWaybillCost
-  } from '@/api/tms'
-  import WaybillCostDialog from './modules/waybill-cost-dialog.vue'
+  import { useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import WaybillExpenseDialog from './modules/waybill-expense-dialog.vue'
+  import ReimbursementDialog from './modules/reimbursement-dialog.vue'
+  import PaymentDialog from './modules/payment-dialog.vue'
+  import ReimbursementDetailDrawer from './modules/reimbursement-detail-drawer.vue'
+  import OcrLogDrawer from './modules/ocr-log-drawer.vue'
   import WaybillCostAuditDrawer from './modules/waybill-cost-audit-drawer.vue'
+  import MasterDeleteProcessingNotice from '@/components/business/master-delete-processing-notice/index.vue'
   import WorkflowBusinessHistoryDrawer from '@/components/business/workflow-business-history/workflow-business-history-drawer.vue'
   import type { WorkflowBusinessHistoryDrawerExpose } from '@/components/business/workflow-business-history/types'
-  import TmsWorkspaceHeader from '@/views/tms-transportation/modules/tms-workspace-header.vue'
 
   defineOptions({ name: 'TmsWaybillCost' })
 
-  type WaybillCost = Api.Tms.Finance.WaybillCostRecord
-  type SearchParams = Api.Tms.Finance.WaybillCostSearchParams
-  type TableParams = SearchParams & Pick<Api.Common.PaginationParams, 'current' | 'size'>
+  type Expense = Api.Tms.Finance.WaybillCostRecord
+  type ExpenseSearch = Api.Tms.Finance.WaybillCostSearchParams
+  type ExpenseTableParams = ExpenseSearch & Pick<Api.Common.PaginationParams, 'current' | 'size'>
+  type Reimbursement = Api.Tms.Finance.ExpenseReimbursementRecord
+  type ReimbursementSearch = Api.Tms.Finance.ExpenseReimbursementSearchParams
+  type ReimbursementTableParams = ReimbursementSearch &
+    Pick<Api.Common.PaginationParams, 'current' | 'size'>
 
-  interface DialogExpose {
-    handleOpen: (row?: WaybillCost) => Promise<void>
+  interface ExpenseTableGroup {
+    search: ExpenseSearch
+    searchItems: ComputedRef<SearchFormItem[]>
+    headerActions: ComputedRef<ArtTableQueryHeaderAction[]>
   }
 
-  interface AuditDrawerExpose {
+  interface ReimbursementTableGroup {
+    search: ReimbursementSearch
+    searchItems: ComputedRef<SearchFormItem[]>
+    headerActions: ComputedRef<ArtTableQueryHeaderAction[]>
+  }
+
+  interface ExpenseDialogExpose {
+    handleOpen: (data?: { row?: Expense; orderId?: string }) => Promise<void>
+  }
+
+  interface ReimbursementDialogExpose {
+    handleOpen: (expenses: Expense[]) => Promise<void>
+  }
+
+  interface PaymentDialogExpose {
+    handleOpen: (row: Reimbursement) => Promise<void>
+  }
+
+  interface ReimbursementDetailExpose {
+    handleOpen: (row: Reimbursement) => Promise<void>
+  }
+
+  const route = useRoute()
+  const router = useRouter()
+  const userStore = useUserStore()
+  const { getDictMap } = storeToRefs(userStore)
+  const { confirmAction } = useArtFeedback()
+  const activeTab = ref<'expense' | 'reimbursement'>('expense')
+  const expenseFocusMode = ref(false)
+  const reimbursementFocusMode = ref(false)
+  const focusMode = computed(() =>
+    activeTab.value === 'expense' ? expenseFocusMode.value : reimbursementFocusMode.value
+  )
+  const expenseTableRef = ref<ArtTableQueryExpose>()
+  const reimbursementTableRef = ref<ArtTableQueryExpose>()
+  const expenseDialogRef = ref<ExpenseDialogExpose>()
+  const reimbursementDialogRef = ref<ReimbursementDialogExpose>()
+  const paymentDialogRef = ref<PaymentDialogExpose>()
+  const reimbursementDetailRef = ref<ReimbursementDetailExpose>()
+  const ocrLogDrawerRef = ref<{ handleOpen: () => Promise<void> }>()
+  const costAuditDrawerRef = ref<{
     handleOpen: (data: { costId: string; waybillNo: string }) => Promise<void>
-  }
-
-  const { getDictMap } = storeToRefs(useUserStore())
-  const { promptReason, confirmAction } = useArtFeedback()
-  const tableQueryRef = ref<ArtTableQueryExpose>()
-  const dialogRef = ref<DialogExpose>()
-  const auditDrawerRef = ref<AuditDrawerExpose>()
+  }>()
   const approvalHistoryRef = ref<WorkflowBusinessHistoryDrawerExpose>()
-  const searchQuery = reactive<SearchParams>({
-    keyword: '',
-    costType: '',
-    auditStatus: '',
-    occurredOnRange: []
+  const overview = reactive<Api.Tms.Finance.WaybillCostOverview>({
+    totalCount: 0,
+    pendingReviewCount: 0,
+    approvedUnconvertedCount: 0,
+    pendingPaymentAmount: 0,
+    paidAmount: 0
   })
 
-  const searchItems = computed<SearchFormItem[]>(() => [
+  const workflowSteps = [
+    { title: '费用上报', description: '绑定运单并上传票据' },
+    { title: '财务审核', description: '按配置流程审批' },
+    { title: '转报销单', description: '可合并多笔已审费用' },
+    { title: '出纳支付', description: '登记凭证并逐笔核销' }
+  ]
+  const metrics = computed(() => [
     {
-      label: '费用类型',
-      key: 'costType',
-      type: 'select',
-      props: {
-        options: getDictMap.value.tmsWaybillCostType ?? [],
-        clearable: true
-      }
+      label: '累计申报',
+      value: `${overview.totalCount} 笔`,
+      hint: '所有运单费用记录',
+      icon: 'ri:file-list-3-line',
+      tone: 'is-primary'
     },
     {
-      label: '审核状态',
-      key: 'auditStatus',
-      type: 'select',
-      props: {
-        options: getDictMap.value.tmsCostAuditStatus ?? [],
-        clearable: true
-      }
+      label: '待财务审核',
+      value: `${overview.pendingReviewCount} 笔`,
+      hint: '等待审批中心处理',
+      icon: 'ri:time-line',
+      tone: 'is-warning'
     },
     {
-      label: '发生日期',
-      key: 'occurredOnRange',
-      type: 'date',
-      props: {
-        type: 'daterange',
-        valueFormat: 'YYYY-MM-DD',
-        startPlaceholder: '开始日期',
-        endPlaceholder: '结束日期',
-        rangeSeparator: '至'
-      }
+      label: '待转报销',
+      value: `${overview.approvedUnconvertedCount} 笔`,
+      hint: '已通过但未生成报销单',
+      icon: 'ri:exchange-cny-line',
+      tone: 'is-success'
     },
     {
-      label: '关键词',
-      key: 'keyword',
-      type: 'input',
-      props: {
-        clearable: true,
-        placeholder: '运单号、收款方、填报人或部门'
-      }
+      label: '待支付金额',
+      value: money(overview.pendingPaymentAmount),
+      hint: `已核销 ${money(overview.paidAmount)}`,
+      icon: 'ri:secure-payment-line',
+      tone: 'is-danger'
     }
   ])
 
-  const formatMoney = (value?: number | null): string =>
-    `¥${Number(value ?? 0).toLocaleString('zh-CN', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    })}`
+  const expenseTable = reactive<ExpenseTableGroup>({
+    search: {
+      recordId:
+        route.query.fromMasterDelete === '1' && typeof route.query.recordId === 'string'
+          ? route.query.recordId
+          : '',
+      orderId:
+        route.query.fromMasterDelete === '1' && typeof route.query.orderId === 'string'
+          ? route.query.orderId
+          : '',
+      keyword: '',
+      expenseItemId: '',
+      auditStatus: '',
+      settlementStatus: '',
+      occurredOnRange: []
+    },
+    searchItems: computed<SearchFormItem[]>(() => [
+      {
+        label: '费用项目',
+        key: 'expenseItemId',
+        type: 'treeSelect',
+        api: fetchExpenseItemTree,
+        labelField: 'itemName',
+        valueField: 'id',
+        childrenField: 'children',
+        props: { clearable: true, checkStrictly: true, defaultExpandAll: true }
+      },
+      {
+        label: '审核状态',
+        key: 'auditStatus',
+        type: 'select',
+        props: { options: getDictMap.value.tmsCostAuditStatus ?? [], clearable: true }
+      },
+      {
+        label: '核销状态',
+        key: 'settlementStatus',
+        type: 'select',
+        props: { options: getDictMap.value.tmsWaybillCostSettlementStatus ?? [], clearable: true }
+      },
+      {
+        label: '发生日期',
+        key: 'occurredOnRange',
+        type: 'date',
+        props: {
+          type: 'daterange',
+          valueFormat: 'YYYY-MM-DD',
+          startPlaceholder: '开始日期',
+          endPlaceholder: '结束日期'
+        }
+      },
+      {
+        label: '关键词',
+        key: 'keyword',
+        type: 'input',
+        props: { clearable: true, placeholder: '费用单、运单、车牌、司机、票号' }
+      }
+    ]),
+    headerActions: computed<ArtTableQueryHeaderAction[]>(() => [
+      { type: 'add', label: '新增费用', onClick: () => openExpenseDialog() },
+      {
+        key: 'convert',
+        label: '转费用报销',
+        selectionRequired: true,
+        buttonProps: { type: 'primary', plain: true },
+        disabled: ({ selectedRows }) => (selectedRows as Expense[]).some((row) => !canConvert(row)),
+        onClick: ({ selectedRows }) =>
+          void reimbursementDialogRef.value?.handleOpen(selectedRows as Expense[])
+      },
+      {
+        key: 'ocrLogs',
+        label: 'OCR 记录',
+        buttonProps: { plain: true },
+        onClick: () => void ocrLogDrawerRef.value?.handleOpen()
+      }
+    ])
+  })
 
-  const columnsFactory = (): ColumnOption<WaybillCost>[] => [
+  const reimbursementTable = reactive<ReimbursementTableGroup>({
+    search: { keyword: '', status: '', paymentMethod: '', plannedPaymentDateRange: [] },
+    searchItems: computed<SearchFormItem[]>(() => [
+      {
+        label: '审批状态',
+        key: 'status',
+        type: 'select',
+        props: { options: getDictMap.value.tmsReimbursementApprovalStatus ?? [], clearable: true }
+      },
+      {
+        label: '付款方式',
+        key: 'paymentMethod',
+        type: 'select',
+        props: { options: getDictMap.value.tmsCashPaymentMethod ?? [], clearable: true }
+      },
+      {
+        label: '计划付款日',
+        key: 'plannedPaymentDateRange',
+        type: 'date',
+        props: {
+          type: 'daterange',
+          valueFormat: 'YYYY-MM-DD',
+          startPlaceholder: '开始日期',
+          endPlaceholder: '结束日期'
+        }
+      },
+      {
+        label: '关键词',
+        key: 'keyword',
+        type: 'input',
+        props: { clearable: true, placeholder: '报销单、收款人、运单、付款单或流水号' }
+      }
+    ]),
+    headerActions: computed<ArtTableQueryHeaderAction[]>(() => [
+      {
+        key: 'backToExpense',
+        label: '从已审费用生成',
+        buttonProps: { type: 'primary', plain: true },
+        onClick: () => {
+          activeTab.value = 'expense'
+          expenseTable.search.auditStatus = 'approved'
+          expenseTable.search.settlementStatus = 'unsettled'
+          void nextTick(() => expenseTableRef.value?.getData())
+        }
+      }
+    ])
+  })
+
+  const expenseColumnsFactory = (): ColumnOption<Expense>[] => [
     { type: 'selection', width: 50, fixed: 'left', reserveSelection: true },
-    { type: 'globalIndex', label: '序号', width: 72 },
+    { prop: 'costNo', label: '费用单号', width: 195, fixed: 'left' },
+    { prop: 'waybillNoSnapshot', label: '运单号', width: 180, fixed: 'left' },
     {
-      prop: 'waybillNo',
-      label: '运单号',
-      width: 175,
-      formatter: (row) => row.waybill?.waybillNo || '-'
+      prop: 'plateNoSnapshot',
+      label: '车牌号',
+      width: 120,
+      formatter: (row) => emptyText(row.plateNoSnapshot)
     },
     {
-      prop: 'route',
-      label: '运输路线',
-      minWidth: 190,
-      showOverflowTooltip: true,
-      formatter: (row) =>
-        [row.waybill?.originCity, row.waybill?.destinationCity].filter(Boolean).join(' → ') || '-'
+      prop: 'driverNameSnapshot',
+      label: '司机',
+      width: 110,
+      formatter: (row) => emptyText(row.driverNameSnapshot)
     },
     {
-      prop: 'costType',
-      label: '费用类型',
-      width: 125,
-      dict: { code: 'tmsWaybillCostType', display: 'tag' }
+      prop: 'expenseItem.itemName',
+      label: '费用项目',
+      width: 150,
+      formatter: (row) => emptyText(row.expenseItem?.itemName)
     },
-    { prop: 'payeeName', label: '收款方', minWidth: 160, showOverflowTooltip: true },
-    { prop: 'occurredOn', label: '发生日期', width: 110 },
     {
       prop: 'amount',
-      label: '费用金额',
+      label: '申报金额',
       width: 130,
       align: 'right',
-      formatter: (row) => formatMoney(row.amount)
+      formatter: (row) => money(row.amount)
     },
     {
-      prop: 'reporterNameSnapshot',
-      label: '填报人',
-      width: 132,
+      prop: 'occurredOn',
+      label: '发生日期',
+      width: 115,
+      formatter: (row) => formatWithDayjs(row.occurredOn, 'YYYY-MM-DD')
+    },
+    {
+      prop: 'providerName',
+      label: '服务商',
+      minWidth: 150,
       showOverflowTooltip: true,
-      formatter: (row) => row.reporterNameSnapshot || row.createBy || '-'
-    },
-    {
-      prop: 'reporterDepartmentSnapshot',
-      label: '填报人所属部门',
-      minWidth: 160,
-      showOverflowTooltip: true,
-      formatter: (row) => row.reporterDepartmentSnapshot || '-'
-    },
-    {
-      prop: 'attachments',
-      label: '图片凭证',
-      width: 144,
-      formatter: (row) => {
-        const urls = row.attachments ?? []
-        if (!urls.length) return '-'
-        return (
-          <div class="waybill-cost__evidence">
-            {urls.slice(0, 3).map((url, index) => (
-              <ElImage
-                key={url}
-                src={url}
-                previewSrcList={urls}
-                initialIndex={index}
-                previewTeleported
-                fit="cover"
-                class="waybill-cost__evidence-image"
-              />
-            ))}
-            {urls.length > 3 ? <span>+{urls.length - 3}</span> : null}
-          </div>
-        )
-      }
+      formatter: (row) => emptyText(row.providerName)
     },
     {
       prop: 'auditStatus',
@@ -213,254 +419,578 @@
       width: 110,
       dict: { code: 'tmsCostAuditStatus', display: 'tag' }
     },
-    { prop: 'remark', label: '费用说明', minWidth: 180, showOverflowTooltip: true },
     {
-      prop: 'reviewRemark',
-      label: '审核意见',
-      minWidth: 160,
-      showOverflowTooltip: true
+      prop: 'settlementStatus',
+      label: '核销状态',
+      width: 105,
+      dict: { code: 'tmsWaybillCostSettlementStatus', display: 'tag' }
     },
     {
-      prop: 'updateTime',
-      label: '更新时间',
-      width: 165,
-      formatter: (row) => formatWithDayjs(row.updateTime, 'YYYY-MM-DD HH:mm')
+      prop: 'ocrStatus',
+      label: 'OCR',
+      width: 105,
+      dict: { code: 'tmsExpenseOcrStatus', display: 'tag' }
     },
     {
       prop: 'operation',
       label: '操作',
-      width: 360,
+      width: 150,
       fixed: 'right',
-      formatter: (row) => {
-        if (row.auditStatus === 'draft' || row.auditStatus === 'rejected') {
-          return (
-            <div class="flex items-center">
-              <ElButton link type="primary" onClick={() => void openApprovalHistory(row)}>
-                审批记录
-              </ElButton>
-              <ElButton link type="primary" onClick={() => void handleAiAudit(row)}>
-                AI 审核
-              </ElButton>
-              <ElButton link type="primary" onClick={() => void dialogRef.value?.handleOpen(row)}>
-                编辑
-              </ElButton>
-              <ElButton link type="primary" onClick={() => void handleSubmitReview(row)}>
-                提交审核
-              </ElButton>
-              <ElButton link type="danger" onClick={() => void handleDelete(row)}>
-                删除
-              </ElButton>
-            </div>
-          )
-        }
-        if (row.auditStatus === 'pending_review') {
-          return (
-            <div class="flex items-center">
-              <ElButton link type="primary" onClick={() => void openApprovalHistory(row)}>
-                审批记录
-              </ElButton>
-              <ElButton link type="primary" onClick={() => void handleAiAudit(row)}>
-                AI 审核
-              </ElButton>
-              <ElButton link type="success" onClick={() => void handleApprove(row)}>
-                审核通过
-              </ElButton>
-              <ElButton link type="danger" onClick={() => void handleReject(row)}>
-                驳回
-              </ElButton>
-            </div>
-          )
-        }
-        if (row.auditStatus === 'approved') {
-          return (
-            <div class="flex items-center">
-              <ElButton link type="primary" onClick={() => void openApprovalHistory(row)}>
-                审批记录
-              </ElButton>
-              <ElButton link type="primary" onClick={() => void handleAiAudit(row)}>
-                AI 复核
-              </ElButton>
-              <ElButton link type="danger" onClick={() => void handleVoid(row)}>
-                作废
-              </ElButton>
-            </div>
-          )
-        }
-        return (
-          <div class="flex items-center">
-            <ElButton link type="primary" onClick={() => void openApprovalHistory(row)}>
-              审批记录
-            </ElButton>
-            <ElButton link type="primary" onClick={() => void handleAiAudit(row)}>
-              AI 复核
-            </ElButton>
-          </div>
-        )
-      }
+      formatter: (row) => (
+        <div class="flex items-center">
+          <ArtButtonTable
+            type="edit"
+            disabled={!canEditExpense(row)}
+            onClick={() => openExpenseDialog(row)}
+          />
+          <ArtButtonMore
+            list={expenseMoreActions(row)}
+            onClick={(item: ButtonMoreItem) => handleExpenseAction(item, row)}
+          />
+        </div>
+      )
     }
   ]
 
-  const excelColumns: ArtTableQueryExcelColumn[] = [
-    { key: 'waybill.waybillNo', title: '运单号' },
-    { key: 'costType', title: '费用类型' },
-    { key: 'payeeName', title: '收款方' },
-    { key: 'occurredOn', title: '发生日期' },
-    { key: 'amount', title: '费用金额' },
-    { key: 'reporterNameSnapshot', title: '填报人' },
-    { key: 'reporterDepartmentSnapshot', title: '填报人所属部门' },
-    { key: 'attachments', title: '图片凭证' },
-    { key: 'auditStatus', title: '审核状态' },
-    { key: 'remark', title: '费用说明' },
-    { key: 'reviewRemark', title: '审核意见' }
-  ]
-
-  const headerActions = computed<ArtTableQueryHeaderAction[]>(() => [
+  const reimbursementColumnsFactory = (): ColumnOption<Reimbursement>[] => [
+    { prop: 'reimbursementNo', label: '报销单号', width: 200, fixed: 'left' },
+    { prop: 'applicantNameSnapshot', label: '申请人', width: 115 },
+    { prop: 'payeeName', label: '收款人', minWidth: 150, showOverflowTooltip: true },
+    { prop: 'waybillNos', label: '关联运单', minWidth: 210, showOverflowTooltip: true },
+    { prop: 'itemCount', label: '费用笔数', width: 95, align: 'center' },
     {
-      type: 'add',
-      label: '登记费用',
-      onClick: () => void dialogRef.value?.handleOpen()
+      prop: 'totalAmount',
+      label: '报销金额',
+      width: 135,
+      align: 'right',
+      formatter: (row) => money(row.totalAmount)
     },
     {
-      type: 'export',
-      exportFilename: 'TMS运单费用',
-      exportSheetName: '运单费用',
-      exportColumns: excelColumns,
-      exportApi: ({ selectedIds, searchParams, maxRows }) =>
-        exportWaybillCostList({
-          ...(searchParams as SearchParams),
-          ids: selectedIds.map(String),
-          maxRows
-        })
+      prop: 'paymentMethod',
+      label: '付款方式',
+      width: 115,
+      dict: { code: 'tmsCashPaymentMethod', display: 'tag' }
+    },
+    { prop: 'plannedPaymentDate', label: '计划付款日', width: 120 },
+    {
+      prop: 'status',
+      label: '审批/支付状态',
+      width: 135,
+      dict: { code: 'tmsReimbursementApprovalStatus', display: 'tag' }
+    },
+    {
+      prop: 'paymentNo',
+      label: '付款单号',
+      width: 195,
+      formatter: (row) => emptyText(row.paymentNo)
+    },
+    {
+      prop: 'createTime',
+      label: '创建时间',
+      width: 165,
+      formatter: (row) => formatWithDayjs(row.createTime, 'YYYY-MM-DD HH:mm')
+    },
+    {
+      prop: 'operation',
+      label: '操作',
+      width: 160,
+      fixed: 'right',
+      formatter: (row) => (
+        <div class="flex items-center">
+          <ArtButtonTable
+            type="view"
+            onClick={() => void reimbursementDetailRef.value?.handleOpen(row)}
+          />
+          <ArtButtonMore
+            list={reimbursementMoreActions(row)}
+            onClick={(item: ButtonMoreItem) => handleReimbursementAction(item, row)}
+          />
+        </div>
+      )
     }
-  ])
+  ]
 
-  const fetchTableData = (params: TableParams) => {
+  function fetchExpenseTableData(params: ExpenseTableParams) {
     const { from, to } = pageInfoHandler({ current: params.current, size: params.size })
     return fetchWaybillCostList({ ...params, from, to })
   }
 
-  const handleSaveSuccess = (type: 'add' | 'edit'): void => {
-    void (type === 'add'
-      ? tableQueryRef.value?.refreshCreate()
-      : tableQueryRef.value?.refreshUpdate())
+  function fetchReimbursementTableData(params: ReimbursementTableParams) {
+    const { from, to } = pageInfoHandler({ current: params.current, size: params.size })
+    return fetchExpenseReimbursementList({ ...params, from, to })
   }
 
-  const handleAiAudit = async (row: WaybillCost): Promise<void> => {
-    if (!row.id) return
-    await auditDrawerRef.value?.handleOpen({
-      costId: row.id,
-      waybillNo: row.waybill?.waybillNo || '未编号运单'
-    })
+  function emptyText(value: unknown): string {
+    return String(value || '--')
   }
 
-  const openApprovalHistory = async (row: WaybillCost): Promise<void> => {
-    if (!row.id) return
-    await approvalHistoryRef.value?.handleOpen({
-      businessType: 'tms_waybill_cost',
-      businessId: row.id,
-      businessTitle: row.waybill?.waybillNo || '运单费用'
-    })
+  function money(value?: number | null): string {
+    return formatCurrencyValue(Number(value ?? 0))
   }
 
-  const handleSubmitReview = async (row: WaybillCost): Promise<void> => {
+  function canEditExpense(row: Expense): boolean {
+    return (
+      ['draft', 'rejected'].includes(String(row.auditStatus)) &&
+      row.settlementStatus === 'unsettled'
+    )
+  }
+
+  function canConvert(row: Expense): boolean {
+    return (
+      Boolean(row.id) &&
+      row.auditStatus === 'approved' &&
+      row.settlementStatus === 'unsettled' &&
+      row.expenseItem?.reimbursementAllowed !== false
+    )
+  }
+
+  function expenseMoreActions(row: Expense): ButtonMoreItem[] {
+    const actions: ButtonMoreItem[] = [
+      { key: 'aiAudit', label: 'AI 费用审核', icon: 'ri:sparkling-2-line' },
+      { key: 'approvalHistory', label: '审批记录', icon: 'ri:file-history-line' }
+    ]
+    if (canEditExpense(row)) {
+      actions.push({ key: 'submit', label: '提交财务审核', icon: 'ri:send-plane-line' })
+      actions.push({
+        key: 'delete',
+        label: '删除草稿',
+        icon: 'ri:delete-bin-line',
+        color: 'var(--el-color-danger)'
+      })
+    }
+    if (canConvert(row)) {
+      actions.push({ key: 'convert', label: '转费用报销', icon: 'ri:exchange-cny-line' })
+    }
+    return actions
+  }
+
+  function reimbursementMoreActions(row: Reimbursement): ButtonMoreItem[] {
+    const actions: ButtonMoreItem[] = [
+      { key: 'approvalHistory', label: '审批记录', icon: 'ri:file-history-line' }
+    ]
+    if (['draft', 'rejected'].includes(row.status)) {
+      actions.push({ key: 'submit', label: '提交报销审批', icon: 'ri:send-plane-line' })
+      actions.push({
+        key: 'delete',
+        label: '删除并退回费用',
+        icon: 'ri:delete-bin-line',
+        color: 'var(--el-color-danger)'
+      })
+    }
+    if (row.status === 'approved') {
+      actions.push({ key: 'pay', label: '出纳付款', icon: 'ri:secure-payment-line' })
+    }
+    return actions
+  }
+
+  function handleExpenseAction(item: ButtonMoreItem, row: Expense): void {
+    const actions: Record<string, () => void> = {
+      submit: () => void handleExpenseSubmit(row),
+      delete: () => void handleExpenseDelete(row),
+      convert: () => void reimbursementDialogRef.value?.handleOpen([row]),
+      aiAudit: () =>
+        row.id
+          ? void costAuditDrawerRef.value?.handleOpen({
+              costId: row.id,
+              waybillNo: row.waybillNoSnapshot || row.costNo || '运单费用'
+            })
+          : undefined,
+      approvalHistory: () =>
+        void openApprovalHistory('tms_waybill_cost', row.id, row.costNo || '运单费用')
+    }
+    actions[String(item.key)]?.()
+  }
+
+  function handleReimbursementAction(item: ButtonMoreItem, row: Reimbursement): void {
+    const actions: Record<string, () => void> = {
+      submit: () => void handleReimbursementSubmit(row),
+      delete: () => void handleReimbursementDelete(row),
+      pay: () => void paymentDialogRef.value?.handleOpen(row),
+      approvalHistory: () =>
+        void openApprovalHistory('tms_expense_reimbursement', row.id, row.reimbursementNo)
+    }
+    actions[String(item.key)]?.()
+  }
+
+  async function openApprovalHistory(
+    businessType: 'tms_waybill_cost' | 'tms_expense_reimbursement',
+    businessId: string | undefined,
+    businessTitle: string
+  ): Promise<void> {
+    if (!businessId) return
+    await approvalHistoryRef.value?.handleOpen({ businessType, businessId, businessTitle })
+  }
+
+  function openExpenseDialog(row?: Expense): void {
+    if (row && !canEditExpense(row)) return
+    void expenseDialogRef.value?.handleOpen({ row })
+  }
+
+  async function handleExpenseSubmit(row: Expense): Promise<void> {
     if (!row.id) return
     try {
-      await confirmAction('提交后业务字段将锁定，确定提交审核吗？', '提交审核', {
+      await confirmAction('提交后费用内容将锁定，并进入配置的财务审批流程。', '提交费用审核', {
         type: 'warning',
-        confirmButtonText: '提交',
+        confirmButtonText: '提交审核',
         cancelButtonText: '取消'
       })
       await submitWaybillCost(row.id)
-      await tableQueryRef.value?.refreshUpdate()
+      await Promise.all([expenseTableRef.value?.refreshUpdate(), loadOverview()])
     } catch {
-      // 用户取消时无需提示。
+      // User cancelled the confirmation.
     }
   }
 
-  const handleApprove = async (row: WaybillCost): Promise<void> => {
+  async function handleExpenseDelete(row: Expense): Promise<void> {
     if (!row.id) return
     try {
-      await confirmAction('审核通过后，该费用会立即计入运单利润。', '审核通过', {
-        type: 'success',
-        confirmButtonText: '通过',
-        cancelButtonText: '取消'
-      })
-      await reviewWaybillCost({ id: row.id, auditStatus: 'approved' })
-      await tableQueryRef.value?.refreshUpdate()
-    } catch {
-      // 用户取消时无需提示。
-    }
-  }
-
-  const handleReject = async (row: WaybillCost): Promise<void> => {
-    if (!row.id) return
-    try {
-      const reason = await promptReason('请填写驳回原因', '驳回费用', {
-        confirmButtonText: '确认驳回',
-        emptyMessage: '驳回原因不能为空',
-        placeholder: '请说明费用被驳回的原因'
-      })
-      await reviewWaybillCost({
-        id: row.id,
-        auditStatus: 'rejected',
-        reviewRemark: reason
-      })
-      await tableQueryRef.value?.refreshUpdate()
-    } catch {
-      // 用户取消时无需提示。
-    }
-  }
-
-  const handleVoid = async (row: WaybillCost): Promise<void> => {
-    if (!row.id) return
-    try {
-      const reason = await promptReason('作废后该费用将从利润中扣除，请填写作废原因', '作废费用', {
-        confirmButtonText: '确认作废',
-        emptyMessage: '作废原因不能为空',
-        placeholder: '请说明费用作废的原因'
-      })
-      await voidWaybillCost(row.id, reason)
-      await tableQueryRef.value?.refreshUpdate()
-    } catch {
-      // 用户取消时无需提示。
-    }
-  }
-
-  const handleDelete = async (row: WaybillCost): Promise<void> => {
-    if (!row.id) return
-    try {
-      await confirmAction('仅草稿或已驳回费用可删除，删除后无法恢复。', '删除费用', {
+      await confirmAction('删除后票据与草稿关联将无法恢复。', '删除运单费用草稿', {
         type: 'warning',
-        confirmButtonText: '删除',
+        confirmButtonText: '确认删除',
         cancelButtonText: '取消',
         confirmButtonClass: 'el-button--danger'
       })
       await deleteWaybillCost(row.id)
-      await tableQueryRef.value?.refreshRemove()
+      await Promise.all([expenseTableRef.value?.refreshRemove(), loadOverview()])
     } catch {
-      // 用户取消时无需提示。
+      // User cancelled the confirmation.
     }
   }
+
+  async function handleReimbursementSubmit(row: Reimbursement): Promise<void> {
+    try {
+      await confirmAction('提交后报销内容将锁定，并进入配置的报销审批流程。', '提交报销审批', {
+        type: 'warning',
+        confirmButtonText: '提交审批',
+        cancelButtonText: '取消'
+      })
+      await submitExpenseReimbursement(row)
+      await reimbursementTableRef.value?.refreshUpdate()
+    } catch {
+      // User cancelled the confirmation.
+    }
+  }
+
+  async function handleReimbursementDelete(row: Reimbursement): Promise<void> {
+    try {
+      await confirmAction('删除后，明细费用会退回“未转报销”状态。', '删除费用报销单', {
+        type: 'warning',
+        confirmButtonText: '删除并退回',
+        cancelButtonText: '取消',
+        confirmButtonClass: 'el-button--danger'
+      })
+      await deleteExpenseReimbursement(row.id)
+      await Promise.all([
+        reimbursementTableRef.value?.refreshRemove(),
+        expenseTableRef.value?.refreshUpdate(),
+        loadOverview()
+      ])
+    } catch {
+      // User cancelled the confirmation.
+    }
+  }
+
+  function handleExpenseSaved(type: 'add' | 'edit'): void {
+    void Promise.all([
+      type === 'add'
+        ? expenseTableRef.value?.refreshCreate()
+        : expenseTableRef.value?.refreshUpdate(),
+      loadOverview()
+    ])
+  }
+
+  function handleReimbursementCreated(): void {
+    activeTab.value = 'reimbursement'
+    void nextTick(() =>
+      Promise.all([
+        reimbursementTableRef.value?.refreshCreate(),
+        expenseTableRef.value?.refreshUpdate(),
+        loadOverview()
+      ])
+    )
+  }
+
+  function handlePaymentSuccess(): void {
+    void Promise.all([
+      reimbursementTableRef.value?.refreshUpdate(),
+      expenseTableRef.value?.refreshUpdate(),
+      loadOverview()
+    ])
+  }
+
+  async function loadOverview(): Promise<void> {
+    const { data } = await fetchWaybillCostOverview()
+    if (data) Object.assign(overview, data)
+  }
+
+  async function openFromOrderQuery(): Promise<void> {
+    const orderId = typeof route.query.orderId === 'string' ? route.query.orderId : ''
+    if (!orderId) return
+    if (route.query.fromMasterDelete === '1') {
+      expenseTable.search.orderId = orderId
+      expenseTable.search.recordId =
+        typeof route.query.recordId === 'string' ? route.query.recordId : ''
+      await nextTick()
+      await expenseTableRef.value?.getData()
+      return
+    }
+    await nextTick()
+    await expenseDialogRef.value?.handleOpen({ orderId })
+    const query = { ...route.query }
+    delete query.orderId
+    await router.replace({ query })
+  }
+
+  onMounted(() => {
+    void Promise.all([userStore.fetchDictList(), loadOverview()])
+  })
+
+  watch(
+    () => route.fullPath,
+    (orderId) => {
+      if (typeof orderId === 'string' && orderId) void openFromOrderQuery()
+    },
+    { immediate: true }
+  )
+
+  watch(activeTab, async (value) => {
+    await nextTick()
+    if (value === 'reimbursement') await reimbursementTableRef.value?.getData()
+  })
 </script>
 
 <style scoped lang="scss">
-  :deep(.waybill-cost__evidence) {
+  .waybill-cost {
     display: flex;
-    gap: 4px;
-    align-items: center;
+    flex-direction: column;
+    gap: var(--art-space-4);
+    min-width: 0;
 
-    > span {
-      font-size: 12px;
-      color: var(--art-text-gray-500);
+    > .art-table-query {
+      min-height: 0;
     }
-  }
 
-  :deep(.waybill-cost__evidence-image) {
-    width: 30px;
-    height: 30px;
-    overflow: hidden;
-    cursor: zoom-in;
-    border: 1px solid var(--art-border-dashed-color);
-    border-radius: var(--el-border-radius-small);
+    &.is-focus-mode {
+      gap: 0;
+    }
+
+    &__hero {
+      display: flex;
+      gap: var(--art-space-5);
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--art-space-5);
+    }
+
+    &__hero-copy,
+    &__hero-actions,
+    &__workflow,
+    &__workflow > div {
+      display: flex;
+      align-items: center;
+    }
+
+    &__hero-copy {
+      gap: var(--art-space-4);
+      min-width: 0;
+
+      > div {
+        min-width: 0;
+
+        > span {
+          font-size: 12px;
+          font-weight: 700;
+          color: rgb(var(--ui-primary));
+          letter-spacing: 0.05em;
+        }
+      }
+
+      h1 {
+        margin: 2px 0 4px;
+        font-size: 22px;
+        line-height: 1.35;
+        color: var(--art-text-gray-900);
+      }
+
+      p {
+        margin: 0;
+        line-height: 1.6;
+        color: var(--art-text-gray-500);
+      }
+    }
+
+    &__hero-icon {
+      display: grid;
+      flex: 0 0 52px;
+      place-items: center;
+      width: 52px;
+      height: 52px;
+      font-size: 25px;
+      color: rgb(var(--ui-primary));
+      background: rgb(var(--ui-primary) / 10%);
+      border-radius: var(--el-border-radius-base);
+    }
+
+    &__hero-actions {
+      flex: 0 0 auto;
+      flex-wrap: wrap;
+      gap: var(--art-space-3);
+      justify-content: flex-end;
+    }
+
+    &__metrics {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: var(--art-space-3);
+
+      > article {
+        display: flex;
+        gap: var(--art-space-3);
+        align-items: center;
+        min-width: 0;
+        padding: var(--art-space-4);
+
+        > span {
+          display: grid;
+          flex: 0 0 38px;
+          place-items: center;
+          width: 38px;
+          height: 38px;
+          border-radius: var(--el-border-radius-base);
+
+          &.is-primary {
+            color: var(--el-color-primary);
+            background: var(--el-color-primary-light-9);
+          }
+
+          &.is-warning {
+            color: var(--el-color-warning);
+            background: var(--el-color-warning-light-9);
+          }
+
+          &.is-success {
+            color: var(--el-color-success);
+            background: var(--el-color-success-light-9);
+          }
+
+          &.is-danger {
+            color: var(--el-color-danger);
+            background: var(--el-color-danger-light-9);
+          }
+        }
+
+        > div {
+          min-width: 0;
+        }
+
+        small,
+        p {
+          color: var(--art-text-gray-500);
+        }
+
+        strong {
+          display: block;
+          margin: 2px 0;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          font-size: 19px;
+          font-variant-numeric: tabular-nums;
+          color: var(--art-text-gray-900);
+          white-space: nowrap;
+        }
+
+        p {
+          margin: 0;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          font-size: 11px;
+          white-space: nowrap;
+        }
+      }
+    }
+
+    &__workflow {
+      gap: 0;
+      padding: var(--art-space-3) var(--art-space-4);
+
+      > div {
+        flex: 1;
+        gap: var(--art-space-2);
+        min-width: 0;
+
+        > span {
+          display: grid;
+          flex: 0 0 26px;
+          place-items: center;
+          width: 26px;
+          height: 26px;
+          font-size: 12px;
+          font-weight: 700;
+          color: rgb(var(--ui-primary));
+          background: rgb(var(--ui-primary) / 10%);
+          border-radius: 50%;
+        }
+
+        > div {
+          display: flex;
+          flex-direction: column;
+          min-width: 0;
+
+          strong {
+            font-size: 13px;
+            color: var(--art-text-gray-800);
+          }
+
+          small {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            color: var(--art-text-gray-500);
+            white-space: nowrap;
+          }
+        }
+
+        > svg {
+          margin-left: auto;
+          color: var(--art-text-gray-300);
+        }
+      }
+    }
+
+    &__tabs {
+      margin-bottom: calc(var(--art-space-4) * -1);
+    }
+
+    @media (width <= 1100px) {
+      &__metrics {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      &__workflow {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: var(--art-space-3);
+
+        > div > svg {
+          display: none;
+        }
+      }
+    }
+
+    @media (width <= 720px) {
+      &__hero,
+      &__hero-actions {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      &__hero-actions > button {
+        width: 100%;
+      }
+
+      &__metrics,
+      &__workflow {
+        grid-template-columns: 1fr;
+      }
+    }
   }
 </style>

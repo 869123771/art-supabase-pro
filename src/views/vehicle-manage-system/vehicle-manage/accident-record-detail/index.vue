@@ -93,8 +93,15 @@
     { key: 'plateNo', label: '车牌号', field: 'plateNo' },
     { key: 'companyName', label: '所属公司', field: 'companyName' },
     { key: 'driverName', label: '驾驶员', field: 'driverName' },
+    { key: 'driverPhone', label: '联系方式', field: 'driverPhone' },
     { key: 'accidentTime', label: '事故时间', field: 'accidentTime', format: 'datetime' },
     { key: 'accidentLocation', label: '事故地点', field: 'accidentLocation' },
+    {
+      key: 'accidentCoordinate',
+      label: '事故坐标',
+      value: (data: Partial<AccidentRecord>) =>
+        formatCoordinate(data.accidentLongitude, data.accidentLatitude)
+    },
     { key: 'damageLevel', label: '事故等级', field: 'damageLevel' },
     { key: 'accidentSummary', label: '事故概述', field: 'accidentSummary', span: 2 }
   ]
@@ -203,6 +210,11 @@
   const formatPercent = (value?: number | null): string => {
     if (isNil(value)) return '--'
     return `${value}%`
+  }
+
+  const formatCoordinate = (longitude?: number | null, latitude?: number | null): string => {
+    if (isNil(longitude) || isNil(latitude)) return '--'
+    return `${Number(longitude).toFixed(7)}, ${Number(latitude).toFixed(7)}`
   }
 
   const getBooleanDictValue = (value?: boolean | null): string | undefined =>
