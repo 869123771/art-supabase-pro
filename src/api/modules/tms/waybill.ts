@@ -28,6 +28,11 @@ type WaybillEventRecord = Api.Tms.Waybill.WaybillEventRecord
 type WaybillProofRecord = Api.Tms.Waybill.WaybillProofRecord
 type CargoOperationRecord = Api.Tms.Waybill.CargoOperationRecord
 type ExecutionRecord = Api.Tms.Waybill.ExecutionRecord
+type WaybillExpenseLocationRecord = Api.Tms.Waybill.WaybillExpenseLocationRecord
+
+interface WaybillExpenseLocationQueryRecord extends WaybillExpenseLocationRecord {
+  costType?: string | null
+}
 
 interface DriverWaybillStatusReference {
   orderId?: string | null
@@ -53,6 +58,29 @@ const WAYBILL_DETAIL_SELECT = `
   cargo:tms_cargo!tms_waybill_cargo_id_fkey(id, cargo_code, cargo_name, unit)
 `
 
+const WAYBILL_EXPENSE_LOCATION_SELECT = `
+  id,
+  cost_type,
+  occurred_on,
+  expense_location,
+  expense_longitude,
+  expense_latitude,
+  expense_coordinate_source,
+  expense_item:tms_expense_item!tms_waybill_cost_expense_item_id_fkey(
+    id,
+    item_code,
+    item_name,
+    business_category
+  )
+`
+
+const ENERGY_COST_TYPES = new Set([
+  'fuel',
+  'in_transit_energy',
+  'in_transit_charging',
+  'in_transit_gas'
+])
+
 export async function fetchWaybillDetail(waybillId: string) {
   const detailResult = await responseHandle<WaybillDetailRecord | null>(
     () =>
@@ -64,48 +92,61 @@ export async function fetchWaybillDetail(waybillId: string) {
   )
   if (!detailResult.data) return detailResult
 
-  const [eventResult, proofResult, cargoOperationResult, executionResult] = await Promise.all([
-    responseHandle<WaybillEventRecord[]>(
-      () =>
-        supabase
-          .from('tms_waybill_event')
-          .select(
-            'id, waybill_id, event_type, event_time, operator_name, location_text, longitude, latitude, payload, remark, create_by, create_time'
-          )
-          .eq('waybill_id', waybillId)
-          .order('event_time', { ascending: false }),
-      { breakReturn: true, errorMessage: '运单跟踪记录加载失败，请稍后重试' }
-    ),
-    responseHandle<WaybillProofRecord[]>(
-      () =>
-        supabase
-          .from('tms_waybill_proof')
-          .select(
-            'id, waybill_id, proof_type, attachment_id, file_url, file_name, mime_type, file_size, uploaded_at, uploader_name, remark'
-          )
-          .eq('waybill_id', waybillId)
-          .order('uploaded_at', { ascending: false }),
-      { breakReturn: true, errorMessage: '运单凭证加载失败，请稍后重试' }
-    ),
-    responseHandle<CargoOperationRecord[]>(
-      () =>
-        supabase
-          .from('tms_waybill_cargo_operation')
-          .select('*')
-          .eq('waybill_id', waybillId)
-          .order('checkin_time', { ascending: false }),
-      { breakReturn: true, errorMessage: '装卸作业记录加载失败，请稍后重试' }
-    ),
-    responseHandle<ExecutionRecord | null>(
-      () =>
-        supabase
-          .from('tms_waybill_execution_record')
-          .select('*')
-          .eq('waybill_id', waybillId)
-          .maybeSingle(),
-      { breakReturn: true, errorMessage: '运单执行记录加载失败，请稍后重试' }
-    )
-  ])
+  const [eventResult, proofResult, cargoOperationResult, executionResult, expenseLocationResult] =
+    await Promise.all([
+      responseHandle<WaybillEventRecord[]>(
+        () =>
+          supabase
+            .from('tms_waybill_event')
+            .select(
+              'id, waybill_id, event_type, event_time, operator_name, location_text, longitude, latitude, payload, remark, create_by, create_time'
+            )
+            .eq('waybill_id', waybillId)
+            .order('event_time', { ascending: false }),
+        { breakReturn: true, errorMessage: '运单跟踪记录加载失败，请稍后重试' }
+      ),
+      responseHandle<WaybillProofRecord[]>(
+        () =>
+          supabase
+            .from('tms_waybill_proof')
+            .select(
+              'id, waybill_id, proof_type, attachment_id, file_url, file_name, mime_type, file_size, uploaded_at, uploader_name, remark'
+            )
+            .eq('waybill_id', waybillId)
+            .order('uploaded_at', { ascending: false }),
+        { breakReturn: true, errorMessage: '运单凭证加载失败，请稍后重试' }
+      ),
+      responseHandle<CargoOperationRecord[]>(
+        () =>
+          supabase
+            .from('tms_waybill_cargo_operation')
+            .select('*')
+            .eq('waybill_id', waybillId)
+            .order('checkin_time', { ascending: false }),
+        { breakReturn: true, errorMessage: '装卸作业记录加载失败，请稍后重试' }
+      ),
+      responseHandle<ExecutionRecord | null>(
+        () =>
+          supabase
+            .from('tms_waybill_execution_record')
+            .select('*')
+            .eq('waybill_id', waybillId)
+            .maybeSingle(),
+        { breakReturn: true, errorMessage: '运单执行记录加载失败，请稍后重试' }
+      ),
+      responseHandle<WaybillExpenseLocationQueryRecord[]>(
+        () =>
+          supabase
+            .from('tms_waybill_cost')
+            .select(WAYBILL_EXPENSE_LOCATION_SELECT)
+            .eq('waybill_id', waybillId)
+            .not('expense_longitude', 'is', null)
+            .not('expense_latitude', 'is', null)
+            .order('occurred_on', { ascending: true })
+            .order('create_time', { ascending: true }),
+        { breakReturn: true, errorMessage: '费用定位记录加载失败，请稍后重试' }
+      )
+    ])
 
   const data = detailResult.data
   return {
@@ -122,6 +163,7 @@ export async function fetchWaybillDetail(waybillId: string) {
       })),
       proofs: proofResult.data ?? [],
       cargoOperations: cargoOperationResult.data ?? [],
+      expenseLocations: normalizeExpenseLocations(expenseLocationResult.data ?? []),
       execution: executionResult.data ?? null
     }
   }
@@ -134,16 +176,77 @@ function normalizeWaybillRoutePoints(value: unknown): Api.Tms.Waybill.WaybillRou
     const longitude = Number(item.longitude ?? item.lng)
     const latitude = Number(item.latitude ?? item.lat)
     if (!Number.isFinite(longitude) || !Number.isFinite(latitude)) return []
+    const speedKmh = Number(item.speedKmh ?? item.speed ?? item.velocity)
     return [
       {
         name: typeof item.name === 'string' ? item.name : null,
         address: typeof item.address === 'string' ? item.address : null,
         type: typeof item.type === 'string' ? item.type : null,
+        capturedAt: getFirstString(item, [
+          'capturedAt',
+          'timestamp',
+          'recordedAt',
+          'eventTime',
+          'gpsTime',
+          'time'
+        ]),
+        speedKmh: Number.isFinite(speedKmh) && speedKmh >= 0 ? speedKmh : null,
+        source: typeof item.source === 'string' ? item.source : null,
         longitude,
         latitude
       }
     ]
   })
+}
+
+function normalizeExpenseLocations(
+  records: WaybillExpenseLocationQueryRecord[]
+): WaybillExpenseLocationRecord[] {
+  return records.flatMap((record) => {
+    const longitude = Number(record.expenseLongitude)
+    const latitude = Number(record.expenseLatitude)
+    const category = String(
+      record.expenseItem?.businessCategory || record.costType || ''
+    ).toLowerCase()
+    const label =
+      `${record.expenseItem?.itemCode || ''} ${record.expenseItem?.itemName || ''}`.toLowerCase()
+    const isEnergyExpense =
+      ENERGY_COST_TYPES.has(category) ||
+      /(fuel|gas|charging|energy|加油|燃油|充电|能源)/i.test(label)
+
+    if (!isEnergyExpense || !isValidCoordinate(longitude, latitude)) return []
+    return [
+      {
+        id: record.id,
+        occurredOn: record.occurredOn,
+        expenseLocation: record.expenseLocation,
+        expenseLongitude: longitude,
+        expenseLatitude: latitude,
+        expenseCoordinateSource: record.expenseCoordinateSource,
+        expenseItem: record.expenseItem
+      }
+    ]
+  })
+}
+
+function getFirstString(record: Record<string, unknown>, keys: string[]): string | null {
+  for (const key of keys) {
+    const value = record[key]
+    if (typeof value === 'string' && value.trim()) return value.trim()
+  }
+  return null
+}
+
+function isValidCoordinate(longitude: number, latitude: number): boolean {
+  return (
+    Number.isFinite(longitude) &&
+    Number.isFinite(latitude) &&
+    longitude >= -180 &&
+    longitude <= 180 &&
+    latitude >= -90 &&
+    latitude <= 90 &&
+    !(longitude === 0 && latitude === 0)
+  )
 }
 
 function normalizeUrlList(value: unknown): string[] {
@@ -495,6 +598,7 @@ export async function fetchDispatchVehicleOptions(params: DispatchVehicleSearchP
   let query = supabase
     .from('vehicle_archive')
     .select(DISPATCH_VEHICLE_SELECT, { count: 'exact' })
+    .eq('audit_status', 'approved')
     .order('plate_no', { ascending: true })
     .range(from, to)
 

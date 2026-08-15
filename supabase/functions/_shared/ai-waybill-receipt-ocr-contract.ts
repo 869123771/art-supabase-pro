@@ -1,3 +1,5 @@
+import { normalizeOcrRawText } from './ai-ocr-text.ts'
+
 export const AI_WAYBILL_RECEIPT_FIELDS = [
   'waybillNo',
   'signerName',
@@ -45,6 +47,7 @@ export interface AiWaybillReceiptSignal {
 }
 
 export interface AiWaybillReceiptNormalizedResponse {
+  rawText: string
   summary: string
   confidence: number
   fieldConfidence: Partial<Record<AiWaybillReceiptField, number>>
@@ -184,6 +187,7 @@ export function normalizeAiWaybillReceiptResponse(
   if (!receipt.signerName) missingFields.push('签收人')
   if (!receipt.signedAt) missingFields.push('签收时间')
   return {
+    rawText: normalizeOcrRawText(payload.rawText),
     summary: textValue(payload.summary) ?? '回单识别完成，请核对后确认签收。',
     confidence: confidenceValue(payload.confidence),
     fieldConfidence,

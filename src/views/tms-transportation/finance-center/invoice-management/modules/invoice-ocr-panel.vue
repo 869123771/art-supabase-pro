@@ -65,6 +65,13 @@
           :status="confidenceProgressStatus"
         />
 
+        <OcrOriginalText
+          class="invoice-ocr-panel__raw-text"
+          :text="result.rawText"
+          :min-rows="4"
+          :max-rows="8"
+        />
+
         <div class="invoice-ocr-panel__fields">
           <div v-for="field in visibleFields" :key="field.key" class="invoice-ocr-panel__field">
             <span>{{ field.label }}</span>
@@ -102,6 +109,7 @@
   import { ElMessage } from 'element-plus'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import ArtUploadImage from '@/components/core/forms/art-upload-image/index.vue'
+  import OcrOriginalText from '@/components/business/ocr-original-text/index.vue'
   import { analyzeInvoiceAttachmentByAi } from '@/api/tms'
 
   defineOptions({ name: 'TmsInvoiceOcrPanel' })
@@ -417,6 +425,10 @@
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 8px;
+      margin-top: 10px;
+    }
+
+    &__raw-text {
       margin-top: 10px;
     }
 

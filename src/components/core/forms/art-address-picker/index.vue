@@ -1097,7 +1097,8 @@
   :global(.art-address-picker-dialog.is-fullscreen > .el-dialog__body) {
     display: flex;
     flex-direction: column;
-    padding-bottom: 0;
+
+    --art-dialog-content-padding: 20px 24px 0;
   }
 
   :global(.art-address-picker-dialog.is-fullscreen .art-dialog__content) {

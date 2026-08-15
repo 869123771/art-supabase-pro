@@ -1,3 +1,5 @@
+import { normalizeOcrRawText } from './ai-ocr-text.ts'
+
 export const AI_CASH_VOUCHER_FIELDS = [
   'payerName',
   'payeeName',
@@ -20,6 +22,7 @@ export interface AiCashVoucherDraft {
 }
 
 export interface AiCashVoucherNormalizedResponse {
+  rawText: string
   summary: string
   confidence: number
   fieldConfidence: Partial<Record<AiCashVoucherField, number>>
@@ -169,6 +172,7 @@ export function normalizeAiCashVoucherResponse(
   if (voucher.amount === null) missingFields.push('交易金额')
   if (!voucher.payerName && !voucher.payeeName) missingFields.push('付款方/收款方')
   return {
+    rawText: normalizeOcrRawText(payload.rawText),
     summary: textValue(payload.summary) ?? '付款凭证识别完成，请核对后应用。',
     confidence: confidenceValue(payload.confidence),
     fieldConfidence,

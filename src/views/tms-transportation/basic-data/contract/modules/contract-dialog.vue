@@ -748,6 +748,7 @@
       } else {
         const response = await addContract(payload)
         payload.id = response.data?.id
+        form.data.id = response.data?.id
       }
       if (submitMode.value === 'submit') await submitContractForApproval(payload)
       emit('success', type)

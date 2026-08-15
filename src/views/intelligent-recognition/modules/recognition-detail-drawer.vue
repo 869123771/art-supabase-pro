@@ -49,6 +49,13 @@
         <ArtSectionTitle class="recognition-detail__section">原始票据</ArtSectionTitle>
         <RecognitionSourceGallery :urls="sourceImageUrls" :expected-count="sourceImageCount" />
 
+        <ArtSectionTitle class="recognition-detail__section">原始识别内容</ArtSectionTitle>
+        <OcrOriginalText
+          :text="detail.data.rawOcrText"
+          title="识别结果"
+          description="这里保留识别时生成的原始 OCR 文字，不随后续表单修正而变化。"
+        />
+
         <ArtSectionTitle class="recognition-detail__section">处理进度</ArtSectionTitle>
         <div class="recognition-detail__progress" aria-label="处理进度">
           <article
@@ -114,6 +121,7 @@
   import ArtDrawer from '@/components/core/drawers/art-drawer/index.vue'
   import type { ArtDrawerExpose } from '@/components/core/drawers/art-drawer/types'
   import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
+  import OcrOriginalText from '@/components/business/ocr-original-text/index.vue'
   import RecognitionSourceGallery from './recognition-source-gallery.vue'
   import { fetchRecognitionArtifactDetail } from '@/api/intelligent-recognition'
   import { formatWithDayjs } from '@/utils/time'

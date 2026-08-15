@@ -68,6 +68,25 @@ export const toGeoCoord = (
   return [Number(lng.toFixed(6)), Number(lat.toFixed(6))]
 }
 
+export const resolveActualTrackPath = (row: InTransitRecord): GeoCoord[] => {
+  const routePoints = Array.isArray(row.routePoints) ? row.routePoints : []
+  const hasGpsEvidence = routePoints.some((point) => {
+    const sourceText = `${point.type || ''} ${point.source || ''}`.toLowerCase()
+    return (
+      Boolean(point.capturedAt || point.timestamp || point.recordedAt) ||
+      /(gps|track|trajectory|telemetry|location)/.test(sourceText)
+    )
+  })
+  if (!hasGpsEvidence) return []
+
+  return dedupeGeoPath(
+    routePoints.flatMap((point) => {
+      const coordinate = toGeoCoord(point.longitude ?? point.lng, point.latitude ?? point.lat)
+      return coordinate ? [coordinate] : []
+    })
+  )
+}
+
 export const resolveProgress = (
   row: InTransitRecord,
   seed: string,

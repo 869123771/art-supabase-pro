@@ -120,11 +120,13 @@
   }
 
   :global(.project-assistant-history .el-drawer__body) {
+    --art-drawer-content-padding: var(--art-space-3) var(--el-drawer-padding-primary)
+      var(--el-drawer-padding-primary);
+
     display: flex;
     flex-direction: column;
     gap: var(--art-space-3);
     min-height: 0;
-    padding-top: var(--art-space-3);
   }
 
   .project-assistant-history {

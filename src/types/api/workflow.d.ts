@@ -91,6 +91,11 @@ declare namespace Api {
       fields: WorkflowBusinessField[]
       warnings: string[]
       attachments: WorkflowBusinessAttachment[]
+      ocrEvidence?: {
+        artifactId: string
+        rawText: string
+        capturedAt: string
+      } | null
     }
 
     interface WorkflowVersionRecord {

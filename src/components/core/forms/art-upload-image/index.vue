@@ -44,6 +44,7 @@
           <el-image
             ref="ElImageRefs"
             :src="file.url"
+            :alt="file.name || '上传图片预览'"
             class="absolute rounded-md"
             :style="getSize"
             fit="cover"
@@ -56,9 +57,21 @@
             :z-index="10000"
           />
         </template>
-        <div v-else-if="file.status === 'fail'" class="upload-state">加载失败</div>
+        <div v-else-if="file.status === 'fail'" class="upload-state upload-state--error">
+          <ArtSvgIcon icon="ri:error-warning-line" aria-hidden="true" />
+          <span>加载失败</span>
+          <button
+            v-if="!readonly"
+            type="button"
+            class="upload-state__remove"
+            aria-label="移除加载失败的图片"
+            @click.stop="handleRemove(index)"
+          >
+            移除
+          </button>
+        </div>
         <div v-else class="upload-state upload-state--loading">
-          <ArtSvgIcon icon="ri:loader-4-line" class="upload-state__spinner" />
+          <ArtSvgIcon icon="ri:loader-4-line" class="upload-state__spinner" aria-hidden="true" />
           <span>上传中</span>
         </div>
       </div>
@@ -378,30 +391,37 @@
     .preview-mask {
       position: absolute;
       z-index: 8;
+      box-sizing: border-box;
       display: flex;
-      column-gap: 0.75rem;
+      column-gap: 6px;
       align-items: center;
       justify-content: center;
       width: 100%;
       height: 100%;
-      border-radius: 0.375rem;
+      padding: 6px;
+      border-radius: var(--el-border-radius-base);
       transition:
         opacity 300ms ease,
         background-color 300ms ease;
 
       .preview-action {
+        --preview-action-focus-shadow: inset 0 0 0 2px
+          color-mix(in srgb, var(--theme-color) 44%, transparent);
+
         display: inline-flex;
+        flex: 0 0 28px;
         align-items: center;
         justify-content: center;
-        width: 36px;
-        height: 36px;
+        width: 28px;
+        height: 28px;
         padding: 0;
         color: #fff;
         cursor: pointer;
-        background: rgb(15 23 42 / 36%);
-        border: 1px solid rgb(255 255 255 / 45%);
+        background: rgb(15 23 42 / 48%);
+        border: 1px solid rgb(255 255 255 / 38%);
         border-radius: 50%;
         opacity: 0;
+        transform: scale(0.92);
         transition:
           color 0.18s ease,
           background-color 0.18s ease,
@@ -410,18 +430,24 @@
           transform 0.18s ease;
 
         .art-svg-icon {
-          font-size: 20px;
+          font-size: 15px;
         }
 
         &:hover {
-          background: rgb(15 23 42 / 68%);
-          transform: translateY(-1px);
+          background: color-mix(in srgb, var(--theme-color) 72%, rgb(15 23 42));
+          border-color: color-mix(in srgb, var(--theme-color) 48%, white);
+          transform: translateY(-1px) scale(1);
+        }
+
+        &:active {
+          transform: translateY(0) scale(0.96);
         }
 
         &:focus-visible {
           outline: none;
-          box-shadow: 0 0 0 3px color-mix(in srgb, var(--theme-color) 35%, transparent);
+          box-shadow: var(--preview-action-focus-shadow);
           opacity: 1;
+          transform: scale(1);
         }
       }
 
@@ -434,11 +460,11 @@
 
     .preview-mask:hover,
     .preview-mask:focus-within {
-      // @apply bg-dark-5/50%;
-      background-color: rgb(15 23 42 / 58%);
+      background-color: rgb(15 23 42 / 52%);
 
       .preview-action {
         opacity: 1;
+        transform: scale(1);
       }
     }
 
@@ -454,6 +480,10 @@
       font-size: 12px;
       color: var(--el-text-color-secondary);
       text-align: center;
+
+      > .art-svg-icon {
+        font-size: 20px;
+      }
     }
 
     .upload-state--loading {
@@ -466,11 +496,52 @@
       animation: upload-spin 0.9s linear infinite;
     }
 
+    .upload-state--error {
+      color: var(--el-color-danger);
+      background: var(--el-color-danger-light-9);
+    }
+
+    .upload-state__remove {
+      padding: 2px 8px;
+      font: inherit;
+      color: var(--el-color-danger);
+      cursor: pointer;
+      background: color-mix(in srgb, var(--el-color-danger) 7%, var(--color-box));
+      border: 1px solid color-mix(in srgb, var(--el-color-danger) 24%, transparent);
+      border-radius: 999px;
+      transition:
+        color 0.18s ease,
+        background-color 0.18s ease,
+        border-color 0.18s ease,
+        box-shadow 0.18s ease;
+
+      &:hover {
+        color: #fff;
+        background: var(--el-color-danger);
+        border-color: var(--el-color-danger);
+      }
+
+      &:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--el-color-danger) 24%, transparent);
+      }
+    }
+
     &:hover {
       // @apply text-[rgb(var(--ui-primary))] b-[rgb(var(--ui-primary))];
       color: var(--el-color-primary);
       border-color: var(--el-color-primary);
     }
+  }
+
+  :global([data-box-mode='shadow-mode']) .preview-action {
+    --preview-action-focus-shadow: 0 0 0 3px color-mix(in srgb, var(--theme-color) 28%, transparent);
+
+    border-color: transparent;
+  }
+
+  :global([data-box-mode='border-mode']) .preview-action {
+    border-color: rgb(255 255 255 / 48%);
   }
 
   @keyframes upload-spin {

@@ -7,6 +7,7 @@ import {
 import { extractAiProviderJson, extractAiProviderText } from './ai-provider-json.ts'
 import { loadAiRuntimeConfig } from './ai-runtime-config.ts'
 import { loadPublishedAiPrompt } from './ai-prompt-template.ts'
+import { normalizeOcrRawText } from './ai-ocr-text.ts'
 
 export interface VisionOcrReviewRequest {
   action?: 'analyze' | 'review'
@@ -19,6 +20,7 @@ export interface VisionOcrReviewRequest {
 }
 
 export interface VisionOcrNormalizedResult {
+  rawText: string
   confidence: number
   fieldConfidence: Record<string, number> | Partial<Record<string, number>>
   warnings: string[]
@@ -331,6 +333,11 @@ export function createVisionOcrHandler<TInput, TResult extends VisionOcrNormaliz
         content: config.defaultPrompt,
         version: runtimeConfig.promptVersion
       })
+      const runtimePrompt = [
+        prompt.content,
+        '必须把图片中可见文字按自然阅读顺序完整抄录到 rawText；保留换行，不得把任务说明、字段模板或推测内容写入 rawText。',
+        '即使没有识别到文字，也必须返回 rawText 空字符串。'
+      ].join('\n')
       let resolvedModel = endpoints[0].model
       const startedAt = Date.now()
       const inputMetadata = config.inputMetadata(input)
@@ -387,7 +394,7 @@ export function createVisionOcrHandler<TInput, TResult extends VisionOcrNormaliz
         stream: false,
         response_format: { type: 'json_object' },
         messages: [
-          { role: 'system', content: prompt.content },
+          { role: 'system', content: runtimePrompt },
           { role: 'user', content: userContent }
         ]
       }
@@ -461,7 +468,7 @@ export function createVisionOcrHandler<TInput, TResult extends VisionOcrNormaliz
       if (!validation.valid) {
         requestBody.temperature = 0
         requestBody.messages = [
-          { role: 'system', content: prompt.content },
+          { role: 'system', content: runtimePrompt },
           { role: 'user', content: userContent },
           { role: 'assistant', content: content.slice(0, 12_000) },
           {
@@ -490,6 +497,7 @@ export function createVisionOcrHandler<TInput, TResult extends VisionOcrNormaliz
       }
 
       const result = config.normalize(parsed)
+      const rawOcrText = normalizeOcrRawText(result.rawText)
       const proposedPayload = config.proposedPayload(result)
       const runtimeContext = {
             admin,
@@ -521,6 +529,7 @@ export function createVisionOcrHandler<TInput, TResult extends VisionOcrNormaliz
           confidence: result.confidence,
           field_confidence: result.fieldConfidence,
           warnings: result.warnings,
+          raw_ocr_text: rawOcrText,
           metadata: {
             imageCount: imageUrls.length,
             imageUrls,
@@ -538,6 +547,7 @@ export function createVisionOcrHandler<TInput, TResult extends VisionOcrNormaliz
       await finishRun('succeeded', usage)
       return json({
         ...result,
+        rawText: rawOcrText,
         ...extraResponse,
         artifactId: artifact.id,
         runId: run.id,

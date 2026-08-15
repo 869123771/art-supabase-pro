@@ -8,6 +8,7 @@ import {
 
 function validPayload() {
   return {
+    rawText: '付款方：杭州示例科技有限公司\n金额：1000.00',
     summary: '识别到银行转账回单',
     confidence: 0.96,
     fieldConfidence: { amount: 0.99, transactionDate: 0.97, payerName: 0.9 },
@@ -28,6 +29,7 @@ test('cash voucher contract accepts and normalizes a valid payload', () => {
   const payload = validPayload()
   assert.deepEqual(validateAiCashVoucherProviderPayload(payload), { valid: true, errors: [] })
   assert.equal(normalizeAiCashVoucherResponse(payload).voucher.transactionDate, '2026-08-05')
+  assert.equal(normalizeAiCashVoucherResponse(payload).rawText, payload.rawText)
 })
 
 test('cash voucher matching prioritizes amount and counterparty matches', () => {

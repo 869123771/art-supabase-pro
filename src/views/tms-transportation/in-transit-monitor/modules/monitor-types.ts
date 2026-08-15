@@ -7,6 +7,7 @@ export type MonitorMode = 'realtime' | 'waybill' | 'vehicle'
 export type GeoCoord = [number, number]
 
 export interface MonitorOrder {
+  actualTrackPath: GeoCoord[]
   arrivalDelayed: boolean
   arrivalText: string
   cargoBoxes: number
@@ -40,6 +41,8 @@ export interface MonitorOrder {
   statusColor: string
   statusLabel: string
   totalKm: number
+  trackSource: 'gps' | 'planned'
+  trackSourceLabel: string
   vehicleType: string
   vehicleTypeCode: string
   vehicleTypeLabel: string

@@ -22,7 +22,8 @@ const defaultPrompt = [
   '若回单出现破损、少货、拒收、部分签收、污损、涂改或字迹模糊，必须写入 warnings。',
   'signedAt 返回带时区的 ISO 日期时间；数量不得为负数。',
   'confidence 与 fieldConfidence 为 0 到 1。',
-  '只返回包含 summary、confidence、fieldConfidence、missingFields、warnings、receipt 的 JSON。'
+  'rawText 按自然阅读顺序完整抄录图片中的可见文字并保留换行，不得写入推测内容。',
+  '只返回包含 rawText、summary、confidence、fieldConfidence、missingFields、warnings、receipt 的 JSON。'
 ].join('\n')
 
 const handler = createVisionOcrHandler({
@@ -32,7 +33,9 @@ const handler = createVisionOcrHandler({
   entityTable: 'tms_order',
   envPrefix: 'WAYBILL_RECEIPT_OCR',
   defaultPrompt,
+  defaultMaxTokens: 3000,
   expectedShape: {
+    rawText: '回单原始识别文字',
     summary: '识别摘要',
     confidence: 0,
     fieldConfidence: { waybillNo: 0, signerName: 0, signedAt: 0, deliveryResult: 0 },

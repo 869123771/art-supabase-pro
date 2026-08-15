@@ -13,7 +13,8 @@ const defaultPrompt = [
   'occurredOn 统一为 YYYY-MM-DD；金额单位是人民币元；数量和单价不得为负数。',
   '金额、数量、单价存在含税、折扣或单位歧义时，保留票面最明确值并写入 warnings。',
   'confidence 与 fieldConfidence 为 0 到 1，模糊、遮挡、重复图片或疑似涂改必须写入 warnings。',
-  '只返回包含 summary、confidence、fieldConfidence、missingFields、warnings、expense 的 JSON。'
+  'rawText 按自然阅读顺序完整抄录图片中的可见文字并保留换行，不得写入推测内容。',
+  '只返回包含 rawText、summary、confidence、fieldConfidence、missingFields、warnings、expense 的 JSON。'
 ].join('\n')
 
 const handler = createVisionOcrHandler({
@@ -23,7 +24,9 @@ const handler = createVisionOcrHandler({
   entityTable: 'tms_waybill_cost',
   envPrefix: 'WAYBILL_EXPENSE_OCR',
   defaultPrompt,
+  defaultMaxTokens: 3000,
   expectedShape: {
+    rawText: '票据原始识别文字',
     summary: '识别摘要',
     confidence: 0,
     fieldConfidence: { amount: 0, occurredOn: 0 },

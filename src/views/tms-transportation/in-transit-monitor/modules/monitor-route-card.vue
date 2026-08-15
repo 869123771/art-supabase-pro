@@ -15,6 +15,12 @@
       <small>{{ order.totalKm }} km</small>
       <span>{{ formatDateTime(order.plannedArrivalTime) }}</span>
     </div>
+    <div class="monitor-route-card__source" :class="`is-${order.trackSource}`">
+      <ArtSvgIcon
+        :icon="order.trackSource === 'gps' ? 'ri:map-pin-time-line' : 'ri:road-map-line'"
+      />
+      <span>{{ order.trackSourceLabel }}</span>
+    </div>
   </div>
 </template>
 
@@ -115,6 +121,19 @@
       small {
         color: #6c8b9c;
         text-align: center;
+      }
+    }
+
+    &__source {
+      display: inline-flex;
+      gap: 5px;
+      align-items: center;
+      margin-top: 8px;
+      font-size: 10px;
+      color: #86a9bc;
+
+      &.is-gps {
+        color: #45d7a1;
       }
     }
   }

@@ -447,7 +447,10 @@
     top: 64px;
     left: calc(50% + 172px);
     z-index: 8;
-    max-width: 280px;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    max-width: 340px;
     padding: 6px 12px;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -459,6 +462,24 @@
     box-shadow: 0 8px 20px rgb(0 0 0 / 18%);
     backdrop-filter: blur(8px);
     transform: translateX(-50%);
+
+    strong {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    span {
+      flex: none;
+      padding-left: 10px;
+      font-size: 10px;
+      color: #9db4c6;
+      border-left: 1px solid rgb(255 255 255 / 12%);
+
+      &.is-gps {
+        color: var(--transit-success);
+      }
+    }
   }
 
   &__tools {
@@ -550,6 +571,18 @@
     display: flex;
     flex-direction: column;
     max-height: 244px;
+    padding: 0;
+    overflow: hidden;
+
+    .screen-panel__title {
+      padding: 16px 16px 0;
+    }
+
+    .alert-list :deep(.el-scrollbar__view) {
+      box-sizing: border-box;
+      min-height: 100%;
+      padding: 0 16px 16px;
+    }
   }
 }
 
@@ -658,6 +691,30 @@
   content: '';
   background: #fff;
   transform: translateX(-50%) rotate(45deg);
+}
+
+:global(.transit-vehicle-marker.is-selected i) {
+  inset: -20px -24px;
+  background: radial-gradient(
+    circle,
+    rgb(35 209 139 / 64%) 0%,
+    rgb(76 125 255 / 34%) 42%,
+    transparent 70%
+  );
+}
+
+:global(.transit-vehicle-marker.is-selected img) {
+  width: 48px;
+  height: 32px;
+  filter: drop-shadow(0 0 10px rgb(102 153 255 / 88%)) drop-shadow(0 8px 12px rgb(0 0 0 / 48%));
+}
+
+:global(.transit-vehicle-marker.is-selected span) {
+  color: #17315e;
+  border: 2px solid #6f98ff;
+  box-shadow:
+    0 0 0 4px rgb(76 125 255 / 18%),
+    0 8px 20px rgb(0 0 0 / 34%);
 }
 
 .alert-item {

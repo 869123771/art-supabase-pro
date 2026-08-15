@@ -3,7 +3,7 @@
     <div class="waybill-route__heading">
       <div>
         <ArtSectionTitle title="节点轨迹与定位" />
-        <p>业务节点优先展示实测定位；缺失坐标按关联打卡或地址补充，并明确标记来源。</p>
+        <p>业务节点、费用定位与自动停车点统一落在车辆轨迹上，并明确标记坐标来源。</p>
       </div>
       <div class="waybill-route__heading-tags" aria-label="轨迹概览">
         <ElTag :type="locationPoints.length ? 'success' : 'info'" effect="plain">
@@ -11,6 +11,12 @@
         </ElTag>
         <ElTag v-if="derivedPointCount" type="warning" effect="plain">
           {{ derivedPointCount }} 个推导坐标
+        </ElTag>
+        <ElTag v-if="energyPointCount" type="primary" effect="plain">
+          {{ energyPointCount }} 个能源节点
+        </ElTag>
+        <ElTag v-if="stopPointCount" type="danger" effect="plain">
+          {{ stopPointCount }} 个停车点
         </ElTag>
       </div>
     </div>
@@ -34,8 +40,8 @@
 
       <ElScrollbar max-height="560px" always class="waybill-route__list-scrollbar">
         <ol class="waybill-route__list">
-          <li v-for="(point, index) in locationPoints" :key="point.id">
-            <span class="waybill-route__index">{{ index + 1 }}</span>
+          <li v-for="point in locationPoints" :key="point.id" :class="`is-${point.kind}`">
+            <span class="waybill-route__index">{{ point.markerLabel }}</span>
             <div>
               <div class="waybill-route__point-title">
                 <strong>{{ point.label }}</strong>
@@ -53,7 +59,10 @@
                 </div>
               </div>
               <p>{{ point.address || '未记录地点说明' }}</p>
-              <small>{{ formatDateTime(point.time) }}</small>
+              <small>
+                {{ formatDateTime(point.time) }}
+                <template v-if="point.endTime"> 至 {{ formatDateTime(point.endTime) }}</template>
+              </small>
               <dl>
                 <div
                   ><dt>经度</dt><dd>{{ point.longitude.toFixed(6) }}</dd></div
@@ -66,6 +75,9 @@
                 </div>
                 <div v-if="point.distanceM != null">
                   <dt>距围栏中心</dt><dd>{{ Math.round(point.distanceM) }} m</dd>
+                </div>
+                <div v-if="point.durationMinutes != null">
+                  <dt>停留时长</dt><dd>{{ formatDuration(point.durationMinutes) }}</dd>
                 </div>
               </dl>
               <p v-if="point.isDerived" class="waybill-route__derived-note">
@@ -80,7 +92,7 @@
     <ArtEmptyState
       v-else
       title="暂无定位节点"
-      description="请先为发货/收货地址维护经纬度，或由司机完成带定位的装卸签到。"
+      description="请维护地址坐标，或由司机完成带定位的业务签到、费用上报与连续 GPS 采集。"
       size="compact"
       :visual-size="92"
     />
@@ -95,21 +107,22 @@
   import { formatWithDayjs } from '@/utils/time'
   import {
     buildDrivingRoutePoints,
+    buildWaybillGpsTrackPoints,
     buildWaybillLocationPoints,
     type WaybillLocationPoint
   } from './waybill-route-model'
 
   defineOptions({ name: 'TmsWaybillRoutePanel' })
 
-  type RouteStatus = 'idle' | 'planning' | 'ready' | 'unavailable'
+  type RouteStatus = 'idle' | 'planning' | 'actual' | 'ready' | 'unavailable'
 
-  interface DetailAmapMarker {
-    setLabel?: (options: Record<string, unknown>) => void
-  }
+  type DetailAmapOverlay = object
+  type DetailAmapMarker = object
+  type DetailAmapPolyline = object
   interface DetailAmapMap {
-    add: (overlays: DetailAmapMarker[] | DetailAmapMarker) => void
+    add: (overlays: DetailAmapOverlay[] | DetailAmapOverlay) => void
     destroy: () => void
-    setFitView: (overlays?: DetailAmapMarker[], immediately?: boolean, avoid?: number[]) => void
+    setFitView: (overlays?: DetailAmapOverlay[], immediately?: boolean, avoid?: number[]) => void
   }
   interface DetailAmapDriving {
     search: (
@@ -122,6 +135,7 @@
   interface DetailAmapNamespace {
     Map: new (container: HTMLElement, options: Record<string, unknown>) => DetailAmapMap
     Marker: new (options: Record<string, unknown>) => DetailAmapMarker
+    Polyline: new (options: Record<string, unknown>) => DetailAmapPolyline
     Driving: new (options: Record<string, unknown>) => DetailAmapDriving
     Pixel: new (x: number, y: number) => unknown
     DrivingPolicy?: { LEAST_TIME?: number }
@@ -146,13 +160,24 @@
     buildWaybillLocationPoints(props.waybill)
   )
   const drivingRoutePoints = computed(() => buildDrivingRoutePoints(locationPoints.value))
+  const gpsTrackPoints = computed(() => buildWaybillGpsTrackPoints(props.waybill))
   const derivedPointCount = computed(
     () => locationPoints.value.filter((point) => point.isDerived).length
+  )
+  const energyPointCount = computed(
+    () => locationPoints.value.filter((point) => point.kind === 'energy').length
+  )
+  const stopPointCount = computed(
+    () => locationPoints.value.filter((point) => point.kind === 'stop').length
   )
   const routeNote = computed(() => {
     const notes: Record<RouteStatus, { icon: string; text: string }> = {
       idle: { icon: 'ri:road-map-line', text: '正在准备道路轨迹。' },
       planning: { icon: 'ri:loader-4-line', text: '高德地图正在根据有效定位节点规划驾车路线。' },
+      actual: {
+        icon: 'ri:route-line',
+        text: '蓝色线路为车辆连续 GPS 实际轨迹；P 点由低速定位簇自动识别并计算停留时长。'
+      },
       ready: {
         icon: 'ri:route-line',
         text: '蓝色线路为高德驾车规划结果，用于连接有效节点；并非车辆连续 GPS 实际轨迹。'
@@ -187,8 +212,15 @@
       })
       const markers = createMarkers(amap)
       mapInstance.add(markers)
-      mapInstance.setFitView(markers, false, [56, 56, 56, 56])
-      map.routeStatus = await planDrivingRoute(amap)
+      const actualTrack = createActualTrack(amap)
+      if (actualTrack) {
+        mapInstance.add(actualTrack)
+        mapInstance.setFitView([...markers, actualTrack], false, [56, 56, 56, 56])
+        map.routeStatus = 'actual'
+      } else {
+        mapInstance.setFitView(markers, false, [56, 56, 56, 56])
+        map.routeStatus = await planDrivingRoute(amap)
+      }
     } catch (error) {
       map.error = error instanceof Error ? error : new Error('地图加载失败，请稍后重试')
       map.routeStatus = 'unavailable'
@@ -198,17 +230,33 @@
   }
 
   function createMarkers(amap: DetailAmapNamespace): DetailAmapMarker[] {
-    return locationPoints.value.map((point, index) => {
+    return locationPoints.value.map((point) => {
       const marker = new amap.Marker({
+        anchor: 'bottom-center',
+        content: `<div class="waybill-route-marker is-${point.kind}"><b>${escapeLabel(point.markerLabel)}</b><span>${escapeLabel(point.label)}</span></div>`,
+        offset: new amap.Pixel(0, 0),
         position: [point.longitude, point.latitude],
-        title: `${index + 1}. ${point.label}`
-      })
-      marker.setLabel?.({
-        direction: 'top',
-        offset: new amap.Pixel(0, -8),
-        content: `<div class="waybill-detail-map-label">${index + 1}. ${escapeLabel(point.label)}</div>`
+        title: point.label,
+        zIndex: point.kind === 'stop' ? 130 : 120
       })
       return marker
+    })
+  }
+
+  function createActualTrack(amap: DetailAmapNamespace): DetailAmapPolyline | undefined {
+    if (gpsTrackPoints.value.length < 2) return undefined
+    return new amap.Polyline({
+      borderWeight: 2,
+      isOutline: true,
+      lineCap: 'round',
+      lineJoin: 'round',
+      outlineColor: '#ffffff',
+      path: gpsTrackPoints.value.map((point) => [point.longitude, point.latitude]),
+      showDir: true,
+      strokeColor: '#2878ff',
+      strokeOpacity: 0.95,
+      strokeWeight: 7,
+      zIndex: 80
     })
   }
 
@@ -259,6 +307,13 @@
 
   function formatDateTime(value?: string | null): string {
     return formatWithDayjs(value, 'YYYY-MM-DD HH:mm:ss') || '-'
+  }
+
+  function formatDuration(minutes: number): string {
+    if (minutes < 60) return `${minutes} 分钟`
+    const hours = Math.floor(minutes / 60)
+    const remainder = minutes % 60
+    return remainder ? `${hours} 小时 ${remainder} 分钟` : `${hours} 小时`
   }
 </script>
 
@@ -355,6 +410,16 @@
         background: var(--el-fill-color-lighter);
         border: 1px solid transparent;
         border-radius: var(--el-border-radius-base);
+
+        &.is-energy {
+          background: var(--el-color-warning-light-9);
+          border-color: var(--el-color-warning-light-7);
+        }
+
+        &.is-stop {
+          background: var(--el-color-danger-light-9);
+          border-color: var(--el-color-danger-light-7);
+        }
       }
 
       p {
@@ -401,6 +466,14 @@
       border-radius: 50%;
     }
 
+    .is-energy &__index {
+      background: var(--el-color-warning);
+    }
+
+    .is-stop &__index {
+      background: var(--el-color-danger);
+    }
+
     &__point-title {
       display: flex;
       gap: var(--art-space-2);
@@ -423,8 +496,11 @@
     }
   }
 
-  :global(.waybill-detail-map-label) {
-    padding: 4px 7px;
+  :global(.waybill-route-marker) {
+    display: inline-flex;
+    gap: 6px;
+    align-items: center;
+    padding: 4px 8px 4px 4px;
     font-size: 12px;
     font-weight: 600;
     color: var(--el-text-color-primary);
@@ -433,6 +509,24 @@
     border: 1px solid var(--el-border-color-light);
     border-radius: var(--el-border-radius-small);
     box-shadow: 0 4px 12px rgb(31 45 61 / 12%);
+  }
+
+  :global(.waybill-route-marker b) {
+    display: grid;
+    place-items: center;
+    width: 25px;
+    height: 25px;
+    color: #fff;
+    background: var(--theme-color);
+    border-radius: 50%;
+  }
+
+  :global(.waybill-route-marker.is-energy b) {
+    background: var(--el-color-warning);
+  }
+
+  :global(.waybill-route-marker.is-stop b) {
+    background: var(--el-color-danger);
   }
 
   @media (width <= 992px) {

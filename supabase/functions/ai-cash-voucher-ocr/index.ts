@@ -36,7 +36,8 @@ const defaultPrompt = [
   'transactionDate 统一为 YYYY-MM-DD，amount 为人民币元且不得为负数。',
   'direction=receipt 时重点识别付款方；direction=payment 时重点识别收款方。',
   'confidence 与 fieldConfidence 为 0 到 1，模糊、遮挡、重复截图或金额不清必须写入 warnings。',
-  '只返回包含 summary、confidence、fieldConfidence、missingFields、warnings、voucher 的 JSON。'
+  'rawText 按自然阅读顺序完整抄录图片中的可见文字并保留换行，不得写入推测内容。',
+  '只返回包含 rawText、summary、confidence、fieldConfidence、missingFields、warnings、voucher 的 JSON。'
 ].join('\n')
 
 const handler = createVisionOcrHandler({
@@ -46,7 +47,9 @@ const handler = createVisionOcrHandler({
   entityTable: 'tms_cash_transaction',
   envPrefix: 'CASH_VOUCHER_OCR',
   defaultPrompt,
+  defaultMaxTokens: 3000,
   expectedShape: {
+    rawText: '凭证原始识别文字',
     summary: '识别摘要',
     confidence: 0,
     fieldConfidence: { payerName: 0, payeeName: 0, transactionDate: 0, amount: 0 },

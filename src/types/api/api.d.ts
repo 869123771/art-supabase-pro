@@ -2171,8 +2171,24 @@ declare namespace Api {
         name?: string | null
         address?: string | null
         type?: string | null
+        capturedAt?: string | null
+        speedKmh?: number | null
+        source?: string | null
         longitude: number
         latitude: number
+      }
+
+      interface WaybillExpenseLocationRecord {
+        id: string
+        occurredOn: string
+        expenseLocation?: string | null
+        expenseLongitude: number
+        expenseLatitude: number
+        expenseCoordinateSource?: string | null
+        expenseItem?: Pick<
+          Api.Tms.Finance.ExpenseItem,
+          'id' | 'itemCode' | 'itemName' | 'businessCategory'
+        > | null
       }
 
       interface WaybillDriverSummary {
@@ -2290,6 +2306,7 @@ declare namespace Api {
         events: WaybillEventRecord[]
         proofs: WaybillProofRecord[]
         cargoOperations: CargoOperationRecord[]
+        expenseLocations: WaybillExpenseLocationRecord[]
         execution?: ExecutionRecord | null
       }
 
@@ -2594,6 +2611,7 @@ declare namespace Api {
         artifactId: string
         runId: string
         generatedAt: string
+        rawText: string
         summary: string
         confidence: number
         fieldConfidence: Partial<Record<ReceiptOcrField, number>>
@@ -2774,6 +2792,7 @@ declare namespace Api {
         artifactId: string
         runId: string
         generatedAt: string
+        rawText: string
         summary: string
         confidence: number
         fieldConfidence: Partial<Record<WaybillExpenseOcrField, number>>
@@ -3616,6 +3635,7 @@ declare namespace Api {
         artifactId: string
         runId: string
         generatedAt: string
+        rawText: string
         summary: string
         confidence: number
         fieldConfidence: Partial<Record<CashVoucherOcrField, number>>
@@ -3919,6 +3939,7 @@ declare namespace Api {
         runId: string
         artifactId: string
         generatedAt: string
+        rawText: string
         summary: string
         confidence: number
         fieldConfidence: Partial<Record<InvoiceOcrField, number>>
@@ -4099,6 +4120,11 @@ declare namespace Api {
         type?: string
         name?: string | null
         address?: string | null
+        capturedAt?: string | null
+        timestamp?: string | null
+        recordedAt?: string | null
+        speedKmh?: number | string | null
+        source?: string | null
         longitude?: number | string | null
         latitude?: number | string | null
         lng?: number | string | null

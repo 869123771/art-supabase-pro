@@ -442,7 +442,9 @@
     }
 
     &__content {
+      box-sizing: border-box;
       min-height: 1px;
+      padding: var(--art-dialog-content-padding, 20px 24px 24px);
     }
 
     &__subtitle {
@@ -460,10 +462,6 @@
 
       :deep(.el-scrollbar__wrap) {
         overscroll-behavior: contain;
-      }
-
-      :deep(.el-scrollbar__view) {
-        padding-right: 4px;
       }
     }
 

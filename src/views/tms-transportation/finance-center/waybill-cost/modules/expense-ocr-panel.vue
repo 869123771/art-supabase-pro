@@ -50,6 +50,7 @@
         <small v-if="state.result.warnings.length">
           {{ state.result.warnings.slice(0, 2).join('；') }}
         </small>
+        <OcrOriginalText class="expense-ocr__raw-text" :text="state.result.rawText" />
       </div>
     </div>
   </section>
@@ -60,6 +61,7 @@
   import { ElMessage } from 'element-plus'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import ArtUploadImage from '@/components/core/forms/art-upload-image/index.vue'
+  import OcrOriginalText from '@/components/business/ocr-original-text/index.vue'
   import { analyzeWaybillExpenseByAi } from '@/api/tms'
 
   defineOptions({ name: 'TmsWaybillExpenseOcrPanel' })
@@ -264,6 +266,10 @@
 
       > small {
         color: var(--el-color-warning-dark-2);
+      }
+
+      .expense-ocr__raw-text {
+        margin-top: var(--art-space-3);
       }
     }
 

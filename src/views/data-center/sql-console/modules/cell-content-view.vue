@@ -85,6 +85,8 @@
     }
 
     .el-drawer__body {
+      --art-drawer-content-padding: 0;
+
       display: flex;
       flex: 1;
       flex-direction: column;

@@ -30,6 +30,7 @@ declare namespace Api {
       artifactType: string
       status: ArtifactStatus
       proposedPayload: Record<string, unknown>
+      rawOcrText: string
       finalPayload?: Record<string, unknown> | null
       confidence?: number | null
       fieldConfidence?: Record<string, number> | null

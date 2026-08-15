@@ -766,6 +766,8 @@
   }
 
   :global(.art-ai-assistant-drawer .el-drawer__body) {
+    --art-drawer-content-padding: 0;
+
     padding: 0;
   }
 

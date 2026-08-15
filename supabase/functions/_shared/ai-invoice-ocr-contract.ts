@@ -1,3 +1,5 @@
+import { normalizeOcrRawText } from './ai-ocr-text.ts'
+
 export const AI_INVOICE_OCR_FIELDS = [
   'invoiceType',
   'invoiceTitle',
@@ -48,6 +50,7 @@ export interface AiInvoiceOcrDraft {
 }
 
 export interface AiInvoiceOcrNormalizedResponse {
+  rawText: string
   summary: string
   confidence: number
   fieldConfidence: Partial<Record<AiInvoiceOcrField, number>>
@@ -131,6 +134,7 @@ export function coerceAiInvoiceOcrProviderPayload(
 
   return {
     ...source,
+    rawText: normalizeOcrRawText(source.rawText),
     invoice,
     confidence: confidenceMissing ? 0 : confidence,
     fieldConfidence,
@@ -294,6 +298,7 @@ export function normalizeAiInvoiceOcrResponse(
   }
 
   return {
+    rawText: normalizeOcrRawText(payload.rawText),
     summary: textValue(payload.summary, 500) ?? '已完成发票票面识别，请人工核对后应用。',
     confidence: confidenceValue(payload.confidence),
     fieldConfidence,

@@ -33,16 +33,17 @@ import {
   getMonitorRecordId,
   getRoutePosition,
   isDelayed,
-  isRouteVisibleStatus,
   normalizeVehicleTypeCode,
   percentOf,
   resolveArrivalPerformance,
+  resolveActualTrackPath,
   resolveCurrentLabel,
   resolveEndpointGeo,
   resolveProgress,
   resolveSpeed,
   resolveTransitStatus,
-  splitRoutePath
+  splitRoutePath,
+  toGeoCoord
 } from './monitor-utils'
 
 interface UseMonitorOrdersOptions {
@@ -66,9 +67,23 @@ export function useMonitorOrders(options: UseMonitorOrdersOptions) {
     monitorOrders.value.filter(isRealtimeMonitorOrder)
   )
 
-  const modeOrders = computed<MonitorOrder[]>(() =>
-    options.activeMode.value === 'realtime' ? realtimeOrders.value : monitorOrders.value
-  )
+  const vehicleOrders = computed<MonitorOrder[]>(() => {
+    const ordersByPlate = new Map<string, MonitorOrder>()
+    monitorOrders.value.forEach((item) => {
+      if (item.plateNo === '未配车') return
+      const existing = ordersByPlate.get(item.plateNo)
+      if (!existing || getVehicleOrderPriority(item) > getVehicleOrderPriority(existing)) {
+        ordersByPlate.set(item.plateNo, item)
+      }
+    })
+    return [...ordersByPlate.values()]
+  })
+
+  const modeOrders = computed<MonitorOrder[]>(() => {
+    if (options.activeMode.value === 'realtime') return realtimeOrders.value
+    if (options.activeMode.value === 'vehicle') return vehicleOrders.value
+    return monitorOrders.value
+  })
 
   const filteredOrders = computed<MonitorOrder[]>(() => {
     const keyword = options.screen.keyword.trim().toLowerCase()
@@ -96,7 +111,7 @@ export function useMonitorOrders(options: UseMonitorOrdersOptions) {
 
   const mapRouteOrder = computed<MonitorOrder | undefined>(() => {
     const active = activeOrder.value
-    return active && isRouteVisibleStatus(active.status) ? active : undefined
+    return active && active.status !== 'pending' ? active : undefined
   })
 
   const averageProgress = computed(() =>
@@ -205,13 +220,18 @@ export function useMonitorOrders(options: UseMonitorOrdersOptions) {
     const arrivalPerformance = resolveArrivalPerformance(row)
     const progress = resolveProgress(row, id, status, options.liveTick.value)
     const routePath = options.drivingRoutePaths.get(id) ?? []
+    const actualTrackPath = resolveActualTrackPath(row)
     const currentGeo =
-      routePath.length > 1
+      toGeoCoord(row.currentLongitude, row.currentLatitude) ??
+      actualTrackPath.at(-1) ??
+      (routePath.length > 1
         ? getRoutePosition(routePath, progress).coord
         : status === 'arrived'
           ? destinationGeo
-          : originGeo
+          : originGeo)
     const routeSegments = splitRoutePath(routePath, currentGeo, progress)
+    const passedPath =
+      actualTrackPath.length > 1 ? [...actualTrackPath, currentGeo] : routeSegments.passedPath
     const distance = estimateDistanceKm(originGeo, destinationGeo)
     const vehicleTypeCode = normalizeVehicleTypeCode(
       row.vehicle?.vehicleType || order?.dispatchVehicleType
@@ -227,6 +247,7 @@ export function useMonitorOrders(options: UseMonitorOrdersOptions) {
         : `${formatNumber(order?.cargoWeightTotal)} kg`
 
     return {
+      actualTrackPath,
       arrivalDelayed: arrivalPerformance.delayed,
       arrivalText: arrivalPerformance.text,
       cargoBoxes: Number(row.cargoQuantity ?? order?.cargoQuantityTotal ?? 0),
@@ -260,7 +281,7 @@ export function useMonitorOrders(options: UseMonitorOrdersOptions) {
       orderNo: formatText(row.waybillNo || order?.orderNo),
       origin,
       originGeo,
-      passedPath: routeSegments.passedPath,
+      passedPath,
       plannedArrivalTime: row.plannedUnloadTime ?? order?.plannedArrivalTime,
       plannedDepartureTime: row.plannedLoadTime ?? order?.plannedDepartureTime,
       plateNo: formatText(row.vehicle?.plateNo || order?.dispatchPlateNo, '未配车'),
@@ -275,6 +296,8 @@ export function useMonitorOrders(options: UseMonitorOrdersOptions) {
       statusColor: getMonitorStatusColor(status),
       statusLabel: getMonitorStatusLabel(status),
       totalKm: distance,
+      trackSource: actualTrackPath.length > 1 ? 'gps' : 'planned',
+      trackSourceLabel: actualTrackPath.length > 1 ? 'GPS 实际轨迹' : '规划线路估算',
       vehicleImage: getVehicleImage(vehicleTypeCode),
       vehicleType: vehicleTypeCode,
       vehicleTypeCode,
@@ -296,6 +319,13 @@ export function useMonitorOrders(options: UseMonitorOrdersOptions) {
       .trim()
       .toLowerCase()
     return REALTIME_WAYBILL_STATUSES.has(waybillStatus)
+  }
+
+  function getVehicleOrderPriority(item: MonitorOrder): number {
+    if (item.status === 'delayed') return 4
+    if (item.status === 'transporting') return 3
+    if (item.status === 'pending') return 2
+    return 1
   }
 
   function getPreferredMonitorRecordId(rows: InTransitRecord[]): string | undefined {

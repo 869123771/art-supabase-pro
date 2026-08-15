@@ -8,6 +8,7 @@ import {
 
 function validPayload() {
   return {
+    rawText: '运单号：YDHZ20260805001\r\n签收人：张三',
     summary: '识别到正常签收回单',
     confidence: 0.94,
     fieldConfidence: { waybillNo: 0.99, signerName: 0.9, signedAt: 0.88 },
@@ -36,6 +37,7 @@ test('waybill receipt contract accepts a valid provider payload', () => {
 test('waybill receipt normalization produces an ISO signing time', () => {
   const result = normalizeAiWaybillReceiptResponse(validPayload())
   assert.equal(result.receipt.signedAt, '2026-08-05T07:30:00.000Z')
+  assert.equal(result.rawText, '运单号：YDHZ20260805001\n签收人：张三')
   assert.equal(result.missingFields.length, 0)
 })
 

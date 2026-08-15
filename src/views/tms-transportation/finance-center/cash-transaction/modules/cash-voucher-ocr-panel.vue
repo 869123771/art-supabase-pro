@@ -63,6 +63,12 @@
             <strong :class="{ 'is-empty': field.empty }">{{ field.value }}</strong>
           </span>
         </div>
+        <OcrOriginalText
+          class="voucher-ocr__raw-text"
+          :text="result.rawText"
+          :min-rows="4"
+          :max-rows="8"
+        />
         <div v-if="result.matches.length" class="voucher-ocr__matches">
           <div v-for="match in result.matches.slice(0, 3)" :key="match.statementId">
             <span>
@@ -94,6 +100,7 @@
   import { ElMessage } from 'element-plus'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import ArtUploadImage from '@/components/core/forms/art-upload-image/index.vue'
+  import OcrOriginalText from '@/components/business/ocr-original-text/index.vue'
   import { analyzeCashVoucherByAi } from '@/api/tms'
 
   defineOptions({ name: 'TmsCashVoucherOcrPanel' })
@@ -397,6 +404,10 @@
           white-space: nowrap;
         }
       }
+    }
+
+    &__raw-text {
+      margin-bottom: 8px;
     }
 
     @media (width <= 900px) {

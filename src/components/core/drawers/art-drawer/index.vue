@@ -397,6 +397,7 @@
     display: flex;
     flex-direction: column;
     min-height: 0;
+    padding: 0;
     overflow: hidden;
     overscroll-behavior: contain;
   }
@@ -470,7 +471,9 @@
   }
 
   .art-drawer__content {
+    box-sizing: border-box;
     min-height: 100%;
+    padding: var(--art-drawer-content-padding, var(--el-drawer-padding-primary));
   }
 
   .art-drawer__scrollbar {
@@ -480,11 +483,6 @@
 
     :deep(.el-scrollbar__wrap) {
       overscroll-behavior: contain;
-    }
-
-    :deep(.el-scrollbar__view) {
-      padding-right: 4px;
-      padding-bottom: 4px;
     }
   }
 

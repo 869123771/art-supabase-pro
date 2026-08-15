@@ -219,6 +219,8 @@ When the dialog enters fullscreen mode, `contentHeight` and `contentMaxHeight` s
 
 `contentHeight` 是固定内容高度；`contentMaxHeight` 是最大内容高度，内容没超过时自然适应，超过后自动出现滚动条。没有设置 `contentHeight` 和 `contentMaxHeight` 时，不会额外创建 `ElScrollbar`。
 
+弹窗 Body 本身不设置内边距，默认内容间距由 `art-dialog__content` 承担，因此滚动条会贴近弹窗右侧边缘。确需贴边展示的特殊内容可在弹窗类名上覆盖 `--art-dialog-content-padding: 0`。
+
 ## 自定义插槽
 
 ```vue

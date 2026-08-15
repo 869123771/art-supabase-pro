@@ -48,6 +48,18 @@
     &--list {
       display: flex;
       flex-direction: column;
+      padding: 0;
+      overflow: hidden;
+
+      .monitor-panel__title {
+        padding: 16px 16px 0;
+      }
+
+      :deep(.el-scrollbar__view) {
+        box-sizing: border-box;
+        min-height: 100%;
+        padding: 0 16px 16px;
+      }
     }
   }
 }

@@ -471,10 +471,10 @@
     {
       prop: 'operation',
       label: '操作',
-      width: 150,
+      width: 120,
       fixed: 'right',
       formatter: (row) => (
-        <div class="flex items-center">
+        <div class="waybill-cost__row-actions">
           <ArtButtonTable
             type="edit"
             disabled={!canEditExpense(row)}
@@ -533,7 +533,7 @@
       width: 160,
       fixed: 'right',
       formatter: (row) => (
-        <div class="flex items-center">
+        <div class="waybill-cost__row-actions">
           <ArtButtonTable
             type="view"
             onClick={() => void reimbursementDetailRef.value?.handleOpen(row)}
@@ -565,6 +565,11 @@
     event.preventDefault()
     event.stopPropagation()
     window.location.assign(router.resolve(expenseDetailPath(id)).href)
+  }
+
+  function openExpenseDetail(row: Expense): void {
+    if (!row.id) return
+    window.location.assign(router.resolve(expenseDetailPath(row.id)).href)
   }
 
   function emptyText(value: unknown): string {
@@ -609,6 +614,7 @@
 
   function expenseMoreActions(row: Expense): ButtonMoreItem[] {
     const actions: ButtonMoreItem[] = [
+      { key: 'view', label: '查看', icon: 'ri:eye-line', disabled: !row.id },
       { key: 'aiAudit', label: 'AI 费用审核', icon: 'ri:sparkling-2-line' },
       { key: 'approvalHistory', label: '审批记录', icon: 'ri:file-history-line' }
     ]
@@ -648,6 +654,7 @@
 
   function handleExpenseAction(item: ButtonMoreItem, row: Expense): void {
     const actions: Record<string, () => void> = {
+      view: () => openExpenseDetail(row),
       submit: () => void handleExpenseSubmit(row),
       delete: () => void handleExpenseDelete(row),
       convert: () => handleReimbursementSelection([row]),
@@ -1031,6 +1038,16 @@
           margin-left: auto;
           color: var(--art-text-gray-300);
         }
+      }
+    }
+
+    :deep(.waybill-cost__row-actions) {
+      display: flex;
+      gap: var(--art-space-2);
+      align-items: center;
+
+      .art-button-table {
+        margin-right: 0;
       }
     }
 

@@ -182,7 +182,8 @@
     min-width: 0;
     height: 100%;
     min-height: 0;
-    padding: 12px;
+    padding: 0;
+    overflow: hidden;
     background: var(--transit-panel-bg);
     border: 1px solid var(--transit-panel-border);
     border-radius: var(--el-border-radius-base);
@@ -193,6 +194,7 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
+      padding: 12px 12px 0;
       margin-bottom: 12px;
 
       > div {
@@ -249,8 +251,7 @@
     display: flex;
     flex-direction: column;
     gap: 16px;
-    padding-right: 4px;
-    padding-bottom: 14px;
+    padding: 0 12px 14px;
   }
 
   .detail-summary {
@@ -557,7 +558,7 @@
 
   .detail-actions {
     flex: none;
-    padding-top: 12px;
+    padding: 12px;
     background: linear-gradient(180deg, rgb(16 31 47 / 12%), rgb(16 31 47 / 98%) 24%);
     border-top: 1px solid rgb(255 255 255 / 7%);
 

@@ -1067,6 +1067,8 @@
   }
 
   :global(.user-organization-filter-drawer__body) {
+    --art-drawer-content-padding: 0;
+
     padding: 0 !important;
     overflow: hidden !important;
   }

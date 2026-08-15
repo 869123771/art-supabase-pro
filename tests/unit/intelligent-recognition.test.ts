@@ -17,6 +17,7 @@ function createArtifact(
     artifactType: 'draft',
     status: 'pending',
     proposedPayload,
+    rawOcrText: '原始识别内容',
     createTime: '2026-08-10T00:00:00Z'
   }
 }
@@ -38,6 +39,7 @@ test('cash voucher artifact normalizes untrusted payload fields', () => {
     bankReference: null,
     paymentMethod: 'other'
   })
+  assert.equal(response.rawText, '原始识别内容')
 })
 
 test('invoice artifact keeps valid values and rejects invalid enum values', () => {

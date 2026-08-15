@@ -58,11 +58,20 @@
         <small>{{ attachment.fileSize || attachment.fileType || '' }}</small>
       </a>
     </div>
+
+    <OcrOriginalText
+      v-if="snapshot.ocrEvidence"
+      :text="snapshot.ocrEvidence.rawText"
+      title="原始识别内容"
+      description="审批依据：此内容由 OCR 在业务表单人工修正前生成并留存。"
+      :rows="6"
+    />
   </section>
 </template>
 
 <script setup lang="ts">
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
+  import OcrOriginalText from '@/components/business/ocr-original-text/index.vue'
 
   defineOptions({ name: 'WorkflowBusinessSnapshot' })
 

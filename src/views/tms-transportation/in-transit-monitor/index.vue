@@ -60,7 +60,10 @@
                   <span>{{ activeOrder?.routeName || '暂无线路' }}</span>
                 </div>
                 <div v-if="activeOrder" class="monitor-map__track-chip">
-                  {{ activeOrder.plateNo }} · {{ activeOrder.orderNo }}
+                  <strong>{{ activeOrder.plateNo }} · {{ activeOrder.orderNo }}</strong>
+                  <span :class="`is-${activeOrder.trackSource}`">
+                    {{ activeOrder.trackSourceLabel }}
+                  </span>
                 </div>
                 <div class="monitor-map__tools" :class="{ 'is-wide': activeMode !== 'realtime' }">
                   <ElButton
@@ -149,7 +152,7 @@
                 v-else-if="activeMode === 'waybill'"
                 v-model:keyword="monitorKeywords.waybill"
                 class="transit-screen__left"
-                :orders="monitorOrders"
+                :orders="modeOrders"
                 :overview="overview"
                 :selected-id="screen.selectedOrderId"
                 @select="selectOrder"
@@ -158,7 +161,7 @@
                 v-else
                 v-model:keyword="monitorKeywords.vehicle"
                 class="transit-screen__left"
-                :orders="monitorOrders"
+                :orders="modeOrders"
                 :overview="overview"
                 :selected-id="screen.selectedOrderId"
                 @select="selectOrder"
@@ -349,7 +352,6 @@
     getPreferredMonitorRecordId,
     mapRouteOrder,
     modeOrders,
-    monitorOrders,
     monitorStatusOptions,
     overview,
     overviewBars,
@@ -503,7 +505,7 @@
       '#ff9f43'
     )
 
-    if (active.routePath.length < 2) {
+    if (active.routePath.length < 2 && active.actualTrackPath.length < 2) {
       clearRouteLines()
       return
     }
@@ -544,6 +546,7 @@
         isRouteVisibleStatus(item.status) ? '#315cff' : '#d69b12',
         {
           image: item.vehicleImage,
+          selected: item.id === activeOrder?.id,
           subtitle: item.statusLabel
         }
       )
@@ -762,14 +765,15 @@
     label: string,
     title: string,
     color: string,
-    options: { image?: string; subtitle?: string } = {}
+    options: { image?: string; selected?: boolean; subtitle?: string } = {}
   ): MonitorAmapMarkerInstance | undefined {
     const map = amapInstance.value
     const AMap = amapSdk.value
     if (!map || !AMap) return marker
 
+    const markerClass = options.selected ? ' is-selected' : ''
     const content = options.image
-      ? `<div class="transit-vehicle-marker" style="--marker-color:${color}"><i></i><img src="${options.image}" alt="${escapeHtml(options.subtitle || title)}" width="42" height="28" /><span>${escapeHtml(title)}</span></div>`
+      ? `<div class="transit-vehicle-marker${markerClass}" style="--marker-color:${color}"><i></i><img src="${options.image}" alt="${escapeHtml(options.subtitle || title)}" width="42" height="28" /><span>${escapeHtml(title)}</span></div>`
       : `<div class="transit-amap-marker" style="--marker-color:${color}"><b>${escapeHtml(label)}</b><span>${escapeHtml(title)}</span>${options.subtitle ? `<em>${escapeHtml(options.subtitle)}</em>` : ''}</div>`
     if (!marker) {
       const nextMarker = new AMap.Marker({
@@ -777,7 +781,7 @@
         content,
         offset: new AMap.Pixel(0, 0),
         position,
-        zIndex: label === '车' ? 1200 : 1100
+        zIndex: options.selected ? 1500 : label === '车' ? 1200 : 1100
       })
       map.add(nextMarker)
       return nextMarker
@@ -785,7 +789,7 @@
 
     marker.setPosition(position)
     marker.setContent(content)
-    marker.setzIndex?.(label === '车' ? 1200 : 1100)
+    marker.setzIndex?.(options.selected ? 1500 : label === '车' ? 1200 : 1100)
     return marker
   }
 
@@ -847,11 +851,24 @@
     }
     if (!force && mapZoom.value >= 11) return
 
-    const current: GeoCoord = [active.longitude, active.latitude]
-    if (map.setZoomAndCenter) map.setZoomAndCenter(INITIAL_MAP_ZOOM, current)
-    else {
-      map.setZoom?.(INITIAL_MAP_ZOOM)
-      map.setCenter?.(current)
+    const selectedMarker = vehicleMarkers.get(active.id)
+    const overlays = [
+      routeBasePolyline,
+      passedPolyline,
+      remainingPolyline,
+      originMarker,
+      destinationMarker,
+      selectedMarker
+    ].filter((overlay): overlay is MonitorAmapOverlay => Boolean(overlay))
+    if (overlays.length && map.setFitView) {
+      map.setFitView(overlays, false, [96, 96, 96, 380])
+    } else {
+      const current: GeoCoord = [active.longitude, active.latitude]
+      if (map.setZoomAndCenter) map.setZoomAndCenter(INITIAL_MAP_ZOOM, current)
+      else {
+        map.setZoom?.(INITIAL_MAP_ZOOM)
+        map.setCenter?.(current)
+      }
     }
     syncMapViewState()
   }
@@ -886,7 +903,8 @@
   }
 
   function buildVisibleRoutePath(active: MonitorOrder): GeoCoord[] {
-    return dedupeGeoPath([...active.passedPath, ...active.remainingPath.slice(1)])
+    const remainingPath = active.routePath.length > 1 ? active.remainingPath.slice(1) : []
+    return dedupeGeoPath([...active.passedPath, ...remainingPath])
   }
 
   function destroyMonitorMap(): void {

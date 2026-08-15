@@ -29,6 +29,7 @@ export interface MonitorAmapMapInstance {
   remove?: (overlay: MonitorAmapOverlay) => void
   resize?: () => void
   setCenter?: (center: GeoCoord) => void
+  setFitView?: (overlays?: MonitorAmapOverlay[], immediately?: boolean, avoid?: number[]) => void
   setStatus?: (status: Record<string, boolean>) => void
   setZoom?: (zoom: number) => void
   setZoomAndCenter?: (zoom: number, center: GeoCoord) => void

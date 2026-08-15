@@ -9,6 +9,7 @@ import {
 
 function createValidPayload() {
   return {
+    rawText: '增值税专用发票\n发票号码：12345678',
     summary: '识别到一张增值税专用发票',
     confidence: 0.96,
     fieldConfidence: { invoiceNo: 0.99, totalAmount: 0.98 },
@@ -52,6 +53,7 @@ test('AI invoice OCR contract adapts flat provider fields for manual review', ()
   const normalized = normalizeAiInvoiceOcrResponse(payload)
   assert.equal(normalized.invoice.invoiceNo, '12345678')
   assert.equal(normalized.invoice.totalAmount, 109)
+  assert.equal(normalized.rawText, '')
   assert.equal(normalized.confidence, 0)
   assert.ok(normalized.warnings.some((warning) => warning.includes('人工复核')))
 })

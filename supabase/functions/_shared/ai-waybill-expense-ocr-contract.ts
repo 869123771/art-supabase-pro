@@ -1,3 +1,5 @@
+import { normalizeOcrRawText } from './ai-ocr-text.ts'
+
 export const AI_WAYBILL_EXPENSE_FIELDS = [
   'amount',
   'occurredOn',
@@ -29,6 +31,7 @@ export interface AiWaybillExpenseDraft {
 }
 
 export interface AiWaybillExpenseNormalizedResponse {
+  rawText: string
   summary: string
   confidence: number
   fieldConfidence: Partial<Record<AiWaybillExpenseField, number>>
@@ -131,6 +134,7 @@ export function normalizeAiWaybillExpenseResponse(
   if (expense.amount === null) missingFields.push('费用金额')
   if (!expense.occurredOn) missingFields.push('发生日期')
   return {
+    rawText: normalizeOcrRawText(payload.rawText),
     summary: textValue(payload.summary) ?? '运单费用票据识别完成，请核对后应用。',
     confidence: confidenceValue(payload.confidence),
     fieldConfidence,

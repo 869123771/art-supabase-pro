@@ -98,6 +98,12 @@
             <strong :class="{ 'is-empty': field.empty }">{{ field.value }}</strong>
           </span>
         </div>
+        <OcrOriginalText
+          class="receipt-ocr__raw-text"
+          :text="result.rawText"
+          :min-rows="4"
+          :max-rows="8"
+        />
         <div v-if="result.assessment.signals.length" class="receipt-ocr__signals">
           <div v-for="signal in result.assessment.signals" :key="signal.type">
             <ArtSvgIcon icon="ri-error-warning-line" />
@@ -128,6 +134,7 @@
   import { ElMessage } from 'element-plus'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import ArtUploadImage from '@/components/core/forms/art-upload-image/index.vue'
+  import OcrOriginalText from '@/components/business/ocr-original-text/index.vue'
   import { analyzeWaybillReceiptByAi, createReceiptExceptionWorkOrder } from '@/api/tms'
   import { useUserStore } from '@/store/modules/user'
   import { useDocumentNumberRule } from '@/hooks/core/useDocumentNumberRule'
@@ -529,6 +536,10 @@
           line-height: 1.45;
         }
       }
+    }
+
+    &__raw-text {
+      margin-bottom: 10px;
     }
 
     &__readonly-note {
