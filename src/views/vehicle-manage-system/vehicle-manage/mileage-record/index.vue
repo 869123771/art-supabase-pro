@@ -1,6 +1,6 @@
 <template>
   <div class="mileage-record-page art-full-height">
-    <VehicleWorkspaceHeader
+    <BusinessWorkspaceHeader
       eyebrow="MILEAGE LEDGER"
       title="车辆里程"
       description="按行程沉淀车辆起止时间与里程数据，为维保周期、成本分析和车辆利用率提供依据。"
@@ -45,9 +45,9 @@
   import { exportVehicleMileageList, fetchVehicleMileageList } from '@/api/vehicle-manage-system'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatWithDayjs } from '@/utils/time'
-  import VehicleWorkspaceHeader, {
-    type VehicleWorkspaceMetric
-  } from '@/views/vehicle-manage-system/modules/vehicle-workspace-header.vue'
+  import BusinessWorkspaceHeader, {
+    type BusinessWorkspaceMetric
+  } from '@/components/business/business-workspace-header/index.vue'
 
   defineOptions({ name: 'VehicleMileage' })
 
@@ -64,7 +64,7 @@
 
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const overview = reactive<{ total: number; rows: MileageRecord[] }>({ total: 0, rows: [] })
-  const workspaceMetrics = computed<VehicleWorkspaceMetric[]>(() => [
+  const workspaceMetrics = computed<BusinessWorkspaceMetric[]>(() => [
     {
       label: '里程记录',
       value: overview.total,

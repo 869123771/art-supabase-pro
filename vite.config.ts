@@ -14,6 +14,7 @@ import tailwindcss from '@tailwindcss/vite'
 import { fileViewerRenderers } from '@file-viewer/vite-plugin'
 import { visualizer } from 'rollup-plugin-visualizer'
 import { getKnownFileViewerExternalization } from './scripts/build-log-policy'
+import { createFileViewerAssetSyncPlugin } from './scripts/file-viewer-asset-sync'
 
 // 添加插件用于生成 .nojekyll 文件
 import { createNoJekyllPlugin } from './src/plugins/nojekyll'
@@ -86,6 +87,10 @@ export default ({ mode }: { mode: string }) => {
   const enableFileViewerPlugin = !isE2E && (isProduction || env.VITE_FILE_VIEWER === 'true')
   const enableFileViewerAssets = !isE2E && (isProduction || env.VITE_FILE_VIEWER_ASSETS === 'true')
   const outDir = process.env.VITE_OUT_DIR || VITE_OUT_DIR || 'dist'
+  const fileViewerAssetStageDir = path.resolve(
+    root,
+    'node_modules/.cache/art-supabase-pro/file-viewer-assets'
+  )
   const elementPlusStyleDeps = getElementPlusStyleDeps(root)
   const knownFileViewerExternalizations = new Set<string>()
 
@@ -247,13 +252,19 @@ export default ({ mode }: { mode: string }) => {
         ? [
             fileViewerRenderers({
               inject: false,
-              copyAssets: enableFileViewerAssets,
+              copyAssets: enableFileViewerAssets
+                ? { mode: 'build', outDir: fileViewerAssetStageDir }
+                : false,
               // Rolldown's native code splitting already preserves renderer-level lazy chunks.
               // Disabling the plugin's Rollup manualChunks avoids an ignored-option warning.
               chunkStrategy: 'none'
             })
           ]
         : []),
+      createFileViewerAssetSyncPlugin({
+        enabled: enableFileViewerPlugin && enableFileViewerAssets,
+        sourceRoot: fileViewerAssetStageDir
+      }),
       {
         name: 'known-file-viewer-browser-external-summary',
         apply: 'build',

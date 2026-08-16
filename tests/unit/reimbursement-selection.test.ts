@@ -5,7 +5,7 @@ import {
   cloneReimbursementExpenses,
   validateReimbursementSelection,
   type ReimbursementExpenseCandidate
-} from '../../src/views/tms-transportation/finance-center/waybill-cost/modules/reimbursement-selection'
+} from '../../src/views/finance/waybill-cost/modules/reimbursement-selection'
 
 const approvedExpense = (
   overrides: Partial<ReimbursementExpenseCandidate> = {}

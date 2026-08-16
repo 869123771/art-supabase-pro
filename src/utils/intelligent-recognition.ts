@@ -1,8 +1,8 @@
 import type { RouteLocationRaw } from 'vue-router'
 
 type Artifact = Api.IntelligentRecognition.RecognitionArtifact
-type CashPaymentMethod = Api.Tms.Finance.CashPaymentMethod
-type InvoiceType = Api.Tms.Finance.InvoiceType
+type CashPaymentMethod = Api.Finance.CashPaymentMethod
+type InvoiceType = Api.Finance.InvoiceType
 
 const CASH_PAYMENT_METHODS = new Set<string>(['bank_transfer', 'cash', 'wechat', 'alipay', 'other'])
 const INVOICE_TYPES = new Set<string>(['vat_special', 'vat_ordinary', 'electronic'])
@@ -25,7 +25,7 @@ function nullableNumber(record: Record<string, unknown>, key: string): number | 
   return typeof value === 'number' && Number.isFinite(value) ? value : null
 }
 
-function normalizeInvoiceDraft(payload: Record<string, unknown>): Api.Tms.Finance.InvoiceOcrDraft {
+function normalizeInvoiceDraft(payload: Record<string, unknown>): Api.Finance.InvoiceOcrDraft {
   const invoiceType = nullableText(payload, 'invoiceType')
   return {
     invoiceType: invoiceType && isInvoiceType(invoiceType) ? invoiceType : null,
@@ -47,7 +47,7 @@ function normalizeInvoiceDraft(payload: Record<string, unknown>): Api.Tms.Financ
 
 function normalizeCashVoucherDraft(
   payload: Record<string, unknown>
-): Api.Tms.Finance.CashVoucherOcrDraft {
+): Api.Finance.CashVoucherOcrDraft {
   const paymentMethod = nullableText(payload, 'paymentMethod')
   return {
     payerName: nullableText(payload, 'payerName'),
@@ -76,7 +76,7 @@ export function buildRecognitionBusinessRoute(artifact: Artifact): RouteLocation
 
   if (artifact.feature === 'invoice_ocr') {
     return {
-      path: '/tms-transportation/finance-center/invoice-management',
+      path: financePaths.invoiceManagement,
       query: { ...commonQuery, direction: metadataText(artifact, 'direction') || 'output' }
     }
   }
@@ -85,9 +85,7 @@ export function buildRecognitionBusinessRoute(artifact: Artifact): RouteLocation
     const direction = metadataText(artifact, 'direction') || 'receipt'
     return {
       path:
-        direction === 'payment'
-          ? '/tms-transportation/finance-center/payment-application'
-          : '/tms-transportation/finance-center/cash-transaction',
+        direction === 'payment' ? financePaths.paymentApplication : financePaths.cashTransaction,
       query: { ...commonQuery, direction }
     }
   }
@@ -104,7 +102,7 @@ export function buildRecognitionBusinessRoute(artifact: Artifact): RouteLocation
 
 export function toInvoiceOcrAnalyzeResponse(
   artifact: Artifact
-): Api.Tms.Finance.InvoiceOcrAnalyzeResponse {
+): Api.Finance.InvoiceOcrAnalyzeResponse {
   const payload = normalizeInvoiceDraft(artifact.proposedPayload)
   return {
     artifactId: artifact.id,
@@ -122,7 +120,7 @@ export function toInvoiceOcrAnalyzeResponse(
 
 export function toCashVoucherOcrAnalyzeResponse(
   artifact: Artifact
-): Api.Tms.Finance.CashVoucherOcrAnalyzeResponse {
+): Api.Finance.CashVoucherOcrAnalyzeResponse {
   const payload = normalizeCashVoucherDraft(artifact.proposedPayload)
   return {
     artifactId: artifact.id,
@@ -140,3 +138,4 @@ export function toCashVoucherOcrAnalyzeResponse(
     reviewConfidenceThreshold: Number(artifact.metadata?.reviewConfidenceThreshold ?? 0.82)
   }
 }
+import { financePaths } from '@/router/business-paths'

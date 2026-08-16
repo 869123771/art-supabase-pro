@@ -1,6 +1,6 @@
 <template>
   <div class="insurance-company-page art-full-height">
-    <VehicleWorkspaceHeader
+    <BusinessWorkspaceHeader
       eyebrow="RISK PARTNER DIRECTORY"
       title="保险公司"
       description="集中维护车辆保险合作机构与关键联络信息，保障投保、续保与理赔协同顺畅。"
@@ -52,9 +52,9 @@
     importInsuranceCompanies
   } from '@/api/vehicle-manage-system'
   import InsuranceCompanyDialog from './modules/insurance-company-dialog.vue'
-  import VehicleWorkspaceHeader, {
-    type VehicleWorkspaceMetric
-  } from '@/views/vehicle-manage-system/modules/vehicle-workspace-header.vue'
+  import BusinessWorkspaceHeader, {
+    type BusinessWorkspaceMetric
+  } from '@/components/business/business-workspace-header/index.vue'
 
   defineOptions({ name: 'InsuranceCompany' })
 
@@ -71,7 +71,7 @@
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<DialogExpose>()
   const overview = reactive<{ total: number; rows: InsuranceCompany[] }>({ total: 0, rows: [] })
-  const workspaceMetrics = computed<VehicleWorkspaceMetric[]>(() => [
+  const workspaceMetrics = computed<BusinessWorkspaceMetric[]>(() => [
     {
       label: '合作机构',
       value: overview.total,

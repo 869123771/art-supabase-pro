@@ -1,6 +1,6 @@
 <template>
-  <div class="tms-workspace-page favorite-route-page art-full-height">
-    <TmsWorkspaceHeader
+  <div class="business-workspace-page favorite-route-page art-full-height">
+    <BusinessWorkspaceHeader
       eyebrow="ROUTE LIBRARY"
       title="常用线路"
       description="沉淀客户高频装卸路线，统一地址、里程与计划时长口径，为开单、报价和调度提供可复用线路资产。"
@@ -42,7 +42,7 @@
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
-  import TmsWorkspaceHeader from '@/views/tms-transportation/modules/tms-workspace-header.vue'
+  import BusinessWorkspaceHeader from '@/components/business/business-workspace-header/index.vue'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { useUserStore } from '@/store/modules/user'
   import { ColumnOption, DialogType } from '@/types'

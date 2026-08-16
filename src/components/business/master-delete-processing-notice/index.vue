@@ -6,7 +6,7 @@
         <strong>正在处理“{{ resourceName }}”的删除前置资料</strong>
         <ElTag type="warning" effect="light" size="small">已精确过滤</ElTag>
       </div>
-      <p>{{ actionHint }}</p>
+      <p>{{ props.actionHint }}</p>
     </div>
     <ElButton type="primary" plain @click="goBack">
       <template #icon><ArtSvgIcon icon="ri:arrow-left-line" /></template>
@@ -18,32 +18,55 @@
 <script setup lang="ts">
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
 
-  withDefaults(
+  const props = withDefaults(
     defineProps<{
       actionHint?: string
+      customerId?: string
+      customerName?: string
     }>(),
     {
-      actionHint: '当前列表已按关联记录自动过滤。请处理完成后返回原页面继续删除。'
+      actionHint: '当前列表已按关联记录自动过滤。请处理完成后返回原页面继续删除。',
+      customerId: '',
+      customerName: ''
     }
   )
 
   const route = useRoute()
   const router = useRouter()
-  const isActive = computed(() => route.query.fromMasterDelete === '1')
-  const resourceLabel = computed(() => String(route.query.resourceLabel || '主数据'))
-  const resourceName = computed(() => String(route.query.resourceName || '当前资料'))
+  const isMasterDelete = computed(() => route.query.fromMasterDelete === '1')
+  const isActive = computed(() => isMasterDelete.value || route.query.fromCustomerDelete === '1')
+  const resourceLabel = computed(() =>
+    isMasterDelete.value ? String(route.query.resourceLabel || '主数据') : '客户'
+  )
+  const resourceName = computed(() =>
+    isMasterDelete.value
+      ? String(route.query.resourceName || '当前资料')
+      : props.customerName || '该客户'
+  )
 
   const goBack = (): void => {
-    const returnPath = typeof route.query.returnPath === 'string' ? route.query.returnPath : '/'
+    if (isMasterDelete.value) {
+      const returnPath = typeof route.query.returnPath === 'string' ? route.query.returnPath : '/'
+      void router.push({
+        path: returnPath,
+        query: {
+          resumeMasterDelete: '1',
+          recordId: typeof route.query.resourceId === 'string' ? route.query.resourceId : undefined,
+          resourceType:
+            typeof route.query.resourceType === 'string' ? route.query.resourceType : undefined,
+          resourceLabel: resourceLabel.value,
+          resourceName: resourceName.value
+        }
+      })
+      return
+    }
+
     void router.push({
-      path: returnPath,
+      name: 'TmsCustomer',
       query: {
-        resumeMasterDelete: '1',
-        recordId: typeof route.query.resourceId === 'string' ? route.query.resourceId : undefined,
-        resourceType:
-          typeof route.query.resourceType === 'string' ? route.query.resourceType : undefined,
-        resourceLabel: resourceLabel.value,
-        resourceName: resourceName.value
+        resumeCustomerDelete: '1',
+        customerId: props.customerId,
+        customerName: props.customerName || undefined
       }
     })
   }

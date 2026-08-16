@@ -193,7 +193,7 @@
   type Organization = Api.SystemManage.OrganizationScopeFilterItem
   type Tenant = Api.SystemManage.TenantListItem
 
-  type ScopeType = 'user' | 'role'
+  type ScopeType = 'user' | 'role' | 'employee'
 
   const props = withDefaults(
     defineProps<{
@@ -232,27 +232,39 @@
   const keyword = ref('')
   const treeProps = { children: 'children', label: 'organizationName' }
 
-  const scopeCopy = computed(() =>
-    props.scopeType === 'role'
-      ? {
-          entityLabel: '角色',
-          allLabel: '全部角色',
-          allDescription: '当前租户内全部角色',
-          unassignedLabel: '待归属角色',
-          unassignedDescription: '尚未绑定适用组织',
-          assignedSuffix: '个角色已归属',
-          countUnit: '个'
-        }
-      : {
-          entityLabel: '用户',
-          allLabel: '全部用户',
-          allDescription: '当前租户内全部账号',
-          unassignedLabel: '待归属用户',
-          unassignedDescription: '尚未分配所属组织',
-          assignedSuffix: '人已归属',
-          countUnit: '人'
-        }
-  )
+  const scopeCopy = computed(() => {
+    if (props.scopeType === 'role') {
+      return {
+        entityLabel: '角色',
+        allLabel: '全部角色',
+        allDescription: '当前租户内全部角色',
+        unassignedLabel: '待归属角色',
+        unassignedDescription: '尚未绑定适用组织',
+        assignedSuffix: '个角色已归属',
+        countUnit: '个'
+      }
+    }
+    if (props.scopeType === 'employee') {
+      return {
+        entityLabel: '员工',
+        allLabel: '全部员工',
+        allDescription: '当前租户内全部员工档案',
+        unassignedLabel: '待归属员工',
+        unassignedDescription: '尚未分配所属组织',
+        assignedSuffix: '名员工已归属',
+        countUnit: '人'
+      }
+    }
+    return {
+      entityLabel: '用户',
+      allLabel: '全部用户',
+      allDescription: '当前租户内全部账号',
+      unassignedLabel: '待归属用户',
+      unassignedDescription: '尚未分配所属组织',
+      assignedSuffix: '人已归属',
+      countUnit: '人'
+    }
+  })
 
   const flatOrganizations = computed(() => treeUtils.treeToList(props.data))
   const validTenantOptions = computed(() =>

@@ -1,47 +1,20 @@
 <template>
-  <div class="system-param-page">
-    <section class="system-param-page__hero art-card-xs">
-      <div class="system-param-page__hero-identity">
-        <span class="system-param-page__hero-icon" aria-hidden="true">
-          <ArtSvgIcon icon="ri:settings-4-line" />
-        </span>
-        <div>
-          <span class="system-param-page__eyebrow">SYSTEM GOVERNANCE</span>
-          <h1>参数设置</h1>
-          <p>
-            统一管理系统运行参数、登录体验、安全策略与审计策略。支持分组维护、内置保护、缓存刷新与按键名读取，便于后续业务模块复用。
-          </p>
-        </div>
-      </div>
-      <div class="system-param-page__hero-tags">
-        <ElTag :type="isPlatformSuper ? 'primary' : 'info'" round>
-          {{ isPlatformSuper ? '平台维护视图' : '安全只读视图' }}
-        </ElTag>
-        <ElTag round>缓存项：{{ overview.stats.total }}</ElTag>
-        <ElTag round>最近刷新：{{ overview.lastRefreshText }}</ElTag>
-      </div>
-    </section>
-
-    <section class="system-param-page__stats">
-      <div
-        v-for="item in overview.statCards"
-        :key="item.label"
-        class="system-param-page__stat-card art-card-xs"
-      >
-        <div>
-          <span>{{ item.label }}</span>
-          <strong>{{ item.value }}</strong>
-          <p>{{ item.description }}</p>
-        </div>
-        <span
-          class="system-param-page__stat-icon"
-          :style="{ color: item.color, backgroundColor: item.backgroundColor }"
-          aria-hidden="true"
-        >
-          <ArtSvgIcon :icon="item.icon" />
-        </span>
-      </div>
-    </section>
+  <div class="system-param-page business-workspace-page">
+    <BusinessWorkspaceHeader
+      eyebrow="SYSTEM GOVERNANCE"
+      title="参数设置"
+      description="统一管理系统运行参数、登录体验、安全策略与审计策略。支持分组维护、内置保护、缓存刷新与按键名读取，便于后续业务模块复用。"
+      icon="ri:settings-4-line"
+      :tags="[
+        {
+          label: isPlatformSuper ? '平台维护视图' : '安全只读视图',
+          type: isPlatformSuper ? 'primary' : 'info'
+        },
+        { label: `缓存项：${overview.stats.total}` },
+        { label: `最近刷新：${overview.lastRefreshText}` }
+      ]"
+      :metrics="overview.statCards"
+    />
 
     <div class="system-param-page__groups art-card-xs">
       <ElSegmented
@@ -69,13 +42,16 @@
 
 <script setup lang="tsx">
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
-  import { ElMessage, ElTag } from 'element-plus'
+  import { ElMessage } from 'element-plus'
   import { omit } from 'lodash-es'
   import type { ComputedRef, UnwrapNestedRefs } from 'vue'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
+  import BusinessWorkspaceHeader, {
+    type BusinessWorkspaceMetric
+  } from '@/components/business/business-workspace-header/index.vue'
   import type {
     ArtTableQueryExpose,
     ArtTableQueryHeaderAction,
@@ -110,16 +86,7 @@
   interface OverviewGroup {
     stats: Api.SystemManage.SystemParamStats
     lastRefreshText: ComputedRef<string>
-    statCards: ComputedRef<
-      Array<{
-        label: string
-        value: number
-        description: string
-        icon: string
-        color: string
-        backgroundColor: string
-      }>
-    >
+    statCards: ComputedRef<BusinessWorkspaceMetric[]>
   }
 
   interface TableGroup {
@@ -153,32 +120,28 @@
         value: overview.stats.total,
         description: '包括内置参数与业务扩展参数',
         icon: 'ri:database-2-line',
-        color: 'var(--el-color-primary)',
-        backgroundColor: 'var(--el-color-primary-light-9)'
+        tone: 'primary'
       },
       {
         label: '启用参数',
         value: overview.stats.enabled,
         description: '当前会参与读取和缓存的有效参数',
         icon: 'ri:checkbox-circle-line',
-        color: 'var(--el-color-success)',
-        backgroundColor: 'var(--el-color-success-light-9)'
+        tone: 'success'
       },
       {
         label: '内置参数',
         value: overview.stats.builtin,
         description: '平台基础参数，建议谨慎修改',
         icon: 'ri:shield-keyhole-line',
-        color: 'var(--el-color-warning)',
-        backgroundColor: 'var(--el-color-warning-light-9)'
+        tone: 'warning'
       },
       {
         label: '参数分组',
         value: overview.stats.groups,
         description: '可按业务域划分不同配置命名空间',
         icon: 'ri:folder-settings-line',
-        color: 'var(--el-color-info)',
-        backgroundColor: 'var(--default-bg-color)'
+        tone: 'info'
       }
     ])
   })

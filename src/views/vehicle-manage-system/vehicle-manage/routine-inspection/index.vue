@@ -1,6 +1,6 @@
 <template>
   <div class="routine-inspection-page art-full-height">
-    <VehicleWorkspaceHeader
+    <BusinessWorkspaceHeader
       eyebrow="DAILY SAFETY CHECK"
       title="车辆例行检查"
       description="记录出车前后与周期性检查结果、责任人员和处置方式，把安全隐患前置发现。"
@@ -61,9 +61,9 @@
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatWithDayjs } from '@/utils/time'
   import RoutineInspectionDialog from './modules/routine-inspection-dialog.vue'
-  import VehicleWorkspaceHeader, {
-    type VehicleWorkspaceMetric
-  } from '@/views/vehicle-manage-system/modules/vehicle-workspace-header.vue'
+  import BusinessWorkspaceHeader, {
+    type BusinessWorkspaceMetric
+  } from '@/components/business/business-workspace-header/index.vue'
 
   defineOptions({ name: 'VehicleRoutineInspection' })
 
@@ -89,7 +89,7 @@
   const dialogRef = ref<DialogExpose>()
   const { getDictMap } = storeToRefs(useUserStore())
   const overview = reactive<{ total: number; rows: RoutineInspection[] }>({ total: 0, rows: [] })
-  const workspaceMetrics = computed<VehicleWorkspaceMetric[]>(() => [
+  const workspaceMetrics = computed<BusinessWorkspaceMetric[]>(() => [
     {
       label: '例检记录',
       value: overview.total,

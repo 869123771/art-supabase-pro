@@ -1,6 +1,6 @@
 <template>
   <div class="vehicle-violation-page art-full-height">
-    <VehicleWorkspaceHeader
+    <BusinessWorkspaceHeader
       eyebrow="TRAFFIC COMPLIANCE"
       title="车辆违章"
       description="汇总车辆违章行为、扣分、罚款与处理进度，帮助车队及时闭环交通合规风险。"
@@ -51,9 +51,9 @@
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatWithDayjs } from '@/utils/time'
   import { useUserStore } from '@/store/modules/user'
-  import VehicleWorkspaceHeader, {
-    type VehicleWorkspaceMetric
-  } from '@/views/vehicle-manage-system/modules/vehicle-workspace-header.vue'
+  import BusinessWorkspaceHeader, {
+    type BusinessWorkspaceMetric
+  } from '@/components/business/business-workspace-header/index.vue'
 
   defineOptions({ name: 'VehicleViolation' })
 
@@ -71,7 +71,7 @@
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const { getDictMap } = storeToRefs(useUserStore())
   const overview = reactive<{ total: number; rows: ViolationRecord[] }>({ total: 0, rows: [] })
-  const workspaceMetrics = computed<VehicleWorkspaceMetric[]>(() => [
+  const workspaceMetrics = computed<BusinessWorkspaceMetric[]>(() => [
     {
       label: '违章记录',
       value: overview.total,

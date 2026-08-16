@@ -42,8 +42,11 @@ Use these components before assembling equivalent Element Plus plumbing:
 | Business data selection | `ArtTableSingleSelect` / `ArtTableMultipleSelect` / tree variants from `src/components/core/forms/art-data-select` |
 | Uploads and common actions | Existing `Art*` core form/action component |
 | Business section title | `ArtSectionTitle` |
+| Business landing/list/workspace identity and metrics | `BusinessWorkspaceHeader` |
 
 When a project wrapper already exists, use it before raw Element Plus primitives. For example, prefer `ArtExcelImport`, `ArtUploadImage`, `ArtButtonTable`, `ArtButtonMore`, and similar `src/components/core` wrappers over page-local `ElUpload`, ad hoc action buttons, or custom dropdown wiring. If the wrapper is close but missing a broadly reusable capability, extend the wrapper first and consume that extension from the business page.
+
+Business landing pages, list workspaces, operational workbenches, and module home pages must use `BusinessWorkspaceHeader` for the page identity, eyebrow, description, feature tags, overview metrics, and header actions. Do not hand-build page-local hero/overview headers or create domain-specific copies of the workspace header. If a reusable header capability is missing, extend `src/components/business/business-workspace-header/index.vue` and consume the extension everywhere. Use `ArtPageHeader` instead for create, edit, detail, or configuration workflow pages that need back navigation; detail pages must present read-only values through `ArtDescriptions` or purpose-built display components rather than disabled form controls.
 
 Use raw `ElDialog` or `ElDrawer` only when the wrapper cannot support a documented platform requirement. Extend the core wrapper instead when the missing behavior is broadly reusable.
 

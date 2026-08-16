@@ -20,7 +20,7 @@ const visualPages: VisualPage[] = [
   },
   {
     name: 'invoice-management',
-    path: '/tms-transportation/finance-center/invoice-management',
+    path: '/finance/invoice-management',
     root: '.art-table-query'
   },
   {

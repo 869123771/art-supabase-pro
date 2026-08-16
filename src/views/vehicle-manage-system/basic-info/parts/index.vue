@@ -1,6 +1,6 @@
 <template>
   <div class="parts-page art-full-height">
-    <VehicleWorkspaceHeader
+    <BusinessWorkspaceHeader
       eyebrow="PARTS MASTER DATA"
       title="零部件资料"
       description="维护零部件编码、类别、品牌与供应关系，为车辆维保和寿命管理建立统一数据底座。"
@@ -59,9 +59,9 @@
     importParts
   } from '@/api/vehicle-manage-system'
   import PartsDialog from './modules/parts-dialog.vue'
-  import VehicleWorkspaceHeader, {
-    type VehicleWorkspaceMetric
-  } from '@/views/vehicle-manage-system/modules/vehicle-workspace-header.vue'
+  import BusinessWorkspaceHeader, {
+    type BusinessWorkspaceMetric
+  } from '@/components/business/business-workspace-header/index.vue'
 
   defineOptions({ name: 'VehicleParts' })
 
@@ -86,7 +86,7 @@
     childrenKey: 'children'
   })
   const overview = reactive<{ total: number; rows: Parts[] }>({ total: 0, rows: [] })
-  const workspaceMetrics = computed<VehicleWorkspaceMetric[]>(() => [
+  const workspaceMetrics = computed<BusinessWorkspaceMetric[]>(() => [
     {
       label: '零部件总数',
       value: overview.total,

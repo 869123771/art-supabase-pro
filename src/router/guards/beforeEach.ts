@@ -59,6 +59,7 @@ import { RouteRegistry, MenuProcessor, IframeRouteManager, RoutePermissionValida
 import TreeUtils from '@utils/tree'
 import type { AppRouteRecord } from '@/types'
 import type { AppRouteRecordRaw } from '@/utils/router'
+import { resolveLegacyBusinessPath } from '../business-paths'
 
 // 路由注册器实例
 let routeRegistry: RouteRegistry | null = null
@@ -155,6 +156,17 @@ async function handleRouteGuard(
   // 启动进度条
   if (settingStore.showNprogress) {
     NProgress.start()
+  }
+
+  // 旧财务书签在鉴权和动态路由注册前完成迁移，避免被误判为无权限路径。
+  const legacyBusinessPath = resolveLegacyBusinessPath(to.path)
+  if (legacyBusinessPath) {
+    return {
+      path: legacyBusinessPath,
+      query: to.query,
+      hash: to.hash,
+      replace: true
+    }
   }
 
   // 1. 检查登录状态

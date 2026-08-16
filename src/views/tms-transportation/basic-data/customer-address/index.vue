@@ -1,6 +1,6 @@
 <template>
-  <div class="tms-workspace-page art-full-height">
-    <TmsWorkspaceHeader
+  <div class="business-workspace-page art-full-height">
+    <BusinessWorkspaceHeader
       eyebrow="ADDRESS DIRECTORY"
       title="客户地址簿"
       description="维护客户常用收发货地址、联系人与地址类型，减少重复录入并提升开单效率。"
@@ -57,7 +57,7 @@
   import MasterDataDeleteGuard, {
     type MasterDataDeleteGuardOpenOptions
   } from '@/components/business/master-data-delete-guard/index.vue'
-  import TmsWorkspaceHeader from '@/views/tms-transportation/modules/tms-workspace-header.vue'
+  import BusinessWorkspaceHeader from '@/components/business/business-workspace-header/index.vue'
 
   defineOptions({ name: 'TmsCustomerAddress' })
 

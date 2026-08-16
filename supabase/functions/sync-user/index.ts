@@ -9,7 +9,7 @@ const allowedOrigins = [
   "http://127.0.0.1:5173",
   "https://ckbftoopuyophiebamwy.supabase.co",
 ]
-const SYS_USER_COLUMNS = new Set(["user_name", "nick_name", "user_gender", "user_phone", "user_email", "status", "create_by", "update_by", "update_time", "extra", "user_roles", "create_time", "auth_user_id", "id", "user_type", "remark", "avatar", "tenant_id", "organization_id"])
+const SYS_USER_COLUMNS = new Set(["user_name", "nick_name", "user_gender", "user_phone", "user_email", "status", "create_by", "update_by", "update_time", "extra", "user_roles", "create_time", "auth_user_id", "id", "user_type", "remark", "avatar", "tenant_id", "organization_id", "hr_employee_id"])
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
@@ -79,6 +79,24 @@ async function canAccessTargetUser(id: string, profile: CallerProfile | null, ca
   if (error || !data) return false
   return data.tenant_id === profile.tenant_id
 }
+async function validateEmployeeLink(employeeId: unknown, tenantId: unknown, targetUserId?: string): Promise<string | null> {
+  if (employeeId === null || employeeId === undefined || employeeId === "") return null
+  if (typeof employeeId !== "string" || typeof tenantId !== "string") return "员工档案关联信息无效"
+  const { data: employee, error: employeeError } = await supabaseDB
+    .from("hr_employee")
+    .select("id, tenant_id, employment_status")
+    .eq("id", employeeId)
+    .maybeSingle()
+  if (employeeError || !employee) return "所选员工档案不存在或不可用"
+  if (employee.tenant_id !== tenantId) return "不能关联当前租户之外的员工档案"
+  if (!["probation", "active"].includes(employee.employment_status)) return "仅可为试用期或在职员工开通账号"
+
+  let accountQuery = supabaseDB.from("sys_user").select("id").eq("hr_employee_id", employeeId).is("deleted_at", null)
+  if (targetUserId) accountQuery = accountQuery.neq("id", targetUserId)
+  const { data: linkedUsers, error: accountError } = await accountQuery.limit(1)
+  if (accountError) return "员工账号关联校验失败，请稍后重试"
+  return linkedUsers?.length ? "所选员工已开通登录账号" : null
+}
 function getFriendlyErrorMessage(error: any, action: string): string {
   const errorMsg = error?.message || String(error); const errorCode = error?.code || ""
   const isPermissionError = errorMsg.toLowerCase().includes("permission denied") || errorMsg.toLowerCase().includes("row-level security") || errorMsg.toLowerCase().includes("policy") || errorMsg.toLowerCase().includes("violates") || errorCode === "42501" || errorCode === "PGRST301" || errorCode === "PGRST116"
@@ -124,6 +142,12 @@ Deno.serve(async (req: Request) => {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
       if (!emailRegex.test(emailFromBody)) return new Response(JSON.stringify({ ok: false, error: "Invalid email format" }), { status: 400, headers: corsHeaders(origin) })
       if (!callerProfile || !callerEmail) return new Response(JSON.stringify({ ok: false, error: "需要登录用户才能创建新用户" }), { status: 401, headers: corsHeaders(origin) })
+      const cleanedAppUserData = cleanAppUserData(appUserData)
+      const targetTenantId = callerIsSuper
+        ? String(cleanedAppUserData.tenant_id || callerProfile.tenant_id)
+        : callerProfile.tenant_id
+      const employeeLinkError = await validateEmployeeLink(cleanedAppUserData.hr_employee_id, targetTenantId)
+      if (employeeLinkError) return new Response(JSON.stringify({ ok: false, error: employeeLinkError }), { status: 400, headers: corsHeaders(origin) })
       const password = appUserData.password || body.password || uuidv4().slice(0, 12)
       const requestedStatus = String(appUserData.status ?? "1")
       const normalizedStatus = requestedStatus === "0" ? "2" : requestedStatus
@@ -132,8 +156,7 @@ Deno.serve(async (req: Request) => {
       const { data: authUser, error: authErr } = await supabaseAdmin.auth.admin.createUser({ email: emailFromBody, password, email_confirm: true, ban_duration: normalizedStatus === "2" ? "876000h" : "none" })
       if (authErr) { const duplicateErrors = ["user_already_exists", "duplicate key", "Email already registered", "already exists"]; const isDuplicate = duplicateErrors.some((keyword) => authErr.code === keyword || (authErr.message || "").includes(keyword)); return new Response(JSON.stringify({ ok: false, error: isDuplicate ? "Email already registered" : `Failed to create user: ${authErr.message}` }), { status: isDuplicate ? 400 : 500, headers: corsHeaders(origin) }) }
       const authUserId = authUser.user.id
-      const insertData: Record<string, unknown> = { ...cleanAppUserData(appUserData), auth_user_id: authUserId, user_email: emailFromBody, status: normalizedStatus, create_by: callerEmail }
-      if (!callerIsSuper) insertData.tenant_id = callerProfile.tenant_id; else if (!insertData.tenant_id) insertData.tenant_id = callerProfile.tenant_id
+      const insertData: Record<string, unknown> = { ...cleanedAppUserData, auth_user_id: authUserId, user_email: emailFromBody, status: normalizedStatus, create_by: callerEmail, tenant_id: targetTenantId }
       const { data: created, error: insertErr } = await supabaseDB.from("sys_user").insert(insertData).select().single()
       if (insertErr) { await deleteAuthUser(authUserId); return new Response(JSON.stringify({ ok: false, error: getFriendlyErrorMessage(insertErr, action) }), { status: 500, headers: corsHeaders(origin) }) }
       const result = { ok: true, auth_user_id: authUserId, app_user: created }; await updateAudit(auditId, result); return new Response(JSON.stringify(result), { status: 200, headers: corsHeaders(origin) })
@@ -153,6 +176,11 @@ Deno.serve(async (req: Request) => {
         return new Response(JSON.stringify({ ok: false, error: "user_roles must be an array" }), { status: 400, headers: corsHeaders(origin) })
       }
       if (!callerIsSuper && cleanedAppUserData.tenant_id && cleanedAppUserData.tenant_id !== callerProfile?.tenant_id) return new Response(JSON.stringify({ ok: false, error: "不能把用户分配到当前租户之外" }), { status: 403, headers: corsHeaders(origin) })
+      if (action === "update" && cleanedAppUserData.hr_employee_id) {
+        const targetTenantId = String(cleanedAppUserData.tenant_id || callerProfile?.tenant_id || "")
+        const employeeLinkError = await validateEmployeeLink(cleanedAppUserData.hr_employee_id, targetTenantId, id)
+        if (employeeLinkError) return new Response(JSON.stringify({ ok: false, error: employeeLinkError }), { status: 400, headers: corsHeaders(origin) })
+      }
       if (action === "update" && auth_user_id) {
         const updateAuthData: Record<string, string> = {}; const emailForAuth = email || cleanedAppUserData.user_email; const passwordForAuth = password || (app_user_data && app_user_data.password)
         if (typeof emailForAuth === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailForAuth)) updateAuthData.email = emailForAuth

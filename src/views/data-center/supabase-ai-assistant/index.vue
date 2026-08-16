@@ -7,40 +7,31 @@
     min-height="720px"
     @retry="loadInitialData"
   >
-    <div class="project-assistant art-full-height" :class="{ 'is-focus-mode': focusMode }">
-      <header v-if="!focusMode" class="project-assistant__hero art-card-xs">
-        <div>
-          <div class="project-assistant__eyebrow">
-            <ArtSvgIcon icon="ri:database-2-line" />
-            SUPABASE PROJECT COPILOT
-          </div>
-          <h1>Supabase AI 助手</h1>
-          <p>
-            统一洞察 Database、RLS、Auth、Storage、Realtime 与 Edge
-            Functions，并生成可审计的治理方案。
-          </p>
-        </div>
-        <div class="project-assistant__safety">
-          <div class="project-assistant__hero-actions">
-            <ElButton plain type="primary" @click="openCapabilityCenter">
-              <ArtSvgIcon icon="ri:radar-line" /> 全域能力
-            </ElButton>
-            <ElTag
-              :type="assistantMode === 'controlled_write' ? 'warning' : 'success'"
-              effect="light"
-              round
-            >
-              <ArtSvgIcon
-                :icon="
-                  assistantMode === 'controlled_write' ? 'ri:admin-line' : 'ri:shield-check-line'
-                "
-              />
-              {{ assistantMode === 'controlled_write' ? '管理员受控变更' : '只读安全模式' }}
-            </ElTag>
-          </div>
-          <span>项目：{{ overview?.projectRef || 'ckbftoopuyophiebamwy' }}</span>
-        </div>
-      </header>
+    <div
+      class="project-assistant business-workspace-page art-full-height"
+      :class="{ 'is-focus-mode': focusMode }"
+    >
+      <BusinessWorkspaceHeader
+        v-if="!focusMode"
+        eyebrow="SUPABASE PROJECT COPILOT"
+        title="Supabase AI 助手"
+        description="统一洞察 Database、RLS、Auth、Storage、Realtime 与 Edge Functions，并生成可审计的治理方案。"
+        icon="ri:database-2-line"
+        :tags="[
+          {
+            label: assistantMode === 'controlled_write' ? '管理员受控变更' : '只读安全模式',
+            type: assistantMode === 'controlled_write' ? 'warning' : 'success',
+            effect: 'light'
+          },
+          { label: `项目：${overview?.projectRef || 'ckbftoopuyophiebamwy'}`, type: 'info' }
+        ]"
+      >
+        <template #actions>
+          <ElButton plain type="primary" @click="openCapabilityCenter">
+            <ArtSvgIcon icon="ri:radar-line" /> 全域能力
+          </ElButton>
+        </template>
+      </BusinessWorkspaceHeader>
 
       <section v-if="!focusMode" class="project-assistant__stats art-card-xs">
         <button
@@ -160,6 +151,7 @@
     ProjectObjectType
   } from '@/types/supabase-ai-assistant'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import BusinessWorkspaceHeader from '@/components/business/business-workspace-header/index.vue'
   import ProjectCapabilityCenterDrawer from './modules/capability-center-drawer.vue'
   import ProjectAssistantChatPanel from './modules/project-assistant-chat-panel.vue'
   import ProjectAssistantHistoryDrawer from './modules/project-assistant-history-drawer.vue'

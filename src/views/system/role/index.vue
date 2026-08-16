@@ -1,59 +1,20 @@
 <template>
-  <div class="role-page art-full-height">
+  <div class="role-page business-workspace-page art-full-height">
     <MasterDeleteProcessingNotice
       action-hint="当前角色已自动定位；可先解除用户或菜单授权后返回。"
     />
-    <section class="role-page__overview art-card-xs">
-      <header class="role-page__hero">
-        <div class="role-page__identity">
-          <div class="role-page__brand" aria-hidden="true">
-            <ArtSvgIcon icon="ri:shield-user-line" />
-          </div>
-          <div>
-            <span>ACCESS GOVERNANCE</span>
-            <h1>角色与权限</h1>
-            <p>按租户维护职责角色与菜单访问边界，让权限配置清晰、可追踪、可审计。</p>
-          </div>
-        </div>
-        <div class="role-page__hero-status">
-          <ElTag type="success" effect="light" round>权限按租户隔离</ElTag>
-          <ElTag type="primary" effect="plain" round>遵循最小权限原则</ElTag>
-        </div>
-      </header>
-
-      <div class="role-page__metrics" aria-label="角色治理概览">
-        <article>
-          <div class="role-page__metric-icon is-primary">
-            <ArtSvgIcon icon="ri:team-line" />
-          </div>
-          <div>
-            <span>当前结果</span>
-            <strong>{{ pagination.total }}</strong>
-            <small>随筛选条件实时更新</small>
-          </div>
-        </article>
-        <article>
-          <div class="role-page__metric-icon is-success">
-            <ArtSvgIcon icon="ri:checkbox-circle-line" />
-          </div>
-          <div>
-            <span>本页启用</span>
-            <strong>{{ enabledRoleCount }}</strong>
-            <small>当前页可正常授权</small>
-          </div>
-        </article>
-        <article>
-          <div class="role-page__metric-icon is-warning">
-            <ArtSvgIcon icon="ri:shield-keyhole-line" />
-          </div>
-          <div>
-            <span>受保护角色</span>
-            <strong>{{ protectedRoleCount }}</strong>
-            <small>内置角色限制关键操作</small>
-          </div>
-        </article>
-      </div>
-    </section>
+    <BusinessWorkspaceHeader
+      class="role-page__overview"
+      eyebrow="ACCESS GOVERNANCE"
+      title="角色与权限"
+      description="按租户维护职责角色与菜单访问边界，让权限配置清晰、可追踪、可审计。"
+      icon="ri:shield-user-line"
+      :tags="[
+        { label: '权限按租户隔离', type: 'success', effect: 'light' },
+        { label: '遵循最小权限原则', type: 'primary', effect: 'plain' }
+      ]"
+      :metrics="workspaceMetrics"
+    />
 
     <div class="role-page__workspace">
       <aside v-if="isDesktopOrganizationLayout" class="role-page__organization-panel">
@@ -148,6 +109,9 @@
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import ArtButtonMore from '@/components/core/forms/art-button-more/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
+  import BusinessWorkspaceHeader, {
+    type BusinessWorkspaceMetric
+  } from '@/components/business/business-workspace-header/index.vue'
   import RoleEditDialog from './modules/role-edit-dialog.vue'
   import RolePermissionDialog from './modules/role-permission-dialog.vue'
   import { formatWithDayjs } from '@/utils/time'
@@ -488,6 +452,28 @@
   const protectedRoleCount = computed(
     () => data.value.filter((row) => isSuperRole(row) || isDefaultRegisterRole(row)).length
   )
+  const workspaceMetrics = computed<BusinessWorkspaceMetric[]>(() => [
+    {
+      label: '当前结果',
+      value: pagination.total,
+      description: '随筛选条件实时更新',
+      icon: 'ri:team-line'
+    },
+    {
+      label: '本页启用',
+      value: enabledRoleCount.value,
+      description: '当前页可正常授权',
+      icon: 'ri:checkbox-circle-line',
+      tone: 'success'
+    },
+    {
+      label: '受保护角色',
+      value: protectedRoleCount.value,
+      description: '内置角色限制关键操作',
+      icon: 'ri:shield-keyhole-line',
+      tone: 'warning'
+    }
+  ])
 
   const showDialog = (type: 'add' | 'edit', row?: RoleListItem) => {
     void roleEditDialogRef.value?.handleOpen({

@@ -1,6 +1,6 @@
 <template>
   <div class="supplier-page art-full-height">
-    <VehicleWorkspaceHeader
+    <BusinessWorkspaceHeader
       eyebrow="SUPPLY NETWORK"
       title="供应厂商"
       description="统一管理车辆零部件供应网络与联系人信息，为采购、维保和追溯提供可靠基础数据。"
@@ -52,9 +52,9 @@
     importSuppliers
   } from '@/api/vehicle-manage-system'
   import SupplierDialog from './modules/supplier-dialog.vue'
-  import VehicleWorkspaceHeader, {
-    type VehicleWorkspaceMetric
-  } from '@/views/vehicle-manage-system/modules/vehicle-workspace-header.vue'
+  import BusinessWorkspaceHeader, {
+    type BusinessWorkspaceMetric
+  } from '@/components/business/business-workspace-header/index.vue'
 
   defineOptions({ name: 'Supplier' })
 
@@ -71,7 +71,7 @@
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<DialogExpose>()
   const overview = reactive<{ total: number; rows: Supplier[] }>({ total: 0, rows: [] })
-  const workspaceMetrics = computed<VehicleWorkspaceMetric[]>(() => [
+  const workspaceMetrics = computed<BusinessWorkspaceMetric[]>(() => [
     {
       label: '供应厂商',
       value: overview.total,

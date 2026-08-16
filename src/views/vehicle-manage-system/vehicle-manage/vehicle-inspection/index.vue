@@ -1,6 +1,6 @@
 <template>
   <div class="vehicle-inspection-page art-full-height">
-    <VehicleWorkspaceHeader
+    <BusinessWorkspaceHeader
       eyebrow="REGULATORY INSPECTION"
       title="车辆年检"
       description="统一维护年检编号、检测机构、费用与有效期，确保车辆持续满足上路合规要求。"
@@ -61,9 +61,9 @@
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatWithDayjs } from '@/utils/time'
   import VehicleInspectionDialog from './modules/vehicle-inspection-dialog.vue'
-  import VehicleWorkspaceHeader, {
-    type VehicleWorkspaceMetric
-  } from '@/views/vehicle-manage-system/modules/vehicle-workspace-header.vue'
+  import BusinessWorkspaceHeader, {
+    type BusinessWorkspaceMetric
+  } from '@/components/business/business-workspace-header/index.vue'
 
   defineOptions({ name: 'VehicleInspection' })
 
@@ -88,7 +88,7 @@
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<DialogExpose>()
   const overview = reactive<{ total: number; rows: VehicleInspection[] }>({ total: 0, rows: [] })
-  const workspaceMetrics = computed<VehicleWorkspaceMetric[]>(() => [
+  const workspaceMetrics = computed<BusinessWorkspaceMetric[]>(() => [
     {
       label: '年检记录',
       value: overview.total,

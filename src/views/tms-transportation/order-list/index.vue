@@ -1,7 +1,7 @@
 <template>
-  <div class="tms-workspace-page art-full-height order-list">
+  <div class="business-workspace-page art-full-height order-list">
     <MasterDeleteProcessingNotice action-hint="当前订单已自动定位；业务历史需按流程处理或保留。" />
-    <TmsWorkspaceHeader
+    <BusinessWorkspaceHeader
       eyebrow="ORDER COMMAND CENTER"
       title="运输订单"
       description="集中跟踪订单状态、运输线路、客户需求与费用进度，快速识别待处理业务。"
@@ -63,6 +63,7 @@
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatWithDayjs } from '@/utils/time'
   import { useUserStore } from '@/store/modules/user'
+  import { financeRouteNames } from '@/router/business-paths'
   import {
     deleteOrder,
     deleteOrderBatch,
@@ -74,9 +75,9 @@
     fetchStationOptions
   } from '@/api/tms'
   import FreightDialog from './modules/freight-dialog.vue'
-  import TmsWorkspaceHeader, {
-    type TmsWorkspaceMetric
-  } from '@/views/tms-transportation/modules/tms-workspace-header.vue'
+  import BusinessWorkspaceHeader, {
+    type BusinessWorkspaceMetric
+  } from '@/components/business/business-workspace-header/index.vue'
   import MasterDataDeleteGuard, {
     type MasterDataDeleteGuardOpenOptions
   } from '@/components/business/master-data-delete-guard/index.vue'
@@ -395,7 +396,7 @@
     ]
   })
 
-  const workspaceMetrics = computed<TmsWorkspaceMetric[]>(() => [
+  const workspaceMetrics = computed<BusinessWorkspaceMetric[]>(() => [
     {
       label: '订单总量',
       value: orderStatusTabValues.reduce(
@@ -526,7 +527,7 @@
 
   function openWaybillExpense(row: OrderRecord): void {
     if (!row.id || !canAddWaybillExpense(row)) return
-    void router.push({ name: 'TmsWaybillCost', query: { orderId: row.id } })
+    void router.push({ name: financeRouteNames.waybillCost, query: { orderId: row.id } })
   }
 
   function canAddWaybillExpense(row: OrderRecord): boolean {

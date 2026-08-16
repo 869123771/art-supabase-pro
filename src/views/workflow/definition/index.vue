@@ -1,35 +1,19 @@
 <template>
-  <div class="art-full-height workflow-definition">
-    <section class="workflow-definition__hero art-card-xs">
-      <div class="workflow-definition__hero-copy">
-        <span class="workflow-definition__hero-icon"><ArtSvgIcon icon="ri:git-merge-line" /></span>
-        <div>
-          <span>流程治理</span>
-          <div class="workflow-definition__heading">
-            <h1>审批流程设计</h1>
-            <ElTag v-if="!isPlatformSuper" type="info" effect="plain" round>租户只读</ElTag>
-          </div>
-          <p>用版本化配置复用审批能力，发布中的版本保持不可变，所有流转动作完整留痕。</p>
-        </div>
-      </div>
-      <div class="workflow-definition__principles">
-        <article aria-label="版本治理：草稿、发布、停用边界清晰">
-          <ArtSvgIcon icon="ri:stack-line" />
-          <div><strong>版本治理</strong><small>草稿、发布、停用边界清晰</small></div>
-        </article>
-        <article aria-label="职责分离：角色审批与禁止自审">
-          <ArtSvgIcon icon="ri:shield-user-line" />
-          <div><strong>职责分离</strong><small>角色审批与禁止自审</small></div>
-        </article>
-        <article aria-label="全程审计：实例、任务、动作可追溯">
-          <ArtSvgIcon icon="ri:file-history-line" />
-          <div><strong>全程审计</strong><small>实例、任务、动作可追溯</small></div>
-        </article>
-      </div>
-      <ElButton class="workflow-definition__catalog-button" plain @click="catalogRef?.handleOpen()">
-        <ArtSvgIcon icon="ri:apps-2-line" />业务覆盖
-      </ElButton>
-    </section>
+  <div class="art-full-height workflow-definition business-workspace-page">
+    <BusinessWorkspaceHeader
+      eyebrow="WORKFLOW GOVERNANCE"
+      title="审批流程设计"
+      description="用版本化配置复用审批能力，发布中的版本保持不可变，所有流转动作完整留痕。"
+      icon="ri:git-merge-line"
+      :tags="!isPlatformSuper ? [{ label: '租户只读', type: 'info', effect: 'plain' }] : []"
+      :metrics="workflowPrinciples"
+    >
+      <template #actions>
+        <ElButton plain @click="catalogRef?.handleOpen()">
+          <ArtSvgIcon icon="ri:apps-2-line" />业务覆盖
+        </ElButton>
+      </template>
+    </BusinessWorkspaceHeader>
 
     <ArtTableQuery
       ref="tableQueryRef"
@@ -71,6 +55,9 @@
   } from '@/components/core/forms/art-button-more/index.vue'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
+  import BusinessWorkspaceHeader, {
+    type BusinessWorkspaceMetric
+  } from '@/components/business/business-workspace-header/index.vue'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatWithDayjs } from '@/utils/time'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
@@ -113,6 +100,28 @@
   }
 
   const userStore = useUserStore()
+  const workflowPrinciples: BusinessWorkspaceMetric[] = [
+    {
+      label: '版本治理',
+      value: '全周期',
+      description: '草稿、发布、停用边界清晰',
+      icon: 'ri:stack-line'
+    },
+    {
+      label: '职责分离',
+      value: '可配置',
+      description: '角色审批与禁止自审',
+      icon: 'ri:shield-user-line',
+      tone: 'warning'
+    },
+    {
+      label: '全程审计',
+      value: '可追溯',
+      description: '实例、任务、动作完整留痕',
+      icon: 'ri:file-history-line',
+      tone: 'success'
+    }
+  ]
   const { getDictMap, isPlatformSuper } = storeToRefs(userStore)
   const { confirmAction, confirmDelete } = useArtFeedback()
   const tableQueryRef = ref<ArtTableQueryExpose>()

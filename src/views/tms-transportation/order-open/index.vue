@@ -909,9 +909,6 @@
       cargoItems.forEach((item) => {
         if (item.sourceContractId) item.freight = calculateContractCargoFreight(item)
       })
-      if (cargoItems.some((item) => item.sourceContractId)) {
-        form.data.transportFee = calculateContractTransportFee(cargoItems)
-      }
     },
     { deep: true, immediate: true }
   )

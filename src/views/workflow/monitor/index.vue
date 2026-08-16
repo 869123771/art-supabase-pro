@@ -1,26 +1,28 @@
 <template>
-  <div class="art-full-height workflow-monitor">
-    <section class="workflow-monitor__hero art-card-xs">
-      <div class="workflow-monitor__identity">
-        <span><ArtSvgIcon icon="ri:pulse-line" /></span>
-        <div>
-          <span>APPROVAL OPERATIONS</span>
-          <h1>审批运营监控</h1>
-          <p>统一观察审批运行、节点时效与异常实例，用可追溯的管理动作保障流程连续性。</p>
-        </div>
-      </div>
-      <div class="workflow-monitor__hero-actions">
-        <ElTag :type="isPlatformSuper ? 'primary' : 'info'" effect="plain" round>
-          {{ isPlatformSuper ? '平台全局视角' : '本租户只读视角' }}
-        </ElTag>
+  <div class="art-full-height workflow-monitor business-workspace-page">
+    <BusinessWorkspaceHeader
+      eyebrow="APPROVAL OPERATIONS"
+      title="审批运营监控"
+      description="统一观察审批运行、节点时效与异常实例，用可追溯的管理动作保障流程连续性。"
+      icon="ri:pulse-line"
+      :tags="[
+        {
+          label: isPlatformSuper ? '平台全局视角' : '本租户只读视角',
+          type: isPlatformSuper ? 'primary' : 'info',
+          effect: 'plain'
+        }
+      ]"
+      :metrics="metricCards"
+    >
+      <template #actions>
         <ElButton type="primary" plain @click="analyticsDialogRef?.handleOpen()">
           <ArtSvgIcon icon="ri:bar-chart-box-line" />运营分析
         </ElButton>
         <ElButton :loading="overview.loading" @click="refreshAll">
           <ArtSvgIcon icon="ri:refresh-line" />刷新数据
         </ElButton>
-      </div>
-    </section>
+      </template>
+    </BusinessWorkspaceHeader>
 
     <ElAlert
       v-if="overview.error"
@@ -35,17 +37,6 @@
         <ElButton link type="primary" @click="loadSummary">重新加载</ElButton>
       </template>
     </ElAlert>
-
-    <section v-loading="overview.loading" class="workflow-monitor__metrics">
-      <article v-for="metric in metricCards" :key="metric.key" class="art-card-xs">
-        <span :class="`is-${metric.tone}`"><ArtSvgIcon :icon="metric.icon" /></span>
-        <div>
-          <small>{{ metric.label }}</small>
-          <strong>{{ metric.value }}</strong>
-          <p>{{ metric.hint }}</p>
-        </div>
-      </article>
-    </section>
 
     <section
       v-loading="callbackHealth.loading"
@@ -113,6 +104,9 @@
   import type { ArtTableQueryExpose } from '@/components/core/tables/art-table-query/index.vue'
   import type { ColumnOption } from '@/types'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
+  import BusinessWorkspaceHeader, {
+    type BusinessWorkspaceMetric
+  } from '@/components/business/business-workspace-header/index.vue'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
@@ -344,39 +338,35 @@
       overview.data.rejected30dCount +
       overview.data.cancelled30dCount
   )
-  const metricCards = computed(() => [
+  const metricCards = computed<BusinessWorkspaceMetric[]>(() => [
     {
-      key: 'running',
       label: '运行中实例',
       value: overview.data.runningCount,
-      hint: '当前仍在流转的审批',
+      description: '当前仍在流转的审批',
       icon: 'ri:loader-2-line',
       tone: 'primary'
     },
     {
-      key: 'overdue',
       label: '超时实例',
       value: overview.data.overdueCount,
-      hint: overview.data.overdueCount ? '需要立即关注或干预' : '当前节点时效正常',
+      description: overview.data.overdueCount ? '需要立即关注或干预' : '当前节点时效正常',
       icon: 'ri:alarm-warning-line',
       tone: overview.data.overdueCount ? 'danger' : 'success'
     },
     {
-      key: 'completed',
       label: '近30日结束',
       value: completed30dCount.value,
-      hint: `通过 ${overview.data.approved30dCount} · 驳回 ${overview.data.rejected30dCount} · 终止 ${overview.data.cancelled30dCount}`,
+      description: `通过 ${overview.data.approved30dCount} · 驳回 ${overview.data.rejected30dCount} · 终止 ${overview.data.cancelled30dCount}`,
       icon: 'ri:checkbox-circle-line',
       tone: 'success'
     },
     {
-      key: 'duration',
       label: '平均流转耗时',
       value:
         overview.data.averageDurationHours > 0
           ? formatDuration(overview.data.averageDurationHours)
           : '--',
-      hint: '基于已结束流程计算',
+      description: '基于已结束流程计算',
       icon: 'ri:timer-flash-line',
       tone: 'info'
     }

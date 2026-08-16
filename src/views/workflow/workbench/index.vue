@@ -1,34 +1,21 @@
 <template>
-  <div class="art-full-height workflow-workbench">
-    <section class="workflow-workbench__hero art-card-xs">
-      <div class="workflow-workbench__welcome">
-        <span><ArtSvgIcon icon="ri:verified-badge-line" /></span>
-        <div>
-          <span>APPROVAL WORKSPACE</span>
-          <h1>审批工作台</h1>
-          <p>统一处理跨业务审批任务，跟踪我发起的流程，并通过完整轨迹快速还原每次决策。</p>
-        </div>
-      </div>
-      <div class="workflow-workbench__hero-actions">
+  <div class="art-full-height workflow-workbench business-workspace-page">
+    <BusinessWorkspaceHeader
+      eyebrow="APPROVAL WORKSPACE"
+      title="审批工作台"
+      description="统一处理跨业务审批任务，跟踪我发起的流程，并通过完整轨迹快速还原每次决策。"
+      icon="ri:verified-badge-line"
+      :metrics="metricCards"
+    >
+      <template #actions>
         <ElButton type="primary" plain @click="openDelegation">
           <ArtSvgIcon icon="ri:user-shared-line" />离岗委托
         </ElButton>
         <ElButton :loading="summary.loading" @click="refreshCurrent">
           <ArtSvgIcon icon="ri:refresh-line" />刷新数据
         </ElButton>
-      </div>
-    </section>
-
-    <section v-loading="summary.loading" class="workflow-workbench__metrics">
-      <article v-for="metric in metricCards" :key="metric.key" class="art-card-xs">
-        <span :class="`is-${metric.tone}`"><ArtSvgIcon :icon="metric.icon" /></span>
-        <div
-          ><small>{{ metric.label }}</small
-          ><strong>{{ metric.value }}</strong
-          ><p>{{ metric.hint }}</p></div
-        >
-      </article>
-    </section>
+      </template>
+    </BusinessWorkspaceHeader>
 
     <section class="workflow-workbench__workspace art-card-xs">
       <header class="workflow-workbench__workspace-header">
@@ -138,6 +125,9 @@
   import type { ArtTableQueryExpose } from '@/components/core/tables/art-table-query/index.vue'
   import type { ColumnOption } from '@/types'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
+  import BusinessWorkspaceHeader, {
+    type BusinessWorkspaceMetric
+  } from '@/components/business/business-workspace-header/index.vue'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
@@ -605,36 +595,32 @@
     ]
   })
 
-  const metricCards = computed(() => [
+  const metricCards = computed<BusinessWorkspaceMetric[]>(() => [
     {
-      key: 'pending',
       label: '待我审批',
       value: summary.data.pendingCount,
-      hint: '需要及时做出决策',
+      description: '需要及时做出决策',
       icon: 'ri:inbox-archive-line',
       tone: 'primary'
     },
     {
-      key: 'handled',
       label: '我已处理',
       value: summary.data.handledCount,
-      hint: '历史审批任务累计',
+      description: '历史审批任务累计',
       icon: 'ri:checkbox-circle-line',
       tone: 'success'
     },
     {
-      key: 'running',
       label: '进行中的申请',
       value: summary.data.initiatedRunningCount,
-      hint: '我发起且尚未结束',
+      description: '我发起且尚未结束',
       icon: 'ri:loader-2-line',
       tone: 'warning'
     },
     {
-      key: 'finished',
       label: '已结束的申请',
       value: summary.data.initiatedCompletedCount,
-      hint: '审批、驳回或撤回',
+      description: '审批、驳回或撤回',
       icon: 'ri:archive-drawer-line',
       tone: 'info'
     }

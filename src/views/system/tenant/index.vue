@@ -1,56 +1,17 @@
 <template>
-  <div class="tenant-page art-full-height">
-    <section class="tenant-page__overview art-card-xs">
-      <header class="tenant-page__hero">
-        <div class="tenant-page__identity">
-          <div class="tenant-page__brand" aria-hidden="true">
-            <ArtSvgIcon icon="ri:building-4-line" />
-          </div>
-          <div>
-            <span>TENANT GOVERNANCE</span>
-            <h1>租户管理</h1>
-            <p>统一维护组织身份、访问状态与数据隔离边界，系统租户受到额外保护。</p>
-          </div>
-        </div>
-        <div class="tenant-page__hero-status">
-          <ElTag type="success" effect="light" round>数据隔离已启用</ElTag>
-          <ElTag type="primary" effect="plain" round>权限按角色授权</ElTag>
-        </div>
-      </header>
-
-      <div class="tenant-page__metrics" aria-label="租户治理概览">
-        <article>
-          <div class="tenant-page__metric-icon is-primary">
-            <ArtSvgIcon icon="ri:group-2-line" />
-          </div>
-          <div>
-            <span>当前结果</span>
-            <strong>{{ overview.total }}</strong>
-            <small>随筛选条件实时更新</small>
-          </div>
-        </article>
-        <article>
-          <div class="tenant-page__metric-icon is-success">
-            <ArtSvgIcon icon="ri:checkbox-circle-line" />
-          </div>
-          <div>
-            <span>本页启用</span>
-            <strong>{{ enabledTenantCount }}</strong>
-            <small>当前页可正常访问</small>
-          </div>
-        </article>
-        <article>
-          <div class="tenant-page__metric-icon is-warning">
-            <ArtSvgIcon icon="ri:shield-keyhole-line" />
-          </div>
-          <div>
-            <span>受保护身份</span>
-            <strong>{{ systemTenantCount }}</strong>
-            <small>平台与注册租户不可停用</small>
-          </div>
-        </article>
-      </div>
-    </section>
+  <div class="tenant-page business-workspace-page art-full-height">
+    <BusinessWorkspaceHeader
+      class="tenant-page__overview"
+      eyebrow="TENANT GOVERNANCE"
+      title="租户管理"
+      description="统一维护组织身份、访问状态与数据隔离边界，系统租户受到额外保护。"
+      icon="ri:building-4-line"
+      :tags="[
+        { label: '数据隔离已启用', type: 'success', effect: 'light' },
+        { label: '权限按角色授权', type: 'primary', effect: 'plain' }
+      ]"
+      :metrics="workspaceMetrics"
+    />
 
     <ArtTableQuery
       ref="tableQueryRef"
@@ -84,7 +45,9 @@
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import ArtButtonMore from '@/components/core/forms/art-button-more/index.vue'
   import type { ButtonMoreItem } from '@/components/core/forms/art-button-more/index.vue'
-  import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
+  import BusinessWorkspaceHeader, {
+    type BusinessWorkspaceMetric
+  } from '@/components/business/business-workspace-header/index.vue'
   import { deactivateTenant, deactivateTenantBatch, fetchGetTenantList } from '@/api/system-manage'
   import TenantDialog from './modules/tenant-dialog.vue'
   import { useUserStore } from '@/store/modules/user'
@@ -122,6 +85,28 @@
   const enabledTenantCount = computed(
     () => overview.rows.filter((row) => String(row.status) === '1').length
   )
+  const workspaceMetrics = computed<BusinessWorkspaceMetric[]>(() => [
+    {
+      label: '当前结果',
+      value: overview.total,
+      description: '随筛选条件实时更新',
+      icon: 'ri:group-2-line'
+    },
+    {
+      label: '本页启用',
+      value: enabledTenantCount.value,
+      description: '当前页可正常访问',
+      icon: 'ri:checkbox-circle-line',
+      tone: 'success'
+    },
+    {
+      label: '受保护身份',
+      value: systemTenantCount.value,
+      description: '平台与注册租户不可停用',
+      icon: 'ri:shield-keyhole-line',
+      tone: 'warning'
+    }
+  ])
 
   const searchQuery = ref<SearchParams>({
     tenantCode: '',

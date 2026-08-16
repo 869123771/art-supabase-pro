@@ -1,62 +1,43 @@
 <template>
-  <div class="ai-configuration">
-    <section class="ai-configuration__control-plane art-card-xs">
-      <header class="ai-configuration__hero">
-        <div class="ai-configuration__hero-main">
-          <div class="ai-configuration__brand">
-            <ArtSvgIcon icon="ri:equalizer-2-line" />
-          </div>
-          <div>
-            <span>AI CONTROL PLANE</span>
-            <h1>AI 配置中心</h1>
-            <p>集中管理能力开关、模型路由、生成参数、超时策略与调用配额，修改后新请求即时生效。</p>
-          </div>
-        </div>
-        <div class="ai-configuration__hero-actions">
-          <ElTag :type="canManage ? 'success' : 'info'" round effect="light">
-            {{ canManage ? '可维护' : '只读模式' }}
-          </ElTag>
-          <ElTooltip content="刷新配置" placement="bottom">
-            <ArtIconButton
-              icon="ri:refresh-line"
-              circle
-              :class="{ 'ai-configuration__refreshing': overview.loading }"
-              @click="refreshAll"
-            />
-          </ElTooltip>
-        </div>
-      </header>
+  <div class="ai-configuration business-workspace-page">
+    <BusinessWorkspaceHeader
+      eyebrow="AI CONTROL PLANE"
+      title="AI 配置中心"
+      description="集中管理能力开关、模型路由、生成参数、超时策略与调用配额，修改后新请求即时生效。"
+      icon="ri:equalizer-2-line"
+      :tags="[
+        {
+          label: canManage ? '可维护' : '只读模式',
+          type: canManage ? 'success' : 'info',
+          effect: 'light'
+        }
+      ]"
+      :metrics="metricCards"
+    >
+      <template #actions>
+        <ElTooltip content="刷新配置" placement="bottom">
+          <ArtIconButton
+            icon="ri:refresh-line"
+            circle
+            :class="{ 'ai-configuration__refreshing': overview.loading }"
+            @click="refreshAll"
+          />
+        </ElTooltip>
+      </template>
+    </BusinessWorkspaceHeader>
 
-      <div class="ai-configuration__control-body">
-        <section class="ai-configuration__metrics" aria-label="AI 配置状态">
-          <article v-for="item in metricCards" :key="item.label">
-            <div :class="['ai-configuration__metric-icon', `is-${item.tone}`]">
-              <ArtSvgIcon :icon="item.icon" />
-            </div>
-            <div>
-              <span>{{ item.label }}</span>
-              <strong>{{ item.value }}</strong>
-              <small>{{ item.hint }}</small>
-            </div>
-          </article>
-        </section>
-
+    <section class="ai-configuration__governance art-card-xs">
+      <div>
+        <ArtSvgIcon icon="ri:shield-keyhole-line" />
         <div>
-          <section class="ai-configuration__governance">
-            <div>
-              <ArtSvgIcon icon="ri:shield-keyhole-line" />
-              <div>
-                <strong>密钥与策略分离</strong>
-                <span
-                  >数据库只保存非敏感运行参数；API Key 与服务地址由 Supabase Edge Function Secrets
-                  托管。</span
-                >
-              </div>
-            </div>
-            <ElTag type="warning" effect="plain" round>不存储任何 API Key</ElTag>
-          </section>
+          <strong>密钥与策略分离</strong>
+          <span
+            >数据库只保存非敏感运行参数；API Key 与服务地址由 Supabase Edge Function Secrets
+            托管。</span
+          >
         </div>
       </div>
+      <ElTag type="warning" effect="plain" round>不存储任何 API Key</ElTag>
     </section>
 
     <ArtTableQuery
@@ -88,6 +69,9 @@
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
+  import BusinessWorkspaceHeader, {
+    type BusinessWorkspaceMetric
+  } from '@/components/business/business-workspace-header/index.vue'
   import type { ColumnOption } from '@/types'
   import { useUserStore } from '@/store/modules/user'
   import {
@@ -106,14 +90,6 @@
   interface TableGroup {
     searchQuery: Partial<AiFeatureConfigSearchParams>
     searchItems: ComputedRef<SearchFormItem[]>
-  }
-
-  interface MetricCard {
-    label: string
-    value: string
-    hint: string
-    icon: string
-    tone: 'primary' | 'success' | 'warning'
   }
 
   const userStore = useUserStore()
@@ -166,7 +142,7 @@
     ])
   })
 
-  const metricCards = computed<MetricCard[]>(() => {
+  const metricCards = computed<BusinessWorkspaceMetric[]>(() => {
     const enabled = overview.rows.filter((item) => item.enabled).length
     const averageTimeout = overview.rows.length
       ? Math.round(
@@ -184,21 +160,21 @@
       {
         label: '能力场景',
         value: `${overview.rows.length} 项`,
-        hint: inherited ? `${inherited} 项继承平台默认配置` : '统一纳入运行策略管理',
+        description: inherited ? `${inherited} 项继承平台默认配置` : '统一纳入运行策略管理',
         icon: 'ri:apps-2-line',
         tone: 'primary'
       },
       {
         label: '已启用能力',
         value: `${enabled} 项`,
-        hint: `${Math.max(overview.rows.length - enabled, 0)} 项当前停用`,
+        description: `${Math.max(overview.rows.length - enabled, 0)} 项当前停用`,
         icon: 'ri:checkbox-circle-line',
         tone: 'success'
       },
       {
         label: '平均超时',
         value: `${averageTimeout} 秒`,
-        hint: `租户总日配额 ${dailyQuota.toLocaleString('zh-CN')} 次`,
+        description: `租户总日配额 ${dailyQuota.toLocaleString('zh-CN')} 次`,
         icon: 'ri:timer-flash-line',
         tone: 'warning'
       }

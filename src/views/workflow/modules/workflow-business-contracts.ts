@@ -1,3 +1,9 @@
+import {
+  financePaths,
+  getExpenseReimbursementDetailPath,
+  getWaybillCostDetailPath
+} from '@/router/business-paths'
+
 export interface WorkflowBusinessContract {
   businessType: string
   label: string
@@ -31,8 +37,7 @@ const contracts: Record<string, WorkflowBusinessContract> = {
       { key: 'waybillNo', label: '运单号', valueType: 'text' },
       { key: 'occurredOn', label: '发生日期', valueType: 'date' }
     ],
-    routePath: (businessId) =>
-      `/tms-transportation/finance-center/waybill-cost/detail/${businessId}`
+    routePath: getWaybillCostDetailPath
   },
   tms_expense_reimbursement: {
     businessType: 'tms_expense_reimbursement',
@@ -48,7 +53,7 @@ const contracts: Record<string, WorkflowBusinessContract> = {
       { key: 'paymentMethod', label: '付款方式', valueType: 'text' },
       { key: 'plannedPaymentDate', label: '计划付款日期', valueType: 'date' }
     ],
-    routePath: () => '/tms-transportation/finance-center/expense-reimbursement'
+    routePath: getExpenseReimbursementDetailPath
   },
   tms_invoice: {
     businessType: 'tms_invoice',
@@ -64,7 +69,7 @@ const contracts: Record<string, WorkflowBusinessContract> = {
       { key: 'taxRate', label: '税率', valueType: 'number' },
       { key: 'counterpartyName', label: '交易对方', valueType: 'text' }
     ],
-    routePath: () => '/tms-transportation/finance-center/invoice-management'
+    routePath: () => financePaths.invoiceManagement
   },
   tms_carrier_payment_application: {
     businessType: 'tms_carrier_payment_application',
@@ -80,7 +85,7 @@ const contracts: Record<string, WorkflowBusinessContract> = {
       { key: 'plannedPaymentDate', label: '计划付款日期', valueType: 'date' },
       { key: 'statementCount', label: '对账单数量', valueType: 'number' }
     ],
-    routePath: () => '/tms-transportation/finance-center/payment-application'
+    routePath: () => financePaths.paymentApplication
   },
   tms_carrier_statement: {
     businessType: 'tms_carrier_statement',
@@ -96,7 +101,7 @@ const contracts: Record<string, WorkflowBusinessContract> = {
       { key: 'carrierName', label: '承运商名称', valueType: 'text' },
       { key: 'settledAmount', label: '已结算金额', valueType: 'number' }
     ],
-    routePath: () => '/tms-transportation/finance-center/carrier-settlement'
+    routePath: () => financePaths.carrierSettlement
   },
   tms_customer_statement: {
     businessType: 'tms_customer_statement',
@@ -112,7 +117,7 @@ const contracts: Record<string, WorkflowBusinessContract> = {
       { key: 'customerName', label: '客户名称', valueType: 'text' },
       { key: 'settledAmount', label: '已结算金额', valueType: 'number' }
     ],
-    routePath: () => '/tms-transportation/finance-center/customer-settlement'
+    routePath: () => financePaths.customerSettlement
   },
   tms_contract: {
     businessType: 'tms_contract',

@@ -1,6 +1,6 @@
 <template>
-  <div class="tms-carrier tms-workspace-page art-full-height">
-    <TmsWorkspaceHeader
+  <div class="tms-carrier business-workspace-page art-full-height">
+    <BusinessWorkspaceHeader
       eyebrow="CARRIER NETWORK"
       title="承运商资料"
       description="集中管理承运主体、合作类型、资质与履约关系，让调度选择和经营评估更高效。"
@@ -60,7 +60,7 @@
   import MasterDataDeleteGuard, {
     type MasterDataDeleteGuardOpenOptions
   } from '@/components/business/master-data-delete-guard/index.vue'
-  import TmsWorkspaceHeader from '@/views/tms-transportation/modules/tms-workspace-header.vue'
+  import BusinessWorkspaceHeader from '@/components/business/business-workspace-header/index.vue'
 
   defineOptions({ name: 'TmsCarrier' })
 

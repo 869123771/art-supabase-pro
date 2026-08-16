@@ -1,12 +1,12 @@
 <template>
-  <div class="tms-contract tms-workspace-page art-full-height">
-    <CustomerDeleteProcessingNotice
+  <div class="tms-contract business-workspace-page art-full-height">
+    <MasterDeleteProcessingNotice
       v-if="deleteContext.active"
       :customer-id="deleteContext.customerId"
       :customer-name="deleteContext.customerName"
       action-hint="已自动定位关联合同；请先按业务规则终止或保留合同。"
     />
-    <TmsWorkspaceHeader
+    <BusinessWorkspaceHeader
       eyebrow="CONTRACT GOVERNANCE"
       title="运输合同"
       description="集中管理客户/货主与承运商合同、计费方式、生效周期及审核状态，确保运输合作有据可循。"
@@ -65,9 +65,9 @@
     importContracts
   } from '@/api/tms'
   import ContractDialog from './modules/contract-dialog.vue'
-  import TmsWorkspaceHeader from '@/views/tms-transportation/modules/tms-workspace-header.vue'
-  import CustomerDeleteProcessingNotice from '@/views/tms-transportation/modules/customer-delete-processing-notice.vue'
-  import { useCustomerDeleteProcessingContext } from '@/views/tms-transportation/modules/use-customer-delete-processing'
+  import BusinessWorkspaceHeader from '@/components/business/business-workspace-header/index.vue'
+  import MasterDeleteProcessingNotice from '@/components/business/master-delete-processing-notice/index.vue'
+  import { useMasterDataDeleteProcessingContext } from '@/hooks/core/useMasterDataDeleteProcessing'
   import { usesCarrierParty } from './modules/contract-business-type'
 
   defineOptions({ name: 'TmsContract' })
@@ -93,7 +93,7 @@
 
   const router = useRouter()
   const route = useRoute()
-  const deleteContext = useCustomerDeleteProcessingContext()
+  const deleteContext = useMasterDataDeleteProcessingContext()
   const { getDictMap } = storeToRefs(useUserStore())
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<ContractDialogExpose>()

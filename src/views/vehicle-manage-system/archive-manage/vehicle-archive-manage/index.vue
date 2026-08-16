@@ -1,6 +1,6 @@
 <template>
   <div class="vehicle-archive-manage art-full-height">
-    <VehicleWorkspaceHeader
+    <BusinessWorkspaceHeader
       eyebrow="FLEET ASSET CONTROL"
       title="车辆档案管理"
       description="统一完成车辆档案录入、维护与审批状态跟踪；审批处理集中在审批工作台。"
@@ -63,9 +63,9 @@
   import type { WorkflowBusinessHistoryDrawerExpose } from '@/components/business/workflow-business-history/types'
   import { fetchCarrierDetail, fetchCarrierOptions } from '@/api/tms'
   import { useUserStore } from '@/store/modules/user'
-  import VehicleWorkspaceHeader, {
-    type VehicleWorkspaceMetric
-  } from '@/views/vehicle-manage-system/modules/vehicle-workspace-header.vue'
+  import BusinessWorkspaceHeader, {
+    type BusinessWorkspaceMetric
+  } from '@/components/business/business-workspace-header/index.vue'
 
   defineOptions({ name: 'VehicleArchiveManage' })
 
@@ -120,7 +120,7 @@
         (row) => !row.companyName?.trim() || !row.manufacturer?.trim() || !row.vin?.trim()
       ).length
   )
-  const workspaceMetrics = computed<VehicleWorkspaceMetric[]>(() => [
+  const workspaceMetrics = computed<BusinessWorkspaceMetric[]>(() => [
     {
       label: '当前结果',
       value: overview.total,

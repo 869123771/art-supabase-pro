@@ -1,12 +1,12 @@
 <template>
-  <div class="tms-workspace-page art-full-height waybill-list">
-    <CustomerDeleteProcessingNotice
+  <div class="business-workspace-page art-full-height waybill-list">
+    <MasterDeleteProcessingNotice
       v-if="deleteContext.active"
       :customer-id="deleteContext.customerId"
       :customer-name="deleteContext.customerName"
       action-hint="已按运单号精确定位；运单属于履约历史，请保留记录并返回停用主数据。"
     />
-    <TmsWorkspaceHeader
+    <BusinessWorkspaceHeader
       eyebrow="WAYBILL EXECUTION"
       title="运输运单"
       description="跟踪装货、运输、卸货与完成状态，统一掌握车辆、司机、线路和执行进度。"
@@ -64,9 +64,9 @@
   import { fetchWaybillStatusCounts } from '@/api/tms'
   import { useUserStore } from '@/store/modules/user'
   import { useAuth } from '@/hooks/core/useAuth'
-  import TmsWorkspaceHeader, {
-    type TmsWorkspaceMetric
-  } from '@/views/tms-transportation/modules/tms-workspace-header.vue'
+  import BusinessWorkspaceHeader, {
+    type BusinessWorkspaceMetric
+  } from '@/components/business/business-workspace-header/index.vue'
   import {
     WAYBILL_STATUS_ALL,
     createInitialWaybillSearch,
@@ -83,8 +83,8 @@
     type WaybillRecord,
     type WaybillSearchParams
   } from './modules/waybill-shared'
-  import CustomerDeleteProcessingNotice from '@/views/tms-transportation/modules/customer-delete-processing-notice.vue'
-  import { useCustomerDeleteProcessingContext } from '@/views/tms-transportation/modules/use-customer-delete-processing'
+  import MasterDeleteProcessingNotice from '@/components/business/master-delete-processing-notice/index.vue'
+  import { useMasterDataDeleteProcessingContext } from '@/hooks/core/useMasterDataDeleteProcessing'
   import CargoOperationDialog from './modules/cargo-operation-dialog.vue'
   import ExecutionOperationDialog from './modules/execution-operation-dialog.vue'
 
@@ -107,7 +107,7 @@
 
   const router = useRouter()
   const route = useRoute()
-  const deleteContext = useCustomerDeleteProcessingContext()
+  const deleteContext = useMasterDataDeleteProcessingContext()
   const { getDictMap } = storeToRefs(useUserStore())
   const { hasAuth } = useAuth()
   const tableQueryRef = ref<ArtTableQueryExpose>()
@@ -177,7 +177,7 @@
       })
   })
 
-  const workspaceMetrics = computed<TmsWorkspaceMetric[]>(() => [
+  const workspaceMetrics = computed<BusinessWorkspaceMetric[]>(() => [
     {
       label: '执行运单',
       value: table.statusTotal,

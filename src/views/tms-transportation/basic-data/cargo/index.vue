@@ -1,6 +1,6 @@
 <template>
-  <div class="tms-workspace-page art-full-height">
-    <TmsWorkspaceHeader
+  <div class="business-workspace-page art-full-height">
+    <BusinessWorkspaceHeader
       eyebrow="CARGO CATALOG"
       title="货物资料"
       description="沉淀货物名称、计量单位、体积重量与启用状态，提升开单录入和计价准确性。"
@@ -56,7 +56,7 @@
   import MasterDataDeleteGuard, {
     type MasterDataDeleteGuardOpenOptions
   } from '@/components/business/master-data-delete-guard/index.vue'
-  import TmsWorkspaceHeader from '@/views/tms-transportation/modules/tms-workspace-header.vue'
+  import BusinessWorkspaceHeader from '@/components/business/business-workspace-header/index.vue'
 
   defineOptions({ name: 'TmsCargo' })
 

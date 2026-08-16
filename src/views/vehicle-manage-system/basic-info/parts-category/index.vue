@@ -1,6 +1,6 @@
 <template>
   <div class="parts-category-page art-full-height">
-    <VehicleWorkspaceHeader
+    <BusinessWorkspaceHeader
       eyebrow="PARTS TAXONOMY"
       title="零部件类别"
       description="以清晰的层级结构治理零部件分类、编码与启用状态，提升维保数据的一致性。"
@@ -79,9 +79,9 @@
   import { useUserStore } from '@/store/modules/user'
   import PartsCategoryTree from './modules/parts-category-tree.vue'
   import PartsCategoryDialog from './modules/parts-category-dialog.vue'
-  import VehicleWorkspaceHeader, {
-    type VehicleWorkspaceMetric
-  } from '@/views/vehicle-manage-system/modules/vehicle-workspace-header.vue'
+  import BusinessWorkspaceHeader, {
+    type BusinessWorkspaceMetric
+  } from '@/components/business/business-workspace-header/index.vue'
 
   defineOptions({ name: 'PartsCategory' })
 
@@ -106,7 +106,7 @@
   const currentCategory = shallowRef<PartsCategory>()
   const { getDictMap } = storeToRefs(useUserStore())
   const overview = reactive<{ total: number; rows: PartsCategory[] }>({ total: 0, rows: [] })
-  const workspaceMetrics = computed<VehicleWorkspaceMetric[]>(() => [
+  const workspaceMetrics = computed<BusinessWorkspaceMetric[]>(() => [
     {
       label: '当前层级结果',
       value: overview.total,

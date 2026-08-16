@@ -18,7 +18,7 @@ export const recognitionCapabilities: RecognitionCapability[] = [
     icon: 'ri:bill-line',
     accent: 'blue',
     businessLabel: '发票管理',
-    businessRoute: '/tms-transportation/finance-center/invoice-management'
+    businessRoute: financePaths.invoiceManagement
   },
   {
     feature: 'waybill_receipt_ocr',
@@ -36,7 +36,7 @@ export const recognitionCapabilities: RecognitionCapability[] = [
     icon: 'ri:bank-card-line',
     accent: 'amber',
     businessLabel: '收付款管理',
-    businessRoute: '/tms-transportation/finance-center/cash-transaction'
+    businessRoute: financePaths.cashTransaction
   },
   {
     feature: 'waybill_expense_ocr',
@@ -45,7 +45,7 @@ export const recognitionCapabilities: RecognitionCapability[] = [
     icon: 'ri:gas-station-line',
     accent: 'violet',
     businessLabel: '运单费用',
-    businessRoute: '/tms-transportation/finance-center/waybill-cost'
+    businessRoute: financePaths.waybillCost
   }
 ]
 
@@ -160,3 +160,4 @@ export function getRecognitionRiskLevel(
   if (score < 85 || artifact.warnings?.length) return 'medium'
   return 'normal'
 }
+import { financePaths } from '@/router/business-paths'

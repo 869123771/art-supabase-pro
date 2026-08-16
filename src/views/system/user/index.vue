@@ -1,59 +1,20 @@
 <template>
-  <div class="user-page art-full-height">
+  <div class="user-page business-workspace-page art-full-height">
     <MasterDeleteProcessingNotice
       action-hint="当前用户已自动定位；可调整组织归属或角色授权后返回。"
     />
-    <section class="user-page__overview art-card-xs">
-      <header class="user-page__hero">
-        <div class="user-page__identity">
-          <div class="user-page__brand" aria-hidden="true">
-            <ArtSvgIcon icon="ri:user-settings-line" />
-          </div>
-          <div>
-            <span>ACCOUNT GOVERNANCE</span>
-            <h1>用户管理</h1>
-            <p>统一维护登录身份、联系方式、租户归属与角色授权，及时识别异常或停用账号。</p>
-          </div>
-        </div>
-        <div class="user-page__hero-status">
-          <ElTag type="success" effect="light" round>账号按租户隔离</ElTag>
-          <ElTag type="primary" effect="plain" round>角色独立授权</ElTag>
-        </div>
-      </header>
-
-      <div class="user-page__metrics" aria-label="账号治理概览">
-        <article>
-          <div class="user-page__metric-icon is-primary">
-            <ArtSvgIcon icon="ri:group-line" />
-          </div>
-          <div>
-            <span>当前结果</span>
-            <strong>{{ overview.total }}</strong>
-            <small>随筛选条件实时更新</small>
-          </div>
-        </article>
-        <article>
-          <div class="user-page__metric-icon is-success">
-            <ArtSvgIcon icon="ri:user-follow-line" />
-          </div>
-          <div>
-            <span>本页启用</span>
-            <strong>{{ enabledUserCount }}</strong>
-            <small>当前页可正常登录</small>
-          </div>
-        </article>
-        <article>
-          <div class="user-page__metric-icon is-info">
-            <ArtSvgIcon icon="ri:contacts-book-2-line" />
-          </div>
-          <div>
-            <span>联系信息完整</span>
-            <strong>{{ completeContactCount }}</strong>
-            <small>本页已填写手机和邮箱</small>
-          </div>
-        </article>
-      </div>
-    </section>
+    <BusinessWorkspaceHeader
+      class="user-page__overview"
+      eyebrow="ACCOUNT GOVERNANCE"
+      title="用户管理"
+      description="统一维护登录身份、联系方式、租户归属与角色授权，及时识别异常或停用账号。"
+      icon="ri:user-settings-line"
+      :tags="[
+        { label: '账号按租户隔离', type: 'success', effect: 'light' },
+        { label: '角色独立授权', type: 'primary', effect: 'plain' }
+      ]"
+      :metrics="workspaceMetrics"
+    />
 
     <div class="user-page__workspace">
       <aside v-if="isDesktopOrganizationLayout" class="user-page__organization-panel">
@@ -153,6 +114,9 @@
   import UserRoleDialog from '@views/system/user/modules/user-role-dialog.vue'
   import { useSystemParam } from '@/hooks'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
+  import BusinessWorkspaceHeader, {
+    type BusinessWorkspaceMetric
+  } from '@/components/business/business-workspace-header/index.vue'
   import TreeUtils from '@/utils/tree'
   import MasterDeleteProcessingNotice from '@/components/business/master-delete-processing-notice/index.vue'
 
@@ -215,6 +179,28 @@
         (row) => String(row.userPhone ?? '').trim() && String(row.userEmail ?? '').trim()
       ).length
   )
+  const workspaceMetrics = computed<BusinessWorkspaceMetric[]>(() => [
+    {
+      label: '当前结果',
+      value: overview.total,
+      description: '随筛选条件实时更新',
+      icon: 'ri:group-line'
+    },
+    {
+      label: '本页启用',
+      value: enabledUserCount.value,
+      description: '当前页可正常登录',
+      icon: 'ri:user-follow-line',
+      tone: 'success'
+    },
+    {
+      label: '联系信息完整',
+      value: completeContactCount.value,
+      description: '本页已填写手机和邮箱',
+      icon: 'ri:contacts-book-2-line',
+      tone: 'info'
+    }
+  ])
   const selectedOrganization = computed(() =>
     selectedOrganizationKey.value === ALL_ORGANIZATIONS_KEY ||
     selectedOrganizationKey.value === UNASSIGNED_ORGANIZATION_KEY

@@ -1,5 +1,5 @@
 import { toRaw } from 'vue'
-import { cloneDeep } from 'lodash-es'
+import { cloneDeep, set, unset } from 'lodash-es'
 
 // ArtForm accepts business-owned models, including nested arrays and arbitrary records.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -16,6 +16,12 @@ export interface SanitizeOutputOptions {
 
 export function cloneModelValue(value: FormRecord | undefined): FormRecord {
   return value ? cloneDeep(toRaw(value)) : {}
+}
+
+export function updateFormFieldValue(model: FormRecord, path: string, value: unknown): FormRecord {
+  if (value === undefined) unset(model, path)
+  else set(model, path, value)
+  return model
 }
 
 function isRichTextEmpty(value: string): boolean {

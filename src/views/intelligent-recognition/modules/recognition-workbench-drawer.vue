@@ -95,8 +95,9 @@
 <script setup lang="ts">
   import ArtDrawer from '@/components/core/drawers/art-drawer/index.vue'
   import type { ArtDrawerExpose } from '@/components/core/drawers/art-drawer/types'
-  import InvoiceOcrPanel from '@/views/tms-transportation/finance-center/invoice-management/modules/invoice-ocr-panel.vue'
-  import CashVoucherOcrPanel from '@/views/tms-transportation/finance-center/cash-transaction/modules/cash-voucher-ocr-panel.vue'
+  import { financePaths } from '@/router/business-paths'
+  import InvoiceOcrPanel from '@/views/finance/invoice-management/modules/invoice-ocr-panel.vue'
+  import CashVoucherOcrPanel from '@/views/finance/cash-transaction/modules/cash-voucher-ocr-panel.vue'
   import { recognitionCapabilities, type RecognitionFeature } from './recognition-config'
 
   defineOptions({ name: 'RecognitionWorkbenchDrawer' })
@@ -105,7 +106,7 @@
     reset: () => void
   }
   type AnalyzeResult =
-    Api.Tms.Finance.InvoiceOcrAnalyzeResponse | Api.Tms.Finance.CashVoucherOcrAnalyzeResponse
+    Api.Finance.InvoiceOcrAnalyzeResponse | Api.Finance.CashVoucherOcrAnalyzeResponse
 
   const emit = defineEmits<{ created: [artifactId: string] }>()
   const router = useRouter()
@@ -115,8 +116,8 @@
   const feature = ref<RecognitionFeature>('invoice_ocr')
   const invoiceImages = ref<string[]>([])
   const cashImages = ref<string[]>([])
-  const invoiceDirection = ref<Api.Tms.Finance.InvoiceDirection>('output')
-  const cashDirection = ref<Api.Tms.Finance.CashDirection>('receipt')
+  const invoiceDirection = ref<Api.Finance.InvoiceDirection>('output')
+  const cashDirection = ref<Api.Finance.CashDirection>('receipt')
   const invoiceDirections = [
     { label: '销项发票', value: 'output' },
     { label: '进项发票', value: 'input' }
@@ -142,12 +143,12 @@
 
   function goPaymentApplication(): void {
     void drawerRef.value?.handleClose()
-    void router.push('/tms-transportation/finance-center/payment-application')
+    void router.push(financePaths.paymentApplication)
   }
 
   function goWaybillExpense(): void {
     void drawerRef.value?.handleClose()
-    void router.push('/tms-transportation/finance-center/waybill-cost')
+    void router.push(financePaths.waybillCost)
   }
 
   async function handleOpen(initialFeature: RecognitionFeature = 'invoice_ocr'): Promise<void> {

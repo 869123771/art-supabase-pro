@@ -1,18 +1,20 @@
 <template>
-  <div class="ai-prompt">
-    <section class="ai-prompt__hero art-card-xs">
-      <div class="ai-prompt__hero-main">
-        <div class="ai-prompt__brand"><ArtSvgIcon icon="ri:quill-pen-line" /></div>
-        <div>
-          <span>PROMPT GOVERNANCE</span>
-          <h1>AI Prompt 中心</h1>
-          <p>集中管理系统指令的草稿、发布与回滚，让每次调整可审计、可验证、可恢复。</p>
-        </div>
-      </div>
-      <div class="ai-prompt__hero-actions">
-        <ElTag :type="canManage ? 'success' : 'info'" effect="light" round>
-          {{ canManage ? '可维护' : '只读模式' }}
-        </ElTag>
+  <div class="ai-prompt business-workspace-page">
+    <BusinessWorkspaceHeader
+      eyebrow="PROMPT GOVERNANCE"
+      title="AI Prompt 中心"
+      description="集中管理系统指令的草稿、发布与回滚，让每次调整可审计、可验证、可恢复。"
+      icon="ri:quill-pen-line"
+      :tags="[
+        {
+          label: canManage ? '可维护' : '只读模式',
+          type: canManage ? 'success' : 'info',
+          effect: 'light'
+        }
+      ]"
+      :metrics="metricCards"
+    >
+      <template #actions>
         <ElTooltip content="刷新 Prompt" placement="bottom">
           <ArtIconButton
             icon="ri:refresh-line"
@@ -21,21 +23,8 @@
             @click="refreshAll"
           />
         </ElTooltip>
-      </div>
-    </section>
-
-    <section class="ai-prompt__metrics">
-      <article v-for="item in metricCards" :key="item.label" class="art-card-xs">
-        <div :class="['ai-prompt__metric-icon', `is-${item.tone}`]">
-          <ArtSvgIcon :icon="item.icon" />
-        </div>
-        <div>
-          <span>{{ item.label }}</span>
-          <strong>{{ item.value }}</strong>
-          <small>{{ item.hint }}</small>
-        </div>
-      </article>
-    </section>
+      </template>
+    </BusinessWorkspaceHeader>
 
     <section class="ai-prompt__governance art-card-xs">
       <div>
@@ -83,6 +72,9 @@
   } from '@/components/core/forms/art-button-more/index.vue'
   import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
+  import BusinessWorkspaceHeader, {
+    type BusinessWorkspaceMetric
+  } from '@/components/business/business-workspace-header/index.vue'
   import type { ColumnOption } from '@/types'
   import { useUserStore } from '@/store/modules/user'
   import {
@@ -106,14 +98,6 @@
     searchQuery: Partial<Omit<AiPromptSearchParams, 'tenantId'>>
     searchItems: ComputedRef<SearchFormItem[]>
     headerActions: ComputedRef<ArtTableQueryHeaderAction[]>
-  }
-
-  interface MetricCard {
-    label: string
-    value: string
-    hint: string
-    icon: string
-    tone: 'primary' | 'success' | 'warning' | 'info'
   }
 
   const userStore = useUserStore()
@@ -171,7 +155,7 @@
     )
   })
 
-  const metricCards = computed<MetricCard[]>(() => {
+  const metricCards = computed<BusinessWorkspaceMetric[]>(() => {
     const published = overview.rows.filter((row) => row.status === 'published').length
     const drafts = overview.rows.filter((row) => row.status === 'draft').length
     const archived = overview.rows.filter((row) => row.status === 'archived').length
@@ -179,28 +163,28 @@
       {
         label: '全部版本',
         value: `${overview.rows.length} 个`,
-        hint: '租户内全部 Prompt 资产',
+        description: '租户内全部 Prompt 资产',
         icon: 'ri:file-list-3-line',
         tone: 'primary'
       },
       {
         label: '生效版本',
         value: `${published} 个`,
-        hint: '新 AI 请求即时读取',
+        description: '新 AI 请求即时读取',
         icon: 'ri:rocket-2-line',
         tone: 'success'
       },
       {
         label: '待发布草稿',
         value: `${drafts} 个`,
-        hint: drafts ? '建议验证后再发布' : '当前没有待处理草稿',
+        description: drafts ? '建议验证后再发布' : '当前没有待处理草稿',
         icon: 'ri:draft-line',
         tone: 'warning'
       },
       {
         label: '历史版本',
         value: `${archived} 个`,
-        hint: '保留审计与回滚能力',
+        description: '保留审计与回滚能力',
         icon: 'ri:history-line',
         tone: 'info'
       }

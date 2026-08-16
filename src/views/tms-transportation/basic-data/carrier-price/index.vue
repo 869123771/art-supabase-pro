@@ -1,12 +1,12 @@
 <template>
-  <div class="tms-workspace-page art-full-height carrier-price">
-    <CustomerDeleteProcessingNotice
+  <div class="business-workspace-page art-full-height carrier-price">
+    <MasterDeleteProcessingNotice
       v-if="deleteContext.active"
       :customer-id="deleteContext.customerId"
       :customer-name="deleteContext.customerName"
       action-hint="已自动定位关联报价；处理完成后可返回原主数据页面继续删除。"
     />
-    <TmsWorkspaceHeader
+    <BusinessWorkspaceHeader
       eyebrow="CARRIER RATE CARD"
       title="承运商报价"
       description="维护承运线路、运输模式与结算计价规则，为调度决策和成本测算提供依据。"
@@ -59,9 +59,9 @@
   import { useUserStore } from '@/store/modules/user'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatWithDayjs } from '@/utils/time'
-  import TmsWorkspaceHeader from '@/views/tms-transportation/modules/tms-workspace-header.vue'
-  import CustomerDeleteProcessingNotice from '@/views/tms-transportation/modules/customer-delete-processing-notice.vue'
-  import { useCustomerDeleteProcessingContext } from '@/views/tms-transportation/modules/use-customer-delete-processing'
+  import BusinessWorkspaceHeader from '@/components/business/business-workspace-header/index.vue'
+  import MasterDeleteProcessingNotice from '@/components/business/master-delete-processing-notice/index.vue'
+  import { useMasterDataDeleteProcessingContext } from '@/hooks/core/useMasterDataDeleteProcessing'
 
   defineOptions({ name: 'TmsCarrierPrice' })
 
@@ -87,7 +87,7 @@
 
   const router = useRouter()
   const route = useRoute()
-  const deleteContext = useCustomerDeleteProcessingContext()
+  const deleteContext = useMasterDataDeleteProcessingContext()
   const { getDictMap } = storeToRefs(useUserStore())
   const tableQueryRef = ref<ArtTableQueryExpose>()
 
@@ -461,8 +461,8 @@
 <style scoped lang="scss">
   .carrier-price {
     :deep(.carrier-price__detail-link) {
-      max-width: 100%;
       justify-content: flex-start;
+      max-width: 100%;
       font-weight: 500;
 
       > span {

@@ -1,6 +1,6 @@
 <template>
-  <div class="tms-workspace-page art-full-height customer-price">
-    <TmsWorkspaceHeader
+  <div class="business-workspace-page art-full-height customer-price">
+    <BusinessWorkspaceHeader
       eyebrow="CUSTOMER RATE CARD"
       title="客户报价"
       description="按运输线路、货物与计费方式维护客户价格方案，支撑快速报价与运费核算。"
@@ -11,7 +11,7 @@
       ]"
     />
 
-    <CustomerDeleteProcessingNotice
+    <MasterDeleteProcessingNotice
       v-if="customerDeleteContext.active"
       :customer-id="customerDeleteContext.customerId"
       :customer-name="customerDeleteContext.customerName"
@@ -59,9 +59,9 @@
   import { useUserStore } from '@/store/modules/user'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatWithDayjs } from '@/utils/time'
-  import TmsWorkspaceHeader from '@/views/tms-transportation/modules/tms-workspace-header.vue'
-  import CustomerDeleteProcessingNotice from '@/views/tms-transportation/modules/customer-delete-processing-notice.vue'
-  import { useCustomerDeleteProcessingContext } from '@/views/tms-transportation/modules/use-customer-delete-processing'
+  import BusinessWorkspaceHeader from '@/components/business/business-workspace-header/index.vue'
+  import MasterDeleteProcessingNotice from '@/components/business/master-delete-processing-notice/index.vue'
+  import { useMasterDataDeleteProcessingContext } from '@/hooks/core/useMasterDataDeleteProcessing'
 
   defineOptions({ name: 'TmsCustomerPrice' })
 
@@ -82,7 +82,7 @@
 
   const router = useRouter()
   const route = useRoute()
-  const customerDeleteContext = useCustomerDeleteProcessingContext()
+  const customerDeleteContext = useMasterDataDeleteProcessingContext()
   const { getDictMap } = storeToRefs(useUserStore())
   const tableQueryRef = ref<ArtTableQueryExpose>()
 
@@ -509,8 +509,8 @@
 <style scoped lang="scss">
   .customer-price {
     :deep(.customer-price__detail-link) {
-      max-width: 100%;
       justify-content: flex-start;
+      max-width: 100%;
       font-weight: 500;
 
       > span {

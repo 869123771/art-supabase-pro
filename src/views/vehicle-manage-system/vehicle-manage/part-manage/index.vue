@@ -1,6 +1,6 @@
 <template>
   <div class="vehicle-part-usage-page art-full-height">
-    <VehicleWorkspaceHeader
+    <BusinessWorkspaceHeader
       eyebrow="PARTS LIFECYCLE"
       title="车辆零部件"
       description="跟踪零部件装车、RFID、质保、使用年限与里程状态，让关键部件全生命周期可追溯。"
@@ -60,9 +60,9 @@
   import { useUserStore } from '@/store/modules/user'
   import TreeUtils from '@/utils/tree'
   import VehiclePartUsageDialog from './modules/vehicle-part-usage-dialog.vue'
-  import VehicleWorkspaceHeader, {
-    type VehicleWorkspaceMetric
-  } from '@/views/vehicle-manage-system/modules/vehicle-workspace-header.vue'
+  import BusinessWorkspaceHeader, {
+    type BusinessWorkspaceMetric
+  } from '@/components/business/business-workspace-header/index.vue'
 
   defineOptions({ name: 'VehiclePartsManage' })
 
@@ -94,7 +94,7 @@
     childrenKey: 'children'
   })
   const overview = reactive<{ total: number; rows: Usage[] }>({ total: 0, rows: [] })
-  const workspaceMetrics = computed<VehicleWorkspaceMetric[]>(() => [
+  const workspaceMetrics = computed<BusinessWorkspaceMetric[]>(() => [
     {
       label: '装车零部件',
       value: overview.total,

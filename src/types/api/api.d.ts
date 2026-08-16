@@ -127,6 +127,14 @@ declare namespace Api {
         OrganizationListItem,
         'id' | 'organizationCode' | 'organizationName'
       > | null
+      hrEmployeeId?: string | null
+      hrEmployee?: {
+        id: string
+        employeeNo: string
+        employeeName: string
+        jobTitle?: string | null
+        employmentStatus: string
+      } | null
       avatar?: string | null
       status?: string
       password: string
@@ -1293,6 +1301,182 @@ declare namespace Api {
   }
 
   /** TMS 运输管理系统 */
+  namespace Hr {
+    type EmploymentStatus = 'probation' | 'active' | 'leave' | 'terminated'
+    type EmploymentType = 'full_time' | 'part_time' | 'intern' | 'contractor'
+
+    interface EmployeeAccount {
+      id: string
+      userEmail: string
+      status: string
+    }
+
+    interface Employee {
+      id?: string
+      tenantId?: string
+      tenant?: Pick<SystemManage.TenantListItem, 'id' | 'tenantCode' | 'tenantName'> | null
+      organizationId?: string | null
+      organization?: Pick<
+        SystemManage.OrganizationListItem,
+        'id' | 'organizationCode' | 'organizationName'
+      > | null
+      employeeNo: string
+      employeeName: string
+      avatarUrl?: string | null
+      jobTitle?: string | null
+      employmentStatus: EmploymentStatus
+      employmentType: EmploymentType
+      gender?: string | null
+      birthDate?: string | null
+      phone?: string | null
+      email?: string | null
+      idCardNo?: string | null
+      ethnicity?: string | null
+      educationLevel?: string | null
+      schoolName?: string | null
+      majorName?: string | null
+      maritalStatus?: string | null
+      politicalStatus?: string | null
+      nativePlace?: string | null
+      homeAddress?: string | null
+      hireDate?: string | null
+      probationEndDate?: string | null
+      leaveDate?: string | null
+      contractStartDate?: string | null
+      contractEndDate?: string | null
+      emergencyContactName?: string | null
+      emergencyContactRelation?: string | null
+      emergencyContactPhone?: string | null
+      remark?: string | null
+      account?: EmployeeAccount | null
+      createBy?: string
+      createTime?: string
+      updateBy?: string
+      updateTime?: string
+    }
+
+    type EmployeeSearchParams = Partial<
+      Pick<Employee, 'tenantId' | 'organizationId' | 'employmentStatus' | 'employmentType'> &
+        Api.Common.CommonSearchParams & {
+          keyword?: string
+          hireDateRange?: string[]
+          recordId?: string
+          organizationIds?: string[]
+          organizationUnassigned?: boolean
+        }
+    >
+
+    interface EmployeeContract {
+      id?: string
+      tenantId?: string
+      employeeId?: string
+      contractNo: string
+      contractType: string
+      contractStatus: string
+      signDate?: string | null
+      startDate: string
+      endDate?: string | null
+      probationEndDate?: string | null
+      workLocation?: string | null
+      monthlySalary?: number | null
+      remark?: string | null
+    }
+
+    interface EmployeeEducation {
+      id?: string
+      tenantId?: string
+      employeeId?: string
+      schoolName: string
+      majorName?: string | null
+      educationLevel: string
+      degree?: string | null
+      startDate?: string | null
+      endDate?: string | null
+      fullTime: boolean
+      certificateNo?: string | null
+      remark?: string | null
+    }
+
+    interface EmployeeWorkExperience {
+      id?: string
+      tenantId?: string
+      employeeId?: string
+      companyName: string
+      departmentName?: string | null
+      jobTitle: string
+      startDate: string
+      endDate?: string | null
+      responsibilities?: string | null
+      leavingReason?: string | null
+      referenceName?: string | null
+      referencePhone?: string | null
+    }
+
+    interface EmployeeTraining {
+      id?: string
+      tenantId?: string
+      employeeId?: string
+      trainingName: string
+      trainingType: string
+      providerName?: string | null
+      startDate: string
+      endDate?: string | null
+      trainingResult?: string | null
+      certificateName?: string | null
+      certificateNo?: string | null
+      cost?: number | null
+      remark?: string | null
+    }
+
+    interface EmployeeReward {
+      id?: string
+      tenantId?: string
+      employeeId?: string
+      recordType: string
+      recordLevel?: string | null
+      title: string
+      recordDate: string
+      issuingOrganization?: string | null
+      amount?: number | null
+      description?: string | null
+    }
+
+    interface EmployeeProfile extends Employee {
+      contracts: EmployeeContract[]
+      educations: EmployeeEducation[]
+      workExperiences: EmployeeWorkExperience[]
+      trainings: EmployeeTraining[]
+      rewards: EmployeeReward[]
+    }
+
+    interface EmployeeProfilePayload {
+      employee: Employee
+      contracts: EmployeeContract[]
+      educations: EmployeeEducation[]
+      workExperiences: EmployeeWorkExperience[]
+      trainings: EmployeeTraining[]
+      rewards: EmployeeReward[]
+    }
+
+    interface EmployeeSelectorItem {
+      id: string
+      tenantId: string
+      organizationId?: string | null
+      employeeNo: string
+      employeeName: string
+      avatarUrl?: string | null
+      jobTitle?: string | null
+      employmentStatus: EmploymentStatus
+      gender?: string | null
+      phone?: string | null
+      email?: string | null
+      organization?: Pick<
+        SystemManage.OrganizationListItem,
+        'id' | 'organizationCode' | 'organizationName'
+      > | null
+    }
+  }
+
   namespace Tms {
     namespace BasicData {
       type CustomerAddressType = 'shipping' | 'receiving'
@@ -2186,7 +2370,7 @@ declare namespace Api {
         expenseLatitude: number
         expenseCoordinateSource?: string | null
         expenseItem?: Pick<
-          Api.Tms.Finance.ExpenseItem,
+          Api.Finance.ExpenseItem,
           'id' | 'itemCode' | 'itemName' | 'businessCategory'
         > | null
       }
@@ -2669,1452 +2853,1455 @@ declare namespace Api {
         updateTime: string
       }
     }
+  }
 
-    namespace Finance {
-      type ExpenseOcrStatus = 'not_started' | 'processing' | 'succeeded' | 'failed'
-      type ReimbursementApprovalStatus =
-        'draft' | 'pending_review' | 'approved' | 'rejected' | 'paid' | 'cancelled'
+  /** Shared finance domain contracts. Transport-backed records remain source-specific DTOs. */
+  namespace Finance {
+    type ExpenseOcrStatus = 'not_started' | 'processing' | 'succeeded' | 'failed'
+    type ReimbursementApprovalStatus =
+      'draft' | 'pending_review' | 'approved' | 'rejected' | 'paid' | 'cancelled'
 
-      interface ExpenseReimbursementItem {
+    interface ExpenseReimbursementItem {
+      id: string
+      tenantId: string
+      reimbursementId: string
+      costId: string
+      waybillId: string
+      costNoSnapshot: string
+      waybillNoSnapshot: string
+      expenseItemNameSnapshot: string
+      amountSnapshot: number
+      occurredOnSnapshot: string
+      createTime: string
+    }
+
+    interface ExpenseReimbursementRecord {
+      id: string
+      tenantId: string
+      reimbursementNo: string
+      applicantUserId?: string | null
+      applicantNameSnapshot: string
+      payeeName: string
+      payeeBank?: string | null
+      payeeAccount?: string | null
+      plannedPaymentDate: string
+      paymentMethod: CashPaymentMethod
+      totalAmount: number
+      basisUrls: string[]
+      status: ReimbursementApprovalStatus
+      submittedAt?: string | null
+      submittedBy?: string | null
+      reviewedAt?: string | null
+      reviewedBy?: string | null
+      reviewRemark?: string | null
+      paidAt?: string | null
+      paidBy?: string | null
+      paymentReference?: string | null
+      paymentVoucherUrls: string[]
+      remark?: string | null
+      itemCount: number
+      waybillCount: number
+      waybillNos?: string | null
+      paymentId?: string | null
+      paymentNo?: string | null
+      createBy?: string | null
+      createTime: string
+      updateBy?: string | null
+      updateTime: string
+      items?: ExpenseReimbursementItem[]
+    }
+
+    type ExpenseReimbursementSearchParams = Api.Common.CommonSearchParams & {
+      keyword?: string
+      status?: string
+      paymentMethod?: string
+      plannedPaymentDateRange?: string[]
+    }
+
+    interface CreateExpenseReimbursementPayload {
+      reimbursementNo?: string | null
+      costIds: string[]
+      payeeName: string
+      payeeBank?: string | null
+      payeeAccount?: string | null
+      plannedPaymentDate: string
+      paymentMethod: CashPaymentMethod
+      basisUrls?: string[]
+      remark?: string | null
+    }
+
+    interface ExecuteExpenseReimbursementPayload {
+      paymentNo?: string | null
+      reimbursementId: string
+      paymentDate: string
+      bankReference?: string | null
+      voucherUrls?: string[]
+      remark?: string | null
+    }
+
+    interface WaybillCostOverview {
+      totalCount: number
+      pendingReviewCount: number
+      approvedUnconvertedCount: number
+      pendingPaymentAmount: number
+      paidAmount: number
+    }
+
+    type WaybillExpenseOcrField =
+      | 'amount'
+      | 'occurredOn'
+      | 'quantity'
+      | 'unitPrice'
+      | 'providerName'
+      | 'payeeName'
+      | 'paymentChannel'
+      | 'invoiceNo'
+      | 'meterNo'
+      | 'expenseLocation'
+      | 'remark'
+
+    interface WaybillExpenseOcrDraft {
+      amount: number | null
+      occurredOn: string | null
+      quantity: number | null
+      unitPrice: number | null
+      providerName: string | null
+      payeeName: string | null
+      paymentChannel: string | null
+      invoiceNo: string | null
+      meterNo: string | null
+      expenseLocation: string | null
+      remark: string | null
+    }
+
+    interface WaybillExpenseOcrAnalyzeResponse {
+      artifactId: string
+      runId: string
+      generatedAt: string
+      rawText: string
+      summary: string
+      confidence: number
+      fieldConfidence: Partial<Record<WaybillExpenseOcrField, number>>
+      missingFields: string[]
+      warnings: string[]
+      expense: WaybillExpenseOcrDraft
+      reviewConfidenceThreshold: number
+    }
+
+    interface WaybillExpenseOcrRunRecord {
+      id: string
+      feature: string
+      model: string
+      status: 'pending' | 'running' | 'succeeded' | 'failed'
+      latencyMs?: number | null
+      errorCode?: string | null
+      errorMessage?: string | null
+      metadata?: Record<string, unknown>
+      startedAt: string
+      finishedAt?: string | null
+      createBy?: string | null
+    }
+
+    type WaybillExpenseOcrRunSearchParams = Api.Common.CommonSearchParams & {
+      status?: string
+      keyword?: string
+      createTimeRange?: string[]
+    }
+
+    type WaybillCostType =
+      | 'carrier_freight'
+      | 'toll'
+      | 'parking'
+      | 'fuel'
+      | 'loading'
+      | 'waiting'
+      | 'driver_expense'
+      | 'cargo_damage'
+      | 'other'
+      | 'in_transit_energy'
+      | 'in_transit_charging'
+      | 'in_transit_gas'
+      | 'in_transit_other'
+
+    type CostAuditStatus = 'draft' | 'pending_review' | 'approved' | 'rejected' | 'voided'
+    type CostSettlementStatus = 'unsettled' | 'pending_payment' | 'paid'
+
+    interface ExpenseItem {
+      id?: string
+      tenantId?: string
+      tenant?: Pick<Api.SystemManage.TenantListItem, 'id' | 'tenantCode' | 'tenantName'> | null
+      parentId?: string | null
+      itemCode: string
+      itemName: string
+      businessCategory?: WaybillCostType | null
+      isSelectable: boolean
+      reimbursementAllowed: boolean
+      isEnabled: boolean
+      sort: number
+      remark?: string | null
+      createBy?: string | null
+      createTime?: string
+      updateBy?: string | null
+      updateTime?: string
+      children?: ExpenseItem[]
+    }
+
+    type ExpenseItemSearchParams = Api.Common.CommonSearchParams & {
+      keyword?: string
+      tenantId?: string
+      parentId?: string | null
+      isEnabled?: boolean
+    }
+
+    interface WaybillCostWaybill {
+      id: string
+      waybillNo: string
+      status: string
+      orderId?: string | null
+      carrierId?: string | null
+      driverId?: string | null
+      originCity?: string | null
+      destinationCity?: string | null
+      carrier?: Pick<BasicData.CarrierOption, 'id' | 'companyName'> | null
+      driver?: Pick<BasicData.DriverOption, 'id' | 'driverName' | 'phone'> | null
+      order?: Pick<
+        Order.OrderRecord,
+        | 'id'
+        | 'orderNo'
+        | 'dispatchPlateNo'
+        | 'dispatchDriverName'
+        | 'dispatchDriverPhone'
+        | 'originStation'
+        | 'destinationStation'
+      > | null
+    }
+
+    interface WaybillCostRecord {
+      id?: string
+      tenantId?: string
+      costNo?: string
+      waybillId: string
+      expenseItemId: string
+      costType: WaybillCostType | string
+      amount: number
+      occurredOn: string
+      quantity?: number | null
+      unitPrice?: number | null
+      providerName?: string | null
+      payeeName?: string | null
+      paymentChannel?: string | null
+      invoiceNo?: string | null
+      meterNo?: string | null
+      expenseLocation?: string | null
+      expenseRegion?: string | null
+      expenseRegionAdcode?: string | null
+      expenseLongitude?: number | string | null
+      expenseLatitude?: number | string | null
+      expenseCoordinateSystem?: string | null
+      expenseCoordinateSource?: string | null
+      expenseCoordinateStatus?: string | null
+      expenseGeocodeProvider?: string | null
+      expenseGeocodedAt?: string | null
+      carrierId?: string | null
+      driverId?: string | null
+      remark?: string | null
+      attachments?: string[]
+      reporterUserId?: string | null
+      reporterNameSnapshot?: string | null
+      reporterDepartmentSnapshot?: string | null
+      auditStatus?: CostAuditStatus
+      settlementStatus?: CostSettlementStatus
+      reimbursementId?: string | null
+      expensePaymentId?: string | null
+      paidAt?: string | null
+      waybillNoSnapshot?: string | null
+      orderNoSnapshot?: string | null
+      plateNoSnapshot?: string | null
+      driverNameSnapshot?: string | null
+      driverPhoneSnapshot?: string | null
+      routeSnapshot?: string | null
+      latestOcrRunId?: string | null
+      ocrArtifactId?: string | null
+      ocrStatus?: ExpenseOcrStatus
+      submittedAt?: string | null
+      submittedBy?: string | null
+      reviewedAt?: string | null
+      reviewedBy?: string | null
+      reviewRemark?: string | null
+      createBy?: string | null
+      createTime?: string
+      updateBy?: string | null
+      updateTime?: string
+      expenseItem?: ExpenseItem | null
+      reimbursement?: Pick<ExpenseReimbursementRecord, 'id' | 'reimbursementNo' | 'status'> | null
+      expensePayment?: {
         id: string
-        tenantId: string
-        reimbursementId: string
-        costId: string
-        waybillId: string
-        costNoSnapshot: string
-        waybillNoSnapshot: string
-        expenseItemNameSnapshot: string
-        amountSnapshot: number
-        occurredOnSnapshot: string
-        createTime: string
-      }
-
-      interface ExpenseReimbursementRecord {
-        id: string
-        tenantId: string
-        reimbursementNo: string
-        applicantUserId?: string | null
-        applicantNameSnapshot: string
-        payeeName: string
-        payeeBank?: string | null
-        payeeAccount?: string | null
-        plannedPaymentDate: string
-        paymentMethod: CashPaymentMethod
-        totalAmount: number
-        basisUrls: string[]
-        status: ReimbursementApprovalStatus
-        submittedAt?: string | null
-        submittedBy?: string | null
-        reviewedAt?: string | null
-        reviewedBy?: string | null
-        reviewRemark?: string | null
-        paidAt?: string | null
-        paidBy?: string | null
-        paymentReference?: string | null
-        paymentVoucherUrls: string[]
-        remark?: string | null
-        itemCount: number
-        waybillCount: number
-        waybillNos?: string | null
-        paymentId?: string | null
-        paymentNo?: string | null
-        createBy?: string | null
-        createTime: string
-        updateBy?: string | null
-        updateTime: string
-        items?: ExpenseReimbursementItem[]
-      }
-
-      type ExpenseReimbursementSearchParams = Api.Common.CommonSearchParams & {
-        keyword?: string
-        status?: string
-        paymentMethod?: string
-        plannedPaymentDateRange?: string[]
-      }
-
-      interface CreateExpenseReimbursementPayload {
-        reimbursementNo?: string | null
-        costIds: string[]
-        payeeName: string
-        payeeBank?: string | null
-        payeeAccount?: string | null
-        plannedPaymentDate: string
-        paymentMethod: CashPaymentMethod
-        basisUrls?: string[]
-        remark?: string | null
-      }
-
-      interface ExecuteExpenseReimbursementPayload {
-        paymentNo?: string | null
-        reimbursementId: string
-        paymentDate: string
+        paymentNo: string
+        paymentDate?: string | null
         bankReference?: string | null
-        voucherUrls?: string[]
-        remark?: string | null
-      }
+      } | null
+      waybill?: WaybillCostWaybill | null
+    }
 
-      interface WaybillCostOverview {
-        totalCount: number
-        pendingReviewCount: number
-        approvedUnconvertedCount: number
-        pendingPaymentAmount: number
-        paidAmount: number
-      }
+    type WaybillCostSearchParams = Api.Common.CommonSearchParams & {
+      recordId?: string
+      orderId?: string
+      keyword?: string
+      expenseItemId?: string
+      costType?: string
+      auditStatus?: string
+      settlementStatus?: string
+      occurredOnRange?: string[]
+    }
 
-      type WaybillExpenseOcrField =
-        | 'amount'
-        | 'occurredOn'
-        | 'quantity'
-        | 'unitPrice'
-        | 'providerName'
-        | 'payeeName'
-        | 'paymentChannel'
-        | 'invoiceNo'
-        | 'meterNo'
-        | 'expenseLocation'
-        | 'remark'
+    interface WaybillOption extends WaybillCostWaybill {
+      completedAt?: string | null
+    }
 
-      interface WaybillExpenseOcrDraft {
-        amount: number | null
-        occurredOn: string | null
-        quantity: number | null
-        unitPrice: number | null
-        providerName: string | null
-        payeeName: string | null
-        paymentChannel: string | null
-        invoiceNo: string | null
-        meterNo: string | null
-        expenseLocation: string | null
-        remark: string | null
-      }
+    interface WaybillOptionSearchParams extends Api.Common.CommonSearchParams {
+      keyword?: string
+      orderId?: string
+    }
 
-      interface WaybillExpenseOcrAnalyzeResponse {
-        artifactId: string
-        runId: string
-        generatedAt: string
-        rawText: string
-        summary: string
-        confidence: number
-        fieldConfidence: Partial<Record<WaybillExpenseOcrField, number>>
-        missingFields: string[]
-        warnings: string[]
-        expense: WaybillExpenseOcrDraft
-        reviewConfidenceThreshold: number
-      }
+    interface CostReviewPayload {
+      id: string
+      auditStatus: 'approved' | 'rejected'
+      reviewRemark?: string | null
+    }
 
-      interface WaybillExpenseOcrRunRecord {
-        id: string
-        feature: string
-        model: string
-        status: 'pending' | 'running' | 'succeeded' | 'failed'
-        latencyMs?: number | null
-        errorCode?: string | null
-        errorMessage?: string | null
-        metadata?: Record<string, unknown>
-        startedAt: string
-        finishedAt?: string | null
-        createBy?: string | null
-      }
+    type WaybillCostAuditSignalType =
+      | 'amount_outlier'
+      | 'cost_concentration'
+      | 'duplicate_cost'
+      | 'future_occurred_date'
+      | 'missing_attachment'
+      | 'missing_payee'
+      | 'missing_remark'
+      | 'negative_margin'
+      | 'thin_margin'
 
-      type WaybillExpenseOcrRunSearchParams = Api.Common.CommonSearchParams & {
-        status?: string
-        keyword?: string
-        createTimeRange?: string[]
-      }
+    type WaybillCostAuditSeverity = 'critical' | 'high' | 'medium'
+    type WaybillCostAuditRiskLevel = WaybillCostAuditSeverity | 'low'
+    type WaybillCostAuditRecommendation =
+      'block_for_verification' | 'manual_review' | 'routine_review'
 
-      type WaybillCostType =
-        | 'carrier_freight'
-        | 'toll'
-        | 'parking'
-        | 'fuel'
-        | 'loading'
-        | 'waiting'
-        | 'driver_expense'
-        | 'cargo_damage'
-        | 'other'
-        | 'in_transit_energy'
-        | 'in_transit_charging'
-        | 'in_transit_gas'
-        | 'in_transit_other'
+    interface WaybillCostAuditSignal {
+      type: WaybillCostAuditSignalType
+      severity: WaybillCostAuditSeverity
+      title: string
+      detail: string
+      evidence: string[]
+    }
 
-      type CostAuditStatus = 'draft' | 'pending_review' | 'approved' | 'rejected' | 'voided'
-      type CostSettlementStatus = 'unsettled' | 'pending_payment' | 'paid'
-
-      interface ExpenseItem {
-        id?: string
-        tenantId?: string
-        tenant?: Pick<Api.SystemManage.TenantListItem, 'id' | 'tenantCode' | 'tenantName'> | null
-        parentId?: string | null
-        itemCode: string
-        itemName: string
-        businessCategory?: WaybillCostType | null
-        isSelectable: boolean
-        reimbursementAllowed: boolean
-        isEnabled: boolean
-        sort: number
-        remark?: string | null
-        createBy?: string | null
-        createTime?: string
-        updateBy?: string | null
-        updateTime?: string
-        children?: ExpenseItem[]
-      }
-
-      type ExpenseItemSearchParams = Api.Common.CommonSearchParams & {
-        keyword?: string
-        tenantId?: string
-        parentId?: string | null
-        isEnabled?: boolean
-      }
-
-      interface WaybillCostWaybill {
-        id: string
-        waybillNo: string
-        status: string
-        orderId?: string | null
-        carrierId?: string | null
-        driverId?: string | null
-        originCity?: string | null
-        destinationCity?: string | null
-        carrier?: Pick<BasicData.CarrierOption, 'id' | 'companyName'> | null
-        driver?: Pick<BasicData.DriverOption, 'id' | 'driverName' | 'phone'> | null
-        order?: Pick<
-          Order.OrderRecord,
-          | 'id'
-          | 'orderNo'
-          | 'dispatchPlateNo'
-          | 'dispatchDriverName'
-          | 'dispatchDriverPhone'
-          | 'originStation'
-          | 'destinationStation'
-        > | null
-      }
-
-      interface WaybillCostRecord {
-        id?: string
-        tenantId?: string
-        costNo?: string
-        waybillId: string
-        expenseItemId: string
-        costType: WaybillCostType | string
+    interface WaybillCostAuditAssessment {
+      costId: string
+      waybillId: string
+      waybillNo: string
+      route: string
+      riskLevel: WaybillCostAuditRiskLevel
+      riskScore: number
+      confidence: number
+      recommendation: WaybillCostAuditRecommendation
+      summary: string
+      signals: WaybillCostAuditSignal[]
+      recommendedActions: string[]
+      limitations: string[]
+      metrics: {
         amount: number
-        occurredOn: string
-        quantity?: number | null
-        unitPrice?: number | null
-        providerName?: string | null
-        payeeName?: string | null
-        paymentChannel?: string | null
-        invoiceNo?: string | null
-        meterNo?: string | null
-        expenseLocation?: string | null
-        expenseRegion?: string | null
-        expenseRegionAdcode?: string | null
-        expenseLongitude?: number | string | null
-        expenseLatitude?: number | string | null
-        expenseCoordinateSystem?: string | null
-        expenseCoordinateSource?: string | null
-        expenseCoordinateStatus?: string | null
-        expenseGeocodeProvider?: string | null
-        expenseGeocodedAt?: string | null
-        carrierId?: string | null
-        driverId?: string | null
-        remark?: string | null
-        attachments?: string[]
-        reporterUserId?: string | null
-        reporterNameSnapshot?: string | null
-        reporterDepartmentSnapshot?: string | null
-        auditStatus?: CostAuditStatus
-        settlementStatus?: CostSettlementStatus
-        reimbursementId?: string | null
-        expensePaymentId?: string | null
-        paidAt?: string | null
-        waybillNoSnapshot?: string | null
-        orderNoSnapshot?: string | null
-        plateNoSnapshot?: string | null
-        driverNameSnapshot?: string | null
-        driverPhoneSnapshot?: string | null
-        routeSnapshot?: string | null
-        latestOcrRunId?: string | null
-        ocrArtifactId?: string | null
-        ocrStatus?: ExpenseOcrStatus
-        submittedAt?: string | null
-        submittedBy?: string | null
-        reviewedAt?: string | null
-        reviewedBy?: string | null
-        reviewRemark?: string | null
-        createBy?: string | null
-        createTime?: string
-        updateBy?: string | null
-        updateTime?: string
-        expenseItem?: ExpenseItem | null
-        reimbursement?: Pick<ExpenseReimbursementRecord, 'id' | 'reimbursementNo' | 'status'> | null
-        expensePayment?: {
-          id: string
-          paymentNo: string
-          paymentDate?: string | null
-          bankReference?: string | null
-        } | null
-        waybill?: WaybillCostWaybill | null
-      }
-
-      type WaybillCostSearchParams = Api.Common.CommonSearchParams & {
-        recordId?: string
-        orderId?: string
-        keyword?: string
-        expenseItemId?: string
-        costType?: string
-        auditStatus?: string
-        settlementStatus?: string
-        occurredOnRange?: string[]
-      }
-
-      interface WaybillOption extends WaybillCostWaybill {
-        completedAt?: string | null
-      }
-
-      interface WaybillOptionSearchParams extends Api.Common.CommonSearchParams {
-        keyword?: string
-        orderId?: string
-      }
-
-      interface CostReviewPayload {
-        id: string
-        auditStatus: 'approved' | 'rejected'
-        reviewRemark?: string | null
-      }
-
-      type WaybillCostAuditSignalType =
-        | 'amount_outlier'
-        | 'cost_concentration'
-        | 'duplicate_cost'
-        | 'future_occurred_date'
-        | 'missing_attachment'
-        | 'missing_payee'
-        | 'missing_remark'
-        | 'negative_margin'
-        | 'thin_margin'
-
-      type WaybillCostAuditSeverity = 'critical' | 'high' | 'medium'
-      type WaybillCostAuditRiskLevel = WaybillCostAuditSeverity | 'low'
-      type WaybillCostAuditRecommendation =
-        'block_for_verification' | 'manual_review' | 'routine_review'
-
-      interface WaybillCostAuditSignal {
-        type: WaybillCostAuditSignalType
-        severity: WaybillCostAuditSeverity
-        title: string
-        detail: string
-        evidence: string[]
-      }
-
-      interface WaybillCostAuditAssessment {
-        costId: string
-        waybillId: string
-        waybillNo: string
-        route: string
-        riskLevel: WaybillCostAuditRiskLevel
-        riskScore: number
-        confidence: number
-        recommendation: WaybillCostAuditRecommendation
-        summary: string
-        signals: WaybillCostAuditSignal[]
-        recommendedActions: string[]
-        limitations: string[]
-        metrics: {
-          amount: number
-          benchmarkMedian: number | null
-          benchmarkSampleSize: number
-          duplicateCount: number
-          projectedTotalCost: number
-          receivableAmount: number | null
-          projectedGrossMargin: number | null
-          attachmentCount: number
-        }
-      }
-
-      interface WaybillCostAuditResponse {
-        runId: string
-        ruleVersion: string
-        generatedAt: string
-        assessment: WaybillCostAuditAssessment
-      }
-
-      type WaybillProfitAnalysisRiskLevel = 'critical' | 'high' | 'medium' | 'low'
-      type WaybillProfitAnalysisSeverity = 'critical' | 'high' | 'medium'
-      type WaybillProfitAnalysisRecommendation =
-        'repair_cost_baseline' | 'manual_profit_review' | 'routine_monitoring'
-
-      interface WaybillProfitAnalysisSignal {
-        type: string
-        severity: WaybillProfitAnalysisSeverity
-        title: string
-        detail: string
-        evidence: string[]
-      }
-
-      interface WaybillProfitRiskWaybill {
-        id: string
-        waybillId: string
-        waybillNo: string
-        route: string
-        customerName: string
-        carrierName: string
-        waybillStatus: string
-        receivableAmount: number
-        totalCostAmount: number
-        grossProfit: number
-        grossMargin: number
-        riskScore: number
-        reasons: string[]
-      }
-
-      interface WaybillProfitAnalysisAssessment {
-        riskLevel: WaybillProfitAnalysisRiskLevel
-        riskScore: number
-        confidence: number
-        recommendation: WaybillProfitAnalysisRecommendation
-        summary: string
-        signals: WaybillProfitAnalysisSignal[]
-        riskWaybills: WaybillProfitRiskWaybill[]
-        recommendedActions: string[]
-        limitations: string[]
-        metrics: {
-          totalWaybills: number
-          finalizedWaybills: number
-          receivableAmount: number
-          totalCostAmount: number
-          bookGrossProfit: number
-          bookGrossMargin: number | null
-          costCoverage: number
-          finalizedCostCoverage: number
-          missingCostCount: number
-          negativeMarginCount: number
-          carrierPayableMissingCount: number
-        }
-      }
-
-      interface WaybillProfitAnalysisResponse {
-        runId: string
-        ruleVersion: string
-        generatedAt: string
-        assessment: WaybillProfitAnalysisAssessment
-      }
-
-      interface WaybillProfitRecord {
-        id: string
-        tenantId: string
-        waybillId: string
-        orderId?: string | null
-        waybillNo: string
-        waybillStatus: string
-        orderStatus?: string | null
-        customerId?: string | null
-        customerName?: string | null
-        carrierId?: string | null
-        carrierName?: string | null
-        plateNo?: string | null
-        driverName?: string | null
-        originStation?: string | null
-        destinationStation?: string | null
-        receivableAmount: number
-        carrierPayableAmount: number
-        otherCostAmount: number
-        totalCostAmount: number
-        grossProfit: number
-        grossMargin: number
-        completedAt?: string | null
-        signedAt?: string | null
-        createTime?: string
-        updateTime?: string
-      }
-
-      type WaybillProfitSearchParams = Api.Common.CommonSearchParams & {
-        keyword?: string
-        waybillStatus?: string
-        completedAtRange?: string[]
-      }
-
-      type CustomerStatementStatus =
-        'draft' | 'pending_review' | 'confirmed' | 'partially_settled' | 'settled' | 'voided'
-
-      interface CustomerStatementItem {
-        id: string
-        tenantId: string
-        statementId: string
-        customerId: string
-        waybillId: string
-        orderId: string
-        waybillNoSnapshot: string
-        orderNoSnapshot: string
-        originStationSnapshot?: string | null
-        destinationStationSnapshot?: string | null
-        completedAtSnapshot?: string | null
-        receivableAmount: number
-        adjustmentAmount: number
-        lineAmount: number
-        isActive: boolean
-        remark?: string | null
-        createBy?: string | null
-        createTime: string
-        updateBy?: string | null
-        updateTime: string
-      }
-
-      interface CustomerStatementRecord {
-        id: string
-        tenantId: string
-        statementNo: string
-        customerId: string
-        customerName: string
-        periodStart: string
-        periodEnd: string
-        status: CustomerStatementStatus
-        waybillCount: number
-        statementAmount: number
-        settledAmount: number
-        outstandingAmount: number
-        submittedAt?: string | null
-        submittedBy?: string | null
-        reviewedAt?: string | null
-        reviewedBy?: string | null
-        reviewRemark?: string | null
-        voidedAt?: string | null
-        voidedBy?: string | null
-        voidReason?: string | null
-        remark?: string | null
-        createBy?: string | null
-        createTime: string
-        updateBy?: string | null
-        updateTime: string
-        items?: CustomerStatementItem[]
-      }
-
-      type CustomerStatementSearchParams = Api.Common.CommonSearchParams & {
-        customerId?: string
-        keyword?: string
-        periodRange?: string[]
-        recordId?: string
-        status?: string
-      }
-
-      interface CustomerStatementEligibleWaybill {
-        id: string
-        tenantId: string
-        waybillNo: string
-        waybillStatus: string
-        orderId: string
-        orderNo: string
-        customerId: string
-        customerName: string
-        originStation?: string | null
-        destinationStation?: string | null
-        completedAt: string
-        receivableAmount: number
-      }
-
-      interface CustomerStatementEligibleWaybillSearchParams extends Api.Common.CommonSearchParams {
-        customerId: string
-        periodStart: string
-        periodEnd: string
-        keyword?: string
-      }
-
-      interface CreateCustomerStatementPayload {
-        statementNo?: string | null
-        customerId: string
-        periodStart: string
-        periodEnd: string
-        waybillIds: string[]
-        remark?: string | null
-      }
-
-      interface CustomerStatementStatusPayload {
-        id: string
-        status: CustomerStatementStatus
-        reviewRemark?: string | null
-        voidReason?: string | null
-      }
-
-      interface CarrierStatementItem {
-        id: string
-        tenantId: string
-        statementId: string
-        carrierId: string
-        costId: string
-        waybillId: string
-        waybillNoSnapshot: string
-        costTypeSnapshot: string
-        occurredOnSnapshot: string
-        payeeNameSnapshot?: string | null
-        costAmount: number
-        adjustmentAmount: number
-        lineAmount: number
-        isActive: boolean
-        remark?: string | null
-        createBy?: string | null
-        createTime: string
-        updateBy?: string | null
-        updateTime: string
-      }
-
-      interface CarrierStatementRecord {
-        id: string
-        tenantId: string
-        statementNo: string
-        carrierId: string
-        carrierName: string
-        periodStart: string
-        periodEnd: string
-        status: CustomerStatementStatus
-        costCount: number
-        waybillCount: number
-        statementAmount: number
-        settledAmount: number
-        outstandingAmount: number
-        submittedAt?: string | null
-        submittedBy?: string | null
-        reviewedAt?: string | null
-        reviewedBy?: string | null
-        reviewRemark?: string | null
-        voidedAt?: string | null
-        voidedBy?: string | null
-        voidReason?: string | null
-        remark?: string | null
-        createBy?: string | null
-        createTime: string
-        updateBy?: string | null
-        updateTime: string
-        items?: CarrierStatementItem[]
-      }
-
-      type CarrierStatementSearchParams = Api.Common.CommonSearchParams & {
-        carrierId?: string
-        keyword?: string
-        periodRange?: string[]
-        recordId?: string
-        status?: string
-      }
-
-      interface CarrierStatementEligibleCost {
-        id: string
-        tenantId: string
-        carrierId: string
-        carrierName: string
-        waybillId: string
-        waybillNo: string
-        waybillStatus: string
-        costType: string
-        costAmount: number
-        occurredOn: string
-        payeeName?: string | null
-        remark?: string | null
-        originCity?: string | null
-        destinationCity?: string | null
-      }
-
-      interface CarrierStatementEligibleCostSearchParams extends Api.Common.CommonSearchParams {
-        carrierId: string
-        periodStart: string
-        periodEnd: string
-        keyword?: string
-      }
-
-      interface CreateCarrierStatementPayload {
-        statementNo?: string | null
-        carrierId: string
-        periodStart: string
-        periodEnd: string
-        costIds: string[]
-        remark?: string | null
-      }
-
-      interface CarrierStatementStatusPayload {
-        id: string
-        status: CustomerStatementStatus
-        reviewRemark?: string | null
-        voidReason?: string | null
-      }
-
-      type CashDirection = 'receipt' | 'payment'
-      type CashPaymentMethod = 'bank_transfer' | 'cash' | 'wechat' | 'alipay' | 'other'
-      type CashTransactionStatus =
-        'pending_allocation' | 'partially_allocated' | 'allocated' | 'voided'
-
-      interface CashAllocationStatement {
-        id: string
-        statementNo: string
-        customerId: string
-        customerNameSnapshot: string
-        periodStart: string
-        periodEnd: string
-        status: CustomerStatementStatus
-        settledAmount: number
-      }
-
-      interface CashAllocationRecord {
-        id: string
-        tenantId: string
-        transactionId: string
-        statementId: string
-        customerId: string
-        allocatedAmount: number
-        isActive: boolean
-        allocatedAt: string
-        allocatedBy?: string | null
-        reversedAt?: string | null
-        reversedBy?: string | null
-        reverseReason?: string | null
-        remark?: string | null
-        createBy?: string | null
-        createTime: string
-        updateBy?: string | null
-        updateTime: string
-        statement?: CashAllocationStatement | null
-      }
-
-      interface CashTransactionRecord {
-        id: string
-        tenantId: string
-        transactionNo: string
-        direction: CashDirection
-        customerId?: string | null
-        carrierId?: string | null
-        counterpartyName: string
-        transactionDate: string
-        amount: number
-        allocatedAmount: number
-        unallocatedAmount: number
-        allocationCount: number
-        paymentMethod: CashPaymentMethod
-        bankReference?: string | null
-        voucherUrls: string[]
-        status: CashTransactionStatus
-        voidedAt?: string | null
-        voidedBy?: string | null
-        voidReason?: string | null
-        remark?: string | null
-        createBy?: string | null
-        createTime: string
-        updateBy?: string | null
-        updateTime: string
-        paymentApplicationId?: string | null
-        allocations?: Array<CashAllocationRecord | CarrierCashAllocationRecord>
-      }
-
-      type CashTransactionSearchParams = Api.Common.CommonSearchParams & {
-        customerId?: string
-        carrierId?: string
-        direction?: string
-        recordId?: string
-        status?: string
-        dateRange?: string[]
-        keyword?: string
-      }
-
-      interface CustomerStatementAllocatable {
-        id: string
-        tenantId: string
-        statementNo: string
-        customerId: string
-        customerName: string
-        periodStart: string
-        periodEnd: string
-        waybillCount: number
-        statementAmount: number
-        settledAmount: number
-        outstandingAmount: number
-        status: CustomerStatementStatus
-        createTime: string
-      }
-
-      interface CustomerStatementAllocatableSearchParams extends Api.Common.CommonSearchParams {
-        customerId: string
-        keyword?: string
-      }
-
-      interface CashAllocationInput {
-        statementId: string
-        amount: number
-      }
-
-      interface CreateCustomerReceiptPayload {
-        transactionNo?: string | null
-        customerId: string
-        transactionDate: string
-        amount: number
-        paymentMethod: CashPaymentMethod
-        bankReference?: string | null
-        voucherUrls?: string[]
-        remark?: string | null
-        allocations: CashAllocationInput[]
-      }
-
-      interface AllocateCustomerReceiptPayload {
-        transactionId: string
-        allocations: CashAllocationInput[]
-      }
-
-      interface CarrierStatementAllocatable {
-        id: string
-        tenantId: string
-        statementNo: string
-        carrierId: string
-        carrierName: string
-        periodStart: string
-        periodEnd: string
-        costCount: number
-        waybillCount: number
-        statementAmount: number
-        settledAmount: number
-        outstandingAmount: number
-        statementOutstandingAmount?: number
-        reservedAmount?: number
-        status: CustomerStatementStatus
-        createTime: string
-      }
-
-      interface CarrierStatementAllocatableSearchParams extends Api.Common.CommonSearchParams {
-        carrierId: string
-        keyword?: string
-      }
-
-      interface CarrierCashAllocationRecord {
-        id: string
-        tenantId: string
-        transactionId: string
-        statementId: string
-        carrierId: string
-        allocatedAmount: number
-        isActive: boolean
-        allocatedAt: string
-        allocatedBy?: string | null
-        reversedAt?: string | null
-        reversedBy?: string | null
-        reverseReason?: string | null
-        remark?: string | null
-        createBy?: string | null
-        createTime: string
-        updateBy?: string | null
-        updateTime: string
-        statement?: CarrierStatementRecord | null
-      }
-
-      interface CreateCarrierPaymentPayload {
-        transactionNo?: string | null
-        carrierId: string
-        transactionDate: string
-        amount: number
-        paymentMethod: CashPaymentMethod
-        bankReference?: string | null
-        voucherUrls?: string[]
-        remark?: string | null
-        allocations: CashAllocationInput[]
-      }
-
-      interface AllocateCarrierPaymentPayload {
-        transactionId: string
-        allocations: CashAllocationInput[]
-      }
-
-      type CarrierPaymentApplicationStatus =
-        'draft' | 'pending_review' | 'approved' | 'rejected' | 'paid' | 'cancelled'
-
-      interface CarrierPaymentApplicationItem {
-        id: string
-        tenantId: string
-        applicationId: string
-        statementId: string
-        carrierId: string
-        statementNoSnapshot: string
-        statementAmountSnapshot: number
-        outstandingAmountSnapshot: number
-        appliedAmount: number
-        remark?: string | null
-        createBy?: string | null
-        createTime: string
-        updateBy?: string | null
-        updateTime: string
-      }
-
-      interface CarrierPaymentApplicationRecord {
-        id: string
-        tenantId: string
-        applicationNo: string
-        carrierId: string
-        carrierName: string
-        plannedPaymentDate: string
-        amount: number
-        paymentMethod: CashPaymentMethod
-        basisUrls: string[]
-        status: CarrierPaymentApplicationStatus
-        paidTransactionId?: string | null
-        paidTransactionNo?: string | null
-        statementCount: number
-        statementNos: string
-        submittedAt?: string | null
-        submittedBy?: string | null
-        reviewedAt?: string | null
-        reviewedBy?: string | null
-        reviewRemark?: string | null
-        paidAt?: string | null
-        paidBy?: string | null
-        cancelledAt?: string | null
-        cancelledBy?: string | null
-        cancelReason?: string | null
-        remark?: string | null
-        createBy?: string | null
-        createTime: string
-        updateBy?: string | null
-        updateTime: string
-        items?: CarrierPaymentApplicationItem[]
-      }
-
-      type CarrierPaymentApplicationSearchParams = Api.Common.CommonSearchParams & {
-        carrierId?: string
-        status?: string
-        plannedPaymentDateRange?: string[]
-        keyword?: string
-        recordId?: string
-      }
-
-      interface SaveCarrierPaymentApplicationPayload {
-        applicationNo?: string | null
-        id?: string
-        carrierId: string
-        plannedPaymentDate: string
-        amount: number
-        paymentMethod: CashPaymentMethod
-        basisUrls?: string[]
-        remark?: string | null
-        allocations: CashAllocationInput[]
-      }
-
-      interface ExecuteCarrierPaymentApplicationPayload {
-        transactionNo?: string | null
-        applicationId: string
-        transactionDate: string
-        bankReference?: string | null
-        voucherUrls?: string[]
-      }
-
-      type CashVoucherOcrField =
-        'payerName' | 'payeeName' | 'transactionDate' | 'amount' | 'bankReference' | 'paymentMethod'
-
-      interface CashVoucherOcrDraft {
-        payerName: string | null
-        payeeName: string | null
-        transactionDate: string | null
-        amount: number | null
-        bankReference: string | null
-        paymentMethod: CashPaymentMethod
-      }
-
-      interface CashVoucherStatementMatch {
-        statementId: string
-        statementNo: string
-        counterpartyId: string
-        counterpartyName: string
-        periodStart: string
-        periodEnd: string
-        statementAmount: number
-        settledAmount: number
-        outstandingAmount: number
-        score: number
-        confidence: number
-        recommendedAllocation: number
-        reasons: string[]
-      }
-
-      interface CashVoucherOcrAnalyzeRequest {
-        action: 'analyze'
-        imageUrls: string[]
-        direction: CashDirection
-      }
-
-      interface CashVoucherOcrAnalyzeResponse {
-        artifactId: string
-        runId: string
-        generatedAt: string
-        rawText: string
-        summary: string
-        confidence: number
-        fieldConfidence: Partial<Record<CashVoucherOcrField, number>>
-        missingFields: string[]
-        warnings: string[]
-        voucher: CashVoucherOcrDraft
-        matches: CashVoucherStatementMatch[]
-        evaluatedStatements: number
-        reviewConfidenceThreshold: number
-      }
-
-      interface CashVoucherOcrReviewRequest {
-        action: 'review'
-        artifactId: string
-        entityId: string
-        outcome: 'applied'
-        finalPayload: Record<string, unknown>
-        reviewNote?: string
-      }
-
-      interface CashVoucherOcrReviewResponse {
-        artifactId: string
-        status: 'applied'
-        acceptedFields: string[]
-        correctedFields: string[]
-      }
-
-      type BankBatchRowStatus = 'ready' | 'review' | 'duplicate' | 'invalid'
-
-      interface BankBatchMatchRow {
-        rowId: string
-        sourceRow: number
-        status: BankBatchRowStatus
-        direction: CashDirection | null
-        transactionDate: string | null
-        amount: number
-        bankReference: string | null
-        counterpartyName: string | null
-        counterpartyId: string | null
-        counterpartyScore: number
-        paymentMethod: CashPaymentMethod
-        remark: string | null
-        statementMatches: CashVoucherStatementMatch[]
-        allocations: CashAllocationInput[]
-        issues: string[]
-      }
-
-      interface BankBatchAnalyzeResponse {
-        artifactId: string
-        runId: string
-        generatedAt: string
-        mapping: Record<string, string>
-        usedAi: boolean
-        confidence: number
-        reviewConfidenceThreshold: number
-        summary: Record<BankBatchRowStatus, number>
-        rows: BankBatchMatchRow[]
-      }
-
-      interface BankBatchCommitResponse {
-        artifactId: string
-        committedCount: number
-        transactionIds: string[]
-      }
-
-      type InvoiceDirection = 'output' | 'input'
-      type InvoiceType = 'vat_special' | 'vat_ordinary' | 'electronic'
-      type InvoiceStatus = 'draft' | 'pending_review' | 'issued' | 'certified' | 'voided'
-      type InvoiceStatusAction = 'submit' | 'approve' | 'reject' | 'void'
-
-      interface InvoiceStatementLinkInput {
-        statementId: string
-        linkedAmount: number
-      }
-
-      interface InvoiceStatementLinkRecord {
-        id: string
-        tenantId: string
-        invoiceId: string
-        direction: InvoiceDirection
-        statementId: string
-        statementNo: string
-        counterpartyId: string
-        counterpartyName: string
-        periodStart: string
-        periodEnd: string
-        statementAmount: number
-        linkedAmount: number
-        createBy?: string | null
-        createTime: string
-      }
-
-      interface InvoiceRecord {
-        id: string
-        tenantId: string
-        invoiceRecordNo: string
-        direction: InvoiceDirection
-        invoiceType: InvoiceType
-        customerId?: string | null
-        carrierId?: string | null
-        counterpartyNameSnapshot: string
-        invoiceTitle?: string | null
-        taxNumber?: string | null
-        invoiceCode?: string | null
-        invoiceNo?: string | null
-        issueDate: string
-        taxRate: number
-        amountExcludingTax: number
-        taxAmount: number
-        totalAmount: number
-        status: InvoiceStatus
-        attachments: Array<Record<string, unknown>>
-        statementCount: number
-        linkedAmount: number
-        unlinkedAmount: number
-        submittedAt?: string | null
-        submittedBy?: string | null
-        reviewedAt?: string | null
-        reviewedBy?: string | null
-        reviewRemark?: string | null
-        voidedAt?: string | null
-        voidedBy?: string | null
-        voidReason?: string | null
-        remark?: string | null
-        createBy?: string | null
-        createTime: string
-        updateBy?: string | null
-        updateTime: string
-        statementLinks?: InvoiceStatementLinkRecord[]
-      }
-
-      interface InvoiceDuplicateRecord {
-        id: string
-        invoiceRecordNo: string
-        direction: InvoiceDirection
-        invoiceNo: string
-        status: InvoiceStatus
-        counterpartyNameSnapshot: string
-        issueDate: string
-        totalAmount: number
-      }
-
-      type InvoiceSearchParams = Api.Common.CommonSearchParams & {
-        direction?: string
-        status?: string
-        invoiceType?: string
-        customerId?: string
-        carrierId?: string
-        recordId?: string
-        issueDateRange?: string[]
-        keyword?: string
-      }
-
-      interface InvoiceableStatement {
-        direction: InvoiceDirection
-        statementId: string
-        tenantId: string
-        statementNo: string
-        counterpartyId: string
-        counterpartyName: string
-        periodStart: string
-        periodEnd: string
-        status: CustomerStatementStatus
-        statementAmount: number
-        invoicedAmount: number
-        uninvoicedAmount: number
-      }
-
-      interface InvoiceableStatementSearchParams extends Api.Common.CommonSearchParams {
-        direction: InvoiceDirection
-        counterpartyId: string
-        keyword?: string
-        includeFullyInvoiced?: boolean
-      }
-
-      interface SaveInvoicePayload {
-        invoiceRecordNo?: string | null
-        id?: string | null
-        direction: InvoiceDirection
-        invoiceType: InvoiceType
-        customerId?: string | null
-        carrierId?: string | null
-        invoiceTitle?: string | null
-        taxNumber?: string | null
-        invoiceCode?: string | null
-        invoiceNo?: string | null
-        issueDate: string
-        taxRate: number
-        amountExcludingTax: number
-        taxAmount: number
-        totalAmount: number
-        attachments?: Array<Record<string, unknown>>
-        remark?: string | null
-        statementLinks: InvoiceStatementLinkInput[]
-      }
-
-      interface InvoiceStatusPayload {
-        id: string
-        action: InvoiceStatusAction
-        remark?: string | null
-      }
-
-      type InvoiceComplianceSignalType =
-        | 'amount_formula_mismatch'
-        | 'counterparty_mismatch'
-        | 'duplicate_invoice_number'
-        | 'future_issue_date'
-        | 'incomplete_statement_coverage'
-        | 'missing_attachment'
-        | 'missing_invoice_identity'
-        | 'missing_tax_identity'
-        | 'statement_amount_mismatch'
-        | 'tax_calculation_mismatch'
-      type InvoiceComplianceSeverity = 'critical' | 'high' | 'medium'
-      type InvoiceComplianceRiskLevel = InvoiceComplianceSeverity | 'low'
-      type InvoiceComplianceRecommendation =
-        'block_for_verification' | 'manual_review' | 'routine_review'
-
-      interface InvoiceComplianceSignal {
-        type: InvoiceComplianceSignalType
-        severity: InvoiceComplianceSeverity
-        title: string
-        detail: string
-        evidence: string[]
-      }
-
-      interface InvoiceComplianceAssessment {
-        invoiceId: string
-        invoiceRecordNo: string
-        invoiceNo: string
-        counterpartyName: string
-        direction: string
-        riskLevel: InvoiceComplianceRiskLevel
-        riskScore: number
-        confidence: number
-        recommendation: InvoiceComplianceRecommendation
-        summary: string
-        signals: InvoiceComplianceSignal[]
-        recommendedActions: string[]
-        limitations: string[]
-        metrics: {
-          totalAmount: number
-          calculatedTotalAmount: number
-          linkedAmount: number
-          unlinkedAmount: number
-          statementCount: number
-          duplicateCount: number
-          attachmentCount: number
-          coverageRate: number
-          taxRate: number
-        }
-      }
-
-      interface InvoiceComplianceAuditResponse {
-        runId: string
-        ruleVersion: string
-        generatedAt: string
-        assessment: InvoiceComplianceAssessment
-      }
-
-      type InvoiceOcrField =
-        | 'invoiceType'
-        | 'invoiceTitle'
-        | 'taxNumber'
-        | 'invoiceCode'
-        | 'invoiceNo'
-        | 'issueDate'
-        | 'taxRate'
-        | 'amountExcludingTax'
-        | 'taxAmount'
-        | 'totalAmount'
-        | 'buyerName'
-        | 'buyerTaxNumber'
-        | 'sellerName'
-        | 'sellerTaxNumber'
-
-      interface InvoiceOcrDraft {
-        invoiceType?: InvoiceType | null
-        invoiceTitle?: string | null
-        taxNumber?: string | null
-        invoiceCode?: string | null
-        invoiceNo?: string | null
-        issueDate?: string | null
-        taxRate?: number | null
-        amountExcludingTax?: number | null
-        taxAmount?: number | null
-        totalAmount?: number | null
-        buyerName?: string | null
-        buyerTaxNumber?: string | null
-        sellerName?: string | null
-        sellerTaxNumber?: string | null
-      }
-
-      interface InvoiceOcrAnalyzeRequest {
-        action?: 'analyze'
-        imageUrls: string[]
-        direction: InvoiceDirection
-      }
-
-      interface InvoiceOcrAnalyzeResponse {
-        runId: string
-        artifactId: string
-        generatedAt: string
-        rawText: string
-        summary: string
-        confidence: number
-        fieldConfidence: Partial<Record<InvoiceOcrField, number>>
-        missingFields: string[]
-        warnings: string[]
-        invoice: InvoiceOcrDraft
-      }
-
-      type InvoiceCounterpartyResolutionStatus =
-        'matched' | 'unmatched' | 'ambiguous' | 'conflict' | 'disabled' | 'invalid'
-
-      interface InvoiceCounterpartyOption {
-        id: string
-        partyName: string
-        partyCode?: string | null
-        taxNo?: string | null
-        enabled: boolean
-      }
-
-      interface InvoiceCounterpartyResolution {
-        status: InvoiceCounterpartyResolutionStatus
-        direction: InvoiceDirection
-        partyKind: 'customer' | 'carrier'
-        name?: string | null
-        taxNo?: string | null
-        confidence: number
-        matchMethod?: 'tax_no' | 'name' | null
-        canCreate: boolean
-        requiresReview: boolean
-        message: string
-        party?: InvoiceCounterpartyOption | null
-      }
-
-      interface CreateInvoiceCounterpartyFromOcrPayload {
-        artifactId: string
-        name: string
-        taxNo?: string | null
-        carrierType?: string | null
-      }
-
-      interface CreateInvoiceCounterpartyFromOcrResponse {
-        created: boolean
-        direction: InvoiceDirection
-        party: InvoiceCounterpartyOption
-      }
-
-      interface InvoiceOcrReviewRequest {
-        action: 'review'
-        artifactId: string
-        entityId: string
-        outcome: 'applied'
-        finalPayload: Record<string, unknown>
-        reviewNote?: string
-      }
-
-      interface InvoiceOcrReviewResponse {
-        artifactId: string
-        status: 'applied'
-        acceptedFields: string[]
-        correctedFields: string[]
-      }
-
-      interface FinanceWorkbenchStats {
-        customerReceivableBalance: number
-        carrierPayableBalance: number
-        monthReceiptAmount: number
-        monthPaymentAmount: number
-        monthRevenueAmount: number
-        monthCostAmount: number
-        monthGrossProfit: number
-        receiptCompletionRate: number
-        paymentCompletionRate: number
-        invoiceMatchRate: number
-        costApprovalRate: number
-        pendingCustomerStatementCount: number
-        pendingCustomerStatementAmount: number
-        pendingCarrierStatementCount: number
-        pendingCarrierStatementAmount: number
-        pendingCostCount: number
-        pendingCostAmount: number
-        unallocatedReceiptCount: number
-        unallocatedReceiptAmount: number
-        unallocatedPaymentCount: number
-        unallocatedPaymentAmount: number
-        draftInvoiceCount: number
-        draftInvoiceAmount: number
-        pendingInvoiceCount: number
-        pendingInvoiceAmount: number
-        pendingPaymentApplicationCount: number
-        pendingPaymentApplicationAmount: number
-        approvedUnpaidPaymentCount: number
-        approvedUnpaidPaymentAmount: number
-        unapprovedPaymentCount: number
-        unapprovedPaymentAmount: number
-        overdueReceivableCount: number
-        overdueReceivableAmount: number
-        uninvoicedReceivableCount: number
-        uninvoicedReceivableAmount: number
-      }
-
-      type ReceivablesRiskLevel = 'critical' | 'high' | 'medium' | 'low'
-      type ReceivablesSignalSeverity = 'critical' | 'high' | 'medium'
-      type ReceivablesRecommendation =
-        'unblock_settlement' | 'complete_invoicing' | 'prioritize_collection' | 'routine_monitoring'
-
-      interface ReceivablesRiskSignal {
-        type: string
-        severity: ReceivablesSignalSeverity
-        title: string
-        detail: string
-        evidence: string[]
-      }
-
-      interface ReceivablesPriorityStatement {
-        id: string
-        statementNo: string
-        customerId: string
-        customerName: string
-        periodStart: string
-        periodEnd: string
-        status: string
-        ageDays: number
-        statementAmount: number
-        settledAmount: number
-        outstandingAmount: number
-        uninvoicedAmount: number
-        riskScore: number
-        reasons: string[]
-      }
-
-      interface ReceivablesRiskCustomer {
-        customerId: string
-        customerName: string
-        statementCount: number
-        outstandingAmount: number
-        maxAgeDays: number
-        riskScore: number
-        statementNos: string[]
-      }
-
-      interface ReceivablesCollectionAssessment {
-        riskLevel: ReceivablesRiskLevel
-        riskScore: number
-        confidence: number
-        recommendation: ReceivablesRecommendation
-        summary: string
-        signals: ReceivablesRiskSignal[]
-        priorityStatements: ReceivablesPriorityStatement[]
-        riskCustomers: ReceivablesRiskCustomer[]
-        recommendedActions: string[]
-        limitations: string[]
-        metrics: {
-          totalStatementCount: number
-          openStatementCount: number
-          statementAmount: number
-          settledAmount: number
-          outstandingAmount: number
-          collectionRate: number
-          aging30Amount: number
-          aging60Amount: number
-          aging90Amount: number
-          uninvoicedAmount: number
-          reviewBlockedAmount: number
-          atRiskAmount: number
-        }
-      }
-
-      interface ReceivablesCollectionResponse {
-        runId: string
-        ruleVersion: string
-        generatedAt: string
-        assessment: ReceivablesCollectionAssessment
+        benchmarkMedian: number | null
+        benchmarkSampleSize: number
+        duplicateCount: number
+        projectedTotalCost: number
+        receivableAmount: number | null
+        projectedGrossMargin: number | null
+        attachmentCount: number
       }
     }
 
+    interface WaybillCostAuditResponse {
+      runId: string
+      ruleVersion: string
+      generatedAt: string
+      assessment: WaybillCostAuditAssessment
+    }
+
+    type WaybillProfitAnalysisRiskLevel = 'critical' | 'high' | 'medium' | 'low'
+    type WaybillProfitAnalysisSeverity = 'critical' | 'high' | 'medium'
+    type WaybillProfitAnalysisRecommendation =
+      'repair_cost_baseline' | 'manual_profit_review' | 'routine_monitoring'
+
+    interface WaybillProfitAnalysisSignal {
+      type: string
+      severity: WaybillProfitAnalysisSeverity
+      title: string
+      detail: string
+      evidence: string[]
+    }
+
+    interface WaybillProfitRiskWaybill {
+      id: string
+      waybillId: string
+      waybillNo: string
+      route: string
+      customerName: string
+      carrierName: string
+      waybillStatus: string
+      receivableAmount: number
+      totalCostAmount: number
+      grossProfit: number
+      grossMargin: number
+      riskScore: number
+      reasons: string[]
+    }
+
+    interface WaybillProfitAnalysisAssessment {
+      riskLevel: WaybillProfitAnalysisRiskLevel
+      riskScore: number
+      confidence: number
+      recommendation: WaybillProfitAnalysisRecommendation
+      summary: string
+      signals: WaybillProfitAnalysisSignal[]
+      riskWaybills: WaybillProfitRiskWaybill[]
+      recommendedActions: string[]
+      limitations: string[]
+      metrics: {
+        totalWaybills: number
+        finalizedWaybills: number
+        receivableAmount: number
+        totalCostAmount: number
+        bookGrossProfit: number
+        bookGrossMargin: number | null
+        costCoverage: number
+        finalizedCostCoverage: number
+        missingCostCount: number
+        negativeMarginCount: number
+        carrierPayableMissingCount: number
+      }
+    }
+
+    interface WaybillProfitAnalysisResponse {
+      runId: string
+      ruleVersion: string
+      generatedAt: string
+      assessment: WaybillProfitAnalysisAssessment
+    }
+
+    interface WaybillProfitRecord {
+      id: string
+      tenantId: string
+      waybillId: string
+      orderId?: string | null
+      waybillNo: string
+      waybillStatus: string
+      orderStatus?: string | null
+      customerId?: string | null
+      customerName?: string | null
+      carrierId?: string | null
+      carrierName?: string | null
+      plateNo?: string | null
+      driverName?: string | null
+      originStation?: string | null
+      destinationStation?: string | null
+      receivableAmount: number
+      carrierPayableAmount: number
+      otherCostAmount: number
+      totalCostAmount: number
+      grossProfit: number
+      grossMargin: number
+      completedAt?: string | null
+      signedAt?: string | null
+      createTime?: string
+      updateTime?: string
+    }
+
+    type WaybillProfitSearchParams = Api.Common.CommonSearchParams & {
+      keyword?: string
+      waybillStatus?: string
+      completedAtRange?: string[]
+    }
+
+    type CustomerStatementStatus =
+      'draft' | 'pending_review' | 'confirmed' | 'partially_settled' | 'settled' | 'voided'
+
+    interface CustomerStatementItem {
+      id: string
+      tenantId: string
+      statementId: string
+      customerId: string
+      waybillId: string
+      orderId: string
+      waybillNoSnapshot: string
+      orderNoSnapshot: string
+      originStationSnapshot?: string | null
+      destinationStationSnapshot?: string | null
+      completedAtSnapshot?: string | null
+      receivableAmount: number
+      adjustmentAmount: number
+      lineAmount: number
+      isActive: boolean
+      remark?: string | null
+      createBy?: string | null
+      createTime: string
+      updateBy?: string | null
+      updateTime: string
+    }
+
+    interface CustomerStatementRecord {
+      id: string
+      tenantId: string
+      statementNo: string
+      customerId: string
+      customerName: string
+      periodStart: string
+      periodEnd: string
+      status: CustomerStatementStatus
+      waybillCount: number
+      statementAmount: number
+      settledAmount: number
+      outstandingAmount: number
+      submittedAt?: string | null
+      submittedBy?: string | null
+      reviewedAt?: string | null
+      reviewedBy?: string | null
+      reviewRemark?: string | null
+      voidedAt?: string | null
+      voidedBy?: string | null
+      voidReason?: string | null
+      remark?: string | null
+      createBy?: string | null
+      createTime: string
+      updateBy?: string | null
+      updateTime: string
+      items?: CustomerStatementItem[]
+    }
+
+    type CustomerStatementSearchParams = Api.Common.CommonSearchParams & {
+      customerId?: string
+      keyword?: string
+      periodRange?: string[]
+      recordId?: string
+      status?: string
+    }
+
+    interface CustomerStatementEligibleWaybill {
+      id: string
+      tenantId: string
+      waybillNo: string
+      waybillStatus: string
+      orderId: string
+      orderNo: string
+      customerId: string
+      customerName: string
+      originStation?: string | null
+      destinationStation?: string | null
+      completedAt: string
+      receivableAmount: number
+    }
+
+    interface CustomerStatementEligibleWaybillSearchParams extends Api.Common.CommonSearchParams {
+      customerId: string
+      periodStart: string
+      periodEnd: string
+      keyword?: string
+    }
+
+    interface CreateCustomerStatementPayload {
+      statementNo?: string | null
+      customerId: string
+      periodStart: string
+      periodEnd: string
+      waybillIds: string[]
+      remark?: string | null
+    }
+
+    interface CustomerStatementStatusPayload {
+      id: string
+      status: CustomerStatementStatus
+      reviewRemark?: string | null
+      voidReason?: string | null
+    }
+
+    interface CarrierStatementItem {
+      id: string
+      tenantId: string
+      statementId: string
+      carrierId: string
+      costId: string
+      waybillId: string
+      waybillNoSnapshot: string
+      costTypeSnapshot: string
+      occurredOnSnapshot: string
+      payeeNameSnapshot?: string | null
+      costAmount: number
+      adjustmentAmount: number
+      lineAmount: number
+      isActive: boolean
+      remark?: string | null
+      createBy?: string | null
+      createTime: string
+      updateBy?: string | null
+      updateTime: string
+    }
+
+    interface CarrierStatementRecord {
+      id: string
+      tenantId: string
+      statementNo: string
+      carrierId: string
+      carrierName: string
+      periodStart: string
+      periodEnd: string
+      status: CustomerStatementStatus
+      costCount: number
+      waybillCount: number
+      statementAmount: number
+      settledAmount: number
+      outstandingAmount: number
+      submittedAt?: string | null
+      submittedBy?: string | null
+      reviewedAt?: string | null
+      reviewedBy?: string | null
+      reviewRemark?: string | null
+      voidedAt?: string | null
+      voidedBy?: string | null
+      voidReason?: string | null
+      remark?: string | null
+      createBy?: string | null
+      createTime: string
+      updateBy?: string | null
+      updateTime: string
+      items?: CarrierStatementItem[]
+    }
+
+    type CarrierStatementSearchParams = Api.Common.CommonSearchParams & {
+      carrierId?: string
+      keyword?: string
+      periodRange?: string[]
+      recordId?: string
+      status?: string
+    }
+
+    interface CarrierStatementEligibleCost {
+      id: string
+      tenantId: string
+      carrierId: string
+      carrierName: string
+      waybillId: string
+      waybillNo: string
+      waybillStatus: string
+      costType: string
+      costAmount: number
+      occurredOn: string
+      payeeName?: string | null
+      remark?: string | null
+      originCity?: string | null
+      destinationCity?: string | null
+    }
+
+    interface CarrierStatementEligibleCostSearchParams extends Api.Common.CommonSearchParams {
+      carrierId: string
+      periodStart: string
+      periodEnd: string
+      keyword?: string
+    }
+
+    interface CreateCarrierStatementPayload {
+      statementNo?: string | null
+      carrierId: string
+      periodStart: string
+      periodEnd: string
+      costIds: string[]
+      remark?: string | null
+    }
+
+    interface CarrierStatementStatusPayload {
+      id: string
+      status: CustomerStatementStatus
+      reviewRemark?: string | null
+      voidReason?: string | null
+    }
+
+    type CashDirection = 'receipt' | 'payment'
+    type CashPaymentMethod = 'bank_transfer' | 'cash' | 'wechat' | 'alipay' | 'other'
+    type CashTransactionStatus =
+      'pending_allocation' | 'partially_allocated' | 'allocated' | 'voided'
+
+    interface CashAllocationStatement {
+      id: string
+      statementNo: string
+      customerId: string
+      customerNameSnapshot: string
+      periodStart: string
+      periodEnd: string
+      status: CustomerStatementStatus
+      settledAmount: number
+    }
+
+    interface CashAllocationRecord {
+      id: string
+      tenantId: string
+      transactionId: string
+      statementId: string
+      customerId: string
+      allocatedAmount: number
+      isActive: boolean
+      allocatedAt: string
+      allocatedBy?: string | null
+      reversedAt?: string | null
+      reversedBy?: string | null
+      reverseReason?: string | null
+      remark?: string | null
+      createBy?: string | null
+      createTime: string
+      updateBy?: string | null
+      updateTime: string
+      statement?: CashAllocationStatement | null
+    }
+
+    interface CashTransactionRecord {
+      id: string
+      tenantId: string
+      transactionNo: string
+      direction: CashDirection
+      customerId?: string | null
+      carrierId?: string | null
+      counterpartyName: string
+      transactionDate: string
+      amount: number
+      allocatedAmount: number
+      unallocatedAmount: number
+      allocationCount: number
+      paymentMethod: CashPaymentMethod
+      bankReference?: string | null
+      voucherUrls: string[]
+      status: CashTransactionStatus
+      voidedAt?: string | null
+      voidedBy?: string | null
+      voidReason?: string | null
+      remark?: string | null
+      createBy?: string | null
+      createTime: string
+      updateBy?: string | null
+      updateTime: string
+      paymentApplicationId?: string | null
+      allocations?: Array<CashAllocationRecord | CarrierCashAllocationRecord>
+    }
+
+    type CashTransactionSearchParams = Api.Common.CommonSearchParams & {
+      customerId?: string
+      carrierId?: string
+      direction?: string
+      recordId?: string
+      status?: string
+      dateRange?: string[]
+      keyword?: string
+    }
+
+    interface CustomerStatementAllocatable {
+      id: string
+      tenantId: string
+      statementNo: string
+      customerId: string
+      customerName: string
+      periodStart: string
+      periodEnd: string
+      waybillCount: number
+      statementAmount: number
+      settledAmount: number
+      outstandingAmount: number
+      status: CustomerStatementStatus
+      createTime: string
+    }
+
+    interface CustomerStatementAllocatableSearchParams extends Api.Common.CommonSearchParams {
+      customerId: string
+      keyword?: string
+    }
+
+    interface CashAllocationInput {
+      statementId: string
+      amount: number
+    }
+
+    interface CreateCustomerReceiptPayload {
+      transactionNo?: string | null
+      customerId: string
+      transactionDate: string
+      amount: number
+      paymentMethod: CashPaymentMethod
+      bankReference?: string | null
+      voucherUrls?: string[]
+      remark?: string | null
+      allocations: CashAllocationInput[]
+    }
+
+    interface AllocateCustomerReceiptPayload {
+      transactionId: string
+      allocations: CashAllocationInput[]
+    }
+
+    interface CarrierStatementAllocatable {
+      id: string
+      tenantId: string
+      statementNo: string
+      carrierId: string
+      carrierName: string
+      periodStart: string
+      periodEnd: string
+      costCount: number
+      waybillCount: number
+      statementAmount: number
+      settledAmount: number
+      outstandingAmount: number
+      statementOutstandingAmount?: number
+      reservedAmount?: number
+      status: CustomerStatementStatus
+      createTime: string
+    }
+
+    interface CarrierStatementAllocatableSearchParams extends Api.Common.CommonSearchParams {
+      carrierId: string
+      keyword?: string
+    }
+
+    interface CarrierCashAllocationRecord {
+      id: string
+      tenantId: string
+      transactionId: string
+      statementId: string
+      carrierId: string
+      allocatedAmount: number
+      isActive: boolean
+      allocatedAt: string
+      allocatedBy?: string | null
+      reversedAt?: string | null
+      reversedBy?: string | null
+      reverseReason?: string | null
+      remark?: string | null
+      createBy?: string | null
+      createTime: string
+      updateBy?: string | null
+      updateTime: string
+      statement?: CarrierStatementRecord | null
+    }
+
+    interface CreateCarrierPaymentPayload {
+      transactionNo?: string | null
+      carrierId: string
+      transactionDate: string
+      amount: number
+      paymentMethod: CashPaymentMethod
+      bankReference?: string | null
+      voucherUrls?: string[]
+      remark?: string | null
+      allocations: CashAllocationInput[]
+    }
+
+    interface AllocateCarrierPaymentPayload {
+      transactionId: string
+      allocations: CashAllocationInput[]
+    }
+
+    type CarrierPaymentApplicationStatus =
+      'draft' | 'pending_review' | 'approved' | 'rejected' | 'paid' | 'cancelled'
+
+    interface CarrierPaymentApplicationItem {
+      id: string
+      tenantId: string
+      applicationId: string
+      statementId: string
+      carrierId: string
+      statementNoSnapshot: string
+      statementAmountSnapshot: number
+      outstandingAmountSnapshot: number
+      appliedAmount: number
+      remark?: string | null
+      createBy?: string | null
+      createTime: string
+      updateBy?: string | null
+      updateTime: string
+    }
+
+    interface CarrierPaymentApplicationRecord {
+      id: string
+      tenantId: string
+      applicationNo: string
+      carrierId: string
+      carrierName: string
+      plannedPaymentDate: string
+      amount: number
+      paymentMethod: CashPaymentMethod
+      basisUrls: string[]
+      status: CarrierPaymentApplicationStatus
+      paidTransactionId?: string | null
+      paidTransactionNo?: string | null
+      statementCount: number
+      statementNos: string
+      submittedAt?: string | null
+      submittedBy?: string | null
+      reviewedAt?: string | null
+      reviewedBy?: string | null
+      reviewRemark?: string | null
+      paidAt?: string | null
+      paidBy?: string | null
+      cancelledAt?: string | null
+      cancelledBy?: string | null
+      cancelReason?: string | null
+      remark?: string | null
+      createBy?: string | null
+      createTime: string
+      updateBy?: string | null
+      updateTime: string
+      items?: CarrierPaymentApplicationItem[]
+    }
+
+    type CarrierPaymentApplicationSearchParams = Api.Common.CommonSearchParams & {
+      carrierId?: string
+      status?: string
+      plannedPaymentDateRange?: string[]
+      keyword?: string
+      recordId?: string
+    }
+
+    interface SaveCarrierPaymentApplicationPayload {
+      applicationNo?: string | null
+      id?: string
+      carrierId: string
+      plannedPaymentDate: string
+      amount: number
+      paymentMethod: CashPaymentMethod
+      basisUrls?: string[]
+      remark?: string | null
+      allocations: CashAllocationInput[]
+    }
+
+    interface ExecuteCarrierPaymentApplicationPayload {
+      transactionNo?: string | null
+      applicationId: string
+      transactionDate: string
+      bankReference?: string | null
+      voucherUrls?: string[]
+    }
+
+    type CashVoucherOcrField =
+      'payerName' | 'payeeName' | 'transactionDate' | 'amount' | 'bankReference' | 'paymentMethod'
+
+    interface CashVoucherOcrDraft {
+      payerName: string | null
+      payeeName: string | null
+      transactionDate: string | null
+      amount: number | null
+      bankReference: string | null
+      paymentMethod: CashPaymentMethod
+    }
+
+    interface CashVoucherStatementMatch {
+      statementId: string
+      statementNo: string
+      counterpartyId: string
+      counterpartyName: string
+      periodStart: string
+      periodEnd: string
+      statementAmount: number
+      settledAmount: number
+      outstandingAmount: number
+      score: number
+      confidence: number
+      recommendedAllocation: number
+      reasons: string[]
+    }
+
+    interface CashVoucherOcrAnalyzeRequest {
+      action: 'analyze'
+      imageUrls: string[]
+      direction: CashDirection
+    }
+
+    interface CashVoucherOcrAnalyzeResponse {
+      artifactId: string
+      runId: string
+      generatedAt: string
+      rawText: string
+      summary: string
+      confidence: number
+      fieldConfidence: Partial<Record<CashVoucherOcrField, number>>
+      missingFields: string[]
+      warnings: string[]
+      voucher: CashVoucherOcrDraft
+      matches: CashVoucherStatementMatch[]
+      evaluatedStatements: number
+      reviewConfidenceThreshold: number
+    }
+
+    interface CashVoucherOcrReviewRequest {
+      action: 'review'
+      artifactId: string
+      entityId: string
+      outcome: 'applied'
+      finalPayload: Record<string, unknown>
+      reviewNote?: string
+    }
+
+    interface CashVoucherOcrReviewResponse {
+      artifactId: string
+      status: 'applied'
+      acceptedFields: string[]
+      correctedFields: string[]
+    }
+
+    type BankBatchRowStatus = 'ready' | 'review' | 'duplicate' | 'invalid'
+
+    interface BankBatchMatchRow {
+      rowId: string
+      sourceRow: number
+      status: BankBatchRowStatus
+      direction: CashDirection | null
+      transactionDate: string | null
+      amount: number
+      bankReference: string | null
+      counterpartyName: string | null
+      counterpartyId: string | null
+      counterpartyScore: number
+      paymentMethod: CashPaymentMethod
+      remark: string | null
+      statementMatches: CashVoucherStatementMatch[]
+      allocations: CashAllocationInput[]
+      issues: string[]
+    }
+
+    interface BankBatchAnalyzeResponse {
+      artifactId: string
+      runId: string
+      generatedAt: string
+      mapping: Record<string, string>
+      usedAi: boolean
+      confidence: number
+      reviewConfidenceThreshold: number
+      summary: Record<BankBatchRowStatus, number>
+      rows: BankBatchMatchRow[]
+    }
+
+    interface BankBatchCommitResponse {
+      artifactId: string
+      committedCount: number
+      transactionIds: string[]
+    }
+
+    type InvoiceDirection = 'output' | 'input'
+    type InvoiceType = 'vat_special' | 'vat_ordinary' | 'electronic'
+    type InvoiceStatus = 'draft' | 'pending_review' | 'issued' | 'certified' | 'voided'
+    type InvoiceStatusAction = 'submit' | 'approve' | 'reject' | 'void'
+
+    interface InvoiceStatementLinkInput {
+      statementId: string
+      linkedAmount: number
+    }
+
+    interface InvoiceStatementLinkRecord {
+      id: string
+      tenantId: string
+      invoiceId: string
+      direction: InvoiceDirection
+      statementId: string
+      statementNo: string
+      counterpartyId: string
+      counterpartyName: string
+      periodStart: string
+      periodEnd: string
+      statementAmount: number
+      linkedAmount: number
+      createBy?: string | null
+      createTime: string
+    }
+
+    interface InvoiceRecord {
+      id: string
+      tenantId: string
+      invoiceRecordNo: string
+      direction: InvoiceDirection
+      invoiceType: InvoiceType
+      customerId?: string | null
+      carrierId?: string | null
+      counterpartyNameSnapshot: string
+      invoiceTitle?: string | null
+      taxNumber?: string | null
+      invoiceCode?: string | null
+      invoiceNo?: string | null
+      issueDate: string
+      taxRate: number
+      amountExcludingTax: number
+      taxAmount: number
+      totalAmount: number
+      status: InvoiceStatus
+      attachments: Array<Record<string, unknown>>
+      statementCount: number
+      linkedAmount: number
+      unlinkedAmount: number
+      submittedAt?: string | null
+      submittedBy?: string | null
+      reviewedAt?: string | null
+      reviewedBy?: string | null
+      reviewRemark?: string | null
+      voidedAt?: string | null
+      voidedBy?: string | null
+      voidReason?: string | null
+      remark?: string | null
+      createBy?: string | null
+      createTime: string
+      updateBy?: string | null
+      updateTime: string
+      statementLinks?: InvoiceStatementLinkRecord[]
+    }
+
+    interface InvoiceDuplicateRecord {
+      id: string
+      invoiceRecordNo: string
+      direction: InvoiceDirection
+      invoiceNo: string
+      status: InvoiceStatus
+      counterpartyNameSnapshot: string
+      issueDate: string
+      totalAmount: number
+    }
+
+    type InvoiceSearchParams = Api.Common.CommonSearchParams & {
+      direction?: string
+      status?: string
+      invoiceType?: string
+      customerId?: string
+      carrierId?: string
+      recordId?: string
+      issueDateRange?: string[]
+      keyword?: string
+    }
+
+    interface InvoiceableStatement {
+      direction: InvoiceDirection
+      statementId: string
+      tenantId: string
+      statementNo: string
+      counterpartyId: string
+      counterpartyName: string
+      periodStart: string
+      periodEnd: string
+      status: CustomerStatementStatus
+      statementAmount: number
+      invoicedAmount: number
+      uninvoicedAmount: number
+    }
+
+    interface InvoiceableStatementSearchParams extends Api.Common.CommonSearchParams {
+      direction: InvoiceDirection
+      counterpartyId: string
+      keyword?: string
+      includeFullyInvoiced?: boolean
+    }
+
+    interface SaveInvoicePayload {
+      invoiceRecordNo?: string | null
+      id?: string | null
+      direction: InvoiceDirection
+      invoiceType: InvoiceType
+      customerId?: string | null
+      carrierId?: string | null
+      invoiceTitle?: string | null
+      taxNumber?: string | null
+      invoiceCode?: string | null
+      invoiceNo?: string | null
+      issueDate: string
+      taxRate: number
+      amountExcludingTax: number
+      taxAmount: number
+      totalAmount: number
+      attachments?: Array<Record<string, unknown>>
+      remark?: string | null
+      statementLinks: InvoiceStatementLinkInput[]
+    }
+
+    interface InvoiceStatusPayload {
+      id: string
+      action: InvoiceStatusAction
+      remark?: string | null
+    }
+
+    type InvoiceComplianceSignalType =
+      | 'amount_formula_mismatch'
+      | 'counterparty_mismatch'
+      | 'duplicate_invoice_number'
+      | 'future_issue_date'
+      | 'incomplete_statement_coverage'
+      | 'missing_attachment'
+      | 'missing_invoice_identity'
+      | 'missing_tax_identity'
+      | 'statement_amount_mismatch'
+      | 'tax_calculation_mismatch'
+    type InvoiceComplianceSeverity = 'critical' | 'high' | 'medium'
+    type InvoiceComplianceRiskLevel = InvoiceComplianceSeverity | 'low'
+    type InvoiceComplianceRecommendation =
+      'block_for_verification' | 'manual_review' | 'routine_review'
+
+    interface InvoiceComplianceSignal {
+      type: InvoiceComplianceSignalType
+      severity: InvoiceComplianceSeverity
+      title: string
+      detail: string
+      evidence: string[]
+    }
+
+    interface InvoiceComplianceAssessment {
+      invoiceId: string
+      invoiceRecordNo: string
+      invoiceNo: string
+      counterpartyName: string
+      direction: string
+      riskLevel: InvoiceComplianceRiskLevel
+      riskScore: number
+      confidence: number
+      recommendation: InvoiceComplianceRecommendation
+      summary: string
+      signals: InvoiceComplianceSignal[]
+      recommendedActions: string[]
+      limitations: string[]
+      metrics: {
+        totalAmount: number
+        calculatedTotalAmount: number
+        linkedAmount: number
+        unlinkedAmount: number
+        statementCount: number
+        duplicateCount: number
+        attachmentCount: number
+        coverageRate: number
+        taxRate: number
+      }
+    }
+
+    interface InvoiceComplianceAuditResponse {
+      runId: string
+      ruleVersion: string
+      generatedAt: string
+      assessment: InvoiceComplianceAssessment
+    }
+
+    type InvoiceOcrField =
+      | 'invoiceType'
+      | 'invoiceTitle'
+      | 'taxNumber'
+      | 'invoiceCode'
+      | 'invoiceNo'
+      | 'issueDate'
+      | 'taxRate'
+      | 'amountExcludingTax'
+      | 'taxAmount'
+      | 'totalAmount'
+      | 'buyerName'
+      | 'buyerTaxNumber'
+      | 'sellerName'
+      | 'sellerTaxNumber'
+
+    interface InvoiceOcrDraft {
+      invoiceType?: InvoiceType | null
+      invoiceTitle?: string | null
+      taxNumber?: string | null
+      invoiceCode?: string | null
+      invoiceNo?: string | null
+      issueDate?: string | null
+      taxRate?: number | null
+      amountExcludingTax?: number | null
+      taxAmount?: number | null
+      totalAmount?: number | null
+      buyerName?: string | null
+      buyerTaxNumber?: string | null
+      sellerName?: string | null
+      sellerTaxNumber?: string | null
+    }
+
+    interface InvoiceOcrAnalyzeRequest {
+      action?: 'analyze'
+      imageUrls: string[]
+      direction: InvoiceDirection
+    }
+
+    interface InvoiceOcrAnalyzeResponse {
+      runId: string
+      artifactId: string
+      generatedAt: string
+      rawText: string
+      summary: string
+      confidence: number
+      fieldConfidence: Partial<Record<InvoiceOcrField, number>>
+      missingFields: string[]
+      warnings: string[]
+      invoice: InvoiceOcrDraft
+    }
+
+    type InvoiceCounterpartyResolutionStatus =
+      'matched' | 'unmatched' | 'ambiguous' | 'conflict' | 'disabled' | 'invalid'
+
+    interface InvoiceCounterpartyOption {
+      id: string
+      partyName: string
+      partyCode?: string | null
+      taxNo?: string | null
+      enabled: boolean
+    }
+
+    interface InvoiceCounterpartyResolution {
+      status: InvoiceCounterpartyResolutionStatus
+      direction: InvoiceDirection
+      partyKind: 'customer' | 'carrier'
+      name?: string | null
+      taxNo?: string | null
+      confidence: number
+      matchMethod?: 'tax_no' | 'name' | null
+      canCreate: boolean
+      requiresReview: boolean
+      message: string
+      party?: InvoiceCounterpartyOption | null
+    }
+
+    interface CreateInvoiceCounterpartyFromOcrPayload {
+      artifactId: string
+      name: string
+      taxNo?: string | null
+      carrierType?: string | null
+    }
+
+    interface CreateInvoiceCounterpartyFromOcrResponse {
+      created: boolean
+      direction: InvoiceDirection
+      party: InvoiceCounterpartyOption
+    }
+
+    interface InvoiceOcrReviewRequest {
+      action: 'review'
+      artifactId: string
+      entityId: string
+      outcome: 'applied'
+      finalPayload: Record<string, unknown>
+      reviewNote?: string
+    }
+
+    interface InvoiceOcrReviewResponse {
+      artifactId: string
+      status: 'applied'
+      acceptedFields: string[]
+      correctedFields: string[]
+    }
+
+    interface FinanceWorkbenchStats {
+      customerReceivableBalance: number
+      carrierPayableBalance: number
+      monthReceiptAmount: number
+      monthPaymentAmount: number
+      monthRevenueAmount: number
+      monthCostAmount: number
+      monthGrossProfit: number
+      receiptCompletionRate: number
+      paymentCompletionRate: number
+      invoiceMatchRate: number
+      costApprovalRate: number
+      pendingCustomerStatementCount: number
+      pendingCustomerStatementAmount: number
+      pendingCarrierStatementCount: number
+      pendingCarrierStatementAmount: number
+      pendingCostCount: number
+      pendingCostAmount: number
+      unallocatedReceiptCount: number
+      unallocatedReceiptAmount: number
+      unallocatedPaymentCount: number
+      unallocatedPaymentAmount: number
+      draftInvoiceCount: number
+      draftInvoiceAmount: number
+      pendingInvoiceCount: number
+      pendingInvoiceAmount: number
+      pendingPaymentApplicationCount: number
+      pendingPaymentApplicationAmount: number
+      approvedUnpaidPaymentCount: number
+      approvedUnpaidPaymentAmount: number
+      unapprovedPaymentCount: number
+      unapprovedPaymentAmount: number
+      overdueReceivableCount: number
+      overdueReceivableAmount: number
+      uninvoicedReceivableCount: number
+      uninvoicedReceivableAmount: number
+    }
+
+    type ReceivablesRiskLevel = 'critical' | 'high' | 'medium' | 'low'
+    type ReceivablesSignalSeverity = 'critical' | 'high' | 'medium'
+    type ReceivablesRecommendation =
+      'unblock_settlement' | 'complete_invoicing' | 'prioritize_collection' | 'routine_monitoring'
+
+    interface ReceivablesRiskSignal {
+      type: string
+      severity: ReceivablesSignalSeverity
+      title: string
+      detail: string
+      evidence: string[]
+    }
+
+    interface ReceivablesPriorityStatement {
+      id: string
+      statementNo: string
+      customerId: string
+      customerName: string
+      periodStart: string
+      periodEnd: string
+      status: string
+      ageDays: number
+      statementAmount: number
+      settledAmount: number
+      outstandingAmount: number
+      uninvoicedAmount: number
+      riskScore: number
+      reasons: string[]
+    }
+
+    interface ReceivablesRiskCustomer {
+      customerId: string
+      customerName: string
+      statementCount: number
+      outstandingAmount: number
+      maxAgeDays: number
+      riskScore: number
+      statementNos: string[]
+    }
+
+    interface ReceivablesCollectionAssessment {
+      riskLevel: ReceivablesRiskLevel
+      riskScore: number
+      confidence: number
+      recommendation: ReceivablesRecommendation
+      summary: string
+      signals: ReceivablesRiskSignal[]
+      priorityStatements: ReceivablesPriorityStatement[]
+      riskCustomers: ReceivablesRiskCustomer[]
+      recommendedActions: string[]
+      limitations: string[]
+      metrics: {
+        totalStatementCount: number
+        openStatementCount: number
+        statementAmount: number
+        settledAmount: number
+        outstandingAmount: number
+        collectionRate: number
+        aging30Amount: number
+        aging60Amount: number
+        aging90Amount: number
+        uninvoicedAmount: number
+        reviewBlockedAmount: number
+        atRiskAmount: number
+      }
+    }
+
+    interface ReceivablesCollectionResponse {
+      runId: string
+      ruleVersion: string
+      generatedAt: string
+      assessment: ReceivablesCollectionAssessment
+    }
+  }
+
+  namespace Tms {
     namespace InTransit {
       interface RoutePoint {
         type?: string

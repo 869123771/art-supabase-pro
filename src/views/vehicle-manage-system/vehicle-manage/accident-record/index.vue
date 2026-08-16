@@ -1,6 +1,6 @@
 <template>
   <div class="accident-record-page art-full-height">
-    <VehicleWorkspaceHeader
+    <BusinessWorkspaceHeader
       eyebrow="SAFETY INCIDENT CONTROL"
       title="车辆事故"
       description="集中记录事故时间、地点、损失、责任和处置状态，为安全复盘与风险治理提供证据。"
@@ -61,9 +61,9 @@
   import { formatWithDayjs } from '@/utils/time'
   import { useUserStore } from '@/store/modules/user'
   import AccidentRecordDialog from './modules/accident-record-dialog.vue'
-  import VehicleWorkspaceHeader, {
-    type VehicleWorkspaceMetric
-  } from '@/views/vehicle-manage-system/modules/vehicle-workspace-header.vue'
+  import BusinessWorkspaceHeader, {
+    type BusinessWorkspaceMetric
+  } from '@/components/business/business-workspace-header/index.vue'
 
   defineOptions({ name: 'VehicleAccident' })
 
@@ -89,7 +89,7 @@
   const dialogRef = ref<DialogExpose>()
   const { getDictMap } = storeToRefs(useUserStore())
   const overview = reactive<{ total: number; rows: AccidentRecord[] }>({ total: 0, rows: [] })
-  const workspaceMetrics = computed<VehicleWorkspaceMetric[]>(() => [
+  const workspaceMetrics = computed<BusinessWorkspaceMetric[]>(() => [
     {
       label: '事故记录',
       value: overview.total,

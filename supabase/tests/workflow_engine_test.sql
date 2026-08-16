@@ -3,7 +3,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions, pg_catalog;
 
-select plan(92);
+select plan(94);
 
 -- Structural and authorization contract.
 select has_table('public', 'wf_definition', 'workflow definition table exists');
@@ -13,6 +13,32 @@ select has_table('public', 'wf_task', 'workflow task table exists');
 select has_table('public', 'wf_action', 'workflow action table exists');
 select has_table('public', 'wf_task_reminder_event', 'workflow reminder ledger exists');
 select has_table('public', 'wf_delegation', 'workflow delegation table exists');
+
+create temp table reimbursement_workflow_guard_probe(status text);
+create trigger reimbursement_workflow_guard_probe_trigger
+before update on reimbursement_workflow_guard_probe
+for each row execute function app_private.trg_guard_tms_expense_workflow_state();
+insert into reimbursement_workflow_guard_probe(status) values ('draft');
+select throws_ok(
+  $$update reimbursement_workflow_guard_probe set status='pending_review'$$,
+  'P0001',
+  '费用审批状态必须通过审批中心或出纳支付流程流转',
+  'shared expense workflow guard reads status-based records safely'
+);
+drop table reimbursement_workflow_guard_probe;
+
+create temp table tms_in_transit_expense(report_status text);
+create trigger in_transit_expense_workflow_guard_probe_trigger
+before update on tms_in_transit_expense
+for each row execute function app_private.trg_guard_tms_expense_workflow_state();
+insert into tms_in_transit_expense(report_status) values ('draft');
+select throws_ok(
+  $$update tms_in_transit_expense set report_status='pending_review'$$,
+  'P0001',
+  '费用审批状态必须通过审批中心或出纳支付流程流转',
+  'shared expense workflow guard reads report-status records safely'
+);
+drop table tms_in_transit_expense;
 
 select ok(
   (select relrowsecurity from pg_class where oid='public.wf_delegation'::regclass),

@@ -1,12 +1,12 @@
 <template>
-  <div class="tms-workspace-page art-full-height">
-    <CustomerDeleteProcessingNotice
+  <div class="business-workspace-page art-full-height">
+    <MasterDeleteProcessingNotice
       v-if="deleteContext.active"
       :customer-id="deleteContext.customerId"
       :customer-name="deleteContext.customerName"
       action-hint="已自动定位关联司机；请先调整归属或处理司机资料。"
     />
-    <TmsWorkspaceHeader
+    <BusinessWorkspaceHeader
       eyebrow="DRIVER ROSTER"
       title="司机资料"
       description="统一维护司机归属、从业类型、证照与可用状态，为车辆调度提供清晰的人力视图。"
@@ -62,9 +62,9 @@
   import MasterDataDeleteGuard, {
     type MasterDataDeleteGuardOpenOptions
   } from '@/components/business/master-data-delete-guard/index.vue'
-  import TmsWorkspaceHeader from '@/views/tms-transportation/modules/tms-workspace-header.vue'
-  import CustomerDeleteProcessingNotice from '@/views/tms-transportation/modules/customer-delete-processing-notice.vue'
-  import { useCustomerDeleteProcessingContext } from '@/views/tms-transportation/modules/use-customer-delete-processing'
+  import BusinessWorkspaceHeader from '@/components/business/business-workspace-header/index.vue'
+  import MasterDeleteProcessingNotice from '@/components/business/master-delete-processing-notice/index.vue'
+  import { useMasterDataDeleteProcessingContext } from '@/hooks/core/useMasterDataDeleteProcessing'
 
   defineOptions({ name: 'TmsDriver' })
 
@@ -85,7 +85,7 @@
 
   const { getDictMap } = storeToRefs(useUserStore())
   const route = useRoute()
-  const deleteContext = useCustomerDeleteProcessingContext()
+  const deleteContext = useMasterDataDeleteProcessingContext()
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<DriverDialogExpose>()
   const deleteGuardRef = ref<MasterDataDeleteGuardExpose>()

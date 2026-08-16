@@ -71,7 +71,7 @@
 
 | 属性 | 类型 | 默认值 | 说明 |
 | --- | --- | --- | --- |
-| `v-model` | `Record<string, any>` | `{}` | 表单数据；字段变化会整体回写新对象，父级建议使用 `ref` |
+| `v-model` | `Record<string, any>` | `{}` | 表单数据；字段变化只更新当前路径，未变化的嵌套对象和数组保持引用稳定 |
 | `items` | `FormItem[]` | `[]` | 表单项元数据 |
 | `span` | `number` | `6` | 默认列宽，基于 24 栅格 |
 | `gutter` | `number` | `12` | 栅格间距 |
@@ -158,6 +158,7 @@
 | `ref` | `Ref<FormInstance \| undefined>` | 底层 `ElForm` 实例 |
 | `validate(...args)` | `FormInstance['validate']` | 执行校验 |
 | `clearValidate(...args)` | `FormInstance['clearValidate']` | 清除校验状态 |
+| `scrollToField(...args)` | `FormInstance['scrollToField']` | 滚动定位到指定字段，适用于长表单或跨页签校验 |
 | `reset()` | `() => void` | 执行组件重置逻辑并触发 `reset` |
 | `fetchOptions(item)` | `(item: FormItem) => Promise<Record<string, any>[]>` | 加载单个字段的异步选项 |
 | `reloadOptions(key?)` | `(key?: string) => Promise<unknown>` | 重新加载指定字段或全部异步选项 |
@@ -324,7 +325,7 @@ const items: FormItem[] = [
 ## 使用建议
 
 - 标准栅格布局会在 `ArtForm` 根节点约束横向溢出，用于吸收 `ElRow gutter` 产生的负 margin，避免放入 `ArtDialog`、`ArtDrawer` 或其他滚动容器后出现无意义的横向滚动条。`customLayout` 模式不应用该约束，自定义内容需要自行管理横向滚动区域。
-- 父组件使用 `ref` 承接 `v-model`，不要把 `reactive` 常量对象直接传给 `ArtForm`，因为组件会整体回写新对象。
+- 父组件可使用 `ref` 或 `reactive` 承接 `v-model`；组件会在现有表单对象上更新当前字段，避免无关的复杂控件因引用变化而重建。
 - 普通字段优先用 `items` 描述；复杂字段用同名插槽。
 - 业务弹窗中配合 `ArtDialog` 使用时，通常设置 `show-reset=false`、`show-submit=false`，把提交交给弹窗 Footer。
 - Element Plus 字段组件的所有 Props 和事件都写到 `item.props`，例如 `maxlength`、`showWordLimit`、`onChange`。

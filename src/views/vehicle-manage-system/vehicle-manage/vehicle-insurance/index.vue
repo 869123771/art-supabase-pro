@@ -1,6 +1,6 @@
 <template>
   <div class="vehicle-insurance-page art-full-height">
-    <VehicleWorkspaceHeader
+    <BusinessWorkspaceHeader
       eyebrow="INSURANCE COMPLIANCE"
       title="车辆保险"
       description="集中管理商业险与交强险保单、保费和到期信息，持续掌握车队保险覆盖情况。"
@@ -61,9 +61,9 @@
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatWithDayjs } from '@/utils/time'
   import VehicleInsuranceDialog from './modules/vehicle-insurance-dialog.vue'
-  import VehicleWorkspaceHeader, {
-    type VehicleWorkspaceMetric
-  } from '@/views/vehicle-manage-system/modules/vehicle-workspace-header.vue'
+  import BusinessWorkspaceHeader, {
+    type BusinessWorkspaceMetric
+  } from '@/components/business/business-workspace-header/index.vue'
 
   defineOptions({ name: 'VehicleInsurance' })
 
@@ -88,7 +88,7 @@
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<DialogExpose>()
   const overview = reactive<{ total: number; rows: VehicleInsurance[] }>({ total: 0, rows: [] })
-  const workspaceMetrics = computed<VehicleWorkspaceMetric[]>(() => [
+  const workspaceMetrics = computed<BusinessWorkspaceMetric[]>(() => [
     {
       label: '保险记录',
       value: overview.total,

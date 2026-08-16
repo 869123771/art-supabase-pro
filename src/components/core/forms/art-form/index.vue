@@ -202,7 +202,7 @@
 <script setup lang="ts">
   import { useWindowSize } from '@vueuse/core'
   import { useI18n } from 'vue-i18n'
-  import { get, set, unset } from 'lodash-es'
+  import { get, unset } from 'lodash-es'
   import { onMounted, unref, watch, type Component, type Ref, type VNodeChild } from 'vue'
   import {
     ElCascader,
@@ -246,7 +246,8 @@
     cloneModelValue,
     sanitizeFormValue,
     type FormRecord,
-    type SanitizeOutputOptions
+    type SanitizeOutputOptions,
+    updateFormFieldValue
   } from './model-utils'
 
   defineOptions({ name: 'ArtForm' })
@@ -555,8 +556,6 @@
     return get(modelValue.value, path)
   }
 
-  const createModelSnapshot = () => cloneModelValue(modelValue.value)
-
   const commitModelValue = (nextValue: FormRecord) => {
     const currentValue = modelValue.value
 
@@ -585,15 +584,15 @@
     const normalizedValue = normalizeClearedValue(value, item)
     if (!path) return
 
-    const nextModelValue = createModelSnapshot()
-
-    if (normalizedValue === undefined) {
-      unset(nextModelValue, path)
-      commitModelValue(nextModelValue)
-      return
+    if (
+      !modelValue.value ||
+      typeof modelValue.value !== 'object' ||
+      Array.isArray(modelValue.value)
+    ) {
+      modelValue.value = {}
     }
 
-    commitModelValue(set(nextModelValue, path, normalizedValue))
+    updateFormFieldValue(modelValue.value, path, normalizedValue)
   }
 
   const emptyStringClearTypes = ['input', 'inputTag', 'select', 'treeSelect', 'cascader']
@@ -1061,6 +1060,8 @@
       formInstance.value?.validate(...args),
     clearValidate: (...args: Parameters<FormInstance['clearValidate']>) =>
       formInstance.value?.clearValidate(...args),
+    scrollToField: (...args: Parameters<FormInstance['scrollToField']>) =>
+      formInstance.value?.scrollToField(...args),
     reset: handleReset,
     fetchOptions,
     reloadOptions,

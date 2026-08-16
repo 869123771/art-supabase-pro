@@ -1,6 +1,6 @@
 <template>
-  <div class="tms-workspace-page art-full-height waybill-list">
-    <TmsWorkspaceHeader
+  <div class="business-workspace-page art-full-height waybill-list">
+    <BusinessWorkspaceHeader
       eyebrow="DISPATCH QUEUE"
       title="待调度运单"
       description="聚合尚未完成派车的运输需求，统一核对线路、货物、付款方式与调度条件。"
@@ -42,7 +42,7 @@
   import type { ColumnOption } from '@/types'
   import { useUserStore } from '@/store/modules/user'
   import DispatchDialog from './modules/dispatch-dialog.vue'
-  import TmsWorkspaceHeader from '@/views/tms-transportation/modules/tms-workspace-header.vue'
+  import BusinessWorkspaceHeader from '@/components/business/business-workspace-header/index.vue'
   import {
     createInitialWaybillSearch,
     createWaybillColumns,

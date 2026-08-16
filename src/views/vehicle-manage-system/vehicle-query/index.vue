@@ -1,56 +1,17 @@
 <template>
-  <div class="vehicle-query-page art-full-height">
-    <section class="vehicle-query-page__overview art-card-xs">
-      <header class="vehicle-query-page__hero">
-        <div class="vehicle-query-page__identity">
-          <div class="vehicle-query-page__brand" aria-hidden="true">
-            <ArtSvgIcon icon="ri:roadster-line" />
-          </div>
-          <div>
-            <span>FLEET INTELLIGENCE</span>
-            <h1>车辆全景查询</h1>
-            <p>以车辆档案为主线，集中核验运营状态、里程、保险、年检与维保资料。</p>
-          </div>
-        </div>
-        <div class="vehicle-query-page__hero-status">
-          <ElTag type="success" effect="light" round>仅展示已审核档案</ElTag>
-          <ElTag type="primary" effect="plain" round>一车一档</ElTag>
-        </div>
-      </header>
-
-      <div class="vehicle-query-page__metrics" aria-label="车辆档案概览">
-        <article>
-          <div class="vehicle-query-page__metric-icon is-primary">
-            <ArtSvgIcon icon="ri:truck-line" />
-          </div>
-          <div>
-            <span>当前结果</span>
-            <strong>{{ overview.total }}</strong>
-            <small>随筛选条件实时更新</small>
-          </div>
-        </article>
-        <article>
-          <div class="vehicle-query-page__metric-icon is-success">
-            <ArtSvgIcon icon="ri:shield-check-line" />
-          </div>
-          <div>
-            <span>本页运营资料齐全</span>
-            <strong>{{ coverageCompleteCount }}</strong>
-            <small>保险、年检与保养均有记录</small>
-          </div>
-        </article>
-        <article>
-          <div class="vehicle-query-page__metric-icon is-warning">
-            <ArtSvgIcon icon="ri:file-warning-line" />
-          </div>
-          <div>
-            <span>本页资料待补</span>
-            <strong>{{ coverageMissingCount }}</strong>
-            <small>至少一项运营保障记录缺失</small>
-          </div>
-        </article>
-      </div>
-    </section>
+  <div class="vehicle-query-page business-workspace-page art-full-height">
+    <BusinessWorkspaceHeader
+      class="vehicle-query-page__overview"
+      eyebrow="FLEET INTELLIGENCE"
+      title="车辆全景查询"
+      description="以车辆档案为主线，集中核验运营状态、里程、保险、年检与维保资料。"
+      icon="ri:roadster-line"
+      :tags="[
+        { label: '仅展示已审核档案', type: 'success', effect: 'light' },
+        { label: '一车一档', type: 'primary', effect: 'plain' }
+      ]"
+      :metrics="workspaceMetrics"
+    />
 
     <ArtTableQuery
       v-model="table.searchQuery"
@@ -68,7 +29,9 @@
 <script setup lang="tsx">
   import type { ComputedRef, UnwrapNestedRefs } from 'vue'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
-  import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
+  import BusinessWorkspaceHeader, {
+    type BusinessWorkspaceMetric
+  } from '@/components/business/business-workspace-header/index.vue'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type { ArtTableQueryProps } from '@/components/core/tables/art-table-query/index.vue'
   import type { ColumnOption } from '@/types'
@@ -136,6 +99,28 @@
       ).length
   )
   const coverageMissingCount = computed(() => overview.rows.length - coverageCompleteCount.value)
+  const workspaceMetrics = computed<BusinessWorkspaceMetric[]>(() => [
+    {
+      label: '当前结果',
+      value: overview.total,
+      description: '随筛选条件实时更新',
+      icon: 'ri:truck-line'
+    },
+    {
+      label: '本页运营资料齐全',
+      value: coverageCompleteCount.value,
+      description: '保险、年检与保养均有记录',
+      icon: 'ri:shield-check-line',
+      tone: 'success'
+    },
+    {
+      label: '本页资料待补',
+      value: coverageMissingCount.value,
+      description: '至少一项运营保障记录缺失',
+      icon: 'ri:file-warning-line',
+      tone: 'warning'
+    }
+  ])
 
   const table: UnwrapNestedRefs<TableGroup> = reactive<TableGroup>({
     searchQuery: {

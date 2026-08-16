@@ -1,9 +1,9 @@
 <template>
-  <div class="tms-workspace-page art-full-height delivery-list">
+  <div class="business-workspace-page art-full-height delivery-list">
     <MasterDeleteProcessingNotice
       action-hint="关联异常工单已自动打开并精确过滤；请完成处置后返回。"
     />
-    <TmsWorkspaceHeader
+    <BusinessWorkspaceHeader
       eyebrow="DELIVERY CONTROL"
       title="配送回单中心"
       description="集中复核签收回单与异常工单；运输完成统一由回场记录驱动，避免回单归档误结束运单。"
@@ -60,9 +60,9 @@
   import { useUserStore } from '@/store/modules/user'
   import ReceiptArchiveDialog from './modules/sign-dialog.vue'
   import ReceiptExceptionWorkOrderDrawer from './modules/receipt-exception-work-order-drawer.vue'
-  import TmsWorkspaceHeader, {
-    type TmsWorkspaceMetric
-  } from '@/views/tms-transportation/modules/tms-workspace-header.vue'
+  import BusinessWorkspaceHeader, {
+    type BusinessWorkspaceMetric
+  } from '@/components/business/business-workspace-header/index.vue'
   import MasterDeleteProcessingNotice from '@/components/business/master-delete-processing-notice/index.vue'
   import {
     DELIVERY_STATUS_ALL,
@@ -145,7 +145,7 @@
       })
   })
 
-  const workspaceMetrics = computed<TmsWorkspaceMetric[]>(() => [
+  const workspaceMetrics = computed<BusinessWorkspaceMetric[]>(() => [
     {
       label: '交付任务',
       value: table.statusTotal,

@@ -1,42 +1,25 @@
 <!-- 菜单管理页面 -->
 <template>
-  <div class="menu-page art-full-height">
+  <div class="menu-page business-workspace-page art-full-height">
     <MasterDeleteProcessingNotice
       action-hint="当前菜单已自动定位；可先解除角色授权或处理编号场景后返回。"
     />
-    <section class="menu-page__overview art-card-xs">
-      <header class="menu-page__hero">
-        <div class="menu-page__identity">
-          <div class="menu-page__brand" aria-hidden="true">
-            <ArtSvgIcon icon="ri:route-line" />
-          </div>
-          <div>
-            <span>NAVIGATION GOVERNANCE</span>
-            <h1>菜单管理</h1>
-            <p>统一维护导航层级、页面入口与按钮权限，确保路由结构和角色授权边界清晰一致。</p>
-          </div>
-        </div>
-        <div class="menu-page__hero-status">
-          <ElTag :type="canSortMenu ? 'success' : 'info'" effect="light" round>
-            {{ canSortMenu ? '专业树形排序' : '排序只读' }}
-          </ElTag>
-          <ElTag type="primary" effect="plain" round>树形权限结构</ElTag>
-        </div>
-      </header>
-
-      <div class="menu-page__metrics" aria-label="菜单结构概览">
-        <article v-for="item in overviewCards" :key="item.label">
-          <div :class="['menu-page__metric-icon', `is-${item.tone}`]">
-            <ArtSvgIcon :icon="item.icon" />
-          </div>
-          <div>
-            <span>{{ item.label }}</span>
-            <strong>{{ item.value }}</strong>
-            <small>{{ item.hint }}</small>
-          </div>
-        </article>
-      </div>
-    </section>
+    <BusinessWorkspaceHeader
+      class="menu-page__overview"
+      eyebrow="NAVIGATION GOVERNANCE"
+      title="菜单管理"
+      description="统一维护导航层级、页面入口与按钮权限，确保路由结构和角色授权边界清晰一致。"
+      icon="ri:route-line"
+      :tags="[
+        {
+          label: canSortMenu ? '专业树形排序' : '排序只读',
+          type: canSortMenu ? 'success' : 'info',
+          effect: 'light'
+        },
+        { label: '树形权限结构', type: 'primary', effect: 'plain' }
+      ]"
+      :metrics="overviewCards"
+    />
 
     <ArtTableQuery
       ref="tableQueryRef"
@@ -65,6 +48,9 @@
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { formatMenuTitle } from '@/utils/router'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
+  import BusinessWorkspaceHeader, {
+    type BusinessWorkspaceMetric
+  } from '@/components/business/business-workspace-header/index.vue'
   import ArtButtonMore from '@/components/core/forms/art-button-more/index.vue'
   import type { ButtonMoreItem } from '@/components/core/forms/art-button-more/index.vue'
   import type { AppRouteRecord } from '@/types/router'
@@ -121,14 +107,6 @@
 
   interface MasterDataDeleteGuardExpose {
     inspect: (options: MasterDataDeleteGuardOpenOptions) => Promise<boolean>
-  }
-
-  interface MenuOverviewCard {
-    label: string
-    value: number
-    hint: string
-    icon: string
-    tone: 'primary' | 'success' | 'warning' | 'info'
   }
 
   const { hasAuth } = useAuth()
@@ -368,7 +346,7 @@
   // 数据相关
   const tableData = ref<AppRouteRecord[]>([])
   const flatMenuRows = computed(() => treeUtils.treeToList(tableData.value))
-  const overviewCards = computed<MenuOverviewCard[]>(() => {
+  const overviewCards = computed<BusinessWorkspaceMetric[]>(() => {
     const rows = flatMenuRows.value
     const navigationRows = rows.filter((row) => row.type !== 'button')
     const permissionRows = rows.filter(
@@ -380,28 +358,28 @@
       {
         label: '全部节点',
         value: rows.length,
-        hint: `${tableData.value.length} 个一级入口`,
+        description: `${tableData.value.length} 个一级入口`,
         icon: 'ri:node-tree',
         tone: 'primary'
       },
       {
         label: '导航菜单',
         value: navigationRows.length,
-        hint: '目录、页面与外部入口',
+        description: '目录、页面与外部入口',
         icon: 'ri:menu-2-line',
         tone: 'info'
       },
       {
         label: '按钮权限',
         value: permissionRows.length,
-        hint: '用于角色精细化授权',
+        description: '用于角色精细化授权',
         icon: 'ri:shield-keyhole-line',
         tone: 'warning'
       },
       {
         label: '启用节点',
         value: enabledRows.length,
-        hint: rows.length
+        description: rows.length
           ? `占全部节点 ${Math.round((enabledRows.length / rows.length) * 100)}%`
           : '暂无节点',
         icon: 'ri:checkbox-circle-line',

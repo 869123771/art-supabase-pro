@@ -1,6 +1,6 @@
 <template>
   <div class="maintenance-record-page art-full-height">
-    <VehicleWorkspaceHeader
+    <BusinessWorkspaceHeader
       eyebrow="MAINTENANCE CONTROL"
       title="维修保养记录"
       description="统一跟踪车辆维修、保养、工期、费用与承修机构，沉淀完整的车辆健康履历。"
@@ -62,9 +62,9 @@
   import { formatWithDayjs } from '@/utils/time'
   import { useUserStore } from '@/store/modules/user'
   import MaintenanceRecordDialog from './modules/maintenance-record-dialog.vue'
-  import VehicleWorkspaceHeader, {
-    type VehicleWorkspaceMetric
-  } from '@/views/vehicle-manage-system/modules/vehicle-workspace-header.vue'
+  import BusinessWorkspaceHeader, {
+    type BusinessWorkspaceMetric
+  } from '@/components/business/business-workspace-header/index.vue'
 
   defineOptions({ name: 'VehicleMaintenance' })
 
@@ -90,7 +90,7 @@
   const dialogRef = ref<DialogExpose>()
   const { getDictMap } = storeToRefs(useUserStore())
   const overview = reactive<{ total: number; rows: MaintenanceRecord[] }>({ total: 0, rows: [] })
-  const workspaceMetrics = computed<VehicleWorkspaceMetric[]>(() => [
+  const workspaceMetrics = computed<BusinessWorkspaceMetric[]>(() => [
     {
       label: '维保记录',
       value: overview.total,

@@ -119,6 +119,7 @@
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import { financeRouteNames } from '@/router/business-paths'
   import {
     cleanupMasterDataDeleteDependencies,
     fetchMasterDataDeleteDependencies,
@@ -195,18 +196,48 @@
     cargo_waybill: createWaybillMeta('货物关联运单', 10),
     address_waybill: createWaybillMeta('地址关联运单', 10),
     vehicle_waybill: createWaybillMeta('车辆关联运单', 10),
-    carrier_statement: createFinanceMeta('承运商对账单', '张', 'TmsCarrierSettlement', 50),
-    carrier_statement_item: createFinanceMeta('承运商对账明细', '条', 'TmsCarrierSettlement', 60),
-    payment_application: createFinanceMeta('付款申请', '张', 'TmsCarrierPaymentApplication', 70),
+    carrier_statement: createFinanceMeta(
+      '承运商对账单',
+      '张',
+      financeRouteNames.carrierSettlement,
+      50
+    ),
+    carrier_statement_item: createFinanceMeta(
+      '承运商对账明细',
+      '条',
+      financeRouteNames.carrierSettlement,
+      60
+    ),
+    payment_application: createFinanceMeta(
+      '付款申请',
+      '张',
+      financeRouteNames.paymentApplication,
+      70
+    ),
     payment_application_item: createFinanceMeta(
       '付款申请明细',
       '条',
-      'TmsCarrierPaymentApplication',
+      financeRouteNames.paymentApplication,
       80
     ),
-    carrier_cash_allocation: createFinanceMeta('付款核销', '条', 'TmsCashTransaction', 90),
-    carrier_cash_transaction: createFinanceMeta('付款流水', '笔', 'TmsCashTransaction', 100),
-    carrier_invoice: createFinanceMeta('承运商发票', '张', 'TmsInvoiceManagement', 110),
+    carrier_cash_allocation: createFinanceMeta(
+      '付款核销',
+      '条',
+      financeRouteNames.cashTransaction,
+      90
+    ),
+    carrier_cash_transaction: createFinanceMeta(
+      '付款流水',
+      '笔',
+      financeRouteNames.cashTransaction,
+      100
+    ),
+    carrier_invoice: createFinanceMeta(
+      '承运商发票',
+      '张',
+      financeRouteNames.invoiceManagement,
+      110
+    ),
     vehicle_reminder_work_order: {
       label: '车辆提醒工单',
       unit: '条',
@@ -309,7 +340,7 @@
       '笔',
       '费用属于经营与财务历史，不允许随订单物理删除。',
       '去处理费用',
-      'TmsWaybillCost',
+      financeRouteNames.waybillCost,
       20
     ),
     order_receipt_work_order: createGovernanceMeta(
@@ -325,7 +356,7 @@
       '条',
       '对账明细属于财务审计历史，不允许随订单删除。',
       '去处理对账',
-      'TmsCustomerSettlement',
+      financeRouteNames.customerSettlement,
       40
     )
   }

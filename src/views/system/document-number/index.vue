@@ -1,46 +1,23 @@
 <template>
-  <div class="number-rule-page art-full-height">
+  <div class="number-rule-page business-workspace-page art-full-height">
     <MasterDeleteProcessingNotice
       action-hint="已按关联菜单过滤编号场景；请调整或迁移规则后返回。"
     />
-    <section class="number-rule-page__hero art-card-xs">
-      <div class="number-rule-page__hero-identity">
-        <span class="number-rule-page__hero-icon" aria-hidden="true">
-          <ArtSvgIcon icon="ri:hashtag" />
-        </span>
-        <div>
-          <span class="number-rule-page__eyebrow">NUMBER GOVERNANCE</span>
-          <h1>编号规则</h1>
-          <p>
-            统一维护运输单据、财务单据、基础资料和车辆业务的编码方式。系统取号由数据库事务完成，支持租户隔离、周期重置与并发防重。
-          </p>
-        </div>
-      </div>
-      <div class="number-rule-page__hero-tags">
-        <ElTag :type="isPlatformSuper ? 'primary' : 'info'" round>
-          {{ isPlatformSuper ? '平台维护视图' : '本租户只读视图' }}
-        </ElTag>
-        <ElTag round>覆盖租户：{{ overview.stats.tenantCount }}</ElTag>
-        <ElTag round>最近更新：{{ overview.lastUpdateText }}</ElTag>
-      </div>
-    </section>
-
-    <section class="number-rule-page__stats">
-      <div
-        v-for="item in overview.cards"
-        :key="item.label"
-        class="number-rule-page__stat art-card-xs"
-      >
-        <div>
-          <span>{{ item.label }}</span>
-          <strong>{{ item.value }}</strong>
-          <p>{{ item.description }}</p>
-        </div>
-        <span class="number-rule-page__stat-icon" :style="item.style" aria-hidden="true">
-          <ArtSvgIcon :icon="item.icon" />
-        </span>
-      </div>
-    </section>
+    <BusinessWorkspaceHeader
+      eyebrow="NUMBER GOVERNANCE"
+      title="编号规则"
+      description="统一维护运输单据、财务单据、基础资料和车辆业务的编码方式。系统取号由数据库事务完成，支持租户隔离、周期重置与并发防重。"
+      icon="ri:hashtag"
+      :tags="[
+        {
+          label: isPlatformSuper ? '平台维护视图' : '本租户只读视图',
+          type: isPlatformSuper ? 'primary' : 'info'
+        },
+        { label: `覆盖租户：${overview.stats.tenantCount}` },
+        { label: `最近更新：${overview.lastUpdateText}` }
+      ]"
+      :metrics="overview.cards"
+    />
 
     <section class="number-rule-page__category art-card-xs">
       <ElSegmented
@@ -118,6 +95,9 @@
   import type { ArtDrawerExpose } from '@/components/core/drawers/art-drawer/types'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
+  import BusinessWorkspaceHeader, {
+    type BusinessWorkspaceMetric
+  } from '@/components/business/business-workspace-header/index.vue'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type {
     ArtTableQueryExpose,
@@ -159,15 +139,7 @@
   interface OverviewGroup {
     stats: Api.SystemManage.DocumentNumberRuleStats
     lastUpdateText: ComputedRef<string>
-    cards: ComputedRef<
-      Array<{
-        label: string
-        value: number
-        description: string
-        icon: string
-        style: Record<string, string>
-      }>
-    >
+    cards: ComputedRef<BusinessWorkspaceMetric[]>
   }
 
   const tableQueryRef = ref<ArtTableQueryExpose>()
@@ -200,37 +172,28 @@
         value: overview.stats.total,
         description: '已接入数据库编号引擎的业务字段',
         icon: 'ri:file-list-3-line',
-        style: {
-          color: 'var(--el-color-primary)',
-          backgroundColor: 'var(--el-color-primary-light-9)'
-        }
+        tone: 'primary'
       },
       {
         label: '自动编码',
         value: overview.stats.automatic,
         description: '保存时由系统生成正式唯一编号',
         icon: 'ri:magic-line',
-        style: {
-          color: 'var(--el-color-success)',
-          backgroundColor: 'var(--el-color-success-light-9)'
-        }
+        tone: 'success'
       },
       {
         label: '手工填写',
         value: overview.stats.manual,
         description: '由业务人员填写并接受唯一性校验',
         icon: 'ri:edit-box-line',
-        style: {
-          color: 'var(--el-color-warning)',
-          backgroundColor: 'var(--el-color-warning-light-9)'
-        }
+        tone: 'warning'
       },
       {
         label: '业务单据',
         value: overview.stats.categoryCounts.business_document,
         description: '运输、合同、财务及异常工单编号',
         icon: 'ri:bill-line',
-        style: { color: 'var(--el-color-info)', backgroundColor: 'var(--el-fill-color-lighter)' }
+        tone: 'info'
       }
     ])
   })

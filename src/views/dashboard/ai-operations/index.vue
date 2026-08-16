@@ -1,26 +1,20 @@
 <template>
   <ArtPageShell
-    class="ai-operations"
+    class="ai-operations business-workspace-page"
     :loading="overview.loading"
     :loading-mode="loadingMode"
     :error="pageError"
     min-height="560px"
     @retry="loadOverview"
   >
-    <section class="ai-operations__hero art-card-xs">
-      <div class="ai-operations__hero-main">
-        <div class="ai-operations__brand">
-          <ArtSvgIcon icon="ri:brain-2-line" />
-        </div>
-        <div>
-          <span>AI OPERATIONS</span>
-          <h1>AI 运行中心</h1>
-          <p
-            >持续跟踪调用质量、响应速度、Token 消耗与失败原因，让每一次 AI 执行都可观测、可追溯。</p
-          >
-        </div>
-      </div>
-      <div class="ai-operations__hero-actions">
+    <BusinessWorkspaceHeader
+      eyebrow="AI OPERATIONS"
+      title="AI 运行中心"
+      description="持续跟踪调用质量、响应速度、Token 消耗与失败原因，让每一次 AI 执行都可观测、可追溯。"
+      icon="ri:brain-2-line"
+      :metrics="workspaceMetrics"
+    >
+      <template #actions>
         <ElRadioGroup v-model="overview.days" size="small" @change="loadOverview">
           <ElRadioButton :value="7">7 天</ElRadioButton>
           <ElRadioButton :value="30">30 天</ElRadioButton>
@@ -35,25 +29,8 @@
             @click="refreshAll"
           />
         </ElTooltip>
-      </div>
-    </section>
-
-    <section class="ai-operations__metrics">
-      <article
-        v-for="metric in metricCards"
-        :key="metric.key"
-        class="ai-operations__metric art-card-xs"
-      >
-        <div :class="['ai-operations__metric-icon', `is-${metric.tone}`]">
-          <ArtSvgIcon :icon="metric.icon" />
-        </div>
-        <div>
-          <span>{{ metric.label }}</span>
-          <strong>{{ metric.value }}</strong>
-          <small>{{ metric.hint }}</small>
-        </div>
-      </article>
-    </section>
+      </template>
+    </BusinessWorkspaceHeader>
 
     <section class="ai-operations__workspace-nav art-card-xs">
       <div>
@@ -342,6 +319,9 @@
   import ArtEmptyState from '@/components/core/layouts/art-empty-state/index.vue'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
+  import BusinessWorkspaceHeader, {
+    type BusinessWorkspaceMetric
+  } from '@/components/business/business-workspace-header/index.vue'
   import type { ColumnOption } from '@/types'
   import type { LineDataItem, PieDataItem } from '@/types/component/chart'
   import { useUserStore } from '@/store/modules/user'
@@ -516,6 +496,15 @@
       tone: 'purple'
     }
   ])
+  const workspaceMetrics = computed<BusinessWorkspaceMetric[]>(() =>
+    metricCards.value.map((metric) => ({
+      label: metric.label,
+      value: metric.value,
+      description: metric.hint,
+      icon: metric.icon,
+      tone: metric.tone === 'purple' ? 'primary' : metric.tone
+    }))
+  )
 
   const qualityMetricCards = computed<MetricCard[]>(() => [
     {

@@ -1,6 +1,6 @@
 <template>
-  <div class="tms-workspace-page art-full-height">
-    <TmsWorkspaceHeader
+  <div class="business-workspace-page art-full-height">
+    <BusinessWorkspaceHeader
       eyebrow="客户主数据"
       title="客户资料"
       description="统一维护客户主体、行业等级、结算联系人与业务状态，为开单和对账提供可信主数据。"
@@ -49,6 +49,7 @@
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatWithDayjs } from '@/utils/time'
   import { useUserStore } from '@/store/modules/user'
+  import { financeRouteNames } from '@/router/business-paths'
   import {
     cleanupCustomerDeleteSafeDependencies,
     deleteCustomer,
@@ -66,7 +67,7 @@
     CustomerDeleteSafeCleanupCode
   } from '@/api/tms'
   import CustomerDialog from './modules/customer-dialog.vue'
-  import TmsWorkspaceHeader from '@/views/tms-transportation/modules/tms-workspace-header.vue'
+  import BusinessWorkspaceHeader from '@/components/business/business-workspace-header/index.vue'
 
   defineOptions({ name: 'TmsCustomer' })
 
@@ -111,7 +112,7 @@
       unit: '条',
       action: '请到“收付款管理”查看并撤销核销；历史核销记录本身不支持直接物理删除。',
       actionLabel: '去处理核销',
-      routeName: 'TmsCashTransaction',
+      routeName: financeRouteNames.cashTransaction,
       order: 1
     },
     cash_transaction: {
@@ -119,7 +120,7 @@
       unit: '笔',
       action: '收付款流水属于财务历史，可作废但不直接物理删除；如需保留历史，建议停用客户。',
       actionLabel: '去查看流水',
-      routeName: 'TmsCashTransaction',
+      routeName: financeRouteNames.cashTransaction,
       order: 2
     },
     customer_statement: {
@@ -127,7 +128,7 @@
       unit: '张',
       action: '无核销关系的草稿可一键清理；审核后或已作废记录应保留，并改为停用客户。',
       actionLabel: '去处理对账单',
-      routeName: 'TmsCustomerSettlement',
+      routeName: financeRouteNames.customerSettlement,
       order: 3
     },
     customer_statement_item: {
@@ -135,7 +136,7 @@
       unit: '条',
       action: '明细随对应草稿对账单一并删除，无需单独处理。',
       actionLabel: '去对应对账单',
-      routeName: 'TmsCustomerSettlement',
+      routeName: financeRouteNames.customerSettlement,
       order: 4
     },
     invoice: {
@@ -143,7 +144,7 @@
       unit: '张',
       action: '草稿发票可一键清理；已复核、已开具或已作废发票属于财务历史，应保留。',
       actionLabel: '去处理发票',
-      routeName: 'TmsInvoiceManagement',
+      routeName: financeRouteNames.invoiceManagement,
       order: 5
     },
     contract: {

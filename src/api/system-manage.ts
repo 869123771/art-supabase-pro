@@ -78,7 +78,21 @@ export async function fetchGetUserList(params: Api.SystemManage.UserSearchParams
   let query = supabase
     .from('sys_user')
     .select(
-      '*, organization:sys_organization!sys_user_organization_id_fkey(id, organization_code, organization_name)',
+      `
+        *,
+        organization:sys_organization!sys_user_organization_id_fkey(
+          id,
+          organization_code,
+          organization_name
+        ),
+        hr_employee:hr_employee!sys_user_hr_employee_tenant_fkey(
+          id,
+          employee_no,
+          employee_name,
+          job_title,
+          employment_status
+        )
+      `,
       { count: 'exact' }
     )
     .is('deleted_at', null)

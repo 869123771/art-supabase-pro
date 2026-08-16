@@ -44,7 +44,7 @@ test('发票登记对话框可打开并呈现完整录入状态', async ({ page 
   test.setTimeout(180_000)
   const pageErrors = collectPageErrors(page)
 
-  await page.goto('/#/tms-transportation/finance-center/invoice-management', {
+  await page.goto('/#/finance/invoice-management', {
     waitUntil: 'domcontentloaded'
   })
   await expect(page.locator('.art-table-query')).toBeVisible({ timeout: 120_000 })

@@ -1,69 +1,20 @@
 <template>
-  <div class="organization-page art-full-height">
+  <div class="organization-page business-workspace-page art-full-height">
     <MasterDeleteProcessingNotice
       action-hint="当前组织已自动定位；请先处理成员、角色或下级组织。"
     />
-    <section class="organization-page__overview art-card-xs">
-      <header class="organization-page__hero">
-        <div class="organization-page__identity">
-          <div class="organization-page__brand" aria-hidden="true">
-            <ArtSvgIcon icon="ri:organization-chart" />
-          </div>
-          <div>
-            <span>ORGANIZATION GOVERNANCE</span>
-            <h1>组织管理</h1>
-            <p>用统一组织树串联成员归属、职责角色与菜单权限，清晰呈现每个组织的访问边界。</p>
-          </div>
-        </div>
-        <div class="organization-page__hero-status">
-          <ElTag type="success" effect="light" round>权限按角色授权</ElTag>
-          <ElTag type="primary" effect="plain" round>用户 · 角色 · 菜单联动</ElTag>
-        </div>
-      </header>
-
-      <div class="organization-page__metrics" aria-label="组织治理概览">
-        <article>
-          <span class="organization-page__metric-icon is-primary">
-            <ArtSvgIcon icon="ri:node-tree" />
-          </span>
-          <div>
-            <span>组织节点</span>
-            <strong>{{ overview.organizations }}</strong>
-            <small>当前筛选范围</small>
-          </div>
-        </article>
-        <article>
-          <span class="organization-page__metric-icon is-success">
-            <ArtSvgIcon icon="ri:group-line" />
-          </span>
-          <div>
-            <span>归属成员</span>
-            <strong>{{ overview.members }}</strong>
-            <small>已纳入组织管理</small>
-          </div>
-        </article>
-        <article>
-          <span class="organization-page__metric-icon is-warning">
-            <ArtSvgIcon icon="ri:shield-user-line" />
-          </span>
-          <div>
-            <span>组织角色</span>
-            <strong>{{ overview.roles }}</strong>
-            <small>承载职责授权</small>
-          </div>
-        </article>
-        <article>
-          <span class="organization-page__metric-icon is-info">
-            <ArtSvgIcon icon="ri:menu-line" />
-          </span>
-          <div>
-            <span>菜单覆盖</span>
-            <strong>{{ overview.menus }}</strong>
-            <small>去重后的访问项</small>
-          </div>
-        </article>
-      </div>
-    </section>
+    <BusinessWorkspaceHeader
+      class="organization-page__overview"
+      eyebrow="ORGANIZATION GOVERNANCE"
+      title="组织管理"
+      description="用统一组织树串联成员归属、职责角色与菜单权限，清晰呈现每个组织的访问边界。"
+      icon="ri:organization-chart"
+      :tags="[
+        { label: '权限按角色授权', type: 'success', effect: 'light' },
+        { label: '用户 · 角色 · 菜单联动', type: 'primary', effect: 'plain' }
+      ]"
+      :metrics="workspaceMetrics"
+    />
 
     <ArtTableQuery
       ref="tableQueryRef"
@@ -99,6 +50,9 @@
     type ButtonMoreItem
   } from '@/components/core/forms/art-button-more/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
+  import BusinessWorkspaceHeader, {
+    type BusinessWorkspaceMetric
+  } from '@/components/business/business-workspace-header/index.vue'
   import { useUserStore } from '@/store/modules/user'
   import { deleteOrganization, fetchGetOrganizationTree } from '@/api/system-manage'
   import { formatWithDayjs } from '@/utils/time'
@@ -154,6 +108,35 @@
     roles: 0,
     menus: 0
   })
+  const workspaceMetrics = computed<BusinessWorkspaceMetric[]>(() => [
+    {
+      label: '组织节点',
+      value: overview.organizations,
+      description: '当前筛选范围',
+      icon: 'ri:node-tree'
+    },
+    {
+      label: '归属成员',
+      value: overview.members,
+      description: '已纳入组织管理',
+      icon: 'ri:group-line',
+      tone: 'success'
+    },
+    {
+      label: '组织角色',
+      value: overview.roles,
+      description: '承载职责授权',
+      icon: 'ri:shield-user-line',
+      tone: 'warning'
+    },
+    {
+      label: '菜单覆盖',
+      value: overview.menus,
+      description: '去重后的访问项',
+      icon: 'ri:menu-line',
+      tone: 'info'
+    }
+  ])
 
   const searchForm = ref<OrganizationSearchParams>({
     recordId: typeof route.query.recordId === 'string' ? route.query.recordId : '',

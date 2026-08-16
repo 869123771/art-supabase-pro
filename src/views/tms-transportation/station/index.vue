@@ -1,6 +1,6 @@
 <template>
-  <div class="tms-workspace-page art-full-height">
-    <TmsWorkspaceHeader
+  <div class="business-workspace-page art-full-height">
+    <BusinessWorkspaceHeader
       eyebrow="STATION NETWORK"
       title="运输站点"
       description="维护运输网络中的站点类型、区域位置、联系人与可用状态，为线路规划提供基础。"
@@ -54,7 +54,7 @@
     updateStationEnabled
   } from '@/api/tms'
   import StationDialog from './modules/station-dialog.vue'
-  import TmsWorkspaceHeader from '@/views/tms-transportation/modules/tms-workspace-header.vue'
+  import BusinessWorkspaceHeader from '@/components/business/business-workspace-header/index.vue'
 
   defineOptions({ name: 'TmsStation' })
 

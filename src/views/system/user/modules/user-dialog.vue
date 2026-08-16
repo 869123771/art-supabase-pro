@@ -39,6 +39,29 @@
         :show-submit="false"
         :validate-on-rule-change="false"
       >
+        <template #hrEmployeeId>
+          <ArtTableSingleSelect
+            :model-value="formData.hrEmployeeId || undefined"
+            :selected-data="employeeSelection.selectedRows"
+            :api-fn="fetchEmployeeSelectorData"
+            :columns="employeeSelection.columns"
+            title="从员工花名册选择"
+            subtitle="仅展示当前租户内在岗、且尚未开通账号的员工"
+            row-key="id"
+            :label-key="getEmployeeLabel"
+            :description-key="getEmployeeDescription"
+            :disabled="!formData.tenantId"
+            :placeholder="formData.tenantId ? '请选择员工档案' : '请先选择所属租户'"
+            search-placeholder="员工工号、姓名、手机、邮箱或岗位"
+            dialog-width="xl"
+            show-pagination
+            :page-size="10"
+            @update:model-value="handleEmployeeValueChange"
+            @update:selected-data="handleEmployeeRowsChange"
+            @confirm="handleEmployeeConfirm"
+            @clear="handleEmployeeClear"
+          />
+        </template>
         <template #avatar>
           <ArtUploadImage v-model="formData.avatar" />
         </template>
@@ -56,6 +79,13 @@
   import ArtForm from '@/components/core/forms/art-form/index.vue'
   import type { FormItem } from '@/components/core/forms/art-form/index.vue'
   import ArtUploadImage from '@/components/core/forms/art-upload-image/index.vue'
+  import ArtTableSingleSelect from '@/components/core/forms/art-data-select/table-single.vue'
+  import type {
+    DataSelectColumn,
+    DataSelectFetchParams,
+    DataSelectKey,
+    DataSelectRecord
+  } from '@/components/core/forms/art-data-select/types'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import { useUserStore } from '@/store/modules/user'
   import {
@@ -64,6 +94,8 @@
     fetchGetEnableOrganizationTree,
     fetchGetEnableTenantList
   } from '@/api/system-manage'
+  import { fetchEmployeeSelectorList } from '@/api/hr'
+  import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { useSystemParam } from '@/hooks'
 
   type UserListItem = Api.SystemManage.UserListItem
@@ -77,6 +109,11 @@
     validate: () => Promise<boolean | void>
     clearValidate: () => void
     reloadOptions: (key?: string) => Promise<void>
+  }
+
+  interface EmployeeSelectionGroup {
+    selectedRows: DataSelectRecord[]
+    columns: DataSelectColumn[]
   }
 
   const emit = defineEmits<Emits>()
@@ -97,6 +134,7 @@
     id: undefined,
     tenantId: undefined,
     organizationId: null,
+    hrEmployeeId: null,
     authUserId: undefined,
     avatar: null,
     userName: '',
@@ -113,6 +151,22 @@
   })
 
   const formData = ref<UserListItem>(createInitialForm())
+  const employeeSelection = reactive<EmployeeSelectionGroup>({
+    selectedRows: [],
+    columns: [
+      { prop: 'employeeNo', label: '员工工号', width: 130 },
+      { prop: 'employeeName', label: '员工姓名', minWidth: 130 },
+      { prop: 'organization.organizationName', label: '所属组织', minWidth: 160 },
+      { prop: 'jobTitle', label: '工作岗位', minWidth: 140 },
+      { prop: 'phone', label: '手机号码', width: 140 },
+      {
+        prop: 'employmentStatus',
+        label: '任职状态',
+        width: 110,
+        dict: { code: 'hrEmploymentStatus', display: 'tag' }
+      }
+    ]
+  })
   const isEdit = computed(() => !!formData.value.id)
   const isCurrentUser = computed(
     () => isEdit.value && getUserInfo.value.email === formData.value.userEmail
@@ -158,6 +212,13 @@
       key: 'identitySection',
       type: 'divider',
       span: 24
+    },
+    {
+      label: '花名册员工',
+      key: 'hrEmployeeId',
+      span: 24,
+      hidden: isEdit.value,
+      description: '选择后自动回填员工身份与联系信息；未建档人员也可直接填写账号资料。'
     },
     {
       label: '头像',
@@ -355,6 +416,7 @@
 
   const resetForm = async (): Promise<void> => {
     formData.value = cloneDeep(createInitialForm())
+    employeeSelection.selectedRows = []
     await nextTick()
     formRef.value?.clearValidate()
   }
@@ -374,7 +436,61 @@
 
   const handleTenantChange = (): void => {
     formData.value.organizationId = null
+    handleEmployeeClear()
     void formRef.value?.reloadOptions('organizationId')
+  }
+
+  const fetchEmployeeSelectorData = async (params: DataSelectFetchParams) => {
+    const { from, to } = pageInfoHandler({ current: params.page, size: params.pageSize })
+    const { data, total } = await fetchEmployeeSelectorList({
+      tenantId: formData.value.tenantId,
+      keyword: params.keyword,
+      from,
+      to
+    })
+    return { data: data ?? [], total: total ?? 0 }
+  }
+
+  const getEmployeeLabel = (row: DataSelectRecord): string => {
+    const employee = row as Api.Hr.EmployeeSelectorItem
+    return `${employee.employeeName}（${employee.employeeNo}）`
+  }
+
+  const getEmployeeDescription = (row: DataSelectRecord): string => {
+    const employee = row as Api.Hr.EmployeeSelectorItem
+    return [employee.organization?.organizationName, employee.jobTitle, employee.phone]
+      .filter(Boolean)
+      .join(' / ')
+  }
+
+  const handleEmployeeValueChange = (value: DataSelectKey | DataSelectKey[] | undefined): void => {
+    formData.value.hrEmployeeId = typeof value === 'string' ? value : null
+  }
+
+  const handleEmployeeRowsChange = (rows: DataSelectRecord[]): void => {
+    employeeSelection.selectedRows = rows
+  }
+
+  const handleEmployeeConfirm = (_value: unknown, rows: DataSelectRecord[]): void => {
+    const employee = rows[0] as Api.Hr.EmployeeSelectorItem | undefined
+    if (!employee) return
+
+    Object.assign(formData.value, {
+      hrEmployeeId: employee.id,
+      organizationId: employee.organizationId ?? null,
+      avatar: employee.avatarUrl ?? null,
+      userName: employee.employeeNo,
+      nickName: employee.employeeName,
+      userPhone: employee.phone ?? '',
+      userEmail: employee.email ?? '',
+      userGender: employee.gender ?? '1'
+    })
+    employeeSelection.selectedRows = [employee]
+  }
+
+  const handleEmployeeClear = (): void => {
+    formData.value.hrEmployeeId = null
+    employeeSelection.selectedRows = []
   }
 
   const handleSubmit = async (): Promise<boolean> => {
@@ -396,6 +512,7 @@
         'password',
         'tenant',
         'organization',
+        'hrEmployee',
         'createBy',
         'createTime',
         'updateBy',

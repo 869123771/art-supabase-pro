@@ -101,9 +101,12 @@
 <script setup lang="tsx">
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import { ElMessage, UploadUserFile, UploadRequestOptions, type UploadFile } from 'element-plus'
-  import { isArray } from 'lodash-es'
   import ArtResourcePicker from '@/components/core/forms/art-resource-picker/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
+  import {
+    normalizeUploadModelUrls,
+    shouldSyncUploadFileList
+  } from '@/components/core/forms/art-upload-image/model-utils'
   import ResourceListItem = Api.DataCenter.Resources.ResourceListItem
   import { uploadAttachment } from '@/api/common'
 
@@ -172,6 +175,7 @@
   }
 
   const fileList = ref<UploadUserFile[]>([])
+  const lastSyncedModelUrls = ref<string[]>([])
 
   watch(
     () => fileList.value.length,
@@ -203,31 +207,25 @@
   watch(
     () => modelValue,
     (val: string | string[] | null) => {
-      if (!val) {
-        fileList.value = []
-        return false
-      }
+      if (!shouldSyncUploadFileList(val, lastSyncedModelUrls.value)) return
 
-      if (isArray(val)) {
-        fileList.value = val.map((item: string) => {
-          return {
-            name: item.split('/').pop() as string,
-            url: item
-          }
-        })
-      } else {
-        fileList.value = [{ name: val?.split('/')?.pop() as string, url: val }]
-      }
+      const nextUrls = normalizeUploadModelUrls(val)
+      lastSyncedModelUrls.value = nextUrls
+      fileList.value = nextUrls.map((url) => ({
+        name: url.split('/').pop() ?? url,
+        url
+      }))
     },
     { immediate: true, deep: true }
   )
 
   function updateModelValue() {
-    emit(
-      'update:modelValue',
-      (multiple ? fileList.value.map((file) => file.url!) : (fileList.value[0]?.url ?? '')) as
-        string | string[]
-    )
+    const value = multiple
+      ? fileList.value.flatMap((file) => (file.url ? [file.url] : []))
+      : (fileList.value[0]?.url ?? '')
+
+    lastSyncedModelUrls.value = normalizeUploadModelUrls(value)
+    emit('update:modelValue', value)
   }
 
   const getErrorMessage = (error?: unknown): string => {
