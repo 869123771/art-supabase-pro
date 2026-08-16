@@ -58,9 +58,9 @@
     align-items: center;
     padding: 18px 20px;
     margin-bottom: var(--art-space-4);
+    background: var(--el-fill-color-lighter);
     border: 1px solid var(--el-border-color-lighter);
     border-radius: 10px;
-    background: var(--el-fill-color-lighter);
   }
 
   &__route-point {
@@ -88,13 +88,13 @@
 
   &__route-arrow {
     display: grid;
+    place-items: center;
     width: 42px;
     height: 42px;
-    place-items: center;
-    border-radius: 50%;
     font-size: 20px;
     color: var(--el-color-primary);
     background: var(--el-color-primary-light-9);
+    border-radius: 50%;
   }
 
   &__split {
@@ -106,9 +106,9 @@
   &__panel {
     min-width: 0;
     padding: 18px;
+    background: var(--el-fill-color-blank);
     border: 1px solid var(--el-border-color-lighter);
     border-radius: 10px;
-    background: var(--el-fill-color-blank);
   }
 
   &__panel-heading {
@@ -120,13 +120,13 @@
     b {
       display: grid;
       flex: 0 0 40px;
+      place-items: center;
       width: 40px;
       height: 40px;
-      place-items: center;
-      border-radius: 10px;
       font-size: 18px;
       color: #fff;
       background: linear-gradient(135deg, #6758ff, #4f46e5);
+      border-radius: 10px;
     }
 
     b.is-green {
@@ -157,8 +157,8 @@
     margin: 0;
     line-height: 1.8;
     color: var(--el-text-color-regular);
-    white-space: pre-wrap;
     overflow-wrap: anywhere;
+    white-space: pre-wrap;
   }
 
   :deep(.art-descriptions .el-descriptions__label) {

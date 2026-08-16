@@ -147,10 +147,10 @@
     :deep(.el-textarea__inner) {
       line-height: 1.75;
       color: var(--art-text-gray-800);
+      white-space: pre-wrap;
       background: var(--default-box-color);
       border-color: var(--art-card-border);
       box-shadow: none;
-      white-space: pre-wrap;
     }
 
     @media (width <= 640px) {

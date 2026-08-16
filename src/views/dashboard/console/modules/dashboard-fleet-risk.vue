@@ -53,9 +53,9 @@
 <style scoped lang="scss">
   .fleet-risk {
     position: relative;
-    container-type: inline-size;
     min-width: 0;
     padding: 24px 25px;
+    container-type: inline-size;
     overflow: hidden;
 
     &::before {

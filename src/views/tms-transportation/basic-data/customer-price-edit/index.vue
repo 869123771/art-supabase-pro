@@ -1493,20 +1493,20 @@
 
       strong {
         overflow: hidden;
+        text-overflow: ellipsis;
         font-size: 14px;
         font-weight: 600;
         line-height: 20px;
         color: var(--el-text-color-primary);
-        text-overflow: ellipsis;
         white-space: nowrap;
       }
 
       small {
         overflow: hidden;
+        text-overflow: ellipsis;
         font-size: 12px;
         line-height: 18px;
         color: var(--el-text-color-secondary);
-        text-overflow: ellipsis;
         white-space: nowrap;
       }
     }
@@ -1582,10 +1582,10 @@
 
       span {
         overflow: hidden;
+        text-overflow: ellipsis;
         font-size: 12px;
         line-height: 18px;
         color: var(--el-text-color-secondary);
-        text-overflow: ellipsis;
         white-space: nowrap;
       }
     }
@@ -1694,9 +1694,9 @@
         flex: 1;
         min-width: 0;
         overflow: hidden;
+        text-overflow: ellipsis;
         font-size: 13px;
         line-height: 20px;
-        text-overflow: ellipsis;
         white-space: nowrap;
       }
 

@@ -1,87 +1,133 @@
 <template>
-  <div
-    class="waybill-cost business-workspace-page art-full-height"
-    :class="{ 'is-focus-mode': focusMode }"
-  >
-    <MasterDeleteProcessingNotice
-      action-hint="当前费用已自动定位；请按审核、报销或支付状态完成处理。"
-    />
-    <BusinessWorkspaceHeader
-      v-if="!focusMode"
-      :eyebrow="pageIdentity.eyebrow"
-      :title="pageIdentity.title"
-      :description="pageIdentity.description"
-      :icon="pageIdentity.icon"
-      :metrics="metrics"
-    >
-      <template #actions>
-        <ElButton v-if="activeTab === 'expense'" plain @click="void ocrLogDrawerRef?.handleOpen()">
-          <ArtSvgIcon icon="ri:file-search-line" /> OCR 识别记录
-        </ElButton>
-        <ElButton v-if="activeTab === 'expense'" type="primary" @click="openExpenseDialog()">
-          <ArtSvgIcon icon="ri:add-line" /> 新增运单费用
-        </ElButton>
-        <ElButton v-else type="primary" @click="openApprovedExpenses">
-          <ArtSvgIcon icon="ri:exchange-cny-line" /> 选择已审费用
-        </ElButton>
-      </template>
-    </BusinessWorkspaceHeader>
+  <div class="waybill-cost business-workspace-page" :class="{ 'is-focus-mode': focusMode }">
+    <div class="waybill-cost__page-content">
+      <MasterDeleteProcessingNotice
+        action-hint="当前费用已自动定位；请按审核、报销或支付状态完成处理。"
+      />
+      <BusinessWorkspaceHeader
+        v-if="!focusMode"
+        :eyebrow="pageIdentity.eyebrow"
+        :title="pageIdentity.title"
+        :description="pageIdentity.description"
+        :icon="pageIdentity.icon"
+        :metrics="metrics"
+        @metric-click="handleMetricClick"
+      >
+        <template #actions>
+          <ElButton
+            v-if="activeTab === 'expense'"
+            plain
+            @click="void ocrLogDrawerRef?.handleOpen()"
+          >
+            <ArtSvgIcon icon="ri:file-search-line" /> OCR 识别记录
+          </ElButton>
+          <ElButton v-if="activeTab === 'expense'" type="primary" @click="openExpenseDialog()">
+            <ArtSvgIcon icon="ri:add-line" /> 新增运单费用
+          </ElButton>
+          <ElButton v-else type="primary" @click="openApprovedExpenses">
+            <ArtSvgIcon icon="ri:exchange-cny-line" /> 选择已审费用
+          </ElButton>
+        </template>
+      </BusinessWorkspaceHeader>
 
-    <nav v-if="!focusMode" class="waybill-cost__workflow art-card-xs" aria-label="运单费用处理流程">
-      <div v-for="(step, index) in workflowSteps" :key="step.title">
-        <span>{{ index + 1 }}</span>
-        <div
-          ><strong>{{ step.title }}</strong
-          ><small>{{ step.description }}</small></div
-        >
-        <ArtSvgIcon v-if="index < workflowSteps.length - 1" icon="ri:arrow-right-s-line" />
-      </div>
-    </nav>
+      <nav
+        v-if="!focusMode"
+        class="waybill-cost__workflow art-card-xs"
+        aria-label="运单费用处理流程"
+      >
+        <ol>
+          <li
+            v-for="(step, index) in workflowSteps"
+            :key="step.title"
+            :class="{
+              'is-complete': index + 1 < workflowStage,
+              'is-current': index + 1 === workflowStage
+            }"
+            :aria-current="index + 1 === workflowStage ? 'step' : undefined"
+          >
+            <span class="waybill-cost__step-index">
+              <ArtSvgIcon v-if="index + 1 < workflowStage" icon="ri:check-line" />
+              <template v-else>{{ index + 1 }}</template>
+            </span>
+            <span class="waybill-cost__step-copy">
+              <strong>{{ step.title }}</strong>
+              <small>{{ step.description }}</small>
+            </span>
+            <ArtSvgIcon
+              v-if="index < workflowSteps.length - 1"
+              class="waybill-cost__step-arrow"
+              icon="ri:arrow-right-s-line"
+            />
+          </li>
+        </ol>
+      </nav>
 
-    <ElTabs v-if="!focusMode" v-model="activeTab" class="waybill-cost__tabs">
-      <ElTabPane label="费用台账" name="expense" />
-      <ElTabPane label="报销与支付" name="reimbursement" />
-    </ElTabs>
+      <ElTabs v-model="activeTab" class="waybill-cost__tabs">
+        <ElTabPane name="expense">
+          <template #label>
+            <span class="waybill-cost__tab-label">
+              <ArtSvgIcon icon="ri:file-list-3-line" />
+              <span>
+                <strong>运单费用台账</strong>
+                <small>费用采集、票据识别与财务审核</small>
+              </span>
+            </span>
+          </template>
 
-    <ArtTableQuery
-      v-show="activeTab === 'expense'"
-      ref="expenseTableRef"
-      v-model="expenseTable.search"
-      v-model:focus-mode="expenseFocusMode"
-      :search-items="expenseTable.searchItems"
-      :api-fn="fetchExpenseTableData"
-      :columns-factory="expenseColumnsFactory"
-      :header-actions="expenseTable.headerActions"
-      :search-bar-props="{ span: 6, labelWidth: 86, showExpand: true }"
-      :table-props="{
-        rowKey: 'id',
-        tableLayout: 'fixed',
-        emptyHeight: '224px',
-        emptyText: '暂无运单费用',
-        emptyDescription: '可新增首笔费用，或调整费用项目、审核和核销条件后查询。'
-      }"
-      focusable
-    />
+          <ArtTableQuery
+            ref="expenseTableRef"
+            v-model="expenseTable.search"
+            v-model:focus-mode="expenseFocusMode"
+            :search-items="expenseTable.searchItems"
+            :api-fn="fetchExpenseTableData"
+            :columns-factory="expenseColumnsFactory"
+            :header-actions="expenseTable.headerActions"
+            :search-bar-props="{ span: 6, labelWidth: 86, showExpand: true }"
+            :table-props="{
+              rowKey: 'id',
+              tableLayout: 'fixed',
+              height: expenseFocusMode ? '100%' : 'auto',
+              emptyHeight: '224px',
+              emptyText: '暂无运单费用',
+              emptyDescription: '可新增首笔费用，或调整费用项目、审核和核销条件后查询。'
+            }"
+            focusable
+          />
+        </ElTabPane>
 
-    <ArtTableQuery
-      v-show="activeTab === 'reimbursement'"
-      ref="reimbursementTableRef"
-      v-model="reimbursementTable.search"
-      v-model:focus-mode="reimbursementFocusMode"
-      :search-items="reimbursementTable.searchItems"
-      :api-fn="fetchReimbursementTableData"
-      :columns-factory="reimbursementColumnsFactory"
-      :header-actions="reimbursementTable.headerActions"
-      :search-bar-props="{ span: 6, labelWidth: 86, showExpand: true }"
-      :table-props="{
-        rowKey: 'id',
-        tableLayout: 'fixed',
-        emptyHeight: '224px',
-        emptyText: '暂无费用报销单',
-        emptyDescription: '已审核费用转为报销单后，将在这里继续完成审批与支付。'
-      }"
-      focusable
-    />
+        <ElTabPane name="reimbursement">
+          <template #label>
+            <span class="waybill-cost__tab-label">
+              <ArtSvgIcon icon="ri:secure-payment-line" />
+              <span>
+                <strong>费用报销与支付</strong>
+                <small>费用归集、报销审批与出纳付款</small>
+              </span>
+            </span>
+          </template>
+
+          <ArtTableQuery
+            ref="reimbursementTableRef"
+            v-model="reimbursementTable.search"
+            v-model:focus-mode="reimbursementFocusMode"
+            :search-items="reimbursementTable.searchItems"
+            :api-fn="fetchReimbursementTableData"
+            :columns-factory="reimbursementColumnsFactory"
+            :header-actions="reimbursementTable.headerActions"
+            :search-bar-props="{ span: 6, labelWidth: 86, showExpand: true }"
+            :table-props="{
+              rowKey: 'id',
+              tableLayout: 'fixed',
+              height: reimbursementFocusMode ? '100%' : 'auto',
+              emptyHeight: '224px',
+              emptyText: '暂无费用报销单',
+              emptyDescription: '已审核费用转为报销单后，将在这里继续完成审批与支付。'
+            }"
+            focusable
+          />
+        </ElTabPane>
+      </ElTabs>
+    </div>
 
     <WaybillExpenseDialog ref="expenseDialogRef" @success="handleExpenseSaved" />
     <ReimbursementDialog ref="reimbursementDialogRef" @success="handleReimbursementCreated" />
@@ -147,6 +193,8 @@
   type ReimbursementSearch = Api.Finance.ExpenseReimbursementSearchParams
   type ReimbursementTableParams = ReimbursementSearch &
     Pick<Api.Common.PaginationParams, 'current' | 'size'>
+  type WorkspaceMetricKey =
+    'all-expenses' | 'pending-review' | 'ready-reimbursement' | 'pending-payment'
 
   interface ExpenseTableGroup {
     search: ExpenseSearch
@@ -182,6 +230,7 @@
   )
   const expenseFocusMode = ref(false)
   const reimbursementFocusMode = ref(false)
+  const overviewLoading = ref(true)
   const focusMode = computed(() =>
     activeTab.value === 'expense' ? expenseFocusMode.value : reimbursementFocusMode.value
   )
@@ -225,34 +274,70 @@
     { title: '转报销单', description: '可合并多笔已审费用' },
     { title: '出纳支付', description: '登记凭证并逐笔核销' }
   ]
+  const workflowStage = computed(() => {
+    if (activeTab.value === 'reimbursement') {
+      return reimbursementTable.search.status === 'approved' ? 4 : 3
+    }
+    if (
+      expenseTable.search.auditStatus === 'approved' &&
+      expenseTable.search.settlementStatus === 'unsettled'
+    ) {
+      return 3
+    }
+    return expenseTable.search.auditStatus === 'pending_review' ? 2 : 1
+  })
   const metrics = computed<BusinessWorkspaceMetric[]>(() => [
     {
-      label: '累计申报',
+      key: 'all-expenses',
+      label: '费用总笔数',
       value: `${overview.totalCount} 笔`,
-      description: '所有运单费用记录',
+      description: '查看全部运单费用',
       icon: 'ri:file-list-3-line',
-      tone: 'primary'
+      tone: 'primary',
+      interactive: true,
+      selected:
+        activeTab.value === 'expense' &&
+        !expenseTable.search.auditStatus &&
+        !expenseTable.search.settlementStatus,
+      loading: overviewLoading.value
     },
     {
+      key: 'pending-review',
       label: '待财务审核',
       value: `${overview.pendingReviewCount} 笔`,
-      description: '等待审批中心处理',
+      description: '点击筛选待审费用',
       icon: 'ri:time-line',
-      tone: 'warning'
+      tone: 'warning',
+      interactive: true,
+      selected:
+        activeTab.value === 'expense' && expenseTable.search.auditStatus === 'pending_review',
+      loading: overviewLoading.value
     },
     {
+      key: 'ready-reimbursement',
       label: '待转报销',
       value: `${overview.approvedUnconvertedCount} 笔`,
-      description: '已通过但未生成报销单',
+      description: '点击选择已审费用',
       icon: 'ri:exchange-cny-line',
-      tone: 'success'
+      tone: 'success',
+      interactive: true,
+      selected:
+        activeTab.value === 'expense' &&
+        expenseTable.search.auditStatus === 'approved' &&
+        expenseTable.search.settlementStatus === 'unsettled',
+      loading: overviewLoading.value
     },
     {
+      key: 'pending-payment',
       label: '待支付金额',
       value: money(overview.pendingPaymentAmount),
-      description: `已核销 ${money(overview.paidAmount)}`,
+      description: `进入付款队列 · 已付 ${money(overview.paidAmount)}`,
       icon: 'ri:secure-payment-line',
-      tone: 'danger'
+      tone: 'danger',
+      interactive: true,
+      selected:
+        activeTab.value === 'reimbursement' && reimbursementTable.search.status === 'approved',
+      loading: overviewLoading.value
     }
   ])
 
@@ -303,7 +388,8 @@
           type: 'daterange',
           valueFormat: 'YYYY-MM-DD',
           startPlaceholder: '开始日期',
-          endPlaceholder: '结束日期'
+          endPlaceholder: '结束日期',
+          style: { width: '100%' }
         }
       },
       {
@@ -358,7 +444,8 @@
           type: 'daterange',
           valueFormat: 'YYYY-MM-DD',
           startPlaceholder: '开始日期',
-          endPlaceholder: '结束日期'
+          endPlaceholder: '结束日期',
+          style: { width: '100%' }
         }
       },
       {
@@ -614,11 +701,46 @@
     void reimbursementDialogRef.value?.handleOpen(expenses)
   }
 
-  function openApprovedExpenses(): void {
+  function handleMetricClick(metric: BusinessWorkspaceMetric): void {
+    switch (metric.key) {
+      case 'all-expenses':
+      case 'pending-review':
+      case 'ready-reimbursement':
+      case 'pending-payment':
+        void applyMetricFilter(metric.key)
+    }
+  }
+
+  async function applyMetricFilter(key: WorkspaceMetricKey): Promise<void> {
+    if (key === 'pending-payment') {
+      activeTab.value = 'reimbursement'
+      Object.assign(reimbursementTable.search, {
+        keyword: '',
+        status: 'approved',
+        paymentMethod: '',
+        plannedPaymentDateRange: []
+      })
+      await nextTick()
+      await reimbursementTableRef.value?.getData()
+      return
+    }
+
     activeTab.value = 'expense'
-    expenseTable.search.auditStatus = 'approved'
-    expenseTable.search.settlementStatus = 'unsettled'
-    void nextTick(() => expenseTableRef.value?.getData())
+    const statusFilters: Record<
+      Exclude<WorkspaceMetricKey, 'pending-payment'>,
+      Pick<ExpenseSearch, 'auditStatus' | 'settlementStatus'>
+    > = {
+      'all-expenses': { auditStatus: '', settlementStatus: '' },
+      'pending-review': { auditStatus: 'pending_review', settlementStatus: '' },
+      'ready-reimbursement': { auditStatus: 'approved', settlementStatus: 'unsettled' }
+    }
+    Object.assign(expenseTable.search, statusFilters[key])
+    await nextTick()
+    await expenseTableRef.value?.getData()
+  }
+
+  function openApprovedExpenses(): void {
+    void applyMetricFilter('ready-reimbursement')
   }
 
   function expenseMoreActions(row: Expense): ButtonMoreItem[] {
@@ -798,8 +920,13 @@
   }
 
   async function loadOverview(): Promise<void> {
-    const { data } = await fetchWaybillCostOverview()
-    if (data) Object.assign(overview, data)
+    overviewLoading.value = true
+    try {
+      const { data } = await fetchWaybillCostOverview()
+      if (data) Object.assign(overview, data)
+    } finally {
+      overviewLoading.value = false
+    }
   }
 
   async function openFromOrderQuery(): Promise<void> {
@@ -852,206 +979,204 @@
     },
     { immediate: true }
   )
-
-  watch(activeTab, async (value) => {
-    await nextTick()
-    if (value === 'reimbursement') await reimbursementTableRef.value?.getData()
-  })
 </script>
 
 <style scoped lang="scss">
   .waybill-cost {
     display: flex;
     flex-direction: column;
-    gap: var(--art-space-4);
+    gap: var(--art-space-3);
     min-width: 0;
-
-    > .art-table-query {
-      min-height: 0;
-    }
+    min-height: var(--art-full-height);
 
     &.is-focus-mode {
       gap: 0;
     }
 
-    &__hero {
+    &__page-content {
       display: flex;
-      gap: var(--art-space-5);
-      align-items: center;
-      justify-content: space-between;
-      padding: var(--art-space-5);
-    }
-
-    &__hero-copy,
-    &__hero-actions,
-    &__workflow,
-    &__workflow > div {
-      display: flex;
-      align-items: center;
-    }
-
-    &__hero-copy {
-      gap: var(--art-space-4);
+      flex-direction: column;
+      gap: var(--art-space-3);
       min-width: 0;
-
-      > div {
-        min-width: 0;
-
-        > span {
-          font-size: 12px;
-          font-weight: 700;
-          color: rgb(var(--ui-primary));
-          letter-spacing: 0.05em;
-        }
-      }
-
-      h1 {
-        margin: 2px 0 4px;
-        font-size: 22px;
-        line-height: 1.35;
-        color: var(--art-text-gray-900);
-      }
-
-      p {
-        margin: 0;
-        line-height: 1.6;
-        color: var(--art-text-gray-500);
-      }
     }
 
-    &__hero-icon {
-      display: grid;
-      flex: 0 0 52px;
-      place-items: center;
-      width: 52px;
-      height: 52px;
-      font-size: 25px;
-      color: rgb(var(--ui-primary));
-      background: rgb(var(--ui-primary) / 10%);
-      border-radius: var(--el-border-radius-base);
-    }
-
-    &__hero-actions {
+    &__workflow {
       flex: 0 0 auto;
-      flex-wrap: wrap;
-      gap: var(--art-space-3);
-      justify-content: flex-end;
-    }
+      min-width: 0;
+      padding: var(--art-space-2) var(--art-space-4);
 
-    &__metrics {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: var(--art-space-3);
+      ol {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        padding: 0;
+        margin: 0;
+        list-style: none;
+      }
 
-      > article {
+      li {
+        position: relative;
         display: flex;
-        gap: var(--art-space-3);
+        gap: var(--art-space-2);
         align-items: center;
         min-width: 0;
-        padding: var(--art-space-4);
+        padding: var(--art-space-2);
+        color: var(--art-text-gray-500);
 
-        > span {
-          display: grid;
-          flex: 0 0 38px;
-          place-items: center;
-          width: 38px;
-          height: 38px;
-          border-radius: var(--el-border-radius-base);
+        &.is-current {
+          color: var(--theme-color);
 
-          &.is-primary {
-            color: var(--el-color-primary);
-            background: var(--el-color-primary-light-9);
+          .waybill-cost__step-index {
+            color: white;
+            background: var(--theme-color);
+            box-shadow: 0 6px 14px color-mix(in srgb, var(--theme-color) 22%, transparent);
           }
 
-          &.is-warning {
-            color: var(--el-color-warning);
-            background: var(--el-color-warning-light-9);
+          strong {
+            color: var(--art-text-gray-900);
           }
+        }
 
-          &.is-success {
+        &.is-complete {
+          .waybill-cost__step-index {
             color: var(--el-color-success);
             background: var(--el-color-success-light-9);
           }
 
-          &.is-danger {
-            color: var(--el-color-danger);
-            background: var(--el-color-danger-light-9);
+          strong {
+            color: var(--art-text-gray-700);
           }
-        }
-
-        > div {
-          min-width: 0;
-        }
-
-        small,
-        p {
-          color: var(--art-text-gray-500);
-        }
-
-        strong {
-          display: block;
-          margin: 2px 0;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          font-size: 19px;
-          font-variant-numeric: tabular-nums;
-          color: var(--art-text-gray-900);
-          white-space: nowrap;
-        }
-
-        p {
-          margin: 0;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          font-size: 11px;
-          white-space: nowrap;
         }
       }
     }
 
-    &__workflow {
-      gap: 0;
-      padding: var(--art-space-3) var(--art-space-4);
+    &__step-index {
+      display: grid;
+      flex: 0 0 28px;
+      place-items: center;
+      width: 28px;
+      height: 28px;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--art-text-gray-500);
+      background: var(--el-fill-color-light);
+      border-radius: 50%;
+      transition:
+        color 0.18s ease,
+        background-color 0.18s ease,
+        box-shadow 0.18s ease;
+    }
 
-      > div {
-        flex: 1;
-        gap: var(--art-space-2);
-        min-width: 0;
+    &__step-copy {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
 
-        > span {
-          display: grid;
-          flex: 0 0 26px;
-          place-items: center;
-          width: 26px;
-          height: 26px;
-          font-size: 12px;
-          font-weight: 700;
-          color: rgb(var(--ui-primary));
-          background: rgb(var(--ui-primary) / 10%);
-          border-radius: 50%;
+      strong,
+      small {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      strong {
+        font-size: 13px;
+        color: var(--art-text-gray-700);
+      }
+
+      small {
+        font-size: 11px;
+        color: var(--art-text-gray-500);
+      }
+    }
+
+    &__step-arrow {
+      flex: 0 0 auto;
+      margin-left: auto;
+      color: var(--art-text-gray-300);
+    }
+
+    &__tabs {
+      display: flex;
+      flex: 1 1 auto;
+      flex-direction: column;
+      min-width: 0;
+      min-height: 480px;
+
+      :deep(.el-tabs__header) {
+        flex: 0 0 auto;
+        margin: 0;
+      }
+
+      :deep(.el-tabs__nav-wrap) {
+        padding-inline: var(--art-space-2);
+
+        &::after {
+          height: 1px;
+          background-color: var(--el-border-color-lighter);
         }
+      }
 
-        > div {
+      :deep(.el-tabs__item) {
+        height: 56px;
+        padding-inline: var(--art-space-4);
+      }
+
+      :deep(.el-tabs__active-bar) {
+        height: 3px;
+        border-radius: 999px 999px 0 0;
+      }
+
+      :deep(.el-tabs__content) {
+        display: flex;
+        flex: 1 1 auto;
+        min-height: 0;
+        padding-top: var(--art-space-3);
+      }
+
+      :deep(.el-tab-pane) {
+        flex: 1 1 auto;
+        min-width: 0;
+        min-height: 0;
+
+        &.is-active {
           display: flex;
           flex-direction: column;
-          min-width: 0;
+        }
+      }
 
-          strong {
-            font-size: 13px;
-            color: var(--art-text-gray-800);
-          }
+      :deep(.art-table-query) {
+        flex: 1 1 auto;
+        min-height: 0;
+      }
+    }
 
-          small {
-            overflow: hidden;
-            text-overflow: ellipsis;
-            color: var(--art-text-gray-500);
-            white-space: nowrap;
-          }
+    &__tab-label {
+      display: flex;
+      gap: var(--art-space-2);
+      align-items: center;
+      min-width: 0;
+
+      > svg {
+        flex: 0 0 auto;
+        width: 19px;
+        height: 19px;
+      }
+
+      > span {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        line-height: 1.25;
+
+        strong {
+          font-size: 14px;
         }
 
-        > svg {
-          margin-left: auto;
-          color: var(--art-text-gray-300);
+        small {
+          margin-top: 2px;
+          font-size: 10px;
+          font-weight: 400;
+          color: var(--art-text-gray-400);
         }
       }
     }
@@ -1088,40 +1213,51 @@
       }
     }
 
-    &__tabs {
-      margin-bottom: calc(var(--art-space-4) * -1);
-    }
-
     @media (width <= 1100px) {
-      &__metrics {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
-
       &__workflow {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: var(--art-space-3);
+        ol {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
 
-        > div > svg {
+        li:nth-child(2) .waybill-cost__step-arrow,
+        li:last-child .waybill-cost__step-arrow {
           display: none;
         }
       }
     }
 
     @media (width <= 720px) {
-      &__hero,
-      &__hero-actions {
-        flex-direction: column;
-        align-items: stretch;
-      }
-
-      &__hero-actions > button {
-        width: 100%;
-      }
-
-      &__metrics,
       &__workflow {
-        grid-template-columns: 1fr;
+        padding-inline: var(--art-space-2);
+
+        ol {
+          grid-template-columns: 1fr;
+        }
+
+        .waybill-cost__step-arrow {
+          display: none;
+        }
+      }
+
+      &__tabs {
+        min-height: 520px;
+
+        :deep(.el-tabs__item) {
+          height: 48px;
+          padding-inline: var(--art-space-2);
+        }
+      }
+
+      &__tab-label {
+        > span small {
+          display: none;
+        }
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      &__step-index {
+        transition: none;
       }
     }
   }

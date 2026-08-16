@@ -1,9 +1,16 @@
 <template>
-  <div class="art-full-height">
+  <div class="art-full-height business-workspace-page">
+    <BusinessWorkspaceHeader
+      eyebrow="DATA GOVERNANCE"
+      title="字典管理"
+      description="集中维护系统枚举、业务分类、展示样式与多级字典项。"
+      icon="ri:book-2-line"
+      :tags="workspaceTags"
+    />
     <MasterDeleteProcessingNotice
       action-hint="字典类型和关联字典项已自动定位；处理完成后可返回继续删除。"
     />
-    <div class="dict-layout">
+    <div class="dict-layout business-workspace-content">
       <ElSplitter class="dict-splitter">
         <ElSplitterPanel size="316px" min="288px" max="380px">
           <div class="dict-tree-panel">
@@ -77,6 +84,9 @@
   } from '@/components/core/forms/art-button-more/index.vue'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import ArtEmptyState from '@/components/core/layouts/art-empty-state/index.vue'
+  import BusinessWorkspaceHeader, {
+    type BusinessWorkspaceTag
+  } from '@/components/business/business-workspace-header/index.vue'
   import { ColumnOption } from '@/types'
   import TreeUtils from '@/utils/tree'
   import { useUserStore } from '@/store/modules/user'
@@ -97,6 +107,10 @@
 
   const { confirmAction } = useArtFeedback()
   const route = useRoute()
+  const workspaceTags: BusinessWorkspaceTag[] = [
+    { label: '按模块分层维护', type: 'primary', effect: 'plain' },
+    { label: '统一驱动表单与状态展示', type: 'success', effect: 'plain' }
+  ]
 
   type DictListItem = Api.DataCenter.DictListItem
   type SearchParams = Partial<Pick<DictListItem, 'label' | 'code' | 'i18nScope' | 'status'>>

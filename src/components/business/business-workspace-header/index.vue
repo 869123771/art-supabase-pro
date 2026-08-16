@@ -35,7 +35,19 @@
     </header>
 
     <div v-if="metrics.length" class="business-workspace-header__metrics" aria-label="业务概览">
-      <article v-for="metric in metrics" :key="metric.label">
+      <component
+        :is="metric.interactive ? 'button' : 'article'"
+        v-for="metric in metrics"
+        :key="metric.key ?? metric.label"
+        class="business-workspace-header__metric"
+        :class="{
+          'is-interactive': metric.interactive,
+          'is-selected': metric.selected
+        }"
+        :type="metric.interactive ? 'button' : undefined"
+        :aria-pressed="metric.interactive ? Boolean(metric.selected) : undefined"
+        @click="handleMetricClick(metric)"
+      >
         <div
           class="business-workspace-header__metric-icon"
           :class="`is-${metric.tone ?? 'primary'}`"
@@ -44,10 +56,13 @@
         </div>
         <div class="business-workspace-header__metric-copy">
           <span>{{ metric.label }}</span>
-          <strong>{{ metric.value }}</strong>
+          <ElSkeleton v-if="metric.loading" animated :rows="0">
+            <template #template><ElSkeletonItem variant="text" /></template>
+          </ElSkeleton>
+          <strong v-else>{{ metric.value }}</strong>
           <small>{{ metric.description }}</small>
         </div>
-      </article>
+      </component>
     </div>
   </section>
 </template>
@@ -63,11 +78,15 @@
   }
 
   export interface BusinessWorkspaceMetric {
+    key?: string
     label: string
     value: string | number
     description: string
     icon: string
     tone?: 'primary' | 'success' | 'warning' | 'danger' | 'info'
+    interactive?: boolean
+    selected?: boolean
+    loading?: boolean
   }
 
   withDefaults(
@@ -85,6 +104,12 @@
       metrics: () => []
     }
   )
+
+  const emit = defineEmits<{ 'metric-click': [metric: BusinessWorkspaceMetric] }>()
+
+  const handleMetricClick = (metric: BusinessWorkspaceMetric): void => {
+    if (metric.interactive && !metric.loading) emit('metric-click', metric)
+  }
 </script>
 
 <style lang="scss">
@@ -114,7 +139,7 @@
     &__aside,
     &__tags,
     &__actions,
-    &__metrics article,
+    &__metric,
     &__brand,
     &__metric-icon {
       display: flex;
@@ -197,15 +222,45 @@
       grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
       border-top: 1px solid var(--el-border-color-lighter);
 
-      article {
+      .business-workspace-header__metric {
         gap: 12px;
         min-width: 0;
         padding: 14px 24px;
+        color: inherit;
+        text-align: left;
+        background: transparent;
+        border: 0;
 
         &:not(:last-child) {
           border-right: 1px solid var(--el-border-color-lighter);
         }
+
+        &.is-interactive {
+          cursor: pointer;
+          transition:
+            color 0.18s ease,
+            background-color 0.18s ease,
+            border-color 0.18s ease,
+            box-shadow 0.18s ease;
+
+          &:hover,
+          &:focus-visible {
+            color: var(--theme-color);
+            outline: none;
+            background: color-mix(in srgb, var(--theme-color) 7%, transparent);
+          }
+        }
       }
+    }
+
+    :global([data-box-mode='border-mode']) &__metric.is-interactive.is-selected {
+      background: color-mix(in srgb, var(--theme-color) 9%, transparent);
+      box-shadow: inset 0 -2px 0 var(--theme-color);
+    }
+
+    :global([data-box-mode='shadow-mode']) &__metric.is-interactive.is-selected {
+      background: color-mix(in srgb, var(--theme-color) 8%, transparent);
+      box-shadow: 0 8px 20px color-mix(in srgb, var(--theme-color) 16%, transparent);
     }
 
     &__metric-copy {
@@ -282,7 +337,7 @@
         align-items: flex-end;
       }
 
-      &__metrics article {
+      &__metric {
         padding-inline: 16px;
       }
     }
@@ -307,10 +362,16 @@
       &__metrics {
         grid-template-columns: 1fr;
 
-        article:not(:last-child) {
+        .business-workspace-header__metric:not(:last-child) {
           border-right: 0;
           border-bottom: 1px solid var(--el-border-color-lighter);
         }
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      &__metric.is-interactive {
+        transition: none;
       }
     }
   }

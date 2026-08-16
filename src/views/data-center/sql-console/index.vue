@@ -1,128 +1,140 @@
 <template>
-  <div class="sql-console-container art-full-height">
-    <el-splitter v-model="splitRatio" layout="vertical">
-      <el-splitter-panel>
-        <div class="sql-editor-section">
-          <Editor
-            ref="editorRef"
-            v-model="sqlCode"
-            @execute="handleExecute"
-            @ai-request="openAiDialog(aiErrorContext ? 'fix' : 'generate')"
-          />
-        </div>
-      </el-splitter-panel>
-
-      <el-splitter-panel>
-        <div class="result-section">
-          <div class="tabs-header">
-            <el-tabs v-model="tabs.active" class="result-tabs">
-              <el-tab-pane
-                v-for="{ label, name } in tabs.list"
-                :key="name"
-                :name="name"
-                :label="label"
-              />
-            </el-tabs>
-            <div class="tabs-actions">
-              <div class="execution-info" v-if="result?.durationMs">
-                <span class="duration">耗时 {{ result.durationMs }}ms</span>
-              </div>
-              <el-tooltip
-                content="AI 写 SQL (Ctrl/Cmd + I)"
-                placement="top"
-                :offset="8"
-                :show-arrow="false"
-              >
-                <ArtIconButton
-                  @click="openAiDialog(aiErrorContext ? 'fix' : 'generate')"
-                  icon="ri-robot-2-line"
-                  class="!size-6.5"
-                />
-              </el-tooltip>
-              <el-tooltip
-                v-if="!executing"
-                content="执行 (Shift + Enter)"
-                placement="top"
-                :offset="8"
-                :show-arrow="false"
-              >
-                <ArtIconButton
-                  @click="() => handleExecute()"
-                  icon="ri-play-line"
-                  class="!size-6.5"
-                />
-              </el-tooltip>
-              <el-tooltip v-else content="执行中" placement="top" :offset="8" :show-arrow="false">
-                <ArtIconButton
-                  @click="() => handleExecute()"
-                  icon="ri-loader-2-line"
-                  :loading="executing"
-                  class="size-6.5! animate-spin duration-3000"
-                />
-              </el-tooltip>
-              <el-tooltip
-                content="格式化 SQL (Ctrl/Cmd + Shift + F)"
-                placement="top"
-                :offset="8"
-                :show-arrow="false"
-              >
-                <ArtIconButton @click="handleFormat" icon="ri-magic-line" class="size-6.5!" />
-              </el-tooltip>
-              <el-tooltip content="清空" placement="top" :offset="8" :show-arrow="false">
-                <ArtIconButton @click="handleClear" icon="ri-close-line" class="size-6.5!" />
-              </el-tooltip>
-            </div>
+  <div class="sql-console-page art-full-height business-workspace-page">
+    <BusinessWorkspaceHeader
+      eyebrow="DATABASE WORKBENCH"
+      title="SQL 工作台"
+      description="在受控权限范围内编写、执行与诊断 SQL，并通过 AI 辅助生成和修复语句。"
+      icon="ri:terminal-box-line"
+    />
+    <section class="sql-console-container business-workspace-content art-card-xs">
+      <el-splitter v-model="splitRatio" layout="vertical">
+        <el-splitter-panel>
+          <div class="sql-editor-section">
+            <Editor
+              ref="editorRef"
+              v-model="sqlCode"
+              @execute="handleExecute"
+              @ai-request="openAiDialog(aiErrorContext ? 'fix' : 'generate')"
+            />
           </div>
-          <ElScrollbar class="tabs-content">
-            <div class="tabs-content__inner">
-              <div v-if="!result" class="empty-state">
-                <ArtSvgIcon
-                  v-if="executing"
-                  :loading="executing"
-                  icon="ri-loader-2-line"
-                  class="size-[30px] animate-spin duration-3000"
-                />
-                <ArtEmptyState
-                  v-else
-                  title="等待执行 SQL"
-                  description="执行后将在这里展示查询结果、耗时与错误信息"
-                  size="compact"
-                  :visual-size="76"
-                />
-              </div>
-              <template v-else>
-                <div v-if="result.status === 'error'" class="error-panel">
-                  <div class="error-toolbar">
-                    <el-tag type="danger" effect="light" round>执行失败</el-tag>
-                    <el-button size="small" text type="primary" @click="openAiDialog('fix')">
-                      AI 修复这条 SQL
-                    </el-button>
-                  </div>
-                  <pre class="error-message">{{ result.errorMessage }}</pre>
-                  <pre v-if="errorCaretPreview" class="error-caret">{{ errorCaretPreview }}</pre>
-                </div>
+        </el-splitter-panel>
 
-                <div
-                  v-if="result.status === 'ok' && result.rows && result.rows.length > 0"
-                  class="result-table"
+        <el-splitter-panel>
+          <div class="result-section">
+            <div class="tabs-header">
+              <el-tabs v-model="tabs.active" class="result-tabs">
+                <el-tab-pane
+                  v-for="{ label, name } in tabs.list"
+                  :key="name"
+                  :name="name"
+                  :label="label"
+                />
+              </el-tabs>
+              <div class="tabs-actions">
+                <div class="execution-info" v-if="result?.durationMs">
+                  <span class="duration">耗时 {{ result.durationMs }}ms</span>
+                </div>
+                <el-tooltip
+                  content="AI 写 SQL (Ctrl/Cmd + I)"
+                  placement="top"
+                  :offset="8"
+                  :show-arrow="false"
                 >
-                  <ResultTable :loading="executing" :data="result.rows" :columns="result.columns" />
-                </div>
-
-                <div v-else-if="result.status === 'ok'" class="empty-result">
+                  <ArtIconButton
+                    @click="openAiDialog(aiErrorContext ? 'fix' : 'generate')"
+                    icon="ri-robot-2-line"
+                    class="!size-6.5"
+                  />
+                </el-tooltip>
+                <el-tooltip
+                  v-if="!executing"
+                  content="执行 (Shift + Enter)"
+                  placement="top"
+                  :offset="8"
+                  :show-arrow="false"
+                >
+                  <ArtIconButton
+                    @click="() => handleExecute()"
+                    icon="ri-play-line"
+                    class="!size-6.5"
+                  />
+                </el-tooltip>
+                <el-tooltip v-else content="执行中" placement="top" :offset="8" :show-arrow="false">
+                  <ArtIconButton
+                    @click="() => handleExecute()"
+                    icon="ri-loader-2-line"
+                    :loading="executing"
+                    class="size-6.5! animate-spin duration-3000"
+                  />
+                </el-tooltip>
+                <el-tooltip
+                  content="格式化 SQL (Ctrl/Cmd + Shift + F)"
+                  placement="top"
+                  :offset="8"
+                  :show-arrow="false"
+                >
+                  <ArtIconButton @click="handleFormat" icon="ri-magic-line" class="size-6.5!" />
+                </el-tooltip>
+                <el-tooltip content="清空" placement="top" :offset="8" :show-arrow="false">
+                  <ArtIconButton @click="handleClear" icon="ri-close-line" class="size-6.5!" />
+                </el-tooltip>
+              </div>
+            </div>
+            <ElScrollbar class="tabs-content">
+              <div class="tabs-content__inner">
+                <div v-if="!result" class="empty-state">
+                  <ArtSvgIcon
+                    v-if="executing"
+                    :loading="executing"
+                    icon="ri-loader-2-line"
+                    class="size-[30px] animate-spin duration-3000"
+                  />
                   <ArtEmptyState
-                    title="执行成功，暂无数据行"
-                    description="当前语句没有返回记录，可以调整查询条件后重新执行"
+                    v-else
+                    title="等待执行 SQL"
+                    description="执行后将在这里展示查询结果、耗时与错误信息"
                     size="compact"
                     :visual-size="76"
                   />
                 </div>
-              </template>
-            </div>
-          </ElScrollbar>
-        </div>
-      </el-splitter-panel>
-    </el-splitter>
+                <template v-else>
+                  <div v-if="result.status === 'error'" class="error-panel">
+                    <div class="error-toolbar">
+                      <el-tag type="danger" effect="light" round>执行失败</el-tag>
+                      <el-button size="small" text type="primary" @click="openAiDialog('fix')">
+                        AI 修复这条 SQL
+                      </el-button>
+                    </div>
+                    <pre class="error-message">{{ result.errorMessage }}</pre>
+                    <pre v-if="errorCaretPreview" class="error-caret">{{ errorCaretPreview }}</pre>
+                  </div>
+
+                  <div
+                    v-if="result.status === 'ok' && result.rows && result.rows.length > 0"
+                    class="result-table"
+                  >
+                    <ResultTable
+                      :loading="executing"
+                      :data="result.rows"
+                      :columns="result.columns"
+                    />
+                  </div>
+
+                  <div v-else-if="result.status === 'ok'" class="empty-result">
+                    <ArtEmptyState
+                      title="执行成功，暂无数据行"
+                      description="当前语句没有返回记录，可以调整查询条件后重新执行"
+                      size="compact"
+                      :visual-size="76"
+                    />
+                  </div>
+                </template>
+              </div>
+            </ElScrollbar>
+          </div>
+        </el-splitter-panel>
+      </el-splitter>
+    </section>
 
     <ArtDialog ref="aiDialogRef">
       <div class="ai-panel">
@@ -150,6 +162,7 @@
   import { computed, ref } from 'vue'
   import { useMemoize } from '@vueuse/core'
   import { ElMessage } from 'element-plus'
+  import BusinessWorkspaceHeader from '@/components/business/business-workspace-header/index.vue'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import ArtEmptyState from '@/components/core/layouts/art-empty-state/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
@@ -342,10 +355,11 @@
 <style scoped lang="scss">
   .sql-console-container {
     width: 100%;
+    height: 100%;
+    min-height: 0;
     padding: 0;
     margin: 0;
-    border: 1px solid var(--el-border-color);
-    border-radius: var(--el-border-radius-base);
+    overflow: hidden;
 
     .sql-editor-section {
       display: flex;

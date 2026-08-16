@@ -56,9 +56,9 @@
       strong {
         min-width: 0;
         overflow: hidden;
+        text-overflow: ellipsis;
         font-size: 14px;
         color: var(--el-text-color-primary);
-        text-overflow: ellipsis;
         white-space: nowrap;
       }
 
@@ -106,9 +106,9 @@
       span {
         display: -webkit-box;
         overflow: hidden;
+        -webkit-line-clamp: 2;
         overflow-wrap: anywhere;
         -webkit-box-orient: vertical;
-        -webkit-line-clamp: 2;
       }
     }
   }

@@ -546,7 +546,7 @@
         isRouteVisibleStatus(item.status) ? '#315cff' : '#d69b12',
         {
           image: item.vehicleImage,
-          selected: item.id === activeOrder?.id,
+          selected: item.id === activeOrder.value?.id,
           subtitle: item.statusLabel
         }
       )

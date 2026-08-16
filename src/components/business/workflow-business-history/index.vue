@@ -270,8 +270,8 @@
       small {
         font-size: 10px;
         font-weight: 700;
-        letter-spacing: 0.12em;
         color: var(--theme-color);
+        letter-spacing: 0.12em;
       }
 
       h2 {
@@ -451,10 +451,10 @@
 
       p {
         margin: 3px 0 0;
-        overflow-wrap: anywhere;
         font-size: 12px;
         line-height: 1.6;
         color: var(--el-text-color-regular);
+        overflow-wrap: anywhere;
       }
     }
 

@@ -1358,11 +1358,11 @@
 
       strong {
         overflow: hidden;
+        text-overflow: ellipsis;
         font-size: 14px;
         font-weight: 600;
         line-height: 22px;
         color: var(--el-text-color-primary);
-        text-overflow: ellipsis;
         white-space: nowrap;
       }
     }
@@ -1427,10 +1427,10 @@
 
       span {
         overflow: hidden;
+        text-overflow: ellipsis;
         font-size: 12px;
         line-height: 18px;
         color: var(--el-text-color-secondary);
-        text-overflow: ellipsis;
         white-space: nowrap;
       }
     }

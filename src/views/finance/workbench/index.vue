@@ -5,22 +5,21 @@
     class="finance-workbench"
     @retry="loadWorkbench"
   >
-    <ArtPageHeader
+    <BusinessWorkspaceHeader
+      eyebrow="FINANCE OPERATIONS"
       title="财务工作台"
-      subtitle="集中查看应收、应付、开票、回款与费用审核进度"
+      description="集中查看应收、应付、开票、回款与费用审核进度"
+      icon="ri:money-cny-box-line"
+      :tags="workspaceTags"
+      :metrics="overview.metrics"
       class="finance-workbench__header"
     >
-      <div class="finance-workbench__header-actions">
-        <ElTag type="success" effect="plain" round>
-          <ArtSvgIcon icon="ri:pulse-line" />经营数据实时汇总
-        </ElTag>
+      <template #actions>
         <ElButton type="primary" @click="openCollectionAdvisor">
           <ArtSvgIcon icon="ri:sparkling-2-line" />AI 回款风险研判
         </ElButton>
-      </div>
-    </ArtPageHeader>
-
-    <FinanceMetricGrid :items="overview.metrics" class="finance-workbench__metrics" />
+      </template>
+    </BusinessWorkspaceHeader>
 
     <div class="finance-workbench__content">
       <ArtPageSection
@@ -96,10 +95,12 @@
   import type { AlertProps, TagProps } from 'element-plus'
   import type { ColumnOption } from '@/types'
   import type { ArtDescriptionItem } from '@/components/core/base/art-descriptions/types'
+  import BusinessWorkspaceHeader, {
+    type BusinessWorkspaceMetric,
+    type BusinessWorkspaceTag
+  } from '@/components/business/business-workspace-header/index.vue'
   import { fetchFinanceWorkbench } from '@/api/finance'
   import { financeRouteNames } from '@/router/business-paths'
-  import type { FinanceMetric } from '../modules/finance-types'
-  import FinanceMetricGrid from '../modules/finance-metric-grid.vue'
   import ReceivablesCollectionAdvisorDrawer from './modules/receivables-collection-advisor-drawer.vue'
 
   defineOptions({ name: 'FinanceWorkbench' })
@@ -132,7 +133,7 @@
   interface OverviewGroup {
     loading: boolean
     stats: Stats
-    metrics: FinanceMetric[]
+    metrics: BusinessWorkspaceMetric[]
     tasks: WorkbenchTask[]
     progressItems: ProgressItem[]
     reminders: ReminderItem[]
@@ -192,6 +193,10 @@
     progressItems: [],
     reminders: []
   })
+  const workspaceTags: BusinessWorkspaceTag[] = [
+    { label: '经营数据实时汇总', type: 'success', effect: 'plain' },
+    { label: '支持 AI 回款风险研判', type: 'info', effect: 'plain' }
+  ]
 
   const taskColumns: ColumnOption<WorkbenchTask>[] = [
     { prop: 'title', label: '待办事项', minWidth: 175 },
@@ -257,33 +262,33 @@
     return Math.min(100, Math.max(0, Number(value || 0)))
   }
 
-  function buildMetrics(stats: Stats): FinanceMetric[] {
+  function buildMetrics(stats: Stats): BusinessWorkspaceMetric[] {
     return [
       {
         label: '客户应收余额',
         value: formatMoney(stats.customerReceivableBalance),
-        trend: `本月已回款 ${formatMoney(stats.monthReceiptAmount)}`,
+        description: `本月已回款 ${formatMoney(stats.monthReceiptAmount)}`,
         icon: 'ri:funds-line',
         tone: 'primary'
       },
       {
         label: '承运商应付余额',
         value: formatMoney(stats.carrierPayableBalance),
-        trend: `本月已付款 ${formatMoney(stats.monthPaymentAmount)}`,
+        description: `本月已付款 ${formatMoney(stats.monthPaymentAmount)}`,
         icon: 'ri:bank-card-line',
         tone: 'warning'
       },
       {
         label: '本月回款',
         value: formatMoney(stats.monthReceiptAmount),
-        trend: `回款完成率 ${Number(stats.receiptCompletionRate).toFixed(2)}%`,
+        description: `回款完成率 ${Number(stats.receiptCompletionRate).toFixed(2)}%`,
         icon: 'ri:money-cny-circle-line',
         tone: 'success'
       },
       {
         label: '本月运输毛利',
         value: formatMoney(stats.monthGrossProfit),
-        trend: `综合毛利率 ${grossMargin.value}%`,
+        description: `综合毛利率 ${grossMargin.value}%`,
         icon: 'ri:line-chart-line',
         tone: stats.monthGrossProfit >= 0 ? 'primary' : 'danger'
       }
@@ -519,21 +524,6 @@
       display: grid;
       gap: 20px;
       min-width: 0;
-    }
-
-    &__header {
-      min-height: 92px;
-    }
-
-    &__header-actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      align-items: center;
-
-      :deep(.el-tag) {
-        gap: 5px;
-      }
     }
 
     &__content {

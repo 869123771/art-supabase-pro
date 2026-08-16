@@ -288,8 +288,8 @@
       margin: auto;
 
       &.is-disabled {
-        filter: grayscale(1);
         opacity: 0.55;
+        filter: grayscale(1);
       }
     }
 
@@ -325,8 +325,8 @@
     }
 
     &__center {
-      display: grid;
       z-index: 2;
+      display: grid;
       place-items: center;
       width: 34px;
       height: 34px;
