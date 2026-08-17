@@ -4,7 +4,7 @@ import {
   buildDrivingRoutePoints,
   buildWaybillLocationPoints,
   isValidMapCoordinate
-} from '../../src/views/tms-transportation/waybill-management/detail/modules/waybill-route-model'
+} from '../../src/views/tms/waybill-management/detail/modules/waybill-route-model'
 
 function createWaybill(): Api.Tms.Waybill.WaybillDetailRecord {
   return {

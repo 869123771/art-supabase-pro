@@ -57,7 +57,7 @@ test('AI 智能填单采用宽屏结果优先布局并向业务角色开放一�
     await route.fulfill({ status: 200, json: analysisResponse })
   })
 
-  await page.goto('/#/tms-transportation/order-open', { waitUntil: 'domcontentloaded' })
+  await page.goto('/#/tms/order-open', { waitUntil: 'domcontentloaded' })
   await expect(page).not.toHaveURL(/#\/auth\/login/)
   const openButton = page.getByRole('button', { name: 'AI智能填单' })
   await expect(openButton).toBeVisible({ timeout: 240_000 })

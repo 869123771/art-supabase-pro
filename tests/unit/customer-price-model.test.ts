@@ -3,7 +3,7 @@ import test from 'node:test'
 import {
   createInitialCustomerPriceForm,
   normalizeCustomerPricePayload
-} from '../../src/views/tms-transportation/basic-data/customer-price-edit/modules/customer-price-model'
+} from '../../src/views/tms/basic-data/customer-price-edit/modules/customer-price-model'
 
 test('customer price payload trims fields and owns calculated totals', () => {
   const form = createInitialCustomerPriceForm()

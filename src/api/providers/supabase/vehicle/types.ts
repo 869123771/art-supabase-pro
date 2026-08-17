@@ -1,14 +1,14 @@
-export type InsuranceCompany = Api.VehicleMgtSys.BasicInfo.InsuranceCompany
-export type InsuranceCompanySearchParams = Api.VehicleMgtSys.BasicInfo.InsuranceCompanySearchParams
-export type Supplier = Api.VehicleMgtSys.BasicInfo.Supplier
-export type SupplierSearchParams = Api.VehicleMgtSys.BasicInfo.SupplierSearchParams
-export type PartsCategory = Api.VehicleMgtSys.BasicInfo.PartsCategory
-export type PartsCategorySearchParams = Api.VehicleMgtSys.BasicInfo.PartsCategorySearchParams
-export type Parts = Api.VehicleMgtSys.BasicInfo.Parts
-export type PartsSearchParams = Api.VehicleMgtSys.BasicInfo.PartsSearchParams
+export type InsuranceCompany = Api.Vms.BasicInfo.InsuranceCompany
+export type InsuranceCompanySearchParams = Api.Vms.BasicInfo.InsuranceCompanySearchParams
+export type Supplier = Api.Vms.BasicInfo.Supplier
+export type SupplierSearchParams = Api.Vms.BasicInfo.SupplierSearchParams
+export type PartsCategory = Api.Vms.BasicInfo.PartsCategory
+export type PartsCategorySearchParams = Api.Vms.BasicInfo.PartsCategorySearchParams
+export type Parts = Api.Vms.BasicInfo.Parts
+export type PartsSearchParams = Api.Vms.BasicInfo.PartsSearchParams
 
-export type VehicleArchive = Api.VehicleMgtSys.ArchiveManage.VehicleArchive
-export type VehicleArchiveSearchParams = Api.VehicleMgtSys.ArchiveManage.VehicleArchiveSearchParams
+export type VehicleArchive = Api.Vms.ArchiveManage.VehicleArchive
+export type VehicleArchiveSearchParams = Api.Vms.ArchiveManage.VehicleArchiveSearchParams
 export type VehicleArchiveWritePayload = Record<string, unknown> & { id?: string }
 
 export interface VehicleArchiveDeleteRelatedCount {
@@ -27,34 +27,26 @@ export interface VehicleArchiveDeleteBase {
   carrierId?: string | null
 }
 
-export type VehicleInsurance = Api.VehicleMgtSys.VehicleManage.VehicleInsurance
-export type VehicleInsuranceSearchParams =
-  Api.VehicleMgtSys.VehicleManage.VehicleInsuranceSearchParams
-export type VehicleInspection = Api.VehicleMgtSys.VehicleManage.VehicleInspection
-export type VehicleInspectionSearchParams =
-  Api.VehicleMgtSys.VehicleManage.VehicleInspectionSearchParams
-export type VehicleRoutineInspectionRecord =
-  Api.VehicleMgtSys.VehicleManage.VehicleRoutineInspectionRecord
+export type VehicleInsurance = Api.Vms.VehicleManage.VehicleInsurance
+export type VehicleInsuranceSearchParams = Api.Vms.VehicleManage.VehicleInsuranceSearchParams
+export type VehicleInspection = Api.Vms.VehicleManage.VehicleInspection
+export type VehicleInspectionSearchParams = Api.Vms.VehicleManage.VehicleInspectionSearchParams
+export type VehicleRoutineInspectionRecord = Api.Vms.VehicleManage.VehicleRoutineInspectionRecord
 export type VehicleRoutineInspectionSearchParams =
-  Api.VehicleMgtSys.VehicleManage.VehicleRoutineInspectionSearchParams
-export type VehicleMileageRecord = Api.VehicleMgtSys.VehicleManage.VehicleMileageRecord
-export type VehicleMileageSearchParams = Api.VehicleMgtSys.VehicleManage.VehicleMileageSearchParams
-export type VehicleViolationRecord = Api.VehicleMgtSys.VehicleManage.VehicleViolationRecord
-export type VehicleViolationSearchParams =
-  Api.VehicleMgtSys.VehicleManage.VehicleViolationSearchParams
-export type VehicleAccidentRecord = Api.VehicleMgtSys.VehicleManage.VehicleAccidentRecord
-export type VehicleAccidentSearchParams =
-  Api.VehicleMgtSys.VehicleManage.VehicleAccidentSearchParams
-export type VehicleMaintenanceRecord = Api.VehicleMgtSys.VehicleManage.VehicleMaintenanceRecord
-export type VehicleMaintenanceSearchParams =
-  Api.VehicleMgtSys.VehicleManage.VehicleMaintenanceSearchParams
-export type VehiclePartUsage = Api.VehicleMgtSys.VehicleManage.VehiclePartUsage
-export type VehiclePartUsageSearchParams =
-  Api.VehicleMgtSys.VehicleManage.VehiclePartUsageSearchParams
+  Api.Vms.VehicleManage.VehicleRoutineInspectionSearchParams
+export type VehicleMileageRecord = Api.Vms.VehicleManage.VehicleMileageRecord
+export type VehicleMileageSearchParams = Api.Vms.VehicleManage.VehicleMileageSearchParams
+export type VehicleViolationRecord = Api.Vms.VehicleManage.VehicleViolationRecord
+export type VehicleViolationSearchParams = Api.Vms.VehicleManage.VehicleViolationSearchParams
+export type VehicleAccidentRecord = Api.Vms.VehicleManage.VehicleAccidentRecord
+export type VehicleAccidentSearchParams = Api.Vms.VehicleManage.VehicleAccidentSearchParams
+export type VehicleMaintenanceRecord = Api.Vms.VehicleManage.VehicleMaintenanceRecord
+export type VehicleMaintenanceSearchParams = Api.Vms.VehicleManage.VehicleMaintenanceSearchParams
+export type VehiclePartUsage = Api.Vms.VehicleManage.VehiclePartUsage
+export type VehiclePartUsageSearchParams = Api.Vms.VehicleManage.VehiclePartUsageSearchParams
 
-export type VehicleReminderRow = Api.VehicleMgtSys.ReminderManage.VehicleReminderRow
-export type VehicleReminderSearchParams =
-  Api.VehicleMgtSys.ReminderManage.VehicleReminderSearchParams
+export type VehicleReminderRow = Api.Vms.ReminderManage.VehicleReminderRow
+export type VehicleReminderSearchParams = Api.Vms.ReminderManage.VehicleReminderSearchParams
 
 export interface VehicleReminderCompanyOption {
   companyName: string

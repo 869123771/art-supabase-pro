@@ -18,7 +18,7 @@ test('订单录入可添加货品且保持非提交状态', async ({ page }) => 
   test.setTimeout(180_000)
   const pageErrors = collectPageErrors(page)
 
-  await page.goto('/#/tms-transportation/order-open', { waitUntil: 'domcontentloaded' })
+  await page.goto('/#/tms/order-open', { waitUntil: 'domcontentloaded' })
   await expect(page).not.toHaveURL(/#\/auth\/login/)
   await expect(page.locator('.order-open')).toBeVisible({ timeout: 60_000 })
   await expect(page.locator('.el-loading-mask:visible')).toHaveCount(0, { timeout: 60_000 })
@@ -44,7 +44,7 @@ test('发票登记对话框可打开并呈现完整录入状态', async ({ page 
   test.setTimeout(180_000)
   const pageErrors = collectPageErrors(page)
 
-  await page.goto('/#/finance/invoice-management', {
+  await page.goto('/#/fms/invoice-management', {
     waitUntil: 'domcontentloaded'
   })
   await expect(page.locator('.art-table-query')).toBeVisible({ timeout: 120_000 })
@@ -68,7 +68,7 @@ test('车辆档案四个业务分区可导航且不产生横向溢出', async ({
   test.setTimeout(180_000)
   const pageErrors = collectPageErrors(page)
 
-  await page.goto('/#/vehicle-manage-system/archive-manage/vehicle-archive-edit', {
+  await page.goto('/#/vms/archive-manage/vehicle-archive-edit', {
     waitUntil: 'domcontentloaded'
   })
   await expect(page.locator('.vehicle-archive-edit')).toBeVisible({ timeout: 120_000 })

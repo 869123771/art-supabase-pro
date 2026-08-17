@@ -577,7 +577,7 @@ declare namespace Api {
   }
 
   /** 车辆管理系统 */
-  namespace VehicleMgtSys {
+  namespace Vms {
     namespace ArchiveManage {
       type AuditStatus = 'pending' | 'approved' | 'rejected'
 
@@ -718,7 +718,7 @@ declare namespace Api {
     }
 
     namespace VehicleManage {
-      type VehicleAttachment = Api.VehicleMgtSys.ArchiveManage.VehicleAttachment
+      type VehicleAttachment = Api.Vms.ArchiveManage.VehicleAttachment
 
       interface VehicleOption {
         id?: string
@@ -1841,7 +1841,7 @@ declare namespace Api {
         driverId?: string | null
         driver?: DriverOption | null
         vehicleId?: string | null
-        vehicle?: Api.VehicleMgtSys.VehicleManage.VehicleOption | null
+        vehicle?: Api.Vms.VehicleManage.VehicleOption | null
         originRegion: string
         destinationRegion: string
         transportMode: string
@@ -2370,7 +2370,7 @@ declare namespace Api {
         expenseLatitude: number
         expenseCoordinateSource?: string | null
         expenseItem?: Pick<
-          Api.Finance.ExpenseItem,
+          Api.Fms.ExpenseItem,
           'id' | 'itemCode' | 'itemName' | 'businessCategory'
         > | null
       }
@@ -2494,7 +2494,7 @@ declare namespace Api {
         execution?: ExecutionRecord | null
       }
 
-      interface DispatchVehicleOption extends Api.VehicleMgtSys.VehicleManage.VehicleOption {
+      interface DispatchVehicleOption extends Api.Vms.VehicleManage.VehicleOption {
         primaryDriverId?: string | null
         primaryDriver?: BasicData.DriverOption | null
         tonnageOrSeat?: string | null
@@ -2856,7 +2856,7 @@ declare namespace Api {
   }
 
   /** Shared finance domain contracts. Transport-backed records remain source-specific DTOs. */
-  namespace Finance {
+  namespace Fms {
     type ExpenseOcrStatus = 'not_started' | 'processing' | 'succeeded' | 'failed'
     type ReimbursementApprovalStatus =
       'draft' | 'pending_review' | 'approved' | 'rejected' | 'paid' | 'cancelled'

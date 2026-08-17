@@ -27,7 +27,7 @@ export const recognitionCapabilities: RecognitionCapability[] = [
     icon: 'ri:file-list-3-line',
     accent: 'green',
     businessLabel: '配送管理',
-    businessRoute: '/tms-transportation/delivery-management'
+    businessRoute: '/tms/delivery-management'
   },
   {
     feature: 'cash_voucher_ocr',

@@ -5,7 +5,7 @@ test('合同新增弹窗展示扩展字段和运输明细', async ({ page }) => 
   const pageErrors: string[] = []
   page.on('pageerror', (error) => pageErrors.push(error.message))
 
-  await page.goto('/#/tms-transportation/basic-data/contract', {
+  await page.goto('/#/tms/basic-data/contract', {
     waitUntil: 'domcontentloaded'
   })
   await expect(page).not.toHaveURL(/#\/(?:auth\/)?login/)

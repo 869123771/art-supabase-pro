@@ -6,7 +6,7 @@ import {
   createInitialForm,
   formatOrderAddress,
   normalizeOrderPayload
-} from '../../src/views/tms-transportation/order-open/modules/order-open-model'
+} from '../../src/views/tms/order-open/modules/order-open-model'
 
 test('order payload normalizes monetary totals, stations and cargo summary', () => {
   const form = createInitialForm()

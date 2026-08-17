@@ -3,7 +3,7 @@ import test from 'node:test'
 import {
   createContractDetailFromCargo,
   mergeContractCargoSelections
-} from '../../src/views/tms-transportation/basic-data/contract/modules/contract-cargo-selection'
+} from '../../src/views/tms/basic-data/contract/modules/contract-cargo-selection'
 
 type Cargo = Api.Tms.BasicData.Cargo
 type ContractTransportDetail = Api.Tms.BasicData.ContractTransportDetail

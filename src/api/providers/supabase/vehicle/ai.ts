@@ -6,9 +6,9 @@ const { supabase } = useSupabase()
 
 export async function analyzeVehicleHealthByAi(
   vehicleId: string
-): Promise<QueryResult<Api.VehicleMgtSys.VehicleManage.VehicleHealthAdvisorResponse>> {
+): Promise<QueryResult<Api.Vms.VehicleManage.VehicleHealthAdvisorResponse>> {
   const { data, error } =
-    await supabase.functions.invoke<Api.VehicleMgtSys.VehicleManage.VehicleHealthAdvisorResponse>(
+    await supabase.functions.invoke<Api.Vms.VehicleManage.VehicleHealthAdvisorResponse>(
       'ai-vehicle-health-advisor',
       { body: { vehicleId } }
     )

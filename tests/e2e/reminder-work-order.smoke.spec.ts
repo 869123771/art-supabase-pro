@@ -5,7 +5,7 @@ test('车辆到期提醒可建立并查看处置单', async ({ page }) => {
   const pageErrors: string[] = []
   page.on('pageerror', (error) => pageErrors.push(error.message))
 
-  await page.goto('/#/vehicle-manage-system/reminder-manage/insurance-expiry', {
+  await page.goto('/#/vms/reminder-manage/insurance-expiry', {
     waitUntil: 'domcontentloaded'
   })
   await expect(page).not.toHaveURL(/#\/auth\/login/)

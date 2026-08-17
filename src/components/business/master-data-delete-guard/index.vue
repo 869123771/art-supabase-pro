@@ -243,7 +243,7 @@
       unit: '条',
       description: '进行中工单需先处理；已取消或已关闭工单可勾选清理。',
       actionLabel: '去处理工单',
-      routePath: '/vehicle-manage-system/reminder-manage',
+      routePath: '/vms/reminder-manage',
       order: 20
     },
     organization_child: createGovernanceMeta(

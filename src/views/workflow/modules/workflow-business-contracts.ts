@@ -141,7 +141,7 @@ const contracts: Record<string, WorkflowBusinessContract> = {
       { key: 'isCompleted', label: '是否完成', valueType: 'boolean' },
       { key: 'handler', label: '经办人', valueType: 'text' }
     ],
-    routePath: (businessId) => `/tms-transportation/basic-data/contract-detail/${businessId}`
+    routePath: (businessId) => `/tms/basic-data/contract-detail/${businessId}`
   },
   vehicle_archive: {
     businessType: 'vehicle_archive',
@@ -157,7 +157,7 @@ const contracts: Record<string, WorkflowBusinessContract> = {
       { key: 'operationType', label: '营运类型', valueType: 'text' },
       { key: 'isNewEnergy', label: '新能源车辆', valueType: 'boolean' }
     ],
-    routePath: (businessId) => `/vehicle-manage-system/vehicle-archive-detail/${businessId}`
+    routePath: (businessId) => `/vms/vehicle-archive-detail/${businessId}`
   }
 }
 

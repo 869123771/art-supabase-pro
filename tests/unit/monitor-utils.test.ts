@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import type { InTransitRecord } from '../../src/views/tms-transportation/in-transit-monitor/modules/monitor-types'
+import type { InTransitRecord } from '../../src/views/tms/in-transit-monitor/modules/monitor-types'
 import {
   dedupeGeoPath,
   escapeHtml,
@@ -9,7 +9,7 @@ import {
   resolveTransitStatus,
   splitRoutePath,
   toGeoCoord
-} from '../../src/views/tms-transportation/in-transit-monitor/modules/monitor-utils'
+} from '../../src/views/tms/in-transit-monitor/modules/monitor-utils'
 
 test('toGeoCoord normalizes valid coordinates and rejects invalid ranges', () => {
   assert.deepEqual(toGeoCoord('120.1234567', '30.7654321'), [120.123457, 30.765432])

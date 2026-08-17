@@ -4,7 +4,7 @@ import {
   createInitialVehicleArchiveForm,
   requiresVehicleArchiveResubmission,
   sanitizeVehicleArchivePayload
-} from '../../src/views/vehicle-manage-system/archive-manage/vehicle-archive-edit/modules/vehicle-archive-model'
+} from '../../src/views/vms/archive-manage/vehicle-archive-edit/modules/vehicle-archive-model'
 
 test('vehicle archive payload removes display and audit-only fields', () => {
   const form = createInitialVehicleArchiveForm()

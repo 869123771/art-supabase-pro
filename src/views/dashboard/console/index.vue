@@ -15,8 +15,8 @@
       :today-order-count="overview.data.todayOrderCount"
       :pending-dispatch-count="overview.data.pendingDispatchCount"
       :in-transit-count="overview.data.inTransitCount"
-      @create-order="navigateTo('/tms-transportation/order-open')"
-      @dispatch="navigateTo('/tms-transportation/waybill-management/pending')"
+      @create-order="navigateTo('/tms/order-open')"
+      @dispatch="navigateTo('/tms/waybill-management/pending')"
       @refresh="refreshData"
     />
 
@@ -25,7 +25,7 @@
     <section class="operations-dashboard__operations">
       <DashboardTransit
         :orders="overview.data.transitOrders"
-        @monitor="navigateTo('/tms-transportation/in-transit-monitor')"
+        @monitor="navigateTo('/tms/in-transit-monitor')"
         @open-order="openOrder"
       />
       <DashboardFleetRisk
@@ -34,7 +34,7 @@
         :pending-audit-vehicle-count="overview.data.pendingAuditVehicleCount"
         :reminder-total="reminderTotal"
         :reminders="overview.data.reminders"
-        @view-reminder="navigateTo('/vehicle-manage-system/reminder-manage')"
+        @view-reminder="navigateTo('/vms/reminder-manage')"
       />
     </section>
 
@@ -50,13 +50,13 @@
         :total="statusTotal"
         :in-transit-count="overview.data.inTransitCount"
         :status-items="statusItems"
-        @view-orders="navigateTo('/tms-transportation/order-list')"
+        @view-orders="navigateTo('/tms/order-list')"
       />
     </section>
 
     <DashboardRecentOrders
       :orders="overview.data.recentOrders"
-      @view-orders="navigateTo('/tms-transportation/order-list')"
+      @view-orders="navigateTo('/tms/order-list')"
       @open-order="openOrder"
     />
   </ArtPageShell>
@@ -182,7 +182,7 @@
       hint: '今日新增运输订单',
       icon: 'ri:file-list-3-line',
       tone: 'primary',
-      route: '/tms-transportation/order-list'
+      route: '/tms/order-list'
     },
     {
       key: 'today-freight',
@@ -191,7 +191,7 @@
       hint: '按今日开单金额汇总',
       icon: 'ri:money-cny-circle-line',
       tone: 'info',
-      route: '/tms-transportation/order-list'
+      route: '/tms/order-list'
     },
     {
       key: 'pending-dispatch',
@@ -201,7 +201,7 @@
       hint: '待安排车辆与司机',
       icon: 'ri:truck-line',
       tone: 'warning',
-      route: '/tms-transportation/waybill-management/pending'
+      route: '/tms/waybill-management/pending'
     },
     {
       key: 'in-transit',
@@ -211,7 +211,7 @@
       hint: '实时关注运输进度',
       icon: 'ri:route-line',
       tone: 'success',
-      route: '/tms-transportation/in-transit-monitor'
+      route: '/tms/in-transit-monitor'
     },
     {
       key: 'completed-today',
@@ -221,7 +221,7 @@
       hint: '今日完成签收结案',
       icon: 'ri:checkbox-circle-line',
       tone: 'success',
-      route: '/tms-transportation/order-list'
+      route: '/tms/order-list'
     },
     {
       key: 'risk',
@@ -231,7 +231,7 @@
       hint: `${overview.data.pendingAuditVehicleCount} 台车辆待审核`,
       icon: 'ri:alarm-warning-line',
       tone: 'danger',
-      route: '/vehicle-manage-system/reminder-manage'
+      route: '/vms/reminder-manage'
     }
   ])
 

@@ -15,12 +15,12 @@ const visualPages: VisualPage[] = [
   },
   {
     name: 'in-transit-monitor',
-    path: '/tms-transportation/in-transit-monitor',
+    path: '/tms/in-transit-monitor',
     root: '.transit-screen__viewport'
   },
   {
     name: 'invoice-management',
-    path: '/finance/invoice-management',
+    path: '/fms/invoice-management',
     root: '.art-table-query'
   },
   {
@@ -40,7 +40,7 @@ const visualPages: VisualPage[] = [
   },
   {
     name: 'order-open',
-    path: '/tms-transportation/order-open',
+    path: '/tms/order-open',
     root: '.order-open',
     captureLower: true
   },

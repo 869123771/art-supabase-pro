@@ -3,7 +3,7 @@ import test from 'node:test'
 import {
   buildWaybillGpsTrackPoints,
   buildWaybillLocationPoints
-} from '../../src/views/tms-transportation/waybill-management/detail/modules/waybill-route-model'
+} from '../../src/views/tms/waybill-management/detail/modules/waybill-route-model'
 
 const createWaybill = (
   routePoints: Api.Tms.Waybill.WaybillRoutePoint[],

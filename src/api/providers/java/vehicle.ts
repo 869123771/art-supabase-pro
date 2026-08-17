@@ -1,14 +1,14 @@
 import http from '@/utils/http'
 import type { QueryResult } from '@/types/api/response'
 
-type InsuranceCompany = Api.VehicleMgtSys.BasicInfo.InsuranceCompany
-type InsuranceCompanySearchParams = Api.VehicleMgtSys.BasicInfo.InsuranceCompanySearchParams
-type Supplier = Api.VehicleMgtSys.BasicInfo.Supplier
-type SupplierSearchParams = Api.VehicleMgtSys.BasicInfo.SupplierSearchParams
-type PartsCategory = Api.VehicleMgtSys.BasicInfo.PartsCategory
-type PartsCategorySearchParams = Api.VehicleMgtSys.BasicInfo.PartsCategorySearchParams
-type Parts = Api.VehicleMgtSys.BasicInfo.Parts
-type PartsSearchParams = Api.VehicleMgtSys.BasicInfo.PartsSearchParams
+type InsuranceCompany = Api.Vms.BasicInfo.InsuranceCompany
+type InsuranceCompanySearchParams = Api.Vms.BasicInfo.InsuranceCompanySearchParams
+type Supplier = Api.Vms.BasicInfo.Supplier
+type SupplierSearchParams = Api.Vms.BasicInfo.SupplierSearchParams
+type PartsCategory = Api.Vms.BasicInfo.PartsCategory
+type PartsCategorySearchParams = Api.Vms.BasicInfo.PartsCategorySearchParams
+type Parts = Api.Vms.BasicInfo.Parts
+type PartsSearchParams = Api.Vms.BasicInfo.PartsSearchParams
 type JavaPageResult<T> = Api.Common.PaginatedResponse<T>
 
 interface RangePaginationParams {
@@ -18,7 +18,7 @@ interface RangePaginationParams {
   size?: number
 }
 
-const API_PREFIX = '/api/vehicle-manage-system/basic-info'
+const API_PREFIX = '/api/vms/basic-info'
 
 const ENDPOINTS = {
   insuranceCompany: `${API_PREFIX}/insurance-companies`,

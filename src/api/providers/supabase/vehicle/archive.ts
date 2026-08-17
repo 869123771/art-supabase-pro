@@ -343,7 +343,7 @@ export async function fetchVehicleArchiveOptions(
     .limit(200)
 
   query = applyFilters(query, filters, { skipEmpty: true, camelToSnake: true })
-  return await responseHandle<Api.VehicleMgtSys.VehicleManage.VehicleOption[]>(
+  return await responseHandle<Api.Vms.VehicleManage.VehicleOption[]>(
     () => withRequestOptions(query, options),
     {
       ignoreCheck: true,
@@ -511,7 +511,7 @@ export async function fetchInsuranceCompanyOptions(_params?: unknown, options?: 
     .order('company_name', { ascending: true })
     .limit(200)
 
-  return await responseHandle<Api.VehicleMgtSys.VehicleManage.InsuranceCompanyOption[]>(
+  return await responseHandle<Api.Vms.VehicleManage.InsuranceCompanyOption[]>(
     () => withRequestOptions(query, options),
     {
       ignoreCheck: true,

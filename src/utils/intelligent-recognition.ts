@@ -1,8 +1,8 @@
 import type { RouteLocationRaw } from 'vue-router'
 
 type Artifact = Api.IntelligentRecognition.RecognitionArtifact
-type CashPaymentMethod = Api.Finance.CashPaymentMethod
-type InvoiceType = Api.Finance.InvoiceType
+type CashPaymentMethod = Api.Fms.CashPaymentMethod
+type InvoiceType = Api.Fms.InvoiceType
 
 const CASH_PAYMENT_METHODS = new Set<string>(['bank_transfer', 'cash', 'wechat', 'alipay', 'other'])
 const INVOICE_TYPES = new Set<string>(['vat_special', 'vat_ordinary', 'electronic'])
@@ -25,7 +25,7 @@ function nullableNumber(record: Record<string, unknown>, key: string): number | 
   return typeof value === 'number' && Number.isFinite(value) ? value : null
 }
 
-function normalizeInvoiceDraft(payload: Record<string, unknown>): Api.Finance.InvoiceOcrDraft {
+function normalizeInvoiceDraft(payload: Record<string, unknown>): Api.Fms.InvoiceOcrDraft {
   const invoiceType = nullableText(payload, 'invoiceType')
   return {
     invoiceType: invoiceType && isInvoiceType(invoiceType) ? invoiceType : null,
@@ -45,9 +45,7 @@ function normalizeInvoiceDraft(payload: Record<string, unknown>): Api.Finance.In
   }
 }
 
-function normalizeCashVoucherDraft(
-  payload: Record<string, unknown>
-): Api.Finance.CashVoucherOcrDraft {
+function normalizeCashVoucherDraft(payload: Record<string, unknown>): Api.Fms.CashVoucherOcrDraft {
   const paymentMethod = nullableText(payload, 'paymentMethod')
   return {
     payerName: nullableText(payload, 'payerName'),
@@ -91,7 +89,7 @@ export function buildRecognitionBusinessRoute(artifact: Artifact): RouteLocation
   }
 
   return {
-    path: '/tms-transportation/delivery-management',
+    path: '/tms/delivery-management',
     query: {
       ...commonQuery,
       orderId: metadataText(artifact, 'orderId'),
@@ -100,9 +98,7 @@ export function buildRecognitionBusinessRoute(artifact: Artifact): RouteLocation
   }
 }
 
-export function toInvoiceOcrAnalyzeResponse(
-  artifact: Artifact
-): Api.Finance.InvoiceOcrAnalyzeResponse {
+export function toInvoiceOcrAnalyzeResponse(artifact: Artifact): Api.Fms.InvoiceOcrAnalyzeResponse {
   const payload = normalizeInvoiceDraft(artifact.proposedPayload)
   return {
     artifactId: artifact.id,
@@ -120,7 +116,7 @@ export function toInvoiceOcrAnalyzeResponse(
 
 export function toCashVoucherOcrAnalyzeResponse(
   artifact: Artifact
-): Api.Finance.CashVoucherOcrAnalyzeResponse {
+): Api.Fms.CashVoucherOcrAnalyzeResponse {
   const payload = normalizeCashVoucherDraft(artifact.proposedPayload)
   return {
     artifactId: artifact.id,

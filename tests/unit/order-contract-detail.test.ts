@@ -5,8 +5,8 @@ import {
   calculateContractTransportFee,
   createCargoItemFromContractDetail,
   mergeOrderContractDetails
-} from '../../src/views/tms-transportation/order-open/modules/order-contract-detail'
-import { createInitialCargoItem } from '../../src/views/tms-transportation/order-open/modules/order-open-model'
+} from '../../src/views/tms/order-open/modules/order-contract-detail'
+import { createInitialCargoItem } from '../../src/views/tms/order-open/modules/order-open-model'
 
 type ContractDetail = Api.Tms.BasicData.ContractDetailSelectorItem
 

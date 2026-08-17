@@ -1,18 +1,23 @@
-export const FINANCE_ROOT_PATH = '/finance'
+export const FMS_ROOT_PATH = '/fms'
+export const TMS_ROOT_PATH = '/tms'
+export const VMS_ROOT_PATH = '/vms'
 
-const LEGACY_FINANCE_ROOT_PATH = '/tms-transportation/finance-center'
+const LEGACY_FMS_ROOT_PATH = '/finance'
+const LEGACY_TMS_ROOT_PATH = '/tms-transportation'
+const LEGACY_VMS_ROOT_PATH = '/vehicle-manage-system'
+const LEGACY_TMS_FINANCE_ROOT_PATH = `${LEGACY_TMS_ROOT_PATH}/finance-center`
 
 export const financePaths = {
-  workbench: `${FINANCE_ROOT_PATH}/workbench`,
-  customerSettlement: `${FINANCE_ROOT_PATH}/customer-settlement`,
-  carrierSettlement: `${FINANCE_ROOT_PATH}/carrier-settlement`,
-  paymentApplication: `${FINANCE_ROOT_PATH}/payment-application`,
-  cashTransaction: `${FINANCE_ROOT_PATH}/cash-transaction`,
-  invoiceManagement: `${FINANCE_ROOT_PATH}/invoice-management`,
-  waybillCost: `${FINANCE_ROOT_PATH}/waybill-cost`,
-  expenseReimbursement: `${FINANCE_ROOT_PATH}/expense-reimbursement`,
-  waybillProfit: `${FINANCE_ROOT_PATH}/waybill-profit`,
-  expenseItem: `${FINANCE_ROOT_PATH}/expense-item`
+  workbench: `${FMS_ROOT_PATH}/workbench`,
+  customerSettlement: `${FMS_ROOT_PATH}/customer-settlement`,
+  carrierSettlement: `${FMS_ROOT_PATH}/carrier-settlement`,
+  paymentApplication: `${FMS_ROOT_PATH}/payment-application`,
+  cashTransaction: `${FMS_ROOT_PATH}/cash-transaction`,
+  invoiceManagement: `${FMS_ROOT_PATH}/invoice-management`,
+  waybillCost: `${FMS_ROOT_PATH}/waybill-cost`,
+  expenseReimbursement: `${FMS_ROOT_PATH}/expense-reimbursement`,
+  waybillProfit: `${FMS_ROOT_PATH}/waybill-profit`,
+  expenseItem: `${FMS_ROOT_PATH}/expense-item`
 } as const
 
 export const financeRouteNames = {
@@ -40,17 +45,26 @@ export function getExpenseReimbursementDetailPath(id: string): string {
 }
 
 /**
- * Maps persisted finance bookmarks from the former TMS namespace to the
- * standalone finance module. Non-finance paths are intentionally ignored.
+ * Maps persisted bookmarks from the former business namespaces to their new
+ * module roots. Non-business paths are intentionally ignored.
  */
 export function resolveLegacyBusinessPath(path: string): string | undefined {
-  if (path === LEGACY_FINANCE_ROOT_PATH) {
-    return FINANCE_ROOT_PATH
+  const mappings = [
+    { legacyRoot: LEGACY_TMS_FINANCE_ROOT_PATH, currentRoot: FMS_ROOT_PATH },
+    { legacyRoot: LEGACY_FMS_ROOT_PATH, currentRoot: FMS_ROOT_PATH },
+    { legacyRoot: LEGACY_TMS_ROOT_PATH, currentRoot: TMS_ROOT_PATH },
+    { legacyRoot: LEGACY_VMS_ROOT_PATH, currentRoot: VMS_ROOT_PATH }
+  ] as const
+
+  for (const { legacyRoot, currentRoot } of mappings) {
+    if (path === legacyRoot) {
+      return currentRoot
+    }
+
+    if (path.startsWith(`${legacyRoot}/`)) {
+      return `${currentRoot}${path.slice(legacyRoot.length)}`
+    }
   }
 
-  if (!path.startsWith(`${LEGACY_FINANCE_ROOT_PATH}/`)) {
-    return undefined
-  }
-
-  return `${FINANCE_ROOT_PATH}${path.slice(LEGACY_FINANCE_ROOT_PATH.length)}`
+  return undefined
 }

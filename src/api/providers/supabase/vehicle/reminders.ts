@@ -8,11 +8,10 @@ import type { ApiRequestOptions } from '@/types/api/request'
 import { applyFilters, type FilterSpec } from '@/utils/supabase'
 import type { VehicleReminderRow, VehicleReminderSearchParams } from './types'
 
-type ReminderKind = Api.VehicleMgtSys.ReminderManage.ReminderKind
-type ReminderWorkOrder = Api.VehicleMgtSys.ReminderManage.VehicleReminderWorkOrder
-type ReminderCreatePayload = Api.VehicleMgtSys.ReminderManage.VehicleReminderWorkOrderCreatePayload
-type ReminderTransitionPayload =
-  Api.VehicleMgtSys.ReminderManage.VehicleReminderWorkOrderTransitionPayload
+type ReminderKind = Api.Vms.ReminderManage.ReminderKind
+type ReminderWorkOrder = Api.Vms.ReminderManage.VehicleReminderWorkOrder
+type ReminderCreatePayload = Api.Vms.ReminderManage.VehicleReminderWorkOrderCreatePayload
+type ReminderTransitionPayload = Api.Vms.ReminderManage.VehicleReminderWorkOrderTransitionPayload
 
 const { supabase, keysToSnakeDeep, responseHandle } = useSupabase()
 
@@ -26,7 +25,7 @@ export const VEHICLE_REMINDER_VIEWS = [
 
 export type VehicleReminderViewName = (typeof VEHICLE_REMINDER_VIEWS)[number]
 
-type ReminderRiskOverview = Api.VehicleMgtSys.ReminderManage.VehicleReminderRiskOverview
+type ReminderRiskOverview = Api.Vms.ReminderManage.VehicleReminderRiskOverview
 
 const getVehicleReminderSearchFilters = (
   params: VehicleReminderSearchParams,

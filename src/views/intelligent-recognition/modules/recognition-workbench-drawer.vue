@@ -96,8 +96,8 @@
   import ArtDrawer from '@/components/core/drawers/art-drawer/index.vue'
   import type { ArtDrawerExpose } from '@/components/core/drawers/art-drawer/types'
   import { financePaths } from '@/router/business-paths'
-  import InvoiceOcrPanel from '@/views/finance/invoice-management/modules/invoice-ocr-panel.vue'
-  import CashVoucherOcrPanel from '@/views/finance/cash-transaction/modules/cash-voucher-ocr-panel.vue'
+  import InvoiceOcrPanel from '@/views/fms/invoice-management/modules/invoice-ocr-panel.vue'
+  import CashVoucherOcrPanel from '@/views/fms/cash-transaction/modules/cash-voucher-ocr-panel.vue'
   import { recognitionCapabilities, type RecognitionFeature } from './recognition-config'
 
   defineOptions({ name: 'RecognitionWorkbenchDrawer' })
@@ -105,8 +105,7 @@
   interface ResetExpose {
     reset: () => void
   }
-  type AnalyzeResult =
-    Api.Finance.InvoiceOcrAnalyzeResponse | Api.Finance.CashVoucherOcrAnalyzeResponse
+  type AnalyzeResult = Api.Fms.InvoiceOcrAnalyzeResponse | Api.Fms.CashVoucherOcrAnalyzeResponse
 
   const emit = defineEmits<{ created: [artifactId: string] }>()
   const router = useRouter()
@@ -116,8 +115,8 @@
   const feature = ref<RecognitionFeature>('invoice_ocr')
   const invoiceImages = ref<string[]>([])
   const cashImages = ref<string[]>([])
-  const invoiceDirection = ref<Api.Finance.InvoiceDirection>('output')
-  const cashDirection = ref<Api.Finance.CashDirection>('receipt')
+  const invoiceDirection = ref<Api.Fms.InvoiceDirection>('output')
+  const cashDirection = ref<Api.Fms.CashDirection>('receipt')
   const invoiceDirections = [
     { label: '销项发票', value: 'output' },
     { label: '进项发票', value: 'input' }
@@ -138,7 +137,7 @@
 
   function goDelivery(): void {
     void drawerRef.value?.handleClose()
-    void router.push('/tms-transportation/delivery-management')
+    void router.push('/tms/delivery-management')
   }
 
   function goPaymentApplication(): void {

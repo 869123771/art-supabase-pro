@@ -9,7 +9,7 @@ import {
   normalizeNullableNumber,
   normalizeText,
   splitRegionPath
-} from '../../src/views/tms-transportation/basic-data/modules/price-form-utils'
+} from '../../src/views/tms/basic-data/modules/price-form-utils'
 
 test('calculateCargoSummary handles mixed numeric values and domain precision', () => {
   const result = calculateCargoSummary([
