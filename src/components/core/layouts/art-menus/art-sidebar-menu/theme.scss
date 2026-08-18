@@ -58,6 +58,55 @@ $popup-menu-radius: 6px;
   }
 }
 
+// 财务等长菜单的目录分组样式：目录承担信息分区，叶子菜单保持紧凑可扫描。
+@mixin section-menu {
+  .el-sub-menu.is-menu-section {
+    > .el-sub-menu__title {
+      height: 38px !important;
+      margin-top: 8px;
+      margin-bottom: 3px;
+      font-weight: 500;
+      color: var(--sidebar-section-text, var(--el-menu-text-color));
+      background: transparent;
+
+      .menu-name {
+        color: inherit !important;
+      }
+
+      .menu-icon .art-svg-icon,
+      .el-sub-menu__icon-arrow {
+        color: var(--sidebar-section-icon, currentcolor) !important;
+      }
+
+      &:hover {
+        background: color-mix(in srgb, var(--theme-color) 8%, transparent) !important;
+      }
+    }
+
+    > .el-menu {
+      padding: 1px 0 4px 4px;
+      margin: 0 8px;
+    }
+
+    > .el-menu > .el-menu-item {
+      height: 38px !important;
+      margin-bottom: 2px;
+      line-height: 38px !important;
+    }
+
+    &.is-active > .el-sub-menu__title {
+      color: var(--theme-color);
+      background: color-mix(in srgb, var(--theme-color) 7%, transparent);
+
+      .menu-name,
+      .menu-icon .art-svg-icon,
+      .el-sub-menu__icon-arrow {
+        color: inherit !important;
+      }
+    }
+  }
+}
+
 // 主题菜单通用样式（合并 design 和 dark 主题的共同逻辑）
 @mixin theme-menu-base {
   .el-sub-menu__title,
@@ -153,6 +202,9 @@ $popup-menu-radius: 6px;
 
   // ---------------------- Design theme menu ----------------------
   .el-menu-design {
+    --sidebar-section-text: var(--art-gray-700);
+    --sidebar-section-icon: var(--art-gray-600);
+
     @include theme-menu-base;
     @include menu-active(var(--theme-color), var(--el-color-primary-light-9));
     @include menu-hover($hover-bg-color);
@@ -163,7 +215,7 @@ $popup-menu-radius: 6px;
 
     .el-menu-item.is-active {
       position: relative;
-      font-weight: 650;
+      font-weight: 600;
       background: linear-gradient(
         100deg,
         color-mix(in srgb, var(--theme-color) 15%, transparent),
@@ -180,47 +232,97 @@ $popup-menu-radius: 6px;
         bottom: 10px;
         width: 3px;
         content: '';
-        background: linear-gradient(180deg, var(--theme-color), #22d3ee);
+        background: var(--theme-color);
         border-radius: 999px 0 0 999px;
         box-shadow: 0 0 10px color-mix(in srgb, var(--theme-color) 42%, transparent);
       }
     }
+
+    @include section-menu;
   }
 
   // ---------------------- Dark theme menu ----------------------
   .el-menu-dark {
+    --sidebar-dark-surface: #181a2a;
+    --sidebar-dark-text: rgb(244 246 255 / 88%);
+    --sidebar-dark-icon: rgb(224 228 240 / 78%);
+    --sidebar-section-text: rgb(244 246 255 / 84%);
+    --sidebar-section-icon: rgb(224 228 240 / 76%);
+
     @include theme-menu-base;
     @include menu-active(
       #fff,
-      color-mix(in srgb, var(--theme-color) 18%, #22232b),
+      color-mix(in srgb, var(--theme-color) 16%, var(--sidebar-dark-surface)),
       color-mix(in srgb, var(--theme-color) 72%, #fff)
     );
-    @include menu-hover(color-mix(in srgb, var(--theme-color) 9%, #202129));
+    @include menu-hover(color-mix(in srgb, var(--theme-color) 8%, var(--sidebar-dark-surface)));
 
     .el-sub-menu__title:hover,
     .el-menu-item:not(.is-active):hover {
-      color: var(--art-gray-900) !important;
+      color: #fff !important;
       box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--theme-color) 12%, transparent);
 
       .menu-icon .art-svg-icon,
-      span {
-        color: var(--art-gray-900) !important;
+      .menu-name,
+      .el-sub-menu__icon-arrow {
+        color: #fff !important;
       }
     }
 
     .el-menu-item.is-active {
+      font-weight: 600;
       box-shadow:
         inset 0 0 0 1px color-mix(in srgb, var(--theme-color) 24%, transparent),
-        0 6px 16px rgb(0 0 0 / 16%);
+        0 3px 10px rgb(0 0 0 / 12%);
     }
 
     .el-sub-menu__icon-arrow {
       color: var(--art-gray-400);
     }
+
+    @include section-menu;
+
+    .el-sub-menu__title,
+    .el-menu-item {
+      color: var(--sidebar-dark-text) !important;
+
+      .menu-name {
+        color: inherit !important;
+      }
+
+      .menu-icon .art-svg-icon {
+        color: var(--sidebar-dark-icon) !important;
+      }
+    }
+
+    .el-sub-menu.is-active > .el-sub-menu__title {
+      font-weight: 600;
+      color: color-mix(in srgb, var(--theme-color) 52%, #fff) !important;
+      background: transparent !important;
+      box-shadow: none !important;
+
+      .menu-name,
+      .menu-icon .art-svg-icon,
+      .el-sub-menu__icon-arrow {
+        color: inherit !important;
+      }
+    }
+
+    .el-menu-item.is-active {
+      color: color-mix(in srgb, var(--theme-color) 70%, #fff) !important;
+
+      .menu-name,
+      .menu-icon .art-svg-icon {
+        color: inherit !important;
+      }
+    }
   }
 
   // ---------------------- Light theme menu ----------------------
   .el-menu-light {
+    --sidebar-section-text: var(--art-gray-700);
+    --sidebar-section-icon: var(--art-gray-600);
+
     .el-sub-menu__title,
     .el-menu-item {
       .menu-icon {
@@ -229,7 +331,7 @@ $popup-menu-radius: 6px;
     }
 
     .el-menu-item.is-active {
-      font-weight: 650;
+      font-weight: 600;
       background: linear-gradient(
         100deg,
         color-mix(in srgb, var(--theme-color) 13%, transparent),
@@ -248,7 +350,7 @@ $popup-menu-radius: 6px;
         width: 4px;
         height: 100%;
         content: '';
-        background: linear-gradient(180deg, var(--theme-color), #22d3ee);
+        background: var(--theme-color);
         box-shadow: 0 0 10px color-mix(in srgb, var(--theme-color) 38%, transparent);
       }
     }
@@ -258,6 +360,8 @@ $popup-menu-radius: 6px;
     .el-sub-menu__icon-arrow {
       color: var(--art-gray-600);
     }
+
+    @include section-menu;
   }
 }
 
@@ -281,6 +385,33 @@ $popup-menu-radius: 6px;
   @include popup-menu-base(var(--art-gray-200), var(--art-gray-900), var(--art-gray-200));
 }
 
+// 独立菜单主题为深色时，折叠弹层也保持同一深色语义，不依赖系统是否为深色模式。
+.menu-left-dark-popper {
+  --sidebar-dark-popup-text: rgb(244 246 255 / 88%);
+
+  @include popup-menu-base(
+    color-mix(in srgb, var(--theme-color) 9%, #181a2a),
+    color-mix(in srgb, var(--theme-color) 70%, #fff),
+    color-mix(in srgb, var(--theme-color) 16%, #181a2a)
+  );
+
+  &.el-menu--vertical,
+  .el-menu--popup,
+  .el-menu {
+    background: #181a2a !important;
+  }
+
+  .el-sub-menu__title,
+  .el-menu-item {
+    color: var(--sidebar-dark-popup-text) !important;
+  }
+
+  .el-sub-menu__title:hover,
+  .el-menu-item:not(.is-active):hover {
+    color: #fff !important;
+  }
+}
+
 // 暗黑模式菜单样式
 .dark {
   .el-menu--vertical,
@@ -292,7 +423,7 @@ $popup-menu-radius: 6px;
     // 图标颜色、文字颜色
     .menu-icon .art-svg-icon,
     .menu-name {
-      color: var(--art-gray-800) !important;
+      color: rgb(236 239 248 / 84%) !important;
     }
 
     // 选中的文字颜色跟图标颜色
@@ -305,12 +436,19 @@ $popup-menu-radius: 6px;
 
     .el-sub-menu__title:hover,
     .el-menu-item:not(.is-active):hover {
+      color: #fff !important;
       background: color-mix(in srgb, var(--theme-color) 9%, #202129) !important;
+
+      .menu-icon .art-svg-icon,
+      .menu-name,
+      .el-sub-menu__icon-arrow {
+        color: #fff !important;
+      }
     }
 
     // 右侧箭头颜色
     .el-sub-menu__icon-arrow {
-      color: #fff;
+      color: rgb(236 239 248 / 74%);
     }
   }
 }

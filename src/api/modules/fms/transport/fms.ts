@@ -527,8 +527,9 @@ export async function executeExpenseReimbursement(
 ) {
   return await responseHandle<string>(
     () =>
-      supabase.rpc('execute_tms_expense_reimbursement', {
+      supabase.rpc('execute_fms_expense_reimbursement', {
         p_reimbursement_id: params.reimbursementId,
+        p_fund_account_id: params.fundAccountId,
         p_payment_date: params.paymentDate,
         p_bank_reference: params.bankReference || null,
         p_voucher_urls: params.voucherUrls ?? [],

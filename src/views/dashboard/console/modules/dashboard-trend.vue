@@ -3,13 +3,15 @@
     <header>
       <div><p>经营态势</p><h2>订单趋势</h2></div>
       <ElRadioGroup
-        :model-value="days"
+        :model-value="period"
         size="small"
-        @update:model-value="emit('update:days', Number($event))"
+        aria-label="趋势统计周期"
+        @update:model-value="emit('update:period', $event as DashboardTrendPeriod)"
       >
-        <ElRadioButton :value="7">近 7 天</ElRadioButton>
-        <ElRadioButton :value="14">近 14 天</ElRadioButton>
-        <ElRadioButton :value="30">近 30 天</ElRadioButton>
+        <ElRadioButton value="today">当天</ElRadioButton>
+        <ElRadioButton value="week">本周</ElRadioButton>
+        <ElRadioButton value="month">本月</ElRadioButton>
+        <ElRadioButton value="year">本年</ElRadioButton>
       </ElRadioGroup>
     </header>
     <div class="dashboard-trend__summary">
@@ -34,10 +36,15 @@
 </template>
 
 <script setup lang="ts">
+  import type { DashboardTrendPeriod } from '@/api/dashboard'
   import type { DashboardTrendData } from './types'
 
-  defineProps<{ days: number; data: DashboardTrendData; loading: boolean }>()
-  const emit = defineEmits<{ 'update:days': [days: number] }>()
+  defineProps<{
+    period: DashboardTrendPeriod
+    data: DashboardTrendData
+    loading: boolean
+  }>()
+  const emit = defineEmits<{ 'update:period': [period: DashboardTrendPeriod] }>()
 
   function formatMoney(value: number): string {
     return value.toLocaleString('zh-CN', { maximumFractionDigits: 2 })
@@ -63,6 +70,7 @@
 
     header {
       display: flex;
+      flex-wrap: wrap;
       gap: 16px;
       align-items: center;
       justify-content: space-between;
@@ -70,13 +78,23 @@
       :deep(.el-radio-group) {
         padding: 3px;
         background: var(--el-fill-color-light);
+        border: 1px solid color-mix(in srgb, var(--el-border-color-lighter) 72%, transparent);
         border-radius: 999px;
       }
 
       :deep(.el-radio-button__inner) {
+        min-width: 48px;
         border: 0;
         border-radius: 999px !important;
         box-shadow: none;
+        transition:
+          color 0.18s ease,
+          background-color 0.18s ease,
+          box-shadow 0.18s ease;
+      }
+
+      :deep(.el-radio-button.is-active .el-radio-button__inner) {
+        box-shadow: 0 4px 12px color-mix(in srgb, var(--theme-color) 18%, transparent);
       }
     }
 
@@ -137,9 +155,24 @@
         align-items: flex-start;
       }
 
+      :deep(.el-radio-group) {
+        width: 100%;
+      }
+
       :deep(.el-radio-button__inner) {
+        width: 100%;
         padding-right: 8px;
         padding-left: 8px;
+      }
+
+      :deep(.el-radio-button) {
+        flex: 1;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      :deep(.el-radio-button__inner) {
+        transition: none;
       }
     }
   }

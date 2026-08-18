@@ -427,7 +427,7 @@
     font-size: 13px;
     line-height: 20px;
     color: var(--el-text-color-secondary);
-    white-space: nowrap;
+    overflow-wrap: anywhere;
   }
 
   :global(.art-drawer .el-drawer__header .art-icon-button),
@@ -488,8 +488,13 @@
 
   .art-drawer__footer {
     display: flex;
-    gap: 12px;
+    gap: var(--art-space-2);
     align-items: center;
     justify-content: flex-end;
+
+    > .el-button {
+      min-width: 72px;
+      margin-left: 0;
+    }
   }
 </style>

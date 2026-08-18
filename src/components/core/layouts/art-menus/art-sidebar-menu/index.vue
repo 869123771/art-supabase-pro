@@ -3,7 +3,10 @@
   <div
     class="layout-sidebar"
     v-if="showLeftMenu || isDualMenu"
-    :class="{ 'no-border': menuList.length === 0 }"
+    :class="{
+      'no-border': menuList.length === 0,
+      'layout-sidebar--header-left': isHeaderLeftMenu
+    }"
   >
     <!-- 双列菜单（左侧） -->
     <div
@@ -75,6 +78,7 @@
     >
       <!-- Logo、系统名称 -->
       <button
+        v-if="!isHeaderLeftMenu"
         type="button"
         class="header"
         aria-label="返回首页"
@@ -186,8 +190,12 @@
 
   // 菜单类型判断
   const isTopLeftMenu = computed(() => menuType.value === MenuTypeEnum.TOP_LEFT)
+  const isHeaderLeftMenu = computed(() => menuType.value === MenuTypeEnum.HEADER_LEFT)
   const showLeftMenu = computed(
-    () => menuType.value === MenuTypeEnum.LEFT || menuType.value === MenuTypeEnum.TOP_LEFT
+    () =>
+      menuType.value === MenuTypeEnum.LEFT ||
+      menuType.value === MenuTypeEnum.HEADER_LEFT ||
+      menuType.value === MenuTypeEnum.TOP_LEFT
   )
   const isDualMenu = computed(() => menuType.value === MenuTypeEnum.DUAL_MENU)
 
@@ -235,6 +243,13 @@
 
   // 双列菜单收起时的滚动条样式
   const scrollbarStyle = computed(() => {
+    if (isHeaderLeftMenu.value) {
+      return {
+        height: '100%',
+        transform: 'translateY(0)',
+        transition: 'transform 0.3s ease'
+      }
+    }
     const isCollapsed = isDualMenu.value && !menuOpen.value
     return {
       transform: isCollapsed ? 'translateY(-50px)' : 'translateY(0)',

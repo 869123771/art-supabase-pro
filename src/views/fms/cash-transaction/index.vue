@@ -261,6 +261,15 @@
       dict: { code: 'tmsCashPaymentMethod', display: 'text' }
     },
     {
+      prop: 'fundAccount',
+      label: '资金账户',
+      minWidth: 180,
+      formatter: (row) =>
+        row.fundAccount
+          ? `${row.fundAccount.accountName} · ${row.fundAccount.accountNoMasked}`
+          : '历史未关联'
+    },
+    {
       prop: 'bankReference',
       label: '银行流水号',
       minWidth: 155,
@@ -325,6 +334,7 @@
     { key: 'allocatedAmount', title: '已核销金额' },
     { key: 'unallocatedAmount', title: '未核销金额' },
     { key: 'paymentMethod', title: '收付方式' },
+    { key: 'fundAccount.accountName', title: '资金账户' },
     { key: 'bankReference', title: '银行流水号' },
     { key: 'status', title: '核销状态' },
     { key: 'createBy', title: '登记人' },

@@ -20,6 +20,8 @@
 export enum MenuTypeEnum {
   /** 左侧菜单 */
   LEFT = 'left',
+  /** 顶部品牌栏 + 左侧菜单 */
+  HEADER_LEFT = 'header-left',
   /** 顶部菜单 */
   TOP = 'top',
   /** 顶部+左侧菜单 */

@@ -214,13 +214,19 @@
 
 <style scoped lang="scss">
   .recognition-workbench {
+    :deep(.art-async-state) {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
     &__attention {
       display: flex;
       gap: 16px;
       align-items: center;
       justify-content: space-between;
       padding: 13px 16px;
-      margin-bottom: 14px;
+      margin-bottom: 0;
       background: color-mix(in srgb, var(--theme-color) 5%, var(--art-main-bg-color));
       border: 1px solid color-mix(in srgb, var(--theme-color) 18%, var(--art-card-border));
       border-radius: var(--custom-radius);
@@ -353,7 +359,6 @@
       display: grid;
       grid-template-columns: minmax(0, 1.35fr) minmax(400px, 0.9fr);
       gap: 14px;
-      margin-top: 14px;
     }
 
     &__flow {

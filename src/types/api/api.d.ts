@@ -2861,6 +2861,981 @@ declare namespace Api {
     type ReimbursementApprovalStatus =
       'draft' | 'pending_review' | 'approved' | 'rejected' | 'paid' | 'cancelled'
 
+    type AccountSetStatus = 'draft' | 'active' | 'suspended' | 'archived'
+    type AccountingStandard =
+      | 'enterprise_2007'
+      | 'enterprise_2019'
+      | 'small_enterprise'
+      | 'non_profit'
+      | 'union'
+      | 'farmer_cooperative_2023'
+      | 'rural_collective_2024'
+    type VatTaxpayerType = 'general' | 'small_scale' | 'other'
+    type AccountingPeriodStatus = 'not_opened' | 'open' | 'closing' | 'closed'
+    type SubjectCategory = 'asset' | 'liability' | 'equity' | 'cost' | 'income' | 'expense' | 'memo'
+    type BalanceDirection = 'debit' | 'credit'
+    type AuxiliarySourceType =
+      'manual' | 'customer' | 'carrier' | 'department' | 'employee' | 'project'
+    type ExchangeRateType = 'spot' | 'average' | 'closing'
+    type OpeningBalanceStatus = 'draft' | 'confirmed'
+    type VoucherStatus =
+      'draft' | 'pending_review' | 'approved' | 'rejected' | 'posted' | 'reversed' | 'voided'
+    type VoucherType =
+      'general' | 'receipt' | 'payment' | 'transfer' | 'adjustment' | 'closing' | 'reversal'
+    type VoucherSourceType =
+      | 'manual'
+      | 'customer_statement'
+      | 'carrier_statement'
+      | 'customer_receipt'
+      | 'carrier_payment'
+      | 'invoice'
+      | 'expense_reimbursement'
+      | 'waybill_cost'
+      | 'system'
+      | 'reversal'
+    type VoucherAction =
+      | 'create'
+      | 'save'
+      | 'submit'
+      | 'approve'
+      | 'reject'
+      | 'post'
+      | 'void'
+      | 'reverse'
+      | 'reversal_create'
+
+    interface AccountSetRecord {
+      id: string
+      tenantId: string
+      tenant?: Pick<Api.SystemManage.TenantListItem, 'id' | 'tenantCode' | 'tenantName'> | null
+      accountSetCode: string
+      accountSetName: string
+      legalEntityName: string
+      unifiedSocialCreditCode?: string | null
+      accountingStandard: AccountingStandard
+      vatTaxpayerType: VatTaxpayerType
+      baseCurrencyCode: string
+      enabledOn: string
+      fiscalYearStartMonth: number
+      status: AccountSetStatus
+      isDefault: boolean
+      remark?: string | null
+      version: number
+      createBy?: string | null
+      createTime: string
+      updateBy?: string | null
+      updateTime: string
+    }
+
+    type AccountSetSearchParams = Api.Common.CommonSearchParams & {
+      keyword?: string
+      tenantId?: string
+      status?: AccountSetStatus
+    }
+
+    interface AccountSetOverview {
+      totalCount: number
+      activeCount: number
+      draftCount: number
+      suspendedCount: number
+    }
+
+    interface AccountSetOption {
+      label: string
+      value: string
+      status: AccountSetStatus
+      tenantId: string
+    }
+
+    interface SaveAccountSetPayload {
+      id?: string
+      tenantId: string
+      accountSetCode: string
+      accountSetName: string
+      legalEntityName: string
+      unifiedSocialCreditCode?: string | null
+      accountingStandard: AccountingStandard
+      vatTaxpayerType: VatTaxpayerType
+      baseCurrencyCode: string
+      enabledOn: string
+      fiscalYearStartMonth: number
+      status?: AccountSetStatus
+      isDefault: boolean
+      remark?: string | null
+    }
+
+    interface AccountingPeriodRecord {
+      id: string
+      tenantId: string
+      accountSetId: string
+      fiscalYear: number
+      periodNo: number
+      startDate: string
+      endDate: string
+      status: AccountingPeriodStatus
+      closedAt?: string | null
+      closedBy?: string | null
+      reopenedAt?: string | null
+      reopenedBy?: string | null
+      reopenReason?: string | null
+      reopenCount: number
+      createBy?: string | null
+      createTime: string
+      updateBy?: string | null
+      updateTime: string
+    }
+
+    interface AccountingFoundationSummary {
+      accountSetId: string
+      subjectCount: number
+      enabledSubjectCount: number
+      currencyCount: number
+      auxiliaryTypeCount: number
+      openPeriodCount: number
+      closedPeriodCount: number
+      openingBalanceCount: number
+    }
+
+    interface SubjectRecord {
+      id: string
+      tenantId: string
+      accountSetId: string
+      parentId?: string | null
+      subjectCode: string
+      subjectName: string
+      category: SubjectCategory
+      balanceDirection: BalanceDirection
+      level: number
+      isSystem: boolean
+      isEnabled: boolean
+      allowQuantity: boolean
+      unitName?: string | null
+      allowForeignCurrency: boolean
+      allowPeriodEndRevaluation: boolean
+      cashFlowRequired: boolean
+      sort: number
+      remark?: string | null
+      createTime: string
+      updateTime: string
+      auxiliaryConfigs?: SubjectAuxiliaryConfigRecord[]
+      children?: SubjectRecord[]
+    }
+
+    interface SubjectAuxiliaryConfigRecord {
+      id?: string
+      auxiliaryTypeId: string
+      isRequired: boolean
+      sort: number
+      auxiliaryType?: Pick<
+        AuxiliaryTypeRecord,
+        'id' | 'typeCode' | 'typeName' | 'sourceType' | 'isEnabled'
+      > | null
+    }
+
+    type SaveSubjectPayload = Omit<
+      SubjectRecord,
+      | 'id'
+      | 'tenantId'
+      | 'level'
+      | 'isSystem'
+      | 'createTime'
+      | 'updateTime'
+      | 'auxiliaryConfigs'
+      | 'children'
+    > & {
+      id?: string
+      tenantId: string
+      auxiliaryConfigs: Array<
+        Pick<SubjectAuxiliaryConfigRecord, 'auxiliaryTypeId' | 'isRequired' | 'sort'>
+      >
+    }
+
+    interface CurrencyRecord {
+      id: string
+      tenantId: string
+      accountSetId: string
+      currencyCode: string
+      currencyName: string
+      symbol?: string | null
+      decimalPlaces: number
+      isBase: boolean
+      isEnabled: boolean
+      sort: number
+      remark?: string | null
+      createTime: string
+      updateTime: string
+    }
+
+    type SaveCurrencyPayload = Omit<CurrencyRecord, 'id' | 'createTime' | 'updateTime'> & {
+      id?: string
+    }
+
+    interface ExchangeRateRecord {
+      id: string
+      tenantId: string
+      accountSetId: string
+      currencyId: string
+      rateDate: string
+      rateType: ExchangeRateType
+      directRate: number
+      source?: string | null
+      remark?: string | null
+      createTime: string
+      updateTime: string
+      currency?: Pick<CurrencyRecord, 'id' | 'currencyCode' | 'currencyName'> | null
+    }
+
+    type SaveExchangeRatePayload = Omit<
+      ExchangeRateRecord,
+      'id' | 'createTime' | 'updateTime' | 'currency'
+    > & { id?: string }
+
+    interface AuxiliaryTypeRecord {
+      id: string
+      tenantId: string
+      accountSetId: string
+      typeCode: string
+      typeName: string
+      sourceType: AuxiliarySourceType
+      isSystem: boolean
+      isEnabled: boolean
+      sort: number
+      remark?: string | null
+      createTime: string
+      updateTime: string
+    }
+
+    type SaveAuxiliaryTypePayload = Omit<
+      AuxiliaryTypeRecord,
+      'id' | 'isSystem' | 'createTime' | 'updateTime'
+    > & { id?: string }
+
+    interface AuxiliaryItemRecord {
+      id: string
+      tenantId: string
+      accountSetId: string
+      auxiliaryTypeId: string
+      itemCode: string
+      itemName: string
+      externalEntityType?: string | null
+      externalEntityId?: string | null
+      isEnabled: boolean
+      sort: number
+      remark?: string | null
+      createTime: string
+      updateTime: string
+    }
+
+    type SaveAuxiliaryItemPayload = Omit<
+      AuxiliaryItemRecord,
+      'id' | 'externalEntityType' | 'externalEntityId' | 'createTime' | 'updateTime'
+    > & { id?: string }
+
+    interface OpeningBalanceRecord {
+      id: string
+      tenantId: string
+      accountSetId: string
+      fiscalYear: number
+      subjectId: string
+      currencyId?: string | null
+      auxiliaryValues: Record<string, string>
+      openingDebit: number
+      openingCredit: number
+      yearToDateDebit: number
+      yearToDateCredit: number
+      openingQuantity: number
+      originalCurrencyAmount: number
+      createTime: string
+      updateTime: string
+      subject?: Pick<
+        SubjectRecord,
+        'id' | 'subjectCode' | 'subjectName' | 'balanceDirection'
+      > | null
+      currency?: Pick<CurrencyRecord, 'id' | 'currencyCode' | 'currencyName'> | null
+    }
+
+    type SaveOpeningBalancePayload = Omit<
+      OpeningBalanceRecord,
+      'id' | 'createTime' | 'updateTime' | 'subject' | 'currency'
+    > & { id?: string }
+
+    interface OpeningBalanceControlRecord {
+      id: string
+      tenantId: string
+      accountSetId: string
+      fiscalYear: number
+      status: OpeningBalanceStatus
+      confirmedAt?: string | null
+      confirmedBy?: string | null
+      reopenedAt?: string | null
+      reopenedBy?: string | null
+      reopenReason?: string | null
+      reopenCount: number
+      createTime: string
+      updateTime: string
+    }
+
+    interface OpeningBalanceSummary {
+      accountSetId: string
+      fiscalYear: number
+      status: OpeningBalanceStatus
+      entryCount: number
+      openingDebit: number
+      openingCredit: number
+      difference: number
+      isBalanced: boolean
+    }
+
+    interface AuxiliarySyncResult {
+      insertedCount: number
+      updatedCount: number
+      totalCount: number
+    }
+
+    interface VoucherAttachment {
+      name: string
+      url: string
+      fileType?: string
+      fileSize?: string
+    }
+
+    interface VoucherLineRecord {
+      id?: string
+      tenantId?: string
+      accountSetId?: string
+      voucherId?: string
+      lineNo: number
+      summary: string
+      subjectId: string
+      subjectCodeSnapshot?: string
+      subjectNameSnapshot?: string
+      auxiliaryValues: Record<string, string>
+      currencyId?: string | null
+      currencyCodeSnapshot?: string | null
+      exchangeRate: number
+      originalAmount: number
+      quantity: number
+      unitNameSnapshot?: string | null
+      debitAmount: number
+      creditAmount: number
+      entryDirection?: BalanceDirection
+      sourceLineType?: string | null
+      sourceLineId?: string | null
+      createTime?: string
+      updateTime?: string
+      subject?: Pick<
+        SubjectRecord,
+        | 'id'
+        | 'subjectCode'
+        | 'subjectName'
+        | 'balanceDirection'
+        | 'allowQuantity'
+        | 'unitName'
+        | 'allowForeignCurrency'
+      > | null
+      currency?: Pick<CurrencyRecord, 'id' | 'currencyCode' | 'currencyName'> | null
+    }
+
+    interface VoucherActionRecord {
+      id: string
+      tenantId: string
+      accountSetId: string
+      voucherId: string
+      action: VoucherAction
+      fromStatus?: VoucherStatus | null
+      toStatus?: VoucherStatus | null
+      reason?: string | null
+      actor: string
+      actionTime: string
+      snapshot: Record<string, unknown>
+    }
+
+    interface VoucherRecord {
+      id: string
+      tenantId: string
+      accountSetId: string
+      accountingPeriodId: string
+      voucherNo: string
+      voucherType: VoucherType
+      voucherDate: string
+      fiscalYear: number
+      periodNo: number
+      status: VoucherStatus
+      sourceType: VoucherSourceType
+      sourceId?: string | null
+      sourceNo?: string | null
+      summary: string
+      attachments: VoucherAttachment[]
+      totalDebit: number
+      totalCredit: number
+      lineCount: number
+      submittedAt?: string | null
+      submittedBy?: string | null
+      reviewedAt?: string | null
+      reviewedBy?: string | null
+      reviewComment?: string | null
+      postedAt?: string | null
+      postedBy?: string | null
+      voidedAt?: string | null
+      voidedBy?: string | null
+      voidReason?: string | null
+      reversedAt?: string | null
+      reversedBy?: string | null
+      reversalReason?: string | null
+      reversalVoucherId?: string | null
+      version: number
+      createBy?: string | null
+      createTime: string
+      updateBy?: string | null
+      updateTime: string
+      accountSet?: Pick<
+        AccountSetRecord,
+        'id' | 'accountSetCode' | 'accountSetName' | 'baseCurrencyCode'
+      > | null
+      lines?: VoucherLineRecord[]
+      actions?: VoucherActionRecord[]
+    }
+
+    type VoucherSearchParams = Api.Common.CommonSearchParams & {
+      accountSetId?: string
+      status?: VoucherStatus | ''
+      voucherType?: VoucherType | ''
+      sourceType?: VoucherSourceType | ''
+      voucherDateRange?: string[]
+      keyword?: string
+    }
+
+    interface SaveVoucherPayload {
+      id?: string
+      accountSetId: string
+      voucherType: VoucherType
+      voucherDate: string
+      sourceType: VoucherSourceType
+      sourceId?: string | null
+      sourceNo?: string | null
+      summary: string
+      attachments: VoucherAttachment[]
+      lines: VoucherLineRecord[]
+    }
+
+    interface VoucherSummary {
+      accountSetId: string
+      draftCount: number
+      pendingReviewCount: number
+      approvedCount: number
+      postedCount: number
+      reversedCount: number
+      currentPeriodPostedAmount: number
+    }
+
+    interface VoucherTemplateLineRecord {
+      id?: string
+      tenantId?: string
+      accountSetId?: string
+      templateId?: string
+      lineNo: number
+      summary?: string | null
+      subjectId: string
+      entryDirection: BalanceDirection
+      defaultAmount: number
+      auxiliaryValues: Record<string, string>
+      currencyId?: string | null
+      exchangeRate: number
+      quantity: number
+      subject?: Pick<SubjectRecord, 'id' | 'subjectCode' | 'subjectName'> | null
+      currency?: Pick<CurrencyRecord, 'id' | 'currencyCode' | 'currencyName'> | null
+    }
+
+    interface VoucherTemplateRecord {
+      id: string
+      tenantId: string
+      accountSetId: string
+      templateCode: string
+      templateName: string
+      voucherType: Exclude<VoucherType, 'reversal'>
+      summary?: string | null
+      isEnabled: boolean
+      sort: number
+      remark?: string | null
+      version: number
+      createBy?: string | null
+      createTime: string
+      updateBy?: string | null
+      updateTime: string
+      lines?: VoucherTemplateLineRecord[]
+    }
+
+    type VoucherTemplateSearchParams = Api.Common.CommonSearchParams & {
+      accountSetId?: string
+      voucherType?: Exclude<VoucherType, 'reversal'> | ''
+      isEnabled?: boolean | ''
+      keyword?: string
+    }
+
+    interface SaveVoucherTemplatePayload {
+      id?: string
+      accountSetId: string
+      templateCode: string
+      templateName: string
+      voucherType: Exclude<VoucherType, 'reversal'>
+      summary?: string | null
+      isEnabled: boolean
+      sort: number
+      remark?: string | null
+      lines: VoucherTemplateLineRecord[]
+    }
+
+    type PostingSourceType = Exclude<VoucherSourceType, 'manual' | 'reversal'>
+    type PostingSubmissionMode = 'draft' | 'pending_review'
+    type PostingAmountKey = 'gross_amount' | 'net_amount' | 'tax_amount'
+    type PostingEventStatus =
+      | 'pending'
+      | 'processing'
+      | 'generated'
+      | 'pending_configuration'
+      | 'failed'
+      | 'reversed'
+      | 'ignored'
+
+    interface PostingRuleLineRecord {
+      id?: string
+      tenantId?: string
+      accountSetId?: string
+      ruleId?: string
+      lineNo: number
+      direction: BalanceDirection
+      amountKey: PostingAmountKey
+      amountMultiplier: number
+      subjectId: string
+      cashFlowItemId?: string | null
+      summary?: string | null
+      auxiliaryBindings: Record<string, string>
+      createTime?: string
+      updateTime?: string
+      subject?: Pick<SubjectRecord, 'id' | 'subjectCode' | 'subjectName'> | null
+    }
+
+    interface PostingRuleRecord {
+      id: string
+      tenantId: string
+      accountSetId: string
+      ruleCode: string
+      ruleName: string
+      sourceType: PostingSourceType
+      eventCode: string
+      sourceEvent?: string
+      voucherType: Exclude<VoucherType, 'reversal'>
+      submissionMode: PostingSubmissionMode
+      matchConditions: Record<string, unknown>
+      priority: number
+      effectiveFrom?: string | null
+      effectiveTo?: string | null
+      isEnabled: boolean
+      remark?: string | null
+      createBy?: string | null
+      createTime: string
+      updateBy?: string | null
+      updateTime: string
+      accountSet?: Pick<AccountSetRecord, 'id' | 'accountSetCode' | 'accountSetName'> | null
+      lines?: PostingRuleLineRecord[]
+    }
+
+    type PostingRuleSearchParams = Api.Common.CommonSearchParams & {
+      accountSetId?: string
+      sourceEvent?: string
+      isEnabled?: boolean | ''
+      keyword?: string
+    }
+
+    interface SavePostingRulePayload {
+      id?: string
+      accountSetId: string
+      ruleCode: string
+      ruleName: string
+      sourceType: PostingSourceType
+      eventCode: string
+      voucherType: Exclude<VoucherType, 'reversal'>
+      submissionMode: PostingSubmissionMode
+      matchConditions: Record<string, unknown>
+      priority: number
+      effectiveFrom?: string | null
+      effectiveTo?: string | null
+      isEnabled: boolean
+      remark?: string | null
+      lines: PostingRuleLineRecord[]
+    }
+
+    interface PostingEventRecord {
+      id: string
+      tenantId: string
+      accountSetId?: string | null
+      sourceType: PostingSourceType
+      eventCode: string
+      sourceEvent?: string
+      sourceId: string
+      sourceNo?: string | null
+      eventDate: string
+      summary: string
+      payload: Record<string, unknown>
+      status: PostingEventStatus
+      ruleId?: string | null
+      originVoucherId?: string | null
+      voucherId?: string | null
+      attemptCount: number
+      lastError?: string | null
+      processedAt?: string | null
+      createBy?: string | null
+      createTime: string
+      updateBy?: string | null
+      updateTime: string
+      accountSet?: Pick<AccountSetRecord, 'id' | 'accountSetCode' | 'accountSetName'> | null
+      rule?: Pick<PostingRuleRecord, 'id' | 'ruleCode' | 'ruleName'> | null
+      voucher?: Pick<VoucherRecord, 'id' | 'voucherNo' | 'status' | 'totalDebit'> | null
+    }
+
+    type PostingEventSearchParams = Api.Common.CommonSearchParams & {
+      accountSetId?: string
+      sourceEvent?: string
+      status?: PostingEventStatus | ''
+      eventDateRange?: string[]
+      keyword?: string
+    }
+
+    interface PostingEventProcessResult {
+      eventId: string
+      status: PostingEventStatus
+      voucherId?: string | null
+      lastError?: string | null
+    }
+
+    type FundAccountType = 'bank' | 'cash' | 'digital_wallet'
+    type FundAccountStatus = 'active' | 'frozen' | 'closed'
+    type FundLedgerDirection = 'inflow' | 'outflow'
+    type FundLedgerSourceType =
+      | 'customer_receipt'
+      | 'carrier_payment'
+      | 'expense_payment'
+      | 'fund_transfer'
+      | 'manual_adjustment'
+      | 'opening'
+    type FundLedgerStatus = 'posted' | 'reversed'
+
+    interface FundAccountRecord {
+      id: string
+      tenantId: string
+      accountSetId: string
+      currencyId: string
+      accountCode: string
+      accountName: string
+      accountType: FundAccountType
+      bankName?: string | null
+      bankBranch?: string | null
+      accountNoMasked: string
+      openingBalance: number
+      frozenBalance: number
+      status: FundAccountStatus
+      isDefault: boolean
+      onlineBankingEnabled: boolean
+      reconciliationEnabled: boolean
+      balanceAsOf?: string | null
+      remark?: string | null
+      version: number
+      createBy?: string | null
+      createTime: string
+      updateBy?: string | null
+      updateTime: string
+      inflowAmount: number
+      outflowAmount: number
+      currentBalance: number
+      availableBalance: number
+      ledgerEntryCount: number
+      latestBalanceDate?: string | null
+      accountSet?: Pick<AccountSetRecord, 'id' | 'accountSetCode' | 'accountSetName'> | null
+      currency?: Pick<CurrencyRecord, 'id' | 'currencyCode' | 'currencyName' | 'symbol'> | null
+    }
+
+    type FundAccountSearchParams = Api.Common.CommonSearchParams & {
+      accountSetId?: string
+      tenantId?: string
+      accountType?: FundAccountType | ''
+      status?: FundAccountStatus | ''
+      keyword?: string
+    }
+
+    interface SaveFundAccountPayload {
+      id?: string
+      accountSetId: string
+      currencyId: string
+      accountCode: string
+      accountName: string
+      accountType: FundAccountType
+      bankName?: string | null
+      bankBranch?: string | null
+      accountNo?: string | null
+      openingBalance: number
+      frozenBalance: number
+      status: FundAccountStatus
+      isDefault: boolean
+      onlineBankingEnabled: boolean
+      reconciliationEnabled: boolean
+      balanceAsOf?: string | null
+      remark?: string | null
+    }
+
+    interface FundAccountOption {
+      label: string
+      value: string
+      tenantId: string
+      accountSetId: string
+      currencyId: string
+      currencyCode?: string
+      accountType: FundAccountType
+      status: FundAccountStatus
+      reconciliationEnabled: boolean
+      availableBalance: number
+    }
+
+    interface FundAccountOverview {
+      accountCount: number
+      activeAccountCount: number
+      baseCurrencyCurrentBalance: number
+      baseCurrencyAvailableBalance: number
+      baseCurrencyFrozenBalance: number
+      foreignCurrencyAccountCount: number
+    }
+
+    interface FundLedgerRecord {
+      id: string
+      tenantId: string
+      accountSetId: string
+      fundAccountId: string
+      entryNo: string
+      entryDate: string
+      direction: FundLedgerDirection
+      amount: number
+      sourceType: FundLedgerSourceType
+      sourceId?: string | null
+      sourceNo?: string | null
+      summary: string
+      counterpartyName?: string | null
+      bankReference?: string | null
+      status: FundLedgerStatus
+      reversalOfId?: string | null
+      postedAt: string
+      postedBy?: string | null
+      createTime: string
+      updateTime: string
+      fundAccount?: Pick<
+        FundAccountRecord,
+        'id' | 'accountCode' | 'accountName' | 'accountNoMasked'
+      > | null
+    }
+
+    type FundLedgerSearchParams = Api.Common.CommonSearchParams & {
+      accountSetId?: string
+      fundAccountId?: string
+      direction?: FundLedgerDirection | ''
+      sourceType?: FundLedgerSourceType | ''
+      status?: FundLedgerStatus | ''
+      entryDateRange?: string[]
+      keyword?: string
+    }
+
+    type FundTransferStatus =
+      'draft' | 'pending_review' | 'approved' | 'rejected' | 'completed' | 'reversed'
+    type FundTransferAction =
+      'create' | 'edit' | 'submit' | 'approve' | 'reject' | 'execute' | 'reverse'
+
+    interface FundTransferRecord {
+      id: string
+      tenantId: string
+      accountSetId: string
+      transferNo: string
+      sourceAccountId: string
+      targetAccountId: string
+      transferDate: string
+      amount: number
+      feeAmount: number
+      purpose: string
+      bankReference?: string | null
+      status: FundTransferStatus
+      submittedAt?: string | null
+      submittedBy?: string | null
+      reviewedAt?: string | null
+      reviewedBy?: string | null
+      reviewRemark?: string | null
+      completedAt?: string | null
+      completedBy?: string | null
+      reversedAt?: string | null
+      reversedBy?: string | null
+      reversalReason?: string | null
+      version: number
+      createBy?: string | null
+      createTime: string
+      updateBy?: string | null
+      updateTime: string
+      sourceAccountCode: string
+      sourceAccountName: string
+      sourceAccountNoMasked: string
+      targetAccountCode: string
+      targetAccountName: string
+      targetAccountNoMasked: string
+      currencyCode: string
+      currencyName: string
+      currencySymbol?: string | null
+    }
+
+    interface FundTransferActionRecord {
+      id: string
+      tenantId: string
+      transferId: string
+      action: FundTransferAction
+      fromStatus?: FundTransferStatus | null
+      toStatus: FundTransferStatus
+      actionRemark?: string | null
+      actionBy: string
+      actionTime: string
+    }
+
+    type FundTransferSearchParams = Api.Common.CommonSearchParams & {
+      accountSetId?: string
+      sourceAccountId?: string
+      targetAccountId?: string
+      status?: FundTransferStatus | ''
+      transferDateRange?: string[]
+      keyword?: string
+    }
+
+    interface SaveFundTransferPayload {
+      id?: string
+      version?: number
+      transferNo?: string | null
+      sourceAccountId: string
+      targetAccountId: string
+      transferDate: string
+      amount: number
+      feeAmount: number
+      purpose: string
+      bankReference?: string | null
+    }
+
+    type BankReconciliationStatus = 'draft' | 'reconciling' | 'reconciled' | 'voided'
+    type BankStatementLineStatus = 'unmatched' | 'partial_matched' | 'matched' | 'ignored'
+    type BankMatchType = 'automatic' | 'manual'
+
+    interface BankReconciliationBatchRecord {
+      id: string
+      tenantId: string
+      accountSetId: string
+      fundAccountId: string
+      batchNo: string
+      statementStartDate: string
+      statementEndDate: string
+      openingBalance: number
+      closingBalance: number
+      importedFileName?: string | null
+      importedAt: string
+      importedBy: string
+      status: BankReconciliationStatus
+      completedAt?: string | null
+      completedBy?: string | null
+      voidedAt?: string | null
+      voidedBy?: string | null
+      voidReason?: string | null
+      remark?: string | null
+      version: number
+      createTime: string
+      updateTime: string
+      accountCode: string
+      accountName: string
+      accountNoMasked: string
+      currencyCode: string
+      currencySymbol?: string | null
+      lineCount: number
+      matchedCount: number
+      partialCount: number
+      ignoredCount: number
+      unmatchedCount: number
+      statementInflowAmount: number
+      statementOutflowAmount: number
+      matchedAmount: number
+      calculatedClosingBalance: number
+      statementBalanceDifference: number
+    }
+
+    type BankReconciliationSearchParams = Api.Common.CommonSearchParams & {
+      accountSetId?: string
+      fundAccountId?: string
+      status?: BankReconciliationStatus | ''
+      statementDateRange?: string[]
+      keyword?: string
+    }
+
+    interface BankStatementLineRecord {
+      id: string
+      tenantId: string
+      accountSetId: string
+      batchId: string
+      fundAccountId: string
+      lineNo: number
+      transactionDate: string
+      direction: FundLedgerDirection
+      amount: number
+      statementBalance?: number | null
+      counterpartyName?: string | null
+      counterpartyAccountMasked?: string | null
+      bankReference?: string | null
+      bankSerialNo?: string | null
+      bankMemo?: string | null
+      status: BankStatementLineStatus
+      ignoredReason?: string | null
+      ignoredAt?: string | null
+      ignoredBy?: string | null
+      matchedAmount: number
+      remainingAmount: number
+      matchCount: number
+      matchTypes?: string | null
+      latestMatchedAt?: string | null
+    }
+
+    interface BankStatementMatchRecord {
+      id: string
+      tenantId: string
+      statementLineId: string
+      ledgerEntryId: string
+      matchedAmount: number
+      matchType: BankMatchType
+      confidenceScore?: number | null
+      matchRemark?: string | null
+      matchedBy: string
+      matchedAt: string
+      ledgerEntry?: FundLedgerRecord | null
+    }
+
+    interface ImportBankStatementLinePayload {
+      transactionDate: string
+      direction: FundLedgerDirection
+      amount: number
+      statementBalance?: number | null
+      counterpartyName?: string | null
+      counterpartyAccount?: string | null
+      bankReference?: string | null
+      bankSerialNo?: string | null
+      bankMemo?: string | null
+    }
+
+    interface ImportBankReconciliationPayload {
+      fundAccountId: string
+      batchNo?: string | null
+      statementStartDate: string
+      statementEndDate: string
+      openingBalance: number
+      closingBalance: number
+      importedFileName?: string | null
+      remark?: string | null
+      lines: ImportBankStatementLinePayload[]
+    }
+
     interface ExpenseReimbursementItem {
       id: string
       tenantId: string
@@ -2933,6 +3908,7 @@ declare namespace Api {
     interface ExecuteExpenseReimbursementPayload {
       paymentNo?: string | null
       reimbursementId: string
+      fundAccountId: string
       paymentDate: string
       bankReference?: string | null
       voucherUrls?: string[]
@@ -3584,6 +4560,11 @@ declare namespace Api {
       updateBy?: string | null
       updateTime: string
       paymentApplicationId?: string | null
+      fundAccountId?: string | null
+      fundAccount?: Pick<
+        FundAccountRecord,
+        'id' | 'accountCode' | 'accountName' | 'accountNoMasked'
+      > | null
       allocations?: Array<CashAllocationRecord | CarrierCashAllocationRecord>
     }
 
@@ -3626,6 +4607,7 @@ declare namespace Api {
     interface CreateCustomerReceiptPayload {
       transactionNo?: string | null
       customerId: string
+      fundAccountId: string
       transactionDate: string
       amount: number
       paymentMethod: CashPaymentMethod
@@ -3688,6 +4670,7 @@ declare namespace Api {
     interface CreateCarrierPaymentPayload {
       transactionNo?: string | null
       carrierId: string
+      fundAccountId: string
       transactionDate: string
       amount: number
       paymentMethod: CashPaymentMethod
@@ -3778,6 +4761,7 @@ declare namespace Api {
     interface ExecuteCarrierPaymentApplicationPayload {
       transactionNo?: string | null
       applicationId: string
+      fundAccountId: string
       transactionDate: string
       bankReference?: string | null
       voucherUrls?: string[]
@@ -4298,6 +5282,665 @@ declare namespace Api {
       ruleVersion: string
       generatedAt: string
       assessment: ReceivablesCollectionAssessment
+    }
+
+    interface LedgerReportParams {
+      accountSetId: string
+      fiscalYear: number
+      periodFrom?: number
+      periodTo?: number
+      subjectId?: string | null
+    }
+
+    interface SubjectBalanceReportParams extends LedgerReportParams {
+      hideZero?: boolean
+    }
+
+    interface SubjectBalanceReportRecord {
+      subjectId: string
+      parentId?: string | null
+      subjectCode: string
+      subjectName: string
+      category: SubjectCategory
+      balanceDirection: BalanceDirection
+      subjectLevel: number
+      isLeaf: boolean
+      openingDebit: number
+      openingCredit: number
+      periodDebit: number
+      periodCredit: number
+      yearToDateDebit: number
+      yearToDateCredit: number
+      endingDebit: number
+      endingCredit: number
+      endingDirection: BalanceDirection
+      endingBalance: number
+    }
+
+    interface GeneralLedgerReportRecord {
+      periodNo: number
+      periodStart?: string | null
+      periodEnd?: string | null
+      openingDirection: BalanceDirection
+      openingBalance: number
+      debitAmount: number
+      creditAmount: number
+      yearToDateDebit: number
+      yearToDateCredit: number
+      endingDirection: BalanceDirection
+      endingBalance: number
+      voucherCount: number
+      lineCount: number
+    }
+
+    interface SubsidiaryLedgerReportParams extends LedgerReportParams {
+      subjectId: string
+      auxiliaryTypeId?: string | null
+      auxiliaryItemId?: string | null
+    }
+
+    interface SubsidiaryLedgerReportRecord {
+      rowType: 'opening' | 'transaction'
+      voucherLineId?: string | null
+      voucherId?: string | null
+      voucherDate?: string | null
+      periodNo: number
+      voucherNo?: string | null
+      voucherType?: VoucherType | null
+      subjectCode?: string | null
+      subjectName?: string | null
+      summary: string
+      auxiliaryDisplay?: string | null
+      currencyCode?: string | null
+      originalAmount: number
+      quantity: number
+      unitName?: string | null
+      debitAmount: number
+      creditAmount: number
+      balanceDirection: BalanceDirection
+      balanceAmount: number
+    }
+
+    type CommercialBillDirection = 'receivable' | 'payable'
+    type CommercialBillType = 'bank_acceptance' | 'commercial_acceptance' | 'digital'
+    type CommercialBillStatus =
+      'draft' | 'held' | 'endorsed' | 'discounted' | 'settled' | 'cancelled'
+    type CommercialBillEventType =
+      'received' | 'issued' | 'endorsed' | 'discounted' | 'settled' | 'cancelled'
+    type CommercialBillAction = 'receive' | 'issue' | 'endorse' | 'discount' | 'settle' | 'cancel'
+
+    interface CommercialBillRecord {
+      id: string
+      tenantId: string
+      accountSetId: string
+      billNo: string
+      externalBillNo?: string | null
+      direction: CommercialBillDirection
+      billType: CommercialBillType
+      status: CommercialBillStatus
+      drawerName: string
+      payeeName: string
+      acceptorName: string
+      counterpartyName?: string | null
+      issueDate: string
+      dueDate: string
+      faceAmount: number
+      settledAmount: number
+      currencyCode: string
+      transferable: boolean
+      sourceType?: string | null
+      sourceId?: string | null
+      sourceNo?: string | null
+      attachmentIds: string[]
+      remark?: string | null
+      version: number
+      createBy?: string | null
+      createTime: string
+      updateBy?: string | null
+      updateTime: string
+    }
+
+    interface CommercialBillEventRecord {
+      id: string
+      tenantId: string
+      accountSetId: string
+      billId: string
+      eventType: CommercialBillEventType
+      eventDate: string
+      amount: number
+      counterpartyName?: string | null
+      fundAccountId?: string | null
+      referenceNo?: string | null
+      voucherId?: string | null
+      remark?: string | null
+      createBy?: string | null
+      createTime: string
+    }
+
+    type CommercialBillSearchParams = Api.Common.CommonSearchParams & {
+      accountSetId?: string
+      direction?: CommercialBillDirection | ''
+      billType?: CommercialBillType | ''
+      status?: CommercialBillStatus | ''
+      dueDateRange?: string[]
+      keyword?: string
+    }
+
+    interface SaveCommercialBillPayload {
+      id?: string
+      accountSetId: string
+      billNo: string
+      externalBillNo?: string | null
+      direction: CommercialBillDirection
+      billType: CommercialBillType
+      drawerName: string
+      payeeName: string
+      acceptorName: string
+      counterpartyName?: string | null
+      issueDate: string
+      dueDate: string
+      faceAmount: number
+      currencyCode: string
+      transferable: boolean
+      sourceType?: string | null
+      sourceId?: string | null
+      sourceNo?: string | null
+      attachmentIds?: string[]
+      remark?: string | null
+    }
+
+    interface CommercialBillSummary {
+      totalCount: number
+      activeCount: number
+      receivableOutstanding: number
+      payableOutstanding: number
+      dueWithin30Days: number
+      overdueCount: number
+    }
+
+    type FixedAssetStatus = 'draft' | 'active' | 'suspended' | 'disposed'
+    type FixedAssetAction = 'activate' | 'suspend' | 'resume' | 'dispose'
+    type DepreciationMethod = 'straight_line'
+    type AssetDepreciationRunStatus = 'draft' | 'calculated' | 'posted' | 'cancelled'
+
+    interface AssetCategoryRecord {
+      id: string
+      tenantId: string
+      accountSetId: string
+      categoryCode: string
+      categoryName: string
+      depreciationMethod: DepreciationMethod
+      defaultUsefulLifeMonths: number
+      defaultResidualRate: number
+      assetSubjectId?: string | null
+      accumulatedDepreciationSubjectId?: string | null
+      depreciationExpenseSubjectId?: string | null
+      disposalSubjectId?: string | null
+      isEnabled: boolean
+      sort: number
+      remark?: string | null
+      createTime: string
+      updateTime: string
+    }
+
+    interface FixedAssetRecord {
+      id: string
+      tenantId: string
+      accountSetId: string
+      categoryId: string
+      assetNo: string
+      assetName: string
+      status: FixedAssetStatus
+      acquisitionDate: string
+      readyForUseDate: string
+      depreciationStartDate: string
+      originalValue: number
+      residualValue: number
+      usefulLifeMonths: number
+      depreciatedMonths: number
+      accumulatedDepreciation: number
+      impairmentAmount: number
+      departmentId?: string | null
+      employeeId?: string | null
+      location?: string | null
+      specification?: string | null
+      serialNo?: string | null
+      disposalDate?: string | null
+      disposalAmount?: number | null
+      disposalReason?: string | null
+      remark?: string | null
+      version: number
+      createTime: string
+      updateTime: string
+      category?: Pick<AssetCategoryRecord, 'id' | 'categoryCode' | 'categoryName'> | null
+    }
+
+    interface SaveAssetCategoryPayload {
+      id?: string
+      accountSetId: string
+      categoryCode: string
+      categoryName: string
+      depreciationMethod: DepreciationMethod
+      defaultUsefulLifeMonths: number
+      defaultResidualRate: number
+      assetSubjectId?: string | null
+      accumulatedDepreciationSubjectId?: string | null
+      depreciationExpenseSubjectId?: string | null
+      disposalSubjectId?: string | null
+      isEnabled: boolean
+      sort: number
+      remark?: string | null
+    }
+
+    interface SaveFixedAssetPayload {
+      id?: string
+      accountSetId: string
+      categoryId: string
+      assetNo: string
+      assetName: string
+      acquisitionDate: string
+      readyForUseDate: string
+      depreciationStartDate: string
+      originalValue: number
+      residualValue: number
+      usefulLifeMonths: number
+      departmentId?: string | null
+      employeeId?: string | null
+      location?: string | null
+      specification?: string | null
+      serialNo?: string | null
+      remark?: string | null
+    }
+
+    type FixedAssetSearchParams = Api.Common.CommonSearchParams & {
+      accountSetId?: string
+      categoryId?: string
+      status?: FixedAssetStatus | ''
+      keyword?: string
+    }
+
+    interface AssetDepreciationRunRecord {
+      id: string
+      tenantId: string
+      accountSetId: string
+      accountingPeriodId: string
+      runNo: string
+      status: AssetDepreciationRunStatus
+      assetCount: number
+      totalAmount: number
+      voucherId?: string | null
+      calculatedAt?: string | null
+      postedAt?: string | null
+      remark?: string | null
+      createTime: string
+      period?: AccountingPeriodRecord | null
+    }
+
+    interface AssetDepreciationLineRecord {
+      id: string
+      runId: string
+      assetId: string
+      openingAccumulatedDepreciation: number
+      depreciationAmount: number
+      closingAccumulatedDepreciation: number
+      asset?: Pick<FixedAssetRecord, 'id' | 'assetNo' | 'assetName'> | null
+    }
+
+    interface FixedAssetSummary {
+      categoryCount: number
+      assetCount: number
+      activeCount: number
+      originalValue: number
+      netValue: number
+      periodDepreciation: number
+    }
+
+    type PayrollRunStatus = 'draft' | 'calculated' | 'approved' | 'paid' | 'cancelled'
+    type PayrollRunAction = 'approve' | 'pay' | 'cancel'
+
+    interface PayrollRunRecord {
+      id: string
+      tenantId: string
+      accountSetId: string
+      accountingPeriodId: string
+      runNo: string
+      payrollMonth: string
+      status: PayrollRunStatus
+      employeeCount: number
+      grossAmount: number
+      deductionAmount: number
+      employerCostAmount: number
+      netAmount: number
+      salaryExpenseSubjectId?: string | null
+      salaryPayableSubjectId?: string | null
+      taxPayableSubjectId?: string | null
+      socialSecurityPayableSubjectId?: string | null
+      voucherId?: string | null
+      calculatedAt?: string | null
+      approvedAt?: string | null
+      approvedBy?: string | null
+      paidAt?: string | null
+      remark?: string | null
+      createTime: string
+      period?: AccountingPeriodRecord | null
+    }
+
+    interface PayrollLineRecord {
+      id: string
+      runId: string
+      employeeId: string
+      employeeNoSnapshot: string
+      employeeNameSnapshot: string
+      departmentNameSnapshot?: string | null
+      earningItems: Record<string, number>
+      deductionItems: Record<string, number>
+      employerCostItems: Record<string, number>
+      grossAmount: number
+      deductionAmount: number
+      employerCostAmount: number
+      netAmount: number
+      remark?: string | null
+      createTime: string
+    }
+
+    interface PayrollEmployeeOption {
+      id: string
+      tenantId: string
+      employeeNo: string
+      employeeName: string
+    }
+
+    interface SavePayrollRunPayload {
+      id?: string
+      accountingPeriodId: string
+      salaryExpenseSubjectId?: string | null
+      salaryPayableSubjectId?: string | null
+      taxPayableSubjectId?: string | null
+      socialSecurityPayableSubjectId?: string | null
+      remark?: string | null
+    }
+
+    interface SavePayrollLinePayload {
+      employeeId: string
+      earningItems: Record<string, number>
+      deductionItems: Record<string, number>
+      employerCostItems: Record<string, number>
+      grossAmount: number
+      deductionAmount: number
+      employerCostAmount: number
+      remark?: string | null
+    }
+
+    type PayrollRunSearchParams = Api.Common.CommonSearchParams & {
+      accountSetId?: string
+      status?: PayrollRunStatus | ''
+    }
+
+    interface PayrollSummary {
+      runCount: number
+      employeeCount: number
+      grossAmount: number
+      netAmount: number
+      pendingCount: number
+    }
+
+    type TaxType = 'vat' | 'surcharge' | 'corporate_income_tax' | 'stamp_duty' | 'other'
+    type TaxPeriodStatus = 'draft' | 'calculated' | 'reviewed' | 'filed' | 'paid' | 'cancelled'
+    type TaxLedgerDirection = 'output' | 'input' | 'adjustment'
+    type TaxPeriodAction = 'review' | 'file' | 'pay' | 'cancel'
+
+    interface TaxPeriodRecord {
+      id: string
+      tenantId: string
+      accountSetId: string
+      accountingPeriodId: string
+      taxType: TaxType
+      status: TaxPeriodStatus
+      outputTaxAmount: number
+      inputTaxAmount: number
+      transferableInputAmount: number
+      adjustmentAmount: number
+      payableAmount: number
+      filingReference?: string | null
+      filedAt?: string | null
+      filedBy?: string | null
+      paidAt?: string | null
+      remark?: string | null
+      createTime: string
+      period?: AccountingPeriodRecord | null
+    }
+
+    interface TaxLedgerLineRecord {
+      id: string
+      taxPeriodId: string
+      sourceType: string
+      sourceId?: string | null
+      sourceNo?: string | null
+      occurredOn: string
+      direction: TaxLedgerDirection
+      taxableAmount: number
+      taxRate?: number | null
+      taxAmount: number
+      isDeductible: boolean
+      remark?: string | null
+      createTime: string
+    }
+
+    interface SaveTaxPeriodPayload {
+      id?: string
+      accountingPeriodId: string
+      taxType: TaxType
+      transferableInputAmount: number
+      adjustmentAmount: number
+      remark?: string | null
+    }
+
+    interface SaveTaxLedgerLinePayload {
+      id?: string
+      sourceType: string
+      sourceId?: string | null
+      sourceNo?: string | null
+      occurredOn: string
+      direction: TaxLedgerDirection
+      taxableAmount: number
+      taxRate?: number | null
+      taxAmount: number
+      isDeductible: boolean
+      remark?: string | null
+    }
+
+    type TaxPeriodSearchParams = Api.Common.CommonSearchParams & {
+      accountSetId?: string
+      taxType?: TaxType | ''
+      status?: TaxPeriodStatus | ''
+    }
+
+    interface TaxSummary {
+      periodCount: number
+      outputTaxAmount: number
+      inputTaxAmount: number
+      payableAmount: number
+      pendingCount: number
+    }
+
+    type PeriodCloseRunStatus = 'checking' | 'ready' | 'closed' | 'cancelled'
+    type PeriodCloseCheckStatus = 'passed' | 'warning' | 'blocked'
+    type PeriodCloseAction = 'close' | 'cancel' | 'reopen'
+
+    interface PeriodCloseRunRecord {
+      id: string
+      tenantId: string
+      accountSetId: string
+      accountingPeriodId: string
+      runNo: string
+      status: PeriodCloseRunStatus
+      passedCount: number
+      warningCount: number
+      blockingCount: number
+      completedAt?: string | null
+      completedBy?: string | null
+      cancelledAt?: string | null
+      cancelledBy?: string | null
+      cancelReason?: string | null
+      createTime: string
+      period?: AccountingPeriodRecord | null
+    }
+
+    interface PeriodCloseCheckRecord {
+      id: string
+      closeRunId: string
+      checkCode: string
+      checkName: string
+      status: PeriodCloseCheckStatus
+      isBlocking: boolean
+      issueCount: number
+      summary: string
+      detail: Record<string, unknown>
+      checkedAt: string
+    }
+
+    type PeriodCloseSearchParams = Api.Common.CommonSearchParams & {
+      accountSetId?: string
+      status?: PeriodCloseRunStatus | ''
+    }
+
+    interface PeriodCloseSummary {
+      periodCount: number
+      closedCount: number
+      checkingCount: number
+      blockingCount: number
+      latestCompletedAt?: string | null
+    }
+
+    type FinancialStatementType =
+      | 'balance_sheet'
+      | 'income_statement'
+      | 'cash_flow_statement'
+    type FinancialStatementMappingDirection = 'debit' | 'credit' | 'net_debit' | 'net_credit'
+    type FinancialStatementDisplayStyle = 'normal' | 'subtotal' | 'total'
+    type FinancialStatementCalculationMethod = 'mapping' | 'formula' | 'label'
+    type CashFlowDirection = 'receipt' | 'payment'
+
+    interface FinancialStatementMappingRecord {
+      id?: string
+      tenantId?: string
+      accountSetId?: string
+      statementItemId?: string
+      subjectId: string
+      mappingDirection: FinancialStatementMappingDirection
+      factor: number
+      remark?: string | null
+      createTime?: string
+      updateTime?: string
+      subject?: Pick<SubjectRecord, 'id' | 'subjectCode' | 'subjectName' | 'category'> | null
+    }
+
+    interface FinancialStatementFormulaRecord {
+      id?: string
+      tenantId?: string
+      accountSetId?: string
+      targetItemId?: string
+      sourceItemId: string
+      factor: number
+      createTime?: string
+      updateTime?: string
+      sourceItem?: Pick<
+        FinancialStatementItemRecord,
+        'id' | 'itemCode' | 'itemName' | 'lineNo'
+      > | null
+    }
+
+    interface FinancialStatementItemRecord {
+      id: string
+      tenantId: string
+      accountSetId: string
+      statementType: FinancialStatementType
+      parentId?: string | null
+      itemCode: string
+      itemName: string
+      lineNo: number
+      itemLevel: number
+      displayStyle: FinancialStatementDisplayStyle
+      calculationMethod: FinancialStatementCalculationMethod
+      cashFlowDirection?: CashFlowDirection | null
+      isEnabled: boolean
+      remark?: string | null
+      createBy?: string | null
+      createTime: string
+      updateBy?: string | null
+      updateTime: string
+      mappings?: FinancialStatementMappingRecord[]
+      formulas?: FinancialStatementFormulaRecord[]
+    }
+
+    interface SaveFinancialStatementItemPayload {
+      id?: string
+      accountSetId: string
+      statementType: FinancialStatementType
+      parentId?: string | null
+      itemCode: string
+      itemName: string
+      lineNo: number
+      itemLevel: number
+      displayStyle: FinancialStatementDisplayStyle
+      calculationMethod: FinancialStatementCalculationMethod
+      cashFlowDirection?: CashFlowDirection | null
+      isEnabled: boolean
+      remark?: string | null
+    }
+
+    interface FinancialStatementReportParams {
+      accountSetId: string
+      statementType: FinancialStatementType
+      fiscalYear: number
+      periodFrom?: number
+      periodTo?: number
+    }
+
+    interface FinancialStatementReportRecord {
+      itemId: string
+      parentId?: string | null
+      itemCode: string
+      itemName: string
+      lineNo: number
+      itemLevel: number
+      displayStyle: FinancialStatementDisplayStyle
+      calculationMethod: FinancialStatementCalculationMethod
+      isLeaf: boolean
+      primaryAmount: number
+      secondaryAmount: number
+      mappingCount: number
+    }
+
+    interface CashFlowAllocationRecord {
+      id: string
+      tenantId: string
+      accountSetId: string
+      voucherLineId: string
+      statementItemId: string
+      flowDirection: CashFlowDirection
+      amount: number
+      remark?: string | null
+      createTime: string
+      updateTime: string
+      statementItem?: Pick<
+        FinancialStatementItemRecord,
+        'id' | 'itemCode' | 'itemName' | 'cashFlowDirection'
+      > | null
+    }
+
+    interface SaveCashFlowAllocationPayload {
+      voucherLineId: string
+      statementItemId: string
+      amount: number
+      remark?: string | null
+    }
+
+    interface VoucherCashFlowAllocationDraft {
+      voucherLineNo: number
+      statementItemId: string
+      amount: number
+      remark?: string | null
     }
   }
 

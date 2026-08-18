@@ -175,6 +175,9 @@ export function createFileViewerAssetSyncPlugin(options: FileViewerAssetSyncPlug
   return {
     name: 'file-viewer-asset-sync',
     apply: 'build',
+    // Vite 8 also runs closeBundle for nested Web Worker builds. Syncing from
+    // there races the top-level vite:prepare-out-dir cleanup on Windows.
+    applyToEnvironment: (environment) => !environment.config.isWorker,
     configResolved(config) {
       resolvedConfig = config
     },

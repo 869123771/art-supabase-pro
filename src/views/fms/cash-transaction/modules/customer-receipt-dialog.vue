@@ -112,6 +112,7 @@
   import {
     allocateCustomerReceipt,
     createCustomerReceipt,
+    fetchFundAccountOptions,
     fetchCustomerSelectorList,
     fetchCustomerStatementAllocatableList,
     reviewCashVoucherOcrArtifact
@@ -131,6 +132,7 @@
   interface ReceiptForm {
     transactionNo: string
     customerId: string
+    fundAccountId: string
     transactionDate: string
     amount: number | undefined
     paymentMethod: Api.Fms.CashPaymentMethod
@@ -174,6 +176,7 @@
   const ocrPanelRef = ref<OcrPanelExpose>()
   const ocrResult = ref<Api.Fms.CashVoucherOcrAnalyzeResponse>()
   const transactionNumber = useDocumentNumberRule('tms.cash_transaction')
+  const fundAccountOptions = ref<Api.Fms.FundAccountOption[]>([])
 
   const dialog = reactive<DialogGroup>({ mode: 'create', transaction: undefined })
   const selection = reactive<SelectionGroup>({
@@ -185,6 +188,7 @@
   const createInitialForm = (): ReceiptForm => ({
     transactionNo: '',
     customerId: '',
+    fundAccountId: '',
     transactionDate: dayjs().format('YYYY-MM-DD'),
     amount: undefined,
     paymentMethod: 'bank_transfer',
@@ -215,6 +219,15 @@
         }
       ],
       customerId: [{ required: true, message: '请选择收款客户', trigger: 'change' }],
+      fundAccountId: [
+        {
+          validator: (_rule, value, callback) =>
+            dialog.mode === 'allocate' || String(value || '').trim()
+              ? callback()
+              : callback(new Error('请选择收款资金账户')),
+          trigger: 'change'
+        }
+      ],
       transactionDate: [{ required: true, message: '请选择收款日期', trigger: 'change' }],
       amount: [
         { required: true, message: '请输入收款金额', trigger: 'blur' },
@@ -276,6 +289,18 @@
 
       if (dialog.mode === 'create') {
         baseItems.push(
+          {
+            label: '收款账户',
+            key: 'fundAccountId',
+            type: 'select',
+            span: 12,
+            props: {
+              options: fundAccountOptions.value,
+              filterable: true,
+              placeholder: '选择实际入账资金账户'
+            },
+            description: '收款成功后自动登记资金流入日记账'
+          },
           {
             label: '银行流水号',
             key: 'bankReference',
@@ -593,6 +618,7 @@
         const { data: transactionId } = await createCustomerReceipt({
           transactionNo: form.data.transactionNo.trim() || null,
           customerId: form.data.customerId,
+          fundAccountId: form.data.fundAccountId,
           transactionDate: form.data.transactionDate,
           amount: numericValue(form.data.amount),
           paymentMethod: form.data.paymentMethod,
@@ -622,7 +648,12 @@
   }
 
   async function handleOpen(transaction?: CashTransaction): Promise<void> {
-    await Promise.all([resetForm(), transactionNumber.loadRule()])
+    const [, , fundAccounts] = await Promise.all([
+      resetForm(),
+      transactionNumber.loadRule(),
+      fetchFundAccountOptions({ status: 'active', baseCurrencyOnly: true })
+    ])
+    fundAccountOptions.value = fundAccounts.data ?? []
     dialog.mode = transaction ? 'allocate' : 'create'
     dialog.transaction = transaction
 

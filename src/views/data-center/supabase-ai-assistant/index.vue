@@ -4,7 +4,7 @@
     :loading="initialLoading"
     loading-mode="skeleton"
     :error="pageError"
-    min-height="720px"
+    full-height
     @retry="loadInitialData"
   >
     <div
@@ -13,6 +13,7 @@
     >
       <BusinessWorkspaceHeader
         v-if="!focusMode"
+        density="compact"
         eyebrow="SUPABASE PROJECT COPILOT"
         title="Supabase AI 助手"
         description="统一洞察 Database、RLS、Auth、Storage、Realtime 与 Edge Functions，并生成可审计的治理方案。"
@@ -141,7 +142,7 @@
 
 <script setup lang="ts">
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
-  import { useStorage } from '@vueuse/core'
+  import { useEventListener, useStorage } from '@vueuse/core'
   import { ElMessage } from 'element-plus'
   import { updateProjectObjectDescription } from '@/api/supabase-ai-assistant'
   import type {
@@ -383,6 +384,14 @@
     nextTick(() => window.dispatchEvent(new Event('resize')))
   }
 
+  function exitFocusMode(event: KeyboardEvent): void {
+    if (event.key !== 'Escape' || !focusMode.value) return
+    event.preventDefault()
+    toggleFocusMode()
+  }
+
+  useEventListener(document, 'keydown', exitFocusMode)
+
   onMounted(async () => {
     await Promise.all([loadInitialData(), loadAssistantCapabilities()])
   })
@@ -391,7 +400,7 @@
 <style scoped lang="scss">
   .project-assistant-shell {
     height: var(--art-full-height);
-    min-height: 720px;
+    min-height: 0;
 
     :deep(> .art-async-state) {
       height: 100%;
@@ -402,84 +411,9 @@
     display: flex;
     flex-direction: column;
     gap: 12px;
-    min-height: 720px;
+    min-height: 0;
     overflow: hidden;
     background: var(--art-main-bg-color);
-
-    &__hero {
-      position: relative;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      min-height: 104px;
-      padding: 17px 22px;
-      overflow: hidden;
-      background:
-        linear-gradient(105deg, transparent 42%, var(--el-color-primary-light-9) 100%),
-        var(--default-box-color);
-
-      &::after {
-        position: absolute;
-        top: -64px;
-        right: 8%;
-        width: 180px;
-        height: 180px;
-        pointer-events: none;
-        content: '';
-        background: radial-gradient(circle, var(--el-color-primary-light-8), transparent 68%);
-        border-radius: 50%;
-      }
-
-      h1 {
-        margin: 4px 0;
-        font-size: 22px;
-        line-height: 1.35;
-        letter-spacing: -0.3px;
-        text-wrap: balance;
-      }
-
-      p {
-        margin: 0;
-        line-height: 1.6;
-        color: var(--el-text-color-secondary);
-      }
-    }
-
-    &__eyebrow {
-      display: flex;
-      gap: 6px;
-      align-items: center;
-      font-size: 12px;
-      font-weight: 700;
-      color: var(--el-color-primary);
-      letter-spacing: 1.1px;
-    }
-
-    &__safety {
-      z-index: 1;
-      display: flex;
-      flex-direction: column;
-      gap: 7px;
-      align-items: flex-end;
-      font-size: 12px;
-      color: var(--el-text-color-secondary);
-
-      :deep(.el-tag) {
-        border-color: var(--el-color-success-light-7);
-      }
-    }
-
-    &__hero-actions {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-
-      .el-button {
-        height: 28px;
-        margin: 0;
-        border-radius: 999px;
-      }
-    }
 
     &__stats {
       display: grid;
@@ -563,10 +497,6 @@
 
     &.is-focus-mode {
       gap: 8px;
-
-      .project-assistant__workspace {
-        min-height: 640px;
-      }
     }
 
     &__splitter {
@@ -651,10 +581,6 @@
     }
 
     @media (width <= 1280px) {
-      &__workspace {
-        min-height: 560px;
-      }
-
       &__stats {
         grid-template-columns: repeat(3, 1fr);
       }
@@ -663,20 +589,6 @@
     @media (width <= 900px) {
       min-height: auto;
       overflow: visible;
-
-      &__hero {
-        flex-direction: column;
-        gap: var(--art-space-3);
-        align-items: flex-start;
-      }
-
-      &__safety {
-        align-items: flex-start;
-
-        > span {
-          display: none;
-        }
-      }
 
       &__stats {
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -718,19 +630,6 @@
     @media (width <= 640px) {
       gap: var(--art-space-3);
 
-      &__hero {
-        min-height: auto;
-        padding: var(--art-space-4);
-
-        h1 {
-          font-size: 20px;
-        }
-
-        p {
-          font-size: 13px;
-        }
-      }
-
       &__stats {
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: var(--art-space-1);
@@ -756,15 +655,13 @@
           }
         }
       }
+    }
+  }
 
-      &__safety,
-      &__hero-actions {
-        width: 100%;
-      }
-
-      &__hero-actions {
-        flex-wrap: wrap;
-      }
+  @media (width <= 900px) {
+    .project-assistant-shell {
+      height: auto;
+      min-height: 0;
     }
   }
 

@@ -10,7 +10,7 @@
     <div class="order-flow__summary">
       <div
         ><strong>{{ total }}</strong
-        ><span>近 {{ days }} 天订单</span></div
+        ><span>{{ periodLabel }}订单</span></div
       >
       <b><i />当前运输中 {{ inTransitCount }} 单</b>
     </div>
@@ -55,7 +55,7 @@
   import type { DashboardStatusItem } from './types'
 
   const props = defineProps<{
-    days: number
+    periodLabel: string
     total: number
     inTransitCount: number
     statusItems: DashboardStatusItem[]

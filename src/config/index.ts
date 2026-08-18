@@ -75,6 +75,11 @@ const appConfig: SystemConfig = {
   // 菜单布局列表
   menuLayoutList: [
     { name: 'Left', value: MenuTypeEnum.LEFT, img: configImages.menuLayouts.vertical },
+    {
+      name: 'Header + Sidebar',
+      value: MenuTypeEnum.HEADER_LEFT,
+      img: configImages.menuLayouts.headerLeft
+    },
     { name: 'Top', value: MenuTypeEnum.TOP, img: configImages.menuLayouts.horizontal },
     { name: 'Mixed', value: MenuTypeEnum.TOP_LEFT, img: configImages.menuLayouts.mixed },
     { name: 'Dual Column', value: MenuTypeEnum.DUAL_MENU, img: configImages.menuLayouts.dualColumn }
@@ -91,7 +96,7 @@ const appConfig: SystemConfig = {
     },
     {
       theme: MenuThemeEnum.DARK,
-      background: '#191A23',
+      background: '#181A2A',
       systemNameColor: '#D9DADB',
       iconColor: '#BABBBD',
       textColor: '#BABBBD',

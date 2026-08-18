@@ -10,7 +10,7 @@
   }
 
   &.art-search-bar {
-    padding: 15px 20px 0;
+    padding: var(--art-space-4) var(--art-section-padding) 0;
 
     :deep(.el-row) {
       width: 100%;
@@ -62,16 +62,30 @@
   &__filter-toggle {
     display: flex;
     align-items: center;
+    min-height: 32px;
+    padding: 0 var(--art-space-1);
     margin-left: 10px;
     line-height: 32px;
-    color: var(--theme-color);
+    color: var(--el-text-color-primary);
     cursor: pointer;
     background: transparent;
     border: 0;
-    transition: color 0.2s ease;
+    border-radius: var(--art-control-radius);
+    transition: color var(--art-motion-duration-fast) ease;
 
     &:hover {
-      color: var(--ElColor-primary);
+      color: var(--theme-color);
+      background: transparent;
+      box-shadow: none;
+    }
+
+    &:focus-visible {
+      color: var(--theme-color);
+      text-decoration: underline;
+      text-underline-offset: 3px;
+      outline: none;
+      background: transparent;
+      box-shadow: none;
     }
 
     span {
@@ -90,7 +104,7 @@
 
   @media (width <= 768px) {
     &.art-search-bar {
-      padding: 16px 16px 0;
+      padding: var(--art-space-4) var(--art-section-padding) 0;
     }
   }
 }

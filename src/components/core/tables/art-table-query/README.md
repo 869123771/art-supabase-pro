@@ -169,7 +169,8 @@ const load = () => {
 | `tableColumns` | `ColumnOption[]` | 受控 | `[]` | 外部表格列。内管模式由 `columnsFactory` 控制。 |
 | `pagination` | `{ current: number; size: number; total: number }` | 受控 | - | 外部分页状态。内管模式由组件内部控制。 |
 | `searchItems` | `SearchFormItem[]` | 两种 | `[]` | 查询表单项。优先级高于 `searchBarProps.items`。为空时不渲染搜索区。 |
-| `headerActions` | `ArtTableQueryHeaderAction[]` | 两种 | `[]` | 工具栏左侧操作按钮配置。 |
+| `headerActions` | `ArtTableQueryHeaderAction[]` | 两种 | `[]` | 工具栏左侧操作按钮配置；勾选后会自动把导出、批量删除和 `selectionRequired` 操作切换到批量命令栏。 |
+| `selectionActions` | `ArtTableQueryHeaderAction[]` | 两种 | `[]` | 显式配置勾选后的批量操作并覆盖自动推导结果；未勾选时不占用空间。 |
 | `apiFn` | `(params: any) => Promise<any>` | 内管 | - | 列表接口函数。传入后启用内管模式。 |
 | `apiParams` | `Record<string, any>` | 内管 | `{}` | 默认接口参数，会和 `{ current: 1, size: 20 }` 合并。 |
 | `immediate` | `boolean` | 内管 | `true` | 是否挂载后立即请求。 |
@@ -188,8 +189,9 @@ const load = () => {
 | `columnsFactory` | `() => ColumnOption[]` | 内管 | `() => []` | 内管模式列工厂。 |
 | `searchBarProps` | `ArtTableQuerySearchBarProps` | 两种 | `{}` | 透传给 `ArtSearchBar`。 |
 | `tableHeaderProps` | `ArtTableQueryTableHeaderProps` | 两种 | `{}` | 透传给 `ArtTableHeader`。 |
+| `showTableToolbar` | `boolean` | 两种 | `false` | 是否启用刷新、密度、全屏、列设置等右侧工具；与批量操作共用一行，关闭且没有左侧内容时不占用空间。 |
 | `tableProps` | `ArtTableQueryTableProps` | 两种 | `{}` | 透传给 `ArtTable` / `ElTable`。 |
-| `focusable` | `boolean` | 两种 | `false` | 是否显示专注模式按钮。仅在页面存在可隐藏的头部介绍、指标概览等内容时显式开启。 |
+| `focusable` | `boolean` | 两种 | `false` | 是否允许专注模式；工具栏开启时显示入口，也可通过 `v-model:focus-mode` 从页面头部直接进入。 |
 
 ### searchBarProps
 
@@ -307,7 +309,7 @@ const load = () => {
 | `v-model` | `Record<string, unknown>` | 查询表单模型。常用于默认查询值和外部联动。 |
 | `v-model:columns` | `ColumnOption[]` | 列显隐和排序配置。受控模式常用，内管模式通常不用传。 |
 | `v-model:show-search-bar` | `boolean` | 搜索区域显隐状态。 |
-| `v-model:focus-mode` | `boolean` | 专注模式状态；进入时搜索区会自动展开，退出后恢复原显隐状态。 |
+| `v-model:focus-mode` | `boolean` | 专注模式状态；进入时保留搜索区当前显隐状态，退出后恢复进入前状态。 |
 
 ## Events
 
@@ -346,6 +348,7 @@ const load = () => {
 | --- | --- |
 | `header-left` | 工具栏左侧扩展，渲染在 `headerActions` 后面。 |
 | `header-right` | 工具栏右侧扩展。 |
+| `selection-bar` | 勾选后的命令栏左侧内容；传入后替换 `selectionActions` 默认外观，并提供 `selectedRows`、`selectedCount`、`clearSelection`。 |
 | `table-header-top` | 工具栏上方扩展区，高度会自动计入表格布局。 |
 | `default` | 透传给 `ArtTable` 的默认插槽。 |
 | 表格列 slot | 除保留插槽外，其它插槽会透传给 `ArtTable`。例如列 `prop: 'status'` 可写 `#status`。 |
@@ -355,6 +358,7 @@ const load = () => {
 
 - `header-left`
 - `header-right`
+- `selection-bar`
 - `table-header-top`
 - `default`
 - `search-*`
@@ -369,6 +373,7 @@ interface ArtTableQueryExpose {
   refreshRemove: () => Promise<void>
   getData: () => Promise<unknown>
   resetSearchParams: () => Promise<void>
+  clearSelection: () => void
 }
 ```
 
@@ -380,10 +385,35 @@ interface ArtTableQueryExpose {
 | `refreshRemove()`     | 删除成功后刷新，当前页为空时自动回退上一页，并清空选中状态。 |
 | `getData()`           | 查询语义的数据加载，默认回到第一页。                         |
 | `resetSearchParams()` | 外部主动清空查询表单并重置内部查询参数。                     |
+| `clearSelection()`    | 清空当前跨页选择。                                           |
 
 ## headerActions
 
-`headerActions` 用于声明工具栏左侧按钮。标准 CRUD 页优先使用它，不手写 `#header-left`。
+`headerActions` 用于声明工具栏左侧按钮。标准 CRUD 页优先使用它，不手写 `#header-left`。存在复选框时，组件会在勾选后自动进入批量上下文：普通新增、导入等操作暂时隐藏，导出会显示为“导出选中”，删除和所有 `selectionRequired` 操作进入批量命令栏，取消选择后恢复普通操作。
+
+需要精确控制批量按钮或覆盖自动推导结果时，使用 `selectionActions`。需要节省表格垂直空间时，将新增、导入等高频入口放进 `BusinessWorkspaceHeader#actions`。批量操作与右侧表格工具共用一条命令栏；`showTableToolbar` 默认关闭，确实需要刷新、列设置等完整工具时再显式开启。高频专注入口可在页面头部直接绑定 `v-model:focus-mode`，不必先开启完整工具栏。
+
+```vue
+<ArtTableQuery :selection-actions="selectionActions" :show-table-toolbar="false" />
+```
+
+```ts
+const selectionActions = computed<ArtTableQueryHeaderAction[]>(() => [
+  {
+    type: 'export',
+    label: '导出选中',
+    selectionRequired: true
+  },
+  {
+    type: 'delete',
+    label: '批量删除',
+    onClick: async ({ selectedRows, api }) => {
+      await deleteBatch(selectedRows.map((row) => String(row.id)))
+      await api.refreshRemove()
+    }
+  }
+])
+```
 
 ```ts
 const headerActions = computed<ArtTableQueryHeaderAction[]>(() => [
@@ -661,7 +691,7 @@ const handleSaveSuccess = (type: 'add' | 'edit'): void => {
 - `searchItems` 和 `searchBarProps.items` 同时存在时，优先使用 `searchItems`。
 - `tableProps` 会在内部默认值之后合并，因此可以覆盖 `rowKey`、`tableLayout`。
 - `immediate=false` 只阻止首次自动请求，不影响后续查询、分页、刷新。
-- 批量删除走 `headerActions.type = 'delete'`，删除成功后调用 `api.refreshRemove()` 或 `tableQueryRef.value?.refreshRemove()`。
+- 批量删除可继续声明在 `headerActions` 中并由组件自动切换，也可用 `selectionActions.type = 'delete'` 显式覆盖；删除成功后调用 `api.refreshRemove()` 或 `tableQueryRef.value?.refreshRemove()`。
 - 新增成功用 `refreshCreate()`，编辑成功用 `refreshUpdate()`，删除成功用 `refreshRemove()`。
 - 导入导出列配置优先放在 `ArtTableQuery` 的 action 中，不要在业务页面堆页面级 Excel 解析/导出逻辑。
 - 行拖拽只负责 UI 事件，不在公共组件里写业务持久化；业务页监听 `row-drag-end` 后自行保存。

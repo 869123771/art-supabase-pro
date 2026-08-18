@@ -124,8 +124,9 @@ export async function submitCarrierPaymentApplication(row: PaymentApplication) {
 export async function executeCarrierPaymentApplication(params: ExecutePayload) {
   return await responseHandle<string>(
     () =>
-      supabase.rpc('execute_tms_carrier_payment_application', {
+      supabase.rpc('execute_fms_carrier_payment_application', {
         p_application_id: params.applicationId,
+        p_fund_account_id: params.fundAccountId,
         p_transaction_date: params.transactionDate,
         p_bank_reference: params.bankReference || null,
         p_voucher_urls: params.voucherUrls ?? [],

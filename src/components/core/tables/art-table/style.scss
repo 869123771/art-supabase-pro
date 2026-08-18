@@ -4,7 +4,7 @@
 
   .el-table {
     height: 100%;
-    margin-top: 10px;
+    margin-top: var(--art-space-3);
   }
 
   &__cell-content {
@@ -35,18 +35,24 @@
     cursor: grab;
     background: var(--el-fill-color-blank);
     border: 1px solid var(--el-border-color-lighter);
-    border-radius: 6px;
+    border-radius: var(--art-control-radius);
     transition:
-      color 0.2s,
-      background 0.2s,
-      border-color 0.2s,
-      box-shadow 0.2s;
+      color var(--art-motion-duration-fast) ease,
+      background-color var(--art-motion-duration-fast) ease,
+      border-color var(--art-motion-duration-fast) ease,
+      box-shadow var(--art-motion-duration-fast) ease;
 
     &:hover {
       color: var(--theme-color);
-      background: var(--el-fill-color-light);
-      border-color: var(--theme-color);
-      box-shadow: 0 0 0 2px var(--el-color-primary-light-9);
+      background: color-mix(in srgb, var(--theme-color) 7%, var(--default-box-color));
+      border-color: var(--art-themed-action-active-border);
+      box-shadow: var(--art-themed-action-hover-shadow);
+    }
+
+    &:focus-visible {
+      color: var(--theme-color);
+      outline: none;
+      box-shadow: var(--art-themed-action-focus-shadow);
     }
 
     &:active {
@@ -72,11 +78,11 @@
   }
 
   :deep(.el-table__body tr.is-art-selected-row > td.el-table__cell) {
-    background-color: var(--el-table-row-hover-bg-color);
+    background-color: color-mix(in srgb, var(--theme-color) 7%, var(--default-box-color));
   }
 
   :deep(.el-table__body tr.is-art-selected-row.hover-row > td.el-table__cell) {
-    background-color: var(--el-table-row-hover-bg-color);
+    background-color: color-mix(in srgb, var(--theme-color) 9%, var(--default-box-color));
   }
 
   :deep(.el-table__body tr:hover > td.el-table__cell) {
@@ -103,14 +109,26 @@
 
   // 空状态垂直居中
   &.is-empty {
+    overflow: hidden;
+
+    :deep(.el-table__body-wrapper),
+    :deep(.el-scrollbar) {
+      overflow: hidden;
+    }
+
     :deep(.el-scrollbar__wrap) {
       display: flex;
+      overflow-y: hidden;
+    }
+
+    :deep(.el-scrollbar__bar.is-vertical) {
+      display: none;
     }
   }
 
   .pagination {
     display: flex;
-    margin-top: 13px;
+    margin-top: var(--art-space-3);
 
     :deep(.el-select) {
       width: 102px !important;
@@ -136,11 +154,22 @@
         .btn-next {
           background-color: transparent;
           border: 1px solid var(--art-gray-300);
-          transition: border-color 0.15s;
+          transition:
+            color var(--art-motion-duration-fast) ease,
+            background-color var(--art-motion-duration-fast) ease,
+            border-color var(--art-motion-duration-fast) ease,
+            box-shadow var(--art-motion-duration-fast) ease;
 
           &:hover:not(.is-disabled) {
             color: var(--theme-color);
-            border-color: var(--theme-color);
+            background: color-mix(in srgb, var(--theme-color) 6%, transparent);
+            border-color: var(--art-themed-action-active-border);
+            box-shadow: var(--art-themed-action-hover-shadow);
+          }
+
+          &:focus-visible {
+            outline: none;
+            box-shadow: var(--art-themed-action-focus-shadow);
           }
         }
 
@@ -149,17 +178,30 @@
           font-weight: 400 !important;
           background-color: transparent;
           border: 1px solid var(--art-gray-300);
-          transition: border-color 0.15s;
+          transition:
+            color var(--art-motion-duration-fast) ease,
+            background-color var(--art-motion-duration-fast) ease,
+            border-color var(--art-motion-duration-fast) ease,
+            box-shadow var(--art-motion-duration-fast) ease;
 
           &.is-active {
-            font-weight: 400;
+            font-weight: 600 !important;
             color: #fff;
             background-color: var(--theme-color);
-            border: 1px solid var(--theme-color);
+            border-color: var(--art-themed-action-active-border);
+            box-shadow: var(--art-themed-action-active-shadow);
           }
 
-          &:hover:not(.is-disabled) {
-            border-color: var(--theme-color);
+          &:not(.is-active):hover:not(.is-disabled) {
+            color: var(--theme-color);
+            background: color-mix(in srgb, var(--theme-color) 6%, transparent);
+            border-color: var(--art-themed-action-active-border);
+            box-shadow: var(--art-themed-action-hover-shadow);
+          }
+
+          &:focus-visible {
+            outline: none;
+            box-shadow: var(--art-themed-action-focus-shadow);
           }
         }
       }
@@ -172,7 +214,7 @@
   :deep(.el-pagination) {
     display: flex;
     flex-wrap: wrap;
-    gap: 15px 0;
+    gap: var(--art-space-3) 0;
     align-items: center;
     justify-content: center;
   }

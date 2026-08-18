@@ -32,6 +32,7 @@
   const ENUM_MAPS = {
     menuType: {
       left: 'MenuTypeEnum.LEFT',
+      'header-left': 'MenuTypeEnum.HEADER_LEFT',
       top: 'MenuTypeEnum.TOP',
       'top-left': 'MenuTypeEnum.TOP_LEFT',
       'dual-menu': 'MenuTypeEnum.DUAL_MENU'

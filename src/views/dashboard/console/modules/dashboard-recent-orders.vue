@@ -104,10 +104,22 @@
         padding: 7px 10px;
         font-size: 11px;
         color: var(--el-color-primary);
+        touch-action: manipulation;
         cursor: pointer;
         background: color-mix(in srgb, var(--el-color-primary) 8%, transparent);
         border: 0;
         border-radius: 999px;
+        transition:
+          color 0.18s ease,
+          background-color 0.18s ease;
+
+        &:hover,
+        &:focus-visible {
+          color: var(--el-color-primary-dark-2);
+          outline: 2px solid color-mix(in srgb, var(--theme-color) 38%, transparent);
+          outline-offset: 2px;
+          background: color-mix(in srgb, var(--el-color-primary) 13%, transparent);
+        }
       }
     }
 
@@ -153,6 +165,7 @@
       min-height: 49px;
       padding: 7px 12px;
       text-align: left;
+      touch-action: manipulation;
       cursor: pointer;
       background: transparent;
       border: 0;
@@ -161,6 +174,12 @@
 
       &:hover {
         background: color-mix(in srgb, var(--el-color-primary) 5%, var(--el-fill-color-light));
+      }
+
+      &:focus-visible {
+        outline: 2px solid color-mix(in srgb, var(--theme-color) 48%, transparent);
+        outline-offset: -2px;
+        background: color-mix(in srgb, var(--theme-color) 6%, var(--el-fill-color-light));
       }
 
       strong,
@@ -216,6 +235,13 @@
       &__row > span:nth-child(4),
       &__row > b {
         display: none;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      header button,
+      &__row {
+        transition: none;
       }
     }
   }

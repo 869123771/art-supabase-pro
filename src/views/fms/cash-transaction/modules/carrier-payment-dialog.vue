@@ -104,6 +104,7 @@
     createCarrierPayment,
     fetchCarrierOptions,
     fetchCarrierStatementAllocatableList,
+    fetchFundAccountOptions,
     reviewCashVoucherOcrArtifact
   } from '@/api/fms'
   import { useUserStore } from '@/store/modules/user'
@@ -117,6 +118,7 @@
   interface PaymentForm {
     transactionNo: string
     carrierId: string
+    fundAccountId: string
     transactionDate: string
     amount: number
     paymentMethod: Api.Fms.CashPaymentMethod
@@ -144,6 +146,7 @@
   const ocrPanelRef = ref<OcrPanelExpose>()
   const ocrResult = ref<Api.Fms.CashVoucherOcrAnalyzeResponse>()
   const transactionNumber = useDocumentNumberRule('tms.cash_transaction')
+  const fundAccountOptions = ref<Api.Fms.FundAccountOption[]>([])
   const dialog = reactive<{ mode: 'create' | 'allocate'; transaction?: CashTransaction }>({
     mode: 'create'
   })
@@ -155,6 +158,7 @@
   const initialForm = (): PaymentForm => ({
     transactionNo: '',
     carrierId: '',
+    fundAccountId: '',
     transactionDate: dayjs().format('YYYY-MM-DD'),
     amount: 0,
     paymentMethod: 'bank_transfer',
@@ -272,6 +276,15 @@
       }
     ],
     carrierId: [{ required: true, message: '请选择付款承运商', trigger: 'change' }],
+    fundAccountId: [
+      {
+        validator: (_rule, value, callback) =>
+          dialog.mode === 'allocate' || String(value || '').trim()
+            ? callback()
+            : callback(new Error('请选择付款资金账户')),
+        trigger: 'change'
+      }
+    ],
     transactionDate: [{ required: true, message: '请选择付款日期', trigger: 'change' }],
     amount: [
       {
@@ -326,6 +339,22 @@
         disabled: dialog.mode === 'allocate'
       }
     },
+    ...(dialog.mode === 'create'
+      ? [
+          {
+            label: '付款账户',
+            key: 'fundAccountId',
+            type: 'select' as const,
+            span: 12,
+            props: {
+              options: fundAccountOptions.value,
+              filterable: true,
+              placeholder: '选择实际扣款资金账户'
+            },
+            description: '付款成功后自动登记资金流出日记账'
+          }
+        ]
+      : []),
     {
       label: '银行流水号',
       key: 'bankReference',
@@ -474,6 +503,7 @@
         const { data: transactionId } = await createCarrierPayment({
           transactionNo: form.transactionNo.trim() || null,
           carrierId: form.carrierId,
+          fundAccountId: form.fundAccountId,
           transactionDate: form.transactionDate,
           amount: Number(form.amount),
           paymentMethod: form.paymentMethod,
@@ -501,7 +531,12 @@
     formRef.value?.clearValidate()
   }
   async function handleOpen(transaction?: CashTransaction) {
-    await Promise.all([resetForm(), transactionNumber.loadRule()])
+    const [, , fundAccounts] = await Promise.all([
+      resetForm(),
+      transactionNumber.loadRule(),
+      fetchFundAccountOptions({ status: 'active', baseCurrencyOnly: true })
+    ])
+    fundAccountOptions.value = fundAccounts.data ?? []
     dialog.mode = transaction ? 'allocate' : 'create'
     dialog.transaction = transaction
     if (transaction) {

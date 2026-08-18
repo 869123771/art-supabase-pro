@@ -1,6 +1,7 @@
 <template>
   <div class="art-full-height workflow-monitor business-workspace-page">
     <BusinessWorkspaceHeader
+      density="compact"
       eyebrow="APPROVAL OPERATIONS"
       title="审批运营监控"
       description="统一观察审批运行、节点时效与异常实例，用可追溯的管理动作保障流程连续性。"
@@ -433,84 +434,7 @@
     flex-direction: column;
     gap: 12px;
     min-width: 0;
-
-    &__hero {
-      display: flex;
-      gap: 24px;
-      align-items: center;
-      justify-content: space-between;
-      padding: 22px 24px;
-      background:
-        radial-gradient(
-          circle at 88% 12%,
-          color-mix(in srgb, var(--el-color-warning) 12%, transparent),
-          transparent 31%
-        ),
-        radial-gradient(
-          circle at 72% 0%,
-          color-mix(in srgb, var(--theme-color) 10%, transparent),
-          transparent 36%
-        ),
-        var(--default-box-color);
-    }
-
-    &__identity {
-      display: flex;
-      gap: 15px;
-      align-items: center;
-      min-width: 0;
-
-      > span {
-        display: grid;
-        flex: 0 0 auto;
-        place-items: center;
-        width: 52px;
-        height: 52px;
-        font-size: 26px;
-        color: #fff;
-        background: linear-gradient(
-          145deg,
-          var(--el-color-primary),
-          var(--el-color-primary-light-3)
-        );
-        border-radius: calc(var(--el-border-radius-base) + 8px);
-        box-shadow: 0 12px 25px color-mix(in srgb, var(--theme-color) 22%, transparent);
-      }
-
-      > div {
-        min-width: 0;
-      }
-
-      > div > span {
-        font-size: 11px;
-        font-weight: 700;
-        color: var(--el-color-primary);
-        letter-spacing: 0.13em;
-      }
-
-      h1 {
-        margin: 3px 0 5px;
-        font-size: 24px;
-        font-weight: 600;
-        line-height: 1.25;
-        color: var(--art-gray-900);
-      }
-
-      p {
-        max-width: 680px;
-        margin: 0;
-        font-size: 13px;
-        line-height: 1.6;
-        color: var(--art-gray-500);
-      }
-    }
-
-    &__hero-actions {
-      display: flex;
-      flex: 0 0 auto;
-      gap: 10px;
-      align-items: center;
-    }
+    overflow: hidden;
 
     &__alert {
       flex: 0 0 auto;
@@ -527,85 +451,18 @@
       }
     }
 
-    &__metrics {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 12px;
-
-      article {
-        display: flex;
-        gap: 13px;
-        align-items: center;
-        min-width: 0;
-        padding: 17px 18px;
-
-        > span {
-          display: grid;
-          flex: 0 0 auto;
-          place-items: center;
-          width: 42px;
-          height: 42px;
-          font-size: 20px;
-          border-radius: var(--el-border-radius-base);
-
-          &.is-primary {
-            color: var(--el-color-primary);
-            background: var(--el-color-primary-light-9);
-          }
-
-          &.is-success {
-            color: var(--el-color-success);
-            background: var(--el-color-success-light-9);
-          }
-
-          &.is-danger {
-            color: var(--el-color-danger);
-            background: var(--el-color-danger-light-9);
-          }
-
-          &.is-info {
-            color: var(--el-color-info);
-            background: var(--el-color-info-light-9);
-          }
-        }
-
-        > div {
-          display: grid;
-          gap: 2px;
-          min-width: 0;
-        }
-
-        small,
-        p {
-          overflow: hidden;
-          text-overflow: ellipsis;
-          font-size: 12px;
-          color: var(--art-gray-500);
-          white-space: nowrap;
-        }
-
-        strong {
-          font-size: 24px;
-          line-height: 1.2;
-          color: var(--art-gray-900);
-        }
-
-        p {
-          margin: 0;
-        }
-      }
-    }
-
     &__workspace {
       display: flex;
-      flex: 1;
+      flex: 1 1 auto;
       flex-direction: column;
-      min-height: 570px;
+      min-height: 0;
       padding: 18px;
+      overflow: hidden;
     }
 
     &__callback-health {
       display: flex;
+      flex: 0 0 auto;
       gap: 14px;
       align-items: center;
       min-width: 0;
@@ -745,18 +602,16 @@
     }
 
     :deep(.art-table-query) {
-      flex: 1;
+      flex: 1 1 auto;
+      height: 100%;
       min-height: 0;
-    }
-
-    @media screen and (width <= 1180px) {
-      &__metrics {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
+      overflow: hidden;
     }
 
     @media screen and (width <= 760px) {
-      &__hero,
+      height: auto;
+      overflow: visible;
+
       &__workspace-header,
       &__callback-health {
         flex-direction: column;
@@ -771,15 +626,6 @@
         .el-button {
           width: 100%;
         }
-      }
-
-      &__hero-actions {
-        flex-wrap: wrap;
-        width: 100%;
-      }
-
-      &__metrics {
-        grid-template-columns: 1fr;
       }
 
       &__workspace {

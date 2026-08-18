@@ -1,5 +1,5 @@
 <template>
-  <div class="art-full-height recognition-records">
+  <div class="art-full-height business-workspace-page recognition-records">
     <RecognitionPageHero
       title="识别记录"
       subtitle="集中查询识别结果、模型运行信息与业务采用状态，便于追溯每一次 AI 建议。"

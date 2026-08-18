@@ -8,6 +8,11 @@ export interface MergeOrderContractDetailsResult {
   addedCount: number
 }
 
+export interface ContractCargoFreightResult {
+  hasContractCargo: boolean
+  transportFee: number
+}
+
 export const createCargoItemFromContractDetail = (detail: ContractDetail): CargoItem => ({
   ...createInitialCargoItem(),
   cargoId: detail.cargoId ?? null,
@@ -57,3 +62,17 @@ export const calculateContractTransportFee = (items: readonly CargoItem[]): numb
     ),
     2
   )
+
+export const synchronizeContractCargoFreight = (
+  items: readonly CargoItem[]
+): ContractCargoFreightResult => {
+  const contractItems = items.filter((item) => item.sourceContractId)
+  contractItems.forEach((item) => {
+    item.freight = calculateContractCargoFreight(item)
+  })
+
+  return {
+    hasContractCargo: contractItems.length > 0,
+    transportFee: calculateContractTransportFee(contractItems)
+  }
+}

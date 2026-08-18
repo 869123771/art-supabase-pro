@@ -37,7 +37,7 @@
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import ArtUploadImage from '@/components/core/forms/art-upload-image/index.vue'
-  import { executeExpenseReimbursement } from '@/api/fms'
+  import { executeExpenseReimbursement, fetchFundAccountOptions } from '@/api/fms'
   import { formatCurrencyValue } from '@/utils/ui'
   import { useDocumentNumberRule } from '@/hooks/core/useDocumentNumberRule'
 
@@ -47,6 +47,7 @@
 
   interface PaymentForm {
     paymentNo: string
+    fundAccountId: string
     paymentDate: string
     bankReference: string
     voucherUrls: string[]
@@ -69,8 +70,10 @@
   const formRef = ref<FormExpose>()
   const state = reactive<{ reimbursement?: Reimbursement }>({ reimbursement: undefined })
   const paymentNumber = useDocumentNumberRule('tms.expense_payment')
+  const fundAccountOptions = ref<Api.Fms.FundAccountOption[]>([])
   const createInitialForm = (): PaymentForm => ({
     paymentNo: '',
+    fundAccountId: '',
     paymentDate: dayjs().format('YYYY-MM-DD'),
     bankReference: '',
     voucherUrls: [],
@@ -89,6 +92,7 @@
         }
       ],
       paymentDate: [{ required: true, message: '请选择实际付款日期', trigger: 'change' }],
+      fundAccountId: [{ required: true, message: '请选择实际付款账户', trigger: 'change' }],
       bankReference: [
         {
           validator: (_rule, value, callback) =>
@@ -112,6 +116,17 @@
         key: 'paymentDate',
         type: 'date',
         props: { valueFormat: 'YYYY-MM-DD', class: '!w-full' }
+      },
+      {
+        label: '付款账户',
+        key: 'fundAccountId',
+        type: 'select',
+        props: {
+          options: fundAccountOptions.value,
+          filterable: true,
+          placeholder: '选择实际扣款资金账户'
+        },
+        description: '付款成功后自动登记资金流出日记账'
       },
       {
         label: '银行流水号',
@@ -147,6 +162,7 @@
       await executeExpenseReimbursement({
         paymentNo: form.data.paymentNo.trim() || null,
         reimbursementId: state.reimbursement.id,
+        fundAccountId: form.data.fundAccountId,
         paymentDate: form.data.paymentDate,
         bankReference: form.data.bankReference.trim() || null,
         voucherUrls: [...form.data.voucherUrls],
@@ -167,7 +183,12 @@
   }
 
   async function handleOpen(row: Reimbursement): Promise<void> {
-    await Promise.all([resetForm(), paymentNumber.loadRule()])
+    const [, , fundAccounts] = await Promise.all([
+      resetForm(),
+      paymentNumber.loadRule(),
+      fetchFundAccountOptions({ status: 'active', baseCurrencyOnly: true })
+    ])
+    fundAccountOptions.value = fundAccounts.data ?? []
     state.reimbursement = structuredClone(toRaw(row))
     await dialogRef.value?.handleOpen(row, {
       title: '出纳登记付款',

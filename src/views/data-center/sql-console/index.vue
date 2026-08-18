@@ -1,11 +1,5 @@
 <template>
   <div class="sql-console-page art-full-height business-workspace-page">
-    <BusinessWorkspaceHeader
-      eyebrow="DATABASE WORKBENCH"
-      title="SQL 工作台"
-      description="在受控权限范围内编写、执行与诊断 SQL，并通过 AI 辅助生成和修复语句。"
-      icon="ri:terminal-box-line"
-    />
     <section class="sql-console-container business-workspace-content art-card-xs">
       <el-splitter v-model="splitRatio" layout="vertical">
         <el-splitter-panel>
@@ -162,7 +156,6 @@
   import { computed, ref } from 'vue'
   import { useMemoize } from '@vueuse/core'
   import { ElMessage } from 'element-plus'
-  import BusinessWorkspaceHeader from '@/components/business/business-workspace-header/index.vue'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import ArtEmptyState from '@/components/core/layouts/art-empty-state/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'

@@ -429,6 +429,7 @@
     }
 
     &__header-main {
+      flex: 1;
       min-width: 0;
     }
 
@@ -444,7 +445,10 @@
     &__content {
       box-sizing: border-box;
       min-height: 1px;
-      padding: var(--art-dialog-content-padding, 20px 24px 24px);
+      padding: var(
+        --art-dialog-content-padding,
+        var(--art-space-4) var(--art-space-5) var(--art-space-5)
+      );
     }
 
     &__subtitle {
@@ -454,7 +458,7 @@
       font-size: 13px;
       line-height: 20px;
       color: var(--el-text-color-secondary);
-      white-space: nowrap;
+      overflow-wrap: anywhere;
     }
 
     &__scrollbar {
@@ -489,7 +493,12 @@
     &__footer-actions {
       display: flex;
       flex: none;
-      gap: 8px;
+      gap: var(--art-space-2);
+
+      > .el-button {
+        min-width: 72px;
+        margin-left: 0;
+      }
     }
   }
 

@@ -63,8 +63,19 @@
   --art-space-6: 32px;
   --art-page-gap: var(--art-space-3);
   --art-page-padding: var(--art-space-4);
+  --art-page-inline-padding: 20px;
   --art-section-padding: 18px;
   --art-sticky-offset: var(--art-space-3);
+  --art-page-vertical-inset: calc(var(--art-page-gap) + var(--art-page-padding));
+
+  /* Application shell */
+  --art-header-height: 60px;
+  --art-work-tab-height: 44px;
+  --art-layout-divider: color-mix(in srgb, var(--art-gray-900) 9%, transparent);
+  --art-layout-header-bg: color-mix(in srgb, var(--default-box-color) 94%, transparent);
+  --art-layout-toolbar-bg: color-mix(in srgb, var(--art-gray-100) 76%, var(--default-box-color));
+  --art-layout-backdrop-filter: saturate(140%) blur(16px);
+  --art-layout-shadow: 0 8px 28px rgb(29 36 67 / 4%);
 
   /* Typography */
   --art-font-size-page-title: 20px;
@@ -88,6 +99,8 @@
   --art-surface-bg: var(--default-box-color);
   --art-surface-border: var(--art-card-border);
   --art-surface-shadow: 0 1px 3px rgb(0 0 0 / 4%);
+  --art-card-shadow-xs: 0 1px 2px rgb(20 28 52 / 4%);
+  --art-card-shadow-sm: 0 1px 3px rgb(20 28 52 / 5%), 0 4px 12px rgb(20 28 52 / 3%);
 }
 
 /* ==================== Dark Mode Variables ==================== */
@@ -124,6 +137,24 @@
 
   /* Element Component Active Color */
   --art-el-active-color: #2e2e38;
+
+  /* Dark application shell */
+  --art-layout-shadow: 0 10px 30px rgb(0 0 0 / 20%);
+  --art-card-shadow-xs: 0 1px 3px rgb(0 0 0 / 22%);
+  --art-card-shadow-sm: 0 2px 5px rgb(0 0 0 / 22%), 0 8px 20px rgb(0 0 0 / 12%);
+}
+
+@media (width <= 800px) {
+  :root {
+    --art-page-inline-padding: 16px;
+  }
+}
+
+@media (width <= 640px) {
+  :root {
+    --art-page-inline-padding: 15px;
+    --art-section-padding: 16px;
+  }
 }
 
 /* ==================== Tailwind Theme Configuration ==================== */

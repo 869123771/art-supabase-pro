@@ -1,5 +1,8 @@
 <template>
-  <section class="business-workspace-header art-card-xs">
+  <section
+    class="business-workspace-header art-card-xs"
+    :class="`business-workspace-header--${density}`"
+  >
     <header class="business-workspace-header__hero">
       <div class="business-workspace-header__identity">
         <div class="business-workspace-header__brand" aria-hidden="true">
@@ -97,11 +100,13 @@
       eyebrow?: string
       tags?: BusinessWorkspaceTag[]
       metrics?: BusinessWorkspaceMetric[]
+      density?: 'default' | 'compact'
     }>(),
     {
       eyebrow: 'BUSINESS OPERATIONS',
       tags: () => [],
-      metrics: () => []
+      metrics: () => [],
+      density: 'default'
     }
   )
 
@@ -183,6 +188,83 @@
         line-height: 1.6;
         color: var(--el-text-color-secondary);
         overflow-wrap: anywhere;
+      }
+    }
+
+    &--compact {
+      .business-workspace-header__hero {
+        gap: 16px;
+        padding: 14px 18px 13px;
+      }
+
+      .business-workspace-header__brand {
+        flex-basis: 42px;
+        width: 42px;
+        height: 42px;
+        margin-right: 12px;
+        border-radius: var(--el-border-radius-base);
+
+        :deep(svg) {
+          width: 20px;
+          height: 20px;
+        }
+      }
+
+      .business-workspace-header__copy {
+        > span {
+          margin-bottom: 1px;
+          font-size: 9px;
+        }
+
+        h1 {
+          margin-bottom: 1px;
+          font-size: 20px;
+        }
+
+        p {
+          font-size: 12px;
+          line-height: 1.5;
+        }
+      }
+
+      .business-workspace-header__aside {
+        gap: 6px;
+      }
+
+      .business-workspace-header__tags,
+      .business-workspace-header__actions {
+        gap: 6px;
+      }
+
+      .business-workspace-header__metric {
+        gap: 10px;
+        padding: 10px 16px;
+      }
+
+      .business-workspace-header__metric-icon {
+        flex-basis: 32px;
+        width: 32px;
+        height: 32px;
+
+        :deep(svg) {
+          width: 16px;
+          height: 16px;
+        }
+      }
+
+      .business-workspace-header__metric-copy {
+        strong {
+          margin: 0;
+          font-size: 18px;
+        }
+
+        span {
+          font-size: 11px;
+        }
+
+        small {
+          font-size: 10px;
+        }
       }
     }
 
@@ -350,7 +432,7 @@
 
       &__aside {
         align-items: flex-start;
-        width: 100%;
+        width: calc(100% - 66px);
         margin-left: 66px;
       }
 
@@ -365,6 +447,43 @@
         .business-workspace-header__metric:not(:last-child) {
           border-right: 0;
           border-bottom: 1px solid var(--el-border-color-lighter);
+        }
+      }
+
+      &--compact {
+        .business-workspace-header__hero {
+          gap: 10px;
+          padding: 14px;
+        }
+
+        .business-workspace-header__aside {
+          width: calc(100% - 54px);
+          margin-left: 54px;
+        }
+
+        .business-workspace-header__metrics {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .business-workspace-header__metric {
+          gap: 8px;
+          padding: 9px 12px;
+
+          &:nth-child(odd) {
+            border-right: 1px solid var(--el-border-color-lighter);
+          }
+
+          &:not(:nth-last-child(-n + 2)) {
+            border-bottom: 1px solid var(--el-border-color-lighter);
+          }
+
+          &:nth-last-child(-n + 2) {
+            border-bottom: 0;
+          }
+        }
+
+        .business-workspace-header__metric-copy small {
+          display: none;
         }
       }
     }

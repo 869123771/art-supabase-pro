@@ -1,20 +1,24 @@
 <!-- 水印组件 -->
 <template>
-  <div
-    v-if="resolvedVisible"
-    class="fixed left-0 top-0 h-screen w-screen pointer-events-none"
-    :style="{ zIndex: zIndex }"
-  >
-    <ElWatermark
-      :content="watermarkContent"
-      :font="{ fontSize: fontSize, color: fontColor }"
-      :rotate="rotate"
-      :gap="watermarkGap"
-      :offset="watermarkOffset"
+  <Teleport to="#app-content">
+    <div
+      v-if="resolvedVisible"
+      class="art-watermark-layer"
+      aria-hidden="true"
+      :style="{ zIndex: zIndex }"
     >
-      <div style="height: 100vh"></div>
-    </ElWatermark>
-  </div>
+      <ElWatermark
+        class="h-full w-full"
+        :content="watermarkContent"
+        :font="{ fontSize: fontSize, color: fontColor }"
+        :rotate="rotate"
+        :gap="watermarkGap"
+        :offset="watermarkOffset"
+      >
+        <div class="h-full"></div>
+      </ElWatermark>
+    </div>
+  </Teleport>
 </template>
 
 <script setup lang="ts">
@@ -56,13 +60,13 @@
   const props = withDefaults(defineProps<WatermarkProps>(), {
     content: '',
     visible: false,
-    fontSize: 16,
-    fontColor: 'rgba(100, 116, 139, 0.08)',
+    fontSize: 14,
+    fontColor: 'rgba(71, 85, 105, 0.05)',
     rotate: -22,
-    gapX: 220,
-    gapY: 190,
-    offsetX: 110,
-    offsetY: 95,
+    gapX: 340,
+    gapY: 260,
+    offsetX: 170,
+    offsetY: 130,
     zIndex: 3100
   })
 
@@ -87,3 +91,12 @@
     void loadWebsiteConfig()
   })
 </script>
+
+<style scoped>
+  .art-watermark-layer {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
+</style>

@@ -1,5 +1,6 @@
-import { useSupabase } from '@/hooks'
 import { normalizeFunctionError } from './ai-assistant'
+import { useSupabase } from '@/hooks'
+import { invokeSupabaseFunctionWithSessionRecovery } from '@/utils/supabase/functions'
 import type {
   AiPlannerCapabilities,
   AiPlannerState,
@@ -9,11 +10,13 @@ import type {
   RecordAiSuggestionEventResponse
 } from '@/types/ai-project-planner'
 
-const { supabase, keysToCamelDeep } = useSupabase()
+const { keysToCamelDeep } = useSupabase()
 const FUNCTION_NAME = 'ai-project-planner'
 
 async function invokePlanner<T>(body: Record<string, unknown>): Promise<T> {
-  const { data, error } = await supabase.functions.invoke<T>(FUNCTION_NAME, { body })
+  const { data, error } = await invokeSupabaseFunctionWithSessionRecovery<T>(FUNCTION_NAME, {
+    body
+  })
   if (error) throw await normalizeFunctionError(error)
   if (!data) throw new Error('AI 项目规划台返回了无效结果')
   return keysToCamelDeep<T>(data)

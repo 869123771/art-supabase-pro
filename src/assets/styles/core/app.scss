@@ -55,9 +55,17 @@
     color-mix(in srgb, var(--art-action-color, var(--theme-color)) 20%, transparent);
   --art-themed-action-active-shadow: inset 0 0 0 1px
     color-mix(in srgb, var(--art-action-color, var(--theme-color)) 30%, transparent);
+  --art-themed-action-active-border: color-mix(
+    in srgb,
+    var(--art-action-color, var(--theme-color)) 24%,
+    var(--art-card-border)
+  );
   --art-themed-action-focus-shadow:
     inset 0 0 0 1px color-mix(in srgb, var(--art-action-color, var(--theme-color)) 28%, transparent),
     0 0 0 3px color-mix(in srgb, var(--art-action-color, var(--theme-color)) 14%, transparent);
+  --art-layout-surface-shadow: none;
+  --art-modal-surface-border: var(--art-card-border);
+  --art-modal-surface-shadow: none;
 }
 
 [data-box-mode='shadow-mode'] {
@@ -65,9 +73,13 @@
     color-mix(in srgb, var(--art-action-color, var(--theme-color)) 18%, transparent);
   --art-themed-action-active-shadow: 0 2px 8px
     color-mix(in srgb, var(--art-action-color, var(--theme-color)) 22%, transparent);
+  --art-themed-action-active-border: transparent;
   --art-themed-action-focus-shadow:
     0 0 0 3px color-mix(in srgb, var(--art-action-color, var(--theme-color)) 14%, transparent),
     0 6px 16px color-mix(in srgb, var(--art-action-color, var(--theme-color)) 18%, transparent);
+  --art-layout-surface-shadow: var(--art-layout-shadow);
+  --art-modal-surface-border: transparent;
+  --art-modal-surface-shadow: var(--art-modal-shadow);
 }
 
 // 语言切换选中样式
@@ -147,7 +159,7 @@
 [data-box-mode='shadow-mode'] {
   .page-content,
   .art-table-card {
-    box-shadow: 0px 0px 4px 0px rgba(0, 0, 0, 0.04) !important;
+    box-shadow: var(--art-card-shadow-xs) !important;
     border: 1px solid var(--art-gray-200) !important;
   }
 
@@ -156,27 +168,15 @@
   }
 
   .art-card {
-    @include art-card-base(
-      var(--art-gray-200),
-      (0 1px 3px 0 rgba(0, 0, 0, 0.03), 0 1px 2px -1px rgba(0, 0, 0, 0.08)),
-      4px
-    );
+    @include art-card-base(var(--art-gray-200), var(--art-card-shadow-sm), 4px);
   }
 
   .art-card-sm {
-    @include art-card-base(
-      var(--art-gray-200),
-      (0 1px 3px 0 rgba(0, 0, 0, 0.03), 0 1px 2px -1px rgba(0, 0, 0, 0.08)),
-      2px
-    );
+    @include art-card-base(var(--art-gray-200), var(--art-card-shadow-sm), 2px);
   }
 
   .art-card-xs {
-    @include art-card-base(
-      var(--art-gray-200),
-      (0 1px 2px 0 rgba(0, 0, 0, 0.03), 0 1px 1px -1px rgba(0, 0, 0, 0.08)),
-      -4px
-    );
+    @include art-card-base(var(--art-gray-200), var(--art-card-shadow-xs), -4px);
   }
 }
 
@@ -213,7 +213,9 @@
 
 // 容器全高
 .art-full-height {
+  box-sizing: border-box;
   height: var(--art-full-height);
+  min-height: 0;
   display: flex;
   flex-direction: column;
 

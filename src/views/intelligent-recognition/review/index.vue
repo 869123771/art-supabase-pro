@@ -1,5 +1,5 @@
 <template>
-  <div class="art-full-height recognition-review">
+  <div class="art-full-height business-workspace-page recognition-review">
     <RecognitionPageHero
       title="待复核"
       subtitle="队列已按风险优先排序。打开任务查看识别依据，确认后可携带当前结果进入原业务表单继续处理。"

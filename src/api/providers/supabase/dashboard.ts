@@ -1,10 +1,11 @@
-import dayjs from 'dayjs'
+import dayjs, { type Dayjs } from 'dayjs'
 import { useSupabase } from '@/hooks'
 import type { SupabaseQueryLike } from '@/api/providers/supabase/query'
 
 const { supabase, responseHandle } = useSupabase()
 
 export type DashboardReminderKey = 'insurance' | 'inspection' | 'maintenance' | 'part' | 'vehicle'
+export type DashboardTrendPeriod = 'today' | 'week' | 'month' | 'year'
 
 export interface DashboardOrder {
   id?: string
@@ -67,6 +68,14 @@ interface DashboardOrderRow {
   plannedArrivalTime?: string | null
   totalFee?: number | string | null
   createTime?: string | null
+}
+
+interface DashboardTrendRange {
+  start: Dayjs
+  pointCount: number
+  unit: 'hour' | 'day' | 'month'
+  keyFormat: string
+  labelFormat: string
 }
 
 const orderSelect =
@@ -163,17 +172,64 @@ async function fetchReminderCounts(): Promise<DashboardReminder[]> {
   )
 }
 
-function createTrend(rows: DashboardOrderRow[], days: number): DashboardTrendPoint[] {
-  const points = Array.from({ length: days }, (_, index) => {
-    const date = dayjs()
-      .subtract(days - index - 1, 'day')
-      .format('YYYY-MM-DD')
-    return { date, label: dayjs(date).format('MM/DD'), orderCount: 0, freightAmount: 0 }
+function getMondayStart(reference: Dayjs): Dayjs {
+  const daysFromMonday = (reference.day() + 6) % 7
+  return reference.subtract(daysFromMonday, 'day').startOf('day')
+}
+
+function getTrendRange(period: DashboardTrendPeriod, reference = dayjs()): DashboardTrendRange {
+  if (period === 'today') {
+    return {
+      start: reference.startOf('day'),
+      pointCount: 24,
+      unit: 'hour',
+      keyFormat: 'YYYY-MM-DD HH',
+      labelFormat: 'HH:mm'
+    }
+  }
+  if (period === 'month') {
+    return {
+      start: reference.startOf('month'),
+      pointCount: reference.daysInMonth(),
+      unit: 'day',
+      keyFormat: 'YYYY-MM-DD',
+      labelFormat: 'MM/DD'
+    }
+  }
+  if (period === 'year') {
+    return {
+      start: reference.startOf('year'),
+      pointCount: 12,
+      unit: 'month',
+      keyFormat: 'YYYY-MM',
+      labelFormat: 'M月'
+    }
+  }
+  return {
+    start: getMondayStart(reference),
+    pointCount: 7,
+    unit: 'day',
+    keyFormat: 'YYYY-MM-DD',
+    labelFormat: 'MM/DD'
+  }
+}
+
+function createTrend(rows: DashboardOrderRow[], range: DashboardTrendRange): DashboardTrendPoint[] {
+  const pointMap = new Map<string, DashboardTrendPoint>()
+  const points = Array.from({ length: range.pointCount }, (_, index) => {
+    const pointDate = range.start.add(index, range.unit)
+    const point = {
+      date: pointDate.format(range.keyFormat),
+      label: pointDate.format(range.labelFormat),
+      orderCount: 0,
+      freightAmount: 0
+    }
+    pointMap.set(point.date, point)
+    return point
   })
-  const pointMap = new Map(points.map((item) => [item.date, item]))
 
   rows.forEach((row) => {
-    const date = dayjs(row.createTime).format('YYYY-MM-DD')
+    const date = dayjs(row.createTime).format(range.keyFormat)
     const point = pointMap.get(date)
     if (!point) return
     point.orderCount += 1
@@ -184,13 +240,12 @@ function createTrend(rows: DashboardOrderRow[], days: number): DashboardTrendPoi
   return points
 }
 
-export async function fetchDashboardData(days = 14): Promise<DashboardData> {
-  const safeDays = Math.min(Math.max(days, 7), 30)
+export async function fetchDashboardData(
+  period: DashboardTrendPeriod = 'month'
+): Promise<DashboardData> {
+  const trendRange = getTrendRange(period)
   const todayStart = dayjs().startOf('day').toISOString()
-  const trendStart = dayjs()
-    .subtract(safeDays - 1, 'day')
-    .startOf('day')
-    .toISOString()
+  const trendStart = trendRange.start.toISOString()
 
   const [
     todayOrders,
@@ -243,7 +298,7 @@ export async function fetchDashboardData(days = 14): Promise<DashboardData> {
           .select('order_no, order_status, total_fee, create_time')
           .gte('create_time', trendStart)
           .order('create_time', { ascending: true })
-          .limit(2000)
+          .limit(5000)
       )
     ),
     fetchRows<DashboardOrderRow>(
@@ -287,7 +342,7 @@ export async function fetchDashboardData(days = 14): Promise<DashboardData> {
       .length,
     pendingAuditVehicleCount: vehicleRows.filter((item) => item.auditStatus === 'pending').length,
     completedTodayCount,
-    trend: createTrend(trendRows, safeDays),
+    trend: createTrend(trendRows, trendRange),
     statusCounts,
     transitOrders: transitRows.map(toDashboardOrder),
     recentOrders: recentRows.map(toDashboardOrder),

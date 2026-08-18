@@ -2,8 +2,12 @@
 <template>
   <div
     v-if="showWorkTab"
-    class="art-work-tab box-border flex-b w-full px-5 mb-3 select-none max-sm:px-[15px]"
-    :class="[tabStyle === 'tab-card' ? 'py-1' : '', tabStyle === 'tab-google' ? 'pt-1 pb-0' : '']"
+    class="art-work-tab box-border flex-b w-full select-none"
+    :class="{
+      'art-work-tab--default': tabStyle === 'tab-default',
+      'art-work-tab--card': tabStyle === 'tab-card',
+      'art-work-tab--google': tabStyle === 'tab-google'
+    }"
   >
     <button
       v-show="hasOverflow"
@@ -32,14 +36,10 @@
           class="art-card-xs inline-flex flex-cc h-8 mr-1.5 text-xs c-p hover:text-theme group"
           :class="[
             item.path === activeTab ? 'activ-tab !text-theme' : 'text-g-600 dark:text-g-800',
-            tabStyle === 'tab-google' ? 'google-tab relative !h-8 !leading-8 !border-none' : ''
+            tabStyle === 'tab-google' ? 'google-tab relative !h-8 !leading-8' : ''
           ]"
           :style="{
-            padding: item.fixedTab ? '0 10px' : '0 8px 0 12px',
-            borderRadius:
-              tabStyle === 'tab-google'
-                ? 'calc(var(--custom-radius) / 2.5 + 4px) !important'
-                : 'calc(var(--custom-radius) / 2.5 + 2px) !important'
+            padding: item.fixedTab ? '0 10px' : '0 8px 0 12px'
           }"
           v-for="(item, index) in list"
           :key="item.path"
@@ -60,7 +60,9 @@
             class="text-base mr-1 group-hover:text-theme"
             :class="item.path === activeTab ? 'text-theme' : 'text-g-600'"
           />
-          {{ item.customTitle || formatMenuTitle(item.title) }}
+          <span class="work-tab-title" :title="item.customTitle || formatMenuTitle(item.title)">
+            {{ item.customTitle || formatMenuTitle(item.title) }}
+          </span>
           <button
             v-if="list.length > 1 && !item.fixedTab"
             type="button"
@@ -558,6 +560,18 @@
 <style scoped lang="scss">
   .art-work-tab {
     gap: 6px;
+    min-height: var(--art-work-tab-height);
+    padding: 6px var(--art-page-inline-padding);
+    margin: 0;
+
+    &--card {
+      padding-block: var(--art-space-1);
+    }
+
+    &--google {
+      padding-top: var(--art-space-1);
+      padding-bottom: 0;
+    }
 
     &__scroll-button {
       display: inline-grid;
@@ -594,6 +608,16 @@
     }
 
     li[role='tab'] {
+      min-width: 0;
+      max-width: 156px;
+      border-radius: calc(var(--custom-radius) / 2.5 + 2px) !important;
+      transition:
+        color 0.18s ease,
+        background-color 0.18s ease,
+        border-color 0.18s ease,
+        box-shadow 0.18s ease,
+        opacity 0.18s ease;
+
       &:focus-visible {
         outline: none;
         box-shadow: var(--art-themed-action-focus-shadow) !important;
@@ -617,28 +641,103 @@
       }
     }
 
-    .activ-tab:not(.google-tab) {
-      font-weight: 620;
-      background: color-mix(in srgb, var(--theme-color) 9%, var(--default-box-color));
-      border-color: color-mix(in srgb, var(--theme-color) 16%, var(--art-card-border)) !important;
-      box-shadow:
-        inset 0 0 0 1px color-mix(in srgb, var(--theme-color) 5%, transparent),
-        0 3px 10px color-mix(in srgb, var(--theme-color) 7%, transparent) !important;
+    .work-tab-title {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
-    li:not(.activ-tab, .google-tab):hover {
-      color: var(--theme-color) !important;
-      background: color-mix(in srgb, var(--theme-color) 5%, var(--default-box-color));
-      border-color: color-mix(in srgb, var(--theme-color) 12%, var(--art-card-border)) !important;
+    &--default {
+      li[role='tab'].art-card-xs {
+        color: var(--art-gray-600) !important;
+        background: transparent !important;
+        border-color: transparent !important;
+        box-shadow: none !important;
+
+        &:hover:not(.activ-tab) {
+          color: var(--theme-color) !important;
+          background: color-mix(
+            in srgb,
+            var(--theme-color) 5%,
+            var(--default-box-color)
+          ) !important;
+          border-color: var(--art-themed-action-active-border) !important;
+          box-shadow: var(--art-themed-action-hover-shadow) !important;
+        }
+
+        &.activ-tab {
+          position: relative;
+          font-weight: 600;
+          color: var(--theme-color) !important;
+
+          &::after {
+            position: absolute;
+            right: 10px;
+            bottom: 0;
+            left: 10px;
+            height: 2px;
+            content: '';
+            background: var(--theme-color);
+            border-radius: 999px 999px 0 0;
+            box-shadow: 0 -2px 8px color-mix(in srgb, var(--theme-color) 24%, transparent);
+          }
+        }
+      }
+    }
+
+    &--card {
+      li[role='tab'].art-card-xs {
+        color: var(--art-gray-700) !important;
+        background: var(--default-box-color) !important;
+        opacity: 1;
+
+        &:hover:not(.activ-tab) {
+          color: var(--theme-color) !important;
+          background: color-mix(
+            in srgb,
+            var(--theme-color) 5%,
+            var(--default-box-color)
+          ) !important;
+          border-color: var(--art-themed-action-active-border) !important;
+          box-shadow: var(--art-themed-action-hover-shadow) !important;
+        }
+
+        &.activ-tab {
+          font-weight: 600;
+          color: var(--theme-color) !important;
+          background: color-mix(
+            in srgb,
+            var(--theme-color) 10%,
+            var(--default-box-color)
+          ) !important;
+          border-color: var(--art-themed-action-active-border) !important;
+          box-shadow: var(--art-themed-action-active-shadow) !important;
+        }
+      }
+    }
+
+    &--google {
+      --work-tab-google-bg: color-mix(in srgb, var(--theme-color) 13%, var(--default-box-color));
+      --work-tab-google-edge: var(--art-themed-action-active-border);
+      --work-tab-google-filter: none;
+
+      li[role='tab'] {
+        border-radius: calc(var(--custom-radius) / 2.5 + 4px) !important;
+      }
     }
   }
 
-  .google-tab.activ-tab {
+  .google-tab.activ-tab.art-card-xs {
+    z-index: 1;
+    font-weight: 600;
     color: var(--theme-color) !important;
-    background-color: var(--el-color-primary-light-9) !important;
-    border-bottom: 0 !important;
+    background-color: var(--work-tab-google-bg) !important;
+    border-color: var(--work-tab-google-edge) !important;
     border-bottom-right-radius: 0 !important;
     border-bottom-left-radius: 0 !important;
+    box-shadow: var(--art-themed-action-active-shadow) !important;
+    filter: var(--work-tab-google-filter);
   }
 
   .google-tab.activ-tab::before,
@@ -649,7 +748,9 @@
     height: 20px;
     content: '';
     border-radius: 50%;
-    box-shadow: 0 0 0 30px var(--el-color-primary-light-9);
+    box-shadow:
+      0 0 0 30px var(--work-tab-google-bg),
+      0 1px 0 30px var(--work-tab-google-edge);
   }
 
   .google-tab.activ-tab::before {
@@ -662,14 +763,14 @@
     clip-path: inset(50% 50% 0 -10px);
   }
 
-  .dark .google-tab.activ-tab {
-    color: var(--art-gray-800) !important;
-    background-color: var(--art-hover-color) !important;
+  :global([data-box-mode='shadow-mode']) .art-work-tab--google {
+    --work-tab-google-filter: drop-shadow(
+      0 3px 5px color-mix(in srgb, var(--theme-color) 18%, transparent)
+    );
   }
 
-  .dark .google-tab.activ-tab::before,
-  .dark .google-tab.activ-tab::after {
-    box-shadow: 0 0 0 30px var(--art-hover-color);
+  :global(.dark) .art-work-tab--google {
+    --work-tab-google-bg: color-mix(in srgb, var(--theme-color) 14%, var(--art-hover-color));
   }
 
   .google-tab:not(.activ-tab):hover {
@@ -678,6 +779,16 @@
     background-color: var(--art-gray-200) !important;
     border-bottom: 1px solid var(--default-box-color) !important;
     border-radius: calc(var(--custom-radius) / 2.5 + 4px) !important;
+    opacity: 1;
+  }
+
+  .google-tab:not(.activ-tab) {
+    color: var(--art-gray-600) !important;
+    background: transparent !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
+    opacity: 1;
+    filter: none;
   }
 
   .dark .google-tab:not(.activ-tab):hover {
@@ -719,19 +830,5 @@
   .google-tab i:hover {
     color: var(--art-gray-700);
     background: var(--art-gray-300);
-  }
-
-  @media only screen and (width <= 768px) {
-    .box-border.flex.justify-between {
-      padding-right: 0.625rem;
-      padding-left: 0.625rem;
-    }
-  }
-
-  @media only screen and (width <= 640px) {
-    .box-border.flex.justify-between {
-      padding-right: 0.9375rem;
-      padding-left: 0.9375rem;
-    }
   }
 </style>

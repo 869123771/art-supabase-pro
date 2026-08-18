@@ -2,6 +2,7 @@ import { useSupabase } from '@/hooks'
 import { WRITE_PERMISSION_DENIED_MESSAGE } from '@/hooks/core/useSupabase'
 import type { QueryResult } from '@/types/api/response'
 import { applyFilters, FilterSpec } from '@/utils/supabase'
+import { invokeSupabaseFunctionWithSessionRecovery } from '@/utils/supabase/functions'
 
 const { supabase, keysToSnakeDeep, responseHandle } = useSupabase()
 
@@ -298,7 +299,7 @@ export async function deleteResource(params: Api.DataCenter.Resources.ResourceLi
 export async function fetchDatabaseMetadata(): Promise<Api.DataCenter.SqlConsole.DatabaseMetadata> {
   try {
     const [{ data, error }, foreignKeys] = await Promise.all([
-      supabase.functions.invoke('execute-sql-with-columns', {
+      invokeSupabaseFunctionWithSessionRecovery('execute-sql-with-columns', {
         body: { action: 'metadata' }
       }),
       fetchForeignKeysMetadata()
@@ -425,7 +426,7 @@ export async function executeSql(
   params: Api.DataCenter.SqlConsole.SqlExecuteRequest
 ): Promise<DataCenterQueryResult<Api.DataCenter.SqlConsole.SqlExecuteResponse>> {
   const invokeResp = () =>
-    supabase.functions.invoke<Api.DataCenter.SqlConsole.SqlExecuteResponse>(
+    invokeSupabaseFunctionWithSessionRecovery<Api.DataCenter.SqlConsole.SqlExecuteResponse>(
       'execute-sql-with-columns',
       {
         body: params
@@ -443,9 +444,10 @@ export async function generateSqlByAi(
   params: Api.DataCenter.SqlConsole.SqlAiGenerateRequest
 ): Promise<QueryResult<Api.DataCenter.SqlConsole.SqlAiGenerateResponse>> {
   const invokeResp = () =>
-    supabase.functions.invoke<Api.DataCenter.SqlConsole.SqlAiGenerateResponse>('ai-sql-assistant', {
-      body: params
-    })
+    invokeSupabaseFunctionWithSessionRecovery<Api.DataCenter.SqlConsole.SqlAiGenerateResponse>(
+      'ai-sql-assistant',
+      { body: params }
+    )
 
   return await responseHandle(invokeResp, {
     convertToCamelShadow: true,

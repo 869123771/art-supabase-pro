@@ -5,11 +5,12 @@
       title="客户资料"
       description="统一维护客户主体、行业等级、结算联系人与业务状态，为开单和对账提供可信主数据。"
       icon="ri:user-star-line"
-      :tags="[
-        { label: '客户主数据', type: 'primary' },
-        { label: '业务可用性', type: 'success' }
-      ]"
-    />
+      density="compact"
+    >
+      <template #actions>
+        <BusinessTableWorkspaceActions :table="tableQueryRef" />
+      </template>
+    </BusinessWorkspaceHeader>
 
     <ArtTableQuery
       ref="tableQueryRef"
@@ -18,6 +19,8 @@
       :api-fn="fetchTableData"
       :columns-factory="columnsFactory"
       :header-actions="headerActions"
+      :selection-actions="selectionActions"
+      header-actions-placement="workspace"
       :search-bar-props="{ span: 6, labelWidth: 86, showExpand: true }"
       :table-props="{
         emptyText: '暂无客户资料',
@@ -46,6 +49,7 @@
   } from '@/components/core/forms/art-button-more/index.vue'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import { ColumnOption, DialogType } from '@/types'
+  import { mapExcelRowsToRecords } from '@/utils/file'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatWithDayjs } from '@/utils/time'
   import { useUserStore } from '@/store/modules/user'
@@ -68,6 +72,7 @@
   } from '@/api/tms'
   import CustomerDialog from './modules/customer-dialog.vue'
   import BusinessWorkspaceHeader from '@/components/business/business-workspace-header/index.vue'
+  import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
 
   defineOptions({ name: 'TmsCustomer' })
 
@@ -95,6 +100,11 @@
     count: number
     dependencyCode: CustomerDeleteDependencyCode
     records: CustomerDeleteDependencyDetail[]
+  }
+
+  interface CustomerTableState {
+    importing: boolean
+    searchQuery: SearchParams
   }
 
   const router = useRouter()
@@ -165,7 +175,8 @@
     }
   }
 
-  const tableState = reactive<{ searchQuery: SearchParams }>({
+  const tableState = reactive<CustomerTableState>({
+    importing: false,
     searchQuery: {
       customerLevel: '',
       industry: '',
@@ -226,7 +237,8 @@
         valueFormat: 'YYYY-MM-DD',
         startPlaceholder: '开始日期',
         endPlaceholder: '结束日期',
-        rangeSeparator: '至'
+        rangeSeparator: '至',
+        class: '!w-full'
       }
     },
     {
@@ -322,19 +334,27 @@
   ]
 
   const headerActions = computed<ArtTableQueryHeaderAction[]>(() => [
-    { type: 'add', onClick: () => openDialog() },
     {
-      type: 'import',
-      importColumns: customerExcelColumns,
-      importApi: async (rows) => {
-        await importCustomers(rows as Customer[])
-      },
-      onImportError: () => {
-        ElMessage.error('导入文件解析失败')
-      }
+      type: 'add',
+      label: '新增客户',
+      buttonProps: { type: 'primary', plain: false },
+      onClick: () => openDialog()
     },
     {
+      type: 'import',
+      label: '导入',
+      buttonProps: { plain: true, loading: tableState.importing },
+      onImportSuccess: handleCustomerImportSuccess,
+      onImportError: () => handleCustomerImportError()
+    }
+  ])
+
+  const selectionActions = computed<ArtTableQueryHeaderAction[]>(() => [
+    {
       type: 'export',
+      label: '导出选中',
+      buttonProps: { type: 'primary', plain: true },
+      selectionRequired: true,
       exportFilename: 'TMS客户资料',
       exportSheetName: '客户管理',
       exportColumns: customerExcelColumns,
@@ -347,6 +367,7 @@
     },
     {
       type: 'delete',
+      label: '批量删除',
       content: ({ selectedCount }: { selectedCount: number }) =>
         `确定删除选中的 ${selectedCount} 个客户吗？客户地址会一并删除，历史订单会解除客户关联；存在财务或价格资料时将无法删除。`,
       onClick: async ({ selectedRows }) => {
@@ -355,6 +376,30 @@
       }
     }
   ])
+
+  const handleCustomerImportSuccess = async (
+    rows: Array<Record<string, unknown>>
+  ): Promise<void> => {
+    const customers = mapExcelRowsToRecords(rows, customerExcelColumns) as Customer[]
+    if (!customers.length) {
+      ElMessage.warning('未读取到可导入的客户资料，请检查客户名称等必填列')
+      return
+    }
+
+    tableState.importing = true
+    try {
+      await importCustomers(customers)
+      await tableQueryRef.value?.refreshCreate()
+    } catch (error) {
+      ElMessage.error(getFriendlySupabaseErrorMessage(error, '客户导入失败，请检查数据后重试'))
+    } finally {
+      tableState.importing = false
+    }
+  }
+
+  const handleCustomerImportError = (): void => {
+    ElMessage.error('导入文件解析失败，请确认文件为有效的 Excel 格式')
+  }
 
   const fetchTableData = (params: TableParams) => {
     const { from, to } = pageInfoHandler({ current: params.current, size: params.size })

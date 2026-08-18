@@ -60,9 +60,13 @@
                 :icon="data.nodeType === 'directory' ? 'ri:folder-3-line' : 'ri:book-2-line'"
               />
               <span class="dict-type-tree__name">{{ data.name }}</span>
-              <ElTag v-if="data.nodeType === 'dictionary'" size="small" type="info">
+              <code
+                v-if="data.nodeType === 'dictionary'"
+                class="dict-type-tree__code"
+                :title="data.code"
+              >
                 {{ data.code }}
-              </ElTag>
+              </code>
             </div>
 
             <div class="dict-type-tree__actions" @click.stop>
@@ -881,23 +885,37 @@
 
     &__label {
       display: flex;
+      flex: 1 1 auto;
       gap: 6px;
       align-items: center;
       min-width: 0;
+      overflow: hidden;
 
       .dict-type-tree__name {
+        flex: 0 1 auto;
         min-width: 0;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
       }
+    }
 
-      .el-tag {
-        flex: none;
-        max-width: 92px;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
+    &__code {
+      flex: 0 1 auto;
+      min-width: 0;
+      max-width: 112px;
+      padding: 2px 6px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 10px;
+      font-style: normal;
+      line-height: 18px;
+      color: var(--el-text-color-secondary);
+      white-space: nowrap;
+      background: var(--el-fill-color-light);
+      border: 1px solid var(--el-border-color-lighter);
+      border-radius: var(--el-border-radius-small);
     }
 
     &__node-icon {

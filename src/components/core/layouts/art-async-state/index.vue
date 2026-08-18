@@ -132,6 +132,25 @@
       align-items: center;
       justify-content: center;
       min-height: inherit;
+      padding: var(--art-space-5) var(--art-section-padding);
+
+      :deep(.el-result__icon svg) {
+        width: 64px;
+        height: 64px;
+      }
+
+      :deep(.el-result__title p) {
+        font-size: var(--art-font-size-section-title);
+        font-weight: 600;
+        line-height: var(--art-line-height-body);
+      }
+
+      :deep(.el-result__subtitle p) {
+        max-width: 520px;
+        font-size: var(--art-font-size-body);
+        line-height: var(--art-line-height-body);
+        color: var(--art-gray-600);
+      }
     }
 
     &__empty {

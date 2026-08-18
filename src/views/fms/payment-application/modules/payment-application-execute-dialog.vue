@@ -38,7 +38,7 @@
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import ArtUploadImage from '@/components/core/forms/art-upload-image/index.vue'
-  import { executeCarrierPaymentApplication } from '@/api/fms'
+  import { executeCarrierPaymentApplication, fetchFundAccountOptions } from '@/api/fms'
   import { formatCurrencyValue } from '@/utils/ui'
   import { useDocumentNumberRule } from '@/hooks/core/useDocumentNumberRule'
 
@@ -48,6 +48,7 @@
 
   interface ExecuteForm {
     transactionNo: string
+    fundAccountId: string
     transactionDate: string
     bankReference: string
     voucherUrls: string[]
@@ -69,9 +70,11 @@
   const formRef = ref<FormExpose>()
   const application = shallowRef<Application>()
   const transactionNumber = useDocumentNumberRule('tms.cash_transaction')
+  const fundAccountOptions = ref<Api.Fms.FundAccountOption[]>([])
 
   const createInitialForm = (): ExecuteForm => ({
     transactionNo: '',
+    fundAccountId: '',
     transactionDate: dayjs().format('YYYY-MM-DD'),
     bankReference: '',
     voucherUrls: []
@@ -90,6 +93,7 @@
         }
       ],
       transactionDate: [{ required: true, message: '请选择实际付款日期', trigger: 'change' }],
+      fundAccountId: [{ required: true, message: '请选择实际付款账户', trigger: 'change' }],
       bankReference: [
         {
           validator: (_rule, value, callback) => {
@@ -122,6 +126,18 @@
         type: 'date',
         span: 24,
         props: { valueFormat: 'YYYY-MM-DD', class: '!w-full' }
+      },
+      {
+        label: '付款账户',
+        key: 'fundAccountId',
+        type: 'select',
+        span: 24,
+        props: {
+          options: fundAccountOptions.value,
+          filterable: true,
+          placeholder: '选择实际扣款资金账户'
+        },
+        description: '付款登记后自动生成资金流出日记账'
       },
       {
         label: '银行流水号',
@@ -158,6 +174,7 @@
       const { data } = await executeCarrierPaymentApplication({
         transactionNo: form.data.transactionNo.trim() || null,
         applicationId: application.value.id,
+        fundAccountId: form.data.fundAccountId,
         transactionDate: form.data.transactionDate,
         bankReference: form.data.bankReference.trim() || null,
         voucherUrls: [...form.data.voucherUrls]
@@ -177,7 +194,12 @@
   }
 
   async function handleOpen(row: Application): Promise<void> {
-    await Promise.all([resetForm(), transactionNumber.loadRule()])
+    const [, , fundAccounts] = await Promise.all([
+      resetForm(),
+      transactionNumber.loadRule(),
+      fetchFundAccountOptions({ status: 'active', baseCurrencyOnly: true })
+    ])
+    fundAccountOptions.value = fundAccounts.data ?? []
     application.value = row
     await dialogRef.value?.handleOpen(row, {
       title: `登记付款 · ${row.applicationNo}`,

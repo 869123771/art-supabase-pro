@@ -3,7 +3,7 @@
   height: 100vh;
   user-select: none;
   scrollbar-width: none;
-  border-right: 1px solid var(--art-card-border);
+  border-right: 1px solid var(--art-layout-divider);
 
   &.no-border {
     border-right: none !important;
@@ -16,16 +16,20 @@
 
   :deep(.el-scrollbar__thumb) {
     right: -2px;
-    background-color: #ccc;
+    background-color: var(--art-gray-400);
     border-radius: 2px;
+
+    &:hover {
+      background-color: var(--art-gray-500);
+    }
   }
 
   .dual-menu-left {
     position: relative;
     width: 80px;
     height: 100%;
-    border-right: 1px solid var(--art-card-border) !important;
-    transition: width 0.25s;
+    border-right: 1px solid var(--art-layout-divider) !important;
+    transition: width var(--art-motion-duration-base) ease;
 
     .dual-menu-home {
       display: flex;
@@ -108,7 +112,7 @@
               color-mix(in srgb, var(--theme-color) 6%, transparent)
             );
             border-color: color-mix(in srgb, var(--theme-color) 12%, transparent);
-            box-shadow: 0 7px 16px color-mix(in srgb, var(--theme-color) 9%, transparent);
+            box-shadow: var(--art-themed-action-active-shadow);
 
             .art-svg-icon,
             span {
@@ -228,6 +232,14 @@
 
   .menu-model {
     display: none;
+  }
+
+  &--header-left {
+    height: 100%;
+
+    .menu-left {
+      height: 100%;
+    }
   }
 }
 

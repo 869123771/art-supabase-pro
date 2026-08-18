@@ -4,6 +4,7 @@
       action-hint="已按关联菜单过滤编号场景；请调整或迁移规则后返回。"
     />
     <BusinessWorkspaceHeader
+      density="compact"
       eyebrow="NUMBER GOVERNANCE"
       title="编号规则"
       description="统一维护运输单据、财务单据、基础资料和车辆业务的编码方式。系统取号由数据库事务完成，支持租户隔离、周期重置与并发防重。"
@@ -544,6 +545,7 @@
   .number-rule-page {
     gap: 12px;
     min-width: 0;
+    overflow: hidden;
 
     &__hero {
       display: flex;
@@ -655,19 +657,19 @@
     &__workspace {
       display: grid;
       flex: 1 1 auto;
+      grid-template-rows: minmax(0, 1fr);
       grid-template-columns: 264px minmax(0, 1fr);
       gap: 12px;
       min-width: 0;
       min-height: 0;
+      overflow: hidden;
     }
 
     &__menu-panel,
     &__table-workspace {
       min-width: 0;
+      height: 100%;
       min-height: 0;
-    }
-
-    &__menu-panel {
       overflow: hidden;
     }
 
@@ -731,7 +733,9 @@
 
     :deep(.art-table-query) {
       flex: 1 1 auto;
-      min-height: 460px;
+      height: 100%;
+      min-height: 0;
+      overflow: hidden;
     }
   }
 

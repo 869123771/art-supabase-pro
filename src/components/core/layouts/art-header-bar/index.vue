@@ -1,15 +1,10 @@
 <!-- 顶部栏 -->
 <template>
-  <div
-    class="art-header-bar w-full bg-[var(--default-bg-color)]"
-    :class="[
-      tabStyle === 'tab-card' || tabStyle === 'tab-google' ? 'mb-5 max-sm:mb-3 !bg-box' : ''
-    ]"
-  >
+  <div class="art-header-bar w-full" :class="{ 'art-header-bar--header-left': isHeaderLeftMenu }">
     <div
-      class="relative box-border flex-b h-15 leading-15 select-none"
+      class="art-header-bar__main relative box-border flex-b select-none"
       :class="[
-        tabStyle === 'tab-card' || tabStyle === 'tab-google'
+        props.showWorkTab && (tabStyle === 'tab-card' || tabStyle === 'tab-google')
           ? 'border-b border-[var(--art-card-border)]'
           : ''
       ]"
@@ -17,14 +12,16 @@
       <div class="flex-c flex-1 min-w-0 leading-15" style="display: flex">
         <!-- 系统信息  -->
         <button
-          v-if="isTopMenu"
+          v-if="isTopMenu || isHeaderLeftMenu"
           type="button"
-          class="flex-c c-p border-0 bg-transparent"
+          class="art-header-bar__brand flex-c c-p border-0 bg-transparent"
           aria-label="返回首页"
           @click="toHome"
         >
           <ArtLogo class="pl-4.5" />
-          <p v-if="width >= 1400" class="my-0 mx-2 ml-2 text-lg">{{ siteName }}</p>
+          <p v-if="isHeaderLeftMenu || width >= 1400" class="my-0 mx-2 ml-2 text-lg">
+            {{ siteName }}
+          </p>
         </button>
 
         <ArtLogo
@@ -43,7 +40,7 @@
 
         <!-- 刷新按钮 -->
         <ArtIconButton
-          v-if="shouldShowRefreshButton"
+          v-if="shouldShowRefreshButton && !isHeaderLeftMenu"
           icon="ri:refresh-line"
           label="刷新当前页面"
           class="!ml-3 refresh-btn max-sm:!hidden"
@@ -53,7 +50,7 @@
 
         <!-- 快速入口 -->
         <ArtFastEnter
-          v-if="shouldShowFastEnter && width >= headerBarFastEnterMinWidth"
+          v-if="shouldShowFastEnter && !isHeaderLeftMenu && width >= headerBarFastEnterMinWidth"
           v-slot="{ onTriggerClick }"
         >
           <ArtIconButton
@@ -76,13 +73,13 @@
         <ArtMixedMenu v-if="isTopLeftMenu" :list="menuList" />
       </div>
 
-      <div class="flex-c gap-2.5">
+      <div class="art-header-bar__actions flex-c">
         <!-- 搜索 -->
         <button
           v-if="shouldShowGlobalSearch"
           type="button"
           aria-label="打开全局搜索"
-          class="flex-cb w-40 h-9 px-2.5 c-p border border-g-400 rounded-custom-sm max-md:!hidden"
+          class="art-header-bar__search flex-cb w-40 h-9 px-2.5 c-p border rounded-custom-sm max-md:!hidden"
           @click="openSearchDialog"
         >
           <div class="flex-c">
@@ -129,18 +126,20 @@
         </ElDropdown>
 
         <!-- 通知按钮 -->
-        <ArtIconButton
+        <ElBadge
           v-if="shouldShowNotification"
-          icon="ri:notification-2-line"
-          label="打开通知中心"
-          class="notice-button relative"
-          @click="visibleNotice"
+          :value="notificationUnreadCount"
+          :max="99"
+          :hidden="notificationUnreadCount === 0"
+          class="notice-badge"
         >
-          <div
-            v-if="notificationUnreadCount > 0"
-            class="absolute top-2 right-2 size-1.5 !bg-danger rounded-full"
-          ></div>
-        </ArtIconButton>
+          <ArtIconButton
+            icon="ri:notification-2-line"
+            :label="notificationButtonLabel"
+            class="notice-button"
+            @click="visibleNotice"
+          />
+        </ElBadge>
 
         <!-- 聊天按钮 -->
         <ArtIconButton
@@ -198,7 +197,7 @@
     </div>
 
     <!-- 标签页 -->
-    <ArtWorkTab />
+    <ArtWorkTab v-if="props.showWorkTab" />
 
     <!-- 通知 -->
     <ArtNotification v-model:value="showNotice" @unread-change="handleUnreadChange" />
@@ -222,6 +221,15 @@
   import ArtUserMenu from './widget/ArtUserMenu.vue'
 
   defineOptions({ name: 'ArtHeaderBar' })
+
+  interface Props {
+    /** 是否由顶部栏渲染工作标签；组合布局会在内容区单独渲染 */
+    showWorkTab?: boolean
+  }
+
+  const props = withDefaults(defineProps<Props>(), {
+    showWorkTab: true
+  })
 
   // 检测操作系统类型
   const isWindows = navigator.userAgent.includes('Windows')
@@ -259,10 +267,16 @@
 
   const showNotice = ref(false)
   const notificationUnreadCount = ref(0)
+  const notificationButtonLabel = computed(() =>
+    notificationUnreadCount.value > 0
+      ? `打开通知中心，${notificationUnreadCount.value} 条未读`
+      : '打开通知中心'
+  )
   let settingGuideTimer: ReturnType<typeof setTimeout> | undefined
 
   // 菜单类型判断
   const isLeftMenu = computed(() => menuType.value === MenuTypeEnum.LEFT)
+  const isHeaderLeftMenu = computed(() => menuType.value === MenuTypeEnum.HEADER_LEFT)
   const isDualMenu = computed(() => menuType.value === MenuTypeEnum.DUAL_MENU)
   const isTopMenu = computed(() => menuType.value === MenuTypeEnum.TOP)
   const isTopLeftMenu = computed(() => menuType.value === MenuTypeEnum.TOP_LEFT)
@@ -393,6 +407,58 @@
 </script>
 
 <style lang="scss" scoped>
+  .art-header-bar {
+    background: transparent;
+
+    &__main {
+      min-height: var(--art-header-height);
+      line-height: var(--art-header-height);
+    }
+
+    &__brand {
+      min-width: 0;
+      height: 44px;
+      padding-right: var(--art-space-2);
+      color: var(--art-gray-900);
+      border-radius: var(--art-control-radius);
+
+      &:focus-visible {
+        outline: none;
+        box-shadow: var(--art-themed-action-focus-shadow);
+      }
+    }
+
+    &__actions {
+      flex: 0 0 auto;
+      gap: 6px;
+      padding-right: var(--art-page-padding);
+    }
+
+    &__search {
+      color: var(--art-gray-700);
+      background: color-mix(in srgb, var(--default-box-color) 78%, transparent);
+      border-color: var(--art-layout-divider);
+      transition:
+        color var(--art-motion-duration-fast) ease,
+        background-color var(--art-motion-duration-fast) ease,
+        border-color var(--art-motion-duration-fast) ease,
+        box-shadow var(--art-motion-duration-fast) ease;
+
+      &:hover {
+        color: var(--art-gray-900);
+        background: var(--default-box-color);
+        border-color: color-mix(in srgb, var(--theme-color) 24%, var(--art-layout-divider));
+        box-shadow: var(--art-themed-action-hover-shadow);
+      }
+
+      &:focus-visible {
+        color: var(--art-gray-900);
+        outline: none;
+        box-shadow: var(--art-themed-action-focus-shadow);
+      }
+    }
+  }
+
   .setting-guide {
     display: grid;
     gap: 6px;
@@ -526,6 +592,25 @@
 
   .notice-button:hover :deep(.art-svg-icon) {
     animation: shake 0.5s ease-in-out;
+  }
+
+  .notice-badge {
+    display: inline-flex;
+
+    :deep(.el-badge__content) {
+      top: 1px;
+      right: 1px;
+      min-width: 17px;
+      height: 17px;
+      padding: 0 5px;
+      font-size: 10px;
+      font-weight: 700;
+      line-height: 15px;
+      color: var(--el-color-white);
+      border: 1px solid var(--default-bg-color);
+      box-shadow: 0 2px 6px color-mix(in srgb, var(--el-color-danger) 24%, transparent);
+      transform: translate(48%, -38%);
+    }
   }
 
   .chat-button:hover :deep(.art-svg-icon) {

@@ -318,7 +318,8 @@
   import {
     calculateContractCargoFreight,
     calculateContractTransportFee,
-    mergeOrderContractDetails
+    mergeOrderContractDetails,
+    synchronizeContractCargoFreight
   } from './modules/order-contract-detail'
   import AiOrderDrawer from './modules/ai-order-drawer.vue'
   import { buildAiOrderFinalPayload } from './modules/ai-order-review'
@@ -743,7 +744,13 @@
         label: '数量（箱/袋）',
         width: 150,
         formatter: (row) => (
-          <ElInputNumber v-model={row.quantity} {...countProps} controls={false} />
+          <ElInputNumber
+            modelValue={row.quantity}
+            {...countProps}
+            precision={2}
+            controls={false}
+            onUpdate:modelValue={(value?: number) => handleCargoQuantityChange(row, value)}
+          />
         )
       },
       {
@@ -783,7 +790,7 @@
       },
       {
         prop: 'freight',
-        label: '行运费(元)',
+        label: '运费(元)',
         width: 135,
         formatter: (row) =>
           row.sourceContractId ? `¥ ${calculateContractCargoFreight(row).toFixed(2)}` : '-'
@@ -900,18 +907,18 @@
   watch(
     () =>
       (form.data.cargoItems ?? []).map((item) => [
-        item.sourceContractDetailKey,
+        item.sourceContractId,
         item.quantity,
         item.unitPrice
       ]),
-    () => {
-      const cargoItems = form.data.cargoItems ?? []
-      cargoItems.forEach((item) => {
-        if (item.sourceContractId) item.freight = calculateContractCargoFreight(item)
-      })
-    },
+    syncContractFreightTotals,
     { deep: true, immediate: true }
   )
+
+  function syncContractFreightTotals(): void {
+    const result = synchronizeContractCargoFreight(form.data.cargoItems ?? [])
+    if (result.hasContractCargo) form.data.transportFee = result.transportFee
+  }
 
   watch(
     () => feeFields.map((field) => form.data[field]),
@@ -1030,6 +1037,12 @@
     form.data.cargoItems = [...(form.data.cargoItems ?? []), createInitialCargoItem()]
   }
 
+  function handleCargoQuantityChange(row: CargoItem, value?: number): void {
+    form.data.cargoItems = (form.data.cargoItems ?? []).map((item) =>
+      item === row ? { ...item, quantity: nullableNumber(value) } : item
+    )
+  }
+
   async function openCargoSelector(): Promise<void> {
     await cargoSelectorRef.value?.open()
   }
@@ -1063,6 +1076,7 @@
     const rows = form.data.cargoItems ?? []
     if (rows.length <= 1) {
       form.data.cargoItems = [createInitialCargoItem()]
+      if (row.sourceContractId) form.data.transportFee = 0
       return
     }
     form.data.cargoItems = rows.filter((item) => item !== row)
@@ -1110,6 +1124,7 @@
   }
 
   function handleCargoSelect(row: CargoItem, item: Record<string, unknown>): void {
+    const wasContractCargo = Boolean(row.sourceContractId)
     const cargoName = String(item.cargoName ?? item.value ?? '')
     const unit = String(item.unit ?? '')
     const weightKg = typeof item.weightKg === 'number' ? item.weightKg : null
@@ -1131,6 +1146,9 @@
       sourceContractDetailKey: null
     }
     Object.assign(row, patch)
+    if (wasContractCargo) {
+      form.data.transportFee = calculateContractTransportFee(form.data.cargoItems ?? [])
+    }
   }
 
   function openCustomerSelector(mode: SelectorMode): void {
@@ -1588,6 +1606,7 @@
   }
 
   function normalizePayload(): OrderRecord {
+    syncContractFreightTotals()
     return normalizeOrderPayload({
       form: toRaw(form.data),
       stationNames: {

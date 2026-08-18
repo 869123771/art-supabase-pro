@@ -1,5 +1,8 @@
 <template>
-  <div class="waybill-cost business-workspace-page" :class="{ 'is-focus-mode': focusMode }">
+  <div
+    class="waybill-cost business-workspace-page art-full-height"
+    :class="{ 'is-focus-mode': focusMode }"
+  >
     <div class="waybill-cost__page-content">
       <MasterDeleteProcessingNotice
         action-hint="当前费用已自动定位；请按审核、报销或支付状态完成处理。"
@@ -86,7 +89,6 @@
             :table-props="{
               rowKey: 'id',
               tableLayout: 'fixed',
-              height: expenseFocusMode ? '100%' : 'auto',
               emptyHeight: '224px',
               emptyText: '暂无运单费用',
               emptyDescription: '可新增首笔费用，或调整费用项目、审核和核销条件后查询。'
@@ -118,7 +120,6 @@
             :table-props="{
               rowKey: 'id',
               tableLayout: 'fixed',
-              height: reimbursementFocusMode ? '100%' : 'auto',
               emptyHeight: '224px',
               emptyText: '暂无费用报销单',
               emptyDescription: '已审核费用转为报销单后，将在这里继续完成审批与支付。'
@@ -982,12 +983,15 @@
 </script>
 
 <style scoped lang="scss">
+  @use '../modules/accounting-workspace.scss' as accounting;
+
   .waybill-cost {
     display: flex;
     flex-direction: column;
     gap: var(--art-space-3);
     min-width: 0;
-    min-height: var(--art-full-height);
+    min-height: 0;
+    overflow: hidden;
 
     &.is-focus-mode {
       gap: 0;
@@ -995,9 +999,12 @@
 
     &__page-content {
       display: flex;
+      flex: 1 1 auto;
       flex-direction: column;
       gap: var(--art-space-3);
       min-width: 0;
+      min-height: 0;
+      overflow: hidden;
     }
 
     &__workflow {
@@ -1096,89 +1103,11 @@
     }
 
     &__tabs {
-      display: flex;
-      flex: 1 1 auto;
-      flex-direction: column;
-      min-width: 0;
-      min-height: 480px;
-
-      :deep(.el-tabs__header) {
-        flex: 0 0 auto;
-        margin: 0;
-      }
-
-      :deep(.el-tabs__nav-wrap) {
-        padding-inline: var(--art-space-2);
-
-        &::after {
-          height: 1px;
-          background-color: var(--el-border-color-lighter);
-        }
-      }
-
-      :deep(.el-tabs__item) {
-        height: 56px;
-        padding-inline: var(--art-space-4);
-      }
-
-      :deep(.el-tabs__active-bar) {
-        height: 3px;
-        border-radius: 999px 999px 0 0;
-      }
-
-      :deep(.el-tabs__content) {
-        display: flex;
-        flex: 1 1 auto;
-        min-height: 0;
-        padding-top: var(--art-space-3);
-      }
-
-      :deep(.el-tab-pane) {
-        flex: 1 1 auto;
-        min-width: 0;
-        min-height: 0;
-
-        &.is-active {
-          display: flex;
-          flex-direction: column;
-        }
-      }
-
-      :deep(.art-table-query) {
-        flex: 1 1 auto;
-        min-height: 0;
-      }
+      @include accounting.accounting-workspace-tabs;
     }
 
     &__tab-label {
-      display: flex;
-      gap: var(--art-space-2);
-      align-items: center;
-      min-width: 0;
-
-      > svg {
-        flex: 0 0 auto;
-        width: 19px;
-        height: 19px;
-      }
-
-      > span {
-        display: flex;
-        flex-direction: column;
-        min-width: 0;
-        line-height: 1.25;
-
-        strong {
-          font-size: 14px;
-        }
-
-        small {
-          margin-top: 2px;
-          font-size: 10px;
-          font-weight: 400;
-          color: var(--art-text-gray-400);
-        }
-      }
+      @include accounting.accounting-workspace-tab-label;
     }
 
     :deep(.waybill-cost__row-actions) {
@@ -1239,19 +1168,18 @@
         }
       }
 
-      &__tabs {
-        min-height: 520px;
-
-        :deep(.el-tabs__item) {
-          height: 48px;
-          padding-inline: var(--art-space-2);
-        }
-      }
-
       &__tab-label {
         > span small {
           display: none;
         }
+      }
+    }
+
+    @media (width <= 640px) {
+      overflow: visible;
+
+      &__page-content {
+        overflow: visible;
       }
     }
 

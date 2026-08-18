@@ -49,7 +49,7 @@
   "setting": {
     "menuType": {
       "title": "Menu Layout",
-      "list": ["Vertical", "Horizontal", "Mixed", "Dual"]
+      "list": ["Vertical", "Header + Sidebar", "Horizontal", "Mixed", "Dual"]
     },
     "theme": {
       "title": "Theme Style",

@@ -622,7 +622,9 @@
     })
   }
 
-  const callExpose = async (method: keyof ArtTableQueryExpose): Promise<void> => {
+  type ArtTableQueryMethod = Exclude<keyof ArtTableQueryExpose, 'workspaceController'>
+
+  const callExpose = async (method: ArtTableQueryMethod): Promise<void> => {
     logEvent(`expose.${method}()`)
     await managedTableRef.value?.[method]()
   }

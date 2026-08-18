@@ -1,6 +1,13 @@
 <!-- 查询表格组合组件：整合 ArtSearchBar + ArtTableHeader + ArtTable -->
 <template>
-  <div ref="rootRef" class="art-table-query" :class="{ 'is-focus-mode': focusMode }">
+  <div
+    ref="rootRef"
+    class="art-table-query"
+    :class="{
+      'is-focus-mode': focusMode,
+      'has-visible-search': hasSearchBar && showSearchBar
+    }"
+  >
     <ArtSearchBar
       v-if="hasSearchBar"
       v-show="showSearchBar"
@@ -14,12 +21,66 @@
       </template>
     </ArtSearchBar>
 
+    <Teleport
+      v-if="headerActionDestination && visibleHeaderActions.length"
+      :to="headerActionDestination"
+    >
+      <template v-for="action in visibleHeaderActions" :key="getHeaderActionKey(action)">
+        <span v-auth="action.permission" :class="getHeaderActionClass()">
+          <slot v-if="action.slot" :name="action.slot" v-bind="getHeaderActionSlotProps(action)" />
+          <component
+            v-else-if="action.render"
+            :is="action.render"
+            v-bind="getHeaderActionSlotProps(action)"
+          />
+          <ArtExcelImport
+            v-else-if="action.type === 'import'"
+            :button-props="getHeaderActionButtonProps(action)"
+            :disabled="isHeaderActionDisabled(action)"
+            :icon="getHeaderActionIcon(action)"
+            @import-success="handleHeaderActionImportSuccess(action, $event)"
+            @import-error="handleHeaderActionImportError(action, $event)"
+          >
+            <component
+              v-if="typeof getHeaderActionLabel(action) !== 'string'"
+              :is="getHeaderActionLabel(action)"
+            />
+            <span v-else>{{ getHeaderActionLabel(action) }}</span>
+          </ArtExcelImport>
+          <ElButton
+            v-else
+            v-bind="getHeaderActionButtonProps(action)"
+            :disabled="isHeaderActionDisabled(action)"
+            @click="handleHeaderActionClick(action, $event)"
+            v-ripple
+          >
+            <template v-if="getHeaderActionIcon(action)" #icon>
+              <component
+                v-if="typeof getHeaderActionIcon(action) !== 'string'"
+                :is="getHeaderActionIcon(action)"
+              />
+              <ArtSvgIcon v-else :icon="String(getHeaderActionIcon(action))" />
+            </template>
+            <component
+              v-if="typeof getHeaderActionLabel(action) !== 'string'"
+              :is="getHeaderActionLabel(action)"
+            />
+            <span v-else>{{ getHeaderActionLabel(action) }}</span>
+          </ElButton>
+        </span>
+      </template>
+    </Teleport>
+
     <ElCard
       class="art-table-card"
+      :class="{
+        'has-header-top': hasHeaderTopContent,
+        'has-table-header': shouldRenderTableHeader,
+        'is-table-only': !hasHeaderTopContent && !shouldRenderTableHeader
+      }"
       shadow="never"
-      :style="{ marginTop: hasSearchBar && showSearchBar ? '12px' : '0' }"
     >
-      <div v-if="$slots['table-header-top']" ref="headerTopRef" class="art-table-query__header-top">
+      <div v-if="hasHeaderTopContent" ref="headerTopRef" class="art-table-query__header-top">
         <slot
           name="table-header-top"
           :selected-rows="selectedRows"
@@ -28,10 +89,16 @@
       </div>
 
       <ArtTableHeader
+        v-if="shouldRenderTableHeader"
         v-model:columns="resolvedColumnsModel"
+        class="art-table-query__command-bar"
+        :class="{
+          'has-selection': showSelectionBar,
+          'has-tools': effectiveShowTableToolbar
+        }"
         v-bind="mergedTableHeaderProps"
-        :show-search-bar="hasSearchBar ? showSearchBar : undefined"
-        :focus-mode="focusable ? focusMode : undefined"
+        :show-search-bar="effectiveShowTableToolbar && hasSearchBar ? showSearchBar : undefined"
+        :focus-mode="effectiveShowTableToolbar && focusable ? focusMode : undefined"
         @update:show-search-bar="handleShowSearchBarChange"
         @update:focus-mode="handleFocusModeChange"
         @refresh="handleRefresh"
@@ -39,60 +106,113 @@
       >
         <template #left>
           <div
-            v-if="visibleHeaderActions.length || $slots['header-left']"
+            v-if="showSelectionBar || shouldRenderHeaderActionsInTable || $slots['header-left']"
             class="art-table-query__header-left"
           >
-            <template v-for="action in visibleHeaderActions" :key="getHeaderActionKey(action)">
-              <span :class="getHeaderActionClass()">
-                <slot
-                  v-if="action.slot"
-                  :name="action.slot"
-                  v-bind="getHeaderActionSlotProps(action)"
-                />
-                <component
-                  v-else-if="action.render"
-                  :is="action.render"
-                  v-bind="getHeaderActionSlotProps(action)"
-                />
-                <ArtExcelImport
-                  v-else-if="action.type === 'import'"
-                  v-auth="action.permission"
-                  :button-props="getHeaderActionButtonProps(action)"
-                  :disabled="isHeaderActionDisabled(action)"
-                  :icon="getHeaderActionIcon(action)"
-                  @import-success="handleHeaderActionImportSuccess(action, $event)"
-                  @import-error="handleHeaderActionImportError(action, $event)"
-                >
-                  <component
-                    v-if="typeof getHeaderActionLabel(action) !== 'string'"
-                    :is="getHeaderActionLabel(action)"
-                  />
-                  <span v-else>{{ getHeaderActionLabel(action) }}</span>
-                </ArtExcelImport>
-                <ElButton
-                  v-else
-                  v-auth="action.permission"
-                  v-bind="getHeaderActionButtonProps(action)"
-                  :disabled="isHeaderActionDisabled(action)"
-                  @click="handleHeaderActionClick(action, $event)"
-                  v-ripple
-                >
-                  <template v-if="getHeaderActionIcon(action)" #icon>
-                    <component
-                      v-if="typeof getHeaderActionIcon(action) !== 'string'"
-                      :is="getHeaderActionIcon(action)"
-                    />
-                    <ArtSvgIcon v-else :icon="String(getHeaderActionIcon(action))" />
-                  </template>
-                  <component
-                    v-if="typeof getHeaderActionLabel(action) !== 'string'"
-                    :is="getHeaderActionLabel(action)"
-                  />
-                  <span v-else>{{ getHeaderActionLabel(action) }}</span>
-                </ElButton>
-              </span>
-            </template>
             <slot
+              v-if="showSelectionBar && $slots['selection-bar']"
+              name="selection-bar"
+              :selected-rows="selectedRows"
+              :selected-count="selectedRows.length"
+              :clear-selection="clearSelectedRows"
+            />
+
+            <div
+              v-else-if="showSelectionBar"
+              class="art-table-query__selection-bar"
+              role="region"
+              aria-label="批量操作"
+            >
+              <div class="art-table-query__selection-summary" aria-live="polite">
+                <ArtSvgIcon icon="ri:checkbox-circle-line" aria-hidden="true" />
+                <span
+                  >已选择 <strong>{{ selectedRows.length }}</strong> 项</span
+                >
+              </div>
+
+              <span
+                v-if="visibleSelectionActions.length"
+                class="art-table-query__selection-divider"
+                aria-hidden="true"
+              />
+
+              <div class="art-table-query__selection-actions">
+                <template
+                  v-for="(action, actionIndex) in visibleSelectionActions"
+                  :key="getSelectionActionKey(action, actionIndex)"
+                >
+                  <span v-auth="action.permission" class="art-table-query__selection-action">
+                    <slot
+                      v-if="action.slot"
+                      :name="action.slot"
+                      v-bind="getHeaderActionSlotProps(action, 'selection')"
+                    />
+                    <component
+                      v-else-if="action.render"
+                      :is="action.render"
+                      v-bind="getHeaderActionSlotProps(action, 'selection')"
+                    />
+                    <ArtExcelImport
+                      v-else-if="action.type === 'import'"
+                      :button-props="getSelectionActionButtonProps(action)"
+                      :disabled="isHeaderActionDisabled(action, 'selection')"
+                      :icon="getHeaderActionIcon(action)"
+                      @import-success="handleHeaderActionImportSuccess(action, $event, 'selection')"
+                      @import-error="handleHeaderActionImportError(action, $event, 'selection')"
+                    >
+                      <component
+                        v-if="typeof getSelectionActionLabel(action) !== 'string'"
+                        :is="getSelectionActionLabel(action)"
+                      />
+                      <span v-else>{{ getSelectionActionLabel(action) }}</span>
+                    </ArtExcelImport>
+                    <ElButton
+                      v-else
+                      v-bind="getSelectionActionButtonProps(action)"
+                      :disabled="isHeaderActionDisabled(action, 'selection')"
+                      @click="handleHeaderActionClick(action, $event, 'selection')"
+                      v-ripple
+                    >
+                      <template v-if="getHeaderActionIcon(action)" #icon>
+                        <component
+                          v-if="typeof getHeaderActionIcon(action) !== 'string'"
+                          :is="getHeaderActionIcon(action)"
+                        />
+                        <ArtSvgIcon v-else :icon="String(getHeaderActionIcon(action))" />
+                      </template>
+                      <component
+                        v-if="typeof getSelectionActionLabel(action) !== 'string'"
+                        :is="getSelectionActionLabel(action)"
+                      />
+                      <span v-else>{{ getSelectionActionLabel(action) }}</span>
+                    </ElButton>
+                  </span>
+                </template>
+
+                <span
+                  v-if="visibleSelectionActions.length"
+                  class="art-table-query__selection-divider"
+                  aria-hidden="true"
+                />
+                <ElButton
+                  class="art-table-query__selection-clear"
+                  size="small"
+                  link
+                  type="primary"
+                  @click="clearSelectedRows"
+                >
+                  取消选择
+                </ElButton>
+              </div>
+            </div>
+
+            <div
+              v-if="!showSelectionBar && shouldRenderHeaderActionsInTable"
+              ref="tableHeaderActionHostRef"
+              class="art-table-query__header-actions"
+            />
+            <slot
+              v-if="!showSelectionBar"
               name="header-left"
               :selected-rows="selectedRows"
               :selected-count="selectedRows.length"
@@ -131,8 +251,10 @@
     onDeactivated,
     onMounted,
     ref,
+    shallowRef,
     watch,
     type Component,
+    type ComputedRef,
     type VNode,
     type VNodeChild
   } from 'vue'
@@ -365,6 +487,8 @@
 
   export interface ArtTableQueryHeaderActionContext {
     action: ArtTableQueryHeaderAction
+    /** 动作所在交互面：普通操作或勾选后的批量操作。 */
+    scope: 'default' | 'selection'
     selectedRows: TableQueryRecord[]
     selectedCount: number
     event?: MouseEvent
@@ -470,6 +594,10 @@
     searchItems?: SearchFormItem[]
     /** 表格头部左侧操作按钮配置，内置 add/delete/import/export 四类预制按钮。 */
     headerActions?: ArtTableQueryHeaderAction[]
+    /** 普通态非批量操作的展示位置；workspace 会在专注模式下自动回到表格左侧。 */
+    headerActionsPlacement?: 'table' | 'workspace'
+    /** 勾选数据后显示在表格上方的批量操作；未勾选时不占用空间。 */
+    selectionActions?: ArtTableQueryHeaderAction[]
     /** 内管模式的数据接口。传入后 ArtTableQuery 会内部创建 useTable 并接管查询、分页、刷新。 */
     apiFn?: ArtTableQueryApiFn
     /** 内管模式的默认接口参数，默认会合并 { current: 1, size: 20 }。 */
@@ -506,18 +634,22 @@
     searchBarProps?: ArtTableQuerySearchBarProps
     /** 透传给 ArtTableHeader 的额外配置，例如 layout、showBorder。 */
     tableHeaderProps?: ArtTableQueryTableHeaderProps
+    /** 是否显示表格右侧工具栏，默认关闭；左侧 headerActions 仍会按需渲染。 */
+    showTableToolbar?: boolean
     /** 透传给 ArtTable 的额外配置，默认已内置 rowKey: 'id'、tableLayout: 'fixed'。 */
     tableProps?: ArtTableQueryTableProps
-    /** 是否允许进入专注模式；关闭后工具栏不显示专注模式按钮。 */
+    /** 是否允许专注模式；工具栏开启时显示入口，也可通过 v-model:focus-mode 从页面头部进入。 */
     focusable?: boolean
   }
 
-  const props = withDefaults(defineProps<ArtTableQueryProps>(), {
+  const props = withDefaults(defineProps<Omit<ArtTableQueryProps, 'showTableToolbar'>>(), {
     loading: false,
     data: () => [],
     tableColumns: () => [],
     searchItems: () => [],
     headerActions: () => [],
+    headerActionsPlacement: 'table',
+    selectionActions: () => [],
     apiParams: () => ({}),
     immediate: true,
     excludeParams: () => [],
@@ -535,11 +667,14 @@
   const searchModel = defineModel<Record<string, unknown>>({ default: () => ({}) })
   const columnsModel = defineModel<ColumnOption[]>('columns', { default: () => [] })
   const showSearchBar = defineModel<boolean>('showSearchBar', { default: true })
+  const showTableToolbar = defineModel<boolean>('showTableToolbar', { default: false })
   const focusMode = defineModel<boolean>('focusMode', { default: false })
   const initialSearchModel = ref<Record<string, unknown>>({})
   const rootRef = ref<HTMLElement>()
   const tableRef = ref<ArtTableExpose | null>(null)
   const headerTopRef = ref<HTMLElement>()
+  const tableHeaderActionHostRef = ref<HTMLElement>()
+  const workspaceHeaderActionHostRef = shallowRef<HTMLElement>()
   const headerTopHeight = ref(0)
 
   export interface ArtTableQueryEmits {
@@ -581,11 +716,18 @@
     selectedCount: number
   }
 
+  export interface ArtTableQuerySelectionBarSlotProps extends ArtTableQueryHeaderLeftSlotProps {
+    /** 清空当前跨页选择。 */
+    clearSelection: () => void
+  }
+
   export interface ArtTableQuerySlots {
     /** 工具栏左侧扩展区，渲染在 headerActions 后 */
     'header-left'?: (props: ArtTableQueryHeaderLeftSlotProps) => VNodeChild
     /** 工具栏右侧扩展区 */
     'header-right'?: () => VNodeChild
+    /** 勾选后批量操作条；传入后替换 selectionActions 的默认外观。 */
+    'selection-bar'?: (props: ArtTableQuerySelectionBarSlotProps) => VNodeChild
     /** 透传给 ArtTable 的默认插槽 */
     default?: () => VNodeChild
     /** 动态表格列插槽和 search-{key} 查询项插槽 */
@@ -705,10 +847,70 @@
     isManaged.value ? managedTable.pagination : props.pagination
   )
 
+  const isStrictSelectionAction = (action: ArtTableQueryHeaderAction): boolean =>
+    action.selectionRequired === true ||
+    (action.selectionRequired == null && action.type === 'delete')
+
+  const isAutomaticSelectionAction = (action: ArtTableQueryHeaderAction): boolean =>
+    isStrictSelectionAction(action) || action.type === 'export'
+
+  const selectionActionSource = computed(() =>
+    props.selectionActions.length
+      ? props.selectionActions
+      : props.headerActions.filter(isAutomaticSelectionAction)
+  )
+
+  const showSelectionBar = computed(
+    () =>
+      selectedRows.value.length > 0 &&
+      (selectionActionSource.value.length > 0 || !!slots['selection-bar'])
+  )
+
+  const hasStandaloneHeaderActions = computed(() =>
+    props.headerActions.some((action) => !isStrictSelectionAction(action))
+  )
+
+  const shouldTeleportHeaderActions = computed(
+    () =>
+      props.headerActionsPlacement === 'workspace' &&
+      !focusMode.value &&
+      Boolean(workspaceHeaderActionHostRef.value)
+  )
+
+  const shouldRenderHeaderActionsInTable = computed(
+    () =>
+      hasStandaloneHeaderActions.value &&
+      !showSelectionBar.value &&
+      !shouldTeleportHeaderActions.value
+  )
+
+  const effectiveShowTableToolbar = computed(
+    () => showTableToolbar.value || (focusMode.value && props.focusable)
+  )
+
+  const headerActionDestination = computed<HTMLElement | undefined>(() =>
+    shouldTeleportHeaderActions.value
+      ? workspaceHeaderActionHostRef.value
+      : tableHeaderActionHostRef.value
+  )
+
+  const shouldRenderTableHeader = computed(
+    () =>
+      showSelectionBar.value ||
+      effectiveShowTableToolbar.value ||
+      (focusMode.value && props.focusable) ||
+      shouldRenderHeaderActionsInTable.value ||
+      !!slots['header-left'] ||
+      !!slots['header-right']
+  )
+
+  const hasHeaderTopContent = computed(() => !!slots['table-header-top'])
+
   const artTableBindings = computed<ArtTableBindings>(
     () =>
       ({
         ...resolvedTableProps.value,
+        showTableHeader: shouldRenderTableHeader.value,
         additionalHeightOffset:
           Number(resolvedTableProps.value.additionalHeightOffset ?? 0) + headerTopHeight.value,
         loading: resolvedLoading.value,
@@ -725,10 +927,17 @@
 
   const mergedTableHeaderProps = computed(() => ({
     ...props.tableHeaderProps,
+    layout: effectiveShowTableToolbar.value ? props.tableHeaderProps.layout : '',
     loading: resolvedLoading.value
   }))
 
-  const reservedSlotNames = new Set(['header-left', 'header-right', 'table-header-top', 'default'])
+  const reservedSlotNames = new Set([
+    'header-left',
+    'header-right',
+    'selection-bar',
+    'table-header-top',
+    'default'
+  ])
 
   const searchBarSlotNames = computed(() => {
     return resolvedSearchItems.value?.map((item) => item.key) ?? []
@@ -786,26 +995,49 @@
 
   const createHeaderActionContext = (
     action: ArtTableQueryHeaderAction,
-    event?: MouseEvent
+    event?: MouseEvent,
+    scope: ArtTableQueryHeaderActionContext['scope'] = 'default'
   ): ArtTableQueryHeaderActionContext => ({
     action,
+    scope,
     selectedRows: selectedRows.value,
     selectedCount: selectedRows.value.length,
     event,
     api: headerActionApi.value
   })
 
+  const isHeaderActionVisible = (
+    action: ArtTableQueryHeaderAction,
+    scope: ArtTableQueryHeaderActionContext['scope'] = 'default'
+  ): boolean => {
+    if (typeof action.hidden === 'function') {
+      return !action.hidden(createHeaderActionContext(action, undefined, scope))
+    }
+    return !action.hidden
+  }
+
   const visibleHeaderActions = computed(() => {
+    if (showSelectionBar.value && !shouldTeleportHeaderActions.value) return []
     return props.headerActions.filter((action) => {
-      if (typeof action.hidden === 'function') {
-        return !action.hidden(createHeaderActionContext(action))
-      }
-      return !action.hidden
+      return !isStrictSelectionAction(action) && isHeaderActionVisible(action)
     })
+  })
+
+  const visibleSelectionActions = computed(() => {
+    return selectionActionSource.value.filter((action) =>
+      isHeaderActionVisible(action, 'selection')
+    )
   })
 
   const getHeaderActionKey = (action: ArtTableQueryHeaderAction): string => {
     return action.key || action.type || `${props.headerActions.indexOf(action)}`
+  }
+
+  const getSelectionActionKey = (
+    action: ArtTableQueryHeaderAction,
+    actionIndex: number
+  ): string => {
+    return `selection-${action.key || action.type || 'action'}-${actionIndex}`
   }
 
   const getHeaderActionClass = () => ({
@@ -825,6 +1057,11 @@
     return defaultLabel
   }
 
+  const getSelectionActionLabel = (action: ArtTableQueryHeaderAction): string | Component => {
+    if (!action.label && action.type === 'export') return '导出选中'
+    return action.label || getHeaderActionDefault(action)?.label || '操作'
+  }
+
   const getHeaderActionIcon = (
     action: ArtTableQueryHeaderAction
   ): string | Component | undefined => {
@@ -836,20 +1073,37 @@
     ...(action.buttonProps ?? {})
   })
 
+  const getSelectionActionButtonProps = (action: ArtTableQueryHeaderAction) => {
+    const contextualButtonProps =
+      action.type === 'export' ? { type: 'primary' as const, plain: true } : {}
+
+    return {
+      size: 'small' as const,
+      ...(getHeaderActionDefault(action)?.buttonProps ?? {}),
+      ...contextualButtonProps,
+      ...(action.buttonProps ?? {})
+    }
+  }
+
   const isHeaderActionSelectionRequired = (action: ArtTableQueryHeaderAction): boolean => {
     return action.selectionRequired ?? getHeaderActionDefault(action)?.selectionRequired ?? false
   }
 
-  const isHeaderActionDisabled = (action: ArtTableQueryHeaderAction): boolean => {
-    const ctx = createHeaderActionContext(action)
+  const isHeaderActionDisabled = (
+    action: ArtTableQueryHeaderAction,
+    scope: ArtTableQueryHeaderActionContext['scope'] = 'default'
+  ): boolean => {
+    const ctx = createHeaderActionContext(action, undefined, scope)
     const disabled = typeof action.disabled === 'function' ? action.disabled(ctx) : action.disabled
     return (
       !!disabled || (isHeaderActionSelectionRequired(action) && selectedRows.value.length === 0)
     )
   }
 
-  const getHeaderActionSlotProps = (action: ArtTableQueryHeaderAction) =>
-    createHeaderActionContext(action)
+  const getHeaderActionSlotProps = (
+    action: ArtTableQueryHeaderAction,
+    scope: ArtTableQueryHeaderActionContext['scope'] = 'default'
+  ) => createHeaderActionContext(action, undefined, scope)
 
   const resolveHeaderActionContent = (
     action: ArtTableQueryHeaderAction,
@@ -926,14 +1180,15 @@
   ): Promise<TableQueryRecord[]> => {
     const maxRows = action.exportMaxRows || 10000
     const columns = resolveExcelColumns(action.exportColumns, ctx)
+    const scopedSelectedRows = ctx.scope === 'selection' ? ctx.selectedRows : []
 
     if (action.exportApi) {
-      const selectedIds = ctx.selectedRows
+      const selectedIds = scopedSelectedRows
         .map((row) => getRowIdentity(row))
         .filter((id): id is string | number => id !== undefined)
       const response = await action.exportApi(
         {
-          selectedRows: ctx.selectedRows,
+          selectedRows: scopedSelectedRows,
           selectedIds,
           selectedCount: ctx.selectedCount,
           searchParams: cloneSearchModel(searchModel.value),
@@ -951,7 +1206,7 @@
     }
 
     if (action.exportData) return await action.exportData(ctx)
-    if (ctx.selectedRows.length) return ctx.selectedRows
+    if (scopedSelectedRows.length) return scopedSelectedRows
     if (!props.apiFn) return resolvedData.value
 
     const currentKey = props.paginationKey?.current || 'current'
@@ -995,9 +1250,10 @@
 
   const handleHeaderActionImportSuccess = async (
     action: ArtTableQueryHeaderAction,
-    data: Array<Record<string, unknown>>
+    data: Array<Record<string, unknown>>,
+    scope: ArtTableQueryHeaderActionContext['scope'] = 'default'
   ): Promise<void> => {
-    const ctx = createHeaderActionContext(action)
+    const ctx = createHeaderActionContext(action, undefined, scope)
     emit('header-action-click', action, ctx)
     const rows =
       action.importApi || action.importTransformer || action.importColumns
@@ -1020,18 +1276,20 @@
 
   const handleHeaderActionImportError = async (
     action: ArtTableQueryHeaderAction,
-    error: Error
+    error: Error,
+    scope: ArtTableQueryHeaderActionContext['scope'] = 'default'
   ): Promise<void> => {
-    await action.onImportError?.(error, createHeaderActionContext(action))
+    await action.onImportError?.(error, createHeaderActionContext(action, undefined, scope))
   }
 
   const handleHeaderActionClick = async (
     action: ArtTableQueryHeaderAction,
-    event: MouseEvent
+    event: MouseEvent,
+    scope: ArtTableQueryHeaderActionContext['scope'] = 'default'
   ): Promise<void> => {
-    if (isHeaderActionDisabled(action)) return
+    if (isHeaderActionDisabled(action, scope)) return
 
-    const ctx = createHeaderActionContext(action, event)
+    const ctx = createHeaderActionContext(action, event, scope)
 
     if (shouldConfirmHeaderAction(action)) {
       try {
@@ -1201,13 +1459,47 @@
     emit('focus-change', value)
   }
 
+  export interface ArtTableQueryWorkspaceController {
+    focusMode: ComputedRef<boolean>
+    showTableToolbar: ComputedRef<boolean>
+    effectiveShowTableToolbar: ComputedRef<boolean>
+    focusable: ComputedRef<boolean>
+    setFocusMode: (value: boolean) => void
+    setShowTableToolbar: (value: boolean) => void
+    attachHeaderActionHost: (element: HTMLElement) => void
+    detachHeaderActionHost: (element: HTMLElement) => void
+  }
+
+  const attachHeaderActionHost = (element: HTMLElement): void => {
+    workspaceHeaderActionHostRef.value = element
+  }
+
+  const detachHeaderActionHost = (element: HTMLElement): void => {
+    if (workspaceHeaderActionHostRef.value === element) {
+      workspaceHeaderActionHostRef.value = undefined
+    }
+  }
+
+  const workspaceController: ArtTableQueryWorkspaceController = {
+    focusMode: computed(() => focusMode.value),
+    showTableToolbar: computed(() => showTableToolbar.value),
+    effectiveShowTableToolbar,
+    focusable: computed(() => props.focusable),
+    setFocusMode: handleFocusModeChange,
+    setShowTableToolbar: (value) => {
+      if (focusMode.value && !value) return
+      showTableToolbar.value = value
+    },
+    attachHeaderActionHost,
+    detachHeaderActionHost
+  }
+
   watch(
     focusMode,
     (value, previousValue) => {
       if (value && props.focusable) {
         if (!previousValue) {
           showSearchBarBeforeFocus = showSearchBar.value
-          if (hasSearchBar.value) showSearchBar.value = true
         }
         void nextTick(applyFocusLayout)
       } else {
@@ -1246,6 +1538,10 @@
     getData: () => Promise<unknown>
     /** 清空查询表单模型并重置内部查询参数。 */
     resetSearchParams: () => Promise<void>
+    /** 清空当前跨页选择。 */
+    clearSelection: () => void
+    /** 业务工作区头部与表格共享的显示状态和动作挂载控制器。 */
+    workspaceController: ArtTableQueryWorkspaceController
   }
 
   const resetSearchParams = async (): Promise<void> => {
@@ -1268,7 +1564,9 @@
     refreshUpdate: managedTable.refreshUpdate,
     refreshRemove,
     getData,
-    resetSearchParams
+    resetSearchParams,
+    clearSelection: clearSelectedRows,
+    workspaceController
   })
 </script>
 

@@ -249,6 +249,7 @@
 
 <style scoped lang="scss">
   .number-menu-filter {
+    box-sizing: border-box;
     display: flex;
     flex-direction: column;
     min-width: 0;
@@ -270,7 +271,7 @@
     &__header {
       flex: none;
       justify-content: space-between;
-      padding: 16px 16px 13px;
+      padding: 12px 12px 10px;
       background: linear-gradient(145deg, var(--el-color-primary-light-9), transparent 74%);
       border-bottom: 1px solid var(--el-border-color-lighter);
     }
@@ -284,7 +285,7 @@
       }
 
       strong {
-        font-size: 15px;
+        font-size: 14px;
         color: var(--el-text-color-primary);
       }
 
@@ -308,9 +309,9 @@
     }
 
     &__brand {
-      width: 36px;
-      height: 36px;
-      margin-right: 10px;
+      width: 32px;
+      height: 32px;
+      margin-right: 8px;
       border: 1px solid var(--el-color-primary-light-7);
     }
 
@@ -320,17 +321,17 @@
 
     &__search {
       flex: none;
-      padding: 14px 14px 10px;
+      padding: 10px 10px 8px;
     }
 
     &__quick {
       flex: none;
-      padding: 0 10px 10px;
+      padding: 0 8px 8px;
 
       button {
         width: 100%;
-        min-height: 56px;
-        padding: 8px 9px;
+        min-height: 48px;
+        padding: 6px 8px;
         font: inherit;
         text-align: left;
         cursor: pointer;
@@ -371,9 +372,9 @@
     }
 
     &__quick-icon {
-      width: 32px;
-      height: 32px;
-      margin-right: 9px;
+      width: 28px;
+      height: 28px;
+      margin-right: 7px;
     }
 
     &__section-title {
@@ -381,7 +382,7 @@
       flex: none;
       align-items: center;
       justify-content: space-between;
-      padding: 10px 14px 8px;
+      padding: 8px 12px 6px;
       background: var(--el-fill-color-lighter);
       border-top: 1px solid var(--el-border-color-lighter);
       border-bottom: 1px solid var(--el-border-color-lighter);
@@ -398,17 +399,24 @@
     }
 
     &__tree-area {
+      display: flex;
       flex: 1 1 auto;
-      min-height: 120px;
-      padding: 8px;
+      flex-direction: column;
+      min-height: 0;
+      padding: 6px;
       overflow: hidden;
+
+      :deep(.el-scrollbar) {
+        flex: 1 1 auto;
+        min-height: 0;
+      }
 
       :deep(.el-tree) {
         background: transparent;
       }
 
       :deep(.el-tree-node__content) {
-        height: 48px;
+        height: 44px;
         padding-right: 5px;
         margin-bottom: 2px;
         border-radius: var(--el-border-radius-base);
@@ -477,7 +485,7 @@
     &__footer {
       display: grid;
       flex: none;
-      padding: 12px 14px 14px;
+      padding: 8px 10px 10px;
       background: var(--el-fill-color-lighter);
       border-top: 1px solid var(--el-border-color-lighter);
     }
@@ -485,7 +493,7 @@
     &__selection {
       gap: 9px;
       min-width: 0;
-      padding: 9px 10px;
+      padding: 6px 8px;
       background: var(--el-bg-color);
       border: 1px solid var(--el-border-color-lighter);
       border-radius: var(--el-border-radius-base);

@@ -236,7 +236,6 @@
     { type: 'add', label: '新增员工', permission: 'Hr:Employee:Add', onClick: () => openProfile() }
   ])
   const columnsFactory = (): ColumnOption<Employee>[] => [
-    { type: 'globalIndex', label: '序号', width: 68 },
     {
       prop: 'employeeIdentity',
       label: '员工身份',
@@ -555,6 +554,23 @@
         display: flex;
         flex-direction: column;
       }
+    }
+  }
+
+  :global(.art-table-focus-page .hr-roster-page__workspace) {
+    display: grid !important;
+    grid-template-columns: 264px minmax(0, 1fr) !important;
+    gap: 12px !important;
+  }
+
+  :global(.art-table-focus-page .hr-roster-page__organization-panel.art-table-focus-hidden) {
+    display: block !important;
+  }
+
+  @media (width <= 1200px) {
+    :global(.art-table-focus-page .hr-roster-page__workspace) {
+      display: flex !important;
+      flex-direction: column !important;
     }
   }
 </style>

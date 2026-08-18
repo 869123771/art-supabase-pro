@@ -1,0 +1,515 @@
+<template>
+  <div class="business-workspace-page art-full-height fms-accounting-page voucher-center-page">
+    <BusinessWorkspaceHeader
+      density="compact"
+      eyebrow="GENERAL LEDGER CONTROL"
+      title="凭证中心"
+      description="统一管理手工及业务自动生成凭证，覆盖制单、审核、过账、作废、冲销和审计追踪。"
+      icon="ri:file-list-3-line"
+      :tags="[
+        { label: '借贷平衡', type: 'primary' },
+        { label: '审核过账', type: 'success' },
+        { label: '冲销留痕', type: 'warning' }
+      ]"
+      :metrics="metrics"
+    />
+
+    <ElAlert
+      v-if="!isPlatformSuper"
+      type="info"
+      :closable="false"
+      show-icon
+      title="当前账号可查看本租户会计凭证；制单、审核、过账、作废和冲销仅平台超级管理员可执行。"
+    />
+
+    <ArtTableQuery
+      ref="tableQueryRef"
+      v-model="table.searchQuery"
+      :search-items="table.searchItems"
+      :api-fn="fetchTableData"
+      :columns-factory="columnsFactory"
+      :header-actions="table.headerActions"
+      :search-bar-props="{ span: 6, labelWidth: 88, showExpand: true }"
+      :table-props="{
+        rowKey: 'id',
+        tableLayout: 'fixed',
+        emptyText: '暂无会计凭证',
+        emptyDescription: '请选择账套和日期范围，或新建一张借贷平衡的会计凭证。'
+      }"
+      focusable
+    />
+
+    <VoucherDialog ref="dialogRef" @success="handleMutationSuccess" />
+    <VoucherActionDialog ref="actionDialogRef" @success="handleMutationSuccess" />
+    <VoucherDetailDrawer ref="drawerRef" />
+  </div>
+</template>
+
+<script setup lang="tsx">
+  import { ElButton } from 'element-plus'
+  import type { ComputedRef, UnwrapNestedRefs } from 'vue'
+  import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
+  import type {
+    ArtTableQueryExcelColumn,
+    ArtTableQueryExpose,
+    ArtTableQueryHeaderAction
+  } from '@/components/core/tables/art-table-query/index.vue'
+  import type { ColumnOption } from '@/types'
+  import BusinessWorkspaceHeader, {
+    type BusinessWorkspaceMetric
+  } from '@/components/business/business-workspace-header/index.vue'
+  import { useUserStore } from '@/store/modules/user'
+  import { useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import { pageInfoHandler } from '@/utils/table/tableUtils'
+  import { formatCurrencyValue } from '@/utils/ui'
+  import { formatWithDayjs } from '@/utils/time'
+  import {
+    exportVoucherList,
+    fetchAccountSetOptions,
+    fetchAuxiliaryItemList,
+    fetchCurrencyList,
+    fetchSubjectList,
+    fetchVoucherList,
+    fetchVoucherSummary,
+    fetchVoucherTemplateList,
+    transitionVoucher
+  } from '@/api/fms'
+  import VoucherDialog from './modules/voucher-dialog.vue'
+  import VoucherActionDialog from './modules/voucher-action-dialog.vue'
+  import VoucherDetailDrawer from './modules/voucher-detail-drawer.vue'
+
+  defineOptions({ name: 'FinanceVoucherCenter' })
+
+  type Voucher = Api.Fms.VoucherRecord
+  type SearchParams = Api.Fms.VoucherSearchParams
+  type TableParams = SearchParams & Pick<Api.Common.PaginationParams, 'current' | 'size'>
+
+  interface DialogContext {
+    accountSet: Api.Fms.AccountSetOption
+    subjects: Api.Fms.SubjectRecord[]
+    currencies: Api.Fms.CurrencyRecord[]
+    auxiliaryItems: Api.Fms.AuxiliaryItemRecord[]
+    templates: Api.Fms.VoucherTemplateRecord[]
+  }
+
+  interface DialogExpose {
+    handleOpen: (context: DialogContext, row?: Voucher) => Promise<void>
+  }
+
+  interface ActionDialogExpose {
+    handleOpen: (row: Voucher, action: 'reject' | 'void' | 'reverse') => Promise<void>
+  }
+
+  interface DrawerExpose {
+    handleOpen: (row: Voucher) => Promise<void>
+  }
+
+  interface TableGroup {
+    searchQuery: SearchParams
+    searchItems: ComputedRef<SearchFormItem[]>
+    headerActions: ComputedRef<ArtTableQueryHeaderAction[]>
+    accountSetOptions: Api.Fms.AccountSetOption[]
+  }
+
+  const { getDictMap, isPlatformSuper } = storeToRefs(useUserStore())
+  const { confirmAction } = useArtFeedback()
+  const tableQueryRef = ref<ArtTableQueryExpose>()
+  const dialogRef = ref<DialogExpose>()
+  const actionDialogRef = ref<ActionDialogExpose>()
+  const drawerRef = ref<DrawerExpose>()
+  const entryContext = shallowRef<DialogContext>()
+  const summary = reactive<Api.Fms.VoucherSummary>({
+    accountSetId: '',
+    draftCount: 0,
+    pendingReviewCount: 0,
+    approvedCount: 0,
+    postedCount: 0,
+    reversedCount: 0,
+    currentPeriodPostedAmount: 0
+  })
+
+  const table: UnwrapNestedRefs<TableGroup> = reactive<TableGroup>({
+    searchQuery: {
+      accountSetId: '',
+      status: '',
+      voucherType: '',
+      sourceType: '',
+      voucherDateRange: [],
+      keyword: ''
+    },
+    accountSetOptions: [],
+    searchItems: computed<SearchFormItem[]>(() => [
+      {
+        label: '账套',
+        key: 'accountSetId',
+        type: 'select',
+        props: {
+          options: table.accountSetOptions,
+          filterable: true,
+          clearable: true,
+          placeholder: '全部可查看账套',
+          onChange: () => void handleAccountSetChange()
+        }
+      },
+      {
+        label: '凭证状态',
+        key: 'status',
+        type: 'select',
+        props: { options: getDictMap.value.fmsVoucherStatus ?? [], clearable: true }
+      },
+      {
+        label: '凭证类型',
+        key: 'voucherType',
+        type: 'select',
+        props: { options: getDictMap.value.fmsVoucherType ?? [], clearable: true }
+      },
+      {
+        label: '凭证日期',
+        key: 'voucherDateRange',
+        type: 'date',
+        props: {
+          type: 'daterange',
+          valueFormat: 'YYYY-MM-DD',
+          startPlaceholder: '开始日期',
+          endPlaceholder: '结束日期',
+          rangeSeparator: '至'
+        }
+      },
+      {
+        label: '业务来源',
+        key: 'sourceType',
+        type: 'select',
+        props: { options: getDictMap.value.fmsVoucherSourceType ?? [], clearable: true }
+      },
+      {
+        label: '关键词',
+        key: 'keyword',
+        type: 'input',
+        props: { clearable: true, placeholder: '凭证号、摘要或来源单号' }
+      }
+    ]),
+    headerActions: computed<ArtTableQueryHeaderAction[]>(() => {
+      const actions: ArtTableQueryHeaderAction[] = []
+      if (isPlatformSuper.value) {
+        actions.push({
+          type: 'add',
+          label: '新增凭证',
+          disabled: !table.searchQuery.accountSetId,
+          onClick: () => void openDialog()
+        })
+      }
+      actions.push({
+        type: 'export',
+        exportFilename: '会计凭证台账',
+        exportSheetName: '会计凭证',
+        exportColumns: excelColumns,
+        exportApi: ({ selectedIds, searchParams, maxRows }) =>
+          exportVoucherList({
+            ...(searchParams as SearchParams),
+            ids: selectedIds.map(String),
+            maxRows
+          })
+      })
+      return actions
+    })
+  })
+
+  const metrics = computed<BusinessWorkspaceMetric[]>(() => [
+    {
+      key: 'draft',
+      label: '待完善',
+      value: summary.draftCount,
+      description: '草稿与已驳回',
+      icon: 'ri:draft-line',
+      tone: 'info'
+    },
+    {
+      key: 'review',
+      label: '待审核',
+      value: summary.pendingReviewCount,
+      description: '等待财务审核',
+      icon: 'ri:user-follow-line',
+      tone: 'warning'
+    },
+    {
+      key: 'approved',
+      label: '待过账',
+      value: summary.approvedCount,
+      description: '审核通过未过账',
+      icon: 'ri:checkbox-circle-line',
+      tone: 'primary'
+    },
+    {
+      key: 'posted',
+      label: '本期过账额',
+      value: formatMoney(summary.currentPeriodPostedAmount),
+      description: `累计已过账 ${summary.postedCount} 张`,
+      icon: 'ri:book-open-line',
+      tone: 'success'
+    }
+  ])
+
+  const columnsFactory = (): ColumnOption<Voucher>[] => [
+    { type: 'selection', width: 50, fixed: 'left', reserveSelection: true },
+    { type: 'globalIndex', label: '序号', width: 70 },
+    {
+      prop: 'voucherNo',
+      label: '凭证号',
+      width: 180,
+      fixed: 'left',
+      formatter: (row) => <span class="voucher-center-page__voucher-no">{row.voucherNo}</span>
+    },
+    { prop: 'voucherDate', label: '凭证日期', width: 115 },
+    {
+      prop: 'voucherType',
+      label: '类型',
+      width: 110,
+      dict: { code: 'fmsVoucherType', display: 'text' }
+    },
+    { prop: 'summary', label: '摘要', minWidth: 220, showOverflowTooltip: true },
+    {
+      prop: 'sourceType',
+      label: '业务来源',
+      width: 125,
+      dict: { code: 'fmsVoucherSourceType', display: 'text' }
+    },
+    { prop: 'sourceNo', label: '来源单号', minWidth: 150, showOverflowTooltip: true },
+    {
+      prop: 'lineCount',
+      label: '分录',
+      width: 80,
+      align: 'center',
+      formatter: (row) => `${row.lineCount} 条`
+    },
+    {
+      prop: 'totalDebit',
+      label: '凭证金额',
+      width: 135,
+      align: 'right',
+      formatter: (row) => formatMoney(row.totalDebit)
+    },
+    {
+      prop: 'status',
+      label: '状态',
+      width: 110,
+      dict: { code: 'fmsVoucherStatus', display: 'tag' }
+    },
+    { prop: 'createBy', label: '制单人', minWidth: 150, showOverflowTooltip: true },
+    {
+      prop: 'createTime',
+      label: '制单时间',
+      width: 165,
+      formatter: (row) => formatWithDayjs(row.createTime, 'YYYY-MM-DD HH:mm')
+    },
+    {
+      prop: 'operation',
+      label: '操作',
+      width: 330,
+      fixed: 'right',
+      formatter: (row) => (
+        <div class="voucher-center-page__actions">
+          <ElButton link type="primary" onClick={() => void drawerRef.value?.handleOpen(row)}>
+            查看
+          </ElButton>
+          {isPlatformSuper.value && ['draft', 'rejected'].includes(row.status) && (
+            <>
+              <ElButton link type="primary" onClick={() => void openDialog(row)}>
+                编辑
+              </ElButton>
+              <ElButton link type="success" onClick={() => void runSimpleAction(row, 'submit')}>
+                提交
+              </ElButton>
+              <ElButton
+                link
+                type="danger"
+                onClick={() => void actionDialogRef.value?.handleOpen(row, 'void')}
+              >
+                作废
+              </ElButton>
+            </>
+          )}
+          {isPlatformSuper.value && row.status === 'pending_review' && (
+            <>
+              <ElButton link type="success" onClick={() => void runSimpleAction(row, 'approve')}>
+                通过
+              </ElButton>
+              <ElButton
+                link
+                type="danger"
+                onClick={() => void actionDialogRef.value?.handleOpen(row, 'reject')}
+              >
+                驳回
+              </ElButton>
+            </>
+          )}
+          {isPlatformSuper.value && row.status === 'approved' && (
+            <>
+              <ElButton link type="success" onClick={() => void runSimpleAction(row, 'post')}>
+                过账
+              </ElButton>
+              <ElButton
+                link
+                type="danger"
+                onClick={() => void actionDialogRef.value?.handleOpen(row, 'void')}
+              >
+                作废
+              </ElButton>
+            </>
+          )}
+          {isPlatformSuper.value && row.status === 'posted' && (
+            <ElButton
+              link
+              type="warning"
+              onClick={() => void actionDialogRef.value?.handleOpen(row, 'reverse')}
+            >
+              冲销
+            </ElButton>
+          )}
+        </div>
+      )
+    }
+  ]
+
+  const excelColumns: ArtTableQueryExcelColumn[] = [
+    { key: 'voucherNo', title: '凭证号' },
+    { key: 'voucherDate', title: '凭证日期' },
+    { key: 'voucherType', title: '凭证类型' },
+    { key: 'summary', title: '摘要' },
+    { key: 'sourceType', title: '业务来源' },
+    { key: 'sourceNo', title: '来源单号' },
+    { key: 'lineCount', title: '分录数' },
+    { key: 'totalDebit', title: '借方合计' },
+    { key: 'totalCredit', title: '贷方合计' },
+    { key: 'status', title: '状态' },
+    { key: 'createBy', title: '制单人' },
+    { key: 'createTime', title: '制单时间' }
+  ]
+
+  function fetchTableData(params: TableParams) {
+    const { from, to } = pageInfoHandler({ current: params.current, size: params.size })
+    return fetchVoucherList({ ...params, from, to })
+  }
+
+  async function loadSummary(): Promise<void> {
+    if (!table.searchQuery.accountSetId) {
+      Object.assign(summary, {
+        accountSetId: '',
+        draftCount: 0,
+        pendingReviewCount: 0,
+        approvedCount: 0,
+        postedCount: 0,
+        reversedCount: 0,
+        currentPeriodPostedAmount: 0
+      })
+      return
+    }
+    const { data } = await fetchVoucherSummary(table.searchQuery.accountSetId)
+    if (data) Object.assign(summary, data)
+  }
+
+  async function loadEntryContext(): Promise<DialogContext | undefined> {
+    const accountSet = table.accountSetOptions.find(
+      (item) => item.value === table.searchQuery.accountSetId
+    )
+    if (!accountSet) return undefined
+    if (entryContext.value?.accountSet.value === accountSet.value) return entryContext.value
+    const [subjectResult, currencyResult, auxiliaryResult, templateResult] = await Promise.all([
+      fetchSubjectList(accountSet.value),
+      fetchCurrencyList(accountSet.value),
+      fetchAuxiliaryItemList(accountSet.value),
+      fetchVoucherTemplateList({ accountSetId: accountSet.value, from: 0, to: 999 })
+    ])
+    entryContext.value = {
+      accountSet,
+      subjects: subjectResult.data ?? [],
+      currencies: currencyResult.data ?? [],
+      auxiliaryItems: auxiliaryResult.data ?? [],
+      templates: templateResult.data ?? []
+    }
+    return entryContext.value
+  }
+
+  async function openDialog(row?: Voucher): Promise<void> {
+    const context = await loadEntryContext()
+    if (context) await dialogRef.value?.handleOpen(context, row)
+  }
+
+  async function runSimpleAction(
+    row: Voucher,
+    action: 'submit' | 'approve' | 'post'
+  ): Promise<void> {
+    const config = {
+      submit: {
+        title: '提交凭证审核',
+        text: '提交后将锁定凭证核算范围和分录内容。',
+        button: '确认提交'
+      },
+      approve: {
+        title: '审核通过凭证',
+        text: '审核通过后凭证进入待过账状态。',
+        button: '审核通过'
+      },
+      post: {
+        title: '凭证过账',
+        text: '过账后凭证将进入总账且只能通过冲销更正。',
+        button: '确认过账'
+      }
+    }[action]
+    try {
+      await confirmAction(config.text, `${config.title} · ${row.voucherNo}`, {
+        confirmButtonText: config.button,
+        type: action === 'post' ? 'warning' : 'info'
+      })
+      await transitionVoucher(row.id, action)
+      handleMutationSuccess()
+    } catch {
+      // 用户取消或操作失败时保留列表状态。
+    }
+  }
+
+  function handleMutationSuccess(): void {
+    entryContext.value = undefined
+    void Promise.all([tableQueryRef.value?.refreshUpdate(), loadSummary()])
+  }
+
+  async function handleAccountSetChange(): Promise<void> {
+    entryContext.value = undefined
+    await loadSummary()
+  }
+
+  async function loadAccountSets(): Promise<void> {
+    const { data } = await fetchAccountSetOptions({ status: 'active', from: 0, to: 999 })
+    table.accountSetOptions = data ?? []
+    if (!table.searchQuery.accountSetId && table.accountSetOptions.length) {
+      table.searchQuery.accountSetId = table.accountSetOptions[0].value
+      await nextTick()
+      await Promise.all([tableQueryRef.value?.getData(), loadSummary()])
+    }
+  }
+
+  function formatMoney(value: number): string {
+    return formatCurrencyValue(Number(value || 0))
+  }
+
+  onMounted(() => void loadAccountSets())
+</script>
+
+<style scoped lang="scss">
+  @use '../modules/accounting-workspace.scss' as accounting;
+
+  .voucher-center-page {
+    @include accounting.accounting-workspace-layout;
+
+    &__voucher-no {
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      color: var(--el-color-primary);
+    }
+
+    &__actions {
+      display: flex;
+      align-items: center;
+      white-space: nowrap;
+    }
+  }
+</style>

@@ -18,6 +18,7 @@ import lightTheme from '@imgs/settings/theme_styles/light.png'
 import darkTheme from '@imgs/settings/theme_styles/dark.png'
 import systemTheme from '@imgs/settings/theme_styles/system.png'
 import verticalLayout from '@imgs/settings/menu_layouts/vertical.png'
+import headerLeftLayout from '@imgs/settings/menu_layouts/header_left.svg'
 import horizontalLayout from '@imgs/settings/menu_layouts/horizontal.png'
 import mixedLayout from '@imgs/settings/menu_layouts/mixed.png'
 import dualColumnLayout from '@imgs/settings/menu_layouts/dual_column.png'
@@ -42,6 +43,8 @@ export const configImages = {
   menuLayouts: {
     /** 左侧菜单 */
     vertical: verticalLayout,
+    /** 顶部品牌栏 + 左侧菜单 */
+    headerLeft: headerLeftLayout,
     /** 顶部菜单 */
     horizontal: horizontalLayout,
     /** 混合菜单 */

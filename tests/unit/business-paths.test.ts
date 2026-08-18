@@ -12,12 +12,17 @@ import {
 
 test('exposes finance routes from the standalone root', () => {
   assert.equal(FMS_ROOT_PATH, '/fms')
-  assert.equal(financePaths.invoiceManagement, '/fms/invoice-management')
-  assert.equal(getWaybillCostDetailPath('waybill-1'), '/fms/waybill-cost/detail/waybill-1')
+  assert.equal(financePaths.invoiceManagement, '/fms/settlement/invoice-management')
+  assert.equal(
+    getWaybillCostDetailPath('waybill-1'),
+    '/fms/settlement/waybill-cost/detail/waybill-1'
+  )
   assert.equal(
     getExpenseReimbursementDetailPath('claim-1'),
-    '/fms/expense-reimbursement/detail/claim-1'
+    '/fms/settlement/expense-reimbursement/detail/claim-1'
   )
+  assert.equal(financePaths.voucherCenter, '/fms/accounting/voucher-center')
+  assert.equal(financePaths.autoPosting, '/fms/accounting/auto-posting')
 })
 
 test('redirects legacy finance bookmarks without changing their suffix', () => {
@@ -26,7 +31,7 @@ test('redirects legacy finance bookmarks without changing their suffix', () => {
     resolveLegacyBusinessPath(
       '/tms-transportation/finance-center/expense-reimbursement/detail/claim-1'
     ),
-    '/fms/expense-reimbursement/detail/claim-1'
+    '/fms/settlement/expense-reimbursement/detail/claim-1'
   )
 })
 

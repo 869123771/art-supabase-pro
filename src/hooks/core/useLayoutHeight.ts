@@ -23,8 +23,8 @@ import { useElementSize } from '@vueuse/core'
  * 页面容器高度配置
  */
 interface LayoutHeightOptions {
-  /** 额外的间距（默认 15px） */
-  extraSpacing?: number
+  /** 页面内容区需要额外扣除的垂直留白，默认跟随全局页面间距变量 */
+  extraSpacing?: number | string
   /** 是否自动更新 CSS 变量（默认 true） */
   updateCssVar?: boolean
   /** CSS 变量名称（默认 '--art-full-height'） */
@@ -32,20 +32,28 @@ interface LayoutHeightOptions {
 }
 
 export function useLayoutHeight(options: LayoutHeightOptions = {}) {
-  const { extraSpacing = 15, updateCssVar = true, cssVarName = '--art-full-height' } = options
+  const {
+    extraSpacing = 'var(--art-page-vertical-inset, 28px)',
+    updateCssVar = true,
+    cssVarName = '--art-full-height'
+  } = options
+  const normalizedExtraSpacing =
+    typeof extraSpacing === 'number' ? `${extraSpacing}px` : extraSpacing
 
   // 元素引用
   const headerRef = ref<HTMLElement>()
   const contentHeaderRef = ref<HTMLElement>()
 
   // 使用 VueUse 自动监听元素尺寸变化
-  const { height: headerHeight } = useElementSize(headerRef)
-  const { height: contentHeaderHeight } = useElementSize(contentHeaderRef)
+  const { height: headerHeight } = useElementSize(headerRef, undefined, { box: 'border-box' })
+  const { height: contentHeaderHeight } = useElementSize(contentHeaderRef, undefined, {
+    box: 'border-box'
+  })
 
   // 计算容器最小高度（响应式）
   const containerMinHeight = computed(() => {
-    const totalHeight = headerHeight.value + contentHeaderHeight.value + extraSpacing
-    return `calc(100vh - ${totalHeight}px)`
+    const layoutHeight = headerHeight.value + contentHeaderHeight.value
+    return `calc(100dvh - ${layoutHeight}px - ${normalizedExtraSpacing})`
   })
 
   if (updateCssVar) {
@@ -84,23 +92,44 @@ export function useLayoutHeight(options: LayoutHeightOptions = {}) {
  * ```
  */
 export function useAutoLayoutHeight(
-  headerIds: string[] = ['app-header', 'app-content-header'],
+  headerIds: string[] = [
+    'app-header',
+    'app-work-tab-header',
+    'app-brand-header',
+    'app-content-header'
+  ],
   options: LayoutHeightOptions = {}
 ) {
-  const { extraSpacing = 15, updateCssVar = true, cssVarName = '--art-full-height' } = options
+  const {
+    extraSpacing = 'var(--art-page-vertical-inset, 28px)',
+    updateCssVar = true,
+    cssVarName = '--art-full-height'
+  } = options
+  const normalizedExtraSpacing =
+    typeof extraSpacing === 'number' ? `${extraSpacing}px` : extraSpacing
 
   // 创建元素引用
-  const headerRef = ref<HTMLElement>()
-  const contentHeaderRef = ref<HTMLElement>()
+  const layoutElementRefs = headerIds.map(() => ref<HTMLElement>())
+  const layoutElementHeights = layoutElementRefs.map(
+    (elementRef) => useElementSize(elementRef, undefined, { box: 'border-box' }).height
+  )
+  const headerRef = layoutElementRefs[0] ?? ref<HTMLElement>()
+  const contentHeaderIndex = headerIds.indexOf('app-content-header')
+  const contentHeaderRef =
+    layoutElementRefs[contentHeaderIndex >= 0 ? contentHeaderIndex : 1] ?? ref<HTMLElement>()
 
   // 使用 VueUse 自动监听元素尺寸变化
-  const { height: headerHeight } = useElementSize(headerRef)
-  const { height: contentHeaderHeight } = useElementSize(contentHeaderRef)
+  const headerHeight = layoutElementHeights[0] ?? ref(0)
+  const contentHeaderHeight =
+    layoutElementHeights[contentHeaderIndex >= 0 ? contentHeaderIndex : 1] ?? ref(0)
 
   // 计算容器最小高度（响应式）
   const containerMinHeight = computed(() => {
-    const totalHeight = headerHeight.value + contentHeaderHeight.value + extraSpacing
-    return `calc(100vh - ${totalHeight}px)`
+    const layoutHeight = layoutElementHeights.reduce(
+      (sum, elementHeight) => sum + elementHeight.value,
+      0
+    )
+    return `calc(100dvh - ${layoutHeight}px - ${normalizedExtraSpacing})`
   })
 
   if (updateCssVar) {
@@ -120,15 +149,11 @@ export function useAutoLayoutHeight(
     if (typeof document !== 'undefined') {
       // 使用 nextTick 确保 DOM 完全渲染
       requestAnimationFrame(() => {
-        const header = document.getElementById(headerIds[0])
-        const contentHeader = document.getElementById(headerIds[1])
-
-        if (header) {
-          headerRef.value = header
-        }
-        if (contentHeader) {
-          contentHeaderRef.value = contentHeader
-        }
+        headerIds.forEach((headerId, index) => {
+          const element = document.getElementById(headerId)
+          const elementRef = layoutElementRefs[index]
+          if (element && elementRef) elementRef.value = element
+        })
       })
     }
   })

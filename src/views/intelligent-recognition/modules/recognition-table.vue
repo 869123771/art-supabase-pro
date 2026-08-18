@@ -51,6 +51,7 @@
   import { useUserStore } from '@/store/modules/user'
   import {
     confidencePercent,
+    featureLabels,
     getArtifactImageUrls,
     getArtifactTitle,
     getRecognitionRiskLevel
@@ -70,6 +71,7 @@
   const emit = defineEmits<{ open: [row: Artifact]; business: [row: Artifact] }>()
   const userStore = useUserStore()
   const { getDictMap } = storeToRefs(userStore)
+  const getDictItemByValue = userStore.getDictItemByValue
   const tableRef = ref<ArtTableQueryExpose>()
   const searchQuery = reactive<Search>({
     creator: '',
@@ -83,6 +85,17 @@
     { label: '低可信度', value: 'low' },
     { label: '中可信度', value: 'medium' }
   ]
+  const recognitionFeatureOptions = computed(() => {
+    const options = new Map<string, { label: string; value: string }>()
+    for (const item of getDictMap.value.aiOcrFeature ?? []) {
+      const value = String(item.value)
+      options.set(value, { label: item.label ?? value, value })
+    }
+    Object.entries(featureLabels).forEach(([value, label]) => {
+      if (!options.has(value)) options.set(value, { label, value })
+    })
+    return Array.from(options.values())
+  })
 
   const searchItems = computed<SearchFormItem[]>(() => [
     {
@@ -96,7 +109,7 @@
       key: 'feature',
       type: 'select',
       props: {
-        options: getDictMap.value.aiOcrFeature ?? [],
+        options: recognitionFeatureOptions.value,
         placeholder: '全部类型',
         clearable: true
       }
@@ -168,9 +181,18 @@
       prop: 'feature',
       label: '识别类型',
       width: 135,
-      formatter: (row) => (
-        <ArtDictDisplay value={row.feature} dictCode="aiOcrFeature" display="tag" />
-      )
+      formatter: (row) => {
+        const dictItem =
+          getDictItemByValue('aiOcrFeature', row.feature) ??
+          ({
+            name: row.feature,
+            code: row.feature,
+            status: '1',
+            value: row.feature,
+            label: featureLabels[row.feature] ?? row.feature
+          } satisfies Api.DataCenter.DictListItem)
+        return <ArtDictDisplay item={dictItem} dictCode="aiOcrFeature" display="tag" />
+      }
     },
     {
       prop: 'confidence',

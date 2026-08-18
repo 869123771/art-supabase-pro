@@ -12,9 +12,6 @@
       :user-name="userName"
       :user-context="userContext"
       :date-text="dateText"
-      :today-order-count="overview.data.todayOrderCount"
-      :pending-dispatch-count="overview.data.pendingDispatchCount"
-      :in-transit-count="overview.data.inTransitCount"
       @create-order="navigateTo('/tms/order-open')"
       @dispatch="navigateTo('/tms/waybill-management/pending')"
       @refresh="refreshData"
@@ -40,13 +37,13 @@
 
     <section class="operations-dashboard__summary">
       <DashboardTrend
-        :days="overview.days"
+        :period="overview.period"
         :data="trendData"
         :loading="overview.loading"
-        @update:days="handleTrendDaysChange"
+        @update:period="handleTrendPeriodChange"
       />
       <DashboardOrderFlow
-        :days="overview.days"
+        :period-label="trendPeriodLabel"
         :total="statusTotal"
         :in-transit-count="overview.data.inTransitCount"
         :status-items="statusItems"
@@ -64,7 +61,11 @@
 
 <script setup lang="ts">
   import { storeToRefs } from 'pinia'
-  import { fetchDashboardData, type DashboardData } from '@/api/dashboard'
+  import {
+    fetchDashboardData,
+    type DashboardData,
+    type DashboardTrendPeriod
+  } from '@/api/dashboard'
   import { useUserStore } from '@/store/modules/user'
   import DashboardFleetRisk from './modules/dashboard-fleet-risk.vue'
   import DashboardHero from './modules/dashboard-hero.vue'
@@ -79,7 +80,8 @@
     loading: boolean
     loaded: boolean
     error: Error | null
-    days: number
+    requestId: number
+    period: DashboardTrendPeriod
     data: DashboardData
   }
 
@@ -104,7 +106,8 @@
     loading: false,
     loaded: false,
     error: null,
-    days: 14,
+    requestId: 0,
+    period: 'month',
     data: createEmptyDashboard()
   })
   const statusDefinitions = [
@@ -155,6 +158,15 @@
     orderCount: overview.data.trend.reduce((total, item) => total + item.orderCount, 0),
     freightAmount: overview.data.trend.reduce((total, item) => total + item.freightAmount, 0)
   }))
+  const trendPeriodLabel = computed(
+    () =>
+      ({
+        today: '当天',
+        week: '本周',
+        month: '本月',
+        year: '本年'
+      })[overview.period]
+  )
   const statusTotal = computed(() =>
     Object.values(overview.data.statusCounts).reduce((total, value) => total + value, 0)
   )
@@ -236,20 +248,24 @@
   ])
 
   async function refreshData(): Promise<void> {
+    const requestId = ++overview.requestId
     overview.loading = true
     overview.error = null
     try {
-      overview.data = await fetchDashboardData(overview.days)
+      const data = await fetchDashboardData(overview.period)
+      if (requestId !== overview.requestId) return
+      overview.data = data
       overview.loaded = true
     } catch (error) {
+      if (requestId !== overview.requestId) return
       overview.error = error instanceof Error ? error : new Error('运营工作台加载失败')
     } finally {
-      overview.loading = false
+      if (requestId === overview.requestId) overview.loading = false
     }
   }
-  function handleTrendDaysChange(days: number): void {
-    if (overview.days === days) return
-    overview.days = days
+  function handleTrendPeriodChange(period: DashboardTrendPeriod): void {
+    if (overview.period === period) return
+    overview.period = period
     void refreshData()
   }
   function navigateTo(path: string): void {
@@ -280,20 +296,23 @@
 
     :deep(> .art-async-state) {
       display: grid;
-      gap: var(--art-space-4);
+      gap: 16px;
+      min-width: 0;
       padding-bottom: var(--art-space-6);
     }
 
     &__summary {
       display: grid;
-      grid-template-columns: minmax(0, 1.62fr) minmax(330px, 0.72fr);
-      gap: var(--art-space-4);
+      grid-template-columns: minmax(0, 1.65fr) minmax(330px, 0.72fr);
+      gap: 16px;
+      min-width: 0;
     }
 
     &__operations {
       display: grid;
-      grid-template-columns: minmax(0, 1.48fr) minmax(330px, 0.78fr);
-      gap: var(--art-space-4);
+      grid-template-columns: minmax(0, 1.55fr) minmax(330px, 0.78fr);
+      gap: 16px;
+      min-width: 0;
     }
 
     @media screen and (width <= 1080px) {

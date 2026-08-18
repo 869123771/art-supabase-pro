@@ -1,11 +1,11 @@
 <!-- 右键菜单 -->
 <template>
-  <div class="menu-right">
+  <Teleport to="body">
     <Transition name="context-menu" @before-enter="onBeforeEnter" @after-leave="onAfterLeave">
       <div
         v-show="visible"
         :style="menuStyle"
-        class="context-menu art-card-xs !shadow-xl min-w-[var(--menu-width)] w-[var(--menu-width)]"
+        class="menu-right context-menu art-card-xs min-w-[var(--menu-width)] w-[var(--menu-width)]"
       >
         <ul class="menu-list m-0 list-none" :style="menuListStyle" role="menu">
           <template v-for="item in menuItems" :key="item.key">
@@ -26,7 +26,7 @@
               >
                 <ArtSvgIcon
                   v-if="item.icon"
-                  class="mr-2 shrink-0 text-base text-g-800"
+                  class="mr-2 shrink-0 text-sm text-g-800"
                   :icon="item.icon"
                   aria-hidden="true"
                 />
@@ -48,7 +48,7 @@
               >
                 <ArtSvgIcon
                   v-if="item.icon"
-                  class="mr-2 shrink-0 text-base text-g-800"
+                  class="mr-2 shrink-0 text-sm text-g-800"
                   :icon="item.icon"
                   aria-hidden="true"
                 />
@@ -58,12 +58,12 @@
                 >
                 <ArtSvgIcon
                   icon="ri:arrow-right-s-line"
-                  class="submenu-arrow ml-auto mr-0 text-base text-g-500 transition-transform duration-150"
+                  class="submenu-arrow ml-auto mr-0 text-sm text-g-500 transition-transform duration-150"
                   aria-hidden="true"
                 />
               </button>
               <ul
-                class="submenu-list art-card-xs absolute left-full top-0 z-[2001] hidden w-max min-w-max list-none !shadow-xl"
+                class="submenu-list art-card-xs absolute left-full top-0 z-[2001] hidden w-max min-w-max list-none"
                 :style="submenuListStyle"
                 role="menu"
               >
@@ -84,7 +84,7 @@
                   >
                     <ArtSvgIcon
                       v-if="child.icon"
-                      class="shrink-0 text-base text-g-800 mr-1"
+                      class="shrink-0 text-sm text-g-800 mr-1"
                       :icon="child.icon"
                       aria-hidden="true"
                     />
@@ -100,7 +100,7 @@
         </ul>
       </div>
     </Transition>
-  </div>
+  </Teleport>
 </template>
 
 <script setup lang="ts">
@@ -368,10 +368,16 @@
   .menu-right {
     --menu-width: v-bind('props.menuWidth + "px"');
     --border-radius: v-bind('props.borderRadius + "px"');
+
+    border-radius: var(--border-radius) !important;
+  }
+
+  .submenu-list {
+    border-radius: var(--border-radius) !important;
   }
 
   .menu-item {
-    font: inherit;
+    font-family: inherit;
     color: inherit;
     text-align: left;
     background: transparent;

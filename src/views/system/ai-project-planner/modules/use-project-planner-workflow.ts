@@ -104,29 +104,35 @@ export function useProjectPlannerWorkflow(options: UseProjectPlannerWorkflowOpti
     }
   }
 
-  async function loadState(showMessage = false): Promise<void> {
+  async function loadState(showMessage = false, notifyOnError = true): Promise<boolean> {
     const requestId = ++activeStateRequest
     const loadingRequestId = ++activeLoadingRequest
     loading.state = true
     try {
       const next = await fetchAiPlannerState()
-      if (requestId !== activeStateRequest) return
+      if (requestId !== activeStateRequest) return false
       assignState(next)
       if (showMessage) ElMessage.success('建议已刷新')
+      return true
     } catch (error) {
-      if (requestId === activeStateRequest) {
+      if (requestId === activeStateRequest && notifyOnError) {
         ElMessage.error(getFriendlySupabaseErrorMessage(error, '加载建议失败，请稍后重试'))
       }
+      return false
     } finally {
       if (loadingRequestId === activeLoadingRequest) loading.state = false
     }
   }
 
-  async function loadCapabilities(): Promise<void> {
+  async function loadCapabilities(notifyOnError = true): Promise<boolean> {
     try {
       capabilities.value = await fetchAiPlannerCapabilities()
+      return true
     } catch (error) {
-      ElMessage.error(getFriendlySupabaseErrorMessage(error, '读取 AI 能力失败，请稍后重试'))
+      if (notifyOnError) {
+        ElMessage.error(getFriendlySupabaseErrorMessage(error, '读取 AI 能力失败，请稍后重试'))
+      }
+      return false
     }
   }
 
@@ -243,7 +249,18 @@ export function useProjectPlannerWorkflow(options: UseProjectPlannerWorkflowOpti
   }
 
   async function initialize(): Promise<void> {
-    await Promise.all([loadCapabilities(), loadState()])
+    const [capabilitiesLoaded, stateLoaded] = await Promise.all([
+      loadCapabilities(false),
+      loadState(false, false)
+    ])
+    if (capabilitiesLoaded && stateLoaded) return
+    if (!capabilitiesLoaded && !stateLoaded) {
+      ElMessage.error('AI 项目规划台加载失败，请稍后重试')
+    } else if (!capabilitiesLoaded) {
+      ElMessage.warning('AI 能力读取失败，部分功能暂不可用')
+    } else {
+      ElMessage.warning('建议读取失败，请稍后重试')
+    }
   }
 
   return {

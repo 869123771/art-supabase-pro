@@ -18,6 +18,24 @@ type AllocateCarrierPaymentPayload = Api.Fms.AllocateCarrierPaymentPayload
 
 const { supabase, responseHandle } = useSupabase()
 
+async function enrichCashFundAccounts(rows: CashTransaction[]): Promise<CashTransaction[]> {
+  const accountIds = [...new Set(rows.map((row) => row.fundAccountId).filter(Boolean))] as string[]
+  if (!accountIds.length) return rows
+  const { data } = await responseHandle<Api.Fms.FundAccountRecord[]>(
+    () =>
+      supabase
+        .from('fms_fund_account')
+        .select('id, account_code, account_name, account_no_masked')
+        .in('id', accountIds),
+    { ignoreCheck: true, showErrorMessage: true }
+  )
+  const accountMap = new Map((data ?? []).map((item) => [item.id, item]))
+  return rows.map((row) => ({
+    ...row,
+    fundAccount: row.fundAccountId ? (accountMap.get(row.fundAccountId) ?? null) : null
+  }))
+}
+
 const CASH_ALLOCATION_SELECT = `
   *,
   statement:tms_customer_statement!tms_cash_allocation_statement_id_fkey(
@@ -73,10 +91,11 @@ export async function fetchCashTransactionList(params: CashTransactionSearchPara
     .order('create_time', { ascending: false })
     .range(from, to)
   query = applyTransactionFilters(query, params)
-  return await responseHandle<CashTransaction[]>(() => query, {
+  const result = await responseHandle<CashTransaction[]>(() => query, {
     ignoreCheck: true,
     showErrorMessage: true
   })
+  return { ...result, data: await enrichCashFundAccounts(result.data ?? []) }
 }
 
 export async function exportCashTransactionList(
@@ -90,10 +109,11 @@ export async function exportCashTransactionList(
     .order('create_time', { ascending: false })
     .limit(maxRows)
   query = ids?.length ? query.in('id', ids) : applyTransactionFilters(query, params)
-  return await responseHandle<CashTransaction[]>(() => query, {
+  const result = await responseHandle<CashTransaction[]>(() => query, {
     ignoreCheck: true,
     showErrorMessage: true
   })
+  return { ...result, data: await enrichCashFundAccounts(result.data ?? []) }
 }
 
 export async function fetchCustomerStatementAllocatableList(
@@ -137,6 +157,10 @@ export async function fetchCashTransactionDetail(id: string) {
     () => supabase.from('tms_cash_transaction_summary').select('*').eq('id', id).single(),
     { ignoreCheck: true, showErrorMessage: true }
   )
+  if (transactionResponse.data) {
+    const [enriched] = await enrichCashFundAccounts([transactionResponse.data])
+    transactionResponse.data = enriched
+  }
   const allocationResponse =
     transactionResponse.data?.direction === 'payment'
       ? await responseHandle<CarrierCashAllocation[]>(
@@ -167,8 +191,9 @@ export async function fetchCashTransactionDetail(id: string) {
 export async function createCarrierPayment(params: CreateCarrierPaymentPayload) {
   return await responseHandle<string>(
     () =>
-      supabase.rpc('create_tms_carrier_payment', {
+      supabase.rpc('create_fms_carrier_payment', {
         p_carrier_id: params.carrierId,
+        p_fund_account_id: params.fundAccountId,
         p_transaction_date: params.transactionDate,
         p_amount: params.amount,
         p_payment_method: params.paymentMethod,
@@ -207,8 +232,9 @@ export async function reverseCarrierCashAllocation(id: string, reason: string) {
 export async function createCustomerReceipt(params: CreateReceiptPayload) {
   return await responseHandle<string>(
     () =>
-      supabase.rpc('create_tms_customer_receipt', {
+      supabase.rpc('create_fms_customer_receipt', {
         p_customer_id: params.customerId,
+        p_fund_account_id: params.fundAccountId,
         p_transaction_date: params.transactionDate,
         p_amount: params.amount,
         p_payment_method: params.paymentMethod,

@@ -141,6 +141,15 @@
       dictCode: 'tmsCashPaymentMethod',
       dictDisplay: 'text'
     },
+    {
+      key: 'fundAccount',
+      label: '资金账户',
+      field: 'fundAccount',
+      formatter: (_value, row) =>
+        row.fundAccount
+          ? `${row.fundAccount.accountName} · ${row.fundAccount.accountNoMasked}`
+          : '历史未关联'
+    },
     { key: 'bankReference', label: '银行流水号', field: 'bankReference', copyable: true },
     { key: 'createBy', label: '登记人', field: 'createBy' },
     {

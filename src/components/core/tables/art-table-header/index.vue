@@ -1,11 +1,11 @@
 <!-- 表格头部，包含表格大小、刷新、全屏、列设置、其他设置 -->
 <template>
   <div ref="rootRef" class="art-table-header flex-cb max-md:!block" id="art-table-header">
-    <div class="flex-wrap">
+    <div class="art-table-header__left flex-wrap">
       <slot name="left"></slot>
     </div>
 
-    <div class="flex-c md:justify-end max-md:mt-3 max-sm:!hidden">
+    <div class="art-table-header__right flex-c md:justify-end max-md:mt-3 max-sm:!hidden">
       <button
         v-if="showSearchBar != null"
         type="button"
@@ -71,16 +71,37 @@
       </button>
 
       <!-- 列设置 -->
-      <ElPopover v-if="shouldShow('columns')" placement="bottom" trigger="click">
+      <ElPopover v-if="shouldShow('columns')" placement="bottom" trigger="click" :width="232">
         <template #reference>
           <button type="button" class="button" aria-label="设置显示列" title="设置显示列">
             <ArtSvgIcon icon="ri:align-right" />
           </button>
         </template>
         <div>
-          <div class="column-presets" aria-label="列显示预设">
-            <button type="button" @click="applyColumnPreset('compact')">精简视图</button>
-            <button type="button" @click="applyColumnPreset('all')">完整视图</button>
+          <div class="column-presets">
+            <span class="column-presets__label">视图预设</span>
+            <div class="column-presets__switch" role="group" aria-label="列显示预设">
+              <button
+                type="button"
+                :class="{ 'is-active': activeColumnPreset === 'compact' }"
+                :aria-pressed="activeColumnPreset === 'compact'"
+                title="保留关键业务列"
+                @click="applyColumnPreset('compact')"
+              >
+                <ArtSvgIcon icon="ri:layout-row-line" />
+                <span>精简视图</span>
+              </button>
+              <button
+                type="button"
+                :class="{ 'is-active': activeColumnPreset === 'all' }"
+                :aria-pressed="activeColumnPreset === 'all'"
+                title="显示全部可用列"
+                @click="applyColumnPreset('all')"
+              >
+                <ArtSvgIcon icon="ri:table-view" />
+                <span>完整视图</span>
+              </button>
+            </div>
           </div>
           <ElScrollbar max-height="380px">
             <VueDraggable
@@ -233,13 +254,36 @@
     col.visible = boolValue
   }
 
-  const applyColumnPreset = (preset: 'compact' | 'all'): void => {
+  type ColumnPreset = 'compact' | 'all'
+
+  const isStructuralColumn = (column: ColumnOption): boolean =>
+    Boolean(column.fixed || column.disabled) ||
+    ['selection', 'index', 'globalIndex'].includes(String(column.type)) ||
+    column.prop === 'operation'
+
+  const activeColumnPreset = computed<ColumnPreset | undefined>(() => {
+    let visibleBusinessColumns = 0
+    let matchesCompactPreset = true
+    let allColumnsVisible = true
+
+    columns.value.forEach((column) => {
+      const isStructural = isStructuralColumn(column)
+      const isVisible = getColumnVisibility(column)
+      const compactVisible = isStructural || visibleBusinessColumns < 5
+
+      if (!isStructural) visibleBusinessColumns += 1
+      if (isVisible !== compactVisible) matchesCompactPreset = false
+      if (!isVisible) allColumnsVisible = false
+    })
+
+    if (allColumnsVisible) return 'all'
+    return matchesCompactPreset ? 'compact' : undefined
+  })
+
+  const applyColumnPreset = (preset: ColumnPreset): void => {
     let visibleBusinessColumns = 0
     columns.value.forEach((column) => {
-      const isStructural =
-        Boolean(column.fixed || column.disabled) ||
-        ['selection', 'index', 'globalIndex'].includes(String(column.type)) ||
-        column.prop === 'operation'
+      const isStructural = isStructuralColumn(column)
       const visible = preset === 'all' || isStructural || visibleBusinessColumns < 5
 
       if (!isStructural) visibleBusinessColumns += 1
@@ -432,27 +476,71 @@
   }
 
   .column-presets {
-    display: flex;
+    display: grid;
     gap: 8px;
-    padding-bottom: 10px;
-    margin-bottom: 8px;
+    padding-bottom: 12px;
+    margin-bottom: 10px;
     border-bottom: 1px solid var(--el-border-color-lighter);
 
-    button {
-      flex: 1;
-      min-height: 30px;
-      padding: 0 10px;
-      font-size: 12px;
-      color: var(--el-text-color-regular);
-      cursor: pointer;
-      background: var(--el-fill-color-light);
-      border: 1px solid var(--el-border-color-light);
-      border-radius: var(--el-border-radius-small);
+    &__label {
+      font-size: 11px;
+      font-weight: 600;
+      line-height: 1;
+      color: var(--el-text-color-secondary);
+    }
 
-      &:hover,
-      &:focus-visible {
-        color: var(--el-color-primary);
-        border-color: var(--el-color-primary-light-5);
+    &__switch {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 4px;
+      padding: 3px;
+      background: var(--el-fill-color-lighter);
+      border: 1px solid var(--el-border-color-lighter);
+      border-radius: var(--el-border-radius-base);
+
+      button {
+        display: inline-flex;
+        gap: 5px;
+        align-items: center;
+        justify-content: center;
+        min-width: 0;
+        min-height: 32px;
+        padding: 0 8px;
+        font: inherit;
+        font-size: 12px;
+        color: var(--el-text-color-secondary);
+        white-space: nowrap;
+        cursor: pointer;
+        background: transparent;
+        border: 1px solid transparent;
+        border-radius: var(--el-border-radius-small);
+        transition:
+          color 0.18s ease,
+          background-color 0.18s ease,
+          border-color 0.18s ease,
+          box-shadow 0.18s ease;
+
+        .art-svg-icon {
+          flex: none;
+          font-size: 14px;
+        }
+
+        &:hover:not(.is-active) {
+          color: var(--theme-color);
+          background: color-mix(in srgb, var(--theme-color) 6%, var(--default-box-color));
+        }
+
+        &:focus-visible {
+          outline: none;
+          box-shadow: var(--art-themed-action-focus-shadow);
+        }
+
+        &.is-active {
+          font-weight: 600;
+          color: var(--theme-color);
+          background: color-mix(in srgb, var(--theme-color) 9%, var(--default-box-color));
+          box-shadow: var(--art-themed-action-active-shadow);
+        }
       }
     }
   }

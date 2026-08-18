@@ -4,7 +4,8 @@ import {
   calculateContractCargoFreight,
   calculateContractTransportFee,
   createCargoItemFromContractDetail,
-  mergeOrderContractDetails
+  mergeOrderContractDetails,
+  synchronizeContractCargoFreight
 } from '../../src/views/tms/order-open/modules/order-contract-detail'
 import { createInitialCargoItem } from '../../src/views/tms/order-open/modules/order-open-model'
 
@@ -64,4 +65,24 @@ test('行运费按本次数量乘合同单价计算并汇总', () => {
 
   assert.equal(calculateContractCargoFreight(first), 37.5)
   assert.equal(calculateContractTransportFee([first, second]), 53.5)
+})
+
+test('数量变化后同步行运费与基础运费，非合同货物不参与计算', () => {
+  const first = createCargoItemFromContractDetail(detail({ transportUnitPrice: 345.2 }))
+  first.quantity = 2.5
+  first.freight = 0
+  const second = createCargoItemFromContractDetail(
+    detail({ key: 'contract-2:cargo-2', contractId: 'contract-2', transportUnitPrice: 360.25 })
+  )
+  second.quantity = 3
+  second.freight = 0
+  const manualCargo = createInitialCargoItem()
+  manualCargo.freight = 99
+
+  const result = synchronizeContractCargoFreight([first, second, manualCargo])
+
+  assert.deepEqual(result, { hasContractCargo: true, transportFee: 1943.75 })
+  assert.equal(first.freight, 863)
+  assert.equal(second.freight, 1080.75)
+  assert.equal(manualCargo.freight, 99)
 })

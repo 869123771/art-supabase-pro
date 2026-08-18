@@ -147,7 +147,7 @@ html.dark .el-card {
 .el-pagination.is-background .btn-next,
 .el-pagination.is-background .btn-prev,
 .el-pagination.is-background .el-pager li {
-  border-radius: 6px;
+  border-radius: var(--art-control-radius);
 }
 
 .el-popover {
@@ -158,9 +158,9 @@ html.dark .el-card {
 .el-dialog {
   overflow: hidden;
   background: var(--default-box-color);
-  border: 1px solid var(--art-card-border);
+  border: 1px solid var(--art-modal-surface-border);
   border-radius: var(--art-modal-radius) !important;
-  box-shadow: var(--art-modal-shadow);
+  box-shadow: var(--art-modal-surface-shadow);
   transition:
     width var(--art-motion-duration-base) var(--art-motion-ease-out),
     height var(--art-motion-duration-base) var(--art-motion-ease-out),
@@ -182,7 +182,7 @@ html.dark .el-card {
 
     .el-dialog__title {
       font-size: 16px;
-      font-weight: 650;
+      font-weight: 600;
       line-height: 24px;
     }
   }
@@ -228,8 +228,8 @@ html.dark .el-card {
 .el-drawer {
   overflow: hidden;
   background: var(--default-box-color);
-  border: 1px solid var(--art-card-border);
-  box-shadow: var(--art-modal-shadow);
+  border: 1px solid var(--art-modal-surface-border);
+  box-shadow: var(--art-modal-surface-shadow);
 
   &.rtl {
     border-radius: var(--art-modal-radius) 0 0 var(--art-modal-radius);
@@ -249,6 +249,7 @@ html.dark .el-card {
 
   &__title {
     font-size: 16px;
+    font-weight: 600;
   }
 
   > .el-drawer__header {
