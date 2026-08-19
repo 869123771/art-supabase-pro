@@ -10,7 +10,11 @@
         { label: '快速开单', type: 'success' },
         { label: '到离场围栏', type: 'info' }
       ]"
-    />
+    >
+      <template #actions>
+        <BusinessTableWorkspaceActions :table="tableQueryRef" />
+      </template>
+    </BusinessWorkspaceHeader>
 
     <ArtTableQuery
       ref="tableQueryRef"
@@ -20,6 +24,7 @@
       :api-params="tableApiParams"
       :columns-factory="columnsFactory"
       :header-actions="headerActions"
+      header-actions-placement="workspace"
       :search-bar-props="{ span: 6, labelWidth: 82, showExpand: false }"
       :table-props="{
         emptyText: '暂无客户地址',
@@ -58,6 +63,7 @@
     type MasterDataDeleteGuardOpenOptions
   } from '@/components/business/master-data-delete-guard/index.vue'
   import BusinessWorkspaceHeader from '@/components/business/business-workspace-header/index.vue'
+  import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
 
   defineOptions({ name: 'TmsCustomerAddress' })
 

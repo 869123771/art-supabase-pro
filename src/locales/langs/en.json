@@ -78,6 +78,8 @@
         "reloadPage": "Show reload page button",
         "fastEnter": "Show fast enter",
         "breadcrumb": "Show crumb navigation",
+        "breadcrumbIcon": "Show breadcrumb icons",
+        "breadcrumbStyle": "Breadcrumb style",
         "language": "Show multilingual selection",
         "progressBar": "Show top progress bar",
         "weakMode": "Color Weakness Mode",
@@ -92,6 +94,10 @@
       "default": "Default",
       "card": "Card",
       "google": "Chrome"
+    },
+    "breadcrumbStyle": {
+      "regular": "Regular",
+      "background": "Background"
     },
     "transition": {
       "list": {

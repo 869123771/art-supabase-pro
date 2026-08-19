@@ -7,7 +7,11 @@
       icon="ri:store-2-line"
       :tags="[{ label: '供应链主数据', type: 'primary' }]"
       :metrics="workspaceMetrics"
-    />
+    >
+      <template #actions>
+        <BusinessTableWorkspaceActions :table="tableQueryRef" />
+      </template>
+    </BusinessWorkspaceHeader>
 
     <ArtTableQuery
       ref="tableQueryRef"
@@ -16,6 +20,7 @@
       :api-fn="fetchTableData"
       :columns-factory="columnsFactory"
       :header-actions="headerActions"
+      header-actions-placement="workspace"
       :on-success="handleTableSuccess"
       :table-props="{
         rowKey: 'id',
@@ -55,6 +60,7 @@
   import BusinessWorkspaceHeader, {
     type BusinessWorkspaceMetric
   } from '@/components/business/business-workspace-header/index.vue'
+  import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
 
   defineOptions({ name: 'Supplier' })
 

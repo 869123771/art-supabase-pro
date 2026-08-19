@@ -9,7 +9,11 @@
         { label: '货品标准化', type: 'primary' },
         { label: '计量一致性', type: 'success' }
       ]"
-    />
+    >
+      <template #actions>
+        <BusinessTableWorkspaceActions :table="tableQueryRef" />
+      </template>
+    </BusinessWorkspaceHeader>
 
     <ArtTableQuery
       ref="tableQueryRef"
@@ -18,6 +22,7 @@
       :api-fn="fetchTableData"
       :columns-factory="columnsFactory"
       :header-actions="headerActions"
+      header-actions-placement="workspace"
       :search-bar-props="{ span: 6, labelWidth: 86, showExpand: false }"
       :table-props="{
         emptyText: '暂无货物资料',
@@ -57,6 +62,7 @@
     type MasterDataDeleteGuardOpenOptions
   } from '@/components/business/master-data-delete-guard/index.vue'
   import BusinessWorkspaceHeader from '@/components/business/business-workspace-header/index.vue'
+  import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
 
   defineOptions({ name: 'TmsCargo' })
 

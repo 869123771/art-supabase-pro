@@ -10,7 +10,11 @@
         { label: currentCategory?.categoryName || '全部顶级类别', type: 'info' }
       ]"
       :metrics="workspaceMetrics"
-    />
+    >
+      <template #actions>
+        <BusinessTableWorkspaceActions :table="tableQueryRef" />
+      </template>
+    </BusinessWorkspaceHeader>
 
     <div class="parts-category-layout">
       <ElSplitter class="parts-category-splitter">
@@ -33,6 +37,7 @@
               :api-fn="fetchTableData"
               :columns-factory="columnsFactory"
               :header-actions="headerActions"
+              header-actions-placement="workspace"
               :search-bar-props="{ span: 8, labelWidth: 90 }"
               :table-props="{
                 rowKey: 'id',
@@ -41,6 +46,7 @@
                 emptyDescription: '可新增当前层级类别，或调整名称、编码和状态后重新查询。'
               }"
               :on-success="handleTableSuccess"
+              focusable
             />
           </div>
         </ElSplitterPanel>
@@ -82,6 +88,7 @@
   import BusinessWorkspaceHeader, {
     type BusinessWorkspaceMetric
   } from '@/components/business/business-workspace-header/index.vue'
+  import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
 
   defineOptions({ name: 'PartsCategory' })
 

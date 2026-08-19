@@ -162,6 +162,23 @@
     line-height: 20px;
   }
 
+  :deep(.accounting-workspace-scope-section.art-page-section.art-card-xs) {
+    display: grid;
+    grid-template-columns: minmax(220px, 320px) minmax(0, 1fr);
+    gap: 24px;
+    align-items: center;
+    padding-block: 14px;
+
+    > .art-page-section__header {
+      align-items: center;
+      margin-bottom: 0;
+    }
+
+    > .art-page-section__body {
+      min-width: 0;
+    }
+  }
+
   :deep(.el-input__wrapper),
   :deep(.el-select__wrapper) {
     min-height: 38px;
@@ -260,6 +277,15 @@
 
     :deep(.art-page-section.art-card-xs) {
       padding: 16px;
+    }
+
+    :deep(.accounting-workspace-scope-section.art-page-section.art-card-xs) {
+      grid-template-columns: 1fr;
+      gap: 12px;
+
+      > .art-page-section__header {
+        align-items: flex-start;
+      }
     }
   }
 

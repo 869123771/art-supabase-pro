@@ -28,6 +28,12 @@ import type { AppRouteRecord } from '@/types/router'
 import { MenuThemeEnum, SystemThemeEnum } from '@/enums/appEnum'
 import { LocationQueryRaw } from 'vue-router'
 
+/** 工作标签页视觉风格 */
+export type WorkTabStyle = 'tab-default' | 'tab-card' | 'tab-google'
+
+/** 面包屑视觉风格 */
+export type BreadcrumbStyle = 'regular' | 'background'
+
 // 系统主题样式（light | dark）
 export interface SystemThemeType {
   /** 主题类名 */
@@ -67,6 +73,10 @@ export interface SettingState {
   showRefreshButton: boolean
   /** 是否显示面包屑 */
   showCrumbs: boolean
+  /** 是否显示面包屑图标 */
+  showBreadcrumbIcon: boolean
+  /** 面包屑视觉风格 */
+  breadcrumbStyle: BreadcrumbStyle
   /** 是否自动关闭 */
   autoClose: boolean
   /** 是否显示工作标签页 */

@@ -9,7 +9,11 @@
         { label: '树形结构', type: 'primary' },
         { label: '统一费用口径', type: 'success' }
       ]"
-    />
+    >
+      <template #actions>
+        <BusinessTableWorkspaceActions :table="tableRef" />
+      </template>
+    </BusinessWorkspaceHeader>
 
     <ArtTableQuery
       ref="tableRef"
@@ -18,6 +22,7 @@
       :api-fn="fetchTableData"
       :columns-factory="columnsFactory"
       :header-actions="headerActions"
+      header-actions-placement="workspace"
       :search-bar-props="{ span: 8, labelWidth: 86, showExpand: false }"
       :table-props="{
         rowKey: 'id',
@@ -50,6 +55,7 @@
   import { useUserStore } from '@/store/modules/user'
   import { deleteExpenseItem, fetchExpenseItemTree } from '@/api/fms'
   import { fetchGetTenantList } from '@/api/system-manage'
+  import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
   import BusinessWorkspaceHeader from '@/components/business/business-workspace-header/index.vue'
   import ExpenseItemDialog from './modules/expense-item-dialog.vue'
 

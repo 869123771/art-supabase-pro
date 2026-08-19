@@ -50,3 +50,11 @@ const metrics: BusinessWorkspaceMetric[] = [
 - `BusinessWorkspaceTag`：特性标签。
 - `BusinessWorkspaceMetric`：概览指标；支持 `key`、`tone`、`interactive`、`selected` 和 `loading`。
 - `actions` 插槽：放置该工作区的主要操作。
+
+列表页不要在 `actions` 插槽重复实现表格动作。将同一份 `ArtTableQuery.headerActions` 通过 `BusinessTableWorkspaceActions` 挂载到头部，专注模式会自动把动作移回表格：
+
+```vue
+<template #actions>
+  <BusinessTableWorkspaceActions :table="tableQueryRef" />
+</template>
+```

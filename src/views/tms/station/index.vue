@@ -9,7 +9,11 @@
         { label: '运输网络', type: 'primary' },
         { label: '区域覆盖', type: 'info' }
       ]"
-    />
+    >
+      <template #actions>
+        <BusinessTableWorkspaceActions :table="tableQueryRef" />
+      </template>
+    </BusinessWorkspaceHeader>
 
     <ArtTableQuery
       ref="tableQueryRef"
@@ -18,6 +22,7 @@
       :api-fn="fetchTableData"
       :columns-factory="columnsFactory"
       :header-actions="headerActions"
+      header-actions-placement="workspace"
       :search-bar-props="{ span: 6, labelWidth: 86, showExpand: false }"
       :table-props="{
         emptyText: '暂无运输站点',
@@ -55,6 +60,7 @@
   } from '@/api/tms'
   import StationDialog from './modules/station-dialog.vue'
   import BusinessWorkspaceHeader from '@/components/business/business-workspace-header/index.vue'
+  import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
 
   defineOptions({ name: 'TmsStation' })
 

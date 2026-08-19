@@ -15,7 +15,11 @@
         { label: '付款审批', type: 'primary' },
         { label: '执行可追踪', type: 'warning' }
       ]"
-    />
+    >
+      <template #actions>
+        <BusinessTableWorkspaceActions :table="tableQueryRef" />
+      </template>
+    </BusinessWorkspaceHeader>
 
     <ArtTableQuery
       ref="tableQueryRef"
@@ -24,6 +28,7 @@
       :api-fn="fetchTableData"
       :columns-factory="columnsFactory"
       :header-actions="table.headerActions"
+      header-actions-placement="workspace"
       :search-bar-props="{ span: 6, labelWidth: 92, showExpand: false }"
       :table-props="{
         rowKey: 'id',
@@ -65,6 +70,7 @@
   import { formatCurrencyValue } from '@/utils/ui'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import BusinessWorkspaceHeader from '@/components/business/business-workspace-header/index.vue'
+  import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
   import PaymentApplicationDialog from './modules/payment-application-dialog.vue'
   import PaymentApplicationExecuteDialog from './modules/payment-application-execute-dialog.vue'
   import PaymentApplicationDetailDrawer from './modules/payment-application-detail-drawer.vue'
@@ -385,6 +391,15 @@
     () => route.fullPath,
     () => syncMasterDeleteRoute(),
     { flush: 'post' }
+  )
+
+  watch(
+    () => route.query.status,
+    (value) => {
+      if (typeof value !== 'string' || table.searchQuery.status === value) return
+      table.searchQuery.status = value
+      void tableQueryRef.value?.getData()
+    }
   )
   onActivated(() => syncMasterDeleteRoute(true))
 

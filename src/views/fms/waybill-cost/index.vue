@@ -8,7 +8,6 @@
         action-hint="当前费用已自动定位；请按审核、报销或支付状态完成处理。"
       />
       <BusinessWorkspaceHeader
-        v-if="!focusMode"
         :eyebrow="pageIdentity.eyebrow"
         :title="pageIdentity.title"
         :description="pageIdentity.description"
@@ -17,27 +16,11 @@
         @metric-click="handleMetricClick"
       >
         <template #actions>
-          <ElButton
-            v-if="activeTab === 'expense'"
-            plain
-            @click="void ocrLogDrawerRef?.handleOpen()"
-          >
-            <ArtSvgIcon icon="ri:file-search-line" /> OCR 识别记录
-          </ElButton>
-          <ElButton v-if="activeTab === 'expense'" type="primary" @click="openExpenseDialog()">
-            <ArtSvgIcon icon="ri:add-line" /> 新增运单费用
-          </ElButton>
-          <ElButton v-else type="primary" @click="openApprovedExpenses">
-            <ArtSvgIcon icon="ri:exchange-cny-line" /> 选择已审费用
-          </ElButton>
+          <BusinessTableWorkspaceActions :table="activeTableRef" />
         </template>
       </BusinessWorkspaceHeader>
 
-      <nav
-        v-if="!focusMode"
-        class="waybill-cost__workflow art-card-xs"
-        aria-label="运单费用处理流程"
-      >
+      <nav class="waybill-cost__workflow art-card-xs" aria-label="运单费用处理流程">
         <ol>
           <li
             v-for="(step, index) in workflowSteps"
@@ -85,6 +68,7 @@
             :api-fn="fetchExpenseTableData"
             :columns-factory="expenseColumnsFactory"
             :header-actions="expenseTable.headerActions"
+            header-actions-placement="workspace"
             :search-bar-props="{ span: 6, labelWidth: 86, showExpand: true }"
             :table-props="{
               rowKey: 'id',
@@ -116,6 +100,7 @@
             :api-fn="fetchReimbursementTableData"
             :columns-factory="reimbursementColumnsFactory"
             :header-actions="reimbursementTable.headerActions"
+            header-actions-placement="workspace"
             :search-bar-props="{ span: 6, labelWidth: 86, showExpand: true }"
             :table-props="{
               rowKey: 'id',
@@ -140,12 +125,13 @@
 </template>
 
 <script setup lang="tsx">
-  import { ElButton, ElMessage } from 'element-plus'
+  import { ElMessage } from 'element-plus'
   import type { ComputedRef } from 'vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import BusinessWorkspaceHeader, {
     type BusinessWorkspaceMetric
   } from '@/components/business/business-workspace-header/index.vue'
+  import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import ArtButtonMore from '@/components/core/forms/art-button-more/index.vue'
   import type { ButtonMoreItem } from '@/components/core/forms/art-button-more/index.vue'
@@ -237,6 +223,9 @@
   )
   const expenseTableRef = ref<ArtTableQueryExpose>()
   const reimbursementTableRef = ref<ArtTableQueryExpose>()
+  const activeTableRef = computed(() =>
+    activeTab.value === 'expense' ? expenseTableRef.value : reimbursementTableRef.value
+  )
   const expenseDialogRef = ref<ExpenseDialogExpose>()
   const reimbursementDialogRef = ref<ReimbursementDialogExpose>()
   const paymentDialogRef = ref<PaymentDialogExpose>()
@@ -354,7 +343,7 @@
           : '',
       keyword: '',
       expenseItemId: '',
-      auditStatus: '',
+      auditStatus: typeof route.query.auditStatus === 'string' ? route.query.auditStatus : '',
       settlementStatus: '',
       occurredOnRange: []
     },
@@ -401,7 +390,13 @@
       }
     ]),
     headerActions: computed<ArtTableQueryHeaderAction[]>(() => [
-      { type: 'add', label: '新增费用', onClick: () => openExpenseDialog() },
+      {
+        key: 'ocrLogs',
+        label: 'OCR 识别记录',
+        buttonProps: { plain: true },
+        onClick: () => void ocrLogDrawerRef.value?.handleOpen()
+      },
+      { type: 'add', label: '新增运单费用', onClick: () => openExpenseDialog() },
       {
         key: 'convert',
         label: '转费用报销',
@@ -412,12 +407,6 @@
           title: '支持单选，或多选同一个运单下的已审费用'
         },
         onClick: ({ selectedRows }) => handleReimbursementSelection(selectedRows as Expense[])
-      },
-      {
-        key: 'ocrLogs',
-        label: 'OCR 记录',
-        buttonProps: { plain: true },
-        onClick: () => void ocrLogDrawerRef.value?.handleOpen()
       }
     ])
   })
@@ -459,7 +448,7 @@
     headerActions: computed<ArtTableQueryHeaderAction[]>(() => [
       {
         key: 'backToExpense',
-        label: '从已审费用生成',
+        label: '选择已审费用',
         buttonProps: { type: 'primary', plain: true },
         onClick: openApprovedExpenses
       }
@@ -957,6 +946,16 @@
     (name) => {
       if (name === financeRouteNames.waybillCost) activeTab.value = 'expense'
       if (name === financeRouteNames.expenseReimbursement) activeTab.value = 'reimbursement'
+    }
+  )
+
+  watch(
+    () => route.query.auditStatus,
+    (value) => {
+      if (typeof value !== 'string' || expenseTable.search.auditStatus === value) return
+      activeTab.value = 'expense'
+      expenseTable.search.auditStatus = value
+      void expenseTableRef.value?.getData()
     }
   )
 

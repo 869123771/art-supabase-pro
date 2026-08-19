@@ -12,7 +12,11 @@
         { label: '处置留痕', type: 'warning' }
       ]"
       :metrics="metrics"
-    />
+    >
+      <template #actions>
+        <BusinessTableWorkspaceActions :table="tableRef" />
+      </template>
+    </BusinessWorkspaceHeader>
 
     <ElAlert
       v-if="!isPlatformSuper"
@@ -29,6 +33,7 @@
       :api-fn="fetchTableData"
       :columns-factory="columnsFactory"
       :header-actions="headerActions"
+      header-actions-placement="workspace"
       :search-bar-props="{ span: 8, labelWidth: 82, showExpand: false }"
       :table-props="{
         rowKey: 'id',
@@ -42,6 +47,7 @@
     />
 
     <FixedAssetDialog ref="dialogRef" @success="handleSaved" />
+    <FixedAssetDisposalDialog ref="disposalDialogRef" @success="refreshAll" />
     <AssetCategoryDialog ref="categoryDialogRef" @success="handleCategorySaved" />
     <AssetDepreciationDrawer ref="depreciationRef" @success="refreshAll" />
   </div>
@@ -58,9 +64,11 @@
     ArtTableQueryExpose,
     ArtTableQueryHeaderAction
   } from '@/components/core/tables/art-table-query/index.vue'
+  import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
   import BusinessWorkspaceHeader, {
     type BusinessWorkspaceMetric
   } from '@/components/business/business-workspace-header/index.vue'
+  import { useFinanceAccountSetPrerequisite } from '../modules/use-finance-account-set-prerequisite'
   import { ACCOUNTING_SELECT_EMPTY_TEXT } from '../modules/accounting-select-text'
   import type { ColumnOption } from '@/types'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
@@ -76,6 +84,7 @@
     fetchFixedAssetSummary
   } from '@/api/fms'
   import FixedAssetDialog from './modules/fixed-asset-dialog.vue'
+  import FixedAssetDisposalDialog from './modules/fixed-asset-disposal-dialog.vue'
   import AssetCategoryDialog from './modules/asset-category-dialog.vue'
   import AssetDepreciationDrawer from './modules/asset-depreciation-drawer.vue'
 
@@ -94,10 +103,12 @@
     periodDepreciation: 0
   })
 
-  const { confirmAction, promptReason } = useArtFeedback()
+  const { confirmAction } = useArtFeedback()
+  const { runWithAccountSet } = useFinanceAccountSetPrerequisite()
   const { getDictMap, isPlatformSuper } = storeToRefs(useUserStore())
   const tableRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<{ handleOpen: (row?: Asset) => Promise<void> }>()
+  const disposalDialogRef = ref<{ handleOpen: (row: Asset) => Promise<void> }>()
   const categoryDialogRef = ref<{ handleOpen: () => Promise<void> }>()
   const depreciationRef = ref<{ handleOpen: (accountSetId?: string) => Promise<void> }>()
   const accountSetOptions = ref<Api.Fms.AccountSetOption[]>([])
@@ -190,18 +201,52 @@
   const headerActions = computed<ArtTableQueryHeaderAction[]>(() =>
     isPlatformSuper.value
       ? [
-          { type: 'add', label: '新建资产', onClick: () => void dialogRef.value?.handleOpen() },
+          {
+            type: 'add',
+            label: '新建资产',
+            onClick: () =>
+              void runWithAccountSet(
+                {
+                  actionLabel: '新建资产',
+                  activeRequired: true,
+                  accountSetId: table.search.accountSetId,
+                  foundationRequired: true,
+                  available: accountSetOptions.value.length > 0
+                },
+                () => dialogRef.value?.handleOpen()
+              )
+          },
           {
             key: 'category',
             label: '资产类别',
             icon: 'ri:folder-add-line',
-            onClick: () => void categoryDialogRef.value?.handleOpen()
+            onClick: () =>
+              void runWithAccountSet(
+                {
+                  actionLabel: '维护资产类别',
+                  activeRequired: true,
+                  accountSetId: table.search.accountSetId,
+                  foundationRequired: true,
+                  available: accountSetOptions.value.length > 0
+                },
+                () => categoryDialogRef.value?.handleOpen()
+              )
           },
           {
             key: 'depreciation',
             label: '折旧管理',
             icon: 'ri:calendar-todo-line',
-            onClick: () => void depreciationRef.value?.handleOpen(table.search.accountSetId)
+            onClick: () =>
+              void runWithAccountSet(
+                {
+                  actionLabel: '折旧管理',
+                  activeRequired: true,
+                  accountSetId: table.search.accountSetId,
+                  foundationRequired: true,
+                  available: accountSetOptions.value.length > 0
+                },
+                () => depreciationRef.value?.handleOpen(table.search.accountSetId)
+              )
           }
         ]
       : []
@@ -349,11 +394,8 @@
         })
         await deleteFixedAsset(row.id)
       } else if (item.key === 'dispose') {
-        const reason = await promptReason('请填写资产处置原因。', '资产处置', {
-          confirmButtonText: '确认处置',
-          emptyMessage: '处置原因不能为空'
-        })
-        await actFixedAsset(row.id, 'dispose', { reason, amount: 0 })
+        await disposalDialogRef.value?.handleOpen(row)
+        return
       } else {
         await confirmAction(`确定执行“${item.label}”吗？`, item.label, {
           type: 'warning',

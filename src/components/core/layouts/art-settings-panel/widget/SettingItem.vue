@@ -1,9 +1,17 @@
 <template>
-  <div class="setting-item-row flex-cb" :class="{ 'mobile-hide': config.mobileHide }">
+  <div
+    class="setting-item-row flex-cb"
+    :class="{ 'mobile-hide': config.mobileHide, 'is-disabled': config.disabled }"
+  >
     <span class="text-sm">{{ config.label }}</span>
 
     <!-- 开关类型 -->
-    <ElSwitch v-if="config.type === 'switch'" :model-value="switchValue" @change="handleChange" />
+    <ElSwitch
+      v-if="config.type === 'switch'"
+      :model-value="switchValue"
+      :disabled="config.disabled"
+      @change="handleChange"
+    />
 
     <!-- 数字输入类型 -->
     <ElInputNumber
@@ -13,6 +21,7 @@
       :max="config.max"
       :step="config.step"
       :style="config.style"
+      :disabled="config.disabled"
       :controls-position="config.controlsPosition"
       @change="handleChange"
     />
@@ -22,6 +31,7 @@
       v-else-if="config.type === 'select'"
       :model-value="selectValue"
       :style="config.style"
+      :disabled="config.disabled"
       @change="handleChange"
     >
       <ElOption
@@ -51,6 +61,7 @@
     type: 'switch' | 'input-number' | 'select'
     handler: string
     mobileHide?: boolean
+    disabled?: boolean
     min?: number
     max?: number
     step?: number
@@ -107,6 +118,12 @@
 </script>
 
 <style lang="scss" scoped>
+  .setting-item-row {
+    &.is-disabled > span {
+      opacity: 0.48;
+    }
+  }
+
   @media screen and (width <= 768px) {
     .mobile-hide {
       display: none !important;

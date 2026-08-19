@@ -1,6 +1,10 @@
 <template>
-  <div class="business-workspace-page art-full-height fms-accounting-page accounting-subject-page">
+  <div
+    class="business-workspace-page art-full-height fms-accounting-page accounting-subject-page"
+    :class="{ 'is-focus-mode': focusMode }"
+  >
     <BusinessWorkspaceHeader
+      v-show="!focusMode"
       density="compact"
       eyebrow="财务基础 · 科目体系"
       title="会计科目"
@@ -12,17 +16,27 @@
         { label: '停用留痕', type: 'info' }
       ]"
       :metrics="metrics"
-    />
+    >
+      <template #actions>
+        <AccountingWorkspaceFocusToggle v-model="focusMode" />
+      </template>
+    </BusinessWorkspaceHeader>
 
     <ElAlert
       v-if="!isPlatformSuper"
+      v-show="!focusMode"
       type="info"
       :closable="false"
       show-icon
       title="当前账号可查看本租户科目体系；新增、编辑和启停科目仅平台超级管理员可执行。"
     />
 
-    <ArtPageSection title="核算范围" subtitle="切换账套后，科目树与统计口径同步刷新">
+    <ArtPageSection
+      v-show="!focusMode"
+      title="核算范围"
+      subtitle="切换账套后，科目树与统计口径同步刷新"
+      class="accounting-workspace-scope-section"
+    >
       <div class="accounting-subject-page__scope">
         <div class="accounting-subject-page__selector">
           <span>当前账套</span>
@@ -51,68 +65,89 @@
       />
     </ArtPageSection>
 
-    <ArtSearchBar
-      v-model="filterForm"
-      :items="searchItems"
-      :span="8"
-      :gutter="16"
-      label-position="left"
-      label-width="76px"
-      :show-expand="false"
-      :button-left-limit="0"
-      @search="applyFilters"
-      @reset="resetFilters"
-    />
-
-    <ArtPageSection
-      title="科目体系"
-      :subtitle="
-        currentAccountSet
-          ? `${currentAccountSet.label} · 下级科目继承上级类别与余额方向`
-          : '请先选择账套'
-      "
-      class="accounting-subject-page__table-section accounting-workspace-fill-section"
+    <section
+      v-if="currentAccountSet && state.readiness && !state.readiness.foundationReady"
+      v-show="!focusMode"
+      class="accounting-subject-page__readiness"
+      aria-labelledby="accounting-readiness-title"
     >
-      <template #actions>
-        <ElButton
-          v-if="isPlatformSuper"
-          type="primary"
-          :disabled="!currentAccountSet"
-          :title="!currentAccountSet ? '请先创建并选择企业账套' : undefined"
-          @click="openDialog()"
-        >
-          <ArtSvgIcon icon="ri:add-line" />新增科目
-        </ElButton>
-      </template>
-
-      <ArtAsyncState
-        class="accounting-workspace-content-state"
-        :class="{
-          'is-empty': !state.loading && !state.error && filteredSubjects.length === 0
-        }"
-        :loading="state.loading"
-        :empty-image-size="72"
-        :min-height="160"
-        :error="state.error"
-        :empty="!state.loading && !state.error && filteredSubjects.length === 0"
-        empty-text="暂无会计科目"
-        :empty-description="
-          currentAccountSet ? '当前账套尚未维护符合条件的会计科目。' : '请选择一个可查看的账套。'
-        "
-        @retry="loadSubjects"
+      <span class="accounting-subject-page__readiness-icon" aria-hidden="true">
+        <ArtSvgIcon icon="ri:settings-4-line" />
+      </span>
+      <div class="accounting-subject-page__readiness-copy">
+        <strong id="accounting-readiness-title">当前账套尚未完成核算初始化</strong>
+        <p>{{ readinessDescription }}</p>
+      </div>
+      <ElButton
+        v-if="isPlatformSuper"
+        type="primary"
+        :loading="state.initializing"
+        @click="initializeFoundation"
       >
-        <ArtTable
-          :data="filteredSubjects"
-          :columns="columns"
-          :pagination="false"
-          row-key="id"
-          default-expand-all
-          table-layout="fixed"
-          :tree-props="{ children: 'children' }"
+        <ArtSvgIcon icon="ri:magic-line" />补齐核算基础
+      </ElButton>
+      <ElTag v-else type="warning">请联系平台超级管理员</ElTag>
+    </section>
+
+    <div class="accounting-subject-page__workspace" :class="{ 'is-focused': focusMode }">
+      <ArtSearchBar
+        v-model="filterForm"
+        :items="searchItems"
+        :span="8"
+        :gutter="16"
+        label-position="left"
+        label-width="76px"
+        :show-expand="false"
+        :button-left-limit="0"
+        @search="applyFilters"
+        @reset="resetFilters"
+      />
+
+      <ArtPageSection
+        title="科目体系"
+        :subtitle="
+          currentAccountSet
+            ? `${currentAccountSet.label} · 下级科目继承上级类别与余额方向`
+            : '请先选择账套'
+        "
+        class="accounting-subject-page__table-section accounting-workspace-fill-section"
+      >
+        <template #actions>
+          <AccountingWorkspaceFocusToggle v-if="focusMode" v-model="focusMode" />
+          <ElButton v-if="isPlatformSuper" type="primary" @click="openDialog()">
+            <ArtSvgIcon icon="ri:add-line" />新增科目
+          </ElButton>
+        </template>
+
+        <ArtAsyncState
+          class="accounting-workspace-content-state"
+          :class="{
+            'is-empty': !state.loading && !state.error && filteredSubjects.length === 0
+          }"
+          :loading="state.loading"
+          :empty-image-size="72"
+          :min-height="160"
+          :error="state.error"
+          :empty="!state.loading && !state.error && filteredSubjects.length === 0"
           empty-text="暂无会计科目"
-        />
-      </ArtAsyncState>
-    </ArtPageSection>
+          :empty-description="
+            currentAccountSet ? '当前账套尚未维护符合条件的会计科目。' : '请选择一个可查看的账套。'
+          "
+          @retry="loadSubjects"
+        >
+          <ArtTable
+            :data="filteredSubjects"
+            :columns="columns"
+            :pagination="false"
+            row-key="id"
+            default-expand-all
+            table-layout="fixed"
+            :tree-props="{ children: 'children' }"
+            empty-text="暂无会计科目"
+          />
+        </ArtAsyncState>
+      </ArtPageSection>
+    </div>
 
     <SubjectDialog ref="dialogRef" @success="loadSubjects" />
   </div>
@@ -124,7 +159,10 @@
   import BusinessWorkspaceHeader, {
     type BusinessWorkspaceMetric
   } from '@/components/business/business-workspace-header/index.vue'
+  import AccountingWorkspaceFocusToggle from '../modules/accounting-workspace-focus-toggle.vue'
+  import { useAccountingWorkspaceFocus } from '../modules/use-accounting-workspace-focus'
   import AccountingSetupGuide from '../modules/accounting-setup-guide.vue'
+  import { useFinanceAccountSetPrerequisite } from '../modules/use-finance-account-set-prerequisite'
   import ArtPageSection from '@/components/core/layouts/art-page-section/index.vue'
   import ArtAsyncState from '@/components/core/layouts/art-async-state/index.vue'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
@@ -136,9 +174,11 @@
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { useUserStore } from '@/store/modules/user'
   import {
+    fetchAccountingReadiness,
     fetchAccountSetOptions,
     fetchAuxiliaryTypeList,
     fetchSubjectList,
+    initializeAccountingDefaults,
     setSubjectEnabled
   } from '@/api/fms'
   import SubjectDialog from './modules/subject-dialog.vue'
@@ -168,7 +208,8 @@
   }
 
   const { confirmAction } = useArtFeedback()
-  const router = useRouter()
+  const { focusMode } = useAccountingWorkspaceFocus()
+  const { ensureAccountSet, goToAccountSet } = useFinanceAccountSetPrerequisite()
   const { getDictMap, isPlatformSuper } = storeToRefs(useUserStore())
   const dialogRef = ref<SubjectDialogExpose>()
   const subjectTree = new TreeUtils({
@@ -183,6 +224,8 @@
     accountSetOptions: [] as AccountSetOption[],
     loading: false,
     error: '',
+    initializing: false,
+    readiness: null as Api.Fms.AccountingReadiness | null,
     subjects: [] as Subject[],
     auxiliaryTypes: [] as Api.Fms.AuxiliaryTypeRecord[]
   })
@@ -208,6 +251,23 @@
   const currentAccountSet = computed(() =>
     state.accountSetOptions.find((item) => item.value === state.accountSetId)
   )
+
+  const readinessDescription = computed(() => {
+    const readiness = state.readiness
+    if (!readiness) return ''
+    const items: string[] = []
+    if (readiness.missingSubjectCodes.length) {
+      items.push(`缺少 ${readiness.missingSubjectCodes.length} 个核心明细科目`)
+    }
+    if (readiness.missingPostingRuleCodes.length) {
+      items.push(`缺少 ${readiness.missingPostingRuleCodes.length} 套自动制证规则`)
+    }
+    if (!readiness.statementItemCount || !readiness.statementMappingCount) {
+      items.push('财务报表项目与科目映射未完成')
+    }
+    if (!readiness.openPeriodCount) items.push('没有开放的会计期间')
+    return `${items.join('；')}。补齐操作只新增缺失项，不覆盖已有科目、规则和报表配置。`
+  })
 
   const metrics = computed<BusinessWorkspaceMetric[]>(() => {
     const subjects = state.subjects
@@ -364,10 +424,6 @@
     Object.assign(appliedFilter, createDefaultFilter())
   }
 
-  function goToAccountSet(): void {
-    void router.push('/fms/account-set')
-  }
-
   async function loadSubjects(): Promise<void> {
     if (!state.accountSetId) {
       state.subjects = []
@@ -376,16 +432,40 @@
     state.loading = true
     state.error = ''
     try {
-      const [subjectResult, auxiliaryResult] = await Promise.all([
+      const [subjectResult, auxiliaryResult, readinessResult] = await Promise.all([
         fetchSubjectList(state.accountSetId),
-        fetchAuxiliaryTypeList(state.accountSetId)
+        fetchAuxiliaryTypeList(state.accountSetId),
+        fetchAccountingReadiness(state.accountSetId)
       ])
       state.subjects = subjectResult.data ?? []
       state.auxiliaryTypes = auxiliaryResult.data ?? []
+      state.readiness = readinessResult.data ?? null
     } catch (error) {
       state.error = error instanceof Error ? error.message : '会计科目加载失败'
     } finally {
       state.loading = false
+    }
+  }
+
+  async function initializeFoundation(): Promise<void> {
+    if (!currentAccountSet.value || state.initializing) return
+    try {
+      await confirmAction(
+        `将为“${currentAccountSet.value.label}”补齐核心会计科目、默认自动制证规则和财务报表映射。已有配置不会被覆盖。`,
+        '补齐核算基础',
+        {
+          type: 'warning',
+          confirmButtonText: '确认补齐',
+          cancelButtonText: '暂不处理'
+        }
+      )
+      state.initializing = true
+      await initializeAccountingDefaults(currentAccountSet.value.value)
+      await loadSubjects()
+    } catch {
+      // 用户取消或数据库业务约束阻止时，不重复提示。
+    } finally {
+      state.initializing = false
     }
   }
 
@@ -395,9 +475,15 @@
   }
 
   async function openDialog(row?: Subject): Promise<void> {
-    if (!currentAccountSet.value) return
+    if (
+      !(await ensureAccountSet({
+        actionLabel: row ? '编辑会计科目' : '新增会计科目',
+        available: Boolean(currentAccountSet.value)
+      }))
+    )
+      return
     await dialogRef.value?.handleOpen(
-      currentAccountSet.value,
+      currentAccountSet.value!,
       state.subjects,
       state.auxiliaryTypes,
       row
@@ -437,6 +523,10 @@
   .accounting-subject-page {
     @include accounting.accounting-workspace-layout;
 
+    &.is-focus-mode {
+      gap: 0;
+    }
+
     &__selector,
     &__actions,
     &__attributes {
@@ -473,6 +563,59 @@
       min-height: 0;
     }
 
+    &__workspace {
+      display: flex;
+      flex: 1;
+      flex-direction: column;
+      gap: 16px;
+      min-width: 0;
+      min-height: 0;
+
+      &.is-focused {
+        height: 100%;
+      }
+    }
+
+    &__readiness {
+      display: grid;
+      grid-template-columns: 40px minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: center;
+      padding: 12px 14px;
+      color: var(--el-text-color-regular);
+      background: color-mix(in srgb, var(--el-color-warning) 7%, var(--default-box-color));
+      border: 1px solid color-mix(in srgb, var(--el-color-warning) 28%, var(--el-border-color));
+      border-radius: var(--el-border-radius-base);
+    }
+
+    &__readiness-icon {
+      display: grid;
+      place-items: center;
+      width: 40px;
+      height: 40px;
+      font-size: 19px;
+      color: var(--el-color-warning-dark-2);
+      background: color-mix(in srgb, var(--el-color-warning) 14%, transparent);
+      border-radius: var(--el-border-radius-base);
+    }
+
+    &__readiness-copy {
+      min-width: 0;
+
+      strong {
+        display: block;
+        margin-bottom: 2px;
+        color: var(--el-text-color-primary);
+      }
+
+      p {
+        margin: 0;
+        font-size: 12px;
+        line-height: 18px;
+        color: var(--el-text-color-secondary);
+      }
+    }
+
     &__code {
       font-weight: 700;
       font-variant-numeric: tabular-nums;
@@ -493,6 +636,16 @@
     .accounting-subject-page {
       &__selector {
         width: 100%;
+      }
+
+      &__readiness {
+        grid-template-columns: 40px minmax(0, 1fr);
+
+        :deep(.el-button),
+        :deep(.el-tag) {
+          grid-column: 1 / -1;
+          width: 100%;
+        }
       }
     }
   }

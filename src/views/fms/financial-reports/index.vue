@@ -15,7 +15,11 @@
         }
       ]"
       :metrics="metrics"
-    />
+    >
+      <template #actions>
+        <BusinessTableWorkspaceActions :table="tableRef" />
+      </template>
+    </BusinessWorkspaceHeader>
 
     <ElAlert
       :type="activeType === 'cash_flow_statement' ? 'warning' : 'info'"
@@ -50,6 +54,7 @@
       :api-fn="fetchTableData"
       :columns-factory="columnsFactory"
       :header-actions="headerActions"
+      header-actions-placement="workspace"
       :immediate="false"
       :search-bar-props="{ span: 6, labelWidth: 82, showExpand: false }"
       :table-props="{
@@ -77,10 +82,12 @@
     ArtTableQueryExpose,
     ArtTableQueryHeaderAction
   } from '@/components/core/tables/art-table-query/index.vue'
+  import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
   import BusinessWorkspaceHeader, {
     type BusinessWorkspaceMetric
   } from '@/components/business/business-workspace-header/index.vue'
   import { ACCOUNTING_SELECT_EMPTY_TEXT } from '../modules/accounting-select-text'
+  import { useFinanceAccountSetPrerequisite } from '../modules/use-finance-account-set-prerequisite'
   import StatementConfigDrawer from './modules/statement-config-drawer.vue'
   import type { ColumnOption } from '@/types'
   import { useUserStore } from '@/store/modules/user'
@@ -101,6 +108,7 @@
 
   const { getDictMap, isPlatformSuper } = storeToRefs(useUserStore())
   const activeType = ref<StatementType>('balance_sheet')
+  const { ensureAccountSet } = useFinanceAccountSetPrerequisite()
   const tableRef = ref<ArtTableQueryExpose>()
   const configDrawerRef = ref<InstanceType<typeof StatementConfigDrawer>>()
   const accountSetOptions = ref<Api.Fms.AccountSetOption[]>([])
@@ -192,7 +200,6 @@
       key: 'statement-config',
       label: isPlatformSuper.value ? '取数口径' : '查看口径',
       icon: isPlatformSuper.value ? 'ri:settings-3-line' : 'ri:eye-line',
-      disabled: !search.accountSetId,
       onClick: openConfiguration
     },
     {
@@ -458,9 +465,16 @@
     void nextTick(() => tableRef.value?.getData())
   }
 
-  function openConfiguration(): void {
-    if (!search.accountSetId) return
-    void configDrawerRef.value?.handleOpen(search.accountSetId, activeType.value)
+  async function openConfiguration(): Promise<void> {
+    if (
+      !(await ensureAccountSet({
+        actionLabel: isPlatformSuper.value ? '维护财务报表取数口径' : '查看财务报表取数口径',
+        activeRequired: true,
+        available: Boolean(search.accountSetId)
+      }))
+    )
+      return
+    await configDrawerRef.value?.handleOpen(search.accountSetId, activeType.value)
   }
 
   function refreshReport(): void {

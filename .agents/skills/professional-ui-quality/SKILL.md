@@ -1,111 +1,89 @@
 ---
 name: professional-ui-quality
-description: Enforce professional visual design and UI quality gates for art-supabase-pro. Use whenever creating, modifying, refactoring, reviewing, or visually auditing any user-facing Vue page, component, dashboard, table, form, dialog, drawer, empty state, loading state, AI feature, or responsive layout under src. Apply even when the user asks only for functionality and does not explicitly request beautification.
+description: Design, improve, review, and visually verify professional user-facing UI for art-supabase-pro. Use for any Vue page, component, dashboard, table, form, dialog, drawer, navigation, empty/loading/error state, responsive layout, theme treatment, accessibility review, UI audit, screenshot comparison, or visual polish under src. Apply to routine frontend changes even when the user asks only for functionality, and use the formal review mode when the user asks to assess UI quality without implementation.
 ---
 
-# Professional UI Quality
+# Professional UI Quality v2
 
-Treat visual quality as part of feature completion. Never hand off a user-facing change that is merely functional.
+Treat visual quality, usability, accessibility, and rendered verification as feature requirements. Produce UI that belongs to this product instead of a generic template.
 
-## Design Direction
+## Select The Operating Mode
 
-Use a modern enterprise logistics style: calm, precise, trustworthy, information-dense without feeling crowded.
+Choose one mode before acting:
 
-- Use the project theme and existing Art/Element Plus primitives as the visual source of truth.
-- Prefer neutral surfaces, blue/indigo primary accents, and semantic success/warning/danger colors.
-- Use gradients only for restrained emphasis, never as a default card background.
-- Build hierarchy with typography, spacing, grouping, borders, and tonal contrast before adding decoration.
-- Keep one clear primary action per region. De-emphasize secondary and destructive actions appropriately.
-- Use icons to improve scanning, not to decorate every label.
-- Preserve consistent radii, card treatment, shadows, control heights, and density across neighboring pages.
+- **Create**: new page, new workflow, or substantial redesign. Read [project-visual-baseline.md](references/project-visual-baseline.md), [creative-direction.md](references/creative-direction.md), and [web-interface-checklist.md](references/web-interface-checklist.md).
+- **Improve**: targeted polish or feature work inside an established page. Read [project-visual-baseline.md](references/project-visual-baseline.md) and the relevant sections of [web-interface-checklist.md](references/web-interface-checklist.md). Preserve the established page language unless the user requests a redesign.
+- **Review**: visual, UX, accessibility, PR, or design-system audit. Read [project-visual-baseline.md](references/project-visual-baseline.md), [web-interface-checklist.md](references/web-interface-checklist.md), and [review-rubric.md](references/review-rubric.md). Report findings; do not implement fixes unless requested.
 
-## Theme And Box-Mode Coupling
+Use [review-rubric.md](references/review-rubric.md) for every formal score, approval decision, or final quality report. Do not load creative guidance for a narrow maintenance change with a fixed visual direction.
 
-Interactive surfaces must follow both the active theme color and the configured box style. Do not implement a theme-colored hover state without also respecting the root `data-box-mode` value.
+## Establish The UI Contract
 
-- Derive hover, active, and focus colors from `--theme-color`; never hardcode a product accent color.
-- In `border-mode`, use a theme-tinted background plus a visible theme-colored border or inset ring. Do not add elevation shadows.
-- In `shadow-mode`, use a theme-tinted background plus a soft theme-colored outer shadow. Keep the border transparent and do not add an inset border ring.
-- Prefer shared CSS tokens for these mode-dependent treatments so headers, `ArtDialog`, `ArtDrawer`, table tools, and other icon actions remain consistent.
-- Preserve keyboard focus visibility in both modes. The focus treatment may be stronger than hover, but it must retain the selected box-mode language.
-- When changing a shared interactive pattern, verify both `border-mode` and `shadow-mode` in a real browser before handoff.
+Before implementation or review, identify:
 
-## Required Workflow
+1. The user's primary job and the one action that should dominate the region.
+2. The information hierarchy: identity, decision summary, main work area, and supporting evidence.
+3. The required states: success, loading, empty, error/retry, disabled/permission-limited, selected, long content, and dense data.
+4. The viewport, theme, box-mode, localization, and permission constraints that can change the result.
+5. The source-of-truth order: explicit user reference or Figma, existing project system, polished neighboring workflow, then this skill's defaults.
 
-### 1. Inspect Before Designing
+Inspect the target, child modules, relevant Art/Element Plus APIs, and at least one polished neighboring workflow before making visual decisions.
 
-Read the target page, its child modules, one polished neighboring page, and the relevant core component APIs. Identify the page's primary task, information hierarchy, high-frequency actions, and likely viewport constraints.
+## Build With Project Identity
 
-### 2. Establish Layout Hierarchy
+- Apply `art-supabase-pro-conventions` together with this skill.
+- Reuse Art components, Element Plus primitives, theme tokens, global radii, and existing layout patterns. Extend a shared pattern before copying it into several pages.
+- Keep the product calm, precise, trustworthy, and operationally dense. Make one visual idea carry the region; keep surrounding treatment disciplined.
+- Use typography, spacing, grouping, tonal contrast, and alignment before decoration.
+- Derive interactive colors from `--theme-color`. Never hardcode a product accent or create a competing local design system.
+- Prefer `ArtTableQuery`, `ArtDialog`, `ArtDrawer`, `ArtForm`, `ArtSectionTitle`, `art-card-xs`, and bounded `ElScrollbar` regions where their established responsibility applies.
 
-Organize the interface into intentional layers:
+## Enforce Perceptible Hierarchy
 
-1. Page or workflow identity: title, context, status, and primary action.
-2. Decision summary: important metrics, warnings, or progress.
-3. Main work area: forms, tables, charts, or business content.
-4. Supporting details: evidence, metadata, explanations, and audit information.
+- A background, filled, tonal, selected, or elevated variant must be visibly distinct at actual rendered size. A technically different but imperceptible color is a defect.
+- Preserve readable neutral, hover/focus, and current/selected levels. Do not rely on color alone for business status.
+- For deliberately borderless tonal navigation, create separation with fill contrast; reserve a ring for keyboard focus instead of adding a decorative border.
+- In `border-mode`, elevated controls use the project's border/inset-ring language without elevation shadows.
+- In `shadow-mode`, elevated controls use a restrained theme-colored outer shadow with a transparent border.
+- Validate light/dark themes and both box modes whenever a shared interactive surface changes.
 
-Avoid undifferentiated stacks of white boxes. Group related content, align edges, and use a consistent spacing rhythm. Prefer 4/8/12/16/24/32px spacing decisions unless an existing component controls spacing.
+## Complete Interaction And Content
 
-### 3. Complete Every UI State
+- Use semantic interactive elements, visible `:focus-visible` treatment, accessible names, and forgiving hit areas.
+- Keep labels action-specific. Helper, empty, and error copy must explain consequences or the next useful action.
+- Do not block paste or browser zoom. Respect reduced motion and avoid decorative animation that delays work.
+- Prevent accidental horizontal scrolling. Use `min-width: 0`, wrapping, truncation with a full-value path, and responsive grids intentionally.
+- For table workspaces, preserve query, table, operation, pagination, loading, empty, and focus-mode behavior as one workflow.
+- Size fixed operation columns from rendered controls and intentional gaps; do not hide valid actions merely to make the column narrower.
 
-Design and implement all states relevant to the workflow:
+## Verify The Rendered Result
 
-- loading and refresh;
-- empty and first-use;
-- error and retry;
-- disabled and permission-limited;
-- selected, active, warning, and destructive;
-- long text, large numbers, missing values, and dense data;
-- narrow desktop and mobile-width behavior where applicable.
+Run focused formatting, ESLint, type checking, and the repository UI audit. When CSS or SCSS changes, run focused Stylelint as a separate gate; ESLint and `ui:audit` do not replace it. Then verify the affected workflow in a real browser.
 
-Do not use raw placeholder text, unstyled fallback blocks, or blank regions when a purposeful state is possible.
+Use the bundled browser audit when a locally reachable URL is available:
 
-### 4. Apply Interaction Quality
+```powershell
+pnpm.cmd exec node .agents/skills/professional-ui-quality/scripts/visual-audit.mjs --url "http://127.0.0.1:3006/#/route" --selector ".target-root" --viewports "1440x900,1280x800"
+```
 
-- Keep labels concise and make helper text explain consequences or next actions.
-- Make clickable regions and button hierarchy visually obvious.
-- On table pages with a persistent identity, governance, overview, or explanatory header above `ArtTableQuery`, enable the shared focus mode. Verify that entering focus mode hides non-table context, preserves the query/table/pagination workflow, supports Escape to exit, and restores the prior layout and search-panel state.
-- Size fixed operation columns from the rendered controls, cell padding, and intentional gaps. When several compact actions are valid, preserve them and remove compounded child margins instead of compressing the controls or hiding useful actions solely for aesthetics.
-- Preserve keyboard focus visibility and sufficient color contrast.
-- Do not communicate status by color alone; pair color with text or iconography.
-- Prevent accidental horizontal scrolling. Use `min-width: 0`, wrapping, truncation, or responsive grids deliberately.
-- Use bounded `ElScrollbar` regions for long drawer, dialog, panel, or page content.
+Add `--themes "light,dark"`, `--box-modes "border-mode,shadow-mode"`, and `--storage-state "playwright/.auth/user.json"` when those variants are relevant. Read the generated JSON report and inspect every screenshot at 100% scale. The script is evidence collection, not a substitute for visual judgment.
 
-### 5. Reuse The Project System
+Use test or sanitized data for screenshots. Keep generated evidence under the ignored `.artifacts` directory; do not commit or share screenshots that contain tenant, customer, credential, financial, or personal data.
 
-Apply `art-supabase-pro-conventions` together with this skill. Prefer `ArtTableQuery`, `ArtDialog`, `ArtDrawer`, `ArtForm`, `ArtSectionTitle`, `art-card-xs`, theme variables, and existing global radius tokens. Do not create a competing local design system inside one business page.
+Check at minimum:
 
-When a broadly useful visual pattern is missing, extend the closest shared core component or token before copying page-local implementations across features.
+- initial and lower scrollable content;
+- alignment, clipping, wrapping, horizontal overflow, and sticky regions;
+- relevant loading, empty, error, disabled, selected, and long-content states;
+- keyboard focus, interaction feedback, console errors, and narrow desktop behavior;
+- light/dark and box-mode variants affected by shared styling.
 
-## Mandatory Visual Quality Gate
+Do not declare completion from source review alone. If browser verification is impossible, state that the visual gate remains provisional.
 
-For every user-facing frontend change:
+## Report The Outcome
 
-1. Format, lint, and type-check the changed files.
-2. Open the affected workflow in a real browser when practical.
-3. Inspect at least the initial view and any scrollable lower content.
-4. Check alignment, clipping, horizontal overflow, loading/empty behavior, and console errors.
-5. Capture or inspect screenshots at the actual rendered size and iterate on visible defects.
-6. Report visual verification and any environment limitation in the handoff.
-
-Do not declare the UI complete based only on source-code review. If browser verification is impossible, explicitly state that the visual gate remains unverified.
-
-## Acceptance Checklist
-
-Before handoff, confirm:
-
-- the primary task and action are immediately understandable;
-- typography has clear title, section, body, and metadata levels;
-- cards and sections align to a coherent grid;
-- spacing is consistent and neither cramped nor wasteful;
-- semantic colors are correct and restrained;
-- tables, forms, dialogs, and drawers match the surrounding product;
-- long content and narrow widths do not introduce unintended horizontal scrolling;
-- loading, empty, error, and disabled states look intentional;
-- the interface contains no debug labels, awkward copy, or unexplained technical values;
-- the browser console has no new errors.
+For implementation, lead with the visible result, then list verification evidence and limitations. For reviews, use the severity, scoring, evidence, and verdict format in [review-rubric.md](references/review-rubric.md). Keep findings concrete and tied to a rendered or source artifact.
 
 ## Design Tool Policy
 
-Use Figma when a supplied Figma file is the design source of truth, when stakeholders need collaborative design approval before implementation, or when exact design-token handoff is required. Do not require Figma for routine feature beautification; this skill and the live product design system remain sufficient for code-first UI work.
+Use Figma when it is the supplied source of truth, collaborative approval is required, or exact token handoff is needed. Do not require Figma for routine code-first improvement; the live product and project design system remain authoritative.

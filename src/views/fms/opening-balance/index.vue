@@ -1,6 +1,10 @@
 <template>
-  <div class="business-workspace-page art-full-height fms-accounting-page opening-balance-page">
+  <div
+    class="business-workspace-page art-full-height fms-accounting-page opening-balance-page"
+    :class="{ 'is-focus-mode': focusMode }"
+  >
     <BusinessWorkspaceHeader
+      v-show="!focusMode"
       density="compact"
       eyebrow="财务基础 · 期初初始化"
       title="期初余额"
@@ -12,10 +16,15 @@
         { label: '反确认留痕', type: 'info' }
       ]"
       :metrics="metrics"
-    />
+    >
+      <template #actions>
+        <AccountingWorkspaceFocusToggle v-model="focusMode" />
+      </template>
+    </BusinessWorkspaceHeader>
 
     <ElAlert
       v-if="!isPlatformSuper"
+      v-show="!focusMode"
       type="info"
       :closable="false"
       show-icon
@@ -23,9 +32,10 @@
     />
 
     <ArtPageSection
+      v-show="!focusMode"
       title="初始化范围"
       subtitle="期初数据按账套与会计年度分别管控"
-      class="opening-balance-page__scope-section"
+      class="opening-balance-page__scope-section accounting-workspace-scope-section"
     >
       <div class="opening-balance-page__scope">
         <label>
@@ -81,73 +91,70 @@
       class="opening-balance-page__detail accounting-workspace-fill-section"
     >
       <template #actions>
-        <div
-          class="opening-balance-page__status-group"
-          role="status"
-          aria-live="polite"
-          aria-atomic="true"
-        >
-          <ElTag
-            class="opening-balance-page__status-tag"
-            :type="summary.status === 'confirmed' ? 'success' : 'warning'"
-            size="small"
-            effect="plain"
-            round
-          >
-            {{ summary.status === 'confirmed' ? '已确认' : '草稿' }}
-          </ElTag>
-          <div
-            class="opening-balance-page__balance-check"
-            :class="summary.isBalanced ? 'is-balanced' : 'is-unbalanced'"
-          >
-            <ArtSvgIcon
-              aria-hidden="true"
-              :icon="summary.isBalanced ? 'ri:checkbox-circle-line' : 'ri:error-warning-line'"
-            />
-            <span>{{
-              summary.isBalanced ? '借贷平衡' : `差额 ${formatMoney(summary.difference)}`
-            }}</span>
-          </div>
-        </div>
+        <AccountingWorkspaceFocusToggle v-if="focusMode" v-model="focusMode" />
         <ElButton
           v-if="isPlatformSuper && summary.status === 'draft'"
           type="primary"
-          :disabled="!currentAccountSet || workspace.leafSubjects.length === 0"
-          :title="
-            !currentAccountSet
-              ? '请先创建并选择企业账套'
-              : workspace.leafSubjects.length === 0
-                ? '当前账套尚未维护末级会计科目'
-                : undefined
-          "
           @click="openDialog()"
         >
           <ArtSvgIcon icon="ri:add-line" />录入余额
         </ElButton>
-        <ElButton
+        <ElTooltip
           v-if="isPlatformSuper && summary.status === 'draft'"
-          type="success"
-          :disabled="!summary.isBalanced || summary.entryCount === 0"
-          :title="
-            summary.entryCount === 0
-              ? '请先录入期初余额'
-              : !summary.isBalanced
-                ? '借贷合计平衡后才能确认锁定'
-                : undefined
-          "
-          :loading="workspace.statusChanging"
-          @click="confirmOpeningBalance"
+          :disabled="canConfirmOpeningBalance"
+          :content="confirmOpeningBalanceHint"
+          placement="bottom"
         >
-          确认并锁定
-        </ElButton>
+          <span class="opening-balance-page__confirm-action">
+            <ElButton
+              type="success"
+              plain
+              :disabled="!canConfirmOpeningBalance"
+              :loading="workspace.statusChanging"
+              @click="confirmOpeningBalance"
+            >
+              确认并锁定
+            </ElButton>
+          </span>
+        </ElTooltip>
         <ElButton
           v-if="isPlatformSuper && summary.status === 'confirmed'"
+          plain
           :loading="workspace.statusChanging"
           @click="reopenOpeningBalance"
         >
           反确认
         </ElButton>
       </template>
+
+      <div
+        class="opening-balance-page__validation-strip"
+        :class="summary.isBalanced ? 'is-balanced' : 'is-unbalanced'"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+      >
+        <span class="opening-balance-page__validation-icon" aria-hidden="true">
+          <ArtSvgIcon
+            :icon="summary.isBalanced ? 'ri:checkbox-circle-line' : 'ri:error-warning-line'"
+          />
+        </span>
+        <div class="opening-balance-page__validation-copy">
+          <div>
+            <strong>{{ balanceValidationTitle }}</strong>
+            <ElTag
+              class="opening-balance-page__status-tag"
+              :type="summary.status === 'confirmed' ? 'success' : 'warning'"
+              size="small"
+              effect="plain"
+              round
+            >
+              {{ summary.status === 'confirmed' ? '已确认' : '草稿' }}
+            </ElTag>
+          </div>
+          <span>{{ balanceValidationDescription }}</span>
+        </div>
+      </div>
 
       <ArtSearchBar
         v-model="balanceFilterForm"
@@ -190,12 +197,15 @@
 </template>
 
 <script setup lang="tsx">
-  import { ElButton, ElTag } from 'element-plus'
+  import { ElButton, ElTag, ElTooltip } from 'element-plus'
   import { storeToRefs } from 'pinia'
   import BusinessWorkspaceHeader, {
     type BusinessWorkspaceMetric
   } from '@/components/business/business-workspace-header/index.vue'
+  import AccountingWorkspaceFocusToggle from '../modules/accounting-workspace-focus-toggle.vue'
+  import { useAccountingWorkspaceFocus } from '../modules/use-accounting-workspace-focus'
   import AccountingSetupGuide from '../modules/accounting-setup-guide.vue'
+  import { useFinanceAccountSetPrerequisite } from '../modules/use-finance-account-set-prerequisite'
   import ArtPageSection from '@/components/core/layouts/art-page-section/index.vue'
   import ArtAsyncState from '@/components/core/layouts/art-async-state/index.vue'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
@@ -230,7 +240,9 @@
   }
 
   const { confirmAction, promptReason } = useArtFeedback()
-  const router = useRouter()
+  const { focusMode } = useAccountingWorkspaceFocus()
+  const { ensureAccountSet, ensureLeafSubjects, goToAccountSet } =
+    useFinanceAccountSetPrerequisite()
   const { getDictMap, isPlatformSuper } = storeToRefs(useUserStore())
   const dialogRef = ref<{
     handleOpen: (
@@ -279,6 +291,24 @@
     scope.options.find((item) => item.value === scope.accountSetId)
   )
   const baseCurrency = computed(() => workspace.currencies.find((item) => item.isBase))
+  const canConfirmOpeningBalance = computed(
+    () => summary.entryCount > 0 && summary.isBalanced && summary.status === 'draft'
+  )
+  const confirmOpeningBalanceHint = computed(() =>
+    summary.entryCount === 0 ? '请先录入至少一条期初余额' : '借贷合计平衡后才能确认锁定'
+  )
+  const balanceValidationTitle = computed(() => {
+    if (summary.status === 'confirmed') return '期初余额已确认锁定'
+    if (!summary.entryCount) return '等待录入期初余额'
+    return summary.isBalanced ? '借贷校验已通过' : '借贷差额待调整'
+  })
+  const balanceValidationDescription = computed(() => {
+    if (summary.status === 'confirmed') return '需要修改时请先反确认，操作原因会写入审计记录。'
+    if (!summary.entryCount) return '录入至少一条末级科目余额后，系统会自动计算借贷差额。'
+    if (!summary.isBalanced)
+      return `当前差额 ${formatMoney(summary.difference)}，调整至借贷平衡后可确认并锁定。`
+    return '当前借贷合计平衡，可以执行确认并锁定。'
+  })
   const directionOptions = computed(() => getDictMap.value.fmsBalanceDirection ?? [])
   const balanceSearchItems = computed<SearchFormItem[]>(() => [
     {
@@ -511,9 +541,17 @@
   }
 
   async function openDialog(row?: OpeningBalance): Promise<void> {
-    if (!currentAccountSet.value || summary.status !== 'draft') return
+    if (summary.status !== 'draft') return
+    if (
+      !(await ensureAccountSet({
+        actionLabel: row ? '编辑期初余额' : '录入期初余额',
+        available: Boolean(currentAccountSet.value)
+      }))
+    )
+      return
+    if (!(await ensureLeafSubjects(workspace.leafSubjects.length > 0, '录入期初余额'))) return
     await dialogRef.value?.handleOpen(
-      currentAccountSet.value,
+      currentAccountSet.value!,
       scope.fiscalYear,
       {
         subjects: workspace.leafSubjects,
@@ -568,10 +606,6 @@
     }
   }
 
-  function goToAccountSet(): void {
-    void router.push('/fms/account-set')
-  }
-
   async function loadAccountSets(): Promise<void> {
     scope.loading = true
     try {
@@ -595,10 +629,14 @@
   .opening-balance-page {
     @include accounting.accounting-workspace-layout;
 
+    &.is-focus-mode {
+      gap: 0;
+    }
+
     &__scope,
     &__actions,
-    &__status-group,
-    &__balance-check {
+    &__validation-strip,
+    &__validation-copy > div {
       display: flex;
       align-items: center;
     }
@@ -634,7 +672,13 @@
       }
     }
 
-    &__scope-section,
+    &__scope-section {
+      :deep(.art-page-section__header) {
+        align-items: center;
+        margin-bottom: 0;
+      }
+    }
+
     &__detail {
       :deep(.art-page-section__header) {
         align-items: center;
@@ -683,8 +727,8 @@
       }
     }
 
-    &__status-group {
-      gap: 6px;
+    &__confirm-action {
+      display: inline-flex;
     }
 
     &__status-tag {
@@ -694,30 +738,59 @@
       font-weight: 600;
     }
 
-    &__balance-check {
-      gap: 5px;
-      min-height: 24px;
-      padding: 2px 8px;
-      font-size: 12px;
-      font-weight: 600;
-      line-height: 18px;
-      white-space: nowrap;
+    &__validation-strip {
+      gap: 10px;
+      min-height: 48px;
+      padding: 8px 12px;
+      margin-bottom: var(--art-space-3);
       border-radius: var(--el-border-radius-base);
 
-      :deep(.art-svg-icon) {
-        font-size: 14px;
-      }
-
       &.is-balanced {
-        color: var(--el-color-success-dark-2);
-        background: color-mix(in srgb, var(--el-color-success) 9%, transparent);
-        border: 1px solid color-mix(in srgb, var(--el-color-success) 18%, transparent);
+        background: color-mix(in srgb, var(--el-color-success) 7%, var(--default-box-color));
+        border: 1px solid color-mix(in srgb, var(--el-color-success) 18%, var(--el-border-color));
       }
 
       &.is-unbalanced {
-        color: var(--el-color-danger-dark-2);
-        background: color-mix(in srgb, var(--el-color-danger) 8%, transparent);
-        border: 1px solid color-mix(in srgb, var(--el-color-danger) 18%, transparent);
+        background: color-mix(in srgb, var(--el-color-warning) 7%, var(--default-box-color));
+        border: 1px solid color-mix(in srgb, var(--el-color-warning) 20%, var(--el-border-color));
+      }
+    }
+
+    &__validation-icon {
+      display: grid;
+      flex: none;
+      place-items: center;
+      width: 32px;
+      height: 32px;
+      font-size: 18px;
+      color: var(--el-color-success-dark-2);
+      background: color-mix(in srgb, var(--el-color-success) 13%, transparent);
+      border-radius: var(--el-border-radius-base);
+    }
+
+    &__validation-strip.is-unbalanced &__validation-icon {
+      color: var(--el-color-warning-dark-2);
+      background: color-mix(in srgb, var(--el-color-warning) 14%, transparent);
+    }
+
+    &__validation-copy {
+      min-width: 0;
+
+      > div {
+        gap: 8px;
+      }
+
+      strong {
+        font-size: 13px;
+        color: var(--el-text-color-primary);
+      }
+
+      > span {
+        display: block;
+        margin-top: 2px;
+        font-size: 12px;
+        line-height: 18px;
+        color: var(--el-text-color-secondary);
       }
     }
 
@@ -758,8 +831,8 @@
         width: 100%;
       }
 
-      &__balance-check {
-        justify-content: center;
+      &__validation-strip {
+        align-items: flex-start;
       }
     }
   }

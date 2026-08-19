@@ -5,17 +5,20 @@ export { fetchCustomerOptions, fetchCustomerSelectorList } from '@/api/modules/t
 
 export {
   fetchAccountingFoundationSummary,
+  fetchAccountingReadiness,
   fetchAccountingPeriodList,
   fetchAccountSetDetail,
   fetchAccountSetList,
   fetchAccountSetOverview,
   fetchAccountSetOptions,
+  initializeAccountingDefaults,
   saveAccountSet,
   setAccountingPeriodStatus,
   setAccountSetStatus
 } from '@/api/modules/fms/accounting/foundation'
 
 export {
+  deleteAuxiliaryType,
   deleteOpeningBalance,
   fetchAuxiliaryItemList,
   fetchAuxiliaryTypeList,
@@ -71,6 +74,7 @@ export {
 
 export {
   deletePostingRule,
+  fetchAccountingWorkloadSummary,
   fetchPostingEventDetail,
   fetchPostingEventList,
   fetchPostingRuleDetail,
@@ -154,6 +158,7 @@ export {
   fetchPeriodCloseChecks,
   fetchPeriodCloseRuns,
   fetchPeriodCloseSummary,
+  generateProfitLossCarryforward,
   runPeriodCloseChecks
 } from '@/api/modules/fms/specialized/period-close'
 

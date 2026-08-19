@@ -74,6 +74,8 @@
     { comment: '是否显示快速入口', key: 'showFastEnter' },
     { comment: '是否显示刷新按钮', key: 'showRefreshButton' },
     { comment: '是否显示面包屑', key: 'showCrumbs' },
+    { comment: '是否显示面包屑图标', key: 'showBreadcrumbIcon' },
+    { comment: '面包屑风格', key: 'breadcrumbStyle' },
     { comment: '是否显示工作台标签', key: 'showWorkTab' },
     { comment: '是否显示语言切换', key: 'showLanguage' },
     { comment: '是否显示进度条', key: 'showNprogress' },
@@ -195,6 +197,8 @@
         settingStore.setShowRefreshButton()
       )
       toggleIfDifferent(settingStore.showCrumbs, config.showCrumbs, () => settingStore.setCrumbs())
+      settingStore.setShowBreadcrumbIcon(config.showBreadcrumbIcon)
+      settingStore.setBreadcrumbStyle(config.breadcrumbStyle)
       toggleIfDifferent(settingStore.showLanguage, config.showLanguage, () =>
         settingStore.setLanguage()
       )

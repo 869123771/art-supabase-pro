@@ -22,6 +22,7 @@
 
 import AppConfig from '@/config'
 import { SystemThemeEnum, MenuThemeEnum, MenuTypeEnum, ContainerWidthEnum } from '@/enums/appEnum'
+import type { BreadcrumbStyle, WorkTabStyle } from '@/types'
 
 /**
  * 系统设置默认值配置
@@ -51,6 +52,10 @@ export const SETTING_DEFAULT_CONFIG = {
   showRefreshButton: true,
   /** 是否显示面包屑 */
   showCrumbs: true,
+  /** 是否显示面包屑图标 */
+  showBreadcrumbIcon: true,
+  /** 面包屑风格 */
+  breadcrumbStyle: 'regular' as BreadcrumbStyle,
   /** 是否显示工作台标签 */
   showWorkTab: true,
   /** 是否显示语言切换 */
@@ -78,7 +83,7 @@ export const SETTING_DEFAULT_CONFIG = {
   /** 页面过渡效果 */
   pageTransition: 'slide-left',
   /** 标签页样式 */
-  tabStyle: 'tab-default',
+  tabStyle: 'tab-default' as WorkTabStyle,
   /** 自定义圆角 */
   customRadius: '0.75',
   /** 容器宽度 */

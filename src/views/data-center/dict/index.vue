@@ -3,6 +3,18 @@
     <MasterDeleteProcessingNotice
       action-hint="字典类型和关联字典项已自动定位；处理完成后可返回继续删除。"
     />
+    <BusinessWorkspaceHeader
+      eyebrow="DICTIONARY CATALOG"
+      :title="dictWorkspaceTitle"
+      :description="dictWorkspaceDescription"
+      icon="ri:book-2-line"
+      :tags="dictWorkspaceTags"
+      density="compact"
+    >
+      <template v-if="isDictionarySelected" #actions>
+        <BusinessTableWorkspaceActions :table="tableQueryRef" />
+      </template>
+    </BusinessWorkspaceHeader>
     <div class="dict-layout business-workspace-content">
       <ElSplitter class="dict-splitter">
         <ElSplitterPanel size="316px" min="288px" max="380px">
@@ -13,23 +25,6 @@
 
         <ElSplitterPanel>
           <div class="dict-table-panel">
-            <div v-if="isDictionarySelected" class="dict-selection-context art-card-xs">
-              <div class="dict-selection-context__icon" aria-hidden="true">
-                <ArtSvgIcon icon="ri:book-2-line" />
-              </div>
-              <div class="dict-selection-context__copy">
-                <div class="dict-selection-context__heading">
-                  <strong>{{ table.currentDictType?.name }}</strong>
-                  <span>{{ table.currentDictType?.code }}</span>
-                </div>
-                <p>
-                  {{
-                    table.currentDictType?.remark || '维护该类型下的字典项、层级关系与展示样式。'
-                  }}
-                </p>
-              </div>
-            </div>
-
             <ArtTableQuery
               v-if="isDictionarySelected"
               ref="tableQueryRef"
@@ -39,9 +34,11 @@
               :data-transformer="transformDictTree"
               :columns-factory="table.columnsFactory"
               :header-actions="table.headerActions"
+              header-actions-placement="workspace"
               :immediate="false"
               :search-bar-props="table.searchBarProps"
               :table-props="table.props"
+              focusable
             />
 
             <div v-else class="dict-selection-empty art-card-xs">
@@ -92,6 +89,8 @@
     type MasterDataDeleteGuardOpenOptions
   } from '@/components/business/master-data-delete-guard/index.vue'
   import MasterDeleteProcessingNotice from '@/components/business/master-delete-processing-notice/index.vue'
+  import BusinessWorkspaceHeader from '@/components/business/business-workspace-header/index.vue'
+  import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
 
   defineOptions({ name: 'Dict' })
 
@@ -298,6 +297,16 @@
   const isDictionarySelected = computed(
     () => table.currentDictType?.nodeType === 'dictionary' && Boolean(table.currentDictType.id)
   )
+  const dictWorkspaceTitle = computed(() => table.currentDictType?.name || '数据字典')
+  const dictWorkspaceDescription = computed(
+    () => table.currentDictType?.remark || '统一维护系统字典目录、字典项和展示规范。'
+  )
+  const dictWorkspaceTags = computed(() => [
+    {
+      label: table.currentDictType?.code || '请选择字典类型',
+      type: isDictionarySelected.value ? ('primary' as const) : ('info' as const)
+    }
+  ])
   const selectionEmptyTitle = computed(() =>
     table.currentDictType?.nodeType === 'directory' ? '请选择具体的字典类型' : '先选择一个字典类型'
   )
@@ -458,82 +467,6 @@
 
       :deep(.pagination) {
         display: none;
-      }
-    }
-
-    .dict-selection-context {
-      position: relative;
-      display: flex;
-      flex: none;
-      gap: 12px;
-      min-width: 0;
-      padding: 14px 16px;
-      margin-bottom: 12px;
-      overflow: hidden;
-
-      &::before {
-        position: absolute;
-        inset: 0;
-        pointer-events: none;
-        content: '';
-        background: linear-gradient(110deg, var(--el-color-primary-light-9), transparent 60%);
-      }
-
-      > * {
-        position: relative;
-      }
-
-      &__icon {
-        display: grid;
-        flex: 0 0 38px;
-        place-items: center;
-        width: 38px;
-        height: 38px;
-        font-size: 18px;
-        color: var(--el-color-primary);
-        background: var(--el-color-primary-light-9);
-        border: 1px solid var(--el-color-primary-light-7);
-        border-radius: var(--art-control-radius);
-      }
-
-      &__copy {
-        min-width: 0;
-
-        p {
-          margin: 4px 0 0;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          font-size: 12px;
-          line-height: 1.5;
-          color: var(--el-text-color-secondary);
-          white-space: nowrap;
-        }
-      }
-
-      &__heading {
-        display: flex;
-        gap: 8px;
-        align-items: center;
-        min-width: 0;
-
-        strong {
-          overflow: hidden;
-          text-overflow: ellipsis;
-          font-size: 15px;
-          color: var(--el-text-color-primary);
-          white-space: nowrap;
-        }
-
-        span {
-          flex: none;
-          padding: 2px 7px;
-          font-size: 11px;
-          line-height: 18px;
-          color: var(--el-text-color-secondary);
-          background: var(--el-fill-color-light);
-          border: 1px solid var(--el-border-color-lighter);
-          border-radius: 999px;
-        }
       }
     }
 

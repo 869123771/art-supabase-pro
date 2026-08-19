@@ -14,7 +14,11 @@
         { label: '用户 · 角色 · 菜单联动', type: 'primary', effect: 'plain' }
       ]"
       :metrics="workspaceMetrics"
-    />
+    >
+      <template #actions>
+        <BusinessTableWorkspaceActions :table="tableQueryRef" />
+      </template>
+    </BusinessWorkspaceHeader>
 
     <ArtTableQuery
       ref="tableQueryRef"
@@ -24,6 +28,7 @@
       :search-items="searchItems"
       :columns-factory="columnsFactory"
       :header-actions="headerActions"
+      header-actions-placement="workspace"
       :table-props="tableProps"
       :on-success="handleTableSuccess"
       focusable
@@ -50,6 +55,7 @@
     type ButtonMoreItem
   } from '@/components/core/forms/art-button-more/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
+  import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
   import BusinessWorkspaceHeader, {
     type BusinessWorkspaceMetric
   } from '@/components/business/business-workspace-header/index.vue'

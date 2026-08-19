@@ -12,7 +12,11 @@
         { label: '租户数据隔离', type: 'info' }
       ]"
       :metrics="metrics"
-    />
+    >
+      <template #actions>
+        <BusinessTableWorkspaceActions :table="activeTableRef" />
+      </template>
+    </BusinessWorkspaceHeader>
 
     <ElAlert
       type="info"
@@ -40,6 +44,7 @@
           :api-fn="fetchBalanceTableData"
           :columns-factory="balanceColumnsFactory"
           :header-actions="balanceHeaderActions"
+          header-actions-placement="workspace"
           :immediate="false"
           :search-bar-props="{ span: 6, labelWidth: 82, showExpand: true }"
           :table-props="{
@@ -70,6 +75,7 @@
           :api-fn="fetchGeneralTableData"
           :columns-factory="generalColumnsFactory"
           :header-actions="generalHeaderActions"
+          header-actions-placement="workspace"
           :immediate="false"
           :search-bar-props="{ span: 6, labelWidth: 82, showExpand: true }"
           :table-props="{
@@ -100,6 +106,7 @@
           :api-fn="fetchSubsidiaryTableData"
           :columns-factory="subsidiaryColumnsFactory"
           :header-actions="subsidiaryHeaderActions"
+          header-actions-placement="workspace"
           :immediate="false"
           :search-bar-props="{ span: 6, labelWidth: 82, showExpand: true }"
           :table-props="{
@@ -126,6 +133,7 @@
     ArtTableQueryExpose,
     ArtTableQueryHeaderAction
   } from '@/components/core/tables/art-table-query/index.vue'
+  import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
   import BusinessWorkspaceHeader, {
     type BusinessWorkspaceMetric
   } from '@/components/business/business-workspace-header/index.vue'
@@ -213,6 +221,7 @@
     if (tab === 'general') return generalTableRef.value
     return subsidiaryTableRef.value
   }
+  const activeTableRef = computed(() => getTableRef(activeTab.value))
 
   const yearOptions = (tab: LedgerTab) =>
     [...new Set(contexts[tab].periods.map((item) => item.fiscalYear))]

@@ -9,7 +9,11 @@
         { label: '销售报价', type: 'primary' },
         { label: '线路计价', type: 'info' }
       ]"
-    />
+    >
+      <template #actions>
+        <BusinessTableWorkspaceActions :table="tableQueryRef" />
+      </template>
+    </BusinessWorkspaceHeader>
 
     <MasterDeleteProcessingNotice
       v-if="customerDeleteContext.active"
@@ -25,6 +29,7 @@
       :api-fn="fetchTableData"
       :columns-factory="columnsFactory"
       :header-actions="headerActions"
+      header-actions-placement="workspace"
       :search-bar-props="{ span: 6, labelWidth: 86, showExpand: false }"
       :table-props="{
         tableLayout: 'fixed',
@@ -60,6 +65,7 @@
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatWithDayjs } from '@/utils/time'
   import BusinessWorkspaceHeader from '@/components/business/business-workspace-header/index.vue'
+  import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
   import MasterDeleteProcessingNotice from '@/components/business/master-delete-processing-notice/index.vue'
   import { useMasterDataDeleteProcessingContext } from '@/hooks/core/useMasterDataDeleteProcessing'
 

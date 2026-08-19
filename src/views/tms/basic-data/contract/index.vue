@@ -15,7 +15,11 @@
         { label: '合同治理', type: 'primary' },
         { label: '周期可追踪', type: 'warning' }
       ]"
-    />
+    >
+      <template #actions>
+        <BusinessTableWorkspaceActions :table="tableQueryRef" />
+      </template>
+    </BusinessWorkspaceHeader>
 
     <ArtTableQuery
       ref="tableQueryRef"
@@ -24,6 +28,7 @@
       :api-fn="fetchTableData"
       :columns-factory="columnsFactory"
       :header-actions="headerActions"
+      header-actions-placement="workspace"
       :search-bar-props="{ span: 6, labelWidth: 86, showExpand: true }"
       :table-props="{
         emptyText: '暂无运输合同',
@@ -66,6 +71,7 @@
   } from '@/api/tms'
   import ContractDialog from './modules/contract-dialog.vue'
   import BusinessWorkspaceHeader from '@/components/business/business-workspace-header/index.vue'
+  import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
   import MasterDeleteProcessingNotice from '@/components/business/master-delete-processing-notice/index.vue'
   import { useMasterDataDeleteProcessingContext } from '@/hooks/core/useMasterDataDeleteProcessing'
   import { usesCarrierParty } from './modules/contract-business-type'

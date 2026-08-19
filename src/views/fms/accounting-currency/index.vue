@@ -1,6 +1,10 @@
 <template>
-  <div class="business-workspace-page art-full-height fms-accounting-page accounting-currency-page">
+  <div
+    class="business-workspace-page art-full-height fms-accounting-page accounting-currency-page"
+    :class="{ 'is-focus-mode': focusMode }"
+  >
     <BusinessWorkspaceHeader
+      v-show="!focusMode"
       density="compact"
       eyebrow="财务基础 · 多币种核算"
       title="币种与汇率"
@@ -12,17 +16,27 @@
         { label: '按日可追溯', type: 'info' }
       ]"
       :metrics="metrics"
-    />
+    >
+      <template #actions>
+        <AccountingWorkspaceFocusToggle v-model="focusMode" />
+      </template>
+    </BusinessWorkspaceHeader>
 
     <ElAlert
       v-if="!isPlatformSuper"
+      v-show="!focusMode"
       type="info"
       :closable="false"
       show-icon
       title="当前账号可查看本租户币种及汇率；币种、汇率维护仅平台超级管理员可执行。"
     />
 
-    <ArtPageSection title="核算范围" subtitle="切换账套后，币种和汇率按法人核算主体完全隔离">
+    <ArtPageSection
+      v-show="!focusMode"
+      title="核算范围"
+      subtitle="切换账套后，币种和汇率按法人核算主体完全隔离"
+      class="accounting-workspace-scope-section"
+    >
       <div class="accounting-currency-page__scope">
         <span>当前账套</span>
         <ElSelect
@@ -49,20 +63,14 @@
       />
     </ArtPageSection>
 
-    <div class="accounting-currency-page__workspace">
+    <div class="accounting-currency-page__workspace" :class="{ 'is-focused': focusMode }">
       <ArtPageSection
         title="核算币种"
         subtitle="本位币不可停用，外币可独立启停"
         class="accounting-workspace-fill-section"
       >
         <template #actions>
-          <ElButton
-            v-if="isPlatformSuper"
-            type="primary"
-            :disabled="!currentAccountSet"
-            :title="!currentAccountSet ? '请先创建并选择企业账套' : undefined"
-            @click="openCurrencyDialog()"
-          >
+          <ElButton v-if="isPlatformSuper" type="primary" @click="openCurrencyDialog()">
             <ArtSvgIcon icon="ri:add-line" />新增外币
           </ElButton>
         </template>
@@ -78,41 +86,58 @@
           empty-description="账套初始化时会自动生成本位币。"
           @retry="loadWorkspace"
         >
-          <div class="accounting-currency-page__currency-grid">
-            <button
-              v-for="item in workspace.currencies"
-              :key="item.id"
-              type="button"
-              class="accounting-currency-page__currency-card"
-              :class="{ 'is-active': item.id === workspace.selectedCurrencyId }"
-              @click="workspace.selectedCurrencyId = item.id"
-            >
-              <span class="accounting-currency-page__symbol">{{
-                item.symbol || item.currencyCode
-              }}</span>
-              <span class="accounting-currency-page__currency-name">
-                <strong>{{ item.currencyName }}</strong>
-                <small>{{ item.currencyCode }} · {{ item.decimalPlaces }} 位小数</small>
-              </span>
-              <span class="accounting-currency-page__currency-status">
-                <ElTag v-if="item.isBase" type="primary" size="small">本位币</ElTag>
-                <ElTag :type="item.isEnabled ? 'success' : 'info'" size="small">
-                  {{ item.isEnabled ? '启用' : '停用' }}
-                </ElTag>
-              </span>
-              <span v-if="isPlatformSuper" class="accounting-currency-page__card-actions">
-                <ElButton link type="primary" @click.stop="openCurrencyDialog(item)">编辑</ElButton>
-                <ElButton
-                  v-if="!item.isBase"
-                  link
-                  :type="item.isEnabled ? 'danger' : 'success'"
-                  @click.stop="toggleCurrency(item)"
+          <ElScrollbar class="accounting-currency-page__currency-scrollbar">
+            <div class="accounting-currency-page__currency-grid">
+              <div
+                v-for="item in workspace.currencies"
+                :key="item.id"
+                class="accounting-currency-page__currency-card"
+                :class="{ 'is-active': item.id === workspace.selectedCurrencyId }"
+              >
+                <button
+                  type="button"
+                  class="accounting-currency-page__currency-select"
+                  :aria-label="`选择${item.currencyName}`"
+                  :aria-pressed="item.id === workspace.selectedCurrencyId"
+                  @click="workspace.selectedCurrencyId = item.id"
                 >
-                  {{ item.isEnabled ? '停用' : '启用' }}
-                </ElButton>
-              </span>
-            </button>
-          </div>
+                  <span class="accounting-currency-page__symbol">{{
+                    item.symbol || item.currencyCode
+                  }}</span>
+                  <span class="accounting-currency-page__currency-name">
+                    <span class="accounting-currency-page__currency-title">
+                      <strong>{{ item.currencyName }}</strong>
+                      <span
+                        v-if="item.id === workspace.selectedCurrencyId"
+                        class="accounting-currency-page__selected-badge"
+                      >
+                        <ArtSvgIcon icon="ri:check-line" />当前
+                      </span>
+                    </span>
+                    <span class="accounting-currency-page__currency-meta">
+                      <small>{{ item.currencyCode }} · {{ item.decimalPlaces }} 位小数</small>
+                      <ElTag v-if="item.isBase" type="primary" size="small" effect="plain">
+                        本位币
+                      </ElTag>
+                      <ElTag
+                        :type="item.isEnabled ? 'success' : 'info'"
+                        size="small"
+                        effect="plain"
+                      >
+                        {{ item.isEnabled ? '启用' : '停用' }}
+                      </ElTag>
+                    </span>
+                  </span>
+                </button>
+                <ArtButtonMore
+                  v-if="isPlatformSuper"
+                  class="accounting-currency-page__currency-more"
+                  :list="getCurrencyActions(item)"
+                  @click="handleCurrencyAction($event, item)"
+                />
+              </div>
+            </div>
+          </ElScrollbar>
         </ArtAsyncState>
       </ArtPageSection>
 
@@ -124,16 +149,27 @@
         class="accounting-workspace-fill-section"
       >
         <template #actions>
-          <ElButton
-            v-if="isPlatformSuper"
-            type="primary"
-            :disabled="!selectedCurrency || selectedCurrency.isBase || !selectedCurrency.isEnabled"
-            :title="!selectedCurrency ? '请先选择一个已启用的外币' : undefined"
-            @click="openRateDialog()"
-          >
+          <AccountingWorkspaceFocusToggle v-if="focusMode" v-model="focusMode" />
+          <ElButton v-if="isPlatformSuper" type="primary" @click="openRateDialog()">
             <ArtSvgIcon icon="ri:add-line" />新增汇率
           </ElButton>
         </template>
+        <div v-if="selectedCurrency" class="accounting-currency-page__rate-context">
+          <span class="accounting-currency-page__rate-context-symbol">
+            {{ selectedCurrency.symbol || selectedCurrency.currencyCode }}
+          </span>
+          <div>
+            <strong>
+              {{ selectedCurrency.currencyName }}（{{ selectedCurrency.currencyCode }}）
+              <ArtSvgIcon icon="ri:arrow-right-line" />
+              {{ baseCurrency?.currencyCode || '本位币' }}
+            </strong>
+            <span>
+              直接汇率 · 共 {{ selectedCurrencyRates.length }} 条记录 ·
+              {{ selectedCurrency.isEnabled ? '当前启用' : '当前停用' }}
+            </span>
+          </div>
+        </div>
         <ArtSearchBar
           v-model="rateFilterForm"
           class="accounting-currency-page__rate-search"
@@ -176,15 +212,21 @@
 </template>
 
 <script setup lang="tsx">
-  import { ElButton, ElTag } from 'element-plus'
+  import { ElButton, ElMessage, ElTag } from 'element-plus'
   import { storeToRefs } from 'pinia'
   import BusinessWorkspaceHeader, {
     type BusinessWorkspaceMetric
   } from '@/components/business/business-workspace-header/index.vue'
+  import AccountingWorkspaceFocusToggle from '../modules/accounting-workspace-focus-toggle.vue'
+  import { useAccountingWorkspaceFocus } from '../modules/use-accounting-workspace-focus'
   import AccountingSetupGuide from '../modules/accounting-setup-guide.vue'
+  import { useFinanceAccountSetPrerequisite } from '../modules/use-finance-account-set-prerequisite'
   import ArtPageSection from '@/components/core/layouts/art-page-section/index.vue'
   import ArtAsyncState from '@/components/core/layouts/art-async-state/index.vue'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
+  import ArtButtonMore, {
+    type ButtonMoreItem
+  } from '@/components/core/forms/art-button-more/index.vue'
   import ArtSearchBar, {
     type SearchFormItem
   } from '@/components/core/forms/art-search-bar/index.vue'
@@ -212,7 +254,8 @@
   }
 
   const { confirmAction } = useArtFeedback()
-  const router = useRouter()
+  const { focusMode } = useAccountingWorkspaceFocus()
+  const { ensureAccountSet, goToAccountSet } = useFinanceAccountSetPrerequisite()
   const { getDictMap, isPlatformSuper } = storeToRefs(useUserStore())
   const currencyDialogRef = ref<{
     handleOpen: (accountSet: Api.Fms.AccountSetOption, row?: Currency) => Promise<void>
@@ -247,6 +290,9 @@
     workspace.currencies.find((item) => item.id === workspace.selectedCurrencyId)
   )
   const baseCurrency = computed(() => workspace.currencies.find((item) => item.isBase))
+  const selectedCurrencyRates = computed(() =>
+    workspace.rates.filter((item) => item.currencyId === workspace.selectedCurrencyId)
+  )
   const rateTypeOptions = computed(() => getDictMap.value.fmsExchangeRateType ?? [])
   const rateSearchItems = computed<SearchFormItem[]>(() => [
     {
@@ -361,6 +407,27 @@
     return { keyword: '', rateType: undefined }
   }
 
+  function getCurrencyActions(row: Currency): ButtonMoreItem[] {
+    const actions: ButtonMoreItem[] = [{ key: 'edit', label: '编辑币种', icon: 'ri:edit-line' }]
+    if (!row.isBase) {
+      actions.push({
+        key: 'toggle',
+        label: row.isEnabled ? '停用币种' : '启用币种',
+        icon: row.isEnabled ? 'ri:forbid-line' : 'ri:checkbox-circle-line',
+        color: row.isEnabled ? 'var(--el-color-danger)' : 'var(--el-color-success)'
+      })
+    }
+    return actions
+  }
+
+  function handleCurrencyAction(action: ButtonMoreItem, row: Currency): void {
+    if (action.key === 'edit') {
+      void openCurrencyDialog(row)
+      return
+    }
+    if (action.key === 'toggle') void toggleCurrency(row)
+  }
+
   function applyRateFilters(params: Record<string, unknown>): void {
     appliedRateFilter.keyword = typeof params.keyword === 'string' ? params.keyword : ''
     appliedRateFilter.rateType =
@@ -397,14 +464,38 @@
   }
 
   async function openCurrencyDialog(row?: Currency): Promise<void> {
-    if (!currentAccountSet.value) return
-    await currencyDialogRef.value?.handleOpen(currentAccountSet.value, row)
+    if (
+      !(await ensureAccountSet({
+        actionLabel: row ? '编辑核算币种' : '新增外币',
+        available: Boolean(currentAccountSet.value)
+      }))
+    )
+      return
+    await currencyDialogRef.value?.handleOpen(currentAccountSet.value!, row)
   }
 
   async function openRateDialog(row?: ExchangeRate): Promise<void> {
-    if (!currentAccountSet.value) return
+    if (
+      !(await ensureAccountSet({
+        actionLabel: row ? '编辑汇率' : '新增汇率',
+        available: Boolean(currentAccountSet.value)
+      }))
+    )
+      return
+    if (!row && !selectedCurrency.value) {
+      ElMessage.info('请先在左侧选择一个已启用的外币')
+      return
+    }
+    if (!row && selectedCurrency.value?.isBase) {
+      ElMessage.info('本位币无需维护兑换汇率，请选择外币')
+      return
+    }
+    if (!row && !selectedCurrency.value?.isEnabled) {
+      ElMessage.info('请先启用该外币，再维护汇率')
+      return
+    }
     await rateDialogRef.value?.handleOpen(
-      currentAccountSet.value,
+      currentAccountSet.value!,
       workspace.currencies,
       selectedCurrency.value,
       row
@@ -423,10 +514,6 @@
   function handleAccountSetChange(): void {
     resetRateFilters()
     void loadWorkspace()
-  }
-
-  function goToAccountSet(): void {
-    void router.push('/fms/account-set')
   }
 
   async function loadAccountSets(): Promise<void> {
@@ -452,19 +539,15 @@
   .accounting-currency-page {
     @include accounting.accounting-workspace-layout;
 
-    &__scope,
-    &__card-actions {
-      display: flex;
-      gap: 10px;
-      align-items: center;
+    &.is-focus-mode {
+      gap: 0;
     }
 
     &__scope {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      align-items: stretch;
-      max-width: 560px;
+      display: grid;
+      grid-template-columns: 76px minmax(280px, 560px);
+      gap: 10px;
+      align-items: center;
 
       > span {
         flex: none;
@@ -488,6 +571,10 @@
       min-width: 0;
       min-height: 0;
 
+      &.is-focused {
+        height: 100%;
+      }
+
       > .accounting-workspace-fill-section {
         min-height: 0;
       }
@@ -496,19 +583,23 @@
     &__currency-grid {
       display: grid;
       gap: 8px;
+      padding-right: 4px;
+    }
+
+    &__currency-scrollbar {
+      flex: 1;
+      min-height: 0;
     }
 
     &__currency-card {
       display: grid;
-      grid-template-columns: 44px minmax(0, 1fr) auto;
-      gap: 10px;
+      grid-template-columns: minmax(0, 1fr) 30px;
+      gap: 6px;
       align-items: center;
       width: 100%;
-      padding: 10px;
+      padding: 6px;
       color: var(--art-text-gray-800);
       text-align: left;
-      touch-action: manipulation;
-      cursor: pointer;
       background: var(--art-main-bg-color);
       border: 1px solid var(--art-border-dashed-color);
       border-radius: var(--el-border-radius-base);
@@ -519,62 +610,174 @@
         box-shadow 0.18s ease;
 
       &:hover,
-      &:focus-visible,
+      &:focus-within,
       &.is-active {
-        outline: none;
-        background: color-mix(in srgb, var(--theme-color) 8%, var(--art-main-bg-color));
+        background: color-mix(in srgb, var(--theme-color) 11%, var(--art-main-bg-color));
+      }
+
+      &.is-active {
+        border-color: color-mix(in srgb, var(--theme-color) 62%, var(--el-border-color));
+        box-shadow: inset 3px 0 0 var(--theme-color);
+      }
+    }
+
+    &__currency-select {
+      display: grid;
+      grid-template-columns: 40px minmax(0, 1fr);
+      gap: 10px;
+      align-items: center;
+      min-width: 0;
+      padding: 4px;
+      color: inherit;
+      text-align: left;
+      touch-action: manipulation;
+      cursor: pointer;
+      background: transparent;
+      border: 0;
+      border-radius: var(--el-border-radius-small);
+
+      &:focus-visible {
+        outline: 2px solid color-mix(in srgb, var(--theme-color) 55%, transparent);
+        outline-offset: 1px;
       }
     }
 
     :global([data-box-mode='border-mode']) &__currency-card:hover,
-    :global([data-box-mode='border-mode']) &__currency-card:focus-visible,
+    :global([data-box-mode='border-mode']) &__currency-card:focus-within,
     :global([data-box-mode='border-mode']) &__currency-card.is-active {
       border-color: color-mix(in srgb, var(--theme-color) 55%, var(--el-border-color));
-      box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--theme-color) 20%, transparent);
+      box-shadow:
+        inset 3px 0 0 var(--theme-color),
+        inset 0 0 0 1px color-mix(in srgb, var(--theme-color) 20%, transparent);
     }
 
     :global([data-box-mode='shadow-mode']) &__currency-card:hover,
-    :global([data-box-mode='shadow-mode']) &__currency-card:focus-visible,
+    :global([data-box-mode='shadow-mode']) &__currency-card:focus-within,
     :global([data-box-mode='shadow-mode']) &__currency-card.is-active {
       border-color: transparent;
-      box-shadow: 0 8px 20px color-mix(in srgb, var(--theme-color) 16%, transparent);
+      box-shadow:
+        inset 3px 0 0 var(--theme-color),
+        0 8px 20px color-mix(in srgb, var(--theme-color) 16%, transparent);
     }
 
     &__symbol {
       display: grid;
       place-items: center;
-      width: 44px;
-      height: 44px;
+      width: 40px;
+      height: 40px;
       font-weight: 700;
       color: var(--theme-color);
       background: color-mix(in srgb, var(--theme-color) 10%, transparent);
       border-radius: var(--custom-radius);
     }
 
-    &__currency-name,
-    &__currency-status {
+    &__currency-card.is-active &__symbol {
+      color: #fff;
+      background: var(--theme-color);
+    }
+
+    &__currency-name {
       display: flex;
       flex-direction: column;
       gap: 4px;
       min-width: 0;
     }
 
-    &__currency-name small {
-      color: var(--art-text-gray-500);
+    &__currency-title,
+    &__currency-meta {
+      display: flex;
+      gap: 7px;
+      align-items: center;
+      min-width: 0;
+
+      strong,
+      small {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
     }
 
-    &__currency-status {
-      align-items: flex-end;
+    &__currency-title strong {
+      flex: 1;
+      min-width: 0;
     }
 
-    &__card-actions {
-      grid-column: 2 / -1;
-      justify-content: flex-end;
-      padding-top: 8px;
+    &__currency-meta {
+      flex-wrap: nowrap;
+
+      small {
+        min-width: 0;
+        color: var(--art-text-gray-500);
+      }
+
+      :deep(.el-tag) {
+        flex: none;
+      }
+    }
+
+    &__selected-badge {
+      display: inline-flex;
+      gap: 3px;
+      align-items: center;
+      font-size: 12px;
+      font-weight: 650;
+      color: var(--theme-color);
+      white-space: nowrap;
+    }
+
+    &__currency-more {
+      flex: none;
     }
 
     &__rate-search {
       margin-bottom: 12px;
+    }
+
+    &__rate-context {
+      display: grid;
+      grid-template-columns: 38px minmax(0, 1fr);
+      gap: 10px;
+      align-items: center;
+      min-height: 50px;
+      padding: 7px 10px;
+      margin-bottom: 10px;
+      background: color-mix(in srgb, var(--theme-color) 5%, var(--default-box-color));
+      border: 1px solid color-mix(in srgb, var(--theme-color) 16%, var(--el-border-color));
+      border-radius: var(--el-border-radius-base);
+
+      strong,
+      span {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      strong {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        font-size: 13px;
+        color: var(--el-text-color-primary);
+      }
+
+      > div > span {
+        display: block;
+        margin-top: 2px;
+        font-size: 12px;
+        color: var(--el-text-color-secondary);
+      }
+    }
+
+    &__rate-context-symbol {
+      display: grid;
+      place-items: center;
+      width: 38px;
+      height: 38px;
+      font-weight: 700;
+      color: var(--theme-color);
+      background: color-mix(in srgb, var(--theme-color) 11%, transparent);
+      border-radius: var(--el-border-radius-base);
     }
   }
 
@@ -592,8 +795,7 @@
   @media only screen and (width <= 640px) {
     .accounting-currency-page {
       &__scope {
-        flex-direction: column;
-        align-items: stretch;
+        grid-template-columns: 1fr;
 
         :deep(.el-select) {
           width: 100%;

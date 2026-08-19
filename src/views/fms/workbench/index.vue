@@ -21,6 +21,8 @@
       </template>
     </BusinessWorkspaceHeader>
 
+    <AccountingReadinessPanel />
+
     <div class="finance-workbench__content">
       <ArtPageSection
         title="财务待办"
@@ -99,8 +101,9 @@
     type BusinessWorkspaceMetric,
     type BusinessWorkspaceTag
   } from '@/components/business/business-workspace-header/index.vue'
-  import { fetchFinanceWorkbench } from '@/api/fms'
+  import { fetchAccountingWorkloadSummary, fetchFinanceWorkbench } from '@/api/fms'
   import { financeRouteNames } from '@/router/business-paths'
+  import AccountingReadinessPanel from './modules/accounting-readiness-panel.vue'
   import ReceivablesCollectionAdvisorDrawer from './modules/receivables-collection-advisor-drawer.vue'
 
   defineOptions({ name: 'FinanceWorkbench' })
@@ -112,7 +115,7 @@
     id: string
     title: string
     count: number
-    amount: number
+    amount: number | null
     urgency: Urgency
     routeName: string
     query?: Record<string, string>
@@ -137,6 +140,7 @@
     tasks: WorkbenchTask[]
     progressItems: ProgressItem[]
     reminders: ReminderItem[]
+    workload: Api.Fms.AccountingWorkloadSummary
   }
 
   interface CollectionAdvisorExpose {
@@ -185,13 +189,23 @@
     uninvoicedReceivableAmount: 0
   })
 
+  const createEmptyWorkload = (): Api.Fms.AccountingWorkloadSummary => ({
+    failedPostingEventCount: 0,
+    pendingConfigurationEventCount: 0,
+    pendingPostingEventCount: 0,
+    pendingVoucherReviewCount: 0,
+    approvedVoucherCount: 0,
+    closingPeriodCount: 0
+  })
+
   const overview = reactive<OverviewGroup>({
     loading: false,
     stats: createEmptyStats(),
     metrics: [],
     tasks: [],
     progressItems: [],
-    reminders: []
+    reminders: [],
+    workload: createEmptyWorkload()
   })
   const workspaceTags: BusinessWorkspaceTag[] = [
     { label: '经营数据实时汇总', type: 'success', effect: 'plain' },
@@ -212,7 +226,7 @@
       label: '涉及金额',
       minWidth: 135,
       align: 'right',
-      formatter: (row) => formatMoney(row.amount)
+      formatter: (row) => (row.amount === null ? '—' : formatMoney(row.amount))
     },
     { prop: 'urgency', label: '优先级', width: 90, useSlot: true },
     { prop: 'operation', label: '操作', width: 90, fixed: 'right', useSlot: true }
@@ -295,8 +309,61 @@
     ]
   }
 
-  function buildTasks(stats: Stats): WorkbenchTask[] {
+  function buildTasks(stats: Stats, workload: Api.Fms.AccountingWorkloadSummary): WorkbenchTask[] {
     const tasks: WorkbenchTask[] = [
+      {
+        id: 'posting-event-failed',
+        title: '自动入账失败事件',
+        count: workload.failedPostingEventCount,
+        amount: null,
+        urgency: '紧急',
+        routeName: financeRouteNames.autoPosting,
+        query: { tab: 'events', status: 'failed' }
+      },
+      {
+        id: 'posting-event-configuration',
+        title: '自动入账待配置事件',
+        count: workload.pendingConfigurationEventCount,
+        amount: null,
+        urgency: '紧急',
+        routeName: financeRouteNames.autoPosting,
+        query: { tab: 'events', status: 'pending_configuration' }
+      },
+      {
+        id: 'posting-event-pending',
+        title: '自动入账待处理事件',
+        count: workload.pendingPostingEventCount,
+        amount: null,
+        urgency: '关注',
+        routeName: financeRouteNames.autoPosting,
+        query: { tab: 'events', status: 'pending' }
+      },
+      {
+        id: 'voucher-review',
+        title: '待审核会计凭证',
+        count: workload.pendingVoucherReviewCount,
+        amount: null,
+        urgency: '紧急',
+        routeName: financeRouteNames.voucherCenter,
+        query: { status: 'pending_review' }
+      },
+      {
+        id: 'voucher-posting',
+        title: '已审核待过账凭证',
+        count: workload.approvedVoucherCount,
+        amount: null,
+        urgency: '关注',
+        routeName: financeRouteNames.voucherCenter,
+        query: { status: 'approved' }
+      },
+      {
+        id: 'period-closing',
+        title: '关账中会计期间',
+        count: workload.closingPeriodCount,
+        amount: null,
+        urgency: '关注',
+        routeName: financeRouteNames.periodClose
+      },
       {
         id: 'payment-application-review',
         title: '待审批承运商付款申请',
@@ -476,10 +543,11 @@
     return reminders
   }
 
-  function applyStats(stats: Stats): void {
+  function applyStats(stats: Stats, workload = overview.workload): void {
     Object.assign(overview.stats, stats)
+    Object.assign(overview.workload, workload)
     overview.metrics = buildMetrics(stats)
-    overview.tasks = buildTasks(stats)
+    overview.tasks = buildTasks(stats, workload)
     overview.progressItems = buildProgressItems(stats)
     overview.reminders = buildReminders(stats)
   }
@@ -504,8 +572,14 @@
     overview.loading = true
     loadError.value = null
     try {
-      const { data } = await fetchFinanceWorkbench()
-      applyStats(data ?? createEmptyStats())
+      const [workbenchResult, workloadResult] = await Promise.all([
+        fetchFinanceWorkbench(),
+        fetchAccountingWorkloadSummary()
+      ])
+      applyStats(
+        workbenchResult.data ?? createEmptyStats(),
+        workloadResult.data ?? createEmptyWorkload()
+      )
     } catch (error) {
       loadError.value = error instanceof Error ? error : new Error('财务工作台加载失败')
     } finally {

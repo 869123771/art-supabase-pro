@@ -1,8 +1,10 @@
 <template>
   <div
     class="business-workspace-page art-full-height fms-accounting-page accounting-auxiliary-page"
+    :class="{ 'is-focus-mode': focusMode }"
   >
     <BusinessWorkspaceHeader
+      v-show="!focusMode"
       density="compact"
       eyebrow="财务基础 · 核算维度"
       title="辅助核算"
@@ -14,17 +16,27 @@
         { label: '维度停用留痕', type: 'info' }
       ]"
       :metrics="metrics"
-    />
+    >
+      <template #actions>
+        <AccountingWorkspaceFocusToggle v-model="focusMode" />
+      </template>
+    </BusinessWorkspaceHeader>
 
     <ElAlert
       v-if="!isPlatformSuper"
+      v-show="!focusMode"
       type="info"
       :closable="false"
       show-icon
       title="当前账号可查看本租户辅助核算体系；类型维护、主数据同步及项目编辑仅平台超级管理员可执行。"
     />
 
-    <ArtPageSection title="核算范围" subtitle="客户、承运商、部门和员工以现有业务档案为权威来源">
+    <ArtPageSection
+      v-show="!focusMode"
+      title="核算范围"
+      subtitle="客户、承运商、部门和员工以现有业务档案为权威来源"
+      class="accounting-workspace-scope-section"
+    >
       <div class="accounting-auxiliary-page__scope">
         <span>当前账套</span>
         <ElSelect
@@ -51,20 +63,14 @@
       />
     </ArtPageSection>
 
-    <div class="accounting-auxiliary-page__workspace">
+    <div class="accounting-auxiliary-page__workspace" :class="{ 'is-focused': focusMode }">
       <ArtPageSection
         title="核算维度"
         subtitle="选择维度后查看其核算项目"
         class="accounting-auxiliary-page__types accounting-workspace-fill-section"
       >
         <template #actions>
-          <ElButton
-            v-if="isPlatformSuper"
-            type="primary"
-            :disabled="!currentAccountSet"
-            :title="!currentAccountSet ? '请先创建并选择企业账套' : undefined"
-            @click="openTypeDialog()"
-          >
+          <ElButton v-if="isPlatformSuper" type="primary" @click="openTypeDialog()">
             <ArtSvgIcon icon="ri:add-line" />新增维度
           </ElButton>
         </template>
@@ -83,32 +89,51 @@
         >
           <ElScrollbar class="accounting-auxiliary-page__type-scrollbar">
             <div class="accounting-auxiliary-page__type-list">
-              <button
+              <div
                 v-for="item in workspace.types"
                 :key="item.id"
-                type="button"
                 class="accounting-auxiliary-page__type-card"
                 :class="{ 'is-active': item.id === workspace.selectedTypeId }"
-                @click="selectType(item.id)"
               >
-                <span class="accounting-auxiliary-page__type-icon">
-                  <ArtSvgIcon :icon="sourceIcon(item.sourceType)" />
-                </span>
-                <span class="accounting-auxiliary-page__type-content">
-                  <strong>{{ item.typeName }}</strong>
-                  <small>{{ item.typeCode }}</small>
-                </span>
-                <span class="accounting-auxiliary-page__type-meta">
-                  <ArtDictDisplay
-                    dict-code="fmsAuxiliarySourceType"
-                    :value="item.sourceType"
-                    display="text"
-                  />
-                  <ElTag size="small" :type="item.isEnabled ? 'success' : 'info'">
-                    {{ item.isEnabled ? '启用' : '停用' }}
-                  </ElTag>
-                </span>
-              </button>
+                <button
+                  type="button"
+                  class="accounting-auxiliary-page__type-select"
+                  :aria-label="`选择核算维度${item.typeName}`"
+                  :aria-pressed="item.id === workspace.selectedTypeId"
+                  @click="selectType(item.id)"
+                >
+                  <span class="accounting-auxiliary-page__type-icon">
+                    <ArtSvgIcon :icon="sourceIcon(item.sourceType)" />
+                  </span>
+                  <span class="accounting-auxiliary-page__type-content">
+                    <strong>{{ item.typeName }}</strong>
+                    <small>{{ item.typeCode }}</small>
+                  </span>
+                  <span class="accounting-auxiliary-page__type-meta">
+                    <span
+                      v-if="item.id === workspace.selectedTypeId"
+                      class="accounting-auxiliary-page__selected-badge"
+                    >
+                      <ArtSvgIcon icon="ri:check-line" />已选
+                    </span>
+                    <ArtDictDisplay
+                      v-else
+                      dict-code="fmsAuxiliarySourceType"
+                      :value="item.sourceType"
+                      display="text"
+                    />
+                    <ElTag size="small" :type="item.isEnabled ? 'success' : 'info'">
+                      {{ item.isEnabled ? '启用' : '停用' }}
+                    </ElTag>
+                  </span>
+                </button>
+                <ArtButtonMore
+                  v-if="isPlatformSuper"
+                  class="accounting-auxiliary-page__type-more"
+                  :list="getTypeActions(item)"
+                  @click="handleTypeAction($event, item)"
+                />
+              </div>
             </div>
           </ElScrollbar>
         </ArtAsyncState>
@@ -122,9 +147,7 @@
         class="accounting-auxiliary-page__items accounting-workspace-fill-section"
       >
         <template #actions>
-          <ElButton v-if="isPlatformSuper && selectedType" @click="openTypeDialog(selectedType)">
-            编辑维度
-          </ElButton>
+          <AccountingWorkspaceFocusToggle v-if="focusMode" v-model="focusMode" />
           <ElButton
             v-if="isPlatformSuper && canSync"
             :loading="workspace.syncing"
@@ -192,9 +215,13 @@
     type BusinessWorkspaceMetric
   } from '@/components/business/business-workspace-header/index.vue'
   import AccountingSetupGuide from '../modules/accounting-setup-guide.vue'
+  import { useFinanceAccountSetPrerequisite } from '../modules/use-finance-account-set-prerequisite'
   import ArtPageSection from '@/components/core/layouts/art-page-section/index.vue'
   import ArtAsyncState from '@/components/core/layouts/art-async-state/index.vue'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
+  import ArtButtonMore, {
+    type ButtonMoreItem
+  } from '@/components/core/forms/art-button-more/index.vue'
   import ArtSearchBar, {
     type SearchFormItem
   } from '@/components/core/forms/art-search-bar/index.vue'
@@ -203,12 +230,15 @@
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { useUserStore } from '@/store/modules/user'
   import {
+    deleteAuxiliaryType,
     fetchAccountSetOptions,
     fetchAuxiliaryItemList,
     fetchAuxiliaryTypeList,
     setAuxiliaryItemEnabled,
     syncAuxiliaryItems
   } from '@/api/fms'
+  import AccountingWorkspaceFocusToggle from '../modules/accounting-workspace-focus-toggle.vue'
+  import { useAccountingWorkspaceFocus } from '../modules/use-accounting-workspace-focus'
   import AuxiliaryTypeDialog from './modules/auxiliary-type-dialog.vue'
   import AuxiliaryItemDialog from './modules/auxiliary-item-dialog.vue'
 
@@ -252,7 +282,8 @@
   }
 
   const { confirmAction } = useArtFeedback()
-  const router = useRouter()
+  const { focusMode } = useAccountingWorkspaceFocus()
+  const { ensureAccountSet, goToAccountSet } = useFinanceAccountSetPrerequisite()
   const { isPlatformSuper } = storeToRefs(useUserStore())
   const typeDialogRef = ref<AuxiliaryTypeDialogExpose>()
   const itemDialogRef = ref<AuxiliaryItemDialogExpose>()
@@ -426,6 +457,27 @@
     return { keyword: '', enabled: undefined }
   }
 
+  function getTypeActions(row: AuxiliaryType): ButtonMoreItem[] {
+    const actions: ButtonMoreItem[] = [{ key: 'edit', label: '编辑维度', icon: 'ri:edit-line' }]
+    if (!row.isSystem && row.sourceType === 'manual') {
+      actions.push({
+        key: 'delete',
+        label: '删除维度',
+        icon: 'ri:delete-bin-line',
+        color: 'var(--el-color-danger)'
+      })
+    }
+    return actions
+  }
+
+  function handleTypeAction(action: ButtonMoreItem, row: AuxiliaryType): void {
+    if (action.key === 'edit') {
+      void openTypeDialog(row)
+      return
+    }
+    if (action.key === 'delete') void handleDeleteType(row)
+  }
+
   function applyItemFilters(params: Record<string, unknown>): void {
     appliedItemFilter.keyword = typeof params.keyword === 'string' ? params.keyword : ''
     appliedItemFilter.enabled = typeof params.enabled === 'boolean' ? params.enabled : undefined
@@ -483,13 +535,29 @@
     void loadWorkspace()
   }
 
-  function goToAccountSet(): void {
-    void router.push('/fms/account-set')
+  async function openTypeDialog(row?: AuxiliaryType): Promise<void> {
+    if (
+      !(await ensureAccountSet({
+        actionLabel: row ? '编辑核算维度' : '新增核算维度',
+        available: Boolean(currentAccountSet.value)
+      }))
+    )
+      return
+    await typeDialogRef.value?.handleOpen(currentAccountSet.value!, row)
   }
 
-  async function openTypeDialog(row?: AuxiliaryType): Promise<void> {
-    if (!currentAccountSet.value) return
-    await typeDialogRef.value?.handleOpen(currentAccountSet.value, row)
+  async function handleDeleteType(row: AuxiliaryType): Promise<void> {
+    await confirmAction(
+      `确定删除手工维度“${row.typeName}（${row.typeCode}）”吗？仅未被会计科目和核算项目引用的维度可以删除。`,
+      '删除辅助核算维度',
+      {
+        type: 'warning',
+        confirmButtonText: '确认删除',
+        cancelButtonText: '取消'
+      }
+    )
+    await deleteAuxiliaryType(row.id)
+    await loadWorkspace()
   }
 
   async function openItemDialog(row?: AuxiliaryItem): Promise<void> {
@@ -540,6 +608,10 @@
   .accounting-auxiliary-page {
     @include accounting.accounting-workspace-layout;
 
+    &.is-focus-mode {
+      gap: 0;
+    }
+
     &__scope,
     &__actions {
       display: flex;
@@ -573,6 +645,10 @@
       grid-template-columns: minmax(300px, 340px) minmax(0, 1fr);
       gap: 12px;
       min-height: 0;
+
+      &.is-focused {
+        height: 100%;
+      }
     }
 
     &__types,
@@ -595,15 +671,13 @@
 
     &__type-card {
       display: grid;
-      grid-template-columns: 40px minmax(0, 1fr) auto;
-      gap: 12px;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 4px;
       align-items: center;
       width: 100%;
-      padding: 10px;
+      padding: 6px;
       color: var(--art-text-gray-800);
       text-align: left;
-      touch-action: manipulation;
-      cursor: pointer;
       background: var(--art-main-bg-color);
       border: 1px solid var(--art-border-dashed-color);
       border-radius: var(--el-border-radius-base);
@@ -614,26 +688,56 @@
         box-shadow 0.18s ease;
 
       &:hover,
-      &:focus-visible,
+      &:focus-within,
       &.is-active {
         color: var(--theme-color);
         outline: none;
-        background: color-mix(in srgb, var(--theme-color) 8%, var(--art-main-bg-color));
+        background: color-mix(in srgb, var(--theme-color) 11%, var(--art-main-bg-color));
+      }
+
+      &.is-active {
+        border-color: color-mix(in srgb, var(--theme-color) 62%, var(--el-border-color));
+        box-shadow: inset 3px 0 0 var(--theme-color);
+      }
+    }
+
+    &__type-select {
+      display: grid;
+      grid-template-columns: 40px minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+      min-width: 0;
+      padding: 4px 2px 4px 4px;
+      color: inherit;
+      text-align: left;
+      touch-action: manipulation;
+      cursor: pointer;
+      background: transparent;
+      border: 0;
+      border-radius: var(--el-border-radius-small);
+
+      &:focus-visible {
+        outline: 2px solid color-mix(in srgb, var(--theme-color) 55%, transparent);
+        outline-offset: 1px;
       }
     }
 
     :global([data-box-mode='border-mode']) &__type-card:hover,
-    :global([data-box-mode='border-mode']) &__type-card:focus-visible,
+    :global([data-box-mode='border-mode']) &__type-card:focus-within,
     :global([data-box-mode='border-mode']) &__type-card.is-active {
       border-color: color-mix(in srgb, var(--theme-color) 55%, var(--el-border-color));
-      box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--theme-color) 20%, transparent);
+      box-shadow:
+        inset 3px 0 0 var(--theme-color),
+        inset 0 0 0 1px color-mix(in srgb, var(--theme-color) 20%, transparent);
     }
 
     :global([data-box-mode='shadow-mode']) &__type-card:hover,
-    :global([data-box-mode='shadow-mode']) &__type-card:focus-visible,
+    :global([data-box-mode='shadow-mode']) &__type-card:focus-within,
     :global([data-box-mode='shadow-mode']) &__type-card.is-active {
       border-color: transparent;
-      box-shadow: 0 8px 20px color-mix(in srgb, var(--theme-color) 16%, transparent);
+      box-shadow:
+        inset 3px 0 0 var(--theme-color),
+        0 8px 20px color-mix(in srgb, var(--theme-color) 16%, transparent);
     }
 
     &__type-icon {
@@ -645,6 +749,11 @@
       color: var(--theme-color);
       background: color-mix(in srgb, var(--theme-color) 10%, transparent);
       border-radius: var(--el-border-radius-base);
+    }
+
+    &__type-card.is-active &__type-icon {
+      color: #fff;
+      background: var(--theme-color);
     }
 
     &__type-content,
@@ -673,6 +782,20 @@
       gap: 5px;
       align-items: flex-end;
       font-size: 12px;
+      white-space: nowrap;
+    }
+
+    &__selected-badge {
+      display: inline-flex;
+      gap: 3px;
+      align-items: center;
+      font-weight: 650;
+      color: var(--theme-color);
+      white-space: nowrap;
+    }
+
+    &__type-more {
+      flex: none;
     }
 
     &__item-search {

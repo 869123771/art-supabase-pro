@@ -9,7 +9,11 @@
         { label: '待调度队列', type: 'warning' },
         { label: '运力匹配', type: 'primary' }
       ]"
-    />
+    >
+      <template #actions>
+        <BusinessTableWorkspaceActions :table="tableQueryRef" />
+      </template>
+    </BusinessWorkspaceHeader>
 
     <ArtTableQuery
       ref="tableQueryRef"
@@ -18,6 +22,7 @@
       :api-fn="fetchTableData"
       :columns-factory="table.columnsFactory"
       :header-actions="table.headerActions"
+      header-actions-placement="workspace"
       :search-bar-props="{ span: 6, labelWidth: 86 }"
       :table-props="{
         rowKey: 'id',
@@ -43,6 +48,7 @@
   import { useUserStore } from '@/store/modules/user'
   import DispatchDialog from './modules/dispatch-dialog.vue'
   import BusinessWorkspaceHeader from '@/components/business/business-workspace-header/index.vue'
+  import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
   import {
     createInitialWaybillSearch,
     createWaybillColumns,

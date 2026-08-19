@@ -8,7 +8,11 @@
       icon="ri:contacts-book-3-line"
       :tags="workspaceTags"
       :metrics="workspaceMetrics"
-    />
+    >
+      <template #actions>
+        <BusinessTableWorkspaceActions :table="tableQueryRef" />
+      </template>
+    </BusinessWorkspaceHeader>
 
     <div class="hr-roster-page__workspace">
       <aside v-if="isDesktopOrganizationLayout" class="hr-roster-page__organization-panel">
@@ -47,6 +51,7 @@
           :api-fn="fetchTableData"
           :columns-factory="columnsFactory"
           :header-actions="headerActions"
+          header-actions-placement="workspace"
           :search-bar-props="{ span: 6, labelWidth: 82 }"
           :table-props="{
             rowKey: 'id',
@@ -91,6 +96,7 @@
   } from '@/components/core/tables/art-table-query/index.vue'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
+  import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
   import BusinessWorkspaceHeader, {
     type BusinessWorkspaceMetric,
     type BusinessWorkspaceTag

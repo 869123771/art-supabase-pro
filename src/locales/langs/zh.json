@@ -78,6 +78,8 @@
         "fastEnter": "显示快速入口",
         "reloadPage": "显示重载页面按钮",
         "breadcrumb": "显示全局面包屑导航",
+        "breadcrumbIcon": "显示面包屑图标",
+        "breadcrumbStyle": "面包屑风格",
         "language": "显示多语言选择",
         "progressBar": "显示顶部进度条",
         "weakMode": "色弱模式",
@@ -92,6 +94,10 @@
       "default": "默认",
       "card": "卡片",
       "google": "谷歌"
+    },
+    "breadcrumbStyle": {
+      "regular": "常规",
+      "background": "背景"
     },
     "transition": {
       "list": {

@@ -74,6 +74,8 @@
   )
   let attachedTable: ArtTableQueryExpose | null | undefined
   let attachedElement: HTMLElement | undefined
+  let pendingFocusTransfer = false
+  let syncRevision = 0
 
   const detachHeaderActionHost = (): void => {
     if (attachedTable && attachedElement) {
@@ -83,25 +85,50 @@
     attachedElement = undefined
   }
 
-  const syncHeaderActionHost = (): void => {
+  const syncHeaderActionHost = async (): Promise<void> => {
     const nextTable = props.table
     const nextElement = headerActionHostRef.value
     if (nextTable === attachedTable && nextElement === attachedElement) return
 
+    const previousTable = attachedTable
+    const tableChanged = Boolean(previousTable && previousTable !== nextTable)
+    const shouldTransferFocus = Boolean(
+      (tableChanged && previousTable?.workspaceController.focusMode.value) || pendingFocusTransfer
+    )
+    const revision = ++syncRevision
+
+    if (tableChanged && previousTable?.workspaceController.focusMode.value) {
+      previousTable.workspaceController.setFocusMode(false)
+    }
     detachHeaderActionHost()
-    if (!nextTable || !nextElement) return
+    if (!nextTable || !nextElement) {
+      pendingFocusTransfer = shouldTransferFocus
+      return
+    }
 
     nextTable.workspaceController.attachHeaderActionHost(nextElement)
     attachedTable = nextTable
     attachedElement = nextElement
+    pendingFocusTransfer = false
+
+    if (shouldTransferFocus && nextTable.workspaceController.focusable.value) {
+      await nextTick()
+      if (revision === syncRevision && props.table === nextTable) {
+        nextTable.workspaceController.setFocusMode(true)
+      }
+    }
   }
 
-  watch([() => props.table, headerActionHostRef], syncHeaderActionHost, {
+  watch([() => props.table, headerActionHostRef], () => void syncHeaderActionHost(), {
     immediate: true,
     flush: 'post'
   })
 
-  onBeforeUnmount(detachHeaderActionHost)
+  onBeforeUnmount(() => {
+    syncRevision += 1
+    pendingFocusTransfer = false
+    detachHeaderActionHost()
+  })
 
   const handleShowTableToolbarChange = (value: string | number | boolean): void => {
     controller.value?.setShowTableToolbar(Boolean(value))

@@ -12,7 +12,11 @@
         { label: '冲销留痕', type: 'warning' }
       ]"
       :metrics="metrics"
-    />
+    >
+      <template #actions>
+        <BusinessTableWorkspaceActions :table="tableQueryRef" />
+      </template>
+    </BusinessWorkspaceHeader>
 
     <ElAlert
       v-if="!isPlatformSuper"
@@ -29,6 +33,7 @@
       :api-fn="fetchTableData"
       :columns-factory="columnsFactory"
       :header-actions="table.headerActions"
+      header-actions-placement="workspace"
       :search-bar-props="{ span: 6, labelWidth: 88, showExpand: true }"
       :table-props="{
         rowKey: 'id',
@@ -58,6 +63,8 @@
   import BusinessWorkspaceHeader, {
     type BusinessWorkspaceMetric
   } from '@/components/business/business-workspace-header/index.vue'
+  import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
+  import { useFinanceAccountSetPrerequisite } from '../modules/use-finance-account-set-prerequisite'
   import { useUserStore } from '@/store/modules/user'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
@@ -113,6 +120,21 @@
 
   const { getDictMap, isPlatformSuper } = storeToRefs(useUserStore())
   const { confirmAction } = useArtFeedback()
+  const { ensureAccountSet } = useFinanceAccountSetPrerequisite()
+  const route = useRoute()
+  const voucherStatuses = new Set<Api.Fms.VoucherStatus>([
+    'draft',
+    'pending_review',
+    'approved',
+    'rejected',
+    'posted',
+    'reversed',
+    'voided'
+  ])
+  const parseVoucherStatus = (value: unknown): Api.Fms.VoucherStatus | '' =>
+    typeof value === 'string' && voucherStatuses.has(value as Api.Fms.VoucherStatus)
+      ? (value as Api.Fms.VoucherStatus)
+      : ''
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<DialogExpose>()
   const actionDialogRef = ref<ActionDialogExpose>()
@@ -131,7 +153,7 @@
   const table: UnwrapNestedRefs<TableGroup> = reactive<TableGroup>({
     searchQuery: {
       accountSetId: '',
-      status: '',
+      status: parseVoucherStatus(route.query.status),
       voucherType: '',
       sourceType: '',
       voucherDateRange: [],
@@ -194,7 +216,6 @@
         actions.push({
           type: 'add',
           label: '新增凭证',
-          disabled: !table.searchQuery.accountSetId,
           onClick: () => void openDialog()
         })
       }
@@ -430,6 +451,14 @@
   }
 
   async function openDialog(row?: Voucher): Promise<void> {
+    if (
+      !(await ensureAccountSet({
+        actionLabel: row ? '编辑会计凭证' : '新增会计凭证',
+        activeRequired: true,
+        available: Boolean(row?.accountSetId || table.searchQuery.accountSetId)
+      }))
+    )
+      return
     const context = await loadEntryContext()
     if (context) await dialogRef.value?.handleOpen(context, row)
   }
@@ -492,6 +521,16 @@
   }
 
   onMounted(() => void loadAccountSets())
+
+  watch(
+    () => route.query.status,
+    (value) => {
+      const nextStatus = parseVoucherStatus(value)
+      if (table.searchQuery.status === nextStatus) return
+      table.searchQuery.status = nextStatus
+      void tableQueryRef.value?.getData()
+    }
+  )
 </script>
 
 <style scoped lang="scss">

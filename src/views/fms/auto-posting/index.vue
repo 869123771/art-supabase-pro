@@ -11,7 +11,11 @@
         { label: '幂等制证', type: 'success' },
         { label: '职责分离', type: 'info' }
       ]"
-    />
+    >
+      <template #actions>
+        <BusinessTableWorkspaceActions :table="activeTableRef" />
+      </template>
+    </BusinessWorkspaceHeader>
 
     <ElAlert
       v-if="!isPlatformSuper"
@@ -40,6 +44,7 @@
           :api-fn="fetchRuleTableData"
           :columns-factory="ruleColumnsFactory"
           :header-actions="ruleTable.headerActions"
+          header-actions-placement="workspace"
           :search-bar-props="{ span: 6, labelWidth: 86, showExpand: false }"
           :table-props="{
             rowKey: 'id',
@@ -69,6 +74,7 @@
           :api-fn="fetchEventTableData"
           :columns-factory="eventColumnsFactory"
           :header-actions="eventTable.headerActions"
+          header-actions-placement="workspace"
           :search-bar-props="{ span: 6, labelWidth: 86, showExpand: true }"
           :table-props="{
             rowKey: 'id',
@@ -97,7 +103,9 @@
   } from '@/components/core/tables/art-table-query/index.vue'
   import type { ColumnOption } from '@/types'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
+  import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
   import BusinessWorkspaceHeader from '@/components/business/business-workspace-header/index.vue'
+  import { useFinanceAccountSetPrerequisite } from '../modules/use-finance-account-set-prerequisite'
   import { useUserStore } from '@/store/modules/user'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
@@ -159,10 +167,28 @@
 
   const { getDictMap, isPlatformSuper } = storeToRefs(useUserStore())
   const { confirm, confirmDelete } = useArtFeedback()
-  const activeTab = ref<'rules' | 'events'>('rules')
+  const { ensureAccountSet } = useFinanceAccountSetPrerequisite()
+  const route = useRoute()
+  const postingEventStatuses = new Set<Api.Fms.PostingEventStatus>([
+    'pending',
+    'processing',
+    'generated',
+    'pending_configuration',
+    'failed',
+    'reversed',
+    'ignored'
+  ])
+  const parsePostingEventStatus = (value: unknown): Api.Fms.PostingEventStatus | '' =>
+    typeof value === 'string' && postingEventStatuses.has(value as Api.Fms.PostingEventStatus)
+      ? (value as Api.Fms.PostingEventStatus)
+      : ''
+  const activeTab = ref<'rules' | 'events'>(route.query.tab === 'events' ? 'events' : 'rules')
   const accountSetOptions = ref<Api.Fms.AccountSetOption[]>([])
   const ruleTableRef = ref<ArtTableQueryExpose>()
   const eventTableRef = ref<ArtTableQueryExpose>()
+  const activeTableRef = computed(() =>
+    activeTab.value === 'rules' ? ruleTableRef.value : eventTableRef.value
+  )
   const ruleDialogRef = ref<RuleDialogExpose>()
   const eventDetailRef = ref<EventDetailExpose>()
   const voucherDetailRef = ref<VoucherDetailExpose>()
@@ -222,7 +248,6 @@
             {
               type: 'add',
               label: '新增规则',
-              disabled: !ruleTable.search.accountSetId,
               onClick: () => void openRuleDialog()
             }
           ]
@@ -234,7 +259,7 @@
     search: {
       accountSetId: '',
       sourceEvent: '',
-      status: '',
+      status: parsePostingEventStatus(route.query.status),
       eventDateRange: [],
       keyword: ''
     },
@@ -462,6 +487,14 @@
   }
 
   async function openRuleDialog(row?: Rule): Promise<void> {
+    if (
+      !(await ensureAccountSet({
+        actionLabel: row ? '编辑自动入账规则' : '新增自动入账规则',
+        activeRequired: true,
+        available: Boolean(row?.accountSetId || ruleTable.search.accountSetId)
+      }))
+    )
+      return
     if (row?.accountSetId && ruleTable.search.accountSetId !== row.accountSetId) {
       ruleTable.search.accountSetId = row.accountSetId
       ruleContext.value = undefined
@@ -525,6 +558,23 @@
   }
 
   onMounted(() => void loadAccountSets())
+
+  watch(
+    () => [route.query.tab, route.query.status] as const,
+    ([tab, status]) => {
+      let changed = false
+      const nextStatus = parsePostingEventStatus(status)
+      if (tab === 'events' && activeTab.value !== 'events') {
+        activeTab.value = 'events'
+        changed = true
+      }
+      if (eventTable.search.status !== nextStatus) {
+        eventTable.search.status = nextStatus
+        changed = true
+      }
+      if (changed && activeTab.value === 'events') void eventTableRef.value?.getData()
+    }
+  )
 </script>
 
 <style scoped lang="scss">

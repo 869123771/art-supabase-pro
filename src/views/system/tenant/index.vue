@@ -11,7 +11,11 @@
         { label: '权限按角色授权', type: 'primary', effect: 'plain' }
       ]"
       :metrics="workspaceMetrics"
-    />
+    >
+      <template #actions>
+        <BusinessTableWorkspaceActions :table="tableQueryRef" />
+      </template>
+    </BusinessWorkspaceHeader>
 
     <ArtTableQuery
       ref="tableQueryRef"
@@ -21,6 +25,7 @@
       :api-fn="fetchTableData"
       :columns-factory="columnsFactory"
       :header-actions="headerActions"
+      header-actions-placement="workspace"
       :table-props="tableProps"
       :on-success="handleTableSuccess"
     />
@@ -48,6 +53,7 @@
   import BusinessWorkspaceHeader, {
     type BusinessWorkspaceMetric
   } from '@/components/business/business-workspace-header/index.vue'
+  import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
   import { deactivateTenant, deactivateTenantBatch, fetchGetTenantList } from '@/api/system-manage'
   import TenantDialog from './modules/tenant-dialog.vue'
   import { useUserStore } from '@/store/modules/user'

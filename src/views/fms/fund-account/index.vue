@@ -13,7 +13,11 @@
       ]"
       :metrics="metrics"
       @metric-click="handleMetricClick"
-    />
+    >
+      <template #actions>
+        <BusinessTableWorkspaceActions :table="tableRef" />
+      </template>
+    </BusinessWorkspaceHeader>
 
     <ElAlert
       v-if="!isPlatformSuper"
@@ -30,6 +34,7 @@
       :api-fn="fetchTableData"
       :columns-factory="columnsFactory"
       :header-actions="headerActions"
+      header-actions-placement="workspace"
       :search-bar-props="{ span: 8, labelWidth: 86, showExpand: false }"
       :table-props="{
         rowKey: 'id',
@@ -55,9 +60,11 @@
     ArtTableQueryHeaderAction
   } from '@/components/core/tables/art-table-query/index.vue'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
+  import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
   import BusinessWorkspaceHeader, {
     type BusinessWorkspaceMetric
   } from '@/components/business/business-workspace-header/index.vue'
+  import { useFinanceAccountSetPrerequisite } from '../modules/use-finance-account-set-prerequisite'
   import type { ColumnOption } from '@/types'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatCurrencyValue } from '@/utils/ui'
@@ -83,6 +90,7 @@
   }
 
   const { confirmAction } = useArtFeedback()
+  const { runWithAccountSet } = useFinanceAccountSetPrerequisite()
   const { getDictMap, isPlatformSuper } = storeToRefs(useUserStore())
   const tableRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<DialogExpose>()
@@ -138,7 +146,15 @@
           {
             type: 'add',
             label: '新建资金账户',
-            onClick: () => void dialogRef.value?.handleOpen()
+            onClick: () =>
+              void runWithAccountSet(
+                {
+                  actionLabel: '新建资金账户',
+                  activeRequired: true,
+                  available: accountSetOptions.value.length > 0
+                },
+                () => dialogRef.value?.handleOpen()
+              )
           }
         ]
       : []

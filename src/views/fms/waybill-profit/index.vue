@@ -9,14 +9,20 @@
         { label: '单票经营', type: 'primary' },
         { label: '毛利洞察', type: 'success' }
       ]"
-    />
+    >
+      <template #actions>
+        <BusinessTableWorkspaceActions :table="tableQueryRef" />
+      </template>
+    </BusinessWorkspaceHeader>
 
     <ArtTableQuery
+      ref="tableQueryRef"
       v-model="searchQuery"
       :search-items="searchItems"
       :api-fn="fetchTableData"
       :columns-factory="columnsFactory"
       :header-actions="headerActions"
+      header-actions-placement="workspace"
       :search-bar-props="{ span: 6, labelWidth: 86, showExpand: false }"
       :table-props="{
         rowKey: 'id',
@@ -35,6 +41,7 @@
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type {
     ArtTableQueryExcelColumn,
+    ArtTableQueryExpose,
     ArtTableQueryHeaderAction
   } from '@/components/core/tables/art-table-query/index.vue'
   import type { ColumnOption } from '@/types'
@@ -44,6 +51,7 @@
   import { useUserStore } from '@/store/modules/user'
   import { exportWaybillProfitList, fetchWaybillProfitList } from '@/api/fms'
   import BusinessWorkspaceHeader from '@/components/business/business-workspace-header/index.vue'
+  import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
 
   defineOptions({ name: 'FinanceWaybillProfit' })
 
@@ -56,6 +64,7 @@
   }
 
   const { getDictMap } = storeToRefs(useUserStore())
+  const tableQueryRef = ref<ArtTableQueryExpose>()
   const profitAnalysisDrawerRef = ref<ProfitAnalysisDrawerExpose>()
   const searchQuery = reactive<SearchParams>({
     keyword: '',

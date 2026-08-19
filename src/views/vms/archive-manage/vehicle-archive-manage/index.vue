@@ -10,7 +10,11 @@
         { label: '流程统一处理', type: 'info' }
       ]"
       :metrics="workspaceMetrics"
-    />
+    >
+      <template #actions>
+        <BusinessTableWorkspaceActions :table="tableQueryRef" />
+      </template>
+    </BusinessWorkspaceHeader>
 
     <ArtTableQuery
       ref="tableQueryRef"
@@ -19,6 +23,7 @@
       :api-fn="fetchTableData"
       :columns-factory="table.columnsFactory"
       :header-actions="table.headerActions"
+      header-actions-placement="workspace"
       :search-bar-props="table.searchBarProps"
       :table-props="table.props"
       :immediate="table.immediate"
@@ -63,6 +68,7 @@
   import type { WorkflowBusinessHistoryDrawerExpose } from '@/components/business/workflow-business-history/types'
   import { fetchCarrierDetail, fetchCarrierOptions } from '@/api/tms'
   import { useUserStore } from '@/store/modules/user'
+  import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
   import BusinessWorkspaceHeader, {
     type BusinessWorkspaceMetric
   } from '@/components/business/business-workspace-header/index.vue'

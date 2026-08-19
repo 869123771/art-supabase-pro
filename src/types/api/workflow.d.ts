@@ -48,9 +48,20 @@ declare namespace Api {
       condition: WorkflowCondition
     }
 
+    interface WorkflowCanvasPosition {
+      x: number
+      y: number
+    }
+
+    interface WorkflowCanvasLayout {
+      mode: 'free' | 'horizontal' | 'vertical'
+      positions: Record<string, WorkflowCanvasPosition>
+    }
+
     interface WorkflowConfig {
       nodes: WorkflowNode[]
       allowAutoApprove?: boolean
+      layout?: WorkflowCanvasLayout
     }
 
     interface WorkflowContextField {

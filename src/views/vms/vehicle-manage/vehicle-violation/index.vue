@@ -10,7 +10,11 @@
         { label: '只读业务台账', type: 'info' }
       ]"
       :metrics="workspaceMetrics"
-    />
+    >
+      <template #actions>
+        <BusinessTableWorkspaceActions :table="tableQueryRef" />
+      </template>
+    </BusinessWorkspaceHeader>
 
     <ArtTableQuery
       ref="tableQueryRef"
@@ -19,6 +23,7 @@
       :api-fn="fetchTableData"
       :columns-factory="table.columnsFactory"
       :header-actions="table.headerActions"
+      header-actions-placement="workspace"
       :search-bar-props="{ span: 6, labelWidth: 100 }"
       :table-props="{
         rowKey: 'id',
@@ -51,6 +56,7 @@
   import BusinessWorkspaceHeader, {
     type BusinessWorkspaceMetric
   } from '@/components/business/business-workspace-header/index.vue'
+  import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
 
   defineOptions({ name: 'VehicleViolation' })
 

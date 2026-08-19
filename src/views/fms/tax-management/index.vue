@@ -12,7 +12,11 @@
         { label: '缴税入账', type: 'success' }
       ]"
       :metrics="metrics"
-    />
+    >
+      <template #actions>
+        <BusinessTableWorkspaceActions :table="tableRef" />
+      </template>
+    </BusinessWorkspaceHeader>
     <ElAlert
       v-if="!isPlatformSuper"
       type="info"
@@ -27,6 +31,7 @@
       :api-fn="fetchTableData"
       :columns-factory="columnsFactory"
       :header-actions="headerActions"
+      header-actions-placement="workspace"
       :search-bar-props="{ span: 8, labelWidth: 82, showExpand: false }"
       :table-props="{
         rowKey: 'id',
@@ -40,6 +45,7 @@
     />
     <TaxPeriodDialog ref="dialogRef" @success="refreshAll" />
     <TaxDetailDrawer ref="drawerRef" @success="refreshAll" />
+    <FundExecutionDialog ref="fundExecutionRef" @success="refreshAll" />
   </div>
 </template>
 
@@ -54,9 +60,15 @@
     ArtTableQueryExpose,
     ArtTableQueryHeaderAction
   } from '@/components/core/tables/art-table-query/index.vue'
+  import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
   import BusinessWorkspaceHeader, {
     type BusinessWorkspaceMetric
   } from '@/components/business/business-workspace-header/index.vue'
+  import { useFinanceAccountSetPrerequisite } from '../modules/use-finance-account-set-prerequisite'
+  import FundExecutionDialog, {
+    type FundExecutionOptions,
+    type FundExecutionPayload
+  } from '../modules/fund-execution-dialog.vue'
   import type { ColumnOption } from '@/types'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatCurrencyValue } from '@/utils/ui'
@@ -82,10 +94,17 @@
     pendingCount: 0
   })
   const { confirmAction, promptReason } = useArtFeedback()
+  const { runWithAccountSet } = useFinanceAccountSetPrerequisite()
   const { getDictMap, isPlatformSuper } = storeToRefs(useUserStore())
   const tableRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<{ handleOpen: (row?: Row) => Promise<void> }>()
   const drawerRef = ref<{ handleOpen: (row: Row) => Promise<void> }>()
+  const fundExecutionRef = ref<{
+    handleOpen: (
+      options: FundExecutionOptions,
+      onSubmit: (payload: FundExecutionPayload) => Promise<void>
+    ) => Promise<void>
+  }>()
   const accountSetOptions = ref<Api.Fms.AccountSetOption[]>([])
   const summary = ref(emptySummary())
   const table = reactive<{ search: SearchParams }>({
@@ -160,7 +179,23 @@
   ])
   const headerActions = computed<ArtTableQueryHeaderAction[]>(() =>
     isPlatformSuper.value
-      ? [{ type: 'add', label: '新建税务期间', onClick: () => void dialogRef.value?.handleOpen() }]
+      ? [
+          {
+            type: 'add',
+            label: '新建税务期间',
+            onClick: () =>
+              void runWithAccountSet(
+                {
+                  actionLabel: '新建税务期间',
+                  activeRequired: true,
+                  accountSetId: table.search.accountSetId,
+                  foundationRequired: true,
+                  available: accountSetOptions.value.length > 0
+                },
+                () => dialogRef.value?.handleOpen()
+              )
+          }
+        ]
       : []
   )
   function columnsFactory(): ColumnOption<Row>[] {
@@ -309,6 +344,32 @@
           { emptyMessage: '申报凭证号不能为空', placeholder: '例如：VAT-202608-001' }
         )
         await actTaxPeriod(row.id, 'file', { filingReference })
+      } else if (item.key === 'pay') {
+        await runWithAccountSet(
+          {
+            actionLabel: '确认缴纳税款',
+            accountSetId: row.accountSetId,
+            available: true,
+            foundationRequired: true,
+            fundAccountRequired: true
+          },
+          () =>
+            fundExecutionRef.value?.handleOpen(
+              {
+                accountSetId: row.accountSetId,
+                amount: row.payableAmount,
+                direction: 'outflow',
+                title: `确认缴税 · ${row.taxType}`,
+                subtitle: '选择实际扣款账户，系统会同步登记资金日记账和税费支付凭证',
+                confirmText: '确认缴税并入账',
+                accountLabel: '缴税账户'
+              },
+              async (payload) => {
+                await actTaxPeriod(row.id, 'pay', payload)
+              }
+            )
+        )
+        return
       } else {
         await confirmAction(
           item.key === 'review'

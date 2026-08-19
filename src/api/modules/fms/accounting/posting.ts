@@ -6,6 +6,51 @@ type PostingEvent = Api.Fms.PostingEventRecord
 
 const { supabase, responseHandle } = useSupabase()
 
+export async function fetchAccountingWorkloadSummary(accountSetId?: string) {
+  const countRows = async (
+    table: 'fms_posting_event' | 'fms_voucher' | 'fms_accounting_period',
+    statuses: string[]
+  ): Promise<number> => {
+    let query = supabase
+      .from(table)
+      .select('id', { count: 'exact', head: true })
+      .in('status', statuses)
+    if (accountSetId) query = query.eq('account_set_id', accountSetId)
+    const result = await responseHandle<never[]>(() => query, {
+      ignoreCheck: true,
+      showErrorMessage: true
+    })
+    return result.total ?? 0
+  }
+
+  const [
+    failedPostingEventCount,
+    pendingConfigurationEventCount,
+    pendingPostingEventCount,
+    pendingVoucherReviewCount,
+    approvedVoucherCount,
+    closingPeriodCount
+  ] = await Promise.all([
+    countRows('fms_posting_event', ['failed']),
+    countRows('fms_posting_event', ['pending_configuration']),
+    countRows('fms_posting_event', ['pending']),
+    countRows('fms_voucher', ['pending_review']),
+    countRows('fms_voucher', ['approved']),
+    countRows('fms_accounting_period', ['closing'])
+  ])
+
+  return {
+    data: {
+      failedPostingEventCount,
+      pendingConfigurationEventCount,
+      pendingPostingEventCount,
+      pendingVoucherReviewCount,
+      approvedVoucherCount,
+      closingPeriodCount
+    } satisfies Api.Fms.AccountingWorkloadSummary
+  }
+}
+
 const POSTING_RULE_SELECT = `
   *,
   accountSet:fms_account_set(id, account_set_code, account_set_name)

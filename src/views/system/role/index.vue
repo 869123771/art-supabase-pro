@@ -14,7 +14,11 @@
         { label: '遵循最小权限原则', type: 'primary', effect: 'plain' }
       ]"
       :metrics="workspaceMetrics"
-    />
+    >
+      <template #actions>
+        <BusinessTableWorkspaceActions :table="tableQueryRef" />
+      </template>
+    </BusinessWorkspaceHeader>
 
     <div class="role-page__workspace">
       <aside v-if="isDesktopOrganizationLayout" class="role-page__organization-panel">
@@ -50,6 +54,7 @@
         </section>
 
         <ArtTableQuery
+          ref="tableQueryRef"
           focusable
           v-model="searchForm"
           v-model:columns="columnChecks"
@@ -60,6 +65,7 @@
           :pagination="pagination"
           :search-bar-props="searchBarProps"
           :header-actions="headerActions"
+          header-actions-placement="workspace"
           :table-props="tableProps"
           @search="handleSearch"
           @reset="resetSearchParams"
@@ -109,6 +115,7 @@
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import ArtButtonMore from '@/components/core/forms/art-button-more/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
+  import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
   import BusinessWorkspaceHeader, {
     type BusinessWorkspaceMetric
   } from '@/components/business/business-workspace-header/index.vue'
@@ -119,6 +126,7 @@
   import { ColumnOption } from '@/types'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type {
+    ArtTableQueryExpose,
     ArtTableQueryHeaderAction,
     ArtTableQuerySearchBarProps,
     ArtTableQueryTableProps
@@ -135,6 +143,7 @@
 
   const { confirmAction } = useArtFeedback()
   const route = useRoute()
+  const tableQueryRef = ref<ArtTableQueryExpose>()
 
   type RoleListItem = Api.SystemManage.RoleListItem
   type OrganizationFilterItem = Api.SystemManage.OrganizationScopeFilterItem

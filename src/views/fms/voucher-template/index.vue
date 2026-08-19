@@ -11,7 +11,11 @@
         { label: '快速制单', type: 'success' },
         { label: '不绕过审核', type: 'info' }
       ]"
-    />
+    >
+      <template #actions>
+        <BusinessTableWorkspaceActions :table="tableQueryRef" />
+      </template>
+    </BusinessWorkspaceHeader>
 
     <ElAlert
       v-if="!isPlatformSuper"
@@ -28,6 +32,7 @@
       :api-fn="fetchTableData"
       :columns-factory="columnsFactory"
       :header-actions="table.headerActions"
+      header-actions-placement="workspace"
       :search-bar-props="{ span: 6, labelWidth: 88, showExpand: false }"
       :table-props="{
         rowKey: 'id',
@@ -51,7 +56,9 @@
     ArtTableQueryHeaderAction
   } from '@/components/core/tables/art-table-query/index.vue'
   import type { ColumnOption } from '@/types'
+  import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
   import BusinessWorkspaceHeader from '@/components/business/business-workspace-header/index.vue'
+  import { useFinanceAccountSetPrerequisite } from '../modules/use-finance-account-set-prerequisite'
   import { useUserStore } from '@/store/modules/user'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
@@ -91,6 +98,7 @@
 
   const { getDictMap, isPlatformSuper } = storeToRefs(useUserStore())
   const { confirmDelete } = useArtFeedback()
+  const { ensureAccountSet } = useFinanceAccountSetPrerequisite()
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<DialogExpose>()
   const entryContext = shallowRef<DialogContext>()
@@ -154,7 +162,6 @@
             {
               type: 'add',
               label: '新增模板',
-              disabled: !table.searchQuery.accountSetId,
               onClick: () => void openDialog()
             }
           ]
@@ -235,6 +242,13 @@
   }
 
   async function openDialog(row?: Template): Promise<void> {
+    if (
+      !(await ensureAccountSet({
+        actionLabel: row ? '编辑凭证模板' : '新增凭证模板',
+        available: Boolean(row?.accountSetId || table.searchQuery.accountSetId)
+      }))
+    )
+      return
     const context = await loadEntryContext()
     if (context) await dialogRef.value?.handleOpen(context, row)
   }
@@ -254,7 +268,7 @@
   }
 
   async function loadAccountSets(): Promise<void> {
-    const { data } = await fetchAccountSetOptions({ status: 'active', from: 0, to: 999 })
+    const { data } = await fetchAccountSetOptions({ from: 0, to: 999 })
     table.accountSetOptions = data ?? []
     if (!table.searchQuery.accountSetId && table.accountSetOptions.length) {
       table.searchQuery.accountSetId = table.accountSetOptions[0].value

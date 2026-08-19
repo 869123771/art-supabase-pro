@@ -13,7 +13,11 @@
       ]"
       :metrics="metrics"
       @metric-click="handleMetricClick"
-    />
+    >
+      <template #actions>
+        <BusinessTableWorkspaceActions :table="tableRef" />
+      </template>
+    </BusinessWorkspaceHeader>
 
     <ElAlert
       v-if="!isPlatformSuper"
@@ -30,6 +34,7 @@
       :api-fn="fetchTableData"
       :columns-factory="columnsFactory"
       :header-actions="headerActions"
+      header-actions-placement="workspace"
       :search-bar-props="{ span: 8, labelWidth: 82, showExpand: false }"
       :table-props="{
         rowKey: 'id',
@@ -44,6 +49,7 @@
 
     <CommercialBillDialog ref="dialogRef" @success="handleSaved" />
     <CommercialBillDetailDrawer ref="drawerRef" />
+    <FundExecutionDialog ref="fundExecutionRef" @success="refreshAll('update')" />
   </div>
 </template>
 
@@ -59,9 +65,15 @@
     ArtTableQueryExpose,
     ArtTableQueryHeaderAction
   } from '@/components/core/tables/art-table-query/index.vue'
+  import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
   import BusinessWorkspaceHeader, {
     type BusinessWorkspaceMetric
   } from '@/components/business/business-workspace-header/index.vue'
+  import { useFinanceAccountSetPrerequisite } from '../modules/use-finance-account-set-prerequisite'
+  import FundExecutionDialog, {
+    type FundExecutionOptions,
+    type FundExecutionPayload
+  } from '../modules/fund-execution-dialog.vue'
   import type { ColumnOption } from '@/types'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatCurrencyValue } from '@/utils/ui'
@@ -90,6 +102,12 @@
   interface DrawerExpose {
     handleOpen: (row: Bill) => Promise<void>
   }
+  interface FundExecutionExpose {
+    handleOpen: (
+      options: FundExecutionOptions,
+      onSubmit: (payload: FundExecutionPayload) => Promise<void>
+    ) => Promise<void>
+  }
 
   const emptySummary = (): Api.Fms.CommercialBillSummary => ({
     totalCount: 0,
@@ -101,10 +119,12 @@
   })
 
   const { confirmAction, promptReason } = useArtFeedback()
+  const { runWithAccountSet } = useFinanceAccountSetPrerequisite()
   const { getDictMap, isPlatformSuper } = storeToRefs(useUserStore())
   const tableRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<DialogExpose>()
   const drawerRef = ref<DrawerExpose>()
+  const fundExecutionRef = ref<FundExecutionExpose>()
   const accountSetOptions = ref<Api.Fms.AccountSetOption[]>([])
   const summary = ref<Api.Fms.CommercialBillSummary>(emptySummary())
   const table = reactive<{ search: SearchParams }>({
@@ -173,7 +193,17 @@
           {
             type: 'add',
             label: '新建票据',
-            onClick: () => void dialogRef.value?.handleOpen()
+            onClick: () =>
+              void runWithAccountSet(
+                {
+                  actionLabel: '新建票据',
+                  activeRequired: true,
+                  accountSetId: table.search.accountSetId,
+                  foundationRequired: true,
+                  available: accountSetOptions.value.length > 0
+                },
+                () => dialogRef.value?.handleOpen()
+              )
           }
         ]
       : []
@@ -400,6 +430,41 @@
         })
         await deleteCommercialBill(row.id)
         await refreshAll('delete')
+        return
+      }
+      if (item.key === 'discount' || item.key === 'settle') {
+        const amount = row.faceAmount - row.settledAmount
+        const direction =
+          item.key === 'discount' || row.direction === 'receivable' ? 'inflow' : 'outflow'
+        await runWithAccountSet(
+          {
+            actionLabel: item.label,
+            accountSetId: row.accountSetId,
+            available: true,
+            foundationRequired: true,
+            fundAccountRequired: true
+          },
+          () =>
+            fundExecutionRef.value?.handleOpen(
+              {
+                accountSetId: row.accountSetId,
+                amount,
+                direction,
+                title: `${item.label} · ${row.billNo}`,
+                subtitle: '选择实际资金账户，系统会同步登记资金日记账和票据会计凭证',
+                confirmText: `${item.label}并入账`,
+                accountLabel: direction === 'inflow' ? '入账账户' : '扣款账户'
+              },
+              async (payload) => {
+                await actCommercialBill(row.id, item.key as Api.Fms.CommercialBillAction, {
+                  amount,
+                  eventDate: payload.actionDate,
+                  fundAccountId: payload.fundAccountId,
+                  referenceNo: payload.referenceNo
+                })
+              }
+            )
+        )
         return
       }
       let remark: string | undefined

@@ -15,7 +15,11 @@
         { label: '应付对账', type: 'primary' },
         { label: '成本核验', type: 'warning' }
       ]"
-    />
+    >
+      <template #actions>
+        <BusinessTableWorkspaceActions :table="tableQueryRef" />
+      </template>
+    </BusinessWorkspaceHeader>
 
     <ArtTableQuery
       ref="tableQueryRef"
@@ -24,6 +28,7 @@
       :api-fn="fetchTableData"
       :columns-factory="columnsFactory"
       :header-actions="headerActions"
+      header-actions-placement="workspace"
       :search-bar-props="{ span: 6, labelWidth: 86, showExpand: false }"
       :table-props="{
         rowKey: 'id',
@@ -61,6 +66,7 @@
   import CarrierStatementDialog from './modules/carrier-statement-dialog.vue'
   import CarrierStatementDetailDrawer from './modules/carrier-statement-detail-drawer.vue'
   import BusinessWorkspaceHeader from '@/components/business/business-workspace-header/index.vue'
+  import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
   import { useMasterDataDeleteProcessingContext } from '@/hooks/core/useMasterDataDeleteProcessing'
   import MasterDeleteProcessingNotice from '@/components/business/master-delete-processing-notice/index.vue'
 
@@ -83,7 +89,7 @@
     keyword: '',
     periodRange: [],
     recordId: deleteContext.value.recordId,
-    status: ''
+    status: typeof route.query.status === 'string' ? route.query.status : ''
   })
 
   const searchItems = computed<SearchFormItem[]>(() => [
@@ -353,6 +359,15 @@
     () => route.fullPath,
     () => syncMasterDeleteRoute(),
     { flush: 'post' }
+  )
+
+  watch(
+    () => route.query.status,
+    (value) => {
+      if (typeof value !== 'string' || searchQuery.status === value) return
+      searchQuery.status = value
+      void tableQueryRef.value?.getData()
+    }
   )
   onActivated(() => syncMasterDeleteRoute(true))
   onMounted(() => void loadCarrierOptions())

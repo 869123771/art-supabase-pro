@@ -9,7 +9,11 @@
         { label: '票据台账', type: 'primary' },
         { label: '合规校验', type: 'success' }
       ]"
-    />
+    >
+      <template #actions>
+        <BusinessTableWorkspaceActions :table="tableQueryRef" />
+      </template>
+    </BusinessWorkspaceHeader>
 
     <MasterDeleteProcessingNotice
       v-if="customerDeleteContext.active"
@@ -25,6 +29,7 @@
       :api-fn="fetchTableData"
       :columns-factory="columnsFactory"
       :header-actions="table.headerActions"
+      header-actions-placement="workspace"
       :search-bar-props="{ span: 6, labelWidth: 86, showExpand: true }"
       :table-props="{
         rowKey: 'id',
@@ -65,6 +70,7 @@
   import { financePaths } from '@/router/business-paths'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import BusinessWorkspaceHeader from '@/components/business/business-workspace-header/index.vue'
+  import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
   import MasterDeleteProcessingNotice from '@/components/business/master-delete-processing-notice/index.vue'
   import { useMasterDataDeleteProcessingContext } from '@/hooks/core/useMasterDataDeleteProcessing'
   import InvoiceDialog from './modules/invoice-dialog.vue'
@@ -115,8 +121,8 @@
 
   const table: UnwrapNestedRefs<TableGroup> = reactive<TableGroup>({
     searchQuery: {
-      direction: '',
-      status: '',
+      direction: typeof route.query.direction === 'string' ? route.query.direction : '',
+      status: typeof route.query.status === 'string' ? route.query.status : '',
       invoiceType: '',
       customerId: customerDeleteContext.value.customerId,
       carrierId: customerDeleteContext.value.carrierId,
@@ -468,6 +474,22 @@
       syncCustomerDeleteRoute()
     },
     { flush: 'post' }
+  )
+
+  watch(
+    () => [route.query.direction, route.query.status] as const,
+    ([direction, status]) => {
+      let changed = false
+      if (typeof direction === 'string' && table.searchQuery.direction !== direction) {
+        table.searchQuery.direction = direction
+        changed = true
+      }
+      if (typeof status === 'string' && table.searchQuery.status !== status) {
+        table.searchQuery.status = status
+        changed = true
+      }
+      if (changed) void tableQueryRef.value?.getData()
+    }
   )
 
   onActivated(() => {

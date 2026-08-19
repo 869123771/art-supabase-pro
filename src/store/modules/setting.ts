@@ -32,7 +32,7 @@
  */
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { MenuThemeType } from '@/types/store'
+import type { BreadcrumbStyle, MenuThemeType, WorkTabStyle } from '@/types/store'
 import AppConfig from '@/config'
 import { SystemThemeEnum, MenuThemeEnum, MenuTypeEnum, ContainerWidthEnum } from '@/enums/appEnum'
 import { setElementThemeColor } from '@/utils/ui'
@@ -76,6 +76,10 @@ export const useSettingStore = defineStore(
     const showRefreshButton = ref(SETTING_DEFAULT_CONFIG.showRefreshButton)
     /** 是否显示面包屑 */
     const showCrumbs = ref(SETTING_DEFAULT_CONFIG.showCrumbs)
+    /** 是否显示面包屑图标 */
+    const showBreadcrumbIcon = ref(SETTING_DEFAULT_CONFIG.showBreadcrumbIcon)
+    /** 面包屑视觉风格 */
+    const breadcrumbStyle = ref<BreadcrumbStyle>(SETTING_DEFAULT_CONFIG.breadcrumbStyle)
     /** 是否显示工作台标签 */
     const showWorkTab = ref(SETTING_DEFAULT_CONFIG.showWorkTab)
     /** 是否显示语言切换 */
@@ -261,6 +265,22 @@ export const useSettingStore = defineStore(
     }
 
     /**
+     * 设置面包屑图标显示
+     * @param visible 是否显示
+     */
+    const setShowBreadcrumbIcon = (visible: boolean) => {
+      showBreadcrumbIcon.value = visible
+    }
+
+    /**
+     * 设置面包屑视觉风格
+     * @param style 风格名称
+     */
+    const setBreadcrumbStyle = (style: BreadcrumbStyle) => {
+      breadcrumbStyle.value = style
+    }
+
+    /**
      * 设置工作台标签显示
      * @param show 是否显示
      */
@@ -315,7 +335,7 @@ export const useSettingStore = defineStore(
      * 设置标签页样式
      * @param style 样式名称
      */
-    const setTabStyle = (style: string) => {
+    const setTabStyle = (style: WorkTabStyle) => {
       tabStyle.value = style
     }
 
@@ -388,6 +408,8 @@ export const useSettingStore = defineStore(
       showFastEnter,
       showRefreshButton,
       showCrumbs,
+      showBreadcrumbIcon,
+      breadcrumbStyle,
       autoClose,
       showWorkTab,
       showLanguage,
@@ -423,6 +445,8 @@ export const useSettingStore = defineStore(
       setAutoClose,
       setShowRefreshButton,
       setCrumbs,
+      setShowBreadcrumbIcon,
+      setBreadcrumbStyle,
       setWorkTab,
       setLanguage,
       setNprogress,

@@ -19,7 +19,11 @@
         { label: '树形权限结构', type: 'primary', effect: 'plain' }
       ]"
       :metrics="overviewCards"
-    />
+    >
+      <template #actions>
+        <BusinessTableWorkspaceActions :table="tableQueryRef" />
+      </template>
+    </BusinessWorkspaceHeader>
 
     <ArtTableQuery
       ref="tableQueryRef"
@@ -32,6 +36,7 @@
       :columns-factory="columnsFactory"
       :response-adapter="responseAdapter"
       :header-actions="headerActions"
+      header-actions-placement="workspace"
       :table-header-props="tableHeaderProps"
       :table-props="tableProps"
     />
@@ -48,6 +53,7 @@
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { formatMenuTitle } from '@/utils/router'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
+  import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
   import BusinessWorkspaceHeader, {
     type BusinessWorkspaceMetric
   } from '@/components/business/business-workspace-header/index.vue'

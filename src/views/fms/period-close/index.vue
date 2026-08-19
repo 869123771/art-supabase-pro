@@ -12,7 +12,11 @@
         { label: '反结账审计', type: 'success' }
       ]"
       :metrics="metrics"
-    />
+    >
+      <template #actions>
+        <BusinessTableWorkspaceActions :table="tableRef" />
+      </template>
+    </BusinessWorkspaceHeader>
     <ElAlert
       v-if="!isPlatformSuper"
       type="info"
@@ -27,6 +31,7 @@
       :api-fn="fetchTableData"
       :columns-factory="columnsFactory"
       :header-actions="headerActions"
+      header-actions-placement="workspace"
       :search-bar-props="{ span: 8, labelWidth: 82, showExpand: false }"
       :table-props="{
         rowKey: 'id',
@@ -54,9 +59,12 @@
     ArtTableQueryExpose,
     ArtTableQueryHeaderAction
   } from '@/components/core/tables/art-table-query/index.vue'
+  import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
   import BusinessWorkspaceHeader, {
     type BusinessWorkspaceMetric
   } from '@/components/business/business-workspace-header/index.vue'
+  import { useFinanceAccountSetPrerequisite } from '../modules/use-finance-account-set-prerequisite'
+  import { financeRouteNames } from '@/router/business-paths'
   import type { ColumnOption } from '@/types'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatWithDayjs } from '@/utils/time'
@@ -67,6 +75,7 @@
     fetchAccountSetOptions,
     fetchPeriodCloseRuns,
     fetchPeriodCloseSummary,
+    generateProfitLossCarryforward,
     runPeriodCloseChecks
   } from '@/api/fms'
   import PeriodCloseStartDialog from './modules/period-close-start-dialog.vue'
@@ -83,6 +92,8 @@
     latestCompletedAt: null
   })
   const { confirmAction, promptReason } = useArtFeedback()
+  const router = useRouter()
+  const { runWithAccountSet } = useFinanceAccountSetPrerequisite()
   const { getDictMap, isPlatformSuper } = storeToRefs(useUserStore())
   const tableRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<{ handleOpen: () => Promise<void> }>()
@@ -158,7 +169,17 @@
             type: 'add',
             label: '执行关账检查',
             icon: 'ri:shield-check-line',
-            onClick: () => void dialogRef.value?.handleOpen()
+            onClick: () =>
+              void runWithAccountSet(
+                {
+                  actionLabel: '执行关账检查',
+                  activeRequired: true,
+                  accountSetId: table.search.accountSetId,
+                  foundationRequired: true,
+                  available: accountSetOptions.value.length > 0
+                },
+                () => dialogRef.value?.handleOpen()
+              )
           }
         ]
       : []
@@ -221,6 +242,12 @@
     if (row.status === 'checking')
       return [
         {
+          key: 'carryforward',
+          label: '生成损益结转凭证',
+          icon: 'ri:exchange-funds-line',
+          color: 'var(--el-color-success)'
+        },
+        {
           key: 'recheck',
           label: '重新检查',
           icon: 'ri:refresh-line',
@@ -235,6 +262,12 @@
       ]
     if (row.status === 'ready')
       return [
+        {
+          key: 'carryforward',
+          label: '生成损益结转凭证',
+          icon: 'ri:exchange-funds-line',
+          color: 'var(--el-color-success)'
+        },
         {
           key: 'recheck',
           label: '重新检查',
@@ -278,6 +311,14 @@
     try {
       if (item.key === 'recheck') {
         await runPeriodCloseChecks(row.accountingPeriodId)
+      } else if (item.key === 'carryforward') {
+        await confirmAction(
+          '系统将按本期已记账的收入、成本和费用自动生成损益结转凭证。生成后仍需在凭证中心完成审核与记账。',
+          '生成损益结转凭证',
+          { type: 'warning', confirmButtonText: '确认生成' }
+        )
+        await generateProfitLossCarryforward(row.accountingPeriodId)
+        await router.push({ name: financeRouteNames.voucherCenter })
       } else if (item.key === 'close') {
         await confirmAction(
           '结账后本期凭证和业务数据将被锁定；如需修改必须执行有原因的反结账。',

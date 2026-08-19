@@ -1,14 +1,22 @@
 <template>
-  <div class="art-full-height workflow-definition business-workspace-page">
+  <WorkflowDesignerWorkspace
+    v-if="designer.mode"
+    :definition-id="designer.definitionId"
+    :template-key="designer.templateKey"
+    @close="closeDesigner"
+    @saved="handleDesignerSaved"
+  />
+
+  <div v-else class="art-full-height workflow-definition business-workspace-page">
     <BusinessWorkspaceHeader
       eyebrow="WORKFLOW GOVERNANCE"
       title="审批流程设计"
       description="用版本化配置复用审批能力，发布中的版本保持不可变，所有流转动作完整留痕。"
       icon="ri:git-merge-line"
       :tags="!isPlatformSuper ? [{ label: '租户只读', type: 'info', effect: 'plain' }] : []"
-      :metrics="workflowPrinciples"
     >
       <template #actions>
+        <BusinessTableWorkspaceActions :table="tableQueryRef" />
         <ElButton plain @click="catalogRef?.handleOpen()">
           <ArtSvgIcon icon="ri:apps-2-line" />业务覆盖
         </ElButton>
@@ -23,6 +31,7 @@
       :api-fn="fetchTableData"
       :columns-factory="table.columnsFactory"
       :header-actions="table.headerActions"
+      header-actions-placement="workspace"
       :search-bar-props="{ span: 8, labelWidth: 88 }"
       :table-props="{
         rowKey: 'id',
@@ -34,9 +43,9 @@
       }"
     />
 
-    <WorkflowDesignerDrawer ref="designerRef" @success="handleSaveSuccess" />
     <WorkflowVersionHistoryDialog ref="versionHistoryRef" @success="handleSaveSuccess" />
     <WorkflowBusinessCatalogDialog ref="catalogRef" />
+    <WorkflowTemplateLibraryDialog ref="templateLibraryRef" @select="openNewDesigner" />
   </div>
 </template>
 
@@ -55,9 +64,8 @@
   } from '@/components/core/forms/art-button-more/index.vue'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
-  import BusinessWorkspaceHeader, {
-    type BusinessWorkspaceMetric
-  } from '@/components/business/business-workspace-header/index.vue'
+  import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
+  import BusinessWorkspaceHeader from '@/components/business/business-workspace-header/index.vue'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatWithDayjs } from '@/utils/time'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
@@ -69,9 +77,10 @@
     publishWorkflowDefinition,
     setWorkflowDefinitionEnabled
   } from '@/api/workflow'
-  import WorkflowDesignerDrawer from './modules/workflow-designer-drawer.vue'
+  import WorkflowDesignerWorkspace from './modules/workflow-designer-workspace.vue'
   import WorkflowVersionHistoryDialog from './modules/workflow-version-history-dialog.vue'
   import WorkflowBusinessCatalogDialog from './modules/workflow-business-catalog-dialog.vue'
+  import WorkflowTemplateLibraryDialog from './modules/workflow-template-library-dialog.vue'
 
   defineOptions({ name: 'WorkflowDefinition' })
 
@@ -82,13 +91,13 @@
   >
   type TableParams = SearchParams & Pick<Api.Common.PaginationParams, 'current' | 'size'>
 
-  interface DesignerExpose {
-    handleOpen: (row?: Definition) => Promise<void>
-  }
   interface VersionHistoryExpose {
     handleOpen: (row: Definition, options?: { canManage?: boolean }) => Promise<void>
   }
   interface CatalogExpose {
+    handleOpen: () => Promise<void>
+  }
+  interface TemplateLibraryExpose {
     handleOpen: () => Promise<void>
   }
 
@@ -100,34 +109,23 @@
   }
 
   const userStore = useUserStore()
-  const workflowPrinciples: BusinessWorkspaceMetric[] = [
-    {
-      label: '版本治理',
-      value: '全周期',
-      description: '草稿、发布、停用边界清晰',
-      icon: 'ri:stack-line'
-    },
-    {
-      label: '职责分离',
-      value: '可配置',
-      description: '角色审批与禁止自审',
-      icon: 'ri:shield-user-line',
-      tone: 'warning'
-    },
-    {
-      label: '全程审计',
-      value: '可追溯',
-      description: '实例、任务、动作完整留痕',
-      icon: 'ri:file-history-line',
-      tone: 'success'
-    }
-  ]
+  const route = useRoute()
+  const router = useRouter()
   const { getDictMap, isPlatformSuper } = storeToRefs(userStore)
   const { confirmAction, confirmDelete } = useArtFeedback()
   const tableQueryRef = ref<ArtTableQueryExpose>()
-  const designerRef = ref<DesignerExpose>()
   const versionHistoryRef = ref<VersionHistoryExpose>()
   const catalogRef = ref<CatalogExpose>()
+  const templateLibraryRef = ref<TemplateLibraryExpose>()
+  const designer = reactive({
+    mode: computed(() => typeof route.query.designer === 'string'),
+    definitionId: computed(() =>
+      typeof route.query.designer === 'string' ? route.query.designer : undefined
+    ),
+    templateKey: computed(() =>
+      typeof route.query.template === 'string' ? route.query.template : undefined
+    )
+  })
 
   const getCurrentVersion = (row: Definition) =>
     row.versions?.find((version) => version.id === row.currentVersionId) ||
@@ -180,7 +178,13 @@
     ]),
     headerActions: computed<ArtTableQueryHeaderAction[]>(() =>
       isPlatformSuper.value
-        ? [{ type: 'add', label: '新建流程', onClick: () => designerRef.value?.handleOpen() }]
+        ? [
+            {
+              type: 'add',
+              label: '新建流程',
+              onClick: () => templateLibraryRef.value?.handleOpen()
+            }
+          ]
         : []
     ),
     columnsFactory: () => [
@@ -274,7 +278,7 @@
                   <ArtButtonTable
                     type="edit"
                     label="编辑流程"
-                    onClick={() => designerRef.value?.handleOpen(row)}
+                    onClick={() => openDesigner(row.id)}
                   />
                   <ArtButtonMore
                     list={() => getRowMoreActions(row)}
@@ -291,6 +295,31 @@
   function fetchTableData(params: TableParams) {
     const { from, to } = pageInfoHandler(params)
     return fetchWorkflowDefinitionList({ ...params, from, to })
+  }
+
+  function openNewDesigner(templateKey: string): void {
+    void router.push({
+      path: route.path,
+      query: { designer: 'new', template: templateKey }
+    })
+  }
+
+  function openDesigner(definitionId: string): void {
+    void router.push({
+      path: route.path,
+      query: { designer: definitionId }
+    })
+  }
+
+  function closeDesigner(): void {
+    void router.push({ path: route.path })
+  }
+
+  function handleDesignerSaved(definitionId: string): void {
+    void router.replace({
+      path: route.path,
+      query: { designer: definitionId }
+    })
   }
 
   function getRowMoreActions(row: Definition): ButtonMoreItem[] {

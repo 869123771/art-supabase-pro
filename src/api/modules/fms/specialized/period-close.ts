@@ -46,6 +46,20 @@ export async function runPeriodCloseChecks(periodId: string) {
   )
 }
 
+export async function generateProfitLossCarryforward(periodId: string) {
+  return await responseHandle<Api.Fms.VoucherRecord>(
+    () =>
+      supabase.rpc('generate_fms_profit_loss_carryforward', {
+        p_accounting_period_id: periodId
+      }),
+    {
+      breakReturn: true,
+      showMessage: true,
+      message: '损益结转凭证已生成，请完成审核与记账'
+    }
+  )
+}
+
 export async function actPeriodCloseRun(
   id: string,
   action: Api.Fms.PeriodCloseAction,

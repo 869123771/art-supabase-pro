@@ -14,7 +14,11 @@
         { label: `最近刷新：${overview.lastRefreshText}` }
       ]"
       :metrics="overview.statCards"
-    />
+    >
+      <template #actions>
+        <BusinessTableWorkspaceActions :table="tableQueryRef" />
+      </template>
+    </BusinessWorkspaceHeader>
 
     <div class="system-param-page__groups art-card-xs">
       <ElSegmented
@@ -32,6 +36,7 @@
       :api-fn="fetchTableData"
       :columns-factory="columnsFactory"
       :header-actions="table.headerActions"
+      header-actions-placement="workspace"
       :table-header-props="{ layout: 'refresh,size,fullscreen,columns,settings' }"
       :table-props="tableProps"
     />
@@ -52,6 +57,7 @@
   import BusinessWorkspaceHeader, {
     type BusinessWorkspaceMetric
   } from '@/components/business/business-workspace-header/index.vue'
+  import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
   import type {
     ArtTableQueryExpose,
     ArtTableQueryHeaderAction,

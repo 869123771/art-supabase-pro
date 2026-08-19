@@ -2892,6 +2892,12 @@ declare namespace Api {
       | 'expense_reimbursement'
       | 'waybill_cost'
       | 'system'
+      | 'commercial_bill'
+      | 'fixed_asset'
+      | 'asset_depreciation'
+      | 'payroll'
+      | 'tax'
+      | 'period_close'
       | 'reversal'
     type VoucherAction =
       | 'create'
@@ -2994,6 +3000,33 @@ declare namespace Api {
       openPeriodCount: number
       closedPeriodCount: number
       openingBalanceCount: number
+    }
+
+    interface AccountingReadiness {
+      accountSetId: string
+      accountSetStatus: AccountSetStatus
+      subjectCount: number
+      missingSubjectCodes: string[]
+      postingRuleCount: number
+      missingPostingRuleCodes: string[]
+      statementItemCount: number
+      statementMappingCount: number
+      openPeriodCount: number
+      fundAccountCount: number
+      foundationReady: boolean
+      transactionReady: boolean
+      subjectsInserted?: number
+      rulesInserted?: number
+      statementMappingsInserted?: number
+    }
+
+    interface AccountingWorkloadSummary {
+      failedPostingEventCount: number
+      pendingConfigurationEventCount: number
+      pendingPostingEventCount: number
+      pendingVoucherReviewCount: number
+      approvedVoucherCount: number
+      closingPeriodCount: number
     }
 
     interface SubjectRecord {
@@ -3387,7 +3420,20 @@ declare namespace Api {
 
     type PostingSourceType = Exclude<VoucherSourceType, 'manual' | 'reversal'>
     type PostingSubmissionMode = 'draft' | 'pending_review'
-    type PostingAmountKey = 'gross_amount' | 'net_amount' | 'tax_amount'
+    type PostingAmountKey =
+      | 'gross_amount'
+      | 'net_amount'
+      | 'tax_amount'
+      | 'original_value'
+      | 'accumulated_depreciation'
+      | 'impairment_amount'
+      | 'disposal_gain'
+      | 'disposal_loss'
+      | 'salary_gross_amount'
+      | 'deduction_amount'
+      | 'employer_cost_amount'
+      | 'output_tax_amount'
+      | 'input_tax_amount'
     type PostingEventStatus =
       | 'pending'
       | 'processing'
@@ -5812,10 +5858,7 @@ declare namespace Api {
       latestCompletedAt?: string | null
     }
 
-    type FinancialStatementType =
-      | 'balance_sheet'
-      | 'income_statement'
-      | 'cash_flow_statement'
+    type FinancialStatementType = 'balance_sheet' | 'income_statement' | 'cash_flow_statement'
     type FinancialStatementMappingDirection = 'debit' | 'credit' | 'net_debit' | 'net_credit'
     type FinancialStatementDisplayStyle = 'normal' | 'subtotal' | 'total'
     type FinancialStatementCalculationMethod = 'mapping' | 'formula' | 'label'

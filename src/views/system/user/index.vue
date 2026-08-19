@@ -14,7 +14,11 @@
         { label: '角色独立授权', type: 'primary', effect: 'plain' }
       ]"
       :metrics="workspaceMetrics"
-    />
+    >
+      <template #actions>
+        <BusinessTableWorkspaceActions :table="tableQueryRef" />
+      </template>
+    </BusinessWorkspaceHeader>
 
     <div class="user-page__workspace">
       <aside v-if="isDesktopOrganizationLayout" class="user-page__organization-panel">
@@ -55,6 +59,7 @@
           :api-fn="fetchTableData"
           :columns-factory="columnsFactory"
           :header-actions="headerActions"
+          header-actions-placement="workspace"
           :table-props="tableProps"
           :on-success="handleTableSuccess"
           focusable
@@ -114,6 +119,7 @@
   import UserRoleDialog from '@views/system/user/modules/user-role-dialog.vue'
   import { useSystemParam } from '@/hooks'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
+  import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
   import BusinessWorkspaceHeader, {
     type BusinessWorkspaceMetric
   } from '@/components/business/business-workspace-header/index.vue'

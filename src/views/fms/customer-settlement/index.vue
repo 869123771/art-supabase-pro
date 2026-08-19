@@ -9,7 +9,11 @@
         { label: '应收对账', type: 'primary' },
         { label: '回款前置', type: 'success' }
       ]"
-    />
+    >
+      <template #actions>
+        <BusinessTableWorkspaceActions :table="tableQueryRef" />
+      </template>
+    </BusinessWorkspaceHeader>
 
     <MasterDeleteProcessingNotice
       v-if="customerDeleteContext.active"
@@ -25,6 +29,7 @@
       :api-fn="fetchTableData"
       :columns-factory="columnsFactory"
       :header-actions="headerActions"
+      header-actions-placement="workspace"
       :search-bar-props="{ span: 6, labelWidth: 86, showExpand: false }"
       :table-props="{
         rowKey: 'id',
@@ -63,6 +68,7 @@
   import CustomerStatementDialog from './modules/customer-statement-dialog.vue'
   import CustomerStatementDetailDrawer from './modules/customer-statement-detail-drawer.vue'
   import BusinessWorkspaceHeader from '@/components/business/business-workspace-header/index.vue'
+  import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
   import MasterDeleteProcessingNotice from '@/components/business/master-delete-processing-notice/index.vue'
   import { useMasterDataDeleteProcessingContext } from '@/hooks/core/useMasterDataDeleteProcessing'
 
@@ -93,7 +99,7 @@
     keyword: '',
     periodRange: [],
     recordId: customerDeleteContext.value.recordId,
-    status: ''
+    status: typeof route.query.status === 'string' ? route.query.status : ''
   })
 
   const searchItems = computed<SearchFormItem[]>(() => [
@@ -414,6 +420,15 @@
     () => route.fullPath,
     () => syncCustomerDeleteRoute(),
     { flush: 'post' }
+  )
+
+  watch(
+    () => route.query.status,
+    (value) => {
+      if (typeof value !== 'string' || searchQuery.status === value) return
+      searchQuery.status = value
+      void tableQueryRef.value?.getData()
+    }
   )
 
   onActivated(() => syncCustomerDeleteRoute(true))

@@ -3,12 +3,14 @@ import { useI18n } from 'vue-i18n'
 import { ContainerWidthEnum } from '@/enums/appEnum'
 import AppConfig from '@/config'
 import { headerBarConfig } from '@/config/modules/headerBar'
+import { useSettingStore } from '@/store/modules/setting'
 
 /**
  * 设置项配置选项管理
  */
 export function useSettingsConfig() {
   const { t } = useI18n()
+  const settingStore = useSettingStore()
 
   // 标签页风格选项
   const tabStyleOptions = computed(() => [
@@ -23,6 +25,18 @@ export function useSettingsConfig() {
     {
       value: 'tab-google',
       label: t('setting.tabStyle.google')
+    }
+  ])
+
+  // 面包屑风格选项
+  const breadcrumbStyleOptions = computed(() => [
+    {
+      value: 'regular',
+      label: t('setting.breadcrumbStyle.regular')
+    },
+    {
+      value: 'background',
+      label: t('setting.breadcrumbStyle.background')
     }
   ])
 
@@ -147,6 +161,26 @@ export function useSettingsConfig() {
         headerBarKey: 'breadcrumb' as const
       },
       {
+        key: 'showBreadcrumbIcon',
+        label: t('setting.basics.list.breadcrumbIcon'),
+        type: 'switch' as const,
+        handler: 'breadcrumbIcon',
+        disabled: !settingStore.showCrumbs,
+        mobileHide: true,
+        headerBarKey: 'breadcrumb' as const
+      },
+      {
+        key: 'breadcrumbStyle',
+        label: t('setting.basics.list.breadcrumbStyle'),
+        type: 'select' as const,
+        handler: 'breadcrumbStyle',
+        options: breadcrumbStyleOptions.value,
+        style: { width: '120px' },
+        disabled: !settingStore.showCrumbs,
+        mobileHide: true,
+        headerBarKey: 'breadcrumb' as const
+      },
+      {
         key: 'showLanguage',
         label: t('setting.basics.list.language'),
         type: 'switch' as const,
@@ -236,6 +270,7 @@ export function useSettingsConfig() {
   return {
     // 选项配置
     tabStyleOptions,
+    breadcrumbStyleOptions,
     pageTransitionOptions,
     customRadiusOptions,
     containerWidthOptions,

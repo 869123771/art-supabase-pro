@@ -66,6 +66,7 @@
   import { storeToRefs } from 'pinia'
   import { ContainerWidthEnum, MenuThemeEnum, MenuTypeEnum } from '@/enums/appEnum'
   import { useSettingStore } from '@/store/modules/setting'
+  import type { WorkTabStyle } from '@/types'
   import { useSettingsState } from '../composables/useSettingsState'
 
   type PresetPreview = 'focus' | 'command' | 'studio'
@@ -83,7 +84,7 @@
     menuWidth: number
     borderMode: boolean
     containerWidth: ContainerWidthEnum
-    tabStyle: string
+    tabStyle: WorkTabStyle
     transition: string
     radius: string
   }

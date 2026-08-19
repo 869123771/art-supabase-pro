@@ -9,7 +9,11 @@
         { label: '资金流水', type: 'primary' },
         { label: '核销可追踪', type: 'success' }
       ]"
-    />
+    >
+      <template #actions>
+        <BusinessTableWorkspaceActions :table="tableQueryRef" />
+      </template>
+    </BusinessWorkspaceHeader>
 
     <MasterDeleteProcessingNotice
       v-if="customerDeleteContext.active"
@@ -25,6 +29,7 @@
       :api-fn="fetchTableData"
       :columns-factory="columnsFactory"
       :header-actions="table.headerActions"
+      header-actions-placement="workspace"
       :search-bar-props="{ span: 6, labelWidth: 86, showExpand: false }"
       :table-props="{
         rowKey: 'id',
@@ -66,6 +71,7 @@
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { fetchRecognitionArtifactDetail } from '@/api/intelligent-recognition'
   import BusinessWorkspaceHeader from '@/components/business/business-workspace-header/index.vue'
+  import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
   import MasterDeleteProcessingNotice from '@/components/business/master-delete-processing-notice/index.vue'
   import { useMasterDataDeleteProcessingContext } from '@/hooks/core/useMasterDataDeleteProcessing'
   import { toCashVoucherOcrAnalyzeResponse } from '@/utils/intelligent-recognition'
@@ -422,6 +428,22 @@
     () => route.fullPath,
     () => syncCustomerDeleteRoute(),
     { flush: 'post' }
+  )
+
+  watch(
+    () => [route.query.direction, route.query.status] as const,
+    ([direction, status]) => {
+      let changed = false
+      if (typeof direction === 'string' && table.searchQuery.direction !== direction) {
+        table.searchQuery.direction = direction
+        changed = true
+      }
+      if (typeof status === 'string' && table.searchQuery.status !== status) {
+        table.searchQuery.status = status
+        changed = true
+      }
+      if (changed) void tableQueryRef.value?.getData()
+    }
   )
 
   onActivated(() => syncCustomerDeleteRoute(true))

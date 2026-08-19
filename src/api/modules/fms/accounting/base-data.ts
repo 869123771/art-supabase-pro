@@ -148,6 +148,17 @@ export async function setAuxiliaryTypeEnabled(id: string, isEnabled: boolean) {
   )
 }
 
+export async function deleteAuxiliaryType(id: string) {
+  return await responseHandle<AuxiliaryType>(
+    () => supabase.rpc('delete_fms_auxiliary_type', { p_id: id }),
+    {
+      breakReturn: true,
+      showMessage: true,
+      message: '辅助核算维度已删除'
+    }
+  )
+}
+
 export async function syncAuxiliaryItems(accountSetId: string, auxiliaryTypeId: string) {
   return await responseHandle<Api.Fms.AuxiliarySyncResult>(
     () =>

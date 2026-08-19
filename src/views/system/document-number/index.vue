@@ -18,7 +18,11 @@
         { label: `最近更新：${overview.lastUpdateText}` }
       ]"
       :metrics="overview.cards"
-    />
+    >
+      <template #actions>
+        <BusinessTableWorkspaceActions :table="tableQueryRef" />
+      </template>
+    </BusinessWorkspaceHeader>
 
     <section class="number-rule-page__category art-card-xs">
       <ElSegmented
@@ -59,6 +63,7 @@
           v-model="table.searchQuery"
           :search-items="table.searchItems"
           :header-actions="table.headerActions"
+          header-actions-placement="workspace"
           :api-fn="fetchTableData"
           :columns-factory="columnsFactory"
           :table-header-props="{ layout: 'refresh,size,fullscreen,columns,settings' }"
@@ -96,6 +101,7 @@
   import type { ArtDrawerExpose } from '@/components/core/drawers/art-drawer/types'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
+  import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
   import BusinessWorkspaceHeader, {
     type BusinessWorkspaceMetric
   } from '@/components/business/business-workspace-header/index.vue'

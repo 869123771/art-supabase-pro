@@ -13,7 +13,11 @@
       ]"
       :metrics="overview.metrics"
       @metric-click="handleMetricClick"
-    />
+    >
+      <template #actions>
+        <BusinessTableWorkspaceActions :table="tableRef" />
+      </template>
+    </BusinessWorkspaceHeader>
 
     <ElAlert
       v-if="!isPlatformSuper"
@@ -31,6 +35,7 @@
       :api-fn="fetchTableData"
       :columns-factory="columnsFactory"
       :header-actions="headerActions"
+      header-actions-placement="workspace"
       :search-bar-props="{
         span: 8,
         gutter: 16,
@@ -67,6 +72,7 @@
   import ArtButtonMore, {
     type ButtonMoreItem
   } from '@/components/core/forms/art-button-more/index.vue'
+  import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
   import BusinessWorkspaceHeader, {
     type BusinessWorkspaceMetric
   } from '@/components/business/business-workspace-header/index.vue'
@@ -75,7 +81,12 @@
   import { formatWithDayjs } from '@/utils/time'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { useUserStore } from '@/store/modules/user'
-  import { fetchAccountSetList, fetchAccountSetOverview, setAccountSetStatus } from '@/api/fms'
+  import {
+    fetchAccountSetList,
+    fetchAccountSetOverview,
+    initializeAccountingDefaults,
+    setAccountSetStatus
+  } from '@/api/fms'
   import { fetchGetEnableTenantList } from '@/api/system-manage'
   import AccountSetDialog from './modules/account-set-dialog.vue'
   import AccountingPeriodDrawer from './modules/accounting-period-drawer.vue'
@@ -397,11 +408,16 @@
           }
         )
       } else {
-        await confirmAction(`确定启用账套“${row.accountSetName}”吗？`, '启用账套', {
-          type: 'success',
-          confirmButtonText: '确认启用',
-          cancelButtonText: '取消'
-        })
+        await confirmAction(
+          `启用“${row.accountSetName}”时会同步补齐缺失的核心科目、默认制证规则和财务报表映射；已有配置不会被覆盖。`,
+          '初始化并启用账套',
+          {
+            type: 'success',
+            confirmButtonText: '初始化并启用',
+            cancelButtonText: '取消'
+          }
+        )
+        await initializeAccountingDefaults(row.id)
       }
       await setAccountSetStatus(row.id, status, reason)
       await Promise.all([tableRef.value?.refreshUpdate(), loadOverview()])

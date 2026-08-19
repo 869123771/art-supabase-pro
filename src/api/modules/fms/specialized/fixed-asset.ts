@@ -120,7 +120,13 @@ export async function deleteFixedAsset(id: string) {
 export async function actFixedAsset(
   id: string,
   action: Api.Fms.FixedAssetAction,
-  payload: { actionDate?: string; amount?: number; reason?: string } = {}
+  payload: {
+    actionDate?: string
+    amount?: number
+    fundAccountId?: string
+    referenceNo?: string
+    reason?: string
+  } = {}
 ) {
   return await responseHandle<Api.Fms.FixedAssetRecord>(
     () =>

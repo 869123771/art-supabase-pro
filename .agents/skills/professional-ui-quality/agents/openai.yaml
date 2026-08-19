@@ -1,4 +1,4 @@
 interface:
-  display_name: 'רҵ UI �����Ž�'
-  short_description: 'Ϊ�����û�����ǿ��ִ��רҵ��������Ӧʽ��״̬��������������'
-  default_prompt: 'Use $professional-ui-quality to design and verify this project UI to a professional production standard.'
+  display_name: '专业 UI 质量 v2'
+  short_description: '项目级 UI 设计、可访问性审查、评分与浏览器视觉验收'
+  default_prompt: '使用 $professional-ui-quality 设计、审查并验证这个项目界面。'

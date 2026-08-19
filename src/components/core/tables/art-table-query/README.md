@@ -170,6 +170,7 @@ const load = () => {
 | `pagination` | `{ current: number; size: number; total: number }` | 受控 | - | 外部分页状态。内管模式由组件内部控制。 |
 | `searchItems` | `SearchFormItem[]` | 两种 | `[]` | 查询表单项。优先级高于 `searchBarProps.items`。为空时不渲染搜索区。 |
 | `headerActions` | `ArtTableQueryHeaderAction[]` | 两种 | `[]` | 工具栏左侧操作按钮配置；勾选后会自动把导出、批量删除和 `selectionRequired` 操作切换到批量命令栏。 |
+| `headerActionsPlacement` | `'table' \| 'workspace'` | 两种 | `'table'` | 普通态非批量操作的位置。`workspace` 需配合 `BusinessTableWorkspaceActions`；进入专注后动作自动回到表格左侧。 |
 | `selectionActions` | `ArtTableQueryHeaderAction[]` | 两种 | `[]` | 显式配置勾选后的批量操作并覆盖自动推导结果；未勾选时不占用空间。 |
 | `apiFn` | `(params: any) => Promise<any>` | 内管 | - | 列表接口函数。传入后启用内管模式。 |
 | `apiParams` | `Record<string, any>` | 内管 | `{}` | 默认接口参数，会和 `{ current: 1, size: 20 }` 合并。 |
@@ -189,7 +190,7 @@ const load = () => {
 | `columnsFactory` | `() => ColumnOption[]` | 内管 | `() => []` | 内管模式列工厂。 |
 | `searchBarProps` | `ArtTableQuerySearchBarProps` | 两种 | `{}` | 透传给 `ArtSearchBar`。 |
 | `tableHeaderProps` | `ArtTableQueryTableHeaderProps` | 两种 | `{}` | 透传给 `ArtTableHeader`。 |
-| `showTableToolbar` | `boolean` | 两种 | `false` | 是否启用刷新、密度、全屏、列设置等右侧工具；与批量操作共用一行，关闭且没有左侧内容时不占用空间。 |
+| `showTableToolbar` | `boolean` | 两种 | `false` | 是否启用刷新、密度、全屏、列设置等右侧工具；支持 `v-model`。专注模式期间有效值强制为开启，退出后恢复原值。 |
 | `tableProps` | `ArtTableQueryTableProps` | 两种 | `{}` | 透传给 `ArtTable` / `ElTable`。 |
 | `focusable` | `boolean` | 两种 | `false` | 是否允许专注模式；工具栏开启时显示入口，也可通过 `v-model:focus-mode` 从页面头部直接进入。 |
 
@@ -309,6 +310,7 @@ const load = () => {
 | `v-model` | `Record<string, unknown>` | 查询表单模型。常用于默认查询值和外部联动。 |
 | `v-model:columns` | `ColumnOption[]` | 列显隐和排序配置。受控模式常用，内管模式通常不用传。 |
 | `v-model:show-search-bar` | `boolean` | 搜索区域显隐状态。 |
+| `v-model:show-table-toolbar` | `boolean` | 右侧完整工具栏开关；专注模式只临时强制显示，不改写该值。 |
 | `v-model:focus-mode` | `boolean` | 专注模式状态；进入时保留搜索区当前显隐状态，退出后恢复进入前状态。 |
 
 ## Events
@@ -391,7 +393,24 @@ interface ArtTableQueryExpose {
 
 `headerActions` 用于声明工具栏左侧按钮。标准 CRUD 页优先使用它，不手写 `#header-left`。存在复选框时，组件会在勾选后自动进入批量上下文：普通新增、导入等操作暂时隐藏，导出会显示为“导出选中”，删除和所有 `selectionRequired` 操作进入批量命令栏，取消选择后恢复普通操作。
 
-需要精确控制批量按钮或覆盖自动推导结果时，使用 `selectionActions`。需要节省表格垂直空间时，将新增、导入等高频入口放进 `BusinessWorkspaceHeader#actions`。批量操作与右侧表格工具共用一条命令栏；`showTableToolbar` 默认关闭，确实需要刷新、列设置等完整工具时再显式开启。高频专注入口可在页面头部直接绑定 `v-model:focus-mode`，不必先开启完整工具栏。
+需要精确控制批量按钮或覆盖自动推导结果时，使用 `selectionActions`。业务列表需要节省表格垂直空间时，使用 `BusinessTableWorkspaceActions` 把同一份 `headerActions` 挂到 `BusinessWorkspaceHeader`，不要在页面重复手写新增、导入或导出按钮。
+
+```vue
+<BusinessWorkspaceHeader title="客户资料" description="..." icon="ri:user-star-line">
+  <template #actions>
+    <BusinessTableWorkspaceActions :table="tableQueryRef" />
+  </template>
+</BusinessWorkspaceHeader>
+
+<ArtTableQuery
+  ref="tableQueryRef"
+  :header-actions="headerActions"
+  header-actions-placement="workspace"
+  focusable
+/>
+```
+
+普通状态下，非批量动作在业务头部，勾选后的批量条仍在表格上方；专注状态下，非批量动作自动回到表格左侧，右侧完整工具栏临时强制显示。退出专注后，动作返回业务头部，并恢复进入前的工具栏开关状态。`showTableToolbar` 默认关闭，关闭且没有批量上下文时不保留空工具栏行。
 
 ```vue
 <ArtTableQuery :selection-actions="selectionActions" :show-table-toolbar="false" />
@@ -480,6 +499,7 @@ const headerActions = computed<ArtTableQueryHeaderAction[]>(() => [
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
 | `action` | `ArtTableQueryHeaderAction` | 当前 action 配置。 |
+| `scope` | `'default' \| 'selection'` | 当前动作位于普通操作面或勾选批量操作面。普通导出按当前筛选，批量导出只导出选中行。 |
 | `selectedRows` | `Record<string, any>[]` | 当前选中行。 |
 | `selectedCount` | `number` | 当前选中数量。 |
 | `event` | `MouseEvent \| undefined` | 点击事件。 |

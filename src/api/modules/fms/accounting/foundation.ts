@@ -6,6 +6,7 @@ type SaveAccountSetPayload = Api.Fms.SaveAccountSetPayload
 type AccountingPeriod = Api.Fms.AccountingPeriodRecord
 type AccountingPeriodStatus = Api.Fms.AccountingPeriodStatus
 type AccountingFoundationSummary = Api.Fms.AccountingFoundationSummary
+type AccountingReadiness = Api.Fms.AccountingReadiness
 
 const { supabase, responseHandle } = useSupabase()
 
@@ -144,5 +145,26 @@ export async function fetchAccountingFoundationSummary(accountSetId: string) {
         .rpc('fms_accounting_foundation_summary', { p_account_set_id: accountSetId })
         .single(),
     { ignoreCheck: true, showErrorMessage: true }
+  )
+}
+
+export async function fetchAccountingReadiness(accountSetId: string) {
+  return await responseHandle<AccountingReadiness>(
+    () => supabase.rpc('fms_accounting_readiness', { p_account_set_id: accountSetId }),
+    { breakReturn: true, showErrorMessage: true }
+  )
+}
+
+export async function initializeAccountingDefaults(accountSetId: string) {
+  return await responseHandle<AccountingReadiness>(
+    () =>
+      supabase.rpc('initialize_fms_accounting_defaults', {
+        p_account_set_id: accountSetId
+      }),
+    {
+      breakReturn: true,
+      showMessage: true,
+      message: '核算基础已补齐'
+    }
   )
 }

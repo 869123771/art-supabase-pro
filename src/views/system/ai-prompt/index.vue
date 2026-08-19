@@ -15,6 +15,7 @@
       :metrics="metricCards"
     >
       <template #actions>
+        <BusinessTableWorkspaceActions :table="tableQueryRef" />
         <ElTooltip content="刷新 Prompt" placement="bottom">
           <ArtIconButton
             icon="ri:refresh-line"
@@ -46,6 +47,7 @@
       v-model="table.searchQuery"
       :search-items="table.searchItems"
       :header-actions="table.headerActions"
+      header-actions-placement="workspace"
       :api-fn="fetchTableData"
       :columns-factory="columnsFactory"
       :table-header-props="{ layout: 'refresh,size,fullscreen,columns,settings' }"
@@ -72,6 +74,7 @@
   } from '@/components/core/forms/art-button-more/index.vue'
   import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
+  import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
   import BusinessWorkspaceHeader, {
     type BusinessWorkspaceMetric
   } from '@/components/business/business-workspace-header/index.vue'

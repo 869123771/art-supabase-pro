@@ -1,6 +1,7 @@
 import { useSettingStore } from '@/store/modules/setting'
 import { storeToRefs } from 'pinia'
 import type { ContainerWidthEnum } from '@/enums/appEnum'
+import type { BreadcrumbStyle, WorkTabStyle } from '@/types'
 
 /**
  * 设置项通用处理逻辑
@@ -78,6 +79,16 @@ export function useSettingsHandlers() {
     // 显示面包屑
     crumbs: createToggleHandler(() => settingStore.setCrumbs()),
 
+    // 显示面包屑图标
+    breadcrumbIcon: createToggleHandler(() =>
+      settingStore.setShowBreadcrumbIcon(!settingStore.showBreadcrumbIcon)
+    ),
+
+    // 面包屑风格
+    breadcrumbStyle: createValueHandler<BreadcrumbStyle>((style) =>
+      settingStore.setBreadcrumbStyle(style)
+    ),
+
     // 显示语言切换
     language: createToggleHandler(() => settingStore.setLanguage()),
 
@@ -103,7 +114,7 @@ export function useSettingsHandlers() {
     ),
 
     // 标签页风格
-    tabStyle: createValueHandler<string>((style: string) => settingStore.setTabStyle(style)),
+    tabStyle: createValueHandler<WorkTabStyle>((style) => settingStore.setTabStyle(style)),
 
     // 页面切换动画
     pageTransition: createValueHandler<string>((transition: string) =>

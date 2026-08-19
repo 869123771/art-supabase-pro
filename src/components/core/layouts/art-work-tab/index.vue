@@ -20,12 +20,12 @@
       <ArtSvgIcon icon="ri:arrow-left-s-line" />
     </button>
 
-    <div class="min-w-0 flex-1 overflow-hidden" ref="scrollRef">
+    <div class="art-work-tab__viewport min-w-0 flex-1" ref="scrollRef">
       <ul
         class="float-left whitespace-nowrap !bg-transparent flex"
         role="tablist"
         aria-label="已打开页面"
-        :class="[tabStyle === 'tab-google' ? 'pl-1' : '']"
+        :class="[tabStyle === 'tab-google' ? 'px-4' : '']"
         ref="tabsRef"
         :style="{
           transform: `translateX(${scrollState.translateX}px)`,
@@ -50,6 +50,7 @@
           :aria-selected="item.path === activeTab"
           :tabindex="item.path === activeTab ? 0 : -1"
           @click="clickTab(item)"
+          @keydown="handleTabKeydown($event, index)"
           @keydown.enter.prevent="clickTab(item)"
           @keydown.space.prevent="clickTab(item)"
           @contextmenu.prevent="(e: MouseEvent) => showMenu(e, item.path)"
@@ -97,7 +98,7 @@
         type="button"
         aria-label="管理已打开页面"
         title="管理已打开页面"
-        class="flex-cc art-card-xs relative top-0 size-8 leading-8 text-center c-p tad-200 hover:!bg-hover-color"
+        class="art-work-tab__menu-button flex-cc art-card-xs relative top-0 size-8 leading-8 text-center c-p tad-200 hover:!bg-hover-color"
         :style="{
           borderRadius: 'calc(var(--custom-radius) / 2.5 + 0px)',
           marginTop: tabStyle === 'tab-google' ? '-2px' : ''
@@ -423,8 +424,8 @@
 
   // 标签页操作逻辑
   const useTabOperations = (adjustPositionAfterClose: () => void) => {
-    const clickTab = (item: WorkTab) => {
-      router.push({
+    const clickTab = (item: WorkTab): void => {
+      void router.push({
         path: item.path,
         query: item.query as LocationQueryRaw
       })
@@ -502,6 +503,31 @@
   const { clickTab, closeWorktab, showMenu, handleSelect } =
     useTabOperations(adjustPositionAfterClose)
 
+  const focusTabAt = (index: number): void => {
+    const targetTab = list.value[index]
+
+    if (!targetTab) return
+
+    clickTab(targetTab)
+    void nextTick(() => document.getElementById(`scroll-li-${index}`)?.focus())
+  }
+
+  const handleTabKeydown = (event: KeyboardEvent, index: number): void => {
+    const lastIndex = list.value.length - 1
+    const targetIndexByKey: Partial<Record<string, number>> = {
+      ArrowLeft: index > 0 ? index - 1 : lastIndex,
+      ArrowRight: index < lastIndex ? index + 1 : 0,
+      Home: 0,
+      End: lastIndex
+    }
+    const targetIndex = targetIndexByKey[event.key]
+
+    if (targetIndex === undefined) return
+
+    event.preventDefault()
+    focusTabAt(targetIndex)
+  }
+
   const scrollTabs = (direction: 'left' | 'right'): void => {
     if (!scrollRef.value || !tabsRef.value) return
 
@@ -563,6 +589,8 @@
     min-height: var(--art-work-tab-height);
     padding: 6px var(--art-page-inline-padding);
     margin: 0;
+    background: var(--art-layout-toolbar-bg);
+    box-shadow: inset 0 -1px 0 var(--art-layout-divider);
 
     &--card {
       padding-block: var(--art-space-1);
@@ -571,6 +599,19 @@
     &--google {
       padding-top: var(--art-space-1);
       padding-bottom: 0;
+    }
+
+    &__menu-button {
+      color: var(--art-gray-700);
+      background: transparent !important;
+      border-color: transparent !important;
+      box-shadow: none !important;
+
+      &:focus-visible {
+        color: var(--theme-color);
+        outline: none;
+        box-shadow: var(--art-themed-action-focus-shadow) !important;
+      }
     }
 
     &__scroll-button {
@@ -605,6 +646,10 @@
         cursor: not-allowed;
         opacity: 0.38;
       }
+    }
+
+    &__viewport {
+      overflow: clip visible;
     }
 
     li[role='tab'] {
@@ -718,11 +763,12 @@
     }
 
     &--google {
-      --work-tab-google-bg: color-mix(in srgb, var(--theme-color) 13%, var(--default-box-color));
-      --work-tab-google-edge: var(--art-themed-action-active-border);
+      --work-tab-google-bg: var(--default-box-color);
       --work-tab-google-filter: none;
+      --work-tab-google-curve-size: 14px;
 
       li[role='tab'] {
+        margin-right: 0 !important;
         border-radius: calc(var(--custom-radius) / 2.5 + 4px) !important;
       }
     }
@@ -731,12 +777,13 @@
   .google-tab.activ-tab.art-card-xs {
     z-index: 1;
     font-weight: 600;
-    color: var(--theme-color) !important;
+    color: var(--art-gray-900) !important;
     background-color: var(--work-tab-google-bg) !important;
-    border-color: var(--work-tab-google-edge) !important;
+    border-color: transparent !important;
+    border-bottom-color: var(--work-tab-google-bg) !important;
     border-bottom-right-radius: 0 !important;
     border-bottom-left-radius: 0 !important;
-    box-shadow: var(--art-themed-action-active-shadow) !important;
+    box-shadow: inset 0 2px 0 color-mix(in srgb, var(--theme-color) 68%, transparent) !important;
     filter: var(--work-tab-google-filter);
   }
 
@@ -744,40 +791,38 @@
   .google-tab.activ-tab::after {
     position: absolute;
     bottom: 0;
-    width: 20px;
-    height: 20px;
+    width: var(--work-tab-google-curve-size);
+    height: var(--work-tab-google-curve-size);
     content: '';
     border-radius: 50%;
-    box-shadow:
-      0 0 0 30px var(--work-tab-google-bg),
-      0 1px 0 30px var(--work-tab-google-edge);
+    box-shadow: 0 0 0 24px var(--work-tab-google-bg);
   }
 
   .google-tab.activ-tab::before {
-    left: -20px;
-    clip-path: inset(50% -10px 0 50%);
+    left: calc(var(--work-tab-google-curve-size) * -1);
+    clip-path: inset(50% -7px 0 50%);
   }
 
   .google-tab.activ-tab::after {
-    right: -20px;
-    clip-path: inset(50% 50% 0 -10px);
+    right: calc(var(--work-tab-google-curve-size) * -1);
+    clip-path: inset(50% 50% 0 -7px);
   }
 
-  :global([data-box-mode='shadow-mode']) .art-work-tab--google {
+  :global([data-box-mode='shadow-mode'] .art-work-tab--google) {
     --work-tab-google-filter: drop-shadow(
-      0 3px 5px color-mix(in srgb, var(--theme-color) 18%, transparent)
+      0 2px 3px color-mix(in srgb, var(--art-gray-900) 9%, transparent)
     );
   }
 
   :global(.dark) .art-work-tab--google {
-    --work-tab-google-bg: color-mix(in srgb, var(--theme-color) 14%, var(--art-hover-color));
+    --work-tab-google-bg: var(--default-box-color);
   }
 
   .google-tab:not(.activ-tab):hover {
     box-sizing: border-box;
-    color: var(--art-gray-600) !important;
-    background-color: var(--art-gray-200) !important;
-    border-bottom: 1px solid var(--default-box-color) !important;
+    color: var(--art-gray-900) !important;
+    background-color: color-mix(in srgb, var(--art-gray-200) 78%, transparent) !important;
+    border-color: transparent !important;
     border-radius: calc(var(--custom-radius) / 2.5 + 4px) !important;
     opacity: 1;
   }
@@ -810,21 +855,21 @@
   .google-tab::after {
     position: absolute;
     bottom: 0;
-    width: 20px;
-    height: 20px;
+    width: var(--work-tab-google-curve-size);
+    height: var(--work-tab-google-curve-size);
     content: '';
     border-radius: 50%;
-    box-shadow: 0 0 0 30px transparent;
+    box-shadow: 0 0 0 24px transparent;
   }
 
   .google-tab::before {
-    left: -20px;
-    clip-path: inset(50% -10px 0 50%);
+    left: calc(var(--work-tab-google-curve-size) * -1);
+    clip-path: inset(50% -7px 0 50%);
   }
 
   .google-tab::after {
-    right: -20px;
-    clip-path: inset(50% 50% 0 -10px);
+    right: calc(var(--work-tab-google-curve-size) * -1);
+    clip-path: inset(50% 50% 0 -7px);
   }
 
   .google-tab i:hover {

@@ -23,7 +23,9 @@
 
     <Teleport
       v-if="headerActionDestination && visibleHeaderActions.length"
+      :key="shouldTeleportHeaderActions ? 'workspace-header-actions' : 'table-header-actions'"
       :to="headerActionDestination"
+      defer
     >
       <template v-for="action in visibleHeaderActions" :key="getHeaderActionKey(action)">
         <span v-auth="action.permission" :class="getHeaderActionClass()">
@@ -267,6 +269,7 @@
   import ArtTable from '@/components/core/tables/art-table/index.vue'
   import type { ArtTableInstance } from '@/components/core/tables/art-table/index.vue'
   import type { ColumnOption } from '@/types'
+  import { useAuth } from '@/hooks/core/useAuth'
   import { useTable } from '@/hooks/core/useTable'
   import type { ApiResponse } from '@/utils/table/tableCache'
   import {
@@ -278,6 +281,8 @@
   import { useCrossPageSelection } from './use-cross-page-selection'
 
   defineOptions({ name: 'ArtTableQuery' })
+
+  const { hasAuth } = useAuth()
 
   export interface ArtTableQuerySanitizeOutputOptions {
     /** 移除空字符串 */
@@ -747,7 +752,8 @@
       apiParams: {
         current: 1,
         size: 20,
-        ...props.apiParams
+        ...props.apiParams,
+        ...searchModel.value
       },
       excludeParams: props.excludeParams,
       immediate: !!props.apiFn && props.immediate,
@@ -867,7 +873,9 @@
   )
 
   const hasStandaloneHeaderActions = computed(() =>
-    props.headerActions.some((action) => !isStrictSelectionAction(action))
+    props.headerActions.some(
+      (action) => !isStrictSelectionAction(action) && isHeaderActionVisible(action)
+    )
   )
 
   const shouldTeleportHeaderActions = computed(
@@ -1010,6 +1018,7 @@
     action: ArtTableQueryHeaderAction,
     scope: ArtTableQueryHeaderActionContext['scope'] = 'default'
   ): boolean => {
+    if (action.permission && !hasAuth(action.permission)) return false
     if (typeof action.hidden === 'function') {
       return !action.hidden(createHeaderActionContext(action, undefined, scope))
     }
@@ -1190,7 +1199,7 @@
         {
           selectedRows: scopedSelectedRows,
           selectedIds,
-          selectedCount: ctx.selectedCount,
+          selectedCount: scopedSelectedRows.length,
           searchParams: cloneSearchModel(searchModel.value),
           columns,
           maxRows
