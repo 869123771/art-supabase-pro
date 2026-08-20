@@ -26,7 +26,7 @@
       <article
         ><span>货物明细</span><strong>{{ cargoItems.length }} 项</strong></article
       >
-      <article
+      <article v-if="canViewSensitiveField('costAmounts')"
         ><span>成本合计</span
         ><strong>¥ {{ formatRateMoney(detail.data?.totalFee) }}</strong></article
       >
@@ -79,12 +79,18 @@
         />
       </section>
 
-      <section class="rate-card-detail__section art-card-xs">
+      <section
+        v-if="canViewSensitiveField('costAmounts')"
+        class="rate-card-detail__section art-card-xs"
+      >
         <ArtSectionTitle>成本与计费</ArtSectionTitle>
         <ArtDescriptions :data="descriptionData" :items="costItems" :columns="4" />
       </section>
 
-      <section class="rate-card-detail__section art-card-xs">
+      <section
+        v-if="canViewSensitiveField('paymentAmounts')"
+        class="rate-card-detail__section art-card-xs"
+      >
         <ArtSectionTitle>付款方式</ArtSectionTitle>
         <ArtDescriptions :data="descriptionData" :items="paymentItems" :columns="4" />
       </section>
@@ -109,11 +115,13 @@
     formatRateMoney,
     formatRateNumber
   } from '../modules/rate-card-detail'
+  import { canViewField } from '@/utils/field-permission'
 
   defineOptions({ name: 'TmsCarrierPriceDetail' })
 
   type CarrierPrice = Api.Tms.BasicData.CarrierPrice
   type CargoItem = Api.Tms.BasicData.CarrierPriceCargoItem
+  type CarrierPriceFieldKey = Api.Tms.BasicData.CarrierPriceFieldKey
 
   const route = useRoute()
   const router = useRouter()
@@ -145,7 +153,7 @@
         `${formatRateNumber(data.cargoQuantityTotal)} 件 / ${formatRateNumber(data.cargoVolumeTotal)} m³ / ${formatRateNumber(data.cargoWeightTotal)} kg`
     }
   ]
-  const carrierItems: ArtDescriptionItem<Partial<CarrierPrice>>[] = [
+  const carrierItems = computed<ArtDescriptionItem<Partial<CarrierPrice>>[]>(() => [
     { key: 'carrierName', label: '承运商', value: () => detail.data?.carrier?.companyName },
     {
       key: 'carrierCode',
@@ -154,11 +162,29 @@
       copyable: true
     },
     { key: 'contactName', label: '联系人', field: 'contactName' },
-    { key: 'contactPhone', label: '联系电话', field: 'contactPhone', copyable: true }
-  ]
-  const capacityItems: ArtDescriptionItem<Partial<CarrierPrice>>[] = [
+    ...(canViewSensitiveField('contactPhones')
+      ? [
+          {
+            key: 'contactPhone',
+            label: '联系电话',
+            field: 'contactPhone',
+            copyable: true
+          } satisfies ArtDescriptionItem<Partial<CarrierPrice>>
+        ]
+      : [])
+  ])
+  const capacityItems = computed<ArtDescriptionItem<Partial<CarrierPrice>>[]>(() => [
     { key: 'driverName', label: '司机', field: 'driverName' },
-    { key: 'driverPhone', label: '司机电话', field: 'driverPhone', copyable: true },
+    ...(canViewSensitiveField('contactPhones')
+      ? [
+          {
+            key: 'driverPhone',
+            label: '司机电话',
+            field: 'driverPhone',
+            copyable: true
+          } satisfies ArtDescriptionItem<Partial<CarrierPrice>>
+        ]
+      : []),
     { key: 'plateNo', label: '车牌号', field: 'plateNo', copyable: true },
     {
       key: 'vehicleType',
@@ -174,7 +200,7 @@
       dictCode: 'tmsCustomerPriceVehicleLength',
       dictDisplay: 'text'
     }
-  ]
+  ])
   const costItems: ArtDescriptionItem<Partial<CarrierPrice>>[] = createMoneyItems([
     ['transportCost', '运输成本'],
     ['splitTransportFee', '拆分运输费'],
@@ -207,7 +233,7 @@
       formatter: (value) => formatRateDateTime(value as string | null)
     }
   ]
-  const cargoColumns: ColumnOption<CargoItem>[] = [
+  const cargoColumns = computed<ColumnOption<CargoItem>[]>(() => [
     { type: 'globalIndex', label: '序号', width: 68 },
     { prop: 'orderNo', label: '订单号', minWidth: 140 },
     { prop: 'cargoName', label: '货物名称', minWidth: 160 },
@@ -233,28 +259,32 @@
       align: 'right',
       formatter: (row) => formatRateNumber(row.weightKg)
     },
-    {
-      prop: 'splitTransportFee',
-      label: '拆分运费(元)',
-      minWidth: 130,
-      align: 'right',
-      formatter: (row) => formatRateMoney(row.splitTransportFee)
-    },
-    {
-      prop: 'loadingFee',
-      label: '装卸费(元)',
-      minWidth: 120,
-      align: 'right',
-      formatter: (row) => formatRateMoney(row.loadingFee)
-    },
-    {
-      prop: 'packageFee',
-      label: '包装费(元)',
-      minWidth: 120,
-      align: 'right',
-      formatter: (row) => formatRateMoney(row.packageFee)
-    }
-  ]
+    ...(canViewSensitiveField('costAmounts')
+      ? [
+          {
+            prop: 'splitTransportFee',
+            label: '拆分运费(元)',
+            minWidth: 130,
+            align: 'right',
+            formatter: (row) => formatRateMoney(row.splitTransportFee)
+          } as ColumnOption<CargoItem>,
+          {
+            prop: 'loadingFee',
+            label: '装卸费(元)',
+            minWidth: 120,
+            align: 'right',
+            formatter: (row) => formatRateMoney(row.loadingFee)
+          } as ColumnOption<CargoItem>,
+          {
+            prop: 'packageFee',
+            label: '包装费(元)',
+            minWidth: 120,
+            align: 'right',
+            formatter: (row) => formatRateMoney(row.packageFee)
+          } as ColumnOption<CargoItem>
+        ]
+      : [])
+  ])
 
   onMounted(() => void loadPage())
 
@@ -278,6 +308,9 @@
 
   function goBack(): void {
     void router.push({ name: 'TmsCarrierPrice' })
+  }
+  function canViewSensitiveField(field: CarrierPriceFieldKey): boolean {
+    return canViewField(detail.data?.fieldAccess, field)
   }
   function createMoneyItems(
     entries: Array<[keyof CarrierPrice, string]>

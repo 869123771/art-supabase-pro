@@ -69,12 +69,19 @@
   import MasterDeleteProcessingNotice from '@/components/business/master-delete-processing-notice/index.vue'
   import { useMasterDataDeleteProcessingContext } from '@/hooks/core/useMasterDataDeleteProcessing'
   import { useAuth } from '@/hooks/core/useAuth'
+  import {
+    canViewField,
+    formatSensitiveNumber,
+    mergeFieldAccessMaps
+  } from '@/utils/field-permission'
 
   defineOptions({ name: 'TmsCarrierPrice' })
 
   const { confirmAction } = useArtFeedback()
 
   type CarrierPrice = Api.Tms.BasicData.CarrierPrice
+  type CarrierPriceFieldKey = Api.Tms.BasicData.CarrierPriceFieldKey
+  type CarrierPriceFieldAccessMap = Api.Tms.BasicData.CarrierPriceFieldAccessMap
   type SearchParams = Api.Tms.BasicData.CarrierPriceSearchParams
   type SearchModel = SearchParams & {
     originRegionPath?: string[]
@@ -98,6 +105,8 @@
   const { hasAuth } = useAuth()
   const { getDictMap } = storeToRefs(useUserStore())
   const tableQueryRef = ref<ArtTableQueryExpose>()
+  const carrierPriceFieldAccess = ref<CarrierPriceFieldAccessMap>({})
+  const currentRows = ref<CarrierPrice[]>([])
 
   const table: UnwrapNestedRefs<TableGroup> = reactive<TableGroup>({
     searchQuery: {
@@ -140,11 +149,15 @@
         title: '司机',
         formatter: (_value, row) => (row as CarrierPrice).driverName || ''
       },
-      {
-        key: 'driverPhone',
-        title: '手机号码',
-        formatter: (_value, row) => (row as CarrierPrice).driverPhone || ''
-      },
+      ...(canViewListField('contactPhones')
+        ? [
+            {
+              key: 'driverPhone',
+              title: '手机号码',
+              formatter: (_value, row) => (row as CarrierPrice).driverPhone || ''
+            } satisfies ArtTableQueryExcelColumn
+          ]
+        : []),
       {
         key: 'plateNo',
         title: '车牌号',
@@ -153,11 +166,15 @@
       { key: 'vehicleType', title: '车型', formatter: (value) => formatVehicleType(value) },
       { key: 'vehicleLength', title: '车长', formatter: (value) => formatVehicleLength(value) },
       { key: 'billingMethod', title: '计费方式', formatter: (value) => formatBillingMethod(value) },
-      {
-        key: 'totalFee',
-        title: '运费合计（元）',
-        formatter: (value) => formatMoney(value as string | number | null)
-      },
+      ...(canViewListField('costAmounts')
+        ? [
+            {
+              key: 'totalFee',
+              title: '运费合计（元）',
+              formatter: (value) => formatMoney(value as string | number | null)
+            } satisfies ArtTableQueryExcelColumn
+          ]
+        : []),
       { key: 'createBy', title: '创建人' },
       {
         key: 'createTime',
@@ -313,7 +330,9 @@
         formatter: (row) => row.carrier?.companyName || '-'
       },
       { prop: 'driverName', label: '司机', width: 110 },
-      { prop: 'driverPhone', label: '手机号码', width: 130 },
+      ...(canViewListField('contactPhones')
+        ? [{ prop: 'driverPhone', label: '手机号码', width: 130 } as ColumnOption<CarrierPrice>]
+        : []),
       { prop: 'plateNo', label: '车牌号', width: 120 },
       {
         prop: 'vehicleType',
@@ -333,13 +352,17 @@
         width: 130,
         dict: { code: 'tmsCustomerPriceBillingMethod', display: 'text' }
       },
-      {
-        prop: 'totalFee',
-        label: '运费合计（元）',
-        width: 130,
-        align: 'right',
-        formatter: (row) => formatMoney(row.totalFee)
-      },
+      ...(canViewListField('costAmounts')
+        ? [
+            {
+              prop: 'totalFee',
+              label: '运费合计（元）',
+              width: 130,
+              align: 'right',
+              formatter: (row) => formatMoney(row.totalFee)
+            } as ColumnOption<CarrierPrice>
+          ]
+        : []),
       { prop: 'createBy', label: '创建人', width: 120 },
       {
         prop: 'createTime',
@@ -370,13 +393,33 @@
     ]
   }
 
-  function fetchTableData(params: TableParams) {
+  async function fetchTableData(params: TableParams) {
     const { from, to } = pageInfoHandler({ current: params.current, size: params.size })
-    return fetchCarrierPriceList({
+    const result = await fetchCarrierPriceList({
       ...normalizeSearchParams(params),
       from,
       to
     })
+    const previousVisibility = getSensitiveColumnVisibility()
+    carrierPriceFieldAccess.value = result.fieldAccess
+    currentRows.value = result.data
+    if (previousVisibility !== getSensitiveColumnVisibility()) {
+      await nextTick()
+      tableQueryRef.value?.resetColumns()
+    }
+    return result
+  }
+
+  function canViewListField(field: CarrierPriceFieldKey): boolean {
+    const merged = mergeFieldAccessMaps(
+      carrierPriceFieldAccess.value,
+      ...currentRows.value.map((row) => row.fieldAccess)
+    )
+    return canViewField(merged, field)
+  }
+
+  function getSensitiveColumnVisibility(): string {
+    return [canViewListField('contactPhones'), canViewListField('costAmounts')].join(':')
   }
 
   function normalizeSearchParams(params: SearchModel): SearchParams {
@@ -449,17 +492,8 @@
     return item?.label || text
   }
 
-  function formatNumber(value?: number | string | null, precision = 2): string {
-    const numberValue = Number(value ?? 0)
-    if (Number.isNaN(numberValue)) return '0'
-    return numberValue
-      .toFixed(precision)
-      .replace(/\.0+$/, '')
-      .replace(/(\.\d*?)0+$/, '$1')
-  }
-
   function formatMoney(value?: number | string | null): string {
-    return formatNumber(value, 2)
+    return formatSensitiveNumber(value)
   }
 
   function formatDateTime(value?: string | null): string {

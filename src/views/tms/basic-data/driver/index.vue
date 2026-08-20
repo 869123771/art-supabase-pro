@@ -97,6 +97,17 @@
   const dialogRef = ref<DriverDialogExpose>()
   const deleteGuardRef = ref<MasterDataDeleteGuardExpose>()
   const driverFieldAccess = ref<Api.Tms.BasicData.DriverFieldAccessMap>({})
+
+  watch(
+    () => [
+      canViewField(driverFieldAccess.value, 'contactPhone'),
+      canViewField(driverFieldAccess.value, 'homeAddress')
+    ],
+    (nextVisibility, previousVisibility) => {
+      if (nextVisibility.every((value, index) => value === previousVisibility?.[index])) return
+      void nextTick(() => tableQueryRef.value?.resetColumns())
+    }
+  )
   const initialCarrierId = String(route.query.carrierId || '')
   const initialRecordId = String(route.query.recordId || '')
   const tableImmediate = !initialCarrierId && !initialRecordId

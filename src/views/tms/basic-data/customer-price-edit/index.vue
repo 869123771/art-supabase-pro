@@ -116,7 +116,7 @@
                       </span>
                     </div>
                   </div>
-                  <div class="customer-price-edit__address-actions">
+                  <div v-if="canEditAddressSelection" class="customer-price-edit__address-actions">
                     <ElButton
                       type="primary"
                       plain
@@ -200,7 +200,7 @@
                       </span>
                     </div>
                   </div>
-                  <div class="customer-price-edit__address-actions">
+                  <div v-if="canEditAddressSelection" class="customer-price-edit__address-actions">
                     <ElButton type="primary" plain @click="openAddressSelector('receiving')">
                       {{ form.data.receivingAddressDetail ? '更换' : '选择地址' }}
                     </ElButton>
@@ -265,7 +265,10 @@
         />
       </section>
 
-      <section class="customer-price-edit__section art-card-xs">
+      <section
+        v-if="canViewSensitiveField('quoteAmounts')"
+        class="customer-price-edit__section art-card-xs"
+      >
         <ArtSectionTitle>费用信息</ArtSectionTitle>
         <ArtForm
           ref="feeFormRef"
@@ -281,7 +284,10 @@
         />
       </section>
 
-      <section class="customer-price-edit__section art-card-xs">
+      <section
+        v-if="canViewSensitiveField('paymentAmounts')"
+        class="customer-price-edit__section art-card-xs"
+      >
         <ArtSectionTitle>付款方式</ArtSectionTitle>
         <ArtForm
           ref="paymentFormRef"
@@ -412,12 +418,14 @@
     type CustomerPriceCargoItem,
     type CustomerPriceForm
   } from './modules/customer-price-model'
+  import { canEditField, canViewField, type FieldAccessLevel } from '@/utils/field-permission'
 
   defineOptions({ name: 'TmsCustomerPriceEdit' })
 
   type CargoMaster = Api.Tms.BasicData.Cargo
   type CustomerOption = Api.Tms.BasicData.CustomerOption
   type CustomerAddress = Api.Tms.BasicData.CustomerAddress
+  type CustomerPriceFieldKey = Api.Tms.BasicData.CustomerPriceFieldKey
   type AddressMode = 'shipping' | 'receiving'
   type CargoSuggestionCallback = (items: CargoSuggestion[]) => void
 
@@ -511,6 +519,9 @@
   ]
 
   const isEdit = computed(() => Boolean(route.params.id))
+  const sensitiveFieldFallback = computed<FieldAccessLevel>(() =>
+    isEdit.value ? 'hidden' : 'edit'
+  )
   const dictCodes = [
     'tmsCargoUnit',
     'tmsCustomerPriceTransportType',
@@ -525,6 +536,33 @@
     precision: 2,
     controlsPosition: 'right',
     class: '!w-full'
+  }
+
+  function canViewSensitiveField(field: CustomerPriceFieldKey): boolean {
+    return canViewField(form.data.fieldAccess, field, sensitiveFieldFallback.value)
+  }
+
+  function canEditSensitiveField(field: CustomerPriceFieldKey): boolean {
+    return canEditField(form.data.fieldAccess, field, sensitiveFieldFallback.value)
+  }
+
+  const canEditAddressSelection = computed(
+    () => canEditSensitiveField('contactPhones') && canEditSensitiveField('addressDetails')
+  )
+
+  function createSensitiveMoneyItem(
+    label: string,
+    key: keyof CustomerPriceForm,
+    field: Extract<CustomerPriceFieldKey, 'quoteAmounts' | 'paymentAmounts'>,
+    calculated = false
+  ): FormItem {
+    const editable = canEditSensitiveField(field) && !calculated
+    return {
+      label,
+      key: String(key),
+      type: editable ? 'number' : 'input',
+      props: editable ? moneyProps : { disabled: true, class: '!w-full' }
+    }
   }
 
   const countProps = {
@@ -611,6 +649,7 @@
         props: {
           clearable: true,
           filterable: true,
+          disabled: !canEditAddressSelection.value,
           placeholder: '搜索并选择客户',
           onChange: handleCustomerChange
         }
@@ -646,13 +685,17 @@
       }
     ]),
     shippingItems: computed<FormItem[]>(() => [
-      {
-        label: '发货地址',
-        key: 'shippingAddressDetail',
-        type: 'input',
-        span: 24,
-        props: { maxlength: 200, placeholder: '请选择发货地址' }
-      },
+      ...(canViewSensitiveField('addressDetails')
+        ? [
+            {
+              label: '发货地址',
+              key: 'shippingAddressDetail',
+              type: 'input',
+              span: 24,
+              props: { disabled: true, maxlength: 200, placeholder: '请选择发货地址' }
+            } satisfies FormItem
+          ]
+        : []),
       {
         label: '始发地',
         key: 'originRegionPath',
@@ -666,22 +709,34 @@
         span: 12,
         props: { disabled: true, maxlength: 50, placeholder: '选择发货地址后带出' }
       },
-      {
-        label: '联系电话',
-        key: 'shippingContactPhone',
-        type: 'input',
-        span: 12,
-        props: { disabled: true, maxlength: 20, placeholder: '选择发货地址后带出' }
-      }
+      ...(canViewSensitiveField('contactPhones')
+        ? [
+            {
+              label: '联系电话',
+              key: 'shippingContactPhone',
+              type: 'input',
+              span: 12,
+              props: {
+                disabled: !canEditSensitiveField('contactPhones'),
+                maxlength: 20,
+                placeholder: '选择发货地址后带出'
+              }
+            } satisfies FormItem
+          ]
+        : [])
     ]),
     receivingItems: computed<FormItem[]>(() => [
-      {
-        label: '收货地址',
-        key: 'receivingAddressDetail',
-        type: 'input',
-        span: 24,
-        props: { maxlength: 200, placeholder: '请选择收货地址' }
-      },
+      ...(canViewSensitiveField('addressDetails')
+        ? [
+            {
+              label: '收货地址',
+              key: 'receivingAddressDetail',
+              type: 'input',
+              span: 24,
+              props: { disabled: true, maxlength: 200, placeholder: '请选择收货地址' }
+            } satisfies FormItem
+          ]
+        : []),
       {
         label: '目的地',
         key: 'destinationRegionPath',
@@ -695,13 +750,21 @@
         span: 12,
         props: { disabled: true, maxlength: 50, placeholder: '选择收货地址后带出' }
       },
-      {
-        label: '联系电话',
-        key: 'receivingContactPhone',
-        type: 'input',
-        span: 12,
-        props: { disabled: true, maxlength: 20, placeholder: '选择收货地址后带出' }
-      }
+      ...(canViewSensitiveField('contactPhones')
+        ? [
+            {
+              label: '联系电话',
+              key: 'receivingContactPhone',
+              type: 'input',
+              span: 12,
+              props: {
+                disabled: !canEditSensitiveField('contactPhones'),
+                maxlength: 20,
+                placeholder: '选择收货地址后带出'
+              }
+            } satisfies FormItem
+          ]
+        : [])
     ]),
     vehicleItems: computed<FormItem[]>(() => [
       {
@@ -730,32 +793,22 @@
         type: 'select',
         props: { options: form.billingMethodOptions, clearable: true, placeholder: '请选择' }
       },
-      { label: '运输费', key: 'transportFee', type: 'number', props: moneyProps },
-      { label: '保险费', key: 'insuranceFee', type: 'number', props: moneyProps },
-      { label: '包装费', key: 'packageFee', type: 'number', props: moneyProps },
-      { label: '装卸费', key: 'loadingFee', type: 'number', props: moneyProps },
-      { label: '中转费', key: 'transferFee', type: 'number', props: moneyProps },
-      { label: '燃油费', key: 'fuelFee', type: 'number', props: moneyProps },
-      { label: '服务费', key: 'serviceFee', type: 'number', props: moneyProps },
-      { label: '其他费用', key: 'otherFee', type: 'number', props: moneyProps },
-      {
-        label: '费用合计',
-        key: 'totalFee',
-        type: 'number',
-        props: { ...moneyProps, disabled: true }
-      }
+      createSensitiveMoneyItem('运输费', 'transportFee', 'quoteAmounts'),
+      createSensitiveMoneyItem('保险费', 'insuranceFee', 'quoteAmounts'),
+      createSensitiveMoneyItem('包装费', 'packageFee', 'quoteAmounts'),
+      createSensitiveMoneyItem('装卸费', 'loadingFee', 'quoteAmounts'),
+      createSensitiveMoneyItem('中转费', 'transferFee', 'quoteAmounts'),
+      createSensitiveMoneyItem('燃油费', 'fuelFee', 'quoteAmounts'),
+      createSensitiveMoneyItem('服务费', 'serviceFee', 'quoteAmounts'),
+      createSensitiveMoneyItem('其他费用', 'otherFee', 'quoteAmounts'),
+      createSensitiveMoneyItem('费用合计', 'totalFee', 'quoteAmounts', true)
     ]),
     paymentItems: computed<FormItem[]>(() => [
-      { label: '现付', key: 'cashAmount', type: 'number', props: moneyProps },
-      { label: '预付', key: 'prepaidAmount', type: 'number', props: moneyProps },
-      { label: '到付', key: 'collectAmount', type: 'number', props: moneyProps },
-      { label: '周期付', key: 'periodicAmount', type: 'number', props: moneyProps },
-      {
-        label: '付款合计',
-        key: 'paymentTotal',
-        type: 'number',
-        props: { ...moneyProps, disabled: true }
-      }
+      createSensitiveMoneyItem('现付', 'cashAmount', 'paymentAmounts'),
+      createSensitiveMoneyItem('预付', 'prepaidAmount', 'paymentAmounts'),
+      createSensitiveMoneyItem('到付', 'collectAmount', 'paymentAmounts'),
+      createSensitiveMoneyItem('周期付', 'periodicAmount', 'paymentAmounts'),
+      createSensitiveMoneyItem('付款合计', 'paymentTotal', 'paymentAmounts', true)
     ]),
     rules: computed<FormRules<CustomerPriceForm>>(() => ({
       customerId: [{ required: true, message: '请选择客户名称', trigger: 'change' }],
@@ -767,13 +820,31 @@
       ],
       transportType: [{ required: true, message: '请选择运输类型', trigger: 'change' }],
       shippingContactName: [{ required: true, message: '请输入发货联系人', trigger: 'blur' }],
-      shippingContactPhone: [{ required: true, message: '请输入发货联系电话', trigger: 'blur' }],
-      shippingAddressDetail: [{ required: true, message: '请输入发货详细地址', trigger: 'blur' }],
       receivingContactName: [{ required: true, message: '请输入收货联系人', trigger: 'blur' }],
-      receivingContactPhone: [{ required: true, message: '请输入收货联系电话', trigger: 'blur' }],
-      receivingAddressDetail: [{ required: true, message: '请输入收货详细地址', trigger: 'blur' }],
       billingMethod: [{ required: true, message: '请选择计费方式', trigger: 'change' }],
-      transportFee: [{ required: true, message: '请输入运输费', trigger: 'blur' }]
+      ...(canEditSensitiveField('contactPhones')
+        ? {
+            shippingContactPhone: [
+              { required: true, message: '请输入发货联系电话', trigger: 'blur' }
+            ],
+            receivingContactPhone: [
+              { required: true, message: '请输入收货联系电话', trigger: 'blur' }
+            ]
+          }
+        : {}),
+      ...(canEditSensitiveField('addressDetails')
+        ? {
+            shippingAddressDetail: [
+              { required: true, message: '请输入发货详细地址', trigger: 'blur' }
+            ],
+            receivingAddressDetail: [
+              { required: true, message: '请输入收货详细地址', trigger: 'blur' }
+            ]
+          }
+        : {}),
+      ...(canEditSensitiveField('quoteAmounts')
+        ? { transportFee: [{ required: true, message: '请输入运输费', trigger: 'blur' }] }
+        : {})
     })),
     cargoColumns: computed<ColumnOption<CustomerPriceCargoItem>[]>(() => [
       { type: 'globalIndex', label: '序号', width: 70 },
@@ -877,25 +948,29 @@
         key: 'shipping',
         label: '确认发货信息',
         description: '默认地址自动带入',
-        complete: Boolean(form.data.shippingAddressDetail && form.data.originRegionPath.length)
+        complete:
+          !canEditAddressSelection.value ||
+          Boolean(form.data.shippingAddressDetail && form.data.originRegionPath.length)
       },
       {
         key: 'receiving',
         label: '选择收货地址',
         description: '目的地自动更新',
-        complete: Boolean(
-          form.data.receivingAddressDetail && form.data.destinationRegionPath.length
-        )
+        complete:
+          !canEditAddressSelection.value ||
+          Boolean(form.data.receivingAddressDetail && form.data.destinationRegionPath.length)
       },
       {
         key: 'pricing',
         label: '完善价格',
         description: '货物、车辆与费用',
-        complete: Boolean(
-          form.data.transportType &&
-          form.data.billingMethod &&
-          form.data.cargoItems?.some((item) => item.cargoName)
-        )
+        complete:
+          !canEditSensitiveField('quoteAmounts') ||
+          Boolean(
+            form.data.transportType &&
+            form.data.billingMethod &&
+            form.data.cargoItems?.some((item) => item.cargoName)
+          )
       }
     ]
     const activeIndex = steps.findIndex((step) => !step.complete)
@@ -965,6 +1040,7 @@
   watch(
     () => feeFields.map((field) => form.data[field]),
     () => {
+      if (!canEditSensitiveField('quoteAmounts')) return
       form.data.totalFee = sumFields(feeFields)
     },
     { immediate: true }
@@ -973,6 +1049,7 @@
   watch(
     () => paymentFields.map((field) => form.data[field]),
     () => {
+      if (!canEditSensitiveField('paymentAmounts')) return
       form.data.paymentTotal = sumFields(paymentFields)
     },
     { immediate: true }
@@ -993,7 +1070,9 @@
       destinationRegionPath: splitRegionPath(data.destinationRegion),
       cargoItems: data.cargoItems?.length ? data.cargoItems : [createInitialCargoItem()]
     })
-    await loadCustomerAddressOptions(data.customerId, false)
+    if (canEditAddressSelection.value) {
+      await loadCustomerAddressOptions(data.customerId, false)
+    }
   }
 
   function replaceForm(nextForm: CustomerPriceForm): void {
@@ -1011,6 +1090,7 @@
   }
 
   function handleCustomerChange(customerId?: string): void {
+    if (!canEditAddressSelection.value) return
     syncCustomerCode(customerId || '')
     void loadCustomerAddressOptions(customerId || '', true)
   }
@@ -1033,6 +1113,7 @@
     applyDefault: boolean,
     clearReceiving = applyDefault
   ): Promise<void> {
+    if (!canEditAddressSelection.value) return
     const requestId = ++addressLoadRequestId
 
     if (applyDefault) {
@@ -1086,6 +1167,7 @@
   }
 
   async function openAddressSelector(mode: AddressMode): Promise<void> {
+    if (!canEditAddressSelection.value) return
     if (mode === 'shipping' && !form.data.customerId) {
       ElMessage.warning('请先选择客户名称')
       return
@@ -1114,10 +1196,12 @@
   }
 
   function handleAddressClear(mode: AddressMode): void {
+    if (!canEditAddressSelection.value) return
     applyAddressPatch(mode)
   }
 
   function retryShippingAddressLoad(): void {
+    if (!canEditAddressSelection.value) return
     if (!form.data.customerId) return
     void loadCustomerAddressOptions(form.data.customerId, true, false)
   }
@@ -1136,12 +1220,14 @@
   }
 
   function handleAddressSelectorConfirm(_value: unknown, rows: DataSelectRecord[]): void {
+    if (!canEditAddressSelection.value) return
     const address = rows[0] as CustomerAddress | undefined
     if (!address) return
     applyAddressPatch(addressSelector.mode, address)
   }
 
   function applyAddressPatch(mode: AddressMode, address?: CustomerAddress): void {
+    if (!canEditAddressSelection.value) return
     // 详细地址只存 addressDetail；区域单独写入 origin/destinationRegionPath。
     // 列表会用 region + detail 拼接展示，这里不能再把区域拼进 detail，否则会重复。
     const patchMap: Record<AddressMode, Partial<CustomerPriceForm>> = {
@@ -1377,7 +1463,50 @@
   }
 
   function normalizePayload(): CustomerPrice {
-    return normalizeCustomerPricePayload(toRaw(form.data))
+    const payload = normalizeCustomerPricePayload(toRaw(form.data))
+    if (!canEditAddressSelection.value) removePayloadFields(payload, ['customerId'])
+    if (!canEditSensitiveField('contactPhones')) {
+      removePayloadFields(payload, ['shippingContactPhone', 'receivingContactPhone'])
+    }
+    if (!canEditSensitiveField('addressDetails')) {
+      removePayloadFields(payload, [
+        'shippingAddressId',
+        'receivingAddressId',
+        'shippingAddressDetail',
+        'shippingLongitude',
+        'shippingLatitude',
+        'receivingAddressDetail',
+        'receivingLongitude',
+        'receivingLatitude'
+      ])
+    }
+    if (!canEditSensitiveField('quoteAmounts')) {
+      removePayloadFields(payload, [
+        'transportFee',
+        'insuranceFee',
+        'packageFee',
+        'loadingFee',
+        'transferFee',
+        'fuelFee',
+        'serviceFee',
+        'otherFee',
+        'totalFee'
+      ])
+    }
+    if (!canEditSensitiveField('paymentAmounts')) {
+      removePayloadFields(payload, [
+        'cashAmount',
+        'prepaidAmount',
+        'collectAmount',
+        'periodicAmount',
+        'paymentTotal'
+      ])
+    }
+    return payload
+  }
+
+  function removePayloadFields(payload: CustomerPrice, fields: Array<keyof CustomerPrice>): void {
+    fields.forEach((field) => Reflect.deleteProperty(payload, field))
   }
 
   async function handleSave(): Promise<void> {

@@ -130,7 +130,9 @@ export function normalizeCustomerPricePayload(form: CustomerPriceForm): Customer
     'createBy',
     'createTime',
     'updateBy',
-    'updateTime'
+    'updateTime',
+    'fieldAccess',
+    'isRecordOwner'
   ]) as CustomerPrice
   const cargoItems = normalizeCustomerPriceCargoItems(raw.cargoItems)
   const cargoSummary = calculateCargoSummary(cargoItems)

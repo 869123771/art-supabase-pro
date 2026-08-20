@@ -74,7 +74,7 @@
     repeatMode: 'once',
     sendHour: 9,
     recipientStrategy: 'owner_then_roles',
-    recipientRoleCodes: ['R_ADMIN', 'YQ_ADMIN', 'R_SUPER'],
+    recipientRoleCodes: [],
     channels: ['in_app'],
     enabled: true
   })

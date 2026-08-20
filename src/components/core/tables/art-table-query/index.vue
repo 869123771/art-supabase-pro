@@ -1559,6 +1559,8 @@
     resetSearchParams: () => Promise<void>
     /** 清空当前跨页选择。 */
     clearSelection: () => void
+    /** 重新执行列工厂；用于字段权限等运行时条件改变后刷新列结构。 */
+    resetColumns: () => void
     /** 业务工作区头部与表格共享的显示状态和动作挂载控制器。 */
     workspaceController: ArtTableQueryWorkspaceController
   }
@@ -1585,6 +1587,7 @@
     getData,
     resetSearchParams,
     clearSelection: clearSelectedRows,
+    resetColumns: () => managedTable.resetColumns?.(),
     workspaceController
   })
 </script>

@@ -1,122 +1,162 @@
+import { pick, pickBy } from 'lodash-es'
 import { useSupabase } from '@/hooks'
-import { applyCreateTimeRange, type SupabaseQueryLike } from '@/api/providers/supabase/query'
 
 type CustomerPrice = Api.Tms.BasicData.CustomerPrice
 type CustomerPriceSearchParams = Api.Tms.BasicData.CustomerPriceSearchParams
 
+interface SecureListPayload<TRecord, TAccess extends Record<string, string>> {
+  records: TRecord[]
+  total: number
+  fieldAccess?: TAccess
+}
+
 const { supabase, keysToSnakeDeep, responseHandle } = useSupabase()
 
-const CUSTOMER_PRICE_SELECT = `
-  *,
-  customer:tms_customer!tms_customer_price_customer_id_fkey(
-    id,
-    customer_code,
-    customer_name,
-    contact_name
-  )
-`
+const CUSTOMER_PRICE_PAYLOAD_KEYS = [
+  'customerId',
+  'originRegion',
+  'destinationRegion',
+  'transportType',
+  'cargoType',
+  'shippingAddressId',
+  'receivingAddressId',
+  'shippingContactName',
+  'shippingContactPhone',
+  'shippingAddressDetail',
+  'shippingLongitude',
+  'shippingLatitude',
+  'receivingContactName',
+  'receivingContactPhone',
+  'receivingAddressDetail',
+  'receivingLongitude',
+  'receivingLatitude',
+  'cargoItems',
+  'cargoQuantityTotal',
+  'cargoVolumeTotal',
+  'cargoWeightTotal',
+  'vehicleType',
+  'vehicleLength',
+  'vehicleCount',
+  'billingMethod',
+  'transportFee',
+  'insuranceFee',
+  'packageFee',
+  'loadingFee',
+  'transferFee',
+  'fuelFee',
+  'serviceFee',
+  'otherFee',
+  'totalFee',
+  'cashAmount',
+  'prepaidAmount',
+  'collectAmount',
+  'periodicAmount',
+  'paymentTotal',
+  'remark'
+] as const satisfies readonly (keyof CustomerPrice)[]
 
-const applyCustomerPriceFilters = <TQuery extends SupabaseQueryLike>(
-  query: TQuery,
-  params: CustomerPriceSearchParams
-): TQuery => {
-  const {
-    customerId,
-    originRegion,
-    destinationRegion,
-    transportType,
-    cargoType,
-    billingMethod,
-    keyword,
-    createTimeRange,
-    recordId
-  } = params
+const createPayload = (record: Partial<CustomerPrice>): Record<string, unknown> =>
+  pickBy(pick(record, CUSTOMER_PRICE_PAYLOAD_KEYS), (value) => value !== undefined)
 
-  if (recordId) query = query.eq('id', recordId)
-  if (customerId) query = query.eq('customer_id', customerId)
-  if (originRegion) query = query.eq('origin_region', originRegion)
-  if (destinationRegion) query = query.eq('destination_region', destinationRegion)
-  if (transportType) query = query.eq('transport_type', transportType)
-  if (cargoType) query = query.eq('cargo_type', cargoType)
-  if (billingMethod) query = query.eq('billing_method', billingMethod)
-  if (keyword) {
-    query = query.or(
-      `shipping_contact_name.ilike.%${keyword}%,shipping_contact_phone.ilike.%${keyword}%,shipping_address_detail.ilike.%${keyword}%,receiving_contact_name.ilike.%${keyword}%,receiving_contact_phone.ilike.%${keyword}%,receiving_address_detail.ilike.%${keyword}%,remark.ilike.%${keyword}%`
-    )
+const toListRpcParams = (
+  params: CustomerPriceSearchParams & { ids?: string[]; maxRows?: number },
+  purpose: 'list' | 'export'
+) => {
+  const from = purpose === 'export' ? 0 : Math.max(params.from ?? 0, 0)
+  const requestedTo = purpose === 'export' ? Math.max((params.maxRows ?? 10000) - 1, 0) : params.to
+  return {
+    p_from: from,
+    p_to: Math.max(requestedTo ?? 9, from),
+    p_customer_id: params.customerId || null,
+    p_record_id: params.recordId || null,
+    p_origin_region: params.originRegion || null,
+    p_destination_region: params.destinationRegion || null,
+    p_transport_type: params.transportType || null,
+    p_cargo_type: params.cargoType || null,
+    p_billing_method: params.billingMethod || null,
+    p_keyword: String(params.keyword ?? '').trim() || null,
+    p_create_time_from: params.createTimeRange?.[0]
+      ? `${params.createTimeRange[0]}T00:00:00`
+      : null,
+    p_create_time_to: params.createTimeRange?.[1]
+      ? `${params.createTimeRange[1]}T23:59:59.999`
+      : null,
+    p_ids: params.ids?.length ? params.ids : null,
+    p_purpose: purpose
   }
-
-  return applyCreateTimeRange(query, createTimeRange)
 }
 
 export async function fetchCustomerPriceList(params: CustomerPriceSearchParams) {
-  const { from = 0, to = 9 } = params
-  let query = supabase
-    .from('tms_customer_price')
-    .select(CUSTOMER_PRICE_SELECT, { count: 'exact' })
-    .order('create_time', { ascending: false })
-    .range(from, to)
-
-  query = applyCustomerPriceFilters(query, params)
-  return await responseHandle<CustomerPrice[]>(() => query, {
-    ignoreCheck: true,
+  const result = await responseHandle<
+    SecureListPayload<CustomerPrice, Api.Tms.BasicData.CustomerPriceFieldAccessMap>
+  >(() => supabase.rpc('tms_list_customer_prices_secure', toListRpcParams(params, 'list')), {
     showErrorMessage: true
   })
+  return {
+    data: result.data?.records ?? [],
+    total: result.data?.total ?? 0,
+    error: result.error,
+    fieldAccess: result.data?.fieldAccess ?? {}
+  }
 }
 
 export async function exportCustomerPriceList(
   params: CustomerPriceSearchParams & { ids?: string[]; maxRows?: number }
 ) {
-  const { ids, maxRows = 10000 } = params
-  let query = supabase
-    .from('tms_customer_price')
-    .select(CUSTOMER_PRICE_SELECT)
-    .order('create_time', { ascending: false })
-    .limit(maxRows)
-
-  query = ids?.length ? query.in('id', ids) : applyCustomerPriceFilters(query, params)
-  return await responseHandle<CustomerPrice[]>(() => query, {
-    ignoreCheck: true,
+  const result = await responseHandle<
+    SecureListPayload<CustomerPrice, Api.Tms.BasicData.CustomerPriceFieldAccessMap>
+  >(() => supabase.rpc('tms_list_customer_prices_secure', toListRpcParams(params, 'export')), {
     showErrorMessage: true
   })
+  return {
+    data: result.data?.records ?? [],
+    total: result.data?.total ?? 0,
+    error: result.error,
+    fieldAccess: result.data?.fieldAccess ?? {}
+  }
 }
 
 export async function fetchCustomerPriceDetail(id: string) {
-  const query = supabase
-    .from('tms_customer_price')
-    .select(CUSTOMER_PRICE_SELECT)
-    .eq('id', id)
-    .maybeSingle()
-
-  return await responseHandle<CustomerPrice | null>(() => query, {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
+  return await responseHandle<CustomerPrice | null>(
+    () => supabase.rpc('tms_get_customer_price_secure', { p_id: id }),
+    { showErrorMessage: true }
+  )
 }
 
 export async function addCustomerPrice(params: CustomerPrice) {
-  return await responseHandle(
-    () => supabase.from('tms_customer_price').insert(keysToSnakeDeep(params)),
+  const result = await responseHandle<string>(
+    () =>
+      supabase.rpc('tms_create_customer_price_secure', {
+        p_payload: keysToSnakeDeep(createPayload(params))
+      }),
     { showMessage: true, breakReturn: true }
   )
+  return { ...result, data: result.data ? { id: result.data } : null }
 }
 
 export async function editCustomerPrice(params: CustomerPrice) {
   const { id, ...data } = params
-  delete data.customer
-  return await responseHandle(
-    () => supabase.from('tms_customer_price').update(keysToSnakeDeep(data)).eq('id', id),
+  if (!id) throw new Error('客户价格 ID 不能为空')
+  return await responseHandle<CustomerPrice>(
+    () =>
+      supabase.rpc('tms_update_customer_price_secure', {
+        p_id: id,
+        p_payload: keysToSnakeDeep(createPayload(data))
+      }),
     { showMessage: true, breakReturn: true }
   )
 }
 
 export async function deleteCustomerPrice(id: string) {
-  return await responseHandle(() => supabase.from('tms_customer_price').delete().eq('id', id), {
-    showMessage: true
-  })
+  return await responseHandle<boolean>(
+    () => supabase.rpc('tms_delete_customer_price_secure', { p_id: id }),
+    { showMessage: true, breakReturn: true }
+  )
 }
 
 export async function deleteCustomerPriceBatch(ids: string[]) {
-  return await responseHandle(() => supabase.from('tms_customer_price').delete().in('id', ids), {
-    showMessage: true
-  })
+  return await responseHandle<number>(
+    () => supabase.rpc('tms_delete_customer_prices_secure', { p_ids: ids }),
+    { showMessage: true, breakReturn: true }
+  )
 }

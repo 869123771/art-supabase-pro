@@ -69,6 +69,11 @@
   import MasterDeleteProcessingNotice from '@/components/business/master-delete-processing-notice/index.vue'
   import { useMasterDataDeleteProcessingContext } from '@/hooks/core/useMasterDataDeleteProcessing'
   import { useAuth } from '@/hooks/core/useAuth'
+  import {
+    canViewField,
+    formatSensitiveNumber,
+    mergeFieldAccessMaps
+  } from '@/utils/field-permission'
 
   defineOptions({ name: 'TmsCustomerPrice' })
 
@@ -77,6 +82,8 @@
 
   type CustomerPrice = Api.Tms.BasicData.CustomerPrice
   type CustomerPriceCargoItem = Api.Tms.BasicData.CustomerPriceCargoItem
+  type CustomerPriceFieldKey = Api.Tms.BasicData.CustomerPriceFieldKey
+  type CustomerPriceFieldAccessMap = Api.Tms.BasicData.CustomerPriceFieldAccessMap
   type SearchParams = Api.Tms.BasicData.CustomerPriceSearchParams
   type SearchModel = SearchParams & {
     originRegionPath?: string[]
@@ -93,6 +100,8 @@
   const customerDeleteContext = useMasterDataDeleteProcessingContext()
   const { getDictMap } = storeToRefs(useUserStore())
   const tableQueryRef = ref<ArtTableQueryExpose>()
+  const customerPriceFieldAccess = ref<CustomerPriceFieldAccessMap>({})
+  const currentRows = ref<CustomerPrice[]>([])
 
   const table = reactive<TableGroup>({
     searchQuery: {
@@ -110,7 +119,7 @@
   const cargoTypeOptions = computed(() => getDictMap.value.tmsCustomerPriceCargoType ?? [])
   const billingMethodOptions = computed(() => getDictMap.value.tmsCustomerPriceBillingMethod ?? [])
 
-  const customerPriceExcelColumns: ArtTableQueryExcelColumn[] = [
+  const customerPriceExcelColumns = computed<ArtTableQueryExcelColumn[]>(() => [
     { key: 'originRegion', title: '始发地' },
     { key: 'destinationRegion', title: '目的地' },
     {
@@ -141,18 +150,22 @@
       title: '总重量',
       formatter: (value) => `${formatNumber(value as number | string | null, 2)}kg`
     },
-    {
-      key: 'totalFee',
-      title: '运费合计',
-      formatter: (value) => formatMoney(value as number | string | null)
-    },
+    ...(canViewListField('quoteAmounts')
+      ? [
+          {
+            key: 'totalFee',
+            title: '运费合计',
+            formatter: (value) => formatMoney(value as number | string | null)
+          } satisfies ArtTableQueryExcelColumn
+        ]
+      : []),
     { key: 'createBy', title: '创建人' },
     {
       key: 'createTime',
       title: '创建时间',
       formatter: (value) => formatDateTime(value as string | null)
     }
-  ]
+  ])
 
   const searchItems = computed<SearchFormItem[]>(() => [
     {
@@ -287,13 +300,17 @@
       align: 'right',
       formatter: (row) => `${formatNumber(row.cargoWeightTotal, 2)}kg`
     },
-    {
-      prop: 'totalFee',
-      label: '运费合计',
-      width: 120,
-      align: 'right',
-      formatter: (row) => formatMoney(row.totalFee)
-    },
+    ...(canViewListField('quoteAmounts')
+      ? [
+          {
+            prop: 'totalFee',
+            label: '运费合计',
+            width: 120,
+            align: 'right',
+            formatter: (row) => formatMoney(row.totalFee)
+          } as ColumnOption<CustomerPrice>
+        ]
+      : []),
     { prop: 'createBy', label: '创建人', width: 120 },
     {
       prop: 'createTime',
@@ -346,7 +363,7 @@
       type: 'export',
       exportFilename: 'TMS客户价格维护',
       exportSheetName: '客户价格维护',
-      exportColumns: customerPriceExcelColumns,
+      exportColumns: customerPriceExcelColumns.value,
       exportApi: ({ selectedIds, searchParams, maxRows }) =>
         exportCustomerPriceList({
           ...normalizeSearchParams(searchParams as SearchModel),
@@ -356,14 +373,35 @@
     }
   ])
 
-  const fetchTableData = (params: TableParams) => {
+  const fetchTableData = async (params: TableParams) => {
     const { from, to } = pageInfoHandler({ current: params.current, size: params.size })
-    return fetchCustomerPriceList({
+    const result = await fetchCustomerPriceList({
       ...normalizeSearchParams(params),
       from,
       to
     })
+    const previousVisibility = getSensitiveColumnVisibility()
+    customerPriceFieldAccess.value = result.fieldAccess
+    currentRows.value = result.data
+    if (previousVisibility !== getSensitiveColumnVisibility()) {
+      await nextTick()
+      tableQueryRef.value?.resetColumns()
+    }
+    return result
   }
+
+  const canViewListField = (field: CustomerPriceFieldKey): boolean => {
+    const merged = mergeFieldAccessMaps(
+      customerPriceFieldAccess.value,
+      ...currentRows.value.map((row) => row.fieldAccess)
+    )
+    return canViewField(merged, field)
+  }
+
+  const canViewRowField = (row: CustomerPrice, field: CustomerPriceFieldKey): boolean =>
+    canViewField(row.fieldAccess ?? customerPriceFieldAccess.value, field)
+
+  const getSensitiveColumnVisibility = (): string => String(canViewListField('quoteAmounts'))
 
   onActivated(() => {
     syncCustomerDeleteRoute(true)
@@ -455,16 +493,32 @@
   const renderShippingInfo = (row: CustomerPrice) => (
     <div class="customer-price__info">
       <span>联系人姓名：{row.shippingContactName || '-'}</span>
-      <span>联系电话：{row.shippingContactPhone || '-'}</span>
-      <span>发货地址：{formatFullAddress(row.originRegion, row.shippingAddressDetail)}</span>
+      {canViewRowField(row, 'contactPhones') ? (
+        <span>联系电话：{row.shippingContactPhone || '-'}</span>
+      ) : null}
+      <span>
+        发货地址：
+        {formatFullAddress(
+          row.originRegion,
+          canViewRowField(row, 'addressDetails') ? row.shippingAddressDetail : null
+        )}
+      </span>
     </div>
   )
 
   const renderReceivingInfo = (row: CustomerPrice) => (
     <div class="customer-price__info">
       <span>联系人姓名：{row.receivingContactName || '-'}</span>
-      <span>联系电话：{row.receivingContactPhone || '-'}</span>
-      <span>收货地址：{formatFullAddress(row.destinationRegion, row.receivingAddressDetail)}</span>
+      {canViewRowField(row, 'contactPhones') ? (
+        <span>联系电话：{row.receivingContactPhone || '-'}</span>
+      ) : null}
+      <span>
+        收货地址：
+        {formatFullAddress(
+          row.destinationRegion,
+          canViewRowField(row, 'addressDetails') ? row.receivingAddressDetail : null
+        )}
+      </span>
     </div>
   )
 
@@ -472,8 +526,13 @@
     const data = row as CustomerPrice
     return [
       `联系人姓名：${data.shippingContactName || ''}`,
-      `联系电话：${data.shippingContactPhone || ''}`,
-      `发货地址：${formatFullAddress(data.originRegion, data.shippingAddressDetail)}`
+      ...(canViewRowField(data, 'contactPhones')
+        ? [`联系电话：${data.shippingContactPhone || ''}`]
+        : []),
+      `发货地址：${formatFullAddress(
+        data.originRegion,
+        canViewRowField(data, 'addressDetails') ? data.shippingAddressDetail : null
+      )}`
     ].join('\n')
   }
 
@@ -481,8 +540,13 @@
     const data = row as CustomerPrice
     return [
       `联系人姓名：${data.receivingContactName || ''}`,
-      `联系电话：${data.receivingContactPhone || ''}`,
-      `收货地址：${formatFullAddress(data.destinationRegion, data.receivingAddressDetail)}`
+      ...(canViewRowField(data, 'contactPhones')
+        ? [`联系电话：${data.receivingContactPhone || ''}`]
+        : []),
+      `收货地址：${formatFullAddress(
+        data.destinationRegion,
+        canViewRowField(data, 'addressDetails') ? data.receivingAddressDetail : null
+      )}`
     ].join('\n')
   }
 
@@ -526,7 +590,7 @@
       .replace(/(\.\d*?)0+$/, '$1')
   }
 
-  const formatMoney = (value?: number | string | null): string => formatNumber(value, 2)
+  const formatMoney = (value?: number | string | null): string => formatSensitiveNumber(value)
 
   const formatDateTime = (value?: string | null): string =>
     value ? (formatWithDayjs(value, 'YYYY-MM-DD HH:mm:ss') ?? '-') : '-'

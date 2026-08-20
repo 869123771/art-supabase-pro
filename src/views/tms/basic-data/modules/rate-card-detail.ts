@@ -1,17 +1,15 @@
-import { isNil } from 'lodash-es'
 import { formatWithDayjs } from '@/utils/time'
+import { formatSensitiveNumber } from '@/utils/field-permission'
 
 export function formatRateNumber(
   value?: number | string | null,
   maximumFractionDigits = 2
 ): string {
-  if (isNil(value) || value === '' || Number.isNaN(Number(value))) return '--'
-  return Number(value).toLocaleString('zh-CN', { maximumFractionDigits })
+  return formatSensitiveNumber(value, { maximumFractionDigits })
 }
 
 export function formatRateMoney(value?: number | string | null): string {
-  if (isNil(value) || value === '' || Number.isNaN(Number(value))) return '--'
-  return Number(value).toLocaleString('zh-CN', {
+  return formatSensitiveNumber(value, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
   })

@@ -2,7 +2,7 @@
   <section class="price-cargo-section art-card-xs">
     <div class="price-cargo-section__header">
       <ArtSectionTitle :show-line="false">货物信息</ArtSectionTitle>
-      <div class="price-cargo-section__actions">
+      <div v-if="editable" class="price-cargo-section__actions">
         <ElButton plain :icon="Collection" @click="emit('select-cargo')">批量选货物</ElButton>
         <ElButton type="primary" plain :icon="Plus" @click="emit('add-cargo')">添加</ElButton>
       </div>
@@ -34,9 +34,11 @@
       volumeText: string
       weightText: string
       weightLabel?: string
+      editable?: boolean
     }>(),
     {
-      weightLabel: '总重量'
+      weightLabel: '总重量',
+      editable: true
     }
   )
 

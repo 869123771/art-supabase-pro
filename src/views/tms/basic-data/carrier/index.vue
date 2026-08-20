@@ -93,6 +93,17 @@
   const deleteGuardRef = ref<MasterDataDeleteGuardExpose>()
   const carrierFieldAccess = ref<Api.Tms.BasicData.CarrierFieldAccessMap>({})
 
+  watch(
+    () => [
+      canViewField(carrierFieldAccess.value, 'addressDetail'),
+      canViewField(carrierFieldAccess.value, 'contactPhone')
+    ],
+    (nextVisibility, previousVisibility) => {
+      if (nextVisibility.every((value, index) => value === previousVisibility?.[index])) return
+      void nextTick(() => tableQueryRef.value?.resetColumns())
+    }
+  )
+
   const tableState = reactive<{ searchQuery: SearchParams }>({
     searchQuery: {
       carrierType: '',

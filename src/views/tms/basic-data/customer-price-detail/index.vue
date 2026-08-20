@@ -26,7 +26,7 @@
       <article
         ><span>货物明细</span><strong>{{ cargoItems.length }} 项</strong></article
       >
-      <article
+      <article v-if="canViewSensitiveField('quoteAmounts')"
         ><span>报价合计</span
         ><strong>¥ {{ formatRateMoney(detail.data?.totalFee) }}</strong></article
       >
@@ -82,11 +82,16 @@
       <section class="rate-card-detail__section art-card-xs">
         <ArtSectionTitle>车辆与结算费用</ArtSectionTitle>
         <ArtDescriptions :data="descriptionData" :items="vehicleItems" :columns="4" />
-        <div class="rate-card-detail__section-gap" aria-hidden="true"></div>
-        <ArtDescriptions :data="descriptionData" :items="feeItems" :columns="4" />
+        <template v-if="canViewSensitiveField('quoteAmounts')">
+          <div class="rate-card-detail__section-gap" aria-hidden="true"></div>
+          <ArtDescriptions :data="descriptionData" :items="feeItems" :columns="4" />
+        </template>
       </section>
 
-      <section class="rate-card-detail__section art-card-xs">
+      <section
+        v-if="canViewSensitiveField('paymentAmounts')"
+        class="rate-card-detail__section art-card-xs"
+      >
         <ArtSectionTitle>付款方式</ArtSectionTitle>
         <ArtDescriptions :data="descriptionData" :items="paymentItems" :columns="4" />
       </section>
@@ -113,11 +118,13 @@
     formatRateMoney,
     formatRateNumber
   } from '../modules/rate-card-detail'
+  import { canViewField } from '@/utils/field-permission'
 
   defineOptions({ name: 'TmsCustomerPriceDetail' })
 
   type CustomerPrice = Api.Tms.BasicData.CustomerPrice
   type CargoItem = Api.Tms.BasicData.CustomerPriceCargoItem
+  type CustomerPriceFieldKey = Api.Tms.BasicData.CustomerPriceFieldKey
 
   const route = useRoute()
   const router = useRouter()
@@ -158,48 +165,64 @@
       dictDisplay: 'text'
     }
   ]
-  const shippingItems: ArtDescriptionItem<Partial<CustomerPrice>>[] = [
+  const shippingItems = computed<ArtDescriptionItem<Partial<CustomerPrice>>[]>(() => [
     { key: 'shippingContactName', label: '联系人', field: 'shippingContactName' },
-    {
-      key: 'shippingContactPhone',
-      label: '联系电话',
-      field: 'shippingContactPhone',
-      copyable: true
-    },
-    {
-      key: 'shippingAddress',
-      label: '详细地址',
-      value: (data: Partial<CustomerPrice>) =>
-        formatRateAddress(data.originRegion, data.shippingAddressDetail)
-    },
-    {
-      key: 'shippingCoordinate',
-      label: '经纬度',
-      value: (data: Partial<CustomerPrice>) =>
-        formatCoordinate(data.shippingLongitude, data.shippingLatitude)
-    }
-  ]
-  const receivingItems: ArtDescriptionItem<Partial<CustomerPrice>>[] = [
+    ...(canViewSensitiveField('contactPhones')
+      ? [
+          {
+            key: 'shippingContactPhone',
+            label: '联系电话',
+            field: 'shippingContactPhone',
+            copyable: true
+          } satisfies ArtDescriptionItem<Partial<CustomerPrice>>
+        ]
+      : []),
+    ...(canViewSensitiveField('addressDetails')
+      ? [
+          {
+            key: 'shippingAddress',
+            label: '详细地址',
+            value: (data: Partial<CustomerPrice>) =>
+              formatRateAddress(data.originRegion, data.shippingAddressDetail)
+          } satisfies ArtDescriptionItem<Partial<CustomerPrice>>,
+          {
+            key: 'shippingCoordinate',
+            label: '经纬度',
+            value: (data: Partial<CustomerPrice>) =>
+              formatCoordinate(data.shippingLongitude, data.shippingLatitude)
+          } satisfies ArtDescriptionItem<Partial<CustomerPrice>>
+        ]
+      : [])
+  ])
+  const receivingItems = computed<ArtDescriptionItem<Partial<CustomerPrice>>[]>(() => [
     { key: 'receivingContactName', label: '联系人', field: 'receivingContactName' },
-    {
-      key: 'receivingContactPhone',
-      label: '联系电话',
-      field: 'receivingContactPhone',
-      copyable: true
-    },
-    {
-      key: 'receivingAddress',
-      label: '详细地址',
-      value: (data: Partial<CustomerPrice>) =>
-        formatRateAddress(data.destinationRegion, data.receivingAddressDetail)
-    },
-    {
-      key: 'receivingCoordinate',
-      label: '经纬度',
-      value: (data: Partial<CustomerPrice>) =>
-        formatCoordinate(data.receivingLongitude, data.receivingLatitude)
-    }
-  ]
+    ...(canViewSensitiveField('contactPhones')
+      ? [
+          {
+            key: 'receivingContactPhone',
+            label: '联系电话',
+            field: 'receivingContactPhone',
+            copyable: true
+          } satisfies ArtDescriptionItem<Partial<CustomerPrice>>
+        ]
+      : []),
+    ...(canViewSensitiveField('addressDetails')
+      ? [
+          {
+            key: 'receivingAddress',
+            label: '详细地址',
+            value: (data: Partial<CustomerPrice>) =>
+              formatRateAddress(data.destinationRegion, data.receivingAddressDetail)
+          } satisfies ArtDescriptionItem<Partial<CustomerPrice>>,
+          {
+            key: 'receivingCoordinate',
+            label: '经纬度',
+            value: (data: Partial<CustomerPrice>) =>
+              formatCoordinate(data.receivingLongitude, data.receivingLatitude)
+          } satisfies ArtDescriptionItem<Partial<CustomerPrice>>
+        ]
+      : [])
+  ])
   const vehicleItems: ArtDescriptionItem<Partial<CustomerPrice>>[] = [
     {
       key: 'vehicleType',
@@ -313,6 +336,9 @@
 
   function goBack(): void {
     void router.push({ name: 'TmsCustomerPrice' })
+  }
+  function canViewSensitiveField(field: CustomerPriceFieldKey): boolean {
+    return canViewField(detail.data?.fieldAccess, field)
   }
   function getDictLabel(code: keyof typeof getDictMap.value, value?: string | null): string {
     if (!value) return '--'

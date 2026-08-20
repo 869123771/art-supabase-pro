@@ -139,6 +139,7 @@
         :quantity-text="form.cargoQuantityText"
         :volume-text="form.cargoVolumeText"
         :weight-text="form.cargoWeightText"
+        :editable="canEditSensitiveField('costAmounts')"
         @select-cargo="openCargoSelector"
         @add-cargo="addCargoItem"
       >
@@ -150,7 +151,7 @@
           table-layout="fixed"
           empty-height="160px"
         />
-        <template #after>
+        <template v-if="canViewSensitiveField('costAmounts')" #after>
           <div class="carrier-price-edit__cost-header">
             <div>
               <ArtSectionTitle :show-line="false">成本与计费</ArtSectionTitle>
@@ -176,7 +177,10 @@
         </template>
       </PriceCargoSection>
 
-      <section class="carrier-price-edit__section art-card-xs">
+      <section
+        v-if="canViewSensitiveField('paymentAmounts')"
+        class="carrier-price-edit__section art-card-xs"
+      >
         <div class="carrier-price-edit__payment-header">
           <ArtSectionTitle :show-line="false">付款方式</ArtSectionTitle>
           <span>支持拆分多种付款方式，付款合计会自动计算。</span>
@@ -252,11 +256,18 @@
     toNumber,
     type CargoSummary
   } from '../modules/price-form-utils'
+  import {
+    canEditField,
+    canViewField,
+    formatSensitiveNumber,
+    type FieldAccessLevel
+  } from '@/utils/field-permission'
 
   defineOptions({ name: 'TmsCarrierPriceEdit' })
 
   type CarrierPrice = Api.Tms.BasicData.CarrierPrice
   type CarrierPriceCargoItem = Api.Tms.BasicData.CarrierPriceCargoItem
+  type CarrierPriceFieldKey = Api.Tms.BasicData.CarrierPriceFieldKey
   type CargoMaster = Api.Tms.BasicData.Cargo
   type CarrierOption = Api.Tms.BasicData.CarrierOption
   type DriverOption = Api.Tms.BasicData.DriverOption
@@ -345,6 +356,9 @@
   const quoteNumber = useDocumentNumberRule('tms.carrier_price')
 
   const isEdit = computed(() => Boolean(route.params.id))
+  const sensitiveFieldFallback = computed<FieldAccessLevel>(() =>
+    isEdit.value ? 'hidden' : 'edit'
+  )
   const dictCodes = [
     'tmsCarrierPriceTransportMode',
     'tmsCargoUnit',
@@ -358,6 +372,29 @@
     precision: 2,
     controlsPosition: 'right',
     class: '!w-full'
+  }
+
+  function canViewSensitiveField(field: CarrierPriceFieldKey): boolean {
+    return canViewField(form.data.fieldAccess, field, sensitiveFieldFallback.value)
+  }
+
+  function canEditSensitiveField(field: CarrierPriceFieldKey): boolean {
+    return canEditField(form.data.fieldAccess, field, sensitiveFieldFallback.value)
+  }
+
+  function createSensitiveMoneyItem(
+    label: string,
+    key: keyof CarrierPriceForm,
+    field: Extract<CarrierPriceFieldKey, 'costAmounts' | 'paymentAmounts'>,
+    calculated = false
+  ): FormItem {
+    const editable = canEditSensitiveField(field) && !calculated
+    return {
+      label,
+      key: String(key),
+      type: editable ? 'number' : 'input',
+      props: editable ? moneyProps : { disabled: true, class: '!w-full' }
+    }
   }
 
   function createInitialCargoItem(): CarrierPriceCargoItem {
@@ -524,6 +561,7 @@
         props: {
           clearable: true,
           filterable: true,
+          disabled: !canEditSensitiveField('contactPhones'),
           placeholder: '搜索并选择承运商',
           onChange: handleCarrierChange
         }
@@ -535,13 +573,17 @@
         span: 12,
         props: { disabled: true, placeholder: '选择承运商后自动带出' }
       },
-      {
-        label: '手机号码',
-        key: 'contactPhone',
-        type: 'input',
-        span: 12,
-        props: { disabled: true, placeholder: '选择承运商后自动带出' }
-      }
+      ...(canViewSensitiveField('contactPhones')
+        ? [
+            {
+              label: '手机号码',
+              key: 'contactPhone',
+              type: 'input',
+              span: 12,
+              props: { disabled: true, placeholder: '选择承运商后自动带出' }
+            } satisfies FormItem
+          ]
+        : [])
     ]),
     capacityItems: computed<FormItem[]>(() => [
       {
@@ -559,7 +601,7 @@
         props: {
           clearable: true,
           filterable: true,
-          disabled: !form.data.carrierId,
+          disabled: !form.data.carrierId || !canEditSensitiveField('contactPhones'),
           placeholder: form.data.carrierId ? '请选择司机' : '请先选择承运商',
           onVisibleChange: (visible: boolean) => {
             if (visible && form.data.carrierId)
@@ -568,13 +610,17 @@
           onChange: handleDriverChange
         }
       },
-      {
-        label: '手机号码',
-        key: 'driverPhone',
-        type: 'input',
-        span: 12,
-        props: { disabled: true, placeholder: '选择司机后自动带出' }
-      },
+      ...(canViewSensitiveField('contactPhones')
+        ? [
+            {
+              label: '手机号码',
+              key: 'driverPhone',
+              type: 'input',
+              span: 12,
+              props: { disabled: true, placeholder: '选择司机后自动带出' }
+            } satisfies FormItem
+          ]
+        : []),
       {
         label: '车牌号',
         key: 'vehicleId',
@@ -625,44 +671,19 @@
           placeholder: '请选择计费方式'
         }
       },
-      { label: '运费成本', key: 'transportCost', type: 'number', props: moneyProps },
-      { label: '其他费用', key: 'otherFee', type: 'number', props: moneyProps },
-      {
-        label: '分摊运费',
-        key: 'splitTransportFee',
-        type: 'number',
-        props: { ...moneyProps, disabled: true }
-      },
-      {
-        label: '装卸费',
-        key: 'loadingFee',
-        type: 'number',
-        props: { ...moneyProps, disabled: true }
-      },
-      {
-        label: '包装费',
-        key: 'packageFee',
-        type: 'number',
-        props: { ...moneyProps, disabled: true }
-      },
-      {
-        label: '运费合计',
-        key: 'totalFee',
-        type: 'number',
-        props: { ...moneyProps, disabled: true }
-      }
+      createSensitiveMoneyItem('运费成本', 'transportCost', 'costAmounts'),
+      createSensitiveMoneyItem('其他费用', 'otherFee', 'costAmounts'),
+      createSensitiveMoneyItem('分摊运费', 'splitTransportFee', 'costAmounts', true),
+      createSensitiveMoneyItem('装卸费', 'loadingFee', 'costAmounts', true),
+      createSensitiveMoneyItem('包装费', 'packageFee', 'costAmounts', true),
+      createSensitiveMoneyItem('运费合计', 'totalFee', 'costAmounts', true)
     ]),
     paymentItems: computed<FormItem[]>(() => [
-      { label: '现付', key: 'cashAmount', type: 'number', props: moneyProps },
-      { label: '预付', key: 'prepaidAmount', type: 'number', props: moneyProps },
-      { label: '到付', key: 'collectAmount', type: 'number', props: moneyProps },
-      { label: '周期付', key: 'periodicAmount', type: 'number', props: moneyProps },
-      {
-        label: '付款合计',
-        key: 'paymentTotal',
-        type: 'number',
-        props: { ...moneyProps, disabled: true }
-      }
+      createSensitiveMoneyItem('现付', 'cashAmount', 'paymentAmounts'),
+      createSensitiveMoneyItem('预付', 'prepaidAmount', 'paymentAmounts'),
+      createSensitiveMoneyItem('到付', 'collectAmount', 'paymentAmounts'),
+      createSensitiveMoneyItem('周期付', 'periodicAmount', 'paymentAmounts'),
+      createSensitiveMoneyItem('付款合计', 'paymentTotal', 'paymentAmounts', true)
     ]),
     rules: computed<FormRules<CarrierPriceForm>>(() => ({
       quoteNo: [
@@ -681,141 +702,165 @@
         { required: true, type: 'array', message: '请选择目的地', trigger: 'change' }
       ],
       transportMode: [{ required: true, message: '请选择运输方式', trigger: 'change' }],
-      carrierId: [{ required: true, message: '请选择承运商名称', trigger: 'change' }],
+      ...(canEditSensitiveField('contactPhones')
+        ? {
+            carrierId: [{ required: true, message: '请选择承运商名称', trigger: 'change' }]
+          }
+        : {}),
       billingMethod: [{ required: true, message: '请选择计费方式', trigger: 'change' }],
-      transportCost: [{ required: true, message: '请输入运费成本', trigger: 'blur' }],
-      totalFee: [{ required: true, message: '请输入运费合计', trigger: 'blur' }]
+      ...(canEditSensitiveField('costAmounts')
+        ? {
+            transportCost: [{ required: true, message: '请输入运费成本', trigger: 'blur' }],
+            totalFee: [{ required: true, message: '请输入运费合计', trigger: 'blur' }]
+          }
+        : {})
     })),
-    cargoColumns: computed<ColumnOption<CarrierPriceCargoItem>[]>(() => [
-      { type: 'globalIndex', label: '序号', width: 70 },
-      {
-        prop: 'orderNo',
-        label: '订单编号',
-        width: 130,
-        formatter: (row) => <ElInput v-model={row.orderNo} maxlength={40} />
-      },
-      {
-        prop: 'originRegion',
-        label: '始发地',
-        minWidth: 170,
-        formatter: (row) => <ElInput v-model={row.originRegion} maxlength={120} />
-      },
-      {
-        prop: 'destinationRegion',
-        label: '目的地',
-        minWidth: 170,
-        formatter: (row) => <ElInput v-model={row.destinationRegion} maxlength={120} />
-      },
-      {
-        prop: 'cargoName',
-        label: '货物名称',
-        minWidth: 160,
-        formatter: (row) => <ElInput v-model={row.cargoName} maxlength={80} />
-      },
-      {
-        prop: 'quantity',
-        label: '数量',
-        width: 120,
-        formatter: (row) => (
-          <ElInputNumber
-            v-model={row.quantity}
-            min={0}
-            precision={2}
-            controls={false}
-            class="w-full!"
-          />
-        )
-      },
-      {
-        prop: 'unit',
-        label: '单位',
-        width: 120,
-        formatter: (row) => (
-          <ElSelect v-model={row.unit} class="w-full!" clearable filterable placeholder="请选择">
-            {form.cargoUnitOptions.map((item) => (
-              <ElOption key={item.value} label={item.label || item.value} value={item.value} />
-            ))}
-          </ElSelect>
-        )
-      },
-      {
-        prop: 'volumeM3',
-        label: '体积（m³）',
-        width: 130,
-        formatter: (row) => (
-          <ElInputNumber
-            v-model={row.volumeM3}
-            min={0}
-            precision={3}
-            controls={false}
-            class="w-full!"
-          />
-        )
-      },
-      {
-        prop: 'weightKg',
-        label: '重量（kg）',
-        width: 130,
-        formatter: (row) => (
-          <ElInputNumber
-            v-model={row.weightKg}
-            min={0}
-            precision={2}
-            controls={false}
-            class="w-full!"
-          />
-        )
-      },
-      {
-        prop: 'splitTransportFee',
-        label: '分摊运费（元）',
-        width: 140,
-        formatter: (row) => (
-          <ElInputNumber
-            v-model={row.splitTransportFee}
-            min={0}
-            precision={2}
-            controls={false}
-            class="w-full!"
-          />
-        )
-      },
-      {
-        prop: 'loadingFee',
-        label: '装卸费（元）',
-        width: 130,
-        formatter: (row) => (
-          <ElInputNumber
-            v-model={row.loadingFee}
-            min={0}
-            precision={2}
-            controls={false}
-            class="w-full!"
-          />
-        )
-      },
-      {
-        prop: 'packageFee',
-        label: '包装费（元）',
-        width: 130,
-        formatter: (row) => (
-          <ElInputNumber
-            v-model={row.packageFee}
-            min={0}
-            precision={2}
-            controls={false}
-            class="w-full!"
-          />
-        )
-      },
-      {
-        prop: 'operation',
-        label: '操作',
-        width: 100,
-        fixed: 'right',
-        formatter: (row) => <ArtButtonTable type="delete" onClick={() => removeCargoItem(row)} />
-      }
-    ]),
+    cargoColumns: computed<ColumnOption<CarrierPriceCargoItem>[]>(() =>
+      canEditSensitiveField('costAmounts')
+        ? [
+            { type: 'globalIndex', label: '序号', width: 70 },
+            {
+              prop: 'orderNo',
+              label: '订单编号',
+              width: 130,
+              formatter: (row) => <ElInput v-model={row.orderNo} maxlength={40} />
+            },
+            {
+              prop: 'originRegion',
+              label: '始发地',
+              minWidth: 170,
+              formatter: (row) => <ElInput v-model={row.originRegion} maxlength={120} />
+            },
+            {
+              prop: 'destinationRegion',
+              label: '目的地',
+              minWidth: 170,
+              formatter: (row) => <ElInput v-model={row.destinationRegion} maxlength={120} />
+            },
+            {
+              prop: 'cargoName',
+              label: '货物名称',
+              minWidth: 160,
+              formatter: (row) => <ElInput v-model={row.cargoName} maxlength={80} />
+            },
+            {
+              prop: 'quantity',
+              label: '数量',
+              width: 120,
+              formatter: (row) => (
+                <ElInputNumber
+                  v-model={row.quantity}
+                  min={0}
+                  precision={2}
+                  controls={false}
+                  class="w-full!"
+                />
+              )
+            },
+            {
+              prop: 'unit',
+              label: '单位',
+              width: 120,
+              formatter: (row) => (
+                <ElSelect
+                  v-model={row.unit}
+                  class="w-full!"
+                  clearable
+                  filterable
+                  placeholder="请选择"
+                >
+                  {form.cargoUnitOptions.map((item) => (
+                    <ElOption
+                      key={item.value}
+                      label={item.label || item.value}
+                      value={item.value}
+                    />
+                  ))}
+                </ElSelect>
+              )
+            },
+            {
+              prop: 'volumeM3',
+              label: '体积（m³）',
+              width: 130,
+              formatter: (row) => (
+                <ElInputNumber
+                  v-model={row.volumeM3}
+                  min={0}
+                  precision={3}
+                  controls={false}
+                  class="w-full!"
+                />
+              )
+            },
+            {
+              prop: 'weightKg',
+              label: '重量（kg）',
+              width: 130,
+              formatter: (row) => (
+                <ElInputNumber
+                  v-model={row.weightKg}
+                  min={0}
+                  precision={2}
+                  controls={false}
+                  class="w-full!"
+                />
+              )
+            },
+            {
+              prop: 'splitTransportFee',
+              label: '分摊运费（元）',
+              width: 140,
+              formatter: (row) => (
+                <ElInputNumber
+                  v-model={row.splitTransportFee}
+                  min={0}
+                  precision={2}
+                  controls={false}
+                  class="w-full!"
+                />
+              )
+            },
+            {
+              prop: 'loadingFee',
+              label: '装卸费（元）',
+              width: 130,
+              formatter: (row) => (
+                <ElInputNumber
+                  v-model={row.loadingFee}
+                  min={0}
+                  precision={2}
+                  controls={false}
+                  class="w-full!"
+                />
+              )
+            },
+            {
+              prop: 'packageFee',
+              label: '包装费（元）',
+              width: 130,
+              formatter: (row) => (
+                <ElInputNumber
+                  v-model={row.packageFee}
+                  min={0}
+                  precision={2}
+                  controls={false}
+                  class="w-full!"
+                />
+              )
+            },
+            {
+              prop: 'operation',
+              label: '操作',
+              width: 100,
+              fixed: 'right',
+              formatter: (row) => (
+                <ArtButtonTable type="delete" onClick={() => removeCargoItem(row)} />
+              )
+            }
+          ]
+        : createReadonlyCargoColumns()
+    ),
     cargoItems: computed(() => form.data.cargoItems ?? []),
     cargoSummary: computed(() => calculateCargoSummary(form.data.cargoItems ?? [])),
     feeSummary: computed(() => {
@@ -849,8 +894,69 @@
     cargoQuantityText: computed(() => formatNumber(form.cargoSummary.quantity, 0)),
     cargoVolumeText: computed(() => formatNumber(form.cargoSummary.volume, 3)),
     cargoWeightText: computed(() => formatNumber(form.cargoSummary.weight, 2)),
-    feeTotalText: computed(() => formatNumber(form.feeSummary.totalFee, 2))
+    feeTotalText: computed(() =>
+      canEditSensitiveField('costAmounts')
+        ? formatNumber(form.feeSummary.totalFee, 2)
+        : formatSensitiveNumber(form.data.totalFee)
+    )
   })
+
+  function createReadonlyCargoColumns(): ColumnOption<CarrierPriceCargoItem>[] {
+    const columns: ColumnOption<CarrierPriceCargoItem>[] = [
+      { type: 'globalIndex', label: '序号', width: 70 },
+      { prop: 'orderNo', label: '订单编号', width: 130 },
+      { prop: 'originRegion', label: '始发地', minWidth: 170 },
+      { prop: 'destinationRegion', label: '目的地', minWidth: 170 },
+      { prop: 'cargoName', label: '货物名称', minWidth: 160 },
+      {
+        prop: 'quantity',
+        label: '数量',
+        width: 110,
+        align: 'right',
+        formatter: (row) => formatNumber(row.quantity, 2)
+      },
+      { prop: 'unit', label: '单位', width: 100, dict: { code: 'tmsCargoUnit', display: 'text' } },
+      {
+        prop: 'volumeM3',
+        label: '体积（m³）',
+        width: 130,
+        align: 'right',
+        formatter: (row) => formatNumber(row.volumeM3, 3)
+      },
+      {
+        prop: 'weightKg',
+        label: '重量（kg）',
+        width: 130,
+        align: 'right',
+        formatter: (row) => formatNumber(row.weightKg, 2)
+      }
+    ]
+    if (!canViewSensitiveField('costAmounts')) return columns
+    return [
+      ...columns,
+      {
+        prop: 'splitTransportFee',
+        label: '分摊运费（元）',
+        width: 140,
+        align: 'right',
+        formatter: (row) => formatSensitiveNumber(row.splitTransportFee)
+      },
+      {
+        prop: 'loadingFee',
+        label: '装卸费（元）',
+        width: 130,
+        align: 'right',
+        formatter: (row) => formatSensitiveNumber(row.loadingFee)
+      },
+      {
+        prop: 'packageFee',
+        label: '包装费（元）',
+        width: 130,
+        align: 'right',
+        formatter: (row) => formatSensitiveNumber(row.packageFee)
+      }
+    ]
+  }
 
   const routeReady = computed(
     () =>
@@ -864,9 +970,9 @@
     )
   )
   const workflowSteps = computed<WorkflowStep[]>(() => {
-    const hasCargoCost = Boolean(
-      form.data.cargoItems?.some((item) => item.cargoName) && form.data.billingMethod
-    )
+    const hasCargoCost =
+      !canEditSensitiveField('costAmounts') ||
+      Boolean(form.data.cargoItems?.some((item) => item.cargoName) && form.data.billingMethod)
     const steps = [
       {
         key: 'route',
@@ -890,7 +996,8 @@
         key: 'payment',
         label: '核对成本付款',
         description: '确认总成本与付款拆分',
-        complete: hasCargoCost && form.feeSummary.totalFee > 0
+        complete:
+          !canEditSensitiveField('costAmounts') || (hasCargoCost && form.feeSummary.totalFee > 0)
       }
     ]
     const activeIndex = steps.findIndex((step) => !step.complete)
@@ -952,6 +1059,7 @@
   watch(
     () => form.cargoSummary,
     (summary) => {
+      if (!canEditSensitiveField('costAmounts')) return
       form.data.cargoQuantityTotal = summary.quantity
       form.data.cargoVolumeTotal = summary.volume
       form.data.cargoWeightTotal = summary.weight
@@ -962,6 +1070,7 @@
   watch(
     () => form.feeSummary,
     (summary) => {
+      if (!canEditSensitiveField('costAmounts')) return
       const nextSummary = summary ?? createEmptyFeeSummary()
       form.data.splitTransportFee = nextSummary.splitTransportFee
       form.data.loadingFee = nextSummary.loadingFee
@@ -974,6 +1083,7 @@
   watch(
     () => paymentFields.map((field) => form.data[field]),
     () => {
+      if (!canEditSensitiveField('paymentAmounts')) return
       form.data.paymentTotal = sumFields(paymentFields)
     },
     { immediate: true }
@@ -1048,6 +1158,7 @@
   }
 
   function handleCarrierChange(carrierId?: string): void {
+    if (!canEditSensitiveField('contactPhones')) return
     const carrier = form.carrierOptions.find((item) => item.id === carrierId)
     Object.assign(form.data, {
       contactName: carrier?.contactName ?? '',
@@ -1067,6 +1178,7 @@
   }
 
   function handleDriverChange(driverId?: string): void {
+    if (!canEditSensitiveField('contactPhones')) return
     const driver = form.driverOptions.find((item) => item.id === driverId)
     Object.assign(form.data, {
       driverName: driver?.driverName ?? '',
@@ -1083,14 +1195,17 @@
   }
 
   function addCargoItem(): void {
+    if (!canEditSensitiveField('costAmounts')) return
     form.data.cargoItems = [...(form.data.cargoItems ?? []), createInitialCargoItem()]
   }
 
   async function openCargoSelector(): Promise<void> {
+    if (!canEditSensitiveField('costAmounts')) return
     await cargoSelectorRef.value?.open()
   }
 
   function handleCargoSelectorConfirm(selectedCargoes: CargoMaster[]): void {
+    if (!canEditSensitiveField('costAmounts')) return
     const currentItems = form.data.cargoItems ?? []
     const result = mergeCargoSelections(currentItems, selectedCargoes, createCargoItemFromMaster)
     if (!result.addedCount) return
@@ -1110,6 +1225,7 @@
   }
 
   function removeCargoItem(row: CarrierPriceCargoItem): void {
+    if (!canEditSensitiveField('costAmounts')) return
     const rows = form.data.cargoItems ?? []
     if (rows.length <= 1) {
       form.data.cargoItems = [createInitialCargoItem()]
@@ -1130,7 +1246,9 @@
       'createBy',
       'createTime',
       'updateBy',
-      'updateTime'
+      'updateTime',
+      'fieldAccess',
+      'isRecordOwner'
     ]) as CarrierPrice
 
     payload.originRegion = joinRegionPath(raw.originRegionPath)
@@ -1161,7 +1279,45 @@
     payload.paymentTotal = sumFields(paymentFields)
     payload.remark = normalizeText(raw.remark)
 
+    if (!canEditSensitiveField('contactPhones')) {
+      removePayloadFields(payload, [
+        'carrierId',
+        'contactName',
+        'contactPhone',
+        'driverId',
+        'driverName',
+        'driverPhone'
+      ])
+    }
+    if (!canEditSensitiveField('costAmounts')) {
+      removePayloadFields(payload, [
+        'cargoItems',
+        'cargoQuantityTotal',
+        'cargoVolumeTotal',
+        'cargoWeightTotal',
+        'transportCost',
+        'splitTransportFee',
+        'loadingFee',
+        'packageFee',
+        'otherFee',
+        'totalFee'
+      ])
+    }
+    if (!canEditSensitiveField('paymentAmounts')) {
+      removePayloadFields(payload, [
+        'cashAmount',
+        'prepaidAmount',
+        'collectAmount',
+        'periodicAmount',
+        'paymentTotal'
+      ])
+    }
+
     return payload
+  }
+
+  function removePayloadFields(payload: CarrierPrice, fields: Array<keyof CarrierPrice>): void {
+    fields.forEach((field) => Reflect.deleteProperty(payload, field))
   }
 
   function normalizeCargoItems(

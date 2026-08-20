@@ -1524,6 +1524,12 @@ declare namespace Api {
       type DriverFieldKey =
         'contactPhone' | 'idCardNo' | 'homeAddress' | 'emergencyContact' | 'identityDocuments'
       type DriverFieldAccessMap = Partial<Record<DriverFieldKey, FieldAccessLevel>>
+      type SensitiveNumber = number | string | null
+      type CarrierPriceFieldKey = 'contactPhones' | 'costAmounts' | 'paymentAmounts'
+      type CarrierPriceFieldAccessMap = Partial<Record<CarrierPriceFieldKey, FieldAccessLevel>>
+      type CustomerPriceFieldKey =
+        'contactPhones' | 'addressDetails' | 'quoteAmounts' | 'paymentAmounts'
+      type CustomerPriceFieldAccessMap = Partial<Record<CustomerPriceFieldKey, FieldAccessLevel>>
 
       interface Customer {
         id?: string
@@ -1685,14 +1691,14 @@ declare namespace Api {
         cargoType?: string | null
         shippingAddressId?: string | null
         receivingAddressId?: string | null
-        shippingContactName: string
-        shippingContactPhone: string
-        shippingAddressDetail: string
+        shippingContactName?: string | null
+        shippingContactPhone?: string | null
+        shippingAddressDetail?: string | null
         shippingLongitude?: number | string | null
         shippingLatitude?: number | string | null
-        receivingContactName: string
-        receivingContactPhone: string
-        receivingAddressDetail: string
+        receivingContactName?: string | null
+        receivingContactPhone?: string | null
+        receivingAddressDetail?: string | null
         receivingLongitude?: number | string | null
         receivingLatitude?: number | string | null
         cargoItems?: CustomerPriceCargoItem[]
@@ -1703,25 +1709,27 @@ declare namespace Api {
         vehicleLength?: string | null
         vehicleCount?: number | null
         billingMethod: string
-        transportFee?: number | null
-        insuranceFee?: number | null
-        packageFee?: number | null
-        loadingFee?: number | null
-        transferFee?: number | null
-        fuelFee?: number | null
-        serviceFee?: number | null
-        otherFee?: number | null
-        totalFee?: number | null
-        cashAmount?: number | null
-        prepaidAmount?: number | null
-        collectAmount?: number | null
-        periodicAmount?: number | null
-        paymentTotal?: number | null
+        transportFee?: SensitiveNumber
+        insuranceFee?: SensitiveNumber
+        packageFee?: SensitiveNumber
+        loadingFee?: SensitiveNumber
+        transferFee?: SensitiveNumber
+        fuelFee?: SensitiveNumber
+        serviceFee?: SensitiveNumber
+        otherFee?: SensitiveNumber
+        totalFee?: SensitiveNumber
+        cashAmount?: SensitiveNumber
+        prepaidAmount?: SensitiveNumber
+        collectAmount?: SensitiveNumber
+        periodicAmount?: SensitiveNumber
+        paymentTotal?: SensitiveNumber
         remark?: string | null
         createBy?: string
         createTime?: string
         updateBy?: string
         updateTime?: string
+        fieldAccess?: CustomerPriceFieldAccessMap
+        isRecordOwner?: boolean
       }
 
       type CustomerPriceSearchParams = Partial<
@@ -1881,9 +1889,9 @@ declare namespace Api {
         unit?: string | null
         volumeM3?: number | null
         weightKg?: number | null
-        splitTransportFee?: number | null
-        loadingFee?: number | null
-        packageFee?: number | null
+        splitTransportFee?: SensitiveNumber
+        loadingFee?: SensitiveNumber
+        packageFee?: SensitiveNumber
       }
 
       interface CarrierPrice {
@@ -1911,22 +1919,24 @@ declare namespace Api {
         cargoVolumeTotal?: number | null
         cargoWeightTotal?: number | null
         billingMethod: string
-        transportCost?: number | null
-        splitTransportFee?: number | null
-        loadingFee?: number | null
-        packageFee?: number | null
-        otherFee?: number | null
-        totalFee?: number | null
-        cashAmount?: number | null
-        prepaidAmount?: number | null
-        collectAmount?: number | null
-        periodicAmount?: number | null
-        paymentTotal?: number | null
+        transportCost?: SensitiveNumber
+        splitTransportFee?: SensitiveNumber
+        loadingFee?: SensitiveNumber
+        packageFee?: SensitiveNumber
+        otherFee?: SensitiveNumber
+        totalFee?: SensitiveNumber
+        cashAmount?: SensitiveNumber
+        prepaidAmount?: SensitiveNumber
+        collectAmount?: SensitiveNumber
+        periodicAmount?: SensitiveNumber
+        paymentTotal?: SensitiveNumber
         remark?: string | null
         createBy?: string
         createTime?: string
         updateBy?: string
         updateTime?: string
+        fieldAccess?: CarrierPriceFieldAccessMap
+        isRecordOwner?: boolean
       }
 
       type CarrierPriceSearchParams = Partial<
@@ -2040,7 +2050,6 @@ declare namespace Api {
         | 'partyContactPhone'
         | 'attachments'
       type ContractFieldAccessMap = Partial<Record<ContractFieldKey, FieldAccessLevel>>
-      type SensitiveNumber = number | string | null
 
       interface ContractAttachment {
         name: string

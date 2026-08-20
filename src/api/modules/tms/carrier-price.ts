@@ -1,136 +1,152 @@
+import { pick, pickBy } from 'lodash-es'
 import { useSupabase } from '@/hooks'
-import { applyCreateTimeRange, type SupabaseQueryLike } from '@/api/providers/supabase/query'
 
 type CarrierPrice = Api.Tms.BasicData.CarrierPrice
 type CarrierPriceSearchParams = Api.Tms.BasicData.CarrierPriceSearchParams
 
+interface SecureListPayload<TRecord, TAccess extends Record<string, string>> {
+  records: TRecord[]
+  total: number
+  fieldAccess?: TAccess
+}
+
 const { supabase, keysToSnakeDeep, responseHandle } = useSupabase()
 
-const CARRIER_PRICE_SELECT = `
-  *,
-  carrier:tms_carrier!tms_carrier_price_carrier_id_fkey(
-    id,
-    carrier_code,
-    company_name,
-    contact_name
-  ),
-  driver:tms_driver!tms_carrier_price_driver_id_fkey(
-    id,
-    carrier_id,
-    driver_name
-  ),
-  vehicle:vehicle_archive!tms_carrier_price_vehicle_id_fkey(
-    id,
-    carrier_id,
-    plate_no,
-    company_name,
-    vehicle_type,
-    vin,
-    self_no
-  )
-`
+const CARRIER_PRICE_PAYLOAD_KEYS = [
+  'quoteNo',
+  'carrierId',
+  'driverId',
+  'vehicleId',
+  'originRegion',
+  'destinationRegion',
+  'transportMode',
+  'contactName',
+  'contactPhone',
+  'driverName',
+  'driverPhone',
+  'plateNo',
+  'vehicleType',
+  'vehicleLength',
+  'cargoItems',
+  'cargoQuantityTotal',
+  'cargoVolumeTotal',
+  'cargoWeightTotal',
+  'billingMethod',
+  'transportCost',
+  'splitTransportFee',
+  'loadingFee',
+  'packageFee',
+  'otherFee',
+  'totalFee',
+  'cashAmount',
+  'prepaidAmount',
+  'collectAmount',
+  'periodicAmount',
+  'paymentTotal',
+  'remark'
+] as const satisfies readonly (keyof CarrierPrice)[]
 
-const applyCarrierPriceFilters = <TQuery extends SupabaseQueryLike>(
-  query: TQuery,
-  params: CarrierPriceSearchParams
-): TQuery => {
-  const {
-    carrierId,
-    recordId,
-    originRegion,
-    destinationRegion,
-    transportMode,
-    billingMethod,
-    keyword,
-    createTimeRange
-  } = params
+const createPayload = (record: Partial<CarrierPrice>): Record<string, unknown> =>
+  pickBy(pick(record, CARRIER_PRICE_PAYLOAD_KEYS), (value) => value !== undefined)
 
-  if (recordId) query = query.eq('id', recordId)
-  if (carrierId) query = query.eq('carrier_id', carrierId)
-  if (originRegion) query = query.eq('origin_region', originRegion)
-  if (destinationRegion) query = query.eq('destination_region', destinationRegion)
-  if (transportMode) query = query.eq('transport_mode', transportMode)
-  if (billingMethod) query = query.eq('billing_method', billingMethod)
-  if (keyword) {
-    query = query.or(
-      `quote_no.ilike.%${keyword}%,contact_name.ilike.%${keyword}%,contact_phone.ilike.%${keyword}%,driver_name.ilike.%${keyword}%,driver_phone.ilike.%${keyword}%,plate_no.ilike.%${keyword}%,remark.ilike.%${keyword}%`
-    )
+const toListRpcParams = (
+  params: CarrierPriceSearchParams & { ids?: string[]; maxRows?: number },
+  purpose: 'list' | 'export'
+) => {
+  const from = purpose === 'export' ? 0 : Math.max(params.from ?? 0, 0)
+  const requestedTo = purpose === 'export' ? Math.max((params.maxRows ?? 10000) - 1, 0) : params.to
+  return {
+    p_from: from,
+    p_to: Math.max(requestedTo ?? 9, from),
+    p_carrier_id: params.carrierId || null,
+    p_record_id: params.recordId || null,
+    p_origin_region: params.originRegion || null,
+    p_destination_region: params.destinationRegion || null,
+    p_transport_mode: params.transportMode || null,
+    p_billing_method: params.billingMethod || null,
+    p_keyword: String(params.keyword ?? '').trim() || null,
+    p_create_time_from: params.createTimeRange?.[0]
+      ? `${params.createTimeRange[0]}T00:00:00`
+      : null,
+    p_create_time_to: params.createTimeRange?.[1]
+      ? `${params.createTimeRange[1]}T23:59:59.999`
+      : null,
+    p_ids: params.ids?.length ? params.ids : null,
+    p_purpose: purpose
   }
-
-  return applyCreateTimeRange(query, createTimeRange)
 }
 
 export async function fetchCarrierPriceList(params: CarrierPriceSearchParams) {
-  const { from = 0, to = 9 } = params
-  let query = supabase
-    .from('tms_carrier_price')
-    .select(CARRIER_PRICE_SELECT, { count: 'exact' })
-    .order('create_time', { ascending: false })
-    .range(from, to)
-
-  query = applyCarrierPriceFilters(query, params)
-  return await responseHandle<CarrierPrice[]>(() => query, {
-    ignoreCheck: true,
+  const result = await responseHandle<
+    SecureListPayload<CarrierPrice, Api.Tms.BasicData.CarrierPriceFieldAccessMap>
+  >(() => supabase.rpc('tms_list_carrier_prices_secure', toListRpcParams(params, 'list')), {
     showErrorMessage: true
   })
+  return {
+    data: result.data?.records ?? [],
+    total: result.data?.total ?? 0,
+    error: result.error,
+    fieldAccess: result.data?.fieldAccess ?? {}
+  }
 }
 
 export async function exportCarrierPriceList(
   params: CarrierPriceSearchParams & { ids?: string[]; maxRows?: number }
 ) {
-  const { ids, maxRows = 10000 } = params
-  let query = supabase
-    .from('tms_carrier_price')
-    .select(CARRIER_PRICE_SELECT)
-    .order('create_time', { ascending: false })
-    .limit(maxRows)
-
-  query = ids?.length ? query.in('id', ids) : applyCarrierPriceFilters(query, params)
-  return await responseHandle<CarrierPrice[]>(() => query, {
-    ignoreCheck: true,
+  const result = await responseHandle<
+    SecureListPayload<CarrierPrice, Api.Tms.BasicData.CarrierPriceFieldAccessMap>
+  >(() => supabase.rpc('tms_list_carrier_prices_secure', toListRpcParams(params, 'export')), {
     showErrorMessage: true
   })
+  return {
+    data: result.data?.records ?? [],
+    total: result.data?.total ?? 0,
+    error: result.error,
+    fieldAccess: result.data?.fieldAccess ?? {}
+  }
 }
 
 export async function fetchCarrierPriceDetail(id: string) {
-  const query = supabase
-    .from('tms_carrier_price')
-    .select(CARRIER_PRICE_SELECT)
-    .eq('id', id)
-    .maybeSingle()
-
-  return await responseHandle<CarrierPrice | null>(() => query, {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
+  return await responseHandle<CarrierPrice | null>(
+    () => supabase.rpc('tms_get_carrier_price_secure', { p_id: id }),
+    { showErrorMessage: true }
+  )
 }
 
 export async function addCarrierPrice(params: CarrierPrice) {
-  return await responseHandle(
-    () => supabase.from('tms_carrier_price').insert(keysToSnakeDeep(params)),
+  const result = await responseHandle<string>(
+    () =>
+      supabase.rpc('tms_create_carrier_price_secure', {
+        p_payload: keysToSnakeDeep(createPayload(params))
+      }),
     { showMessage: true, breakReturn: true }
   )
+  return { ...result, data: result.data ? { id: result.data } : null }
 }
 
 export async function editCarrierPrice(params: CarrierPrice) {
   const { id, ...data } = params
-  delete data.carrier
-  delete data.driver
-  delete data.vehicle
-  return await responseHandle(
-    () => supabase.from('tms_carrier_price').update(keysToSnakeDeep(data)).eq('id', id),
+  if (!id) throw new Error('承运商价格 ID 不能为空')
+  return await responseHandle<CarrierPrice>(
+    () =>
+      supabase.rpc('tms_update_carrier_price_secure', {
+        p_id: id,
+        p_payload: keysToSnakeDeep(createPayload(data))
+      }),
     { showMessage: true, breakReturn: true }
   )
 }
 
 export async function deleteCarrierPrice(id: string) {
-  return await responseHandle(() => supabase.from('tms_carrier_price').delete().eq('id', id), {
-    showMessage: true
-  })
+  return await responseHandle<boolean>(
+    () => supabase.rpc('tms_delete_carrier_price_secure', { p_id: id }),
+    { showMessage: true, breakReturn: true }
+  )
 }
 
 export async function deleteCarrierPriceBatch(ids: string[]) {
-  return await responseHandle(() => supabase.from('tms_carrier_price').delete().in('id', ids), {
-    showMessage: true
-  })
+  return await responseHandle<number>(
+    () => supabase.rpc('tms_delete_carrier_prices_secure', { p_ids: ids }),
+    { showMessage: true, breakReturn: true }
+  )
 }
