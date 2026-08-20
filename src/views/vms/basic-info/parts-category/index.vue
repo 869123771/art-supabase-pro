@@ -176,10 +176,12 @@
 
   const headerActions = computed<ArtTableQueryHeaderAction[]>(() => [
     {
+      permission: 'PartsCategory:Add',
       type: 'add',
       onClick: () => openDialog(undefined, currentCategory.value)
     },
     {
+      permission: 'PartsCategory:Import',
       type: 'import',
       importColumns: partsCategoryExcelColumns,
       importApi: async (rows) => {
@@ -189,6 +191,7 @@
       onImportError: handleImportError
     },
     {
+      permission: 'PartsCategory:Export',
       type: 'export',
       exportFilename: '零部件类别',
       exportSheetName: '零部件类别',
@@ -203,6 +206,7 @@
       }
     },
     {
+      permission: 'PartsCategory:Delete',
       type: 'delete',
       content: ({ selectedCount }: ArtTableQueryHeaderActionContext) =>
         `确定删除选中的 ${selectedCount} 个零部件类别吗？子类别会一并删除，删除后无法恢复。`,
@@ -271,7 +275,11 @@
       fixed: 'right',
       formatter: (row) => (
         <div class="flex">
-          <ArtButtonTable type="edit" onClick={() => openDialog(row)} />
+          <ArtButtonTable
+            type="edit"
+            permission="PartsCategory:Edit"
+            onClick={() => openDialog(row)}
+          />
           <ArtButtonMore
             list={getMoreActions()}
             onClick={(item: ButtonMoreItem) => handleMoreAction(item, row)}
@@ -291,12 +299,9 @@
   }
 
   const getMoreActions = (): ButtonMoreItem[] => [
+    { auth: 'PartsCategory:Add', key: 'add', label: '新增下级', icon: 'ri:add-line' },
     {
-      key: 'add',
-      label: '新增下级',
-      icon: 'ri:add-line'
-    },
-    {
+      auth: 'PartsCategory:Delete',
       key: 'delete',
       label: '删除',
       icon: 'ri:delete-bin-5-line',

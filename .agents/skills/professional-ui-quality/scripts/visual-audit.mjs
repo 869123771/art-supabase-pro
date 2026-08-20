@@ -140,6 +140,30 @@ try {
           .waitForLoadState('networkidle', { timeout: Math.min(timeout, 5000) })
           .catch(() => {})
 
+        const target = page.locator(selector).first()
+        await target.waitFor({ state: 'visible', timeout })
+        const settingGuide = page.locator('.setting-guide').first()
+        if (await settingGuide.isVisible()) {
+          const dismissButton = settingGuide.getByRole('button').last()
+          if (await dismissButton.isVisible()) {
+            await dismissButton.click()
+            await settingGuide
+              .waitFor({ state: 'hidden', timeout: Math.min(timeout, 5000) })
+              .catch(() => {})
+          }
+        }
+        await target
+          .locator('[aria-busy="true"]')
+          .first()
+          .waitFor({ state: 'hidden', timeout: Math.min(timeout, 15000) })
+          .catch(() => {})
+        await page
+          .locator('.el-loading-mask:visible')
+          .first()
+          .waitFor({ state: 'hidden', timeout: Math.min(timeout, 15000) })
+          .catch(() => {})
+        if (settle > 0) await page.waitForTimeout(settle)
+
         await page.evaluate(
           ({ selectedTheme, selectedBoxMode }) => {
             if (selectedTheme !== 'current') {
@@ -151,10 +175,12 @@ try {
           },
           { selectedTheme: theme, selectedBoxMode: boxMode }
         )
-
-        const target = page.locator(selector).first()
-        await target.waitFor({ state: 'visible', timeout })
-        if (settle > 0) await page.waitForTimeout(settle)
+        await page.evaluate(
+          () =>
+            new Promise((resolve) => {
+              requestAnimationFrame(() => requestAnimationFrame(resolve))
+            })
+        )
 
         const metrics = await page.evaluate((targetSelector) => {
           const scope = document.querySelector(targetSelector)
@@ -210,9 +236,19 @@ try {
           })
 
           return {
+            appliedTheme: root.classList.contains('dark') ? 'dark' : 'light',
+            appliedBoxMode: root.getAttribute('data-box-mode') || 'unset',
             documentWidth: root.clientWidth,
             documentScrollWidth: root.scrollWidth,
             horizontalOverflow: root.scrollWidth > root.clientWidth + 1,
+            busyRegionCount: scope?.querySelectorAll('[aria-busy="true"]').length ?? 0,
+            visibleSkeletonCount: scope
+              ? [...scope.querySelectorAll('.el-skeleton')].filter((element) => {
+                  const rect = element.getBoundingClientRect()
+                  const style = getComputedStyle(element)
+                  return rect.width > 0 && rect.height > 0 && style.visibility !== 'hidden'
+                }).length
+              : 0,
             focusableCount: visibleFocusables.length,
             unnamedInteractiveCount: unnamed.length,
             undersizedInteractiveCount: undersized.length,
@@ -264,6 +300,15 @@ try {
 const blockingFindings = results.flatMap((result) => {
   const findings = []
   if (result.metrics.horizontalOverflow) findings.push(`${result.name}: horizontal overflow`)
+  if (result.metrics.busyRegionCount || result.metrics.visibleSkeletonCount) {
+    findings.push(`${result.name}: page captured before loading completed`)
+  }
+  if (result.theme !== 'current' && result.metrics.appliedTheme !== result.theme) {
+    findings.push(`${result.name}: requested theme was not applied`)
+  }
+  if (result.boxMode !== 'current' && result.metrics.appliedBoxMode !== result.boxMode) {
+    findings.push(`${result.name}: requested box mode was not applied`)
+  }
   if (result.consoleErrors.length)
     findings.push(`${result.name}: ${result.consoleErrors.length} console error(s)`)
   if (result.pageErrors.length)

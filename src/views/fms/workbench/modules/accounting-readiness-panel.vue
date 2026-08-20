@@ -78,7 +78,6 @@
 </template>
 
 <script setup lang="ts">
-  import { storeToRefs } from 'pinia'
   import {
     fetchAccountingReadiness,
     fetchAccountSetOptions,
@@ -86,7 +85,7 @@
   } from '@/api/fms'
   import { financeRouteNames } from '@/router/business-paths'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
-  import { useUserStore } from '@/store/modules/user'
+  import { useAuth } from '@/hooks/core/useAuth'
 
   defineOptions({ name: 'AccountingReadinessPanel' })
 
@@ -103,7 +102,7 @@
 
   const router = useRouter()
   const { confirmAction } = useArtFeedback()
-  const { isPlatformSuper } = storeToRefs(useUserStore())
+  const { hasAuth } = useAuth()
   const state = reactive({
     loading: false,
     initializing: false,
@@ -128,7 +127,7 @@
         ready: Boolean(current?.foundationReady),
         actionLabel: current?.foundationReady
           ? '查看科目'
-          : isPlatformSuper.value
+          : hasAuth('FinanceAccountingSubject:Initialize')
             ? '一键补齐'
             : '查看科目',
         routeName: financeRouteNames.accountingSubject,
@@ -220,7 +219,11 @@
   }
 
   async function handleStep(item: ReadinessStep): Promise<void> {
-    if (item.key === 'foundation' && !item.ready && isPlatformSuper.value) {
+    if (
+      item.key === 'foundation' &&
+      !item.ready &&
+      hasAuth('FinanceAccountingSubject:Initialize')
+    ) {
       try {
         await confirmAction(
           '将只新增缺失的核心科目、默认制证规则和报表映射，不覆盖已有配置。',

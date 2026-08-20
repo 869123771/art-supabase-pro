@@ -1,9 +1,10 @@
 import { useSupabase } from '@/hooks'
-import { compact, uniq } from 'lodash-es'
 import { WRITE_PERMISSION_DENIED_MESSAGE } from '@/hooks/core/useSupabase'
 import { withRequestOptions } from '@/api/providers/supabase/query'
 import type { ApiRequestOptions } from '@/types/api/request'
 import { applyFilters, type FilterSpec } from '@/utils/supabase'
+import { fetchCarrierOptions } from '@/api/modules/tms/carrier'
+import { fetchDriverOptions } from '@/api/modules/tms/driver'
 import {
   VEHICLE_REMINDER_VIEWS,
   fetchVehicleReminderViewList,
@@ -15,7 +16,6 @@ import {
   type VehicleArchiveWritePayload,
   type VehicleArchiveDeleteRelatedCount,
   type VehicleArchiveDeletePreview,
-  type VehicleArchiveDeleteBase,
   type VehicleReminderSearchParams,
   type VehicleReminderCompanyOption
 } from './types'
@@ -35,14 +35,12 @@ const VEHICLE_ARCHIVE_SELECT = `
     id,
     carrier_code,
     company_name,
-    contact_name,
-    contact_phone
+    contact_name
   ),
   primary_driver:tms_driver!vehicle_archive_primary_driver_id_fkey(
     id,
     carrier_id,
     driver_name,
-    phone,
     driver_type,
     license_type,
     enabled
@@ -51,7 +49,6 @@ const VEHICLE_ARCHIVE_SELECT = `
     id,
     carrier_id,
     driver_name,
-    phone,
     driver_type,
     license_type,
     enabled
@@ -69,6 +66,53 @@ const VEHICLE_ARCHIVE_RELATED_DELETE_ITEMS = [
   { tableName: 'vehicle_violation_record', label: '违章记录' },
   { tableName: 'tms_carrier_price', label: '承运商车辆报价' }
 ] as const
+
+const enrichVehicleArchiveMasterData = async (
+  records: VehicleArchive[],
+  options?: ApiRequestOptions
+): Promise<VehicleArchive[]> => {
+  const carrierIds = Array.from(
+    new Set(records.map((record) => record.carrierId).filter((id): id is string => Boolean(id)))
+  )
+  const driverIds = Array.from(
+    new Set(
+      records
+        .flatMap((record) => [record.primaryDriverId, record.secondaryDriverId])
+        .filter((id): id is string => Boolean(id))
+    )
+  )
+  if (!carrierIds.length && !driverIds.length) return records
+
+  const [carrierResult, driverResult] = await Promise.all([
+    carrierIds.length
+      ? fetchCarrierOptions(
+          { ids: carrierIds, includeDisabled: true, maxRows: carrierIds.length },
+          options
+        )
+      : Promise.resolve({ data: [] as Api.Tms.BasicData.CarrierOption[] }),
+    driverIds.length
+      ? fetchDriverOptions(
+          { ids: driverIds, includeDisabled: true, maxRows: driverIds.length },
+          options
+        )
+      : Promise.resolve({ data: [] as Api.Tms.BasicData.DriverOption[] })
+  ])
+  const carriersById = new Map((carrierResult.data ?? []).map((carrier) => [carrier.id, carrier]))
+  const driversById = new Map((driverResult.data ?? []).map((driver) => [driver.id, driver]))
+
+  return records.map((record) => ({
+    ...record,
+    carrier: record.carrierId
+      ? (carriersById.get(record.carrierId) ?? record.carrier ?? null)
+      : null,
+    primaryDriver: record.primaryDriverId
+      ? (driversById.get(record.primaryDriverId) ?? record.primaryDriver ?? null)
+      : null,
+    secondaryDriver: record.secondaryDriverId
+      ? (driversById.get(record.secondaryDriverId) ?? record.secondaryDriver ?? null)
+      : null
+  }))
+}
 
 const countRowsByVehicleIds = async (
   tableName: string,
@@ -104,54 +148,12 @@ const fetchVehicleArchiveDeleteRelatedCounts = async (
   return counts
 }
 
-const fetchVehicleArchiveCarrierIds = async (ids: string[]): Promise<string[]> => {
-  if (!ids.length) return []
-
-  const query =
-    ids.length === 1
-      ? supabase.from(VEHICLE_ARCHIVE_TABLE).select('carrier_id').eq('id', ids[0])
-      : supabase.from(VEHICLE_ARCHIVE_TABLE).select('carrier_id').in('id', ids)
-
-  const result = await responseHandle<VehicleArchiveDeleteBase[]>(() => query, {
-    ignoreCheck: true,
-    showErrorMessage: true,
-    breakReturn: true
-  })
-
-  return Array.from(
-    new Set((result.data ?? []).map((item) => item.carrierId).filter((id): id is string => !!id))
-  )
-}
-
 const assertVehicleArchiveNoWaybill = async (ids: string[]): Promise<void> => {
   const waybillCount = await countRowsByVehicleIds('tms_waybill', 'vehicle_id', ids)
 
   if (waybillCount > 0) {
     throw new Error(`该车辆已关联 ${waybillCount} 条运单，禁止删除`)
   }
-}
-
-const refreshCarrierVehicleCounts = async (carrierIds: string[]): Promise<void> => {
-  const uniqueCarrierIds = uniq(compact(carrierIds))
-  if (!uniqueCarrierIds.length) return
-
-  await Promise.all(
-    uniqueCarrierIds.map(async (carrierId) => {
-      const count = await countRowsByVehicleIds(VEHICLE_ARCHIVE_TABLE, 'carrier_id', [carrierId])
-
-      await responseHandle(
-        () =>
-          supabase
-            .from('tms_carrier')
-            .update({ vehicle_count: count }, { count: 'exact' })
-            .eq('id', carrierId),
-        {
-          showErrorMessage: true,
-          breakReturn: true
-        }
-      )
-    })
-  )
 }
 
 const getVehicleArchiveSearchFilters = (params: VehicleArchiveSearchParams): FilterSpec[] => [
@@ -195,10 +197,11 @@ export async function fetchVehicleArchiveList(
     camelToSnake: true
   })
 
-  return await responseHandle<VehicleArchive[]>(() => withRequestOptions(query, options), {
+  const result = await responseHandle<VehicleArchive[]>(() => withRequestOptions(query, options), {
     ignoreCheck: true,
     showErrorMessage: true
   })
+  return { ...result, data: await enrichVehicleArchiveMasterData(result.data ?? [], options) }
 }
 
 export async function exportVehicleArchiveList(
@@ -223,20 +226,23 @@ export async function exportVehicleArchiveList(
     })
   }
 
-  return await responseHandle<VehicleArchive[]>(() => query, {
+  const result = await responseHandle<VehicleArchive[]>(() => query, {
     ignoreCheck: true,
     showErrorMessage: true
   })
+  return { ...result, data: await enrichVehicleArchiveMasterData(result.data ?? []) }
 }
 
 export async function fetchVehicleArchiveDetail(id: string) {
-  return await responseHandle<VehicleArchive>(
+  const result = await responseHandle<VehicleArchive>(
     () => supabase.from(VEHICLE_ARCHIVE_TABLE).select(VEHICLE_ARCHIVE_SELECT).eq('id', id).single(),
     {
       ignoreCheck: true,
       showErrorMessage: true
     }
   )
+  const [data] = result.data ? await enrichVehicleArchiveMasterData([result.data]) : []
+  return { ...result, data: data ?? null }
 }
 
 export async function addVehicleArchive(
@@ -294,7 +300,6 @@ export async function fetchVehicleArchiveDeletePreview(id: string) {
 
 export async function deleteVehicleArchive(id: string) {
   const ids = [id]
-  const carrierIds = await fetchVehicleArchiveCarrierIds(ids)
   await assertVehicleArchiveNoWaybill(ids)
 
   return await responseHandle(
@@ -306,12 +311,11 @@ export async function deleteVehicleArchive(id: string) {
       requireAffected: true,
       noAffectedMessage: WRITE_PERMISSION_DENIED_MESSAGE
     }
-  ).finally(() => refreshCarrierVehicleCounts(carrierIds))
+  )
 }
 
 export async function deleteVehicleArchiveBatch(ids: string[]) {
   await assertVehicleArchiveNoWaybill(ids)
-  const carrierIds = await fetchVehicleArchiveCarrierIds(ids)
 
   return await responseHandle(
     () => supabase.from(VEHICLE_ARCHIVE_TABLE).delete({ count: 'exact' }).in('id', ids),
@@ -321,7 +325,7 @@ export async function deleteVehicleArchiveBatch(ids: string[]) {
       requireAffected: true,
       noAffectedMessage: WRITE_PERMISSION_DENIED_MESSAGE
     }
-  ).finally(() => refreshCarrierVehicleCounts(carrierIds))
+  )
 }
 
 // 车辆管理选项

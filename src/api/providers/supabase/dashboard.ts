@@ -1,6 +1,7 @@
 import dayjs, { type Dayjs } from 'dayjs'
 import { useSupabase } from '@/hooks'
 import type { SupabaseQueryLike } from '@/api/providers/supabase/query'
+import { fetchSecureOrders } from '@/api/modules/tms/transport-secure'
 
 const { supabase, responseHandle } = useSupabase()
 
@@ -77,9 +78,6 @@ interface DashboardTrendRange {
   keyFormat: string
   labelFormat: string
 }
-
-const orderSelect =
-  'id, order_no, order_status, dispatch_status, origin_station, destination_station, dispatch_plate_no, dispatch_driver_name, planned_arrival_time, total_fee, create_time, shippingCustomer:tms_customer!tms_order_shipping_customer_id_fkey(customer_name)'
 
 const statusKeys = ['pending_load', 'pending_order', 'transporting', 'signed', 'completed'] as const
 
@@ -244,8 +242,8 @@ export async function fetchDashboardData(
   period: DashboardTrendPeriod = 'month'
 ): Promise<DashboardData> {
   const trendRange = getTrendRange(period)
-  const todayStart = dayjs().startOf('day').toISOString()
-  const trendStart = trendRange.start.toISOString()
+  const todayDate = dayjs().format('YYYY-MM-DD')
+  const trendStartDate = trendRange.start.format('YYYY-MM-DD')
 
   const [
     todayOrders,
@@ -258,67 +256,39 @@ export async function fetchDashboardData(
     recentRows,
     reminders
   ] = await Promise.all([
-    fetchRows<DashboardOrderRow>(
-      asDashboardQuery(
-        supabase.from('tms_order').select(orderSelect).gte('create_time', todayStart)
-      )
-    ),
-    countRows(
-      asDashboardQuery(
-        supabase
-          .from('tms_order')
-          .select('id', { count: 'exact', head: true })
-          .eq('dispatch_status', 'pending')
-      )
-    ),
-    countRows(
-      asDashboardQuery(
-        supabase
-          .from('tms_order')
-          .select('id', { count: 'exact', head: true })
-          .eq('order_status', 'transporting')
-      )
-    ),
+    fetchSecureOrders<Api.Tms.Order.OrderRecord>(
+      { createTimeRange: [todayDate, todayDate], maxRows: 10000 },
+      'dashboard'
+    ).then((result) => result.data as DashboardOrderRow[]),
+    fetchSecureOrders<Api.Tms.Order.OrderRecord>(
+      { dispatchStatus: 'pending', countOnly: true },
+      'dashboard'
+    ).then((result) => result.total),
+    fetchSecureOrders<Api.Tms.Order.OrderRecord>(
+      { orderStatus: 'transporting', countOnly: true },
+      'dashboard'
+    ).then((result) => result.total),
     fetchRows<{ operationStatus?: string | null; auditStatus?: string | null }>(
       asDashboardQuery(supabase.from('vehicle_archive').select('operation_status, audit_status'))
     ),
-    countRows(
-      asDashboardQuery(
-        supabase
-          .from('tms_order')
-          .select('id', { count: 'exact', head: true })
-          .eq('order_status', 'completed')
-          .gte('signed_at', todayStart)
-      )
-    ),
-    fetchRows<DashboardOrderRow>(
-      asDashboardQuery(
-        supabase
-          .from('tms_order')
-          .select('order_no, order_status, total_fee, create_time')
-          .gte('create_time', trendStart)
-          .order('create_time', { ascending: true })
-          .limit(5000)
-      )
-    ),
-    fetchRows<DashboardOrderRow>(
-      asDashboardQuery(
-        supabase
-          .from('tms_order')
-          .select(orderSelect)
-          .eq('order_status', 'transporting')
-          .order('update_time', { ascending: false })
-          .limit(6)
-      )
-    ),
-    fetchRows<DashboardOrderRow>(
-      asDashboardQuery(
-        supabase
-          .from('tms_order')
-          .select(orderSelect)
-          .order('create_time', { ascending: false })
-          .limit(6)
-      )
+    fetchSecureOrders<Api.Tms.Order.OrderRecord>(
+      {
+        orderStatus: 'completed',
+        signedTimeRange: [todayDate, todayDate],
+        countOnly: true
+      },
+      'dashboard'
+    ).then((result) => result.total),
+    fetchSecureOrders<Api.Tms.Order.OrderRecord>(
+      { createTimeRange: [trendStartDate], maxRows: 5000 },
+      'dashboard'
+    ).then((result) => result.data as DashboardOrderRow[]),
+    fetchSecureOrders<Api.Tms.Order.OrderRecord>(
+      { orderStatus: 'transporting', maxRows: 6 },
+      'dashboard'
+    ).then((result) => result.data as DashboardOrderRow[]),
+    fetchSecureOrders<Api.Tms.Order.OrderRecord>({ maxRows: 6 }, 'dashboard').then(
+      (result) => result.data as DashboardOrderRow[]
     ),
     fetchReminderCounts()
   ])

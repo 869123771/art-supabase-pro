@@ -244,8 +244,16 @@
       fixed: 'right',
       formatter: (row) => (
         <div class="favorite-route-page__operation">
-          <ArtButtonTable type="edit" onClick={() => openDialog(row)} />
-          <ArtButtonTable type="delete" onClick={() => void handleDelete(row)} />
+          <ArtButtonTable
+            type="edit"
+            permission="TmsFavoriteRoute:Edit"
+            onClick={() => openDialog(row)}
+          />
+          <ArtButtonTable
+            type="delete"
+            permission="TmsFavoriteRoute:Delete"
+            onClick={() => void handleDelete(row)}
+          />
         </div>
       )
     }
@@ -253,11 +261,13 @@
 
   const headerActions = computed<ArtTableQueryHeaderAction[]>(() => [
     {
+      permission: 'TmsFavoriteRoute:Add',
       type: 'add',
       label: '新增线路',
       onClick: () => openDialog(undefined, table.searchQuery.tenantId)
     },
     {
+      permission: 'TmsFavoriteRoute:Delete',
       type: 'delete',
       content: ({ selectedCount }: { selectedCount: number }) =>
         `确定删除选中的 ${selectedCount} 条常用线路吗？`,

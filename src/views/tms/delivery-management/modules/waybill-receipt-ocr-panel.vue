@@ -10,6 +10,7 @@
         </div>
       </div>
       <ElButton
+        v-auth="'TmsDeliveryManagement:OcrReceipt'"
         type="primary"
         :loading="analyzing"
         :disabled="!imageUrls.length"
@@ -79,6 +80,7 @@
             />
             <ElButton
               v-if="result.assessment.signals.length && isPlatformSuper"
+              v-auth="'TmsDeliveryManagement:ManageException'"
               type="warning"
               plain
               :loading="creatingWorkOrder"
@@ -88,7 +90,14 @@
               <ArtSvgIcon icon="ri-file-warning-line" />
               {{ workOrder ? '已生成异常工单' : '生成异常工单' }}
             </ElButton>
-            <ElButton type="primary" plain @click="emit('apply', result)">采用识别结果</ElButton>
+            <ElButton
+              v-auth="'TmsDeliveryManagement:OcrReceipt'"
+              type="primary"
+              plain
+              @click="emit('apply', result)"
+            >
+              采用识别结果
+            </ElButton>
           </div>
         </div>
         <p>{{ result.summary }}</p>

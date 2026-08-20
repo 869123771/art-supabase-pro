@@ -105,3 +105,45 @@ test('keeps a complete and stable carrier in the preferred tier', () => {
   assert.equal(result.metrics.onTimeRate, 100)
   assert.equal(result.signals.length, 0)
 })
+
+test('does not infer freight metrics from masked or hidden values', () => {
+  const result = assessCarrierPerformance(
+    {
+      carrier: {
+        id: 'carrier-4',
+        carrier_code: 'C004',
+        company_name: '受限运输',
+        business_license_no: 'LIC-004',
+        signed_contract: true
+      },
+      waybills: [
+        {
+          id: 'restricted-1',
+          waybill_no: 'RESTRICTED-1',
+          status: 'cancelled',
+          origin_city: '成都',
+          destination_city: '重庆',
+          freight_amount: '***',
+          create_time: '2026-08-04T00:00:00.000Z'
+        },
+        {
+          id: 'restricted-2',
+          waybill_no: 'RESTRICTED-2',
+          status: 'completed',
+          origin_city: '成都',
+          destination_city: '西安',
+          create_time: '2026-08-03T00:00:00.000Z'
+        }
+      ],
+      costs: [{ amount: 500, audit_status: 'approved' }],
+      driverCount: 2,
+      vehicleCount: 2
+    },
+    { now }
+  )
+
+  assert.equal(result.metrics.totalFreightAmount, null)
+  assert.equal(result.metrics.costToFreightRate, null)
+  assert.equal(result.riskWaybills[0]?.freightAmount, null)
+  assert.ok(result.limitations.some((item) => item.includes('无权查看全部运费')))
+})

@@ -12,14 +12,23 @@
       :show-submit="false"
     >
       <template #businessLicenseUrl>
-        <ArtUploadImage v-model="form.businessLicenseUrl" title="营业执照" :size="104" :limit="1" />
+        <ArtUploadImage
+          v-if="canViewCarrierAttachments"
+          v-model="form.businessLicenseUrl"
+          title="营业执照"
+          :size="104"
+          :limit="1"
+          :readonly="!canEditCarrierField('attachments')"
+        />
       </template>
       <template #addressPicker>
         <ArtAddressPicker
+          v-if="canViewCarrierField('addressDetail')"
           v-model:region-path="form.regionPath"
           v-model:address-detail="form.addressDetail"
           :region-api="fetchRegionOptions"
           :show-coordinate-hint="false"
+          :disabled="!canEditCarrierField('addressDetail')"
           label-width="118px"
         />
       </template>
@@ -39,6 +48,7 @@
   import { addCarrier, editCarrier, fetchCarrierOptions } from '@/api/tms'
   import { fetchRegionOptions } from '@/api/common'
   import { useUserStore } from '@/store/modules/user'
+  import { canEditField, canViewField, getFieldAccess } from '@/utils/field-permission'
 
   defineOptions({ name: 'TmsCarrierDialog' })
 
@@ -88,11 +98,29 @@
     bankName: '',
     bankAccountName: '',
     bankAccount: '',
-    remark: ''
+    remark: '',
+    fieldAccess: {
+      contactPhone: 'edit',
+      addressDetail: 'edit',
+      taxNo: 'edit',
+      bankAccount: 'edit',
+      attachments: 'edit'
+    },
+    isRecordOwner: true
   })
 
   const form = reactive<CarrierForm>(createInitialForm())
   const carrierNumber = useDocumentNumberRule('master.carrier')
+
+  const canViewCarrierField = (field: Api.Tms.BasicData.CarrierFieldKey): boolean =>
+    canViewField(form.fieldAccess, field)
+
+  const canEditCarrierField = (field: Api.Tms.BasicData.CarrierFieldKey): boolean =>
+    canEditField(form.fieldAccess, field)
+
+  const canViewCarrierAttachments = computed(() =>
+    ['read', 'edit'].includes(getFieldAccess(form.fieldAccess, 'attachments'))
+  )
 
   const formRules: FormRules<CarrierForm> = {
     companyName: [
@@ -115,8 +143,12 @@
     legalRepresentative: [{ max: 50, message: '法人代表不能超过 50 个字符', trigger: 'blur' }],
     contactPhone: [
       {
-        pattern: /^(?:1[3-9]\d{9}|0\d{2,3}-?\d{7,8})$/,
-        message: '请输入正确的手机号或座机号',
+        validator: (_rule, value, callback) => {
+          if (!canEditCarrierField('contactPhone') || !value) return callback()
+          return /^(?:1[3-9]\d{9}|0\d{2,3}-?\d{7,8})$/.test(String(value))
+            ? callback()
+            : callback(new Error('请输入正确的手机号或座机号'))
+        },
         trigger: 'blur'
       }
     ],
@@ -190,7 +222,12 @@
       label: '税务登记号码',
       key: 'taxRegistrationNo',
       type: 'input',
-      props: { maxlength: 50, placeholder: '请输入税务登记号码' }
+      hidden: !canViewCarrierField('taxNo'),
+      props: {
+        maxlength: 50,
+        placeholder: '请输入税务登记号码',
+        disabled: !canEditCarrierField('taxNo')
+      }
     },
     {
       label: '法人代表',
@@ -203,13 +240,19 @@
       key: 'addressPicker',
       type: 'input',
       span: 24,
-      labelWidth: 0
+      labelWidth: 0,
+      hidden: !canViewCarrierField('addressDetail')
     },
     {
       label: '邮编',
       key: 'postalCode',
       type: 'input',
-      props: { maxlength: 6, placeholder: '请输入邮编' }
+      hidden: !canViewCarrierField('addressDetail'),
+      props: {
+        maxlength: 6,
+        placeholder: '请输入邮编',
+        disabled: !canEditCarrierField('addressDetail')
+      }
     },
     {
       label: '承运商状态',
@@ -220,7 +263,8 @@
     {
       label: '营业执照',
       key: 'businessLicenseUrl',
-      span: 24
+      span: 24,
+      hidden: !canViewCarrierAttachments.value
     },
     {
       label: '备注信息',
@@ -246,7 +290,12 @@
       label: '手机号码',
       key: 'contactPhone',
       type: 'input',
-      props: { maxlength: 20, placeholder: '请输入联系电话' }
+      hidden: !canViewCarrierField('contactPhone'),
+      props: {
+        maxlength: 20,
+        placeholder: '请输入联系电话',
+        disabled: !canEditCarrierField('contactPhone')
+      }
     },
     {
       label: '部门',
@@ -283,26 +332,46 @@
       label: '纳税人识别号',
       key: 'taxNo',
       type: 'input',
-      props: { maxlength: 40, placeholder: '请输入纳税人识别号' }
+      hidden: !canViewCarrierField('taxNo'),
+      props: {
+        maxlength: 40,
+        placeholder: '请输入纳税人识别号',
+        disabled: !canEditCarrierField('taxNo')
+      }
     },
     {
       label: '开户行',
       key: 'bankName',
       type: 'input',
-      props: { maxlength: 100, placeholder: '请输入开户行' }
+      hidden: !canViewCarrierField('bankAccount'),
+      props: {
+        maxlength: 100,
+        placeholder: '请输入开户行',
+        disabled: !canEditCarrierField('bankAccount')
+      }
     },
     {
       label: '开户名称',
       key: 'bankAccountName',
       type: 'input',
-      props: { maxlength: 100, placeholder: '请输入开户名称' }
+      hidden: !canViewCarrierField('bankAccount'),
+      props: {
+        maxlength: 100,
+        placeholder: '请输入开户名称',
+        disabled: !canEditCarrierField('bankAccount')
+      }
     },
     {
       label: '银行账号',
       key: 'bankAccount',
       type: 'input',
       span: 16,
-      props: { maxlength: 50, placeholder: '请输入银行账号' }
+      hidden: !canViewCarrierField('bankAccount'),
+      props: {
+        maxlength: 50,
+        placeholder: '请输入银行账号',
+        disabled: !canEditCarrierField('bankAccount')
+      }
     }
   ])
 
@@ -319,6 +388,27 @@
 
   const normalizePayload = (): Carrier => {
     const { regionPath, ...rawPayload } = structuredClone(toRaw(form))
+    if (rawPayload.id && !canEditField(rawPayload.fieldAccess, 'contactPhone')) {
+      delete rawPayload.contactPhone
+    }
+    if (rawPayload.id && !canEditField(rawPayload.fieldAccess, 'addressDetail')) {
+      delete rawPayload.region
+      delete rawPayload.addressDetail
+      delete rawPayload.postalCode
+    }
+    if (rawPayload.id && !canEditField(rawPayload.fieldAccess, 'taxNo')) {
+      delete rawPayload.taxRegistrationNo
+      delete rawPayload.taxNo
+    }
+    if (rawPayload.id && !canEditField(rawPayload.fieldAccess, 'bankAccount')) {
+      delete rawPayload.bankName
+      delete rawPayload.bankAccountName
+      delete rawPayload.bankAccount
+    }
+    if (rawPayload.id && !canEditField(rawPayload.fieldAccess, 'attachments')) {
+      delete rawPayload.businessLicenseUrl
+      delete rawPayload.contractAttachmentUrl
+    }
     const payload = omit(rawPayload, [
       'tenantId',
       'createBy',
@@ -329,10 +419,12 @@
       'vehicleCount',
       'signedContract',
       'contractAttachmentUrl',
-      'addressPicker'
+      'addressPicker',
+      'fieldAccess',
+      'isRecordOwner'
     ]) as Carrier
     payload.parentUnitId = payload.parentUnitId || null
-    payload.region = regionPath.join('/')
+    if (rawPayload.region !== undefined) payload.region = regionPath.join('/')
     if (!payload.carrierCode) delete payload.carrierCode
     return payload
   }

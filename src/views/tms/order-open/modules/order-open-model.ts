@@ -1,4 +1,5 @@
 import { cloneDeep, isNil, omit, round, toNumber, trim } from 'lodash-es'
+import { getFieldAccess } from '@/utils/field-permission'
 
 export type OrderRecord = Api.Tms.Order.OrderRecord
 export type CargoItem = Api.Tms.Order.CargoItem
@@ -161,25 +162,39 @@ export function createFavoriteRouteContactPatch(route: FavoriteRoute): Partial<O
   const destination = route.destinationAddress
   const originCustomer = resolveEndpointCustomer(route, origin)
   const destinationCustomer = resolveEndpointCustomer(route, destination)
+  const originPhoneAccess = getFieldAccess(origin?.fieldAccess, 'contactPhone')
+  const originAddressAccess = getFieldAccess(origin?.fieldAccess, 'addressDetail')
+  const destinationPhoneAccess = getFieldAccess(destination?.fieldAccess, 'contactPhone')
+  const destinationAddressAccess = getFieldAccess(destination?.fieldAccess, 'addressDetail')
+  const canReadOriginPhone = originPhoneAccess === 'read' || originPhoneAccess === 'edit'
+  const canReadOriginAddress = originAddressAccess === 'read' || originAddressAccess === 'edit'
+  const canReadDestinationPhone =
+    destinationPhoneAccess === 'read' || destinationPhoneAccess === 'edit'
+  const canReadDestinationAddress =
+    destinationAddressAccess === 'read' || destinationAddressAccess === 'edit'
 
   return {
     shippingCustomerId: origin?.customerId || route.customerId || null,
     shippingCustomerName: originCustomer?.customerName || '',
     shippingAddressId: origin?.id || route.originAddressId || null,
     shippingContactName: textValue(origin?.contactName) || originCustomer?.customerName || '',
-    shippingContactPhone: textValue(origin?.contactPhone),
-    shippingAddressDetail: formatOrderAddress(origin?.region, origin?.addressDetail),
-    shippingLongitude: origin?.longitude ?? null,
-    shippingLatitude: origin?.latitude ?? null,
+    shippingContactPhone: canReadOriginPhone ? textValue(origin?.contactPhone) : '',
+    shippingAddressDetail: canReadOriginAddress
+      ? formatOrderAddress(origin?.region, origin?.addressDetail)
+      : '',
+    shippingLongitude: canReadOriginAddress ? (origin?.longitude ?? null) : null,
+    shippingLatitude: canReadOriginAddress ? (origin?.latitude ?? null) : null,
     receivingCustomerId: destination?.customerId || route.customerId || null,
     receivingCustomerName: destinationCustomer?.customerName || '',
     receivingAddressId: destination?.id || route.destinationAddressId || null,
     receivingContactName:
       textValue(destination?.contactName) || destinationCustomer?.customerName || '',
-    receivingContactPhone: textValue(destination?.contactPhone),
-    receivingAddressDetail: formatOrderAddress(destination?.region, destination?.addressDetail),
-    receivingLongitude: destination?.longitude ?? null,
-    receivingLatitude: destination?.latitude ?? null
+    receivingContactPhone: canReadDestinationPhone ? textValue(destination?.contactPhone) : '',
+    receivingAddressDetail: canReadDestinationAddress
+      ? formatOrderAddress(destination?.region, destination?.addressDetail)
+      : '',
+    receivingLongitude: canReadDestinationAddress ? (destination?.longitude ?? null) : null,
+    receivingLatitude: canReadDestinationAddress ? (destination?.latitude ?? null) : null
   }
 }
 

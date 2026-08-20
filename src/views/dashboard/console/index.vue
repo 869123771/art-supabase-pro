@@ -7,15 +7,32 @@
     min-height="520px"
     @retry="refreshData"
   >
-    <DashboardHero
-      :greeting="greeting"
-      :user-name="userName"
-      :user-context="userContext"
-      :date-text="dateText"
-      @create-order="navigateTo('/tms/order-open')"
-      @dispatch="navigateTo('/tms/waybill-management/pending')"
-      @refresh="refreshData"
-    />
+    <BusinessWorkspaceHeader
+      eyebrow="TRANSPORT CONTROL"
+      :title="`${greeting}，${userName}`"
+      description="聚焦今日运力、调度进度与车辆风险，快速处理需要关注的运营事项。"
+      icon="ri:dashboard-3-line"
+      :tags="workspaceTags"
+      class="operations-dashboard__header"
+    >
+      <template #actions>
+        <ElTooltip content="刷新运营数据" placement="bottom">
+          <ArtIconButton
+            icon="ri:refresh-line"
+            circle
+            aria-label="刷新运营数据"
+            :loading="overview.loading"
+            @click="refreshData"
+          />
+        </ElTooltip>
+        <ElButton :icon="Van" @click="navigateTo('/tms/waybill-management/pending')">
+          处理调度
+        </ElButton>
+        <ElButton type="primary" :icon="EditPen" @click="navigateTo('/tms/order-open')">
+          立即开单
+        </ElButton>
+      </template>
+    </BusinessWorkspaceHeader>
 
     <DashboardMetricCards :items="metricCards" @select="navigateTo" />
 
@@ -60,15 +77,20 @@
 </template>
 
 <script setup lang="ts">
+  import { EditPen, Van } from '@element-plus/icons-vue'
   import { storeToRefs } from 'pinia'
+  import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
+  import BusinessWorkspaceHeader, {
+    type BusinessWorkspaceTag
+  } from '@/components/business/business-workspace-header/index.vue'
   import {
     fetchDashboardData,
     type DashboardData,
     type DashboardTrendPeriod
   } from '@/api/dashboard'
   import { useUserStore } from '@/store/modules/user'
+  import { formatCurrencyValue, formatNumberValue } from '@/utils/ui'
   import DashboardFleetRisk from './modules/dashboard-fleet-risk.vue'
-  import DashboardHero from './modules/dashboard-hero.vue'
   import DashboardMetricCards from './modules/dashboard-metric-cards.vue'
   import DashboardOrderFlow from './modules/dashboard-order-flow.vue'
   import DashboardRecentOrders from './modules/dashboard-recent-orders.vue'
@@ -152,6 +174,13 @@
       weekday: 'long'
     }).format(new Date())
   )
+  const workspaceTags = computed<BusinessWorkspaceTag[]>(() => [
+    { label: '运营数据实时同步', type: 'success', effect: 'plain' },
+    { label: dateText.value, type: 'info', effect: 'plain' },
+    ...(userContext.value
+      ? [{ label: userContext.value, type: 'primary' as const, effect: 'plain' as const }]
+      : [])
+  ])
   const trendData = computed<DashboardTrendData>(() => ({
     labels: overview.data.trend.map((item) => item.label),
     values: overview.data.trend.map((item) => item.orderCount),
@@ -189,7 +218,7 @@
     {
       key: 'today-order',
       label: '今日开单',
-      value: formatNumber(overview.data.todayOrderCount),
+      value: formatNumberValue(overview.data.todayOrderCount, locale.value),
       unit: '单',
       hint: '今日新增运输订单',
       icon: 'ri:file-list-3-line',
@@ -199,7 +228,7 @@
     {
       key: 'today-freight',
       label: '今日运费',
-      value: `¥ ${formatMoney(overview.data.todayFreightAmount)}`,
+      value: formatCurrencyValue(overview.data.todayFreightAmount, 'CNY', locale.value),
       hint: '按今日开单金额汇总',
       icon: 'ri:money-cny-circle-line',
       tone: 'info',
@@ -208,7 +237,7 @@
     {
       key: 'pending-dispatch',
       label: '待调度',
-      value: formatNumber(overview.data.pendingDispatchCount),
+      value: formatNumberValue(overview.data.pendingDispatchCount, locale.value),
       unit: '单',
       hint: '待安排车辆与司机',
       icon: 'ri:truck-line',
@@ -218,7 +247,7 @@
     {
       key: 'in-transit',
       label: '运输中',
-      value: formatNumber(overview.data.inTransitCount),
+      value: formatNumberValue(overview.data.inTransitCount, locale.value),
       unit: '单',
       hint: '实时关注运输进度',
       icon: 'ri:route-line',
@@ -228,7 +257,7 @@
     {
       key: 'completed-today',
       label: '今日完成',
-      value: formatNumber(overview.data.completedTodayCount),
+      value: formatNumberValue(overview.data.completedTodayCount, locale.value),
       unit: '单',
       hint: '今日完成签收结案',
       icon: 'ri:checkbox-circle-line',
@@ -238,7 +267,7 @@
     {
       key: 'risk',
       label: '风险待处理',
-      value: formatNumber(reminderTotal.value),
+      value: formatNumberValue(reminderTotal.value, locale.value),
       unit: '项',
       hint: `${overview.data.pendingAuditVehicleCount} 台车辆待审核`,
       icon: 'ri:alarm-warning-line',
@@ -273,15 +302,6 @@
   }
   function openOrder(id?: string): void {
     if (id) void router.push({ name: 'TmsOrderDetail', params: { id } })
-  }
-  function formatMoney(value?: number | string | null): string {
-    const amount = Number(value ?? 0)
-    return Number.isFinite(amount)
-      ? new Intl.NumberFormat(locale.value, { maximumFractionDigits: 2 }).format(amount)
-      : '0'
-  }
-  function formatNumber(value: number): string {
-    return new Intl.NumberFormat(locale.value, { maximumFractionDigits: 0 }).format(value)
   }
   onMounted(() => {
     void refreshData()

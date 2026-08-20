@@ -22,15 +22,6 @@
       </template>
     </BusinessWorkspaceHeader>
 
-    <ElAlert
-      v-if="!isPlatformSuper"
-      v-show="!focusMode"
-      type="info"
-      :closable="false"
-      show-icon
-      title="当前账号可查看本租户期初余额；录入、删除、确认及反确认仅平台超级管理员可执行。"
-    />
-
     <ArtPageSection
       v-show="!focusMode"
       title="初始化范围"
@@ -76,7 +67,7 @@
       <AccountingSetupGuide
         :loading="scope.loading"
         :has-account-set="scope.options.length > 0"
-        :can-configure="isPlatformSuper"
+        :can-configure="hasAuth('FinanceAccountSet:Add')"
         @configure="goToAccountSet"
       />
     </ArtPageSection>
@@ -93,14 +84,14 @@
       <template #actions>
         <AccountingWorkspaceFocusToggle v-if="focusMode" v-model="focusMode" />
         <ElButton
-          v-if="isPlatformSuper && summary.status === 'draft'"
+          v-if="hasAuth('FinanceOpeningBalance:Add') && summary.status === 'draft'"
           type="primary"
           @click="openDialog()"
         >
           <ArtSvgIcon icon="ri:add-line" />录入余额
         </ElButton>
         <ElTooltip
-          v-if="isPlatformSuper && summary.status === 'draft'"
+          v-if="hasAuth('FinanceOpeningBalance:Confirm') && summary.status === 'draft'"
           :disabled="canConfirmOpeningBalance"
           :content="confirmOpeningBalanceHint"
           placement="bottom"
@@ -118,7 +109,7 @@
           </span>
         </ElTooltip>
         <ElButton
-          v-if="isPlatformSuper && summary.status === 'confirmed'"
+          v-if="hasAuth('FinanceOpeningBalance:Reopen') && summary.status === 'confirmed'"
           plain
           :loading="workspace.statusChanging"
           @click="reopenOpeningBalance"
@@ -215,6 +206,7 @@
   import type { ColumnOption } from '@/types'
   import { formatCurrencyValue } from '@/utils/ui/format'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import { useAuth } from '@/hooks/core/useAuth'
   import { useUserStore } from '@/store/modules/user'
   import {
     deleteOpeningBalance,
@@ -243,7 +235,8 @@
   const { focusMode } = useAccountingWorkspaceFocus()
   const { ensureAccountSet, ensureLeafSubjects, goToAccountSet } =
     useFinanceAccountSetPrerequisite()
-  const { getDictMap, isPlatformSuper } = storeToRefs(useUserStore())
+  const { getDictMap } = storeToRefs(useUserStore())
+  const { hasAuth } = useAuth()
   const dialogRef = ref<{
     handleOpen: (
       accountSet: Api.Fms.AccountSetOption,
@@ -431,7 +424,7 @@
       formatter: (row) =>
         row.currency ? Number(row.originalCurrencyAmount).toLocaleString('zh-CN') : '—'
     },
-    ...(isPlatformSuper.value
+    ...(hasAuth('FinanceOpeningBalance:Edit') || hasAuth('FinanceOpeningBalance:Delete')
       ? [
           {
             prop: 'operation',
@@ -441,8 +434,16 @@
             formatter: (row: OpeningBalance) =>
               summary.status === 'draft' ? (
                 <div class="opening-balance-page__actions">
-                  <ArtButtonTable type="edit" onClick={() => openDialog(row)} />
-                  <ArtButtonTable type="delete" onClick={() => removeBalance(row)} />
+                  <ArtButtonTable
+                    type="edit"
+                    permission="FinanceOpeningBalance:Edit"
+                    onClick={() => openDialog(row)}
+                  />
+                  <ArtButtonTable
+                    type="delete"
+                    permission="FinanceOpeningBalance:Delete"
+                    onClick={() => removeBalance(row)}
+                  />
                 </div>
               ) : (
                 <span class="opening-balance-page__locked">已锁定</span>

@@ -113,7 +113,12 @@
   ])
 
   const headerActions = computed<ArtTableQueryHeaderAction[]>(() => [
-    { type: 'add', label: '新增一级项目', onClick: () => openDialog() }
+    {
+      permission: 'FinanceExpenseItem:Add',
+      type: 'add',
+      label: '新增一级项目',
+      onClick: () => openDialog()
+    }
   ])
 
   const fetchTableData = async (params: SearchParams) => {
@@ -181,7 +186,11 @@
       fixed: 'right',
       formatter: (row) => (
         <div class="flex items-center">
-          <ArtButtonTable type="edit" onClick={() => openDialog(row)} />
+          <ArtButtonTable
+            type="edit"
+            permission="FinanceExpenseItem:Edit"
+            onClick={() => openDialog(row)}
+          />
           <ArtButtonMore
             list={moreActions}
             onClick={(item: ButtonMoreItem) => handleMoreAction(item, row)}
@@ -192,8 +201,14 @@
   ]
 
   const moreActions: ButtonMoreItem[] = [
-    { key: 'addChild', label: '新增下级', icon: 'ri:add-line' },
     {
+      auth: 'FinanceExpenseItem:AddChild',
+      key: 'addChild',
+      label: '新增下级',
+      icon: 'ri:add-line'
+    },
+    {
+      auth: 'FinanceExpenseItem:Delete',
       key: 'delete',
       label: '删除',
       icon: 'ri:delete-bin-line',

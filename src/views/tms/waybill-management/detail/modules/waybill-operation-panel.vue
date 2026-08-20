@@ -34,13 +34,13 @@
               <div
                 ><dt>作业净重</dt><dd>{{ weight(card.record.weightTon) }}</dd></div
               >
-              <div
+              <div v-if="canView('routeCoordinates')"
                 ><dt>定位精度</dt><dd>{{ distance(card.record.locationAccuracyM) }}</dd></div
               >
-              <div
+              <div v-if="canView('routeCoordinates')"
                 ><dt>围栏距离</dt><dd>{{ distance(card.record.distanceM) }}</dd></div
               >
-              <div>
+              <div v-if="canView('routeCoordinates')">
                 <dt>电子围栏</dt>
                 <dd>
                   <ElTag :type="card.record.insideGeofence ? 'success' : 'warning'" size="small">
@@ -49,7 +49,7 @@
                 </dd>
               </div>
             </dl>
-            <div class="waybill-operation-panel__location">
+            <div v-if="canView('routeCoordinates')" class="waybill-operation-panel__location">
               <ArtSvgIcon icon="ri:map-pin-line" aria-hidden="true" />
               <div>
                 <strong>{{ card.record.locationText || '未记录位置名称' }}</strong>
@@ -66,9 +66,9 @@
               <span>作业说明</span>
               <p>{{ card.record.outsideReason || card.record.remark }}</p>
             </div>
-            <div class="waybill-operation-panel__evidence">
-              <span>现场照片 {{ card.record.photoUrls.length }} 份</span>
-              <span>磅单 {{ card.record.weighbridgeTicketUrls.length }} 份</span>
+            <div v-if="canView('proofAttachments')" class="waybill-operation-panel__evidence">
+              <span>现场照片 {{ card.record.photoUrls?.length ?? 0 }} 份</span>
+              <span>磅单 {{ card.record.weighbridgeTicketUrls?.length ?? 0 }} 份</span>
             </div>
           </template>
 
@@ -83,9 +83,13 @@
               </div>
             </div>
             <ul aria-label="待归档内容">
-              <li><ArtSvgIcon icon="ri:map-pin-line" aria-hidden="true" />围栏签到</li>
+              <li v-if="canView('routeCoordinates')"
+                ><ArtSvgIcon icon="ri:map-pin-line" aria-hidden="true" />围栏签到</li
+              >
               <li><ArtSvgIcon icon="ri:scales-3-line" aria-hidden="true" />作业重量</li>
-              <li><ArtSvgIcon icon="ri:camera-line" aria-hidden="true" />照片与磅单</li>
+              <li v-if="canView('proofAttachments')"
+                ><ArtSvgIcon icon="ri:camera-line" aria-hidden="true" />照片与磅单</li
+              >
             </ul>
           </div>
         </article>
@@ -170,6 +174,7 @@
   import ArtEmptyState from '@/components/core/layouts/art-empty-state/index.vue'
   import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
   import { formatWithDayjs } from '@/utils/time'
+  import { canViewField } from '@/utils/field-permission'
 
   defineOptions({ name: 'TmsWaybillOperationPanel' })
 
@@ -324,6 +329,10 @@
 
   function date(value?: string | null): string {
     return formatWithDayjs(value, 'YYYY-MM-DD HH:mm') || '-'
+  }
+
+  function canView(field: Api.Tms.Waybill.WaybillFieldKey): boolean {
+    return canViewField(props.waybill.fieldAccess, field)
   }
 </script>
 

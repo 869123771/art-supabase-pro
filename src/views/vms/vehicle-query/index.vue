@@ -225,7 +225,11 @@
         fixed: 'right',
         formatter: (row) => (
           <div class="vehicle-query-page__operation">
-            <ArtButtonTable type="view" onClick={() => openDetail(row)} />
+            <ArtButtonTable
+              type="view"
+              permission="VehicleQuery:View"
+              onClick={() => openDetail(row)}
+            />
           </div>
         )
       }

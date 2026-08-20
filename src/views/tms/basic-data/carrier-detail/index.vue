@@ -14,7 +14,12 @@
       show-back
       @back="goBack"
     >
-      <ElButton type="primary" :disabled="!detail.data?.id" @click="openPerformanceAdvisor">
+      <ElButton
+        v-auth="'TmsCarrierDetail:AiAnalyze'"
+        type="primary"
+        :disabled="!detail.data?.id"
+        @click="openPerformanceAdvisor"
+      >
         <ArtSvgIcon icon="ri:sparkling-2-line" />AI 经营评估
       </ElButton>
     </ArtPageHeader>
@@ -129,6 +134,7 @@
   import { fetchCarrierDetail, fetchDriverListByCarrierId } from '@/api/tms'
   import { fetchVehicleArchiveList } from '@/api/vms'
   import type { ColumnOption } from '@/types'
+  import { canViewField, getFieldAccess, mergeFieldAccessMaps } from '@/utils/field-permission'
   import CarrierPerformanceAdvisorDrawer from './modules/carrier-performance-advisor-drawer.vue'
 
   defineOptions({ name: 'TmsCarrierDetail' })
@@ -160,6 +166,7 @@
   const route = useRoute()
   const router = useRouter()
   const performanceAdvisorRef = ref<PerformanceAdvisorExpose>()
+  const driverFieldAccess = ref<Api.Tms.BasicData.DriverFieldAccessMap>({})
 
   const page = reactive<PageState>({ loading: false, error: null })
   const detail = reactive<DetailState>({ data: undefined })
@@ -175,7 +182,12 @@
     vehicleCount: relationData.vehicles.length
   }))
   const descriptionData = computed<Partial<Carrier>>(() => detail.data ?? {})
-  const basicItems: ArtDescriptionItem<Partial<Carrier>>[] = [
+  const canViewCarrierField = (field: Api.Tms.BasicData.CarrierFieldKey): boolean =>
+    canViewField(detail.data?.fieldAccess, field)
+  const canViewCarrierAttachments = (): boolean =>
+    ['read', 'edit'].includes(getFieldAccess(detail.data?.fieldAccess, 'attachments'))
+
+  const basicItems = computed<ArtDescriptionItem<Partial<Carrier>>[]>(() => [
     { key: 'carrierCode', label: '承运商编码', field: 'carrierCode', copyable: true },
     { key: 'companyName', label: '公司名称', field: 'companyName' },
     {
@@ -186,10 +198,31 @@
       dictDisplay: 'text'
     },
     { key: 'businessLicenseNo', label: '营业执照号码', field: 'businessLicenseNo', copyable: true },
-    { key: 'taxRegistrationNo', label: '税务登记号码', field: 'taxRegistrationNo', copyable: true },
+    ...(canViewCarrierField('taxNo')
+      ? [
+          {
+            key: 'taxRegistrationNo',
+            label: '税务登记号码',
+            field: 'taxRegistrationNo',
+            copyable: true
+          } satisfies ArtDescriptionItem<Partial<Carrier>>
+        ]
+      : []),
     { key: 'legalRepresentative', label: '法人代表', field: 'legalRepresentative' },
-    { key: 'address', label: '公司地址', value: (data: Partial<Carrier>) => formatAddress(data) },
-    { key: 'postalCode', label: '邮编', field: 'postalCode' },
+    ...(canViewCarrierField('addressDetail')
+      ? [
+          {
+            key: 'address',
+            label: '公司地址',
+            value: (data: Partial<Carrier>) => formatAddress(data)
+          } satisfies ArtDescriptionItem<Partial<Carrier>>,
+          {
+            key: 'postalCode',
+            label: '邮编',
+            field: 'postalCode'
+          } satisfies ArtDescriptionItem<Partial<Carrier>>
+        ]
+      : []),
     {
       key: 'enabled',
       label: '承运商状态',
@@ -197,27 +230,62 @@
       dictCode: 'commonBoolean',
       dictDisplay: 'tag'
     },
-    { key: 'businessLicenseUrl', label: '营业执照', field: 'businessLicenseUrl' },
+    ...(canViewCarrierAttachments()
+      ? [
+          {
+            key: 'businessLicenseUrl',
+            label: '营业执照',
+            field: 'businessLicenseUrl'
+          } satisfies ArtDescriptionItem<Partial<Carrier>>
+        ]
+      : []),
     { key: 'driverCount', label: '司机数量', value: () => relationStats.value.driverCount },
     { key: 'vehicleCount', label: '车辆数量', value: () => relationStats.value.vehicleCount },
     { key: 'remark', label: '备注信息', field: 'remark', span: 4 }
-  ]
-  const contactItems: ArtDescriptionItem<Partial<Carrier>>[] = [
+  ])
+  const contactItems = computed<ArtDescriptionItem<Partial<Carrier>>[]>(() => [
     { key: 'contactName', label: '姓名', field: 'contactName' },
-    { key: 'contactPhone', label: '手机号码', field: 'contactPhone', copyable: true },
+    ...(canViewCarrierField('contactPhone')
+      ? [
+          {
+            key: 'contactPhone',
+            label: '手机号码',
+            field: 'contactPhone',
+            copyable: true
+          } satisfies ArtDescriptionItem<Partial<Carrier>>
+        ]
+      : []),
     { key: 'contactDepartment', label: '部门', field: 'contactDepartment' },
     { key: 'contactPosition', label: '职位', field: 'contactPosition' },
     { key: 'contactEmail', label: 'E-mail', field: 'contactEmail', copyable: true },
     { key: 'contactQq', label: 'QQ', field: 'contactQq', copyable: true }
-  ]
-  const financeItems: ArtDescriptionItem<Partial<Carrier>>[] = [
+  ])
+  const financeItems = computed<ArtDescriptionItem<Partial<Carrier>>[]>(() => [
     { key: 'invoiceTitle', label: '发票抬头', field: 'invoiceTitle' },
-    { key: 'taxNo', label: '纳税人识别号', field: 'taxNo', copyable: true },
-    { key: 'bankName', label: '开户行', field: 'bankName' },
-    { key: 'bankAccountName', label: '开户名称', field: 'bankAccountName' },
-    { key: 'bankAccount', label: '银行账号', field: 'bankAccount', copyable: true }
-  ]
-  const contractItems: ArtDescriptionItem<Partial<Carrier>>[] = [
+    ...(canViewCarrierField('taxNo')
+      ? [
+          {
+            key: 'taxNo',
+            label: '纳税人识别号',
+            field: 'taxNo',
+            copyable: true
+          } satisfies ArtDescriptionItem<Partial<Carrier>>
+        ]
+      : []),
+    ...(canViewCarrierField('bankAccount')
+      ? ([
+          { key: 'bankName', label: '开户行', field: 'bankName' },
+          { key: 'bankAccountName', label: '开户名称', field: 'bankAccountName' },
+          {
+            key: 'bankAccount',
+            label: '银行账号',
+            field: 'bankAccount',
+            copyable: true
+          }
+        ] satisfies ArtDescriptionItem<Partial<Carrier>>[])
+      : [])
+  ])
+  const contractItems = computed<ArtDescriptionItem<Partial<Carrier>>[]>(() => [
     {
       key: 'signedContract',
       label: '是否签订合同',
@@ -225,13 +293,23 @@
       dictCode: 'commonBoolean',
       dictDisplay: 'text'
     },
-    { key: 'contractAttachmentUrl', label: '合同附件', field: 'contractAttachmentUrl' }
-  ]
+    ...(canViewCarrierAttachments()
+      ? [
+          {
+            key: 'contractAttachmentUrl',
+            label: '合同附件',
+            field: 'contractAttachmentUrl'
+          } satisfies ArtDescriptionItem<Partial<Carrier>>
+        ]
+      : [])
+  ])
 
   const driverColumns: ColumnOption<Driver>[] = [
     { type: 'globalIndex', label: '序号', width: 70 },
     { prop: 'driverName', label: '司机姓名', minWidth: 120 },
-    { prop: 'phone', label: '手机号', minWidth: 140 },
+    ...(canViewField(driverFieldAccess.value, 'contactPhone')
+      ? [{ prop: 'phone', label: '手机号', minWidth: 140 } satisfies ColumnOption<Driver>]
+      : []),
     {
       prop: 'gender',
       label: '性别',
@@ -311,6 +389,9 @@
     try {
       const { data } = await fetchDriverListByCarrierId(carrierId)
       relationData.drivers = data ?? []
+      driverFieldAccess.value = mergeFieldAccessMaps(
+        ...(data ?? []).map((record) => record.fieldAccess)
+      )
     } finally {
       relationData.loadingDrivers = false
     }

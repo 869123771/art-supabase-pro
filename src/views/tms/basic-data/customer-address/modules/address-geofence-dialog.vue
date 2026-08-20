@@ -52,7 +52,7 @@
         请先编辑地址并通过地图选点保存经纬度，再启用电子围栏。
       </ElAlert>
       <ElAlert v-else-if="!canManage" type="info" :closable="false" show-icon>
-        普通用户可查看地址围栏范围；修改围栏仅允许平台超级管理员执行。
+        当前角色可查看地址围栏范围；如需修改，请联系管理员授权“维护地址围栏”按钮。
       </ElAlert>
     </div>
   </ArtDialog>
@@ -65,7 +65,7 @@
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import { fetchGeofenceConfig } from '@/api/system-manage'
   import { updateCustomerAddressGeofence } from '@/api/tms'
-  import { useUserStore } from '@/store/modules/user'
+  import { useAuth } from '@/hooks/core/useAuth'
 
   defineOptions({ name: 'TmsCustomerAddressGeofenceDialog' })
 
@@ -85,12 +85,12 @@
     (event: 'success'): void
   }>()
 
-  const { isPlatformSuper } = storeToRefs(useUserStore())
+  const { hasAuth } = useAuth()
   const dialogRef = ref<ArtDialogExpose<CustomerAddress>>()
   const formRef = ref<FormExpose>()
   const address = shallowRef<CustomerAddress>()
   const form = reactive<GeofenceForm>({ enabled: false, radiusM: 1000 })
-  const canManage = computed(() => isPlatformSuper.value)
+  const canManage = computed(() => hasAuth('TmsCustomerAddress:Geofence'))
   const hasCoordinate = computed(() => {
     const longitude = address.value?.longitude
     const latitude = address.value?.latitude

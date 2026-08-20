@@ -11,8 +11,8 @@
       icon="ri:hashtag"
       :tags="[
         {
-          label: isPlatformSuper ? '平台维护视图' : '本租户只读视图',
-          type: isPlatformSuper ? 'primary' : 'info'
+          label: canManage ? '已授权维护' : '本租户只读视图',
+          type: canManage ? 'primary' : 'info'
         },
         { label: `覆盖租户：${overview.stats.tenantCount}` },
         { label: `最近更新：${overview.lastUpdateText}` }
@@ -72,9 +72,13 @@
       </div>
     </div>
 
-    <DocumentNumberDialog v-if="isPlatformSuper" ref="dialogRef" @success="handleSaveSuccess" />
+    <DocumentNumberDialog
+      v-if="hasAuth('System:DocumentNumberRule:Edit')"
+      ref="dialogRef"
+      @success="handleSaveSuccess"
+    />
     <DocumentNumberCreateDialog
-      v-if="isPlatformSuper"
+      v-if="hasAuth('System:DocumentNumberRule:Add')"
       ref="createDialogRef"
       @success="handleSaveSuccess"
     />
@@ -120,6 +124,7 @@
   } from '@/api/document-number'
   import { fetchGetEnableMenuList, fetchGetEnableTenantList } from '@/api/system-manage'
   import { useUserStore } from '@/store/modules/user'
+  import { useAuth } from '@/hooks/core/useAuth'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatWithDayjs } from '@/utils/time'
   import TreeUtils from '@/utils/tree'
@@ -163,6 +168,10 @@
   const treeUtils = new TreeUtils({ idKey: 'id', parentKey: 'parentId', childrenKey: 'children' })
   const userStore = useUserStore()
   const { getDictMap, isPlatformSuper } = storeToRefs(userStore)
+  const { hasAuth, hasAnyAuth } = useAuth()
+  const canManage = computed(() =>
+    hasAnyAuth(['System:DocumentNumberRule:Add', 'System:DocumentNumberRule:Edit'])
+  )
 
   const overview: UnwrapNestedRefs<OverviewGroup> = reactive<OverviewGroup>({
     stats: {
@@ -278,11 +287,12 @@
       }
     ]),
     headerActions: computed<ArtTableQueryHeaderAction[]>(() =>
-      isPlatformSuper.value
+      hasAuth('System:DocumentNumberRule:Add')
         ? [
             {
               type: 'add',
               label: '新增规则',
+              permission: 'System:DocumentNumberRule:Add',
               onClick: () => void createDialogRef.value?.handleOpen()
             }
           ]
@@ -424,7 +434,7 @@
         </div>
       )
     },
-    ...(isPlatformSuper.value
+    ...(hasAuth('System:DocumentNumberRule:Edit')
       ? [
           {
             prop: 'operation',
@@ -432,7 +442,11 @@
             width: 88,
             fixed: 'right',
             formatter: (row: NumberRule) => (
-              <ArtButtonTable type="edit" onClick={() => void dialogRef.value?.handleOpen(row)} />
+              <ArtButtonTable
+                type="edit"
+                permission="System:DocumentNumberRule:Edit"
+                onClick={() => void dialogRef.value?.handleOpen(row)}
+              />
             )
           } satisfies ColumnOption<NumberRule>
         ]

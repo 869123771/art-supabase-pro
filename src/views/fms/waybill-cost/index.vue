@@ -391,13 +391,20 @@
     ]),
     headerActions: computed<ArtTableQueryHeaderAction[]>(() => [
       {
+        auth: 'FinanceWaybillCost:OcrLogs',
         key: 'ocrLogs',
         label: 'OCR 识别记录',
         buttonProps: { plain: true },
         onClick: () => void ocrLogDrawerRef.value?.handleOpen()
       },
-      { type: 'add', label: '新增运单费用', onClick: () => openExpenseDialog() },
       {
+        permission: 'FinanceWaybillCost:Add',
+        type: 'add',
+        label: '新增运单费用',
+        onClick: () => openExpenseDialog()
+      },
+      {
+        auth: 'FinanceWaybillCost:Convert',
         key: 'convert',
         label: '转费用报销',
         selectionRequired: true,
@@ -449,6 +456,7 @@
       {
         key: 'backToExpense',
         label: '选择已审费用',
+        permission: 'FinanceWaybillCost:Convert',
         buttonProps: { type: 'primary', plain: true },
         onClick: openApprovedExpenses
       }
@@ -542,6 +550,7 @@
         <div class="waybill-cost__row-actions">
           <ArtButtonTable
             type="edit"
+            permission="FinanceWaybillCost:Edit"
             disabled={!canEditExpense(row)}
             onClick={() => openExpenseDialog(row)}
           />
@@ -617,7 +626,11 @@
       fixed: 'right',
       formatter: (row) => (
         <div class="waybill-cost__row-actions">
-          <ArtButtonTable type="view" onClick={() => openReimbursementDetail(row)} />
+          <ArtButtonTable
+            type="view"
+            permission="FinanceWaybillCost:View"
+            onClick={() => openReimbursementDetail(row)}
+          />
           <ArtButtonMore
             list={reimbursementMoreActions(row)}
             onClick={(item: ButtonMoreItem) => handleReimbursementAction(item, row)}
@@ -735,13 +748,35 @@
 
   function expenseMoreActions(row: Expense): ButtonMoreItem[] {
     const actions: ButtonMoreItem[] = [
-      { key: 'view', label: '查看', icon: 'ri:eye-line', disabled: !row.id },
-      { key: 'aiAudit', label: 'AI 费用审核', icon: 'ri:sparkling-2-line' },
-      { key: 'approvalHistory', label: '审批记录', icon: 'ri:file-history-line' }
+      {
+        auth: 'FinanceWaybillCost:View',
+        key: 'view',
+        label: '查看',
+        icon: 'ri:eye-line',
+        disabled: !row.id
+      },
+      {
+        auth: 'FinanceWaybillCost:AiAudit',
+        key: 'aiAudit',
+        label: 'AI 费用审核',
+        icon: 'ri:sparkling-2-line'
+      },
+      {
+        auth: 'FinanceWaybillCost:ApprovalHistory',
+        key: 'approvalHistory',
+        label: '审批记录',
+        icon: 'ri:file-history-line'
+      }
     ]
     if (canEditExpense(row)) {
-      actions.push({ key: 'submit', label: '提交财务审核', icon: 'ri:send-plane-line' })
       actions.push({
+        auth: 'FinanceWaybillCost:Submit',
+        key: 'submit',
+        label: '提交财务审核',
+        icon: 'ri:send-plane-line'
+      })
+      actions.push({
+        auth: 'FinanceWaybillCost:Delete',
         key: 'delete',
         label: '删除草稿',
         icon: 'ri:delete-bin-line',
@@ -749,18 +784,34 @@
       })
     }
     if (canConvert(row)) {
-      actions.push({ key: 'convert', label: '转费用报销', icon: 'ri:exchange-cny-line' })
+      actions.push({
+        auth: 'FinanceWaybillCost:Convert',
+        key: 'convert',
+        label: '转费用报销',
+        icon: 'ri:exchange-cny-line'
+      })
     }
     return actions
   }
 
   function reimbursementMoreActions(row: Reimbursement): ButtonMoreItem[] {
     const actions: ButtonMoreItem[] = [
-      { key: 'approvalHistory', label: '审批记录', icon: 'ri:file-history-line' }
+      {
+        auth: 'FinanceWaybillCost:ApprovalHistory',
+        key: 'approvalHistory',
+        label: '审批记录',
+        icon: 'ri:file-history-line'
+      }
     ]
     if (['draft', 'rejected'].includes(row.status)) {
-      actions.push({ key: 'submit', label: '提交报销审批', icon: 'ri:send-plane-line' })
       actions.push({
+        auth: 'FinanceWaybillCost:Submit',
+        key: 'submit',
+        label: '提交报销审批',
+        icon: 'ri:send-plane-line'
+      })
+      actions.push({
+        auth: 'FinanceWaybillCost:Delete',
         key: 'delete',
         label: '删除并退回费用',
         icon: 'ri:delete-bin-line',
@@ -768,7 +819,12 @@
       })
     }
     if (row.status === 'approved') {
-      actions.push({ key: 'pay', label: '出纳付款', icon: 'ri:secure-payment-line' })
+      actions.push({
+        auth: 'FinanceWaybillCost:Pay',
+        key: 'pay',
+        label: '出纳付款',
+        icon: 'ri:secure-payment-line'
+      })
     }
     return actions
   }

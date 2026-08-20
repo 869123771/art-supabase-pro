@@ -9,7 +9,7 @@
             <div>
               <small>起运地</small>
               <strong>{{ waybill.originCity || waybill.order?.originStation || '-' }}</strong>
-              <p>{{ waybill.shipperAddress || waybill.order?.shippingAddressDetail || '-' }}</p>
+              <p v-if="canView('shipperAddress')">{{ shipperAddress }}</p>
             </div>
           </div>
           <div class="waybill-info-panel__route-line">
@@ -24,7 +24,7 @@
               <strong>{{
                 waybill.destinationCity || waybill.order?.destinationStation || '-'
               }}</strong>
-              <p>{{ waybill.receiverAddress || waybill.order?.receivingAddressDetail || '-' }}</p>
+              <p v-if="canView('receiverAddress')">{{ receiverAddress }}</p>
             </div>
           </div>
         </div>
@@ -36,10 +36,13 @@
         </dl>
       </section>
 
-      <section class="waybill-info-panel__section art-card-xs">
+      <section
+        v-if="canView('freightAmounts') || canView('settlementAmounts')"
+        class="waybill-info-panel__section art-card-xs"
+      >
         <ArtSectionTitle title="费用与结算" />
         <div class="waybill-info-panel__amount">
-          <div>
+          <div v-if="canView('freightAmounts')">
             <small>运单运费</small>
             <strong>{{ money(waybill.freightAmount ?? waybill.order?.totalFee) }}</strong>
           </div>
@@ -50,13 +53,13 @@
             display="tag"
           />
         </div>
-        <dl class="waybill-info-panel__fee-list">
+        <dl v-if="canView('freightAmounts')" class="waybill-info-panel__fee-list">
           <div v-for="item in feeItems" :key="item.label">
             <dt>{{ item.label }}</dt>
             <dd>{{ money(item.value) }}</dd>
           </div>
         </dl>
-        <div class="waybill-info-panel__payment-summary">
+        <div v-if="canView('settlementAmounts')" class="waybill-info-panel__payment-summary">
           <span>应收/付款合计</span>
           <strong>{{ money(waybill.order?.paymentTotal) }}</strong>
         </div>
@@ -73,7 +76,7 @@
           <div>
             <small>承运司机</small>
             <strong>{{ waybill.driver?.driverName || '暂未分配' }}</strong>
-            <p>{{ waybill.driver?.phone || '-' }}</p>
+            <p v-if="canView('driverPhone')">{{ waybill.driver?.phone || '-' }}</p>
           </div>
           <ElTag v-if="waybill.driver?.licenseType" size="small" type="info">
             {{ waybill.driver.licenseType }} 驾照
@@ -118,8 +121,12 @@
               }}</strong>
             </div>
           </div>
-          <p><ArtSvgIcon icon="ri:phone-line" aria-hidden="true" />{{ shipperPhone }}</p>
-          <p><ArtSvgIcon icon="ri:map-pin-line" aria-hidden="true" />{{ shipperAddress }}</p>
+          <p v-if="canView('shipperContact')"
+            ><ArtSvgIcon icon="ri:phone-line" aria-hidden="true" />{{ shipperPhone }}</p
+          >
+          <p v-if="canView('shipperAddress')"
+            ><ArtSvgIcon icon="ri:map-pin-line" aria-hidden="true" />{{ shipperAddress }}</p
+          >
         </article>
         <div class="waybill-info-panel__contact-arrow" aria-hidden="true">
           <i></i><ArtSvgIcon icon="ri:arrow-right-line" /><i></i>
@@ -134,8 +141,12 @@
               }}</strong>
             </div>
           </div>
-          <p><ArtSvgIcon icon="ri:phone-line" aria-hidden="true" />{{ receiverPhone }}</p>
-          <p><ArtSvgIcon icon="ri:map-pin-line" aria-hidden="true" />{{ receiverAddress }}</p>
+          <p v-if="canView('receiverContact')"
+            ><ArtSvgIcon icon="ri:phone-line" aria-hidden="true" />{{ receiverPhone }}</p
+          >
+          <p v-if="canView('receiverAddress')"
+            ><ArtSvgIcon icon="ri:map-pin-line" aria-hidden="true" />{{ receiverAddress }}</p
+          >
         </article>
       </div>
     </section>
@@ -256,6 +267,7 @@
   import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
   import { formatWithDayjs } from '@/utils/time'
   import { formatCurrencyValue } from '@/utils/ui'
+  import { canViewField } from '@/utils/field-permission'
 
   defineOptions({ name: 'TmsWaybillInfoPanel' })
 
@@ -316,7 +328,10 @@
   )
   const carrierContact = computed(
     () =>
-      [props.waybill.carrier?.contactName, props.waybill.carrier?.contactPhone]
+      [
+        props.waybill.carrier?.contactName,
+        canView('carrierPhone') ? props.waybill.carrier?.contactPhone : null
+      ]
         .filter(Boolean)
         .join(' · ') || '-'
   )
@@ -357,12 +372,18 @@
     return labels[status] || status || '-'
   }
 
-  function sum(...values: Array<number | null | undefined>): number {
+  function sum(...values: Array<number | string | null | undefined>): number | string {
+    const masked = values.find(
+      (value) => typeof value === 'string' && !Number.isFinite(Number(value))
+    )
+    if (masked) return masked
     return values.reduce<number>((total, value) => total + Number(value || 0), 0)
   }
 
-  function money(value?: number | null): string {
-    return value == null ? '-' : formatCurrencyValue(value)
+  function money(value?: number | string | null): string {
+    if (value == null) return '-'
+    const numeric = Number(value)
+    return Number.isFinite(numeric) ? formatCurrencyValue(numeric) : String(value)
   }
 
   function formatUnit(value: number | null | undefined, unit: string): string {
@@ -371,6 +392,10 @@
 
   function date(value?: string | null): string {
     return formatWithDayjs(value, 'YYYY-MM-DD HH:mm') || '-'
+  }
+
+  function canView(field: Api.Tms.Waybill.WaybillFieldKey): boolean {
+    return canViewField(props.waybill.fieldAccess, field)
   }
 </script>
 

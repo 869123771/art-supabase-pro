@@ -19,15 +19,6 @@
       </template>
     </BusinessWorkspaceHeader>
 
-    <ElAlert
-      v-if="!isPlatformSuper"
-      class="account-set-page__permission"
-      type="info"
-      :closable="false"
-      show-icon
-      title="当前账号处于财务只读模式，可查看本租户账套与会计期间；配置和状态变更仅平台超级管理员可执行。"
-    />
-
     <ArtTableQuery
       ref="tableRef"
       v-model="table.search"
@@ -48,9 +39,8 @@
         rowKey: 'id',
         tableLayout: 'fixed',
         emptyText: '暂无账套',
-        emptyDescription: isPlatformSuper
-          ? '创建首个企业账套后，系统会自动生成本位币、辅助核算类型和首个会计年度期间。'
-          : '当前租户尚未配置可查看的财务账套。'
+        emptyDescription:
+          '创建首个企业账套后，系统会自动生成本位币、辅助核算类型和首个会计年度期间。'
       }"
       focusable
     />
@@ -160,17 +150,14 @@
     }
   ])
 
-  const headerActions = computed<ArtTableQueryHeaderAction[]>(() =>
-    isPlatformSuper.value
-      ? [
-          {
-            type: 'add',
-            label: '新建企业账套',
-            onClick: () => void dialogRef.value?.handleOpen()
-          }
-        ]
-      : []
-  )
+  const headerActions = computed<ArtTableQueryHeaderAction[]>(() => [
+    {
+      permission: 'FinanceAccountSet:Add',
+      type: 'add',
+      label: '新建企业账套',
+      onClick: () => void dialogRef.value?.handleOpen()
+    }
+  ])
 
   function columnsFactory(): ColumnOption<AccountSet>[] {
     return [
@@ -254,30 +241,28 @@
       {
         prop: 'operation',
         label: '操作',
-        width: isPlatformSuper.value ? 150 : 72,
+        width: 150,
         fixed: 'right',
         formatter: (row) => (
           <div class="flex items-center">
             <ArtButtonTable
               type="view"
+              permission="FinanceAccountSet:View"
               label="查看会计期间"
               onClick={() => void periodDrawerRef.value?.handleOpen(row)}
             />
-            {isPlatformSuper.value ? (
-              <>
-                <ArtButtonTable
-                  type="edit"
-                  label="编辑账套"
-                  disabled={row.status === 'archived'}
-                  onClick={() => void dialogRef.value?.handleOpen(row)}
-                />
-                {getStatusActions(row).length ? (
-                  <ArtButtonMore
-                    list={getStatusActions(row)}
-                    onClick={(item: ButtonMoreItem) => void handleStatusAction(item, row)}
-                  />
-                ) : null}
-              </>
+            <ArtButtonTable
+              type="edit"
+              permission="FinanceAccountSet:Edit"
+              label="编辑账套"
+              disabled={row.status === 'archived'}
+              onClick={() => void dialogRef.value?.handleOpen(row)}
+            />
+            {getStatusActions(row).length ? (
+              <ArtButtonMore
+                list={getStatusActions(row)}
+                onClick={(item: ButtonMoreItem) => void handleStatusAction(item, row)}
+              />
             ) : null}
           </div>
         )
@@ -289,8 +274,13 @@
     if (row.status === 'archived') return []
     if (row.status === 'draft') {
       return [
-        { key: 'active', label: '启用账套', icon: 'ri:play-circle-line' },
         {
+          key: 'active',
+          label: '启用账套',
+          icon: 'ri:play-circle-line'
+        },
+        {
+          auth: 'FinanceAccountSet:Archived',
           key: 'archived',
           label: '归档账套',
           icon: 'ri:archive-line',
@@ -300,8 +290,14 @@
     }
     if (row.status === 'active') {
       return [
-        { key: 'suspended', label: '停用账套', icon: 'ri:pause-circle-line' },
         {
+          auth: 'FinanceAccountSet:Suspended',
+          key: 'suspended',
+          label: '停用账套',
+          icon: 'ri:pause-circle-line'
+        },
+        {
+          auth: 'FinanceAccountSet:Archived',
           key: 'archived',
           label: '归档账套',
           icon: 'ri:archive-line',
@@ -310,8 +306,14 @@
       ]
     }
     return [
-      { key: 'active', label: '恢复启用', icon: 'ri:restart-line' },
       {
+        auth: 'FinanceAccountSet:Active',
+        key: 'active',
+        label: '恢复启用',
+        icon: 'ri:restart-line'
+      },
+      {
+        auth: 'FinanceAccountSet:Archived',
         key: 'archived',
         label: '归档账套',
         icon: 'ri:archive-line',

@@ -18,7 +18,7 @@
           <span>车辆综合档案</span>
           <small>汇总车辆合规、运营和维保关键数据</small>
         </div>
-        <ElButton type="primary" plain @click="emit('analyze')">
+        <ElButton v-auth="'VehicleQuery:AiAnalyze'" type="primary" plain @click="emit('analyze')">
           <ArtSvgIcon icon="ri:sparkling-2-line" />AI 车辆健康研判
         </ElButton>
       </header>

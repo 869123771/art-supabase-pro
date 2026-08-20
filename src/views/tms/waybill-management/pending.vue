@@ -46,6 +46,7 @@
   } from '@/components/core/tables/art-table-query/index.vue'
   import type { ColumnOption } from '@/types'
   import { useUserStore } from '@/store/modules/user'
+  import { mergeFieldAccessMaps } from '@/utils/field-permission'
   import DispatchDialog from './modules/dispatch-dialog.vue'
   import BusinessWorkspaceHeader from '@/components/business/business-workspace-header/index.vue'
   import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
@@ -74,6 +75,7 @@
   const { getDictMap } = storeToRefs(useUserStore())
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const dispatchDialogRef = ref<WaybillDialogExpose>()
+  const fieldAccess = ref<Api.Tms.Waybill.WaybillFieldAccessMap>({})
   const paymentMethodOptions = computed(() => getDictMap.value.tmsOrderPaymentMethod ?? [])
 
   const table: UnwrapNestedRefs<TableGroup> = reactive<TableGroup>({
@@ -81,6 +83,7 @@
     searchItems: createWaybillSearchItems(paymentMethodOptions, false),
     headerActions: createWaybillHeaderActions({
       mode: 'pending',
+      fieldAccess,
       router,
       tableQueryRef,
       dispatchDialogRef
@@ -88,14 +91,20 @@
     columnsFactory: () =>
       createWaybillColumns({
         mode: 'pending',
+        fieldAccess,
         router,
         tableQueryRef,
         dispatchDialogRef
       })
   })
 
-  function fetchTableData(params: TableParams) {
-    return fetchWaybillTableData(params, 'pending')
+  async function fetchTableData(params: TableParams) {
+    const result = await fetchWaybillTableData(params, 'pending')
+    fieldAccess.value = mergeFieldAccessMaps(
+      result.fieldAccess,
+      ...(result.data ?? []).map((row) => row.fieldAccess)
+    )
+    return result
   }
 
   function handleDispatchSuccess(): void {

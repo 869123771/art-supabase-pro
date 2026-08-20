@@ -28,7 +28,7 @@
       defer
     >
       <template v-for="action in visibleHeaderActions" :key="getHeaderActionKey(action)">
-        <span v-auth="action.permission" :class="getHeaderActionClass()">
+        <span v-auth="getHeaderActionPermission(action)" :class="getHeaderActionClass()">
           <slot v-if="action.slot" :name="action.slot" v-bind="getHeaderActionSlotProps(action)" />
           <component
             v-else-if="action.render"
@@ -143,7 +143,10 @@
                   v-for="(action, actionIndex) in visibleSelectionActions"
                   :key="getSelectionActionKey(action, actionIndex)"
                 >
-                  <span v-auth="action.permission" class="art-table-query__selection-action">
+                  <span
+                    v-auth="getHeaderActionPermission(action)"
+                    class="art-table-query__selection-action"
+                  >
                     <slot
                       v-if="action.slot"
                       :name="action.slot"
@@ -279,10 +282,13 @@
   } from '@/utils/table/tableUtils'
   import { exportExcel, mapExcelRowsToRecords, type ExcelColumn } from '@/utils/file'
   import { useCrossPageSelection } from './use-cross-page-selection'
+  import { useRoute } from 'vue-router'
+  import { resolveBusinessButtonPermission } from '@/utils/business-permission'
 
   defineOptions({ name: 'ArtTableQuery' })
 
   const { hasAuth } = useAuth()
+  const route = useRoute()
 
   export interface ArtTableQuerySanitizeOutputOptions {
     /** 移除空字符串 */
@@ -1018,12 +1024,16 @@
     action: ArtTableQueryHeaderAction,
     scope: ArtTableQueryHeaderActionContext['scope'] = 'default'
   ): boolean => {
-    if (action.permission && !hasAuth(action.permission)) return false
+    const permission = getHeaderActionPermission(action)
+    if (permission && !hasAuth(permission)) return false
     if (typeof action.hidden === 'function') {
       return !action.hidden(createHeaderActionContext(action, undefined, scope))
     }
     return !action.hidden
   }
+
+  const getHeaderActionPermission = (action: ArtTableQueryHeaderAction): string | undefined =>
+    resolveBusinessButtonPermission(route, action.key ?? action.type, action.permission)
 
   const visibleHeaderActions = computed(() => {
     if (showSelectionBar.value && !shouldTeleportHeaderActions.value) return []

@@ -65,7 +65,13 @@ export const useAuth = () => {
     return getBackendAuthList().some((item) => item?.name === auth)
   }
 
+  const hasAnyAuth = (authList: string[]): boolean => authList.some(hasAuth)
+
+  const hasAllAuth = (authList: string[]): boolean => authList.every(hasAuth)
+
   return {
-    hasAuth
+    hasAuth,
+    hasAnyAuth,
+    hasAllAuth
   }
 }

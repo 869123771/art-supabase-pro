@@ -135,7 +135,7 @@ Deno.serve(async (request) => {
       userClient
         .from('vehicle_archive')
         .select(
-          `id,carrier_id,plate_no,company_name,vehicle_type,tonnage_or_seat,overall_length,approved_load_mass,operation_route,operation_status,audit_status,service_end_time,primary_driver_id,primaryDriver:tms_driver!vehicle_archive_primary_driver_id_fkey(id,driver_name,phone,license_type,license_expire_date,enabled)`,
+          `id,carrier_id,plate_no,company_name,vehicle_type,tonnage_or_seat,overall_length,approved_load_mass,operation_route,operation_status,audit_status,service_end_time,primary_driver_id,primaryDriver:tms_driver!vehicle_archive_primary_driver_id_fkey(id,driver_name,license_type,license_expire_date,enabled)`,
           { count: 'exact' }
         )
         .eq('audit_status', 'approved')
@@ -162,9 +162,48 @@ Deno.serve(async (request) => {
     if (assignmentsResult.error) throw assignmentsResult.error
     if (historyResult.error) throw historyResult.error
 
+    const vehicleRows = (vehiclesResult.data ?? []) as Array<Record<string, unknown>>
+    const driverIds = Array.from(
+      new Set(
+        vehicleRows
+          .map((vehicle) => String(vehicle.primary_driver_id ?? '').trim())
+          .filter(Boolean)
+      )
+    )
+    let secureDrivers: Array<Record<string, unknown>> = []
+    if (driverIds.length) {
+      const secureDriversResult = await userClient.rpc('tms_list_driver_options_secure', {
+        p_carrier_id: null,
+        p_driver_name: null,
+        p_driver_type: null,
+        p_ids: driverIds,
+        p_include_disabled: true,
+        p_max_rows: driverIds.length
+      })
+      if (secureDriversResult.error) throw secureDriversResult.error
+      secureDrivers = Array.isArray(secureDriversResult.data)
+        ? (secureDriversResult.data as Array<Record<string, unknown>>)
+        : []
+    }
+    const secureDriversById = new Map(
+      secureDrivers.map((driver) => [String(driver.id ?? ''), driver])
+    )
+    const securedVehicleRows = vehicleRows.map((vehicle) => {
+      const driverId = String(vehicle.primary_driver_id ?? '')
+      const secureDriver = secureDriversById.get(driverId)
+      if (!secureDriver) return vehicle
+      return {
+        ...vehicle,
+        primaryDriver: {
+          ...((vehicle.primaryDriver as Record<string, unknown> | null) ?? {}),
+          ...secureDriver
+        }
+      }
+    })
+
     const result = recommendDispatchResources({
       order: order as Record<string, unknown>,
-      vehicles: (vehiclesResult.data ?? []) as Array<Record<string, unknown>>,
+      vehicles: securedVehicleRows,
       activeAssignments: (assignmentsResult.data ?? []) as Array<Record<string, unknown>>,
       history: (historyResult.data ?? []) as Array<Record<string, unknown>>,
       limit: integer(body.limit, 5, 1, 10)

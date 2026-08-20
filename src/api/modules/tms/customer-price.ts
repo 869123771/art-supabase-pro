@@ -12,8 +12,7 @@ const CUSTOMER_PRICE_SELECT = `
     id,
     customer_code,
     customer_name,
-    contact_name,
-    contact_phone
+    contact_name
   )
 `
 

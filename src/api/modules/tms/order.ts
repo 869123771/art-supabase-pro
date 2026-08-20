@@ -1,42 +1,20 @@
 import { useSupabase } from '@/hooks'
 import type { QueryResult } from '@/types/api/response'
-import { withRequestOptions } from '@/api/providers/supabase/query'
 import type { ApiRequestOptions } from '@/types/api/request'
-import {
-  applyOrderListFilters,
-  mergeOrdersWithDriverWaybills,
-  ORDER_SELECT
-} from '@/api/modules/tms/order-shared'
+import { fetchSecureOrders } from '@/api/modules/tms/transport-secure'
+import { canEditField } from '@/utils/field-permission'
+import { pick } from 'lodash-es'
 
 type OrderRecord = Api.Tms.Order.OrderRecord
 type OrderSearchParams = Api.Tms.Order.OrderSearchParams
 type OrderFreightPayload = Api.Tms.Order.OrderFreightPayload
-type RelatedWaybillSummary = Api.Tms.Waybill.RelatedWaybillSummary
-
-interface RelatedWaybillRow extends RelatedWaybillSummary {
-  driver?: { driverName?: string | null; phone?: string | null } | null
-  vehicle?: { plateNo?: string | null } | null
-}
-
 const { supabase, keysToSnakeDeep, responseHandle } = useSupabase()
 
 export async function fetchOrderList(
   params: OrderSearchParams & Api.Common.CommonSearchParams,
   options?: ApiRequestOptions
 ) {
-  const { from = 0, to = 9 } = params
-  let query = supabase
-    .from('tms_order')
-    .select(ORDER_SELECT, { count: 'exact' })
-    .order('create_time', { ascending: false })
-    .range(from, to)
-
-  query = applyOrderListFilters(query, params)
-  const result = await responseHandle<OrderRecord[]>(() => withRequestOptions(query, options), {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
-  return { ...result, data: await mergeOrdersWithDriverWaybills(result.data) }
+  return await fetchSecureOrders<OrderRecord>(params, 'order_list', options)
 }
 
 const ORDER_STATUS_COUNT_VALUES = [
@@ -55,11 +33,11 @@ export async function fetchOrderStatusCounts(
   const sharedFilters = { ...params, orderStatus: undefined }
   const countEntries = await Promise.all(
     ORDER_STATUS_COUNT_VALUES.map(async (orderStatus) => {
-      let query = supabase.from('tms_order').select('id', { count: 'exact', head: true })
-
-      query = applyOrderListFilters(query, { ...sharedFilters, orderStatus })
-      const { total } = await responseHandle<null>(() => query, { ignoreCheck: true })
-      return [orderStatus, total ?? 0] as const
+      const result = await fetchSecureOrders<OrderRecord>(
+        { ...sharedFilters, orderStatus, countOnly: true },
+        'order_list'
+      )
+      return [orderStatus, result.total] as const
     })
   )
 
@@ -69,121 +47,19 @@ export async function fetchOrderStatusCounts(
 export async function exportOrderList(
   params: OrderSearchParams & { ids?: string[]; maxRows?: number }
 ) {
-  const { ids, maxRows = 10000 } = params
-  let query = supabase
-    .from('tms_order')
-    .select(ORDER_SELECT)
-    .order('create_time', { ascending: false })
-    .limit(maxRows)
-
-  query = ids?.length ? query.in('id', ids) : applyOrderListFilters(query, params)
-  const result = await responseHandle<OrderRecord[]>(() => query, {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
-  return { ...result, data: await mergeOrdersWithDriverWaybills(result.data) }
+  return await fetchSecureOrders<OrderRecord>(params, 'order_export')
 }
 
 export async function fetchOrderDetail(id: string) {
-  const query = supabase.from('tms_order').select(ORDER_SELECT).eq('id', id).maybeSingle()
-
-  const result = await responseHandle<OrderRecord | null>(() => query, {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
-  const rows = result.data ? await mergeOrdersWithDriverWaybills([result.data]) : []
-  const order = rows[0] ?? null
-  if (!order?.id) return { ...result, data: order }
-
-  const [audit, relatedWaybills] = await Promise.all([
-    fetchDriverDeliveryAudit(order.id),
-    fetchRelatedWaybills(order.id)
-  ])
-  return { ...result, data: { ...order, ...audit, relatedWaybills } }
-}
-
-async function fetchRelatedWaybills(orderId: string): Promise<RelatedWaybillSummary[]> {
-  const { data } = await responseHandle<RelatedWaybillRow[]>(
-    () =>
-      supabase
-        .from('tms_waybill')
-        .select(
-          `
-            id,
-            waybill_no,
-            status,
-            accepted_at,
-            departed_at,
-            completed_at,
-            driver:tms_driver!tms_waybill_driver_id_fkey(driver_name, phone),
-            vehicle:vehicle_archive!tms_waybill_vehicle_id_fkey(plate_no)
-          `
-        )
-        .eq('order_id', orderId)
-        .order('create_time', { ascending: false }),
-    {
-      breakReturn: true,
-      errorMessage: '关联运单加载失败，请稍后重试'
-    }
+  return await responseHandle<OrderRecord | null>(
+    () => supabase.rpc('tms_get_order_detail_secure', { p_id: id }),
+    { ignoreCheck: true, showErrorMessage: true }
   )
-
-  return (data ?? []).map((item) => {
-    return {
-      id: item.id,
-      waybillNo: item.waybillNo,
-      status: item.status,
-      acceptedAt: item.acceptedAt,
-      departedAt: item.departedAt,
-      completedAt: item.completedAt,
-      driverName: item.driver?.driverName ?? null,
-      driverPhone: item.driver?.phone ?? null,
-      plateNo: item.vehicle?.plateNo ?? null
-    }
-  })
-}
-
-async function fetchDriverDeliveryAudit(orderId: string): Promise<Partial<OrderRecord>> {
-  const { data: waybill, error: waybillError } = await supabase
-    .from('tms_waybill')
-    .select('id, completed_at')
-    .eq('order_id', orderId)
-    .order('create_time', { ascending: false })
-    .limit(1)
-    .maybeSingle()
-
-  if (waybillError || !waybill) return {}
-
-  const [eventResult, proofResult] = await Promise.all([
-    supabase
-      .from('tms_waybill_event')
-      .select('event_type, event_time, operator_name, payload')
-      .eq('waybill_id', waybill.id)
-      .in('event_type', ['signed', 'completed'])
-      .order('event_time', { ascending: true }),
-    supabase
-      .from('tms_waybill_proof')
-      .select('id, proof_type')
-      .eq('waybill_id', waybill.id)
-      .in('proof_type', ['delivery_photo', 'receipt'])
-  ])
-
-  const signedEvent = (eventResult.data ?? []).find(
-    (event) =>
-      event.event_type === 'signed' ||
-      String((event.payload as Record<string, unknown> | null)?.action ?? '') === 'submit_signature'
-  )
-
-  return {
-    driverWaybillCompletedAt: waybill.completed_at,
-    driverWaybillSignedAt: signedEvent?.event_time ?? null,
-    driverWaybillSignedBy: signedEvent?.operator_name ?? null,
-    driverWaybillSignatureProofCount: proofResult.data?.length ?? 0
-  }
 }
 
 export async function addOrder(params: OrderRecord) {
   return await responseHandle<OrderRecord>(
-    () => supabase.from('tms_order').insert(keysToSnakeDeep(params)).select().single(),
+    () => supabase.rpc('tms_create_order_secure', { p_payload: toOrderWritePayload(params) }),
     { showMessage: true, breakReturn: true }
   )
 }
@@ -258,57 +134,146 @@ async function normalizeEdgeFunctionError(error: unknown): Promise<unknown | nul
   }
 }
 
-export async function editOrder(params: OrderRecord) {
-  const { id, ...data } = params
-  delete data.shippingCustomer
-  delete data.receivingCustomer
-  delete data.originStationRef
-  delete data.destinationStationRef
-  delete data.transferStationRef
-  delete data.dispatchVehicle
-  delete data.dispatchDriver
-  delete data.driverWaybillAcceptedAt
-  delete data.driverWaybillLoadedAt
-  delete data.driverWaybillDepartedAt
-  delete data.driverWaybillUnloadedAt
-  delete data.driverWaybillCompletedAt
-  delete data.driverWaybillSignedAt
-  delete data.driverWaybillSignedBy
-  delete data.driverWaybillSignatureProofCount
-  delete data.waybillStatus
+const ORDER_WRITE_FIELDS = [
+  'order_no',
+  'cargo_no',
+  'order_status',
+  'origin_station',
+  'destination_station',
+  'transfer_station',
+  'delivery_method',
+  'shipping_customer_id',
+  'receiving_customer_id',
+  'shipping_contact_name',
+  'shipping_contact_phone',
+  'shipping_address_detail',
+  'receiving_contact_name',
+  'receiving_contact_phone',
+  'receiving_address_detail',
+  'cargo_items',
+  'cargo_quantity_total',
+  'cargo_weight_total',
+  'cargo_volume_total',
+  'transport_fee',
+  'delivery_fee',
+  'unloading_fee',
+  'collect_payment_fee',
+  'transfer_fee',
+  'declared_value',
+  'insurance_fee',
+  'package_fee',
+  'other_fee',
+  'total_fee',
+  'payment_method',
+  'cash_amount',
+  'collect_amount',
+  'monthly_amount',
+  'cod_amount',
+  'handling_fee',
+  'payment_total',
+  'transport_mode',
+  'order_remark',
+  'image_urls',
+  'origin_station_id',
+  'destination_station_id',
+  'transfer_station_id',
+  'shipping_address_id',
+  'receiving_address_id',
+  'shipping_longitude',
+  'shipping_latitude',
+  'receiving_longitude',
+  'receiving_latitude'
+] as const
 
+const ORDER_SENSITIVE_WRITE_FIELDS: Record<Api.Tms.Order.OrderFieldKey, readonly string[]> = {
+  shipperContact: ['shipping_contact_phone'],
+  shipperAddress: ['shipping_address_detail', 'shipping_address_id'],
+  receiverContact: ['receiving_contact_phone'],
+  receiverAddress: ['receiving_address_detail', 'receiving_address_id'],
+  cargoPricing: [],
+  freightAmounts: [
+    'transport_fee',
+    'delivery_fee',
+    'unloading_fee',
+    'collect_payment_fee',
+    'transfer_fee',
+    'insurance_fee',
+    'package_fee',
+    'other_fee',
+    'total_fee'
+  ],
+  settlementAmounts: [
+    'declared_value',
+    'cash_amount',
+    'collect_amount',
+    'monthly_amount',
+    'cod_amount',
+    'handling_fee',
+    'payment_total'
+  ],
+  driverPhone: [],
+  proofAttachments: ['image_urls'],
+  routeCoordinates: [
+    'shipping_longitude',
+    'shipping_latitude',
+    'receiving_longitude',
+    'receiving_latitude'
+  ]
+}
+
+function toOrderWritePayload(params: OrderRecord): Record<string, unknown> {
+  const payload = pick(
+    keysToSnakeDeep(params) as unknown as Record<string, unknown>,
+    ORDER_WRITE_FIELDS
+  ) as Record<string, unknown>
+  if (!params.id) return payload
+
+  Object.entries(ORDER_SENSITIVE_WRITE_FIELDS).forEach(([field, columns]) => {
+    if (canEditField(params.fieldAccess, field as Api.Tms.Order.OrderFieldKey)) return
+    columns.forEach((column) => delete payload[column])
+  })
+  return payload
+}
+
+export async function editOrder(params: OrderRecord) {
+  const id = params.id
+  if (!id) throw new Error('缺少订单 ID')
   return await responseHandle<OrderRecord>(
     () =>
-      supabase
-        .from('tms_order')
-        .update(keysToSnakeDeep(data))
-        .eq('id', id)
-        .eq('order_status', 'pending_load')
-        .select()
-        .single(),
+      supabase.rpc('tms_update_order_secure', {
+        p_id: id,
+        p_payload: toOrderWritePayload(params),
+        p_action: 'edit'
+      }),
     { showMessage: true, breakReturn: true }
   )
 }
 
 export async function editOrderFreight(params: OrderFreightPayload) {
   const { id, ...data } = params
+  if (!id) throw new Error('缺少订单 ID')
 
   return await responseHandle<OrderRecord>(
-    () => supabase.from('tms_order').update(keysToSnakeDeep(data)).eq('id', id).select().single(),
+    () =>
+      supabase.rpc('tms_update_order_secure', {
+        p_id: id,
+        p_payload: keysToSnakeDeep(data),
+        p_action: 'edit_freight'
+      }),
     { showMessage: true, breakReturn: true }
   )
 }
 
 export async function deleteOrder(id: string) {
-  return await responseHandle(
-    () => supabase.rpc('tms_delete_order_with_waybill', { p_order_id: id }),
-    { showMessage: true, breakReturn: true }
-  )
+  return await responseHandle(() => supabase.rpc('tms_delete_order_secure', { p_order_id: id }), {
+    showMessage: true,
+    breakReturn: true
+  })
 }
 
 export async function deleteOrderBatch(ids: string[]) {
   return await responseHandle(
-    () => supabase.rpc('tms_delete_orders_with_waybills', { p_order_ids: ids }),
+    () => supabase.rpc('tms_delete_orders_secure', { p_order_ids: ids }),
     { showMessage: true, breakReturn: true }
   )
 }

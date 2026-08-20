@@ -19,14 +19,6 @@
       </template>
     </BusinessWorkspaceHeader>
 
-    <ElAlert
-      v-if="!isPlatformSuper"
-      type="info"
-      :closable="false"
-      show-icon
-      title="当前账号可查看本租户票据台账；新增、编辑和票据流转仅平台超级管理员可执行。"
-    />
-
     <ArtTableQuery
       ref="tableRef"
       v-model="table.search"
@@ -40,9 +32,7 @@
         rowKey: 'id',
         tableLayout: 'fixed',
         emptyText: '暂无商业票据',
-        emptyDescription: isPlatformSuper
-          ? '新建票据草稿，并按业务方向确认收票或出票。'
-          : '当前租户暂无可查看的商业票据记录。'
+        emptyDescription: '新建票据草稿，并按业务方向确认收票或出票。'
       }"
       focusable
     />
@@ -120,7 +110,7 @@
 
   const { confirmAction, promptReason } = useArtFeedback()
   const { runWithAccountSet } = useFinanceAccountSetPrerequisite()
-  const { getDictMap, isPlatformSuper } = storeToRefs(useUserStore())
+  const { getDictMap } = storeToRefs(useUserStore())
   const tableRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<DialogExpose>()
   const drawerRef = ref<DrawerExpose>()
@@ -187,27 +177,24 @@
     }
   ])
 
-  const headerActions = computed<ArtTableQueryHeaderAction[]>(() =>
-    isPlatformSuper.value
-      ? [
+  const headerActions = computed<ArtTableQueryHeaderAction[]>(() => [
+    {
+      permission: 'FinanceCommercialBill:Add',
+      type: 'add',
+      label: '新建票据',
+      onClick: () =>
+        void runWithAccountSet(
           {
-            type: 'add',
-            label: '新建票据',
-            onClick: () =>
-              void runWithAccountSet(
-                {
-                  actionLabel: '新建票据',
-                  activeRequired: true,
-                  accountSetId: table.search.accountSetId,
-                  foundationRequired: true,
-                  available: accountSetOptions.value.length > 0
-                },
-                () => dialogRef.value?.handleOpen()
-              )
-          }
-        ]
-      : []
-  )
+            actionLabel: '新建票据',
+            activeRequired: true,
+            accountSetId: table.search.accountSetId,
+            foundationRequired: true,
+            available: accountSetOptions.value.length > 0
+          },
+          () => dialogRef.value?.handleOpen()
+        )
+    }
+  ])
 
   const metrics = computed<BusinessWorkspaceMetric[]>(() => [
     {
@@ -322,15 +309,23 @@
       {
         prop: 'operation',
         label: '操作',
-        width: isPlatformSuper.value ? 156 : 76,
+        width: 156,
         fixed: 'right',
         formatter: (row) => (
           <div class="flex items-center">
-            <ArtButtonTable type="view" onClick={() => void drawerRef.value?.handleOpen(row)} />
-            {isPlatformSuper.value && row.status === 'draft' ? (
-              <ArtButtonTable type="edit" onClick={() => void dialogRef.value?.handleOpen(row)} />
+            <ArtButtonTable
+              type="view"
+              permission="FinanceCommercialBill:View"
+              onClick={() => void drawerRef.value?.handleOpen(row)}
+            />
+            {row.status === 'draft' ? (
+              <ArtButtonTable
+                type="edit"
+                permission="FinanceCommercialBill:Edit"
+                onClick={() => void dialogRef.value?.handleOpen(row)}
+              />
             ) : null}
-            {isPlatformSuper.value && getActionItems(row).length ? (
+            {getActionItems(row).length ? (
               <ArtButtonMore
                 list={getActionItems(row)}
                 onClick={(item: ButtonMoreItem) => void handleAction(item, row)}
@@ -346,12 +341,17 @@
     if (row.status === 'draft') {
       return [
         {
+          auth:
+            row.direction === 'receivable'
+              ? 'FinanceCommercialBill:Receive'
+              : 'FinanceCommercialBill:Issue',
           key: row.direction === 'receivable' ? 'receive' : 'issue',
           label: row.direction === 'receivable' ? '确认收票' : '确认出票',
           icon: row.direction === 'receivable' ? 'ri:inbox-archive-line' : 'ri:send-plane-line',
           color: 'var(--el-color-success)'
         },
         {
+          auth: 'FinanceCommercialBill:Delete',
           key: 'delete',
           label: '删除草稿',
           icon: 'ri:delete-bin-line',
@@ -363,6 +363,7 @@
       const actions: ButtonMoreItem[] = []
       if (row.transferable) {
         actions.push({
+          auth: 'FinanceCommercialBill:Endorse',
           key: 'endorse',
           label: '背书转让',
           icon: 'ri:exchange-line',
@@ -371,6 +372,7 @@
       }
       if (row.direction === 'receivable') {
         actions.push({
+          auth: 'FinanceCommercialBill:Discount',
           key: 'discount',
           label: '票据贴现',
           icon: 'ri:discount-percent-line',
@@ -379,12 +381,14 @@
       }
       actions.push(
         {
+          auth: 'FinanceCommercialBill:Settle',
           key: 'settle',
           label: '到期结算',
           icon: 'ri:checkbox-circle-line',
           color: 'var(--el-color-success)'
         },
         {
+          auth: 'FinanceCommercialBill:Cancel',
           key: 'cancel',
           label: '取消票据',
           icon: 'ri:close-circle-line',

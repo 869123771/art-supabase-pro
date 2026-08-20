@@ -4,8 +4,12 @@
     v-auth="permission"
     type="button"
     class="art-icon-button size-8.5 inline-flex flex-cc c-p border-0 bg-transparent text-g-600 dark:text-g-800 text-xl rounded tad-300 hover:bg-hover-color"
-    :class="[`art-icon-button--${tone}`, { 'rounded-full': circle }]"
-    :disabled="disabled"
+    :class="[
+      `art-icon-button--${tone}`,
+      { 'rounded-full': circle, 'art-icon-button--loading': loading }
+    ]"
+    :disabled="disabled || loading"
+    :aria-busy="loading || undefined"
     :aria-label="accessibleLabel"
     :title="accessibleLabel"
     @click="handleClick"
@@ -25,6 +29,8 @@
     circle?: boolean
     /** 是否禁用 */
     disabled?: boolean
+    /** 是否处于加载状态；加载时保留动作含义并旋转图标 */
+    loading?: boolean
     tone?: 'theme' | 'danger'
     permission?: string
     /** 按钮动作名称，用于无障碍文本和悬停提示 */
@@ -57,7 +63,7 @@
   const accessibleLabel = computed(() => props.label || defaultIconLabels[props.icon] || '图标操作')
 
   const handleClick = (event: MouseEvent): void => {
-    if (props.disabled) return
+    if (props.disabled || props.loading) return
     emit('click', event)
   }
 </script>
@@ -94,9 +100,31 @@
       box-shadow: var(--art-themed-action-focus-shadow);
     }
 
-    &:disabled {
+    &:disabled:not(.art-icon-button--loading) {
       cursor: not-allowed;
       opacity: 0.55;
+    }
+
+    &.art-icon-button--loading {
+      color: var(--art-action-color);
+      cursor: progress;
+      background-color: color-mix(in srgb, var(--art-action-color) 10%, transparent);
+    }
+
+    &.art-icon-button--loading :deep(svg) {
+      animation: art-icon-button-spin 0.8s linear infinite;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      &.art-icon-button--loading :deep(svg) {
+        animation: none;
+      }
+    }
+  }
+
+  @keyframes art-icon-button-spin {
+    to {
+      transform: rotate(360deg);
     }
   }
 </style>

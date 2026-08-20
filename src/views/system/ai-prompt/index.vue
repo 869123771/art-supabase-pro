@@ -151,6 +151,7 @@
             {
               type: 'add',
               label: '新建版本',
+              permission: 'System:AiPrompt:Add',
               onClick: () => openDialog({ mode: 'create' })
             }
           ]
@@ -256,7 +257,8 @@
       {
         key: 'clone',
         label: row.status === 'draft' ? '复制为新版本' : '基于此版本新建草稿',
-        icon: 'ri:file-copy-2-line'
+        icon: 'ri:file-copy-2-line',
+        auth: 'System:AiPrompt:Clone'
       }
     ]
     if (row.status === 'draft') {
@@ -264,7 +266,8 @@
         key: 'delete',
         label: '删除草稿',
         icon: 'ri:delete-bin-5-line',
-        color: 'var(--el-color-danger)'
+        color: 'var(--el-color-danger)',
+        auth: 'System:AiPrompt:Delete'
       })
     }
     return actions
@@ -357,7 +360,11 @@
           <div class="ai-prompt__actions">
             {row.status === 'draft' ? (
               <ElTooltip content="编辑草稿（发布前可反复修改）" placement="top">
-                <ArtButtonTable type="edit" onClick={() => openDialog({ mode: 'edit', row })} />
+                <ArtButtonTable
+                  type="edit"
+                  permission="System:AiPrompt:Edit"
+                  onClick={() => openDialog({ mode: 'edit', row })}
+                />
               </ElTooltip>
             ) : null}
             {row.status !== 'published' ? (
@@ -368,6 +375,7 @@
                 <ArtButtonTable
                   type="sign"
                   icon={row.status === 'archived' ? 'ri:history-line' : 'ri:rocket-2-line'}
+                  permission="System:AiPrompt:Publish"
                   onClick={() => void handlePublish(row)}
                 />
               </ElTooltip>

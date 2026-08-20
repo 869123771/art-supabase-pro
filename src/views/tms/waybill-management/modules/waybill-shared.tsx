@@ -14,6 +14,7 @@ import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
 import { ColumnOption } from '@/types'
 import { pageInfoHandler } from '@/utils/table/tableUtils'
 import { formatWithDayjs } from '@/utils/time'
+import { canViewField, formatSensitiveNumber } from '@/utils/field-permission'
 import { useUserStore } from '@/store/modules/user'
 import {
   cancelAssignedWaybill,
@@ -51,6 +52,7 @@ export interface ExecutionOperationDialogExpose {
 
 export interface WaybillListContext {
   mode: WaybillMode
+  fieldAccess: Ref<Api.Tms.Waybill.WaybillFieldAccessMap>
   router: Router
   tableQueryRef: Ref<
     { refreshData: () => Promise<void>; refreshUpdate: () => Promise<void> } | undefined
@@ -137,17 +139,24 @@ export const createInitialWaybillSearch = (): WaybillSearchParams => ({
   waybillStatus: WAYBILL_STATUS_ALL
 })
 
-export const waybillExcelColumns: ArtTableQueryExcelColumn[] = [
+const createWaybillExcelColumns = (context: WaybillListContext): ArtTableQueryExcelColumn[] => [
   { key: 'cargoNo', title: '货号' },
   { key: 'orderNo', title: '运单号' },
   { key: 'shippingContactName', title: '发货人' },
-  { key: 'shippingContactPhone', title: '发货人电话' },
-  { key: 'shippingAddressDetail', title: '发货人地址' },
+  ...(canViewField(context.fieldAccess.value, 'shipperContact')
+    ? [{ key: 'shippingContactPhone', title: '发货人电话' }]
+    : []),
+  ...(canViewField(context.fieldAccess.value, 'shipperAddress')
+    ? [{ key: 'shippingAddressDetail', title: '发货人地址' }]
+    : []),
   { key: 'originStation', title: '发货站' },
   { key: 'destinationStation', title: '到货站' },
   { key: 'transferStation', title: '中转站' },
   { key: 'dispatchPlateNo', title: '配载车辆' },
   { key: 'dispatchDriverName', title: '司机' },
+  ...(canViewField(context.fieldAccess.value, 'driverPhone')
+    ? [{ key: 'dispatchDriverPhone', title: '司机电话' }]
+    : []),
   { key: 'plannedDepartureTime', title: '计划发车时间' },
   { key: 'plannedArrivalTime', title: '计划到达时间' },
   { key: 'dispatchStatus', title: '配载状态' },
@@ -294,6 +303,7 @@ export const createWaybillHeaderActions = (
     const actions: ArtTableQueryHeaderAction[] = [
       {
         key: 'batch-dispatch',
+        permission: 'TmsPendingWaybillList:Dispatch',
         label: '批量配载',
         icon: 'ri:truck-line',
         selectionRequired: true,
@@ -307,10 +317,14 @@ export const createWaybillHeaderActions = (
         }
       },
       {
+        permission:
+          context.mode === 'pending'
+            ? 'TmsPendingWaybillList:Export'
+            : 'TmsLoadedWaybillList:Export',
         type: 'export',
         exportFilename: context.mode === 'pending' ? '待运载运单' : '已配载运单',
         exportSheetName: context.mode === 'pending' ? '待运载运单' : '已配载运单',
-        exportColumns: waybillExcelColumns,
+        exportColumns: createWaybillExcelColumns(context),
         exportApi: ({ selectedIds, searchParams, maxRows }) => {
           const waybillSearchParams = searchParams as WaybillSearchParams
           return exportWaybillList({
@@ -330,13 +344,26 @@ export const createWaybillColumns = (
   context: WaybillListContext
 ): ColumnOption<WaybillRecord>[] => {
   const orderColumns: ColumnOption<WaybillRecord>[] = [
-    { prop: 'shippingContactPhone', label: '发货人电话', width: 140, showOverflowTooltip: true },
-    {
-      prop: 'shippingAddressDetail',
-      label: '发货人地址',
-      minWidth: 220,
-      showOverflowTooltip: true
-    },
+    ...(canViewField(context.fieldAccess.value, 'shipperContact')
+      ? [
+          {
+            prop: 'shippingContactPhone',
+            label: '发货人电话',
+            width: 140,
+            showOverflowTooltip: true
+          }
+        ]
+      : []),
+    ...(canViewField(context.fieldAccess.value, 'shipperAddress')
+      ? [
+          {
+            prop: 'shippingAddressDetail',
+            label: '发货人地址',
+            minWidth: 220,
+            showOverflowTooltip: true
+          }
+        ]
+      : []),
     { prop: 'originStation', label: '发货站', width: 110, showOverflowTooltip: true },
     {
       prop: 'transferStation',
@@ -346,18 +373,26 @@ export const createWaybillColumns = (
     },
     { prop: 'destinationStation', label: '到达站', width: 110, showOverflowTooltip: true },
     { prop: 'receivingContactName', label: '收货人', width: 110, showOverflowTooltip: true },
-    {
-      prop: 'receivingContactPhone',
-      label: '收货人电话',
-      width: 140,
-      showOverflowTooltip: true
-    },
-    {
-      prop: 'receivingAddressDetail',
-      label: '收货人地址',
-      minWidth: 220,
-      showOverflowTooltip: true
-    },
+    ...(canViewField(context.fieldAccess.value, 'receiverContact')
+      ? [
+          {
+            prop: 'receivingContactPhone',
+            label: '收货人电话',
+            width: 140,
+            showOverflowTooltip: true
+          }
+        ]
+      : []),
+    ...(canViewField(context.fieldAccess.value, 'receiverAddress')
+      ? [
+          {
+            prop: 'receivingAddressDetail',
+            label: '收货人地址',
+            minWidth: 220,
+            showOverflowTooltip: true
+          }
+        ]
+      : []),
     {
       prop: 'cargoItems',
       label: '货物类型',
@@ -388,43 +423,45 @@ export const createWaybillColumns = (
       width: 110,
       dict: { code: 'tmsOrderPaymentMethod', display: 'tag' }
     },
-    {
-      prop: 'declaredValue',
-      label: '声明价值',
-      width: 110,
-      formatter: (row) => formatMoney(row.declaredValue)
-    },
-    {
-      prop: 'insuranceFee',
-      label: '保费',
-      width: 100,
-      formatter: (row) => formatMoney(row.insuranceFee)
-    },
-    {
-      prop: 'deliveryFee',
-      label: '配送费',
-      width: 100,
-      formatter: (row) => formatMoney(row.deliveryFee)
-    },
-    {
-      prop: 'unloadingFee',
-      label: '卸货费',
-      width: 100,
-      formatter: (row) => formatMoney(row.unloadingFee)
-    },
-    {
-      prop: 'totalFee',
-      label: '总运费',
-      width: 110,
-      formatter: (row) => formatMoney(row.totalFee)
-    },
+    ...(canViewField(context.fieldAccess.value, 'settlementAmounts')
+      ? [
+          {
+            prop: 'declaredValue',
+            label: '声明价值',
+            width: 110,
+            formatter: (row: WaybillRecord) => formatMoney(row.declaredValue)
+          }
+        ]
+      : []),
+    ...(canViewField(context.fieldAccess.value, 'freightAmounts')
+      ? [
+          {
+            prop: 'insuranceFee',
+            label: '保费',
+            width: 100,
+            formatter: (row: WaybillRecord) => formatMoney(row.insuranceFee)
+          },
+          {
+            prop: 'deliveryFee',
+            label: '配送费',
+            width: 100,
+            formatter: (row: WaybillRecord) => formatMoney(row.deliveryFee)
+          },
+          {
+            prop: 'unloadingFee',
+            label: '卸货费',
+            width: 100,
+            formatter: (row: WaybillRecord) => formatMoney(row.unloadingFee)
+          },
+          {
+            prop: 'totalFee',
+            label: '总运费',
+            width: 110,
+            formatter: (row: WaybillRecord) => formatMoney(row.totalFee)
+          }
+        ]
+      : []),
     { prop: 'createBy', label: '开单人', width: 110, showOverflowTooltip: true },
-    {
-      prop: 'createByPhone',
-      label: '开单人电话',
-      width: 140,
-      formatter: (row) => formatValue(getRecordValue(row, 'createByPhone'))
-    },
     {
       prop: 'createTime',
       label: '开单时间',
@@ -454,7 +491,16 @@ export const createWaybillColumns = (
     columns.push(
       ...orderColumns,
       { prop: 'dispatchDriverName', label: '司机', width: 100, showOverflowTooltip: true },
-      { prop: 'dispatchDriverPhone', label: '司机电话', width: 130, showOverflowTooltip: true },
+      ...(canViewField(context.fieldAccess.value, 'driverPhone')
+        ? [
+            {
+              prop: 'dispatchDriverPhone',
+              label: '司机电话',
+              width: 130,
+              showOverflowTooltip: true
+            }
+          ]
+        : []),
       {
         prop: 'originStation',
         label: '线路',
@@ -487,7 +533,15 @@ export const createWaybillColumns = (
       fixed: 'right',
       formatter: (row) => (
         <div class="flex items-center">
-          <ArtButtonTable type="view" onClick={() => openDetail(context, row)} />
+          <ArtButtonTable
+            type="view"
+            permission={
+              context.mode === 'pending'
+                ? 'TmsPendingWaybillList:View'
+                : 'TmsLoadedWaybillList:View'
+            }
+            onClick={() => openDetail(context, row)}
+          />
           <ArtButtonMore
             list={getMoreActions(context, row)}
             onClick={(item: ButtonMoreItem) => handleMoreAction(context, row, item)}
@@ -529,7 +583,8 @@ function getMoreActions(context: WaybillListContext, row: WaybillRecord): Button
       actions.push({
         key: 'dispatch',
         label: '配载',
-        icon: 'ri:truck-line'
+        icon: 'ri:truck-line',
+        auth: 'TmsPendingWaybillList:Dispatch'
       })
     }
     if (canCancelWaybillOrder(row)) {
@@ -537,7 +592,8 @@ function getMoreActions(context: WaybillListContext, row: WaybillRecord): Button
         key: 'cancel-order',
         label: '取消订单',
         icon: 'ri:close-circle-line',
-        color: 'var(--el-color-danger)'
+        color: 'var(--el-color-danger)',
+        auth: 'TmsPendingWaybillList:Cancel'
       })
     }
 
@@ -548,35 +604,40 @@ function getMoreActions(context: WaybillListContext, row: WaybillRecord): Button
     actions.push({
       key: 'confirm-acceptance',
       label: '确认接单',
-      icon: 'ri:checkbox-circle-line'
+      icon: 'ri:checkbox-circle-line',
+      auth: 'TmsWaybill:Accept'
     })
   }
   if (context.canDepart && row.waybillStatus === 'loading') {
     actions.push({
       key: 'confirm-departure',
       label: '确认发车',
-      icon: 'ri:send-plane-line'
+      icon: 'ri:send-plane-line',
+      auth: 'TmsWaybill:Depart'
     })
   }
   if (context.canLoading && ['accepted', 'loading'].includes(String(row.waybillStatus))) {
     actions.push({
       key: 'loading-operation',
       label: '装货',
-      icon: 'ri:upload-cloud-2-line'
+      icon: 'ri:upload-cloud-2-line',
+      auth: 'TmsWaybill:Loading'
     })
   }
   if (context.canArrive && row.waybillStatus === 'transporting') {
     actions.push({
       key: 'arrival-operation',
       label: '确认到达',
-      icon: 'ri:map-pin-user-line'
+      icon: 'ri:map-pin-user-line',
+      auth: 'TmsWaybill:Arrive'
     })
   }
   if (context.canUnloading && row.waybillStatus === 'unloading') {
     actions.push({
       key: 'unloading-operation',
       label: '卸货',
-      icon: 'ri:download-cloud-2-line'
+      icon: 'ri:download-cloud-2-line',
+      auth: 'TmsWaybill:Unloading'
     })
   }
   if (
@@ -585,7 +646,12 @@ function getMoreActions(context: WaybillListContext, row: WaybillRecord): Button
     row.driverWaybillUnloadingStatus === 'completed' &&
     !row.driverWaybillSignedAt
   ) {
-    actions.push({ key: 'signature-operation', label: '签收', icon: 'ri:signature-line' })
+    actions.push({
+      key: 'signature-operation',
+      label: '签收',
+      icon: 'ri:signature-line',
+      auth: 'TmsWaybill:Sign'
+    })
   }
   if (
     context.canComplete &&
@@ -597,6 +663,7 @@ function getMoreActions(context: WaybillListContext, row: WaybillRecord): Button
       key: 'completion-operation',
       label: row.waybillStatus === 'completed' ? '补录回场' : '确认回场',
       icon: row.waybillStatus === 'completed' ? 'ri:history-line' : 'ri:home-4-line',
+      auth: 'TmsWaybill:Complete',
       color: row.waybillStatus === 'completed' ? 'var(--el-color-warning)' : undefined
     })
   }
@@ -604,7 +671,8 @@ function getMoreActions(context: WaybillListContext, row: WaybillRecord): Button
     actions.push({
       key: 'print',
       label: '打印',
-      icon: 'ri:printer-line'
+      icon: 'ri:printer-line',
+      auth: 'TmsLoadedWaybillList:Print'
     })
   }
   if (context.canCancel && canCancelWaybillOrder(row)) {
@@ -612,7 +680,8 @@ function getMoreActions(context: WaybillListContext, row: WaybillRecord): Button
       key: 'cancel-order',
       label: '取消订单',
       icon: 'ri:close-circle-line',
-      color: 'var(--el-color-danger)'
+      color: 'var(--el-color-danger)',
+      auth: 'TmsWaybill:Cancel'
     })
   }
 
@@ -741,8 +810,7 @@ function formatRoute(row: WaybillRecord): string {
 }
 
 function formatMoney(value?: number | string | null): string {
-  const numericValue = Number(value ?? 0)
-  return Number.isFinite(numericValue) ? String(numericValue) : '0'
+  return formatSensitiveNumber(value)
 }
 
 function formatNumber(value?: number | string | null, precision = 2): string {
@@ -758,10 +826,4 @@ function formatNumber(value?: number | string | null, precision = 2): string {
 function formatValue(value?: string | number | null): string {
   const text = String(value ?? '').trim()
   return text || '-'
-}
-
-function getRecordValue(row: WaybillRecord, key: string): string | number | null {
-  const value = (row as unknown as Record<string, unknown>)[key]
-  if (typeof value === 'string' || typeof value === 'number') return value
-  return null
 }

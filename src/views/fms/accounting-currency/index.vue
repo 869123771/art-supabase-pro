@@ -22,15 +22,6 @@
       </template>
     </BusinessWorkspaceHeader>
 
-    <ElAlert
-      v-if="!isPlatformSuper"
-      v-show="!focusMode"
-      type="info"
-      :closable="false"
-      show-icon
-      title="当前账号可查看本租户币种及汇率；币种、汇率维护仅平台超级管理员可执行。"
-    />
-
     <ArtPageSection
       v-show="!focusMode"
       title="核算范围"
@@ -58,7 +49,7 @@
       <AccountingSetupGuide
         :loading="scope.loading"
         :has-account-set="scope.options.length > 0"
-        :can-configure="isPlatformSuper"
+        :can-configure="hasAuth('FinanceAccountSet:Add')"
         @configure="goToAccountSet"
       />
     </ArtPageSection>
@@ -70,7 +61,11 @@
         class="accounting-workspace-fill-section"
       >
         <template #actions>
-          <ElButton v-if="isPlatformSuper" type="primary" @click="openCurrencyDialog()">
+          <ElButton
+            v-auth="'FinanceAccountingCurrency:AddCurrency'"
+            type="primary"
+            @click="openCurrencyDialog()"
+          >
             <ArtSvgIcon icon="ri:add-line" />新增外币
           </ElButton>
         </template>
@@ -130,7 +125,6 @@
                   </span>
                 </button>
                 <ArtButtonMore
-                  v-if="isPlatformSuper"
                   class="accounting-currency-page__currency-more"
                   :list="getCurrencyActions(item)"
                   @click="handleCurrencyAction($event, item)"
@@ -150,7 +144,11 @@
       >
         <template #actions>
           <AccountingWorkspaceFocusToggle v-if="focusMode" v-model="focusMode" />
-          <ElButton v-if="isPlatformSuper" type="primary" @click="openRateDialog()">
+          <ElButton
+            v-auth="'FinanceAccountingCurrency:Add'"
+            type="primary"
+            @click="openRateDialog()"
+          >
             <ArtSvgIcon icon="ri:add-line" />新增汇率
           </ElButton>
         </template>
@@ -233,6 +231,7 @@
   import type { ColumnOption } from '@/types'
   import { formatWithDayjs } from '@/utils/time'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import { useAuth } from '@/hooks/core/useAuth'
   import { useUserStore } from '@/store/modules/user'
   import {
     fetchAccountSetOptions,
@@ -256,7 +255,8 @@
   const { confirmAction } = useArtFeedback()
   const { focusMode } = useAccountingWorkspaceFocus()
   const { ensureAccountSet, goToAccountSet } = useFinanceAccountSetPrerequisite()
-  const { getDictMap, isPlatformSuper } = storeToRefs(useUserStore())
+  const { getDictMap } = storeToRefs(useUserStore())
+  const { hasAuth } = useAuth()
   const currencyDialogRef = ref<{
     handleOpen: (accountSet: Api.Fms.AccountSetOption, row?: Currency) => Promise<void>
   }>()
@@ -388,7 +388,7 @@
     },
     { prop: 'source', label: '来源', minWidth: 170, showOverflowTooltip: true },
     { prop: 'remark', label: '备注', minWidth: 180, showOverflowTooltip: true },
-    ...(isPlatformSuper.value
+    ...(hasAuth('FinanceAccountingCurrency:Edit')
       ? [
           {
             prop: 'operation',
@@ -396,7 +396,11 @@
             width: 80,
             fixed: 'right' as const,
             formatter: (row: ExchangeRate) => (
-              <ArtButtonTable type="edit" onClick={() => openRateDialog(row)} />
+              <ArtButtonTable
+                type="edit"
+                permission="FinanceAccountingCurrency:Edit"
+                onClick={() => openRateDialog(row)}
+              />
             )
           } satisfies ColumnOption<ExchangeRate>
         ]
@@ -408,13 +412,21 @@
   }
 
   function getCurrencyActions(row: Currency): ButtonMoreItem[] {
-    const actions: ButtonMoreItem[] = [{ key: 'edit', label: '编辑币种', icon: 'ri:edit-line' }]
+    const actions: ButtonMoreItem[] = [
+      {
+        key: 'edit',
+        label: '编辑币种',
+        icon: 'ri:edit-line',
+        auth: 'FinanceAccountingCurrency:EditCurrency'
+      }
+    ]
     if (!row.isBase) {
       actions.push({
         key: 'toggle',
         label: row.isEnabled ? '停用币种' : '启用币种',
         icon: row.isEnabled ? 'ri:forbid-line' : 'ri:checkbox-circle-line',
-        color: row.isEnabled ? 'var(--el-color-danger)' : 'var(--el-color-success)'
+        color: row.isEnabled ? 'var(--el-color-danger)' : 'var(--el-color-success)',
+        auth: 'FinanceAccountingCurrency:Toggle'
       })
     }
     return actions

@@ -67,6 +67,12 @@
   import { ColumnOption } from '@/types'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatWithDayjs } from '@/utils/time'
+  import {
+    canEditField,
+    canViewField,
+    formatSensitiveNumber,
+    mergeFieldAccessMaps
+  } from '@/utils/field-permission'
   import { useUserStore } from '@/store/modules/user'
   import { financeRouteNames } from '@/router/business-paths'
   import {
@@ -138,23 +144,30 @@
   const freightDialogRef = ref<FreightDialogExpose>()
   const deleteGuardRef = ref<MasterDataDeleteGuardExpose>()
   const statusCountRequestId = ref(0)
+  const orderFieldAccess = ref<Api.Tms.Order.OrderFieldAccessMap>({})
 
-  const orderExcelColumns: ArtTableQueryExcelColumn[] = [
+  const orderExcelColumns = computed<ArtTableQueryExcelColumn[]>(() => [
     { key: 'cargoNo', title: '货号' },
     { key: 'orderNo', title: '运单号' },
     { key: 'shippingContactName', title: '发货人' },
-    { key: 'shippingContactPhone', title: '发货人电话' },
-    { key: 'shippingAddressDetail', title: '发货人地址' },
+    ...(canViewOrderField('shipperContact')
+      ? [{ key: 'shippingContactPhone', title: '发货人电话' }]
+      : []),
+    ...(canViewOrderField('shipperAddress')
+      ? [{ key: 'shippingAddressDetail', title: '发货人地址' }]
+      : []),
     { key: 'receivingContactName', title: '收货人' },
-    { key: 'receivingContactPhone', title: '收货人电话' },
+    ...(canViewOrderField('receiverContact')
+      ? [{ key: 'receivingContactPhone', title: '收货人电话' }]
+      : []),
     { key: 'originStation', title: '发货站' },
     { key: 'destinationStation', title: '到货站' },
     { key: 'transferStation', title: '中转站' },
     { key: 'orderStatus', title: '订单状态' },
     { key: 'paymentMethod', title: '付款方式' },
-    { key: 'totalFee', title: '总运费' },
+    ...(canViewOrderField('freightAmounts') ? [{ key: 'totalFee', title: '总运费' }] : []),
     { key: 'createTime', title: '开单时间' }
-  ]
+  ])
 
   const table: UnwrapNestedRefs<TableGroup> = reactive<TableGroup>({
     searchQuery: {
@@ -269,12 +282,18 @@
       }
     ]),
     headerActions: computed<ArtTableQueryHeaderAction[]>(() => [
-      { type: 'add', label: '开单', onClick: openOrderOpen },
       {
+        type: 'add',
+        label: '开单',
+        permission: 'TmsOrderOpen:Create',
+        onClick: openOrderOpen
+      },
+      {
+        permission: 'TmsOrderList:Export',
         type: 'export',
         exportFilename: 'TMS订单列表',
         exportSheetName: '订单列表',
-        exportColumns: orderExcelColumns,
+        exportColumns: orderExcelColumns.value,
         exportApi: ({ selectedIds, searchParams, maxRows }) =>
           exportOrderList({
             ...(searchParams as SearchParams),
@@ -284,6 +303,7 @@
       },
       {
         key: 'batch-cancel',
+        permission: 'TmsOrderList:Cancel',
         label: '批量取消',
         icon: 'ri:close-circle-line',
         selectionRequired: true,
@@ -308,6 +328,7 @@
         }
       },
       {
+        permission: 'TmsOrderList:Delete',
         type: 'delete',
         content: ({ selectedCount }: { selectedCount: number }) =>
           `确定永久删除选中的 ${selectedCount} 条订单及其关联数据吗？删除后无法恢复。`,
@@ -343,13 +364,19 @@
         )
       },
       { prop: 'shippingContactName', label: '发货人', width: 110 },
-      { prop: 'shippingContactPhone', label: '发货人电话', width: 140 },
-      {
-        prop: 'shippingAddressDetail',
-        label: '发货人地址',
-        minWidth: 220,
-        showOverflowTooltip: true
-      },
+      ...(canViewOrderField('shipperContact')
+        ? [{ prop: 'shippingContactPhone', label: '发货人电话', width: 140 }]
+        : []),
+      ...(canViewOrderField('shipperAddress')
+        ? [
+            {
+              prop: 'shippingAddressDetail',
+              label: '发货人地址',
+              minWidth: 220,
+              showOverflowTooltip: true
+            }
+          ]
+        : []),
       { prop: 'originStation', label: '发货站', width: 120, showOverflowTooltip: true },
       { prop: 'destinationStation', label: '到货站', width: 120, showOverflowTooltip: true },
       {
@@ -365,12 +392,16 @@
         width: 110,
         dict: { code: 'tmsOrderPaymentMethod', display: 'tag' }
       },
-      {
-        prop: 'totalFee',
-        label: '总运费',
-        width: 110,
-        formatter: (row) => `¥${formatMoney(row.totalFee)}`
-      },
+      ...(canViewOrderField('freightAmounts')
+        ? [
+            {
+              prop: 'totalFee',
+              label: '总运费',
+              width: 110,
+              formatter: (row: OrderRecord) => `¥${formatMoney(row.totalFee)}`
+            }
+          ]
+        : []),
       {
         prop: 'createTime',
         label: '开单时间',
@@ -391,7 +422,11 @@
         fixed: 'right',
         formatter: (row) => (
           <div class="flex items-center">
-            <ArtButtonTable type="view" onClick={() => openDetail(row)} />
+            <ArtButtonTable
+              type="view"
+              permission="TmsOrderList:View"
+              onClick={() => openDetail(row)}
+            />
             <ArtButtonMore
               list={getMoreActions(row)}
               onClick={(item: ButtonMoreItem) => handleMoreAction(item, row)}
@@ -443,10 +478,15 @@
     }
   )
 
-  function fetchTableData(params: TableParams) {
+  async function fetchTableData(params: TableParams) {
     const { from, to } = pageInfoHandler({ current: params.current, size: params.size })
     void loadStatusCounts(params)
-    return fetchOrderList({ ...params, from, to })
+    const result = await fetchOrderList({ ...params, from, to })
+    orderFieldAccess.value = mergeFieldAccessMaps(
+      result.fieldAccess,
+      ...(result.data ?? []).map((row) => row.fieldAccess)
+    )
+    return result
   }
 
   async function loadStatusCounts(params: TableParams): Promise<void> {
@@ -488,9 +528,11 @@
         key: 'waybillExpense',
         label: '新增运单费用',
         icon: 'ri:gas-station-line',
+        auth: 'TmsOrderList:AddExpense',
         disabled: !canAddWaybillExpense(row)
       },
       {
+        auth: 'TmsOrderList:Edit',
         key: 'edit',
         label: '编辑',
         icon: 'ri:edit-line',
@@ -500,9 +542,11 @@
         key: 'freight',
         label: '修改运费',
         icon: 'ri:money-cny-circle-line',
+        auth: 'TmsOrderList:EditFreight',
         disabled: !canEditFreight(row)
       },
       {
+        auth: 'TmsOrderList:Cancel',
         key: 'cancel',
         label: '取消订单',
         icon: 'ri:close-circle-line',
@@ -510,6 +554,7 @@
         disabled: !canCancelOrder(row)
       },
       {
+        auth: 'TmsOrderList:Delete',
         key: 'delete',
         label: '永久删除',
         icon: 'ri:delete-bin-line',
@@ -549,8 +594,10 @@
 
   function canEditFreight(row: OrderRecord): boolean {
     return (
-      ['created', 'pending_load'].includes(String(row.orderStatus || '')) ||
-      String(row.dispatchStatus || '') === 'pending'
+      (canEditField(row.fieldAccess, 'freightAmounts') &&
+        ['created', 'pending_load'].includes(String(row.orderStatus || ''))) ||
+      (canEditField(row.fieldAccess, 'freightAmounts') &&
+        String(row.dispatchStatus || '') === 'pending')
     )
   }
 
@@ -621,8 +668,11 @@
   }
 
   function formatMoney(value?: number | string | null): string {
-    const numericValue = Number(value ?? 0)
-    return Number.isFinite(numericValue) ? numericValue.toFixed(2) : '0.00'
+    return formatSensitiveNumber(value)
+  }
+
+  function canViewOrderField(field: Api.Tms.Order.OrderFieldKey): boolean {
+    return canViewField(orderFieldAccess.value, field)
   }
 </script>
 

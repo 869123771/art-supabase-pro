@@ -236,17 +236,22 @@
       fixed: 'right',
       formatter: (row) => (
         <div>
-          <ArtButtonTable type="edit" onClick={() => openDialog(row)} />
-          <ArtButtonTable type="delete" onClick={() => handleDelete(row)} />
+          <ArtButtonTable type="edit" permission="TmsCargo:Edit" onClick={() => openDialog(row)} />
+          <ArtButtonTable
+            type="delete"
+            permission="TmsCargo:Delete"
+            onClick={() => handleDelete(row)}
+          />
         </div>
       )
     }
   ]
 
   const headerActions = computed<ArtTableQueryHeaderAction[]>(() => [
-    { type: 'add', onClick: () => openDialog() },
+    { type: 'add', permission: 'TmsCargo:Add', onClick: () => openDialog() },
     {
       type: 'import',
+      permission: 'TmsCargo:Import',
       importColumns: cargoExcelColumns,
       importTransformer: (rows) =>
         rows.map((row) => normalizeImportRow(row as Record<string, unknown>)),
@@ -259,6 +264,7 @@
     },
     {
       type: 'export',
+      permission: 'TmsCargo:Export',
       exportFilename: 'TMS货物资料',
       exportSheetName: '货物管理',
       exportColumns: cargoExcelColumns,
@@ -271,6 +277,7 @@
     },
     {
       type: 'delete',
+      permission: 'TmsCargo:Delete',
       content: ({ selectedCount }: { selectedCount: number }) =>
         `确定删除选中的 ${selectedCount} 条货物资料吗？删除后无法恢复。`,
       onClick: async ({ selectedRows }) => {

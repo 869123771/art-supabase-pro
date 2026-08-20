@@ -14,8 +14,7 @@ export const DISPATCH_VEHICLE_SELECT = `
   primaryDriver:tms_driver!vehicle_archive_primary_driver_id_fkey(
     id,
     carrier_id,
-    driver_name,
-    phone
+    driver_name
   )
 `
 

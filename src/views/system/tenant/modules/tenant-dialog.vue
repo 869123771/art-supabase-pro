@@ -71,6 +71,8 @@
     tenantCode: '',
     tenantName: '',
     status: '1',
+    serviceStartDate: '',
+    serviceEndDate: '',
     remark: '',
     createBy: undefined,
     createTime: undefined,
@@ -88,7 +90,7 @@
   const contextDescription = computed(() =>
     isEdit.value
       ? '租户编码已锁定；名称、状态和用途说明的调整会立即影响后台识别。'
-      : '租户编码将作为稳定的隔离标识，创建成功后不可修改。'
+      : '租户编码将作为稳定的隔离标识；服务有效期决定账号何时可以进入系统。'
   )
 
   const rules: FormRules<Tenant> = {
@@ -104,6 +106,31 @@
     tenantName: [
       { required: true, message: '请输入租户名称', trigger: 'blur' },
       { min: 2, max: 100, message: '长度应为 2 到 100 个字符', trigger: 'blur' }
+    ],
+    serviceStartDate: [
+      {
+        validator: (_rule, value, callback) => {
+          if (!isSystemTenant.value && !value) callback(new Error('请选择启用日期'))
+          else callback()
+        },
+        trigger: 'change'
+      }
+    ],
+    serviceEndDate: [
+      {
+        validator: (_rule, value, callback) => {
+          if (!isSystemTenant.value && !value) {
+            callback(new Error('请选择到期日期'))
+            return
+          }
+          if (value && form.serviceStartDate && value < form.serviceStartDate) {
+            callback(new Error('到期日期不能早于启用日期'))
+            return
+          }
+          callback()
+        },
+        trigger: 'change'
+      }
     ],
     remark: [{ max: 500, message: '备注不能超过 500 个字符', trigger: 'blur' }]
   }
@@ -142,6 +169,32 @@
       key: 'statusSection',
       type: 'divider',
       span: 24
+    },
+    {
+      label: '启用日期',
+      key: 'serviceStartDate',
+      type: 'date',
+      props: {
+        type: 'date',
+        valueFormat: 'YYYY-MM-DD',
+        placeholder: isSystemTenant.value ? '长期有效（可不填）' : '请选择启用日期'
+      },
+      description: '早于该日期时，租户账号不能登录或访问租户数据。'
+    },
+    {
+      label: '到期日期',
+      key: 'serviceEndDate',
+      type: 'date',
+      props: {
+        type: 'date',
+        valueFormat: 'YYYY-MM-DD',
+        placeholder: isSystemTenant.value ? '长期有效（可不填）' : '请选择到期日期',
+        disabledDate: (date: Date) =>
+          Boolean(
+            form.serviceStartDate && date.getTime() < new Date(form.serviceStartDate).getTime()
+          )
+      },
+      description: '到期后系统会在数据库边界阻止访问；提醒规则可在“消息提醒”中配置。'
     },
     {
       label: '状态',

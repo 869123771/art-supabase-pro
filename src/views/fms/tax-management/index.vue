@@ -17,13 +17,6 @@
         <BusinessTableWorkspaceActions :table="tableRef" />
       </template>
     </BusinessWorkspaceHeader>
-    <ElAlert
-      v-if="!isPlatformSuper"
-      type="info"
-      :closable="false"
-      show-icon
-      title="当前账号可查看本租户税务台账；税额、复核、申报和缴纳仅平台超级管理员可维护。"
-    />
     <ArtTableQuery
       ref="tableRef"
       v-model="table.search"
@@ -37,9 +30,7 @@
         rowKey: 'id',
         tableLayout: 'fixed',
         emptyText: '暂无税务期间',
-        emptyDescription: isPlatformSuper
-          ? '按开放会计期间创建税种台账。'
-          : '当前租户暂无可查看的税务数据。'
+        emptyDescription: '按开放会计期间创建税种台账。'
       }"
       focusable
     />
@@ -95,7 +86,7 @@
   })
   const { confirmAction, promptReason } = useArtFeedback()
   const { runWithAccountSet } = useFinanceAccountSetPrerequisite()
-  const { getDictMap, isPlatformSuper } = storeToRefs(useUserStore())
+  const { getDictMap } = storeToRefs(useUserStore())
   const tableRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<{ handleOpen: (row?: Row) => Promise<void> }>()
   const drawerRef = ref<{ handleOpen: (row: Row) => Promise<void> }>()
@@ -177,27 +168,24 @@
       }
     }
   ])
-  const headerActions = computed<ArtTableQueryHeaderAction[]>(() =>
-    isPlatformSuper.value
-      ? [
+  const headerActions = computed<ArtTableQueryHeaderAction[]>(() => [
+    {
+      permission: 'FinanceTaxManagement:Add',
+      type: 'add',
+      label: '新建税务期间',
+      onClick: () =>
+        void runWithAccountSet(
           {
-            type: 'add',
-            label: '新建税务期间',
-            onClick: () =>
-              void runWithAccountSet(
-                {
-                  actionLabel: '新建税务期间',
-                  activeRequired: true,
-                  accountSetId: table.search.accountSetId,
-                  foundationRequired: true,
-                  available: accountSetOptions.value.length > 0
-                },
-                () => dialogRef.value?.handleOpen()
-              )
-          }
-        ]
-      : []
-  )
+            actionLabel: '新建税务期间',
+            activeRequired: true,
+            accountSetId: table.search.accountSetId,
+            foundationRequired: true,
+            available: accountSetOptions.value.length > 0
+          },
+          () => dialogRef.value?.handleOpen()
+        )
+    }
+  ])
   function columnsFactory(): ColumnOption<Row>[] {
     return [
       {
@@ -257,15 +245,23 @@
       {
         prop: 'operation',
         label: '操作',
-        width: isPlatformSuper.value ? 160 : 76,
+        width: 160,
         fixed: 'right',
         formatter: (row) => (
           <div class="flex items-center">
-            <ArtButtonTable type="view" onClick={() => void drawerRef.value?.handleOpen(row)} />
-            {isPlatformSuper.value && ['draft', 'calculated'].includes(row.status) ? (
-              <ArtButtonTable type="edit" onClick={() => void dialogRef.value?.handleOpen(row)} />
+            <ArtButtonTable
+              type="view"
+              permission="FinanceTaxManagement:View"
+              onClick={() => void drawerRef.value?.handleOpen(row)}
+            />
+            {['draft', 'calculated'].includes(row.status) ? (
+              <ArtButtonTable
+                type="edit"
+                permission="FinanceTaxManagement:Edit"
+                onClick={() => void dialogRef.value?.handleOpen(row)}
+              />
             ) : null}
-            {isPlatformSuper.value && actions(row).length ? (
+            {actions(row).length ? (
               <ArtButtonMore
                 list={actions(row)}
                 onClick={(item: ButtonMoreItem) => void handleAction(item, row)}
@@ -280,12 +276,14 @@
     if (row.status === 'calculated')
       return [
         {
+          auth: 'FinanceTaxManagement:Review',
           key: 'review',
           label: '复核税额',
           icon: 'ri:check-double-line',
           color: 'var(--el-color-success)'
         },
         {
+          auth: 'FinanceTaxManagement:Cancel',
           key: 'cancel',
           label: '取消期间',
           icon: 'ri:close-circle-line',
@@ -295,6 +293,7 @@
     if (row.status === 'reviewed')
       return [
         {
+          auth: 'FinanceTaxManagement:File',
           key: 'file',
           label: '确认申报',
           icon: 'ri:file-check-line',
@@ -304,6 +303,7 @@
     if (row.status === 'filed')
       return [
         {
+          auth: 'FinanceTaxManagement:Pay',
           key: 'pay',
           label: '确认缴税',
           icon: 'ri:secure-payment-line',
@@ -313,6 +313,7 @@
     if (row.status === 'draft')
       return [
         {
+          auth: 'FinanceTaxManagement:Cancel',
           key: 'cancel',
           label: '取消期间',
           icon: 'ri:close-circle-line',

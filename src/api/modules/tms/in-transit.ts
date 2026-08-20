@@ -1,17 +1,12 @@
 import { useSupabase } from '@/hooks'
 import type { QueryResult } from '@/types/api/response'
-import { ORDER_SELECT, uniqueStringValues } from '@/api/modules/tms/order-shared'
-import {
-  createDriverWaybillPayload,
-  DISPATCH_VEHICLE_SELECT
-} from '@/api/modules/tms/waybill-shared'
+import { createDriverWaybillPayload } from '@/api/modules/tms/waybill-shared'
+import { fetchSecureInTransitWaybills, fetchSecureOrders } from '@/api/modules/tms/transport-secure'
 
-type OrderRecord = Api.Tms.Order.OrderRecord
-type DispatchVehicleOption = Api.Tms.Waybill.DispatchVehicleOption
 type InTransitMonitorRecord = Api.Tms.InTransit.MonitorRecord
 type InTransitMonitorSearchParams = Api.Tms.InTransit.MonitorSearchParams
 
-const { supabase, responseHandle } = useSupabase()
+const { supabase } = useSupabase()
 
 const createRealtimeChannelId = (): string => {
   if (typeof globalThis.crypto?.randomUUID === 'function') {
@@ -77,73 +72,23 @@ const isMonitoredTransportRow = (row: InTransitMonitorRecord): boolean => {
   )
 }
 
-const fetchInTransitVehicleMap = async (
-  ids: string[]
-): Promise<Map<string, DispatchVehicleOption>> => {
-  if (!ids.length) return new Map()
-
-  const query = supabase.from('vehicle_archive').select(DISPATCH_VEHICLE_SELECT).in('id', ids)
-
-  const { data } = await responseHandle<DispatchVehicleOption[]>(() => query, {
-    ignoreCheck: true
-  })
-
-  return new Map((data ?? []).map((item) => [String(item.id), item]))
-}
-
-const fetchInTransitDriverMap = async (
-  ids: string[]
-): Promise<Map<string, Api.Tms.BasicData.DriverOption>> => {
-  if (!ids.length) return new Map()
-
-  const query = supabase
-    .from('tms_driver')
-    .select('id, carrier_id, driver_name, phone')
-    .in('id', ids)
-
-  const { data } = await responseHandle<Api.Tms.BasicData.DriverOption[]>(() => query, {
-    ignoreCheck: true
-  })
-
-  return new Map((data ?? []).map((item) => [String(item.id), item]))
-}
-
-const fetchInTransitOrderMap = async (waybillNos: string[]): Promise<Map<string, OrderRecord>> => {
-  if (!waybillNos.length) return new Map()
-
-  const query = supabase.from('tms_order').select(ORDER_SELECT).in('order_no', waybillNos)
-
-  const { data } = await responseHandle<OrderRecord[]>(() => query, {
-    ignoreCheck: true
-  })
-
-  return new Map((data ?? []).map((item) => [String(item.orderNo), item]))
-}
-
 const fetchInTransitOrderMonitorRows = async (
   params: InTransitMonitorSearchParams,
   existingWaybillNos: Set<string>
 ): Promise<InTransitMonitorRecord[]> => {
   const { keyword, to = 199 } = params
-  let query = supabase
-    .from('tms_order')
-    .select(ORDER_SELECT)
-    .in('order_status', MONITORED_ORDER_STATUSES)
-    .order('update_time', { ascending: false, nullsFirst: false })
-    .order('create_time', { ascending: false, nullsFirst: false })
-    .limit(to + 1)
+  const result = await fetchSecureOrders<Api.Tms.Order.OrderRecord>(
+    {
+      from: 0,
+      to,
+      orderStatuses: MONITORED_ORDER_STATUSES,
+      cargoKeyword: keyword,
+      vehicleKeyword: keyword
+    },
+    'in_transit'
+  )
 
-  if (keyword) {
-    query = query.or(
-      `order_no.ilike.%${keyword}%,cargo_no.ilike.%${keyword}%,dispatch_plate_no.ilike.%${keyword}%,dispatch_driver_name.ilike.%${keyword}%`
-    )
-  }
-
-  const { data } = await responseHandle<OrderRecord[]>(() => query, {
-    ignoreCheck: true
-  })
-
-  return (data ?? [])
+  return result.data
     .filter((order) => !existingWaybillNos.has(String(order.orderNo)))
     .map((order) => ({
       ...createDriverWaybillPayload(order),
@@ -162,26 +107,8 @@ export async function fetchInTransitMonitorList(
   params: InTransitMonitorSearchParams = { from: 0, to: 199 }
 ) {
   const { from = 0, to = 199, keyword, statuses = MONITORED_WAYBILL_STATUSES } = params
-  let query = supabase
-    .from('tms_waybill')
-    .select('*', { count: 'exact' })
-    .not('order_id', 'is', null)
-    .order('update_time', { ascending: false, nullsFirst: false })
-    .order('create_time', { ascending: false, nullsFirst: false })
-    .range(from, to)
-
-  if (statuses.length) query = query.in('status', statuses)
-  if (keyword) {
-    query = query.or(
-      `waybill_no.ilike.%${keyword}%,origin_city.ilike.%${keyword}%,destination_city.ilike.%${keyword}%,cargo_name.ilike.%${keyword}%,shipper_name.ilike.%${keyword}%,receiver_name.ilike.%${keyword}%`
-    )
-  }
-
-  const result = await responseHandle<InTransitMonitorRecord[]>(() => query, {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
-  const rows = result.data ?? []
+  const result = await fetchSecureInTransitWaybills({ from, to, keyword, statuses })
+  const rows = result.data
   const fallbackRows = await fetchInTransitOrderMonitorRows(
     params,
     new Set(rows.map((row) => String(row.waybillNo)))
@@ -189,22 +116,9 @@ export async function fetchInTransitMonitorList(
   const monitorRows = [...rows, ...fallbackRows]
   if (!monitorRows.length) return { ...result, data: [] }
 
-  const [vehicleMap, driverMap, orderMap] = await Promise.all([
-    fetchInTransitVehicleMap(uniqueStringValues(monitorRows.map((row) => row.vehicleId))),
-    fetchInTransitDriverMap(uniqueStringValues(monitorRows.map((row) => row.driverId))),
-    fetchInTransitOrderMap(uniqueStringValues(monitorRows.map((row) => row.waybillNo)))
-  ])
-
   return {
     ...result,
-    data: monitorRows
-      .map((row) => ({
-        ...row,
-        driver: row.driverId ? (driverMap.get(String(row.driverId)) ?? null) : null,
-        order: row.order ?? orderMap.get(String(row.waybillNo)) ?? null,
-        vehicle: row.vehicleId ? (vehicleMap.get(String(row.vehicleId)) ?? null) : null
-      }))
-      .filter(isMonitoredTransportRow)
+    data: monitorRows.filter(isMonitoredTransportRow)
   }
 }
 
@@ -244,9 +158,11 @@ async function normalizeTransportAnomalyAdvisorError(error: unknown): Promise<un
 export function subscribeInTransitMonitorChanges(onChange: () => void): () => void {
   const channel = supabase
     .channel(`tms-in-transit-monitor-${createRealtimeChannelId()}`)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'tms_waybill' }, onChange)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'tms_order' }, onChange)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicle_archive' }, onChange)
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'tms_transport_change_signal' },
+      onChange
+    )
     .subscribe()
 
   return () => {

@@ -68,6 +68,7 @@
   import type { ColumnOption } from '@/types'
   import { fetchWaybillStatusCounts } from '@/api/tms'
   import { useUserStore } from '@/store/modules/user'
+  import { mergeFieldAccessMaps } from '@/utils/field-permission'
   import { useAuth } from '@/hooks/core/useAuth'
   import BusinessWorkspaceHeader, {
     type BusinessWorkspaceMetric
@@ -118,6 +119,7 @@
   const { hasAuth } = useAuth()
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const dispatchDialogRef = ref<WaybillDialogExpose>()
+  const fieldAccess = ref<Api.Tms.Waybill.WaybillFieldAccessMap>({})
   const cargoOperationDialogRef = ref<CargoOperationDialogExpose>()
   const executionOperationDialogRef = ref<ExecutionOperationDialogExpose>()
   const statusCountRequestId = ref(0)
@@ -160,6 +162,7 @@
     searchItems: createWaybillSearchItems(paymentMethodOptions, true),
     headerActions: createWaybillHeaderActions({
       mode: 'loaded',
+      fieldAccess,
       router,
       tableQueryRef,
       dispatchDialogRef
@@ -167,6 +170,7 @@
     columnsFactory: () =>
       createWaybillColumns({
         mode: 'loaded',
+        fieldAccess,
         router,
         tableQueryRef,
         dispatchDialogRef,
@@ -209,9 +213,14 @@
     }
   ])
 
-  function fetchTableData(params: TableParams) {
+  async function fetchTableData(params: TableParams) {
     void loadStatusCounts(params)
-    return fetchWaybillTableData(params, 'loaded')
+    const result = await fetchWaybillTableData(params, 'loaded')
+    fieldAccess.value = mergeFieldAccessMaps(
+      result.fieldAccess,
+      ...(result.data ?? []).map((row) => row.fieldAccess)
+    )
+    return result
   }
 
   async function loadStatusCounts(params: TableParams): Promise<void> {

@@ -48,22 +48,25 @@
           'is-selected': metric.selected
         }"
         :type="metric.interactive ? 'button' : undefined"
+        :disabled="metric.interactive ? metric.loading : undefined"
+        :aria-busy="metric.loading || undefined"
         :aria-pressed="metric.interactive ? Boolean(metric.selected) : undefined"
         @click="handleMetricClick(metric)"
       >
         <div
           class="business-workspace-header__metric-icon"
           :class="`is-${metric.tone ?? 'primary'}`"
+          aria-hidden="true"
         >
           <ArtSvgIcon :icon="metric.icon" />
         </div>
         <div class="business-workspace-header__metric-copy">
-          <span>{{ metric.label }}</span>
+          <span :title="metric.label">{{ metric.label }}</span>
           <ElSkeleton v-if="metric.loading" animated :rows="0">
             <template #template><ElSkeletonItem variant="text" /></template>
           </ElSkeleton>
-          <strong v-else>{{ metric.value }}</strong>
-          <small>{{ metric.description }}</small>
+          <strong v-else :title="String(metric.value)">{{ metric.value }}</strong>
+          <small :title="metric.description">{{ metric.description }}</small>
         </div>
       </component>
     </div>
@@ -155,9 +158,11 @@
       gap: 20px;
       justify-content: space-between;
       padding: 20px 24px 18px;
-      background:
-        linear-gradient(115deg, transparent 62%, var(--el-color-primary-light-9)),
-        radial-gradient(circle at 84% 0%, var(--el-color-success-light-9), transparent 34%);
+      background: linear-gradient(
+        115deg,
+        transparent 58%,
+        color-mix(in srgb, var(--theme-color) 7%, transparent)
+      );
     }
 
     &__identity,
@@ -325,11 +330,22 @@
             border-color 0.18s ease,
             box-shadow 0.18s ease;
 
-          &:hover,
-          &:focus-visible {
+          &:hover {
             color: var(--theme-color);
-            outline: none;
             background: color-mix(in srgb, var(--theme-color) 7%, transparent);
+          }
+
+          &:focus-visible {
+            z-index: 1;
+            color: var(--theme-color);
+            outline: 2px solid color-mix(in srgb, var(--theme-color) 55%, transparent);
+            outline-offset: -2px;
+            background: color-mix(in srgb, var(--theme-color) 7%, transparent);
+          }
+
+          &:disabled {
+            cursor: progress;
+            opacity: 0.72;
           }
         }
       }

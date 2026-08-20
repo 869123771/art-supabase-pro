@@ -53,6 +53,7 @@
   import { ColumnOption, DialogType } from '@/types'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatWithDayjs } from '@/utils/time'
+  import { canViewField, mergeFieldAccessMaps } from '@/utils/field-permission'
   import { useUserStore } from '@/store/modules/user'
   import {
     deleteCarrier,
@@ -90,6 +91,7 @@
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<CarrierDialogExpose>()
   const deleteGuardRef = ref<MasterDataDeleteGuardExpose>()
+  const carrierFieldAccess = ref<Api.Tms.BasicData.CarrierFieldAccessMap>({})
 
   const tableState = reactive<{ searchQuery: SearchParams }>({
     searchQuery: {
@@ -109,7 +111,7 @@
     }))
   )
 
-  const carrierExcelColumns: ArtTableQueryExcelColumn[] = [
+  const carrierImportColumns: ArtTableQueryExcelColumn[] = [
     { key: 'carrierCode', title: '承运商编码' },
     { key: 'companyName', title: '公司名称', required: true },
     { key: 'carrierType', title: '承运商类型', required: true },
@@ -121,6 +123,18 @@
     { key: 'contactName', title: '联系人' },
     { key: 'contactPhone', title: '手机号码' }
   ]
+
+  const visibleCarrierExportColumns = computed(() =>
+    carrierImportColumns.filter((column) => {
+      if (column.key === 'addressDetail') {
+        return canViewField(carrierFieldAccess.value, 'addressDetail')
+      }
+      if (column.key === 'contactPhone') {
+        return canViewField(carrierFieldAccess.value, 'contactPhone')
+      }
+      return true
+    })
+  )
 
   const searchItems = computed<SearchFormItem[]>(() => [
     {
@@ -151,7 +165,7 @@
       label: '关键词',
       key: 'keyword',
       type: 'input',
-      props: { clearable: true, placeholder: '公司名称、编码、联系人或电话' }
+      props: { clearable: true, placeholder: '公司名称、编码或联系人' }
     }
   ])
 
@@ -204,13 +218,28 @@
         </ElButton>
       )
     },
-    {
-      prop: 'address',
-      label: '公司地址',
-      minWidth: 240,
-      showOverflowTooltip: true,
-      formatter: (row) => [row.region, row.addressDetail].filter(Boolean).join(' ') || '-'
-    },
+    ...(canViewField(carrierFieldAccess.value, 'addressDetail')
+      ? [
+          {
+            prop: 'address',
+            label: '公司地址',
+            minWidth: 240,
+            showOverflowTooltip: true,
+            formatter: (row: Carrier) =>
+              [row.region, row.addressDetail].filter(Boolean).join(' ') || '-'
+          } satisfies ColumnOption<Carrier>
+        ]
+      : []),
+    ...(canViewField(carrierFieldAccess.value, 'contactPhone')
+      ? [
+          {
+            prop: 'contactPhone',
+            label: '联系人电话',
+            width: 150,
+            formatter: (row: Carrier) => row.contactPhone || '-'
+          } satisfies ColumnOption<Carrier>
+        ]
+      : []),
     {
       prop: 'enabled',
       label: '状态',
@@ -230,7 +259,11 @@
       fixed: 'right',
       formatter: (row) => (
         <div class="flex">
-          <ArtButtonTable type="edit" onClick={() => openDialog(row)} />
+          <ArtButtonTable
+            type="edit"
+            permission="TmsCarrier:Edit"
+            onClick={() => openDialog(row)}
+          />
           <ArtButtonMore
             list={getMoreActions()}
             onClick={(item: ButtonMoreItem) => handleMoreAction(item, row)}
@@ -241,10 +274,11 @@
   ]
 
   const headerActions = computed<ArtTableQueryHeaderAction[]>(() => [
-    { type: 'add', onClick: () => openDialog() },
+    { permission: 'TmsCarrier:Add', type: 'add', onClick: () => openDialog() },
     {
+      permission: 'TmsCarrier:Import',
       type: 'import',
-      importColumns: carrierExcelColumns,
+      importColumns: carrierImportColumns,
       importApi: async (rows) => {
         await importCarriers(rows as Carrier[])
       },
@@ -253,10 +287,11 @@
       }
     },
     {
+      permission: 'TmsCarrier:Export',
       type: 'export',
       exportFilename: 'TMS承运商资料',
       exportSheetName: '承运商管理',
-      exportColumns: carrierExcelColumns,
+      exportColumns: visibleCarrierExportColumns.value,
       exportApi: ({ selectedIds, searchParams, maxRows }) =>
         exportCarrierList({
           ...(searchParams as SearchParams),
@@ -265,6 +300,7 @@
         })
     },
     {
+      permission: 'TmsCarrier:Delete',
       type: 'delete',
       content: ({ selectedCount }: { selectedCount: number }) =>
         `确定删除选中的 ${selectedCount} 个承运商吗？删除后无法恢复。`,
@@ -277,9 +313,14 @@
     }
   ])
 
-  const fetchTableData = (params: TableParams) => {
+  const fetchTableData = async (params: TableParams) => {
     const { from, to } = pageInfoHandler({ current: params.current, size: params.size })
-    return fetchCarrierList({ ...params, from, to })
+    const result = await fetchCarrierList({ ...params, from, to })
+    carrierFieldAccess.value = mergeFieldAccessMaps(
+      result.fieldAccess,
+      ...(result.data ?? []).map((record) => record.fieldAccess)
+    )
+    return result
   }
 
   const openDialog = (row?: Carrier): void => {
@@ -308,12 +349,9 @@
   }
 
   const getMoreActions = (): ButtonMoreItem[] => [
+    { auth: 'TmsCarrier:View', key: 'view', label: '查看', icon: 'ri:eye-line' },
     {
-      key: 'view',
-      label: '查看',
-      icon: 'ri:eye-line'
-    },
-    {
+      auth: 'TmsCarrier:Delete',
       key: 'delete',
       label: '删除',
       icon: 'ri:delete-bin-5-line',

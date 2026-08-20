@@ -25,6 +25,21 @@ For new business pages, create the Vue page/component files and add or update `s
 
 When a requested menu does not appear, check backend mode first: verify the `sys_menu` row exists, the row is enabled and not hidden, the component path points to an existing `src/views/**/index.vue`, and the current role has the corresponding `sys_role_menu` grant. Do not solve missing backend menus by adding local static or frontend route records.
 
+## Managed Button Authorization Is Mandatory
+
+Every executable business action under TMS, VMS, FMS, HR, and System Management must be role-assignable through a button permission. This is a completion requirement for new pages and for changes that add actions to existing pages.
+
+Before finishing a business page:
+
+1. Inventory every meaningful action in page headers, selection toolbars, table rows, `ArtButtonMore` dropdowns, drawers, dialogs, and detail pages. Search/reset, expand/collapse, close/cancel-form, map zoom, tab switching, and other non-business UI controls do not need button permissions.
+2. Register each action as a `sys_menu` row with `type = 'button'` under the exact page menu. Use a stable permission name such as `<RouteName>:<Action>` and preserve existing permission names when they are already assigned to roles. Do not create button rows under a module directory when the action belongs to a leaf page.
+3. Wire every action to its exact permission code in the page source. Prefer the `permission` support in `ArtTableQuery` and `ArtButtonTable`, the `auth` item field in `ArtButtonMore`, and use `v-auth`, `hasAuth`, `hasAnyAuth`, or `hasAllAuth` for raw buttons and compound workflows. Route-based inference in shared components is compatibility fallback only and never satisfies completion or audit requirements; new and modified pages must declare the literal permission code explicitly.
+4. Enforce the same permission at the API/database boundary for mutations and lifecycle transitions, using `app_private.has_permission(...)` or the closest established server helper. UI visibility is not authorization. Keep ordinary users tenant-scoped in RLS, RPC record lookup, and security-definer write guards.
+5. Normal tenant-scoped business and System Management maintenance must not be gated with `isPlatformSuper` or copy such as “仅平台超级管理员可维护”. Platform super remains an implicit override through the permission resolver. Cross-tenant platform context and control-plane actions such as global menus, tenants, website publishing, controlled AI writes/configuration, and AI workflow-state changes are the only allowed exceptions; those actions still require explicit button codes and must retain their server-side platform-super boundary.
+6. Confirm the role-management tree can assign the new button rows, then run `pnpm permissions:audit`. The audit catalog at `scripts/business-button-permission-catalog.ts`, its idempotent Supabase migrations, every exact page reference, and server enforcement must stay aligned. The audit must fail when a catalogued code is only inferred and is absent from page source. When button permissions subdivide a page that was previously controlled only by its menu, the rollout migration must preserve existing access by granting those newly created buttons once to roles that already own that exact page menu. Do not require administrators to rediscover and repair permissions silently removed by the rollout.
+
+Do not grant newly introduced business buttons to roles that lack the parent page menu. Compatibility inheritance is limited to historical holders of that exact page and is not a default for future roles. Register buttons so administrators can subsequently assign least-privilege access through role management. When a page has separate actions such as submit, approve, reject, post, void, pay, export, or AI analysis, keep them as separate button permissions instead of collapsing them into a broad edit privilege.
+
 ## Choose Project Components First
 
 Use these components before assembling equivalent Element Plus plumbing:

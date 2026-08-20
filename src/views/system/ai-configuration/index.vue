@@ -314,7 +314,11 @@
         width: 78,
         fixed: 'right',
         formatter: (row: AiFeatureConfig) => (
-          <ArtButtonTable type="edit" onClick={() => openEdit(row)} />
+          <ArtButtonTable
+            type="edit"
+            permission="System:AiConfiguration:Edit"
+            onClick={() => openEdit(row)}
+          />
         )
       }
     ].filter(

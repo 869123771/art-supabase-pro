@@ -135,11 +135,13 @@
 
   const headerActions = computed<ArtTableQueryHeaderAction[]>(() => [
     {
+      permission: 'InsuranceCompany:Add',
       type: 'add',
       // permission: 'add',
       onClick: () => openDialog()
     },
     {
+      permission: 'InsuranceCompany:Import',
       type: 'import',
       importColumns: insuranceCompanyExcelColumns,
       importApi: async (rows) => {
@@ -148,6 +150,7 @@
       onImportError: handleImportError
     },
     {
+      permission: 'InsuranceCompany:Export',
       type: 'export',
       // permission: 'export',
       exportFilename: '保险公司',
@@ -162,6 +165,7 @@
       }
     },
     {
+      permission: 'InsuranceCompany:Delete',
       type: 'delete',
       // permission: 'delete',
       content: ({ selectedCount }: ArtTableQueryHeaderActionContext) =>
@@ -231,8 +235,16 @@
       fixed: 'right',
       formatter: (row) => (
         <div class="insurance-company-page__operation">
-          <ArtButtonTable type="edit" onClick={() => openDialog(row)} />
-          <ArtButtonTable type="delete" onClick={() => handleDelete(row)} />
+          <ArtButtonTable
+            type="edit"
+            permission="InsuranceCompany:Edit"
+            onClick={() => openDialog(row)}
+          />
+          <ArtButtonTable
+            type="delete"
+            permission="InsuranceCompany:Delete"
+            onClick={() => handleDelete(row)}
+          />
         </div>
       )
     }

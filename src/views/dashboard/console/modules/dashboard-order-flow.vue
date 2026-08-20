@@ -52,6 +52,7 @@
 
 <script setup lang="ts">
   import type { PieDataItem } from '@/types/component/chart'
+  import { useChartOps } from '@/hooks/core/useChart'
   import type { DashboardStatusItem } from './types'
 
   const props = defineProps<{
@@ -62,19 +63,20 @@
   }>()
   const emit = defineEmits<{ 'view-orders': [] }>()
 
+  const chartPalette = useChartOps().colors
   const chartColorMap: Record<string, string> = {
-    pending_load: '#5b8ff9',
-    pending_order: '#8f96a3',
-    transporting: '#67c23a',
-    signed: '#e6a23c',
-    completed: '#909399'
+    pending_load: chartPalette[0],
+    pending_order: chartPalette[4],
+    transporting: chartPalette[1],
+    signed: chartPalette[2],
+    completed: chartPalette[5]
   }
   const activeStatusItems = computed(() => props.statusItems.filter((item) => item.value > 0))
   const chartData = computed<PieDataItem[]>(() =>
     activeStatusItems.value.map((item) => ({ name: item.label, value: item.value }))
   )
   const chartColors = computed(() =>
-    activeStatusItems.value.map((item) => chartColorMap[item.key] ?? '#5b8ff9')
+    activeStatusItems.value.map((item) => chartColorMap[item.key] ?? chartPalette[0])
   )
 </script>
 

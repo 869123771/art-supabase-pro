@@ -352,6 +352,7 @@
           h(ArtButtonTable, {
             type: 'view',
             label: '治理详情',
+            permission: 'System:Organization:View',
             onClick: () => organizationDetailDrawerRef.value?.handleOpen(row)
           }),
           h(ArtButtonMore, {

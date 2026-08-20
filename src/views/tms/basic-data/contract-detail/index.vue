@@ -27,9 +27,9 @@
         </ElTag>
         <strong v-else>--</strong>
       </article>
-      <article>
+      <article v-if="canViewSensitiveField('contractAmount')">
         <span>合同金额</span>
-        <strong>¥ {{ formatMoney(detail.data?.contractAmount) }}</strong>
+        <strong>{{ formatMoney(detail.data?.contractAmount, '¥ ') }}</strong>
       </article>
       <article>
         <span>合同相对方</span>
@@ -42,7 +42,10 @@
     </section>
 
     <div class="contract-detail__content">
-      <section class="contract-detail__section art-card-xs">
+      <section
+        v-if="canViewSensitiveField('attachments')"
+        class="contract-detail__section art-card-xs"
+      >
         <ArtSectionTitle>基础信息</ArtSectionTitle>
         <ArtDescriptions :data="descriptionData" :items="baseDescriptionItems" :columns="4">
           <template #item-contractStatus>
@@ -113,11 +116,13 @@
   import WorkflowBusinessHistory from '@/components/business/workflow-business-history/index.vue'
   import type { ColumnOption } from '@/types'
   import { fetchContractDetail } from '@/api/tms'
+  import { canViewField, formatSensitiveNumber, isMaskedValue } from '@/utils/field-permission'
 
   defineOptions({ name: 'TmsContractDetail' })
 
   type Contract = Api.Tms.BasicData.Contract
   type ContractStatus = Api.Tms.BasicData.ContractStatus
+  type ContractFieldKey = Api.Tms.BasicData.ContractFieldKey
   type StatusTagType = 'success' | 'warning' | 'danger' | 'info'
 
   interface PageState {
@@ -135,6 +140,9 @@
   const page = reactive<PageState>({ loading: false, error: null })
   const detail = reactive<DetailState>({ data: undefined })
   const descriptionData = computed<Partial<Contract>>(() => detail.data ?? {})
+  const fieldAccess = computed(() => detail.data?.fieldAccess)
+  const canViewSensitiveField = (field: ContractFieldKey): boolean =>
+    canViewField(fieldAccess.value, field)
   const baseDescriptionItems: ArtDescriptionItem<Partial<Contract>>[] = [
     { key: 'contractStatus', label: '合同状态', field: 'contractStatus' },
     { key: 'contractNo', label: '合同编号', field: 'contractNo', copyable: true },
@@ -169,7 +177,7 @@
     { key: 'handler', label: '经办人', field: 'handler' }
   ]
 
-  const fulfillmentDescriptionItems: ArtDescriptionItem<Partial<Contract>>[] = [
+  const fulfillmentDescriptionItems = computed<ArtDescriptionItem<Partial<Contract>>[]>(() => [
     {
       key: 'billingMethod',
       label: '计费方式',
@@ -177,30 +185,50 @@
       dictCode: 'tmsContractBillingMethod',
       dictDisplay: 'text'
     },
-    {
-      key: 'contractAmount',
-      label: '合同金额',
-      field: 'contractAmount',
-      formatter: (value) => formatMoney(value as number | null | undefined)
-    },
-    {
-      key: 'transportUnitPrice',
-      label: '运输单价',
-      field: 'transportUnitPrice',
-      formatter: (value) => formatMoney(value as number | null | undefined)
-    },
-    {
-      key: 'roadConsumptionRate',
-      label: '路耗标准',
-      field: 'roadConsumptionRate',
-      formatter: (value) => formatRate(value as number | null | undefined)
-    },
-    {
-      key: 'lossDeductionPrice',
-      label: '亏扣价',
-      field: 'lossDeductionPrice',
-      formatter: (value) => formatMoney(value as number | null | undefined)
-    },
+    ...(canViewSensitiveField('contractAmount')
+      ? [
+          {
+            key: 'contractAmount',
+            label: '合同金额',
+            field: 'contractAmount',
+            formatter: (value: unknown) =>
+              formatMoney(value as Api.Tms.BasicData.SensitiveNumber | undefined)
+          }
+        ]
+      : []),
+    ...(canViewSensitiveField('transportUnitPrice')
+      ? [
+          {
+            key: 'transportUnitPrice',
+            label: '运输单价',
+            field: 'transportUnitPrice',
+            formatter: (value: unknown) =>
+              formatMoney(value as Api.Tms.BasicData.SensitiveNumber | undefined)
+          }
+        ]
+      : []),
+    ...(canViewSensitiveField('roadConsumptionRate')
+      ? [
+          {
+            key: 'roadConsumptionRate',
+            label: '路耗标准',
+            field: 'roadConsumptionRate',
+            formatter: (value: unknown) =>
+              formatRate(value as Api.Tms.BasicData.SensitiveNumber | undefined)
+          }
+        ]
+      : []),
+    ...(canViewSensitiveField('lossDeductionPrice')
+      ? [
+          {
+            key: 'lossDeductionPrice',
+            label: '亏扣价',
+            field: 'lossDeductionPrice',
+            formatter: (value: unknown) =>
+              formatMoney(value as Api.Tms.BasicData.SensitiveNumber | undefined)
+          }
+        ]
+      : []),
     { key: 'signTime', label: '签订时间', field: 'signTime', format: 'datetime' },
     { key: 'effectiveDate', label: '生效日期', field: 'effectiveDate', format: 'date' },
     { key: 'expiryDate', label: '到期日期', field: 'expiryDate', format: 'date' },
@@ -216,7 +244,7 @@
       field: 'agreedTransportQuantity',
       formatter: (value) => formatNumber(value as number | null | undefined)
     }
-  ]
+  ])
 
   const termsDescriptionItems: ArtDescriptionItem<Partial<Contract>>[] = [
     { key: 'transportRoute', label: '运输路线', field: 'transportRoute', span: 2 },
@@ -246,7 +274,9 @@
   const partyName = computed(
     () => detail.data?.customer?.customerName || detail.data?.carrier?.companyName || '--'
   )
-  const transportDetailColumns: ColumnOption<Api.Tms.BasicData.ContractTransportDetail>[] = [
+  const transportDetailColumns = computed<
+    ColumnOption<Api.Tms.BasicData.ContractTransportDetail>[]
+  >(() => [
     { type: 'globalIndex', label: '行号', width: 68 },
     { prop: 'cargoDescription', label: '货物描述', minWidth: 180, showOverflowTooltip: true },
     { prop: 'cargoCode', label: '货物编码', minWidth: 130 },
@@ -258,21 +288,26 @@
       formatter: (row) => formatNumber(row.contractQuantity)
     },
     { prop: 'unit', label: '计量单位', minWidth: 110, dict: { code: 'tmsCargoUnit' } },
-    {
-      prop: 'transportUnitPrice',
-      label: '运输单价(元)',
-      minWidth: 140,
-      align: 'right',
-      formatter: (row) => formatMoney(row.transportUnitPrice)
-    },
-    {
-      prop: 'freight',
-      label: '运费(元)',
-      minWidth: 130,
-      align: 'right',
-      formatter: (row) => formatMoney(row.freight)
-    }
-  ]
+    ...(canViewSensitiveField('transportDetailsPricing')
+      ? [
+          {
+            prop: 'transportUnitPrice',
+            label: '运输单价(元)',
+            minWidth: 140,
+            align: 'right' as const,
+            formatter: (row: Api.Tms.BasicData.ContractTransportDetail) =>
+              formatMoney(row.transportUnitPrice)
+          },
+          {
+            prop: 'freight',
+            label: '运费(元)',
+            minWidth: 130,
+            align: 'right' as const,
+            formatter: (row: Api.Tms.BasicData.ContractTransportDetail) => formatMoney(row.freight)
+          }
+        ]
+      : [])
+  ])
 
   onMounted(() => {
     void loadPage()
@@ -301,9 +336,9 @@
     void router.push('/tms/basic-data/contract')
   }
 
-  const formatMoney = (value?: number | null): string => {
-    if (isNil(value) || Number.isNaN(Number(value))) return '--'
-    return Number(value).toFixed(2)
+  const formatMoney = (value?: Api.Tms.BasicData.SensitiveNumber, prefix = ''): string => {
+    const formatted = formatSensitiveNumber(value)
+    return formatted === '--' || isMaskedValue(formatted) ? formatted : `${prefix}${formatted}`
   }
 
   const formatNumber = (value?: number | null): string => {
@@ -311,8 +346,10 @@
     return Number(value).toLocaleString('zh-CN', { maximumFractionDigits: 4 })
   }
 
-  const formatRate = (value?: number | null): string =>
-    formatNumber(value) === '--' ? '--' : `${formatNumber(value)}%`
+  const formatRate = (value?: Api.Tms.BasicData.SensitiveNumber): string => {
+    const formatted = formatSensitiveNumber(value, { maximumFractionDigits: 4 })
+    return formatted === '--' || isMaskedValue(formatted) ? formatted : `${formatted}%`
+  }
 </script>
 
 <style scoped lang="scss">

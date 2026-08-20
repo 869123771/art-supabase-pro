@@ -135,11 +135,13 @@
 
   const headerActions = computed<ArtTableQueryHeaderAction[]>(() => [
     {
+      permission: 'Supplier:Add',
       type: 'add',
       // permission: 'add',
       onClick: () => openDialog()
     },
     {
+      permission: 'Supplier:Import',
       type: 'import',
       importColumns: supplierExcelColumns,
       importApi: async (rows) => {
@@ -148,6 +150,7 @@
       onImportError: handleImportError
     },
     {
+      permission: 'Supplier:Export',
       type: 'export',
       // permission: 'export',
       exportFilename: '供应厂商',
@@ -162,6 +165,7 @@
       }
     },
     {
+      permission: 'Supplier:Delete',
       type: 'delete',
       // permission: 'delete',
       content: ({ selectedCount }: ArtTableQueryHeaderActionContext) =>
@@ -231,8 +235,12 @@
       fixed: 'right',
       formatter: (row) => (
         <div class="supplier-page__operation">
-          <ArtButtonTable type="edit" onClick={() => openDialog(row)} />
-          <ArtButtonTable type="delete" onClick={() => handleDelete(row)} />
+          <ArtButtonTable type="edit" permission="Supplier:Edit" onClick={() => openDialog(row)} />
+          <ArtButtonTable
+            type="delete"
+            permission="Supplier:Delete"
+            onClick={() => handleDelete(row)}
+          />
         </div>
       )
     }

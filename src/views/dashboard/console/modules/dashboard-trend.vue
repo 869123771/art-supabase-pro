@@ -20,7 +20,7 @@
       >
       <i />
       <div
-        ><span>开单运费</span><strong>¥ {{ formatMoney(data.freightAmount) }}</strong></div
+        ><span>开单运费</span><strong>{{ formatCurrencyValue(data.freightAmount) }}</strong></div
       >
     </div>
     <ArtLineChart
@@ -37,6 +37,7 @@
 
 <script setup lang="ts">
   import type { DashboardTrendPeriod } from '@/api/dashboard'
+  import { formatCurrencyValue } from '@/utils/ui'
   import type { DashboardTrendData } from './types'
 
   defineProps<{
@@ -45,10 +46,6 @@
     loading: boolean
   }>()
   const emit = defineEmits<{ 'update:period': [period: DashboardTrendPeriod] }>()
-
-  function formatMoney(value: number): string {
-    return value.toLocaleString('zh-CN', { maximumFractionDigits: 2 })
-  }
 </script>
 
 <style scoped lang="scss">
@@ -65,7 +62,12 @@
       width: 100%;
       height: 3px;
       content: '';
-      background: linear-gradient(90deg, var(--el-color-primary), #38d9ff, transparent 72%);
+      background: linear-gradient(
+        90deg,
+        var(--theme-color),
+        var(--el-color-success),
+        transparent 72%
+      );
     }
 
     header {

@@ -18,14 +18,6 @@
       </template>
     </BusinessWorkspaceHeader>
 
-    <ElAlert
-      v-if="!isPlatformSuper"
-      type="info"
-      :closable="false"
-      show-icon
-      title="当前账号可查看本租户资产台账；类别、卡片、折旧和处置仅平台超级管理员可维护。"
-    />
-
     <ArtTableQuery
       ref="tableRef"
       v-model="table.search"
@@ -39,9 +31,7 @@
         rowKey: 'id',
         tableLayout: 'fixed',
         emptyText: '暂无固定资产',
-        emptyDescription: isPlatformSuper
-          ? '先建立资产类别，再新增资产卡片。'
-          : '当前租户暂无资产卡片。'
+        emptyDescription: '先建立资产类别，再新增资产卡片。'
       }"
       focusable
     />
@@ -105,7 +95,7 @@
 
   const { confirmAction } = useArtFeedback()
   const { runWithAccountSet } = useFinanceAccountSetPrerequisite()
-  const { getDictMap, isPlatformSuper } = storeToRefs(useUserStore())
+  const { getDictMap } = storeToRefs(useUserStore())
   const tableRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<{ handleOpen: (row?: Asset) => Promise<void> }>()
   const disposalDialogRef = ref<{ handleOpen: (row: Asset) => Promise<void> }>()
@@ -120,6 +110,7 @@
 
   const metrics = computed<BusinessWorkspaceMetric[]>(() => [
     {
+      auth: 'FinanceFixedAsset:ManageCategory',
       key: 'category',
       label: '资产类别',
       value: summary.value.categoryCount,
@@ -198,59 +189,58 @@
     }
   ])
 
-  const headerActions = computed<ArtTableQueryHeaderAction[]>(() =>
-    isPlatformSuper.value
-      ? [
+  const headerActions = computed<ArtTableQueryHeaderAction[]>(() => [
+    {
+      permission: 'FinanceFixedAsset:Add',
+      type: 'add',
+      label: '新建资产',
+      onClick: () =>
+        void runWithAccountSet(
           {
-            type: 'add',
-            label: '新建资产',
-            onClick: () =>
-              void runWithAccountSet(
-                {
-                  actionLabel: '新建资产',
-                  activeRequired: true,
-                  accountSetId: table.search.accountSetId,
-                  foundationRequired: true,
-                  available: accountSetOptions.value.length > 0
-                },
-                () => dialogRef.value?.handleOpen()
-              )
+            actionLabel: '新建资产',
+            activeRequired: true,
+            accountSetId: table.search.accountSetId,
+            foundationRequired: true,
+            available: accountSetOptions.value.length > 0
           },
+          () => dialogRef.value?.handleOpen()
+        )
+    },
+    {
+      auth: 'FinanceFixedAsset:ManageCategory',
+      key: 'manage-category',
+      label: '资产类别',
+      icon: 'ri:folder-add-line',
+      onClick: () =>
+        void runWithAccountSet(
           {
-            key: 'category',
-            label: '资产类别',
-            icon: 'ri:folder-add-line',
-            onClick: () =>
-              void runWithAccountSet(
-                {
-                  actionLabel: '维护资产类别',
-                  activeRequired: true,
-                  accountSetId: table.search.accountSetId,
-                  foundationRequired: true,
-                  available: accountSetOptions.value.length > 0
-                },
-                () => categoryDialogRef.value?.handleOpen()
-              )
+            actionLabel: '维护资产类别',
+            activeRequired: true,
+            accountSetId: table.search.accountSetId,
+            foundationRequired: true,
+            available: accountSetOptions.value.length > 0
           },
+          () => categoryDialogRef.value?.handleOpen()
+        )
+    },
+    {
+      auth: 'FinanceFixedAsset:Depreciation',
+      key: 'depreciation',
+      label: '折旧管理',
+      icon: 'ri:calendar-todo-line',
+      onClick: () =>
+        void runWithAccountSet(
           {
-            key: 'depreciation',
-            label: '折旧管理',
-            icon: 'ri:calendar-todo-line',
-            onClick: () =>
-              void runWithAccountSet(
-                {
-                  actionLabel: '折旧管理',
-                  activeRequired: true,
-                  accountSetId: table.search.accountSetId,
-                  foundationRequired: true,
-                  available: accountSetOptions.value.length > 0
-                },
-                () => depreciationRef.value?.handleOpen(table.search.accountSetId)
-              )
-          }
-        ]
-      : []
-  )
+            actionLabel: '折旧管理',
+            activeRequired: true,
+            accountSetId: table.search.accountSetId,
+            foundationRequired: true,
+            available: accountSetOptions.value.length > 0
+          },
+          () => depreciationRef.value?.handleOpen(table.search.accountSetId)
+        )
+    }
+  ])
 
   function columnsFactory(): ColumnOption<Asset>[] {
     return [
@@ -298,14 +288,18 @@
       {
         prop: 'operation',
         label: '操作',
-        width: isPlatformSuper.value ? 150 : 70,
+        width: 150,
         fixed: 'right',
         formatter: (row) => (
           <div class="flex items-center">
-            {isPlatformSuper.value && row.status === 'draft' ? (
-              <ArtButtonTable type="edit" onClick={() => void dialogRef.value?.handleOpen(row)} />
+            {row.status === 'draft' ? (
+              <ArtButtonTable
+                type="edit"
+                permission="FinanceFixedAsset:Edit"
+                onClick={() => void dialogRef.value?.handleOpen(row)}
+              />
             ) : null}
-            {isPlatformSuper.value && getActionItems(row).length ? (
+            {getActionItems(row).length ? (
               <ArtButtonMore
                 list={getActionItems(row)}
                 onClick={(item: ButtonMoreItem) => void handleAction(item, row)}
@@ -321,12 +315,14 @@
     if (row.status === 'draft')
       return [
         {
+          auth: 'FinanceFixedAsset:Activate',
           key: 'activate',
           label: '确认转固',
           icon: 'ri:checkbox-circle-line',
           color: 'var(--el-color-success)'
         },
         {
+          auth: 'FinanceFixedAsset:Delete',
           key: 'delete',
           label: '删除草稿',
           icon: 'ri:delete-bin-line',
@@ -336,12 +332,14 @@
     if (row.status === 'active')
       return [
         {
+          auth: 'FinanceFixedAsset:Suspend',
           key: 'suspend',
           label: '暂停折旧',
           icon: 'ri:pause-circle-line',
           color: 'var(--el-color-warning)'
         },
         {
+          auth: 'FinanceFixedAsset:Dispose',
           key: 'dispose',
           label: '资产处置',
           icon: 'ri:delete-bin-6-line',
@@ -351,12 +349,14 @@
     if (row.status === 'suspended')
       return [
         {
+          auth: 'FinanceFixedAsset:Resume',
           key: 'resume',
           label: '恢复使用',
           icon: 'ri:play-circle-line',
           color: 'var(--el-color-success)'
         },
         {
+          auth: 'FinanceFixedAsset:Dispose',
           key: 'dispose',
           label: '资产处置',
           icon: 'ri:delete-bin-6-line',

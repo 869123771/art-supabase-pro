@@ -51,13 +51,12 @@ const WAYBILL_COST_SELECT = `
     origin_city,
     destination_city,
     carrier:tms_carrier!tms_waybill_carrier_id_fkey(id, company_name),
-    driver:tms_driver!tms_waybill_driver_id_fkey(id, driver_name, phone),
+    driver:tms_driver!tms_waybill_driver_id_fkey(id, driver_name),
     order:tms_order!tms_waybill_order_id_fkey(
       id,
       order_no,
       dispatch_plate_no,
       dispatch_driver_name,
-      dispatch_driver_phone,
       origin_station,
       destination_station
     )
@@ -75,13 +74,12 @@ const WAYBILL_OPTION_SELECT = `
   destination_city,
   completed_at,
   carrier:tms_carrier!tms_waybill_carrier_id_fkey(id, company_name),
-  driver:tms_driver!tms_waybill_driver_id_fkey(id, driver_name, phone),
+  driver:tms_driver!tms_waybill_driver_id_fkey(id, driver_name),
   order:tms_order!tms_waybill_order_id_fkey(
     id,
     order_no,
     dispatch_plate_no,
     dispatch_driver_name,
-    dispatch_driver_phone,
     origin_station,
     destination_station
   )

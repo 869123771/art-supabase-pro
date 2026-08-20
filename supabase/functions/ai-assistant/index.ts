@@ -1,9 +1,6 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
 import { createClient, type SupabaseClient } from 'jsr:@supabase/supabase-js@2'
-import {
-  loadAiRuntimeConfig,
-  type AiRuntimeConfig
-} from '../_shared/ai-runtime-config.ts'
+import { loadAiRuntimeConfig, type AiRuntimeConfig } from '../_shared/ai-runtime-config.ts'
 import {
   resolveAiProviderEndpoints,
   type AiProviderEndpoint
@@ -258,7 +255,11 @@ function resolveDirectTool(content: string, context: AssistantContext): DirectTo
   if (/(最近|最新).*(订单)|订单.*(最近|最新)|总结最近订单/.test(normalized)) {
     return { name: 'get_recent_orders', args: { limit: 8 } }
   }
-  if (/(运输|订单|运单).*(异常|风险|延误|逾期|超时|卡住)|(异常|风险|延误|逾期|超时).*(运输|订单|运单)/.test(normalized)) {
+  if (
+    /(运输|订单|运单).*(异常|风险|延误|逾期|超时|卡住)|(异常|风险|延误|逾期|超时).*(运输|订单|运单)/.test(
+      normalized
+    )
+  ) {
     return {
       name: 'get_transport_anomalies',
       args: { stale_hours: 24, limit: 20 }
@@ -270,7 +271,11 @@ function resolveDirectTool(content: string, context: AssistantContext): DirectTo
       args: { days: parseRequestedDays(normalized, 30) }
     }
   }
-  if (/(车辆|保险|年检|服务期限).*(到期|过期|临期)|(到期|过期|临期).*(车辆|保险|年检)/.test(normalized)) {
+  if (
+    /(车辆|保险|年检|服务期限).*(到期|过期|临期)|(到期|过期|临期).*(车辆|保险|年检)/.test(
+      normalized
+    )
+  ) {
     return {
       name: 'get_vehicle_expiries',
       args: { within_days: parseRequestedDays(normalized, 30), limit: 10 }
@@ -296,7 +301,11 @@ function formatStatus(value: unknown): string {
 }
 
 function formatMoney(value: unknown): string {
-  return numberValue(value).toLocaleString('zh-CN', { maximumFractionDigits: 2 })
+  if (value === '***') return '***'
+  if (value === null || value === undefined || value === '') return '无权限查看'
+  const parsed = Number(value)
+  if (!Number.isFinite(parsed)) return '无权限查看'
+  return `¥${parsed.toLocaleString('zh-CN', { maximumFractionDigits: 2 })}`
 }
 
 function formatDate(value: unknown): string {
@@ -321,14 +330,12 @@ function formatAnomalyType(value: unknown): string {
   return labels[stringValue(value)] || '运输异常'
 }
 
-function formatDirectToolResponse(
-  name: ToolName,
-  result: Record<string, unknown>
-): string {
+function formatDirectToolResponse(name: ToolName, result: Record<string, unknown>): string {
   if (name === 'get_order_detail') {
-    const order = result.order && typeof result.order === 'object'
-      ? (result.order as Record<string, unknown>)
-      : null
+    const order =
+      result.order && typeof result.order === 'object'
+        ? (result.order as Record<string, unknown>)
+        : null
     if (!order) return '没有查到当前订单，可能已被删除或你没有查看权限。'
     const route = `${stringValue(order.origin_station) || '起点未设置'} → ${stringValue(order.destination_station) || '终点未设置'}`
     return [
@@ -340,7 +347,7 @@ function formatDirectToolResponse(
       `- 配送方式：${stringValue(order.delivery_method) || '未设置'}`,
       `- 计划时间：${formatDate(order.planned_departure_time)} 至 ${formatDate(order.planned_arrival_time)}`,
       `- 车辆 / 司机：${stringValue(order.dispatch_plate_no) || '未安排'} / ${stringValue(order.dispatch_driver_name) || '未安排'}`,
-      `- 费用合计：¥${formatMoney(order.total_fee)}`
+      `- 费用合计：${formatMoney(order.total_fee)}`
     ].join('\n')
   }
 
@@ -351,9 +358,15 @@ function formatDirectToolResponse(
     if (!orders.length) return '最近没有查到可查看的订单。'
     const lines = orders.map((order, index) => {
       const route = `${stringValue(order.origin_station) || '起点未设置'} → ${stringValue(order.destination_station) || '终点未设置'}`
-      return `${index + 1}. ${stringValue(order.order_no) || '未编号'}｜${route}｜${formatStatus(order.order_status)}｜¥${formatMoney(order.total_fee)}`
+      return `${index + 1}. ${stringValue(order.order_no) || '未编号'}｜${route}｜${formatStatus(order.order_status)}｜${formatMoney(order.total_fee)}`
     })
-    return [`最近 ${orders.length} 笔订单：`, '', ...lines, '', '如需继续分析，可以告诉我订单号或打开订单详情页。'].join('\n')
+    return [
+      `最近 ${orders.length} 笔订单：`,
+      '',
+      ...lines,
+      '',
+      '如需继续分析，可以告诉我订单号或打开订单详情页。'
+    ].join('\n')
   }
 
   if (name === 'get_transport_overview') {
@@ -364,7 +377,7 @@ function formatDirectToolResponse(
       `- 订单总数：${numberValue(result.totalOrders)} 单`,
       `- 订单状态：${formatCountMap(result.orderStatus)}`,
       `- 调度状态：${formatCountMap(result.dispatchStatus)}`,
-      `- 样本费用合计：¥${formatMoney(result.sampledTotalFee)}`,
+      `- 样本费用合计：${formatMoney(result.sampledTotalFee)}`,
       numberValue(result.sampledOrders) < numberValue(result.totalOrders)
         ? `- 当前基于最近 ${numberValue(result.sampledOrders)} 单计算费用与状态分布`
         : '- 已覆盖当前查询范围内的全部订单'
@@ -404,15 +417,24 @@ function formatDirectToolResponse(
     ? (result.vehicleService as Array<Record<string, unknown>>)
     : []
   const samples = [
-    ...insurance.slice(0, 3).map((item) =>
-      `${stringValue(item.plate_no) || '未知车辆'}：保险最晚 ${formatDate(item.commercial_expire_date || item.compulsory_expire_date)}`
-    ),
-    ...inspection.slice(0, 3).map((item) =>
-      `${stringValue(item.plate_no) || '未知车辆'}：年检 ${formatDate(item.expire_date)}`
-    ),
-    ...vehicleService.slice(0, 3).map((item) =>
-      `${stringValue(item.plate_no) || '未知车辆'}：服务期限 ${formatDate(item.service_end_time)}`
-    )
+    ...insurance
+      .slice(0, 3)
+      .map(
+        (item) =>
+          `${stringValue(item.plate_no) || '未知车辆'}：保险最晚 ${formatDate(item.commercial_expire_date || item.compulsory_expire_date)}`
+      ),
+    ...inspection
+      .slice(0, 3)
+      .map(
+        (item) =>
+          `${stringValue(item.plate_no) || '未知车辆'}：年检 ${formatDate(item.expire_date)}`
+      ),
+    ...vehicleService
+      .slice(0, 3)
+      .map(
+        (item) =>
+          `${stringValue(item.plate_no) || '未知车辆'}：服务期限 ${formatDate(item.service_end_time)}`
+      )
   ]
   return [
     `未来 ${numberValue(result.withinDays)} 天车辆到期提醒：`,
@@ -420,7 +442,9 @@ function formatDirectToolResponse(
     `- 保险：${insurance.length} 项`,
     `- 年检：${inspection.length} 项`,
     `- 车辆服务期限：${vehicleService.length} 项`,
-    ...(samples.length ? ['', '重点记录：', ...samples.map((item) => `- ${item}`)] : ['', '当前没有查到临期记录。'])
+    ...(samples.length
+      ? ['', '重点记录：', ...samples.map((item) => `- ${item}`)]
+      : ['', '当前没有查到临期记录。'])
   ].join('\n')
 }
 
@@ -535,49 +559,60 @@ async function executeTool(
     const orderId = stringValue(args.order_id) || stringValue(context.recordId)
     if (!orderId) return { found: false, reason: '缺少订单 ID' }
 
-    const { data, error } = await userClient
-      .from('tms_order')
-      .select(
-        'id,order_no,order_status,dispatch_status,origin_station,destination_station,transfer_station,delivery_method,cargo_items,cargo_quantity_total,cargo_weight_total,cargo_volume_total,total_fee,payment_method,transport_mode,planned_departure_time,planned_arrival_time,dispatch_plate_no,dispatch_driver_name,order_remark,create_time,update_time'
-      )
-      .eq('id', orderId)
-      .maybeSingle()
+    const { data, error } = await userClient.rpc('tms_get_order_detail_secure', {
+      p_id: orderId
+    })
     if (error) throw error
     return { found: Boolean(data), order: data }
   }
 
   if (name === 'get_recent_orders') {
     const limit = integerValue(args.limit, 8, 1, 20)
-    const { data, error } = await userClient
-      .from('tms_order')
-      .select(
-        'id,order_no,order_status,dispatch_status,origin_station,destination_station,total_fee,planned_departure_time,planned_arrival_time,create_time'
-      )
-      .order('create_time', { ascending: false })
-      .limit(limit)
+    const { data, error } = await userClient.rpc('tms_list_orders_secure', {
+      p_scope: 'dashboard',
+      p_from: 0,
+      p_to: limit - 1
+    })
     if (error) throw error
-    return { orders: data ?? [], count: data?.length ?? 0 }
+    const result = data && typeof data === 'object' ? (data as Record<string, unknown>) : {}
+    const orders = Array.isArray(result.records)
+      ? (result.records as Array<Record<string, unknown>>)
+      : []
+    return { orders, count: orders.length }
   }
 
   if (name === 'get_transport_overview') {
     const days = integerValue(args.days, 30, 1, 90)
     const since = addDays(new Date(), -days).toISOString()
-    const { data, error, count } = await userClient
-      .from('tms_order')
-      .select('order_status,dispatch_status,total_fee', { count: 'exact' })
-      .gte('create_time', since)
-      .limit(1000)
+    const { data, error } = await userClient.rpc('tms_list_orders_secure', {
+      p_scope: 'dashboard',
+      p_from: 0,
+      p_to: 999,
+      p_create_time_from: since
+    })
     if (error) throw error
 
-    const rows = (data ?? []) as Array<Record<string, unknown>>
-    const totalFee = rows.reduce((sum, row) => sum + (Number(row.total_fee) || 0), 0)
+    const result = data && typeof data === 'object' ? (data as Record<string, unknown>) : {}
+    const rows = Array.isArray(result.records)
+      ? (result.records as Array<Record<string, unknown>>)
+      : []
+    const feeAccessComplete = rows.every((row) => {
+      if (row.total_fee === null || row.total_fee === undefined || row.total_fee === '***') {
+        return false
+      }
+      return Number.isFinite(Number(row.total_fee))
+    })
+    const totalFee = feeAccessComplete
+      ? rows.reduce((sum, row) => sum + Number(row.total_fee), 0)
+      : null
     return {
       days,
-      totalOrders: count ?? rows.length,
+      totalOrders: Number(result.total) || rows.length,
       sampledOrders: rows.length,
       orderStatus: groupCounts(rows, 'order_status'),
       dispatchStatus: groupCounts(rows, 'dispatch_status'),
-      sampledTotalFee: Math.round(totalFee * 100) / 100
+      sampledTotalFee: totalFee === null ? null : Math.round(totalFee * 100) / 100,
+      feeAccessComplete
     }
   }
 
@@ -663,12 +698,11 @@ async function writeToolAudit(
   const resultSummary = payload.result
     ? {
         keys: Object.keys(payload.result),
-        count:
-          Array.isArray(payload.result.orders)
-            ? payload.result.orders.length
-            : Array.isArray(payload.result.anomalies)
-              ? payload.result.anomalies.length
-              : undefined
+        count: Array.isArray(payload.result.orders)
+          ? payload.result.orders.length
+          : Array.isArray(payload.result.anomalies)
+            ? payload.result.anomalies.length
+            : undefined
       }
     : {}
   const { error } = await admin.from('ai_tool_call').insert({
@@ -689,7 +723,8 @@ async function writeToolAudit(
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
-  if (req.method !== 'POST') return json({ code: 'method_not_allowed', message: 'Method not allowed' }, 405)
+  if (req.method !== 'POST')
+    return json({ code: 'method_not_allowed', message: 'Method not allowed' }, 405)
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
   const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? ''
@@ -778,8 +813,7 @@ Deno.serve(async (req) => {
       return json({ code: 'invalid_input', message: 'A user message is required' }, 400)
     }
 
-    const sharedModel =
-      Deno.env.get('AI_MODEL') || Deno.env.get('OPENAI_MODEL') || 'gpt-4.1-mini'
+    const sharedModel = Deno.env.get('AI_MODEL') || Deno.env.get('OPENAI_MODEL') || 'gpt-4.1-mini'
     const isNvidia = (Deno.env.get('AI_BASE_URL') || '').includes('nvidia.com')
     const configuredModel = Deno.env.get('AI_ASSISTANT_MODEL') || sharedModel
     const defaultModel =
@@ -800,12 +834,7 @@ Deno.serve(async (req) => {
         maxRetries: integerValue(Deno.env.get('AI_ASSISTANT_MAX_RETRIES'), 0, 0, 2),
         temperature: 0.2,
         maxTokens: integerValue(Deno.env.get('AI_ASSISTANT_MAX_TOKENS'), 800, 200, 2000),
-        rateLimitPerMinute: integerValue(
-          Deno.env.get('AI_ASSISTANT_PER_MINUTE'),
-          8,
-          1,
-          60
-        ),
+        rateLimitPerMinute: integerValue(Deno.env.get('AI_ASSISTANT_PER_MINUTE'), 8, 1, 60),
         rateLimitPerDay: integerValue(Deno.env.get('AI_ASSISTANT_PER_DAY'), 100, 1, 5000),
         promptVersion: 'v1'
       }
@@ -863,7 +892,8 @@ Deno.serve(async (req) => {
         .update({ context, update_by: appUser.user_email })
         .eq('id', conversationId)
     } else {
-      const title = latestUserMessage.content.replace(/\s+/g, ' ').slice(0, 40) || 'New conversation'
+      const title =
+        latestUserMessage.content.replace(/\s+/g, ' ').slice(0, 40) || 'New conversation'
       const { data, error } = await admin
         .from('ai_conversation')
         .insert({
@@ -1109,7 +1139,10 @@ Deno.serve(async (req) => {
         .update({
           status: 'failed',
           latency_ms: Date.now() - startedAt,
-          error_code: error instanceof DOMException && error.name === 'AbortError' ? 'provider_timeout' : 'server_error',
+          error_code:
+            error instanceof DOMException && error.name === 'AbortError'
+              ? 'provider_timeout'
+              : 'server_error',
           error_message: message.slice(0, 2000),
           finished_at: new Date().toISOString(),
           update_by: appUser.user_email
@@ -1118,10 +1151,14 @@ Deno.serve(async (req) => {
     }
     return json(
       {
-        code: error instanceof DOMException && error.name === 'AbortError' ? 'provider_timeout' : 'server_error',
-        message: error instanceof DOMException && error.name === 'AbortError'
-          ? 'AI 服务响应超时，请稍后重试'
-          : message
+        code:
+          error instanceof DOMException && error.name === 'AbortError'
+            ? 'provider_timeout'
+            : 'server_error',
+        message:
+          error instanceof DOMException && error.name === 'AbortError'
+            ? 'AI 服务响应超时，请稍后重试'
+            : message
       },
       error instanceof DOMException && error.name === 'AbortError' ? 504 : 500
     )

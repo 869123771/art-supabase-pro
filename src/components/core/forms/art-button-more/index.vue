@@ -11,7 +11,7 @@
         <ElDropdownMenu>
           <template v-for="item in dropdownList" :key="item.key">
             <ElDropdownItem
-              v-if="!item.auth || hasAuth(item.auth)"
+              v-if="isItemAuthorized(item)"
               :disabled="item.disabled"
               @click="handleClick(item)"
             >
@@ -28,11 +28,14 @@
 </template>
 
 <script setup lang="ts">
+  import { useRoute } from 'vue-router'
   import { useAuth } from '@/hooks/core/useAuth'
+  import { resolveBusinessButtonPermission } from '@/utils/business-permission'
 
   defineOptions({ name: 'ArtButtonMore' })
 
   const { hasAuth } = useAuth()
+  const route = useRoute()
 
   export interface ButtonMoreItem {
     /** 按钮标识，可用于点击事件 */
@@ -64,9 +67,18 @@
     typeof props.list === 'function' ? props?.list() : props.list
   )
 
+  const resolveItemPermission = (item: ButtonMoreItem): string | undefined =>
+    resolveBusinessButtonPermission(route, item.key, item.auth)
+
+  const isItemAuthorized = (item: ButtonMoreItem): boolean => {
+    const permission = resolveItemPermission(item)
+    return !permission || hasAuth(permission)
+  }
+
   // 检查是否有任何有权限的 item
   const hasAnyAuthItem = computed(() => {
-    return dropdownList.value.some((item) => !item.auth || hasAuth(item.auth))
+    if (props.auth && !hasAuth(props.auth)) return false
+    return dropdownList.value.some(isItemAuthorized)
   })
 
   const emit = defineEmits<{

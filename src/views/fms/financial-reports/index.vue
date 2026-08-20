@@ -10,8 +10,8 @@
         { label: '已记账口径', type: 'primary' },
         { label: '公式可审计', type: 'success' },
         {
-          label: isPlatformSuper ? '平台配置' : '租户只读',
-          type: isPlatformSuper ? 'warning' : 'info'
+          label: canEditConfig ? '口径可维护' : '口径只读',
+          type: canEditConfig ? 'warning' : 'info'
         }
       ]"
       :metrics="metrics"
@@ -91,6 +91,7 @@
   import StatementConfigDrawer from './modules/statement-config-drawer.vue'
   import type { ColumnOption } from '@/types'
   import { useUserStore } from '@/store/modules/user'
+  import { useAuth } from '@/hooks/core/useAuth'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatCurrencyValue } from '@/utils/ui'
   import {
@@ -106,7 +107,9 @@
   type TablePageParams = Pick<Api.Common.PaginationParams, 'current' | 'size'>
   type SearchData = Omit<Api.Fms.FinancialStatementReportParams, 'statementType'>
 
-  const { getDictMap, isPlatformSuper } = storeToRefs(useUserStore())
+  const { getDictMap } = storeToRefs(useUserStore())
+  const { hasAuth } = useAuth()
+  const canEditConfig = computed(() => hasAuth('FinanceFinancialReports:EditConfig'))
   const activeType = ref<StatementType>('balance_sheet')
   const { ensureAccountSet } = useFinanceAccountSetPrerequisite()
   const tableRef = ref<ArtTableQueryExpose>()
@@ -198,11 +201,15 @@
   const headerActions = computed<ArtTableQueryHeaderAction[]>(() => [
     {
       key: 'statement-config',
-      label: isPlatformSuper.value ? '取数口径' : '查看口径',
-      icon: isPlatformSuper.value ? 'ri:settings-3-line' : 'ri:eye-line',
+      label: canEditConfig.value ? '取数口径' : '查看口径',
+      icon: canEditConfig.value ? 'ri:settings-3-line' : 'ri:eye-line',
+      permission: canEditConfig.value
+        ? 'FinanceFinancialReports:EditConfig'
+        : 'FinanceFinancialReports:ViewConfig',
       onClick: openConfiguration
     },
     {
+      permission: 'FinanceFinancialReports:Export',
       type: 'export',
       exportFilename: () => `${activeStatementLabel.value}-${search.fiscalYear}年`,
       exportSheetName: activeStatementLabel.value,
@@ -468,7 +475,7 @@
   async function openConfiguration(): Promise<void> {
     if (
       !(await ensureAccountSet({
-        actionLabel: isPlatformSuper.value ? '维护财务报表取数口径' : '查看财务报表取数口径',
+        actionLabel: canEditConfig.value ? '维护财务报表取数口径' : '查看财务报表取数口径',
         activeRequired: true,
         available: Boolean(search.accountSetId)
       }))

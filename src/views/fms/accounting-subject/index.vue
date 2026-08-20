@@ -22,15 +22,6 @@
       </template>
     </BusinessWorkspaceHeader>
 
-    <ElAlert
-      v-if="!isPlatformSuper"
-      v-show="!focusMode"
-      type="info"
-      :closable="false"
-      show-icon
-      title="当前账号可查看本租户科目体系；新增、编辑和启停科目仅平台超级管理员可执行。"
-    />
-
     <ArtPageSection
       v-show="!focusMode"
       title="核算范围"
@@ -60,7 +51,7 @@
       <AccountingSetupGuide
         :loading="state.accountSetLoading"
         :has-account-set="state.accountSetOptions.length > 0"
-        :can-configure="isPlatformSuper"
+        :can-configure="hasAuth('FinanceAccountSet:Add')"
         @configure="goToAccountSet"
       />
     </ArtPageSection>
@@ -79,14 +70,14 @@
         <p>{{ readinessDescription }}</p>
       </div>
       <ElButton
-        v-if="isPlatformSuper"
+        v-if="hasAuth('FinanceAccountingSubject:Initialize')"
         type="primary"
         :loading="state.initializing"
         @click="initializeFoundation"
       >
         <ArtSvgIcon icon="ri:magic-line" />补齐核算基础
       </ElButton>
-      <ElTag v-else type="warning">请联系平台超级管理员</ElTag>
+      <ElTag v-else type="warning">请联系管理员授权或初始化</ElTag>
     </section>
 
     <div class="accounting-subject-page__workspace" :class="{ 'is-focused': focusMode }">
@@ -114,7 +105,7 @@
       >
         <template #actions>
           <AccountingWorkspaceFocusToggle v-if="focusMode" v-model="focusMode" />
-          <ElButton v-if="isPlatformSuper" type="primary" @click="openDialog()">
+          <ElButton v-auth="'FinanceAccountingSubject:Add'" type="primary" @click="openDialog()">
             <ArtSvgIcon icon="ri:add-line" />新增科目
           </ElButton>
         </template>
@@ -172,6 +163,7 @@
   import type { ColumnOption } from '@/types'
   import TreeUtils from '@/utils/tree'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import { useAuth } from '@/hooks/core/useAuth'
   import { useUserStore } from '@/store/modules/user'
   import {
     fetchAccountingReadiness,
@@ -210,7 +202,8 @@
   const { confirmAction } = useArtFeedback()
   const { focusMode } = useAccountingWorkspaceFocus()
   const { ensureAccountSet, goToAccountSet } = useFinanceAccountSetPrerequisite()
-  const { getDictMap, isPlatformSuper } = storeToRefs(useUserStore())
+  const { getDictMap } = storeToRefs(useUserStore())
+  const { hasAuth } = useAuth()
   const dialogRef = ref<SubjectDialogExpose>()
   const subjectTree = new TreeUtils({
     idKey: 'id',
@@ -382,10 +375,14 @@
       label: '操作',
       width: 150,
       fixed: 'right',
-      formatter: (row) =>
-        isPlatformSuper.value ? (
-          <div class="accounting-subject-page__actions">
-            <ArtButtonTable type="edit" onClick={() => openDialog(row)} />
+      formatter: (row) => (
+        <div class="accounting-subject-page__actions">
+          <ArtButtonTable
+            type="edit"
+            permission="FinanceAccountingSubject:Edit"
+            onClick={() => openDialog(row)}
+          />
+          {hasAuth('FinanceAccountingSubject:Toggle') ? (
             <ElButton
               link
               type={row.isEnabled ? 'danger' : 'success'}
@@ -393,10 +390,9 @@
             >
               {row.isEnabled ? '停用' : '启用'}
             </ElButton>
-          </div>
-        ) : (
-          <span class="accounting-subject-page__readonly">只读</span>
-        )
+          ) : null}
+        </div>
+      )
     }
   ]
 

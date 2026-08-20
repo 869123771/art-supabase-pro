@@ -18,14 +18,6 @@
       </template>
     </BusinessWorkspaceHeader>
 
-    <ElAlert
-      v-if="!isPlatformSuper"
-      type="info"
-      :closable="false"
-      show-icon
-      title="当前账号可查看本租户会计凭证；制单、审核、过账、作废和冲销仅平台超级管理员可执行。"
-    />
-
     <ArtTableQuery
       ref="tableQueryRef"
       v-model="table.searchQuery"
@@ -67,6 +59,7 @@
   import { useFinanceAccountSetPrerequisite } from '../modules/use-finance-account-set-prerequisite'
   import { useUserStore } from '@/store/modules/user'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import { useAuth } from '@/hooks/core/useAuth'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatCurrencyValue } from '@/utils/ui'
   import { formatWithDayjs } from '@/utils/time'
@@ -118,7 +111,8 @@
     accountSetOptions: Api.Fms.AccountSetOption[]
   }
 
-  const { getDictMap, isPlatformSuper } = storeToRefs(useUserStore())
+  const { getDictMap } = storeToRefs(useUserStore())
+  const { hasAuth } = useAuth()
   const { confirmAction } = useArtFeedback()
   const { ensureAccountSet } = useFinanceAccountSetPrerequisite()
   const route = useRoute()
@@ -212,14 +206,14 @@
     ]),
     headerActions: computed<ArtTableQueryHeaderAction[]>(() => {
       const actions: ArtTableQueryHeaderAction[] = []
-      if (isPlatformSuper.value) {
-        actions.push({
-          type: 'add',
-          label: '新增凭证',
-          onClick: () => void openDialog()
-        })
-      }
       actions.push({
+        permission: 'FinanceVoucherCenter:Add',
+        type: 'add',
+        label: '新增凭证',
+        onClick: () => void openDialog()
+      })
+      actions.push({
+        permission: 'FinanceVoucherCenter:Export',
         type: 'export',
         exportFilename: '会计凭证台账',
         exportSheetName: '会计凭证',
@@ -329,55 +323,71 @@
       fixed: 'right',
       formatter: (row) => (
         <div class="voucher-center-page__actions">
-          <ElButton link type="primary" onClick={() => void drawerRef.value?.handleOpen(row)}>
-            查看
-          </ElButton>
-          {isPlatformSuper.value && ['draft', 'rejected'].includes(row.status) && (
+          {hasAuth('FinanceVoucherCenter:View') ? (
+            <ElButton link type="primary" onClick={() => void drawerRef.value?.handleOpen(row)}>
+              查看
+            </ElButton>
+          ) : null}
+          {['draft', 'rejected'].includes(row.status) && (
             <>
-              <ElButton link type="primary" onClick={() => void openDialog(row)}>
-                编辑
-              </ElButton>
-              <ElButton link type="success" onClick={() => void runSimpleAction(row, 'submit')}>
-                提交
-              </ElButton>
-              <ElButton
-                link
-                type="danger"
-                onClick={() => void actionDialogRef.value?.handleOpen(row, 'void')}
-              >
-                作废
-              </ElButton>
+              {hasAuth('FinanceVoucherCenter:Edit') ? (
+                <ElButton link type="primary" onClick={() => void openDialog(row)}>
+                  编辑
+                </ElButton>
+              ) : null}
+              {hasAuth('FinanceVoucherCenter:Submit') ? (
+                <ElButton link type="success" onClick={() => void runSimpleAction(row, 'submit')}>
+                  提交
+                </ElButton>
+              ) : null}
+              {hasAuth('FinanceVoucherCenter:Void') ? (
+                <ElButton
+                  link
+                  type="danger"
+                  onClick={() => void actionDialogRef.value?.handleOpen(row, 'void')}
+                >
+                  作废
+                </ElButton>
+              ) : null}
             </>
           )}
-          {isPlatformSuper.value && row.status === 'pending_review' && (
+          {row.status === 'pending_review' && (
             <>
-              <ElButton link type="success" onClick={() => void runSimpleAction(row, 'approve')}>
-                通过
-              </ElButton>
-              <ElButton
-                link
-                type="danger"
-                onClick={() => void actionDialogRef.value?.handleOpen(row, 'reject')}
-              >
-                驳回
-              </ElButton>
+              {hasAuth('FinanceVoucherCenter:Approve') ? (
+                <ElButton link type="success" onClick={() => void runSimpleAction(row, 'approve')}>
+                  通过
+                </ElButton>
+              ) : null}
+              {hasAuth('FinanceVoucherCenter:Reject') ? (
+                <ElButton
+                  link
+                  type="danger"
+                  onClick={() => void actionDialogRef.value?.handleOpen(row, 'reject')}
+                >
+                  驳回
+                </ElButton>
+              ) : null}
             </>
           )}
-          {isPlatformSuper.value && row.status === 'approved' && (
+          {row.status === 'approved' && (
             <>
-              <ElButton link type="success" onClick={() => void runSimpleAction(row, 'post')}>
-                过账
-              </ElButton>
-              <ElButton
-                link
-                type="danger"
-                onClick={() => void actionDialogRef.value?.handleOpen(row, 'void')}
-              >
-                作废
-              </ElButton>
+              {hasAuth('FinanceVoucherCenter:Post') ? (
+                <ElButton link type="success" onClick={() => void runSimpleAction(row, 'post')}>
+                  过账
+                </ElButton>
+              ) : null}
+              {hasAuth('FinanceVoucherCenter:Void') ? (
+                <ElButton
+                  link
+                  type="danger"
+                  onClick={() => void actionDialogRef.value?.handleOpen(row, 'void')}
+                >
+                  作废
+                </ElButton>
+              ) : null}
             </>
           )}
-          {isPlatformSuper.value && row.status === 'posted' && (
+          {row.status === 'posted' && hasAuth('FinanceVoucherCenter:Reverse') && (
             <ElButton
               link
               type="warning"

@@ -31,9 +31,7 @@ function text(value: unknown): string {
 }
 
 function isUuid(value: string): boolean {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-    value
-  )
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
 }
 
 Deno.serve(async (request) => {
@@ -100,14 +98,10 @@ Deno.serve(async (request) => {
 
     const [waybillResult, costResult, statementResult, driverResult, vehicleResult] =
       await Promise.all([
-        userClient
-          .from('tms_waybill')
-          .select(
-            'id,waybill_no,status,origin_city,destination_city,planned_unload_time,arrived_at,completed_at,freight_amount,create_time'
-          )
-          .eq('carrier_id', carrierId)
-          .order('create_time', { ascending: false })
-          .limit(200),
+        userClient.rpc('tms_list_carrier_waybills_secure', {
+          p_carrier_id: carrierId,
+          p_limit: 200
+        }),
         userClient
           .from('tms_waybill_cost')
           .select('id,waybill_id,amount,audit_status,occurred_on,create_time')
@@ -162,9 +156,17 @@ Deno.serve(async (request) => {
     if (runError) throw runError
     runId = run.id
 
+    const secureWaybillResult =
+      waybillResult.data && typeof waybillResult.data === 'object'
+        ? (waybillResult.data as Record<string, unknown>)
+        : {}
+    const waybills = Array.isArray(secureWaybillResult.records)
+      ? (secureWaybillResult.records as Array<Record<string, unknown>>)
+      : []
+
     const assessment = assessCarrierPerformance({
       carrier,
-      waybills: waybillResult.data ?? [],
+      waybills,
       costs: costResult.data ?? [],
       statements: statementResult.data ?? [],
       driverCount: driverResult.count ?? 0,

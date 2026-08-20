@@ -1,13 +1,8 @@
 import { useSupabase } from '@/hooks'
 import type { QueryResult } from '@/types/api/response'
-import type { SupabaseQueryLike } from '@/api/providers/supabase/query'
-import {
-  applyOrderFilters,
-  mergeOrdersWithDriverWaybills,
-  ORDER_SELECT,
-  uniqueStringValues
-} from '@/api/modules/tms/order-shared'
+import { fetchSecureOrders } from '@/api/modules/tms/transport-secure'
 import { DISPATCH_VEHICLE_SELECT } from '@/api/modules/tms/waybill-shared'
+import { fetchDriverOptions } from '@/api/modules/tms/driver'
 import { isPlainObject } from 'lodash-es'
 
 type WaybillRecord = Api.Tms.Waybill.WaybillRecord
@@ -24,18 +19,10 @@ type ExecutionDeparturePayload = Api.Tms.Waybill.ExecutionDeparturePayload
 type ExecutionSignaturePayload = Api.Tms.Waybill.ExecutionSignaturePayload
 type ExecutionCompletionPayload = Api.Tms.Waybill.ExecutionCompletionPayload
 type WaybillDetailRecord = Api.Tms.Waybill.WaybillDetailRecord
-type WaybillEventRecord = Api.Tms.Waybill.WaybillEventRecord
-type WaybillProofRecord = Api.Tms.Waybill.WaybillProofRecord
-type CargoOperationRecord = Api.Tms.Waybill.CargoOperationRecord
-type ExecutionRecord = Api.Tms.Waybill.ExecutionRecord
 type WaybillExpenseLocationRecord = Api.Tms.Waybill.WaybillExpenseLocationRecord
 
 interface WaybillExpenseLocationQueryRecord extends WaybillExpenseLocationRecord {
   costType?: string | null
-}
-
-interface DriverWaybillStatusReference {
-  orderId?: string | null
 }
 
 interface WaybillStatusCountResult {
@@ -44,35 +31,6 @@ interface WaybillStatusCountResult {
 }
 
 const { supabase, keysToSnakeDeep, responseHandle } = useSupabase()
-
-const WAYBILL_DETAIL_SELECT = `
-  *,
-  order:tms_order!tms_waybill_order_id_fkey(${ORDER_SELECT}),
-  driver:tms_driver!tms_waybill_driver_id_fkey(id, driver_name, phone, license_type),
-  vehicle:vehicle_archive!tms_waybill_vehicle_id_fkey(
-    id, plate_no, vehicle_type, brand_model, approved_load_mass, vehicle_photo_url
-  ),
-  carrier:tms_carrier!tms_waybill_carrier_id_fkey(
-    id, company_name, contact_name, contact_phone
-  ),
-  cargo:tms_cargo!tms_waybill_cargo_id_fkey(id, cargo_code, cargo_name, unit)
-`
-
-const WAYBILL_EXPENSE_LOCATION_SELECT = `
-  id,
-  cost_type,
-  occurred_on,
-  expense_location,
-  expense_longitude,
-  expense_latitude,
-  expense_coordinate_source,
-  expense_item:tms_expense_item!tms_waybill_cost_expense_item_id_fkey(
-    id,
-    item_code,
-    item_name,
-    business_category
-  )
-`
 
 const ENERGY_COST_TYPES = new Set([
   'fuel',
@@ -83,70 +41,13 @@ const ENERGY_COST_TYPES = new Set([
 
 export async function fetchWaybillDetail(waybillId: string) {
   const detailResult = await responseHandle<WaybillDetailRecord | null>(
-    () =>
-      supabase.from('tms_waybill').select(WAYBILL_DETAIL_SELECT).eq('id', waybillId).maybeSingle(),
+    () => supabase.rpc('tms_get_waybill_detail_secure', { p_waybill_id: waybillId }),
     {
       breakReturn: true,
       errorMessage: '运单详情加载失败，请稍后重试'
     }
   )
   if (!detailResult.data) return detailResult
-
-  const [eventResult, proofResult, cargoOperationResult, executionResult, expenseLocationResult] =
-    await Promise.all([
-      responseHandle<WaybillEventRecord[]>(
-        () =>
-          supabase
-            .from('tms_waybill_event')
-            .select(
-              'id, waybill_id, event_type, event_time, operator_name, location_text, longitude, latitude, payload, remark, create_by, create_time'
-            )
-            .eq('waybill_id', waybillId)
-            .order('event_time', { ascending: false }),
-        { breakReturn: true, errorMessage: '运单跟踪记录加载失败，请稍后重试' }
-      ),
-      responseHandle<WaybillProofRecord[]>(
-        () =>
-          supabase
-            .from('tms_waybill_proof')
-            .select(
-              'id, waybill_id, proof_type, attachment_id, file_url, file_name, mime_type, file_size, uploaded_at, uploader_name, remark'
-            )
-            .eq('waybill_id', waybillId)
-            .order('uploaded_at', { ascending: false }),
-        { breakReturn: true, errorMessage: '运单凭证加载失败，请稍后重试' }
-      ),
-      responseHandle<CargoOperationRecord[]>(
-        () =>
-          supabase
-            .from('tms_waybill_cargo_operation')
-            .select('*')
-            .eq('waybill_id', waybillId)
-            .order('checkin_time', { ascending: false }),
-        { breakReturn: true, errorMessage: '装卸作业记录加载失败，请稍后重试' }
-      ),
-      responseHandle<ExecutionRecord | null>(
-        () =>
-          supabase
-            .from('tms_waybill_execution_record')
-            .select('*')
-            .eq('waybill_id', waybillId)
-            .maybeSingle(),
-        { breakReturn: true, errorMessage: '运单执行记录加载失败，请稍后重试' }
-      ),
-      responseHandle<WaybillExpenseLocationQueryRecord[]>(
-        () =>
-          supabase
-            .from('tms_waybill_cost')
-            .select(WAYBILL_EXPENSE_LOCATION_SELECT)
-            .eq('waybill_id', waybillId)
-            .not('expense_longitude', 'is', null)
-            .not('expense_latitude', 'is', null)
-            .order('occurred_on', { ascending: true })
-            .order('create_time', { ascending: true }),
-        { breakReturn: true, errorMessage: '费用定位记录加载失败，请稍后重试' }
-      )
-    ])
 
   const data = detailResult.data
   return {
@@ -157,14 +58,14 @@ export async function fetchWaybillDetail(waybillId: string) {
       pickupPhotos: normalizeUrlList(data.pickupPhotos),
       deliveryPhotos: normalizeUrlList(data.deliveryPhotos),
       receiptAttachments: normalizeUrlList(data.receiptAttachments),
-      events: (eventResult.data ?? []).map((event) => ({
+      events: (data.events ?? []).map((event) => ({
         ...event,
         payload: isPlainObject(event.payload) ? event.payload : {}
       })),
-      proofs: proofResult.data ?? [],
-      cargoOperations: cargoOperationResult.data ?? [],
-      expenseLocations: normalizeExpenseLocations(expenseLocationResult.data ?? []),
-      execution: executionResult.data ?? null
+      proofs: data.proofs ?? [],
+      cargoOperations: data.cargoOperations ?? [],
+      expenseLocations: normalizeExpenseLocations(data.expenseLocations ?? []),
+      execution: data.execution ?? null
     }
   }
 }
@@ -259,42 +160,14 @@ function normalizeUrlList(value: unknown): string[] {
   })
 }
 
-const applyPlannedTimeRange = <TQuery extends SupabaseQueryLike>(
-  query: TQuery,
-  plannedTimeRange?: string[]
-): TQuery => {
-  if (plannedTimeRange?.[0]) {
-    query = query.gte('planned_departure_time', `${plannedTimeRange[0]}T00:00:00`)
-  }
-  if (plannedTimeRange?.[1]) {
-    query = query.lte('planned_departure_time', `${plannedTimeRange[1]}T23:59:59.999`)
-  }
-  return query
-}
-
-const applyWaybillFilters = <TQuery extends SupabaseQueryLike>(
-  query: TQuery,
-  params: WaybillSearchParams
-): TQuery => {
-  const { dispatchStatus, dispatchStatuses, dispatchVehicleId, vehicleKeyword, plannedTimeRange } =
-    params
-
-  query = applyOrderFilters(query, params)
-  if (dispatchStatuses?.length) query = query.in('dispatch_status', dispatchStatuses)
-  if (!dispatchStatuses?.length && dispatchStatus)
-    query =
-      dispatchStatus === 'loaded'
-        ? query.in('dispatch_status', ['loaded', 'transporting', 'completed'])
-        : query.eq('dispatch_status', dispatchStatus)
-  if (dispatchVehicleId) query = query.eq('dispatch_vehicle_id', dispatchVehicleId)
-  if (vehicleKeyword) {
-    query = query.or(
-      `dispatch_plate_no.ilike.%${vehicleKeyword}%,dispatch_vehicle_type.ilike.%${vehicleKeyword}%,dispatch_driver_name.ilike.%${vehicleKeyword}%,dispatch_driver_phone.ilike.%${vehicleKeyword}%`
-    )
-  }
-
-  return applyPlannedTimeRange(query, plannedTimeRange)
-}
+const normalizeWaybillSearchParams = (params: WaybillSearchParams): WaybillSearchParams =>
+  params.dispatchStatus === 'loaded' && !params.dispatchStatuses?.length
+    ? {
+        ...params,
+        dispatchStatus: undefined,
+        dispatchStatuses: ['loaded', 'transporting', 'completed']
+      }
+    : params
 
 const WAYBILL_STATUS_VALUES = [
   'pending',
@@ -307,50 +180,26 @@ const WAYBILL_STATUS_VALUES = [
   'cancelled'
 ] as const
 
-const countWaybillOrders = async (
-  params: WaybillSearchParams,
-  orderIds?: string[] | null
-): Promise<number> => {
-  if (orderIds !== null && orderIds !== undefined && !orderIds.length) return 0
-
-  let query = supabase.from('tms_order').select('id', { count: 'exact', head: true })
-  query = applyWaybillFilters(query, params)
-  if (orderIds?.length) query = query.in('id', orderIds)
-
-  const { total } = await responseHandle<null>(() => query, {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
-  return total ?? 0
-}
-
-const fetchWaybillOrderIdsByStatus = async (status?: string): Promise<string[] | null> => {
-  if (!status) return null
-
-  const { data } = await responseHandle<DriverWaybillStatusReference[]>(
-    () =>
-      supabase
-        .from('tms_waybill')
-        .select('order_id')
-        .eq('status', status)
-        .not('order_id', 'is', null),
-    { ignoreCheck: true, showErrorMessage: true }
-  )
-
-  return uniqueStringValues((data ?? []).map((item) => item.orderId))
-}
-
 export async function fetchWaybillStatusCounts(
   params: WaybillSearchParams
 ): Promise<WaybillStatusCountResult> {
   const sharedFilters = { ...params, waybillStatus: undefined }
   const [total, countEntries] = await Promise.all([
-    countWaybillOrders(sharedFilters),
+    fetchSecureOrders<WaybillRecord>(
+      { ...normalizeWaybillSearchParams(sharedFilters), countOnly: true },
+      'waybill_list'
+    ).then((result) => result.total),
     Promise.all(
       WAYBILL_STATUS_VALUES.map(async (waybillStatus) => {
-        const orderIds = await fetchWaybillOrderIdsByStatus(waybillStatus)
-        const count = await countWaybillOrders(sharedFilters, orderIds)
-        return [waybillStatus, count] as const
+        const result = await fetchSecureOrders<WaybillRecord>(
+          {
+            ...normalizeWaybillSearchParams(sharedFilters),
+            waybillStatus,
+            countOnly: true
+          },
+          'waybill_list'
+        )
+        return [waybillStatus, result.total] as const
       })
     )
   ])
@@ -374,44 +223,19 @@ const createDispatchRpcPayload = (params: WaybillDispatchPayload) => ({
 export async function fetchWaybillList(
   params: WaybillSearchParams & Api.Common.CommonSearchParams
 ) {
-  const { from = 0, to = 9 } = params
-  const orderIds = await fetchWaybillOrderIdsByStatus(params.waybillStatus)
-  if (orderIds !== null && !orderIds.length) return { data: [], total: 0 }
-
-  let query = supabase
-    .from('tms_order')
-    .select(ORDER_SELECT, { count: 'exact' })
-    .order('create_time', { ascending: false })
-    .range(from, to)
-
-  query = applyWaybillFilters(query, params)
-  if (orderIds) query = query.in('id', orderIds)
-  const result = await responseHandle<WaybillRecord[]>(() => query, {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
-  return { ...result, data: await mergeOrdersWithDriverWaybills(result.data) }
+  return await fetchSecureOrders<WaybillRecord>(
+    normalizeWaybillSearchParams(params),
+    'waybill_list'
+  )
 }
 
 export async function exportWaybillList(
   params: WaybillSearchParams & { ids?: string[]; maxRows?: number }
 ) {
-  const { ids, maxRows = 10000 } = params
-  const orderIds = ids?.length ? null : await fetchWaybillOrderIdsByStatus(params.waybillStatus)
-  if (orderIds !== null && !orderIds.length) return { data: [], total: 0 }
-
-  let query = supabase
-    .from('tms_order')
-    .select(ORDER_SELECT)
-    .order('create_time', { ascending: false })
-    .limit(maxRows)
-  query = ids?.length ? query.in('id', ids) : applyWaybillFilters(query, params)
-  if (orderIds) query = query.in('id', orderIds)
-  const result = await responseHandle<WaybillRecord[]>(() => query, {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
-  return { ...result, data: await mergeOrdersWithDriverWaybills(result.data) }
+  return await fetchSecureOrders<WaybillRecord>(
+    normalizeWaybillSearchParams(params),
+    'waybill_export'
+  )
 }
 
 export async function dispatchWaybill(params: WaybillDispatchPayload) {
@@ -420,7 +244,7 @@ export async function dispatchWaybill(params: WaybillDispatchPayload) {
 
   const result = await responseHandle<WaybillRecord[]>(
     () =>
-      supabase.rpc('tms_dispatch_orders', {
+      supabase.rpc('tms_dispatch_orders_secure', {
         p_order_ids: [id],
         p_dispatch: keysToSnakeDeep(createDispatchRpcPayload(params))
       }),
@@ -435,7 +259,7 @@ export async function dispatchWaybillBatch(params: WaybillDispatchPayload) {
 
   const result = await responseHandle<WaybillRecord[]>(
     () =>
-      supabase.rpc('tms_dispatch_orders', {
+      supabase.rpc('tms_dispatch_orders_secure', {
         p_order_ids: ids,
         p_dispatch: keysToSnakeDeep(createDispatchRpcPayload(params))
       }),
@@ -446,7 +270,7 @@ export async function dispatchWaybillBatch(params: WaybillDispatchPayload) {
 
 export async function cancelWaybillDispatch(id: string) {
   const result = await responseHandle<WaybillRecord[]>(
-    () => supabase.rpc('tms_revoke_order_dispatch', { p_order_ids: [id] }),
+    () => supabase.rpc('tms_revoke_order_dispatch_secure', { p_order_ids: [id] }),
     { showMessage: true, breakReturn: true }
   )
   return { ...result, data: result.data?.[0] ?? null }
@@ -454,21 +278,21 @@ export async function cancelWaybillDispatch(id: string) {
 
 export async function cancelWaybillDispatchBatch(ids: string[]) {
   return await responseHandle<WaybillRecord[]>(
-    () => supabase.rpc('tms_revoke_order_dispatch', { p_order_ids: ids }),
+    () => supabase.rpc('tms_revoke_order_dispatch_secure', { p_order_ids: ids }),
     { showMessage: true, breakReturn: true }
   )
 }
 
 export async function cancelWaybillOrder(id: string) {
   return await responseHandle(
-    () => supabase.rpc('tms_cancel_order_with_waybill', { p_order_id: id }),
+    () => supabase.rpc('tms_cancel_waybill_order_secure', { p_order_id: id }),
     { showMessage: true, breakReturn: true }
   )
 }
 
 export async function cancelWaybillOrderBatch(ids: string[]) {
   return await responseHandle(
-    () => supabase.rpc('tms_cancel_orders_with_waybills', { p_order_ids: ids }),
+    () => supabase.rpc('tms_cancel_waybill_orders_secure', { p_order_ids: ids }),
     { showMessage: true, breakReturn: true }
   )
 }
@@ -603,16 +427,12 @@ export async function fetchDispatchVehicleOptions(params: DispatchVehicleSearchP
     .range(from, to)
 
   if (keyword) {
-    const { data: driverRows } = await responseHandle<Array<{ id?: string }>>(
-      () =>
-        supabase
-          .from('tms_driver')
-          .select('id')
-          .or(`driver_name.ilike.%${keyword}%,phone.ilike.%${keyword}%`)
-          .limit(200),
-      { ignoreCheck: true }
-    )
-    const driverIds = (driverRows ?? []).map((item) => item.id).filter((id): id is string => !!id)
+    const { data: driverRows } = await fetchDriverOptions({
+      driverName: keyword,
+      includeDisabled: true,
+      maxRows: 200
+    })
+    const driverIds = (driverRows ?? []).map((item) => item.id).filter(Boolean)
     const conditions = [
       `plate_no.ilike.%${keyword}%`,
       `company_name.ilike.%${keyword}%`,
@@ -626,10 +446,34 @@ export async function fetchDispatchVehicleOptions(params: DispatchVehicleSearchP
     query = query.or(conditions.join(','))
   }
 
-  return await responseHandle<DispatchVehicleOption[]>(() => query, {
+  const result = await responseHandle<DispatchVehicleOption[]>(() => query, {
     ignoreCheck: true,
     showErrorMessage: true
   })
+  const driverIds = Array.from(
+    new Set(
+      (result.data ?? [])
+        .map((vehicle) => vehicle.primaryDriverId)
+        .filter((id): id is string => Boolean(id))
+    )
+  )
+  if (!driverIds.length) return result
+
+  const driverResult = await fetchDriverOptions({
+    ids: driverIds,
+    includeDisabled: true,
+    maxRows: driverIds.length
+  })
+  const driversById = new Map((driverResult.data ?? []).map((driver) => [driver.id, driver]))
+  return {
+    ...result,
+    data: (result.data ?? []).map((vehicle) => ({
+      ...vehicle,
+      primaryDriver: vehicle.primaryDriverId
+        ? (driversById.get(vehicle.primaryDriverId) ?? vehicle.primaryDriver ?? null)
+        : null
+    }))
+  }
 }
 
 export async function recommendDispatchResourcesByAi(

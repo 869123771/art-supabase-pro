@@ -368,6 +368,7 @@
                 撤销未发布修改
               </ElButton>
               <ElButton
+                v-auth="'System:WebsiteConfig:Publish'"
                 type="primary"
                 :disabled="!hasUnsavedChanges"
                 :loading="page.saving"

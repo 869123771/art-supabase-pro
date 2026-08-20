@@ -1,14 +1,6 @@
 <template>
   <ArtDrawer ref="drawerRef" size="xl" :show-footer="false">
     <div class="statement-config-drawer">
-      <ElAlert
-        v-if="!isPlatformSuper"
-        type="info"
-        :closable="false"
-        show-icon
-        title="当前为租户只读口径视图；报表项目、科目映射和计算公式仅平台超级管理员可维护。"
-      />
-
       <section class="statement-config-drawer__summary">
         <div>
           <span>报表类型</span>
@@ -34,7 +26,7 @@
             <h3>账套报表项目</h3>
             <p>项目结构决定报表展示，科目映射与公式关系决定可审计取数口径。</p>
           </div>
-          <div v-if="isPlatformSuper" class="statement-config-drawer__actions">
+          <div v-if="canEditConfig" class="statement-config-drawer__actions">
             <ElButton :loading="loading" @click="initializeItems">
               <ArtSvgIcon icon="ri:magic-line" />
               初始化标准项目
@@ -99,7 +91,7 @@
               </ElTag>
             </template>
           </ElTableColumn>
-          <ElTableColumn v-if="isPlatformSuper" label="操作" width="180" fixed="right">
+          <ElTableColumn v-if="canEditConfig" label="操作" width="180" fixed="right">
             <template #default="{ row }">
               <div class="statement-config-drawer__row-actions">
                 <ArtButtonTable type="edit" @click="openItemDialog(row)" />
@@ -136,13 +128,16 @@
     initializeFinancialStatementItems
   } from '@/api/fms'
   import { useUserStore } from '@/store/modules/user'
+  import { useAuth } from '@/hooks/core/useAuth'
 
   defineOptions({ name: 'FinanceStatementConfigDrawer' })
 
   type Item = Api.Fms.FinancialStatementItemRecord
 
   const emit = defineEmits<{ success: [] }>()
-  const { getDictMap, isPlatformSuper } = storeToRefs(useUserStore())
+  const { getDictMap } = storeToRefs(useUserStore())
+  const { hasAuth } = useAuth()
+  const canEditConfig = computed(() => hasAuth('FinanceFinancialReports:EditConfig'))
   const drawerRef = ref<ArtDrawerExpose>()
   const itemDialogRef = ref<InstanceType<typeof StatementItemDialog>>()
   const ruleDialogRef = ref<InstanceType<typeof StatementRuleDialog>>()
@@ -201,7 +196,7 @@
   }
 
   async function initializeItems(): Promise<void> {
-    if (!isPlatformSuper.value || !accountSetId.value) return
+    if (!canEditConfig.value || !accountSetId.value) return
     await ElMessageBox.confirm(
       '系统将补齐企业会计准则通用报表项目、合计公式和现金流方向；已有同编码项目不会重复创建。',
       '初始化标准财务报表',
@@ -212,7 +207,7 @@
   }
 
   function openItemDialog(row?: unknown): void {
-    if (!isPlatformSuper.value) return
+    if (!canEditConfig.value) return
     void itemDialogRef.value?.handleOpen(
       accountSetId.value,
       statementType.value,
@@ -222,7 +217,7 @@
   }
 
   function openRuleDialog(row: unknown): void {
-    if (!isPlatformSuper.value) return
+    if (!canEditConfig.value) return
     void ruleDialogRef.value?.handleOpen(row as Item, items.value, subjects.value)
   }
 

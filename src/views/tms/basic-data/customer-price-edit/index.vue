@@ -300,7 +300,14 @@
 
     <ArtStickyActionBar class="customer-price-edit__footer">
       <ElButton :disabled="page.saving" @click="goBack()">取消</ElButton>
-      <ElButton type="primary" :loading="page.saving" @click="handleSave"> 保存客户价 </ElButton>
+      <ElButton
+        v-auth="'TmsCustomerPriceEdit:Save'"
+        type="primary"
+        :loading="page.saving"
+        @click="handleSave"
+      >
+        保存客户价
+      </ElButton>
     </ArtStickyActionBar>
 
     <ArtTableSingleSelect

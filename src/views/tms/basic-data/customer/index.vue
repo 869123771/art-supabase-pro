@@ -52,6 +52,7 @@
   import { mapExcelRowsToRecords } from '@/utils/file'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatWithDayjs } from '@/utils/time'
+  import { canViewField, type FieldAccessLevel } from '@/utils/field-permission'
   import { useUserStore } from '@/store/modules/user'
   import { financeRouteNames } from '@/router/business-paths'
   import {
@@ -112,6 +113,29 @@
   const { getDictMap } = storeToRefs(useUserStore())
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<CustomerDialogExpose>()
+  const customerFieldAccess = ref<Api.Tms.BasicData.CustomerFieldAccessMap>({})
+
+  const fieldAccessRank: Record<FieldAccessLevel, number> = {
+    hidden: 0,
+    masked: 1,
+    read: 2,
+    edit: 3
+  }
+
+  const mergeCustomerFieldAccess = (
+    baseAccess: Api.Tms.BasicData.CustomerFieldAccessMap,
+    records: Customer[]
+  ): Api.Tms.BasicData.CustomerFieldAccessMap => {
+    const result = { ...baseAccess }
+    records.forEach((record) => {
+      Object.entries(record.fieldAccess ?? {}).forEach(([field, access]) => {
+        const key = field as Api.Tms.BasicData.CustomerFieldKey
+        const current = result[key] ?? 'hidden'
+        if (fieldAccessRank[access] > fieldAccessRank[current]) result[key] = access
+      })
+    })
+    return result
+  }
 
   const customerDeleteDependencyMeta: Record<
     CustomerDeleteDependencyCode,
@@ -209,6 +233,18 @@
     { key: 'remark', title: '备注' }
   ]
 
+  const visibleCustomerExcelColumns = computed(() =>
+    customerExcelColumns.filter((column) => {
+      if (column.key === 'contactPhone') {
+        return canViewField(customerFieldAccess.value, 'contactPhone')
+      }
+      if (column.key === 'addressDetail') {
+        return canViewField(customerFieldAccess.value, 'addressDetail')
+      }
+      return true
+    })
+  )
+
   const searchItems = computed<SearchFormItem[]>(() => [
     {
       label: '客户级别',
@@ -305,12 +341,16 @@
       )
     },
     { prop: 'contactName', label: '联系人', width: 110 },
-    {
-      prop: 'contactPhone',
-      label: '手机号码',
-      width: 140,
-      formatter: (row) => maskPhone(row.contactPhone)
-    },
+    ...(canViewField(customerFieldAccess.value, 'contactPhone')
+      ? [
+          {
+            prop: 'contactPhone',
+            label: '手机号码',
+            width: 140,
+            formatter: (row: Customer) => row.contactPhone || '—'
+          } satisfies ColumnOption<Customer>
+        ]
+      : []),
     {
       prop: 'operation',
       label: '操作',
@@ -320,10 +360,15 @@
         <div class="flex">
           <ArtButtonTable
             type="view"
+            permission="TmsCustomer:View"
             icon="ri:map-pin-line"
             onClick={() => openAddressManage(row)}
           />
-          <ArtButtonTable type="edit" onClick={() => openDialog(row)} />
+          <ArtButtonTable
+            type="edit"
+            permission="TmsCustomer:Edit"
+            onClick={() => openDialog(row)}
+          />
           <ArtButtonMore
             list={getMoreActions()}
             onClick={(item: ButtonMoreItem) => handleMoreAction(item, row)}
@@ -335,12 +380,14 @@
 
   const headerActions = computed<ArtTableQueryHeaderAction[]>(() => [
     {
+      permission: 'TmsCustomer:Add',
       type: 'add',
       label: '新增客户',
       buttonProps: { type: 'primary', plain: false },
       onClick: () => openDialog()
     },
     {
+      permission: 'TmsCustomer:Import',
       type: 'import',
       label: '导入',
       buttonProps: { plain: true, loading: tableState.importing },
@@ -351,13 +398,14 @@
 
   const selectionActions = computed<ArtTableQueryHeaderAction[]>(() => [
     {
+      permission: 'TmsCustomer:Export',
       type: 'export',
       label: '导出选中',
       buttonProps: { type: 'primary', plain: true },
       selectionRequired: true,
       exportFilename: 'TMS客户资料',
       exportSheetName: '客户管理',
-      exportColumns: customerExcelColumns,
+      exportColumns: visibleCustomerExcelColumns.value,
       exportApi: ({ selectedIds, searchParams, maxRows }) =>
         exportCustomerList({
           ...(searchParams as SearchParams),
@@ -366,6 +414,7 @@
         })
     },
     {
+      permission: 'TmsCustomer:Delete',
       type: 'delete',
       label: '批量删除',
       content: ({ selectedCount }: { selectedCount: number }) =>
@@ -401,9 +450,11 @@
     ElMessage.error('导入文件解析失败，请确认文件为有效的 Excel 格式')
   }
 
-  const fetchTableData = (params: TableParams) => {
+  const fetchTableData = async (params: TableParams) => {
     const { from, to } = pageInfoHandler({ current: params.current, size: params.size })
-    return fetchCustomerList({ ...params, from, to })
+    const result = await fetchCustomerList({ ...params, from, to })
+    customerFieldAccess.value = mergeCustomerFieldAccess(result.fieldAccess, result.data ?? [])
+    return result
   }
 
   const openDialog = (row?: Customer): void => {
@@ -421,15 +472,9 @@
     })
   }
 
-  const maskPhone = (phone?: string | null): string => {
-    const value = String(phone ?? '').trim()
-    if (!value) return '—'
-    if (value.length <= 7) return `${value.slice(0, 2)}***${value.slice(-2)}`
-    return `${value.slice(0, 3)}****${value.slice(-4)}`
-  }
-
   const getMoreActions = (): ButtonMoreItem[] => [
     {
+      auth: 'TmsCustomer:Delete',
       key: 'delete',
       label: '删除客户',
       icon: 'ri:delete-bin-5-line',

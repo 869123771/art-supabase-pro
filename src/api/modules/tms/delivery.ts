@@ -1,37 +1,14 @@
 import { normalizeSupabaseFunctionError } from '@/utils/supabase'
 import { useSupabase } from '@/hooks'
 import type { QueryResult } from '@/types/api/response'
-import { withRequestOptions, type SupabaseQueryLike } from '@/api/providers/supabase/query'
-import { applyOrderFilters, ORDER_SELECT } from '@/api/modules/tms/order-shared'
 import type { ApiRequestOptions } from '@/types/api/request'
+import { fetchSecureOrders } from '@/api/modules/tms/transport-secure'
 
 type DeliveryRecord = Api.Tms.Delivery.DeliveryRecord
 type DeliverySearchParams = Api.Tms.Delivery.DeliverySearchParams
 type DeliveryReceiptArchivePayload = Api.Tms.Delivery.DeliveryReceiptArchivePayload
 
 const { supabase, responseHandle } = useSupabase()
-
-// 配送签收 / 在途监控
-const applySignedTimeRange = <TQuery extends SupabaseQueryLike>(
-  query: TQuery,
-  signedTimeRange?: string[]
-): TQuery => {
-  if (signedTimeRange?.[0]) query = query.gte('signed_at', `${signedTimeRange[0]}T00:00:00`)
-  if (signedTimeRange?.[1]) query = query.lte('signed_at', `${signedTimeRange[1]}T23:59:59.999`)
-  return query
-}
-
-const applyDeliveryFilters = <TQuery extends SupabaseQueryLike>(
-  query: TQuery,
-  params: DeliverySearchParams
-): TQuery => {
-  const { orderStatuses, signedTimeRange } = params
-
-  query = applyOrderFilters(query, params)
-  if (orderStatuses?.length) query = query.in('order_status', orderStatuses)
-
-  return applySignedTimeRange(query, signedTimeRange)
-}
 
 interface DeliveryStatusCountResult {
   total: number
@@ -41,15 +18,11 @@ interface DeliveryStatusCountResult {
 const DELIVERY_STATUS_COUNT_VALUES = ['signed', 'completed'] as const
 
 const countDeliveryOrders = async (params: DeliverySearchParams): Promise<number> => {
-  let query = supabase.from('tms_order').select('id', { count: 'exact', head: true })
-
-  query = applyDeliveryFilters(query, params)
-
-  const { total } = await responseHandle<null>(() => query, {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
-  return total ?? 0
+  const result = await fetchSecureOrders<DeliveryRecord>(
+    { ...params, countOnly: true },
+    'delivery_list'
+  )
+  return result.total
 }
 
 export async function fetchDeliveryStatusCounts(
@@ -78,35 +51,13 @@ export async function fetchDeliveryList(
   params: DeliverySearchParams & Api.Common.CommonSearchParams,
   options?: ApiRequestOptions
 ) {
-  const { from = 0, to = 9 } = params
-  let query = supabase
-    .from('tms_order')
-    .select(ORDER_SELECT, { count: 'exact' })
-    .order('create_time', { ascending: false })
-    .range(from, to)
-
-  query = applyDeliveryFilters(query, params)
-  return await responseHandle<DeliveryRecord[]>(() => withRequestOptions(query, options), {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
+  return await fetchSecureOrders<DeliveryRecord>(params, 'delivery_list', options)
 }
 
 export async function exportDeliveryList(
   params: DeliverySearchParams & { ids?: string[]; maxRows?: number }
 ) {
-  const { ids, maxRows = 10000 } = params
-  let query = supabase
-    .from('tms_order')
-    .select(ORDER_SELECT)
-    .order('create_time', { ascending: false })
-    .limit(maxRows)
-
-  query = ids?.length ? query.in('id', ids) : applyDeliveryFilters(query, params)
-  return await responseHandle<DeliveryRecord[]>(() => query, {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
+  return await fetchSecureOrders<DeliveryRecord>(params, 'delivery_export')
 }
 
 export async function archiveDeliveryReceipt(params: DeliveryReceiptArchivePayload) {

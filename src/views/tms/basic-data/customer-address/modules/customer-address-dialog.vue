@@ -13,6 +13,7 @@
     >
       <template #addressPicker>
         <ArtAddressPicker
+          v-if="canViewAddressField('addressDetail')"
           v-model:region-path="form.regionPath"
           v-model:address-detail="form.addressDetail"
           v-model:region-adcode="form.regionAdcode"
@@ -24,6 +25,7 @@
           v-model:geocode-provider="form.geocodeProvider"
           v-model:geocoded-at="form.geocodedAt"
           :region-api="fetchRegionOptions"
+          :disabled="!canEditAddressField('addressDetail')"
         />
       </template>
     </ArtForm>
@@ -39,6 +41,7 @@
   import { fetchRegionOptions } from '@/api/common'
   import { addCustomerAddress, editCustomerAddress, fetchCustomerOptions } from '@/api/tms'
   import { useUserStore } from '@/store/modules/user'
+  import { canEditField, canViewField, getFieldAccess } from '@/utils/field-permission'
 
   defineOptions({ name: 'TmsCustomerAddressDialog' })
 
@@ -91,24 +94,55 @@
     geocodedAt: '',
     postalCode: '',
     isDefault: false,
-    remark: ''
+    remark: '',
+    fieldAccess: {
+      contactPhone: 'edit',
+      addressDetail: 'edit'
+    },
+    isRecordOwner: true
   })
 
   const form = reactive<CustomerAddressForm>(createInitialForm())
+
+  const canViewAddressField = (field: Api.Tms.BasicData.CustomerAddressFieldKey): boolean =>
+    canViewField(form.fieldAccess, field)
+
+  const canEditAddressField = (field: Api.Tms.BasicData.CustomerAddressFieldKey): boolean =>
+    canEditField(form.fieldAccess, field)
 
   const formRules: FormRules<CustomerAddressForm> = {
     addressType: [{ required: true, message: '请选择地址类型', trigger: 'change' }],
     contactName: [{ required: true, message: '请输入联系人', trigger: 'blur' }],
     contactPhone: [
-      { required: true, message: '请输入联系电话', trigger: 'blur' },
       {
-        pattern: /^(?:1[3-9]\d{9}|0\d{2,3}-?\d{7,8})$/,
-        message: '请输入正确的手机号或座机号',
+        validator: (_rule, value, callback) => {
+          if (!canEditAddressField('contactPhone')) return callback()
+          if (!value) return callback(new Error('请输入联系电话'))
+          return /^(?:1[3-9]\d{9}|0\d{2,3}-?\d{7,8})$/.test(String(value))
+            ? callback()
+            : callback(new Error('请输入正确的手机号或座机号'))
+        },
         trigger: 'blur'
       }
     ],
-    regionPath: [{ required: true, message: '请选择区域', trigger: 'change' }],
-    addressDetail: [{ required: true, message: '请输入详细地址', trigger: 'blur' }],
+    regionPath: [
+      {
+        validator: (_rule, value, callback) =>
+          !canEditAddressField('addressDetail') || (Array.isArray(value) && value.length)
+            ? callback()
+            : callback(new Error('请选择区域')),
+        trigger: 'change'
+      }
+    ],
+    addressDetail: [
+      {
+        validator: (_rule, value, callback) =>
+          !canEditAddressField('addressDetail') || value
+            ? callback()
+            : callback(new Error('请输入详细地址')),
+        trigger: 'blur'
+      }
+    ],
     postalCode: [{ pattern: /^\d{6}$/, message: '邮编应为 6 位数字', trigger: 'blur' }],
     remark: [{ max: 500, message: '备注不能超过 500 个字符', trigger: 'blur' }]
   }
@@ -158,20 +192,31 @@
       label: '联系电话',
       key: 'contactPhone',
       type: 'input',
-      props: { maxlength: 20, placeholder: '请输入联系电话' }
+      hidden: !canViewAddressField('contactPhone'),
+      props: {
+        maxlength: 20,
+        placeholder: '请输入联系电话',
+        disabled: !canEditAddressField('contactPhone')
+      }
     },
     {
       label: '邮编',
       key: 'postalCode',
       type: 'input',
-      props: { maxlength: 6, placeholder: '请输入邮编' }
+      hidden: !canViewAddressField('addressDetail'),
+      props: {
+        maxlength: 6,
+        placeholder: '请输入邮编',
+        disabled: !canEditAddressField('addressDetail')
+      }
     },
     {
       label: '',
       key: 'addressPicker',
       type: 'input',
       span: 24,
-      labelWidth: 0
+      labelWidth: 0,
+      hidden: !canViewAddressField('addressDetail')
     },
     {
       label: '默认地址',
@@ -230,32 +275,37 @@
     const customer = customerOptions.value.find((item) => item.id === customerId)
     if (!customer) return
 
-    const longitude = normalizeNullableNumber(customer.longitude)
-    const latitude = normalizeNullableNumber(customer.latitude)
+    const phoneAccess = getFieldAccess(customer.fieldAccess, 'contactPhone')
+    const addressAccess = getFieldAccess(customer.fieldAccess, 'addressDetail')
+    const canUsePhone = phoneAccess === 'read' || phoneAccess === 'edit'
+    const canUseAddress = addressAccess === 'read' || addressAccess === 'edit'
+    const longitude = canUseAddress ? normalizeNullableNumber(customer.longitude) : null
+    const latitude = canUseAddress ? normalizeNullableNumber(customer.latitude) : null
     const hasCoordinate = longitude !== null && latitude !== null
 
     Object.assign(form, {
       contactName: customer.contactName || '',
-      contactPhone: customer.contactPhone || '',
+      contactPhone: canUsePhone ? customer.contactPhone || '' : '',
       region: customer.region || '',
-      regionAdcode: customer.regionAdcode || '',
+      regionAdcode: canUseAddress ? customer.regionAdcode || '' : '',
       regionPath: customer.region?.split('/').filter(Boolean) ?? [],
-      addressDetail: customer.addressDetail || '',
+      addressDetail: canUseAddress ? customer.addressDetail || '' : '',
       longitude,
       latitude,
       coordinateSystem: hasCoordinate ? customer.coordinateSystem || 'gcj02' : 'gcj02',
-      coordinateSource: customer.coordinateSource || '',
+      coordinateSource: canUseAddress ? customer.coordinateSource || '' : '',
       coordinateStatus: hasCoordinate
         ? customer.coordinateStatus || 'located'
         : customer.coordinateStatus || 'pending',
-      geocodeProvider: customer.geocodeProvider || '',
-      geocodedAt: customer.geocodedAt || '',
-      postalCode: customer.postalCode || ''
+      geocodeProvider: canUseAddress ? customer.geocodeProvider || '' : '',
+      geocodedAt: canUseAddress ? customer.geocodedAt || '' : '',
+      postalCode: canUseAddress ? customer.postalCode || '' : ''
     })
   }
 
   const buildSubmitPayload = (data: CustomerAddressForm): CustomerAddress => {
-    const { regionPath, ...rest } = data
+    const { regionPath, ...rawRest } = data
+    const rest: Partial<CustomerAddressForm> = rawRest
     delete rest.addressPicker
     delete rest.customer
     delete rest.tenantId
@@ -264,14 +314,29 @@
     delete rest.updateBy
     delete rest.updateTime
 
+    if (data.id && !canEditField(data.fieldAccess, 'contactPhone')) delete rest.contactPhone
+    if (data.id && !canEditField(data.fieldAccess, 'addressDetail')) {
+      delete rest.region
+      delete rest.regionAdcode
+      delete rest.addressDetail
+      delete rest.longitude
+      delete rest.latitude
+      delete rest.coordinateSystem
+      delete rest.coordinateSource
+      delete rest.coordinateStatus
+      delete rest.geocodeProvider
+      delete rest.geocodedAt
+      delete rest.postalCode
+    }
+
     const longitude = normalizeNullableNumber(rest.longitude)
     const latitude = normalizeNullableNumber(rest.latitude)
     const hasCoordinate = longitude !== null && latitude !== null
 
-    return {
+    const payload: Partial<CustomerAddress> = {
       ...rest,
       customerId: normalizeNullableText(rest.customerId),
-      region: regionPath.join('/'),
+      ...(rest.region === undefined ? {} : { region: regionPath.join('/') }),
       regionAdcode: normalizeNullableText(rest.regionAdcode),
       longitude,
       latitude,
@@ -285,6 +350,21 @@
       geocodeProvider: normalizeNullableText(rest.geocodeProvider),
       geocodedAt: normalizeNullableText(rest.geocodedAt)
     }
+
+    if (data.id && !canEditField(data.fieldAccess, 'addressDetail')) {
+      delete payload.region
+      delete payload.regionAdcode
+      delete payload.addressDetail
+      delete payload.longitude
+      delete payload.latitude
+      delete payload.coordinateSystem
+      delete payload.coordinateSource
+      delete payload.coordinateStatus
+      delete payload.geocodeProvider
+      delete payload.geocodedAt
+      delete payload.postalCode
+    }
+    return payload as CustomerAddress
   }
 
   const resetForm = async (): Promise<void> => {

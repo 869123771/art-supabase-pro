@@ -57,26 +57,30 @@ import type { BaseChartProps, ChartThemeConfig, UseChartOptions } from '@/types/
 import type { WatchSource } from 'vue'
 
 // 图表主题配置
-export const useChartOps = (): ChartThemeConfig => ({
-  /** */
-  chartHeight: '16rem',
-  /** 字体大小 */
-  fontSize: 13,
-  /** 字体颜色 */
-  fontColor: '#999',
-  /** 主题颜色 */
-  themeColor: getCssVar('--el-color-primary-light-1'),
-  /** 颜色组 */
-  colors: [
-    getCssVar('--el-color-primary-light-1'),
-    '#4ABEFF',
-    '#EDF2FF',
-    '#14DEBA',
-    '#FFAF20',
-    '#FA8A6C',
-    '#FFAF20'
-  ]
-})
+export const useChartOps = (): ChartThemeConfig => {
+  const cssColor = (name: string): string => getCssVar(name).trim()
+  const themeColor = cssColor('--theme-color') || cssColor('--el-color-primary')
+
+  return {
+    /** */
+    chartHeight: '16rem',
+    /** 字体大小 */
+    fontSize: 13,
+    /** 字体颜色 */
+    fontColor: cssColor('--el-text-color-secondary'),
+    /** 主题颜色 */
+    themeColor,
+    /** 颜色组 */
+    colors: [
+      themeColor,
+      cssColor('--el-color-success'),
+      cssColor('--el-color-warning'),
+      cssColor('--el-color-danger'),
+      cssColor('--el-color-info'),
+      cssColor('--el-color-primary-light-3')
+    ]
+  }
+}
 
 // 常量定义
 const RESIZE_DELAYS = [50, 100, 200, 350] as const

@@ -103,6 +103,7 @@
   import ArtEmptyState from '@/components/core/layouts/art-empty-state/index.vue'
   import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
   import { formatWithDayjs } from '@/utils/time'
+  import { canViewField } from '@/utils/field-permission'
 
   defineOptions({ name: 'TmsWaybillTrackingPanel' })
 
@@ -144,7 +145,7 @@
     props.waybill.events.map((event) => {
       const source = getEventSource(event)
       const operation = findOperation(event.eventType)
-      const images = getEventImages(event.eventType, operation)
+      const images = canView('proofAttachments') ? getEventImages(event.eventType, operation) : []
       const tone = getNodeTone(event.eventType)
       return {
         id: event.id,
@@ -154,10 +155,12 @@
         sourceLabel: source === 'driver' ? '司机端' : source === 'web' ? 'Web 端' : '系统',
         sourceTone: source === 'driver' ? 'success' : source === 'web' ? 'primary' : 'info',
         tone,
-        location: event.locationText || operation?.locationText || '',
+        location: canView('routeCoordinates')
+          ? event.locationText || operation?.locationText || ''
+          : '',
         weight: getWeight(event, operation),
         mileage: getMileage(event),
-        geofence: getGeofence(event, operation),
+        geofence: canView('routeCoordinates') ? getGeofence(event, operation) : '',
         signer: getText(event.payload.signerName),
         remark: event.remark || operation?.remark || '',
         images
@@ -200,7 +203,7 @@
             ? execution?.returnPhotoUrls
             : []
     const operationUrls = operation
-      ? [...operation.photoUrls, ...operation.weighbridgeTicketUrls]
+      ? [...(operation.photoUrls ?? []), ...(operation.weighbridgeTicketUrls ?? [])]
       : []
     return uniq(compact([...proofUrls, ...(executionUrls ?? []), ...operationUrls]))
   }
@@ -211,6 +214,10 @@
   ): string {
     const value = operation?.weightTon ?? getNumber(event.payload.weightTon)
     return value == null ? '' : `${value} 吨`
+  }
+
+  function canView(field: Api.Tms.Waybill.WaybillFieldKey): boolean {
+    return canViewField(props.waybill.fieldAccess, field)
   }
 
   function getMileage(event: Api.Tms.Waybill.WaybillEventRecord): string {

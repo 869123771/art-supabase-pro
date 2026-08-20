@@ -7,8 +7,8 @@
       icon="ri:settings-4-line"
       :tags="[
         {
-          label: isPlatformSuper ? '平台维护视图' : '安全只读视图',
-          type: isPlatformSuper ? 'primary' : 'info'
+          label: canManage ? '已授权维护' : '安全只读视图',
+          type: canManage ? 'primary' : 'info'
         },
         { label: `缓存项：${overview.stats.total}` },
         { label: `最近刷新：${overview.lastRefreshText}` }
@@ -72,6 +72,7 @@
     fetchSystemParamStats
   } from '@/api/system-manage'
   import { clearSystemParamCache } from '@/hooks/core/system-param/read-system-param'
+  import { useAuth } from '@/hooks/core/useAuth'
   import { useUserStore } from '@/store/modules/user'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatWithDayjs } from '@/utils/time'
@@ -104,7 +105,13 @@
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<DialogExpose>()
   const userStore = useUserStore()
-  const { getDictMap, isPlatformSuper } = storeToRefs(userStore)
+  const { getDictMap, getUserInfo, isPlatformSuper } = storeToRefs(userStore)
+  const { hasAuth, hasAnyAuth } = useAuth()
+  const canManage = computed(() =>
+    hasAnyAuth(['System:SystemParam:Add', 'System:SystemParam:Edit', 'System:SystemParam:Delete'])
+  )
+  const isWritableRow = (row: SystemParam): boolean =>
+    isPlatformSuper.value || row.tenantId === getUserInfo.value.tenantId
   const groupOptions = computed(() => getDictMap.value.systemParamGroup ?? [])
   const typeOptions = computed(() => getDictMap.value.systemParamType ?? [])
 
@@ -193,13 +200,13 @@
         }
       }
     ]),
-    headerActions: computed<ArtTableQueryHeaderAction[]>(() =>
-      (
+    headerActions: computed<ArtTableQueryHeaderAction[]>(
+      () =>
         [
           {
             type: 'add',
             label: '新增参数',
-            // permission: 'System:SystemParam:Add',
+            permission: 'System:SystemParam:Add',
             onClick: () => openDialog()
           },
           {
@@ -236,7 +243,6 @@
             }
           }
         ] as ArtTableQueryHeaderAction[]
-      ).filter((action) => isPlatformSuper.value || action.key === 'refresh-cache')
     )
   })
 
@@ -262,116 +268,115 @@
   }
 
   const columnsFactory = (): ColumnOption<SystemParam>[] =>
-    (
-      [
-        {
-          type: 'selection',
-          width: 50,
-          fixed: 'left',
-          reserveSelection: true,
-          selectable: (row: SystemParam) => isPlatformSuper.value && !row.builtin
-        },
-        {
-          prop: 'paramIdentity',
-          label: '参数定义',
-          minWidth: 270,
-          formatter: (row) => (
-            <div class="system-param-identity-cell">
-              <span
-                class={['system-param-identity-cell__icon', { 'is-builtin': row.builtin }]}
-                aria-hidden="true"
-              >
-                <ArtSvgIcon icon={row.builtin ? 'ri:shield-keyhole-line' : 'ri:settings-3-line'} />
-              </span>
-              <div class="system-param-identity-cell__copy">
-                <div class="system-param-identity-cell__heading">
-                  <strong title={row.paramName}>{row.paramName}</strong>
-                  <span
-                    class={['system-param-identity-cell__badge', { 'is-builtin': row.builtin }]}
-                  >
-                    {row.builtin ? '内置' : '自定义'}
-                  </span>
-                </div>
-                <code title={row.paramKey} translate="no">
-                  {row.paramKey}
-                </code>
+    [
+      {
+        type: 'selection',
+        width: 50,
+        fixed: 'left',
+        reserveSelection: true,
+        selectable: (row: SystemParam) =>
+          hasAuth('System:SystemParam:Delete') && isWritableRow(row) && !row.builtin
+      },
+      {
+        prop: 'paramIdentity',
+        label: '参数定义',
+        minWidth: 270,
+        formatter: (row) => (
+          <div class="system-param-identity-cell">
+            <span
+              class={['system-param-identity-cell__icon', { 'is-builtin': row.builtin }]}
+              aria-hidden="true"
+            >
+              <ArtSvgIcon icon={row.builtin ? 'ri:shield-keyhole-line' : 'ri:settings-3-line'} />
+            </span>
+            <div class="system-param-identity-cell__copy">
+              <div class="system-param-identity-cell__heading">
+                <strong title={row.paramName}>{row.paramName}</strong>
+                <span class={['system-param-identity-cell__badge', { 'is-builtin': row.builtin }]}>
+                  {row.builtin ? '内置' : '自定义'}
+                </span>
               </div>
+              <code title={row.paramKey} translate="no">
+                {row.paramKey}
+              </code>
             </div>
-          )
-        },
-        {
-          prop: 'classification',
-          label: '分类',
-          minWidth: 156,
-          formatter: (row) => (
-            <div class="system-param-class-cell">
-              <ArtDictDisplay dictCode="systemParamGroup" value={row.groupCode} display="text" />
-              <ArtDictDisplay dictCode="systemParamType" value={row.paramType} display="tag" />
+          </div>
+        )
+      },
+      {
+        prop: 'classification',
+        label: '分类',
+        minWidth: 156,
+        formatter: (row) => (
+          <div class="system-param-class-cell">
+            <ArtDictDisplay dictCode="systemParamGroup" value={row.groupCode} display="text" />
+            <ArtDictDisplay dictCode="systemParamType" value={row.paramType} display="tag" />
+          </div>
+        )
+      },
+      {
+        prop: 'paramValue',
+        label: '当前值与说明',
+        minWidth: 220,
+        formatter: (row) => (
+          <div class="system-param-value-cell">
+            {row.paramType === 'boolean' ? (
+              <ArtDictDisplay
+                dictCode="commonBoolean"
+                value={String(row.paramValue === 'true')}
+                display="tag"
+              />
+            ) : (
+              <code title={row.paramValue} translate="no">
+                {row.paramValue || '--'}
+              </code>
+            )}
+            <small title={row.remark || ''}>{row.remark || '暂无补充说明'}</small>
+          </div>
+        )
+      },
+      {
+        prop: 'enabled',
+        label: '是否启用',
+        width: 92,
+        formatter: (row) => (
+          <ArtDictDisplay dictCode="commonBoolean" value={String(row.enabled)} display="tag" />
+        )
+      },
+      {
+        prop: 'updateTime',
+        label: '更新信息',
+        minWidth: 174,
+        formatter: (row) => (
+          <div class="system-param-update-cell">
+            <span>{formatWithDayjs(row.updateTime) || '--'}</span>
+            <small>{row.updateBy || '系统维护'}</small>
+          </div>
+        )
+      },
+      {
+        prop: 'operation',
+        label: '操作',
+        width: 120,
+        fixed: 'right',
+        formatter: (row) =>
+          isWritableRow(row) ? (
+            <div class="system-param-page__operation">
+              <ArtButtonTable
+                type="edit"
+                permission="System:SystemParam:Edit"
+                onClick={() => openDialog(row)}
+              />
+              <ArtButtonTable
+                type="delete"
+                permission="System:SystemParam:Delete"
+                disabled={row.builtin}
+                onClick={() => void handleDelete(row)}
+              />
             </div>
-          )
-        },
-        {
-          prop: 'paramValue',
-          label: '当前值与说明',
-          minWidth: 220,
-          formatter: (row) => (
-            <div class="system-param-value-cell">
-              {row.paramType === 'boolean' ? (
-                <ArtDictDisplay
-                  dictCode="commonBoolean"
-                  value={String(row.paramValue === 'true')}
-                  display="tag"
-                />
-              ) : (
-                <code title={row.paramValue} translate="no">
-                  {row.paramValue || '--'}
-                </code>
-              )}
-              <small title={row.remark || ''}>{row.remark || '暂无补充说明'}</small>
-            </div>
-          )
-        },
-        {
-          prop: 'enabled',
-          label: '是否启用',
-          width: 92,
-          formatter: (row) => (
-            <ArtDictDisplay dictCode="commonBoolean" value={String(row.enabled)} display="tag" />
-          )
-        },
-        {
-          prop: 'updateTime',
-          label: '更新信息',
-          minWidth: 174,
-          formatter: (row) => (
-            <div class="system-param-update-cell">
-              <span>{formatWithDayjs(row.updateTime) || '--'}</span>
-              <small>{row.updateBy || '系统维护'}</small>
-            </div>
-          )
-        },
-        {
-          prop: 'operation',
-          label: '操作',
-          width: 120,
-          fixed: 'right',
-          formatter: (row) =>
-            isPlatformSuper.value ? (
-              <div class="system-param-page__operation">
-                <ArtButtonTable type="edit" onClick={() => openDialog(row)} />
-                <ArtButtonTable
-                  type="delete"
-                  disabled={row.builtin}
-                  onClick={() => void handleDelete(row)}
-                />
-              </div>
-            ) : null
-        }
-      ] as ColumnOption<SystemParam>[]
-    ).filter(
-      (column) =>
-        isPlatformSuper.value || (column.prop !== 'operation' && column.type !== 'selection')
-    )
+          ) : null
+      }
+    ] as ColumnOption<SystemParam>[]
 
   const openDialog = (row?: SystemParam): void => {
     void dialogRef.value?.handleOpen(row ? (omit(row, []) as SystemParam) : undefined)

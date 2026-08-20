@@ -69,6 +69,7 @@
   import { financeRouteNames } from '@/router/business-paths'
   import { formatCurrencyValue } from '@/utils/ui'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import { useAuth } from '@/hooks/core/useAuth'
   import BusinessWorkspaceHeader from '@/components/business/business-workspace-header/index.vue'
   import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
   import PaymentApplicationDialog from './modules/payment-application-dialog.vue'
@@ -106,6 +107,7 @@
   const router = useRouter()
   const { getDictMap } = storeToRefs(useUserStore())
   const { confirmAction, confirmDelete, promptReason } = useArtFeedback()
+  const { hasAuth } = useAuth()
   const deleteContext = useMasterDataDeleteProcessingContext()
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<DialogExpose>()
@@ -166,11 +168,13 @@
     ]),
     headerActions: computed<ArtTableQueryHeaderAction[]>(() => [
       {
+        permission: 'FinanceCarrierPaymentApplication:Add',
         type: 'add',
         label: '新建付款申请',
         onClick: () => void dialogRef.value?.handleOpen()
       },
       {
+        permission: 'FinanceCarrierPaymentApplication:Export',
         type: 'export',
         exportFilename: 'TMS承运商付款申请',
         exportSheetName: '承运商付款申请',
@@ -240,39 +244,52 @@
       fixed: 'right',
       formatter: (row) => (
         <div class="flex items-center">
-          <ElButton link type="primary" onClick={() => void drawerRef.value?.handleOpen(row)}>
-            查看
-          </ElButton>
+          {hasAuth('FinanceCarrierPaymentApplication:View') ? (
+            <ElButton link type="primary" onClick={() => void drawerRef.value?.handleOpen(row)}>
+              查看
+            </ElButton>
+          ) : null}
           {['draft', 'rejected'].includes(row.status) && (
             <>
-              <ElButton link type="primary" onClick={() => void handleSubmit(row)}>
-                提交审批
-              </ElButton>
-              <ElButton link type="primary" onClick={() => void dialogRef.value?.handleOpen(row)}>
-                编辑
-              </ElButton>
-              <ElButton link type="danger" onClick={() => void handleDelete(row)}>
-                删除
-              </ElButton>
+              {hasAuth('FinanceCarrierPaymentApplication:Submit') ? (
+                <ElButton link type="primary" onClick={() => void handleSubmit(row)}>
+                  提交审批
+                </ElButton>
+              ) : null}
+              {hasAuth('FinanceCarrierPaymentApplication:Edit') ? (
+                <ElButton link type="primary" onClick={() => void dialogRef.value?.handleOpen(row)}>
+                  编辑
+                </ElButton>
+              ) : null}
+              {hasAuth('FinanceCarrierPaymentApplication:Delete') ? (
+                <ElButton link type="danger" onClick={() => void handleDelete(row)}>
+                  删除
+                </ElButton>
+              ) : null}
             </>
           )}
-          {row.status === 'pending_review' && (
-            <ElButton link type="primary" onClick={() => void openApprovalCenter()}>
-              查看审批
-            </ElButton>
-          )}
+          {row.status === 'pending_review' &&
+            hasAuth('FinanceCarrierPaymentApplication:ViewApproval') && (
+              <ElButton link type="primary" onClick={() => void openApprovalCenter()}>
+                查看审批
+              </ElButton>
+            )}
           {row.status === 'approved' && (
             <>
-              <ElButton
-                link
-                type="success"
-                onClick={() => void executeDialogRef.value?.handleOpen(row)}
-              >
-                付款登记
-              </ElButton>
-              <ElButton link type="danger" onClick={() => void handleCancel(row)}>
-                取消
-              </ElButton>
+              {hasAuth('FinanceCarrierPaymentApplication:Execute') ? (
+                <ElButton
+                  link
+                  type="success"
+                  onClick={() => void executeDialogRef.value?.handleOpen(row)}
+                >
+                  付款登记
+                </ElButton>
+              ) : null}
+              {hasAuth('FinanceCarrierPaymentApplication:Cancel') ? (
+                <ElButton link type="danger" onClick={() => void handleCancel(row)}>
+                  取消
+                </ElButton>
+              ) : null}
             </>
           )}
           {row.status === 'paid' && row.paidTransactionNo && (

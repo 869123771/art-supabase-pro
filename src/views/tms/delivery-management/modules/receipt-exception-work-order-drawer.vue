@@ -138,6 +138,7 @@
                 <div v-if="isPlatformSuper" class="exception-work-orders__actions">
                   <ElButton
                     v-if="row.status === 'pending'"
+                    v-auth="'TmsDeliveryManagement:ManageException'"
                     type="primary"
                     link
                     @click="transition(row, 'in_progress')"
@@ -145,6 +146,7 @@
                   >
                   <ElButton
                     v-if="row.status === 'in_progress'"
+                    v-auth="'TmsDeliveryManagement:ManageException'"
                     type="success"
                     link
                     @click="transition(row, 'resolved')"
@@ -152,6 +154,7 @@
                   >
                   <ElButton
                     v-if="row.status === 'resolved'"
+                    v-auth="'TmsDeliveryManagement:ManageException'"
                     type="primary"
                     link
                     @click="transition(row, 'closed')"
@@ -159,12 +162,14 @@
                   >
                   <ElButton
                     v-if="row.status === 'resolved'"
+                    v-auth="'TmsDeliveryManagement:ManageException'"
                     link
                     @click="transition(row, 'in_progress')"
                     >重新处理</ElButton
                   >
                   <ElButton
                     v-if="['pending', 'in_progress'].includes(row.status)"
+                    v-auth="'TmsDeliveryManagement:ManageException'"
                     type="danger"
                     link
                     @click="transition(row, 'cancelled')"

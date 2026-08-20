@@ -47,6 +47,7 @@
   import type { ColumnOption, DialogType } from '@/types'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatWithDayjs } from '@/utils/time'
+  import dayjs from 'dayjs'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import ArtButtonMore from '@/components/core/forms/art-button-more/index.vue'
   import type { ButtonMoreItem } from '@/components/core/forms/art-button-more/index.vue'
@@ -74,7 +75,9 @@
   interface TenantOverviewRow {
     status?: unknown
     builtinType?: Api.SystemManage.TenantBuiltinType | null
+    serviceEndDate?: string | null
   }
+  const router = useRouter()
   const userStore = useUserStore()
   const { getDictMap } = storeToRefs(userStore)
   const { hasAuth } = useAuth()
@@ -91,6 +94,16 @@
   const enabledTenantCount = computed(
     () => overview.rows.filter((row) => String(row.status) === '1').length
   )
+  const expiringTenantCount = computed(
+    () =>
+      overview.rows.filter((row) => {
+        if (!row.serviceEndDate) return false
+        const remainingDays = dayjs(row.serviceEndDate)
+          .startOf('day')
+          .diff(dayjs().startOf('day'), 'day')
+        return remainingDays >= 0 && remainingDays <= 30
+      }).length
+  )
   const workspaceMetrics = computed<BusinessWorkspaceMetric[]>(() => [
     {
       label: '当前结果',
@@ -106,10 +119,12 @@
       tone: 'success'
     },
     {
-      label: '受保护身份',
-      value: systemTenantCount.value,
-      description: '平台与注册租户不可停用',
-      icon: 'ri:shield-keyhole-line',
+      label: '30 日内到期',
+      value: expiringTenantCount.value,
+      description: systemTenantCount.value
+        ? `${systemTenantCount.value} 个系统租户长期保护`
+        : '需关注续期安排',
+      icon: 'ri:alarm-warning-line',
       tone: 'warning'
     }
   ])
@@ -228,6 +243,41 @@
       dict: { code: 'status', display: 'auto' }
     },
     {
+      prop: 'servicePeriod',
+      label: '服务有效期',
+      minWidth: 210,
+      formatter: (row) => {
+        const endDate = row.serviceEndDate
+        const remainingDays = endDate
+          ? dayjs(endDate).startOf('day').diff(dayjs().startOf('day'), 'day')
+          : null
+        const tone =
+          remainingDays === null
+            ? 'is-neutral'
+            : remainingDays < 0
+              ? 'is-danger'
+              : remainingDays <= 30
+                ? 'is-warning'
+                : 'is-success'
+        const label =
+          remainingDays === null
+            ? '长期有效'
+            : remainingDays < 0
+              ? `已到期 ${Math.abs(remainingDays)} 天`
+              : remainingDays === 0
+                ? '今天到期'
+                : `剩余 ${remainingDays} 天`
+        return (
+          <div class="tenant-period-cell">
+            <span>
+              {row.serviceStartDate || '未限制'} 至 {row.serviceEndDate || '未限制'}
+            </span>
+            <small class={tone}>{label}</small>
+          </div>
+        )
+      }
+    },
+    {
       prop: 'remark',
       label: '用途说明',
       minWidth: 260,
@@ -284,6 +334,12 @@
       ? []
       : [
           {
+            key: 'reminder',
+            label: '配置到期提醒',
+            icon: 'ri:notification-badge-line',
+            auth: 'System:NotificationReminder:View'
+          },
+          {
             key: 'delete',
             label: '停用租户',
             icon: 'ri:pause-circle-line',
@@ -301,6 +357,12 @@
       case 'delete':
         void handleDelete(row)
         break
+      case 'reminder':
+        void router.push({
+          path: '/system/notification-reminder',
+          query: { tenantId: row.id, scenario: 'tenant_expiry' }
+        })
+        break
     }
   }
 
@@ -313,7 +375,8 @@
   const handleTableSuccess: NonNullable<ArtTableQueryProps['onSuccess']> = (rows, response) => {
     overview.rows = rows.map((row) => ({
       status: row.status,
-      builtinType: row.builtinType
+      builtinType: row.builtinType,
+      serviceEndDate: row.serviceEndDate
     }))
     overview.total = response.total ?? rows.length
   }
@@ -597,6 +660,37 @@
       small {
         font-size: 12px;
         color: var(--el-text-color-secondary);
+      }
+    }
+
+    :deep(.tenant-period-cell) {
+      display: grid;
+      gap: 2px;
+      line-height: 20px;
+
+      span {
+        color: var(--el-text-color-primary);
+        white-space: nowrap;
+      }
+
+      small {
+        font-size: 12px;
+
+        &.is-neutral {
+          color: var(--el-text-color-secondary);
+        }
+
+        &.is-success {
+          color: var(--el-color-success);
+        }
+
+        &.is-warning {
+          color: var(--el-color-warning-dark-2);
+        }
+
+        &.is-danger {
+          color: var(--el-color-danger);
+        }
       }
     }
 

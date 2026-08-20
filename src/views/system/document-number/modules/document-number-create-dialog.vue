@@ -129,7 +129,7 @@
   const dialogRef = ref<ArtDialogExpose>()
   const formRef = ref<FormExpose>()
   const userStore = useUserStore()
-  const { getDictMap } = storeToRefs(userStore)
+  const { getDictMap, getUserInfo, isPlatformSuper } = storeToRefs(userStore)
   const treeUtils = new TreeUtils({ idKey: 'id', parentKey: 'parentId', childrenKey: 'children' })
 
   const createInitialForm = (): CreateFormModel => ({
@@ -199,6 +199,7 @@
         props: {
           multiple: true,
           filterable: true,
+          disabled: !isPlatformSuper.value,
           collapseTags: true,
           collapseTagsTooltip: true,
           maxCollapseTags: 3,
@@ -359,6 +360,9 @@
       label: `${tenant.tenantName}（${tenant.tenantCode}）`,
       value: String(tenant.id)
     }))
+    if (!isPlatformSuper.value && getUserInfo.value.tenantId) {
+      form.data.tenantIds = [String(getUserInfo.value.tenantId)]
+    }
     buildMenuTree()
   }
 

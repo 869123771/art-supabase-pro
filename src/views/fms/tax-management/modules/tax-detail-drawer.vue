@@ -14,7 +14,11 @@
           display="tag" /></section
       ><div class="tax-detail__toolbar"
         ><div><strong>税务台账明细</strong><small>销项、进项与调整项目</small></div
-        ><ElButton v-if="editable" type="primary" @click="dialogRef?.handleOpen(period)"
+        ><ElButton
+          v-if="editable"
+          v-auth="'FinanceTaxManagement:Calculate'"
+          type="primary"
+          @click="dialogRef?.handleOpen(period)"
           >新增明细</ElButton
         ></div
       ><ElTable :data="lines" row-key="id"
@@ -44,26 +48,36 @@
           }}</template></ElTableColumn
         ><ElTableColumn v-if="editable" label="操作" width="110" fixed="right"
           ><template #default="{ row }"
-            ><ElButton link type="primary" @click="editLine(row)">编辑</ElButton
-            ><ElButton link type="danger" @click="remove(row)">删除</ElButton></template
+            ><ElButton
+              v-auth="'FinanceTaxManagement:Calculate'"
+              link
+              type="primary"
+              @click="editLine(row)"
+              >编辑</ElButton
+            ><ElButton
+              v-auth="'FinanceTaxManagement:Calculate'"
+              link
+              type="danger"
+              @click="remove(row)"
+              >删除</ElButton
+            ></template
           ></ElTableColumn
         ></ElTable
       ><TaxLedgerDialog ref="dialogRef" @success="reload" /></div
   ></ArtDrawer>
 </template>
 <script setup lang="ts">
-  import { storeToRefs } from 'pinia'
   import ArtDrawer from '@/components/core/drawers/art-drawer/index.vue'
   import type { ArtDrawerExpose } from '@/components/core/drawers/art-drawer/types'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
-  import { useUserStore } from '@/store/modules/user'
+  import { useAuth } from '@/hooks/core/useAuth'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { deleteTaxLedgerLine, fetchTaxLedgerLines } from '@/api/fms'
   import { formatCurrencyValue } from '@/utils/ui'
   import TaxLedgerDialog from './tax-ledger-dialog.vue'
   defineOptions({ name: 'FinanceTaxDetailDrawer' })
   const emit = defineEmits<{ success: [] }>()
-  const { isPlatformSuper } = storeToRefs(useUserStore())
+  const { hasAuth } = useAuth()
   const { confirmAction } = useArtFeedback()
   const drawerRef = ref<ArtDrawerExpose>()
   const dialogRef = ref<{
@@ -76,7 +90,7 @@
   const lines = ref<Api.Fms.TaxLedgerLineRecord[]>([])
   const editable = computed(
     () =>
-      isPlatformSuper.value &&
+      hasAuth('FinanceTaxManagement:Calculate') &&
       Boolean(period.value && ['draft', 'calculated'].includes(period.value.status))
   )
   async function reload() {

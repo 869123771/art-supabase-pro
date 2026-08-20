@@ -215,11 +215,9 @@
   ]
 
   const headerActions = computed<ArtTableQueryHeaderAction[]>(() => [
+    { permission: 'Parts:Add', type: 'add', onClick: () => openDialog() },
     {
-      type: 'add',
-      onClick: () => openDialog()
-    },
-    {
+      permission: 'Parts:Import',
       type: 'import',
       importColumns: partsImportColumns,
       importApi: async (rows) => {
@@ -228,6 +226,7 @@
       onImportError: handleImportError
     },
     {
+      permission: 'Parts:Export',
       type: 'export',
       exportFilename: '零部件',
       exportSheetName: '零部件',
@@ -241,6 +240,7 @@
       }
     },
     {
+      permission: 'Parts:Delete',
       type: 'delete',
       content: ({ selectedCount }: ArtTableQueryHeaderActionContext) =>
         `确定删除选中的 ${selectedCount} 个零部件吗？删除后无法恢复。`,
@@ -319,8 +319,12 @@
       fixed: 'right',
       formatter: (row) => (
         <div class="parts-page__operation">
-          <ArtButtonTable type="edit" onClick={() => openDialog(row)} />
-          <ArtButtonTable type="delete" onClick={() => handleDelete(row)} />
+          <ArtButtonTable type="edit" permission="Parts:Edit" onClick={() => openDialog(row)} />
+          <ArtButtonTable
+            type="delete"
+            permission="Parts:Delete"
+            onClick={() => handleDelete(row)}
+          />
         </div>
       )
     }

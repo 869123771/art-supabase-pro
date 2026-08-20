@@ -359,7 +359,7 @@
       align-items: center;
       justify-content: center;
       width: 100%;
-      height: 20%;
+      height: max(20%, 32px);
       padding: 0;
       margin-inline: auto;
       color: var(--color-g-500);
@@ -407,11 +407,11 @@
           color-mix(in srgb, var(--theme-color) 44%, transparent);
 
         display: inline-flex;
-        flex: 0 0 28px;
+        flex: 0 0 32px;
         align-items: center;
         justify-content: center;
-        width: 28px;
-        height: 28px;
+        width: 32px;
+        height: 32px;
         padding: 0;
         color: #fff;
         cursor: pointer;

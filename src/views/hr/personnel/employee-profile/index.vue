@@ -480,7 +480,9 @@
         </span>
       </template>
       <ElButton :disabled="page.saving" @click="goBack">取消</ElButton>
-      <ElButton type="primary" :loading="page.saving" @click="handleSave"> 保存员工档案 </ElButton>
+      <ElButton v-auth="savePermission" type="primary" :loading="page.saving" @click="handleSave">
+        保存员工档案
+      </ElButton>
     </ArtStickyActionBar>
   </ArtPageShell>
 </template>
@@ -528,6 +530,7 @@
   const router = useRouter()
   const userStore = useUserStore()
   const { getDictMap, getUserInfo, isPlatformSuper } = storeToRefs(userStore)
+  const savePermission = computed(() => (route.params.id ? 'Hr:Employee:Edit' : 'Hr:Employee:Add'))
   const basicFormRef = ref<FormExpose>()
   const tenantFormOptions = ref<FormItemOption[]>([])
   const organizationFormOptions = ref<FormItemOption[]>([])

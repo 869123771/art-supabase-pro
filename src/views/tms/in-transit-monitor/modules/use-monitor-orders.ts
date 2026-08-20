@@ -16,6 +16,7 @@ import type {
   ScreenState,
   TransitStatus
 } from './monitor-types'
+import { canViewField } from '@/utils/field-permission'
 
 const maskPhone = (value?: string | null): string => {
   const phone = String(value ?? '').trim()
@@ -275,6 +276,7 @@ export function useMonitorOrders(options: UseMonitorOrdersOptions) {
       destinationGeo,
       driverName: formatText(row.driver?.driverName || order?.dispatchDriverName, '未派司机'),
       driverPhone: maskPhone(row.driver?.phone || order?.dispatchDriverPhone),
+      driverPhoneVisible: canViewField(row.fieldAccess ?? order?.fieldAccess, 'driverPhone'),
       id,
       latitude: currentGeo[1],
       longitude: currentGeo[0],

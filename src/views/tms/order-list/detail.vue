@@ -21,7 +21,7 @@
     <section class="order-detail__section order-detail__steps-card art-card-xs">
       <OrderStatusSteps :steps="detail.statusSteps" :active-index="detail.activeStep" />
       <div
-        v-if="deliveryAudit.visible"
+        v-if="deliveryAudit.visible && canViewOrderField('proofAttachments')"
         class="order-detail__delivery-audit"
         :class="{ 'is-warning': deliveryAudit.missingSignature }"
       >
@@ -130,7 +130,7 @@
     </section>
 
     <div class="order-detail__finance-grid">
-      <section class="order-detail__section art-card-xs">
+      <section v-if="canViewOrderField('freightAmounts')" class="order-detail__section art-card-xs">
         <ArtSectionTitle title="费用信息" />
         <ArtDescriptions :data="descriptionData" :items="feeItems" :columns="2" />
       </section>
@@ -172,6 +172,7 @@
   import ArtTable from '@/components/core/tables/art-table/index.vue'
   import type { ColumnOption } from '@/types'
   import { formatWithDayjs } from '@/utils/time'
+  import { canViewField, formatSensitiveNumber } from '@/utils/field-permission'
   import { useUserStore } from '@/store/modules/user'
   import { fetchOrderDetail } from '@/api/tms'
   import OrderStatusSteps from './modules/order-status-steps.vue'
@@ -335,21 +336,38 @@
       dictCode: 'tmsOrderTransportMode'
     }
   ]
-  const shippingItems: ArtDescriptionItem<Partial<OrderRecord>>[] = [
+  const shippingItems = computed<ArtDescriptionItem<Partial<OrderRecord>>[]>(() => [
     { key: 'shippingContactName', label: '姓名', field: 'shippingContactName' },
-    { key: 'shippingContactPhone', label: '手机号', field: 'shippingContactPhone', copyable: true },
-    { key: 'shippingAddressDetail', label: '发货地址', field: 'shippingAddressDetail' }
-  ]
-  const receivingItems: ArtDescriptionItem<Partial<OrderRecord>>[] = [
+    ...(canViewOrderField('shipperContact')
+      ? [
+          {
+            key: 'shippingContactPhone',
+            label: '手机号',
+            field: 'shippingContactPhone',
+            copyable: true
+          }
+        ]
+      : []),
+    ...(canViewOrderField('shipperAddress')
+      ? [{ key: 'shippingAddressDetail', label: '发货地址', field: 'shippingAddressDetail' }]
+      : [])
+  ])
+  const receivingItems = computed<ArtDescriptionItem<Partial<OrderRecord>>[]>(() => [
     { key: 'receivingContactName', label: '姓名', field: 'receivingContactName' },
-    {
-      key: 'receivingContactPhone',
-      label: '手机号',
-      field: 'receivingContactPhone',
-      copyable: true
-    },
-    { key: 'receivingAddressDetail', label: '收货地址', field: 'receivingAddressDetail' }
-  ]
+    ...(canViewOrderField('receiverContact')
+      ? [
+          {
+            key: 'receivingContactPhone',
+            label: '手机号',
+            field: 'receivingContactPhone',
+            copyable: true
+          }
+        ]
+      : []),
+    ...(canViewOrderField('receiverAddress')
+      ? [{ key: 'receivingAddressDetail', label: '收货地址', field: 'receivingAddressDetail' }]
+      : [])
+  ])
   const feeItems = createMoneyDescriptionItems([
     ['transportFee', '基础运费'],
     ['deliveryFee', '配送费'],
@@ -362,44 +380,50 @@
     ['otherFee', '其他费用'],
     ['totalFee', '运费合计', true]
   ])
-  const paymentItems: ArtDescriptionItem<Partial<OrderRecord>>[] = [
+  const paymentItems = computed<ArtDescriptionItem<Partial<OrderRecord>>[]>(() => [
     {
       key: 'paymentMethod',
       label: '付款方式',
       field: 'paymentMethod',
       dictCode: 'tmsOrderPaymentMethod'
     },
-    ...createMoneyDescriptionItems([
-      ['cashAmount', '现付'],
-      ['collectAmount', '到付'],
-      ['monthlyAmount', '月结'],
-      ['codAmount', '代收货款'],
-      ['handlingFee', '手续费'],
-      ['paymentTotal', '付款合计', true]
-    ])
-  ]
-  const otherItems: ArtDescriptionItem<Partial<OrderRecord>>[] = [
+    ...(canViewOrderField('settlementAmounts')
+      ? createMoneyDescriptionItems([
+          ['cashAmount', '现付'],
+          ['collectAmount', '到付'],
+          ['monthlyAmount', '月结'],
+          ['codAmount', '代收货款'],
+          ['handlingFee', '手续费'],
+          ['paymentTotal', '付款合计', true]
+        ])
+      : [])
+  ])
+  const otherItems = computed<ArtDescriptionItem<Partial<OrderRecord>>[]>(() => [
     { key: 'orderRemark', label: '订单备注', field: 'orderRemark', span: 2 },
-    {
-      key: 'imageUrls',
-      label: '图片',
-      span: 2,
-      value: (data: Partial<OrderRecord>) => data.imageUrls,
-      render: (value) => {
-        const imageUrls = (value as string[] | undefined) ?? []
-        if (!imageUrls.length) return '--'
-        return (
-          <ArtUploadImage
-            modelValue={imageUrls}
-            size={88}
-            limit={Math.max(imageUrls.length, 1)}
-            multiple
-            readonly
-          />
-        )
-      }
-    }
-  ]
+    ...(canViewOrderField('proofAttachments')
+      ? [
+          {
+            key: 'imageUrls',
+            label: '图片',
+            span: 2,
+            value: (data: Partial<OrderRecord>) => data.imageUrls,
+            render: (value: unknown) => {
+              const imageUrls = (value as string[] | undefined) ?? []
+              if (!imageUrls.length) return '--'
+              return (
+                <ArtUploadImage
+                  modelValue={imageUrls}
+                  size={88}
+                  limit={Math.max(imageUrls.length, 1)}
+                  multiple
+                  readonly
+                />
+              )
+            }
+          }
+        ]
+      : [])
+  ])
 
   onMounted(() => {
     void loadDetail()
@@ -500,8 +524,7 @@
   }
 
   function formatCurrency(value?: number | string | null): string {
-    const parsed = toNumber(value ?? 0)
-    return `¥${Number.isFinite(parsed) ? parsed.toFixed(2) : '0.00'}`
+    return `¥${formatSensitiveNumber(value)}`
   }
 
   function createMoneyDescriptionItems(
@@ -514,6 +537,10 @@
       formatter: (value) => formatCurrency(value as number | string | null | undefined),
       className: strong ? 'order-detail__strong' : undefined
     }))
+  }
+
+  function canViewOrderField(field: Api.Tms.Order.OrderFieldKey): boolean {
+    return canViewField(detail.data?.fieldAccess, field)
   }
 </script>
 

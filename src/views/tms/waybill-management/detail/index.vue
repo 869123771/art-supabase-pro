@@ -116,7 +116,7 @@
           </template>
           <WaybillOperationPanel :waybill="detail.data" />
         </ElTabPane>
-        <ElTabPane name="documents" lazy>
+        <ElTabPane v-if="canView('proofAttachments')" name="documents" lazy>
           <template #label>
             <span class="waybill-detail__tab-label"
               >单证影像<ElBadge v-if="evidenceCount" :value="evidenceCount" :max="99"
@@ -124,7 +124,7 @@
           </template>
           <WaybillDocumentPanel :waybill="detail.data" />
         </ElTabPane>
-        <ElTabPane label="轨迹和定位" name="route" lazy>
+        <ElTabPane v-if="canView('routeCoordinates')" label="轨迹和定位" name="route" lazy>
           <WaybillRoutePanel :waybill="detail.data" />
         </ElTabPane>
       </ElTabs>
@@ -139,6 +139,7 @@
   import ArtPageShell from '@/components/core/layouts/art-page-shell/index.vue'
   import { fetchWaybillDetail } from '@/api/tms'
   import { formatWithDayjs } from '@/utils/time'
+  import { canViewField } from '@/utils/field-permission'
   import WaybillDocumentPanel from './modules/waybill-document-panel.vue'
   import WaybillInfoPanel from './modules/waybill-info-panel.vue'
   import WaybillOperationPanel from './modules/waybill-operation-panel.vue'
@@ -253,20 +254,28 @@
         icon: 'ri:smartphone-line',
         tone: 'success'
       },
-      {
-        label: '作业凭证',
-        value: `${countEvidence(data)} 份`,
-        description: '现场照片、磅单、回单及签名',
-        icon: 'ri:image-2-line',
-        tone: 'warning'
-      },
-      {
-        label: '定位节点',
-        value: `${countLocations(data)} 个`,
-        description: '地址端点、签到和运输事件位置',
-        icon: 'ri:map-pin-line',
-        tone: 'info'
-      }
+      ...(canView('proofAttachments')
+        ? [
+            {
+              label: '作业凭证',
+              value: `${countEvidence(data)} 份`,
+              description: '现场照片、磅单、回单及签名',
+              icon: 'ri:image-2-line',
+              tone: 'warning' as const
+            }
+          ]
+        : []),
+      ...(canView('routeCoordinates')
+        ? [
+            {
+              label: '定位节点',
+              value: `${countLocations(data)} 个`,
+              description: '地址端点、签到和运输事件位置',
+              icon: 'ri:map-pin-line',
+              tone: 'info' as const
+            }
+          ]
+        : [])
     ]
   })
 
@@ -298,6 +307,12 @@
     try {
       const { data } = await fetchWaybillDetail(waybillId)
       detail.data = data ?? undefined
+      if (
+        (detail.activeTab === 'documents' && !canView('proofAttachments')) ||
+        (detail.activeTab === 'route' && !canView('routeCoordinates'))
+      ) {
+        detail.activeTab = 'overview'
+      }
     } catch (error) {
       detail.error = error instanceof Error ? error : new Error('运单详情加载失败，请稍后重试')
     } finally {
@@ -339,8 +354,8 @@
       ...(data.order?.imageUrls ?? []),
       ...(data.order?.receiptImageUrls ?? []),
       ...data.cargoOperations.flatMap((operation) => [
-        ...operation.photoUrls,
-        ...operation.weighbridgeTicketUrls
+        ...(operation.photoUrls ?? []),
+        ...(operation.weighbridgeTicketUrls ?? [])
       ]),
       ...(execution?.departurePhotoUrls ?? []),
       ...(execution?.receiptUrls ?? []),
@@ -388,6 +403,10 @@
   function openOrderDetail(): void {
     if (!detail.data?.orderId) return
     void router.push({ name: 'TmsOrderDetail', params: { id: detail.data.orderId } })
+  }
+
+  function canView(field: Api.Tms.Waybill.WaybillFieldKey): boolean {
+    return canViewField(detail.data?.fieldAccess, field)
   }
 
   function goBack(): void {

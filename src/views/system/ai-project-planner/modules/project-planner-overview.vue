@@ -82,6 +82,7 @@
       </ElButton>
       <ElButton
         v-if="canManageWorkflow"
+        v-auth="'System:AiProjectPlanner:ManageWorkflow'"
         type="primary"
         :loading="pendingAction === 'accepted'"
         :disabled="Boolean(pendingAction)"

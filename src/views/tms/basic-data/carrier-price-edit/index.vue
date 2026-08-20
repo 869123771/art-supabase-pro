@@ -198,7 +198,14 @@
 
     <ArtStickyActionBar class="carrier-price-edit__footer">
       <ElButton :disabled="page.saving" @click="goBack">取消</ElButton>
-      <ElButton type="primary" :loading="page.saving" @click="handleSave"> 保存承运商价 </ElButton>
+      <ElButton
+        v-auth="'TmsCarrierPriceEdit:Save'"
+        type="primary"
+        :loading="page.saving"
+        @click="handleSave"
+      >
+        保存承运商价
+      </ElButton>
     </ArtStickyActionBar>
 
     <CargoMultipleSelect ref="cargoSelectorRef" @confirm="handleCargoSelectorConfirm" />

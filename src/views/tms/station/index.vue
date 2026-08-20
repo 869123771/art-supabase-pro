@@ -37,6 +37,7 @@
 
 <script setup lang="tsx">
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import { useAuth } from '@/hooks/core/useAuth'
   import { ElMessage, ElSwitch } from 'element-plus'
   import { trim, uniq } from 'lodash-es'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
@@ -65,6 +66,7 @@
   defineOptions({ name: 'TmsStation' })
 
   const { confirmAction } = useArtFeedback()
+  const { hasAuth } = useAuth()
 
   type Station = Api.Tms.Station.StationRecord
   type StationSavePayload = Api.Tms.Station.StationSavePayload
@@ -210,15 +212,18 @@
       prop: 'enabled',
       label: '状态',
       width: 100,
-      formatter: (row) => (
-        <ElSwitch
-          modelValue={row.enabled}
-          inlinePrompt
-          activeText="启"
-          inactiveText="停"
-          onChange={(value) => handleStatusChange(row, Boolean(value))}
-        />
-      )
+      formatter: (row) =>
+        hasAuth('TmsStation:Toggle') ? (
+          <ElSwitch
+            modelValue={row.enabled}
+            inlinePrompt
+            activeText="启"
+            inactiveText="停"
+            onChange={(value) => handleStatusChange(row, Boolean(value))}
+          />
+        ) : (
+          <ArtDictDisplay dictCode="commonBoolean" value={String(row.enabled)} display="tag" />
+        )
     },
     {
       prop: 'operation',
@@ -227,16 +232,25 @@
       fixed: 'right',
       formatter: (row) => (
         <div>
-          <ArtButtonTable type="edit" onClick={() => openDialog(row)} />
-          <ArtButtonTable type="delete" onClick={() => handleDelete(row)} />
+          <ArtButtonTable
+            type="edit"
+            permission="TmsStation:Edit"
+            onClick={() => openDialog(row)}
+          />
+          <ArtButtonTable
+            type="delete"
+            permission="TmsStation:Delete"
+            onClick={() => handleDelete(row)}
+          />
         </div>
       )
     }
   ]
 
   const headerActions = computed<ArtTableQueryHeaderAction[]>(() => [
-    { type: 'add', onClick: () => openDialog() },
+    { permission: 'TmsStation:Add', type: 'add', onClick: () => openDialog() },
     {
+      permission: 'TmsStation:Import',
       type: 'import',
       importColumns: stationExcelColumns,
       importTransformer: (rows) =>
@@ -249,6 +263,7 @@
       }
     },
     {
+      permission: 'TmsStation:Export',
       type: 'export',
       exportFilename: 'TMS站点资料',
       exportSheetName: '站点管理',
@@ -261,6 +276,7 @@
         })
     },
     {
+      permission: 'TmsStation:Delete',
       type: 'delete',
       content: ({ selectedCount }: { selectedCount: number }) =>
         `确定删除选中的 ${selectedCount} 条站点资料吗？删除后无法恢复。`,

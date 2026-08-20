@@ -9,14 +9,6 @@
       @retry="retryLoad"
     >
       <div v-if="state.accountSet" class="accounting-period-drawer">
-        <ElAlert
-          v-if="!isPlatformSuper"
-          type="info"
-          :closable="false"
-          show-icon
-          title="当前账号可查看期间状态；结账、反结账等受控操作仅平台超级管理员可执行。"
-        />
-
         <section class="accounting-period-drawer__overview">
           <article
             v-for="metric in overviewMetrics"
@@ -33,7 +25,7 @@
 
         <ArtSectionTitle>会计期间</ArtSectionTitle>
         <p class="accounting-period-drawer__hint">
-          期间必须按时间顺序结账；反结账需从最后一个已结期间开始，并完整记录原因与操作人。
+          {{ periodPolicyHint }}
         </p>
 
         <ArtTable
@@ -42,7 +34,6 @@
           :pagination="false"
           :show-table-header="false"
           empty-text="暂无会计期间"
-          max-height="calc(100vh - 390px)"
           border
         />
       </div>
@@ -56,14 +47,13 @@
 
 <script setup lang="tsx">
   import { ElButton } from 'element-plus'
-  import { storeToRefs } from 'pinia'
   import ArtDrawer from '@/components/core/drawers/art-drawer/index.vue'
   import type { ArtDrawerExpose } from '@/components/core/drawers/art-drawer/types'
   import ArtTable from '@/components/core/tables/art-table/index.vue'
   import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
   import type { ColumnOption } from '@/types'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
-  import { useUserStore } from '@/store/modules/user'
+  import { useAuth } from '@/hooks/core/useAuth'
   import {
     fetchAccountingFoundationSummary,
     fetchAccountingPeriodList,
@@ -86,7 +76,7 @@
   }
 
   const { confirmAction, promptReason } = useArtFeedback()
-  const { isPlatformSuper } = storeToRefs(useUserStore())
+  const { hasAuth } = useAuth()
   const drawerRef = ref<ArtDrawerExpose<AccountSet>>()
   const state = reactive<DrawerState>({
     accountSet: undefined,
@@ -119,12 +109,27 @@
     }
   ])
 
+  const periodPolicyHint = computed(() => {
+    const accountSet = state.accountSet
+    if (!accountSet) return ''
+    const enabledMonth = formatWithDayjs(accountSet.enabledOn, 'YYYY-MM')
+    return `当前配置：账套启用月份 ${enabledMonth}，会计年度从 ${accountSet.fiscalYearStartMonth} 月开始。两者是不同口径；期间必须按时间顺序结账，反结账需从最后一个已结期间开始。`
+  })
+
   const columns = computed<ColumnOption<AccountingPeriod>[]>(() => [
     {
       prop: 'periodNo',
       label: '期间',
-      width: 110,
-      formatter: (row) => `${row.fiscalYear} 年第 ${String(row.periodNo).padStart(2, '0')} 期`
+      width: 132,
+      formatter: (row) => (
+        <div
+          class="accounting-period-drawer__period"
+          title={`${row.fiscalYear} 会计年度第 ${row.periodNo} 期`}
+        >
+          <strong>第 {String(row.periodNo).padStart(2, '0')} 期</strong>
+          <span>{row.fiscalYear} 会计年度</span>
+        </div>
+      )
     },
     {
       prop: 'dateRange',
@@ -154,7 +159,7 @@
       align: 'center',
       formatter: (row) => `${row.reopenCount} 次`
     },
-    ...(isPlatformSuper.value
+    ...(hasAuth('FinanceAccountSet:ManagePeriod')
       ? [
           {
             prop: 'operation',
@@ -280,6 +285,7 @@
       subtitle: `${row.accountSetCode} · 本位币 ${row.baseCurrencyCode}`,
       size: 'xl',
       contentHeight: 'calc(100vh - 132px)',
+      scrollbarAlways: true,
       onOpen: () => loadData(row.id),
       drawerProps: { appendToBody: true, resizable: true, closeOnClickModal: false }
     })
@@ -335,6 +341,23 @@
       font-size: 12px;
       line-height: 1.6;
       color: var(--el-text-color-secondary);
+    }
+
+    :deep(.accounting-period-drawer__period) {
+      display: grid;
+      gap: 2px;
+      line-height: 1.35;
+
+      strong {
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+        color: var(--el-text-color-primary);
+      }
+
+      span {
+        font-size: 12px;
+        color: var(--el-text-color-secondary);
+      }
     }
 
     @media (width <= 900px) {

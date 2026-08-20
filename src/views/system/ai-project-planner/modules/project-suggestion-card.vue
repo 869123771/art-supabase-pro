@@ -123,6 +123,7 @@
         <div class="ai-planner__workflow">
           <ElButton
             v-if="suggestion.status === 'active'"
+            v-auth="'System:AiProjectPlanner:ManageWorkflow'"
             :loading="isActionPending('dismissed')"
             :disabled="isPending"
             @click="emit('workflow', suggestion, 'dismissed')"
@@ -132,6 +133,7 @@
           </ElButton>
           <ElButton
             v-if="suggestion.status === 'active'"
+            v-auth="'System:AiProjectPlanner:ManageWorkflow'"
             type="primary"
             :loading="isActionPending('accepted')"
             :disabled="isPending"
@@ -142,6 +144,7 @@
           </ElButton>
           <ElButton
             v-if="suggestion.status === 'active' || suggestion.status === 'accepted'"
+            v-auth="'System:AiProjectPlanner:ManageWorkflow'"
             type="success"
             :loading="isActionPending('completed')"
             :disabled="isPending"
@@ -155,6 +158,7 @@
           </div>
           <ElButton
             v-if="suggestion.status === 'dismissed'"
+            v-auth="'System:AiProjectPlanner:ManageWorkflow'"
             type="primary"
             plain
             :loading="isActionPending('restored')"

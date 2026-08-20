@@ -22,15 +22,6 @@
       </template>
     </BusinessWorkspaceHeader>
 
-    <ElAlert
-      v-if="!isPlatformSuper"
-      v-show="!focusMode"
-      type="info"
-      :closable="false"
-      show-icon
-      title="当前账号可查看本租户辅助核算体系；类型维护、主数据同步及项目编辑仅平台超级管理员可执行。"
-    />
-
     <ArtPageSection
       v-show="!focusMode"
       title="核算范围"
@@ -58,7 +49,7 @@
       <AccountingSetupGuide
         :loading="scope.loading"
         :has-account-set="scope.options.length > 0"
-        :can-configure="isPlatformSuper"
+        :can-configure="hasAuth('FinanceAccountSet:Add')"
         @configure="goToAccountSet"
       />
     </ArtPageSection>
@@ -70,7 +61,11 @@
         class="accounting-auxiliary-page__types accounting-workspace-fill-section"
       >
         <template #actions>
-          <ElButton v-if="isPlatformSuper" type="primary" @click="openTypeDialog()">
+          <ElButton
+            v-auth="'FinanceAccountingAuxiliary:AddType'"
+            type="primary"
+            @click="openTypeDialog()"
+          >
             <ArtSvgIcon icon="ri:add-line" />新增维度
           </ElButton>
         </template>
@@ -128,7 +123,6 @@
                   </span>
                 </button>
                 <ArtButtonMore
-                  v-if="isPlatformSuper"
                   class="accounting-auxiliary-page__type-more"
                   :list="getTypeActions(item)"
                   @click="handleTypeAction($event, item)"
@@ -149,14 +143,14 @@
         <template #actions>
           <AccountingWorkspaceFocusToggle v-if="focusMode" v-model="focusMode" />
           <ElButton
-            v-if="isPlatformSuper && canSync"
+            v-if="hasAuth('FinanceAccountingAuxiliary:Sync') && canSync"
             :loading="workspace.syncing"
             @click="handleSync"
           >
             <ArtSvgIcon icon="ri:refresh-line" />同步主数据
           </ElButton>
           <ElButton
-            v-if="isPlatformSuper && canMaintainItems"
+            v-if="hasAuth('FinanceAccountingAuxiliary:Add') && canMaintainItems"
             type="primary"
             @click="openItemDialog()"
           >
@@ -210,7 +204,6 @@
 
 <script setup lang="tsx">
   import { ElButton, ElTag } from 'element-plus'
-  import { storeToRefs } from 'pinia'
   import BusinessWorkspaceHeader, {
     type BusinessWorkspaceMetric
   } from '@/components/business/business-workspace-header/index.vue'
@@ -228,7 +221,7 @@
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import type { ColumnOption } from '@/types'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
-  import { useUserStore } from '@/store/modules/user'
+  import { useAuth } from '@/hooks/core/useAuth'
   import {
     deleteAuxiliaryType,
     fetchAccountSetOptions,
@@ -284,7 +277,7 @@
   const { confirmAction } = useArtFeedback()
   const { focusMode } = useAccountingWorkspaceFocus()
   const { ensureAccountSet, goToAccountSet } = useFinanceAccountSetPrerequisite()
-  const { isPlatformSuper } = storeToRefs(useUserStore())
+  const { hasAuth } = useAuth()
   const typeDialogRef = ref<AuxiliaryTypeDialogExpose>()
   const itemDialogRef = ref<AuxiliaryItemDialogExpose>()
   const scope = reactive<ScopeGroup>({ accountSetId: '', loading: true, options: [] })
@@ -422,20 +415,24 @@
       width: 150,
       fixed: 'right',
       formatter: (row) => {
-        if (!isPlatformSuper.value)
-          return <span class="accounting-auxiliary-page__readonly">只读</span>
         if (row.externalEntityId)
           return <span class="accounting-auxiliary-page__readonly">源数据维护</span>
         return (
           <div class="accounting-auxiliary-page__actions">
-            <ArtButtonTable type="edit" onClick={() => openItemDialog(row)} />
-            <ElButton
-              link
-              type={row.isEnabled ? 'danger' : 'success'}
-              onClick={() => toggleItem(row)}
-            >
-              {row.isEnabled ? '停用' : '启用'}
-            </ElButton>
+            <ArtButtonTable
+              type="edit"
+              permission="FinanceAccountingAuxiliary:Edit"
+              onClick={() => openItemDialog(row)}
+            />
+            {hasAuth('FinanceAccountingAuxiliary:Toggle') ? (
+              <ElButton
+                link
+                type={row.isEnabled ? 'danger' : 'success'}
+                onClick={() => toggleItem(row)}
+              >
+                {row.isEnabled ? '停用' : '启用'}
+              </ElButton>
+            ) : null}
           </div>
         )
       }
@@ -458,13 +455,21 @@
   }
 
   function getTypeActions(row: AuxiliaryType): ButtonMoreItem[] {
-    const actions: ButtonMoreItem[] = [{ key: 'edit', label: '编辑维度', icon: 'ri:edit-line' }]
+    const actions: ButtonMoreItem[] = [
+      {
+        key: 'edit',
+        label: '编辑维度',
+        icon: 'ri:edit-line',
+        auth: 'FinanceAccountingAuxiliary:EditType'
+      }
+    ]
     if (!row.isSystem && row.sourceType === 'manual') {
       actions.push({
         key: 'delete',
         label: '删除维度',
         icon: 'ri:delete-bin-line',
-        color: 'var(--el-color-danger)'
+        color: 'var(--el-color-danger)',
+        auth: 'FinanceAccountingAuxiliary:DeleteType'
       })
     }
     return actions

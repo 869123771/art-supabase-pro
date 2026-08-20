@@ -13,6 +13,7 @@ import ArtButtonMore, {
 import type { ColumnOption } from '@/types'
 import { pageInfoHandler } from '@/utils/table/tableUtils'
 import { exportDeliveryList, fetchDeliveryList } from '@/api/tms'
+import { canEditField, canViewField, formatSensitiveNumber } from '@/utils/field-permission'
 
 export type DeliveryMode = 'delivery' | 'transit'
 export type DeliveryRecord = Api.Tms.Delivery.DeliveryRecord
@@ -26,6 +27,7 @@ export interface DeliveryReceiptArchiveDialogExpose {
 
 export interface DeliveryListContext {
   mode: DeliveryMode
+  fieldAccess: Ref<Api.Tms.Order.OrderFieldAccessMap>
   router: Router
   tableQueryRef: Ref<
     { refreshData: () => Promise<void>; refreshUpdate: () => Promise<void> } | undefined
@@ -68,6 +70,9 @@ export const deliveryExcelColumns: ArtTableQueryExcelColumn[] = [
   { key: 'codAmount', title: '代收货款' },
   { key: 'orderStatus', title: '状态' }
 ]
+
+const createDeliveryExcelColumns = (context: DeliveryListContext): ArtTableQueryExcelColumn[] =>
+  deliveryExcelColumns.filter((column) => isDeliveryColumnVisible(context, column.key))
 
 export const createDeliverySearchItems = (
   paymentMethodOptions: ComputedRef<Api.DataCenter.DictListItem[]>,
@@ -137,7 +142,7 @@ export const createDeliveryHeaderActions = (
       type: 'export',
       exportFilename: context.mode === 'delivery' ? '配送管理' : '在途监控',
       exportSheetName: context.mode === 'delivery' ? '配送管理' : '在途监控',
-      exportColumns: deliveryExcelColumns,
+      exportColumns: createDeliveryExcelColumns(context),
       exportApi: ({ selectedIds, searchParams, maxRows }) =>
         exportDeliveryList({
           ...(searchParams as DeliverySearchParams),
@@ -153,119 +158,126 @@ export const createDeliveryHeaderActions = (
 
 export const createDeliveryColumns = (
   context: DeliveryListContext
-): ColumnOption<DeliveryRecord>[] => [
-  { type: 'selection', width: 50, fixed: 'left', reserveSelection: true },
-  { prop: 'cargoNo', label: '货号', fixed: 'left', width: 130, showOverflowTooltip: true },
-  {
-    prop: 'orderNo',
-    label: '运单号',
-    fixed: 'left',
-    width: 140,
-    formatter: (row) => (
-      <ElLink type="primary" underline="never" onClick={() => openDetail(context, row)}>
-        {row.orderNo}
-      </ElLink>
-    )
-  },
-  { prop: 'receivingContactName', label: '收货人', width: 110, showOverflowTooltip: true },
-  { prop: 'receivingContactPhone', label: '收货人电话', width: 140, showOverflowTooltip: true },
-  {
-    prop: 'receivingAddressDetail',
-    label: '收货人地址',
-    minWidth: 220,
-    showOverflowTooltip: true
-  },
-  { prop: 'shippingContactName', label: '发货人', width: 110, showOverflowTooltip: true },
-  { prop: 'shippingContactPhone', label: '发货人电话', width: 140, showOverflowTooltip: true },
-  {
-    prop: 'shippingAddressDetail',
-    label: '发货人地址',
-    minWidth: 220,
-    showOverflowTooltip: true
-  },
-  {
-    prop: 'cargoItems',
-    label: '货物类型',
-    width: 120,
-    formatter: (row) => formatCargoType(row)
-  },
-  {
-    prop: 'cargoQuantityTotal',
-    label: '总数量',
-    width: 100,
-    formatter: (row) => formatNumber(row.cargoQuantityTotal, 0)
-  },
-  {
-    prop: 'cargoVolumeTotal',
-    label: '总体积(方)',
-    width: 120,
-    formatter: (row) => formatNumber(row.cargoVolumeTotal)
-  },
-  {
-    prop: 'cargoWeightTotal',
-    label: '总重量(KG)',
-    width: 120,
-    formatter: (row) => formatNumber(row.cargoWeightTotal)
-  },
-  {
-    prop: 'paymentMethod',
-    label: '付款方式',
-    width: 110,
-    dict: { code: 'tmsOrderPaymentMethod', display: 'tag' }
-  },
-  {
-    prop: 'declaredValue',
-    label: '声明价值',
-    width: 110,
-    formatter: (row) => formatMoney(row.declaredValue)
-  },
-  {
-    prop: 'insuranceFee',
-    label: '保费',
-    width: 100,
-    formatter: (row) => formatMoney(row.insuranceFee)
-  },
-  {
-    prop: 'deliveryFee',
-    label: '配送费',
-    width: 100,
-    formatter: (row) => formatMoney(row.deliveryFee)
-  },
-  {
-    prop: 'unloadingFee',
-    label: '卸货费',
-    width: 100,
-    formatter: (row) => formatMoney(row.unloadingFee)
-  },
-  {
-    prop: 'codAmount',
-    label: '代收货款',
-    width: 110,
-    formatter: (row) => formatMoney(row.codAmount)
-  },
-  {
-    prop: 'orderStatus',
-    label: '状态',
-    width: 100,
-    fixed: 'right',
-    dict: { code: 'tmsOrderStatus', display: 'badge' }
-  },
-  {
-    prop: 'operation',
-    label: '操作',
-    width: 100,
-    fixed: 'right',
-    formatter: (row) => (
-      <div class="flex items-center">
-        <ArtButtonTable type="view" onClick={() => openDetail(context, row)} />
-        <ArtButtonMore
-          list={getMoreActions(context, row)}
-          onClick={(item: ButtonMoreItem) => handleMoreAction(context, row, item)}
-        />
-      </div>
-    )
-  }
-]
+): ColumnOption<DeliveryRecord>[] => {
+  const columns: ColumnOption<DeliveryRecord>[] = [
+    { type: 'selection', width: 50, fixed: 'left', reserveSelection: true },
+    { prop: 'cargoNo', label: '货号', fixed: 'left', width: 130, showOverflowTooltip: true },
+    {
+      prop: 'orderNo',
+      label: '运单号',
+      fixed: 'left',
+      width: 140,
+      formatter: (row) => (
+        <ElLink type="primary" underline="never" onClick={() => openDetail(context, row)}>
+          {row.orderNo}
+        </ElLink>
+      )
+    },
+    { prop: 'receivingContactName', label: '收货人', width: 110, showOverflowTooltip: true },
+    { prop: 'receivingContactPhone', label: '收货人电话', width: 140, showOverflowTooltip: true },
+    {
+      prop: 'receivingAddressDetail',
+      label: '收货人地址',
+      minWidth: 220,
+      showOverflowTooltip: true
+    },
+    { prop: 'shippingContactName', label: '发货人', width: 110, showOverflowTooltip: true },
+    { prop: 'shippingContactPhone', label: '发货人电话', width: 140, showOverflowTooltip: true },
+    {
+      prop: 'shippingAddressDetail',
+      label: '发货人地址',
+      minWidth: 220,
+      showOverflowTooltip: true
+    },
+    {
+      prop: 'cargoItems',
+      label: '货物类型',
+      width: 120,
+      formatter: (row) => formatCargoType(row)
+    },
+    {
+      prop: 'cargoQuantityTotal',
+      label: '总数量',
+      width: 100,
+      formatter: (row) => formatNumber(row.cargoQuantityTotal, 0)
+    },
+    {
+      prop: 'cargoVolumeTotal',
+      label: '总体积(方)',
+      width: 120,
+      formatter: (row) => formatNumber(row.cargoVolumeTotal)
+    },
+    {
+      prop: 'cargoWeightTotal',
+      label: '总重量(KG)',
+      width: 120,
+      formatter: (row) => formatNumber(row.cargoWeightTotal)
+    },
+    {
+      prop: 'paymentMethod',
+      label: '付款方式',
+      width: 110,
+      dict: { code: 'tmsOrderPaymentMethod', display: 'tag' }
+    },
+    {
+      prop: 'declaredValue',
+      label: '声明价值',
+      width: 110,
+      formatter: (row) => formatMoney(row.declaredValue)
+    },
+    {
+      prop: 'insuranceFee',
+      label: '保费',
+      width: 100,
+      formatter: (row) => formatMoney(row.insuranceFee)
+    },
+    {
+      prop: 'deliveryFee',
+      label: '配送费',
+      width: 100,
+      formatter: (row) => formatMoney(row.deliveryFee)
+    },
+    {
+      prop: 'unloadingFee',
+      label: '卸货费',
+      width: 100,
+      formatter: (row) => formatMoney(row.unloadingFee)
+    },
+    {
+      prop: 'codAmount',
+      label: '代收货款',
+      width: 110,
+      formatter: (row) => formatMoney(row.codAmount)
+    },
+    {
+      prop: 'orderStatus',
+      label: '状态',
+      width: 100,
+      fixed: 'right',
+      dict: { code: 'tmsOrderStatus', display: 'badge' }
+    },
+    {
+      prop: 'operation',
+      label: '操作',
+      width: 100,
+      fixed: 'right',
+      formatter: (row) => (
+        <div class="flex items-center">
+          <ArtButtonTable
+            type="view"
+            permission="TmsDeliveryManagement:View"
+            onClick={() => openDetail(context, row)}
+          />
+          <ArtButtonMore
+            list={getMoreActions(context, row)}
+            onClick={(item: ButtonMoreItem) => handleMoreAction(context, row, item)}
+          />
+        </div>
+      )
+    }
+  ]
+  return columns.filter((column) => isDeliveryColumnVisible(context, String(column.prop ?? '')))
+}
 
 function getModeStatuses(mode: DeliveryMode, deliveryStatus?: string): string[] {
   if (mode === 'transit') return transitOrderStatuses
@@ -290,7 +302,10 @@ function openReceiptArchiveDialog(context: DeliveryListContext, row: DeliveryRec
 function getMoreActions(context: DeliveryListContext, row: DeliveryRecord): ButtonMoreItem[] {
   if (context.mode !== 'delivery') return []
 
-  const canArchiveReceipt = ['signed', 'completed'].includes(String(row.orderStatus))
+  const canArchiveReceipt =
+    ['signed', 'completed'].includes(String(row.orderStatus)) &&
+    canEditField(row.fieldAccess, 'settlementAmounts') &&
+    canEditField(row.fieldAccess, 'proofAttachments')
   if (!canArchiveReceipt) return []
 
   return [
@@ -298,7 +313,8 @@ function getMoreActions(context: DeliveryListContext, row: DeliveryRecord): Butt
       key: 'archive-receipt',
       label: row.receiptImageUrls?.length ? '复核回单' : '归档回单',
       icon: 'ri:archive-2-line',
-      color: 'var(--el-color-primary)'
+      color: 'var(--el-color-primary)',
+      auth: 'TmsDeliveryManagement:ArchiveReceipt'
     }
   ]
 }
@@ -317,8 +333,23 @@ function formatCargoType(row: DeliveryRecord): string {
 }
 
 function formatMoney(value?: number | string | null): string {
-  const numericValue = Number(value ?? 0)
-  return Number.isFinite(numericValue) ? String(numericValue) : '0'
+  return formatSensitiveNumber(value)
+}
+
+function isDeliveryColumnVisible(context: DeliveryListContext, key: string): boolean {
+  const fieldByColumn: Partial<Record<string, Api.Tms.Order.OrderFieldKey>> = {
+    receivingContactPhone: 'receiverContact',
+    receivingAddressDetail: 'receiverAddress',
+    shippingContactPhone: 'shipperContact',
+    shippingAddressDetail: 'shipperAddress',
+    declaredValue: 'settlementAmounts',
+    codAmount: 'settlementAmounts',
+    insuranceFee: 'freightAmounts',
+    deliveryFee: 'freightAmounts',
+    unloadingFee: 'freightAmounts'
+  }
+  const field = fieldByColumn[key]
+  return !field || canViewField(context.fieldAccess.value, field)
 }
 
 function formatNumber(value?: number | string | null, precision = 2): string {

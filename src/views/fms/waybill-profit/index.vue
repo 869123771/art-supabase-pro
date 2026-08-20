@@ -227,6 +227,7 @@
 
   const headerActions = computed<ArtTableQueryHeaderAction[]>(() => [
     {
+      auth: 'FinanceWaybillProfit:AiProfitAnalysis',
       key: 'ai-profit-analysis',
       label: 'AI 利润诊断',
       icon: 'ri:sparkling-2-line',
@@ -234,6 +235,7 @@
       onClick: () => void profitAnalysisDrawerRef.value?.handleOpen()
     },
     {
+      permission: 'FinanceWaybillProfit:Export',
       type: 'export',
       label: '导出利润明细',
       exportFilename: 'TMS运单利润明细',

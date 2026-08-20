@@ -63,7 +63,12 @@
       width: 100%;
       height: 3px;
       content: '';
-      background: linear-gradient(90deg, #06b6d4, var(--el-color-success), transparent 66%);
+      background: linear-gradient(
+        90deg,
+        var(--el-color-success),
+        var(--theme-color),
+        transparent 66%
+      );
     }
 
     header {
@@ -102,7 +107,7 @@
       margin: 0 0 5px;
       font-size: 11px;
       font-weight: 700;
-      color: #079db6;
+      color: var(--el-color-success-dark-2);
       letter-spacing: 0.8px;
     }
 
@@ -134,7 +139,7 @@
       transition: background 0.16s ease;
 
       &:hover {
-        background: color-mix(in srgb, #06b6d4 5%, var(--el-fill-color-light));
+        background: color-mix(in srgb, var(--el-color-success) 5%, var(--el-fill-color-light));
       }
 
       &:focus-visible {
@@ -149,8 +154,8 @@
         justify-content: center;
         width: 36px;
         height: 36px;
-        color: #079db6;
-        background: color-mix(in srgb, #06b6d4 12%, var(--el-bg-color));
+        color: var(--el-color-success-dark-2);
+        background: color-mix(in srgb, var(--el-color-success) 12%, var(--el-bg-color));
         border-radius: var(--el-border-radius-small);
       }
 
@@ -206,7 +211,7 @@
           position: relative;
           flex: 0 0 18px;
           height: 1px;
-          background: linear-gradient(90deg, #06b6d4, var(--el-color-primary));
+          background: linear-gradient(90deg, var(--el-color-success), var(--theme-color));
 
           &::after {
             position: absolute;

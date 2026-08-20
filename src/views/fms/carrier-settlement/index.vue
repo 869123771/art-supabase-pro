@@ -63,6 +63,7 @@
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatWithDayjs } from '@/utils/time'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import { useAuth } from '@/hooks/core/useAuth'
   import CarrierStatementDialog from './modules/carrier-statement-dialog.vue'
   import CarrierStatementDetailDrawer from './modules/carrier-statement-detail-drawer.vue'
   import BusinessWorkspaceHeader from '@/components/business/business-workspace-header/index.vue'
@@ -78,6 +79,7 @@
 
   const { getDictMap } = storeToRefs(useUserStore())
   const { promptReason, confirmAction } = useArtFeedback()
+  const { hasAuth } = useAuth()
   const route = useRoute()
   const deleteContext = useMasterDataDeleteProcessingContext()
   const tableQueryRef = ref<ArtTableQueryExpose>()
@@ -137,31 +139,39 @@
     if (row.status === 'draft')
       return (
         <>
-          <ElButton link type="primary" onClick={() => void changeStatus(row, 'pending_review')}>
-            提交审核
-          </ElButton>
-          <ElButton link type="danger" onClick={() => void handleDelete(row)}>
-            删除
-          </ElButton>
+          {hasAuth('FinanceCarrierSettlement:Submit') ? (
+            <ElButton link type="primary" onClick={() => void changeStatus(row, 'pending_review')}>
+              提交审核
+            </ElButton>
+          ) : null}
+          {hasAuth('FinanceCarrierSettlement:Delete') ? (
+            <ElButton link type="danger" onClick={() => void handleDelete(row)}>
+              删除
+            </ElButton>
+          ) : null}
         </>
       )
     if (row.status === 'pending_review')
       return (
         <>
-          <ElButton link type="success" onClick={() => void changeStatus(row, 'confirmed')}>
-            审核通过
-          </ElButton>
-          <ElButton link type="danger" onClick={() => void handleReject(row)}>
-            驳回
-          </ElButton>
+          {hasAuth('FinanceCarrierSettlement:Approve') ? (
+            <ElButton link type="success" onClick={() => void changeStatus(row, 'confirmed')}>
+              审核通过
+            </ElButton>
+          ) : null}
+          {hasAuth('FinanceCarrierSettlement:Reject') ? (
+            <ElButton link type="danger" onClick={() => void handleReject(row)}>
+              驳回
+            </ElButton>
+          ) : null}
         </>
       )
     if (row.status === 'confirmed')
-      return (
+      return hasAuth('FinanceCarrierSettlement:Void') ? (
         <ElButton link type="danger" onClick={() => void handleVoid(row)}>
           作废
         </ElButton>
-      )
+      ) : null
     return null
   }
 
@@ -230,9 +240,11 @@
       fixed: 'right',
       formatter: (row) => (
         <div class="flex items-center">
-          <ElButton link type="primary" onClick={() => void drawerRef.value?.handleOpen(row)}>
-            查看
-          </ElButton>
+          {hasAuth('FinanceCarrierSettlement:View') ? (
+            <ElButton link type="primary" onClick={() => void drawerRef.value?.handleOpen(row)}>
+              查看
+            </ElButton>
+          ) : null}
           {renderStatusActions(row)}
         </div>
       )
@@ -253,8 +265,14 @@
   ]
 
   const headerActions = computed<ArtTableQueryHeaderAction[]>(() => [
-    { type: 'add', label: '生成承运商对账单', onClick: () => void dialogRef.value?.handleOpen() },
     {
+      permission: 'FinanceCarrierSettlement:Add',
+      type: 'add',
+      label: '生成承运商对账单',
+      onClick: () => void dialogRef.value?.handleOpen()
+    },
+    {
+      permission: 'FinanceCarrierSettlement:Export',
       type: 'export',
       exportFilename: 'TMS承运商对账单',
       exportSheetName: '承运商对账单',

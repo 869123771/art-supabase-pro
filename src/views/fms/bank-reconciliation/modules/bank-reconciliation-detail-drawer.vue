@@ -16,16 +16,26 @@
             </ElTag>
             <span>已匹配 {{ detail.matchedCount }}/{{ detail.lineCount }} 行</span>
           </div>
-          <div v-if="isPlatformSuper && ['draft', 'reconciling'].includes(detail.status)">
-            <ElButton @click="handleAutoMatch">
+          <div v-if="['draft', 'reconciling'].includes(detail.status)">
+            <ElButton v-auth="'FinanceBankReconciliation:AutoMatch'" @click="handleAutoMatch">
               <ArtSvgIcon icon="ri:magic-line" />
               自动匹配
             </ElButton>
-            <ElButton type="success" @click="handleComplete">
+            <ElButton
+              v-auth="'FinanceBankReconciliation:Complete'"
+              type="success"
+              @click="handleComplete"
+            >
               <ArtSvgIcon icon="ri:checkbox-circle-line" />
               完成对账
             </ElButton>
-            <ElButton type="danger" plain @click="handleVoid">作废批次</ElButton>
+            <ElButton
+              v-auth="'FinanceBankReconciliation:Void'"
+              type="danger"
+              plain
+              @click="handleVoid"
+              >作废批次</ElButton
+            >
           </div>
         </div>
 
@@ -69,7 +79,6 @@
 </template>
 
 <script setup lang="tsx">
-  import { storeToRefs } from 'pinia'
   import type { ColumnOption } from '@/types'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import ArtDescriptions from '@/components/core/base/art-descriptions/index.vue'
@@ -88,7 +97,7 @@
     unmatchBankStatementLine
   } from '@/api/fms'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
-  import { useUserStore } from '@/store/modules/user'
+  import { useAuth } from '@/hooks/core/useAuth'
   import { formatCurrencyValue } from '@/utils/ui'
   import { formatWithDayjs } from '@/utils/time'
   import BankLineMatchDialog from './bank-line-match-dialog.vue'
@@ -105,7 +114,7 @@
 
   const emit = defineEmits<{ changed: [] }>()
   const { confirmAction, promptReason } = useArtFeedback()
-  const { isPlatformSuper } = storeToRefs(useUserStore())
+  const { hasAuth } = useAuth()
   const drawerRef = ref<ArtDrawerExpose<Batch>>()
   const matchDialogRef = ref<MatchDialogExpose>()
   const detail = shallowRef<Batch>()
@@ -169,21 +178,23 @@
     {
       prop: 'operation',
       label: '操作',
-      width: isPlatformSuper.value ? 170 : 76,
+      width: 170,
       fixed: 'right',
       formatter: (row) => (
         <div class="flex items-center">
           <ArtButtonTable type="view" label="查看匹配" onClick={() => void loadMatches(row)} />
-          {isPlatformSuper.value && ['unmatched', 'partial_matched'].includes(row.status) ? (
+          {['unmatched', 'partial_matched'].includes(row.status) ? (
             <>
               <ArtButtonTable
                 type="edit"
+                permission="FinanceBankReconciliation:Match"
                 label="手工匹配"
                 onClick={() => void matchDialogRef.value?.handleOpen(row)}
               />
               {row.status === 'unmatched' ? (
                 <ArtButtonTable
                   type="delete"
+                  permission="FinanceBankReconciliation:Ignore"
                   label="忽略流水"
                   onClick={() => void handleIgnore(row)}
                 />
@@ -223,7 +234,7 @@
       formatter: (row) => formatMoney(row.matchedAmount)
     },
     { prop: 'matchedBy', label: '操作人', minWidth: 140, showOverflowTooltip: true },
-    ...(isPlatformSuper.value && detail.value?.status !== 'reconciled'
+    ...(hasAuth('FinanceBankReconciliation:Unmatch') && detail.value?.status !== 'reconciled'
       ? [
           {
             prop: 'operation',
@@ -233,6 +244,7 @@
             formatter: (row: Match) => (
               <ArtButtonTable
                 type="delete"
+                permission="FinanceBankReconciliation:Unmatch"
                 label="撤销匹配"
                 onClick={() => void handleUnmatch(row)}
               />

@@ -63,6 +63,7 @@
   import type { ColumnOption } from '@/types'
   import { fetchDeliveryStatusCounts } from '@/api/tms'
   import { useUserStore } from '@/store/modules/user'
+  import { mergeFieldAccessMaps } from '@/utils/field-permission'
   import ReceiptArchiveDialog from './modules/sign-dialog.vue'
   import ReceiptExceptionWorkOrderDrawer from './modules/receipt-exception-work-order-drawer.vue'
   import BusinessWorkspaceHeader, {
@@ -108,6 +109,7 @@
   const receiptArchiveDialogRef = ref<DeliveryReceiptArchiveDialogExpose>()
   const exceptionDrawerRef = ref<{ handleOpen: (recordId?: string) => Promise<void> }>()
   const statusCountRequestId = ref(0)
+  const fieldAccess = ref<Api.Tms.Order.OrderFieldAccessMap>({})
   const paymentMethodOptions = computed(() => getDictMap.value.tmsOrderPaymentMethod ?? [])
 
   const table: UnwrapNestedRefs<TableGroup> = reactive<TableGroup>({
@@ -130,6 +132,8 @@
     searchItems: createDeliverySearchItems(paymentMethodOptions, true),
     headerActions: computed<ArtTableQueryHeaderAction[]>(() => [
       {
+        permission: 'TmsDeliveryManagement:ManageException',
+        key: 'manage-exception',
         label: '签收异常工单',
         icon: 'ri-file-warning-line',
         buttonProps: { type: 'primary', plain: true },
@@ -137,6 +141,7 @@
       },
       ...createDeliveryHeaderActions({
         mode: 'delivery',
+        fieldAccess,
         router,
         tableQueryRef,
         receiptArchiveDialogRef
@@ -145,6 +150,7 @@
     columnsFactory: () =>
       createDeliveryColumns({
         mode: 'delivery',
+        fieldAccess,
         router,
         tableQueryRef,
         receiptArchiveDialogRef
@@ -174,9 +180,14 @@
     }
   ])
 
-  function fetchTableData(params: TableParams) {
+  async function fetchTableData(params: TableParams) {
     void loadStatusCounts(params)
-    return fetchDeliveryTableData(params, 'delivery')
+    const result = await fetchDeliveryTableData(params, 'delivery')
+    fieldAccess.value = mergeFieldAccessMaps(
+      result.fieldAccess,
+      ...(result.data ?? []).map((row) => row.fieldAccess)
+    )
+    return result
   }
 
   async function loadStatusCounts(params: TableParams): Promise<void> {

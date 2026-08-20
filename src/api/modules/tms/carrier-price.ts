@@ -12,14 +12,12 @@ const CARRIER_PRICE_SELECT = `
     id,
     carrier_code,
     company_name,
-    contact_name,
-    contact_phone
+    contact_name
   ),
   driver:tms_driver!tms_carrier_price_driver_id_fkey(
     id,
     carrier_id,
-    driver_name,
-    phone
+    driver_name
   ),
   vehicle:vehicle_archive!tms_carrier_price_vehicle_id_fkey(
     id,

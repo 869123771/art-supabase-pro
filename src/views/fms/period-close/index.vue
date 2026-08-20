@@ -17,13 +17,6 @@
         <BusinessTableWorkspaceActions :table="tableRef" />
       </template>
     </BusinessWorkspaceHeader>
-    <ElAlert
-      v-if="!isPlatformSuper"
-      type="info"
-      :closable="false"
-      show-icon
-      title="当前账号可查看本租户关账结果；执行检查、结账、取消和反结账仅平台超级管理员可操作。"
-    />
     <ArtTableQuery
       ref="tableRef"
       v-model="table.search"
@@ -37,9 +30,7 @@
         rowKey: 'id',
         tableLayout: 'fixed',
         emptyText: '暂无关账批次',
-        emptyDescription: isPlatformSuper
-          ? '选择开放期间执行月末关账检查。'
-          : '当前租户暂无关账记录。'
+        emptyDescription: '选择开放期间执行月末关账检查。'
       }"
       focusable
     />
@@ -94,7 +85,7 @@
   const { confirmAction, promptReason } = useArtFeedback()
   const router = useRouter()
   const { runWithAccountSet } = useFinanceAccountSetPrerequisite()
-  const { getDictMap, isPlatformSuper } = storeToRefs(useUserStore())
+  const { getDictMap } = storeToRefs(useUserStore())
   const tableRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<{ handleOpen: () => Promise<void> }>()
   const drawerRef = ref<{ handleOpen: (row: Row) => Promise<void> }>()
@@ -162,28 +153,25 @@
       }
     }
   ])
-  const headerActions = computed<ArtTableQueryHeaderAction[]>(() =>
-    isPlatformSuper.value
-      ? [
+  const headerActions = computed<ArtTableQueryHeaderAction[]>(() => [
+    {
+      permission: 'FinancePeriodClose:Add',
+      type: 'add',
+      label: '执行关账检查',
+      icon: 'ri:shield-check-line',
+      onClick: () =>
+        void runWithAccountSet(
           {
-            type: 'add',
-            label: '执行关账检查',
-            icon: 'ri:shield-check-line',
-            onClick: () =>
-              void runWithAccountSet(
-                {
-                  actionLabel: '执行关账检查',
-                  activeRequired: true,
-                  accountSetId: table.search.accountSetId,
-                  foundationRequired: true,
-                  available: accountSetOptions.value.length > 0
-                },
-                () => dialogRef.value?.handleOpen()
-              )
-          }
-        ]
-      : []
-  )
+            actionLabel: '执行关账检查',
+            activeRequired: true,
+            accountSetId: table.search.accountSetId,
+            foundationRequired: true,
+            available: accountSetOptions.value.length > 0
+          },
+          () => dialogRef.value?.handleOpen()
+        )
+    }
+  ])
   function columnsFactory(): ColumnOption<Row>[] {
     return [
       { prop: 'runNo', label: '批次号', minWidth: 160, fixed: 'left' },
@@ -222,12 +210,16 @@
       {
         prop: 'operation',
         label: '操作',
-        width: isPlatformSuper.value ? 170 : 76,
+        width: 170,
         fixed: 'right',
         formatter: (row) => (
           <div class="flex items-center">
-            <ArtButtonTable type="view" onClick={() => void drawerRef.value?.handleOpen(row)} />
-            {isPlatformSuper.value && actions(row).length ? (
+            <ArtButtonTable
+              type="view"
+              permission="FinancePeriodClose:View"
+              onClick={() => void drawerRef.value?.handleOpen(row)}
+            />
+            {actions(row).length ? (
               <ArtButtonMore
                 list={actions(row)}
                 onClick={(item: ButtonMoreItem) => void handleAction(item, row)}
@@ -242,18 +234,21 @@
     if (row.status === 'checking')
       return [
         {
+          auth: 'FinancePeriodClose:Carryforward',
           key: 'carryforward',
           label: '生成损益结转凭证',
           icon: 'ri:exchange-funds-line',
           color: 'var(--el-color-success)'
         },
         {
+          auth: 'FinancePeriodClose:Recheck',
           key: 'recheck',
           label: '重新检查',
           icon: 'ri:refresh-line',
           color: 'var(--el-color-primary)'
         },
         {
+          auth: 'FinancePeriodClose:Cancel',
           key: 'cancel',
           label: '取消关账',
           icon: 'ri:close-circle-line',
@@ -263,24 +258,28 @@
     if (row.status === 'ready')
       return [
         {
+          auth: 'FinancePeriodClose:Carryforward',
           key: 'carryforward',
           label: '生成损益结转凭证',
           icon: 'ri:exchange-funds-line',
           color: 'var(--el-color-success)'
         },
         {
+          auth: 'FinancePeriodClose:Recheck',
           key: 'recheck',
           label: '重新检查',
           icon: 'ri:refresh-line',
           color: 'var(--el-color-primary)'
         },
         {
+          auth: 'FinancePeriodClose:Close',
           key: 'close',
           label: '确认结账',
           icon: 'ri:lock-2-line',
           color: 'var(--el-color-success)'
         },
         {
+          auth: 'FinancePeriodClose:Cancel',
           key: 'cancel',
           label: '取消关账',
           icon: 'ri:close-circle-line',
@@ -290,6 +289,7 @@
     if (row.status === 'closed')
       return [
         {
+          auth: 'FinancePeriodClose:Reopen',
           key: 'reopen',
           label: '反结账',
           icon: 'ri:lock-unlock-line',

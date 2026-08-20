@@ -68,6 +68,7 @@
   import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
   import MasterDeleteProcessingNotice from '@/components/business/master-delete-processing-notice/index.vue'
   import { useMasterDataDeleteProcessingContext } from '@/hooks/core/useMasterDataDeleteProcessing'
+  import { useAuth } from '@/hooks/core/useAuth'
 
   defineOptions({ name: 'TmsCarrierPrice' })
 
@@ -94,6 +95,7 @@
   const router = useRouter()
   const route = useRoute()
   const deleteContext = useMasterDataDeleteProcessingContext()
+  const { hasAuth } = useAuth()
   const { getDictMap } = storeToRefs(useUserStore())
   const tableQueryRef = ref<ArtTableQueryExpose>()
 
@@ -240,8 +242,14 @@
 
   function createHeaderActions(): ArtTableQueryHeaderAction[] {
     return [
-      { type: 'add', label: '新增', onClick: () => openEditPage() },
       {
+        permission: 'TmsCarrierPrice:Add',
+        type: 'add',
+        label: '新增',
+        onClick: () => openEditPage()
+      },
+      {
+        permission: 'TmsCarrierPrice:Delete',
         type: 'delete',
         label: '批量操作',
         content: ({ selectedCount }: { selectedCount: number }) =>
@@ -252,6 +260,7 @@
         }
       },
       {
+        permission: 'TmsCarrierPrice:Export',
         type: 'export',
         exportFilename: 'TMS承运商价格维护',
         exportSheetName: '承运商价格维护',
@@ -274,17 +283,20 @@
         label: '报价单号',
         width: 180,
         fixed: 'left',
-        formatter: (row) => (
-          <ElButton
-            class="carrier-price__detail-link"
-            link
-            type="primary"
-            disabled={!row.id}
-            onClick={() => openDetailPage(row)}
-          >
-            {row.quoteNo || '-'}
-          </ElButton>
-        )
+        formatter: (row) =>
+          hasAuth('TmsCarrierPrice:View') ? (
+            <ElButton
+              class="carrier-price__detail-link"
+              link
+              type="primary"
+              disabled={!row.id}
+              onClick={() => openDetailPage(row)}
+            >
+              {row.quoteNo || '-'}
+            </ElButton>
+          ) : (
+            <span>{row.quoteNo || '-'}</span>
+          )
       },
       { prop: 'originRegion', label: '始发地', width: 170 },
       { prop: 'destinationRegion', label: '目的地', width: 170 },
@@ -342,8 +354,16 @@
         fixed: 'right',
         formatter: (row) => (
           <div>
-            <ArtButtonTable type="edit" onClick={() => openEditPage(row)} />
-            <ArtButtonTable type="delete" onClick={() => handleDelete(row)} />
+            <ArtButtonTable
+              type="edit"
+              permission="TmsCarrierPrice:Edit"
+              onClick={() => openEditPage(row)}
+            />
+            <ArtButtonTable
+              type="delete"
+              permission="TmsCarrierPrice:Delete"
+              onClick={() => handleDelete(row)}
+            />
           </div>
         )
       }

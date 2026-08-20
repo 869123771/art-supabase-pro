@@ -17,14 +17,6 @@
       </template>
     </BusinessWorkspaceHeader>
 
-    <ElAlert
-      v-if="!isPlatformSuper"
-      type="info"
-      :closable="false"
-      show-icon
-      title="当前账号可查看本租户凭证模板；新增、编辑和删除模板仅平台超级管理员可执行。"
-    />
-
     <ArtTableQuery
       ref="tableQueryRef"
       v-model="table.searchQuery"
@@ -61,6 +53,7 @@
   import { useFinanceAccountSetPrerequisite } from '../modules/use-finance-account-set-prerequisite'
   import { useUserStore } from '@/store/modules/user'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import { useAuth } from '@/hooks/core/useAuth'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import {
     deleteVoucherTemplate,
@@ -96,7 +89,8 @@
     accountSetOptions: Api.Fms.AccountSetOption[]
   }
 
-  const { getDictMap, isPlatformSuper } = storeToRefs(useUserStore())
+  const { getDictMap } = storeToRefs(useUserStore())
+  const { hasAuth } = useAuth()
   const { confirmDelete } = useArtFeedback()
   const { ensureAccountSet } = useFinanceAccountSetPrerequisite()
   const tableQueryRef = ref<ArtTableQueryExpose>()
@@ -156,17 +150,14 @@
         props: { clearable: true, placeholder: '模板编码、名称或摘要' }
       }
     ]),
-    headerActions: computed<ArtTableQueryHeaderAction[]>(() =>
-      isPlatformSuper.value
-        ? [
-            {
-              type: 'add',
-              label: '新增模板',
-              onClick: () => void openDialog()
-            }
-          ]
-        : []
-    )
+    headerActions: computed<ArtTableQueryHeaderAction[]>(() => [
+      {
+        permission: 'FinanceVoucherTemplate:Add',
+        type: 'add',
+        label: '新增模板',
+        onClick: () => void openDialog()
+      }
+    ])
   })
 
   const columnsFactory = (): ColumnOption<Template>[] => [
@@ -200,19 +191,20 @@
       label: '操作',
       width: 140,
       fixed: 'right',
-      formatter: (row) =>
-        isPlatformSuper.value ? (
-          <div class="voucher-template-page__actions">
+      formatter: (row) => (
+        <div class="voucher-template-page__actions">
+          {hasAuth('FinanceVoucherTemplate:Edit') ? (
             <ElButton link type="primary" onClick={() => void openDialog(row)}>
               编辑
             </ElButton>
+          ) : null}
+          {hasAuth('FinanceVoucherTemplate:Delete') ? (
             <ElButton link type="danger" onClick={() => void handleDelete(row)}>
               删除
             </ElButton>
-          </div>
-        ) : (
-          <span>只读</span>
-        )
+          ) : null}
+        </div>
+      )
     }
   ]
 

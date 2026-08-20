@@ -17,13 +17,6 @@
         <BusinessTableWorkspaceActions :table="tableRef" />
       </template>
     </BusinessWorkspaceHeader>
-    <ElAlert
-      v-if="!isPlatformSuper"
-      type="info"
-      :closable="false"
-      show-icon
-      title="当前账号可查看本租户薪资核算结果；批次、明细、审批和支付仅平台超级管理员可执行。"
-    />
     <ArtTableQuery
       ref="tableRef"
       v-model="table.search"
@@ -37,9 +30,7 @@
         rowKey: 'id',
         tableLayout: 'fixed',
         emptyText: '暂无薪资批次',
-        emptyDescription: isPlatformSuper
-          ? '选择开放会计期间创建薪资批次。'
-          : '当前租户暂无可查看的薪资核算记录。'
+        emptyDescription: '选择开放会计期间创建薪资批次。'
       }"
       focusable
     />
@@ -97,7 +88,7 @@
   })
   const { confirmAction, promptReason } = useArtFeedback()
   const { runWithAccountSet } = useFinanceAccountSetPrerequisite()
-  const { getDictMap, isPlatformSuper } = storeToRefs(useUserStore())
+  const { getDictMap } = storeToRefs(useUserStore())
   const tableRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<{ handleOpen: (row?: Run) => Promise<void> }>()
   const drawerRef = ref<{ handleOpen: (row: Run) => Promise<void> }>()
@@ -169,27 +160,24 @@
       }
     }
   ])
-  const headerActions = computed<ArtTableQueryHeaderAction[]>(() =>
-    isPlatformSuper.value
-      ? [
+  const headerActions = computed<ArtTableQueryHeaderAction[]>(() => [
+    {
+      permission: 'FinancePayroll:Add',
+      type: 'add',
+      label: '新建薪资批次',
+      onClick: () =>
+        void runWithAccountSet(
           {
-            type: 'add',
-            label: '新建薪资批次',
-            onClick: () =>
-              void runWithAccountSet(
-                {
-                  actionLabel: '新建薪资批次',
-                  activeRequired: true,
-                  accountSetId: table.search.accountSetId,
-                  foundationRequired: true,
-                  available: accountSetOptions.value.length > 0
-                },
-                () => dialogRef.value?.handleOpen()
-              )
-          }
-        ]
-      : []
-  )
+            actionLabel: '新建薪资批次',
+            activeRequired: true,
+            accountSetId: table.search.accountSetId,
+            foundationRequired: true,
+            available: accountSetOptions.value.length > 0
+          },
+          () => dialogRef.value?.handleOpen()
+        )
+    }
+  ])
   function columnsFactory(): ColumnOption<Run>[] {
     return [
       { prop: 'runNo', label: '批次号', minWidth: 160, fixed: 'left' },
@@ -237,15 +225,23 @@
       {
         prop: 'operation',
         label: '操作',
-        width: isPlatformSuper.value ? 160 : 76,
+        width: 160,
         fixed: 'right',
         formatter: (row) => (
           <div class="flex items-center">
-            <ArtButtonTable type="view" onClick={() => void drawerRef.value?.handleOpen(row)} />
-            {isPlatformSuper.value && ['draft', 'calculated'].includes(row.status) ? (
-              <ArtButtonTable type="edit" onClick={() => void dialogRef.value?.handleOpen(row)} />
+            <ArtButtonTable
+              type="view"
+              permission="FinancePayroll:View"
+              onClick={() => void drawerRef.value?.handleOpen(row)}
+            />
+            {['draft', 'calculated'].includes(row.status) ? (
+              <ArtButtonTable
+                type="edit"
+                permission="FinancePayroll:Edit"
+                onClick={() => void dialogRef.value?.handleOpen(row)}
+              />
             ) : null}
-            {isPlatformSuper.value && actionItems(row).length ? (
+            {actionItems(row).length ? (
               <ArtButtonMore
                 list={actionItems(row)}
                 onClick={(item: ButtonMoreItem) => void handleAction(item, row)}
@@ -260,12 +256,14 @@
     if (row.status === 'calculated')
       return [
         {
+          auth: 'FinancePayroll:Approve',
           key: 'approve',
           label: '审批并计提',
           icon: 'ri:check-double-line',
           color: 'var(--el-color-success)'
         },
         {
+          auth: 'FinancePayroll:Cancel',
           key: 'cancel',
           label: '取消批次',
           icon: 'ri:close-circle-line',
@@ -275,6 +273,7 @@
     if (row.status === 'approved')
       return [
         {
+          auth: 'FinancePayroll:Pay',
           key: 'pay',
           label: '确认发放',
           icon: 'ri:secure-payment-line',
@@ -284,6 +283,7 @@
     if (row.status === 'draft')
       return [
         {
+          auth: 'FinancePayroll:Cancel',
           key: 'cancel',
           label: '取消批次',
           icon: 'ri:close-circle-line',

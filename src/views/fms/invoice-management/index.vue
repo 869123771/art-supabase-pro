@@ -69,6 +69,7 @@
   import { formatWithDayjs } from '@/utils/time'
   import { financePaths } from '@/router/business-paths'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import { useAuth } from '@/hooks/core/useAuth'
   import BusinessWorkspaceHeader from '@/components/business/business-workspace-header/index.vue'
   import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
   import MasterDeleteProcessingNotice from '@/components/business/master-delete-processing-notice/index.vue'
@@ -110,6 +111,7 @@
 
   const { getDictMap } = storeToRefs(useUserStore())
   const { promptReason, confirmAction } = useArtFeedback()
+  const { hasAuth } = useAuth()
   const route = useRoute()
   const customerDeleteContext = useMasterDataDeleteProcessingContext()
   const invoiceManagementPath = financePaths.invoiceManagement
@@ -182,11 +184,13 @@
     ]),
     headerActions: computed(() => [
       {
+        permission: 'FinanceInvoiceManagement:Add',
         type: 'add',
         label: '登记发票',
         onClick: () => void dialogRef.value?.handleOpen()
       },
       {
+        permission: 'FinanceInvoiceManagement:Export',
         type: 'export',
         exportFilename: 'TMS发票台账',
         exportSheetName: '发票台账',
@@ -213,34 +217,44 @@
     if (row.status === 'draft')
       return (
         <>
-          <ElButton link type="primary" onClick={() => void dialogRef.value?.handleOpen(row)}>
-            编辑
-          </ElButton>
-          <ElButton link type="primary" onClick={() => void handleStatusAction(row, 'submit')}>
-            提交复核
-          </ElButton>
-          <ElButton link type="danger" onClick={() => void handleDelete(row)}>
-            删除
-          </ElButton>
+          {hasAuth('FinanceInvoiceManagement:Edit') ? (
+            <ElButton link type="primary" onClick={() => void dialogRef.value?.handleOpen(row)}>
+              编辑
+            </ElButton>
+          ) : null}
+          {hasAuth('FinanceInvoiceManagement:Submit') ? (
+            <ElButton link type="primary" onClick={() => void handleStatusAction(row, 'submit')}>
+              提交复核
+            </ElButton>
+          ) : null}
+          {hasAuth('FinanceInvoiceManagement:Delete') ? (
+            <ElButton link type="danger" onClick={() => void handleDelete(row)}>
+              删除
+            </ElButton>
+          ) : null}
         </>
       )
     if (row.status === 'pending_review')
       return (
         <>
-          <ElButton link type="success" onClick={() => void handleStatusAction(row, 'approve')}>
-            审核通过
-          </ElButton>
-          <ElButton link type="danger" onClick={() => void handleRemarkAction(row, 'reject')}>
-            驳回
-          </ElButton>
+          {hasAuth('FinanceInvoiceManagement:Approve') ? (
+            <ElButton link type="success" onClick={() => void handleStatusAction(row, 'approve')}>
+              审核通过
+            </ElButton>
+          ) : null}
+          {hasAuth('FinanceInvoiceManagement:Reject') ? (
+            <ElButton link type="danger" onClick={() => void handleRemarkAction(row, 'reject')}>
+              驳回
+            </ElButton>
+          ) : null}
         </>
       )
     if (row.status === 'issued' || row.status === 'certified')
-      return (
+      return hasAuth('FinanceInvoiceManagement:Void') ? (
         <ElButton link type="danger" onClick={() => void handleRemarkAction(row, 'void')}>
           作废
         </ElButton>
-      )
+      ) : null
     return null
   }
 
@@ -308,10 +322,12 @@
       fixed: 'right',
       formatter: (row) => (
         <div class="flex items-center">
-          <ElButton link type="primary" onClick={() => void drawerRef.value?.handleOpen(row)}>
-            查看
-          </ElButton>
-          {row.status !== 'voided' ? (
+          {hasAuth('FinanceInvoiceManagement:View') ? (
+            <ElButton link type="primary" onClick={() => void drawerRef.value?.handleOpen(row)}>
+              查看
+            </ElButton>
+          ) : null}
+          {row.status !== 'voided' && hasAuth('FinanceInvoiceManagement:AiAudit') ? (
             <ElButton
               link
               type="primary"

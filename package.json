@@ -11,6 +11,7 @@
     "build": "vite build",
     "build:analyze": "tsx scripts/analyze-build.ts",
     "bundle:check": "tsx scripts/check-bundle-budget.ts",
+    "permissions:audit": "tsx scripts/audit-business-permissions.ts",
     "snapshot:ai": "tsx scripts/generate-ai-project-snapshot.ts",
     "snapshot:check": "tsx scripts/generate-ai-project-snapshot.ts --check",
     "ui:audit": "tsx scripts/ui-audit.ts",

@@ -11,7 +11,11 @@
           display="tag" /></section
       ><div class="payroll-detail__toolbar"
         ><div><strong>员工薪资明细</strong><small>应发、扣款、企业成本与实发金额</small></div
-        ><ElButton v-if="editable" type="primary" @click="lineDialogRef?.handleOpen(run)"
+        ><ElButton
+          v-if="editable"
+          v-auth="'FinancePayroll:Calculate'"
+          type="primary"
+          @click="lineDialogRef?.handleOpen(run)"
           >新增员工</ElButton
         ></div
       ><ElTable :data="lines" row-key="id"
@@ -37,19 +41,29 @@
           }}</template></ElTableColumn
         ><ElTableColumn v-if="editable" label="操作" width="110" fixed="right"
           ><template #default="{ row }"
-            ><ElButton link type="primary" @click="editLine(row)">编辑</ElButton
-            ><ElButton link type="danger" @click="removeLine(row)">删除</ElButton></template
+            ><ElButton
+              v-auth="'FinancePayroll:Calculate'"
+              link
+              type="primary"
+              @click="editLine(row)"
+              >编辑</ElButton
+            ><ElButton
+              v-auth="'FinancePayroll:Calculate'"
+              link
+              type="danger"
+              @click="removeLine(row)"
+              >删除</ElButton
+            ></template
           ></ElTableColumn
         ></ElTable
       ><PayrollLineDialog ref="lineDialogRef" @success="reload" /></div
   ></ArtDrawer>
 </template>
 <script setup lang="ts">
-  import { storeToRefs } from 'pinia'
   import ArtDrawer from '@/components/core/drawers/art-drawer/index.vue'
   import type { ArtDrawerExpose } from '@/components/core/drawers/art-drawer/types'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
-  import { useUserStore } from '@/store/modules/user'
+  import { useAuth } from '@/hooks/core/useAuth'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { deletePayrollLine, fetchPayrollLines } from '@/api/fms'
   import { formatCurrencyValue } from '@/utils/ui'
@@ -57,7 +71,7 @@
   import PayrollLineDialog from './payroll-line-dialog.vue'
   defineOptions({ name: 'FinancePayrollDetailDrawer' })
   const emit = defineEmits<{ success: [] }>()
-  const { isPlatformSuper } = storeToRefs(useUserStore())
+  const { hasAuth } = useAuth()
   const { confirmAction } = useArtFeedback()
   const drawerRef = ref<ArtDrawerExpose>()
   const lineDialogRef = ref<{
@@ -67,7 +81,7 @@
   const lines = ref<Api.Fms.PayrollLineRecord[]>([])
   const editable = computed(
     () =>
-      isPlatformSuper.value &&
+      hasAuth('FinancePayroll:Calculate') &&
       Boolean(run.value && ['draft', 'calculated'].includes(run.value.status))
   )
   async function reload(): Promise<void> {

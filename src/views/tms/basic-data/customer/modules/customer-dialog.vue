@@ -13,6 +13,7 @@
     >
       <template #addressPicker>
         <ArtAddressPicker
+          v-if="canViewCustomerField('addressDetail')"
           v-model:region-path="form.regionPath"
           v-model:address-detail="form.addressDetail"
           v-model:region-adcode="form.regionAdcode"
@@ -24,6 +25,7 @@
           v-model:geocode-provider="form.geocodeProvider"
           v-model:geocoded-at="form.geocodedAt"
           :region-api="fetchRegionOptions"
+          :disabled="!canEditCustomerField('addressDetail')"
           label-width="108px"
         />
       </template>
@@ -41,6 +43,7 @@
   import { addCustomer, editCustomer, fetchCustomerOptions } from '@/api/tms'
   import { fetchRegionOptions } from '@/api/common'
   import { useUserStore } from '@/store/modules/user'
+  import { canEditField, canViewField } from '@/utils/field-permission'
 
   defineOptions({ name: 'TmsCustomerDialog' })
 
@@ -97,11 +100,24 @@
     taxNo: '',
     bankName: '',
     bankAccount: '',
-    remark: ''
+    remark: '',
+    fieldAccess: {
+      contactPhone: 'edit',
+      addressDetail: 'edit',
+      taxNo: 'edit',
+      bankAccount: 'edit'
+    },
+    isRecordOwner: true
   })
 
   const form = reactive<CustomerForm>(createInitialForm())
   const customerNumber = useDocumentNumberRule('master.customer')
+
+  const canViewCustomerField = (field: Api.Tms.BasicData.CustomerFieldKey): boolean =>
+    canViewField(form.fieldAccess, field)
+
+  const canEditCustomerField = (field: Api.Tms.BasicData.CustomerFieldKey): boolean =>
+    canEditField(form.fieldAccess, field)
 
   const formRules: FormRules<CustomerForm> = {
     customerName: [
@@ -120,8 +136,12 @@
     ],
     contactPhone: [
       {
-        pattern: /^(?:1[3-9]\d{9}|0\d{2,3}-?\d{7,8})$/,
-        message: '请输入正确的手机号或座机号',
+        validator: (_rule, value, callback) => {
+          if (!canEditCustomerField('contactPhone') || !value) return callback()
+          return /^(?:1[3-9]\d{9}|0\d{2,3}-?\d{7,8})$/.test(String(value))
+            ? callback()
+            : callback(new Error('请输入正确的手机号或座机号'))
+        },
         trigger: 'blur'
       }
     ],
@@ -217,7 +237,8 @@
       key: 'addressPicker',
       type: 'input',
       span: 24,
-      labelWidth: 0
+      labelWidth: 0,
+      hidden: !canViewCustomerField('addressDetail')
     },
     {
       label: '邮编',
@@ -249,7 +270,12 @@
       label: '手机号码',
       key: 'contactPhone',
       type: 'input',
-      props: { maxlength: 20, placeholder: '请输入联系电话' }
+      hidden: !canViewCustomerField('contactPhone'),
+      props: {
+        maxlength: 20,
+        placeholder: '请输入联系电话',
+        disabled: !canEditCustomerField('contactPhone')
+      }
     },
     {
       label: '部门',
@@ -286,7 +312,12 @@
       label: '纳税人识别号',
       key: 'taxNo',
       type: 'input',
-      props: { maxlength: 40, placeholder: '请输入纳税人识别号' }
+      hidden: !canViewCustomerField('taxNo'),
+      props: {
+        maxlength: 40,
+        placeholder: '请输入纳税人识别号',
+        disabled: !canEditCustomerField('taxNo')
+      }
     },
     {
       label: '开户行',
@@ -299,7 +330,12 @@
       key: 'bankAccount',
       type: 'input',
       span: 16,
-      props: { maxlength: 50, placeholder: '请输入银行账号' }
+      hidden: !canViewCustomerField('bankAccount'),
+      props: {
+        maxlength: 50,
+        placeholder: '请输入银行账号',
+        disabled: !canEditCustomerField('bankAccount')
+      }
     }
   ])
 
@@ -323,6 +359,25 @@
     const { regionPath, ...rawPayload } = data
     delete rawPayload.addressPicker
 
+    if (data.id && !canEditField(data.fieldAccess, 'contactPhone')) {
+      delete rawPayload.contactPhone
+    }
+    if (data.id && !canEditField(data.fieldAccess, 'taxNo')) delete rawPayload.taxNo
+    if (data.id && !canEditField(data.fieldAccess, 'bankAccount')) delete rawPayload.bankAccount
+    if (data.id && !canEditField(data.fieldAccess, 'addressDetail')) {
+      delete rawPayload.region
+      delete rawPayload.regionAdcode
+      delete rawPayload.addressDetail
+      delete rawPayload.longitude
+      delete rawPayload.latitude
+      delete rawPayload.coordinateSystem
+      delete rawPayload.coordinateSource
+      delete rawPayload.coordinateStatus
+      delete rawPayload.geocodeProvider
+      delete rawPayload.geocodedAt
+      delete rawPayload.postalCode
+    }
+
     const longitude = normalizeNullableNumber(rawPayload.longitude)
     const latitude = normalizeNullableNumber(rawPayload.latitude)
     const hasCoordinate = longitude !== null && latitude !== null
@@ -330,7 +385,7 @@
     const payload: Customer = {
       ...rawPayload,
       parentUnitId: rawPayload.parentUnitId || null,
-      region: regionPath.join('/'),
+      ...(rawPayload.region === undefined ? {} : { region: regionPath.join('/') }),
       regionAdcode: normalizeNullableText(rawPayload.regionAdcode),
       longitude,
       latitude,
@@ -343,6 +398,20 @@
         : rawPayload.coordinateStatus || 'pending',
       geocodeProvider: normalizeNullableText(rawPayload.geocodeProvider),
       geocodedAt: normalizeNullableText(rawPayload.geocodedAt)
+    }
+
+    if (data.id && !canEditField(data.fieldAccess, 'addressDetail')) {
+      delete payload.region
+      delete payload.regionAdcode
+      delete payload.addressDetail
+      delete payload.longitude
+      delete payload.latitude
+      delete payload.coordinateSystem
+      delete payload.coordinateSource
+      delete payload.coordinateStatus
+      delete payload.geocodeProvider
+      delete payload.geocodedAt
+      delete payload.postalCode
     }
 
     if (!payload.customerCode) delete payload.customerCode

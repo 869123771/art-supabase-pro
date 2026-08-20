@@ -17,14 +17,6 @@
       </template>
     </BusinessWorkspaceHeader>
 
-    <ElAlert
-      v-if="!isPlatformSuper"
-      type="info"
-      :closable="false"
-      show-icon
-      title="当前账号可查看本租户规则与入账事件；规则维护、异常重试和批量处理仅平台超级管理员可执行。"
-    />
-
     <ElTabs v-model="activeTab" class="auto-posting-page__tabs">
       <ElTabPane name="rules">
         <template #label>
@@ -108,6 +100,7 @@
   import { useFinanceAccountSetPrerequisite } from '../modules/use-finance-account-set-prerequisite'
   import { useUserStore } from '@/store/modules/user'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import { useAuth } from '@/hooks/core/useAuth'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatCurrencyValue } from '@/utils/ui'
   import { formatWithDayjs } from '@/utils/time'
@@ -165,7 +158,8 @@
     headerActions: ComputedRef<ArtTableQueryHeaderAction[]>
   }
 
-  const { getDictMap, isPlatformSuper } = storeToRefs(useUserStore())
+  const { getDictMap } = storeToRefs(useUserStore())
+  const { hasAuth } = useAuth()
   const { confirm, confirmDelete } = useArtFeedback()
   const { ensureAccountSet } = useFinanceAccountSetPrerequisite()
   const route = useRoute()
@@ -242,17 +236,14 @@
         props: { clearable: true, placeholder: '规则编码、名称或说明' }
       }
     ]),
-    headerActions: computed<ArtTableQueryHeaderAction[]>(() =>
-      isPlatformSuper.value
-        ? [
-            {
-              type: 'add',
-              label: '新增规则',
-              onClick: () => void openRuleDialog()
-            }
-          ]
-        : []
-    )
+    headerActions: computed<ArtTableQueryHeaderAction[]>(() => [
+      {
+        permission: 'FinanceAutoPosting:Add',
+        type: 'add',
+        label: '新增规则',
+        onClick: () => void openRuleDialog()
+      }
+    ])
   })
 
   const eventTable: UnwrapNestedRefs<EventTableGroup> = reactive<EventTableGroup>({
@@ -301,19 +292,16 @@
         props: { clearable: true, placeholder: '来源单号、摘要或异常信息' }
       }
     ]),
-    headerActions: computed<ArtTableQueryHeaderAction[]>(() =>
-      isPlatformSuper.value
-        ? [
-            {
-              key: 'process-pending',
-              label: '批量处理待办',
-              icon: 'ri:refresh-line',
-              buttonProps: { type: 'primary', plain: true },
-              onClick: () => void handleBatchProcess()
-            }
-          ]
-        : []
-    )
+    headerActions: computed<ArtTableQueryHeaderAction[]>(() => [
+      {
+        auth: 'FinanceAutoPosting:ProcessPending',
+        key: 'process-pending',
+        label: '批量处理待办',
+        icon: 'ri:refresh-line',
+        buttonProps: { type: 'primary', plain: true },
+        onClick: () => void handleBatchProcess()
+      }
+    ])
   })
 
   function fetchRuleTableData(params: RuleParams) {
@@ -373,19 +361,20 @@
       label: '操作',
       width: 140,
       fixed: 'right',
-      formatter: (row) =>
-        isPlatformSuper.value ? (
-          <div class="auto-posting-page__actions">
+      formatter: (row) => (
+        <div class="auto-posting-page__actions">
+          {hasAuth('FinanceAutoPosting:Edit') ? (
             <ElButton link type="primary" onClick={() => void openRuleDialog(row)}>
               编辑
             </ElButton>
+          ) : null}
+          {hasAuth('FinanceAutoPosting:Delete') ? (
             <ElButton link type="danger" onClick={() => void handleDeleteRule(row)}>
               删除
             </ElButton>
-          </div>
-        ) : (
-          <span>只读</span>
-        )
+          ) : null}
+        </div>
+      )
     }
   ]
 
@@ -395,11 +384,14 @@
       prop: 'sourceNo',
       label: '来源单号',
       minWidth: 190,
-      formatter: (row) => (
-        <ElButton link type="primary" onClick={() => void eventDetailRef.value?.handleOpen(row)}>
-          {row.sourceNo || '查看事件'}
-        </ElButton>
-      )
+      formatter: (row) =>
+        hasAuth('FinanceAutoPosting:View') ? (
+          <ElButton link type="primary" onClick={() => void eventDetailRef.value?.handleOpen(row)}>
+            {row.sourceNo || '查看事件'}
+          </ElButton>
+        ) : (
+          row.sourceNo || '—'
+        )
     },
     {
       prop: 'sourceEvent',
@@ -432,7 +424,7 @@
       label: '生成凭证',
       minWidth: 150,
       formatter: (row) =>
-        row.voucherId ? (
+        row.voucherId && hasAuth('FinanceAutoPosting:View') ? (
           <ElButton link type="primary" onClick={() => void openVoucherById(row.voucherId!)}>
             {row.voucher?.voucherNo || '查看凭证'}
           </ElButton>
@@ -455,10 +447,16 @@
       fixed: 'right',
       formatter: (row) => (
         <div class="auto-posting-page__actions">
-          <ElButton link type="primary" onClick={() => void eventDetailRef.value?.handleOpen(row)}>
-            详情
-          </ElButton>
-          {isPlatformSuper.value && canRetry(row) ? (
+          {hasAuth('FinanceAutoPosting:View') ? (
+            <ElButton
+              link
+              type="primary"
+              onClick={() => void eventDetailRef.value?.handleOpen(row)}
+            >
+              详情
+            </ElButton>
+          ) : null}
+          {hasAuth('FinanceAutoPosting:Retry') && canRetry(row) ? (
             <ElButton link type="warning" onClick={() => void handleRetryEvent(row)}>
               重试
             </ElButton>

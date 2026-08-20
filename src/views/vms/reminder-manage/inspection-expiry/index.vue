@@ -117,7 +117,11 @@
         sortable: true,
         formatter: (row) => renderRemainingDays(row.remainingDays)
       },
-      ...createReminderWorkOrderColumns(openWorkOrder)
+      ...createReminderWorkOrderColumns(openWorkOrder, {
+        view: 'VehicleInspectionExpiry:View',
+        createWorkOrder: 'VehicleInspectionExpiry:CreateWorkOrder',
+        transitionWorkOrder: 'VehicleInspectionExpiry:TransitionWorkOrder'
+      })
     ]
   }
 

@@ -50,6 +50,7 @@
   import { ColumnOption, DialogType } from '@/types'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatWithDayjs } from '@/utils/time'
+  import { canEditField, canViewField, type FieldAccessLevel } from '@/utils/field-permission'
   import { useUserStore } from '@/store/modules/user'
   import {
     deleteCustomerAddress,
@@ -99,6 +100,29 @@
   const dialogRef = ref<AddressDialogExpose>()
   const geofenceDialogRef = ref<GeofenceDialogExpose>()
   const deleteGuardRef = ref<MasterDataDeleteGuardExpose>()
+  const addressFieldAccess = ref<Api.Tms.BasicData.CustomerAddressFieldAccessMap>({})
+
+  const fieldAccessRank: Record<FieldAccessLevel, number> = {
+    hidden: 0,
+    masked: 1,
+    read: 2,
+    edit: 3
+  }
+
+  const mergeAddressFieldAccess = (
+    baseAccess: Api.Tms.BasicData.CustomerAddressFieldAccessMap,
+    records: CustomerAddress[]
+  ): Api.Tms.BasicData.CustomerAddressFieldAccessMap => {
+    const result = { ...baseAccess }
+    records.forEach((record) => {
+      Object.entries(record.fieldAccess ?? {}).forEach(([field, access]) => {
+        const key = field as Api.Tms.BasicData.CustomerAddressFieldKey
+        const current = result[key] ?? 'hidden'
+        if (fieldAccessRank[access] > fieldAccessRank[current]) result[key] = access
+      })
+    })
+    return result
+  }
 
   const routeCustomerId = computed(() => String(route.query.customerId ?? ''))
   const customerName = computed(() => String(route.query.customerName ?? ''))
@@ -189,14 +213,28 @@
       formatter: (row) => row.customer?.customerName || customerName.value || '-'
     },
     { prop: 'contactName', label: '联系人', width: 120 },
-    { prop: 'contactPhone', label: '联系电话', width: 150 },
-    {
-      prop: 'fullAddress',
-      label: '详细地址',
-      minWidth: 300,
-      showOverflowTooltip: true,
-      formatter: (row) => [row.region, row.addressDetail].filter(Boolean).join(' ') || '-'
-    },
+    ...(canViewField(addressFieldAccess.value, 'contactPhone')
+      ? [
+          {
+            prop: 'contactPhone',
+            label: '联系电话',
+            width: 150,
+            formatter: (row: CustomerAddress) => row.contactPhone || '-'
+          } satisfies ColumnOption<CustomerAddress>
+        ]
+      : []),
+    ...(canViewField(addressFieldAccess.value, 'addressDetail')
+      ? [
+          {
+            prop: 'fullAddress',
+            label: '详细地址',
+            minWidth: 300,
+            showOverflowTooltip: true,
+            formatter: (row: CustomerAddress) =>
+              [row.region, row.addressDetail].filter(Boolean).join(' ') || '-'
+          } satisfies ColumnOption<CustomerAddress>
+        ]
+      : []),
     {
       prop: 'isDefault',
       label: '默认',
@@ -235,21 +273,33 @@
       fixed: 'right',
       formatter: (row) => (
         <div class="customer-address-page__operation">
+          {canEditField(row.fieldAccess, 'addressDetail') ? (
+            <ArtButtonTable
+              icon="ri:radar-line"
+              permission="TmsCustomerAddress:Geofence"
+              label={row.geofenceEnabled ? '查看或修改围栏' : '设置围栏'}
+              onClick={() => void geofenceDialogRef.value?.handleOpen(row)}
+            />
+          ) : null}
           <ArtButtonTable
-            icon="ri:radar-line"
-            label={row.geofenceEnabled ? '查看或修改围栏' : '设置围栏'}
-            onClick={() => void geofenceDialogRef.value?.handleOpen(row)}
+            type="edit"
+            permission="TmsCustomerAddress:Edit"
+            onClick={() => openDialog(row)}
           />
-          <ArtButtonTable type="edit" onClick={() => openDialog(row)} />
-          <ArtButtonTable type="delete" onClick={() => handleDelete(row)} />
+          <ArtButtonTable
+            type="delete"
+            permission="TmsCustomerAddress:Delete"
+            onClick={() => handleDelete(row)}
+          />
         </div>
       )
     }
   ]
 
   const headerActions = computed<ArtTableQueryHeaderAction[]>(() => [
-    { type: 'add', onClick: () => openDialog() },
+    { permission: 'TmsCustomerAddress:Add', type: 'add', onClick: () => openDialog() },
     {
+      permission: 'TmsCustomerAddress:Delete',
       type: 'delete',
       content: ({ selectedCount }: { selectedCount: number }) =>
         `确定删除选中的 ${selectedCount} 条地址吗？`,
@@ -262,13 +312,15 @@
     }
   ])
 
-  const fetchTableData = (params: TableParams) => {
+  const fetchTableData = async (params: TableParams) => {
     const { from, to } = pageInfoHandler({ current: params.current, size: params.size })
-    return fetchCustomerAddressList({
+    const result = await fetchCustomerAddressList({
       ...params,
       from,
       to
     })
+    addressFieldAccess.value = mergeAddressFieldAccess(result.fieldAccess, result.data ?? [])
+    return result
   }
 
   const openDialog = (row?: CustomerAddress): void => {

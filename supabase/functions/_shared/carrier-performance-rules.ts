@@ -20,7 +20,7 @@ export interface CarrierPerformanceWaybill {
   waybillNo: string
   route: string
   status: string
-  freightAmount: number
+  freightAmount: number | null
   plannedUnloadTime: string | null
   arrivedAt: string | null
   riskScore: number
@@ -51,7 +51,7 @@ export interface CarrierPerformanceAssessment {
     onTimeRate: number | null
     onTimeSampleCount: number
     routeCount: number
-    totalFreightAmount: number
+    totalFreightAmount: number | null
     totalCostAmount: number
     costToFreightRate: number | null
     pendingCostCount: number
@@ -81,7 +81,7 @@ interface NormalizedWaybill {
   waybillNo: string
   route: string
   status: string
-  freightAmount: number
+  freightAmount: number | null
   plannedUnloadTime: string | null
   arrivedAt: string | null
   createTime: string | null
@@ -89,7 +89,14 @@ interface NormalizedWaybill {
 
 const DAY_MS = 86_400_000
 const COMPLETED_STATUSES = new Set(['completed', 'signed'])
-const ACTIVE_STATUSES = new Set(['accepted', 'loaded', 'departed', 'arrived', 'unloaded', 'in_transit'])
+const ACTIVE_STATUSES = new Set([
+  'accepted',
+  'loaded',
+  'departed',
+  'arrived',
+  'unloaded',
+  'in_transit'
+])
 const CLOSED_STATEMENT_STATUSES = new Set(['approved', 'paid', 'settled', 'voided'])
 
 function field(row: Record<string, unknown>, snakeKey: string, camelKey: string): unknown {
@@ -103,6 +110,12 @@ function text(value: unknown): string {
 function number(value: unknown): number {
   const parsed = Number(value ?? 0)
   return Number.isFinite(parsed) ? parsed : 0
+}
+
+function optionalNumber(value: unknown): number | null {
+  if (value === null || value === undefined || value === '' || value === '***') return null
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : null
 }
 
 function boolean(value: unknown): boolean {
@@ -123,13 +136,6 @@ function percentage(part: number, total: number): number {
   return total > 0 ? round((part / total) * 100) : 0
 }
 
-function money(value: number): string {
-  return `¥${round(value, 2).toLocaleString('zh-CN', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  })}`
-}
-
 function normalizeWaybill(row: Record<string, unknown>): NormalizedWaybill {
   const origin = text(field(row, 'origin_city', 'originCity'))
   const destination = text(field(row, 'destination_city', 'destinationCity'))
@@ -138,9 +144,8 @@ function normalizeWaybill(row: Record<string, unknown>): NormalizedWaybill {
     waybillNo: text(field(row, 'waybill_no', 'waybillNo')) || '未编号运单',
     route: [origin, destination].filter(Boolean).join(' → ') || '路线待补充',
     status: text(field(row, 'status', 'status')).toLowerCase() || 'unknown',
-    freightAmount: number(field(row, 'freight_amount', 'freightAmount')),
-    plannedUnloadTime:
-      text(field(row, 'planned_unload_time', 'plannedUnloadTime')) || null,
+    freightAmount: optionalNumber(field(row, 'freight_amount', 'freightAmount')),
+    plannedUnloadTime: text(field(row, 'planned_unload_time', 'plannedUnloadTime')) || null,
     arrivedAt: text(field(row, 'arrived_at', 'arrivedAt')) || null,
     createTime: text(field(row, 'create_time', 'createTime')) || null
   }
@@ -176,7 +181,7 @@ function buildRiskWaybill(row: NormalizedWaybill, now: number): CarrierPerforman
     waybillNo: row.waybillNo,
     route: row.route,
     status: row.status,
-    freightAmount: round(row.freightAmount, 2),
+    freightAmount: row.freightAmount === null ? null : round(row.freightAmount, 2),
     plannedUnloadTime: row.plannedUnloadTime,
     arrivedAt: row.arrivedAt,
     riskScore,
@@ -219,14 +224,18 @@ export function assessCarrierPerformance(
   const cancellationRate = percentage(cancelled.length, waybills.length)
   const completionRate = percentage(completed.length, waybills.length)
   const routeCount = new Set(waybills.map((row) => row.route).filter(Boolean)).size
-  const totalFreightAmount = waybills.reduce((sum, row) => sum + row.freightAmount, 0)
+  const freightAccessComplete = waybills.every((row) => row.freightAmount !== null)
+  const totalFreightAmount = freightAccessComplete
+    ? waybills.reduce((sum, row) => sum + (row.freightAmount ?? 0), 0)
+    : null
   const totalCostAmount = costs.reduce(
     (sum, row) => sum + number(field(row, 'amount', 'amount')),
     0
   )
-  const costToFreightRate = totalFreightAmount > 0
-    ? percentage(totalCostAmount, totalFreightAmount)
-    : null
+  const costToFreightRate =
+    totalFreightAmount !== null && totalFreightAmount > 0
+      ? percentage(totalCostAmount, totalFreightAmount)
+      : null
   const pendingCostCount = costs.filter((row) => {
     const status = text(field(row, 'audit_status', 'auditStatus')).toLowerCase()
     return status === 'draft' || status === 'submitted' || status === 'pending'
@@ -237,16 +246,15 @@ export function assessCarrierPerformance(
   const openStatementCount = statements.filter(
     (row) => !CLOSED_STATEMENT_STATUSES.has(text(field(row, 'status', 'status')).toLowerCase())
   ).length
-  const latestWaybillAt = Math.max(
-    0,
-    ...waybills.map((row) => timestamp(row.createTime) ?? 0)
-  )
+  const latestWaybillAt = Math.max(0, ...waybills.map((row) => timestamp(row.createTime) ?? 0))
   const daysSinceLastWaybill = latestWaybillAt
     ? Math.max(0, Math.floor((now - latestWaybillAt) / DAY_MS))
     : null
   const signals: CarrierPerformanceSignal[] = []
   const recommendedActions: string[] = []
-  const hasBusinessLicense = Boolean(text(field(input.carrier, 'business_license_no', 'businessLicenseNo')))
+  const hasBusinessLicense = Boolean(
+    text(field(input.carrier, 'business_license_no', 'businessLicenseNo'))
+  )
   const signedContract = boolean(field(input.carrier, 'signed_contract', 'signedContract'))
 
   if (!hasBusinessLicense || !signedContract) {
@@ -302,10 +310,7 @@ export function assessCarrierPerformance(
       severity: onTimeRate < 70 ? 'high' : 'medium',
       title: '准点表现低于建议基线',
       detail: '可计量样本中的准点率偏低，应先改善高频线路的发车与到达记录。',
-      evidence: [
-        `准点率：${onTimeRate.toFixed(1)}%`,
-        `可计量样本：${measurableOnTime.length} 票`
-      ]
+      evidence: [`准点率：${onTimeRate.toFixed(1)}%`, `可计量样本：${measurableOnTime.length} 票`]
     })
     recommendedActions.push('优先复盘延误运单，核对计划时窗、实际到达和异常上报是否完整。')
   }
@@ -381,15 +386,16 @@ export function assessCarrierPerformance(
             ? 'improve_and_monitor'
             : 'preferred_partner'
   const performanceScore = Math.max(0, 100 - riskScore)
-  const confidence = waybills.length >= 20
-    ? 0.94
-    : waybills.length >= 10
-      ? 0.9
-      : waybills.length >= 5
-        ? 0.82
-        : waybills.length
-          ? 0.68
-          : 0.55
+  const confidence =
+    waybills.length >= 20
+      ? 0.94
+      : waybills.length >= 10
+        ? 0.9
+        : waybills.length >= 5
+          ? 0.82
+          : waybills.length
+            ? 0.68
+            : 0.55
 
   if (!recommendedActions.length) {
     recommendedActions.push('保持当前合作节奏，按月复核准点率、取消率、费用审核和结算闭环。')
@@ -415,6 +421,7 @@ export function assessCarrierPerformance(
     limitations: [
       '本次评估基于系统内最近最多 200 票运单、300 条费用和 100 笔承运对账单。',
       '准点率只统计同时具备计划到达和实际到达时间的运单，缺失时间不会被推断为准点。',
+      ...(!freightAccessComplete ? ['当前用户无权查看全部运费，运费合计与成本运费比未计算。'] : []),
       '结果用于合作复核和数据治理，不会自动停用承运商、修改合同、报价、费用或结算状态。'
     ],
     metrics: {
@@ -427,7 +434,7 @@ export function assessCarrierPerformance(
       onTimeRate,
       onTimeSampleCount: measurableOnTime.length,
       routeCount,
-      totalFreightAmount: round(totalFreightAmount, 2),
+      totalFreightAmount: totalFreightAmount === null ? null : round(totalFreightAmount, 2),
       totalCostAmount: round(totalCostAmount, 2),
       costToFreightRate,
       pendingCostCount,

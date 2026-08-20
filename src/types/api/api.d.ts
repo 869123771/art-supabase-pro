@@ -226,6 +226,36 @@ declare namespace Api {
         }
     >
 
+    type FieldPermissionSubjectType = 'role' | 'user'
+
+    interface FieldPermissionResource {
+      id: string
+      resourceKey: string
+      resourceLabel: string
+      menuName: string
+      fieldCount: number
+    }
+
+    interface FieldPermissionField {
+      id: string
+      fieldKey: string
+      fieldLabel: string
+      defaultAccess: Api.Tms.BasicData.FieldAccessLevel
+      maskStrategy?: string | null
+      ownerOverrideEnabled: boolean
+      inheritedAccess: Api.Tms.BasicData.FieldAccessLevel
+      explicitAccess?: Api.Tms.BasicData.FieldAccessLevel | null
+    }
+
+    interface FieldPermissionConfiguration {
+      resourceId: string
+      resourceKey: string
+      resourceLabel: string
+      subjectType: FieldPermissionSubjectType
+      subjectId: string
+      fields: FieldPermissionField[]
+    }
+
     type OrganizationType = 'company' | 'division' | 'department' | 'team'
 
     interface OrganizationMember {
@@ -338,6 +368,8 @@ declare namespace Api {
       tenantName: string
       builtinType?: TenantBuiltinType | null
       status?: Api.Common.EnableStatus
+      serviceStartDate?: string | null
+      serviceEndDate?: string | null
       remark?: string
       createBy?: string
       createTime?: string
@@ -1480,6 +1512,18 @@ declare namespace Api {
   namespace Tms {
     namespace BasicData {
       type CustomerAddressType = 'shipping' | 'receiving'
+      type CustomerFieldKey = 'contactPhone' | 'addressDetail' | 'taxNo' | 'bankAccount'
+      type CustomerFieldAccessMap = Partial<Record<CustomerFieldKey, FieldAccessLevel>>
+      type CustomerAddressFieldKey = 'contactPhone' | 'addressDetail'
+      type CustomerAddressFieldAccessMap = Partial<
+        Record<CustomerAddressFieldKey, FieldAccessLevel>
+      >
+      type CarrierFieldKey =
+        'contactPhone' | 'addressDetail' | 'taxNo' | 'bankAccount' | 'attachments'
+      type CarrierFieldAccessMap = Partial<Record<CarrierFieldKey, FieldAccessLevel>>
+      type DriverFieldKey =
+        'contactPhone' | 'idCardNo' | 'homeAddress' | 'emergencyContact' | 'identityDocuments'
+      type DriverFieldAccessMap = Partial<Record<DriverFieldKey, FieldAccessLevel>>
 
       interface Customer {
         id?: string
@@ -1517,6 +1561,8 @@ declare namespace Api {
         createTime?: string
         updateBy?: string
         updateTime?: string
+        fieldAccess?: CustomerFieldAccessMap
+        isRecordOwner?: boolean
       }
 
       type CustomerSearchParams = Partial<
@@ -1547,6 +1593,8 @@ declare namespace Api {
         geocodeProvider?: string | null
         geocodedAt?: string | null
         postalCode?: string
+        fieldAccess?: CustomerFieldAccessMap
+        isRecordOwner?: boolean
       }
 
       interface CustomerAddress {
@@ -1577,6 +1625,8 @@ declare namespace Api {
         createTime?: string
         updateBy?: string
         updateTime?: string
+        fieldAccess?: CustomerAddressFieldAccessMap
+        isRecordOwner?: boolean
       }
 
       type CustomerAddressSearchParams = Partial<
@@ -1726,6 +1776,8 @@ declare namespace Api {
         createTime?: string
         updateBy?: string
         updateTime?: string
+        fieldAccess?: CarrierFieldAccessMap
+        isRecordOwner?: boolean
       }
 
       type CarrierSearchParams = Partial<
@@ -1744,6 +1796,8 @@ declare namespace Api {
         enabled?: boolean
         contactName?: string
         contactPhone?: string
+        fieldAccess?: CarrierFieldAccessMap
+        isRecordOwner?: boolean
       }
 
       type CarrierPerformanceSeverity = 'critical' | 'high' | 'medium'
@@ -1892,9 +1946,9 @@ declare namespace Api {
         tenantId?: string
         carrierId: string
         driverName: string
-        phone: string
+        phone?: string
         gender: string
-        idCardNo: string
+        idCardNo?: string
         licenseType: string
         driverType: 'primary' | 'secondary'
         licenseExpireDate?: string | null
@@ -1913,6 +1967,8 @@ declare namespace Api {
         createTime?: string
         updateBy?: string
         updateTime?: string
+        fieldAccess?: DriverFieldAccessMap
+        isRecordOwner?: boolean
       }
 
       interface DriverAssignedVehicle {
@@ -1937,7 +1993,10 @@ declare namespace Api {
         phone?: string
         driverType?: 'primary' | 'secondary'
         licenseType?: string
+        licenseExpireDate?: string | null
         enabled?: boolean
+        fieldAccess?: DriverFieldAccessMap
+        isRecordOwner?: boolean
       }
 
       interface Cargo {
@@ -1971,6 +2030,17 @@ declare namespace Api {
 
       type ContractStatus = 'draft' | 'pending' | 'approved' | 'rejected' | 'terminated'
       type ContractBusinessType = 'customer' | 'carrier'
+      type FieldAccessLevel = 'hidden' | 'masked' | 'read' | 'edit'
+      type ContractFieldKey =
+        | 'contractAmount'
+        | 'transportUnitPrice'
+        | 'roadConsumptionRate'
+        | 'lossDeductionPrice'
+        | 'transportDetailsPricing'
+        | 'partyContactPhone'
+        | 'attachments'
+      type ContractFieldAccessMap = Partial<Record<ContractFieldKey, FieldAccessLevel>>
+      type SensitiveNumber = number | string | null
 
       interface ContractAttachment {
         name: string
@@ -1985,8 +2055,8 @@ declare namespace Api {
         cargoCode: string
         contractQuantity: number
         unit: string
-        transportUnitPrice: number
-        freight: number
+        transportUnitPrice?: SensitiveNumber
+        freight?: SensitiveNumber
       }
 
       interface Contract {
@@ -2007,10 +2077,10 @@ declare namespace Api {
         waybillNo?: string | null
         customerSignatory?: string | null
         billingMethod: string
-        contractAmount?: number | null
-        transportUnitPrice?: number | null
-        roadConsumptionRate?: number | null
-        lossDeductionPrice?: number | null
+        contractAmount?: SensitiveNumber
+        transportUnitPrice?: SensitiveNumber
+        roadConsumptionRate?: SensitiveNumber
+        lossDeductionPrice?: SensitiveNumber
         signTime: string
         effectiveDate?: string | null
         expiryDate?: string | null
@@ -2031,6 +2101,8 @@ declare namespace Api {
         createTime?: string
         updateBy?: string
         updateTime?: string
+        fieldAccess?: ContractFieldAccessMap
+        isRecordOwner?: boolean
       }
 
       type ContractSearchParams = Partial<
@@ -2050,13 +2122,18 @@ declare namespace Api {
           }
       >
 
-      interface ContractDetailSelectorItem extends ContractTransportDetail {
+      interface ContractDetailSelectorItem extends Omit<
+        ContractTransportDetail,
+        'transportUnitPrice' | 'freight'
+      > {
         key: string
         contractId: string
         contractNo: string
         contractName: string
         effectiveDate?: string | null
         expiryDate?: string | null
+        transportUnitPrice: number | null
+        freight: number | null
       }
 
       interface ContractDetailSelectorSearchParams extends Api.Common.CommonSearchParams {
@@ -2065,6 +2142,19 @@ declare namespace Api {
     }
 
     namespace Order {
+      type OrderFieldKey =
+        | 'shipperContact'
+        | 'shipperAddress'
+        | 'receiverContact'
+        | 'receiverAddress'
+        | 'cargoPricing'
+        | 'freightAmounts'
+        | 'settlementAmounts'
+        | 'driverPhone'
+        | 'proofAttachments'
+        | 'routeCoordinates'
+      type OrderFieldAccessMap = Partial<Record<OrderFieldKey, Api.Tms.BasicData.FieldAccessLevel>>
+
       interface StationOption {
         id: string
         stationCode: string
@@ -2087,6 +2177,9 @@ declare namespace Api {
         addressDetail?: string
         longitude?: number | string | null
         latitude?: number | string | null
+        fieldAccess?:
+          Api.Tms.BasicData.CustomerFieldAccessMap | Api.Tms.BasicData.CustomerAddressFieldAccessMap
+        isRecordOwner?: boolean
       }
 
       interface CargoItem {
@@ -2098,8 +2191,8 @@ declare namespace Api {
         unit?: string | null
         weightKg?: number | null
         volumeM3?: number | null
-        unitPrice?: number | null
-        freight?: number | null
+        unitPrice?: number | string | null
+        freight?: number | string | null
         sourceContractId?: string | null
         sourceContractNo?: string | null
         sourceContractName?: string | null
@@ -2242,27 +2335,27 @@ declare namespace Api {
         cargoQuantityTotal?: number | null
         cargoWeightTotal?: number | null
         cargoVolumeTotal?: number | null
-        transportFee?: number | null
-        deliveryFee?: number | null
-        unloadingFee?: number | null
-        collectPaymentFee?: number | null
-        transferFee?: number | null
-        declaredValue?: number | null
-        insuranceFee?: number | null
-        packageFee?: number | null
-        otherFee?: number | null
-        totalFee?: number | null
+        transportFee?: number | string | null
+        deliveryFee?: number | string | null
+        unloadingFee?: number | string | null
+        collectPaymentFee?: number | string | null
+        transferFee?: number | string | null
+        declaredValue?: number | string | null
+        insuranceFee?: number | string | null
+        packageFee?: number | string | null
+        otherFee?: number | string | null
+        totalFee?: number | string | null
         paymentMethod: string
-        cashAmount?: number | null
-        collectAmount?: number | null
-        monthlyAmount?: number | null
-        codAmount?: number | null
-        handlingFee?: number | null
-        paymentTotal?: number | null
+        cashAmount?: number | string | null
+        collectAmount?: number | string | null
+        monthlyAmount?: number | string | null
+        codAmount?: number | string | null
+        handlingFee?: number | string | null
+        paymentTotal?: number | string | null
         transportMode?: string | null
         orderRemark?: string | null
         imageUrls?: string[]
-        signedCodAmount?: number | null
+        signedCodAmount?: number | string | null
         receiptImageUrls?: string[]
         signedAt?: string | null
         relatedWaybills?: Waybill.RelatedWaybillSummary[]
@@ -2299,6 +2392,8 @@ declare namespace Api {
         createTime?: string
         updateBy?: string
         updateTime?: string
+        fieldAccess?: OrderFieldAccessMap
+        isRecordOwner?: boolean
       }
 
       type OrderSearchParams = Partial<
@@ -2327,6 +2422,10 @@ declare namespace Api {
     }
 
     namespace Waybill {
+      type WaybillFieldKey = Api.Tms.Order.OrderFieldKey | 'carrierPhone'
+      type WaybillFieldAccessMap = Partial<
+        Record<WaybillFieldKey, Api.Tms.BasicData.FieldAccessLevel>
+      >
       type DispatchStatus = 'pending' | 'loaded' | 'transporting' | 'completed' | 'cancelled'
       type WaybillStatus =
         | 'pending'
@@ -2470,7 +2569,7 @@ declare namespace Api {
         cargoWeightTon?: number | null
         cargoVolumeM3?: number | null
         cargoQuantity?: number | null
-        freightAmount?: number | null
+        freightAmount?: number | string | null
         estimatedDurationMin?: number | null
         remainingDistanceKm?: number | null
         routePoints: unknown
@@ -2492,6 +2591,8 @@ declare namespace Api {
         cargoOperations: CargoOperationRecord[]
         expenseLocations: WaybillExpenseLocationRecord[]
         execution?: ExecutionRecord | null
+        fieldAccess?: WaybillFieldAccessMap
+        isRecordOwner?: boolean
       }
 
       interface DispatchVehicleOption extends Api.Vms.VehicleManage.VehicleOption {
@@ -6050,6 +6151,8 @@ declare namespace Api {
         order?: Api.Tms.Order.OrderRecord | null
         vehicle?: Api.Tms.Waybill.DispatchVehicleOption | null
         driver?: Api.Tms.BasicData.DriverOption | null
+        fieldAccess?: Api.Tms.Waybill.WaybillFieldAccessMap
+        isRecordOwner?: boolean
       }
 
       type TransportAnomalyType =

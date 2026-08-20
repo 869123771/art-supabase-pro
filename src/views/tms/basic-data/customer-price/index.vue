@@ -68,10 +68,12 @@
   import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
   import MasterDeleteProcessingNotice from '@/components/business/master-delete-processing-notice/index.vue'
   import { useMasterDataDeleteProcessingContext } from '@/hooks/core/useMasterDataDeleteProcessing'
+  import { useAuth } from '@/hooks/core/useAuth'
 
   defineOptions({ name: 'TmsCustomerPrice' })
 
   const { confirmAction } = useArtFeedback()
+  const { hasAuth } = useAuth()
 
   type CustomerPrice = Api.Tms.BasicData.CustomerPrice
   type CustomerPriceCargoItem = Api.Tms.BasicData.CustomerPriceCargoItem
@@ -225,17 +227,20 @@
       prop: 'customerName',
       label: '客户名称',
       width: 190,
-      formatter: (row) => (
-        <ElButton
-          class="customer-price__detail-link"
-          link
-          type="primary"
-          disabled={!row.id}
-          onClick={() => openDetailPage(row)}
-        >
-          {row.customer?.customerName || '-'}
-        </ElButton>
-      )
+      formatter: (row) =>
+        hasAuth('TmsCustomerPrice:View') ? (
+          <ElButton
+            class="customer-price__detail-link"
+            link
+            type="primary"
+            disabled={!row.id}
+            onClick={() => openDetailPage(row)}
+          >
+            {row.customer?.customerName || '-'}
+          </ElButton>
+        ) : (
+          <span>{row.customer?.customerName || '-'}</span>
+        )
     },
     {
       prop: 'shippingInfo',
@@ -303,16 +308,30 @@
       fixed: 'right',
       formatter: (row) => (
         <div>
-          <ArtButtonTable type="edit" onClick={() => openEditPage(row)} />
-          <ArtButtonTable type="delete" onClick={() => handleDelete(row)} />
+          <ArtButtonTable
+            type="edit"
+            permission="TmsCustomerPrice:Edit"
+            onClick={() => openEditPage(row)}
+          />
+          <ArtButtonTable
+            type="delete"
+            permission="TmsCustomerPrice:Delete"
+            onClick={() => handleDelete(row)}
+          />
         </div>
       )
     }
   ]
 
   const headerActions = computed<ArtTableQueryHeaderAction[]>(() => [
-    { type: 'add', label: '新增', onClick: () => openEditPage() },
     {
+      permission: 'TmsCustomerPrice:Add',
+      type: 'add',
+      label: '新增',
+      onClick: () => openEditPage()
+    },
+    {
+      permission: 'TmsCustomerPrice:Delete',
       type: 'delete',
       label: '批量删除',
       content: ({ selectedCount }: { selectedCount: number }) =>
@@ -323,6 +342,7 @@
       }
     },
     {
+      permission: 'TmsCustomerPrice:Export',
       type: 'export',
       exportFilename: 'TMS客户价格维护',
       exportSheetName: '客户价格维护',

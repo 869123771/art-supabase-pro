@@ -19,14 +19,6 @@
       </template>
     </BusinessWorkspaceHeader>
 
-    <ElAlert
-      v-if="!isPlatformSuper"
-      type="info"
-      :closable="false"
-      show-icon
-      title="当前账号处于资金只读模式，可查看本租户银行对账结果；导入、匹配、完成与作废仅平台超级管理员可执行。"
-    />
-
     <ArtTableQuery
       ref="tableRef"
       v-model="table.search"
@@ -40,9 +32,7 @@
         rowKey: 'id',
         tableLayout: 'fixed',
         emptyText: '暂无银行对账批次',
-        emptyDescription: isPlatformSuper
-          ? '导入银行流水后，系统将按账户、方向、金额、日期和参考号执行自动匹配。'
-          : '当前租户暂无可查看的银行对账记录。'
+        emptyDescription: '导入银行流水后，系统将按账户、方向、金额、日期和参考号执行自动匹配。'
       }"
       focusable
     />
@@ -91,7 +81,7 @@
     handleOpen: (row: Batch) => Promise<void>
   }
 
-  const { getDictMap, isPlatformSuper } = storeToRefs(useUserStore())
+  const { getDictMap } = storeToRefs(useUserStore())
   const tableRef = ref<ArtTableQueryExpose>()
   const importDialogRef = ref<ImportDialogExpose>()
   const drawerRef = ref<DrawerExpose>()
@@ -151,28 +141,25 @@
     }
   ])
 
-  const headerActions = computed<ArtTableQueryHeaderAction[]>(() =>
-    isPlatformSuper.value
-      ? [
+  const headerActions = computed<ArtTableQueryHeaderAction[]>(() => [
+    {
+      permission: 'FinanceBankReconciliation:Add',
+      type: 'add',
+      label: '导入银行流水',
+      onClick: () =>
+        void runWithAccountSet(
           {
-            type: 'add',
-            label: '导入银行流水',
-            onClick: () =>
-              void runWithAccountSet(
-                {
-                  actionLabel: '导入银行流水',
-                  activeRequired: true,
-                  accountSetId: table.search.accountSetId,
-                  foundationRequired: true,
-                  fundAccountRequired: true,
-                  available: accountSetOptions.value.length > 0
-                },
-                () => importDialogRef.value?.handleOpen()
-              )
-          }
-        ]
-      : []
-  )
+            actionLabel: '导入银行流水',
+            activeRequired: true,
+            accountSetId: table.search.accountSetId,
+            foundationRequired: true,
+            fundAccountRequired: true,
+            available: accountSetOptions.value.length > 0
+          },
+          () => importDialogRef.value?.handleOpen()
+        )
+    }
+  ])
 
   const metrics = computed<BusinessWorkspaceMetric[]>(() => {
     const selected = table.search.status
@@ -302,6 +289,7 @@
         formatter: (row) => (
           <ArtButtonTable
             type="view"
+            permission="FinanceBankReconciliation:View"
             label="进入对账"
             onClick={() => void drawerRef.value?.handleOpen(row)}
           />

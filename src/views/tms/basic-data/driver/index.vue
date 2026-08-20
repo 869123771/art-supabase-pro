@@ -71,6 +71,7 @@
   import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
   import MasterDeleteProcessingNotice from '@/components/business/master-delete-processing-notice/index.vue'
   import { useMasterDataDeleteProcessingContext } from '@/hooks/core/useMasterDataDeleteProcessing'
+  import { canViewField, mergeFieldAccessMaps } from '@/utils/field-permission'
 
   defineOptions({ name: 'TmsDriver' })
 
@@ -95,6 +96,7 @@
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<DriverDialogExpose>()
   const deleteGuardRef = ref<MasterDataDeleteGuardExpose>()
+  const driverFieldAccess = ref<Api.Tms.BasicData.DriverFieldAccessMap>({})
   const initialCarrierId = String(route.query.carrierId || '')
   const initialRecordId = String(route.query.recordId || '')
   const tableImmediate = !initialCarrierId && !initialRecordId
@@ -223,7 +225,7 @@
       type: 'input',
       props: {
         clearable: true,
-        placeholder: '姓名、手机号、身份证号或家庭住址'
+        placeholder: '姓名或驾照类型'
       }
     }
   ])
@@ -256,7 +258,16 @@
       minWidth: 240,
       formatter: (row) => renderAssignedVehicles(row)
     },
-    { prop: 'phone', label: '手机号码', width: 150 },
+    ...(canViewField(driverFieldAccess.value, 'contactPhone')
+      ? [
+          {
+            prop: 'phone',
+            label: '手机号码',
+            width: 150,
+            formatter: (row: Driver) => row.phone || '-'
+          } satisfies ColumnOption<Driver>
+        ]
+      : []),
     {
       prop: 'gender',
       label: '性别',
@@ -275,13 +286,17 @@
       width: 130,
       formatter: (row) => row.licenseExpireDate || '-'
     },
-    {
-      prop: 'homeAddress',
-      label: '家庭住址',
-      minWidth: 260,
-      showOverflowTooltip: true,
-      formatter: (row) => row.homeAddress || '-'
-    },
+    ...(canViewField(driverFieldAccess.value, 'homeAddress')
+      ? [
+          {
+            prop: 'homeAddress',
+            label: '家庭住址',
+            minWidth: 260,
+            showOverflowTooltip: true,
+            formatter: (row: Driver) => row.homeAddress || '-'
+          } satisfies ColumnOption<Driver>
+        ]
+      : []),
     {
       prop: 'enabled',
       label: '状态',
@@ -301,16 +316,21 @@
       fixed: 'right',
       formatter: (row) => (
         <div>
-          <ArtButtonTable type="edit" onClick={() => openDialog(row)} />
-          <ArtButtonTable type="delete" onClick={() => handleDelete(row)} />
+          <ArtButtonTable type="edit" permission="TmsDriver:Edit" onClick={() => openDialog(row)} />
+          <ArtButtonTable
+            type="delete"
+            permission="TmsDriver:Delete"
+            onClick={() => handleDelete(row)}
+          />
         </div>
       )
     }
   ]
 
   const headerActions = computed<ArtTableQueryHeaderAction[]>(() => [
-    { type: 'add', onClick: () => openDialog() },
+    { permission: 'TmsDriver:Add', type: 'add', onClick: () => openDialog() },
     {
+      permission: 'TmsDriver:Delete',
       type: 'delete',
       content: ({ selectedCount }: { selectedCount: number }) =>
         `确定删除选中的 ${selectedCount} 个司机吗？删除后无法恢复。`,
@@ -323,9 +343,14 @@
     }
   ])
 
-  const fetchTableData = (params: TableParams) => {
+  const fetchTableData = async (params: TableParams) => {
     const { from, to } = pageInfoHandler({ current: params.current, size: params.size })
-    return fetchDriverList({ ...params, from, to })
+    const result = await fetchDriverList({ ...params, from, to })
+    driverFieldAccess.value = mergeFieldAccessMaps(
+      result.fieldAccess,
+      ...(result.data ?? []).map((record) => record.fieldAccess)
+    )
+    return result
   }
 
   const renderAssignedVehicles = (row: Driver) => {

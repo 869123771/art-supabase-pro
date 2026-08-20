@@ -65,6 +65,7 @@
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatWithDayjs } from '@/utils/time'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import { useAuth } from '@/hooks/core/useAuth'
   import CustomerStatementDialog from './modules/customer-statement-dialog.vue'
   import CustomerStatementDetailDrawer from './modules/customer-statement-detail-drawer.vue'
   import BusinessWorkspaceHeader from '@/components/business/business-workspace-header/index.vue'
@@ -88,6 +89,7 @@
 
   const { getDictMap } = storeToRefs(useUserStore())
   const { promptReason, confirmAction } = useArtFeedback()
+  const { hasAuth } = useAuth()
   const route = useRoute()
   const customerDeleteContext = useMasterDataDeleteProcessingContext()
   const tableQueryRef = ref<ArtTableQueryExpose>()
@@ -216,9 +218,11 @@
       fixed: 'right',
       formatter: (row) => (
         <div class="flex items-center">
-          <ElButton link type="primary" onClick={() => void drawerRef.value?.handleOpen(row)}>
-            查看
-          </ElButton>
+          {hasAuth('FinanceCustomerSettlement:View') ? (
+            <ElButton link type="primary" onClick={() => void drawerRef.value?.handleOpen(row)}>
+              查看
+            </ElButton>
+          ) : null}
           {renderStatusActions(row)}
         </div>
       )
@@ -229,33 +233,41 @@
     if (row.status === 'draft') {
       return (
         <>
-          <ElButton link type="primary" onClick={() => void handleSubmitReview(row)}>
-            提交审核
-          </ElButton>
-          <ElButton link type="danger" onClick={() => void handleDelete(row)}>
-            删除
-          </ElButton>
+          {hasAuth('FinanceCustomerSettlement:Submit') ? (
+            <ElButton link type="primary" onClick={() => void handleSubmitReview(row)}>
+              提交审核
+            </ElButton>
+          ) : null}
+          {hasAuth('FinanceCustomerSettlement:Delete') ? (
+            <ElButton link type="danger" onClick={() => void handleDelete(row)}>
+              删除
+            </ElButton>
+          ) : null}
         </>
       )
     }
     if (row.status === 'pending_review') {
       return (
         <>
-          <ElButton link type="success" onClick={() => void handleApprove(row)}>
-            审核通过
-          </ElButton>
-          <ElButton link type="danger" onClick={() => void handleReject(row)}>
-            驳回
-          </ElButton>
+          {hasAuth('FinanceCustomerSettlement:Approve') ? (
+            <ElButton link type="success" onClick={() => void handleApprove(row)}>
+              审核通过
+            </ElButton>
+          ) : null}
+          {hasAuth('FinanceCustomerSettlement:Reject') ? (
+            <ElButton link type="danger" onClick={() => void handleReject(row)}>
+              驳回
+            </ElButton>
+          ) : null}
         </>
       )
     }
     if (row.status === 'confirmed') {
-      return (
+      return hasAuth('FinanceCustomerSettlement:Void') ? (
         <ElButton link type="danger" onClick={() => void handleVoid(row)}>
           作废
         </ElButton>
-      )
+      ) : null
     }
     return null
   }
@@ -276,11 +288,13 @@
 
   const headerActions = computed<ArtTableQueryHeaderAction[]>(() => [
     {
+      permission: 'FinanceCustomerSettlement:Add',
       type: 'add',
       label: '生成客户对账单',
       onClick: () => void dialogRef.value?.handleOpen()
     },
     {
+      permission: 'FinanceCustomerSettlement:Export',
       type: 'export',
       exportFilename: 'TMS客户对账单',
       exportSheetName: '客户对账单',

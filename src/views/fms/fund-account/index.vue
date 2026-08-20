@@ -19,14 +19,6 @@
       </template>
     </BusinessWorkspaceHeader>
 
-    <ElAlert
-      v-if="!isPlatformSuper"
-      type="info"
-      :closable="false"
-      show-icon
-      title="当前账号处于资金只读模式，可查看本租户账户与余额；账户配置、冻结和关闭仅平台超级管理员可执行。"
-    />
-
     <ArtTableQuery
       ref="tableRef"
       v-model="table.search"
@@ -40,9 +32,7 @@
         rowKey: 'id',
         tableLayout: 'fixed',
         emptyText: '暂无资金账户',
-        emptyDescription: isPlatformSuper
-          ? '创建首个资金账户后，收付款、资金调拨与银行对账即可关联实际账户。'
-          : '当前租户尚未配置可查看的资金账户。'
+        emptyDescription: '创建首个资金账户后，收付款、资金调拨与银行对账即可关联实际账户。'
       }"
       focusable
     />
@@ -91,7 +81,7 @@
 
   const { confirmAction } = useArtFeedback()
   const { runWithAccountSet } = useFinanceAccountSetPrerequisite()
-  const { getDictMap, isPlatformSuper } = storeToRefs(useUserStore())
+  const { getDictMap } = storeToRefs(useUserStore())
   const tableRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<DialogExpose>()
   const accountSetOptions = ref<Api.Fms.AccountSetOption[]>([])
@@ -140,25 +130,22 @@
     }
   ])
 
-  const headerActions = computed<ArtTableQueryHeaderAction[]>(() =>
-    isPlatformSuper.value
-      ? [
+  const headerActions = computed<ArtTableQueryHeaderAction[]>(() => [
+    {
+      permission: 'FinanceFundAccount:Add',
+      type: 'add',
+      label: '新建资金账户',
+      onClick: () =>
+        void runWithAccountSet(
           {
-            type: 'add',
-            label: '新建资金账户',
-            onClick: () =>
-              void runWithAccountSet(
-                {
-                  actionLabel: '新建资金账户',
-                  activeRequired: true,
-                  available: accountSetOptions.value.length > 0
-                },
-                () => dialogRef.value?.handleOpen()
-              )
-          }
-        ]
-      : []
-  )
+            actionLabel: '新建资金账户',
+            activeRequired: true,
+            available: accountSetOptions.value.length > 0
+          },
+          () => dialogRef.value?.handleOpen()
+        )
+    }
+  ])
 
   const metrics = computed<BusinessWorkspaceMetric[]>(() => {
     const value = overview.value
@@ -282,21 +269,23 @@
       {
         prop: 'operation',
         label: '操作',
-        width: isPlatformSuper.value ? 104 : 70,
+        width: 104,
         fixed: 'right',
-        formatter: (row) =>
-          isPlatformSuper.value ? (
-            <div class="flex items-center">
-              <ArtButtonTable type="edit" onClick={() => void dialogRef.value?.handleOpen(row)} />
-              <ArtButtonTable
-                type="delete"
-                disabled={row.ledgerEntryCount > 0}
-                onClick={() => void handleDelete(row)}
-              />
-            </div>
-          ) : (
-            <span class="text-sm text-g-500">只读</span>
-          )
+        formatter: (row) => (
+          <div class="flex items-center">
+            <ArtButtonTable
+              type="edit"
+              permission="FinanceFundAccount:Edit"
+              onClick={() => void dialogRef.value?.handleOpen(row)}
+            />
+            <ArtButtonTable
+              type="delete"
+              permission="FinanceFundAccount:Delete"
+              disabled={row.ledgerEntryCount > 0}
+              onClick={() => void handleDelete(row)}
+            />
+          </div>
+        )
       }
     ]
   }

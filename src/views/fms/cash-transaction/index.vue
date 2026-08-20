@@ -69,6 +69,7 @@
   import { formatWithDayjs } from '@/utils/time'
   import { financeRouteNames } from '@/router/business-paths'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import { useAuth } from '@/hooks/core/useAuth'
   import { fetchRecognitionArtifactDetail } from '@/api/intelligent-recognition'
   import BusinessWorkspaceHeader from '@/components/business/business-workspace-header/index.vue'
   import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
@@ -105,6 +106,7 @@
 
   const { getDictMap } = storeToRefs(useUserStore())
   const { promptReason } = useArtFeedback()
+  const { hasAuth } = useAuth()
   const route = useRoute()
   const router = useRouter()
   const customerDeleteContext = useMasterDataDeleteProcessingContext()
@@ -185,22 +187,27 @@
     ]),
     headerActions: computed<ArtTableQueryHeaderAction[]>(() => [
       {
+        auth: 'FinanceCashTransaction:Import',
+        key: 'import',
         label: 'AI 批量导入流水',
         icon: 'ri-file-excel-2-line',
         buttonProps: { type: 'primary', plain: true },
         onClick: () => void batchImportDialogRef.value?.handleOpen()
       },
       {
+        permission: 'FinanceCashTransaction:Add',
         type: 'add',
         label: '登记客户收款',
         onClick: () => void dialogRef.value?.handleOpen()
       },
       {
-        type: 'add',
+        auth: 'FinanceCashTransaction:CreatePayment',
+        key: 'create-payment',
         label: '发起承运商付款申请',
         onClick: () => void router.push({ name: financeRouteNames.paymentApplication })
       },
       {
+        permission: 'FinanceCashTransaction:Export',
         type: 'export',
         exportFilename: 'TMS收付款核销',
         exportSheetName: '收付款核销',
@@ -300,19 +307,23 @@
       fixed: 'right',
       formatter: (row) => (
         <div class="flex items-center">
-          <ElButton link type="primary" onClick={() => void drawerRef.value?.handleOpen(row)}>
-            查看
-          </ElButton>
+          {hasAuth('FinanceCashTransaction:View') ? (
+            <ElButton link type="primary" onClick={() => void drawerRef.value?.handleOpen(row)}>
+              查看
+            </ElButton>
+          ) : null}
           {row.direction === 'receipt' &&
             ['pending_allocation', 'partially_allocated'].includes(row.status) &&
-            row.unallocatedAmount > 0 && (
+            row.unallocatedAmount > 0 &&
+            hasAuth('FinanceCashTransaction:Allocate') && (
               <ElButton link type="primary" onClick={() => void dialogRef.value?.handleOpen(row)}>
                 继续核销
               </ElButton>
             )}
           {row.direction === 'payment' &&
             ['pending_allocation', 'partially_allocated'].includes(row.status) &&
-            row.unallocatedAmount > 0 && (
+            row.unallocatedAmount > 0 &&
+            hasAuth('FinanceCashTransaction:Allocate') && (
               <ElButton
                 link
                 type="primary"
@@ -321,11 +332,13 @@
                 继续核销
               </ElButton>
             )}
-          {row.status === 'pending_allocation' && row.allocatedAmount === 0 && (
-            <ElButton link type="danger" onClick={() => void handleVoid(row)}>
-              {row.direction === 'receipt' ? '作废收款' : '作废付款'}
-            </ElButton>
-          )}
+          {row.status === 'pending_allocation' &&
+            row.allocatedAmount === 0 &&
+            hasAuth('FinanceCashTransaction:Void') && (
+              <ElButton link type="danger" onClick={() => void handleVoid(row)}>
+                {row.direction === 'receipt' ? '作废收款' : '作废付款'}
+              </ElButton>
+            )}
         </div>
       )
     }

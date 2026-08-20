@@ -12,10 +12,22 @@
       :show-submit="false"
     >
       <template #idCardFrontUrl>
-        <ArtUploadImage v-model="form.idCardFrontUrl" title="身份证正面" :size="104" :limit="1" />
+        <ArtUploadImage
+          v-model="form.idCardFrontUrl"
+          title="身份证正面"
+          :size="104"
+          :limit="1"
+          :readonly="!canEditDriverField('identityDocuments')"
+        />
       </template>
       <template #idCardBackUrl>
-        <ArtUploadImage v-model="form.idCardBackUrl" title="身份证反面" :size="104" :limit="1" />
+        <ArtUploadImage
+          v-model="form.idCardBackUrl"
+          title="身份证反面"
+          :size="104"
+          :limit="1"
+          :readonly="!canEditDriverField('identityDocuments')"
+        />
       </template>
       <template #driverLicenseFrontUrl>
         <ArtUploadImage
@@ -23,6 +35,7 @@
           title="驾驶证正面"
           :size="104"
           :limit="1"
+          :readonly="!canEditDriverField('identityDocuments')"
         />
       </template>
       <template #driverLicenseBackUrl>
@@ -31,6 +44,7 @@
           title="驾驶证反面"
           :size="104"
           :limit="1"
+          :readonly="!canEditDriverField('identityDocuments')"
         />
       </template>
     </ArtForm>
@@ -51,6 +65,7 @@
     fetchDriverAssignedVehicles
   } from '@/api/tms'
   import { useUserStore } from '@/store/modules/user'
+  import { canEditField, canViewField, getFieldAccess } from '@/utils/field-permission'
 
   defineOptions({ name: 'TmsDriverDialog' })
 
@@ -95,47 +110,71 @@
     driverLicenseFrontUrl: '',
     driverLicenseBackUrl: '',
     remark: '',
-    carrierVehiclePlates: []
+    carrierVehiclePlates: [],
+    fieldAccess: {
+      contactPhone: 'edit',
+      idCardNo: 'edit',
+      homeAddress: 'edit',
+      emergencyContact: 'edit',
+      identityDocuments: 'edit'
+    },
+    isRecordOwner: true
   })
 
   const form = reactive<DriverForm>(createInitialForm())
 
-  const formRules: FormRules<DriverForm> = {
+  const canViewDriverField = (field: Api.Tms.BasicData.DriverFieldKey): boolean =>
+    canViewField(form.fieldAccess, field)
+
+  const canEditDriverField = (field: Api.Tms.BasicData.DriverFieldKey): boolean =>
+    canEditField(form.fieldAccess, field)
+
+  const canViewIdentityDocuments = computed(() =>
+    ['read', 'edit'].includes(getFieldAccess(form.fieldAccess, 'identityDocuments'))
+  )
+
+  const formRules = computed<FormRules<DriverForm>>(() => ({
     driverName: [
       { required: true, message: '请输入姓名', trigger: 'blur' },
       { min: 2, max: 50, message: '长度应为 2 到 50 个字符', trigger: 'blur' }
     ],
     carrierId: [{ required: true, message: '请选择所属承运商', trigger: 'change' }],
     driverType: [{ required: true, message: '请选择司机类型', trigger: 'change' }],
-    phone: [
-      { required: true, message: '请输入手机号码', trigger: 'blur' },
-      {
-        pattern: /^1[3-9]\d{9}$/,
-        message: '请输入正确的手机号码',
-        trigger: 'blur'
-      }
-    ],
-    idCardNo: [
-      { required: true, message: '请输入身份证号', trigger: 'blur' },
-      {
-        pattern:
-          /^(^[1-9]\d{5}(18|19|20)\d{2}(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])\d{3}[\dXx]$)|(^[1-9]\d{7}(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])\d{3}$)$/,
-        message: '请输入正确的身份证号',
-        trigger: 'blur'
-      }
-    ],
+    phone: canEditDriverField('contactPhone')
+      ? [
+          { required: true, message: '请输入手机号码', trigger: 'blur' },
+          {
+            pattern: /^1[3-9]\d{9}$/,
+            message: '请输入正确的手机号码',
+            trigger: 'blur'
+          }
+        ]
+      : [],
+    idCardNo: canEditDriverField('idCardNo')
+      ? [
+          { required: true, message: '请输入身份证号', trigger: 'blur' },
+          {
+            pattern:
+              /^(^[1-9]\d{5}(18|19|20)\d{2}(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])\d{3}[\dXx]$)|(^[1-9]\d{7}(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])\d{3}$)$/,
+            message: '请输入正确的身份证号',
+            trigger: 'blur'
+          }
+        ]
+      : [],
     gender: [{ required: true, message: '请选择性别', trigger: 'change' }],
     licenseType: [{ required: true, message: '请选择驾照类型', trigger: 'change' }],
     licenseExpireDate: [{ required: true, message: '请选择驾照有效期', trigger: 'change' }],
-    emergencyContactPhone: [
-      {
-        pattern: /^$|^1[3-9]\d{9}$/,
-        message: '请输入正确的紧急联系人电话',
-        trigger: 'blur'
-      }
-    ],
+    emergencyContactPhone: canEditDriverField('emergencyContact')
+      ? [
+          {
+            pattern: /^$|^1[3-9]\d{9}$/,
+            message: '请输入正确的紧急联系人电话',
+            trigger: 'blur'
+          }
+        ]
+      : [],
     remark: [{ max: 500, message: '备注不能超过 500 个字符', trigger: 'blur' }]
-  }
+  }))
 
   const formItems = computed<FormItem[]>(() => [
     { label: '基础信息', key: 'baseSection', type: 'divider', span: 24 },
@@ -149,13 +188,23 @@
       label: '手机号码',
       key: 'phone',
       type: 'input',
-      props: { maxlength: 11, placeholder: '请输入手机号码' }
+      hidden: !canViewDriverField('contactPhone'),
+      props: {
+        maxlength: 11,
+        placeholder: '请输入手机号码',
+        disabled: !canEditDriverField('contactPhone')
+      }
     },
     {
       label: '身份证号',
       key: 'idCardNo',
       type: 'input',
-      props: { maxlength: 18, placeholder: '请输入身份证号' }
+      hidden: !canViewDriverField('idCardNo'),
+      props: {
+        maxlength: 18,
+        placeholder: '请输入身份证号',
+        disabled: !canEditDriverField('idCardNo')
+      }
     },
     {
       label: '司机类型',
@@ -241,19 +290,34 @@
       key: 'homeAddress',
       type: 'input',
       span: 16,
-      props: { maxlength: 200, placeholder: '请输入家庭住址' }
+      hidden: !canViewDriverField('homeAddress'),
+      props: {
+        maxlength: 200,
+        placeholder: '请输入家庭住址',
+        disabled: !canEditDriverField('homeAddress')
+      }
     },
     {
       label: '紧急联系人',
       key: 'emergencyContactName',
       type: 'input',
-      props: { maxlength: 50, placeholder: '请输入紧急联系人' }
+      hidden: !canViewDriverField('emergencyContact'),
+      props: {
+        maxlength: 50,
+        placeholder: '请输入紧急联系人',
+        disabled: !canEditDriverField('emergencyContact')
+      }
     },
     {
       label: '紧急联系人电话',
       key: 'emergencyContactPhone',
       type: 'input',
-      props: { maxlength: 11, placeholder: '请输入紧急联系人电话' }
+      hidden: !canViewDriverField('emergencyContact'),
+      props: {
+        maxlength: 11,
+        placeholder: '请输入紧急联系人电话',
+        disabled: !canEditDriverField('emergencyContact')
+      }
     },
     {
       label: '状态',
@@ -265,22 +329,32 @@
         inlinePrompt: true
       }
     },
-    { label: '证件照', key: 'certificateSection', type: 'divider', span: 24 },
+    {
+      label: '证件照',
+      key: 'certificateSection',
+      type: 'divider',
+      span: 24,
+      hidden: !canViewIdentityDocuments.value
+    },
     {
       label: '身份证正面',
-      key: 'idCardFrontUrl'
+      key: 'idCardFrontUrl',
+      hidden: !canViewIdentityDocuments.value
     },
     {
       label: '身份证反面',
-      key: 'idCardBackUrl'
+      key: 'idCardBackUrl',
+      hidden: !canViewIdentityDocuments.value
     },
     {
       label: '驾驶证正面',
-      key: 'driverLicenseFrontUrl'
+      key: 'driverLicenseFrontUrl',
+      hidden: !canViewIdentityDocuments.value
     },
     {
       label: '驾驶证反面',
-      key: 'driverLicenseBackUrl'
+      key: 'driverLicenseBackUrl',
+      hidden: !canViewIdentityDocuments.value
     },
     {
       label: '备注信息',
@@ -312,15 +386,39 @@
   }
 
   const normalizePayload = (): Driver => {
-    const payload = omit(structuredClone(toRaw(form)), [
+    const rawPayload = structuredClone(toRaw(form))
+    if (rawPayload.id && !canEditField(rawPayload.fieldAccess, 'contactPhone')) {
+      delete rawPayload.phone
+    }
+    if (rawPayload.id && !canEditField(rawPayload.fieldAccess, 'idCardNo')) {
+      delete rawPayload.idCardNo
+    }
+    if (rawPayload.id && !canEditField(rawPayload.fieldAccess, 'homeAddress')) {
+      delete rawPayload.homeAddress
+    }
+    if (rawPayload.id && !canEditField(rawPayload.fieldAccess, 'emergencyContact')) {
+      delete rawPayload.emergencyContactName
+      delete rawPayload.emergencyContactPhone
+    }
+    if (rawPayload.id && !canEditField(rawPayload.fieldAccess, 'identityDocuments')) {
+      delete rawPayload.idCardFrontUrl
+      delete rawPayload.idCardBackUrl
+      delete rawPayload.driverLicenseFrontUrl
+      delete rawPayload.driverLicenseBackUrl
+    }
+
+    const payload = omit(rawPayload, [
       'tenantId',
+      'createdByUserId',
       'createBy',
       'createTime',
       'updateBy',
       'updateTime',
       'carrier',
       'assignedVehicles',
-      'carrierVehiclePlates'
+      'carrierVehiclePlates',
+      'fieldAccess',
+      'isRecordOwner'
     ]) as Driver
 
     return {

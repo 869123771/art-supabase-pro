@@ -32,7 +32,7 @@
             >{{ item.dispatchPlateNo || '待配载'
             }}<em>{{ item.dispatchDriverName || '司机待分配' }}</em></span
           >
-          <b>¥ {{ formatMoney(item.totalFee) }}</b>
+          <b>{{ formatCurrencyValue(item.totalFee) }}</b>
           <ElTag size="small" :type="getOrderTagType(item.orderStatus)" effect="plain">{{
             getOrderStatusLabel(item.orderStatus)
           }}</ElTag>
@@ -45,6 +45,7 @@
 <script setup lang="ts">
   import { ArrowRight } from '@element-plus/icons-vue'
   import ArtAsyncState from '@/components/core/layouts/art-async-state/index.vue'
+  import { formatCurrencyValue } from '@/utils/ui'
   import type { DashboardOrder } from './types'
 
   defineProps<{ orders: DashboardOrder[] }>()
@@ -70,8 +71,6 @@
   const getOrderTagType = (
     status?: string | null
   ): 'primary' | 'success' | 'warning' | 'info' | 'danger' => tagMap[String(status ?? '')] ?? 'info'
-  const formatMoney = (value?: number | string | null): string =>
-    Number(value ?? 0).toLocaleString('zh-CN', { maximumFractionDigits: 2 })
 </script>
 
 <style scoped lang="scss">
@@ -88,7 +87,12 @@
       width: 100%;
       height: 3px;
       content: '';
-      background: linear-gradient(90deg, #8b5cf6, var(--el-color-primary), transparent 62%);
+      background: linear-gradient(
+        90deg,
+        var(--el-color-primary-light-3),
+        var(--theme-color),
+        transparent 62%
+      );
     }
 
     header {

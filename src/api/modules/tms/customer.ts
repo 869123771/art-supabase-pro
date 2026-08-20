@@ -1,10 +1,5 @@
 import { useSupabase } from '@/hooks'
-import {
-  applyCreateTimeRange,
-  normalizeBooleanFilter,
-  withRequestOptions,
-  type SupabaseQueryLike
-} from '@/api/providers/supabase/query'
+import { normalizeBooleanFilter, withRequestOptions } from '@/api/providers/supabase/query'
 import type { ApiRequestOptions } from '@/types/api/request'
 
 type Customer = Api.Tms.BasicData.Customer
@@ -16,22 +11,7 @@ type FavoriteRouteSearchParams = Api.Tms.BasicData.FavoriteRouteSearchParams
 type CustomerSelectorItem = Api.Tms.Order.CustomerSelectorItem
 type CustomerSelectorSearchParams = Api.Tms.Order.CustomerSelectorSearchParams
 
-type CustomerSelectorAddress = Pick<
-  CustomerAddress,
-  | 'id'
-  | 'addressType'
-  | 'contactName'
-  | 'contactPhone'
-  | 'region'
-  | 'regionAdcode'
-  | 'addressDetail'
-  | 'longitude'
-  | 'latitude'
->
-
-interface CustomerSelectorRecord extends CustomerSelectorItem {
-  addresses?: CustomerSelectorAddress[]
-}
+type CustomerSelectorRecord = CustomerSelectorItem
 
 interface WriteOptions {
   showMessage?: boolean
@@ -41,6 +21,16 @@ interface CustomerOptionParams {
   excludeId?: string
   includeDisabled?: boolean
   tenantId?: string
+}
+
+interface SecureListPayload<TRecord, TAccess extends Record<string, string>> {
+  records: TRecord[]
+  total: number
+  fieldAccess?: TAccess
+}
+
+interface SecureImportResult {
+  count: number
 }
 
 export type CustomerDeleteDependencyCode =
@@ -88,74 +78,138 @@ export interface CustomerDeleteSafeCleanupResult {
 
 const { supabase, keysToSnakeDeep, responseHandle } = useSupabase()
 
-const applyCustomerFilters = <TQuery extends SupabaseQueryLike>(
-  query: TQuery,
-  params: CustomerSearchParams
-): TQuery => {
-  const { customerId, customerLevel, industry, enabled, keyword, createTimeRange } = params
-  if (customerId) query = query.eq('id', customerId)
-  if (customerLevel) query = query.eq('customer_level', customerLevel)
-  if (industry) query = query.eq('industry', industry)
-  const enabledValue = normalizeBooleanFilter(enabled)
-  if (enabledValue !== undefined) query = query.eq('enabled', enabledValue)
-  if (keyword) {
-    query = query.or(
-      `customer_name.ilike.%${keyword}%,customer_code.ilike.%${keyword}%,contact_name.ilike.%${keyword}%,contact_phone.ilike.%${keyword}%`
-    )
+const CUSTOMER_PAYLOAD_KEYS = [
+  'parentUnitId',
+  'customerCode',
+  'customerName',
+  'industry',
+  'customerLevel',
+  'tags',
+  'region',
+  'regionAdcode',
+  'addressDetail',
+  'longitude',
+  'latitude',
+  'coordinateSystem',
+  'coordinateSource',
+  'coordinateStatus',
+  'geocodeProvider',
+  'geocodedAt',
+  'postalCode',
+  'enabled',
+  'contactName',
+  'contactPhone',
+  'contactDepartment',
+  'contactPosition',
+  'contactEmail',
+  'contactQq',
+  'invoiceTitle',
+  'taxNo',
+  'bankName',
+  'bankAccount',
+  'remark'
+] as const satisfies readonly (keyof Customer)[]
+
+const CUSTOMER_ADDRESS_PAYLOAD_KEYS = [
+  'customerId',
+  'addressType',
+  'contactName',
+  'contactPhone',
+  'region',
+  'regionAdcode',
+  'addressDetail',
+  'longitude',
+  'latitude',
+  'coordinateSystem',
+  'coordinateSource',
+  'coordinateStatus',
+  'geocodeProvider',
+  'geocodedAt',
+  'postalCode',
+  'isDefault',
+  'remark',
+  'geofenceEnabled',
+  'geofenceRadiusM',
+  'geofenceUpdatedAt'
+] as const satisfies readonly (keyof CustomerAddress)[]
+
+const pickPayload = <TRecord extends object, TKey extends Extract<keyof TRecord, string>>(
+  record: TRecord,
+  keys: readonly TKey[]
+): Record<string, unknown> =>
+  Object.fromEntries(
+    keys.filter((key) => record[key] !== undefined).map((key) => [key, record[key]])
+  )
+
+const toCustomerListRpcParams = (
+  params: CustomerSearchParams & { ids?: string[]; maxRows?: number },
+  purpose: 'list' | 'export'
+) => {
+  const from = purpose === 'export' ? 0 : Math.max(params.from ?? 0, 0)
+  const requestedTo = purpose === 'export' ? Math.max((params.maxRows ?? 10000) - 1, 0) : params.to
+  return {
+    p_from: from,
+    p_to: Math.max(requestedTo ?? 9, from),
+    p_customer_id: params.customerId || null,
+    p_customer_level: params.customerLevel || null,
+    p_industry: params.industry || null,
+    p_enabled: normalizeBooleanFilter(params.enabled) ?? null,
+    p_keyword: String(params.keyword ?? '').trim() || null,
+    p_create_time_from: params.createTimeRange?.[0]
+      ? `${params.createTimeRange[0]}T00:00:00`
+      : null,
+    p_create_time_to: params.createTimeRange?.[1]
+      ? `${params.createTimeRange[1]}T23:59:59.999`
+      : null,
+    p_ids: params.ids?.length ? params.ids : null,
+    p_purpose: purpose
   }
-  return applyCreateTimeRange(query, createTimeRange)
 }
 
 export async function fetchCustomerList(params: CustomerSearchParams, options?: ApiRequestOptions) {
-  const { from = 0, to = 9 } = params
-  let query = supabase
-    .from('tms_customer')
-    .select('*', { count: 'exact' })
-    .order('create_time', { ascending: false })
-    .range(from, to)
-  query = applyCustomerFilters(query, params)
-  return await responseHandle<Customer[]>(() => withRequestOptions(query, options), {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
+  const query = supabase.rpc('tms_list_customers_secure', toCustomerListRpcParams(params, 'list'))
+  const result = await responseHandle<
+    SecureListPayload<Customer, Api.Tms.BasicData.CustomerFieldAccessMap>
+  >(() => withRequestOptions(query, options), { showErrorMessage: true })
+  return {
+    data: result.data?.records ?? [],
+    total: result.data?.total ?? 0,
+    error: result.error,
+    fieldAccess: result.data?.fieldAccess ?? {}
+  }
 }
 
 export async function exportCustomerList(
   params: CustomerSearchParams & { ids?: string[]; maxRows?: number }
 ) {
-  const { ids, maxRows = 10000 } = params
-  let query = supabase
-    .from('tms_customer')
-    .select('*')
-    .order('create_time', { ascending: false })
-    .limit(maxRows)
-  query = ids?.length ? query.in('id', ids) : applyCustomerFilters(query, params)
-  return await responseHandle<Customer[]>(() => query, {
-    ignoreCheck: true,
+  const result = await responseHandle<
+    SecureListPayload<Customer, Api.Tms.BasicData.CustomerFieldAccessMap>
+  >(() => supabase.rpc('tms_list_customers_secure', toCustomerListRpcParams(params, 'export')), {
     showErrorMessage: true
   })
+  return {
+    data: result.data?.records ?? [],
+    total: result.data?.total ?? 0,
+    error: result.error,
+    fieldAccess: result.data?.fieldAccess ?? {}
+  }
 }
 
 export async function fetchCustomerOptions(
   params: CustomerOptionParams = {},
   options?: ApiRequestOptions
 ) {
-  const { excludeId, includeDisabled = false, tenantId } = params
-  let query = supabase
-    .from('tms_customer')
-    .select(
-      'id, tenant_id, customer_code, customer_name, enabled, contact_name, contact_phone, region, region_adcode, address_detail, longitude, latitude, coordinate_system, coordinate_source, coordinate_status, geocode_provider, geocoded_at, postal_code'
-    )
-    .order('customer_name', { ascending: true })
-    .limit(1000)
-
-  if (!includeDisabled) query = query.eq('enabled', true)
-  if (excludeId) query = query.neq('id', excludeId)
-  if (tenantId) query = query.eq('tenant_id', tenantId)
-
   return await responseHandle<Api.Tms.BasicData.CustomerOption[]>(
-    () => withRequestOptions(query, options),
-    { ignoreCheck: true, showErrorMessage: true }
+    () =>
+      withRequestOptions(
+        supabase.rpc('tms_list_customer_options_secure', {
+          p_exclude_id: params.excludeId || null,
+          p_include_disabled: params.includeDisabled ?? false,
+          p_tenant_id: params.tenantId || null
+        }),
+        options
+      ),
+    { showErrorMessage: true }
   )
 }
 
@@ -164,89 +218,46 @@ export async function fetchCustomerSelectorList(
   options?: ApiRequestOptions
 ) {
   const { from = 0, to = 9, keyword, addressType } = params
-  const addressSelect = addressType
-    ? `,
-      addresses:tms_customer_address!tms_customer_address_customer_id_fkey(
-        id,
-        address_type,
-        contact_name,
-        contact_phone,
-        region,
-        region_adcode,
-        address_detail,
-        longitude,
-        latitude
-      )`
-    : ''
-  let query = supabase
-    .from('tms_customer')
-    .select(
-      `id, customer_code, customer_name, contact_name, contact_phone, region, region_adcode, address_detail, longitude, latitude${addressSelect}`,
-      { count: 'exact' }
-    )
-    .eq('enabled', true)
-    .order('create_time', { ascending: false })
-    .range(from, to)
-  if (addressType) {
-    query = query
-      .eq('addresses.address_type', addressType)
-      .order('is_default', { ascending: false, referencedTable: 'addresses' })
-      .order('update_time', {
-        ascending: false,
-        nullsFirst: false,
-        referencedTable: 'addresses'
-      })
-      .order('create_time', {
-        ascending: false,
-        nullsFirst: false,
-        referencedTable: 'addresses'
-      })
-      .limit(1, { referencedTable: 'addresses' })
-  }
-  if (keyword) {
-    query = query.or(
-      `customer_name.ilike.%${keyword}%,customer_code.ilike.%${keyword}%,contact_name.ilike.%${keyword}%,contact_phone.ilike.%${keyword}%,address_detail.ilike.%${keyword}%`
-    )
-  }
-  const result = await responseHandle<CustomerSelectorRecord[]>(
-    () => withRequestOptions(query, options),
-    {
-      ignoreCheck: true,
-      showErrorMessage: true
-    }
+  const result = await responseHandle<SecureListPayload<CustomerSelectorRecord, never>>(
+    () =>
+      withRequestOptions(
+        supabase.rpc('tms_list_customer_selector_secure', {
+          p_from: from,
+          p_to: to,
+          p_keyword: String(keyword ?? '').trim() || null,
+          p_address_type: addressType || null
+        }),
+        options
+      ),
+    { showErrorMessage: true }
   )
   return {
-    ...result,
-    data: result.data?.map(({ addresses, ...customer }) => {
-      const address = addresses?.[0]
-      if (!address) return customer
-      return {
-        ...customer,
-        addressId: address.id ?? null,
-        addressType: address.addressType,
-        contactName: address.contactName,
-        contactPhone: address.contactPhone,
-        region: address.region,
-        regionAdcode: address.regionAdcode,
-        addressDetail: address.addressDetail,
-        longitude: address.longitude,
-        latitude: address.latitude
-      } satisfies CustomerSelectorItem
-    })
+    data: result.data?.records ?? [],
+    total: result.data?.total ?? 0,
+    error: result.error
   }
 }
 
 export async function addCustomer(params: Customer, options: WriteOptions = {}) {
-  return await responseHandle<Customer>(
-    () => supabase.from('tms_customer').insert(keysToSnakeDeep(params)).select().single(),
+  const result = await responseHandle<string>(
+    () =>
+      supabase.rpc('tms_create_customer_secure', {
+        p_payload: keysToSnakeDeep(pickPayload(params, CUSTOMER_PAYLOAD_KEYS))
+      }),
     { showMessage: options.showMessage ?? true, breakReturn: true }
   )
+  return { ...result, data: result.data ? { id: result.data } : null }
 }
 
 export async function editCustomer(params: Customer) {
   const { id, ...data } = params
-  return await responseHandle(
-    () => supabase.from('tms_customer').update(keysToSnakeDeep(data)).eq('id', id),
+  if (!id) throw new Error('客户 ID 不能为空')
+  return await responseHandle<Customer>(
+    () =>
+      supabase.rpc('tms_update_customer_secure', {
+        p_id: id,
+        p_payload: keysToSnakeDeep(pickPayload(data, CUSTOMER_PAYLOAD_KEYS))
+      }),
     { showMessage: true, breakReturn: true }
   )
 }
@@ -315,43 +326,27 @@ export async function cleanupCustomerDeleteSafeDependencies(
 }
 
 export async function deleteCustomer(id: string) {
-  return await responseHandle(
-    () => supabase.from('tms_customer').delete({ count: 'exact' }).eq('id', id),
-    { breakReturn: true, requireAffected: true }
+  return await responseHandle<boolean>(
+    () => supabase.rpc('tms_delete_customer_secure', { p_id: id }),
+    { breakReturn: true }
   )
 }
 
 export async function deleteCustomerBatch(ids: string[]) {
-  return await responseHandle(
-    () => supabase.from('tms_customer').delete({ count: 'exact' }).in('id', ids),
-    { breakReturn: true, requireAffected: true }
+  return await responseHandle<number>(
+    () => supabase.rpc('tms_delete_customers_secure', { p_ids: ids }),
+    { breakReturn: true }
   )
 }
 
 export async function importCustomers(rows: Customer[]) {
-  return await responseHandle(
+  return await responseHandle<SecureImportResult>(
     () =>
-      supabase
-        .from('tms_customer')
-        .upsert(keysToSnakeDeep(rows), { onConflict: 'tenant_id,customer_code' }),
+      supabase.rpc('tms_import_customers_secure', {
+        p_rows: rows.map((row) => keysToSnakeDeep(pickPayload(row, CUSTOMER_PAYLOAD_KEYS)))
+      }),
     { showMessage: true, breakReturn: true }
   )
-}
-
-const applyCustomerAddressFilters = <TQuery extends SupabaseQueryLike>(
-  query: TQuery,
-  params: CustomerAddressSearchParams
-): TQuery => {
-  const { customerId, addressType, keyword, createTimeRange, recordId } = params
-  if (recordId) query = query.eq('id', recordId)
-  if (customerId) query = query.eq('customer_id', customerId)
-  if (addressType) query = query.eq('address_type', addressType)
-  if (keyword) {
-    query = query.or(
-      `contact_name.ilike.%${keyword}%,contact_phone.ilike.%${keyword}%,address_detail.ilike.%${keyword}%`
-    )
-  }
-  return applyCreateTimeRange(query, createTimeRange)
 }
 
 export async function fetchCustomerAddressList(
@@ -359,20 +354,29 @@ export async function fetchCustomerAddressList(
   options?: ApiRequestOptions
 ) {
   const { from = 0, to = 9 } = params
-  let query = supabase
-    .from('tms_customer_address')
-    .select(
-      '*, customer:tms_customer!tms_customer_address_customer_id_fkey(id, customer_code, customer_name, contact_name, contact_phone)',
-      { count: 'exact' }
-    )
-    .order('update_time', { ascending: false, nullsFirst: false })
-    .order('create_time', { ascending: false, nullsFirst: false })
-    .range(from, to)
-  query = applyCustomerAddressFilters(query, params)
-  return await responseHandle<CustomerAddress[]>(() => withRequestOptions(query, options), {
-    ignoreCheck: true,
-    showErrorMessage: true
+  const query = supabase.rpc('tms_list_customer_addresses_secure', {
+    p_from: from,
+    p_to: to,
+    p_customer_id: params.customerId || null,
+    p_address_type: params.addressType || null,
+    p_keyword: String(params.keyword ?? '').trim() || null,
+    p_create_time_from: params.createTimeRange?.[0]
+      ? `${params.createTimeRange[0]}T00:00:00`
+      : null,
+    p_create_time_to: params.createTimeRange?.[1]
+      ? `${params.createTimeRange[1]}T23:59:59.999`
+      : null,
+    p_record_id: params.recordId || null
   })
+  const result = await responseHandle<
+    SecureListPayload<CustomerAddress, Api.Tms.BasicData.CustomerAddressFieldAccessMap>
+  >(() => withRequestOptions(query, options), { showErrorMessage: true })
+  return {
+    data: result.data?.records ?? [],
+    total: result.data?.total ?? 0,
+    error: result.error,
+    fieldAccess: result.data?.fieldAccess ?? {}
+  }
 }
 
 export async function fetchCustomerDefaultAddress(
@@ -381,55 +385,49 @@ export async function fetchCustomerDefaultAddress(
 ) {
   return await responseHandle<CustomerAddress | null>(
     () =>
-      supabase
-        .from('tms_customer_address')
-        .select('*')
-        .eq('customer_id', customerId)
-        .eq('address_type', addressType)
-        .order('is_default', { ascending: false })
-        .order('update_time', { ascending: false, nullsFirst: false })
-        .order('create_time', { ascending: false, nullsFirst: false })
-        .limit(1)
-        .maybeSingle(),
-    { ignoreCheck: true, showErrorMessage: true }
+      supabase.rpc('tms_get_customer_default_address_secure', {
+        p_customer_id: customerId,
+        p_address_type: addressType
+      }),
+    { showErrorMessage: true }
   )
 }
 
 export async function addCustomerAddress(params: CustomerAddress, options: WriteOptions = {}) {
-  return await responseHandle<CustomerAddress>(
-    () => supabase.from('tms_customer_address').insert(keysToSnakeDeep(params)).select().single(),
+  const result = await responseHandle<string>(
+    () =>
+      supabase.rpc('tms_create_customer_address_secure', {
+        p_payload: keysToSnakeDeep(pickPayload(params, CUSTOMER_ADDRESS_PAYLOAD_KEYS))
+      }),
     { showMessage: options.showMessage ?? true, breakReturn: true }
   )
+  return { ...result, data: result.data ? { id: result.data } : null }
 }
 
 export async function editCustomerAddress(params: CustomerAddress) {
   const { id } = params
-  const data = { ...params }
-  delete data.id
-  delete data.customer
+  if (!id) throw new Error('客户地址 ID 不能为空')
   return await responseHandle<CustomerAddress>(
     () =>
-      supabase
-        .from('tms_customer_address')
-        .update(keysToSnakeDeep(data), { count: 'exact' })
-        .eq('id', id)
-        .select()
-        .single(),
-    { showMessage: true, breakReturn: true, requireAffected: true }
+      supabase.rpc('tms_update_customer_address_secure', {
+        p_id: id,
+        p_payload: keysToSnakeDeep(pickPayload(params, CUSTOMER_ADDRESS_PAYLOAD_KEYS))
+      }),
+    { showMessage: true, breakReturn: true }
   )
 }
 
 export async function deleteCustomerAddress(id: string) {
-  return await responseHandle(
-    () => supabase.from('tms_customer_address').delete({ count: 'exact' }).eq('id', id),
-    { showMessage: true, breakReturn: true, requireAffected: true }
+  return await responseHandle<boolean>(
+    () => supabase.rpc('tms_delete_customer_address_secure', { p_id: id }),
+    { showMessage: true, breakReturn: true }
   )
 }
 
 export async function deleteCustomerAddressBatch(ids: string[]) {
-  return await responseHandle(
-    () => supabase.from('tms_customer_address').delete({ count: 'exact' }).in('id', ids),
-    { showMessage: true, breakReturn: true, requireAffected: true }
+  return await responseHandle<number>(
+    () => supabase.rpc('tms_delete_customer_addresses_secure', { p_ids: ids }),
+    { showMessage: true, breakReturn: true }
   )
 }
 
@@ -439,13 +437,11 @@ export async function updateCustomerAddressGeofence(
 ) {
   return await responseHandle<CustomerAddress>(
     () =>
-      supabase
-        .from('tms_customer_address')
-        .update(keysToSnakeDeep(payload), { count: 'exact' })
-        .eq('id', id)
-        .select()
-        .single(),
-    { showMessage: true, breakReturn: true, requireAffected: true }
+      supabase.rpc('tms_update_customer_address_secure', {
+        p_id: id,
+        p_payload: keysToSnakeDeep(payload)
+      }),
+    { showMessage: true, breakReturn: true }
   )
 }
 
@@ -456,20 +452,15 @@ export async function fetchCustomerAddressOptions(
     addressType?: CustomerAddress['addressType']
   } = {}
 ) {
-  let query = supabase
-    .from('tms_customer_address')
-    .select(
-      '*, customer:tms_customer!tms_customer_address_customer_id_fkey(id, customer_code, customer_name)'
-    )
-    .order('is_default', { ascending: false })
-    .order('update_time', { ascending: false, nullsFirst: false })
-  if (params.customerId) query = query.eq('customer_id', params.customerId)
-  if (params.tenantId) query = query.eq('tenant_id', params.tenantId)
-  if (params.addressType) query = query.eq('address_type', params.addressType)
-  return await responseHandle<CustomerAddress[]>(() => query, {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
+  return await responseHandle<CustomerAddress[]>(
+    () =>
+      supabase.rpc('tms_list_customer_address_options_secure', {
+        p_customer_id: params.customerId || null,
+        p_tenant_id: params.tenantId || null,
+        p_address_type: params.addressType || null
+      }),
+    { showErrorMessage: true }
+  )
 }
 
 export async function fetchFavoriteRouteList(
@@ -477,44 +468,23 @@ export async function fetchFavoriteRouteList(
   options?: ApiRequestOptions
 ) {
   const { from = 0, to = 9, tenantId, customerId, enabled, keyword } = params
-  let query = supabase
-    .from('tms_favorite_route')
-    .select(
-      `
-        *,
-        tenant:sys_tenant!tms_favorite_route_tenant_id_fkey(id, tenant_code, tenant_name),
-        customer:tms_customer!tms_favorite_route_customer_id_fkey(
-          id, customer_code, customer_name
-        ),
-        origin_address:tms_customer_address!tms_favorite_route_origin_address_id_fkey(
-          *,
-          customer:tms_customer!tms_customer_address_customer_id_fkey(
-            id, customer_code, customer_name
-          )
-        ),
-        destination_address:tms_customer_address!tms_favorite_route_destination_address_id_fkey(
-          *,
-          customer:tms_customer!tms_customer_address_customer_id_fkey(
-            id, customer_code, customer_name
-          )
-        )
-      `,
-      { count: 'exact' }
-    )
-    .order('enabled', { ascending: false })
-    .order('update_time', { ascending: false, nullsFirst: false })
-    .range(from, to)
-  if (customerId) query = query.eq('customer_id', customerId)
-  if (tenantId) query = query.eq('tenant_id', tenantId)
-  if (enabled !== undefined) query = query.eq('enabled', enabled)
-  if (keyword?.trim()) {
-    const trimmedKeyword = keyword.trim()
-    query = query.or(`route_name.ilike.%${trimmedKeyword}%,remark.ilike.%${trimmedKeyword}%`)
-  }
-  return await responseHandle<FavoriteRoute[]>(() => withRequestOptions(query, options), {
-    ignoreCheck: true,
-    showErrorMessage: true
+  const query = supabase.rpc('tms_list_favorite_routes_secure', {
+    p_from: from,
+    p_to: to,
+    p_tenant_id: tenantId || null,
+    p_customer_id: customerId || null,
+    p_enabled: enabled ?? null,
+    p_keyword: String(keyword ?? '').trim() || null
   })
+  const result = await responseHandle<SecureListPayload<FavoriteRoute, never>>(
+    () => withRequestOptions(query, options),
+    { showErrorMessage: true }
+  )
+  return {
+    data: result.data?.records ?? [],
+    total: result.data?.total ?? 0,
+    error: result.error
+  }
 }
 
 export async function addFavoriteRoute(params: FavoriteRoute) {

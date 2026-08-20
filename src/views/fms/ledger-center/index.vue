@@ -383,6 +383,7 @@
 
   const balanceHeaderActions = computed<ArtTableQueryHeaderAction[]>(() => [
     {
+      permission: 'FinanceLedgerCenter:Export',
       type: 'export',
       exportFilename: '科目余额表',
       exportSheetName: '科目余额表',
@@ -412,6 +413,7 @@
 
   const generalHeaderActions = computed<ArtTableQueryHeaderAction[]>(() => [
     {
+      permission: 'FinanceLedgerCenter:Export',
       type: 'export',
       exportFilename: '总账',
       exportSheetName: '总账',
@@ -443,6 +445,7 @@
 
   const subsidiaryHeaderActions = computed<ArtTableQueryHeaderAction[]>(() => [
     {
+      permission: 'FinanceLedgerCenter:Export',
       type: 'export',
       exportFilename: '明细辅助账',
       exportSheetName: '明细辅助账',
@@ -696,6 +699,7 @@
         formatter: (row) => (
           <ArtButtonTable
             type="view"
+            permission="FinanceLedgerCenter:View"
             label="查看总账"
             onClick={() => void openGeneralLedger(row)}
           />
@@ -786,6 +790,7 @@
         formatter: (row) => (
           <ArtButtonTable
             type="view"
+            permission="FinanceLedgerCenter:View"
             label="查看明细"
             onClick={() => void openSubsidiaryLedger(row)}
           />

@@ -22,6 +22,7 @@
     </BusinessWorkspaceHeader>
 
     <ArtTableQuery
+      :key="tablePermissionKey"
       ref="tableQueryRef"
       v-model="table.searchQuery"
       :search-items="searchItems"
@@ -59,6 +60,7 @@
   import { formatNameCodeOption } from '@/utils/form'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatWithDayjs } from '@/utils/time'
+  import { canViewField, formatSensitiveNumber } from '@/utils/field-permission'
   import { useUserStore } from '@/store/modules/user'
   import {
     deleteContract,
@@ -83,6 +85,8 @@
   type Contract = Api.Tms.BasicData.Contract
   type ContractStatus = Api.Tms.BasicData.ContractStatus
   type ContractBusinessType = Api.Tms.BasicData.ContractBusinessType
+  type ContractFieldKey = Api.Tms.BasicData.ContractFieldKey
+  type ContractFieldAccessMap = Api.Tms.BasicData.ContractFieldAccessMap
   type SearchParams = Api.Tms.BasicData.ContractSearchParams
   type CarrierOption = Api.Tms.BasicData.CarrierOption
   type CustomerOption = Api.Tms.BasicData.CustomerOption
@@ -103,6 +107,8 @@
   const { getDictMap } = storeToRefs(useUserStore())
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<ContractDialogExpose>()
+  const listFieldAccess = ref<ContractFieldAccessMap>({})
+  const currentRows = ref<Contract[]>([])
 
   const table = reactive<TableGroup>({
     searchQuery: {
@@ -236,6 +242,30 @@
     { key: 'contractDescription', title: '合同说明摘要' }
   ]
 
+  const excelSensitiveFieldMap: Partial<Record<string, ContractFieldKey>> = {
+    contractAmount: 'contractAmount',
+    transportUnitPrice: 'transportUnitPrice',
+    roadConsumptionRate: 'roadConsumptionRate',
+    lossDeductionPrice: 'lossDeductionPrice'
+  }
+
+  const shouldDisplaySensitiveField = (field: ContractFieldKey): boolean =>
+    canViewField(listFieldAccess.value, field) ||
+    currentRows.value.some((row) => canViewField(row.fieldAccess, field))
+
+  const visibleExportColumns = computed(() =>
+    contractExcelColumns.filter((column) => {
+      const field = excelSensitiveFieldMap[String(column.key)]
+      return !field || shouldDisplaySensitiveField(field)
+    })
+  )
+
+  const tablePermissionKey = computed(() =>
+    (['contractAmount'] as const)
+      .map((field) => `${field}:${shouldDisplaySensitiveField(field) ? 'visible' : 'hidden'}`)
+      .join('|')
+  )
+
   const searchItems = computed<SearchFormItem[]>(() => [
     {
       label: '合同状态',
@@ -336,13 +366,17 @@
       showOverflowTooltip: true,
       formatter: (row) => row.customer?.customerName || row.carrier?.companyName || '-'
     },
-    {
-      prop: 'contractAmount',
-      label: '合同金额',
-      width: 130,
-      align: 'right',
-      formatter: (row) => formatMoney(row.contractAmount)
-    },
+    ...(shouldDisplaySensitiveField('contractAmount')
+      ? [
+          {
+            prop: 'contractAmount',
+            label: '合同金额',
+            width: 130,
+            align: 'right' as const,
+            formatter: (row: Contract) => formatMoney(row.contractAmount)
+          }
+        ]
+      : []),
     { prop: 'handler', label: '经办人', width: 110 },
     {
       prop: 'expiryDate',
@@ -357,7 +391,11 @@
       fixed: 'right',
       formatter: (row) => (
         <div class="flex">
-          <ArtButtonTable type="edit" onClick={() => openDialog(row)} />
+          <ArtButtonTable
+            type="edit"
+            permission="TmsContract:Edit"
+            onClick={() => openDialog(row)}
+          />
           <ArtButtonMore
             list={getMoreActions()}
             onClick={(item: ButtonMoreItem) => handleMoreAction(item, row)}
@@ -368,8 +406,9 @@
   ]
 
   const headerActions = computed<ArtTableQueryHeaderAction[]>(() => [
-    { type: 'add', onClick: () => openDialog() },
+    { permission: 'TmsContract:Add', type: 'add', onClick: () => openDialog() },
     {
+      permission: 'TmsContract:Delete',
       type: 'delete',
       content: ({ selectedCount }: { selectedCount: number }) =>
         `确定删除选中的 ${selectedCount} 条合同吗？删除后无法恢复。`,
@@ -390,10 +429,11 @@
       }
     },
     {
+      permission: 'TmsContract:Export',
       type: 'export',
       exportFilename: 'TMS合同资料',
       exportSheetName: '合同管理',
-      exportColumns: contractExcelColumns,
+      exportColumns: () => visibleExportColumns.value,
       exportApi: ({ selectedIds, searchParams, maxRows }) =>
         exportContractList({
           ...(searchParams as SearchParams),
@@ -403,9 +443,12 @@
     }
   ])
 
-  const fetchTableData = (params: TableParams) => {
+  const fetchTableData = async (params: TableParams) => {
     const { from, to } = pageInfoHandler({ current: params.current, size: params.size })
-    return fetchContractList({ ...params, from, to })
+    const result = await fetchContractList({ ...params, from, to })
+    listFieldAccess.value = result.fieldAccess
+    currentRows.value = result.data
+    return result
   }
 
   function formatCarrierOption(option: Record<string, unknown>): string {
@@ -455,10 +498,8 @@
     return billingLabelMap.value.get(key) || key
   }
 
-  const formatMoney = (value?: number | null): string => {
-    if (value === null || value === undefined || Number.isNaN(Number(value))) return '-'
-    return Number(value).toFixed(2)
-  }
+  const formatMoney = (value?: Api.Tms.BasicData.SensitiveNumber): string =>
+    formatSensitiveNumber(value)
 
   const formatDateTime = (value?: unknown): string => {
     if (!value) return '-'
@@ -595,12 +636,9 @@
   }
 
   const getMoreActions = (): ButtonMoreItem[] => [
+    { auth: 'TmsContract:View', key: 'view', label: '查看', icon: 'ri:eye-line' },
     {
-      key: 'view',
-      label: '查看',
-      icon: 'ri:eye-line'
-    },
-    {
+      auth: 'TmsContract:Delete',
       key: 'delete',
       label: '删除',
       icon: 'ri:delete-bin-5-line',

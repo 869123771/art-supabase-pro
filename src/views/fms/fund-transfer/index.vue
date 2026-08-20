@@ -19,14 +19,6 @@
       </template>
     </BusinessWorkspaceHeader>
 
-    <ElAlert
-      v-if="!isPlatformSuper"
-      type="info"
-      :closable="false"
-      show-icon
-      title="当前账号处于资金只读模式，可查看本租户调拨记录；新增、审批、执行与冲销仅平台超级管理员可操作。"
-    />
-
     <ArtTableQuery
       ref="tableRef"
       v-model="table.search"
@@ -40,9 +32,7 @@
         rowKey: 'id',
         tableLayout: 'fixed',
         emptyText: '暂无资金调拨',
-        emptyDescription: isPlatformSuper
-          ? '创建调拨草稿，经提交、审批和执行后自动形成双边资金流水。'
-          : '当前租户暂无可查看的资金调拨记录。'
+        emptyDescription: '创建调拨草稿，经提交、审批和执行后自动形成双边资金流水。'
       }"
       focusable
     />
@@ -100,7 +90,7 @@
 
   const { confirmAction, promptReason } = useArtFeedback()
   const { runWithAccountSet } = useFinanceAccountSetPrerequisite()
-  const { getDictMap, isPlatformSuper } = storeToRefs(useUserStore())
+  const { getDictMap } = storeToRefs(useUserStore())
   const tableRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<DialogExpose>()
   const drawerRef = ref<DrawerExpose>()
@@ -159,28 +149,25 @@
     }
   ])
 
-  const headerActions = computed<ArtTableQueryHeaderAction[]>(() =>
-    isPlatformSuper.value
-      ? [
+  const headerActions = computed<ArtTableQueryHeaderAction[]>(() => [
+    {
+      permission: 'FinanceFundTransfer:Add',
+      type: 'add',
+      label: '新建资金调拨',
+      onClick: () =>
+        void runWithAccountSet(
           {
-            type: 'add',
-            label: '新建资金调拨',
-            onClick: () =>
-              void runWithAccountSet(
-                {
-                  actionLabel: '新建资金调拨',
-                  activeRequired: true,
-                  accountSetId: table.search.accountSetId,
-                  foundationRequired: true,
-                  fundAccountRequired: true,
-                  available: accountSetOptions.value.length > 0
-                },
-                () => dialogRef.value?.handleOpen()
-              )
-          }
-        ]
-      : []
-  )
+            actionLabel: '新建资金调拨',
+            activeRequired: true,
+            accountSetId: table.search.accountSetId,
+            foundationRequired: true,
+            fundAccountRequired: true,
+            available: accountSetOptions.value.length > 0
+          },
+          () => dialogRef.value?.handleOpen()
+        )
+    }
+  ])
 
   const metrics = computed<BusinessWorkspaceMetric[]>(() => {
     const selected = table.search.status
@@ -303,15 +290,23 @@
       {
         prop: 'operation',
         label: '操作',
-        width: isPlatformSuper.value ? 156 : 76,
+        width: 156,
         fixed: 'right',
         formatter: (row) => (
           <div class="flex items-center">
-            <ArtButtonTable type="view" onClick={() => void drawerRef.value?.handleOpen(row)} />
-            {isPlatformSuper.value && ['draft', 'rejected'].includes(row.status) ? (
-              <ArtButtonTable type="edit" onClick={() => void dialogRef.value?.handleOpen(row)} />
+            <ArtButtonTable
+              type="view"
+              permission="FinanceFundTransfer:View"
+              onClick={() => void drawerRef.value?.handleOpen(row)}
+            />
+            {['draft', 'rejected'].includes(row.status) ? (
+              <ArtButtonTable
+                type="edit"
+                permission="FinanceFundTransfer:Edit"
+                onClick={() => void dialogRef.value?.handleOpen(row)}
+              />
             ) : null}
-            {isPlatformSuper.value && getActionItems(row).length ? (
+            {getActionItems(row).length ? (
               <ArtButtonMore
                 list={getActionItems(row)}
                 onClick={(item: ButtonMoreItem) => void handleAction(item, row)}
@@ -327,12 +322,14 @@
     if (['draft', 'rejected'].includes(row.status)) {
       return [
         {
+          auth: 'FinanceFundTransfer:Submit',
           key: 'submit',
           label: '提交审批',
           icon: 'ri:send-plane-line',
           color: 'var(--el-color-primary)'
         },
         {
+          auth: 'FinanceFundTransfer:Delete',
           key: 'delete',
           label: '删除草稿',
           icon: 'ri:delete-bin-line',
@@ -343,17 +340,25 @@
     if (row.status === 'pending_review') {
       return [
         {
+          auth: 'FinanceFundTransfer:Approve',
           key: 'approve',
           label: '审批通过',
           icon: 'ri:check-line',
           color: 'var(--el-color-success)'
         },
-        { key: 'reject', label: '驳回', icon: 'ri:close-line', color: 'var(--el-color-danger)' }
+        {
+          auth: 'FinanceFundTransfer:Reject',
+          key: 'reject',
+          label: '驳回',
+          icon: 'ri:close-line',
+          color: 'var(--el-color-danger)'
+        }
       ]
     }
     if (row.status === 'approved') {
       return [
         {
+          auth: 'FinanceFundTransfer:Execute',
           key: 'execute',
           label: '执行入账',
           icon: 'ri:play-line',
@@ -364,6 +369,7 @@
     if (row.status === 'completed') {
       return [
         {
+          auth: 'FinanceFundTransfer:Reverse',
           key: 'reverse',
           label: '冲销调拨',
           icon: 'ri:arrow-go-back-line',

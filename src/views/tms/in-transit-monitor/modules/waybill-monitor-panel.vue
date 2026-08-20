@@ -82,7 +82,7 @@
                 <dt>司机姓名</dt>
                 <dd>{{ item.driverName }}</dd>
               </div>
-              <div>
+              <div v-if="item.driverPhoneVisible">
                 <dt>手机号码</dt>
                 <dd>{{ item.driverPhone }}</dd>
               </div>
@@ -120,7 +120,13 @@
     if (!normalizedKeyword) return props.orders
 
     return props.orders.filter((item) =>
-      [item.orderNo, item.plateNo, item.driverName, item.driverPhone, item.routeName]
+      [
+        item.orderNo,
+        item.plateNo,
+        item.driverName,
+        item.driverPhoneVisible ? item.driverPhone : '',
+        item.routeName
+      ]
         .join(' ')
         .toLowerCase()
         .includes(normalizedKeyword)

@@ -125,7 +125,7 @@
 
     <ArtStickyActionBar class="vehicle-archive-edit__footer">
       <ElButton :disabled="page.saving" @click="goBack">取消</ElButton>
-      <ElButton type="primary" :loading="page.saving" @click="handleSave">
+      <ElButton v-auth="savePermission" type="primary" :loading="page.saving" @click="handleSave">
         {{ saveButtonLabel }}
       </ElButton>
     </ArtStickyActionBar>
@@ -260,6 +260,9 @@
   const driverCache = ref(new Map<string, DriverOption>())
 
   const isEdit = computed(() => typeof route.params.id === 'string' && route.params.id.length > 0)
+  const savePermission = computed(() =>
+    isEdit.value ? 'VehicleArchive:Edit' : 'VehicleArchive:Add'
+  )
   const selectedPrimaryDriverOptions = computed<FormItemOption[]>(() => {
     const driver = getSelectedPrimaryDriver()
     return driver ? [createDriverOption(driver)] : []

@@ -68,7 +68,12 @@ export const renderReminderStatus = (row: ReminderRow): VNodeChild => {
 }
 
 export const createReminderWorkOrderColumns = (
-  onOpen: (row: ReminderRow) => void
+  onOpen: (row: ReminderRow) => void,
+  permissions: {
+    view: string
+    createWorkOrder: string
+    transitionWorkOrder: string
+  }
 ): ColumnOption<ReminderRow>[] => [
   {
     prop: 'workOrderStatus',
@@ -93,6 +98,11 @@ export const createReminderWorkOrderColumns = (
         type: hasWorkOrder ? 'view' : 'add',
         icon: hasWorkOrder ? 'ri:eye-line' : 'ri:play-circle-line',
         label: actionLabel,
+        permission: !hasWorkOrder
+          ? permissions.createWorkOrder
+          : isTerminal
+            ? permissions.view
+            : permissions.transitionWorkOrder,
         onClick: () => onOpen(row)
       })
     }

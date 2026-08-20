@@ -7,6 +7,7 @@
           <span><i />运输中</span>
         </div>
         <ElButton
+          v-auth="'TmsInTransitMonitor:View'"
           link
           :icon="MoreFilled"
           title="查看运输详情"
@@ -108,9 +109,11 @@
                   <div>
                     <small>承运司机</small>
                     <strong>{{ order.driverName }}</strong>
-                    <p>{{ order.driverPhone }}</p>
+                    <p v-if="order.driverPhoneVisible">{{ order.driverPhone }}</p>
                   </div>
-                  <span><ArtSvgIcon icon="ri:phone-line" /></span>
+                  <span v-if="order.driverPhoneVisible">
+                    <ArtSvgIcon icon="ri:phone-line" />
+                  </span>
                 </div>
               </div>
             </div>
@@ -122,6 +125,7 @@
               <small>关键操作将记录处理时间</small>
             </div>
             <ElButton
+              v-auth="'TmsInTransitMonitor:AiAnalyze'"
               class="detail-actions__ai"
               type="primary"
               plain
@@ -131,10 +135,21 @@
               AI 异常研判
             </ElButton>
             <div class="detail-actions__row">
-              <ElButton type="primary" :icon="Phone" @click="emit('contact-driver')">
+              <ElButton
+                v-if="order.driverPhoneVisible"
+                v-auth="'TmsInTransitMonitor:ContactDriver'"
+                type="primary"
+                :icon="Phone"
+                @click="emit('contact-driver')"
+              >
                 联系司机
               </ElButton>
-              <ElButton type="warning" :icon="Warning" @click="emit('send-reminder')">
+              <ElButton
+                v-auth="'TmsInTransitMonitor:SendReminder'"
+                type="warning"
+                :icon="Warning"
+                @click="emit('send-reminder')"
+              >
                 发送提醒
               </ElButton>
             </div>

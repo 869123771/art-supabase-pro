@@ -199,6 +199,7 @@
           撤销未发布修改
         </ElButton>
         <ElButton
+          v-auth="'System:GeofenceConfig:Edit'"
           type="primary"
           :loading="page.saving"
           :title="hasUnsavedChanges ? '保存修改并同步到司机端' : '请先修改任一策略配置'"
@@ -222,7 +223,6 @@
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import { fetchGeofenceConfig, saveGeofenceConfig } from '@/api/system-manage'
   import { useAuth } from '@/hooks/core/useAuth'
-  import { useUserStore } from '@/store/modules/user'
   import { formatWithDayjs } from '@/utils/time'
 
   defineOptions({ name: 'GeofenceConfig' })
@@ -274,15 +274,12 @@
     autoConfirmUnloading: value.autoConfirmUnloading
   })
 
-  const { isPlatformSuper } = storeToRefs(useUserStore())
   const { hasAuth } = useAuth()
   const formRef = ref<FormExpose>()
   const page = reactive<PageGroup>({ loading: false, saving: false, error: null })
   const form = reactive<GeofenceConfig>(createInitialConfig())
   const original = ref<GeofenceConfig>(createInitialConfig())
-  const isReadOnly = computed(
-    () => !isPlatformSuper.value && !hasAuth('System:GeofenceConfig:Edit')
-  )
+  const isReadOnly = computed(() => !hasAuth('System:GeofenceConfig:Edit'))
   const changedFieldLabels = computed(() =>
     editableFields
       .filter(({ key }) => !isEqual(form[key], original.value[key]))

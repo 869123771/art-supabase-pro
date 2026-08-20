@@ -20,6 +20,7 @@ export interface MonitorOrder {
   destinationGeo: GeoCoord
   driverName: string
   driverPhone: string
+  driverPhoneVisible: boolean
   id: string
   latitude: number
   longitude: number

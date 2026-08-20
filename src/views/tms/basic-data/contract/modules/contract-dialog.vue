@@ -18,15 +18,20 @@
       <ContractTransportDetails
         v-model="form.data.transportDetails"
         :unit-options="cargoUnitOptions"
+        :pricing-access="transportDetailsPricingAccess"
+        :editable="canEditTransportDetails"
       />
 
-      <section class="contract-dialog__section art-card-xs">
+      <section
+        v-if="canViewSensitiveField('attachments')"
+        class="contract-dialog__section art-card-xs"
+      >
         <div class="contract-dialog__section-header">
           <ArtSectionTitle :show-line="false">合同附件</ArtSectionTitle>
           <ArtExcelImport
             accept=""
             :parse-excel="false"
-            :disabled="form.attachmentUploading"
+            :disabled="form.attachmentUploading || !canEditSensitiveField('attachments')"
             :button-props="{ type: 'primary', plain: true, loading: form.attachmentUploading }"
             @file-change="handleAttachmentUpload"
           >
@@ -92,6 +97,7 @@
   import { uploadAttachment } from '@/api/common'
   import { useUserStore } from '@/store/modules/user'
   import { downloadAttachment, getFileExtension } from '@/utils/file'
+  import { canEditField, canViewField, getFieldAccess } from '@/utils/field-permission'
   import { usesCarrierParty } from './contract-business-type'
   import ContractTransportDetails from './contract-transport-details.vue'
 
@@ -103,6 +109,8 @@
   type ContractAttachment = Api.Tms.BasicData.ContractAttachment
   type ContractBusinessType = Api.Tms.BasicData.ContractBusinessType
   type ContractTransportDetail = Api.Tms.BasicData.ContractTransportDetail
+  type ContractFieldKey = Api.Tms.BasicData.ContractFieldKey
+  type FieldAccessLevel = Api.Tms.BasicData.FieldAccessLevel
   type CarrierOption = Api.Tms.BasicData.CarrierOption
   type CustomerOption = Api.Tms.BasicData.CustomerOption
   type SubmitMode = 'save' | 'submit'
@@ -133,6 +141,18 @@
   const formRef = ref<FormExpose>()
   const contractNumber = useDocumentNumberRule('tms.contract')
   const submitMode = ref<SubmitMode>('save')
+
+  const sensitiveFieldFallback = computed<FieldAccessLevel>(() =>
+    form.data.id ? 'hidden' : 'edit'
+  )
+  const canViewSensitiveField = (field: ContractFieldKey): boolean =>
+    canViewField(form.data.fieldAccess, field, sensitiveFieldFallback.value)
+  const canEditSensitiveField = (field: ContractFieldKey): boolean =>
+    canEditField(form.data.fieldAccess, field, sensitiveFieldFallback.value)
+  const transportDetailsPricingAccess = computed(() =>
+    getFieldAccess(form.data.fieldAccess, 'transportDetailsPricing', sensitiveFieldFallback.value)
+  )
+  const canEditTransportDetails = computed(() => canEditSensitiveField('transportDetailsPricing'))
 
   const billingMethodOptions = computed(() => getDictMap.value.tmsContractBillingMethod ?? [])
   const contractCategoryOptions = computed(() => getDictMap.value.tmsContractCategory ?? [])
@@ -336,26 +356,40 @@
       {
         label: '合同金额',
         key: 'contractAmount',
-        type: 'number',
-        props: moneyProps()
+        type: canEditSensitiveField('contractAmount') ? 'number' : 'input',
+        hidden: !canViewSensitiveField('contractAmount'),
+        props: canEditSensitiveField('contractAmount') ? moneyProps() : { disabled: true }
       },
       {
         label: '运输单价',
         key: 'transportUnitPrice',
-        type: 'number',
-        props: { ...moneyProps(4), placeholder: '请输入合同级默认单价' }
+        type: canEditSensitiveField('transportUnitPrice') ? 'number' : 'input',
+        hidden: !canViewSensitiveField('transportUnitPrice'),
+        props: canEditSensitiveField('transportUnitPrice')
+          ? { ...moneyProps(4), placeholder: '请输入合同级默认单价' }
+          : { disabled: true }
       },
       {
         label: '路耗标准%',
         key: 'roadConsumptionRate',
-        type: 'number',
-        props: { min: 0, max: 100, precision: 4, controlsPosition: 'right', class: '!w-full' }
+        type: canEditSensitiveField('roadConsumptionRate') ? 'number' : 'input',
+        hidden: !canViewSensitiveField('roadConsumptionRate'),
+        props: canEditSensitiveField('roadConsumptionRate')
+          ? {
+              min: 0,
+              max: 100,
+              precision: 4,
+              controlsPosition: 'right',
+              class: '!w-full'
+            }
+          : { disabled: true }
       },
       {
         label: '亏扣价',
         key: 'lossDeductionPrice',
-        type: 'number',
-        props: moneyProps(4)
+        type: canEditSensitiveField('lossDeductionPrice') ? 'number' : 'input',
+        hidden: !canViewSensitiveField('lossDeductionPrice'),
+        props: canEditSensitiveField('lossDeductionPrice') ? moneyProps(4) : { disabled: true }
       },
       {
         label: '约定运输量',
@@ -554,7 +588,7 @@
     return Array.from(options.values())
   })
 
-  const attachmentColumns: ColumnOption<ContractAttachment>[] = [
+  const attachmentColumns = computed<ColumnOption<ContractAttachment>[]>(() => [
     { type: 'globalIndex', label: '序号', width: 72 },
     {
       prop: 'name',
@@ -573,19 +607,21 @@
     {
       prop: 'operation',
       label: '操作',
-      width: 96,
+      width: canEditSensitiveField('attachments') ? 96 : 56,
       formatter: (row) => (
         <div class="flex items-center">
           <ArtIconButton icon="ri:download-2-line" onClick={() => downloadAttachment(row)} />
-          <ArtIconButton
-            icon="ri:delete-bin-5-line"
-            tone="danger"
-            onClick={() => void removeAttachment(row)}
-          />
+          {canEditSensitiveField('attachments') ? (
+            <ArtIconButton
+              icon="ri:delete-bin-5-line"
+              tone="danger"
+              onClick={() => void removeAttachment(row)}
+            />
+          ) : null}
         </div>
       )
     }
-  ]
+  ])
 
   const getResponseData = <TRecord,>(result: unknown): TRecord[] => {
     if (!result || typeof result !== 'object') return []
@@ -674,7 +710,7 @@
 
     if (!payload.contractNo) delete payload.contractNo
     const hasCarrierParty = usesCarrierParty(payload.businessContractType)
-    return {
+    const normalized: Contract = {
       ...payload,
       contractStatus: payload.contractStatus || 'draft',
       customerId: hasCarrierParty ? null : normalizeText(payload.customerId),
@@ -701,6 +737,18 @@
       transportDetails: (payload.transportDetails ?? []).map(normalizeTransportDetail),
       attachments: payload.attachments ?? []
     }
+
+    if (form.data.id) {
+      if (!canEditSensitiveField('contractAmount')) delete normalized.contractAmount
+      if (!canEditSensitiveField('transportUnitPrice')) delete normalized.transportUnitPrice
+      if (!canEditSensitiveField('roadConsumptionRate')) delete normalized.roadConsumptionRate
+      if (!canEditSensitiveField('lossDeductionPrice')) delete normalized.lossDeductionPrice
+      if (!canEditSensitiveField('transportDetailsPricing')) {
+        delete (normalized as Partial<Contract>).transportDetails
+      }
+      if (!canEditSensitiveField('attachments')) delete normalized.attachments
+    }
+    return normalized
   }
 
   const normalizeTransportDetail = (detail: ContractTransportDetail): ContractTransportDetail => ({
@@ -714,6 +762,7 @@
   })
 
   const validateTransportDetails = (): boolean => {
+    if (!canEditTransportDetails.value) return true
     const invalidIndex = (form.data.transportDetails ?? []).findIndex((detail) => {
       const numericValues = [
         Number(detail.contractQuantity),
@@ -787,6 +836,7 @@
   }
 
   const handleAttachmentUpload = async (file: File): Promise<void> => {
+    if (!canEditSensitiveField('attachments')) return
     form.attachmentUploading = true
     try {
       const [resource] = await uploadAttachment(file)
@@ -815,6 +865,7 @@
   }
 
   const removeAttachment = async (row: ContractAttachment): Promise<void> => {
+    if (!canEditSensitiveField('attachments')) return
     try {
       await confirmAction(`确定删除附件“${row.name}”吗？`, '删除确认', {
         confirmButtonText: '删除',

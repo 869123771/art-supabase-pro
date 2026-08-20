@@ -3,9 +3,15 @@
     <div class="contract-transport-details__header">
       <div>
         <ArtSectionTitle :show-line="false">运输合同明细</ArtSectionTitle>
-        <p>按货物维护合同数量、计量单位和运输价格，运费自动按数量与单价计算。</p>
+        <p>
+          {{
+            editable
+              ? '按货物维护合同数量、计量单位和运输价格，运费自动按数量与单价计算。'
+              : '当前字段权限仅允许查看运输明细，修改需获得明细价格可编辑权限。'
+          }}
+        </p>
       </div>
-      <div class="contract-transport-details__actions">
+      <div v-if="editable" class="contract-transport-details__actions">
         <ElButton plain @click="openCargoSelector">
           <template #icon><ArtSvgIcon icon="ri:archive-stack-line" /></template>
           批量选货物
@@ -49,6 +55,7 @@
   import { fetchCargoList } from '@/api/tms'
   import CargoMultipleSelect from '@/views/tms/modules/cargo-multiple-select.vue'
   import { mergeContractCargoSelections } from './contract-cargo-selection'
+  import { formatSensitiveNumber } from '@/utils/field-permission'
 
   defineOptions({ name: 'ContractTransportDetails' })
 
@@ -66,6 +73,8 @@
   interface Props {
     modelValue: ContractTransportDetail[]
     unitOptions: Api.DataCenter.DictListItem[]
+    pricingAccess: Api.Tms.BasicData.FieldAccessLevel
+    editable: boolean
   }
 
   const props = defineProps<Props>()
@@ -88,12 +97,16 @@
     current: ContractTransportDetail,
     patch: Partial<ContractTransportDetail>
   ): void => {
+    if (!props.editable) return
     emit(
       'update:modelValue',
       props.modelValue.map((item) => {
         if (item !== current) return item
         const next = { ...item, ...patch }
-        if ('contractQuantity' in patch || 'transportUnitPrice' in patch) {
+        if (
+          props.pricingAccess === 'edit' &&
+          ('contractQuantity' in patch || 'transportUnitPrice' in patch)
+        ) {
           next.freight = round(
             Number(next.contractQuantity || 0) * Number(next.transportUnitPrice || 0),
             2
@@ -104,7 +117,13 @@
     )
   }
 
-  const columns: ColumnOption<ContractTransportDetail>[] = [
+  const canViewPricing = computed(() => props.pricingAccess !== 'hidden')
+  const canEditPricing = computed(() => props.editable && props.pricingAccess === 'edit')
+  const numericModelValue = (
+    value: Api.Tms.BasicData.SensitiveNumber | undefined
+  ): number | null => (typeof value === 'number' ? value : null)
+
+  const columns = computed<ColumnOption<ContractTransportDetail>[]>(() => [
     { type: 'globalIndex', label: '行号', width: 68, fixed: 'left' },
     {
       prop: 'cargoDescription',
@@ -117,6 +136,7 @@
           valueKey="value"
           triggerOnFocus={true}
           clearable
+          disabled={!props.editable}
           maxlength={120}
           placeholder="选择或输入货物"
           onUpdate:modelValue={(value: string | number) =>
@@ -134,6 +154,7 @@
         <ElInput
           modelValue={row.cargoCode}
           maxlength={60}
+          disabled={!props.editable}
           placeholder="请输入编码"
           onUpdate:modelValue={(value: string | number) =>
             updateDetail(row, { cargoCode: String(value) })
@@ -151,6 +172,7 @@
           min={0}
           precision={4}
           controls={false}
+          disabled={!props.editable}
           class="w-full!"
           onUpdate:modelValue={(value?: number) =>
             updateDetail(row, { contractQuantity: Number(value ?? 0) })
@@ -166,6 +188,7 @@
         <ElSelect
           modelValue={row.unit}
           filterable
+          disabled={!props.editable}
           placeholder="请选择"
           class="w-full!"
           onUpdate:modelValue={(value: string | number) =>
@@ -182,53 +205,74 @@
         </ElSelect>
       )
     },
-    {
-      prop: 'transportUnitPrice',
-      label: '运输单价(元)',
-      minWidth: 154,
-      formatter: (row) => (
-        <ElInputNumber
-          modelValue={row.transportUnitPrice}
-          min={0}
-          precision={4}
-          controls={false}
-          class="w-full!"
-          onUpdate:modelValue={(value?: number) =>
-            updateDetail(row, { transportUnitPrice: Number(value ?? 0) })
+    ...(canViewPricing.value
+      ? [
+          {
+            prop: 'transportUnitPrice',
+            label: '运输单价(元)',
+            minWidth: 154,
+            formatter: (row: ContractTransportDetail) =>
+              canEditPricing.value ? (
+                <ElInputNumber
+                  modelValue={numericModelValue(row.transportUnitPrice)}
+                  min={0}
+                  precision={4}
+                  controls={false}
+                  class="w-full!"
+                  onUpdate:modelValue={(value?: number) =>
+                    updateDetail(row, { transportUnitPrice: Number(value ?? 0) })
+                  }
+                />
+              ) : (
+                <span>
+                  {formatSensitiveNumber(row.transportUnitPrice, {
+                    maximumFractionDigits: 4
+                  })}
+                </span>
+              )
+          },
+          {
+            prop: 'freight',
+            label: '运费(元)',
+            minWidth: 130,
+            align: 'right' as const,
+            formatter: (row: ContractTransportDetail) => formatSensitiveNumber(row.freight)
           }
-        />
-      )
-    },
-    {
-      prop: 'freight',
-      label: '运费(元)',
-      minWidth: 130,
-      align: 'right',
-      formatter: (row) => `¥ ${Number(row.freight || 0).toFixed(2)}`
-    },
-    {
-      prop: 'operation',
-      label: '操作',
-      width: 76,
-      fixed: 'right',
-      formatter: (row) => <ArtButtonTable type="delete" onClick={() => removeDetail(row)} />
-    }
-  ]
+        ]
+      : []),
+    ...(props.editable
+      ? [
+          {
+            prop: 'operation',
+            label: '操作',
+            width: 76,
+            fixed: 'right' as const,
+            formatter: (row: ContractTransportDetail) => (
+              <ArtButtonTable type="delete" onClick={() => removeDetail(row)} />
+            )
+          }
+        ]
+      : [])
+  ])
 
   const addDetail = (): void => {
+    if (!props.editable) return
     emit('update:modelValue', [...props.modelValue, createInitialDetail()])
   }
 
   const openCargoSelector = async (): Promise<void> => {
+    if (!props.editable) return
     await cargoSelectorRef.value?.open()
   }
 
   const handleCargoSelectorConfirm = (selectedCargoes: Cargo[]): void => {
+    if (!props.editable) return
     const result = mergeContractCargoSelections(props.modelValue, selectedCargoes)
     if (result.addedCount) emit('update:modelValue', result.items)
   }
 
   const removeDetail = (row: ContractTransportDetail): void => {
+    if (!props.editable) return
     emit(
       'update:modelValue',
       props.modelValue.filter((item) => item !== row)

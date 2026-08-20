@@ -7,41 +7,53 @@
     @retry="initializePage"
   >
     <div ref="pageRef" class="order-open__content">
-      <div class="order-open__header art-card-xs">
-        <div class="order-open__badge">
-          <label>
-            <span>运单号：</span>
-            <ElInput
-              v-if="isNewOrder && orderNumberRule && !orderNumberRule.autoEnabled"
-              v-model="form.data.orderNo"
-              size="small"
-              maxlength="50"
-              placeholder="请手工填写运单号"
-            />
-            <strong v-else>{{
-              form.data.orderNo || orderNumberRule?.preview || '保存后自动生成'
-            }}</strong>
-          </label>
-          <label>
-            <span>货号：</span>
-            <ElInput
-              v-if="isNewOrder && cargoNumberRule && !cargoNumberRule.autoEnabled"
-              v-model="form.data.cargoNo"
-              size="small"
-              maxlength="50"
-              placeholder="可手工填写货号"
-            />
-            <strong v-else>{{
-              form.data.cargoNo || cargoNumberRule?.preview || '保存后自动生成'
-            }}</strong>
-          </label>
-        </div>
-        <div class="order-open__title">货 物 运 输 单</div>
-        <div class="order-open__time">
-          <ArtSvgIcon icon="ri:calendar-line" />
-          <span>{{ page.nowText }}</span>
-        </div>
-      </div>
+      <ArtPageHeader
+        title="货物运输单"
+        :subtitle="
+          isNewOrder ? '填写运输业务信息，保存后进入调度流程。' : '核对并更新运输业务信息。'
+        "
+        class="order-open__page-header"
+      >
+        <template #status>
+          <ElTag :type="isNewOrder ? 'primary' : 'warning'" effect="plain">
+            {{ isNewOrder ? '新建订单' : '编辑订单' }}
+          </ElTag>
+        </template>
+        <template #meta>
+          <div class="order-open__document-meta">
+            <label class="order-open__document-number">
+              <span>运单号</span>
+              <ElInput
+                v-if="isNewOrder && orderNumberRule && !orderNumberRule.autoEnabled"
+                v-model="form.data.orderNo"
+                size="small"
+                maxlength="50"
+                placeholder="请手工填写运单号"
+              />
+              <strong v-else translate="no">{{
+                form.data.orderNo || orderNumberRule?.preview || '保存后自动生成'
+              }}</strong>
+            </label>
+            <label class="order-open__document-number">
+              <span>货号</span>
+              <ElInput
+                v-if="isNewOrder && cargoNumberRule && !cargoNumberRule.autoEnabled"
+                v-model="form.data.cargoNo"
+                size="small"
+                maxlength="50"
+                placeholder="可手工填写货号"
+              />
+              <strong v-else translate="no">{{
+                form.data.cargoNo || cargoNumberRule?.preview || '保存后自动生成'
+              }}</strong>
+            </label>
+            <span class="order-open__time">
+              <ArtSvgIcon icon="ri:calendar-line" aria-hidden="true" />
+              {{ page.nowText }}
+            </span>
+          </div>
+        </template>
+      </ArtPageHeader>
 
       <section class="order-open__section order-open__section--compact art-card-xs">
         <ArtForm
@@ -62,14 +74,25 @@
         <div class="order-open__contact-grid">
           <div class="order-open__contact-panel">
             <div class="order-open__contact-heading">
-              <span class="order-open__contact-mark order-open__contact-mark--send">寄</span>
-              <h3>发货人信息</h3>
+              <ArtSectionTitle :show-line="false" class="order-open__contact-title">
+                发货人信息
+              </ArtSectionTitle>
               <div class="order-open__contact-actions">
-                <ElButton size="small" type="primary" plain @click="openFavoriteRouteSelector">
+                <ElButton
+                  v-if="canEditContactEndpoint('shipping')"
+                  size="small"
+                  type="primary"
+                  plain
+                  @click="openFavoriteRouteSelector"
+                >
                   <ArtSvgIcon icon="ri:route-line" />
                   选择线路
                 </ElButton>
-                <ElButton size="small" @click="openCustomerSelector('shipping')">
+                <ElButton
+                  v-if="canEditContactEndpoint('shipping')"
+                  size="small"
+                  @click="openCustomerSelector('shipping')"
+                >
                   选择地址
                 </ElButton>
               </div>
@@ -88,16 +111,28 @@
           </div>
 
           <div class="order-open__swap">
-            <ElButton circle text @click="swapContacts">
+            <ElButton
+              v-if="canEditContactEndpoint('shipping') && canEditContactEndpoint('receiving')"
+              circle
+              text
+              aria-label="交换发货人与收货人"
+              @click="swapContacts"
+            >
               <ArtSvgIcon icon="ri:arrow-left-right-line" />
             </ElButton>
           </div>
 
           <div class="order-open__contact-panel">
             <div class="order-open__contact-heading">
-              <span class="order-open__contact-mark order-open__contact-mark--receive">收</span>
-              <h3>收货人信息</h3>
-              <ElButton size="small" @click="openCustomerSelector('receiving')">选择地址</ElButton>
+              <ArtSectionTitle :show-line="false" class="order-open__contact-title">
+                收货人信息
+              </ArtSectionTitle>
+              <ElButton
+                v-if="canEditContactEndpoint('receiving')"
+                size="small"
+                @click="openCustomerSelector('receiving')"
+                >选择地址</ElButton
+              >
             </div>
             <ArtForm
               ref="receivingFormRef"
@@ -118,7 +153,11 @@
         <div class="order-open__section-header">
           <ArtSectionTitle :show-line="false">货品信息</ArtSectionTitle>
           <div class="order-open__section-actions">
-            <ElButton plain @click="openContractDetailSelector">
+            <ElButton
+              v-if="canEditOrderField('cargoPricing')"
+              plain
+              @click="openContractDetailSelector"
+            >
               <template #icon><ArtSvgIcon icon="ri:file-list-3-line" /></template>
               批量选合同明细
             </ElButton>
@@ -143,7 +182,7 @@
         </div>
       </section>
 
-      <section class="order-open__section art-card-xs">
+      <section v-if="canViewOrderField('freightAmounts')" class="order-open__section art-card-xs">
         <ArtSectionTitle>运费设置</ArtSectionTitle>
         <ArtForm
           ref="feeFormRef"
@@ -187,7 +226,7 @@
           :show-reset="false"
           :show-submit="false"
         />
-        <div class="order-open__upload-row">
+        <div v-if="canViewOrderField('proofAttachments')" class="order-open__upload-row">
           <span>图片上传</span>
           <ArtUploadImage
             v-model="form.data.imageUrls"
@@ -195,13 +234,14 @@
             :size="104"
             :limit="3"
             multiple
+            :readonly="!canEditOrderField('proofAttachments')"
           />
         </div>
       </section>
 
       <ArtStickyActionBar class="order-open__footer">
         <template #summary>
-          <div class="order-open__footer-total">
+          <div v-if="canViewOrderField('freightAmounts')" class="order-open__footer-total">
             <span>总运费：</span>
             <strong>￥{{ form.totalFeeText }}</strong>
             <ElPopover
@@ -237,19 +277,57 @@
         </template>
 
         <div class="order-open__footer-actions order-open__footer-actions--desktop">
-          <ElButton size="large" type="primary" :loading="page.saving" @click="handleSaveOnly">
+          <ElButton
+            v-auth="'TmsOrderOpen:Create'"
+            size="large"
+            type="primary"
+            :loading="page.saving"
+            @click="handleSaveOnly"
+          >
             仅开单
           </ElButton>
-          <ElButton size="large" type="primary" plain @click="openAiOrderDrawer">
+          <ElButton
+            v-auth="'TmsOrderOpen:AiFill'"
+            size="large"
+            type="primary"
+            plain
+            @click="openAiOrderDrawer"
+          >
             AI智能填单
           </ElButton>
-          <ElButton size="large" plain @click="openPrintDialog('waybill')"> 打印运单 </ElButton>
-          <ElButton size="large" plain @click="openPrintDialog('label')"> 打印标签 </ElButton>
-          <ElButton size="large" plain @click="handleDoublePrint">双打</ElButton>
+          <ElButton
+            v-auth="'TmsOrderOpen:PrintWaybill'"
+            size="large"
+            plain
+            @click="openPrintDialog('waybill')"
+          >
+            打印运单
+          </ElButton>
+          <ElButton
+            v-auth="'TmsOrderOpen:PrintLabel'"
+            size="large"
+            plain
+            @click="openPrintDialog('label')"
+          >
+            打印标签
+          </ElButton>
+          <ElButton
+            v-auth="'TmsOrderOpen:DoublePrint'"
+            size="large"
+            plain
+            @click="handleDoublePrint"
+            >双打</ElButton
+          >
         </div>
 
         <div class="order-open__footer-actions order-open__footer-actions--mobile">
-          <ElButton size="large" type="primary" :loading="page.saving" @click="handleSaveOnly">
+          <ElButton
+            v-auth="'TmsOrderOpen:Create'"
+            size="large"
+            type="primary"
+            :loading="page.saving"
+            @click="handleSaveOnly"
+          >
             仅开单
           </ElButton>
           <ElDropdown trigger="click" @command="handleFooterCommand">
@@ -259,10 +337,18 @@
             </ElButton>
             <template #dropdown>
               <ElDropdownMenu>
-                <ElDropdownItem command="ai">AI 智能填单</ElDropdownItem>
-                <ElDropdownItem command="print-waybill">打印运单</ElDropdownItem>
-                <ElDropdownItem command="print-label">打印标签</ElDropdownItem>
-                <ElDropdownItem command="double-print">双打</ElDropdownItem>
+                <ElDropdownItem v-auth="'TmsOrderOpen:AiFill'" command="ai">
+                  AI 智能填单
+                </ElDropdownItem>
+                <ElDropdownItem v-auth="'TmsOrderOpen:PrintWaybill'" command="print-waybill">
+                  打印运单
+                </ElDropdownItem>
+                <ElDropdownItem v-auth="'TmsOrderOpen:PrintLabel'" command="print-label">
+                  打印标签
+                </ElDropdownItem>
+                <ElDropdownItem v-auth="'TmsOrderOpen:DoublePrint'" command="double-print">
+                  双打
+                </ElDropdownItem>
               </ElDropdownMenu>
             </template>
           </ElDropdown>
@@ -300,6 +386,7 @@
   import { useAmapGeocoder } from '@/hooks/core/useAmapGeocoder'
   import type { ColumnOption } from '@/types'
   import { formatNameCodeOption } from '@/utils/form'
+  import { canEditField, canViewField, getFieldAccess } from '@/utils/field-permission'
   import {
     addOrder,
     editOrder,
@@ -316,7 +403,6 @@
   import CargoMultipleSelect from '../modules/cargo-multiple-select.vue'
   import ContractDetailMultipleSelect from './modules/contract-detail-multiple-select.vue'
   import {
-    calculateContractCargoFreight,
     calculateContractTransportFee,
     mergeOrderContractDetails,
     synchronizeContractCargoFreight
@@ -601,22 +687,35 @@
         type: 'input',
         props: { maxlength: 50, placeholder: '请输入发货人姓名' }
       },
-      {
-        label: '手机号',
-        key: 'shippingContactPhone',
-        type: 'input',
-        props: { maxlength: 20, placeholder: '请输入发货人手机号' }
-      },
-      {
-        label: '发货地址',
-        key: 'shippingAddressDetail',
-        type: 'input',
-        props: {
-          maxlength: 200,
-          placeholder: '请输入发货地址',
-          onInput: () => clearAddressCoordinates('shipping')
-        }
-      }
+      ...(canViewOrderField('shipperContact')
+        ? [
+            {
+              label: '手机号',
+              key: 'shippingContactPhone',
+              type: 'input' as const,
+              props: {
+                maxlength: 20,
+                placeholder: '请输入发货人手机号',
+                readonly: !canEditOrderField('shipperContact')
+              }
+            }
+          ]
+        : []),
+      ...(canViewOrderField('shipperAddress')
+        ? [
+            {
+              label: '发货地址',
+              key: 'shippingAddressDetail',
+              type: 'input' as const,
+              props: {
+                maxlength: 200,
+                placeholder: '请输入发货地址',
+                readonly: !canEditOrderField('shipperAddress'),
+                onInput: () => clearAddressCoordinates('shipping')
+              }
+            }
+          ]
+        : [])
     ]),
     receivingItems: computed<FormItem[]>(() => [
       {
@@ -631,34 +730,49 @@
         type: 'input',
         props: { maxlength: 50, placeholder: '请输入收货人姓名' }
       },
-      {
-        label: '手机号',
-        key: 'receivingContactPhone',
-        type: 'input',
-        props: { maxlength: 20, placeholder: '请输入收货人手机号' }
-      },
-      {
-        label: '收货地址',
-        key: 'receivingAddressDetail',
-        type: 'input',
-        props: {
-          maxlength: 200,
-          placeholder: '请输入收货地址，配送上门请输入详细地址',
-          onInput: () => clearAddressCoordinates('receiving')
-        }
-      }
+      ...(canViewOrderField('receiverContact')
+        ? [
+            {
+              label: '手机号',
+              key: 'receivingContactPhone',
+              type: 'input' as const,
+              props: {
+                maxlength: 20,
+                placeholder: '请输入收货人手机号',
+                readonly: !canEditOrderField('receiverContact')
+              }
+            }
+          ]
+        : []),
+      ...(canViewOrderField('receiverAddress')
+        ? [
+            {
+              label: '收货地址',
+              key: 'receivingAddressDetail',
+              type: 'input' as const,
+              props: {
+                maxlength: 200,
+                placeholder: '请输入收货地址，配送上门请输入详细地址',
+                readonly: !canEditOrderField('receiverAddress'),
+                onInput: () => clearAddressCoordinates('receiving')
+              }
+            }
+          ]
+        : [])
     ]),
-    feeItems: computed<FormItem[]>(() => [
-      { label: '运费', key: 'transportFee', type: 'number', props: moneyProps },
-      { label: '配送费', key: 'deliveryFee', type: 'number', props: moneyProps },
-      { label: '卸货费', key: 'unloadingFee', type: 'number', props: moneyProps },
-      { label: '回款费', key: 'collectPaymentFee', type: 'number', props: moneyProps },
-      { label: '中转费', key: 'transferFee', type: 'number', props: moneyProps },
-      { label: '声明价值', key: 'declaredValue', type: 'number', props: moneyProps },
-      { label: '保费', key: 'insuranceFee', type: 'number', props: moneyProps },
-      { label: '包装费', key: 'packageFee', type: 'number', props: moneyProps },
-      { label: '其他费用', key: 'otherFee', type: 'number', props: moneyProps }
-    ]),
+    feeItems: computed<FormItem[]>(() => {
+      const props = { ...moneyProps, disabled: !canEditOrderField('freightAmounts') }
+      return [
+        { label: '运费', key: 'transportFee', type: 'number', props },
+        { label: '配送费', key: 'deliveryFee', type: 'number', props },
+        { label: '卸货费', key: 'unloadingFee', type: 'number', props },
+        { label: '回款费', key: 'collectPaymentFee', type: 'number', props },
+        { label: '中转费', key: 'transferFee', type: 'number', props },
+        { label: '保费', key: 'insuranceFee', type: 'number', props },
+        { label: '包装费', key: 'packageFee', type: 'number', props },
+        { label: '其他费用', key: 'otherFee', type: 'number', props }
+      ]
+    }),
     paymentItems: computed<FormItem[]>(() => [
       {
         label: '付款方式',
@@ -667,11 +781,19 @@
         span: 24,
         props: { options: form.paymentMethodOptions }
       },
-      { label: '现付', key: 'cashAmount', type: 'number', props: moneyProps },
-      { label: '到付', key: 'collectAmount', type: 'number', props: moneyProps },
-      { label: '月结', key: 'monthlyAmount', type: 'number', props: moneyProps },
-      { label: '代收货款', key: 'codAmount', type: 'number', props: moneyProps },
-      { label: '手续费', key: 'handlingFee', type: 'number', props: moneyProps }
+      ...(canViewOrderField('settlementAmounts')
+        ? [
+            { label: '声明价值', key: 'declaredValue', type: 'number' as const },
+            { label: '现付', key: 'cashAmount', type: 'number' as const },
+            { label: '到付', key: 'collectAmount', type: 'number' as const },
+            { label: '月结', key: 'monthlyAmount', type: 'number' as const },
+            { label: '代收货款', key: 'codAmount', type: 'number' as const },
+            { label: '手续费', key: 'handlingFee', type: 'number' as const }
+          ].map((item) => ({
+            ...item,
+            props: { ...moneyProps, disabled: !canEditOrderField('settlementAmounts') }
+          }))
+        : [])
     ]),
     otherItems: computed<FormItem[]>(() => [
       {
@@ -693,11 +815,31 @@
       destinationStationId: [{ required: true, message: '请选择到货站', trigger: 'change' }],
       deliveryMethod: [{ required: true, message: '请选择配送方式', trigger: 'change' }],
       shippingContactName: [{ required: true, message: '请输入发货人姓名', trigger: 'blur' }],
-      shippingContactPhone: [{ required: true, message: '请输入发货人手机号', trigger: 'blur' }],
-      shippingAddressDetail: [{ required: true, message: '请输入发货地址', trigger: 'blur' }],
+      ...(canEditOrderField('shipperContact')
+        ? {
+            shippingContactPhone: [
+              { required: true, message: '请输入发货人手机号', trigger: 'blur' }
+            ]
+          }
+        : {}),
+      ...(canEditOrderField('shipperAddress')
+        ? {
+            shippingAddressDetail: [{ required: true, message: '请输入发货地址', trigger: 'blur' }]
+          }
+        : {}),
       receivingContactName: [{ required: true, message: '请输入收货人姓名', trigger: 'blur' }],
-      receivingContactPhone: [{ required: true, message: '请输入收货人手机号', trigger: 'blur' }],
-      receivingAddressDetail: [{ required: true, message: '请输入收货地址', trigger: 'blur' }],
+      ...(canEditOrderField('receiverContact')
+        ? {
+            receivingContactPhone: [
+              { required: true, message: '请输入收货人手机号', trigger: 'blur' }
+            ]
+          }
+        : {}),
+      ...(canEditOrderField('receiverAddress')
+        ? {
+            receivingAddressDetail: [{ required: true, message: '请输入收货地址', trigger: 'blur' }]
+          }
+        : {}),
       paymentMethod: [{ required: true, message: '请选择付款方式', trigger: 'change' }]
     })),
     cargoColumns: computed<ColumnOption<CargoItem>[]>(() => [
@@ -709,6 +851,7 @@
         formatter: (row) => (
           <ElAutocomplete
             v-model={row.cargoName}
+            aria-label="货物名称"
             fetchSuggestions={(keyword, callback) =>
               void fetchCargoSuggestions(keyword, callback as CargoSuggestionCallback)
             }
@@ -732,7 +875,13 @@
         label: '计量单位',
         width: 150,
         formatter: (row) => (
-          <ElSelect v-model={row.packageType} class="w-full!" clearable placeholder="请选择">
+          <ElSelect
+            v-model={row.packageType}
+            aria-label="计量单位"
+            class="w-full!"
+            clearable
+            placeholder="请选择"
+          >
             {form.cargoUnitOptions.map((item) => (
               <ElOption key={item.value} label={item.label || item.name} value={item.value} />
             ))}
@@ -746,6 +895,7 @@
         formatter: (row) => (
           <ElInputNumber
             modelValue={row.quantity}
+            aria-label="货物数量"
             {...countProps}
             precision={2}
             controls={false}
@@ -760,6 +910,7 @@
         formatter: (row) => (
           <ElInputNumber
             v-model={row.weightKg}
+            aria-label="货物重量"
             min={0}
             precision={2}
             controls={false}
@@ -774,6 +925,7 @@
         formatter: (row) => (
           <ElInputNumber
             v-model={row.volumeM3}
+            aria-label="货物体积"
             min={0}
             precision={3}
             controls={false}
@@ -781,20 +933,24 @@
           />
         )
       },
-      {
-        prop: 'unitPrice',
-        label: '合同单价(元)',
-        width: 145,
-        formatter: (row) =>
-          row.sourceContractId ? `¥ ${numericValue(row.unitPrice).toFixed(2)}` : '-'
-      },
-      {
-        prop: 'freight',
-        label: '运费(元)',
-        width: 135,
-        formatter: (row) =>
-          row.sourceContractId ? `¥ ${calculateContractCargoFreight(row).toFixed(2)}` : '-'
-      },
+      ...(canViewOrderField('cargoPricing')
+        ? [
+            {
+              prop: 'unitPrice',
+              label: '合同单价(元)',
+              width: 145,
+              formatter: (row: CargoItem) =>
+                row.sourceContractId ? `¥ ${formatNumber(row.unitPrice)}` : '-'
+            },
+            {
+              prop: 'freight',
+              label: '运费(元)',
+              width: 135,
+              formatter: (row: CargoItem) =>
+                row.sourceContractId ? `¥ ${formatNumber(row.freight)}` : '-'
+            }
+          ]
+        : []),
       {
         prop: 'sourceContractNo',
         label: '来源合同',
@@ -1193,11 +1349,20 @@
     address?: CustomerAddress | null
   ): ContactPatch {
     const contactName = address?.contactName || customer.contactName || customer.customerName
-    const contactPhone = address?.contactPhone || customer.contactPhone || ''
-    const addressText = formatOrderAddress(
-      address?.region || customer.region,
-      address?.addressDetail || customer.addressDetail
-    )
+    const effectiveAccess = address?.fieldAccess ?? customer.fieldAccess
+    const phoneAccess = getFieldAccess(effectiveAccess, 'contactPhone')
+    const addressAccess = getFieldAccess(effectiveAccess, 'addressDetail')
+    const canReadPhone = phoneAccess === 'read' || phoneAccess === 'edit'
+    const canReadAddress = addressAccess === 'read' || addressAccess === 'edit'
+    const contactPhone = canReadPhone ? address?.contactPhone || customer.contactPhone || '' : ''
+    const addressText = canReadAddress
+      ? formatOrderAddress(
+          address?.region || customer.region,
+          address?.addressDetail || customer.addressDetail
+        )
+      : ''
+    const longitude = canReadAddress ? (address?.longitude ?? customer.longitude ?? null) : null
+    const latitude = canReadAddress ? (address?.latitude ?? customer.latitude ?? null) : null
 
     const patchMap: Record<SelectorMode, ContactPatch> = {
       shipping: {
@@ -1207,8 +1372,8 @@
         shippingContactName: contactName,
         shippingContactPhone: contactPhone,
         shippingAddressDetail: addressText,
-        shippingLongitude: address?.longitude ?? customer.longitude ?? null,
-        shippingLatitude: address?.latitude ?? customer.latitude ?? null
+        shippingLongitude: longitude,
+        shippingLatitude: latitude
       },
       receiving: {
         receivingCustomerId: customer.id,
@@ -1217,8 +1382,8 @@
         receivingContactName: contactName,
         receivingContactPhone: contactPhone,
         receivingAddressDetail: addressText,
-        receivingLongitude: address?.longitude ?? customer.longitude ?? null,
-        receivingLatitude: address?.latitude ?? customer.latitude ?? null
+        receivingLongitude: longitude,
+        receivingLatitude: latitude
       }
     }
 
@@ -1622,6 +1787,20 @@
       fields.reduce((sum, field) => sum + numericValue(form.data[field] as number), 0),
       2
     )
+  }
+
+  function canViewOrderField(field: Api.Tms.Order.OrderFieldKey): boolean {
+    return isNewOrder.value || canViewField(form.data.fieldAccess, field)
+  }
+
+  function canEditOrderField(field: Api.Tms.Order.OrderFieldKey): boolean {
+    return isNewOrder.value || canEditField(form.data.fieldAccess, field)
+  }
+
+  function canEditContactEndpoint(mode: SelectorMode): boolean {
+    return mode === 'shipping'
+      ? canEditOrderField('shipperContact') && canEditOrderField('shipperAddress')
+      : canEditOrderField('receiverContact') && canEditOrderField('receiverAddress')
   }
 </script>
 
