@@ -4,6 +4,10 @@
   "type": "module",
   "types": "./src/types/platform-runtime.d.ts",
   "files": [
+    ".auto-import.json",
+    ".env",
+    ".env.development",
+    ".env.production",
     "src",
     "public"
   ],
