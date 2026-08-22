@@ -94,7 +94,7 @@
     fetchGetEnableOrganizationTree,
     fetchGetEnableTenantList
   } from '@/api/system-manage'
-  import { fetchEmployeeSelectorList } from '@/api/hr'
+  import { fetchEmployeeSelectorList } from '@/api/integration/employees'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { useSystemParam } from '@/hooks'
 

@@ -17,6 +17,7 @@
     "paths": {
       "@finance/*": ["modules/art-supabase-finance/src/*"],
       "@fms/*": ["modules/art-supabase-fms/src/*"],
+      "@hr/*": ["modules/art-supabase-hr/src/*"],
       "@vms/*": ["modules/art-supabase-vms/src/*"],
       "@/*": ["src/*"],
       "@views/*": ["src/views/*"],
@@ -38,6 +39,8 @@
     "modules/art-supabase-finance/src/**/*.vue",
     "modules/art-supabase-fms/src/**/*.ts",
     "modules/art-supabase-fms/src/**/*.vue",
+    "modules/art-supabase-hr/src/**/*.ts",
+    "modules/art-supabase-hr/src/**/*.vue",
     "modules/art-supabase-vms/src/**/*.ts",
     "modules/art-supabase-vms/src/**/*.vue"
   ],
