@@ -126,20 +126,14 @@ export async function fetchAccidentCaseEventList(accidentCaseId: string) {
 }
 
 export async function fetchVmsAccidentOptions(keyword = '') {
-  let query = supabase
-    .from('vehicle_accident_record')
-    .select('id, plate_no, accident_time, accident_location, accident_summary, economic_loss')
-    .order('accident_time', { ascending: false })
-    .limit(100)
-  if (keyword.trim()) {
-    query = query.or(
-      `plate_no.ilike.%${keyword.trim()}%,accident_summary.ilike.%${keyword.trim()}%`
-    )
-  }
-  return await responseHandle<Api.Smis.AccidentEmergency.VmsAccidentOption[]>(() => query, {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
+  return await responseHandle<Api.Smis.AccidentEmergency.VmsAccidentOption[]>(
+    () =>
+      supabase.rpc('vms_list_vehicle_accident_options_secure', {
+        p_keyword: keyword.trim() || null,
+        p_limit: 100
+      }),
+    { ignoreCheck: true, showErrorMessage: true }
+  )
 }
 
 export async function fetchEmergencyPlanList() {

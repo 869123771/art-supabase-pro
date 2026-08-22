@@ -8,17 +8,12 @@
       icon="ri:notification-badge-line"
       :tags="workspaceTags"
       :metrics="workspaceMetrics"
+      refreshable
+      refresh-label="刷新消息提醒数据"
+      :refresh-loading="page.loading || page.loadingTenants"
+      @refresh="loadWorkspace"
     >
       <template #actions>
-        <ElTooltip content="刷新消息提醒数据" placement="bottom">
-          <ArtIconButton
-            icon="ri:refresh-line"
-            circle
-            label="刷新消息提醒数据"
-            :loading="page.loading || page.loadingTenants"
-            @click="loadWorkspace"
-          />
-        </ElTooltip>
         <ElButton
           v-auth="'System:NotificationReminder:Dispatch'"
           type="primary"
@@ -252,7 +247,7 @@
 
 <script setup lang="tsx">
   import dayjs from 'dayjs'
-  import { ElButton, ElMessage, ElOption, ElSelect, ElTag, ElTooltip } from 'element-plus'
+  import { ElButton, ElMessage, ElOption, ElSelect, ElTag } from 'element-plus'
   import type {
     ArtTableQueryExpose,
     ArtTableQueryHeaderAction,
@@ -262,7 +257,6 @@
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
-  import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
   import BusinessWorkspaceHeader, {
     type BusinessWorkspaceMetric,
     type BusinessWorkspaceTag

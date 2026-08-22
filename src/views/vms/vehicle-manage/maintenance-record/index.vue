@@ -42,7 +42,6 @@
 <script setup lang="tsx">
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import type { ComputedRef, UnwrapNestedRefs } from 'vue'
-  import { isNil } from 'lodash-es'
   import { storeToRefs } from 'pinia'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import ArtButtonMore, {
@@ -71,6 +70,11 @@
     type BusinessWorkspaceMetric
   } from '@/components/business/business-workspace-header/index.vue'
   import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
+  import {
+    canViewField,
+    formatSensitiveNumber,
+    mergeFieldAccessMaps
+  } from '@/utils/field-permission'
 
   defineOptions({ name: 'VehicleMaintenance' })
 
@@ -96,6 +100,10 @@
   const dialogRef = ref<DialogExpose>()
   const { getDictMap } = storeToRefs(useUserStore())
   const overview = reactive<{ total: number; rows: MaintenanceRecord[] }>({ total: 0, rows: [] })
+  const listFieldAccess = ref<Api.Vms.VehicleManage.VehicleMaintenanceFieldAccessMap>({})
+  const effectiveFieldAccess = computed(() =>
+    mergeFieldAccessMaps(listFieldAccess.value, ...overview.rows.map((row) => row.fieldAccess))
+  )
   const workspaceMetrics = computed<BusinessWorkspaceMetric[]>(() => [
     {
       label: '维保记录',
@@ -111,9 +119,14 @@
       tone: 'success'
     },
     {
-      label: '本页费用待核',
-      value: overview.rows.filter((row) => isNil(row.costAmount)).length,
-      description: '尚未登记维保费用',
+      label: canViewField(effectiveFieldAccess.value, 'totalCost') ? '本页费用待核' : '本页进行中',
+      value: canViewField(effectiveFieldAccess.value, 'totalCost')
+        ? overview.rows.filter((row) => row.costAmount === null || row.costAmount === undefined)
+            .length
+        : overview.rows.filter((row) => !row.endTime).length,
+      description: canViewField(effectiveFieldAccess.value, 'totalCost')
+        ? '尚未登记维保费用'
+        : '尚未登记结束时间',
       icon: 'ri:money-cny-circle-line',
       tone: 'warning'
     }
@@ -140,7 +153,9 @@
     searchItems: computed<SearchFormItem[]>(() => [
       { label: '所属公司', key: 'companyName', type: 'input' },
       { label: '车牌号', key: 'plateNo', type: 'input' },
-      { label: '维修单号', key: 'maintenanceNo', type: 'input' },
+      ...(canViewField(effectiveFieldAccess.value, 'maintenanceIdentifiers')
+        ? [{ label: '维修单号', key: 'maintenanceNo', type: 'input' }]
+        : []),
       {
         label: '维修类型',
         key: 'maintenanceType',
@@ -156,7 +171,7 @@
         permission: 'VehicleMaintenance:Export',
         exportFilename: '维修保养记录',
         exportSheetName: '维修保养记录',
-        exportColumns: maintenanceExcelColumns,
+        exportColumns: maintenanceExcelColumns.value,
         exportApi: ({ selectedIds, searchParams, maxRows }) =>
           exportVehicleMaintenanceList({
             ...(searchParams as SearchParams),
@@ -181,7 +196,9 @@
       { type: 'globalIndex', label: '序号', width: 72 },
       { prop: 'companyName', label: '所属公司', minWidth: 150 },
       { prop: 'plateNo', label: '车牌号', width: 120 },
-      { prop: 'maintenanceNo', label: '维修单号', minWidth: 150 },
+      ...(canViewField(effectiveFieldAccess.value, 'maintenanceIdentifiers')
+        ? [{ prop: 'maintenanceNo', label: '维修单号', minWidth: 150 }]
+        : []),
       {
         prop: 'maintenanceType',
         label: '维修类型',
@@ -201,13 +218,17 @@
         width: 170,
         formatter: (row) => formatWithDayjs(row.endTime)
       },
-      {
-        prop: 'costAmount',
-        label: '费用金额',
-        width: 120,
-        align: 'right',
-        formatter: (row) => formatMoney(row.costAmount)
-      },
+      ...(canViewField(effectiveFieldAccess.value, 'totalCost')
+        ? [
+            {
+              prop: 'costAmount',
+              label: '费用金额',
+              width: 120,
+              align: 'right',
+              formatter: (row: MaintenanceRecord) => formatMoney(row.costAmount)
+            }
+          ]
+        : []),
       { prop: 'workshop', label: '维修厂', minWidth: 160 },
       {
         prop: 'createTime',
@@ -238,22 +259,28 @@
     ]
   })
 
-  const maintenanceExcelColumns: ArtTableQueryExcelColumn[] = [
+  const maintenanceExcelColumns = computed<ArtTableQueryExcelColumn[]>(() => [
     { key: 'companyName', title: '所属公司' },
     { key: 'plateNo', title: '车牌号', required: true },
-    { key: 'maintenanceNo', title: '维修单号', required: true },
+    ...(canViewField(effectiveFieldAccess.value, 'maintenanceIdentifiers')
+      ? [{ key: 'maintenanceNo', title: '维修单号', required: true }]
+      : []),
     { key: 'maintenanceType', title: '维修类型' },
     { key: 'initiator', title: '发起人' },
     { key: 'startTime', title: '开始时间' },
     { key: 'endTime', title: '结束时间' },
-    { key: 'costAmount', title: '费用金额' },
+    ...(canViewField(effectiveFieldAccess.value, 'totalCost')
+      ? [{ key: 'costAmount', title: '费用金额' }]
+      : []),
     { key: 'workshop', title: '维修厂' },
     { key: 'remark', title: '备注' }
-  ]
+  ])
 
-  const fetchTableData = (params: TableParams) => {
+  const fetchTableData = async (params: TableParams) => {
     const { from, to } = pageInfoHandler({ current: params.current, size: params.size })
-    return fetchVehicleMaintenanceList({ ...params, from, to })
+    const result = await fetchVehicleMaintenanceList({ ...params, from, to })
+    listFieldAccess.value = result.fieldAccess ?? {}
+    return result
   }
 
   const handleTableSuccess: NonNullable<ArtTableQueryProps['onSuccess']> = (rows, response) => {
@@ -310,9 +337,9 @@
     }
   }
 
-  const formatMoney = (value?: number | null): string => {
-    if (isNil(value)) return '--'
-    return `${Number(value).toFixed(2)} 元`
+  const formatMoney = (value?: number | string | null): string => {
+    const formatted = formatSensitiveNumber(value)
+    return formatted === '--' || formatted === '***' ? formatted : `${formatted} 元`
   }
 </script>
 

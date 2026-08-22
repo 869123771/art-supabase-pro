@@ -92,12 +92,13 @@
 
   const dialogRef = ref<ArtDialogExpose>()
 
-  function domainIcon(domain: 'transport' | 'finance' | 'master_data' | 'safety'): string {
+  function domainIcon(domain: 'transport' | 'finance' | 'master_data' | 'safety' | 'hr'): string {
     return {
       transport: 'ri:truck-line',
       finance: 'ri:money-cny-circle-line',
       master_data: 'ri:database-2-line',
-      safety: 'ri:shield-check-line'
+      safety: 'ri:shield-check-line',
+      hr: 'ri:team-line'
     }[domain]
   }
 

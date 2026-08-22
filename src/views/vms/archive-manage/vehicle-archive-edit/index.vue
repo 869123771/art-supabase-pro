@@ -36,16 +36,17 @@
                 <ArtSectionTitle :show-line="false">车辆证件影像</ArtSectionTitle>
                 <p>可直接上传或从资源库选择，上传后支持预览、替换和删除</p>
               </div>
-              <span>{{ certificateFilledCount }}/{{ certificateItems.length }} 已完成</span>
+              <span>{{ certificateFilledCount }}/{{ visibleCertificateItems.length }} 已完成</span>
             </header>
             <div class="vehicle-archive-edit__images">
               <ArtUploadImage
-                v-for="item in certificateItems"
+                v-for="item in visibleCertificateItems"
                 :key="item.key"
                 v-model="form[item.key]"
                 :title="item.label"
                 :size="120"
                 :limit="1"
+                :readonly="item.key !== 'vehiclePhotoUrl' && !canEditArchiveField('documents')"
               />
             </div>
           </section>
@@ -92,7 +93,7 @@
             :show-submit="false"
           />
 
-          <section class="vehicle-archive-edit__section">
+          <section v-if="canViewArchiveField('documents')" class="vehicle-archive-edit__section">
             <div class="vehicle-archive-edit__section-header">
               <ArtSectionTitle class="vehicle-archive-edit__section-title" :show-line="false">
                 车辆档案附件
@@ -100,7 +101,7 @@
               <ArtExcelImport
                 accept=""
                 :parse-excel="false"
-                :disabled="page.attachmentUploading"
+                :disabled="page.attachmentUploading || !canEditArchiveField('documents')"
                 :button-props="{
                   type: 'primary',
                   plain: true,
@@ -123,7 +124,10 @@
       </ElTabs>
     </div>
 
-    <ArtStickyActionBar class="vehicle-archive-edit__footer">
+    <ArtStickyActionBar
+      class="vehicle-archive-edit__footer"
+      hint="带 * 的信息为必填项；提交前请确认车辆、证件与运营信息完整。"
+    >
       <ElButton :disabled="page.saving" @click="goBack">取消</ElButton>
       <ElButton v-auth="savePermission" type="primary" :loading="page.saving" @click="handleSave">
         {{ saveButtonLabel }}
@@ -163,6 +167,7 @@
   import { useDocumentNumberRule } from '@/hooks/core/useDocumentNumberRule'
   import { downloadAttachment, getFileExtension, viewAttachment } from '@/utils/file'
   import { renderAttachmentLink } from '@/components/core/media/art-file-viewer/render'
+  import { canEditField, canViewField } from '@/utils/field-permission'
   import {
     createInitialVehicleArchiveForm,
     requiresVehicleArchiveResubmission,
@@ -298,11 +303,56 @@
   const form = reactive<VehicleArchiveForm>(createInitialForm())
   const archiveNumber = useDocumentNumberRule('vehicle.archive_self')
 
-  const rules: FormRules<VehicleArchiveForm> = {
+  const canViewArchiveField = (field: Api.Vms.ArchiveManage.VehicleArchiveFieldKey): boolean =>
+    !isEdit.value || canViewField(form.fieldAccess, field)
+  const canEditArchiveField = (field: Api.Vms.ArchiveManage.VehicleArchiveFieldKey): boolean =>
+    !isEdit.value || canEditField(form.fieldAccess, field)
+
+  const sensitiveFormFields: Partial<
+    Record<keyof VehicleArchiveForm, Api.Vms.ArchiveManage.VehicleArchiveFieldKey>
+  > = {
+    vin: 'vehicleIdentifiers',
+    operationCertNo: 'vehicleIdentifiers',
+    purchaseCertNo: 'vehicleIdentifiers',
+    registrationCertNo: 'vehicleIdentifiers',
+    chassisNo: 'vehicleIdentifiers',
+    gearboxSerialNo: 'vehicleIdentifiers',
+    engineNo: 'vehicleIdentifiers',
+    licensePlateCode: 'vehicleIdentifiers',
+    ownerId: 'ownerIdentity',
+    ownerName: 'ownerIdentity',
+    ownerGender: 'ownerIdentity',
+    idCardNo: 'ownerIdentity',
+    ownerPhone: 'contactPhones',
+    mailingAddress: 'mailingAddress',
+    operationRoute: 'operationRoute',
+    acCode: 'deviceIdentity',
+    terminalPhone: 'deviceIdentity'
+  }
+
+  const applyVehicleFieldAccess = (item: FormItem): FormItem => {
+    const field = sensitiveFormFields[String(item.key) as keyof VehicleArchiveForm]
+    if (!field) return item
+    const canView = canViewArchiveField(field)
+    const canEdit = canEditArchiveField(field)
+    return {
+      ...item,
+      hidden: !canView,
+      props: {
+        ...(item.props ?? {}),
+        disabled: !canEdit
+      },
+      description: !canView ? item.description : canEdit ? item.description : '当前字段按权限只读。'
+    }
+  }
+
+  const rules = computed<FormRules<VehicleArchiveForm>>(() => ({
     plateNo: [{ required: true, message: '请输入车牌号', trigger: 'blur' }],
     carrierId: [{ required: true, message: '请选择所属承运商', trigger: 'change' }],
     vehicleType: [{ required: true, message: '请选择车型', trigger: 'change' }],
-    vin: [{ required: true, message: '请输入车架号（VIN）', trigger: 'blur' }],
+    vin: canEditArchiveField('vehicleIdentifiers')
+      ? [{ required: true, message: '请输入车架号（VIN）', trigger: 'blur' }]
+      : [],
     registerDate: [{ required: true, message: '请选择登记日期', trigger: 'change' }],
     issueDate: [{ required: true, message: '请选择发证日期', trigger: 'change' }],
     invoiceDate: [{ required: true, message: '请选择购入开票日期', trigger: 'change' }],
@@ -314,37 +364,53 @@
     threeGuaranteeDuration: [{ required: true, message: '请输入整车三包时长', trigger: 'blur' }],
     warrantyMileage: [{ required: true, message: '请输入整车包修里程', trigger: 'blur' }],
     warrantyDuration: [{ required: true, message: '请输入整车包修时长', trigger: 'blur' }]
-  }
+  }))
 
-  const basicItems = computed<FormItem[]>(() => [
-    { label: '车牌号', key: 'plateNo', type: 'input' },
-    {
-      label: '所属承运商',
-      key: 'carrierId',
-      type: 'select',
-      span: 16,
-      api: fetchCarrierOptions,
-      resultField: 'data',
-      labelField: 'companyName',
-      valueField: 'id',
-      labelFn: (option) => {
-        const carrier = option as CarrierOption
-        return carrier.carrierCode
-          ? `${carrier.companyName}（${carrier.carrierCode}）`
-          : carrier.companyName
-      },
-      props: {
-        filterable: true,
-        clearable: true,
-        placeholder: '请选择所属承运商',
-        onVisibleChange: async (visible: boolean) => {
-          if (!visible) return
-          const { data } = await fetchCarrierOptions()
-          carrierCache.value = new Map((data ?? []).map((item) => [item.id, item]))
+  const basicItems = computed<FormItem[]>(() =>
+    [
+      { label: '车牌号', key: 'plateNo', type: 'input' },
+      {
+        label: '所属承运商',
+        key: 'carrierId',
+        type: 'select',
+        span: 16,
+        api: fetchCarrierOptions,
+        resultField: 'data',
+        labelField: 'companyName',
+        valueField: 'id',
+        labelFn: (option: unknown) => {
+          const carrier = option as CarrierOption
+          return carrier.carrierCode
+            ? `${carrier.companyName}（${carrier.carrierCode}）`
+            : carrier.companyName
         },
-        onChange: (value?: string) => {
-          if (!value) {
-            form.companyName = ''
+        props: {
+          filterable: true,
+          clearable: true,
+          placeholder: '请选择所属承运商',
+          onVisibleChange: async (visible: boolean) => {
+            if (!visible) return
+            const { data } = await fetchCarrierOptions()
+            carrierCache.value = new Map((data ?? []).map((item) => [item.id, item]))
+          },
+          onChange: (value?: string) => {
+            if (!value) {
+              form.companyName = ''
+              form.primaryDriverId = null
+              form.primaryDriver = null
+              form.primaryDriverName = ''
+              form.primaryDriverPhone = ''
+              form.secondaryDriverId = null
+              form.secondaryDriver = null
+              form.secondaryDriverName = ''
+              form.secondaryDriverPhone = ''
+              driverCache.value = new Map()
+              return
+            }
+            const carrier = carrierCache.value.get(value)
+            if (carrier) {
+              form.companyName = carrier.companyName
+            }
             form.primaryDriverId = null
             form.primaryDriver = null
             form.primaryDriverName = ''
@@ -354,140 +420,137 @@
             form.secondaryDriverName = ''
             form.secondaryDriverPhone = ''
             driverCache.value = new Map()
-            return
           }
-          const carrier = carrierCache.value.get(value)
-          if (carrier) {
-            form.companyName = carrier.companyName
-          }
-          form.primaryDriverId = null
-          form.primaryDriver = null
-          form.primaryDriverName = ''
-          form.primaryDriverPhone = ''
-          form.secondaryDriverId = null
-          form.secondaryDriver = null
-          form.secondaryDriverName = ''
-          form.secondaryDriverPhone = ''
-          driverCache.value = new Map()
         }
-      }
-    },
-    { label: '所属公司', key: 'companyName', type: 'input', props: { readonly: true } },
-    {
-      label: '自编号',
-      key: 'selfNo',
-      type: 'input',
-      props: {
-        maxlength: 50,
-        ...archiveNumber.inputProps(Boolean(form.id), '可手工填写车辆自编号', true)
       },
-      description: archiveNumber.description.value
-    },
-    { label: '车型', key: 'vehicleType', type: 'select', props: { options: options.vehicleType } },
-    {
-      label: '国产/进口',
-      key: 'originType',
-      type: 'radioGroup',
-      props: { options: options.originType, optionType: 'button' }
-    },
-    { label: '车架号（VIN）', key: 'vin', type: 'input' },
-    { label: '车辆厂商', key: 'manufacturer', type: 'input' },
-    { label: '厂牌型号', key: 'brandModel', type: 'input' },
-    { label: '营运证号', key: 'operationCertNo', type: 'input' },
-    { label: '购置证号', key: 'purchaseCertNo', type: 'input' },
-    { label: '登记证号', key: 'registrationCertNo', type: 'input' },
-    { label: '车身颜色', key: 'vehicleColor', type: 'select', props: { options: options.color } },
-    { label: '底盘号', key: 'chassisNo', type: 'input' },
-    { label: '空调号码', key: 'acCode', type: 'input' },
-    { label: '波箱系列号', key: 'gearboxSerialNo', type: 'input' },
-    { label: '登记日期', key: 'registerDate', type: 'date', props: dateProps },
-    { label: '发证日期', key: 'issueDate', type: 'date', props: dateProps },
-    { label: '购入开票日期', key: 'invoiceDate', type: 'date', props: dateProps },
-    { label: '启用日期', key: 'startUseDate', type: 'date', props: dateProps },
-    {
-      label: '使用年限',
-      key: 'serviceYears',
-      type: 'number',
-      description: '单位：年',
-      props: numberProps
-    },
-    {
-      label: '核定乘员数',
-      key: 'approvedPassengerCount',
-      type: 'number',
-      description: '单位：人',
-      props: numberProps
-    },
-    { label: '座位数', key: 'seatCount', type: 'number', props: numberProps },
-    {
-      label: '业务类型',
-      key: 'businessType',
-      type: 'select',
-      props: { options: options.businessType }
-    },
-    {
-      label: '是否空调车',
-      key: 'isAirConditioned',
-      type: 'radioGroup',
-      props: { options: options.boolean }
-    },
-    {
-      label: '营运状态',
-      key: 'operationStatus',
-      type: 'select',
-      props: { options: options.operationStatus }
-    },
-    { label: '营运状态变更', key: 'operationStatusChangeDate', type: 'date', props: dateProps },
-    {
-      label: '购置状态',
-      key: 'purchaseStatus',
-      type: 'select',
-      props: { options: options.purchaseStatus }
-    },
-    { label: '购置状态变更', key: 'purchaseStatusChangeDate', type: 'date', props: dateProps },
-    { label: '例检启用日期', key: 'inspectionStartDate', type: 'date', props: dateProps },
-    {
-      label: '车辆等级',
-      key: 'vehicleLevel',
-      type: 'select',
-      props: { options: options.vehicleLevel }
-    },
-    {
-      label: '是否新能源车',
-      key: 'isNewEnergy',
-      type: 'radioGroup',
-      props: { options: options.boolean }
-    },
-    {
-      label: '整车三包里程',
-      key: 'threeGuaranteeMileage',
-      type: 'number',
-      description: '单位：公里',
-      props: numberProps
-    },
-    {
-      label: '整车三包时长',
-      key: 'threeGuaranteeDuration',
-      type: 'number',
-      description: '单位：个月',
-      props: numberProps
-    },
-    {
-      label: '整车包修里程',
-      key: 'warrantyMileage',
-      type: 'number',
-      description: '单位：公里',
-      props: numberProps
-    },
-    {
-      label: '整车包修时长',
-      key: 'warrantyDuration',
-      type: 'number',
-      description: '单位：个月',
-      props: numberProps
-    },
-    { label: '备注', key: 'remark', type: 'input', span: 24, props: { type: 'textarea', rows: 3 } }
-  ])
+      { label: '所属公司', key: 'companyName', type: 'input', props: { readonly: true } },
+      {
+        label: '自编号',
+        key: 'selfNo',
+        type: 'input',
+        props: {
+          maxlength: 50,
+          ...archiveNumber.inputProps(Boolean(form.id), '可手工填写车辆自编号', true)
+        },
+        description: archiveNumber.description.value
+      },
+      {
+        label: '车型',
+        key: 'vehicleType',
+        type: 'select',
+        props: { options: options.vehicleType }
+      },
+      {
+        label: '国产/进口',
+        key: 'originType',
+        type: 'radioGroup',
+        props: { options: options.originType, optionType: 'button' }
+      },
+      { label: '车架号（VIN）', key: 'vin', type: 'input' },
+      { label: '车辆厂商', key: 'manufacturer', type: 'input' },
+      { label: '厂牌型号', key: 'brandModel', type: 'input' },
+      { label: '营运证号', key: 'operationCertNo', type: 'input' },
+      { label: '购置证号', key: 'purchaseCertNo', type: 'input' },
+      { label: '登记证号', key: 'registrationCertNo', type: 'input' },
+      { label: '车身颜色', key: 'vehicleColor', type: 'select', props: { options: options.color } },
+      { label: '底盘号', key: 'chassisNo', type: 'input' },
+      { label: '空调号码', key: 'acCode', type: 'input' },
+      { label: '波箱系列号', key: 'gearboxSerialNo', type: 'input' },
+      { label: '登记日期', key: 'registerDate', type: 'date', props: dateProps },
+      { label: '发证日期', key: 'issueDate', type: 'date', props: dateProps },
+      { label: '购入开票日期', key: 'invoiceDate', type: 'date', props: dateProps },
+      { label: '启用日期', key: 'startUseDate', type: 'date', props: dateProps },
+      {
+        label: '使用年限',
+        key: 'serviceYears',
+        type: 'number',
+        description: '单位：年',
+        props: numberProps
+      },
+      {
+        label: '核定乘员数',
+        key: 'approvedPassengerCount',
+        type: 'number',
+        description: '单位：人',
+        props: numberProps
+      },
+      { label: '座位数', key: 'seatCount', type: 'number', props: numberProps },
+      {
+        label: '业务类型',
+        key: 'businessType',
+        type: 'select',
+        props: { options: options.businessType }
+      },
+      {
+        label: '是否空调车',
+        key: 'isAirConditioned',
+        type: 'radioGroup',
+        props: { options: options.boolean }
+      },
+      {
+        label: '营运状态',
+        key: 'operationStatus',
+        type: 'select',
+        props: { options: options.operationStatus }
+      },
+      { label: '营运状态变更', key: 'operationStatusChangeDate', type: 'date', props: dateProps },
+      {
+        label: '购置状态',
+        key: 'purchaseStatus',
+        type: 'select',
+        props: { options: options.purchaseStatus }
+      },
+      { label: '购置状态变更', key: 'purchaseStatusChangeDate', type: 'date', props: dateProps },
+      { label: '例检启用日期', key: 'inspectionStartDate', type: 'date', props: dateProps },
+      {
+        label: '车辆等级',
+        key: 'vehicleLevel',
+        type: 'select',
+        props: { options: options.vehicleLevel }
+      },
+      {
+        label: '是否新能源车',
+        key: 'isNewEnergy',
+        type: 'radioGroup',
+        props: { options: options.boolean }
+      },
+      {
+        label: '整车三包里程',
+        key: 'threeGuaranteeMileage',
+        type: 'number',
+        description: '单位：公里',
+        props: numberProps
+      },
+      {
+        label: '整车三包时长',
+        key: 'threeGuaranteeDuration',
+        type: 'number',
+        description: '单位：个月',
+        props: numberProps
+      },
+      {
+        label: '整车包修里程',
+        key: 'warrantyMileage',
+        type: 'number',
+        description: '单位：公里',
+        props: numberProps
+      },
+      {
+        label: '整车包修时长',
+        key: 'warrantyDuration',
+        type: 'number',
+        description: '单位：个月',
+        props: numberProps
+      },
+      {
+        label: '备注',
+        key: 'remark',
+        type: 'input',
+        span: 24,
+        props: { type: 'textarea', rows: 3 }
+      }
+    ].map(applyVehicleFieldAccess)
+  )
 
   const bodyItems = computed<FormItem[]>(() => [
     {
@@ -583,177 +646,187 @@
     }
   ])
 
-  const engineItems = computed<FormItem[]>(() => [
-    { label: '发动机号', key: 'engineNo', type: 'input' },
-    { label: '发动机型号', key: 'engineModel', type: 'input' },
-    { label: '燃油类型', key: 'fuelType', type: 'select', props: { options: options.fuelType } },
-    {
-      label: '发动机排量',
-      key: 'displacement',
-      type: 'number',
-      props: numberProps,
-      slots: {
-        suffix: () => 'L'
+  const engineItems = computed<FormItem[]>(() =>
+    [
+      { label: '发动机号', key: 'engineNo', type: 'input' },
+      { label: '发动机型号', key: 'engineModel', type: 'input' },
+      { label: '燃油类型', key: 'fuelType', type: 'select', props: { options: options.fuelType } },
+      {
+        label: '发动机排量',
+        key: 'displacement',
+        type: 'number',
+        props: numberProps,
+        slots: {
+          suffix: () => 'L'
+        }
+      },
+      {
+        label: '排放标准',
+        key: 'emissionStandard',
+        type: 'select',
+        props: { options: options.emissionStandard }
+      },
+      {
+        label: '发动机功率',
+        key: 'enginePower',
+        type: 'number',
+        props: numberProps,
+        slots: {
+          suffix: () => 'KW'
+        }
+      },
+      {
+        label: '额定扭矩转速',
+        key: 'ratedTorqueSpeed',
+        type: 'number',
+        props: numberProps,
+        slots: {
+          suffix: () => 'r/min'
+        }
+      },
+      {
+        label: '发动机扭矩',
+        key: 'engineTorque',
+        type: 'number',
+        props: numberProps,
+        slots: {
+          suffix: () => 'N-M'
+        }
       }
-    },
-    {
-      label: '排放标准',
-      key: 'emissionStandard',
-      type: 'select',
-      props: { options: options.emissionStandard }
-    },
-    {
-      label: '发动机功率',
-      key: 'enginePower',
-      type: 'number',
-      props: numberProps,
-      slots: {
-        suffix: () => 'KW'
-      }
-    },
-    {
-      label: '额定扭矩转速',
-      key: 'ratedTorqueSpeed',
-      type: 'number',
-      props: numberProps,
-      slots: {
-        suffix: () => 'r/min'
-      }
-    },
-    {
-      label: '发动机扭矩',
-      key: 'engineTorque',
-      type: 'number',
-      props: numberProps,
-      slots: {
-        suffix: () => 'N-M'
-      }
-    }
-  ])
+    ].map(applyVehicleFieldAccess)
+  )
 
-  const otherItems = computed<FormItem[]>(() => [
-    { label: '车牌颜色', key: 'plateColor', type: 'select', props: { options: options.color } },
-    {
-      label: '运输行业',
-      key: 'transportIndustry',
-      type: 'select',
-      props: { options: options.transportIndustry }
-    },
-    {
-      label: '营运类型',
-      key: 'operationType',
-      type: 'select',
-      props: { options: options.operationType }
-    },
-    { label: '业户ID', key: 'ownerId', type: 'input' },
-    { label: '业户名称', key: 'ownerName', type: 'input' },
-    { label: '业户联系电话', key: 'ownerPhone', type: 'input' },
-    { label: '车载终端电话', key: 'terminalPhone', type: 'input' },
-    { label: '车主性别', key: 'ownerGender', type: 'select', props: { options: options.gender } },
-    { label: '身份证号码', key: 'idCardNo', type: 'input' },
-    { label: '通讯地址', key: 'mailingAddress', type: 'input' },
-    { label: '吨位/座位', key: 'tonnageOrSeat', type: 'input' },
-    {
-      label: '主司机',
-      key: 'primaryDriverId',
-      type: 'select',
-      span: 8,
-      api: fetchDriverOptions,
-      options: selectedPrimaryDriverOptions.value,
-      resultField: 'data',
-      labelField: 'driverName',
-      valueField: 'id',
-      immediate: false,
-      beforeFetch: () => ({
-        carrierId: form.carrierId ?? undefined,
-        driverType: 'primary'
-      }),
-      shouldFetch: () => Boolean(form.carrierId),
-      afterFetch: syncPrimaryDriverOptions,
-      labelFn: (option) => {
-        const driver = option as DriverOption
-        return driver.phone ? `${driver.driverName}（${driver.phone}）` : driver.driverName
+  const otherItems = computed<FormItem[]>(() =>
+    [
+      { label: '车牌颜色', key: 'plateColor', type: 'select', props: { options: options.color } },
+      {
+        label: '运输行业',
+        key: 'transportIndustry',
+        type: 'select',
+        props: { options: options.transportIndustry }
       },
-      props: {
-        filterable: true,
-        clearable: true,
-        disabled: !form.carrierId,
-        placeholder: form.carrierId ? '请选择主司机' : '请先选择所属承运商',
-        onVisibleChange: (visible: boolean) => {
-          if (visible && form.carrierId) void otherFormRef.value?.reloadOptions('primaryDriverId')
-        },
-        onChange: (value?: string) => {
-          if (!value) {
-            form.primaryDriver = null
-            form.primaryDriverName = ''
-            form.primaryDriverPhone = ''
-            return
-          }
-          const driver = driverCache.value.get(value)
-          form.primaryDriver = driver ?? null
-          form.primaryDriverName = driver?.driverName ?? ''
-          form.primaryDriverPhone = driver?.phone ?? ''
-        }
-      }
-    },
-    { label: '主司机姓名', key: 'primaryDriverName', type: 'input', props: { readonly: true } },
-    { label: '主司机电话', key: 'primaryDriverPhone', type: 'input', props: { readonly: true } },
-    {
-      label: '辅司机',
-      key: 'secondaryDriverId',
-      type: 'select',
-      span: 8,
-      api: fetchDriverOptions,
-      options: selectedSecondaryDriverOptions.value,
-      resultField: 'data',
-      labelField: 'driverName',
-      valueField: 'id',
-      immediate: false,
-      beforeFetch: () => ({
-        carrierId: form.carrierId ?? undefined,
-        driverType: 'secondary'
-      }),
-      shouldFetch: () => Boolean(form.carrierId),
-      afterFetch: syncSecondaryDriverOptions,
-      labelFn: (option) => {
-        const driver = option as DriverOption
-        return driver.phone ? `${driver.driverName}（${driver.phone}）` : driver.driverName
+      {
+        label: '营运类型',
+        key: 'operationType',
+        type: 'select',
+        props: { options: options.operationType }
       },
-      props: {
-        filterable: true,
-        clearable: true,
-        disabled: !form.carrierId,
-        placeholder: form.carrierId ? '请选择辅司机' : '请先选择所属承运商',
-        onVisibleChange: (visible: boolean) => {
-          if (visible && form.carrierId) void otherFormRef.value?.reloadOptions('secondaryDriverId')
+      { label: '业户ID', key: 'ownerId', type: 'input' },
+      { label: '业户名称', key: 'ownerName', type: 'input' },
+      { label: '业户联系电话', key: 'ownerPhone', type: 'input' },
+      { label: '车载终端电话', key: 'terminalPhone', type: 'input' },
+      { label: '车主性别', key: 'ownerGender', type: 'select', props: { options: options.gender } },
+      { label: '身份证号码', key: 'idCardNo', type: 'input' },
+      { label: '通讯地址', key: 'mailingAddress', type: 'input' },
+      { label: '吨位/座位', key: 'tonnageOrSeat', type: 'input' },
+      {
+        label: '主司机',
+        key: 'primaryDriverId',
+        type: 'select',
+        span: 8,
+        api: fetchDriverOptions,
+        options: selectedPrimaryDriverOptions.value,
+        resultField: 'data',
+        labelField: 'driverName',
+        valueField: 'id',
+        immediate: false,
+        beforeFetch: () => ({
+          carrierId: form.carrierId ?? undefined,
+          driverType: 'primary'
+        }),
+        shouldFetch: () => Boolean(form.carrierId),
+        afterFetch: syncPrimaryDriverOptions,
+        labelFn: (option: unknown) => {
+          const driver = option as DriverOption
+          return driver.phone ? `${driver.driverName}（${driver.phone}）` : driver.driverName
         },
-        onChange: (value?: string) => {
-          if (!value) {
-            form.secondaryDriver = null
-            form.secondaryDriverName = ''
-            form.secondaryDriverPhone = ''
-            return
+        props: {
+          filterable: true,
+          clearable: true,
+          disabled: !form.carrierId,
+          placeholder: form.carrierId ? '请选择主司机' : '请先选择所属承运商',
+          onVisibleChange: (visible: boolean) => {
+            if (visible && form.carrierId) void otherFormRef.value?.reloadOptions('primaryDriverId')
+          },
+          onChange: (value?: string) => {
+            if (!value) {
+              form.primaryDriver = null
+              form.primaryDriverName = ''
+              form.primaryDriverPhone = ''
+              return
+            }
+            const driver = driverCache.value.get(value)
+            form.primaryDriver = driver ?? null
+            form.primaryDriverName = driver?.driverName ?? ''
+            form.primaryDriverPhone = driver?.phone ?? ''
           }
-          const driver = driverCache.value.get(value)
-          form.secondaryDriver = driver ?? null
-          form.secondaryDriverName = driver?.driverName ?? ''
-          form.secondaryDriverPhone = driver?.phone ?? ''
         }
+      },
+      { label: '主司机姓名', key: 'primaryDriverName', type: 'input', props: { readonly: true } },
+      { label: '主司机电话', key: 'primaryDriverPhone', type: 'input', props: { readonly: true } },
+      {
+        label: '辅司机',
+        key: 'secondaryDriverId',
+        type: 'select',
+        span: 8,
+        api: fetchDriverOptions,
+        options: selectedSecondaryDriverOptions.value,
+        resultField: 'data',
+        labelField: 'driverName',
+        valueField: 'id',
+        immediate: false,
+        beforeFetch: () => ({
+          carrierId: form.carrierId ?? undefined,
+          driverType: 'secondary'
+        }),
+        shouldFetch: () => Boolean(form.carrierId),
+        afterFetch: syncSecondaryDriverOptions,
+        labelFn: (option: unknown) => {
+          const driver = option as DriverOption
+          return driver.phone ? `${driver.driverName}（${driver.phone}）` : driver.driverName
+        },
+        props: {
+          filterable: true,
+          clearable: true,
+          disabled: !form.carrierId,
+          placeholder: form.carrierId ? '请选择辅司机' : '请先选择所属承运商',
+          onVisibleChange: (visible: boolean) => {
+            if (visible && form.carrierId)
+              void otherFormRef.value?.reloadOptions('secondaryDriverId')
+          },
+          onChange: (value?: string) => {
+            if (!value) {
+              form.secondaryDriver = null
+              form.secondaryDriverName = ''
+              form.secondaryDriverPhone = ''
+              return
+            }
+            const driver = driverCache.value.get(value)
+            form.secondaryDriver = driver ?? null
+            form.secondaryDriverName = driver?.driverName ?? ''
+            form.secondaryDriverPhone = driver?.phone ?? ''
+          }
+        }
+      },
+      { label: '辅司机姓名', key: 'secondaryDriverName', type: 'input', props: { readonly: true } },
+      {
+        label: '辅司机电话',
+        key: 'secondaryDriverPhone',
+        type: 'input',
+        props: { readonly: true }
+      },
+      { label: '营运线路', key: 'operationRoute', type: 'input' },
+      { label: '车籍地代码', key: 'licensePlateCode', type: 'input' },
+      { label: '服务开始时间', key: 'serviceStartTime', type: 'date', props: dateProps },
+      { label: '服务结束时间', key: 'serviceEndTime', type: 'date', props: dateProps },
+      {
+        label: '支持拍照',
+        key: 'supportPhoto',
+        type: 'radioGroup',
+        props: { options: options.boolean }
       }
-    },
-    { label: '辅司机姓名', key: 'secondaryDriverName', type: 'input', props: { readonly: true } },
-    { label: '辅司机电话', key: 'secondaryDriverPhone', type: 'input', props: { readonly: true } },
-    { label: '营运线路', key: 'operationRoute', type: 'input' },
-    { label: '车籍地代码', key: 'licensePlateCode', type: 'input' },
-    { label: '服务开始时间', key: 'serviceStartTime', type: 'date', props: dateProps },
-    { label: '服务结束时间', key: 'serviceEndTime', type: 'date', props: dateProps },
-    {
-      label: '支持拍照',
-      key: 'supportPhoto',
-      type: 'radioGroup',
-      props: { options: options.boolean }
-    }
-  ])
+    ].map(applyVehicleFieldAccess)
+  )
 
   function syncPrimaryDriverOptions(result: unknown): unknown {
     return syncDriverOptions(result, getSelectedPrimaryDriver())
@@ -813,8 +886,13 @@
     { key: 'drivingLicenseBackUrl', label: '行驶证副页' },
     { key: 'operationLicenseUrl', label: '运营证照片' }
   ]
+  const visibleCertificateItems = computed(() =>
+    certificateItems.filter(
+      (item) => item.key === 'vehiclePhotoUrl' || canViewArchiveField('documents')
+    )
+  )
   const certificateFilledCount = computed(
-    () => certificateItems.filter((item) => Boolean(form[item.key])).length
+    () => visibleCertificateItems.value.filter((item) => Boolean(form[item.key])).length
   )
 
   const attachmentColumns: ColumnOption<ArchiveAttachment>[] = [
@@ -839,10 +917,12 @@
       formatter: (row) => (
         <div class="flex">
           <ArtButtonTable type="view" onClick={() => viewAttachment(row)} />
-          <ArtButtonMore
-            list={getAttachmentMoreActions()}
-            onClick={(item: ButtonMoreItem) => handleAttachmentMoreAction(item, row)}
-          />
+          {canEditArchiveField('documents') ? (
+            <ArtButtonMore
+              list={getAttachmentMoreActions()}
+              onClick={(item: ButtonMoreItem) => handleAttachmentMoreAction(item, row)}
+            />
+          ) : null}
         </div>
       )
     }

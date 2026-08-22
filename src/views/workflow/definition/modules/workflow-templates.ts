@@ -2,7 +2,7 @@ import { cloneDeep } from 'lodash-es'
 import { getWorkflowBusinessContract } from '../../modules/workflow-business-contracts'
 
 export type WorkflowTemplateCategory =
-  'all' | 'finance' | 'transport' | 'vehicle' | 'safety' | 'general'
+  'all' | 'finance' | 'transport' | 'vehicle' | 'safety' | 'hr' | 'general'
 
 export interface WorkflowTemplateDefinition {
   key: string
@@ -112,6 +112,46 @@ const templateDefinitions: WorkflowTemplateDefinition[] = [
     icon: 'ri:shield-check-line',
     tone: 'warning',
     nodeNames: ['安全管理复查']
+  },
+  {
+    key: 'hr-personnel-change',
+    name: '人事异动审批',
+    description: '用于转正、调岗、晋升、停复职与离职等员工主档变更。',
+    category: 'hr',
+    businessType: 'hr_personnel_change',
+    icon: 'ri:swap-box-line',
+    tone: 'primary',
+    nodeNames: ['直属负责人审核', '人力资源复核']
+  },
+  {
+    key: 'hr-lifecycle',
+    name: '入转调离审批',
+    description: '审批通过后自动生成入职、转正、调动或离职办理清单。',
+    category: 'hr',
+    businessType: 'hr_lifecycle_case',
+    icon: 'ri:user-settings-line',
+    tone: 'success',
+    nodeNames: ['业务负责人确认', '人力资源确认']
+  },
+  {
+    key: 'hr-self-service',
+    name: '员工自助申请审批',
+    description: '覆盖请假、加班、出差、补卡与资料变更等员工申请。',
+    category: 'hr',
+    businessType: 'hr_self_service_request',
+    icon: 'ri:selfie-line',
+    tone: 'info',
+    nodeNames: ['直属负责人审批']
+  },
+  {
+    key: 'hr-recruitment',
+    name: '招聘需求审批',
+    description: '根据组织、岗位、编制人数和到岗计划审批招聘需求。',
+    category: 'hr',
+    businessType: 'hr_recruitment_requisition',
+    icon: 'ri:user-add-line',
+    tone: 'warning',
+    nodeNames: ['用人部门审核', '人力资源复核']
   }
 ]
 
@@ -121,6 +161,7 @@ export const workflowTemplateCategories: WorkflowTemplateCategoryOption[] = [
   { key: 'transport', label: '运输管理' },
   { key: 'vehicle', label: '车辆管理' },
   { key: 'safety', label: '安全生产' },
+  { key: 'hr', label: '人力资源' },
   { key: 'general', label: '通用审批' }
 ]
 

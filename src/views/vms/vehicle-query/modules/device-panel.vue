@@ -11,6 +11,7 @@
   import type { VehicleArchive } from './types'
   import { formatValue } from './query-format'
   import { isNil } from 'lodash-es'
+  import { canViewField } from '@/utils/field-permission'
 
   defineOptions({ name: 'VehicleQueryDevicePanel' })
 
@@ -31,6 +32,7 @@
   }>()
 
   const records = computed<BoundDevice[]>(() => {
+    if (!canViewField(props.vehicle.fieldAccess, 'deviceIdentity')) return []
     if (isNil(props.vehicle.terminalPhone) || props.vehicle.terminalPhone === '') return []
 
     return [

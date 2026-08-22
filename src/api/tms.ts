@@ -137,6 +137,7 @@ export {
   recordWaybillDeparture,
   signWaybill
 } from '@/api/modules/tms/waybill'
+export type { WaybillExportScope, WaybillListScope } from '@/api/modules/tms/waybill'
 export {
   analyzeTransportAnomalyByAi,
   fetchInTransitMonitorList,

@@ -486,8 +486,9 @@ declare namespace Api {
         plateNo: string
         accidentTime: string
         accidentLocation?: string | null
-        accidentSummary: string
-        economicLoss?: number | null
+        accidentSummary?: string
+        economicLoss?: number | string | null
+        fieldAccess?: Api.Vms.VehicleManage.VehicleAccidentFieldAccessMap
       }
     }
 

@@ -166,9 +166,10 @@
 
 <script setup lang="tsx">
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
-  import { ElMessage, ElMessageBox, ElTag } from 'element-plus'
+  import { ElMessage, ElTag } from 'element-plus'
   import type { TagProps } from 'element-plus'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
+  import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import type {
     ArtTableQueryExpose,
     ArtTableQueryExcelColumn,
@@ -640,8 +641,10 @@
     await managedTableRef.value?.refreshUpdate()
   }
 
+  const { confirmDelete } = useArtFeedback()
+
   const simulateRemove = async (row: DemoOrder): Promise<void> => {
-    await ElMessageBox.confirm(`确认删除 ${row.code} 吗？`, '删除模拟数据', { type: 'warning' })
+    await confirmDelete(`确认删除 ${row.code} 吗？`, { title: '删除模拟数据' })
     allRows.value = allRows.value.filter((item) => item.id !== row.id)
     logEvent(`row operation remove -> ${row.code}`)
     await managedTableRef.value?.refreshRemove()

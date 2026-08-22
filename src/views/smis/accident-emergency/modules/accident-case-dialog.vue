@@ -35,6 +35,7 @@
     fetchSmisRiskPointOptions,
     fetchVmsAccidentOptions
   } from '@/api/smis'
+  import { getFieldAccess } from '@/utils/field-permission'
   import {
     buildAccidentCaseWritePayload,
     canEditAccidentField,
@@ -273,9 +274,18 @@
       if (!source) return
       form.caseTitle = `${source.plateNo} 车辆事故`
       form.occurredAt = source.accidentTime
-      form.location = source.accidentLocation || ''
-      form.description = source.accidentSummary
-      form.economicLoss = source.economicLoss || 0
+      if (['read', 'edit'].includes(getFieldAccess(source.fieldAccess, 'accidentLocation'))) {
+        form.location = source.accidentLocation || ''
+      }
+      if (['read', 'edit'].includes(getFieldAccess(source.fieldAccess, 'accidentNarrative'))) {
+        form.description = source.accidentSummary || ''
+      }
+      if (
+        ['read', 'edit'].includes(getFieldAccess(source.fieldAccess, 'lossAmounts')) &&
+        typeof source.economicLoss === 'number'
+      ) {
+        form.economicLoss = source.economicLoss
+      }
     }
   )
 
@@ -302,10 +312,7 @@
     }))
     vmsAccidents.value = vms.data ?? []
     Object.keys(form).forEach((key) => delete form[key as keyof AccidentCase])
-    Object.assign(
-      form,
-      row ? normalizeAccidentCase(structuredClone(toRaw(row))) : initialForm()
-    )
+    Object.assign(form, row ? normalizeAccidentCase(structuredClone(toRaw(row))) : initialForm())
     await nextTick()
     formRef.value?.clearValidate()
     await dialogRef.value?.handleOpen(row, {

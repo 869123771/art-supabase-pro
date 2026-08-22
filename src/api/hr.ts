@@ -15,3 +15,13 @@ export {
   fetchPositionList,
   fetchPositionOptions
 } from '@/api/modules/hr/position'
+
+export {
+  completeLifecycleTask,
+  deleteHrWorkspaceRecord,
+  effectPersonnelChange,
+  effectRecruitmentRequisition,
+  fetchHrWorkspaceRecords,
+  saveHrWorkspaceRecord,
+  submitHrApproval
+} from '@/api/modules/hr/workspace'

@@ -1,5 +1,5 @@
 <template>
-  <div class="business-workspace-page art-full-height fms-accounting-page tax-management-page">
+  <FinanceAccountingWorkspaceShell class="tax-management-page">
     <BusinessWorkspaceHeader
       density="compact"
       eyebrow="TAX COMPLIANCE LEDGER"
@@ -37,7 +37,7 @@
     <TaxPeriodDialog ref="dialogRef" @success="refreshAll" />
     <TaxDetailDrawer ref="drawerRef" @success="refreshAll" />
     <FundExecutionDialog ref="fundExecutionRef" @success="refreshAll" />
-  </div>
+  </FinanceAccountingWorkspaceShell>
 </template>
 
 <script setup lang="tsx">
@@ -442,10 +442,4 @@
     await tableRef.value?.getData()
   })
 </script>
-<style scoped lang="scss">
-  @use '../modules/accounting-workspace.scss' as accounting;
-
-  .tax-management-page {
-    @include accounting.accounting-workspace-layout;
-  }
-</style>
+<style scoped lang="scss"></style>

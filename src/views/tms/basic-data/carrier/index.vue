@@ -302,13 +302,16 @@
       type: 'export',
       exportFilename: 'TMS承运商资料',
       exportSheetName: '承运商管理',
-      exportColumns: visibleCarrierExportColumns.value,
-      exportApi: ({ selectedIds, searchParams, maxRows }) =>
-        exportCarrierList({
+      exportColumns: () => visibleCarrierExportColumns.value,
+      exportApi: async ({ selectedIds, searchParams, maxRows }) => {
+        const result = await exportCarrierList({
           ...(searchParams as SearchParams),
           ids: selectedIds.map(String),
           maxRows
         })
+        syncCarrierFieldAccess(result)
+        return result
+      }
     },
     {
       permission: 'TmsCarrier:Delete',
@@ -327,11 +330,18 @@
   const fetchTableData = async (params: TableParams) => {
     const { from, to } = pageInfoHandler({ current: params.current, size: params.size })
     const result = await fetchCarrierList({ ...params, from, to })
+    syncCarrierFieldAccess(result)
+    return result
+  }
+
+  const syncCarrierFieldAccess = (result: {
+    fieldAccess?: Api.Tms.BasicData.CarrierFieldAccessMap
+    data?: Carrier[] | null
+  }): void => {
     carrierFieldAccess.value = mergeFieldAccessMaps(
       result.fieldAccess,
       ...(result.data ?? []).map((record) => record.fieldAccess)
     )
-    return result
   }
 
   const openDialog = (row?: Carrier): void => {

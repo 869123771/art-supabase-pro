@@ -649,17 +649,16 @@ async function executeTool(
   const until = toIsoDate(addDays(today, withinDays))
 
   const [insuranceResult, inspectionResult, archiveResult] = await Promise.all([
-    userClient
-      .from('vehicle_insurance')
-      .select('id,vehicle_id,plate_no,company_name,commercial_expire_date,compulsory_expire_date')
-      .or(`commercial_expire_date.lte.${until},compulsory_expire_date.lte.${until}`)
-      .limit(limit),
-    userClient
-      .from('vehicle_inspection')
-      .select('id,vehicle_id,plate_no,company_name,expire_date')
-      .lte('expire_date', until)
-      .order('expire_date', { ascending: true })
-      .limit(limit),
+    userClient.rpc('vms_get_vehicle_insurance_expiry_context_secure', {
+      p_vehicle_id: null,
+      p_until: until,
+      p_limit: limit
+    }),
+    userClient.rpc('vms_get_vehicle_inspection_expiry_context_secure', {
+      p_vehicle_id: null,
+      p_until: until,
+      p_limit: limit
+    }),
     userClient
       .from('vehicle_archive')
       .select('id,plate_no,company_name,service_end_time')

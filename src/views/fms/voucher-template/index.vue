@@ -1,5 +1,5 @@
 <template>
-  <div class="business-workspace-page art-full-height fms-accounting-page voucher-template-page">
+  <FinanceAccountingWorkspaceShell class="voucher-template-page">
     <BusinessWorkspaceHeader
       density="compact"
       eyebrow="VOUCHER STANDARDIZATION"
@@ -36,7 +36,7 @@
     />
 
     <VoucherTemplateDialog ref="dialogRef" @success="handleSaveSuccess" />
-  </div>
+  </FinanceAccountingWorkspaceShell>
 </template>
 
 <script setup lang="tsx">
@@ -307,11 +307,7 @@
 </script>
 
 <style scoped lang="scss">
-  @use '../modules/accounting-workspace.scss' as accounting;
-
   .voucher-template-page {
-    @include accounting.accounting-workspace-layout;
-
     &__code {
       font-weight: 600;
       font-variant-numeric: tabular-nums;

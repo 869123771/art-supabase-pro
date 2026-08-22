@@ -69,6 +69,7 @@
     type BusinessWorkspaceMetric
   } from '@/components/business/business-workspace-header/index.vue'
   import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
+  import { canViewField, getFieldAccess, mergeFieldAccessMaps } from '@/utils/field-permission'
 
   defineOptions({ name: 'VehiclePartsManage' })
 
@@ -100,6 +101,13 @@
     childrenKey: 'children'
   })
   const overview = reactive<{ total: number; rows: Usage[] }>({ total: 0, rows: [] })
+  const listFieldAccess = ref<Api.Vms.VehicleManage.VehiclePartUsageFieldAccessMap>({})
+  const effectiveFieldAccess = computed(() =>
+    mergeFieldAccessMaps(listFieldAccess.value, ...overview.rows.map((row) => row.fieldAccess))
+  )
+  const visibleTraceabilityRows = computed(() =>
+    overview.rows.filter((row) => canViewField(row.fieldAccess, 'traceabilityTag'))
+  )
   const workspaceMetrics = computed<BusinessWorkspaceMetric[]>(() => [
     {
       label: '装车零部件',
@@ -107,20 +115,24 @@
       description: '当前筛选条件下的使用记录',
       icon: 'ri:settings-5-line'
     },
-    {
-      label: '本页 RFID 已绑定',
-      value: overview.rows.filter((row) => row.rfidTag).length,
-      description: '可通过标签快速识别追踪',
-      icon: 'ri:rfid-line',
-      tone: 'success'
-    },
-    {
-      label: '本页 RFID 待绑定',
-      value: overview.rows.filter((row) => !row.rfidTag).length,
-      description: '尚未登记零部件标签',
-      icon: 'ri:link-unlink-m',
-      tone: 'warning'
-    }
+    ...(visibleTraceabilityRows.value.length
+      ? [
+          {
+            label: '本页可见 RFID 已绑定',
+            value: visibleTraceabilityRows.value.filter((row) => row.rfidTag).length,
+            description: '仅统计当前有权查看的标签',
+            icon: 'ri:rfid-line',
+            tone: 'success' as const
+          },
+          {
+            label: '本页可见 RFID 待绑定',
+            value: visibleTraceabilityRows.value.filter((row) => !row.rfidTag).length,
+            description: '仅统计当前有权查看的记录',
+            icon: 'ri:link-unlink-m',
+            tone: 'warning' as const
+          }
+        ]
+      : [])
   ])
 
   const table: UnwrapNestedRefs<TableGroup> = reactive<TableGroup>({
@@ -158,7 +170,10 @@
         props: { checkStrictly: true }
       },
       { label: '零部件名称', key: 'partName', type: 'input' },
-      { label: 'RFID标签', key: 'rfidTag', type: 'input' },
+      ...(getFieldAccess(listFieldAccess.value, 'traceabilityTag') === 'read' ||
+      getFieldAccess(listFieldAccess.value, 'traceabilityTag') === 'edit'
+        ? [{ label: 'RFID标签', key: 'rfidTag', type: 'input' as const }]
+        : []),
       {
         label: '状态',
         key: 'status',
@@ -213,23 +228,50 @@
       { prop: 'categoryName', label: '类别', minWidth: 130 },
       { prop: 'brand', label: '品牌', width: 110 },
       { prop: 'model', label: '型号', minWidth: 130 },
-      { prop: 'rfidTag', label: 'RFID标签', minWidth: 150 },
-      { prop: 'enableDate', label: '启用日期', width: 120 },
-      {
-        prop: 'warrantySummary',
-        label: '质保期',
-        minWidth: 160,
-        formatter: formatWarranty
-      },
-      { prop: 'serviceYears', label: '使用年限（年）', width: 130 },
-      {
-        prop: 'usedYears',
-        label: '已使用时长（年）',
-        width: 140,
-        formatter: (row) => formatUsedYears(row.enableDate)
-      },
-      { prop: 'serviceMileage', label: '可使用里程（公里）', width: 155 },
-      { prop: 'usedMileage', label: '已使用里程（公里）', width: 155 },
+      ...(canViewField(effectiveFieldAccess.value, 'traceabilityTag')
+        ? [{ prop: 'rfidTag', label: 'RFID标签', minWidth: 150 } as ColumnOption<Usage>]
+        : []),
+      ...(canViewField(effectiveFieldAccess.value, 'lifecycleLimits')
+        ? ([
+            {
+              prop: 'enableDate',
+              label: '启用日期',
+              width: 120,
+              formatter: (row) => (row.lifecycleLimitsMasked ? '***' : row.enableDate || '--')
+            },
+            {
+              prop: 'warrantySummary',
+              label: '质保期',
+              minWidth: 160,
+              formatter: formatWarranty
+            },
+            {
+              prop: 'serviceYears',
+              label: '使用年限（年）',
+              width: 130,
+              formatter: (row) => (row.lifecycleLimitsMasked ? '***' : (row.serviceYears ?? '--'))
+            },
+            {
+              prop: 'usedYears',
+              label: '已使用时长（年）',
+              width: 140,
+              formatter: (row) =>
+                row.lifecycleLimitsMasked ? '***' : formatUsedYears(row.enableDate)
+            },
+            {
+              prop: 'serviceMileage',
+              label: '可使用里程（公里）',
+              width: 155,
+              formatter: (row) => (row.lifecycleLimitsMasked ? '***' : (row.serviceMileage ?? '--'))
+            },
+            {
+              prop: 'usedMileage',
+              label: '已使用里程（公里）',
+              width: 155,
+              formatter: (row) => (row.lifecycleLimitsMasked ? '***' : (row.usedMileage ?? '--'))
+            }
+          ] as ColumnOption<Usage>[])
+        : []),
       {
         prop: 'status',
         label: '状态',
@@ -265,12 +307,14 @@
     ]
   })
 
-  const fetchTableData = (params: TableParams) => {
+  const fetchTableData = async (params: TableParams) => {
     const { from, to } = pageInfoHandler({
       current: params.current,
       size: params.size
     })
-    return fetchVehiclePartUsageList({ ...params, from, to })
+    const result = await fetchVehiclePartUsageList({ ...params, from, to })
+    listFieldAccess.value = result.fieldAccess ?? {}
+    return result
   }
 
   const handleTableSuccess: NonNullable<ArtTableQueryProps['onSuccess']> = (rows, response) => {
@@ -279,6 +323,7 @@
   }
 
   const formatWarranty = (row: Usage): string => {
+    if (row.lifecycleLimitsMasked) return '***'
     if (row.warrantyMode === 'vehicle') return '随整车质保'
     const values = [
       row.warrantyMileage ? `${row.warrantyMileage}公里` : '',

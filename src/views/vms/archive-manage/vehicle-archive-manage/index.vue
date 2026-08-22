@@ -72,6 +72,7 @@
   import BusinessWorkspaceHeader, {
     type BusinessWorkspaceMetric
   } from '@/components/business/business-workspace-header/index.vue'
+  import { canViewField, mergeFieldAccessMaps } from '@/utils/field-permission'
 
   defineOptions({ name: 'VehicleArchiveManage' })
 
@@ -117,13 +118,20 @@
     total: 0,
     rows: []
   })
+  const listFieldAccess = ref<Api.Vms.ArchiveManage.VehicleArchiveFieldAccessMap>({})
+  const effectiveFieldAccess = computed(() =>
+    mergeFieldAccessMaps(listFieldAccess.value, ...overview.rows.map((row) => row.fieldAccess))
+  )
   const operatingCount = computed(
     () => overview.rows.filter((row) => row.operationStatus === 'operating').length
   )
   const incompleteCount = computed(
     () =>
       overview.rows.filter(
-        (row) => !row.companyName?.trim() || !row.manufacturer?.trim() || !row.vin?.trim()
+        (row) =>
+          !row.companyName?.trim() ||
+          !row.manufacturer?.trim() ||
+          (canViewField(row.fieldAccess, 'vehicleIdentifiers') && !row.vin?.trim())
       ).length
   )
   const workspaceMetrics = computed<BusinessWorkspaceMetric[]>(() => [
@@ -143,24 +151,30 @@
     {
       label: '本页资料待完善',
       value: incompleteCount.value,
-      description: '公司、厂商或 VIN 信息缺失',
+      description: canViewField(effectiveFieldAccess.value, 'vehicleIdentifiers')
+        ? '公司、厂商或 VIN 信息缺失'
+        : '公司或厂商信息缺失',
       icon: 'ri:file-warning-line',
       tone: 'warning'
     }
   ])
 
-  const archiveExcelColumns: ArtTableQueryExcelColumn[] = [
+  const archiveExcelColumns = computed<ArtTableQueryExcelColumn[]>(() => [
     { key: 'companyName', title: '所属公司' },
     { key: 'plateNo', title: '车牌号', required: true },
     { key: 'vehicleType', title: '车型', required: true },
     { key: 'manufacturer', title: '车辆厂商' },
-    { key: 'chassisNo', title: '底盘号' },
-    { key: 'vin', title: '车架号（VIN）', required: true },
+    ...(canViewField(effectiveFieldAccess.value, 'vehicleIdentifiers')
+      ? [
+          { key: 'chassisNo', title: '底盘号' },
+          { key: 'vin', title: '车架号（VIN）', required: true }
+        ]
+      : []),
     { key: 'operationStatus', title: '营运状态' },
     { key: 'auditStatus', title: '审核状态' },
     { key: 'createTime', title: '创建时间' },
     { key: 'createBy', title: '创建人' }
-  ]
+  ])
 
   const withSelectedCarrierOption = async (result: unknown) => {
     const carrierResult = result as Awaited<ReturnType<typeof fetchCarrierOptions>>
@@ -216,7 +230,16 @@
       },
       { label: '车牌号', key: 'plateNo', type: 'input', props: { clearable: true } },
       { label: '车辆厂商', key: 'manufacturer', type: 'input', props: { clearable: true } },
-      { label: '车架号（VIN）', key: 'vin', type: 'input', props: { clearable: true } },
+      ...(canViewField(effectiveFieldAccess.value, 'vehicleIdentifiers')
+        ? [
+            {
+              label: '车架号（VIN）',
+              key: 'vin',
+              type: 'input' as const,
+              props: { clearable: true }
+            }
+          ]
+        : []),
       {
         label: '营运状态',
         key: 'operationStatus',
@@ -246,13 +269,16 @@
         type: 'export',
         exportFilename: '车辆档案',
         exportSheetName: '车辆档案',
-        exportColumns: archiveExcelColumns,
-        exportApi: ({ selectedIds, searchParams, maxRows }) =>
-          exportVehicleArchiveList({
+        exportColumns: () => archiveExcelColumns.value,
+        exportApi: async ({ selectedIds, searchParams, maxRows }) => {
+          const result = await exportVehicleArchiveList({
             ...(searchParams as SearchParams),
             ids: selectedIds.map(String),
             maxRows
           })
+          syncVehicleFieldAccess(result)
+          return result
+        }
       }
     ]),
     immediate: !initialCarrierId && !initialRecordId,
@@ -349,16 +375,25 @@
 
   onActivated(() => void tableQueryRef.value?.getData())
 
-  const fetchTableData = (params: TableParams) => {
+  const fetchTableData = async (params: TableParams) => {
     const { from, to } = pageInfoHandler({
       current: params.current,
       size: params.size
     })
-    return fetchVehicleArchiveList({
+    const result = await fetchVehicleArchiveList({
       ...params,
       from,
       to
     })
+    syncVehicleFieldAccess(result)
+    return result
+  }
+
+  const syncVehicleFieldAccess = (result: {
+    fieldAccess?: Api.Vms.ArchiveManage.VehicleArchiveFieldAccessMap
+    data?: VehicleArchive[] | null
+  }): void => {
+    listFieldAccess.value = result.fieldAccess ?? {}
   }
 
   const handleTableSuccess: NonNullable<ArtTableQueryProps['onSuccess']> = (rows, response) => {
@@ -382,7 +417,9 @@
         )}
         <span>{row.manufacturer || '厂商待补充'}</span>
       </div>
-      <small title={row.vin}>{row.vin || 'VIN 待补充'}</small>
+      {canViewField(row.fieldAccess, 'vehicleIdentifiers') ? (
+        <small title={row.vin}>{row.vin || 'VIN 待补充'}</small>
+      ) : null}
     </div>
   )
 

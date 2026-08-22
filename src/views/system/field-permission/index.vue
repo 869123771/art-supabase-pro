@@ -11,19 +11,11 @@
         { label: subjectType === 'role' ? '角色授权' : '人员例外', type: 'info' }
       ]"
       :metrics="overviewMetrics"
-    >
-      <template #actions>
-        <ElTooltip content="刷新字段权限配置" placement="bottom">
-          <ArtIconButton
-            icon="ri:refresh-line"
-            circle
-            label="刷新字段权限配置"
-            :loading="page.loading || page.configurationLoading"
-            @click="retryLoad"
-          />
-        </ElTooltip>
-      </template>
-    </BusinessWorkspaceHeader>
+      refreshable
+      refresh-label="刷新字段权限配置"
+      :refresh-loading="page.loading || page.configurationLoading"
+      @refresh="retryLoad"
+    />
 
     <section class="field-permission-page__scope art-card-xs" aria-label="授权范围">
       <div class="field-permission-page__scope-heading">
@@ -296,21 +288,12 @@
 </template>
 
 <script setup lang="ts">
-  import {
-    ElButton,
-    ElMessage,
-    ElOption,
-    ElSegmented,
-    ElSelect,
-    ElSkeleton,
-    ElTooltip
-  } from 'element-plus'
+  import { ElButton, ElMessage, ElOption, ElSegmented, ElSelect, ElSkeleton } from 'element-plus'
   import { cloneDeep, isEqual } from 'lodash-es'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
   import ArtEmptyState from '@/components/core/layouts/art-empty-state/index.vue'
   import ArtStickyActionBar from '@/components/core/layouts/art-sticky-action-bar/index.vue'
-  import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
   import BusinessWorkspaceHeader, {
     type BusinessWorkspaceMetric
   } from '@/components/business/business-workspace-header/index.vue'

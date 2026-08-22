@@ -16,7 +16,7 @@
       </div>
 
       <div
-        v-if="tags.length || $slots.actions"
+        v-if="tags.length || refreshable || $slots.actions"
         class="business-workspace-header__aside"
         aria-label="业务特性与操作"
       >
@@ -31,7 +31,21 @@
             {{ tag.label }}
           </ElTag>
         </div>
-        <div v-if="$slots.actions" class="business-workspace-header__actions">
+        <div
+          v-if="refreshable || $slots.actions"
+          class="business-workspace-header__actions"
+          aria-label="页面操作"
+        >
+          <ElTooltip v-if="refreshable" :content="refreshLabel" placement="bottom">
+            <ArtIconButton
+              icon="ri:refresh-line"
+              circle
+              :label="refreshLabel"
+              :loading="refreshLoading"
+              :disabled="refreshDisabled"
+              @click="emit('refresh')"
+            />
+          </ElTooltip>
           <slot name="actions" />
         </div>
       </div>
@@ -76,6 +90,7 @@
 <script setup lang="ts">
   import type { TagProps } from 'element-plus'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
+  import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
 
   export interface BusinessWorkspaceTag {
     label: string
@@ -104,16 +119,27 @@
       tags?: BusinessWorkspaceTag[]
       metrics?: BusinessWorkspaceMetric[]
       density?: 'default' | 'compact'
+      refreshable?: boolean
+      refreshLabel?: string
+      refreshLoading?: boolean
+      refreshDisabled?: boolean
     }>(),
     {
       eyebrow: 'BUSINESS OPERATIONS',
       tags: () => [],
       metrics: () => [],
-      density: 'default'
+      density: 'default',
+      refreshable: false,
+      refreshLabel: '刷新页面数据',
+      refreshLoading: false,
+      refreshDisabled: false
     }
   )
 
-  const emit = defineEmits<{ 'metric-click': [metric: BusinessWorkspaceMetric] }>()
+  const emit = defineEmits<{
+    'metric-click': [metric: BusinessWorkspaceMetric]
+    refresh: []
+  }>()
 
   const handleMetricClick = (metric: BusinessWorkspaceMetric): void => {
     if (metric.interactive && !metric.loading) emit('metric-click', metric)

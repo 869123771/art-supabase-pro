@@ -42,11 +42,12 @@ export const normalizeAccidentCase = (record: AccidentCase): AccidentCase => ({
 export const buildAccidentCaseWritePayload = (record: AccidentCase): AccidentCase => {
   if (!record.id) return normalizeAccidentCase(record)
 
-  let payload = { ...normalizeAccidentCase(record) }
-  ;(Object.entries(FIELD_GROUPS) as Array<[
-    FieldKey,
-    readonly Extract<keyof AccidentCase, string>[]
-  ]>).forEach(([field, keys]) => {
+  const payload = { ...normalizeAccidentCase(record) }
+  ;(
+    Object.entries(FIELD_GROUPS) as Array<
+      [FieldKey, readonly Extract<keyof AccidentCase, string>[]]
+    >
+  ).forEach(([field, keys]) => {
     if (canEditAccidentField(record, field)) return
     keys.forEach((key) => delete payload[key])
   })

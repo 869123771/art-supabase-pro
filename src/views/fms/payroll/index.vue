@@ -1,5 +1,5 @@
 <template>
-  <div class="business-workspace-page art-full-height fms-accounting-page payroll-page">
+  <FinanceAccountingWorkspaceShell class="payroll-page">
     <BusinessWorkspaceHeader
       density="compact"
       eyebrow="PAYROLL ACCOUNTING"
@@ -37,7 +37,7 @@
     <PayrollRunDialog ref="dialogRef" @success="refreshAll" />
     <PayrollDetailDrawer ref="drawerRef" @success="refreshAll" />
     <FundExecutionDialog ref="fundExecutionRef" @success="refreshAll" />
-  </div>
+  </FinanceAccountingWorkspaceShell>
 </template>
 
 <script setup lang="tsx">
@@ -421,10 +421,4 @@
   })
 </script>
 
-<style scoped lang="scss">
-  @use '../modules/accounting-workspace.scss' as accounting;
-
-  .payroll-page {
-    @include accounting.accounting-workspace-layout;
-  }
-</style>
+<style scoped lang="scss"></style>

@@ -1,5 +1,5 @@
 <template>
-  <div class="business-workspace-page art-full-height fms-accounting-page period-close-page">
+  <FinanceAccountingWorkspaceShell class="period-close-page">
     <BusinessWorkspaceHeader
       density="compact"
       eyebrow="PERIOD-END CONTROL"
@@ -36,7 +36,7 @@
     />
     <PeriodCloseStartDialog ref="dialogRef" @success="refreshAll" />
     <PeriodCloseDetailDrawer ref="drawerRef" />
-  </div>
+  </FinanceAccountingWorkspaceShell>
 </template>
 
 <script setup lang="tsx">
@@ -407,12 +407,6 @@
   })
 </script>
 <style scoped lang="scss">
-  @use '../modules/accounting-workspace.scss' as accounting;
-
-  .period-close-page {
-    @include accounting.accounting-workspace-layout;
-  }
-
   :deep(.period-close-blocking) {
     color: var(--el-color-danger);
   }

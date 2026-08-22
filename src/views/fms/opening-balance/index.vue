@@ -1,6 +1,6 @@
 <template>
-  <div
-    class="business-workspace-page art-full-height fms-accounting-page opening-balance-page"
+  <FinanceAccountingWorkspaceShell
+    class="opening-balance-page"
     :class="{ 'is-focus-mode': focusMode }"
   >
     <BusinessWorkspaceHeader
@@ -184,7 +184,7 @@
     </ArtPageSection>
 
     <OpeningBalanceDialog ref="dialogRef" @success="loadBalances" />
-  </div>
+  </FinanceAccountingWorkspaceShell>
 </template>
 
 <script setup lang="tsx">
@@ -693,11 +693,7 @@
 </script>
 
 <style scoped lang="scss">
-  @use '../modules/accounting-workspace.scss' as accounting;
-
   .opening-balance-page {
-    @include accounting.accounting-workspace-layout;
-
     &.is-focus-mode {
       gap: 0;
     }

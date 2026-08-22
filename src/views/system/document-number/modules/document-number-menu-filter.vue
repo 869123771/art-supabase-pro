@@ -12,17 +12,13 @@
       </div>
 
       <ElTooltip content="刷新菜单目录" placement="top">
-        <ElButton
-          class="number-menu-filter__refresh"
-          :class="{ 'is-refreshing': loading }"
-          text
+        <ArtIconButton
+          icon="ri:refresh-line"
           circle
-          :disabled="loading"
-          aria-label="刷新菜单目录"
+          label="刷新菜单目录"
+          :loading="loading"
           @click="emit('refresh')"
-        >
-          <ArtSvgIcon icon="ri:refresh-line" />
-        </ElButton>
+        />
       </ElTooltip>
     </header>
 
@@ -113,6 +109,7 @@
 
 <script setup lang="ts">
   import { ElTree, type TreeNodeData } from 'element-plus'
+  import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
   import type { AppRouteRecord } from '@/types/router'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
 
@@ -313,10 +310,6 @@
       height: 32px;
       margin-right: 8px;
       border: 1px solid var(--el-color-primary-light-7);
-    }
-
-    &__refresh.is-refreshing :deep(svg) {
-      animation: number-menu-filter-spin 720ms linear infinite;
     }
 
     &__search {
@@ -538,12 +531,6 @@
       padding-inline: 8px;
       white-space: nowrap;
       border-radius: 999px;
-    }
-  }
-
-  @keyframes number-menu-filter-spin {
-    to {
-      transform: rotate(360deg);
     }
   }
 </style>

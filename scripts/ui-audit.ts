@@ -10,7 +10,7 @@ interface Finding {
 
 const projectRoot = process.cwd()
 const sourceRoot = path.join(projectRoot, 'src')
-const supportedExtensions = new Set(['.vue', '.scss', '.css'])
+const supportedExtensions = new Set(['.vue', '.scss', '.css', '.ts', '.tsx'])
 
 async function collectFiles(directory: string): Promise<string[]> {
   const entries = await readdir(directory, { withFileTypes: true })
@@ -69,9 +69,36 @@ function scanFile(file: string, content: string): Finding[] {
   if (path.extname(file) === '.vue') {
     for (const match of content.matchAll(/<img\b[^>]*>/gs)) {
       if (match.index == null || match[0].includes('data-ui-audit-allow')) continue
+      if (!/\s(?:alt|:alt)\s*=/.test(match[0])) addFinding(match.index, 'images/require-alt')
       const hasWidth = /\s:?width\s*=/.test(match[0])
       const hasHeight = /\s:?height\s*=/.test(match[0])
       if (!hasWidth || !hasHeight) addFinding(match.index, 'images/require-intrinsic-size')
+    }
+
+    for (const match of content.matchAll(/<ElButton\b[^>]*\bcircle\b[^>]*>/gs)) {
+      if (match.index == null || match[0].includes('data-ui-audit-allow')) continue
+      if (!/(?:aria-label|title)\s*=/.test(match[0])) {
+        addFinding(match.index, 'a11y/icon-button-requires-name')
+      }
+    }
+
+    for (const match of content.matchAll(
+      /<BusinessWorkspaceHeader\b[\s\S]*?<\/BusinessWorkspaceHeader>/g
+    )) {
+      if (match.index == null || match[0].includes('data-ui-audit-allow')) continue
+      const manualRefreshOffset = match[0].search(/ri:refresh-line|>\s*刷新\s*</)
+      if (manualRefreshOffset >= 0) {
+        addFinding(match.index + manualRefreshOffset, 'consistency/use-workspace-refresh-prop')
+      }
+    }
+
+    for (const match of content.matchAll(/<ArtStickyActionBar\b[\s\S]*?<\/ArtStickyActionBar>/g)) {
+      if (match.index == null || match[0].includes('data-ui-audit-allow')) continue
+      const hasSummary = /<template\s+#summary\b/.test(match[0])
+      const hasHint = /\s:?hint\s*=/.test(match[0])
+      if (!hasSummary && !hasHint) {
+        addFinding(match.index, 'consistency/sticky-action-bar-requires-summary')
+      }
     }
 
     for (const match of content.matchAll(/<a\b[^>]*target\s*=\s*["']_blank["'][^>]*>/gs)) {
@@ -109,6 +136,12 @@ function scanFile(file: string, content: string): Finding[] {
           if (match.index != null) addFinding(match.index, 'quality/no-raw-error-render')
         }
       })
+    }
+  }
+
+  if (relativeFile.startsWith('src/views/')) {
+    for (const match of content.matchAll(/\bElMessageBox\.(?:confirm|prompt)\s*\(/g)) {
+      if (match.index != null) addFinding(match.index, 'architecture/use-art-feedback')
     }
   }
 

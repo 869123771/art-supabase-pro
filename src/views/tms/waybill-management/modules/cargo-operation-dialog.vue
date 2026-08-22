@@ -107,7 +107,7 @@
 
 <script setup lang="ts">
   import type { ComputedRef } from 'vue'
-  import { ElMessageBox, type FormRules } from 'element-plus'
+  import type { FormRules } from 'element-plus'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
@@ -120,6 +120,7 @@
   } from '@/api/tms'
   import { formatWithDayjs } from '@/utils/time'
   import { useAmapSdk } from '@/hooks/core/useAmapSdk'
+  import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import type { WaybillRecord } from './waybill-shared'
 
   defineOptions({ name: 'TmsWaybillCargoOperationDialog' })
@@ -186,6 +187,7 @@
     securityJsCode: import.meta.env.VITE_AMAP_SECURITY_JS_CODE,
     plugins: ['AMap.Geolocation']
   })
+  const { promptReason } = useArtFeedback()
 
   const createInitialForm = (): OperationForm => ({
     weightTon: null,
@@ -334,16 +336,17 @@
     if (!context.value.allowOutsideCheckIn) {
       throw new Error(`当前不在${operationTitle.value}地围栏内，请到达现场后重新打卡`)
     }
-    return await ElMessageBox.prompt(
+    return await promptReason(
       `当前距${operationTitle.value}地约 ${Math.round(distance).toLocaleString()} 米，请说明围栏外打卡原因。`,
       '围栏外打卡确认',
       {
         confirmButtonText: '确认打卡',
         cancelButtonText: '取消',
-        inputPlaceholder: '例如：园区入口封闭，车辆在指定临时作业区',
-        inputValidator: (value) => String(value || '').trim().length >= 4 || '请至少填写 4 个字'
+        placeholder: '例如：园区入口封闭，车辆在指定临时作业区',
+        minLength: 4,
+        minLengthMessage: '请至少填写 4 个字'
       }
-    ).then(({ value }) => value.trim())
+    )
   }
 
   async function handleCheckIn(): Promise<void> {

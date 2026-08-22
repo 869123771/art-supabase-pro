@@ -1,4 +1,4 @@
-import { readdir, stat } from 'node:fs/promises'
+import { readFile, readdir, stat } from 'node:fs/promises'
 import { resolve } from 'node:path'
 
 const KIB = 1024
@@ -9,6 +9,8 @@ const outputDirectory = resolve(process.env.VITE_OUT_DIR || process.argv[2] || '
 // ceiling so their vendor size does not weaken the budget for ordinary route/application chunks.
 const LAZY_VENDOR_PATTERN =
   /(?:worker|monaco|RTFJS|heic2any|maplibre-gl|rich-editor|data-tools|charts|media|cytoscape|pdf-|element-plus)/i
+const LAZY_STYLE_PATTERN =
+  /(?:^|\/)(?:assets\/(?:monaco|rich-editor|art-file-viewer)[.-]|vendor\/pdf\/)/i
 
 interface BundleAsset {
   path: string
@@ -28,13 +30,25 @@ for (const relativePath of relativePaths) {
 const javascriptAssets = assets.filter((asset) => asset.path.endsWith('.js'))
 const cssAssets = assets.filter((asset) => asset.path.endsWith('.css'))
 const applicationChunks = javascriptAssets.filter((asset) => !LAZY_VENDOR_PATTERN.test(asset.path))
+const applicationCssChunks = cssAssets.filter((asset) => !LAZY_STYLE_PATTERN.test(asset.path))
+const lazyStyleChunks = cssAssets.filter((asset) => LAZY_STYLE_PATTERN.test(asset.path))
+const initialAssetPaths = await getInitialAssetPaths()
+const initialJavascriptAssets = javascriptAssets.filter((asset) =>
+  initialAssetPaths.has(asset.path)
+)
+const initialCssAssets = cssAssets.filter((asset) => initialAssetPaths.has(asset.path))
+const routeCssChunks = applicationCssChunks.filter((asset) => !initialAssetPaths.has(asset.path))
 const violations: string[] = []
 
 checkLargest('单个 JavaScript 文件', javascriptAssets, 7 * MIB)
 checkLargest('普通应用/路由 JavaScript 分包', applicationChunks, 900 * KIB)
 checkLargest('单个 CSS 文件', cssAssets, 360 * KIB)
+checkLargest('普通页面 CSS 分包', routeCssChunks, 64 * KIB)
 checkTotal('JavaScript 总体积', javascriptAssets, 40 * MIB)
-checkTotal('CSS 总体积', cssAssets, 1.6 * MIB)
+checkTotal('普通应用/路由 CSS 总体积', applicationCssChunks, 1.6 * MIB)
+checkTotal('按需工具 CSS 总体积', lazyStyleChunks, 500 * KIB)
+checkTotal('首屏 JavaScript', initialJavascriptAssets, 1.5 * MIB)
+checkTotal('首屏 CSS', initialCssAssets, 420 * KIB)
 
 if (violations.length) {
   console.error('[bundle:check] 构建体积预算未通过：')
@@ -44,12 +58,26 @@ if (violations.length) {
 } else {
   const largestApplicationChunk = [...applicationChunks].sort((a, b) => b.size - a.size)[0]
   console.log(
-    `[bundle:check] 通过 · JS ${formatBytes(sumSize(javascriptAssets))} · CSS ${formatBytes(
-      sumSize(cssAssets)
-    )} · 最大普通分包 ${largestApplicationChunk?.path || '-'} ${formatBytes(
-      largestApplicationChunk?.size || 0
-    )}`
+    `[bundle:check] 通过 · 首屏 JS ${formatBytes(
+      sumSize(initialJavascriptAssets)
+    )} · 首屏 CSS ${formatBytes(sumSize(initialCssAssets))} · 应用 CSS ${formatBytes(
+      sumSize(applicationCssChunks)
+    )} · JS 总量 ${formatBytes(sumSize(javascriptAssets))} · 最大普通分包 ${
+      largestApplicationChunk?.path || '-'
+    } ${formatBytes(largestApplicationChunk?.size || 0)}`
   )
+}
+
+async function getInitialAssetPaths(): Promise<Set<string>> {
+  const html = await readFile(resolve(outputDirectory, 'index.html'), 'utf8')
+  const paths = new Set<string>()
+
+  for (const match of html.matchAll(/(?:src|href)=["']([^"']+\.(?:js|css))(?:\?[^"']*)?["']/g)) {
+    const assetPath = match[1]?.split('/assets/')[1]
+    if (assetPath) paths.add(`assets/${assetPath}`)
+  }
+
+  return paths
 }
 
 function checkLargest(label: string, source: BundleAsset[], limit: number): void {

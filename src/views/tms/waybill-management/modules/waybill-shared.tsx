@@ -1,5 +1,5 @@
 import { computed, type ComputedRef, type Ref } from 'vue'
-import { ElLink, ElMessage, ElMessageBox } from 'element-plus'
+import { ElLink, ElMessage } from 'element-plus'
 import type { Router } from 'vue-router'
 import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
 import type {
@@ -14,16 +14,21 @@ import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
 import { ColumnOption } from '@/types'
 import { pageInfoHandler } from '@/utils/table/tableUtils'
 import { formatWithDayjs } from '@/utils/time'
-import { canViewField, formatSensitiveNumber } from '@/utils/field-permission'
+import { canViewField, formatSensitiveNumber, mergeFieldAccessMaps } from '@/utils/field-permission'
 import { useUserStore } from '@/store/modules/user'
+import { useArtFeedback } from '@/hooks/core/useArtFeedback'
 import {
   cancelAssignedWaybill,
   cancelWaybillOrder,
   confirmWaybillAcceptance,
   exportWaybillList,
   fetchStationOptions,
-  fetchWaybillList
+  fetchWaybillList,
+  type WaybillExportScope,
+  type WaybillListScope
 } from '@/api/tms'
+
+const { confirmAction, promptReason } = useArtFeedback()
 
 export type WaybillMode = 'pending' | 'loaded'
 export type WaybillRecord = Api.Tms.Waybill.WaybillRecord
@@ -290,10 +295,31 @@ export const createWaybillModeParams = (
   }
 }
 
+const getWaybillListScope = (mode: WaybillMode): WaybillListScope =>
+  mode === 'pending' ? 'pending_waybill_list' : 'loaded_waybill_list'
+
+const getWaybillExportScope = (mode: WaybillMode): WaybillExportScope =>
+  mode === 'pending' ? 'pending_waybill_export' : 'loaded_waybill_export'
+
+interface SecureWaybillListResult {
+  data?: WaybillRecord[] | null
+  fieldAccess?: Api.Tms.Waybill.WaybillFieldAccessMap
+}
+
+const syncWaybillFieldAccess = (
+  context: Pick<WaybillListContext, 'fieldAccess'>,
+  result: SecureWaybillListResult
+): void => {
+  context.fieldAccess.value = mergeFieldAccessMaps(
+    result.fieldAccess,
+    ...(result.data ?? []).map((row) => row.fieldAccess)
+  )
+}
+
 export function fetchWaybillTableData(params: TableParams, mode: WaybillMode) {
   const { from, to } = pageInfoHandler({ current: params.current, size: params.size })
   const modeParams = createWaybillModeParams(params, mode)
-  return fetchWaybillList({ ...params, ...modeParams, from, to })
+  return fetchWaybillList({ ...params, ...modeParams, from, to }, getWaybillListScope(mode))
 }
 
 export const createWaybillHeaderActions = (
@@ -324,15 +350,20 @@ export const createWaybillHeaderActions = (
         type: 'export',
         exportFilename: context.mode === 'pending' ? '待运载运单' : '已配载运单',
         exportSheetName: context.mode === 'pending' ? '待运载运单' : '已配载运单',
-        exportColumns: createWaybillExcelColumns(context),
-        exportApi: ({ selectedIds, searchParams, maxRows }) => {
+        exportColumns: () => createWaybillExcelColumns(context),
+        exportApi: async ({ selectedIds, searchParams, maxRows }) => {
           const waybillSearchParams = searchParams as WaybillSearchParams
-          return exportWaybillList({
-            ...waybillSearchParams,
-            ...createWaybillModeParams(waybillSearchParams, context.mode),
-            ids: selectedIds.map(String),
-            maxRows
-          })
+          const result = await exportWaybillList(
+            {
+              ...waybillSearchParams,
+              ...createWaybillModeParams(waybillSearchParams, context.mode),
+              ids: selectedIds.map(String),
+              maxRows
+            },
+            getWaybillExportScope(context.mode)
+          )
+          syncWaybillFieldAccess(context, result)
+          return result
         }
       }
     ]
@@ -742,24 +773,23 @@ async function handleCancelOrder(context: WaybillListContext, row: WaybillRecord
   if (!row.id || !canCancelWaybillOrder(row)) return
   try {
     if (context.mode === 'loaded' && row.driverWaybillId) {
-      const { value } = await ElMessageBox.prompt(
+      const reason = await promptReason(
         `取消运单“${row.orderNo}”后不可继续执行，请填写取消原因。`,
         '取消运单',
         {
           confirmButtonText: '确认取消',
           cancelButtonText: '关闭',
-          type: 'warning',
-          inputPlaceholder: '例如：客户取消发运，调度已核实',
-          inputValidator: (value) => String(value || '').trim().length >= 4 || '至少填写 4 个字'
+          placeholder: '例如：客户取消发运，调度已核实',
+          minLength: 4,
+          minLengthMessage: '至少填写 4 个字'
         }
       )
-      await cancelAssignedWaybill(row.driverWaybillId, value.trim())
+      await cancelAssignedWaybill(row.driverWaybillId, reason)
     } else {
-      await ElMessageBox.confirm(`确定取消运单“${row.orderNo}”吗？`, '取消运单', {
+      await confirmAction(`确定取消运单“${row.orderNo}”吗？`, '取消运单', {
         confirmButtonText: '取消运单',
         cancelButtonText: '关闭',
-        type: 'warning',
-        confirmButtonClass: 'el-button--danger'
+        confirmButtonType: 'danger'
       })
       await cancelWaybillOrder(row.id)
     }
@@ -779,7 +809,7 @@ async function handleConfirmAcceptance(
 ): Promise<void> {
   if (!row.driverWaybillId || row.waybillStatus !== 'pending') return
   try {
-    await ElMessageBox.confirm(
+    await confirmAction(
       `确认接收运单“${row.orderNo}”吗？确认后 Web 端和司机端都会进入待提货状态。`,
       '确认接单',
       {

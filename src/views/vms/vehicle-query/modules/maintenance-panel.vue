@@ -22,8 +22,13 @@
   import ArtPageSection from '@/components/core/layouts/art-page-section/index.vue'
   import VehicleQueryTable from './vehicle-query-table.vue'
   import type { VehicleArchive, VehicleMaintenanceRecord } from './types'
-  import { formatDateTime, formatMoney } from './query-format'
+  import { formatDateTime } from './query-format'
   import { useVehiclePanelList } from './use-vehicle-panel-list'
+  import {
+    canViewField,
+    formatSensitiveNumber,
+    mergeFieldAccessMaps
+  } from '@/utils/field-permission'
 
   defineOptions({ name: 'VehicleQueryMaintenancePanel' })
 
@@ -40,7 +45,7 @@
     vehicle,
     async (current) => {
       const { data } = await fetchVehicleMaintenanceList({
-        plateNo: current.plateNo,
+        vehicleId: current.id,
         from: 0,
         to: 9999
       })
@@ -54,9 +59,20 @@
       : records.value
   )
 
-  const columns: ColumnOption<VehicleMaintenanceRecord>[] = [
+  const effectiveFieldAccess = computed(() =>
+    mergeFieldAccessMaps(...records.value.map((record) => record.fieldAccess))
+  )
+
+  const formatMoney = (value?: number | string | null): string => {
+    const formatted = formatSensitiveNumber(value)
+    return formatted === '--' || formatted === '***' ? formatted : `${formatted} 元`
+  }
+
+  const columns = computed<ColumnOption<VehicleMaintenanceRecord>[]>(() => [
     { type: 'globalIndex', label: '序号', width: 80 },
-    { prop: 'maintenanceNo', label: '维修单号', minWidth: 160 },
+    ...(canViewField(effectiveFieldAccess.value, 'maintenanceIdentifiers')
+      ? [{ prop: 'maintenanceNo', label: '维修单号', minWidth: 160 }]
+      : []),
     {
       prop: 'maintenanceType',
       label: '维修类别',
@@ -76,11 +92,15 @@
       minWidth: 180,
       formatter: (row) => formatDateTime(row.endTime)
     },
-    {
-      prop: 'costAmount',
-      label: '费用（元）',
-      minWidth: 130,
-      formatter: (row) => formatMoney(row.costAmount)
-    }
-  ]
+    ...(canViewField(effectiveFieldAccess.value, 'totalCost')
+      ? [
+          {
+            prop: 'costAmount',
+            label: '费用',
+            minWidth: 130,
+            formatter: (row: VehicleMaintenanceRecord) => formatMoney(row.costAmount)
+          }
+        ]
+      : [])
+  ])
 </script>

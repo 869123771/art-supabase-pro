@@ -242,6 +242,104 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
     ]
   },
   {
+    menuName: 'HrPosition',
+    buttons: [
+      button('View', '查看岗位', 'Hr:Position:View'),
+      button('Add', '新增岗位', 'Hr:Position:Add'),
+      button('Edit', '编辑岗位', 'Hr:Position:Edit'),
+      button('Delete', '删除岗位', 'Hr:Position:Delete')
+    ]
+  },
+  {
+    menuName: 'HrPersonnelChange',
+    buttons: [
+      button('View', '查看异动', 'Hr:PersonnelChange:View'),
+      button('Add', '新增异动', 'Hr:PersonnelChange:Add'),
+      button('Edit', '编辑异动', 'Hr:PersonnelChange:Edit'),
+      button('Delete', '删除异动', 'Hr:PersonnelChange:Delete'),
+      button('Submit', '提交审批', 'Hr:PersonnelChange:Submit'),
+      button('Effect', '生效异动', 'Hr:PersonnelChange:Effect')
+    ]
+  },
+  {
+    menuName: 'HrLifecycle',
+    buttons: [
+      button('View', '查看事项', 'Hr:Lifecycle:View'),
+      button('Add', '新增事项', 'Hr:Lifecycle:Add'),
+      button('Edit', '编辑事项', 'Hr:Lifecycle:Edit'),
+      button('Delete', '删除事项', 'Hr:Lifecycle:Delete'),
+      button('Submit', '提交审批', 'Hr:Lifecycle:Submit'),
+      button('CompleteTask', '完成任务', 'Hr:Lifecycle:CompleteTask')
+    ]
+  },
+  {
+    menuName: 'HrCompliance',
+    buttons: [
+      button('View', '查看合同资质', 'Hr:Compliance:View'),
+      button('Add', '新增资质', 'Hr:Compliance:Add'),
+      button('Edit', '编辑合同资质', 'Hr:Compliance:Edit'),
+      button('Delete', '删除资质', 'Hr:Compliance:Delete')
+    ]
+  },
+  {
+    menuName: 'HrHeadcount',
+    buttons: [
+      button('View', '查看编制', 'Hr:Headcount:View'),
+      button('Add', '新增编制', 'Hr:Headcount:Add'),
+      button('Edit', '编辑编制', 'Hr:Headcount:Edit'),
+      button('Delete', '删除编制', 'Hr:Headcount:Delete')
+    ]
+  },
+  {
+    menuName: 'HrAttendance',
+    buttons: [
+      button('View', '查看考勤', 'Hr:Attendance:View'),
+      button('Add', '新增考勤排班', 'Hr:Attendance:Add'),
+      button('Edit', '编辑考勤排班', 'Hr:Attendance:Edit'),
+      button('Delete', '删除考勤排班', 'Hr:Attendance:Delete')
+    ]
+  },
+  {
+    menuName: 'HrSelfService',
+    buttons: [
+      button('View', '查看员工申请', 'Hr:SelfService:View'),
+      button('Add', '新增员工申请', 'Hr:SelfService:Add'),
+      button('Edit', '编辑员工申请', 'Hr:SelfService:Edit'),
+      button('Delete', '删除员工申请', 'Hr:SelfService:Delete'),
+      button('Submit', '提交员工申请', 'Hr:SelfService:Submit'),
+      button('Manage', '管理员工申请', 'Hr:SelfService:Manage')
+    ]
+  },
+  {
+    menuName: 'HrPerformance',
+    buttons: [
+      button('View', '查看绩效', 'Hr:Performance:View'),
+      button('Add', '新增绩效', 'Hr:Performance:Add'),
+      button('Edit', '编辑绩效', 'Hr:Performance:Edit'),
+      button('Delete', '删除绩效', 'Hr:Performance:Delete')
+    ]
+  },
+  {
+    menuName: 'HrTalentDevelopment',
+    buttons: [
+      button('View', '查看人才发展', 'Hr:Talent:View'),
+      button('Add', '新增人才发展记录', 'Hr:Talent:Add'),
+      button('Edit', '编辑人才发展记录', 'Hr:Talent:Edit'),
+      button('Delete', '删除人才发展记录', 'Hr:Talent:Delete')
+    ]
+  },
+  {
+    menuName: 'HrRecruitment',
+    buttons: [
+      button('View', '查看招聘', 'Hr:Recruitment:View'),
+      button('Add', '新增招聘记录', 'Hr:Recruitment:Add'),
+      button('Edit', '编辑招聘记录', 'Hr:Recruitment:Edit'),
+      button('Delete', '删除招聘记录', 'Hr:Recruitment:Delete'),
+      button('Submit', '提交招聘审批', 'Hr:Recruitment:Submit'),
+      button('Effect', '启动招聘', 'Hr:Recruitment:Effect')
+    ]
+  },
+  {
     menuName: 'FinanceAccountSet',
     buttons: [
       button('View', '查看会计期间'),

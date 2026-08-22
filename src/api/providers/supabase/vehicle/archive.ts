@@ -1,10 +1,6 @@
 import { useSupabase } from '@/hooks'
-import { WRITE_PERMISSION_DENIED_MESSAGE } from '@/hooks/core/useSupabase'
 import { withRequestOptions } from '@/api/providers/supabase/query'
 import type { ApiRequestOptions } from '@/types/api/request'
-import { applyFilters, type FilterSpec } from '@/utils/supabase'
-import { fetchCarrierOptions } from '@/api/modules/tms/carrier'
-import { fetchDriverOptions } from '@/api/modules/tms/driver'
 import {
   VEHICLE_REMINDER_VIEWS,
   fetchVehicleReminderViewList,
@@ -14,7 +10,6 @@ import {
   type VehicleArchive,
   type VehicleArchiveSearchParams,
   type VehicleArchiveWritePayload,
-  type VehicleArchiveDeleteRelatedCount,
   type VehicleArchiveDeletePreview,
   type VehicleReminderSearchParams,
   type VehicleReminderCompanyOption
@@ -22,241 +17,104 @@ import {
 
 const { supabase, keysToSnakeDeep, responseHandle } = useSupabase()
 
-// 车辆档案
-const VEHICLE_ARCHIVE_TABLE = 'vehicle_archive'
-
 interface VehicleArchiveWriteOptions {
   showMessage?: boolean
 }
 
-const VEHICLE_ARCHIVE_SELECT = `
-  *,
-  carrier:tms_carrier!vehicle_archive_carrier_id_fkey(
-    id,
-    carrier_code,
-    company_name,
-    contact_name
-  ),
-  primary_driver:tms_driver!vehicle_archive_primary_driver_id_fkey(
-    id,
-    carrier_id,
-    driver_name,
-    driver_type,
-    license_type,
-    enabled
-  ),
-  secondary_driver:tms_driver!vehicle_archive_secondary_driver_id_fkey(
-    id,
-    carrier_id,
-    driver_name,
-    driver_type,
-    license_type,
-    enabled
-  )
-`
-
-const VEHICLE_ARCHIVE_RELATED_DELETE_ITEMS = [
-  { tableName: 'vehicle_insurance', label: '保险记录' },
-  { tableName: 'vehicle_inspection', label: '年检记录' },
-  { tableName: 'vehicle_maintenance_record', label: '保养维修记录' },
-  { tableName: 'vehicle_routine_inspection_record', label: '例行检查记录' },
-  { tableName: 'vehicle_mileage_record', label: '里程记录' },
-  { tableName: 'vehicle_part_usage', label: '零部件使用记录' },
-  { tableName: 'vehicle_accident_record', label: '事故记录' },
-  { tableName: 'vehicle_violation_record', label: '违章记录' },
-  { tableName: 'tms_carrier_price', label: '承运商车辆报价' }
-] as const
-
-const enrichVehicleArchiveMasterData = async (
-  records: VehicleArchive[],
-  options?: ApiRequestOptions
-): Promise<VehicleArchive[]> => {
-  const carrierIds = Array.from(
-    new Set(records.map((record) => record.carrierId).filter((id): id is string => Boolean(id)))
-  )
-  const driverIds = Array.from(
-    new Set(
-      records
-        .flatMap((record) => [record.primaryDriverId, record.secondaryDriverId])
-        .filter((id): id is string => Boolean(id))
-    )
-  )
-  if (!carrierIds.length && !driverIds.length) return records
-
-  const [carrierResult, driverResult] = await Promise.all([
-    carrierIds.length
-      ? fetchCarrierOptions(
-          { ids: carrierIds, includeDisabled: true, maxRows: carrierIds.length },
-          options
-        )
-      : Promise.resolve({ data: [] as Api.Tms.BasicData.CarrierOption[] }),
-    driverIds.length
-      ? fetchDriverOptions(
-          { ids: driverIds, includeDisabled: true, maxRows: driverIds.length },
-          options
-        )
-      : Promise.resolve({ data: [] as Api.Tms.BasicData.DriverOption[] })
-  ])
-  const carriersById = new Map((carrierResult.data ?? []).map((carrier) => [carrier.id, carrier]))
-  const driversById = new Map((driverResult.data ?? []).map((driver) => [driver.id, driver]))
-
-  return records.map((record) => ({
-    ...record,
-    carrier: record.carrierId
-      ? (carriersById.get(record.carrierId) ?? record.carrier ?? null)
-      : null,
-    primaryDriver: record.primaryDriverId
-      ? (driversById.get(record.primaryDriverId) ?? record.primaryDriver ?? null)
-      : null,
-    secondaryDriver: record.secondaryDriverId
-      ? (driversById.get(record.secondaryDriverId) ?? record.secondaryDriver ?? null)
-      : null
-  }))
+interface SecureVehicleArchivePayload {
+  records: VehicleArchive[]
+  total: number
+  fieldAccess?: Api.Vms.ArchiveManage.VehicleArchiveFieldAccessMap
 }
 
-const countRowsByVehicleIds = async (
-  tableName: string,
-  columnName: string,
-  ids: string[]
-): Promise<number> => {
-  if (!ids.length) return 0
+const startOfDay = (value?: string): string | null => (value ? `${value}T00:00:00` : null)
+const endOfDay = (value?: string): string | null => (value ? `${value}T23:59:59.999` : null)
 
-  const query =
-    ids.length === 1
-      ? supabase.from(tableName).select('id', { count: 'exact', head: true }).eq(columnName, ids[0])
-      : supabase.from(tableName).select('id', { count: 'exact', head: true }).in(columnName, ids)
-
-  const result = await responseHandle(() => query, {
-    ignoreCheck: true,
-    showErrorMessage: true,
-    breakReturn: true
-  })
-
-  return result.total ?? 0
-}
-
-const fetchVehicleArchiveDeleteRelatedCounts = async (
-  ids: string[]
-): Promise<VehicleArchiveDeleteRelatedCount[]> => {
-  const counts = await Promise.all(
-    VEHICLE_ARCHIVE_RELATED_DELETE_ITEMS.map(async (item) => ({
-      ...item,
-      count: await countRowsByVehicleIds(item.tableName, 'vehicle_id', ids)
-    }))
-  )
-
-  return counts
-}
-
-const assertVehicleArchiveNoWaybill = async (ids: string[]): Promise<void> => {
-  const waybillCount = await countRowsByVehicleIds('tms_waybill', 'vehicle_id', ids)
-
-  if (waybillCount > 0) {
-    throw new Error(`该车辆已关联 ${waybillCount} 条运单，禁止删除`)
+const createVehicleArchiveRpcParams = (
+  params: VehicleArchiveSearchParams & { ids?: string[]; maxRows?: number },
+  purpose: 'list' | 'export'
+) => {
+  const from = Math.max(params.from ?? 0, 0)
+  const requestedTo = params.maxRows ? from + Math.max(params.maxRows, 1) - 1 : params.to
+  const to = Math.max(requestedTo ?? 9, from)
+  return {
+    p_from: from,
+    p_to: to,
+    p_record_id: params.recordId || null,
+    p_carrier_id: params.carrierId || null,
+    p_plate_no: String(params.plateNo ?? '').trim() || null,
+    p_company_name: String(params.companyName ?? '').trim() || null,
+    p_vehicle_type: params.vehicleType || null,
+    p_manufacturer: String(params.manufacturer ?? '').trim() || null,
+    p_vin: String(params.vin ?? '').trim() || null,
+    p_operation_status: params.operationStatus || null,
+    p_audit_status: params.auditStatus || null,
+    p_audit_statuses: params.auditStatuses?.length ? params.auditStatuses : null,
+    p_create_time_from: startOfDay(params.createTimeRange?.[0]),
+    p_create_time_to: endOfDay(params.createTimeRange?.[1]),
+    p_ids: params.ids?.length ? params.ids : null,
+    p_purpose: purpose
   }
 }
-
-const getVehicleArchiveSearchFilters = (params: VehicleArchiveSearchParams): FilterSpec[] => [
-  { col: 'id', op: 'eq', val: params.recordId },
-  { col: 'carrierId', op: 'eq', val: params.carrierId },
-  { col: 'plateNo', op: 'ilike', val: params.plateNo ? `%${params.plateNo}%` : undefined },
-  {
-    col: 'companyName',
-    op: 'ilike',
-    val: params.companyName ? `%${params.companyName}%` : undefined
-  },
-  { col: 'vehicleType', op: 'eq', val: params.vehicleType },
-  {
-    col: 'manufacturer',
-    op: 'ilike',
-    val: params.manufacturer ? `%${params.manufacturer}%` : undefined
-  },
-  { col: 'vin', op: 'ilike', val: params.vin ? `%${params.vin}%` : undefined },
-  { col: 'operationStatus', op: 'eq', val: params.operationStatus },
-  { col: 'auditStatus', op: 'eq', val: params.auditStatus },
-  { col: 'auditStatus', op: 'in', val: params.auditStatuses }
-]
 
 export async function fetchVehicleArchiveList(
   params: VehicleArchiveSearchParams,
   options?: ApiRequestOptions
 ) {
-  const { from = 0, to = 9, createTimeRange } = params
-  let query = supabase
-    .from(VEHICLE_ARCHIVE_TABLE)
-    .select(VEHICLE_ARCHIVE_SELECT, { count: 'exact' })
-    .order('create_time', { ascending: false })
-    .range(from, to)
-
-  const [startTime, endTime] = createTimeRange ?? []
-  if (startTime) query = query.gte('create_time', startTime)
-  if (endTime) query = query.lte('create_time', endTime)
-
-  query = applyFilters(query, getVehicleArchiveSearchFilters(params), {
-    skipEmpty: true,
-    camelToSnake: true
-  })
-
-  const result = await responseHandle<VehicleArchive[]>(() => withRequestOptions(query, options), {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
-  return { ...result, data: await enrichVehicleArchiveMasterData(result.data ?? [], options) }
+  const result = await responseHandle<SecureVehicleArchivePayload>(
+    () =>
+      withRequestOptions(
+        supabase.rpc(
+          'vms_list_vehicle_archives_secure',
+          createVehicleArchiveRpcParams(params, 'list')
+        ),
+        options
+      ),
+    { showErrorMessage: true }
+  )
+  return {
+    data: result.data?.records ?? [],
+    total: result.data?.total ?? 0,
+    error: result.error,
+    fieldAccess: result.data?.fieldAccess ?? {}
+  }
 }
 
 export async function exportVehicleArchiveList(
   params: VehicleArchiveSearchParams & { ids?: string[]; maxRows?: number }
 ) {
-  const { ids, maxRows = 10000, createTimeRange } = params
-  let query = supabase
-    .from(VEHICLE_ARCHIVE_TABLE)
-    .select(VEHICLE_ARCHIVE_SELECT)
-    .order('create_time', { ascending: false })
-    .limit(maxRows)
-
-  if (ids?.length) {
-    query = query.in('id', ids)
-  } else {
-    const [startTime, endTime] = createTimeRange ?? []
-    if (startTime) query = query.gte('create_time', startTime)
-    if (endTime) query = query.lte('create_time', endTime)
-    query = applyFilters(query, getVehicleArchiveSearchFilters(params), {
-      skipEmpty: true,
-      camelToSnake: true
-    })
+  const result = await responseHandle<SecureVehicleArchivePayload>(
+    () =>
+      supabase.rpc(
+        'vms_list_vehicle_archives_secure',
+        createVehicleArchiveRpcParams({ ...params, maxRows: params.maxRows ?? 10000 }, 'export')
+      ),
+    { showErrorMessage: true }
+  )
+  return {
+    data: result.data?.records ?? [],
+    total: result.data?.total ?? 0,
+    error: result.error,
+    fieldAccess: result.data?.fieldAccess ?? {}
   }
-
-  const result = await responseHandle<VehicleArchive[]>(() => query, {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
-  return { ...result, data: await enrichVehicleArchiveMasterData(result.data ?? []) }
 }
 
 export async function fetchVehicleArchiveDetail(id: string) {
-  const result = await responseHandle<VehicleArchive>(
-    () => supabase.from(VEHICLE_ARCHIVE_TABLE).select(VEHICLE_ARCHIVE_SELECT).eq('id', id).single(),
-    {
-      ignoreCheck: true,
-      showErrorMessage: true
-    }
+  return await responseHandle<VehicleArchive | null>(
+    () => supabase.rpc('vms_get_vehicle_archive_secure', { p_id: id }),
+    { ignoreCheck: true, showErrorMessage: true }
   )
-  const [data] = result.data ? await enrichVehicleArchiveMasterData([result.data]) : []
-  return { ...result, data: data ?? null }
 }
 
 export async function addVehicleArchive(
   params: VehicleArchiveWritePayload,
   options: VehicleArchiveWriteOptions = {}
 ) {
-  return await responseHandle<Pick<VehicleArchive, 'id'>>(
-    () =>
-      supabase.from(VEHICLE_ARCHIVE_TABLE).insert(keysToSnakeDeep(params)).select('id').single(),
-    {
-      showMessage: options.showMessage ?? true,
-      breakReturn: true
-    }
+  const result = await responseHandle<string>(
+    () => supabase.rpc('vms_create_vehicle_archive_secure', { p_payload: keysToSnakeDeep(params) }),
+    { showMessage: options.showMessage ?? true, breakReturn: true }
   )
+  return { ...result, data: result.data ? { id: result.data } : null }
 }
 
 export async function editVehicleArchive(
@@ -264,67 +122,35 @@ export async function editVehicleArchive(
   options: VehicleArchiveWriteOptions = {}
 ) {
   const { id, ...payload } = params
-  return await responseHandle(
+  if (!id) throw new Error('缺少车辆档案 ID')
+  return await responseHandle<VehicleArchive>(
     () =>
-      supabase
-        .from(VEHICLE_ARCHIVE_TABLE)
-        .update(keysToSnakeDeep(payload), { count: 'exact' })
-        .eq('id', id),
-    {
-      showMessage: options.showMessage ?? true,
-      breakReturn: true,
-      requireAffected: true,
-      noAffectedMessage: WRITE_PERMISSION_DENIED_MESSAGE
-    }
+      supabase.rpc('vms_update_vehicle_archive_secure', {
+        p_id: id,
+        p_payload: keysToSnakeDeep(payload)
+      }),
+    { showMessage: options.showMessage ?? true, breakReturn: true }
   )
 }
 
 export async function fetchVehicleArchiveDeletePreview(id: string) {
-  const ids = [id]
-  const [waybillCount, relatedCounts] = await Promise.all([
-    countRowsByVehicleIds('tms_waybill', 'vehicle_id', ids),
-    fetchVehicleArchiveDeleteRelatedCounts(ids)
-  ])
-  const relatedTotal = relatedCounts.reduce((total, item) => total + item.count, 0)
-
-  return {
-    data: {
-      waybillCount,
-      relatedCounts,
-      relatedTotal
-    } satisfies VehicleArchiveDeletePreview,
-    total: 0,
-    error: null
-  }
+  return await responseHandle<VehicleArchiveDeletePreview>(
+    () => supabase.rpc('vms_get_vehicle_archive_delete_preview_secure', { p_id: id }),
+    { ignoreCheck: true, showErrorMessage: true }
+  )
 }
 
 export async function deleteVehicleArchive(id: string) {
-  const ids = [id]
-  await assertVehicleArchiveNoWaybill(ids)
-
-  return await responseHandle(
-    () => supabase.from(VEHICLE_ARCHIVE_TABLE).delete({ count: 'exact' }).eq('id', id),
-    {
-      showMessage: true,
-      message: '删除成功',
-      breakReturn: true,
-      requireAffected: true,
-      noAffectedMessage: WRITE_PERMISSION_DENIED_MESSAGE
-    }
+  return await responseHandle<number>(
+    () => supabase.rpc('vms_delete_vehicle_archives_secure', { p_ids: [id] }),
+    { showMessage: true, message: '删除成功', breakReturn: true }
   )
 }
 
 export async function deleteVehicleArchiveBatch(ids: string[]) {
-  await assertVehicleArchiveNoWaybill(ids)
-
-  return await responseHandle(
-    () => supabase.from(VEHICLE_ARCHIVE_TABLE).delete({ count: 'exact' }).in('id', ids),
-    {
-      showMessage: true,
-      breakReturn: true,
-      requireAffected: true,
-      noAffectedMessage: WRITE_PERMISSION_DENIED_MESSAGE
-    }
+  return await responseHandle<number>(
+    () => supabase.rpc('vms_delete_vehicle_archives_secure', { p_ids: ids }),
+    { showMessage: true, breakReturn: true }
   )
 }
 
@@ -334,21 +160,18 @@ export async function fetchVehicleArchiveOptions(
   options?: ApiRequestOptions
 ) {
   const { carrierId, plateNo, companyName } = params
-  const filters: FilterSpec[] = [
-    { col: 'carrierId', op: 'eq', val: carrierId },
-    { col: 'plateNo', op: 'ilike', val: plateNo ? `%${plateNo}%` : undefined },
-    { col: 'companyName', op: 'ilike', val: companyName ? `%${companyName}%` : undefined }
-  ]
-
-  let query = supabase
-    .from(VEHICLE_ARCHIVE_TABLE)
-    .select('id, plate_no, company_name, vin, self_no, carrier_id, vehicle_type')
-    .order('plate_no', { ascending: true })
-    .limit(200)
-
-  query = applyFilters(query, filters, { skipEmpty: true, camelToSnake: true })
   return await responseHandle<Api.Vms.VehicleManage.VehicleOption[]>(
-    () => withRequestOptions(query, options),
+    () =>
+      withRequestOptions(
+        supabase.rpc('vms_list_vehicle_archive_options_secure', {
+          p_carrier_id: carrierId || null,
+          p_plate_no: String(plateNo ?? '').trim() || null,
+          p_company_name: String(companyName ?? '').trim() || null,
+          p_ids: null,
+          p_max_rows: 200
+        }),
+        options
+      ),
     {
       ignoreCheck: true,
       showErrorMessage: true

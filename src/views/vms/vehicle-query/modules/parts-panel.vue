@@ -17,6 +17,7 @@
   import { formatDate, formatValue } from './query-format'
   import { useVehiclePanelList } from './use-vehicle-panel-list'
   import { isNil } from 'lodash-es'
+  import { canViewField, mergeFieldAccessMaps } from '@/utils/field-permission'
 
   defineOptions({ name: 'VehicleQueryPartsPanel' })
 
@@ -44,7 +45,11 @@
     return records.value.filter((item) => item.partName?.includes(keyword))
   })
 
-  const columns: ColumnOption<VehiclePartUsage>[] = [
+  const effectiveFieldAccess = computed(() =>
+    mergeFieldAccessMaps(...records.value.map((record) => record.fieldAccess))
+  )
+
+  const columns = computed<ColumnOption<VehiclePartUsage>[]>(() => [
     { type: 'globalIndex', label: '序号', width: 70 },
     {
       prop: 'partType',
@@ -56,37 +61,60 @@
     { prop: 'categoryName', label: '类别', width: 120 },
     { prop: 'brand', label: '品牌', width: 100 },
     { prop: 'model', label: '型号', width: 120 },
-    { prop: 'rfidTag', label: 'RFID标签', minWidth: 140 },
-    {
-      prop: 'enableDate',
-      label: '启用日期',
-      width: 120,
-      formatter: (row) => formatDate(row.enableDate)
-    },
-    {
-      prop: 'warrantySummary',
-      label: '质保期',
-      width: 150,
-      formatter: (row) => formatWarranty(row)
-    },
-    { prop: 'serviceYears', label: '使用年限（年）', width: 130 },
-    {
-      prop: 'usedYears',
-      label: '已使用时长（年）',
-      width: 150,
-      formatter: (row) => formatUsedYears(row.enableDate)
-    },
-    { prop: 'serviceMileage', label: '可使用里程（公里）', width: 160 },
-    { prop: 'usedMileage', label: '已使用里程（公里）', width: 160 },
+    ...(canViewField(effectiveFieldAccess.value, 'traceabilityTag')
+      ? [{ prop: 'rfidTag', label: 'RFID标签', minWidth: 140 } as ColumnOption<VehiclePartUsage>]
+      : []),
+    ...(canViewField(effectiveFieldAccess.value, 'lifecycleLimits')
+      ? ([
+          {
+            prop: 'enableDate',
+            label: '启用日期',
+            width: 120,
+            formatter: (row) => (row.lifecycleLimitsMasked ? '***' : formatDate(row.enableDate))
+          },
+          {
+            prop: 'warrantySummary',
+            label: '质保期',
+            width: 150,
+            formatter: (row) => formatWarranty(row)
+          },
+          {
+            prop: 'serviceYears',
+            label: '使用年限（年）',
+            width: 130,
+            formatter: (row) => (row.lifecycleLimitsMasked ? '***' : (row.serviceYears ?? '--'))
+          },
+          {
+            prop: 'usedYears',
+            label: '已使用时长（年）',
+            width: 150,
+            formatter: (row) =>
+              row.lifecycleLimitsMasked ? '***' : formatUsedYears(row.enableDate)
+          },
+          {
+            prop: 'serviceMileage',
+            label: '可使用里程（公里）',
+            width: 160,
+            formatter: (row) => (row.lifecycleLimitsMasked ? '***' : (row.serviceMileage ?? '--'))
+          },
+          {
+            prop: 'usedMileage',
+            label: '已使用里程（公里）',
+            width: 160,
+            formatter: (row) => (row.lifecycleLimitsMasked ? '***' : (row.usedMileage ?? '--'))
+          }
+        ] as ColumnOption<VehiclePartUsage>[])
+      : []),
     {
       prop: 'status',
       label: '状态',
       width: 100,
       dict: { code: 'vehiclePartUsageStatus', display: 'auto' }
     }
-  ]
+  ])
 
   const formatWarranty = (row: VehiclePartUsage): string => {
+    if (row.lifecycleLimitsMasked) return '***'
     if (row.warrantyMode === 'vehicle') return '随整车质保'
     const values = [
       row.warrantyDuration ? `${row.warrantyDuration}个月` : '',

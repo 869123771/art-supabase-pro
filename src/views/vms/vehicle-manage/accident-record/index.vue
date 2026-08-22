@@ -70,6 +70,7 @@
     type BusinessWorkspaceMetric
   } from '@/components/business/business-workspace-header/index.vue'
   import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
+  import { canViewField, mergeFieldAccessMaps } from '@/utils/field-permission'
 
   defineOptions({ name: 'VehicleAccident' })
 
@@ -95,6 +96,10 @@
   const dialogRef = ref<DialogExpose>()
   const { getDictMap } = storeToRefs(useUserStore())
   const overview = reactive<{ total: number; rows: AccidentRecord[] }>({ total: 0, rows: [] })
+  const listFieldAccess = ref<Api.Vms.VehicleManage.VehicleAccidentFieldAccessMap>({})
+  const effectiveFieldAccess = computed(() =>
+    mergeFieldAccessMaps(listFieldAccess.value, ...overview.rows.map((row) => row.fieldAccess))
+  )
   const workspaceMetrics = computed<BusinessWorkspaceMetric[]>(() => [
     {
       label: '事故记录',
@@ -141,7 +146,9 @@
     searchItems: computed<SearchFormItem[]>(() => [
       { label: '所属公司', key: 'companyName', type: 'input' },
       { label: '车牌号', key: 'plateNo', type: 'input' },
-      { label: '驾驶员', key: 'driverName', type: 'input' },
+      ...(canViewField(effectiveFieldAccess.value, 'driverContact')
+        ? [{ label: '驾驶员', key: 'driverName', type: 'input' }]
+        : []),
       {
         label: '处理状态',
         key: 'processed',
@@ -168,7 +175,7 @@
         permission: 'VehicleAccident:Export',
         exportFilename: '事故记录',
         exportSheetName: '事故记录',
-        exportColumns: accidentExcelColumns,
+        exportColumns: accidentExcelColumns.value,
         exportApi: ({ selectedIds, searchParams, maxRows }) =>
           exportVehicleAccidentList({
             ...(searchParams as SearchParams),
@@ -193,16 +200,24 @@
       { type: 'globalIndex', label: '序号', width: 72 },
       { prop: 'companyName', label: '所属公司', minWidth: 150 },
       { prop: 'plateNo', label: '车牌号', width: 120 },
-      { prop: 'driverName', label: '驾驶员', width: 120 },
-      { prop: 'driverPhone', label: '联系方式', width: 140 },
+      ...(canViewField(effectiveFieldAccess.value, 'driverContact')
+        ? [
+            { prop: 'driverName', label: '驾驶员', width: 120 },
+            { prop: 'driverPhone', label: '联系方式', width: 140 }
+          ]
+        : []),
       {
         prop: 'accidentTime',
         label: '事故时间',
         width: 170,
         formatter: (row) => formatWithDayjs(row.accidentTime)
       },
-      { prop: 'accidentLocation', label: '事故地点', minWidth: 180 },
-      { prop: 'accidentSummary', label: '事故概述', minWidth: 220 },
+      ...(canViewField(effectiveFieldAccess.value, 'accidentLocation')
+        ? [{ prop: 'accidentLocation', label: '事故地点', minWidth: 180 }]
+        : []),
+      ...(canViewField(effectiveFieldAccess.value, 'accidentNarrative')
+        ? [{ prop: 'accidentSummary', label: '事故概述', minWidth: 220 }]
+        : []),
       { prop: 'damageLevel', label: '事故等级', width: 120 },
       {
         prop: 'processed',
@@ -249,27 +264,46 @@
     ]
   })
 
-  const accidentExcelColumns: ArtTableQueryExcelColumn[] = [
+  const accidentExcelColumns = computed<ArtTableQueryExcelColumn[]>(() => [
     { key: 'companyName', title: '所属公司' },
     { key: 'plateNo', title: '车牌号', required: true },
-    { key: 'driverName', title: '驾驶员' },
-    { key: 'driverPhone', title: '联系方式' },
+    ...(canViewField(effectiveFieldAccess.value, 'driverContact')
+      ? [
+          { key: 'driverName', title: '驾驶员' },
+          { key: 'driverPhone', title: '联系方式' }
+        ]
+      : []),
     { key: 'accidentTime', title: '事故时间', required: true },
-    { key: 'accidentLocation', title: '事故地点' },
-    { key: 'accidentLongitude', title: '事故经度' },
-    { key: 'accidentLatitude', title: '事故纬度' },
-    { key: 'accidentSummary', title: '事故概述', required: true },
+    ...(canViewField(effectiveFieldAccess.value, 'accidentLocation')
+      ? [
+          { key: 'accidentLocation', title: '事故地点' },
+          { key: 'accidentLongitude', title: '事故经度' },
+          { key: 'accidentLatitude', title: '事故纬度' }
+        ]
+      : []),
+    ...(canViewField(effectiveFieldAccess.value, 'accidentNarrative')
+      ? [{ key: 'accidentSummary', title: '事故概述', required: true }]
+      : []),
     { key: 'damageLevel', title: '事故等级' },
     { key: 'responsibilityType', title: '责任类型' },
-    { key: 'economicLoss', title: '经济损失' },
+    ...(canViewField(effectiveFieldAccess.value, 'lossAmounts')
+      ? [
+          { key: 'companyBearAmount', title: '公司承担' },
+          { key: 'economicLoss', title: '经济损失' }
+        ]
+      : []),
     { key: 'processed', title: '处理状态' },
     { key: 'dataSource', title: '数据来源' },
-    { key: 'remark', title: '备注' }
-  ]
+    ...(canViewField(effectiveFieldAccess.value, 'accidentNarrative')
+      ? [{ key: 'remark', title: '备注' }]
+      : [])
+  ])
 
-  const fetchTableData = (params: TableParams) => {
+  const fetchTableData = async (params: TableParams) => {
     const { from, to } = pageInfoHandler({ current: params.current, size: params.size })
-    return fetchVehicleAccidentList({ ...params, from, to })
+    const result = await fetchVehicleAccidentList({ ...params, from, to })
+    listFieldAccess.value = result.fieldAccess ?? {}
+    return result
   }
 
   const handleTableSuccess: NonNullable<ArtTableQueryProps['onSuccess']> = (rows, response) => {

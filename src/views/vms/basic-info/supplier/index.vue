@@ -61,6 +61,7 @@
     type BusinessWorkspaceMetric
   } from '@/components/business/business-workspace-header/index.vue'
   import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
+  import { canViewField, getFieldAccess, mergeFieldAccessMaps } from '@/utils/field-permission'
 
   defineOptions({ name: 'Supplier' })
 
@@ -77,6 +78,18 @@
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<DialogExpose>()
   const overview = reactive<{ total: number; rows: Supplier[] }>({ total: 0, rows: [] })
+  const listFieldAccess = ref<Api.Vms.BasicInfo.SupplierFieldAccessMap>({})
+  const effectiveFieldAccess = computed(() =>
+    mergeFieldAccessMaps(listFieldAccess.value, ...overview.rows.map((row) => row.fieldAccess))
+  )
+  const columnAccessSignature = computed(() =>
+    (['contactDetails', 'addressDetails', 'internalNotes'] as const)
+      .map((field) => `${field}:${getFieldAccess(effectiveFieldAccess.value, field)}`)
+      .join('|')
+  )
+  const visibleContactRows = computed(() =>
+    overview.rows.filter((row) => canViewField(row.fieldAccess, 'contactDetails'))
+  )
   const workspaceMetrics = computed<BusinessWorkspaceMetric[]>(() => [
     {
       label: '供应厂商',
@@ -84,20 +97,26 @@
       description: '当前筛选条件下的厂商总数',
       icon: 'ri:store-3-line'
     },
-    {
-      label: '本页联络信息完整',
-      value: overview.rows.filter((row) => row.contactPerson && row.contactPhone).length,
-      description: '联系人与联系电话均已维护',
-      icon: 'ri:contacts-book-2-line',
-      tone: 'success'
-    },
-    {
-      label: '本页待完善',
-      value: overview.rows.filter((row) => !row.contactPerson || !row.contactPhone).length,
-      description: '至少缺少一项关键联络信息',
-      icon: 'ri:user-search-line',
-      tone: 'warning'
-    }
+    ...(visibleContactRows.value.length
+      ? [
+          {
+            label: '本页可见联络信息完整',
+            value: visibleContactRows.value.filter((row) => row.contactPerson && row.contactPhone)
+              .length,
+            description: '仅统计当前有权查看的联络信息',
+            icon: 'ri:contacts-book-2-line',
+            tone: 'success' as const
+          },
+          {
+            label: '本页可见联络信息待完善',
+            value: visibleContactRows.value.filter((row) => !row.contactPerson || !row.contactPhone)
+              .length,
+            description: '仅统计当前有权查看的记录',
+            icon: 'ri:user-search-line',
+            tone: 'warning' as const
+          }
+        ]
+      : [])
   ])
 
   const searchQuery = ref<SearchParams>({
@@ -112,19 +131,16 @@
       key: 'supplierName',
       type: 'input'
     },
-    {
-      label: '联系人',
-      key: 'contactPerson',
-      type: 'input'
-    },
-    {
-      label: '联系电话',
-      key: 'contactPhone',
-      type: 'input'
-    }
+    ...(getFieldAccess(listFieldAccess.value, 'contactDetails') === 'read' ||
+    getFieldAccess(listFieldAccess.value, 'contactDetails') === 'edit'
+      ? ([
+          { label: '联系人', key: 'contactPerson', type: 'input' },
+          { label: '联系电话', key: 'contactPhone', type: 'input' }
+        ] as SearchFormItem[])
+      : [])
   ])
 
-  const supplierExcelColumns: ArtTableQueryExcelColumn[] = [
+  const supplierImportColumns: ArtTableQueryExcelColumn[] = [
     { key: 'supplierName', title: '供应厂商名称', required: true },
     { key: 'contactPerson', title: '联系人' },
     { key: 'contactPhone', title: '联系电话' },
@@ -132,6 +148,24 @@
     { key: 'addressDetail', title: '详细地址' },
     { key: 'remark', title: '备注' }
   ]
+  const supplierExportColumns = computed<ArtTableQueryExcelColumn[]>(() => [
+    { key: 'supplierName', title: '供应厂商名称', required: true },
+    ...(canViewField(effectiveFieldAccess.value, 'contactDetails')
+      ? [
+          { key: 'contactPerson', title: '联系人' },
+          { key: 'contactPhone', title: '联系电话' }
+        ]
+      : []),
+    ...(canViewField(effectiveFieldAccess.value, 'addressDetails')
+      ? [
+          { key: 'region', title: '所在地区' },
+          { key: 'addressDetail', title: '详细地址' }
+        ]
+      : []),
+    ...(canViewField(effectiveFieldAccess.value, 'internalNotes')
+      ? [{ key: 'remark', title: '备注' }]
+      : [])
+  ])
 
   const headerActions = computed<ArtTableQueryHeaderAction[]>(() => [
     {
@@ -143,7 +177,7 @@
     {
       permission: 'Supplier:Import',
       type: 'import',
-      importColumns: supplierExcelColumns,
+      importColumns: supplierImportColumns,
       importApi: async (rows) => {
         await importSuppliers(rows as Supplier[])
       },
@@ -155,7 +189,7 @@
       // permission: 'export',
       exportFilename: '供应厂商',
       exportSheetName: '供应厂商',
-      exportColumns: supplierExcelColumns,
+      exportColumns: supplierExportColumns.value,
       exportApi: ({ selectedIds, searchParams, maxRows }) => {
         return exportSupplierList({
           ...(searchParams as SearchParams),
@@ -178,16 +212,18 @@
     }
   ])
 
-  const fetchTableData = (params: TableParams) => {
+  const fetchTableData = async (params: TableParams) => {
     const { from, to } = pageInfoHandler({
       current: params.current,
       size: params.size
     })
-    return fetchSupplierList({
+    const result = await fetchSupplierList({
       ...params,
       from,
       to
     })
+    listFieldAccess.value = result.fieldAccess ?? {}
+    return result
   }
 
   const columnsFactory = (): ColumnOption<Supplier>[] => [
@@ -207,27 +243,25 @@
       label: '供应厂商名称',
       minWidth: 180
     },
-    {
-      prop: 'contactPerson',
-      label: '联系人',
-      width: 130
-    },
-    {
-      prop: 'contactPhone',
-      label: '联系电话',
-      width: 160
-    },
-    {
-      prop: 'address',
-      label: '联系地址',
-      minWidth: 260,
-      formatter: (row) => [row.region, row.addressDetail].filter(Boolean).join(' ') || '-'
-    },
-    {
-      prop: 'remark',
-      label: '备注',
-      minWidth: 180
-    },
+    ...(canViewField(effectiveFieldAccess.value, 'contactDetails')
+      ? ([
+          { prop: 'contactPerson', label: '联系人', width: 130 },
+          { prop: 'contactPhone', label: '联系电话', width: 160 }
+        ] as ColumnOption<Supplier>[])
+      : []),
+    ...(canViewField(effectiveFieldAccess.value, 'addressDetails')
+      ? ([
+          {
+            prop: 'address',
+            label: '联系地址',
+            minWidth: 260,
+            formatter: (row) => [row.region, row.addressDetail].filter(Boolean).join(' ') || '-'
+          }
+        ] as ColumnOption<Supplier>[])
+      : []),
+    ...(canViewField(effectiveFieldAccess.value, 'internalNotes')
+      ? ([{ prop: 'remark', label: '备注', minWidth: 180 }] as ColumnOption<Supplier>[])
+      : []),
     {
       prop: 'operation',
       label: '操作',
@@ -245,6 +279,10 @@
       )
     }
   ]
+
+  watch(columnAccessSignature, () => {
+    nextTick(() => tableQueryRef.value?.resetColumns())
+  })
 
   const handleTableSuccess: NonNullable<ArtTableQueryProps['onSuccess']> = (rows, response) => {
     overview.rows = rows as Supplier[]

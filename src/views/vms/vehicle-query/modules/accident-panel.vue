@@ -12,6 +12,7 @@
   import type { VehicleAccidentRecord, VehicleArchive } from './types'
   import { formatDate, formatValue } from './query-format'
   import { useVehiclePanelList } from './use-vehicle-panel-list'
+  import { canViewField, mergeFieldAccessMaps } from '@/utils/field-permission'
 
   defineOptions({ name: 'VehicleQueryAccidentPanel' })
 
@@ -24,7 +25,7 @@
     vehicle,
     async (current) => {
       const { data } = await fetchVehicleAccidentList({
-        plateNo: current.plateNo,
+        vehicleId: current.id,
         from: 0,
         to: 9999
       })
@@ -32,17 +33,27 @@
     }
   )
 
-  const columns: ColumnOption<VehicleAccidentRecord>[] = [
+  const effectiveFieldAccess = computed(() =>
+    mergeFieldAccessMaps(...records.value.map((record) => record.fieldAccess))
+  )
+
+  const columns = computed<ColumnOption<VehicleAccidentRecord>[]>(() => [
     { type: 'globalIndex', label: '序号', width: 80 },
-    { prop: 'driverName', label: '驾驶员姓名', minWidth: 150 },
+    ...(canViewField(effectiveFieldAccess.value, 'driverContact')
+      ? [{ prop: 'driverName', label: '驾驶员姓名', minWidth: 150 }]
+      : []),
     {
       prop: 'accidentTime',
       label: '事故时间',
       minWidth: 150,
       formatter: (row) => formatDate(row.accidentTime)
     },
-    { prop: 'accidentLocation', label: '事故地点', minWidth: 260 },
-    { prop: 'accidentSummary', label: '事故概要', minWidth: 220 },
+    ...(canViewField(effectiveFieldAccess.value, 'accidentLocation')
+      ? [{ prop: 'accidentLocation', label: '事故地点', minWidth: 260 }]
+      : []),
+    ...(canViewField(effectiveFieldAccess.value, 'accidentNarrative')
+      ? [{ prop: 'accidentSummary', label: '事故概要', minWidth: 220 }]
+      : []),
     { prop: 'damageLevel', label: '损坏程度', minWidth: 150 },
     {
       prop: 'processed',
@@ -61,5 +72,5 @@
       dict: { code: 'vehicleAccidentDataSource', display: 'auto' },
       formatter: (row) => formatValue(row.dataSource)
     }
-  ]
+  ])
 </script>

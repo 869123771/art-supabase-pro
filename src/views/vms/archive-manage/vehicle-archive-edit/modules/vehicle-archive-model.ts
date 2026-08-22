@@ -9,6 +9,40 @@ export type VehicleArchiveForm = VehicleArchive & {
 
 export type VehicleArchiveWritePayload = Record<string, unknown> & { id?: string }
 
+const EDITABLE_FIELD_ACCESS: Api.Vms.ArchiveManage.VehicleArchiveFieldAccessMap = {
+  vehicleIdentifiers: 'edit',
+  ownerIdentity: 'edit',
+  contactPhones: 'edit',
+  mailingAddress: 'edit',
+  operationRoute: 'edit',
+  documents: 'edit',
+  deviceIdentity: 'edit'
+}
+
+const SENSITIVE_PAYLOAD_KEYS: Record<Api.Vms.ArchiveManage.VehicleArchiveFieldKey, string[]> = {
+  vehicleIdentifiers: [
+    'vin',
+    'operationCertNo',
+    'purchaseCertNo',
+    'registrationCertNo',
+    'chassisNo',
+    'gearboxSerialNo',
+    'engineNo',
+    'licensePlateCode'
+  ],
+  ownerIdentity: ['ownerId', 'ownerName', 'ownerGender', 'idCardNo'],
+  contactPhones: ['ownerPhone'],
+  mailingAddress: ['mailingAddress'],
+  operationRoute: ['operationRoute'],
+  documents: [
+    'drivingLicenseFrontUrl',
+    'drivingLicenseBackUrl',
+    'operationLicenseUrl',
+    'attachments'
+  ],
+  deviceIdentity: ['acCode', 'terminalPhone']
+}
+
 export function requiresVehicleArchiveResubmission(
   auditStatus: VehicleArchive['auditStatus']
 ): boolean {
@@ -108,7 +142,9 @@ export function createInitialVehicleArchiveForm(): VehicleArchiveForm {
     operationLicenseUrl: '',
     attachments: [],
     auditStatus: 'pending',
-    auditRemark: ''
+    auditRemark: '',
+    fieldAccess: { ...EDITABLE_FIELD_ACCESS },
+    isRecordOwner: false
   }
 }
 
@@ -137,9 +173,11 @@ export function sanitizeVehicleArchivePayload(
     driverOnePhone,
     driverTwoName,
     driverTwoPhone,
+    fieldAccess,
+    isRecordOwner,
     ...formPayload
   } = params
-  const payload = {
+  const payload: Record<string, unknown> = {
     ...formPayload,
     attachments: formPayload.attachments ?? [],
     isAirConditioned: formPayload.isAirConditioned ?? false,
@@ -168,6 +206,14 @@ export function sanitizeVehicleArchivePayload(
   void driverOnePhone
   void driverTwoName
   void driverTwoPhone
+  void isRecordOwner
+
+  if (id) {
+    Object.entries(SENSITIVE_PAYLOAD_KEYS).forEach(([field, keys]) => {
+      if (fieldAccess?.[field as Api.Vms.ArchiveManage.VehicleArchiveFieldKey] === 'edit') return
+      keys.forEach((key) => delete payload[key])
+    })
+  }
 
   return {
     ...(id ? { id } : {}),

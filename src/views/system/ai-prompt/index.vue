@@ -13,17 +13,13 @@
         }
       ]"
       :metrics="metricCards"
+      refreshable
+      refresh-label="刷新 Prompt"
+      :refresh-loading="overview.loading"
+      @refresh="refreshAll"
     >
       <template #actions>
         <BusinessTableWorkspaceActions :table="tableQueryRef" />
-        <ElTooltip content="刷新 Prompt" placement="bottom">
-          <ArtIconButton
-            icon="ri:refresh-line"
-            circle
-            :class="{ 'ai-prompt__refreshing': overview.loading }"
-            @click="refreshAll"
-          />
-        </ElTooltip>
       </template>
     </BusinessWorkspaceHeader>
 
@@ -72,7 +68,6 @@
   import ArtButtonMore, {
     type ButtonMoreItem
   } from '@/components/core/forms/art-button-more/index.vue'
-  import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
   import BusinessWorkspaceHeader, {
@@ -508,12 +503,6 @@
       margin-left: 18px;
     }
 
-    &__refreshing {
-      :deep(svg) {
-        animation: ai-prompt-spin 0.9s linear infinite;
-      }
-    }
-
     &__metrics {
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -720,12 +709,6 @@
     line-height: 1.65;
     overflow-wrap: anywhere;
     white-space: pre-wrap;
-  }
-
-  @keyframes ai-prompt-spin {
-    to {
-      transform: rotate(360deg);
-    }
   }
 
   @media (width <= 1200px) {

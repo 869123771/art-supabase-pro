@@ -70,6 +70,11 @@
     type BusinessWorkspaceMetric
   } from '@/components/business/business-workspace-header/index.vue'
   import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
+  import {
+    canViewField,
+    formatSensitiveNumber,
+    mergeFieldAccessMaps
+  } from '@/utils/field-permission'
 
   defineOptions({ name: 'VehicleInspection' })
 
@@ -94,6 +99,10 @@
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<DialogExpose>()
   const overview = reactive<{ total: number; rows: VehicleInspection[] }>({ total: 0, rows: [] })
+  const listFieldAccess = ref<Api.Vms.VehicleManage.VehicleInspectionFieldAccessMap>({})
+  const effectiveFieldAccess = computed(() =>
+    mergeFieldAccessMaps(listFieldAccess.value, ...overview.rows.map((row) => row.fieldAccess))
+  )
   const workspaceMetrics = computed<BusinessWorkspaceMetric[]>(() => [
     {
       label: '年检记录',
@@ -102,9 +111,17 @@
       icon: 'ri:file-list-3-line'
     },
     {
-      label: '本页信息完整',
-      value: overview.rows.filter((row) => row.inspectionNo && row.expireDate).length,
-      description: '年检号与到期日均已维护',
+      label: canViewField(effectiveFieldAccess.value, 'inspectionIdentifiers')
+        ? '本页信息完整'
+        : '本页有效期已维护',
+      value: overview.rows.filter((row) =>
+        canViewField(effectiveFieldAccess.value, 'inspectionIdentifiers')
+          ? row.inspectionNo && row.expireDate
+          : row.expireDate
+      ).length,
+      description: canViewField(effectiveFieldAccess.value, 'inspectionIdentifiers')
+        ? '年检号与到期日均已维护'
+        : '已维护年检到期日期',
       icon: 'ri:file-check-line',
       tone: 'success'
     },
@@ -136,7 +153,9 @@
     searchItems: computed<SearchFormItem[]>(() => [
       { label: '所属公司', key: 'companyName', type: 'input' },
       { label: '车牌号', key: 'plateNo', type: 'input' },
-      { label: '年检号', key: 'inspectionNo', type: 'input' },
+      ...(canViewField(effectiveFieldAccess.value, 'inspectionIdentifiers')
+        ? [{ label: '年检号', key: 'inspectionNo', type: 'input' }]
+        : []),
       { label: '到期日期', key: 'expireDateRange', type: 'date', props: dateRangeProps },
       { label: '创建时间', key: 'createTimeRange', type: 'date', props: dateRangeProps }
     ]),
@@ -151,7 +170,7 @@
         permission: 'VehicleInspection:Export',
         exportFilename: '车辆年检',
         exportSheetName: '车辆年检',
-        exportColumns: inspectionExcelColumns,
+        exportColumns: inspectionExcelColumns.value,
         exportApi: ({ selectedIds, searchParams, maxRows }) =>
           exportVehicleInspectionList({
             ...(searchParams as SearchParams),
@@ -177,13 +196,19 @@
       { prop: 'companyName', label: '所属公司', minWidth: 160 },
       { prop: 'plateNo', label: '车牌号', width: 108 },
       { prop: 'inspectionDate', label: '年检日期', width: 108 },
-      { prop: 'inspectionNo', label: '年检号', minWidth: 150 },
-      {
-        prop: 'inspectionAmount',
-        label: '年检金额',
-        width: 110,
-        formatter: (row) => formatMoney(row.inspectionAmount)
-      },
+      ...(canViewField(effectiveFieldAccess.value, 'inspectionIdentifiers')
+        ? [{ prop: 'inspectionNo', label: '年检号', minWidth: 150 }]
+        : []),
+      ...(canViewField(effectiveFieldAccess.value, 'monetaryAmounts')
+        ? [
+            {
+              prop: 'inspectionAmount',
+              label: '年检金额',
+              width: 110,
+              formatter: (row: VehicleInspection) => formatMoney(row.inspectionAmount)
+            }
+          ]
+        : []),
       { prop: 'vehicleOffice', label: '车管所', minWidth: 140 },
       { prop: 'expireDate', label: '到期日期', width: 108 },
       {
@@ -214,23 +239,29 @@
     ]
   })
 
-  const inspectionExcelColumns: ArtTableQueryExcelColumn[] = [
+  const inspectionExcelColumns = computed<ArtTableQueryExcelColumn[]>(() => [
     { key: 'companyName', title: '所属公司' },
     { key: 'plateNo', title: '车牌号', required: true },
     { key: 'inspectionDate', title: '年检日期' },
-    { key: 'inspectionNo', title: '年检号', required: true },
-    { key: 'inspectionAmount', title: '年检金额' },
+    ...(canViewField(effectiveFieldAccess.value, 'inspectionIdentifiers')
+      ? [{ key: 'inspectionNo', title: '年检号', required: true }]
+      : []),
+    ...(canViewField(effectiveFieldAccess.value, 'monetaryAmounts')
+      ? [{ key: 'inspectionAmount', title: '年检金额' }]
+      : []),
     { key: 'vehicleOffice', title: '车管所' },
     { key: 'expireDate', title: '到期日期' },
     { key: 'remark', title: '备注' }
-  ]
+  ])
 
-  const fetchTableData = (params: TableParams) => {
+  const fetchTableData = async (params: TableParams) => {
     const { from, to } = pageInfoHandler({
       current: params.current,
       size: params.size
     })
-    return fetchVehicleInspectionList({ ...params, from, to })
+    const result = await fetchVehicleInspectionList({ ...params, from, to })
+    listFieldAccess.value = result.fieldAccess ?? {}
+    return result
   }
 
   const handleTableSuccess: NonNullable<ArtTableQueryProps['onSuccess']> = (rows, response) => {
@@ -293,9 +324,9 @@
     }
   }
 
-  const formatMoney = (value?: number | null): string => {
-    if (value === undefined || value === null) return '--'
-    return `${Number(value).toFixed(2)} 元`
+  const formatMoney = (value?: number | string | null): string => {
+    const formatted = formatSensitiveNumber(value)
+    return formatted === '--' || formatted === '***' ? formatted : `${formatted} 元`
   }
 
   onErrorCaptured((error) => {

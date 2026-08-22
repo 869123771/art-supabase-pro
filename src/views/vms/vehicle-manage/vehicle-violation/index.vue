@@ -39,7 +39,6 @@
 
 <script setup lang="tsx">
   import type { ComputedRef, UnwrapNestedRefs } from 'vue'
-  import { isNil } from 'lodash-es'
   import { storeToRefs } from 'pinia'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type {
@@ -57,6 +56,11 @@
     type BusinessWorkspaceMetric
   } from '@/components/business/business-workspace-header/index.vue'
   import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
+  import {
+    canViewField,
+    formatSensitiveNumber,
+    mergeFieldAccessMaps
+  } from '@/utils/field-permission'
 
   defineOptions({ name: 'VehicleViolation' })
 
@@ -74,6 +78,10 @@
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const { getDictMap } = storeToRefs(useUserStore())
   const overview = reactive<{ total: number; rows: ViolationRecord[] }>({ total: 0, rows: [] })
+  const listFieldAccess = ref<Api.Vms.VehicleManage.VehicleViolationFieldAccessMap>({})
+  const effectiveFieldAccess = computed(() =>
+    mergeFieldAccessMaps(listFieldAccess.value, ...overview.rows.map((row) => row.fieldAccess))
+  )
   const workspaceMetrics = computed<BusinessWorkspaceMetric[]>(() => [
     {
       label: '违章记录',
@@ -119,8 +127,12 @@
     searchItems: computed<SearchFormItem[]>(() => [
       { label: '所属公司', key: 'companyName', type: 'input' },
       { label: '车牌号', key: 'plateNo', type: 'input' },
-      { label: '驾驶员', key: 'driverName', type: 'input' },
-      { label: '违章行为', key: 'violationBehavior', type: 'input' },
+      ...(canViewField(effectiveFieldAccess.value, 'driverIdentity')
+        ? [{ label: '驾驶员', key: 'driverName', type: 'input' }]
+        : []),
+      ...(canViewField(effectiveFieldAccess.value, 'violationNarrative')
+        ? [{ label: '违章行为', key: 'violationBehavior', type: 'input' }]
+        : []),
       {
         label: '处理状态',
         key: 'processed',
@@ -135,7 +147,7 @@
         permission: 'VehicleViolation:Export',
         exportFilename: '车辆违章记录',
         exportSheetName: '车辆违章记录',
-        exportColumns: violationExcelColumns,
+        exportColumns: violationExcelColumns.value,
         exportApi: ({ selectedIds, searchParams, maxRows }) =>
           exportVehicleViolationList({
             ...(searchParams as SearchParams),
@@ -149,23 +161,33 @@
       { type: 'globalIndex', label: '序号', width: 72 },
       { prop: 'companyName', label: '所属公司', minWidth: 150 },
       { prop: 'plateNo', label: '车牌号', width: 120 },
-      { prop: 'driverName', label: '驾驶员', width: 120 },
-      { prop: 'violationBehavior', label: '违章行为', minWidth: 180 },
+      ...(canViewField(effectiveFieldAccess.value, 'driverIdentity')
+        ? [{ prop: 'driverName', label: '驾驶员', width: 120 }]
+        : []),
+      ...(canViewField(effectiveFieldAccess.value, 'violationNarrative')
+        ? [{ prop: 'violationBehavior', label: '违章行为', minWidth: 180 }]
+        : []),
       {
         prop: 'violationTime',
         label: '违章时间',
         width: 170,
         formatter: (row) => formatWithDayjs(row.violationTime)
       },
-      { prop: 'violationLocation', label: '违章地点', minWidth: 180 },
-      { prop: 'penaltyPoints', label: '扣分', width: 90, align: 'right' },
-      {
-        prop: 'fineAmount',
-        label: '罚款金额',
-        width: 120,
-        align: 'right',
-        formatter: (row) => formatMoney(row.fineAmount)
-      },
+      ...(canViewField(effectiveFieldAccess.value, 'violationLocation')
+        ? [{ prop: 'violationLocation', label: '违章地点', minWidth: 180 }]
+        : []),
+      ...(canViewField(effectiveFieldAccess.value, 'penaltyAmounts')
+        ? [
+            { prop: 'penaltyPoints', label: '扣分', width: 90, align: 'right' },
+            {
+              prop: 'fineAmount',
+              label: '罚款金额',
+              width: 120,
+              align: 'right',
+              formatter: (row: ViolationRecord) => formatMoney(row.fineAmount)
+            }
+          ]
+        : []),
       {
         prop: 'processed',
         label: '处理状态',
@@ -180,25 +202,39 @@
     ]
   })
 
-  const violationExcelColumns: ArtTableQueryExcelColumn[] = [
+  const violationExcelColumns = computed<ArtTableQueryExcelColumn[]>(() => [
     { key: 'companyName', title: '所属公司' },
     { key: 'plateNo', title: '车牌号', required: true },
-    { key: 'driverName', title: '驾驶员' },
-    { key: 'violationBehavior', title: '违章行为', required: true },
+    ...(canViewField(effectiveFieldAccess.value, 'driverIdentity')
+      ? [{ key: 'driverName', title: '驾驶员' }]
+      : []),
+    ...(canViewField(effectiveFieldAccess.value, 'violationNarrative')
+      ? [{ key: 'violationBehavior', title: '违章行为', required: true }]
+      : []),
     { key: 'violationTime', title: '违章时间', required: true },
-    { key: 'violationLocation', title: '违章地点' },
-    { key: 'penaltyPoints', title: '扣分' },
-    { key: 'fineAmount', title: '罚款金额' },
+    ...(canViewField(effectiveFieldAccess.value, 'violationLocation')
+      ? [{ key: 'violationLocation', title: '违章地点' }]
+      : []),
+    ...(canViewField(effectiveFieldAccess.value, 'penaltyAmounts')
+      ? [
+          { key: 'penaltyPoints', title: '扣分' },
+          { key: 'fineAmount', title: '罚款金额' }
+        ]
+      : []),
     { key: 'processed', title: '处理状态' },
-    { key: 'remark', title: '备注' }
-  ]
+    ...(canViewField(effectiveFieldAccess.value, 'violationNarrative')
+      ? [{ key: 'remark', title: '备注' }]
+      : [])
+  ])
 
-  const fetchTableData = (params: TableParams) => {
+  const fetchTableData = async (params: TableParams) => {
     const { from, to } = pageInfoHandler({
       current: params.current,
       size: params.size
     })
-    return fetchVehicleViolationList({ ...params, from, to })
+    const result = await fetchVehicleViolationList({ ...params, from, to })
+    listFieldAccess.value = result.fieldAccess ?? {}
+    return result
   }
 
   const handleTableSuccess: NonNullable<ArtTableQueryProps['onSuccess']> = (rows, response) => {
@@ -212,9 +248,9 @@
       value: item.value === 'true'
     }))
 
-  const formatMoney = (value?: number | null): string => {
-    if (isNil(value)) return '--'
-    return `${Number(value).toFixed(2)} 元`
+  const formatMoney = (value?: number | string | null): string => {
+    const formatted = formatSensitiveNumber(value)
+    return formatted === '--' || formatted === '***' ? formatted : `${formatted} 元`
   }
 </script>
 

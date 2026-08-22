@@ -1,5 +1,5 @@
 <template>
-  <div class="business-workspace-page art-full-height fms-accounting-page commercial-bill-page">
+  <FinanceAccountingWorkspaceShell class="commercial-bill-page">
     <BusinessWorkspaceHeader
       density="compact"
       eyebrow="COMMERCIAL PAPER"
@@ -40,7 +40,7 @@
     <CommercialBillDialog ref="dialogRef" @success="handleSaved" />
     <CommercialBillDetailDrawer ref="drawerRef" />
     <FundExecutionDialog ref="fundExecutionRef" @success="refreshAll('update')" />
-  </div>
+  </FinanceAccountingWorkspaceShell>
 </template>
 
 <script setup lang="tsx">
@@ -596,12 +596,6 @@
 </script>
 
 <style scoped lang="scss">
-  @use '../modules/accounting-workspace.scss' as accounting;
-
-  .commercial-bill-page {
-    @include accounting.accounting-workspace-layout;
-  }
-
   :deep(.commercial-bill-link) {
     display: grid;
     gap: 3px;

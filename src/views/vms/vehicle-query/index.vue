@@ -45,7 +45,12 @@
   import { useUserStore } from '@/store/modules/user'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { mapWithConcurrency } from '@/utils/async'
-  import { formatDate, formatMileage, getLatestByDate } from './modules/query-format'
+  import {
+    formatDate,
+    formatMileage,
+    getLatestByDate,
+    toFiniteNumber
+  } from './modules/query-format'
   import type {
     VehicleArchive,
     VehicleInspection,
@@ -54,6 +59,7 @@
     VehicleMileageRecord
   } from './modules/types'
   import { isNil } from 'lodash-es'
+  import { canViewField, mergeFieldAccessMaps } from '@/utils/field-permission'
 
   defineOptions({ name: 'VehicleQuery' })
 
@@ -92,6 +98,10 @@
     total: 0,
     rows: []
   })
+  const listFieldAccess = ref<Api.Vms.ArchiveManage.VehicleArchiveFieldAccessMap>({})
+  const effectiveFieldAccess = computed(() =>
+    mergeFieldAccessMaps(listFieldAccess.value, ...overview.rows.map((row) => row.fieldAccess))
+  )
   const coverageCompleteCount = computed(
     () =>
       overview.rows.filter(
@@ -149,12 +159,16 @@
         type: 'input',
         props: { clearable: true }
       },
-      {
-        label: '车架号（VIN）',
-        key: 'vin',
-        type: 'input',
-        props: { clearable: true }
-      },
+      ...(canViewField(effectiveFieldAccess.value, 'vehicleIdentifiers')
+        ? [
+            {
+              label: '车架号（VIN）',
+              key: 'vin',
+              type: 'input' as const,
+              props: { clearable: true }
+            }
+          ]
+        : []),
       {
         label: '营运状态',
         key: 'operationStatus',
@@ -250,6 +264,7 @@
       from,
       to
     })
+    listFieldAccess.value = result.fieldAccess ?? {}
 
     return {
       ...result,
@@ -300,7 +315,8 @@
     )
 
     return {
-      runningMileage: latestMileage?.endMileage ?? latestMileage?.runningMileage ?? null,
+      runningMileage:
+        toFiniteNumber(latestMileage?.endMileage) ?? toFiniteNumber(latestMileage?.runningMileage),
       operationYears: getOperationYears(row.startUseDate),
       commercialExpireDate: latestInsurance?.commercialExpireDate,
       compulsoryExpireDate: latestInsurance?.compulsoryExpireDate,
@@ -332,7 +348,9 @@
         <strong>{row.plateNo || '未录入车牌'}</strong>
         <span>{row.manufacturer || '厂商待补充'}</span>
       </div>
-      <small title={row.vin}>{row.vin || 'VIN 待补充'}</small>
+      {canViewField(row.fieldAccess, 'vehicleIdentifiers') ? (
+        <small title={row.vin}>{row.vin || 'VIN 待补充'}</small>
+      ) : null}
     </div>
   )
 

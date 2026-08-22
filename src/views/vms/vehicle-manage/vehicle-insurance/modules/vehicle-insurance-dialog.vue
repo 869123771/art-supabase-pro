@@ -17,10 +17,11 @@
         :show-submit="false"
       />
 
-      <section class="vehicle-insurance-dialog__section">
+      <section v-if="canViewInsuranceField('documents')" class="vehicle-insurance-dialog__section">
         <div class="vehicle-insurance-dialog__section-header">
           <ArtSectionTitle :show-line="false">保险附件</ArtSectionTitle>
           <ArtExcelImport
+            v-if="canEditInsuranceField('documents')"
             accept=""
             :parse-excel="false"
             :disabled="form.attachmentUploading"
@@ -66,6 +67,11 @@
   import { uploadAttachment } from '@/api/common'
   import { downloadAttachment, getFileExtension } from '@/utils/file'
   import { renderAttachmentLink } from '@/components/core/media/art-file-viewer/render'
+  import { canEditField, canViewField } from '@/utils/field-permission'
+  import {
+    EDITABLE_VEHICLE_INSURANCE_ACCESS,
+    sanitizeVehicleInsurancePayload
+  } from './vehicle-insurance-model'
 
   defineOptions({ name: 'VehicleInsuranceDialog' })
 
@@ -75,6 +81,7 @@
   type VehicleOption = Api.Vms.VehicleManage.VehicleOption
   type InsuranceCompanyOption = Api.Vms.VehicleManage.InsuranceCompanyOption
   type Attachment = Api.Vms.VehicleManage.VehicleAttachment
+  type InsuranceFieldKey = Api.Vms.VehicleManage.VehicleInsuranceFieldKey
 
   interface FormExpose {
     validate: () => Promise<boolean>
@@ -117,8 +124,32 @@
     compulsoryPremium: null,
     compulsoryExpireDate: '',
     remark: '',
-    attachments: []
+    attachments: [],
+    fieldAccess: { ...EDITABLE_VEHICLE_INSURANCE_ACCESS },
+    isRecordOwner: false
   })
+
+  const canViewInsuranceField = (field: InsuranceFieldKey): boolean =>
+    !form.data.id || canViewField(form.data.fieldAccess, field)
+  const canEditInsuranceField = (field: InsuranceFieldKey): boolean =>
+    !form.data.id || canEditField(form.data.fieldAccess, field)
+
+  const POLICY_FIELDS = new Set(['commercialPolicyNo', 'compulsoryPolicyNo'])
+  const PREMIUM_FIELDS = new Set(['commercialPremium', 'compulsoryPremium'])
+
+  const canDisplayFormItem = (item: FormItem): boolean => {
+    const key = String(item.key)
+    if (POLICY_FIELDS.has(key)) return canViewInsuranceField('policyNumbers')
+    if (PREMIUM_FIELDS.has(key)) return canViewInsuranceField('premiumAmounts')
+    return true
+  }
+
+  const getSensitiveFieldForFormItem = (item: FormItem): InsuranceFieldKey | null => {
+    const key = String(item.key)
+    if (POLICY_FIELDS.has(key)) return 'policyNumbers'
+    if (PREMIUM_FIELDS.has(key)) return 'premiumAmounts'
+    return null
+  }
 
   const dateProps = {
     type: 'date',
@@ -138,109 +169,133 @@
     vehicleOptions: [],
     companyOptions: [],
     attachmentUploading: false,
-    items: computed<FormItem[]>(() => [
-      { label: '车辆信息', key: 'vehicleSection', type: 'divider', span: 24 },
-      {
-        label: '车牌号',
-        key: 'vehicleId',
-        type: 'select',
-        api: fetchVehicleArchiveOptions,
-        immediate: false,
-        resultField: 'data',
-        labelField: 'plateNo',
-        valueField: 'id',
-        afterFetch: syncVehicleOptions,
-        props: {
-          onChange: handleVehicleChange
+    items: computed<FormItem[]>(() => {
+      const items: FormItem[] = [
+        { label: '车辆信息', key: 'vehicleSection', type: 'divider', span: 24 },
+        {
+          label: '车牌号',
+          key: 'vehicleId',
+          type: 'select',
+          api: fetchVehicleArchiveOptions,
+          immediate: false,
+          resultField: 'data',
+          labelField: 'plateNo',
+          valueField: 'id',
+          afterFetch: syncVehicleOptions,
+          props: {
+            onChange: handleVehicleChange
+          }
+        },
+        {
+          label: '所属公司',
+          key: 'companyName',
+          type: 'input',
+          props: {
+            disabled: true,
+            placeholder: '选择车辆后自动带出'
+          }
+        },
+        { label: '商业险', key: 'commercialSection', type: 'divider', span: 24 },
+        {
+          label: '商业险保单号',
+          key: 'commercialPolicyNo',
+          type: 'input',
+          props: { maxlength: 80 }
+        },
+        {
+          label: '保险公司',
+          key: 'commercialCompanyId',
+          type: 'select',
+          api: fetchInsuranceCompanyOptions,
+          immediate: false,
+          resultField: 'data',
+          labelField: 'companyName',
+          valueField: 'id',
+          afterFetch: syncCompanyOptions,
+          props: {
+            onChange: (value?: string) => handleInsuranceCompanyChange(value, 'commercial')
+          }
+        },
+        { label: '投保日期', key: 'commercialInsureDate', type: 'date', props: dateProps },
+        { label: '投保金额', key: 'commercialPremium', type: 'number', props: moneyProps },
+        { label: '到期日期', key: 'commercialExpireDate', type: 'date', props: dateProps },
+        { label: '交强险', key: 'compulsorySection', type: 'divider', span: 24 },
+        {
+          label: '交强险保单号',
+          key: 'compulsoryPolicyNo',
+          type: 'input',
+          props: { maxlength: 80 }
+        },
+        {
+          label: '保险公司',
+          key: 'compulsoryCompanyId',
+          type: 'select',
+          api: fetchInsuranceCompanyOptions,
+          immediate: false,
+          resultField: 'data',
+          labelField: 'companyName',
+          valueField: 'id',
+          afterFetch: syncCompanyOptions,
+          props: {
+            onChange: (value?: string) => handleInsuranceCompanyChange(value, 'compulsory')
+          }
+        },
+        { label: '投保日期', key: 'compulsoryInsureDate', type: 'date', props: dateProps },
+        { label: '投保金额', key: 'compulsoryPremium', type: 'number', props: moneyProps },
+        { label: '到期日期', key: 'compulsoryExpireDate', type: 'date', props: dateProps },
+        {
+          label: '备注',
+          key: 'remark',
+          type: 'input',
+          span: 24,
+          props: { type: 'textarea', rows: 3, maxlength: 500, showWordLimit: true }
         }
-      },
-      {
-        label: '所属公司',
-        key: 'companyName',
-        type: 'input',
-        props: {
-          disabled: true,
-          placeholder: '选择车辆后自动带出'
-        }
-      },
-      { label: '商业险', key: 'commercialSection', type: 'divider', span: 24 },
-      {
-        label: '商业险保单号',
-        key: 'commercialPolicyNo',
-        type: 'input',
-        props: { maxlength: 80 }
-      },
-      {
-        label: '保险公司',
-        key: 'commercialCompanyId',
-        type: 'select',
-        api: fetchInsuranceCompanyOptions,
-        immediate: false,
-        resultField: 'data',
-        labelField: 'companyName',
-        valueField: 'id',
-        afterFetch: syncCompanyOptions,
-        props: {
-          onChange: (value?: string) => handleInsuranceCompanyChange(value, 'commercial')
-        }
-      },
-      { label: '投保日期', key: 'commercialInsureDate', type: 'date', props: dateProps },
-      { label: '投保金额', key: 'commercialPremium', type: 'number', props: moneyProps },
-      { label: '到期日期', key: 'commercialExpireDate', type: 'date', props: dateProps },
-      { label: '交强险', key: 'compulsorySection', type: 'divider', span: 24 },
-      {
-        label: '交强险保单号',
-        key: 'compulsoryPolicyNo',
-        type: 'input',
-        props: { maxlength: 80 }
-      },
-      {
-        label: '保险公司',
-        key: 'compulsoryCompanyId',
-        type: 'select',
-        api: fetchInsuranceCompanyOptions,
-        immediate: false,
-        resultField: 'data',
-        labelField: 'companyName',
-        valueField: 'id',
-        afterFetch: syncCompanyOptions,
-        props: {
-          onChange: (value?: string) => handleInsuranceCompanyChange(value, 'compulsory')
-        }
-      },
-      { label: '投保日期', key: 'compulsoryInsureDate', type: 'date', props: dateProps },
-      { label: '投保金额', key: 'compulsoryPremium', type: 'number', props: moneyProps },
-      { label: '到期日期', key: 'compulsoryExpireDate', type: 'date', props: dateProps },
-      {
-        label: '备注',
-        key: 'remark',
-        type: 'input',
-        span: 24,
-        props: { type: 'textarea', rows: 3, maxlength: 500, showWordLimit: true }
+      ]
+      return items.filter(canDisplayFormItem).map((item) => {
+        const field = getSensitiveFieldForFormItem(item)
+        if (!field || canEditInsuranceField(field)) return item
+        return { ...item, props: { ...(item.props ?? {}), disabled: true } }
+      })
+    }),
+    rules: computed<FormRules<VehicleInsurance>>(() => {
+      const rules: FormRules<VehicleInsurance> = {
+        vehicleId: [{ required: true, message: '请选择车辆', trigger: 'change' }],
+        commercialPolicyNo: [{ required: true, message: '请输入商业险保单号', trigger: 'blur' }],
+        commercialCompanyId: [
+          { required: true, message: '请选择商业险保险公司', trigger: 'change' }
+        ],
+        commercialInsureDate: [
+          { required: true, message: '请选择商业险投保日期', trigger: 'change' }
+        ],
+        commercialPremium: [{ required: true, message: '请输入商业险投保金额', trigger: 'blur' }],
+        commercialExpireDate: [
+          { required: true, message: '请选择商业险到期日期', trigger: 'change' }
+        ],
+        compulsoryPolicyNo: [{ required: true, message: '请输入交强险保单号', trigger: 'blur' }],
+        compulsoryCompanyId: [
+          { required: true, message: '请选择交强险保险公司', trigger: 'change' }
+        ],
+        compulsoryInsureDate: [
+          { required: true, message: '请选择交强险投保日期', trigger: 'change' }
+        ],
+        compulsoryPremium: [{ required: true, message: '请输入交强险投保金额', trigger: 'blur' }],
+        compulsoryExpireDate: [
+          { required: true, message: '请选择交强险到期日期', trigger: 'change' }
+        ]
       }
-    ]),
-    rules: computed<FormRules<VehicleInsurance>>(() => ({
-      vehicleId: [{ required: true, message: '请选择车辆', trigger: 'change' }],
-      commercialPolicyNo: [{ required: true, message: '请输入商业险保单号', trigger: 'blur' }],
-      commercialCompanyId: [{ required: true, message: '请选择商业险保险公司', trigger: 'change' }],
-      commercialInsureDate: [
-        { required: true, message: '请选择商业险投保日期', trigger: 'change' }
-      ],
-      commercialPremium: [{ required: true, message: '请输入商业险投保金额', trigger: 'blur' }],
-      commercialExpireDate: [
-        { required: true, message: '请选择商业险到期日期', trigger: 'change' }
-      ],
-      compulsoryPolicyNo: [{ required: true, message: '请输入交强险保单号', trigger: 'blur' }],
-      compulsoryCompanyId: [{ required: true, message: '请选择交强险保险公司', trigger: 'change' }],
-      compulsoryInsureDate: [
-        { required: true, message: '请选择交强险投保日期', trigger: 'change' }
-      ],
-      compulsoryPremium: [{ required: true, message: '请输入交强险投保金额', trigger: 'blur' }],
-      compulsoryExpireDate: [{ required: true, message: '请选择交强险到期日期', trigger: 'change' }]
-    }))
+      if (!canEditInsuranceField('policyNumbers')) {
+        delete rules.commercialPolicyNo
+        delete rules.compulsoryPolicyNo
+      }
+      if (!canEditInsuranceField('premiumAmounts')) {
+        delete rules.commercialPremium
+        delete rules.compulsoryPremium
+      }
+      return rules
+    })
   })
 
-  const attachmentColumns: ColumnOption<Attachment>[] = [
+  const attachmentColumns = computed<ColumnOption<Attachment>[]>(() => [
     { type: 'globalIndex', label: '序号', width: 72 },
     { prop: 'name', label: '附件名称', minWidth: 220, formatter: renderAttachmentLink },
     {
@@ -250,22 +305,26 @@
       dict: { code: 'FILE_EXTENSION_LABEL_MAP', display: 'text' }
     },
     { prop: 'fileSize', label: '附件大小', width: 120 },
-    {
-      prop: 'operation',
-      label: '操作',
-      width: 96,
-      formatter: (row) => (
-        <div class="flex items-center">
-          <ArtIconButton icon="ri:download-2-line" onClick={() => downloadAttachment(row)} />
-          <ArtIconButton
-            icon="ri:delete-bin-5-line"
-            tone="danger"
-            onClick={() => void removeAttachment(row)}
-          />
-        </div>
-      )
-    }
-  ]
+    ...(canEditInsuranceField('documents')
+      ? [
+          {
+            prop: 'operation',
+            label: '操作',
+            width: 96,
+            formatter: (row) => (
+              <div class="flex items-center">
+                <ArtIconButton icon="ri:download-2-line" onClick={() => downloadAttachment(row)} />
+                <ArtIconButton
+                  icon="ri:delete-bin-5-line"
+                  tone="danger"
+                  onClick={() => void removeAttachment(row)}
+                />
+              </div>
+            )
+          } as ColumnOption<Attachment>
+        ]
+      : [])
+  ])
 
   const getResponseData = <TRecord,>(result: unknown): TRecord[] => {
     if (!result || typeof result !== 'object') return []
@@ -314,12 +373,7 @@
   }
 
   const normalizePayload = (): VehicleInsurance => {
-    const payload = { ...toRaw(form.data) }
-    delete payload.tenantId
-    delete payload.createBy
-    delete payload.createTime
-    delete payload.updateBy
-    delete payload.updateTime
+    const payload = sanitizeVehicleInsurancePayload(toRaw(form.data))
     return {
       ...payload,
       vehicleId: payload.vehicleId || null,

@@ -41,15 +41,18 @@
             detail-placeholder="输入事故地点，或使用地图搜索并选点"
             address-detail-prop="accidentLocation"
             label-width="120px"
+            :disabled="!canEditAccidentField('accidentLocation')"
             @address-change="handleLocationChange"
           />
         </template>
       </ArtForm>
 
-      <section class="accident-record-dialog__section">
+      <section v-if="canViewDocuments" class="accident-record-dialog__section">
         <div class="accident-record-dialog__section-header">
           <ArtSectionTitle :show-line="false">事故附件</ArtSectionTitle>
-          <ElButton type="primary" plain @click="openAttachmentDialog">上传</ElButton>
+          <ElButton v-if="canEditDocuments" type="primary" plain @click="openAttachmentDialog">
+            上传
+          </ElButton>
         </div>
         <ArtTable
           :data="form.data.attachments"
@@ -125,12 +128,18 @@
   import { downloadAttachment, getFileExtension } from '@/utils/file'
   import { renderAttachmentLink } from '@/components/core/media/art-file-viewer/render'
   import { useUserStore } from '@/store/modules/user'
+  import { canEditField, canViewField } from '@/utils/field-permission'
+  import {
+    EDITABLE_VEHICLE_ACCIDENT_ACCESS,
+    sanitizeVehicleAccidentPayload
+  } from './accident-record-model'
 
   defineOptions({ name: 'AccidentRecordDialog' })
 
   const { confirmAction } = useArtFeedback()
 
   type AccidentRecord = Api.Vms.VehicleManage.VehicleAccidentRecord
+  type AccidentFieldKey = Api.Vms.VehicleManage.VehicleAccidentFieldKey
   type VehicleArchive = Api.Vms.ArchiveManage.VehicleArchive
   type Attachment = Api.Vms.VehicleManage.VehicleAttachment
 
@@ -195,8 +204,31 @@
     processed: false,
     dataSource: 'self',
     remark: '',
-    attachments: []
+    attachments: [],
+    fieldAccess: { ...EDITABLE_VEHICLE_ACCIDENT_ACCESS },
+    isRecordOwner: true
   })
+
+  const canViewAccidentField = (field: AccidentFieldKey): boolean =>
+    !form.data.id || canViewField(form.data.fieldAccess, field)
+  const canEditAccidentField = (field: AccidentFieldKey): boolean =>
+    !form.data.id || canEditField(form.data.fieldAccess, field)
+  const canViewDocuments = computed(() => canViewAccidentField('documents'))
+  const canEditDocuments = computed(() => canEditAccidentField('documents'))
+
+  const DRIVER_FIELDS = new Set(['driverName', 'driverPhone'])
+  const LOCATION_FIELDS = new Set(['accidentLocation'])
+  const NARRATIVE_FIELDS = new Set(['accidentSummary', 'remark'])
+  const LOSS_FIELDS = new Set(['economicLoss', 'companyBearAmount'])
+
+  const getSensitiveFieldForFormItem = (item: FormItem): AccidentFieldKey | null => {
+    const key = String(item.key)
+    if (DRIVER_FIELDS.has(key)) return 'driverContact'
+    if (LOCATION_FIELDS.has(key)) return 'accidentLocation'
+    if (NARRATIVE_FIELDS.has(key)) return 'accidentNarrative'
+    if (LOSS_FIELDS.has(key)) return 'lossAmounts'
+    return null
+  }
 
   const createInitialAttachmentForm = (): AttachmentFormData => ({
     name: '',
@@ -223,89 +255,109 @@
   const form: UnwrapNestedRefs<FormGroup> = reactive<FormGroup>({
     data: createInitialForm(),
     vehicleSelection: [],
-    items: computed<FormItem[]>(() => [
-      { label: '基础信息', key: 'baseSection', type: 'divider', span: 24 },
-      { label: '车牌号', key: 'vehicleId', span: 12 },
-      { label: '所属公司', key: 'companyName', type: 'input', props: { disabled: true } },
-      {
-        label: '驾驶员',
-        key: 'driverName',
-        type: 'input',
-        props: { maxlength: 50, placeholder: '选择车辆后自动带出，可按实际情况修改' }
-      },
-      {
-        label: '联系方式',
-        key: 'driverPhone',
-        type: 'input',
-        props: { maxlength: 30, placeholder: '选择车辆后自动带出，可按实际情况修改' }
-      },
-      { label: '事故时间', key: 'accidentTime', type: 'date', props: dateTimeProps },
-      {
-        label: '',
-        key: 'accidentLocation',
-        type: 'input',
-        span: 24,
-        labelWidth: 0
-      },
-      {
-        label: '事故概述',
-        key: 'accidentSummary',
-        type: 'input',
-        span: 24,
-        props: { type: 'textarea', rows: 3, maxlength: 500, showWordLimit: true }
-      },
-      { label: '责任及处理', key: 'processSection', type: 'divider', span: 24 },
-      { label: '事故等级', key: 'damageLevel', type: 'input', props: { maxlength: 50 } },
-      {
-        label: '责任类型',
-        key: 'responsibilityType',
-        type: 'select',
-        props: { options: getDictMap.value.vehicleAccidentResponsibility ?? [] }
-      },
-      {
-        label: '责任比例',
-        key: 'responsibilityPercent',
-        type: 'number',
-        props: { min: 0, max: 100, precision: 0, controlsPosition: 'right', class: '!w-full' }
-      },
-      { label: '经济损失', key: 'economicLoss', type: 'number', props: moneyProps },
-      { label: '公司承担', key: 'companyBearAmount', type: 'number', props: moneyProps },
-      {
-        label: '是否报案',
-        key: 'reported',
-        type: 'radioGroup',
-        props: { options: getBooleanDictOptions() }
-      },
-      {
-        label: '是否报保险公司',
-        key: 'insuranceReported',
-        type: 'radioGroup',
-        props: { options: getBooleanDictOptions() }
-      },
-      {
-        label: '是否处理',
-        key: 'processed',
-        type: 'radioGroup',
-        props: { options: getProcessedDictOptions() }
-      },
-      {
-        label: '数据来源',
-        key: 'dataSource',
-        type: 'select',
-        props: { options: getDictMap.value.vehicleAccidentDataSource ?? [] }
-      },
-      {
-        label: '备注',
-        key: 'remark',
-        type: 'input',
-        span: 24,
-        props: { type: 'textarea', rows: 3, maxlength: 500, showWordLimit: true }
-      }
-    ]),
+    items: computed<FormItem[]>(() => {
+      const items: FormItem[] = [
+        { label: '基础信息', key: 'baseSection', type: 'divider', span: 24 },
+        { label: '车牌号', key: 'vehicleId', span: 12 },
+        { label: '所属公司', key: 'companyName', type: 'input', props: { disabled: true } },
+        {
+          label: '驾驶员',
+          key: 'driverName',
+          type: 'input',
+          props: { maxlength: 50, placeholder: '选择车辆后自动带出，可按实际情况修改' }
+        },
+        {
+          label: '联系方式',
+          key: 'driverPhone',
+          type: 'input',
+          props: { maxlength: 30, placeholder: '选择车辆后自动带出，可按实际情况修改' }
+        },
+        { label: '事故时间', key: 'accidentTime', type: 'date', props: dateTimeProps },
+        {
+          label: '',
+          key: 'accidentLocation',
+          type: 'input',
+          span: 24,
+          labelWidth: 0
+        },
+        {
+          label: '事故概述',
+          key: 'accidentSummary',
+          type: 'input',
+          span: 24,
+          props: { type: 'textarea', rows: 3, maxlength: 500, showWordLimit: true }
+        },
+        { label: '责任及处理', key: 'processSection', type: 'divider', span: 24 },
+        { label: '事故等级', key: 'damageLevel', type: 'input', props: { maxlength: 50 } },
+        {
+          label: '责任类型',
+          key: 'responsibilityType',
+          type: 'select',
+          props: { options: getDictMap.value.vehicleAccidentResponsibility ?? [] }
+        },
+        {
+          label: '责任比例',
+          key: 'responsibilityPercent',
+          type: 'number',
+          props: {
+            min: 0,
+            max: 100,
+            precision: 0,
+            controlsPosition: 'right',
+            class: '!w-full'
+          }
+        },
+        { label: '经济损失', key: 'economicLoss', type: 'number', props: moneyProps },
+        { label: '公司承担', key: 'companyBearAmount', type: 'number', props: moneyProps },
+        {
+          label: '是否报案',
+          key: 'reported',
+          type: 'radioGroup',
+          props: { options: getBooleanDictOptions() }
+        },
+        {
+          label: '是否报保险公司',
+          key: 'insuranceReported',
+          type: 'radioGroup',
+          props: { options: getBooleanDictOptions() }
+        },
+        {
+          label: '是否处理',
+          key: 'processed',
+          type: 'radioGroup',
+          props: { options: getProcessedDictOptions() }
+        },
+        {
+          label: '数据来源',
+          key: 'dataSource',
+          type: 'select',
+          props: { options: getDictMap.value.vehicleAccidentDataSource ?? [] }
+        },
+        {
+          label: '备注',
+          key: 'remark',
+          type: 'input',
+          span: 24,
+          props: { type: 'textarea', rows: 3, maxlength: 500, showWordLimit: true }
+        }
+      ]
+      return items
+        .filter((item) => {
+          const field = getSensitiveFieldForFormItem(item)
+          return !field || canViewAccidentField(field)
+        })
+        .map((item) => {
+          const field = getSensitiveFieldForFormItem(item)
+          if (!field || canEditAccidentField(field) || field === 'accidentLocation') return item
+          return { ...item, props: { ...(item.props ?? {}), disabled: true } }
+        })
+    }),
     rules: computed<FormRules<AccidentRecord>>(() => ({
       vehicleId: [{ required: true, message: '请选择车辆', trigger: 'change' }],
       accidentTime: [{ required: true, message: '请选择事故时间', trigger: 'change' }],
-      accidentSummary: [{ required: true, message: '请输入事故概述', trigger: 'blur' }],
+      accidentSummary: canEditAccidentField('accidentNarrative')
+        ? [{ required: true, message: '请输入事故概述', trigger: 'blur' }]
+        : [],
       dataSource: [{ required: true, message: '请选择数据来源', trigger: 'change' }]
     }))
   })
@@ -357,7 +409,7 @@
     }
   ]
 
-  const attachmentColumns: ColumnOption<Attachment>[] = [
+  const attachmentColumns = computed<ColumnOption<Attachment>[]>(() => [
     { type: 'globalIndex', label: '序号', width: 56 },
     { prop: 'name', label: '事故附件名称', formatter: renderAttachmentLink },
     {
@@ -374,15 +426,17 @@
       formatter: (row) => (
         <div class="flex items-center">
           <ArtIconButton icon="ri:download-2-line" onClick={() => downloadAttachment(row)} />
-          <ArtIconButton
-            icon="ri:delete-bin-5-line"
-            tone="danger"
-            onClick={() => void removeAttachment(row)}
-          />
+          {canEditDocuments.value ? (
+            <ArtIconButton
+              icon="ri:delete-bin-5-line"
+              tone="danger"
+              onClick={() => void removeAttachment(row)}
+            />
+          ) : null}
         </div>
       )
     }
-  ]
+  ])
 
   const getBooleanDictOptions = () =>
     (getDictMap.value.commonBoolean ?? []).map((item) => ({
@@ -510,15 +564,10 @@
 
   const normalizePayload = (): AccidentRecord => {
     const payload = { ...toRaw(form.data) }
-    delete payload.tenantId
-    delete payload.createBy
-    delete payload.createTime
-    delete payload.updateBy
-    delete payload.updateTime
     const accidentLongitude = normalizeNullableNumber(payload.accidentLongitude)
     const accidentLatitude = normalizeNullableNumber(payload.accidentLatitude)
     const hasCoordinate = accidentLongitude !== null && accidentLatitude !== null
-    return {
+    return sanitizeVehicleAccidentPayload({
       ...payload,
       vehicleId: payload.vehicleId || null,
       driverName: payload.driverName?.trim() || '',
@@ -527,7 +576,7 @@
       accidentLongitude: hasCoordinate ? accidentLongitude : null,
       accidentLatitude: hasCoordinate ? accidentLatitude : null,
       attachments: payload.attachments ?? []
-    }
+    })
   }
 
   const normalizeNullableNumber = (value: unknown): number | null => {

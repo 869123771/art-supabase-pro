@@ -17,8 +17,12 @@ export class ComponentLoader {
   private modules: Record<string, RouteComponentLoader>
 
   constructor() {
-    // 动态导入 views 目录下所有 .vue 组件
-    this.modules = import.meta.glob<RouteComponentModule>('../../views/**/*.vue')
+    // 业务模块与局部组件不作为路由入口，避免它们进入动态路由映射和首屏依赖图。
+    this.modules = import.meta.glob<RouteComponentModule>([
+      '../../views/**/*.vue',
+      '!../../views/**/modules/**/*.vue',
+      '!../../views/**/components/**/*.vue'
+    ])
   }
 
   /**

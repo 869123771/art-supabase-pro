@@ -18,9 +18,8 @@
           <ArtIconButton
             icon="ri:refresh-line"
             circle
-            :disabled="state.loading"
-            :class="{ 'ocr-quality__refreshing': state.loading }"
-            aria-label="刷新 OCR 质量"
+            label="刷新 OCR 质量"
+            :loading="state.loading"
             @click="loadData"
           />
         </ElTooltip>
@@ -334,10 +333,6 @@
       }
     }
 
-    &__refreshing :deep(svg) {
-      animation: ocr-quality-spin 0.8s linear infinite;
-    }
-
     &__metrics {
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -586,18 +581,6 @@
       &__metrics {
         grid-template-columns: 1fr;
       }
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      &__refreshing :deep(svg) {
-        animation: none;
-      }
-    }
-  }
-
-  @keyframes ocr-quality-spin {
-    to {
-      transform: rotate(360deg);
     }
   }
 </style>

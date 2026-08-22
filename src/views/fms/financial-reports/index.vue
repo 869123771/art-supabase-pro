@@ -1,5 +1,5 @@
 <template>
-  <div class="business-workspace-page art-full-height fms-accounting-page financial-reports-page">
+  <FinanceAccountingWorkspaceShell class="financial-reports-page">
     <BusinessWorkspaceHeader
       density="compact"
       eyebrow="FINANCIAL STATEMENTS"
@@ -70,7 +70,7 @@
     />
 
     <StatementConfigDrawer ref="configDrawerRef" @success="refreshReport" />
-  </div>
+  </FinanceAccountingWorkspaceShell>
 </template>
 
 <script setup lang="tsx">
@@ -585,11 +585,7 @@
 </script>
 
 <style scoped lang="scss">
-  @use '../modules/accounting-workspace.scss' as accounting;
-
   .financial-reports-page {
-    @include accounting.accounting-workspace-layout;
-
     &__tabs {
       flex: 0 0 auto;
 

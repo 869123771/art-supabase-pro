@@ -16,7 +16,10 @@
     />
 
     <section class="vehicle-part-usage-detail__summary art-card-xs">
-      <div class="vehicle-part-usage-detail__summary-item">
+      <div
+        v-if="canViewField(fieldAccess, 'traceabilityTag')"
+        class="vehicle-part-usage-detail__summary-item"
+      >
         <span>零部件状态</span>
         <strong>
           <ArtDictDisplay
@@ -30,13 +33,23 @@
         <span>RFID 标签</span>
         <strong>{{ detail.data?.rfidTag || '待绑定' }}</strong>
       </div>
-      <div class="vehicle-part-usage-detail__summary-item">
+      <div
+        v-if="canViewField(fieldAccess, 'lifecycleLimits')"
+        class="vehicle-part-usage-detail__summary-item"
+      >
         <span>启用日期</span>
-        <strong>{{ detail.data?.enableDate || '--' }}</strong>
+        <strong>{{
+          detail.data?.lifecycleLimitsMasked ? '***' : detail.data?.enableDate || '--'
+        }}</strong>
       </div>
-      <div class="vehicle-part-usage-detail__summary-item">
+      <div
+        v-if="canViewField(fieldAccess, 'lifecycleLimits')"
+        class="vehicle-part-usage-detail__summary-item"
+      >
         <span>已使用里程</span>
-        <strong>{{ formatMileage(detail.data?.usedMileage) }}</strong>
+        <strong>{{
+          detail.data?.lifecycleLimitsMasked ? '***' : formatMileage(detail.data?.usedMileage)
+        }}</strong>
       </div>
     </section>
 
@@ -60,6 +73,7 @@
   import type { ArtDescriptionItem } from '@/components/core/base/art-descriptions/types'
   import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
   import { fetchVehiclePartUsageDetail } from '@/api/vms'
+  import { canViewField } from '@/utils/field-permission'
 
   defineOptions({ name: 'VehiclePartUsageDetail' })
 
@@ -69,12 +83,13 @@
   const router = useRouter()
   const page = reactive<{ loading: boolean; error: Error | null }>({ loading: false, error: null })
   const detail = reactive<{ data?: Usage }>({ data: undefined })
+  const fieldAccess = computed(() => detail.data?.fieldAccess ?? {})
   const descriptionData = computed<Partial<Usage>>(() => detail.data ?? {})
 
   const formatMileage = (value?: number | null): string =>
     value === undefined || value === null ? '--' : `${Number(value).toLocaleString()} km`
 
-  const partItems: ArtDescriptionItem<Partial<Usage>>[] = [
+  const partItems = computed<ArtDescriptionItem<Partial<Usage>>[]>(() => [
     { key: 'plateNo', label: '车牌号', field: 'plateNo' },
     { key: 'companyName', label: '所属公司', field: 'companyName' },
     { key: 'partType', label: '零部件类型', field: 'partType', dictCode: 'vehiclePartType' },
@@ -99,11 +114,21 @@
       dictDisplay: 'text'
     },
     { key: 'manufacturer', label: '生产厂商', field: 'manufacturer' },
-    { key: 'supplierName', label: '供应厂商', field: 'supplierName' },
-    { key: 'supplierContact', label: '供应厂商联系人', field: 'supplierContact', span: 2 }
-  ]
+    ...(canViewField(fieldAccess.value, 'supplierDetails')
+      ? ([
+          { key: 'supplierName', label: '供应厂商', field: 'supplierName' },
+          {
+            key: 'supplierContact',
+            label: '供应厂商联系人',
+            field: 'supplierContact',
+            span: 2
+          }
+        ] as ArtDescriptionItem<Partial<Usage>>[])
+      : [])
+  ])
 
   const warrantyText = computed(() => {
+    if (detail.data?.lifecycleLimitsMasked) return '***'
     if (detail.data?.warrantyMode === 'vehicle') return '随整车质保'
     return (
       [
@@ -116,6 +141,7 @@
   })
 
   const serviceLifeText = computed(() => {
+    if (detail.data?.lifecycleLimitsMasked) return '***'
     return (
       [
         detail.data?.serviceMileageEnabled && detail.data.serviceMileage
@@ -131,30 +157,47 @@
   })
 
   const usageItems = computed<ArtDescriptionItem<Partial<Usage>>[]>(() => [
-    {
-      key: 'rfidTag',
-      label: 'RFID标签',
-      value: (data: Partial<Usage>) => (data.rfidEnabled ? data.rfidTag : '否')
-    },
-    { key: 'enableDate', label: '启用日期', field: 'enableDate', format: 'date' },
-    { key: 'warranty', label: '质保期', value: warrantyText.value },
-    { key: 'serviceLife', label: '使用寿命', value: serviceLifeText.value, span: 2 },
-    {
-      key: 'usedMileage',
-      label: '已使用里程',
-      field: 'usedMileage',
-      formatter: (value) => numberWithUnit(value as number | null | undefined, '公里')
-    },
+    ...(canViewField(fieldAccess.value, 'traceabilityTag')
+      ? ([
+          {
+            key: 'rfidTag',
+            label: 'RFID标签',
+            value: (data: Partial<Usage>) => (data.rfidEnabled ? data.rfidTag : '否')
+          }
+        ] as ArtDescriptionItem<Partial<Usage>>[])
+      : []),
+    ...(canViewField(fieldAccess.value, 'lifecycleLimits')
+      ? ([
+          {
+            key: 'enableDate',
+            label: '启用日期',
+            value: detail.data?.lifecycleLimitsMasked ? '***' : detail.data?.enableDate || '--'
+          },
+          { key: 'warranty', label: '质保期', value: warrantyText.value },
+          { key: 'serviceLife', label: '使用寿命', value: serviceLifeText.value, span: 2 },
+          {
+            key: 'usedMileage',
+            label: '已使用里程',
+            value: detail.data?.lifecycleLimitsMasked
+              ? '***'
+              : numberWithUnit(detail.data?.usedMileage, '公里')
+          }
+        ] as ArtDescriptionItem<Partial<Usage>>[])
+      : []),
     {
       key: 'status',
       label: '状态',
       field: 'status',
       dictCode: 'vehiclePartUsageStatus'
     },
-    ...(detail.data?.status === 'scrapped'
+    ...(detail.data?.status === 'scrapped' && canViewField(fieldAccess.value, 'dispositionNotes')
       ? [{ key: 'scrapReason', label: '报废原因', field: 'scrapReason', span: 2 }]
       : []),
-    { key: 'remark', label: '备注', field: 'remark', span: 3 }
+    ...(canViewField(fieldAccess.value, 'dispositionNotes')
+      ? ([{ key: 'remark', label: '备注', field: 'remark', span: 3 }] as ArtDescriptionItem<
+          Partial<Usage>
+        >[])
+      : [])
   ])
 
   onMounted(() => {

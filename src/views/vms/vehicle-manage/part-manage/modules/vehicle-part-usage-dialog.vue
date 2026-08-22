@@ -4,6 +4,15 @@
       >登记零部件装车、质保、使用基线和 RFID 信息，持续跟踪部件寿命状态。</template
     >
 
+    <ElAlert
+      v-if="form.data.lifecycleLimitsMasked"
+      class="vehicle-part-usage-form__permission-alert"
+      title="寿命、质保与里程数据已按当前字段权限脱敏"
+      type="info"
+      :closable="false"
+      show-icon
+    />
+
     <ArtForm
       ref="formRef"
       v-model="form.data"
@@ -50,7 +59,10 @@
 
       <template #rfidTag>
         <div class="vehicle-part-usage-form__inline">
-          <ElRadioGroup v-model="form.data.rfidEnabled">
+          <ElRadioGroup
+            v-model="form.data.rfidEnabled"
+            :disabled="!canEditField(currentFieldAccess, 'traceabilityTag')"
+          >
             <ElRadio
               v-for="option in getBooleanDictOptions()"
               :key="String(option.value)"
@@ -65,13 +77,18 @@
             placeholder="请输入RFID标签"
             maxlength="80"
             clearable
+            :disabled="!canEditField(currentFieldAccess, 'traceabilityTag')"
           />
         </div>
       </template>
 
       <template #enableDate>
         <div class="vehicle-part-usage-form__inline">
-          <ElRadioGroup v-model="form.data.enableMode" @change="handleEnableModeChange">
+          <ElRadioGroup
+            v-model="form.data.enableMode"
+            :disabled="!canEditField(currentFieldAccess, 'lifecycleLimits')"
+            @change="handleEnableModeChange"
+          >
             <ElRadio
               v-for="option in getDictMap.vehiclePartEnableMode ?? []"
               :key="option.value"
@@ -87,13 +104,18 @@
             value-format="YYYY-MM-DD"
             placeholder="选择启用日期"
             class="w-full"
+            :disabled="!canEditField(currentFieldAccess, 'lifecycleLimits')"
           />
         </div>
       </template>
 
       <template #warrantyMileage>
         <div class="vehicle-part-usage-form__stack">
-          <ElRadioGroup v-model="form.data.warrantyMode" @change="handleWarrantyModeChange">
+          <ElRadioGroup
+            v-model="form.data.warrantyMode"
+            :disabled="!canEditField(currentFieldAccess, 'lifecycleLimits')"
+            @change="handleWarrantyModeChange"
+          >
             <ElRadio
               v-for="option in getDictMap.vehiclePartWarrantyMode ?? []"
               :key="option.value"
@@ -111,6 +133,7 @@
               :min="0"
               :controls="false"
               placeholder="质保里程"
+              :disabled="!canEditField(currentFieldAccess, 'lifecycleLimits')"
             />
             <span>公里</span>
             <ElInputNumber
@@ -119,6 +142,7 @@
               :precision="0"
               :controls="false"
               placeholder="质保时长"
+              :disabled="!canEditField(currentFieldAccess, 'lifecycleLimits')"
             />
             <span>个月</span>
           </div>
@@ -127,21 +151,31 @@
 
       <template #serviceMileage>
         <div class="vehicle-part-usage-form__metric-list">
-          <ElCheckbox v-model="form.data.serviceMileageEnabled">使用里程</ElCheckbox>
+          <ElCheckbox
+            v-model="form.data.serviceMileageEnabled"
+            :disabled="!canEditField(currentFieldAccess, 'lifecycleLimits')"
+            >使用里程</ElCheckbox
+          >
           <ElInputNumber
             v-if="form.data.serviceMileageEnabled"
             v-model="form.data.serviceMileage"
             :min="0"
             :controls="false"
+            :disabled="!canEditField(currentFieldAccess, 'lifecycleLimits')"
           />
           <span v-if="form.data.serviceMileageEnabled">公里</span>
-          <ElCheckbox v-model="form.data.serviceYearsEnabled">使用年限</ElCheckbox>
+          <ElCheckbox
+            v-model="form.data.serviceYearsEnabled"
+            :disabled="!canEditField(currentFieldAccess, 'lifecycleLimits')"
+            >使用年限</ElCheckbox
+          >
           <ElInputNumber
             v-if="form.data.serviceYearsEnabled"
             v-model="form.data.serviceYears"
             :min="0"
             :precision="0"
             :controls="false"
+            :disabled="!canEditField(currentFieldAccess, 'lifecycleLimits')"
           />
           <span v-if="form.data.serviceYearsEnabled">年</span>
         </div>
@@ -159,10 +193,14 @@
             </ElRadio>
           </ElRadioGroup>
           <ElInput
-            v-if="form.data.status === 'scrapped'"
+            v-if="
+              form.data.status === 'scrapped' &&
+              canViewField(currentFieldAccess, 'dispositionNotes')
+            "
             v-model="form.data.scrapReason"
             placeholder="请输入报废原因"
             maxlength="200"
+            :disabled="!canEditField(currentFieldAccess, 'dispositionNotes')"
           />
         </div>
       </template>
@@ -190,6 +228,11 @@
     fetchVehicleArchiveList
   } from '@/api/vms'
   import { useUserStore } from '@/store/modules/user'
+  import { canEditField, canViewField } from '@/utils/field-permission'
+  import {
+    EDITABLE_VEHICLE_PART_USAGE_ACCESS,
+    sanitizeVehiclePartUsagePayload
+  } from './vehicle-part-usage-model'
 
   defineOptions({ name: 'VehiclePartUsageDialog' })
 
@@ -215,6 +258,9 @@
     validate: () => Promise<boolean>
     clearValidate: () => void
   }>()
+  const currentFieldAccess = computed(() =>
+    form.data.id ? (form.data.fieldAccess ?? {}) : EDITABLE_VEHICLE_PART_USAGE_ACCESS
+  )
 
   const createInitialForm = (): Usage => ({
     id: undefined,
@@ -317,39 +363,64 @@
       options: getDictMap.value.vehiclePartQualityCategory ?? []
     },
     { label: '生产厂商', key: 'manufacturer', type: 'input' },
-    {
-      label: '供应厂商',
-      key: 'supplierName',
-      type: 'input',
-      props: { disabled: true }
-    },
-    {
-      label: '供应厂商联系人',
-      key: 'supplierContact',
-      type: 'input',
-      span: 16,
-      props: { disabled: true }
-    },
+    ...(canViewField(currentFieldAccess.value, 'supplierDetails')
+      ? ([
+          {
+            label: '供应厂商',
+            key: 'supplierName',
+            type: 'input',
+            props: { disabled: true }
+          },
+          {
+            label: '供应厂商联系人',
+            key: 'supplierContact',
+            type: 'input',
+            span: 16,
+            props: { disabled: true }
+          }
+        ] as FormItem[])
+      : []),
     { label: '零部件使用', key: 'partUsageSection', type: 'divider', span: 24 },
-    { label: 'RFID标签', key: 'rfidTag', span: 24 },
-    { label: '启用日期', key: 'enableDate', span: 24 },
-    { label: '质保期', key: 'warrantyMileage', span: 24 },
-    { label: '使用寿命', key: 'serviceMileage', span: 24 },
-    {
-      label: '已使用里程',
-      key: 'usedMileage',
-      type: 'number',
-      span: 12,
-      props: { min: 0, controls: false, class: 'w-full' }
-    },
+    ...(canViewField(currentFieldAccess.value, 'traceabilityTag')
+      ? ([{ label: 'RFID标签', key: 'rfidTag', span: 24 }] as FormItem[])
+      : []),
+    ...(canViewField(currentFieldAccess.value, 'lifecycleLimits')
+      ? ([
+          { label: '启用日期', key: 'enableDate', span: 24 },
+          { label: '质保期', key: 'warrantyMileage', span: 24 },
+          { label: '使用寿命', key: 'serviceMileage', span: 24 },
+          {
+            label: '已使用里程',
+            key: 'usedMileage',
+            type: 'number',
+            span: 12,
+            props: {
+              min: 0,
+              controls: false,
+              class: 'w-full',
+              disabled: !canEditField(currentFieldAccess.value, 'lifecycleLimits')
+            }
+          }
+        ] as FormItem[])
+      : []),
     { label: '状态', key: 'status', span: 24 },
-    {
-      label: '备注',
-      key: 'remark',
-      type: 'input',
-      span: 24,
-      props: { type: 'textarea', rows: 3, maxlength: 500, showWordLimit: true }
-    }
+    ...(canViewField(currentFieldAccess.value, 'dispositionNotes')
+      ? ([
+          {
+            label: '备注',
+            key: 'remark',
+            type: 'input',
+            span: 24,
+            props: {
+              type: 'textarea',
+              rows: 3,
+              maxlength: 500,
+              showWordLimit: true,
+              disabled: !canEditField(currentFieldAccess.value, 'dispositionNotes')
+            }
+          }
+        ] as FormItem[])
+      : [])
   ])
 
   const vehicleSelectValue = computed<DataSelectKey | undefined>({
@@ -480,6 +551,7 @@
   }
 
   function validateRfidTag(_rule: unknown, value: string, callback: (error?: Error) => void): void {
+    if (!canEditField(currentFieldAccess.value, 'traceabilityTag')) return callback()
     if (form.data.rfidEnabled && !String(value ?? '').trim()) {
       callback(new Error('请输入RFID标签'))
       return
@@ -492,6 +564,7 @@
     value: string,
     callback: (error?: Error) => void
   ): void {
+    if (!canEditField(currentFieldAccess.value, 'lifecycleLimits')) return callback()
     if (form.data.enableMode === 'date' && !value) {
       callback(new Error('请选择启用日期'))
       return
@@ -504,6 +577,7 @@
     _value: number,
     callback: (error?: Error) => void
   ): void {
+    if (!canEditField(currentFieldAccess.value, 'lifecycleLimits')) return callback()
     if (
       form.data.warrantyMode === 'self' &&
       !form.data.warrantyMileage &&
@@ -520,6 +594,7 @@
     _value: number,
     callback: (error?: Error) => void
   ): void {
+    if (!canEditField(currentFieldAccess.value, 'lifecycleLimits')) return callback()
     if (!form.data.serviceMileageEnabled && !form.data.serviceYearsEnabled) {
       callback(new Error('请至少选择一种使用寿命'))
       return
@@ -536,6 +611,7 @@
   }
 
   function validateStatus(_rule: unknown, _value: string, callback: (error?: Error) => void): void {
+    if (!canEditField(currentFieldAccess.value, 'dispositionNotes')) return callback()
     if (form.data.status === 'scrapped' && !String(form.data.scrapReason ?? '').trim()) {
       callback(new Error('请输入报废原因'))
       return
@@ -592,7 +668,7 @@
     if (!payload.serviceMileageEnabled) payload.serviceMileage = null
     if (!payload.serviceYearsEnabled) payload.serviceYears = null
     if (payload.status !== 'scrapped') payload.scrapReason = ''
-    return payload
+    return sanitizeVehiclePartUsagePayload(payload)
   }
 
   const handleSubmit = async (): Promise<boolean> => {
@@ -659,6 +735,10 @@
       gap: 12px;
       align-items: flex-start;
       width: 100%;
+    }
+
+    &__permission-alert {
+      margin-bottom: 16px;
     }
 
     &__metric-list {

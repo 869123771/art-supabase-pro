@@ -1,6 +1,6 @@
 <template>
-  <div
-    class="business-workspace-page art-full-height fms-accounting-page accounting-currency-page"
+  <FinanceAccountingWorkspaceShell
+    class="accounting-currency-page"
     :class="{ 'is-focus-mode': focusMode }"
   >
     <BusinessWorkspaceHeader
@@ -206,7 +206,7 @@
 
     <CurrencyDialog ref="currencyDialogRef" @success="loadWorkspace" />
     <ExchangeRateDialog ref="rateDialogRef" @success="loadWorkspace" />
-  </div>
+  </FinanceAccountingWorkspaceShell>
 </template>
 
 <script setup lang="tsx">
@@ -546,11 +546,7 @@
 </script>
 
 <style scoped lang="scss">
-  @use '../modules/accounting-workspace.scss' as accounting;
-
   .accounting-currency-page {
-    @include accounting.accounting-workspace-layout;
-
     &.is-focus-mode {
       gap: 0;
     }

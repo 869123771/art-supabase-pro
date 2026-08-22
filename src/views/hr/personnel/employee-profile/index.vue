@@ -67,119 +67,16 @@
         />
       </ElTabPane>
 
-      <ElTabPane v-if="canViewCareerRecords && !form.historiesMasked" name="contracts">
-        <template #label
-          >劳动合同
-          <span class="hr-profile-page__tab-count">{{ form.contracts.length }}</span></template
-        >
-        <HistorySection
-          title="劳动合同"
-          description="维护合同期限、签署状态、工作地点与薪资信息"
-          add-label="新增合同"
-          icon="ri:file-list-3-line"
-          :count="form.contracts.length"
-          :readonly="!canEditCareerRecords"
-          @add="form.contracts.push(createContract())"
-        >
-          <HistoryCard
-            v-for="(item, index) in form.contracts"
-            :key="item.id || index"
-            :title="item.contractNo || `合同 ${index + 1}`"
-            :subtitle="displayDict('hrContractStatus', item.contractStatus)"
-            :readonly="!canEditCareerRecords"
-            @remove="form.contracts.splice(index, 1)"
-          >
-            <ElForm
-              label-position="top"
-              class="hr-profile-page__record-form"
-              :disabled="!canEditCareerRecords"
-            >
-              <ElFormItem
-                label="合同编号"
-                required
-                :error="historyFieldError('contracts', index, 'contractNo')"
-                :data-validation-key="historyFieldKey('contracts', index, 'contractNo')"
-                ><ElInput v-model="item.contractNo" maxlength="60"
-              /></ElFormItem>
-              <ElFormItem
-                label="合同类型"
-                required
-                :error="historyFieldError('contracts', index, 'contractType')"
-                :data-validation-key="historyFieldKey('contracts', index, 'contractType')"
-                ><ElSelect v-model="item.contractType"
-                  ><ElOption
-                    v-for="option in dict('hrContractType')"
-                    :key="option.value"
-                    :label="option.label"
-                    :value="option.value" /></ElSelect
-              ></ElFormItem>
-              <ElFormItem
-                label="合同状态"
-                required
-                :error="historyFieldError('contracts', index, 'contractStatus')"
-                :data-validation-key="historyFieldKey('contracts', index, 'contractStatus')"
-                ><ElSelect v-model="item.contractStatus"
-                  ><ElOption
-                    v-for="option in dict('hrContractStatus')"
-                    :key="option.value"
-                    :label="option.label"
-                    :value="option.value" /></ElSelect
-              ></ElFormItem>
-              <ElFormItem label="签署日期"
-                ><ElDatePicker v-model="item.signDate" type="date" value-format="YYYY-MM-DD"
-              /></ElFormItem>
-              <ElFormItem
-                label="开始日期"
-                required
-                :error="historyFieldError('contracts', index, 'startDate')"
-                :data-validation-key="historyFieldKey('contracts', index, 'startDate')"
-                ><ElDatePicker v-model="item.startDate" type="date" value-format="YYYY-MM-DD"
-              /></ElFormItem>
-              <ElFormItem
-                label="结束日期"
-                :error="historyFieldError('contracts', index, 'endDate')"
-                :data-validation-key="historyFieldKey('contracts', index, 'endDate')"
-                ><ElDatePicker v-model="item.endDate" type="date" value-format="YYYY-MM-DD"
-              /></ElFormItem>
-              <ElFormItem label="试用期结束"
-                ><ElDatePicker
-                  v-model="item.probationEndDate"
-                  type="date"
-                  value-format="YYYY-MM-DD"
-              /></ElFormItem>
-              <ElFormItem label="工作地点"
-                ><ElInput v-model="item.workLocation" maxlength="120"
-              /></ElFormItem>
-              <ElFormItem label="合同备注" class="is-wide"
-                ><ElInput
-                  v-model="item.remark"
-                  type="textarea"
-                  :rows="2"
-                  maxlength="300"
-                  show-word-limit
-              /></ElFormItem>
-            </ElForm>
-            <ElForm
-              v-if="canViewCompensationDetails"
-              label-position="top"
-              class="hr-profile-page__compensation-form"
-              :disabled="!canEditCompensationDetails"
-            >
-              <ElFormItem label="月薪">
-                <ElInputNumber
-                  v-if="canEditCompensationDetails"
-                  :model-value="editableAmount(item.monthlySalary)"
-                  :min="0"
-                  :precision="2"
-                  :controls="false"
-                  @update:model-value="item.monthlySalary = $event"
-                />
-                <ElInput v-else :model-value="formatSensitiveNumber(item.monthlySalary)" disabled />
-              </ElFormItem>
-            </ElForm>
-          </HistoryCard>
-        </HistorySection>
-      </ElTabPane>
+      <EmployeeContractsTab
+        v-if="canViewCareerRecords && !form.historiesMasked"
+        v-model="form.contracts"
+        :is-readonly="!canEditCareerRecords"
+        :can-view-compensation-details="canViewCompensationDetails"
+        :can-edit-compensation-details="canEditCompensationDetails"
+        :dict="dict"
+        :display-dict="displayDict"
+        :validation-errors="historyValidationErrors"
+      />
 
       <ElTabPane v-if="canViewCareerRecords && !form.historiesMasked" name="educations">
         <template #label
@@ -600,6 +497,7 @@
   } from '@/components/core/forms/art-form/index.vue'
   import ArtUploadImage from '@/components/core/forms/art-upload-image/index.vue'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
+  import EmployeeContractsTab from './modules/employee-contracts-tab.vue'
   import HistorySection from './modules/history-section.vue'
   import HistoryCard from './modules/history-card.vue'
   import {
@@ -709,18 +607,6 @@
     emergencyContactName: '',
     emergencyContactRelation: null,
     emergencyContactPhone: '',
-    remark: ''
-  })
-  const createContract = (): Api.Hr.EmployeeContract => ({
-    contractNo: '',
-    contractType: 'fixed_term',
-    contractStatus: 'active',
-    signDate: null,
-    startDate: '',
-    endDate: null,
-    probationEndDate: null,
-    workLocation: '',
-    monthlySalary: null,
     remark: ''
   })
   const createEducation = (): Api.Hr.EmployeeEducation => ({
@@ -1768,7 +1654,7 @@
       height: 1px;
     }
 
-    &__tab-count {
+    :deep(.hr-profile-page__tab-count) {
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -1781,33 +1667,33 @@
       border-radius: 999px;
     }
 
-    &__record-form {
+    :deep(.hr-profile-page__record-form) {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 0 18px;
     }
 
-    &__record-form :deep(.el-form-item) {
+    :deep(.hr-profile-page__record-form .el-form-item) {
       min-width: 0;
       margin-bottom: 18px;
     }
 
-    &__record-form :deep(.el-select),
-    &__record-form :deep(.el-date-editor),
-    &__record-form :deep(.el-input-number) {
+    :deep(.hr-profile-page__record-form .el-select),
+    :deep(.hr-profile-page__record-form .el-date-editor),
+    :deep(.hr-profile-page__record-form .el-input-number) {
       width: 100%;
     }
 
-    &__record-form .is-wide {
+    :deep(.hr-profile-page__record-form .is-wide) {
       grid-column: 1 / -1;
     }
 
-    &__compensation-form {
+    :deep(.hr-profile-page__compensation-form) {
       max-width: 360px;
       padding: 0 18px;
     }
 
-    &__compensation-form :deep(.el-input-number) {
+    :deep(.hr-profile-page__compensation-form .el-input-number) {
       width: 100%;
     }
 
@@ -1864,7 +1750,7 @@
         grid-column: 1 / -1;
       }
 
-      &__record-form {
+      :deep(.hr-profile-page__record-form) {
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
 
@@ -1893,11 +1779,11 @@
         margin-inline: -14px;
       }
 
-      &__record-form {
+      :deep(.hr-profile-page__record-form) {
         grid-template-columns: 1fr;
       }
 
-      &__record-form .is-wide {
+      :deep(.hr-profile-page__record-form .is-wide) {
         grid-column: auto;
       }
 

@@ -134,6 +134,7 @@ export const deleteVehicleMaintenance = supabaseVehicleApi.deleteVehicleMaintena
 export const deleteVehicleMaintenanceBatch = supabaseVehicleApi.deleteVehicleMaintenanceBatch
 
 export const fetchVehiclePartUsageList = supabaseVehicleApi.fetchVehiclePartUsageList
+export const exportVehiclePartUsageList = supabaseVehicleApi.exportVehiclePartUsageList
 export const fetchVehiclePartUsageDetail = supabaseVehicleApi.fetchVehiclePartUsageDetail
 export const addVehiclePartUsage = supabaseVehicleApi.addVehiclePartUsage
 export const editVehiclePartUsage = supabaseVehicleApi.editVehiclePartUsage

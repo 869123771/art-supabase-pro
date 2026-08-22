@@ -108,88 +108,104 @@ export async function importInsuranceCompanies(rows: InsuranceCompany[]) {
 }
 
 // 供应厂商
+interface SecureSupplierPayload {
+  records: Supplier[]
+  total: number
+  fieldAccess?: Api.Vms.BasicInfo.SupplierFieldAccessMap
+}
+
+const createSupplierRpcParams = (
+  params: SupplierSearchParams & { ids?: string[]; maxRows?: number },
+  purpose: 'list' | 'export' | 'options'
+) => {
+  const from = Math.max(params.from ?? 0, 0)
+  const requestedTo = params.maxRows ? from + Math.max(params.maxRows, 1) - 1 : params.to
+  return {
+    p_from: from,
+    p_to: Math.max(requestedTo ?? 9, from),
+    p_supplier_name: String(params.supplierName ?? '').trim() || null,
+    p_contact_person: String(params.contactPerson ?? '').trim() || null,
+    p_contact_phone: String(params.contactPhone ?? '').trim() || null,
+    p_ids: params.ids?.length ? params.ids : null,
+    p_purpose: purpose
+  }
+}
+
 export async function fetchSupplierList(params: SupplierSearchParams, options?: ApiRequestOptions) {
-  const { supplierName, contactPerson, contactPhone, from = 0, to = 9 } = params
-  const filters: FilterSpec[] = [
-    { col: 'supplierName', op: 'ilike', val: supplierName ? `%${supplierName}%` : undefined },
-    { col: 'contactPerson', op: 'ilike', val: contactPerson ? `%${contactPerson}%` : undefined },
-    { col: 'contactPhone', op: 'ilike', val: contactPhone ? `%${contactPhone}%` : undefined }
-  ]
-
-  let query = supabase
-    .from('vehicle_supplier')
-    .select('*', { count: 'exact' })
-    .order('create_time', { ascending: false })
-    .range(from, to)
-
-  query = applyFilters(query, filters, { skipEmpty: true, camelToSnake: true })
-  return await responseHandle(() => withRequestOptions(query, options), {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
+  const result = await responseHandle<SecureSupplierPayload>(
+    () =>
+      withRequestOptions(
+        supabase.rpc('vms_list_vehicle_suppliers_secure', createSupplierRpcParams(params, 'list')),
+        options
+      ),
+    { showErrorMessage: true }
+  )
+  return {
+    data: result.data?.records ?? [],
+    total: result.data?.total ?? 0,
+    error: result.error,
+    fieldAccess: result.data?.fieldAccess ?? {}
+  }
 }
 
 export async function exportSupplierList(
   params: SupplierSearchParams & { ids?: string[]; maxRows?: number }
 ) {
-  const { supplierName, contactPerson, contactPhone, ids, maxRows = 10000 } = params
-  const filters: FilterSpec[] = [
-    { col: 'supplierName', op: 'ilike', val: supplierName ? `%${supplierName}%` : undefined },
-    { col: 'contactPerson', op: 'ilike', val: contactPerson ? `%${contactPerson}%` : undefined },
-    { col: 'contactPhone', op: 'ilike', val: contactPhone ? `%${contactPhone}%` : undefined }
-  ]
-
-  let query = supabase
-    .from('vehicle_supplier')
-    .select('*')
-    .order('create_time', { ascending: false })
-    .limit(maxRows)
-
-  if (ids?.length) {
-    query = query.in('id', ids)
-  } else {
-    query = applyFilters(query, filters, { skipEmpty: true, camelToSnake: true })
+  const result = await responseHandle<SecureSupplierPayload>(
+    () =>
+      supabase.rpc(
+        'vms_list_vehicle_suppliers_secure',
+        createSupplierRpcParams({ ...params, maxRows: params.maxRows ?? 10000 }, 'export')
+      ),
+    { showErrorMessage: true }
+  )
+  return {
+    data: result.data?.records ?? [],
+    total: result.data?.total ?? 0,
+    error: result.error,
+    fieldAccess: result.data?.fieldAccess ?? {}
   }
-
-  return await responseHandle(() => query, {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
 }
 
 export async function addSupplier(params: Supplier) {
-  return await responseHandle(
-    () => supabase.from('vehicle_supplier').insert(keysToSnakeDeep(params)),
+  const result = await responseHandle<string>(
+    () =>
+      supabase.rpc('vms_create_vehicle_supplier_secure', { p_payload: keysToSnakeDeep(params) }),
     { showMessage: true, breakReturn: true }
   )
+  return { ...result, data: result.data ? { id: result.data } : null }
 }
 
 export async function editSupplier(params: Supplier) {
   const { id, ...data } = params
-  return await responseHandle(
-    () => supabase.from('vehicle_supplier').update(keysToSnakeDeep(data)).eq('id', id),
+  if (!id) throw new Error('缺少车辆供应商 ID')
+  return await responseHandle<Supplier>(
+    () =>
+      supabase.rpc('vms_update_vehicle_supplier_secure', {
+        p_id: id,
+        p_payload: keysToSnakeDeep(data)
+      }),
     { showMessage: true, breakReturn: true }
   )
 }
 
 export async function deleteSupplier(id: string) {
-  return await responseHandle(() => supabase.from('vehicle_supplier').delete().eq('id', id), {
-    showMessage: true
-  })
+  return await responseHandle<number>(
+    () => supabase.rpc('vms_delete_vehicle_suppliers_secure', { p_ids: [id] }),
+    { showMessage: true, message: '删除成功' }
+  )
 }
 
 export async function deleteSupplierBatch(ids: string[]) {
-  return await responseHandle(() => supabase.from('vehicle_supplier').delete().in('id', ids), {
-    showMessage: true
-  })
+  return await responseHandle<number>(
+    () => supabase.rpc('vms_delete_vehicle_suppliers_secure', { p_ids: ids }),
+    { showMessage: true }
+  )
 }
 
 export async function importSuppliers(rows: Supplier[]) {
-  return await responseHandle(
-    () =>
-      supabase.from('vehicle_supplier').upsert(keysToSnakeDeep(rows), {
-        onConflict: 'create_by,supplier_name'
-      }),
+  return await responseHandle<number>(
+    () => supabase.rpc('vms_import_vehicle_suppliers_secure', { p_rows: keysToSnakeDeep(rows) }),
     { showMessage: true, breakReturn: true }
   )
 }
@@ -333,14 +349,24 @@ const PARTS_SELECT = `
   category:vehicle_parts_category!vehicle_parts_category_id_fkey(
     id,
     category_name
-  ),
-  supplier:vehicle_supplier!vehicle_parts_supplier_id_fkey(
-    id,
-    supplier_name,
-    contact_person,
-    contact_phone
   )
 `
+
+const enrichPartsWithSupplierNames = async (
+  records: Parts[],
+  options?: ApiRequestOptions
+): Promise<Parts[]> => {
+  const supplierIds = [...new Set(records.map((row) => row.supplierId).filter(Boolean))] as string[]
+  if (!supplierIds.length) return records
+  const { data } = await fetchSupplierOptions({ ids: supplierIds }, options)
+  const suppliers = new Map<string, Supplier>(
+    (data ?? []).flatMap((row) => (row.id ? ([[row.id, row]] as const) : []))
+  )
+  return records.map((row) => ({
+    ...row,
+    supplier: row.supplierId ? (suppliers.get(row.supplierId) ?? null) : null
+  }))
+}
 
 export async function fetchPartsList(params: PartsSearchParams, options?: ApiRequestOptions) {
   const { from = 0, to = 9 } = params
@@ -353,10 +379,11 @@ export async function fetchPartsList(params: PartsSearchParams, options?: ApiReq
     .range(from, to)
 
   query = applyFilters(query, filters, { skipEmpty: true, camelToSnake: true })
-  return await responseHandle<Parts[]>(() => withRequestOptions(query, options), {
+  const result = await responseHandle<Parts[]>(() => withRequestOptions(query, options), {
     ignoreCheck: true,
     showErrorMessage: true
   })
+  return { ...result, data: await enrichPartsWithSupplierNames(result.data ?? [], options) }
 }
 
 export async function exportPartsList(
@@ -377,10 +404,11 @@ export async function exportPartsList(
     query = applyFilters(query, filters, { skipEmpty: true, camelToSnake: true })
   }
 
-  return await responseHandle(() => query, {
+  const result = await responseHandle<Parts[]>(() => query, {
     ignoreCheck: true,
     showErrorMessage: true
   })
+  return { ...result, data: await enrichPartsWithSupplierNames(result.data ?? []) }
 }
 
 export async function addParts(params: Parts) {
@@ -420,14 +448,24 @@ export async function importParts(rows: Parts[]) {
   )
 }
 
-export async function fetchSupplierOptions(_params?: unknown, options?: ApiRequestOptions) {
-  const query = supabase
-    .from('vehicle_supplier')
-    .select('id, supplier_name, contact_person, contact_phone')
-    .order('supplier_name', { ascending: true })
-
-  return await responseHandle(() => withRequestOptions(query, options), {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
+export async function fetchSupplierOptions(
+  params?: { ids?: string[]; supplierName?: string },
+  options?: ApiRequestOptions
+) {
+  const result = await responseHandle<SecureSupplierPayload>(
+    () =>
+      withRequestOptions(
+        supabase.rpc(
+          'vms_list_vehicle_suppliers_secure',
+          createSupplierRpcParams({ ...params, from: 0, to: 9999 }, 'options')
+        ),
+        options
+      ),
+    { showErrorMessage: true }
+  )
+  return {
+    data: result.data?.records ?? [],
+    total: result.data?.total ?? 0,
+    error: result.error
+  }
 }

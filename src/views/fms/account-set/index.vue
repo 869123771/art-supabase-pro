@@ -1,5 +1,5 @@
 <template>
-  <div class="business-workspace-page art-full-height fms-accounting-page account-set-page">
+  <FinanceAccountingWorkspaceShell class="account-set-page">
     <BusinessWorkspaceHeader
       density="compact"
       eyebrow="财务基础 · 核算主体"
@@ -47,7 +47,7 @@
 
     <AccountSetDialog ref="dialogRef" @success="handleSaved" />
     <AccountingPeriodDrawer ref="periodDrawerRef" />
-  </div>
+  </FinanceAccountingWorkspaceShell>
 </template>
 
 <script setup lang="tsx">
@@ -505,11 +505,7 @@
 </script>
 
 <style scoped lang="scss">
-  @use '../modules/accounting-workspace.scss' as accounting;
-
   .account-set-page {
-    @include accounting.accounting-workspace-layout;
-
     &__permission {
       flex: 0 0 auto;
     }

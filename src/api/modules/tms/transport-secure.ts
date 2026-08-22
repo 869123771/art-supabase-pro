@@ -2,13 +2,16 @@ import { useSupabase } from '@/hooks'
 import { withRequestOptions } from '@/api/providers/supabase/query'
 import type { ApiRequestOptions } from '@/types/api/request'
 
+export type WaybillListScope = 'pending_waybill_list' | 'loaded_waybill_list'
+export type WaybillExportScope = 'pending_waybill_export' | 'loaded_waybill_export'
+
 export type TransportOrderScope =
   | 'order_list'
   | 'order_export'
   | 'order_detail'
   | 'order_open'
-  | 'waybill_list'
-  | 'waybill_export'
+  | WaybillListScope
+  | WaybillExportScope
   | 'delivery_list'
   | 'delivery_export'
   | 'in_transit'

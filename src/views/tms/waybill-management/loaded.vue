@@ -226,7 +226,7 @@
   async function loadStatusCounts(params: TableParams): Promise<void> {
     const requestId = ++statusCountRequestId.value
     const searchParams = { ...params, ...createWaybillModeParams(params, 'loaded') }
-    const result = await fetchWaybillStatusCounts(searchParams)
+    const result = await fetchWaybillStatusCounts(searchParams, 'loaded_waybill_list')
     if (requestId !== statusCountRequestId.value) return
 
     table.statusTotal = result.total

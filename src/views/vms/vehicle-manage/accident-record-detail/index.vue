@@ -21,8 +21,14 @@
         <strong>{{ formatValue(detail.data?.accidentTime) }}</strong>
       </div>
       <div class="accident-record-detail__summary-item">
-        <span>经济损失</span>
-        <strong>{{ formatMoney(detail.data?.economicLoss) }}</strong>
+        <span>{{ canViewLossAmounts ? '经济损失' : '事故等级' }}</span>
+        <strong>
+          {{
+            canViewLossAmounts
+              ? formatMoney(detail.data?.economicLoss)
+              : formatValue(detail.data?.damageLevel)
+          }}
+        </strong>
       </div>
       <div class="accident-record-detail__summary-item">
         <span>处理状态</span>
@@ -47,12 +53,12 @@
         <ArtDescriptions :data="descriptionData" :items="responsibilityItems" :columns="2" />
       </section>
 
-      <section class="accident-record-detail__section">
+      <section v-if="canViewNarrative" class="accident-record-detail__section">
         <ArtSectionTitle>备注</ArtSectionTitle>
         <div class="accident-record-detail__remark">{{ formatValue(detail.data?.remark) }}</div>
       </section>
 
-      <section class="accident-record-detail__section">
+      <section v-if="canViewDocuments" class="accident-record-detail__section">
         <ArtSectionTitle>事故附件</ArtSectionTitle>
         <ArtTable
           :data="detail.data?.attachments ?? []"
@@ -78,6 +84,7 @@
   import { fetchVehicleAccidentDetail } from '@/api/vms'
   import { downloadAttachment, viewAttachment } from '@/utils/file'
   import { renderAttachmentLink } from '@/components/core/media/art-file-viewer/render'
+  import { canViewField, formatSensitiveNumber } from '@/utils/field-permission'
 
   defineOptions({ name: 'VehicleAccidentDetail' })
 
@@ -88,24 +95,43 @@
   const router = useRouter()
   const page = reactive<{ loading: boolean; error: Error | null }>({ loading: false, error: null })
   const detail = reactive<{ data?: AccidentRecord }>({ data: undefined })
+  const canViewDriverContact = computed(() =>
+    canViewField(detail.data?.fieldAccess, 'driverContact')
+  )
+  const canViewLocation = computed(() => canViewField(detail.data?.fieldAccess, 'accidentLocation'))
+  const canViewNarrative = computed(() =>
+    canViewField(detail.data?.fieldAccess, 'accidentNarrative')
+  )
+  const canViewLossAmounts = computed(() => canViewField(detail.data?.fieldAccess, 'lossAmounts'))
+  const canViewDocuments = computed(() => canViewField(detail.data?.fieldAccess, 'documents'))
   const descriptionData = computed<Partial<AccidentRecord>>(() => detail.data ?? {})
-  const basicItems: ArtDescriptionItem<Partial<AccidentRecord>>[] = [
+  const basicItems = computed<ArtDescriptionItem<Partial<AccidentRecord>>[]>(() => [
     { key: 'plateNo', label: '车牌号', field: 'plateNo' },
     { key: 'companyName', label: '所属公司', field: 'companyName' },
-    { key: 'driverName', label: '驾驶员', field: 'driverName' },
-    { key: 'driverPhone', label: '联系方式', field: 'driverPhone' },
+    ...(canViewDriverContact.value
+      ? [
+          { key: 'driverName', label: '驾驶员', field: 'driverName' },
+          { key: 'driverPhone', label: '联系方式', field: 'driverPhone' }
+        ]
+      : []),
     { key: 'accidentTime', label: '事故时间', field: 'accidentTime', format: 'datetime' },
-    { key: 'accidentLocation', label: '事故地点', field: 'accidentLocation' },
-    {
-      key: 'accidentCoordinate',
-      label: '事故坐标',
-      value: (data: Partial<AccidentRecord>) =>
-        formatCoordinate(data.accidentLongitude, data.accidentLatitude)
-    },
+    ...(canViewLocation.value
+      ? [
+          { key: 'accidentLocation', label: '事故地点', field: 'accidentLocation' },
+          {
+            key: 'accidentCoordinate',
+            label: '事故坐标',
+            value: (data: Partial<AccidentRecord>) =>
+              formatCoordinate(data.accidentLongitude, data.accidentLatitude)
+          }
+        ]
+      : []),
     { key: 'damageLevel', label: '事故等级', field: 'damageLevel' },
-    { key: 'accidentSummary', label: '事故概述', field: 'accidentSummary', span: 2 }
-  ]
-  const responsibilityItems: ArtDescriptionItem<Partial<AccidentRecord>>[] = [
+    ...(canViewNarrative.value
+      ? [{ key: 'accidentSummary', label: '事故概述', field: 'accidentSummary', span: 2 }]
+      : [])
+  ])
+  const responsibilityItems = computed<ArtDescriptionItem<Partial<AccidentRecord>>[]>(() => [
     {
       key: 'responsibilityType',
       label: '责任类型',
@@ -119,18 +145,22 @@
       field: 'responsibilityPercent',
       formatter: (value) => formatPercent(value as number | null | undefined)
     },
-    {
-      key: 'economicLoss',
-      label: '经济损失',
-      field: 'economicLoss',
-      formatter: (value) => formatMoney(value as number | null | undefined)
-    },
-    {
-      key: 'companyBearAmount',
-      label: '公司承担',
-      field: 'companyBearAmount',
-      formatter: (value) => formatMoney(value as number | null | undefined)
-    },
+    ...(canViewLossAmounts.value
+      ? [
+          {
+            key: 'economicLoss',
+            label: '经济损失',
+            field: 'economicLoss',
+            formatter: (value: unknown) => formatMoney(value as number | string | null | undefined)
+          },
+          {
+            key: 'companyBearAmount',
+            label: '公司承担',
+            field: 'companyBearAmount',
+            formatter: (value: unknown) => formatMoney(value as number | string | null | undefined)
+          }
+        ]
+      : []),
     ...(['reported', 'insuranceReported', 'processed'] as const).map((field) => ({
       key: field,
       label: { reported: '是否报案', insuranceReported: '保险报案', processed: '已处理' }[field],
@@ -146,7 +176,7 @@
       dictCode: 'vehicleAccidentDataSource',
       dictDisplay: 'text'
     }
-  ]
+  ])
 
   const attachmentColumns: ColumnOption<Attachment>[] = [
     { type: 'globalIndex', label: '序号', width: 56 },
@@ -202,9 +232,9 @@
     return String(value)
   }
 
-  const formatMoney = (value?: number | null): string => {
-    if (isNil(value)) return '--'
-    return `${Number(value).toFixed(2)} 元`
+  const formatMoney = (value?: number | string | null): string => {
+    const formatted = formatSensitiveNumber(value)
+    return formatted === '--' || formatted === '***' ? formatted : `${formatted} 元`
   }
 
   const formatPercent = (value?: number | null): string => {

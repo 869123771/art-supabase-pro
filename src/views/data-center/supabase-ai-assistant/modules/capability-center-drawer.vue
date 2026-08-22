@@ -9,16 +9,16 @@
           <strong>Supabase 全域能力中心</strong>
           <small>实时探测平台能力、安全边界与 AI 可用工具</small>
         </div>
-        <ElButton
-          text
-          type="primary"
-          class="capability-center__refresh"
-          :aria-busy="loading"
-          aria-label="刷新能力快照"
-          @click="loadSnapshot"
-        >
-          <ArtSvgIcon :class="{ 'is-spinning': loading }" icon="ri:refresh-line" />
-        </ElButton>
+        <ElTooltip content="刷新能力快照" placement="bottom">
+          <ArtIconButton
+            class="capability-center__refresh"
+            icon="ri:refresh-line"
+            circle
+            label="刷新能力快照"
+            :loading="loading"
+            @click="loadSnapshot"
+          />
+        </ElTooltip>
       </div>
     </template>
 
@@ -152,6 +152,7 @@
   import { fetchProjectCatalog } from '@/api/supabase-ai-assistant'
   import ArtDrawer from '@/components/core/drawers/art-drawer/index.vue'
   import type { ArtDrawerExpose } from '@/components/core/drawers/art-drawer/types'
+  import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
   import type {
     ProjectCapabilitySnapshot,
     ProjectEdgeFunctionResult
@@ -437,26 +438,8 @@
       }
 
       > .capability-center__refresh {
-        --el-component-custom-height: 30px;
-
-        box-sizing: border-box;
-        display: grid;
         flex: 0 0 auto;
-        place-items: center;
-        width: 30px;
-        height: 30px;
-        min-height: 30px;
-        padding: 0;
         margin-left: auto;
-        border-radius: var(--el-border-radius-small);
-
-        :deep(svg) {
-          margin: 0;
-        }
-
-        .is-spinning {
-          animation: capability-center-spin 0.8s linear infinite;
-        }
       }
     }
 
@@ -715,12 +698,6 @@
       flex-wrap: wrap;
       gap: 7px;
       margin-top: 10px;
-    }
-  }
-
-  @keyframes capability-center-spin {
-    to {
-      transform: rotate(360deg);
     }
   }
 </style>

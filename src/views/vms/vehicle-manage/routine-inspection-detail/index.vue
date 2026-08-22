@@ -18,7 +18,10 @@
     />
 
     <section class="routine-inspection-detail__summary art-card-xs">
-      <div class="routine-inspection-detail__summary-item">
+      <div
+        v-if="canViewField(fieldAccess, 'inspectionFindings')"
+        class="routine-inspection-detail__summary-item"
+      >
         <span>例检类型</span>
         <strong>
           <ArtDictDisplay
@@ -38,26 +41,40 @@
           />
         </strong>
       </div>
-      <div class="routine-inspection-detail__summary-item">
+      <div
+        v-if="canViewField(fieldAccess, 'documents')"
+        class="routine-inspection-detail__summary-item"
+      >
         <span>附件数量</span>
-        <strong>{{ detail.data?.attachments?.length ?? 0 }}</strong>
+        <strong>{{
+          detail.data?.attachmentsMasked ? '***' : (detail.data?.attachments?.length ?? 0)
+        }}</strong>
       </div>
     </section>
 
     <div class="routine-inspection-detail__content art-card-xs">
-      <section class="routine-inspection-detail__section">
+      <section
+        v-if="canViewField(fieldAccess, 'inspectionFindings')"
+        class="routine-inspection-detail__section"
+      >
         <ArtSectionTitle>基础信息</ArtSectionTitle>
         <ArtDescriptions :data="descriptionData" :items="descriptionItems" :columns="2" />
       </section>
 
-      <section class="routine-inspection-detail__section">
+      <section
+        v-if="canViewField(fieldAccess, 'remediationDetails')"
+        class="routine-inspection-detail__section"
+      >
         <ArtSectionTitle>检查情况</ArtSectionTitle>
         <div class="routine-inspection-detail__text">
           {{ formatValue(detail.data?.checkCondition) }}
         </div>
       </section>
 
-      <section class="routine-inspection-detail__section">
+      <section
+        v-if="canViewField(fieldAccess, 'remediationDetails')"
+        class="routine-inspection-detail__section"
+      >
         <ArtSectionTitle>处理方式</ArtSectionTitle>
         <div class="routine-inspection-detail__text">
           {{ formatValue(detail.data?.handlingMethod) }}
@@ -69,9 +86,16 @@
         <div class="routine-inspection-detail__text">{{ formatValue(detail.data?.remark) }}</div>
       </section>
 
-      <section class="routine-inspection-detail__section">
+      <section
+        v-if="canViewField(fieldAccess, 'documents')"
+        class="routine-inspection-detail__section"
+      >
         <ArtSectionTitle>例检附件</ArtSectionTitle>
+        <div v-if="detail.data?.attachmentsMasked" class="routine-inspection-detail__text">
+          附件内容已脱敏
+        </div>
         <ArtTable
+          v-else
           :data="detail.data?.attachments ?? []"
           :columns="attachmentColumns"
           :pagination="undefined"
@@ -95,6 +119,7 @@
   import { fetchVehicleRoutineInspectionDetail } from '@/api/vms'
   import { downloadAttachment, viewAttachment } from '@/utils/file'
   import { renderAttachmentLink } from '@/components/core/media/art-file-viewer/render'
+  import { canViewField } from '@/utils/field-permission'
 
   defineOptions({ name: 'VehicleRoutineInspectionDetail' })
 
@@ -105,8 +130,9 @@
   const router = useRouter()
   const page = reactive<{ loading: boolean; error: Error | null }>({ loading: false, error: null })
   const detail = reactive<{ data?: RoutineInspection }>({ data: undefined })
+  const fieldAccess = computed(() => detail.data?.fieldAccess ?? {})
   const descriptionData = computed<Partial<RoutineInspection>>(() => detail.data ?? {})
-  const descriptionItems: ArtDescriptionItem<Partial<RoutineInspection>>[] = [
+  const descriptionItems = computed<ArtDescriptionItem<Partial<RoutineInspection>>[]>(() => [
     { key: 'plateNo', label: '车牌号', field: 'plateNo' },
     { key: 'companyName', label: '所属公司', field: 'companyName' },
     {
@@ -123,16 +149,24 @@
       dictDisplay: 'text'
     },
     { key: 'inspectionTime', label: '例检时间', field: 'inspectionTime', format: 'datetime' },
-    { key: 'inspector', label: '检查人', field: 'inspector' },
-    { key: 'driverName', label: '驾驶员', field: 'driverName' },
-    {
-      key: 'checkResult',
-      label: '检查结果',
-      field: 'checkResult',
-      dictCode: 'vehicleRoutineInspectionResult',
-      dictDisplay: 'text'
-    }
-  ]
+    ...(canViewField(fieldAccess.value, 'responsiblePeople')
+      ? ([
+          { key: 'inspector', label: '检查人', field: 'inspector' },
+          { key: 'driverName', label: '驾驶员', field: 'driverName' }
+        ] as ArtDescriptionItem<Partial<RoutineInspection>>[])
+      : []),
+    ...(canViewField(fieldAccess.value, 'inspectionFindings')
+      ? ([
+          {
+            key: 'checkResult',
+            label: '检查结果',
+            field: 'checkResult',
+            dictCode: 'vehicleRoutineInspectionResult',
+            dictDisplay: 'text'
+          }
+        ] as ArtDescriptionItem<Partial<RoutineInspection>>[])
+      : [])
+  ])
 
   const attachmentColumns: ColumnOption<Attachment>[] = [
     { type: 'globalIndex', label: '序号', width: 56 },

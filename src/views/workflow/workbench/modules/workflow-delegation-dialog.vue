@@ -34,9 +34,15 @@
             <ArtSectionTitle :show-line="false">委托记录</ArtSectionTitle>
             <p>我发出的委托可以撤销；收到的委托用于说明待办来源。</p>
           </div>
-          <ElButton text :loading="state.loading" @click="loadData">
-            <ArtSvgIcon icon="ri:refresh-line" />刷新
-          </ElButton>
+          <ElTooltip content="刷新委托记录" placement="top">
+            <ArtIconButton
+              icon="ri:refresh-line"
+              circle
+              label="刷新委托记录"
+              :loading="state.loading"
+              @click="loadData"
+            />
+          </ElTooltip>
         </div>
 
         <ArtEmptyState
@@ -98,6 +104,7 @@
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
   import ArtEmptyState from '@/components/core/layouts/art-empty-state/index.vue'
+  import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import {
     createWorkflowDelegation,

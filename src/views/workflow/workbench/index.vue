@@ -6,20 +6,15 @@
       description="统一处理跨业务审批任务，跟踪我发起的流程，并通过完整轨迹快速还原每次决策。"
       icon="ri:verified-badge-line"
       :metrics="metricCards"
+      refreshable
+      refresh-label="刷新审批数据"
+      :refresh-loading="summary.loading"
+      @refresh="refreshCurrent"
     >
       <template #actions>
         <ElButton type="primary" plain @click="openDelegation">
           <ArtSvgIcon icon="ri:user-shared-line" />离岗委托
         </ElButton>
-        <ElTooltip content="刷新审批数据" placement="bottom">
-          <ArtIconButton
-            icon="ri:refresh-line"
-            circle
-            label="刷新审批数据"
-            :loading="summary.loading"
-            @click="refreshCurrent"
-          />
-        </ElTooltip>
       </template>
     </BusinessWorkspaceHeader>
 
@@ -131,7 +126,6 @@
   import type { ArtTableQueryExpose } from '@/components/core/tables/art-table-query/index.vue'
   import type { ColumnOption } from '@/types'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
-  import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
   import BusinessWorkspaceHeader, {
     type BusinessWorkspaceMetric
   } from '@/components/business/business-workspace-header/index.vue'

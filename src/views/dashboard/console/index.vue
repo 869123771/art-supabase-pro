@@ -14,17 +14,12 @@
       icon="ri:dashboard-3-line"
       :tags="workspaceTags"
       class="operations-dashboard__header"
+      refreshable
+      refresh-label="刷新运营数据"
+      :refresh-loading="overview.loading"
+      @refresh="refreshData"
     >
       <template #actions>
-        <ElTooltip content="刷新运营数据" placement="bottom">
-          <ArtIconButton
-            icon="ri:refresh-line"
-            circle
-            aria-label="刷新运营数据"
-            :loading="overview.loading"
-            @click="refreshData"
-          />
-        </ElTooltip>
         <ElButton :icon="Van" @click="navigateTo('/tms/waybill-management/pending')">
           处理调度
         </ElButton>
@@ -79,7 +74,6 @@
 <script setup lang="ts">
   import { EditPen, Van } from '@element-plus/icons-vue'
   import { storeToRefs } from 'pinia'
-  import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
   import BusinessWorkspaceHeader, {
     type BusinessWorkspaceTag
   } from '@/components/business/business-workspace-header/index.vue'

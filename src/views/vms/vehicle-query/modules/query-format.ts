@@ -41,6 +41,12 @@ export const formatBoolean = (value?: boolean | null): string => {
   return value ? '是' : '否'
 }
 
+export const toFiniteNumber = (value?: number | string | null): number | null => {
+  if (isNil(value) || value === '') return null
+  const numericValue = Number(value)
+  return Number.isFinite(numericValue) ? numericValue : null
+}
+
 export const createDescriptionItems = (items: InfoItem[]): ArtDescriptionItem[] =>
   items.map((item, index) => ({
     key: `${item.label}-${index}`,

@@ -118,7 +118,6 @@
 </template>
 
 <script setup lang="ts">
-  import { ElMessageBox } from 'element-plus'
   import { storeToRefs } from 'pinia'
   import ArtDrawer from '@/components/core/drawers/art-drawer/index.vue'
   import type { ArtDrawerExpose } from '@/components/core/drawers/art-drawer/types'
@@ -133,6 +132,7 @@
   } from '@/api/fms'
   import { useUserStore } from '@/store/modules/user'
   import { useAuth } from '@/hooks/core/useAuth'
+  import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { canEditField, getFieldAccess, mergeFieldAccessMaps } from '@/utils/field-permission'
 
   defineOptions({ name: 'FinanceStatementConfigDrawer' })
@@ -142,6 +142,7 @@
   const emit = defineEmits<{ success: [] }>()
   const { getDictMap } = storeToRefs(useUserStore())
   const { hasAuth } = useAuth()
+  const { confirmAction } = useArtFeedback()
   const canEditConfigButton = computed(() => hasAuth('FinanceFinancialReports:EditConfig'))
   const drawerRef = ref<ArtDrawerExpose>()
   const itemDialogRef = ref<InstanceType<typeof StatementItemDialog>>()
@@ -229,7 +230,7 @@
 
   async function initializeItems(): Promise<void> {
     if (!canEditBaseRules.value || !accountSetId.value) return
-    await ElMessageBox.confirm(
+    await confirmAction(
       '系统将补齐企业会计准则通用报表项目、合计公式和现金流方向；已有同编码项目不会重复创建。',
       '初始化标准财务报表',
       { type: 'warning', confirmButtonText: '确认初始化', cancelButtonText: '取消' }

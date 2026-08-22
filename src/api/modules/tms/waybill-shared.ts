@@ -1,23 +1,5 @@
 type WaybillRecord = Api.Tms.Waybill.WaybillRecord
 
-export const DISPATCH_VEHICLE_SELECT = `
-  id,
-  carrier_id,
-  plate_no,
-  company_name,
-  vin,
-  self_no,
-  vehicle_type,
-  primary_driver_id,
-  tonnage_or_seat,
-  overall_length,
-  primaryDriver:tms_driver!vehicle_archive_primary_driver_id_fkey(
-    id,
-    carrier_id,
-    driver_name
-  )
-`
-
 const toNullableNumberValue = (value?: number | string | null): number | null => {
   if (value === null || value === undefined || value === '') return null
   const numberValue = Number(value)

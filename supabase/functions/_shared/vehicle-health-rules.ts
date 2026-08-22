@@ -316,8 +316,8 @@ export function assessVehicleHealth(
       title: '存在未处理事故记录',
       detail: `当前有 ${unresolvedAccidents.length} 条事故记录尚未完成处理，车辆安全状态可能未闭环。`,
       evidence: unresolvedAccidents.slice(0, 3).map((item) => {
-        const summary = text(field(item, 'accident_summary', 'accidentSummary')) || '事故详情未记录'
-        return `${dateLabel(field(item, 'accident_time', 'accidentTime'))} · ${summary}`
+        const damageLevel = text(field(item, 'damage_level', 'damageLevel')) || '事故等级未记录'
+        return `${dateLabel(field(item, 'accident_time', 'accidentTime'))} · ${damageLevel}`
       })
     })
     actions.push('核实事故维修、保险理赔和复检结论，确认安全闭环后再安排运输。')

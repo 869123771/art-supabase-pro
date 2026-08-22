@@ -10,6 +10,10 @@
         { label: 'AI只读研判', type: 'success' }
       ]"
       :metrics="metrics"
+      refreshable
+      refresh-label="刷新安全驾驶舱数据"
+      :refresh-loading="state.loading"
+      @refresh="loadDashboard"
     >
       <template #actions>
         <ElButton
@@ -19,9 +23,6 @@
         >
           <ArtSvgIcon icon="ri:sparkling-2-line" />AI 安全研判
         </ElButton>
-        <ElButton :loading="state.loading" @click="void loadDashboard()"
-          ><ArtSvgIcon icon="ri:refresh-line" />刷新</ElButton
-        >
       </template>
     </BusinessWorkspaceHeader>
 

@@ -52,7 +52,10 @@
     <ElTabs v-model="activeTab" class="vehicle-archive-detail__tabs art-card-xs">
       <ElTabPane label="基础信息" name="basic">
         <InfoDescriptions :items="basicInfoItems" />
-        <section class="vehicle-archive-detail__section vehicle-archive-detail__certificate-panel">
+        <section
+          v-if="canViewArchiveField('documents')"
+          class="vehicle-archive-detail__section vehicle-archive-detail__certificate-panel"
+        >
           <header class="vehicle-archive-detail__section-heading">
             <div>
               <ArtSectionTitle :show-line="false">车辆证件</ArtSectionTitle>
@@ -107,7 +110,7 @@
 
       <ElTabPane label="其他信息" name="other">
         <InfoDescriptions :items="otherInfoItems" />
-        <section class="vehicle-archive-detail__section">
+        <section v-if="canViewArchiveField('documents')" class="vehicle-archive-detail__section">
           <ArtSectionTitle>车辆档案附件</ArtSectionTitle>
           <ArtTable
             :data="archive?.attachments ?? []"
@@ -145,6 +148,7 @@
   import { useUserStore } from '@/store/modules/user'
   import { viewAttachment } from '@/utils/file'
   import { renderAttachmentLink } from '@/components/core/media/art-file-viewer/render'
+  import { canViewField } from '@/utils/field-permission'
 
   defineOptions({ name: 'VehicleArchiveDetailContent' })
 
@@ -196,6 +200,10 @@
   const archive = ref<VehicleArchive>()
   const loading = ref(false)
   const loadError = shallowRef<Error | null>(null)
+  const canViewArchiveField = (field: Api.Vms.ArchiveManage.VehicleArchiveFieldKey): boolean =>
+    canViewField(archive.value?.fieldAccess, field)
+  const canViewDriverPhone = (driver?: Api.Tms.BasicData.DriverOption | null): boolean =>
+    canViewField(driver?.fieldAccess, 'contactPhone')
 
   onMounted(async () => {
     await Promise.all([
@@ -211,16 +219,28 @@
     { label: '自编号', value: archive.value?.selfNo },
     { label: '车型', value: getDictLabel('vehicleType', archive.value?.vehicleType) },
     { label: '国产/进口', value: getDictLabel('vehicleOriginType', archive.value?.originType) },
-    { label: '车架号（VIN）', value: archive.value?.vin },
+    ...(canViewArchiveField('vehicleIdentifiers')
+      ? [{ label: '车架号（VIN）', value: archive.value?.vin }]
+      : []),
     { label: '车辆厂商', value: archive.value?.manufacturer },
     { label: '厂牌型号', value: archive.value?.brandModel },
-    { label: '营运证号', value: archive.value?.operationCertNo },
-    { label: '购置证号', value: archive.value?.purchaseCertNo },
-    { label: '登记证号', value: archive.value?.registrationCertNo },
+    ...(canViewArchiveField('vehicleIdentifiers')
+      ? [
+          { label: '营运证号', value: archive.value?.operationCertNo },
+          { label: '购置证号', value: archive.value?.purchaseCertNo },
+          { label: '登记证号', value: archive.value?.registrationCertNo }
+        ]
+      : []),
     { label: '车身颜色', value: getDictLabel('vehicleColor', archive.value?.vehicleColor) },
-    { label: '底盘号', value: archive.value?.chassisNo },
-    { label: '空调号码', value: archive.value?.acCode },
-    { label: '波箱系列号', value: archive.value?.gearboxSerialNo },
+    ...(canViewArchiveField('vehicleIdentifiers')
+      ? [
+          { label: '底盘号', value: archive.value?.chassisNo },
+          { label: '波箱系列号', value: archive.value?.gearboxSerialNo }
+        ]
+      : []),
+    ...(canViewArchiveField('deviceIdentity')
+      ? [{ label: '空调号码', value: archive.value?.acCode }]
+      : []),
     { label: '登记日期', value: archive.value?.registerDate },
     { label: '发证日期', value: archive.value?.issueDate },
     { label: '购入开票日期', value: archive.value?.invoiceDate },
@@ -271,7 +291,9 @@
   ])
 
   const engineInfoItems = computed<InfoItem[]>(() => [
-    { label: '发动机号', value: archive.value?.engineNo },
+    ...(canViewArchiveField('vehicleIdentifiers')
+      ? [{ label: '发动机号', value: archive.value?.engineNo }]
+      : []),
     { label: '发动机型号', value: archive.value?.engineModel },
     { label: '燃油类型', value: getDictLabel('vehicleFuelType', archive.value?.fuelType) },
     { label: '发动机排量', value: archive.value?.displacement, suffix: 'L' },
@@ -294,20 +316,38 @@
       label: '营运类型',
       value: getDictLabel('vehicleOperationType', archive.value?.operationType)
     },
-    { label: '业户ID', value: archive.value?.ownerId },
-    { label: '业户名称', value: archive.value?.ownerName },
-    { label: '业户联系电话', value: archive.value?.ownerPhone },
-    { label: '车载终端电话', value: archive.value?.terminalPhone },
-    { label: '车主性别', value: getDictLabel('sex', archive.value?.ownerGender) },
-    { label: '身份证号码', value: archive.value?.idCardNo },
-    { label: '通讯地址', value: archive.value?.mailingAddress },
+    ...(canViewArchiveField('ownerIdentity')
+      ? [
+          { label: '业户ID', value: archive.value?.ownerId },
+          { label: '业户名称', value: archive.value?.ownerName },
+          { label: '车主性别', value: getDictLabel('sex', archive.value?.ownerGender) },
+          { label: '身份证号码', value: archive.value?.idCardNo }
+        ]
+      : []),
+    ...(canViewArchiveField('contactPhones')
+      ? [{ label: '业户联系电话', value: archive.value?.ownerPhone }]
+      : []),
+    ...(canViewArchiveField('deviceIdentity')
+      ? [{ label: '车载终端电话', value: archive.value?.terminalPhone }]
+      : []),
+    ...(canViewArchiveField('mailingAddress')
+      ? [{ label: '通讯地址', value: archive.value?.mailingAddress }]
+      : []),
     { label: '吨位/座位', value: archive.value?.tonnageOrSeat },
     { label: '主司机姓名', value: archive.value?.primaryDriver?.driverName },
-    { label: '主司机电话', value: archive.value?.primaryDriver?.phone },
+    ...(canViewDriverPhone(archive.value?.primaryDriver)
+      ? [{ label: '主司机电话', value: archive.value?.primaryDriver?.phone }]
+      : []),
     { label: '辅司机姓名', value: archive.value?.secondaryDriver?.driverName },
-    { label: '辅司机电话', value: archive.value?.secondaryDriver?.phone },
-    { label: '营运线路', value: archive.value?.operationRoute },
-    { label: '车籍地代码', value: archive.value?.licensePlateCode },
+    ...(canViewDriverPhone(archive.value?.secondaryDriver)
+      ? [{ label: '辅司机电话', value: archive.value?.secondaryDriver?.phone }]
+      : []),
+    ...(canViewArchiveField('operationRoute')
+      ? [{ label: '营运线路', value: archive.value?.operationRoute }]
+      : []),
+    ...(canViewArchiveField('vehicleIdentifiers')
+      ? [{ label: '车籍地代码', value: archive.value?.licensePlateCode }]
+      : []),
     { label: '服务开始时间', value: archive.value?.serviceStartTime },
     { label: '服务结束时间', value: archive.value?.serviceEndTime },
     { label: '支持拍照', value: getBooleanDictLabel(archive.value?.supportPhoto) }

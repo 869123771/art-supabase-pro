@@ -1,5 +1,5 @@
 <template>
-  <div class="business-workspace-page art-full-height fms-accounting-page fund-journal-page">
+  <FinanceAccountingWorkspaceShell class="fund-journal-page">
     <BusinessWorkspaceHeader
       density="compact"
       eyebrow="TREASURY LEDGER"
@@ -37,7 +37,7 @@
       }"
       focusable
     />
-  </div>
+  </FinanceAccountingWorkspaceShell>
 </template>
 
 <script setup lang="tsx">
@@ -399,12 +399,6 @@
 </script>
 
 <style scoped lang="scss">
-  @use '../modules/accounting-workspace.scss' as accounting;
-
-  .fund-journal-page {
-    @include accounting.accounting-workspace-layout;
-  }
-
   :deep(.fund-ledger-identity) {
     display: grid;
     gap: 3px;

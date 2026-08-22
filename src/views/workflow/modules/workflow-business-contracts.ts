@@ -7,7 +7,7 @@ import {
 export interface WorkflowBusinessContract {
   businessType: string
   label: string
-  domain: 'transport' | 'finance' | 'master_data' | 'safety'
+  domain: 'transport' | 'finance' | 'master_data' | 'safety' | 'hr'
   riskLevel: 'high' | 'medium'
   owner: string
   fields: Api.Workflow.WorkflowContextField[]
@@ -174,6 +174,65 @@ const contracts: Record<string, WorkflowBusinessContract> = {
       { key: 'rectificationDeadline', label: '整改期限', valueType: 'date' }
     ],
     routePath: () => '/smis/inspection-control/hidden-danger'
+  },
+  hr_personnel_change: {
+    businessType: 'hr_personnel_change',
+    label: '人事异动',
+    domain: 'hr',
+    riskLevel: 'high',
+    owner: '人力资源',
+    fields: [
+      { key: 'changeNo', label: '异动单号', valueType: 'text' },
+      { key: 'changeType', label: '异动类型', valueType: 'text' },
+      { key: 'employeeId', label: '员工ID', valueType: 'text' },
+      { key: 'effectiveDate', label: '生效日期', valueType: 'date' }
+    ],
+    routePath: () => '/hr/personnel/personnel-change'
+  },
+  hr_lifecycle_case: {
+    businessType: 'hr_lifecycle_case',
+    label: '员工生命周期',
+    domain: 'hr',
+    riskLevel: 'high',
+    owner: '人力资源',
+    fields: [
+      { key: 'caseNo', label: '事项编号', valueType: 'text' },
+      { key: 'caseType', label: '事项类型', valueType: 'text' },
+      { key: 'employeeId', label: '员工ID', valueType: 'text' },
+      { key: 'plannedEffectiveDate', label: '计划生效日期', valueType: 'date' }
+    ],
+    routePath: () => '/hr/personnel/lifecycle'
+  },
+  hr_self_service_request: {
+    businessType: 'hr_self_service_request',
+    label: '员工自助申请',
+    domain: 'hr',
+    riskLevel: 'medium',
+    owner: '员工服务',
+    fields: [
+      { key: 'requestNo', label: '申请编号', valueType: 'text' },
+      { key: 'requestType', label: '申请类型', valueType: 'text' },
+      { key: 'employeeId', label: '员工ID', valueType: 'text' },
+      { key: 'durationHours', label: '申请时长', valueType: 'number' },
+      { key: 'startAt', label: '开始时间', valueType: 'date' },
+      { key: 'endAt', label: '结束时间', valueType: 'date' }
+    ],
+    routePath: () => '/hr/operations/self-service'
+  },
+  hr_recruitment_requisition: {
+    businessType: 'hr_recruitment_requisition',
+    label: '招聘需求',
+    domain: 'hr',
+    riskLevel: 'high',
+    owner: '招聘管理',
+    fields: [
+      { key: 'requisitionNo', label: '需求编号', valueType: 'text' },
+      { key: 'organizationId', label: '招聘组织ID', valueType: 'text' },
+      { key: 'positionId', label: '招聘岗位ID', valueType: 'text' },
+      { key: 'openingCount', label: '需求人数', valueType: 'number' },
+      { key: 'expectedOnboardDate', label: '期望到岗日期', valueType: 'date' }
+    ],
+    routePath: () => '/hr/recruitment/workbench'
   }
 }
 

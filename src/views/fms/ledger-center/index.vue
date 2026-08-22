@@ -1,5 +1,5 @@
 <template>
-  <div class="business-workspace-page art-full-height fms-accounting-page ledger-center-page">
+  <FinanceAccountingWorkspaceShell class="ledger-center-page">
     <BusinessWorkspaceHeader
       density="compact"
       eyebrow="FINANCIAL LEDGERS"
@@ -120,7 +120,7 @@
         />
       </ElTabPane>
     </ElTabs>
-  </div>
+  </FinanceAccountingWorkspaceShell>
 </template>
 
 <script setup lang="tsx">
@@ -1195,8 +1195,6 @@
   @use '../modules/accounting-workspace.scss' as accounting;
 
   .ledger-center-page {
-    @include accounting.accounting-workspace-layout;
-
     &__tabs {
       @include accounting.accounting-workspace-tabs(640px, 540px);
     }

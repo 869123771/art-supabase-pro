@@ -9,12 +9,6 @@ import '@utils/sys/console'                         // 控制台输出内容
 import { setupGlobDirectives } from './directives'
 import { setupErrorHandle } from './utils/sys/error-handle'
 
-document.addEventListener(
-  'touchstart',
-  function () {},
-  { passive: false }
-)
-
 const app = createApp(App)
 initStore(app)
 initRouter(app)

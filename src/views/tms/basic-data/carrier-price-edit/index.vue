@@ -200,7 +200,10 @@
       </section>
     </div>
 
-    <ArtStickyActionBar class="carrier-price-edit__footer">
+    <ArtStickyActionBar
+      class="carrier-price-edit__footer"
+      hint="带 * 的信息为必填项；保存前请确认路线、承运主体与计费信息。"
+    >
       <ElButton :disabled="page.saving" @click="goBack">取消</ElButton>
       <ElButton
         v-auth="'TmsCarrierPriceEdit:Save'"

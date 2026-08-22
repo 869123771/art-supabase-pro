@@ -1,8 +1,6 @@
 import { useSupabase } from '@/hooks'
-import { WRITE_PERMISSION_DENIED_MESSAGE } from '@/hooks/core/useSupabase'
-import { applyDateRange, withRequestOptions } from '@/api/providers/supabase/query'
+import { withRequestOptions } from '@/api/providers/supabase/query'
 import type { ApiRequestOptions } from '@/types/api/request'
-import { applyFilters, type FilterSpec } from '@/utils/supabase'
 import {
   type VehicleInsurance,
   type VehicleInsuranceSearchParams,
@@ -15,95 +13,85 @@ import {
 const { supabase, keysToSnakeDeep, responseHandle } = useSupabase()
 
 // 车辆保险
-const VEHICLE_INSURANCE_TABLE = 'vehicle_insurance'
+interface SecureVehicleInsurancePayload {
+  records: VehicleInsurance[]
+  total: number
+  fieldAccess?: Api.Vms.VehicleManage.VehicleInsuranceFieldAccessMap
+}
 
-const getVehicleInsuranceSearchFilters = (params: VehicleInsuranceSearchParams): FilterSpec[] => [
-  {
-    col: 'companyName',
-    op: 'ilike',
-    val: params.companyName ? `%${params.companyName}%` : undefined
-  },
-  { col: 'plateNo', op: 'ilike', val: params.plateNo ? `%${params.plateNo}%` : undefined },
-  {
-    col: 'commercialPolicyNo',
-    op: 'ilike',
-    val: params.commercialPolicyNo ? `%${params.commercialPolicyNo}%` : undefined
-  },
-  {
-    col: 'compulsoryPolicyNo',
-    op: 'ilike',
-    val: params.compulsoryPolicyNo ? `%${params.compulsoryPolicyNo}%` : undefined
+const startOfDay = (value?: string): string | null => (value ? `${value}T00:00:00` : null)
+const endOfDay = (value?: string): string | null => (value ? `${value}T23:59:59.999` : null)
+
+const createVehicleInsuranceRpcParams = (
+  params: VehicleInsuranceSearchParams & { ids?: string[]; maxRows?: number },
+  purpose: 'list' | 'export'
+) => {
+  const from = Math.max(params.from ?? 0, 0)
+  const requestedTo = params.maxRows ? from + Math.max(params.maxRows, 1) - 1 : params.to
+  return {
+    p_from: from,
+    p_to: Math.max(requestedTo ?? 9, from),
+    p_vehicle_id: params.vehicleId || null,
+    p_company_name: String(params.companyName ?? '').trim() || null,
+    p_plate_no: String(params.plateNo ?? '').trim() || null,
+    p_commercial_policy_no: String(params.commercialPolicyNo ?? '').trim() || null,
+    p_compulsory_policy_no: String(params.compulsoryPolicyNo ?? '').trim() || null,
+    p_commercial_expire_from: params.commercialExpireDateRange?.[0] || null,
+    p_commercial_expire_to: params.commercialExpireDateRange?.[1] || null,
+    p_compulsory_expire_from: params.compulsoryExpireDateRange?.[0] || null,
+    p_compulsory_expire_to: params.compulsoryExpireDateRange?.[1] || null,
+    p_create_time_from: startOfDay(params.createTimeRange?.[0]),
+    p_create_time_to: endOfDay(params.createTimeRange?.[1]),
+    p_ids: params.ids?.length ? params.ids : null,
+    p_purpose: purpose
   }
-]
+}
 
 export async function fetchVehicleInsuranceList(
   params: VehicleInsuranceSearchParams,
   options?: ApiRequestOptions
 ) {
-  const {
-    from = 0,
-    to = 9,
-    commercialExpireDateRange,
-    compulsoryExpireDateRange,
-    createTimeRange
-  } = params
-  let query = supabase
-    .from(VEHICLE_INSURANCE_TABLE)
-    .select('*', { count: 'exact' })
-    .order('create_time', { ascending: false })
-    .range(from, to)
-
-  query = applyDateRange(query, 'commercial_expire_date', commercialExpireDateRange)
-  query = applyDateRange(query, 'compulsory_expire_date', compulsoryExpireDateRange)
-  query = applyDateRange(query, 'create_time', createTimeRange)
-  query = applyFilters(query, getVehicleInsuranceSearchFilters(params), {
-    skipEmpty: true,
-    camelToSnake: true
-  })
-
-  return await responseHandle<VehicleInsurance[]>(() => withRequestOptions(query, options), {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
+  const result = await responseHandle<SecureVehicleInsurancePayload>(
+    () =>
+      withRequestOptions(
+        supabase.rpc(
+          'vms_list_vehicle_insurance_secure',
+          createVehicleInsuranceRpcParams(params, 'list')
+        ),
+        options
+      ),
+    { showErrorMessage: true }
+  )
+  return {
+    data: result.data?.records ?? [],
+    total: result.data?.total ?? 0,
+    error: result.error,
+    fieldAccess: result.data?.fieldAccess ?? {}
+  }
 }
 
 export async function exportVehicleInsuranceList(
   params: VehicleInsuranceSearchParams & { ids?: string[]; maxRows?: number }
 ) {
-  const {
-    ids,
-    maxRows = 10000,
-    commercialExpireDateRange,
-    compulsoryExpireDateRange,
-    createTimeRange
-  } = params
-  let query = supabase
-    .from(VEHICLE_INSURANCE_TABLE)
-    .select('*')
-    .order('create_time', { ascending: false })
-    .limit(maxRows)
-
-  if (ids?.length) {
-    query = query.in('id', ids)
-  } else {
-    query = applyDateRange(query, 'commercial_expire_date', commercialExpireDateRange)
-    query = applyDateRange(query, 'compulsory_expire_date', compulsoryExpireDateRange)
-    query = applyDateRange(query, 'create_time', createTimeRange)
-    query = applyFilters(query, getVehicleInsuranceSearchFilters(params), {
-      skipEmpty: true,
-      camelToSnake: true
-    })
+  const result = await responseHandle<SecureVehicleInsurancePayload>(
+    () =>
+      supabase.rpc(
+        'vms_list_vehicle_insurance_secure',
+        createVehicleInsuranceRpcParams({ ...params, maxRows: params.maxRows ?? 10000 }, 'export')
+      ),
+    { showErrorMessage: true }
+  )
+  return {
+    data: result.data?.records ?? [],
+    total: result.data?.total ?? 0,
+    error: result.error,
+    fieldAccess: result.data?.fieldAccess ?? {}
   }
-
-  return await responseHandle<VehicleInsurance[]>(() => query, {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
 }
 
 export async function fetchVehicleInsuranceDetail(id: string) {
-  return await responseHandle<VehicleInsurance>(
-    () => supabase.from(VEHICLE_INSURANCE_TABLE).select('*').eq('id', id).single(),
+  return await responseHandle<VehicleInsurance | null>(
+    () => supabase.rpc('vms_get_vehicle_insurance_secure', { p_id: id }),
     {
       ignoreCheck: true,
       showErrorMessage: true
@@ -112,124 +100,117 @@ export async function fetchVehicleInsuranceDetail(id: string) {
 }
 
 export async function addVehicleInsurance(params: VehicleInsurance) {
-  return await responseHandle(
-    () => supabase.from(VEHICLE_INSURANCE_TABLE).insert(keysToSnakeDeep(params)),
+  const result = await responseHandle<string>(
+    () =>
+      supabase.rpc('vms_create_vehicle_insurance_secure', {
+        p_payload: keysToSnakeDeep(params)
+      }),
     { showMessage: true, breakReturn: true }
   )
+  return { ...result, data: result.data ? { id: result.data } : null }
 }
 
 export async function editVehicleInsurance(params: VehicleInsurance) {
   const { id, ...data } = params
-  return await responseHandle(
+  if (!id) throw new Error('缺少车辆保险 ID')
+  return await responseHandle<VehicleInsurance>(
     () =>
-      supabase
-        .from(VEHICLE_INSURANCE_TABLE)
-        .update(keysToSnakeDeep(data), { count: 'exact' })
-        .eq('id', id),
-    {
-      showMessage: true,
-      breakReturn: true,
-      requireAffected: true,
-      noAffectedMessage: WRITE_PERMISSION_DENIED_MESSAGE
-    }
+      supabase.rpc('vms_update_vehicle_insurance_secure', {
+        p_id: id,
+        p_payload: keysToSnakeDeep(data)
+      }),
+    { showMessage: true, breakReturn: true }
   )
 }
 
 export async function deleteVehicleInsurance(id: string) {
-  return await responseHandle(
-    () => supabase.from(VEHICLE_INSURANCE_TABLE).delete({ count: 'exact' }).eq('id', id),
-    {
-      showMessage: true,
-      breakReturn: true,
-      requireAffected: true,
-      noAffectedMessage: WRITE_PERMISSION_DENIED_MESSAGE
-    }
+  return await responseHandle<number>(
+    () => supabase.rpc('vms_delete_vehicle_insurance_secure', { p_ids: [id] }),
+    { showMessage: true, message: '删除成功', breakReturn: true }
   )
 }
 
 export async function deleteVehicleInsuranceBatch(ids: string[]) {
-  return await responseHandle(
-    () => supabase.from(VEHICLE_INSURANCE_TABLE).delete({ count: 'exact' }).in('id', ids),
-    {
-      showMessage: true,
-      breakReturn: true,
-      requireAffected: true,
-      noAffectedMessage: WRITE_PERMISSION_DENIED_MESSAGE
-    }
+  return await responseHandle<number>(
+    () => supabase.rpc('vms_delete_vehicle_insurance_secure', { p_ids: ids }),
+    { showMessage: true, breakReturn: true }
   )
 }
 
 // 车辆年检
-const VEHICLE_INSPECTION_TABLE = 'vehicle_inspection'
+interface SecureVehicleInspectionPayload {
+  records: VehicleInspection[]
+  total: number
+  fieldAccess?: Api.Vms.VehicleManage.VehicleInspectionFieldAccessMap
+}
 
-const getVehicleInspectionSearchFilters = (params: VehicleInspectionSearchParams): FilterSpec[] => [
-  {
-    col: 'companyName',
-    op: 'ilike',
-    val: params.companyName ? `%${params.companyName}%` : undefined
-  },
-  { col: 'plateNo', op: 'ilike', val: params.plateNo ? `%${params.plateNo}%` : undefined },
-  {
-    col: 'inspectionNo',
-    op: 'ilike',
-    val: params.inspectionNo ? `%${params.inspectionNo}%` : undefined
+const createVehicleInspectionRpcParams = (
+  params: VehicleInspectionSearchParams & { ids?: string[]; maxRows?: number },
+  purpose: 'list' | 'export'
+) => {
+  const from = Math.max(params.from ?? 0, 0)
+  const requestedTo = params.maxRows ? from + Math.max(params.maxRows, 1) - 1 : params.to
+  return {
+    p_from: from,
+    p_to: Math.max(requestedTo ?? 9, from),
+    p_vehicle_id: params.vehicleId || null,
+    p_company_name: String(params.companyName ?? '').trim() || null,
+    p_plate_no: String(params.plateNo ?? '').trim() || null,
+    p_inspection_no: String(params.inspectionNo ?? '').trim() || null,
+    p_expire_from: params.expireDateRange?.[0] || null,
+    p_expire_to: params.expireDateRange?.[1] || null,
+    p_create_time_from: startOfDay(params.createTimeRange?.[0]),
+    p_create_time_to: endOfDay(params.createTimeRange?.[1]),
+    p_ids: params.ids?.length ? params.ids : null,
+    p_purpose: purpose
   }
-]
+}
 
 export async function fetchVehicleInspectionList(
   params: VehicleInspectionSearchParams,
   options?: ApiRequestOptions
 ) {
-  const { from = 0, to = 9, expireDateRange, createTimeRange } = params
-  let query = supabase
-    .from(VEHICLE_INSPECTION_TABLE)
-    .select('*', { count: 'exact' })
-    .order('create_time', { ascending: false })
-    .range(from, to)
-
-  query = applyDateRange(query, 'expire_date', expireDateRange)
-  query = applyDateRange(query, 'create_time', createTimeRange)
-  query = applyFilters(query, getVehicleInspectionSearchFilters(params), {
-    skipEmpty: true,
-    camelToSnake: true
-  })
-
-  return await responseHandle<VehicleInspection[]>(() => withRequestOptions(query, options), {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
+  const result = await responseHandle<SecureVehicleInspectionPayload>(
+    () =>
+      withRequestOptions(
+        supabase.rpc(
+          'vms_list_vehicle_inspections_secure',
+          createVehicleInspectionRpcParams(params, 'list')
+        ),
+        options
+      ),
+    { showErrorMessage: true }
+  )
+  return {
+    data: result.data?.records ?? [],
+    total: result.data?.total ?? 0,
+    error: result.error,
+    fieldAccess: result.data?.fieldAccess ?? {}
+  }
 }
 
 export async function exportVehicleInspectionList(
   params: VehicleInspectionSearchParams & { ids?: string[]; maxRows?: number }
 ) {
-  const { ids, maxRows = 10000, expireDateRange, createTimeRange } = params
-  let query = supabase
-    .from(VEHICLE_INSPECTION_TABLE)
-    .select('*')
-    .order('create_time', { ascending: false })
-    .limit(maxRows)
-
-  if (ids?.length) {
-    query = query.in('id', ids)
-  } else {
-    query = applyDateRange(query, 'expire_date', expireDateRange)
-    query = applyDateRange(query, 'create_time', createTimeRange)
-    query = applyFilters(query, getVehicleInspectionSearchFilters(params), {
-      skipEmpty: true,
-      camelToSnake: true
-    })
+  const result = await responseHandle<SecureVehicleInspectionPayload>(
+    () =>
+      supabase.rpc(
+        'vms_list_vehicle_inspections_secure',
+        createVehicleInspectionRpcParams({ ...params, maxRows: params.maxRows ?? 10000 }, 'export')
+      ),
+    { showErrorMessage: true }
+  )
+  return {
+    data: result.data?.records ?? [],
+    total: result.data?.total ?? 0,
+    error: result.error,
+    fieldAccess: result.data?.fieldAccess ?? {}
   }
-
-  return await responseHandle<VehicleInspection[]>(() => query, {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
 }
 
 export async function fetchVehicleInspectionDetail(id: string) {
-  return await responseHandle<VehicleInspection>(
-    () => supabase.from(VEHICLE_INSPECTION_TABLE).select('*').eq('id', id).single(),
+  return await responseHandle<VehicleInspection | null>(
+    () => supabase.rpc('vms_get_vehicle_inspection_secure', { p_id: id }),
     {
       ignoreCheck: true,
       showErrorMessage: true
@@ -237,126 +218,121 @@ export async function fetchVehicleInspectionDetail(id: string) {
   )
 }
 export async function addVehicleInspection(params: VehicleInspection) {
-  return await responseHandle(
-    () => supabase.from(VEHICLE_INSPECTION_TABLE).insert(keysToSnakeDeep(params)),
+  const result = await responseHandle<string>(
+    () =>
+      supabase.rpc('vms_create_vehicle_inspection_secure', {
+        p_payload: keysToSnakeDeep(params)
+      }),
     { showMessage: true, breakReturn: true }
   )
+  return { ...result, data: result.data ? { id: result.data } : null }
 }
 
 export async function editVehicleInspection(params: VehicleInspection) {
   const { id, ...data } = params
-  return await responseHandle(
+  if (!id) throw new Error('缺少车辆年检 ID')
+  return await responseHandle<VehicleInspection>(
     () =>
-      supabase
-        .from(VEHICLE_INSPECTION_TABLE)
-        .update(keysToSnakeDeep(data), { count: 'exact' })
-        .eq('id', id),
-    {
-      showMessage: true,
-      breakReturn: true,
-      requireAffected: true,
-      noAffectedMessage: WRITE_PERMISSION_DENIED_MESSAGE
-    }
+      supabase.rpc('vms_update_vehicle_inspection_secure', {
+        p_id: id,
+        p_payload: keysToSnakeDeep(data)
+      }),
+    { showMessage: true, breakReturn: true }
   )
 }
 
 export async function deleteVehicleInspection(id: string) {
-  return await responseHandle(
-    () => supabase.from(VEHICLE_INSPECTION_TABLE).delete({ count: 'exact' }).eq('id', id),
-    {
-      showMessage: true,
-      breakReturn: true,
-      requireAffected: true,
-      noAffectedMessage: WRITE_PERMISSION_DENIED_MESSAGE
-    }
+  return await responseHandle<number>(
+    () => supabase.rpc('vms_delete_vehicle_inspections_secure', { p_ids: [id] }),
+    { showMessage: true, message: '删除成功', breakReturn: true }
   )
 }
 
 export async function deleteVehicleInspectionBatch(ids: string[]) {
-  return await responseHandle(
-    () => supabase.from(VEHICLE_INSPECTION_TABLE).delete({ count: 'exact' }).in('id', ids),
-    {
-      showMessage: true,
-      breakReturn: true,
-      requireAffected: true,
-      noAffectedMessage: WRITE_PERMISSION_DENIED_MESSAGE
-    }
+  return await responseHandle<number>(
+    () => supabase.rpc('vms_delete_vehicle_inspections_secure', { p_ids: ids }),
+    { showMessage: true, breakReturn: true }
   )
 }
 
 // 车辆例行检查
-const VEHICLE_ROUTINE_INSPECTION_TABLE = 'vehicle_routine_inspection_record'
+interface SecureVehicleRoutineInspectionPayload {
+  records: VehicleRoutineInspectionRecord[]
+  total: number
+  fieldAccess?: Api.Vms.VehicleManage.VehicleRoutineInspectionFieldAccessMap
+}
 
-const getVehicleRoutineInspectionSearchFilters = (
-  params: VehicleRoutineInspectionSearchParams
-): FilterSpec[] => [
-  {
-    col: 'companyName',
-    op: 'ilike',
-    val: params.companyName ? `%${params.companyName}%` : undefined
-  },
-  { col: 'plateNo', op: 'ilike', val: params.plateNo ? `%${params.plateNo}%` : undefined },
-  { col: 'inspectionType', op: 'eq', val: params.inspectionType },
-  { col: 'checkResult', op: 'eq', val: params.checkResult }
-]
+const createVehicleRoutineInspectionRpcParams = (
+  params: VehicleRoutineInspectionSearchParams & { ids?: string[]; maxRows?: number },
+  purpose: 'list' | 'export'
+) => {
+  const from = Math.max(params.from ?? 0, 0)
+  const requestedTo = params.maxRows ? from + Math.max(params.maxRows, 1) - 1 : params.to
+  return {
+    p_from: from,
+    p_to: Math.max(requestedTo ?? 9, from),
+    p_vehicle_id: params.vehicleId || null,
+    p_company_name: String(params.companyName ?? '').trim() || null,
+    p_plate_no: String(params.plateNo ?? '').trim() || null,
+    p_inspection_type: String(params.inspectionType ?? '').trim() || null,
+    p_check_result: String(params.checkResult ?? '').trim() || null,
+    p_inspection_time_from: startOfDay(params.inspectionTimeRange?.[0]),
+    p_inspection_time_to: endOfDay(params.inspectionTimeRange?.[1]),
+    p_create_time_from: startOfDay(params.createTimeRange?.[0]),
+    p_create_time_to: endOfDay(params.createTimeRange?.[1]),
+    p_ids: params.ids?.length ? params.ids : null,
+    p_purpose: purpose
+  }
+}
 
 export async function fetchVehicleRoutineInspectionList(
   params: VehicleRoutineInspectionSearchParams,
   options?: ApiRequestOptions
 ) {
-  const { from = 0, to = 9, inspectionTimeRange, createTimeRange } = params
-  let query = supabase
-    .from(VEHICLE_ROUTINE_INSPECTION_TABLE)
-    .select('*', { count: 'exact' })
-    .order('inspection_time', { ascending: false })
-    .range(from, to)
-
-  query = applyDateRange(query, 'inspection_time', inspectionTimeRange)
-  query = applyDateRange(query, 'create_time', createTimeRange)
-  query = applyFilters(query, getVehicleRoutineInspectionSearchFilters(params), {
-    skipEmpty: true,
-    camelToSnake: true
-  })
-
-  return await responseHandle<VehicleRoutineInspectionRecord[]>(
-    () => withRequestOptions(query, options),
-    {
-      ignoreCheck: true,
-      showErrorMessage: true
-    }
+  const result = await responseHandle<SecureVehicleRoutineInspectionPayload>(
+    () =>
+      withRequestOptions(
+        supabase.rpc(
+          'vms_list_vehicle_routine_inspections_secure',
+          createVehicleRoutineInspectionRpcParams(params, 'list')
+        ),
+        options
+      ),
+    { showErrorMessage: true }
   )
+  return {
+    data: result.data?.records ?? [],
+    total: result.data?.total ?? 0,
+    error: result.error,
+    fieldAccess: result.data?.fieldAccess ?? {}
+  }
 }
 
 export async function exportVehicleRoutineInspectionList(
   params: VehicleRoutineInspectionSearchParams & { ids?: string[]; maxRows?: number }
 ) {
-  const { ids, maxRows = 10000, inspectionTimeRange, createTimeRange } = params
-  let query = supabase
-    .from(VEHICLE_ROUTINE_INSPECTION_TABLE)
-    .select('*')
-    .order('inspection_time', { ascending: false })
-    .limit(maxRows)
-
-  if (ids?.length) {
-    query = query.in('id', ids)
-  } else {
-    query = applyDateRange(query, 'inspection_time', inspectionTimeRange)
-    query = applyDateRange(query, 'create_time', createTimeRange)
-    query = applyFilters(query, getVehicleRoutineInspectionSearchFilters(params), {
-      skipEmpty: true,
-      camelToSnake: true
-    })
+  const result = await responseHandle<SecureVehicleRoutineInspectionPayload>(
+    () =>
+      supabase.rpc(
+        'vms_list_vehicle_routine_inspections_secure',
+        createVehicleRoutineInspectionRpcParams(
+          { ...params, maxRows: params.maxRows ?? 10000 },
+          'export'
+        )
+      ),
+    { showErrorMessage: true }
+  )
+  return {
+    data: result.data?.records ?? [],
+    total: result.data?.total ?? 0,
+    error: result.error,
+    fieldAccess: result.data?.fieldAccess ?? {}
   }
-
-  return await responseHandle<VehicleRoutineInspectionRecord[]>(() => query, {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
 }
 
 export async function fetchVehicleRoutineInspectionDetail(id: string) {
-  return await responseHandle<VehicleRoutineInspectionRecord>(
-    () => supabase.from(VEHICLE_ROUTINE_INSPECTION_TABLE).select('*').eq('id', id).single(),
+  return await responseHandle<VehicleRoutineInspectionRecord | null>(
+    () => supabase.rpc('vms_get_vehicle_routine_inspection_secure', { p_id: id }),
     {
       ignoreCheck: true,
       showErrorMessage: true
@@ -365,49 +341,39 @@ export async function fetchVehicleRoutineInspectionDetail(id: string) {
 }
 
 export async function addVehicleRoutineInspection(params: VehicleRoutineInspectionRecord) {
-  return await responseHandle(
-    () => supabase.from(VEHICLE_ROUTINE_INSPECTION_TABLE).insert(keysToSnakeDeep(params)),
+  const result = await responseHandle<string>(
+    () =>
+      supabase.rpc('vms_create_vehicle_routine_inspection_secure', {
+        p_payload: keysToSnakeDeep(params)
+      }),
     { showMessage: true, breakReturn: true }
   )
+  return { ...result, data: result.data ? { id: result.data } : null }
 }
 
 export async function editVehicleRoutineInspection(params: VehicleRoutineInspectionRecord) {
   const { id, ...data } = params
-  return await responseHandle(
+  if (!id) throw new Error('缺少车辆例检记录 ID')
+  return await responseHandle<VehicleRoutineInspectionRecord>(
     () =>
-      supabase
-        .from(VEHICLE_ROUTINE_INSPECTION_TABLE)
-        .update(keysToSnakeDeep(data), { count: 'exact' })
-        .eq('id', id),
-    {
-      showMessage: true,
-      breakReturn: true,
-      requireAffected: true,
-      noAffectedMessage: WRITE_PERMISSION_DENIED_MESSAGE
-    }
+      supabase.rpc('vms_update_vehicle_routine_inspection_secure', {
+        p_id: id,
+        p_payload: keysToSnakeDeep(data)
+      }),
+    { showMessage: true, breakReturn: true }
   )
 }
 
 export async function deleteVehicleRoutineInspection(id: string) {
-  return await responseHandle(
-    () => supabase.from(VEHICLE_ROUTINE_INSPECTION_TABLE).delete({ count: 'exact' }).eq('id', id),
-    {
-      showMessage: true,
-      breakReturn: true,
-      requireAffected: true,
-      noAffectedMessage: WRITE_PERMISSION_DENIED_MESSAGE
-    }
+  return await responseHandle<number>(
+    () => supabase.rpc('vms_delete_vehicle_routine_inspections_secure', { p_ids: [id] }),
+    { showMessage: true, message: '删除成功', breakReturn: true }
   )
 }
 
 export async function deleteVehicleRoutineInspectionBatch(ids: string[]) {
-  return await responseHandle(
-    () => supabase.from(VEHICLE_ROUTINE_INSPECTION_TABLE).delete({ count: 'exact' }).in('id', ids),
-    {
-      showMessage: true,
-      breakReturn: true,
-      requireAffected: true,
-      noAffectedMessage: WRITE_PERMISSION_DENIED_MESSAGE
-    }
+  return await responseHandle<number>(
+    () => supabase.rpc('vms_delete_vehicle_routine_inspections_secure', { p_ids: ids }),
+    { showMessage: true, breakReturn: true }
   )
 }

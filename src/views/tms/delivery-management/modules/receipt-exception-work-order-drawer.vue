@@ -56,6 +56,15 @@
         </header>
 
         <div class="exception-work-orders__toolbar">
+          <ElTooltip content="刷新异常工单" placement="top">
+            <ArtIconButton
+              icon="ri:refresh-line"
+              circle
+              label="刷新异常工单"
+              :loading="state.loading"
+              @click="loadData"
+            />
+          </ElTooltip>
           <ElInput
             v-model="filters.keyword"
             clearable
@@ -83,9 +92,6 @@
               :value="item.value"
             />
           </ElSelect>
-          <ElButton :loading="state.loading" @click="loadData">
-            <ArtSvgIcon icon="ri:refresh-line" aria-hidden="true" />刷新
-          </ElButton>
         </div>
 
         <ArtAsyncState
@@ -194,6 +200,7 @@
   import ArtAsyncState from '@/components/core/layouts/art-async-state/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
+  import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
   import { fetchReceiptExceptionWorkOrders, transitionReceiptExceptionWorkOrder } from '@/api/tms'
   import { useUserStore } from '@/store/modules/user'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'

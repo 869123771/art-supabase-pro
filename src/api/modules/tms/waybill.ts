@@ -1,8 +1,10 @@
 import { useSupabase } from '@/hooks'
 import type { QueryResult } from '@/types/api/response'
-import { fetchSecureOrders } from '@/api/modules/tms/transport-secure'
-import { DISPATCH_VEHICLE_SELECT } from '@/api/modules/tms/waybill-shared'
-import { fetchDriverOptions } from '@/api/modules/tms/driver'
+import {
+  fetchSecureOrders,
+  type WaybillExportScope,
+  type WaybillListScope
+} from '@/api/modules/tms/transport-secure'
 import { isPlainObject } from 'lodash-es'
 
 type WaybillRecord = Api.Tms.Waybill.WaybillRecord
@@ -29,6 +31,8 @@ interface WaybillStatusCountResult {
   total: number
   counts: Record<string, number>
 }
+
+export type { WaybillExportScope, WaybillListScope } from '@/api/modules/tms/transport-secure'
 
 const { supabase, keysToSnakeDeep, responseHandle } = useSupabase()
 
@@ -181,13 +185,14 @@ const WAYBILL_STATUS_VALUES = [
 ] as const
 
 export async function fetchWaybillStatusCounts(
-  params: WaybillSearchParams
+  params: WaybillSearchParams,
+  scope: WaybillListScope
 ): Promise<WaybillStatusCountResult> {
   const sharedFilters = { ...params, waybillStatus: undefined }
   const [total, countEntries] = await Promise.all([
     fetchSecureOrders<WaybillRecord>(
       { ...normalizeWaybillSearchParams(sharedFilters), countOnly: true },
-      'waybill_list'
+      scope
     ).then((result) => result.total),
     Promise.all(
       WAYBILL_STATUS_VALUES.map(async (waybillStatus) => {
@@ -197,7 +202,7 @@ export async function fetchWaybillStatusCounts(
             waybillStatus,
             countOnly: true
           },
-          'waybill_list'
+          scope
         )
         return [waybillStatus, result.total] as const
       })
@@ -221,21 +226,17 @@ const createDispatchRpcPayload = (params: WaybillDispatchPayload) => ({
 })
 
 export async function fetchWaybillList(
-  params: WaybillSearchParams & Api.Common.CommonSearchParams
+  params: WaybillSearchParams & Api.Common.CommonSearchParams,
+  scope: WaybillListScope
 ) {
-  return await fetchSecureOrders<WaybillRecord>(
-    normalizeWaybillSearchParams(params),
-    'waybill_list'
-  )
+  return await fetchSecureOrders<WaybillRecord>(normalizeWaybillSearchParams(params), scope)
 }
 
 export async function exportWaybillList(
-  params: WaybillSearchParams & { ids?: string[]; maxRows?: number }
+  params: WaybillSearchParams & { ids?: string[]; maxRows?: number },
+  scope: WaybillExportScope
 ) {
-  return await fetchSecureOrders<WaybillRecord>(
-    normalizeWaybillSearchParams(params),
-    'waybill_export'
-  )
+  return await fetchSecureOrders<WaybillRecord>(normalizeWaybillSearchParams(params), scope)
 }
 
 export async function dispatchWaybill(params: WaybillDispatchPayload) {
@@ -419,60 +420,19 @@ export async function cancelAssignedWaybill(waybillId: string, reason: string) {
 
 export async function fetchDispatchVehicleOptions(params: DispatchVehicleSearchParams = {}) {
   const { from = 0, to = 9, keyword } = params
-  let query = supabase
-    .from('vehicle_archive')
-    .select(DISPATCH_VEHICLE_SELECT, { count: 'exact' })
-    .eq('audit_status', 'approved')
-    .order('plate_no', { ascending: true })
-    .range(from, to)
-
-  if (keyword) {
-    const { data: driverRows } = await fetchDriverOptions({
-      driverName: keyword,
-      includeDisabled: true,
-      maxRows: 200
-    })
-    const driverIds = (driverRows ?? []).map((item) => item.id).filter(Boolean)
-    const conditions = [
-      `plate_no.ilike.%${keyword}%`,
-      `company_name.ilike.%${keyword}%`,
-      `self_no.ilike.%${keyword}%`,
-      `vehicle_type.ilike.%${keyword}%`
-    ]
-    if (driverIds.length) {
-      const ids = driverIds.join(',')
-      conditions.push(`primary_driver_id.in.(${ids})`)
-    }
-    query = query.or(conditions.join(','))
-  }
-
-  const result = await responseHandle<DispatchVehicleOption[]>(() => query, {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
-  const driverIds = Array.from(
-    new Set(
-      (result.data ?? [])
-        .map((vehicle) => vehicle.primaryDriverId)
-        .filter((id): id is string => Boolean(id))
-    )
+  const result = await responseHandle<{ records: DispatchVehicleOption[]; total: number }>(
+    () =>
+      supabase.rpc('vms_list_dispatch_vehicle_options_secure', {
+        p_from: Math.max(from, 0),
+        p_to: Math.max(to, from),
+        p_keyword: String(keyword ?? '').trim() || null
+      }),
+    { ignoreCheck: true, showErrorMessage: true }
   )
-  if (!driverIds.length) return result
-
-  const driverResult = await fetchDriverOptions({
-    ids: driverIds,
-    includeDisabled: true,
-    maxRows: driverIds.length
-  })
-  const driversById = new Map((driverResult.data ?? []).map((driver) => [driver.id, driver]))
   return {
-    ...result,
-    data: (result.data ?? []).map((vehicle) => ({
-      ...vehicle,
-      primaryDriver: vehicle.primaryDriverId
-        ? (driversById.get(vehicle.primaryDriverId) ?? vehicle.primaryDriver ?? null)
-        : null
-    }))
+    data: result.data?.records ?? [],
+    total: result.data?.total ?? 0,
+    error: result.error
   }
 }
 

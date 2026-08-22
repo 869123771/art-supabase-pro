@@ -12,6 +12,8 @@ export interface ArtPromptOptions extends ArtConfirmOptions {
   allowEmpty?: boolean
   emptyMessage?: string
   initialValue?: string
+  minLength?: number
+  minLengthMessage?: string
   maxLength?: number
   maxLengthMessage?: string
   multiline?: boolean
@@ -76,6 +78,9 @@ export function useArtFeedback() {
       inputValidator: (input) => {
         const normalized = normalizeMessage(input ?? '')
         if (!options.allowEmpty && !normalized) return options.emptyMessage ?? '内容不能为空'
+        if (options.minLength && normalized.length < options.minLength) {
+          return options.minLengthMessage ?? `内容不能少于 ${options.minLength} 个字`
+        }
         if (normalized.length > maxLength) {
           return options.maxLengthMessage ?? `内容不能超过 ${maxLength} 个字`
         }

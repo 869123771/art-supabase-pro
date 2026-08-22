@@ -1,5 +1,5 @@
 <template>
-  <div class="business-workspace-page art-full-height fms-accounting-page fund-transfer-page">
+  <FinanceAccountingWorkspaceShell class="fund-transfer-page">
     <BusinessWorkspaceHeader
       density="compact"
       eyebrow="TREASURY CONTROL"
@@ -39,7 +39,7 @@
 
     <FundTransferDialog ref="dialogRef" @success="handleSaved" />
     <FundTransferDetailDrawer ref="drawerRef" />
-  </div>
+  </FinanceAccountingWorkspaceShell>
 </template>
 
 <script setup lang="tsx">
@@ -570,12 +570,6 @@
 </script>
 
 <style scoped lang="scss">
-  @use '../modules/accounting-workspace.scss' as accounting;
-
-  .fund-transfer-page {
-    @include accounting.accounting-workspace-layout;
-  }
-
   :deep(.fund-transfer-link) {
     display: grid;
     gap: 3px;

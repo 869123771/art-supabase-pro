@@ -31,10 +31,11 @@
         </template>
       </ArtForm>
 
-      <section class="vehicle-inspection-dialog__section">
+      <section v-if="canViewDocuments" class="vehicle-inspection-dialog__section">
         <div class="vehicle-inspection-dialog__section-header">
           <ArtSectionTitle :show-line="false">年检附件</ArtSectionTitle>
           <ArtExcelImport
+            v-if="canEditDocuments"
             accept=""
             :parse-excel="false"
             :disabled="form.attachmentUploading"
@@ -82,6 +83,11 @@
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { downloadAttachment, getFileExtension } from '@/utils/file'
   import { renderAttachmentLink } from '@/components/core/media/art-file-viewer/render'
+  import { canEditField, canViewField } from '@/utils/field-permission'
+  import {
+    EDITABLE_VEHICLE_INSPECTION_ACCESS,
+    sanitizeVehicleInspectionPayload
+  } from './vehicle-inspection-model'
 
   defineOptions({ name: 'VehicleInspectionDialog' })
 
@@ -124,7 +130,9 @@
     vehicleOffice: '',
     expireDate: '',
     remark: '',
-    attachments: []
+    attachments: [],
+    fieldAccess: { ...EDITABLE_VEHICLE_INSPECTION_ACCESS },
+    isRecordOwner: true
   })
 
   const dateProps = {
@@ -140,48 +148,77 @@
     class: '!w-full'
   }
 
+  const canViewIdentifiers = computed(() =>
+    canViewField(form.data.fieldAccess, 'inspectionIdentifiers')
+  )
+  const canEditIdentifiers = computed(() =>
+    canEditField(form.data.fieldAccess, 'inspectionIdentifiers')
+  )
+  const canViewAmounts = computed(() => canViewField(form.data.fieldAccess, 'monetaryAmounts'))
+  const canEditAmounts = computed(() => canEditField(form.data.fieldAccess, 'monetaryAmounts'))
+  const canViewDocuments = computed(() => canViewField(form.data.fieldAccess, 'documents'))
+  const canEditDocuments = computed(() => canEditField(form.data.fieldAccess, 'documents'))
+
   const form: UnwrapNestedRefs<FormGroup> = reactive<FormGroup>({
     data: createInitialForm(),
     vehicleSelection: [],
     attachmentUploading: false,
-    items: computed<FormItem[]>(() => [
-      { label: '年检信息', key: 'inspectionSection', type: 'divider', span: 24 },
-      { label: '车牌号', key: 'vehicleId' },
-      {
-        label: '所属公司',
-        key: 'companyName',
-        type: 'input',
-        props: { disabled: true, placeholder: '选择车辆后自动带出' }
-      },
-      { label: '年检日期', key: 'inspectionDate', type: 'date', props: dateProps },
-      {
-        label: '年检号',
-        key: 'inspectionNo',
-        type: 'input',
-        props: {
-          maxlength: 80,
-          ...inspectionNumber.inputProps(Boolean(form.data.id), '请输入年检号', true)
+    items: computed<FormItem[]>(() => {
+      const items: FormItem[] = [
+        { label: '年检信息', key: 'inspectionSection', type: 'divider', span: 24 },
+        { label: '车牌号', key: 'vehicleId' },
+        {
+          label: '所属公司',
+          key: 'companyName',
+          type: 'input',
+          props: { disabled: true, placeholder: '选择车辆后自动带出' }
         },
-        description: inspectionNumber.description.value
-      },
-      { label: '年检金额', key: 'inspectionAmount', type: 'number', props: moneyProps },
-      { label: '车管所', key: 'vehicleOffice', type: 'input', props: { maxlength: 100 } },
-      { label: '到期日期', key: 'expireDate', type: 'date', props: dateProps },
-      {
-        label: '备注',
-        key: 'remark',
-        type: 'input',
-        span: 24,
-        props: { type: 'textarea', rows: 3, maxlength: 500, showWordLimit: true }
+        { label: '年检日期', key: 'inspectionDate', type: 'date', props: dateProps }
+      ]
+      if (canViewIdentifiers.value) {
+        items.push({
+          label: '年检号',
+          key: 'inspectionNo',
+          type: 'input',
+          props: {
+            maxlength: 80,
+            ...inspectionNumber.inputProps(Boolean(form.data.id), '请输入年检号', true),
+            disabled: !canEditIdentifiers.value
+          },
+          description: inspectionNumber.description.value
+        })
       }
-    ]),
+      if (canViewAmounts.value) {
+        items.push({
+          label: '年检金额',
+          key: 'inspectionAmount',
+          type: 'number',
+          props: { ...moneyProps, disabled: !canEditAmounts.value }
+        })
+      }
+      items.push(
+        { label: '车管所', key: 'vehicleOffice', type: 'input', props: { maxlength: 100 } },
+        { label: '到期日期', key: 'expireDate', type: 'date', props: dateProps },
+        {
+          label: '备注',
+          key: 'remark',
+          type: 'input',
+          span: 24,
+          props: { type: 'textarea', rows: 3, maxlength: 500, showWordLimit: true }
+        }
+      )
+      return items
+    }),
     rules: computed<FormRules<VehicleInspection>>(() => ({
-      inspectionNo: inspectionNumber.manualRequired(Boolean(form.data.id))
-        ? [{ required: true, message: '请输入年检号', trigger: 'blur' }]
-        : [],
+      inspectionNo:
+        canEditIdentifiers.value && inspectionNumber.manualRequired(Boolean(form.data.id))
+          ? [{ required: true, message: '请输入年检号', trigger: 'blur' }]
+          : [],
       vehicleId: [{ required: true, message: '请选择车辆', trigger: 'change' }],
       inspectionDate: [{ required: true, message: '请选择年检日期', trigger: 'change' }],
-      inspectionAmount: [{ required: true, message: '请输入年检金额', trigger: 'blur' }],
+      inspectionAmount: canEditAmounts.value
+        ? [{ required: true, message: '请输入年检金额', trigger: 'blur' }]
+        : [],
       expireDate: [{ required: true, message: '请选择年检到期日期', trigger: 'change' }]
     }))
   })
@@ -204,7 +241,7 @@
     }
   ]
 
-  const attachmentColumns: ColumnOption<Attachment>[] = [
+  const attachmentColumns = computed<ColumnOption<Attachment>[]>(() => [
     { type: 'globalIndex', label: '序号', width: 56 },
     { prop: 'name', label: '附件名称', minWidth: 180, formatter: renderAttachmentLink },
     {
@@ -217,19 +254,21 @@
     {
       prop: 'operation',
       label: '操作',
-      width: 96,
+      width: canEditDocuments.value ? 96 : 64,
       formatter: (row) => (
         <div class="flex items-center">
           <ArtIconButton icon="ri:download-2-line" onClick={() => downloadAttachment(row)} />
-          <ArtIconButton
-            icon="ri:delete-bin-5-line"
-            tone="danger"
-            onClick={() => void removeAttachment(row)}
-          />
+          {canEditDocuments.value ? (
+            <ArtIconButton
+              icon="ri:delete-bin-5-line"
+              tone="danger"
+              onClick={() => void removeAttachment(row)}
+            />
+          ) : null}
         </div>
       )
     }
-  ]
+  ])
 
   const fetchVehicleSelectData = async (params: {
     page: number
@@ -273,19 +312,12 @@
     formRef.value?.clearValidate()
   }
 
-  const normalizePayload = (): VehicleInspection => {
-    const payload = { ...toRaw(form.data) }
-    delete payload.tenantId
-    delete payload.createBy
-    delete payload.createTime
-    delete payload.updateBy
-    delete payload.updateTime
-    return {
-      ...payload,
-      vehicleId: payload.vehicleId || null,
-      attachments: payload.attachments ?? []
-    }
-  }
+  const normalizePayload = (): VehicleInspection =>
+    sanitizeVehicleInspectionPayload({
+      ...toRaw(form.data),
+      vehicleId: form.data.vehicleId || null,
+      attachments: form.data.attachments ?? []
+    })
 
   const handleSubmit = async (): Promise<boolean> => {
     try {

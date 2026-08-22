@@ -1,6 +1,6 @@
 <template>
-  <div
-    class="business-workspace-page art-full-height fms-accounting-page accounting-subject-page"
+  <FinanceAccountingWorkspaceShell
+    class="accounting-subject-page"
     :class="{ 'is-focus-mode': focusMode }"
   >
     <BusinessWorkspaceHeader
@@ -141,7 +141,7 @@
     </div>
 
     <SubjectDialog ref="dialogRef" @success="loadSubjects" />
-  </div>
+  </FinanceAccountingWorkspaceShell>
 </template>
 
 <script setup lang="tsx">
@@ -514,11 +514,7 @@
 </script>
 
 <style scoped lang="scss">
-  @use '../modules/accounting-workspace.scss' as accounting;
-
   .accounting-subject-page {
-    @include accounting.accounting-workspace-layout;
-
     &.is-focus-mode {
       gap: 0;
     }

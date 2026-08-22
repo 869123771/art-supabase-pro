@@ -1,5 +1,5 @@
 <template>
-  <div class="business-workspace-page art-full-height fms-accounting-page fund-account-page">
+  <FinanceAccountingWorkspaceShell class="fund-account-page">
     <BusinessWorkspaceHeader
       density="compact"
       eyebrow="TREASURY FOUNDATION"
@@ -38,7 +38,7 @@
     />
 
     <FundAccountDialog ref="dialogRef" @success="handleSaved" />
-  </div>
+  </FinanceAccountingWorkspaceShell>
 </template>
 
 <script setup lang="tsx">
@@ -393,12 +393,6 @@
 </script>
 
 <style scoped lang="scss">
-  @use '../modules/accounting-workspace.scss' as accounting;
-
-  .fund-account-page {
-    @include accounting.accounting-workspace-layout;
-  }
-
   :deep(.fund-account-identity) {
     min-width: 0;
 

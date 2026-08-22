@@ -18,7 +18,7 @@
     />
 
     <section class="maintenance-record-detail__summary art-card-xs">
-      <div class="maintenance-record-detail__summary-item">
+      <div v-if="canViewTotalCost" class="maintenance-record-detail__summary-item">
         <span>维修类型</span>
         <strong>
           <ArtDictDisplay
@@ -28,7 +28,7 @@
           />
         </strong>
       </div>
-      <div class="maintenance-record-detail__summary-item">
+      <div v-if="canViewMaintenanceItems" class="maintenance-record-detail__summary-item">
         <span>费用金额</span>
         <strong>{{ formatMoney(detail.data?.costAmount) }}</strong>
       </div>
@@ -39,12 +39,12 @@
     </section>
 
     <div class="maintenance-record-detail__content art-card-xs">
-      <section class="maintenance-record-detail__section">
+      <section v-if="canViewMaintenanceItems" class="maintenance-record-detail__section">
         <ArtSectionTitle>基础信息</ArtSectionTitle>
         <ArtDescriptions :data="descriptionData" :items="descriptionItems" :columns="2" />
       </section>
 
-      <section class="maintenance-record-detail__section">
+      <section v-if="canViewDocuments" class="maintenance-record-detail__section">
         <ArtSectionTitle>维修项目</ArtSectionTitle>
         <ArtTable
           :data="detail.data?.items ?? []"
@@ -86,6 +86,7 @@
   import { fetchVehicleMaintenanceDetail } from '@/api/vms'
   import { downloadAttachment, viewAttachment } from '@/utils/file'
   import { renderAttachmentLink } from '@/components/core/media/art-file-viewer/render'
+  import { canViewField, formatSensitiveNumber } from '@/utils/field-permission'
 
   defineOptions({ name: 'VehicleMaintenanceDetail' })
 
@@ -97,11 +98,21 @@
   const router = useRouter()
   const page = reactive<{ loading: boolean; error: Error | null }>({ loading: false, error: null })
   const detail = reactive<{ data?: MaintenanceRecord }>({ data: undefined })
+  const canViewIdentifiers = computed(() =>
+    canViewField(detail.data?.fieldAccess, 'maintenanceIdentifiers')
+  )
+  const canViewTotalCost = computed(() => canViewField(detail.data?.fieldAccess, 'totalCost'))
+  const canViewMaintenanceItems = computed(() =>
+    canViewField(detail.data?.fieldAccess, 'maintenanceItems')
+  )
+  const canViewDocuments = computed(() => canViewField(detail.data?.fieldAccess, 'documents'))
   const descriptionData = computed<Partial<MaintenanceRecord>>(() => detail.data ?? {})
-  const descriptionItems: ArtDescriptionItem<Partial<MaintenanceRecord>>[] = [
+  const descriptionItems = computed<ArtDescriptionItem<Partial<MaintenanceRecord>>[]>(() => [
     { key: 'plateNo', label: '车牌号', field: 'plateNo' },
     { key: 'companyName', label: '所属公司', field: 'companyName' },
-    { key: 'maintenanceNo', label: '维修单号', field: 'maintenanceNo', copyable: true },
+    ...(canViewIdentifiers.value
+      ? [{ key: 'maintenanceNo', label: '维修单号', field: 'maintenanceNo', copyable: true }]
+      : []),
     {
       key: 'maintenanceType',
       label: '维修类型',
@@ -113,12 +124,16 @@
     { key: 'workshop', label: '维修厂', field: 'workshop' },
     { key: 'startTime', label: '开始时间', field: 'startTime', format: 'datetime' },
     { key: 'endTime', label: '结束时间', field: 'endTime', format: 'datetime' },
-    {
-      key: 'costAmount',
-      label: '费用金额',
-      field: 'costAmount',
-      formatter: (value) => formatMoney(value as number | null | undefined)
-    },
+    ...(canViewTotalCost.value
+      ? [
+          {
+            key: 'costAmount',
+            label: '费用金额',
+            field: 'costAmount',
+            formatter: (value: unknown) => formatMoney(value as number | string | null | undefined)
+          }
+        ]
+      : []),
     {
       key: 'externalRepair',
       label: '外部维修',
@@ -127,7 +142,7 @@
       dictDisplay: 'text',
       value: (data: Partial<MaintenanceRecord>) => getBooleanDictValue(data.externalRepair)
     }
-  ]
+  ])
 
   const itemColumns: ColumnOption<MaintenanceItem>[] = [
     { type: 'globalIndex', label: '序号', width: 80 },
@@ -210,9 +225,9 @@
     return String(value)
   }
 
-  const formatMoney = (value?: number | null): string => {
-    if (isNil(value)) return '--'
-    return `${Number(value).toFixed(2)} 元`
+  const formatMoney = (value?: number | string | null): string => {
+    const formatted = formatSensitiveNumber(value)
+    return formatted === '--' || formatted === '***' ? formatted : `${formatted} 元`
   }
 
   const getBooleanDictValue = (value?: boolean | null): string | undefined =>

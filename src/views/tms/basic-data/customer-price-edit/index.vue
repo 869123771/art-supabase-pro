@@ -304,7 +304,10 @@
       </section>
     </div>
 
-    <ArtStickyActionBar class="customer-price-edit__footer">
+    <ArtStickyActionBar
+      class="customer-price-edit__footer"
+      hint="带 * 的信息为必填项；保存前请确认客户、收发货地址与结算费用。"
+    >
       <ElButton :disabled="page.saving" @click="goBack()">取消</ElButton>
       <ElButton
         v-auth="'TmsCustomerPriceEdit:Save'"

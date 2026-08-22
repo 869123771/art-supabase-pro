@@ -3,7 +3,12 @@
     <template #header>
       <div class="tree-toolbar">
         <ElInput v-model="keyword" placeholder="请输入类别名称" clearable @input="debounceFetch" />
-        <ElButton type="primary" @click="handleAddRoot">
+        <ElButton
+          type="primary"
+          aria-label="新增一级类别"
+          title="新增一级类别"
+          @click="handleAddRoot"
+        >
           <ArtSvgIcon icon="ri:add-fill" />
         </ElButton>
       </div>
@@ -27,10 +32,24 @@
               <ElTag size="small" type="info">{{ data.categoryCode }}</ElTag>
             </div>
             <div class="actions" :class="{ 'is-current': currentId === data.id }">
-              <ElButton size="small" circle type="primary" @click.stop="handleAddChild(data)">
+              <ElButton
+                size="small"
+                circle
+                type="primary"
+                aria-label="新增子类别"
+                title="新增子类别"
+                @click.stop="handleAddChild(data)"
+              >
                 <ArtSvgIcon icon="ri:add-line" />
               </ElButton>
-              <ElButton size="small" circle type="success" @click.stop="handleEdit(data)">
+              <ElButton
+                size="small"
+                circle
+                type="success"
+                aria-label="编辑类别"
+                title="编辑类别"
+                @click.stop="handleEdit(data)"
+              >
                 <ArtSvgIcon icon="ri:pencil-line" />
               </ElButton>
               <ElPopconfirm
@@ -40,7 +59,14 @@
                 @confirm="handleDelete(data)"
               >
                 <template #reference>
-                  <ElButton size="small" circle type="danger" @click.stop>
+                  <ElButton
+                    size="small"
+                    circle
+                    type="danger"
+                    aria-label="删除类别"
+                    title="删除类别"
+                    @click.stop
+                  >
                     <ArtSvgIcon icon="ri:delete-bin-5-line" />
                   </ElButton>
                 </template>

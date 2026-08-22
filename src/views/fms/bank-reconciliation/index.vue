@@ -1,5 +1,5 @@
 <template>
-  <div class="business-workspace-page art-full-height fms-accounting-page bank-reconciliation-page">
+  <FinanceAccountingWorkspaceShell class="bank-reconciliation-page">
     <BusinessWorkspaceHeader
       density="compact"
       eyebrow="BANK RECONCILIATION"
@@ -39,7 +39,7 @@
 
     <BankReconciliationImportDialog ref="importDialogRef" @success="handleImported" />
     <BankReconciliationDetailDrawer ref="drawerRef" @changed="handleChanged" />
-  </div>
+  </FinanceAccountingWorkspaceShell>
 </template>
 
 <script setup lang="tsx">
@@ -418,12 +418,6 @@
 </script>
 
 <style scoped lang="scss">
-  @use '../modules/accounting-workspace.scss' as accounting;
-
-  .bank-reconciliation-page {
-    @include accounting.accounting-workspace-layout;
-  }
-
   :deep(.bank-batch-link),
   :deep(.bank-batch-account) {
     display: grid;

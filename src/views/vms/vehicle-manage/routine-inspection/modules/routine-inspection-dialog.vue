@@ -33,10 +33,20 @@
         </template>
       </ArtForm>
 
-      <section class="routine-inspection-dialog__section">
+      <section
+        v-if="canViewField(currentFieldAccess, 'documents')"
+        class="routine-inspection-dialog__section"
+      >
         <div class="routine-inspection-dialog__section-header">
           <ArtSectionTitle :show-line="false">例检附件</ArtSectionTitle>
-          <ElButton type="primary" plain @click="openAttachmentDialog">上传</ElButton>
+          <ElButton
+            v-if="canEditField(currentFieldAccess, 'documents')"
+            type="primary"
+            plain
+            @click="openAttachmentDialog"
+          >
+            上传
+          </ElButton>
         </div>
         <ArtTable
           :data="form.data.attachments"
@@ -115,6 +125,11 @@
   import { downloadAttachment, getFileExtension } from '@/utils/file'
   import { renderAttachmentLink } from '@/components/core/media/art-file-viewer/render'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
+  import { canEditField, canViewField } from '@/utils/field-permission'
+  import {
+    EDITABLE_VEHICLE_ROUTINE_INSPECTION_ACCESS,
+    sanitizeVehicleRoutineInspectionPayload
+  } from './routine-inspection-model'
 
   defineOptions({ name: 'RoutineInspectionDialog' })
 
@@ -163,6 +178,9 @@
   const formRef = ref<FormExpose>()
   const routineNumber = useDocumentNumberRule('vehicle.routine_inspection')
   const attachmentFormRef = ref<FormExpose>()
+  const currentFieldAccess = computed(() =>
+    form.data.id ? (form.data.fieldAccess ?? {}) : EDITABLE_VEHICLE_ROUTINE_INSPECTION_ACCESS
+  )
 
   const createInitialForm = (): RoutineInspection => ({
     id: undefined,
@@ -220,35 +238,84 @@
         props: { options: getDictMap.value.vehicleRoutineInspectionType ?? [] }
       },
       { label: '例检时间', key: 'inspectionTime', type: 'date', props: dateTimeProps },
-      { label: '检查人', key: 'inspector', type: 'input', props: { maxlength: 50 } },
-      { label: '驾驶员', key: 'driverName', type: 'input', props: { maxlength: 50 } },
-      {
-        label: '检查结果',
-        key: 'checkResult',
-        type: 'select',
-        props: { options: getDictMap.value.vehicleRoutineInspectionResult ?? [] }
-      },
-      {
-        label: '检查情况',
-        key: 'checkCondition',
-        type: 'input',
-        span: 24,
-        props: { type: 'textarea', rows: 3, maxlength: 500, showWordLimit: true }
-      },
-      {
-        label: '处理方式',
-        key: 'handlingMethod',
-        type: 'input',
-        span: 24,
-        props: { type: 'textarea', rows: 3, maxlength: 500, showWordLimit: true }
-      },
-      {
-        label: '备注',
-        key: 'remark',
-        type: 'input',
-        span: 24,
-        props: { type: 'textarea', rows: 3, maxlength: 500, showWordLimit: true }
-      }
+      ...(canViewField(currentFieldAccess.value, 'responsiblePeople')
+        ? [
+            {
+              label: '检查人',
+              key: 'inspector',
+              type: 'input',
+              props: {
+                maxlength: 50,
+                disabled: !canEditField(currentFieldAccess.value, 'responsiblePeople')
+              }
+            },
+            {
+              label: '驾驶员',
+              key: 'driverName',
+              type: 'input',
+              props: {
+                maxlength: 50,
+                disabled: !canEditField(currentFieldAccess.value, 'responsiblePeople')
+              }
+            }
+          ]
+        : []),
+      ...(canViewField(currentFieldAccess.value, 'inspectionFindings')
+        ? [
+            {
+              label: '检查结果',
+              key: 'checkResult',
+              type: 'select',
+              props: {
+                options: getDictMap.value.vehicleRoutineInspectionResult ?? [],
+                disabled: !canEditField(currentFieldAccess.value, 'inspectionFindings')
+              }
+            },
+            {
+              label: '检查情况',
+              key: 'checkCondition',
+              type: 'input',
+              span: 24,
+              props: {
+                type: 'textarea',
+                rows: 3,
+                maxlength: 500,
+                showWordLimit: true,
+                disabled: !canEditField(currentFieldAccess.value, 'inspectionFindings')
+              }
+            }
+          ]
+        : []),
+      ...(canViewField(currentFieldAccess.value, 'remediationDetails')
+        ? [
+            {
+              label: '处理方式',
+              key: 'handlingMethod',
+              type: 'input',
+              span: 24,
+              props: {
+                type: 'textarea',
+                rows: 3,
+                maxlength: 500,
+                showWordLimit: true,
+                disabled: !canEditField(currentFieldAccess.value, 'remediationDetails')
+              }
+            },
+            {
+              label: '备注',
+              key: 'remark',
+              type: 'input',
+              span: 24,
+              props: {
+                type: 'textarea',
+                rows: 3,
+                maxlength: 500,
+                showWordLimit: true,
+                disabled: !canEditField(currentFieldAccess.value, 'remediationDetails')
+              }
+            }
+          ]
+        : [])
     ]),
     rules: computed<FormRules<RoutineInspection>>(() => ({
       vehicleId: [{ required: true, message: '请选择车辆', trigger: 'change' }],
@@ -257,8 +324,12 @@
         : [],
       inspectionType: [{ required: true, message: '请选择例检类型', trigger: 'change' }],
       inspectionTime: [{ required: true, message: '请选择例检时间', trigger: 'change' }],
-      inspector: [{ required: true, message: '请输入检查人', trigger: 'blur' }],
-      checkResult: [{ required: true, message: '请选择检查结果', trigger: 'change' }]
+      inspector: canEditField(currentFieldAccess.value, 'responsiblePeople')
+        ? [{ required: true, message: '请输入检查人', trigger: 'blur' }]
+        : [],
+      checkResult: canEditField(currentFieldAccess.value, 'inspectionFindings')
+        ? [{ required: true, message: '请选择检查结果', trigger: 'change' }]
+        : []
     }))
   })
 
@@ -310,11 +381,13 @@
       formatter: (row) => (
         <div class="flex items-center">
           <ArtIconButton icon="ri:download-2-line" onClick={() => downloadAttachment(row)} />
-          <ArtIconButton
-            icon="ri:delete-bin-5-line"
-            tone="danger"
-            onClick={() => void removeAttachment(row)}
-          />
+          {canEditField(currentFieldAccess.value, 'documents') ? (
+            <ArtIconButton
+              icon="ri:delete-bin-5-line"
+              tone="danger"
+              onClick={() => void removeAttachment(row)}
+            />
+          ) : null}
         </div>
       )
     }
@@ -370,6 +443,7 @@
   }
 
   const openAttachmentDialog = async (): Promise<void> => {
+    if (!canEditField(currentFieldAccess.value, 'documents')) return
     await resetAttachmentForm()
     await attachmentDialogRef.value?.handleOpen(undefined, {
       title: '上传例检附件',
@@ -433,16 +507,11 @@
   }
 
   const normalizePayload = (): RoutineInspection => {
-    const payload = { ...toRaw(form.data) }
-    delete payload.tenantId
-    delete payload.createBy
-    delete payload.createTime
-    delete payload.updateBy
-    delete payload.updateTime
+    const payload = sanitizeVehicleRoutineInspectionPayload({ ...toRaw(form.data) })
     return {
       ...payload,
       vehicleId: payload.vehicleId || null,
-      attachments: payload.attachments ?? []
+      ...(payload.attachments ? { attachments: payload.attachments } : {})
     }
   }
 

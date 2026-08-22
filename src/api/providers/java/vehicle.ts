@@ -130,7 +130,14 @@ export async function fetchSupplierList(params: SupplierSearchParams) {
     url: ENDPOINTS.supplier,
     params: withPageParams(params)
   })
-  return normalizePageResult(result)
+  return {
+    ...normalizePageResult(result),
+    fieldAccess: {
+      contactDetails: 'edit',
+      addressDetails: 'edit',
+      internalNotes: 'edit'
+    } satisfies Api.Vms.BasicInfo.SupplierFieldAccessMap
+  }
 }
 
 export async function exportSupplierList(

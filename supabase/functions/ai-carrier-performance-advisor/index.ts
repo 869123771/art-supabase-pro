@@ -11,6 +11,13 @@ interface AppUser {
   status: string | null
 }
 
+interface CarrierPerformanceContext {
+  carrier?: Record<string, unknown>
+  statements?: Array<Record<string, unknown>>
+  driver_count?: number
+  vehicle_count?: number
+}
+
 const FEATURE = 'carrier_performance_advisor'
 const RULE_VERSION = 'carrier-performance-rules-v1'
 const corsHeaders = {
@@ -84,52 +91,30 @@ Deno.serve(async (request) => {
   const startedAt = Date.now()
   let runId = ''
   try {
-    const { data: carrier, error: carrierError } = await userClient
-      .from('tms_carrier')
-      .select(
-        'id,carrier_code,company_name,carrier_type,business_license_no,signed_contract,enabled,create_time'
-      )
-      .eq('id', carrierId)
-      .maybeSingle()
-    if (carrierError) throw carrierError
+    const [contextResult, waybillResult, costResult] = await Promise.all([
+      userClient.rpc('tms_get_carrier_performance_context_secure', {
+        p_carrier_id: carrierId
+      }),
+      userClient.rpc('tms_list_carrier_waybills_secure', {
+        p_carrier_id: carrierId,
+        p_limit: 200
+      }),
+      userClient.rpc('tms_list_carrier_cost_ai_evidence_secure', {
+        p_carrier_id: carrierId,
+        p_limit: 300
+      })
+    ])
+    const evidenceError = [contextResult.error, waybillResult.error, costResult.error].find(Boolean)
+    if (evidenceError) throw evidenceError
+
+    const context =
+      contextResult.data && typeof contextResult.data === 'object'
+        ? (contextResult.data as CarrierPerformanceContext)
+        : null
+    const carrier = context?.carrier
     if (!carrier) {
       return json({ code: 'carrier_not_found', message: '未找到可查看的承运商档案' }, 404)
     }
-
-    const [waybillResult, costResult, statementResult, driverResult, vehicleResult] =
-      await Promise.all([
-        userClient.rpc('tms_list_carrier_waybills_secure', {
-          p_carrier_id: carrierId,
-          p_limit: 200
-        }),
-        userClient.rpc('tms_list_carrier_cost_ai_evidence_secure', {
-          p_carrier_id: carrierId,
-          p_limit: 300
-        }),
-        userClient
-          .from('tms_carrier_statement')
-          .select('id,statement_no,status,period_start,period_end')
-          .eq('carrier_id', carrierId)
-          .order('period_end', { ascending: false })
-          .limit(100),
-        userClient
-          .from('tms_driver')
-          .select('id', { count: 'exact', head: true })
-          .eq('carrier_id', carrierId)
-          .eq('enabled', true),
-        userClient
-          .from('vehicle_archive')
-          .select('id', { count: 'exact', head: true })
-          .eq('carrier_id', carrierId)
-      ])
-    const evidenceError = [
-      waybillResult.error,
-      costResult.error,
-      statementResult.error,
-      driverResult.error,
-      vehicleResult.error
-    ].find(Boolean)
-    if (evidenceError) throw evidenceError
 
     const { data: run, error: runError } = await admin
       .from('ai_run')
@@ -166,9 +151,9 @@ Deno.serve(async (request) => {
       carrier,
       waybills,
       costs: costResult.data ?? [],
-      statements: statementResult.data ?? [],
-      driverCount: driverResult.count ?? 0,
-      vehicleCount: vehicleResult.count ?? 0
+      statements: context.statements ?? [],
+      driverCount: context.driver_count ?? 0,
+      vehicleCount: context.vehicle_count ?? 0
     })
     const { error: finishError } = await admin
       .from('ai_run')

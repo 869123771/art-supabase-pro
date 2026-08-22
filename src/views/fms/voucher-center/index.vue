@@ -1,5 +1,5 @@
 <template>
-  <div class="business-workspace-page art-full-height fms-accounting-page voucher-center-page">
+  <FinanceAccountingWorkspaceShell class="voucher-center-page">
     <BusinessWorkspaceHeader
       density="compact"
       eyebrow="GENERAL LEDGER CONTROL"
@@ -39,7 +39,7 @@
     <VoucherDialog ref="dialogRef" @success="handleMutationSuccess" />
     <VoucherActionDialog ref="actionDialogRef" @success="handleMutationSuccess" />
     <VoucherDetailDrawer ref="drawerRef" />
-  </div>
+  </FinanceAccountingWorkspaceShell>
 </template>
 
 <script setup lang="tsx">
@@ -597,11 +597,7 @@
 </script>
 
 <style scoped lang="scss">
-  @use '../modules/accounting-workspace.scss' as accounting;
-
   .voucher-center-page {
-    @include accounting.accounting-workspace-layout;
-
     &__voucher-no {
       font-weight: 600;
       font-variant-numeric: tabular-nums;

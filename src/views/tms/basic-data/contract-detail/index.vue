@@ -42,10 +42,7 @@
     </section>
 
     <div class="contract-detail__content">
-      <section
-        v-if="canViewSensitiveField('attachments')"
-        class="contract-detail__section art-card-xs"
-      >
+      <section class="contract-detail__section art-card-xs">
         <ArtSectionTitle>基础信息</ArtSectionTitle>
         <ArtDescriptions :data="descriptionData" :items="baseDescriptionItems" :columns="4">
           <template #item-contractStatus>
@@ -86,7 +83,10 @@
         <ArtDescriptions :data="descriptionData" :items="termsDescriptionItems" :columns="4" />
       </section>
 
-      <section class="contract-detail__section art-card-xs">
+      <section
+        v-if="canViewSensitiveField('attachments')"
+        class="contract-detail__section art-card-xs"
+      >
         <ArtSectionTitle>合同附件</ArtSectionTitle>
         <div v-if="attachments.length" class="contract-detail__attachments">
           <ArtAttachmentLink
@@ -143,7 +143,7 @@
   const fieldAccess = computed(() => detail.data?.fieldAccess)
   const canViewSensitiveField = (field: ContractFieldKey): boolean =>
     canViewField(fieldAccess.value, field)
-  const baseDescriptionItems: ArtDescriptionItem<Partial<Contract>>[] = [
+  const baseDescriptionItems = computed<ArtDescriptionItem<Partial<Contract>>[]>(() => [
     { key: 'contractStatus', label: '合同状态', field: 'contractStatus' },
     { key: 'contractNo', label: '合同编号', field: 'contractNo', copyable: true },
     { key: 'paperContractNo', label: '纸质合同编号', field: 'paperContractNo', copyable: true },
@@ -172,10 +172,19 @@
     },
     { key: 'partyName', label: '合同相对方', value: () => partyName.value },
     { key: 'contactName', label: '联系人姓名', field: 'contactName' },
+    ...(canViewSensitiveField('partyContactPhone')
+      ? [
+          {
+            key: 'partyContactPhone',
+            label: '联系电话',
+            field: 'partyContactPhone'
+          }
+        ]
+      : []),
     { key: 'customerSignatory', label: '客户签约人', field: 'customerSignatory' },
     { key: 'waybillNo', label: '运单号', field: 'waybillNo', copyable: true },
     { key: 'handler', label: '经办人', field: 'handler' }
-  ]
+  ])
 
   const fulfillmentDescriptionItems = computed<ArtDescriptionItem<Partial<Contract>>[]>(() => [
     {

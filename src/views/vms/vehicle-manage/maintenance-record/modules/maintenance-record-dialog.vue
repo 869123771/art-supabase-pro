@@ -33,10 +33,12 @@
         </template>
       </ArtForm>
 
-      <section class="maintenance-record-dialog__section">
+      <section v-if="canViewMaintenanceItems" class="maintenance-record-dialog__section">
         <div class="maintenance-record-dialog__section-header">
           <ArtSectionTitle :show-line="false">项目清单</ArtSectionTitle>
-          <ElButton type="primary" plain @click="addItem">新增</ElButton>
+          <ElButton v-if="canEditMaintenanceItems" type="primary" plain @click="addItem">
+            新增
+          </ElButton>
         </div>
         <ArtTable
           :data="form.data.items"
@@ -47,10 +49,12 @@
         />
       </section>
 
-      <section class="maintenance-record-dialog__section">
+      <section v-if="canViewDocuments" class="maintenance-record-dialog__section">
         <div class="maintenance-record-dialog__section-header">
           <ArtSectionTitle :show-line="false">维修保养附件</ArtSectionTitle>
-          <ElButton type="primary" plain @click="openAttachmentDialog">上传</ElButton>
+          <ElButton v-if="canEditDocuments" type="primary" plain @click="openAttachmentDialog">
+            上传
+          </ElButton>
         </div>
         <ArtTable
           :data="form.data.attachments"
@@ -63,7 +67,7 @@
     </div>
   </ArtDialog>
 
-  <ArtDialog ref="attachmentDialogRef" size="md">
+  <ArtDialog v-if="canEditDocuments" ref="attachmentDialogRef" size="md">
     <div class="maintenance-attachment-dialog">
       <ArtForm
         ref="attachmentFormRef"
@@ -125,6 +129,11 @@
   import { downloadAttachment, getFileExtension } from '@/utils/file'
   import { renderAttachmentLink } from '@/components/core/media/art-file-viewer/render'
   import { useUserStore } from '@/store/modules/user'
+  import { canEditField, canViewField } from '@/utils/field-permission'
+  import {
+    EDITABLE_VEHICLE_MAINTENANCE_ACCESS,
+    sanitizeVehicleMaintenancePayload
+  } from './maintenance-record-model'
 
   defineOptions({ name: 'MaintenanceRecordDialog' })
 
@@ -132,6 +141,7 @@
 
   type MaintenanceRecord = Api.Vms.VehicleManage.VehicleMaintenanceRecord
   type MaintenanceItem = Api.Vms.VehicleManage.VehicleMaintenanceItem
+  type MaintenanceFieldKey = Api.Vms.VehicleManage.VehicleMaintenanceFieldKey
   type VehicleArchive = Api.Vms.ArchiveManage.VehicleArchive
   type Attachment = Api.Vms.VehicleManage.VehicleAttachment
 
@@ -199,8 +209,29 @@
     externalRepair: false,
     remark: '',
     items: [createInitialItem()],
-    attachments: []
+    attachments: [],
+    fieldAccess: { ...EDITABLE_VEHICLE_MAINTENANCE_ACCESS },
+    isRecordOwner: true
   })
+
+  const canViewMaintenanceField = (field: MaintenanceFieldKey): boolean =>
+    !form.data.id || canViewField(form.data.fieldAccess, field)
+  const canEditMaintenanceField = (field: MaintenanceFieldKey): boolean =>
+    !form.data.id || canEditField(form.data.fieldAccess, field)
+  const canViewMaintenanceItems = computed(() => canViewMaintenanceField('maintenanceItems'))
+  const canEditMaintenanceItems = computed(() => canEditMaintenanceField('maintenanceItems'))
+  const canViewDocuments = computed(() => canViewMaintenanceField('documents'))
+  const canEditDocuments = computed(() => canEditMaintenanceField('documents'))
+
+  const IDENTIFIER_FIELDS = new Set(['maintenanceNo'])
+  const COST_FIELDS = new Set(['costAmount'])
+
+  const getSensitiveFieldForFormItem = (item: FormItem): MaintenanceFieldKey | null => {
+    const key = String(item.key)
+    if (IDENTIFIER_FIELDS.has(key)) return 'maintenanceIdentifiers'
+    if (COST_FIELDS.has(key)) return 'totalCost'
+    return null
+  }
 
   const createInitialAttachmentForm = (): AttachmentFormData => ({
     name: '',
@@ -227,50 +258,64 @@
   const form: UnwrapNestedRefs<FormGroup> = reactive<FormGroup>({
     data: createInitialForm(),
     vehicleSelection: [],
-    items: computed<FormItem[]>(() => [
-      { label: '基础信息', key: 'baseSection', type: 'divider', span: 24 },
-      { label: '车牌号', key: 'vehicleId', span: 12 },
-      { label: '所属公司', key: 'companyName', type: 'input', props: { disabled: true } },
-      {
-        label: '维修单号',
-        key: 'maintenanceNo',
-        type: 'input',
-        props: {
-          maxlength: 80,
-          ...maintenanceNumber.inputProps(Boolean(form.data.id), '请输入维修单号', true)
+    items: computed<FormItem[]>(() => {
+      const items: FormItem[] = [
+        { label: '基础信息', key: 'baseSection', type: 'divider', span: 24 },
+        { label: '车牌号', key: 'vehicleId', span: 12 },
+        { label: '所属公司', key: 'companyName', type: 'input', props: { disabled: true } },
+        {
+          label: '维修单号',
+          key: 'maintenanceNo',
+          type: 'input',
+          props: {
+            maxlength: 80,
+            ...maintenanceNumber.inputProps(Boolean(form.data.id), '请输入维修单号', true)
+          },
+          description: maintenanceNumber.description.value
         },
-        description: maintenanceNumber.description.value
-      },
-      {
-        label: '维修类型',
-        key: 'maintenanceType',
-        type: 'select',
-        props: { options: getDictMap.value.vehicleMaintenanceType ?? [] }
-      },
-      { label: '发起人', key: 'initiator', type: 'input', props: { maxlength: 50 } },
-      { label: '开始时间', key: 'startTime', type: 'date', props: dateTimeProps },
-      { label: '结束时间', key: 'endTime', type: 'date', props: dateTimeProps },
-      { label: '费用金额', key: 'costAmount', type: 'number', props: moneyProps },
-      { label: '维修厂', key: 'workshop', type: 'input', props: { maxlength: 120 } },
-      {
-        label: '外部维修',
-        key: 'externalRepair',
-        type: 'radioGroup',
-        props: { options: getBooleanDictOptions() }
-      },
-      {
-        label: '备注',
-        key: 'remark',
-        type: 'input',
-        span: 24,
-        props: { type: 'textarea', rows: 3, maxlength: 500, showWordLimit: true }
-      }
-    ]),
+        {
+          label: '维修类型',
+          key: 'maintenanceType',
+          type: 'select',
+          props: { options: getDictMap.value.vehicleMaintenanceType ?? [] }
+        },
+        { label: '发起人', key: 'initiator', type: 'input', props: { maxlength: 50 } },
+        { label: '开始时间', key: 'startTime', type: 'date', props: dateTimeProps },
+        { label: '结束时间', key: 'endTime', type: 'date', props: dateTimeProps },
+        { label: '费用金额', key: 'costAmount', type: 'number', props: moneyProps },
+        { label: '维修厂', key: 'workshop', type: 'input', props: { maxlength: 120 } },
+        {
+          label: '外部维修',
+          key: 'externalRepair',
+          type: 'radioGroup',
+          props: { options: getBooleanDictOptions() }
+        },
+        {
+          label: '备注',
+          key: 'remark',
+          type: 'input',
+          span: 24,
+          props: { type: 'textarea', rows: 3, maxlength: 500, showWordLimit: true }
+        }
+      ]
+      return items
+        .filter((item) => {
+          const field = getSensitiveFieldForFormItem(item)
+          return !field || canViewMaintenanceField(field)
+        })
+        .map((item) => {
+          const field = getSensitiveFieldForFormItem(item)
+          if (!field || canEditMaintenanceField(field)) return item
+          return { ...item, props: { ...(item.props ?? {}), disabled: true } }
+        })
+    }),
     rules: computed<FormRules<MaintenanceRecord>>(() => ({
       vehicleId: [{ required: true, message: '请选择车辆', trigger: 'change' }],
-      maintenanceNo: maintenanceNumber.manualRequired(Boolean(form.data.id))
-        ? [{ required: true, message: '请输入维修单号', trigger: 'blur' }]
-        : [],
+      maintenanceNo:
+        canEditMaintenanceField('maintenanceIdentifiers') &&
+        maintenanceNumber.manualRequired(Boolean(form.data.id))
+          ? [{ required: true, message: '请输入维修单号', trigger: 'blur' }]
+          : [],
       maintenanceType: [{ required: true, message: '请选择维修类型', trigger: 'change' }],
       startTime: [{ required: true, message: '请选择开始时间', trigger: 'change' }]
     }))
@@ -312,19 +357,31 @@
     }
   ]
 
-  const itemColumns: ColumnOption<MaintenanceItem>[] = [
+  const itemColumns = computed<ColumnOption<MaintenanceItem>[]>(() => [
     { type: 'globalIndex', label: '序号', width: 56 },
     {
       prop: 'itemName',
       label: '项目名称',
       minWidth: 130,
-      formatter: (row) => <ElInput v-model={row.itemName} placeholder="项目名称" />
+      formatter: (row) => (
+        <ElInput
+          v-model={row.itemName}
+          placeholder="项目名称"
+          disabled={!canEditMaintenanceItems.value}
+        />
+      )
     },
     {
       prop: 'partName',
       label: '配件名称',
       minWidth: 120,
-      formatter: (row) => <ElInput v-model={row.partName} placeholder="配件名称" />
+      formatter: (row) => (
+        <ElInput
+          v-model={row.partName}
+          placeholder="配件名称"
+          disabled={!canEditMaintenanceItems.value}
+        />
+      )
     },
     {
       prop: 'quantity',
@@ -336,6 +393,7 @@
           min={0}
           precision={2}
           controls={false}
+          disabled={!canEditMaintenanceItems.value}
           class="w-full!"
         />
       )
@@ -350,6 +408,7 @@
           min={0}
           precision={2}
           controls={false}
+          disabled={!canEditMaintenanceItems.value}
           class="w-full!"
         />
       )
@@ -364,6 +423,7 @@
           min={0}
           precision={2}
           controls={false}
+          disabled={!canEditMaintenanceItems.value}
           class="w-full!"
         />
       )
@@ -378,21 +438,30 @@
           min={0}
           precision={2}
           controls={false}
+          disabled={!canEditMaintenanceItems.value}
           class="w-full!"
         />
       )
     },
-    {
-      prop: 'operation',
-      label: '操作',
-      width: 64,
-      formatter: (row) => (
-        <ArtIconButton icon="ri:delete-bin-5-line" tone="danger" onClick={() => removeItem(row)} />
-      )
-    }
-  ]
+    ...(canEditMaintenanceItems.value
+      ? [
+          {
+            prop: 'operation',
+            label: '操作',
+            width: 64,
+            formatter: (row: MaintenanceItem) => (
+              <ArtIconButton
+                icon="ri:delete-bin-5-line"
+                tone="danger"
+                onClick={() => removeItem(row)}
+              />
+            )
+          }
+        ]
+      : [])
+  ])
 
-  const attachmentColumns: ColumnOption<Attachment>[] = [
+  const attachmentColumns = computed<ColumnOption<Attachment>[]>(() => [
     { type: 'globalIndex', label: '序号', width: 56 },
     { prop: 'name', label: '附件名称', minWidth: 180, formatter: renderAttachmentLink },
     {
@@ -409,15 +478,17 @@
       formatter: (row) => (
         <div class="flex items-center">
           <ArtIconButton icon="ri:download-2-line" onClick={() => downloadAttachment(row)} />
-          <ArtIconButton
-            icon="ri:delete-bin-5-line"
-            tone="danger"
-            onClick={() => void removeAttachment(row)}
-          />
+          {canEditDocuments.value ? (
+            <ArtIconButton
+              icon="ri:delete-bin-5-line"
+              tone="danger"
+              onClick={() => void removeAttachment(row)}
+            />
+          ) : null}
         </div>
       )
     }
-  ]
+  ])
 
   const getBooleanDictOptions = () =>
     (getDictMap.value.commonBoolean ?? []).map((item) => ({
@@ -534,21 +605,14 @@
     return true
   }
 
-  const normalizePayload = (): MaintenanceRecord => {
-    const payload = { ...toRaw(form.data) }
-    delete payload.tenantId
-    delete payload.createBy
-    delete payload.createTime
-    delete payload.updateBy
-    delete payload.updateTime
-    return {
-      ...payload,
-      vehicleId: payload.vehicleId || null,
-      endTime: payload.endTime || null,
-      items: (payload.items ?? []).filter((item) => item.itemName || item.partName),
-      attachments: payload.attachments ?? []
-    }
-  }
+  const normalizePayload = (): MaintenanceRecord =>
+    sanitizeVehicleMaintenancePayload({
+      ...toRaw(form.data),
+      vehicleId: form.data.vehicleId || null,
+      endTime: form.data.endTime || null,
+      items: (form.data.items ?? []).filter((item) => item.itemName || item.partName),
+      attachments: form.data.attachments ?? []
+    })
 
   const handleSubmit = async (): Promise<boolean> => {
     try {

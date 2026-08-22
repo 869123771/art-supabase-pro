@@ -70,6 +70,11 @@
     type BusinessWorkspaceMetric
   } from '@/components/business/business-workspace-header/index.vue'
   import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
+  import {
+    canViewField,
+    formatSensitiveNumber,
+    mergeFieldAccessMaps
+  } from '@/utils/field-permission'
 
   defineOptions({ name: 'VehicleInsurance' })
 
@@ -94,6 +99,10 @@
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<DialogExpose>()
   const overview = reactive<{ total: number; rows: VehicleInsurance[] }>({ total: 0, rows: [] })
+  const listFieldAccess = ref<Api.Vms.VehicleManage.VehicleInsuranceFieldAccessMap>({})
+  const effectiveFieldAccess = computed(() =>
+    mergeFieldAccessMaps(listFieldAccess.value, ...overview.rows.map((row) => row.fieldAccess))
+  )
   const workspaceMetrics = computed<BusinessWorkspaceMetric[]>(() => [
     {
       label: '保险记录',
@@ -141,8 +150,12 @@
     searchItems: computed<SearchFormItem[]>(() => [
       { label: '所属公司', key: 'companyName', type: 'input' },
       { label: '车牌号', key: 'plateNo', type: 'input' },
-      { label: '商业险保单号', key: 'commercialPolicyNo', type: 'input' },
-      { label: '交强险保单号', key: 'compulsoryPolicyNo', type: 'input' },
+      ...(canViewField(effectiveFieldAccess.value, 'policyNumbers')
+        ? [
+            { label: '商业险保单号', key: 'commercialPolicyNo', type: 'input' },
+            { label: '交强险保单号', key: 'compulsoryPolicyNo', type: 'input' }
+          ]
+        : []),
       {
         label: '商业险到期',
         key: 'commercialExpireDateRange',
@@ -168,7 +181,7 @@
         permission: 'VehicleInsurance:Export',
         exportFilename: '车辆保险',
         exportSheetName: '车辆保险',
-        exportColumns: insuranceExcelColumns,
+        exportColumns: insuranceExcelColumns.value,
         exportApi: ({ selectedIds, searchParams, maxRows }) =>
           exportVehicleInsuranceList({
             ...(searchParams as SearchParams),
@@ -196,30 +209,42 @@
       {
         label: '商业险',
         children: [
-          { prop: 'commercialPolicyNo', label: '保单号', minWidth: 150 },
+          ...(canViewField(effectiveFieldAccess.value, 'policyNumbers')
+            ? [{ prop: 'commercialPolicyNo', label: '保单号', minWidth: 150 }]
+            : []),
           { prop: 'commercialCompanyName', label: '保险公司', minWidth: 150 },
           { prop: 'commercialInsureDate', label: '投保日期', width: 120 },
-          {
-            prop: 'commercialPremium',
-            label: '投保金额',
-            width: 120,
-            formatter: (row: VehicleInsurance) => formatMoney(row.commercialPremium)
-          },
+          ...(canViewField(effectiveFieldAccess.value, 'premiumAmounts')
+            ? [
+                {
+                  prop: 'commercialPremium',
+                  label: '投保金额',
+                  width: 120,
+                  formatter: (row: VehicleInsurance) => formatMoney(row.commercialPremium)
+                }
+              ]
+            : []),
           { prop: 'commercialExpireDate', label: '到期日期', width: 120 }
         ]
       },
       {
         label: '交强险',
         children: [
-          { prop: 'compulsoryPolicyNo', label: '保单号', minWidth: 150 },
+          ...(canViewField(effectiveFieldAccess.value, 'policyNumbers')
+            ? [{ prop: 'compulsoryPolicyNo', label: '保单号', minWidth: 150 }]
+            : []),
           { prop: 'compulsoryCompanyName', label: '保险公司', minWidth: 150 },
           { prop: 'compulsoryInsureDate', label: '投保日期', width: 120 },
-          {
-            prop: 'compulsoryPremium',
-            label: '投保金额',
-            width: 120,
-            formatter: (row: VehicleInsurance) => formatMoney(row.compulsoryPremium)
-          },
+          ...(canViewField(effectiveFieldAccess.value, 'premiumAmounts')
+            ? [
+                {
+                  prop: 'compulsoryPremium',
+                  label: '投保金额',
+                  width: 120,
+                  formatter: (row: VehicleInsurance) => formatMoney(row.compulsoryPremium)
+                }
+              ]
+            : []),
           { prop: 'compulsoryExpireDate', label: '到期日期', width: 120 }
         ]
       },
@@ -252,28 +277,38 @@
     ]
   })
 
-  const insuranceExcelColumns: ArtTableQueryExcelColumn[] = [
+  const insuranceExcelColumns = computed<ArtTableQueryExcelColumn[]>(() => [
     { key: 'companyName', title: '所属公司' },
     { key: 'plateNo', title: '车牌号', required: true },
-    { key: 'commercialPolicyNo', title: '商业险保单号', required: true },
+    ...(canViewField(effectiveFieldAccess.value, 'policyNumbers')
+      ? [{ key: 'commercialPolicyNo', title: '商业险保单号', required: true }]
+      : []),
     { key: 'commercialCompanyName', title: '商业险保险公司' },
     { key: 'commercialInsureDate', title: '商业险投保日期' },
-    { key: 'commercialPremium', title: '商业险投保金额' },
+    ...(canViewField(effectiveFieldAccess.value, 'premiumAmounts')
+      ? [{ key: 'commercialPremium', title: '商业险投保金额' }]
+      : []),
     { key: 'commercialExpireDate', title: '商业险到期日期' },
-    { key: 'compulsoryPolicyNo', title: '交强险保单号', required: true },
+    ...(canViewField(effectiveFieldAccess.value, 'policyNumbers')
+      ? [{ key: 'compulsoryPolicyNo', title: '交强险保单号', required: true }]
+      : []),
     { key: 'compulsoryCompanyName', title: '交强险保险公司' },
     { key: 'compulsoryInsureDate', title: '交强险投保日期' },
-    { key: 'compulsoryPremium', title: '交强险投保金额' },
+    ...(canViewField(effectiveFieldAccess.value, 'premiumAmounts')
+      ? [{ key: 'compulsoryPremium', title: '交强险投保金额' }]
+      : []),
     { key: 'compulsoryExpireDate', title: '交强险到期日期' },
     { key: 'remark', title: '备注' }
-  ]
+  ])
 
-  const fetchTableData = (params: TableParams) => {
+  const fetchTableData = async (params: TableParams) => {
     const { from, to } = pageInfoHandler({
       current: params.current,
       size: params.size
     })
-    return fetchVehicleInsuranceList({ ...params, from, to })
+    const result = await fetchVehicleInsuranceList({ ...params, from, to })
+    listFieldAccess.value = result.fieldAccess ?? {}
+    return result
   }
 
   const handleTableSuccess: NonNullable<ArtTableQueryProps['onSuccess']> = (rows, response) => {
@@ -339,9 +374,9 @@
     }
   }
 
-  const formatMoney = (value?: number | null): string => {
-    if (value === undefined || value === null) return '--'
-    return `${Number(value).toFixed(2)} 元`
+  const formatMoney = (value?: number | string | null): string => {
+    const formatted = formatSensitiveNumber(value)
+    return formatted === '--' || formatted === '***' ? formatted : `${formatted} 元`
   }
 
   onErrorCaptured((error) => {

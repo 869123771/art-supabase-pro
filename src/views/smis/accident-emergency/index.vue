@@ -130,9 +130,7 @@
       ]
   )
   const counts = reactive({ accident: 0, plan: 0, drill: 0, open: 0 })
-  const accidentListFieldAccess = ref<
-    Api.Smis.AccidentEmergency.AccidentCaseFieldAccessMap
-  >({})
+  const accidentListFieldAccess = ref<Api.Smis.AccidentEmergency.AccidentCaseFieldAccessMap>({})
   const metrics = computed<BusinessWorkspaceMetric[]>(() => [
     {
       label: '事故事件',
@@ -270,8 +268,7 @@
             permission="SmisAccidentEmergency:View"
             onClick={() => void accidentDrawerRef.value?.handleOpen(row)}
           />
-          {row.status === 'reported' &&
-            canEditField(row.fieldAccess, 'caseParticipants') && (
+          {row.status === 'reported' && canEditField(row.fieldAccess, 'caseParticipants') && (
             <ArtButtonTable
               type="edit"
               permission="SmisAccidentEmergency:ManageAccident"
@@ -285,25 +282,24 @@
               permission="SmisAccidentEmergency:ManageAccident"
               onClick={() => openAccidentAction(row, 'investigate')}
             />
-            )}
+          )}
           {row.status === 'investigating' &&
             canEditField(row.fieldAccess, 'investigationDetails') && (
-            <ArtButtonTable
-              type="edit"
-              label="整改"
-              permission="SmisAccidentEmergency:ManageAccident"
-              onClick={() => openAccidentAction(row, 'rectify')}
-            />
+              <ArtButtonTable
+                type="edit"
+                label="整改"
+                permission="SmisAccidentEmergency:ManageAccident"
+                onClick={() => openAccidentAction(row, 'rectify')}
+              />
             )}
-          {row.status === 'rectifying' &&
-            canEditField(row.fieldAccess, 'investigationDetails') && (
+          {row.status === 'rectifying' && canEditField(row.fieldAccess, 'investigationDetails') && (
             <ArtButtonTable
               type="edit"
               label="结案"
               permission="SmisAccidentEmergency:ManageAccident"
               onClick={() => openAccidentAction(row, 'close')}
             />
-            )}
+          )}
         </div>
       )
     }

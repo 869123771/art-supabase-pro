@@ -97,49 +97,36 @@ Deno.serve(async (request) => {
     if (!vehicle) return json({ code: 'vehicle_not_found', message: '未找到可查看的车辆档案' }, 404)
 
     const evidenceResults = await Promise.all([
-      userClient
-        .from('vehicle_insurance')
-        .select('commercial_expire_date,compulsory_expire_date,create_time')
-        .eq('vehicle_id', vehicleId)
-        .order('create_time', { ascending: false })
-        .limit(20),
-      userClient
-        .from('vehicle_inspection')
-        .select('inspection_date,expire_date,create_time')
-        .eq('vehicle_id', vehicleId)
-        .order('expire_date', { ascending: false })
-        .limit(20),
-      userClient
-        .from('vehicle_maintenance_record')
-        .select('maintenance_type,start_time,end_time,cost_amount,items,remark')
-        .eq('vehicle_id', vehicleId)
-        .order('start_time', { ascending: false })
-        .limit(100),
-      userClient
-        .from('vehicle_mileage_record')
-        .select('running_mileage,start_time,start_mileage,end_time,end_mileage')
-        .eq('vehicle_id', vehicleId)
-        .order('start_time', { ascending: false })
-        .limit(60),
-      userClient
-        .from('vehicle_accident_record')
-        .select('accident_time,accident_summary,damage_level,processed,economic_loss')
-        .eq('vehicle_id', vehicleId)
-        .order('accident_time', { ascending: false })
-        .limit(50),
-      userClient
-        .from('vehicle_routine_inspection_record')
-        .select('inspection_time,check_result,check_condition,handling_method')
-        .eq('vehicle_id', vehicleId)
-        .order('inspection_time', { ascending: false })
-        .limit(100),
-      userClient
-        .from('vehicle_part_usage')
-        .select(
-          'part_name,status,enable_date,service_mileage_enabled,service_mileage,service_years_enabled,service_years,used_mileage'
-        )
-        .eq('vehicle_id', vehicleId)
-        .limit(200)
+      userClient.rpc('vms_get_vehicle_insurance_expiry_context_secure', {
+        p_vehicle_id: vehicleId,
+        p_until: null,
+        p_limit: 20
+      }),
+      userClient.rpc('vms_get_vehicle_inspection_expiry_context_secure', {
+        p_vehicle_id: vehicleId,
+        p_until: null,
+        p_limit: 20
+      }),
+      userClient.rpc('vms_get_vehicle_maintenance_health_context_secure', {
+        p_vehicle_id: vehicleId,
+        p_limit: 100
+      }),
+      userClient.rpc('vms_get_vehicle_mileage_health_context_secure', {
+        p_vehicle_id: vehicleId,
+        p_limit: 60
+      }),
+      userClient.rpc('vms_get_vehicle_accident_health_context_secure', {
+        p_vehicle_id: vehicleId,
+        p_limit: 50
+      }),
+      userClient.rpc('vms_get_vehicle_routine_inspection_health_context_secure', {
+        p_vehicle_id: vehicleId,
+        p_limit: 100
+      }),
+      userClient.rpc('vms_get_vehicle_part_health_context_secure', {
+        p_vehicle_id: vehicleId,
+        p_limit: 200
+      })
     ])
     const evidenceError = evidenceResults.find((result) => result.error)?.error
     if (evidenceError) throw evidenceError

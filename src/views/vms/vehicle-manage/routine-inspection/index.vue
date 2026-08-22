@@ -70,6 +70,7 @@
     type BusinessWorkspaceMetric
   } from '@/components/business/business-workspace-header/index.vue'
   import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
+  import { canViewField, mergeFieldAccessMaps } from '@/utils/field-permission'
 
   defineOptions({ name: 'VehicleRoutineInspection' })
 
@@ -95,6 +96,10 @@
   const dialogRef = ref<DialogExpose>()
   const { getDictMap } = storeToRefs(useUserStore())
   const overview = reactive<{ total: number; rows: RoutineInspection[] }>({ total: 0, rows: [] })
+  const listFieldAccess = ref<Api.Vms.VehicleManage.VehicleRoutineInspectionFieldAccessMap>({})
+  const effectiveFieldAccess = computed(() =>
+    mergeFieldAccessMaps(listFieldAccess.value, ...overview.rows.map((row) => row.fieldAccess))
+  )
   const workspaceMetrics = computed<BusinessWorkspaceMetric[]>(() => [
     {
       label: '例检记录',
@@ -104,14 +109,18 @@
     },
     {
       label: '本页责任信息完整',
-      value: overview.rows.filter((row) => row.inspector && row.driverName).length,
+      value: canViewField(effectiveFieldAccess.value, 'responsiblePeople')
+        ? overview.rows.filter((row) => row.inspector && row.driverName).length
+        : '--',
       description: '检查人与驾驶员均已登记',
       icon: 'ri:team-line',
       tone: 'success'
     },
     {
       label: '本页责任信息待补',
-      value: overview.rows.filter((row) => !row.inspector || !row.driverName).length,
+      value: canViewField(effectiveFieldAccess.value, 'responsiblePeople')
+        ? overview.rows.filter((row) => !row.inspector || !row.driverName).length
+        : '--',
       description: '至少缺少一位责任人员',
       icon: 'ri:user-warning-line',
       tone: 'warning'
@@ -146,12 +155,16 @@
         type: 'select',
         props: { options: getDictMap.value.vehicleRoutineInspectionType ?? [] }
       },
-      {
-        label: '检查结果',
-        key: 'checkResult',
-        type: 'select',
-        props: { options: getDictMap.value.vehicleRoutineInspectionResult ?? [] }
-      },
+      ...(canViewField(effectiveFieldAccess.value, 'inspectionFindings')
+        ? [
+            {
+              label: '检查结果',
+              key: 'checkResult',
+              type: 'select',
+              props: { options: getDictMap.value.vehicleRoutineInspectionResult ?? [] }
+            }
+          ]
+        : []),
       { label: '例检时间', key: 'inspectionTimeRange', type: 'date', props: dateRangeProps },
       { label: '创建时间', key: 'createTimeRange', type: 'date', props: dateRangeProps }
     ]),
@@ -162,7 +175,7 @@
         permission: 'VehicleRoutineInspection:Export',
         exportFilename: '例检记录',
         exportSheetName: '例检记录',
-        exportColumns: routineInspectionExcelColumns,
+        exportColumns: routineInspectionExcelColumns.value,
         exportApi: ({ selectedIds, searchParams, maxRows }) =>
           exportVehicleRoutineInspectionList({
             ...(searchParams as SearchParams),
@@ -200,14 +213,22 @@
         minWidth: 170,
         formatter: (row) => formatWithDayjs(row.inspectionTime)
       },
-      { prop: 'inspector', label: '检查人', width: 100 },
-      { prop: 'driverName', label: '驾驶员', width: 100 },
-      {
-        prop: 'checkResult',
-        label: '检查结果',
-        width: 108,
-        dict: { code: 'vehicleRoutineInspectionResult', display: 'auto' }
-      },
+      ...(canViewField(effectiveFieldAccess.value, 'responsiblePeople')
+        ? ([
+            { prop: 'inspector', label: '检查人', width: 100 },
+            { prop: 'driverName', label: '驾驶员', width: 100 }
+          ] as ColumnOption<RoutineInspection>[])
+        : []),
+      ...(canViewField(effectiveFieldAccess.value, 'inspectionFindings')
+        ? ([
+            {
+              prop: 'checkResult',
+              label: '检查结果',
+              width: 108,
+              dict: { code: 'vehicleRoutineInspectionResult', display: 'auto' }
+            }
+          ] as ColumnOption<RoutineInspection>[])
+        : []),
       {
         prop: 'operation',
         label: '操作',
@@ -230,23 +251,37 @@
     ]
   })
 
-  const routineInspectionExcelColumns: ArtTableQueryExcelColumn[] = [
+  const routineInspectionExcelColumns = computed<ArtTableQueryExcelColumn[]>(() => [
     { key: 'companyName', title: '所属公司' },
     { key: 'plateNo', title: '车牌号', required: true },
     { key: 'routineInspectionNo', title: '例检编号', required: true },
     { key: 'inspectionType', title: '例检类型' },
     { key: 'inspectionTime', title: '例检时间', required: true },
-    { key: 'inspector', title: '检查人' },
-    { key: 'driverName', title: '驾驶员' },
-    { key: 'checkCondition', title: '检查情况' },
-    { key: 'checkResult', title: '检查结果' },
-    { key: 'handlingMethod', title: '处理方式' },
-    { key: 'remark', title: '备注' }
-  ]
+    ...(canViewField(effectiveFieldAccess.value, 'responsiblePeople')
+      ? [
+          { key: 'inspector', title: '检查人' },
+          { key: 'driverName', title: '驾驶员' }
+        ]
+      : []),
+    ...(canViewField(effectiveFieldAccess.value, 'inspectionFindings')
+      ? [
+          { key: 'checkCondition', title: '检查情况' },
+          { key: 'checkResult', title: '检查结果' }
+        ]
+      : []),
+    ...(canViewField(effectiveFieldAccess.value, 'remediationDetails')
+      ? [
+          { key: 'handlingMethod', title: '处理方式' },
+          { key: 'remark', title: '备注' }
+        ]
+      : [])
+  ])
 
-  const fetchTableData = (params: TableParams) => {
+  const fetchTableData = async (params: TableParams) => {
     const { from, to } = pageInfoHandler({ current: params.current, size: params.size })
-    return fetchVehicleRoutineInspectionList({ ...params, from, to })
+    const result = await fetchVehicleRoutineInspectionList({ ...params, from, to })
+    listFieldAccess.value = result.fieldAccess ?? {}
+    return result
   }
 
   const handleTableSuccess: NonNullable<ArtTableQueryProps['onSuccess']> = (rows, response) => {

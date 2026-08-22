@@ -13,18 +13,11 @@
         }
       ]"
       :metrics="metricCards"
-    >
-      <template #actions>
-        <ElTooltip content="刷新配置" placement="bottom">
-          <ArtIconButton
-            icon="ri:refresh-line"
-            circle
-            :class="{ 'ai-configuration__refreshing': overview.loading }"
-            @click="refreshAll"
-          />
-        </ElTooltip>
-      </template>
-    </BusinessWorkspaceHeader>
+      refreshable
+      refresh-label="刷新配置"
+      :refresh-loading="overview.loading"
+      @refresh="refreshAll"
+    />
 
     <section class="ai-configuration__governance art-card-xs">
       <div>
@@ -67,7 +60,6 @@
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type { ArtTableQueryExpose } from '@/components/core/tables/art-table-query/index.vue'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
-  import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import BusinessWorkspaceHeader, {
     type BusinessWorkspaceMetric
@@ -445,10 +437,6 @@
       gap: 10px;
     }
 
-    &__refreshing :deep(svg) {
-      animation: ai-configuration-spin 0.8s linear infinite;
-    }
-
     &__metrics {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -612,12 +600,6 @@
         gap: 12px;
         align-items: flex-start;
       }
-    }
-  }
-
-  @keyframes ai-configuration-spin {
-    to {
-      transform: rotate(360deg);
     }
   }
 </style>

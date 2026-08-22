@@ -1,8 +1,6 @@
 import { useSupabase } from '@/hooks'
-import { WRITE_PERMISSION_DENIED_MESSAGE } from '@/hooks/core/useSupabase'
-import { applyDateRange, withRequestOptions } from '@/api/providers/supabase/query'
+import { withRequestOptions } from '@/api/providers/supabase/query'
 import type { ApiRequestOptions } from '@/types/api/request'
-import { applyFilters, type FilterSpec } from '@/utils/supabase'
 import {
   type VehicleMaintenanceRecord,
   type VehicleMaintenanceSearchParams,
@@ -13,80 +11,83 @@ import {
 const { supabase, keysToSnakeDeep, responseHandle } = useSupabase()
 
 // 车辆保养维修
-const VEHICLE_MAINTENANCE_TABLE = 'vehicle_maintenance_record'
+interface SecureVehicleMaintenancePayload {
+  records: VehicleMaintenanceRecord[]
+  total: number
+  fieldAccess?: Api.Vms.VehicleManage.VehicleMaintenanceFieldAccessMap
+}
 
-const getVehicleMaintenanceSearchFilters = (
-  params: VehicleMaintenanceSearchParams
-): FilterSpec[] => [
-  {
-    col: 'companyName',
-    op: 'ilike',
-    val: params.companyName ? `%${params.companyName}%` : undefined
-  },
-  { col: 'plateNo', op: 'ilike', val: params.plateNo ? `%${params.plateNo}%` : undefined },
-  {
-    col: 'maintenanceNo',
-    op: 'ilike',
-    val: params.maintenanceNo ? `%${params.maintenanceNo}%` : undefined
-  },
-  { col: 'maintenanceType', op: 'eq', val: params.maintenanceType }
-]
+const maintenanceStartOfDay = (value?: string): string | null =>
+  value ? `${value}T00:00:00` : null
+const maintenanceEndOfDay = (value?: string): string | null =>
+  value ? `${value}T23:59:59.999` : null
+
+const createVehicleMaintenanceRpcParams = (
+  params: VehicleMaintenanceSearchParams & { ids?: string[]; maxRows?: number },
+  purpose: 'list' | 'export'
+) => {
+  const from = Math.max(params.from ?? 0, 0)
+  const requestedTo = params.maxRows ? from + Math.max(params.maxRows, 1) - 1 : params.to
+  return {
+    p_from: from,
+    p_to: Math.max(requestedTo ?? 9, from),
+    p_vehicle_id: params.vehicleId || null,
+    p_company_name: String(params.companyName ?? '').trim() || null,
+    p_plate_no: String(params.plateNo ?? '').trim() || null,
+    p_maintenance_no: String(params.maintenanceNo ?? '').trim() || null,
+    p_maintenance_type: String(params.maintenanceType ?? '').trim() || null,
+    p_create_time_from: maintenanceStartOfDay(params.createTimeRange?.[0]),
+    p_create_time_to: maintenanceEndOfDay(params.createTimeRange?.[1]),
+    p_ids: params.ids?.length ? params.ids : null,
+    p_purpose: purpose
+  }
+}
 
 export async function fetchVehicleMaintenanceList(
   params: VehicleMaintenanceSearchParams,
   options?: ApiRequestOptions
 ) {
-  const { from = 0, to = 9, createTimeRange } = params
-  let query = supabase
-    .from(VEHICLE_MAINTENANCE_TABLE)
-    .select('*', { count: 'exact' })
-    .order('start_time', { ascending: false })
-    .range(from, to)
-
-  query = applyDateRange(query, 'create_time', createTimeRange)
-  query = applyFilters(query, getVehicleMaintenanceSearchFilters(params), {
-    skipEmpty: true,
-    camelToSnake: true
-  })
-
-  return await responseHandle<VehicleMaintenanceRecord[]>(
-    () => withRequestOptions(query, options),
-    {
-      ignoreCheck: true,
-      showErrorMessage: true
-    }
+  const result = await responseHandle<SecureVehicleMaintenancePayload>(
+    () =>
+      withRequestOptions(
+        supabase.rpc(
+          'vms_list_vehicle_maintenance_secure',
+          createVehicleMaintenanceRpcParams(params, 'list')
+        ),
+        options
+      ),
+    { showErrorMessage: true }
   )
+  return {
+    data: result.data?.records ?? [],
+    total: result.data?.total ?? 0,
+    error: result.error,
+    fieldAccess: result.data?.fieldAccess ?? {}
+  }
 }
 
 export async function exportVehicleMaintenanceList(
   params: VehicleMaintenanceSearchParams & { ids?: string[]; maxRows?: number }
 ) {
-  const { ids, maxRows = 10000, createTimeRange } = params
-  let query = supabase
-    .from(VEHICLE_MAINTENANCE_TABLE)
-    .select('*')
-    .order('start_time', { ascending: false })
-    .limit(maxRows)
-
-  if (ids?.length) {
-    query = query.in('id', ids)
-  } else {
-    query = applyDateRange(query, 'create_time', createTimeRange)
-    query = applyFilters(query, getVehicleMaintenanceSearchFilters(params), {
-      skipEmpty: true,
-      camelToSnake: true
-    })
+  const result = await responseHandle<SecureVehicleMaintenancePayload>(
+    () =>
+      supabase.rpc(
+        'vms_list_vehicle_maintenance_secure',
+        createVehicleMaintenanceRpcParams({ ...params, maxRows: params.maxRows ?? 10000 }, 'export')
+      ),
+    { showErrorMessage: true }
+  )
+  return {
+    data: result.data?.records ?? [],
+    total: result.data?.total ?? 0,
+    error: result.error,
+    fieldAccess: result.data?.fieldAccess ?? {}
   }
-
-  return await responseHandle<VehicleMaintenanceRecord[]>(() => query, {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
 }
 
 export async function fetchVehicleMaintenanceDetail(id: string) {
-  return await responseHandle<VehicleMaintenanceRecord>(
-    () => supabase.from(VEHICLE_MAINTENANCE_TABLE).select('*').eq('id', id).single(),
+  return await responseHandle<VehicleMaintenanceRecord | null>(
+    () => supabase.rpc('vms_get_vehicle_maintenance_secure', { p_id: id }),
     {
       ignoreCheck: true,
       showErrorMessage: true
@@ -95,100 +96,123 @@ export async function fetchVehicleMaintenanceDetail(id: string) {
 }
 
 export async function addVehicleMaintenance(params: VehicleMaintenanceRecord) {
-  return await responseHandle(
-    () => supabase.from(VEHICLE_MAINTENANCE_TABLE).insert(keysToSnakeDeep(params)),
+  const result = await responseHandle<string>(
+    () =>
+      supabase.rpc('vms_create_vehicle_maintenance_secure', {
+        p_payload: keysToSnakeDeep(params)
+      }),
     { showMessage: true, breakReturn: true }
   )
+  return { ...result, data: result.data ? { id: result.data } : null }
 }
 
 export async function editVehicleMaintenance(params: VehicleMaintenanceRecord) {
   const { id, ...data } = params
-  return await responseHandle(
+  if (!id) throw new Error('缺少车辆维修保养 ID')
+  return await responseHandle<VehicleMaintenanceRecord>(
     () =>
-      supabase
-        .from(VEHICLE_MAINTENANCE_TABLE)
-        .update(keysToSnakeDeep(data), { count: 'exact' })
-        .eq('id', id),
-    {
-      showMessage: true,
-      breakReturn: true,
-      requireAffected: true,
-      noAffectedMessage: WRITE_PERMISSION_DENIED_MESSAGE
-    }
+      supabase.rpc('vms_update_vehicle_maintenance_secure', {
+        p_id: id,
+        p_payload: keysToSnakeDeep(data)
+      }),
+    { showMessage: true, breakReturn: true }
   )
 }
 
 export async function deleteVehicleMaintenance(id: string) {
-  return await responseHandle(
-    () => supabase.from(VEHICLE_MAINTENANCE_TABLE).delete({ count: 'exact' }).eq('id', id),
-    {
-      showMessage: true,
-      breakReturn: true,
-      requireAffected: true,
-      noAffectedMessage: WRITE_PERMISSION_DENIED_MESSAGE
-    }
+  return await responseHandle<number>(
+    () => supabase.rpc('vms_delete_vehicle_maintenance_secure', { p_ids: [id] }),
+    { showMessage: true, message: '删除成功', breakReturn: true }
   )
 }
 
 export async function deleteVehicleMaintenanceBatch(ids: string[]) {
-  return await responseHandle(
-    () => supabase.from(VEHICLE_MAINTENANCE_TABLE).delete({ count: 'exact' }).in('id', ids),
-    {
-      showMessage: true,
-      breakReturn: true,
-      requireAffected: true,
-      noAffectedMessage: WRITE_PERMISSION_DENIED_MESSAGE
-    }
+  return await responseHandle<number>(
+    () => supabase.rpc('vms_delete_vehicle_maintenance_secure', { p_ids: ids }),
+    { showMessage: true, breakReturn: true }
   )
 }
 
 // 车辆零部件使用
-const VEHICLE_PART_USAGE_TABLE = 'vehicle_part_usage'
+interface SecureVehiclePartUsagePayload {
+  records: VehiclePartUsage[]
+  total: number
+  fieldAccess?: Api.Vms.VehicleManage.VehiclePartUsageFieldAccessMap
+}
 
-const getVehiclePartUsageSearchFilters = (params: VehiclePartUsageSearchParams): FilterSpec[] => [
-  {
-    col: 'companyName',
-    op: 'ilike',
-    val: params.companyName ? `%${params.companyName}%` : undefined
-  },
-  { col: 'plateNo', op: 'ilike', val: params.plateNo ? `%${params.plateNo}%` : undefined },
-  { col: 'partType', op: 'eq', val: params.partType },
-  {
-    col: 'partName',
-    op: 'ilike',
-    val: params.partName ? `%${params.partName}%` : undefined
-  },
-  { col: 'categoryId', op: 'eq', val: params.categoryId },
-  { col: 'rfidTag', op: 'ilike', val: params.rfidTag ? `%${params.rfidTag}%` : undefined },
-  { col: 'status', op: 'eq', val: params.status }
-]
+const partUsageStartOfDay = (value?: string): string | null => (value ? `${value}T00:00:00` : null)
+const partUsageEndOfDay = (value?: string): string | null =>
+  value ? `${value}T23:59:59.999` : null
+
+const createVehiclePartUsageRpcParams = (
+  params: VehiclePartUsageSearchParams & { ids?: string[]; maxRows?: number },
+  purpose: 'list' | 'export'
+) => {
+  const from = Math.max(params.from ?? 0, 0)
+  const requestedTo = params.maxRows ? from + Math.max(params.maxRows, 1) - 1 : params.to
+  return {
+    p_from: from,
+    p_to: Math.max(requestedTo ?? 9, from),
+    p_vehicle_id: params.vehicleId || null,
+    p_company_name: String(params.companyName ?? '').trim() || null,
+    p_plate_no: String(params.plateNo ?? '').trim() || null,
+    p_part_type: String(params.partType ?? '').trim() || null,
+    p_part_name: String(params.partName ?? '').trim() || null,
+    p_category_id: params.categoryId || null,
+    p_rfid_tag: String(params.rfidTag ?? '').trim() || null,
+    p_status: String(params.status ?? '').trim() || null,
+    p_create_time_from: partUsageStartOfDay(params.createTimeRange?.[0]),
+    p_create_time_to: partUsageEndOfDay(params.createTimeRange?.[1]),
+    p_ids: params.ids?.length ? params.ids : null,
+    p_purpose: purpose
+  }
+}
 
 export async function fetchVehiclePartUsageList(
   params: VehiclePartUsageSearchParams,
   options?: ApiRequestOptions
 ) {
-  const { from = 0, to = 9, createTimeRange } = params
-  let query = supabase
-    .from(VEHICLE_PART_USAGE_TABLE)
-    .select('*', { count: 'exact' })
-    .order('create_time', { ascending: false })
-    .range(from, to)
+  const result = await responseHandle<SecureVehiclePartUsagePayload>(
+    () =>
+      withRequestOptions(
+        supabase.rpc(
+          'vms_list_vehicle_part_usages_secure',
+          createVehiclePartUsageRpcParams(params, 'list')
+        ),
+        options
+      ),
+    { showErrorMessage: true }
+  )
+  return {
+    data: result.data?.records ?? [],
+    total: result.data?.total ?? 0,
+    error: result.error,
+    fieldAccess: result.data?.fieldAccess ?? {}
+  }
+}
 
-  query = applyDateRange(query, 'create_time', createTimeRange)
-  query = applyFilters(query, getVehiclePartUsageSearchFilters(params), {
-    skipEmpty: true,
-    camelToSnake: true
-  })
-
-  return await responseHandle<VehiclePartUsage[]>(() => withRequestOptions(query, options), {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
+export async function exportVehiclePartUsageList(
+  params: VehiclePartUsageSearchParams & { ids?: string[]; maxRows?: number }
+) {
+  const result = await responseHandle<SecureVehiclePartUsagePayload>(
+    () =>
+      supabase.rpc(
+        'vms_list_vehicle_part_usages_secure',
+        createVehiclePartUsageRpcParams({ ...params, maxRows: params.maxRows ?? 10000 }, 'export')
+      ),
+    { showErrorMessage: true }
+  )
+  return {
+    data: result.data?.records ?? [],
+    total: result.data?.total ?? 0,
+    error: result.error,
+    fieldAccess: result.data?.fieldAccess ?? {}
+  }
 }
 
 export async function fetchVehiclePartUsageDetail(id: string) {
-  return await responseHandle<VehiclePartUsage>(
-    () => supabase.from(VEHICLE_PART_USAGE_TABLE).select('*').eq('id', id).single(),
+  return await responseHandle<VehiclePartUsage | null>(
+    () => supabase.rpc('vms_get_vehicle_part_usage_secure', { p_id: id }),
     {
       ignoreCheck: true,
       showErrorMessage: true
@@ -197,49 +221,37 @@ export async function fetchVehiclePartUsageDetail(id: string) {
 }
 
 export async function addVehiclePartUsage(params: VehiclePartUsage) {
-  return await responseHandle(
-    () => supabase.from(VEHICLE_PART_USAGE_TABLE).insert(keysToSnakeDeep(params)),
+  const result = await responseHandle<string>(
+    () =>
+      supabase.rpc('vms_create_vehicle_part_usage_secure', { p_payload: keysToSnakeDeep(params) }),
     { showMessage: true, breakReturn: true }
   )
+  return { ...result, data: result.data ? { id: result.data } : null }
 }
 
 export async function editVehiclePartUsage(params: VehiclePartUsage) {
   const { id, ...data } = params
-  return await responseHandle(
+  if (!id) throw new Error('缺少车辆配件使用记录 ID')
+  return await responseHandle<VehiclePartUsage>(
     () =>
-      supabase
-        .from(VEHICLE_PART_USAGE_TABLE)
-        .update(keysToSnakeDeep(data), { count: 'exact' })
-        .eq('id', id),
-    {
-      showMessage: true,
-      breakReturn: true,
-      requireAffected: true,
-      noAffectedMessage: WRITE_PERMISSION_DENIED_MESSAGE
-    }
+      supabase.rpc('vms_update_vehicle_part_usage_secure', {
+        p_id: id,
+        p_payload: keysToSnakeDeep(data)
+      }),
+    { showMessage: true, breakReturn: true }
   )
 }
 
 export async function deleteVehiclePartUsage(id: string) {
-  return await responseHandle(
-    () => supabase.from(VEHICLE_PART_USAGE_TABLE).delete({ count: 'exact' }).eq('id', id),
-    {
-      showMessage: true,
-      breakReturn: true,
-      requireAffected: true,
-      noAffectedMessage: WRITE_PERMISSION_DENIED_MESSAGE
-    }
+  return await responseHandle<number>(
+    () => supabase.rpc('vms_delete_vehicle_part_usages_secure', { p_ids: [id] }),
+    { showMessage: true, message: '删除成功', breakReturn: true }
   )
 }
 
 export async function deleteVehiclePartUsageBatch(ids: string[]) {
-  return await responseHandle(
-    () => supabase.from(VEHICLE_PART_USAGE_TABLE).delete({ count: 'exact' }).in('id', ids),
-    {
-      showMessage: true,
-      breakReturn: true,
-      requireAffected: true,
-      noAffectedMessage: WRITE_PERMISSION_DENIED_MESSAGE
-    }
+  return await responseHandle<number>(
+    () => supabase.rpc('vms_delete_vehicle_part_usages_secure', { p_ids: ids }),
+    { showMessage: true, breakReturn: true }
   )
 }

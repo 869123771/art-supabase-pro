@@ -6,37 +6,25 @@
         <small>{{ objects.length }} 条结果</small>
       </div>
       <div class="project-assistant-object-browser__actions">
-        <ElTooltip :content="focusMode ? '退出专注模式' : '进入专注模式'" placement="bottom">
-          <ElButton
-            :class="{ 'is-active': focusMode }"
-            text
-            circle
-            :type="focusMode ? 'primary' : undefined"
-            :title="focusMode ? '退出专注模式' : '进入专注模式'"
-            :aria-label="focusMode ? '退出专注模式' : '进入专注模式'"
-            @click="emit('toggle-focus')"
-          >
-            <ArtSvgIcon
-              :icon="focusMode ? 'dashicons:fullscreen-exit-alt' : 'dashicons:fullscreen-alt'"
-            />
-          </ElButton>
-        </ElTooltip>
-        <ElButton
-          class="project-assistant-object-browser__refresh"
-          :class="{ 'is-refreshing': loading && loadSource === 'refresh' }"
-          text
-          circle
-          type="primary"
-          title="刷新项目对象"
-          aria-label="刷新项目对象"
-          :disabled="loading"
-          @click="emit('refresh')"
-        >
-          <ArtSvgIcon
-            class="project-assistant-object-browser__refresh-icon"
+        <ElTooltip content="刷新项目对象" placement="bottom">
+          <ArtIconButton
             icon="ri:refresh-line"
+            circle
+            label="刷新项目对象"
+            :loading="loading && loadSource === 'refresh'"
+            :disabled="loading && loadSource !== 'refresh'"
+            @click="emit('refresh')"
           />
-        </ElButton>
+        </ElTooltip>
+        <ElTooltip :content="focusMode ? '退出专注模式' : '进入专注模式'" placement="bottom">
+          <ArtIconButton
+            :class="{ 'is-active': focusMode }"
+            :icon="focusMode ? 'dashicons:fullscreen-exit-alt' : 'dashicons:fullscreen-alt'"
+            circle
+            :label="focusMode ? '退出专注模式' : '进入专注模式'"
+            @click="emit('toggle-focus')"
+          />
+        </ElTooltip>
       </div>
     </div>
 
@@ -111,6 +99,7 @@
 </template>
 
 <script setup lang="ts">
+  import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
   import type { ProjectDatabaseObject, ProjectObjectType } from '@/types/supabase-ai-assistant'
 
   defineOptions({ name: 'ProjectAssistantObjectBrowser' })
@@ -210,10 +199,6 @@
       }
     }
 
-    &__refresh.is-refreshing &__refresh-icon {
-      animation: project-assistant-browser-spin 0.75s linear infinite;
-    }
-
     &__filters {
       display: flex;
       flex-direction: column;
@@ -308,12 +293,6 @@
       height: 30px;
       background: var(--el-fill-color-light);
       border-radius: var(--el-border-radius-base);
-    }
-  }
-
-  @keyframes project-assistant-browser-spin {
-    to {
-      transform: rotate(360deg);
     }
   }
 </style>

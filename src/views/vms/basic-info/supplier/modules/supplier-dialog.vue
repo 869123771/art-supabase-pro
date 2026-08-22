@@ -15,10 +15,12 @@
     >
       <template #addressPicker>
         <ArtAddressPicker
+          v-if="canViewField(currentFieldAccess, 'addressDetails')"
           v-model:region-path="form.regionPath"
           v-model:address-detail="form.addressDetail"
           :region-api="fetchRegionOptions"
           :show-coordinate-hint="false"
+          :disabled="!canEditField(currentFieldAccess, 'addressDetails')"
           hide-region-selector
           label-width="120px"
         />
@@ -35,6 +37,8 @@
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import { addSupplier, editSupplier } from '@/api/vms'
   import { fetchRegionOptions } from '@/api/common'
+  import { canEditField, canViewField } from '@/utils/field-permission'
+  import { EDITABLE_SUPPLIER_ACCESS, sanitizeSupplierPayload } from './supplier-model'
 
   type Supplier = Api.Vms.BasicInfo.Supplier
   type SupplierForm = Supplier & {
@@ -66,6 +70,9 @@
   })
 
   const form = reactive<SupplierForm>(createInitialForm())
+  const currentFieldAccess = computed<Api.Vms.BasicInfo.SupplierFieldAccessMap>(() =>
+    form.id ? (form.fieldAccess ?? {}) : EDITABLE_SUPPLIER_ACCESS
+  )
 
   const rules: FormRules<SupplierForm> = {
     supplierName: [
@@ -75,8 +82,14 @@
     contactPerson: [{ max: 50, message: '联系人不能超过 50 个字符', trigger: 'blur' }],
     contactPhone: [
       {
-        pattern: /^(?:1[3-9]\d{9}|0\d{2,3}-?\d{7,8})$/,
-        message: '请输入正确的手机号或座机号',
+        validator: (_rule, value, callback) => {
+          if (!canEditField(currentFieldAccess.value, 'contactDetails') || !value) {
+            return callback()
+          }
+          return /^(?:1[3-9]\d{9}|0\d{2,3}-?\d{7,8})$/.test(String(value))
+            ? callback()
+            : callback(new Error('请输入正确的手机号或座机号'))
+        },
         trigger: 'blur'
       }
     ],
@@ -96,22 +109,34 @@
         maxlength: 100
       }
     },
-    { label: '联络与地址', key: 'contactSection', type: 'divider', span: 24 },
+    {
+      label: '联络与地址',
+      key: 'contactSection',
+      type: 'divider',
+      span: 24,
+      hidden:
+        !canViewField(currentFieldAccess.value, 'contactDetails') &&
+        !canViewField(currentFieldAccess.value, 'addressDetails')
+    },
     {
       label: '联系人',
       key: 'contactPerson',
       type: 'input',
+      hidden: !canViewField(currentFieldAccess.value, 'contactDetails'),
       props: {
-        maxlength: 50
+        maxlength: 50,
+        disabled: !canEditField(currentFieldAccess.value, 'contactDetails')
       }
     },
     {
       label: '联系电话',
       key: 'contactPhone',
       type: 'input',
+      hidden: !canViewField(currentFieldAccess.value, 'contactDetails'),
       props: {
         maxlength: 20,
-        placeholder: '请输入手机号或座机号'
+        placeholder: '请输入手机号或座机号',
+        disabled: !canEditField(currentFieldAccess.value, 'contactDetails')
       }
     },
     {
@@ -119,19 +144,22 @@
       key: 'addressPicker',
       type: 'input',
       span: 24,
-      labelWidth: 0
+      labelWidth: 0,
+      hidden: !canViewField(currentFieldAccess.value, 'addressDetails')
     },
     {
       label: '备注',
       key: 'remark',
       type: 'input',
       span: 24,
+      hidden: !canViewField(currentFieldAccess.value, 'internalNotes'),
       props: {
         type: 'textarea',
         rows: 3,
         maxlength: 500,
         showWordLimit: true,
-        placeholder: '请输入备注'
+        placeholder: '请输入备注',
+        disabled: !canEditField(currentFieldAccess.value, 'internalNotes')
       }
     }
   ])
@@ -159,11 +187,14 @@
     try {
       const { regionPath, ...payload } = toRaw(form)
       delete payload.addressPicker
-      payload.region = regionPath?.join('/') || ''
+      if (!form.id || canEditField(currentFieldAccess.value, 'addressDetails')) {
+        payload.region = regionPath?.join('/') || ''
+      }
+      const safePayload = sanitizeSupplierPayload(payload)
       if (form.id) {
-        await editSupplier(payload)
+        await editSupplier(safePayload)
       } else {
-        await addSupplier(payload)
+        await addSupplier(safePayload)
       }
       emit('success', form.id ? 'edit' : 'add')
       return true

@@ -231,6 +231,7 @@
       formatter: (value) => formatBillingMethod(value)
     },
     { key: 'contactName', title: '联系人姓名' },
+    { key: 'partyContactPhone', title: '相对方联系电话' },
     { key: 'customerSignatory', title: '客户签约人' },
     { key: 'waybillNo', title: '运单号' },
     { key: 'transportRoute', title: '运输路线' },
@@ -246,7 +247,8 @@
     contractAmount: 'contractAmount',
     transportUnitPrice: 'transportUnitPrice',
     roadConsumptionRate: 'roadConsumptionRate',
-    lossDeductionPrice: 'lossDeductionPrice'
+    lossDeductionPrice: 'lossDeductionPrice',
+    partyContactPhone: 'partyContactPhone'
   }
 
   const shouldDisplaySensitiveField = (field: ContractFieldKey): boolean =>
@@ -261,7 +263,7 @@
   )
 
   const tablePermissionKey = computed(() =>
-    (['contractAmount'] as const)
+    (['contractAmount', 'partyContactPhone'] as const)
       .map((field) => `${field}:${shouldDisplaySensitiveField(field) ? 'visible' : 'hidden'}`)
       .join('|')
   )
@@ -366,6 +368,16 @@
       showOverflowTooltip: true,
       formatter: (row) => row.customer?.customerName || row.carrier?.companyName || '-'
     },
+    ...(shouldDisplaySensitiveField('partyContactPhone')
+      ? [
+          {
+            prop: 'partyContactPhone',
+            label: '联系电话',
+            width: 145,
+            formatter: (row: Contract) => row.partyContactPhone || '-'
+          }
+        ]
+      : []),
     ...(shouldDisplaySensitiveField('contractAmount')
       ? [
           {

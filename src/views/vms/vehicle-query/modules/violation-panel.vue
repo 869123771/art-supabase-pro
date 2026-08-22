@@ -10,8 +10,13 @@
   import ArtPageSection from '@/components/core/layouts/art-page-section/index.vue'
   import VehicleQueryTable from './vehicle-query-table.vue'
   import type { VehicleArchive, VehicleViolationRecord } from './types'
-  import { formatDateTime, formatMoney } from './query-format'
+  import { formatDateTime } from './query-format'
   import { useVehiclePanelList } from './use-vehicle-panel-list'
+  import {
+    canViewField,
+    formatSensitiveNumber,
+    mergeFieldAccessMaps
+  } from '@/utils/field-permission'
 
   defineOptions({ name: 'VehicleQueryViolationPanel' })
 
@@ -24,7 +29,7 @@
     vehicle,
     async (current) => {
       const { data } = await fetchVehicleViolationList({
-        plateNo: current.plateNo,
+        vehicleId: current.id,
         from: 0,
         to: 9999
       })
@@ -32,24 +37,46 @@
     }
   )
 
-  const columns: ColumnOption<VehicleViolationRecord>[] = [
+  const effectiveFieldAccess = computed(() =>
+    mergeFieldAccessMaps(...records.value.map((record) => record.fieldAccess))
+  )
+
+  const formatFineAmount = (value?: number | string | null): string => {
+    const formatted = formatSensitiveNumber(value, {
+      minimumFractionDigits: 1,
+      maximumFractionDigits: 1
+    })
+    return formatted
+  }
+
+  const columns = computed<ColumnOption<VehicleViolationRecord>[]>(() => [
     { type: 'globalIndex', label: '序号', width: 80 },
-    { prop: 'driverName', label: '驾驶员姓名', minWidth: 140 },
-    { prop: 'violationBehavior', label: '违章行为', minWidth: 220 },
+    ...(canViewField(effectiveFieldAccess.value, 'driverIdentity')
+      ? [{ prop: 'driverName', label: '驾驶员姓名', minWidth: 140 }]
+      : []),
+    ...(canViewField(effectiveFieldAccess.value, 'violationNarrative')
+      ? [{ prop: 'violationBehavior', label: '违章行为', minWidth: 220 }]
+      : []),
     {
       prop: 'violationTime',
       label: '违章时间',
       minWidth: 180,
       formatter: (row) => formatDateTime(row.violationTime)
     },
-    { prop: 'violationLocation', label: '违章地点', minWidth: 260 },
-    { prop: 'penaltyPoints', label: '违章扣分（分）', width: 150 },
-    {
-      prop: 'fineAmount',
-      label: '违章罚款（元）',
-      width: 150,
-      formatter: (row) => formatMoney(row.fineAmount)
-    },
+    ...(canViewField(effectiveFieldAccess.value, 'violationLocation')
+      ? [{ prop: 'violationLocation', label: '违章地点', minWidth: 260 }]
+      : []),
+    ...(canViewField(effectiveFieldAccess.value, 'penaltyAmounts')
+      ? [
+          { prop: 'penaltyPoints', label: '违章扣分（分）', width: 150 },
+          {
+            prop: 'fineAmount',
+            label: '违章罚款（元）',
+            width: 150,
+            formatter: (row: VehicleViolationRecord) => formatFineAmount(row.fineAmount)
+          }
+        ]
+      : []),
     {
       prop: 'processed',
       label: '是否处理',
@@ -60,5 +87,5 @@
         value: (row) => String(row.processed)
       }
     }
-  ]
+  ])
 </script>

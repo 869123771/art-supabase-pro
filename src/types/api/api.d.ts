@@ -624,6 +624,17 @@ declare namespace Api {
   namespace Vms {
     namespace ArchiveManage {
       type AuditStatus = 'pending' | 'approved' | 'rejected'
+      type VehicleArchiveFieldKey =
+        | 'vehicleIdentifiers'
+        | 'ownerIdentity'
+        | 'contactPhones'
+        | 'mailingAddress'
+        | 'operationRoute'
+        | 'documents'
+        | 'deviceIdentity'
+      type VehicleArchiveFieldAccessMap = Partial<
+        Record<VehicleArchiveFieldKey, Api.Common.FieldAccessLevel>
+      >
 
       interface VehicleAttachment {
         name: string
@@ -644,7 +655,7 @@ declare namespace Api {
         selfNo?: string
         vehicleType: string
         originType?: string
-        vin: string
+        vin?: string
         manufacturer?: string
         brandModel?: string
         operationCertNo?: string
@@ -739,6 +750,8 @@ declare namespace Api {
         createTime?: string
         updateBy?: string
         updateTime?: string
+        fieldAccess?: VehicleArchiveFieldAccessMap
+        isRecordOwner?: boolean
       }
 
       type VehicleArchiveSearchParams = Partial<
@@ -772,6 +785,8 @@ declare namespace Api {
         vin?: string
         selfNo?: string
         vehicleType?: string
+        fieldAccess?: Api.Vms.ArchiveManage.VehicleArchiveFieldAccessMap
+        isRecordOwner?: boolean
       }
 
       interface InsuranceCompanyOption {
@@ -780,6 +795,11 @@ declare namespace Api {
         contactPerson?: string
         contactPhone?: string
       }
+
+      type VehicleInsuranceFieldKey = 'policyNumbers' | 'premiumAmounts' | 'documents'
+      type VehicleInsuranceFieldAccessMap = Partial<
+        Record<VehicleInsuranceFieldKey, Api.System.FieldPermissionAccessLevel>
+      >
 
       interface VehicleInsurance {
         id?: string
@@ -791,13 +811,13 @@ declare namespace Api {
         commercialCompanyId?: string | null
         commercialCompanyName?: string
         commercialInsureDate?: string
-        commercialPremium?: number | null
+        commercialPremium?: number | string | null
         commercialExpireDate?: string
         compulsoryPolicyNo?: string
         compulsoryCompanyId?: string | null
         compulsoryCompanyName?: string
         compulsoryInsureDate?: string
-        compulsoryPremium?: number | null
+        compulsoryPremium?: number | string | null
         compulsoryExpireDate?: string
         remark?: string
         attachments?: VehicleAttachment[]
@@ -805,18 +825,25 @@ declare namespace Api {
         createTime?: string
         updateBy?: string
         updateTime?: string
+        fieldAccess?: VehicleInsuranceFieldAccessMap
+        isRecordOwner?: boolean
       }
 
       type VehicleInsuranceSearchParams = Partial<
         Pick<
           VehicleInsurance,
-          'companyName' | 'plateNo' | 'commercialPolicyNo' | 'compulsoryPolicyNo'
+          'vehicleId' | 'companyName' | 'plateNo' | 'commercialPolicyNo' | 'compulsoryPolicyNo'
         > &
           Api.Common.CommonSearchParams & {
             commercialExpireDateRange?: string[]
             compulsoryExpireDateRange?: string[]
             createTimeRange?: string[]
           }
+      >
+
+      type VehicleInspectionFieldKey = 'inspectionIdentifiers' | 'monetaryAmounts' | 'documents'
+      type VehicleInspectionFieldAccessMap = Partial<
+        Record<VehicleInspectionFieldKey, Api.System.FieldPermissionAccessLevel>
       >
 
       interface VehicleInspection {
@@ -827,14 +854,14 @@ declare namespace Api {
         companyName?: string
         inspectionNo?: string
         inspectionDate?: string
-        inspectionAmount?: number | null
+        inspectionAmount?: number | string | null
         vehicleOffice?: string
         expireDate?: string
         compulsoryPolicyNo?: string
         compulsoryCompanyId?: string | null
         compulsoryCompanyName?: string
         compulsoryInsureDate?: string
-        compulsoryPremium?: number | null
+        compulsoryPremium?: number | string | null
         compulsoryExpireDate?: string
         remark?: string
         attachments?: VehicleAttachment[]
@@ -842,10 +869,12 @@ declare namespace Api {
         createTime?: string
         updateBy?: string
         updateTime?: string
+        fieldAccess?: VehicleInspectionFieldAccessMap
+        isRecordOwner?: boolean
       }
 
       type VehicleInspectionSearchParams = Partial<
-        Pick<VehicleInspection, 'companyName' | 'plateNo' | 'inspectionNo'> &
+        Pick<VehicleInspection, 'vehicleId' | 'companyName' | 'plateNo' | 'inspectionNo'> &
           Api.Common.CommonSearchParams & {
             expireDateRange?: string[]
             createTimeRange?: string[]
@@ -854,6 +883,11 @@ declare namespace Api {
 
       type VehicleRoutineInspectionType = 'daily' | 'monthly'
       type VehicleRoutineInspectionResult = 'qualified' | 'unqualified'
+      type VehicleRoutineInspectionFieldKey =
+        'responsiblePeople' | 'inspectionFindings' | 'remediationDetails' | 'documents'
+      type VehicleRoutineInspectionFieldAccessMap = Partial<
+        Record<VehicleRoutineInspectionFieldKey, Api.System.FieldPermissionAccessLevel>
+      >
 
       interface VehicleRoutineInspectionRecord {
         id?: string
@@ -867,7 +901,7 @@ declare namespace Api {
         inspector?: string
         driverName?: string
         checkCondition?: string
-        checkResult: VehicleRoutineInspectionResult | string
+        checkResult?: VehicleRoutineInspectionResult | string
         handlingMethod?: string
         remark?: string
         attachments?: VehicleAttachment[]
@@ -875,17 +909,25 @@ declare namespace Api {
         createTime?: string
         updateBy?: string
         updateTime?: string
+        fieldAccess?: VehicleRoutineInspectionFieldAccessMap
+        isRecordOwner?: boolean
+        attachmentsMasked?: boolean
       }
 
       type VehicleRoutineInspectionSearchParams = Partial<
         Pick<
           VehicleRoutineInspectionRecord,
-          'companyName' | 'plateNo' | 'inspectionType' | 'checkResult'
+          'vehicleId' | 'companyName' | 'plateNo' | 'inspectionType' | 'checkResult'
         > &
           Api.Common.CommonSearchParams & {
             inspectionTimeRange?: string[]
             createTimeRange?: string[]
           }
+      >
+
+      type VehicleMileageFieldKey = 'tripTimeline' | 'mileageValues'
+      type VehicleMileageFieldAccessMap = Partial<
+        Record<VehicleMileageFieldKey, Api.System.FieldPermissionAccessLevel>
       >
 
       interface VehicleMileageRecord {
@@ -894,19 +936,21 @@ declare namespace Api {
         vehicleId?: string | null
         plateNo: string
         companyName?: string
-        runningMileage?: number | null
-        startTime: string
-        startMileage?: number | null
+        runningMileage?: number | string | null
+        startTime?: string
+        startMileage?: number | string | null
         endTime?: string | null
-        endMileage?: number | null
+        endMileage?: number | string | null
         createBy?: string
         createTime?: string
         updateBy?: string
         updateTime?: string
+        fieldAccess?: VehicleMileageFieldAccessMap
+        isRecordOwner?: boolean
       }
 
       type VehicleMileageSearchParams = Partial<
-        Pick<VehicleMileageRecord, 'companyName' | 'plateNo'> &
+        Pick<VehicleMileageRecord, 'vehicleId' | 'companyName' | 'plateNo'> &
           Api.Common.CommonSearchParams & {
             drivingTimeRange?: string[]
           }
@@ -922,20 +966,28 @@ declare namespace Api {
         violationBehavior: string
         violationTime: string
         violationLocation?: string
-        penaltyPoints?: number | null
-        fineAmount?: number | null
+        penaltyPoints?: number | string | null
+        fineAmount?: number | string | null
         processed: boolean
         remark?: string
         createBy?: string
         createTime?: string
         updateBy?: string
         updateTime?: string
+        fieldAccess?: VehicleViolationFieldAccessMap
+        isRecordOwner?: boolean
       }
+
+      type VehicleViolationFieldKey =
+        'driverIdentity' | 'violationLocation' | 'violationNarrative' | 'penaltyAmounts'
+      type VehicleViolationFieldAccessMap = Partial<
+        Record<VehicleViolationFieldKey, Api.System.FieldPermissionAccessLevel>
+      >
 
       type VehicleViolationSearchParams = Partial<
         Pick<
           VehicleViolationRecord,
-          'companyName' | 'plateNo' | 'driverName' | 'violationBehavior' | 'processed'
+          'vehicleId' | 'companyName' | 'plateNo' | 'driverName' | 'violationBehavior' | 'processed'
         > &
           Api.Common.CommonSearchParams & {
             violationTimeRange?: string[]
@@ -944,6 +996,12 @@ declare namespace Api {
 
       type VehicleAccidentResponsibility = 'primary' | 'secondary' | 'equal' | 'none' | 'full'
       type VehicleAccidentDataSource = 'self' | 'external'
+
+      type VehicleAccidentFieldKey =
+        'driverContact' | 'accidentLocation' | 'accidentNarrative' | 'lossAmounts' | 'documents'
+      type VehicleAccidentFieldAccessMap = Partial<
+        Record<VehicleAccidentFieldKey, Api.System.FieldPermissionAccessLevel>
+      >
 
       interface VehicleAccidentRecord {
         id?: string
@@ -961,8 +1019,8 @@ declare namespace Api {
         damageLevel?: string
         responsibilityType?: VehicleAccidentResponsibility | string
         responsibilityPercent?: number | null
-        companyBearAmount?: number | null
-        economicLoss?: number | null
+        companyBearAmount?: number | string | null
+        economicLoss?: number | string | null
         reported: boolean
         insuranceReported: boolean
         processed: boolean
@@ -973,12 +1031,14 @@ declare namespace Api {
         createTime?: string
         updateBy?: string
         updateTime?: string
+        fieldAccess?: VehicleAccidentFieldAccessMap
+        isRecordOwner?: boolean
       }
 
       type VehicleAccidentSearchParams = Partial<
         Pick<
           VehicleAccidentRecord,
-          'companyName' | 'plateNo' | 'driverName' | 'processed' | 'dataSource'
+          'vehicleId' | 'companyName' | 'plateNo' | 'driverName' | 'processed' | 'dataSource'
         > &
           Api.Common.CommonSearchParams & {
             accidentTimeRange?: string[]
@@ -987,6 +1047,12 @@ declare namespace Api {
       >
 
       type VehicleMaintenanceType = 'repair' | 'maintenance'
+
+      type VehicleMaintenanceFieldKey =
+        'maintenanceIdentifiers' | 'totalCost' | 'maintenanceItems' | 'documents'
+      type VehicleMaintenanceFieldAccessMap = Partial<
+        Record<VehicleMaintenanceFieldKey, Api.System.FieldPermissionAccessLevel>
+      >
 
       interface VehicleMaintenanceItem {
         itemName: string
@@ -1008,7 +1074,7 @@ declare namespace Api {
         initiator?: string
         startTime: string
         endTime?: string | null
-        costAmount?: number | null
+        costAmount?: number | string | null
         workshop?: string
         externalRepair: boolean
         remark?: string
@@ -1018,12 +1084,14 @@ declare namespace Api {
         createTime?: string
         updateBy?: string
         updateTime?: string
+        fieldAccess?: VehicleMaintenanceFieldAccessMap
+        isRecordOwner?: boolean
       }
 
       type VehicleMaintenanceSearchParams = Partial<
         Pick<
           VehicleMaintenanceRecord,
-          'companyName' | 'plateNo' | 'maintenanceNo' | 'maintenanceType'
+          'vehicleId' | 'companyName' | 'plateNo' | 'maintenanceNo' | 'maintenanceType'
         > &
           Api.Common.CommonSearchParams & {
             createTimeRange?: string[]
@@ -1034,6 +1102,11 @@ declare namespace Api {
       type VehiclePartUsageStatus = 'normal' | 'reused' | 'scrapped'
       type VehiclePartEnableMode = 'vehicle' | 'date'
       type VehiclePartWarrantyMode = 'vehicle' | 'self'
+      type VehiclePartUsageFieldKey =
+        'supplierDetails' | 'traceabilityTag' | 'lifecycleLimits' | 'dispositionNotes'
+      type VehiclePartUsageFieldAccessMap = Partial<
+        Record<VehiclePartUsageFieldKey, Api.System.FieldPermissionAccessLevel>
+      >
 
       interface VehiclePartUsage {
         id?: string
@@ -1075,12 +1148,22 @@ declare namespace Api {
         createTime?: string
         updateBy?: string
         updateTime?: string
+        fieldAccess?: VehiclePartUsageFieldAccessMap
+        isRecordOwner?: boolean
+        lifecycleLimitsMasked?: boolean
       }
 
       type VehiclePartUsageSearchParams = Partial<
         Pick<
           VehiclePartUsage,
-          'companyName' | 'plateNo' | 'partType' | 'partName' | 'categoryId' | 'rfidTag' | 'status'
+          | 'vehicleId'
+          | 'companyName'
+          | 'plateNo'
+          | 'partType'
+          | 'partName'
+          | 'categoryId'
+          | 'rfidTag'
+          | 'status'
         > &
           Api.Common.CommonSearchParams & {
             createTimeRange?: string[]
@@ -1278,7 +1361,14 @@ declare namespace Api {
         createTime?: string
         updateBy?: string
         updateTime?: string
+        fieldAccess?: SupplierFieldAccessMap
+        isRecordOwner?: boolean
       }
+
+      type SupplierFieldKey = 'contactDetails' | 'addressDetails' | 'internalNotes'
+      type SupplierFieldAccessMap = Partial<
+        Record<SupplierFieldKey, Api.System.FieldPermissionAccessLevel>
+      >
 
       type SupplierSearchParams = Partial<
         Pick<Supplier, 'supplierName' | 'contactPerson' | 'contactPhone'> &
@@ -1477,6 +1567,8 @@ declare namespace Api {
       probationEndDate?: string | null
       workLocation?: string | null
       monthlySalary?: ProtectedAmount
+      attachmentUrl?: string | null
+      renewalReminderDays?: number
       remark?: string | null
     }
 
@@ -1577,6 +1669,201 @@ declare namespace Api {
         SystemManage.OrganizationListItem,
         'id' | 'organizationCode' | 'organizationName'
       > | null
+    }
+
+    type ApprovalStatus = 'draft' | 'pending' | 'approved' | 'effective' | 'rejected' | 'cancelled'
+    type WorkspaceEntity =
+      | 'contract'
+      | 'personnelChange'
+      | 'lifecycleCase'
+      | 'lifecycleTask'
+      | 'qualification'
+      | 'headcount'
+      | 'shift'
+      | 'shiftAssignment'
+      | 'attendance'
+      | 'selfServiceRequest'
+      | 'performanceCycle'
+      | 'performanceReview'
+      | 'performanceGoal'
+      | 'trainingPlan'
+      | 'trainingEnrollment'
+      | 'competency'
+      | 'positionCompetency'
+      | 'employeeCompetency'
+      | 'recruitmentRequisition'
+      | 'candidate'
+
+    interface WorkspaceReference {
+      id: string
+      employeeNo?: string
+      employeeName?: string
+      positionCode?: string
+      positionName?: string
+      organizationCode?: string
+      organizationName?: string
+      shiftCode?: string
+      shiftName?: string
+      cycleCode?: string
+      cycleName?: string
+      planCode?: string
+      planName?: string
+      competencyCode?: string
+      competencyName?: string
+      requisitionNo?: string
+    }
+
+    interface WorkspaceRecord {
+      id?: string
+      tenantId?: string
+      employeeId?: string | null
+      employee?: WorkspaceReference | null
+      organizationId?: string | null
+      organization?: WorkspaceReference | null
+      fromOrganization?: WorkspaceReference | null
+      toOrganization?: WorkspaceReference | null
+      positionId?: string | null
+      position?: WorkspaceReference | null
+      fromPosition?: WorkspaceReference | null
+      toPosition?: WorkspaceReference | null
+      contractNo?: string
+      contractType?: string
+      contractStatus?: string
+      signDate?: string | null
+      probationEndDate?: string | null
+      workLocation?: string | null
+      monthlySalary?: ProtectedAmount
+      renewalReminderDays?: number
+      changeNo?: string
+      changeType?: string
+      effectiveDate?: string
+      status?: string
+      fromOrganizationId?: string | null
+      toOrganizationId?: string | null
+      fromPositionId?: string | null
+      toPositionId?: string | null
+      fromEmploymentStatus?: string | null
+      toEmploymentStatus?: string | null
+      fromJobTitle?: string | null
+      toJobTitle?: string | null
+      reason?: string | null
+      caseNo?: string
+      caseType?: string
+      plannedEffectiveDate?: string
+      ownerUserId?: string | null
+      lifecycleCaseId?: string | null
+      lifecycleCase?: WorkspaceReference | null
+      taskType?: string
+      taskName?: string
+      responsibleUserId?: string | null
+      dueDate?: string | null
+      completionNote?: string | null
+      sort?: number
+      qualificationType?: string
+      qualificationName?: string
+      certificateNo?: string | null
+      issuer?: string | null
+      issueDate?: string | null
+      expiryDate?: string | null
+      attachmentUrl?: string | null
+      reminderDays?: number
+      approvedCount?: number
+      occupiedCount?: number
+      vacancyCount?: number
+      effectiveFrom?: string
+      effectiveTo?: string | null
+      enabled?: boolean
+      shiftCode?: string
+      shiftName?: string
+      shiftType?: string
+      startTime?: string
+      endTime?: string
+      breakMinutes?: number
+      crossDay?: boolean
+      shiftId?: string | null
+      shift?: WorkspaceReference | null
+      workDate?: string
+      assignmentStatus?: string
+      clockInAt?: string | null
+      clockOutAt?: string | null
+      workMinutes?: number
+      overtimeMinutes?: number
+      attendanceStatus?: string
+      source?: string
+      requestNo?: string
+      requestType?: string
+      title?: string
+      startAt?: string | null
+      endAt?: string | null
+      durationHours?: number | null
+      requestData?: Record<string, unknown>
+      cycleCode?: string
+      cycleName?: string
+      startDate?: string
+      endDate?: string | null
+      description?: string | null
+      cycleId?: string | null
+      cycle?: WorkspaceReference | null
+      reviewerUserId?: string | null
+      totalScore?: number | null
+      performanceLevel?: string | null
+      employeeSummary?: string | null
+      reviewerComment?: string | null
+      reviewId?: string | null
+      review?: WorkspaceReference | null
+      goalName?: string
+      targetDescription?: string
+      weight?: number
+      actualResult?: string | null
+      evidenceSource?: string | null
+      planCode?: string
+      planName?: string
+      trainingType?: string
+      providerName?: string | null
+      budget?: number | null
+      objective?: string | null
+      planId?: string | null
+      plan?: WorkspaceReference | null
+      score?: number | null
+      result?: string | null
+      competencyCode?: string
+      competencyName?: string
+      category?: string
+      competencyId?: string | null
+      competency?: WorkspaceReference | null
+      currentLevel?: string
+      requiredLevel?: string
+      assessedDate?: string
+      evidence?: string | null
+      requisitionNo?: string
+      openingCount?: number
+      hiredCount?: number
+      expectedOnboardDate?: string | null
+      employmentType?: EmploymentType
+      requirements?: string | null
+      requisitionId?: string | null
+      requisition?: WorkspaceReference | null
+      candidateName?: string
+      phone?: string | null
+      email?: string | null
+      stage?: string
+      expectedSalary?: number | null
+      resumeUrl?: string | null
+      interviewFeedback?: string | null
+      offerDate?: string | null
+      onboardEmployeeId?: string | null
+      remark?: string | null
+      createBy?: string | null
+      createTime?: string
+      updateBy?: string | null
+      updateTime?: string
+    }
+
+    interface WorkspaceSearchParams extends Api.Common.CommonSearchParams {
+      keyword?: string
+      status?: string
+      employeeId?: string
+      tenantId?: string
     }
   }
 
@@ -2175,6 +2462,7 @@ declare namespace Api {
         customerId?: string | null
         customer?: CustomerOption | null
         carrierId?: string | null
+        partyContactPhone?: string | null
         contactName?: string | null
         waybillNo?: string | null
         customerSignatory?: string | null

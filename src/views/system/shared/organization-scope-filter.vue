@@ -12,17 +12,13 @@
       </div>
 
       <ElTooltip content="刷新组织结构" placement="top">
-        <ElButton
-          class="user-organization-filter__refresh"
-          :class="{ 'is-refreshing': loading }"
-          text
+        <ArtIconButton
+          icon="ri:refresh-line"
           circle
-          :disabled="loading"
-          aria-label="刷新组织结构"
+          label="刷新组织结构"
+          :loading="loading"
           @click="emit('refresh')"
-        >
-          <ArtSvgIcon icon="ri:refresh-line" />
-        </ElButton>
+        />
       </ElTooltip>
     </header>
 
@@ -183,6 +179,7 @@
 
 <script setup lang="ts">
   import type { ElTree, TreeNodeData } from 'element-plus'
+  import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
   import ArtEmptyState from '@/components/core/layouts/art-empty-state/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import TreeUtils from '@/utils/tree'
@@ -412,15 +409,6 @@
       :deep(svg) {
         width: 18px;
         height: 18px;
-      }
-    }
-
-    &__refresh {
-      flex: none;
-      color: var(--el-text-color-secondary);
-
-      &.is-refreshing :deep(svg) {
-        animation: organization-filter-spin 720ms linear infinite;
       }
     }
 
@@ -755,12 +743,6 @@
       padding-inline: 8px;
       white-space: nowrap;
       border-radius: 999px;
-    }
-  }
-
-  @keyframes organization-filter-spin {
-    to {
-      transform: rotate(360deg);
     }
   }
 </style>

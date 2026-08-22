@@ -54,6 +54,11 @@
     type BusinessWorkspaceMetric
   } from '@/components/business/business-workspace-header/index.vue'
   import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
+  import {
+    canViewField,
+    formatSensitiveNumber,
+    mergeFieldAccessMaps
+  } from '@/utils/field-permission'
 
   defineOptions({ name: 'VehicleMileage' })
 
@@ -70,6 +75,10 @@
 
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const overview = reactive<{ total: number; rows: MileageRecord[] }>({ total: 0, rows: [] })
+  const listFieldAccess = ref<Api.Vms.VehicleManage.VehicleMileageFieldAccessMap>({})
+  const effectiveFieldAccess = computed(() =>
+    mergeFieldAccessMaps(listFieldAccess.value, ...overview.rows.map((row) => row.fieldAccess))
+  )
   const workspaceMetrics = computed<BusinessWorkspaceMetric[]>(() => [
     {
       label: '里程记录',
@@ -79,14 +88,23 @@
     },
     {
       label: '本页累计行驶',
-      value: `${overview.rows.reduce((sum, row) => sum + Number(row.runningMileage || 0), 0).toFixed(0)} km`,
+      value: canViewField(effectiveFieldAccess.value, 'mileageValues')
+        ? `${overview.rows
+            .reduce((sum, row) => {
+              const value = Number(row.runningMileage)
+              return Number.isFinite(value) ? sum + value : sum
+            }, 0)
+            .toFixed(0)} km`
+        : '--',
       description: '当前页行驶里程合计',
       icon: 'ri:speed-up-line',
       tone: 'success'
     },
     {
       label: '本页未结束行程',
-      value: overview.rows.filter((row) => !row.endTime).length,
+      value: canViewField(effectiveFieldAccess.value, 'tripTimeline')
+        ? overview.rows.filter((row) => !row.endTime).length
+        : '--',
       description: '尚未登记结束时间',
       icon: 'ri:timer-flash-line',
       tone: 'warning'
@@ -112,7 +130,9 @@
     searchItems: computed<SearchFormItem[]>(() => [
       { label: '所属公司', key: 'companyName', type: 'input' },
       { label: '车牌号', key: 'plateNo', type: 'input' },
-      { label: '行驶时间', key: 'drivingTimeRange', type: 'date', props: dateRangeProps }
+      ...(canViewField(effectiveFieldAccess.value, 'tripTimeline')
+        ? [{ label: '行驶时间', key: 'drivingTimeRange', type: 'date', props: dateRangeProps }]
+        : [])
     ]),
     headerActions: computed<ArtTableQueryHeaderAction[]>(() => [
       {
@@ -120,7 +140,7 @@
         permission: 'VehicleMileage:Export',
         exportFilename: '里程记录',
         exportSheetName: '里程记录',
-        exportColumns: mileageExcelColumns,
+        exportColumns: mileageExcelColumns.value,
         exportApi: ({ selectedIds, searchParams, maxRows }) =>
           exportVehicleMileageList({
             ...(searchParams as SearchParams),
@@ -134,55 +154,77 @@
       { type: 'globalIndex', label: '序号', width: 64 },
       { prop: 'companyName', label: '所属公司', minWidth: 220 },
       { prop: 'plateNo', label: '车牌号', width: 120 },
-      {
-        prop: 'startTime',
-        label: '开始时间',
-        minWidth: 180,
-        formatter: (row) => formatWithDayjs(row.startTime)
-      },
-      {
-        prop: 'startMileage',
-        label: '开始里程',
-        width: 120,
-        align: 'right',
-        formatter: (row) => formatMileage(row.startMileage)
-      },
-      {
-        prop: 'endMileage',
-        label: '结束里程',
-        width: 120,
-        align: 'right',
-        formatter: (row) => formatMileage(row.endMileage)
-      },
-      {
-        prop: 'runningMileage',
-        label: '行驶里程',
-        width: 120,
-        align: 'right',
-        formatter: (row) => formatMileage(row.runningMileage)
-      },
-      {
-        prop: 'endTime',
-        label: '结束时间',
-        minWidth: 180,
-        formatter: (row) => formatWithDayjs(row.endTime)
-      }
+      ...(canViewField(effectiveFieldAccess.value, 'tripTimeline')
+        ? [
+            {
+              prop: 'startTime',
+              label: '开始时间',
+              minWidth: 180,
+              formatter: (row: MileageRecord) => formatMileageTime(row.startTime)
+            }
+          ]
+        : []),
+      ...(canViewField(effectiveFieldAccess.value, 'mileageValues')
+        ? [
+            {
+              prop: 'startMileage',
+              label: '开始里程',
+              width: 120,
+              align: 'right',
+              formatter: (row: MileageRecord) => formatMileage(row.startMileage)
+            },
+            {
+              prop: 'endMileage',
+              label: '结束里程',
+              width: 120,
+              align: 'right',
+              formatter: (row: MileageRecord) => formatMileage(row.endMileage)
+            },
+            {
+              prop: 'runningMileage',
+              label: '行驶里程',
+              width: 120,
+              align: 'right',
+              formatter: (row: MileageRecord) => formatMileage(row.runningMileage)
+            }
+          ]
+        : []),
+      ...(canViewField(effectiveFieldAccess.value, 'tripTimeline')
+        ? [
+            {
+              prop: 'endTime',
+              label: '结束时间',
+              minWidth: 180,
+              formatter: (row: MileageRecord) => formatMileageTime(row.endTime)
+            }
+          ]
+        : [])
     ]
   })
 
-  const mileageExcelColumns: ArtTableQueryExcelColumn[] = [
+  const mileageExcelColumns = computed<ArtTableQueryExcelColumn[]>(() => [
     { key: 'companyName', title: '所属公司' },
     { key: 'plateNo', title: '车牌号', required: true },
-    { key: 'startTime', title: '开始时间' },
-    { key: 'startMileage', title: '开始里程' },
-    { key: 'endTime', title: '结束时间' },
-    { key: 'endMileage', title: '结束里程' },
-    { key: 'runningMileage', title: '行驶里程' }
-  ]
+    ...(canViewField(effectiveFieldAccess.value, 'tripTimeline')
+      ? [
+          { key: 'startTime', title: '开始时间' },
+          { key: 'endTime', title: '结束时间' }
+        ]
+      : []),
+    ...(canViewField(effectiveFieldAccess.value, 'mileageValues')
+      ? [
+          { key: 'startMileage', title: '开始里程' },
+          { key: 'endMileage', title: '结束里程' },
+          { key: 'runningMileage', title: '行驶里程' }
+        ]
+      : [])
+  ])
 
-  const fetchTableData = (params: TableParams) => {
+  const fetchTableData = async (params: TableParams) => {
     const { from, to } = pageInfoHandler({ current: params.current, size: params.size })
-    return fetchVehicleMileageList({ ...params, from, to })
+    const result = await fetchVehicleMileageList({ ...params, from, to })
+    listFieldAccess.value = result.fieldAccess ?? {}
+    return result
   }
 
   const handleTableSuccess: NonNullable<ArtTableQueryProps['onSuccess']> = (rows, response) => {
@@ -190,10 +232,13 @@
     overview.total = response.total ?? rows.length
   }
 
-  const formatMileage = (value?: number | null): string => {
-    if (value === undefined || value === null) return '--'
-    return `${Number(value).toFixed(2)} km`
+  const formatMileage = (value?: number | string | null): string => {
+    const formatted = formatSensitiveNumber(value)
+    return formatted === '--' || formatted === '***' ? formatted : `${formatted} km`
   }
+
+  const formatMileageTime = (value?: string | null): string =>
+    value === '***' ? value : (formatWithDayjs(value) ?? '--')
 </script>
 
 <style scoped lang="scss">

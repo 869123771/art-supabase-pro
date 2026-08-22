@@ -99,6 +99,8 @@ export default ({ mode }: { mode: string }) => {
   console.log(`[vite] outDir=${outDir}`)
 
   return defineConfig({
+    // 开发、E2E 与其他模式使用独立依赖缓存，避免并行启动时互相清理预构建文件。
+    cacheDir: path.resolve(root, 'node_modules/.vite', mode),
     define: {
       __APP_VERSION__: JSON.stringify(VITE_VERSION)
     },

@@ -13,6 +13,10 @@
       description="持续跟踪调用质量、响应速度、Token 消耗与失败原因，让每一次 AI 执行都可观测、可追溯。"
       icon="ri:brain-2-line"
       :metrics="workspaceMetrics"
+      refreshable
+      refresh-label="刷新运行数据"
+      :refresh-loading="overview.loading"
+      @refresh="refreshAll"
     >
       <template #actions>
         <ElRadioGroup v-model="overview.days" size="small" @change="loadOverview">
@@ -20,15 +24,6 @@
           <ElRadioButton :value="30">30 天</ElRadioButton>
           <ElRadioButton :value="90">90 天</ElRadioButton>
         </ElRadioGroup>
-        <ElTooltip content="刷新运行数据" placement="bottom">
-          <ArtIconButton
-            icon="ri:refresh-line"
-            circle
-            aria-label="刷新运行数据"
-            :class="{ 'ai-operations__refreshing': overview.loading }"
-            @click="refreshAll"
-          />
-        </ElTooltip>
       </template>
     </BusinessWorkspaceHeader>
 
@@ -919,10 +914,6 @@
       gap: 10px;
     }
 
-    &__refreshing :deep(svg) {
-      animation: ai-operations-spin 0.8s linear infinite;
-    }
-
     &__metrics {
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1604,12 +1595,6 @@
         flex-wrap: wrap;
         grid-column: auto;
       }
-    }
-  }
-
-  @keyframes ai-operations-spin {
-    to {
-      transform: rotate(360deg);
     }
   }
 </style>

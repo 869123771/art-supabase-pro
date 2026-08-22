@@ -91,6 +91,7 @@
     addContract,
     editContract,
     fetchCarrierOptions,
+    fetchContractDetail,
     fetchCustomerOptions,
     submitContractForApproval
   } from '@/api/tms'
@@ -813,9 +814,7 @@
   }
 
   const handleOpen = async (row?: Contract): Promise<void> => {
-    await Promise.all([resetForm(), contractNumber.loadRule()])
-    if (row?.id) replaceForm(row)
-
+    await resetForm()
     await dialogRef.value?.handleOpen(row, {
       title: row?.id ? '编辑合同' : '新增合同',
       subtitle: '维护合同相对方、履约条款、运输明细和附件',
@@ -823,7 +822,25 @@
       loading: true,
       onOpen: async (_data, api) => {
         try {
+          if (row?.id) {
+            const [, detailResponse] = await Promise.all([
+              contractNumber.loadRule(),
+              fetchContractDetail(row.id)
+            ])
+            if (!detailResponse.data) {
+              ElMessage.warning('合同不存在或已无权访问')
+              await api.handleClose(true)
+              return
+            }
+            replaceForm(detailResponse.data)
+          } else {
+            await contractNumber.loadRule()
+          }
+
+          await nextTick()
           await formRef.value?.reloadOptions()
+        } catch {
+          await api.handleClose(true)
         } finally {
           await nextTick()
           formRef.value?.clearValidate()

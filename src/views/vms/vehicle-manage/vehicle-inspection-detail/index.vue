@@ -18,11 +18,11 @@
     />
 
     <section class="vehicle-inspection-detail__summary art-card-xs">
-      <div class="vehicle-inspection-detail__summary-item">
+      <div v-if="canViewAmounts" class="vehicle-inspection-detail__summary-item">
         <span>年检日期</span>
         <strong>{{ detail.data?.inspectionDate || '--' }}</strong>
       </div>
-      <div class="vehicle-inspection-detail__summary-item">
+      <div v-if="canViewDocuments" class="vehicle-inspection-detail__summary-item">
         <span>到期日期</span>
         <strong>{{ detail.data?.expireDate || '--' }}</strong>
       </div>
@@ -37,7 +37,7 @@
     </section>
 
     <div class="vehicle-inspection-detail__content art-card-xs">
-      <section class="vehicle-inspection-detail__section">
+      <section v-if="canViewDocuments" class="vehicle-inspection-detail__section">
         <ArtSectionTitle>年检信息</ArtSectionTitle>
         <ArtDescriptions :data="descriptionData" :items="descriptionItems" :columns="2" />
       </section>
@@ -57,7 +57,6 @@
 </template>
 
 <script setup lang="tsx">
-  import { isNil } from 'lodash-es'
   import ArtDescriptions from '@/components/core/base/art-descriptions/index.vue'
   import type { ArtDescriptionItem } from '@/components/core/base/art-descriptions/types'
   import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
@@ -67,6 +66,7 @@
   import { fetchVehicleInspectionDetail } from '@/api/vms'
   import { downloadAttachment } from '@/utils/file'
   import { renderAttachmentLink } from '@/components/core/media/art-file-viewer/render'
+  import { canViewField, formatSensitiveNumber } from '@/utils/field-permission'
 
   defineOptions({ name: 'VehicleInspectionDetail' })
 
@@ -77,22 +77,33 @@
   const router = useRouter()
   const page = reactive<{ loading: boolean; error: Error | null }>({ loading: false, error: null })
   const detail = reactive<{ data?: VehicleInspection }>({ data: undefined })
+  const canViewIdentifiers = computed(() =>
+    canViewField(detail.data?.fieldAccess, 'inspectionIdentifiers')
+  )
+  const canViewAmounts = computed(() => canViewField(detail.data?.fieldAccess, 'monetaryAmounts'))
+  const canViewDocuments = computed(() => canViewField(detail.data?.fieldAccess, 'documents'))
   const descriptionData = computed<Partial<VehicleInspection>>(() => detail.data ?? {})
-  const descriptionItems: ArtDescriptionItem<Partial<VehicleInspection>>[] = [
+  const descriptionItems = computed<ArtDescriptionItem<Partial<VehicleInspection>>[]>(() => [
     { key: 'plateNo', label: '车牌号', field: 'plateNo' },
     { key: 'companyName', label: '所属公司', field: 'companyName' },
     { key: 'inspectionDate', label: '年检日期', field: 'inspectionDate', format: 'date' },
-    { key: 'inspectionNo', label: '年检号', field: 'inspectionNo', copyable: true },
-    {
-      key: 'inspectionAmount',
-      label: '年检金额',
-      field: 'inspectionAmount',
-      formatter: (value) => formatMoney(value as number | null | undefined)
-    },
+    ...(canViewIdentifiers.value
+      ? [{ key: 'inspectionNo', label: '年检号', field: 'inspectionNo', copyable: true }]
+      : []),
+    ...(canViewAmounts.value
+      ? [
+          {
+            key: 'inspectionAmount',
+            label: '年检金额',
+            field: 'inspectionAmount',
+            formatter: (value: unknown) => formatMoney(value as number | string | null | undefined)
+          }
+        ]
+      : []),
     { key: 'vehicleOffice', label: '车管所', field: 'vehicleOffice' },
     { key: 'expireDate', label: '到期日期', field: 'expireDate', format: 'date' },
     { key: 'remark', label: '备注', field: 'remark' }
-  ]
+  ])
 
   const attachmentColumns: ColumnOption<Attachment>[] = [
     { type: 'globalIndex', label: '序号', width: 56 },
@@ -142,9 +153,9 @@
     void router.push('/vms/vehicle-manage/vehicle-inspection')
   }
 
-  const formatMoney = (value?: number | null): string => {
-    if (isNil(value)) return '--'
-    return `${Number(value).toFixed(2)} 元`
+  const formatMoney = (value?: number | string | null): string => {
+    const formatted = formatSensitiveNumber(value)
+    return formatted === '--' || formatted === '***' ? formatted : `${formatted} 元`
   }
 </script>
 

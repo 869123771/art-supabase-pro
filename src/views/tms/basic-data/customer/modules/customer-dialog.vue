@@ -444,7 +444,7 @@
   }
 
   const handleOpen = async (row?: Customer): Promise<void> => {
-    await Promise.all([resetForm(), customerNumber.loadRule()])
+    await resetForm()
     const isEdit = Boolean(row?.id)
     if (row) {
       replaceForm({
@@ -462,8 +462,13 @@
       loading: true,
       onOpen: async (_openData, api) => {
         try {
-          await formRef.value?.reloadOptions('parentUnitId')
+          await Promise.all([
+            customerNumber.loadRule(),
+            formRef.value?.reloadOptions('parentUnitId')
+          ])
         } finally {
+          await nextTick()
+          formRef.value?.clearValidate()
           api.setLoading(false)
         }
       },

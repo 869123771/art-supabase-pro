@@ -33,6 +33,7 @@
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import type { InfoItem, VehicleArchive, VehicleQuerySummary } from './types'
   import { createDescriptionItems, formatDate, formatMileage, formatNumber } from './query-format'
+  import { canViewField } from '@/utils/field-permission'
 
   defineOptions({ name: 'VehicleQuerySummary' })
 
@@ -49,7 +50,9 @@
       { label: '所属机构', value: props.vehicle.companyName },
       { label: '车型', value: props.vehicle.vehicleType, dictCode: 'vehicleType' },
       { label: '车型厂商', value: props.vehicle.manufacturer },
-      { label: '车架号', value: props.vehicle.vin },
+      ...(canViewField(props.vehicle.fieldAccess, 'vehicleIdentifiers')
+        ? [{ label: '车架号', value: props.vehicle.vin }]
+        : []),
       { label: '购入开票日期', value: formatDate(props.vehicle.invoiceDate) },
       { label: '启用日期', value: formatDate(props.vehicle.startUseDate) },
       {

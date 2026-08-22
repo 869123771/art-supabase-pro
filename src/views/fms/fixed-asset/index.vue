@@ -1,5 +1,5 @@
 <template>
-  <div class="business-workspace-page art-full-height fms-accounting-page fixed-asset-page">
+  <FinanceAccountingWorkspaceShell class="fixed-asset-page">
     <BusinessWorkspaceHeader
       density="compact"
       eyebrow="FIXED ASSET LEDGER"
@@ -40,7 +40,7 @@
     <FixedAssetDisposalDialog ref="disposalDialogRef" @success="refreshAll" />
     <AssetCategoryDialog ref="categoryDialogRef" @success="handleCategorySaved" />
     <AssetDepreciationDrawer ref="depreciationRef" @success="refreshAll" />
-  </div>
+  </FinanceAccountingWorkspaceShell>
 </template>
 
 <script setup lang="tsx">
@@ -493,10 +493,4 @@
   })
 </script>
 
-<style scoped lang="scss">
-  @use '../modules/accounting-workspace.scss' as accounting;
-
-  .fixed-asset-page {
-    @include accounting.accounting-workspace-layout;
-  }
-</style>
+<style scoped lang="scss"></style>

@@ -12,6 +12,7 @@
   import type { VehicleArchive, VehicleRoutineInspectionRecord } from './types'
   import { formatDateTime } from './query-format'
   import { useVehiclePanelList } from './use-vehicle-panel-list'
+  import { canViewField, mergeFieldAccessMaps } from '@/utils/field-permission'
 
   defineOptions({ name: 'VehicleQueryRoutineInspectionPanel' })
 
@@ -24,7 +25,7 @@
     vehicle,
     async (current) => {
       const { data } = await fetchVehicleRoutineInspectionList({
-        plateNo: current.plateNo,
+        vehicleId: current.id,
         from: 0,
         to: 9999
       })
@@ -32,7 +33,11 @@
     }
   )
 
-  const columns: ColumnOption<VehicleRoutineInspectionRecord>[] = [
+  const effectiveFieldAccess = computed(() =>
+    mergeFieldAccessMaps(...records.value.map((record) => record.fieldAccess))
+  )
+
+  const columns = computed<ColumnOption<VehicleRoutineInspectionRecord>[]>(() => [
     { type: 'globalIndex', label: '序号', width: 80 },
     { prop: 'routineInspectionNo', label: '例检单号', minWidth: 160 },
     {
@@ -47,15 +52,27 @@
       minWidth: 180,
       formatter: (row) => formatDateTime(row.inspectionTime)
     },
-    { prop: 'inspector', label: '例检员', minWidth: 130 },
-    { prop: 'driverName', label: '驾驶员姓名', minWidth: 140 },
-    { prop: 'checkCondition', label: '检查情况', minWidth: 160 },
-    {
-      prop: 'checkResult',
-      label: '检查结果',
-      minWidth: 130,
-      dict: { code: 'vehicleRoutineInspectionResult', display: 'auto' }
-    },
-    { prop: 'handlingMethod', label: '处理方式', minWidth: 160 }
-  ]
+    ...(canViewField(effectiveFieldAccess.value, 'responsiblePeople')
+      ? ([
+          { prop: 'inspector', label: '例检员', minWidth: 130 },
+          { prop: 'driverName', label: '驾驶员姓名', minWidth: 140 }
+        ] as ColumnOption<VehicleRoutineInspectionRecord>[])
+      : []),
+    ...(canViewField(effectiveFieldAccess.value, 'inspectionFindings')
+      ? ([
+          { prop: 'checkCondition', label: '检查情况', minWidth: 160 },
+          {
+            prop: 'checkResult',
+            label: '检查结果',
+            minWidth: 130,
+            dict: { code: 'vehicleRoutineInspectionResult', display: 'auto' }
+          }
+        ] as ColumnOption<VehicleRoutineInspectionRecord>[])
+      : []),
+    ...(canViewField(effectiveFieldAccess.value, 'remediationDetails')
+      ? ([
+          { prop: 'handlingMethod', label: '处理方式', minWidth: 160 }
+        ] as ColumnOption<VehicleRoutineInspectionRecord>[])
+      : [])
+  ])
 </script>

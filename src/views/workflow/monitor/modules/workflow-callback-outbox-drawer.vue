@@ -56,6 +56,15 @@
             <small>当前展示 {{ visibleItems.length }} 条，最多加载最近 100 条事件</small>
           </div>
           <div class="workflow-callback-outbox__tools">
+            <ElTooltip content="刷新投递事件" placement="top">
+              <ArtIconButton
+                icon="ri:refresh-line"
+                circle
+                label="刷新投递事件"
+                :loading="state.loading"
+                @click="loadData"
+              />
+            </ElTooltip>
             <ElSelect
               v-model="state.status"
               placeholder="全部状态"
@@ -70,9 +79,6 @@
                 :value="option.value"
               />
             </ElSelect>
-            <ElButton :loading="state.loading" @click="loadData">
-              <ArtSvgIcon icon="ri:refresh-line" />刷新
-            </ElButton>
           </div>
         </header>
 
@@ -103,6 +109,7 @@
   import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import ArtTable from '@/components/core/tables/art-table/index.vue'
+  import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
   import { useUserStore } from '@/store/modules/user'
   import { formatWithDayjs } from '@/utils/time'
   import { fetchWorkflowCallbackOutbox, retryWorkflowBusinessCallback } from '@/api/workflow'

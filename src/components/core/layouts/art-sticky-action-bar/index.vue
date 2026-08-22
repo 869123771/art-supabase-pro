@@ -1,7 +1,12 @@
 <template>
   <footer class="art-sticky-action-bar art-card-xs">
-    <div v-if="$slots.summary" class="art-sticky-action-bar__summary">
-      <slot name="summary" />
+    <div v-if="$slots.summary || hint" class="art-sticky-action-bar__summary">
+      <slot name="summary">
+        <span class="art-sticky-action-bar__hint">
+          <ArtSvgIcon :icon="hintIcon" aria-hidden="true" />
+          <span>{{ hint }}</span>
+        </span>
+      </slot>
     </div>
     <div class="art-sticky-action-bar__actions">
       <slot />
@@ -10,7 +15,20 @@
 </template>
 
 <script setup lang="ts">
+  import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
+
   defineOptions({ name: 'ArtStickyActionBar' })
+
+  withDefaults(
+    defineProps<{
+      hint?: string
+      hintIcon?: string
+    }>(),
+    {
+      hint: '',
+      hintIcon: 'ri:information-line'
+    }
+  )
 </script>
 
 <style scoped lang="scss">
@@ -37,12 +55,27 @@
       min-width: 0;
     }
 
+    &__hint {
+      display: inline-flex;
+      gap: var(--art-space-2);
+      align-items: center;
+      font-size: 12px;
+      line-height: 1.5;
+      color: var(--el-text-color-secondary);
+
+      :deep(svg) {
+        flex: none;
+        color: var(--theme-color);
+      }
+    }
+
     &__actions {
       display: flex;
       flex: none;
       gap: var(--art-space-2);
       align-items: center;
       justify-content: flex-end;
+      margin-left: auto;
     }
 
     @media (width <= 640px) {
@@ -53,8 +86,9 @@
 
       &__actions {
         flex-wrap: wrap;
-        justify-content: flex-start;
+        justify-content: flex-end;
         width: 100%;
+        margin-left: 0;
       }
     }
   }

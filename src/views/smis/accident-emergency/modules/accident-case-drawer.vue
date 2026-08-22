@@ -40,27 +40,18 @@
               ><dt>伤亡人数</dt><dd>{{ formatSensitiveCount(state.row.casualties) }}</dd></div
             >
             <div v-if="canViewAccidentField(state.row, 'casualtyAndLoss')"
-              ><dt>经济损失</dt
-              ><dd>{{ formatSensitiveMoney(state.row.economicLoss) }}</dd></div
+              ><dt>经济损失</dt><dd>{{ formatSensitiveMoney(state.row.economicLoss) }}</dd></div
             >
-            <div
-              v-if="canViewAccidentField(state.row, 'investigationDetails')"
-              class="is-wide"
+            <div v-if="canViewAccidentField(state.row, 'investigationDetails')" class="is-wide"
               ><dt>事件描述</dt><dd>{{ state.row.description || '--' }}</dd></div
             >
-            <div
-              v-if="canViewAccidentField(state.row, 'investigationDetails')"
-              class="is-wide"
+            <div v-if="canViewAccidentField(state.row, 'investigationDetails')" class="is-wide"
               ><dt>即时处置</dt><dd>{{ state.row.immediateActions || '--' }}</dd></div
             >
-            <div
-              v-if="canViewAccidentField(state.row, 'investigationDetails')"
-              class="is-wide"
+            <div v-if="canViewAccidentField(state.row, 'investigationDetails')" class="is-wide"
               ><dt>原因分析</dt><dd>{{ state.row.causeAnalysis || '--' }}</dd></div
             >
-            <div
-              v-if="canViewAccidentField(state.row, 'investigationDetails')"
-              class="is-wide"
+            <div v-if="canViewAccidentField(state.row, 'investigationDetails')" class="is-wide"
               ><dt>纠正措施</dt><dd>{{ state.row.correctiveActions || '--' }}</dd></div
             >
           </dl>

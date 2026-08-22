@@ -293,13 +293,16 @@
         type: 'export',
         exportFilename: 'TMS订单列表',
         exportSheetName: '订单列表',
-        exportColumns: orderExcelColumns.value,
-        exportApi: ({ selectedIds, searchParams, maxRows }) =>
-          exportOrderList({
+        exportColumns: () => orderExcelColumns.value,
+        exportApi: async ({ selectedIds, searchParams, maxRows }) => {
+          const result = await exportOrderList({
             ...(searchParams as SearchParams),
             ids: selectedIds.map(String),
             maxRows
           })
+          syncOrderFieldAccess(result)
+          return result
+        }
       },
       {
         key: 'batch-cancel',
@@ -482,11 +485,18 @@
     const { from, to } = pageInfoHandler({ current: params.current, size: params.size })
     void loadStatusCounts(params)
     const result = await fetchOrderList({ ...params, from, to })
+    syncOrderFieldAccess(result)
+    return result
+  }
+
+  function syncOrderFieldAccess(result: {
+    data?: OrderRecord[] | null
+    fieldAccess?: Api.Tms.Order.OrderFieldAccessMap
+  }): void {
     orderFieldAccess.value = mergeFieldAccessMaps(
       result.fieldAccess,
       ...(result.data ?? []).map((row) => row.fieldAccess)
     )
-    return result
   }
 
   async function loadStatusCounts(params: TableParams): Promise<void> {

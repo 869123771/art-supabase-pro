@@ -1,5 +1,5 @@
 <template>
-  <div class="business-workspace-page art-full-height fms-accounting-page auto-posting-page">
+  <FinanceAccountingWorkspaceShell class="auto-posting-page">
     <BusinessWorkspaceHeader
       density="compact"
       eyebrow="ACCOUNTING AUTOMATION"
@@ -82,7 +82,7 @@
     <PostingRuleDialog ref="ruleDialogRef" @success="handleRuleSaved" />
     <PostingEventDetailDrawer ref="eventDetailRef" @view-voucher="openVoucherById" />
     <VoucherDetailDrawer ref="voucherDetailRef" />
-  </div>
+  </FinanceAccountingWorkspaceShell>
 </template>
 
 <script setup lang="tsx">
@@ -690,8 +690,6 @@
   @use '../modules/accounting-workspace.scss' as accounting;
 
   .auto-posting-page {
-    @include accounting.accounting-workspace-layout;
-
     &__tabs {
       @include accounting.accounting-workspace-tabs;
     }

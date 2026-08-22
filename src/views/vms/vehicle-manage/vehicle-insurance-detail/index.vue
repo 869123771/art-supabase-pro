@@ -16,7 +16,7 @@
     />
 
     <section class="vehicle-insurance-detail__summary art-card-xs">
-      <div class="vehicle-insurance-detail__summary-item">
+      <div v-if="canViewInsuranceField('documents')" class="vehicle-insurance-detail__summary-item">
         <span>商业险到期</span>
         <strong>{{ formatValue(detail.data?.commercialExpireDate) }}</strong>
       </div>
@@ -31,7 +31,7 @@
     </section>
 
     <div class="vehicle-insurance-detail__content art-card-xs">
-      <section class="vehicle-insurance-detail__section">
+      <section v-if="canViewInsuranceField('documents')" class="vehicle-insurance-detail__section">
         <ArtSectionTitle>保险信息</ArtSectionTitle>
         <ArtDescriptions :data="descriptionData" :items="vehicleItems" :columns="2" />
       </section>
@@ -77,23 +77,36 @@
   import { fetchVehicleInsuranceDetail } from '@/api/vms'
   import { downloadAttachment } from '@/utils/file'
   import { renderAttachmentLink } from '@/components/core/media/art-file-viewer/render'
+  import { canViewField, formatSensitiveNumber } from '@/utils/field-permission'
 
   defineOptions({ name: 'VehicleInsuranceDetail' })
 
   type VehicleInsurance = Api.Vms.VehicleManage.VehicleInsurance
   type Attachment = Api.Vms.VehicleManage.VehicleAttachment
+  type InsuranceFieldKey = Api.Vms.VehicleManage.VehicleInsuranceFieldKey
 
   const route = useRoute()
   const router = useRouter()
   const page = reactive<{ loading: boolean; error: Error | null }>({ loading: false, error: null })
   const detail = reactive<{ data?: VehicleInsurance }>({ data: undefined })
   const descriptionData = computed<Partial<VehicleInsurance>>(() => detail.data ?? {})
+  const canViewInsuranceField = (field: InsuranceFieldKey): boolean =>
+    canViewField(detail.data?.fieldAccess, field)
   const vehicleItems: ArtDescriptionItem<Partial<VehicleInsurance>>[] = [
     { key: 'plateNo', label: '车牌号', field: 'plateNo' },
     { key: 'companyName', label: '所属公司', field: 'companyName' }
   ]
-  const commercialItems: ArtDescriptionItem<Partial<VehicleInsurance>>[] = [
-    { key: 'commercialPolicyNo', label: '保单号', field: 'commercialPolicyNo', copyable: true },
+  const commercialItems = computed<ArtDescriptionItem<Partial<VehicleInsurance>>[]>(() => [
+    ...(canViewInsuranceField('policyNumbers')
+      ? [
+          {
+            key: 'commercialPolicyNo',
+            label: '保单号',
+            field: 'commercialPolicyNo',
+            copyable: true
+          } as ArtDescriptionItem<Partial<VehicleInsurance>>
+        ]
+      : []),
     { key: 'commercialCompanyName', label: '保险公司', field: 'commercialCompanyName' },
     {
       key: 'commercialInsureDate',
@@ -101,21 +114,34 @@
       field: 'commercialInsureDate',
       format: 'date'
     },
-    {
-      key: 'commercialPremium',
-      label: '投保金额',
-      field: 'commercialPremium',
-      formatter: (value) => formatMoney(value as number | null | undefined)
-    },
+    ...(canViewInsuranceField('premiumAmounts')
+      ? [
+          {
+            key: 'commercialPremium',
+            label: '投保金额',
+            field: 'commercialPremium',
+            formatter: (value) => formatMoney(value as number | string | null | undefined)
+          } as ArtDescriptionItem<Partial<VehicleInsurance>>
+        ]
+      : []),
     {
       key: 'commercialExpireDate',
       label: '到期日期',
       field: 'commercialExpireDate',
       format: 'date'
     }
-  ]
-  const compulsoryItems: ArtDescriptionItem<Partial<VehicleInsurance>>[] = [
-    { key: 'compulsoryPolicyNo', label: '保单号', field: 'compulsoryPolicyNo', copyable: true },
+  ])
+  const compulsoryItems = computed<ArtDescriptionItem<Partial<VehicleInsurance>>[]>(() => [
+    ...(canViewInsuranceField('policyNumbers')
+      ? [
+          {
+            key: 'compulsoryPolicyNo',
+            label: '保单号',
+            field: 'compulsoryPolicyNo',
+            copyable: true
+          } as ArtDescriptionItem<Partial<VehicleInsurance>>
+        ]
+      : []),
     { key: 'compulsoryCompanyName', label: '保险公司', field: 'compulsoryCompanyName' },
     {
       key: 'compulsoryInsureDate',
@@ -123,19 +149,23 @@
       field: 'compulsoryInsureDate',
       format: 'date'
     },
-    {
-      key: 'compulsoryPremium',
-      label: '投保金额',
-      field: 'compulsoryPremium',
-      formatter: (value) => formatMoney(value as number | null | undefined)
-    },
+    ...(canViewInsuranceField('premiumAmounts')
+      ? [
+          {
+            key: 'compulsoryPremium',
+            label: '投保金额',
+            field: 'compulsoryPremium',
+            formatter: (value) => formatMoney(value as number | string | null | undefined)
+          } as ArtDescriptionItem<Partial<VehicleInsurance>>
+        ]
+      : []),
     {
       key: 'compulsoryExpireDate',
       label: '到期日期',
       field: 'compulsoryExpireDate',
       format: 'date'
     }
-  ]
+  ])
 
   const attachmentColumns: ColumnOption<Attachment>[] = [
     { type: 'globalIndex', label: '序号', width: 80 },
@@ -190,9 +220,9 @@
     return String(value)
   }
 
-  const formatMoney = (value?: number | null): string => {
-    if (value === undefined || value === null) return '--'
-    return `${Number(value).toFixed(2)} 元`
+  const formatMoney = (value?: number | string | null): string => {
+    const formatted = formatSensitiveNumber(value)
+    return formatted === '--' || formatted === '***' ? formatted : `${formatted} 元`
   }
 </script>
 

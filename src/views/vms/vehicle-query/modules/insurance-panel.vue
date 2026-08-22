@@ -10,8 +10,13 @@
   import ArtPageSection from '@/components/core/layouts/art-page-section/index.vue'
   import VehicleQueryTable from './vehicle-query-table.vue'
   import type { VehicleArchive, VehicleInsurance } from './types'
-  import { formatDate, formatMoney } from './query-format'
+  import { formatDate } from './query-format'
   import { useVehiclePanelList } from './use-vehicle-panel-list'
+  import {
+    canViewField,
+    formatSensitiveNumber,
+    mergeFieldAccessMaps
+  } from '@/utils/field-permission'
 
   defineOptions({ name: 'VehicleQueryInsurancePanel' })
 
@@ -29,12 +34,20 @@
     return data ?? []
   })
 
-  const columns: ColumnOption<VehicleInsurance>[] = [
+  const effectiveFieldAccess = computed(() =>
+    mergeFieldAccessMaps(...records.value.map((row) => row.fieldAccess))
+  )
+  const formatPremium = (value?: number | string | null): string =>
+    formatSensitiveNumber(value, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+
+  const columns = computed<ColumnOption<VehicleInsurance>[]>(() => [
     { type: 'globalIndex', label: '序号', width: 70 },
     {
       label: '商业险',
       children: [
-        { prop: 'commercialPolicyNo', label: '保单号', minWidth: 150 },
+        ...(canViewField(effectiveFieldAccess.value, 'policyNumbers')
+          ? [{ prop: 'commercialPolicyNo', label: '保单号', minWidth: 150 }]
+          : []),
         { prop: 'commercialCompanyName', label: '保险公司', minWidth: 150 },
         {
           prop: 'commercialInsureDate',
@@ -42,12 +55,16 @@
           width: 120,
           formatter: (row) => formatDate(row.commercialInsureDate)
         },
-        {
-          prop: 'commercialPremium',
-          label: '投保金额（元）',
-          width: 140,
-          formatter: (row) => formatMoney(row.commercialPremium)
-        },
+        ...(canViewField(effectiveFieldAccess.value, 'premiumAmounts')
+          ? [
+              {
+                prop: 'commercialPremium',
+                label: '投保金额（元）',
+                width: 140,
+                formatter: (row: VehicleInsurance) => formatPremium(row.commercialPremium)
+              }
+            ]
+          : []),
         {
           prop: 'commercialExpireDate',
           label: '到期日期',
@@ -59,7 +76,9 @@
     {
       label: '交强险',
       children: [
-        { prop: 'compulsoryPolicyNo', label: '保单号', minWidth: 150 },
+        ...(canViewField(effectiveFieldAccess.value, 'policyNumbers')
+          ? [{ prop: 'compulsoryPolicyNo', label: '保单号', minWidth: 150 }]
+          : []),
         { prop: 'compulsoryCompanyName', label: '保险公司', minWidth: 150 },
         {
           prop: 'compulsoryInsureDate',
@@ -67,12 +86,16 @@
           width: 120,
           formatter: (row) => formatDate(row.compulsoryInsureDate)
         },
-        {
-          prop: 'compulsoryPremium',
-          label: '投保金额（元）',
-          width: 140,
-          formatter: (row) => formatMoney(row.compulsoryPremium)
-        },
+        ...(canViewField(effectiveFieldAccess.value, 'premiumAmounts')
+          ? [
+              {
+                prop: 'compulsoryPremium',
+                label: '投保金额（元）',
+                width: 140,
+                formatter: (row: VehicleInsurance) => formatPremium(row.compulsoryPremium)
+              }
+            ]
+          : []),
         {
           prop: 'compulsoryExpireDate',
           label: '到期日期',
@@ -81,5 +104,5 @@
         }
       ]
     }
-  ]
+  ])
 </script>

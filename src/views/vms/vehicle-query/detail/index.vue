@@ -70,7 +70,7 @@
     VehicleQueryTab,
     VehicleQueryTabKey
   } from '../modules/types'
-  import { getLatestByDate } from '../modules/query-format'
+  import { getLatestByDate, toFiniteNumber } from '../modules/query-format'
   import { isNil } from 'lodash-es'
 
   defineOptions({ name: 'VehicleQueryDetail' })
@@ -214,7 +214,8 @@
       commercialExpireDate: latestInsurance?.commercialExpireDate,
       compulsoryExpireDate: latestInsurance?.compulsoryExpireDate,
       inspectionExpireDate: latestInspection?.expireDate,
-      runningMileage: latestMileage?.endMileage ?? latestMileage?.runningMileage ?? null,
+      runningMileage:
+        toFiniteNumber(latestMileage?.endMileage) ?? toFiniteNumber(latestMileage?.runningMileage),
       nextMaintenanceDate: getNextMaintenanceDate(latestMaintenance),
       nextMaintenanceMileage: getNextMaintenanceMileage(latestMaintenance, latestMileage)
     }
@@ -232,7 +233,10 @@
     maintenance?: VehicleMaintenanceRecord,
     mileage?: VehicleMileageRecord
   ): number | null => {
-    const currentMileage = mileage?.endMileage ?? mileage?.runningMileage ?? mileage?.startMileage
+    const currentMileage =
+      toFiniteNumber(mileage?.endMileage) ??
+      toFiniteNumber(mileage?.runningMileage) ??
+      toFiniteNumber(mileage?.startMileage)
     if (isNil(currentMileage)) return null
     if (!maintenance) return currentMileage + 5000
     return currentMileage + 5000
