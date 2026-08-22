@@ -18,6 +18,7 @@
       "@finance/*": ["modules/art-supabase-finance/src/*"],
       "@fms/*": ["modules/art-supabase-fms/src/*"],
       "@hr/*": ["modules/art-supabase-hr/src/*"],
+      "@smis/*": ["modules/art-supabase-smis/src/*"],
       "@vms/*": ["modules/art-supabase-vms/src/*"],
       "@/*": ["src/*"],
       "@views/*": ["src/views/*"],
@@ -41,6 +42,8 @@
     "modules/art-supabase-fms/src/**/*.vue",
     "modules/art-supabase-hr/src/**/*.ts",
     "modules/art-supabase-hr/src/**/*.vue",
+    "modules/art-supabase-smis/src/**/*.ts",
+    "modules/art-supabase-smis/src/**/*.vue",
     "modules/art-supabase-vms/src/**/*.ts",
     "modules/art-supabase-vms/src/**/*.vue"
   ],

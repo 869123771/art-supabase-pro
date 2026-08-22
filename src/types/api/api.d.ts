@@ -1920,7 +1920,7 @@ declare namespace Api {
           'id' | 'organizationCode' | 'organizationName'
         > | null
         jobTitle?: string | null
-        employmentStatus: Api.Hr.EmploymentStatus
+        employmentStatus: string
         gender?: string | null
         phone?: string | null
         idCardNo?: string | null

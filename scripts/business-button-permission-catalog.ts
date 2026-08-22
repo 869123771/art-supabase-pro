@@ -50,7 +50,6 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
     menuName: 'SmisHiddenDanger',
     buttons: [
       button('View', '查看隐患'),
-      button('ManagePlan', '维护检查计划'),
       button('ExecuteInspection', '执行检查'),
       button('Report', '上报隐患'),
       button('Assign', '指派整改'),
@@ -65,6 +64,15 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
       button('ManageAccident', '管理事故事件'),
       button('ManagePlan', '管理应急预案'),
       button('ManageDrill', '管理应急演练')
+    ]
+  },
+  {
+    menuName: 'SmisCatalog',
+    buttons: [
+      button('View', '查看安全台账'),
+      button('Add', '新增安全台账'),
+      button('Edit', '编辑安全台账'),
+      button('Delete', '删除安全台账')
     ]
   },
   { menuName: 'TmsCargo', buttons: crud({ import: true, export: true }) },
@@ -306,8 +314,7 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
       button('Add', '新增员工申请', 'Hr:SelfService:Add'),
       button('Edit', '编辑员工申请', 'Hr:SelfService:Edit'),
       button('Delete', '删除员工申请', 'Hr:SelfService:Delete'),
-      button('Submit', '提交员工申请', 'Hr:SelfService:Submit'),
-      button('Manage', '管理员工申请', 'Hr:SelfService:Manage')
+      button('Submit', '提交员工申请', 'Hr:SelfService:Submit')
     ]
   },
   {

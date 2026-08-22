@@ -14,3 +14,6 @@
 	path = modules/art-supabase-hr
 	url = https://gitee.com/wangyanghub/art-supabase-hr.git
 	branch = master
+[submodule "modules/art-supabase-smis"]
+	path = modules/art-supabase-smis
+	url = https://gitee.com/wangyanghub/art-supabase-smis.git

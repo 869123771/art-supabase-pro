@@ -76,6 +76,12 @@ export class ComponentLoader {
       '!../../../modules/art-supabase-hr/src/views/**/modules/**/*.vue',
       '!../../../modules/art-supabase-hr/src/views/**/components/**/*.vue'
     ])
+    const smisSourceRoot = '../../../modules/art-supabase-smis/src/views'
+    const smisModules = import.meta.glob<RouteComponentModule>([
+      '../../../modules/art-supabase-smis/src/views/**/*.vue',
+      '!../../../modules/art-supabase-smis/src/views/**/modules/**/*.vue',
+      '!../../../modules/art-supabase-smis/src/views/**/components/**/*.vue'
+    ])
     const vmsSourceRoot = '../../../modules/art-supabase-vms/src/views'
     const vmsModules = import.meta.glob<RouteComponentModule>([
       '../../../modules/art-supabase-vms/src/views/**/*.vue',
@@ -88,6 +94,7 @@ export class ComponentLoader {
       ...mapApplicationViewModules('finance', financeSourceRoot, financeModules),
       ...mapApplicationViewModules('fms', fmsSourceRoot, fmsModules),
       ...mapApplicationViewModules('hr', hrSourceRoot, hrModules),
+      ...mapApplicationViewModules('smis', smisSourceRoot, smisModules),
       ...mapApplicationViewModules('vms', vmsSourceRoot, vmsModules),
       ...registeredApplicationModules
     }

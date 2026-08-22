@@ -78,6 +78,7 @@ export default ({ mode }: { mode: string }) => {
     ['Finance', 'modules/art-supabase-finance/src/views'],
     ['FMS', 'modules/art-supabase-fms/src/views'],
     ['HR', 'modules/art-supabase-hr/src/views'],
+    ['SMIS', 'modules/art-supabase-smis/src/views'],
     ['VMS', 'modules/art-supabase-vms/src/views']
   ] as const
   for (const [applicationName, relativeViewsPath] of requiredModuleViews) {
@@ -137,6 +138,7 @@ export default ({ mode }: { mode: string }) => {
         '@finance': resolvePath('modules/art-supabase-finance/src'),
         '@fms': resolvePath('modules/art-supabase-fms/src'),
         '@hr': resolvePath('modules/art-supabase-hr/src'),
+        '@smis': resolvePath('modules/art-supabase-smis/src'),
         '@vms': resolvePath('modules/art-supabase-vms/src'),
         '@': fileURLToPath(new URL('./src', import.meta.url)),
         '@views': resolvePath('src/views'),

@@ -94,7 +94,10 @@
     fetchGetEnableOrganizationTree,
     fetchGetEnableTenantList
   } from '@/api/system-manage'
-  import { fetchEmployeeSelectorList } from '@/api/integration/employees'
+  import {
+    fetchEmployeeSelectorList,
+    type EmployeeIntegrationItem
+  } from '@/api/integration/employees'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { useSystemParam } from '@/hooks'
 
@@ -452,12 +455,12 @@
   }
 
   const getEmployeeLabel = (row: DataSelectRecord): string => {
-    const employee = row as Api.Hr.EmployeeSelectorItem
+    const employee = row as EmployeeIntegrationItem
     return `${employee.employeeName}（${employee.employeeNo}）`
   }
 
   const getEmployeeDescription = (row: DataSelectRecord): string => {
-    const employee = row as Api.Hr.EmployeeSelectorItem
+    const employee = row as EmployeeIntegrationItem
     return [employee.organization?.organizationName, employee.jobTitle, employee.phone]
       .filter(Boolean)
       .join(' / ')
@@ -472,7 +475,7 @@
   }
 
   const handleEmployeeConfirm = (_value: unknown, rows: DataSelectRecord[]): void => {
-    const employee = rows[0] as Api.Hr.EmployeeSelectorItem | undefined
+    const employee = rows[0] as EmployeeIntegrationItem | undefined
     if (!employee) return
 
     Object.assign(formData.value, {
