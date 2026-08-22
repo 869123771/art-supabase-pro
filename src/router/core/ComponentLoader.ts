@@ -13,6 +13,8 @@ type AsyncRouteComponent = () => Promise<Component>
 type RouteComponentModule = { default: Component }
 type RouteComponentLoader = () => Promise<RouteComponentModule>
 
+const registeredApplicationModules: Record<string, RouteComponentLoader> = {}
+
 export function mapApplicationViewModules(
   applicationCode: string,
   sourceRoot: string,
@@ -28,16 +30,34 @@ export function mapApplicationViewModules(
   )
 }
 
+export function registerApplicationViewModules(
+  applicationCode: string,
+  sourceRoot: string,
+  sourceModules: Record<string, RouteComponentLoader>
+): Record<string, RouteComponentLoader> {
+  const mappedModules = mapApplicationViewModules(applicationCode, sourceRoot, sourceModules)
+  Object.assign(registeredApplicationModules, mappedModules)
+  return mappedModules
+}
+
 export class ComponentLoader {
   private modules: Record<string, RouteComponentLoader>
 
   constructor() {
     // 业务模块与局部组件不作为路由入口，避免它们进入动态路由映射和首屏依赖图。
-    const platformModules = import.meta.glob<RouteComponentModule>([
+    const platformHostModules = import.meta.glob<RouteComponentModule>([
       '../../views/**/*.vue',
       '!../../views/**/modules/**/*.vue',
       '!../../views/**/components/**/*.vue'
     ])
+    const platformShellModules = import.meta.glob<RouteComponentModule>([
+      '../../views/auth/**/*.vue',
+      '../../views/exception/**/*.vue',
+      '../../views/index/**/*.vue',
+      '../../views/outside/**/*.vue'
+    ])
+    const platformModules =
+      import.meta.env.VITE_APP_CODE === 'platform' ? platformHostModules : platformShellModules
     const vmsSourceRoot = '../../../modules/art-supabase-vms/src/views'
     const vmsModules = import.meta.glob<RouteComponentModule>([
       '../../../modules/art-supabase-vms/src/views/**/*.vue',
@@ -47,7 +67,8 @@ export class ComponentLoader {
 
     this.modules = {
       ...platformModules,
-      ...mapApplicationViewModules('vms', vmsSourceRoot, vmsModules)
+      ...mapApplicationViewModules('vms', vmsSourceRoot, vmsModules),
+      ...registeredApplicationModules
     }
   }
 
