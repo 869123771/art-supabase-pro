@@ -12,8 +12,9 @@
         <div class="posting-event-detail__hero">
           <div>
             <span>{{ detail.accountSet?.accountSetName || '待匹配账套' }}</span>
-            <h3>{{ detail.sourceNo || detail.id }}</h3>
-            <p>{{ detail.summary }}</p>
+            <h3>{{ eventHeading }}</h3>
+            <p v-if="canViewSourceReferences">{{ detail.summary || '暂无事件摘要' }}</p>
+            <p v-else>业务来源信息受字段权限保护</p>
           </div>
           <ElTag :type="statusType(detail.status)" effect="dark" size="large">
             {{ statusLabel(detail.status) }}
@@ -23,12 +24,15 @@
         <ArtSectionTitle>处理信息</ArtSectionTitle>
         <ArtDescriptions :data="detail" :items="descriptionItems" :columns="2" />
 
-        <section v-if="detail.lastError" class="posting-event-detail__section">
+        <section
+          v-if="canViewDiagnostics && detail.lastError"
+          class="posting-event-detail__section"
+        >
           <ArtSectionTitle>异常信息</ArtSectionTitle>
           <ElAlert type="error" :closable="false" show-icon :title="detail.lastError" />
         </section>
 
-        <section class="posting-event-detail__section">
+        <section v-if="canViewPayload" class="posting-event-detail__section">
           <ArtSectionTitle>业务事件载荷</ArtSectionTitle>
           <ArtTable
             :data="payloadRows"
@@ -40,14 +44,12 @@
           />
         </section>
 
-        <section v-if="detail.voucherId" class="posting-event-detail__voucher art-card-xs">
+        <section v-if="canOpenVoucher" class="posting-event-detail__voucher art-card-xs">
           <div>
             <strong>{{ detail.voucher?.voucherNo || '已生成会计凭证' }}</strong>
             <span>凭证状态与后续审核、过账仍由凭证中心统一控制。</span>
           </div>
-          <ElButton type="primary" plain @click="emit('view-voucher', detail.voucherId)">
-            查看凭证
-          </ElButton>
+          <ElButton type="primary" plain @click="viewVoucher"> 查看凭证 </ElButton>
         </section>
       </div>
     </ArtAsyncState>
@@ -65,10 +67,11 @@
   import ArtTable from '@/components/core/tables/art-table/index.vue'
   import type { ColumnOption } from '@/types'
   import { fetchPostingEventDetail } from '@/api/fms'
+  import { canViewField, formatSensitiveNumber, getFieldAccess } from '@/utils/field-permission'
 
   defineOptions({ name: 'FinancePostingEventDetailDrawer' })
 
-  type Event = Api.Fms.PostingEventRecord
+  type Event = Api.Fms.SecurePostingEventRecord
 
   interface PayloadRow {
     key: string
@@ -103,39 +106,82 @@
     waybill_no: '运单号'
   }
 
-  const descriptionItems: ArtDescriptionItem<Event>[] = [
-    {
-      key: 'sourceEvent',
-      label: '业务事件',
-      field: 'sourceEvent',
-      dictCode: 'fmsPostingSourceEvent'
-    },
-    { key: 'eventDate', label: '业务日期', field: 'eventDate', format: 'date' },
-    { key: 'status', label: '处理状态', field: 'status', dictCode: 'fmsPostingEventStatus' },
-    {
-      key: 'attemptCount',
-      label: '处理次数',
-      field: 'attemptCount',
-      formatter: (value) => `${Number(value ?? 0)} 次`
-    },
-    {
-      key: 'rule',
-      label: '命中规则',
-      field: 'rule',
-      formatter: (_value, row) =>
-        row.rule ? `${row.rule.ruleCode} · ${row.rule.ruleName}` : '未命中规则'
-    },
-    {
-      key: 'voucher',
-      label: '生成凭证',
-      field: 'voucher',
-      formatter: (_value, row) => row.voucher?.voucherNo || '—'
-    },
-    { key: 'createBy', label: '事件发起人', field: 'createBy' },
-    { key: 'createTime', label: '捕获时间', field: 'createTime', format: 'datetime' },
-    { key: 'processedAt', label: '处理时间', field: 'processedAt', format: 'datetime' },
-    { key: 'sourceId', label: '来源数据 ID', field: 'sourceId', copyable: true }
-  ]
+  const canViewSourceReferences = computed(() =>
+    canViewField(detail.value?.fieldAccess, 'eventSourceReferences')
+  )
+  const canViewDiagnostics = computed(() =>
+    canViewField(detail.value?.fieldAccess, 'processingDiagnostics')
+  )
+  const canViewPayload = computed(
+    () =>
+      canViewField(detail.value?.fieldAccess, 'eventAmounts') ||
+      canViewField(detail.value?.fieldAccess, 'eventPayloadDetails')
+  )
+  const canOpenVoucher = computed(
+    () =>
+      Boolean(detail.value?.voucherId) &&
+      ['read', 'edit'].includes(getFieldAccess(detail.value?.fieldAccess, 'eventSourceReferences'))
+  )
+  const eventHeading = computed(() =>
+    canViewSourceReferences.value ? detail.value?.sourceNo || '自动入账事件' : '自动入账事件'
+  )
+
+  const descriptionItems = computed<ArtDescriptionItem<Event>[]>(() => {
+    const items: ArtDescriptionItem<Event>[] = [
+      {
+        key: 'sourceEvent',
+        label: '业务事件',
+        field: 'sourceEvent',
+        dictCode: 'fmsPostingSourceEvent'
+      },
+      { key: 'eventDate', label: '业务日期', field: 'eventDate', format: 'date' },
+      { key: 'status', label: '处理状态', field: 'status', dictCode: 'fmsPostingEventStatus' },
+      { key: 'createTime', label: '捕获时间', field: 'createTime', format: 'datetime' }
+    ]
+    if (canViewSourceReferences.value) {
+      items.push(
+        {
+          key: 'rule',
+          label: '命中规则',
+          field: 'rule',
+          formatter: (_value, row) =>
+            row.rule ? `${row.rule.ruleCode} · ${row.rule.ruleName}` : '未命中规则'
+        },
+        {
+          key: 'voucher',
+          label: '生成凭证',
+          field: 'voucher',
+          formatter: (_value, row) => row.voucher?.voucherNo || '—'
+        },
+        {
+          key: 'sourceId',
+          label: '来源数据 ID',
+          field: 'sourceId',
+          copyable: ['read', 'edit'].includes(
+            getFieldAccess(detail.value?.fieldAccess, 'eventSourceReferences')
+          )
+        }
+      )
+    }
+    if (canViewDiagnostics.value) {
+      items.push(
+        {
+          key: 'attemptCount',
+          label: '处理次数',
+          field: 'attemptCount',
+          formatter: (value) => {
+            const formatted = formatSensitiveNumber(value as number | string | null | undefined, {
+              maximumFractionDigits: 0
+            })
+            return formatted === '***' ? formatted : `${formatted} 次`
+          }
+        },
+        { key: 'createBy', label: '事件发起人', field: 'createBy' },
+        { key: 'processedAt', label: '处理时间', field: 'processedAt', format: 'datetime' }
+      )
+    }
+    return items
+  })
 
   const payloadRows = computed<PayloadRow[]>(() =>
     Object.entries(detail.value?.payload ?? {}).map(([key, value]) => ({
@@ -194,10 +240,19 @@
     if (detail.value?.id) void loadDetail(detail.value.id)
   }
 
+  function viewVoucher(): void {
+    const voucherId = detail.value?.voucherId
+    if (canOpenVoucher.value && voucherId) emit('view-voucher', voucherId)
+  }
+
   async function handleOpen(row: Event): Promise<void> {
     detail.value = row
     await drawerRef.value?.handleOpen(row, {
-      title: `自动入账事件 · ${row.sourceNo || row.id}`,
+      title: `自动入账事件 · ${
+        ['read', 'edit'].includes(getFieldAccess(row.fieldAccess, 'eventSourceReferences'))
+          ? row.sourceNo || row.id
+          : row.eventDate
+      }`,
       subtitle: '查看规则命中、凭证生成、错误原因与业务事件载荷。',
       size: 'xl',
       contentHeight: 'calc(100vh - 132px)',

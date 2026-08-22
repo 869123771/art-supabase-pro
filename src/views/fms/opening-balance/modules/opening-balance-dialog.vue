@@ -1,7 +1,7 @@
 <template>
   <ArtDialog ref="dialogRef" size="lg">
     <template #subtitle>
-      期初余额仅录入末级启用科目；方向、外币、数量和辅助核算要求由科目档案自动控制。
+      期初余额仅录入末级启用科目；字段按当前记录权限显示，无权明文查看的字段不会载入表单。
     </template>
     <ArtForm
       ref="formRef"
@@ -23,13 +23,13 @@
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
+  import { canEditField, getFieldAccess } from '@/utils/field-permission'
   import { saveOpeningBalance } from '@/api/fms'
 
   defineOptions({ name: 'FinanceOpeningBalanceDialog' })
 
   interface OpeningBalanceForm {
     id?: string
-    tenantId: string
     accountSetId: string
     fiscalYear: number
     subjectId: string
@@ -52,6 +52,7 @@
   const emit = defineEmits<{ success: [] }>()
   const dialogRef = ref<ArtDialogExpose>()
   const formRef = ref<{ validate: () => Promise<boolean>; clearValidate: () => void }>()
+  const fieldAccess = ref<Api.Fms.OpeningBalanceFieldAccessMap>({})
   const context = reactive<DialogContext>({
     subjects: [],
     currencies: [],
@@ -61,7 +62,6 @@
 
   const createInitialForm = (): OpeningBalanceForm => ({
     id: undefined,
-    tenantId: '',
     accountSetId: '',
     fiscalYear: new Date().getFullYear(),
     subjectId: '',
@@ -103,9 +103,14 @@
       .map((item) => ({ label: `${item.currencyName}（${item.currencyCode}）`, value: item.id }))
   )
   const subjectAuxiliaryConfigs = computed(() => selectedSubject.value?.auxiliaryConfigs ?? [])
+  const amountAccess = computed(() => getFieldAccess(fieldAccess.value, 'balanceAmounts'))
+  const auxiliaryAccess = computed(() => getFieldAccess(fieldAccess.value, 'auxiliaryDetails'))
+  const canReadAmounts = computed(() => ['read', 'edit'].includes(amountAccess.value))
+  const canReadAuxiliary = computed(() => ['read', 'edit'].includes(auxiliaryAccess.value))
+  const canEditAmounts = computed(() => canEditField(fieldAccess.value, 'balanceAmounts'))
+  const canEditAuxiliary = computed(() => canEditField(fieldAccess.value, 'auxiliaryDetails'))
 
   const formItems = computed<FormItem[]>(() => [
-    { label: '科目余额', key: 'balanceSection', type: 'divider', span: 24 },
     {
       label: '会计科目',
       key: 'subjectId',
@@ -119,63 +124,111 @@
         onChange: handleSubjectChange
       }
     },
-    {
-      label: selectedSubject.value?.balanceDirection === 'credit' ? '期初贷方余额' : '期初借方余额',
-      key: 'openingAmount',
-      type: 'number',
-      span: 12,
-      props: { min: 0, precision: 2, controlsPosition: 'right', class: '!w-full' }
-    },
-    {
-      label: '本年借方累计',
-      key: 'yearToDateDebit',
-      type: 'number',
-      span: 12,
-      props: { min: 0, precision: 2, controlsPosition: 'right', class: '!w-full' }
-    },
-    {
-      label: '本年贷方累计',
-      key: 'yearToDateCredit',
-      type: 'number',
-      span: 12,
-      props: { min: 0, precision: 2, controlsPosition: 'right', class: '!w-full' }
-    },
-    ...(selectedSubject.value?.allowQuantity
+    ...(canReadAmounts.value
       ? [
+          { label: '科目余额', key: 'balanceSection', type: 'divider' as const, span: 24 },
           {
-            label: `期初数量${selectedSubject.value.unitName ? `（${selectedSubject.value.unitName}）` : ''}`,
-            key: 'openingQuantity',
+            label:
+              selectedSubject.value?.balanceDirection === 'credit'
+                ? '期初贷方余额'
+                : '期初借方余额',
+            key: 'openingAmount',
             type: 'number' as const,
             span: 12,
-            props: { min: 0, precision: 4, controlsPosition: 'right', class: '!w-full' }
-          }
-        ]
-      : []),
-    ...(selectedSubject.value?.allowForeignCurrency
-      ? [
-          { label: '外币核算', key: 'currencySection', type: 'divider' as const, span: 24 },
-          {
-            label: '核算外币',
-            key: 'currencyId',
-            type: 'select' as const,
-            span: 12,
             props: {
-              clearable: true,
-              filterable: true,
-              options: currencyOptions.value,
-              placeholder: '请选择外币'
+              min: 0,
+              precision: 2,
+              controlsPosition: 'right',
+              class: '!w-full',
+              disabled: !canEditAmounts.value
             }
           },
           {
-            label: '原币期初金额',
-            key: 'originalCurrencyAmount',
+            label: '本年借方累计',
+            key: 'yearToDateDebit',
             type: 'number' as const,
             span: 12,
-            props: { min: 0, precision: 2, controlsPosition: 'right', class: '!w-full' }
-          }
+            props: {
+              min: 0,
+              precision: 2,
+              controlsPosition: 'right',
+              class: '!w-full',
+              disabled: !canEditAmounts.value
+            }
+          },
+          {
+            label: '本年贷方累计',
+            key: 'yearToDateCredit',
+            type: 'number' as const,
+            span: 12,
+            props: {
+              min: 0,
+              precision: 2,
+              controlsPosition: 'right',
+              class: '!w-full',
+              disabled: !canEditAmounts.value
+            }
+          },
+          ...(selectedSubject.value?.allowQuantity
+            ? [
+                {
+                  label: `期初数量${selectedSubject.value.unitName ? `（${selectedSubject.value.unitName}）` : ''}`,
+                  key: 'openingQuantity',
+                  type: 'number' as const,
+                  span: 12,
+                  props: {
+                    min: 0,
+                    precision: 4,
+                    controlsPosition: 'right',
+                    class: '!w-full',
+                    disabled: !canEditAmounts.value
+                  }
+                }
+              ]
+            : [])
         ]
       : []),
-    ...(subjectAuxiliaryConfigs.value.length
+    ...(selectedSubject.value?.allowForeignCurrency &&
+    (canReadAuxiliary.value || canReadAmounts.value)
+      ? [
+          { label: '外币核算', key: 'currencySection', type: 'divider' as const, span: 24 },
+          ...(canReadAuxiliary.value
+            ? [
+                {
+                  label: '核算外币',
+                  key: 'currencyId',
+                  type: 'select' as const,
+                  span: 12,
+                  props: {
+                    clearable: true,
+                    filterable: true,
+                    options: currencyOptions.value,
+                    placeholder: '请选择外币',
+                    disabled: !canEditAuxiliary.value
+                  }
+                }
+              ]
+            : []),
+          ...(canReadAmounts.value
+            ? [
+                {
+                  label: '原币期初金额',
+                  key: 'originalCurrencyAmount',
+                  type: 'number' as const,
+                  span: 12,
+                  props: {
+                    min: 0,
+                    precision: 2,
+                    controlsPosition: 'right',
+                    class: '!w-full',
+                    disabled: !canEditAmounts.value
+                  }
+                }
+              ]
+            : [])
+        ]
+      : []),
+    ...(subjectAuxiliaryConfigs.value.length && canReadAuxiliary.value
       ? [
           { label: '辅助核算', key: 'auxiliarySection', type: 'divider' as const, span: 24 },
           ...subjectAuxiliaryConfigs.value.map((config) => ({
@@ -188,6 +241,7 @@
             props: {
               clearable: !config.isRequired,
               filterable: true,
+              disabled: !canEditAuxiliary.value,
               options: context.auxiliaryItems
                 .filter((item) => item.auxiliaryTypeId === config.auxiliaryTypeId && item.isEnabled)
                 .map((item) => ({ label: `${item.itemCode} ${item.itemName}`, value: item.id }))
@@ -207,10 +261,11 @@
   function validateBusinessRules(): boolean {
     const subject = selectedSubject.value
     if (!subject) return false
-    if (subject.allowForeignCurrency && !form.data.currencyId) {
+    if (canEditAuxiliary.value && subject.allowForeignCurrency && !form.data.currencyId) {
       ElMessage.warning('该科目启用了外币核算，请选择核算外币')
       return false
     }
+    if (!canEditAuxiliary.value) return true
     const missing = subjectAuxiliaryConfigs.value.find(
       (config) => config.isRequired && !form.data.auxiliaryValues[config.auxiliaryTypeId]
     )
@@ -228,7 +283,6 @@
       const isDebit = selectedSubject.value.balanceDirection === 'debit'
       await saveOpeningBalance({
         id: form.data.id,
-        tenantId: form.data.tenantId,
         accountSetId: form.data.accountSetId,
         fiscalYear: form.data.fiscalYear,
         subjectId: form.data.subjectId,
@@ -254,6 +308,11 @@
     }
   }
 
+  function toFormNumber(value: number | string | null | undefined): number {
+    const numericValue = Number(value)
+    return Number.isFinite(numericValue) ? numericValue : 0
+  }
+
   async function handleOpen(
     accountSet: Api.Fms.AccountSetOption,
     fiscalYear: number,
@@ -261,19 +320,23 @@
     row?: Api.Fms.OpeningBalanceRecord
   ): Promise<void> {
     Object.assign(context, dialogContext)
+    fieldAccess.value = row?.fieldAccess ?? {
+      balanceAmounts: 'edit',
+      auxiliaryDetails: 'edit',
+      controlAudit: 'edit'
+    }
     Object.assign(form.data, createInitialForm(), {
       id: row?.id,
-      tenantId: accountSet.tenantId,
       accountSetId: accountSet.value,
       fiscalYear,
       subjectId: row?.subjectId ?? '',
       currencyId: row?.currencyId ?? null,
       auxiliaryValues: { ...(row?.auxiliaryValues ?? {}) },
-      openingAmount: Number(row ? row.openingDebit || row.openingCredit : 0),
-      yearToDateDebit: Number(row?.yearToDateDebit ?? 0),
-      yearToDateCredit: Number(row?.yearToDateCredit ?? 0),
-      openingQuantity: Number(row?.openingQuantity ?? 0),
-      originalCurrencyAmount: Number(row?.originalCurrencyAmount ?? 0)
+      openingAmount: toFormNumber(row ? row.openingDebit || row.openingCredit : 0),
+      yearToDateDebit: toFormNumber(row?.yearToDateDebit),
+      yearToDateCredit: toFormNumber(row?.yearToDateCredit),
+      openingQuantity: toFormNumber(row?.openingQuantity),
+      originalCurrencyAmount: toFormNumber(row?.originalCurrencyAmount)
     })
     await dialogRef.value?.handleOpen(undefined, {
       title: row ? `编辑期初余额 · ${row.subject?.subjectCode ?? ''}` : '录入期初余额',

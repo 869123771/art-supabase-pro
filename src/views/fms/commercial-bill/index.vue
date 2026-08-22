@@ -68,6 +68,7 @@
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatCurrencyValue } from '@/utils/ui'
   import { formatWithDayjs } from '@/utils/time'
+  import { canViewField, mergeFieldAccessMaps } from '@/utils/field-permission'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { useUserStore } from '@/store/modules/user'
   import {
@@ -116,10 +117,18 @@
   const drawerRef = ref<DrawerExpose>()
   const fundExecutionRef = ref<FundExecutionExpose>()
   const accountSetOptions = ref<Api.Fms.AccountSetOption[]>([])
+  const currentRows = ref<Bill[]>([])
+  const listFieldAccess = ref<Api.Fms.CommercialBillFieldAccessMap>({})
   const summary = ref<Api.Fms.CommercialBillSummary>(emptySummary())
   const table = reactive<{ search: SearchParams }>({
     search: { accountSetId: undefined, keyword: '', direction: undefined, status: undefined }
   })
+
+  const effectiveFieldAccess = computed(() =>
+    mergeFieldAccessMaps(listFieldAccess.value, ...currentRows.value.map((row) => row.fieldAccess))
+  )
+  const canViewListField = (field: Api.Fms.CommercialBillFieldKey): boolean =>
+    canViewField(effectiveFieldAccess.value, field)
 
   const searchItems = computed<SearchFormItem[]>(() => [
     {
@@ -173,7 +182,13 @@
       label: '关键字',
       key: 'keyword',
       type: 'input',
-      props: { clearable: true, placeholder: '票据号、承兑人或往来单位' }
+      props: {
+        clearable: true,
+        placeholder:
+          canViewListField('billParties') || canViewListField('billReferences')
+            ? '票据号、承兑人或往来单位'
+            : '票据编号'
+      }
     }
   ])
 
@@ -210,7 +225,7 @@
     {
       key: 'receivable',
       label: '应收未结',
-      value: formatCurrencyValue(summary.value.receivableOutstanding),
+      value: formatProtectedAmount(summary.value.receivableOutstanding),
       description: '持有中应收票据',
       icon: 'ri:arrow-down-circle-line',
       tone: 'success',
@@ -220,7 +235,7 @@
     {
       key: 'payable',
       label: '应付未结',
-      value: formatCurrencyValue(summary.value.payableOutstanding),
+      value: formatProtectedAmount(summary.value.payableOutstanding),
       description: '持有中应付票据',
       icon: 'ri:arrow-up-circle-line',
       tone: 'warning',
@@ -251,7 +266,11 @@
             onClick={() => void drawerRef.value?.handleOpen(row)}
           >
             <strong translate="no">{row.billNo}</strong>
-            <small>{row.externalBillNo || row.sourceNo || '内部登记'}</small>
+            <small>
+              {canViewField(row.fieldAccess, 'billReferences')
+                ? row.externalBillNo || row.sourceNo || '内部登记'
+                : '受保护票据信息'}
+            </small>
           </button>
         )
       },
@@ -267,26 +286,35 @@
         minWidth: 140,
         dict: { code: 'fmsBillType' }
       },
-      {
-        prop: 'acceptorName',
-        label: '承兑人',
-        minWidth: 180,
-        showOverflowTooltip: true
-      },
-      {
-        prop: 'counterpartyName',
-        label: '往来单位',
-        minWidth: 170,
-        showOverflowTooltip: true,
-        formatter: (row) => row.counterpartyName || '--'
-      },
-      {
-        prop: 'faceAmount',
-        label: '票面金额',
-        minWidth: 145,
-        align: 'right',
-        formatter: (row) => formatCurrencyValue(row.faceAmount, row.currencyCode)
-      },
+      ...(canViewListField('billParties')
+        ? [
+            {
+              prop: 'acceptorName',
+              label: '承兑人',
+              minWidth: 180,
+              showOverflowTooltip: true,
+              formatter: (row: Bill) => row.acceptorName || '--'
+            },
+            {
+              prop: 'counterpartyName',
+              label: '往来单位',
+              minWidth: 170,
+              showOverflowTooltip: true,
+              formatter: (row: Bill) => row.counterpartyName || '--'
+            }
+          ]
+        : []),
+      ...(canViewListField('billAmounts')
+        ? [
+            {
+              prop: 'faceAmount',
+              label: '票面金额',
+              minWidth: 145,
+              align: 'right' as const,
+              formatter: (row: Bill) => formatProtectedAmount(row.faceAmount, row.currencyCode)
+            }
+          ]
+        : []),
       {
         prop: 'dueDate',
         label: '到期日',
@@ -402,7 +430,10 @@
 
   async function fetchTableData(params: TableParams) {
     const { from, to } = pageInfoHandler({ current: params.current, size: params.size })
-    return await fetchCommercialBillList({ ...params, from, to })
+    const result = await fetchCommercialBillList({ ...params, from, to })
+    listFieldAccess.value = result.fieldAccess
+    currentRows.value = result.data ?? []
+    return result
   }
 
   async function loadSummary(): Promise<void> {
@@ -412,6 +443,30 @@
     }
     const { data } = await fetchCommercialBillSummary(table.search.accountSetId)
     summary.value = data ?? emptySummary()
+    if (data?.fieldAccess) listFieldAccess.value = data.fieldAccess
+  }
+
+  function toFiniteNumber(
+    value: Api.Tms.BasicData.SensitiveNumber | undefined | null
+  ): number | undefined {
+    const numberValue = Number(value)
+    return Number.isFinite(numberValue) ? numberValue : undefined
+  }
+
+  function getRemainingAmount(row: Bill): number | undefined {
+    const faceAmount = toFiniteNumber(row.faceAmount)
+    const settledAmount = toFiniteNumber(row.settledAmount)
+    return faceAmount === undefined || settledAmount === undefined
+      ? undefined
+      : faceAmount - settledAmount
+  }
+
+  function formatProtectedAmount(
+    value: Api.Tms.BasicData.SensitiveNumber | undefined | null,
+    currency = 'CNY'
+  ): string {
+    if (value === null || value === undefined || value === '') return '--'
+    return formatCurrencyValue(value, currency)
   }
 
   function handleMetricClick(metric: BusinessWorkspaceMetric): void {
@@ -436,8 +491,16 @@
         await refreshAll('delete')
         return
       }
+      const remainingAmount = getRemainingAmount(row)
+      if (
+        ['endorse', 'discount', 'settle'].includes(String(item.key)) &&
+        remainingAmount === undefined
+      ) {
+        ElMessage.warning('当前字段权限无法读取票据金额，不能执行该票据操作')
+        return
+      }
       if (item.key === 'discount' || item.key === 'settle') {
-        const amount = row.faceAmount - row.settledAmount
+        const amount = remainingAmount!
         const direction =
           item.key === 'discount' || row.direction === 'receivable' ? 'inflow' : 'outflow'
         await runWithAccountSet(
@@ -492,7 +555,7 @@
         })
       }
       await actCommercialBill(row.id, item.key as Api.Fms.CommercialBillAction, {
-        amount: row.faceAmount - row.settledAmount,
+        amount: remainingAmount,
         eventDate: dayjs().format('YYYY-MM-DD'),
         remark
       })

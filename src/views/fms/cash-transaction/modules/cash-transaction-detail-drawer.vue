@@ -12,9 +12,9 @@
         <ArtSectionTitle>{{ directionLabel }}概览</ArtSectionTitle>
         <ArtDescriptions :data="detail.data" :items="descriptionItems" :columns="2" />
 
-        <template v-if="detail.data.voucherUrls?.length">
+        <template v-if="canViewField(detail.data.fieldAccess, 'voucherEvidence')">
           <ArtSectionTitle class="cash-detail__section">{{ directionLabel }}凭证</ArtSectionTitle>
-          <div class="cash-detail__vouchers">
+          <div v-if="detail.data.voucherUrls?.length" class="cash-detail__vouchers">
             <ElImage
               v-for="(url, index) in detail.data.voucherUrls"
               :key="url"
@@ -25,6 +25,13 @@
               fit="cover"
               class="cash-detail__voucher"
             />
+          </div>
+          <div v-else class="cash-detail__restricted">
+            {{
+              getFieldAccess(detail.data.fieldAccess, 'voucherEvidence') === 'masked'
+                ? '凭证内容已脱敏'
+                : '暂无收付款凭证'
+            }}
           </div>
         </template>
 
@@ -65,7 +72,12 @@
     reverseCashAllocation
   } from '@/api/fms'
   import { formatWithDayjs } from '@/utils/time'
-  import { formatCurrencyValue } from '@/utils/ui'
+  import {
+    canEditField,
+    canViewField,
+    formatSensitiveNumber,
+    getFieldAccess
+  } from '@/utils/field-permission'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
 
   defineOptions({ name: 'FinanceCashTransactionDetailDrawer' })
@@ -75,7 +87,7 @@
   type CashTransaction = Api.Fms.CashTransactionRecord
   interface DetailAllocation {
     id: string
-    allocatedAmount: number
+    allocatedAmount?: Api.Tms.BasicData.SensitiveNumber
     allocatedAt: string
     allocatedBy?: string | null
     isActive: boolean
@@ -98,8 +110,9 @@
   const loadError = shallowRef<Error | null>(null)
   const directionLabel = computed(() => (detail.data?.direction === 'payment' ? '付款' : '收款'))
 
-  function formatMoney(value?: number | null): string {
-    return formatCurrencyValue(value ?? 0)
+  function formatMoney(value?: Api.Tms.BasicData.SensitiveNumber): string {
+    const formatted = formatSensitiveNumber(value)
+    return formatted === '***' || formatted === '--' ? formatted : `¥${formatted}`
   }
 
   function formatDateTime(value?: string | null): string {
@@ -131,9 +144,28 @@
       field: 'transactionDate',
       format: 'date'
     },
-    { key: 'amount', label: `${directionLabel.value}金额`, field: 'amount', format: 'money' },
-    { key: 'allocatedAmount', label: '已核销金额', field: 'allocatedAmount', format: 'money' },
-    { key: 'unallocatedAmount', label: '未核销金额', field: 'unallocatedAmount', format: 'money' },
+    ...(canViewField(detail.data?.fieldAccess, 'transactionAmounts')
+      ? [
+          {
+            key: 'amount',
+            label: `${directionLabel.value}金额`,
+            field: 'amount' as const,
+            formatter: (value: unknown) => formatMoney(value as Api.Tms.BasicData.SensitiveNumber)
+          },
+          {
+            key: 'allocatedAmount',
+            label: '已核销金额',
+            field: 'allocatedAmount' as const,
+            formatter: (value: unknown) => formatMoney(value as Api.Tms.BasicData.SensitiveNumber)
+          },
+          {
+            key: 'unallocatedAmount',
+            label: '未核销金额',
+            field: 'unallocatedAmount' as const,
+            formatter: (value: unknown) => formatMoney(value as Api.Tms.BasicData.SensitiveNumber)
+          }
+        ]
+      : []),
     {
       key: 'paymentMethod',
       label: `${directionLabel.value}方式`,
@@ -141,16 +173,25 @@
       dictCode: 'tmsCashPaymentMethod',
       dictDisplay: 'text'
     },
-    {
-      key: 'fundAccount',
-      label: '资金账户',
-      field: 'fundAccount',
-      formatter: (_value, row) =>
-        row.fundAccount
-          ? `${row.fundAccount.accountName} · ${row.fundAccount.accountNoMasked}`
-          : '历史未关联'
-    },
-    { key: 'bankReference', label: '银行流水号', field: 'bankReference', copyable: true },
+    ...(canViewField(detail.data?.fieldAccess, 'bankDetails')
+      ? [
+          {
+            key: 'fundAccount',
+            label: '资金账户',
+            field: 'fundAccount' as const,
+            formatter: (_value: unknown, row: CashTransaction) =>
+              row.fundAccount
+                ? `${row.fundAccount.accountName} · ${row.fundAccount.accountNoMasked}`
+                : '历史未关联'
+          },
+          {
+            key: 'bankReference',
+            label: '银行流水号',
+            field: 'bankReference' as const,
+            copyable: detail.data?.bankReference !== '***'
+          }
+        ]
+      : []),
     { key: 'createBy', label: '登记人', field: 'createBy' },
     {
       key: 'createTime',
@@ -164,7 +205,7 @@
       : [])
   ])
 
-  const allocationColumns: ColumnOption<DetailAllocation>[] = [
+  const allocationColumns = computed<ColumnOption<DetailAllocation>[]>(() => [
     { type: 'globalIndex', label: '序号', width: 66 },
     {
       prop: 'statementNo',
@@ -179,13 +220,17 @@
       formatter: (row) =>
         row.statement ? `${row.statement.periodStart} 至 ${row.statement.periodEnd}` : '-'
     },
-    {
-      prop: 'allocatedAmount',
-      label: '核销金额',
-      width: 130,
-      align: 'right',
-      formatter: (row) => formatMoney(row.allocatedAmount)
-    },
+    ...(canViewField(detail.data?.fieldAccess, 'transactionAmounts')
+      ? [
+          {
+            prop: 'allocatedAmount',
+            label: '核销金额',
+            width: 130,
+            align: 'right' as const,
+            formatter: (row: DetailAllocation) => formatMoney(row.allocatedAmount)
+          }
+        ]
+      : []),
     {
       prop: 'allocatedAt',
       label: '核销时间',
@@ -211,7 +256,7 @@
       width: 86,
       fixed: 'right',
       formatter: (row) =>
-        row.isActive ? (
+        row.isActive && canEditField(detail.data?.fieldAccess, 'transactionAmounts') ? (
           <ElTooltip content="撤销核销" placement="top">
             <ArtButtonTable
               icon="ri:arrow-go-back-line"
@@ -225,14 +270,14 @@
           </ElTooltip>
         )
     }
-  ]
+  ])
 
   async function loadDetail(id: string): Promise<void> {
     detail.loading = true
     loadError.value = null
     try {
       const { data } = await fetchCashTransactionDetail(id)
-      detail.data = data
+      detail.data = data ?? undefined
     } catch (error) {
       loadError.value = error instanceof Error ? error : new Error('收付款详情加载失败')
     } finally {
@@ -296,6 +341,14 @@
     &__voucher {
       width: 112px;
       height: 112px;
+      border-radius: var(--el-border-radius-base);
+    }
+
+    &__restricted {
+      padding: var(--art-space-4);
+      color: var(--el-text-color-secondary);
+      text-align: center;
+      background: var(--el-fill-color-light);
       border-radius: var(--el-border-radius-base);
     }
   }

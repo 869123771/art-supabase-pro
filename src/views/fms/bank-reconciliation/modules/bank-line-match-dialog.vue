@@ -17,12 +17,11 @@
 </template>
 
 <script setup lang="ts">
-  import dayjs from 'dayjs'
   import type { FormRules } from 'element-plus'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
-  import { fetchFundLedgerList, matchBankStatementLine } from '@/api/fms'
+  import { fetchBankMatchCandidates, matchBankStatementLine } from '@/api/fms'
   import { formatCurrencyValue } from '@/utils/ui'
 
   defineOptions({ name: 'FinanceBankLineMatchDialog' })
@@ -46,7 +45,7 @@
         { required: true, message: '请输入匹配金额', trigger: 'change' },
         {
           validator: (_rule, value, callback) =>
-            Number(value) > 0 && Number(value) <= Number(line.value?.remainingAmount ?? 0)
+            Number(value) > 0 && Number(value) <= getRemainingAmount()
               ? callback()
               : callback(new Error('匹配金额必须大于 0 且不超过银行流水剩余金额')),
           trigger: 'change'
@@ -83,7 +82,7 @@
       type: 'number',
       props: {
         min: 0.01,
-        max: line.value?.remainingAmount ?? 0,
+        max: getRemainingAmount(),
         precision: 2,
         controlsPosition: 'right',
         class: '!w-full'
@@ -118,23 +117,14 @@
     line.value = row
     Object.assign(form.data, {
       ledgerEntryId: '',
-      amount: row.remainingAmount,
+      amount: Number(row.remainingAmount ?? 0),
       remark: ''
     })
-    const { data } = await fetchFundLedgerList({
-      fundAccountId: row.fundAccountId,
-      direction: row.direction,
-      entryDateRange: [
-        dayjs(row.transactionDate).subtract(30, 'day').format('YYYY-MM-DD'),
-        dayjs(row.transactionDate).add(30, 'day').format('YYYY-MM-DD')
-      ],
-      from: 0,
-      to: 199
-    })
+    const { data } = await fetchBankMatchCandidates(row.id)
     ledgerOptions.value = (data ?? []).map((item) => ({
       label: `${item.entryDate} · ${item.summary} · ${formatCurrencyValue(item.amount)}${item.sourceNo ? ` · ${item.sourceNo}` : ''}`,
       value: item.id,
-      amount: item.amount
+      amount: Number(item.amount ?? 0)
     }))
     await dialogRef.value?.handleOpen(undefined, {
       title: `手工匹配 · 第 ${row.lineNo} 行`,
@@ -143,6 +133,11 @@
       onOpen: () => formRef.value?.clearValidate(),
       dialogProps: { closeOnClickModal: false }
     })
+  }
+
+  function getRemainingAmount(): number {
+    const value = Number(line.value?.remainingAmount ?? 0)
+    return Number.isFinite(value) ? value : 0
   }
 
   defineExpose({ handleOpen })

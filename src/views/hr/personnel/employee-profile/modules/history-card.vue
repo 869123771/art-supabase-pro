@@ -5,7 +5,13 @@
         <strong>{{ title }}</strong>
         <span>{{ subtitle || '待完善' }}</span>
       </div>
-      <ElButton type="danger" text aria-label="删除本条记录" @click="emit('remove')">
+      <ElButton
+        v-if="!readonly"
+        type="danger"
+        text
+        aria-label="删除本条记录"
+        @click="emit('remove')"
+      >
         <ArtSvgIcon icon="ri:delete-bin-6-line" />
         删除
       </ElButton>
@@ -18,7 +24,7 @@
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
 
   defineOptions({ name: 'HrHistoryCard' })
-  defineProps<{ title: string; subtitle?: string | null }>()
+  defineProps<{ title: string; subtitle?: string | null; readonly?: boolean }>()
   const emit = defineEmits<{ (event: 'remove'): void }>()
 </script>
 
@@ -66,6 +72,7 @@
     }
 
     &__content {
+      min-width: 0;
       padding: 18px 18px 0;
     }
   }

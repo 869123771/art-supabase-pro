@@ -13,10 +13,10 @@ export interface InvoiceFormModel {
   invoiceCode: string
   invoiceNo: string
   issueDate: string
-  taxRate: number
-  amountExcludingTax: number
-  taxAmount: number
-  totalAmount: number
+  taxRate: number | string
+  amountExcludingTax: number | string
+  taxAmount: number | string
+  totalAmount: number | string
   statementIds: string[]
   attachments: Array<Record<string, unknown>>
   remark: string
@@ -69,6 +69,11 @@ export function normalizeInvoiceNo(value: unknown): string {
     .toUpperCase()
 }
 
+function finiteNumber(value: unknown): number {
+  const numeric = Number(value)
+  return Number.isFinite(numeric) ? numeric : 0
+}
+
 export function buildInvoicePayload({
   form,
   statementLinks,
@@ -88,10 +93,10 @@ export function buildInvoicePayload({
     invoiceCode: form.invoiceCode.trim() || null,
     invoiceNo: normalizeInvoiceNo(form.invoiceNo) || null,
     issueDate: form.issueDate,
-    taxRate: Number(form.taxRate),
-    amountExcludingTax: Number(form.amountExcludingTax),
-    taxAmount: Number(form.taxAmount),
-    totalAmount: Number(form.totalAmount),
+    taxRate: finiteNumber(form.taxRate),
+    amountExcludingTax: finiteNumber(form.amountExcludingTax),
+    taxAmount: finiteNumber(form.taxAmount),
+    totalAmount: finiteNumber(form.totalAmount),
     attachments: form.attachments,
     remark: form.remark.trim() || null,
     statementLinks

@@ -63,6 +63,7 @@
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatCurrencyValue } from '@/utils/ui'
   import { formatWithDayjs } from '@/utils/time'
+  import { canViewField, getFieldAccess, mergeFieldAccessMaps } from '@/utils/field-permission'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { useUserStore } from '@/store/modules/user'
   import {
@@ -97,6 +98,16 @@
   const accountSetOptions = ref<Api.Fms.AccountSetOption[]>([])
   const accountOptions = ref<Api.Fms.FundAccountOption[]>([])
   const overviewRows = ref<Transfer[]>([])
+  const currentRows = ref<Transfer[]>([])
+  const listFieldAccess = ref<Api.Fms.FundTransferFieldAccessMap>({})
+  const effectiveFieldAccess = computed(() =>
+    mergeFieldAccessMaps(listFieldAccess.value, ...currentRows.value.map((row) => row.fieldAccess))
+  )
+  const canViewListField = (field: Api.Fms.FundTransferFieldKey): boolean =>
+    canViewField(effectiveFieldAccess.value, field)
+  const canFilterAccount = computed(() =>
+    ['read', 'edit'].includes(getFieldAccess(listFieldAccess.value, 'transferAccounts'))
+  )
   const table = reactive<{ search: SearchParams }>({
     search: { keyword: '', accountSetId: undefined, status: undefined }
   })
@@ -114,17 +125,21 @@
         onChange: (value: string) => void loadAccountOptions(value)
       }
     },
-    {
-      label: '调拨账户',
-      key: 'sourceAccountId',
-      type: 'select',
-      props: {
-        options: accountOptions.value,
-        clearable: true,
-        filterable: true,
-        placeholder: '全部转出账户'
-      }
-    },
+    ...(canFilterAccount.value
+      ? [
+          {
+            label: '调拨账户',
+            key: 'sourceAccountId',
+            type: 'select' as const,
+            props: {
+              options: accountOptions.value,
+              clearable: true,
+              filterable: true,
+              placeholder: '全部转出账户'
+            }
+          }
+        ]
+      : []),
     {
       label: '调拨状态',
       key: 'status',
@@ -145,7 +160,18 @@
       label: '关键字',
       key: 'keyword',
       type: 'input',
-      props: { clearable: true, placeholder: '调拨单号、用途、银行参考号或账户名称' }
+      props: {
+        clearable: true,
+        placeholder: [
+          '调拨单号、用途',
+          canFilterAccount.value ? '账户名称' : '',
+          ['read', 'edit'].includes(getFieldAccess(listFieldAccess.value, 'bankReference'))
+            ? '银行参考号'
+            : ''
+        ]
+          .filter(Boolean)
+          .join('、')
+      }
     }
   ])
 
@@ -173,9 +199,15 @@
     const selected = table.search.status
     const count = (status: Api.Fms.FundTransferStatus) =>
       overviewRows.value.filter((row) => row.status === status).length
-    const completedAmount = overviewRows.value
-      .filter((row) => row.status === 'completed')
-      .reduce((sum, row) => sum + Number(row.amount || 0), 0)
+    const completedRows = overviewRows.value.filter((row) => row.status === 'completed')
+    const amountAccess = getFieldAccess(listFieldAccess.value, 'transferAmounts')
+    const completedAmounts = completedRows.map((row) => toFiniteNumber(row.amount))
+    const canAggregateAmount =
+      ['read', 'edit'].includes(amountAccess) &&
+      completedAmounts.every((value): value is number => value !== undefined)
+    const completedAmount = canAggregateAmount
+      ? completedAmounts.reduce((sum, value) => sum + value, 0)
+      : undefined
     return [
       {
         key: 'all',
@@ -209,9 +241,14 @@
       },
       {
         key: 'completed',
-        label: '已完成金额',
-        value: formatCurrencyValue(completedAmount),
-        description: `${count('completed')} 笔已入账`,
+        label: canAggregateAmount ? '已完成金额' : '已完成调拨',
+        value:
+          completedAmount === undefined
+            ? amountAccess === 'masked'
+              ? '***'
+              : count('completed')
+            : formatCurrencyValue(completedAmount),
+        description: canAggregateAmount ? `${count('completed')} 笔已入账` : '金额受字段权限控制',
         icon: 'ri:checkbox-circle-line',
         tone: 'success',
         interactive: true,
@@ -238,42 +275,50 @@
           </button>
         )
       },
-      {
-        prop: 'sourceAccountName',
-        label: '转出账户',
-        minWidth: 190,
-        formatter: (row) => (
-          <div class="fund-transfer-account">
-            <strong>{row.sourceAccountName}</strong>
-            <small>{row.sourceAccountNoMasked}</small>
-          </div>
-        )
-      },
-      {
-        prop: 'targetAccountName',
-        label: '转入账户',
-        minWidth: 190,
-        formatter: (row) => (
-          <div class="fund-transfer-account">
-            <strong>{row.targetAccountName}</strong>
-            <small>{row.targetAccountNoMasked}</small>
-          </div>
-        )
-      },
-      {
-        prop: 'amount',
-        label: '调拨金额',
-        minWidth: 145,
-        align: 'right',
-        formatter: (row) => formatCurrencyValue(row.amount, row.currencyCode)
-      },
-      {
-        prop: 'feeAmount',
-        label: '手续费',
-        width: 120,
-        align: 'right',
-        formatter: (row) => formatCurrencyValue(row.feeAmount, row.currencyCode)
-      },
+      ...(canViewListField('transferAccounts')
+        ? [
+            {
+              prop: 'sourceAccountName',
+              label: '转出账户',
+              minWidth: 190,
+              formatter: (row: Transfer) => (
+                <div class="fund-transfer-account">
+                  <strong>{row.sourceAccountName || '--'}</strong>
+                  <small>{row.sourceAccountNoMasked || '--'}</small>
+                </div>
+              )
+            },
+            {
+              prop: 'targetAccountName',
+              label: '转入账户',
+              minWidth: 190,
+              formatter: (row: Transfer) => (
+                <div class="fund-transfer-account">
+                  <strong>{row.targetAccountName || '--'}</strong>
+                  <small>{row.targetAccountNoMasked || '--'}</small>
+                </div>
+              )
+            }
+          ]
+        : []),
+      ...(canViewListField('transferAmounts')
+        ? [
+            {
+              prop: 'amount',
+              label: '调拨金额',
+              minWidth: 145,
+              align: 'right' as const,
+              formatter: (row: Transfer) => formatTransferAmount(row.amount, row.currencyCode)
+            },
+            {
+              prop: 'feeAmount',
+              label: '手续费',
+              width: 120,
+              align: 'right' as const,
+              formatter: (row: Transfer) => formatTransferAmount(row.feeAmount, row.currencyCode)
+            }
+          ]
+        : []),
       { prop: 'purpose', label: '调拨用途', minWidth: 200, showOverflowTooltip: true },
       {
         prop: 'status',
@@ -382,16 +427,20 @@
 
   async function fetchTableData(params: TableParams) {
     const { from, to } = pageInfoHandler({ current: params.current, size: params.size })
-    return await fetchFundTransferList({ ...params, from, to })
+    const result = await fetchFundTransferList({ ...params, from, to })
+    listFieldAccess.value = result.fieldAccess
+    currentRows.value = result.data ?? []
+    return result
   }
 
   async function loadOverview(): Promise<void> {
-    const { data } = await fetchFundTransferList({
+    const result = await fetchFundTransferList({
       accountSetId: table.search.accountSetId,
       from: 0,
       to: 999
     })
-    overviewRows.value = data ?? []
+    overviewRows.value = result.data ?? []
+    listFieldAccess.value = result.fieldAccess
   }
 
   async function loadAccountOptions(accountSetId?: string): Promise<void> {
@@ -434,7 +483,7 @@
         const messages: Record<string, string> = {
           submit: '提交后将进入资金审批流程。',
           approve: '审批通过后仍需执行入账，当前操作不会立即改变余额。',
-          execute: `执行后将从“${row.sourceAccountName}”扣减 ${formatCurrencyValue(row.amount + row.feeAmount, row.currencyCode)}。`
+          execute: buildExecuteConfirmMessage(row)
         }
         await confirmAction(messages[item.key] || '确定执行该操作吗？', item.label, {
           type: item.key === 'execute' ? 'warning' : 'info',
@@ -458,6 +507,30 @@
     }
   }
 
+  function toFiniteNumber(
+    value: Api.Tms.BasicData.SensitiveNumber | undefined
+  ): number | undefined {
+    const numberValue = Number(value)
+    return Number.isFinite(numberValue) ? numberValue : undefined
+  }
+
+  function formatTransferAmount(
+    value: Api.Tms.BasicData.SensitiveNumber | undefined,
+    currency = 'CNY'
+  ): string {
+    if (value === null || value === undefined || value === '') return '--'
+    return formatCurrencyValue(value, currency)
+  }
+
+  function buildExecuteConfirmMessage(row: Transfer): string {
+    const amount = toFiniteNumber(row.amount)
+    const feeAmount = toFiniteNumber(row.feeAmount)
+    if (row.sourceAccountName && amount !== undefined && feeAmount !== undefined) {
+      return `执行后将从“${row.sourceAccountName}”扣减 ${formatCurrencyValue(amount + feeAmount, row.currencyCode)}。`
+    }
+    return '执行后将生成双边资金流水并更新账户余额。'
+  }
+
   async function refreshAll(mode: 'add' | 'edit' | 'update' | 'delete'): Promise<void> {
     const refresh =
       mode === 'add'
@@ -475,6 +548,18 @@
   watch(
     () => table.search.accountSetId,
     () => void loadOverview()
+  )
+
+  watch(canFilterAccount, (allowed) => {
+    if (!allowed) table.search.sourceAccountId = undefined
+  })
+
+  watch(
+    () => [canViewListField('transferAccounts'), canViewListField('transferAmounts')],
+    (nextVisibility, previousVisibility) => {
+      if (nextVisibility.every((value, index) => value === previousVisibility?.[index])) return
+      void nextTick(() => tableRef.value?.resetColumns())
+    }
   )
 
   onMounted(async () => {

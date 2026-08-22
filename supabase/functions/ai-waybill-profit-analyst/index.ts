@@ -67,12 +67,10 @@ Deno.serve(async (request) => {
   const startedAt = Date.now()
   let runId = ''
   try {
-    const { data: profitRows, error: profitError } = await userClient
-      .from('tms_waybill_profit')
-      .select('*')
-      .neq('waybill_status', 'cancelled')
-      .order('create_time', { ascending: false })
-      .limit(300)
+    const { data: profitRows, error: profitError } = await userClient.rpc(
+      'tms_get_waybill_profit_ai_evidence_secure',
+      { p_limit: 300 }
+    )
     if (profitError) throw profitError
 
     const { data: run, error: runError } = await admin
@@ -97,7 +95,7 @@ Deno.serve(async (request) => {
     if (runError) throw runError
     runId = run.id
 
-    const assessment = assessWaybillProfitPortfolio(profitRows ?? [])
+    const assessment = assessWaybillProfitPortfolio(Array.isArray(profitRows) ? profitRows : [])
     const { error: finishError } = await admin
       .from('ai_run')
       .update({

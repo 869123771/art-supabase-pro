@@ -11,9 +11,15 @@
         <ElButton type="primary" plain @click="openDelegation">
           <ArtSvgIcon icon="ri:user-shared-line" />离岗委托
         </ElButton>
-        <ElButton :loading="summary.loading" @click="refreshCurrent">
-          <ArtSvgIcon icon="ri:refresh-line" />刷新数据
-        </ElButton>
+        <ElTooltip content="刷新审批数据" placement="bottom">
+          <ArtIconButton
+            icon="ri:refresh-line"
+            circle
+            label="刷新审批数据"
+            :loading="summary.loading"
+            @click="refreshCurrent"
+          />
+        </ElTooltip>
       </template>
     </BusinessWorkspaceHeader>
 
@@ -125,6 +131,7 @@
   import type { ArtTableQueryExpose } from '@/components/core/tables/art-table-query/index.vue'
   import type { ColumnOption } from '@/types'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
+  import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
   import BusinessWorkspaceHeader, {
     type BusinessWorkspaceMetric
   } from '@/components/business/business-workspace-header/index.vue'

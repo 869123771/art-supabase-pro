@@ -109,14 +109,49 @@ Deno.serve(async (req) => {
     const headers = [...new Set(rows.flatMap((row) => Object.keys(row)))].slice(0, 80)
     const mappingResult = await aiHeaderMapping(headers, rows)
 
-    const [{ data: customers }, { data: carriers }, { data: customerStatements }, { data: carrierStatements }, { data: existing }, { data: threshold }] = await Promise.all([
+    const [
+      { data: customers },
+      { data: carriers },
+      customerStatementResult,
+      carrierStatementResult,
+      existingReferenceResult,
+      { data: threshold }
+    ] = await Promise.all([
       admin.from('tms_customer').select('id,customer_name').eq('tenant_id', appUser.tenant_id).limit(2000),
       admin.from('tms_carrier').select('id,company_name').eq('tenant_id', appUser.tenant_id).limit(2000),
-      admin.from('tms_customer_statement_allocatable').select('*').eq('tenant_id', appUser.tenant_id).gt('outstanding_amount', 0).limit(1000),
-      admin.from('tms_carrier_statement_allocatable').select('*').eq('tenant_id', appUser.tenant_id).gt('outstanding_amount', 0).limit(1000),
-      admin.from('tms_cash_transaction').select('direction,bank_reference').eq('tenant_id', appUser.tenant_id).not('bank_reference', 'is', null).limit(5000),
+      authClient.rpc('tms_list_customer_statement_allocatable_secure', {
+        p_customer_id: null,
+        p_keyword: null,
+        p_from: 0,
+        p_to: 499
+      }),
+      authClient.rpc('tms_list_carrier_statement_allocatable_secure', {
+        p_carrier_id: null,
+        p_keyword: null,
+        p_from: 0,
+        p_to: 499
+      }),
+      authClient.rpc('tms_list_cash_bank_references_ai_secure', { p_limit: 5000 }),
       admin.from('ai_ocr_quality_threshold').select('review_confidence_threshold').eq('tenant_id', appUser.tenant_id).eq('feature', 'bank_statement_batch_match').maybeSingle()
     ])
+    const customerStatementPayload = isRecord(customerStatementResult.data)
+      ? customerStatementResult.data
+      : {}
+    const carrierStatementPayload = isRecord(carrierStatementResult.data)
+      ? carrierStatementResult.data
+      : {}
+    if (customerStatementResult.error) throw customerStatementResult.error
+    if (carrierStatementResult.error) throw carrierStatementResult.error
+    if (existingReferenceResult.error) throw existingReferenceResult.error
+    const existingReferences = Array.isArray(existingReferenceResult.data)
+      ? existingReferenceResult.data
+      : []
+    const customerStatements = Array.isArray(customerStatementPayload.records)
+      ? customerStatementPayload.records
+      : []
+    const carrierStatements = Array.isArray(carrierStatementPayload.records)
+      ? carrierStatementPayload.records
+      : []
     const counterparties: AiBankCounterparty[] = [
       ...(customers ?? []).map((item) => ({ id: item.id, name: item.customer_name, direction: 'receipt' as const })),
       ...(carriers ?? []).map((item) => ({ id: item.id, name: item.company_name, direction: 'payment' as const }))
@@ -139,7 +174,9 @@ Deno.serve(async (req) => {
       mapping: mappingResult.mapping,
       counterparties,
       statementCandidates,
-      existingReferences: new Set((existing ?? []).map((row) => `${row.direction}:${row.bank_reference}`))
+      existingReferences: new Set(
+        existingReferences.map((row) => `${row.direction}:${row.bank_reference}`)
+      )
     })
     const summary = normalizedRows.reduce((acc, row) => {
       acc[row.status] = (acc[row.status] ?? 0) + 1

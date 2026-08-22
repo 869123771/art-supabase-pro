@@ -59,6 +59,7 @@
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatCurrencyValue } from '@/utils/ui'
   import { formatWithDayjs } from '@/utils/time'
+  import { canViewField, getFieldAccess, mergeFieldAccessMaps } from '@/utils/field-permission'
   import { useUserStore } from '@/store/modules/user'
   import {
     fetchAccountSetOptions,
@@ -89,6 +90,15 @@
   const { runWithAccountSet } = useFinanceAccountSetPrerequisite()
   const accountOptions = ref<Api.Fms.FundAccountOption[]>([])
   const overviewRows = ref<Batch[]>([])
+  const currentRows = ref<Batch[]>([])
+  const listFieldAccess = ref<Api.Fms.BankReconciliationFieldAccessMap>({})
+  const effectiveFieldAccess = computed(() =>
+    mergeFieldAccessMaps(listFieldAccess.value, ...currentRows.value.map((row) => row.fieldAccess))
+  )
+  const canViewListField = (field: Api.Fms.BankReconciliationFieldKey): boolean =>
+    canViewField(effectiveFieldAccess.value, field)
+  const canViewRowField = (row: Batch, field: Api.Fms.BankReconciliationFieldKey): boolean =>
+    canViewField(row.fieldAccess, field)
   const table = reactive<{ search: SearchParams }>({
     search: { keyword: '', accountSetId: undefined, fundAccountId: undefined, status: undefined }
   })
@@ -137,7 +147,20 @@
       label: '关键字',
       key: 'keyword',
       type: 'input',
-      props: { clearable: true, placeholder: '批次号、账户名称、账号尾号或文件名' }
+      props: {
+        clearable: true,
+        placeholder: [
+          '批次号、账户名称',
+          ['read', 'edit'].includes(getFieldAccess(listFieldAccess.value, 'accountDetails'))
+            ? '账号尾号'
+            : '',
+          ['read', 'edit'].includes(getFieldAccess(listFieldAccess.value, 'bankReferences'))
+            ? '文件名'
+            : ''
+        ]
+          .filter(Boolean)
+          .join('、')
+      }
     }
   ])
 
@@ -225,7 +248,11 @@
             onClick={() => void drawerRef.value?.handleOpen(row)}
           >
             <strong translate="no">{row.batchNo}</strong>
-            <small>{row.importedFileName || '手工录入'}</small>
+            <small>
+              {canViewRowField(row, 'bankReferences')
+                ? row.importedFileName || '手工录入'
+                : '受控导入批次'}
+            </small>
           </button>
         )
       },
@@ -237,7 +264,10 @@
           <div class="bank-batch-account">
             <strong>{row.accountName}</strong>
             <small>
-              {row.accountNoMasked} · {row.currencyCode}
+              {canViewRowField(row, 'accountDetails') && row.accountNoMasked
+                ? `${row.accountNoMasked} · `
+                : ''}
+              {row.currencyCode}
             </small>
           </div>
         )
@@ -248,13 +278,17 @@
         width: 205,
         formatter: (row) => `${row.statementStartDate} 至 ${row.statementEndDate}`
       },
-      {
-        prop: 'closingBalance',
-        label: '期末余额',
-        width: 140,
-        align: 'right',
-        formatter: (row) => formatCurrencyValue(row.closingBalance, row.currencyCode)
-      },
+      ...(canViewListField('statementAmounts')
+        ? ([
+            {
+              prop: 'closingBalance',
+              label: '期末余额',
+              width: 140,
+              align: 'right',
+              formatter: (row: Batch) => formatBankAmount(row.closingBalance, row.currencyCode)
+            }
+          ] as ColumnOption<Batch>[])
+        : []),
       {
         prop: 'matchedCount',
         label: '匹配进度',
@@ -262,13 +296,18 @@
         align: 'center',
         formatter: (row) => `${row.matchedCount + row.ignoredCount}/${row.lineCount}`
       },
-      {
-        prop: 'statementBalanceDifference',
-        label: '余额差',
-        width: 130,
-        align: 'right',
-        formatter: (row) => formatCurrencyValue(row.statementBalanceDifference, row.currencyCode)
-      },
+      ...(canViewListField('statementAmounts')
+        ? ([
+            {
+              prop: 'statementBalanceDifference',
+              label: '余额差',
+              width: 130,
+              align: 'right',
+              formatter: (row: Batch) =>
+                formatBankAmount(row.statementBalanceDifference, row.currencyCode)
+            }
+          ] as ColumnOption<Batch>[])
+        : []),
       {
         prop: 'status',
         label: '状态',
@@ -300,17 +339,26 @@
 
   async function fetchTableData(params: TableParams) {
     const { from, to } = pageInfoHandler({ current: params.current, size: params.size })
-    return await fetchBankReconciliationList({ ...params, from, to })
+    const result = await fetchBankReconciliationList({ ...params, from, to })
+    listFieldAccess.value = result.fieldAccess
+    currentRows.value = result.data ?? []
+    return result
+  }
+
+  function formatBankAmount(value: unknown, currency = 'CNY'): string {
+    if (value === null || value === undefined || value === '') return '--'
+    return formatCurrencyValue(value, currency)
   }
 
   async function loadOverview(): Promise<void> {
-    const { data } = await fetchBankReconciliationList({
+    const result = await fetchBankReconciliationList({
       accountSetId: table.search.accountSetId,
       fundAccountId: table.search.fundAccountId,
       from: 0,
       to: 999
     })
-    overviewRows.value = data ?? []
+    overviewRows.value = result.data ?? []
+    listFieldAccess.value = result.fieldAccess
   }
 
   async function loadAccountOptions(accountSetId?: string): Promise<void> {
@@ -348,6 +396,18 @@
   watch(
     () => [table.search.accountSetId, table.search.fundAccountId],
     () => void loadOverview()
+  )
+
+  watch(
+    () => [
+      canViewListField('accountDetails'),
+      canViewListField('statementAmounts'),
+      canViewListField('bankReferences')
+    ],
+    (nextVisibility, previousVisibility) => {
+      if (nextVisibility.every((value, index) => value === previousVisibility?.[index])) return
+      void nextTick(() => tableRef.value?.resetColumns())
+    }
   )
 
   onMounted(async () => {

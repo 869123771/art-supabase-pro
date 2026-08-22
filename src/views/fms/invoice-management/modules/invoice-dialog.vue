@@ -1,6 +1,7 @@
 <template>
   <ArtDialog ref="dialogRef" size="xl">
     <InvoiceOcrPanel
+      v-if="canEditInvoiceField('invoiceAttachments')"
       ref="ocrPanelRef"
       v-model="attachmentUrls"
       :direction="form.data.direction"
@@ -93,7 +94,7 @@
           show-pagination
           show-selected-panel
           :page-size="10"
-          :disabled="!form.data.counterpartyId"
+          :disabled="!form.data.counterpartyId || !canEditInvoiceField('invoiceAmounts')"
         />
       </template>
     </ArtForm>
@@ -135,7 +136,10 @@
       />
     </div>
 
-    <section v-if="selection.statements.length" class="invoice-dialog__links art-card-xs">
+    <section
+      v-if="selection.statements.length && canViewInvoiceField('invoiceAmounts')"
+      class="invoice-dialog__links art-card-xs"
+    >
       <ArtSectionTitle>对账单关联金额</ArtSectionTitle>
       <ArtTable
         :data="selection.statements"
@@ -144,12 +148,20 @@
         table-layout="fixed"
       >
         <template #linkedAmount="{ row }">
+          <span
+            v-if="getFieldAccess(fieldAccess, 'invoiceAmounts') === 'masked'"
+            class="invoice-dialog__masked-value"
+          >
+            ***
+          </span>
           <ElInputNumber
+            v-else
             v-model="selection.linkAmounts[row.statementId]"
             :min="0.01"
             :max="getAvailableAmount(row)"
             :precision="2"
             :step="100"
+            :disabled="!canEditInvoiceField('invoiceAmounts')"
             controls-position="right"
           />
         </template>
@@ -195,6 +207,12 @@
   } from '@/api/fms'
   import { fetchRecognitionArtifactDetail } from '@/api/intelligent-recognition'
   import { useUserStore } from '@/store/modules/user'
+  import {
+    canEditField,
+    canViewField,
+    formatSensitiveNumber,
+    getFieldAccess
+  } from '@/utils/field-permission'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { toInvoiceOcrAnalyzeResponse } from '@/utils/intelligent-recognition'
   import { useDocumentNumberRule } from '@/hooks/core/useDocumentNumberRule'
@@ -271,7 +289,20 @@
   const ocrSourceDuplicateInvoice = ref<Api.Fms.InvoiceDuplicateRecord>()
   const duplicateCheckPending = ref(false)
   const invoiceRecordNumber = useDocumentNumberRule('tms.invoice_record')
+  const fieldAccess = ref<Api.Fms.InvoiceFieldAccessMap>({
+    invoiceAmounts: 'edit',
+    taxIdentity: 'edit',
+    invoiceAttachments: 'edit'
+  })
   let duplicateCheckSequence = 0
+
+  function canViewInvoiceField(field: Api.Fms.InvoiceFieldKey): boolean {
+    return canViewField(fieldAccess.value, field)
+  }
+
+  function canEditInvoiceField(field: Api.Fms.InvoiceFieldKey): boolean {
+    return canEditField(fieldAccess.value, field)
+  }
 
   const createInitialForm = createInitialInvoiceForm
 
@@ -330,22 +361,40 @@
         span: 8,
         props: { valueFormat: 'YYYY-MM-DD', class: '!w-full' }
       },
-      {
-        label: '税率（%）',
-        key: 'taxRate',
-        type: 'number',
-        span: 8,
-        props: {
-          min: 0,
-          max: 100,
-          precision: 2,
-          controlsPosition: 'right',
-          class: '!w-full',
-          onChange: recalculateTax
-        }
-      },
+      ...(canViewInvoiceField('invoiceAmounts')
+        ? [
+            {
+              label: '税率（%）',
+              key: 'taxRate',
+              type:
+                getFieldAccess(fieldAccess.value, 'invoiceAmounts') === 'masked'
+                  ? ('input' as const)
+                  : ('number' as const),
+              span: 8,
+              props: {
+                min: 0,
+                max: 100,
+                precision: 2,
+                controlsPosition: 'right',
+                class: '!w-full',
+                disabled: !canEditInvoiceField('invoiceAmounts'),
+                onChange: recalculateTax
+              }
+            }
+          ]
+        : []),
       { label: '发票抬头', key: 'invoiceTitle', type: 'input', span: 12 },
-      { label: '纳税人识别号', key: 'taxNumber', type: 'input', span: 12 },
+      ...(canViewInvoiceField('taxIdentity')
+        ? [
+            {
+              label: '纳税人识别号',
+              key: 'taxNumber',
+              type: 'input' as const,
+              span: 12,
+              props: { disabled: !canEditInvoiceField('taxIdentity') }
+            }
+          ]
+        : []),
       { label: '发票代码', key: 'invoiceCode', type: 'input', span: 12 },
       {
         label: '发票号码',
@@ -359,48 +408,63 @@
           onBlur: handleInvoiceNoBlur
         }
       },
-      { label: '金额信息', key: 'amountSection', type: 'divider', span: 24 },
-      {
-        label: '不含税金额',
-        key: 'amountExcludingTax',
-        type: 'number',
-        span: 8,
-        props: {
-          min: 0,
-          precision: 2,
-          controlsPosition: 'right',
-          class: '!w-full',
-          onChange: recalculateTax
-        }
-      },
-      {
-        label: '税额',
-        key: 'taxAmount',
-        type: 'number',
-        span: 8,
-        props: {
-          min: 0,
-          precision: 2,
-          controlsPosition: 'right',
-          class: '!w-full',
-          onChange: recalculateTotal
-        }
-      },
-      {
-        label: '价税合计',
-        key: 'totalAmount',
-        type: 'number',
-        span: 8,
-        props: {
-          min: 0.01,
-          precision: 2,
-          controlsPosition: 'right',
-          class: '!w-full',
-          disabled: true
-        }
-      },
-      { label: '对账关联', key: 'linkSection', type: 'divider', span: 24 },
-      { label: '关联对账单', key: 'statementIds', type: 'input', span: 24 },
+      ...(canViewInvoiceField('invoiceAmounts')
+        ? [
+            { label: '金额信息', key: 'amountSection', type: 'divider' as const, span: 24 },
+            {
+              label: '不含税金额',
+              key: 'amountExcludingTax',
+              type:
+                getFieldAccess(fieldAccess.value, 'invoiceAmounts') === 'masked'
+                  ? ('input' as const)
+                  : ('number' as const),
+              span: 8,
+              props: {
+                min: 0,
+                precision: 2,
+                controlsPosition: 'right',
+                class: '!w-full',
+                disabled: !canEditInvoiceField('invoiceAmounts'),
+                onChange: recalculateTax
+              }
+            },
+            {
+              label: '税额',
+              key: 'taxAmount',
+              type:
+                getFieldAccess(fieldAccess.value, 'invoiceAmounts') === 'masked'
+                  ? ('input' as const)
+                  : ('number' as const),
+              span: 8,
+              props: {
+                min: 0,
+                precision: 2,
+                controlsPosition: 'right',
+                class: '!w-full',
+                disabled: !canEditInvoiceField('invoiceAmounts'),
+                onChange: recalculateTotal
+              }
+            },
+            {
+              label: '价税合计',
+              key: 'totalAmount',
+              type:
+                getFieldAccess(fieldAccess.value, 'invoiceAmounts') === 'masked'
+                  ? ('input' as const)
+                  : ('number' as const),
+              span: 8,
+              props: {
+                min: 0.01,
+                precision: 2,
+                controlsPosition: 'right',
+                class: '!w-full',
+                disabled: true
+              }
+            },
+            { label: '对账关联', key: 'linkSection', type: 'divider' as const, span: 24 },
+            { label: '关联对账单', key: 'statementIds', type: 'input' as const, span: 24 }
+          ]
+        : []),
       {
         label: '备注',
         key: 'remark',
@@ -480,36 +544,43 @@
     }
   ]
 
-  const linkedStatementColumns: ColumnOption<DataSelectRecord>[] = [
-    { prop: 'statementNo', label: '对账单号', minWidth: 180 },
-    {
-      prop: 'periodLabel',
-      label: '账期',
-      width: 205,
-      formatter: (row) => `${row.periodStart} 至 ${row.periodEnd}`
-    },
-    {
-      prop: 'statementAmount',
-      label: '对账金额',
-      width: 135,
-      align: 'right',
-      formatter: (row) => formatMoney(Number(row.statementAmount))
-    },
-    {
-      prop: 'availableAmount',
-      label: '可开票金额',
-      width: 135,
-      align: 'right',
-      formatter: (row) => formatMoney(getAvailableAmount(row))
-    },
-    {
-      prop: 'linkedAmount',
-      label: '本次关联',
-      width: 190,
-      align: 'right',
-      useSlot: true
+  const linkedStatementColumns = computed<ColumnOption<DataSelectRecord>[]>(() => {
+    const columns: ColumnOption<DataSelectRecord>[] = [
+      { prop: 'statementNo', label: '对账单号', minWidth: 180 },
+      {
+        prop: 'periodLabel',
+        label: '账期',
+        width: 205,
+        formatter: (row) => `${row.periodStart} 至 ${row.periodEnd}`
+      }
+    ]
+    if (selection.statements.some((row) => row.statementAmount !== undefined)) {
+      columns.push({
+        prop: 'statementAmount',
+        label: '对账金额',
+        width: 135,
+        align: 'right',
+        formatter: (row) => formatStatementMoney(row.statementAmount)
+      })
     }
-  ]
+    columns.push(
+      {
+        prop: 'availableAmount',
+        label: '可开票金额',
+        width: 135,
+        align: 'right',
+        formatter: (row) => formatMoney(getAvailableAmount(row))
+      },
+      {
+        prop: 'linkedAmount',
+        label: '本次关联',
+        width: 190,
+        align: 'right',
+        useSlot: true
+      }
+    )
+    return columns
+  })
 
   const selectedLinkedAmount = computed(() =>
     selection.statements.reduce(
@@ -573,7 +644,9 @@
 
   const selectionSummary = computed(() =>
     selection.statements.length
-      ? `已选择 ${selection.statements.length} 份对账单，本次关联 ${formatMoney(selectedLinkedAmount.value)}，发票价税合计 ${formatMoney(form.data.totalAmount)}`
+      ? getFieldAccess(fieldAccess.value, 'invoiceAmounts') === 'masked'
+        ? `已选择 ${selection.statements.length} 份对账单，关联金额已脱敏`
+        : `已选择 ${selection.statements.length} 份对账单，本次关联 ${formatMoney(selectedLinkedAmount.value)}，发票价税合计 ${formatMoney(form.data.totalAmount)}`
       : form.data.counterpartyId
         ? '可以关联已确认的对账单；暂不关联时，发票将进入待匹配状态'
         : '请先选择发票方向和往来单位，再关联对账单'
@@ -609,13 +682,14 @@
   watch(
     () => selection.statements.map((row) => String(row.statementId)),
     (statementIds) => {
+      if (!canEditInvoiceField('invoiceAmounts')) return
       const nextAmounts: Record<string, number> = {}
       for (const statementId of statementIds) {
         const row = selection.statements.find((item) => String(item.statementId) === statementId)
         const availableAmount = row ? getAvailableAmount(row) : 0
         nextAmounts[statementId] =
           selection.linkAmounts[statementId] ??
-          Math.min(availableAmount, form.data.totalAmount || availableAmount)
+          Math.min(availableAmount, sensitiveNumberValue(form.data.totalAmount) || availableAmount)
       }
       selection.linkAmounts = nextAmounts
     },
@@ -624,6 +698,11 @@
 
   function roundMoney(value: number): number {
     return roundInvoiceMoney(value)
+  }
+
+  function sensitiveNumberValue(value?: Api.Tms.BasicData.SensitiveNumber): number {
+    const numeric = Number(value)
+    return Number.isFinite(numeric) ? numeric : 0
   }
 
   function validateInvoiceNo(
@@ -701,11 +780,18 @@
     )
   }
 
-  function formatMoney(value?: number | null): string {
+  function formatMoney(value?: Api.Tms.BasicData.SensitiveNumber): string {
     return `¥${Number(value ?? 0).toLocaleString('zh-CN', {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
     })}`
+  }
+
+  function formatStatementMoney(value: unknown): string {
+    const formatted = formatSensitiveNumber(
+      value as Api.Tms.BasicData.SensitiveNumber | null | undefined
+    )
+    return formatted === '***' || formatted === '--' ? formatted : `¥${formatted}`
   }
 
   function getAvailableAmount(row: Record<string, unknown>): number {
@@ -800,6 +886,11 @@
 
   async function resetForm(): Promise<void> {
     replaceForm(createInitialForm())
+    fieldAccess.value = {
+      invoiceAmounts: 'edit',
+      taxIdentity: 'edit',
+      invoiceAttachments: 'edit'
+    }
     selection.parties = []
     selection.statements = []
     selection.linkAmounts = {}
@@ -948,10 +1039,11 @@
   async function loadDetail(id: string): Promise<void> {
     const { data } = await fetchInvoiceDetail(id)
     if (!data) return
+    fieldAccess.value = data.fieldAccess ?? {}
     const links = data.statementLinks ?? []
     const counterpartyId = data.direction === 'output' ? data.customerId : data.carrierId
     const linkAmounts = Object.fromEntries(
-      links.map((item) => [item.statementId, Number(item.linkedAmount)])
+      links.map((item) => [item.statementId, sensitiveNumberValue(item.linkedAmount)])
     )
     replaceForm({
       id: data.id,
@@ -964,10 +1056,10 @@
       invoiceCode: data.invoiceCode ?? '',
       invoiceNo: data.invoiceNo ?? '',
       issueDate: data.issueDate,
-      taxRate: Number(data.taxRate),
-      amountExcludingTax: Number(data.amountExcludingTax),
-      taxAmount: Number(data.taxAmount),
-      totalAmount: Number(data.totalAmount),
+      taxRate: data.taxRate ?? 0,
+      amountExcludingTax: data.amountExcludingTax ?? 0,
+      taxAmount: data.taxAmount ?? 0,
+      totalAmount: data.totalAmount ?? 0,
       statementIds: links.map((item) => item.statementId),
       attachments: data.attachments ?? [],
       remark: data.remark ?? ''
@@ -1005,10 +1097,13 @@
       return false
     }
 
-    let statementLinks = selection.statements.map((row) => ({
-      statementId: String(row.statementId),
-      linkedAmount: Number(selection.linkAmounts[String(row.statementId)] ?? 0)
-    }))
+    const canEditAmounts = canEditInvoiceField('invoiceAmounts')
+    let statementLinks = canEditAmounts
+      ? selection.statements.map((row) => ({
+          statementId: String(row.statementId),
+          linkedAmount: Number(selection.linkAmounts[String(row.statementId)] ?? 0)
+        }))
+      : []
     if (shouldMergeDuplicate && activeDuplicate && !statementLinks.length) {
       const { data: existingInvoice } = await fetchInvoiceDetail(activeDuplicate.id)
       if (!existingInvoice) {
@@ -1020,11 +1115,13 @@
         linkedAmount: Number(item.linkedAmount)
       }))
     }
-    if (statementLinks.some((item) => item.linkedAmount <= 0)) return false
-    const linkedAmountTotal = statementLinks.reduce((total, item) => total + item.linkedAmount, 0)
-    if (linkedAmountTotal > form.data.totalAmount + 0.01) {
-      ElMessage.warning('关联对账金额不能超过发票价税合计')
-      return false
+    if (canEditAmounts) {
+      if (statementLinks.some((item) => item.linkedAmount <= 0)) return false
+      const linkedAmountTotal = statementLinks.reduce((total, item) => total + item.linkedAmount, 0)
+      if (linkedAmountTotal > sensitiveNumberValue(form.data.totalAmount) + 0.01) {
+        ElMessage.warning('关联对账金额不能超过发票价税合计')
+        return false
+      }
     }
 
     const payload = buildInvoicePayload({
@@ -1086,6 +1183,7 @@
 
   async function handleOpen(row?: Invoice, ocrContext?: InvoiceOcrContext): Promise<void> {
     await Promise.all([resetForm(), invoiceRecordNumber.loadRule()])
+    if (row) fieldAccess.value = row.fieldAccess ?? {}
     if (ocrContext) form.data.direction = ocrContext.direction
     await dialogRef.value?.handleOpen(row, {
       title: row ? '编辑发票' : ocrContext ? '复核识别发票' : '登记发票',
@@ -1235,6 +1333,12 @@
     &__links {
       padding: 16px;
       margin-top: 16px;
+    }
+
+    &__masked-value {
+      font-weight: 600;
+      color: var(--el-text-color-secondary);
+      letter-spacing: 0.08em;
     }
 
     &__feedback-stack {

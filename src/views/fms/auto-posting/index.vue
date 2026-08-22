@@ -105,6 +105,14 @@
   import { formatCurrencyValue } from '@/utils/ui'
   import { formatWithDayjs } from '@/utils/time'
   import {
+    canEditField,
+    canViewField,
+    formatSensitiveNumber,
+    getFieldAccess,
+    isMaskedValue,
+    mergeFieldAccessMaps
+  } from '@/utils/field-permission'
+  import {
     deletePostingRule,
     fetchAccountSetOptions,
     fetchAuxiliaryTypeList,
@@ -121,8 +129,8 @@
 
   defineOptions({ name: 'FinanceAutoPosting' })
 
-  type Rule = Api.Fms.PostingRuleRecord
-  type Event = Api.Fms.PostingEventRecord
+  type Rule = Api.Fms.SecurePostingRuleRecord
+  type Event = Api.Fms.SecurePostingEventRecord
   type RuleParams = Api.Fms.PostingRuleSearchParams &
     Pick<Api.Common.PaginationParams, 'current' | 'size'>
   type EventParams = Api.Fms.PostingEventSearchParams &
@@ -143,7 +151,7 @@
   }
 
   interface VoucherDetailExpose {
-    handleOpen: (row: Api.Fms.VoucherRecord) => Promise<void>
+    handleOpen: (row: Api.Fms.SecureVoucherRecord) => Promise<void>
   }
 
   interface RuleTableGroup {
@@ -187,6 +195,22 @@
   const eventDetailRef = ref<EventDetailExpose>()
   const voucherDetailRef = ref<VoucherDetailExpose>()
   const ruleContext = shallowRef<RuleDialogContext>()
+  const ruleRows = ref<Rule[]>([])
+  const eventRows = ref<Event[]>([])
+  const ruleFieldAccess = ref<Api.Fms.AutoPostingFieldAccessMap>({})
+  const eventFieldAccess = ref<Api.Fms.AutoPostingFieldAccessMap>({})
+  const effectiveRuleFieldAccess = computed(() =>
+    mergeFieldAccessMaps(ruleFieldAccess.value, ...ruleRows.value.map((row) => row.fieldAccess))
+  )
+  const effectiveEventFieldAccess = computed(() =>
+    mergeFieldAccessMaps(eventFieldAccess.value, ...eventRows.value.map((row) => row.fieldAccess))
+  )
+  const canSearchEventSource = computed(() =>
+    ['read', 'edit'].includes(getFieldAccess(eventFieldAccess.value, 'eventSourceReferences'))
+  )
+  const canSearchDiagnostics = computed(() =>
+    ['read', 'edit'].includes(getFieldAccess(eventFieldAccess.value, 'processingDiagnostics'))
+  )
 
   const commonAccountSetSearchItem = (onChange?: () => void): SearchFormItem => ({
     label: '账套',
@@ -233,17 +257,21 @@
         label: '关键词',
         key: 'keyword',
         type: 'input',
-        props: { clearable: true, placeholder: '规则编码、名称或说明' }
+        props: { clearable: true, placeholder: '规则编码或名称' }
       }
     ]),
-    headerActions: computed<ArtTableQueryHeaderAction[]>(() => [
-      {
-        permission: 'FinanceAutoPosting:Add',
-        type: 'add',
-        label: '新增规则',
-        onClick: () => void openRuleDialog()
-      }
-    ])
+    headerActions: computed<ArtTableQueryHeaderAction[]>(() =>
+      canEditField(ruleFieldAccess.value, 'ruleConfiguration')
+        ? [
+            {
+              permission: 'FinanceAutoPosting:Add',
+              type: 'add',
+              label: '新增规则',
+              onClick: () => void openRuleDialog()
+            }
+          ]
+        : []
+    )
   })
 
   const eventTable: UnwrapNestedRefs<EventTableGroup> = reactive<EventTableGroup>({
@@ -285,33 +313,61 @@
           clearable: true
         }
       },
-      {
-        label: '关键词',
-        key: 'keyword',
-        type: 'input',
-        props: { clearable: true, placeholder: '来源单号、摘要或异常信息' }
-      }
+      ...(canSearchEventSource.value || canSearchDiagnostics.value
+        ? [
+            {
+              label: '关键词',
+              key: 'keyword',
+              type: 'input' as const,
+              props: {
+                clearable: true,
+                placeholder: [
+                  canSearchEventSource.value ? '来源单号、摘要' : '',
+                  canSearchDiagnostics.value ? '异常信息' : ''
+                ]
+                  .filter(Boolean)
+                  .join('或')
+              }
+            }
+          ]
+        : [])
     ]),
-    headerActions: computed<ArtTableQueryHeaderAction[]>(() => [
-      {
-        auth: 'FinanceAutoPosting:ProcessPending',
-        key: 'process-pending',
-        label: '批量处理待办',
-        icon: 'ri:refresh-line',
-        buttonProps: { type: 'primary', plain: true },
-        onClick: () => void handleBatchProcess()
-      }
-    ])
+    headerActions: computed<ArtTableQueryHeaderAction[]>(() =>
+      canEditField(eventFieldAccess.value, 'processingDiagnostics')
+        ? [
+            {
+              auth: 'FinanceAutoPosting:ProcessPending',
+              key: 'process-pending',
+              label: '批量处理待办',
+              icon: 'ri:refresh-line',
+              buttonProps: { type: 'primary', plain: true },
+              onClick: () => void handleBatchProcess()
+            }
+          ]
+        : []
+    )
   })
 
-  function fetchRuleTableData(params: RuleParams) {
+  async function fetchRuleTableData(params: RuleParams) {
     const { from, to } = pageInfoHandler({ current: params.current, size: params.size })
-    return fetchPostingRuleList({ ...params, from, to })
+    const result = await fetchPostingRuleList({ ...params, from, to })
+    ruleFieldAccess.value = result.fieldAccess
+    ruleRows.value = result.data ?? []
+    return result
   }
 
-  function fetchEventTableData(params: EventParams) {
+  async function fetchEventTableData(params: EventParams) {
     const { from, to } = pageInfoHandler({ current: params.current, size: params.size })
-    return fetchPostingEventList({ ...params, from, to })
+    const result = await fetchPostingEventList({ ...params, from, to })
+    eventFieldAccess.value = result.fieldAccess
+    eventRows.value = result.data ?? []
+    return result
+  }
+
+  function formatProtectedCurrency(value: unknown): string {
+    const formatted = formatSensitiveNumber(value as number | string | null | undefined)
+    if (isMaskedValue(formatted) || formatted === '--') return formatted
+    return formatCurrencyValue(Number(value))
   }
 
   const ruleColumnsFactory = (): ColumnOption<Rule>[] => [
@@ -329,18 +385,22 @@
       minWidth: 180,
       dict: { code: 'fmsPostingSourceEvent', display: 'tag' }
     },
-    {
-      prop: 'voucherType',
-      label: '凭证类型',
-      width: 112,
-      dict: { code: 'fmsVoucherType', display: 'text' }
-    },
-    {
-      prop: 'submissionMode',
-      label: '生成状态',
-      width: 140,
-      dict: { code: 'fmsPostingSubmissionMode', display: 'tag' }
-    },
+    ...(canViewField(effectiveRuleFieldAccess.value, 'ruleConfiguration')
+      ? [
+          {
+            prop: 'voucherType',
+            label: '凭证类型',
+            width: 112,
+            dict: { code: 'fmsVoucherType', display: 'text' as const }
+          },
+          {
+            prop: 'submissionMode',
+            label: '生成状态',
+            width: 140,
+            dict: { code: 'fmsPostingSubmissionMode', display: 'tag' as const }
+          }
+        ]
+      : []),
     { prop: 'priority', label: '优先级', width: 88, align: 'center' },
     {
       prop: 'effectiveFrom',
@@ -363,12 +423,14 @@
       fixed: 'right',
       formatter: (row) => (
         <div class="auto-posting-page__actions">
-          {hasAuth('FinanceAutoPosting:Edit') ? (
+          {hasAuth('FinanceAutoPosting:Edit') &&
+          canEditField(row.fieldAccess, 'ruleConfiguration') ? (
             <ElButton link type="primary" onClick={() => void openRuleDialog(row)}>
               编辑
             </ElButton>
           ) : null}
-          {hasAuth('FinanceAutoPosting:Delete') ? (
+          {hasAuth('FinanceAutoPosting:Delete') &&
+          canEditField(row.fieldAccess, 'ruleConfiguration') ? (
             <ElButton link type="danger" onClick={() => void handleDeleteRule(row)}>
               删除
             </ElButton>
@@ -380,26 +442,46 @@
 
   const eventColumnsFactory = (): ColumnOption<Event>[] => [
     { type: 'globalIndex', label: '序号', width: 72 },
-    {
-      prop: 'sourceNo',
-      label: '来源单号',
-      minWidth: 190,
-      formatter: (row) =>
-        hasAuth('FinanceAutoPosting:View') ? (
-          <ElButton link type="primary" onClick={() => void eventDetailRef.value?.handleOpen(row)}>
-            {row.sourceNo || '查看事件'}
-          </ElButton>
-        ) : (
-          row.sourceNo || '—'
-        )
-    },
+    ...(canViewField(effectiveEventFieldAccess.value, 'eventSourceReferences')
+      ? [
+          {
+            prop: 'sourceNo',
+            label: '来源单号',
+            minWidth: 190,
+            formatter: (row: Event) =>
+              hasAuth('FinanceAutoPosting:View') &&
+              ['read', 'edit'].includes(
+                getFieldAccess(row.fieldAccess, 'eventSourceReferences')
+              ) ? (
+                <ElButton
+                  link
+                  type="primary"
+                  onClick={() => void eventDetailRef.value?.handleOpen(row)}
+                >
+                  {row.sourceNo || '查看事件'}
+                </ElButton>
+              ) : (
+                row.sourceNo || '—'
+              )
+          }
+        ]
+      : []),
     {
       prop: 'sourceEvent',
       label: '业务事件',
       minWidth: 180,
       dict: { code: 'fmsPostingSourceEvent', display: 'tag' }
     },
-    { prop: 'summary', label: '事件摘要', minWidth: 250, showOverflowTooltip: true },
+    ...(canViewField(effectiveEventFieldAccess.value, 'eventSourceReferences')
+      ? [
+          {
+            prop: 'summary',
+            label: '事件摘要',
+            minWidth: 250,
+            showOverflowTooltip: true
+          }
+        ]
+      : []),
     {
       prop: 'eventDate',
       label: '业务日期',
@@ -412,34 +494,57 @@
       width: 124,
       dict: { code: 'fmsPostingEventStatus', display: 'tag' }
     },
-    {
-      prop: 'rule',
-      label: '命中规则',
-      minWidth: 180,
-      showOverflowTooltip: true,
-      formatter: (row) => row.rule?.ruleName || '—'
-    },
-    {
-      prop: 'voucher',
-      label: '生成凭证',
-      minWidth: 150,
-      formatter: (row) =>
-        row.voucherId && hasAuth('FinanceAutoPosting:View') ? (
-          <ElButton link type="primary" onClick={() => void openVoucherById(row.voucherId!)}>
-            {row.voucher?.voucherNo || '查看凭证'}
-          </ElButton>
-        ) : (
-          '—'
-        )
-    },
-    {
-      prop: 'amount',
-      label: '业务金额',
-      width: 130,
-      align: 'right',
-      formatter: (row) => formatCurrencyValue(Number(row.payload.gross_amount || 0))
-    },
-    { prop: 'attemptCount', label: '处理次数', width: 92, align: 'center' },
+    ...(canViewField(effectiveEventFieldAccess.value, 'eventSourceReferences')
+      ? [
+          {
+            prop: 'rule',
+            label: '命中规则',
+            minWidth: 180,
+            showOverflowTooltip: true,
+            formatter: (row: Event) => row.rule?.ruleName || '—'
+          },
+          {
+            prop: 'voucher',
+            label: '生成凭证',
+            minWidth: 150,
+            formatter: (row: Event) =>
+              row.voucherId &&
+              hasAuth('FinanceAutoPosting:View') &&
+              ['read', 'edit'].includes(
+                getFieldAccess(row.fieldAccess, 'eventSourceReferences')
+              ) ? (
+                <ElButton link type="primary" onClick={() => void openVoucherById(row.voucherId!)}>
+                  {row.voucher?.voucherNo || '查看凭证'}
+                </ElButton>
+              ) : (
+                row.voucher?.voucherNo || '—'
+              )
+          }
+        ]
+      : []),
+    ...(canViewField(effectiveEventFieldAccess.value, 'eventAmounts')
+      ? [
+          {
+            prop: 'amount',
+            label: '业务金额',
+            width: 130,
+            align: 'right' as const,
+            formatter: (row: Event) => formatProtectedCurrency(row.payload.gross_amount)
+          }
+        ]
+      : []),
+    ...(canViewField(effectiveEventFieldAccess.value, 'processingDiagnostics')
+      ? [
+          {
+            prop: 'attemptCount',
+            label: '处理次数',
+            width: 92,
+            align: 'center' as const,
+            formatter: (row: Event) =>
+              formatSensitiveNumber(row.attemptCount, { maximumFractionDigits: 0 })
+          }
+        ]
+      : []),
     {
       prop: 'operation',
       label: '操作',
@@ -456,7 +561,9 @@
               详情
             </ElButton>
           ) : null}
-          {hasAuth('FinanceAutoPosting:Retry') && canRetry(row) ? (
+          {hasAuth('FinanceAutoPosting:Retry') &&
+          canEditField(row.fieldAccess, 'processingDiagnostics') &&
+          canRetry(row) ? (
             <ElButton link type="warning" onClick={() => void handleRetryEvent(row)}>
               重试
             </ElButton>
@@ -485,6 +592,7 @@
   }
 
   async function openRuleDialog(row?: Rule): Promise<void> {
+    if (!canEditField(row?.fieldAccess ?? ruleFieldAccess.value, 'ruleConfiguration')) return
     if (
       !(await ensureAccountSet({
         actionLabel: row ? '编辑自动入账规则' : '新增自动入账规则',
@@ -502,6 +610,7 @@
   }
 
   async function handleDeleteRule(row: Rule): Promise<void> {
+    if (!canEditField(row.fieldAccess, 'ruleConfiguration')) return
     try {
       await confirmDelete(
         `确定删除规则 ${row.ruleCode} · ${row.ruleName} 吗？已产生事件的规则只能停用。`
@@ -523,11 +632,13 @@
   }
 
   async function handleRetryEvent(row: Event): Promise<void> {
+    if (!canEditField(row.fieldAccess, 'processingDiagnostics')) return
     await retryPostingEvent(row.id)
     await eventTableRef.value?.refreshUpdate()
   }
 
   async function handleBatchProcess(): Promise<void> {
+    if (!canEditField(eventFieldAccess.value, 'processingDiagnostics')) return
     try {
       await confirm('系统将重新处理最多 50 条待处理、待配置或失败事件，是否继续？', {
         title: '批量处理确认',

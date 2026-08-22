@@ -25,6 +25,7 @@
           placeholder="请选择承运商"
           search-placeholder="承运商名称、编码或联系人"
           dialog-width="lg"
+          :disabled="!canEditApplicationField('applicationAmounts')"
           @change="handleCarrierChange"
         />
       </template>
@@ -47,26 +48,39 @@
           show-pagination
           show-selected-panel
           :page-size="10"
-          :disabled="!form.data.carrierId"
+          :disabled="!form.data.carrierId || !canEditApplicationField('applicationAmounts')"
           @change="handleStatementChange"
         />
       </template>
 
       <template #basisUrls>
         <ArtUploadImage
+          v-if="getFieldAccess(fieldAccess, 'basisEvidence') !== 'masked'"
           v-model="form.data.basisUrls"
           title="付款依据"
           :size="84"
           :limit="5"
+          :readonly="!canEditApplicationField('basisEvidence')"
           multiple
         />
+        <ElAlert v-else type="info" :closable="false" show-icon title="付款依据内容已脱敏" />
       </template>
     </ArtForm>
 
-    <section v-if="allocationRows.length" class="payment-application-dialog__allocation">
+    <section
+      v-if="allocationRows.length && canViewApplicationField('applicationAmounts')"
+      class="payment-application-dialog__allocation"
+    >
       <div class="payment-application-dialog__allocation-header">
         <ArtSectionTitle :show-line="false">付款分配</ArtSectionTitle>
-        <ElButton link type="primary" @click="autoAllocate">按可申请余额自动分配</ElButton>
+        <ElButton
+          v-if="canEditApplicationField('applicationAmounts')"
+          link
+          type="primary"
+          @click="autoAllocate"
+        >
+          按可申请余额自动分配
+        </ElButton>
       </div>
       <ArtTable
         :data="allocationRows"
@@ -80,6 +94,7 @@
     </section>
 
     <ElAlert
+      v-if="canViewApplicationField('applicationAmounts')"
       class="payment-application-dialog__summary"
       :type="allocationSummary.remaining === 0 ? 'success' : 'warning'"
       :closable="false"
@@ -117,8 +132,13 @@
   } from '@/api/fms'
   import { useUserStore } from '@/store/modules/user'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
-  import { formatCurrencyValue } from '@/utils/ui'
   import { useDocumentNumberRule } from '@/hooks/core/useDocumentNumberRule'
+  import {
+    canEditField,
+    canViewField,
+    formatSensitiveNumber,
+    getFieldAccess
+  } from '@/utils/field-permission'
 
   defineOptions({ name: 'FinancePaymentApplicationDialog' })
 
@@ -130,7 +150,7 @@
     applicationNo: string
     carrierId: string
     plannedPaymentDate: string
-    amount: number
+    amount: Api.Tms.BasicData.SensitiveNumber | undefined
     paymentMethod: Api.Fms.CashPaymentMethod
     basisUrls: string[]
     remark: string
@@ -165,6 +185,18 @@
   const formRef = ref<FormExpose>()
   const statementSelectRef = ref<ArtDataSelectExpose>()
   const applicationNumber = useDocumentNumberRule('tms.carrier_payment_application')
+  const fieldAccess = ref<Api.Fms.CarrierPaymentApplicationFieldAccessMap>({
+    applicationAmounts: 'edit',
+    basisEvidence: 'edit'
+  })
+
+  function canViewApplicationField(field: Api.Fms.CarrierPaymentApplicationFieldKey): boolean {
+    return canViewField(fieldAccess.value, field)
+  }
+
+  function canEditApplicationField(field: Api.Fms.CarrierPaymentApplicationFieldKey): boolean {
+    return canEditField(fieldAccess.value, field)
+  }
 
   const createInitialForm = (): PaymentApplicationForm => ({
     id: undefined,
@@ -196,8 +228,14 @@
       plannedPaymentDate: [{ required: true, message: '请选择计划付款日期', trigger: 'change' }],
       amount: [
         {
-          validator: (_rule, value, callback) =>
-            Number(value) > 0 ? callback() : callback(new Error('申请付款金额必须大于 0')),
+          validator: (_rule, value, callback) => {
+            if (formData.id && !canEditApplicationField('applicationAmounts')) {
+              callback()
+              return
+            }
+            if (Number(value) > 0) callback()
+            else callback(new Error('申请付款金额必须大于 0'))
+          },
           trigger: 'change'
         }
       ],
@@ -224,19 +262,27 @@
         span: isCompact.value ? 24 : 12,
         props: { valueFormat: 'YYYY-MM-DD', class: '!w-full' }
       },
-      {
-        label: '申请付款金额',
-        key: 'amount',
-        type: 'number',
-        span: isCompact.value ? 24 : 12,
-        props: {
-          min: 0.01,
-          precision: 2,
-          controlsPosition: 'right',
-          class: '!w-full',
-          onChange: autoAllocate
-        }
-      },
+      ...(canViewApplicationField('applicationAmounts')
+        ? [
+            {
+              label: '申请付款金额',
+              key: 'amount',
+              type:
+                getFieldAccess(fieldAccess.value, 'applicationAmounts') === 'masked'
+                  ? ('input' as const)
+                  : ('number' as const),
+              span: isCompact.value ? 24 : 12,
+              props: {
+                min: 0.01,
+                precision: 2,
+                controlsPosition: 'right',
+                class: '!w-full',
+                disabled: !canEditApplicationField('applicationAmounts'),
+                onChange: autoAllocate
+              }
+            }
+          ]
+        : []),
       {
         label: '计划付款方式',
         key: 'paymentMethod',
@@ -256,10 +302,18 @@
           placeholder: '说明付款用途、账期或其他审批要点'
         }
       },
-      { label: '付款依据', key: 'evidence', type: 'divider', span: 24 },
-      { label: '依据附件', key: 'basisUrls', type: 'input', span: 24 },
-      { label: '应付核销', key: 'allocation', type: 'divider', span: 24 },
-      { label: '承运商对账单', key: 'statementIds', type: 'input', span: 24 }
+      ...(canViewApplicationField('basisEvidence')
+        ? [
+            { label: '付款依据', key: 'evidence', type: 'divider' as const, span: 24 },
+            { label: '依据附件', key: 'basisUrls', type: 'input' as const, span: 24 }
+          ]
+        : []),
+      ...(canViewApplicationField('applicationAmounts')
+        ? [
+            { label: '应付核销', key: 'allocation', type: 'divider' as const, span: 24 },
+            { label: '承运商对账单', key: 'statementIds', type: 'input' as const, span: 24 }
+          ]
+        : [])
     ])
   })
 
@@ -276,14 +330,16 @@
     )
     return {
       allocated,
-      limit: round(Number(form.data.amount || 0)),
-      remaining: round(Number(form.data.amount || 0) - allocated)
+      limit: round(sensitiveNumberValue(form.data.amount)),
+      remaining: round(sensitiveNumberValue(form.data.amount) - allocated)
     }
   })
-  const summaryText = computed(
-    () =>
-      `申请金额 ${money(allocationSummary.value.limit)}，已分配 ${money(allocationSummary.value.allocated)}，待分配 ${money(allocationSummary.value.remaining)}`
-  )
+  const summaryText = computed(() => {
+    if (getFieldAccess(fieldAccess.value, 'applicationAmounts') === 'masked') {
+      return '申请金额与付款分配已脱敏'
+    }
+    return `申请金额 ${money(allocationSummary.value.limit)}，已分配 ${money(allocationSummary.value.allocated)}，待分配 ${money(allocationSummary.value.remaining)}`
+  })
 
   const carrierColumns: DataSelectColumn[] = [
     { prop: 'carrierCode', label: '承运商编码', width: 150 },
@@ -299,21 +355,21 @@
       label: '账面未付',
       width: 130,
       align: 'right',
-      formatter: (row) => money(Number((row as Statement).statementOutstandingAmount ?? 0))
+      formatter: (row) => money((row as Statement).statementOutstandingAmount)
     },
     {
       prop: 'reservedAmount',
       label: '审批占用',
       width: 130,
       align: 'right',
-      formatter: (row) => money(Number((row as Statement).reservedAmount ?? 0))
+      formatter: (row) => money((row as Statement).reservedAmount)
     },
     {
       prop: 'outstandingAmount',
       label: '可申请余额',
       width: 135,
       align: 'right',
-      formatter: (row) => money(Number((row as Statement).outstandingAmount))
+      formatter: (row) => money((row as Statement).outstandingAmount)
     }
   ]
   const allocationColumns: ColumnOption<AllocationRow>[] = [
@@ -335,25 +391,39 @@
       prop: 'allocationAmount',
       label: '本次申请',
       width: 180,
-      formatter: (row) => (
-        <ElInputNumber
-          modelValue={Number(selection.amounts[row.id] ?? 0)}
-          min={0}
-          max={Math.min(Number(row.outstandingAmount), Number(form.data.amount || 0))}
-          precision={2}
-          controlsPosition="right"
-          class="w-full!"
-          onUpdate:modelValue={(value) => {
-            selection.amounts[row.id] = round(Number(value ?? 0))
-          }}
-        />
-      )
+      formatter: (row) =>
+        getFieldAccess(fieldAccess.value, 'applicationAmounts') === 'masked' ? (
+          <span>***</span>
+        ) : (
+          <ElInputNumber
+            modelValue={Number(selection.amounts[row.id] ?? 0)}
+            min={0}
+            max={Math.min(
+              sensitiveNumberValue(row.outstandingAmount),
+              sensitiveNumberValue(form.data.amount)
+            )}
+            precision={2}
+            controlsPosition="right"
+            class="w-full!"
+            disabled={!canEditApplicationField('applicationAmounts')}
+            onUpdate:modelValue={(value) => {
+              selection.amounts[row.id] = round(Number(value ?? 0))
+            }}
+          />
+        )
     }
   ]
 
   const round = (value: number): number =>
     Math.round((Number(value || 0) + Number.EPSILON) * 100) / 100
-  const money = (value: number): string => formatCurrencyValue(value)
+  const sensitiveNumberValue = (value?: Api.Tms.BasicData.SensitiveNumber): number => {
+    const numericValue = Number(value)
+    return Number.isFinite(numericValue) ? numericValue : 0
+  }
+  const money = (value?: Api.Tms.BasicData.SensitiveNumber): string => {
+    const formatted = formatSensitiveNumber(value)
+    return formatted === '***' || formatted === '--' ? formatted : `¥${formatted}`
+  }
 
   async function fetchCarrierSelectorData(params: DataSelectFetchParams) {
     const { data } = await fetchCarrierOptions({ companyName: params.keyword })
@@ -398,15 +468,17 @@
   }
 
   function autoAllocate(): void {
-    let remaining = round(Number(form.data.amount || 0))
+    if (!canEditApplicationField('applicationAmounts')) return
+    let remaining = round(sensitiveNumberValue(form.data.amount))
     selectedStatements.value.forEach((statement) => {
-      const amount = round(Math.min(remaining, Number(statement.outstandingAmount)))
+      const amount = round(Math.min(remaining, sensitiveNumberValue(statement.outstandingAmount)))
       selection.amounts[statement.id] = Math.max(amount, 0)
       remaining = round(remaining - amount)
     })
   }
 
   function buildAllocations(): Api.Fms.CashAllocationInput[] {
+    if (!canEditApplicationField('applicationAmounts')) return []
     return allocationRows.value
       .map((row) => ({
         statementId: row.id,
@@ -421,11 +493,11 @@
     } catch {
       return false
     }
-    if (!buildAllocations().length) {
+    if (canEditApplicationField('applicationAmounts') && !buildAllocations().length) {
       ElMessage.warning('请至少选择一份待付款对账单')
       return false
     }
-    if (allocationSummary.value.remaining !== 0) {
+    if (canEditApplicationField('applicationAmounts') && allocationSummary.value.remaining !== 0) {
       ElMessage.warning('申请付款金额必须与对账单分配合计一致')
       return false
     }
@@ -435,7 +507,9 @@
         applicationNo: form.data.applicationNo.trim() || null,
         carrierId: form.data.carrierId,
         plannedPaymentDate: form.data.plannedPaymentDate,
-        amount: Number(form.data.amount),
+        amount: canEditApplicationField('applicationAmounts')
+          ? sensitiveNumberValue(form.data.amount)
+          : null,
         paymentMethod: form.data.paymentMethod,
         basisUrls: [...form.data.basisUrls],
         remark: form.data.remark.trim() || null,
@@ -452,6 +526,7 @@
     Object.assign(form.data, createInitialForm())
     selection.carriers = []
     clearStatements()
+    fieldAccess.value = { applicationAmounts: 'edit', basisEvidence: 'edit' }
     await nextTick()
     formRef.value?.clearValidate()
   }
@@ -459,12 +534,13 @@
   async function loadApplication(id: string): Promise<void> {
     const { data } = await fetchCarrierPaymentApplicationDetail(id)
     if (!data) throw new Error('付款申请不存在')
+    fieldAccess.value = data.fieldAccess ?? {}
     Object.assign(form.data, {
       id: data.id,
       applicationNo: data.applicationNo,
       carrierId: data.carrierId,
       plannedPaymentDate: data.plannedPaymentDate,
-      amount: Number(data.amount),
+      amount: data.amount,
       paymentMethod: data.paymentMethod,
       basisUrls: [...(data.basisUrls ?? [])],
       remark: data.remark ?? '',
@@ -484,7 +560,10 @@
       costCount: 0,
       waybillCount: 0,
       statementAmount: item.statementAmountSnapshot,
-      settledAmount: round(item.statementAmountSnapshot - item.outstandingAmountSnapshot),
+      settledAmount: round(
+        sensitiveNumberValue(item.statementAmountSnapshot) -
+          sensitiveNumberValue(item.outstandingAmountSnapshot)
+      ),
       outstandingAmount: item.outstandingAmountSnapshot,
       statementOutstandingAmount: item.outstandingAmountSnapshot,
       reservedAmount: 0,
@@ -492,12 +571,13 @@
       createTime: item.createTime
     }))
     selection.amounts = Object.fromEntries(
-      (data.items ?? []).map((item) => [item.statementId, Number(item.appliedAmount)])
+      (data.items ?? []).map((item) => [item.statementId, sensitiveNumberValue(item.appliedAmount)])
     )
   }
 
   async function handleOpen(row?: Application): Promise<void> {
     await Promise.all([resetForm(), applicationNumber.loadRule()])
+    if (row) fieldAccess.value = row.fieldAccess ?? {}
     await dialogRef.value?.handleOpen(row, {
       title: row ? `编辑付款申请 · ${row.applicationNo}` : '新建承运商付款申请',
       subtitle: '审批通过前锁定可付款额度，通过后再登记实际付款凭证并自动核销',

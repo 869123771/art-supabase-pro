@@ -11,6 +11,28 @@
       :show-reset="false"
       :show-submit="false"
     >
+      <template #employeeId>
+        <ArtTableSingleSelect
+          :model-value="form.employeeId || undefined"
+          :selected-data="employeeSelection.selectedRows"
+          :api-fn="fetchEmployeeSelectorData"
+          :columns="employeeSelection.columns"
+          title="从员工花名册选择"
+          subtitle="仅展示在职、试用且尚未建立司机档案的员工；建档后岗位同步为司机"
+          row-key="id"
+          :label-key="getEmployeeLabel"
+          :description-key="getEmployeeDescription"
+          placeholder="请选择员工，或直接填写司机资料"
+          search-placeholder="员工工号、姓名、所属组织或岗位"
+          dialog-width="xl"
+          show-pagination
+          :page-size="10"
+          @update:model-value="handleEmployeeValueChange"
+          @update:selected-data="handleEmployeeRowsChange"
+          @confirm="handleEmployeeConfirm"
+          @clear="handleEmployeeClear"
+        />
+      </template>
       <template #idCardFrontUrl>
         <ArtUploadImage
           v-model="form.idCardFrontUrl"
@@ -57,25 +79,41 @@
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
+  import ArtTableSingleSelect from '@/components/core/forms/art-data-select/table-single.vue'
+  import type {
+    DataSelectColumn,
+    DataSelectFetchParams,
+    DataSelectKey,
+    DataSelectRecord
+  } from '@/components/core/forms/art-data-select/types'
   import ArtUploadImage from '@/components/core/forms/art-upload-image/index.vue'
   import {
     addDriver,
     editDriver,
     fetchCarrierOptions,
-    fetchDriverAssignedVehicles
+    fetchDriverAssignedVehicles,
+    fetchDriverEmployeeOptions
   } from '@/api/tms'
   import { useUserStore } from '@/store/modules/user'
   import { canEditField, canViewField, getFieldAccess } from '@/utils/field-permission'
+  import { pageInfoHandler } from '@/utils/table/tableUtils'
 
   defineOptions({ name: 'TmsDriverDialog' })
 
   type Driver = Api.Tms.BasicData.Driver
   type DriverForm = Driver & { carrierVehiclePlates: string[] }
   type CarrierOption = Api.Tms.BasicData.CarrierOption
+  type DriverEmployeeOption = Api.Tms.BasicData.DriverEmployeeOption
 
   interface DialogExposeForm {
     validate: () => Promise<boolean>
     clearValidate: () => void
+  }
+
+  interface EmployeeSelectionGroup {
+    selectedRows: DataSelectRecord[]
+    columns: DataSelectColumn[]
+    tenantLabel: string
   }
 
   const emit = defineEmits<{
@@ -86,6 +124,24 @@
   const dialogRef = ref<ArtDialogExpose<Driver | undefined>>()
   const formRef = ref<DialogExposeForm>()
   const vehicleState = reactive({ loading: false, error: '', requestId: 0 })
+  const employeeSelection = reactive<EmployeeSelectionGroup>({
+    selectedRows: [],
+    tenantLabel: '',
+    columns: [
+      { prop: 'tenant.tenantName', label: '所属租户', minWidth: 160 },
+      { prop: 'employeeNo', label: '员工工号', width: 130 },
+      { prop: 'employeeName', label: '员工姓名', minWidth: 130 },
+      { prop: 'organization.organizationName', label: '所属组织', minWidth: 160 },
+      { prop: 'jobTitle', label: '工作岗位', minWidth: 140 },
+      { prop: 'phone', label: '手机号码', width: 140 },
+      {
+        prop: 'employmentStatus',
+        label: '任职状态',
+        width: 110,
+        dict: { code: 'hrEmploymentStatus', display: 'tag' }
+      }
+    ]
+  })
 
   const genderOptions = computed(() => getDictMap.value.sex ?? [])
   const licenseTypeOptions = computed(() => getDictMap.value.tmsDriverLicenseType ?? [])
@@ -93,6 +149,7 @@
 
   const createInitialForm = (): DriverForm => ({
     id: undefined,
+    employeeId: null,
     carrierId: '',
     driverName: '',
     phone: '',
@@ -179,6 +236,14 @@
   const formItems = computed<FormItem[]>(() => [
     { label: '基础信息', key: 'baseSection', type: 'divider', span: 24 },
     {
+      label: '花名册员工',
+      key: 'employeeId',
+      span: 24,
+      hidden: Boolean(form.id),
+      description:
+        '选择后回填共有身份信息并将员工岗位同步为司机；证照、承运商和司机类型仍需单独维护。'
+    },
+    {
       label: '姓名',
       key: 'driverName',
       type: 'input',
@@ -248,6 +313,9 @@
       key: 'carrierId',
       type: 'select',
       span: 16,
+      description: employeeSelection.tenantLabel
+        ? `所选员工属于${employeeSelection.tenantLabel}，承运商须来自同一租户。`
+        : undefined,
       api: fetchCarrierOptions,
       resultField: 'data',
       labelField: 'companyName',
@@ -380,9 +448,70 @@
     vehicleState.requestId += 1
     vehicleState.loading = false
     vehicleState.error = ''
+    employeeSelection.selectedRows = []
+    employeeSelection.tenantLabel = ''
     replaceForm(createInitialForm())
     await nextTick()
     formRef.value?.clearValidate()
+  }
+
+  const fetchEmployeeSelectorData = async (params: DataSelectFetchParams) => {
+    const { from, to } = pageInfoHandler({ current: params.page, size: params.pageSize })
+    const { data, total } = await fetchDriverEmployeeOptions({
+      keyword: params.keyword,
+      from,
+      to
+    })
+    return { data, total }
+  }
+
+  const getEmployeeLabel = (row: DataSelectRecord): string => {
+    const employee = row as DriverEmployeeOption
+    return `${employee.employeeName}（${employee.employeeNo}）`
+  }
+
+  const getEmployeeDescription = (row: DataSelectRecord): string => {
+    const employee = row as DriverEmployeeOption
+    return [
+      employee.tenant.tenantName,
+      employee.organization?.organizationName,
+      employee.jobTitle,
+      employee.phone
+    ]
+      .filter(Boolean)
+      .join(' / ')
+  }
+
+  const handleEmployeeValueChange = (value: DataSelectKey | DataSelectKey[] | undefined): void => {
+    form.employeeId = typeof value === 'string' ? value : null
+  }
+
+  const handleEmployeeRowsChange = (rows: DataSelectRecord[]): void => {
+    employeeSelection.selectedRows = rows
+  }
+
+  const handleEmployeeConfirm = (_value: unknown, rows: DataSelectRecord[]): void => {
+    const employee = rows[0] as DriverEmployeeOption | undefined
+    if (!employee) return
+
+    Object.assign(form, {
+      employeeId: employee.id,
+      driverName: employee.employeeName,
+      phone: employee.phone ?? '',
+      gender: employee.gender ?? '',
+      idCardNo: employee.idCardNo ?? '',
+      homeAddress: employee.homeAddress ?? '',
+      emergencyContactName: employee.emergencyContactName ?? '',
+      emergencyContactPhone: employee.emergencyContactPhone ?? ''
+    } satisfies Partial<DriverForm>)
+    employeeSelection.selectedRows = [employee]
+    employeeSelection.tenantLabel = employee.tenant.tenantName
+  }
+
+  const handleEmployeeClear = (): void => {
+    form.employeeId = null
+    employeeSelection.selectedRows = []
+    employeeSelection.tenantLabel = ''
   }
 
   const normalizePayload = (): Driver => {

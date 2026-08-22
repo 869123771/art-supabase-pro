@@ -14,7 +14,16 @@
         scroll-to-error
       />
 
+      <ElAlert
+        v-if="narrativeAccess === 'masked'"
+        title="默认摘要与模板说明已按字段权限脱敏"
+        type="info"
+        :closable="false"
+        show-icon
+      />
+
       <VoucherEntryLines
+        v-if="canShowEntries"
         v-model="form.lines"
         :subjects="context.subjects"
         :currencies="context.currencies"
@@ -22,6 +31,15 @@
         :direction-options="directionOptions"
         mode="template"
         allow-zero-amount
+        :readonly="!canEditEntries"
+      />
+      <ElAlert
+        v-else-if="entryAccess === 'masked'"
+        :title="`模板分录已脱敏${detailLineCount ? `，共 ${detailLineCount} 条` : ''}`"
+        description="科目、借贷方向、核算维度和默认金额不会发送到无明文权限的客户端。"
+        type="warning"
+        :closable="false"
+        show-icon
       />
     </div>
   </ArtDialog>
@@ -29,7 +47,7 @@
 
 <script setup lang="ts">
   import { cloneDeep } from 'lodash-es'
-  import { ElMessage } from 'element-plus'
+  import { ElAlert, ElMessage } from 'element-plus'
   import { storeToRefs } from 'pinia'
   import type { ComputedRef, UnwrapNestedRefs } from 'vue'
   import type { FormRules } from 'element-plus'
@@ -39,6 +57,7 @@
   import { fetchVoucherTemplateDetail, saveVoucherTemplate } from '@/api/fms'
   import VoucherEntryLines from '@/views/fms/modules/voucher-entry-lines.vue'
   import { useUserStore } from '@/store/modules/user'
+  import { canEditField, getFieldAccess, type FieldAccessLevel } from '@/utils/field-permission'
 
   defineOptions({ name: 'FinanceVoucherTemplateDialog' })
 
@@ -80,6 +99,8 @@
   const { getDictMap } = storeToRefs(useUserStore())
   const dialogRef = ref<ArtDialogExpose<Template | undefined>>()
   const formRef = ref<FormExpose>()
+  const fieldAccess = ref<Api.Fms.VoucherTemplateFieldAccessMap>({})
+  const detailLineCount = ref(0)
   const context = reactive<DialogContext>({
     accountSet: { label: '', value: '', status: 'draft', tenantId: '' },
     subjects: [],
@@ -141,19 +162,36 @@
         type: 'input',
         props: { maxlength: 80, placeholder: '请输入模板名称' }
       },
-      {
-        label: '凭证类型',
-        key: 'voucherType',
-        type: 'select',
-        props: { options: voucherTypeOptions.value, clearable: false }
-      },
-      {
-        label: '默认摘要',
-        key: 'summary',
-        type: 'input',
-        span: 12,
-        props: { maxlength: 200, showWordLimit: true, placeholder: '套用模板时带入凭证摘要' }
-      },
+      ...(canShowEntries.value
+        ? ([
+            {
+              label: '凭证类型',
+              key: 'voucherType',
+              type: 'select',
+              props: {
+                options: voucherTypeOptions.value,
+                clearable: false,
+                disabled: !canEditEntries.value
+              }
+            }
+          ] as FormItem[])
+        : []),
+      ...(canShowNarrative.value
+        ? ([
+            {
+              label: '默认摘要',
+              key: 'summary',
+              type: 'input',
+              span: 12,
+              props: {
+                maxlength: 200,
+                showWordLimit: true,
+                placeholder: '套用模板时带入凭证摘要',
+                disabled: !canEditNarrative.value
+              }
+            }
+          ] as FormItem[])
+        : []),
       {
         label: '启用状态',
         key: 'isEnabled',
@@ -166,13 +204,23 @@
         type: 'number',
         props: { min: 0, max: 9999, controlsPosition: 'right', class: '!w-full' }
       },
-      {
-        label: '模板说明',
-        key: 'remark',
-        type: 'input',
-        span: 24,
-        props: { type: 'textarea', rows: 3, maxlength: 500, showWordLimit: true }
-      }
+      ...(canShowNarrative.value
+        ? ([
+            {
+              label: '模板说明',
+              key: 'remark',
+              type: 'input',
+              span: 24,
+              props: {
+                type: 'textarea',
+                rows: 3,
+                maxlength: 500,
+                showWordLimit: true,
+                disabled: !canEditNarrative.value
+              }
+            }
+          ] as FormItem[])
+        : [])
     ]),
     rules: {
       accountSetId: [{ required: true, message: '请选择账套', trigger: 'change' }],
@@ -192,6 +240,23 @@
   const voucherTypeOptions = computed(() =>
     (getDictMap.value.fmsVoucherType ?? []).filter((item) => item.value !== 'reversal')
   )
+  const sensitiveFieldFallback = computed<FieldAccessLevel>(() =>
+    form.data.id ? 'hidden' : 'edit'
+  )
+  const narrativeAccess = computed(() =>
+    getFieldAccess(fieldAccess.value, 'templateNarrative', sensitiveFieldFallback.value)
+  )
+  const entryAccess = computed(() =>
+    getFieldAccess(fieldAccess.value, 'templateEntries', sensitiveFieldFallback.value)
+  )
+  const canShowNarrative = computed(() => ['read', 'edit'].includes(narrativeAccess.value))
+  const canShowEntries = computed(() => ['read', 'edit'].includes(entryAccess.value))
+  const canEditNarrative = computed(() =>
+    canEditField(fieldAccess.value, 'templateNarrative', sensitiveFieldFallback.value)
+  )
+  const canEditEntries = computed(() =>
+    canEditField(fieldAccess.value, 'templateEntries', sensitiveFieldFallback.value)
+  )
   const directionOptions = computed(() =>
     (getDictMap.value.fmsBalanceDirection ?? [])
       .filter((item) => item.value === 'debit' || item.value === 'credit')
@@ -202,6 +267,7 @@
   )
 
   function validateLines(): boolean {
+    if (!canEditEntries.value) return true
     if (!form.lines.length) {
       ElMessage.warning('凭证模板至少需要一条分录')
       return false
@@ -224,13 +290,21 @@
     }
     if (!validateLines()) return false
     try {
-      await saveVoucherTemplate({
-        ...cloneDeep(toRaw(form.data)),
+      const payload: Api.Fms.SaveVoucherTemplatePayload = {
+        id: form.data.id,
+        accountSetId: form.data.accountSetId,
         templateCode: form.data.templateCode.trim().toUpperCase(),
         templateName: form.data.templateName.trim(),
-        summary: form.data.summary.trim() || null,
-        remark: form.data.remark.trim() || null,
-        lines: form.lines.map((line, index) => ({
+        isEnabled: form.data.isEnabled,
+        sort: form.data.sort
+      }
+      if (canEditNarrative.value) {
+        payload.summary = form.data.summary.trim() || null
+        payload.remark = form.data.remark.trim() || null
+      }
+      if (canEditEntries.value) {
+        payload.voucherType = form.data.voucherType
+        payload.lines = cloneDeep(form.lines).map((line, index) => ({
           lineNo: index + 1,
           summary: line.summary.trim() || null,
           subjectId: line.subjectId,
@@ -243,7 +317,8 @@
           exchangeRate: Number(line.exchangeRate || 1),
           quantity: Number(line.quantity || 0)
         }))
-      })
+      }
+      await saveVoucherTemplate(payload)
       emit('success')
       return true
     } catch {
@@ -253,23 +328,34 @@
 
   async function handleOpen(dialogContext: DialogContext, row?: Template): Promise<void> {
     Object.assign(context, dialogContext)
+    fieldAccess.value = {}
+    detailLineCount.value = 0
     Object.assign(form.data, createInitialForm(), { accountSetId: context.accountSet.value })
     form.lines = [createLine(1, 'debit'), createLine(2, 'credit')]
     if (row?.id) {
       const { data } = await fetchVoucherTemplateDetail(row.id)
       if (!data) return
+      fieldAccess.value = data.fieldAccess ?? {}
+      detailLineCount.value = data.lineCount ?? 0
       Object.assign(form.data, {
         id: data.id,
         accountSetId: data.accountSetId,
         templateCode: data.templateCode,
         templateName: data.templateName,
-        voucherType: data.voucherType,
-        summary: data.summary ?? '',
         isEnabled: data.isEnabled,
         sort: data.sort,
-        remark: data.remark ?? ''
+        ...(['read', 'edit'].includes(getFieldAccess(data.fieldAccess, 'templateNarrative'))
+          ? { summary: data.summary ?? '', remark: data.remark ?? '' }
+          : {}),
+        ...(['read', 'edit'].includes(getFieldAccess(data.fieldAccess, 'templateEntries')) &&
+        data.voucherType !== '***'
+          ? {
+              voucherType:
+                data.voucherType ?? ('general' as Exclude<Api.Fms.VoucherType, 'reversal'>)
+            }
+          : {})
       })
-      form.lines = (data.lines ?? []).map((line, index) => ({
+      form.lines = (Array.isArray(data.lines) ? data.lines : []).map((line, index) => ({
         lineNo: index + 1,
         summary: line.summary ?? '',
         subjectId: line.subjectId,

@@ -27,11 +27,14 @@
   import { saveAccountSet } from '@/api/fms'
   import { fetchGetEnableTenantList } from '@/api/system-manage'
   import { useUserStore } from '@/store/modules/user'
+  import { canEditField, getFieldAccess, type FieldAccessLevel } from '@/utils/field-permission'
 
   defineOptions({ name: 'FinanceAccountSetDialog' })
 
   type AccountSet = Api.Fms.AccountSetRecord
-  type AccountSetForm = Api.Fms.SaveAccountSetPayload
+  type AccountSetForm = Api.Fms.SaveAccountSetPayload & {
+    fieldAccess?: Api.Fms.AccountSetFieldAccessMap
+  }
 
   interface FormGroup {
     data: AccountSetForm
@@ -103,6 +106,15 @@
   })
 
   const isEdit = computed(() => Boolean(form.data.id))
+  const sensitiveFieldFallback = computed<FieldAccessLevel>(() =>
+    isEdit.value ? 'hidden' : 'edit'
+  )
+  const canShowSensitiveField = (field: Api.Fms.AccountSetFieldKey): boolean =>
+    ['read', 'edit'].includes(
+      getFieldAccess(form.data.fieldAccess, field, sensitiveFieldFallback.value)
+    )
+  const canEditSensitiveField = (field: Api.Fms.AccountSetFieldKey): boolean =>
+    canEditField(form.data.fieldAccess, field, sensitiveFieldFallback.value)
   const booleanOptions = computed(() =>
     (getDictMap.value.commonBoolean ?? []).map((item) => ({
       ...item,
@@ -155,54 +167,68 @@
       span: 12,
       props: { maxlength: 120, placeholder: '请输入营业执照上的企业名称' }
     },
-    {
-      label: '信用代码',
-      key: 'unifiedSocialCreditCode',
-      type: 'input',
-      span: 12,
-      props: {
-        maxlength: 20,
-        placeholder: '统一社会信用代码',
-        onInput: (value: string) => {
-          form.data.unifiedSocialCreditCode = value.toUpperCase() || null
-        }
-      }
-    },
-    { label: '核算政策', key: 'policySection', type: 'divider', span: 24 },
-    {
-      label: '会计准则',
-      key: 'accountingStandard',
-      type: 'select',
-      span: 12,
-      props: {
-        options: getDictMap.value.fmsAccountingStandard ?? [],
-        placeholder: '请选择会计准则'
-      }
-    },
-    {
-      label: '纳税人类型',
-      key: 'vatTaxpayerType',
-      type: 'select',
-      span: 12,
-      props: {
-        options: getDictMap.value.fmsVatTaxpayerType ?? [],
-        placeholder: '请选择纳税人类型'
-      }
-    },
-    {
-      label: '本位币',
-      key: 'baseCurrencyCode',
-      type: 'input',
-      span: 12,
-      help: '使用 ISO 4217 三位币种代码；已有期初余额后不可变更。',
-      props: {
-        maxlength: 3,
-        placeholder: 'CNY',
-        onInput: (value: string) => {
-          form.data.baseCurrencyCode = value.toUpperCase()
-        }
-      }
-    },
+    ...(canShowSensitiveField('taxRegistration') || canShowSensitiveField('accountingPolicy')
+      ? [{ label: '核算政策', key: 'policySection', type: 'divider' as const, span: 24 }]
+      : []),
+    ...(canShowSensitiveField('taxRegistration')
+      ? ([
+          {
+            label: '信用代码',
+            key: 'unifiedSocialCreditCode',
+            type: 'input',
+            span: 12,
+            props: {
+              maxlength: 20,
+              placeholder: '统一社会信用代码',
+              disabled: !canEditSensitiveField('taxRegistration'),
+              onInput: (value: string) => {
+                form.data.unifiedSocialCreditCode = value.toUpperCase() || null
+              }
+            }
+          },
+          {
+            label: '纳税人类型',
+            key: 'vatTaxpayerType',
+            type: 'select',
+            span: 12,
+            props: {
+              options: getDictMap.value.fmsVatTaxpayerType ?? [],
+              placeholder: '请选择纳税人类型',
+              disabled: !canEditSensitiveField('taxRegistration')
+            }
+          }
+        ] as FormItem[])
+      : []),
+    ...(canShowSensitiveField('accountingPolicy')
+      ? ([
+          {
+            label: '会计准则',
+            key: 'accountingStandard',
+            type: 'select',
+            span: 12,
+            props: {
+              options: getDictMap.value.fmsAccountingStandard ?? [],
+              placeholder: '请选择会计准则',
+              disabled: !canEditSensitiveField('accountingPolicy')
+            }
+          },
+          {
+            label: '本位币',
+            key: 'baseCurrencyCode',
+            type: 'input',
+            span: 12,
+            help: '使用 ISO 4217 三位币种代码；已有期初余额后不可变更。',
+            props: {
+              maxlength: 3,
+              placeholder: 'CNY',
+              disabled: !canEditSensitiveField('accountingPolicy'),
+              onInput: (value: string) => {
+                form.data.baseCurrencyCode = value.toUpperCase()
+              }
+            }
+          }
+        ] as FormItem[])
+      : []),
     {
       label: '默认账套',
       key: 'isDefault',
@@ -210,47 +236,62 @@
       span: 12,
       props: { options: booleanOptions.value }
     },
-    { label: '启用期间', key: 'periodSection', type: 'divider', span: 24 },
-    {
-      label: '启用日期',
-      key: 'enabledOn',
-      type: 'date',
-      span: 12,
-      description: isEdit.value
-        ? '账套创建后启用日期不可变更。'
-        : '系统会据此生成首个会计年度的 12 个期间。',
-      props: {
-        type: 'date',
-        valueFormat: 'YYYY-MM-DD',
-        format: 'YYYY-MM-DD',
-        class: '!w-full',
-        disabled: isEdit.value
-      }
-    },
-    {
-      label: '年度起始月',
-      key: 'fiscalYearStartMonth',
-      type: 'number',
-      span: 12,
-      props: {
-        min: 1,
-        max: 12,
-        controlsPosition: 'right',
-        class: '!w-full',
-        disabled: isEdit.value
-      }
-    },
-    {
-      label: '备注',
-      key: 'remark',
-      type: 'input',
-      span: 24,
-      props: { type: 'textarea', rows: 3, maxlength: 500, showWordLimit: true }
-    }
+    ...(canShowSensitiveField('accountingPolicy')
+      ? ([
+          { label: '启用期间', key: 'periodSection', type: 'divider', span: 24 },
+          {
+            label: '启用日期',
+            key: 'enabledOn',
+            type: 'date',
+            span: 12,
+            description: isEdit.value
+              ? '账套创建后启用日期不可变更。'
+              : '系统会据此生成首个会计年度的 12 个期间。',
+            props: {
+              type: 'date',
+              valueFormat: 'YYYY-MM-DD',
+              format: 'YYYY-MM-DD',
+              class: '!w-full',
+              disabled: isEdit.value || !canEditSensitiveField('accountingPolicy')
+            }
+          },
+          {
+            label: '年度起始月',
+            key: 'fiscalYearStartMonth',
+            type: 'number',
+            span: 12,
+            props: {
+              min: 1,
+              max: 12,
+              controlsPosition: 'right',
+              class: '!w-full',
+              disabled: isEdit.value || !canEditSensitiveField('accountingPolicy')
+            }
+          }
+        ] as FormItem[])
+      : []),
+    ...(canShowSensitiveField('administrativeAudit')
+      ? ([
+          { label: '管理信息', key: 'auditSection', type: 'divider', span: 24 },
+          {
+            label: '备注',
+            key: 'remark',
+            type: 'input',
+            span: 24,
+            props: {
+              type: 'textarea',
+              rows: 3,
+              maxlength: 500,
+              showWordLimit: true,
+              disabled: !canEditSensitiveField('administrativeAudit')
+            }
+          }
+        ] as FormItem[])
+      : [])
   ])
 
   function createPayload(): AccountSetForm {
-    return {
+    const payload: AccountSetForm = {
       ...toRaw(form.data),
       accountSetCode: form.data.accountSetCode.trim().toUpperCase(),
       accountSetName: form.data.accountSetName.trim(),
@@ -259,6 +300,21 @@
       baseCurrencyCode: form.data.baseCurrencyCode.trim().toUpperCase(),
       remark: form.data.remark?.trim() || null
     }
+    delete payload.fieldAccess
+    if (isEdit.value && !canEditSensitiveField('taxRegistration')) {
+      delete (payload as Partial<AccountSetForm>).unifiedSocialCreditCode
+      delete (payload as Partial<AccountSetForm>).vatTaxpayerType
+    }
+    if (isEdit.value && !canEditSensitiveField('accountingPolicy')) {
+      delete (payload as Partial<AccountSetForm>).accountingStandard
+      delete (payload as Partial<AccountSetForm>).baseCurrencyCode
+      delete (payload as Partial<AccountSetForm>).enabledOn
+      delete (payload as Partial<AccountSetForm>).fiscalYearStartMonth
+    }
+    if (isEdit.value && !canEditSensitiveField('administrativeAudit')) {
+      delete (payload as Partial<AccountSetForm>).remark
+    }
+    return payload
   }
 
   async function handleSubmit(): Promise<boolean> {
@@ -284,15 +340,27 @@
             accountSetCode: row.accountSetCode,
             accountSetName: row.accountSetName,
             legalEntityName: row.legalEntityName,
-            unifiedSocialCreditCode: row.unifiedSocialCreditCode ?? null,
-            accountingStandard: row.accountingStandard,
-            vatTaxpayerType: row.vatTaxpayerType,
-            baseCurrencyCode: row.baseCurrencyCode,
-            enabledOn: row.enabledOn,
-            fiscalYearStartMonth: row.fiscalYearStartMonth,
             status: row.status,
             isDefault: row.isDefault,
-            remark: row.remark ?? null
+            fieldAccess: row.fieldAccess,
+            ...(['read', 'edit'].includes(getFieldAccess(row.fieldAccess, 'taxRegistration'))
+              ? {
+                  unifiedSocialCreditCode: row.unifiedSocialCreditCode ?? null,
+                  vatTaxpayerType: row.vatTaxpayerType as Api.Fms.VatTaxpayerType
+                }
+              : {}),
+            ...(['read', 'edit'].includes(getFieldAccess(row.fieldAccess, 'accountingPolicy'))
+              ? {
+                  accountingStandard: row.accountingStandard as Api.Fms.AccountingStandard,
+                  baseCurrencyCode: row.baseCurrencyCode ?? 'CNY',
+                  enabledOn: row.enabledOn ?? '',
+                  fiscalYearStartMonth:
+                    typeof row.fiscalYearStartMonth === 'number' ? row.fiscalYearStartMonth : 1
+                }
+              : {}),
+            ...(['read', 'edit'].includes(getFieldAccess(row.fieldAccess, 'administrativeAudit'))
+              ? { remark: row.remark ?? null }
+              : {})
           }
         : {}
     )

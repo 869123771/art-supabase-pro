@@ -9,7 +9,7 @@
       :description="disposalResult.description"
     />
     <div
-      v-if="form.data.amount > 0 && !accountOptions.length"
+      v-if="form.data.amount > 0 && canEditReferences && !accountOptions.length"
       class="fixed-asset-disposal-dialog__prerequisite"
       role="status"
     >
@@ -38,7 +38,8 @@
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
-  import { actFixedAsset, fetchFundAccountOptions } from '@/api/fms'
+  import { actFixedAsset, fetchFixedAssetDetail, fetchFundAccountOptions } from '@/api/fms'
+  import { canEditField } from '@/utils/field-permission'
   import { financeRouteNames } from '@/router/business-paths'
   import { formatCurrencyValue } from '@/utils/ui'
 
@@ -65,6 +66,9 @@
   const formRef = ref<FormExpose>()
   const currentAsset = shallowRef<Asset>()
   const accountOptions = ref<Api.Fms.FundAccountOption[]>([])
+  const canEditReferences = computed(() =>
+    canEditField(currentAsset.value?.fieldAccess, 'assetReferences')
+  )
   const createInitialForm = (): DisposalForm => ({
     actionDate: dayjs().format('YYYY-MM-DD'),
     amount: 0,
@@ -75,6 +79,10 @@
   const formData = reactive<DisposalForm>(createInitialForm())
 
   const validateFundAccount: NonNullable<FormItemRule['validator']> = (_rule, value, callback) => {
+    if (Number(formData.amount || 0) > 0 && !canEditReferences.value) {
+      callback(new Error('登记处置收入需要资产来源与凭证字段编辑权限'))
+      return
+    }
     if (Number(formData.amount || 0) > 0 && !String(value || '').trim()) {
       callback(new Error('有处置收入时必须选择实际收款账户'))
       return
@@ -119,7 +127,8 @@
         props: {
           options: accountOptions.value,
           filterable: true,
-          placeholder: '选择处置收入实际到账账户'
+          placeholder: '选择处置收入实际到账账户',
+          disabled: !canEditReferences.value
         },
         description: accountOptions.value.length
           ? '确认后同步登记资金日记账'
@@ -131,7 +140,12 @@
         type: 'input',
         span: 24,
         hidden: Number(formData.amount || 0) <= 0,
-        props: { clearable: true, maxlength: 120, placeholder: '选填，用于银行对账和追溯' }
+        props: {
+          clearable: true,
+          maxlength: 120,
+          placeholder: '选填，用于银行对账和追溯',
+          disabled: !canEditReferences.value
+        }
       },
       {
         label: '处置原因',
@@ -152,9 +166,9 @@
     const asset = currentAsset.value
     if (!asset) return 0
     return Math.max(
-      Number(asset.originalValue || 0) -
-        Number(asset.accumulatedDepreciation || 0) -
-        Number(asset.impairmentAmount || 0),
+      toFiniteNumber(asset.originalValue) -
+        toFiniteNumber(asset.accumulatedDepreciation) -
+        toFiniteNumber(asset.impairmentAmount),
       0
     )
   })
@@ -201,16 +215,23 @@
 
   async function handleOpen(asset: Asset): Promise<void> {
     await reset()
-    currentAsset.value = asset
-    const { data } = await fetchFundAccountOptions({
-      accountSetId: asset.accountSetId,
-      status: 'active',
-      baseCurrencyOnly: true
-    })
-    accountOptions.value = data ?? []
-    await dialogRef.value?.handleOpen(asset, {
+    const record = (await fetchFixedAssetDetail(asset.id)).data ?? asset
+    if (!canEditField(record.fieldAccess, 'assetValues')) {
+      ElMessage.warning('你没有该资产价值字段的编辑权限，无法执行资产处置')
+      return
+    }
+    currentAsset.value = record
+    if (canEditField(record.fieldAccess, 'assetReferences')) {
+      const { data } = await fetchFundAccountOptions({
+        accountSetId: record.accountSetId,
+        status: 'active',
+        baseCurrencyOnly: true
+      })
+      accountOptions.value = data ?? []
+    }
+    await dialogRef.value?.handleOpen(record, {
       title: '处置固定资产',
-      subtitle: `${asset.assetNo} · ${asset.assetName}`,
+      subtitle: `${record.assetNo} · ${record.assetName}`,
       confirmText: '确认处置',
       contentMaxHeight: '68vh',
       onConfirm: handleSubmit,
@@ -221,6 +242,11 @@
 
   function goToFundAccount(): void {
     void router.push({ name: financeRouteNames.fundAccount })
+  }
+
+  function toFiniteNumber(value: Api.Tms.BasicData.SensitiveNumber | undefined): number {
+    const numberValue = Number(value)
+    return Number.isFinite(numberValue) ? numberValue : 0
   }
 
   defineExpose({ handleOpen })

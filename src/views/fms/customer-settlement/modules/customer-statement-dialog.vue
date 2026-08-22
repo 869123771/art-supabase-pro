@@ -85,6 +85,7 @@
   } from '@/api/fms'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatWithDayjs } from '@/utils/time'
+  import { formatSensitiveNumber, getFieldAccess } from '@/utils/field-permission'
   import { useDocumentNumberRule } from '@/hooks/core/useDocumentNumberRule'
 
   defineOptions({ name: 'FinanceCustomerStatementDialog' })
@@ -111,6 +112,7 @@
   const waybillSelectRef = ref<ArtDataSelectExpose>()
   const selectedCustomers = ref<DataSelectRecord[]>([])
   const selectedWaybills = ref<DataSelectRecord[]>([])
+  const fieldAccess = ref<Api.Fms.CustomerStatementFieldAccessMap>({})
   const statementNumber = useDocumentNumberRule('tms.customer_statement')
 
   const createInitialForm = (): StatementForm => ({
@@ -127,22 +129,30 @@
     Boolean(form.customerId && form.periodRange?.[0] && form.periodRange?.[1])
   )
 
-  const selectedAmount = computed(() =>
-    selectedWaybills.value.reduce(
+  const amountAccess = computed(() => getFieldAccess(fieldAccess.value, 'statementAmounts'))
+
+  const selectedAmount = computed(() => {
+    if (!['read', 'edit'].includes(amountAccess.value)) return null
+    return selectedWaybills.value.reduce(
       (total, row) => total + Number((row as EligibleWaybill).receivableAmount ?? 0),
       0
     )
-  )
+  })
 
-  const formatMoney = (value?: number | null): string =>
-    `¥${Number(value ?? 0).toLocaleString('zh-CN', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    })}`
+  const formatMoney = (value?: number | string | null): string => {
+    const formatted = formatSensitiveNumber(value)
+    return formatted === '***' || formatted === '--' ? formatted : `¥${formatted}`
+  }
+
+  const selectedAmountSummary = computed(() => {
+    if (amountAccess.value === 'hidden') return ''
+    if (amountAccess.value === 'masked') return '，对账金额 ***'
+    return `，对账金额 ${formatMoney(selectedAmount.value)}`
+  })
 
   const selectionSummary = computed(() =>
     selectedWaybills.value.length
-      ? `已选择 ${selectedWaybills.value.length} 条运单，对账金额 ${formatMoney(selectedAmount.value)}`
+      ? `已选择 ${selectedWaybills.value.length} 条运单${selectedAmountSummary.value}`
       : canSelectWaybill.value
         ? '请选择本次需要纳入对账的运单'
         : '请先选择客户和账期，再选择待对账运单'
@@ -156,7 +166,7 @@
     { prop: 'region', label: '所在区域', minWidth: 150 }
   ]
 
-  const waybillColumns: DataSelectColumn[] = [
+  const waybillColumns = computed<DataSelectColumn[]>(() => [
     { prop: 'waybillNo', label: '运单号', width: 170 },
     { prop: 'orderNo', label: '订单号', width: 170 },
     {
@@ -175,14 +185,19 @@
       formatter: (row) =>
         formatWithDayjs((row as EligibleWaybill).completedAt, 'YYYY-MM-DD HH:mm') ?? '-'
     },
-    {
-      prop: 'receivableAmount',
-      label: '应收金额',
-      width: 130,
-      align: 'right',
-      formatter: (row) => formatMoney((row as EligibleWaybill).receivableAmount)
-    }
-  ]
+    ...(amountAccess.value !== 'hidden'
+      ? [
+          {
+            prop: 'receivableAmount',
+            label: '应收金额',
+            width: 130,
+            align: 'right' as const,
+            formatter: (row: DataSelectRecord) =>
+              formatMoney((row as EligibleWaybill).receivableAmount)
+          }
+        ]
+      : [])
+  ])
 
   const formRules: FormRules<StatementForm> = {
     statementNo: [
@@ -263,7 +278,11 @@
   async function fetchWaybillSelectorData(params: DataSelectFetchParams) {
     if (!canSelectWaybill.value) return { data: [], total: 0 }
     const { from, to } = pageInfoHandler({ current: params.page, size: params.pageSize })
-    const { data, total } = await fetchCustomerStatementEligibleWaybills({
+    const {
+      data,
+      fieldAccess: access,
+      total
+    } = await fetchCustomerStatementEligibleWaybills({
       customerId: form.customerId,
       periodStart: form.periodRange[0],
       periodEnd: form.periodRange[1],
@@ -271,6 +290,7 @@
       from,
       to
     })
+    fieldAccess.value = access
     const records = (data ?? []).map((item) => ({
       ...item,
       routeLabel: [item.originStation, item.destinationStation].filter(Boolean).join(' → ')
@@ -281,6 +301,7 @@
   function handleCriteriaChange(): void {
     form.waybillIds = []
     selectedWaybills.value = []
+    fieldAccess.value = {}
     void waybillSelectRef.value?.reload()
   }
 
@@ -293,6 +314,7 @@
     replaceForm(createInitialForm())
     selectedCustomers.value = []
     selectedWaybills.value = []
+    fieldAccess.value = {}
     await nextTick()
     formRef.value?.clearValidate()
   }

@@ -348,8 +348,10 @@
     }
   ]
 
-  function money(value: number): string {
-    return formatCurrencyValue(value)
+  function money(value: Api.Tms.BasicData.SensitiveNumber): string {
+    if (value === null || value === undefined) return '--'
+    const numericValue = Number(value)
+    return Number.isFinite(numericValue) ? formatCurrencyValue(numericValue) : String(value)
   }
 
   function emptyText(value?: string | null): string {

@@ -23,7 +23,10 @@
 
     <AccountingReadinessPanel />
 
-    <div class="finance-workbench__content">
+    <div
+      class="finance-workbench__content"
+      :class="{ 'finance-workbench__content--single': !overview.progressItems.length }"
+    >
       <ArtPageSection
         title="财务待办"
         subtitle="按优先级集中处理当前未完成事项"
@@ -46,6 +49,7 @@
       </ArtPageSection>
 
       <ArtPageSection
+        v-if="overview.progressItems.length"
         title="业务完成率"
         subtitle="跟踪本月关键财务流程推进情况"
         class="finance-workbench__panel"
@@ -67,6 +71,7 @@
     </div>
 
     <ArtPageSection
+      v-if="statsDescriptionItems.length"
       title="本月经营概览"
       subtitle="本月运输收入、成本、毛利及资金核销概况"
       class="finance-workbench__panel"
@@ -109,13 +114,16 @@
   defineOptions({ name: 'FinanceWorkbench' })
 
   type Stats = Api.Fms.FinanceWorkbenchStats
+  type SensitiveNumber = Api.Tms.BasicData.SensitiveNumber
+  type WorkbenchFieldKey = Api.Fms.FinanceWorkbenchFieldKey
+  type FieldAccessLevel = Api.Tms.BasicData.FieldAccessLevel
   type Urgency = '普通' | '关注' | '紧急'
 
   interface WorkbenchTask {
     id: string
     title: string
     count: number
-    amount: number | null
+    amount?: SensitiveNumber
     urgency: Urgency
     routeName: string
     query?: Record<string, string>
@@ -152,41 +160,42 @@
   const collectionAdvisorRef = ref<CollectionAdvisorExpose>()
 
   const createEmptyStats = (): Stats => ({
-    customerReceivableBalance: 0,
-    carrierPayableBalance: 0,
-    monthReceiptAmount: 0,
-    monthPaymentAmount: 0,
-    monthRevenueAmount: 0,
-    monthCostAmount: 0,
-    monthGrossProfit: 0,
-    receiptCompletionRate: 0,
-    paymentCompletionRate: 0,
-    invoiceMatchRate: 0,
-    costApprovalRate: 0,
+    customerReceivableBalance: undefined,
+    carrierPayableBalance: undefined,
+    monthReceiptAmount: undefined,
+    monthPaymentAmount: undefined,
+    monthRevenueAmount: undefined,
+    monthCostAmount: undefined,
+    monthGrossProfit: undefined,
+    receiptCompletionRate: undefined,
+    paymentCompletionRate: undefined,
+    invoiceMatchRate: undefined,
+    costApprovalRate: undefined,
     pendingCustomerStatementCount: 0,
-    pendingCustomerStatementAmount: 0,
+    pendingCustomerStatementAmount: undefined,
     pendingCarrierStatementCount: 0,
-    pendingCarrierStatementAmount: 0,
+    pendingCarrierStatementAmount: undefined,
     pendingCostCount: 0,
-    pendingCostAmount: 0,
+    pendingCostAmount: undefined,
     unallocatedReceiptCount: 0,
-    unallocatedReceiptAmount: 0,
+    unallocatedReceiptAmount: undefined,
     unallocatedPaymentCount: 0,
-    unallocatedPaymentAmount: 0,
+    unallocatedPaymentAmount: undefined,
     draftInvoiceCount: 0,
-    draftInvoiceAmount: 0,
+    draftInvoiceAmount: undefined,
     pendingInvoiceCount: 0,
-    pendingInvoiceAmount: 0,
+    pendingInvoiceAmount: undefined,
     pendingPaymentApplicationCount: 0,
-    pendingPaymentApplicationAmount: 0,
+    pendingPaymentApplicationAmount: undefined,
     approvedUnpaidPaymentCount: 0,
-    approvedUnpaidPaymentAmount: 0,
+    approvedUnpaidPaymentAmount: undefined,
     unapprovedPaymentCount: 0,
-    unapprovedPaymentAmount: 0,
+    unapprovedPaymentAmount: undefined,
     overdueReceivableCount: 0,
-    overdueReceivableAmount: 0,
+    overdueReceivableAmount: undefined,
     uninvoicedReceivableCount: 0,
-    uninvoicedReceivableAmount: 0
+    uninvoicedReceivableAmount: undefined,
+    fieldAccess: {}
   })
 
   const createEmptyWorkload = (): Api.Fms.AccountingWorkloadSummary => ({
@@ -212,101 +221,213 @@
     { label: '支持 AI 回款风险研判', type: 'info', effect: 'plain' }
   ]
 
-  const taskColumns: ColumnOption<WorkbenchTask>[] = [
-    { prop: 'title', label: '待办事项', minWidth: 175 },
-    {
-      prop: 'count',
-      label: '数量',
-      width: 90,
-      align: 'center',
-      formatter: (row) => `${row.count} 项`
-    },
-    {
-      prop: 'amount',
-      label: '涉及金额',
-      minWidth: 135,
-      align: 'right',
-      formatter: (row) => (row.amount === null ? '—' : formatMoney(row.amount))
-    },
-    { prop: 'urgency', label: '优先级', width: 90, useSlot: true },
-    { prop: 'operation', label: '操作', width: 90, fixed: 'right', useSlot: true }
-  ]
-
-  const statsDescriptionData = computed<Record<string, unknown>>(() => ({ ...overview.stats }))
-  const statsDescriptionItems: ArtDescriptionItem[] = [
-    { key: 'revenue', label: '运输收入', field: 'monthRevenueAmount', format: 'money' },
-    { key: 'cost', label: '运输成本', field: 'monthCostAmount', format: 'money' },
-    { key: 'profit', label: '运输毛利', field: 'monthGrossProfit', format: 'money' },
-    {
-      key: 'margin',
-      label: '综合毛利率',
-      value: () => `${grossMargin.value}%`
-    },
-    { key: 'receipt', label: '客户回款', field: 'monthReceiptAmount', format: 'money' },
-    { key: 'payment', label: '承运商付款', field: 'monthPaymentAmount', format: 'money' },
-    {
-      key: 'unallocatedReceipt',
-      label: '未核销收款',
-      field: 'unallocatedReceiptAmount',
-      format: 'money'
-    },
-    {
-      key: 'unallocatedPayment',
-      label: '未核销付款',
-      field: 'unallocatedPaymentAmount',
-      format: 'money'
+  const taskColumns = computed<ColumnOption<WorkbenchTask>[]>(() => {
+    const columns: ColumnOption<WorkbenchTask>[] = [
+      { prop: 'title', label: '待办事项', minWidth: 175 },
+      {
+        prop: 'count',
+        label: '数量',
+        width: 90,
+        align: 'center',
+        formatter: (row) => `${row.count} 项`
+      }
+    ]
+    if (overview.tasks.some((item) => item.amount !== undefined && item.amount !== null)) {
+      columns.push({
+        prop: 'amount',
+        label: '涉及金额',
+        minWidth: 135,
+        align: 'right',
+        formatter: (row) => formatMoney(row.amount)
+      })
     }
-  ]
-
-  const grossMargin = computed(() => {
-    const revenue = Number(overview.stats.monthRevenueAmount || 0)
-    return revenue > 0
-      ? ((Number(overview.stats.monthGrossProfit || 0) / revenue) * 100).toFixed(2)
-      : '0.00'
+    columns.push(
+      { prop: 'urgency', label: '优先级', width: 90, useSlot: true },
+      { prop: 'operation', label: '操作', width: 90, fixed: 'right', useSlot: true }
+    )
+    return columns
   })
 
-  function formatMoney(value?: number | null): string {
-    return `¥${Number(value ?? 0).toLocaleString('zh-CN', {
+  const statsDescriptionData = computed<Record<string, unknown>>(() => ({ ...overview.stats }))
+  const statsDescriptionItems = computed<ArtDescriptionItem[]>(() => {
+    const items: Array<{ access: WorkbenchFieldKey; item: ArtDescriptionItem }> = [
+      {
+        access: 'operatingAmounts',
+        item: {
+          key: 'revenue',
+          label: '运输收入',
+          value: () => formatMoney(overview.stats.monthRevenueAmount)
+        }
+      },
+      {
+        access: 'operatingAmounts',
+        item: {
+          key: 'cost',
+          label: '运输成本',
+          value: () => formatMoney(overview.stats.monthCostAmount)
+        }
+      },
+      {
+        access: 'operatingAmounts',
+        item: {
+          key: 'profit',
+          label: '运输毛利',
+          value: () => formatMoney(overview.stats.monthGrossProfit)
+        }
+      },
+      {
+        access: 'operatingAmounts',
+        item: {
+          key: 'margin',
+          label: '综合毛利率',
+          value: () => formatPercent(grossMargin.value)
+        }
+      },
+      {
+        access: 'cashFlowAmounts',
+        item: {
+          key: 'receipt',
+          label: '客户回款',
+          value: () => formatMoney(overview.stats.monthReceiptAmount)
+        }
+      },
+      {
+        access: 'cashFlowAmounts',
+        item: {
+          key: 'payment',
+          label: '承运商付款',
+          value: () => formatMoney(overview.stats.monthPaymentAmount)
+        }
+      },
+      {
+        access: 'cashFlowAmounts',
+        item: {
+          key: 'unallocatedReceipt',
+          label: '未核销收款',
+          value: () => formatMoney(overview.stats.unallocatedReceiptAmount)
+        }
+      },
+      {
+        access: 'cashFlowAmounts',
+        item: {
+          key: 'unallocatedPayment',
+          label: '未核销付款',
+          value: () => formatMoney(overview.stats.unallocatedPaymentAmount)
+        }
+      }
+    ]
+    return items
+      .filter(({ access }) => fieldAccessLevel(access) !== 'hidden')
+      .map(({ item }) => item)
+  })
+
+  const grossMargin = computed(() => {
+    const revenue = toFiniteNumber(overview.stats.monthRevenueAmount)
+    const profit = toFiniteNumber(overview.stats.monthGrossProfit)
+    if (revenue === undefined || profit === undefined) {
+      return isMaskedValue(overview.stats.monthRevenueAmount) ||
+        isMaskedValue(overview.stats.monthGrossProfit)
+        ? '***'
+        : undefined
+    }
+    return revenue > 0 ? Number(((profit / revenue) * 100).toFixed(2)) : 0
+  })
+
+  function fieldAccessLevel(field: WorkbenchFieldKey): FieldAccessLevel {
+    return overview.stats.fieldAccess?.[field] ?? 'hidden'
+  }
+
+  function isMaskedValue(value: unknown): value is string {
+    return value === '***'
+  }
+
+  function toFiniteNumber(value?: SensitiveNumber): number | undefined {
+    if (value === null || value === undefined || isMaskedValue(value)) return undefined
+    const numberValue = Number(value)
+    return Number.isFinite(numberValue) ? numberValue : undefined
+  }
+
+  function formatMoney(value?: SensitiveNumber): string {
+    if (isMaskedValue(value)) return '***'
+    const numberValue = toFiniteNumber(value)
+    if (numberValue === undefined) return '—'
+    return `¥${numberValue.toLocaleString('zh-CN', {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
     })}`
   }
 
-  function clampRate(value: number): number {
-    return Math.min(100, Math.max(0, Number(value || 0)))
+  function formatPercent(value?: SensitiveNumber): string {
+    if (isMaskedValue(value)) return '***'
+    const numberValue = toFiniteNumber(value)
+    return numberValue === undefined ? '—' : `${numberValue.toFixed(2)}%`
+  }
+
+  function clampRate(value?: SensitiveNumber): number {
+    const numberValue = toFiniteNumber(value)
+    return numberValue === undefined ? 0 : Math.min(100, Math.max(0, numberValue))
+  }
+
+  function withOptionalAmount(label: string, value?: SensitiveNumber): string {
+    return value === undefined || value === null ? label : `${label}，金额 ${formatMoney(value)}`
   }
 
   function buildMetrics(stats: Stats): BusinessWorkspaceMetric[] {
-    return [
+    const profit = toFiniteNumber(stats.monthGrossProfit)
+    const candidates: Array<{ access: WorkbenchFieldKey; metric: BusinessWorkspaceMetric }> = [
       {
-        label: '客户应收余额',
-        value: formatMoney(stats.customerReceivableBalance),
-        description: `本月已回款 ${formatMoney(stats.monthReceiptAmount)}`,
-        icon: 'ri:funds-line',
-        tone: 'primary'
+        access: 'customerSettlementAmounts',
+        metric: {
+          label: '客户应收余额',
+          value: formatMoney(stats.customerReceivableBalance),
+          description:
+            fieldAccessLevel('cashFlowAmounts') === 'hidden'
+              ? '本月回款金额受限'
+              : `本月已回款 ${formatMoney(stats.monthReceiptAmount)}`,
+          icon: 'ri:funds-line',
+          tone: 'primary'
+        }
       },
       {
-        label: '承运商应付余额',
-        value: formatMoney(stats.carrierPayableBalance),
-        description: `本月已付款 ${formatMoney(stats.monthPaymentAmount)}`,
-        icon: 'ri:bank-card-line',
-        tone: 'warning'
+        access: 'carrierSettlementAmounts',
+        metric: {
+          label: '承运商应付余额',
+          value: formatMoney(stats.carrierPayableBalance),
+          description:
+            fieldAccessLevel('cashFlowAmounts') === 'hidden'
+              ? '本月付款金额受限'
+              : `本月已付款 ${formatMoney(stats.monthPaymentAmount)}`,
+          icon: 'ri:bank-card-line',
+          tone: 'warning'
+        }
       },
       {
-        label: '本月回款',
-        value: formatMoney(stats.monthReceiptAmount),
-        description: `回款完成率 ${Number(stats.receiptCompletionRate).toFixed(2)}%`,
-        icon: 'ri:money-cny-circle-line',
-        tone: 'success'
+        access: 'cashFlowAmounts',
+        metric: {
+          label: '本月回款',
+          value: formatMoney(stats.monthReceiptAmount),
+          description:
+            fieldAccessLevel('customerSettlementAmounts') === 'hidden'
+              ? '回款完成率受限'
+              : `回款完成率 ${formatPercent(stats.receiptCompletionRate)}`,
+          icon: 'ri:money-cny-circle-line',
+          tone: 'success'
+        }
       },
       {
-        label: '本月运输毛利',
-        value: formatMoney(stats.monthGrossProfit),
-        description: `综合毛利率 ${grossMargin.value}%`,
-        icon: 'ri:line-chart-line',
-        tone: stats.monthGrossProfit >= 0 ? 'primary' : 'danger'
+        access: 'operatingAmounts',
+        metric: {
+          label: '本月运输毛利',
+          value: formatMoney(stats.monthGrossProfit),
+          description: `综合毛利率 ${formatPercent(grossMargin.value)}`,
+          icon: 'ri:line-chart-line',
+          tone: profit === undefined || profit >= 0 ? 'primary' : 'danger'
+        }
       }
     ]
+    return candidates
+      .filter(({ access }) => fieldAccessLevel(access) !== 'hidden')
+      .map(({ metric }) => metric)
   }
 
   function buildTasks(stats: Stats, workload: Api.Fms.AccountingWorkloadSummary): WorkbenchTask[] {
@@ -477,66 +598,108 @@
   }
 
   function buildProgressItems(stats: Stats): ProgressItem[] {
-    return [
+    const candidates: Array<{ access: WorkbenchFieldKey; item: ProgressItem }> = [
       {
-        label: '客户回款完成率',
-        value: `${Number(stats.receiptCompletionRate).toFixed(2)}%`,
-        percent: clampRate(stats.receiptCompletionRate),
-        color: 'var(--el-color-success)'
+        access: 'customerSettlementAmounts',
+        item: {
+          label: '客户回款完成率',
+          value: formatPercent(stats.receiptCompletionRate),
+          percent: clampRate(stats.receiptCompletionRate),
+          color:
+            toFiniteNumber(stats.receiptCompletionRate) !== undefined
+              ? 'var(--el-color-success)'
+              : 'var(--el-color-info)'
+        }
       },
       {
-        label: '承运商付款完成率',
-        value: `${Number(stats.paymentCompletionRate).toFixed(2)}%`,
-        percent: clampRate(stats.paymentCompletionRate),
-        color: 'var(--el-color-warning)'
+        access: 'carrierSettlementAmounts',
+        item: {
+          label: '承运商付款完成率',
+          value: formatPercent(stats.paymentCompletionRate),
+          percent: clampRate(stats.paymentCompletionRate),
+          color:
+            toFiniteNumber(stats.paymentCompletionRate) !== undefined
+              ? 'var(--el-color-warning)'
+              : 'var(--el-color-info)'
+        }
       },
       {
-        label: '发票匹配完成率',
-        value: `${Number(stats.invoiceMatchRate).toFixed(2)}%`,
-        percent: clampRate(stats.invoiceMatchRate),
-        color: 'var(--el-color-primary)'
+        access: 'invoiceAmounts',
+        item: {
+          label: '发票匹配完成率',
+          value: formatPercent(stats.invoiceMatchRate),
+          percent: clampRate(stats.invoiceMatchRate),
+          color:
+            toFiniteNumber(stats.invoiceMatchRate) !== undefined
+              ? 'var(--el-color-primary)'
+              : 'var(--el-color-info)'
+        }
       },
       {
-        label: '费用审核完成率',
-        value: `${Number(stats.costApprovalRate).toFixed(2)}%`,
-        percent: clampRate(stats.costApprovalRate),
-        color: 'var(--el-color-success)'
+        access: 'operatingAmounts',
+        item: {
+          label: '费用审核完成率',
+          value: formatPercent(stats.costApprovalRate),
+          percent: clampRate(stats.costApprovalRate),
+          color:
+            toFiniteNumber(stats.costApprovalRate) !== undefined
+              ? 'var(--el-color-success)'
+              : 'var(--el-color-info)'
+        }
       }
     ]
+    return candidates
+      .filter(({ access }) => fieldAccessLevel(access) !== 'hidden')
+      .map(({ item }) => item)
   }
 
   function buildReminders(stats: Stats): ReminderItem[] {
     const reminders: ReminderItem[] = []
     if (stats.approvedUnpaidPaymentCount > 0) {
       reminders.push({
-        title: `有 ${stats.approvedUnpaidPaymentCount} 笔付款申请已审批但尚未付款，金额 ${formatMoney(stats.approvedUnpaidPaymentAmount)}`,
+        title: withOptionalAmount(
+          `有 ${stats.approvedUnpaidPaymentCount} 笔付款申请已审批但尚未付款`,
+          stats.approvedUnpaidPaymentAmount
+        ),
         type: 'warning'
       })
     }
     if (stats.unapprovedPaymentCount > 0) {
       reminders.push({
-        title: `发现 ${stats.unapprovedPaymentCount} 笔未关联付款审批的实际付款，金额 ${formatMoney(stats.unapprovedPaymentAmount)}；请复核存量或平台批量入账记录`,
+        title: `${withOptionalAmount(
+          `发现 ${stats.unapprovedPaymentCount} 笔未关联付款审批的实际付款`,
+          stats.unapprovedPaymentAmount
+        )}；请复核存量或平台批量入账记录`,
         type: 'error'
       })
     }
     if (stats.unallocatedReceiptCount > 0) {
       reminders.push({
-        title: `有 ${stats.unallocatedReceiptCount} 笔客户收款尚未完全核销，金额 ${formatMoney(stats.unallocatedReceiptAmount)}`,
+        title: withOptionalAmount(
+          `有 ${stats.unallocatedReceiptCount} 笔客户收款尚未完全核销`,
+          stats.unallocatedReceiptAmount
+        ),
         type: 'warning'
       })
     }
     if (stats.unallocatedPaymentCount > 0) {
       reminders.push({
-        title: `有 ${stats.unallocatedPaymentCount} 笔承运商付款尚未完全核销，金额 ${formatMoney(stats.unallocatedPaymentAmount)}`,
+        title: withOptionalAmount(
+          `有 ${stats.unallocatedPaymentCount} 笔承运商付款尚未完全核销`,
+          stats.unallocatedPaymentAmount
+        ),
         type: 'info'
       })
     }
-    if (
-      stats.invoiceMatchRate < 100 &&
-      (stats.draftInvoiceCount > 0 || stats.pendingInvoiceCount > 0)
-    ) {
+    if (stats.draftInvoiceCount > 0 || stats.pendingInvoiceCount > 0) {
+      const invoiceRate = toFiniteNumber(stats.invoiceMatchRate)
+      const invoiceRateLabel =
+        fieldAccessLevel('invoiceAmounts') === 'hidden'
+          ? ''
+          : `当前发票匹配完成率 ${formatPercent(stats.invoiceMatchRate)}，`
+      if (invoiceRate !== undefined && invoiceRate >= 100) return reminders
       reminders.push({
-        title: `当前发票匹配完成率 ${Number(stats.invoiceMatchRate).toFixed(2)}%，请及时关联对账单并完成复核`,
+        title: `${invoiceRateLabel}请及时关联对账单并完成复核`,
         type: 'info'
       })
     }
@@ -544,12 +707,17 @@
   }
 
   function applyStats(stats: Stats, workload = overview.workload): void {
-    Object.assign(overview.stats, stats)
+    const normalizedStats: Stats = {
+      ...createEmptyStats(),
+      ...stats,
+      fieldAccess: stats.fieldAccess ?? {}
+    }
+    Object.assign(overview.stats, normalizedStats)
     Object.assign(overview.workload, workload)
-    overview.metrics = buildMetrics(stats)
-    overview.tasks = buildTasks(stats, workload)
-    overview.progressItems = buildProgressItems(stats)
-    overview.reminders = buildReminders(stats)
+    overview.metrics = buildMetrics(normalizedStats)
+    overview.tasks = buildTasks(normalizedStats, workload)
+    overview.progressItems = buildProgressItems(normalizedStats)
+    overview.reminders = buildReminders(normalizedStats)
   }
 
   function urgencyType(value: string): TagProps['type'] {
@@ -605,6 +773,10 @@
       grid-template-columns: 1.35fr 1fr;
       gap: 16px;
       min-width: 0;
+
+      &--single {
+        grid-template-columns: 1fr;
+      }
     }
 
     &__panel {

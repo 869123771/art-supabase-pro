@@ -87,37 +87,32 @@ Deno.serve(async (request) => {
   const startedAt = Date.now()
   let runId = ''
   try {
-    const { data: invoice, error: invoiceError } = await userClient
-      .from('tms_invoice_summary')
-      .select('*')
-      .eq('id', invoiceId)
-      .maybeSingle()
-    if (invoiceError) throw invoiceError
+    const { data: auditPayload, error: auditPayloadError } = await userClient.rpc(
+      'tms_get_invoice_compliance_audit_secure',
+      { p_invoice_id: invoiceId }
+    )
+    if (auditPayloadError) {
+      if (auditPayloadError.code === '42501') {
+        return json(
+          { code: 'invoice_field_permission_denied', message: auditPayloadError.message },
+          403
+        )
+      }
+      throw auditPayloadError
+    }
+    if (!auditPayload || typeof auditPayload !== 'object') {
+      return json({ code: 'invoice_not_found', message: '未找到可查看的发票' }, 404)
+    }
+    const payload = auditPayload as Record<string, unknown>
+    const invoice =
+      payload.invoice && typeof payload.invoice === 'object'
+        ? (payload.invoice as Record<string, unknown>)
+        : null
     if (!invoice) return json({ code: 'invoice_not_found', message: '未找到可查看的发票' }, 404)
-
-    const invoiceNo = text(invoice.invoice_no)
-    const invoiceCode = text(invoice.invoice_code)
-    const duplicateQuery = userClient
-      .from('tms_invoice_summary')
-      .select('id,status,invoice_record_no,invoice_code,invoice_no,total_amount')
-      .eq('invoice_no', invoiceNo)
-      .neq('id', invoiceId)
-      .neq('status', 'voided')
-      .limit(20)
-    const [linkResult, duplicateResult] = await Promise.all([
-      userClient
-        .from('tms_invoice_detail_link')
-        .select('*')
-        .eq('invoice_id', invoiceId)
-        .order('period_end', { ascending: true }),
-      invoiceNo
-        ? invoiceCode
-          ? duplicateQuery.eq('invoice_code', invoiceCode)
-          : duplicateQuery
-        : Promise.resolve({ data: [], error: null })
-    ])
-    if (linkResult.error) throw linkResult.error
-    if (duplicateResult.error) throw duplicateResult.error
+    const statementLinks = Array.isArray(payload.statementLinks) ? payload.statementLinks : []
+    const duplicateInvoices = Array.isArray(payload.duplicateInvoices)
+      ? payload.duplicateInvoices
+      : []
 
     const { data: run, error: runError } = await admin
       .from('ai_run')
@@ -142,8 +137,8 @@ Deno.serve(async (request) => {
 
     const assessment = assessInvoiceCompliance({
       invoice,
-      statementLinks: linkResult.data ?? [],
-      duplicateInvoices: duplicateResult.data ?? []
+      statementLinks,
+      duplicateInvoices
     })
 
     const { error: finishError } = await admin

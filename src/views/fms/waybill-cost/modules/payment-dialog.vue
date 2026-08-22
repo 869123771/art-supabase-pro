@@ -32,13 +32,14 @@
 <script setup lang="ts">
   import dayjs from 'dayjs'
   import type { ComputedRef } from 'vue'
-  import type { FormRules } from 'element-plus'
+  import { ElMessage, type FormRules } from 'element-plus'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import ArtUploadImage from '@/components/core/forms/art-upload-image/index.vue'
   import { executeExpenseReimbursement, fetchFundAccountOptions } from '@/api/fms'
   import { formatCurrencyValue } from '@/utils/ui'
+  import { getFieldAccess, isMaskedValue } from '@/utils/field-permission'
   import { useDocumentNumberRule } from '@/hooks/core/useDocumentNumberRule'
 
   defineOptions({ name: 'FinanceWaybillExpensePaymentDialog' })
@@ -147,8 +148,11 @@
     ])
   })
 
-  function money(value?: number | null): string {
-    return formatCurrencyValue(Number(value ?? 0))
+  function money(value?: Api.Tms.BasicData.SensitiveNumber): string {
+    if (isMaskedValue(value)) return '***'
+    if (value === null || value === undefined) return '--'
+    const numericValue = Number(value)
+    return Number.isFinite(numericValue) ? formatCurrencyValue(numericValue) : String(value)
   }
 
   async function handleSubmit(): Promise<boolean> {
@@ -183,6 +187,15 @@
   }
 
   async function handleOpen(row: Reimbursement): Promise<void> {
+    const canReadPaymentContext = ['reimbursementAmounts', 'payeeDetails'].every((field) =>
+      ['read', 'edit'].includes(
+        getFieldAccess(row.fieldAccess, field as Api.Fms.ExpenseReimbursementFieldKey)
+      )
+    )
+    if (!canReadPaymentContext || getFieldAccess(row.fieldAccess, 'paymentExecution') !== 'edit') {
+      ElMessage.warning('当前字段权限不足，无法读取报销付款信息或登记付款结果')
+      return
+    }
     const [, , fundAccounts] = await Promise.all([
       resetForm(),
       paymentNumber.loadRule(),

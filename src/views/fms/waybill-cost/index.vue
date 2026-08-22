@@ -151,9 +151,16 @@
     submitExpenseReimbursement,
     submitWaybillCost
   } from '@/api/fms'
+  import { fetchRecognitionArtifactDetail } from '@/api/intelligent-recognition'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatWithDayjs } from '@/utils/time'
   import { formatCurrencyValue } from '@/utils/ui'
+  import {
+    canViewField,
+    getFieldAccess,
+    isMaskedValue,
+    mergeFieldAccessMaps
+  } from '@/utils/field-permission'
   import {
     financeRouteNames,
     getExpenseReimbursementDetailPath,
@@ -161,6 +168,8 @@
   } from '@/router/business-paths'
   import { useUserStore } from '@/store/modules/user'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import { useAuth } from '@/hooks/core/useAuth'
+  import { toWaybillExpenseOcrAnalyzeResponse } from '@/utils/intelligent-recognition'
   import WaybillExpenseDialog from './modules/waybill-expense-dialog.vue'
   import ReimbursementDialog from './modules/reimbursement-dialog.vue'
   import PaymentDialog from './modules/payment-dialog.vue'
@@ -196,7 +205,11 @@
   }
 
   interface ExpenseDialogExpose {
-    handleOpen: (data?: { row?: Expense; orderId?: string }) => Promise<void>
+    handleOpen: (data?: {
+      row?: Expense
+      orderId?: string
+      ocrResult?: Api.Fms.WaybillExpenseOcrAnalyzeResponse
+    }) => Promise<void>
   }
 
   interface ReimbursementDialogExpose {
@@ -212,17 +225,42 @@
   const userStore = useUserStore()
   const { getDictMap } = storeToRefs(userStore)
   const { confirmAction } = useArtFeedback()
+  const { hasAuth } = useAuth()
   const activeTab = ref<'expense' | 'reimbursement'>(
     route.name === financeRouteNames.expenseReimbursement ? 'reimbursement' : 'expense'
   )
   const expenseFocusMode = ref(false)
   const reimbursementFocusMode = ref(false)
   const overviewLoading = ref(true)
+  const expenseFieldAccess = ref<Api.Fms.WaybillCostFieldAccessMap>({})
+  const reimbursementBaseFieldAccess = ref<Api.Fms.ExpenseReimbursementFieldAccessMap>({})
+  const reimbursementFieldAccess = ref<Api.Fms.ExpenseReimbursementFieldAccessMap>({})
   const focusMode = computed(() =>
     activeTab.value === 'expense' ? expenseFocusMode.value : reimbursementFocusMode.value
   )
   const expenseTableRef = ref<ArtTableQueryExpose>()
   const reimbursementTableRef = ref<ArtTableQueryExpose>()
+  watch(
+    () => [
+      canViewField(expenseFieldAccess.value, 'costAmounts'),
+      canViewField(expenseFieldAccess.value, 'paymentDetails')
+    ],
+    (nextVisibility, previousVisibility) => {
+      if (nextVisibility.every((value, index) => value === previousVisibility?.[index])) return
+      void nextTick(() => expenseTableRef.value?.resetColumns())
+    }
+  )
+  watch(
+    () => [
+      canViewField(reimbursementFieldAccess.value, 'reimbursementAmounts'),
+      canViewField(reimbursementFieldAccess.value, 'payeeDetails'),
+      canViewField(reimbursementFieldAccess.value, 'paymentExecution')
+    ],
+    (nextVisibility, previousVisibility) => {
+      if (nextVisibility.every((value, index) => value === previousVisibility?.[index])) return
+      void nextTick(() => reimbursementTableRef.value?.resetColumns())
+    }
+  )
   const activeTableRef = computed(() =>
     activeTab.value === 'expense' ? expenseTableRef.value : reimbursementTableRef.value
   )
@@ -276,60 +314,65 @@
     }
     return expenseTable.search.auditStatus === 'pending_review' ? 2 : 1
   })
-  const metrics = computed<BusinessWorkspaceMetric[]>(() => [
-    {
-      key: 'all-expenses',
-      label: '费用总笔数',
-      value: `${overview.totalCount} 笔`,
-      description: '查看全部运单费用',
-      icon: 'ri:file-list-3-line',
-      tone: 'primary',
-      interactive: true,
-      selected:
-        activeTab.value === 'expense' &&
-        !expenseTable.search.auditStatus &&
-        !expenseTable.search.settlementStatus,
-      loading: overviewLoading.value
-    },
-    {
-      key: 'pending-review',
-      label: '待财务审核',
-      value: `${overview.pendingReviewCount} 笔`,
-      description: '点击筛选待审费用',
-      icon: 'ri:time-line',
-      tone: 'warning',
-      interactive: true,
-      selected:
-        activeTab.value === 'expense' && expenseTable.search.auditStatus === 'pending_review',
-      loading: overviewLoading.value
-    },
-    {
-      key: 'ready-reimbursement',
-      label: '待转报销',
-      value: `${overview.approvedUnconvertedCount} 笔`,
-      description: '点击选择已审费用',
-      icon: 'ri:exchange-cny-line',
-      tone: 'success',
-      interactive: true,
-      selected:
-        activeTab.value === 'expense' &&
-        expenseTable.search.auditStatus === 'approved' &&
-        expenseTable.search.settlementStatus === 'unsettled',
-      loading: overviewLoading.value
-    },
-    {
-      key: 'pending-payment',
-      label: '待支付金额',
-      value: money(overview.pendingPaymentAmount),
-      description: `进入付款队列 · 已付 ${money(overview.paidAmount)}`,
-      icon: 'ri:secure-payment-line',
-      tone: 'danger',
-      interactive: true,
-      selected:
-        activeTab.value === 'reimbursement' && reimbursementTable.search.status === 'approved',
-      loading: overviewLoading.value
+  const metrics = computed<BusinessWorkspaceMetric[]>(() => {
+    const items: BusinessWorkspaceMetric[] = [
+      {
+        key: 'all-expenses',
+        label: '费用总笔数',
+        value: `${overview.totalCount} 笔`,
+        description: '查看全部运单费用',
+        icon: 'ri:file-list-3-line',
+        tone: 'primary',
+        interactive: true,
+        selected:
+          activeTab.value === 'expense' &&
+          !expenseTable.search.auditStatus &&
+          !expenseTable.search.settlementStatus,
+        loading: overviewLoading.value
+      },
+      {
+        key: 'pending-review',
+        label: '待财务审核',
+        value: `${overview.pendingReviewCount} 笔`,
+        description: '点击筛选待审费用',
+        icon: 'ri:time-line',
+        tone: 'warning',
+        interactive: true,
+        selected:
+          activeTab.value === 'expense' && expenseTable.search.auditStatus === 'pending_review',
+        loading: overviewLoading.value
+      },
+      {
+        key: 'ready-reimbursement',
+        label: '待转报销',
+        value: `${overview.approvedUnconvertedCount} 笔`,
+        description: '点击选择已审费用',
+        icon: 'ri:exchange-cny-line',
+        tone: 'success',
+        interactive: true,
+        selected:
+          activeTab.value === 'expense' &&
+          expenseTable.search.auditStatus === 'approved' &&
+          expenseTable.search.settlementStatus === 'unsettled',
+        loading: overviewLoading.value
+      }
+    ]
+    if (canViewField(overview.fieldAccess, 'costAmounts')) {
+      items.push({
+        key: 'pending-payment',
+        label: '待支付金额',
+        value: money(overview.pendingPaymentAmount),
+        description: `进入付款队列 · 已付 ${money(overview.paidAmount)}`,
+        icon: 'ri:secure-payment-line',
+        tone: 'danger',
+        interactive: true,
+        selected:
+          activeTab.value === 'reimbursement' && reimbursementTable.search.status === 'approved',
+        loading: overviewLoading.value
+      })
     }
-  ])
+    return items
+  })
 
   const expenseTable = reactive<ExpenseTableGroup>({
     search: {
@@ -420,38 +463,56 @@
 
   const reimbursementTable = reactive<ReimbursementTableGroup>({
     search: { keyword: '', status: '', paymentMethod: '', plannedPaymentDateRange: [] },
-    searchItems: computed<SearchFormItem[]>(() => [
-      {
-        label: '审批状态',
-        key: 'status',
-        type: 'select',
-        props: { options: getDictMap.value.tmsReimbursementApprovalStatus ?? [], clearable: true }
-      },
-      {
-        label: '付款方式',
-        key: 'paymentMethod',
-        type: 'select',
-        props: { options: getDictMap.value.tmsCashPaymentMethod ?? [], clearable: true }
-      },
-      {
-        label: '计划付款日',
-        key: 'plannedPaymentDateRange',
-        type: 'date',
-        props: {
-          type: 'daterange',
-          valueFormat: 'YYYY-MM-DD',
-          startPlaceholder: '开始日期',
-          endPlaceholder: '结束日期',
-          style: { width: '100%' }
+    searchItems: computed<SearchFormItem[]>(() => {
+      const items: SearchFormItem[] = [
+        {
+          label: '审批状态',
+          key: 'status',
+          type: 'select',
+          props: { options: getDictMap.value.tmsReimbursementApprovalStatus ?? [], clearable: true }
         }
-      },
-      {
-        label: '关键词',
-        key: 'keyword',
-        type: 'input',
-        props: { clearable: true, placeholder: '报销单、收款人、运单、付款单或流水号' }
+      ]
+      if (
+        ['read', 'edit'].includes(
+          getFieldAccess(reimbursementBaseFieldAccess.value, 'payeeDetails')
+        )
+      ) {
+        items.push({
+          label: '付款方式',
+          key: 'paymentMethod',
+          type: 'select',
+          props: { options: getDictMap.value.tmsCashPaymentMethod ?? [], clearable: true }
+        })
       }
-    ]),
+      items.push(
+        {
+          label: '计划付款日',
+          key: 'plannedPaymentDateRange',
+          type: 'date',
+          props: {
+            type: 'daterange',
+            valueFormat: 'YYYY-MM-DD',
+            startPlaceholder: '开始日期',
+            endPlaceholder: '结束日期',
+            style: { width: '100%' }
+          }
+        },
+        {
+          label: '关键词',
+          key: 'keyword',
+          type: 'input',
+          props: {
+            clearable: true,
+            placeholder: ['read', 'edit'].includes(
+              getFieldAccess(reimbursementBaseFieldAccess.value, 'payeeDetails')
+            )
+              ? '报销单、申请人、收款人或运单'
+              : '报销单、申请人、费用单或运单'
+          }
+        }
+      )
+      return items
+    }),
     headerActions: computed<ArtTableQueryHeaderAction[]>(() => [
       {
         key: 'backToExpense',
@@ -503,26 +564,34 @@
       width: 150,
       formatter: (row) => emptyText(row.expenseItem?.itemName)
     },
-    {
-      prop: 'amount',
-      label: '申报金额',
-      width: 130,
-      align: 'right',
-      formatter: (row) => money(row.amount)
-    },
+    ...(canViewField(expenseFieldAccess.value, 'costAmounts')
+      ? [
+          {
+            prop: 'amount',
+            label: '申报金额',
+            width: 130,
+            align: 'right' as const,
+            formatter: (row: Expense) => money(row.amount)
+          }
+        ]
+      : []),
     {
       prop: 'occurredOn',
       label: '发生日期',
       width: 115,
       formatter: (row) => formatWithDayjs(row.occurredOn, 'YYYY-MM-DD')
     },
-    {
-      prop: 'providerName',
-      label: '服务商',
-      minWidth: 150,
-      showOverflowTooltip: true,
-      formatter: (row) => emptyText(row.providerName)
-    },
+    ...(canViewField(expenseFieldAccess.value, 'paymentDetails')
+      ? [
+          {
+            prop: 'providerName',
+            label: '服务商',
+            minWidth: 150,
+            showOverflowTooltip: true,
+            formatter: (row: Expense) => emptyText(row.providerName)
+          }
+        ]
+      : []),
     {
       prop: 'auditStatus',
       label: '审核状态',
@@ -584,22 +653,39 @@
         )
     },
     { prop: 'applicantNameSnapshot', label: '申请人', width: 115 },
-    { prop: 'payeeName', label: '收款人', minWidth: 150, showOverflowTooltip: true },
+    ...(canViewField(reimbursementFieldAccess.value, 'payeeDetails')
+      ? [
+          {
+            prop: 'payeeName',
+            label: '收款人',
+            minWidth: 150,
+            showOverflowTooltip: true
+          }
+        ]
+      : []),
     { prop: 'waybillNos', label: '关联运单', minWidth: 210, showOverflowTooltip: true },
     { prop: 'itemCount', label: '费用笔数', width: 95, align: 'center' },
-    {
-      prop: 'totalAmount',
-      label: '报销金额',
-      width: 135,
-      align: 'right',
-      formatter: (row) => money(row.totalAmount)
-    },
-    {
-      prop: 'paymentMethod',
-      label: '付款方式',
-      width: 115,
-      dict: { code: 'tmsCashPaymentMethod', display: 'tag' }
-    },
+    ...(canViewField(reimbursementFieldAccess.value, 'reimbursementAmounts')
+      ? [
+          {
+            prop: 'totalAmount',
+            label: '报销金额',
+            width: 135,
+            align: 'right' as const,
+            formatter: (row: Reimbursement) => money(row.totalAmount)
+          }
+        ]
+      : []),
+    ...(canViewField(reimbursementFieldAccess.value, 'payeeDetails')
+      ? [
+          {
+            prop: 'paymentMethod',
+            label: '付款方式',
+            width: 115,
+            dict: { code: 'tmsCashPaymentMethod', display: 'tag' as const }
+          }
+        ]
+      : []),
     { prop: 'plannedPaymentDate', label: '计划付款日', width: 120 },
     {
       prop: 'status',
@@ -607,12 +693,16 @@
       width: 135,
       dict: { code: 'tmsReimbursementApprovalStatus', display: 'tag' }
     },
-    {
-      prop: 'paymentNo',
-      label: '付款单号',
-      width: 195,
-      formatter: (row) => emptyText(row.paymentNo)
-    },
+    ...(canViewField(reimbursementFieldAccess.value, 'paymentExecution')
+      ? [
+          {
+            prop: 'paymentNo',
+            label: '付款单号',
+            width: 195,
+            formatter: (row: Reimbursement) => emptyText(row.paymentNo)
+          }
+        ]
+      : []),
     {
       prop: 'createTime',
       label: '创建时间',
@@ -640,14 +730,25 @@
     }
   ]
 
-  function fetchExpenseTableData(params: ExpenseTableParams) {
+  async function fetchExpenseTableData(params: ExpenseTableParams) {
     const { from, to } = pageInfoHandler({ current: params.current, size: params.size })
-    return fetchWaybillCostList({ ...params, from, to })
+    const result = await fetchWaybillCostList({ ...params, from, to })
+    expenseFieldAccess.value = mergeFieldAccessMaps(
+      result.fieldAccess,
+      ...(result.data ?? []).map((row) => row.fieldAccess)
+    )
+    return result
   }
 
-  function fetchReimbursementTableData(params: ReimbursementTableParams) {
+  async function fetchReimbursementTableData(params: ReimbursementTableParams) {
     const { from, to } = pageInfoHandler({ current: params.current, size: params.size })
-    return fetchExpenseReimbursementList({ ...params, from, to })
+    const result = await fetchExpenseReimbursementList({ ...params, from, to })
+    reimbursementBaseFieldAccess.value = result.fieldAccess
+    reimbursementFieldAccess.value = mergeFieldAccessMaps(
+      result.fieldAccess,
+      ...(result.data ?? []).map((row) => row.fieldAccess)
+    )
+    return result
   }
 
   function navigateToExpenseDetail(event: MouseEvent, id: string): void {
@@ -675,8 +776,11 @@
     return String(value || '--')
   }
 
-  function money(value?: number | null): string {
-    return formatCurrencyValue(Number(value ?? 0))
+  function money(value?: Api.Tms.BasicData.SensitiveNumber): string {
+    if (isMaskedValue(value)) return value
+    if (value === null || value === undefined) return '--'
+    const numericValue = Number(value)
+    return Number.isFinite(numericValue) ? formatCurrencyValue(numericValue) : '--'
   }
 
   function canEditExpense(row: Expense): boolean {
@@ -689,6 +793,7 @@
   function canConvert(row: Expense): boolean {
     return (
       Boolean(row.id) &&
+      ['read', 'edit'].includes(getFieldAccess(row.fieldAccess, 'costAmounts')) &&
       row.auditStatus === 'approved' &&
       row.settlementStatus === 'unsettled' &&
       row.expenseItem?.reimbursementAllowed !== false
@@ -756,19 +861,29 @@
         disabled: !row.id
       },
       {
-        auth: 'FinanceWaybillCost:AiAudit',
-        key: 'aiAudit',
-        label: 'AI 费用审核',
-        icon: 'ri:sparkling-2-line'
-      },
-      {
         auth: 'FinanceWaybillCost:ApprovalHistory',
         key: 'approvalHistory',
         label: '审批记录',
         icon: 'ri:file-history-line'
       }
     ]
-    if (canEditExpense(row)) {
+    const canReadAiEvidence = ['costAmounts', 'paymentDetails', 'expenseEvidence'].every((field) =>
+      ['read', 'edit'].includes(
+        getFieldAccess(row.fieldAccess, field as Api.Fms.WaybillCostFieldKey)
+      )
+    )
+    if (canReadAiEvidence) {
+      actions.splice(1, 0, {
+        auth: 'FinanceWaybillCost:AiAudit',
+        key: 'aiAudit',
+        label: 'AI 费用审核',
+        icon: 'ri:sparkling-2-line'
+      })
+    }
+    if (
+      canEditExpense(row) &&
+      ['read', 'edit'].includes(getFieldAccess(row.fieldAccess, 'costAmounts'))
+    ) {
       actions.push({
         auth: 'FinanceWaybillCost:Submit',
         key: 'submit',
@@ -803,7 +918,7 @@
         icon: 'ri:file-history-line'
       }
     ]
-    if (['draft', 'rejected'].includes(row.status)) {
+    if (['draft', 'rejected'].includes(row.status) && canSubmitReimbursement(row)) {
       actions.push({
         auth: 'FinanceWaybillCost:Submit',
         key: 'submit',
@@ -818,7 +933,7 @@
         color: 'var(--el-color-danger)'
       })
     }
-    if (row.status === 'approved') {
+    if (row.status === 'approved' && canPayReimbursement(row)) {
       actions.push({
         auth: 'FinanceWaybillCost:Pay',
         key: 'pay',
@@ -827,6 +942,20 @@
       })
     }
     return actions
+  }
+
+  function canSubmitReimbursement(row: Reimbursement): boolean {
+    return ['reimbursementAmounts', 'payeeDetails'].every((field) =>
+      ['read', 'edit'].includes(
+        getFieldAccess(row.fieldAccess, field as Api.Fms.ExpenseReimbursementFieldKey)
+      )
+    )
+  }
+
+  function canPayReimbursement(row: Reimbursement): boolean {
+    return (
+      canSubmitReimbursement(row) && getFieldAccess(row.fieldAccess, 'paymentExecution') === 'edit'
+    )
   }
 
   function handleExpenseAction(item: ButtonMoreItem, row: Expense): void {
@@ -852,11 +981,19 @@
     const actions: Record<string, () => void> = {
       submit: () => void handleReimbursementSubmit(row),
       delete: () => void handleReimbursementDelete(row),
-      pay: () => void paymentDialogRef.value?.handleOpen(row),
+      pay: () => openPaymentDialog(row),
       approvalHistory: () =>
         void openApprovalHistory('tms_expense_reimbursement', row.id, row.reimbursementNo)
     }
     actions[String(item.key)]?.()
+  }
+
+  function openPaymentDialog(row: Reimbursement): void {
+    if (!canPayReimbursement(row)) {
+      ElMessage.warning('当前字段权限不足，无法读取报销金额、收款信息或登记付款结果')
+      return
+    }
+    void paymentDialogRef.value?.handleOpen(row)
   }
 
   async function openApprovalHistory(
@@ -905,6 +1042,10 @@
   }
 
   async function handleReimbursementSubmit(row: Reimbursement): Promise<void> {
+    if (!canSubmitReimbursement(row)) {
+      ElMessage.warning('当前字段权限不足，无法读取报销金额和收款信息并提交审批')
+      return
+    }
     try {
       await confirmAction('提交后报销内容将锁定，并进入配置的报销审批流程。', '提交报销审批', {
         type: 'warning',
@@ -969,7 +1110,13 @@
     overviewLoading.value = true
     try {
       const { data } = await fetchWaybillCostOverview()
-      if (data) Object.assign(overview, data)
+      if (data) {
+        Object.assign(overview, data, {
+          pendingPaymentAmount: data.pendingPaymentAmount,
+          paidAmount: data.paidAmount,
+          fieldAccess: data.fieldAccess ?? {}
+        })
+      }
     } finally {
       overviewLoading.value = false
     }
@@ -991,6 +1138,52 @@
     const query = { ...route.query }
     delete query.orderId
     await router.replace({ query })
+  }
+
+  async function openFromRecognitionQuery(): Promise<void> {
+    const artifactId =
+      typeof route.query.aiArtifactId === 'string' ? route.query.aiArtifactId.trim() : ''
+    if (!artifactId) return
+
+    try {
+      if (!hasAuth('FinanceWaybillCost:Add')) {
+        ElMessage.warning('当前角色没有新增运单费用权限，可在识别记录中查看识别依据')
+        return
+      }
+
+      const { data, error } = await fetchRecognitionArtifactDetail(artifactId)
+      if (error) return
+      if (!data) {
+        ElMessage.warning('识别任务不存在或已无权访问')
+        return
+      }
+      if (data.feature !== 'waybill_expense_ocr') {
+        ElMessage.warning('该识别任务不属于运单费用票据')
+        return
+      }
+      if (data.status !== 'pending') {
+        ElMessage.warning('该识别任务已处理，请从识别记录查看最终结果')
+        return
+      }
+
+      activeTab.value = 'expense'
+      await nextTick()
+      await expenseDialogRef.value?.handleOpen({
+        ocrResult: toWaybillExpenseOcrAnalyzeResponse(data)
+      })
+    } finally {
+      const query = { ...route.query }
+      delete query.aiArtifactId
+      await router.replace({ query })
+    }
+  }
+
+  async function openFromRouteQuery(): Promise<void> {
+    if (typeof route.query.aiArtifactId === 'string' && route.query.aiArtifactId.trim()) {
+      await openFromRecognitionQuery()
+      return
+    }
+    await openFromOrderQuery()
   }
 
   onMounted(() => {
@@ -1030,8 +1223,8 @@
 
   watch(
     () => route.fullPath,
-    (orderId) => {
-      if (typeof orderId === 'string' && orderId) void openFromOrderQuery()
+    (fullPath) => {
+      if (typeof fullPath === 'string' && fullPath) void openFromRouteQuery()
     },
     { immediate: true }
   )

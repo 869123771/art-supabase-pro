@@ -2,45 +2,74 @@ import { useSupabase } from '@/hooks'
 
 const { supabase, responseHandle } = useSupabase()
 
+interface TaxPeriodListPayload {
+  records: Api.Fms.TaxPeriodRecord[]
+  total: number
+  fieldAccess: Api.Fms.TaxFieldAccessMap
+}
+
+interface TaxLedgerLineListPayload {
+  records: Api.Fms.TaxLedgerLineRecord[]
+  fieldAccess: Api.Fms.TaxFieldAccessMap
+  isRecordOwner: boolean
+}
+
 export async function fetchTaxPeriodList(params: Api.Fms.TaxPeriodSearchParams = {}) {
   const { accountSetId, from = 0, status, taxType, to = 19 } = params
-  let query = supabase
-    .from('fms_tax_period')
-    .select('*, period:fms_accounting_period!fms_tax_period_period_fkey(*)', { count: 'exact' })
-    .order('create_time', { ascending: false })
-    .range(from, to)
-  if (accountSetId) query = query.eq('account_set_id', accountSetId)
-  if (taxType) query = query.eq('tax_type', taxType)
-  if (status) query = query.eq('status', status)
-  return await responseHandle<Api.Fms.TaxPeriodRecord[]>(() => query, {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
+  const result = await responseHandle<TaxPeriodListPayload>(
+    () =>
+      supabase.rpc('fms_list_tax_periods_secure', {
+        p_from: Math.max(from, 0),
+        p_to: Math.max(to, from),
+        p_account_set_id: accountSetId || null,
+        p_tax_type: taxType || null,
+        p_status: status || null,
+        p_tenant_id: null
+      }),
+    { showErrorMessage: true }
+  )
+  return {
+    data: result.data?.records ?? [],
+    total: result.data?.total ?? 0,
+    error: result.error,
+    fieldAccess: result.data?.fieldAccess ?? {}
+  }
+}
+
+export async function fetchTaxPeriodDetail(id: string) {
+  return await responseHandle<Api.Fms.TaxPeriodRecord>(
+    () => supabase.rpc('fms_get_tax_period_secure', { p_period_id: id }),
+    { showErrorMessage: true }
+  )
 }
 
 export async function fetchTaxLedgerLines(periodId: string) {
-  return await responseHandle<Api.Fms.TaxLedgerLineRecord[]>(
-    () =>
-      supabase
-        .from('fms_tax_ledger_line')
-        .select('*')
-        .eq('tax_period_id', periodId)
-        .order('occurred_on')
-        .order('create_time'),
-    { ignoreCheck: true, showErrorMessage: true }
+  const result = await responseHandle<TaxLedgerLineListPayload>(
+    () => supabase.rpc('fms_list_tax_ledger_lines_secure', { p_period_id: periodId }),
+    { showErrorMessage: true }
   )
+  return {
+    data: result.data?.records ?? [],
+    error: result.error,
+    fieldAccess: result.data?.fieldAccess ?? {},
+    isRecordOwner: result.data?.isRecordOwner ?? false
+  }
 }
 
 export async function fetchTaxSummary(accountSetId?: string) {
   return await responseHandle<Api.Fms.TaxSummary>(
-    () => supabase.rpc('fms_tax_summary', { p_account_set_id: accountSetId || null }).single(),
+    () =>
+      supabase.rpc('fms_tax_summary_secure', {
+        p_account_set_id: accountSetId || null,
+        p_tenant_id: null
+      }),
     { ignoreCheck: true, showErrorMessage: true }
   )
 }
 
 export async function saveTaxPeriod(payload: Api.Fms.SaveTaxPeriodPayload) {
   return await responseHandle<Api.Fms.TaxPeriodRecord>(
-    () => supabase.rpc('save_fms_tax_period', { p_payload: payload }),
+    () => supabase.rpc('save_fms_tax_period_secure', { p_payload: payload }),
     {
       breakReturn: true,
       showMessage: true,
@@ -55,14 +84,17 @@ export async function saveTaxLedgerLine(
 ) {
   return await responseHandle<Api.Fms.TaxLedgerLineRecord>(
     () =>
-      supabase.rpc('save_fms_tax_ledger_line', { p_tax_period_id: periodId, p_payload: payload }),
+      supabase.rpc('save_fms_tax_ledger_line_secure', {
+        p_period_id: periodId,
+        p_payload: payload
+      }),
     { breakReturn: true, showMessage: true, message: '税务台账明细已保存' }
   )
 }
 
 export async function deleteTaxLedgerLine(id: string) {
   return await responseHandle<string>(
-    () => supabase.rpc('delete_fms_tax_ledger_line', { p_line_id: id }),
+    () => supabase.rpc('delete_fms_tax_ledger_line_secure', { p_line_id: id }),
     { breakReturn: true, showMessage: true, message: '税务台账明细已删除' }
   )
 }
@@ -80,8 +112,8 @@ export async function actTaxPeriod(
 ) {
   return await responseHandle<Api.Fms.TaxPeriodRecord>(
     () =>
-      supabase.rpc('act_fms_tax_period', {
-        p_tax_period_id: id,
+      supabase.rpc('act_fms_tax_period_secure', {
+        p_period_id: id,
         p_action: action,
         p_payload: payload
       }),

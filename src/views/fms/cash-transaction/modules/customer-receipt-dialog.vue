@@ -121,6 +121,7 @@
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import CashVoucherOcrPanel from './cash-voucher-ocr-panel.vue'
   import { useDocumentNumberRule } from '@/hooks/core/useDocumentNumberRule'
+  import { canEditField } from '@/utils/field-permission'
 
   defineOptions({ name: 'FinanceCustomerReceiptDialog' })
 
@@ -452,7 +453,7 @@
     return Number.isFinite(result) ? result : 0
   }
 
-  function formatMoney(value?: number | null): string {
+  function formatMoney(value?: number | string | null): string {
     return `¥${numericValue(value).toLocaleString('zh-CN', {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
@@ -648,6 +649,10 @@
   }
 
   async function handleOpen(transaction?: CashTransaction): Promise<void> {
+    if (transaction && !canEditField(transaction.fieldAccess, 'transactionAmounts')) {
+      ElMessage.warning('当前字段权限不允许继续核销该收款')
+      return
+    }
     const [, , fundAccounts] = await Promise.all([
       resetForm(),
       transactionNumber.loadRule(),
@@ -662,7 +667,7 @@
         transactionNo: transaction.transactionNo,
         customerId: transaction.customerId ?? '',
         transactionDate: transaction.transactionDate,
-        amount: transaction.amount,
+        amount: numericValue(transaction.amount),
         paymentMethod: transaction.paymentMethod,
         bankReference: transaction.bankReference ?? '',
         voucherUrls: [...(transaction.voucherUrls ?? [])]

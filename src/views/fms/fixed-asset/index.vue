@@ -63,6 +63,12 @@
   import type { ColumnOption } from '@/types'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatCurrencyValue } from '@/utils/ui'
+  import {
+    canEditField,
+    canViewField,
+    getFieldAccess,
+    mergeFieldAccessMaps
+  } from '@/utils/field-permission'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { useUserStore } from '@/store/modules/user'
   import {
@@ -103,10 +109,18 @@
   const depreciationRef = ref<{ handleOpen: (accountSetId?: string) => Promise<void> }>()
   const accountSetOptions = ref<Api.Fms.AccountSetOption[]>([])
   const categoryOptions = ref<Array<{ label: string; value: string }>>([])
+  const currentRows = ref<Asset[]>([])
+  const listFieldAccess = ref<Api.Fms.FixedAssetFieldAccessMap>({})
   const summary = ref<Api.Fms.FixedAssetSummary>(emptySummary())
   const table = reactive<{ search: SearchParams }>({
     search: { accountSetId: undefined, keyword: '' }
   })
+
+  const effectiveFieldAccess = computed(() =>
+    mergeFieldAccessMaps(listFieldAccess.value, ...currentRows.value.map((row) => row.fieldAccess))
+  )
+  const canViewListField = (field: Api.Fms.FixedAssetFieldKey): boolean =>
+    canViewField(effectiveFieldAccess.value, field)
 
   const metrics = computed<BusinessWorkspaceMetric[]>(() => [
     {
@@ -126,22 +140,26 @@
       icon: 'ri:building-2-line',
       tone: 'success'
     },
-    {
-      key: 'original',
-      label: '资产原值',
-      value: formatCurrencyValue(summary.value.originalValue),
-      description: '全部资产口径',
-      icon: 'ri:money-cny-box-line',
-      tone: 'warning'
-    },
-    {
-      key: 'net',
-      label: '资产净值',
-      value: formatCurrencyValue(summary.value.netValue),
-      description: '扣除累计折旧与减值',
-      icon: 'ri:line-chart-line',
-      tone: 'info'
-    }
+    ...(canViewListField('assetValues')
+      ? [
+          {
+            key: 'original',
+            label: '资产原值',
+            value: formatProtectedAmount(summary.value.originalValue),
+            description: '全部资产口径',
+            icon: 'ri:money-cny-box-line',
+            tone: 'warning' as const
+          },
+          {
+            key: 'net',
+            label: '资产净值',
+            value: formatProtectedAmount(summary.value.netValue),
+            description: '扣除累计折旧与减值',
+            icon: 'ri:line-chart-line',
+            tone: 'info' as const
+          }
+        ]
+      : [])
   ])
 
   const searchItems = computed<SearchFormItem[]>(() => [
@@ -185,7 +203,13 @@
       label: '关键字',
       key: 'keyword',
       type: 'input',
-      props: { clearable: true, placeholder: '资产编号、名称或序列号' }
+      props: {
+        clearable: true,
+        placeholder:
+          canViewListField('assetCustody') || canViewListField('assetReferences')
+            ? '资产编号、名称、地点或序列号'
+            : '资产编号或名称'
+      }
     }
   ])
 
@@ -252,33 +276,41 @@
         minWidth: 140,
         formatter: (row) => row.category?.categoryName || '--'
       },
-      {
-        prop: 'originalValue',
-        label: '原值',
-        minWidth: 130,
-        align: 'right',
-        formatter: (row) => formatCurrencyValue(row.originalValue)
-      },
-      {
-        prop: 'accumulatedDepreciation',
-        label: '累计折旧',
-        minWidth: 130,
-        align: 'right',
-        formatter: (row) => formatCurrencyValue(row.accumulatedDepreciation)
-      },
+      ...(canViewListField('assetValues')
+        ? [
+            {
+              prop: 'originalValue',
+              label: '原值',
+              minWidth: 130,
+              align: 'right' as const,
+              formatter: (row: Asset) => formatProtectedAmount(row.originalValue)
+            },
+            {
+              prop: 'accumulatedDepreciation',
+              label: '累计折旧',
+              minWidth: 130,
+              align: 'right' as const,
+              formatter: (row: Asset) => formatProtectedAmount(row.accumulatedDepreciation)
+            }
+          ]
+        : []),
       {
         prop: 'usefulLifeMonths',
         label: '使用寿命',
         width: 110,
         formatter: (row) => `${row.depreciatedMonths}/${row.usefulLifeMonths} 月`
       },
-      {
-        prop: 'location',
-        label: '存放地点',
-        minWidth: 140,
-        formatter: (row) => row.location || '--',
-        showOverflowTooltip: true
-      },
+      ...(canViewListField('assetCustody')
+        ? [
+            {
+              prop: 'location',
+              label: '存放地点',
+              minWidth: 140,
+              formatter: (row: Asset) => row.location || '--',
+              showOverflowTooltip: true
+            }
+          ]
+        : []),
       {
         prop: 'status',
         label: '状态',
@@ -314,13 +346,18 @@
   function getActionItems(row: Asset): ButtonMoreItem[] {
     if (row.status === 'draft')
       return [
-        {
-          auth: 'FinanceFixedAsset:Activate',
-          key: 'activate',
-          label: '确认转固',
-          icon: 'ri:checkbox-circle-line',
-          color: 'var(--el-color-success)'
-        },
+        ...(getFieldAccess(row.fieldAccess, 'assetValues') === 'read' ||
+        getFieldAccess(row.fieldAccess, 'assetValues') === 'edit'
+          ? [
+              {
+                auth: 'FinanceFixedAsset:Activate',
+                key: 'activate',
+                label: '确认转固',
+                icon: 'ri:checkbox-circle-line',
+                color: 'var(--el-color-success)'
+              }
+            ]
+          : []),
         {
           auth: 'FinanceFixedAsset:Delete',
           key: 'delete',
@@ -338,13 +375,17 @@
           icon: 'ri:pause-circle-line',
           color: 'var(--el-color-warning)'
         },
-        {
-          auth: 'FinanceFixedAsset:Dispose',
-          key: 'dispose',
-          label: '资产处置',
-          icon: 'ri:delete-bin-6-line',
-          color: 'var(--el-color-danger)'
-        }
+        ...(canEditField(row.fieldAccess, 'assetValues')
+          ? [
+              {
+                auth: 'FinanceFixedAsset:Dispose',
+                key: 'dispose',
+                label: '资产处置',
+                icon: 'ri:delete-bin-6-line',
+                color: 'var(--el-color-danger)'
+              }
+            ]
+          : [])
       ]
     if (row.status === 'suspended')
       return [
@@ -355,20 +396,27 @@
           icon: 'ri:play-circle-line',
           color: 'var(--el-color-success)'
         },
-        {
-          auth: 'FinanceFixedAsset:Dispose',
-          key: 'dispose',
-          label: '资产处置',
-          icon: 'ri:delete-bin-6-line',
-          color: 'var(--el-color-danger)'
-        }
+        ...(canEditField(row.fieldAccess, 'assetValues')
+          ? [
+              {
+                auth: 'FinanceFixedAsset:Dispose',
+                key: 'dispose',
+                label: '资产处置',
+                icon: 'ri:delete-bin-6-line',
+                color: 'var(--el-color-danger)'
+              }
+            ]
+          : [])
       ]
     return []
   }
 
   async function fetchTableData(params: TableParams) {
     const { from, to } = pageInfoHandler({ current: params.current, size: params.size })
-    return await fetchFixedAssetList({ ...params, from, to })
+    const result = await fetchFixedAssetList({ ...params, from, to })
+    listFieldAccess.value = result.fieldAccess
+    currentRows.value = result.data ?? []
+    return result
   }
 
   async function loadCategories(): Promise<void> {
@@ -383,6 +431,14 @@
     if (!table.search.accountSetId) return void (summary.value = emptySummary())
     const { data } = await fetchFixedAssetSummary(table.search.accountSetId)
     summary.value = data ?? emptySummary()
+    if (data?.fieldAccess) listFieldAccess.value = data.fieldAccess
+  }
+
+  function formatProtectedAmount(
+    value: Api.Tms.BasicData.SensitiveNumber | undefined | null
+  ): string {
+    if (value === null || value === undefined || value === '') return '--'
+    return formatCurrencyValue(value)
   }
 
   async function handleAction(item: ButtonMoreItem, row: Asset): Promise<void> {

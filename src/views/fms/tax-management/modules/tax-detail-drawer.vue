@@ -23,28 +23,32 @@
         ></div
       ><ElTable :data="lines" row-key="id"
         ><ElTableColumn prop="occurredOn" label="日期" width="115" /><ElTableColumn
+          v-if="canViewSources"
           prop="sourceType"
           label="来源"
           min-width="110"
-        /><ElTableColumn prop="sourceNo" label="来源单号" min-width="140" /><ElTableColumn
-          label="方向"
-          width="100"
+        /><ElTableColumn
+          v-if="canViewSources"
+          prop="sourceNo"
+          label="来源单号"
+          min-width="140"
+        /><ElTableColumn label="方向" width="100"
           ><template #default="{ row }"
             ><ArtDictDisplay
               dict-code="fmsTaxLedgerDirection"
               :value="row.direction"
               display="tag" /></template></ElTableColumn
-        ><ElTableColumn label="计税金额" min-width="120" align="right"
+        ><ElTableColumn v-if="canViewAmounts" label="计税金额" min-width="120" align="right"
           ><template #default="{ row }">{{
-            formatCurrencyValue(row.taxableAmount)
+            formatProtectedAmount(row.taxableAmount)
           }}</template></ElTableColumn
-        ><ElTableColumn label="税率" width="100" align="right"
+        ><ElTableColumn v-if="canViewAmounts" label="税率" width="100" align="right"
           ><template #default="{ row }">{{
-            row.taxRate == null ? '--' : `${(row.taxRate * 100).toFixed(4)}%`
+            formatProtectedRate(row.taxRate)
           }}</template></ElTableColumn
-        ><ElTableColumn label="税额" min-width="120" align="right"
+        ><ElTableColumn v-if="canViewAmounts" label="税额" min-width="120" align="right"
           ><template #default="{ row }">{{
-            formatCurrencyValue(row.taxAmount)
+            formatProtectedAmount(row.taxAmount)
           }}</template></ElTableColumn
         ><ElTableColumn v-if="editable" label="操作" width="110" fixed="right"
           ><template #default="{ row }"
@@ -72,7 +76,8 @@
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import { useAuth } from '@/hooks/core/useAuth'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
-  import { deleteTaxLedgerLine, fetchTaxLedgerLines } from '@/api/fms'
+  import { deleteTaxLedgerLine, fetchTaxLedgerLines, fetchTaxPeriodDetail } from '@/api/fms'
+  import { canEditField, canViewField } from '@/utils/field-permission'
   import { formatCurrencyValue } from '@/utils/ui'
   import TaxLedgerDialog from './tax-ledger-dialog.vue'
   defineOptions({ name: 'FinanceTaxDetailDrawer' })
@@ -88,10 +93,14 @@
   }>()
   const period = ref<Api.Fms.TaxPeriodRecord>()
   const lines = ref<Api.Fms.TaxLedgerLineRecord[]>([])
+  const canViewSources = computed(() => canViewField(period.value?.fieldAccess, 'taxSources'))
+  const canViewAmounts = computed(() => canViewField(period.value?.fieldAccess, 'taxAmounts'))
   const editable = computed(
     () =>
       hasAuth('FinanceTaxManagement:Calculate') &&
-      Boolean(period.value && ['draft', 'calculated'].includes(period.value.status))
+      Boolean(period.value && ['draft', 'calculated'].includes(period.value.status)) &&
+      canEditField(period.value?.fieldAccess, 'taxSources') &&
+      canEditField(period.value?.fieldAccess, 'taxAmounts')
   )
   async function reload() {
     if (!period.value) return
@@ -115,7 +124,7 @@
     }
   }
   async function handleOpen(row: Api.Fms.TaxPeriodRecord) {
-    period.value = row
+    period.value = (await fetchTaxPeriodDetail(row.id)).data ?? row
     await reload()
     await drawerRef.value?.handleOpen(undefined, {
       title: '税务期间详情',
@@ -123,6 +132,19 @@
       contentHeight: 'calc(100vh - 132px)',
       drawerProps: { appendToBody: true, resizable: true, closeOnClickModal: false }
     })
+  }
+  function formatProtectedAmount(
+    value: Api.Tms.BasicData.SensitiveNumber | undefined | null
+  ): string {
+    if (value === null || value === undefined || value === '') return '--'
+    return formatCurrencyValue(value)
+  }
+  function formatProtectedRate(
+    value: Api.Tms.BasicData.SensitiveNumber | undefined | null
+  ): string {
+    if (value === null || value === undefined || value === '') return '--'
+    if (typeof value === 'string') return value
+    return `${(value * 100).toFixed(4)}%`
   }
   defineExpose({ handleOpen })
 </script>

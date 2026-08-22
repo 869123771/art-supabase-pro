@@ -62,6 +62,11 @@
   import { useUserStore } from '@/store/modules/user'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatWithDayjs } from '@/utils/time'
+  import {
+    canViewField,
+    formatSensitiveNumber,
+    mergeFieldAccessMaps
+  } from '@/utils/field-permission'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { useAuth } from '@/hooks/core/useAuth'
   import CarrierStatementDialog from './modules/carrier-statement-dialog.vue'
@@ -74,6 +79,7 @@
   defineOptions({ name: 'FinanceCarrierSettlement' })
 
   type Statement = Api.Fms.CarrierStatementRecord
+  type StatementFieldKey = Api.Fms.CarrierStatementFieldKey
   type SearchParams = Api.Fms.CarrierStatementSearchParams
   type TableParams = SearchParams & Pick<Api.Common.PaginationParams, 'current' | 'size'>
 
@@ -86,6 +92,8 @@
   const dialogRef = ref<{ handleOpen: () => Promise<void> }>()
   const drawerRef = ref<{ handleOpen: (row: Statement) => Promise<void> }>()
   const carrierOptions = ref<Array<{ label: string; value: string }>>([])
+  const fieldAccess = ref<Api.Fms.CarrierStatementFieldAccessMap>({})
+  const currentRows = ref<Statement[]>([])
   const searchQuery = reactive<SearchParams>({
     carrierId: deleteContext.value.carrierId,
     keyword: '',
@@ -132,8 +140,10 @@
     }
   ])
 
-  const formatMoney = (value?: number | null): string =>
-    `¥${Number(value ?? 0).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  const formatMoney = (value?: number | string | null): string => {
+    const formatted = formatSensitiveNumber(value)
+    return formatted === '***' || formatted === '--' ? formatted : `¥${formatted}`
+  }
 
   const renderStatusActions = (row: Statement) => {
     if (row.status === 'draft')
@@ -200,27 +210,35 @@
       align: 'center',
       formatter: (row) => `${row.waybillCount} 单`
     },
-    {
-      prop: 'statementAmount',
-      label: '应付金额',
-      width: 135,
-      align: 'right',
-      formatter: (row) => formatMoney(row.statementAmount)
-    },
-    {
-      prop: 'settledAmount',
-      label: '已付金额',
-      width: 135,
-      align: 'right',
-      formatter: (row) => formatMoney(row.settledAmount)
-    },
-    {
-      prop: 'outstandingAmount',
-      label: '未付金额',
-      width: 135,
-      align: 'right',
-      formatter: (row) => formatMoney(row.outstandingAmount)
-    },
+    ...(canViewListField('statementAmounts')
+      ? [
+          {
+            prop: 'statementAmount',
+            label: '应付金额',
+            width: 135,
+            align: 'right' as const,
+            formatter: (row: Statement) => formatMoney(row.statementAmount)
+          }
+        ]
+      : []),
+    ...(canViewListField('settlementAmounts')
+      ? [
+          {
+            prop: 'settledAmount',
+            label: '已付金额',
+            width: 135,
+            align: 'right' as const,
+            formatter: (row: Statement) => formatMoney(row.settledAmount)
+          },
+          {
+            prop: 'outstandingAmount',
+            label: '未付金额',
+            width: 135,
+            align: 'right' as const,
+            formatter: (row: Statement) => formatMoney(row.outstandingAmount)
+          }
+        ]
+      : []),
     {
       prop: 'status',
       label: '状态',
@@ -251,18 +269,24 @@
     }
   ]
 
-  const excelColumns: ArtTableQueryExcelColumn[] = [
+  const excelColumns = computed<ArtTableQueryExcelColumn[]>(() => [
     { key: 'statementNo', title: '对账单号' },
     { key: 'carrierName', title: '对账承运商' },
     { key: 'periodStart', title: '账期开始' },
     { key: 'periodEnd', title: '账期结束' },
     { key: 'costCount', title: '费用数' },
     { key: 'waybillCount', title: '运单数' },
-    { key: 'statementAmount', title: '应付金额' },
-    { key: 'settledAmount', title: '已付金额' },
-    { key: 'outstandingAmount', title: '未付金额' },
+    ...(canViewListField('statementAmounts')
+      ? [{ key: 'statementAmount', title: '应付金额' }]
+      : []),
+    ...(canViewListField('settlementAmounts')
+      ? [
+          { key: 'settledAmount', title: '已付金额' },
+          { key: 'outstandingAmount', title: '未付金额' }
+        ]
+      : []),
     { key: 'status', title: '状态' }
-  ]
+  ])
 
   const headerActions = computed<ArtTableQueryHeaderAction[]>(() => [
     {
@@ -276,7 +300,7 @@
       type: 'export',
       exportFilename: 'TMS承运商对账单',
       exportSheetName: '承运商对账单',
-      exportColumns: excelColumns,
+      exportColumns: excelColumns.value,
       exportApi: ({ selectedIds, searchParams, maxRows }) =>
         exportCarrierStatementList({
           ...(searchParams as SearchParams),
@@ -286,10 +310,27 @@
     }
   ])
 
-  function fetchTableData(params: TableParams) {
+  async function fetchTableData(params: TableParams) {
     const { from, to } = pageInfoHandler({ current: params.current, size: params.size })
-    return fetchCarrierStatementList({ ...params, from, to })
+    const result = await fetchCarrierStatementList({ ...params, from, to })
+    const previousVisibility = getSensitiveColumnVisibility()
+    fieldAccess.value = result.fieldAccess
+    currentRows.value = result.data
+    if (previousVisibility !== getSensitiveColumnVisibility()) {
+      await nextTick()
+      tableQueryRef.value?.resetColumns()
+    }
+    return result
   }
+
+  const canViewListField = (field: StatementFieldKey): boolean =>
+    canViewField(
+      mergeFieldAccessMaps(fieldAccess.value, ...currentRows.value.map((row) => row.fieldAccess)),
+      field
+    )
+
+  const getSensitiveColumnVisibility = (): string =>
+    `${canViewListField('statementAmounts')}:${canViewListField('settlementAmounts')}`
 
   async function changeStatus(row: Statement, status: Api.Fms.CustomerStatementStatus) {
     const label = status === 'pending_review' ? '提交审核' : '审核通过'

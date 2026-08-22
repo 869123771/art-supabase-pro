@@ -46,7 +46,7 @@
 </template>
 
 <script setup lang="tsx">
-  import { ElButton } from 'element-plus'
+  import { ElButton, ElMessage } from 'element-plus'
   import type { ComputedRef, UnwrapNestedRefs } from 'vue'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type {
@@ -67,7 +67,12 @@
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatWithDayjs } from '@/utils/time'
   import { financeRouteNames } from '@/router/business-paths'
-  import { formatCurrencyValue } from '@/utils/ui'
+  import {
+    canViewField,
+    formatSensitiveNumber,
+    getFieldAccess,
+    mergeFieldAccessMaps
+  } from '@/utils/field-permission'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { useAuth } from '@/hooks/core/useAuth'
   import BusinessWorkspaceHeader from '@/components/business/business-workspace-header/index.vue'
@@ -81,6 +86,7 @@
   defineOptions({ name: 'FinanceCarrierPaymentApplication' })
 
   type Application = Api.Fms.CarrierPaymentApplicationRecord
+  type ApplicationFieldKey = Api.Fms.CarrierPaymentApplicationFieldKey
   type SearchParams = Api.Fms.CarrierPaymentApplicationSearchParams
   type TableParams = SearchParams & Pick<Api.Common.PaginationParams, 'current' | 'size'>
 
@@ -113,6 +119,8 @@
   const dialogRef = ref<DialogExpose>()
   const executeDialogRef = ref<ExecuteDialogExpose>()
   const drawerRef = ref<DrawerExpose>()
+  const fieldAccess = ref<Api.Fms.CarrierPaymentApplicationFieldAccessMap>({})
+  const currentRows = ref<Application[]>([])
 
   const table: UnwrapNestedRefs<TableGroup> = reactive<TableGroup>({
     searchQuery: {
@@ -178,7 +186,7 @@
         type: 'export',
         exportFilename: 'TMS承运商付款申请',
         exportSheetName: '承运商付款申请',
-        exportColumns: excelColumns,
+        exportColumns: excelColumns.value,
         exportApi: ({ selectedIds, searchParams, maxRows }) =>
           exportCarrierPaymentApplicationList({
             ...(searchParams as SearchParams),
@@ -189,18 +197,27 @@
     ])
   })
 
+  const formatMoney = (value?: Api.Tms.BasicData.SensitiveNumber): string => {
+    const formatted = formatSensitiveNumber(value)
+    return formatted === '***' || formatted === '--' ? formatted : `¥${formatted}`
+  }
+
   const columnsFactory = (): ColumnOption<Application>[] => [
     { type: 'selection', width: 50, fixed: 'left', reserveSelection: true },
     { type: 'globalIndex', label: '序号', width: 72 },
     { prop: 'applicationNo', label: '付款申请单号', width: 190 },
     { prop: 'carrierName', label: '付款承运商', minWidth: 190, showOverflowTooltip: true },
-    {
-      prop: 'amount',
-      label: '申请金额',
-      width: 135,
-      align: 'right',
-      formatter: (row) => formatCurrencyValue(row.amount)
-    },
+    ...(canViewListField('applicationAmounts')
+      ? [
+          {
+            prop: 'amount',
+            label: '申请金额',
+            width: 135,
+            align: 'right' as const,
+            formatter: (row: Application) => formatMoney(row.amount)
+          }
+        ]
+      : []),
     {
       prop: 'plannedPaymentDate',
       label: '计划付款日',
@@ -277,11 +294,7 @@
           {row.status === 'approved' && (
             <>
               {hasAuth('FinanceCarrierPaymentApplication:Execute') ? (
-                <ElButton
-                  link
-                  type="success"
-                  onClick={() => void executeDialogRef.value?.handleOpen(row)}
-                >
+                <ElButton link type="success" onClick={() => void handleExecute(row)}>
                   付款登记
                 </ElButton>
               ) : null}
@@ -302,11 +315,11 @@
     }
   ]
 
-  const excelColumns: ArtTableQueryExcelColumn[] = [
+  const excelColumns = computed<ArtTableQueryExcelColumn[]>(() => [
     { key: 'applicationNo', title: '付款申请单号' },
     { key: 'carrierName', title: '付款承运商' },
     { key: 'plannedPaymentDate', title: '计划付款日期' },
-    { key: 'amount', title: '申请金额' },
+    ...(canViewListField('applicationAmounts') ? [{ key: 'amount', title: '申请金额' }] : []),
     { key: 'statementCount', title: '对账单数' },
     { key: 'statementNos', title: '关联对账单' },
     { key: 'paymentMethod', title: '付款方式' },
@@ -314,17 +327,40 @@
     { key: 'paidTransactionNo', title: '付款流水号' },
     { key: 'createBy', title: '申请人' },
     { key: 'createTime', title: '创建时间' }
-  ]
+  ])
 
-  function fetchTableData(params: TableParams) {
+  async function fetchTableData(params: TableParams) {
     const { from, to } = pageInfoHandler({ current: params.current, size: params.size })
-    return fetchCarrierPaymentApplicationList({ ...params, from, to })
+    const result = await fetchCarrierPaymentApplicationList({ ...params, from, to })
+    const previousVisibility = getSensitiveColumnVisibility()
+    fieldAccess.value = result.fieldAccess
+    currentRows.value = result.data
+    if (previousVisibility !== getSensitiveColumnVisibility()) {
+      await nextTick()
+      tableQueryRef.value?.resetColumns()
+    }
+    return result
   }
 
+  const canViewListField = (field: ApplicationFieldKey): boolean =>
+    canViewField(
+      mergeFieldAccessMaps(fieldAccess.value, ...currentRows.value.map((row) => row.fieldAccess)),
+      field
+    )
+
+  const getSensitiveColumnVisibility = (): string => `${canViewListField('applicationAmounts')}`
+
+  const isReadableAccess = (access: Api.Tms.BasicData.FieldAccessLevel): boolean =>
+    access === 'read' || access === 'edit'
+
   async function handleSubmit(row: Application): Promise<void> {
+    if (!isReadableAccess(getFieldAccess(row.fieldAccess, 'applicationAmounts'))) {
+      ElMessage.warning('当前字段权限不允许读取付款申请金额，无法提交审批')
+      return
+    }
     try {
       await confirmAction(
-        `提交后将占用 ${formatCurrencyValue(row.amount)} 可付款额度，并进入审批流程。`,
+        `提交后将占用 ${formatMoney(row.amount)} 可付款额度，并进入审批流程。`,
         '提交付款审批',
         { confirmButtonText: '提交审批', type: 'warning' }
       )
@@ -333,6 +369,14 @@
     } catch {
       // 用户取消或提交失败时保持当前列表状态。
     }
+  }
+
+  function handleExecute(row: Application): void {
+    if (!isReadableAccess(getFieldAccess(row.fieldAccess, 'applicationAmounts'))) {
+      ElMessage.warning('当前字段权限不允许读取付款申请金额，无法登记付款')
+      return
+    }
+    void executeDialogRef.value?.handleOpen(row)
   }
 
   async function handleDelete(row: Application): Promise<void> {

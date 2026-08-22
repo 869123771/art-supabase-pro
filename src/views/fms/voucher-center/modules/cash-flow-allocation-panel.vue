@@ -50,6 +50,7 @@
                 filterable
                 class="!w-full"
                 placeholder="请选择现金流量项目"
+                :disabled="readonly"
               >
                 <ElOption
                   v-for="option in itemOptions(line)"
@@ -70,15 +71,21 @@
                 :step="100"
                 controls-position="right"
                 class="!w-full"
+                :disabled="readonly"
               />
             </template>
           </ElTableColumn>
           <ElTableColumn label="备注" min-width="180">
             <template #default="{ row }">
-              <ElInput v-model="row.remark" maxlength="200" placeholder="可选" />
+              <ElInput
+                v-model="row.remark"
+                maxlength="200"
+                placeholder="可选"
+                :disabled="readonly"
+              />
             </template>
           </ElTableColumn>
-          <ElTableColumn label="操作" width="78" fixed="right" align="center">
+          <ElTableColumn v-if="!readonly" label="操作" width="78" fixed="right" align="center">
             <template #default="{ row }">
               <ElButton type="danger" link @click="removeAllocation(row)">删除</ElButton>
             </template>
@@ -87,6 +94,7 @@
 
         <footer>
           <ElButton
+            v-if="!readonly"
             type="primary"
             plain
             :disabled="!statementItems.length || remainingAmount(line) <= 0"
@@ -114,11 +122,15 @@
   type VoucherLine = Api.Fms.VoucherLineRecord
   type Draft = Api.Fms.VoucherCashFlowAllocationDraft
 
-  const props = defineProps<{
-    lines: VoucherLine[]
-    subjects: Api.Fms.SubjectRecord[]
-    statementItems: Api.Fms.FinancialStatementItemRecord[]
-  }>()
+  const props = withDefaults(
+    defineProps<{
+      lines: VoucherLine[]
+      subjects: Api.Fms.SubjectRecord[]
+      statementItems: Api.Fms.FinancialStatementItemRecord[]
+      readonly?: boolean
+    }>(),
+    { readonly: false }
+  )
   const model = defineModel<Draft[]>({ default: () => [] })
   const { getDictMap } = storeToRefs(useUserStore())
 

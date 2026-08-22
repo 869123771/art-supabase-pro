@@ -29,7 +29,13 @@
             :label="item.label"
             :value="item.value"
         /></ElSelect>
-        <ElButton type="primary" :disabled="!periodId" @click="calculate">计算本期折旧</ElButton>
+        <ElButton
+          type="primary"
+          :disabled="!periodId || !canCalculate"
+          :title="canCalculate ? undefined : '需要资产价值字段编辑权限'"
+          @click="calculate"
+          >计算本期折旧</ElButton
+        >
       </section>
       <ElTable :data="runs" row-key="id" @row-click="selectRun">
         <ElTableColumn prop="runNo" label="批次号" min-width="150" />
@@ -39,9 +45,9 @@
           }}</template></ElTableColumn
         >
         <ElTableColumn prop="assetCount" label="资产数" width="90" />
-        <ElTableColumn label="折旧金额" min-width="130" align="right"
+        <ElTableColumn v-if="canViewRunValues" label="折旧金额" min-width="130" align="right"
           ><template #default="{ row }">{{
-            formatCurrencyValue(row.totalAmount)
+            formatProtectedAmount(row.totalAmount)
           }}</template></ElTableColumn
         >
         <ElTableColumn label="状态" width="100"
@@ -54,7 +60,7 @@
         <ElTableColumn label="操作" width="130" fixed="right"
           ><template #default="{ row }"
             ><ElButton
-              v-if="row.status === 'calculated'"
+              v-if="row.status === 'calculated' && canEditField(row.fieldAccess, 'assetValues')"
               link
               type="primary"
               @click.stop="postRun(row)"
@@ -71,19 +77,19 @@
               >{{ row.asset?.assetNo }} · {{ row.asset?.assetName }}</template
             ></ElTableColumn
           >
-          <ElTableColumn label="期初累计" min-width="120" align="right"
+          <ElTableColumn v-if="canViewLineValues" label="期初累计" min-width="120" align="right"
             ><template #default="{ row }">{{
-              formatCurrencyValue(row.openingAccumulatedDepreciation)
+              formatProtectedAmount(row.openingAccumulatedDepreciation)
             }}</template></ElTableColumn
           >
-          <ElTableColumn label="本期折旧" min-width="120" align="right"
+          <ElTableColumn v-if="canViewLineValues" label="本期折旧" min-width="120" align="right"
             ><template #default="{ row }">{{
-              formatCurrencyValue(row.depreciationAmount)
+              formatProtectedAmount(row.depreciationAmount)
             }}</template></ElTableColumn
           >
-          <ElTableColumn label="期末累计" min-width="120" align="right"
+          <ElTableColumn v-if="canViewLineValues" label="期末累计" min-width="120" align="right"
             ><template #default="{ row }">{{
-              formatCurrencyValue(row.closingAccumulatedDepreciation)
+              formatProtectedAmount(row.closingAccumulatedDepreciation)
             }}</template></ElTableColumn
           >
         </ElTable>
@@ -98,6 +104,7 @@
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { formatCurrencyValue } from '@/utils/ui'
+  import { canEditField, canViewField, mergeFieldAccessMaps } from '@/utils/field-permission'
   import { ACCOUNTING_SELECT_EMPTY_TEXT } from '../../modules/accounting-select-text'
   import {
     actAssetDepreciationRun,
@@ -118,6 +125,17 @@
   const runs = ref<Api.Fms.AssetDepreciationRunRecord[]>([])
   const selectedRun = ref<Api.Fms.AssetDepreciationRunRecord>()
   const lines = ref<Api.Fms.AssetDepreciationLineRecord[]>([])
+  const runFieldAccess = ref<Api.Fms.FixedAssetFieldAccessMap>({})
+  const lineFieldAccess = ref<Api.Fms.FixedAssetFieldAccessMap>({})
+  const effectiveRunAccess = computed(() =>
+    mergeFieldAccessMaps(runFieldAccess.value, ...runs.value.map((row) => row.fieldAccess))
+  )
+  const effectiveLineAccess = computed(() =>
+    mergeFieldAccessMaps(lineFieldAccess.value, ...lines.value.map((row) => row.fieldAccess))
+  )
+  const canCalculate = computed(() => canEditField(runFieldAccess.value, 'assetValues'))
+  const canViewRunValues = computed(() => canViewField(effectiveRunAccess.value, 'assetValues'))
+  const canViewLineValues = computed(() => canViewField(effectiveLineAccess.value, 'assetValues'))
   async function loadPeriods(): Promise<void> {
     periodId.value = ''
     periodOptions.value = []
@@ -133,25 +151,35 @@
     await loadRuns()
   }
   async function loadRuns(): Promise<void> {
-    const { data } = await fetchAssetDepreciationRuns(accountSetId.value)
-    runs.value = data ?? []
+    const result = await fetchAssetDepreciationRuns(accountSetId.value)
+    runs.value = result.data ?? []
+    runFieldAccess.value = result.fieldAccess
   }
   async function selectRun(rawRow: object): Promise<void> {
     const row = rawRow as Api.Fms.AssetDepreciationRunRecord
     selectedRun.value = row
-    const { data } = await fetchAssetDepreciationLines(row.id)
-    lines.value = data ?? []
+    const result = await fetchAssetDepreciationLines(row.id)
+    lines.value = result.data ?? []
+    lineFieldAccess.value = result.fieldAccess
   }
   async function calculate(): Promise<void> {
+    if (!canCalculate.value) {
+      ElMessage.warning('你没有资产价值字段的编辑权限，无法计算折旧')
+      return
+    }
     await calculateAssetDepreciation(periodId.value)
     await loadRuns()
     emit('success')
   }
   async function postRun(rawRow: object): Promise<void> {
     const row = rawRow as Api.Fms.AssetDepreciationRunRecord
+    if (!canEditField(row.fieldAccess, 'assetValues')) {
+      ElMessage.warning('你没有资产价值字段的编辑权限，无法确认折旧')
+      return
+    }
     try {
       await confirmAction(
-        `确认批次 ${row.runNo} 的折旧金额 ${formatCurrencyValue(row.totalAmount)} 吗？`,
+        `确认批次 ${row.runNo} 的折旧金额 ${formatProtectedAmount(row.totalAmount)} 吗？`,
         '确认本期折旧',
         { type: 'warning', confirmButtonText: '确认并入账' }
       )
@@ -173,6 +201,11 @@
       contentHeight: 'calc(100vh - 132px)',
       drawerProps: { appendToBody: true, resizable: true, closeOnClickModal: false }
     })
+  }
+
+  function formatProtectedAmount(value: Api.Tms.BasicData.SensitiveNumber | undefined): string {
+    if (value === null || value === undefined || value === '') return '--'
+    return formatCurrencyValue(value)
   }
   defineExpose({ handleOpen })
 </script>

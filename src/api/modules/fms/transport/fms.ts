@@ -1,7 +1,7 @@
 import { normalizeSupabaseFunctionError } from '@/utils/supabase'
 import { useSupabase } from '@/hooks'
 import type { QueryResult } from '@/types/api/response'
-import { applyDateRange, type SupabaseQueryLike } from '@/api/providers/supabase/query'
+import { applyDateRange } from '@/api/providers/supabase/query'
 import { actWorkflowByBusiness, startWorkflow } from '@/api/workflow'
 import TreeUtils from '@/utils/tree'
 
@@ -20,6 +20,12 @@ type WaybillProfit = Api.Fms.WaybillProfitRecord
 type WaybillProfitSearchParams = Api.Fms.WaybillProfitSearchParams
 type FinanceWorkbenchStats = Api.Fms.FinanceWorkbenchStats
 
+interface SecureListPayload<TRecord, TAccess extends Record<string, string> = never> {
+  records: TRecord[]
+  total: number
+  fieldAccess?: TAccess
+}
+
 const { supabase, keysToSnakeDeep, responseHandle } = useSupabase()
 const expenseItemTreeUtils = new TreeUtils({
   idKey: 'id',
@@ -27,126 +33,29 @@ const expenseItemTreeUtils = new TreeUtils({
   childrenKey: 'children'
 })
 
-const WAYBILL_COST_SELECT = `
-  *,
-  expense_item:tms_expense_item!tms_waybill_cost_expense_item_id_fkey(*),
-  reimbursement:tms_expense_reimbursement!tms_waybill_cost_reimbursement_id_fkey(
-    id,
-    reimbursement_no,
-    status
-  ),
-  expense_payment:tms_expense_payment!tms_waybill_cost_expense_payment_id_fkey(
-    id,
-    payment_no,
-    payment_date,
-    bank_reference
-  ),
-  waybill:tms_waybill!tms_waybill_cost_waybill_id_fkey(
-    id,
-    waybill_no,
-    status,
-    order_id,
-    carrier_id,
-    driver_id,
-    origin_city,
-    destination_city,
-    carrier:tms_carrier!tms_waybill_carrier_id_fkey(id, company_name),
-    driver:tms_driver!tms_waybill_driver_id_fkey(id, driver_name),
-    order:tms_order!tms_waybill_order_id_fkey(
-      id,
-      order_no,
-      dispatch_plate_no,
-      dispatch_driver_name,
-      origin_station,
-      destination_station
-    )
-  )
-`
-
-const WAYBILL_OPTION_SELECT = `
-  id,
-  waybill_no,
-  status,
-  order_id,
-  carrier_id,
-  driver_id,
-  origin_city,
-  destination_city,
-  completed_at,
-  carrier:tms_carrier!tms_waybill_carrier_id_fkey(id, company_name),
-  driver:tms_driver!tms_waybill_driver_id_fkey(id, driver_name),
-  order:tms_order!tms_waybill_order_id_fkey(
-    id,
-    order_no,
-    dispatch_plate_no,
-    dispatch_driver_name,
-    origin_station,
-    destination_station
-  )
-`
-
-const fetchMatchingWaybillIds = async (params: {
-  keyword?: string
-  orderId?: string
-}): Promise<string[]> => {
-  const { keyword, orderId } = params
-  if (!keyword && !orderId) return []
-  let query = supabase.from('tms_waybill').select('id').limit(500)
-  if (orderId) query = query.eq('order_id', orderId)
-  if (keyword) {
-    query = query.or(
-      `waybill_no.ilike.%${keyword}%,origin_city.ilike.%${keyword}%,destination_city.ilike.%${keyword}%`
-    )
+const toCostListRpcParams = (
+  params: WaybillCostSearchParams & { ids?: string[]; maxRows?: number },
+  purpose: 'list' | 'export'
+) => {
+  const from = purpose === 'export' ? 0 : Math.max(params.from ?? 0, 0)
+  const requestedTo = purpose === 'export' ? Math.max((params.maxRows ?? 10000) - 1, 0) : params.to
+  return {
+    p_from: from,
+    p_to: Math.max(requestedTo ?? 9, from),
+    p_record_id: params.recordId || null,
+    p_order_id: params.orderId || null,
+    p_waybill_id: params.waybillId || null,
+    p_carrier_id: params.carrierId || null,
+    p_expense_item_id: params.expenseItemId || null,
+    p_cost_type: params.costType || null,
+    p_audit_status: params.auditStatus || null,
+    p_settlement_status: params.settlementStatus || null,
+    p_occurred_on_start: params.occurredOnRange?.[0] || null,
+    p_occurred_on_end: params.occurredOnRange?.[1] || null,
+    p_keyword: String(params.keyword ?? '').trim() || null,
+    p_ids: params.ids?.length ? params.ids : null,
+    p_purpose: purpose
   }
-  const { data } = await responseHandle<Array<{ id: string }>>(() => query, {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
-  return (data ?? []).map((item) => item.id)
-}
-
-const applyCostFilters = <TQuery extends SupabaseQueryLike>(
-  query: TQuery,
-  params: WaybillCostSearchParams,
-  waybillIds: string[]
-): TQuery => {
-  const {
-    auditStatus,
-    costType,
-    expenseItemId,
-    keyword,
-    occurredOnRange,
-    recordId,
-    settlementStatus
-  } = params
-  if (recordId) query = query.eq('id', recordId)
-  if (auditStatus) query = query.eq('audit_status', auditStatus)
-  if (costType) query = query.eq('cost_type', costType)
-  if (expenseItemId) query = query.eq('expense_item_id', expenseItemId)
-  if (settlementStatus) query = query.eq('settlement_status', settlementStatus)
-  if (params.orderId) {
-    query = waybillIds.length
-      ? query.in('waybill_id', waybillIds)
-      : query.eq('waybill_id', '00000000-0000-0000-0000-000000000000')
-  }
-  if (keyword) {
-    const filters = [
-      `cost_no.ilike.%${keyword}%`,
-      `payee_name.ilike.%${keyword}%`,
-      `provider_name.ilike.%${keyword}%`,
-      `invoice_no.ilike.%${keyword}%`,
-      `waybill_no_snapshot.ilike.%${keyword}%`,
-      `order_no_snapshot.ilike.%${keyword}%`,
-      `plate_no_snapshot.ilike.%${keyword}%`,
-      `driver_name_snapshot.ilike.%${keyword}%`,
-      `remark.ilike.%${keyword}%`,
-      `reporter_name_snapshot.ilike.%${keyword}%`,
-      `reporter_department_snapshot.ilike.%${keyword}%`
-    ]
-    if (waybillIds.length) filters.push(`waybill_id.in.(${waybillIds.join(',')})`)
-    query = query.or(filters.join(','))
-  }
-  return applyDateRange(query, 'occurred_on', occurredOnRange)
 }
 
 const createCostWritePayload = (params: WaybillCost) => ({
@@ -275,8 +184,8 @@ export async function deleteExpenseItem(id: string) {
 
 export async function fetchWaybillCostOverview() {
   const result = await responseHandle<Api.Fms.WaybillCostOverview>(
-    () => supabase.from('tms_waybill_cost_overview').select('*').maybeSingle(),
-    { ignoreCheck: true, showErrorMessage: true }
+    () => supabase.rpc('tms_get_waybill_cost_overview_secure'),
+    { showErrorMessage: true }
   )
   return {
     data: result.data ?? {
@@ -290,73 +199,67 @@ export async function fetchWaybillCostOverview() {
 }
 
 export async function fetchWaybillCostList(params: WaybillCostSearchParams) {
-  const { from = 0, to = 9, keyword } = params
-  const waybillIds = await fetchMatchingWaybillIds({ keyword, orderId: params.orderId })
-  let query = supabase
-    .from('tms_waybill_cost')
-    .select(WAYBILL_COST_SELECT, { count: 'exact' })
-    .order('occurred_on', { ascending: false })
-    .order('create_time', { ascending: false })
-    .range(from, to)
-  query = applyCostFilters(query, params, waybillIds)
-  return await responseHandle<WaybillCost[]>(() => query, {
-    ignoreCheck: true,
+  const result = await responseHandle<
+    SecureListPayload<WaybillCost, Api.Fms.WaybillCostFieldAccessMap>
+  >(() => supabase.rpc('tms_list_waybill_costs_secure', toCostListRpcParams(params, 'list')), {
     showErrorMessage: true
   })
+  return {
+    data: result.data?.records ?? [],
+    total: result.data?.total ?? 0,
+    error: result.error,
+    fieldAccess: result.data?.fieldAccess ?? {}
+  }
 }
 
 export async function fetchWaybillCostDetail(id: string) {
   return await responseHandle<WaybillCost | null>(
-    () => supabase.from('tms_waybill_cost').select(WAYBILL_COST_SELECT).eq('id', id).maybeSingle(),
-    { ignoreCheck: true, showErrorMessage: true }
+    () => supabase.rpc('tms_get_waybill_cost_secure', { p_id: id }),
+    { showErrorMessage: true }
   )
 }
 
 export async function exportWaybillCostList(
   params: WaybillCostSearchParams & { ids?: string[]; maxRows?: number }
 ) {
-  const { ids, maxRows = 10000, keyword } = params
-  const waybillIds = await fetchMatchingWaybillIds({ keyword, orderId: params.orderId })
-  let query = supabase
-    .from('tms_waybill_cost')
-    .select(WAYBILL_COST_SELECT)
-    .order('occurred_on', { ascending: false })
-    .limit(maxRows)
-  query = ids?.length ? query.in('id', ids) : applyCostFilters(query, params, waybillIds)
-  return await responseHandle<WaybillCost[]>(() => query, {
-    ignoreCheck: true,
+  const result = await responseHandle<
+    SecureListPayload<WaybillCost, Api.Fms.WaybillCostFieldAccessMap>
+  >(() => supabase.rpc('tms_list_waybill_costs_secure', toCostListRpcParams(params, 'export')), {
     showErrorMessage: true
   })
+  return {
+    data: result.data?.records ?? [],
+    total: result.data?.total ?? 0,
+    error: result.error,
+    fieldAccess: result.data?.fieldAccess ?? {}
+  }
 }
 
 export async function fetchFinanceWaybillOptions(params: WaybillOptionSearchParams = {}) {
-  const { from = 0, to = 999, keyword, orderId } = params
-  let query = supabase
-    .from('tms_waybill')
-    .select(WAYBILL_OPTION_SELECT, { count: 'exact' })
-    .neq('status', 'cancelled')
-    .order('create_time', { ascending: false })
-    .range(from, to)
-  if (keyword) {
-    query = query.or(
-      `waybill_no.ilike.%${keyword}%,origin_city.ilike.%${keyword}%,destination_city.ilike.%${keyword}%`
-    )
+  const result = await responseHandle<SecureListPayload<WaybillOption>>(
+    () =>
+      supabase.rpc('tms_list_waybill_cost_options_secure', {
+        p_from: Math.max(params.from ?? 0, 0),
+        p_to: Math.max(params.to ?? 999, params.from ?? 0),
+        p_keyword: String(params.keyword ?? '').trim() || null,
+        p_order_id: params.orderId || null
+      }),
+    { showErrorMessage: true }
+  )
+  return {
+    data: result.data?.records ?? [],
+    total: result.data?.total ?? 0,
+    error: result.error
   }
-  if (orderId) query = query.eq('order_id', orderId)
-  return await responseHandle<WaybillOption[]>(() => query, {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
 }
 
 export async function addWaybillCost(params: WaybillCost) {
   return await responseHandle<WaybillCost>(
     () =>
-      supabase
-        .from('tms_waybill_cost')
-        .insert(keysToSnakeDeep(createCostWritePayload(params)))
-        .select(WAYBILL_COST_SELECT)
-        .single(),
+      supabase.rpc('tms_save_waybill_cost_secure', {
+        p_id: null,
+        p_payload: keysToSnakeDeep(createCostWritePayload(params))
+      }),
     { showMessage: true, breakReturn: true }
   )
 }
@@ -365,20 +268,18 @@ export async function editWaybillCost(params: WaybillCost) {
   if (!params.id) throw new Error('缺少费用ID')
   return await responseHandle<WaybillCost>(
     () =>
-      supabase
-        .from('tms_waybill_cost')
-        .update(keysToSnakeDeep(createCostWritePayload(params)), { count: 'exact' })
-        .eq('id', params.id)
-        .select(WAYBILL_COST_SELECT)
-        .single(),
-    { showMessage: true, breakReturn: true, requireAffected: true }
+      supabase.rpc('tms_save_waybill_cost_secure', {
+        p_id: params.id,
+        p_payload: keysToSnakeDeep(createCostWritePayload(params))
+      }),
+    { showMessage: true, breakReturn: true }
   )
 }
 
 export async function deleteWaybillCost(id: string) {
-  return await responseHandle(
-    () => supabase.from('tms_waybill_cost').delete({ count: 'exact' }).eq('id', id),
-    { showMessage: true, breakReturn: true, requireAffected: true }
+  return await responseHandle<string>(
+    () => supabase.rpc('tms_delete_waybill_cost_secure', { p_id: id }),
+    { showMessage: true, breakReturn: true }
   )
 }
 
@@ -400,15 +301,13 @@ export async function reviewWaybillCost(params: CostReviewPayload) {
 }
 
 export async function voidWaybillCost(id: string, reviewRemark?: string | null) {
-  return await responseHandle(
+  return await responseHandle<string>(
     () =>
-      supabase
-        .from('tms_waybill_cost')
-        .update(keysToSnakeDeep({ auditStatus: 'voided', reviewRemark: reviewRemark || null }), {
-          count: 'exact'
-        })
-        .eq('id', id),
-    { showMessage: true, breakReturn: true, requireAffected: true }
+      supabase.rpc('tms_void_waybill_cost_secure', {
+        p_id: id,
+        p_reason: reviewRemark || null
+      }),
+    { showMessage: true, breakReturn: true }
   )
 }
 
@@ -426,55 +325,37 @@ export async function analyzeWaybillCostByAi(
   }
 }
 
-const applyReimbursementFilters = <TQuery extends SupabaseQueryLike>(
-  query: TQuery,
-  params: ReimbursementSearch
-): TQuery => {
-  const { keyword, paymentMethod, plannedPaymentDateRange, status } = params
-  if (status) query = query.eq('status', status)
-  if (paymentMethod) query = query.eq('payment_method', paymentMethod)
-  if (keyword) {
-    const value = keyword.trim()
-    query = query.or(
-      `reimbursement_no.ilike.%${value}%,applicant_name_snapshot.ilike.%${value}%,payee_name.ilike.%${value}%,waybill_nos.ilike.%${value}%,payment_no.ilike.%${value}%,payment_reference.ilike.%${value}%`
-    )
-  }
-  return applyDateRange(query, 'planned_payment_date', plannedPaymentDateRange)
-}
-
 export async function fetchExpenseReimbursementList(params: ReimbursementSearch) {
   const { from = 0, to = 9 } = params
-  let query = supabase
-    .from('tms_expense_reimbursement_summary')
-    .select('*', { count: 'exact' })
-    .order('create_time', { ascending: false })
-    .range(from, to)
-  query = applyReimbursementFilters(query, params)
-  return await responseHandle<Reimbursement[]>(() => query, {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
+  const result = await responseHandle<
+    SecureListPayload<Reimbursement, Api.Fms.ExpenseReimbursementFieldAccessMap>
+  >(
+    () =>
+      supabase.rpc('tms_list_expense_reimbursements_secure', {
+        p_from: Math.max(from, 0),
+        p_to: Math.max(to, from),
+        p_keyword: params.keyword?.trim() || null,
+        p_status: params.status || null,
+        p_payment_method: params.paymentMethod || null,
+        p_planned_payment_date_start: params.plannedPaymentDateRange?.[0] || null,
+        p_planned_payment_date_end: params.plannedPaymentDateRange?.[1] || null,
+        p_ids: null
+      }),
+    { showErrorMessage: true }
+  )
+  return {
+    data: result.data?.records ?? [],
+    total: result.data?.total ?? 0,
+    error: result.error,
+    fieldAccess: result.data?.fieldAccess ?? {}
+  }
 }
 
 export async function fetchExpenseReimbursementDetail(id: string) {
-  const [reimbursement, items] = await Promise.all([
-    responseHandle<Reimbursement>(
-      () => supabase.from('tms_expense_reimbursement_summary').select('*').eq('id', id).single(),
-      { ignoreCheck: true, showErrorMessage: true }
-    ),
-    responseHandle<Api.Fms.ExpenseReimbursementItem[]>(
-      () =>
-        supabase
-          .from('tms_expense_reimbursement_item')
-          .select('*')
-          .eq('reimbursement_id', id)
-          .order('occurred_on_snapshot'),
-      { ignoreCheck: true, showErrorMessage: true }
-    )
-  ])
-  return {
-    data: reimbursement.data ? { ...reimbursement.data, items: items.data ?? [] } : undefined
-  }
+  return await responseHandle<Reimbursement | null>(
+    () => supabase.rpc('tms_get_expense_reimbursement_secure', { p_id: id }),
+    { showErrorMessage: true }
+  )
 }
 
 export async function createExpenseReimbursement(
@@ -501,11 +382,9 @@ export async function submitExpenseReimbursement(row: Reimbursement) {
   return await startWorkflow({
     businessType: 'tms_expense_reimbursement',
     businessId: row.id,
-    businessTitle: `费用报销 ${row.reimbursementNo} · ${row.payeeName}`,
+    businessTitle: `费用报销 ${row.reimbursementNo}`,
     context: {
-      amount: Number(row.totalAmount),
       reimbursementNo: row.reimbursementNo,
-      paymentMethod: row.paymentMethod,
       plannedPaymentDate: row.plannedPaymentDate,
       itemCount: row.itemCount,
       waybillCount: row.waybillCount
@@ -525,7 +404,7 @@ export async function executeExpenseReimbursement(
 ) {
   return await responseHandle<string>(
     () =>
-      supabase.rpc('execute_fms_expense_reimbursement', {
+      supabase.rpc('execute_fms_expense_reimbursement_secure', {
         p_reimbursement_id: params.reimbursementId,
         p_fund_account_id: params.fundAccountId,
         p_payment_date: params.paymentDate,
@@ -598,35 +477,40 @@ export async function fetchWaybillExpenseOcrRunList(params: OcrRunSearch) {
   })
 }
 
-const applyProfitFilters = <TQuery extends SupabaseQueryLike>(
-  query: TQuery,
-  params: WaybillProfitSearchParams
-): TQuery => {
-  const { keyword, waybillStatus, completedAtRange } = params
-  if (waybillStatus) query = query.eq('waybill_status', waybillStatus)
-  if (keyword) {
-    query = query.or(
-      `waybill_no.ilike.%${keyword}%,customer_name.ilike.%${keyword}%,carrier_name.ilike.%${keyword}%,plate_no.ilike.%${keyword}%,driver_name.ilike.%${keyword}%`
-    )
+const toProfitListRpcParams = (
+  params: WaybillProfitSearchParams & { ids?: string[]; maxRows?: number },
+  purpose: 'list' | 'export'
+) => {
+  const from = purpose === 'export' ? 0 : Math.max(params.from ?? 0, 0)
+  const requestedTo = purpose === 'export' ? Math.max((params.maxRows ?? 10000) - 1, 0) : params.to
+  return {
+    p_from: from,
+    p_to: Math.max(requestedTo ?? 9, from),
+    p_keyword: String(params.keyword ?? '').trim() || null,
+    p_waybill_status: params.waybillStatus || null,
+    p_completed_at_start: params.completedAtRange?.[0]
+      ? `${params.completedAtRange[0]}T00:00:00`
+      : null,
+    p_completed_at_end: params.completedAtRange?.[1]
+      ? `${params.completedAtRange[1]}T23:59:59.999`
+      : null,
+    p_ids: params.ids?.length ? params.ids : null,
+    p_purpose: purpose
   }
-  return applyDateRange(query, 'completed_at', completedAtRange, {
-    startOfDay: true,
-    endOfDay: true
-  })
 }
 
 export async function fetchWaybillProfitList(params: WaybillProfitSearchParams) {
-  const { from = 0, to = 9 } = params
-  let query = supabase
-    .from('tms_waybill_profit')
-    .select('*', { count: 'exact' })
-    .order('create_time', { ascending: false })
-    .range(from, to)
-  query = applyProfitFilters(query, params)
-  return await responseHandle<WaybillProfit[]>(() => query, {
-    ignoreCheck: true,
+  const result = await responseHandle<
+    SecureListPayload<WaybillProfit, Api.Fms.WaybillProfitFieldAccessMap>
+  >(() => supabase.rpc('tms_list_waybill_profits_secure', toProfitListRpcParams(params, 'list')), {
     showErrorMessage: true
   })
+  return {
+    data: result.data?.records ?? [],
+    total: result.data?.total ?? 0,
+    error: result.error,
+    fieldAccess: result.data?.fieldAccess ?? {}
+  }
 }
 
 export async function analyzeWaybillProfitByAi(): Promise<
@@ -658,33 +542,25 @@ export async function analyzeReceivablesCollectionByAi(): Promise<
 export async function exportWaybillProfitList(
   params: WaybillProfitSearchParams & { ids?: string[]; maxRows?: number }
 ) {
-  const { ids, maxRows = 10000 } = params
-  let query = supabase
-    .from('tms_waybill_profit')
-    .select('*')
-    .order('create_time', { ascending: false })
-    .limit(maxRows)
-  query = ids?.length ? query.in('id', ids) : applyProfitFilters(query, params)
-  return await responseHandle<WaybillProfit[]>(() => query, {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
+  const result = await responseHandle<
+    SecureListPayload<WaybillProfit, Api.Fms.WaybillProfitFieldAccessMap>
+  >(
+    () => supabase.rpc('tms_list_waybill_profits_secure', toProfitListRpcParams(params, 'export')),
+    {
+      showErrorMessage: true
+    }
+  )
+  return {
+    data: result.data?.records ?? [],
+    total: result.data?.total ?? 0,
+    error: result.error,
+    fieldAccess: result.data?.fieldAccess ?? {}
+  }
 }
 
 export async function fetchFinanceWorkbench() {
-  const [workbenchResponse, exceptionResponse] = await Promise.all([
-    responseHandle<FinanceWorkbenchStats>(
-      () => supabase.from('tms_finance_workbench').select('*').single(),
-      { ignoreCheck: true, showErrorMessage: true }
-    ),
-    responseHandle<Partial<FinanceWorkbenchStats>>(
-      () => supabase.from('tms_finance_exception_summary').select('*').single(),
-      { ignoreCheck: true, showErrorMessage: true }
-    )
-  ])
-  return {
-    data: workbenchResponse.data
-      ? { ...workbenchResponse.data, ...(exceptionResponse.data ?? {}) }
-      : undefined
-  }
+  return await responseHandle<FinanceWorkbenchStats>(
+    () => supabase.rpc('tms_get_finance_workbench_secure'),
+    { showErrorMessage: true }
+  )
 }

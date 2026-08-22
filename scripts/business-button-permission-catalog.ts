@@ -31,6 +31,42 @@ const crud = (
 ]
 
 export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] = [
+  {
+    menuName: 'SmisSafetyDashboard',
+    buttons: [button('View', '查看安全驾驶舱'), button('AiAnalyze', 'AI安全研判')]
+  },
+  {
+    menuName: 'SmisRiskPoint',
+    buttons: [
+      button('View', '查看风险点'),
+      button('Add', '新增风险点'),
+      button('Edit', '编辑风险点'),
+      button('Delete', '删除风险点'),
+      button('Assess', '维护风险评估'),
+      button('ActivateAssessment', '评估生效')
+    ]
+  },
+  {
+    menuName: 'SmisHiddenDanger',
+    buttons: [
+      button('View', '查看隐患'),
+      button('ManagePlan', '维护检查计划'),
+      button('ExecuteInspection', '执行检查'),
+      button('Report', '上报隐患'),
+      button('Assign', '指派整改'),
+      button('Rectify', '提交整改'),
+      button('Review', '复查销号')
+    ]
+  },
+  {
+    menuName: 'SmisAccidentEmergency',
+    buttons: [
+      button('View', '查看事故与应急'),
+      button('ManageAccident', '管理事故事件'),
+      button('ManagePlan', '管理应急预案'),
+      button('ManageDrill', '管理应急演练')
+    ]
+  },
   { menuName: 'TmsCargo', buttons: crud({ import: true, export: true }) },
   { menuName: 'TmsCarrier', buttons: crud({ view: true, import: true, export: true }) },
   { menuName: 'TmsCarrierDetail', buttons: [button('AiAnalyze', 'AI 经营评估')] },

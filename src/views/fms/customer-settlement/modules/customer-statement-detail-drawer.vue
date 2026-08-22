@@ -47,7 +47,7 @@
   import type { ColumnOption } from '@/types'
   import { fetchCustomerStatementDetail } from '@/api/fms'
   import { formatWithDayjs } from '@/utils/time'
-  import { formatCurrencyValue } from '@/utils/ui'
+  import { canViewField, formatSensitiveNumber } from '@/utils/field-permission'
 
   defineOptions({ name: 'FinanceCustomerStatementDetailDrawer' })
 
@@ -59,7 +59,13 @@
   const detail = ref<CustomerStatement>()
   const loadError = shallowRef<Error | null>(null)
 
-  const formatMoney = (value?: number | null): string => formatCurrencyValue(value ?? 0)
+  const formatMoney = (value?: number | string | null): string => {
+    const formatted = formatSensitiveNumber(value)
+    return formatted === '***' || formatted === '--' ? formatted : `¥${formatted}`
+  }
+
+  const canView = (field: Api.Fms.CustomerStatementFieldKey): boolean =>
+    canViewField(detail.value?.fieldAccess, field)
 
   const formatDateTime = (value?: string | null): string =>
     value ? (formatWithDayjs(value, 'YYYY-MM-DD HH:mm') ?? '-') : '-'
@@ -85,9 +91,32 @@
       field: 'waybillCount',
       formatter: (value) => `${Number(value ?? 0)} 单`
     },
-    { key: 'statementAmount', label: '对账金额', field: 'statementAmount', format: 'money' },
-    { key: 'settledAmount', label: '已结金额', field: 'settledAmount', format: 'money' },
-    { key: 'outstandingAmount', label: '未结金额', field: 'outstandingAmount', format: 'money' },
+    ...(canView('statementAmounts')
+      ? [
+          {
+            key: 'statementAmount',
+            label: '对账金额',
+            field: 'statementAmount',
+            formatter: (value: unknown) => formatMoney(value as number | string | null | undefined)
+          }
+        ]
+      : []),
+    ...(canView('settlementAmounts')
+      ? [
+          {
+            key: 'settledAmount',
+            label: '已结金额',
+            field: 'settledAmount',
+            formatter: (value: unknown) => formatMoney(value as number | string | null | undefined)
+          },
+          {
+            key: 'outstandingAmount',
+            label: '未结金额',
+            field: 'outstandingAmount',
+            formatter: (value: unknown) => formatMoney(value as number | string | null | undefined)
+          }
+        ]
+      : []),
     { key: 'createBy', label: '创建人', field: 'createBy' },
     {
       key: 'createTime',
@@ -104,7 +133,7 @@
       : [])
   ])
 
-  const itemColumns: ColumnOption<CustomerStatementItem>[] = [
+  const itemColumns = computed<ColumnOption<CustomerStatementItem>[]>(() => [
     { type: 'globalIndex', label: '序号', width: 66 },
     { prop: 'waybillNoSnapshot', label: '运单号', width: 170 },
     { prop: 'orderNoSnapshot', label: '订单号', width: 170 },
@@ -123,35 +152,39 @@
       width: 165,
       formatter: (row) => formatDateTime(row.completedAtSnapshot)
     },
-    {
-      prop: 'receivableAmount',
-      label: '应收金额',
-      width: 125,
-      align: 'right',
-      formatter: (row) => formatMoney(row.receivableAmount)
-    },
-    {
-      prop: 'adjustmentAmount',
-      label: '调整金额',
-      width: 125,
-      align: 'right',
-      formatter: (row) => formatMoney(row.adjustmentAmount)
-    },
-    {
-      prop: 'lineAmount',
-      label: '对账金额',
-      width: 125,
-      align: 'right',
-      formatter: (row) => formatMoney(row.lineAmount)
-    }
-  ]
+    ...(canView('statementAmounts')
+      ? [
+          {
+            prop: 'receivableAmount',
+            label: '应收金额',
+            width: 125,
+            align: 'right' as const,
+            formatter: (row: CustomerStatementItem) => formatMoney(row.receivableAmount)
+          },
+          {
+            prop: 'adjustmentAmount',
+            label: '调整金额',
+            width: 125,
+            align: 'right' as const,
+            formatter: (row: CustomerStatementItem) => formatMoney(row.adjustmentAmount)
+          },
+          {
+            prop: 'lineAmount',
+            label: '对账金额',
+            width: 125,
+            align: 'right' as const,
+            formatter: (row: CustomerStatementItem) => formatMoney(row.lineAmount)
+          }
+        ]
+      : [])
+  ])
 
   async function loadDetail(id: string): Promise<void> {
     loading.value = true
     loadError.value = null
     try {
       const { data } = await fetchCustomerStatementDetail(id)
-      detail.value = data
+      detail.value = data ?? undefined
     } catch (error) {
       loadError.value = error instanceof Error ? error : new Error('客户对账详情加载失败')
     } finally {

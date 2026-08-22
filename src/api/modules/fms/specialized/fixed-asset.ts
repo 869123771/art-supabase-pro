@@ -2,84 +2,111 @@ import { useSupabase } from '@/hooks'
 
 const { supabase, responseHandle } = useSupabase()
 
+type Asset = Api.Fms.FixedAssetRecord
+
+interface FixedAssetListPayload {
+  records: Asset[]
+  total: number
+  fieldAccess: Api.Fms.FixedAssetFieldAccessMap
+}
+
+interface DepreciationRunListPayload {
+  records: Api.Fms.AssetDepreciationRunRecord[]
+  fieldAccess: Api.Fms.FixedAssetFieldAccessMap
+}
+
+interface DepreciationLineListPayload {
+  records: Api.Fms.AssetDepreciationLineRecord[]
+  fieldAccess: Api.Fms.FixedAssetFieldAccessMap
+}
+
 export async function fetchAssetCategoryList(accountSetId?: string) {
-  let query = supabase.from('fms_asset_category').select('*').order('sort').order('category_code')
-  if (accountSetId) query = query.eq('account_set_id', accountSetId)
-  return await responseHandle<Api.Fms.AssetCategoryRecord[]>(() => query, {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
+  return await responseHandle<Api.Fms.AssetCategoryRecord[]>(
+    () =>
+      supabase.rpc('fms_list_asset_categories_secure', {
+        p_account_set_id: accountSetId || null,
+        p_tenant_id: null
+      }),
+    {
+      ignoreCheck: true,
+      showErrorMessage: true
+    }
+  )
 }
 
 export async function fetchFixedAssetList(params: Api.Fms.FixedAssetSearchParams = {}) {
   const { accountSetId, categoryId, from = 0, keyword, status, to = 19 } = params
-  let query = supabase
-    .from('fms_fixed_asset')
-    .select(
-      '*, category:fms_asset_category!fms_fixed_asset_category_fkey(id,category_code,category_name)',
-      {
-        count: 'exact'
-      }
-    )
-    .order('asset_no')
-    .range(from, to)
-  if (accountSetId) query = query.eq('account_set_id', accountSetId)
-  if (categoryId) query = query.eq('category_id', categoryId)
-  if (status) query = query.eq('status', status)
-  if (keyword?.trim()) {
-    const value = keyword.trim()
-    query = query.or(
-      `asset_no.ilike.%${value}%,asset_name.ilike.%${value}%,serial_no.ilike.%${value}%,location.ilike.%${value}%`
-    )
+  const result = await responseHandle<FixedAssetListPayload>(
+    () =>
+      supabase.rpc('fms_list_fixed_assets_secure', {
+        p_from: Math.max(from, 0),
+        p_to: Math.max(to, from),
+        p_account_set_id: accountSetId || null,
+        p_category_id: categoryId || null,
+        p_status: status || null,
+        p_keyword: keyword?.trim() || null,
+        p_tenant_id: null
+      }),
+    { showErrorMessage: true }
+  )
+  return {
+    data: result.data?.records ?? [],
+    total: result.data?.total ?? 0,
+    error: result.error,
+    fieldAccess: result.data?.fieldAccess ?? {}
   }
-  return await responseHandle<Api.Fms.FixedAssetRecord[]>(() => query, {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
+}
+
+export async function fetchFixedAssetDetail(id: string) {
+  return await responseHandle<Asset>(
+    () => supabase.rpc('fms_get_fixed_asset_secure', { p_asset_id: id }),
+    { showErrorMessage: true }
+  )
 }
 
 export async function fetchAssetDepreciationRuns(accountSetId?: string) {
-  let query = supabase
-    .from('fms_asset_depreciation_run')
-    .select('*, period:fms_accounting_period!fms_asset_depreciation_run_period_fkey(*)')
-    .order('create_time', { ascending: false })
-  if (accountSetId) query = query.eq('account_set_id', accountSetId)
-  return await responseHandle<Api.Fms.AssetDepreciationRunRecord[]>(() => query, {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
+  const result = await responseHandle<DepreciationRunListPayload>(
+    () =>
+      supabase.rpc('fms_list_asset_depreciation_runs_secure', {
+        p_account_set_id: accountSetId || null,
+        p_tenant_id: null
+      }),
+    { showErrorMessage: true }
+  )
+  return {
+    data: result.data?.records ?? [],
+    error: result.error,
+    fieldAccess: result.data?.fieldAccess ?? {}
+  }
 }
 
 export async function fetchAssetDepreciationLines(runId: string) {
-  return await responseHandle<Api.Fms.AssetDepreciationLineRecord[]>(
-    () =>
-      supabase
-        .from('fms_asset_depreciation_line')
-        .select(
-          '*, asset:fms_fixed_asset!fms_asset_depreciation_line_asset_fkey(id,asset_no,asset_name)'
-        )
-        .eq('run_id', runId)
-        .order('create_time'),
-    { ignoreCheck: true, showErrorMessage: true }
+  const result = await responseHandle<DepreciationLineListPayload>(
+    () => supabase.rpc('fms_list_asset_depreciation_lines_secure', { p_run_id: runId }),
+    { showErrorMessage: true }
   )
+  return {
+    data: result.data?.records ?? [],
+    error: result.error,
+    fieldAccess: result.data?.fieldAccess ?? {}
+  }
 }
 
 export async function fetchFixedAssetSummary(accountSetId?: string, periodId?: string) {
   return await responseHandle<Api.Fms.FixedAssetSummary>(
     () =>
-      supabase
-        .rpc('fms_fixed_asset_summary', {
-          p_account_set_id: accountSetId || null,
-          p_period_id: periodId || null
-        })
-        .single(),
+      supabase.rpc('fms_fixed_asset_summary_secure', {
+        p_account_set_id: accountSetId || null,
+        p_period_id: periodId || null,
+        p_tenant_id: null
+      }),
     { ignoreCheck: true, showErrorMessage: true }
   )
 }
 
 export async function saveAssetCategory(payload: Api.Fms.SaveAssetCategoryPayload) {
   return await responseHandle<Api.Fms.AssetCategoryRecord>(
-    () => supabase.rpc('save_fms_asset_category', { p_payload: payload }),
+    () => supabase.rpc('save_fms_asset_category_secure', { p_payload: payload }),
     {
       breakReturn: true,
       showMessage: true,
@@ -90,14 +117,14 @@ export async function saveAssetCategory(payload: Api.Fms.SaveAssetCategoryPayloa
 
 export async function deleteAssetCategory(id: string) {
   return await responseHandle<string>(
-    () => supabase.rpc('delete_fms_asset_category', { p_category_id: id }),
+    () => supabase.rpc('delete_fms_asset_category_secure', { p_category_id: id }),
     { breakReturn: true, showMessage: true, message: '资产类别已删除' }
   )
 }
 
 export async function saveFixedAsset(payload: Api.Fms.SaveFixedAssetPayload) {
   return await responseHandle<Api.Fms.FixedAssetRecord>(
-    () => supabase.rpc('save_fms_fixed_asset', { p_payload: payload }),
+    () => supabase.rpc('save_fms_fixed_asset_secure', { p_payload: payload }),
     {
       breakReturn: true,
       showMessage: true,
@@ -108,7 +135,7 @@ export async function saveFixedAsset(payload: Api.Fms.SaveFixedAssetPayload) {
 
 export async function deleteFixedAsset(id: string) {
   return await responseHandle<string>(
-    () => supabase.rpc('delete_fms_fixed_asset', { p_asset_id: id }),
+    () => supabase.rpc('delete_fms_fixed_asset_secure', { p_asset_id: id }),
     {
       breakReturn: true,
       showMessage: true,
@@ -130,7 +157,11 @@ export async function actFixedAsset(
 ) {
   return await responseHandle<Api.Fms.FixedAssetRecord>(
     () =>
-      supabase.rpc('act_fms_fixed_asset', { p_asset_id: id, p_action: action, p_payload: payload }),
+      supabase.rpc('act_fms_fixed_asset_secure', {
+        p_asset_id: id,
+        p_action: action,
+        p_payload: payload
+      }),
     { breakReturn: true, showMessage: true, message: '资产状态已更新' }
   )
 }
@@ -138,7 +169,7 @@ export async function actFixedAsset(
 export async function calculateAssetDepreciation(periodId: string, remark?: string) {
   return await responseHandle<Api.Fms.AssetDepreciationRunRecord>(
     () =>
-      supabase.rpc('calculate_fms_asset_depreciation', {
+      supabase.rpc('calculate_fms_asset_depreciation_secure', {
         p_accounting_period_id: periodId,
         p_remark: remark || null
       }),
@@ -153,7 +184,7 @@ export async function actAssetDepreciationRun(
 ) {
   return await responseHandle<Api.Fms.AssetDepreciationRunRecord>(
     () =>
-      supabase.rpc('act_fms_asset_depreciation_run', {
+      supabase.rpc('act_fms_asset_depreciation_run_secure', {
         p_run_id: id,
         p_action: action,
         p_reason: reason || null

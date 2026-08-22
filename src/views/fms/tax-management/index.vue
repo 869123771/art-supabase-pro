@@ -63,6 +63,7 @@
   import type { ColumnOption } from '@/types'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatCurrencyValue } from '@/utils/ui'
+  import { canEditField, canViewField, mergeFieldAccessMaps } from '@/utils/field-permission'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { useUserStore } from '@/store/modules/user'
   import {
@@ -97,10 +98,17 @@
     ) => Promise<void>
   }>()
   const accountSetOptions = ref<Api.Fms.AccountSetOption[]>([])
+  const currentRows = ref<Row[]>([])
+  const listFieldAccess = ref<Api.Fms.TaxFieldAccessMap>({})
   const summary = ref(emptySummary())
   const table = reactive<{ search: SearchParams }>({
     search: { accountSetId: undefined, taxType: undefined, status: undefined }
   })
+  const effectiveFieldAccess = computed(() =>
+    mergeFieldAccessMaps(listFieldAccess.value, ...currentRows.value.map((row) => row.fieldAccess))
+  )
+  const canViewListField = (field: Api.Fms.TaxFieldKey): boolean =>
+    canViewField(effectiveFieldAccess.value, field)
   const metrics = computed<BusinessWorkspaceMetric[]>(() => [
     {
       key: 'period',
@@ -110,30 +118,34 @@
       icon: 'ri:calendar-check-line',
       tone: 'primary'
     },
-    {
-      key: 'output',
-      label: '销项税额',
-      value: formatCurrencyValue(summary.value.outputTaxAmount),
-      description: '本账套累计',
-      icon: 'ri:arrow-up-circle-line',
-      tone: 'warning'
-    },
-    {
-      key: 'input',
-      label: '进项税额',
-      value: formatCurrencyValue(summary.value.inputTaxAmount),
-      description: '本账套累计',
-      icon: 'ri:arrow-down-circle-line',
-      tone: 'success'
-    },
-    {
-      key: 'payable',
-      label: '应纳税额',
-      value: formatCurrencyValue(summary.value.payableAmount),
-      description: '测算应缴口径',
-      icon: 'ri:government-line',
-      tone: 'info'
-    }
+    ...(canViewListField('taxAmounts')
+      ? [
+          {
+            key: 'output',
+            label: '销项税额',
+            value: formatProtectedAmount(summary.value.outputTaxAmount),
+            description: '本账套累计',
+            icon: 'ri:arrow-up-circle-line',
+            tone: 'warning' as const
+          },
+          {
+            key: 'input',
+            label: '进项税额',
+            value: formatProtectedAmount(summary.value.inputTaxAmount),
+            description: '本账套累计',
+            icon: 'ri:arrow-down-circle-line',
+            tone: 'success' as const
+          },
+          {
+            key: 'payable',
+            label: '应纳税额',
+            value: formatProtectedAmount(summary.value.payableAmount),
+            description: '测算应缴口径',
+            icon: 'ri:government-line',
+            tone: 'info' as const
+          }
+        ]
+      : [])
   ])
   const searchItems = computed<SearchFormItem[]>(() => [
     {
@@ -202,40 +214,48 @@
         formatter: (row) =>
           row.period ? `${row.period.fiscalYear} 年第 ${row.period.periodNo} 期` : '--'
       },
-      {
-        prop: 'outputTaxAmount',
-        label: '销项税额',
-        minWidth: 125,
-        align: 'right',
-        formatter: (row) => formatCurrencyValue(row.outputTaxAmount)
-      },
-      {
-        prop: 'inputTaxAmount',
-        label: '进项税额',
-        minWidth: 125,
-        align: 'right',
-        formatter: (row) => formatCurrencyValue(row.inputTaxAmount)
-      },
-      {
-        prop: 'adjustmentAmount',
-        label: '调整金额',
-        minWidth: 125,
-        align: 'right',
-        formatter: (row) => formatCurrencyValue(row.adjustmentAmount)
-      },
-      {
-        prop: 'payableAmount',
-        label: '应纳税额',
-        minWidth: 125,
-        align: 'right',
-        formatter: (row) => formatCurrencyValue(row.payableAmount)
-      },
-      {
-        prop: 'filingReference',
-        label: '申报凭证号',
-        minWidth: 150,
-        formatter: (row) => row.filingReference || '--'
-      },
+      ...(canViewListField('taxAmounts')
+        ? [
+            {
+              prop: 'outputTaxAmount',
+              label: '销项税额',
+              minWidth: 125,
+              align: 'right' as const,
+              formatter: (row: Row) => formatProtectedAmount(row.outputTaxAmount)
+            },
+            {
+              prop: 'inputTaxAmount',
+              label: '进项税额',
+              minWidth: 125,
+              align: 'right' as const,
+              formatter: (row: Row) => formatProtectedAmount(row.inputTaxAmount)
+            },
+            {
+              prop: 'adjustmentAmount',
+              label: '调整金额',
+              minWidth: 125,
+              align: 'right' as const,
+              formatter: (row: Row) => formatProtectedAmount(row.adjustmentAmount)
+            },
+            {
+              prop: 'payableAmount',
+              label: '应纳税额',
+              minWidth: 125,
+              align: 'right' as const,
+              formatter: (row: Row) => formatProtectedAmount(row.payableAmount)
+            }
+          ]
+        : []),
+      ...(canViewListField('filingReferences')
+        ? [
+            {
+              prop: 'filingReference',
+              label: '申报凭证号',
+              minWidth: 150,
+              formatter: (row: Row) => row.filingReference || '--'
+            }
+          ]
+        : []),
       {
         prop: 'status',
         label: '状态',
@@ -275,13 +295,17 @@
   function actions(row: Row): ButtonMoreItem[] {
     if (row.status === 'calculated')
       return [
-        {
-          auth: 'FinanceTaxManagement:Review',
-          key: 'review',
-          label: '复核税额',
-          icon: 'ri:check-double-line',
-          color: 'var(--el-color-success)'
-        },
+        ...(canEditField(row.fieldAccess, 'taxAmounts')
+          ? [
+              {
+                auth: 'FinanceTaxManagement:Review',
+                key: 'review',
+                label: '复核税额',
+                icon: 'ri:check-double-line',
+                color: 'var(--el-color-success)'
+              }
+            ]
+          : []),
         {
           auth: 'FinanceTaxManagement:Cancel',
           key: 'cancel',
@@ -291,25 +315,31 @@
         }
       ]
     if (row.status === 'reviewed')
-      return [
-        {
-          auth: 'FinanceTaxManagement:File',
-          key: 'file',
-          label: '确认申报',
-          icon: 'ri:file-check-line',
-          color: 'var(--el-color-primary)'
-        }
-      ]
+      return canEditField(row.fieldAccess, 'taxAmounts') &&
+        canEditField(row.fieldAccess, 'filingReferences')
+        ? [
+            {
+              auth: 'FinanceTaxManagement:File',
+              key: 'file',
+              label: '确认申报',
+              icon: 'ri:file-check-line',
+              color: 'var(--el-color-primary)'
+            }
+          ]
+        : []
     if (row.status === 'filed')
-      return [
-        {
-          auth: 'FinanceTaxManagement:Pay',
-          key: 'pay',
-          label: '确认缴税',
-          icon: 'ri:secure-payment-line',
-          color: 'var(--el-color-success)'
-        }
-      ]
+      return canEditField(row.fieldAccess, 'taxAmounts') &&
+        canEditField(row.fieldAccess, 'filingReferences')
+        ? [
+            {
+              auth: 'FinanceTaxManagement:Pay',
+              key: 'pay',
+              label: '确认缴税',
+              icon: 'ri:secure-payment-line',
+              color: 'var(--el-color-success)'
+            }
+          ]
+        : []
     if (row.status === 'draft')
       return [
         {
@@ -324,12 +354,16 @@
   }
   async function fetchTableData(params: TableParams) {
     const { from, to } = pageInfoHandler({ current: params.current, size: params.size })
-    return await fetchTaxPeriodList({ ...params, from, to })
+    const result = await fetchTaxPeriodList({ ...params, from, to })
+    listFieldAccess.value = result.fieldAccess
+    currentRows.value = result.data ?? []
+    return result
   }
   async function loadSummary() {
     if (!table.search.accountSetId) return void (summary.value = emptySummary())
     const { data } = await fetchTaxSummary(table.search.accountSetId)
     summary.value = data ?? emptySummary()
+    if (data?.fieldAccess) listFieldAccess.value = data.fieldAccess
   }
   async function handleAction(item: ButtonMoreItem, row: Row) {
     try {
@@ -358,7 +392,7 @@
             fundExecutionRef.value?.handleOpen(
               {
                 accountSetId: row.accountSetId,
-                amount: row.payableAmount,
+                amount: toFiniteNumber(row.payableAmount),
                 direction: 'outflow',
                 title: `确认缴税 · ${row.taxType}`,
                 subtitle: '选择实际扣款账户，系统会同步登记资金日记账和税费支付凭证',
@@ -388,6 +422,16 @@
   }
   async function refreshAll() {
     await Promise.all([tableRef.value?.refreshUpdate(), loadSummary()])
+  }
+  function toFiniteNumber(value: Api.Tms.BasicData.SensitiveNumber | undefined): number {
+    const numberValue = Number(value)
+    return Number.isFinite(numberValue) ? numberValue : 0
+  }
+  function formatProtectedAmount(
+    value: Api.Tms.BasicData.SensitiveNumber | undefined | null
+  ): string {
+    if (value === null || value === undefined || value === '') return '--'
+    return formatCurrencyValue(value)
   }
   watch(() => table.search.accountSetId, loadSummary)
   onMounted(async () => {

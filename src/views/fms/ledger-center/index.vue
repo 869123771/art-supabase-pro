@@ -140,6 +140,12 @@
   import { ACCOUNTING_SELECT_EMPTY_TEXT } from '../modules/accounting-select-text'
   import type { ColumnOption } from '@/types'
   import { useUserStore } from '@/store/modules/user'
+  import {
+    canViewField,
+    formatSensitiveNumber,
+    getFieldAccess,
+    isMaskedValue
+  } from '@/utils/field-permission'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatCurrencyValue } from '@/utils/ui'
   import { formatWithDayjs } from '@/utils/time'
@@ -178,6 +184,20 @@
   const balanceRows = ref<BalanceRecord[]>([])
   const generalRows = ref<GeneralRecord[]>([])
   const subsidiaryRows = ref<SubsidiaryRecord[]>([])
+  const ledgerFieldAccess = ref<Api.Fms.LedgerFieldAccessMap>({})
+
+  const ledgerAmountAccess = computed(() =>
+    getFieldAccess(ledgerFieldAccess.value, 'ledgerAmounts')
+  )
+  const canViewLedgerAmounts = computed(() =>
+    canViewField(ledgerFieldAccess.value, 'ledgerAmounts')
+  )
+  const canViewVoucherReferences = computed(() =>
+    canViewField(ledgerFieldAccess.value, 'voucherReferences')
+  )
+  const canViewAuxiliaryDetails = computed(() =>
+    canViewField(ledgerFieldAccess.value, 'auxiliaryDetails')
+  )
 
   const contexts = reactive<Record<LedgerTab, LedgerOptionContext>>({
     balance: { periods: [], subjects: [], auxiliaryTypes: [], auxiliaryItems: [] },
@@ -348,37 +368,41 @@
 
   const subsidiarySearchItems = computed<SearchFormItem[]>(() => [
     ...commonSearchItems('subsidiary'),
-    {
-      label: '辅助类型',
-      key: 'auxiliaryTypeId',
-      type: 'select',
-      props: {
-        options: auxiliaryTypeOptions.value,
-        filterable: true,
-        clearable: true,
-        placeholder: '全部辅助类型',
-        disabled: !subsidiarySearch.accountSetId,
-        noDataText: subsidiarySearch.accountSetId
-          ? ACCOUNTING_SELECT_EMPTY_TEXT.auxiliaryType
-          : ACCOUNTING_SELECT_EMPTY_TEXT.chooseAccountSet,
-        onChange: (value: string) => void handleAuxiliaryTypeChange(value)
-      }
-    },
-    {
-      label: '辅助项目',
-      key: 'auxiliaryItemId',
-      type: 'select',
-      props: {
-        options: auxiliaryItemOptions.value,
-        filterable: true,
-        clearable: true,
-        disabled: !subsidiarySearch.auxiliaryTypeId,
-        placeholder: subsidiarySearch.auxiliaryTypeId ? '全部辅助项目' : '请先选择辅助类型',
-        noDataText: subsidiarySearch.auxiliaryTypeId
-          ? ACCOUNTING_SELECT_EMPTY_TEXT.auxiliaryItem
-          : '请先选择辅助类型'
-      }
-    }
+    ...(canViewAuxiliaryDetails.value
+      ? [
+          {
+            label: '辅助类型',
+            key: 'auxiliaryTypeId',
+            type: 'select' as const,
+            props: {
+              options: auxiliaryTypeOptions.value,
+              filterable: true,
+              clearable: true,
+              placeholder: '全部辅助类型',
+              disabled: !subsidiarySearch.accountSetId,
+              noDataText: subsidiarySearch.accountSetId
+                ? ACCOUNTING_SELECT_EMPTY_TEXT.auxiliaryType
+                : ACCOUNTING_SELECT_EMPTY_TEXT.chooseAccountSet,
+              onChange: (value: string) => void handleAuxiliaryTypeChange(value)
+            }
+          },
+          {
+            label: '辅助项目',
+            key: 'auxiliaryItemId',
+            type: 'select' as const,
+            props: {
+              options: auxiliaryItemOptions.value,
+              filterable: true,
+              clearable: true,
+              disabled: !subsidiarySearch.auxiliaryTypeId,
+              placeholder: subsidiarySearch.auxiliaryTypeId ? '全部辅助项目' : '请先选择辅助类型',
+              noDataText: subsidiarySearch.auxiliaryTypeId
+                ? ACCOUNTING_SELECT_EMPTY_TEXT.auxiliaryItem
+                : '请先选择辅助类型'
+            }
+          }
+        ]
+      : [])
   ])
 
   const balanceHeaderActions = computed<ArtTableQueryHeaderAction[]>(() => [
@@ -387,7 +411,7 @@
       type: 'export',
       exportFilename: '科目余额表',
       exportSheetName: '科目余额表',
-      exportColumns: [
+      exportColumns: () => [
         { key: 'subjectCode', title: '科目编码', width: 18 },
         { key: 'subjectName', title: '科目名称', width: 24 },
         {
@@ -395,18 +419,22 @@
           title: '科目类别',
           formatter: (value) => dictLabel('fmsSubjectCategory', value)
         },
-        { key: 'openingDebit', title: '期初借方' },
-        { key: 'openingCredit', title: '期初贷方' },
-        { key: 'periodDebit', title: '本期借方' },
-        { key: 'periodCredit', title: '本期贷方' },
-        { key: 'yearToDateDebit', title: '本年累计借方' },
-        { key: 'yearToDateCredit', title: '本年累计贷方' },
+        ...(canViewLedgerAmounts.value
+          ? [
+              { key: 'openingDebit', title: '期初借方' },
+              { key: 'openingCredit', title: '期初贷方' },
+              { key: 'periodDebit', title: '本期借方' },
+              { key: 'periodCredit', title: '本期贷方' },
+              { key: 'yearToDateDebit', title: '本年累计借方' },
+              { key: 'yearToDateCredit', title: '本年累计贷方' }
+            ]
+          : []),
         {
           key: 'endingDirection',
           title: '期末方向',
           formatter: (value) => dictLabel('fmsBalanceDirection', value)
         },
-        { key: 'endingBalance', title: '期末余额' }
+        ...(canViewLedgerAmounts.value ? [{ key: 'endingBalance', title: '期末余额' }] : [])
       ]
     }
   ])
@@ -417,7 +445,7 @@
       type: 'export',
       exportFilename: '总账',
       exportSheetName: '总账',
-      exportColumns: [
+      exportColumns: () => [
         { key: 'periodNo', title: '会计期间' },
         { key: 'periodStart', title: '期间开始' },
         { key: 'periodEnd', title: '期间结束' },
@@ -426,19 +454,27 @@
           title: '期初方向',
           formatter: (value) => dictLabel('fmsBalanceDirection', value)
         },
-        { key: 'openingBalance', title: '期初余额' },
-        { key: 'debitAmount', title: '本期借方' },
-        { key: 'creditAmount', title: '本期贷方' },
-        { key: 'yearToDateDebit', title: '本年累计借方' },
-        { key: 'yearToDateCredit', title: '本年累计贷方' },
+        ...(canViewLedgerAmounts.value
+          ? [
+              { key: 'openingBalance', title: '期初余额' },
+              { key: 'debitAmount', title: '本期借方' },
+              { key: 'creditAmount', title: '本期贷方' },
+              { key: 'yearToDateDebit', title: '本年累计借方' },
+              { key: 'yearToDateCredit', title: '本年累计贷方' }
+            ]
+          : []),
         {
           key: 'endingDirection',
           title: '期末方向',
           formatter: (value) => dictLabel('fmsBalanceDirection', value)
         },
-        { key: 'endingBalance', title: '期末余额' },
-        { key: 'voucherCount', title: '凭证数' },
-        { key: 'lineCount', title: '分录数' }
+        ...(canViewLedgerAmounts.value ? [{ key: 'endingBalance', title: '期末余额' }] : []),
+        ...(canViewVoucherReferences.value
+          ? [
+              { key: 'voucherCount', title: '凭证数' },
+              { key: 'lineCount', title: '分录数' }
+            ]
+          : [])
       ]
     }
   ])
@@ -449,29 +485,41 @@
       type: 'export',
       exportFilename: '明细辅助账',
       exportSheetName: '明细辅助账',
-      exportColumns: [
+      exportColumns: () => [
         { key: 'voucherDate', title: '日期' },
         { key: 'periodNo', title: '期间' },
-        { key: 'voucherNo', title: '凭证号', width: 18 },
-        {
-          key: 'voucherType',
-          title: '凭证类型',
-          formatter: (value) => dictLabel('fmsVoucherType', value)
-        },
-        { key: 'summary', title: '摘要', width: 30 },
-        { key: 'auxiliaryDisplay', title: '辅助核算', width: 28 },
-        { key: 'currencyCode', title: '币种' },
-        { key: 'originalAmount', title: '原币金额' },
-        { key: 'quantity', title: '数量' },
-        { key: 'unitName', title: '单位' },
-        { key: 'debitAmount', title: '借方金额' },
-        { key: 'creditAmount', title: '贷方金额' },
+        ...(canViewVoucherReferences.value
+          ? [
+              { key: 'voucherNo', title: '凭证号', width: 18 },
+              {
+                key: 'voucherType',
+                title: '凭证类型',
+                formatter: (value: unknown) => dictLabel('fmsVoucherType', value)
+              },
+              { key: 'summary', title: '摘要', width: 30 }
+            ]
+          : []),
+        ...(canViewAuxiliaryDetails.value
+          ? [
+              { key: 'auxiliaryDisplay', title: '辅助核算', width: 28 },
+              { key: 'currencyCode', title: '币种' },
+              { key: 'quantity', title: '数量' },
+              { key: 'unitName', title: '单位' }
+            ]
+          : []),
+        ...(canViewLedgerAmounts.value
+          ? [
+              { key: 'originalAmount', title: '原币金额' },
+              { key: 'debitAmount', title: '借方金额' },
+              { key: 'creditAmount', title: '贷方金额' }
+            ]
+          : []),
         {
           key: 'balanceDirection',
           title: '余额方向',
           formatter: (value) => dictLabel('fmsBalanceDirection', value)
         },
-        { key: 'balanceAmount', title: '余额' }
+        ...(canViewLedgerAmounts.value ? [{ key: 'balanceAmount', title: '余额' }] : [])
       ]
     }
   ])
@@ -486,32 +534,40 @@
     const rows = balanceRows.value.filter((item) => item.isLeaf)
     const debit = sumRows(rows, 'periodDebit')
     const credit = sumRows(rows, 'periodCredit')
+    const difference =
+      debit === undefined || credit === undefined ? undefined : Math.abs(debit - credit)
     return [
       metric('subjects', '末级科目', rows.length, '当前筛选范围', 'ri:node-tree', 'primary'),
-      metric(
-        'debit',
-        '本期借方',
-        formatCurrencyValue(debit),
-        '末级科目汇总',
-        'ri:add-line',
-        'success'
-      ),
-      metric(
-        'credit',
-        '本期贷方',
-        formatCurrencyValue(credit),
-        '末级科目汇总',
-        'ri:subtract-line',
-        'warning'
-      ),
-      metric(
-        'balanced',
-        '借贷平衡',
-        Math.abs(debit - credit) < 0.005 ? '平衡' : '待核对',
-        `差额 ${formatCurrencyValue(Math.abs(debit - credit))}`,
-        'ri:scales-3-line',
-        Math.abs(debit - credit) < 0.005 ? 'success' : 'danger'
-      )
+      ...(canViewLedgerAmounts.value
+        ? [
+            metric(
+              'debit',
+              '本期借方',
+              protectedMoney(debit),
+              '末级科目汇总',
+              'ri:add-line',
+              'success'
+            ),
+            metric(
+              'credit',
+              '本期贷方',
+              protectedMoney(credit),
+              '末级科目汇总',
+              'ri:subtract-line',
+              'warning'
+            ),
+            metric(
+              'balanced',
+              '借贷平衡',
+              difference === undefined ? '***' : difference < 0.005 ? '平衡' : '待核对',
+              difference === undefined
+                ? '账簿金额已脱敏'
+                : `差额 ${formatCurrencyValue(difference)}`,
+              'ri:scales-3-line',
+              difference === undefined ? 'info' : difference < 0.005 ? 'success' : 'danger'
+            )
+          ]
+        : [])
     ]
   }
 
@@ -520,30 +576,34 @@
     const last = rows.at(-1)
     return [
       metric('periods', '会计期间', rows.length, '当前总账跨度', 'ri:calendar-2-line', 'primary'),
-      metric(
-        'debit',
-        '期间借方',
-        formatCurrencyValue(sumRows(rows, 'debitAmount')),
-        '期间发生额合计',
-        'ri:add-line',
-        'success'
-      ),
-      metric(
-        'credit',
-        '期间贷方',
-        formatCurrencyValue(sumRows(rows, 'creditAmount')),
-        '期间发生额合计',
-        'ri:subtract-line',
-        'warning'
-      ),
-      metric(
-        'ending',
-        '期末余额',
-        formatCurrencyValue(last?.endingBalance ?? 0),
-        dictLabel('fmsBalanceDirection', last?.endingDirection) || '当前末期',
-        'ri:wallet-3-line',
-        'info'
-      )
+      ...(canViewLedgerAmounts.value
+        ? [
+            metric(
+              'debit',
+              '期间借方',
+              protectedMoney(sumRows(rows, 'debitAmount')),
+              '期间发生额合计',
+              'ri:add-line',
+              'success'
+            ),
+            metric(
+              'credit',
+              '期间贷方',
+              protectedMoney(sumRows(rows, 'creditAmount')),
+              '期间发生额合计',
+              'ri:subtract-line',
+              'warning'
+            ),
+            metric(
+              'ending',
+              '期末余额',
+              protectedMoney(numericValue(last?.endingBalance)),
+              dictLabel('fmsBalanceDirection', last?.endingDirection) || '当前末期',
+              'ri:wallet-3-line',
+              'info'
+            )
+          ]
+        : [])
     ]
   }
 
@@ -559,30 +619,34 @@
         'ri:file-list-3-line',
         'primary'
       ),
-      metric(
-        'debit',
-        '明细借方',
-        formatCurrencyValue(sumRows(transactions, 'debitAmount')),
-        '分录发生额合计',
-        'ri:add-line',
-        'success'
-      ),
-      metric(
-        'credit',
-        '明细贷方',
-        formatCurrencyValue(sumRows(transactions, 'creditAmount')),
-        '分录发生额合计',
-        'ri:subtract-line',
-        'warning'
-      ),
-      metric(
-        'ending',
-        '滚动余额',
-        formatCurrencyValue(last?.balanceAmount ?? 0),
-        dictLabel('fmsBalanceDirection', last?.balanceDirection) || '当前末笔',
-        'ri:line-chart-line',
-        'info'
-      )
+      ...(canViewLedgerAmounts.value
+        ? [
+            metric(
+              'debit',
+              '明细借方',
+              protectedMoney(sumRows(transactions, 'debitAmount')),
+              '分录发生额合计',
+              'ri:add-line',
+              'success'
+            ),
+            metric(
+              'credit',
+              '明细贷方',
+              protectedMoney(sumRows(transactions, 'creditAmount')),
+              '分录发生额合计',
+              'ri:subtract-line',
+              'warning'
+            ),
+            metric(
+              'ending',
+              '滚动余额',
+              protectedMoney(numericValue(last?.balanceAmount)),
+              dictLabel('fmsBalanceDirection', last?.balanceDirection) || '当前末笔',
+              'ri:line-chart-line',
+              'info'
+            )
+          ]
+        : [])
     ]
   }
 
@@ -597,8 +661,24 @@
     return { key, label, value, description, icon, tone }
   }
 
-  function sumRows<T extends object>(rows: T[], key: keyof T): number {
-    return rows.reduce((sum, row) => sum + Number(row[key] || 0), 0)
+  function numericValue(value: Api.Tms.BasicData.SensitiveNumber | undefined): number | undefined {
+    const result = Number(value)
+    return Number.isFinite(result) ? result : undefined
+  }
+
+  function sumRows<T extends object>(rows: T[], key: keyof T): number | undefined {
+    let sum = 0
+    for (const row of rows) {
+      const value = numericValue(row[key] as Api.Tms.BasicData.SensitiveNumber | undefined)
+      if (value === undefined) return undefined
+      sum += value
+    }
+    return sum
+  }
+
+  function protectedMoney(value: number | undefined): string {
+    if (ledgerAmountAccess.value === 'masked') return '***'
+    return value === undefined ? '--' : formatCurrencyValue(value)
   }
 
   function dictLabel(code: string, value: unknown): string {
@@ -609,8 +689,23 @@
     return option?.label ?? String(value)
   }
 
-  function moneyCell(value: number): string {
-    return formatCurrencyValue(Number(value || 0))
+  function moneyCell(value: Api.Tms.BasicData.SensitiveNumber | undefined): string {
+    if (value === null || value === undefined || value === '') return '--'
+    return formatCurrencyValue(value)
+  }
+
+  function originalAmountCell(row: SubsidiaryRecord): string {
+    const amount = formatSensitiveNumber(row.originalAmount)
+    if (isMaskedValue(amount) || isMaskedValue(row.currencyCode)) return '***'
+    return row.currencyCode && amount !== '--' ? `${row.currencyCode} ${amount}` : amount
+  }
+
+  function quantityCell(row: SubsidiaryRecord): string {
+    const quantity = formatSensitiveNumber(row.quantity, {
+      maximumFractionDigits: 6
+    })
+    if (isMaskedValue(quantity) || isMaskedValue(row.unitName)) return '***'
+    return quantity === '--' ? '无数量核算' : `${quantity}${row.unitName ? ` ${row.unitName}` : ''}`
   }
 
   function balanceColumnsFactory(): ColumnOption<BalanceRecord>[] {
@@ -636,61 +731,65 @@
         )
       },
       { prop: 'category', label: '科目类别', width: 100, dict: { code: 'fmsSubjectCategory' } },
-      {
-        prop: 'openingDebit',
-        label: '期初借方',
-        width: 130,
-        align: 'right',
-        formatter: (row) => moneyCell(row.openingDebit)
-      },
-      {
-        prop: 'openingCredit',
-        label: '期初贷方',
-        width: 130,
-        align: 'right',
-        formatter: (row) => moneyCell(row.openingCredit)
-      },
-      {
-        prop: 'periodDebit',
-        label: '本期借方',
-        width: 130,
-        align: 'right',
-        formatter: (row) => moneyCell(row.periodDebit)
-      },
-      {
-        prop: 'periodCredit',
-        label: '本期贷方',
-        width: 130,
-        align: 'right',
-        formatter: (row) => moneyCell(row.periodCredit)
-      },
-      {
-        prop: 'yearToDateDebit',
-        label: '本年累计借方',
-        width: 145,
-        align: 'right',
-        formatter: (row) => moneyCell(row.yearToDateDebit)
-      },
-      {
-        prop: 'yearToDateCredit',
-        label: '本年累计贷方',
-        width: 145,
-        align: 'right',
-        formatter: (row) => moneyCell(row.yearToDateCredit)
-      },
-      {
-        prop: 'endingDirection',
-        label: '期末方向',
-        width: 90,
-        dict: { code: 'fmsBalanceDirection', display: 'tag' }
-      },
-      {
-        prop: 'endingBalance',
-        label: '期末余额',
-        width: 135,
-        align: 'right',
-        formatter: (row) => moneyCell(row.endingBalance)
-      },
+      ...(canViewLedgerAmounts.value
+        ? [
+            {
+              prop: 'openingDebit',
+              label: '期初借方',
+              width: 130,
+              align: 'right' as const,
+              formatter: (row: BalanceRecord) => moneyCell(row.openingDebit)
+            },
+            {
+              prop: 'openingCredit',
+              label: '期初贷方',
+              width: 130,
+              align: 'right' as const,
+              formatter: (row: BalanceRecord) => moneyCell(row.openingCredit)
+            },
+            {
+              prop: 'periodDebit',
+              label: '本期借方',
+              width: 130,
+              align: 'right' as const,
+              formatter: (row: BalanceRecord) => moneyCell(row.periodDebit)
+            },
+            {
+              prop: 'periodCredit',
+              label: '本期贷方',
+              width: 130,
+              align: 'right' as const,
+              formatter: (row: BalanceRecord) => moneyCell(row.periodCredit)
+            },
+            {
+              prop: 'yearToDateDebit',
+              label: '本年累计借方',
+              width: 145,
+              align: 'right' as const,
+              formatter: (row: BalanceRecord) => moneyCell(row.yearToDateDebit)
+            },
+            {
+              prop: 'yearToDateCredit',
+              label: '本年累计贷方',
+              width: 145,
+              align: 'right' as const,
+              formatter: (row: BalanceRecord) => moneyCell(row.yearToDateCredit)
+            },
+            {
+              prop: 'endingDirection',
+              label: '期末方向',
+              width: 90,
+              dict: { code: 'fmsBalanceDirection', display: 'tag' as const }
+            },
+            {
+              prop: 'endingBalance',
+              label: '期末余额',
+              width: 135,
+              align: 'right' as const,
+              formatter: (row: BalanceRecord) => moneyCell(row.endingBalance)
+            }
+          ]
+        : []),
       {
         prop: 'operation',
         label: '操作',
@@ -726,62 +825,70 @@
           </div>
         )
       },
-      {
-        prop: 'openingDirection',
-        label: '期初方向',
-        width: 90,
-        dict: { code: 'fmsBalanceDirection', display: 'tag' }
-      },
-      {
-        prop: 'openingBalance',
-        label: '期初余额',
-        width: 135,
-        align: 'right',
-        formatter: (row) => moneyCell(row.openingBalance)
-      },
-      {
-        prop: 'debitAmount',
-        label: '本期借方',
-        width: 135,
-        align: 'right',
-        formatter: (row) => moneyCell(row.debitAmount)
-      },
-      {
-        prop: 'creditAmount',
-        label: '本期贷方',
-        width: 135,
-        align: 'right',
-        formatter: (row) => moneyCell(row.creditAmount)
-      },
-      {
-        prop: 'yearToDateDebit',
-        label: '本年累计借方',
-        width: 145,
-        align: 'right',
-        formatter: (row) => moneyCell(row.yearToDateDebit)
-      },
-      {
-        prop: 'yearToDateCredit',
-        label: '本年累计贷方',
-        width: 145,
-        align: 'right',
-        formatter: (row) => moneyCell(row.yearToDateCredit)
-      },
-      {
-        prop: 'endingDirection',
-        label: '期末方向',
-        width: 90,
-        dict: { code: 'fmsBalanceDirection', display: 'tag' }
-      },
-      {
-        prop: 'endingBalance',
-        label: '期末余额',
-        width: 135,
-        align: 'right',
-        formatter: (row) => moneyCell(row.endingBalance)
-      },
-      { prop: 'voucherCount', label: '凭证数', width: 90, align: 'right' },
-      { prop: 'lineCount', label: '分录数', width: 90, align: 'right' },
+      ...(canViewLedgerAmounts.value
+        ? [
+            {
+              prop: 'openingDirection',
+              label: '期初方向',
+              width: 90,
+              dict: { code: 'fmsBalanceDirection', display: 'tag' as const }
+            },
+            {
+              prop: 'openingBalance',
+              label: '期初余额',
+              width: 135,
+              align: 'right' as const,
+              formatter: (row: GeneralRecord) => moneyCell(row.openingBalance)
+            },
+            {
+              prop: 'debitAmount',
+              label: '本期借方',
+              width: 135,
+              align: 'right' as const,
+              formatter: (row: GeneralRecord) => moneyCell(row.debitAmount)
+            },
+            {
+              prop: 'creditAmount',
+              label: '本期贷方',
+              width: 135,
+              align: 'right' as const,
+              formatter: (row: GeneralRecord) => moneyCell(row.creditAmount)
+            },
+            {
+              prop: 'yearToDateDebit',
+              label: '本年累计借方',
+              width: 145,
+              align: 'right' as const,
+              formatter: (row: GeneralRecord) => moneyCell(row.yearToDateDebit)
+            },
+            {
+              prop: 'yearToDateCredit',
+              label: '本年累计贷方',
+              width: 145,
+              align: 'right' as const,
+              formatter: (row: GeneralRecord) => moneyCell(row.yearToDateCredit)
+            },
+            {
+              prop: 'endingDirection',
+              label: '期末方向',
+              width: 90,
+              dict: { code: 'fmsBalanceDirection', display: 'tag' as const }
+            },
+            {
+              prop: 'endingBalance',
+              label: '期末余额',
+              width: 135,
+              align: 'right' as const,
+              formatter: (row: GeneralRecord) => moneyCell(row.endingBalance)
+            }
+          ]
+        : []),
+      ...(canViewVoucherReferences.value
+        ? [
+            { prop: 'voucherCount', label: '凭证数', width: 90, align: 'right' as const },
+            { prop: 'lineCount', label: '分录数', width: 90, align: 'right' as const }
+          ]
+        : []),
       {
         prop: 'operation',
         label: '操作',
@@ -817,77 +924,83 @@
           </div>
         )
       },
-      {
-        prop: 'voucherNo',
-        label: '凭证',
-        minWidth: 160,
-        formatter: (row) =>
-          row.rowType === 'opening' ? (
-            <ElTag size="small" type="info" effect="plain">
-              期初
-            </ElTag>
-          ) : (
-            <div class="ledger-center-page__period">
-              <strong translate="no">{row.voucherNo || '--'}</strong>
-              <small>{dictLabel('fmsVoucherType', row.voucherType)}</small>
-            </div>
-          )
-      },
-      { prop: 'summary', label: '摘要', minWidth: 220, showOverflowTooltip: true },
-      {
-        prop: 'auxiliaryDisplay',
-        label: '辅助核算',
-        minWidth: 190,
-        showOverflowTooltip: true,
-        formatter: (row) => row.auxiliaryDisplay || '--'
-      },
-      {
-        prop: 'originalAmount',
-        label: '外币 / 数量',
-        minWidth: 150,
-        formatter: (row) => (
-          <div class="ledger-center-page__period">
-            <strong>
-              {row.currencyCode
-                ? `${row.currencyCode} ${Number(row.originalAmount || 0).toLocaleString('zh-CN')}`
-                : '--'}
-            </strong>
-            <small>
-              {row.quantity
-                ? `${Number(row.quantity).toLocaleString('zh-CN')} ${row.unitName || ''}`
-                : '无数量核算'}
-            </small>
-          </div>
-        )
-      },
-      {
-        prop: 'debitAmount',
-        label: '借方金额',
-        width: 135,
-        align: 'right',
-        formatter: (row) => moneyCell(row.debitAmount)
-      },
-      {
-        prop: 'creditAmount',
-        label: '贷方金额',
-        width: 135,
-        align: 'right',
-        formatter: (row) => moneyCell(row.creditAmount)
-      },
-      {
-        prop: 'balanceDirection',
-        label: '余额方向',
-        width: 90,
-        dict: { code: 'fmsBalanceDirection', display: 'tag' }
-      },
-      {
-        prop: 'balanceAmount',
-        label: '滚动余额',
-        width: 135,
-        align: 'right',
-        fixed: 'right',
-        formatter: (row) => moneyCell(row.balanceAmount)
-      }
+      ...(canViewVoucherReferences.value
+        ? [
+            {
+              prop: 'voucherNo',
+              label: '凭证',
+              minWidth: 160,
+              formatter: (row: SubsidiaryRecord) =>
+                row.rowType === 'opening' ? (
+                  <ElTag size="small" type="info" effect="plain">
+                    期初
+                  </ElTag>
+                ) : (
+                  <div class="ledger-center-page__period">
+                    <strong translate="no">{row.voucherNo || '--'}</strong>
+                    <small>{dictLabel('fmsVoucherType', row.voucherType)}</small>
+                  </div>
+                )
+            },
+            { prop: 'summary', label: '摘要', minWidth: 220, showOverflowTooltip: true }
+          ]
+        : []),
+      ...(canViewAuxiliaryDetails.value
+        ? [
+            {
+              prop: 'auxiliaryDisplay',
+              label: '辅助核算',
+              minWidth: 190,
+              showOverflowTooltip: true,
+              formatter: (row: SubsidiaryRecord) => row.auxiliaryDisplay || '--'
+            },
+            {
+              prop: 'quantity',
+              label: '数量核算',
+              minWidth: 135,
+              formatter: (row: SubsidiaryRecord) => quantityCell(row)
+            }
+          ]
+        : []),
+      ...(canViewLedgerAmounts.value
+        ? [
+            {
+              prop: 'originalAmount',
+              label: '原币金额',
+              minWidth: 145,
+              align: 'right' as const,
+              formatter: (row: SubsidiaryRecord) => originalAmountCell(row)
+            },
+            {
+              prop: 'debitAmount',
+              label: '借方金额',
+              width: 135,
+              align: 'right' as const,
+              formatter: (row: SubsidiaryRecord) => moneyCell(row.debitAmount)
+            },
+            {
+              prop: 'creditAmount',
+              label: '贷方金额',
+              width: 135,
+              align: 'right' as const,
+              formatter: (row: SubsidiaryRecord) => moneyCell(row.creditAmount)
+            },
+            {
+              prop: 'balanceDirection',
+              label: '余额方向',
+              width: 90,
+              dict: { code: 'fmsBalanceDirection', display: 'tag' as const }
+            },
+            {
+              prop: 'balanceAmount',
+              label: '滚动余额',
+              width: 135,
+              align: 'right' as const,
+              fixed: 'right' as const,
+              formatter: (row: SubsidiaryRecord) => moneyCell(row.balanceAmount)
+            }
+          ]
+        : [])
     ]
   }
 
@@ -908,11 +1021,12 @@
   ) {
     if (!params.accountSetId || !params.fiscalYear) return pagedResult([], params)
     normalizePeriodRange(balanceSearch)
-    const { data } = await fetchSubjectBalanceReport({
+    const { data, fieldAccess } = await fetchSubjectBalanceReport({
       ...params,
       periodFrom: Math.min(Number(params.periodFrom || 1), Number(params.periodTo || 12)),
       periodTo: Math.max(Number(params.periodFrom || 1), Number(params.periodTo || 12))
     })
+    ledgerFieldAccess.value = fieldAccess
     balanceRows.value = data ?? []
     return pagedResult(balanceRows.value, params)
   }
@@ -923,12 +1037,13 @@
       return pagedResult([], params)
     }
     normalizePeriodRange(generalSearch)
-    const { data } = await fetchGeneralLedgerReport({
+    const { data, fieldAccess } = await fetchGeneralLedgerReport({
       ...params,
       subjectId: params.subjectId,
       periodFrom: Math.min(Number(params.periodFrom || 1), Number(params.periodTo || 12)),
       periodTo: Math.max(Number(params.periodFrom || 1), Number(params.periodTo || 12))
     })
+    ledgerFieldAccess.value = fieldAccess
     generalRows.value = data ?? []
     return pagedResult(generalRows.value, params)
   }
@@ -941,11 +1056,12 @@
       return pagedResult([], params)
     }
     normalizePeriodRange(subsidiarySearch)
-    const { data } = await fetchSubsidiaryLedgerReport({
+    const { data, fieldAccess } = await fetchSubsidiaryLedgerReport({
       ...params,
       periodFrom: Math.min(Number(params.periodFrom || 1), Number(params.periodTo || 12)),
       periodTo: Math.max(Number(params.periodFrom || 1), Number(params.periodTo || 12))
     })
+    ledgerFieldAccess.value = fieldAccess
     subsidiaryRows.value = data ?? []
     return pagedResult(subsidiaryRows.value, params)
   }

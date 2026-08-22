@@ -1,6 +1,7 @@
 <template>
   <ArtDialog ref="dialogRef" size="xl">
     <ExpenseOcrPanel
+      v-if="canUseOcr"
       ref="ocrPanelRef"
       v-model="form.data.attachments"
       :enabled="state.ocrEnabled"
@@ -38,7 +39,7 @@
         />
       </template>
 
-      <template #locationPicker>
+      <template v-if="canViewExpenseLocation" #locationPicker>
         <ArtAddressPicker
           ref="addressPickerRef"
           v-model:region-path="form.data.expenseRegionPath"
@@ -52,6 +53,7 @@
           v-model:geocode-provider="form.data.expenseGeocodeProvider"
           v-model:geocoded-at="form.data.expenseGeocodedAt"
           :region-api="fetchRegionOptions"
+          :disabled="!canEditExpenseLocation"
           detail-label="发生地点"
           detail-placeholder="定位当前位置，或搜索/点击地图选择加油站等消费地点"
           address-detail-prop="expenseLocation"
@@ -106,6 +108,7 @@
     reviewWaybillExpenseOcrArtifact
   } from '@/api/fms'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
+  import { canEditField, canViewField } from '@/utils/field-permission'
   import { useDocumentNumberRule } from '@/hooks/core/useDocumentNumberRule'
   import ExpenseOcrPanel from './expense-ocr-panel.vue'
 
@@ -133,6 +136,7 @@
   interface ExpenseDialogOpenData {
     row?: Expense
     orderId?: string
+    ocrResult?: Api.Fms.WaybillExpenseOcrAnalyzeResponse
   }
 
   interface ExpenseFormGroup {
@@ -155,6 +159,13 @@
   const selection = reactive<{ waybills: SelectorWaybill[] }>({ waybills: [] })
   const state = reactive({ autoLocateArmed: false, ocrEnabled: true })
   const expenseNumber = useDocumentNumberRule('tms.waybill_cost')
+  const NEW_RECORD_FIELD_ACCESS: Api.Fms.WaybillCostFieldAccessMap = {
+    costAmounts: 'edit',
+    paymentDetails: 'edit',
+    driverPhone: 'edit',
+    expenseLocation: 'edit',
+    expenseEvidence: 'edit'
+  }
 
   const createInitialForm = (): ExpenseForm => ({
     id: undefined,
@@ -188,10 +199,33 @@
     ocrArtifactId: null,
     ocrStatus: 'not_started',
     auditStatus: 'draft',
-    settlementStatus: 'unsettled'
+    settlementStatus: 'unsettled',
+    fieldAccess: { ...NEW_RECORD_FIELD_ACCESS }
   })
 
   const formData = reactive<ExpenseForm>(createInitialForm())
+  const activeFieldAccess = computed(() => formData.fieldAccess ?? NEW_RECORD_FIELD_ACCESS)
+  const canViewCostAmounts = computed(() => canViewField(activeFieldAccess.value, 'costAmounts'))
+  const canEditCostAmounts = computed(() => canEditField(activeFieldAccess.value, 'costAmounts'))
+  const canViewPaymentDetails = computed(() =>
+    canViewField(activeFieldAccess.value, 'paymentDetails')
+  )
+  const canEditPaymentDetails = computed(() =>
+    canEditField(activeFieldAccess.value, 'paymentDetails')
+  )
+  const canViewExpenseLocation = computed(() =>
+    canViewField(activeFieldAccess.value, 'expenseLocation')
+  )
+  const canEditExpenseLocation = computed(() =>
+    canEditField(activeFieldAccess.value, 'expenseLocation')
+  )
+  const canUseOcr = computed(
+    () =>
+      canEditCostAmounts.value &&
+      canEditPaymentDetails.value &&
+      canEditExpenseLocation.value &&
+      canEditField(activeFieldAccess.value, 'expenseEvidence')
+  )
   const form = reactive<ExpenseFormGroup>({
     data: formData,
     rules: {
@@ -208,8 +242,10 @@
       expenseItemId: [{ required: true, message: '请选择费用项目', trigger: 'change' }],
       amount: [
         {
-          validator: (_rule, value, callback) =>
-            Number(value) > 0 ? callback() : callback(new Error('费用金额必须大于 0')),
+          validator: (_rule, value, callback) => {
+            if (!canEditCostAmounts.value) return callback()
+            return Number(value) > 0 ? callback() : callback(new Error('费用金额必须大于 0'))
+          },
           trigger: 'change'
         }
       ],
@@ -217,6 +253,7 @@
       expenseLocation: [
         {
           validator: (_rule, value, callback) => {
+            if (!canEditExpenseLocation.value) return callback()
             if (String(value || '').trim() && !hasValidExpenseCoordinate.value) {
               callback(new Error('请确认发生地点并获取有效经纬度'))
               return
@@ -262,7 +299,14 @@
         label: '费用金额',
         key: 'amount',
         type: 'number',
-        props: { min: 0.01, precision: 2, controlsPosition: 'right', class: '!w-full' }
+        hidden: !canViewCostAmounts.value,
+        props: {
+          min: 0.01,
+          precision: 2,
+          controlsPosition: 'right',
+          class: '!w-full',
+          disabled: !canEditCostAmounts.value
+        }
       },
       {
         label: '发生日期',
@@ -274,45 +318,91 @@
         label: '数量/用量',
         key: 'quantity',
         type: 'number',
-        props: { min: 0, precision: 3, controlsPosition: 'right', class: '!w-full' }
+        hidden: !canViewCostAmounts.value,
+        props: {
+          min: 0,
+          precision: 3,
+          controlsPosition: 'right',
+          class: '!w-full',
+          disabled: !canEditCostAmounts.value
+        }
       },
       {
         label: '单价',
         key: 'unitPrice',
         type: 'number',
-        props: { min: 0, precision: 4, controlsPosition: 'right', class: '!w-full' }
+        hidden: !canViewCostAmounts.value,
+        props: {
+          min: 0,
+          precision: 4,
+          controlsPosition: 'right',
+          class: '!w-full',
+          disabled: !canEditCostAmounts.value
+        }
       },
       {
         label: '服务商',
         key: 'providerName',
         type: 'input',
-        props: { maxlength: 200, placeholder: '加油站、充电站或服务商' }
+        hidden: !canViewPaymentDetails.value,
+        props: {
+          maxlength: 200,
+          placeholder: '加油站、充电站或服务商',
+          disabled: !canEditPaymentDetails.value
+        }
       },
       {
         label: '收款方',
         key: 'payeeName',
         type: 'input',
-        props: { maxlength: 200, placeholder: '司机、服务商或实际收款人' }
+        hidden: !canViewPaymentDetails.value,
+        props: {
+          maxlength: 200,
+          placeholder: '司机、服务商或实际收款人',
+          disabled: !canEditPaymentDetails.value
+        }
       },
       {
         label: '支付渠道',
         key: 'paymentChannel',
         type: 'input',
-        props: { maxlength: 80, placeholder: '现金、微信、油卡等' }
+        hidden: !canViewPaymentDetails.value,
+        props: {
+          maxlength: 80,
+          placeholder: '现金、微信、油卡等',
+          disabled: !canEditPaymentDetails.value
+        }
       },
       {
         label: '票据号码',
         key: 'invoiceNo',
         type: 'input',
-        props: { maxlength: 120, placeholder: '发票号、订单号或交易号' }
+        hidden: !canViewPaymentDetails.value,
+        props: {
+          maxlength: 120,
+          placeholder: '发票号、订单号或交易号',
+          disabled: !canEditPaymentDetails.value
+        }
       },
       {
         label: '表号/桩号',
         key: 'meterNo',
         type: 'input',
-        props: { maxlength: 120, placeholder: '油枪号、充电桩号或设备号' }
+        hidden: !canViewPaymentDetails.value,
+        props: {
+          maxlength: 120,
+          placeholder: '油枪号、充电桩号或设备号',
+          disabled: !canEditPaymentDetails.value
+        }
       },
-      { label: '', key: 'locationPicker', type: 'input', span: 24, labelWidth: 0 },
+      {
+        label: '',
+        key: 'locationPicker',
+        type: 'input',
+        span: 24,
+        labelWidth: 0,
+        hidden: !canViewExpenseLocation.value
+      },
       {
         label: '费用说明',
         key: 'remark',
@@ -439,6 +529,7 @@
   }
 
   function applyOcrResult(result: Api.Fms.WaybillExpenseOcrAnalyzeResponse): void {
+    if (!canUseOcr.value) return
     const value = result.expense
     const ocrLocation = value.expenseLocation?.trim()
     const shouldApplyOcrLocation = Boolean(ocrLocation) && !hasValidExpenseCoordinate.value
@@ -514,7 +605,7 @@
   }
 
   async function handleSubmit(): Promise<boolean> {
-    if (isCompact.value && !hasValidExpenseCoordinate.value) {
+    if (isCompact.value && canEditExpenseLocation.value && !hasValidExpenseCoordinate.value) {
       await addressPickerRef.value?.locateCurrent()
     }
     try {
@@ -528,7 +619,7 @@
         ? await editWaybillCost(buildExpensePayload())
         : await addWaybillCost(buildExpensePayload())
       const entityId = form.data.id || response.data?.id
-      if (form.data.ocrArtifactId && entityId) {
+      if (canUseOcr.value && form.data.ocrArtifactId && entityId) {
         await reviewWaybillExpenseOcrArtifact({
           artifactId: form.data.ocrArtifactId,
           entityId,
@@ -571,11 +662,17 @@
       form.data.expenseLocation = form.data.expenseLocation || ''
     }
     await dialogRef.value?.handleOpen(data, {
-      title: data.row ? `编辑运单费用 · ${data.row.costNo}` : '新增运单费用',
-      subtitle: '按费用项目和运单统一归集承运、在途及其他业务成本',
+      title: data.row
+        ? `编辑运单费用 · ${data.row.costNo}`
+        : data.ocrResult
+          ? '复核识别结果 · 新增运单费用'
+          : '新增运单费用',
+      subtitle: data.ocrResult
+        ? '识别字段已恢复为草稿，请绑定运单并完成人工核对后再保存'
+        : '按费用项目和运单统一归集承运、在途及其他业务成本',
       confirmText: data.row ? '保存修改' : '保存草稿',
       contentMaxHeight: '78vh',
-      loading: Boolean(data.orderId),
+      loading: Boolean(data.orderId || data.ocrResult),
       onOpen: async (_openData, api) => {
         try {
           const [enabled] = await Promise.all([
@@ -583,6 +680,7 @@
             data.orderId ? prefillByOrderId(data.orderId) : Promise.resolve()
           ])
           state.ocrEnabled = enabled
+          if (data.ocrResult && enabled) applyOcrResult(data.ocrResult)
         } finally {
           state.autoLocateArmed = true
           api.setLoading(false)
@@ -603,6 +701,7 @@
       if (
         !state.autoLocateArmed ||
         !isCompact.value ||
+        !canEditExpenseLocation.value ||
         count <= previousCount ||
         hasValidExpenseCoordinate.value
       ) {

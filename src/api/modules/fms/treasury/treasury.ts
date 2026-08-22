@@ -1,5 +1,5 @@
-import { applyDateRange, type SupabaseQueryLike } from '@/api/providers/supabase/query'
 import { useSupabase } from '@/hooks'
+import { fetchAccountSetIdentities } from '@/api/modules/fms/accounting/foundation'
 
 const { supabase, responseHandle } = useSupabase()
 
@@ -8,19 +8,48 @@ type FundLedger = Api.Fms.FundLedgerRecord
 type FundTransfer = Api.Fms.FundTransferRecord
 type ReconciliationBatch = Api.Fms.BankReconciliationBatchRecord
 
+interface FundAccountListPayload {
+  records?: FundAccount[]
+  total?: number
+  fieldAccess?: Api.Fms.FundAccountFieldAccessMap
+}
+
+interface BankReconciliationListPayload {
+  records?: ReconciliationBatch[]
+  total?: number
+  fieldAccess?: Api.Fms.BankReconciliationFieldAccessMap
+}
+
+interface FundTransferListPayload {
+  records?: FundTransfer[]
+  total?: number
+  fieldAccess?: Api.Fms.FundTransferFieldAccessMap
+}
+
+interface FundLedgerListPayload {
+  records?: FundLedger[]
+  total?: number
+  fieldAccess?: Api.Fms.FundLedgerFieldAccessMap
+}
+
+interface BankStatementLineListPayload {
+  records?: Api.Fms.BankStatementLineRecord[]
+  fieldAccess?: Api.Fms.BankReconciliationFieldAccessMap
+}
+
+interface BankMatchCandidateListPayload {
+  records?: Api.Fms.BankMatchCandidateRecord[]
+  fieldAccess?: Api.Fms.BankReconciliationFieldAccessMap
+}
+
+type FundAccountOptionPayload = Omit<Api.Fms.FundAccountOption, 'label' | 'value'>
+
 async function enrichFundAccounts(rows: FundAccount[]): Promise<FundAccount[]> {
   if (!rows.length) return rows
   const accountSetIds = [...new Set(rows.map((row) => row.accountSetId))]
   const currencyIds = [...new Set(rows.map((row) => row.currencyId))]
   const [accountSets, currencies] = await Promise.all([
-    responseHandle<Api.Fms.AccountSetRecord[]>(
-      () =>
-        supabase
-          .from('fms_account_set')
-          .select('id, account_set_code, account_set_name')
-          .in('id', accountSetIds),
-      { ignoreCheck: true, showErrorMessage: true }
-    ),
+    fetchAccountSetIdentities(accountSetIds),
     responseHandle<Api.Fms.CurrencyRecord[]>(
       () =>
         supabase
@@ -41,57 +70,45 @@ async function enrichFundAccounts(rows: FundAccount[]): Promise<FundAccount[]> {
 
 export async function fetchFundAccountList(params: Api.Fms.FundAccountSearchParams = {}) {
   const { accountSetId, accountType, from = 0, keyword, status, tenantId, to = 19 } = params
-  let query = supabase
-    .from('fms_fund_account_summary')
-    .select('*', { count: 'exact' })
-    .order('is_default', { ascending: false })
-    .order('account_code')
-    .range(from, to)
-  if (tenantId) query = query.eq('tenant_id', tenantId)
-  if (accountSetId) query = query.eq('account_set_id', accountSetId)
-  if (accountType) query = query.eq('account_type', accountType)
-  if (status) query = query.eq('status', status)
-  if (keyword?.trim()) {
-    const value = keyword.trim()
-    query = query.or(
-      `account_code.ilike.%${value}%,account_name.ilike.%${value}%,bank_name.ilike.%${value}%,account_no_masked.ilike.%${value}%`
-    )
+  const result = await responseHandle<FundAccountListPayload>(
+    () =>
+      supabase.rpc('fms_list_fund_accounts_secure', {
+        p_from: Math.max(from, 0),
+        p_to: Math.max(to, from),
+        p_account_set_id: accountSetId || null,
+        p_account_type: accountType || null,
+        p_status: status || null,
+        p_keyword: keyword?.trim() || null,
+        p_tenant_id: tenantId || null
+      }),
+    { showErrorMessage: true }
+  )
+  return {
+    data: await enrichFundAccounts(result.data?.records ?? []),
+    total: result.data?.total ?? 0,
+    error: result.error,
+    fieldAccess: result.data?.fieldAccess ?? {}
   }
-  const result = await responseHandle<FundAccount[]>(() => query, {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
-  return { ...result, data: await enrichFundAccounts(result.data ?? []) }
 }
 
 export async function fetchFundAccountOptions(
   params: Api.Fms.FundAccountSearchParams & { baseCurrencyOnly?: boolean } = {}
 ) {
-  const result = await fetchFundAccountList({ ...params, from: 0, to: 999 })
-  let rows = result.data ?? []
-  if (params.baseCurrencyOnly) {
-    const accountSetIds = [...new Set(rows.map((row) => row.accountSetId))]
-    const sets = await responseHandle<Api.Fms.AccountSetRecord[]>(
-      () =>
-        supabase.from('fms_account_set').select('id, base_currency_code').in('id', accountSetIds),
-      { ignoreCheck: true, showErrorMessage: true }
-    )
-    const baseCodeMap = new Map((sets.data ?? []).map((item) => [item.id, item.baseCurrencyCode]))
-    rows = rows.filter((row) => row.currency?.currencyCode === baseCodeMap.get(row.accountSetId))
-  }
+  const result = await responseHandle<FundAccountOptionPayload[]>(
+    () =>
+      supabase.rpc('fms_list_fund_account_options_secure', {
+        p_account_set_id: params.accountSetId || null,
+        p_status: params.status || null,
+        p_base_currency_only: params.baseCurrencyOnly ?? false
+      }),
+    { showErrorMessage: true }
+  )
   return {
     ...result,
-    data: rows.map<Api.Fms.FundAccountOption>((row) => ({
-      label: `${row.accountName}（${row.accountNoMasked}）`,
-      value: row.id,
-      tenantId: row.tenantId,
-      accountSetId: row.accountSetId,
-      currencyId: row.currencyId,
-      currencyCode: row.currency?.currencyCode,
-      accountType: row.accountType,
-      status: row.status,
-      reconciliationEnabled: row.reconciliationEnabled,
-      availableBalance: row.availableBalance
+    data: (result.data ?? []).map<Api.Fms.FundAccountOption>((row) => ({
+      ...row,
+      label: row.accountNoMasked ? `${row.accountName}（${row.accountNoMasked}）` : row.accountName,
+      value: row.id
     }))
   }
 }
@@ -99,16 +116,16 @@ export async function fetchFundAccountOptions(
 export async function fetchFundAccountOverview(accountSetId?: string) {
   return await responseHandle<Api.Fms.FundAccountOverview>(
     () =>
-      supabase
-        .rpc('fms_fund_account_overview', { p_account_set_id: accountSetId || null })
-        .single(),
-    { ignoreCheck: true, showErrorMessage: true }
+      supabase.rpc('fms_get_fund_account_overview_secure', {
+        p_account_set_id: accountSetId || null
+      }),
+    { showErrorMessage: true }
   )
 }
 
 export async function saveFundAccount(payload: Api.Fms.SaveFundAccountPayload) {
   return await responseHandle<FundAccount>(
-    () => supabase.rpc('save_fms_fund_account', { p_payload: payload }),
+    () => supabase.rpc('save_fms_fund_account_secure', { p_payload: payload }),
     {
       breakReturn: true,
       showMessage: true,
@@ -119,57 +136,35 @@ export async function saveFundAccount(payload: Api.Fms.SaveFundAccountPayload) {
 
 export async function deleteFundAccount(id: string) {
   return await responseHandle<string>(
-    () => supabase.rpc('delete_fms_fund_account', { p_account_id: id }),
+    () => supabase.rpc('delete_fms_fund_account_secure', { p_account_id: id }),
     { breakReturn: true, showMessage: true, message: '资金账户已删除' }
   )
 }
 
-function applyFundLedgerFilters<TQuery extends SupabaseQueryLike>(
-  query: TQuery,
-  params: Api.Fms.FundLedgerSearchParams
-): TQuery {
-  const { accountSetId, direction, entryDateRange, fundAccountId, keyword, sourceType, status } =
-    params
-  if (accountSetId) query = query.eq('account_set_id', accountSetId)
-  if (fundAccountId) query = query.eq('fund_account_id', fundAccountId)
-  if (direction) query = query.eq('direction', direction)
-  if (sourceType) query = query.eq('source_type', sourceType)
-  if (status) query = query.eq('status', status)
-  if (keyword?.trim()) {
-    const value = keyword.trim()
-    query = query.or(
-      `entry_no.ilike.%${value}%,source_no.ilike.%${value}%,summary.ilike.%${value}%,counterparty_name.ilike.%${value}%,bank_reference.ilike.%${value}%`
-    )
-  }
-  return applyDateRange(query, 'entry_date', entryDateRange)
-}
-
 export async function fetchFundLedgerList(params: Api.Fms.FundLedgerSearchParams = {}) {
   const { from = 0, to = 19 } = params
-  let query = supabase
-    .from('fms_fund_ledger_entry')
-    .select('*', { count: 'exact' })
-    .order('entry_date', { ascending: false })
-    .order('create_time', { ascending: false })
-    .range(from, to)
-  query = applyFundLedgerFilters(query, params)
-  const result = await responseHandle<FundLedger[]>(() => query, {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
-  const accountIds = [...new Set((result.data ?? []).map((row) => row.fundAccountId))]
-  const accounts = accountIds.length
-    ? await fetchFundAccountList({ from: 0, to: 999 })
-    : { data: [] as FundAccount[] }
-  const accountMap = new Map(
-    (accounts.data ?? []).filter((row) => accountIds.includes(row.id)).map((row) => [row.id, row])
+  const result = await responseHandle<FundLedgerListPayload>(
+    () =>
+      supabase.rpc('fms_list_fund_ledger_entries_secure', {
+        p_from: Math.max(from, 0),
+        p_to: Math.max(to, from),
+        p_account_set_id: params.accountSetId || null,
+        p_fund_account_id: params.fundAccountId || null,
+        p_direction: params.direction || null,
+        p_source_type: params.sourceType || null,
+        p_status: params.status || null,
+        p_keyword: params.keyword?.trim() || null,
+        p_entry_start_date: params.entryDateRange?.[0] || null,
+        p_entry_end_date: params.entryDateRange?.[1] || null,
+        p_tenant_id: null
+      }),
+    { showErrorMessage: true }
   )
   return {
-    ...result,
-    data: (result.data ?? []).map((row) => ({
-      ...row,
-      fundAccount: accountMap.get(row.fundAccountId) ?? null
-    }))
+    data: result.data?.records ?? [],
+    total: result.data?.total ?? 0,
+    error: result.error,
+    fieldAccess: result.data?.fieldAccess ?? {}
   }
 }
 
@@ -183,44 +178,47 @@ export async function fetchFundTransferList(params: Api.Fms.FundTransferSearchPa
     targetAccountId,
     to = 19
   } = params
-  let query = supabase
-    .from('fms_fund_transfer_summary')
-    .select('*', { count: 'exact' })
-    .order('transfer_date', { ascending: false })
-    .order('create_time', { ascending: false })
-    .range(from, to)
-  if (accountSetId) query = query.eq('account_set_id', accountSetId)
-  if (sourceAccountId) query = query.eq('source_account_id', sourceAccountId)
-  if (targetAccountId) query = query.eq('target_account_id', targetAccountId)
-  if (status) query = query.eq('status', status)
-  if (keyword?.trim()) {
-    const value = keyword.trim()
-    query = query.or(
-      `transfer_no.ilike.%${value}%,purpose.ilike.%${value}%,bank_reference.ilike.%${value}%,source_account_name.ilike.%${value}%,target_account_name.ilike.%${value}%`
-    )
+  const result = await responseHandle<FundTransferListPayload>(
+    () =>
+      supabase.rpc('fms_list_fund_transfers_secure', {
+        p_from: Math.max(from, 0),
+        p_to: Math.max(to, from),
+        p_account_set_id: accountSetId || null,
+        p_source_account_id: sourceAccountId || null,
+        p_target_account_id: targetAccountId || null,
+        p_status: status || null,
+        p_keyword: keyword?.trim() || null,
+        p_transfer_start_date: params.transferDateRange?.[0] || null,
+        p_transfer_end_date: params.transferDateRange?.[1] || null,
+        p_tenant_id: null
+      }),
+    { showErrorMessage: true }
+  )
+  return {
+    data: result.data?.records ?? [],
+    total: result.data?.total ?? 0,
+    error: result.error,
+    fieldAccess: result.data?.fieldAccess ?? {}
   }
-  query = applyDateRange(query, 'transfer_date', params.transferDateRange)
-  return await responseHandle<FundTransfer[]>(() => query, {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
+}
+
+export async function fetchFundTransferDetail(id: string) {
+  return await responseHandle<FundTransfer>(
+    () => supabase.rpc('fms_get_fund_transfer_secure', { p_transfer_id: id }),
+    { showErrorMessage: true }
+  )
 }
 
 export async function fetchFundTransferActions(id: string) {
   return await responseHandle<Api.Fms.FundTransferActionRecord[]>(
-    () =>
-      supabase
-        .from('fms_fund_transfer_action')
-        .select('*')
-        .eq('transfer_id', id)
-        .order('action_time'),
-    { ignoreCheck: true, showErrorMessage: true }
+    () => supabase.rpc('fms_list_fund_transfer_actions_secure', { p_transfer_id: id }),
+    { showErrorMessage: true }
   )
 }
 
 export async function saveFundTransfer(payload: Api.Fms.SaveFundTransferPayload) {
   return await responseHandle<FundTransfer>(
-    () => supabase.rpc('save_fms_fund_transfer', { p_payload: payload }),
+    () => supabase.rpc('save_fms_fund_transfer_secure', { p_payload: payload }),
     {
       breakReturn: true,
       showMessage: true,
@@ -236,7 +234,7 @@ export async function transitionFundTransfer(
 ) {
   return await responseHandle<FundTransfer>(
     () =>
-      supabase.rpc('transition_fms_fund_transfer', {
+      supabase.rpc('transition_fms_fund_transfer_secure', {
         p_transfer_id: id,
         p_action: action,
         p_remark: options.reason || null,
@@ -249,7 +247,7 @@ export async function transitionFundTransfer(
 
 export async function deleteFundTransfer(id: string) {
   return await responseHandle<string>(
-    () => supabase.rpc('delete_fms_fund_transfer', { p_transfer_id: id }),
+    () => supabase.rpc('delete_fms_fund_transfer_secure', { p_transfer_id: id }),
     { breakReturn: true, showMessage: true, message: '资金调拨单已删除' }
   )
 }
@@ -258,67 +256,77 @@ export async function fetchBankReconciliationList(
   params: Api.Fms.BankReconciliationSearchParams = {}
 ) {
   const { accountSetId, from = 0, fundAccountId, keyword, status, to = 19 } = params
-  let query = supabase
-    .from('fms_bank_reconciliation_batch_summary')
-    .select('*', { count: 'exact' })
-    .order('statement_end_date', { ascending: false })
-    .order('create_time', { ascending: false })
-    .range(from, to)
-  if (accountSetId) query = query.eq('account_set_id', accountSetId)
-  if (fundAccountId) query = query.eq('fund_account_id', fundAccountId)
-  if (status) query = query.eq('status', status)
-  if (keyword?.trim()) {
-    const value = keyword.trim()
-    query = query.or(
-      `batch_no.ilike.%${value}%,account_name.ilike.%${value}%,account_no_masked.ilike.%${value}%,imported_file_name.ilike.%${value}%`
-    )
+  const result = await responseHandle<BankReconciliationListPayload>(
+    () =>
+      supabase.rpc('fms_list_bank_reconciliations_secure', {
+        p_from: Math.max(from, 0),
+        p_to: Math.max(to, from),
+        p_account_set_id: accountSetId || null,
+        p_fund_account_id: fundAccountId || null,
+        p_status: status || null,
+        p_keyword: keyword?.trim() || null,
+        p_statement_start_date: params.statementDateRange?.[0] || null,
+        p_statement_end_date: params.statementDateRange?.[1] || null,
+        p_tenant_id: null
+      }),
+    { showErrorMessage: true }
+  )
+  return {
+    data: result.data?.records ?? [],
+    total: result.data?.total ?? 0,
+    error: result.error,
+    fieldAccess: result.data?.fieldAccess ?? {}
   }
-  if (params.statementDateRange?.length === 2) {
-    query = query
-      .gte('statement_end_date', params.statementDateRange[0])
-      .lte('statement_start_date', params.statementDateRange[1])
-  }
-  return await responseHandle<ReconciliationBatch[]>(() => query, {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
 }
 
 export async function fetchBankReconciliationDetail(id: string) {
   return await responseHandle<ReconciliationBatch>(
-    () => supabase.from('fms_bank_reconciliation_batch_summary').select('*').eq('id', id).single(),
-    { ignoreCheck: true, showErrorMessage: true }
+    () => supabase.rpc('fms_get_bank_reconciliation_secure', { p_batch_id: id }),
+    { showErrorMessage: true }
   )
 }
 
 export async function fetchBankStatementLines(batchId: string) {
-  return await responseHandle<Api.Fms.BankStatementLineRecord[]>(
-    () =>
-      supabase
-        .from('fms_bank_statement_line_summary')
-        .select('*')
-        .eq('batch_id', batchId)
-        .order('transaction_date')
-        .order('line_no'),
-    { ignoreCheck: true, showErrorMessage: true }
+  const result = await responseHandle<BankStatementLineListPayload>(
+    () => supabase.rpc('fms_list_bank_statement_lines_secure', { p_batch_id: batchId }),
+    { showErrorMessage: true }
   )
+  return {
+    data: result.data?.records ?? [],
+    error: result.error,
+    fieldAccess: result.data?.fieldAccess ?? {}
+  }
 }
 
 export async function fetchBankStatementMatches(lineId: string) {
   return await responseHandle<Api.Fms.BankStatementMatchRecord[]>(
     () =>
-      supabase
-        .from('fms_bank_statement_match')
-        .select('*, ledgerEntry:fms_fund_ledger_entry(*)')
-        .eq('statement_line_id', lineId)
-        .order('matched_at'),
-    { ignoreCheck: true, showErrorMessage: true }
+      supabase.rpc('fms_list_bank_statement_matches_secure', {
+        p_statement_line_id: lineId
+      }),
+    { showErrorMessage: true }
   )
+}
+
+export async function fetchBankMatchCandidates(lineId: string, toleranceDays = 30) {
+  const result = await responseHandle<BankMatchCandidateListPayload>(
+    () =>
+      supabase.rpc('fms_list_bank_match_candidates_secure', {
+        p_statement_line_id: lineId,
+        p_date_tolerance_days: toleranceDays
+      }),
+    { showErrorMessage: true }
+  )
+  return {
+    data: result.data?.records ?? [],
+    error: result.error,
+    fieldAccess: result.data?.fieldAccess ?? {}
+  }
 }
 
 export async function importBankReconciliation(payload: Api.Fms.ImportBankReconciliationPayload) {
   return await responseHandle<ReconciliationBatch>(
-    () => supabase.rpc('import_fms_bank_reconciliation', { p_payload: payload }),
+    () => supabase.rpc('import_fms_bank_reconciliation_secure', { p_payload: payload }),
     { breakReturn: true, showMessage: true, message: '银行流水已导入' }
   )
 }
@@ -326,7 +334,7 @@ export async function importBankReconciliation(payload: Api.Fms.ImportBankReconc
 export async function autoMatchBankReconciliation(id: string, toleranceDays = 3) {
   return await responseHandle<number>(
     () =>
-      supabase.rpc('auto_match_fms_bank_reconciliation', {
+      supabase.rpc('auto_match_fms_bank_reconciliation_secure', {
         p_batch_id: id,
         p_date_tolerance_days: toleranceDays
       }),
@@ -342,7 +350,7 @@ export async function matchBankStatementLine(
 ) {
   return await responseHandle<Api.Fms.BankStatementMatchRecord>(
     () =>
-      supabase.rpc('match_fms_bank_statement_line', {
+      supabase.rpc('match_fms_bank_statement_line_secure', {
         p_statement_line_id: lineId,
         p_ledger_entry_id: ledgerEntryId,
         p_matched_amount: amount ?? null,
@@ -354,7 +362,7 @@ export async function matchBankStatementLine(
 
 export async function unmatchBankStatementLine(matchId: string) {
   return await responseHandle<string>(
-    () => supabase.rpc('unmatch_fms_bank_statement_line', { p_match_id: matchId }),
+    () => supabase.rpc('unmatch_fms_bank_statement_line_secure', { p_match_id: matchId }),
     { breakReturn: true, showMessage: true, message: '匹配已撤销' }
   )
 }
@@ -362,7 +370,7 @@ export async function unmatchBankStatementLine(matchId: string) {
 export async function ignoreBankStatementLine(lineId: string, reason: string) {
   return await responseHandle<Api.Fms.BankStatementLineRecord>(
     () =>
-      supabase.rpc('ignore_fms_bank_statement_line', {
+      supabase.rpc('ignore_fms_bank_statement_line_secure', {
         p_statement_line_id: lineId,
         p_reason: reason
       }),
@@ -377,7 +385,7 @@ export async function transitionBankReconciliation(
 ) {
   return await responseHandle<ReconciliationBatch>(
     () =>
-      supabase.rpc('transition_fms_bank_reconciliation', {
+      supabase.rpc('transition_fms_bank_reconciliation_secure', {
         p_batch_id: id,
         p_action: action,
         p_reason: options.reason || null,

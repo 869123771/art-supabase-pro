@@ -24,6 +24,10 @@ function json(body: unknown, status = 200): Response {
   })
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+}
+
 Deno.serve(async (request) => {
   if (request.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
   if (request.method !== 'POST') {
@@ -68,26 +72,23 @@ Deno.serve(async (request) => {
   const startedAt = Date.now()
   let runId = ''
   try {
-    const [statementResult, invoiceResult] = await Promise.all([
-      userClient
-        .from('tms_customer_statement_summary')
-        .select(
-          'id,statement_no,customer_id,customer_name,period_start,period_end,status,statement_amount,settled_amount,outstanding_amount,submitted_at,reviewed_at'
-        )
-        .not('status', 'in', '(settled,voided)')
-        .order('period_end', { ascending: true })
-        .limit(ROW_LIMIT),
-      userClient
-        .from('tms_invoiceable_statement')
-        .select(
-          'statement_id,direction,statement_amount,invoiced_amount,uninvoiced_amount'
-        )
-        .eq('direction', 'receivable')
-        .order('period_end', { ascending: true })
-        .limit(ROW_LIMIT)
-    ])
+    const statementResult = await userClient.rpc(
+      'tms_list_customer_statements_receivables_ai_secure',
+      { p_limit: ROW_LIMIT }
+    )
     if (statementResult.error) throw statementResult.error
-    if (invoiceResult.error) throw invoiceResult.error
+
+    const statementPayload = isRecord(statementResult.data) ? statementResult.data : {}
+    const statements = Array.isArray(statementPayload.records)
+      ? statementPayload.records.filter(isRecord)
+      : []
+    const invoiceableStatements = statements.map((row) => ({
+      statement_id: row.id,
+      direction: 'receivable',
+      statement_amount: row.statement_amount,
+      invoiced_amount: row.invoiced_amount,
+      uninvoiced_amount: row.uninvoiced_amount
+    }))
 
     const { data: run, error: runError } = await admin
       .from('ai_run')
@@ -113,8 +114,8 @@ Deno.serve(async (request) => {
     runId = run.id
 
     const assessment = assessReceivablesCollection({
-      statements: statementResult.data ?? [],
-      invoiceableStatements: invoiceResult.data ?? []
+      statements,
+      invoiceableStatements
     })
     const { error: finishError } = await admin
       .from('ai_run')

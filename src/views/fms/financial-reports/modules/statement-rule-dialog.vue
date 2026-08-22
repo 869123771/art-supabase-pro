@@ -10,7 +10,7 @@
           <strong>{{ currentItem?.itemCode }} {{ currentItem?.itemName }}</strong>
           <small>{{ ruleHint }}</small>
         </div>
-        <ElButton type="primary" plain @click="addRule">
+        <ElButton v-if="editable" type="primary" plain @click="addRule">
           <ArtSvgIcon icon="ri:add-line" />
           添加规则
         </ElButton>
@@ -38,6 +38,7 @@
             <ElSelect
               v-model="row.sourceId"
               filterable
+              :disabled="!editable"
               class="!w-full"
               :placeholder="isFormula ? '请选择来源项目' : '请选择会计科目'"
             >
@@ -52,7 +53,7 @@
         </ElTableColumn>
         <ElTableColumn v-if="!isFormula" label="取数方向" width="170">
           <template #default="{ row }">
-            <ElSelect v-model="row.mappingDirection" class="!w-full">
+            <ElSelect v-model="row.mappingDirection" class="!w-full" :disabled="!editable">
               <ElOption
                 v-for="option in directionOptions"
                 :key="String(option.value)"
@@ -72,15 +73,21 @@
               :step="1"
               controls-position="right"
               class="!w-full"
+              :disabled="!editable"
             />
           </template>
         </ElTableColumn>
         <ElTableColumn v-if="!isFormula" label="备注" min-width="190">
           <template #default="{ row }">
-            <ElInput v-model="row.remark" maxlength="200" placeholder="可选" />
+            <ElInput
+              v-model="row.remark"
+              maxlength="200"
+              placeholder="可选"
+              :disabled="!editable"
+            />
           </template>
         </ElTableColumn>
-        <ElTableColumn label="操作" width="80" fixed="right" align="center">
+        <ElTableColumn v-if="editable" label="操作" width="80" fixed="right" align="center">
           <template #default="{ $index }">
             <ElButton type="danger" link @click="removeRule($index)">删除</ElButton>
           </template>
@@ -92,7 +99,7 @@
         :description="isFormula ? '尚未配置计算来源' : '尚未配置科目映射'"
         :image-size="96"
       >
-        <ElButton type="primary" plain @click="addRule">添加第一条规则</ElButton>
+        <ElButton v-if="editable" type="primary" plain @click="addRule"> 添加第一条规则 </ElButton>
       </ElEmpty>
     </div>
   </ArtDialog>
@@ -130,6 +137,7 @@
   const items = ref<Item[]>([])
   const subjects = ref<Api.Fms.SubjectRecord[]>([])
   const rows = ref<RuleRow[]>([])
+  const editable = ref(false)
 
   const isFormula = computed(() => currentItem.value?.calculationMethod === 'formula')
   const directionOptions = computed(() => getDictMap.value.fmsStatementMappingDirection ?? [])
@@ -194,7 +202,7 @@
   }
 
   async function handleSubmit(): Promise<boolean> {
-    if (!currentItem.value || !validateRows()) return false
+    if (!editable.value || !currentItem.value || !validateRows()) return false
     try {
       if (isFormula.value) {
         await saveFinancialStatementFormulas(
@@ -222,12 +230,14 @@
   async function handleOpen(
     item: Item,
     statementItems: Item[],
-    subjectList: Api.Fms.SubjectRecord[]
+    subjectList: Api.Fms.SubjectRecord[],
+    canEdit: boolean
   ): Promise<void> {
     currentItem.value = item
     items.value = statementItems
     subjects.value = subjectList
     rows.value = []
+    editable.value = canEdit
 
     if (item.calculationMethod === 'formula') {
       const { data } = await fetchFinancialStatementFormulas(item.id)
@@ -247,10 +257,11 @@
     }
 
     await dialogRef.value?.handleOpen(undefined, {
-      title: isFormula.value ? '配置报表公式' : '配置科目取数',
+      title: `${editable.value ? '配置' : '查看'}${isFormula.value ? '报表公式' : '科目取数'}`,
       confirmText: '保存取数规则',
+      showFooter: editable.value,
       contentMaxHeight: '72vh',
-      onConfirm: handleSubmit,
+      onConfirm: editable.value ? handleSubmit : undefined,
       dialogProps: { appendToBody: true, closeOnClickModal: false }
     })
   }

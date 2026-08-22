@@ -267,7 +267,10 @@ export async function fetchCustomerDeleteDependencies(
 ): Promise<CustomerDeleteDependency[]> {
   if (!customerIds.length) return []
   const { data } = await responseHandle<CustomerDeleteDependency[]>(
-    () => supabase.rpc('get_tms_customer_delete_dependencies', { p_customer_ids: customerIds }),
+    () =>
+      supabase.rpc('get_tms_customer_delete_dependencies_secure', {
+        p_customer_ids: customerIds
+      }),
     { breakReturn: true }
   )
   return (data ?? []).map((item) => ({
@@ -282,7 +285,9 @@ export async function fetchCustomerDeleteDependencyDetails(
   if (!customerIds.length) return []
   const { data } = await responseHandle<CustomerDeleteDependencyDetail[]>(
     () =>
-      supabase.rpc('get_tms_customer_delete_dependency_details', { p_customer_ids: customerIds }),
+      supabase.rpc('get_tms_customer_delete_dependency_details_secure', {
+        p_customer_ids: customerIds
+      }),
     { breakReturn: true }
   )
   return (data ?? []).map((item) => ({
@@ -300,7 +305,7 @@ export async function fetchCustomerDeleteSafeCleanupCandidates(
   if (!customerIds.length) return []
   const { data } = await responseHandle<CustomerDeleteSafeCleanupCandidate[]>(
     () =>
-      supabase.rpc('get_tms_customer_delete_safe_cleanup_candidates', {
+      supabase.rpc('get_tms_customer_delete_safe_cleanup_candidates_secure', {
         p_customer_ids: customerIds
       }),
     { breakReturn: true }
@@ -314,7 +319,7 @@ export async function cleanupCustomerDeleteSafeDependencies(
   if (!customerIds.length) return []
   const { data } = await responseHandle<CustomerDeleteSafeCleanupResult[]>(
     () =>
-      supabase.rpc('cleanup_tms_customer_safe_delete_dependencies', {
+      supabase.rpc('cleanup_tms_customer_safe_delete_dependencies_secure', {
         p_customer_ids: customerIds
       }),
     { breakReturn: true }

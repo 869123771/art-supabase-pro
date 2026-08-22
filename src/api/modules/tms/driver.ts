@@ -6,6 +6,7 @@ type Driver = Api.Tms.BasicData.Driver
 type DriverSearchParams = Api.Tms.BasicData.DriverSearchParams
 type DriverOption = Api.Tms.BasicData.DriverOption
 type DriverAssignedVehicle = Api.Tms.BasicData.DriverAssignedVehicle
+type DriverEmployeeOption = Api.Tms.BasicData.DriverEmployeeOption
 
 interface DriverOptionParams extends Partial<
   Pick<DriverOption, 'carrierId' | 'driverName' | 'driverType'>
@@ -21,11 +22,23 @@ interface SecureListPayload<TRecord, TAccess extends Record<string, string>> {
   fieldAccess?: TAccess
 }
 
+interface DriverEmployeeOptionParams {
+  keyword?: string
+  from?: number
+  to?: number
+}
+
+interface DriverEmployeeOptionPayload {
+  records: DriverEmployeeOption[]
+  total: number
+}
+
 const { supabase, keysToSnakeDeep, responseHandle } = useSupabase()
 
 const UUID_PATTERN = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i
 
 const DRIVER_PAYLOAD_KEYS = [
+  'employeeId',
   'carrierId',
   'driverName',
   'phone',
@@ -44,6 +57,31 @@ const DRIVER_PAYLOAD_KEYS = [
   'driverLicenseBackUrl',
   'remark'
 ] as const satisfies readonly (keyof Driver)[]
+
+export async function fetchDriverEmployeeOptions(
+  params: DriverEmployeeOptionParams,
+  options?: ApiRequestOptions
+) {
+  const from = Math.max(params.from ?? 0, 0)
+  const result = await responseHandle<DriverEmployeeOptionPayload>(
+    () =>
+      withRequestOptions(
+        supabase.rpc('tms_list_driver_employee_options_secure', {
+          p_from: from,
+          p_to: Math.max(params.to ?? from + 9, from),
+          p_keyword: String(params.keyword ?? '').trim() || null
+        }),
+        options
+      ),
+    { showErrorMessage: true }
+  )
+
+  return {
+    data: result.data?.records ?? [],
+    total: result.data?.total ?? 0,
+    error: result.error
+  }
+}
 
 const pickPayload = <TRecord extends object, TKey extends Extract<keyof TRecord, string>>(
   record: TRecord,

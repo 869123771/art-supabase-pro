@@ -651,6 +651,11 @@
     tableProps?: ArtTableQueryTableProps
     /** 是否允许专注模式；工具栏开启时显示入口，也可通过 v-model:focus-mode 从页面头部进入。 */
     focusable?: boolean
+    /**
+     * 专注模式需要整体保留的最近祖先选择器。
+     * 适用于“导航树 + 查询表格”等复合工作区；未传时仅保留当前查询表格。
+     */
+    focusScopeSelector?: string
   }
 
   const props = withDefaults(defineProps<Omit<ArtTableQueryProps, 'showTableToolbar'>>(), {
@@ -1440,8 +1445,8 @@
   }
 
   /**
-   * 只保留当前查询表格到路由页面根节点之间的 DOM 路径。
-   * 这样页面级概览、指标、说明等区域会隐藏，而搜索、工具栏、表格和分页保持完整。
+   * 只保留当前专注工作区到路由页面根节点之间的 DOM 路径。
+   * 默认工作区为查询表格本身；复合页面可通过 focusScopeSelector 保留导航树等必要上下文。
    */
   const applyFocusLayout = (): void => {
     restoreFocusLayout()
@@ -1454,7 +1459,10 @@
     focusPageElement = pageElement
     pageElement.classList.add(focusPageClass)
 
-    let currentElement = tableQueryElement
+    const focusScopeElement = props.focusScopeSelector
+      ? tableQueryElement.closest<HTMLElement>(props.focusScopeSelector)
+      : undefined
+    let currentElement = focusScopeElement ?? tableQueryElement
     while (currentElement !== pageElement) {
       const parentElement: HTMLElement | null = currentElement.parentElement
       if (!parentElement || !pageElement.contains(parentElement)) break

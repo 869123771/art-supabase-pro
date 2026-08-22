@@ -11,7 +11,10 @@
       <div v-if="detail" class="bank-reconciliation-detail">
         <div class="bank-reconciliation-detail__toolbar">
           <div>
-            <ElTag :type="detail.statementBalanceDifference === 0 ? 'success' : 'danger'">
+            <ElTag
+              v-if="canViewDetailField('statementAmounts')"
+              :type="detail.statementBalanceDifference === 0 ? 'success' : 'danger'"
+            >
               余额差 {{ formatMoney(detail.statementBalanceDifference) }}
             </ElTag>
             <span>已匹配 {{ detail.matchedCount }}/{{ detail.lineCount }} 行</span>
@@ -100,6 +103,7 @@
   import { useAuth } from '@/hooks/core/useAuth'
   import { formatCurrencyValue } from '@/utils/ui'
   import { formatWithDayjs } from '@/utils/time'
+  import { canViewField, getFieldAccess } from '@/utils/field-permission'
   import BankLineMatchDialog from './bank-line-match-dialog.vue'
 
   defineOptions({ name: 'FinanceBankReconciliationDetailDrawer' })
@@ -123,28 +127,41 @@
   const matches = shallowRef<Match[]>([])
   const loading = ref(false)
   const loadError = shallowRef<Error | null>(null)
+  const canViewDetailField = (field: Api.Fms.BankReconciliationFieldKey): boolean =>
+    canViewField(detail.value?.fieldAccess, field)
+  const canUsePlainAmounts = computed(() =>
+    ['read', 'edit'].includes(getFieldAccess(detail.value?.fieldAccess, 'statementAmounts'))
+  )
 
-  const descriptionItems: ArtDescriptionItem<Batch>[] = [
+  const descriptionItems = computed<ArtDescriptionItem<Batch>[]>(() => [
     { key: 'batchNo', label: '对账批次号', field: 'batchNo', copyable: true },
     { key: 'status', label: '批次状态', field: 'status', dictCode: 'fmsBankReconciliationStatus' },
     { key: 'accountName', label: '对账账户', field: 'accountName' },
     { key: 'statementStartDate', label: '期间开始', field: 'statementStartDate', format: 'date' },
     { key: 'statementEndDate', label: '期间结束', field: 'statementEndDate', format: 'date' },
     { key: 'currencyCode', label: '币种', field: 'currencyCode' },
-    { key: 'openingBalance', label: '期初余额', field: 'openingBalance', format: 'money' },
-    { key: 'closingBalance', label: '期末余额', field: 'closingBalance', format: 'money' },
-    {
-      key: 'calculatedClosingBalance',
-      label: '流水推算余额',
-      field: 'calculatedClosingBalance',
-      format: 'money'
-    },
-    { key: 'importedFileName', label: '来源文件', field: 'importedFileName', span: 2 },
+    ...(canViewDetailField('statementAmounts')
+      ? ([
+          { key: 'openingBalance', label: '期初余额', field: 'openingBalance', format: 'money' },
+          { key: 'closingBalance', label: '期末余额', field: 'closingBalance', format: 'money' },
+          {
+            key: 'calculatedClosingBalance',
+            label: '流水推算余额',
+            field: 'calculatedClosingBalance',
+            format: 'money'
+          }
+        ] as ArtDescriptionItem<Batch>[])
+      : []),
+    ...(canViewDetailField('bankReferences')
+      ? ([
+          { key: 'importedFileName', label: '来源文件', field: 'importedFileName', span: 2 }
+        ] as ArtDescriptionItem<Batch>[])
+      : []),
     { key: 'remark', label: '导入说明', field: 'remark', span: 3 },
     { key: 'voidReason', label: '作废原因', field: 'voidReason', span: 3 }
-  ]
+  ])
 
-  const lineColumns: ColumnOption<Line>[] = [
+  const lineColumns = computed<ColumnOption<Line>[]>(() => [
     { prop: 'lineNo', label: '#', width: 54, align: 'center' },
     { prop: 'transactionDate', label: '交易日期', width: 112 },
     {
@@ -153,22 +170,48 @@
       width: 90,
       dict: { code: 'fmsFundLedgerDirection', display: 'tag' }
     },
-    {
-      prop: 'amount',
-      label: '银行金额',
-      width: 130,
-      align: 'right',
-      formatter: (row) => formatMoney(row.amount)
-    },
-    { prop: 'counterpartyName', label: '对方名称', minWidth: 150, showOverflowTooltip: true },
-    { prop: 'bankReference', label: '银行参考号', minWidth: 145, showOverflowTooltip: true },
-    {
-      prop: 'matchedAmount',
-      label: '已匹配',
-      width: 125,
-      align: 'right',
-      formatter: (row) => formatMoney(row.matchedAmount)
-    },
+    ...(canViewDetailField('statementAmounts')
+      ? ([
+          {
+            prop: 'amount',
+            label: '银行金额',
+            width: 130,
+            align: 'right',
+            formatter: (row: Line) => formatMoney(row.amount)
+          }
+        ] as ColumnOption<Line>[])
+      : []),
+    ...(canViewDetailField('accountDetails')
+      ? ([
+          {
+            prop: 'counterpartyName',
+            label: '对方名称',
+            minWidth: 150,
+            showOverflowTooltip: true
+          }
+        ] as ColumnOption<Line>[])
+      : []),
+    ...(canViewDetailField('bankReferences')
+      ? ([
+          {
+            prop: 'bankReference',
+            label: '银行参考号',
+            minWidth: 145,
+            showOverflowTooltip: true
+          }
+        ] as ColumnOption<Line>[])
+      : []),
+    ...(canViewDetailField('statementAmounts')
+      ? ([
+          {
+            prop: 'matchedAmount',
+            label: '已匹配',
+            width: 125,
+            align: 'right',
+            formatter: (row: Line) => formatMoney(row.matchedAmount)
+          }
+        ] as ColumnOption<Line>[])
+      : []),
     {
       prop: 'status',
       label: '状态',
@@ -185,12 +228,14 @@
           <ArtButtonTable type="view" label="查看匹配" onClick={() => void loadMatches(row)} />
           {['unmatched', 'partial_matched'].includes(row.status) ? (
             <>
-              <ArtButtonTable
-                type="edit"
-                permission="FinanceBankReconciliation:Match"
-                label="手工匹配"
-                onClick={() => void matchDialogRef.value?.handleOpen(row)}
-              />
+              {canUsePlainAmounts.value ? (
+                <ArtButtonTable
+                  type="edit"
+                  permission="FinanceBankReconciliation:Match"
+                  label="手工匹配"
+                  onClick={() => void matchDialogRef.value?.handleOpen(row)}
+                />
+              ) : null}
               {row.status === 'unmatched' ? (
                 <ArtButtonTable
                   type="delete"
@@ -204,7 +249,7 @@
         </div>
       )
     }
-  ]
+  ])
 
   const matchColumns = computed<ColumnOption<Match>[]>(() => [
     {
@@ -226,13 +271,17 @@
       formatter: (row) =>
         row.ledgerEntry ? `${row.ledgerEntry.entryDate} · ${row.ledgerEntry.summary}` : '--'
     },
-    {
-      prop: 'matchedAmount',
-      label: '匹配金额',
-      width: 125,
-      align: 'right',
-      formatter: (row) => formatMoney(row.matchedAmount)
-    },
+    ...(canViewDetailField('statementAmounts')
+      ? [
+          {
+            prop: 'matchedAmount',
+            label: '匹配金额',
+            width: 125,
+            align: 'right',
+            formatter: (row: Match) => formatMoney(row.matchedAmount)
+          } satisfies ColumnOption<Match>
+        ]
+      : []),
     { prop: 'matchedBy', label: '操作人', minWidth: 140, showOverflowTooltip: true },
     ...(hasAuth('FinanceBankReconciliation:Unmatch') && detail.value?.status !== 'reconciled'
       ? [
@@ -254,7 +303,8 @@
       : [])
   ])
 
-  function formatMoney(value: number): string {
+  function formatMoney(value: unknown): string {
+    if (value === null || value === undefined || value === '') return '--'
     return formatCurrencyValue(value, detail.value?.currencyCode)
   }
 

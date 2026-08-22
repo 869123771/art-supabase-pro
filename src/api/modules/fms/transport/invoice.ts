@@ -1,7 +1,6 @@
 import { createFriendlySupabaseError, normalizeSupabaseFunctionError } from '@/utils/supabase'
 import { useSupabase } from '@/hooks'
 import type { QueryResult } from '@/types/api/response'
-import { applyDateRange, type SupabaseQueryLike } from '@/api/providers/supabase/query'
 import { actWorkflowByBusiness, startWorkflow } from '@/api/workflow'
 
 type Invoice = Api.Fms.InvoiceRecord
@@ -12,6 +11,12 @@ type SaveInvoicePayload = Api.Fms.SaveInvoicePayload
 type InvoiceStatusPayload = Api.Fms.InvoiceStatusPayload & { businessTitle?: string }
 type InvoiceStatementLink = Api.Fms.InvoiceStatementLinkRecord
 type InvoiceDuplicateRecord = Api.Fms.InvoiceDuplicateRecord
+
+interface SecureListPayload<TRecord> {
+  records: TRecord[]
+  total: number
+  fieldAccess?: Api.Fms.InvoiceFieldAccessMap
+}
 
 const { supabase, responseHandle } = useSupabase()
 const ACTIVE_LEGAL_NO_CONSTRAINT = 'tms_invoice_active_legal_no_key'
@@ -38,99 +43,86 @@ function toError(error: unknown): Error {
   return createFriendlySupabaseError(error, '发票保存失败，请稍后重试')
 }
 
-function applyInvoiceFilters<TQuery extends SupabaseQueryLike>(
-  query: TQuery,
-  params: InvoiceSearchParams
-): TQuery {
-  const {
-    carrierId,
-    customerId,
-    direction,
-    invoiceType,
-    issueDateRange,
-    keyword,
-    recordId,
-    status
-  } = params
-  if (recordId) query = query.eq('id', recordId)
-  if (direction) query = query.eq('direction', direction)
-  if (invoiceType) query = query.eq('invoice_type', invoiceType)
-  if (status) query = query.eq('status', status)
-  if (customerId) query = query.eq('customer_id', customerId)
-  if (carrierId) query = query.eq('carrier_id', carrierId)
-  if (keyword) {
-    query = query.or(
-      `invoice_record_no.ilike.%${keyword}%,invoice_no.ilike.%${keyword}%,invoice_code.ilike.%${keyword}%,counterparty_name_snapshot.ilike.%${keyword}%,invoice_title.ilike.%${keyword}%,tax_number.ilike.%${keyword}%`
-    )
+const toInvoiceListRpcParams = (
+  params: InvoiceSearchParams & { ids?: string[]; maxRows?: number },
+  purpose: 'list' | 'export'
+) => {
+  const from = purpose === 'export' ? 0 : Math.max(params.from ?? 0, 0)
+  const requestedTo = purpose === 'export' ? Math.max((params.maxRows ?? 10000) - 1, 0) : params.to
+  return {
+    p_from: from,
+    p_to: Math.max(requestedTo ?? 9, from),
+    p_direction: params.direction || null,
+    p_status: params.status || null,
+    p_invoice_type: params.invoiceType || null,
+    p_customer_id: params.customerId || null,
+    p_carrier_id: params.carrierId || null,
+    p_record_id: params.recordId || null,
+    p_issue_date_start: params.issueDateRange?.[0] || null,
+    p_issue_date_end: params.issueDateRange?.[1] || null,
+    p_keyword: String(params.keyword ?? '').trim() || null,
+    p_ids: params.ids?.length ? params.ids : null,
+    p_purpose: purpose
   }
-  return applyDateRange(query, 'issue_date', issueDateRange)
 }
 
 export async function fetchInvoiceList(params: InvoiceSearchParams) {
-  const { from = 0, to = 9 } = params
-  let query = supabase
-    .from('tms_invoice_summary')
-    .select('*', { count: 'exact' })
-    .order('issue_date', { ascending: false })
-    .order('create_time', { ascending: false })
-    .range(from, to)
-  query = applyInvoiceFilters(query, params)
-  return await responseHandle<Invoice[]>(() => query, {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
+  const result = await responseHandle<SecureListPayload<Invoice>>(
+    () => supabase.rpc('tms_list_invoices_secure', toInvoiceListRpcParams(params, 'list')),
+    { showErrorMessage: true }
+  )
+  return {
+    data: result.data?.records ?? [],
+    total: result.data?.total ?? 0,
+    error: result.error,
+    fieldAccess: result.data?.fieldAccess ?? {}
+  }
 }
 
 export async function exportInvoiceList(
   params: InvoiceSearchParams & { ids?: string[]; maxRows?: number }
 ) {
-  const { ids, maxRows = 10000 } = params
-  let query = supabase
-    .from('tms_invoice_summary')
-    .select('*')
-    .order('issue_date', { ascending: false })
-    .order('create_time', { ascending: false })
-    .limit(maxRows)
-  query = ids?.length ? query.in('id', ids) : applyInvoiceFilters(query, params)
-  return await responseHandle<Invoice[]>(() => query, {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
+  const result = await responseHandle<SecureListPayload<Invoice>>(
+    () => supabase.rpc('tms_list_invoices_secure', toInvoiceListRpcParams(params, 'export')),
+    { showErrorMessage: true }
+  )
+  return {
+    data: result.data?.records ?? [],
+    total: result.data?.total ?? 0,
+    error: result.error,
+    fieldAccess: result.data?.fieldAccess ?? {}
+  }
 }
 
 export async function fetchInvoiceableStatementList(params: InvoiceableSearchParams) {
   const { counterpartyId, direction, from = 0, includeFullyInvoiced, keyword, to = 9 } = params
-  let query = supabase
-    .from('tms_invoiceable_statement')
-    .select('*', { count: 'exact' })
-    .eq('direction', direction)
-    .eq('counterparty_id', counterpartyId)
-    .order('period_end', { ascending: true })
-    .range(from, to)
-  if (!includeFullyInvoiced) query = query.gt('uninvoiced_amount', 0)
-  if (keyword) {
-    query = query.or(`statement_no.ilike.%${keyword}%,counterparty_name.ilike.%${keyword}%`)
+  const result = await responseHandle<SecureListPayload<InvoiceableStatement>>(
+    () =>
+      supabase.rpc('tms_list_invoiceable_statements_secure', {
+        p_direction: direction,
+        p_counterparty_id: counterpartyId,
+        p_from: Math.max(from, 0),
+        p_to: Math.max(to, from),
+        p_keyword: String(keyword ?? '').trim() || null,
+        p_include_fully_invoiced: Boolean(includeFullyInvoiced)
+      }),
+    { showErrorMessage: true }
+  )
+  return {
+    data: result.data?.records ?? [],
+    total: result.data?.total ?? 0,
+    error: result.error
   }
-  return await responseHandle<InvoiceableStatement[]>(() => query, {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
 }
 
 export async function fetchInvoiceDetail(id: string) {
   const [invoiceResponse, linkResponse] = await Promise.all([
-    responseHandle<Invoice>(
-      () => supabase.from('tms_invoice_summary').select('*').eq('id', id).single(),
-      { ignoreCheck: true, showErrorMessage: true }
-    ),
+    responseHandle<Invoice | null>(() => supabase.rpc('tms_get_invoice_secure', { p_id: id }), {
+      showErrorMessage: true
+    }),
     responseHandle<InvoiceStatementLink[]>(
-      () =>
-        supabase
-          .from('tms_invoice_detail_link')
-          .select('*')
-          .eq('invoice_id', id)
-          .order('period_end', { ascending: true }),
-      { ignoreCheck: true, showErrorMessage: true }
+      () => supabase.rpc('tms_list_invoice_statement_links_secure', { p_invoice_id: id }),
+      { showErrorMessage: true }
     )
   ])
   return {
@@ -145,28 +137,23 @@ export async function fetchActiveInvoiceByLegalNo(params: {
   invoiceNo: string
   excludeId?: string
 }) {
-  let query = supabase
-    .from('tms_invoice_summary')
-    .select(
-      'id,invoice_record_no,direction,invoice_no,status,counterparty_name_snapshot,issue_date,total_amount'
-    )
-    .eq('direction', params.direction)
-    .eq('invoice_no', params.invoiceNo.trim())
-    .neq('status', 'voided')
-    .limit(1)
-
-  if (params.excludeId) query = query.neq('id', params.excludeId)
-
-  return await responseHandle<InvoiceDuplicateRecord | null>(() => query.maybeSingle(), {
-    ignoreCheck: true,
-    showErrorMessage: false
-  })
+  return await responseHandle<InvoiceDuplicateRecord | null>(
+    () =>
+      supabase.rpc('tms_find_active_invoice_by_legal_no_secure', {
+        p_direction: params.direction,
+        p_invoice_no: params.invoiceNo.trim(),
+        p_exclude_id: params.excludeId || null
+      }),
+    {
+      showErrorMessage: false
+    }
+  )
 }
 
 export async function saveInvoice(params: SaveInvoicePayload) {
   const result = await responseHandle<string>(
     () =>
-      supabase.rpc('save_tms_invoice', {
+      supabase.rpc('save_tms_invoice_secure', {
         p_invoice_id: params.id || null,
         p_direction: params.direction,
         p_invoice_type: params.invoiceType,
@@ -214,7 +201,7 @@ export async function updateInvoiceStatus(params: InvoiceStatusPayload) {
   }
   return await responseHandle<string>(
     () =>
-      supabase.rpc('update_tms_invoice_status', {
+      supabase.rpc('update_tms_invoice_status_secure', {
         p_invoice_id: params.id,
         p_action: params.action,
         p_remark: params.remark || null

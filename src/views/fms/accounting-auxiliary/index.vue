@@ -18,7 +18,7 @@
       :metrics="metrics"
     >
       <template #actions>
-        <AccountingWorkspaceFocusToggle v-model="focusMode" />
+        <BusinessWorkspaceFocusToggle v-model="focusMode" />
       </template>
     </BusinessWorkspaceHeader>
 
@@ -141,7 +141,7 @@
         class="accounting-auxiliary-page__items accounting-workspace-fill-section"
       >
         <template #actions>
-          <AccountingWorkspaceFocusToggle v-if="focusMode" v-model="focusMode" />
+          <BusinessWorkspaceFocusToggle v-if="focusMode" v-model="focusMode" />
           <ElButton
             v-if="hasAuth('FinanceAccountingAuxiliary:Sync') && canSync"
             :loading="workspace.syncing"
@@ -230,8 +230,8 @@
     setAuxiliaryItemEnabled,
     syncAuxiliaryItems
   } from '@/api/fms'
-  import AccountingWorkspaceFocusToggle from '../modules/accounting-workspace-focus-toggle.vue'
-  import { useAccountingWorkspaceFocus } from '../modules/use-accounting-workspace-focus'
+  import BusinessWorkspaceFocusToggle from '@/components/business/business-workspace-focus-toggle/index.vue'
+  import { useWorkspaceFocus } from '@/hooks/core/useWorkspaceFocus'
   import AuxiliaryTypeDialog from './modules/auxiliary-type-dialog.vue'
   import AuxiliaryItemDialog from './modules/auxiliary-item-dialog.vue'
 
@@ -275,7 +275,7 @@
   }
 
   const { confirmAction } = useArtFeedback()
-  const { focusMode } = useAccountingWorkspaceFocus()
+  const { focusMode } = useWorkspaceFocus()
   const { ensureAccountSet, goToAccountSet } = useFinanceAccountSetPrerequisite()
   const { hasAuth } = useAuth()
   const typeDialogRef = ref<AuxiliaryTypeDialogExpose>()

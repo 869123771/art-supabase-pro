@@ -8,7 +8,7 @@
           <p>{{ description }}</p>
         </div>
       </div>
-      <ElButton type="primary" plain @click="emit('add')">
+      <ElButton v-if="!readonly" type="primary" plain @click="emit('add')">
         <ArtSvgIcon icon="ri:add-line" />
         {{ addLabel }}
       </ElButton>
@@ -18,8 +18,12 @@
     <div v-else class="hr-history-section__empty">
       <span aria-hidden="true"><ArtSvgIcon :icon="icon" /></span>
       <strong>暂无{{ title }}</strong>
-      <p>点击“{{ addLabel }}”补充员工的{{ title }}。</p>
-      <ElButton type="primary" @click="emit('add')">{{ addLabel }}</ElButton>
+      <p>{{
+        readonly
+          ? '当前权限仅支持查看，无法维护此类履历。'
+          : `点击“${addLabel}”补充员工的${title}。`
+      }}</p>
+      <ElButton v-if="!readonly" type="primary" @click="emit('add')">{{ addLabel }}</ElButton>
     </div>
   </section>
 </template>
@@ -34,6 +38,7 @@
     addLabel: string
     icon: string
     count: number
+    readonly?: boolean
   }>()
   const emit = defineEmits<{ (event: 'add'): void }>()
 </script>

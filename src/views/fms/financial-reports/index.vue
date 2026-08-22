@@ -92,6 +92,12 @@
   import type { ColumnOption } from '@/types'
   import { useUserStore } from '@/store/modules/user'
   import { useAuth } from '@/hooks/core/useAuth'
+  import {
+    canEditField,
+    canViewField,
+    getFieldAccess,
+    mergeFieldAccessMaps
+  } from '@/utils/field-permission'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatCurrencyValue } from '@/utils/ui'
   import {
@@ -109,7 +115,7 @@
 
   const { getDictMap } = storeToRefs(useUserStore())
   const { hasAuth } = useAuth()
-  const canEditConfig = computed(() => hasAuth('FinanceFinancialReports:EditConfig'))
+  const canEditConfigButton = computed(() => hasAuth('FinanceFinancialReports:EditConfig'))
   const activeType = ref<StatementType>('balance_sheet')
   const { ensureAccountSet } = useFinanceAccountSetPrerequisite()
   const tableRef = ref<ArtTableQueryExpose>()
@@ -117,6 +123,7 @@
   const accountSetOptions = ref<Api.Fms.AccountSetOption[]>([])
   const periods = ref<Api.Fms.AccountingPeriodRecord[]>([])
   const reportRows = ref<ReportRow[]>([])
+  const listFieldAccess = ref<Api.Fms.FinancialReportFieldAccessMap>({})
   const search = reactive<SearchData>({
     accountSetId: '',
     fiscalYear: new Date().getFullYear(),
@@ -141,6 +148,17 @@
     periods.value
       .filter((item) => item.fiscalYear === search.fiscalYear)
       .map((item) => ({ label: `第 ${item.periodNo} 期`, value: item.periodNo }))
+  )
+
+  const effectiveFieldAccess = computed(() =>
+    mergeFieldAccessMaps(listFieldAccess.value, ...reportRows.value.map((row) => row.fieldAccess))
+  )
+  const canViewReportAmounts = computed(() =>
+    canViewField(effectiveFieldAccess.value, 'reportAmounts')
+  )
+  const canViewReportRules = computed(() => canViewField(effectiveFieldAccess.value, 'reportRules'))
+  const canEditConfig = computed(
+    () => canEditConfigButton.value && canEditField(effectiveFieldAccess.value, 'reportRules')
   )
 
   const searchItems = computed<SearchFormItem[]>(() => [
@@ -203,7 +221,7 @@
       key: 'statement-config',
       label: canEditConfig.value ? '取数口径' : '查看口径',
       icon: canEditConfig.value ? 'ri:settings-3-line' : 'ri:eye-line',
-      permission: canEditConfig.value
+      permission: canEditConfigButton.value
         ? 'FinanceFinancialReports:EditConfig'
         : 'FinanceFinancialReports:ViewConfig',
       onClick: openConfiguration
@@ -217,17 +235,25 @@
         { key: 'lineNo', title: '行次' },
         { key: 'itemCode', title: '项目编码', width: 16 },
         { key: 'itemName', title: '项目名称', width: 32 },
-        { key: 'primaryAmount', title: primaryAmountLabel.value },
-        { key: 'secondaryAmount', title: secondaryAmountLabel.value },
+        ...(canViewReportAmounts.value
+          ? [
+              { key: 'primaryAmount', title: primaryAmountLabel.value },
+              { key: 'secondaryAmount', title: secondaryAmountLabel.value }
+            ]
+          : []),
         {
           key: 'calculationMethod',
           title: '计算方式',
           formatter: (value) => dictLabel('fmsStatementCalculationMethod', value)
         },
-        {
-          key: 'mappingCount',
-          title: activeType.value === 'cash_flow_statement' ? '归集笔数' : '取数规则数'
-        }
+        ...(canViewReportRules.value
+          ? [
+              {
+                key: 'mappingCount',
+                title: activeType.value === 'cash_flow_statement' ? '归集笔数' : '取数规则数'
+              }
+            ]
+          : [])
       ]
     }
   ])
@@ -253,11 +279,23 @@
 
   const metrics = computed<BusinessWorkspaceMetric[]>(() => {
     const dataRows = reportRows.value.filter((item) => item.calculationMethod === 'mapping')
-    const populatedRows = dataRows.filter((item) => Number(item.mappingCount) > 0)
+    const rulesAccess = getFieldAccess(listFieldAccess.value, 'reportRules')
+    const populatedRows = dataRows.filter(
+      (item) => numericValue(item.mappingCount) !== undefined && Number(item.mappingCount) > 0
+    )
     if (activeType.value === 'balance_sheet') {
-      const asset = amountByCode('BS199', 'secondaryAmount')
-      const liabilities = amountByCode('BS499', 'secondaryAmount')
-      const difference = Math.abs(asset - liabilities)
+      const assetRow = reportRows.value.find((item) => item.itemCode === 'BS199')
+      const liabilitiesRow = reportRows.value.find((item) => item.itemCode === 'BS499')
+      const asset = assetRow?.secondaryAmount
+      const liabilities = liabilitiesRow?.secondaryAmount
+      const assetNumber = numericValue(asset)
+      const liabilitiesNumber = numericValue(liabilities)
+      const canViewAsset = canViewField(assetRow?.fieldAccess, 'reportAmounts')
+      const canViewLiabilities = canViewField(liabilitiesRow?.fieldAccess, 'reportAmounts')
+      const difference =
+        assetNumber !== undefined && liabilitiesNumber !== undefined
+          ? Math.abs(assetNumber - liabilitiesNumber)
+          : undefined
       return [
         metric(
           'items',
@@ -267,26 +305,47 @@
           'ri:list-check-3',
           'primary'
         ),
-        metric('assets', '资产总计', money(asset), '期末口径', 'ri:building-2-line', 'success'),
-        metric(
-          'liabilities',
-          '负债与权益',
-          money(liabilities),
-          '期末口径',
-          'ri:scales-3-line',
-          'warning'
-        ),
-        metric(
-          'balance',
-          '报表平衡',
-          difference < 0.005 ? '平衡' : '待核对',
-          `差额 ${money(difference)}`,
-          'ri:checkbox-circle-line',
-          difference < 0.005 ? 'success' : 'danger'
-        )
+        ...(canViewAsset
+          ? [
+              metric(
+                'assets',
+                '资产总计',
+                money(asset),
+                '期末口径',
+                'ri:building-2-line',
+                'success'
+              )
+            ]
+          : []),
+        ...(canViewLiabilities
+          ? [
+              metric(
+                'liabilities',
+                '负债与权益',
+                money(liabilities),
+                '期末口径',
+                'ri:scales-3-line',
+                'warning'
+              )
+            ]
+          : []),
+        ...(canViewAsset && canViewLiabilities
+          ? [
+              metric(
+                'balance',
+                '报表平衡',
+                difference === undefined ? '***' : difference < 0.005 ? '平衡' : '待核对',
+                difference === undefined ? '金额已脱敏' : `差额 ${money(difference)}`,
+                'ri:checkbox-circle-line',
+                difference === undefined ? 'info' : difference < 0.005 ? 'success' : 'danger'
+              )
+            ]
+          : [])
       ]
     }
     const totalCode = activeType.value === 'income_statement' ? 'IS399' : 'CF399'
+    const totalRow = reportRows.value.find((item) => item.itemCode === totalCode)
+    const canViewTotalAmount = canViewField(totalRow?.fieldAccess, 'reportAmounts')
     return [
       metric(
         'items',
@@ -296,30 +355,38 @@
         'ri:list-check-3',
         'primary'
       ),
-      metric(
-        'coverage',
-        activeType.value === 'cash_flow_statement' ? '已归集项目' : '已有取数行',
-        populatedRows.length,
-        `共 ${dataRows.length} 个明细行`,
-        'ri:links-line',
-        'info'
-      ),
-      metric(
-        'period',
-        activeType.value === 'income_statement' ? '本期净利润' : '本期净增加额',
-        money(amountByCode(totalCode, 'primaryAmount')),
-        '当前期间范围',
-        'ri:line-chart-line',
-        'success'
-      ),
-      metric(
-        'year',
-        activeType.value === 'income_statement' ? '本年净利润' : '本年净增加额',
-        money(amountByCode(totalCode, 'secondaryAmount')),
-        '年初至截止期间',
-        'ri:bar-chart-box-line',
-        'warning'
-      )
+      ...(rulesAccess !== 'hidden'
+        ? [
+            metric(
+              'coverage',
+              activeType.value === 'cash_flow_statement' ? '已归集项目' : '已有取数行',
+              rulesAccess === 'masked' ? '***' : populatedRows.length,
+              rulesAccess === 'masked' ? '规则数量已脱敏' : `共 ${dataRows.length} 个明细行`,
+              'ri:links-line',
+              'info'
+            )
+          ]
+        : []),
+      ...(canViewTotalAmount
+        ? [
+            metric(
+              'period',
+              activeType.value === 'income_statement' ? '本期净利润' : '本期净增加额',
+              money(totalRow?.primaryAmount),
+              '当前期间范围',
+              'ri:line-chart-line',
+              'success'
+            ),
+            metric(
+              'year',
+              activeType.value === 'income_statement' ? '本年净利润' : '本年净增加额',
+              money(totalRow?.secondaryAmount),
+              '年初至截止期间',
+              'ri:bar-chart-box-line',
+              'warning'
+            )
+          ]
+        : [])
     ]
   })
 
@@ -334,12 +401,14 @@
     return { key, label, value, description, icon, tone }
   }
 
-  function money(value: number): string {
-    return formatCurrencyValue(Number(value || 0))
+  function money(value: Api.Tms.BasicData.SensitiveNumber | null | undefined): string {
+    if (value === null || value === undefined || value === '') return '--'
+    return formatCurrencyValue(value)
   }
 
-  function amountByCode(code: string, key: 'primaryAmount' | 'secondaryAmount'): number {
-    return Number(reportRows.value.find((item) => item.itemCode === code)?.[key] ?? 0)
+  function numericValue(value: Api.Tms.BasicData.SensitiveNumber | undefined): number | undefined {
+    const result = Number(value)
+    return Number.isFinite(result) ? result : undefined
   }
 
   function dictLabel(code: string, value: unknown): string {
@@ -391,33 +460,44 @@
           </div>
         )
       },
-      {
-        prop: 'primaryAmount',
-        label: primaryAmountLabel.value,
-        width: 170,
-        align: 'right',
-        formatter: (row) => (row.calculationMethod === 'label' ? '--' : money(row.primaryAmount))
-      },
-      {
-        prop: 'secondaryAmount',
-        label: secondaryAmountLabel.value,
-        width: 170,
-        align: 'right',
-        formatter: (row) => (row.calculationMethod === 'label' ? '--' : money(row.secondaryAmount))
-      },
+      ...(canViewReportAmounts.value
+        ? [
+            {
+              prop: 'primaryAmount',
+              label: primaryAmountLabel.value,
+              width: 170,
+              align: 'right' as const,
+              formatter: (row: ReportRow) =>
+                row.calculationMethod === 'label' ? '--' : money(row.primaryAmount)
+            },
+            {
+              prop: 'secondaryAmount',
+              label: secondaryAmountLabel.value,
+              width: 170,
+              align: 'right' as const,
+              formatter: (row: ReportRow) =>
+                row.calculationMethod === 'label' ? '--' : money(row.secondaryAmount)
+            }
+          ]
+        : []),
       {
         prop: 'calculationMethod',
         label: '计算方式',
         width: 112,
         dict: { code: 'fmsStatementCalculationMethod', display: 'tag' }
       },
-      {
-        prop: 'mappingCount',
-        label: activeType.value === 'cash_flow_statement' ? '归集笔数' : '取数规则数',
-        width: 108,
-        align: 'right',
-        formatter: (row) => (row.calculationMethod === 'label' ? '--' : row.mappingCount)
-      }
+      ...(canViewReportRules.value
+        ? [
+            {
+              prop: 'mappingCount',
+              label: activeType.value === 'cash_flow_statement' ? '归集笔数' : '取数规则数',
+              width: 108,
+              align: 'right' as const,
+              formatter: (row: ReportRow) =>
+                row.calculationMethod === 'label' ? '--' : (row.mappingCount ?? '--')
+            }
+          ]
+        : [])
     ]
   }
 
@@ -433,20 +513,22 @@
   async function fetchTableData(params: SearchData & TablePageParams) {
     if (!params.accountSetId || !params.fiscalYear) {
       reportRows.value = []
+      listFieldAccess.value = {}
       return pagedResult([], params)
     }
     const periodFrom = Math.min(Number(params.periodFrom || 1), Number(params.periodTo || 12))
     const periodTo = Math.max(Number(params.periodFrom || 1), Number(params.periodTo || 12))
     search.periodFrom = periodFrom
     search.periodTo = periodTo
-    const { data } = await fetchFinancialStatementReport({
+    const result = await fetchFinancialStatementReport({
       accountSetId: params.accountSetId,
       statementType: activeType.value,
       fiscalYear: params.fiscalYear,
       periodFrom,
       periodTo
     })
-    reportRows.value = data ?? []
+    listFieldAccess.value = result.fieldAccess
+    reportRows.value = result.data ?? []
     return pagedResult(reportRows.value, params)
   }
 
@@ -469,6 +551,7 @@
 
   function handleTabChange(): void {
     reportRows.value = []
+    listFieldAccess.value = {}
     void nextTick(() => tableRef.value?.getData())
   }
 

@@ -18,7 +18,7 @@
       :metrics="metrics"
     >
       <template #actions>
-        <AccountingWorkspaceFocusToggle v-model="focusMode" />
+        <BusinessWorkspaceFocusToggle v-model="focusMode" />
       </template>
     </BusinessWorkspaceHeader>
 
@@ -104,7 +104,7 @@
         class="accounting-subject-page__table-section accounting-workspace-fill-section"
       >
         <template #actions>
-          <AccountingWorkspaceFocusToggle v-if="focusMode" v-model="focusMode" />
+          <BusinessWorkspaceFocusToggle v-if="focusMode" v-model="focusMode" />
           <ElButton v-auth="'FinanceAccountingSubject:Add'" type="primary" @click="openDialog()">
             <ArtSvgIcon icon="ri:add-line" />新增科目
           </ElButton>
@@ -150,8 +150,8 @@
   import BusinessWorkspaceHeader, {
     type BusinessWorkspaceMetric
   } from '@/components/business/business-workspace-header/index.vue'
-  import AccountingWorkspaceFocusToggle from '../modules/accounting-workspace-focus-toggle.vue'
-  import { useAccountingWorkspaceFocus } from '../modules/use-accounting-workspace-focus'
+  import BusinessWorkspaceFocusToggle from '@/components/business/business-workspace-focus-toggle/index.vue'
+  import { useWorkspaceFocus } from '@/hooks/core/useWorkspaceFocus'
   import AccountingSetupGuide from '../modules/accounting-setup-guide.vue'
   import { useFinanceAccountSetPrerequisite } from '../modules/use-finance-account-set-prerequisite'
   import ArtPageSection from '@/components/core/layouts/art-page-section/index.vue'
@@ -200,7 +200,7 @@
   }
 
   const { confirmAction } = useArtFeedback()
-  const { focusMode } = useAccountingWorkspaceFocus()
+  const { focusMode } = useWorkspaceFocus()
   const { ensureAccountSet, goToAccountSet } = useFinanceAccountSetPrerequisite()
   const { getDictMap } = storeToRefs(useUserStore())
   const { hasAuth } = useAuth()

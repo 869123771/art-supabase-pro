@@ -81,6 +81,7 @@
   } from '@/api/fms'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { useDocumentNumberRule } from '@/hooks/core/useDocumentNumberRule'
+  import { formatSensitiveNumber, getFieldAccess } from '@/utils/field-permission'
 
   defineOptions({ name: 'FinanceCarrierStatementDialog' })
   type EligibleCost = Api.Fms.CarrierStatementEligibleCost
@@ -102,6 +103,7 @@
   const costSelectRef = ref<ArtDataSelectExpose>()
   const selectedCarriers = ref<DataSelectRecord[]>([])
   const selectedCosts = ref<DataSelectRecord[]>([])
+  const fieldAccess = ref<Api.Fms.CarrierStatementFieldAccessMap>({})
   const statementNumber = useDocumentNumberRule('tms.carrier_statement')
   const createInitialForm = (): StatementForm => ({
     statementNo: '',
@@ -114,14 +116,26 @@
   const canSelectCost = computed(() =>
     Boolean(form.carrierId && form.periodRange[0] && form.periodRange[1])
   )
-  const selectedAmount = computed(() =>
-    selectedCosts.value.reduce((sum, row) => sum + Number((row as EligibleCost).costAmount ?? 0), 0)
-  )
-  const formatMoney = (v: number) =>
-    `¥${v.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  const amountAccess = computed(() => getFieldAccess(fieldAccess.value, 'statementAmounts'))
+  const selectedAmount = computed(() => {
+    if (!['read', 'edit'].includes(amountAccess.value)) return null
+    return selectedCosts.value.reduce(
+      (sum, row) => sum + Number((row as EligibleCost).costAmount ?? 0),
+      0
+    )
+  })
+  const formatMoney = (value?: number | string | null): string => {
+    const formatted = formatSensitiveNumber(value)
+    return formatted === '***' || formatted === '--' ? formatted : `¥${formatted}`
+  }
+  const selectedAmountSummary = computed(() => {
+    if (amountAccess.value === 'hidden') return ''
+    if (amountAccess.value === 'masked') return '，应付金额 ***'
+    return `，应付金额 ${formatMoney(selectedAmount.value)}`
+  })
   const selectionSummary = computed(() =>
     selectedCosts.value.length
-      ? `已选择 ${selectedCosts.value.length} 笔费用，应付金额 ${formatMoney(selectedAmount.value)}`
+      ? `已选择 ${selectedCosts.value.length} 笔费用${selectedAmountSummary.value}`
       : canSelectCost.value
         ? '请选择本次需要纳入对账的费用'
         : '请先选择承运商和账期，再选择待对账费用'
@@ -133,7 +147,7 @@
     { prop: 'contactName', label: '联系人', width: 120 },
     { prop: 'contactPhone', label: '联系电话', width: 150 }
   ]
-  const costColumns: DataSelectColumn[] = [
+  const costColumns = computed<DataSelectColumn[]>(() => [
     { prop: 'waybillNo', label: '运单号', width: 175 },
     {
       prop: 'costType',
@@ -144,14 +158,18 @@
     { prop: 'routeLabel', label: '运输线路', minWidth: 210 },
     { prop: 'occurredOn', label: '发生日期', width: 115 },
     { prop: 'payeeName', label: '收款方', width: 160 },
-    {
-      prop: 'costAmount',
-      label: '费用金额',
-      width: 130,
-      align: 'right',
-      formatter: (row) => formatMoney(Number((row as EligibleCost).costAmount ?? 0))
-    }
-  ]
+    ...(amountAccess.value !== 'hidden'
+      ? [
+          {
+            prop: 'costAmount',
+            label: '费用金额',
+            width: 130,
+            align: 'right' as const,
+            formatter: (row: DataSelectRecord) => formatMoney((row as EligibleCost).costAmount)
+          }
+        ]
+      : [])
+  ])
   const formRules: FormRules<StatementForm> = {
     statementNo: [
       {
@@ -222,7 +240,11 @@
   async function fetchCostSelectorData(params: DataSelectFetchParams) {
     if (!canSelectCost.value) return { data: [], total: 0 }
     const { from, to } = pageInfoHandler({ current: params.page, size: params.pageSize })
-    const { data, total } = await fetchCarrierStatementEligibleCosts({
+    const {
+      data,
+      fieldAccess: access,
+      total
+    } = await fetchCarrierStatementEligibleCosts({
       carrierId: form.carrierId,
       periodStart: form.periodRange[0],
       periodEnd: form.periodRange[1],
@@ -230,6 +252,7 @@
       from,
       to
     })
+    fieldAccess.value = access
     return {
       data: (data ?? []).map((item) => ({
         ...item,
@@ -241,12 +264,14 @@
   function handleCriteriaChange() {
     form.costIds = []
     selectedCosts.value = []
+    fieldAccess.value = {}
     void costSelectRef.value?.reload()
   }
   async function resetForm() {
     Object.assign(form, createInitialForm())
     selectedCarriers.value = []
     selectedCosts.value = []
+    fieldAccess.value = {}
     await nextTick()
     formRef.value?.clearValidate()
   }

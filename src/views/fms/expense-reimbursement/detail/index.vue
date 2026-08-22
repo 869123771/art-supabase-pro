@@ -92,12 +92,18 @@
         </div>
       </section>
 
-      <section class="expense-reimbursement-detail__section art-card-xs">
+      <section
+        v-if="canViewEvidence || canViewPaymentExecution"
+        class="expense-reimbursement-detail__section art-card-xs"
+      >
         <ArtSectionTitle>报销与付款凭证</ArtSectionTitle>
         <div class="expense-reimbursement-detail__evidence-grid">
-          <div>
+          <div v-if="canViewEvidence">
             <h3>报销依据</h3>
-            <div v-if="basisFiles.length" class="expense-reimbursement-detail__attachments">
+            <div
+              v-if="canReadEvidence && basisFiles.length"
+              class="expense-reimbursement-detail__attachments"
+            >
               <div
                 v-for="file in basisFiles"
                 :key="file.url"
@@ -109,12 +115,15 @@
             </div>
             <div v-else class="expense-reimbursement-detail__empty-inline">
               <ArtSvgIcon icon="ri:file-damage-line" aria-hidden="true" />
-              未上传报销依据
+              {{ canReadEvidence ? '未上传报销依据' : '报销依据已按字段权限脱敏' }}
             </div>
           </div>
-          <div>
+          <div v-if="canViewPaymentExecution">
             <h3>付款凭证</h3>
-            <div v-if="paymentFiles.length" class="expense-reimbursement-detail__attachments">
+            <div
+              v-if="canReadPaymentExecution && paymentFiles.length"
+              class="expense-reimbursement-detail__attachments"
+            >
               <div
                 v-for="file in paymentFiles"
                 :key="file.url"
@@ -126,7 +135,7 @@
             </div>
             <div v-else class="expense-reimbursement-detail__empty-inline">
               <ArtSvgIcon icon="ri:file-damage-line" aria-hidden="true" />
-              尚未形成付款凭证
+              {{ canReadPaymentExecution ? '尚未形成付款凭证' : '付款凭证已按字段权限脱敏' }}
             </div>
           </div>
         </div>
@@ -161,6 +170,7 @@
   import { getWaybillCostDetailPath } from '@/router/business-paths'
   import { formatWithDayjs } from '@/utils/time'
   import { formatCurrencyValue } from '@/utils/ui'
+  import { canViewField, getFieldAccess, isMaskedValue } from '@/utils/field-permission'
 
   defineOptions({ name: 'FinanceExpenseReimbursementDetail' })
 
@@ -195,91 +205,153 @@
 
   const descriptionColumns = computed(() => (isMobile.value ? 1 : isNarrow.value ? 2 : 4))
   const primaryWaybillId = computed(() => detail.data?.items?.[0]?.waybillId)
+  const amountAccess = computed(() =>
+    getFieldAccess(detail.data?.fieldAccess, 'reimbursementAmounts')
+  )
+  const payeeAccess = computed(() => getFieldAccess(detail.data?.fieldAccess, 'payeeDetails'))
+  const evidenceAccess = computed(() =>
+    getFieldAccess(detail.data?.fieldAccess, 'reimbursementEvidence')
+  )
+  const paymentExecutionAccess = computed(() =>
+    getFieldAccess(detail.data?.fieldAccess, 'paymentExecution')
+  )
+  const canViewEvidence = computed(() =>
+    canViewField(detail.data?.fieldAccess, 'reimbursementEvidence')
+  )
+  const canReadEvidence = computed(() => ['read', 'edit'].includes(evidenceAccess.value))
+  const canViewPaymentExecution = computed(() =>
+    canViewField(detail.data?.fieldAccess, 'paymentExecution')
+  )
+  const canReadPaymentExecution = computed(() =>
+    ['read', 'edit'].includes(paymentExecutionAccess.value)
+  )
   const basisFiles = computed<FilePreviewTarget[]>(() =>
-    createFiles(detail.data?.basisUrls, '报销依据')
+    canReadEvidence.value ? createFiles(detail.data?.basisUrls, '报销依据') : []
   )
   const paymentFiles = computed<FilePreviewTarget[]>(() =>
-    createFiles(detail.data?.paymentVoucherUrls, '付款凭证')
+    canReadPaymentExecution.value ? createFiles(detail.data?.paymentVoucherUrls, '付款凭证') : []
   )
-  const overviewItems = computed<OverviewItem[]>(() => [
-    {
-      label: '报销金额',
-      value: money(detail.data?.totalAmount),
-      hint: '本单申请报销总额',
-      icon: 'ri:money-cny-circle-line',
-      tone: 'primary'
-    },
-    {
-      label: '费用笔数',
-      value: `${detail.data?.itemCount ?? 0} 笔`,
-      hint: '逐笔保留费用快照',
-      icon: 'ri:file-list-3-line',
-      tone: 'warning'
-    },
-    {
-      label: '关联运单',
-      value: detail.data?.waybillNos || `${detail.data?.waybillCount ?? 0} 单`,
-      hint: '同一运单费用集中报销',
-      icon: 'ri:truck-line',
-      tone: 'success'
-    },
-    {
-      label: '付款进度',
-      value: detail.data?.paymentNo || (detail.data?.status === 'paid' ? '已支付' : '待支付'),
-      hint: detail.data?.paymentReference || '付款后自动逐笔核销',
-      icon: 'ri:secure-payment-line',
-      tone: 'info'
+  const overviewItems = computed<OverviewItem[]>(() => {
+    const items: OverviewItem[] = []
+    if (amountAccess.value !== 'hidden') {
+      items.push({
+        label: '报销金额',
+        value: money(detail.data?.totalAmount),
+        hint: amountAccess.value === 'masked' ? '金额已按字段权限脱敏' : '本单申请报销总额',
+        icon: 'ri:money-cny-circle-line',
+        tone: 'primary'
+      })
     }
-  ])
+    items.push(
+      {
+        label: '费用笔数',
+        value: `${detail.data?.itemCount ?? 0} 笔`,
+        hint: '逐笔保留费用快照',
+        icon: 'ri:file-list-3-line',
+        tone: 'warning'
+      },
+      {
+        label: '关联运单',
+        value: detail.data?.waybillNos || `${detail.data?.waybillCount ?? 0} 单`,
+        hint: '同一运单费用集中报销',
+        icon: 'ri:truck-line',
+        tone: 'success'
+      }
+    )
+    if (paymentExecutionAccess.value !== 'hidden') {
+      items.push({
+        label: '付款进度',
+        value: detail.data?.paymentNo || (detail.data?.status === 'paid' ? '已支付' : '待支付'),
+        hint:
+          paymentExecutionAccess.value === 'masked'
+            ? '付款结果已按字段权限脱敏'
+            : detail.data?.paymentReference || '付款后自动逐笔核销',
+        icon: 'ri:secure-payment-line',
+        tone: 'info'
+      })
+    }
+    return items
+  })
 
-  const reimbursementItems: ArtDescriptionItem<Reimbursement>[] = [
-    { key: 'reimbursementNo', label: '报销单号', field: 'reimbursementNo', copyable: true },
-    { key: 'applicantName', label: '申请人', field: 'applicantNameSnapshot' },
-    { key: 'payeeName', label: '收款人', field: 'payeeName' },
-    { key: 'totalAmount', label: '报销金额', field: 'totalAmount', format: 'money' },
-    {
-      key: 'paymentMethod',
-      label: '付款方式',
-      field: 'paymentMethod',
-      dictCode: 'tmsCashPaymentMethod'
-    },
-    {
+  const reimbursementItems = computed<ArtDescriptionItem<Reimbursement>[]>(() => {
+    const items: ArtDescriptionItem<Reimbursement>[] = [
+      { key: 'reimbursementNo', label: '报销单号', field: 'reimbursementNo', copyable: true },
+      { key: 'applicantName', label: '申请人', field: 'applicantNameSnapshot' }
+    ]
+    if (payeeAccess.value !== 'hidden') {
+      items.push(
+        { key: 'payeeName', label: '收款人', field: 'payeeName' },
+        {
+          key: 'paymentMethod',
+          label: '付款方式',
+          field: 'paymentMethod',
+          dictCode: 'tmsCashPaymentMethod'
+        },
+        { key: 'payeeBank', label: '收款银行', field: 'payeeBank' },
+        {
+          key: 'payeeAccount',
+          label: '收款账号',
+          field: 'payeeAccount',
+          copyable: payeeAccess.value === 'read' || payeeAccess.value === 'edit'
+        }
+      )
+    }
+    if (amountAccess.value !== 'hidden') {
+      items.push({
+        key: 'totalAmount',
+        label: '报销金额',
+        field: 'totalAmount',
+        value: (data: Reimbursement) => money(data.totalAmount)
+      })
+    }
+    items.push({
       key: 'plannedPaymentDate',
       label: '计划付款日',
       field: 'plannedPaymentDate',
       format: 'date'
-    },
-    { key: 'payeeBank', label: '收款银行', field: 'payeeBank' },
-    { key: 'payeeAccount', label: '收款账号', field: 'payeeAccount', copyable: true },
-    { key: 'remark', label: '报销说明', field: 'remark', span: 4 }
-  ]
+    })
+    if (evidenceAccess.value !== 'hidden') {
+      items.push({ key: 'remark', label: '报销说明', field: 'remark', span: 4 })
+    }
+    return items
+  })
 
-  const approvalPaymentItems: ArtDescriptionItem<Reimbursement>[] = [
-    {
-      key: 'status',
-      label: '审批/支付状态',
-      field: 'status',
-      dictCode: 'tmsReimbursementApprovalStatus'
-    },
-    { key: 'submittedAt', label: '提交时间', field: 'submittedAt', format: 'datetime' },
-    { key: 'submittedBy', label: '提交人', field: 'submittedBy' },
-    { key: 'reviewedAt', label: '审批完成时间', field: 'reviewedAt', format: 'datetime' },
-    { key: 'reviewedBy', label: '最终审批人', field: 'reviewedBy' },
-    { key: 'reviewRemark', label: '审批意见', field: 'reviewRemark', span: 2 },
-    { key: 'paymentNo', label: '付款单号', field: 'paymentNo', copyable: true },
-    {
-      key: 'paymentReference',
-      label: '银行流水号',
-      field: 'paymentReference',
-      copyable: true
-    },
-    { key: 'paidAt', label: '付款时间', field: 'paidAt', format: 'datetime' },
-    { key: 'paidBy', label: '付款登记人', field: 'paidBy' },
-    { key: 'createTime', label: '创建时间', field: 'createTime', format: 'datetime' },
-    { key: 'updateTime', label: '最后更新', field: 'updateTime', format: 'datetime' }
-  ]
+  const approvalPaymentItems = computed<ArtDescriptionItem<Reimbursement>[]>(() => {
+    const items: ArtDescriptionItem<Reimbursement>[] = [
+      {
+        key: 'status',
+        label: '审批/支付状态',
+        field: 'status',
+        dictCode: 'tmsReimbursementApprovalStatus'
+      },
+      { key: 'submittedAt', label: '提交时间', field: 'submittedAt', format: 'datetime' },
+      { key: 'submittedBy', label: '提交人', field: 'submittedBy' },
+      { key: 'reviewedAt', label: '审批完成时间', field: 'reviewedAt', format: 'datetime' },
+      { key: 'reviewedBy', label: '最终审批人', field: 'reviewedBy' },
+      { key: 'reviewRemark', label: '审批意见', field: 'reviewRemark', span: 2 }
+    ]
+    if (paymentExecutionAccess.value !== 'hidden') {
+      const copyable = ['read', 'edit'].includes(paymentExecutionAccess.value)
+      items.push(
+        { key: 'paymentNo', label: '付款单号', field: 'paymentNo', copyable },
+        {
+          key: 'paymentReference',
+          label: '银行流水号',
+          field: 'paymentReference',
+          copyable
+        },
+        { key: 'paidAt', label: '付款时间', field: 'paidAt', format: 'datetime' },
+        { key: 'paidBy', label: '付款登记人', field: 'paidBy' }
+      )
+    }
+    items.push(
+      { key: 'createTime', label: '创建时间', field: 'createTime', format: 'datetime' },
+      { key: 'updateTime', label: '最后更新', field: 'updateTime', format: 'datetime' }
+    )
+    return items
+  })
 
-  const expenseColumns: ColumnOption<ExpenseItem>[] = [
+  const expenseColumns = computed<ColumnOption<ExpenseItem>[]>(() => [
     {
       prop: 'costNoSnapshot',
       label: '费用单号',
@@ -318,14 +390,18 @@
       width: 125,
       formatter: (row) => formatDate(row.occurredOnSnapshot)
     },
-    {
-      prop: 'amountSnapshot',
-      label: '核销金额',
-      width: 140,
-      align: 'right',
-      formatter: (row) => money(row.amountSnapshot)
-    }
-  ]
+    ...(amountAccess.value !== 'hidden'
+      ? [
+          {
+            prop: 'amountSnapshot',
+            label: '核销金额',
+            width: 140,
+            align: 'right' as const,
+            formatter: (row: ExpenseItem) => money(row.amountSnapshot)
+          }
+        ]
+      : [])
+  ])
 
   onMounted(() => {
     void loadDetail()
@@ -342,7 +418,7 @@
     detail.error = null
     try {
       const { data } = await fetchExpenseReimbursementDetail(reimbursementId)
-      detail.data = data
+      detail.data = data ?? undefined
     } catch (error) {
       detail.error = error instanceof Error ? error : new Error('报销详情加载失败，请稍后重试')
     } finally {
@@ -364,8 +440,11 @@
     void router.back()
   }
 
-  function money(value?: number | null): string {
-    return formatCurrencyValue(Number(value ?? 0))
+  function money(value?: Api.Tms.BasicData.SensitiveNumber): string {
+    if (isMaskedValue(value)) return '***'
+    if (value === null || value === undefined) return '--'
+    const numericValue = Number(value)
+    return Number.isFinite(numericValue) ? formatCurrencyValue(numericValue) : String(value)
   }
 
   function formatDate(value?: string | null): string {

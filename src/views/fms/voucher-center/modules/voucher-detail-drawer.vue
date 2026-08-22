@@ -33,13 +33,16 @@
             border
             empty-text="暂无会计分录"
           />
-          <div class="voucher-detail__totals">
+          <div v-if="canViewAmounts" class="voucher-detail__totals">
             <strong>借方合计 {{ formatMoney(detail.totalDebit) }}</strong>
             <strong>贷方合计 {{ formatMoney(detail.totalCredit) }}</strong>
           </div>
         </section>
 
-        <section v-if="detail.attachments?.length" class="voucher-detail__section">
+        <section
+          v-if="canViewAttachments && detail.attachments?.length"
+          class="voucher-detail__section"
+        >
           <ArtSectionTitle>原始凭证附件</ArtSectionTitle>
           <div class="voucher-detail__attachments">
             <ElButton
@@ -53,7 +56,7 @@
           </div>
         </section>
 
-        <section class="voucher-detail__section">
+        <section v-if="canViewAuditTrail" class="voucher-detail__section">
           <ArtSectionTitle>操作流水</ArtSectionTitle>
           <ElTimeline v-if="detail.actions?.length" class="voucher-detail__timeline">
             <ElTimelineItem
@@ -87,21 +90,30 @@
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import { fetchVoucherDetail } from '@/api/fms'
   import type { ColumnOption } from '@/types'
-  import { formatCurrencyValue } from '@/utils/ui'
   import { formatWithDayjs } from '@/utils/time'
   import { downloadAttachment } from '@/utils/file'
+  import { canViewField, formatSensitiveNumber } from '@/utils/field-permission'
 
   defineOptions({ name: 'FinanceVoucherDetailDrawer' })
 
-  type Voucher = Api.Fms.VoucherRecord
-  type Line = Api.Fms.VoucherLineRecord
+  type Voucher = Api.Fms.SecureVoucherRecord
+  type Line = Api.Fms.SecureVoucherLineRecord
 
   const drawerRef = ref<ArtDrawerExpose<Voucher>>()
   const detail = shallowRef<Voucher>()
   const loading = ref(false)
   const loadError = shallowRef<Error | null>(null)
 
-  const descriptionItems: ArtDescriptionItem<Voucher>[] = [
+  const canViewAmounts = computed(() => canViewField(detail.value?.fieldAccess, 'voucherAmounts'))
+  const canViewAttachments = computed(() =>
+    canViewField(detail.value?.fieldAccess, 'voucherAttachments')
+  )
+  const canViewAuditTrail = computed(() => canViewField(detail.value?.fieldAccess, 'auditTrail'))
+  const canViewSourceReferences = computed(() =>
+    canViewField(detail.value?.fieldAccess, 'sourceReferences')
+  )
+
+  const descriptionItems = computed<ArtDescriptionItem<Voucher>[]>(() => [
     { key: 'voucherNo', label: '凭证号', field: 'voucherNo', copyable: true },
     { key: 'status', label: '凭证状态', field: 'status', dictCode: 'fmsVoucherStatus' },
     { key: 'voucherDate', label: '凭证日期', field: 'voucherDate', format: 'date' },
@@ -113,7 +125,9 @@
       formatter: (_value, row) => `${row.fiscalYear} 年第 ${row.periodNo} 期`
     },
     { key: 'sourceType', label: '业务来源', field: 'sourceType', dictCode: 'fmsVoucherSourceType' },
-    { key: 'sourceNo', label: '来源单号', field: 'sourceNo', copyable: true },
+    ...(canViewSourceReferences.value
+      ? [{ key: 'sourceNo', label: '来源单号', field: 'sourceNo', copyable: true }]
+      : []),
     {
       key: 'lineCount',
       label: '分录数',
@@ -122,14 +136,18 @@
     },
     { key: 'createBy', label: '制单人', field: 'createBy' },
     { key: 'createTime', label: '制单时间', field: 'createTime', format: 'datetime' },
-    { key: 'reviewedBy', label: '审核人', field: 'reviewedBy' },
-    { key: 'postedBy', label: '过账人', field: 'postedBy' },
-    { key: 'reviewComment', label: '审核意见', field: 'reviewComment', span: 2 },
-    { key: 'voidReason', label: '作废原因', field: 'voidReason', span: 2 },
-    { key: 'reversalReason', label: '冲销原因', field: 'reversalReason', span: 2 }
-  ]
+    ...(canViewAuditTrail.value
+      ? [
+          { key: 'reviewedBy', label: '审核人', field: 'reviewedBy' },
+          { key: 'postedBy', label: '过账人', field: 'postedBy' },
+          { key: 'reviewComment', label: '审核意见', field: 'reviewComment', span: 2 },
+          { key: 'voidReason', label: '作废原因', field: 'voidReason', span: 2 },
+          { key: 'reversalReason', label: '冲销原因', field: 'reversalReason', span: 2 }
+        ]
+      : [])
+  ])
 
-  const lineColumns: ColumnOption<Line>[] = [
+  const lineColumns = computed<ColumnOption<Line>[]>(() => [
     { prop: 'lineNo', label: '行号', width: 68, align: 'center', fixed: 'left' },
     { prop: 'summary', label: '摘要', minWidth: 180, showOverflowTooltip: true },
     {
@@ -138,35 +156,39 @@
       minWidth: 220,
       formatter: (row) => `${row.subjectCodeSnapshot} ${row.subjectNameSnapshot}`
     },
-    {
-      prop: 'currencyCodeSnapshot',
-      label: '外币',
-      width: 90,
-      formatter: (row) => row.currencyCodeSnapshot || '—'
-    },
-    {
-      prop: 'originalAmount',
-      label: '原币金额',
-      width: 120,
-      align: 'right',
-      formatter: (row) =>
-        row.currencyCodeSnapshot ? Number(row.originalAmount).toLocaleString('zh-CN') : '—'
-    },
-    {
-      prop: 'debitAmount',
-      label: '借方金额',
-      width: 135,
-      align: 'right',
-      formatter: (row) => (row.debitAmount ? formatMoney(row.debitAmount) : '—')
-    },
-    {
-      prop: 'creditAmount',
-      label: '贷方金额',
-      width: 135,
-      align: 'right',
-      formatter: (row) => (row.creditAmount ? formatMoney(row.creditAmount) : '—')
-    }
-  ]
+    ...(canViewAmounts.value
+      ? [
+          {
+            prop: 'currencyCodeSnapshot',
+            label: '外币',
+            width: 90,
+            formatter: (row: Line) => row.currencyCodeSnapshot || '—'
+          },
+          {
+            prop: 'originalAmount',
+            label: '原币金额',
+            width: 120,
+            align: 'right' as const,
+            formatter: (row: Line) =>
+              row.currencyCodeSnapshot ? formatMoney(row.originalAmount) : '—'
+          },
+          {
+            prop: 'debitAmount',
+            label: '借方金额',
+            width: 135,
+            align: 'right' as const,
+            formatter: (row: Line) => formatMoney(row.debitAmount)
+          },
+          {
+            prop: 'creditAmount',
+            label: '贷方金额',
+            width: 135,
+            align: 'right' as const,
+            formatter: (row: Line) => formatMoney(row.creditAmount)
+          }
+        ]
+      : [])
+  ])
 
   function statusLabel(status: Api.Fms.VoucherStatus): string {
     return {
@@ -208,8 +230,8 @@
     }[action]
   }
 
-  function formatMoney(value: number): string {
-    return formatCurrencyValue(Number(value || 0))
+  function formatMoney(value?: Api.Tms.BasicData.SensitiveNumber): string {
+    return formatSensitiveNumber(value)
   }
 
   function formatTime(value: string): string {

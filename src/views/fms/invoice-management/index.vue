@@ -67,6 +67,12 @@
   import { useUserStore } from '@/store/modules/user'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatWithDayjs } from '@/utils/time'
+  import {
+    canViewField,
+    formatSensitiveNumber,
+    getFieldAccess,
+    mergeFieldAccessMaps
+  } from '@/utils/field-permission'
   import { financePaths } from '@/router/business-paths'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { useAuth } from '@/hooks/core/useAuth'
@@ -81,6 +87,7 @@
   defineOptions({ name: 'FinanceInvoiceManagement' })
 
   type Invoice = Api.Fms.InvoiceRecord
+  type InvoiceFieldKey = Api.Fms.InvoiceFieldKey
   type SearchParams = Api.Fms.InvoiceSearchParams
   type TableParams = SearchParams & Pick<Api.Common.PaginationParams, 'current' | 'size'>
 
@@ -119,6 +126,8 @@
   const dialogRef = ref<DialogExpose>()
   const drawerRef = ref<DrawerExpose>()
   const auditDrawerRef = ref<AuditDrawerExpose>()
+  const fieldAccess = ref<Api.Fms.InvoiceFieldAccessMap>({})
+  const currentRows = ref<Invoice[]>([])
   let openedRouteArtifactId = ''
 
   const table: UnwrapNestedRefs<TableGroup> = reactive<TableGroup>({
@@ -194,7 +203,7 @@
         type: 'export',
         exportFilename: 'TMS发票台账',
         exportSheetName: '发票台账',
-        exportColumns: excelColumns,
+        exportColumns: excelColumns.value,
         exportApi: ({ selectedIds, searchParams, maxRows }) =>
           exportInvoiceList({
             ...(searchParams as SearchParams),
@@ -207,11 +216,10 @@
     carrierOptions: []
   })
 
-  const formatMoney = (value?: number | null): string =>
-    `¥${Number(value ?? 0).toLocaleString('zh-CN', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    })}`
+  const formatMoney = (value?: Api.Tms.BasicData.SensitiveNumber): string => {
+    const formatted = formatSensitiveNumber(value)
+    return formatted === '***' || formatted === '--' ? formatted : `¥${formatted}`
+  }
 
   const renderStatusActions = (row: Invoice) => {
     if (row.status === 'draft')
@@ -282,27 +290,31 @@
       showOverflowTooltip: true
     },
     { prop: 'issueDate', label: '开票日期', width: 110 },
-    {
-      prop: 'totalAmount',
-      label: '价税合计',
-      width: 135,
-      align: 'right',
-      formatter: (row) => formatMoney(row.totalAmount)
-    },
-    {
-      prop: 'linkedAmount',
-      label: '已关联对账',
-      width: 135,
-      align: 'right',
-      formatter: (row) => formatMoney(row.linkedAmount)
-    },
-    {
-      prop: 'unlinkedAmount',
-      label: '未关联金额',
-      width: 135,
-      align: 'right',
-      formatter: (row) => formatMoney(row.unlinkedAmount)
-    },
+    ...(canViewListField('invoiceAmounts')
+      ? [
+          {
+            prop: 'totalAmount',
+            label: '价税合计',
+            width: 135,
+            align: 'right' as const,
+            formatter: (row: Invoice) => formatMoney(row.totalAmount)
+          },
+          {
+            prop: 'linkedAmount',
+            label: '已关联对账',
+            width: 135,
+            align: 'right' as const,
+            formatter: (row: Invoice) => formatMoney(row.linkedAmount)
+          },
+          {
+            prop: 'unlinkedAmount',
+            label: '未关联金额',
+            width: 135,
+            align: 'right' as const,
+            formatter: (row: Invoice) => formatMoney(row.unlinkedAmount)
+          }
+        ]
+      : []),
     {
       prop: 'status',
       label: '状态',
@@ -327,7 +339,9 @@
               查看
             </ElButton>
           ) : null}
-          {row.status !== 'voided' && hasAuth('FinanceInvoiceManagement:AiAudit') ? (
+          {row.status !== 'voided' &&
+          hasAuth('FinanceInvoiceManagement:AiAudit') &&
+          canAuditInvoice(row) ? (
             <ElButton
               link
               type="primary"
@@ -347,27 +361,56 @@
     }
   ]
 
-  const excelColumns: ArtTableQueryExcelColumn[] = [
+  const excelColumns = computed<ArtTableQueryExcelColumn[]>(() => [
     { key: 'invoiceRecordNo', title: '登记单号' },
     { key: 'invoiceNo', title: '发票号码' },
     { key: 'direction', title: '方向' },
     { key: 'invoiceType', title: '发票类型' },
     { key: 'counterpartyNameSnapshot', title: '往来单位' },
     { key: 'invoiceTitle', title: '发票抬头' },
-    { key: 'taxNumber', title: '税号' },
+    ...(canViewListField('taxIdentity') ? [{ key: 'taxNumber', title: '税号' }] : []),
     { key: 'issueDate', title: '开票日期' },
-    { key: 'amountExcludingTax', title: '不含税金额' },
-    { key: 'taxAmount', title: '税额' },
-    { key: 'totalAmount', title: '价税合计' },
-    { key: 'linkedAmount', title: '已关联对账金额' },
-    { key: 'unlinkedAmount', title: '未关联金额' },
+    ...(canViewListField('invoiceAmounts')
+      ? [
+          { key: 'amountExcludingTax', title: '不含税金额' },
+          { key: 'taxAmount', title: '税额' },
+          { key: 'totalAmount', title: '价税合计' },
+          { key: 'linkedAmount', title: '已关联对账金额' },
+          { key: 'unlinkedAmount', title: '未关联金额' }
+        ]
+      : []),
     { key: 'status', title: '状态' }
-  ]
+  ])
 
-  function fetchTableData(params: TableParams) {
+  async function fetchTableData(params: TableParams) {
     const { from, to } = pageInfoHandler({ current: params.current, size: params.size })
-    return fetchInvoiceList({ ...params, from, to })
+    const result = await fetchInvoiceList({ ...params, from, to })
+    const previousVisibility = getSensitiveColumnVisibility()
+    fieldAccess.value = result.fieldAccess
+    currentRows.value = result.data
+    if (previousVisibility !== getSensitiveColumnVisibility()) {
+      await nextTick()
+      tableQueryRef.value?.resetColumns()
+    }
+    return result
   }
+
+  const canViewListField = (field: InvoiceFieldKey): boolean =>
+    canViewField(
+      mergeFieldAccessMaps(fieldAccess.value, ...currentRows.value.map((row) => row.fieldAccess)),
+      field
+    )
+
+  const getSensitiveColumnVisibility = (): string =>
+    `${canViewListField('invoiceAmounts')}:${canViewListField('taxIdentity')}`
+
+  const canAuditInvoice = (row: Invoice): boolean =>
+    isReadableAccess(getFieldAccess(row.fieldAccess, 'invoiceAmounts')) &&
+    isReadableAccess(getFieldAccess(row.fieldAccess, 'taxIdentity')) &&
+    isReadableAccess(getFieldAccess(row.fieldAccess, 'invoiceAttachments'))
+
+  const isReadableAccess = (access: Api.Tms.BasicData.FieldAccessLevel): boolean =>
+    access === 'read' || access === 'edit'
 
   async function handleStatusAction(row: Invoice, statusAction: Api.Fms.InvoiceStatusAction) {
     const label = statusAction === 'submit' ? '提交复核' : '审核通过'

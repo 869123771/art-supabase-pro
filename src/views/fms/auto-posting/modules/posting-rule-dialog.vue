@@ -56,11 +56,12 @@
   import type { ColumnOption } from '@/types'
   import { fetchFinancialStatementItems, fetchPostingRuleDetail, savePostingRule } from '@/api/fms'
   import { useUserStore } from '@/store/modules/user'
+  import { canEditField } from '@/utils/field-permission'
   import PostingLineAuxiliaryDialog from './posting-line-auxiliary-dialog.vue'
 
   defineOptions({ name: 'FinancePostingRuleDialog' })
 
-  type Rule = Api.Fms.PostingRuleRecord
+  type Rule = Api.Fms.SecurePostingRuleRecord
   type Line = Api.Fms.PostingRuleLineRecord
 
   interface SelectOption {
@@ -599,6 +600,19 @@
     if (row?.id) {
       const { data } = await fetchPostingRuleDetail(row.id)
       if (!data) return
+      if (!canEditField(data.fieldAccess, 'ruleConfiguration')) {
+        ElMessage.warning('当前账号无权编辑该规则的制证配置')
+        return
+      }
+      if (
+        !data.voucherType ||
+        data.voucherType === '***' ||
+        !data.submissionMode ||
+        data.submissionMode === '***'
+      ) {
+        ElMessage.warning('规则配置已受字段权限保护，无法进入编辑')
+        return
+      }
       Object.assign(form.data, {
         id: data.id,
         accountSetId: data.accountSetId,
@@ -607,7 +621,7 @@
         sourceEvent: `${data.sourceType}:${data.eventCode}`,
         voucherType: data.voucherType,
         submissionMode: data.submissionMode,
-        costTypeCondition: String(data.matchConditions.cost_type ?? ''),
+        costTypeCondition: String(data.matchConditions?.cost_type ?? ''),
         priority: data.priority,
         effectiveFrom: data.effectiveFrom ?? '',
         effectiveTo: data.effectiveTo ?? '',

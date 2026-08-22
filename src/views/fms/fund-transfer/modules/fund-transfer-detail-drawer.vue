@@ -12,21 +12,28 @@
         <ArtSectionTitle>调拨信息</ArtSectionTitle>
         <ArtDescriptions :data="detail" :items="descriptionItems" :columns="2" />
 
-        <section class="fund-transfer-detail__flow" aria-label="资金流向">
-          <div>
+        <section
+          v-if="showTransferFlow"
+          class="fund-transfer-detail__flow"
+          :class="{ 'is-amount-only': !canViewAccounts }"
+          aria-label="资金流向"
+        >
+          <div v-if="canViewAccounts">
             <small>转出账户</small>
-            <strong>{{ detail.sourceAccountName }}</strong>
-            <span>{{ detail.sourceAccountNoMasked }}</span>
+            <strong>{{ detail.sourceAccountName || '--' }}</strong>
+            <span>{{ detail.sourceAccountNoMasked || '--' }}</span>
           </div>
           <div class="fund-transfer-detail__arrow">
             <ArtSvgIcon icon="ri:arrow-right-line" />
-            <strong>{{ formatMoney(detail.amount) }}</strong>
-            <small v-if="detail.feeAmount">手续费 {{ formatMoney(detail.feeAmount) }}</small>
+            <strong v-if="canViewAmounts">{{ formatMoney(detail.amount) }}</strong>
+            <small v-if="canViewAmounts && hasFeeAmount">
+              手续费 {{ formatMoney(detail.feeAmount) }}
+            </small>
           </div>
-          <div>
+          <div v-if="canViewAccounts">
             <small>转入账户</small>
-            <strong>{{ detail.targetAccountName }}</strong>
-            <span>{{ detail.targetAccountNoMasked }}</span>
+            <strong>{{ detail.targetAccountName || '--' }}</strong>
+            <span>{{ detail.targetAccountNoMasked || '--' }}</span>
           </div>
         </section>
 
@@ -57,7 +64,8 @@
   import ArtDrawer from '@/components/core/drawers/art-drawer/index.vue'
   import type { ArtDrawerExpose } from '@/components/core/drawers/art-drawer/types'
   import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
-  import { fetchFundTransferActions } from '@/api/fms'
+  import { fetchFundTransferActions, fetchFundTransferDetail } from '@/api/fms'
+  import { canViewField } from '@/utils/field-permission'
   import { formatCurrencyValue } from '@/utils/ui'
   import { formatWithDayjs } from '@/utils/time'
 
@@ -72,17 +80,39 @@
   const loading = ref(false)
   const loadError = shallowRef<Error | null>(null)
 
-  const descriptionItems: ArtDescriptionItem<Transfer>[] = [
+  const canViewAccounts = computed(() =>
+    canViewField(detail.value?.fieldAccess, 'transferAccounts')
+  )
+  const canViewAmounts = computed(() => canViewField(detail.value?.fieldAccess, 'transferAmounts'))
+  const canViewBankReference = computed(() =>
+    canViewField(detail.value?.fieldAccess, 'bankReference')
+  )
+  const showTransferFlow = computed(() => canViewAccounts.value || canViewAmounts.value)
+  const hasFeeAmount = computed(() => {
+    const value = detail.value?.feeAmount
+    if (typeof value === 'string') return Boolean(value.trim())
+    return Number(value) > 0
+  })
+  const descriptionItems = computed<ArtDescriptionItem<Transfer>[]>(() => [
     { key: 'transferNo', label: '调拨单号', field: 'transferNo', copyable: true },
     { key: 'status', label: '调拨状态', field: 'status', dictCode: 'fmsFundTransferStatus' },
     { key: 'transferDate', label: '调拨日期', field: 'transferDate', format: 'date' },
     { key: 'currencyCode', label: '币种', field: 'currencyCode' },
-    { key: 'bankReference', label: '银行参考号', field: 'bankReference', copyable: true },
+    ...(canViewBankReference.value
+      ? [
+          {
+            key: 'bankReference',
+            label: '银行参考号',
+            field: 'bankReference',
+            copyable: true
+          } as ArtDescriptionItem<Transfer>
+        ]
+      : []),
     { key: 'createBy', label: '创建人', field: 'createBy' },
     { key: 'purpose', label: '调拨用途', field: 'purpose', span: 2 },
     { key: 'reviewRemark', label: '审批意见', field: 'reviewRemark', span: 2 },
     { key: 'reversalReason', label: '冲销原因', field: 'reversalReason', span: 2 }
-  ]
+  ])
 
   const actionColumns: ColumnOption<Action>[] = [
     {
@@ -101,16 +131,21 @@
     { prop: 'actionRemark', label: '说明', minWidth: 180, showOverflowTooltip: true }
   ]
 
-  function formatMoney(value: number): string {
+  function formatMoney(value: Api.Tms.BasicData.SensitiveNumber | undefined): string {
+    if (value === null || value === undefined || value === '') return '--'
     return formatCurrencyValue(value, detail.value?.currencyCode)
   }
 
-  async function loadActions(id: string): Promise<void> {
+  async function loadDetail(id: string): Promise<void> {
     loading.value = true
     loadError.value = null
     try {
-      const { data } = await fetchFundTransferActions(id)
-      actions.value = data ?? []
+      const [detailResult, actionResult] = await Promise.all([
+        fetchFundTransferDetail(id),
+        fetchFundTransferActions(id)
+      ])
+      detail.value = detailResult.data ?? undefined
+      actions.value = actionResult.data ?? []
     } catch (error) {
       loadError.value = error instanceof Error ? error : new Error('资金调拨详情加载失败')
     } finally {
@@ -119,7 +154,7 @@
   }
 
   function retryLoad(): void {
-    if (detail.value?.id) void loadActions(detail.value.id)
+    if (detail.value?.id) void loadDetail(detail.value.id)
   }
 
   async function handleOpen(row: Transfer): Promise<void> {
@@ -128,7 +163,7 @@
       title: `资金调拨详情 · ${row.transferNo}`,
       size: 'xl',
       contentHeight: 'calc(100vh - 132px)',
-      onOpen: () => loadActions(row.id),
+      onOpen: () => loadDetail(row.id),
       drawerProps: { appendToBody: true, resizable: true, closeOnClickModal: false }
     })
   }
@@ -174,6 +209,10 @@
       display: grid;
       justify-items: center;
       color: var(--el-color-primary);
+    }
+
+    &__flow.is-amount-only {
+      grid-template-columns: minmax(0, 1fr);
     }
 
     &__section {

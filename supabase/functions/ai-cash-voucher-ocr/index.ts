@@ -72,21 +72,22 @@ const handler = createVisionOcrHandler({
   normalize: normalizeAiCashVoucherResponse,
   proposedPayload: (result) => result.voucher,
   compare: compareAiCashVoucherPayloads,
-  enrichResponse: async ({ admin, appUser, input, result }) => {
+  enrichResponse: async ({ userClient, input, result }) => {
     const isReceipt = input.direction === 'receipt'
-    const viewName = isReceipt
-      ? 'tms_customer_statement_allocatable'
-      : 'tms_carrier_statement_allocatable'
-    const { data, error } = await admin
-      .from(viewName)
-      .select('*')
-      .eq('tenant_id', appUser.tenant_id)
-      .gt('outstanding_amount', 0)
-      .order('period_end', { ascending: false })
-      .limit(80)
+    const functionName = isReceipt
+      ? 'tms_list_customer_statement_allocatable_secure'
+      : 'tms_list_carrier_statement_allocatable_secure'
+    const counterpartyParam = isReceipt ? { p_customer_id: null } : { p_carrier_id: null }
+    const { data, error } = await userClient.rpc(functionName, {
+      ...counterpartyParam,
+      p_keyword: null,
+      p_from: 0,
+      p_to: 79
+    })
     if (error) throw error
-    const candidates: AiCashVoucherStatementCandidate[] = ((data ?? []) as AllocatableRow[]).map(
-      (row) => ({
+    const payload = data && typeof data === 'object' ? (data as Record<string, unknown>) : {}
+    const rows = Array.isArray(payload.records) ? (payload.records as AllocatableRow[]) : []
+    const candidates: AiCashVoucherStatementCandidate[] = rows.map((row) => ({
         statementId: row.id,
         statementNo: row.statement_no,
         counterpartyId: isReceipt ? String(row.customer_id ?? '') : String(row.carrier_id ?? ''),
@@ -99,8 +100,7 @@ const handler = createVisionOcrHandler({
         settledAmount: Number(row.settled_amount ?? 0),
         outstandingAmount: Number(row.outstanding_amount ?? 0),
         createTime: row.create_time
-      })
-    )
+      }))
     return {
       matches: matchAiCashVoucherStatements(result.voucher, input.direction, candidates),
       evaluatedStatements: candidates.length

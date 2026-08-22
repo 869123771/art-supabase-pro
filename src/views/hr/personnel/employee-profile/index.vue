@@ -42,6 +42,15 @@
       </div>
     </section>
 
+    <ElAlert
+      v-if="accessNotice"
+      class="hr-profile-page__access-notice"
+      type="info"
+      :closable="false"
+      show-icon
+      :title="accessNotice"
+    />
+
     <ElTabs v-model="page.activeTab" class="hr-profile-page__tabs art-card-xs">
       <ElTabPane label="基础信息" name="basic">
         <ArtForm
@@ -58,7 +67,7 @@
         />
       </ElTabPane>
 
-      <ElTabPane name="contracts">
+      <ElTabPane v-if="canViewCareerRecords && !form.historiesMasked" name="contracts">
         <template #label
           >劳动合同
           <span class="hr-profile-page__tab-count">{{ form.contracts.length }}</span></template
@@ -69,6 +78,7 @@
           add-label="新增合同"
           icon="ri:file-list-3-line"
           :count="form.contracts.length"
+          :readonly="!canEditCareerRecords"
           @add="form.contracts.push(createContract())"
         >
           <HistoryCard
@@ -76,9 +86,14 @@
             :key="item.id || index"
             :title="item.contractNo || `合同 ${index + 1}`"
             :subtitle="displayDict('hrContractStatus', item.contractStatus)"
+            :readonly="!canEditCareerRecords"
             @remove="form.contracts.splice(index, 1)"
           >
-            <ElForm label-position="top" class="hr-profile-page__record-form">
+            <ElForm
+              label-position="top"
+              class="hr-profile-page__record-form"
+              :disabled="!canEditCareerRecords"
+            >
               <ElFormItem
                 label="合同编号"
                 required
@@ -135,13 +150,6 @@
               <ElFormItem label="工作地点"
                 ><ElInput v-model="item.workLocation" maxlength="120"
               /></ElFormItem>
-              <ElFormItem label="月薪"
-                ><ElInputNumber
-                  v-model="item.monthlySalary"
-                  :min="0"
-                  :precision="2"
-                  :controls="false"
-              /></ElFormItem>
               <ElFormItem label="合同备注" class="is-wide"
                 ><ElInput
                   v-model="item.remark"
@@ -151,11 +159,29 @@
                   show-word-limit
               /></ElFormItem>
             </ElForm>
+            <ElForm
+              v-if="canViewCompensationDetails"
+              label-position="top"
+              class="hr-profile-page__compensation-form"
+              :disabled="!canEditCompensationDetails"
+            >
+              <ElFormItem label="月薪">
+                <ElInputNumber
+                  v-if="canEditCompensationDetails"
+                  :model-value="editableAmount(item.monthlySalary)"
+                  :min="0"
+                  :precision="2"
+                  :controls="false"
+                  @update:model-value="item.monthlySalary = $event"
+                />
+                <ElInput v-else :model-value="formatSensitiveNumber(item.monthlySalary)" disabled />
+              </ElFormItem>
+            </ElForm>
           </HistoryCard>
         </HistorySection>
       </ElTabPane>
 
-      <ElTabPane name="educations">
+      <ElTabPane v-if="canViewCareerRecords && !form.historiesMasked" name="educations">
         <template #label
           >教育背景
           <span class="hr-profile-page__tab-count">{{ form.educations.length }}</span></template
@@ -166,6 +192,7 @@
           add-label="新增教育经历"
           icon="ri:graduation-cap-line"
           :count="form.educations.length"
+          :readonly="!canEditCareerRecords"
           @add="form.educations.push(createEducation())"
         >
           <HistoryCard
@@ -173,9 +200,14 @@
             :key="item.id || index"
             :title="item.schoolName || `教育经历 ${index + 1}`"
             :subtitle="displayDict('hrEducationLevel', item.educationLevel)"
+            :readonly="!canEditCareerRecords"
             @remove="form.educations.splice(index, 1)"
           >
-            <ElForm label-position="top" class="hr-profile-page__record-form">
+            <ElForm
+              label-position="top"
+              class="hr-profile-page__record-form"
+              :disabled="!canEditCareerRecords"
+            >
               <ElFormItem
                 label="学校名称"
                 required
@@ -237,7 +269,7 @@
         </HistorySection>
       </ElTabPane>
 
-      <ElTabPane name="workExperiences">
+      <ElTabPane v-if="canViewCareerRecords && !form.historiesMasked" name="workExperiences">
         <template #label
           >工作经历
           <span class="hr-profile-page__tab-count">{{
@@ -250,6 +282,7 @@
           add-label="新增工作经历"
           icon="ri:briefcase-4-line"
           :count="form.workExperiences.length"
+          :readonly="!canEditCareerRecords"
           @add="form.workExperiences.push(createWorkExperience())"
         >
           <HistoryCard
@@ -257,9 +290,14 @@
             :key="item.id || index"
             :title="item.companyName || `工作经历 ${index + 1}`"
             :subtitle="item.jobTitle"
+            :readonly="!canEditCareerRecords"
             @remove="form.workExperiences.splice(index, 1)"
           >
-            <ElForm label-position="top" class="hr-profile-page__record-form">
+            <ElForm
+              label-position="top"
+              class="hr-profile-page__record-form"
+              :disabled="!canEditCareerRecords"
+            >
               <ElFormItem
                 label="公司名称"
                 required
@@ -290,11 +328,17 @@
                 :data-validation-key="historyFieldKey('workExperiences', index, 'endDate')"
                 ><ElDatePicker v-model="item.endDate" type="date" value-format="YYYY-MM-DD"
               /></ElFormItem>
-              <ElFormItem label="证明人"
-                ><ElInput v-model="item.referenceName" maxlength="50"
+              <ElFormItem v-if="canViewContactDetails" label="证明人"
+                ><ElInput
+                  v-model="item.referenceName"
+                  maxlength="50"
+                  :disabled="!canEditContactDetails"
               /></ElFormItem>
-              <ElFormItem label="证明人电话"
-                ><ElInput v-model="item.referencePhone" maxlength="20"
+              <ElFormItem v-if="canViewContactDetails" label="证明人电话"
+                ><ElInput
+                  v-model="item.referencePhone"
+                  maxlength="20"
+                  :disabled="!canEditContactDetails"
               /></ElFormItem>
               <ElFormItem label="离职原因"
                 ><ElInput v-model="item.leavingReason" maxlength="150"
@@ -312,7 +356,7 @@
         </HistorySection>
       </ElTabPane>
 
-      <ElTabPane name="trainings">
+      <ElTabPane v-if="canViewCareerRecords && !form.historiesMasked" name="trainings">
         <template #label
           >培训经历
           <span class="hr-profile-page__tab-count">{{ form.trainings.length }}</span></template
@@ -323,6 +367,7 @@
           add-label="新增培训经历"
           icon="ri:presentation-line"
           :count="form.trainings.length"
+          :readonly="!canEditCareerRecords"
           @add="form.trainings.push(createTraining())"
         >
           <HistoryCard
@@ -330,9 +375,14 @@
             :key="item.id || index"
             :title="item.trainingName || `培训经历 ${index + 1}`"
             :subtitle="displayDict('hrTrainingResult', item.trainingResult)"
+            :readonly="!canEditCareerRecords"
             @remove="form.trainings.splice(index, 1)"
           >
-            <ElForm label-position="top" class="hr-profile-page__record-form">
+            <ElForm
+              label-position="top"
+              class="hr-profile-page__record-form"
+              :disabled="!canEditCareerRecords"
+            >
               <ElFormItem
                 label="培训名称"
                 required
@@ -382,9 +432,6 @@
               <ElFormItem label="证书编号"
                 ><ElInput v-model="item.certificateNo" maxlength="80"
               /></ElFormItem>
-              <ElFormItem label="培训费用"
-                ><ElInputNumber v-model="item.cost" :min="0" :precision="2" :controls="false"
-              /></ElFormItem>
               <ElFormItem label="备注" class="is-wide"
                 ><ElInput
                   v-model="item.remark"
@@ -394,11 +441,29 @@
                   show-word-limit
               /></ElFormItem>
             </ElForm>
+            <ElForm
+              v-if="canViewCompensationDetails"
+              label-position="top"
+              class="hr-profile-page__compensation-form"
+              :disabled="!canEditCompensationDetails"
+            >
+              <ElFormItem label="培训费用">
+                <ElInputNumber
+                  v-if="canEditCompensationDetails"
+                  :model-value="editableAmount(item.cost)"
+                  :min="0"
+                  :precision="2"
+                  :controls="false"
+                  @update:model-value="item.cost = $event"
+                />
+                <ElInput v-else :model-value="formatSensitiveNumber(item.cost)" disabled />
+              </ElFormItem>
+            </ElForm>
           </HistoryCard>
         </HistorySection>
       </ElTabPane>
 
-      <ElTabPane name="rewards">
+      <ElTabPane v-if="canViewCareerRecords && !form.historiesMasked" name="rewards">
         <template #label
           >奖惩经历
           <span class="hr-profile-page__tab-count">{{ form.rewards.length }}</span></template
@@ -409,6 +474,7 @@
           add-label="新增奖惩记录"
           icon="ri:award-line"
           :count="form.rewards.length"
+          :readonly="!canEditCareerRecords"
           @add="form.rewards.push(createReward())"
         >
           <HistoryCard
@@ -416,9 +482,14 @@
             :key="item.id || index"
             :title="item.title || `奖惩记录 ${index + 1}`"
             :subtitle="displayDict('hrRewardType', item.recordType)"
+            :readonly="!canEditCareerRecords"
             @remove="form.rewards.splice(index, 1)"
           >
-            <ElForm label-position="top" class="hr-profile-page__record-form">
+            <ElForm
+              label-position="top"
+              class="hr-profile-page__record-form"
+              :disabled="!canEditCareerRecords"
+            >
               <ElFormItem
                 label="奖惩类型"
                 required
@@ -456,9 +527,6 @@
               <ElFormItem label="颁发/认定机构"
                 ><ElInput v-model="item.issuingOrganization" maxlength="120"
               /></ElFormItem>
-              <ElFormItem label="金额"
-                ><ElInputNumber v-model="item.amount" :min="0" :precision="2" :controls="false"
-              /></ElFormItem>
               <ElFormItem label="详细说明" class="is-wide"
                 ><ElInput
                   v-model="item.description"
@@ -468,15 +536,49 @@
                   show-word-limit
               /></ElFormItem>
             </ElForm>
+            <ElForm
+              v-if="canViewCompensationDetails"
+              label-position="top"
+              class="hr-profile-page__compensation-form"
+              :disabled="!canEditCompensationDetails"
+            >
+              <ElFormItem label="金额">
+                <ElInputNumber
+                  v-if="canEditCompensationDetails"
+                  :model-value="editableAmount(item.amount)"
+                  :min="0"
+                  :precision="2"
+                  :controls="false"
+                  @update:model-value="item.amount = $event"
+                />
+                <ElInput v-else :model-value="formatSensitiveNumber(item.amount)" disabled />
+              </ElFormItem>
+            </ElForm>
           </HistoryCard>
         </HistorySection>
+      </ElTabPane>
+      <ElTabPane v-if="form.historiesMasked" label="履历概览" name="historyOverview">
+        <div class="hr-profile-page__history-mask">
+          <ElAlert
+            title="履历内容已按字段权限脱敏，仅展示记录数量，当前页面不会提交履历变更。"
+            type="warning"
+            :closable="false"
+            show-icon
+          />
+          <div class="hr-profile-page__history-counts">
+            <div v-for="item in historyCountItems" :key="item.key">
+              <strong>{{ item.value }}</strong
+              ><span>{{ item.label }}</span>
+            </div>
+          </div>
+        </div>
       </ElTabPane>
     </ElTabs>
 
     <ArtStickyActionBar class="hr-profile-page__footer">
       <template #summary>
         <span class="hr-profile-page__save-hint">
-          带 <b>*</b> 的信息为必填项，保存后将同步更新员工花名册。
+          带 <b>*</b> 的信息为必填项；司机岗位保存时将同时创建司机档案。
         </span>
       </template>
       <ElButton :disabled="page.saving" @click="goBack">取消</ElButton>
@@ -500,17 +602,34 @@
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import HistorySection from './modules/history-section.vue'
   import HistoryCard from './modules/history-card.vue'
-  import { fetchEmployeeProfile, saveEmployeeProfile } from '@/api/hr'
+  import {
+    fetchEmployeeDriverCarrierOptions,
+    fetchEmployeeProfile,
+    fetchPositionOptions,
+    saveEmployeeProfile
+  } from '@/api/hr'
   import { fetchGetEnableOrganizationTree, fetchGetEnableTenantList } from '@/api/system-manage'
   import { useUserStore } from '@/store/modules/user'
   import { useDocumentNumberRule } from '@/hooks/core/useDocumentNumberRule'
+  import {
+    canEditField,
+    canViewField,
+    formatSensitiveNumber,
+    getFieldAccess
+  } from '@/utils/field-permission'
 
   defineOptions({ name: 'HrEmployeeProfile' })
 
   type Employee = Api.Hr.Employee
   type EmployeeProfile = Api.Hr.EmployeeProfile
-  type TabName = 'basic' | 'contracts' | 'educations' | 'workExperiences' | 'trainings' | 'rewards'
-  type HistoryTabName = Exclude<TabName, 'basic'>
+  interface EmployeeProfileForm extends EmployeeProfile {
+    driverCarrierId: string
+    driverType: Api.Tms.BasicData.Driver['driverType']
+    driverLicenseType: string
+    driverLicenseExpireDate: string
+  }
+  type HistoryTabName = 'contracts' | 'educations' | 'workExperiences' | 'trainings' | 'rewards'
+  type TabName = 'basic' | 'historyOverview' | HistoryTabName
 
   interface ValidationTarget {
     tab: TabName
@@ -534,6 +653,8 @@
   const basicFormRef = ref<FormExpose>()
   const tenantFormOptions = ref<FormItemOption[]>([])
   const organizationFormOptions = ref<FormItemOption[]>([])
+  const positionOptions = ref<Api.Hr.PositionOption[]>([])
+  const driverCarrierOptions = ref<FormItemOption[]>([])
   const employeeNumber = useDocumentNumberRule('hr.employee')
   const historyValidationErrors = reactive<Record<string, string>>({})
   const isDesktop = useMediaQuery('(min-width: 1200px)')
@@ -560,6 +681,7 @@
   const createEmployee = (): Employee => ({
     tenantId: isPlatformSuper.value ? undefined : getUserInfo.value.tenantId,
     organizationId: null,
+    positionId: null,
     employeeNo: '',
     employeeName: '',
     avatarUrl: null,
@@ -644,58 +766,147 @@
     amount: null,
     description: ''
   })
-  const createProfile = (): EmployeeProfile => ({
+  const createProfile = (): EmployeeProfileForm => ({
     ...createEmployee(),
+    driverCarrierId: '',
+    driverType: 'primary',
+    driverLicenseType: '',
+    driverLicenseExpireDate: '',
     contracts: [],
     educations: [],
     workExperiences: [],
     trainings: [],
     rewards: []
   })
-  const form = reactive<EmployeeProfile>(createProfile())
+  const form = reactive<EmployeeProfileForm>(createProfile())
+  const fieldAccessFallback = computed<Api.Common.FieldAccessLevel>(() =>
+    isEdit.value ? 'hidden' : 'edit'
+  )
+  const fieldLevel = (field: Api.Hr.EmployeeFieldKey): Api.Common.FieldAccessLevel =>
+    getFieldAccess(form.fieldAccess, field, fieldAccessFallback.value)
+  const canViewContactDetails = computed(() =>
+    canViewField(form.fieldAccess, 'contactDetails', fieldAccessFallback.value)
+  )
+  const canEditContactDetails = computed(() =>
+    canEditField(form.fieldAccess, 'contactDetails', fieldAccessFallback.value)
+  )
+  const canEditIdentityDetails = computed(() =>
+    canEditField(form.fieldAccess, 'identityDetails', fieldAccessFallback.value)
+  )
+  const canViewIdentityDetails = computed(() =>
+    canViewField(form.fieldAccess, 'identityDetails', fieldAccessFallback.value)
+  )
+  const canViewCompensationDetails = computed(() =>
+    canViewField(form.fieldAccess, 'compensationDetails', fieldAccessFallback.value)
+  )
+  const canEditCompensationDetails = computed(() =>
+    canEditField(form.fieldAccess, 'compensationDetails', fieldAccessFallback.value)
+  )
+  const canViewCareerRecords = computed(() =>
+    canViewField(form.fieldAccess, 'careerRecords', fieldAccessFallback.value)
+  )
+  const canEditCareerRecords = computed(() =>
+    canEditField(form.fieldAccess, 'careerRecords', fieldAccessFallback.value)
+  )
+  const accessNotice = computed(() => {
+    if (!isEdit.value || form.isRecordOwner) return ''
+    const readonlyGroups = (
+      ['contactDetails', 'identityDetails', 'compensationDetails', 'careerRecords'] as const
+    ).filter((field) => fieldLevel(field) !== 'edit').length
+    return readonlyGroups
+      ? `${readonlyGroups} 组敏感信息受字段权限限制；隐藏字段不会提交，只读字段不会被修改。`
+      : ''
+  })
+  const editableAmount = (value: Api.Hr.ProtectedAmount | undefined): number | null => {
+    const numericValue = Number(value)
+    return value === null || value === undefined || !Number.isFinite(numericValue)
+      ? null
+      : numericValue
+  }
+  const historyCountItems = computed(() => [
+    { key: 'contracts', label: '劳动合同', value: form.historyCounts?.contracts ?? 0 },
+    { key: 'educations', label: '教育背景', value: form.historyCounts?.educations ?? 0 },
+    {
+      key: 'workExperiences',
+      label: '工作经历',
+      value: form.historyCounts?.workExperiences ?? 0
+    },
+    { key: 'trainings', label: '培训经历', value: form.historyCounts?.trainings ?? 0 },
+    { key: 'rewards', label: '奖惩经历', value: form.historyCounts?.rewards ?? 0 }
+  ])
 
   const dict = (code: string) => getDictMap.value[code] ?? []
   const displayDict = (code: string, value?: string | null): string =>
     dict(code).find((item) => item.value === value)?.label ?? value ?? '待完善'
+  const selectedPosition = computed(() =>
+    positionOptions.value.find((item) => item.id === form.positionId)
+  )
+  const isDriverEmployeeCreate = computed(
+    () => !isEdit.value && selectedPosition.value?.positionKind === 'driver'
+  )
+  const positionFormOptions = computed<FormItemOption[]>(() =>
+    positionOptions.value.map((position) => ({
+      label: `${position.positionName}（${position.positionCode}）`,
+      value: position.id,
+      disabled:
+        isEdit.value && position.positionKind === 'driver' && position.id !== form.positionId
+    }))
+  )
 
   const requiredBaseFields = computed(() => [
     form.employeeNo,
     form.employeeName,
     form.organizationId,
+    form.positionId,
     form.employmentStatus,
     form.employmentType
   ])
   const optionalBaseFields = computed(() => [
-    form.gender,
-    form.birthDate,
-    form.phone,
-    form.email,
-    form.idCardNo,
-    form.ethnicity,
-    form.educationLevel,
-    form.schoolName,
-    form.majorName,
-    form.maritalStatus,
-    form.politicalStatus,
-    form.nativePlace,
-    form.homeAddress,
     form.hireDate,
-    form.emergencyContactName,
-    form.emergencyContactPhone
+    ...(canViewIdentityDetails.value
+      ? [
+          form.gender,
+          form.birthDate,
+          form.idCardNo,
+          form.ethnicity,
+          form.educationLevel,
+          form.schoolName,
+          form.majorName,
+          form.maritalStatus,
+          form.politicalStatus,
+          form.nativePlace
+        ]
+      : []),
+    ...(canViewContactDetails.value
+      ? [
+          form.phone,
+          form.email,
+          form.homeAddress,
+          form.emergencyContactName,
+          form.emergencyContactPhone
+        ]
+      : [])
   ])
   const profileCompletion = computed(() => {
     const all = [...requiredBaseFields.value, ...optionalBaseFields.value]
     const filled = all.filter(
       (value) => value !== null && value !== undefined && String(value).trim()
     ).length
-    const historyBonus = [
-      form.contracts,
-      form.educations,
-      form.workExperiences,
-      form.trainings,
-      form.rewards
-    ].filter((items) => items.length).length
-    return Math.min(100, Math.round(((filled + historyBonus * 2) / (all.length + 10)) * 100))
+    const historyBonus =
+      canViewCareerRecords.value && !form.historiesMasked
+        ? [
+            form.contracts,
+            form.educations,
+            form.workExperiences,
+            form.trainings,
+            form.rewards
+          ].filter((items) => items.length).length
+        : 0
+    const historyWeight = canViewCareerRecords.value && !form.historiesMasked ? 10 : 0
+    return Math.min(
+      100,
+      Math.round(((filled + historyBonus * 2) / Math.max(all.length + historyWeight, 1)) * 100)
+    )
   })
 
   const dateProps = {
@@ -727,16 +938,43 @@
     organizationFormOptions.value = mapOrganizationOptions(response.data ?? [])
   }
 
-  const handleTenantChange = (): void => {
-    form.organizationId = null
-    void loadOrganizationOptions()
+  const loadPositionOptions = async (): Promise<void> => {
+    if (!form.tenantId) {
+      positionOptions.value = []
+      return
+    }
+    const response = await fetchPositionOptions({ tenantId: form.tenantId })
+    positionOptions.value = response.data ?? []
   }
 
-  const basicRules = computed<FormRules<Employee>>(() => ({
+  const loadDriverCarrierOptions = async (): Promise<void> => {
+    if (!form.tenantId || !isDriverEmployeeCreate.value) {
+      driverCarrierOptions.value = []
+      return
+    }
+    const response = await fetchEmployeeDriverCarrierOptions(form.tenantId)
+    driverCarrierOptions.value = (response.data ?? []).map((carrier) => ({
+      label: carrier.carrierCode
+        ? `${carrier.companyName}（${carrier.carrierCode}）`
+        : carrier.companyName,
+      value: carrier.id
+    }))
+  }
+
+  const handleTenantChange = (): void => {
+    form.organizationId = null
+    form.positionId = null
+    form.driverCarrierId = ''
+    void loadOrganizationOptions()
+    void loadPositionOptions()
+  }
+
+  const basicRules = computed<FormRules<EmployeeProfileForm>>(() => ({
     tenantId: isPlatformSuper.value
       ? [{ required: true, message: '请选择所属租户', trigger: 'change' }]
       : [],
     organizationId: [{ required: true, message: '请选择所属组织', trigger: 'change' }],
+    positionId: [{ required: true, message: '请选择工作岗位', trigger: 'change' }],
     employeeNo: [
       ...(isEdit.value || employeeNumber.manualRequired(false)
         ? [{ required: true, message: '请输入员工工号', trigger: 'blur' as const }]
@@ -753,148 +991,287 @@
     ],
     employmentStatus: [{ required: true, message: '请选择任职状态', trigger: 'change' }],
     employmentType: [{ required: true, message: '请选择用工类型', trigger: 'change' }],
-    phone: [{ pattern: /^$|^1[3-9]\d{9}$/, message: '请输入正确的手机号码', trigger: 'blur' }],
-    email: [
-      { pattern: /^$|^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: '请输入正确的邮箱地址', trigger: 'blur' }
-    ],
-    emergencyContactPhone: [
-      { pattern: /^$|^1[3-9]\d{9}$/, message: '请输入正确的联系电话', trigger: 'blur' }
-    ]
+    phone: canEditContactDetails.value
+      ? [
+          ...(isDriverEmployeeCreate.value
+            ? [{ required: true, message: '司机岗位必须填写手机号码', trigger: 'blur' as const }]
+            : []),
+          { pattern: /^$|^1[3-9]\d{9}$/, message: '请输入正确的手机号码', trigger: 'blur' }
+        ]
+      : [],
+    gender:
+      isDriverEmployeeCreate.value && canEditIdentityDetails.value
+        ? [{ required: true, message: '司机岗位必须选择性别', trigger: 'change' }]
+        : [],
+    idCardNo:
+      isDriverEmployeeCreate.value && canEditIdentityDetails.value
+        ? [
+            { required: true, message: '司机岗位必须填写身份证号', trigger: 'blur' },
+            {
+              pattern: /(^\d{15}$)|(^\d{17}[\dXx]$)/,
+              message: '请输入正确的身份证号',
+              trigger: 'blur'
+            }
+          ]
+        : [],
+    driverCarrierId: isDriverEmployeeCreate.value
+      ? [{ required: true, message: '请选择所属承运商', trigger: 'change' }]
+      : [],
+    driverType: isDriverEmployeeCreate.value
+      ? [{ required: true, message: '请选择司机类型', trigger: 'change' }]
+      : [],
+    driverLicenseType: isDriverEmployeeCreate.value
+      ? [{ required: true, message: '请选择驾照类型', trigger: 'change' }]
+      : [],
+    driverLicenseExpireDate: isDriverEmployeeCreate.value
+      ? [{ required: true, message: '请选择驾照有效期', trigger: 'change' }]
+      : [],
+    email: canEditContactDetails.value
+      ? [
+          {
+            pattern: /^$|^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+            message: '请输入正确的邮箱地址',
+            trigger: 'blur'
+          }
+        ]
+      : [],
+    emergencyContactPhone: canEditContactDetails.value
+      ? [{ pattern: /^$|^1[3-9]\d{9}$/, message: '请输入正确的联系电话', trigger: 'blur' }]
+      : []
   }))
 
-  const basicItems = computed<FormItem[]>(() => [
-    { label: '组织与任职', key: 'organizationSection', type: 'divider', span: 24 },
-    {
-      label: '所属租户',
-      key: 'tenantId',
-      type: 'select',
-      span: 24,
-      hidden: !isPlatformSuper.value,
-      options: tenantFormOptions.value,
-      props: {
-        filterable: true,
-        disabled: isEdit.value,
-        placeholder: '请选择所属租户',
-        onChange: handleTenantChange
-      }
-    },
-    {
-      label: '所属组织',
-      key: 'organizationId',
-      type: 'treeSelect',
-      span: isDesktop.value ? 16 : 24,
-      options: organizationFormOptions.value,
-      props: {
-        disabled: !form.tenantId,
-        clearable: true,
-        checkStrictly: true,
-        defaultExpandAll: true,
-        filterable: true,
-        placeholder: form.tenantId ? '请选择所属组织' : '请先选择租户'
-      }
-    },
-    {
-      label: '员工工号',
-      key: 'employeeNo',
-      type: 'input',
-      props: {
-        maxlength: 32,
-        ...employeeNumber.inputProps(isEdit.value, '请输入员工工号', true)
-      },
-      description: employeeNumber.description.value
-    },
-    {
-      label: '员工姓名',
-      key: 'employeeName',
-      type: 'input',
-      props: { maxlength: 50, placeholder: '请输入姓名' }
-    },
-    {
-      label: '工作岗位',
-      key: 'jobTitle',
-      type: 'input',
-      props: { maxlength: 80, placeholder: '如 销售经理' }
-    },
-    {
-      label: '任职状态',
-      key: 'employmentStatus',
-      type: 'select',
-      props: { options: dict('hrEmploymentStatus') }
-    },
-    {
-      label: '用工类型',
-      key: 'employmentType',
-      type: 'select',
-      props: { options: dict('hrEmploymentType') }
-    },
-    { label: '个人身份', key: 'identitySection', type: 'divider', span: 24 },
-    {
-      label: '性别',
-      key: 'gender',
-      type: 'select',
-      props: { options: dict('sex'), clearable: true }
-    },
-    { label: '出生日期', key: 'birthDate', type: 'date', props: dateProps },
-    { label: '身份证号', key: 'idCardNo', type: 'input', props: { maxlength: 18 } },
-    {
-      label: '民族',
-      key: 'ethnicity',
-      type: 'select',
-      props: { options: dict('hrEthnicity'), clearable: true }
-    },
-    {
-      label: '婚姻状况',
-      key: 'maritalStatus',
-      type: 'select',
-      props: { options: dict('hrMaritalStatus'), clearable: true }
-    },
-    {
-      label: '政治面貌',
-      key: 'politicalStatus',
-      type: 'select',
-      props: { options: dict('hrPoliticalStatus'), clearable: true }
-    },
-    { label: '籍贯', key: 'nativePlace', type: 'input', props: { maxlength: 100 } },
-    {
-      label: '最高学历',
-      key: 'educationLevel',
-      type: 'select',
-      props: { options: dict('hrEducationLevel'), clearable: true }
-    },
-    { label: '毕业院校', key: 'schoolName', type: 'input', props: { maxlength: 120 } },
-    { label: '专业', key: 'majorName', type: 'input', props: { maxlength: 100 } },
-    { label: '任职时间', key: 'employmentSection', type: 'divider', span: 24 },
-    { label: '入职日期', key: 'hireDate', type: 'date', props: dateProps },
-    { label: '转正日期', key: 'probationEndDate', type: 'date', props: dateProps },
-    { label: '离职日期', key: 'leaveDate', type: 'date', props: dateProps },
-    { label: '合同开始', key: 'contractStartDate', type: 'date', props: dateProps },
-    { label: '合同结束', key: 'contractEndDate', type: 'date', props: dateProps },
-    { label: '联系信息', key: 'contactSection', type: 'divider', span: 24 },
-    { label: '手机号码', key: 'phone', type: 'input', props: { maxlength: 11 } },
-    { label: '电子邮箱', key: 'email', type: 'input', props: { maxlength: 120 } },
-    {
-      label: '家庭住址',
-      key: 'homeAddress',
-      type: 'input',
-      span: isDesktop.value ? 16 : 24,
-      props: { maxlength: 200 }
-    },
-    { label: '紧急联系人', key: 'emergencyContactName', type: 'input', props: { maxlength: 50 } },
-    {
-      label: '联系人关系',
-      key: 'emergencyContactRelation',
-      type: 'select',
-      props: { options: dict('hrEmergencyRelation'), clearable: true }
-    },
-    { label: '联系电话', key: 'emergencyContactPhone', type: 'input', props: { maxlength: 11 } },
-    {
-      label: '备注',
-      key: 'remark',
-      type: 'input',
-      span: 24,
-      props: { type: 'textarea', rows: 3, maxlength: 500, showWordLimit: true }
-    }
+  const identityBasicKeys = new Set([
+    'identitySection',
+    'gender',
+    'birthDate',
+    'idCardNo',
+    'ethnicity',
+    'maritalStatus',
+    'politicalStatus',
+    'nativePlace',
+    'educationLevel',
+    'schoolName',
+    'majorName'
   ])
+  const contactBasicKeys = new Set([
+    'contactSection',
+    'phone',
+    'email',
+    'homeAddress',
+    'emergencyContactName',
+    'emergencyContactRelation',
+    'emergencyContactPhone'
+  ])
+  const basicItems = computed<FormItem[]>(() => {
+    const items: FormItem[] = [
+      { label: '组织与任职', key: 'organizationSection', type: 'divider', span: 24 },
+      {
+        label: '所属租户',
+        key: 'tenantId',
+        type: 'select',
+        span: 24,
+        hidden: !isPlatformSuper.value,
+        options: tenantFormOptions.value,
+        props: {
+          filterable: true,
+          disabled: isEdit.value,
+          placeholder: '请选择所属租户',
+          onChange: handleTenantChange
+        }
+      },
+      {
+        label: '所属组织',
+        key: 'organizationId',
+        type: 'treeSelect',
+        span: isDesktop.value ? 16 : 24,
+        options: organizationFormOptions.value,
+        props: {
+          disabled: !form.tenantId,
+          clearable: true,
+          checkStrictly: true,
+          defaultExpandAll: true,
+          filterable: true,
+          placeholder: form.tenantId ? '请选择所属组织' : '请先选择租户'
+        }
+      },
+      {
+        label: '员工工号',
+        key: 'employeeNo',
+        type: 'input',
+        props: {
+          maxlength: 32,
+          ...employeeNumber.inputProps(isEdit.value, '请输入员工工号', true)
+        },
+        description: employeeNumber.description.value
+      },
+      {
+        label: '员工姓名',
+        key: 'employeeName',
+        type: 'input',
+        props: { maxlength: 50, placeholder: '请输入姓名' }
+      },
+      {
+        label: '工作岗位',
+        key: 'positionId',
+        type: 'select',
+        options: positionFormOptions.value,
+        props: {
+          filterable: true,
+          clearable: true,
+          placeholder: form.tenantId ? '请选择工作岗位' : '请先选择租户'
+        },
+        description: '岗位由 HR「岗位管理」统一维护；司机岗位会触发司机档案联动。'
+      },
+      {
+        label: '任职状态',
+        key: 'employmentStatus',
+        type: 'select',
+        props: { options: dict('hrEmploymentStatus') }
+      },
+      {
+        label: '用工类型',
+        key: 'employmentType',
+        type: 'select',
+        props: { options: dict('hrEmploymentType') }
+      },
+      {
+        label: '司机任职资料',
+        key: 'driverSection',
+        type: 'divider',
+        span: 24,
+        hidden: !isDriverEmployeeCreate.value
+      },
+      {
+        label: '所属承运商',
+        key: 'driverCarrierId',
+        type: 'select',
+        span: isDesktop.value ? 16 : 24,
+        hidden: !isDriverEmployeeCreate.value,
+        options: driverCarrierOptions.value,
+        props: { filterable: true, clearable: true, placeholder: '请选择同租户承运商' }
+      },
+      {
+        label: '司机类型',
+        key: 'driverType',
+        type: 'radioGroup',
+        hidden: !isDriverEmployeeCreate.value,
+        props: { options: dict('tmsDriverType') }
+      },
+      {
+        label: '驾照类型',
+        key: 'driverLicenseType',
+        type: 'select',
+        hidden: !isDriverEmployeeCreate.value,
+        props: { options: dict('tmsDriverLicenseType'), clearable: true }
+      },
+      {
+        label: '驾照有效期',
+        key: 'driverLicenseExpireDate',
+        type: 'date',
+        hidden: !isDriverEmployeeCreate.value,
+        props: dateProps
+      },
+      { label: '个人身份', key: 'identitySection', type: 'divider', span: 24 },
+      {
+        label: '性别',
+        key: 'gender',
+        type: 'select',
+        props: { options: dict('sex'), clearable: true }
+      },
+      { label: '出生日期', key: 'birthDate', type: 'date', props: dateProps },
+      { label: '身份证号', key: 'idCardNo', type: 'input', props: { maxlength: 18 } },
+      {
+        label: '民族',
+        key: 'ethnicity',
+        type: 'select',
+        props: { options: dict('hrEthnicity'), clearable: true }
+      },
+      {
+        label: '婚姻状况',
+        key: 'maritalStatus',
+        type: 'select',
+        props: { options: dict('hrMaritalStatus'), clearable: true }
+      },
+      {
+        label: '政治面貌',
+        key: 'politicalStatus',
+        type: 'select',
+        props: { options: dict('hrPoliticalStatus'), clearable: true }
+      },
+      { label: '籍贯', key: 'nativePlace', type: 'input', props: { maxlength: 100 } },
+      {
+        label: '最高学历',
+        key: 'educationLevel',
+        type: 'select',
+        props: { options: dict('hrEducationLevel'), clearable: true }
+      },
+      { label: '毕业院校', key: 'schoolName', type: 'input', props: { maxlength: 120 } },
+      { label: '专业', key: 'majorName', type: 'input', props: { maxlength: 100 } },
+      { label: '任职时间', key: 'employmentSection', type: 'divider', span: 24 },
+      { label: '入职日期', key: 'hireDate', type: 'date', props: dateProps },
+      { label: '转正日期', key: 'probationEndDate', type: 'date', props: dateProps },
+      { label: '离职日期', key: 'leaveDate', type: 'date', props: dateProps },
+      { label: '合同开始', key: 'contractStartDate', type: 'date', props: dateProps },
+      { label: '合同结束', key: 'contractEndDate', type: 'date', props: dateProps },
+      { label: '联系信息', key: 'contactSection', type: 'divider', span: 24 },
+      { label: '手机号码', key: 'phone', type: 'input', props: { maxlength: 11 } },
+      { label: '电子邮箱', key: 'email', type: 'input', props: { maxlength: 120 } },
+      {
+        label: '家庭住址',
+        key: 'homeAddress',
+        type: 'input',
+        span: isDesktop.value ? 16 : 24,
+        props: { maxlength: 200 }
+      },
+      { label: '紧急联系人', key: 'emergencyContactName', type: 'input', props: { maxlength: 50 } },
+      {
+        label: '联系人关系',
+        key: 'emergencyContactRelation',
+        type: 'select',
+        props: { options: dict('hrEmergencyRelation'), clearable: true }
+      },
+      { label: '联系电话', key: 'emergencyContactPhone', type: 'input', props: { maxlength: 11 } },
+      {
+        label: '备注',
+        key: 'remark',
+        type: 'input',
+        span: 24,
+        props: { type: 'textarea', rows: 3, maxlength: 500, showWordLimit: true }
+      }
+    ]
+
+    return items.map((item) => {
+      const key = String(item.key)
+      const permissionField: Api.Hr.EmployeeFieldKey | undefined = identityBasicKeys.has(key)
+        ? 'identityDetails'
+        : contactBasicKeys.has(key)
+          ? 'contactDetails'
+          : key === 'remark'
+            ? 'careerRecords'
+            : undefined
+      if (!permissionField) return item
+
+      const access = fieldLevel(permissionField)
+      if (access === 'hidden') return { ...item, hidden: true }
+
+      const isMasked = access === 'masked'
+      return {
+        ...item,
+        type: isMasked && item.type !== 'divider' ? 'input' : item.type,
+        options: isMasked ? undefined : item.options,
+        props: {
+          ...(item.props ?? {}),
+          disabled: access !== 'edit'
+        },
+        description:
+          access === 'masked'
+            ? '该字段已按权限脱敏，无法编辑。'
+            : access === 'read'
+              ? '当前字段为只读。'
+              : item.description
+      }
+    })
+  })
 
   const ensureDictionaries = async (): Promise<void> => {
     const codes = [
@@ -912,7 +1289,9 @@
       'hrTrainingType',
       'hrTrainingResult',
       'hrRewardType',
-      'hrRewardLevel'
+      'hrRewardLevel',
+      'tmsDriverType',
+      'tmsDriverLicenseType'
     ]
     await Promise.all(codes.map((code) => userStore.ensureDictLoaded(code)))
   }
@@ -938,7 +1317,7 @@
         if (!profile) throw new Error('员工档案不存在，或当前账号无权查看')
         replaceProfile(profile)
       }
-      await loadOrganizationOptions()
+      await Promise.all([loadOrganizationOptions(), loadPositionOptions()])
     } catch (error) {
       page.error = error instanceof Error ? error : new Error('员工档案加载失败')
     } finally {
@@ -1157,14 +1536,48 @@
       'workExperiences',
       'trainings',
       'rewards',
+      'driverCarrierId',
+      'driverType',
+      'driverLicenseType',
+      'driverLicenseExpireDate',
       'tenant',
       'organization',
       'account',
+      'fieldAccess',
+      'isRecordOwner',
+      'historyCounts',
+      'historiesMasked',
       'createBy',
       'createTime',
       'updateBy',
       'updateTime'
     ]) as Employee
+    const employeeRecord = employee as Employee & Record<string, unknown>
+    if (!canEditContactDetails.value) {
+      ;[
+        'phone',
+        'email',
+        'homeAddress',
+        'emergencyContactName',
+        'emergencyContactRelation',
+        'emergencyContactPhone'
+      ].forEach((key) => delete employeeRecord[key])
+    }
+    if (!canEditIdentityDetails.value) {
+      ;[
+        'gender',
+        'birthDate',
+        'idCardNo',
+        'ethnicity',
+        'educationLevel',
+        'schoolName',
+        'majorName',
+        'maritalStatus',
+        'politicalStatus',
+        'nativePlace'
+      ].forEach((key) => delete employeeRecord[key])
+    }
+    if (!canEditCareerRecords.value) delete employeeRecord.remark
     if (!isPlatformSuper.value) employee.tenantId = getUserInfo.value.tenantId
     return employee
   }
@@ -1178,7 +1591,7 @@
       ElMessage.warning(failure.message)
       return
     }
-    const historyFailure = validateHistories()
+    const historyFailure = canEditCareerRecords.value ? validateHistories() : undefined
     if (historyFailure) {
       await focusValidationTarget(historyFailure)
       ElMessage.warning(historyFailure.message)
@@ -1187,14 +1600,29 @@
 
     page.saving = true
     try {
-      await saveEmployeeProfile({
+      const payload: Api.Hr.EmployeeProfilePayload = {
         employee: normalizeEmployee(),
-        contracts: structuredClone(toRaw(form.contracts)),
-        educations: structuredClone(toRaw(form.educations)),
-        workExperiences: structuredClone(toRaw(form.workExperiences)),
-        trainings: structuredClone(toRaw(form.trainings)),
-        rewards: structuredClone(toRaw(form.rewards))
-      })
+        driver: isDriverEmployeeCreate.value
+          ? {
+              carrierId: form.driverCarrierId,
+              driverType: form.driverType,
+              licenseType: form.driverLicenseType,
+              licenseExpireDate: form.driverLicenseExpireDate
+            }
+          : null
+      }
+      if (canEditCareerRecords.value) {
+        payload.contracts = structuredClone(toRaw(form.contracts))
+        payload.educations = structuredClone(toRaw(form.educations))
+        payload.workExperiences = structuredClone(toRaw(form.workExperiences))
+        payload.trainings = structuredClone(toRaw(form.trainings))
+        payload.rewards = structuredClone(toRaw(form.rewards))
+      } else if (canEditCompensationDetails.value) {
+        payload.contracts = structuredClone(toRaw(form.contracts))
+        payload.trainings = structuredClone(toRaw(form.trainings))
+        payload.rewards = structuredClone(toRaw(form.rewards))
+      }
+      await saveEmployeeProfile(payload)
       ElMessage.success('员工完整档案已保存')
       goBack()
     } catch (error) {
@@ -1207,6 +1635,15 @@
   const goBack = (): void => {
     void router.push('/hr/personnel/employee-roster')
   }
+
+  watch(selectedPosition, (position) => {
+    if (position) form.jobTitle = position.positionName
+    if (!isDriverEmployeeCreate.value) {
+      form.driverCarrierId = ''
+      return
+    }
+    void loadDriverCarrierOptions()
+  })
 
   onMounted(() => void initializePage())
 </script>
@@ -1236,6 +1673,10 @@
       );
       border: 1px solid
         color-mix(in srgb, var(--profile-accent) 18%, var(--el-border-color-lighter));
+    }
+
+    &__access-notice {
+      margin-bottom: 14px;
     }
 
     &__avatar {
@@ -1361,6 +1802,44 @@
       grid-column: 1 / -1;
     }
 
+    &__compensation-form {
+      max-width: 360px;
+      padding: 0 18px;
+    }
+
+    &__compensation-form :deep(.el-input-number) {
+      width: 100%;
+    }
+
+    &__history-mask {
+      display: grid;
+      gap: 16px;
+      padding: 8px 0;
+    }
+
+    &__history-counts {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+
+      > div {
+        display: grid;
+        gap: 3px;
+        padding: 16px;
+        text-align: center;
+        background: var(--el-fill-color-lighter);
+        border-radius: var(--custom-radius);
+      }
+
+      strong {
+        font-size: 22px;
+      }
+
+      span {
+        color: var(--el-text-color-secondary);
+      }
+    }
+
     &__save-hint {
       display: block;
       font-size: 12px;
@@ -1387,6 +1866,10 @@
 
       &__record-form {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      &__history-counts {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
       }
     }
 
@@ -1416,6 +1899,10 @@
 
       &__record-form .is-wide {
         grid-column: auto;
+      }
+
+      &__history-counts {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
       }
 
       &__save-hint {

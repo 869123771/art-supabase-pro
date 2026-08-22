@@ -1,4 +1,5 @@
 import type { RouteLocationRaw } from 'vue-router'
+import { financePaths } from '@/router/business-paths'
 
 type Artifact = Api.IntelligentRecognition.RecognitionArtifact
 type CashPaymentMethod = Api.Fms.CashPaymentMethod
@@ -57,6 +58,29 @@ function normalizeCashVoucherDraft(payload: Record<string, unknown>): Api.Fms.Ca
   }
 }
 
+function normalizeWaybillExpenseDraft(
+  payload: Record<string, unknown>
+): Api.Fms.WaybillExpenseOcrDraft {
+  return {
+    amount: nullableNumber(payload, 'amount'),
+    occurredOn: nullableText(payload, 'occurredOn'),
+    quantity: nullableNumber(payload, 'quantity'),
+    unitPrice: nullableNumber(payload, 'unitPrice'),
+    providerName: nullableText(payload, 'providerName'),
+    payeeName: nullableText(payload, 'payeeName'),
+    paymentChannel: nullableText(payload, 'paymentChannel'),
+    invoiceNo: nullableText(payload, 'invoiceNo'),
+    meterNo: nullableText(payload, 'meterNo'),
+    expenseLocation: nullableText(payload, 'expenseLocation'),
+    remark: nullableText(payload, 'remark')
+  }
+}
+
+function metadataNumber(artifact: Artifact, key: string, fallback: number): number {
+  const value = Number(artifact.metadata?.[key])
+  return Number.isFinite(value) ? value : fallback
+}
+
 function metadataText(artifact: Artifact, key: string): string {
   const value = artifact.metadata?.[key]
   return typeof value === 'string' ? value : ''
@@ -85,6 +109,13 @@ export function buildRecognitionBusinessRoute(artifact: Artifact): RouteLocation
       path:
         direction === 'payment' ? financePaths.paymentApplication : financePaths.cashTransaction,
       query: { ...commonQuery, direction }
+    }
+  }
+
+  if (artifact.feature === 'waybill_expense_ocr') {
+    return {
+      path: financePaths.waybillCost,
+      query: commonQuery
     }
   }
 
@@ -131,7 +162,25 @@ export function toCashVoucherOcrAnalyzeResponse(
     voucher: payload,
     matches: [],
     evaluatedStatements: 0,
-    reviewConfidenceThreshold: Number(artifact.metadata?.reviewConfidenceThreshold ?? 0.82)
+    reviewConfidenceThreshold: metadataNumber(artifact, 'reviewConfidenceThreshold', 0.82)
   }
 }
-import { financePaths } from '@/router/business-paths'
+
+export function toWaybillExpenseOcrAnalyzeResponse(
+  artifact: Artifact
+): Api.Fms.WaybillExpenseOcrAnalyzeResponse {
+  const payload = normalizeWaybillExpenseDraft(artifact.proposedPayload)
+  return {
+    artifactId: artifact.id,
+    runId: artifact.aiRunId,
+    generatedAt: artifact.createTime,
+    rawText: artifact.rawOcrText,
+    summary: metadataText(artifact, 'summary') || '已从识别中心恢复待复核运单费用票据',
+    confidence: Number(artifact.confidence ?? 0),
+    fieldConfidence: artifact.fieldConfidence ?? {},
+    missingFields: metadataTextList(artifact, 'missingFields'),
+    warnings: artifact.warnings ?? [],
+    expense: payload,
+    reviewConfidenceThreshold: metadataNumber(artifact, 'reviewConfidenceThreshold', 0.82)
+  }
+}

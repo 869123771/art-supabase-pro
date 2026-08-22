@@ -8,6 +8,7 @@ export interface ReimbursementExpenseCandidate {
   settlementStatus?: string
   reimbursementId?: string | null
   expensePaymentId?: string | null
+  fieldAccess?: Api.Fms.WaybillCostFieldAccessMap
   expenseItem?: {
     reimbursementAllowed?: boolean
   } | null
@@ -33,6 +34,15 @@ export function validateReimbursementSelection(
   expenses: ReimbursementExpenseCandidate[]
 ): ReimbursementSelectionValidation {
   if (!expenses.length) return invalid('请先选择要转报销的运单费用')
+
+  if (
+    expenses.some(
+      (item) =>
+        item.fieldAccess && !['read', 'edit'].includes(item.fieldAccess.costAmounts ?? 'hidden')
+    )
+  ) {
+    return invalid('当前字段权限不足，无法读取所选费用金额并转报销')
+  }
 
   if (expenses.some((item) => !item.id || !item.waybillId)) {
     return invalid('所选费用缺少有效的运单信息，请刷新列表后重试')

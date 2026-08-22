@@ -59,6 +59,7 @@
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatCurrencyValue } from '@/utils/ui'
   import { formatWithDayjs } from '@/utils/time'
+  import { canViewField, getFieldAccess, mergeFieldAccessMaps } from '@/utils/field-permission'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { useUserStore } from '@/store/modules/user'
   import {
@@ -86,6 +87,15 @@
   const dialogRef = ref<DialogExpose>()
   const accountSetOptions = ref<Api.Fms.AccountSetOption[]>([])
   const overview = ref<Api.Fms.FundAccountOverview>()
+  const currentRows = ref<Account[]>([])
+  const listFieldAccess = ref<Api.Fms.FundAccountFieldAccessMap>({})
+  const effectiveFieldAccess = computed(() =>
+    mergeFieldAccessMaps(listFieldAccess.value, ...currentRows.value.map((row) => row.fieldAccess))
+  )
+  const canViewListField = (field: Api.Fms.FundAccountFieldKey): boolean =>
+    canViewField(effectiveFieldAccess.value, field)
+  const canViewRowField = (row: Account, field: Api.Fms.FundAccountFieldKey): boolean =>
+    canViewField(row.fieldAccess, field)
   const table = reactive<{ search: SearchParams }>({
     search: { keyword: '', accountSetId: undefined, accountType: undefined, status: undefined }
   })
@@ -126,7 +136,14 @@
       label: '关键字',
       key: 'keyword',
       type: 'input',
-      props: { clearable: true, placeholder: '账户编码、名称、开户行或账号尾号' }
+      props: {
+        clearable: true,
+        placeholder: ['read', 'edit'].includes(
+          getFieldAccess(listFieldAccess.value, 'accountDetails')
+        )
+          ? '账户编码、名称、开户行或账号尾号'
+          : '账户编码或名称'
+      }
     }
   ])
 
@@ -149,7 +166,7 @@
 
   const metrics = computed<BusinessWorkspaceMetric[]>(() => {
     const value = overview.value
-    return [
+    const items: BusinessWorkspaceMetric[] = [
       {
         key: 'all',
         label: '资金账户',
@@ -169,24 +186,29 @@
         tone: 'success',
         interactive: true,
         selected: table.search.status === 'active'
-      },
-      {
-        key: 'balance',
-        label: '本位币余额',
-        value: formatCurrencyValue(value?.baseCurrencyCurrentBalance ?? 0),
-        description: '不跨币种直接相加',
-        icon: 'ri:money-cny-circle-line',
-        tone: 'primary'
-      },
-      {
-        key: 'available',
-        label: '本位币可用',
-        value: formatCurrencyValue(value?.baseCurrencyAvailableBalance ?? 0),
-        description: `外币账户 ${value?.foreignCurrencyAccountCount ?? 0} 个`,
-        icon: 'ri:safe-2-line',
-        tone: 'warning'
       }
     ]
+    if (canViewField(value?.fieldAccess, 'accountBalances')) {
+      items.push(
+        {
+          key: 'balance',
+          label: '本位币余额',
+          value: formatFundAmount(value?.baseCurrencyCurrentBalance),
+          description: '不跨币种直接相加',
+          icon: 'ri:money-cny-circle-line',
+          tone: 'primary'
+        },
+        {
+          key: 'available',
+          label: '本位币可用',
+          value: formatFundAmount(value?.baseCurrencyAvailableBalance),
+          description: `外币账户 ${value?.foreignCurrencyAccountCount ?? 0} 个`,
+          icon: 'ri:safe-2-line',
+          tone: 'warning'
+        }
+      )
+    }
+    return items
   })
 
   function columnsFactory(): ColumnOption<Account>[] {
@@ -203,7 +225,10 @@
               {row.isDefault ? <ElTag size="small">默认</ElTag> : null}
             </div>
             <small translate="no">
-              {row.accountCode} · {row.accountNoMasked}
+              {row.accountCode}
+              {canViewRowField(row, 'accountDetails') && row.accountNoMasked
+                ? ` · ${row.accountNoMasked}`
+                : ''}
             </small>
           </div>
         )
@@ -220,13 +245,18 @@
         width: 115,
         dict: { code: 'fmsFundAccountType', display: 'tag' }
       },
-      {
-        prop: 'bankName',
-        label: '开户机构',
-        minWidth: 160,
-        showOverflowTooltip: true,
-        formatter: (row) => row.bankName || (row.accountType === 'cash' ? '企业现金' : '--')
-      },
+      ...(canViewListField('accountDetails')
+        ? [
+            {
+              prop: 'bankName',
+              label: '开户机构',
+              minWidth: 160,
+              showOverflowTooltip: true,
+              formatter: (row: Account) =>
+                row.bankName || (row.accountType === 'cash' ? '企业现金' : '--')
+            } as ColumnOption<Account>
+          ]
+        : []),
       {
         prop: 'currency',
         label: '币种',
@@ -234,20 +264,33 @@
         align: 'center',
         formatter: (row) => row.currency?.currencyCode || '--'
       },
-      {
-        prop: 'currentBalance',
-        label: '当前余额',
-        minWidth: 145,
-        align: 'right',
-        formatter: (row) => formatCurrencyValue(row.currentBalance, row.currency?.currencyCode)
-      },
-      {
-        prop: 'availableBalance',
-        label: '可用余额',
-        minWidth: 145,
-        align: 'right',
-        formatter: (row) => formatCurrencyValue(row.availableBalance, row.currency?.currencyCode)
-      },
+      ...(canViewListField('accountBalances')
+        ? ([
+            {
+              prop: 'currentBalance',
+              label: '当前余额',
+              minWidth: 145,
+              align: 'right',
+              formatter: (row: Account) =>
+                formatFundAmount(row.currentBalance, row.currency?.currencyCode)
+            },
+            {
+              prop: 'availableBalance',
+              label: '可用余额',
+              minWidth: 145,
+              align: 'right',
+              formatter: (row: Account) =>
+                formatFundAmount(row.availableBalance, row.currency?.currencyCode)
+            },
+            {
+              prop: 'latestBalanceDate',
+              label: '余额日期',
+              width: 120,
+              formatter: (row: Account) =>
+                formatWithDayjs(row.latestBalanceDate, 'YYYY-MM-DD') || '--'
+            }
+          ] as ColumnOption<Account>[])
+        : []),
       {
         prop: 'ledgerEntryCount',
         label: '流水数',
@@ -259,12 +302,6 @@
         label: '状态',
         width: 100,
         dict: { code: 'fmsFundAccountStatus', display: 'tag' }
-      },
-      {
-        prop: 'latestBalanceDate',
-        label: '余额日期',
-        width: 120,
-        formatter: (row) => formatWithDayjs(row.latestBalanceDate, 'YYYY-MM-DD') || '--'
       },
       {
         prop: 'operation',
@@ -292,7 +329,15 @@
 
   async function fetchTableData(params: TableParams) {
     const { from, to } = pageInfoHandler({ current: params.current, size: params.size })
-    return await fetchFundAccountList({ ...params, from, to })
+    const result = await fetchFundAccountList({ ...params, from, to })
+    listFieldAccess.value = result.fieldAccess
+    currentRows.value = result.data ?? []
+    return result
+  }
+
+  function formatFundAmount(value: unknown, currency = 'CNY'): string {
+    if (value === null || value === undefined || value === '') return '--'
+    return formatCurrencyValue(value, currency)
   }
 
   async function loadOverview(): Promise<void> {
@@ -330,6 +375,14 @@
   watch(
     () => table.search.accountSetId,
     () => void loadOverview()
+  )
+
+  watch(
+    () => [canViewListField('accountDetails'), canViewListField('accountBalances')],
+    (nextVisibility, previousVisibility) => {
+      if (nextVisibility.every((value, index) => value === previousVisibility?.[index])) return
+      void nextTick(() => tableRef.value?.resetColumns())
+    }
   )
 
   onMounted(async () => {

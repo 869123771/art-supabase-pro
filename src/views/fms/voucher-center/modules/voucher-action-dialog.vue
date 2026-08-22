@@ -43,9 +43,9 @@
   }
 
   const emit = defineEmits<{ success: [action: Action] }>()
-  const dialogRef = ref<ArtDialogExpose<Api.Fms.VoucherRecord>>()
+  const dialogRef = ref<ArtDialogExpose<Api.Fms.SecureVoucherRecord>>()
   const formRef = ref<FormExpose>()
-  const current = shallowRef<Api.Fms.VoucherRecord>()
+  const current = shallowRef<Api.Fms.SecureVoucherRecord>()
   const action = ref<Action>('reject')
 
   const form: UnwrapNestedRefs<FormGroup> = reactive<FormGroup>({
@@ -108,7 +108,7 @@
     }
   }
 
-  async function handleOpen(row: Api.Fms.VoucherRecord, nextAction: Action): Promise<void> {
+  async function handleOpen(row: Api.Fms.SecureVoucherRecord, nextAction: Action): Promise<void> {
     current.value = row
     action.value = nextAction
     Object.assign(form.data, { reason: '', actionDate: dayjs().format('YYYY-MM-DD') })

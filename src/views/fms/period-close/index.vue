@@ -59,6 +59,7 @@
   import type { ColumnOption } from '@/types'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatWithDayjs } from '@/utils/time'
+  import { canEditField, canViewField, mergeFieldAccessMaps } from '@/utils/field-permission'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { useUserStore } from '@/store/modules/user'
   import {
@@ -90,10 +91,17 @@
   const dialogRef = ref<{ handleOpen: () => Promise<void> }>()
   const drawerRef = ref<{ handleOpen: (row: Row) => Promise<void> }>()
   const accountSetOptions = ref<Api.Fms.AccountSetOption[]>([])
+  const currentRows = ref<Row[]>([])
+  const listFieldAccess = ref<Api.Fms.PeriodCloseFieldAccessMap>({})
   const summary = ref(emptySummary())
   const table = reactive<{ search: SearchParams }>({
     search: { accountSetId: undefined, status: undefined }
   })
+  const effectiveFieldAccess = computed(() =>
+    mergeFieldAccessMaps(listFieldAccess.value, ...currentRows.value.map((row) => row.fieldAccess))
+  )
+  const canViewListField = (field: Api.Fms.PeriodCloseFieldKey): boolean =>
+    canViewField(effectiveFieldAccess.value, field)
   const metrics = computed<BusinessWorkspaceMetric[]>(() => [
     {
       key: 'period',
@@ -111,24 +119,31 @@
       icon: 'ri:lock-2-line',
       tone: 'success'
     },
-    {
-      key: 'checking',
-      label: '关账进行中',
-      value: summary.value.checkingCount,
-      description: '检查或待确认',
-      icon: 'ri:loader-4-line',
-      tone: 'warning'
-    },
-    {
-      key: 'blocking',
-      label: '阻断事项',
-      value: summary.value.blockingCount,
-      description: summary.value.latestCompletedAt
-        ? `最近结账 ${formatWithDayjs(summary.value.latestCompletedAt, 'YYYY-MM-DD')}`
-        : '暂无结账记录',
-      icon: 'ri:alarm-warning-line',
-      tone: summary.value.blockingCount ? 'danger' : 'info'
-    }
+    ...(canViewListField('closeDiagnostics')
+      ? [
+          {
+            key: 'checking',
+            label: '关账进行中',
+            value: formatProtectedCount(summary.value.checkingCount),
+            description: '检查或待确认',
+            icon: 'ri:loader-4-line',
+            tone: 'warning' as const
+          },
+          {
+            key: 'blocking',
+            label: '阻断事项',
+            value: formatProtectedCount(summary.value.blockingCount),
+            description:
+              canViewListField('closeAudit') && summary.value.latestCompletedAt
+                ? `最近结账 ${formatWithDayjs(summary.value.latestCompletedAt, 'YYYY-MM-DD')}`
+                : '关账诊断汇总',
+            icon: 'ri:alarm-warning-line',
+            tone: toFiniteNumber(summary.value.blockingCount)
+              ? ('danger' as const)
+              : ('info' as const)
+          }
+        ]
+      : [])
   ])
   const searchItems = computed<SearchFormItem[]>(() => [
     {
@@ -182,25 +197,48 @@
         formatter: (row) =>
           row.period ? `${row.period.fiscalYear} 年第 ${row.period.periodNo} 期` : '--'
       },
-      { prop: 'passedCount', label: '通过项', width: 90, align: 'right' },
-      { prop: 'warningCount', label: '提醒项', width: 90, align: 'right' },
-      {
-        prop: 'blockingCount',
-        label: '阻断项',
-        width: 90,
-        align: 'right',
-        formatter: (row) => (
-          <strong class={row.blockingCount ? 'period-close-blocking' : ''}>
-            {row.blockingCount}
-          </strong>
-        )
-      },
-      {
-        prop: 'completedAt',
-        label: '结账时间',
-        minWidth: 155,
-        formatter: (row) => formatWithDayjs(row.completedAt, 'YYYY-MM-DD HH:mm') || '--'
-      },
+      ...(canViewListField('closeDiagnostics')
+        ? [
+            {
+              prop: 'passedCount',
+              label: '通过项',
+              width: 90,
+              align: 'right' as const,
+              formatter: (row: Row) => formatProtectedCount(row.passedCount)
+            },
+            {
+              prop: 'warningCount',
+              label: '提醒项',
+              width: 90,
+              align: 'right' as const,
+              formatter: (row: Row) => formatProtectedCount(row.warningCount)
+            },
+            {
+              prop: 'blockingCount',
+              label: '阻断项',
+              width: 90,
+              align: 'right' as const,
+              formatter: (row: Row) => (
+                <strong class={toFiniteNumber(row.blockingCount) ? 'period-close-blocking' : ''}>
+                  {formatProtectedCount(row.blockingCount)}
+                </strong>
+              )
+            }
+          ]
+        : []),
+      ...(canViewListField('closeAudit')
+        ? [
+            {
+              prop: 'completedAt',
+              label: '结账时间',
+              minWidth: 155,
+              formatter: (row: Row) =>
+                row.completedAt === '***'
+                  ? row.completedAt
+                  : formatWithDayjs(row.completedAt, 'YYYY-MM-DD HH:mm') || '--'
+            }
+          ]
+        : []),
       {
         prop: 'status',
         label: '状态',
@@ -233,79 +271,86 @@
   function actions(row: Row): ButtonMoreItem[] {
     if (row.status === 'checking')
       return [
-        {
-          auth: 'FinancePeriodClose:Carryforward',
-          key: 'carryforward',
-          label: '生成损益结转凭证',
-          icon: 'ri:exchange-funds-line',
-          color: 'var(--el-color-success)'
-        },
-        {
-          auth: 'FinancePeriodClose:Recheck',
-          key: 'recheck',
-          label: '重新检查',
-          icon: 'ri:refresh-line',
-          color: 'var(--el-color-primary)'
-        },
-        {
-          auth: 'FinancePeriodClose:Cancel',
-          key: 'cancel',
-          label: '取消关账',
-          icon: 'ri:close-circle-line',
-          color: 'var(--el-color-danger)'
-        }
+        ...(canEditField(row.fieldAccess, 'closeDiagnostics') &&
+        canEditField(row.fieldAccess, 'voucherReferences')
+          ? [carryforwardAction()]
+          : []),
+        ...(canEditField(row.fieldAccess, 'closeDiagnostics') ? [recheckAction()] : []),
+        ...(canEditField(row.fieldAccess, 'closeAudit') ? [cancelAction()] : [])
       ]
     if (row.status === 'ready')
       return [
-        {
-          auth: 'FinancePeriodClose:Carryforward',
-          key: 'carryforward',
-          label: '生成损益结转凭证',
-          icon: 'ri:exchange-funds-line',
-          color: 'var(--el-color-success)'
-        },
-        {
-          auth: 'FinancePeriodClose:Recheck',
-          key: 'recheck',
-          label: '重新检查',
-          icon: 'ri:refresh-line',
-          color: 'var(--el-color-primary)'
-        },
-        {
-          auth: 'FinancePeriodClose:Close',
-          key: 'close',
-          label: '确认结账',
-          icon: 'ri:lock-2-line',
-          color: 'var(--el-color-success)'
-        },
-        {
-          auth: 'FinancePeriodClose:Cancel',
-          key: 'cancel',
-          label: '取消关账',
-          icon: 'ri:close-circle-line',
-          color: 'var(--el-color-danger)'
-        }
+        ...(canEditField(row.fieldAccess, 'closeDiagnostics') &&
+        canEditField(row.fieldAccess, 'voucherReferences')
+          ? [carryforwardAction()]
+          : []),
+        ...(canEditField(row.fieldAccess, 'closeDiagnostics')
+          ? [
+              recheckAction(),
+              {
+                auth: 'FinancePeriodClose:Close',
+                key: 'close',
+                label: '确认结账',
+                icon: 'ri:lock-2-line',
+                color: 'var(--el-color-success)'
+              }
+            ]
+          : []),
+        ...(canEditField(row.fieldAccess, 'closeAudit') ? [cancelAction()] : [])
       ]
     if (row.status === 'closed')
-      return [
-        {
-          auth: 'FinancePeriodClose:Reopen',
-          key: 'reopen',
-          label: '反结账',
-          icon: 'ri:lock-unlock-line',
-          color: 'var(--el-color-warning)'
-        }
-      ]
+      return canEditField(row.fieldAccess, 'closeAudit')
+        ? [
+            {
+              auth: 'FinancePeriodClose:Reopen',
+              key: 'reopen',
+              label: '反结账',
+              icon: 'ri:lock-unlock-line',
+              color: 'var(--el-color-warning)'
+            }
+          ]
+        : []
     return []
+  }
+  function carryforwardAction(): ButtonMoreItem {
+    return {
+      auth: 'FinancePeriodClose:Carryforward',
+      key: 'carryforward',
+      label: '生成损益结转凭证',
+      icon: 'ri:exchange-funds-line',
+      color: 'var(--el-color-success)'
+    }
+  }
+  function recheckAction(): ButtonMoreItem {
+    return {
+      auth: 'FinancePeriodClose:Recheck',
+      key: 'recheck',
+      label: '重新检查',
+      icon: 'ri:refresh-line',
+      color: 'var(--el-color-primary)'
+    }
+  }
+  function cancelAction(): ButtonMoreItem {
+    return {
+      auth: 'FinancePeriodClose:Cancel',
+      key: 'cancel',
+      label: '取消关账',
+      icon: 'ri:close-circle-line',
+      color: 'var(--el-color-danger)'
+    }
   }
   async function fetchTableData(params: TableParams) {
     const { from, to } = pageInfoHandler({ current: params.current, size: params.size })
-    return await fetchPeriodCloseRuns({ ...params, from, to })
+    const result = await fetchPeriodCloseRuns({ ...params, from, to })
+    listFieldAccess.value = result.fieldAccess
+    currentRows.value = result.data ?? []
+    return result
   }
   async function loadSummary() {
     if (!table.search.accountSetId) return void (summary.value = emptySummary())
     const { data } = await fetchPeriodCloseSummary(table.search.accountSetId)
     summary.value = data ?? emptySummary()
+    if (data?.fieldAccess) listFieldAccess.value = data.fieldAccess
   }
   async function handleAction(item: ButtonMoreItem, row: Row) {
     try {
@@ -341,6 +386,16 @@
   }
   async function refreshAll() {
     await Promise.all([tableRef.value?.refreshUpdate(), loadSummary()])
+  }
+  function toFiniteNumber(value: Api.Tms.BasicData.SensitiveNumber | undefined | null): number {
+    const numberValue = Number(value)
+    return Number.isFinite(numberValue) ? numberValue : 0
+  }
+  function formatProtectedCount(
+    value: Api.Tms.BasicData.SensitiveNumber | undefined | null
+  ): string | number {
+    if (value === null || value === undefined || value === '') return '--'
+    return typeof value === 'string' ? value : value.toLocaleString('zh-CN')
   }
   watch(() => table.search.accountSetId, loadSummary)
   onMounted(async () => {

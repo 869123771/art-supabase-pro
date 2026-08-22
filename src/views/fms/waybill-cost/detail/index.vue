@@ -64,12 +64,12 @@
     </section>
 
     <div v-if="detail.data" class="waybill-cost-detail__content">
-      <section class="waybill-cost-detail__section art-card-xs">
+      <section v-if="canViewExpenseLocation" class="waybill-cost-detail__section art-card-xs">
         <ArtSectionTitle>费用信息</ArtSectionTitle>
         <ArtDescriptions :data="detail.data" :items="expenseItems" :columns="4" />
       </section>
 
-      <section class="waybill-cost-detail__section art-card-xs">
+      <section v-if="canViewExpenseEvidence" class="waybill-cost-detail__section art-card-xs">
         <ArtSectionTitle>运输关联</ArtSectionTitle>
         <ArtDescriptions :data="detail.data" :items="transportItems" :columns="4">
           <template #item-waybillNo>
@@ -108,7 +108,10 @@
 
       <section class="waybill-cost-detail__section art-card-xs">
         <ArtSectionTitle>票据附件</ArtSectionTitle>
-        <div v-if="attachments.length" class="waybill-cost-detail__attachments">
+        <div
+          v-if="canReadExpenseEvidence && attachments.length"
+          class="waybill-cost-detail__attachments"
+        >
           <div v-for="file in attachments" :key="file.url" class="waybill-cost-detail__attachment">
             <span><ArtSvgIcon icon="ri:attachment-2" aria-hidden="true" /></span>
             <ArtAttachmentLink :file="file" />
@@ -116,7 +119,7 @@
         </div>
         <div v-else class="waybill-cost-detail__empty-inline">
           <ArtSvgIcon icon="ri:file-damage-line" aria-hidden="true" />
-          当前费用单未上传票据附件
+          {{ canReadExpenseEvidence ? '当前费用单未上传票据附件' : '票据附件已按字段权限脱敏' }}
         </div>
       </section>
 
@@ -140,7 +143,13 @@
   import WorkflowBusinessHistory from '@/components/business/workflow-business-history/index.vue'
   import { fetchWaybillCostDetail } from '@/api/fms'
   import { formatWithDayjs } from '@/utils/time'
-  import { formatCurrencyValue, formatNumberValue } from '@/utils/ui'
+  import { formatCurrencyValue } from '@/utils/ui'
+  import {
+    canViewField,
+    formatSensitiveNumber,
+    getFieldAccess,
+    isMaskedValue
+  } from '@/utils/field-permission'
   import { getExpenseReimbursementDetailPath } from '@/router/business-paths'
 
   defineOptions({ name: 'FinanceWaybillCostDetail' })
@@ -170,6 +179,20 @@
     loaded: false,
     loading: false
   })
+  const canViewCostAmounts = computed(() => canViewField(detail.data?.fieldAccess, 'costAmounts'))
+  const canViewPaymentDetails = computed(() =>
+    canViewField(detail.data?.fieldAccess, 'paymentDetails')
+  )
+  const canViewDriverPhone = computed(() => canViewField(detail.data?.fieldAccess, 'driverPhone'))
+  const canViewExpenseLocation = computed(() =>
+    canViewField(detail.data?.fieldAccess, 'expenseLocation')
+  )
+  const canViewExpenseEvidence = computed(() =>
+    canViewField(detail.data?.fieldAccess, 'expenseEvidence')
+  )
+  const canReadExpenseEvidence = computed(() =>
+    ['read', 'edit'].includes(getFieldAccess(detail.data?.fieldAccess, 'expenseEvidence'))
+  )
 
   const waybillNo = computed(
     () => detail.data?.waybillNoSnapshot || detail.data?.waybill?.waybillNo || '--'
@@ -191,81 +214,116 @@
       name: `费用票据 ${index + 1}`
     }))
   )
-  const overviewItems = computed<OverviewItem[]>(() => [
-    {
-      label: '申报金额',
-      value: formatCurrencyValue(detail.data?.amount),
-      hint: '本次费用申报金额',
-      icon: 'ri:money-cny-circle-line',
-      tone: 'primary'
-    },
-    {
-      label: '费用项目',
-      value: detail.data?.expenseItem?.itemName || '--',
-      hint: detail.data?.expenseItem?.itemCode || '费用口径待补充',
-      icon: 'ri:price-tag-3-line',
-      tone: 'warning'
-    },
-    {
-      label: '关联运单',
-      value: waybillNo.value,
-      hint: routeSummary.value,
-      icon: 'ri:truck-line',
-      tone: 'success'
-    },
-    {
-      label: '票据材料',
-      value: `${attachments.value.length} 份`,
-      hint: detail.data?.invoiceNo || '未填写票据号码',
-      icon: 'ri:attachment-2',
-      tone: 'info'
+  const overviewItems = computed<OverviewItem[]>(() => {
+    const items: OverviewItem[] = [
+      {
+        label: '费用项目',
+        value: detail.data?.expenseItem?.itemName || '--',
+        hint: detail.data?.expenseItem?.itemCode || '费用口径待补充',
+        icon: 'ri:price-tag-3-line',
+        tone: 'warning'
+      },
+      {
+        label: '关联运单',
+        value: waybillNo.value,
+        hint: routeSummary.value,
+        icon: 'ri:truck-line',
+        tone: 'success'
+      }
+    ]
+    if (canViewCostAmounts.value) {
+      items.unshift({
+        label: '申报金额',
+        value: formatOptionalMoney(detail.data?.amount),
+        hint: '本次费用申报金额',
+        icon: 'ri:money-cny-circle-line',
+        tone: 'primary'
+      })
     }
-  ])
+    if (canViewExpenseEvidence.value) {
+      items.push({
+        label: '票据材料',
+        value: canReadExpenseEvidence.value ? `${attachments.value.length} 份` : '***',
+        hint: canViewPaymentDetails.value
+          ? detail.data?.invoiceNo || '未填写票据号码'
+          : '票据信息不可见',
+        icon: 'ri:attachment-2',
+        tone: 'info'
+      })
+    }
+    return items
+  })
 
-  const expenseItems: ArtDescriptionItem<Expense>[] = [
+  const expenseItems = computed<ArtDescriptionItem<Expense>[]>(() => [
     { key: 'costNo', label: '费用单号', field: 'costNo', copyable: true },
     {
       key: 'expenseItem',
       label: '费用项目',
       value: (data: Expense) => data.expenseItem?.itemName
     },
-    { key: 'amount', label: '申报金额', field: 'amount', format: 'money' },
+    ...(canViewCostAmounts.value
+      ? [
+          {
+            key: 'amount',
+            label: '申报金额',
+            field: 'amount' as const,
+            formatter: (value: unknown) => formatOptionalMoney(value)
+          },
+          {
+            key: 'quantity',
+            label: '数量/用量',
+            field: 'quantity' as const,
+            formatter: (value: unknown) => formatOptionalNumber(value)
+          },
+          {
+            key: 'unitPrice',
+            label: '单价',
+            field: 'unitPrice' as const,
+            formatter: (value: unknown) => formatOptionalMoney(value)
+          }
+        ]
+      : []),
     { key: 'occurredOn', label: '发生日期', field: 'occurredOn', format: 'date' },
-    {
-      key: 'quantity',
-      label: '数量/用量',
-      field: 'quantity',
-      formatter: (value) => formatOptionalNumber(value)
-    },
-    {
-      key: 'unitPrice',
-      label: '单价',
-      field: 'unitPrice',
-      formatter: (value) => formatOptionalMoney(value)
-    },
-    { key: 'providerName', label: '服务商', field: 'providerName' },
-    { key: 'payeeName', label: '收款方', field: 'payeeName' },
-    { key: 'paymentChannel', label: '支付渠道', field: 'paymentChannel' },
-    { key: 'invoiceNo', label: '票据号码', field: 'invoiceNo', copyable: true },
-    { key: 'meterNo', label: '表号/桩号', field: 'meterNo' },
+    ...(canViewPaymentDetails.value
+      ? [
+          { key: 'providerName', label: '服务商', field: 'providerName' as const },
+          { key: 'payeeName', label: '收款方', field: 'payeeName' as const },
+          { key: 'paymentChannel', label: '支付渠道', field: 'paymentChannel' as const },
+          {
+            key: 'invoiceNo',
+            label: '票据号码',
+            field: 'invoiceNo' as const,
+            copyable: true
+          },
+          { key: 'meterNo', label: '表号/桩号', field: 'meterNo' as const }
+        ]
+      : []),
     { key: 'remark', label: '费用说明', field: 'remark', span: 2 }
-  ]
+  ])
 
-  const transportItems: ArtDescriptionItem<Expense>[] = [
+  const transportItems = computed<ArtDescriptionItem<Expense>[]>(() => [
     { key: 'waybillNo', label: '运单号', value: () => waybillNo.value },
     { key: 'orderNo', label: '订单号', value: () => orderNo.value, copyable: true },
     { key: 'plateNo', label: '车牌号', field: 'plateNoSnapshot' },
     { key: 'driverName', label: '司机', field: 'driverNameSnapshot' },
-    { key: 'driverPhone', label: '司机电话', field: 'driverPhoneSnapshot' },
+    ...(canViewDriverPhone.value
+      ? [
+          {
+            key: 'driverPhone',
+            label: '司机电话',
+            field: 'driverPhoneSnapshot' as const
+          }
+        ]
+      : []),
     {
       key: 'carrier',
       label: '承运商',
       value: (data: Expense) => data.waybill?.carrier?.companyName
     },
     { key: 'route', label: '运输路线', value: () => routeSummary.value, span: 2 }
-  ]
+  ])
 
-  const locationItems: ArtDescriptionItem<Expense>[] = [
+  const locationItems = computed<ArtDescriptionItem<Expense>[]>(() => [
     { key: 'expenseRegion', label: '所在区域', field: 'expenseRegion', span: 2 },
     { key: 'expenseLocation', label: '详细地点', field: 'expenseLocation', span: 2 },
     {
@@ -283,9 +341,9 @@
       field: 'expenseGeocodedAt',
       format: 'datetime'
     }
-  ]
+  ])
 
-  const settlementItems: ArtDescriptionItem<Expense>[] = [
+  const settlementItems = computed<ArtDescriptionItem<Expense>[]>(() => [
     {
       key: 'auditStatus',
       label: '审核状态',
@@ -321,20 +379,28 @@
       value: (data: Expense) => data.expensePayment?.paymentDate,
       format: 'date'
     },
-    {
-      key: 'bankReference',
-      label: '银行流水号',
-      value: (data: Expense) => data.expensePayment?.bankReference,
-      copyable: true
-    },
+    ...(canViewPaymentDetails.value
+      ? [
+          {
+            key: 'bankReference',
+            label: '银行流水号',
+            value: (data: Expense) => data.expensePayment?.bankReference,
+            copyable: true
+          }
+        ]
+      : []),
     { key: 'paidAt', label: '核销时间', field: 'paidAt', format: 'datetime' },
-    {
-      key: 'ocrStatus',
-      label: 'OCR 状态',
-      field: 'ocrStatus',
-      dictCode: 'tmsExpenseOcrStatus'
-    }
-  ]
+    ...(canViewExpenseEvidence.value
+      ? [
+          {
+            key: 'ocrStatus',
+            label: 'OCR 状态',
+            field: 'ocrStatus' as const,
+            dictCode: 'tmsExpenseOcrStatus'
+          }
+        ]
+      : [])
+  ])
 
   onMounted(() => {
     void loadDetail()
@@ -378,11 +444,16 @@
   }
 
   function formatOptionalNumber(value: unknown): string {
-    return value === null || value === undefined || value === '' ? '--' : formatNumberValue(value)
+    return formatSensitiveNumber(value as Api.Tms.BasicData.SensitiveNumber, {
+      maximumFractionDigits: 4
+    })
   }
 
   function formatOptionalMoney(value: unknown): string {
-    return value === null || value === undefined || value === '' ? '--' : formatCurrencyValue(value)
+    if (isMaskedValue(value)) return value
+    if (value === null || value === undefined || value === '') return '--'
+    const numericValue = Number(value)
+    return Number.isFinite(numericValue) ? formatCurrencyValue(numericValue) : '--'
   }
 
   function formatCoordinates(
@@ -397,6 +468,7 @@
     ) {
       return '--'
     }
+    if (isMaskedValue(longitude) || isMaskedValue(latitude)) return '***'
     return `${longitude}, ${latitude}`
   }
 </script>

@@ -102,17 +102,15 @@ Deno.serve(async (request) => {
           p_carrier_id: carrierId,
           p_limit: 200
         }),
-        userClient
-          .from('tms_waybill_cost')
-          .select('id,waybill_id,amount,audit_status,occurred_on,create_time')
-          .eq('carrier_id', carrierId)
-          .order('create_time', { ascending: false })
-          .limit(300),
+        userClient.rpc('tms_list_carrier_cost_ai_evidence_secure', {
+          p_carrier_id: carrierId,
+          p_limit: 300
+        }),
         userClient
           .from('tms_carrier_statement')
-          .select('id,statement_no,status,settled_amount,period_start,period_end,create_time')
+          .select('id,statement_no,status,period_start,period_end')
           .eq('carrier_id', carrierId)
-          .order('create_time', { ascending: false })
+          .order('period_end', { ascending: false })
           .limit(100),
         userClient
           .from('tms_driver')

@@ -1,197 +1,129 @@
 import { normalizeSupabaseFunctionError } from '@/utils/supabase'
 import { useSupabase } from '@/hooks'
 import type { QueryResult } from '@/types/api/response'
-import { applyDateRange, type SupabaseQueryLike } from '@/api/providers/supabase/query'
 
 type CashTransaction = Api.Fms.CashTransactionRecord
 type CashTransactionSearchParams = Api.Fms.CashTransactionSearchParams
 type AllocatableStatement = Api.Fms.CustomerStatementAllocatable
 type AllocatableStatementSearchParams = Api.Fms.CustomerStatementAllocatableSearchParams
-type CashAllocation = Api.Fms.CashAllocationRecord
 type CreateReceiptPayload = Api.Fms.CreateCustomerReceiptPayload
 type AllocateReceiptPayload = Api.Fms.AllocateCustomerReceiptPayload
 type CarrierAllocatableStatement = Api.Fms.CarrierStatementAllocatable
 type CarrierAllocatableSearchParams = Api.Fms.CarrierStatementAllocatableSearchParams
-type CarrierCashAllocation = Api.Fms.CarrierCashAllocationRecord
 type CreateCarrierPaymentPayload = Api.Fms.CreateCarrierPaymentPayload
 type AllocateCarrierPaymentPayload = Api.Fms.AllocateCarrierPaymentPayload
 
-const { supabase, responseHandle } = useSupabase()
-
-async function enrichCashFundAccounts(rows: CashTransaction[]): Promise<CashTransaction[]> {
-  const accountIds = [...new Set(rows.map((row) => row.fundAccountId).filter(Boolean))] as string[]
-  if (!accountIds.length) return rows
-  const { data } = await responseHandle<Api.Fms.FundAccountRecord[]>(
-    () =>
-      supabase
-        .from('fms_fund_account')
-        .select('id, account_code, account_name, account_no_masked')
-        .in('id', accountIds),
-    { ignoreCheck: true, showErrorMessage: true }
-  )
-  const accountMap = new Map((data ?? []).map((item) => [item.id, item]))
-  return rows.map((row) => ({
-    ...row,
-    fundAccount: row.fundAccountId ? (accountMap.get(row.fundAccountId) ?? null) : null
-  }))
+interface SecureAllocatablePayload<TRecord> {
+  records: TRecord[]
+  total: number
+  fieldAccess?: Api.Fms.CashTransactionFieldAccessMap
 }
 
-const CASH_ALLOCATION_SELECT = `
-  *,
-  statement:tms_customer_statement!tms_cash_allocation_statement_id_fkey(
-    id,
-    statement_no,
-    customer_id,
-    customer_name_snapshot,
-    period_start,
-    period_end,
-    status,
-    settled_amount
-  )
-`
+const { supabase, responseHandle } = useSupabase()
 
-const CARRIER_CASH_ALLOCATION_SELECT = `
-  *,
-  statement:tms_carrier_statement!tms_carrier_cash_allocation_statement_id_fkey(
-    id,
-    statement_no,
-    carrier_id,
-    carrier_name_snapshot,
-    period_start,
-    period_end,
-    status,
-    settled_amount
-  )
-`
-
-const applyTransactionFilters = <TQuery extends SupabaseQueryLike>(
-  query: TQuery,
-  params: CashTransactionSearchParams
-): TQuery => {
-  const { carrierId, customerId, dateRange, direction, keyword, recordId, status } = params
-  if (recordId) query = query.eq('id', recordId)
-  if (customerId) query = query.eq('customer_id', customerId)
-  if (carrierId) query = query.eq('carrier_id', carrierId)
-  if (direction) query = query.eq('direction', direction)
-  if (status) query = query.eq('status', status)
-  if (keyword) {
-    query = query.or(
-      `transaction_no.ilike.%${keyword}%,counterparty_name.ilike.%${keyword}%,bank_reference.ilike.%${keyword}%,remark.ilike.%${keyword}%`
-    )
+const toCashListRpcParams = (
+  params: CashTransactionSearchParams & { ids?: string[]; maxRows?: number },
+  purpose: 'list' | 'export'
+) => {
+  const from = purpose === 'export' ? 0 : Math.max(params.from ?? 0, 0)
+  const requestedTo = purpose === 'export' ? Math.max((params.maxRows ?? 10000) - 1, 0) : params.to
+  return {
+    p_from: from,
+    p_to: Math.max(requestedTo ?? 9, from),
+    p_direction: params.direction || null,
+    p_status: params.status || null,
+    p_customer_id: params.customerId || null,
+    p_carrier_id: params.carrierId || null,
+    p_record_id: params.recordId || null,
+    p_transaction_date_start: params.dateRange?.[0] || null,
+    p_transaction_date_end: params.dateRange?.[1] || null,
+    p_keyword: String(params.keyword ?? '').trim() || null,
+    p_ids: params.ids?.length ? params.ids : null,
+    p_purpose: purpose
   }
-  return applyDateRange(query, 'transaction_date', dateRange)
 }
 
 export async function fetchCashTransactionList(params: CashTransactionSearchParams) {
-  const { from = 0, to = 9 } = params
-  let query = supabase
-    .from('tms_cash_transaction_summary')
-    .select('*', { count: 'exact' })
-    .order('transaction_date', { ascending: false })
-    .order('create_time', { ascending: false })
-    .range(from, to)
-  query = applyTransactionFilters(query, params)
-  const result = await responseHandle<CashTransaction[]>(() => query, {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
-  return { ...result, data: await enrichCashFundAccounts(result.data ?? []) }
+  const result = await responseHandle<SecureAllocatablePayload<CashTransaction>>(
+    () => supabase.rpc('tms_list_cash_transactions_secure', toCashListRpcParams(params, 'list')),
+    { showErrorMessage: true }
+  )
+  return {
+    data: result.data?.records ?? [],
+    total: result.data?.total ?? 0,
+    error: result.error,
+    fieldAccess: result.data?.fieldAccess ?? {}
+  }
 }
 
 export async function exportCashTransactionList(
   params: CashTransactionSearchParams & { ids?: string[]; maxRows?: number }
 ) {
-  const { ids, maxRows = 10000 } = params
-  let query = supabase
-    .from('tms_cash_transaction_summary')
-    .select('*')
-    .order('transaction_date', { ascending: false })
-    .order('create_time', { ascending: false })
-    .limit(maxRows)
-  query = ids?.length ? query.in('id', ids) : applyTransactionFilters(query, params)
-  const result = await responseHandle<CashTransaction[]>(() => query, {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
-  return { ...result, data: await enrichCashFundAccounts(result.data ?? []) }
+  const result = await responseHandle<SecureAllocatablePayload<CashTransaction>>(
+    () => supabase.rpc('tms_list_cash_transactions_secure', toCashListRpcParams(params, 'export')),
+    { showErrorMessage: true }
+  )
+  return {
+    data: result.data?.records ?? [],
+    total: result.data?.total ?? 0,
+    error: result.error,
+    fieldAccess: result.data?.fieldAccess ?? {}
+  }
 }
 
 export async function fetchCustomerStatementAllocatableList(
   params: AllocatableStatementSearchParams
 ) {
   const { customerId, from = 0, keyword, to = 9 } = params
-  let query = supabase
-    .from('tms_customer_statement_allocatable')
-    .select('*', { count: 'exact' })
-    .eq('customer_id', customerId)
-    .order('period_end', { ascending: true })
-    .order('create_time', { ascending: true })
-    .range(from, to)
-  if (keyword) {
-    query = query.or(`statement_no.ilike.%${keyword}%,customer_name.ilike.%${keyword}%`)
+  const result = await responseHandle<SecureAllocatablePayload<AllocatableStatement>>(
+    () =>
+      supabase.rpc('tms_list_customer_statement_allocatable_secure', {
+        p_customer_id: customerId,
+        p_keyword: String(keyword ?? '').trim() || null,
+        p_from: Math.max(from, 0),
+        p_to: Math.max(to, from)
+      }),
+    {
+      showErrorMessage: true
+    }
+  )
+  return {
+    data: result.data?.records ?? [],
+    total: result.data?.total ?? 0,
+    error: result.error
   }
-  return await responseHandle<AllocatableStatement[]>(() => query, {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
 }
 
 export async function fetchCarrierStatementAllocatableList(params: CarrierAllocatableSearchParams) {
   const { carrierId, from = 0, keyword, to = 9 } = params
-  let query = supabase
-    .from('tms_carrier_statement_allocatable')
-    .select('*', { count: 'exact' })
-    .eq('carrier_id', carrierId)
-    .order('period_end', { ascending: true })
-    .order('create_time', { ascending: true })
-    .range(from, to)
-  if (keyword) query = query.or(`statement_no.ilike.%${keyword}%,carrier_name.ilike.%${keyword}%`)
-  return await responseHandle<CarrierAllocatableStatement[]>(() => query, {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
+  const result = await responseHandle<SecureAllocatablePayload<CarrierAllocatableStatement>>(
+    () =>
+      supabase.rpc('tms_list_carrier_statement_allocatable_secure', {
+        p_carrier_id: carrierId,
+        p_keyword: String(keyword ?? '').trim() || null,
+        p_from: Math.max(from, 0),
+        p_to: Math.max(to, from)
+      }),
+    { showErrorMessage: true }
+  )
+  return {
+    data: result.data?.records ?? [],
+    total: result.data?.total ?? 0,
+    error: result.error
+  }
 }
 
 export async function fetchCashTransactionDetail(id: string) {
-  const transactionResponse = await responseHandle<CashTransaction>(
-    () => supabase.from('tms_cash_transaction_summary').select('*').eq('id', id).single(),
-    { ignoreCheck: true, showErrorMessage: true }
+  return await responseHandle<CashTransaction | null>(
+    () => supabase.rpc('tms_get_cash_transaction_secure', { p_id: id }),
+    { showErrorMessage: true }
   )
-  if (transactionResponse.data) {
-    const [enriched] = await enrichCashFundAccounts([transactionResponse.data])
-    transactionResponse.data = enriched
-  }
-  const allocationResponse =
-    transactionResponse.data?.direction === 'payment'
-      ? await responseHandle<CarrierCashAllocation[]>(
-          () =>
-            supabase
-              .from('tms_carrier_cash_allocation')
-              .select(CARRIER_CASH_ALLOCATION_SELECT)
-              .eq('transaction_id', id)
-              .order('create_time', { ascending: false }),
-          { ignoreCheck: true, showErrorMessage: true }
-        )
-      : await responseHandle<CashAllocation[]>(
-          () =>
-            supabase
-              .from('tms_cash_allocation')
-              .select(CASH_ALLOCATION_SELECT)
-              .eq('transaction_id', id)
-              .order('create_time', { ascending: false }),
-          { ignoreCheck: true, showErrorMessage: true }
-        )
-  return {
-    data: transactionResponse.data
-      ? { ...transactionResponse.data, allocations: allocationResponse.data ?? [] }
-      : undefined
-  }
 }
 
 export async function createCarrierPayment(params: CreateCarrierPaymentPayload) {
   return await responseHandle<string>(
     () =>
-      supabase.rpc('create_fms_carrier_payment', {
+      supabase.rpc('create_fms_carrier_payment_secure', {
         p_carrier_id: params.carrierId,
         p_fund_account_id: params.fundAccountId,
         p_transaction_date: params.transactionDate,
@@ -210,7 +142,7 @@ export async function createCarrierPayment(params: CreateCarrierPaymentPayload) 
 export async function allocateCarrierPayment(params: AllocateCarrierPaymentPayload) {
   return await responseHandle<number>(
     () =>
-      supabase.rpc('allocate_tms_carrier_payment', {
+      supabase.rpc('allocate_tms_carrier_payment_secure', {
         p_transaction_id: params.transactionId,
         p_allocations: params.allocations
       }),
@@ -221,7 +153,7 @@ export async function allocateCarrierPayment(params: AllocateCarrierPaymentPaylo
 export async function reverseCarrierCashAllocation(id: string, reason: string) {
   return await responseHandle<string>(
     () =>
-      supabase.rpc('reverse_tms_carrier_cash_allocation', {
+      supabase.rpc('reverse_tms_carrier_cash_allocation_secure', {
         p_allocation_id: id,
         p_reason: reason
       }),
@@ -232,7 +164,7 @@ export async function reverseCarrierCashAllocation(id: string, reason: string) {
 export async function createCustomerReceipt(params: CreateReceiptPayload) {
   return await responseHandle<string>(
     () =>
-      supabase.rpc('create_fms_customer_receipt', {
+      supabase.rpc('create_fms_customer_receipt_secure', {
         p_customer_id: params.customerId,
         p_fund_account_id: params.fundAccountId,
         p_transaction_date: params.transactionDate,
@@ -251,7 +183,7 @@ export async function createCustomerReceipt(params: CreateReceiptPayload) {
 export async function allocateCustomerReceipt(params: AllocateReceiptPayload) {
   return await responseHandle<number>(
     () =>
-      supabase.rpc('allocate_tms_customer_receipt', {
+      supabase.rpc('allocate_tms_customer_receipt_secure', {
         p_transaction_id: params.transactionId,
         p_allocations: params.allocations
       }),
@@ -262,7 +194,7 @@ export async function allocateCustomerReceipt(params: AllocateReceiptPayload) {
 export async function reverseCashAllocation(id: string, reason: string) {
   return await responseHandle<string>(
     () =>
-      supabase.rpc('reverse_tms_cash_allocation', {
+      supabase.rpc('reverse_tms_cash_allocation_secure', {
         p_allocation_id: id,
         p_reason: reason
       }),
@@ -273,7 +205,7 @@ export async function reverseCashAllocation(id: string, reason: string) {
 export async function voidCashTransaction(id: string, reason: string) {
   return await responseHandle<string>(
     () =>
-      supabase.rpc('void_tms_cash_transaction', {
+      supabase.rpc('void_tms_cash_transaction_secure', {
         p_transaction_id: id,
         p_reason: reason
       }),

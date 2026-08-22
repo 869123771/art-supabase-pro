@@ -48,7 +48,7 @@
     >
       <ElTabs v-model="detailTab" class="project-assistant__detail-tabs">
         <ElTabPane label="智能概览" name="insights">
-          <ElScrollbar class="project-assistant__insights-scroll">
+          <ElScrollbar class="project-assistant__insights-scroll" always>
             <div class="project-assistant__insights">
               <section>
                 <ArtSectionTitle :show-line="false">对象画像</ArtSectionTitle>
@@ -112,7 +112,7 @@
             full-height
             min-height="0"
           >
-            <ElScrollbar class="project-assistant__code-scroll">
+            <ElScrollbar class="project-assistant__code-scroll" always>
               <pre
                 class="project-assistant__code"
                 aria-label="SQL 对象定义"
@@ -130,10 +130,12 @@
               <span>{{ filteredColumns.length }} / {{ detail.columns.length }} 个字段</span>
             </div>
             <ArtTable
+              class="project-assistant__fields-table"
               :data="filteredColumns"
               :columns="fieldColumns"
               :pagination="false"
-              height="calc(100% - 49px)"
+              height="100%"
+              :scrollbar-always-on="true"
               stripe
             />
           </div>
@@ -150,7 +152,7 @@
             min-height="0"
             @retry="emit('retry', selectedObject)"
           >
-            <ElScrollbar class="project-assistant__relation-list">
+            <ElScrollbar class="project-assistant__relation-list" always>
               <article v-for="relation in relationships" :key="relation.constraintName">
                 <strong>{{ relation.constraintName }}</strong>
                 <span>
@@ -280,19 +282,36 @@
     }
 
     &__detail-state {
+      display: flex;
       flex: 1;
+      flex-direction: column;
       min-height: 0;
+      overflow: hidden;
     }
 
     &__detail-tabs {
+      display: flex;
       flex: 1;
+      flex-direction: column;
       min-height: 0;
       padding: 0 14px 14px;
+      overflow: hidden;
     }
 
-    &__detail-tabs :deep(.el-tabs__content),
+    &__detail-tabs :deep(.el-tabs__header) {
+      flex: none;
+    }
+
+    &__detail-tabs :deep(.el-tabs__content) {
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
+    }
+
     &__detail-tabs :deep(.el-tab-pane) {
-      height: calc(100% - 28px);
+      height: 100%;
+      min-height: 0;
+      overflow: hidden;
     }
 
     &__insights-scroll,
@@ -507,7 +526,14 @@
     }
 
     &__fields-panel {
+      display: flex;
+      flex-direction: column;
       height: 100%;
+      min-height: 0;
+    }
+
+    &__fields-table {
+      flex: 1;
       min-height: 0;
     }
 

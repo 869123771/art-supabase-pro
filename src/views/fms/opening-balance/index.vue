@@ -18,7 +18,7 @@
       :metrics="metrics"
     >
       <template #actions>
-        <AccountingWorkspaceFocusToggle v-model="focusMode" />
+        <BusinessWorkspaceFocusToggle v-model="focusMode" />
       </template>
     </BusinessWorkspaceHeader>
 
@@ -82,7 +82,7 @@
       class="opening-balance-page__detail accounting-workspace-fill-section"
     >
       <template #actions>
-        <AccountingWorkspaceFocusToggle v-if="focusMode" v-model="focusMode" />
+        <BusinessWorkspaceFocusToggle v-if="focusMode" v-model="focusMode" />
         <ElButton
           v-if="hasAuth('FinanceOpeningBalance:Add') && summary.status === 'draft'"
           type="primary"
@@ -193,8 +193,8 @@
   import BusinessWorkspaceHeader, {
     type BusinessWorkspaceMetric
   } from '@/components/business/business-workspace-header/index.vue'
-  import AccountingWorkspaceFocusToggle from '../modules/accounting-workspace-focus-toggle.vue'
-  import { useAccountingWorkspaceFocus } from '../modules/use-accounting-workspace-focus'
+  import BusinessWorkspaceFocusToggle from '@/components/business/business-workspace-focus-toggle/index.vue'
+  import { useWorkspaceFocus } from '@/hooks/core/useWorkspaceFocus'
   import AccountingSetupGuide from '../modules/accounting-setup-guide.vue'
   import { useFinanceAccountSetPrerequisite } from '../modules/use-finance-account-set-prerequisite'
   import ArtPageSection from '@/components/core/layouts/art-page-section/index.vue'
@@ -205,6 +205,13 @@
   } from '@/components/core/forms/art-search-bar/index.vue'
   import type { ColumnOption } from '@/types'
   import { formatCurrencyValue } from '@/utils/ui/format'
+  import {
+    canEditField,
+    canViewField,
+    getFieldAccess,
+    isMaskedValue,
+    mergeFieldAccessMaps
+  } from '@/utils/field-permission'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { useAuth } from '@/hooks/core/useAuth'
   import { useUserStore } from '@/store/modules/user'
@@ -225,6 +232,7 @@
   defineOptions({ name: 'FinanceOpeningBalance' })
 
   type OpeningBalance = Api.Fms.OpeningBalanceRecord
+  type OpeningBalanceFieldKey = Api.Fms.OpeningBalanceFieldKey
 
   interface BalanceFilter extends Record<string, unknown> {
     keyword: string
@@ -232,7 +240,7 @@
   }
 
   const { confirmAction, promptReason } = useArtFeedback()
-  const { focusMode } = useAccountingWorkspaceFocus()
+  const { focusMode } = useWorkspaceFocus()
   const { ensureAccountSet, ensureLeafSubjects, goToAccountSet } =
     useFinanceAccountSetPrerequisite()
   const { getDictMap } = storeToRefs(useUserStore())
@@ -262,6 +270,7 @@
     error: '',
     statusChanging: false,
     balances: [] as OpeningBalance[],
+    fieldAccess: {} as Api.Fms.OpeningBalanceFieldAccessMap,
     leafSubjects: [] as Api.Fms.SubjectRecord[],
     currencies: [] as Api.Fms.CurrencyRecord[],
     auxiliaryTypes: [] as Api.Fms.AuxiliaryTypeRecord[],
@@ -274,9 +283,7 @@
     fiscalYear: scope.fiscalYear,
     status: 'draft',
     entryCount: 0,
-    openingDebit: 0,
-    openingCredit: 0,
-    difference: 0,
+    fieldAccess: {},
     isBalanced: true
   })
 
@@ -284,6 +291,17 @@
     scope.options.find((item) => item.value === scope.accountSetId)
   )
   const baseCurrency = computed(() => workspace.currencies.find((item) => item.isBase))
+  const effectiveFieldAccess = computed(() =>
+    mergeFieldAccessMaps(workspace.fieldAccess, ...workspace.balances.map((row) => row.fieldAccess))
+  )
+  const canViewListField = (field: OpeningBalanceFieldKey): boolean =>
+    canViewField(effectiveFieldAccess.value, field)
+  const canViewRowField = (row: OpeningBalance, field: OpeningBalanceFieldKey): boolean =>
+    canViewField(row.fieldAccess, field)
+  const canEditRow = (row: OpeningBalance): boolean =>
+    canEditField(row.fieldAccess, 'balanceAmounts') ||
+    canEditField(row.fieldAccess, 'auxiliaryDetails')
+  const summaryAmountAccess = computed(() => getFieldAccess(summary.fieldAccess, 'balanceAmounts'))
   const canConfirmOpeningBalance = computed(
     () => summary.entryCount > 0 && summary.isBalanced && summary.status === 'draft'
   )
@@ -298,6 +316,8 @@
   const balanceValidationDescription = computed(() => {
     if (summary.status === 'confirmed') return '需要修改时请先反确认，操作原因会写入审计记录。'
     if (!summary.entryCount) return '录入至少一条末级科目余额后，系统会自动计算借贷差额。'
+    if (!summary.isBalanced && summaryAmountAccess.value === 'hidden')
+      return '金额明细受字段权限保护；系统仍会在后端完成借贷平衡校验。'
     if (!summary.isBalanced)
       return `当前差额 ${formatMoney(summary.difference)}，调整至借贷平衡后可确认并锁定。`
     return '当前借贷合计平衡，可以执行确认并锁定。'
@@ -340,22 +360,26 @@
       description: `${scope.fiscalYear} 年期初`,
       icon: 'ri:file-list-3-line'
     },
-    {
-      key: 'debit',
-      label: '借方合计',
-      value: formatMoney(summary.openingDebit),
-      description: baseCurrency.value?.currencyCode ?? '本位币',
-      icon: 'ri:arrow-left-down-line',
-      tone: 'success'
-    },
-    {
-      key: 'credit',
-      label: '贷方合计',
-      value: formatMoney(summary.openingCredit),
-      description: baseCurrency.value?.currencyCode ?? '本位币',
-      icon: 'ri:arrow-right-up-line',
-      tone: 'warning'
-    },
+    ...(summaryAmountAccess.value !== 'hidden'
+      ? [
+          {
+            key: 'debit',
+            label: '借方合计',
+            value: formatMoney(summary.openingDebit),
+            description: baseCurrency.value?.currencyCode ?? '本位币',
+            icon: 'ri:arrow-left-down-line',
+            tone: 'success' as const
+          },
+          {
+            key: 'credit',
+            label: '贷方合计',
+            value: formatMoney(summary.openingCredit),
+            description: baseCurrency.value?.currencyCode ?? '本位币',
+            icon: 'ri:arrow-right-up-line',
+            tone: 'warning' as const
+          }
+        ]
+      : []),
     {
       key: 'status',
       label: '平衡状态',
@@ -366,7 +390,7 @@
     }
   ])
 
-  const columns: ColumnOption<OpeningBalance>[] = [
+  const columns = computed<ColumnOption<OpeningBalance>[]>(() => [
     {
       prop: 'subject',
       label: '会计科目',
@@ -389,41 +413,63 @@
         </ElTag>
       )
     },
-    {
-      prop: 'openingDebit',
-      label: '期初借方',
-      minWidth: 135,
-      align: 'right',
-      formatter: (row) => formatMoney(row.openingDebit)
-    },
-    {
-      prop: 'openingCredit',
-      label: '期初贷方',
-      minWidth: 135,
-      align: 'right',
-      formatter: (row) => formatMoney(row.openingCredit)
-    },
-    {
-      prop: 'auxiliaryValues',
-      label: '辅助核算',
-      minWidth: 220,
-      showOverflowTooltip: true,
-      formatter: (row) => formatAuxiliaryValues(row.auxiliaryValues)
-    },
-    {
-      prop: 'currency',
-      label: '外币',
-      width: 90,
-      formatter: (row) => row.currency?.currencyCode ?? '—'
-    },
-    {
-      prop: 'originalCurrencyAmount',
-      label: '原币金额',
-      minWidth: 125,
-      align: 'right',
-      formatter: (row) =>
-        row.currency ? Number(row.originalCurrencyAmount).toLocaleString('zh-CN') : '—'
-    },
+    ...(canViewListField('balanceAmounts')
+      ? [
+          {
+            prop: 'openingDebit',
+            label: '期初借方',
+            minWidth: 135,
+            align: 'right' as const,
+            formatter: (row: OpeningBalance) =>
+              canViewRowField(row, 'balanceAmounts') ? formatMoney(row.openingDebit) : '—'
+          },
+          {
+            prop: 'openingCredit',
+            label: '期初贷方',
+            minWidth: 135,
+            align: 'right' as const,
+            formatter: (row: OpeningBalance) =>
+              canViewRowField(row, 'balanceAmounts') ? formatMoney(row.openingCredit) : '—'
+          }
+        ]
+      : []),
+    ...(canViewListField('auxiliaryDetails')
+      ? [
+          {
+            prop: 'auxiliaryValues',
+            label: '辅助核算',
+            minWidth: 220,
+            showOverflowTooltip: true,
+            formatter: (row: OpeningBalance) =>
+              canViewRowField(row, 'auxiliaryDetails')
+                ? formatAuxiliaryValues(row.auxiliaryValues)
+                : '—'
+          },
+          {
+            prop: 'currency',
+            label: '外币',
+            width: 90,
+            formatter: (row: OpeningBalance) =>
+              canViewRowField(row, 'auxiliaryDetails') ? (row.currency?.currencyCode ?? '—') : '—'
+          }
+        ]
+      : []),
+    ...(canViewListField('balanceAmounts') && canViewListField('auxiliaryDetails')
+      ? [
+          {
+            prop: 'originalCurrencyAmount',
+            label: '原币金额',
+            minWidth: 125,
+            align: 'right' as const,
+            formatter: (row: OpeningBalance) =>
+              canViewRowField(row, 'balanceAmounts') &&
+              canViewRowField(row, 'auxiliaryDetails') &&
+              row.currency
+                ? formatSensitiveNumber(row.originalCurrencyAmount)
+                : '—'
+          }
+        ]
+      : []),
     ...(hasAuth('FinanceOpeningBalance:Edit') || hasAuth('FinanceOpeningBalance:Delete')
       ? [
           {
@@ -434,11 +480,13 @@
             formatter: (row: OpeningBalance) =>
               summary.status === 'draft' ? (
                 <div class="opening-balance-page__actions">
-                  <ArtButtonTable
-                    type="edit"
-                    permission="FinanceOpeningBalance:Edit"
-                    onClick={() => openDialog(row)}
-                  />
+                  {canEditRow(row) ? (
+                    <ArtButtonTable
+                      type="edit"
+                      permission="FinanceOpeningBalance:Edit"
+                      onClick={() => openDialog(row)}
+                    />
+                  ) : null}
                   <ArtButtonTable
                     type="delete"
                     permission="FinanceOpeningBalance:Delete"
@@ -451,7 +499,7 @@
           } satisfies ColumnOption<OpeningBalance>
         ]
       : [])
-  ]
+  ])
 
   function createDefaultBalanceFilter(): BalanceFilter {
     return { keyword: '', direction: undefined }
@@ -470,13 +518,27 @@
     Object.assign(appliedBalanceFilter, createDefaultBalanceFilter())
   }
 
-  function formatMoney(value: number): string {
-    return formatCurrencyValue(value, baseCurrency.value?.currencyCode ?? 'CNY')
+  function formatSensitiveNumber(value: number | string | null | undefined): string {
+    if (value === null || value === undefined) return '—'
+    if (isMaskedValue(value)) return '***'
+    const numericValue = Number(value)
+    return Number.isFinite(numericValue) ? numericValue.toLocaleString('zh-CN') : '—'
   }
 
-  function formatAuxiliaryValues(values: Record<string, string>): string {
+  function formatMoney(value: number | string | null | undefined): string {
+    if (value === null || value === undefined) return '—'
+    if (isMaskedValue(value)) return '***'
+    const numericValue = Number(value)
+    return Number.isFinite(numericValue)
+      ? formatCurrencyValue(numericValue, baseCurrency.value?.currencyCode ?? 'CNY')
+      : '—'
+  }
+
+  function formatAuxiliaryValues(values?: Record<string, string>): string {
+    if (!values) return '—'
     const labels = Object.entries(values).map(([typeId, itemId]) => {
       const type = workspace.auxiliaryTypes.find((item) => item.id === typeId)
+      if (isMaskedValue(itemId)) return `${type?.typeName ?? '维度'}：***`
       const item = workspace.auxiliaryItems.find((candidate) => candidate.id === itemId)
       return `${type?.typeName ?? '维度'}：${item?.itemName ?? itemId}`
     })
@@ -493,6 +555,10 @@
         fetchOpeningBalanceSummary(scope.accountSetId, scope.fiscalYear)
       ])
       workspace.balances = balanceResult.data ?? []
+      workspace.fieldAccess = balanceResult.fieldAccess ?? {}
+      delete summary.openingDebit
+      delete summary.openingCredit
+      delete summary.difference
       if (summaryResult.data) Object.assign(summary, summaryResult.data)
     } catch (error) {
       workspace.error = error instanceof Error ? error.message : '期初余额加载失败'
@@ -537,12 +603,14 @@
 
   function handleAccountSetChange(): void {
     workspace.balances = []
+    workspace.fieldAccess = {}
     resetBalanceFilters()
     void loadFoundation()
   }
 
   async function openDialog(row?: OpeningBalance): Promise<void> {
     if (summary.status !== 'draft') return
+    if (row && !canEditRow(row)) return
     if (
       !(await ensureAccountSet({
         actionLabel: row ? '编辑期初余额' : '录入期初余额',

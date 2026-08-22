@@ -10,71 +10,80 @@ type AccountingReadiness = Api.Fms.AccountingReadiness
 
 const { supabase, responseHandle } = useSupabase()
 
-const ACCOUNT_SET_SELECT = `
-  *,
-  tenant:sys_tenant!fms_account_set_tenant_fkey(id, tenant_code, tenant_name)
-`
+interface AccountSetListPayload {
+  records?: AccountSet[]
+  total?: number
+  fieldAccess?: Api.Fms.AccountSetFieldAccessMap
+}
+
+interface AccountSetIdentity {
+  id: string
+  tenantId: string
+  accountSetCode: string
+  accountSetName: string
+  status: Api.Fms.AccountSetStatus
+}
+
+interface AccountSetOptionListPayload {
+  records?: AccountSetIdentity[]
+  total?: number
+}
 
 export async function fetchAccountSetList(params: AccountSetSearchParams = {}) {
   const { from = 0, to = 19, keyword, status, tenantId } = params
-  let query = supabase
-    .from('fms_account_set')
-    .select(ACCOUNT_SET_SELECT, { count: 'exact' })
-    .order('is_default', { ascending: false })
-    .order('create_time', { ascending: false })
-    .range(from, to)
-
-  if (tenantId) query = query.eq('tenant_id', tenantId)
-  if (status) query = query.eq('status', status)
-  if (keyword?.trim()) {
-    const value = keyword.trim()
-    query = query.or(
-      `account_set_code.ilike.%${value}%,account_set_name.ilike.%${value}%,legal_entity_name.ilike.%${value}%,unified_social_credit_code.ilike.%${value}%`
-    )
+  const result = await responseHandle<AccountSetListPayload>(
+    () =>
+      supabase.rpc('fms_list_account_sets_secure', {
+        p_from: Math.max(from, 0),
+        p_to: Math.max(to, from),
+        p_keyword: keyword?.trim() || null,
+        p_status: status || null,
+        p_tenant_id: tenantId || null
+      }),
+    { showErrorMessage: true }
+  )
+  return {
+    data: result.data?.records ?? [],
+    total: result.data?.total ?? 0,
+    error: result.error,
+    fieldAccess: result.data?.fieldAccess ?? {}
   }
-
-  return await responseHandle<AccountSet[]>(() => query, {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
 }
 
 export async function fetchAccountSetOverview(tenantId?: string) {
-  const fetchCount = async (status?: Api.Fms.AccountSetStatus): Promise<number> => {
-    let query = supabase.from('fms_account_set').select('id', { count: 'exact', head: true })
-    if (tenantId) query = query.eq('tenant_id', tenantId)
-    if (status) query = query.eq('status', status)
-    const result = await responseHandle<never[]>(() => query, {
-      ignoreCheck: true,
-      showErrorMessage: true
-    })
-    return result.total ?? 0
-  }
-
-  const [totalCount, activeCount, draftCount, suspendedCount] = await Promise.all([
-    fetchCount(),
-    fetchCount('active'),
-    fetchCount('draft'),
-    fetchCount('suspended')
-  ])
-
-  return {
-    data: { totalCount, activeCount, draftCount, suspendedCount }
-  }
+  return await responseHandle<Api.Fms.AccountSetOverview>(
+    () =>
+      supabase.rpc('fms_get_account_set_overview_secure', {
+        p_tenant_id: tenantId || null
+      }),
+    { showErrorMessage: true }
+  )
 }
 
 export async function fetchAccountSetDetail(id: string) {
   return await responseHandle<AccountSet>(
-    () => supabase.from('fms_account_set').select(ACCOUNT_SET_SELECT).eq('id', id).single(),
+    () => supabase.rpc('fms_get_account_set_secure', { p_account_set_id: id }),
     { breakReturn: true, showErrorMessage: true }
   )
 }
 
 export async function fetchAccountSetOptions(params: AccountSetSearchParams = {}) {
-  const result = await fetchAccountSetList({ ...params, from: 0, to: 999 })
+  const { from = 0, to = 999, status, tenantId } = params
+  const result = await responseHandle<AccountSetOptionListPayload>(
+    () =>
+      supabase.rpc('fms_list_account_set_options_secure', {
+        p_from: Math.max(from, 0),
+        p_to: Math.max(to, from),
+        p_status: status || null,
+        p_tenant_id: tenantId || null,
+        p_ids: null
+      }),
+    { showErrorMessage: true }
+  )
   return {
-    ...result,
-    data: (result.data ?? []).map((item) => ({
+    error: result.error,
+    total: result.data?.total ?? 0,
+    data: (result.data?.records ?? []).map((item) => ({
       label: `${item.accountSetName}（${item.accountSetCode}）`,
       value: item.id,
       status: item.status,
@@ -83,9 +92,29 @@ export async function fetchAccountSetOptions(params: AccountSetSearchParams = {}
   }
 }
 
+export async function fetchAccountSetIdentities(ids: string[]) {
+  if (!ids.length) return { data: [] as AccountSetIdentity[], total: 0, error: null }
+  const result = await responseHandle<AccountSetOptionListPayload>(
+    () =>
+      supabase.rpc('fms_list_account_set_options_secure', {
+        p_from: 0,
+        p_to: Math.max(ids.length - 1, 0),
+        p_status: null,
+        p_tenant_id: null,
+        p_ids: ids
+      }),
+    { showErrorMessage: true }
+  )
+  return {
+    data: result.data?.records ?? [],
+    total: result.data?.total ?? 0,
+    error: result.error
+  }
+}
+
 export async function saveAccountSet(payload: SaveAccountSetPayload) {
   return await responseHandle<AccountSet>(
-    () => supabase.rpc('save_fms_account_set', { p_payload: payload }),
+    () => supabase.rpc('save_fms_account_set_secure', { p_payload: payload }),
     {
       breakReturn: true,
       showMessage: true,
@@ -101,7 +130,7 @@ export async function setAccountSetStatus(
 ) {
   return await responseHandle<AccountSet>(
     () =>
-      supabase.rpc('set_fms_account_set_status', {
+      supabase.rpc('set_fms_account_set_status_secure', {
         p_account_set_id: id,
         p_status: status,
         p_reason: reason || null

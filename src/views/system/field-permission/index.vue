@@ -36,7 +36,9 @@
           <ElSegmented
             v-model="subjectType"
             :options="subjectTypeOptions"
-            :disabled="page.loading || page.saving"
+            :disabled="
+              page.loading || page.saving || page.configurationLoading || page.auditLoading
+            "
             @change="handleSubjectTypeChange"
           />
         </div>
@@ -49,9 +51,9 @@
             v-model="selectedResourceKey"
             filterable
             :loading="page.loading"
-            :disabled="page.saving"
+            :disabled="page.saving || page.configurationLoading || page.auditLoading"
             placeholder="请选择业务表单"
-            @change="loadConfiguration"
+            @change="handleResourceChange"
           >
             <ElOption
               v-for="resource in resources"
@@ -68,9 +70,9 @@
             v-model="selectedSubjectId"
             filterable
             :loading="page.loading"
-            :disabled="page.saving"
+            :disabled="page.saving || page.configurationLoading || page.auditLoading"
             :placeholder="subjectType === 'role' ? '请选择角色' : '请选择人员'"
-            @change="loadConfiguration"
+            @change="handleSubjectChange"
           >
             <ElOption
               v-for="option in subjectOptions"
@@ -150,7 +152,7 @@
           >
             <div class="field-permission-page__field-identity">
               <span class="field-permission-page__field-icon" aria-hidden="true">
-                <ArtSvgIcon :icon="field.maskStrategy ? 'ri:eye-off-line' : 'ri:key-2-line'" />
+                <ArtSvgIcon :icon="supportsMask(field) ? 'ri:eye-off-line' : 'ri:key-2-line'" />
               </span>
               <div>
                 <strong>{{ field.fieldLabel }}</strong>
@@ -166,7 +168,7 @@
                 <ArtSvgIcon icon="ri:user-star-line" />
                 创建人可编辑
               </span>
-              <span v-if="field.maskStrategy" class="field-permission-page__field-flag is-mask">
+              <span v-if="supportsMask(field)" class="field-permission-page__field-flag is-mask">
                 <ArtSvgIcon icon="ri:eye-off-line" />
                 支持脱敏
               </span>
@@ -202,6 +204,55 @@
             </div>
           </article>
         </div>
+
+        <section class="field-permission-page__audit" aria-label="最近授权变更">
+          <header class="field-permission-page__audit-header">
+            <div>
+              <ArtSectionTitle :show-line="false"> 最近授权变更 </ArtSectionTitle>
+              <p>记录当前表单与授权对象最近 10 次人工配置，便于核对权限收紧与放开。</p>
+            </div>
+            <span class="field-permission-page__audit-count">
+              <ArtSvgIcon icon="ri:history-line" />
+              {{ auditLogs.length }} 条记录
+            </span>
+          </header>
+
+          <ElSkeleton v-if="page.auditLoading" animated :rows="2" />
+          <div v-else-if="page.auditError" class="field-permission-page__audit-error" role="alert">
+            <span><ArtSvgIcon icon="ri:error-warning-line" /></span>
+            <div>
+              <strong>授权变更记录暂时无法加载</strong>
+              <p>字段授权矩阵仍可正常使用，可单独重试变更记录。</p>
+            </div>
+            <ElButton link type="primary" @click="loadAuditLogs">重新加载</ElButton>
+          </div>
+          <ArtEmptyState
+            v-else-if="auditLogs.length === 0"
+            title="尚无人工授权变更"
+            description="系统初始化授权不会计入这里；首次保存角色或人员字段权限后会自动留下记录。"
+            size="compact"
+            :visual-size="64"
+          />
+          <ol v-else class="field-permission-page__audit-list">
+            <li v-for="auditLog in auditLogs" :key="auditLog.id">
+              <span class="field-permission-page__audit-marker" aria-hidden="true">
+                <ArtSvgIcon
+                  :icon="auditLog.action === 'clear' ? 'ri:eraser-line' : 'ri:edit-line'"
+                />
+              </span>
+              <div class="field-permission-page__audit-copy">
+                <div>
+                  <strong>{{ auditActorLabel(auditLog) }}</strong>
+                  <span>{{ auditActionLabel(auditLog) }}</span>
+                </div>
+                <p :title="auditChangeDetails(auditLog)">{{ auditChangeSummary(auditLog) }}</p>
+              </div>
+              <time :datetime="auditLog.createTime">{{
+                formatAuditTime(auditLog.createTime)
+              }}</time>
+            </li>
+          </ol>
+        </section>
       </section>
     </ArtPageShell>
 
@@ -245,16 +296,26 @@
 </template>
 
 <script setup lang="ts">
-  import { ElButton, ElOption, ElSegmented, ElSelect, ElTooltip } from 'element-plus'
+  import {
+    ElButton,
+    ElMessage,
+    ElOption,
+    ElSegmented,
+    ElSelect,
+    ElSkeleton,
+    ElTooltip
+  } from 'element-plus'
   import { cloneDeep, isEqual } from 'lodash-es'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
+  import ArtEmptyState from '@/components/core/layouts/art-empty-state/index.vue'
   import ArtStickyActionBar from '@/components/core/layouts/art-sticky-action-bar/index.vue'
   import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
   import BusinessWorkspaceHeader, {
     type BusinessWorkspaceMetric
   } from '@/components/business/business-workspace-header/index.vue'
   import {
+    fetchFieldPermissionAuditLogs,
     fetchFieldPermissionConfiguration,
     fetchFieldPermissionResources,
     saveFieldPermissions
@@ -262,12 +323,15 @@
   import { fetchGetRoleList, fetchGetUserList } from '@/api/system-manage'
   import { useAuth } from '@/hooks/core/useAuth'
   import { useUserStore } from '@/store/modules/user'
+  import { formatWithDayjs } from '@/utils/time'
+  import { getFieldPermissionAuditChanges } from './modules/field-permission-audit'
 
   defineOptions({ name: 'FieldPermission' })
 
   type SubjectType = Api.SystemManage.FieldPermissionSubjectType
   type Configuration = Api.SystemManage.FieldPermissionConfiguration
   type PermissionField = Api.SystemManage.FieldPermissionField
+  type AuditLog = Api.SystemManage.FieldPermissionAuditLog
   type AccessLevel = Api.Tms.BasicData.FieldAccessLevel
   type PermissionSelection = AccessLevel | 'inherit'
 
@@ -279,8 +343,10 @@
   interface PageGroup {
     loading: boolean
     configurationLoading: boolean
+    auditLoading: boolean
     saving: boolean
     error: Error | null
+    auditError: Error | null
   }
 
   interface AccessMeta {
@@ -295,8 +361,10 @@
   const page = reactive<PageGroup>({
     loading: false,
     configurationLoading: false,
+    auditLoading: false,
     saving: false,
-    error: null
+    error: null,
+    auditError: null
   })
   const resources = shallowRef<Api.SystemManage.FieldPermissionResource[]>([])
   const roleOptions = shallowRef<SelectOption[]>([])
@@ -305,6 +373,7 @@
   const selectedResourceKey = ref('')
   const selectedSubjectId = ref('')
   const configuration = shallowRef<Configuration | null>(null)
+  const auditLogs = shallowRef<AuditLog[]>([])
   const permissionDraft = ref<Record<string, PermissionSelection>>({})
   const savedDraft = shallowRef<Record<string, PermissionSelection>>({})
 
@@ -344,8 +413,11 @@
   const isDirty = computed(() => Boolean(configuration.value) && changedFieldCount.value > 0)
   const overviewMetrics = computed<BusinessWorkspaceMetric[]>(() => {
     const fields = configuration.value?.fields ?? []
-    const explicitCount = fields.filter(
-      (field) => permissionDraft.value[field.fieldKey] !== 'inherit'
+    const explicitCount = fields.filter((field) =>
+      subjectType.value === 'user'
+        ? permissionDraft.value[field.fieldKey] !== 'inherit'
+        : field.explicitAccess != null ||
+          !isEqual(permissionDraft.value[field.fieldKey], savedDraft.value[field.fieldKey])
     ).length
     return [
       {
@@ -408,31 +480,130 @@
     return !selection || selection === 'inherit' ? field.inheritedAccess : selection
   }
 
+  const supportsMask = (field: PermissionField): boolean =>
+    Boolean(field.maskStrategy && field.maskStrategy !== 'none')
+
+  const auditAccessLabel = (access: AccessLevel | null): string =>
+    access ? accessMeta[access].label : subjectType.value === 'user' ? '继承角色' : '默认权限'
+
+  const auditActorLabel = (auditLog: AuditLog): string => {
+    if (auditLog.actorEmail && auditLog.actorEmail !== auditLog.actorName) {
+      return `${auditLog.actorName}（${auditLog.actorEmail}）`
+    }
+    return auditLog.actorName
+  }
+
+  const auditActionLabel = (auditLog: AuditLog): string => {
+    if (auditLog.action === 'clear') {
+      return subjectType.value === 'user' ? '清除了人员字段例外' : '清除了角色字段授权'
+    }
+    return subjectType.value === 'user' ? '更新了人员字段例外' : '更新了角色字段授权'
+  }
+
+  const auditChangeDetails = (auditLog: AuditLog): string => {
+    const changes = getFieldPermissionAuditChanges(auditLog, configuration.value?.fields ?? [])
+    if (changes.length === 0) return '配置已重新保存，字段权限等级未发生变化。'
+    return changes
+      .map(
+        (change) =>
+          `${change.fieldLabel}：${auditAccessLabel(change.beforeAccess)} → ${auditAccessLabel(change.afterAccess)}`
+      )
+      .join('；')
+  }
+
+  const auditChangeSummary = (auditLog: AuditLog): string => {
+    const changes = getFieldPermissionAuditChanges(auditLog, configuration.value?.fields ?? [])
+    if (changes.length === 0) return '配置已重新保存，字段权限等级未发生变化。'
+    const visibleChanges = changes
+      .slice(0, 3)
+      .map(
+        (change) =>
+          `${change.fieldLabel}：${auditAccessLabel(change.beforeAccess)} → ${auditAccessLabel(change.afterAccess)}`
+      )
+      .join('；')
+    return changes.length > 3 ? `${visibleChanges}；另有 ${changes.length - 3} 项` : visibleChanges
+  }
+
+  const formatAuditTime = (value: string): string =>
+    formatWithDayjs(value, 'YYYY-MM-DD HH:mm:ss') || '--'
+
+  const rejectDirtyScopeChange = (): boolean => {
+    if (!isDirty.value || !configuration.value) return false
+    ElMessage.warning('当前有未保存的字段授权，请先保存或撤销修改后再切换授权范围')
+    return true
+  }
+
   const loadConfiguration = async (): Promise<void> => {
     if (!selectedResourceKey.value || !selectedSubjectId.value) {
       configuration.value = null
+      auditLogs.value = []
       permissionDraft.value = {}
       savedDraft.value = {}
       return
     }
 
     page.configurationLoading = true
+    page.auditLoading = true
     page.error = null
+    page.auditError = null
     try {
-      const { data, error } = await fetchFieldPermissionConfiguration({
+      const params = {
         resourceKey: selectedResourceKey.value,
         subjectType: subjectType.value,
         subjectId: selectedSubjectId.value
-      })
-      if (error || !data) throw error instanceof Error ? error : new Error('字段权限配置加载失败')
-      configuration.value = data
-      permissionDraft.value = normalizeDraft(data)
+      }
+      const [configurationResult, auditResult] = await Promise.all([
+        fetchFieldPermissionConfiguration(params),
+        fetchFieldPermissionAuditLogs(params)
+      ])
+
+      if (auditResult.error) {
+        auditLogs.value = []
+        page.auditError = new Error('字段权限变更记录加载失败，请稍后重试。', {
+          cause: auditResult.error
+        })
+      } else {
+        auditLogs.value = auditResult.data ?? []
+      }
+
+      if (configurationResult.error || !configurationResult.data) {
+        throw configurationResult.error instanceof Error
+          ? configurationResult.error
+          : new Error('字段权限配置加载失败')
+      }
+      configuration.value = configurationResult.data
+      permissionDraft.value = normalizeDraft(configurationResult.data)
       savedDraft.value = cloneDeep(permissionDraft.value)
     } catch (error) {
       configuration.value = null
       page.error = new Error('字段权限配置加载失败，请刷新后重试。', { cause: error })
     } finally {
       page.configurationLoading = false
+      page.auditLoading = false
+    }
+  }
+
+  const loadAuditLogs = async (): Promise<void> => {
+    if (!selectedResourceKey.value || !selectedSubjectId.value) {
+      auditLogs.value = []
+      return
+    }
+
+    page.auditLoading = true
+    page.auditError = null
+    try {
+      const { data, error } = await fetchFieldPermissionAuditLogs({
+        resourceKey: selectedResourceKey.value,
+        subjectType: subjectType.value,
+        subjectId: selectedSubjectId.value
+      })
+      if (error) throw error
+      auditLogs.value = data ?? []
+    } catch (error) {
+      auditLogs.value = []
+      page.auditError = new Error('字段权限变更记录加载失败，请稍后重试。', { cause: error })
+    } finally {
+      page.auditLoading = false
     }
   }
 
@@ -484,7 +655,27 @@
   }
 
   const handleSubjectTypeChange = async (): Promise<void> => {
+    if (rejectDirtyScopeChange()) {
+      subjectType.value = configuration.value?.subjectType ?? 'role'
+      return
+    }
     selectedSubjectId.value = subjectOptions.value[0]?.value ?? ''
+    await loadConfiguration()
+  }
+
+  const handleResourceChange = async (): Promise<void> => {
+    if (rejectDirtyScopeChange()) {
+      selectedResourceKey.value = configuration.value?.resourceKey ?? ''
+      return
+    }
+    await loadConfiguration()
+  }
+
+  const handleSubjectChange = async (): Promise<void> => {
+    if (rejectDirtyScopeChange()) {
+      selectedSubjectId.value = configuration.value?.subjectId ?? ''
+      return
+    }
     await loadConfiguration()
   }
 
@@ -890,6 +1081,154 @@
       }
     }
 
+    &__audit {
+      display: grid;
+      gap: 12px;
+      padding-top: 16px;
+      margin-top: 16px;
+      border-top: 1px solid var(--el-border-color-lighter);
+    }
+
+    &__audit-header {
+      display: flex;
+      gap: 16px;
+      align-items: flex-start;
+      justify-content: space-between;
+
+      > div {
+        min-width: 0;
+      }
+
+      :deep(.art-section-title) {
+        margin: 0;
+      }
+
+      p {
+        margin: 4px 0 0;
+        font-size: 12px;
+        line-height: 1.55;
+        color: var(--art-text-gray-500);
+      }
+    }
+
+    &__audit-count {
+      display: inline-flex;
+      flex: none;
+      gap: 5px;
+      align-items: center;
+      min-height: 26px;
+      padding: 3px 9px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--art-text-gray-600);
+      white-space: nowrap;
+      background: var(--art-gray-100);
+      border-radius: 999px;
+      box-shadow: inset 0 0 0 1px var(--el-border-color-lighter);
+    }
+
+    &__audit-list {
+      display: grid;
+      padding: 0;
+      margin: 0;
+      list-style: none;
+
+      li {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        gap: 11px;
+        align-items: flex-start;
+        min-width: 0;
+        padding: 12px 2px;
+
+        & + li {
+          border-top: 1px dashed var(--el-border-color-lighter);
+        }
+
+        > time {
+          padding-top: 2px;
+          font-size: 11px;
+          color: var(--art-text-gray-500);
+          white-space: nowrap;
+        }
+      }
+    }
+
+    &__audit-marker {
+      display: grid;
+      place-items: center;
+      width: 30px;
+      height: 30px;
+      color: var(--el-color-primary);
+      background: var(--el-color-primary-light-9);
+      border-radius: var(--art-control-radius);
+    }
+
+    &__audit-copy {
+      display: grid;
+      gap: 4px;
+      min-width: 0;
+
+      > div {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px 8px;
+        align-items: center;
+      }
+
+      strong {
+        color: var(--art-text-gray-800);
+      }
+
+      span,
+      p {
+        font-size: 12px;
+        color: var(--art-text-gray-500);
+      }
+
+      p {
+        margin: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        line-height: 1.55;
+        white-space: nowrap;
+      }
+    }
+
+    &__audit-error {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      gap: 11px;
+      align-items: center;
+      padding: 12px;
+      color: var(--el-color-warning-dark-2);
+      background: var(--el-color-warning-light-9);
+      border-radius: var(--art-control-radius);
+      box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--el-color-warning) 28%, transparent);
+
+      > span {
+        display: grid;
+        place-items: center;
+        width: 30px;
+        height: 30px;
+        font-size: 17px;
+      }
+
+      > div {
+        min-width: 0;
+      }
+
+      strong {
+        display: block;
+      }
+
+      p {
+        margin: 2px 0 0;
+        font-size: 12px;
+        color: var(--art-text-gray-600);
+      }
+    }
+
     &__actions {
       flex: none;
     }
@@ -956,7 +1295,8 @@
 
     @media (width <= 720px) {
       &__scope-heading,
-      &__matrix-header {
+      &__matrix-header,
+      &__audit-header {
         flex-direction: column;
 
         p {
@@ -999,6 +1339,34 @@
 
       &__field-control {
         grid-template-columns: 1fr;
+      }
+
+      &__audit-count {
+        align-self: flex-start;
+      }
+
+      &__audit-list li {
+        grid-template-columns: auto minmax(0, 1fr);
+
+        > time {
+          grid-column: 2;
+          padding-top: 0;
+        }
+      }
+
+      &__audit-copy p {
+        overflow: visible;
+        text-overflow: clip;
+        white-space: normal;
+      }
+
+      &__audit-error {
+        grid-template-columns: auto minmax(0, 1fr);
+
+        .el-button {
+          grid-column: 2;
+          justify-self: start;
+        }
       }
 
       &__action-summary p {

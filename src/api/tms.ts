@@ -17,6 +17,7 @@ export {
   editDriver,
   exportDriverList,
   fetchDriverAssignedVehicles,
+  fetchDriverEmployeeOptions,
   fetchDriverList,
   fetchDriverListByCarrierId,
   fetchDriverOptions

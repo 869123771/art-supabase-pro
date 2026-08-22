@@ -173,16 +173,21 @@ export const createDeliveryColumns = (
         </ElLink>
       )
     },
-    { prop: 'receivingContactName', label: '收货人', width: 110, showOverflowTooltip: true },
-    { prop: 'receivingContactPhone', label: '收货人电话', width: 140, showOverflowTooltip: true },
+    { prop: 'receivingContactName', label: '收货人', minWidth: 110, showOverflowTooltip: true },
+    {
+      prop: 'receivingContactPhone',
+      label: '收货人电话',
+      minWidth: 140,
+      showOverflowTooltip: true
+    },
     {
       prop: 'receivingAddressDetail',
       label: '收货人地址',
       minWidth: 220,
       showOverflowTooltip: true
     },
-    { prop: 'shippingContactName', label: '发货人', width: 110, showOverflowTooltip: true },
-    { prop: 'shippingContactPhone', label: '发货人电话', width: 140, showOverflowTooltip: true },
+    { prop: 'shippingContactName', label: '发货人', minWidth: 110, showOverflowTooltip: true },
+    { prop: 'shippingContactPhone', label: '发货人电话', minWidth: 140, showOverflowTooltip: true },
     {
       prop: 'shippingAddressDetail',
       label: '发货人地址',
@@ -192,7 +197,7 @@ export const createDeliveryColumns = (
     {
       prop: 'cargoItems',
       label: '货物类型',
-      width: 120,
+      minWidth: 120,
       formatter: (row) => formatCargoType(row)
     },
     {

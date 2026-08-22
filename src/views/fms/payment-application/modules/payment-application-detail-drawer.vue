@@ -27,9 +27,12 @@
           />
         </section>
 
-        <section v-if="detail.basisUrls?.length" class="payment-application-detail__section">
+        <section
+          v-if="canViewField(detail.fieldAccess, 'basisEvidence')"
+          class="payment-application-detail__section"
+        >
           <ArtSectionTitle>付款依据</ArtSectionTitle>
-          <div class="payment-application-detail__evidence">
+          <div v-if="detail.basisUrls?.length" class="payment-application-detail__evidence">
             <ElImage
               v-for="url in detail.basisUrls"
               :key="url"
@@ -39,6 +42,13 @@
               class="payment-application-detail__evidence-image"
               preview-teleported
             />
+          </div>
+          <div v-else class="payment-application-detail__restricted">
+            {{
+              getFieldAccess(detail.fieldAccess, 'basisEvidence') === 'masked'
+                ? '付款依据内容已脱敏'
+                : '暂无付款依据'
+            }}
           </div>
         </section>
 
@@ -62,7 +72,7 @@
   import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
   import WorkflowBusinessHistory from '@/components/business/workflow-business-history/index.vue'
   import { fetchCarrierPaymentApplicationDetail } from '@/api/fms'
-  import { formatCurrencyValue } from '@/utils/ui'
+  import { canViewField, formatSensitiveNumber, getFieldAccess } from '@/utils/field-permission'
 
   defineOptions({ name: 'FinancePaymentApplicationDetailDrawer' })
 
@@ -74,7 +84,7 @@
   const loading = ref(false)
   const loadError = shallowRef<Error | null>(null)
 
-  const descriptionItems: ArtDescriptionItem<Application>[] = [
+  const descriptionItems = computed<ArtDescriptionItem<Application>[]>(() => [
     { key: 'applicationNo', label: '付款申请单号', field: 'applicationNo', copyable: true },
     {
       key: 'status',
@@ -83,7 +93,16 @@
       dictCode: 'tmsCarrierPaymentApplicationStatus'
     },
     { key: 'carrierName', label: '承运商', field: 'carrierName' },
-    { key: 'amount', label: '申请金额', field: 'amount', format: 'money' },
+    ...(canViewField(detail.value?.fieldAccess, 'applicationAmounts')
+      ? [
+          {
+            key: 'amount',
+            label: '申请金额',
+            field: 'amount' as const,
+            formatter: (value: unknown) => formatMoney(value as Api.Tms.BasicData.SensitiveNumber)
+          }
+        ]
+      : []),
     {
       key: 'plannedPaymentDate',
       label: '计划付款日期',
@@ -111,32 +130,41 @@
     { key: 'remark', label: '申请说明', field: 'remark', span: 2 },
     { key: 'reviewRemark', label: '审批意见', field: 'reviewRemark', span: 2 },
     { key: 'cancelReason', label: '取消原因', field: 'cancelReason', span: 2 }
-  ]
+  ])
 
-  const itemColumns: ColumnOption<ApplicationItem>[] = [
+  const itemColumns = computed<ColumnOption<ApplicationItem>[]>(() => [
     { prop: 'statementNoSnapshot', label: '对账单号', minWidth: 190 },
-    {
-      prop: 'statementAmountSnapshot',
-      label: '对账金额',
-      width: 135,
-      align: 'right',
-      formatter: (row) => formatCurrencyValue(row.statementAmountSnapshot)
-    },
-    {
-      prop: 'outstandingAmountSnapshot',
-      label: '申请时未付',
-      width: 135,
-      align: 'right',
-      formatter: (row) => formatCurrencyValue(row.outstandingAmountSnapshot)
-    },
-    {
-      prop: 'appliedAmount',
-      label: '本次付款',
-      width: 135,
-      align: 'right',
-      formatter: (row) => formatCurrencyValue(row.appliedAmount)
-    }
-  ]
+    ...(canViewField(detail.value?.fieldAccess, 'applicationAmounts')
+      ? [
+          {
+            prop: 'statementAmountSnapshot' as const,
+            label: '对账金额',
+            width: 135,
+            align: 'right' as const,
+            formatter: (row: ApplicationItem) => formatMoney(row.statementAmountSnapshot)
+          },
+          {
+            prop: 'outstandingAmountSnapshot' as const,
+            label: '申请时未付',
+            width: 135,
+            align: 'right' as const,
+            formatter: (row: ApplicationItem) => formatMoney(row.outstandingAmountSnapshot)
+          },
+          {
+            prop: 'appliedAmount' as const,
+            label: '本次付款',
+            width: 135,
+            align: 'right' as const,
+            formatter: (row: ApplicationItem) => formatMoney(row.appliedAmount)
+          }
+        ]
+      : [])
+  ])
+
+  function formatMoney(value?: Api.Tms.BasicData.SensitiveNumber): string {
+    const formatted = formatSensitiveNumber(value)
+    return formatted === '***' || formatted === '--' ? formatted : `¥${formatted}`
+  }
 
   async function loadDetail(id: string): Promise<void> {
     loading.value = true
@@ -188,6 +216,11 @@
       height: 96px;
       border: 1px solid var(--el-border-color-light);
       border-radius: var(--el-border-radius-base);
+    }
+
+    &__restricted {
+      font-size: 13px;
+      color: var(--el-text-color-secondary);
     }
   }
 </style>

@@ -69,6 +69,12 @@
   import type { ColumnOption } from '@/types'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatWithDayjs } from '@/utils/time'
+  import {
+    canViewField,
+    getFieldAccess,
+    isMaskedValue,
+    mergeFieldAccessMaps
+  } from '@/utils/field-permission'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { useUserStore } from '@/store/modules/user'
   import {
@@ -110,6 +116,13 @@
   const dialogRef = ref<AccountSetDialogExpose>()
   const periodDrawerRef = ref<PeriodDrawerExpose>()
   const tableRef = ref<ArtTableQueryExpose>()
+  const currentRows = ref<AccountSet[]>([])
+  const listFieldAccess = ref<Api.Fms.AccountSetFieldAccessMap>({})
+  const effectiveFieldAccess = computed(() =>
+    mergeFieldAccessMaps(listFieldAccess.value, ...currentRows.value.map((row) => row.fieldAccess))
+  )
+  const canViewListField = (field: Api.Fms.AccountSetFieldKey): boolean =>
+    canViewField(effectiveFieldAccess.value, field)
   const table = reactive<TableGroup>({
     search: { keyword: '', tenantId: undefined, status: undefined },
     tenantOptions: []
@@ -146,7 +159,14 @@
       label: '关键字',
       key: 'keyword',
       type: 'input',
-      props: { clearable: true, placeholder: '账套编码、名称、法人主体或信用代码' }
+      props: {
+        clearable: true,
+        placeholder: ['read', 'edit'].includes(
+          getFieldAccess(listFieldAccess.value, 'taxRegistration')
+        )
+          ? '账套编码、名称、法人主体或信用代码'
+          : '账套编码、名称或法人主体'
+      }
     }
   ])
 
@@ -207,37 +227,60 @@
         minWidth: 210,
         showOverflowTooltip: true
       },
-      {
-        prop: 'accountingStandard',
-        label: '会计准则',
-        minWidth: 190,
-        dict: { code: 'fmsAccountingStandard', display: 'text' }
-      },
-      {
-        prop: 'vatTaxpayerType',
-        label: '纳税人类型',
-        width: 135,
-        dict: { code: 'fmsVatTaxpayerType', display: 'tag' }
-      },
-      { prop: 'baseCurrencyCode', label: '本位币', width: 90, align: 'center' },
-      {
-        prop: 'enabledOn',
-        label: '启用日期',
-        width: 120,
-        formatter: (row) => formatWithDayjs(row.enabledOn, 'YYYY-MM-DD') || '--'
-      },
+      ...(canViewListField('accountingPolicy')
+        ? ([
+            {
+              prop: 'accountingStandard',
+              label: '会计准则',
+              minWidth: 190,
+              dict: { code: 'fmsAccountingStandard', display: 'text' }
+            },
+            {
+              prop: 'baseCurrencyCode',
+              label: '本位币',
+              width: 90,
+              align: 'center'
+            },
+            {
+              prop: 'enabledOn',
+              label: '启用日期',
+              width: 120,
+              formatter: (row: AccountSet) =>
+                isMaskedValue(row.enabledOn)
+                  ? row.enabledOn
+                  : formatWithDayjs(row.enabledOn, 'YYYY-MM-DD') || '--'
+            }
+          ] as ColumnOption<AccountSet>[])
+        : []),
+      ...(canViewListField('taxRegistration')
+        ? ([
+            {
+              prop: 'vatTaxpayerType',
+              label: '纳税人类型',
+              width: 135,
+              dict: { code: 'fmsVatTaxpayerType', display: 'tag' }
+            }
+          ] as ColumnOption<AccountSet>[])
+        : []),
       {
         prop: 'status',
         label: '状态',
         width: 105,
         dict: { code: 'fmsAccountSetStatus', display: 'tag' }
       },
-      {
-        prop: 'updateTime',
-        label: '最近更新',
-        width: 165,
-        formatter: (row) => formatWithDayjs(row.updateTime, 'YYYY-MM-DD HH:mm') || '--'
-      },
+      ...(canViewListField('administrativeAudit')
+        ? ([
+            {
+              prop: 'updateTime',
+              label: '最近更新',
+              width: 165,
+              formatter: (row: AccountSet) =>
+                isMaskedValue(row.updateTime)
+                  ? row.updateTime
+                  : formatWithDayjs(row.updateTime, 'YYYY-MM-DD HH:mm') || '--'
+            }
+          ] as ColumnOption<AccountSet>[])
+        : []),
       {
         prop: 'operation',
         label: '操作',
@@ -324,7 +367,10 @@
 
   async function fetchTableData(params: TableParams) {
     const { from, to } = pageInfoHandler({ current: params.current, size: params.size })
-    return await fetchAccountSetList({ ...params, from, to })
+    const result = await fetchAccountSetList({ ...params, from, to })
+    listFieldAccess.value = result.fieldAccess
+    currentRows.value = result.data ?? []
+    return result
   }
 
   async function loadOverview(): Promise<void> {

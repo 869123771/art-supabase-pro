@@ -1,89 +1,83 @@
 import { useSupabase } from '@/hooks'
-import { applyDateRange, type SupabaseQueryLike } from '@/api/providers/supabase/query'
 import { startWorkflow } from '@/api/workflow'
 
 type PaymentApplication = Api.Fms.CarrierPaymentApplicationRecord
-type PaymentApplicationItem = Api.Fms.CarrierPaymentApplicationItem
 type SearchParams = Api.Fms.CarrierPaymentApplicationSearchParams
 type SavePayload = Api.Fms.SaveCarrierPaymentApplicationPayload
 type ExecutePayload = Api.Fms.ExecuteCarrierPaymentApplicationPayload
 
+interface SecureListPayload {
+  records: PaymentApplication[]
+  total: number
+  fieldAccess?: Api.Fms.CarrierPaymentApplicationFieldAccessMap
+}
+
 const { supabase, responseHandle } = useSupabase()
 
-function applyFilters<TQuery extends SupabaseQueryLike>(
-  query: TQuery,
-  params: SearchParams
-): TQuery {
-  const { carrierId, keyword, plannedPaymentDateRange, recordId, status } = params
-  if (recordId) query = query.eq('id', recordId)
-  if (carrierId) query = query.eq('carrier_id', carrierId)
-  if (status) query = query.eq('status', status)
-  if (keyword) {
-    query = query.or(
-      `application_no.ilike.%${keyword}%,carrier_name.ilike.%${keyword}%,statement_nos.ilike.%${keyword}%,paid_transaction_no.ilike.%${keyword}%,remark.ilike.%${keyword}%`
-    )
+const toListRpcParams = (
+  params: SearchParams & { ids?: string[]; maxRows?: number },
+  purpose: 'list' | 'export'
+) => {
+  const from = purpose === 'export' ? 0 : Math.max(params.from ?? 0, 0)
+  const requestedTo = purpose === 'export' ? Math.max((params.maxRows ?? 10000) - 1, 0) : params.to
+  return {
+    p_from: from,
+    p_to: Math.max(requestedTo ?? 9, from),
+    p_carrier_id: params.carrierId || null,
+    p_status: params.status || null,
+    p_record_id: params.recordId || null,
+    p_planned_payment_date_start: params.plannedPaymentDateRange?.[0] || null,
+    p_planned_payment_date_end: params.plannedPaymentDateRange?.[1] || null,
+    p_keyword: String(params.keyword ?? '').trim() || null,
+    p_ids: params.ids?.length ? params.ids : null,
+    p_purpose: purpose
   }
-  return applyDateRange(query, 'planned_payment_date', plannedPaymentDateRange)
 }
 
 export async function fetchCarrierPaymentApplicationList(params: SearchParams) {
-  const { from = 0, to = 9 } = params
-  let query = supabase
-    .from('tms_carrier_payment_application_summary')
-    .select('*', { count: 'exact' })
-    .order('create_time', { ascending: false })
-    .range(from, to)
-  query = applyFilters(query, params)
-  return await responseHandle<PaymentApplication[]>(() => query, {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
+  const result = await responseHandle<SecureListPayload>(
+    () =>
+      supabase.rpc('tms_list_carrier_payment_applications_secure', toListRpcParams(params, 'list')),
+    { showErrorMessage: true }
+  )
+  return {
+    data: result.data?.records ?? [],
+    total: result.data?.total ?? 0,
+    error: result.error,
+    fieldAccess: result.data?.fieldAccess ?? {}
+  }
 }
 
 export async function exportCarrierPaymentApplicationList(
   params: SearchParams & { ids?: string[]; maxRows?: number }
 ) {
-  const { ids, maxRows = 10000 } = params
-  let query = supabase
-    .from('tms_carrier_payment_application_summary')
-    .select('*')
-    .order('create_time', { ascending: false })
-    .limit(maxRows)
-  query = ids?.length ? query.in('id', ids) : applyFilters(query, params)
-  return await responseHandle<PaymentApplication[]>(() => query, {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
+  const result = await responseHandle<SecureListPayload>(
+    () =>
+      supabase.rpc(
+        'tms_list_carrier_payment_applications_secure',
+        toListRpcParams(params, 'export')
+      ),
+    { showErrorMessage: true }
+  )
+  return {
+    data: result.data?.records ?? [],
+    total: result.data?.total ?? 0,
+    error: result.error,
+    fieldAccess: result.data?.fieldAccess ?? {}
+  }
 }
 
 export async function fetchCarrierPaymentApplicationDetail(id: string) {
-  const [applicationResponse, itemResponse] = await Promise.all([
-    responseHandle<PaymentApplication>(
-      () =>
-        supabase.from('tms_carrier_payment_application_summary').select('*').eq('id', id).single(),
-      { ignoreCheck: true, showErrorMessage: true }
-    ),
-    responseHandle<PaymentApplicationItem[]>(
-      () =>
-        supabase
-          .from('tms_carrier_payment_application_item')
-          .select('*')
-          .eq('application_id', id)
-          .order('statement_no_snapshot'),
-      { ignoreCheck: true, showErrorMessage: true }
-    )
-  ])
-  return {
-    data: applicationResponse.data
-      ? { ...applicationResponse.data, items: itemResponse.data ?? [] }
-      : undefined
-  }
+  return await responseHandle<PaymentApplication | null>(
+    () => supabase.rpc('tms_get_carrier_payment_application_secure', { p_id: id }),
+    { showErrorMessage: true }
+  )
 }
 
 export async function saveCarrierPaymentApplication(params: SavePayload) {
   return await responseHandle<string>(
     () =>
-      supabase.rpc('save_tms_carrier_payment_application', {
+      supabase.rpc('save_tms_carrier_payment_application_secure', {
         p_application_id: params.id || null,
         p_carrier_id: params.carrierId,
         p_planned_payment_date: params.plannedPaymentDate,
@@ -101,17 +95,19 @@ export async function saveCarrierPaymentApplication(params: SavePayload) {
 export async function submitCarrierPaymentApplication(row: PaymentApplication) {
   await responseHandle<boolean>(
     () =>
-      supabase.rpc('validate_tms_carrier_payment_application_submission', {
+      supabase.rpc('validate_tms_carrier_payment_application_submission_secure', {
         p_application_id: row.id
       }),
     { breakReturn: true, showErrorMessage: true }
   )
+  const amount = Number(row.amount)
+  if (!Number.isFinite(amount)) throw new Error('当前字段权限不足，无法提交付款金额审批')
   return await startWorkflow({
     businessType: 'tms_carrier_payment_application',
     businessId: row.id,
     businessTitle: `承运商付款申请 ${row.applicationNo} · ${row.carrierName}`,
     context: {
-      amount: Number(row.amount),
+      amount,
       applicationNo: row.applicationNo,
       carrierId: row.carrierId,
       carrierName: row.carrierName,
@@ -124,7 +120,7 @@ export async function submitCarrierPaymentApplication(row: PaymentApplication) {
 export async function executeCarrierPaymentApplication(params: ExecutePayload) {
   return await responseHandle<string>(
     () =>
-      supabase.rpc('execute_fms_carrier_payment_application', {
+      supabase.rpc('execute_fms_carrier_payment_application_secure', {
         p_application_id: params.applicationId,
         p_fund_account_id: params.fundAccountId,
         p_transaction_date: params.transactionDate,
@@ -139,7 +135,7 @@ export async function executeCarrierPaymentApplication(params: ExecutePayload) {
 export async function cancelCarrierPaymentApplication(id: string, reason: string) {
   return await responseHandle<string>(
     () =>
-      supabase.rpc('cancel_tms_carrier_payment_application', {
+      supabase.rpc('cancel_tms_carrier_payment_application_secure', {
         p_application_id: id,
         p_reason: reason
       }),
@@ -149,7 +145,7 @@ export async function cancelCarrierPaymentApplication(id: string, reason: string
 
 export async function deleteCarrierPaymentApplication(id: string) {
   return await responseHandle<string>(
-    () => supabase.rpc('delete_tms_carrier_payment_application', { p_application_id: id }),
+    () => supabase.rpc('delete_tms_carrier_payment_application_secure', { p_application_id: id }),
     { showMessage: true, breakReturn: true }
   )
 }

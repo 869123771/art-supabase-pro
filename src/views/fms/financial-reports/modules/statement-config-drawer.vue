@@ -26,7 +26,7 @@
             <h3>账套报表项目</h3>
             <p>项目结构决定报表展示，科目映射与公式关系决定可审计取数口径。</p>
           </div>
-          <div v-if="canEditConfig" class="statement-config-drawer__actions">
+          <div v-if="canEditBaseRules" class="statement-config-drawer__actions">
             <ElButton :loading="loading" @click="initializeItems">
               <ArtSvgIcon icon="ri:magic-line" />
               初始化标准项目
@@ -79,9 +79,9 @@
               {{ dictLabel('fmsCashFlowDirection', row.cashFlowDirection) || '--' }}
             </template>
           </ElTableColumn>
-          <ElTableColumn label="规则数" width="90" align="right">
+          <ElTableColumn v-if="canViewRules" label="规则数" width="90" align="right">
             <template #default="{ row }">
-              {{ row.calculationMethod === 'mapping' ? (row.mappings?.length ?? 0) : '--' }}
+              {{ row.calculationMethod === 'label' ? '--' : (row.ruleCount ?? '--') }}
             </template>
           </ElTableColumn>
           <ElTableColumn label="状态" width="84" align="center">
@@ -91,14 +91,18 @@
               </ElTag>
             </template>
           </ElTableColumn>
-          <ElTableColumn v-if="canEditConfig" label="操作" width="180" fixed="right">
+          <ElTableColumn v-if="canViewRules" label="操作" width="180" fixed="right">
             <template #default="{ row }">
               <div class="statement-config-drawer__row-actions">
-                <ArtButtonTable type="edit" @click="openItemDialog(row)" />
                 <ArtButtonTable
-                  v-if="canConfigureRule(row)"
+                  v-if="canEditRowRules(row)"
                   type="edit"
-                  :label="row.calculationMethod === 'formula' ? '配置公式' : '科目映射'"
+                  @click="openItemDialog(row)"
+                />
+                <ArtButtonTable
+                  v-if="canConfigureRule(row) && canReadRowRules(row)"
+                  :type="canEditRowRules(row) ? 'edit' : 'view'"
+                  :label="ruleActionLabel(row)"
                   @click="openRuleDialog(row)"
                 />
               </div>
@@ -129,6 +133,7 @@
   } from '@/api/fms'
   import { useUserStore } from '@/store/modules/user'
   import { useAuth } from '@/hooks/core/useAuth'
+  import { canEditField, getFieldAccess, mergeFieldAccessMaps } from '@/utils/field-permission'
 
   defineOptions({ name: 'FinanceStatementConfigDrawer' })
 
@@ -137,7 +142,7 @@
   const emit = defineEmits<{ success: [] }>()
   const { getDictMap } = storeToRefs(useUserStore())
   const { hasAuth } = useAuth()
-  const canEditConfig = computed(() => hasAuth('FinanceFinancialReports:EditConfig'))
+  const canEditConfigButton = computed(() => hasAuth('FinanceFinancialReports:EditConfig'))
   const drawerRef = ref<ArtDrawerExpose>()
   const itemDialogRef = ref<InstanceType<typeof StatementItemDialog>>()
   const ruleDialogRef = ref<InstanceType<typeof StatementRuleDialog>>()
@@ -145,6 +150,7 @@
   const statementType = ref<Api.Fms.FinancialStatementType>('balance_sheet')
   const items = ref<Item[]>([])
   const subjects = ref<Api.Fms.SubjectRecord[]>([])
+  const listFieldAccess = ref<Api.Fms.FinancialReportFieldAccessMap>({})
   const loading = ref(false)
 
   const statementTypeLabel = computed(() =>
@@ -158,6 +164,15 @@
   )
   const labelItemCount = computed(
     () => items.value.filter((item) => item.calculationMethod === 'label').length
+  )
+  const effectiveFieldAccess = computed(() =>
+    mergeFieldAccessMaps(listFieldAccess.value, ...items.value.map((item) => item.fieldAccess))
+  )
+  const canViewRules = computed(
+    () => getFieldAccess(effectiveFieldAccess.value, 'reportRules') !== 'hidden'
+  )
+  const canEditBaseRules = computed(
+    () => canEditConfigButton.value && canEditField(listFieldAccess.value, 'reportRules')
   )
 
   function dictLabel(code: string, value: unknown): string {
@@ -180,6 +195,22 @@
     return item.calculationMethod === 'mapping' && item.statementType !== 'cash_flow_statement'
   }
 
+  function canReadRowRules(row: unknown): boolean {
+    const item = row as Item
+    return ['read', 'edit'].includes(getFieldAccess(item.fieldAccess, 'reportRules'))
+  }
+
+  function canEditRowRules(row: unknown): boolean {
+    const item = row as Item
+    return canEditConfigButton.value && canEditField(item.fieldAccess, 'reportRules')
+  }
+
+  function ruleActionLabel(row: unknown): string {
+    const item = row as Item
+    const action = item.calculationMethod === 'formula' ? '公式' : '科目映射'
+    return `${canEditRowRules(item) ? '配置' : '查看'}${action}`
+  }
+
   async function loadConfiguration(): Promise<void> {
     if (!accountSetId.value) return
     loading.value = true
@@ -189,6 +220,7 @@
         fetchSubjectList(accountSetId.value)
       ])
       items.value = itemResult.data ?? []
+      listFieldAccess.value = itemResult.fieldAccess
       subjects.value = subjectResult.data ?? []
     } finally {
       loading.value = false
@@ -196,7 +228,7 @@
   }
 
   async function initializeItems(): Promise<void> {
-    if (!canEditConfig.value || !accountSetId.value) return
+    if (!canEditBaseRules.value || !accountSetId.value) return
     await ElMessageBox.confirm(
       '系统将补齐企业会计准则通用报表项目、合计公式和现金流方向；已有同编码项目不会重复创建。',
       '初始化标准财务报表',
@@ -207,18 +239,15 @@
   }
 
   function openItemDialog(row?: unknown): void {
-    if (!canEditConfig.value) return
-    void itemDialogRef.value?.handleOpen(
-      accountSetId.value,
-      statementType.value,
-      items.value,
-      row as Item | undefined
-    )
+    const item = row as Item | undefined
+    if (!(item ? canEditRowRules(item) : canEditBaseRules.value)) return
+    void itemDialogRef.value?.handleOpen(accountSetId.value, statementType.value, items.value, item)
   }
 
   function openRuleDialog(row: unknown): void {
-    if (!canEditConfig.value) return
-    void ruleDialogRef.value?.handleOpen(row as Item, items.value, subjects.value)
+    const item = row as Item
+    if (!canReadRowRules(item)) return
+    void ruleDialogRef.value?.handleOpen(item, items.value, subjects.value, canEditRowRules(item))
   }
 
   async function handleConfigurationSaved(): Promise<void> {

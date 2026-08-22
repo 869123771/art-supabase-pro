@@ -6,6 +6,8 @@
     :search-items="searchItems"
     :api-fn="fetchTableData"
     :columns-factory="columnsFactory"
+    :header-actions="headerActions"
+    header-actions-placement="workspace"
     :search-bar-props="{ span: 8, labelWidth: 82 }"
     :table-props="{
       rowKey: 'id',
@@ -40,7 +42,10 @@
 <script setup lang="tsx">
   import { ElButton, ElProgress, ElTag } from 'element-plus'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
-  import type { ArtTableQueryExpose } from '@/components/core/tables/art-table-query/index.vue'
+  import type {
+    ArtTableQueryExpose,
+    ArtTableQueryHeaderAction
+  } from '@/components/core/tables/art-table-query/index.vue'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import RecognitionSourceGallery from './recognition-source-gallery.vue'
@@ -68,7 +73,12 @@
   const props = withDefaults(defineProps<{ mode: 'review' | 'records'; artifactId?: string }>(), {
     artifactId: ''
   })
-  const emit = defineEmits<{ open: [row: Artifact]; business: [row: Artifact] }>()
+  const emit = defineEmits<{
+    open: [row: Artifact]
+    business: [row: Artifact]
+    create: []
+    review: []
+  }>()
   const userStore = useUserStore()
   const { getDictMap } = storeToRefs(userStore)
   const getDictItemByValue = userStore.getDictItemByValue
@@ -85,6 +95,26 @@
     { label: '低可信度', value: 'low' },
     { label: '中可信度', value: 'medium' }
   ]
+  const headerActions = computed<ArtTableQueryHeaderAction[]>(() =>
+    props.mode === 'review'
+      ? [
+          {
+            type: 'add',
+            label: '发起识别',
+            icon: 'ri:add-line',
+            onClick: () => emit('create')
+          }
+        ]
+      : [
+          {
+            key: 'review',
+            label: '查看待复核',
+            icon: 'ri:shield-check-line',
+            buttonProps: { plain: true },
+            onClick: () => emit('review')
+          }
+        ]
+  )
   const recognitionFeatureOptions = computed(() => {
     const options = new Map<string, { label: string; value: string }>()
     for (const item of getDictMap.value.aiOcrFeature ?? []) {
@@ -316,7 +346,7 @@
     void tableRef.value?.getData()
   }
 
-  defineExpose({ refresh })
+  defineExpose({ refresh, tableQuery: tableRef })
 </script>
 
 <style scoped lang="scss">
@@ -362,6 +392,11 @@
     cursor: pointer;
     background: transparent;
     border: 0;
+
+    &:focus-visible {
+      outline: 2px solid color-mix(in srgb, var(--theme-color) 68%, transparent);
+      outline-offset: 3px;
+    }
 
     > span {
       display: grid;

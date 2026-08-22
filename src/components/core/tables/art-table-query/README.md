@@ -60,7 +60,7 @@
 - `ArtTableHeader`：工具栏、刷新、搜索区显隐、列设置、表格设置
 - `ArtTable`：表格主体、分页、列渲染、行拖拽事件
 - `useTable`：可选的内管数据生命周期
-- 专注模式：只保留当前查询条件、工具栏、表格与分页，退出后恢复页面原布局
+- 专注模式：默认只保留当前查询条件、工具栏、表格与分页；复合工作区可同时保留必要的导航上下文，退出后恢复页面原布局
 
 标准 CRUD 列表页优先使用 `ArtTableQuery`，不要重复手写 `ArtSearchBar + ArtTableHeader + ArtTable`。
 
@@ -193,6 +193,7 @@ const load = () => {
 | `showTableToolbar` | `boolean` | 两种 | `false` | 是否启用刷新、密度、全屏、列设置等右侧工具；支持 `v-model`。专注模式期间有效值强制为开启，退出后恢复原值。 |
 | `tableProps` | `ArtTableQueryTableProps` | 两种 | `{}` | 透传给 `ArtTable` / `ElTable`。 |
 | `focusable` | `boolean` | 两种 | `false` | 是否允许专注模式；工具栏开启时显示入口，也可通过 `v-model:focus-mode` 从页面头部直接进入。 |
+| `focusScopeSelector` | `string` | 两种 | - | 专注模式整体保留的最近祖先选择器；用于“导航树 + 查询表格”等不可拆分的复合工作区。 |
 
 ### searchBarProps
 

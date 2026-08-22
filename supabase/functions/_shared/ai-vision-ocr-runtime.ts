@@ -28,6 +28,7 @@ export interface VisionOcrNormalizedResult {
 
 export interface VisionOcrRuntimeContext<TInput, TResult extends VisionOcrNormalizedResult> {
   admin: SupabaseClient
+  userClient: SupabaseClient
   appUser: { tenant_id: string; user_email: string }
   userId: string
   input: TInput
@@ -165,6 +166,10 @@ export function createVisionOcrHandler<TInput, TResult extends VisionOcrNormaliz
 
       const user = authData.user
       const admin = createClient(supabaseUrl, serviceRoleKey, {
+        auth: { autoRefreshToken: false, persistSession: false }
+      })
+      const userClient = createClient(supabaseUrl, supabaseAnonKey, {
+        global: { headers: { Authorization: authHeader } },
         auth: { autoRefreshToken: false, persistSession: false }
       })
       const { data: appUser, error: appUserError } = await admin
@@ -501,6 +506,7 @@ export function createVisionOcrHandler<TInput, TResult extends VisionOcrNormaliz
       const proposedPayload = config.proposedPayload(result)
       const runtimeContext = {
             admin,
+            userClient,
             appUser,
             userId: user.id,
             input,

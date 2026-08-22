@@ -34,6 +34,27 @@ export async function fetchFieldPermissionConfiguration(params: {
   )
 }
 
+export async function fetchFieldPermissionAuditLogs(params: {
+  resourceKey: string
+  subjectType: SubjectType
+  subjectId: string
+  limit?: number
+}) {
+  return await responseHandle<Api.SystemManage.FieldPermissionAuditLog[]>(
+    () =>
+      supabase.rpc('get_field_permission_audit_logs', {
+        p_resource_key: params.resourceKey,
+        p_subject_type: params.subjectType,
+        p_subject_id: params.subjectId,
+        p_limit: params.limit ?? 10
+      }),
+    {
+      showErrorMessage: false,
+      errorMessage: '字段权限变更记录加载失败，请稍后重试'
+    }
+  )
+}
+
 export async function saveFieldPermissions(params: {
   resourceKey: string
   subjectType: SubjectType

@@ -84,13 +84,6 @@ export async function fetchGetUserList(params: Api.SystemManage.UserSearchParams
           id,
           organization_code,
           organization_name
-        ),
-        hr_employee:hr_employee!sys_user_hr_employee_tenant_fkey(
-          id,
-          employee_no,
-          employee_name,
-          job_title,
-          employment_status
         )
       `,
       { count: 'exact' }

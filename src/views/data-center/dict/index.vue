@@ -1,20 +1,8 @@
 <template>
-  <div class="art-full-height business-workspace-page">
+  <div class="dict-page art-full-height business-workspace-page">
     <MasterDeleteProcessingNotice
       action-hint="字典类型和关联字典项已自动定位；处理完成后可返回继续删除。"
     />
-    <BusinessWorkspaceHeader
-      eyebrow="DICTIONARY CATALOG"
-      :title="dictWorkspaceTitle"
-      :description="dictWorkspaceDescription"
-      icon="ri:book-2-line"
-      :tags="dictWorkspaceTags"
-      density="compact"
-    >
-      <template v-if="isDictionarySelected" #actions>
-        <BusinessTableWorkspaceActions :table="tableQueryRef" />
-      </template>
-    </BusinessWorkspaceHeader>
     <div class="dict-layout business-workspace-content">
       <ElSplitter class="dict-splitter">
         <ElSplitterPanel size="316px" min="288px" max="380px">
@@ -25,10 +13,26 @@
 
         <ElSplitterPanel>
           <div class="dict-table-panel">
+            <BusinessWorkspaceHeader
+              v-show="!table.focusMode || !isDictionarySelected"
+              class="dict-type-overview"
+              eyebrow="DICTIONARY TYPE"
+              :title="dictWorkspaceTitle"
+              :description="dictWorkspaceDescription"
+              icon="ri:book-2-line"
+              :tags="dictWorkspaceTags"
+              density="compact"
+            >
+              <template v-if="isDictionarySelected" #actions>
+                <BusinessTableWorkspaceActions :table="tableQueryRef" />
+              </template>
+            </BusinessWorkspaceHeader>
+
             <ArtTableQuery
               v-if="isDictionarySelected"
               ref="tableQueryRef"
               v-model="table.searchQuery"
+              v-model:focus-mode="table.focusMode"
               :search-items="table.searchItems"
               :api-fn="fetchTableData"
               :data-transformer="transformDictTree"
@@ -39,6 +43,7 @@
               :search-bar-props="table.searchBarProps"
               :table-props="table.props"
               focusable
+              focus-scope-selector=".dict-layout"
             />
 
             <div v-else class="dict-selection-empty art-card-xs">
@@ -113,6 +118,7 @@
   interface TableGroup {
     searchQuery: SearchParams
     currentDictType?: DictTypeItem
+    focusMode: boolean
     searchItems: ComputedRef<SearchFormItem[]>
     headerActions: ComputedRef<ArtTableQueryHeaderAction[]>
     columnsFactory: () => ColumnOption<DictListItem>[]
@@ -153,6 +159,7 @@
       status: ''
     } as SearchParams,
     currentDictType: undefined as DictTypeItem | undefined,
+    focusMode: false,
     searchItems: computed<SearchFormItem[]>(() => [
       {
         label: '字典标签',
@@ -297,13 +304,26 @@
   const isDictionarySelected = computed(
     () => table.currentDictType?.nodeType === 'dictionary' && Boolean(table.currentDictType.id)
   )
-  const dictWorkspaceTitle = computed(() => table.currentDictType?.name || '数据字典')
-  const dictWorkspaceDescription = computed(
-    () => table.currentDictType?.remark || '统一维护系统字典目录、字典项和展示规范。'
-  )
+  const dictWorkspaceTitle = computed(() => table.currentDictType?.name || '字典项维护')
+  const dictWorkspaceDescription = computed(() => {
+    if (table.currentDictType?.nodeType === 'dictionary') {
+      return (
+        table.currentDictType.remark ||
+        `维护「${table.currentDictType.name}」类型下的字典项、取值状态与呈现方式。`
+      )
+    }
+
+    if (table.currentDictType?.nodeType === 'directory') {
+      return `「${table.currentDictType.name}」用于组织字典类型，请从左侧选择需要维护的具体类型。`
+    }
+
+    return '从左侧目录选择字典类型，查看并维护对应的字典项。'
+  })
   const dictWorkspaceTags = computed(() => [
     {
-      label: table.currentDictType?.code || '请选择字典类型',
+      label: table.currentDictType?.code
+        ? `类型编码 · ${table.currentDictType.code}`
+        : '等待选择字典类型',
       type: isDictionarySelected.value ? ('primary' as const) : ('info' as const)
     }
   ])
@@ -341,7 +361,10 @@
 
   const handleTreeNodeClick = async (node: DictTypeItem): Promise<void> => {
     table.currentDictType = node
-    if (node.nodeType !== 'dictionary') return
+    if (node.nodeType !== 'dictionary') {
+      table.focusMode = false
+      return
+    }
 
     await nextTick()
     await tableQueryRef.value?.getData()
@@ -463,7 +486,12 @@
     }
 
     .dict-table-panel {
+      gap: 12px;
       padding-left: 8px;
+
+      .dict-type-overview {
+        flex: none;
+      }
 
       :deep(.pagination) {
         display: none;

@@ -1,7 +1,8 @@
 import { cloneDeep } from 'lodash-es'
 import { getWorkflowBusinessContract } from '../../modules/workflow-business-contracts'
 
-export type WorkflowTemplateCategory = 'all' | 'finance' | 'transport' | 'vehicle' | 'general'
+export type WorkflowTemplateCategory =
+  'all' | 'finance' | 'transport' | 'vehicle' | 'safety' | 'general'
 
 export interface WorkflowTemplateDefinition {
   key: string
@@ -101,6 +102,16 @@ const templateDefinitions: WorkflowTemplateDefinition[] = [
     icon: 'ri:car-line',
     tone: 'info',
     nodeNames: ['车辆管理员审核']
+  },
+  {
+    key: 'smis-hidden-danger',
+    name: '安全隐患复查审批',
+    description: '按隐患等级、风险点、整改责任人与整改期限完成复查销号审批。',
+    category: 'safety',
+    businessType: 'smis_hidden_danger',
+    icon: 'ri:shield-check-line',
+    tone: 'warning',
+    nodeNames: ['安全管理复查']
   }
 ]
 
@@ -109,6 +120,7 @@ export const workflowTemplateCategories: WorkflowTemplateCategoryOption[] = [
   { key: 'finance', label: '财务审批' },
   { key: 'transport', label: '运输管理' },
   { key: 'vehicle', label: '车辆管理' },
+  { key: 'safety', label: '安全生产' },
   { key: 'general', label: '通用审批' }
 ]
 

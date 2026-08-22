@@ -363,7 +363,7 @@
           </ElLink>
         )
       },
-      { prop: 'shippingContactName', label: '发货人', width: 110 },
+      { prop: 'shippingContactName', label: '发货人', minWidth: 110 },
       ...(canViewOrderField('shipperContact')
         ? [{ prop: 'shippingContactPhone', label: '发货人电话', width: 140 }]
         : []),
@@ -377,12 +377,12 @@
             }
           ]
         : []),
-      { prop: 'originStation', label: '发货站', width: 120, showOverflowTooltip: true },
-      { prop: 'destinationStation', label: '到货站', width: 120, showOverflowTooltip: true },
+      { prop: 'originStation', label: '发货站', minWidth: 120, showOverflowTooltip: true },
+      { prop: 'destinationStation', label: '到货站', minWidth: 120, showOverflowTooltip: true },
       {
         prop: 'transferStation',
         label: '中转站',
-        width: 120,
+        minWidth: 120,
         formatter: (row) => row.transferStation || '-'
       },
 

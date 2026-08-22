@@ -1,112 +1,89 @@
 import { useSupabase } from '@/hooks'
-import { applyDateRange, type SupabaseQueryLike } from '@/api/providers/supabase/query'
-
-type Voucher = Api.Fms.VoucherRecord
+type Voucher = Api.Fms.SecureVoucherRecord
 type VoucherSearchParams = Api.Fms.VoucherSearchParams
 type VoucherTemplate = Api.Fms.VoucherTemplateRecord
 type VoucherTemplateSearchParams = Api.Fms.VoucherTemplateSearchParams
 
+interface VoucherListPayload {
+  records: Voucher[]
+  total: number
+  fieldAccess?: Api.Fms.VoucherFieldAccessMap
+}
+
+interface VoucherTemplateListPayload {
+  records?: VoucherTemplate[]
+  total?: number
+  fieldAccess?: Api.Fms.VoucherTemplateFieldAccessMap
+}
+
 const { supabase, responseHandle } = useSupabase()
 
-const VOUCHER_SELECT = `
-  *,
-  accountSet:fms_account_set(id, account_set_code, account_set_name, base_currency_code)
-`
-
-const VOUCHER_LINE_SELECT = `
-  *,
-  subject:fms_subject(
-    id, subject_code, subject_name, balance_direction,
-    allow_quantity, unit_name, allow_foreign_currency
-  ),
-  currency:fms_currency(id, currency_code, currency_name)
-`
-
-function applyVoucherFilters<TQuery extends SupabaseQueryLike>(
-  query: TQuery,
-  params: VoucherSearchParams
-): TQuery {
-  const { accountSetId, keyword, sourceType, status, voucherDateRange, voucherType } = params
-  if (accountSetId) query = query.eq('account_set_id', accountSetId)
-  if (status) query = query.eq('status', status)
-  if (voucherType) query = query.eq('voucher_type', voucherType)
-  if (sourceType) query = query.eq('source_type', sourceType)
-  if (keyword?.trim()) {
-    const value = keyword.trim()
-    query = query.or(
-      `voucher_no.ilike.%${value}%,summary.ilike.%${value}%,source_no.ilike.%${value}%`
-    )
+function toVoucherListRpcParams(
+  params: VoucherSearchParams & { ids?: string[] },
+  purpose: 'list' | 'export'
+) {
+  const { accountSetId, from = 0, ids, keyword, sourceType, status, to = 19, voucherType } = params
+  return {
+    p_from: Math.max(from, 0),
+    p_to: Math.max(to, from),
+    p_account_set_id: accountSetId || null,
+    p_status: status || null,
+    p_voucher_type: voucherType || null,
+    p_source_type: sourceType || null,
+    p_keyword: keyword?.trim() || null,
+    p_voucher_start_date: params.voucherDateRange?.[0] || null,
+    p_voucher_end_date: params.voucherDateRange?.[1] || null,
+    p_ids: ids?.length ? ids : null,
+    p_purpose: purpose
   }
-  return applyDateRange(query, 'voucher_date', voucherDateRange)
 }
 
 export async function fetchVoucherList(params: VoucherSearchParams) {
-  const { from = 0, to = 19 } = params
-  let query = supabase
-    .from('fms_voucher')
-    .select(VOUCHER_SELECT, { count: 'exact' })
-    .order('voucher_date', { ascending: false })
-    .order('voucher_no', { ascending: false })
-    .range(from, to)
-  query = applyVoucherFilters(query, params)
-  return await responseHandle<Voucher[]>(() => query, {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
+  const result = await responseHandle<VoucherListPayload>(
+    () => supabase.rpc('fms_list_vouchers_secure', toVoucherListRpcParams(params, 'list')),
+    { showErrorMessage: true }
+  )
+  return {
+    data: result.data?.records ?? [],
+    total: result.data?.total ?? 0,
+    error: result.error,
+    fieldAccess: result.data?.fieldAccess ?? {}
+  }
 }
 
 export async function exportVoucherList(
   params: VoucherSearchParams & { ids?: string[]; maxRows?: number }
 ) {
   const { ids, maxRows = 10000 } = params
-  let query = supabase
-    .from('fms_voucher')
-    .select(VOUCHER_SELECT)
-    .order('voucher_date', { ascending: false })
-    .order('voucher_no', { ascending: false })
-    .limit(maxRows)
-  query = ids?.length ? query.in('id', ids) : applyVoucherFilters(query, params)
-  return await responseHandle<Voucher[]>(() => query, {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
+  const result = await responseHandle<VoucherListPayload>(
+    () =>
+      supabase.rpc(
+        'fms_list_vouchers_secure',
+        toVoucherListRpcParams(
+          { ...params, ids, from: 0, to: Math.max(Math.min(maxRows, 10000) - 1, 0) },
+          'export'
+        )
+      ),
+    { showErrorMessage: true }
+  )
+  return {
+    data: result.data?.records ?? [],
+    total: result.data?.total ?? 0,
+    error: result.error,
+    fieldAccess: result.data?.fieldAccess ?? {}
+  }
 }
 
 export async function fetchVoucherDetail(id: string) {
-  const [voucherResult, lineResult, actionResult] = await Promise.all([
-    responseHandle<Voucher>(
-      () => supabase.from('fms_voucher').select(VOUCHER_SELECT).eq('id', id).single(),
-      { breakReturn: true, showErrorMessage: true }
-    ),
-    responseHandle<Api.Fms.VoucherLineRecord[]>(
-      () =>
-        supabase
-          .from('fms_voucher_line')
-          .select(VOUCHER_LINE_SELECT)
-          .eq('voucher_id', id)
-          .order('line_no'),
-      { ignoreCheck: true, showErrorMessage: true }
-    ),
-    responseHandle<Api.Fms.VoucherActionRecord[]>(
-      () =>
-        supabase.from('fms_voucher_action').select('*').eq('voucher_id', id).order('action_time'),
-      { ignoreCheck: true, showErrorMessage: true }
-    )
-  ])
-  return {
-    data: voucherResult.data
-      ? {
-          ...voucherResult.data,
-          lines: lineResult.data ?? [],
-          actions: actionResult.data ?? []
-        }
-      : undefined
-  }
+  return await responseHandle<Voucher>(
+    () => supabase.rpc('fms_get_voucher_secure', { p_voucher_id: id }),
+    { breakReturn: true, showErrorMessage: true }
+  )
 }
 
 export async function saveVoucher(payload: Api.Fms.SaveVoucherPayload) {
   return await responseHandle<Voucher>(
-    () => supabase.rpc('save_fms_voucher', { p_payload: payload }),
+    () => supabase.rpc('save_fms_voucher_secure', { p_payload: payload }),
     {
       breakReturn: true,
       showMessage: true,
@@ -131,7 +108,7 @@ export async function transitionVoucher(
   }
   return await responseHandle<Voucher>(
     () =>
-      supabase.rpc('transition_fms_voucher', {
+      supabase.rpc('transition_fms_voucher_secure', {
         p_voucher_id: id,
         p_action: action,
         p_reason: reason || null,
@@ -143,60 +120,43 @@ export async function transitionVoucher(
 
 export async function fetchVoucherSummary(accountSetId: string) {
   return await responseHandle<Api.Fms.VoucherSummary>(
-    () => supabase.rpc('fms_voucher_summary', { p_account_set_id: accountSetId }).single(),
+    () => supabase.rpc('fms_voucher_summary_secure', { p_account_set_id: accountSetId }),
     { ignoreCheck: true, showErrorMessage: true }
   )
 }
 
 export async function fetchVoucherTemplateList(params: VoucherTemplateSearchParams) {
   const { accountSetId, from = 0, isEnabled, keyword, to = 19, voucherType } = params
-  let query = supabase
-    .from('fms_voucher_template')
-    .select('*', { count: 'exact' })
-    .order('sort')
-    .order('template_code')
-    .range(from, to)
-  if (accountSetId) query = query.eq('account_set_id', accountSetId)
-  if (voucherType) query = query.eq('voucher_type', voucherType)
-  if (typeof isEnabled === 'boolean') query = query.eq('is_enabled', isEnabled)
-  if (keyword?.trim()) {
-    const value = keyword.trim()
-    query = query.or(
-      `template_code.ilike.%${value}%,template_name.ilike.%${value}%,summary.ilike.%${value}%`
-    )
+  const result = await responseHandle<VoucherTemplateListPayload>(
+    () =>
+      supabase.rpc('fms_list_voucher_templates_secure', {
+        p_from: Math.max(from, 0),
+        p_to: Math.max(to, from),
+        p_account_set_id: accountSetId || null,
+        p_voucher_type: voucherType || null,
+        p_is_enabled: typeof isEnabled === 'boolean' ? isEnabled : null,
+        p_keyword: keyword?.trim() || null
+      }),
+    { showErrorMessage: true }
+  )
+  return {
+    data: result.data?.records ?? [],
+    total: result.data?.total ?? 0,
+    error: result.error,
+    fieldAccess: result.data?.fieldAccess ?? {}
   }
-  return await responseHandle<VoucherTemplate[]>(() => query, {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
 }
 
 export async function fetchVoucherTemplateDetail(id: string) {
-  const [templateResult, lineResult] = await Promise.all([
-    responseHandle<VoucherTemplate>(
-      () => supabase.from('fms_voucher_template').select('*').eq('id', id).single(),
-      { breakReturn: true, showErrorMessage: true }
-    ),
-    responseHandle<Api.Fms.VoucherTemplateLineRecord[]>(
-      () =>
-        supabase
-          .from('fms_voucher_template_line')
-          .select(
-            '*, subject:fms_subject(id, subject_code, subject_name), currency:fms_currency(id, currency_code, currency_name)'
-          )
-          .eq('template_id', id)
-          .order('line_no'),
-      { ignoreCheck: true, showErrorMessage: true }
-    )
-  ])
-  return {
-    data: templateResult.data ? { ...templateResult.data, lines: lineResult.data ?? [] } : undefined
-  }
+  return await responseHandle<VoucherTemplate>(
+    () => supabase.rpc('fms_get_voucher_template_secure', { p_template_id: id }),
+    { breakReturn: true, showErrorMessage: true }
+  )
 }
 
 export async function saveVoucherTemplate(payload: Api.Fms.SaveVoucherTemplatePayload) {
   return await responseHandle<VoucherTemplate>(
-    () => supabase.rpc('save_fms_voucher_template', { p_payload: payload }),
+    () => supabase.rpc('save_fms_voucher_template_secure', { p_payload: payload }),
     {
       breakReturn: true,
       showMessage: true,
@@ -207,7 +167,7 @@ export async function saveVoucherTemplate(payload: Api.Fms.SaveVoucherTemplatePa
 
 export async function deleteVoucherTemplate(id: string) {
   return await responseHandle<void>(
-    () => supabase.rpc('delete_fms_voucher_template', { p_template_id: id }),
+    () => supabase.rpc('delete_fms_voucher_template_secure', { p_template_id: id }),
     { breakReturn: true, showMessage: true, message: '凭证模板已删除' }
   )
 }

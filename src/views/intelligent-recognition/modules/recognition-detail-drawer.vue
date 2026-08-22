@@ -163,6 +163,7 @@
   const drawerRef = ref<ArtDrawerExpose<Artifact>>()
   const detail = reactive<{ data?: Artifact; loading: boolean }>({ loading: false })
   const loadError = shallowRef<Error | null>(null)
+  const requestedArtifactId = ref('')
   const confidence = computed(() => confidencePercent(detail.data?.confidence))
   const confidenceClass = computed(() =>
     confidence.value >= 85 ? 'is-high' : confidence.value >= 65 ? 'is-medium' : 'is-low'
@@ -305,7 +306,7 @@
   }
 
   function retryLoad(): void {
-    if (detail.data?.id) void loadDetail(detail.data.id)
+    if (requestedArtifactId.value) void loadDetail(requestedArtifactId.value)
   }
 
   function goBusinessReview(): void {
@@ -327,12 +328,18 @@
   async function handleOpen(row: Artifact | string): Promise<void> {
     const seed = typeof row === 'string' ? undefined : row
     const id = typeof row === 'string' ? row : row.id
+    requestedArtifactId.value = id
     detail.data = seed
     await drawerRef.value?.handleOpen(seed, {
       title: '识别详情与复核依据',
       size: 'lg',
       contentHeight: 'calc(100vh - 132px)',
       onOpen: () => loadDetail(id),
+      onReset: () => {
+        detail.data = undefined
+        loadError.value = null
+        requestedArtifactId.value = ''
+      },
       drawerProps: { appendToBody: true, resizable: true, closeOnClickModal: false }
     })
   }

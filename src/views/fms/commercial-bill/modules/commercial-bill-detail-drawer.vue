@@ -6,7 +6,7 @@
           <div>
             <span>票据编号</span>
             <strong translate="no">{{ bill.billNo }}</strong>
-            <small>{{ bill.externalBillNo || '未登记票面号码' }}</small>
+            <small>{{ referenceSummary }}</small>
           </div>
           <ElTag :type="dictTagType('fmsBillStatus', bill.status)" effect="light">
             {{ dictLabel('fmsBillStatus', bill.status) }}
@@ -32,7 +32,7 @@
             >
               <div class="commercial-bill-detail__event-card">
                 <strong>{{ dictLabel('fmsBillEventType', event.eventType) }}</strong>
-                <span>{{ formatCurrencyValue(event.amount, bill.currencyCode) }}</span>
+                <span>{{ formatProtectedAmount(event.amount) }}</span>
                 <small>{{
                   event.counterpartyName || event.referenceNo || event.remark || '系统登记'
                 }}</small>
@@ -53,7 +53,8 @@
   import type { ArtDrawerExpose } from '@/components/core/drawers/art-drawer/types'
   import ArtDescriptions from '@/components/core/base/art-descriptions/index.vue'
   import type { ArtDescriptionItem } from '@/components/core/base/art-descriptions/types'
-  import { fetchCommercialBillEvents } from '@/api/fms'
+  import { fetchCommercialBillDetail, fetchCommercialBillEvents } from '@/api/fms'
+  import { canViewField } from '@/utils/field-permission'
   import { formatCurrencyValue } from '@/utils/ui'
   import { formatWithDayjs } from '@/utils/time'
   import { useUserStore } from '@/store/modules/user'
@@ -67,6 +68,12 @@
   const bill = ref<Bill>()
   const events = ref<Api.Fms.CommercialBillEventRecord[]>([])
 
+  const canView = (field: Api.Fms.CommercialBillFieldKey): boolean =>
+    canViewField(bill.value?.fieldAccess, field)
+  const referenceSummary = computed(() =>
+    canView('billReferences') ? bill.value?.externalBillNo || '未登记票面号码' : '票面号码已保护'
+  )
+
   function dictLabel(code: keyof typeof getDictMap.value, value: string): string {
     return getDictMap.value[code]?.find((item) => item.value === value)?.label ?? value
   }
@@ -78,27 +85,55 @@
 
   const detailItems = computed<ArtDescriptionItem<Bill>[]>(() => {
     if (!bill.value) return []
-    return [
+    const items: ArtDescriptionItem<Bill>[] = [
       { key: 'direction', label: '票据方向', field: 'direction', dictCode: 'fmsBillDirection' },
       { key: 'billType', label: '票据类型', field: 'billType', dictCode: 'fmsBillType' },
-      { key: 'drawerName', label: '出票人', field: 'drawerName' },
-      { key: 'payeeName', label: '收款人', field: 'payeeName' },
-      { key: 'acceptorName', label: '承兑人', field: 'acceptorName' },
-      { key: 'counterpartyName', label: '往来单位', field: 'counterpartyName' },
       { key: 'issueDate', label: '出票日期', field: 'issueDate', format: 'date' },
       { key: 'dueDate', label: '到期日期', field: 'dueDate', format: 'date' },
-      { key: 'faceAmount', label: '票面金额', field: 'faceAmount', format: 'money' },
-      { key: 'settledAmount', label: '已结金额', field: 'settledAmount', format: 'money' },
       {
         key: 'transferable',
         label: '允许背书',
         field: 'transferable',
         formatter: (_value, row) => (row.transferable ? '允许' : '禁止')
-      },
-      { key: 'sourceNo', label: '来源单号', field: 'sourceNo', copyable: true },
-      { key: 'remark', label: '备注', field: 'remark', span: 2 }
+      }
     ]
+    if (canView('billParties')) {
+      items.splice(
+        2,
+        0,
+        { key: 'drawerName', label: '出票人', field: 'drawerName' },
+        { key: 'payeeName', label: '收款人', field: 'payeeName' },
+        { key: 'acceptorName', label: '承兑人', field: 'acceptorName' },
+        { key: 'counterpartyName', label: '往来单位', field: 'counterpartyName' }
+      )
+    }
+    if (canView('billAmounts')) {
+      items.push(
+        {
+          key: 'faceAmount',
+          label: '票面金额',
+          field: 'faceAmount',
+          formatter: (_value, row) => formatProtectedAmount(row.faceAmount)
+        },
+        {
+          key: 'settledAmount',
+          label: '已结金额',
+          field: 'settledAmount',
+          formatter: (_value, row) => formatProtectedAmount(row.settledAmount)
+        }
+      )
+    }
+    if (canView('billReferences')) {
+      items.push({ key: 'sourceNo', label: '来源单号', field: 'sourceNo', copyable: true })
+    }
+    items.push({ key: 'remark', label: '备注', field: 'remark', span: 2 })
+    return items
   })
+
+  function formatProtectedAmount(value: Api.Tms.BasicData.SensitiveNumber | undefined): string {
+    if (value === null || value === undefined || value === '') return '--'
+    return formatCurrencyValue(value, bill.value?.currencyCode)
+  }
 
   async function handleOpen(row: Bill): Promise<void> {
     bill.value = row
@@ -108,8 +143,12 @@
       size: 'xl',
       contentHeight: 'calc(100vh - 132px)',
       onOpen: async () => {
-        const { data } = await fetchCommercialBillEvents(row.id)
-        events.value = data ?? []
+        const [detailResult, eventResult] = await Promise.all([
+          fetchCommercialBillDetail(row.id),
+          fetchCommercialBillEvents(row.id)
+        ])
+        bill.value = detailResult.data ?? row
+        events.value = eventResult.data ?? []
       },
       drawerProps: { appendToBody: true, resizable: true, closeOnClickModal: false }
     })

@@ -1,9 +1,12 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
+  buildRecognitionBusinessRoute,
   toCashVoucherOcrAnalyzeResponse,
-  toInvoiceOcrAnalyzeResponse
+  toInvoiceOcrAnalyzeResponse,
+  toWaybillExpenseOcrAnalyzeResponse
 } from '../../src/utils/intelligent-recognition'
+import { financePaths } from '../../src/router/business-paths'
 
 function createArtifact(
   feature: Api.IntelligentRecognition.Feature,
@@ -56,4 +59,31 @@ test('invoice artifact keeps valid values and rejects invalid enum values', () =
   assert.equal(response.invoice.invoiceNo, 'INV-001')
   assert.equal(response.invoice.totalAmount, 128.5)
   assert.equal(response.invoice.taxRate, null)
+})
+
+test('waybill expense artifact restores a typed draft and rejects invalid numbers', () => {
+  const artifact = createArtifact('waybill_expense_ocr', {
+    amount: 286.5,
+    occurredOn: '2026-08-20',
+    quantity: Number.NaN,
+    providerName: '能源服务商'
+  })
+  artifact.metadata = { reviewConfidenceThreshold: 'invalid' }
+
+  const response = toWaybillExpenseOcrAnalyzeResponse(artifact)
+
+  assert.equal(response.expense.amount, 286.5)
+  assert.equal(response.expense.occurredOn, '2026-08-20')
+  assert.equal(response.expense.quantity, null)
+  assert.equal(response.expense.providerName, '能源服务商')
+  assert.equal(response.reviewConfidenceThreshold, 0.82)
+})
+
+test('waybill expense review returns to the finance cost workflow', () => {
+  const artifact = createArtifact('waybill_expense_ocr', {})
+
+  assert.deepEqual(buildRecognitionBusinessRoute(artifact), {
+    path: financePaths.waybillCost,
+    query: { aiArtifactId: 'artifact-id' }
+  })
 })

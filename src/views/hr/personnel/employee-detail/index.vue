@@ -42,7 +42,11 @@
             <ElTag effect="plain" round>{{
               profile.organization?.organizationName || '未归属组织'
             }}</ElTag>
-            <ElTag v-if="profile.account?.id" type="success" effect="plain" round
+            <ElTag
+              v-if="canViewMaintenanceAudit && profile.account?.id"
+              type="success"
+              effect="plain"
+              round
               >已开通系统账号</ElTag
             >
           </div>
@@ -54,11 +58,20 @@
           <div
             ><small>入职日期</small><strong>{{ profile.hireDate || '--' }}</strong></div
           >
-          <div
+          <div v-if="canViewContactDetails"
             ><small>联系电话</small><strong>{{ profile.phone || '--' }}</strong></div
           >
         </div>
       </section>
+
+      <ElAlert
+        v-if="limitedAccessSummary"
+        class="employee-detail-page__access-notice"
+        type="info"
+        :closable="false"
+        show-icon
+        :title="limitedAccessSummary"
+      />
 
       <ElTabs v-model="activeTab" class="employee-detail-page__tabs art-card-xs">
         <ElTabPane label="基础信息" name="basic">
@@ -67,33 +80,69 @@
               <ArtSectionTitle>组织与任职</ArtSectionTitle>
               <ArtDescriptions :data="profile" :items="employmentItems" :columns="3" />
             </section>
-            <section class="employee-detail-page__section">
+            <section v-if="canViewIdentityDetails" class="employee-detail-page__section">
               <ArtSectionTitle>个人身份</ArtSectionTitle>
               <ArtDescriptions :data="profile" :items="identityItems" :columns="3" />
             </section>
-            <section class="employee-detail-page__section">
+            <section v-if="contactAndOtherItems.length" class="employee-detail-page__section">
               <ArtSectionTitle>联系与其他</ArtSectionTitle>
-              <ArtDescriptions :data="profile" :items="contactItems" :columns="3" />
+              <ArtDescriptions :data="profile" :items="contactAndOtherItems" :columns="3" />
             </section>
           </div>
         </ElTabPane>
-        <ElTabPane :label="`劳动合同 ${profile.contracts.length}`" name="contracts">
+        <ElTabPane
+          v-if="canViewCareerRecords && !profile.historiesMasked"
+          :label="`劳动合同 ${profile.contracts.length}`"
+          name="contracts"
+        >
           <EmployeeHistoryList v-bind="historyPanels.contracts" :records="profile.contracts" />
         </ElTabPane>
-        <ElTabPane :label="`教育背景 ${profile.educations.length}`" name="educations">
+        <ElTabPane
+          v-if="canViewCareerRecords && !profile.historiesMasked"
+          :label="`教育背景 ${profile.educations.length}`"
+          name="educations"
+        >
           <EmployeeHistoryList v-bind="historyPanels.educations" :records="profile.educations" />
         </ElTabPane>
-        <ElTabPane :label="`工作经历 ${profile.workExperiences.length}`" name="workExperiences">
+        <ElTabPane
+          v-if="canViewCareerRecords && !profile.historiesMasked"
+          :label="`工作经历 ${profile.workExperiences.length}`"
+          name="workExperiences"
+        >
           <EmployeeHistoryList
             v-bind="historyPanels.workExperiences"
             :records="profile.workExperiences"
           />
         </ElTabPane>
-        <ElTabPane :label="`培训经历 ${profile.trainings.length}`" name="trainings">
+        <ElTabPane
+          v-if="canViewCareerRecords && !profile.historiesMasked"
+          :label="`培训经历 ${profile.trainings.length}`"
+          name="trainings"
+        >
           <EmployeeHistoryList v-bind="historyPanels.trainings" :records="profile.trainings" />
         </ElTabPane>
-        <ElTabPane :label="`奖惩经历 ${profile.rewards.length}`" name="rewards">
+        <ElTabPane
+          v-if="canViewCareerRecords && !profile.historiesMasked"
+          :label="`奖惩经历 ${profile.rewards.length}`"
+          name="rewards"
+        >
           <EmployeeHistoryList v-bind="historyPanels.rewards" :records="profile.rewards" />
+        </ElTabPane>
+        <ElTabPane v-if="profile.historiesMasked" label="履历概览" name="histories">
+          <div class="employee-detail-page__masked-history">
+            <ElAlert
+              title="履历内容已按字段权限脱敏，仅展示记录数量。"
+              type="warning"
+              :closable="false"
+              show-icon
+            />
+            <div class="employee-detail-page__history-counts">
+              <div v-for="item in historyCountItems" :key="item.key">
+                <strong>{{ item.value }}</strong
+                ><span>{{ item.label }}</span>
+              </div>
+            </div>
+          </div>
         </ElTabPane>
       </ElTabs>
     </template>
@@ -109,6 +158,7 @@
   import EmployeeHistoryList from './modules/employee-history-list.vue'
   import { fetchEmployeeProfile } from '@/api/hr'
   import { useUserStore } from '@/store/modules/user'
+  import { canViewField, getFieldAccess } from '@/utils/field-permission'
 
   defineOptions({ name: 'HrEmployeeDetail' })
 
@@ -126,6 +176,38 @@
   const employeeInitials = computed(() => {
     const name = profile.value?.employeeName.trim() || ''
     return Array.from(name).slice(0, 1).join('').toUpperCase() || '员'
+  })
+  const canViewContactDetails = computed(() =>
+    canViewField(profile.value?.fieldAccess, 'contactDetails')
+  )
+  const canViewIdentityDetails = computed(() =>
+    canViewField(profile.value?.fieldAccess, 'identityDetails')
+  )
+  const canViewCompensationDetails = computed(() =>
+    canViewField(profile.value?.fieldAccess, 'compensationDetails')
+  )
+  const canViewCareerRecords = computed(() =>
+    canViewField(profile.value?.fieldAccess, 'careerRecords')
+  )
+  const canViewMaintenanceAudit = computed(() =>
+    canViewField(profile.value?.fieldAccess, 'maintenanceAudit')
+  )
+  const isPlaintextField = (field: Api.Hr.EmployeeFieldKey): boolean =>
+    ['read', 'edit'].includes(getFieldAccess(profile.value?.fieldAccess, field))
+  const limitedAccessSummary = computed(() => {
+    if (!profile.value || profile.value.isRecordOwner) return ''
+    const limitedCount = (
+      [
+        'contactDetails',
+        'identityDetails',
+        'compensationDetails',
+        'careerRecords',
+        'maintenanceAudit'
+      ] as Api.Hr.EmployeeFieldKey[]
+    ).filter(
+      (field) => !['read', 'edit'].includes(getFieldAccess(profile.value?.fieldAccess, field))
+    ).length
+    return limitedCount ? `${limitedCount} 组敏感信息已按你的字段权限隐藏或脱敏。` : ''
   })
 
   const employmentItems: DescriptionItem[] = [
@@ -160,7 +242,7 @@
     { key: 'contractStartDate', label: '合同开始', field: 'contractStartDate' },
     { key: 'contractEndDate', label: '合同结束', field: 'contractEndDate' }
   ]
-  const identityItems: DescriptionItem[] = [
+  const identityItemDefinitions: DescriptionItem[] = [
     { key: 'gender', label: '性别', field: 'gender', dictCode: 'sex' },
     { key: 'birthDate', label: '出生日期', field: 'birthDate' },
     { key: 'idCardNo', label: '身份证号', field: 'idCardNo', copyable: true },
@@ -187,7 +269,20 @@
     { key: 'schoolName', label: '毕业院校', field: 'schoolName' },
     { key: 'majorName', label: '专业', field: 'majorName' }
   ]
-  const contactItems: DescriptionItem[] = [
+  const identityItems = computed<DescriptionItem[]>(() =>
+    identityItemDefinitions.map((item) =>
+      isPlaintextField('identityDetails')
+        ? item
+        : {
+            ...item,
+            copyable: false,
+            dictCode: undefined,
+            value: (data: Partial<EmployeeProfile>) =>
+              item.field ? Reflect.get(data, item.field) : undefined
+          }
+    )
+  )
+  const contactItemDefinitions: DescriptionItem[] = [
     { key: 'phone', label: '手机号码', field: 'phone', copyable: true },
     { key: 'email', label: '电子邮箱', field: 'email', copyable: true },
     { key: 'homeAddress', label: '家庭住址', field: 'homeAddress' },
@@ -206,12 +301,29 @@
     },
     { key: 'remark', label: '备注', field: 'remark', span: 3 }
   ]
+  const contactAndOtherItems = computed<DescriptionItem[]>(() =>
+    contactItemDefinitions
+      .filter((item) =>
+        item.key === 'remark' ? canViewCareerRecords.value : canViewContactDetails.value
+      )
+      .map((item) =>
+        item.key === 'remark' || isPlaintextField('contactDetails')
+          ? item
+          : {
+              ...item,
+              copyable: false,
+              dictCode: undefined,
+              value: (data: Partial<EmployeeProfile>) =>
+                item.field ? Reflect.get(data, item.field) : undefined
+            }
+      )
+  )
 
   const dictLabel = (code: string, value: unknown): string => {
     const options = userStore.getDictMap[code] ?? []
     return String(options.find((item) => String(item.value) === String(value))?.label ?? '')
   }
-  const historyPanels = {
+  const historyPanelDefinitions = {
     contracts: createHistoryPanel(
       '劳动合同',
       '合同期限、签署状态、工作地点与薪资信息',
@@ -273,12 +385,12 @@
       [
         item('trainingName', '培训名称'),
         dictItem('trainingType', '培训类型', 'hrTrainingType'),
-        item('institutionName', '培训机构'),
+        item('providerName', '培训机构'),
         item('startDate', '开始日期'),
         item('endDate', '结束日期'),
         dictItem('trainingResult', '培训结果', 'hrTrainingResult'),
         item('certificateNo', '证书编号', true),
-        item('trainingCost', '培训费用'),
+        item('cost', '培训费用'),
         item('remark', '备注', false, 3)
       ],
       (record, index) => String(read(record, 'trainingName') || `培训经历 ${index + 1}`),
@@ -293,7 +405,7 @@
         dictItem('recordLevel', '奖惩级别', 'hrRewardLevel'),
         item('title', '奖惩标题'),
         item('recordDate', '发生日期'),
-        item('organizationName', '颁发/认定机构'),
+        item('issuingOrganization', '颁发/认定机构'),
         item('amount', '金额'),
         item('description', '详细说明', false, 3)
       ],
@@ -301,6 +413,32 @@
       (record) => dictLabel('hrRewardType', read(record, 'recordType'))
     )
   }
+  const compensationKeys = new Set(['monthlySalary', 'cost', 'amount'])
+  const historyPanels = computed(
+    () =>
+      Object.fromEntries(
+        Object.entries(historyPanelDefinitions).map(([key, panel]) => [
+          key,
+          {
+            ...panel,
+            items: canViewCompensationDetails.value
+              ? panel.items
+              : panel.items.filter((item) => !compensationKeys.has(String(item.key)))
+          }
+        ])
+      ) as typeof historyPanelDefinitions
+  )
+  const historyCountItems = computed(() => [
+    { key: 'contracts', label: '劳动合同', value: profile.value?.historyCounts?.contracts ?? 0 },
+    { key: 'educations', label: '教育背景', value: profile.value?.historyCounts?.educations ?? 0 },
+    {
+      key: 'workExperiences',
+      label: '工作经历',
+      value: profile.value?.historyCounts?.workExperiences ?? 0
+    },
+    { key: 'trainings', label: '培训经历', value: profile.value?.historyCounts?.trainings ?? 0 },
+    { key: 'rewards', label: '奖惩经历', value: profile.value?.historyCounts?.rewards ?? 0 }
+  ])
 
   function item(
     key: string,
@@ -358,6 +496,7 @@
       const result = await fetchEmployeeProfile(String(route.params.id || ''))
       if (!result) throw new Error('员工档案不存在，或当前账号无权查看')
       profile.value = result
+      activeTab.value = result.historiesMasked ? 'histories' : 'basic'
     } catch (error) {
       page.error = error instanceof Error ? error : new Error('员工档案加载失败')
     } finally {
@@ -459,6 +598,39 @@
       padding: 0 20px 20px;
     }
 
+    &__access-notice {
+      margin-bottom: 14px;
+    }
+
+    &__masked-history {
+      display: grid;
+      gap: 16px;
+      padding: 8px 0;
+    }
+
+    &__history-counts {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+
+      > div {
+        display: grid;
+        gap: 3px;
+        padding: 16px;
+        text-align: center;
+        background: var(--el-fill-color-lighter);
+        border-radius: var(--custom-radius);
+      }
+
+      strong {
+        font-size: 22px;
+      }
+
+      span {
+        color: var(--el-text-color-secondary);
+      }
+    }
+
     &__sections {
       display: grid;
       gap: 14px;
@@ -477,6 +649,10 @@
 
       &__quick-facts {
         grid-column: 1 / -1;
+      }
+
+      &__history-counts {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
       }
     }
 
@@ -507,6 +683,10 @@
 
       &__tabs {
         padding-inline: 14px;
+      }
+
+      &__history-counts {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
       }
     }
   }

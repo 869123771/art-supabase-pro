@@ -67,6 +67,12 @@
   import { useUserStore } from '@/store/modules/user'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatWithDayjs } from '@/utils/time'
+  import {
+    canEditField,
+    canViewField,
+    formatSensitiveNumber,
+    mergeFieldAccessMaps
+  } from '@/utils/field-permission'
   import { financeRouteNames } from '@/router/business-paths'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { useAuth } from '@/hooks/core/useAuth'
@@ -84,6 +90,7 @@
   defineOptions({ name: 'FinanceCashTransaction' })
 
   type CashTransaction = Api.Fms.CashTransactionRecord
+  type CashTransactionFieldKey = Api.Fms.CashTransactionFieldKey
   type SearchParams = Api.Fms.CashTransactionSearchParams
   type TableParams = SearchParams & Pick<Api.Common.PaginationParams, 'current' | 'size'>
 
@@ -115,6 +122,8 @@
   const paymentDialogRef = ref<DialogExpose>()
   const drawerRef = ref<DrawerExpose>()
   const batchImportDialogRef = ref<{ handleOpen: () => Promise<void> }>()
+  const fieldAccess = ref<Api.Fms.CashTransactionFieldAccessMap>({})
+  const currentRows = ref<CashTransaction[]>([])
 
   const table: UnwrapNestedRefs<TableGroup> = reactive<TableGroup>({
     searchQuery: {
@@ -181,7 +190,9 @@
         type: 'input',
         props: {
           clearable: true,
-          placeholder: '收付款单号、往来单位、银行流水号或备注'
+          placeholder: canViewListField('bankDetails')
+            ? '收付款单号、往来单位、银行流水号或备注'
+            : '收付款单号、往来单位或备注'
         }
       }
     ]),
@@ -211,7 +222,7 @@
         type: 'export',
         exportFilename: 'TMS收付款核销',
         exportSheetName: '收付款核销',
-        exportColumns: excelColumns,
+        exportColumns: excelColumns.value,
         exportApi: ({ selectedIds, searchParams, maxRows }) =>
           exportCashTransactionList({
             ...(searchParams as SearchParams),
@@ -222,11 +233,9 @@
     ])
   })
 
-  function formatMoney(value?: number | null): string {
-    return `¥${Number(value ?? 0).toLocaleString('zh-CN', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    })}`
+  function formatMoney(value?: Api.Tms.BasicData.SensitiveNumber): string {
+    const formatted = formatSensitiveNumber(value)
+    return formatted === '***' || formatted === '--' ? formatted : `¥${formatted}`
   }
 
   const columnsFactory = (): ColumnOption<CashTransaction>[] => [
@@ -246,48 +255,56 @@
       showOverflowTooltip: true
     },
     { prop: 'transactionDate', label: '收付日期', width: 110 },
-    {
-      prop: 'amount',
-      label: '收付金额',
-      width: 135,
-      align: 'right',
-      formatter: (row) => formatMoney(row.amount)
-    },
-    {
-      prop: 'allocatedAmount',
-      label: '已核销',
-      width: 135,
-      align: 'right',
-      formatter: (row) => formatMoney(row.allocatedAmount)
-    },
-    {
-      prop: 'unallocatedAmount',
-      label: '未核销',
-      width: 135,
-      align: 'right',
-      formatter: (row) => formatMoney(row.unallocatedAmount)
-    },
+    ...(canViewListField('transactionAmounts')
+      ? [
+          {
+            prop: 'amount',
+            label: '收付金额',
+            width: 135,
+            align: 'right' as const,
+            formatter: (row: CashTransaction) => formatMoney(row.amount)
+          },
+          {
+            prop: 'allocatedAmount',
+            label: '已核销',
+            width: 135,
+            align: 'right' as const,
+            formatter: (row: CashTransaction) => formatMoney(row.allocatedAmount)
+          },
+          {
+            prop: 'unallocatedAmount',
+            label: '未核销',
+            width: 135,
+            align: 'right' as const,
+            formatter: (row: CashTransaction) => formatMoney(row.unallocatedAmount)
+          }
+        ]
+      : []),
     {
       prop: 'paymentMethod',
       label: '收付方式',
       width: 110,
       dict: { code: 'tmsCashPaymentMethod', display: 'text' }
     },
-    {
-      prop: 'fundAccount',
-      label: '资金账户',
-      minWidth: 180,
-      formatter: (row) =>
-        row.fundAccount
-          ? `${row.fundAccount.accountName} · ${row.fundAccount.accountNoMasked}`
-          : '历史未关联'
-    },
-    {
-      prop: 'bankReference',
-      label: '银行流水号',
-      minWidth: 155,
-      showOverflowTooltip: true
-    },
+    ...(canViewListField('bankDetails')
+      ? [
+          {
+            prop: 'fundAccount',
+            label: '资金账户',
+            minWidth: 180,
+            formatter: (row: CashTransaction) =>
+              row.fundAccount
+                ? `${row.fundAccount.accountName} · ${row.fundAccount.accountNoMasked}`
+                : '历史未关联'
+          },
+          {
+            prop: 'bankReference',
+            label: '银行流水号',
+            minWidth: 155,
+            showOverflowTooltip: true
+          }
+        ]
+      : []),
     {
       prop: 'status',
       label: '核销状态',
@@ -314,7 +331,8 @@
           ) : null}
           {row.direction === 'receipt' &&
             ['pending_allocation', 'partially_allocated'].includes(row.status) &&
-            row.unallocatedAmount > 0 &&
+            sensitiveNumberValue(row.unallocatedAmount) > 0 &&
+            canEditField(row.fieldAccess, 'transactionAmounts') &&
             hasAuth('FinanceCashTransaction:Allocate') && (
               <ElButton link type="primary" onClick={() => void dialogRef.value?.handleOpen(row)}>
                 继续核销
@@ -322,7 +340,8 @@
             )}
           {row.direction === 'payment' &&
             ['pending_allocation', 'partially_allocated'].includes(row.status) &&
-            row.unallocatedAmount > 0 &&
+            sensitiveNumberValue(row.unallocatedAmount) > 0 &&
+            canEditField(row.fieldAccess, 'transactionAmounts') &&
             hasAuth('FinanceCashTransaction:Allocate') && (
               <ElButton
                 link
@@ -333,7 +352,7 @@
               </ElButton>
             )}
           {row.status === 'pending_allocation' &&
-            row.allocatedAmount === 0 &&
+            sensitiveNumberValue(row.allocatedAmount) === 0 &&
             hasAuth('FinanceCashTransaction:Void') && (
               <ElButton link type="danger" onClick={() => void handleVoid(row)}>
                 {row.direction === 'receipt' ? '作废收款' : '作废付款'}
@@ -344,25 +363,55 @@
     }
   ]
 
-  const excelColumns: ArtTableQueryExcelColumn[] = [
+  const excelColumns = computed<ArtTableQueryExcelColumn[]>(() => [
     { key: 'transactionNo', title: '收付款单号' },
     { key: 'direction', title: '方向' },
     { key: 'counterpartyName', title: '往来单位' },
     { key: 'transactionDate', title: '收付日期' },
-    { key: 'amount', title: '收付金额' },
-    { key: 'allocatedAmount', title: '已核销金额' },
-    { key: 'unallocatedAmount', title: '未核销金额' },
+    ...(canViewListField('transactionAmounts')
+      ? [
+          { key: 'amount', title: '收付金额' },
+          { key: 'allocatedAmount', title: '已核销金额' },
+          { key: 'unallocatedAmount', title: '未核销金额' }
+        ]
+      : []),
     { key: 'paymentMethod', title: '收付方式' },
-    { key: 'fundAccount.accountName', title: '资金账户' },
-    { key: 'bankReference', title: '银行流水号' },
+    ...(canViewListField('bankDetails')
+      ? [
+          { key: 'fundAccount.accountName', title: '资金账户' },
+          { key: 'bankReference', title: '银行流水号' }
+        ]
+      : []),
     { key: 'status', title: '核销状态' },
     { key: 'createBy', title: '登记人' },
     { key: 'createTime', title: '登记时间' }
-  ]
+  ])
 
-  function fetchTableData(params: TableParams) {
+  async function fetchTableData(params: TableParams) {
     const { from, to } = pageInfoHandler({ current: params.current, size: params.size })
-    return fetchCashTransactionList({ ...params, from, to })
+    const result = await fetchCashTransactionList({ ...params, from, to })
+    const previousVisibility = getSensitiveColumnVisibility()
+    fieldAccess.value = result.fieldAccess
+    currentRows.value = result.data
+    if (previousVisibility !== getSensitiveColumnVisibility()) {
+      await nextTick()
+      tableQueryRef.value?.resetColumns()
+    }
+    return result
+  }
+
+  const canViewListField = (field: CashTransactionFieldKey): boolean =>
+    canViewField(
+      mergeFieldAccessMaps(fieldAccess.value, ...currentRows.value.map((row) => row.fieldAccess)),
+      field
+    )
+
+  const getSensitiveColumnVisibility = (): string =>
+    `${canViewListField('transactionAmounts')}:${canViewListField('bankDetails')}`
+
+  function sensitiveNumberValue(value?: Api.Tms.BasicData.SensitiveNumber): number {
+    const numeric = Number(value)
+    return Number.isFinite(numeric) ? numeric : 0
   }
 
   async function loadCustomerOptions(): Promise<void> {

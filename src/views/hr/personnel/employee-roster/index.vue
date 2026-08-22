@@ -45,6 +45,7 @@
           >
         </section>
         <ArtTableQuery
+          :key="tablePermissionKey"
           ref="tableQueryRef"
           v-model="searchForm"
           :search-items="searchItems"
@@ -106,6 +107,7 @@
   import OrganizationScopeFilter from '@/views/system/shared/organization-scope-filter.vue'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { formatWithDayjs } from '@/utils/time'
+  import { canViewField, getFieldAccess } from '@/utils/field-permission'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import TreeUtils from '@/utils/tree'
   import { useUserStore } from '@/store/modules/user'
@@ -115,6 +117,8 @@
   defineOptions({ name: 'HrEmployeeRoster' })
   type Employee = Api.Hr.Employee
   type SearchParams = Api.Hr.EmployeeSearchParams
+  type EmployeeFieldKey = Api.Hr.EmployeeFieldKey
+  type EmployeeFieldAccessMap = Api.Hr.EmployeeFieldAccessMap
   type TableParams = SearchParams & Pick<Api.Common.PaginationParams, 'current' | 'size'>
   type Organization = Api.SystemManage.OrganizationScopeFilterItem
   type Tenant = Api.SystemManage.TenantListItem
@@ -144,6 +148,8 @@
   const selectedTenantId = ref(getUserInfo.value.tenantId ?? '')
   const selectedOrganizationKey = ref(ALL_ORGANIZATIONS_KEY)
   const includeDescendantOrganizations = ref(true)
+  const listFieldAccess = ref<EmployeeFieldAccessMap>({})
+  const currentRows = ref<Employee[]>([])
   const overview = reactive<{ total: number; rows: OverviewRow[] }>({ total: 0, rows: [] })
   const searchForm = ref<SearchParams>({
     recordId: typeof route.query.recordId === 'string' ? route.query.recordId : undefined,
@@ -176,13 +182,17 @@
       icon: 'ri:user-follow-line',
       tone: 'success'
     },
-    {
-      label: '已开通账号',
-      value: linkedAccountCount.value,
-      description: '当前页账号关联',
-      icon: 'ri:shield-user-line',
-      tone: 'info'
-    }
+    ...(['read', 'edit'].includes(getFieldAccess(listFieldAccess.value, 'maintenanceAudit'))
+      ? [
+          {
+            label: '已开通账号',
+            value: linkedAccountCount.value,
+            description: '当前页账号关联',
+            icon: 'ri:shield-user-line',
+            tone: 'info' as const
+          }
+        ]
+      : [])
   ])
   const selectedOrganization = computed(() =>
     [ALL_ORGANIZATIONS_KEY, UNASSIGNED_ORGANIZATION_KEY].includes(selectedOrganizationKey.value)
@@ -205,6 +215,16 @@
       .map((item) => item.id)
       .filter((id): id is string => Boolean(id))
   })
+  const shouldDisplayField = (field: EmployeeFieldKey): boolean =>
+    canViewField(listFieldAccess.value, field) ||
+    currentRows.value.some((row) => canViewField(row.fieldAccess, field))
+
+  const tablePermissionKey = computed(() =>
+    (['contactDetails', 'maintenanceAudit'] as const)
+      .map((field) => `${field}:${shouldDisplayField(field) ? 'visible' : 'hidden'}`)
+      .join('|')
+  )
+
   const searchItems = computed<SearchFormItem[]>(() => [
     {
       label: '任职状态',
@@ -235,7 +255,12 @@
       label: '关键词',
       key: 'keyword',
       type: 'input',
-      props: { clearable: true, placeholder: '工号、姓名、手机、邮箱或岗位' }
+      props: {
+        clearable: true,
+        placeholder: canViewField(listFieldAccess.value, 'contactDetails')
+          ? '工号、姓名、手机、邮箱或岗位'
+          : '工号、姓名或岗位'
+      }
     }
   ])
   const headerActions = computed<ArtTableQueryHeaderAction[]>(() => [
@@ -287,33 +312,54 @@
       dict: { code: 'hrEmploymentType', display: 'text' }
     },
     { prop: 'hireDate', label: '入职日期', width: 116, formatter: (row) => row.hireDate || '--' },
-    {
-      prop: 'contact',
-      label: '联系方式',
-      minWidth: 200,
-      formatter: (row) =>
-        h('div', { class: 'hr-roster-contact' }, [
-          h('span', null, row.phone || '未填写手机'),
-          h('small', { title: row.email || undefined }, row.email || '未填写邮箱')
-        ])
-    },
-    {
-      prop: 'account',
-      label: '系统账号',
-      width: 112,
-      formatter: (row) =>
-        h(
-          'span',
-          { class: ['hr-roster-account', row.account?.id ? 'is-linked' : ''] },
-          row.account?.id ? '已开通' : '未开通'
-        )
-    },
-    {
-      prop: 'updateTime',
-      label: '最近维护',
-      width: 160,
-      formatter: (row) => formatWithDayjs(row.updateTime, 'YYYY-MM-DD HH:mm') || '--'
-    },
+    ...(shouldDisplayField('contactDetails')
+      ? [
+          {
+            prop: 'contact',
+            label: '联系方式',
+            minWidth: 200,
+            formatter: (row: Employee) =>
+              canViewField(row.fieldAccess, 'contactDetails')
+                ? h('div', { class: 'hr-roster-contact' }, [
+                    h('span', null, row.phone || '未填写手机'),
+                    h('small', { title: row.email || undefined }, row.email || '未填写邮箱')
+                  ])
+                : '--'
+          }
+        ]
+      : []),
+    ...(shouldDisplayField('maintenanceAudit')
+      ? [
+          {
+            prop: 'account',
+            label: '系统账号',
+            width: 112,
+            formatter: (row: Employee) => {
+              const access = getFieldAccess(row.fieldAccess, 'maintenanceAudit')
+              if (access === 'masked') return '***'
+              return ['read', 'edit'].includes(access)
+                ? h(
+                    'span',
+                    { class: ['hr-roster-account', row.account?.id ? 'is-linked' : ''] },
+                    row.account?.id ? '已开通' : '未开通'
+                  )
+                : '--'
+            }
+          },
+          {
+            prop: 'updateTime',
+            label: '最近维护',
+            width: 160,
+            formatter: (row: Employee) => {
+              const access = getFieldAccess(row.fieldAccess, 'maintenanceAudit')
+              if (access === 'masked') return '***'
+              return ['read', 'edit'].includes(access)
+                ? formatWithDayjs(row.updateTime, 'YYYY-MM-DD HH:mm') || '--'
+                : '--'
+            }
+          }
+        ]
+      : []),
     {
       prop: 'operation',
       label: '操作',
@@ -340,9 +386,9 @@
         ])
     }
   ]
-  const fetchTableData = (params: TableParams) => {
+  const fetchTableData = async (params: TableParams) => {
     const { from, to } = pageInfoHandler({ current: params.current, size: params.size })
-    return fetchEmployeeList({
+    const result = await fetchEmployeeList({
       ...params,
       tenantId: selectedTenantId.value || getUserInfo.value.tenantId,
       organizationIds: selectedOrganizationIds.value,
@@ -350,6 +396,9 @@
       from,
       to
     })
+    listFieldAccess.value = result.fieldAccess
+    currentRows.value = result.data
+    return result
   }
   const handleTableSuccess: NonNullable<ArtTableQueryProps['onSuccess']> = (rows, response) => {
     overview.rows = rows.map((row) => ({

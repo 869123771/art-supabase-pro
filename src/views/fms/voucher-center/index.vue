@@ -61,8 +61,13 @@
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { useAuth } from '@/hooks/core/useAuth'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
-  import { formatCurrencyValue } from '@/utils/ui'
   import { formatWithDayjs } from '@/utils/time'
+  import {
+    canViewField,
+    formatSensitiveNumber,
+    getFieldAccess,
+    mergeFieldAccessMaps
+  } from '@/utils/field-permission'
   import {
     exportVoucherList,
     fetchAccountSetOptions,
@@ -80,7 +85,7 @@
 
   defineOptions({ name: 'FinanceVoucherCenter' })
 
-  type Voucher = Api.Fms.VoucherRecord
+  type Voucher = Api.Fms.SecureVoucherRecord
   type SearchParams = Api.Fms.VoucherSearchParams
   type TableParams = SearchParams & Pick<Api.Common.PaginationParams, 'current' | 'size'>
 
@@ -134,6 +139,13 @@
   const actionDialogRef = ref<ActionDialogExpose>()
   const drawerRef = ref<DrawerExpose>()
   const entryContext = shallowRef<DialogContext>()
+  const currentRows = ref<Voucher[]>([])
+  const listFieldAccess = ref<Api.Fms.VoucherFieldAccessMap>({})
+  const effectiveFieldAccess = computed(() =>
+    mergeFieldAccessMaps(listFieldAccess.value, ...currentRows.value.map((row) => row.fieldAccess))
+  )
+  const canViewListField = (field: Api.Fms.VoucherFieldKey): boolean =>
+    canViewField(effectiveFieldAccess.value, field)
   const summary = reactive<Api.Fms.VoucherSummary>({
     accountSetId: '',
     draftCount: 0,
@@ -201,7 +213,12 @@
         label: '关键词',
         key: 'keyword',
         type: 'input',
-        props: { clearable: true, placeholder: '凭证号、摘要或来源单号' }
+        props: {
+          clearable: true,
+          placeholder: ['凭证号、摘要', canFilterSourceReference.value ? '来源单号' : '']
+            .filter(Boolean)
+            .join('、')
+        }
       }
     ]),
     headerActions: computed<ArtTableQueryHeaderAction[]>(() => {
@@ -217,7 +234,7 @@
         type: 'export',
         exportFilename: '会计凭证台账',
         exportSheetName: '会计凭证',
-        exportColumns: excelColumns,
+        exportColumns: excelColumns.value,
         exportApi: ({ selectedIds, searchParams, maxRows }) =>
           exportVoucherList({
             ...(searchParams as SearchParams),
@@ -228,6 +245,10 @@
       return actions
     })
   })
+
+  const canFilterSourceReference = computed(() =>
+    ['read', 'edit'].includes(getFieldAccess(listFieldAccess.value, 'sourceReferences'))
+  )
 
   const metrics = computed<BusinessWorkspaceMetric[]>(() => [
     {
@@ -256,9 +277,13 @@
     },
     {
       key: 'posted',
-      label: '本期过账额',
-      value: formatMoney(summary.currentPeriodPostedAmount),
-      description: `累计已过账 ${summary.postedCount} 张`,
+      label: canViewField(summary.fieldAccess, 'voucherAmounts') ? '本期过账额' : '本期已过账',
+      value: canViewField(summary.fieldAccess, 'voucherAmounts')
+        ? formatMoney(summary.currentPeriodPostedAmount)
+        : summary.postedCount,
+      description: canViewField(summary.fieldAccess, 'voucherAmounts')
+        ? `累计已过账 ${summary.postedCount} 张`
+        : '金额受字段权限控制',
       icon: 'ri:book-open-line',
       tone: 'success'
     }
@@ -288,7 +313,16 @@
       width: 125,
       dict: { code: 'fmsVoucherSourceType', display: 'text' }
     },
-    { prop: 'sourceNo', label: '来源单号', minWidth: 150, showOverflowTooltip: true },
+    ...(canViewListField('sourceReferences')
+      ? [
+          {
+            prop: 'sourceNo',
+            label: '来源单号',
+            minWidth: 150,
+            showOverflowTooltip: true
+          }
+        ]
+      : []),
     {
       prop: 'lineCount',
       label: '分录',
@@ -296,13 +330,17 @@
       align: 'center',
       formatter: (row) => `${row.lineCount} 条`
     },
-    {
-      prop: 'totalDebit',
-      label: '凭证金额',
-      width: 135,
-      align: 'right',
-      formatter: (row) => formatMoney(row.totalDebit)
-    },
+    ...(canViewListField('voucherAmounts')
+      ? [
+          {
+            prop: 'totalDebit',
+            label: '凭证金额',
+            width: 135,
+            align: 'right' as const,
+            formatter: (row: Voucher) => formatMoney(row.totalDebit)
+          }
+        ]
+      : []),
     {
       prop: 'status',
       label: '状态',
@@ -330,7 +368,7 @@
           ) : null}
           {['draft', 'rejected'].includes(row.status) && (
             <>
-              {hasAuth('FinanceVoucherCenter:Edit') ? (
+              {hasAuth('FinanceVoucherCenter:Edit') && canOpenEdit(row) ? (
                 <ElButton link type="primary" onClick={() => void openDialog(row)}>
                   编辑
                 </ElButton>
@@ -401,24 +439,31 @@
     }
   ]
 
-  const excelColumns: ArtTableQueryExcelColumn[] = [
+  const excelColumns = computed<ArtTableQueryExcelColumn[]>(() => [
     { key: 'voucherNo', title: '凭证号' },
     { key: 'voucherDate', title: '凭证日期' },
     { key: 'voucherType', title: '凭证类型' },
     { key: 'summary', title: '摘要' },
     { key: 'sourceType', title: '业务来源' },
-    { key: 'sourceNo', title: '来源单号' },
+    ...(canViewListField('sourceReferences') ? [{ key: 'sourceNo', title: '来源单号' }] : []),
     { key: 'lineCount', title: '分录数' },
-    { key: 'totalDebit', title: '借方合计' },
-    { key: 'totalCredit', title: '贷方合计' },
+    ...(canViewListField('voucherAmounts')
+      ? [
+          { key: 'totalDebit', title: '借方合计' },
+          { key: 'totalCredit', title: '贷方合计' }
+        ]
+      : []),
     { key: 'status', title: '状态' },
     { key: 'createBy', title: '制单人' },
     { key: 'createTime', title: '制单时间' }
-  ]
+  ])
 
-  function fetchTableData(params: TableParams) {
+  async function fetchTableData(params: TableParams) {
     const { from, to } = pageInfoHandler({ current: params.current, size: params.size })
-    return fetchVoucherList({ ...params, from, to })
+    const result = await fetchVoucherList({ ...params, from, to })
+    listFieldAccess.value = result.fieldAccess
+    currentRows.value = result.data ?? []
+    return result
   }
 
   async function loadSummary(): Promise<void> {
@@ -430,12 +475,16 @@
         approvedCount: 0,
         postedCount: 0,
         reversedCount: 0,
-        currentPeriodPostedAmount: 0
+        currentPeriodPostedAmount: 0,
+        fieldAccess: listFieldAccess.value
       })
       return
     }
     const { data } = await fetchVoucherSummary(table.searchQuery.accountSetId)
-    if (data) Object.assign(summary, data)
+    if (data) {
+      Object.assign(summary, data)
+      if (data.fieldAccess) listFieldAccess.value = data.fieldAccess
+    }
   }
 
   async function loadEntryContext(): Promise<DialogContext | undefined> {
@@ -471,6 +520,10 @@
       return
     const context = await loadEntryContext()
     if (context) await dialogRef.value?.handleOpen(context, row)
+  }
+
+  function canOpenEdit(row: Voucher): boolean {
+    return ['read', 'edit'].includes(getFieldAccess(row.fieldAccess, 'voucherAmounts'))
   }
 
   async function runSimpleAction(
@@ -526,8 +579,8 @@
     }
   }
 
-  function formatMoney(value: number): string {
-    return formatCurrencyValue(Number(value || 0))
+  function formatMoney(value?: Api.Tms.BasicData.SensitiveNumber): string {
+    return formatSensitiveNumber(value)
   }
 
   onMounted(() => void loadAccountSets())

@@ -60,6 +60,7 @@
     setAccountingPeriodStatus
   } from '@/api/fms'
   import { formatWithDayjs } from '@/utils/time'
+  import { getFieldAccess } from '@/utils/field-permission'
 
   defineOptions({ name: 'FinanceAccountingPeriodDrawer' })
 
@@ -112,6 +113,10 @@
   const periodPolicyHint = computed(() => {
     const accountSet = state.accountSet
     if (!accountSet) return ''
+    const policyAccess = getFieldAccess(accountSet.fieldAccess, 'accountingPolicy')
+    if (!['read', 'edit'].includes(policyAccess)) {
+      return '账套启用月份、会计年度起始月和本位币受字段权限保护；期间状态与操作仍按期间按钮权限执行。'
+    }
     const enabledMonth = formatWithDayjs(accountSet.enabledOn, 'YYYY-MM')
     return `当前配置：账套启用月份 ${enabledMonth}，会计年度从 ${accountSet.fiscalYearStartMonth} 月开始。两者是不同口径；期间必须按时间顺序结账，反结账需从最后一个已结期间开始。`
   })
@@ -273,6 +278,9 @@
   }
 
   async function handleOpen(row: AccountSet): Promise<void> {
+    const policyAccess = getFieldAccess(row.fieldAccess, 'accountingPolicy')
+    const subtitle = [`${row.accountSetCode}`]
+    if (policyAccess !== 'hidden') subtitle.push(`本位币 ${row.baseCurrencyCode || '--'}`)
     Object.assign(state, {
       accountSet: row,
       periods: [],
@@ -282,7 +290,7 @@
     })
     await drawerRef.value?.handleOpen(row, {
       title: `会计期间 · ${row.accountSetName}`,
-      subtitle: `${row.accountSetCode} · 本位币 ${row.baseCurrencyCode}`,
+      subtitle: subtitle.join(' · '),
       size: 'xl',
       contentHeight: 'calc(100vh - 132px)',
       scrollbarAlways: true,

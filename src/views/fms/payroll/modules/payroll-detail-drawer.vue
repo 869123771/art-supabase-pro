@@ -19,25 +19,31 @@
           >新增员工</ElButton
         ></div
       ><ElTable :data="lines" row-key="id"
-        ><ElTableColumn prop="employeeNoSnapshot" label="工号" min-width="110" /><ElTableColumn
+        ><ElTableColumn
+          v-if="canViewIdentity"
+          prop="employeeNoSnapshot"
+          label="工号"
+          min-width="110"
+        /><ElTableColumn
+          v-if="canViewIdentity"
           prop="employeeNameSnapshot"
           label="姓名"
           min-width="120"
-        /><ElTableColumn label="应发" min-width="120" align="right"
+        /><ElTableColumn v-if="canViewAmounts" label="应发" min-width="120" align="right"
           ><template #default="{ row }">{{
-            formatCurrencyValue(row.grossAmount)
+            formatProtectedAmount(row.grossAmount)
           }}</template></ElTableColumn
-        ><ElTableColumn label="扣款" min-width="120" align="right"
+        ><ElTableColumn v-if="canViewAmounts" label="扣款" min-width="120" align="right"
           ><template #default="{ row }">{{
-            formatCurrencyValue(row.deductionAmount)
+            formatProtectedAmount(row.deductionAmount)
           }}</template></ElTableColumn
-        ><ElTableColumn label="企业成本" min-width="120" align="right"
+        ><ElTableColumn v-if="canViewAmounts" label="企业成本" min-width="120" align="right"
           ><template #default="{ row }">{{
-            formatCurrencyValue(row.employerCostAmount)
+            formatProtectedAmount(row.employerCostAmount)
           }}</template></ElTableColumn
-        ><ElTableColumn label="实发" min-width="120" align="right"
+        ><ElTableColumn v-if="canViewAmounts" label="实发" min-width="120" align="right"
           ><template #default="{ row }">{{
-            formatCurrencyValue(row.netAmount)
+            formatProtectedAmount(row.netAmount)
           }}</template></ElTableColumn
         ><ElTableColumn v-if="editable" label="操作" width="110" fixed="right"
           ><template #default="{ row }"
@@ -65,7 +71,8 @@
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import { useAuth } from '@/hooks/core/useAuth'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
-  import { deletePayrollLine, fetchPayrollLines } from '@/api/fms'
+  import { deletePayrollLine, fetchPayrollLines, fetchPayrollRunDetail } from '@/api/fms'
+  import { canEditField, canViewField, mergeFieldAccessMaps } from '@/utils/field-permission'
   import { formatCurrencyValue } from '@/utils/ui'
   import { formatWithDayjs } from '@/utils/time'
   import PayrollLineDialog from './payroll-line-dialog.vue'
@@ -79,15 +86,26 @@
   }>()
   const run = ref<Api.Fms.PayrollRunRecord>()
   const lines = ref<Api.Fms.PayrollLineRecord[]>([])
+  const lineFieldAccess = ref<Api.Fms.PayrollFieldAccessMap>({})
+  const effectiveLineAccess = computed(() =>
+    mergeFieldAccessMaps(lineFieldAccess.value, ...lines.value.map((line) => line.fieldAccess))
+  )
+  const canViewIdentity = computed(() =>
+    canViewField(effectiveLineAccess.value, 'employeeIdentity')
+  )
+  const canViewAmounts = computed(() => canViewField(effectiveLineAccess.value, 'salaryAmounts'))
   const editable = computed(
     () =>
       hasAuth('FinancePayroll:Calculate') &&
-      Boolean(run.value && ['draft', 'calculated'].includes(run.value.status))
+      Boolean(run.value && ['draft', 'calculated'].includes(run.value.status)) &&
+      canEditField(lineFieldAccess.value, 'employeeIdentity') &&
+      canEditField(lineFieldAccess.value, 'salaryAmounts')
   )
   async function reload(): Promise<void> {
     if (!run.value) return
-    const { data } = await fetchPayrollLines(run.value.id)
-    lines.value = data ?? []
+    const result = await fetchPayrollLines(run.value.id)
+    lines.value = result.data ?? []
+    lineFieldAccess.value = result.fieldAccess
     emit('success')
   }
   function editLine(rawRow: object): void {
@@ -98,9 +116,13 @@
   async function removeLine(rawRow: object): Promise<void> {
     const row = rawRow as Api.Fms.PayrollLineRecord
     try {
-      await confirmAction(`确定删除 ${row.employeeNameSnapshot} 的薪资明细吗？`, '删除薪资明细', {
-        type: 'warning'
-      })
+      await confirmAction(
+        `确定删除 ${row.employeeNameSnapshot || '该员工'} 的薪资明细吗？`,
+        '删除薪资明细',
+        {
+          type: 'warning'
+        }
+      )
       await deletePayrollLine(row.id)
       await reload()
     } catch {
@@ -108,7 +130,7 @@
     }
   }
   async function handleOpen(row: Api.Fms.PayrollRunRecord): Promise<void> {
-    run.value = row
+    run.value = (await fetchPayrollRunDetail(row.id)).data ?? row
     await reload()
     await drawerRef.value?.handleOpen(undefined, {
       title: `薪资批次详情 · ${row.runNo}`,
@@ -116,6 +138,10 @@
       contentHeight: 'calc(100vh - 132px)',
       drawerProps: { appendToBody: true, resizable: true, closeOnClickModal: false }
     })
+  }
+  function formatProtectedAmount(value: Api.Tms.BasicData.SensitiveNumber | undefined): string {
+    if (value === null || value === undefined || value === '') return '--'
+    return formatCurrencyValue(value)
   }
   defineExpose({ handleOpen })
 </script>

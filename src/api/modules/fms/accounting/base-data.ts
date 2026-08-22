@@ -7,6 +7,11 @@ type AuxiliaryType = Api.Fms.AuxiliaryTypeRecord
 type AuxiliaryItem = Api.Fms.AuxiliaryItemRecord
 type OpeningBalance = Api.Fms.OpeningBalanceRecord
 
+interface OpeningBalanceListPayload {
+  records?: OpeningBalance[]
+  fieldAccess?: Api.Fms.OpeningBalanceFieldAccessMap
+}
+
 const { supabase, keysToSnakeDeep, responseHandle } = useSupabase()
 
 const SUBJECT_SELECT = `
@@ -202,27 +207,24 @@ export async function setAuxiliaryItemEnabled(id: string, isEnabled: boolean) {
 }
 
 export async function fetchOpeningBalanceList(accountSetId: string, fiscalYear: number) {
-  return await responseHandle<OpeningBalance[]>(
+  const result = await responseHandle<OpeningBalanceListPayload>(
     () =>
-      supabase
-        .from('fms_opening_balance')
-        .select(
-          `
-          *,
-          subject:fms_subject(id, subject_code, subject_name, balance_direction),
-          currency:fms_currency(id, currency_code, currency_name)
-        `
-        )
-        .eq('account_set_id', accountSetId)
-        .eq('fiscal_year', fiscalYear)
-        .order('subject(subject_code)', { ascending: true }),
+      supabase.rpc('fms_list_opening_balances_secure', {
+        p_account_set_id: accountSetId,
+        p_fiscal_year: fiscalYear
+      }),
     { ignoreCheck: true, showErrorMessage: true }
   )
+  return {
+    ...result,
+    data: result.data?.records ?? [],
+    fieldAccess: result.data?.fieldAccess ?? {}
+  }
 }
 
 export async function saveOpeningBalance(payload: Api.Fms.SaveOpeningBalancePayload) {
   return await responseHandle<OpeningBalance>(
-    () => supabase.rpc('save_fms_opening_balance', { p_payload: payload }),
+    () => supabase.rpc('save_fms_opening_balance_secure', { p_payload: payload }),
     {
       breakReturn: true,
       showMessage: true,
@@ -232,10 +234,10 @@ export async function saveOpeningBalance(payload: Api.Fms.SaveOpeningBalancePayl
 }
 
 export async function deleteOpeningBalance(id: string) {
-  return await responseHandle<OpeningBalance[]>(
-    () => supabase.from('fms_opening_balance').delete({ count: 'exact' }).eq('id', id).select('*'),
+  return await responseHandle<string>(
+    () => supabase.rpc('delete_fms_opening_balance_secure', { p_balance_id: id }),
     {
-      requireAffected: true,
+      breakReturn: true,
       showMessage: true,
       message: '期初余额记录已删除'
     }
@@ -245,12 +247,10 @@ export async function deleteOpeningBalance(id: string) {
 export async function fetchOpeningBalanceSummary(accountSetId: string, fiscalYear: number) {
   return await responseHandle<Api.Fms.OpeningBalanceSummary>(
     () =>
-      supabase
-        .rpc('fms_opening_balance_summary', {
-          p_account_set_id: accountSetId,
-          p_fiscal_year: fiscalYear
-        })
-        .single(),
+      supabase.rpc('fms_opening_balance_summary_secure', {
+        p_account_set_id: accountSetId,
+        p_fiscal_year: fiscalYear
+      }),
     { ignoreCheck: true, showErrorMessage: true }
   )
 }
@@ -263,7 +263,7 @@ export async function setOpeningBalanceStatus(
 ) {
   return await responseHandle<Api.Fms.OpeningBalanceControlRecord>(
     () =>
-      supabase.rpc('set_fms_opening_balance_status', {
+      supabase.rpc('set_fms_opening_balance_status_secure', {
         p_account_set_id: accountSetId,
         p_fiscal_year: fiscalYear,
         p_status: status,

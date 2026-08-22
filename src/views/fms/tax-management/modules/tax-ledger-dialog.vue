@@ -23,6 +23,7 @@
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import { saveTaxLedgerLine } from '@/api/fms'
   import { useUserStore } from '@/store/modules/user'
+  import { canEditField } from '@/utils/field-permission'
   defineOptions({ name: 'FinanceTaxLedgerDialog' })
   const emit = defineEmits<{ success: [] }>()
   const { getDictMap } = storeToRefs(useUserStore())
@@ -102,6 +103,11 @@
     }
   }
   async function handleOpen(period: Api.Fms.TaxPeriodRecord, line?: Api.Fms.TaxLedgerLineRecord) {
+    const access = line?.fieldAccess ?? period.fieldAccess
+    if (!canEditField(access, 'taxSources') || !canEditField(access, 'taxAmounts')) {
+      ElMessage.warning('你没有该税务期间来源与税额字段的编辑权限')
+      return
+    }
     periodId.value = period.id
     Object.assign(form, {
       id: line?.id,
@@ -109,9 +115,9 @@
       sourceNo: line?.sourceNo || null,
       occurredOn: line?.occurredOn || dayjs().format('YYYY-MM-DD'),
       direction: line?.direction || 'output',
-      taxableAmount: line?.taxableAmount || 0,
-      taxRate: line?.taxRate ?? null,
-      taxAmount: line?.taxAmount || 0,
+      taxableAmount: toFiniteNumber(line?.taxableAmount),
+      taxRate: toNullableFiniteNumber(line?.taxRate),
+      taxAmount: toFiniteNumber(line?.taxAmount),
       isDeductible: line?.isDeductible ?? true,
       remark: line?.remark || null
     })
@@ -122,6 +128,17 @@
       onOpen: () => formRef.value?.clearValidate(),
       dialogProps: { closeOnClickModal: false }
     })
+  }
+  function toFiniteNumber(value: Api.Tms.BasicData.SensitiveNumber | undefined): number {
+    const numberValue = Number(value)
+    return Number.isFinite(numberValue) ? numberValue : 0
+  }
+  function toNullableFiniteNumber(
+    value: Api.Tms.BasicData.SensitiveNumber | undefined | null
+  ): number | null {
+    if (value === null || value === undefined || value === '') return null
+    const numberValue = Number(value)
+    return Number.isFinite(numberValue) ? numberValue : null
   }
   defineExpose({ handleOpen })
 </script>

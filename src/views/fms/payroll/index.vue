@@ -64,6 +64,7 @@
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatCurrencyValue } from '@/utils/ui'
   import { formatWithDayjs } from '@/utils/time'
+  import { canEditField, canViewField, mergeFieldAccessMaps } from '@/utils/field-permission'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { useUserStore } from '@/store/modules/user'
   import {
@@ -99,10 +100,17 @@
     ) => Promise<void>
   }>()
   const accountSetOptions = ref<Api.Fms.AccountSetOption[]>([])
+  const currentRows = ref<Run[]>([])
+  const listFieldAccess = ref<Api.Fms.PayrollFieldAccessMap>({})
   const summary = ref<Api.Fms.PayrollSummary>(emptySummary())
   const table = reactive<{ search: SearchParams }>({
     search: { accountSetId: undefined, status: undefined }
   })
+  const effectiveFieldAccess = computed(() =>
+    mergeFieldAccessMaps(listFieldAccess.value, ...currentRows.value.map((row) => row.fieldAccess))
+  )
+  const canViewListField = (field: Api.Fms.PayrollFieldKey): boolean =>
+    canViewField(effectiveFieldAccess.value, field)
   const metrics = computed<BusinessWorkspaceMetric[]>(() => [
     {
       key: 'run',
@@ -112,30 +120,38 @@
       icon: 'ri:file-list-3-line',
       tone: 'primary'
     },
-    {
-      key: 'employee',
-      label: '核算人次',
-      value: summary.value.employeeCount,
-      description: '批次员工快照合计',
-      icon: 'ri:user-follow-line',
-      tone: 'info'
-    },
-    {
-      key: 'gross',
-      label: '应发合计',
-      value: formatCurrencyValue(summary.value.grossAmount),
-      description: '税前应发口径',
-      icon: 'ri:money-cny-circle-line',
-      tone: 'warning'
-    },
-    {
-      key: 'net',
-      label: '实发合计',
-      value: formatCurrencyValue(summary.value.netAmount),
-      description: '扣款后支付口径',
-      icon: 'ri:secure-payment-line',
-      tone: 'success'
-    }
+    ...(canViewListField('employeeIdentity')
+      ? [
+          {
+            key: 'employee',
+            label: '核算人次',
+            value: formatProtectedCount(summary.value.employeeCount),
+            description: '批次员工快照合计',
+            icon: 'ri:user-follow-line',
+            tone: 'info' as const
+          }
+        ]
+      : []),
+    ...(canViewListField('salaryAmounts')
+      ? [
+          {
+            key: 'gross',
+            label: '应发合计',
+            value: formatProtectedAmount(summary.value.grossAmount),
+            description: '税前应发口径',
+            icon: 'ri:money-cny-circle-line',
+            tone: 'warning' as const
+          },
+          {
+            key: 'net',
+            label: '实发合计',
+            value: formatProtectedAmount(summary.value.netAmount),
+            description: '扣款后支付口径',
+            icon: 'ri:secure-payment-line',
+            tone: 'success' as const
+          }
+        ]
+      : [])
   ])
   const searchItems = computed<SearchFormItem[]>(() => [
     {
@@ -187,35 +203,49 @@
         width: 120,
         formatter: (row) => formatWithDayjs(row.payrollMonth, 'YYYY-MM')
       },
-      { prop: 'employeeCount', label: '员工数', width: 90, align: 'right' },
-      {
-        prop: 'grossAmount',
-        label: '应发金额',
-        minWidth: 130,
-        align: 'right',
-        formatter: (row) => formatCurrencyValue(row.grossAmount)
-      },
-      {
-        prop: 'deductionAmount',
-        label: '扣款金额',
-        minWidth: 130,
-        align: 'right',
-        formatter: (row) => formatCurrencyValue(row.deductionAmount)
-      },
-      {
-        prop: 'employerCostAmount',
-        label: '企业成本',
-        minWidth: 130,
-        align: 'right',
-        formatter: (row) => formatCurrencyValue(row.employerCostAmount)
-      },
-      {
-        prop: 'netAmount',
-        label: '实发金额',
-        minWidth: 130,
-        align: 'right',
-        formatter: (row) => formatCurrencyValue(row.netAmount)
-      },
+      ...(canViewListField('employeeIdentity')
+        ? [
+            {
+              prop: 'employeeCount',
+              label: '员工数',
+              width: 90,
+              align: 'right' as const,
+              formatter: (row: Run) => formatProtectedCount(row.employeeCount)
+            }
+          ]
+        : []),
+      ...(canViewListField('salaryAmounts')
+        ? [
+            {
+              prop: 'grossAmount',
+              label: '应发金额',
+              minWidth: 130,
+              align: 'right' as const,
+              formatter: (row: Run) => formatProtectedAmount(row.grossAmount)
+            },
+            {
+              prop: 'deductionAmount',
+              label: '扣款金额',
+              minWidth: 130,
+              align: 'right' as const,
+              formatter: (row: Run) => formatProtectedAmount(row.deductionAmount)
+            },
+            {
+              prop: 'employerCostAmount',
+              label: '企业成本',
+              minWidth: 130,
+              align: 'right' as const,
+              formatter: (row: Run) => formatProtectedAmount(row.employerCostAmount)
+            },
+            {
+              prop: 'netAmount',
+              label: '实发金额',
+              minWidth: 130,
+              align: 'right' as const,
+              formatter: (row: Run) => formatProtectedAmount(row.netAmount)
+            }
+          ]
+        : []),
       {
         prop: 'status',
         label: '状态',
@@ -255,13 +285,18 @@
   function actionItems(row: Run): ButtonMoreItem[] {
     if (row.status === 'calculated')
       return [
-        {
-          auth: 'FinancePayroll:Approve',
-          key: 'approve',
-          label: '审批并计提',
-          icon: 'ri:check-double-line',
-          color: 'var(--el-color-success)'
-        },
+        ...(canEditField(row.fieldAccess, 'salaryAmounts') &&
+        canEditField(row.fieldAccess, 'payrollReferences')
+          ? [
+              {
+                auth: 'FinancePayroll:Approve',
+                key: 'approve',
+                label: '审批并计提',
+                icon: 'ri:check-double-line',
+                color: 'var(--el-color-success)'
+              }
+            ]
+          : []),
         {
           auth: 'FinancePayroll:Cancel',
           key: 'cancel',
@@ -271,15 +306,18 @@
         }
       ]
     if (row.status === 'approved')
-      return [
-        {
-          auth: 'FinancePayroll:Pay',
-          key: 'pay',
-          label: '确认发放',
-          icon: 'ri:secure-payment-line',
-          color: 'var(--el-color-success)'
-        }
-      ]
+      return canEditField(row.fieldAccess, 'salaryAmounts') &&
+        canEditField(row.fieldAccess, 'payrollReferences')
+        ? [
+            {
+              auth: 'FinancePayroll:Pay',
+              key: 'pay',
+              label: '确认发放',
+              icon: 'ri:secure-payment-line',
+              color: 'var(--el-color-success)'
+            }
+          ]
+        : []
     if (row.status === 'draft')
       return [
         {
@@ -294,12 +332,16 @@
   }
   async function fetchTableData(params: TableParams) {
     const { from, to } = pageInfoHandler({ current: params.current, size: params.size })
-    return await fetchPayrollRunList({ ...params, from, to })
+    const result = await fetchPayrollRunList({ ...params, from, to })
+    listFieldAccess.value = result.fieldAccess
+    currentRows.value = result.data ?? []
+    return result
   }
   async function loadSummary(): Promise<void> {
     if (!table.search.accountSetId) return void (summary.value = emptySummary())
     const { data } = await fetchPayrollSummary(table.search.accountSetId)
     summary.value = data ?? emptySummary()
+    if (data?.fieldAccess) listFieldAccess.value = data.fieldAccess
   }
   async function handleAction(item: ButtonMoreItem, row: Run): Promise<void> {
     try {
@@ -321,7 +363,7 @@
             fundExecutionRef.value?.handleOpen(
               {
                 accountSetId: row.accountSetId,
-                amount: row.netAmount,
+                amount: toFiniteNumber(row.netAmount),
                 direction: 'outflow',
                 title: `确认发放 · ${row.runNo}`,
                 subtitle: '选择实际扣款账户，系统会同步登记资金日记账和薪资支付凭证',
@@ -351,6 +393,23 @@
   }
   async function refreshAll(): Promise<void> {
     await Promise.all([tableRef.value?.refreshUpdate(), loadSummary()])
+  }
+  function toFiniteNumber(value: Api.Tms.BasicData.SensitiveNumber | undefined): number {
+    const numberValue = Number(value)
+    return Number.isFinite(numberValue) ? numberValue : 0
+  }
+  function formatProtectedAmount(
+    value: Api.Tms.BasicData.SensitiveNumber | undefined | null
+  ): string {
+    if (value === null || value === undefined || value === '') return '--'
+    return formatCurrencyValue(value)
+  }
+  function formatProtectedCount(
+    value: Api.Tms.BasicData.SensitiveNumber | undefined | null
+  ): string {
+    if (value === null || value === undefined || value === '') return '--'
+    if (typeof value === 'string') return value
+    return value.toLocaleString('zh-CN')
   }
   watch(() => table.search.accountSetId, loadSummary)
   onMounted(async () => {

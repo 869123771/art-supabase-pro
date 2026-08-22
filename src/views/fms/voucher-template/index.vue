@@ -55,6 +55,7 @@
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { useAuth } from '@/hooks/core/useAuth'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
+  import { canViewField, getFieldAccess, mergeFieldAccessMaps } from '@/utils/field-permission'
   import {
     deleteVoucherTemplate,
     fetchAccountSetOptions,
@@ -96,6 +97,13 @@
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<DialogExpose>()
   const entryContext = shallowRef<DialogContext>()
+  const currentRows = ref<Template[]>([])
+  const listFieldAccess = ref<Api.Fms.VoucherTemplateFieldAccessMap>({})
+  const effectiveFieldAccess = computed(() =>
+    mergeFieldAccessMaps(listFieldAccess.value, ...currentRows.value.map((row) => row.fieldAccess))
+  )
+  const canViewListField = (field: Api.Fms.VoucherTemplateFieldKey): boolean =>
+    canViewField(effectiveFieldAccess.value, field)
 
   const table: UnwrapNestedRefs<TableGroup> = reactive<TableGroup>({
     searchQuery: {
@@ -120,17 +128,21 @@
           }
         }
       },
-      {
-        label: '凭证类型',
-        key: 'voucherType',
-        type: 'select',
-        props: {
-          options: (getDictMap.value.fmsVoucherType ?? []).filter(
-            (item) => item.value !== 'reversal'
-          ),
-          clearable: true
-        }
-      },
+      ...(canViewListField('templateEntries')
+        ? [
+            {
+              label: '凭证类型',
+              key: 'voucherType',
+              type: 'select' as const,
+              props: {
+                options: (getDictMap.value.fmsVoucherType ?? []).filter(
+                  (item) => item.value !== 'reversal'
+                ),
+                clearable: true
+              }
+            }
+          ]
+        : []),
       {
         label: '启用状态',
         key: 'isEnabled',
@@ -147,7 +159,14 @@
         label: '关键词',
         key: 'keyword',
         type: 'input',
-        props: { clearable: true, placeholder: '模板编码、名称或摘要' }
+        props: {
+          clearable: true,
+          placeholder: ['read', 'edit'].includes(
+            getFieldAccess(listFieldAccess.value, 'templateNarrative')
+          )
+            ? '模板编码、名称或摘要'
+            : '模板编码或名称'
+        }
       }
     ]),
     headerActions: computed<ArtTableQueryHeaderAction[]>(() => [
@@ -169,13 +188,21 @@
       formatter: (row) => <span class="voucher-template-page__code">{row.templateCode}</span>
     },
     { prop: 'templateName', label: '模板名称', minWidth: 210, showOverflowTooltip: true },
-    {
-      prop: 'voucherType',
-      label: '凭证类型',
-      width: 120,
-      dict: { code: 'fmsVoucherType', display: 'text' }
-    },
-    { prop: 'summary', label: '默认摘要', minWidth: 230, showOverflowTooltip: true },
+    ...(canViewListField('templateEntries')
+      ? ([
+          {
+            prop: 'voucherType',
+            label: '凭证类型',
+            width: 120,
+            dict: { code: 'fmsVoucherType', display: 'text' }
+          }
+        ] as ColumnOption<Template>[])
+      : []),
+    ...(canViewListField('templateNarrative')
+      ? ([
+          { prop: 'summary', label: '默认摘要', minWidth: 230, showOverflowTooltip: true }
+        ] as ColumnOption<Template>[])
+      : []),
     { prop: 'sort', label: '排序', width: 80, align: 'center' },
     {
       prop: 'isEnabled',
@@ -185,7 +212,11 @@
         <ElTag type={row.isEnabled ? 'success' : 'info'}>{row.isEnabled ? '启用' : '停用'}</ElTag>
       )
     },
-    { prop: 'updateBy', label: '最后维护人', minWidth: 150, showOverflowTooltip: true },
+    ...(canViewListField('maintenanceAudit')
+      ? ([
+          { prop: 'updateBy', label: '最后维护人', minWidth: 150, showOverflowTooltip: true }
+        ] as ColumnOption<Template>[])
+      : []),
     {
       prop: 'operation',
       label: '操作',
@@ -208,9 +239,12 @@
     }
   ]
 
-  function fetchTableData(params: TableParams) {
+  async function fetchTableData(params: TableParams) {
     const { from, to } = pageInfoHandler({ current: params.current, size: params.size })
-    return fetchVoucherTemplateList({ ...params, from, to })
+    const result = await fetchVoucherTemplateList({ ...params, from, to })
+    listFieldAccess.value = result.fieldAccess
+    currentRows.value = result.data ?? []
+    return result
   }
 
   async function loadEntryContext(): Promise<DialogContext | undefined> {

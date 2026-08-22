@@ -67,6 +67,8 @@ declare namespace Api {
     type EnableStatus = '1' | '2'
     /** Element Plus Tag 预设类型 */
     type TagPreset = 'primary' | 'success' | 'info' | 'warning' | 'danger'
+    /** 敏感字段统一访问级别 */
+    type FieldAccessLevel = 'hidden' | 'masked' | 'read' | 'edit'
     /** 字典项保存的 Tag 类型，空值表示默认样式 */
     type TagType = '' | TagPreset
   }
@@ -254,6 +256,16 @@ declare namespace Api {
       subjectType: FieldPermissionSubjectType
       subjectId: string
       fields: FieldPermissionField[]
+    }
+
+    interface FieldPermissionAuditLog {
+      id: string
+      action: 'replace' | 'clear'
+      beforeValue: Record<string, Api.Tms.BasicData.FieldAccessLevel>
+      afterValue: Record<string, Api.Tms.BasicData.FieldAccessLevel>
+      actorName: string
+      actorEmail?: string | null
+      createTime: string
     }
 
     type OrganizationType = 'company' | 'division' | 'department' | 'team'
@@ -1336,6 +1348,57 @@ declare namespace Api {
   namespace Hr {
     type EmploymentStatus = 'probation' | 'active' | 'leave' | 'terminated'
     type EmploymentType = 'full_time' | 'part_time' | 'intern' | 'contractor'
+    type PositionKind = 'standard' | 'driver'
+    type EmployeeFieldKey =
+      | 'contactDetails'
+      | 'identityDetails'
+      | 'compensationDetails'
+      | 'careerRecords'
+      | 'maintenanceAudit'
+    type EmployeeFieldAccessMap = Partial<Record<EmployeeFieldKey, Api.Common.FieldAccessLevel>>
+    type ProtectedAmount = number | string | null
+
+    interface Position {
+      id?: string
+      tenantId?: string
+      tenant?: Pick<SystemManage.TenantListItem, 'id' | 'tenantCode' | 'tenantName'> | null
+      positionCode: string
+      positionName: string
+      positionKind?: PositionKind
+      systemCode?: string | null
+      enabled: boolean
+      sort: number
+      description?: string | null
+      employeeCount?: number
+      createBy?: string
+      createTime?: string
+      updateBy?: string
+      updateTime?: string
+    }
+
+    type PositionSearchParams = Partial<
+      Pick<Position, 'tenantId' | 'enabled'> &
+        Api.Common.CommonSearchParams & {
+          keyword?: string
+        }
+    >
+
+    interface PositionOption {
+      id: string
+      tenantId: string
+      positionCode: string
+      positionName: string
+      positionKind: PositionKind
+      systemCode?: string | null
+      enabled: boolean
+    }
+
+    interface EmployeeDriverInput {
+      carrierId: string
+      driverType: Tms.BasicData.Driver['driverType']
+      licenseType: string
+      licenseExpireDate: string
+    }
 
     interface EmployeeAccount {
       id: string
@@ -1352,6 +1415,7 @@ declare namespace Api {
         SystemManage.OrganizationListItem,
         'id' | 'organizationCode' | 'organizationName'
       > | null
+      positionId?: string | null
       employeeNo: string
       employeeName: string
       avatarUrl?: string | null
@@ -1385,6 +1449,8 @@ declare namespace Api {
       createTime?: string
       updateBy?: string
       updateTime?: string
+      fieldAccess?: EmployeeFieldAccessMap
+      isRecordOwner?: boolean
     }
 
     type EmployeeSearchParams = Partial<
@@ -1410,7 +1476,7 @@ declare namespace Api {
       endDate?: string | null
       probationEndDate?: string | null
       workLocation?: string | null
-      monthlySalary?: number | null
+      monthlySalary?: ProtectedAmount
       remark?: string | null
     }
 
@@ -1456,7 +1522,7 @@ declare namespace Api {
       trainingResult?: string | null
       certificateName?: string | null
       certificateNo?: string | null
-      cost?: number | null
+      cost?: ProtectedAmount
       remark?: string | null
     }
 
@@ -1469,7 +1535,7 @@ declare namespace Api {
       title: string
       recordDate: string
       issuingOrganization?: string | null
-      amount?: number | null
+      amount?: ProtectedAmount
       description?: string | null
     }
 
@@ -1479,15 +1545,20 @@ declare namespace Api {
       workExperiences: EmployeeWorkExperience[]
       trainings: EmployeeTraining[]
       rewards: EmployeeReward[]
+      historyCounts?: Partial<
+        Record<'contracts' | 'educations' | 'workExperiences' | 'trainings' | 'rewards', number>
+      >
+      historiesMasked?: boolean
     }
 
     interface EmployeeProfilePayload {
       employee: Employee
-      contracts: EmployeeContract[]
-      educations: EmployeeEducation[]
-      workExperiences: EmployeeWorkExperience[]
-      trainings: EmployeeTraining[]
-      rewards: EmployeeReward[]
+      driver?: EmployeeDriverInput | null
+      contracts?: EmployeeContract[]
+      educations?: EmployeeEducation[]
+      workExperiences?: EmployeeWorkExperience[]
+      trainings?: EmployeeTraining[]
+      rewards?: EmployeeReward[]
     }
 
     interface EmployeeSelectorItem {
@@ -1954,6 +2025,7 @@ declare namespace Api {
       interface Driver {
         id?: string
         tenantId?: string
+        employeeId?: string | null
         carrierId: string
         driverName: string
         phone?: string
@@ -1979,6 +2051,27 @@ declare namespace Api {
         updateTime?: string
         fieldAccess?: DriverFieldAccessMap
         isRecordOwner?: boolean
+      }
+
+      interface DriverEmployeeOption {
+        id: string
+        tenantId: string
+        tenant: Pick<Api.SystemManage.TenantListItem, 'id' | 'tenantCode' | 'tenantName'>
+        employeeNo: string
+        employeeName: string
+        organizationId?: string | null
+        organization?: Pick<
+          Api.SystemManage.OrganizationListItem,
+          'id' | 'organizationCode' | 'organizationName'
+        > | null
+        jobTitle?: string | null
+        employmentStatus: Api.Hr.EmploymentStatus
+        gender?: string | null
+        phone?: string | null
+        idCardNo?: string | null
+        homeAddress?: string | null
+        emergencyContactName?: string | null
+        emergencyContactPhone?: string | null
       }
 
       interface DriverAssignedVehicle {
@@ -3019,6 +3112,15 @@ declare namespace Api {
       | 'void'
       | 'reverse'
       | 'reversal_create'
+    type VoucherFieldKey =
+      'voucherAmounts' | 'sourceReferences' | 'voucherAttachments' | 'auditTrail'
+    type VoucherFieldAccessMap = Partial<Record<VoucherFieldKey, Api.Common.FieldAccessLevel>>
+
+    type AccountSetFieldKey = 'taxRegistration' | 'accountingPolicy' | 'administrativeAudit'
+    type AccountSetFieldAccessMap = Partial<Record<AccountSetFieldKey, Api.Common.FieldAccessLevel>>
+    type ProtectedAccountingStandard = AccountingStandard | '***'
+    type ProtectedVatTaxpayerType = VatTaxpayerType | '***'
+    type ProtectedFiscalMonth = number | '***'
 
     interface AccountSetRecord {
       id: string
@@ -3028,19 +3130,21 @@ declare namespace Api {
       accountSetName: string
       legalEntityName: string
       unifiedSocialCreditCode?: string | null
-      accountingStandard: AccountingStandard
-      vatTaxpayerType: VatTaxpayerType
-      baseCurrencyCode: string
-      enabledOn: string
-      fiscalYearStartMonth: number
+      accountingStandard?: ProtectedAccountingStandard
+      vatTaxpayerType?: ProtectedVatTaxpayerType
+      baseCurrencyCode?: string
+      enabledOn?: string
+      fiscalYearStartMonth?: ProtectedFiscalMonth
       status: AccountSetStatus
       isDefault: boolean
       remark?: string | null
-      version: number
+      version?: number | '***'
       createBy?: string | null
-      createTime: string
+      createTime?: string
       updateBy?: string | null
-      updateTime: string
+      updateTime?: string
+      fieldAccess?: AccountSetFieldAccessMap
+      isRecordOwner?: boolean
     }
 
     type AccountSetSearchParams = Api.Common.CommonSearchParams & {
@@ -3274,9 +3378,38 @@ declare namespace Api {
       'id' | 'externalEntityType' | 'externalEntityId' | 'createTime' | 'updateTime'
     > & { id?: string }
 
+    type OpeningBalanceFieldKey = 'balanceAmounts' | 'auxiliaryDetails' | 'controlAudit'
+    type OpeningBalanceFieldAccessMap = Partial<
+      Record<OpeningBalanceFieldKey, Api.Common.FieldAccessLevel>
+    >
+    type OpeningBalanceSensitiveNumber = number | string
+
     interface OpeningBalanceRecord {
       id: string
-      tenantId: string
+      accountSetId: string
+      fiscalYear: number
+      subjectId: string
+      currencyId?: string | null
+      auxiliaryValues?: Record<string, string>
+      openingDebit?: OpeningBalanceSensitiveNumber
+      openingCredit?: OpeningBalanceSensitiveNumber
+      yearToDateDebit?: OpeningBalanceSensitiveNumber
+      yearToDateCredit?: OpeningBalanceSensitiveNumber
+      openingQuantity?: OpeningBalanceSensitiveNumber
+      originalCurrencyAmount?: OpeningBalanceSensitiveNumber
+      createTime?: string
+      updateTime?: string
+      subject?: Pick<
+        SubjectRecord,
+        'id' | 'subjectCode' | 'subjectName' | 'balanceDirection'
+      > | null
+      currency?: Pick<CurrencyRecord, 'id' | 'currencyCode' | 'currencyName'> | null
+      fieldAccess?: OpeningBalanceFieldAccessMap
+      isRecordOwner?: boolean
+    }
+
+    interface SaveOpeningBalancePayload {
+      id?: string
       accountSetId: string
       fiscalYear: number
       subjectId: string
@@ -3288,23 +3421,10 @@ declare namespace Api {
       yearToDateCredit: number
       openingQuantity: number
       originalCurrencyAmount: number
-      createTime: string
-      updateTime: string
-      subject?: Pick<
-        SubjectRecord,
-        'id' | 'subjectCode' | 'subjectName' | 'balanceDirection'
-      > | null
-      currency?: Pick<CurrencyRecord, 'id' | 'currencyCode' | 'currencyName'> | null
     }
-
-    type SaveOpeningBalancePayload = Omit<
-      OpeningBalanceRecord,
-      'id' | 'createTime' | 'updateTime' | 'subject' | 'currency'
-    > & { id?: string }
 
     interface OpeningBalanceControlRecord {
       id: string
-      tenantId: string
       accountSetId: string
       fiscalYear: number
       status: OpeningBalanceStatus
@@ -3313,9 +3433,10 @@ declare namespace Api {
       reopenedAt?: string | null
       reopenedBy?: string | null
       reopenReason?: string | null
-      reopenCount: number
-      createTime: string
-      updateTime: string
+      reopenCount?: OpeningBalanceSensitiveNumber
+      createTime?: string
+      updateTime?: string
+      fieldAccess?: OpeningBalanceFieldAccessMap
     }
 
     interface OpeningBalanceSummary {
@@ -3323,10 +3444,12 @@ declare namespace Api {
       fiscalYear: number
       status: OpeningBalanceStatus
       entryCount: number
-      openingDebit: number
-      openingCredit: number
-      difference: number
+      openingDebit?: OpeningBalanceSensitiveNumber
+      openingCredit?: OpeningBalanceSensitiveNumber
+      difference?: OpeningBalanceSensitiveNumber
       isBalanced: boolean
+      fieldAccess?: OpeningBalanceFieldAccessMap
+      control?: OpeningBalanceControlRecord | null
     }
 
     interface AuxiliarySyncResult {
@@ -3439,6 +3562,25 @@ declare namespace Api {
       actions?: VoucherActionRecord[]
     }
 
+    type SecureVoucherLineRecord = Omit<
+      VoucherLineRecord,
+      'exchangeRate' | 'originalAmount' | 'quantity' | 'debitAmount' | 'creditAmount'
+    > & {
+      exchangeRate?: Api.Tms.BasicData.SensitiveNumber
+      originalAmount?: Api.Tms.BasicData.SensitiveNumber
+      quantity?: Api.Tms.BasicData.SensitiveNumber
+      debitAmount?: Api.Tms.BasicData.SensitiveNumber
+      creditAmount?: Api.Tms.BasicData.SensitiveNumber
+    }
+
+    type SecureVoucherRecord = Omit<VoucherRecord, 'totalDebit' | 'totalCredit' | 'lines'> & {
+      totalDebit?: Api.Tms.BasicData.SensitiveNumber
+      totalCredit?: Api.Tms.BasicData.SensitiveNumber
+      lines?: SecureVoucherLineRecord[]
+      fieldAccess?: VoucherFieldAccessMap
+      isRecordOwner?: boolean
+    }
+
     type VoucherSearchParams = Api.Common.CommonSearchParams & {
       accountSetId?: string
       status?: VoucherStatus | ''
@@ -3468,7 +3610,8 @@ declare namespace Api {
       approvedCount: number
       postedCount: number
       reversedCount: number
-      currentPeriodPostedAmount: number
+      currentPeriodPostedAmount?: Api.Tms.BasicData.SensitiveNumber
+      fieldAccess?: VoucherFieldAccessMap
     }
 
     interface VoucherTemplateLineRecord {
@@ -3489,23 +3632,31 @@ declare namespace Api {
       currency?: Pick<CurrencyRecord, 'id' | 'currencyCode' | 'currencyName'> | null
     }
 
+    type VoucherTemplateFieldKey = 'templateNarrative' | 'templateEntries' | 'maintenanceAudit'
+    type VoucherTemplateFieldAccessMap = Partial<
+      Record<VoucherTemplateFieldKey, Api.Common.FieldAccessLevel>
+    >
+
     interface VoucherTemplateRecord {
       id: string
       tenantId: string
       accountSetId: string
       templateCode: string
       templateName: string
-      voucherType: Exclude<VoucherType, 'reversal'>
+      voucherType?: Exclude<VoucherType, 'reversal'> | '***'
       summary?: string | null
       isEnabled: boolean
       sort: number
       remark?: string | null
-      version: number
+      version?: number | '***'
       createBy?: string | null
-      createTime: string
+      createTime?: string
       updateBy?: string | null
-      updateTime: string
-      lines?: VoucherTemplateLineRecord[]
+      updateTime?: string
+      lines?: VoucherTemplateLineRecord[] | '***'
+      lineCount?: number
+      fieldAccess?: VoucherTemplateFieldAccessMap
+      isRecordOwner?: boolean
     }
 
     type VoucherTemplateSearchParams = Api.Common.CommonSearchParams & {
@@ -3520,12 +3671,12 @@ declare namespace Api {
       accountSetId: string
       templateCode: string
       templateName: string
-      voucherType: Exclude<VoucherType, 'reversal'>
+      voucherType?: Exclude<VoucherType, 'reversal'>
       summary?: string | null
       isEnabled: boolean
       sort: number
       remark?: string | null
-      lines: VoucherTemplateLineRecord[]
+      lines?: VoucherTemplateLineRecord[]
     }
 
     type PostingSourceType = Exclude<VoucherSourceType, 'manual' | 'reversal'>
@@ -3664,8 +3815,79 @@ declare namespace Api {
       lastError?: string | null
     }
 
+    type AutoPostingFieldKey =
+      | 'ruleConfiguration'
+      | 'eventAmounts'
+      | 'eventPayloadDetails'
+      | 'eventSourceReferences'
+      | 'processingDiagnostics'
+    type AutoPostingFieldAccessMap = Partial<
+      Record<AutoPostingFieldKey, Api.Common.FieldAccessLevel>
+    >
+
+    interface SecurePostingRuleRecord extends Omit<
+      PostingRuleRecord,
+      'tenantId' | 'voucherType' | 'submissionMode' | 'matchConditions' | 'remark' | 'lines'
+    > {
+      tenantId?: string
+      voucherType?: Exclude<VoucherType, 'reversal'> | '***'
+      submissionMode?: PostingSubmissionMode | '***'
+      matchConditions?: Record<string, unknown>
+      remark?: string | null
+      lines?: PostingRuleLineRecord[]
+      configurationMasked?: boolean
+      fieldAccess?: AutoPostingFieldAccessMap
+      isRecordOwner?: boolean
+    }
+
+    interface SecurePostingEventRecord extends Omit<
+      PostingEventRecord,
+      | 'tenantId'
+      | 'sourceId'
+      | 'sourceNo'
+      | 'summary'
+      | 'payload'
+      | 'ruleId'
+      | 'originVoucherId'
+      | 'voucherId'
+      | 'attemptCount'
+      | 'lastError'
+      | 'processedAt'
+      | 'createBy'
+      | 'updateBy'
+      | 'rule'
+      | 'voucher'
+    > {
+      tenantId?: string
+      sourceId?: string
+      sourceNo?: string | null
+      summary?: string | null
+      payload: Record<string, unknown>
+      ruleId?: string | null
+      originVoucherId?: string | null
+      voucherId?: string | null
+      attemptCount?: Api.Tms.BasicData.SensitiveNumber
+      lastError?: string | null
+      processedAt?: string | null
+      createBy?: string | null
+      updateBy?: string | null
+      rule?: { id: string; ruleCode: string; ruleName: string } | null
+      voucher?: {
+        id: string
+        voucherNo: string
+        status: VoucherStatus | '***'
+        totalDebit?: Api.Tms.BasicData.SensitiveNumber
+      } | null
+      fieldAccess?: AutoPostingFieldAccessMap
+      isRecordOwner?: boolean
+    }
+
     type FundAccountType = 'bank' | 'cash' | 'digital_wallet'
     type FundAccountStatus = 'active' | 'frozen' | 'closed'
+    type FundAccountFieldKey = 'accountDetails' | 'accountBalances'
+    type FundAccountFieldAccessMap = Partial<
+      Record<FundAccountFieldKey, Api.Tms.BasicData.FieldAccessLevel>
+    >
     type FundLedgerDirection = 'inflow' | 'outflow'
     type FundLedgerSourceType =
       | 'customer_receipt'
@@ -3674,7 +3896,13 @@ declare namespace Api {
       | 'fund_transfer'
       | 'manual_adjustment'
       | 'opening'
+      | 'commercial_bill'
+      | 'fixed_asset'
+      | 'payroll'
+      | 'tax'
     type FundLedgerStatus = 'posted' | 'reversed'
+    type FundLedgerFieldKey = 'accountDetails' | 'ledgerAmounts' | 'transactionDetails'
+    type FundLedgerFieldAccessMap = Partial<Record<FundLedgerFieldKey, Api.Common.FieldAccessLevel>>
 
     interface FundAccountRecord {
       id: string
@@ -3686,9 +3914,9 @@ declare namespace Api {
       accountType: FundAccountType
       bankName?: string | null
       bankBranch?: string | null
-      accountNoMasked: string
-      openingBalance: number
-      frozenBalance: number
+      accountNoMasked?: string
+      openingBalance?: Api.Tms.BasicData.SensitiveNumber
+      frozenBalance?: Api.Tms.BasicData.SensitiveNumber
       status: FundAccountStatus
       isDefault: boolean
       onlineBankingEnabled: boolean
@@ -3700,14 +3928,16 @@ declare namespace Api {
       createTime: string
       updateBy?: string | null
       updateTime: string
-      inflowAmount: number
-      outflowAmount: number
-      currentBalance: number
-      availableBalance: number
+      inflowAmount?: Api.Tms.BasicData.SensitiveNumber
+      outflowAmount?: Api.Tms.BasicData.SensitiveNumber
+      currentBalance?: Api.Tms.BasicData.SensitiveNumber
+      availableBalance?: Api.Tms.BasicData.SensitiveNumber
       ledgerEntryCount: number
       latestBalanceDate?: string | null
       accountSet?: Pick<AccountSetRecord, 'id' | 'accountSetCode' | 'accountSetName'> | null
       currency?: Pick<CurrencyRecord, 'id' | 'currencyCode' | 'currencyName' | 'symbol'> | null
+      fieldAccess?: FundAccountFieldAccessMap
+      isRecordOwner?: boolean
     }
 
     type FundAccountSearchParams = Api.Common.CommonSearchParams & {
@@ -3739,40 +3969,47 @@ declare namespace Api {
     }
 
     interface FundAccountOption {
+      id: string
       label: string
       value: string
       tenantId: string
       accountSetId: string
       currencyId: string
       currencyCode?: string
+      accountCode: string
+      accountName: string
+      accountNoMasked?: string
       accountType: FundAccountType
       status: FundAccountStatus
       reconciliationEnabled: boolean
-      availableBalance: number
+      availableBalance?: Api.Tms.BasicData.SensitiveNumber
+      fieldAccess?: FundAccountFieldAccessMap
+      isRecordOwner?: boolean
     }
 
     interface FundAccountOverview {
       accountCount: number
       activeAccountCount: number
-      baseCurrencyCurrentBalance: number
-      baseCurrencyAvailableBalance: number
-      baseCurrencyFrozenBalance: number
+      baseCurrencyCurrentBalance?: Api.Tms.BasicData.SensitiveNumber
+      baseCurrencyAvailableBalance?: Api.Tms.BasicData.SensitiveNumber
+      baseCurrencyFrozenBalance?: Api.Tms.BasicData.SensitiveNumber
       foreignCurrencyAccountCount: number
+      fieldAccess?: FundAccountFieldAccessMap
     }
 
     interface FundLedgerRecord {
       id: string
-      tenantId: string
+      tenantId?: string
       accountSetId: string
-      fundAccountId: string
+      fundAccountId?: string
       entryNo: string
       entryDate: string
       direction: FundLedgerDirection
-      amount: number
+      amount?: Api.Tms.BasicData.SensitiveNumber
       sourceType: FundLedgerSourceType
       sourceId?: string | null
       sourceNo?: string | null
-      summary: string
+      summary?: string
       counterpartyName?: string | null
       bankReference?: string | null
       status: FundLedgerStatus
@@ -3781,10 +4018,13 @@ declare namespace Api {
       postedBy?: string | null
       createTime: string
       updateTime: string
+      currencyCode?: string
       fundAccount?: Pick<
         FundAccountRecord,
         'id' | 'accountCode' | 'accountName' | 'accountNoMasked'
       > | null
+      fieldAccess?: FundLedgerFieldAccessMap
+      isRecordOwner?: boolean
     }
 
     type FundLedgerSearchParams = Api.Common.CommonSearchParams & {
@@ -3801,17 +4041,21 @@ declare namespace Api {
       'draft' | 'pending_review' | 'approved' | 'rejected' | 'completed' | 'reversed'
     type FundTransferAction =
       'create' | 'edit' | 'submit' | 'approve' | 'reject' | 'execute' | 'reverse'
+    type FundTransferFieldKey = 'transferAccounts' | 'transferAmounts' | 'bankReference'
+    type FundTransferFieldAccessMap = Partial<
+      Record<FundTransferFieldKey, Api.Common.FieldAccessLevel>
+    >
 
     interface FundTransferRecord {
       id: string
-      tenantId: string
+      tenantId?: string
       accountSetId: string
       transferNo: string
-      sourceAccountId: string
-      targetAccountId: string
+      sourceAccountId?: string
+      targetAccountId?: string
       transferDate: string
-      amount: number
-      feeAmount: number
+      amount?: Api.Tms.BasicData.SensitiveNumber
+      feeAmount?: Api.Tms.BasicData.SensitiveNumber
       purpose: string
       bankReference?: string | null
       status: FundTransferStatus
@@ -3830,15 +4074,17 @@ declare namespace Api {
       createTime: string
       updateBy?: string | null
       updateTime: string
-      sourceAccountCode: string
-      sourceAccountName: string
-      sourceAccountNoMasked: string
-      targetAccountCode: string
-      targetAccountName: string
-      targetAccountNoMasked: string
+      sourceAccountCode?: string
+      sourceAccountName?: string
+      sourceAccountNoMasked?: string
+      targetAccountCode?: string
+      targetAccountName?: string
+      targetAccountNoMasked?: string
       currencyCode: string
       currencyName: string
       currencySymbol?: string | null
+      fieldAccess?: FundTransferFieldAccessMap
+      isRecordOwner?: boolean
     }
 
     interface FundTransferActionRecord {
@@ -3866,11 +4112,11 @@ declare namespace Api {
       id?: string
       version?: number
       transferNo?: string | null
-      sourceAccountId: string
-      targetAccountId: string
+      sourceAccountId?: string
+      targetAccountId?: string
       transferDate: string
-      amount: number
-      feeAmount: number
+      amount?: number
+      feeAmount?: number
       purpose: string
       bankReference?: string | null
     }
@@ -3878,6 +4124,10 @@ declare namespace Api {
     type BankReconciliationStatus = 'draft' | 'reconciling' | 'reconciled' | 'voided'
     type BankStatementLineStatus = 'unmatched' | 'partial_matched' | 'matched' | 'ignored'
     type BankMatchType = 'automatic' | 'manual'
+    type BankReconciliationFieldKey = 'accountDetails' | 'statementAmounts' | 'bankReferences'
+    type BankReconciliationFieldAccessMap = Partial<
+      Record<BankReconciliationFieldKey, Api.Common.FieldAccessLevel>
+    >
 
     interface BankReconciliationBatchRecord {
       id: string
@@ -3887,8 +4137,8 @@ declare namespace Api {
       batchNo: string
       statementStartDate: string
       statementEndDate: string
-      openingBalance: number
-      closingBalance: number
+      openingBalance?: Api.Tms.BasicData.SensitiveNumber
+      closingBalance?: Api.Tms.BasicData.SensitiveNumber
       importedFileName?: string | null
       importedAt: string
       importedBy: string
@@ -3904,7 +4154,7 @@ declare namespace Api {
       updateTime: string
       accountCode: string
       accountName: string
-      accountNoMasked: string
+      accountNoMasked?: string
       currencyCode: string
       currencySymbol?: string | null
       lineCount: number
@@ -3912,11 +4162,13 @@ declare namespace Api {
       partialCount: number
       ignoredCount: number
       unmatchedCount: number
-      statementInflowAmount: number
-      statementOutflowAmount: number
-      matchedAmount: number
-      calculatedClosingBalance: number
-      statementBalanceDifference: number
+      statementInflowAmount?: Api.Tms.BasicData.SensitiveNumber
+      statementOutflowAmount?: Api.Tms.BasicData.SensitiveNumber
+      matchedAmount?: Api.Tms.BasicData.SensitiveNumber
+      calculatedClosingBalance?: Api.Tms.BasicData.SensitiveNumber
+      statementBalanceDifference?: Api.Tms.BasicData.SensitiveNumber
+      fieldAccess?: BankReconciliationFieldAccessMap
+      isRecordOwner?: boolean
     }
 
     type BankReconciliationSearchParams = Api.Common.CommonSearchParams & {
@@ -3936,8 +4188,8 @@ declare namespace Api {
       lineNo: number
       transactionDate: string
       direction: FundLedgerDirection
-      amount: number
-      statementBalance?: number | null
+      amount?: Api.Tms.BasicData.SensitiveNumber
+      statementBalance?: Api.Tms.BasicData.SensitiveNumber | null
       counterpartyName?: string | null
       counterpartyAccountMasked?: string | null
       bankReference?: string | null
@@ -3947,11 +4199,13 @@ declare namespace Api {
       ignoredReason?: string | null
       ignoredAt?: string | null
       ignoredBy?: string | null
-      matchedAmount: number
-      remainingAmount: number
+      matchedAmount?: Api.Tms.BasicData.SensitiveNumber
+      remainingAmount?: Api.Tms.BasicData.SensitiveNumber
       matchCount: number
       matchTypes?: string | null
       latestMatchedAt?: string | null
+      fieldAccess?: BankReconciliationFieldAccessMap
+      isRecordOwner?: boolean
     }
 
     interface BankStatementMatchRecord {
@@ -3959,13 +4213,24 @@ declare namespace Api {
       tenantId: string
       statementLineId: string
       ledgerEntryId: string
-      matchedAmount: number
+      matchedAmount?: Api.Tms.BasicData.SensitiveNumber
       matchType: BankMatchType
       confidenceScore?: number | null
       matchRemark?: string | null
       matchedBy: string
       matchedAt: string
       ledgerEntry?: FundLedgerRecord | null
+      fieldAccess?: BankReconciliationFieldAccessMap
+      isRecordOwner?: boolean
+    }
+
+    interface BankMatchCandidateRecord {
+      id: string
+      entryDate: string
+      summary: string
+      amount?: Api.Tms.BasicData.SensitiveNumber
+      sourceNo?: string | null
+      bankReference?: string | null
     }
 
     interface ImportBankStatementLinePayload {
@@ -4001,10 +4266,17 @@ declare namespace Api {
       costNoSnapshot: string
       waybillNoSnapshot: string
       expenseItemNameSnapshot: string
-      amountSnapshot: number
+      amountSnapshot?: Api.Tms.BasicData.SensitiveNumber
       occurredOnSnapshot: string
       createTime: string
     }
+
+    type ExpenseReimbursementFieldKey =
+      'reimbursementAmounts' | 'payeeDetails' | 'reimbursementEvidence' | 'paymentExecution'
+
+    type ExpenseReimbursementFieldAccessMap = Partial<
+      Record<ExpenseReimbursementFieldKey, Api.Tms.BasicData.FieldAccessLevel>
+    >
 
     interface ExpenseReimbursementRecord {
       id: string
@@ -4012,13 +4284,13 @@ declare namespace Api {
       reimbursementNo: string
       applicantUserId?: string | null
       applicantNameSnapshot: string
-      payeeName: string
+      payeeName?: string | null
       payeeBank?: string | null
       payeeAccount?: string | null
       plannedPaymentDate: string
-      paymentMethod: CashPaymentMethod
-      totalAmount: number
-      basisUrls: string[]
+      paymentMethod?: CashPaymentMethod | '***'
+      totalAmount?: Api.Tms.BasicData.SensitiveNumber
+      basisUrls?: string[]
       status: ReimbursementApprovalStatus
       submittedAt?: string | null
       submittedBy?: string | null
@@ -4028,7 +4300,7 @@ declare namespace Api {
       paidAt?: string | null
       paidBy?: string | null
       paymentReference?: string | null
-      paymentVoucherUrls: string[]
+      paymentVoucherUrls?: string[]
       remark?: string | null
       itemCount: number
       waybillCount: number
@@ -4040,6 +4312,8 @@ declare namespace Api {
       updateBy?: string | null
       updateTime: string
       items?: ExpenseReimbursementItem[]
+      fieldAccess?: ExpenseReimbursementFieldAccessMap
+      isRecordOwner?: boolean
     }
 
     type ExpenseReimbursementSearchParams = Api.Common.CommonSearchParams & {
@@ -4075,8 +4349,9 @@ declare namespace Api {
       totalCount: number
       pendingReviewCount: number
       approvedUnconvertedCount: number
-      pendingPaymentAmount: number
-      paidAmount: number
+      pendingPaymentAmount?: Api.Tms.BasicData.SensitiveNumber
+      paidAmount?: Api.Tms.BasicData.SensitiveNumber
+      fieldAccess?: WaybillCostFieldAccessMap
     }
 
     type WaybillExpenseOcrField =
@@ -4158,6 +4433,12 @@ declare namespace Api {
     type CostAuditStatus = 'draft' | 'pending_review' | 'approved' | 'rejected' | 'voided'
     type CostSettlementStatus = 'unsettled' | 'pending_payment' | 'paid'
 
+    type WaybillCostFieldKey =
+      'costAmounts' | 'paymentDetails' | 'driverPhone' | 'expenseLocation' | 'expenseEvidence'
+    type WaybillCostFieldAccessMap = Partial<
+      Record<WaybillCostFieldKey, Api.Tms.BasicData.FieldAccessLevel>
+    >
+
     interface ExpenseItem {
       id?: string
       tenantId?: string
@@ -4215,10 +4496,10 @@ declare namespace Api {
       waybillId: string
       expenseItemId: string
       costType: WaybillCostType | string
-      amount: number
+      amount: Api.Tms.BasicData.SensitiveNumber
       occurredOn: string
-      quantity?: number | null
-      unitPrice?: number | null
+      quantity?: Api.Tms.BasicData.SensitiveNumber
+      unitPrice?: Api.Tms.BasicData.SensitiveNumber
       providerName?: string | null
       payeeName?: string | null
       paymentChannel?: string | null
@@ -4273,11 +4554,15 @@ declare namespace Api {
         bankReference?: string | null
       } | null
       waybill?: WaybillCostWaybill | null
+      fieldAccess?: WaybillCostFieldAccessMap
+      isRecordOwner?: boolean
     }
 
     type WaybillCostSearchParams = Api.Common.CommonSearchParams & {
       recordId?: string
       orderId?: string
+      waybillId?: string
+      carrierId?: string
       keyword?: string
       expenseItemId?: string
       costType?: string
@@ -4434,17 +4719,24 @@ declare namespace Api {
       driverName?: string | null
       originStation?: string | null
       destinationStation?: string | null
-      receivableAmount: number
-      carrierPayableAmount: number
-      otherCostAmount: number
-      totalCostAmount: number
-      grossProfit: number
-      grossMargin: number
+      receivableAmount?: Api.Tms.BasicData.SensitiveNumber
+      carrierPayableAmount?: Api.Tms.BasicData.SensitiveNumber
+      otherCostAmount?: Api.Tms.BasicData.SensitiveNumber
+      totalCostAmount?: Api.Tms.BasicData.SensitiveNumber
+      grossProfit?: Api.Tms.BasicData.SensitiveNumber
+      grossMargin?: Api.Tms.BasicData.SensitiveNumber
       completedAt?: string | null
       signedAt?: string | null
       createTime?: string
       updateTime?: string
+      fieldAccess?: WaybillProfitFieldAccessMap
+      isRecordOwner?: boolean
     }
+
+    type WaybillProfitFieldKey = 'receivableAmounts' | 'costAmounts' | 'profitAmounts'
+    type WaybillProfitFieldAccessMap = Partial<
+      Record<WaybillProfitFieldKey, Api.Tms.BasicData.FieldAccessLevel>
+    >
 
     type WaybillProfitSearchParams = Api.Common.CommonSearchParams & {
       keyword?: string
@@ -4455,9 +4747,19 @@ declare namespace Api {
     type CustomerStatementStatus =
       'draft' | 'pending_review' | 'confirmed' | 'partially_settled' | 'settled' | 'voided'
 
+    type CustomerStatementFieldKey = 'statementAmounts' | 'settlementAmounts'
+    type CustomerStatementFieldAccessMap = Partial<
+      Record<CustomerStatementFieldKey, Api.Tms.BasicData.FieldAccessLevel>
+    >
+
+    type CarrierStatementFieldKey = 'statementAmounts' | 'settlementAmounts'
+    type CarrierStatementFieldAccessMap = Partial<
+      Record<CarrierStatementFieldKey, Api.Tms.BasicData.FieldAccessLevel>
+    >
+
     interface CustomerStatementItem {
       id: string
-      tenantId: string
+      tenantId?: string
       statementId: string
       customerId: string
       waybillId: string
@@ -4467,9 +4769,9 @@ declare namespace Api {
       originStationSnapshot?: string | null
       destinationStationSnapshot?: string | null
       completedAtSnapshot?: string | null
-      receivableAmount: number
-      adjustmentAmount: number
-      lineAmount: number
+      receivableAmount?: Api.Tms.BasicData.SensitiveNumber
+      adjustmentAmount?: Api.Tms.BasicData.SensitiveNumber
+      lineAmount?: Api.Tms.BasicData.SensitiveNumber
       isActive: boolean
       remark?: string | null
       createBy?: string | null
@@ -4480,7 +4782,7 @@ declare namespace Api {
 
     interface CustomerStatementRecord {
       id: string
-      tenantId: string
+      tenantId?: string
       statementNo: string
       customerId: string
       customerName: string
@@ -4488,9 +4790,9 @@ declare namespace Api {
       periodEnd: string
       status: CustomerStatementStatus
       waybillCount: number
-      statementAmount: number
-      settledAmount: number
-      outstandingAmount: number
+      statementAmount?: Api.Tms.BasicData.SensitiveNumber
+      settledAmount?: Api.Tms.BasicData.SensitiveNumber
+      outstandingAmount?: Api.Tms.BasicData.SensitiveNumber
       submittedAt?: string | null
       submittedBy?: string | null
       reviewedAt?: string | null
@@ -4505,6 +4807,8 @@ declare namespace Api {
       updateBy?: string | null
       updateTime: string
       items?: CustomerStatementItem[]
+      fieldAccess?: CustomerStatementFieldAccessMap
+      isRecordOwner?: boolean
     }
 
     type CustomerStatementSearchParams = Api.Common.CommonSearchParams & {
@@ -4517,7 +4821,7 @@ declare namespace Api {
 
     interface CustomerStatementEligibleWaybill {
       id: string
-      tenantId: string
+      tenantId?: string
       waybillNo: string
       waybillStatus: string
       orderId: string
@@ -4527,7 +4831,7 @@ declare namespace Api {
       originStation?: string | null
       destinationStation?: string | null
       completedAt: string
-      receivableAmount: number
+      receivableAmount?: Api.Tms.BasicData.SensitiveNumber
     }
 
     interface CustomerStatementEligibleWaybillSearchParams extends Api.Common.CommonSearchParams {
@@ -4549,13 +4853,14 @@ declare namespace Api {
     interface CustomerStatementStatusPayload {
       id: string
       status: CustomerStatementStatus
+      businessTitle?: string
       reviewRemark?: string | null
       voidReason?: string | null
     }
 
     interface CarrierStatementItem {
       id: string
-      tenantId: string
+      tenantId?: string
       statementId: string
       carrierId: string
       costId: string
@@ -4564,9 +4869,9 @@ declare namespace Api {
       costTypeSnapshot: string
       occurredOnSnapshot: string
       payeeNameSnapshot?: string | null
-      costAmount: number
-      adjustmentAmount: number
-      lineAmount: number
+      costAmount?: Api.Tms.BasicData.SensitiveNumber
+      adjustmentAmount?: Api.Tms.BasicData.SensitiveNumber
+      lineAmount?: Api.Tms.BasicData.SensitiveNumber
       isActive: boolean
       remark?: string | null
       createBy?: string | null
@@ -4577,7 +4882,7 @@ declare namespace Api {
 
     interface CarrierStatementRecord {
       id: string
-      tenantId: string
+      tenantId?: string
       statementNo: string
       carrierId: string
       carrierName: string
@@ -4586,9 +4891,9 @@ declare namespace Api {
       status: CustomerStatementStatus
       costCount: number
       waybillCount: number
-      statementAmount: number
-      settledAmount: number
-      outstandingAmount: number
+      statementAmount?: Api.Tms.BasicData.SensitiveNumber
+      settledAmount?: Api.Tms.BasicData.SensitiveNumber
+      outstandingAmount?: Api.Tms.BasicData.SensitiveNumber
       submittedAt?: string | null
       submittedBy?: string | null
       reviewedAt?: string | null
@@ -4603,6 +4908,8 @@ declare namespace Api {
       updateBy?: string | null
       updateTime: string
       items?: CarrierStatementItem[]
+      fieldAccess?: CarrierStatementFieldAccessMap
+      isRecordOwner?: boolean
     }
 
     type CarrierStatementSearchParams = Api.Common.CommonSearchParams & {
@@ -4615,14 +4922,14 @@ declare namespace Api {
 
     interface CarrierStatementEligibleCost {
       id: string
-      tenantId: string
+      tenantId?: string
       carrierId: string
       carrierName: string
       waybillId: string
       waybillNo: string
       waybillStatus: string
       costType: string
-      costAmount: number
+      costAmount?: Api.Tms.BasicData.SensitiveNumber
       occurredOn: string
       payeeName?: string | null
       remark?: string | null
@@ -4649,6 +4956,7 @@ declare namespace Api {
     interface CarrierStatementStatusPayload {
       id: string
       status: CustomerStatementStatus
+      businessTitle?: string
       reviewRemark?: string | null
       voidReason?: string | null
     }
@@ -4666,7 +4974,7 @@ declare namespace Api {
       periodStart: string
       periodEnd: string
       status: CustomerStatementStatus
-      settledAmount: number
+      settledAmount?: number
     }
 
     interface CashAllocationRecord {
@@ -4675,7 +4983,7 @@ declare namespace Api {
       transactionId: string
       statementId: string
       customerId: string
-      allocatedAmount: number
+      allocatedAmount?: Api.Tms.BasicData.SensitiveNumber
       isActive: boolean
       allocatedAt: string
       allocatedBy?: string | null
@@ -4690,6 +4998,11 @@ declare namespace Api {
       statement?: CashAllocationStatement | null
     }
 
+    type CashTransactionFieldKey = 'transactionAmounts' | 'bankDetails' | 'voucherEvidence'
+    type CashTransactionFieldAccessMap = Partial<
+      Record<CashTransactionFieldKey, Api.Tms.BasicData.FieldAccessLevel>
+    >
+
     interface CashTransactionRecord {
       id: string
       tenantId: string
@@ -4699,13 +5012,13 @@ declare namespace Api {
       carrierId?: string | null
       counterpartyName: string
       transactionDate: string
-      amount: number
-      allocatedAmount: number
-      unallocatedAmount: number
+      amount?: Api.Tms.BasicData.SensitiveNumber
+      allocatedAmount?: Api.Tms.BasicData.SensitiveNumber
+      unallocatedAmount?: Api.Tms.BasicData.SensitiveNumber
       allocationCount: number
       paymentMethod: CashPaymentMethod
       bankReference?: string | null
-      voucherUrls: string[]
+      voucherUrls?: string[]
       status: CashTransactionStatus
       voidedAt?: string | null
       voidedBy?: string | null
@@ -4722,6 +5035,8 @@ declare namespace Api {
         'id' | 'accountCode' | 'accountName' | 'accountNoMasked'
       > | null
       allocations?: Array<CashAllocationRecord | CarrierCashAllocationRecord>
+      fieldAccess?: CashTransactionFieldAccessMap
+      isRecordOwner?: boolean
     }
 
     type CashTransactionSearchParams = Api.Common.CommonSearchParams & {
@@ -4808,7 +5123,7 @@ declare namespace Api {
       transactionId: string
       statementId: string
       carrierId: string
-      allocatedAmount: number
+      allocatedAmount?: Api.Tms.BasicData.SensitiveNumber
       isActive: boolean
       allocatedAt: string
       allocatedBy?: string | null
@@ -4844,16 +5159,21 @@ declare namespace Api {
     type CarrierPaymentApplicationStatus =
       'draft' | 'pending_review' | 'approved' | 'rejected' | 'paid' | 'cancelled'
 
+    type CarrierPaymentApplicationFieldKey = 'applicationAmounts' | 'basisEvidence'
+    type CarrierPaymentApplicationFieldAccessMap = Partial<
+      Record<CarrierPaymentApplicationFieldKey, Api.Tms.BasicData.FieldAccessLevel>
+    >
+
     interface CarrierPaymentApplicationItem {
       id: string
-      tenantId: string
+      tenantId?: string
       applicationId: string
       statementId: string
       carrierId: string
       statementNoSnapshot: string
-      statementAmountSnapshot: number
-      outstandingAmountSnapshot: number
-      appliedAmount: number
+      statementAmountSnapshot?: Api.Tms.BasicData.SensitiveNumber
+      outstandingAmountSnapshot?: Api.Tms.BasicData.SensitiveNumber
+      appliedAmount?: Api.Tms.BasicData.SensitiveNumber
       remark?: string | null
       createBy?: string | null
       createTime: string
@@ -4863,14 +5183,14 @@ declare namespace Api {
 
     interface CarrierPaymentApplicationRecord {
       id: string
-      tenantId: string
+      tenantId?: string
       applicationNo: string
       carrierId: string
       carrierName: string
       plannedPaymentDate: string
-      amount: number
+      amount?: Api.Tms.BasicData.SensitiveNumber
       paymentMethod: CashPaymentMethod
-      basisUrls: string[]
+      basisUrls?: string[]
       status: CarrierPaymentApplicationStatus
       paidTransactionId?: string | null
       paidTransactionNo?: string | null
@@ -4891,6 +5211,8 @@ declare namespace Api {
       createTime: string
       updateBy?: string | null
       updateTime: string
+      fieldAccess?: CarrierPaymentApplicationFieldAccessMap
+      isRecordOwner?: boolean
       items?: CarrierPaymentApplicationItem[]
     }
 
@@ -4907,7 +5229,7 @@ declare namespace Api {
       id?: string
       carrierId: string
       plannedPaymentDate: string
-      amount: number
+      amount: number | null
       paymentMethod: CashPaymentMethod
       basisUrls?: string[]
       remark?: string | null
@@ -5037,9 +5359,18 @@ declare namespace Api {
       linkedAmount: number
     }
 
+    type InvoiceFieldKey = 'invoiceAmounts' | 'taxIdentity' | 'invoiceAttachments'
+    type InvoiceFieldAccessMap = Partial<
+      Record<InvoiceFieldKey, Api.Tms.BasicData.FieldAccessLevel>
+    >
+    type InvoiceStatementLinkFieldKey = 'statementAmounts' | 'invoiceAmounts'
+    type InvoiceStatementLinkFieldAccessMap = Partial<
+      Record<InvoiceStatementLinkFieldKey, Api.Tms.BasicData.FieldAccessLevel>
+    >
+
     interface InvoiceStatementLinkRecord {
       id: string
-      tenantId: string
+      tenantId?: string
       invoiceId: string
       direction: InvoiceDirection
       statementId: string
@@ -5048,8 +5379,9 @@ declare namespace Api {
       counterpartyName: string
       periodStart: string
       periodEnd: string
-      statementAmount: number
-      linkedAmount: number
+      statementAmount?: Api.Tms.BasicData.SensitiveNumber
+      linkedAmount?: Api.Tms.BasicData.SensitiveNumber
+      fieldAccess?: InvoiceStatementLinkFieldAccessMap
       createBy?: string | null
       createTime: string
     }
@@ -5068,15 +5400,15 @@ declare namespace Api {
       invoiceCode?: string | null
       invoiceNo?: string | null
       issueDate: string
-      taxRate: number
-      amountExcludingTax: number
-      taxAmount: number
-      totalAmount: number
+      taxRate?: Api.Tms.BasicData.SensitiveNumber
+      amountExcludingTax?: Api.Tms.BasicData.SensitiveNumber
+      taxAmount?: Api.Tms.BasicData.SensitiveNumber
+      totalAmount?: Api.Tms.BasicData.SensitiveNumber
       status: InvoiceStatus
-      attachments: Array<Record<string, unknown>>
+      attachments?: Array<Record<string, unknown>>
       statementCount: number
-      linkedAmount: number
-      unlinkedAmount: number
+      linkedAmount?: Api.Tms.BasicData.SensitiveNumber
+      unlinkedAmount?: Api.Tms.BasicData.SensitiveNumber
       submittedAt?: string | null
       submittedBy?: string | null
       reviewedAt?: string | null
@@ -5091,6 +5423,8 @@ declare namespace Api {
       updateBy?: string | null
       updateTime: string
       statementLinks?: InvoiceStatementLinkRecord[]
+      fieldAccess?: InvoiceFieldAccessMap
+      isRecordOwner?: boolean
     }
 
     interface InvoiceDuplicateRecord {
@@ -5101,7 +5435,7 @@ declare namespace Api {
       status: InvoiceStatus
       counterpartyNameSnapshot: string
       issueDate: string
-      totalAmount: number
+      totalAmount?: Api.Tms.BasicData.SensitiveNumber
     }
 
     type InvoiceSearchParams = Api.Common.CommonSearchParams & {
@@ -5118,7 +5452,7 @@ declare namespace Api {
     interface InvoiceableStatement {
       direction: InvoiceDirection
       statementId: string
-      tenantId: string
+      tenantId?: string
       statementNo: string
       counterpartyId: string
       counterpartyName: string
@@ -5128,6 +5462,7 @@ declare namespace Api {
       statementAmount: number
       invoicedAmount: number
       uninvoicedAmount: number
+      fieldAccess?: CustomerStatementFieldAccessMap | CarrierStatementFieldAccessMap
     }
 
     interface InvoiceableStatementSearchParams extends Api.Common.CommonSearchParams {
@@ -5328,42 +5663,55 @@ declare namespace Api {
       correctedFields: string[]
     }
 
+    type FinanceWorkbenchFieldKey =
+      | 'customerSettlementAmounts'
+      | 'carrierSettlementAmounts'
+      | 'cashFlowAmounts'
+      | 'invoiceAmounts'
+      | 'paymentApplicationAmounts'
+      | 'operatingAmounts'
+
+    type FinanceWorkbenchFieldAccessMap = Partial<
+      Record<FinanceWorkbenchFieldKey, Api.Tms.BasicData.FieldAccessLevel>
+    >
+
     interface FinanceWorkbenchStats {
-      customerReceivableBalance: number
-      carrierPayableBalance: number
-      monthReceiptAmount: number
-      monthPaymentAmount: number
-      monthRevenueAmount: number
-      monthCostAmount: number
-      monthGrossProfit: number
-      receiptCompletionRate: number
-      paymentCompletionRate: number
-      invoiceMatchRate: number
-      costApprovalRate: number
+      customerReceivableBalance?: Api.Tms.BasicData.SensitiveNumber
+      carrierPayableBalance?: Api.Tms.BasicData.SensitiveNumber
+      monthReceiptAmount?: Api.Tms.BasicData.SensitiveNumber
+      monthPaymentAmount?: Api.Tms.BasicData.SensitiveNumber
+      monthRevenueAmount?: Api.Tms.BasicData.SensitiveNumber
+      monthCostAmount?: Api.Tms.BasicData.SensitiveNumber
+      monthGrossProfit?: Api.Tms.BasicData.SensitiveNumber
+      receiptCompletionRate?: Api.Tms.BasicData.SensitiveNumber
+      paymentCompletionRate?: Api.Tms.BasicData.SensitiveNumber
+      invoiceMatchRate?: Api.Tms.BasicData.SensitiveNumber
+      costApprovalRate?: Api.Tms.BasicData.SensitiveNumber
       pendingCustomerStatementCount: number
-      pendingCustomerStatementAmount: number
+      pendingCustomerStatementAmount?: Api.Tms.BasicData.SensitiveNumber
       pendingCarrierStatementCount: number
-      pendingCarrierStatementAmount: number
+      pendingCarrierStatementAmount?: Api.Tms.BasicData.SensitiveNumber
       pendingCostCount: number
-      pendingCostAmount: number
+      pendingCostAmount?: Api.Tms.BasicData.SensitiveNumber
       unallocatedReceiptCount: number
-      unallocatedReceiptAmount: number
+      unallocatedReceiptAmount?: Api.Tms.BasicData.SensitiveNumber
       unallocatedPaymentCount: number
-      unallocatedPaymentAmount: number
+      unallocatedPaymentAmount?: Api.Tms.BasicData.SensitiveNumber
       draftInvoiceCount: number
-      draftInvoiceAmount: number
+      draftInvoiceAmount?: Api.Tms.BasicData.SensitiveNumber
       pendingInvoiceCount: number
-      pendingInvoiceAmount: number
+      pendingInvoiceAmount?: Api.Tms.BasicData.SensitiveNumber
       pendingPaymentApplicationCount: number
-      pendingPaymentApplicationAmount: number
+      pendingPaymentApplicationAmount?: Api.Tms.BasicData.SensitiveNumber
       approvedUnpaidPaymentCount: number
-      approvedUnpaidPaymentAmount: number
+      approvedUnpaidPaymentAmount?: Api.Tms.BasicData.SensitiveNumber
       unapprovedPaymentCount: number
-      unapprovedPaymentAmount: number
+      unapprovedPaymentAmount?: Api.Tms.BasicData.SensitiveNumber
       overdueReceivableCount: number
-      overdueReceivableAmount: number
+      overdueReceivableAmount?: Api.Tms.BasicData.SensitiveNumber
       uninvoicedReceivableCount: number
-      uninvoicedReceivableAmount: number
+      uninvoicedReceivableAmount?: Api.Tms.BasicData.SensitiveNumber
+      fieldAccess?: FinanceWorkbenchFieldAccessMap
     }
 
     type ReceivablesRiskLevel = 'critical' | 'high' | 'medium' | 'low'
@@ -5452,6 +5800,10 @@ declare namespace Api {
       hideZero?: boolean
     }
 
+    type LedgerFieldKey = 'ledgerAmounts' | 'voucherReferences' | 'auxiliaryDetails'
+    type LedgerFieldAccessMap = Partial<Record<LedgerFieldKey, Api.Common.FieldAccessLevel>>
+    type ProtectedBalanceDirection = BalanceDirection | '***' | null
+
     interface SubjectBalanceReportRecord {
       subjectId: string
       parentId?: string | null
@@ -5461,32 +5813,32 @@ declare namespace Api {
       balanceDirection: BalanceDirection
       subjectLevel: number
       isLeaf: boolean
-      openingDebit: number
-      openingCredit: number
-      periodDebit: number
-      periodCredit: number
-      yearToDateDebit: number
-      yearToDateCredit: number
-      endingDebit: number
-      endingCredit: number
-      endingDirection: BalanceDirection
-      endingBalance: number
+      openingDebit?: Api.Tms.BasicData.SensitiveNumber
+      openingCredit?: Api.Tms.BasicData.SensitiveNumber
+      periodDebit?: Api.Tms.BasicData.SensitiveNumber
+      periodCredit?: Api.Tms.BasicData.SensitiveNumber
+      yearToDateDebit?: Api.Tms.BasicData.SensitiveNumber
+      yearToDateCredit?: Api.Tms.BasicData.SensitiveNumber
+      endingDebit?: Api.Tms.BasicData.SensitiveNumber
+      endingCredit?: Api.Tms.BasicData.SensitiveNumber
+      endingDirection?: ProtectedBalanceDirection
+      endingBalance?: Api.Tms.BasicData.SensitiveNumber
     }
 
     interface GeneralLedgerReportRecord {
       periodNo: number
       periodStart?: string | null
       periodEnd?: string | null
-      openingDirection: BalanceDirection
-      openingBalance: number
-      debitAmount: number
-      creditAmount: number
-      yearToDateDebit: number
-      yearToDateCredit: number
-      endingDirection: BalanceDirection
-      endingBalance: number
-      voucherCount: number
-      lineCount: number
+      openingDirection?: ProtectedBalanceDirection
+      openingBalance?: Api.Tms.BasicData.SensitiveNumber
+      debitAmount?: Api.Tms.BasicData.SensitiveNumber
+      creditAmount?: Api.Tms.BasicData.SensitiveNumber
+      yearToDateDebit?: Api.Tms.BasicData.SensitiveNumber
+      yearToDateCredit?: Api.Tms.BasicData.SensitiveNumber
+      endingDirection?: ProtectedBalanceDirection
+      endingBalance?: Api.Tms.BasicData.SensitiveNumber
+      voucherCount?: Api.Tms.BasicData.SensitiveNumber
+      lineCount?: Api.Tms.BasicData.SensitiveNumber
     }
 
     interface SubsidiaryLedgerReportParams extends LedgerReportParams {
@@ -5505,16 +5857,16 @@ declare namespace Api {
       voucherType?: VoucherType | null
       subjectCode?: string | null
       subjectName?: string | null
-      summary: string
+      summary?: string | null
       auxiliaryDisplay?: string | null
       currencyCode?: string | null
-      originalAmount: number
-      quantity: number
+      originalAmount?: Api.Tms.BasicData.SensitiveNumber
+      quantity?: Api.Tms.BasicData.SensitiveNumber
       unitName?: string | null
-      debitAmount: number
-      creditAmount: number
-      balanceDirection: BalanceDirection
-      balanceAmount: number
+      debitAmount?: Api.Tms.BasicData.SensitiveNumber
+      creditAmount?: Api.Tms.BasicData.SensitiveNumber
+      balanceDirection?: ProtectedBalanceDirection
+      balanceAmount?: Api.Tms.BasicData.SensitiveNumber
     }
 
     type CommercialBillDirection = 'receivable' | 'payable'
@@ -5524,6 +5876,10 @@ declare namespace Api {
     type CommercialBillEventType =
       'received' | 'issued' | 'endorsed' | 'discounted' | 'settled' | 'cancelled'
     type CommercialBillAction = 'receive' | 'issue' | 'endorse' | 'discount' | 'settle' | 'cancel'
+    type CommercialBillFieldKey = 'billParties' | 'billAmounts' | 'billReferences'
+    type CommercialBillFieldAccessMap = Partial<
+      Record<CommercialBillFieldKey, Api.Common.FieldAccessLevel>
+    >
 
     interface CommercialBillRecord {
       id: string
@@ -5534,26 +5890,28 @@ declare namespace Api {
       direction: CommercialBillDirection
       billType: CommercialBillType
       status: CommercialBillStatus
-      drawerName: string
-      payeeName: string
-      acceptorName: string
+      drawerName?: string
+      payeeName?: string
+      acceptorName?: string
       counterpartyName?: string | null
       issueDate: string
       dueDate: string
-      faceAmount: number
-      settledAmount: number
+      faceAmount?: Api.Tms.BasicData.SensitiveNumber
+      settledAmount?: Api.Tms.BasicData.SensitiveNumber
       currencyCode: string
       transferable: boolean
       sourceType?: string | null
       sourceId?: string | null
       sourceNo?: string | null
-      attachmentIds: string[]
+      attachmentIds?: string[]
       remark?: string | null
       version: number
       createBy?: string | null
       createTime: string
       updateBy?: string | null
       updateTime: string
+      fieldAccess?: CommercialBillFieldAccessMap
+      isRecordOwner?: boolean
     }
 
     interface CommercialBillEventRecord {
@@ -5563,7 +5921,7 @@ declare namespace Api {
       billId: string
       eventType: CommercialBillEventType
       eventDate: string
-      amount: number
+      amount?: Api.Tms.BasicData.SensitiveNumber
       counterpartyName?: string | null
       fundAccountId?: string | null
       referenceNo?: string | null
@@ -5589,13 +5947,13 @@ declare namespace Api {
       externalBillNo?: string | null
       direction: CommercialBillDirection
       billType: CommercialBillType
-      drawerName: string
-      payeeName: string
-      acceptorName: string
+      drawerName?: string
+      payeeName?: string
+      acceptorName?: string
       counterpartyName?: string | null
       issueDate: string
       dueDate: string
-      faceAmount: number
+      faceAmount?: number
       currencyCode: string
       transferable: boolean
       sourceType?: string | null
@@ -5608,16 +5966,19 @@ declare namespace Api {
     interface CommercialBillSummary {
       totalCount: number
       activeCount: number
-      receivableOutstanding: number
-      payableOutstanding: number
+      receivableOutstanding?: Api.Tms.BasicData.SensitiveNumber | null
+      payableOutstanding?: Api.Tms.BasicData.SensitiveNumber | null
       dueWithin30Days: number
       overdueCount: number
+      fieldAccess?: CommercialBillFieldAccessMap
     }
 
     type FixedAssetStatus = 'draft' | 'active' | 'suspended' | 'disposed'
     type FixedAssetAction = 'activate' | 'suspend' | 'resume' | 'dispose'
     type DepreciationMethod = 'straight_line'
     type AssetDepreciationRunStatus = 'draft' | 'calculated' | 'posted' | 'cancelled'
+    type FixedAssetFieldKey = 'assetValues' | 'assetCustody' | 'assetReferences'
+    type FixedAssetFieldAccessMap = Partial<Record<FixedAssetFieldKey, Api.Common.FieldAccessLevel>>
 
     interface AssetCategoryRecord {
       id: string
@@ -5650,25 +6011,30 @@ declare namespace Api {
       acquisitionDate: string
       readyForUseDate: string
       depreciationStartDate: string
-      originalValue: number
-      residualValue: number
+      originalValue?: Api.Tms.BasicData.SensitiveNumber
+      residualValue?: Api.Tms.BasicData.SensitiveNumber
       usefulLifeMonths: number
       depreciatedMonths: number
-      accumulatedDepreciation: number
-      impairmentAmount: number
+      accumulatedDepreciation?: Api.Tms.BasicData.SensitiveNumber
+      impairmentAmount?: Api.Tms.BasicData.SensitiveNumber
       departmentId?: string | null
       employeeId?: string | null
       location?: string | null
       specification?: string | null
       serialNo?: string | null
+      sourceType?: string | null
+      sourceId?: string | null
+      sourceNo?: string | null
       disposalDate?: string | null
-      disposalAmount?: number | null
+      disposalAmount?: Api.Tms.BasicData.SensitiveNumber
       disposalReason?: string | null
       remark?: string | null
       version: number
       createTime: string
       updateTime: string
       category?: Pick<AssetCategoryRecord, 'id' | 'categoryCode' | 'categoryName'> | null
+      fieldAccess?: FixedAssetFieldAccessMap
+      isRecordOwner?: boolean
     }
 
     interface SaveAssetCategoryPayload {
@@ -5697,14 +6063,17 @@ declare namespace Api {
       acquisitionDate: string
       readyForUseDate: string
       depreciationStartDate: string
-      originalValue: number
-      residualValue: number
+      originalValue?: number
+      residualValue?: number
       usefulLifeMonths: number
       departmentId?: string | null
       employeeId?: string | null
       location?: string | null
       specification?: string | null
       serialNo?: string | null
+      sourceType?: string | null
+      sourceId?: string | null
+      sourceNo?: string | null
       remark?: string | null
     }
 
@@ -5723,36 +6092,44 @@ declare namespace Api {
       runNo: string
       status: AssetDepreciationRunStatus
       assetCount: number
-      totalAmount: number
+      totalAmount?: Api.Tms.BasicData.SensitiveNumber
       voucherId?: string | null
       calculatedAt?: string | null
       postedAt?: string | null
       remark?: string | null
       createTime: string
       period?: AccountingPeriodRecord | null
+      fieldAccess?: FixedAssetFieldAccessMap
+      isRecordOwner?: boolean
     }
 
     interface AssetDepreciationLineRecord {
       id: string
       runId: string
       assetId: string
-      openingAccumulatedDepreciation: number
-      depreciationAmount: number
-      closingAccumulatedDepreciation: number
+      openingAccumulatedDepreciation?: Api.Tms.BasicData.SensitiveNumber
+      depreciationAmount?: Api.Tms.BasicData.SensitiveNumber
+      closingAccumulatedDepreciation?: Api.Tms.BasicData.SensitiveNumber
       asset?: Pick<FixedAssetRecord, 'id' | 'assetNo' | 'assetName'> | null
+      fieldAccess?: FixedAssetFieldAccessMap
+      isRecordOwner?: boolean
     }
 
     interface FixedAssetSummary {
       categoryCount: number
       assetCount: number
       activeCount: number
-      originalValue: number
-      netValue: number
-      periodDepreciation: number
+      originalValue?: Api.Tms.BasicData.SensitiveNumber | null
+      netValue?: Api.Tms.BasicData.SensitiveNumber | null
+      periodDepreciation?: Api.Tms.BasicData.SensitiveNumber | null
+      fieldAccess?: FixedAssetFieldAccessMap
     }
 
     type PayrollRunStatus = 'draft' | 'calculated' | 'approved' | 'paid' | 'cancelled'
     type PayrollRunAction = 'approve' | 'pay' | 'cancel'
+    type PayrollFieldKey = 'employeeIdentity' | 'salaryAmounts' | 'payrollReferences'
+    type PayrollFieldAccessMap = Partial<Record<PayrollFieldKey, Api.Common.FieldAccessLevel>>
+    type PayrollAmountItems = Record<string, number> | string | null
 
     interface PayrollRunRecord {
       id: string
@@ -5762,11 +6139,11 @@ declare namespace Api {
       runNo: string
       payrollMonth: string
       status: PayrollRunStatus
-      employeeCount: number
-      grossAmount: number
-      deductionAmount: number
-      employerCostAmount: number
-      netAmount: number
+      employeeCount?: Api.Tms.BasicData.SensitiveNumber
+      grossAmount?: Api.Tms.BasicData.SensitiveNumber
+      deductionAmount?: Api.Tms.BasicData.SensitiveNumber
+      employerCostAmount?: Api.Tms.BasicData.SensitiveNumber
+      netAmount?: Api.Tms.BasicData.SensitiveNumber
       salaryExpenseSubjectId?: string | null
       salaryPayableSubjectId?: string | null
       taxPayableSubjectId?: string | null
@@ -5779,29 +6156,32 @@ declare namespace Api {
       remark?: string | null
       createTime: string
       period?: AccountingPeriodRecord | null
+      fieldAccess?: PayrollFieldAccessMap
+      isRecordOwner?: boolean
     }
 
     interface PayrollLineRecord {
       id: string
       runId: string
-      employeeId: string
-      employeeNoSnapshot: string
-      employeeNameSnapshot: string
+      employeeId?: string
+      employeeNoSnapshot?: string
+      employeeNameSnapshot?: string
       departmentNameSnapshot?: string | null
-      earningItems: Record<string, number>
-      deductionItems: Record<string, number>
-      employerCostItems: Record<string, number>
-      grossAmount: number
-      deductionAmount: number
-      employerCostAmount: number
-      netAmount: number
+      earningItems?: PayrollAmountItems
+      deductionItems?: PayrollAmountItems
+      employerCostItems?: PayrollAmountItems
+      grossAmount?: Api.Tms.BasicData.SensitiveNumber
+      deductionAmount?: Api.Tms.BasicData.SensitiveNumber
+      employerCostAmount?: Api.Tms.BasicData.SensitiveNumber
+      netAmount?: Api.Tms.BasicData.SensitiveNumber
       remark?: string | null
       createTime: string
+      fieldAccess?: PayrollFieldAccessMap
+      isRecordOwner?: boolean
     }
 
     interface PayrollEmployeeOption {
       id: string
-      tenantId: string
       employeeNo: string
       employeeName: string
     }
@@ -5834,16 +6214,19 @@ declare namespace Api {
 
     interface PayrollSummary {
       runCount: number
-      employeeCount: number
-      grossAmount: number
-      netAmount: number
+      employeeCount?: Api.Tms.BasicData.SensitiveNumber | null
+      grossAmount?: Api.Tms.BasicData.SensitiveNumber | null
+      netAmount?: Api.Tms.BasicData.SensitiveNumber | null
       pendingCount: number
+      fieldAccess?: PayrollFieldAccessMap
     }
 
     type TaxType = 'vat' | 'surcharge' | 'corporate_income_tax' | 'stamp_duty' | 'other'
     type TaxPeriodStatus = 'draft' | 'calculated' | 'reviewed' | 'filed' | 'paid' | 'cancelled'
     type TaxLedgerDirection = 'output' | 'input' | 'adjustment'
     type TaxPeriodAction = 'review' | 'file' | 'pay' | 'cancel'
+    type TaxFieldKey = 'taxAmounts' | 'taxSources' | 'filingReferences'
+    type TaxFieldAccessMap = Partial<Record<TaxFieldKey, Api.Common.FieldAccessLevel>>
 
     interface TaxPeriodRecord {
       id: string
@@ -5852,11 +6235,11 @@ declare namespace Api {
       accountingPeriodId: string
       taxType: TaxType
       status: TaxPeriodStatus
-      outputTaxAmount: number
-      inputTaxAmount: number
-      transferableInputAmount: number
-      adjustmentAmount: number
-      payableAmount: number
+      outputTaxAmount?: Api.Tms.BasicData.SensitiveNumber
+      inputTaxAmount?: Api.Tms.BasicData.SensitiveNumber
+      transferableInputAmount?: Api.Tms.BasicData.SensitiveNumber
+      adjustmentAmount?: Api.Tms.BasicData.SensitiveNumber
+      payableAmount?: Api.Tms.BasicData.SensitiveNumber
       filingReference?: string | null
       filedAt?: string | null
       filedBy?: string | null
@@ -5864,30 +6247,34 @@ declare namespace Api {
       remark?: string | null
       createTime: string
       period?: AccountingPeriodRecord | null
+      fieldAccess?: TaxFieldAccessMap
+      isRecordOwner?: boolean
     }
 
     interface TaxLedgerLineRecord {
       id: string
       taxPeriodId: string
-      sourceType: string
+      sourceType?: string
       sourceId?: string | null
       sourceNo?: string | null
       occurredOn: string
       direction: TaxLedgerDirection
-      taxableAmount: number
-      taxRate?: number | null
-      taxAmount: number
+      taxableAmount?: Api.Tms.BasicData.SensitiveNumber
+      taxRate?: Api.Tms.BasicData.SensitiveNumber | null
+      taxAmount?: Api.Tms.BasicData.SensitiveNumber
       isDeductible: boolean
       remark?: string | null
       createTime: string
+      fieldAccess?: TaxFieldAccessMap
+      isRecordOwner?: boolean
     }
 
     interface SaveTaxPeriodPayload {
       id?: string
       accountingPeriodId: string
       taxType: TaxType
-      transferableInputAmount: number
-      adjustmentAmount: number
+      transferableInputAmount?: number
+      adjustmentAmount?: number
       remark?: string | null
     }
 
@@ -5913,15 +6300,20 @@ declare namespace Api {
 
     interface TaxSummary {
       periodCount: number
-      outputTaxAmount: number
-      inputTaxAmount: number
-      payableAmount: number
+      outputTaxAmount?: Api.Tms.BasicData.SensitiveNumber | null
+      inputTaxAmount?: Api.Tms.BasicData.SensitiveNumber | null
+      payableAmount?: Api.Tms.BasicData.SensitiveNumber | null
       pendingCount: number
+      fieldAccess?: TaxFieldAccessMap
     }
 
     type PeriodCloseRunStatus = 'checking' | 'ready' | 'closed' | 'cancelled'
     type PeriodCloseCheckStatus = 'passed' | 'warning' | 'blocked'
     type PeriodCloseAction = 'close' | 'cancel' | 'reopen'
+    type PeriodCloseFieldKey = 'closeDiagnostics' | 'voucherReferences' | 'closeAudit'
+    type PeriodCloseFieldAccessMap = Partial<
+      Record<PeriodCloseFieldKey, Api.Common.FieldAccessLevel>
+    >
 
     interface PeriodCloseRunRecord {
       id: string
@@ -5930,9 +6322,11 @@ declare namespace Api {
       accountingPeriodId: string
       runNo: string
       status: PeriodCloseRunStatus
-      passedCount: number
-      warningCount: number
-      blockingCount: number
+      passedCount?: Api.Tms.BasicData.SensitiveNumber
+      warningCount?: Api.Tms.BasicData.SensitiveNumber
+      blockingCount?: Api.Tms.BasicData.SensitiveNumber
+      profitLossVoucherId?: string | null
+      yearEndVoucherId?: string | null
       completedAt?: string | null
       completedBy?: string | null
       cancelledAt?: string | null
@@ -5940,6 +6334,8 @@ declare namespace Api {
       cancelReason?: string | null
       createTime: string
       period?: AccountingPeriodRecord | null
+      fieldAccess?: PeriodCloseFieldAccessMap
+      isRecordOwner?: boolean
     }
 
     interface PeriodCloseCheckRecord {
@@ -5947,12 +6343,14 @@ declare namespace Api {
       closeRunId: string
       checkCode: string
       checkName: string
-      status: PeriodCloseCheckStatus
-      isBlocking: boolean
-      issueCount: number
-      summary: string
-      detail: Record<string, unknown>
+      status?: PeriodCloseCheckStatus | string
+      isBlocking?: boolean | string
+      issueCount?: Api.Tms.BasicData.SensitiveNumber
+      summary?: string
+      detail?: Record<string, unknown> | string
       checkedAt: string
+      fieldAccess?: PeriodCloseFieldAccessMap
+      isRecordOwner?: boolean
     }
 
     type PeriodCloseSearchParams = Api.Common.CommonSearchParams & {
@@ -5963,9 +6361,10 @@ declare namespace Api {
     interface PeriodCloseSummary {
       periodCount: number
       closedCount: number
-      checkingCount: number
-      blockingCount: number
+      checkingCount?: Api.Tms.BasicData.SensitiveNumber | null
+      blockingCount?: Api.Tms.BasicData.SensitiveNumber | null
       latestCompletedAt?: string | null
+      fieldAccess?: PeriodCloseFieldAccessMap
     }
 
     type FinancialStatementType = 'balance_sheet' | 'income_statement' | 'cash_flow_statement'
@@ -5973,6 +6372,10 @@ declare namespace Api {
     type FinancialStatementDisplayStyle = 'normal' | 'subtotal' | 'total'
     type FinancialStatementCalculationMethod = 'mapping' | 'formula' | 'label'
     type CashFlowDirection = 'receipt' | 'payment'
+    type FinancialReportFieldKey = 'reportAmounts' | 'reportRules'
+    type FinancialReportFieldAccessMap = Partial<
+      Record<FinancialReportFieldKey, Api.Common.FieldAccessLevel>
+    >
 
     interface FinancialStatementMappingRecord {
       id?: string
@@ -6005,7 +6408,7 @@ declare namespace Api {
 
     interface FinancialStatementItemRecord {
       id: string
-      tenantId: string
+      tenantId?: string
       accountSetId: string
       statementType: FinancialStatementType
       parentId?: string | null
@@ -6022,8 +6425,11 @@ declare namespace Api {
       createTime: string
       updateBy?: string | null
       updateTime: string
+      ruleCount?: Api.Tms.BasicData.SensitiveNumber
       mappings?: FinancialStatementMappingRecord[]
       formulas?: FinancialStatementFormulaRecord[]
+      fieldAccess?: FinancialReportFieldAccessMap
+      isRecordOwner?: boolean
     }
 
     interface SaveFinancialStatementItemPayload {
@@ -6060,19 +6466,21 @@ declare namespace Api {
       displayStyle: FinancialStatementDisplayStyle
       calculationMethod: FinancialStatementCalculationMethod
       isLeaf: boolean
-      primaryAmount: number
-      secondaryAmount: number
-      mappingCount: number
+      primaryAmount?: Api.Tms.BasicData.SensitiveNumber
+      secondaryAmount?: Api.Tms.BasicData.SensitiveNumber
+      mappingCount?: Api.Tms.BasicData.SensitiveNumber
+      fieldAccess?: FinancialReportFieldAccessMap
+      isRecordOwner?: boolean
     }
 
     interface CashFlowAllocationRecord {
       id: string
-      tenantId: string
+      tenantId?: string
       accountSetId: string
       voucherLineId: string
       statementItemId: string
       flowDirection: CashFlowDirection
-      amount: number
+      amount?: Api.Tms.BasicData.SensitiveNumber
       remark?: string | null
       createTime: string
       updateTime: string
@@ -6080,6 +6488,8 @@ declare namespace Api {
         FinancialStatementItemRecord,
         'id' | 'itemCode' | 'itemName' | 'cashFlowDirection'
       > | null
+      fieldAccess?: VoucherFieldAccessMap
+      isRecordOwner?: boolean
     }
 
     interface SaveCashFlowAllocationPayload {

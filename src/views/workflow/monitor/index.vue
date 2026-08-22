@@ -19,9 +19,15 @@
         <ElButton type="primary" plain @click="analyticsDialogRef?.handleOpen()">
           <ArtSvgIcon icon="ri:bar-chart-box-line" />运营分析
         </ElButton>
-        <ElButton :loading="overview.loading" @click="refreshAll">
-          <ArtSvgIcon icon="ri:refresh-line" />刷新数据
-        </ElButton>
+        <ElTooltip content="刷新审批监控数据" placement="bottom">
+          <ArtIconButton
+            icon="ri:refresh-line"
+            circle
+            label="刷新审批监控数据"
+            :loading="overview.loading"
+            @click="refreshAll"
+          />
+        </ElTooltip>
       </template>
     </BusinessWorkspaceHeader>
 
@@ -105,6 +111,7 @@
   import type { ArtTableQueryExpose } from '@/components/core/tables/art-table-query/index.vue'
   import type { ColumnOption } from '@/types'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
+  import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
   import BusinessWorkspaceHeader, {
     type BusinessWorkspaceMetric
   } from '@/components/business/business-workspace-header/index.vue'

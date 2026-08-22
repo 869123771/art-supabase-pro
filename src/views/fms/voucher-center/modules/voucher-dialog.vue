@@ -20,6 +20,7 @@
         :subjects="context.subjects"
         :currencies="context.currencies"
         :auxiliary-items="context.auxiliaryItems"
+        :readonly="!amountEditable"
       />
 
       <CashFlowAllocationPanel
@@ -28,15 +29,17 @@
         :lines="form.data.lines"
         :subjects="context.subjects"
         :statement-items="context.cashFlowItems"
+        :readonly="!amountEditable"
       />
 
-      <section class="voucher-dialog__attachments art-card-xs">
+      <section v-if="canViewAttachments" class="voucher-dialog__attachments art-card-xs">
         <div class="voucher-dialog__section-header">
           <div>
             <ArtSectionTitle :show-line="false">原始凭证附件</ArtSectionTitle>
             <p>支持上传回单、发票、合同或其他记账依据，附件与凭证一并留存。</p>
           </div>
           <ArtExcelImport
+            v-if="canEditAttachments"
             accept=""
             :parse-excel="false"
             :disabled="form.attachmentUploading"
@@ -105,13 +108,14 @@
   } from '@/api/fms'
   import { renderAttachmentLink } from '@/components/core/media/art-file-viewer/render'
   import { downloadAttachment, getFileExtension } from '@/utils/file'
+  import { canEditField, canViewField, getFieldAccess } from '@/utils/field-permission'
   import VoucherEntryLines from '@/views/fms/modules/voucher-entry-lines.vue'
   import CashFlowAllocationPanel from './cash-flow-allocation-panel.vue'
   import { useUserStore } from '@/store/modules/user'
 
   defineOptions({ name: 'FinanceVoucherDialog' })
 
-  type Voucher = Api.Fms.VoucherRecord
+  type Voucher = Api.Fms.SecureVoucherRecord
   type FormData = Api.Fms.SaveVoucherPayload & { templateId?: string }
   type SubmitMode = 'save' | 'submit'
   type FooterApi = Pick<ArtDialogExpose<Voucher | undefined>, 'handleConfirm'>
@@ -145,6 +149,15 @@
   const cashFlowPanelRef = ref<{ validate: (requireComplete?: boolean) => boolean }>()
   const cashFlowDrafts = ref<Api.Fms.VoucherCashFlowAllocationDraft[]>([])
   const submitMode = ref<SubmitMode>('save')
+  const fieldAccess = ref<Api.Fms.VoucherFieldAccessMap>({
+    voucherAmounts: 'edit',
+    sourceReferences: 'edit',
+    voucherAttachments: 'edit',
+    auditTrail: 'edit'
+  })
+  const amountEditable = computed(() => canEditField(fieldAccess.value, 'voucherAmounts'))
+  const canViewAttachments = computed(() => canViewField(fieldAccess.value, 'voucherAttachments'))
+  const canEditAttachments = computed(() => canEditField(fieldAccess.value, 'voucherAttachments'))
   const context = reactive<DialogContext>({
     accountSet: { label: '', value: '', status: 'draft', tenantId: '' },
     subjects: [],
@@ -219,7 +232,11 @@
         type: 'select',
         props: {
           options: context.templates
-            .filter((item) => item.isEnabled)
+            .filter(
+              (item) =>
+                item.isEnabled &&
+                ['read', 'edit'].includes(getFieldAccess(item.fieldAccess, 'templateEntries'))
+            )
             .map((item) => ({
               label: `${item.templateCode} ${item.templateName}`,
               value: item.id
@@ -249,7 +266,13 @@
         key: 'sourceNo',
         type: 'input',
         span: 6,
-        props: { maxlength: 80, clearable: true, disabled: form.data.sourceType === 'manual' }
+        props: {
+          maxlength: 80,
+          clearable: true,
+          disabled:
+            getFieldAccess(fieldAccess.value, 'sourceReferences') !== 'edit' ||
+            form.data.sourceType === 'manual'
+        }
       }
     ]),
     rules: {
@@ -268,7 +291,7 @@
   )
   const sourceTypeOptions = computed(() => getDictMap.value.fmsVoucherSourceType ?? [])
 
-  const attachmentColumns: ColumnOption<Api.Fms.VoucherAttachment>[] = [
+  const attachmentColumns = computed<ColumnOption<Api.Fms.VoucherAttachment>[]>(() => [
     { type: 'globalIndex', label: '序号', width: 72 },
     {
       prop: 'name',
@@ -279,22 +302,26 @@
     },
     { prop: 'fileType', label: '格式', width: 100 },
     { prop: 'fileSize', label: '大小', width: 110 },
-    {
-      prop: 'operation',
-      label: '操作',
-      width: 96,
-      formatter: (row) => (
-        <div class="flex items-center">
-          <ArtIconButton icon="ri:download-2-line" onClick={() => downloadAttachment(row)} />
-          <ArtIconButton
-            icon="ri:delete-bin-5-line"
-            tone="danger"
-            onClick={() => removeAttachment(row)}
-          />
-        </div>
-      )
-    }
-  ]
+    ...(canEditAttachments.value
+      ? [
+          {
+            prop: 'operation',
+            label: '操作',
+            width: 96,
+            formatter: (row: Api.Fms.VoucherAttachment) => (
+              <div class="flex items-center">
+                <ArtIconButton icon="ri:download-2-line" onClick={() => downloadAttachment(row)} />
+                <ArtIconButton
+                  icon="ri:delete-bin-5-line"
+                  tone="danger"
+                  onClick={() => removeAttachment(row)}
+                />
+              </div>
+            )
+          }
+        ]
+      : [])
+  ])
 
   function subjectFor(line: Api.Fms.VoucherLineRecord): Api.Fms.SubjectRecord | undefined {
     return context.subjects.find((item) => item.id === line.subjectId)
@@ -338,7 +365,8 @@
       return false
     }
     if (!validateLines()) return false
-    if (!cashFlowPanelRef.value?.validate(submitMode.value === 'submit')) return false
+    if (amountEditable.value && !cashFlowPanelRef.value?.validate(submitMode.value === 'submit'))
+      return false
     try {
       const payload = cloneDeep(toRaw(form.data))
       delete payload.templateId
@@ -351,7 +379,7 @@
         )
       }))
       const { data } = await saveVoucher(payload)
-      if (data?.id) {
+      if (data?.id && amountEditable.value) {
         const { data: detail } = await fetchVoucherDetail(data.id)
         const lineIdByNo = new Map(
           (detail?.lines ?? [])
@@ -383,9 +411,22 @@
     try {
       const { data } = await fetchVoucherTemplateDetail(templateId)
       if (!data) return
+      const entriesAccess = getFieldAccess(data.fieldAccess, 'templateEntries')
+      if (
+        !['read', 'edit'].includes(entriesAccess) ||
+        !data.voucherType ||
+        data.voucherType === '***' ||
+        !Array.isArray(data.lines)
+      ) {
+        form.data.templateId = ''
+        ElMessage.warning('当前字段权限不允许套用该凭证模板')
+        return
+      }
       form.data.voucherType = data.voucherType
-      form.data.summary = data.summary || form.data.summary
-      form.data.lines = (data.lines ?? []).map((line, index) => ({
+      if (['read', 'edit'].includes(getFieldAccess(data.fieldAccess, 'templateNarrative'))) {
+        form.data.summary = data.summary || form.data.summary
+      }
+      form.data.lines = data.lines.map((line, index) => ({
         lineNo: index + 1,
         summary: line.summary || data.summary || '',
         subjectId: line.subjectId,
@@ -430,9 +471,26 @@
     form.data.attachments = form.data.attachments.filter((item) => item.url !== row.url)
   }
 
+  function toEditableLine(line: Api.Fms.SecureVoucherLineRecord): Api.Fms.VoucherLineRecord {
+    return {
+      ...line,
+      exchangeRate: Number(line.exchangeRate ?? 1),
+      originalAmount: Number(line.originalAmount ?? 0),
+      quantity: Number(line.quantity ?? 0),
+      debitAmount: Number(line.debitAmount ?? 0),
+      creditAmount: Number(line.creditAmount ?? 0)
+    }
+  }
+
   async function handleOpen(dialogContext: DialogContext, row?: Voucher): Promise<void> {
     Object.assign(context, dialogContext)
     cashFlowDrafts.value = []
+    fieldAccess.value = {
+      voucherAmounts: 'edit',
+      sourceReferences: 'edit',
+      voucherAttachments: 'edit',
+      auditTrail: 'edit'
+    }
     Object.assign(form.data, createInitialForm(), { accountSetId: context.accountSet.value })
     const { data: cashFlowItems } = await fetchFinancialStatementItems(
       context.accountSet.value,
@@ -445,6 +503,11 @@
         fetchCashFlowAllocations(row.id)
       ])
       if (!data) return
+      fieldAccess.value = data.fieldAccess ?? {}
+      if (!['read', 'edit'].includes(getFieldAccess(fieldAccess.value, 'voucherAmounts'))) {
+        ElMessage.warning('当前字段权限不足，无法编辑凭证分录')
+        return
+      }
       Object.assign(form.data, {
         id: data.id,
         accountSetId: data.accountSetId,
@@ -455,11 +518,13 @@
         sourceNo: data.sourceNo,
         summary: data.summary,
         attachments: cloneDeep(data.attachments ?? []),
-        lines: cloneDeep(data.lines ?? [])
+        lines: cloneDeep((data.lines ?? []).map(toEditableLine))
       })
       const lineNoById = new Map(
         (data.lines ?? [])
-          .filter((line): line is Api.Fms.VoucherLineRecord & { id: string } => Boolean(line.id))
+          .filter((line): line is Api.Fms.SecureVoucherLineRecord & { id: string } =>
+            Boolean(line.id)
+          )
           .map((line) => [line.id, line.lineNo])
       )
       cashFlowDrafts.value = (allocations ?? [])

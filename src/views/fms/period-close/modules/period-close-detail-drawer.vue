@@ -11,31 +11,40 @@
           dict-code="fmsPeriodCloseRunStatus"
           :value="run.status"
           display="tag" /></section
-      ><div class="close-detail__counts"
+      ><div v-if="canViewDiagnostics" class="close-detail__counts"
         ><article
-          ><span>通过</span><strong>{{ run.passedCount }}</strong></article
+          ><span>通过</span><strong>{{ formatProtectedCount(run.passedCount) }}</strong></article
         ><article
-          ><span>提醒</span><strong>{{ run.warningCount }}</strong></article
+          ><span>提醒</span><strong>{{ formatProtectedCount(run.warningCount) }}</strong></article
         ><article
-          ><span>阻断</span><strong>{{ run.blockingCount }}</strong></article
+          ><span>阻断</span><strong>{{ formatProtectedCount(run.blockingCount) }}</strong></article
         ></div
       ><ElTable :data="checks" row-key="id"
         ><ElTableColumn prop="checkName" label="检查项目" min-width="170" /><ElTableColumn
+          v-if="canViewDiagnostics"
           label="结果"
           width="100"
           ><template #default="{ row }"
+            ><span v-if="row.status === '***'">***</span
             ><ArtDictDisplay
+              v-else
               dict-code="fmsPeriodCloseCheckStatus"
               :value="row.status"
               display="tag" /></template></ElTableColumn
-        ><ElTableColumn prop="issueCount" label="问题数" width="90" align="right" /><ElTableColumn
+        ><ElTableColumn v-if="canViewDiagnostics" label="问题数" width="90" align="right"
+          ><template #default="{ row }">{{
+            formatProtectedCount(row.issueCount)
+          }}</template></ElTableColumn
+        ><ElTableColumn
+          v-if="canViewDiagnostics"
           prop="summary"
           label="检查结论"
           min-width="280"
           show-overflow-tooltip
-        /><ElTableColumn label="控制级别" width="110"
+        /><ElTableColumn v-if="canViewDiagnostics" label="控制级别" width="110"
           ><template #default="{ row }"
-            ><ElTag :type="row.isBlocking ? 'danger' : 'info'" effect="plain">{{
+            ><span v-if="row.isBlocking === '***'">***</span
+            ><ElTag v-else :type="row.isBlocking ? 'danger' : 'info'" effect="plain">{{
               row.isBlocking ? '阻断' : '提醒'
             }}</ElTag></template
           ></ElTableColumn
@@ -48,13 +57,17 @@
   import ArtDrawer from '@/components/core/drawers/art-drawer/index.vue'
   import type { ArtDrawerExpose } from '@/components/core/drawers/art-drawer/types'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
-  import { fetchPeriodCloseChecks } from '@/api/fms'
+  import { fetchPeriodCloseChecks, fetchPeriodCloseRunDetail } from '@/api/fms'
+  import { canViewField } from '@/utils/field-permission'
   defineOptions({ name: 'FinancePeriodCloseDetailDrawer' })
   const drawerRef = ref<ArtDrawerExpose>()
   const run = ref<Api.Fms.PeriodCloseRunRecord>()
   const checks = ref<Api.Fms.PeriodCloseCheckRecord[]>([])
+  const canViewDiagnostics = computed(() =>
+    canViewField(run.value?.fieldAccess, 'closeDiagnostics')
+  )
   async function handleOpen(row: Api.Fms.PeriodCloseRunRecord) {
-    run.value = row
+    run.value = (await fetchPeriodCloseRunDetail(row.id)).data ?? row
     const { data } = await fetchPeriodCloseChecks(row.id)
     checks.value = data ?? []
     await drawerRef.value?.handleOpen(undefined, {
@@ -63,6 +76,12 @@
       contentHeight: 'calc(100vh - 132px)',
       drawerProps: { appendToBody: true, resizable: true, closeOnClickModal: false }
     })
+  }
+  function formatProtectedCount(
+    value: Api.Tms.BasicData.SensitiveNumber | undefined | null
+  ): string {
+    if (value === null || value === undefined || value === '') return '--'
+    return typeof value === 'string' ? value : value.toLocaleString('zh-CN')
   }
   defineExpose({ handleOpen })
 </script>

@@ -1,61 +1,69 @@
-import { applyDateRange } from '@/api/providers/supabase/query'
 import { useSupabase } from '@/hooks'
 
 const { supabase, responseHandle } = useSupabase()
 
 type Bill = Api.Fms.CommercialBillRecord
 
+interface CommercialBillListPayload {
+  records: Bill[]
+  total: number
+  fieldAccess: Api.Fms.CommercialBillFieldAccessMap
+}
+
 export async function fetchCommercialBillList(params: Api.Fms.CommercialBillSearchParams = {}) {
   const { accountSetId, billType, direction, from = 0, keyword, status, to = 19 } = params
-  let query = supabase
-    .from('fms_commercial_bill')
-    .select('*', { count: 'exact' })
-    .order('due_date')
-    .order('create_time', { ascending: false })
-    .range(from, to)
-  if (accountSetId) query = query.eq('account_set_id', accountSetId)
-  if (direction) query = query.eq('direction', direction)
-  if (billType) query = query.eq('bill_type', billType)
-  if (status) query = query.eq('status', status)
-  if (keyword?.trim()) {
-    const value = keyword.trim()
-    query = query.or(
-      `bill_no.ilike.%${value}%,external_bill_no.ilike.%${value}%,drawer_name.ilike.%${value}%,payee_name.ilike.%${value}%,acceptor_name.ilike.%${value}%,counterparty_name.ilike.%${value}%`
-    )
+  const result = await responseHandle<CommercialBillListPayload>(
+    () =>
+      supabase.rpc('fms_list_commercial_bills_secure', {
+        p_from: Math.max(from, 0),
+        p_to: Math.max(to, from),
+        p_account_set_id: accountSetId || null,
+        p_direction: direction || null,
+        p_bill_type: billType || null,
+        p_status: status || null,
+        p_keyword: keyword?.trim() || null,
+        p_due_start_date: params.dueDateRange?.[0] || null,
+        p_due_end_date: params.dueDateRange?.[1] || null,
+        p_tenant_id: null
+      }),
+    { showErrorMessage: true }
+  )
+  return {
+    data: result.data?.records ?? [],
+    total: result.data?.total ?? 0,
+    error: result.error,
+    fieldAccess: result.data?.fieldAccess ?? {}
   }
-  query = applyDateRange(query, 'due_date', params.dueDateRange)
-  return await responseHandle<Bill[]>(() => query, {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
+}
+
+export async function fetchCommercialBillDetail(id: string) {
+  return await responseHandle<Bill>(
+    () => supabase.rpc('fms_get_commercial_bill_secure', { p_bill_id: id }),
+    { showErrorMessage: true }
+  )
 }
 
 export async function fetchCommercialBillEvents(billId: string) {
   return await responseHandle<Api.Fms.CommercialBillEventRecord[]>(
-    () =>
-      supabase
-        .from('fms_commercial_bill_event')
-        .select('*')
-        .eq('bill_id', billId)
-        .order('event_date')
-        .order('create_time'),
-    { ignoreCheck: true, showErrorMessage: true }
+    () => supabase.rpc('fms_list_commercial_bill_events_secure', { p_bill_id: billId }),
+    { showErrorMessage: true }
   )
 }
 
 export async function fetchCommercialBillSummary(accountSetId?: string) {
   return await responseHandle<Api.Fms.CommercialBillSummary>(
     () =>
-      supabase
-        .rpc('fms_commercial_bill_summary', { p_account_set_id: accountSetId || null })
-        .single(),
-    { ignoreCheck: true, showErrorMessage: true }
+      supabase.rpc('fms_commercial_bill_summary_secure', {
+        p_account_set_id: accountSetId || null,
+        p_tenant_id: null
+      }),
+    { showErrorMessage: true }
   )
 }
 
 export async function saveCommercialBill(payload: Api.Fms.SaveCommercialBillPayload) {
   return await responseHandle<Bill>(
-    () => supabase.rpc('save_fms_commercial_bill', { p_payload: payload }),
+    () => supabase.rpc('save_fms_commercial_bill_secure', { p_payload: payload }),
     {
       breakReturn: true,
       showMessage: true,
@@ -66,7 +74,7 @@ export async function saveCommercialBill(payload: Api.Fms.SaveCommercialBillPayl
 
 export async function deleteCommercialBill(id: string) {
   return await responseHandle<string>(
-    () => supabase.rpc('delete_fms_commercial_bill', { p_bill_id: id }),
+    () => supabase.rpc('delete_fms_commercial_bill_secure', { p_bill_id: id }),
     { breakReturn: true, showMessage: true, message: '票据草稿已删除' }
   )
 }
@@ -85,7 +93,7 @@ export async function actCommercialBill(
 ) {
   return await responseHandle<Bill>(
     () =>
-      supabase.rpc('act_fms_commercial_bill', {
+      supabase.rpc('act_fms_commercial_bill_secure', {
         p_bill_id: id,
         p_action: action,
         p_payload: payload

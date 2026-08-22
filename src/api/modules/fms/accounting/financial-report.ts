@@ -2,59 +2,63 @@ import { useSupabase } from '@/hooks'
 
 const { supabase, responseHandle } = useSupabase()
 
-const STATEMENT_ITEM_SELECT = `
-  *,
-  mappings:fms_financial_statement_mapping(
-    id,
-    subject_id,
-    mapping_direction,
-    factor,
-    remark,
-    subject:fms_subject(id, subject_code, subject_name, category)
-  )
-`
+interface FinancialStatementItemListPayload {
+  records: Api.Fms.FinancialStatementItemRecord[]
+  fieldAccess: Api.Fms.FinancialReportFieldAccessMap
+}
+
+interface FinancialStatementFormulaListPayload {
+  records: Api.Fms.FinancialStatementFormulaRecord[]
+  fieldAccess: Api.Fms.FinancialReportFieldAccessMap
+  isRecordOwner: boolean
+}
+
+interface FinancialStatementReportPayload {
+  records: Api.Fms.FinancialStatementReportRecord[]
+  fieldAccess: Api.Fms.FinancialReportFieldAccessMap
+}
 
 export async function fetchFinancialStatementItems(
   accountSetId: string,
   statementType: Api.Fms.FinancialStatementType
 ) {
-  return await responseHandle<Api.Fms.FinancialStatementItemRecord[]>(
+  const result = await responseHandle<FinancialStatementItemListPayload>(
     () =>
-      supabase
-        .from('fms_financial_statement_item')
-        .select(STATEMENT_ITEM_SELECT)
-        .eq('account_set_id', accountSetId)
-        .eq('statement_type', statementType)
-        .order('line_no'),
-    { ignoreCheck: true, showErrorMessage: true }
+      supabase.rpc('fms_list_financial_statement_items_secure', {
+        p_account_set_id: accountSetId,
+        p_statement_type: statementType
+      }),
+    { showErrorMessage: true }
   )
+  return {
+    data: result.data?.records ?? [],
+    error: result.error,
+    fieldAccess: result.data?.fieldAccess ?? {}
+  }
 }
 
 export async function fetchFinancialStatementFormulas(targetItemId: string) {
-  return await responseHandle<Api.Fms.FinancialStatementFormulaRecord[]>(
+  const result = await responseHandle<FinancialStatementFormulaListPayload>(
     () =>
-      supabase
-        .from('fms_financial_statement_formula')
-        .select(
-          `
-          *,
-          sourceItem:fms_financial_statement_item!fms_financial_statement_formula_source_fkey(
-            id, item_code, item_name, line_no
-          )
-        `
-        )
-        .eq('target_item_id', targetItemId)
-        .order('create_time'),
-    { ignoreCheck: true, showErrorMessage: true }
+      supabase.rpc('fms_list_financial_statement_formulas_secure', {
+        p_target_item_id: targetItemId
+      }),
+    { showErrorMessage: true }
   )
+  return {
+    data: result.data?.records ?? [],
+    error: result.error,
+    fieldAccess: result.data?.fieldAccess ?? {},
+    isRecordOwner: result.data?.isRecordOwner ?? false
+  }
 }
 
 export async function fetchFinancialStatementReport(
   params: Api.Fms.FinancialStatementReportParams
 ) {
-  return await responseHandle<Api.Fms.FinancialStatementReportRecord[]>(
+  const result = await responseHandle<FinancialStatementReportPayload>(
     () =>
-      supabase.rpc('fms_financial_statement_report', {
+      supabase.rpc('fms_financial_statement_report_secure', {
         p_account_set_id: params.accountSetId,
         p_statement_type: params.statementType,
         p_fiscal_year: params.fiscalYear,
@@ -63,12 +67,17 @@ export async function fetchFinancialStatementReport(
       }),
     { ignoreCheck: true, showErrorMessage: true }
   )
+  return {
+    data: result.data?.records ?? [],
+    error: result.error,
+    fieldAccess: result.data?.fieldAccess ?? {}
+  }
 }
 
 export async function initializeFinancialStatementItems(accountSetId: string) {
   return await responseHandle<number>(
     () =>
-      supabase.rpc('initialize_fms_financial_statement_items', {
+      supabase.rpc('initialize_fms_financial_statement_items_secure', {
         p_account_set_id: accountSetId
       }),
     {
@@ -83,7 +92,7 @@ export async function saveFinancialStatementItem(
   payload: Api.Fms.SaveFinancialStatementItemPayload
 ) {
   return await responseHandle<Api.Fms.FinancialStatementItemRecord>(
-    () => supabase.rpc('save_fms_financial_statement_item', { p_payload: payload }),
+    () => supabase.rpc('save_fms_financial_statement_item_secure', { p_payload: payload }),
     {
       breakReturn: true,
       showMessage: true,
@@ -98,7 +107,7 @@ export async function saveFinancialStatementMappings(
 ) {
   return await responseHandle<number>(
     () =>
-      supabase.rpc('save_fms_financial_statement_mappings', {
+      supabase.rpc('save_fms_financial_statement_mappings_secure', {
         p_statement_item_id: statementItemId,
         p_mappings: mappings
       }),
@@ -112,7 +121,7 @@ export async function saveFinancialStatementFormulas(
 ) {
   return await responseHandle<number>(
     () =>
-      supabase.rpc('save_fms_financial_statement_formulas', {
+      supabase.rpc('save_fms_financial_statement_formulas_secure', {
         p_target_item_id: targetItemId,
         p_formulas: formulas
       }),
@@ -122,20 +131,7 @@ export async function saveFinancialStatementFormulas(
 
 export async function fetchCashFlowAllocations(voucherId: string) {
   return await responseHandle<Api.Fms.CashFlowAllocationRecord[]>(
-    () =>
-      supabase
-        .from('fms_cash_flow_allocation')
-        .select(
-          `
-          *,
-          statementItem:fms_financial_statement_item(
-            id, item_code, item_name, cash_flow_direction
-          ),
-          voucherLine:fms_voucher_line!inner(voucher_id)
-        `
-        )
-        .eq('voucherLine.voucher_id', voucherId)
-        .order('create_time'),
+    () => supabase.rpc('fms_list_cash_flow_allocations_secure', { p_voucher_id: voucherId }),
     { ignoreCheck: true, showErrorMessage: true }
   )
 }
@@ -146,7 +142,7 @@ export async function saveCashFlowAllocations(
 ) {
   return await responseHandle<number>(
     () =>
-      supabase.rpc('save_fms_cash_flow_allocations', {
+      supabase.rpc('save_fms_cash_flow_allocations_secure', {
         p_voucher_id: voucherId,
         p_allocations: allocations
       }),

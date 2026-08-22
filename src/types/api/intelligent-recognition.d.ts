@@ -65,6 +65,7 @@ declare namespace Api {
       applied: number
       rejected: number
       lowConfidence: number
+      pendingLowConfidence: number
       today: number
       avgConfidence: number
       byFeature: Partial<Record<Feature, number>>

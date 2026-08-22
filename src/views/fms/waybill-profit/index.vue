@@ -52,6 +52,12 @@
   import { exportWaybillProfitList, fetchWaybillProfitList } from '@/api/fms'
   import BusinessWorkspaceHeader from '@/components/business/business-workspace-header/index.vue'
   import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
+  import {
+    canViewField,
+    formatSensitiveNumber,
+    isMaskedValue,
+    mergeFieldAccessMaps
+  } from '@/utils/field-permission'
 
   defineOptions({ name: 'FinanceWaybillProfit' })
 
@@ -66,6 +72,18 @@
   const { getDictMap } = storeToRefs(useUserStore())
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const profitAnalysisDrawerRef = ref<ProfitAnalysisDrawerExpose>()
+  const profitFieldAccess = ref<Api.Fms.WaybillProfitFieldAccessMap>({})
+  watch(
+    () => [
+      canViewField(profitFieldAccess.value, 'receivableAmounts'),
+      canViewField(profitFieldAccess.value, 'costAmounts'),
+      canViewField(profitFieldAccess.value, 'profitAmounts')
+    ],
+    (nextVisibility, previousVisibility) => {
+      if (nextVisibility.every((value, index) => value === previousVisibility?.[index])) return
+      void nextTick(() => tableQueryRef.value?.resetColumns())
+    }
+  )
   const searchQuery = reactive<SearchParams>({
     keyword: '',
     waybillStatus: '',
@@ -106,11 +124,13 @@
     }
   ])
 
-  const formatMoney = (value?: number | null): string =>
-    `¥${Number(value ?? 0).toLocaleString('zh-CN', {
+  const formatMoney = (value?: Api.Tms.BasicData.SensitiveNumber): string => {
+    const formatted = formatSensitiveNumber(value, {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
-    })}`
+    })
+    return formatted === '***' || formatted === '--' ? formatted : `¥${formatted}`
+  }
 
   const columnsFactory = (): ColumnOption<WaybillProfit>[] => [
     { type: 'selection', width: 50, fixed: 'left', reserveSelection: true },
@@ -144,61 +164,81 @@
       width: 110,
       dict: { code: 'tmsWaybillStatus', display: 'tag' }
     },
-    {
-      prop: 'receivableAmount',
-      label: '订单应收',
-      width: 130,
-      align: 'right',
-      formatter: (row) => formatMoney(row.receivableAmount)
-    },
-    {
-      prop: 'carrierPayableAmount',
-      label: '承运运费',
-      width: 130,
-      align: 'right',
-      formatter: (row) => formatMoney(row.carrierPayableAmount)
-    },
-    {
-      prop: 'otherCostAmount',
-      label: '附加成本',
-      width: 130,
-      align: 'right',
-      formatter: (row) => formatMoney(row.otherCostAmount)
-    },
-    {
-      prop: 'totalCostAmount',
-      label: '成本状态',
-      width: 110,
-      align: 'center',
-      formatter: (row) =>
-        row.totalCostAmount > 0 ? (
-          <ElTooltip content={`已审核成本 ${formatMoney(row.totalCostAmount)}`} placement="top">
-            <ElTag type="success">已核成本</ElTag>
-          </ElTooltip>
-        ) : (
-          <ElTooltip content="尚无审核通过的费用，当前利润仅供参考" placement="top">
-            <ElTag type="warning">未核成本</ElTag>
-          </ElTooltip>
-        )
-    },
-    {
-      prop: 'grossProfit',
-      label: '毛利额',
-      width: 130,
-      align: 'right',
-      formatter: (row) => formatMoney(row.grossProfit)
-    },
-    {
-      prop: 'grossMargin',
-      label: '毛利率',
-      width: 105,
-      align: 'right',
-      formatter: (row) => {
-        if (row.totalCostAmount <= 0) return <ElTag type="warning">待核算</ElTag>
-        const type = row.grossMargin < 15 ? 'danger' : row.grossMargin < 25 ? 'warning' : 'success'
-        return <ElTag type={type}>{Number(row.grossMargin).toFixed(2)}%</ElTag>
-      }
-    },
+    ...(canViewField(profitFieldAccess.value, 'receivableAmounts')
+      ? [
+          {
+            prop: 'receivableAmount',
+            label: '订单应收',
+            width: 130,
+            align: 'right' as const,
+            formatter: (row: WaybillProfit) => formatMoney(row.receivableAmount)
+          }
+        ]
+      : []),
+    ...(canViewField(profitFieldAccess.value, 'costAmounts')
+      ? [
+          {
+            prop: 'carrierPayableAmount',
+            label: '承运运费',
+            width: 130,
+            align: 'right' as const,
+            formatter: (row: WaybillProfit) => formatMoney(row.carrierPayableAmount)
+          },
+          {
+            prop: 'otherCostAmount',
+            label: '附加成本',
+            width: 130,
+            align: 'right' as const,
+            formatter: (row: WaybillProfit) => formatMoney(row.otherCostAmount)
+          },
+          {
+            prop: 'totalCostAmount',
+            label: '成本状态',
+            width: 110,
+            align: 'center' as const,
+            formatter: (row: WaybillProfit) =>
+              isMaskedValue(row.totalCostAmount) ? (
+                <ElTag type="info">已脱敏</ElTag>
+              ) : Number(row.totalCostAmount) > 0 ? (
+                <ElTooltip
+                  content={`已审核成本 ${formatMoney(row.totalCostAmount)}`}
+                  placement="top"
+                >
+                  <ElTag type="success">已核成本</ElTag>
+                </ElTooltip>
+              ) : (
+                <ElTooltip content="尚无审核通过的费用，当前利润仅供参考" placement="top">
+                  <ElTag type="warning">未核成本</ElTag>
+                </ElTooltip>
+              )
+          }
+        ]
+      : []),
+    ...(canViewField(profitFieldAccess.value, 'profitAmounts')
+      ? [
+          {
+            prop: 'grossProfit',
+            label: '毛利额',
+            width: 130,
+            align: 'right' as const,
+            formatter: (row: WaybillProfit) => formatMoney(row.grossProfit)
+          },
+          {
+            prop: 'grossMargin',
+            label: '毛利率',
+            width: 105,
+            align: 'right' as const,
+            formatter: (row: WaybillProfit) => {
+              if (isMaskedValue(row.grossMargin)) return <ElTag type="info">***</ElTag>
+              if (Number(row.totalCostAmount) <= 0) return <ElTag type="warning">待核算</ElTag>
+              const margin = Number(row.grossMargin)
+              if (!Number.isFinite(margin)) return '--'
+              const type = margin < 15 ? 'danger' : margin < 25 ? 'warning' : 'success'
+              return <ElTag type={type}>{margin.toFixed(2)}%</ElTag>
+            }
+          }
+        ]
+      : []),
     {
       prop: 'completedAt',
       label: '完成时间',
@@ -208,7 +248,7 @@
     }
   ]
 
-  const excelColumns: ArtTableQueryExcelColumn[] = [
+  const excelColumns = computed<ArtTableQueryExcelColumn[]>(() => [
     { key: 'waybillNo', title: '运单号' },
     { key: 'originStation', title: '起始站' },
     { key: 'destinationStation', title: '目的站' },
@@ -216,14 +256,24 @@
     { key: 'carrierName', title: '承运商' },
     { key: 'plateNo', title: '车牌号' },
     { key: 'waybillStatus', title: '运单状态' },
-    { key: 'receivableAmount', title: '订单应收' },
-    { key: 'carrierPayableAmount', title: '承运运费' },
-    { key: 'otherCostAmount', title: '附加成本' },
-    { key: 'totalCostAmount', title: '总成本' },
-    { key: 'grossProfit', title: '毛利额' },
-    { key: 'grossMargin', title: '毛利率(%)' },
+    ...(canViewField(profitFieldAccess.value, 'receivableAmounts')
+      ? [{ key: 'receivableAmount', title: '订单应收' }]
+      : []),
+    ...(canViewField(profitFieldAccess.value, 'costAmounts')
+      ? [
+          { key: 'carrierPayableAmount', title: '承运运费' },
+          { key: 'otherCostAmount', title: '附加成本' },
+          { key: 'totalCostAmount', title: '总成本' }
+        ]
+      : []),
+    ...(canViewField(profitFieldAccess.value, 'profitAmounts')
+      ? [
+          { key: 'grossProfit', title: '毛利额' },
+          { key: 'grossMargin', title: '毛利率(%)' }
+        ]
+      : []),
     { key: 'completedAt', title: '完成时间' }
-  ]
+  ])
 
   const headerActions = computed<ArtTableQueryHeaderAction[]>(() => [
     {
@@ -240,7 +290,7 @@
       label: '导出利润明细',
       exportFilename: 'TMS运单利润明细',
       exportSheetName: '运单利润',
-      exportColumns: excelColumns,
+      exportColumns: excelColumns.value,
       exportApi: ({ selectedIds, searchParams, maxRows }) =>
         exportWaybillProfitList({
           ...(searchParams as SearchParams),
@@ -250,8 +300,13 @@
     }
   ])
 
-  const fetchTableData = (params: TableParams) => {
+  const fetchTableData = async (params: TableParams) => {
     const { from, to } = pageInfoHandler({ current: params.current, size: params.size })
-    return fetchWaybillProfitList({ ...params, from, to })
+    const result = await fetchWaybillProfitList({ ...params, from, to })
+    profitFieldAccess.value = mergeFieldAccessMaps(
+      result.fieldAccess,
+      ...(result.data ?? []).map((row) => row.fieldAccess)
+    )
+    return result
   }
 </script>

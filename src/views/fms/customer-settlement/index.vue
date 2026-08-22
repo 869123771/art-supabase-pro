@@ -64,6 +64,11 @@
   import { useUserStore } from '@/store/modules/user'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatWithDayjs } from '@/utils/time'
+  import {
+    canViewField,
+    formatSensitiveNumber,
+    mergeFieldAccessMaps
+  } from '@/utils/field-permission'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { useAuth } from '@/hooks/core/useAuth'
   import CustomerStatementDialog from './modules/customer-statement-dialog.vue'
@@ -76,6 +81,7 @@
   defineOptions({ name: 'FinanceCustomerSettlement' })
 
   type CustomerStatement = Api.Fms.CustomerStatementRecord
+  type CustomerStatementFieldKey = Api.Fms.CustomerStatementFieldKey
   type SearchParams = Api.Fms.CustomerStatementSearchParams
   type TableParams = SearchParams & Pick<Api.Common.PaginationParams, 'current' | 'size'>
 
@@ -96,6 +102,8 @@
   const dialogRef = ref<DialogExpose>()
   const drawerRef = ref<DrawerExpose>()
   const customerOptions = ref<Array<{ label: string; value: string }>>([])
+  const fieldAccess = ref<Api.Fms.CustomerStatementFieldAccessMap>({})
+  const currentRows = ref<CustomerStatement[]>([])
   const searchQuery = reactive<SearchParams>({
     customerId: customerDeleteContext.value.customerId,
     keyword: '',
@@ -148,11 +156,10 @@
     }
   ])
 
-  const formatMoney = (value?: number | null): string =>
-    `¥${Number(value ?? 0).toLocaleString('zh-CN', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    })}`
+  const formatMoney = (value?: number | string | null): string => {
+    const formatted = formatSensitiveNumber(value)
+    return formatted === '***' || formatted === '--' ? formatted : `¥${formatted}`
+  }
 
   const columnsFactory = (): ColumnOption<CustomerStatement>[] => [
     { type: 'selection', width: 50, fixed: 'left', reserveSelection: true },
@@ -177,27 +184,35 @@
       align: 'center',
       formatter: (row) => `${row.waybillCount} 单`
     },
-    {
-      prop: 'statementAmount',
-      label: '对账金额',
-      width: 135,
-      align: 'right',
-      formatter: (row) => formatMoney(row.statementAmount)
-    },
-    {
-      prop: 'settledAmount',
-      label: '已结金额',
-      width: 135,
-      align: 'right',
-      formatter: (row) => formatMoney(row.settledAmount)
-    },
-    {
-      prop: 'outstandingAmount',
-      label: '未结金额',
-      width: 135,
-      align: 'right',
-      formatter: (row) => formatMoney(row.outstandingAmount)
-    },
+    ...(canViewListField('statementAmounts')
+      ? [
+          {
+            prop: 'statementAmount',
+            label: '对账金额',
+            width: 135,
+            align: 'right' as const,
+            formatter: (row: CustomerStatement) => formatMoney(row.statementAmount)
+          }
+        ]
+      : []),
+    ...(canViewListField('settlementAmounts')
+      ? [
+          {
+            prop: 'settledAmount',
+            label: '已结金额',
+            width: 135,
+            align: 'right' as const,
+            formatter: (row: CustomerStatement) => formatMoney(row.settledAmount)
+          },
+          {
+            prop: 'outstandingAmount',
+            label: '未结金额',
+            width: 135,
+            align: 'right' as const,
+            formatter: (row: CustomerStatement) => formatMoney(row.outstandingAmount)
+          }
+        ]
+      : []),
     {
       prop: 'status',
       label: '状态',
@@ -272,19 +287,25 @@
     return null
   }
 
-  const excelColumns: ArtTableQueryExcelColumn[] = [
+  const excelColumns = computed<ArtTableQueryExcelColumn[]>(() => [
     { key: 'statementNo', title: '对账单号' },
     { key: 'customerName', title: '对账客户' },
     { key: 'periodStart', title: '账期开始' },
     { key: 'periodEnd', title: '账期结束' },
     { key: 'waybillCount', title: '运单数' },
-    { key: 'statementAmount', title: '对账金额' },
-    { key: 'settledAmount', title: '已结金额' },
-    { key: 'outstandingAmount', title: '未结金额' },
+    ...(canViewListField('statementAmounts')
+      ? [{ key: 'statementAmount', title: '对账金额' }]
+      : []),
+    ...(canViewListField('settlementAmounts')
+      ? [
+          { key: 'settledAmount', title: '已结金额' },
+          { key: 'outstandingAmount', title: '未结金额' }
+        ]
+      : []),
     { key: 'status', title: '状态' },
     { key: 'createBy', title: '创建人' },
     { key: 'createTime', title: '创建时间' }
-  ]
+  ])
 
   const headerActions = computed<ArtTableQueryHeaderAction[]>(() => [
     {
@@ -298,7 +319,7 @@
       type: 'export',
       exportFilename: 'TMS客户对账单',
       exportSheetName: '客户对账单',
-      exportColumns: excelColumns,
+      exportColumns: excelColumns.value,
       exportApi: ({ selectedIds, searchParams, maxRows }) =>
         exportCustomerStatementList({
           ...(searchParams as SearchParams),
@@ -308,10 +329,30 @@
     }
   ])
 
-  const fetchTableData = (params: TableParams) => {
+  const fetchTableData = async (params: TableParams) => {
     const { from, to } = pageInfoHandler({ current: params.current, size: params.size })
-    return fetchCustomerStatementList({ ...params, from, to })
+    const result = await fetchCustomerStatementList({ ...params, from, to })
+    const previousVisibility = getSensitiveColumnVisibility()
+    fieldAccess.value = result.fieldAccess
+    currentRows.value = result.data
+    if (previousVisibility !== getSensitiveColumnVisibility()) {
+      await nextTick()
+      tableQueryRef.value?.resetColumns()
+    }
+    return result
   }
+
+  const canViewListField = (field: CustomerStatementFieldKey): boolean =>
+    canViewField(
+      mergeFieldAccessMaps(fieldAccess.value, ...currentRows.value.map((row) => row.fieldAccess)),
+      field
+    )
+
+  const canViewRowField = (row: CustomerStatement, field: CustomerStatementFieldKey): boolean =>
+    canViewField(row.fieldAccess ?? fieldAccess.value, field)
+
+  const getSensitiveColumnVisibility = (): string =>
+    `${canViewListField('statementAmounts')}:${canViewListField('settlementAmounts')}`
 
   async function loadCustomerOptions(): Promise<void> {
     const { data } = await fetchCustomerOptions()
@@ -336,7 +377,11 @@
           cancelButtonText: '取消'
         }
       )
-      await updateCustomerStatementStatus({ id: row.id, status: 'pending_review' })
+      await updateCustomerStatementStatus({
+        id: row.id,
+        status: 'pending_review',
+        businessTitle: `客户对账单 ${row.statementNo} · ${row.customerName}`
+      })
       await tableQueryRef.value?.refreshUpdate()
     } catch {
       // 用户取消时无需提示。
@@ -345,15 +390,14 @@
 
   async function handleApprove(row: CustomerStatement): Promise<void> {
     try {
-      await confirmAction(
-        `确认对账金额 ${formatMoney(row.statementAmount)} 无误并审核通过吗？`,
-        '审核通过',
-        {
-          type: 'success',
-          confirmButtonText: '通过',
-          cancelButtonText: '取消'
-        }
-      )
+      const amountHint = canViewRowField(row, 'statementAmounts')
+        ? `对账金额 ${formatMoney(row.statementAmount)}`
+        : '该对账单'
+      await confirmAction(`确认${amountHint}无误并审核通过吗？`, '审核通过', {
+        type: 'success',
+        confirmButtonText: '通过',
+        cancelButtonText: '取消'
+      })
       await updateCustomerStatementStatus({ id: row.id, status: 'confirmed' })
       await tableQueryRef.value?.refreshUpdate()
     } catch {

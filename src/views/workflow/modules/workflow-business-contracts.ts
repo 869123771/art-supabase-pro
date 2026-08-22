@@ -7,7 +7,7 @@ import {
 export interface WorkflowBusinessContract {
   businessType: string
   label: string
-  domain: 'transport' | 'finance' | 'master_data'
+  domain: 'transport' | 'finance' | 'master_data' | 'safety'
   riskLevel: 'high' | 'medium'
   owner: string
   fields: Api.Workflow.WorkflowContextField[]
@@ -158,6 +158,22 @@ const contracts: Record<string, WorkflowBusinessContract> = {
       { key: 'isNewEnergy', label: '新能源车辆', valueType: 'boolean' }
     ],
     routePath: (businessId) => `/vms/vehicle-archive-detail/${businessId}`
+  },
+  smis_hidden_danger: {
+    businessType: 'smis_hidden_danger',
+    label: '安全隐患复查',
+    domain: 'safety',
+    riskLevel: 'high',
+    owner: '安全生产管理',
+    fields: [
+      { key: 'dangerNo', label: '隐患编号', valueType: 'text' },
+      { key: 'dangerTitle', label: '隐患标题', valueType: 'text' },
+      { key: 'riskLevel', label: '隐患等级', valueType: 'text' },
+      { key: 'riskPointName', label: '风险点', valueType: 'text' },
+      { key: 'responsibleUserName', label: '整改责任人', valueType: 'text' },
+      { key: 'rectificationDeadline', label: '整改期限', valueType: 'date' }
+    ],
+    routePath: () => '/smis/inspection-control/hidden-danger'
   }
 }
 

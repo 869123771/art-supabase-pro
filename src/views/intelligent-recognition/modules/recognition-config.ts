@@ -5,9 +5,9 @@ export interface RecognitionCapability {
   title: string
   description: string
   icon: string
-  accent: string
   businessLabel: string
   businessRoute: string
+  actionLabel: string
 }
 
 export const recognitionCapabilities: RecognitionCapability[] = [
@@ -16,36 +16,36 @@ export const recognitionCapabilities: RecognitionCapability[] = [
     title: '发票识别',
     description: '提取票号、购销双方、税额与价税合计，标注低置信字段。',
     icon: 'ri:bill-line',
-    accent: 'blue',
     businessLabel: '发票管理',
-    businessRoute: financePaths.invoiceManagement
+    businessRoute: financePaths.invoiceManagement,
+    actionLabel: '开始识别'
   },
   {
     feature: 'waybill_receipt_ocr',
     title: '运输回单识别',
     description: '结合运单上下文识别签收时间、收货人和异常数量。',
     icon: 'ri:file-list-3-line',
-    accent: 'green',
     businessLabel: '配送管理',
-    businessRoute: '/tms/delivery-management'
+    businessRoute: '/tms/delivery-management',
+    actionLabel: '进入业务'
   },
   {
     feature: 'cash_voucher_ocr',
     title: '收付款凭证',
     description: '识别交易要素，并基于往来单位、金额和账期推荐对账单。',
     icon: 'ri:bank-card-line',
-    accent: 'amber',
     businessLabel: '收付款管理',
-    businessRoute: financePaths.cashTransaction
+    businessRoute: financePaths.cashTransaction,
+    actionLabel: '开始识别'
   },
   {
     feature: 'waybill_expense_ocr',
     title: '运单费用票据识别',
     description: '识别能源、路桥、装卸及其他费用票据，并回填绑定运单的费用草稿。',
     icon: 'ri:gas-station-line',
-    accent: 'violet',
     businessLabel: '运单费用',
-    businessRoute: financePaths.waybillCost
+    businessRoute: financePaths.waybillCost,
+    actionLabel: '进入业务'
   }
 ]
 

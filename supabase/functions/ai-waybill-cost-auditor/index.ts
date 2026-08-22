@@ -87,48 +87,22 @@ Deno.serve(async (request) => {
   const startedAt = Date.now()
   let runId = ''
   try {
-    const { data: cost, error: costError } = await userClient
-      .from('tms_waybill_cost')
-      .select(
-        `
-          *,
-          waybill:tms_waybill!tms_waybill_cost_waybill_id_fkey(
-            id,
-            waybill_no,
-            origin_city,
-            destination_city,
-            order:tms_order!tms_waybill_order_id_fkey(
-              id,
-              origin_station,
-              destination_station
-            )
-          )
-        `
-      )
-      .eq('id', costId)
-      .maybeSingle()
-    if (costError) throw costError
+    const { data: evidenceData, error: evidenceError } = await userClient.rpc(
+      'tms_get_waybill_cost_ai_evidence_secure',
+      { p_cost_id: costId }
+    )
+    if (evidenceError) throw evidenceError
+    const evidence =
+      evidenceData && typeof evidenceData === 'object'
+        ? (evidenceData as Record<string, unknown>)
+        : {}
+    const cost =
+      evidence.cost && typeof evidence.cost === 'object'
+        ? (evidence.cost as Record<string, unknown>)
+        : null
     if (!cost) return json({ code: 'cost_not_found', message: '未找到可查看的运单费用' }, 404)
 
     const waybillId = text(cost.waybill_id)
-    const costType = text(cost.cost_type)
-    const [siblingResult, referenceResult, profitResult] = await Promise.all([
-      userClient
-        .from('tms_waybill_cost')
-        .select('id,waybill_id,cost_type,amount,occurred_on,payee_name,audit_status')
-        .eq('waybill_id', waybillId),
-      userClient
-        .from('tms_waybill_cost')
-        .select('id,amount')
-        .eq('cost_type', costType)
-        .eq('audit_status', 'approved')
-        .order('occurred_on', { ascending: false })
-        .limit(100),
-      userClient.from('tms_waybill_profit').select('*').eq('waybill_id', waybillId).maybeSingle()
-    ])
-    if (siblingResult.error) throw siblingResult.error
-    if (referenceResult.error) throw referenceResult.error
-    if (profitResult.error) throw profitResult.error
 
     const { data: run, error: runError } = await admin
       .from('ai_run')
@@ -154,9 +128,10 @@ Deno.serve(async (request) => {
 
     const assessment = assessWaybillCost({
       cost,
-      siblingCosts: siblingResult.data ?? [],
-      referenceCosts: referenceResult.data ?? [],
-      profit: profitResult.data
+      siblingCosts: Array.isArray(evidence.sibling_costs) ? evidence.sibling_costs : [],
+      referenceCosts: Array.isArray(evidence.reference_costs) ? evidence.reference_costs : [],
+      profit:
+        evidence.profit && typeof evidence.profit === 'object' ? evidence.profit : null
     })
 
     const { error: finishError } = await admin

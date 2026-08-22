@@ -19,6 +19,7 @@
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import { fetchPayrollEmployeeOptions, savePayrollLine } from '@/api/fms'
+  import { canEditField } from '@/utils/field-permission'
   defineOptions({ name: 'FinancePayrollLineDialog' })
   const emit = defineEmits<{ success: [] }>()
   const dialogRef = ref<ArtDialogExpose>()
@@ -112,18 +113,23 @@
     run: Api.Fms.PayrollRunRecord,
     line?: Api.Fms.PayrollLineRecord
   ): Promise<void> {
+    const access = line?.fieldAccess ?? run.fieldAccess
+    if (!canEditField(access, 'employeeIdentity') || !canEditField(access, 'salaryAmounts')) {
+      ElMessage.warning('你没有该薪资批次员工与金额字段的编辑权限')
+      return
+    }
     runId.value = run.id
     currentLine.value = line
-    const { data } = await fetchPayrollEmployeeOptions(run.tenantId)
+    const { data } = await fetchPayrollEmployeeOptions(run.id)
     employeeOptions.value = (data ?? []).map((item) => ({
       label: `${item.employeeName}（${item.employeeNo}）`,
       value: item.id
     }))
     Object.assign(form, {
       employeeId: line?.employeeId || '',
-      grossAmount: line?.grossAmount || 0,
-      deductionAmount: line?.deductionAmount || 0,
-      employerCostAmount: line?.employerCostAmount || 0,
+      grossAmount: toFiniteNumber(line?.grossAmount),
+      deductionAmount: toFiniteNumber(line?.deductionAmount),
+      employerCostAmount: toFiniteNumber(line?.employerCostAmount),
       remark: line?.remark || null
     })
     await dialogRef.value?.handleOpen(undefined, {
@@ -133,6 +139,10 @@
       onOpen: () => formRef.value?.clearValidate(),
       dialogProps: { closeOnClickModal: false }
     })
+  }
+  function toFiniteNumber(value: Api.Tms.BasicData.SensitiveNumber | undefined): number {
+    const numberValue = Number(value)
+    return Number.isFinite(numberValue) ? numberValue : 0
   }
   defineExpose({ handleOpen })
 </script>

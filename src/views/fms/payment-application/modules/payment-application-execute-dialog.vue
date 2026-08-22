@@ -33,13 +33,13 @@
 <script setup lang="ts">
   import dayjs from 'dayjs'
   import type { ComputedRef } from 'vue'
-  import type { FormRules } from 'element-plus'
+  import { ElMessage, type FormRules } from 'element-plus'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import ArtUploadImage from '@/components/core/forms/art-upload-image/index.vue'
   import { executeCarrierPaymentApplication, fetchFundAccountOptions } from '@/api/fms'
-  import { formatCurrencyValue } from '@/utils/ui'
+  import { formatSensitiveNumber, getFieldAccess } from '@/utils/field-permission'
   import { useDocumentNumberRule } from '@/hooks/core/useDocumentNumberRule'
 
   defineOptions({ name: 'FinancePaymentApplicationExecuteDialog' })
@@ -160,8 +160,13 @@
 
   const noticeTitle = computed(() => {
     if (!application.value) return '确认实际付款信息'
-    return `${application.value.carrierName} · ${formatCurrencyValue(application.value.amount)} · ${application.value.statementCount} 份对账单`
+    return `${application.value.carrierName} · ${formatMoney(application.value.amount)} · ${application.value.statementCount} 份对账单`
   })
+
+  function formatMoney(value?: Api.Tms.BasicData.SensitiveNumber): string {
+    const formatted = formatSensitiveNumber(value)
+    return formatted === '***' || formatted === '--' ? formatted : `¥${formatted}`
+  }
 
   async function handleSubmit(): Promise<boolean> {
     if (!application.value) return false
@@ -194,6 +199,10 @@
   }
 
   async function handleOpen(row: Application): Promise<void> {
+    if (!['read', 'edit'].includes(getFieldAccess(row.fieldAccess, 'applicationAmounts'))) {
+      ElMessage.warning('当前字段权限不允许读取付款申请金额，无法登记付款')
+      return
+    }
     const [, , fundAccounts] = await Promise.all([
       resetForm(),
       transactionNumber.loadRule(),
