@@ -3,6 +3,10 @@
   "version": "1.0.0",
   "type": "module",
   "types": "./src/types/platform-runtime.d.ts",
+  "files": [
+    "src",
+    "public"
+  ],
   "engines": {
     "node": ">=20.19.0",
     "pnpm": ">=8.8.0"
