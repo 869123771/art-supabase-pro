@@ -1,5 +1,6 @@
 import type { ApplicationCode } from '@/config/application'
 import type { AppRouteRecord } from '@/types/router'
+import { RoutesAlias } from '../routesAlias'
 
 /**
  * 独立应用已经通过应用切换器表明自身身份，不再重复显示应用壳目录。
@@ -18,6 +19,9 @@ export function flattenStandaloneApplicationMenu(
       return [item]
     }
 
-    return item.children
+    return item.children.map((child) => ({
+      ...child,
+      component: child.component || (child.children?.length ? RoutesAlias.Layout : child.component)
+    }))
   })
 }
