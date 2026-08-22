@@ -1,1 +1,0 @@
-import{Et as e,Wt as t,_t as n}from"./framework-Dnpk0_Lx.js";import{t as r}from"./hr-workspace-page-CegrG7Nb.js";var i=e({name:`HrHeadcount`,__name:`index`,setup(e){let i={view:`Hr:Headcount:View`,add:`Hr:Headcount:Add`,edit:`Hr:Headcount:Edit`,delete:`Hr:Headcount:Delete`};return(e,a)=>(t(),n(r,{"workspace-key":`headcount`,permissions:i}))}});export{i as default};

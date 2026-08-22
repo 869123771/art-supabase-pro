@@ -1,1 +1,0 @@
-import{Et as e,Wt as t,_t as n}from"./framework-Dnpk0_Lx.js";import{t as r}from"./hr-workspace-page-CegrG7Nb.js";var i=e({name:`HrTalentDevelopment`,__name:`index`,setup(e){let i={view:`Hr:Talent:View`,add:`Hr:Talent:Add`,edit:`Hr:Talent:Edit`,delete:`Hr:Talent:Delete`};return(e,a)=>(t(),n(r,{"workspace-key":`talent`,permissions:i}))}});export{i as default};

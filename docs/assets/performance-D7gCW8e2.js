@@ -1,0 +1,1 @@
+import{Rr as e,fi as t,qr as n}from"./framework-D8pXWVr4.js";import{t as r}from"./hr-workspace-page-CsBV4Sks.js";var i=n({name:`HrPerformance`,__name:`index`,setup(n){let i={view:`Hr:Performance:View`,add:`Hr:Performance:Add`,edit:`Hr:Performance:Edit`,delete:`Hr:Performance:Delete`};return(n,a)=>(t(),e(r,{"workspace-key":`performance`,permissions:i}))}});export{i as default};

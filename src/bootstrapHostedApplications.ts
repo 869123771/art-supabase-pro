@@ -1,5 +1,6 @@
 import type { Component } from 'vue'
 import { registerApplicationViewModules } from '@/router/core/ComponentLoader'
+import { registerFmsRecognitionIntegration } from '@fms/integrations'
 
 type HostedRouteComponentModule = { default: Component }
 
@@ -20,6 +21,7 @@ registerHostedApplication(
     '!../modules/art-supabase-finance/src/views/**/components/**/*.vue'
   ])
 )
+registerFmsRecognitionIntegration()
 registerHostedApplication(
   'fms',
   '../modules/art-supabase-fms/src/views',
