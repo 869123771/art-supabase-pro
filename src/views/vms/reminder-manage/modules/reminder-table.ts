@@ -4,7 +4,7 @@ import dayjs from 'dayjs'
 import { isNil } from 'lodash-es'
 import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
 import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
-import { fetchCarrierOptions } from '@/api/tms'
+import { fetchCarrierOptions, type VmsCarrierReference } from '@/api/vms'
 import type { ColumnOption } from '@/types'
 
 type ReminderRow = Api.Vms.ReminderManage.VehicleReminderRow
@@ -18,7 +18,7 @@ export const companySearchItem: SearchFormItem = {
   labelField: 'companyName',
   valueField: 'companyName',
   labelFn: (option) => {
-    const carrier = option as Api.Tms.BasicData.CarrierOption
+    const carrier = option as VmsCarrierReference
     return carrier.carrierCode
       ? `${carrier.companyName}（${carrier.carrierCode}）`
       : carrier.companyName

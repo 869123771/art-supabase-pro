@@ -1,5 +1,13 @@
 /// <reference types="vite/client" />
 
+interface ImportMetaEnv {
+  readonly VITE_APP_CODE?: 'platform' | 'finance' | 'fms' | 'hr' | 'smis' | 'vms'
+}
+
+interface ImportMeta {
+  readonly env: ImportMetaEnv
+}
+
 declare module 'nprogress'
 
 declare module 'crypto-js'

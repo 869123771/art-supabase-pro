@@ -59,14 +59,15 @@
   import {
     deleteVehicleArchive,
     exportVehicleArchiveList,
-    fetchVehicleArchiveList
+    fetchCarrierOptions,
+    fetchVehicleArchiveList,
+    type VmsCarrierReference
   } from '@/api/vms'
   import MasterDataDeleteGuard, {
     type MasterDataDeleteGuardOpenOptions
   } from '@/components/business/master-data-delete-guard/index.vue'
   import WorkflowBusinessHistoryDrawer from '@/components/business/workflow-business-history/workflow-business-history-drawer.vue'
   import type { WorkflowBusinessHistoryDrawerExpose } from '@/components/business/workflow-business-history/types'
-  import { fetchCarrierDetail, fetchCarrierOptions } from '@/api/tms'
   import { useUserStore } from '@/store/modules/user'
   import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
   import BusinessWorkspaceHeader, {
@@ -79,7 +80,7 @@
   const { confirmAction } = useArtFeedback()
 
   type VehicleArchive = Api.Vms.ArchiveManage.VehicleArchive
-  type CarrierOption = Api.Tms.BasicData.CarrierOption
+  type CarrierOption = VmsCarrierReference
   type SearchParams = Api.Vms.ArchiveManage.VehicleArchiveSearchParams
   type TableParams = SearchParams & Pick<Api.Common.PaginationParams, 'current' | 'size'>
 
@@ -185,8 +186,8 @@
       return carrierResult
     }
 
-    const detailResult = await fetchCarrierDetail(selectedCarrierId)
-    const carrier = detailResult.data
+    const selectedResult = await fetchCarrierOptions({ ids: [selectedCarrierId] })
+    const carrier = selectedResult.data?.[0]
     if (!carrier?.id) return carrierResult
 
     return {

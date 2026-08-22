@@ -154,6 +154,8 @@ export interface EnvConfig {
   NODE_ENV: string
   // 应用版本
   VITE_VERSION: string
+  // 独立应用标识
+  VITE_APP_CODE?: 'platform' | 'finance' | 'fms' | 'hr' | 'smis' | 'vms'
   // 应用端口
   VITE_PORT: string
   // 应用基础路径

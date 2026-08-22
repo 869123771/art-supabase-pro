@@ -15,6 +15,7 @@ import { fetchCurrentUserMenu } from '@/api/system-manage'
 import { asyncRoutes } from '../routes/asyncRoutes'
 import { RoutesAlias } from '../routesAlias'
 import { formatMenuTitle } from '@/utils'
+import { currentApplication } from '@/config/application'
 
 export class MenuProcessor {
   /**
@@ -58,7 +59,7 @@ export class MenuProcessor {
    * 处理后端控制模式的菜单
    */
   private async processBackendMenu(): Promise<AppRouteRecord[]> {
-    const { data } = await fetchCurrentUserMenu()
+    const { data } = await fetchCurrentUserMenu(currentApplication.code)
     const { flat = [], tree = [] } = data ?? {}
     // 保存按钮数据到 store
     const menuStore = useMenuStore()

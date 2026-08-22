@@ -74,6 +74,8 @@
       </div>
 
       <div class="art-header-bar__actions flex-c">
+        <ArtApplicationSwitcher />
+
         <!-- 搜索 -->
         <button
           v-if="shouldShowGlobalSearch"
@@ -219,6 +221,7 @@
   import { useHeaderBar } from '@/hooks/core/useHeaderBar'
   import { useWebsiteConfig } from '@/hooks'
   import ArtUserMenu from './widget/ArtUserMenu.vue'
+  import ArtApplicationSwitcher from './widget/ArtApplicationSwitcher.vue'
 
   defineOptions({ name: 'ArtHeaderBar' })
 

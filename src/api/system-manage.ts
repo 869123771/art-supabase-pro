@@ -1,4 +1,5 @@
 import { AppRouteRecord } from '@/types/router'
+import type { ApplicationCode } from '@/config/application'
 import { useSupabase } from '@/hooks'
 import { WRITE_PERMISSION_DENIED_MESSAGE } from '@/hooks/core/useSupabase'
 import { buildSpecsFromMap, applyFilters, type Op } from '@/utils/supabase'
@@ -1117,9 +1118,31 @@ export async function saveMenuTreeOrder(
 }
 
 /*获取当前用户的菜单权限*/
-export async function fetchCurrentUserMenu() {
+export async function fetchCurrentUserMenu(applicationCode: ApplicationCode) {
   return await responseHandle<{ flat: AppRouteRecord[]; tree: AppRouteRecord[] }>(
-    () => supabase.rpc('get_menus_for_current_user'),
+    () =>
+      supabase.rpc('get_menus_for_current_application', {
+        p_app_code: applicationCode
+      }),
+    {
+      showMessage: false,
+      ignoreCheck: true
+    }
+  )
+}
+
+export interface AccessibleApplication {
+  code: ApplicationCode
+  name: string
+  description: string | null
+  baseUrl: string
+  sort: number
+}
+
+/** 获取当前用户可进入的独立应用。 */
+export async function fetchAccessibleApplications() {
+  return await responseHandle<AccessibleApplication[]>(
+    () => supabase.rpc('get_accessible_applications'),
     {
       showMessage: false,
       ignoreCheck: true

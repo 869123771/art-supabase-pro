@@ -3,6 +3,17 @@ import * as javaVehicleApi from '@/api/providers/java/vehicle'
 import * as supabaseVehicleApi from '@/api/providers/supabase/vehicle'
 import { startWorkflow } from '@/api/workflow'
 
+export {
+  fetchVmsCarrierReferences as fetchCarrierOptions,
+  fetchVmsDriverReferences as fetchDriverOptions,
+  fetchVmsHrEmployeeReferences as fetchHrEmployeeOptions
+} from '@/api/modules/vms/integration'
+export type {
+  VmsCarrierReference,
+  VmsDriverReference,
+  VmsHrEmployeeReference
+} from '@/api/modules/vms/integration'
+
 const vehicleApi = isJavaApi ? javaVehicleApi : supabaseVehicleApi
 
 export const fetchInsuranceCompanyList = vehicleApi.fetchInsuranceCompanyList

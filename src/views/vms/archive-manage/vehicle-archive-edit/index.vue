@@ -158,10 +158,13 @@
   import {
     addVehicleArchive,
     editVehicleArchive,
+    fetchCarrierOptions,
+    fetchDriverOptions,
     fetchVehicleArchiveDetail,
-    submitVehicleArchiveForApproval
+    submitVehicleArchiveForApproval,
+    type VmsCarrierReference,
+    type VmsDriverReference
   } from '@/api/vms'
-  import { fetchCarrierOptions, fetchDriverOptions } from '@/api/tms'
   import { uploadAttachment } from '@/api/common'
   import { useUserStore } from '@/store/modules/user'
   import { useDocumentNumberRule } from '@/hooks/core/useDocumentNumberRule'
@@ -181,8 +184,8 @@
   const { confirmAction } = useArtFeedback()
 
   type ArchiveAttachment = Api.Vms.ArchiveManage.VehicleArchiveAttachment
-  type CarrierOption = Api.Tms.BasicData.CarrierOption
-  type DriverOption = Api.Tms.BasicData.DriverOption
+  type CarrierOption = VmsCarrierReference
+  type DriverOption = VmsDriverReference
   type ArchiveTabName = 'basic' | 'body' | 'engine' | 'other'
   type BooleanDictOption = Omit<Api.DataCenter.DictListItem, 'value'> & { value: boolean }
   type ImageKey =
