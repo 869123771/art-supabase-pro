@@ -10,6 +10,7 @@
 /// <reference path="./api/workflow.d.ts" />
 /// <reference path="./directive/directive.d.ts" />
 /// <reference path="./import/auto-imports.d.ts" />
+/// <reference path="./import/components.d.ts" />
 /// <reference path="./import/wangeditor-editor-for-vue.d.ts" />
 
 /**
