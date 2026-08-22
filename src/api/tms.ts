@@ -23,6 +23,11 @@ export {
   fetchDriverOptions
 } from '@/api/modules/tms/driver'
 export {
+  fetchTmsVehicleOptions,
+  fetchTmsVehicleReferences
+} from '@/api/modules/tms/vehicle-reference'
+export type { TmsVehicleOption, TmsVehicleReference } from '@/api/modules/tms/vehicle-reference'
+export {
   addCustomer,
   addCustomerAddress,
   addFavoriteRoute,

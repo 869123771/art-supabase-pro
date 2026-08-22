@@ -53,6 +53,7 @@
   import { ColumnOption, DialogType } from '@/types'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatWithDayjs } from '@/utils/time'
+  import { navigateToApplication } from '@/utils/application-navigation'
   import { canViewField, mergeFieldAccessMaps } from '@/utils/field-permission'
   import { useUserStore } from '@/store/modules/user'
   import {
@@ -363,10 +364,11 @@
 
   const goVehicleManage = (row: Carrier): void => {
     if (!row.id) return
-    void router.push({
-      path: '/vms/vehicle-archive-manage',
-      query: { carrierId: row.id }
-    })
+    void navigateToApplication('vms', '/vms/vehicle-archive-manage', {
+      carrierId: row.id
+    }).catch((error) =>
+      ElMessage.error(error instanceof Error ? error.message : 'VMS 应用跳转失败')
+    )
   }
 
   const getMoreActions = (): ButtonMoreItem[] => [

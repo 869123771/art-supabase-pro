@@ -342,12 +342,9 @@ async function handleDynamicRoutes(
       }
     } else {
       // 有权限，正常导航
-      return {
-        path: to.path,
-        query: to.query,
-        hash: to.hash,
-        replace: true
-      }
+      // 动态路由加入后返回完整地址，强制 Vue Router 用新 matcher 重新解析。
+      // 返回同 path 的对象在 Vue Router 5 中可能被当作重复导航，导致首屏悬空。
+      return to.fullPath
     }
   } catch (error) {
     console.error('[RouteGuard] 动态路由注册失败:', error)

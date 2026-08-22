@@ -73,6 +73,7 @@
 
 <script setup lang="ts">
   import { EditPen, Van } from '@element-plus/icons-vue'
+  import { ElMessage } from 'element-plus'
   import { storeToRefs } from 'pinia'
   import BusinessWorkspaceHeader, {
     type BusinessWorkspaceTag
@@ -84,6 +85,7 @@
   } from '@/api/dashboard'
   import { useUserStore } from '@/store/modules/user'
   import { formatCurrencyValue, formatNumberValue } from '@/utils/ui'
+  import { navigateToApplication } from '@/utils/application-navigation'
   import DashboardFleetRisk from './modules/dashboard-fleet-risk.vue'
   import DashboardMetricCards from './modules/dashboard-metric-cards.vue'
   import DashboardOrderFlow from './modules/dashboard-order-flow.vue'
@@ -292,6 +294,12 @@
     void refreshData()
   }
   function navigateTo(path: string): void {
+    if (path.startsWith('/vms/')) {
+      void navigateToApplication('vms', path).catch((error) =>
+        ElMessage.error(error instanceof Error ? error.message : 'VMS 应用跳转失败')
+      )
+      return
+    }
     void router.push(path)
   }
   function openOrder(id?: string): void {

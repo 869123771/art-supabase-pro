@@ -93,7 +93,7 @@
           <ArtSectionTitle :show-line="false">名下司机</ArtSectionTitle>
           <ElButton type="primary" plain @click="goDriverManage">司机管理</ElButton>
         </div>
-        <VehicleQueryTable
+        <CarrierRelationTable
           :data="relationData.drivers"
           :columns="driverColumns"
           :loading="relationData.loadingDrivers"
@@ -107,7 +107,7 @@
           <ArtSectionTitle :show-line="false">名下车辆</ArtSectionTitle>
           <ElButton type="primary" plain @click="goVehicleManage">车辆管理</ElButton>
         </div>
-        <VehicleQueryTable
+        <CarrierRelationTable
           :data="relationData.vehicles"
           :columns="vehicleColumns"
           :loading="relationData.loadingVehicles"
@@ -123,25 +123,30 @@
 
 <script setup lang="tsx">
   import { isNil } from 'lodash-es'
-  import { ElButton, ElImage } from 'element-plus'
+  import { ElButton, ElImage, ElMessage } from 'element-plus'
   import ArtDescriptions from '@/components/core/base/art-descriptions/index.vue'
   import type { ArtDescriptionItem } from '@/components/core/base/art-descriptions/types'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import ArtAttachmentLink from '@/components/core/media/art-file-viewer/attachment-link.vue'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
-  import VehicleQueryTable from '@/views/vms/vehicle-query/modules/vehicle-query-table.vue'
-  import { fetchCarrierDetail, fetchDriverListByCarrierId } from '@/api/tms'
-  import { fetchVehicleArchiveList } from '@/api/vms'
+  import {
+    fetchCarrierDetail,
+    fetchDriverListByCarrierId,
+    fetchTmsVehicleReferences,
+    type TmsVehicleReference
+  } from '@/api/tms'
   import type { ColumnOption } from '@/types'
   import { canViewField, getFieldAccess, mergeFieldAccessMaps } from '@/utils/field-permission'
   import CarrierPerformanceAdvisorDrawer from './modules/carrier-performance-advisor-drawer.vue'
+  import CarrierRelationTable from './modules/carrier-relation-table.vue'
+  import { navigateToApplication } from '@/utils/application-navigation'
 
   defineOptions({ name: 'TmsCarrierDetail' })
 
   type Carrier = Api.Tms.BasicData.Carrier
   type Driver = Api.Tms.BasicData.Driver
-  type VehicleArchive = Api.Vms.ArchiveManage.VehicleArchive
+  type VehicleArchive = TmsVehicleReference
 
   interface PageState {
     loading: boolean
@@ -400,7 +405,7 @@
   const loadVehicles = async (carrierId: string): Promise<void> => {
     relationData.loadingVehicles = true
     try {
-      const { data } = await fetchVehicleArchiveList({
+      const { data } = await fetchTmsVehicleReferences({
         carrierId,
         from: 0,
         to: 999
@@ -431,10 +436,11 @@
 
   const goVehicleManage = (): void => {
     const carrierId = detail.data?.id
-    void router.push({
-      path: '/vms/vehicle-archive-manage',
-      query: carrierId ? { carrierId } : undefined
-    })
+    void navigateToApplication('vms', '/vms/vehicle-archive-manage', {
+      carrierId
+    }).catch((error) =>
+      ElMessage.error(error instanceof Error ? error.message : 'VMS 应用跳转失败')
+    )
   }
 
   const openDriverManage = (row: Driver): void => {
@@ -456,7 +462,9 @@
       goVehicleManage()
       return
     }
-    void router.push(`/vms/vehicle-archive-edit/${row.id}`)
+    void navigateToApplication('vms', `/vms/vehicle-archive-edit/${row.id}`).catch((error) =>
+      ElMessage.error(error instanceof Error ? error.message : 'VMS 应用跳转失败')
+    )
   }
 
   const formatAddress = (row?: Partial<Carrier>): string => {

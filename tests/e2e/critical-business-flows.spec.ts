@@ -63,23 +63,3 @@ test('发票登记对话框可打开并呈现完整录入状态', async ({ page 
   await expectNoHorizontalOverflow(page)
   expect(pageErrors).toEqual([])
 })
-
-test('车辆档案四个业务分区可导航且不产生横向溢出', async ({ page }) => {
-  test.setTimeout(180_000)
-  const pageErrors = collectPageErrors(page)
-
-  await page.goto('/#/vms/archive-manage/vehicle-archive-edit', {
-    waitUntil: 'domcontentloaded'
-  })
-  await expect(page.locator('.vehicle-archive-edit')).toBeVisible({ timeout: 120_000 })
-  await expect(page.locator('.el-loading-mask:visible')).toHaveCount(0, { timeout: 120_000 })
-
-  for (const tabName of ['基础信息', '车身参数', '发动机参数', '其他信息']) {
-    const tab = page.getByRole('tab', { name: tabName, exact: true })
-    await tab.click()
-    await expect(tab).toHaveAttribute('aria-selected', 'true')
-  }
-
-  await expectNoHorizontalOverflow(page)
-  expect(pageErrors).toEqual([])
-})

@@ -238,9 +238,10 @@
     editCarrierPrice,
     fetchCarrierOptions,
     fetchCarrierPriceDetail,
-    fetchDriverOptions
+    fetchDriverOptions,
+    fetchTmsVehicleOptions,
+    type TmsVehicleOption
   } from '@/api/tms'
-  import { fetchVehicleArchiveOptions } from '@/api/vms'
   import { useUserStore } from '@/store/modules/user'
   import { clearFormRefsValidation, validateFormRefs } from '@/utils/form/validation'
   import CargoMultipleSelect from '../../modules/cargo-multiple-select.vue'
@@ -274,7 +275,7 @@
   type CargoMaster = Api.Tms.BasicData.Cargo
   type CarrierOption = Api.Tms.BasicData.CarrierOption
   type DriverOption = Api.Tms.BasicData.DriverOption
-  type VehicleOption = Api.Vms.VehicleManage.VehicleOption
+  type VehicleOption = TmsVehicleOption
   type RegionMode = 'origin' | 'destination'
   type CarrierPriceForm = CarrierPrice & {
     originRegionPath: string[]
@@ -629,7 +630,7 @@
         key: 'vehicleId',
         type: 'select',
         span: 12,
-        api: fetchVehicleArchiveOptions,
+        api: fetchTmsVehicleOptions,
         resultField: 'data',
         labelField: 'plateNo',
         valueField: 'id',

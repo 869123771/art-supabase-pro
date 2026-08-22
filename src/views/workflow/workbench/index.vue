@@ -134,6 +134,7 @@
   import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatWithDayjs } from '@/utils/time'
+  import { navigateToApplication } from '@/utils/application-navigation'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { useUserStore } from '@/store/modules/user'
   import {
@@ -270,6 +271,12 @@
   const navigateToBusinessDocument = (event: MouseEvent, routePath: string): void => {
     event.preventDefault()
     event.stopPropagation()
+    if (routePath.startsWith('/vms/')) {
+      void navigateToApplication('vms', routePath).catch((error) =>
+        ElMessage.error(error instanceof Error ? error.message : 'VMS 应用跳转失败')
+      )
+      return
+    }
     window.location.assign(router.resolve(routePath).href)
   }
 

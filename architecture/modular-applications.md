@@ -11,8 +11,7 @@
 | `smis` | `art-supabase-smis` | SMIS 安全生产 |
 | `vms` | `art-supabase-vms` | VMS 车辆管理 |
 
-每个前端通过 `VITE_APP_CODE` 声明运行身份，通过
-`get_menus_for_current_application(app_code)` 获取自己的菜单。平台超级用户可以进入全部已启用应用；普通租户用户只能进入其角色拥有菜单的应用。
+每个前端通过 `VITE_APP_CODE` 声明运行身份，通过 `get_menus_for_current_application(app_code)` 获取自己的菜单。平台超级用户可以进入全部已启用应用；普通租户用户只能进入其角色拥有菜单的应用。
 
 ## 数据交互原则
 

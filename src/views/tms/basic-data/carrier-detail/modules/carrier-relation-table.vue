@@ -14,11 +14,10 @@
   import ArtTable from '@/components/core/tables/art-table/index.vue'
   import type { ColumnOption } from '@/types'
 
-  defineOptions({ name: 'VehicleQueryTable' })
+  defineOptions({ name: 'CarrierRelationTable' })
 
   withDefaults(
     defineProps<{
-      /** 车辆查询详情页的轻量表格包装，行结构由各业务面板决定。 */
       data: unknown[]
       columns: ColumnOption[]
       loading?: boolean

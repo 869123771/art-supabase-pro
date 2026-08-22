@@ -1,7 +1,0 @@
-export * from './vehicle/basic-info'
-export * from './vehicle/archive'
-export * from './vehicle/compliance'
-export * from './vehicle/operations'
-export * from './vehicle/maintenance'
-export * from './vehicle/ai'
-export * from './vehicle/reminders'
