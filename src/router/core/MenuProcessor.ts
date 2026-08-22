@@ -16,6 +16,7 @@ import { asyncRoutes } from '../routes/asyncRoutes'
 import { RoutesAlias } from '../routesAlias'
 import { formatMenuTitle } from '@/utils'
 import { currentApplication, resolveHostedApplicationCodes } from '@/config/application'
+import { flattenStandaloneApplicationMenu } from './applicationMenu'
 
 export class MenuProcessor {
   /**
@@ -35,7 +36,8 @@ export class MenuProcessor {
     this.validateMenuPaths(menuList)
 
     // 规范化路径（将相对路径转换为完整路径）
-    return this.normalizeMenuPaths(menuList)
+    const normalizedMenuList = this.normalizeMenuPaths(menuList)
+    return flattenStandaloneApplicationMenu(normalizedMenuList, currentApplication.code)
   }
 
   /**
