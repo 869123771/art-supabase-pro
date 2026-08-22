@@ -1,15 +1,15 @@
-/// <reference path="../env.d.ts" />
-/// <reference path="./amap.d.ts" />
-/// <reference path="./i18n.d.ts" />
-/// <reference path="./api/api.d.ts" />
-/// <reference path="./api/intelligent-recognition.d.ts" />
-/// <reference path="./api/notification-reminder.d.ts" />
-/// <reference path="./api/notification.d.ts" />
-/// <reference path="./api/smis.d.ts" />
-/// <reference path="./api/workflow.d.ts" />
-/// <reference path="./directive/directive.d.ts" />
-/// <reference path="./import/auto-imports.d.ts" />
-/// <reference path="./import/wangeditor-editor-for-vue.d.ts" />
+import '../env'
+import './amap'
+import './i18n'
+import './api/api'
+import './api/intelligent-recognition'
+import './api/notification-reminder'
+import './api/notification'
+import './api/smis'
+import './api/workflow'
+import './directive/directive'
+import './import/auto-imports'
+import './import/wangeditor-editor-for-vue'
 
 /**
  * Public type entry for independently deployed business applications.
