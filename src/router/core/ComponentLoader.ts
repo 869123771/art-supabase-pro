@@ -45,49 +45,61 @@ export class ComponentLoader {
 
   constructor() {
     // 业务模块与局部组件不作为路由入口，避免它们进入动态路由映射和首屏依赖图。
-    const platformHostModules = import.meta.glob<RouteComponentModule>([
-      '../../views/**/*.vue',
-      '!../../views/**/modules/**/*.vue',
-      '!../../views/**/components/**/*.vue'
-    ])
+    const isPlatformHost = import.meta.env.VITE_APP_CODE === 'platform'
+    const platformHostModules = isPlatformHost
+      ? import.meta.glob<RouteComponentModule>([
+          '../../views/**/*.vue',
+          '!../../views/**/modules/**/*.vue',
+          '!../../views/**/components/**/*.vue'
+        ])
+      : {}
     const platformShellModules = import.meta.glob<RouteComponentModule>([
       '../../views/auth/**/*.vue',
       '../../views/exception/**/*.vue',
       '../../views/index/**/*.vue',
       '../../views/outside/**/*.vue'
     ])
-    const platformModules =
-      import.meta.env.VITE_APP_CODE === 'platform' ? platformHostModules : platformShellModules
+    const platformModules = isPlatformHost ? platformHostModules : platformShellModules
     const financeSourceRoot = '../../../modules/art-supabase-finance/src/views'
-    const financeModules = import.meta.glob<RouteComponentModule>([
-      '../../../modules/art-supabase-finance/src/views/**/*.vue',
-      '!../../../modules/art-supabase-finance/src/views/**/modules/**/*.vue',
-      '!../../../modules/art-supabase-finance/src/views/**/components/**/*.vue'
-    ])
+    const financeModules = isPlatformHost
+      ? import.meta.glob<RouteComponentModule>([
+          '../../../modules/art-supabase-finance/src/views/**/*.vue',
+          '!../../../modules/art-supabase-finance/src/views/**/modules/**/*.vue',
+          '!../../../modules/art-supabase-finance/src/views/**/components/**/*.vue'
+        ])
+      : {}
     const fmsSourceRoot = '../../../modules/art-supabase-fms/src/views'
-    const fmsModules = import.meta.glob<RouteComponentModule>([
-      '../../../modules/art-supabase-fms/src/views/**/*.vue',
-      '!../../../modules/art-supabase-fms/src/views/**/modules/**/*.vue',
-      '!../../../modules/art-supabase-fms/src/views/**/components/**/*.vue'
-    ])
+    const fmsModules = isPlatformHost
+      ? import.meta.glob<RouteComponentModule>([
+          '../../../modules/art-supabase-fms/src/views/**/*.vue',
+          '!../../../modules/art-supabase-fms/src/views/**/modules/**/*.vue',
+          '!../../../modules/art-supabase-fms/src/views/**/components/**/*.vue'
+        ])
+      : {}
     const hrSourceRoot = '../../../modules/art-supabase-hr/src/views'
-    const hrModules = import.meta.glob<RouteComponentModule>([
-      '../../../modules/art-supabase-hr/src/views/**/*.vue',
-      '!../../../modules/art-supabase-hr/src/views/**/modules/**/*.vue',
-      '!../../../modules/art-supabase-hr/src/views/**/components/**/*.vue'
-    ])
+    const hrModules = isPlatformHost
+      ? import.meta.glob<RouteComponentModule>([
+          '../../../modules/art-supabase-hr/src/views/**/*.vue',
+          '!../../../modules/art-supabase-hr/src/views/**/modules/**/*.vue',
+          '!../../../modules/art-supabase-hr/src/views/**/components/**/*.vue'
+        ])
+      : {}
     const smisSourceRoot = '../../../modules/art-supabase-smis/src/views'
-    const smisModules = import.meta.glob<RouteComponentModule>([
-      '../../../modules/art-supabase-smis/src/views/**/*.vue',
-      '!../../../modules/art-supabase-smis/src/views/**/modules/**/*.vue',
-      '!../../../modules/art-supabase-smis/src/views/**/components/**/*.vue'
-    ])
+    const smisModules = isPlatformHost
+      ? import.meta.glob<RouteComponentModule>([
+          '../../../modules/art-supabase-smis/src/views/**/*.vue',
+          '!../../../modules/art-supabase-smis/src/views/**/modules/**/*.vue',
+          '!../../../modules/art-supabase-smis/src/views/**/components/**/*.vue'
+        ])
+      : {}
     const vmsSourceRoot = '../../../modules/art-supabase-vms/src/views'
-    const vmsModules = import.meta.glob<RouteComponentModule>([
-      '../../../modules/art-supabase-vms/src/views/**/*.vue',
-      '!../../../modules/art-supabase-vms/src/views/**/modules/**/*.vue',
-      '!../../../modules/art-supabase-vms/src/views/**/components/**/*.vue'
-    ])
+    const vmsModules = isPlatformHost
+      ? import.meta.glob<RouteComponentModule>([
+          '../../../modules/art-supabase-vms/src/views/**/*.vue',
+          '!../../../modules/art-supabase-vms/src/views/**/modules/**/*.vue',
+          '!../../../modules/art-supabase-vms/src/views/**/components/**/*.vue'
+        ])
+      : {}
 
     this.modules = {
       ...platformModules,
