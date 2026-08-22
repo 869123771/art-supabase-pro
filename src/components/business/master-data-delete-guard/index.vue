@@ -29,7 +29,9 @@
                 v-if="getGroupSafeRecords(group).length"
                 :model-value="isGroupFullySelected(group)"
                 :indeterminate="isGroupPartiallySelected(group)"
-                @change="(checked) => toggleGroupSelection(group, Boolean(checked))"
+                @change="
+                  (checked: CheckboxValueType) => toggleGroupSelection(group, Boolean(checked))
+                "
               >
                 全选可清理项
               </ElCheckbox>
@@ -50,7 +52,10 @@
                 v-if="record.cleanupAllowed"
                 :model-value="selectedRecordIds.includes(record.recordId)"
                 :aria-label="`选择清理 ${record.recordNo}`"
-                @change="(checked) => toggleRecordSelection(record.recordId, Boolean(checked))"
+                @change="
+                  (checked: CheckboxValueType) =>
+                    toggleRecordSelection(record.recordId, Boolean(checked))
+                "
               />
               <span v-else class="master-delete-guard__record-spacer" aria-hidden="true" />
 
@@ -115,7 +120,7 @@
 <script setup lang="ts">
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import { groupBy, uniq } from 'lodash-es'
-  import { ElMessage } from 'element-plus'
+  import { ElMessage, type CheckboxValueType } from 'element-plus'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'

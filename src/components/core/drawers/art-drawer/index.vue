@@ -18,9 +18,9 @@
     @closed="handleClosed"
     @open-auto-focus="emit('open-auto-focus')"
     @close-auto-focus="emit('close-auto-focus')"
-    @resize-start="(...args) => emit('resize-start', ...args)"
-    @resize="(...args) => emit('resize', ...args)"
-    @resize-end="(...args) => emit('resize-end', ...args)"
+    @resize-start="handleResizeStart"
+    @resize="handleResize"
+    @resize-end="handleResizeEnd"
   >
     <template
       v-if="$slots.header || hasSubtitle || options.showFullscreenButton"
@@ -165,6 +165,10 @@
 
   const emit = defineEmits<ArtDrawerEmits<T>>()
   const slots = defineSlots<ArtDrawerSlots<T>>()
+
+  const handleResizeStart = (event: MouseEvent, size: number) => emit('resize-start', event, size)
+  const handleResize = (event: MouseEvent, size: number) => emit('resize', event, size)
+  const handleResizeEnd = (event: MouseEvent, size: number) => emit('resize-end', event, size)
 
   const attrs = useAttrs()
   const drawerRef = shallowRef<unknown>()
