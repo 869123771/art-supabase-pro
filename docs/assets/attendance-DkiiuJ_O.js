@@ -1,1 +1,0 @@
-import{Dt as e,Kt as t,vt as n}from"./framework-Dc3kpLtW.js";import{t as r}from"./hr-workspace-page-ikygvQPP.js";var i=e({name:`HrAttendance`,__name:`index`,setup(e){let i={view:`Hr:Attendance:View`,add:`Hr:Attendance:Add`,edit:`Hr:Attendance:Edit`,delete:`Hr:Attendance:Delete`};return(e,a)=>(t(),n(r,{"workspace-key":`attendance`,permissions:i}))}});export{i as default};

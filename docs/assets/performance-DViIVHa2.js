@@ -1,0 +1,1 @@
+import{Et as e,Wt as t,_t as n}from"./framework-Dnpk0_Lx.js";import{t as r}from"./hr-workspace-page-CegrG7Nb.js";var i=e({name:`HrPerformance`,__name:`index`,setup(e){let i={view:`Hr:Performance:View`,add:`Hr:Performance:Add`,edit:`Hr:Performance:Edit`,delete:`Hr:Performance:Delete`};return(e,a)=>(t(),n(r,{"workspace-key":`performance`,permissions:i}))}});export{i as default};

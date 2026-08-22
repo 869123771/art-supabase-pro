@@ -1,0 +1,1 @@
+import{Et as e,Wt as t,_t as n}from"./framework-Dnpk0_Lx.js";import{t as r}from"./hr-workspace-page-CegrG7Nb.js";var i=e({name:`HrCompliance`,__name:`index`,setup(e){let i={view:`Hr:Compliance:View`,add:`Hr:Compliance:Add`,edit:`Hr:Compliance:Edit`,delete:`Hr:Compliance:Delete`};return(e,a)=>(t(),n(r,{"workspace-key":`compliance`,permissions:i}))}});export{i as default};
