@@ -227,11 +227,6 @@ export default ({ mode }: { mode: string }) => {
                 priority: 40
               },
               {
-                name: 'element-plus',
-                test: (id) => matchPackages(id, ['element-plus', '@element-plus']),
-                priority: 30
-              },
-              {
                 name: 'charts',
                 test: (id) => matchPackages(id, ['echarts', 'zrender']),
                 priority: 30

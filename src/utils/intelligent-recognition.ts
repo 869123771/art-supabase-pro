@@ -8,12 +8,21 @@ type InvoiceType = Api.Fms.InvoiceType
 const CASH_PAYMENT_METHODS = new Set<string>(['bank_transfer', 'cash', 'wechat', 'alipay', 'other'])
 const INVOICE_TYPES = new Set<string>(['vat_special', 'vat_ordinary', 'electronic'])
 
-function isCashPaymentMethod(value: string): value is CashPaymentMethod {
-  return CASH_PAYMENT_METHODS.has(value)
+function metadataText(artifact: Artifact, key: string): string {
+  const value = artifact.metadata?.[key]
+  return typeof value === 'string' ? value : ''
 }
 
-function isInvoiceType(value: string): value is InvoiceType {
-  return INVOICE_TYPES.has(value)
+function metadataNumber(artifact: Artifact, key: string, fallback: number): number {
+  const value = Number(artifact.metadata?.[key])
+  return Number.isFinite(value) ? value : fallback
+}
+
+function metadataTextList(artifact: Artifact, key: string): string[] {
+  const value = artifact.metadata?.[key]
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === 'string')
+    : []
 }
 
 function nullableText(record: Record<string, unknown>, key: string): string | null {
@@ -24,6 +33,14 @@ function nullableText(record: Record<string, unknown>, key: string): string | nu
 function nullableNumber(record: Record<string, unknown>, key: string): number | null {
   const value = record[key]
   return typeof value === 'number' && Number.isFinite(value) ? value : null
+}
+
+function isCashPaymentMethod(value: string): value is CashPaymentMethod {
+  return CASH_PAYMENT_METHODS.has(value)
+}
+
+function isInvoiceType(value: string): value is InvoiceType {
+  return INVOICE_TYPES.has(value)
 }
 
 function normalizeInvoiceDraft(payload: Record<string, unknown>): Api.Fms.InvoiceOcrDraft {
@@ -76,23 +93,7 @@ function normalizeWaybillExpenseDraft(
   }
 }
 
-function metadataNumber(artifact: Artifact, key: string, fallback: number): number {
-  const value = Number(artifact.metadata?.[key])
-  return Number.isFinite(value) ? value : fallback
-}
-
-function metadataText(artifact: Artifact, key: string): string {
-  const value = artifact.metadata?.[key]
-  return typeof value === 'string' ? value : ''
-}
-
-function metadataTextList(artifact: Artifact, key: string): string[] {
-  const value = artifact.metadata?.[key]
-  return Array.isArray(value)
-    ? value.filter((item): item is string => typeof item === 'string')
-    : []
-}
-
+/** Resolve a platform navigation target from a recognition artifact's public contract. */
 export function buildRecognitionBusinessRoute(artifact: Artifact): RouteLocationRaw {
   const commonQuery = { aiArtifactId: artifact.id }
 
@@ -113,10 +114,7 @@ export function buildRecognitionBusinessRoute(artifact: Artifact): RouteLocation
   }
 
   if (artifact.feature === 'waybill_expense_ocr') {
-    return {
-      path: financePaths.waybillCost,
-      query: commonQuery
-    }
+    return { path: financePaths.waybillCost, query: commonQuery }
   }
 
   return {
@@ -129,8 +127,8 @@ export function buildRecognitionBusinessRoute(artifact: Artifact): RouteLocation
   }
 }
 
+/** @deprecated FMS owns this converter; retained for one runtime compatibility release. */
 export function toInvoiceOcrAnalyzeResponse(artifact: Artifact): Api.Fms.InvoiceOcrAnalyzeResponse {
-  const payload = normalizeInvoiceDraft(artifact.proposedPayload)
   return {
     artifactId: artifact.id,
     runId: artifact.aiRunId,
@@ -141,14 +139,14 @@ export function toInvoiceOcrAnalyzeResponse(artifact: Artifact): Api.Fms.Invoice
     fieldConfidence: artifact.fieldConfidence ?? {},
     missingFields: metadataTextList(artifact, 'missingFields'),
     warnings: artifact.warnings ?? [],
-    invoice: payload
+    invoice: normalizeInvoiceDraft(artifact.proposedPayload)
   }
 }
 
+/** @deprecated FMS owns this converter; retained for one runtime compatibility release. */
 export function toCashVoucherOcrAnalyzeResponse(
   artifact: Artifact
 ): Api.Fms.CashVoucherOcrAnalyzeResponse {
-  const payload = normalizeCashVoucherDraft(artifact.proposedPayload)
   return {
     artifactId: artifact.id,
     runId: artifact.aiRunId,
@@ -159,17 +157,17 @@ export function toCashVoucherOcrAnalyzeResponse(
     fieldConfidence: artifact.fieldConfidence ?? {},
     missingFields: metadataTextList(artifact, 'missingFields'),
     warnings: artifact.warnings ?? [],
-    voucher: payload,
+    voucher: normalizeCashVoucherDraft(artifact.proposedPayload),
     matches: [],
     evaluatedStatements: 0,
     reviewConfidenceThreshold: metadataNumber(artifact, 'reviewConfidenceThreshold', 0.82)
   }
 }
 
+/** @deprecated FMS owns this converter; retained for one runtime compatibility release. */
 export function toWaybillExpenseOcrAnalyzeResponse(
   artifact: Artifact
 ): Api.Fms.WaybillExpenseOcrAnalyzeResponse {
-  const payload = normalizeWaybillExpenseDraft(artifact.proposedPayload)
   return {
     artifactId: artifact.id,
     runId: artifact.aiRunId,
@@ -180,7 +178,7 @@ export function toWaybillExpenseOcrAnalyzeResponse(
     fieldConfidence: artifact.fieldConfidence ?? {},
     missingFields: metadataTextList(artifact, 'missingFields'),
     warnings: artifact.warnings ?? [],
-    expense: payload,
+    expense: normalizeWaybillExpenseDraft(artifact.proposedPayload),
     reviewConfidenceThreshold: metadataNumber(artifact, 'reviewConfidenceThreshold', 0.82)
   }
 }

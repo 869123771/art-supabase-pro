@@ -58,35 +58,14 @@
               </ElTag>
               <small>{{ currentCapability.businessLabel }}</small>
             </div>
-
-            <div v-if="feature === 'invoice_ocr'" class="recognition-runner__direction">
-              <span>发票方向</span>
-              <ElSegmented v-model="invoiceDirection" :options="invoiceDirections" />
-            </div>
-            <div v-else-if="feature === 'cash_voucher_ocr'" class="recognition-runner__direction">
-              <span>资金方向</span>
-              <ElSegmented v-model="cashDirection" :options="cashDirections" />
-            </div>
           </section>
 
-          <InvoiceOcrPanel
-            v-if="feature === 'invoice_ocr'"
-            ref="invoicePanelRef"
-            v-model="invoiceImages"
-            class="recognition-runner__panel"
-            :direction="invoiceDirection"
-            apply-label="进入待复核"
-            @apply="handleCreated"
-          />
-
-          <CashVoucherOcrPanel
-            v-else-if="feature === 'cash_voucher_ocr' && cashDirection === 'receipt'"
-            ref="cashPanelRef"
-            v-model="cashImages"
-            class="recognition-runner__panel"
-            :direction="cashDirection"
-            apply-label="进入待复核"
-            @apply="handleCreated"
+          <component
+            :is="currentRunner"
+            v-if="currentRunner"
+            ref="runnerRef"
+            :feature="feature"
+            @created="handleCreated"
           />
 
           <section v-else-if="businessContext" class="recognition-runner__context art-card-xs">
@@ -131,7 +110,7 @@
           识别结果受业务权限控制，并保留人工复核记录
         </span>
         <div>
-          <ElButton v-if="hasUploadedMaterials" @click="api.handleReset()">清空已上传材料</ElButton>
+          <ElButton v-if="currentRunner" @click="api.handleReset()">清空已上传材料</ElButton>
           <ElButton @click="api.handleClose()">关闭</ElButton>
         </div>
       </div>
@@ -142,9 +121,7 @@
 <script setup lang="ts">
   import ArtDrawer from '@/components/core/drawers/art-drawer/index.vue'
   import type { ArtDrawerExpose } from '@/components/core/drawers/art-drawer/types'
-  import { financePaths } from '@/router/business-paths'
-  import CashVoucherOcrPanel from '@fms/views/cash-transaction/modules/cash-voucher-ocr-panel.vue'
-  import InvoiceOcrPanel from '@fms/views/invoice-management/modules/invoice-ocr-panel.vue'
+  import { resolveRecognitionRunner } from '@/integrations/recognition-runner'
   import {
     getCapability,
     recognitionCapabilities,
@@ -172,36 +149,15 @@
     steps: BusinessContextStep[]
   }
 
-  type AnalyzeResult = Api.Fms.InvoiceOcrAnalyzeResponse | Api.Fms.CashVoucherOcrAnalyzeResponse
-
   const emit = defineEmits<{ created: [artifactId: string] }>()
   const router = useRouter()
   const drawerRef = ref<ArtDrawerExpose<RecognitionFeature>>()
-  const invoicePanelRef = ref<ResetExpose>()
-  const cashPanelRef = ref<ResetExpose>()
+  const runnerRef = ref<ResetExpose>()
   const feature = ref<RecognitionFeature>('invoice_ocr')
-  const invoiceImages = ref<string[]>([])
-  const cashImages = ref<string[]>([])
-  const invoiceDirection = ref<Api.Fms.InvoiceDirection>('output')
-  const cashDirection = ref<Api.Fms.CashDirection>('receipt')
-  const invoiceDirections = [
-    { label: '销项发票', value: 'output' },
-    { label: '进项发票', value: 'input' }
-  ]
-  const cashDirections = [
-    { label: '客户收款', value: 'receipt' },
-    { label: '承运商付款', value: 'payment' }
-  ]
 
   const currentCapability = computed(() => getCapability(feature.value))
-  const hasUploadedMaterials = computed(
-    () => invoiceImages.value.length > 0 || cashImages.value.length > 0
-  )
-  const isDirectRecognition = computed(
-    () =>
-      feature.value === 'invoice_ocr' ||
-      (feature.value === 'cash_voucher_ocr' && cashDirection.value === 'receipt')
-  )
+  const currentRunner = computed(() => resolveRecognitionRunner(feature.value))
+  const isDirectRecognition = computed(() => Boolean(currentRunner.value))
   const currentStatusLabel = computed(() =>
     isDirectRecognition.value ? '可直接上传' : '需业务上下文'
   )
@@ -241,7 +197,7 @@
       }
     }
 
-    if (feature.value === 'cash_voucher_ocr' && cashDirection.value === 'payment') {
+    if (feature.value === 'cash_voucher_ocr') {
       return {
         eyebrow: '需绑定已审批付款申请',
         title: '从付款执行环节识别付款凭证',
@@ -271,7 +227,7 @@
     feature.value = value
   }
 
-  function handleCreated(result: AnalyzeResult): void {
+  function handleCreated(result: { artifactId: string }): void {
     emit('created', result.artifactId)
     void drawerRef.value?.handleClose()
   }
@@ -279,26 +235,11 @@
   function goBusinessContext(): void {
     void drawerRef.value?.handleClose()
 
-    if (feature.value === 'waybill_receipt_ocr') {
-      void router.push('/tms/delivery-management')
-      return
-    }
-
-    if (feature.value === 'cash_voucher_ocr') {
-      void router.push(financePaths.paymentApplication)
-      return
-    }
-
-    void router.push(financePaths.waybillCost)
+    void router.push(currentCapability.value.businessRoute)
   }
 
   function resetContent(): void {
-    invoiceImages.value = []
-    cashImages.value = []
-    invoiceDirection.value = 'output'
-    cashDirection.value = 'receipt'
-    invoicePanelRef.value?.reset()
-    cashPanelRef.value?.reset()
+    runnerRef.value?.reset()
   }
 
   async function handleOpen(initialFeature: RecognitionFeature = 'invoice_ocr'): Promise<void> {
@@ -561,27 +502,6 @@
       }
     }
 
-    &__direction {
-      display: flex;
-      grid-column: 2 / -1;
-      gap: 12px;
-      align-items: center;
-      justify-content: flex-end;
-      padding-top: 10px;
-      font-size: 11px;
-      color: var(--art-text-gray-500);
-      border-top: 1px dashed var(--art-card-border);
-    }
-
-    &__panel {
-      display: flex;
-      flex: 1;
-      flex-direction: column;
-      min-width: 0;
-      min-height: 360px;
-      margin-bottom: 0;
-    }
-
     &__context {
       display: flex;
       flex: 1;
@@ -785,12 +705,6 @@
         flex-direction: row;
         grid-column: 2;
         align-items: center;
-      }
-
-      &__direction {
-        flex-direction: column;
-        grid-column: 1 / -1;
-        align-items: stretch;
       }
 
       &__flow {

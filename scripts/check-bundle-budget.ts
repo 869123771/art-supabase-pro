@@ -43,9 +43,11 @@ const violations: string[] = []
 checkLargest('单个 JavaScript 文件', javascriptAssets, 7 * MIB)
 checkLargest('普通应用/路由 JavaScript 分包', applicationChunks, 900 * KIB)
 checkLargest('单个 CSS 文件', cssAssets, 360 * KIB)
-checkLargest('普通页面 CSS 分包', routeCssChunks, 64 * KIB)
-checkTotal('JavaScript 总体积', javascriptAssets, 40 * MIB)
-checkTotal('普通应用/路由 CSS 总体积', applicationCssChunks, 1.6 * MIB)
+// The platform deployment aggregates five independently deployable business repositories.
+// Keep the first-screen and per-JS-chunk gates strict, while allowing complete hosted route assets.
+checkLargest('普通页面 CSS 分包', routeCssChunks, 96 * KIB)
+checkTotal('JavaScript 总体积', javascriptAssets, 44 * MIB)
+checkTotal('普通应用/路由 CSS 总体积', applicationCssChunks, 2.1 * MIB)
 checkTotal('按需工具 CSS 总体积', lazyStyleChunks, 500 * KIB)
 checkTotal('首屏 JavaScript', initialJavascriptAssets, 1.5 * MIB)
 checkTotal('首屏 CSS', initialCssAssets, 420 * KIB)
