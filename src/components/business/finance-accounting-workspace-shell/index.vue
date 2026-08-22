@@ -11,7 +11,7 @@
 </script>
 
 <style scoped lang="scss">
-  @use '@/views/fms/modules/accounting-workspace.scss' as accounting;
+  @use '@fms/views/modules/accounting-workspace.scss' as accounting;
 
   .accounting-workspace-shell {
     @include accounting.accounting-workspace-layout;

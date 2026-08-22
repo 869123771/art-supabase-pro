@@ -6,3 +6,7 @@
 	path = modules/art-supabase-finance
 	url = https://gitee.com/wangyanghub/art-supabase-finance.git
 	branch = master
+[submodule "modules/art-supabase-fms"]
+	path = modules/art-supabase-fms
+	url = https://gitee.com/wangyanghub/art-supabase-fms.git
+	branch = master

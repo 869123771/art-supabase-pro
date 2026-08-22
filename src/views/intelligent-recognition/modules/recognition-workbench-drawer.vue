@@ -143,8 +143,8 @@
   import ArtDrawer from '@/components/core/drawers/art-drawer/index.vue'
   import type { ArtDrawerExpose } from '@/components/core/drawers/art-drawer/types'
   import { financePaths } from '@/router/business-paths'
-  import CashVoucherOcrPanel from '@/views/fms/cash-transaction/modules/cash-voucher-ocr-panel.vue'
-  import InvoiceOcrPanel from '@/views/fms/invoice-management/modules/invoice-ocr-panel.vue'
+  import CashVoucherOcrPanel from '@fms/views/cash-transaction/modules/cash-voucher-ocr-panel.vue'
+  import InvoiceOcrPanel from '@fms/views/invoice-management/modules/invoice-ocr-panel.vue'
   import {
     getCapability,
     recognitionCapabilities,

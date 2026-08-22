@@ -76,6 +76,7 @@ export default ({ mode }: { mode: string }) => {
   const root = process.cwd()
   const requiredModuleViews = [
     ['Finance', 'modules/art-supabase-finance/src/views'],
+    ['FMS', 'modules/art-supabase-fms/src/views'],
     ['VMS', 'modules/art-supabase-vms/src/views']
   ] as const
   for (const [applicationName, relativeViewsPath] of requiredModuleViews) {
@@ -133,6 +134,7 @@ export default ({ mode }: { mode: string }) => {
     resolve: {
       alias: {
         '@finance': resolvePath('modules/art-supabase-finance/src'),
+        '@fms': resolvePath('modules/art-supabase-fms/src'),
         '@vms': resolvePath('modules/art-supabase-vms/src'),
         '@': fileURLToPath(new URL('./src', import.meta.url)),
         '@views': resolvePath('src/views'),
