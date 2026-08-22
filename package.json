@@ -2,6 +2,7 @@
   "name": "art-supabase-pro",
   "version": "1.0.0",
   "type": "module",
+  "types": "./src/types/platform-runtime.d.ts",
   "engines": {
     "node": ">=20.19.0",
     "pnpm": ">=8.8.0"
