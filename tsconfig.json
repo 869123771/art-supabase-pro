@@ -47,5 +47,5 @@
     "modules/art-supabase-vms/src/**/*.ts",
     "modules/art-supabase-vms/src/**/*.vue"
   ],
-  "exclude": ["node_modules", "dist", "supabase", "**/*.js"]
+  "exclude": ["node_modules", "dist", "supabase", "**/*.js", "src/types/import/components.d.ts"]
 }

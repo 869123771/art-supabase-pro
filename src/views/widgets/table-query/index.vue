@@ -54,8 +54,8 @@
           @row-drag-start="handleRowDragStart"
           @row-drag-update="handleRowDragUpdate"
           @row-drag-end="handleRowDragEnd"
-          @pagination:size-change="(size) => logEvent(`managed page size -> ${size}`)"
-          @pagination:current-change="(page) => logEvent(`managed current page -> ${page}`)"
+          @pagination:size-change="(size: number) => logEvent(`managed page size -> ${size}`)"
+          @pagination:current-change="(page: number) => logEvent(`managed current page -> ${page}`)"
         >
           <template #search-priority="{ modelValue }">
             <ElSegmented
@@ -129,7 +129,7 @@
             @search="handleControlledSearch"
             @reset="handleControlledReset"
             @refresh="loadControlledData"
-            @selection-change="(rows) => logEvent(`controlled selection -> ${rows.length}`)"
+            @selection-change="(rows: unknown[]) => logEvent(`controlled selection -> ${rows.length}`)"
             @pagination:size-change="handleControlledSizeChange"
             @pagination:current-change="handleControlledCurrentChange"
           >

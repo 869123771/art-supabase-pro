@@ -311,6 +311,10 @@ export default ({ mode }: { mode: string }) => {
       }),
       // 自动按需导入组件
       Components({
+        dirs: [
+          resolvePath('src/components'),
+          resolvePath('modules/art-supabase-fms/src/views/modules')
+        ],
         dts: enableGeneratedDeclarations ? 'src/types/import/components.d.ts' : false,
         exclude: [/[\\/]art-data-select[\\/]preview\.vue$/],
         resolvers: [ElementPlusResolver({ importStyle: 'sass' })]

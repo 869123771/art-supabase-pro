@@ -6,11 +6,9 @@
 /// <reference path="./api/intelligent-recognition.d.ts" />
 /// <reference path="./api/notification-reminder.d.ts" />
 /// <reference path="./api/notification.d.ts" />
-/// <reference path="./api/smis.d.ts" />
 /// <reference path="./api/workflow.d.ts" />
 /// <reference path="./directive/directive.d.ts" />
 /// <reference path="./import/auto-imports.d.ts" />
-/// <reference path="./import/components.d.ts" />
 /// <reference path="./import/wangeditor-editor-for-vue.d.ts" />
 
 /**
