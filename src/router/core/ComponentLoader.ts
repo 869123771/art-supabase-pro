@@ -60,54 +60,8 @@ export class ComponentLoader {
       '../../views/outside/**/*.vue'
     ])
     const platformModules = isPlatformHost ? platformHostModules : platformShellModules
-    const financeSourceRoot = '../../../modules/art-supabase-finance/src/views'
-    const financeModules = isPlatformHost
-      ? import.meta.glob<RouteComponentModule>([
-          '../../../modules/art-supabase-finance/src/views/**/*.vue',
-          '!../../../modules/art-supabase-finance/src/views/**/modules/**/*.vue',
-          '!../../../modules/art-supabase-finance/src/views/**/components/**/*.vue'
-        ])
-      : {}
-    const fmsSourceRoot = '../../../modules/art-supabase-fms/src/views'
-    const fmsModules = isPlatformHost
-      ? import.meta.glob<RouteComponentModule>([
-          '../../../modules/art-supabase-fms/src/views/**/*.vue',
-          '!../../../modules/art-supabase-fms/src/views/**/modules/**/*.vue',
-          '!../../../modules/art-supabase-fms/src/views/**/components/**/*.vue'
-        ])
-      : {}
-    const hrSourceRoot = '../../../modules/art-supabase-hr/src/views'
-    const hrModules = isPlatformHost
-      ? import.meta.glob<RouteComponentModule>([
-          '../../../modules/art-supabase-hr/src/views/**/*.vue',
-          '!../../../modules/art-supabase-hr/src/views/**/modules/**/*.vue',
-          '!../../../modules/art-supabase-hr/src/views/**/components/**/*.vue'
-        ])
-      : {}
-    const smisSourceRoot = '../../../modules/art-supabase-smis/src/views'
-    const smisModules = isPlatformHost
-      ? import.meta.glob<RouteComponentModule>([
-          '../../../modules/art-supabase-smis/src/views/**/*.vue',
-          '!../../../modules/art-supabase-smis/src/views/**/modules/**/*.vue',
-          '!../../../modules/art-supabase-smis/src/views/**/components/**/*.vue'
-        ])
-      : {}
-    const vmsSourceRoot = '../../../modules/art-supabase-vms/src/views'
-    const vmsModules = isPlatformHost
-      ? import.meta.glob<RouteComponentModule>([
-          '../../../modules/art-supabase-vms/src/views/**/*.vue',
-          '!../../../modules/art-supabase-vms/src/views/**/modules/**/*.vue',
-          '!../../../modules/art-supabase-vms/src/views/**/components/**/*.vue'
-        ])
-      : {}
-
     this.modules = {
       ...platformModules,
-      ...mapApplicationViewModules('finance', financeSourceRoot, financeModules),
-      ...mapApplicationViewModules('fms', fmsSourceRoot, fmsModules),
-      ...mapApplicationViewModules('hr', hrSourceRoot, hrModules),
-      ...mapApplicationViewModules('smis', smisSourceRoot, smisModules),
-      ...mapApplicationViewModules('vms', vmsSourceRoot, vmsModules),
       ...registeredApplicationModules
     }
   }
