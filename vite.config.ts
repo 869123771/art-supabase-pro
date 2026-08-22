@@ -74,6 +74,12 @@ const getElementPlusStyleDeps = (root: string): string[] => {
 
 export default ({ mode }: { mode: string }) => {
   const root = process.cwd()
+  const vmsModuleViewsDir = path.resolve(root, 'modules/art-supabase-vms/src/views')
+  if (!existsSync(vmsModuleViewsDir)) {
+    throw new Error(
+      'VMS 子仓未初始化，请先运行 git submodule update --init --recursive modules/art-supabase-vms'
+    )
+  }
   const env = loadEnv(mode, root)
   const { VITE_VERSION, VITE_PORT, VITE_BASE_URL, VITE_API_URL, VITE_API_PROXY_URL, VITE_OUT_DIR } =
     env
@@ -121,6 +127,7 @@ export default ({ mode }: { mode: string }) => {
     // 路径别名
     resolve: {
       alias: {
+        '@vms': resolvePath('modules/art-supabase-vms/src'),
         '@': fileURLToPath(new URL('./src', import.meta.url)),
         '@views': resolvePath('src/views'),
         '@imgs': resolvePath('src/assets/images'),

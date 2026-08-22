@@ -23,6 +23,7 @@
     "test:db": "supabase db query --linked --file supabase/tests/workflow_engine_test.sql",
     "test:e2e": "playwright test",
     "test:e2e:auth": "playwright test tests/e2e/auth-pages.accessibility.spec.ts --project=public-desktop-1440 --project=public-mobile-390",
+    "test:e2e:vms-module": "playwright test tests/e2e/vms-module-host.spec.ts --project=desktop-1440",
     "test:e2e:critical": "playwright test tests/e2e/critical-business-flows.spec.ts --project=desktop-1440 --project=mobile-390 && playwright test tests/e2e/ai-configuration-inheritance.smoke.spec.ts --project=desktop-1440",
     "test:e2e:core": "playwright test tests/e2e/core-pages.visual.spec.ts --project=desktop-1440 --project=mobile-390",
     "test:e2e:install": "playwright install chromium",

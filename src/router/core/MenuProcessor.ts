@@ -11,11 +11,11 @@ import type { AppRouteRecord } from '@/types/router'
 import { useUserStore } from '@/store/modules/user'
 import { useMenuStore } from '@/store/modules/menu'
 import { useAppMode } from '@/hooks/core/useAppMode'
-import { fetchCurrentUserMenu } from '@/api/system-manage'
+import { fetchAccessibleApplications, fetchCurrentUserMenu } from '@/api/system-manage'
 import { asyncRoutes } from '../routes/asyncRoutes'
 import { RoutesAlias } from '../routesAlias'
 import { formatMenuTitle } from '@/utils'
-import { currentApplication } from '@/config/application'
+import { currentApplication, resolveHostedApplicationCodes } from '@/config/application'
 
 export class MenuProcessor {
   /**
@@ -59,12 +59,22 @@ export class MenuProcessor {
    * 处理后端控制模式的菜单
    */
   private async processBackendMenu(): Promise<AppRouteRecord[]> {
-    const { data } = await fetchCurrentUserMenu(currentApplication.code)
-    const { flat = [], tree = [] } = data ?? {}
+    const accessibleApplications =
+      currentApplication.code === 'platform' ? await fetchAccessibleApplications() : null
+    const applicationCodes = resolveHostedApplicationCodes(
+      currentApplication.code,
+      accessibleApplications?.error ? [] : (accessibleApplications?.data ?? [])
+    )
+    const menuResponses = await Promise.all(
+      applicationCodes.map((applicationCode) => fetchCurrentUserMenu(applicationCode))
+    )
+    const flat = menuResponses.flatMap(({ data }) => data?.flat ?? [])
+    const tree = menuResponses.flatMap(({ data }) => data?.tree ?? [])
+
     // 保存按钮数据到 store
     const menuStore = useMenuStore()
     menuStore.setButtonList(flat)
-    return this.filterEmptyMenus(tree ?? [])
+    return this.filterEmptyMenus(tree)
   }
 
   /**

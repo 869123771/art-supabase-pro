@@ -1,0 +1,4 @@
+[submodule "modules/art-supabase-vms"]
+	path = modules/art-supabase-vms
+	url = https://gitee.com/wangyanghub/art-supabase-vms.git
+	branch = master

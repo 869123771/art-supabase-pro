@@ -57,7 +57,7 @@ export const APPLICATION_PROFILES: Record<ApplicationCode, ApplicationProfile> =
     code: 'vms',
     name: 'Art Supabase VMS',
     description: '车辆管理系统',
-    defaultPath: '/vms',
+    defaultPath: '/vms/vehicle-archive-manage',
     developmentPort: 3015
   }
 }
@@ -67,6 +67,19 @@ export function resolveApplicationCode(value: string | undefined): ApplicationCo
   return APPLICATION_CODES.includes(normalized as ApplicationCode)
     ? (normalized as ApplicationCode)
     : 'platform'
+}
+
+export function resolveHostedApplicationCodes(
+  applicationCode: ApplicationCode,
+  accessibleApplications: ReadonlyArray<{ code: ApplicationCode }>
+): ApplicationCode[] {
+  if (applicationCode !== 'platform') return [applicationCode]
+
+  const accessibleCodes = new Set<ApplicationCode>([
+    'platform',
+    ...accessibleApplications.map((application) => application.code)
+  ])
+  return APPLICATION_CODES.filter((code) => accessibleCodes.has(code))
 }
 
 const runtimeEnv = (import.meta as ImportMeta & { env?: ImportMetaEnv }).env

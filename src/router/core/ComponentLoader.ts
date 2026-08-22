@@ -13,16 +13,42 @@ type AsyncRouteComponent = () => Promise<Component>
 type RouteComponentModule = { default: Component }
 type RouteComponentLoader = () => Promise<RouteComponentModule>
 
+export function mapApplicationViewModules(
+  applicationCode: string,
+  sourceRoot: string,
+  sourceModules: Record<string, RouteComponentLoader>
+): Record<string, RouteComponentLoader> {
+  const normalizedRoot = sourceRoot.replace(/\/$/, '')
+
+  return Object.fromEntries(
+    Object.entries(sourceModules).map(([sourcePath, loader]) => {
+      const relativeViewPath = sourcePath.slice(normalizedRoot.length)
+      return [`../../views/${applicationCode}${relativeViewPath}`, loader]
+    })
+  )
+}
+
 export class ComponentLoader {
   private modules: Record<string, RouteComponentLoader>
 
   constructor() {
     // 业务模块与局部组件不作为路由入口，避免它们进入动态路由映射和首屏依赖图。
-    this.modules = import.meta.glob<RouteComponentModule>([
+    const platformModules = import.meta.glob<RouteComponentModule>([
       '../../views/**/*.vue',
       '!../../views/**/modules/**/*.vue',
       '!../../views/**/components/**/*.vue'
     ])
+    const vmsSourceRoot = '../../../modules/art-supabase-vms/src/views'
+    const vmsModules = import.meta.glob<RouteComponentModule>([
+      '../../../modules/art-supabase-vms/src/views/**/*.vue',
+      '!../../../modules/art-supabase-vms/src/views/**/modules/**/*.vue',
+      '!../../../modules/art-supabase-vms/src/views/**/components/**/*.vue'
+    ])
+
+    this.modules = {
+      ...platformModules,
+      ...mapApplicationViewModules('vms', vmsSourceRoot, vmsModules)
+    }
   }
 
   /**

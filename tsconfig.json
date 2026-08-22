@@ -15,6 +15,7 @@
     "ignoreDeprecations": "6.0",
     "baseUrl": ".",
     "paths": {
+      "@vms/*": ["modules/art-supabase-vms/src/*"],
       "@/*": ["src/*"],
       "@views/*": ["src/views/*"],
       "@imgs/*": ["src/assets/images/*"],
@@ -25,6 +26,14 @@
       "@styles/*": ["src/assets/styles/*"]
     }
   },
-  "include": ["src/**/*", "src/**/*.ts", "src/**/*.d.ts", "src/**/*.tsx", "src/**/*.vue"],
+  "include": [
+    "src/**/*",
+    "src/**/*.ts",
+    "src/**/*.d.ts",
+    "src/**/*.tsx",
+    "src/**/*.vue",
+    "modules/art-supabase-vms/src/**/*.ts",
+    "modules/art-supabase-vms/src/**/*.vue"
+  ],
   "exclude": ["node_modules", "dist", "supabase", "**/*.js"]
 }

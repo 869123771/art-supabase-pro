@@ -127,6 +127,10 @@
   import { getFirstMenuPath } from '@/utils'
   import { useWebsiteConfig } from '@/hooks'
   import ArtTurnstileCaptcha from '@/components/core/forms/art-turnstile-captcha/index.vue'
+  import {
+    isAbsoluteApplicationRedirect,
+    resolveSafePostLoginRedirect
+  } from '@/utils/auth-redirect'
 
   defineOptions({ name: 'Login' })
 
@@ -202,7 +206,9 @@
   }
 
   const resolvePostLoginPath = async (): Promise<string> => {
-    const redirect = route.query.redirect as string | undefined
+    const requestedRedirect =
+      typeof route.query.redirect === 'string' ? route.query.redirect : undefined
+    const redirect = resolveSafePostLoginRedirect(requestedRedirect, window.location.origin)
 
     if (!redirect) {
       return '/'
@@ -266,6 +272,11 @@
 
       // 获取 redirect 参数，如果存在则跳转到指定页面，否则跳转到首页
       const targetPath = await resolvePostLoginPath()
+      if (isAbsoluteApplicationRedirect(targetPath)) {
+        window.location.replace(targetPath)
+        return
+      }
+
       await router.push(targetPath)
     } catch (error) {
       if (!(error instanceof HttpError)) {
