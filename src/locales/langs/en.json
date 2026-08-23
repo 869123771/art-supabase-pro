@@ -179,6 +179,7 @@
     "backBtnText": "Back to login"
   },
   "register": {
+    "eyebrow": "SECURE SIGN-UP",
     "title": "Create account",
     "subTitle": "Welcome to join us, please fill in the following information to complete the registration",
     "placeholder": {
@@ -203,7 +204,11 @@
     "privacyPolicy": "Privacy policy",
     "submitBtnText": "Register",
     "hasAccount": "Already have an account?",
-    "toLogin": "To login"
+    "toLogin": "Sign in",
+    "trust": {
+      "tls": "TLS secure connection",
+      "isolation": "Enterprise permission isolation"
+    }
   },
   "lockScreen": {
     "pwdError": "Password error",
@@ -238,6 +243,7 @@
     "serviceUnavailable": "Service unavailable",
     "systemStatus": "System status",
     "goBack": "Go back",
+    "retryInitialization": "Retry system startup",
     "reload": "Reload page",
     "support": "Need help? Contact your administrator and include this status code.",
     "gohome": "Go Home",

@@ -34,13 +34,28 @@
       focusable
     />
 
-    <OrganizationDialog ref="organizationDialogRef" @success="handleSaveSuccess" />
-    <OrganizationDetailDrawer ref="organizationDetailDrawerRef" />
-    <MasterDataDeleteGuard ref="deleteGuardRef" @cleared="handleDeleteDependenciesCleared" />
+    <component
+      :is="organizationDialogComponent"
+      v-if="organizationDialogComponent"
+      ref="organizationDialogRef"
+      @success="handleSaveSuccess"
+    />
+    <component
+      :is="organizationDetailDrawerComponent"
+      v-if="organizationDetailDrawerComponent"
+      ref="organizationDetailDrawerRef"
+    />
+    <component
+      :is="deleteGuardComponent"
+      v-if="deleteGuardComponent"
+      ref="deleteGuardRef"
+      @cleared="handleDeleteDependenciesCleared"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
+  import type { Component } from 'vue'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import type { ColumnOption } from '@/types'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
@@ -63,11 +78,7 @@
   import { deleteOrganization, fetchGetOrganizationTree } from '@/api/system-manage'
   import { formatWithDayjs } from '@/utils/time'
   import TreeUtils from '@/utils/tree'
-  import OrganizationDialog from './modules/organization-dialog.vue'
-  import OrganizationDetailDrawer from './modules/organization-detail-drawer.vue'
-  import MasterDataDeleteGuard, {
-    type MasterDataDeleteGuardOpenOptions
-  } from '@/components/business/master-data-delete-guard/index.vue'
+  import type { MasterDataDeleteGuardOpenOptions } from '@/components/business/master-data-delete-guard/index.vue'
   import MasterDeleteProcessingNotice from '@/components/business/master-delete-processing-notice/index.vue'
 
   defineOptions({ name: 'Organization' })
@@ -107,6 +118,9 @@
   const organizationDialogRef = ref<OrganizationDialogExpose>()
   const organizationDetailDrawerRef = ref<OrganizationDetailDrawerExpose>()
   const deleteGuardRef = ref<MasterDataDeleteGuardExpose>()
+  const organizationDialogComponent = shallowRef<Component>()
+  const organizationDetailDrawerComponent = shallowRef<Component>()
+  const deleteGuardComponent = shallowRef<Component>()
   const organizationDepthMap = shallowRef(new Map<string, number>())
   const overview = reactive<OverviewState>({
     organizations: 0,
@@ -138,7 +152,7 @@
     {
       label: '菜单覆盖',
       value: overview.menus,
-      description: '去重后的访问项',
+      description: '各组织去重后汇总',
       icon: 'ri:menu-line',
       tone: 'info'
     }
@@ -190,7 +204,7 @@
       type: 'add',
       label: '新增组织',
       permission: 'System:Organization:Add',
-      onClick: () => openOrganizationDialog('add')
+      onClick: () => void openOrganizationDialog('add')
     }
   ])
 
@@ -228,6 +242,8 @@
   }
 
   const getMenuCoverage = (row: Organization): number => {
+    if (typeof row.menuCount === 'number') return row.menuCount
+
     const menuIds = new Set(
       (row.roles ?? []).flatMap((role) =>
         (role.roleMenus ?? []).map((roleMenu) => roleMenu.menuId).filter(Boolean)
@@ -239,7 +255,19 @@
   const getOrganizationDepth = (row: Organization): number =>
     row.id ? (organizationDepthMap.value.get(row.id) ?? 0) : 0
 
+  const getMemberCount = (row: Organization): number => row.memberCount ?? row.members?.length ?? 0
+
+  const getRoleCount = (row: Organization): number => row.roleCount ?? row.roles?.length ?? 0
+
   const isProtectedOrganization = (row: Organization): boolean => Boolean(row.isSystem)
+
+  const ensureLazyComponent = async (
+    target: { value: Component | undefined },
+    loader: () => Promise<{ default: Component }>
+  ): Promise<void> => {
+    if (!target.value) target.value = markRaw((await loader()).default)
+    await nextTick()
+  }
 
   const columnsFactory = (): ColumnOption<Organization>[] => [
     {
@@ -317,13 +345,10 @@
       formatter: (row) =>
         h('div', { class: 'organization-access-cell' }, [
           h('span', null, [
-            h('strong', null, String(row.members?.length ?? 0)),
+            h('strong', null, String(getMemberCount(row))),
             h('small', null, '成员')
           ]),
-          h('span', null, [
-            h('strong', null, String(row.roles?.length ?? 0)),
-            h('small', null, '角色')
-          ]),
+          h('span', null, [h('strong', null, String(getRoleCount(row))), h('small', null, '角色')]),
           h('span', null, [
             h('strong', null, String(getMenuCoverage(row))),
             h('small', null, '菜单')
@@ -353,7 +378,7 @@
             type: 'view',
             label: '治理详情',
             permission: 'System:Organization:View',
-            onClick: () => organizationDetailDrawerRef.value?.handleOpen(row)
+            onClick: () => void openOrganizationDetail(row)
           }),
           h(ArtButtonMore, {
             list: getOrganizationActions(row),
@@ -394,20 +419,32 @@
   const handleOrganizationAction = (item: ButtonMoreItem, row: Organization): void => {
     if (item.disabled) return
     if (item.key === 'addChild') {
-      openOrganizationDialog('add', undefined, row)
+      void openOrganizationDialog('add', undefined, row)
     } else if (item.key === 'edit') {
-      openOrganizationDialog('edit', row)
+      void openOrganizationDialog('edit', row)
     } else if (item.key === 'delete') {
       void handleDelete(row)
     }
   }
 
-  const openOrganizationDialog = (
+  const openOrganizationDialog = async (
     type: 'add' | 'edit',
     row?: Organization,
     parent?: Organization
-  ): void => {
-    void organizationDialogRef.value?.handleOpen({ type, row, parent })
+  ): Promise<void> => {
+    await ensureLazyComponent(
+      organizationDialogComponent,
+      () => import('./modules/organization-dialog.vue')
+    )
+    await organizationDialogRef.value?.handleOpen({ type, row, parent })
+  }
+
+  const openOrganizationDetail = async (row: Organization): Promise<void> => {
+    await ensureLazyComponent(
+      organizationDetailDrawerComponent,
+      () => import('./modules/organization-detail-drawer.vue')
+    )
+    await organizationDetailDrawerRef.value?.handleOpen(row)
   }
 
   const handleTableSuccess: NonNullable<ArtTableQueryProps['onSuccess']> = (rows) => {
@@ -421,22 +458,28 @@
     const menuIds = new Set<string>()
     let members = 0
     let roles = 0
+    let menuCount = 0
 
     organizations.forEach((organization) => {
-      members += organization.members?.length ?? 0
-      roles += organization.roles?.length ?? 0
-      organization.roles?.forEach((role) => {
-        role.roleMenus?.forEach((roleMenu) => {
-          if (roleMenu.menuId) menuIds.add(roleMenu.menuId)
+      members += getMemberCount(organization)
+      roles += getRoleCount(organization)
+
+      if (typeof organization.menuCount === 'number') {
+        menuCount += organization.menuCount
+      } else {
+        organization.roles?.forEach((role) => {
+          role.roleMenus?.forEach((roleMenu) => {
+            if (roleMenu.menuId) menuIds.add(roleMenu.menuId)
+          })
         })
-      })
+      }
     })
 
     Object.assign(overview, {
       organizations: organizations.length,
       members,
       roles,
-      menus: menuIds.size
+      menus: menuCount + menuIds.size
     })
   }
 
@@ -449,6 +492,10 @@
   const handleDelete = async (row: Organization): Promise<void> => {
     if (!row.id || isProtectedOrganization(row)) return
     try {
+      await ensureLazyComponent(
+        deleteGuardComponent,
+        () => import('@/components/business/master-data-delete-guard/index.vue')
+      )
       const blocked = await deleteGuardRef.value?.inspect({
         resourceType: 'organization',
         resourceLabel: '组织',

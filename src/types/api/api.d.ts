@@ -323,6 +323,9 @@ declare namespace Api {
       address?: string | null
       description?: string | null
       isSystem?: boolean
+      memberCount?: number
+      roleCount?: number
+      menuCount?: number
       members?: OrganizationMember[]
       roles?: OrganizationRole[]
       children?: OrganizationListItem[]

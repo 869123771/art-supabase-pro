@@ -12,10 +12,20 @@ interface PackageManifest {
   scripts?: Record<string, string>
 }
 
+interface TypeScriptConfig {
+  compilerOptions?: {
+    paths?: Record<string, string[]>
+  }
+}
+
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 
 async function readManifest(relativePath: string): Promise<PackageManifest> {
   return JSON.parse(await readFile(path.join(projectRoot, relativePath, 'package.json'), 'utf8'))
+}
+
+async function readTypeScriptConfig(relativePath: string): Promise<TypeScriptConfig> {
+  return JSON.parse(await readFile(path.join(projectRoot, relativePath, 'tsconfig.json'), 'utf8'))
 }
 
 async function readSubmodulePaths(): Promise<string[]> {
@@ -29,6 +39,7 @@ test('every hosted repository participates in the root module quality gate', asy
 
   assert.equal(modulePaths.length, 6)
   assert.match(rootManifest.scripts?.['check:ci'] ?? '', /pnpm modules:check/)
+  assert.match(rootManifest.scripts?.['check:ci'] ?? '', /pnpm modules:build/)
 
   for (const modulePath of modulePaths) {
     const manifest = await readManifest(modulePath)
@@ -52,6 +63,30 @@ test('every business repository runs the shared UI audit independently', async (
       `${modulePath} must reuse the platform UI audit`
     )
     assert.match(manifest.scripts?.check ?? '', /pnpm ui:audit/)
+  }
+})
+
+test('standalone module checks resolve one pinned platform snapshot', async () => {
+  const modulePaths = (await readSubmodulePaths()).filter(
+    (modulePath) => modulePath !== 'modules/art-supabase-doc'
+  )
+  const expectedPinnedAliases = new Map([
+    ['@/*', 'node_modules/art-supabase-pro/src/*'],
+    ['@views/*', 'node_modules/art-supabase-pro/src/views/*'],
+    ['@styles/*', 'node_modules/art-supabase-pro/src/assets/styles/*'],
+    ['@utils/*', 'node_modules/art-supabase-pro/src/utils/*'],
+    ['@stores/*', 'node_modules/art-supabase-pro/src/store/*']
+  ])
+
+  for (const modulePath of modulePaths) {
+    const config = await readTypeScriptConfig(modulePath)
+    for (const [alias, pinnedPath] of expectedPinnedAliases) {
+      assert.equal(
+        config.compilerOptions?.paths?.[alias]?.[0],
+        pinnedPath,
+        `${modulePath} ${alias} must resolve from the same pinned platform package as global types`
+      )
+    }
   }
 })
 

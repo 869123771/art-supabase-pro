@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { createHash } from 'node:crypto'
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { extname, join, relative, resolve } from 'node:path'
 import {
@@ -8,35 +9,28 @@ import {
 } from './business-button-permission-catalog'
 
 const projectRoot = resolve(import.meta.dirname, '..')
-const migrationPath = join(
-  projectRoot,
-  'supabase/migrations/20260820005922_business_button_permissions.sql'
-)
-const systemMigrationPath = join(
-  projectRoot,
-  'supabase/migrations/20260820143000_system_button_permissions.sql'
-)
-const notificationReminderMigrationPath = join(
-  projectRoot,
-  'supabase/migrations/20260820044218_tenant_notification_reminder.sql'
-)
-const compatibilityMigrationPath = join(
-  projectRoot,
-  'supabase/migrations/20260820143100_backfill_new_button_permissions_for_existing_roles.sql'
-)
+const migrationDirectory = join(projectRoot, 'supabase/migrations')
+const migrationFilePattern = /^(\d{14})_([a-z0-9_]+)\.sql$/
+const requiredPermissionMigrations = [
+  'business_button_permissions',
+  'system_button_permissions',
+  'tenant_notification_reminder',
+  'backfill_new_button_permissions_for_existing_roles'
+] as const
 const managedViewRoots = new Map<string, string>([
   ['tms', join(projectRoot, 'modules/art-supabase-tms/src/views')],
   ['system', join(projectRoot, 'src/views/system')],
+  ['workflow', join(projectRoot, 'src/views/workflow')],
   ['fms', join(projectRoot, 'modules/art-supabase-fms/src/views')],
   ['vms', join(projectRoot, 'modules/art-supabase-vms/src/views')],
   ['hr', join(projectRoot, 'modules/art-supabase-hr/src/views')],
   ['smis', join(projectRoot, 'modules/art-supabase-smis/src/views')]
 ])
-const managedModules = new Set(['tms', 'vms', 'fms', 'hr', 'smis', 'system'])
+const managedModules = new Set(['tms', 'vms', 'fms', 'hr', 'smis', 'system', 'workflow'])
 const businessModules = new Set(['tms', 'vms', 'fms', 'hr', 'smis'])
 const sourceExtensions = new Set(['.ts', '.tsx', '.vue'])
 const permissionPattern =
-  /['"`]((?:System|Tms|Finance|Hr|Smis|Vehicle|Insurance|Parts|PartsCategory|Supplier)[A-Za-z0-9]*(?::[A-Za-z][A-Za-z0-9]*)+)['"`]/g
+  /['"`]((?:System|Workflow|Tms|Finance|Hr|Smis|Vehicle|Insurance|Parts|PartsCategory|Supplier)[A-Za-z0-9]*(?::[A-Za-z][A-Za-z0-9]*)+)['"`]/g
 const platformSuperPattern = /isPlatformSuper|平台超级管理员|仅平台|platform super administrator/i
 
 // These files use platform-super only for cross-tenant context or for controlled AI writes.
@@ -123,21 +117,63 @@ for (const row of catalogRows) {
   )
 }
 
-const permissionMigrationPaths = [
-  migrationPath,
-  systemMigrationPath,
-  notificationReminderMigrationPath,
-  compatibilityMigrationPath
-]
-const hasLocalPermissionMigrations = permissionMigrationPaths.every(existsSync)
+const migrationFiles = readdirSync(migrationDirectory)
+  .filter((fileName) => fileName.endsWith('.sql'))
+  .sort()
+  .map((fileName) => {
+    const match = migrationFilePattern.exec(fileName)
+    assert.ok(match, `迁移文件名必须使用 <14位版本>_<snake_case名称>.sql：${fileName}`)
 
-if (hasLocalPermissionMigrations) {
-  const migrationSql = [migrationPath, systemMigrationPath, notificationReminderMigrationPath]
-    .map((filePath) => readFileSync(filePath, 'utf8'))
-    .join('\n')
+    const sql = readFileSync(join(migrationDirectory, fileName), 'utf8')
+    assert.ok(sql.trim(), `迁移文件不能为空：${fileName}`)
+
+    return {
+      fileName,
+      version: match[1],
+      name: match[2],
+      sql,
+      contentHash: createHash('sha256').update(sql.replace(/\r\n?/g, '\n').trimEnd()).digest('hex')
+    }
+  })
+
+const duplicateVersions = migrationFiles
+  .filter((migration, index, migrations) =>
+    migrations.some(
+      (candidate, candidateIndex) =>
+        candidateIndex < index && candidate.version === migration.version
+    )
+  )
+  .map((migration) => migration.version)
+assert.deepEqual(duplicateVersions, [], `迁移版本号重复：${duplicateVersions.join(', ')}`)
+
+const duplicateContents = migrationFiles
+  .filter((migration, index, migrations) =>
+    migrations.some(
+      (candidate, candidateIndex) =>
+        candidateIndex < index && candidate.contentHash === migration.contentHash
+    )
+  )
+  .map((migration) => migration.fileName)
+assert.deepEqual(duplicateContents, [], `存在内容完全重复的迁移：${duplicateContents.join(', ')}`)
+
+if (migrationFiles.length > 0) {
+  assert.ok(
+    migrationFiles.some((migration) => migration.name === 'baseline'),
+    '缺少真实数据库 baseline 迁移'
+  )
+
+  const requiredMigrationFiles = new Map(
+    requiredPermissionMigrations.map((migrationName) => {
+      const matches = migrationFiles.filter((migration) => migration.name === migrationName)
+      assert.equal(matches.length, 1, `权限关键迁移必须且只能存在一份：${migrationName}`)
+      return [migrationName, matches[0]!]
+    })
+  )
+  const allMigrationSql = migrationFiles.map((migration) => migration.sql).join('\n')
   const missingFromMigration = catalogRows.filter(
     (row) =>
-      !migrationSql.includes(JSON.stringify(row.code)) && !migrationSql.includes(`'${row.code}'`)
+      !allMigrationSql.includes(JSON.stringify(row.code)) &&
+      !allMigrationSql.includes(`'${row.code}'`)
   )
   assert.deepEqual(
     missingFromMigration,
@@ -145,7 +181,9 @@ if (hasLocalPermissionMigrations) {
     `权限目录尚未写入迁移：${missingFromMigration.map((row) => row.code).join(', ')}`
   )
 
-  const compatibilityMigrationSql = readFileSync(compatibilityMigrationPath, 'utf8')
+  const compatibilityMigrationSql = requiredMigrationFiles.get(
+    'backfill_new_button_permissions_for_existing_roles'
+  )!.sql
   for (const migrationOwner of [
     'codex-business-permission-migration',
     'codex-system-permission-migration'
@@ -159,10 +197,6 @@ if (hasLocalPermissionMigrations) {
     compatibilityMigrationSql,
     /button\.parent_id\s*=\s*parent_grant\.menu_id/,
     '历史角色只能继承其已授权页面直属的新增按钮'
-  )
-} else {
-  console.warn(
-    'Local permission migrations are not present; migration-content checks were skipped.'
   )
 }
 
@@ -221,5 +255,5 @@ assert.deepEqual(
 )
 
 console.log(
-  `Managed permission audit passed: ${businessButtonPermissionCatalog.length} business menus, ${catalogRows.length} button permissions, ${sourceFiles.length} source files.`
+  `Managed permission audit passed: ${businessButtonPermissionCatalog.length} business menus, ${catalogRows.length} button permissions, ${sourceFiles.length} source files, ${migrationFiles.length} migrations.`
 )

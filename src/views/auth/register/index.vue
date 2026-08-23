@@ -1,13 +1,17 @@
 <!-- 注册页面 -->
 <template>
-  <div class="flex w-full h-screen">
+  <div class="auth-page auth-register-page">
     <LoginLeftView />
 
-    <div class="relative flex-1">
+    <div class="auth-page__panel">
       <AuthTopBar />
 
       <div class="auth-right-wrap">
         <div class="form">
+          <div class="form__eyebrow">
+            <span><ArtSvgIcon icon="ri:user-add-line" /></span>
+            {{ $t('register.eyebrow') }}
+          </div>
           <h3 class="title">{{ $t('register.title') }}</h3>
           <p class="sub-title">{{ $t('register.subTitle') }}</p>
           <ElForm
@@ -29,7 +33,9 @@
                 :aria-label="$t('register.placeholder.email')"
                 :spellcheck="false"
                 :placeholder="$t('register.placeholder.email')"
-              />
+              >
+                <template #prefix><ArtSvgIcon icon="ri:mail-line" /></template>
+              </ElInput>
             </ElFormItem>
 
             <ElFormItem prop="password">
@@ -42,7 +48,9 @@
                 autocomplete="new-password"
                 :aria-label="$t('register.placeholder.password')"
                 show-password
-              />
+              >
+                <template #prefix><ArtSvgIcon icon="ri:lock-2-line" /></template>
+              </ElInput>
             </ElFormItem>
 
             <ElFormItem prop="confirmPassword">
@@ -56,17 +64,17 @@
                 :aria-label="$t('register.placeholder.confirmPassword')"
                 @keyup.enter="handleRegister"
                 show-password
-              />
+              >
+                <template #prefix><ArtSvgIcon icon="ri:shield-keyhole-line" /></template>
+              </ElInput>
             </ElFormItem>
 
-            <ElFormItem prop="agreement">
+            <ElFormItem prop="agreement" class="agreement-form-item">
               <ElCheckbox v-model="formData.agreement">
                 {{ $t('register.agreeText') }}
-                <RouterLink
-                  style="color: var(--theme-color); text-decoration: none"
-                  to="/privacy-policy"
-                  >{{ $t('register.privacyPolicy') }}</RouterLink
-                >
+                <RouterLink class="text-theme agreement-link" to="/privacy-policy">{{
+                  $t('register.privacyPolicy')
+                }}</RouterLink>
               </ElCheckbox>
             </ElFormItem>
 
@@ -78,7 +86,8 @@
                 :loading="loading"
                 v-ripple
               >
-                {{ $t('register.submitBtnText') }}
+                <span>{{ $t('register.submitBtnText') }}</span>
+                <ArtSvgIcon icon="ri:arrow-right-line" />
               </ElButton>
             </div>
 
@@ -89,6 +98,15 @@
               }}</RouterLink>
             </div>
           </ElForm>
+
+          <div class="form__trust">
+            <span>
+              <ArtSvgIcon icon="ri:lock-line" />
+              {{ $t('register.trust.tls') }}
+            </span>
+            <i />
+            <span>{{ $t('register.trust.isolation') }}</span>
+          </div>
         </div>
       </div>
     </div>
@@ -223,7 +241,10 @@
         trigger: 'change'
       }
     ],
-    email: [{ type: 'email', trigger: 'change', message: t('register.rule.emailIncorrect') }],
+    email: [
+      { required: true, message: t('register.placeholder.email'), trigger: 'change' },
+      { type: 'email', trigger: 'change', message: t('register.rule.emailIncorrect') }
+    ],
     confirmPassword: [{ required: true, validator: validateConfirmPassword, trigger: 'change' }],
     agreement: [{ validator: validateAgreement, trigger: 'change' }]
   }))
@@ -240,10 +261,11 @@
       return
     }
 
-    try {
-      await formRef.value.validate()
-      loading.value = true
+    const valid = await formRef.value.validate().catch(() => false)
+    if (!valid) return
 
+    loading.value = true
+    try {
       const params: RegisterParams = {
         email: formData.email,
         password: formData.password
@@ -252,8 +274,6 @@
       if (data) {
         toLogin()
       }
-    } catch (error) {
-      console.error('表单验证失败:', error)
     } finally {
       loading.value = false
     }
@@ -275,4 +295,27 @@
 
 <style scoped>
   @import '../login/style.css';
+</style>
+
+<style lang="scss" scoped>
+  .auth-register-page {
+    .agreement-form-item {
+      margin-top: 2px;
+      margin-bottom: 0;
+
+      :deep(.el-checkbox) {
+        min-height: 32px;
+        white-space: normal;
+      }
+
+      :deep(.el-checkbox__label) {
+        line-height: 22px;
+        color: var(--el-text-color-regular);
+      }
+    }
+
+    .agreement-link {
+      text-decoration: none;
+    }
+  }
 </style>

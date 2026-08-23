@@ -5,6 +5,8 @@
       :index="item.path || item.meta.title"
       :level="level"
       :class="{ 'is-menu-section': menuLevel > 0 }"
+      @mouseenter="preloadFirstMenuRoute(item)"
+      @focusin="preloadFirstMenuRoute(item)"
     >
       <template #title>
         <div class="menu-icon flex-cc">
@@ -66,7 +68,7 @@
   import { computed } from 'vue'
   import type { AppRouteRecord } from '@/types/router'
   import { formatMenuTitle } from '@/utils/router'
-  import { handleMenuJump, preloadMenuRoute } from '@/utils/navigation'
+  import { handleMenuJump, preloadFirstMenuRoute, preloadMenuRoute } from '@/utils/navigation'
   import { useSettingStore } from '@/store/modules/setting'
 
   interface MenuTheme {

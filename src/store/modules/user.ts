@@ -72,6 +72,8 @@ export const useUserStore = defineStore(
     const accessToken = ref('')
     // 刷新令牌
     const refreshToken = ref('')
+    // 仅记录当前页面生命周期内最近一次成功刷新，避免登录完成后路由守卫立即重复请求。
+    let userInfoFetchedAt = 0
     //数据字典数据
     const dictMap = ref<DictMap>({})
     // 计算属性：获取用户信息
@@ -160,7 +162,7 @@ export const useUserStore = defineStore(
      * 清空所有用户相关状态并跳转到登录页
      * 如果是同一账号重新登录，保留工作台标签页
      */
-    const logOut = async () => {
+    const logOut = async (redirectTarget?: string) => {
       // 保存当前用户 ID，用于下次登录时判断是否为同一用户
       const currentUserId = info.value.userId
       if (currentUserId) {
@@ -188,7 +190,8 @@ export const useUserStore = defineStore(
       resetRouterState(500)
       // 跳转到登录页，携带当前路由作为 redirect 参数
       const currentRoute = router.currentRoute.value
-      const redirect = currentRoute.path !== '/login' ? currentRoute.fullPath : undefined
+      const redirect =
+        redirectTarget ?? (currentRoute.path !== '/auth/login' ? currentRoute.fullPath : undefined)
       await router.push({
         name: 'Login',
         query: redirect ? { redirect } : undefined
@@ -252,8 +255,11 @@ export const useUserStore = defineStore(
       }
     }
 
-    const fetchUserInfo = async () => {
-      const { data } = await fetchGetUserInfo()
+    const fetchUserInfo = async (signal?: AbortSignal): Promise<boolean> => {
+      const { data, error, session } = await fetchGetUserInfo(signal)
+      if (error) {
+        throw new Error('用户资料加载失败', { cause: error })
+      }
       if (!data) return false
 
       const { id: userId, userEmail: email, ...res } = data ?? {}
@@ -262,7 +268,16 @@ export const useUserStore = defineStore(
         email,
         ...res
       })
+      setToken(session.accessToken, session.refreshToken)
+      userInfoFetchedAt = Date.now()
       return true
+    }
+
+    const ensureUserInfo = async (signal?: AbortSignal): Promise<boolean> => {
+      const recentlyFetched = Date.now() - userInfoFetchedAt < 30_000
+      if (recentlyFetched && Boolean(info.value.userId)) return true
+
+      return fetchUserInfo(signal)
     }
 
     const fetchDictList = async () => {
@@ -318,6 +333,7 @@ export const useUserStore = defineStore(
       logOut,
       checkAndClearWorkTabs,
       fetchUserInfo,
+      ensureUserInfo,
       fetchDictList,
       ensureDictLoaded
     }

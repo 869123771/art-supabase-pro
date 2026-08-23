@@ -36,6 +36,51 @@
     backdrop-filter: blur(22px);
   }
 
+  .form__eyebrow {
+    display: inline-flex;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 18px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--el-color-primary);
+    letter-spacing: 1px;
+  }
+
+  .form__eyebrow > span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    font-size: 15px;
+    background: color-mix(in srgb, var(--el-color-primary) 12%, var(--el-bg-color));
+    border-radius: 50%;
+  }
+
+  .form__trust {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    justify-content: center;
+    margin-top: 28px;
+    font-size: 10px;
+    color: var(--el-text-color-placeholder);
+  }
+
+  .form__trust span {
+    display: inline-flex;
+    gap: 5px;
+    align-items: center;
+  }
+
+  .form__trust i {
+    width: 3px;
+    height: 3px;
+    background: var(--el-border-color);
+    border-radius: 50%;
+  }
+
   .title {
     @apply text-g-900 text-[34px] leading-tight font-bold max-md:text-3xl;
 
@@ -48,6 +93,62 @@
 
   .custom-height {
     @apply !h-[48px];
+  }
+}
+
+.auth-page {
+  :deep(.el-select__wrapper) {
+    height: 48px !important;
+  }
+
+  :deep(.el-input__wrapper) {
+    padding: 0 15px;
+    background: color-mix(in srgb, var(--el-fill-color-light) 64%, transparent);
+    border: 1px solid transparent;
+    box-shadow: none;
+    transition:
+      border-color 0.2s ease,
+      background-color 0.2s ease,
+      box-shadow 0.2s ease;
+
+    &:hover {
+      background: var(--el-fill-color-light);
+      border-color: var(--el-border-color);
+    }
+
+    &.is-focus {
+      background: var(--el-bg-color);
+      border-color: color-mix(in srgb, var(--el-color-primary) 72%, transparent);
+      box-shadow: 0 0 0 4px color-mix(in srgb, var(--el-color-primary) 10%, transparent);
+    }
+  }
+
+  :deep(.el-input__prefix) {
+    margin-right: 7px;
+    font-size: 17px;
+    color: var(--el-text-color-placeholder);
+  }
+
+  :deep(.el-button--primary) {
+    justify-content: space-between;
+    padding: 0 18px 0 22px;
+    font-weight: 700;
+    background: linear-gradient(
+      100deg,
+      var(--el-color-primary-dark-2),
+      var(--theme-color),
+      var(--el-color-primary-light-3)
+    );
+    border: 0;
+    box-shadow: 0 14px 28px color-mix(in srgb, var(--el-color-primary) 28%, transparent);
+    transition:
+      box-shadow 0.2s ease,
+      transform 0.2s ease;
+
+    &:hover {
+      box-shadow: 0 17px 34px color-mix(in srgb, var(--el-color-primary) 36%, transparent);
+      transform: translateY(-1px);
+    }
   }
 }
 

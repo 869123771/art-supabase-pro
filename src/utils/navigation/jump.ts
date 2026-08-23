@@ -20,6 +20,15 @@ import { isNavigableMenuItem } from './route'
 
 const preloadingRoutes = new Map<string, Promise<void>>()
 
+const findFirstLeafMenu = (items: AppRouteRecord[]): AppRouteRecord | undefined => {
+  for (const child of items) {
+    if (isNavigableMenuItem(child)) {
+      return child.children?.length ? findFirstLeafMenu(child.children) || child : child
+    }
+  }
+  return undefined
+}
+
 /**
  * 提前加载菜单对应的异步路由组件，减少首次点击后的空等时间。
  */
@@ -47,6 +56,15 @@ export const preloadMenuRoute = (item: AppRouteRecord): Promise<void> => {
   return task
 }
 
+/**
+ * 用户准备展开目录时，优先预热其第一个可访问页面。
+ * 这让冷缓存下的常见“展开目录后点击第一项”路径在点击前就开始加载。
+ */
+export const preloadFirstMenuRoute = (item: AppRouteRecord): Promise<void> => {
+  const target = item.children?.length ? findFirstLeafMenu(item.children) : item
+  return target ? preloadMenuRoute(target) : Promise.resolve()
+}
+
 // 打开外部链接
 export const openExternalLink = (link: string): void => {
   window.open(link, '_blank', 'noopener,noreferrer')
@@ -69,16 +87,6 @@ export const handleMenuJump = (item: AppRouteRecord, jumpToFirst: boolean = fals
   if (!jumpToFirst || !item.children?.length) {
     void preloadMenuRoute(item)
     return router.push(item.path)
-  }
-
-  // 递归查找第一个可导航的叶子节点菜单
-  const findFirstLeafMenu = (items: AppRouteRecord[]): AppRouteRecord | undefined => {
-    for (const child of items) {
-      if (isNavigableMenuItem(child)) {
-        return child.children?.length ? findFirstLeafMenu(child.children) || child : child
-      }
-    }
-    return undefined
   }
 
   const firstChild = findFirstLeafMenu(item.children)

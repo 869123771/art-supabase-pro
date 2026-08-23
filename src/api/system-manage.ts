@@ -14,6 +14,24 @@ const organizationTreeUtils = new TreeUtils({
   childrenKey: 'children'
 })
 
+const ORGANIZATION_DETAIL_SELECT = `
+  *,
+  tenant:sys_tenant!sys_organization_tenant_id_fkey(tenant_code, tenant_name),
+  leader:sys_user!sys_organization_leader_user_id_fkey(
+    id, avatar, user_name, nick_name, user_email
+  ),
+  members:sys_user!sys_user_organization_id_fkey(
+    id, avatar, user_name, nick_name, user_email, status, user_roles
+  ),
+  roles:sys_role!sys_role_organization_id_fkey(
+    id, role_name, role_code, enabled,
+    role_menus:sys_role_menu!sys_role_menu_role_id_fkey(
+      menu_id,
+      menu:sys_menu!sys_role_menu_menu_id_fkey(name, type, meta)
+    )
+  )
+`
+
 type TenantListItem = Api.SystemManage.TenantListItem
 type TenantSearchParams = Api.SystemManage.TenantSearchParams
 type SystemParamItem = Api.SystemManage.SystemParamItem
@@ -145,50 +163,40 @@ export async function fetchGetOrganizationList(
   params: Api.SystemManage.OrganizationSearchParams = {}
 ) {
   const { keyword, tenantId, organizationType, status, recordId } = params
-  const specs = [
-    { col: 'id', op: 'eq', val: recordId },
-    { col: 'tenant_id', op: 'eq', val: tenantId },
-    { col: 'organization_type', op: 'eq', val: organizationType },
-    { col: 'status', op: 'eq', val: status }
-  ]
+  const response = await responseHandle<Api.SystemManage.OrganizationListItem[]>(
+    () =>
+      supabase.rpc('get_organization_list_secure', {
+        p_keyword: keyword?.trim() || undefined,
+        p_tenant_id: tenantId || undefined,
+        p_organization_type: organizationType || undefined,
+        p_status: status || undefined,
+        p_record_id: recordId || undefined
+      }),
+    {
+      ignoreCheck: true,
+      showErrorMessage: true
+    }
+  )
 
-  let query = supabase
-    .from('sys_organization')
-    .select(
-      `
-        *,
-        tenant:sys_tenant!sys_organization_tenant_id_fkey(tenant_code, tenant_name),
-        leader:sys_user!sys_organization_leader_user_id_fkey(
-          id, avatar, user_name, nick_name, user_email
-        ),
-        members:sys_user!sys_user_organization_id_fkey(
-          id, avatar, user_name, nick_name, user_email, status, user_roles
-        ),
-        roles:sys_role!sys_role_organization_id_fkey(
-          id, role_name, role_code, enabled,
-          role_menus:sys_role_menu!sys_role_menu_role_id_fkey(
-            menu_id,
-            menu:sys_menu!sys_role_menu_menu_id_fkey(name, type, meta)
-          )
-        )
-      `,
-      { count: 'exact' }
-    )
-    .order('sort', { ascending: true })
-    .order('organization_name', { ascending: true })
-
-  const trimmedKeyword = keyword?.trim()
-  if (trimmedKeyword) {
-    query = query.or(
-      `organization_name.ilike.%${trimmedKeyword}%,organization_code.ilike.%${trimmedKeyword}%,description.ilike.%${trimmedKeyword}%`
-    )
+  return {
+    ...response,
+    total: response.data?.length ?? 0
   }
+}
 
-  query = applyFilters(query, specs, { skipEmpty: true, camelToSnake: false })
-  return await responseHandle<Api.SystemManage.OrganizationListItem[]>(() => query, {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
+export async function fetchGetOrganizationDetail(id: string) {
+  return await responseHandle<Api.SystemManage.OrganizationListItem | null>(
+    () =>
+      supabase
+        .from('sys_organization')
+        .select(ORGANIZATION_DETAIL_SELECT)
+        .eq('id', id)
+        .maybeSingle(),
+    {
+      ignoreCheck: true,
+      showErrorMessage: true
+    }
+  )
 }
 
 export async function fetchGetOrganizationTree(
@@ -1118,12 +1126,12 @@ export async function saveMenuTreeOrder(
 }
 
 /*获取当前用户的菜单权限*/
-export async function fetchCurrentUserMenu(applicationCode: ApplicationCode) {
+export async function fetchCurrentUserMenu(applicationCode: ApplicationCode, signal?: AbortSignal) {
+  const query = supabase.rpc('get_menus_for_current_application', {
+    p_app_code: applicationCode
+  })
   return await responseHandle<{ flat: AppRouteRecord[]; tree: AppRouteRecord[] }>(
-    () =>
-      supabase.rpc('get_menus_for_current_application', {
-        p_app_code: applicationCode
-      }),
+    () => (signal ? query.abortSignal(signal) : query),
     {
       showMessage: false,
       ignoreCheck: true
@@ -1140,9 +1148,10 @@ export interface AccessibleApplication {
 }
 
 /** 获取当前用户可进入的独立应用。 */
-export async function fetchAccessibleApplications() {
+export async function fetchAccessibleApplications(signal?: AbortSignal) {
+  const query = supabase.rpc('get_accessible_applications')
   return await responseHandle<AccessibleApplication[]>(
-    () => supabase.rpc('get_accessible_applications'),
+    () => (signal ? query.abortSignal(signal) : query),
     {
       showMessage: false,
       ignoreCheck: true

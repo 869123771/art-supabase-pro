@@ -179,6 +179,7 @@
   import type { ArtDrawerExpose } from '@/components/core/drawers/art-drawer/types'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
+  import { fetchGetOrganizationDetail } from '@/api/system-manage'
 
   type Organization = Api.SystemManage.OrganizationListItem
   type OrganizationMember = Api.SystemManage.OrganizationMember
@@ -257,11 +258,25 @@
       contentHeight: 'calc(100vh - 126px)',
       scrollbarAlways: true,
       showFooter: false,
+      loading: true,
+      loadingText: '正在加载组织治理详情…',
       onReset: () => {
         organization.value = undefined
         activeTab.value = 'members'
       }
     })
+
+    if (!row.id) {
+      drawerRef.value?.setLoading(false)
+      return
+    }
+
+    try {
+      const response = await fetchGetOrganizationDetail(row.id)
+      if (response.data) organization.value = response.data
+    } finally {
+      drawerRef.value?.setLoading(false)
+    }
   }
 
   defineExpose({ handleOpen })

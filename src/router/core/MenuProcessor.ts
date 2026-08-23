@@ -22,14 +22,14 @@ export class MenuProcessor {
   /**
    * 获取菜单数据
    */
-  async getMenuList(): Promise<AppRouteRecord[]> {
+  async getMenuList(signal?: AbortSignal): Promise<AppRouteRecord[]> {
     const { isFrontendMode } = useAppMode()
 
     let menuList: AppRouteRecord[]
     if (isFrontendMode.value) {
       menuList = await this.processFrontendMenu()
     } else {
-      menuList = await this.processBackendMenu()
+      menuList = await this.processBackendMenu(signal)
     }
 
     // 在规范化路径之前，验证原始路径配置
@@ -60,16 +60,27 @@ export class MenuProcessor {
   /**
    * 处理后端控制模式的菜单
    */
-  private async processBackendMenu(): Promise<AppRouteRecord[]> {
-    const accessibleApplications =
-      currentApplication.code === 'platform' ? await fetchAccessibleApplications() : null
+  private async processBackendMenu(signal?: AbortSignal): Promise<AppRouteRecord[]> {
+    const accessibleApplicationsResult =
+      currentApplication.code === 'platform' ? await fetchAccessibleApplications(signal) : null
+    if (accessibleApplicationsResult?.error) {
+      throw new Error('可访问应用范围加载失败', {
+        cause: accessibleApplicationsResult.error
+      })
+    }
+
     const applicationCodes = resolveHostedApplicationCodes(
       currentApplication.code,
-      accessibleApplications?.error ? [] : (accessibleApplications?.data ?? [])
+      accessibleApplicationsResult?.data ?? []
     )
     const menuResponses = await Promise.all(
-      applicationCodes.map((applicationCode) => fetchCurrentUserMenu(applicationCode))
+      applicationCodes.map((applicationCode) => fetchCurrentUserMenu(applicationCode, signal))
     )
+    const menuError = menuResponses.find((response) => response.error)?.error
+    if (menuError) {
+      throw new Error('菜单权限加载失败', { cause: menuError })
+    }
+
     const flat = menuResponses.flatMap(({ data }) => data?.flat ?? [])
     const tree = menuResponses.flatMap(({ data }) => data?.tree ?? [])
 

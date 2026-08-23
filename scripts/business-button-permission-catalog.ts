@@ -164,6 +164,14 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
       button('SendReminder', '发送在途提醒')
     ]
   },
+  {
+    menuName: 'TmsTransportEvent',
+    buttons: [button('View', '查看运输事件')]
+  },
+  {
+    menuName: 'TmsRoutePerformance',
+    buttons: [button('View', '查看线路效能')]
+  },
 
   { menuName: 'InsuranceCompany', buttons: crud({ import: true, export: true }) },
   { menuName: 'Parts', buttons: crud({ import: true, export: true }) },
@@ -244,6 +252,28 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
     menuName: 'VehicleQuery',
     buttons: [button('View', '查看'), button('AiAnalyze', 'AI 健康分析')]
   },
+  {
+    menuName: 'VehicleFleetHealth',
+    buttons: [button('View', '查看车队健康', 'VehicleFleetHealth:View')]
+  },
+
+  {
+    menuName: 'WorkflowAnalytics',
+    buttons: [button('View', '查看审批效能', 'WorkflowAnalytics:View')]
+  },
+
+  {
+    menuName: 'TmsCapacityPlanning',
+    buttons: [button('View', '查看运力容量', 'TmsCapacityPlanning:View')]
+  },
+  {
+    menuName: 'FinanceExceptionCenter',
+    buttons: [button('View', '查看财务异常', 'FinanceExceptionCenter:View')]
+  },
+  {
+    menuName: 'HrSkillMatrix',
+    buttons: [button('View', '查看技能矩阵', 'Hr:SkillMatrix:View')]
+  },
 
   {
     menuName: 'HrEmployeeRoster',
@@ -302,6 +332,14 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
       button('Edit', '编辑编制', 'Hr:Headcount:Edit'),
       button('Delete', '删除编制', 'Hr:Headcount:Delete')
     ]
+  },
+  {
+    menuName: 'HrWorkforceRisk',
+    buttons: [button('View', '查看人力风险', 'Hr:WorkforceRisk:View')]
+  },
+  {
+    menuName: 'HrTalentInventory',
+    buttons: [button('View', '查看人才盘点', 'Hr:TalentInventory:View')]
   },
   {
     menuName: 'HrAttendance',
@@ -510,6 +548,14 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
     ]
   },
   { menuName: 'FinanceFundAccount', buttons: crud() },
+  {
+    menuName: 'FinanceCashForecast',
+    buttons: [button('View', '查看资金预测')]
+  },
+  {
+    menuName: 'FinanceReceivableAging',
+    buttons: [button('View', '查看应收账龄')]
+  },
   {
     menuName: 'FinanceFundTransfer',
     buttons: [

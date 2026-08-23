@@ -205,7 +205,9 @@ export async function transferWorkflowTask(params: {
 }
 
 export async function fetchPendingWorkflowTasks(params: Api.Workflow.WorkflowTaskSearchParams) {
-  const { from = 0, to = 9, keyword, businessType, assigneeUserId } = params
+  const { from = 0, to = 9, keyword, businessType, assigneeUserId, slaStatus } = params
+  const now = new Date()
+  const dueSoonCutoff = new Date(now.getTime() + 24 * 60 * 60 * 1000)
   let query = supabase
     .from('wf_task')
     .select(TASK_SELECT, { count: 'exact' })
@@ -215,6 +217,15 @@ export async function fetchPendingWorkflowTasks(params: Api.Workflow.WorkflowTas
     .range(from, to)
   if (keyword) query = query.ilike('instance.business_title', `%${keyword}%`)
   if (businessType) query = query.eq('instance.business_type', businessType)
+  if (slaStatus === 'overdue')
+    query = query.not('due_at', 'is', null).lt('due_at', now.toISOString())
+  if (slaStatus === 'due_soon')
+    query = query
+      .not('due_at', 'is', null)
+      .gte('due_at', now.toISOString())
+      .lte('due_at', dueSoonCutoff.toISOString())
+  if (slaStatus === 'normal')
+    query = query.or(`due_at.is.null,due_at.gt.${dueSoonCutoff.toISOString()}`)
   return await responseHandle<Api.Workflow.WorkflowTaskRecord[]>(() => query, {
     showErrorMessage: true
   })
@@ -318,7 +329,7 @@ export async function fetchWorkflowWorkbenchSummary(
   const [pending, handled, initiatedRunning, initiatedCompleted] = await Promise.all([
     supabase
       .from('wf_task')
-      .select('id', { count: 'exact', head: true })
+      .select('id, due_at', { count: 'exact' })
       .eq('assignee_user_id', userId)
       .eq('status', 'pending'),
     supabase
@@ -339,8 +350,17 @@ export async function fetchWorkflowWorkbenchSummary(
   ])
   const error = pending.error || handled.error || initiatedRunning.error || initiatedCompleted.error
   if (error) throw createFriendlySupabaseError(error, '审批统计加载失败，请稍后重试')
+  const now = Date.now()
+  const dueSoonCutoff = now + 24 * 60 * 60 * 1000
   return {
     pendingCount: pending.count ?? 0,
+    dueSoonPendingCount: (pending.data ?? []).filter((task) => {
+      const dueAt = task.due_at ? new Date(task.due_at).getTime() : 0
+      return dueAt >= now && dueAt <= dueSoonCutoff
+    }).length,
+    overduePendingCount: (pending.data ?? []).filter(
+      (task) => task.due_at && new Date(task.due_at).getTime() < now
+    ).length,
     handledCount: handled.count ?? 0,
     initiatedRunningCount: initiatedRunning.count ?? 0,
     initiatedCompletedCount: initiatedCompleted.count ?? 0

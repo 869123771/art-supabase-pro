@@ -260,6 +260,7 @@ declare namespace Api {
       keyword?: string
       businessType?: string
       status?: TaskStatus | ''
+      slaStatus?: WorkflowSlaStatus | ''
       assigneeUserId: string
       from?: number
       to?: number
@@ -301,12 +302,14 @@ declare namespace Api {
 
     interface WorkflowWorkbenchSummary {
       pendingCount: number
+      dueSoonPendingCount: number
+      overduePendingCount: number
       handledCount: number
       initiatedRunningCount: number
       initiatedCompletedCount: number
     }
 
-    type WorkflowSlaStatus = 'normal' | 'overdue'
+    type WorkflowSlaStatus = 'normal' | 'due_soon' | 'overdue'
 
     interface WorkflowMonitorRecord extends WorkflowInstanceRecord {
       definitionName: string

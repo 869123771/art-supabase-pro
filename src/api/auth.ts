@@ -1,5 +1,7 @@
 import { useSupabase } from '@/hooks'
 import { formatSupabaseAuthErrorMessage } from '@/utils/supabase'
+import type { QueryResult } from '@/types/api/response'
+import { isAuthError, isAuthSessionMissingError } from '@supabase/supabase-js'
 const { supabase, keysToSnakeDeep, responseHandle } = useSupabase()
 
 interface AuthSessionResponse {
@@ -7,6 +9,72 @@ interface AuthSessionResponse {
     accessToken?: string
     refreshToken?: string
   } | null
+}
+
+interface CurrentAuthTokens {
+  accessToken: string
+  refreshToken: string
+}
+
+export type CurrentAuthSessionRecovery =
+  ({ status: 'valid' } & CurrentAuthTokens) | { status: 'expired' }
+
+interface CurrentUserInfoResult extends QueryResult<Api.SystemManage.UserListItem> {
+  session: CurrentAuthTokens
+}
+
+const EXPIRED_AUTH_ERROR_CODES = new Set([
+  'bad_jwt',
+  'refresh_token_already_used',
+  'refresh_token_not_found',
+  'session_not_found'
+])
+
+function isExpiredAuthSessionError(error: unknown): boolean {
+  if (isAuthSessionMissingError(error)) return true
+  if (!isAuthError(error)) return false
+
+  return (
+    error.status === 401 ||
+    error.status === 403 ||
+    (typeof error.code === 'string' && EXPIRED_AUTH_ERROR_CODES.has(error.code))
+  )
+}
+
+/**
+ * 验证并刷新浏览器中的 Supabase 会话。
+ *
+ * 仅把明确缺失、过期或无效的凭证判定为 expired；网络及服务异常继续抛出，
+ * 避免因为临时故障误退出仍然有效的账号。
+ */
+export async function recoverCurrentAuthSession(): Promise<CurrentAuthSessionRecovery> {
+  const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+  if (sessionError) {
+    if (isExpiredAuthSessionError(sessionError)) return { status: 'expired' }
+    throw new Error('登录状态检查失败', { cause: sessionError })
+  }
+  if (!sessionData.session) return { status: 'expired' }
+
+  const { data: claimsData, error: claimsError } = await supabase.auth.getClaims()
+  if (claimsError) {
+    if (isExpiredAuthSessionError(claimsError)) return { status: 'expired' }
+    throw new Error('登录身份验证失败', { cause: claimsError })
+  }
+  if (!claimsData?.claims.sub) return { status: 'expired' }
+
+  const { data: refreshedSessionData, error: refreshedSessionError } =
+    await supabase.auth.getSession()
+  if (refreshedSessionError) {
+    if (isExpiredAuthSessionError(refreshedSessionError)) return { status: 'expired' }
+    throw new Error('登录状态刷新失败', { cause: refreshedSessionError })
+  }
+  if (!refreshedSessionData.session) return { status: 'expired' }
+
+  return {
+    status: 'valid',
+    accessToken: refreshedSessionData.session.access_token,
+    refreshToken: refreshedSessionData.session.refresh_token
+  }
 }
 
 export async function register(payload: Api.Auth.RegisterParams) {
@@ -99,26 +167,39 @@ export async function resetPassword(params: Api.Auth.ResetPwdParams) {
  * 获取用户信息
  * @returns 用户信息
  */
-export async function fetchGetUserInfo() {
-  const session = await supabase.auth.getSession()
-  const uid = session?.data?.session?.user?.id
+export async function fetchGetUserInfo(signal?: AbortSignal): Promise<CurrentUserInfoResult> {
+  // 让 Supabase 从自身会话中取令牌，以便 SDK 在验证前自动刷新即将过期的会话。
+  // 显式传入 Pinia 中持久化的 JWT 会跳过这个刷新步骤，导致刷新页面后误进 500。
+  const { data: claimsData, error: claimsError } = await supabase.auth.getClaims()
+  if (claimsError || !claimsData) {
+    throw new Error('当前登录身份校验失败', { cause: claimsError })
+  }
+
+  const uid = claimsData.claims.sub
+  if (!uid) {
+    throw new Error('当前登录身份缺少用户标识')
+  }
+
+  const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+  if (sessionError || !sessionData.session) {
+    throw new Error('当前登录会话已失效', { cause: sessionError })
+  }
+
+  const profileQueryBuilder = supabase
+    .from('sys_user')
+    .select('*, tenant:sys_tenant!sys_user_tenant_id_fkey(tenant_code, tenant_name, builtin_type)')
+    .eq('auth_user_id', uid)
+    .is('deleted_at', null)
+  const profileQuery = (
+    signal ? profileQueryBuilder.abortSignal(signal) : profileQueryBuilder
+  ).single()
+  const superQuery = supabase.rpc('current_is_super')
 
   const [profileResult, superResult] = await Promise.all([
-    responseHandle<Api.SystemManage.UserListItem>(
-      () =>
-        supabase
-          .from('sys_user')
-          .select(
-            '*, tenant:sys_tenant!sys_user_tenant_id_fkey(tenant_code, tenant_name, builtin_type)'
-          )
-          .eq('auth_user_id', uid)
-          .is('deleted_at', null)
-          .single(),
-      {
-        ignoreCheck: true
-      }
-    ),
-    responseHandle<boolean>(() => supabase.rpc('current_is_super'), {
+    responseHandle<Api.SystemManage.UserListItem>(() => profileQuery, {
+      ignoreCheck: true
+    }),
+    responseHandle<boolean>(() => (signal ? superQuery.abortSignal(signal) : superQuery), {
       ignoreCheck: true
     })
   ])
@@ -127,7 +208,13 @@ export async function fetchGetUserInfo() {
     Object.assign(profileResult.data, { platformSuper: superResult.data })
   }
 
-  return profileResult
+  return {
+    ...profileResult,
+    session: {
+      accessToken: sessionData.session.access_token,
+      refreshToken: sessionData.session.refresh_token
+    }
+  }
 }
 
 export async function updateCurrentUserProfile(params: Api.Auth.UserInfo) {

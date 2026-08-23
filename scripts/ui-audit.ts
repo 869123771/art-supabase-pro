@@ -83,6 +83,13 @@ function scanFile(file: string, content: string): Finding[] {
     }
 
     for (const match of content.matchAll(
+      /<ElDropdownItem\b[^>]*\bv-(?:auth|loading|ripple)\b[^>]*>/gs
+    )) {
+      if (match.index == null || match[0].includes('data-ui-audit-allow')) continue
+      addFinding(match.index, 'runtime/no-directive-on-dropdown-item')
+    }
+
+    for (const match of content.matchAll(
       /<BusinessWorkspaceHeader\b[\s\S]*?<\/BusinessWorkspaceHeader>/g
     )) {
       if (match.index == null || match[0].includes('data-ui-audit-allow')) continue

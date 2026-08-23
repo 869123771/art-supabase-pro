@@ -60,6 +60,12 @@ import TreeUtils from '@utils/tree'
 import type { AppRouteRecord } from '@/types'
 import type { AppRouteRecordRaw } from '@/utils/router'
 import { resolveLegacyBusinessPath } from '../business-paths'
+import {
+  isRouteInitializationAccessError,
+  RouteInitializationAccessError,
+  resolveRouteInitializationTarget,
+  runRouteInitializationStage
+} from './routeInitialization'
 
 // 路由注册器实例
 let routeRegistry: RouteRegistry | null = null
@@ -70,8 +76,8 @@ const menuProcessor = new MenuProcessor()
 // 跟踪是否需要关闭 loading
 let pendingLoading = false
 
-// 路由初始化失败标记，防止死循环
-// 一旦设置为 true，只有刷新页面或重新登录才能重置
+// 路由初始化失败标记，防止错误页与动态路由之间循环跳转。
+// 可由异常页的显式重试动作或重新登录重置。
 let routeInitFailed = false
 
 // 路由初始化进行中标记，防止并发请求
@@ -114,6 +120,19 @@ export function resetRouteInitState(): void {
 }
 
 /**
+ * 清理可能已部分装配的动态路由，让异常页重试真正执行完整初始化。
+ */
+export function resetRouteInitializationForRetry(): void {
+  routeRegistry?.unregister()
+  IframeRouteManager.getInstance().clear()
+
+  const menuStore = useMenuStore()
+  menuStore.clearRemoveRouteFns()
+  menuStore.setMenuList([])
+  resetRouteInitState()
+}
+
+/**
  * 设置路由全局前置守卫
  */
 export function setupBeforeEachGuard(router: Router): void {
@@ -126,7 +145,7 @@ export function setupBeforeEachGuard(router: Router): void {
     } catch (error) {
       console.error('[RouteGuard] 路由守卫处理失败:', error)
       closeLoading()
-      return { name: 'Exception500' }
+      return createInitializationFailureRoute(to)
     }
   })
 }
@@ -177,13 +196,12 @@ async function handleRouteGuard(
 
   // 2. 检查路由初始化是否已失败（防止死循环）
   if (routeInitFailed) {
-    // 已经失败过，直接放行到错误页面，不再重试
-    if (to.matched.length > 0) {
+    // 静态登录/异常页不依赖动态菜单，可以安全放行。
+    if (isStaticRoute(to.path)) {
       return true
-    } else {
-      // 未匹配到路由，跳转到 500 页面
-      return { name: 'Exception500', replace: true }
     }
+
+    return createInitializationFailureRoute(to)
   }
 
   // 3. 处理动态路由注册
@@ -227,7 +245,8 @@ function getLoginRedirect(
   }
 
   // 未登录且访问需要权限的页面，跳转到登录页并携带 redirect 参数
-  userStore.logOut()
+  // 此处不能调用会自行导航的 logOut，否则它会和当前守卫的重定向竞争，
+  // 并可能把异常页地址覆盖成登录后的回跳目标。
   return {
     name: 'Login',
     query: { redirect: to.fullPath }
@@ -282,13 +301,22 @@ async function handleDynamicRoutes(
 
   try {
     // 1. 每次应用启动都刷新一次持久化用户资料，确保租户、角色与内置身份变更及时生效
-    await userStore.fetchUserInfo()
+    const hasUserProfile = await runRouteInitializationStage(
+      'user-profile',
+      userStore.ensureUserInfo
+    )
+    if (!hasUserProfile) {
+      throw new RouteInitializationAccessError('当前账号缺少有效的业务用户资料')
+    }
+
     // 2. 获取菜单数据
-    const menuList = await menuProcessor.getMenuList()
+    const menuList = await runRouteInitializationStage('menu-permissions', (signal) =>
+      menuProcessor.getMenuList(signal)
+    )
 
     // 3. 验证菜单数据
     if (!menuProcessor.validateMenuList(menuList)) {
-      throw new Error('获取菜单列表失败，请重新登录')
+      throw new RouteInitializationAccessError('当前账号未分配可访问的业务菜单')
     }
 
     // 4. 注册动态路由
@@ -368,8 +396,26 @@ async function handleDynamicRoutes(
       console.error(`[RouteGuard] 错误码: ${error.code}, 消息: ${error.message}`)
     }
 
-    // 跳转到 403 页面，使用 replace 避免产生历史记录
-    return { name: 'Exception403', replace: true }
+    if (isRouteInitializationAccessError(error)) {
+      return { name: 'Exception403', replace: true }
+    }
+
+    return createInitializationFailureRoute(to)
+  }
+}
+
+/**
+ * 跳转到可恢复的服务异常页，并保留本次内部导航目标供用户显式重试。
+ */
+function createInitializationFailureRoute(to: RouteLocationNormalized): RouteLocationRaw {
+  const redirectTarget = resolveRouteInitializationTarget(
+    to.path === '/500' ? to.query.redirect : to.fullPath
+  )
+
+  return {
+    name: 'Exception500',
+    query: { redirect: redirectTarget },
+    replace: true
   }
 }
 
@@ -378,15 +424,7 @@ async function handleDynamicRoutes(
  */
 export function resetRouterState(delay: number): void {
   setTimeout(() => {
-    routeRegistry?.unregister()
-    IframeRouteManager.getInstance().clear()
-
-    const menuStore = useMenuStore()
-    menuStore.removeAllDynamicRoutes()
-    menuStore.setMenuList([])
-
-    // 重置路由初始化状态，允许重新登录后再次初始化
-    resetRouteInitState()
+    resetRouteInitializationForRetry()
   }, delay)
 }
 

@@ -9,6 +9,7 @@
       refreshable
       refresh-label="刷新审批数据"
       :refresh-loading="summary.loading"
+      @metric-click="handleMetricClick"
       @refresh="refreshCurrent"
     >
       <template #actions>
@@ -161,6 +162,7 @@
     keyword: string
     businessType: string
     status?: Api.Workflow.TaskStatus | ''
+    slaStatus?: Api.Workflow.WorkflowSlaStatus | ''
   }
   interface InstanceSearch {
     keyword: string
@@ -215,10 +217,23 @@
 
   const summary = reactive({
     loading: false,
-    data: { pendingCount: 0, handledCount: 0, initiatedRunningCount: 0, initiatedCompletedCount: 0 }
+    data: {
+      pendingCount: 0,
+      dueSoonPendingCount: 0,
+      overduePendingCount: 0,
+      handledCount: 0,
+      initiatedRunningCount: 0,
+      initiatedCompletedCount: 0
+    }
   })
   const currentUserId = computed(() => String(getUserInfo.value.userId || ''))
   const globalPendingCount = ref(0)
+  const metricTabs: Record<string, Exclude<ActiveTab, 'global'>> = {
+    pending: 'pending',
+    handled: 'handled',
+    'initiated-running': 'initiated',
+    'initiated-completed': 'initiated'
+  }
   let openedRouteInstanceId = ''
 
   const businessTypeSearchItem = (): SearchFormItem => ({
@@ -283,8 +298,21 @@
   const pendingTable: UnwrapNestedRefs<TableGroup<TaskSearch, Task>> = reactive<
     TableGroup<TaskSearch, Task>
   >({
-    searchQuery: { keyword: '', businessType: '' },
-    searchItems: computed(() => [keywordSearchItem, businessTypeSearchItem()]),
+    searchQuery: { keyword: '', businessType: '', slaStatus: '' },
+    searchItems: computed(() => [
+      keywordSearchItem,
+      businessTypeSearchItem(),
+      {
+        label: '时限状态',
+        key: 'slaStatus',
+        type: 'select',
+        props: {
+          options: getDictMap.value.workflowSlaStatus ?? [],
+          placeholder: '全部时限',
+          clearable: true
+        }
+      }
+    ]),
     columnsFactory: () => [
       {
         prop: 'businessTitle',
@@ -344,10 +372,17 @@
             <span
               class={{
                 'workflow-workbench__due': true,
-                'is-overdue': dayjs(row.dueAt).isBefore(dayjs())
+                'is-overdue': dayjs(row.dueAt).isBefore(dayjs()),
+                'is-due-soon':
+                  dayjs(row.dueAt).isAfter(dayjs()) &&
+                  dayjs(row.dueAt).diff(dayjs(), 'hour', true) <= 24
               }}
             >
-              {dayjs(row.dueAt).isBefore(dayjs()) ? '已超时 · ' : ''}
+              {dayjs(row.dueAt).isBefore(dayjs())
+                ? '已超时 · '
+                : dayjs(row.dueAt).diff(dayjs(), 'hour', true) <= 24
+                  ? '即将超时 · '
+                  : ''}
               {dayjs(row.dueAt).format('MM-DD HH:mm')}
             </span>
           ) : (
@@ -605,32 +640,70 @@
 
   const metricCards = computed<BusinessWorkspaceMetric[]>(() => [
     {
+      key: 'pending',
       label: '待我审批',
       value: summary.data.pendingCount,
       description: '需要及时做出决策',
       icon: 'ri:inbox-archive-line',
-      tone: 'primary'
+      tone: 'primary',
+      interactive: true,
+      selected: activeTab.value === 'pending',
+      loading: summary.loading
     },
     {
+      key: 'due-soon',
+      label: '24 小时内到期',
+      value: summary.data.dueSoonPendingCount,
+      description: '优先处理临近时限任务',
+      icon: 'ri:timer-flash-line',
+      tone: summary.data.dueSoonPendingCount ? 'warning' : 'info',
+      interactive: true,
+      selected: activeTab.value === 'pending' && pendingTable.searchQuery.slaStatus === 'due_soon',
+      loading: summary.loading
+    },
+    {
+      key: 'overdue',
+      label: '已超时待办',
+      value: summary.data.overduePendingCount,
+      description: '已超过节点审批时限',
+      icon: 'ri:alarm-warning-line',
+      tone: summary.data.overduePendingCount ? 'danger' : 'info',
+      interactive: true,
+      selected: activeTab.value === 'pending' && pendingTable.searchQuery.slaStatus === 'overdue',
+      loading: summary.loading
+    },
+    {
+      key: 'handled',
       label: '我已处理',
       value: summary.data.handledCount,
       description: '历史审批任务累计',
       icon: 'ri:checkbox-circle-line',
-      tone: 'success'
+      tone: 'success',
+      interactive: true,
+      selected: activeTab.value === 'handled',
+      loading: summary.loading
     },
     {
+      key: 'initiated-running',
       label: '进行中的申请',
       value: summary.data.initiatedRunningCount,
       description: '我发起且尚未结束',
       icon: 'ri:loader-2-line',
-      tone: 'warning'
+      tone: 'warning',
+      interactive: true,
+      selected: activeTab.value === 'initiated',
+      loading: summary.loading
     },
     {
+      key: 'initiated-completed',
       label: '已结束的申请',
       value: summary.data.initiatedCompletedCount,
       description: '审批、驳回或撤回',
       icon: 'ri:archive-drawer-line',
-      tone: 'info'
+      tone: 'info',
+      interactive: true,
+      selected: activeTab.value === 'initiated',
+      loading: summary.loading
     }
   ])
   const activeTabDescription = computed(
@@ -706,7 +779,39 @@
   async function refreshCurrent(): Promise<void> {
     await Promise.all([loadSummary(), getActiveTableRef().value?.getData()])
   }
+  async function handleMetricClick(metric: BusinessWorkspaceMetric): Promise<void> {
+    if (metric.key === 'due-soon') {
+      activeTab.value = 'pending'
+      pendingTable.searchQuery.slaStatus = 'due_soon'
+      await router.replace({ query: { ...route.query, tab: 'pending', scope: 'due-soon' } })
+      await nextTick()
+      await pendingTableRef.value?.getData()
+      return
+    }
+    if (metric.key === 'overdue') {
+      activeTab.value = 'pending'
+      pendingTable.searchQuery.slaStatus = 'overdue'
+      await router.replace({ query: { ...route.query, tab: 'pending', scope: 'overdue' } })
+      await nextTick()
+      await pendingTableRef.value?.getData()
+      return
+    }
+    const tab = metricTabs[metric.key ?? '']
+    if (!tab) return
+    if (metric.key === 'pending') pendingTable.searchQuery.slaStatus = ''
+    activeTab.value = tab
+    await router.replace({ query: { ...route.query, tab, scope: undefined } })
+    await nextTick()
+    await getActiveTableRef().value?.getData()
+  }
   async function handleTabChange(): Promise<void> {
+    await router.replace({
+      query: {
+        ...route.query,
+        tab: activeTab.value,
+        scope: activeTab.value === 'pending' ? route.query.scope : undefined
+      }
+    })
     await getActiveTableRef().value?.getData()
   }
   async function handleActionSuccess(): Promise<void> {
@@ -740,6 +845,12 @@
     ) {
       activeTab.value = routeTab
     }
+    pendingTable.searchQuery.slaStatus =
+      route.query.scope === 'overdue'
+        ? 'overdue'
+        : route.query.scope === 'due-soon'
+          ? 'due_soon'
+          : ''
 
     const instanceId = String(route.query.instanceId || '')
     if (!instanceId || instanceId === openedRouteInstanceId) return
@@ -1010,6 +1121,11 @@
     :deep(.workflow-workbench__due.is-overdue) {
       font-weight: 600;
       color: var(--el-color-danger);
+    }
+
+    :deep(.workflow-workbench__due.is-due-soon) {
+      font-weight: 600;
+      color: var(--el-color-warning);
     }
 
     :deep(.art-table-query) {

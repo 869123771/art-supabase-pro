@@ -272,7 +272,9 @@
         key: 'slaStatus',
         type: 'select',
         props: {
-          options: getDictMap.value.workflowSlaStatus ?? [],
+          options: (getDictMap.value.workflowSlaStatus ?? []).filter(
+            (item) => item.value !== 'due_soon'
+          ),
           placeholder: '全部时效状态',
           clearable: true
         }
