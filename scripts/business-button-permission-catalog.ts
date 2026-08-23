@@ -72,7 +72,12 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
       button('View', '查看安全台账'),
       button('Add', '新增安全台账'),
       button('Edit', '编辑安全台账'),
-      button('Delete', '删除安全台账')
+      button('Delete', '删除安全台账'),
+      button('Submit', '提交业务单'),
+      button('Approve', '审批业务单'),
+      button('Execute', '执行业务单'),
+      button('Print', '打印业务单'),
+      button('TakeExam', '参加在线考试')
     ]
   },
   { menuName: 'TmsCargo', buttons: crud({ import: true, export: true }) },

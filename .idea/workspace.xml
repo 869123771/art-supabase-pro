@@ -7,20 +7,10 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="b8f35119-660a-46e7-82f4-53eee06863eb" name="Changes" comment="feat split module">
-      <change beforePath="$PROJECT_DIR$/.auto-import.json" beforeDir="false" afterPath="$PROJECT_DIR$/.auto-import.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/architecture/modular-applications.md" beforeDir="false" afterPath="$PROJECT_DIR$/architecture/modular-applications.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/modules/art-supabase-doc/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/modules/art-supabase-doc/package.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/modules/art-supabase-fms/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/modules/art-supabase-fms/package.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/modules/art-supabase-hr/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/modules/art-supabase-hr/package.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/modules/art-supabase-hr/src/views/personnel/position/modules/position-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/modules/art-supabase-hr/src/views/personnel/position/modules/position-dialog.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/modules/art-supabase-smis/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/modules/art-supabase-smis/package.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/modules/art-supabase-tms/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/modules/art-supabase-tms/package.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/modules/art-supabase-vms/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/modules/art-supabase-vms/package.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/manage-modules.ts" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/manage-modules.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/vite.config.ts" beforeDir="false" afterPath="$PROJECT_DIR$/vite.config.ts" afterDir="false" />
+    <list default="true" id="b8f35119-660a-46e7-82f4-53eee06863eb" name="Changes" comment="build: refresh GitHub Pages">
+      <change beforePath="$PROJECT_DIR$/docs/flyfish-viewer-assets.json" beforeDir="false" afterPath="$PROJECT_DIR$/docs/flyfish-viewer-assets.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/business-button-permission-catalog.ts" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/business-button-permission-catalog.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/supabase/functions/ai-project-planner/project-snapshot.generated.ts" beforeDir="false" afterPath="$PROJECT_DIR$/supabase/functions/ai-project-planner/project-snapshot.generated.ts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -368,22 +358,6 @@
       <workItem from="1787205676923" duration="16754000" />
       <workItem from="1787380650636" duration="582000" />
       <workItem from="1787390889717" duration="885000" />
-    </task>
-    <task id="LOCAL-00029" summary="fix change default pwd in Login page">
-      <option name="closed" value="true" />
-      <created>1775620432279</created>
-      <option name="number" value="00029" />
-      <option name="presentableId" value="LOCAL-00029" />
-      <option name="project" value="LOCAL" />
-      <updated>1775620432279</updated>
-    </task>
-    <task id="LOCAL-00030" summary="feat reset pwd">
-      <option name="closed" value="true" />
-      <created>1775640884451</created>
-      <option name="number" value="00030" />
-      <option name="presentableId" value="LOCAL-00030" />
-      <option name="project" value="LOCAL" />
-      <updated>1775640884451</updated>
     </task>
     <task id="LOCAL-00031" summary="feat reset pwd">
       <option name="closed" value="true" />
@@ -761,7 +735,23 @@
       <option name="project" value="LOCAL" />
       <updated>1787473352123</updated>
     </task>
-    <option name="localTasksCounter" value="78" />
+    <task id="LOCAL-00078" summary="build: refresh GitHub Pages">
+      <option name="closed" value="true" />
+      <created>1787474572835</created>
+      <option name="number" value="00078" />
+      <option name="presentableId" value="LOCAL-00078" />
+      <option name="project" value="LOCAL" />
+      <updated>1787474572836</updated>
+    </task>
+    <task id="LOCAL-00079" summary="build: refresh GitHub Pages">
+      <option name="closed" value="true" />
+      <created>1787474616642</created>
+      <option name="number" value="00079" />
+      <option name="presentableId" value="LOCAL-00079" />
+      <option name="project" value="LOCAL" />
+      <updated>1787474616642</updated>
+    </task>
+    <option name="localTasksCounter" value="80" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -797,7 +787,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="feat:waybill manage doc" />
     <MESSAGE value="feat:address picker" />
     <MESSAGE value="fix build" />
     <MESSAGE value="feat monitor" />
@@ -822,7 +811,8 @@
     <MESSAGE value="feat hr dependent finance" />
     <MESSAGE value="feat tms vms fms" />
     <MESSAGE value="feat split module" />
-    <option name="LAST_COMMIT_MESSAGE" value="feat split module" />
+    <MESSAGE value="build: refresh GitHub Pages" />
+    <option name="LAST_COMMIT_MESSAGE" value="build: refresh GitHub Pages" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
