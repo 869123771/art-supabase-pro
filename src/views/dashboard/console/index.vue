@@ -1,107 +1,140 @@
 <template>
-  <div class="platform-workbench art-full-height">
+  <ArtPageShell
+    class="operations-dashboard"
+    :loading="overview.loading"
+    :loading-mode="loadingMode"
+    :error="pageError"
+    min-height="520px"
+    @retry="refreshData"
+  >
     <BusinessWorkspaceHeader
-      eyebrow="PLATFORM WORKSPACE"
+      eyebrow="TRANSPORT CONTROL"
       :title="`${greeting}，${userName}`"
-      description="从统一工作台进入已授权的业务应用；账号、菜单、角色与数据权限由平台基座集中管理。"
-      icon="ri:apps-2-ai-line"
+      description="聚焦今日运力、调度进度与车辆风险，快速处理需要关注的运营事项。"
+      icon="ri:dashboard-3-line"
       :tags="workspaceTags"
-      :metrics="workspaceMetrics"
+      class="operations-dashboard__header"
+      refreshable
+      refresh-label="刷新运营数据"
+      :refresh-loading="overview.loading"
+      @refresh="refreshData"
+    >
+      <template #actions>
+        <ElButton :icon="Van" @click="navigateTo('/tms/waybill-management/pending')">
+          处理调度
+        </ElButton>
+        <ElButton type="primary" :icon="EditPen" @click="navigateTo('/tms/order-open')">
+          立即开单
+        </ElButton>
+      </template>
+    </BusinessWorkspaceHeader>
+
+    <DashboardMetricCards :items="metricCards" @select="navigateTo" />
+
+    <section class="operations-dashboard__operations">
+      <DashboardTransit
+        :orders="overview.data.transitOrders"
+        @monitor="navigateTo('/tms/in-transit-monitor')"
+        @open-order="openOrder"
+      />
+      <DashboardFleetRisk
+        :vehicle-count="overview.data.vehicleCount"
+        :operating-vehicle-count="overview.data.operatingVehicleCount"
+        :pending-audit-vehicle-count="overview.data.pendingAuditVehicleCount"
+        :reminder-total="reminderTotal"
+        :reminders="overview.data.reminders"
+        @view-reminder="navigateTo('/vms/reminder-manage')"
+      />
+    </section>
+
+    <section class="operations-dashboard__summary">
+      <DashboardTrend
+        :period="overview.period"
+        :data="trendData"
+        :loading="overview.loading"
+        @update:period="handleTrendPeriodChange"
+      />
+      <DashboardOrderFlow
+        :period-label="trendPeriodLabel"
+        :total="statusTotal"
+        :in-transit-count="overview.data.inTransitCount"
+        :status-items="statusItems"
+        @view-orders="navigateTo('/tms/order-list')"
+      />
+    </section>
+
+    <DashboardRecentOrders
+      :orders="overview.data.recentOrders"
+      @view-orders="navigateTo('/tms/order-list')"
+      @open-order="openOrder"
     />
-
-    <section class="platform-workbench__section" aria-labelledby="application-heading">
-      <header class="platform-workbench__section-header">
-        <div>
-          <span>APPLICATIONS</span>
-          <h2 id="application-heading">我的应用</h2>
-          <p>这里只展示当前租户和角色已获得菜单权限的应用。</p>
-        </div>
-      </header>
-
-      <div v-if="applications.length" class="platform-workbench__application-grid">
-        <button
-          v-for="application in applications"
-          :key="application.name"
-          type="button"
-          class="platform-workbench__application-card art-card-xs"
-          @click="openApplication(application)"
-        >
-          <span class="platform-workbench__application-icon" aria-hidden="true">
-            <ArtSvgIcon :icon="application.meta.icon || 'ri:apps-line'" />
-          </span>
-          <span class="platform-workbench__application-copy">
-            <strong>{{ application.meta.title }}</strong>
-            <small>{{ pageCount(application) }} 个可访问页面</small>
-          </span>
-          <ArtSvgIcon icon="ri:arrow-right-line" class="platform-workbench__application-arrow" />
-        </button>
-      </div>
-
-      <ElEmpty v-else description="当前账号还没有可访问的业务应用，请联系管理员分配角色菜单。" />
-    </section>
-
-    <section class="platform-workbench__support-grid" aria-label="平台能力">
-      <article class="platform-workbench__support-card art-card-xs">
-        <span class="platform-workbench__support-icon is-primary">
-          <ArtSvgIcon icon="ri:shield-user-line" />
-        </span>
-        <div>
-          <h3>统一身份与权限</h3>
-          <p>所有子应用复用平台登录、租户、用户、角色与按钮权限，无需重复维护认证代码。</p>
-        </div>
-      </article>
-      <article class="platform-workbench__support-card art-card-xs">
-        <span class="platform-workbench__support-icon is-success">
-          <ArtSvgIcon icon="ri:database-2-line" />
-        </span>
-        <div>
-          <h3>数据中心</h3>
-          <p>字典、组织和跨模块数据通过稳定的公共契约共享，业务仓之间不直接复制实现。</p>
-        </div>
-      </article>
-      <article class="platform-workbench__support-card art-card-xs">
-        <span class="platform-workbench__support-icon is-warning">
-          <ArtSvgIcon icon="ri:cloud-line" />
-        </span>
-        <div>
-          <h3>独立运行与部署</h3>
-          <p>每个应用拥有独立入口和构建产物，同时可由平台租户在主工程中统一访问。</p>
-        </div>
-      </article>
-    </section>
-  </div>
+  </ArtPageShell>
 </template>
 
 <script setup lang="ts">
+  import { EditPen, Van } from '@element-plus/icons-vue'
+  import { ElMessage } from 'element-plus'
   import { storeToRefs } from 'pinia'
   import BusinessWorkspaceHeader, {
-    type BusinessWorkspaceMetric,
     type BusinessWorkspaceTag
   } from '@/components/business/business-workspace-header/index.vue'
-  import { useMenuStore } from '@/store/modules/menu'
+  import {
+    fetchDashboardData,
+    type DashboardData,
+    type DashboardTrendPeriod
+  } from '@/api/dashboard'
   import { useUserStore } from '@/store/modules/user'
-  import type { AppRouteRecord } from '@/types/router'
+  import { formatCurrencyValue, formatNumberValue } from '@/utils/ui'
+  import { navigateToApplication } from '@/utils/application-navigation'
+  import DashboardFleetRisk from './modules/dashboard-fleet-risk.vue'
+  import DashboardMetricCards from './modules/dashboard-metric-cards.vue'
+  import DashboardOrderFlow from './modules/dashboard-order-flow.vue'
+  import DashboardRecentOrders from './modules/dashboard-recent-orders.vue'
+  import DashboardTransit from './modules/dashboard-transit.vue'
+  import DashboardTrend from './modules/dashboard-trend.vue'
+  import type { DashboardMetric, DashboardStatusItem, DashboardTrendData } from './modules/types'
 
-  defineOptions({ name: 'Console' })
+  interface OverviewState {
+    loading: boolean
+    loaded: boolean
+    error: Error | null
+    requestId: number
+    period: DashboardTrendPeriod
+    data: DashboardData
+  }
 
   const router = useRouter()
-  const { menuList, buttonList } = storeToRefs(useMenuStore())
-  const { info, language, isPlatformSuper } = storeToRefs(useUserStore())
-
-  const flattenMenus = (items: AppRouteRecord[]): AppRouteRecord[] =>
-    items.flatMap((item) => [item, ...flattenMenus(item.children ?? [])])
-
-  const isApplication = (item: AppRouteRecord): boolean =>
-    item.type === 'folder' &&
-    item.path !== '/dashboard' &&
-    (item.children ?? []).some((child) =>
-      flattenMenus([child]).some((entry) => entry.type === 'menu')
-    )
-
-  const applications = computed(() => menuList.value.filter(isApplication))
-  const allVisiblePages = computed(() =>
-    flattenMenus(menuList.value).filter((item) => item.type === 'menu' && !item.meta.isHide)
-  )
+  const { info, language } = storeToRefs(useUserStore())
+  const createEmptyDashboard = (): DashboardData => ({
+    todayOrderCount: 0,
+    todayFreightAmount: 0,
+    pendingDispatchCount: 0,
+    inTransitCount: 0,
+    vehicleCount: 0,
+    operatingVehicleCount: 0,
+    pendingAuditVehicleCount: 0,
+    completedTodayCount: 0,
+    trend: [],
+    statusCounts: {},
+    transitOrders: [],
+    recentOrders: [],
+    reminders: []
+  })
+  const overview = reactive<OverviewState>({
+    loading: false,
+    loaded: false,
+    error: null,
+    requestId: 0,
+    period: 'month',
+    data: createEmptyDashboard()
+  })
+  const statusDefinitions = [
+    { key: 'pending_load', label: '待配载', color: 'var(--el-color-primary)' },
+    { key: 'pending_order', label: '待发车', color: 'var(--el-color-info)' },
+    { key: 'transporting', label: '运输中', color: 'var(--el-color-success)' },
+    { key: 'signed', label: '待结案', color: 'var(--el-color-warning)' },
+    { key: 'completed', label: '已完成', color: 'var(--el-text-color-secondary)' }
+  ]
   const locale = computed(() =>
     String(language.value).toLowerCase().startsWith('en') ? 'en-US' : 'zh-CN'
   )
@@ -110,8 +143,24 @@
     return hour < 12 ? '早上好' : hour < 18 ? '下午好' : '晚上好'
   })
   const userName = computed(() => {
-    const candidates = [info.value?.nickName, info.value?.userName, info.value?.email]
-    return candidates.find((value) => String(value ?? '').trim())?.trim() || '用户'
+    const candidates = [
+      info.value?.nickName,
+      info.value?.organization?.organizationName,
+      info.value?.userName
+    ]
+    return (
+      candidates.find((value) => value && !/^\d+$/.test(String(value).trim()))?.trim() || '用户'
+    )
+  })
+  const userContext = computed(() => {
+    const organization = info.value?.organization?.organizationName
+    const role = info.value?.userRoles?.[0]
+    const roleLabels: Record<string, string> = {
+      R_SUPER: '平台管理员',
+      R_ADMIN: '管理员',
+      R_REGISTER: '注册用户'
+    }
+    return [organization, role ? roleLabels[role] : ''].filter(Boolean).join(' · ')
   })
   const dateText = computed(() =>
     new Intl.DateTimeFormat(locale.value, {
@@ -122,207 +171,182 @@
     }).format(new Date())
   )
   const workspaceTags = computed<BusinessWorkspaceTag[]>(() => [
+    { label: '运营数据实时同步', type: 'success', effect: 'plain' },
     { label: dateText.value, type: 'info', effect: 'plain' },
-    {
-      label: isPlatformSuper.value ? '平台管理员' : '租户授权用户',
-      type: isPlatformSuper.value ? 'primary' : 'success',
-      effect: 'plain'
-    }
+    ...(userContext.value
+      ? [{ label: userContext.value, type: 'primary' as const, effect: 'plain' as const }]
+      : [])
   ])
-  const workspaceMetrics = computed<BusinessWorkspaceMetric[]>(() => [
+  const trendData = computed<DashboardTrendData>(() => ({
+    labels: overview.data.trend.map((item) => item.label),
+    values: overview.data.trend.map((item) => item.orderCount),
+    orderCount: overview.data.trend.reduce((total, item) => total + item.orderCount, 0),
+    freightAmount: overview.data.trend.reduce((total, item) => total + item.freightAmount, 0)
+  }))
+  const trendPeriodLabel = computed(
+    () =>
+      ({
+        today: '当天',
+        week: '本周',
+        month: '本月',
+        year: '本年'
+      })[overview.period]
+  )
+  const statusTotal = computed(() =>
+    Object.values(overview.data.statusCounts).reduce((total, value) => total + value, 0)
+  )
+  const statusItems = computed<DashboardStatusItem[]>(() =>
+    statusDefinitions.map((item) => {
+      const value = overview.data.statusCounts[item.key] ?? 0
+      return {
+        ...item,
+        value,
+        percent: statusTotal.value ? Math.round((value / statusTotal.value) * 100) : 0
+      }
+    })
+  )
+  const reminderTotal = computed(() =>
+    overview.data.reminders.reduce((total, item) => total + item.count, 0)
+  )
+  const loadingMode = computed<'mask' | 'skeleton'>(() => (overview.loaded ? 'mask' : 'skeleton'))
+  const pageError = computed(() => (overview.loaded ? null : overview.error))
+  const metricCards = computed<DashboardMetric[]>(() => [
     {
-      label: '已授权应用',
-      value: applications.value.length,
-      description: '当前账号可进入的业务模块',
-      icon: 'ri:apps-line'
+      key: 'today-order',
+      label: '今日开单',
+      value: formatNumberValue(overview.data.todayOrderCount, locale.value),
+      unit: '单',
+      hint: '今日新增运输订单',
+      icon: 'ri:file-list-3-line',
+      tone: 'primary',
+      route: '/tms/order-list'
     },
     {
-      label: '可访问页面',
-      value: allVisiblePages.value.length,
-      description: '由角色菜单动态授权',
-      icon: 'ri:layout-grid-line',
-      tone: 'success'
+      key: 'today-freight',
+      label: '今日运费',
+      value: formatCurrencyValue(overview.data.todayFreightAmount, 'CNY', locale.value),
+      hint: '按今日开单金额汇总',
+      icon: 'ri:money-cny-circle-line',
+      tone: 'info',
+      route: '/tms/order-list'
     },
     {
-      label: '操作权限',
-      value: buttonList.value.length,
-      description: '按钮与业务动作权限',
-      icon: 'ri:key-2-line',
-      tone: 'warning'
+      key: 'pending-dispatch',
+      label: '待调度',
+      value: formatNumberValue(overview.data.pendingDispatchCount, locale.value),
+      unit: '单',
+      hint: '待安排车辆与司机',
+      icon: 'ri:truck-line',
+      tone: 'warning',
+      route: '/tms/waybill-management/pending'
+    },
+    {
+      key: 'in-transit',
+      label: '运输中',
+      value: formatNumberValue(overview.data.inTransitCount, locale.value),
+      unit: '单',
+      hint: '实时关注运输进度',
+      icon: 'ri:route-line',
+      tone: 'success',
+      route: '/tms/in-transit-monitor'
+    },
+    {
+      key: 'completed-today',
+      label: '今日完成',
+      value: formatNumberValue(overview.data.completedTodayCount, locale.value),
+      unit: '单',
+      hint: '今日完成签收结案',
+      icon: 'ri:checkbox-circle-line',
+      tone: 'success',
+      route: '/tms/order-list'
+    },
+    {
+      key: 'risk',
+      label: '风险待处理',
+      value: formatNumberValue(reminderTotal.value, locale.value),
+      unit: '项',
+      hint: `${overview.data.pendingAuditVehicleCount} 台车辆待审核`,
+      icon: 'ri:alarm-warning-line',
+      tone: 'danger',
+      route: '/vms/reminder-manage'
     }
   ])
 
-  const pageCount = (application: AppRouteRecord): number =>
-    flattenMenus(application.children ?? []).filter(
-      (item) => item.type === 'menu' && !item.meta.isHide
-    ).length
-
-  const firstPage = (application: AppRouteRecord): AppRouteRecord | undefined =>
-    flattenMenus(application.children ?? []).find(
-      (item) => item.type === 'menu' && !item.meta.isHide
-    )
-
-  const openApplication = (application: AppRouteRecord): void => {
-    const target = firstPage(application)
-    if (target?.name) void router.push({ name: target.name })
+  async function refreshData(): Promise<void> {
+    const requestId = ++overview.requestId
+    overview.loading = true
+    overview.error = null
+    try {
+      const data = await fetchDashboardData(overview.period)
+      if (requestId !== overview.requestId) return
+      overview.data = data
+      overview.loaded = true
+    } catch (error) {
+      if (requestId !== overview.requestId) return
+      overview.error = error instanceof Error ? error : new Error('运营工作台加载失败')
+    } finally {
+      if (requestId === overview.requestId) overview.loading = false
+    }
   }
+  function handleTrendPeriodChange(period: DashboardTrendPeriod): void {
+    if (overview.period === period) return
+    overview.period = period
+    void refreshData()
+  }
+  function navigateTo(path: string): void {
+    if (path.startsWith('/vms/')) {
+      void navigateToApplication('vms', path).catch((error) =>
+        ElMessage.error(error instanceof Error ? error.message : 'VMS 应用跳转失败')
+      )
+      return
+    }
+    void router.push(path)
+  }
+  function openOrder(id?: string): void {
+    if (id) void router.push({ name: 'TmsOrderDetail', params: { id } })
+  }
+  onMounted(() => {
+    void refreshData()
+  })
+  defineOptions({ name: 'Console' })
 </script>
 
 <style scoped lang="scss">
-  .platform-workbench {
-    gap: var(--art-space-3);
-    min-width: 0;
-    padding-bottom: var(--art-space-6);
+  .operations-dashboard {
+    min-height: 100%;
+    font-variant-numeric: tabular-nums;
 
-    &__section {
-      padding: clamp(18px, 2vw, 24px);
-      background: var(--art-main-bg-color);
-      border: 1px solid var(--art-card-border);
-      border-radius: calc(var(--custom-radius) + 4px);
-    }
-
-    &__section-header {
-      margin-bottom: 18px;
-
-      span {
-        font-size: 11px;
-        font-weight: 700;
-        color: var(--el-color-primary);
-        letter-spacing: 0.13em;
-      }
-
-      h2 {
-        margin: 4px 0;
-        font-size: 20px;
-        color: var(--art-text-gray-900);
-      }
-
-      p {
-        margin: 0;
-        font-size: 13px;
-        color: var(--art-text-gray-500);
-      }
-    }
-
-    &__application-grid,
-    &__support-grid {
+    :deep(> .art-async-state) {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 12px;
-    }
-
-    &__application-card {
-      display: grid;
-      grid-template-columns: auto minmax(0, 1fr) auto;
-      gap: 14px;
-      align-items: center;
+      gap: 16px;
       min-width: 0;
-      padding: 18px;
-      color: inherit;
-      text-align: left;
-      cursor: pointer;
-      background: color-mix(in srgb, var(--el-color-primary) 3%, var(--art-main-bg-color));
-      border: 1px solid color-mix(in srgb, var(--el-color-primary) 10%, var(--art-card-border));
-      transition:
-        transform 160ms ease,
-        border-color 160ms ease,
-        box-shadow 160ms ease;
-
-      &:hover,
-      &:focus-visible {
-        border-color: color-mix(in srgb, var(--el-color-primary) 42%, transparent);
-        box-shadow: 0 12px 28px rgb(31 39 82 / 8%);
-        transform: translateY(-2px);
-      }
-
-      &:focus-visible {
-        outline: 2px solid var(--el-color-primary);
-        outline-offset: 2px;
-      }
+      padding-bottom: var(--art-space-6);
     }
 
-    &__application-icon,
-    &__support-icon {
+    &__summary {
       display: grid;
-      flex: 0 0 auto;
-      place-items: center;
-      width: 44px;
-      height: 44px;
-      font-size: 22px;
-      color: var(--el-color-primary);
-      background: color-mix(in srgb, var(--el-color-primary) 12%, transparent);
-      border-radius: 14px;
-    }
-
-    &__application-copy {
-      display: grid;
-      gap: 5px;
+      grid-template-columns: minmax(0, 1.65fr) minmax(330px, 0.72fr);
+      gap: 16px;
       min-width: 0;
-
-      strong,
-      small {
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-
-      strong {
-        font-size: 15px;
-        color: var(--art-text-gray-900);
-      }
-
-      small {
-        font-size: 12px;
-        color: var(--art-text-gray-500);
-      }
     }
 
-    &__application-arrow {
-      font-size: 18px;
-      color: var(--art-text-gray-400);
+    &__operations {
+      display: grid;
+      grid-template-columns: minmax(0, 1.55fr) minmax(330px, 0.78fr);
+      gap: 16px;
+      min-width: 0;
     }
 
-    &__support-card {
-      display: flex;
-      gap: 14px;
-      align-items: flex-start;
-      padding: 18px;
-
-      h3 {
-        margin: 2px 0 7px;
-        font-size: 15px;
-        color: var(--art-text-gray-900);
-      }
-
-      p {
-        margin: 0;
-        font-size: 13px;
-        line-height: 1.65;
-        color: var(--art-text-gray-500);
-      }
-    }
-
-    &__support-icon.is-success {
-      color: var(--el-color-success);
-      background: color-mix(in srgb, var(--el-color-success) 12%, transparent);
-    }
-
-    &__support-icon.is-warning {
-      color: var(--el-color-warning);
-      background: color-mix(in srgb, var(--el-color-warning) 12%, transparent);
-    }
-
-    @media screen and (width <= 1100px) {
-      &__application-grid,
-      &__support-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+    @media screen and (width <= 1080px) {
+      &__summary,
+      &__operations {
+        grid-template-columns: 1fr;
       }
     }
 
     @media screen and (width <= 720px) {
-      &__application-grid,
-      &__support-grid {
-        grid-template-columns: 1fr;
+      :deep(> .art-async-state) {
+        gap: var(--art-space-3);
       }
     }
   }

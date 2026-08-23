@@ -18,6 +18,11 @@
   "scripts": {
     "dev": "vite --open",
     "build": "vite build",
+    "modules:pull": "tsx scripts/manage-modules.ts pull",
+    "modules:update": "tsx scripts/manage-modules.ts update",
+    "modules:install": "tsx scripts/manage-modules.ts install",
+    "modules:build": "tsx scripts/manage-modules.ts build",
+    "modules:setup": "tsx scripts/manage-modules.ts setup",
     "build:analyze": "tsx scripts/analyze-build.ts",
     "bundle:check": "tsx scripts/check-bundle-budget.ts",
     "permissions:audit": "tsx scripts/audit-business-permissions.ts",
