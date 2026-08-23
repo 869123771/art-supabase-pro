@@ -80,7 +80,7 @@ function runForModules(modulePaths: string[], action: 'install' | 'build'): void
 
   for (const [index, modulePath] of modulePaths.entries()) {
     console.log(`\n[module ${index + 1}/${modulePaths.length}] ${modulePath} · ${action}`)
-    const args = action === 'install' ? ['install', '--frozen-lockfile'] : ['build']
+    const args = action === 'install' ? ['install', '--frozen-lockfile'] : ['run', 'build']
     runPackageManager(args, join(projectRoot, modulePath))
   }
 }

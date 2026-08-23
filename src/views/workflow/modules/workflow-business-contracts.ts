@@ -7,6 +7,7 @@ import {
 export interface WorkflowBusinessContract {
   businessType: string
   label: string
+  menuName: string
   domain: 'transport' | 'finance' | 'master_data' | 'safety' | 'hr'
   riskLevel: 'high' | 'medium'
   owner: string
@@ -18,6 +19,7 @@ const contracts: Record<string, WorkflowBusinessContract> = {
   generic: {
     businessType: 'generic',
     label: '通用审批',
+    menuName: 'WorkflowWorkbench',
     domain: 'master_data',
     riskLevel: 'medium',
     owner: '平台管理',
@@ -27,6 +29,7 @@ const contracts: Record<string, WorkflowBusinessContract> = {
   tms_waybill_cost: {
     businessType: 'tms_waybill_cost',
     label: '运单费用',
+    menuName: 'FinanceWaybillCost',
     domain: 'finance',
     riskLevel: 'high',
     owner: '运输财务',
@@ -42,6 +45,7 @@ const contracts: Record<string, WorkflowBusinessContract> = {
   tms_expense_reimbursement: {
     businessType: 'tms_expense_reimbursement',
     label: '费用报销',
+    menuName: 'FinanceExpenseReimbursement',
     domain: 'finance',
     riskLevel: 'high',
     owner: '财务审批',
@@ -58,6 +62,7 @@ const contracts: Record<string, WorkflowBusinessContract> = {
   tms_invoice: {
     businessType: 'tms_invoice',
     label: '发票',
+    menuName: 'FinanceInvoiceManagement',
     domain: 'finance',
     riskLevel: 'high',
     owner: '财务',
@@ -74,6 +79,7 @@ const contracts: Record<string, WorkflowBusinessContract> = {
   tms_carrier_payment_application: {
     businessType: 'tms_carrier_payment_application',
     label: '承运商付款申请',
+    menuName: 'FinanceCarrierPaymentApplication',
     domain: 'finance',
     riskLevel: 'high',
     owner: '应付结算',
@@ -90,6 +96,7 @@ const contracts: Record<string, WorkflowBusinessContract> = {
   tms_carrier_statement: {
     businessType: 'tms_carrier_statement',
     label: '承运商结算',
+    menuName: 'FinanceCarrierSettlement',
     domain: 'finance',
     riskLevel: 'high',
     owner: '应付结算',
@@ -106,6 +113,7 @@ const contracts: Record<string, WorkflowBusinessContract> = {
   tms_customer_statement: {
     businessType: 'tms_customer_statement',
     label: '客户结算',
+    menuName: 'FinanceCustomerSettlement',
     domain: 'finance',
     riskLevel: 'high',
     owner: '应收结算',
@@ -122,6 +130,7 @@ const contracts: Record<string, WorkflowBusinessContract> = {
   tms_contract: {
     businessType: 'tms_contract',
     label: '运输合同',
+    menuName: 'TmsContract',
     domain: 'transport',
     riskLevel: 'high',
     owner: '合同管理',
@@ -146,6 +155,7 @@ const contracts: Record<string, WorkflowBusinessContract> = {
   vehicle_archive: {
     businessType: 'vehicle_archive',
     label: '车辆档案',
+    menuName: 'VehicleArchiveManage',
     domain: 'master_data',
     riskLevel: 'medium',
     owner: '车辆管理',
@@ -162,6 +172,7 @@ const contracts: Record<string, WorkflowBusinessContract> = {
   smis_hidden_danger: {
     businessType: 'smis_hidden_danger',
     label: '安全隐患复查',
+    menuName: 'SmisDocDangerGovernance',
     domain: 'safety',
     riskLevel: 'high',
     owner: '安全生产管理',
@@ -178,6 +189,7 @@ const contracts: Record<string, WorkflowBusinessContract> = {
   hr_personnel_change: {
     businessType: 'hr_personnel_change',
     label: '人事异动',
+    menuName: 'HrPersonnelChange',
     domain: 'hr',
     riskLevel: 'high',
     owner: '人力资源',
@@ -192,6 +204,7 @@ const contracts: Record<string, WorkflowBusinessContract> = {
   hr_lifecycle_case: {
     businessType: 'hr_lifecycle_case',
     label: '员工生命周期',
+    menuName: 'HrLifecycle',
     domain: 'hr',
     riskLevel: 'high',
     owner: '人力资源',
@@ -206,6 +219,7 @@ const contracts: Record<string, WorkflowBusinessContract> = {
   hr_self_service_request: {
     businessType: 'hr_self_service_request',
     label: '员工自助申请',
+    menuName: 'HrSelfService',
     domain: 'hr',
     riskLevel: 'medium',
     owner: '员工服务',
@@ -222,6 +236,7 @@ const contracts: Record<string, WorkflowBusinessContract> = {
   hr_recruitment_requisition: {
     businessType: 'hr_recruitment_requisition',
     label: '招聘需求',
+    menuName: 'HrRecruitment',
     domain: 'hr',
     riskLevel: 'high',
     owner: '招聘管理',

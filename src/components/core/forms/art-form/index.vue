@@ -23,11 +23,11 @@
         <ElCol
           v-for="item in visibleFormItems"
           :key="item.key"
-          :xs="getColSpan(item.span, 'xs')"
-          :sm="getColSpan(item.span, 'sm')"
-          :md="getColSpan(item.span, 'md')"
-          :lg="getColSpan(item.span, 'lg')"
-          :xl="getColSpan(item.span, 'xl')"
+          :xs="getColSpan(getItemSpan(item), 'xs')"
+          :sm="getColSpan(getItemSpan(item), 'sm')"
+          :md="getColSpan(getItemSpan(item), 'md')"
+          :lg="getColSpan(getItemSpan(item), 'lg')"
+          :xl="getColSpan(getItemSpan(item), 'xl')"
         >
           <ArtSectionTitle
             v-if="isDividerItem(item)"
@@ -254,6 +254,7 @@
 
   const componentMap = {
     input: ElInput, // 输入框
+    textarea: ElInput, // 多行文本框
     inputTag: ElInputTag, // 标签输入框
     number: ElInputNumber, // 数字输入框
     select: ElSelect, // 选择器
@@ -446,7 +447,7 @@
     span?: number
     /** 表单控件间隙 */
     gutter?: number
-    /** 表单域标签的位置 */
+    /** 表单域标签的位置；业务录入默认顶部，紧凑查询场景应显式使用 left/right */
     labelPosition?: 'left' | 'right' | 'top'
     /** 文字宽度 */
     labelWidth?: string | number
@@ -482,7 +483,7 @@
     items: () => [],
     span: 6,
     gutter: 12,
-    labelPosition: 'right',
+    labelPosition: 'top',
     labelWidth: '70px',
     buttonLeftLimit: 2,
     showReset: true,
@@ -595,7 +596,14 @@
     updateFormFieldValue(modelValue.value, path, normalizedValue)
   }
 
-  const emptyStringClearTypes = ['input', 'inputTag', 'select', 'treeSelect', 'cascader']
+  const emptyStringClearTypes = [
+    'input',
+    'textarea',
+    'inputTag',
+    'select',
+    'treeSelect',
+    'cascader'
+  ]
   const stringValueFieldKeys = ref(new Set<string>())
 
   const shouldNormalizeClearToEmptyString = (item: FormItem): boolean => {
@@ -803,7 +811,7 @@
       return `请选择${label}`
     }
 
-    if (['input', 'inputTag', 'number'].includes(String(item.type))) {
+    if (['input', 'textarea', 'inputTag', 'number'].includes(String(item.type))) {
       return `请输入${label}`
     }
 
@@ -840,7 +848,21 @@
       defaults.filterable = true
     }
 
+    if (isTextareaItem(item)) {
+      Object.assign(defaults, {
+        type: 'textarea',
+        rows: 4,
+        maxlength: 300,
+        showWordLimit: true,
+        resize: 'vertical'
+      })
+    }
+
     return defaults
+  }
+
+  const isTextareaItem = (item: FormItem): boolean => {
+    return String(item.type) === 'textarea' || getProps(item).type === 'textarea'
   }
 
   const isDividerItem = (item: FormItem): boolean => String(item.type) === dividerType
@@ -939,9 +961,14 @@
     return calculateResponsiveSpan(itemSpan, span.value, breakpoint)
   }
 
+  /** 长文本默认独占整行；调用方仍可通过 span 显式覆盖。 */
+  const getItemSpan = (item: FormItem): number | undefined => {
+    return item.span ?? (isTextareaItem(item) ? 24 : undefined)
+  }
+
   const getActionColSpan = (breakpoint: ResponsiveBreakpoint): number => {
     const occupiedSpan = visibleFormItems.value.reduce((total, item) => {
-      return (total + getColSpan(item.span, breakpoint)) % 24
+      return (total + getColSpan(getItemSpan(item), breakpoint)) % 24
     }, 0)
 
     return occupiedSpan === 0 ? 24 : 24 - occupiedSpan

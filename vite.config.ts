@@ -75,7 +75,6 @@ const getElementPlusStyleDeps = (root: string): string[] => {
 export default ({ mode }: { mode: string }) => {
   const root = process.cwd()
   const requiredModuleViews = [
-    ['Finance', 'modules/art-supabase-finance/src/views'],
     ['FMS', 'modules/art-supabase-fms/src/views'],
     ['HR', 'modules/art-supabase-hr/src/views'],
     ['SMIS', 'modules/art-supabase-smis/src/views'],
@@ -136,7 +135,6 @@ export default ({ mode }: { mode: string }) => {
     // 路径别名
     resolve: {
       alias: {
-        '@finance': resolvePath('modules/art-supabase-finance/src'),
         '@fms': resolvePath('modules/art-supabase-fms/src'),
         '@hr': resolvePath('modules/art-supabase-hr/src'),
         '@smis': resolvePath('modules/art-supabase-smis/src'),

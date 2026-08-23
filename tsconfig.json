@@ -15,7 +15,6 @@
     "ignoreDeprecations": "6.0",
     "baseUrl": ".",
     "paths": {
-      "@finance/*": ["modules/art-supabase-finance/src/*"],
       "@fms/*": ["modules/art-supabase-fms/src/*"],
       "@hr/*": ["modules/art-supabase-hr/src/*"],
       "@smis/*": ["modules/art-supabase-smis/src/*"],
@@ -37,8 +36,6 @@
     "src/**/*.d.ts",
     "src/**/*.tsx",
     "src/**/*.vue",
-    "modules/art-supabase-finance/src/**/*.ts",
-    "modules/art-supabase-finance/src/**/*.vue",
     "modules/art-supabase-fms/src/**/*.ts",
     "modules/art-supabase-fms/src/**/*.vue",
     "modules/art-supabase-hr/src/**/*.ts",

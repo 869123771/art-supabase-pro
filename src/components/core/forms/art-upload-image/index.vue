@@ -163,12 +163,14 @@
               isOpenResource.value = true
             }}
           >
-            <ArtSvgIcon icon="ri-folder-open-line" class="text-[18px]" />
+            <ArtSvgIcon icon="ri-folder-open-line" />
           </button>
         </el-tooltip>
-        <div class="mt-[18%] flex flex-col items-center">
-          <ArtSvgIcon icon="ri-add-line" class="text-[20px]" />
-          <span class="mt-1 text-[14px]">{title ?? '上传图片'}</span>
+        <div class="upload-prompt">
+          <span class="upload-prompt__icon" aria-hidden="true">
+            <ArtSvgIcon icon="ri-add-line" />
+          </span>
+          <span class="upload-prompt__title">{title ?? '上传图片'}</span>
         </div>
       </div>
     )
@@ -355,6 +357,7 @@
     .resource-btn {
       position: absolute;
       top: 0;
+      z-index: 2;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -375,6 +378,10 @@
         background-color 300ms ease,
         border-color 300ms ease;
 
+      .art-svg-icon {
+        font-size: 18px;
+      }
+
       &:hover,
       &:focus-visible {
         color: var(--el-color-primary);
@@ -384,6 +391,40 @@
       &:focus-visible {
         box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--theme-color) 28%, transparent);
       }
+    }
+
+    .upload-prompt {
+      position: absolute;
+      inset: max(20%, 32px) 0 0;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      padding: 4px;
+      text-align: center;
+    }
+
+    .upload-prompt__icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--el-color-primary);
+
+      .art-svg-icon {
+        font-size: 20px;
+      }
+    }
+
+    .upload-prompt__title {
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-size: 12px;
+      line-height: 1.2;
+      color: var(--el-text-color-regular);
+      white-space: nowrap;
     }
 
     .preview-mask {
@@ -529,6 +570,10 @@
       // @apply text-[rgb(var(--ui-primary))] b-[rgb(var(--ui-primary))];
       color: var(--el-color-primary);
       border-color: var(--el-color-primary);
+
+      .upload-prompt__title {
+        color: var(--el-color-primary);
+      }
     }
   }
 

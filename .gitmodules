@@ -2,10 +2,6 @@
 	path = modules/art-supabase-vms
 	url = https://gitee.com/wangyanghub/art-supabase-vms.git
 	branch = master
-[submodule "modules/art-supabase-finance"]
-	path = modules/art-supabase-finance
-	url = https://gitee.com/wangyanghub/art-supabase-finance.git
-	branch = master
 [submodule "modules/art-supabase-fms"]
 	path = modules/art-supabase-fms
 	url = https://gitee.com/wangyanghub/art-supabase-fms.git
@@ -20,4 +16,8 @@
 [submodule "modules/art-supabase-tms"]
 	path = modules/art-supabase-tms
 	url = https://gitee.com/wangyanghub/art-supabase-tms.git
+	branch = master
+[submodule "modules/art-supabase-doc"]
+	path = modules/art-supabase-doc
+	url = https://gitee.com/wangyanghub/art-supabase-doc.git
 	branch = master

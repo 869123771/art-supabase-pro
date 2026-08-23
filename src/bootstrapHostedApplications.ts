@@ -12,15 +12,6 @@ function registerHostedApplication(
   registerApplicationViewModules(applicationCode, sourceRoot, sourceModules)
 }
 
-registerHostedApplication(
-  'finance',
-  '../modules/art-supabase-finance/src/views',
-  import.meta.glob<HostedRouteComponentModule>([
-    '../modules/art-supabase-finance/src/views/**/*.vue',
-    '!../modules/art-supabase-finance/src/views/**/modules/**/*.vue',
-    '!../modules/art-supabase-finance/src/views/**/components/**/*.vue'
-  ])
-)
 registerFmsRecognitionIntegration()
 registerHostedApplication(
   'fms',

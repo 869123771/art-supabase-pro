@@ -147,6 +147,7 @@ declare namespace Api {
     interface WorkflowDefinitionSearchParams {
       keyword?: string
       businessType?: string
+      businessTypes?: string[]
       status?: DefinitionStatus | ''
       tenantId?: string
       from?: number

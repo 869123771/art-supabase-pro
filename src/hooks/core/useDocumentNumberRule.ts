@@ -1,13 +1,19 @@
 import { fetchDocumentNumberRulesByKeys } from '@/api/document-number'
+import { useUserStore } from '@/store/modules/user'
 
-export function useDocumentNumberRule(ruleKey: string) {
+export function useDocumentNumberRule(
+  ruleKey: string,
+  tenantId?: MaybeRefOrGetter<string | undefined>
+) {
+  const userStore = useUserStore()
   const rule = shallowRef<Api.SystemManage.DocumentNumberRuleItem>()
   const loading = ref(false)
 
   const loadRule = async (): Promise<void> => {
     loading.value = true
     try {
-      const { data } = await fetchDocumentNumberRulesByKeys([ruleKey])
+      const targetTenantId = toValue(tenantId) || userStore.getUserInfo.tenantId
+      const { data } = await fetchDocumentNumberRulesByKeys([ruleKey], targetTenantId)
       rule.value = data?.[0]
     } finally {
       loading.value = false

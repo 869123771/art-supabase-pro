@@ -1,6 +1,6 @@
 <template>
   <ElDropdown
-    v-if="applications.length > 1"
+    v-if="switcherEntries.length > 1"
     trigger="click"
     placement="bottom-end"
     @command="switchApplication"
@@ -14,7 +14,7 @@
     <template #dropdown>
       <ElDropdownMenu class="application-switcher__menu">
         <ElDropdownItem
-          v-for="application in applications"
+          v-for="application in switcherEntries"
           :key="application.code"
           :command="application.code"
           :disabled="application.code === currentApplication.code"
@@ -39,19 +39,53 @@
 
 <script setup lang="ts">
   import { fetchAccessibleApplications, type AccessibleApplication } from '@/api/system-manage'
-  import { currentApplication, type ApplicationCode } from '@/config/application'
+  import {
+    currentApplication,
+    resolveApplicationBaseUrl,
+    type ApplicationCode
+  } from '@/config/application'
+  import { WEB_LINKS } from '@/utils/constants'
 
   defineOptions({ name: 'ArtApplicationSwitcher' })
 
-  const applications = ref<AccessibleApplication[]>([])
+  type SwitcherEntryCode = ApplicationCode | 'docs'
 
-  const iconByApplication: Partial<Record<ApplicationCode, string>> = {
+  interface SwitcherEntry {
+    code: SwitcherEntryCode
+    name: string
+    description: string | null
+    baseUrl: string
+  }
+
+  const applications = ref<AccessibleApplication[]>([])
+  const documentationEntry: SwitcherEntry = {
+    code: 'docs',
+    name: 'Art Supabase DOC',
+    description: '官方文档、使用指南与技术支持',
+    baseUrl: WEB_LINKS.DOCS
+  }
+  const switcherEntries = computed<SwitcherEntry[]>(() => [
+    ...(applications.value.length
+      ? applications.value
+      : [
+          {
+            code: currentApplication.code,
+            name: currentApplication.name,
+            description: currentApplication.description,
+            baseUrl: window.location.href
+          }
+        ]),
+    documentationEntry
+  ])
+
+  const iconByApplication: Record<SwitcherEntryCode, string> = {
     platform: 'ri:building-4-line',
-    finance: 'ri:money-cny-circle-line',
     fms: 'ri:bank-card-line',
     hr: 'ri:team-line',
     smis: 'ri:shield-check-line',
-    vms: 'ri:truck-line'
+    tms: 'ri:apps-2-line',
+    vms: 'ri:truck-line',
+    docs: 'ri:book-open-line'
   }
 
   onMounted(async () => {
@@ -59,11 +93,19 @@
     if (!error) applications.value = data ?? []
   })
 
-  function switchApplication(code: ApplicationCode): void {
+  function switchApplication(code: SwitcherEntryCode): void {
+    if (code === 'docs') {
+      window.open(WEB_LINKS.DOCS, '_blank', 'noopener,noreferrer')
+      return
+    }
+
     if (code === currentApplication.code) return
 
     const target = applications.value.find((application) => application.code === code)
-    if (target?.baseUrl) window.location.assign(target.baseUrl)
+    if (!target?.baseUrl) return
+
+    const targetUrl = resolveApplicationBaseUrl(code, target.baseUrl, window.location)
+    window.location.assign(targetUrl.toString())
   }
 </script>
 

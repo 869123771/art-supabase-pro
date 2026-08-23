@@ -130,7 +130,7 @@
   }
 
   const labelWidth = ref(100)
-  const labelPosition = ref<'right' | 'left' | 'top'>('right')
+  const labelPosition = ref<'right' | 'left' | 'top'>('top')
   const span = ref(6)
   const gutter = ref(12)
 

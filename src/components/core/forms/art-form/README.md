@@ -12,7 +12,6 @@
     :items="formItems"
     :rules="rules"
     :span="12"
-    label-width="100px"
     validate-on-rule-change
     @submit="handleSubmit"
     @reset="handleReset"
@@ -75,7 +74,7 @@
 | `items` | `FormItem[]` | `[]` | 表单项元数据 |
 | `span` | `number` | `6` | 默认列宽，基于 24 栅格 |
 | `gutter` | `number` | `12` | 栅格间距 |
-| `labelPosition` | `'left' \| 'right' \| 'top'` | `'right'` | 标签位置，会传给 `ElForm` |
+| `labelPosition` | `'left' \| 'right' \| 'top'` | `'top'` | 标签位置；业务录入默认使用顶部标签 |
 | `labelWidth` | `string \| number` | `'70px'` | 默认标签宽度，字段可用 `item.labelWidth` 覆盖 |
 | `buttonLeftLimit` | `number` | `2` | 可见字段数量小于等于该值时，按钮组左对齐；设为 `0` 可始终右对齐 |
 | `showReset` | `boolean` | `true` | 是否显示重置按钮 |
@@ -126,6 +125,15 @@
   :validate-on-rule-change="false"
 />
 ```
+
+## 表单布局规范
+
+- 业务新增、编辑、审批和配置表单默认使用顶部标签，让标签、控件、说明和校验信息形成稳定的纵向阅读顺序。
+- 两列短表单通常使用 `span="12"`，单列流程表单使用 `span="24"`；长文本、上传和分区标题应独占整行。
+- 备注、说明、原因、意见等长文本使用 `type: 'textarea'`。该类型默认独占整行、初始 4 行高、限制 300 字并显示字数统计；业务上需要更长内容时只覆盖 `props.maxlength`，不要重复设置高度和统计开关。
+- `ArtSearchBar` 保持紧凑的左右标签布局，适合高频筛选和表格查询，不受 `ArtForm` 顶部标签默认值影响。
+- 只有空间高度明显受限的台账筛选、表格内编辑等高密度场景，才显式设置 `label-position="left"` 或 `label-position="right"`，并同时给出合适的 `label-width`。
+- 不要用 placeholder 代替标签；帮助说明和校验信息继续显示在对应控件下方。
 
 ## Events
 
@@ -202,6 +210,7 @@
 | type | 底层组件 | 选项写法 |
 | --- | --- | --- |
 | `input` | `ElInput` | 无 |
+| `textarea` | `ElInput type="textarea"` | 默认 4 行高、`maxlength: 300`、显示字数统计并允许纵向拉伸 |
 | `inputTag` | `ElInputTag` | 无 |
 | `number` | `ElInputNumber` | 无 |
 | `select` | `ElSelect` + `ElOption` | `props.options` / `options` / `api` |

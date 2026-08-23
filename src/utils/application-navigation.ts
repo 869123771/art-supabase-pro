@@ -1,5 +1,5 @@
 import { fetchAccessibleApplications } from '@/api/system-manage'
-import type { ApplicationCode } from '@/config/application'
+import { resolveApplicationBaseUrl, type ApplicationCode } from '@/config/application'
 
 export async function navigateToApplication(
   applicationCode: ApplicationCode,
@@ -19,7 +19,7 @@ export async function navigateToApplication(
     if (value) routeQuery.set(key, value)
   })
 
-  const target = new URL(application.baseUrl, window.location.origin)
+  const target = resolveApplicationBaseUrl(applicationCode, application.baseUrl, window.location)
   const normalizedPath = routePath.startsWith('/') ? routePath : `/${routePath}`
   target.hash = `${normalizedPath}${routeQuery.size ? `?${routeQuery.toString()}` : ''}`
   window.location.assign(target.toString())

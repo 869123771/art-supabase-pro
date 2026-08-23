@@ -154,10 +154,10 @@
                   <ElInput
                     v-model="form.loginDescription"
                     type="textarea"
-                    resize="none"
+                    resize="vertical"
                     maxlength="255"
                     show-word-limit
-                    :rows="3"
+                    :rows="4"
                   />
                 </ElFormItem>
                 <ElFormItem label="登录验证" prop="captchaEnabled">
@@ -274,10 +274,10 @@
                   <ElInput
                     v-model="form.seoDescription"
                     type="textarea"
-                    resize="none"
+                    resize="vertical"
                     maxlength="500"
                     show-word-limit
-                    :rows="3"
+                    :rows="4"
                   />
                 </ElFormItem>
                 <ElFormItem label="Logo" prop="logoUrl">

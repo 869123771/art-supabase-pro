@@ -41,7 +41,8 @@
       :table-props="tableProps"
     />
 
-    <!-- 菜单弹窗 -->
+    <!-- 菜单详情与维护弹窗 -->
+    <MenuDetailDrawer ref="menuDetailDrawerRef" />
     <MenuDialog ref="menuDialogRef" @submit="handleSubmit" />
     <MenuSortDialog ref="menuSortDialogRef" @submit="handleSubmit" />
     <MasterDataDeleteGuard ref="deleteGuardRef" @cleared="handleSubmit" />
@@ -58,10 +59,19 @@
     type BusinessWorkspaceMetric
   } from '@/components/business/business-workspace-header/index.vue'
   import ArtButtonMore from '@/components/core/forms/art-button-more/index.vue'
+  import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import type { ButtonMoreItem } from '@/components/core/forms/art-button-more/index.vue'
   import type { AppRouteRecord } from '@/types/router'
   import MenuDialog from './modules/menu-dialog.vue'
+  import MenuDetailDrawer from './modules/menu-detail-drawer.vue'
   import MenuSortDialog from './modules/menu-sort-dialog.vue'
+  import {
+    getDirectPermissionCount,
+    getMenuActionSubject,
+    getMenuTypeIcon,
+    getMenuTypeTag,
+    getMenuTypeText
+  } from './modules/menu-presentation'
   import TreeUtils from '@/utils/tree'
   import { ElMessage, ElTag } from 'element-plus'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
@@ -111,6 +121,10 @@
     handleOpen: (menuTree: AppRouteRecord[]) => Promise<void>
   }
 
+  interface MenuDetailDrawerExpose {
+    handleOpen: (row: AppRouteRecord, menuTree: AppRouteRecord[]) => Promise<void>
+  }
+
   interface MasterDataDeleteGuardExpose {
     inspect: (options: MasterDataDeleteGuardOpenOptions) => Promise<boolean>
   }
@@ -125,6 +139,7 @@
   // 弹窗相关
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const menuDialogRef = ref<MenuDialogExpose>()
+  const menuDetailDrawerRef = ref<MenuDetailDrawerExpose>()
   const menuSortDialogRef = ref<MenuSortDialogExpose>()
   const deleteGuardRef = ref<MasterDataDeleteGuardExpose>()
 
@@ -201,47 +216,6 @@
       onClick: toggleExpand
     }
   ])
-
-  /**
-   * 获取菜单类型标签颜色
-   * @param row 菜单行数据
-   * @returns 标签颜色类型
-   */
-  const getMenuTypeTag = (
-    row: AppRouteRecord
-  ): 'primary' | 'success' | 'warning' | 'info' | 'danger' => {
-    if (row.type === 'button') return 'danger'
-    if (row.type === 'menu') return 'primary'
-    if (row.meta?.link && row.meta?.isIframe) return 'success'
-    if (row.meta?.link) return 'warning'
-    return 'info'
-  }
-
-  /**
-   * 获取菜单类型文本
-   * @param row 菜单行数据
-   * @returns 菜单类型文本
-   */
-  const getMenuTypeText = (row: AppRouteRecord): string => {
-    if (row.type === 'button') return '按钮'
-    if (row.type === 'folder') return '目录'
-    if (row.meta?.link && row.meta?.isIframe) return '内嵌'
-    if (row.meta?.link) return '外链'
-    if (row.path) return '菜单'
-    return '未知'
-  }
-
-  const getMenuTypeIcon = (row: AppRouteRecord): string => {
-    if (row.type === 'button') return 'ri:cursor-line'
-    if (row.meta?.link && row.meta?.isIframe) return 'ri:window-line'
-    if (row.meta?.link) return 'ri:external-link-line'
-    if (row.type === 'folder') return row.meta?.icon || 'ri:folder-3-line'
-    return row.meta?.icon || 'ri:file-list-3-line'
-  }
-
-  const getDirectPermissionCount = (row: AppRouteRecord): number =>
-    row.children?.filter((item) => item.type === 'button' || item.meta?.menuType === 'button')
-      .length ?? 0
 
   const getAccessPrimaryText = (row: AppRouteRecord): string => {
     if (row.type === 'button') return row.name || '未配置权限标识'
@@ -339,13 +313,22 @@
     {
       prop: 'operation',
       label: '操作',
-      width: 96,
+      width: 112,
       align: 'right',
+      fixed: 'right',
       formatter: (row: AppRouteRecord) =>
-        h(ArtButtonMore, {
-          list: getMenuActions(row),
-          onClick: (item: ButtonMoreItem) => handleMenuAction(item, row)
-        })
+        h('div', { class: 'menu-operation-cell' }, [
+          h(ArtButtonTable, {
+            type: 'view',
+            label: '查看详情',
+            permission: 'System:Menu:View',
+            onClick: () => menuDetailDrawerRef.value?.handleOpen(row, tableData.value)
+          }),
+          h(ArtButtonMore, {
+            list: getMenuActions(row),
+            onClick: (item: ButtonMoreItem) => handleMenuAction(item, row)
+          })
+        ])
     }
   ]
 
@@ -417,12 +400,6 @@
         auth: 'System:Menu:Delete'
       }
     ].filter((item) => !item.hidden)
-
-  const getMenuActionSubject = (row: AppRouteRecord): string => {
-    if (row.type === 'button') return '权限'
-    if (row.type === 'folder') return '目录'
-    return '菜单'
-  }
 
   const handleMenuAction = (item: ButtonMoreItem, row: AppRouteRecord): void => {
     switch (item.key) {
@@ -832,6 +809,16 @@
     :deep(.menu-update-cell) {
       font-variant-numeric: tabular-nums;
       color: var(--el-text-color-secondary);
+    }
+
+    :deep(.menu-operation-cell) {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+
+      .art-button-table {
+        margin-right: 0;
+      }
     }
 
     @media (width <= 1080px) {

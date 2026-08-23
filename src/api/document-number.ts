@@ -75,17 +75,18 @@ export async function fetchDocumentNumberRuleList(params: SearchParams = {}) {
   return { ...result, data: (result.data ?? []).map(enhanceRule) }
 }
 
-export async function fetchDocumentNumberRulesByKeys(ruleKeys: string[]) {
+export async function fetchDocumentNumberRulesByKeys(ruleKeys: string[], tenantId?: string) {
   if (!ruleKeys.length) return { data: [] as NumberRule[], error: null }
-  const result = await responseHandle<NumberRule[]>(
-    () =>
-      supabase
-        .from('sys_document_number_rule')
-        .select(ruleSelect)
-        .in('rule_key', ruleKeys)
-        .eq('enabled', true),
-    { ignoreCheck: true, showErrorMessage: false }
-  )
+  let query = supabase
+    .from('sys_document_number_rule')
+    .select(ruleSelect)
+    .in('rule_key', ruleKeys)
+    .eq('enabled', true)
+  if (tenantId) query = query.eq('tenant_id', tenantId)
+  const result = await responseHandle<NumberRule[]>(() => query, {
+    ignoreCheck: true,
+    showErrorMessage: false
+  })
   return { ...result, data: (result.data ?? []).map(enhanceRule) }
 }
 

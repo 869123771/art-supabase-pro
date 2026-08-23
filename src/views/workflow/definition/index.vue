@@ -23,33 +23,73 @@
       </template>
     </BusinessWorkspaceHeader>
 
-    <ArtTableQuery
-      ref="tableQueryRef"
-      focusable
-      v-model="table.searchQuery"
-      :search-items="table.searchItems"
-      :api-fn="fetchTableData"
-      :columns-factory="table.columnsFactory"
-      :header-actions="table.headerActions"
-      header-actions-placement="workspace"
-      :search-bar-props="{ span: 8, labelWidth: 88 }"
-      :table-props="{
-        rowKey: 'id',
-        tableLayout: 'fixed',
-        emptyText: '暂无审批流程定义',
-        emptyDescription: isPlatformSuper
-          ? '可以新建流程，或调整筛选条件后重新查询。'
-          : '当前租户还没有可查看的流程，请联系平台管理员配置。'
-      }"
-    />
+    <div class="workflow-definition__workspace">
+      <aside v-if="isDesktopMenuLayout" class="workflow-definition__menu-panel">
+        <WorkflowBusinessMenuFilter
+          :data="menuTree"
+          :selected-menu-id="selectedMenuId"
+          :loading="menuLoading"
+          @select="handleMenuSelect"
+          @refresh="handleMenuRefresh"
+        />
+      </aside>
+
+      <div class="workflow-definition__table-workspace">
+        <section v-if="!isDesktopMenuLayout" class="workflow-definition__mobile-menu art-card-xs">
+          <span aria-hidden="true"><ArtSvgIcon icon="ri:node-tree" /></span>
+          <div
+            ><small>当前业务范围</small><strong>{{ selectedMenuLabel }}</strong></div
+          >
+          <ElButton type="primary" plain @click="openMenuDrawer">
+            <ArtSvgIcon icon="ri:filter-3-line" />业务筛选
+          </ElButton>
+        </section>
+
+        <ArtTableQuery
+          ref="tableQueryRef"
+          focusable
+          v-model="table.searchQuery"
+          :search-items="table.searchItems"
+          :api-fn="fetchTableData"
+          :columns-factory="table.columnsFactory"
+          :header-actions="table.headerActions"
+          header-actions-placement="workspace"
+          :search-bar-props="{ span: 8, labelWidth: 88 }"
+          :table-props="{
+            rowKey: 'id',
+            tableLayout: 'fixed',
+            emptyText: '暂无审批流程定义',
+            emptyDescription: isPlatformSuper
+              ? '可以新建流程，或调整筛选条件后重新查询。'
+              : '当前租户还没有可查看的流程，请联系平台管理员配置。'
+          }"
+        />
+      </div>
+    </div>
 
     <WorkflowVersionHistoryDialog ref="versionHistoryRef" @success="handleSaveSuccess" />
-    <WorkflowBusinessCatalogDialog ref="catalogRef" />
+    <WorkflowBusinessCatalogDialog
+      ref="catalogRef"
+      :menu-tree="menuTree"
+      :loading="menuLoading"
+      @refresh="handleMenuRefresh"
+    />
     <WorkflowTemplateLibraryDialog ref="templateLibraryRef" @select="openNewDesigner" />
+    <ArtDrawer ref="menuDrawerRef">
+      <WorkflowBusinessMenuFilter
+        class="workflow-definition__drawer-filter"
+        :data="menuTree"
+        :selected-menu-id="selectedMenuId"
+        :loading="menuLoading"
+        @select="handleDrawerMenuSelect"
+        @refresh="handleMenuRefresh"
+      />
+    </ArtDrawer>
   </div>
 </template>
 
 <script setup lang="tsx">
+  import { useMediaQuery } from '@vueuse/core'
   import { ElTag } from 'element-plus'
   import type { ComputedRef, UnwrapNestedRefs } from 'vue'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
@@ -58,19 +98,23 @@
     ArtTableQueryHeaderAction
   } from '@/components/core/tables/art-table-query/index.vue'
   import type { ColumnOption } from '@/types'
+  import type { AppRouteRecord } from '@/types/router'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import ArtButtonMore, {
     type ButtonMoreItem
   } from '@/components/core/forms/art-button-more/index.vue'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
+  import ArtDrawer from '@/components/core/drawers/art-drawer/index.vue'
+  import type { ArtDrawerExpose } from '@/components/core/drawers/art-drawer/types'
   import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
   import BusinessWorkspaceHeader from '@/components/business/business-workspace-header/index.vue'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatWithDayjs } from '@/utils/time'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { useUserStore } from '@/store/modules/user'
-  import { fetchGetEnableTenantList } from '@/api/system-manage'
+  import { fetchGetEnableMenuList, fetchGetEnableTenantList } from '@/api/system-manage'
+  import TreeUtils from '@/utils/tree'
   import {
     deleteWorkflowDefinition,
     fetchWorkflowDefinitionList,
@@ -81,14 +125,18 @@
   import WorkflowVersionHistoryDialog from './modules/workflow-version-history-dialog.vue'
   import WorkflowBusinessCatalogDialog from './modules/workflow-business-catalog-dialog.vue'
   import WorkflowTemplateLibraryDialog from './modules/workflow-template-library-dialog.vue'
+  import WorkflowBusinessMenuFilter from './modules/workflow-business-menu-filter.vue'
+  import { workflowBusinessContracts } from '../modules/workflow-business-contracts'
 
   defineOptions({ name: 'WorkflowDefinition' })
 
   type Definition = Api.Workflow.WorkflowDefinitionRecord
   type SearchParams = Pick<
     Api.Workflow.WorkflowDefinitionSearchParams,
-    'keyword' | 'businessType' | 'status' | 'tenantId'
-  >
+    'keyword' | 'status' | 'tenantId'
+  > & {
+    businessTypes?: string[]
+  }
   type TableParams = SearchParams & Pick<Api.Common.PaginationParams, 'current' | 'size'>
 
   interface VersionHistoryExpose {
@@ -117,6 +165,13 @@
   const versionHistoryRef = ref<VersionHistoryExpose>()
   const catalogRef = ref<CatalogExpose>()
   const templateLibraryRef = ref<TemplateLibraryExpose>()
+  const menuDrawerRef = ref<ArtDrawerExpose<Record<string, never>>>()
+  const menuTree = ref<AppRouteRecord[]>([])
+  const menuLoading = ref(false)
+  const selectedMenuId = ref('')
+  const selectedMenuLabel = ref('全部业务')
+  const isDesktopMenuLayout = useMediaQuery('(min-width: 1201px)')
+  const treeUtils = new TreeUtils({ idKey: 'id', parentKey: 'parentId', childrenKey: 'children' })
   const designer = reactive({
     mode: computed(() => typeof route.query.designer === 'string'),
     definitionId: computed(() =>
@@ -132,23 +187,13 @@
     [...(row.versions || [])].sort((a, b) => b.versionNo - a.versionNo)[0]
 
   const table: UnwrapNestedRefs<TableGroup> = reactive<TableGroup>({
-    searchQuery: { keyword: '', businessType: '', status: '', tenantId: '' },
+    searchQuery: { keyword: '', businessTypes: undefined, status: '', tenantId: '' },
     searchItems: computed<SearchFormItem[]>(() => [
       {
         label: '关键词',
         key: 'keyword',
         type: 'input',
         props: { placeholder: '搜索流程名称或编码', clearable: true }
-      },
-      {
-        label: '业务类型',
-        key: 'businessType',
-        type: 'select',
-        props: {
-          options: getDictMap.value.workflowBusinessType ?? [],
-          placeholder: '全部业务类型',
-          clearable: true
-        }
       },
       {
         label: '流程状态',
@@ -297,6 +342,62 @@
     return fetchWorkflowDefinitionList({ ...params, from, to })
   }
 
+  async function loadMenuTree(): Promise<void> {
+    const { data } = await fetchGetEnableMenuList()
+    menuTree.value = treeUtils.listToTree((data ?? []).filter((menu) => menu.type !== 'button'))
+  }
+
+  async function handleMenuSelect(
+    menuId: string,
+    businessTypes: string[],
+    label: string
+  ): Promise<void> {
+    selectedMenuId.value = menuId
+    selectedMenuLabel.value = label
+    table.searchQuery.businessTypes =
+      businessTypes.length === workflowBusinessContracts.length ? undefined : businessTypes
+    await tableQueryRef.value?.getData()
+  }
+
+  async function handleDrawerMenuSelect(
+    menuId: string,
+    businessTypes: string[],
+    label: string
+  ): Promise<void> {
+    await handleMenuSelect(menuId, businessTypes, label)
+    await menuDrawerRef.value?.handleClose()
+  }
+
+  async function handleMenuRefresh(): Promise<void> {
+    menuLoading.value = true
+    try {
+      await loadMenuTree()
+      if (selectedMenuId.value && !treeUtils.findNode(menuTree.value, selectedMenuId.value)) {
+        await handleMenuSelect(
+          '',
+          workflowBusinessContracts.map((contract) => contract.businessType),
+          '全部业务'
+        )
+      }
+    } finally {
+      menuLoading.value = false
+    }
+  }
+
+  async function openMenuDrawer(): Promise<void> {
+    await menuDrawerRef.value?.handleOpen(
+      {},
+      {
+        title: '筛选审批业务',
+        subtitle: '按业务菜单树定位流程定义，选择目录时自动包含全部下级业务。',
+        size: 'sm',
+        contentHeight: 'calc(100vh - 118px)',
+        showFooter: false,
+        drawerProps: { appendToBody: true }
+      }
+    )
+  }
+
   function openNewDesigner(templateKey: string): void {
     void router.push({
       path: route.path,
@@ -393,7 +494,14 @@
     await tableQueryRef.value?.getData()
   }
 
-  onMounted(() => void userStore.fetchDictList())
+  onMounted(async () => {
+    menuLoading.value = true
+    try {
+      await Promise.all([userStore.fetchDictList(), loadMenuTree()])
+    } finally {
+      menuLoading.value = false
+    }
+  })
 </script>
 
 <style scoped lang="scss">
@@ -505,8 +613,88 @@
       }
     }
 
-    :deep(.art-table-query) {
+    &__workspace {
+      display: grid;
+      flex: 1 1 auto;
+      grid-template-rows: minmax(0, 1fr);
+      grid-template-columns: 264px minmax(0, 1fr);
+      gap: 12px;
+      min-width: 0;
       min-height: 0;
+      overflow: hidden;
+    }
+
+    &__menu-panel,
+    &__table-workspace {
+      min-width: 0;
+      height: 100%;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    &__table-workspace {
+      display: flex;
+      flex-direction: column;
+    }
+
+    &__mobile-menu {
+      display: flex;
+      flex: none;
+      gap: 11px;
+      align-items: center;
+      min-width: 0;
+      padding: 12px 14px;
+      margin-bottom: 12px;
+      background: linear-gradient(145deg, var(--el-color-primary-light-9), var(--el-bg-color) 76%);
+
+      > span {
+        display: inline-flex;
+        flex: 0 0 36px;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        color: var(--el-color-primary);
+        background: var(--el-bg-color);
+        border: 1px solid var(--el-color-primary-light-7);
+        border-radius: var(--custom-radius);
+      }
+
+      > div {
+        display: grid;
+        flex: 1;
+        min-width: 0;
+      }
+
+      small,
+      strong {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      small {
+        font-size: 11px;
+        color: var(--el-text-color-secondary);
+      }
+
+      strong {
+        font-size: 14px;
+        color: var(--el-text-color-primary);
+      }
+    }
+
+    &__drawer-filter {
+      height: 100%;
+      border: 0;
+      border-radius: 0;
+    }
+
+    :deep(.art-table-query) {
+      flex: 1 1 auto;
+      height: 100%;
+      min-height: 0;
+      overflow: hidden;
     }
 
     :deep(.workflow-definition__name-cell) {
@@ -627,6 +815,18 @@
   @media (width <= 1360px) {
     .workflow-definition__principles article:nth-child(n + 2) {
       display: none;
+    }
+  }
+
+  @media (width <= 1200px) {
+    .workflow-definition__workspace {
+      display: block;
+      overflow: visible;
+    }
+
+    .workflow-definition__table-workspace {
+      height: auto;
+      overflow: visible;
     }
   }
 

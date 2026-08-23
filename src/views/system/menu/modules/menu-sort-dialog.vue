@@ -67,13 +67,13 @@
           <template #default="{ data }">
             <div class="menu-tree-sort__node">
               <span :class="['menu-tree-sort__node-icon', `is-${data.type || 'menu'}`]">
-                <ArtSvgIcon :icon="getMenuIcon(data)" />
+                <ArtSvgIcon :icon="getMenuTypeIcon(data)" />
               </span>
               <div class="menu-tree-sort__node-copy">
                 <strong>{{ formatMenuTitle(data.meta?.title) }}</strong>
                 <small translate="no">{{ data.name || '未配置权限标识' }}</small>
               </div>
-              <ElTag size="small" :type="getMenuTagType(data)" effect="light">
+              <ElTag size="small" :type="getMenuTypeTag(data)" effect="light">
                 {{ getMenuTypeText(data) }}
               </ElTag>
             </div>
@@ -107,6 +107,7 @@
   import { formatMenuTitle } from '@/utils/router'
   import { saveMenuTreeOrder } from '@/api/system-manage'
   import { buildMenuTreeOrderUpdates } from './menu-order'
+  import { getMenuTypeIcon, getMenuTypeTag, getMenuTypeText } from './menu-presentation'
 
   type AllowDrop = NonNullable<InstanceType<typeof ElTree>['$props']['allowDrop']>
 
@@ -163,24 +164,6 @@
 
   const getNodeKey = (data?: AppRouteRecord): string | undefined =>
     data?.id ? String(data.id) : undefined
-
-  const getMenuTypeText = (data: AppRouteRecord): string => {
-    if (data.type === 'button') return '按钮'
-    if (data.type === 'folder') return '目录'
-    return '菜单'
-  }
-
-  const getMenuTagType = (data: AppRouteRecord): 'primary' | 'warning' | 'info' => {
-    if (data.type === 'button') return 'warning'
-    if (data.type === 'folder') return 'info'
-    return 'primary'
-  }
-
-  const getMenuIcon = (data: AppRouteRecord): string => {
-    if (data.type === 'button') return 'ri:cursor-line'
-    if (data.type === 'folder') return data.meta?.icon || 'ri:folder-3-line'
-    return data.meta?.icon || 'ri:file-list-3-line'
-  }
 
   const filterNode = (value: string, rawData: unknown): boolean => {
     if (!value) return true

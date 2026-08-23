@@ -19,7 +19,7 @@ export const WEB_LINKS = {
   BLOG: 'https://www.artd.pro',
 
   // 项目文档
-  DOCS: 'https://www.artd.pro/docs/zh/',
+  DOCS: 'https://869123771.github.io/art-supabase-doc/',
 
   // 精简版本
   LiteVersion: 'https://www.artd.pro/docs/zh/guide/lite-version.html',
@@ -28,7 +28,7 @@ export const WEB_LINKS = {
   OldVersion: 'https://www.artd.pro/v2/',
 
   // 项目社区
-  COMMUNITY: 'https://www.artd.pro/docs/zh/community/communicate.html',
+  COMMUNITY: 'https://869123771.github.io/art-supabase-doc/',
 
   // 哔哩哔哩
   BILIBILI: 'https://www.bilibili.com/',

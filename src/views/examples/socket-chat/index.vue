@@ -53,7 +53,7 @@
             </div>
           </template>
 
-          <ElForm :model="connectForm" label-width="100px" class="max-w-md">
+          <ElForm :model="connectForm" label-position="top" class="max-w-md">
             <ElFormItem label="服务器地址">
               <ElInput v-model="connectForm.url" placeholder="ws://localhost:8080/ws" clearable />
             </ElFormItem>
@@ -89,7 +89,7 @@
             <span class="text-base font-bold">发送消息</span>
           </template>
 
-          <ElForm :model="messageForm" @submit.prevent="handleSendMessage">
+          <ElForm :model="messageForm" label-position="top" @submit.prevent="handleSendMessage">
             <ElFormItem label="消息类型">
               <ElSelect v-model="messageForm.type" class="w-full">
                 <ElOption label="文本消息" value="text" />

@@ -574,7 +574,8 @@
     {
       label: '版本说明',
       key: 'changeNote',
-      type: 'input',
+      type: 'textarea',
+      span: 24,
       props: { maxlength: 200, placeholder: '说明本次流程配置变更内容' }
     },
     {

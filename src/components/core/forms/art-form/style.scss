@@ -3,6 +3,11 @@
     min-width: 0;
     max-width: 100%;
     overflow-x: clip;
+
+    :deep(.el-textarea__inner) {
+      height: 104px;
+      min-height: 104px !important;
+    }
   }
 
   &--custom-layout {

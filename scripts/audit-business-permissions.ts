@@ -27,7 +27,6 @@ const compatibilityMigrationPath = join(
 const managedViewRoots = new Map<string, string>([
   ['tms', join(projectRoot, 'modules/art-supabase-tms/src/views')],
   ['system', join(projectRoot, 'src/views/system')],
-  ['finance', join(projectRoot, 'modules/art-supabase-finance/src/views')],
   ['fms', join(projectRoot, 'modules/art-supabase-fms/src/views')],
   ['vms', join(projectRoot, 'modules/art-supabase-vms/src/views')],
   ['hr', join(projectRoot, 'modules/art-supabase-hr/src/views')],

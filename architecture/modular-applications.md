@@ -5,7 +5,6 @@
 | 应用代码 | 仓库 | 负责范围 |
 | --- | --- | --- |
 | `platform` | `art-supabase-pro` | Auth、租户、用户、组织、菜单、角色权限、数据中心与共享数据库契约 |
-| `finance` | `art-supabase-finance` | Finance 独立应用预留边界 |
 | `fms` | `art-supabase-fms` | FMS 财务管理 |
 | `hr` | `art-supabase-hr` | HR 人力资源 |
 | `smis` | `art-supabase-smis` | SMIS 安全生产 |

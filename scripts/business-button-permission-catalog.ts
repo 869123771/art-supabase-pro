@@ -612,7 +612,12 @@ export const systemButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] = [
   { menuName: 'Organization', buttons: crud({ view: true }) },
   {
     menuName: 'Menu',
-    buttons: [button('Add', '新增菜单'), button('Edit', '编辑菜单'), button('Delete', '删除菜单')]
+    buttons: [
+      button('View', '查看菜单'),
+      button('Add', '新增菜单'),
+      button('Edit', '编辑菜单'),
+      button('Delete', '删除菜单')
+    ]
   },
   {
     menuName: 'Tenant',

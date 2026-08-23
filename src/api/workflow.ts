@@ -40,10 +40,12 @@ const BUSINESS_HISTORY_SELECT = `
   )
 `
 
-export async function fetchWorkflowDefinitionList(
-  params: Api.Workflow.WorkflowDefinitionSearchParams
-) {
-  const { from = 0, to = 9, keyword, businessType, status, tenantId } = params
+type WorkflowDefinitionListParams = Api.Workflow.WorkflowDefinitionSearchParams & {
+  businessTypes?: string[]
+}
+
+export async function fetchWorkflowDefinitionList(params: WorkflowDefinitionListParams) {
+  const { from = 0, to = 9, keyword, businessType, businessTypes, status, tenantId } = params
   let query = supabase
     .from('wf_definition')
     .select(DEFINITION_SELECT, { count: 'exact' })
@@ -51,7 +53,8 @@ export async function fetchWorkflowDefinitionList(
     .range(from, to)
 
   if (keyword) query = query.or(`code.ilike.%${keyword}%,name.ilike.%${keyword}%`)
-  if (businessType) query = query.eq('business_type', businessType)
+  if (businessTypes?.length) query = query.in('business_type', businessTypes)
+  else if (businessType) query = query.eq('business_type', businessType)
   if (status) query = query.eq('status', status)
   if (tenantId) query = query.eq('tenant_id', tenantId)
 
