@@ -1,0 +1,1 @@
+import{Ai as e,O as t,si as n}from"./framework-zmx8ZOtz.js";function r(t){return e(t)&&t.type===n}var i=n=>{let r=t(n)?n:[n],a=[];return r.forEach(n=>{t(n)?a.push(...i(n)):e(n)&&n.component?.subTree?a.push(n,...i(n.component.subTree)):e(n)&&t(n.children)?a.push(...i(n.children)):e(n)&&n.shapeFlag===2?a.push(...i(n.type())):a.push(n)}),a};export{r as n,i as t};

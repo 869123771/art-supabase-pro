@@ -1,0 +1,1 @@
+import{en as e,vn as t}from"./common-utils-CN7ualjA.js";var n=e=>Object.keys(e),r=(n,r,i)=>({get value(){return t(n,r,i)},set value(t){e(n,r,t)}});export{n,r as t};

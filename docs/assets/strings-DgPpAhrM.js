@@ -1,0 +1,1 @@
+import{st as e}from"./framework-zmx8ZOtz.js";var t=(e=``)=>e.replace(/[|\\{}()[\]^$+*?.]/g,`\\$&`).replace(/-/g,`\\x2d`),n=t=>e(t);export{t as n,n as t};

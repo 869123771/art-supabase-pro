@@ -1,0 +1,1 @@
+import{L as e}from"./common-utils-CN7ualjA.js";import{ct as t}from"./style-DJACKiYQ.js";var n=`update:modelValue`,r=`change`,i=`input`,a=t({ariaLabel:String,ariaOrientation:{type:String,values:[`horizontal`,`vertical`,`undefined`]},ariaControls:String}),o=t=>e(a,t);export{n as i,r as n,i as r,o as t};

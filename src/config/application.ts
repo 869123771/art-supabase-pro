@@ -5,7 +5,7 @@
  * frontend declares only its own application code and requests the matching
  * menu tree from the platform contract.
  */
-export const APPLICATION_CODES = ['platform', 'finance', 'fms', 'hr', 'smis', 'vms'] as const
+export const APPLICATION_CODES = ['platform', 'finance', 'fms', 'hr', 'smis', 'tms', 'vms'] as const
 
 export type ApplicationCode = (typeof APPLICATION_CODES)[number]
 
@@ -52,6 +52,13 @@ export const APPLICATION_PROFILES: Record<ApplicationCode, ApplicationProfile> =
     description: '安全生产管理系统',
     defaultPath: '/smis',
     developmentPort: 3014
+  },
+  tms: {
+    code: 'tms',
+    name: 'Art Supabase TMS',
+    description: '智慧运输管理系统',
+    defaultPath: '/tms/order-open',
+    developmentPort: 3016
   },
   vms: {
     code: 'vms',

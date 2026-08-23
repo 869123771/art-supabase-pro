@@ -1,0 +1,1 @@
+import{Jn as e}from"./common-utils-CN7ualjA.js";import{ot as t}from"./style-DT-Q-OBS.js";var n=t({ariaLabel:String,ariaOrientation:{type:String,values:[`horizontal`,`vertical`,`undefined`]},ariaControls:String}),r=t=>e(n,t);export{r as t};

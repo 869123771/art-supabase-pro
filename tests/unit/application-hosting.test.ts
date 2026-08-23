@@ -7,9 +7,10 @@ test('platform host aggregates every application granted to the current user', (
     resolveHostedApplicationCodes('platform', [
       { code: 'vms' },
       { code: 'platform' },
-      { code: 'hr' }
+      { code: 'hr' },
+      { code: 'tms' }
     ]),
-    ['platform', 'hr', 'vms']
+    ['platform', 'hr', 'tms', 'vms']
   )
 })
 
@@ -17,4 +18,8 @@ test('standalone application only requests its own menu contract', () => {
   assert.deepEqual(resolveHostedApplicationCodes('vms', [{ code: 'platform' }, { code: 'hr' }]), [
     'vms'
   ])
+})
+
+test('standalone TMS is not mistaken for the platform host', () => {
+  assert.deepEqual(resolveHostedApplicationCodes('tms', [{ code: 'platform' }]), ['tms'])
 })
