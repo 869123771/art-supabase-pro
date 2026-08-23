@@ -2,5 +2,10 @@
 <project version="4">
   <component name="VcsDirectoryMappings">
     <mapping directory="" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/modules/art-supabase-finance" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/modules/art-supabase-fms" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/modules/art-supabase-hr" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/modules/art-supabase-smis" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/modules/art-supabase-vms" vcs="Git" />
   </component>
 </project>

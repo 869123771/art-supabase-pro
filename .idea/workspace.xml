@@ -7,8 +7,17 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="b8f35119-660a-46e7-82f4-53eee06863eb" name="Changes" comment="feat tms vms fms">
-      <change beforePath="$PROJECT_DIR$/docs/flyfish-viewer-assets.json" beforeDir="false" afterPath="$PROJECT_DIR$/docs/flyfish-viewer-assets.json" afterDir="false" />
+    <list default="true" id="b8f35119-660a-46e7-82f4-53eee06863eb" name="Changes" comment="feat hr dependent finance">
+      <change beforePath="$PROJECT_DIR$/.idea/vcs.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-finance" beforeDir="false" afterPath="$PROJECT_DIR$/modules/art-supabase-finance" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-fms" beforeDir="false" afterPath="$PROJECT_DIR$/modules/art-supabase-fms" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-hr" beforeDir="false" afterPath="$PROJECT_DIR$/modules/art-supabase-hr" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-smis" beforeDir="false" afterPath="$PROJECT_DIR$/modules/art-supabase-smis" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-vms" beforeDir="false" afterPath="$PROJECT_DIR$/modules/art-supabase-vms" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/types/import/components.d.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/types/import/components.d.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/system/organization/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/system/organization/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/supabase/migrations/20260822020000_modular_application_registry.sql" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -38,8 +47,9 @@
         <entry key="$PROJECT_DIR$" value="github-master" />
       </map>
     </option>
-    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/modules/art-supabase-fms" />
     <option name="RESET_MODE" value="HARD" />
+    <option name="ROOT_SYNC" value="DONT_SYNC" />
   </component>
   <component name="HighlightingSettingsPerFile">
     <setting file="file://$PROJECT_DIR$/node_modules/.pnpm/element-plus@2.14.2_vue@3.5.38_typescript@6.0.3_/node_modules/element-plus/es/components/table/src/table/defaults.d.ts" root0="SKIP_INSPECTION" />
@@ -50,61 +60,61 @@
   </component>
   <component name="NextEditCompletionFeaturesState">
     <decayedCancelled>
-      <entry key="MS100" value="1.463888678881135" />
-      <entry key="MS500" value="3.2433773076266914" />
-      <entry key="S2" value="5.4376923248015645" />
-      <entry key="S5" value="6.292662874874647" />
-      <entry key="S10" value="6.630752137350559" />
-      <entry key="S30" value="6.950756250367496" />
-      <entry key="S60" value="8.220088145529605" />
-      <entry key="M2" value="12.612907107735174" />
-      <entry key="M5" value="21.732602526759035" />
-      <entry key="M10" value="28.10903716328671" />
-      <entry key="M15" value="31.044648695020197" />
-      <entry key="M30" value="34.60161175642315" />
-      <entry key="H1" value="36.678304623184424" />
-      <entry key="H2" value="37.806016689502805" />
-      <entry key="H4" value="38.45970430852065" />
-      <entry key="D1" value="77.7469162026054" />
-      <entry key="W1" value="517.1384698973393" />
+      <entry key="MS100" value="1.0489439104214244" />
+      <entry key="MS500" value="2.8308763443648344" />
+      <entry key="S2" value="5.386229215299801" />
+      <entry key="S5" value="6.286111093581438" />
+      <entry key="S10" value="6.6304760961614955" />
+      <entry key="S30" value="6.873909909828239" />
+      <entry key="S60" value="6.93658274231645" />
+      <entry key="M2" value="6.968199038826687" />
+      <entry key="M5" value="7.010358547264235" />
+      <entry key="M10" value="7.621530861553204" />
+      <entry key="M15" value="8.904449633685893" />
+      <entry key="M30" value="13.03669399774649" />
+      <entry key="H1" value="20.183019872704957" />
+      <entry key="H2" value="31.82075013749108" />
+      <entry key="H4" value="44.6539059566964" />
+      <entry key="D1" value="97.85707994154575" />
+      <entry key="W1" value="537.9971400806126" />
     </decayedCancelled>
     <decayedSelected>
       <entry key="MS100" value="0.0" />
       <entry key="MS500" value="0.0" />
-      <entry key="S2" value="7.268734578509778E-171" />
-      <entry key="S5" value="8.802043778391991E-69" />
-      <entry key="S10" value="9.381920793948325E-35" />
-      <entry key="S30" value="4.543919066425354E-12" />
-      <entry key="S60" value="2.131647031388018E-6" />
-      <entry key="M2" value="0.0014600161065508887" />
-      <entry key="M5" value="0.07340794368873028" />
-      <entry key="M10" value="0.270939003631316" />
-      <entry key="M15" value="0.41871098310501736" />
-      <entry key="M30" value="0.647078807491806" />
-      <entry key="H1" value="0.8044120881070526" />
-      <entry key="H2" value="0.8968915042827538" />
-      <entry key="H4" value="0.9489935755092397" />
-      <entry key="D1" value="2.3940150980954256" />
-      <entry key="W1" value="19.819762196659052" />
+      <entry key="S2" value="0.0" />
+      <entry key="S5" value="0.0" />
+      <entry key="S10" value="0.0" />
+      <entry key="S30" value="6.784705234236638E-149" />
+      <entry key="S60" value="8.236932216691247E-75" />
+      <entry key="M2" value="9.075754633467803E-38" />
+      <entry key="M5" value="1.5245901108481213E-15" />
+      <entry key="M10" value="3.904599993402807E-8" />
+      <entry key="M15" value="1.1509356244292357E-5" />
+      <entry key="M30" value="0.0033925442140512164" />
+      <entry key="H1" value="0.058245551023714745" />
+      <entry key="H2" value="0.24134149308195685" />
+      <entry key="H4" value="0.49227673879429107" />
+      <entry key="D1" value="2.1459415666565325" />
+      <entry key="W1" value="19.512433699396656" />
     </decayedSelected>
     <decayedShown>
-      <entry key="MS100" value="1.3484867543995185" />
-      <entry key="MS500" value="3.177373185458729" />
-      <entry key="S2" value="5.407498458718309" />
-      <entry key="S5" value="6.2785333663238125" />
-      <entry key="S10" value="6.623286084575651" />
-      <entry key="S30" value="6.948144934654549" />
-      <entry key="S60" value="8.21851596761947" />
-      <entry key="M2" value="12.612963677677815" />
-      <entry key="M5" value="21.80433578660155" />
-      <entry key="M10" value="28.378204427254296" />
-      <entry key="M15" value="31.461754971037713" />
-      <entry key="M30" value="35.24757262695925" />
-      <entry key="H1" value="37.482051295119824" />
-      <entry key="H2" value="38.702544485143555" />
-      <entry key="H4" value="39.408507412782924" />
-      <entry key="D1" value="80.14087258186024" />
-      <entry key="W1" value="537.1574646794793" />
+      <entry key="MS100" value="0.1744218186711818" />
+      <entry key="MS500" value="2.4721841314768955" />
+      <entry key="S2" value="5.274815893266325" />
+      <entry key="S5" value="6.239121963542121" />
+      <entry key="S10" value="6.6065399842961545" />
+      <entry key="S30" value="6.865829204491808" />
+      <entry key="S60" value="6.932529386149437" />
+      <entry key="M2" value="6.966169089995912" />
+      <entry key="M5" value="7.009542510515989" />
+      <entry key="M10" value="7.621078919002999" />
+      <entry key="M15" value="8.904097032097454" />
+      <entry key="M30" value="13.039799918226612" />
+      <entry key="H1" value="20.241013253641956" />
+      <entry key="H2" value="32.06185829203569" />
+      <entry key="H4" value="45.14600172378389" />
+      <entry key="D1" value="100.00295214754527" />
+      <entry key="W1" value="557.7057145489189" />
     </decayedShown>
   </component>
   <component name="PackageJsonUpdateNotifier">
@@ -121,50 +131,50 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;ASKED_MARK_IGNORED_FILES_AS_EXCLUDED&quot;: &quot;true&quot;,
-    &quot;Git.Working.Tree.Tab.closed.by.user&quot;: &quot;closed&quot;,
-    &quot;JavaScript Debug.__devtools__.executor&quot;: &quot;Debug&quot;,
-    &quot;RunOnceActivity.MCP Project settings loaded&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
-    &quot;codeWithMe.voiceChat.enabledByDefault&quot;: &quot;false&quot;,
-    &quot;com.intellij.ml.llm.matterhorn.ej.ui.settings.DefaultModelSelectionForGA.v1&quot;: &quot;true&quot;,
-    &quot;disable.download.node.interpreter.editor.notification&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;master&quot;,
-    &quot;git.auto.fetch.suggestion.counter&quot;: &quot;3&quot;,
-    &quot;ignore.virus.scanning.warn.message&quot;: &quot;true&quot;,
-    &quot;javascript.preferred.runtime.type.id&quot;: &quot;node&quot;,
-    &quot;junie.onboarding.icon.badge.shown&quot;: &quot;true&quot;,
-    &quot;last_opened_file_path&quot;: &quot;D:/spa/art-supabase-pro&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.standard&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.stylelint&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;node.js.selected.package.standard&quot;: &quot;&quot;,
-    &quot;node.js.selected.package.stylelint&quot;: &quot;D:\\spa\\art-design-pro\\node_modules\\stylelint&quot;,
-    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;pnpm&quot;,
-    &quot;prettierjs.PrettierConfiguration.Package&quot;: &quot;D:\\spa\\art-supabase-pro\\node_modules\\prettier&quot;,
-    &quot;run.code.analysis.last.selected.profile&quot;: &quot;pProject Default&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.pluginManager&quot;,
-    &quot;to.speed.mode.migration.done&quot;: &quot;true&quot;,
-    &quot;ts.external.directory.path&quot;: &quot;D:\\spa\\art-supabase-pro\\node_modules\\typescript\\lib&quot;,
-    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ASKED_MARK_IGNORED_FILES_AS_EXCLUDED": "true",
+    "Git.Working.Tree.Tab.closed.by.user": "closed",
+    "JavaScript Debug.__devtools__.executor": "Debug",
+    "RunOnceActivity.MCP Project settings loaded": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
+    "codeWithMe.voiceChat.enabledByDefault": "false",
+    "com.intellij.ml.llm.matterhorn.ej.ui.settings.DefaultModelSelectionForGA.v1": "true",
+    "disable.download.node.interpreter.editor.notification": "true",
+    "git-widget-placeholder": "master",
+    "git.auto.fetch.suggestion.counter": "3",
+    "ignore.virus.scanning.warn.message": "true",
+    "javascript.preferred.runtime.type.id": "node",
+    "junie.onboarding.icon.badge.shown": "true",
+    "last_opened_file_path": "D:/spa/art-supabase-pro",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.standard": "true",
+    "node.js.detected.package.stylelint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.standard": "",
+    "node.js.selected.package.stylelint": "D:\\spa\\art-design-pro\\node_modules\\stylelint",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "pnpm",
+    "prettierjs.PrettierConfiguration.Package": "D:\\spa\\art-supabase-pro\\node_modules\\prettier",
+    "run.code.analysis.last.selected.profile": "pProject Default",
+    "settings.editor.selected.configurable": "preferences.pluginManager",
+    "to.speed.mode.migration.done": "true",
+    "ts.external.directory.path": "D:\\spa\\art-supabase-pro\\node_modules\\typescript\\lib",
+    "vue.rearranger.settings.migration": "true"
   },
-  &quot;keyToStringList&quot;: {
-    &quot;DatabaseDriversLRU&quot;: [
-      &quot;postgresql&quot;
+  "keyToStringList": {
+    "DatabaseDriversLRU": [
+      "postgresql"
     ],
-    &quot;vue.recent.templates&quot;: [
-      &quot;Vue Composition API Component&quot;
+    "vue.recent.templates": [
+      "Vue Composition API Component"
     ]
   }
-}</component>
+}]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="D:\spa\art-supabase-pro\src\assets\fonts" />

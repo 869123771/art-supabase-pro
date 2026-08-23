@@ -98,7 +98,7 @@
     menus: number
   }
 
-  const { confirmAction } = useArtFeedback()
+  const { confirmDelete } = useArtFeedback()
   const route = useRoute()
   const userStore = useUserStore()
   const { getDictMap } = storeToRefs(userStore)
@@ -456,15 +456,8 @@
       })
       if (blocked) return
 
-      await confirmAction(
-        `删除「${row.organizationName}」后无法恢复。仅无下级组织、无成员且无角色的节点可以删除。`,
-        '删除组织',
-        {
-          confirmButtonText: '确认删除',
-          cancelButtonText: '取消',
-          type: 'warning',
-          confirmButtonClass: 'el-button--danger'
-        }
+      await confirmDelete(
+        `确定删除组织「${row.organizationName}」吗？删除后无法恢复。仅无下级组织、无成员且无角色的节点可以删除。`
       )
       await deleteOrganization(row.id)
       await tableQueryRef.value?.refreshRemove()

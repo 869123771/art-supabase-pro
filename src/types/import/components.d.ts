@@ -12,8 +12,10 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    AccountingSetupGuide: typeof import('./../../../modules/art-supabase-fms/src/views/modules/accounting-setup-guide.vue')['default']
     ArtAddressPicker: typeof import('./../../components/core/forms/art-address-picker/index.vue')['default']
     ArtAiFeedback: typeof import('./../../components/core/base/art-ai-feedback/index.vue')['default']
+    ArtApplicationSwitcher: typeof import('./../../components/core/layouts/art-header-bar/widget/ArtApplicationSwitcher.vue')['default']
     ArtAsyncState: typeof import('./../../components/core/layouts/art-async-state/index.vue')['default']
     ArtBackToTop: typeof import('./../../components/core/base/art-back-to-top/index.vue')['default']
     ArtBarChart: typeof import('./../../components/core/charts/art-bar-chart/index.vue')['default']
@@ -170,7 +172,8 @@ declare module 'vue' {
     ElTree: typeof import('element-plus/es')['ElTree']
     ElUpload: typeof import('element-plus/es')['ElUpload']
     ElWatermark: typeof import('element-plus/es')['ElWatermark']
-    FinanceAccountingWorkspaceShell: typeof import('./../../components/business/finance-accounting-workspace-shell/index.vue')['default']
+    FinanceAccountingWorkspaceShell: typeof import('./../../../modules/art-supabase-fms/src/views/modules/finance-accounting-workspace-shell/index.vue')['default']
+    FundExecutionDialog: typeof import('./../../../modules/art-supabase-fms/src/views/modules/fund-execution-dialog.vue')['default']
     HorizontalSubmenu: typeof import('./../../components/core/layouts/art-menus/art-horizontal-menu/widget/HorizontalSubmenu.vue')['default']
     LoginLeftView: typeof import('./../../components/core/views/login/LoginLeftView.vue')['default']
     Map: typeof import('./../../components/core/forms/art-address-picker/modules/map.vue')['default']
@@ -196,6 +199,7 @@ declare module 'vue' {
     ThemeSvg: typeof import('./../../components/core/theme/theme-svg/index.vue')['default']
     TreeMultiple: typeof import('./../../components/core/forms/art-data-select/tree-multiple.vue')['default']
     TreeSingle: typeof import('./../../components/core/forms/art-data-select/tree-single.vue')['default']
+    VoucherEntryLines: typeof import('./../../../modules/art-supabase-fms/src/views/modules/voucher-entry-lines.vue')['default']
     WorkflowBusinessHistory: typeof import('./../../components/business/workflow-business-history/index.vue')['default']
     WorkflowBusinessHistoryDrawer: typeof import('./../../components/business/workflow-business-history/workflow-business-history-drawer.vue')['default']
     WorkflowFlowMap: typeof import('./../../components/business/workflow-flow-map/index.vue')['default']
@@ -207,8 +211,10 @@ declare module 'vue' {
 
 // For TSX support
 declare global {
+  const AccountingSetupGuide: typeof import('./../../../modules/art-supabase-fms/src/views/modules/accounting-setup-guide.vue')['default']
   const ArtAddressPicker: typeof import('./../../components/core/forms/art-address-picker/index.vue')['default']
   const ArtAiFeedback: typeof import('./../../components/core/base/art-ai-feedback/index.vue')['default']
+  const ArtApplicationSwitcher: typeof import('./../../components/core/layouts/art-header-bar/widget/ArtApplicationSwitcher.vue')['default']
   const ArtAsyncState: typeof import('./../../components/core/layouts/art-async-state/index.vue')['default']
   const ArtBackToTop: typeof import('./../../components/core/base/art-back-to-top/index.vue')['default']
   const ArtBarChart: typeof import('./../../components/core/charts/art-bar-chart/index.vue')['default']
@@ -365,7 +371,8 @@ declare global {
   const ElTree: typeof import('element-plus/es')['ElTree']
   const ElUpload: typeof import('element-plus/es')['ElUpload']
   const ElWatermark: typeof import('element-plus/es')['ElWatermark']
-  const FinanceAccountingWorkspaceShell: typeof import('./../../components/business/finance-accounting-workspace-shell/index.vue')['default']
+  const FinanceAccountingWorkspaceShell: typeof import('./../../../modules/art-supabase-fms/src/views/modules/finance-accounting-workspace-shell/index.vue')['default']
+  const FundExecutionDialog: typeof import('./../../../modules/art-supabase-fms/src/views/modules/fund-execution-dialog.vue')['default']
   const HorizontalSubmenu: typeof import('./../../components/core/layouts/art-menus/art-horizontal-menu/widget/HorizontalSubmenu.vue')['default']
   const LoginLeftView: typeof import('./../../components/core/views/login/LoginLeftView.vue')['default']
   const Map: typeof import('./../../components/core/forms/art-address-picker/modules/map.vue')['default']
@@ -391,6 +398,7 @@ declare global {
   const ThemeSvg: typeof import('./../../components/core/theme/theme-svg/index.vue')['default']
   const TreeMultiple: typeof import('./../../components/core/forms/art-data-select/tree-multiple.vue')['default']
   const TreeSingle: typeof import('./../../components/core/forms/art-data-select/tree-single.vue')['default']
+  const VoucherEntryLines: typeof import('./../../../modules/art-supabase-fms/src/views/modules/voucher-entry-lines.vue')['default']
   const WorkflowBusinessHistory: typeof import('./../../components/business/workflow-business-history/index.vue')['default']
   const WorkflowBusinessHistoryDrawer: typeof import('./../../components/business/workflow-business-history/workflow-business-history-drawer.vue')['default']
   const WorkflowFlowMap: typeof import('./../../components/business/workflow-flow-map/index.vue')['default']
