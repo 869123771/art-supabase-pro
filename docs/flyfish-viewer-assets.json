@@ -27,96 +27,96 @@
     "data-asset",
     "eda"
   ],
-  "copiedAt": "2026-08-23T03:34:50.100Z",
+  "copiedAt": "2026-08-23T06:42:03.134Z",
   "assets": [
     {
       "rendererId": "pdf",
       "id": "pdf-worker",
-      "to": "D:\\spa\\art-supabase-pro-clean-build-28e715db409c40ba855abd59620ab16e\\docs\\vendor\\pdf\\pdf.worker.mjs",
+      "to": "C:\\Users\\Administrator\\AppData\\Local\\Temp\\art-supabase-pro-smis-ui-build\\docs\\vendor\\pdf\\pdf.worker.mjs",
       "copied": true
     },
     {
       "rendererId": "pdf",
       "id": "pdf-cmaps",
-      "to": "D:\\spa\\art-supabase-pro-clean-build-28e715db409c40ba855abd59620ab16e\\docs\\vendor\\pdf\\cmaps",
+      "to": "C:\\Users\\Administrator\\AppData\\Local\\Temp\\art-supabase-pro-smis-ui-build\\docs\\vendor\\pdf\\cmaps",
       "copied": true
     },
     {
       "rendererId": "pdf",
       "id": "pdf-wasm",
-      "to": "D:\\spa\\art-supabase-pro-clean-build-28e715db409c40ba855abd59620ab16e\\docs\\vendor\\pdf\\wasm",
+      "to": "C:\\Users\\Administrator\\AppData\\Local\\Temp\\art-supabase-pro-smis-ui-build\\docs\\vendor\\pdf\\wasm",
       "copied": true
     },
     {
       "rendererId": "pdf",
       "id": "pdf-standard-fonts",
-      "to": "D:\\spa\\art-supabase-pro-clean-build-28e715db409c40ba855abd59620ab16e\\docs\\vendor\\pdf\\standard_fonts",
+      "to": "C:\\Users\\Administrator\\AppData\\Local\\Temp\\art-supabase-pro-smis-ui-build\\docs\\vendor\\pdf\\standard_fonts",
       "copied": true
     },
     {
       "rendererId": "pdf",
       "id": "pdf-cjk-font-fallback",
-      "to": "D:\\spa\\art-supabase-pro-clean-build-28e715db409c40ba855abd59620ab16e\\docs\\vendor\\pdf\\fonts",
+      "to": "C:\\Users\\Administrator\\AppData\\Local\\Temp\\art-supabase-pro-smis-ui-build\\docs\\vendor\\pdf\\fonts",
       "copied": true
     },
     {
       "rendererId": "office-presentation",
       "id": "pptx-worker",
-      "to": "D:\\spa\\art-supabase-pro-clean-build-28e715db409c40ba855abd59620ab16e\\docs\\vendor\\pptx\\pptx.worker.js",
+      "to": "C:\\Users\\Administrator\\AppData\\Local\\Temp\\art-supabase-pro-smis-ui-build\\docs\\vendor\\pptx\\pptx.worker.js",
       "copied": true
     },
     {
       "rendererId": "office-word-openxml",
       "id": "docx-worker",
-      "to": "D:\\spa\\art-supabase-pro-clean-build-28e715db409c40ba855abd59620ab16e\\docs\\vendor\\docx\\docx.worker.js",
+      "to": "C:\\Users\\Administrator\\AppData\\Local\\Temp\\art-supabase-pro-smis-ui-build\\docs\\vendor\\docx\\docx.worker.js",
       "copied": true
     },
     {
       "rendererId": "office-word-openxml",
       "id": "docx-worker-jszip",
-      "to": "D:\\spa\\art-supabase-pro-clean-build-28e715db409c40ba855abd59620ab16e\\docs\\vendor\\docx\\jszip.min.js",
+      "to": "C:\\Users\\Administrator\\AppData\\Local\\Temp\\art-supabase-pro-smis-ui-build\\docs\\vendor\\docx\\jszip.min.js",
       "copied": true
     },
     {
       "rendererId": "cad",
       "id": "cad-wasm-directory",
-      "to": "D:\\spa\\art-supabase-pro-clean-build-28e715db409c40ba855abd59620ab16e\\docs\\wasm\\cad",
+      "to": "C:\\Users\\Administrator\\AppData\\Local\\Temp\\art-supabase-pro-smis-ui-build\\docs\\wasm\\cad",
       "copied": true
     },
     {
       "rendererId": "typst",
       "id": "typst-compiler-wasm",
-      "to": "D:\\spa\\art-supabase-pro-clean-build-28e715db409c40ba855abd59620ab16e\\docs\\wasm\\typst\\typst_ts_web_compiler_bg.wasm",
+      "to": "C:\\Users\\Administrator\\AppData\\Local\\Temp\\art-supabase-pro-smis-ui-build\\docs\\wasm\\typst\\typst_ts_web_compiler_bg.wasm",
       "copied": true
     },
     {
       "rendererId": "typst",
       "id": "typst-renderer-wasm",
-      "to": "D:\\spa\\art-supabase-pro-clean-build-28e715db409c40ba855abd59620ab16e\\docs\\wasm\\typst\\typst_ts_renderer_bg.wasm",
+      "to": "C:\\Users\\Administrator\\AppData\\Local\\Temp\\art-supabase-pro-smis-ui-build\\docs\\wasm\\typst\\typst_ts_renderer_bg.wasm",
       "copied": true
     },
     {
       "rendererId": "typst",
       "id": "typst-font-assets",
-      "to": "D:\\spa\\art-supabase-pro-clean-build-28e715db409c40ba855abd59620ab16e\\docs\\wasm\\typst\\fonts",
+      "to": "C:\\Users\\Administrator\\AppData\\Local\\Temp\\art-supabase-pro-smis-ui-build\\docs\\wasm\\typst\\fonts",
       "copied": true
     },
     {
       "rendererId": "archive",
       "id": "libarchive-worker",
-      "to": "D:\\spa\\art-supabase-pro-clean-build-28e715db409c40ba855abd59620ab16e\\docs\\vendor\\libarchive\\worker-bundle.js",
+      "to": "C:\\Users\\Administrator\\AppData\\Local\\Temp\\art-supabase-pro-smis-ui-build\\docs\\vendor\\libarchive\\worker-bundle.js",
       "copied": true
     },
     {
       "rendererId": "archive",
       "id": "libarchive-wasm",
-      "to": "D:\\spa\\art-supabase-pro-clean-build-28e715db409c40ba855abd59620ab16e\\docs\\vendor\\libarchive\\libarchive.wasm",
+      "to": "C:\\Users\\Administrator\\AppData\\Local\\Temp\\art-supabase-pro-smis-ui-build\\docs\\vendor\\libarchive\\libarchive.wasm",
       "copied": true
     },
     {
       "rendererId": "data-asset",
       "id": "data-sql-wasm",
-      "to": "D:\\spa\\art-supabase-pro-clean-build-28e715db409c40ba855abd59620ab16e\\docs\\wasm\\data\\sql-wasm.wasm",
+      "to": "C:\\Users\\Administrator\\AppData\\Local\\Temp\\art-supabase-pro-smis-ui-build\\docs\\wasm\\data\\sql-wasm.wasm",
       "copied": true
     }
   ]
