@@ -9,6 +9,8 @@
 | `hr` | `art-supabase-hr` | HR 人力资源 |
 | `smis` | `art-supabase-smis` | SMIS 安全生产 |
 | `vms` | `art-supabase-vms` | VMS 车辆管理 |
+| `tms` | `art-supabase-tms` | TMS 智慧运输 |
+| `docs` | `art-supabase-doc` | 产品、开发与运维文档站 |
 
 当前采用“多业务源码仓 + 单一平台宿主”模式。平台宿主聚合当前用户可访问应用的菜单；平台超级用户可以进入全部已启用应用，普通租户用户只能进入其角色拥有菜单的应用。`VITE_APP_CODE` 和单应用菜单查询能力保留为将来拆分独立运行壳的兼容契约。
 
@@ -47,5 +49,6 @@ VMS 实验包含两类真实契约：
 | `pnpm modules:pull`    | 初始化子模块，并拉取主仓 gitlink 锁定的版本                        |
 | `pnpm modules:update`  | 更新到各子工程远端配置分支的最新提交；执行后需要检查并提交 gitlink |
 | `pnpm modules:install` | 按各子工程自己的 lockfile 安装全部依赖                             |
+| `pnpm modules:check`   | 执行全部子工程的边界、类型、代码规范、UI 与测试门禁                |
 | `pnpm modules:build`   | 依次构建全部子工程                                                 |
 | `pnpm modules:setup`   | 一次完成锁定版本拉取、依赖安装和全部构建                           |

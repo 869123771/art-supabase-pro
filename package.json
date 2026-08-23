@@ -2,6 +2,7 @@
   "name": "art-supabase-pro",
   "version": "1.0.0",
   "type": "module",
+  "packageManager": "pnpm@11.9.0",
   "types": "./src/types/platform-runtime.d.ts",
   "files": [
     ".auto-import.json",
@@ -12,8 +13,8 @@
     "public"
   ],
   "engines": {
-    "node": ">=20.19.0",
-    "pnpm": ">=8.8.0"
+    "node": ">=22.0.0",
+    "pnpm": ">=11.9.0"
   },
   "scripts": {
     "dev": "vite --open",
@@ -21,6 +22,7 @@
     "modules:pull": "tsx scripts/manage-modules.ts pull",
     "modules:update": "tsx scripts/manage-modules.ts update",
     "modules:install": "tsx scripts/manage-modules.ts install",
+    "modules:check": "tsx scripts/manage-modules.ts check",
     "modules:build": "tsx scripts/manage-modules.ts build",
     "modules:setup": "tsx scripts/manage-modules.ts setup",
     "build:analyze": "tsx scripts/analyze-build.ts",
@@ -45,7 +47,7 @@
     "test:e2e:report": "playwright show-report",
     "check:fast": "pnpm ui:audit && pnpm typecheck && pnpm lint && pnpm test:unit",
     "check": "pnpm check:fast && pnpm lint:stylelint",
-    "check:ci": "pnpm ui:audit && pnpm typecheck && pnpm lint && pnpm lint:stylelint && pnpm test:coverage && pnpm snapshot:check && pnpm build && pnpm bundle:check && pnpm test:e2e:auth && pnpm test:e2e:critical && pnpm test:e2e:core",
+    "check:ci": "pnpm modules:check && pnpm ui:audit && pnpm typecheck && pnpm lint && pnpm lint:stylelint && pnpm test:coverage && pnpm snapshot:check && pnpm build && pnpm bundle:check && pnpm test:e2e:auth && pnpm test:e2e:critical && pnpm test:e2e:core",
     "fix": "pnpm lint --fix",
     "lint:prettier": "prettier --write \"**/*.{js,cjs,ts,json,tsx,css,less,scss,vue,html,md}\"",
     "lint:stylelint": "stylelint \"src/**/*.{css,scss,vue}\"",

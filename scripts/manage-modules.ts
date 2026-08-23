@@ -3,7 +3,8 @@ import { spawnSync } from 'node:child_process'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-type ModuleAction = 'pull' | 'update' | 'install' | 'build' | 'setup'
+type ModuleAction = 'pull' | 'update' | 'install' | 'check' | 'build' | 'setup'
+type ModulePackageAction = 'install' | 'check' | 'build'
 
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 
@@ -75,12 +76,12 @@ function updateRemoteModules(): void {
   runCommand('git', ['submodule', 'update', '--init', '--recursive', '--remote'])
 }
 
-function runForModules(modulePaths: string[], action: 'install' | 'build'): void {
+function runForModules(modulePaths: string[], action: ModulePackageAction): void {
   ensureModulesInitialized(modulePaths)
 
   for (const [index, modulePath] of modulePaths.entries()) {
     console.log(`\n[module ${index + 1}/${modulePaths.length}] ${modulePath} · ${action}`)
-    const args = action === 'install' ? ['install', '--frozen-lockfile'] : ['run', 'build']
+    const args = action === 'install' ? ['install', '--frozen-lockfile'] : ['run', action]
     runPackageManager(args, join(projectRoot, modulePath))
   }
 }
@@ -91,6 +92,7 @@ function printUsage(): void {
   pnpm modules:pull     初始化并拉取主仓锁定的子工程版本
   pnpm modules:update   更新到各子工程远端配置分支的最新提交
   pnpm modules:install  安装全部子工程依赖
+  pnpm modules:check    执行全部子工程的边界、类型、代码规范、UI 与测试门禁
   pnpm modules:build    构建全部子工程
   pnpm modules:setup    拉取锁定版本、安装依赖并构建全部子工程
 `)
@@ -98,7 +100,7 @@ function printUsage(): void {
 
 function main(): void {
   const action = process.argv[2] as ModuleAction | undefined
-  if (!action || !['pull', 'update', 'install', 'build', 'setup'].includes(action)) {
+  if (!action || !['pull', 'update', 'install', 'check', 'build', 'setup'].includes(action)) {
     printUsage()
     if (action) process.exitCode = 1
     return
@@ -115,6 +117,9 @@ function main(): void {
       break
     case 'install':
       runForModules(modulePaths, 'install')
+      break
+    case 'check':
+      runForModules(modulePaths, 'check')
       break
     case 'build':
       runForModules(modulePaths, 'build')

@@ -15,6 +15,7 @@ import { fileViewerRenderers } from '@file-viewer/vite-plugin'
 import { visualizer } from 'rollup-plugin-visualizer'
 import { getKnownFileViewerExternalization } from './scripts/build-log-policy'
 import { createFileViewerAssetSyncPlugin } from './scripts/file-viewer-asset-sync'
+import { hostedModuleSharedDependencies } from './scripts/hosted-module-dependencies'
 
 // 添加插件用于生成 .nojekyll 文件
 import { createNoJekyllPlugin } from './src/plugins/nojekyll'
@@ -134,6 +135,7 @@ export default ({ mode }: { mode: string }) => {
     },
     // 路径别名
     resolve: {
+      dedupe: hostedModuleSharedDependencies,
       alias: {
         '@fms': resolvePath('modules/art-supabase-fms/src'),
         '@hr': resolvePath('modules/art-supabase-hr/src'),
