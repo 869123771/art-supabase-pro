@@ -1,1 +1,0 @@
-import{Ui as e,hi as t,wi as n}from"./framework-zmx8ZOtz.js";import{t as r}from"./hr-workspace-page-CDBlnyWd.js";var i=n({name:`HrHeadcount`,__name:`index`,setup(n){let i={view:`Hr:Headcount:View`,add:`Hr:Headcount:Add`,edit:`Hr:Headcount:Edit`,delete:`Hr:Headcount:Delete`};return(n,a)=>(e(),t(r,{"workspace-key":`headcount`,permissions:i}))}});export{i as default};

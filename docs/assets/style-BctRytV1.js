@@ -1,1 +1,0 @@
-import"./style-DT-Q-OBS.js";

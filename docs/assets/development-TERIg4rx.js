@@ -1,1 +1,0 @@
-import{Ui as e,hi as t,wi as n}from"./framework-zmx8ZOtz.js";import{t as r}from"./hr-workspace-page-CDBlnyWd.js";var i=n({name:`HrTalentDevelopment`,__name:`index`,setup(n){let i={view:`Hr:Talent:View`,add:`Hr:Talent:Add`,edit:`Hr:Talent:Edit`,delete:`Hr:Talent:Delete`};return(n,a)=>(e(),t(r,{"workspace-key":`talent`,permissions:i}))}});export{i as default};

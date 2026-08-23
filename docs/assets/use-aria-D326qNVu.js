@@ -1,1 +1,0 @@
-import{nn as e}from"./common-utils-CN7ualjA.js";import{q as t}from"./style-CIXPBBet.js";var n=t({ariaLabel:String,ariaOrientation:{type:String,values:[`horizontal`,`vertical`,`undefined`]},ariaControls:String}),r=t=>e(n,t);export{r as t};

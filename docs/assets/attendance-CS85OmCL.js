@@ -1,1 +1,0 @@
-import{Ui as e,hi as t,wi as n}from"./framework-zmx8ZOtz.js";import{t as r}from"./hr-workspace-page-CDBlnyWd.js";var i=n({name:`HrAttendance`,__name:`index`,setup(n){let i={view:`Hr:Attendance:View`,add:`Hr:Attendance:Add`,edit:`Hr:Attendance:Edit`,delete:`Hr:Attendance:Delete`};return(n,a)=>(e(),t(r,{"workspace-key":`attendance`,permissions:i}))}});export{i as default};

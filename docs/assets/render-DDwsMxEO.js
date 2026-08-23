@@ -1,1 +1,0 @@
-import{Di as e}from"./framework-zmx8ZOtz.js";import{t}from"./attachment-link-DmqeyY5d.js";var n=n=>e(t,{file:n});export{n as t};
