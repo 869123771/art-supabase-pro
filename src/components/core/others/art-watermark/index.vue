@@ -1,6 +1,6 @@
 <!-- 水印组件 -->
 <template>
-  <Teleport to="#app-content">
+  <Teleport to="#app-content" :disabled="!teleportReady">
     <div
       v-if="resolvedVisible"
       class="art-watermark-layer"
@@ -33,6 +33,7 @@
   const { watermarkVisible } = storeToRefs(settingStore)
   const { websiteConfig, websiteConfigLoaded, loadWebsiteConfig, resolveWatermarkContent } =
     useWebsiteConfig()
+  const teleportReady = ref(false)
 
   interface WatermarkProps {
     /** 水印内容 */
@@ -87,7 +88,9 @@
     props.offsetY ?? 95
   ])
 
-  onMounted(() => {
+  onMounted(async () => {
+    await nextTick()
+    teleportReady.value = true
     void loadWebsiteConfig()
   })
 </script>
