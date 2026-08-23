@@ -1,7 +1,7 @@
 import dayjs, { type Dayjs } from 'dayjs'
 import { useSupabase } from '@/hooks'
 import type { SupabaseQueryLike } from '@/api/providers/supabase/query'
-import { fetchSecureOrders } from '@/api/modules/tms/transport-secure'
+import { fetchSecureOrders } from '@tms/api/integration'
 
 const { supabase, responseHandle } = useSupabase()
 

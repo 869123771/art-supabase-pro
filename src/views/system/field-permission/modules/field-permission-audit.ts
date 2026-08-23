@@ -1,6 +1,6 @@
 import { uniq } from 'lodash-es'
 
-type AccessLevel = Api.Tms.BasicData.FieldAccessLevel
+type AccessLevel = Api.Common.FieldAccessLevel
 type PermissionField = Api.SystemManage.FieldPermissionField
 type AuditLog = Api.SystemManage.FieldPermissionAuditLog
 

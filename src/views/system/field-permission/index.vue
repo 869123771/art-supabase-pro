@@ -315,7 +315,7 @@
   type Configuration = Api.SystemManage.FieldPermissionConfiguration
   type PermissionField = Api.SystemManage.FieldPermissionField
   type AuditLog = Api.SystemManage.FieldPermissionAuditLog
-  type AccessLevel = Api.Tms.BasicData.FieldAccessLevel
+  type AccessLevel = Api.Common.FieldAccessLevel
   type PermissionSelection = AccessLevel | 'inherit'
 
   interface SelectOption {

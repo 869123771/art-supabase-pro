@@ -50,6 +50,15 @@ registerHostedApplication(
   ])
 )
 registerHostedApplication(
+  'tms',
+  '../modules/art-supabase-tms/src/views',
+  import.meta.glob<HostedRouteComponentModule>([
+    '../modules/art-supabase-tms/src/views/**/*.vue',
+    '!../modules/art-supabase-tms/src/views/**/modules/**/*.vue',
+    '!../modules/art-supabase-tms/src/views/**/components/**/*.vue'
+  ])
+)
+registerHostedApplication(
   'vms',
   '../modules/art-supabase-vms/src/views',
   import.meta.glob<HostedRouteComponentModule>([

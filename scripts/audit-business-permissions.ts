@@ -25,7 +25,7 @@ const compatibilityMigrationPath = join(
   'supabase/migrations/20260820143100_backfill_new_button_permissions_for_existing_roles.sql'
 )
 const managedViewRoots = new Map<string, string>([
-  ['tms', join(projectRoot, 'src/views/tms')],
+  ['tms', join(projectRoot, 'modules/art-supabase-tms/src/views')],
   ['system', join(projectRoot, 'src/views/system')],
   ['finance', join(projectRoot, 'modules/art-supabase-finance/src/views')],
   ['fms', join(projectRoot, 'modules/art-supabase-fms/src/views')],
@@ -71,18 +71,24 @@ const platformSuperAllowlist = new Map<string, string>([
     'modules/art-supabase-hr/src/views/personnel/position/modules/position-dialog.vue',
     'cross-tenant position tenant assignment'
   ],
-  ['src/views/tms/basic-data/favorite-route/index.vue', 'cross-tenant favorite-route context'],
   [
-    'src/views/tms/basic-data/favorite-route/modules/favorite-route-dialog.vue',
+    'modules/art-supabase-tms/src/views/basic-data/favorite-route/index.vue',
     'cross-tenant favorite-route context'
   ],
-  ['src/views/tms/order-open/modules/ai-order-drawer.vue', 'controlled AI master-data write'],
   [
-    'src/views/tms/delivery-management/modules/receipt-exception-work-order-drawer.vue',
+    'modules/art-supabase-tms/src/views/basic-data/favorite-route/modules/favorite-route-dialog.vue',
+    'cross-tenant favorite-route context'
+  ],
+  [
+    'modules/art-supabase-tms/src/views/order-open/modules/ai-order-drawer.vue',
+    'controlled AI master-data write'
+  ],
+  [
+    'modules/art-supabase-tms/src/views/delivery-management/modules/receipt-exception-work-order-drawer.vue',
     'controlled AI workflow-state write'
   ],
   [
-    'src/views/tms/delivery-management/modules/waybill-receipt-ocr-panel.vue',
+    'modules/art-supabase-tms/src/views/delivery-management/modules/waybill-receipt-ocr-panel.vue',
     'controlled AI workflow-state write'
   ]
 ])

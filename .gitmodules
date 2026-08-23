@@ -17,3 +17,7 @@
 [submodule "modules/art-supabase-smis"]
 	path = modules/art-supabase-smis
 	url = https://gitee.com/wangyanghub/art-supabase-smis.git
+[submodule "modules/art-supabase-tms"]
+	path = modules/art-supabase-tms
+	url = https://gitee.com/wangyanghub/art-supabase-tms.git
+	branch = master

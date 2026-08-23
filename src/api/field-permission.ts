@@ -1,7 +1,7 @@
 import { useSupabase } from '@/hooks'
 
 type SubjectType = Api.SystemManage.FieldPermissionSubjectType
-type AccessLevel = Api.Tms.BasicData.FieldAccessLevel
+type AccessLevel = Api.Common.FieldAccessLevel
 
 const { supabase, responseHandle } = useSupabase()
 
