@@ -1,0 +1,1 @@
+import{At as e}from"./framework-Dc3kpLtW.js";import{t}from"./attachment-link-D03lSZX5.js";var n=n=>e(t,{file:n});export{n as t};

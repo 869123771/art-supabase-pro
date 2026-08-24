@@ -4,8 +4,8 @@ import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { extname, join, relative, resolve } from 'node:path'
 import {
   businessButtonPermissionCatalog,
-  managedButtonPermissionCatalog,
-  resolveCatalogPermissionCode
+  resolveCatalogPermissionCode,
+  systemButtonPermissionCatalog
 } from './business-button-permission-catalog'
 
 const projectRoot = resolve(import.meta.dirname, '..')
@@ -17,20 +17,20 @@ const requiredPermissionMigrations = [
   'tenant_notification_reminder',
   'backfill_new_button_permissions_for_existing_roles'
 ] as const
-const managedViewRoots = new Map<string, string>([
+type ManagedModule = 'tms' | 'vms' | 'fms' | 'hr' | 'system' | 'workflow'
+
+const managedViewRoots = new Map<ManagedModule, string>([
   ['tms', join(projectRoot, 'modules/art-supabase-tms/src/views')],
   ['system', join(projectRoot, 'src/views/system')],
   ['workflow', join(projectRoot, 'src/views/workflow')],
   ['fms', join(projectRoot, 'modules/art-supabase-fms/src/views')],
   ['vms', join(projectRoot, 'modules/art-supabase-vms/src/views')],
-  ['hr', join(projectRoot, 'modules/art-supabase-hr/src/views')],
-  ['smis', join(projectRoot, 'modules/art-supabase-smis/src/views')]
+  ['hr', join(projectRoot, 'modules/art-supabase-hr/src/views')]
 ])
-const managedModules = new Set(['tms', 'vms', 'fms', 'hr', 'smis', 'system', 'workflow'])
-const businessModules = new Set(['tms', 'vms', 'fms', 'hr', 'smis'])
+const businessModules = new Set<ManagedModule>(['tms', 'vms', 'fms', 'hr'])
 const sourceExtensions = new Set(['.ts', '.tsx', '.vue'])
 const permissionPattern =
-  /['"`]((?:System|Workflow|Tms|Finance|Hr|Smis|Vehicle|Insurance|Parts|PartsCategory|Supplier)[A-Za-z0-9]*(?::[A-Za-z][A-Za-z0-9]*)+)['"`]/g
+  /['"`]((?:System|Workflow|Tms|Finance|Hr|Vehicle|Insurance|Parts|PartsCategory|Supplier)[A-Za-z0-9]*(?::[A-Za-z][A-Za-z0-9]*)+)['"`]/g
 const platformSuperPattern = /isPlatformSuper|平台超级管理员|仅平台|platform super administrator/i
 
 // These files use platform-super only for cross-tenant context or for controlled AI writes.
@@ -99,13 +99,32 @@ function toProjectPath(filePath: string): string {
   return relative(projectRoot, filePath).replaceAll('\\', '/')
 }
 
-const catalogRows = managedButtonPermissionCatalog.flatMap((entry) =>
-  entry.buttons.map((definition) => ({
-    menuName: entry.menuName,
-    action: definition.action,
-    code: resolveCatalogPermissionCode(entry.menuName, definition)
-  }))
-)
+function resolveBusinessCatalogOwner(menuName: string): ManagedModule {
+  if (menuName === 'WorkflowAnalytics') return 'workflow'
+  if (menuName.startsWith('Tms')) return 'tms'
+  if (menuName.startsWith('Finance')) return 'fms'
+  if (menuName.startsWith('Hr')) return 'hr'
+  return 'vms'
+}
+
+const catalogRows = [
+  ...businessButtonPermissionCatalog.flatMap((entry) =>
+    entry.buttons.map((definition) => ({
+      owner: resolveBusinessCatalogOwner(entry.menuName),
+      menuName: entry.menuName,
+      action: definition.action,
+      code: resolveCatalogPermissionCode(entry.menuName, definition)
+    }))
+  ),
+  ...systemButtonPermissionCatalog.flatMap((entry) =>
+    entry.buttons.map((definition) => ({
+      owner: 'system' as const,
+      menuName: entry.menuName,
+      action: definition.action,
+      code: resolveCatalogPermissionCode(entry.menuName, definition)
+    }))
+  )
+]
 const catalogCodes = new Set(catalogRows.map((row) => row.code))
 assert.equal(catalogCodes.size, catalogRows.length, '业务按钮权限码存在重复，请保持全局唯一')
 
@@ -201,9 +220,14 @@ if (migrationFiles.length > 0) {
 }
 
 const sourceFiles = [...managedViewRoots.entries()].flatMap(([moduleName, viewRoot]) =>
-  managedModules.has(moduleName) && existsSync(viewRoot)
+  existsSync(viewRoot)
     ? walkSourceFiles(viewRoot).map((filePath) => ({ filePath, moduleName }))
     : []
+)
+const availableSourceModules = new Set<ManagedModule>(
+  [...managedViewRoots.entries()]
+    .filter(([, viewRoot]) => existsSync(viewRoot))
+    .map(([moduleName]) => moduleName)
 )
 const uncataloguedReferences: string[] = []
 const forbiddenPlatformSuperReferences: string[] = []
@@ -230,7 +254,8 @@ for (const { filePath, moduleName } of sourceFiles) {
 
 const allManagedSource = [...sourceText.values()].join('\n')
 const missingExplicitReferences = catalogRows.filter(
-  ({ code }) =>
+  ({ code, owner }) =>
+    availableSourceModules.has(owner) &&
     !allManagedSource.includes(`'${code}'`) &&
     !allManagedSource.includes(`"${code}"`) &&
     !allManagedSource.includes(`\`${code}\``)

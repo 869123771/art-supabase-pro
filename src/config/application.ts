@@ -93,6 +93,10 @@ export function resolveApplicationBaseUrl(
   return new URL(baseUrl, location.origin)
 }
 
+/**
+ * 平台宿主聚合当前用户有权访问的应用；独立子应用始终只加载自己的菜单。
+ * 菜单明细仍由数据库按用户角色过滤，这里只确定需要请求的应用范围。
+ */
 export function resolveHostedApplicationCodes(
   applicationCode: ApplicationCode,
   accessibleApplications: ReadonlyArray<{ code: ApplicationCode }>

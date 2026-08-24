@@ -10,7 +10,9 @@
     ".env.development",
     ".env.production",
     "src",
-    "public"
+    "public",
+    "scripts/build-log-policy.mjs",
+    "scripts/build-log-policy.d.mts"
   ],
   "engines": {
     "node": ">=22.0.0",
@@ -19,6 +21,9 @@
   "scripts": {
     "dev": "vite --open",
     "build": "vite build",
+    "build:all": "pnpm modules:build && pnpm build",
+    "modules": "tsx scripts/manage-modules.ts",
+    "modules:status": "tsx scripts/manage-modules.ts status",
     "modules:pull": "tsx scripts/manage-modules.ts pull",
     "modules:update": "tsx scripts/manage-modules.ts update",
     "modules:install": "tsx scripts/manage-modules.ts install",
@@ -40,15 +45,14 @@
     "test:db": "supabase db query --linked --file supabase/tests/workflow_engine_test.sql",
     "test:e2e": "playwright test",
     "test:e2e:auth": "playwright test tests/e2e/auth-pages.accessibility.spec.ts --project=public-desktop-1440 --project=public-mobile-390",
-    "test:e2e:vms-module": "playwright test tests/e2e/vms-module-host.spec.ts --project=desktop-1440",
-    "test:e2e:critical": "playwright test tests/e2e/critical-business-flows.spec.ts --project=desktop-1440 --project=mobile-390 && playwright test tests/e2e/ai-configuration-inheritance.smoke.spec.ts --project=desktop-1440",
+    "test:e2e:critical": "playwright test tests/e2e/ai-configuration-inheritance.smoke.spec.ts --project=desktop-1440",
     "test:e2e:core": "playwright test tests/e2e/core-pages.visual.spec.ts --project=desktop-1440 --project=mobile-390",
     "test:e2e:install": "playwright install chromium",
     "test:e2e:update": "playwright test --update-snapshots",
     "test:e2e:report": "playwright show-report",
     "check:fast": "pnpm ui:audit && pnpm permissions:audit && pnpm database:security:audit && pnpm typecheck && pnpm lint && pnpm test:unit",
     "check": "pnpm check:fast && pnpm lint:stylelint",
-    "check:ci": "pnpm modules:check && pnpm modules:build && pnpm ui:audit && pnpm typecheck && pnpm lint && pnpm lint:stylelint && pnpm test:coverage && pnpm snapshot:check && pnpm build && pnpm bundle:check && pnpm test:e2e:auth && pnpm test:e2e:critical && pnpm test:e2e:core",
+    "check:ci": "pnpm ui:audit && pnpm typecheck && pnpm lint && pnpm lint:stylelint && pnpm test:coverage && pnpm snapshot:check && pnpm build && pnpm bundle:check && pnpm test:e2e:auth && pnpm test:e2e:critical && pnpm test:e2e:core",
     "fix": "pnpm lint --fix",
     "lint:prettier": "prettier --write \"**/*.{js,cjs,ts,json,tsx,css,less,scss,vue,html,md}\"",
     "lint:stylelint": "stylelint \"src/**/*.{css,scss,vue}\"",

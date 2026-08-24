@@ -1,8 +1,10 @@
 import type { Component } from 'vue'
 import { registerApplicationViewModules } from '@/router/core/ComponentLoader'
-import { registerFmsRecognitionIntegration } from '@fms/integrations'
 
 type HostedRouteComponentModule = { default: Component }
+type HostedIntegrationModule = {
+  registerFmsRecognitionIntegration?: () => void
+}
 
 function registerHostedApplication(
   applicationCode: string,
@@ -12,7 +14,15 @@ function registerHostedApplication(
   registerApplicationViewModules(applicationCode, sourceRoot, sourceModules)
 }
 
-registerFmsRecognitionIntegration()
+// FMS 的识别器是可选集成。子仓未初始化时 glob 为空，平台仍可独立启动和构建。
+const fmsIntegrationModules = import.meta.glob<HostedIntegrationModule>(
+  '../modules/art-supabase-fms/src/integrations/index.ts',
+  { eager: true }
+)
+Object.values(fmsIntegrationModules).forEach((module) => {
+  module.registerFmsRecognitionIntegration?.()
+})
+
 registerHostedApplication(
   'fms',
   '../modules/art-supabase-fms/src/views',

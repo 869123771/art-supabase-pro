@@ -104,16 +104,6 @@ const templateDefinitions: WorkflowTemplateDefinition[] = [
     nodeNames: ['车辆管理员审核']
   },
   {
-    key: 'smis-hidden-danger',
-    name: '安全隐患复查审批',
-    description: '按隐患等级、风险点、整改责任人与整改期限完成复查销号审批。',
-    category: 'safety',
-    businessType: 'smis_hidden_danger',
-    icon: 'ri:shield-check-line',
-    tone: 'warning',
-    nodeNames: ['安全管理复查']
-  },
-  {
     key: 'hr-personnel-change',
     name: '人事异动审批',
     description: '用于转正、调岗、晋升、停复职与离职等员工主档变更。',

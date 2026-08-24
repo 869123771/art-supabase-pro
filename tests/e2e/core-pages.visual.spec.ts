@@ -14,16 +14,6 @@ const visualPages: VisualPage[] = [
     root: '.operations-dashboard'
   },
   {
-    name: 'in-transit-monitor',
-    path: '/tms/in-transit-monitor',
-    root: '.transit-screen__viewport'
-  },
-  {
-    name: 'invoice-management',
-    path: '/fms/invoice-management',
-    root: '.art-table-query'
-  },
-  {
     name: 'supabase-ai-assistant',
     path: '/data-center/supabase-ai-assistant',
     root: '.project-assistant'
@@ -37,12 +27,6 @@ const visualPages: VisualPage[] = [
     name: 'ai-project-planner',
     path: '/system/ai-project-planner',
     root: '.ai-planner'
-  },
-  {
-    name: 'order-open',
-    path: '/tms/order-open',
-    root: '.order-open',
-    captureLower: true
   },
   {
     name: 'website-config',

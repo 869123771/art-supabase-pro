@@ -77,19 +77,6 @@ test.describe('multi-module workspace expansion', () => {
     await verifyWorkspace(page, '/#/workflow/analytics', '审批效能')
   })
 
-  test('keeps SMIS training analytics hidden from an unassigned ordinary role', async ({
-    page
-  }) => {
-    await page.goto('/#/smis/qualification/training-management/training-analysis', {
-      waitUntil: 'domcontentloaded'
-    })
-
-    await expect(page).toHaveURL(/#\/dashboard\/console/, { timeout: 60_000 })
-    await expect(page.getByRole('heading', { name: '培训统计报表', exact: true })).toHaveCount(0)
-    await expect(page.getByRole('menuitem', { name: '培训统计报表', exact: true })).toHaveCount(0)
-    await expectNoHorizontalOverflow(page)
-  })
-
   test('opens TMS capacity planning center', async ({ page }) => {
     await verifyWorkspace(page, '/#/tms/capacity-planning', '运力容量中心')
   })

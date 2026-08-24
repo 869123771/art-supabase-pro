@@ -7,13 +7,30 @@
  * @author Art Design Pro Team
  */
 
-import { h, type Component } from 'vue'
+import { defineComponent, h, type Component } from 'vue'
+import { APPLICATION_CODES, type ApplicationCode } from '@/config/application'
 
 type AsyncRouteComponent = () => Promise<Component>
 type RouteComponentModule = { default: Component }
 type RouteComponentLoader = () => Promise<RouteComponentModule>
 
 const registeredApplicationModules: Record<string, RouteComponentLoader> = {}
+const warnedMissingHostedApplications = new Set<HostedApplicationCode>()
+
+type HostedApplicationCode = Exclude<ApplicationCode, 'platform'>
+
+export function resolveHostedApplicationCode(componentPath: string): HostedApplicationCode | null {
+  const applicationCode = componentPath.split('/').filter(Boolean)[0]
+  if (
+    !applicationCode ||
+    applicationCode === 'platform' ||
+    !APPLICATION_CODES.includes(applicationCode as ApplicationCode)
+  ) {
+    return null
+  }
+
+  return applicationCode as HostedApplicationCode
+}
 
 export function mapApplicationViewModules(
   applicationCode: string,
@@ -82,6 +99,17 @@ export class ComponentLoader {
     const module = this.modules[fullPath] || this.modules[fullPathWithIndex]
 
     if (!module) {
+      const hostedApplicationCode = resolveHostedApplicationCode(componentPath)
+      if (hostedApplicationCode) {
+        if (!warnedMissingHostedApplications.has(hostedApplicationCode)) {
+          warnedMissingHostedApplications.add(hostedApplicationCode)
+          console.warn(
+            `[ComponentLoader] ${hostedApplicationCode.toUpperCase()} 子模块未装载，相关授权菜单将使用缺失模块提示页`
+          )
+        }
+        return this.createErrorComponent(componentPath)
+      }
+
       console.error(
         `[ComponentLoader] 未找到组件: ${componentPath}，尝试过的路径: ${fullPath} 和 ${fullPathWithIndex}`
       )
@@ -133,6 +161,19 @@ export class ComponentLoader {
    * 创建错误提示组件
    */
   private createErrorComponent(componentPath: string): AsyncRouteComponent {
+    const applicationCode = resolveHostedApplicationCode(componentPath)
+    if (applicationCode) {
+      return async () => {
+        const { default: ModuleUnavailable } =
+          await import('@/views/exception/module-unavailable/index.vue')
+
+        return defineComponent({
+          name: 'HostedModuleUnavailableRoute',
+          render: () => h(ModuleUnavailable, { applicationCode, componentPath })
+        })
+      }
+    }
+
     return () =>
       Promise.resolve({
         render() {

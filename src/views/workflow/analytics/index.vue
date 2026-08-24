@@ -1,8 +1,5 @@
 <template>
-  <div
-    v-auth="'WorkflowAnalytics:View'"
-    class="workflow-analytics-page business-workspace-page art-full-height"
-  >
+  <div v-auth="'WorkflowAnalytics:View'" class="workflow-analytics-page business-workspace-page">
     <BusinessWorkspaceHeader
       eyebrow="APPROVAL PERFORMANCE"
       title="审批效能"
@@ -366,7 +363,6 @@
   .workflow-analytics-page {
     gap: 12px;
     min-width: 0;
-    overflow: hidden;
 
     &__decision-strip,
     &__trend,
@@ -617,8 +613,6 @@
     }
 
     @media (width <= 1180px) {
-      overflow: visible;
-
       &__grid {
         grid-template-columns: 1fr;
       }
@@ -629,8 +623,6 @@
     }
 
     @media (width <= 760px) {
-      height: auto;
-
       &__decision-strip,
       header {
         flex-direction: column;

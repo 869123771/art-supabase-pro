@@ -1,8 +1,8 @@
 /**
  * Business modules are independent repositories with their own lockfiles. The platform host loads
- * their source directly, so these shared dependencies must resolve from the host root. Keeping the
- * policy in one tested module prevents duplicated Vue contexts, Pinia stores, Element Plus
- * injection state and transport clients in the integrated application.
+ * any locally available module source directly, so these shared dependencies must resolve from the
+ * host root. Keeping the policy in one module prevents duplicated Vue contexts, Pinia stores,
+ * Element Plus injection state and transport clients in the integrated application.
  */
 export const hostedModuleSharedDependencies = [
   '@element-plus/icons-vue',
@@ -17,3 +17,11 @@ export const hostedModuleSharedDependencies = [
   'vue-i18n',
   'vue-router'
 ] as const
+
+export const hostedApplicationSourceDirectories = {
+  '@fms': 'modules/art-supabase-fms/src',
+  '@hr': 'modules/art-supabase-hr/src',
+  '@smis': 'modules/art-supabase-smis/src',
+  '@tms': 'modules/art-supabase-tms/src',
+  '@vms': 'modules/art-supabase-vms/src'
+} as const

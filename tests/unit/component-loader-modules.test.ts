@@ -2,7 +2,8 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
   mapApplicationViewModules,
-  registerApplicationViewModules
+  registerApplicationViewModules,
+  resolveHostedApplicationCode
 } from '../../src/router/core/ComponentLoader'
 
 test('maps flattened child views behind the stable application route prefix', () => {
@@ -22,4 +23,11 @@ test('accepts independently built application view registrations before bootstra
   })
 
   assert.equal(registered['../../views/vms/vehicle-query/index.vue'], loader)
+})
+
+test('identifies missing business application pages for the host fallback', () => {
+  assert.equal(resolveHostedApplicationCode('/vms/vehicle-query'), 'vms')
+  assert.equal(resolveHostedApplicationCode('/fms/account-set'), 'fms')
+  assert.equal(resolveHostedApplicationCode('/system/user'), null)
+  assert.equal(resolveHostedApplicationCode('/unknown/page'), null)
 })

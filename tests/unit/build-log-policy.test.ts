@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { getKnownFileViewerExternalization } from '../../scripts/build-log-policy'
+import {
+  createBuildLogPolicy,
+  getKnownFileViewerExternalization
+} from '../../scripts/build-log-policy'
 
 test('build log policy recognizes known lazy file-viewer transitive warnings', () => {
   const warning = getKnownFileViewerExternalization({
@@ -20,4 +23,33 @@ test('build log policy keeps unknown browser externalizations visible', () => {
     null
   )
   assert.equal(getKnownFileViewerExternalization({ message: 'Circular dependency detected' }), null)
+})
+
+test('shared build policy only folds known warnings and owns common Rolldown settings', () => {
+  const policy = createBuildLogPolicy()
+  const forwarded: string[] = []
+  const defaultHandler = (_level: string, log: { message?: string }) => {
+    forwarded.push(log.message || '')
+  }
+
+  policy.rolldownOptions.onLog(
+    'warn',
+    {
+      message:
+        'Module "stream" has been externalized for browser compatibility, imported by "D:/repo/node_modules/.pnpm/avsc@5.7.9/node_modules/avsc/lib/types.js".'
+    },
+    defaultHandler
+  )
+  policy.rolldownOptions.onLog(
+    'warn',
+    { message: 'A new warning that must remain visible' },
+    defaultHandler
+  )
+
+  assert.deepEqual(forwarded, ['A new warning that must remain visible'])
+  assert.equal(policy.chunkSizeWarningLimit, 7000)
+  assert.deepEqual(policy.rolldownOptions.checks, {
+    invalidAnnotation: false,
+    pluginTimings: false
+  })
 })

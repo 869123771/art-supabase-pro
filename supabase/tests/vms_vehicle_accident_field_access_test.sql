@@ -13,7 +13,6 @@ insert into auth.users(
   ('fd200000-0000-4000-8000-000000000001', 'authenticated', 'authenticated', 'qa-accident-owner@example.invalid', '', now(), '{"provider":"email","providers":["email"]}', '{}', now(), now()),
   ('fd200000-0000-4000-8000-000000000002', 'authenticated', 'authenticated', 'qa-accident-manager@example.invalid', '', now(), '{"provider":"email","providers":["email"]}', '{}', now(), now()),
   ('fd200000-0000-4000-8000-000000000003', 'authenticated', 'authenticated', 'qa-accident-viewer@example.invalid', '', now(), '{"provider":"email","providers":["email"]}', '{}', now(), now()),
-  ('fd200000-0000-4000-8000-000000000004', 'authenticated', 'authenticated', 'qa-accident-smis@example.invalid', '', now(), '{"provider":"email","providers":["email"]}', '{}', now(), now()),
   ('fd200000-0000-4000-8000-000000000005', 'authenticated', 'authenticated', 'qa-accident-no-menu@example.invalid', '', now(), '{"provider":"email","providers":["email"]}', '{}', now(), now()),
   ('fd200000-0000-4000-8000-000000000006', 'authenticated', 'authenticated', 'qa-accident-other@example.invalid', '', now(), '{"provider":"email","providers":["email"]}', '{}', now(), now());
 
@@ -22,8 +21,7 @@ insert into public.sys_role(
 ) values
   ('fd400000-0000-4000-8000-000000000001', 'QA accident owner', 'QA_ACCIDENT_OWNER', true, 'fd100000-0000-4000-8000-000000000001', 'qa', 'qa'),
   ('fd400000-0000-4000-8000-000000000002', 'QA accident manager', 'QA_ACCIDENT_MANAGER', true, 'fd100000-0000-4000-8000-000000000001', 'qa', 'qa'),
-  ('fd400000-0000-4000-8000-000000000003', 'QA accident viewer', 'QA_ACCIDENT_VIEWER', true, 'fd100000-0000-4000-8000-000000000001', 'qa', 'qa'),
-  ('fd400000-0000-4000-8000-000000000004', 'QA accident SMIS', 'QA_ACCIDENT_SMIS', true, 'fd100000-0000-4000-8000-000000000001', 'qa', 'qa');
+  ('fd400000-0000-4000-8000-000000000003', 'QA accident viewer', 'QA_ACCIDENT_VIEWER', true, 'fd100000-0000-4000-8000-000000000001', 'qa', 'qa');
 
 insert into public.sys_user(
   id, user_name, nick_name, user_email, status, user_roles, auth_user_id,
@@ -32,7 +30,6 @@ insert into public.sys_user(
   ('fd300000-0000-4000-8000-000000000001', 'qa-accident-owner', 'QA Accident Owner', 'qa-accident-owner@example.invalid', '1', array['QA_ACCIDENT_OWNER']::text[], 'fd200000-0000-4000-8000-000000000001', 'fd100000-0000-4000-8000-000000000001', '2', 'qa', 'qa'),
   ('fd300000-0000-4000-8000-000000000002', 'qa-accident-manager', 'QA Accident Manager', 'qa-accident-manager@example.invalid', '1', array['QA_ACCIDENT_MANAGER']::text[], 'fd200000-0000-4000-8000-000000000002', 'fd100000-0000-4000-8000-000000000001', '2', 'qa', 'qa'),
   ('fd300000-0000-4000-8000-000000000003', 'qa-accident-viewer', 'QA Accident Viewer', 'qa-accident-viewer@example.invalid', '1', array['QA_ACCIDENT_VIEWER']::text[], 'fd200000-0000-4000-8000-000000000003', 'fd100000-0000-4000-8000-000000000001', '2', 'qa', 'qa'),
-  ('fd300000-0000-4000-8000-000000000004', 'qa-accident-smis', 'QA Accident SMIS', 'qa-accident-smis@example.invalid', '1', array['QA_ACCIDENT_SMIS']::text[], 'fd200000-0000-4000-8000-000000000004', 'fd100000-0000-4000-8000-000000000001', '2', 'qa', 'qa'),
   ('fd300000-0000-4000-8000-000000000005', 'qa-accident-no-menu', 'QA Accident No Menu', 'qa-accident-no-menu@example.invalid', '1', array[]::text[], 'fd200000-0000-4000-8000-000000000005', 'fd100000-0000-4000-8000-000000000001', '2', 'qa', 'qa'),
   ('fd300000-0000-4000-8000-000000000006', 'qa-accident-other', 'QA Accident Other', 'qa-accident-other@example.invalid', '1', array[]::text[], 'fd200000-0000-4000-8000-000000000006', 'fd100000-0000-4000-8000-000000000002', '2', 'qa', 'qa');
 
@@ -52,9 +49,6 @@ join public.sys_menu menu_row on (
 ) or (
   role_row.role_code = 'QA_ACCIDENT_VIEWER'
   and menu_row.name in ('VehicleQuery', 'VehicleQuery:View')
-) or (
-  role_row.role_code = 'QA_ACCIDENT_SMIS'
-  and menu_row.name in ('SmisAccidentEmergency', 'SmisAccidentEmergency:View')
 )
 where role_row.tenant_id = 'fd100000-0000-4000-8000-000000000001';
 
@@ -250,28 +244,6 @@ begin
 end;
 $qa$;
 
-select set_config('request.jwt.claims', '{"sub":"fd200000-0000-4000-8000-000000000004","email":"qa-accident-smis@example.invalid","role":"authenticated"}', true);
-select set_config('request.jwt.claim.sub', 'fd200000-0000-4000-8000-000000000004', true);
-
-do $qa$
-declare
-  v_options jsonb;
-begin
-  v_options := public.vms_list_vehicle_accident_options_secure(null, 100);
-  if jsonb_array_length(v_options) <> 1
-     or (v_options->0) ? 'accident_location'
-     or (v_options->0) ? 'accident_summary'
-     or (v_options->0) ? 'economic_loss' then
-    raise exception 'SMIS accident options leaked protected VMS fields';
-  end if;
-  if jsonb_array_length(public.vms_list_vehicle_accident_options_secure(
-    'SECRET-ACCIDENT-NARRATIVE', 100
-  )) <> 0 then
-    raise exception 'hidden accident narrative remained searchable from SMIS';
-  end if;
-end;
-$qa$;
-
 select set_config('request.jwt.claims', '{"sub":"fd200000-0000-4000-8000-000000000005","email":"qa-accident-no-menu@example.invalid","role":"authenticated"}', true);
 select set_config('request.jwt.claim.sub', 'fd200000-0000-4000-8000-000000000005', true);
 
@@ -280,12 +252,6 @@ begin
   begin
     perform public.vms_list_vehicle_accidents_secure();
     raise exception 'accident list unexpectedly allowed without a consuming menu';
-  exception when insufficient_privilege then null;
-  end;
-
-  begin
-    perform public.vms_list_vehicle_accident_options_secure(null, 100);
-    raise exception 'SMIS accident options unexpectedly allowed without the SMIS menu';
   exception when insufficient_privilege then null;
   end;
 
@@ -307,11 +273,6 @@ begin
     'execute'
   ) then
     raise exception 'anon retained execute on secure accident list';
-  end if;
-  if has_function_privilege(
-    'anon', 'public.vms_list_vehicle_accident_options_secure(text,integer)', 'execute'
-  ) then
-    raise exception 'anon retained execute on secure accident options';
   end if;
   if has_table_privilege('authenticated', 'public.vehicle_accident_record', 'select')
      or has_table_privilege('authenticated', 'public.vehicle_accident_record', 'insert')

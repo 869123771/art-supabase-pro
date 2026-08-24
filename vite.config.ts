@@ -13,9 +13,12 @@ import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
 import tailwindcss from '@tailwindcss/vite'
 import { fileViewerRenderers } from '@file-viewer/vite-plugin'
 import { visualizer } from 'rollup-plugin-visualizer'
-import { getKnownFileViewerExternalization } from './scripts/build-log-policy'
+import { createBuildLogPolicy } from './scripts/build-log-policy'
 import { createFileViewerAssetSyncPlugin } from './scripts/file-viewer-asset-sync'
-import { hostedModuleSharedDependencies } from './scripts/hosted-module-dependencies'
+import {
+  hostedApplicationSourceDirectories,
+  hostedModuleSharedDependencies
+} from './scripts/hosted-module-dependencies'
 
 // 添加插件用于生成 .nojekyll 文件
 import { createNoJekyllPlugin } from './src/plugins/nojekyll'
@@ -75,20 +78,6 @@ const getElementPlusStyleDeps = (root: string): string[] => {
 
 export default ({ mode }: { mode: string }) => {
   const root = process.cwd()
-  const requiredModuleViews = [
-    ['FMS', 'modules/art-supabase-fms/src/views'],
-    ['HR', 'modules/art-supabase-hr/src/views'],
-    ['SMIS', 'modules/art-supabase-smis/src/views'],
-    ['VMS', 'modules/art-supabase-vms/src/views'],
-    ['TMS', 'modules/art-supabase-tms/src/views']
-  ] as const
-  for (const [applicationName, relativeViewsPath] of requiredModuleViews) {
-    if (!existsSync(path.resolve(root, relativeViewsPath))) {
-      throw new Error(
-        `${applicationName} 子仓未初始化，请先运行 git submodule update --init --recursive`
-      )
-    }
-  }
   const env = loadEnv(mode, root)
   const { VITE_VERSION, VITE_PORT, VITE_BASE_URL, VITE_API_URL, VITE_API_PROXY_URL, VITE_OUT_DIR } =
     env
@@ -107,7 +96,12 @@ export default ({ mode }: { mode: string }) => {
     'node_modules/.cache/art-supabase-pro/file-viewer-assets'
   )
   const elementPlusStyleDeps = getElementPlusStyleDeps(root)
-  const knownFileViewerExternalizations = new Set<string>()
+  const buildLogPolicy = createBuildLogPolicy()
+  const hostedApplicationAliases = Object.fromEntries(
+    Object.entries(hostedApplicationSourceDirectories)
+      .filter(([, sourceDirectory]) => existsSync(path.resolve(root, sourceDirectory)))
+      .map(([alias, sourceDirectory]) => [alias, resolvePath(sourceDirectory)])
+  )
 
   console.log(`[vite] API_URL=${VITE_API_URL}`)
   console.log(`[vite] VERSION=${VITE_VERSION}`)
@@ -137,11 +131,7 @@ export default ({ mode }: { mode: string }) => {
     resolve: {
       dedupe: hostedModuleSharedDependencies,
       alias: {
-        '@fms': resolvePath('modules/art-supabase-fms/src'),
-        '@hr': resolvePath('modules/art-supabase-hr/src'),
-        '@smis': resolvePath('modules/art-supabase-smis/src'),
-        '@vms': resolvePath('modules/art-supabase-vms/src'),
-        '@tms': resolvePath('modules/art-supabase-tms/src'),
+        ...hostedApplicationAliases,
         '@': fileURLToPath(new URL('./src', import.meta.url)),
         '@views': resolvePath('src/views'),
         '@imgs': resolvePath('src/assets/images'),
@@ -164,23 +154,11 @@ export default ({ mode }: { mode: string }) => {
           )
         }
       },
-      chunkSizeWarningLimit: 7000,
+      chunkSizeWarningLimit: buildLogPolicy.chunkSizeWarningLimit,
       minify: 'oxc',
       reportCompressedSize: false,
       rolldownOptions: {
-        onLog(level, log, defaultHandler) {
-          const knownExternalization =
-            level === 'warn' ? getKnownFileViewerExternalization(log) : null
-          if (knownExternalization) {
-            knownFileViewerExternalizations.add(knownExternalization)
-            return
-          }
-          defaultHandler(level, log)
-        },
-        checks: {
-          invalidAnnotation: false,
-          pluginTimings: false
-        },
+        ...buildLogPolicy.rolldownOptions,
         output: {
           codeSplitting: {
             groups: [
@@ -283,18 +261,7 @@ export default ({ mode }: { mode: string }) => {
         enabled: enableFileViewerPlugin && enableFileViewerAssets,
         sourceRoot: fileViewerAssetStageDir
       }),
-      {
-        name: 'known-file-viewer-browser-external-summary',
-        apply: 'build',
-        closeBundle() {
-          if (!knownFileViewerExternalizations.size) return
-          console.warn(
-            `[vite] file-viewer 使用 ${knownFileViewerExternalizations.size} 个已知浏览器 external shim：${[
-              ...knownFileViewerExternalizations
-            ].join(', ')}`
-          )
-        }
-      },
+      buildLogPolicy.summaryPlugin,
       // 自动按需导入 API
       AutoImport({
         imports: ['vue', 'vue-router', 'pinia', '@vueuse/core'],
@@ -310,7 +277,9 @@ export default ({ mode }: { mode: string }) => {
       Components({
         dirs: [
           resolvePath('src/components'),
-          resolvePath('modules/art-supabase-fms/src/views/modules')
+          ...(existsSync(path.resolve(root, 'modules/art-supabase-fms/src/views/modules'))
+            ? [resolvePath('modules/art-supabase-fms/src/views/modules')]
+            : [])
         ],
         dts: enableGeneratedDeclarations ? 'src/types/import/components.d.ts' : false,
         exclude: [/[\\/]art-data-select[\\/]preview\.vue$/],
