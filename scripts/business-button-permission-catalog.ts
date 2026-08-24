@@ -209,11 +209,6 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
   },
 
   {
-    menuName: 'WorkflowAnalytics',
-    buttons: [button('View', '查看审批效能', 'WorkflowAnalytics:View')]
-  },
-
-  {
     menuName: 'TmsCapacityPlanning',
     buttons: [button('View', '查看运力容量', 'TmsCapacityPlanning:View')]
   },

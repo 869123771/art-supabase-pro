@@ -100,7 +100,6 @@ function toProjectPath(filePath: string): string {
 }
 
 function resolveBusinessCatalogOwner(menuName: string): ManagedModule {
-  if (menuName === 'WorkflowAnalytics') return 'workflow'
   if (menuName.startsWith('Tms')) return 'tms'
   if (menuName.startsWith('Finance')) return 'fms'
   if (menuName.startsWith('Hr')) return 'hr'

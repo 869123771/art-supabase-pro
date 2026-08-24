@@ -73,10 +73,6 @@ test.describe('multi-module workspace expansion', () => {
     await verifyWorkspace(page, '/#/vms/fleet-health', '车队健康中心')
   })
 
-  test('opens workflow analytics', async ({ page }) => {
-    await verifyWorkspace(page, '/#/workflow/analytics', '审批效能')
-  })
-
   test('opens TMS capacity planning center', async ({ page }) => {
     await verifyWorkspace(page, '/#/tms/capacity-planning', '运力容量中心')
   })
