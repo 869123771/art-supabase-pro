@@ -160,7 +160,7 @@ const snapshot = {
         '公开 schema 的业务表必须启用 RLS、租户隔离、审计字段与审计触发器。',
         '数据库、认证、RLS、生命周期和跨系统变更必须先做影响评估。',
         '修改代码前必须应用 project-code-quality；用户界面同时应用项目约定与专业 UI 质量规范。',
-        '用户界面优先复用 Art* 核心组件并使用 art-card-xs 视觉规范。'
+        '用户界面优先复用 Art* 核心组件；有标题的业务内容卡片统一使用 ArtSectionCard，原始 art-card-xs 仅用于无标题紧凑表面。'
       ]
     },
     fileSignals: {

@@ -157,7 +157,7 @@
   import { useMemoize } from '@vueuse/core'
   import { ElMessage } from 'element-plus'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
-  import ArtEmptyState from '@/components/core/layouts/art-empty-state/index.vue'
+  import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import { executeSql, fetchDatabaseMetadata, generateSqlByAi } from '@/api/data-center'
   import Editor from './modules/editor.vue'

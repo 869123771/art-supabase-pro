@@ -154,7 +154,7 @@
   import { ElMessage } from 'element-plus'
   import { cloneDeep, uniq } from 'lodash-es'
   import TreeUtils from '@/utils/tree'
-  import ArtEmptyState from '@/components/core/layouts/art-empty-state/index.vue'
+  import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import { deleteDictType, fetchGetDictTypeList, saveDictTypeTreeOrder } from '@/api/data-center'
   import DictTypeDialog from './dict-type-dialog.vue'
   import MasterDataDeleteGuard, {

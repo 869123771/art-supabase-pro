@@ -1,16 +1,18 @@
 <template>
   <ArtDialog ref="dialogRef" size="lg" :dialog-props="{ appendToBody: true }">
     <div class="number-rule-dialog">
-      <section class="number-rule-dialog__main art-card-xs">
-        <header class="number-rule-dialog__header">
-          <div>
-            <ArtSectionTitle :show-line="false">生成策略</ArtSectionTitle>
-            <p>切换自动编码或手工填写，并维护正式入库时使用的编号模板。</p>
-          </div>
-          <ElTag :type="formModel.autoEnabled ? 'success' : 'warning'" round>
-            {{ formModel.autoEnabled ? '系统自动取号' : '业务人员手工填写' }}
-          </ElTag>
-        </header>
+      <ArtSectionCard class="number-rule-dialog__main" preserve-content-structure>
+        <template #header>
+          <header class="number-rule-dialog__header">
+            <div>
+              <ArtSectionTitle :show-line="false">生成策略</ArtSectionTitle>
+              <p>切换自动编码或手工填写，并维护正式入库时使用的编号模板。</p>
+            </div>
+            <ElTag :type="formModel.autoEnabled ? 'success' : 'warning'" round>
+              {{ formModel.autoEnabled ? '系统自动取号' : '业务人员手工填写' }}
+            </ElTag>
+          </header>
+        </template>
 
         <div class="number-rule-dialog__identity">
           <div>
@@ -72,11 +74,14 @@
             </div>
           </template>
         </ArtForm>
-      </section>
+      </ArtSectionCard>
 
       <aside class="number-rule-dialog__side" aria-label="编号预览与规则说明">
-        <section class="number-rule-dialog__preview art-card-xs">
-          <ArtSectionTitle :show-line="false">下一个编号预览</ArtSectionTitle>
+        <ArtSectionCard
+          class="number-rule-dialog__preview"
+          preserve-content-structure
+          title="下一个编号预览"
+        >
           <code translate="no">{{ previewText }}</code>
           <dl>
             <div>
@@ -92,29 +97,33 @@
               <dd>V{{ formModel.ruleVersion }}</dd>
             </div>
           </dl>
-        </section>
+        </ArtSectionCard>
 
-        <section class="number-rule-dialog__tips art-card-xs">
-          <ArtSectionTitle :show-line="false">生效规则</ArtSectionTitle>
+        <ArtSectionCard
+          class="number-rule-dialog__tips"
+          preserve-content-structure
+          title="生效规则"
+        >
           <ul>
             <li>模板必须包含且只能包含一个 <code>{SEQ:n}</code>。</li>
             <li>修改模板、周期、起始值或时区后会自动启用新版本计数器。</li>
             <li>每月重置时，进入新月份后的第一张单会从起始值重新编码。</li>
             <li>正式编号由数据库事务生成，页面预览不占用流水号。</li>
           </ul>
-        </section>
+        </ArtSectionCard>
       </aside>
     </div>
   </ArtDialog>
 </template>
 
 <script setup lang="ts">
+  import ArtSectionCard from '@/components/core/surfaces/art-section-card/index.vue'
   import type { FormRules } from 'element-plus'
   import { cloneDeep } from 'lodash-es'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
-  import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
+  import ArtSectionTitle from '@/components/core/surfaces/art-section-title/index.vue'
   import { editDocumentNumberRule } from '@/api/document-number'
   import { renderDocumentNumber, validateDocumentNumberTemplate } from '@/utils/document-number'
   import { useUserStore } from '@/store/modules/user'

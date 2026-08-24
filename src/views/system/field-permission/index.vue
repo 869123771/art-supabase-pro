@@ -17,24 +17,30 @@
       @refresh="retryLoad"
     />
 
-    <section class="field-permission-page__scope art-card-xs" aria-label="授权范围">
-      <div class="field-permission-page__scope-heading">
-        <div>
-          <ArtSectionTitle :show-line="false">选择授权范围</ArtSectionTitle>
-          <p>人员配置覆盖其全部角色的合并结果；清除人员例外后恢复角色继承。</p>
+    <ArtSectionCard
+      class="field-permission-page__scope"
+      aria-label="授权范围"
+      preserve-content-structure
+    >
+      <template #header>
+        <div class="field-permission-page__scope-heading">
+          <div>
+            <ArtSectionTitle :show-line="false">选择授权范围</ArtSectionTitle>
+            <p>人员配置覆盖其全部角色的合并结果；清除人员例外后恢复角色继承。</p>
+          </div>
+          <div class="field-permission-page__scope-mode">
+            <span>授权对象</span>
+            <ElSegmented
+              v-model="subjectType"
+              :options="subjectTypeOptions"
+              :disabled="
+                page.loading || page.saving || page.configurationLoading || page.auditLoading
+              "
+              @change="handleSubjectTypeChange"
+            />
+          </div>
         </div>
-        <div class="field-permission-page__scope-mode">
-          <span>授权对象</span>
-          <ElSegmented
-            v-model="subjectType"
-            :options="subjectTypeOptions"
-            :disabled="
-              page.loading || page.saving || page.configurationLoading || page.auditLoading
-            "
-            @change="handleSubjectTypeChange"
-          />
-        </div>
-      </div>
+      </template>
 
       <div class="field-permission-page__selectors">
         <label>
@@ -88,7 +94,7 @@
         </div>
         <span class="field-permission-page__policy-level">记录级规则</span>
       </div>
-    </section>
+    </ArtSectionCard>
 
     <ArtPageShell
       class="field-permission-page__matrix-shell"
@@ -99,34 +105,40 @@
       empty-text="暂无可配置的敏感字段"
       @retry="retryLoad"
     >
-      <section v-if="configuration" class="field-permission-page__matrix art-card-xs">
-        <header class="field-permission-page__matrix-header">
-          <div>
-            <ArtSectionTitle :show-line="false">字段授权矩阵</ArtSectionTitle>
-            <div class="field-permission-page__matrix-context">
-              <strong>{{ configuration.resourceLabel }}</strong>
-              <span aria-hidden="true">/</span>
-              <b>{{ currentSubjectLabel }}</b>
+      <ArtSectionCard
+        v-if="configuration"
+        class="field-permission-page__matrix"
+        preserve-content-structure
+      >
+        <template #header>
+          <header class="field-permission-page__matrix-header">
+            <div>
+              <ArtSectionTitle :show-line="false">字段授权矩阵</ArtSectionTitle>
+              <div class="field-permission-page__matrix-context">
+                <strong>{{ configuration.resourceLabel }}</strong>
+                <span aria-hidden="true">/</span>
+                <b>{{ currentSubjectLabel }}</b>
+              </div>
             </div>
-          </div>
-          <div class="field-permission-page__matrix-summary">
-            <span
-              class="field-permission-page__sync-state"
-              :class="{ 'is-dirty': isDirty }"
-              role="status"
-            >
-              <ArtSvgIcon :icon="isDirty ? 'ri:draft-line' : 'ri:shield-check-line'" />
-              {{ isDirty ? `${changedFieldCount} 项待保存` : '配置已同步' }}
-            </span>
-            <p>
-              {{
-                subjectType === 'role'
-                  ? '角色成员继承本配置；用户拥有多个角色时取权限最大值。'
-                  : '“继承角色”不保存人员记录；其余选项覆盖角色合并结果。'
-              }}
-            </p>
-          </div>
-        </header>
+            <div class="field-permission-page__matrix-summary">
+              <span
+                class="field-permission-page__sync-state"
+                :class="{ 'is-dirty': isDirty }"
+                role="status"
+              >
+                <ArtSvgIcon :icon="isDirty ? 'ri:draft-line' : 'ri:shield-check-line'" />
+                {{ isDirty ? `${changedFieldCount} 项待保存` : '配置已同步' }}
+              </span>
+              <p>
+                {{
+                  subjectType === 'role'
+                    ? '角色成员继承本配置；用户拥有多个角色时取权限最大值。'
+                    : '“继承角色”不保存人员记录；其余选项覆盖角色合并结果。'
+                }}
+              </p>
+            </div>
+          </header>
+        </template>
 
         <div class="field-permission-page__legend" aria-label="权限等级说明">
           <span v-for="option in accessOptions" :key="option.value">
@@ -245,7 +257,7 @@
             </li>
           </ol>
         </section>
-      </section>
+      </ArtSectionCard>
     </ArtPageShell>
 
     <ArtStickyActionBar
@@ -288,11 +300,12 @@
 </template>
 
 <script setup lang="ts">
+  import ArtSectionCard from '@/components/core/surfaces/art-section-card/index.vue'
   import { ElButton, ElMessage, ElOption, ElSegmented, ElSelect, ElSkeleton } from 'element-plus'
   import { cloneDeep, isEqual } from 'lodash-es'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
-  import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
-  import ArtEmptyState from '@/components/core/layouts/art-empty-state/index.vue'
+  import ArtSectionTitle from '@/components/core/surfaces/art-section-title/index.vue'
+  import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import ArtStickyActionBar from '@/components/core/layouts/art-sticky-action-bar/index.vue'
   import BusinessWorkspaceHeader, {
     type BusinessWorkspaceMetric

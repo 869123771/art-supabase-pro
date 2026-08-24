@@ -9,14 +9,16 @@
         </div>
       </section>
 
-      <section class="workflow-delegation__create art-card-xs">
-        <div class="workflow-delegation__heading">
-          <div>
-            <ArtSectionTitle :show-line="false">新建委托</ArtSectionTitle>
-            <p>委托不能重叠，最长 180 天；受托人不能再次代表你转委托。</p>
+      <ArtSectionCard class="workflow-delegation__create" preserve-content-structure>
+        <template #header>
+          <div class="workflow-delegation__heading">
+            <div>
+              <ArtSectionTitle :show-line="false">新建委托</ArtSectionTitle>
+              <p>委托不能重叠，最长 180 天；受托人不能再次代表你转委托。</p>
+            </div>
+            <ElTag type="warning" effect="plain" round>有审计记录</ElTag>
           </div>
-          <ElTag type="warning" effect="plain" round>有审计记录</ElTag>
-        </div>
+        </template>
         <ArtForm
           ref="formRef"
           v-model="form.data"
@@ -26,24 +28,30 @@
           :show-submit="false"
           label-position="top"
         />
-      </section>
+      </ArtSectionCard>
 
-      <section v-loading="state.loading" class="workflow-delegation__history art-card-xs">
-        <div class="workflow-delegation__heading">
-          <div>
-            <ArtSectionTitle :show-line="false">委托记录</ArtSectionTitle>
-            <p>我发出的委托可以撤销；收到的委托用于说明待办来源。</p>
+      <ArtSectionCard
+        v-loading="state.loading"
+        class="workflow-delegation__history"
+        preserve-content-structure
+      >
+        <template #header>
+          <div class="workflow-delegation__heading">
+            <div>
+              <ArtSectionTitle :show-line="false">委托记录</ArtSectionTitle>
+              <p>我发出的委托可以撤销；收到的委托用于说明待办来源。</p>
+            </div>
+            <ElTooltip content="刷新委托记录" placement="top">
+              <ArtIconButton
+                icon="ri:refresh-line"
+                circle
+                label="刷新委托记录"
+                :loading="state.loading"
+                @click="loadData"
+              />
+            </ElTooltip>
           </div>
-          <ElTooltip content="刷新委托记录" placement="top">
-            <ArtIconButton
-              icon="ri:refresh-line"
-              circle
-              label="刷新委托记录"
-              :loading="state.loading"
-              @click="loadData"
-            />
-          </ElTooltip>
-        </div>
+        </template>
 
         <ArtEmptyState
           v-if="!state.loading && !state.records.length"
@@ -89,12 +97,13 @@
             </article>
           </div>
         </ElScrollbar>
-      </section>
+      </ArtSectionCard>
     </div>
   </ArtDialog>
 </template>
 
 <script setup lang="ts">
+  import ArtSectionCard from '@/components/core/surfaces/art-section-card/index.vue'
   import dayjs from 'dayjs'
   import type { FormRules, TagProps } from 'element-plus'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
@@ -102,8 +111,8 @@
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import type { ArtUserSelectOption } from '@/components/core/forms/art-user-select/types'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
-  import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
-  import ArtEmptyState from '@/components/core/layouts/art-empty-state/index.vue'
+  import ArtSectionTitle from '@/components/core/surfaces/art-section-title/index.vue'
+  import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import {

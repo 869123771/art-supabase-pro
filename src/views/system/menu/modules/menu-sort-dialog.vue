@@ -1,20 +1,26 @@
 <template>
   <ArtDialog ref="dialogRef">
     <div class="menu-tree-sort" v-loading="tree.loading">
-      <section class="menu-tree-sort__guide art-card-xs" aria-label="拖拽规则">
-        <div class="menu-tree-sort__guide-heading">
-          <span aria-hidden="true"><ArtSvgIcon icon="ri:node-tree" /></span>
-          <div>
-            <strong>按真实树结构调整菜单</strong>
-            <p>每次放下都会原子保存父级关系和同级顺序，父节点移动时整棵子树会一起移动。</p>
+      <ArtSectionCard
+        class="menu-tree-sort__guide"
+        aria-label="拖拽规则"
+        preserve-content-structure
+      >
+        <template #header>
+          <div class="menu-tree-sort__guide-heading">
+            <span aria-hidden="true"><ArtSvgIcon icon="ri:node-tree" /></span>
+            <div>
+              <strong>按真实树结构调整菜单</strong>
+              <p>每次放下都会原子保存父级关系和同级顺序，父节点移动时整棵子树会一起移动。</p>
+            </div>
           </div>
-        </div>
+        </template>
         <div class="menu-tree-sort__rules">
           <span><i class="is-line"></i>蓝色横线：放到目标前面或后面</span>
           <span><i class="is-inner"></i>节点高亮：移入目标成为子级</span>
           <span><i class="is-root"></i>拖到一级节点前后：移动到最外层</span>
         </div>
-      </section>
+      </ArtSectionCard>
 
       <section class="menu-tree-sort__workspace art-card-xs">
         <header class="menu-tree-sort__toolbar">
@@ -93,6 +99,7 @@
 </template>
 
 <script setup lang="ts">
+  import ArtSectionCard from '@/components/core/surfaces/art-section-card/index.vue'
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import type { ElTree } from 'element-plus'
   import type { NodeDropType } from 'element-plus'
@@ -101,7 +108,7 @@
   import type { AppRouteRecord } from '@/types/router'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
-  import ArtEmptyState from '@/components/core/layouts/art-empty-state/index.vue'
+  import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import TreeUtils from '@/utils/tree'
   import { formatMenuTitle } from '@/utils/router'

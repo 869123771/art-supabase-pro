@@ -1,7 +1,7 @@
 <template>
   <ArtPageShell>
     <div class="widget-page">
-      <ArtPageSection
+      <ArtSectionCard
         class="widget-section"
         title="右键菜单"
         subtitle="ArtMenuRight 支持普通项、分割线、禁用项、子菜单、自定义尺寸和命令式打开。"
@@ -29,9 +29,9 @@
             />
           </div>
         </div>
-      </ArtPageSection>
+      </ArtSectionCard>
 
-      <ArtPageSection
+      <ArtSectionCard
         class="widget-section"
         title="API"
         subtitle="包含组件 props、菜单项字段、事件和 expose 方法。"
@@ -47,7 +47,7 @@
             <ArtTable :data="eventRows" :columns="eventColumns" :pagination="false" />
           </ElTabPane>
         </ElTabs>
-      </ArtPageSection>
+      </ArtSectionCard>
 
       <ArtMenuRight
         ref="mainMenuRef"

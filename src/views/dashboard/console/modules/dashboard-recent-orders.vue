@@ -44,7 +44,7 @@
 
 <script setup lang="ts">
   import { ArrowRight } from '@element-plus/icons-vue'
-  import ArtAsyncState from '@/components/core/layouts/art-async-state/index.vue'
+  import ArtAsyncState from '@/components/core/feedback/art-async-state/index.vue'
   import { formatCurrencyValue } from '@/utils/ui'
   import type { DashboardOrder } from './types'
 

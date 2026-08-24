@@ -65,8 +65,8 @@
   import { ElAvatar, ElScrollbar, ElTag, ElTimeline, ElTimelineItem } from 'element-plus'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
-  import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
-  import ArtEmptyState from '@/components/core/layouts/art-empty-state/index.vue'
+  import ArtSectionTitle from '@/components/core/surfaces/art-section-title/index.vue'
+  import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import { formatWithDayjs } from '@/utils/time'
   import type { ArtProcessTimelineItem } from './types'
 

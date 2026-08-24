@@ -52,19 +52,22 @@
         />
         <WorkflowBusinessSnapshot v-else-if="state.snapshot" :snapshot="state.snapshot" />
 
-        <section class="workflow-instance__section art-card-xs">
-          <div class="workflow-instance__section-heading">
-            <ArtSectionTitle>实例概览</ArtSectionTitle>
-            <span>流程身份与当前进度</span>
-          </div>
+        <ArtSectionCard class="workflow-instance__section" preserve-content-structure>
+          <template #header
+            ><div class="workflow-instance__section-heading">
+              <ArtSectionTitle>实例概览</ArtSectionTitle>
+              <span>流程身份与当前进度</span>
+            </div></template
+          >
           <ArtDescriptions :data="state.detail" :items="descriptionItems" :columns="2" />
-        </section>
+        </ArtSectionCard>
 
-        <section
+        <ArtSectionCard
           v-if="state.detail.version?.config?.nodes?.length"
-          class="workflow-instance__section art-card-xs"
+          class="workflow-instance__section"
+          preserve-content-structure
+          title="流程图"
         >
-          <ArtSectionTitle>流程图</ArtSectionTitle>
           <WorkflowFlowMap
             :nodes="state.detail.version.config.nodes"
             :tasks="state.detail.tasks"
@@ -72,15 +75,17 @@
             :current-node-key="state.detail.currentNodeKey"
             :instance-status="state.detail.status"
           />
-        </section>
+        </ArtSectionCard>
 
-        <section class="workflow-instance__section art-card-xs">
-          <div class="workflow-instance__section-heading">
-            <ArtSectionTitle>审批任务</ArtSectionTitle>
-            <span>{{ taskNodeCount }} 个节点 · {{ sortedTasks.length }} 位审批人</span>
-          </div>
+        <ArtSectionCard class="workflow-instance__section" preserve-content-structure>
+          <template #header
+            ><div class="workflow-instance__section-heading">
+              <ArtSectionTitle>审批任务</ArtSectionTitle>
+              <span>{{ taskNodeCount }} 个节点 · {{ sortedTasks.length }} 位审批人</span>
+            </div></template
+          >
           <WorkflowTaskBoard :tasks="sortedTasks" />
-        </section>
+        </ArtSectionCard>
 
         <section class="workflow-instance__section art-card-xs">
           <ArtProcessTimeline
@@ -98,16 +103,17 @@
 </template>
 
 <script setup lang="ts">
+  import ArtSectionCard from '@/components/core/surfaces/art-section-card/index.vue'
   import { createFriendlySupabaseError } from '@/utils/supabase'
   import ArtDrawer from '@/components/core/drawers/art-drawer/index.vue'
   import type { ArtDrawerExpose } from '@/components/core/drawers/art-drawer/types'
-  import ArtAsyncState from '@/components/core/layouts/art-async-state/index.vue'
+  import ArtAsyncState from '@/components/core/feedback/art-async-state/index.vue'
   import ArtProcessTimeline from '@/components/core/layouts/art-process-timeline/index.vue'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import ArtDescriptions from '@/components/core/base/art-descriptions/index.vue'
   import type { ArtDescriptionItem } from '@/components/core/base/art-descriptions/types'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
-  import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
+  import ArtSectionTitle from '@/components/core/surfaces/art-section-title/index.vue'
   import WorkflowBusinessSnapshot from '../../modules/workflow-business-snapshot.vue'
   import WorkflowFlowMap from '@/components/business/workflow-flow-map/index.vue'
   import WorkflowTaskBoard from '../../modules/workflow-task-board.vue'

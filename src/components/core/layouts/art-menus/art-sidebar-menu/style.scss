@@ -2,7 +2,6 @@
   display: flex;
   height: 100vh;
   user-select: none;
-  scrollbar-width: none;
   border-right: 1px solid var(--art-layout-divider);
 
   &.no-border {
@@ -11,13 +10,18 @@
 
   // 自定义滚动条宽度
   :deep(.el-scrollbar__bar.is-vertical) {
-    width: 4px;
+    right: 2px;
+    width: 5px;
+  }
+
+  :deep(.el-scrollbar__bar.is-horizontal) {
+    display: none;
   }
 
   :deep(.el-scrollbar__thumb) {
-    right: -2px;
     background-color: var(--art-gray-400);
-    border-radius: 2px;
+    border-radius: 999px;
+    opacity: 0.72;
 
     &:hover {
       background-color: var(--art-gray-500);
@@ -135,7 +139,17 @@
   .menu-left {
     position: relative;
     box-sizing: border-box;
+    min-width: 0;
     height: 100vh;
+    overflow: hidden;
+
+    :deep(.el-scrollbar__wrap) {
+      overflow-x: hidden;
+    }
+
+    :deep(.el-scrollbar__view) {
+      min-width: 0;
+    }
 
     @media only screen and (width <= 640px) {
       height: 100dvh;

@@ -19,16 +19,18 @@
       </template>
     </BusinessWorkspaceHeader>
 
-    <section class="workflow-workbench__workspace art-card-xs">
-      <header class="workflow-workbench__workspace-header">
-        <div>
-          <ArtSectionTitle :show-line="false">{{ workspaceTitle }}</ArtSectionTitle>
-          <p>{{ activeTabDescription }}</p>
-        </div>
-        <ElTag :type="activeTab === 'global' ? 'warning' : 'primary'" effect="plain" round>
-          {{ activeTab === 'global' ? '平台超管全局视角' : '数据按当前租户隔离' }}
-        </ElTag>
-      </header>
+    <ArtSectionCard class="workflow-workbench__workspace" preserve-content-structure>
+      <template #header>
+        <header class="workflow-workbench__workspace-header">
+          <div>
+            <ArtSectionTitle :show-line="false">{{ workspaceTitle }}</ArtSectionTitle>
+            <p>{{ activeTabDescription }}</p>
+          </div>
+          <ElTag :type="activeTab === 'global' ? 'warning' : 'primary'" effect="plain" round>
+            {{ activeTab === 'global' ? '平台超管全局视角' : '数据按当前租户隔离' }}
+          </ElTag>
+        </header>
+      </template>
 
       <ElTabs v-model="activeTab" class="workflow-workbench__tabs" @tab-change="handleTabChange">
         <ElTabPane name="pending">
@@ -108,7 +110,7 @@
           />
         </ElTabPane>
       </ElTabs>
-    </section>
+    </ArtSectionCard>
 
     <WorkflowActionDialog ref="actionDialogRef" @success="handleActionSuccess" />
     <WorkflowTransferDialog ref="transferDialogRef" @success="handleActionSuccess" />
@@ -118,6 +120,7 @@
 </template>
 
 <script setup lang="tsx">
+  import ArtSectionCard from '@/components/core/surfaces/art-section-card/index.vue'
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import dayjs from 'dayjs'
   import { ElMessage, ElTag } from 'element-plus'
@@ -132,7 +135,7 @@
   } from '@/components/business/business-workspace-header/index.vue'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
-  import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
+  import ArtSectionTitle from '@/components/core/surfaces/art-section-title/index.vue'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatWithDayjs } from '@/utils/time'
   import { navigateToApplication } from '@/utils/application-navigation'

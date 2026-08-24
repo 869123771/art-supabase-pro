@@ -148,17 +148,22 @@
           </template>
         </ArtTableQuery>
 
-        <section class="notification-reminder-page__channel-panel art-card-xs">
-          <div class="notification-reminder-page__section-heading">
-            <div>
-              <ArtSectionTitle :show-line="false">通知渠道</ArtSectionTitle>
-              <p>渠道凭据加密保存且不回显；跨租户测试发送给目标租户的可用管理员。</p>
-            </div>
-            <span class="notification-reminder-page__section-count is-success">
-              <b>{{ workspace.summary.enabledChannelCount }}</b>
-              / 5 已启用
-            </span>
-          </div>
+        <ArtSectionCard
+          class="notification-reminder-page__channel-panel"
+          preserve-content-structure
+        >
+          <template #header
+            ><div class="notification-reminder-page__section-heading">
+              <div>
+                <ArtSectionTitle :show-line="false">通知渠道</ArtSectionTitle>
+                <p>渠道凭据加密保存且不回显；跨租户测试发送给目标租户的可用管理员。</p>
+              </div>
+              <span class="notification-reminder-page__section-count is-success">
+                <b>{{ workspace.summary.enabledChannelCount }}</b>
+                / 5 已启用
+              </span>
+            </div></template
+          >
 
           <div class="notification-reminder-page__channels">
             <article
@@ -227,7 +232,7 @@
               </footer>
             </article>
           </div>
-        </section>
+        </ArtSectionCard>
       </div>
     </ArtPageShell>
 
@@ -246,6 +251,7 @@
 </template>
 
 <script setup lang="tsx">
+  import ArtSectionCard from '@/components/core/surfaces/art-section-card/index.vue'
   import dayjs from 'dayjs'
   import { ElButton, ElMessage, ElOption, ElSelect, ElTag } from 'element-plus'
   import type {
@@ -255,7 +261,7 @@
   } from '@/components/core/tables/art-table-query/index.vue'
   import type { ColumnOption } from '@/types'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
-  import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
+  import ArtSectionTitle from '@/components/core/surfaces/art-section-title/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import BusinessWorkspaceHeader, {
     type BusinessWorkspaceMetric,

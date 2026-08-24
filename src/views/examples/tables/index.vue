@@ -436,7 +436,7 @@
     QuestionFilled,
     ArrowDown
   } from '@element-plus/icons-vue'
-  import ArtEmptyState from '@/components/core/layouts/art-empty-state/index.vue'
+  import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import { useTable, CacheInvalidationStrategy } from '@/hooks/core/useTable'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { fetchGetUserList } from '@/api/system-manage'

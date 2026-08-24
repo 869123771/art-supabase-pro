@@ -1,7 +1,7 @@
 <template>
   <ArtPageShell>
     <div class="widget-page">
-      <ArtPageSection
+      <ArtSectionCard
         class="widget-section"
         title="数据选择器"
         subtitle="复刻表格多选、表格单选、树形多选、树形单选四种常用弹窗选择场景。"
@@ -104,9 +104,9 @@
             {{ regionSingleValue }}
           </ElDescriptionsItem>
         </ElDescriptions>
-      </ArtPageSection>
+      </ArtSectionCard>
 
-      <ArtPageSection
+      <ArtSectionCard
         class="widget-section"
         title="API"
         subtitle="四种组件共享 ArtDataSelect 的 props、事件、插槽和 expose 方法。"
@@ -119,7 +119,7 @@
             <ArtTable :data="eventRows" :columns="eventColumns" :pagination="false" />
           </ElTabPane>
         </ElTabs>
-      </ArtPageSection>
+      </ArtSectionCard>
     </div>
   </ArtPageShell>
 </template>

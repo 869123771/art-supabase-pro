@@ -12,6 +12,7 @@ Build features in the project's established Vue 3, TypeScript, Element Plus, and
 1. Read the target page, its `modules` directory, API types, and one recently migrated neighboring module.
 2. Reuse aliases, naming, layout classes, hooks, and response handling already present in the repository.
 3. Check the core component README and types before extending a wrapper:
+   - `src/components/README.md`
    - `src/components/core/dialogs/art-dialog/README.md`
    - `src/components/core/drawers/art-drawer/README.md`
    - `src/hooks/core/useTable.ts`
@@ -57,6 +58,7 @@ Use these components before assembling equivalent Element Plus plumbing:
 | Business data selection | `ArtTableSingleSelect` / `ArtTableMultipleSelect` / tree variants from `src/components/core/forms/art-data-select` |
 | Uploads and common actions | Existing `Art*` core form/action component |
 | Business section title | `ArtSectionTitle` |
+| Titled business content card with async states | `ArtSectionCard` |
 | Business landing/list/workspace identity and metrics | `BusinessWorkspaceHeader` |
 
 When a project wrapper already exists, use it before raw Element Plus primitives. For example, prefer `ArtExcelImport`, `ArtUploadImage`, `ArtButtonTable`, `ArtButtonMore`, and similar `src/components/core` wrappers over page-local `ElUpload`, ad hoc action buttons, or custom dropdown wiring. If the wrapper is close but missing a broadly reusable capability, extend the wrapper first and consume that extension from the business page.
@@ -69,6 +71,8 @@ For remote option data in metadata forms, use `ArtForm` item-level API options i
 
 For selecting business records from a dialog or embedded selector, use the data selector components under `src/components/core/forms/art-data-select` instead of hand-rolled `ArtDialog + ArtTable + radio/checkbox` selectors. Use `ArtTableSingleSelect` for table single-select, `ArtTableMultipleSelect` for table multi-select, and the tree variants for hierarchical selections. Adapt existing list APIs with a small feature-local `apiFn` that maps `DataSelectFetchParams` (`keyword`, `page`, `pageSize`, `filters`) into the backend provider's params, and return `{ data, total }`. Keep custom trigger slots only when the selector is opened imperatively from an existing button.
 
+Every employee/person field must use the shared platform `ArtEmployeeSelect`. Do not render employee UUIDs in a raw `ElSelect`, and do not rebuild employee search in a page. `ArtEmployeeSelect` owns secure employee search, pagination, edit-reference display, and the `员工姓名 · 工号` identity label. Persist only the selected employee ID, and pass the existing employee reference through `selectedData` in edit forms so no UUID fallback is exposed. Keep system-account and approval-account fields on `ArtUserSelect`; an employee record and a system user account are different business objects.
+
 Business pages and business components must call backend data through exported functions from `src/api/**`, such as `@/api/vehicle-manage-system` or `@/api/common`. Do not import provider modules, `useSupabase`, `supabase.from(...)`, `request`, or other transport clients directly from `src/views/**`. Keep direct transport access inside API providers only. If a view needs a new backend read/write or option list, add or expose an API function first, then consume that function from the page or `ArtForm` item-level `api`.
 
 For dictionary-backed options, do not create page-local API calls or `ArtForm` item APIs. Dictionary data is already loaded into `useUserStore()`; consume it through `storeToRefs(useUserStore()).getDictMap` for option lists. Values that are reusable, persisted, filtered, or displayed as an enumerable business meaning must be dictionaries instead of page-local arrays or maps. This includes yes/no, status, processed state, source, type, category-like enums, responsibility, mode, and tag/badge choices. Shared yes/no values must use the public `commonBoolean` dictionary. For boolean form fields, keep the form model boolean and map dictionary values with a small helper such as `value: item.value === 'true'`; for display, pass `String(value)` to `ArtDictDisplay`.
@@ -78,6 +82,8 @@ For table dictionary display, use the table column dictionary configuration, for
 For tree-shaped data operations, use the shared utilities in `src/utils/tree.ts` such as `TreeUtils.normalizeTreeData`, `listToTree`, `treeToList`, and related helpers. Do not hand-write page-local tree parsing, recursive children normalization, list/tree conversion, node lookup, flattening, or descendant traversal logic. In particular, do not add business-level `normalize*Options`, `parse*Options`, or `afterFetch` callbacks solely to parse or normalize tree API responses. Normalize reusable tree responses in the shared API with `TreeUtils`, so business forms receive a standard tree directly. If `TreeUtils` does not cover a needed tree operation, extend it first and then consume it from shared APIs or business pages.
 
 For business section titles such as "基础信息", "车辆证件", or "车辆档案附件", use `ArtSectionTitle` to keep the visual language consistent. In `ArtForm`, use items with `type: 'divider'` and `span: 24`, because the divider is rendered through `ArtSectionTitle`. Do not create page-local `h3` headings and SCSS for section titles. Use the default right-side line for ordinary section breaks; pass `:show-line="false"` only for compact header rows where the line should be hidden, such as a title with a right-aligned action button.
+
+For a titled business content surface, use `ArtSectionCard` instead of assembling `art-card-xs`, `ArtSectionTitle`, `ElSkeleton`, `ArtEmptyState`, and error/retry markup in the page. Pass title, subtitle, actions, loading, empty, and error state through the component contract. Use `body-class` when the shared state body needs an established layout class. Keep an inner `ArtAsyncState` only for a genuinely independent sub-region whose surrounding controls or metrics must remain visible while that region loads or is empty. Keep `ArtPageSection` for borderless sections nested inside an existing surface. Keep raw `art-card-xs` only for untitled surfaces such as compact summaries, tab shells, popovers, and sticky action bars. If the required state or header behavior is broadly reusable, extend `ArtSectionCard` first rather than adding page-local wrappers.
 
 ## Build CRUD Pages
 
@@ -214,7 +220,7 @@ Apply the same ownership model to `ArtDrawer`.
 - In Vue SFCs with `lang="scss"`, write styles with SCSS nesting under the feature/root class instead of repeating flat sibling selectors.
 - Keep responsive overrides nested under the same root selector and place `:deep(...)` rules inside the relevant component block.
 - Avoid adding scattered top-level selectors in scoped SCSS unless the selector genuinely targets an independent root.
-- Business page card sections and sticky footer action bars must use the global `art-card-xs` class, for example `<section class="feature__section art-card-xs">` and `<div class="feature__footer art-card-xs">`. Do not recreate card backgrounds, borders, radius, or shadows in page-local SCSS when `art-card-xs` applies, because that style is globally controlled. Page-local styles may only add feature layout details such as padding, spacing, sticky positioning, or internal grid alignment.
+- Titled business card sections must use `ArtSectionCard`; do not place `art-card-xs` directly on a page-local titled section. Untitled compact surfaces and sticky footer action bars may use the global `art-card-xs` class, for example `<div class="feature__summary art-card-xs">` and `<div class="feature__footer art-card-xs">`. Do not recreate card backgrounds, borders, radius, or shadows in page-local SCSS. Page-local styles may only add feature layout details such as spacing, sticky positioning, or internal grid alignment.
 - Business-local rounded corners must use global radius variables, global classes, or project components instead of hardcoded `px` / `rem` values. Prefer `var(--el-border-radius-base)`, `var(--el-border-radius-small)`, `var(--custom-radius)`, `art-card-xs`, or an existing shared style for badges, chips, panels, buttons, upload boxes, and similar business UI. Use fixed values only for true circles or pills such as `50%` / `999px`, or when extending an established global/core component style.
 - Use Element Plus `ElScrollbar` for page, card, panel, drawer, and dialog-section scroll containers instead of native `overflow-y: auto` scrollbars. Give the scrollbar container a stable height or flex-bounded parent (`height`, `max-height`, or `flex: 1; min-height: 0`) so the scrollbar is owned by the intended content area.
 
@@ -246,9 +252,25 @@ Apply the same ownership model to `ArtDrawer`.
 
 - Page entry: `src/views/<domain>/<feature>/index.vue`
 - Feature-only components: `src/views/<domain>/<feature>/modules`
-- Reusable UI wrappers: `src/components/core`
+- Domain-independent shared UI: `src/components/core/<responsibility>`
+- Domain-aware or API-backed shared components: `src/components/business`
 - Shared composables: `src/hooks/core`
 - Keep wrapper types and detailed usage docs beside the wrapper.
+
+Shared component placement is responsibility-based. Read `src/components/README.md` before adding or relocating a public component, then use these boundaries:
+
+| Directory | Allowed responsibility |
+| --- | --- |
+| `core/base` | Small dependency-light display and interaction primitives |
+| `core/forms` | Generic inputs, selectors, form composition, and validation-aware controls |
+| `core/feedback` | Loading, skeleton, empty, error, and status feedback |
+| `core/surfaces` | Reusable content containers and section chrome |
+| `core/layouts` | Application shell, page geometry, navigation, and structural flow only |
+| `core/tables` | Table rendering, querying, pagination, and table tooling |
+| `core/dialogs` / `core/drawers` | Generic modal and side-panel infrastructure |
+| `components/business` | Cross-page components that understand business records or use exported `src/api/**` functions |
+
+`ArtAsyncState` and `ArtEmptyState` belong to `core/feedback`; `ArtSectionCard` and `ArtSectionTitle` belong to `core/surfaces`; `ArtEmployeeSelect` belongs to `components/business`. Do not put state components or content cards in `core/layouts`, and do not use `core/others` as a catch-all for new work. Keep a page-specific component in the feature's `modules` directory until a genuine shared contract exists. Before adding a new directory, search the closest category and document why none of the established responsibilities fits.
 
 ## Supabase Table Rules
 

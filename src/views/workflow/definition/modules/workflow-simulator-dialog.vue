@@ -15,14 +15,16 @@
         </ElTag>
       </section>
 
-      <section class="workflow-simulator__section art-card-xs">
-        <div class="workflow-simulator__section-header">
-          <div>
-            <ArtSectionTitle>业务样例</ArtSectionTitle>
-            <p>这里只模拟当前草稿，不会创建审批实例，也不会修改业务数据。</p>
+      <ArtSectionCard class="workflow-simulator__section" preserve-content-structure>
+        <template #header>
+          <div class="workflow-simulator__section-header">
+            <div>
+              <ArtSectionTitle>业务样例</ArtSectionTitle>
+              <p>这里只模拟当前草稿，不会创建审批实例，也不会修改业务数据。</p>
+            </div>
+            <span>{{ contextFields.length }} 个受控字段</span>
           </div>
-          <span>{{ contextFields.length }} 个受控字段</span>
-        </div>
+        </template>
         <ArtForm
           v-if="contextFields.length"
           v-model="form.data"
@@ -40,7 +42,7 @@
           size="compact"
           :visual-size="72"
         />
-      </section>
+      </ArtSectionCard>
 
       <section class="workflow-simulator__summary" aria-label="模拟结果摘要">
         <article v-for="item in summaryItems" :key="item.label" :class="`is-${item.tone}`">
@@ -52,16 +54,18 @@
         </article>
       </section>
 
-      <section class="workflow-simulator__section art-card-xs">
-        <div class="workflow-simulator__section-header">
-          <div>
-            <ArtSectionTitle>模拟路径</ArtSectionTitle>
-            <p>引擎按节点顺序检查条件，首个命中节点会先生成审批任务。</p>
+      <ArtSectionCard class="workflow-simulator__section" preserve-content-structure>
+        <template #header>
+          <div class="workflow-simulator__section-header">
+            <div>
+              <ArtSectionTitle>模拟路径</ArtSectionTitle>
+              <p>引擎按节点顺序检查条件，首个命中节点会先生成审批任务。</p>
+            </div>
+            <ElTag v-if="result.firstMatchedNodeKey" type="success" effect="plain">
+              已找到首个审批节点
+            </ElTag>
           </div>
-          <ElTag v-if="result.firstMatchedNodeKey" type="success" effect="plain">
-            已找到首个审批节点
-          </ElTag>
-        </div>
+        </template>
         <WorkflowFlowMap
           :nodes="config.nodes"
           :simulation-states="result.simulationStates"
@@ -91,27 +95,29 @@
             <em>{{ trace.state === 'matched' ? '条件命中' : '本次跳过' }}</em>
           </article>
         </div>
-      </section>
+      </ArtSectionCard>
 
-      <section class="workflow-simulator__section art-card-xs">
-        <div class="workflow-simulator__section-header">
-          <div>
-            <ArtSectionTitle>配置体检</ArtSectionTitle>
-            <p>错误项会阻止可靠运行；警告项需要在发布前确认业务意图。</p>
+      <ArtSectionCard class="workflow-simulator__section" preserve-content-structure>
+        <template #header>
+          <div class="workflow-simulator__section-header">
+            <div>
+              <ArtSectionTitle>配置体检</ArtSectionTitle>
+              <p>错误项会阻止可靠运行；警告项需要在发布前确认业务意图。</p>
+            </div>
+            <ElTag
+              :type="result.errorCount ? 'danger' : result.warningCount ? 'warning' : 'success'"
+              effect="plain"
+            >
+              {{
+                result.errorCount
+                  ? `${result.errorCount} 个错误`
+                  : result.warningCount
+                    ? `${result.warningCount} 个警告`
+                    : '配置健康'
+              }}
+            </ElTag>
           </div>
-          <ElTag
-            :type="result.errorCount ? 'danger' : result.warningCount ? 'warning' : 'success'"
-            effect="plain"
-          >
-            {{
-              result.errorCount
-                ? `${result.errorCount} 个错误`
-                : result.warningCount
-                  ? `${result.warningCount} 个警告`
-                  : '配置健康'
-            }}
-          </ElTag>
-        </div>
+        </template>
 
         <div v-if="result.diagnostics.length" class="workflow-simulator__diagnostics">
           <article
@@ -143,7 +149,7 @@
             <p>建议继续使用边界金额、空值和不同业务类型各试跑一次。</p>
           </div>
         </div>
-      </section>
+      </ArtSectionCard>
     </div>
 
     <template #footer="{ api }">
@@ -158,12 +164,13 @@
 </template>
 
 <script setup lang="ts">
+  import ArtSectionCard from '@/components/core/surfaces/art-section-card/index.vue'
   import { cloneDeep } from 'lodash-es'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
-  import ArtEmptyState from '@/components/core/layouts/art-empty-state/index.vue'
+  import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
-  import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
+  import ArtSectionTitle from '@/components/core/surfaces/art-section-title/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import WorkflowFlowMap from '@/components/business/workflow-flow-map/index.vue'
   import { getWorkflowContextFields } from '../../modules/workflow-business-contracts'

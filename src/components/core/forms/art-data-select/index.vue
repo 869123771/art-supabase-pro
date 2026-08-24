@@ -288,7 +288,7 @@
 </template>
 
 <script setup lang="ts">
-  import ArtEmptyState from '@/components/core/layouts/art-empty-state/index.vue'
+  import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import { get, isEqual, uniqBy } from 'lodash-es'
   import type { Component } from 'vue'
   import type { ComponentPublicInstance } from 'vue'

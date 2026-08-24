@@ -79,7 +79,7 @@
   import { trim } from 'lodash-es'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
-  import ArtEmptyState from '@/components/core/layouts/art-empty-state/index.vue'
+  import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import {
     workflowTemplateCategories,

@@ -74,11 +74,17 @@
 
       <ElScrollbar class="workflow-designer-page__scrollbar" always>
         <div class="workflow-designer-page__content">
-          <section v-show="activeStep === 1" class="workflow-designer-page__basic art-card-xs">
-            <div class="workflow-designer-page__section-heading">
-              <ArtSectionTitle>基础信息</ArtSectionTitle>
-              <p>先定义流程身份、所属租户与业务场景，后续字段和节点均围绕该对象配置。</p>
-            </div>
+          <ArtSectionCard
+            v-show="activeStep === 1"
+            class="workflow-designer-page__basic"
+            preserve-content-structure
+          >
+            <template #header>
+              <div class="workflow-designer-page__section-heading">
+                <ArtSectionTitle>基础信息</ArtSectionTitle>
+                <p>先定义流程身份、所属租户与业务场景，后续字段和节点均围绕该对象配置。</p>
+              </div>
+            </template>
             <ArtForm
               ref="baseFormRef"
               v-model="form.data"
@@ -90,35 +96,41 @@
               :show-reset="false"
               :show-submit="false"
             />
-          </section>
+          </ArtSectionCard>
 
-          <section v-show="activeStep === 2" class="workflow-designer-page__fields art-card-xs">
-            <div class="workflow-designer-page__section-heading is-split">
-              <div>
-                <ArtSectionTitle>业务字段契约</ArtSectionTitle>
-                <p>
-                  审批沿用业务原单，不另建低代码表单；这里只展示服务端允许进入审批上下文的字段。
-                </p>
+          <ArtSectionCard
+            v-show="activeStep === 2"
+            class="workflow-designer-page__fields"
+            preserve-content-structure
+          >
+            <template #header>
+              <div class="workflow-designer-page__section-heading is-split">
+                <div>
+                  <ArtSectionTitle>业务字段契约</ArtSectionTitle>
+                  <p>
+                    审批沿用业务原单，不另建低代码表单；这里只展示服务端允许进入审批上下文的字段。
+                  </p>
+                </div>
+                <label class="workflow-designer-page__business-selector">
+                  <span>当前业务场景</span>
+                  <ElSelect
+                    ref="businessTypeSelectRef"
+                    v-model="form.data.businessType"
+                    filterable
+                    :disabled="identityLocked"
+                    placeholder="选择具体业务类型"
+                    @change="handleBusinessTypeChange"
+                  >
+                    <ElOption
+                      v-for="option in businessTypeOptions"
+                      :key="option.value"
+                      :label="option.label"
+                      :value="option.value"
+                    />
+                  </ElSelect>
+                </label>
               </div>
-              <label class="workflow-designer-page__business-selector">
-                <span>当前业务场景</span>
-                <ElSelect
-                  ref="businessTypeSelectRef"
-                  v-model="form.data.businessType"
-                  filterable
-                  :disabled="identityLocked"
-                  placeholder="选择具体业务类型"
-                  @change="handleBusinessTypeChange"
-                >
-                  <ElOption
-                    v-for="option in businessTypeOptions"
-                    :key="option.value"
-                    :label="option.label"
-                    :value="option.value"
-                  />
-                </ElSelect>
-              </label>
-            </div>
+            </template>
 
             <div class="workflow-designer-page__contract-summary">
               <article>
@@ -179,7 +191,7 @@
               show-icon
               title="字段契约由业务模块和服务端共同维护，流程设计器只能读取，不会复制或改写业务原表。"
             />
-          </section>
+          </ArtSectionCard>
 
           <WorkflowCanvasEditor
             ref="workflowCanvasRef"
@@ -190,19 +202,25 @@
             @request-step="activeStep = $event"
           />
 
-          <section v-show="activeStep === 4" class="workflow-designer-page__settings art-card-xs">
-            <div class="workflow-designer-page__section-heading is-split">
-              <div>
-                <ArtSectionTitle>发布与安全设置</ArtSectionTitle>
-                <p>发布前确认兜底策略、节点配置与不可变版本规则。</p>
+          <ArtSectionCard
+            v-show="activeStep === 4"
+            class="workflow-designer-page__settings"
+            preserve-content-structure
+          >
+            <template #header>
+              <div class="workflow-designer-page__section-heading is-split">
+                <div>
+                  <ArtSectionTitle>发布与安全设置</ArtSectionTitle>
+                  <p>发布前确认兜底策略、节点配置与不可变版本规则。</p>
+                </div>
+                <ElTag
+                  :type="errorCount ? 'danger' : warningCount ? 'warning' : 'success'"
+                  effect="light"
+                >
+                  {{ publishReadinessLabel }}
+                </ElTag>
               </div>
-              <ElTag
-                :type="errorCount ? 'danger' : warningCount ? 'warning' : 'success'"
-                effect="light"
-              >
-                {{ publishReadinessLabel }}
-              </ElTag>
-            </div>
+            </template>
 
             <div class="workflow-designer-page__release-overview">
               <article :class="{ 'is-danger': errorCount }">
@@ -327,7 +345,7 @@
                 </div>
               </section>
             </div>
-          </section>
+          </ArtSectionCard>
         </div>
       </ElScrollbar>
     </div>
@@ -338,13 +356,14 @@
 </template>
 
 <script setup lang="ts">
+  import ArtSectionCard from '@/components/core/surfaces/art-section-card/index.vue'
   import type { FormRules } from 'element-plus'
   import { cloneDeep, trim } from 'lodash-es'
-  import ArtEmptyState from '@/components/core/layouts/art-empty-state/index.vue'
+  import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import ArtPageHeader from '@/components/core/layouts/art-page-header/index.vue'
   import ArtPageShell from '@/components/core/layouts/art-page-shell/index.vue'
-  import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
+  import ArtSectionTitle from '@/components/core/surfaces/art-section-title/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { useUserStore } from '@/store/modules/user'

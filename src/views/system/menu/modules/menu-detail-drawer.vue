@@ -42,30 +42,27 @@
         </article>
       </section>
 
-      <section class="menu-detail__section art-card-xs">
-        <ArtSectionTitle>导航与访问</ArtSectionTitle>
+      <ArtSectionCard class="menu-detail__section" preserve-content-structure title="导航与访问">
         <ArtDescriptions :data="menu" :items="accessItems" :columns="2" />
-      </section>
+      </ArtSectionCard>
 
-      <section class="menu-detail__section art-card-xs">
-        <ArtSectionTitle>页面行为</ArtSectionTitle>
+      <ArtSectionCard class="menu-detail__section" preserve-content-structure title="页面行为">
         <ArtDescriptions :data="menu" :items="behaviorItems" :columns="4" />
-      </section>
+      </ArtSectionCard>
 
-      <section class="menu-detail__section art-card-xs">
-        <ArtSectionTitle>审计信息</ArtSectionTitle>
+      <ArtSectionCard class="menu-detail__section" preserve-content-structure title="审计信息">
         <ArtDescriptions :data="menu" :items="auditItems" :columns="2" />
-      </section>
+      </ArtSectionCard>
     </div>
   </ArtDrawer>
 </template>
 
 <script setup lang="ts">
+  import ArtSectionCard from '@/components/core/surfaces/art-section-card/index.vue'
   import { h } from 'vue'
   import { ElTag } from 'element-plus'
   import ArtDescriptions from '@/components/core/base/art-descriptions/index.vue'
   import type { ArtDescriptionItem } from '@/components/core/base/art-descriptions/types'
-  import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import ArtDrawer from '@/components/core/drawers/art-drawer/index.vue'
   import type { ArtDrawerExpose } from '@/components/core/drawers/art-drawer/types'

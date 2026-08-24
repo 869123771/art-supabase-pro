@@ -32,14 +32,16 @@
             </article>
           </section>
 
-          <section class="workflow-analytics__trend art-card-xs">
-            <div class="workflow-analytics__heading">
-              <div>
-                <ArtSectionTitle :show-line="false">近 14 日发起趋势</ArtSectionTitle>
-                <p>柱高按当前区间最大日发起量归一化，仅用于快速识别峰值。</p>
-              </div>
-              <span>生成于 {{ formatDate(state.data.generatedAt) }}</span>
-            </div>
+          <ArtSectionCard class="workflow-analytics__trend" preserve-content-structure>
+            <template #header
+              ><div class="workflow-analytics__heading">
+                <div>
+                  <ArtSectionTitle :show-line="false">近 14 日发起趋势</ArtSectionTitle>
+                  <p>柱高按当前区间最大日发起量归一化，仅用于快速识别峰值。</p>
+                </div>
+                <span>生成于 {{ formatDate(state.data.generatedAt) }}</span>
+              </div></template
+            >
             <div class="workflow-analytics__bars" aria-label="审批每日发起趋势">
               <article v-for="item in recentDaily" :key="item.date">
                 <div>
@@ -52,16 +54,18 @@
                 <small>{{ dayjs(item.date).format('MM-DD') }}</small>
               </article>
             </div>
-          </section>
+          </ArtSectionCard>
 
-          <section class="workflow-analytics__business art-card-xs">
-            <div class="workflow-analytics__heading">
-              <div>
-                <ArtSectionTitle :show-line="false">按业务类型分析</ArtSectionTitle>
-                <p>通过率只计算已有明确通过/驳回结论的实例。</p>
-              </div>
-              <ElTag effect="plain" round>{{ state.data.businessTypes.length }} 类业务</ElTag>
-            </div>
+          <ArtSectionCard class="workflow-analytics__business" preserve-content-structure>
+            <template #header
+              ><div class="workflow-analytics__heading">
+                <div>
+                  <ArtSectionTitle :show-line="false">按业务类型分析</ArtSectionTitle>
+                  <p>通过率只计算已有明确通过/驳回结论的实例。</p>
+                </div>
+                <ElTag effect="plain" round>{{ state.data.businessTypes.length }} 类业务</ElTag>
+              </div></template
+            >
 
             <ArtEmptyState
               v-if="!state.data.businessTypes.length"
@@ -96,7 +100,7 @@
                 </div>
               </article>
             </div>
-          </section>
+          </ArtSectionCard>
         </ElTabPane>
 
         <ElTabPane label="瓶颈治理" name="governance">
@@ -117,14 +121,16 @@
               </article>
             </section>
 
-            <section class="workflow-analytics__governance-card art-card-xs">
-              <div class="workflow-analytics__heading">
-                <div>
-                  <ArtSectionTitle :show-line="false">节点瓶颈</ArtSectionTitle>
-                  <p>按逾期、SLA 违约、待办量与 P90 耗时排序，优先处理影响面更大的节点。</p>
-                </div>
-                <ElTag effect="plain" round>{{ attentionNodeCount }} 个需关注</ElTag>
-              </div>
+            <ArtSectionCard class="workflow-analytics__governance-card" preserve-content-structure>
+              <template #header
+                ><div class="workflow-analytics__heading">
+                  <div>
+                    <ArtSectionTitle :show-line="false">节点瓶颈</ArtSectionTitle>
+                    <p>按逾期、SLA 违约、待办量与 P90 耗时排序，优先处理影响面更大的节点。</p>
+                  </div>
+                  <ElTag effect="plain" round>{{ attentionNodeCount }} 个需关注</ElTag>
+                </div></template
+              >
 
               <ArtEmptyState
                 v-if="!state.bottleneck.nodes.length"
@@ -168,16 +174,20 @@
                   </article>
                 </div>
               </ElScrollbar>
-            </section>
+            </ArtSectionCard>
 
-            <section class="workflow-analytics__governance-card art-card-xs">
-              <div class="workflow-analytics__heading">
-                <div>
-                  <ArtSectionTitle :show-line="false">审批负载</ArtSectionTitle>
-                  <p>用于发现工作量集中和代办承接压力，建议结合岗位与排班共同判断。</p>
-                </div>
-                <ElTag effect="plain" round>{{ state.bottleneck.approvers.length }} 位审批人</ElTag>
-              </div>
+            <ArtSectionCard class="workflow-analytics__governance-card" preserve-content-structure>
+              <template #header
+                ><div class="workflow-analytics__heading">
+                  <div>
+                    <ArtSectionTitle :show-line="false">审批负载</ArtSectionTitle>
+                    <p>用于发现工作量集中和代办承接压力，建议结合岗位与排班共同判断。</p>
+                  </div>
+                  <ElTag effect="plain" round
+                    >{{ state.bottleneck.approvers.length }} 位审批人</ElTag
+                  >
+                </div></template
+              >
 
               <ArtEmptyState
                 v-if="!state.bottleneck.approvers.length"
@@ -213,7 +223,7 @@
                   </article>
                 </div>
               </ElScrollbar>
-            </section>
+            </ArtSectionCard>
           </div>
         </ElTabPane>
       </ElTabs>
@@ -222,6 +232,7 @@
 </template>
 
 <script setup lang="ts">
+  import ArtSectionCard from '@/components/core/surfaces/art-section-card/index.vue'
   import { createFriendlySupabaseError } from '@/utils/supabase'
   import dayjs from 'dayjs'
   import { ElMessage } from 'element-plus'
@@ -229,9 +240,9 @@
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
-  import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
-  import ArtEmptyState from '@/components/core/layouts/art-empty-state/index.vue'
-  import ArtAsyncState from '@/components/core/layouts/art-async-state/index.vue'
+  import ArtSectionTitle from '@/components/core/surfaces/art-section-title/index.vue'
+  import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
+  import ArtAsyncState from '@/components/core/feedback/art-async-state/index.vue'
   import {
     fetchWorkflowBottleneckAnalytics,
     fetchWorkflowOperationalAnalytics

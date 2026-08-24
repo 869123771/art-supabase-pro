@@ -240,7 +240,7 @@
   import ArtIconPicker from '@/components/core/forms/art-icon-picker/index.vue'
   import ArtDataSelect from '@/components/core/forms/art-data-select/index.vue'
   import ArtUserSelect from '@/components/core/forms/art-user-select/index.vue'
-  import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
+  import ArtSectionTitle from '@/components/core/surfaces/art-section-title/index.vue'
   import { calculateResponsiveSpan, type ResponsiveBreakpoint } from '@/utils/form/responsive'
   import {
     cloneModelValue,

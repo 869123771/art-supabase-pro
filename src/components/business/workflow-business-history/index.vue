@@ -137,9 +137,9 @@
   import { fetchWorkflowBusinessHistory } from '@/api/workflow'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
-  import ArtAsyncState from '@/components/core/layouts/art-async-state/index.vue'
+  import ArtAsyncState from '@/components/core/feedback/art-async-state/index.vue'
   import ArtProcessTimeline from '@/components/core/layouts/art-process-timeline/index.vue'
-  import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
+  import ArtSectionTitle from '@/components/core/surfaces/art-section-title/index.vue'
   import WorkflowFlowMap from '@/components/business/workflow-flow-map/index.vue'
   import { formatWithDayjs } from '@/utils/time'
   import {

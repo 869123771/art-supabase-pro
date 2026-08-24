@@ -192,7 +192,7 @@
 </template>
 
 <script setup lang="ts">
-  import ArtEmptyState from '@/components/core/layouts/art-empty-state/index.vue'
+  import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import WebSocketClient from '@/utils/socket'
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import { ElMessage } from 'element-plus'

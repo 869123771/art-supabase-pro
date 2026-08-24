@@ -186,7 +186,7 @@
 </template>
 
 <script setup lang="ts">
-  import ArtEmptyState from '@/components/core/layouts/art-empty-state/index.vue'
+  import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import type { FileType, Resource, ResourcePanelProps } from './type.ts'
   import ArtMenuRight from '@/components/core/others/art-menu-right/index.vue'
   import type { MenuItemType } from '@/components/core/others/art-menu-right/index.vue'

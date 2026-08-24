@@ -84,8 +84,15 @@ $popup-menu-radius: 6px;
     }
 
     > .el-menu {
-      padding: 1px 0 4px 4px;
-      margin: 0 8px;
+      width: auto;
+      padding: 1px 0 4px;
+      margin: 0 4px 0 8px;
+    }
+
+    > .el-menu > .el-menu-item,
+    > .el-menu > .el-sub-menu > .el-sub-menu__title {
+      width: 100%;
+      margin-left: 0;
     }
 
     > .el-menu > .el-menu-item {
@@ -162,8 +169,14 @@ $popup-menu-radius: 6px;
 
   // 菜单图标
   .menu-icon {
+    flex: none;
     margin-right: 8px;
     font-size: $menu-icon-size;
+  }
+
+  .menu-name {
+    flex: 1;
+    min-width: 0;
   }
 
   // 菜单高度

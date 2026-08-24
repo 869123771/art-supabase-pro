@@ -389,12 +389,16 @@
 
   .layout-sidebar {
     // 展开的宽度
-    .el-menu:not(.el-menu--collapse) {
+    > .menu-left
+      > .el-scrollbar
+      > .el-scrollbar__wrap
+      > .el-scrollbar__view
+      > .el-menu:not(.el-menu--collapse) {
       width: v-bind(menuopenwidth);
     }
 
     // 折叠后宽度
-    .el-menu--collapse {
+    > .menu-left > .el-scrollbar > .el-scrollbar__wrap > .el-scrollbar__view > .el-menu--collapse {
       width: v-bind(menuclosewidth);
     }
   }

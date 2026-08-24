@@ -40,22 +40,15 @@
         :validate-on-rule-change="false"
       >
         <template #hrEmployeeId>
-          <ArtTableSingleSelect
+          <ArtEmployeeSelect
             :model-value="formData.hrEmployeeId || undefined"
             :selected-data="employeeSelection.selectedRows"
-            :api-fn="fetchEmployeeSelectorData"
-            :columns="employeeSelection.columns"
+            :tenant-id="formData.tenantId || undefined"
             title="从员工花名册选择"
             subtitle="仅展示当前租户内在岗、且尚未开通账号的员工"
-            row-key="id"
-            :label-key="getEmployeeLabel"
-            :description-key="getEmployeeDescription"
             :disabled="!formData.tenantId"
             :placeholder="formData.tenantId ? '请选择员工档案' : '请先选择所属租户'"
             search-placeholder="员工工号、姓名、手机、邮箱或岗位"
-            dialog-width="xl"
-            show-pagination
-            :page-size="10"
             @update:model-value="handleEmployeeValueChange"
             @update:selected-data="handleEmployeeRowsChange"
             @confirm="handleEmployeeConfirm"
@@ -79,13 +72,7 @@
   import ArtForm from '@/components/core/forms/art-form/index.vue'
   import type { FormItem } from '@/components/core/forms/art-form/index.vue'
   import ArtUploadImage from '@/components/core/forms/art-upload-image/index.vue'
-  import ArtTableSingleSelect from '@/components/core/forms/art-data-select/table-single.vue'
-  import type {
-    DataSelectColumn,
-    DataSelectFetchParams,
-    DataSelectKey,
-    DataSelectRecord
-  } from '@/components/core/forms/art-data-select/types'
+  import ArtEmployeeSelect from '@/components/business/art-employee-select/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import { useUserStore } from '@/store/modules/user'
   import {
@@ -94,11 +81,7 @@
     fetchGetEnableOrganizationTree,
     fetchGetEnableTenantList
   } from '@/api/system-manage'
-  import {
-    fetchEmployeeSelectorList,
-    type EmployeeIntegrationItem
-  } from '@/api/integration/employees'
-  import { pageInfoHandler } from '@/utils/table/tableUtils'
+  import type { EmployeeIntegrationItem } from '@/api/integration/employees'
   import { useSystemParam } from '@/hooks'
 
   type UserListItem = Api.SystemManage.UserListItem
@@ -115,8 +98,7 @@
   }
 
   interface EmployeeSelectionGroup {
-    selectedRows: DataSelectRecord[]
-    columns: DataSelectColumn[]
+    selectedRows: EmployeeIntegrationItem[]
   }
 
   const emit = defineEmits<Emits>()
@@ -155,20 +137,7 @@
 
   const formData = ref<UserListItem>(createInitialForm())
   const employeeSelection = reactive<EmployeeSelectionGroup>({
-    selectedRows: [],
-    columns: [
-      { prop: 'employeeNo', label: '员工工号', width: 130 },
-      { prop: 'employeeName', label: '员工姓名', minWidth: 130 },
-      { prop: 'organization.organizationName', label: '所属组织', minWidth: 160 },
-      { prop: 'jobTitle', label: '工作岗位', minWidth: 140 },
-      { prop: 'phone', label: '手机号码', width: 140 },
-      {
-        prop: 'employmentStatus',
-        label: '任职状态',
-        width: 110,
-        dict: { code: 'hrEmploymentStatus', display: 'tag' }
-      }
-    ]
+    selectedRows: []
   })
   const isEdit = computed(() => !!formData.value.id)
   const isCurrentUser = computed(
@@ -443,39 +412,16 @@
     void formRef.value?.reloadOptions('organizationId')
   }
 
-  const fetchEmployeeSelectorData = async (params: DataSelectFetchParams) => {
-    const { from, to } = pageInfoHandler({ current: params.page, size: params.pageSize })
-    const { data, total } = await fetchEmployeeSelectorList({
-      tenantId: formData.value.tenantId,
-      keyword: params.keyword,
-      from,
-      to
-    })
-    return { data: data ?? [], total: total ?? 0 }
+  const handleEmployeeValueChange = (value: string | undefined): void => {
+    formData.value.hrEmployeeId = value ?? null
   }
 
-  const getEmployeeLabel = (row: DataSelectRecord): string => {
-    const employee = row as EmployeeIntegrationItem
-    return `${employee.employeeName}（${employee.employeeNo}）`
-  }
-
-  const getEmployeeDescription = (row: DataSelectRecord): string => {
-    const employee = row as EmployeeIntegrationItem
-    return [employee.organization?.organizationName, employee.jobTitle, employee.phone]
-      .filter(Boolean)
-      .join(' / ')
-  }
-
-  const handleEmployeeValueChange = (value: DataSelectKey | DataSelectKey[] | undefined): void => {
-    formData.value.hrEmployeeId = typeof value === 'string' ? value : null
-  }
-
-  const handleEmployeeRowsChange = (rows: DataSelectRecord[]): void => {
+  const handleEmployeeRowsChange = (rows: EmployeeIntegrationItem[]): void => {
     employeeSelection.selectedRows = rows
   }
 
-  const handleEmployeeConfirm = (_value: unknown, rows: DataSelectRecord[]): void => {
-    const employee = rows[0] as EmployeeIntegrationItem | undefined
+  const handleEmployeeConfirm = (_value: unknown, rows: EmployeeIntegrationItem[]): void => {
+    const employee = rows[0]
     if (!employee) return
 
     Object.assign(formData.value, {

@@ -1,5 +1,6 @@
 import { readdir, readFile } from 'node:fs/promises'
 import path from 'node:path'
+import { parse as parseSfc } from '@vue/compiler-sfc'
 
 interface Finding {
   file: string
@@ -35,6 +36,68 @@ function excerptAt(content: string, offset: number): string {
   return content.slice(start, end === -1 ? content.length : end).trim()
 }
 
+interface TemplateNode {
+  type: number
+  tag?: string
+  props?: Array<{
+    type: number
+    name?: string
+    value?: { content?: string }
+  }>
+  children?: TemplateNode[]
+  loc?: { start: { offset: number } }
+}
+
+function hasStaticClass(node: TemplateNode, className: string): boolean {
+  const classAttribute = node.props?.find(
+    (property) => property.type === 6 && property.name === 'class'
+  )
+  return Boolean(classAttribute?.value?.content?.split(/\s+/).some((name) => name === className))
+}
+
+function containsSectionHeading(node: TemplateNode): boolean {
+  if (node.type === 1) {
+    if (node.tag === 'ArtSectionTitle' || /^h[1-6]$/.test(node.tag ?? '')) return true
+  }
+  return node.children?.some(containsSectionHeading) ?? false
+}
+
+function countSectionTitles(node: TemplateNode, isRoot = true): number {
+  if (!isRoot && node.type === 1 && hasStaticClass(node, 'art-card-xs')) return 0
+  const ownCount = node.type === 1 && node.tag === 'ArtSectionTitle' ? 1 : 0
+  return (
+    ownCount +
+    (node.children?.reduce((sum, child) => sum + countSectionTitles(child, false), 0) ?? 0)
+  )
+}
+
+function findRawTitledCards(file: string, content: string): number[] {
+  const { descriptor } = parseSfc(content, { filename: file })
+  if (!descriptor.template?.ast) return []
+
+  const offsets: number[] = []
+  const visit = (node: TemplateNode): void => {
+    if (
+      node.type === 1 &&
+      node.tag === 'section' &&
+      hasStaticClass(node, 'art-card-xs') &&
+      (countSectionTitles(node) === 1 ||
+        node.children?.some((child) => {
+          if (child.type !== 1) return false
+          return child.tag === 'header' || /^h[1-6]$/.test(child.tag ?? '')
+            ? containsSectionHeading(child)
+            : false
+        }))
+    ) {
+      offsets.push(node.loc?.start.offset ?? 0)
+    }
+    node.children?.forEach(visit)
+  }
+
+  visit(descriptor.template.ast as TemplateNode)
+  return offsets
+}
+
 function scanFile(file: string, content: string): Finding[] {
   const findings: Finding[] = []
   const relativeFile = path.relative(projectRoot, file).replaceAll('\\', '/')
@@ -67,6 +130,19 @@ function scanFile(file: string, content: string): Finding[] {
   })
 
   if (path.extname(file) === '.vue') {
+    if (
+      ![
+        'src/components/business/business-workspace-header/index.vue',
+        'src/components/core/surfaces/art-section-card/index.vue'
+      ].includes(relativeFile)
+    ) {
+      findRawTitledCards(file, content).forEach((offset) => {
+        if (!excerptAt(content, offset).includes('data-ui-audit-allow')) {
+          addFinding(offset, 'consistency/use-art-section-card')
+        }
+      })
+    }
+
     for (const match of content.matchAll(/<img\b[^>]*>/gs)) {
       if (match.index == null || match[0].includes('data-ui-audit-allow')) continue
       if (!/\s(?:alt|:alt)\s*=/.test(match[0])) addFinding(match.index, 'images/require-alt')

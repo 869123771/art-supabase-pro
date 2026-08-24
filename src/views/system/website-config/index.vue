@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <ArtPageShell
     :loading="page.loading"
     :error="page.error"
@@ -76,7 +76,7 @@
             </div>
           </section>
 
-          <ArtPageSection
+          <ArtSectionCard
             v-for="section in formSections"
             :id="section.key"
             :key="section.key"
@@ -345,7 +345,7 @@
                 </div>
               </template>
             </div>
-          </ArtPageSection>
+          </ArtSectionCard>
 
           <ArtStickyActionBar
             class="website-config-page__actions"

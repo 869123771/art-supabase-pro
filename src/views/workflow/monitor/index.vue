@@ -66,16 +66,18 @@
       </ElButton>
     </section>
 
-    <section class="workflow-monitor__workspace art-card-xs">
-      <header class="workflow-monitor__workspace-header">
-        <div>
-          <ArtSectionTitle :show-line="false">流程实例</ArtSectionTitle>
-          <p>超时按当前待办节点的截止时间实时计算；终止流程仅允许平台超级管理员操作。</p>
-        </div>
-        <ElTag :type="isPlatformSuper ? 'warning' : 'info'" effect="plain" round>
-          <ArtSvgIcon icon="ri:timer-line" />优先处理超时实例
-        </ElTag>
-      </header>
+    <ArtSectionCard class="workflow-monitor__workspace" preserve-content-structure>
+      <template #header>
+        <header class="workflow-monitor__workspace-header">
+          <div>
+            <ArtSectionTitle :show-line="false">流程实例</ArtSectionTitle>
+            <p>超时按当前待办节点的截止时间实时计算；终止流程仅允许平台超级管理员操作。</p>
+          </div>
+          <ElTag :type="isPlatformSuper ? 'warning' : 'info'" effect="plain" round>
+            <ArtSvgIcon icon="ri:timer-line" />优先处理超时实例
+          </ElTag>
+        </header>
+      </template>
 
       <ArtTableQuery
         ref="tableRef"
@@ -87,7 +89,7 @@
         :search-bar-props="table.searchBarProps"
         :table-props="table.tableProps"
       />
-    </section>
+    </ArtSectionCard>
 
     <WorkflowInstanceDrawer ref="instanceDrawerRef" />
     <WorkflowCancelDialog ref="cancelDialogRef" @success="handleCancelSuccess" />
@@ -97,6 +99,7 @@
 </template>
 
 <script setup lang="tsx">
+  import ArtSectionCard from '@/components/core/surfaces/art-section-card/index.vue'
   import { createFriendlySupabaseError } from '@/utils/supabase'
   import dayjs from 'dayjs'
   import { ElTag } from 'element-plus'
@@ -111,7 +114,7 @@
   } from '@/components/business/business-workspace-header/index.vue'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
-  import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
+  import ArtSectionTitle from '@/components/core/surfaces/art-section-title/index.vue'
   import { useUserStore } from '@/store/modules/user'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatWithDayjs } from '@/utils/time'

@@ -1,23 +1,25 @@
 <template>
-  <section class="ai-feedback-quality art-card-xs">
-    <header class="ai-feedback-quality__header">
-      <div class="ai-feedback-quality__identity">
-        <div class="ai-feedback-quality__identity-icon">
-          <ArtSvgIcon icon="ri:loop-right-line" />
+  <ArtSectionCard class="ai-feedback-quality" preserve-content-structure>
+    <template #header>
+      <header class="ai-feedback-quality__header">
+        <div class="ai-feedback-quality__identity">
+          <div class="ai-feedback-quality__identity-icon">
+            <ArtSvgIcon icon="ri:loop-right-line" />
+          </div>
+          <div>
+            <span>QUALITY GOVERNANCE</span>
+            <h2>AI 质量评估与反馈闭环</h2>
+            <p>用评价覆盖率、正向率和问题关闭率衡量 AI 是否真正可用。</p>
+          </div>
         </div>
-        <div>
-          <span>QUALITY GOVERNANCE</span>
-          <h2>AI 质量评估与反馈闭环</h2>
-          <p>用评价覆盖率、正向率和问题关闭率衡量 AI 是否真正可用。</p>
+        <div class="ai-feedback-quality__header-status">
+          <ElTag :type="data.canManageFeedback ? 'primary' : 'info'" effect="plain" round>
+            {{ data.canManageFeedback ? '管理员处理模式' : '只读观察模式' }}
+          </ElTag>
+          <span>{{ data.days }} 天评估周期</span>
         </div>
-      </div>
-      <div class="ai-feedback-quality__header-status">
-        <ElTag :type="data.canManageFeedback ? 'primary' : 'info'" effect="plain" round>
-          {{ data.canManageFeedback ? '管理员处理模式' : '只读观察模式' }}
-        </ElTag>
-        <span>{{ data.days }} 天评估周期</span>
-      </div>
-    </header>
+      </header>
+    </template>
 
     <ElAlert
       v-if="data.totalRuns > 0 && data.feedbackCoverageRate < 20"
@@ -135,14 +137,15 @@
         </ElScrollbar>
       </article>
     </div>
-  </section>
+  </ArtSectionCard>
 </template>
 
 <script setup lang="ts">
+  import ArtSectionCard from '@/components/core/surfaces/art-section-card/index.vue'
   import dayjs from 'dayjs'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
-  import ArtAsyncState from '@/components/core/layouts/art-async-state/index.vue'
+  import ArtAsyncState from '@/components/core/feedback/art-async-state/index.vue'
   import type {
     AiFeedbackQualityOverview,
     AiFeedbackQueueItem,

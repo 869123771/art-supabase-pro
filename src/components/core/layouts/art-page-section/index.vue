@@ -1,5 +1,5 @@
 <template>
-  <section class="art-page-section" :class="{ 'art-card-xs': card, 'has-header': hasHeader }">
+  <section class="art-page-section" :class="{ 'has-header': hasHeader }">
     <div v-if="hasHeader" class="art-page-section__header">
       <div class="art-page-section__identity">
         <ArtSectionTitle :show-line="false" :show-marker="showMarker">{{ title }}</ArtSectionTitle>
@@ -16,7 +16,7 @@
 </template>
 
 <script setup lang="ts">
-  import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
+  import ArtSectionTitle from '@/components/core/surfaces/art-section-title/index.vue'
 
   defineOptions({ name: 'ArtPageSection' })
 
@@ -24,13 +24,11 @@
     defineProps<{
       title?: string
       subtitle?: string
-      card?: boolean
       showMarker?: boolean
     }>(),
     {
       title: '',
       subtitle: '',
-      card: true,
       showMarker: true
     }
   )
@@ -42,10 +40,6 @@
 <style scoped lang="scss">
   .art-page-section {
     min-width: 0;
-
-    &.art-card-xs {
-      padding: var(--art-section-padding);
-    }
 
     &__header {
       display: flex;
@@ -86,10 +80,6 @@
     }
 
     @media (width <= 640px) {
-      &.art-card-xs {
-        padding: var(--art-space-4);
-      }
-
       &__header {
         flex-direction: column;
       }

@@ -15,25 +15,27 @@
       @accept="(suggestion) => updateWorkflow(suggestion, 'accepted')"
     />
 
-    <section class="ai-planner__control-panel art-card-xs">
-      <header class="ai-planner__toolbar">
-        <div>
-          <strong>建议池</strong>
-          <span>{{ toolbarSubtitle }}</span>
-        </div>
-        <div class="ai-planner__toolbar-actions">
-          <ElTooltip content="刷新建议" placement="bottom">
-            <ArtIconButton
-              icon="ri:refresh-line"
-              circle
-              label="刷新建议"
-              :loading="loading.state"
-              @click="loadState(true)"
-            />
-          </ElTooltip>
-          <ElSegmented v-model="filters.status" :options="statusFilterOptions" />
-        </div>
-      </header>
+    <ArtSectionCard class="ai-planner__control-panel" preserve-content-structure>
+      <template #header>
+        <header class="ai-planner__toolbar">
+          <div>
+            <strong>建议池</strong>
+            <span>{{ toolbarSubtitle }}</span>
+          </div>
+          <div class="ai-planner__toolbar-actions">
+            <ElTooltip content="刷新建议" placement="bottom">
+              <ArtIconButton
+                icon="ri:refresh-line"
+                circle
+                label="刷新建议"
+                :loading="loading.state"
+                @click="loadState(true)"
+              />
+            </ElTooltip>
+            <ElSegmented v-model="filters.status" :options="statusFilterOptions" />
+          </div>
+        </header>
+      </template>
 
       <section v-if="state.suggestions.length" class="ai-planner__filters">
         <ElSelect v-model="filters.batchId" class="ai-planner__batch-select" placeholder="生成批次">
@@ -89,7 +91,7 @@
           </ElButton>
         </div>
       </section>
-    </section>
+    </ArtSectionCard>
 
     <div v-loading="loading.state" class="ai-planner__list">
       <ProjectPlannerEmptyState
@@ -122,6 +124,7 @@
 </template>
 
 <script setup lang="ts">
+  import ArtSectionCard from '@/components/core/surfaces/art-section-card/index.vue'
   import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import { useUserStore } from '@/store/modules/user'

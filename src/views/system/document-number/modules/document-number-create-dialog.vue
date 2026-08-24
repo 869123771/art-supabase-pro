@@ -1,14 +1,16 @@
 <template>
   <ArtDialog ref="dialogRef" size="lg" :dialog-props="{ appendToBody: true }">
     <div class="number-rule-create">
-      <section class="number-rule-create__form art-card-xs">
-        <header class="number-rule-create__header">
-          <div>
-            <ArtSectionTitle :show-line="false">批量配置租户规则</ArtSectionTitle>
-            <p>先从树形菜单定位业务功能，再把同一套编号规范一次分配给多个租户。</p>
-          </div>
-          <ElTag type="primary" round>{{ selectedTenantCount }} 个租户</ElTag>
-        </header>
+      <ArtSectionCard class="number-rule-create__form" preserve-content-structure>
+        <template #header>
+          <header class="number-rule-create__header">
+            <div>
+              <ArtSectionTitle :show-line="false">批量配置租户规则</ArtSectionTitle>
+              <p>先从树形菜单定位业务功能，再把同一套编号规范一次分配给多个租户。</p>
+            </div>
+            <ElTag type="primary" round>{{ selectedTenantCount }} 个租户</ElTag>
+          </header>
+        </template>
 
         <ArtForm
           ref="formRef"
@@ -43,11 +45,14 @@
             </div>
           </template>
         </ArtForm>
-      </section>
+      </ArtSectionCard>
 
       <aside class="number-rule-create__summary">
-        <section class="number-rule-create__preview art-card-xs">
-          <ArtSectionTitle :show-line="false">配置预览</ArtSectionTitle>
+        <ArtSectionCard
+          class="number-rule-create__preview"
+          preserve-content-structure
+          title="配置预览"
+        >
           <code translate="no">{{ previewText }}</code>
           <dl>
             <div>
@@ -63,7 +68,7 @@
               <dd>{{ selectedTenantCount }} 个租户</dd>
             </div>
           </dl>
-        </section>
+        </ArtSectionCard>
 
         <ElAlert
           type="info"
@@ -77,13 +82,14 @@
 </template>
 
 <script setup lang="ts">
+  import ArtSectionCard from '@/components/core/surfaces/art-section-card/index.vue'
   import type { ComputedRef, UnwrapNestedRefs } from 'vue'
   import type { FormRules } from 'element-plus'
   import { ElMessage } from 'element-plus'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
-  import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
+  import ArtSectionTitle from '@/components/core/surfaces/art-section-title/index.vue'
   import { addDocumentNumberRules, fetchDocumentNumberSceneList } from '@/api/document-number'
   import { fetchGetEnableMenuList, fetchGetEnableTenantList } from '@/api/system-manage'
   import { renderDocumentNumber, validateDocumentNumberTemplate } from '@/utils/document-number'

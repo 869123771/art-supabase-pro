@@ -54,7 +54,7 @@
 </template>
 
 <script setup lang="ts">
-  import ArtEmptyState from '@/components/core/layouts/art-empty-state/index.vue'
+  import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
 
   defineOptions({ name: 'ArtAsyncState' })

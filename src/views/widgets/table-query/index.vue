@@ -1,7 +1,7 @@
 <template>
   <ArtPageShell>
     <div class="table-query-widget">
-      <ArtPageSection
+      <ArtSectionCard
         class="table-query-widget__section"
         title="ArtTableQuery 综合示例"
         subtitle="覆盖内管模式、受控模式、查询插槽、列插槽、headerActions、导入导出、缓存、分页字段映射、响应适配、行拖拽和 Expose API。"
@@ -103,10 +103,10 @@
             </ElSpace>
           </template>
         </ArtTableQuery>
-      </ArtPageSection>
+      </ArtSectionCard>
 
       <div class="table-query-widget__grid">
-        <ArtPageSection
+        <ArtSectionCard
           class="table-query-widget__section"
           title="受控模式"
           subtitle="不传 apiFn，由页面维护 loading、data、columns、pagination，并响应 ArtTableQuery 事件。"
@@ -139,26 +139,27 @@
               </ElTag>
             </template>
           </ArtTableQuery>
-        </ArtPageSection>
+        </ArtSectionCard>
 
-        <ArtPageSection
+        <ArtSectionCard
           class="table-query-widget__section table-query-widget__log"
           title="事件日志"
           subtitle="展示 search、reset、refresh、分页、header action、缓存命中和行拖拽等回调。"
+          :empty="!eventLogs.length"
+          empty-title="暂无事件"
+          min-height="420px"
         >
           <template #actions>
             <ElButton text type="primary" @click="eventLogs = []">清空</ElButton>
           </template>
 
-          <ArtAsyncState :empty="!eventLogs.length" empty-text="暂无事件" min-height="420px">
-            <ElScrollbar height="420px">
-              <div v-for="item in eventLogs" :key="item.id" class="table-query-widget__log-item">
-                <span>{{ item.time }}</span>
-                <strong>{{ item.text }}</strong>
-              </div>
-            </ElScrollbar>
-          </ArtAsyncState>
-        </ArtPageSection>
+          <ElScrollbar height="420px">
+            <div v-for="item in eventLogs" :key="item.id" class="table-query-widget__log-item">
+              <span>{{ item.time }}</span>
+              <strong>{{ item.text }}</strong>
+            </div>
+          </ElScrollbar>
+        </ArtSectionCard>
       </div>
     </div>
   </ArtPageShell>

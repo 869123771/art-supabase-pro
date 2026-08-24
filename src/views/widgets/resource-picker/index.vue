@@ -1,7 +1,7 @@
 <template>
   <ArtPageShell>
     <div class="widget-page">
-      <ArtPageSection
+      <ArtSectionCard
         class="widget-section"
         title="资源选择器"
         subtitle="基于附件资源列表，支持单选、多选、分类筛选、搜索、分页、右键预览和确认回传。"
@@ -38,9 +38,9 @@
             <span class="widget-section__value">{{ row.url }}</span>
           </template>
         </ArtTable>
-      </ArtPageSection>
+      </ArtSectionCard>
 
-      <ArtPageSection
+      <ArtSectionCard
         class="widget-section"
         title="API"
         subtitle="覆盖 ArtResourcePicker / ResourcePanel 的 props 和事件。"
@@ -53,7 +53,7 @@
             <ArtTable :data="eventRows" :columns="eventColumns" :pagination="false" />
           </ElTabPane>
         </ElTabs>
-      </ArtPageSection>
+      </ArtSectionCard>
 
       <ArtResourcePicker
         v-model:visible="singleVisible"

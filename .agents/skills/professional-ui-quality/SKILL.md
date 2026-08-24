@@ -36,7 +36,7 @@ Inspect the target, child modules, relevant Art/Element Plus APIs, and at least 
 - Keep the product calm, precise, trustworthy, and operationally dense. Make one visual idea carry the region; keep surrounding treatment disciplined.
 - Use typography, spacing, grouping, tonal contrast, and alignment before decoration.
 - Derive interactive colors from `--theme-color`. Never hardcode a product accent or create a competing local design system.
-- Prefer `ArtTableQuery`, `ArtDialog`, `ArtDrawer`, `ArtForm`, `ArtSectionTitle`, `art-card-xs`, and bounded `ElScrollbar` regions where their established responsibility applies.
+- Prefer `ArtTableQuery`, `ArtDialog`, `ArtDrawer`, `ArtForm`, `ArtSectionCard`, `ArtSectionTitle`, and bounded `ElScrollbar` regions where their established responsibility applies. Use `ArtSectionCard` for titled content surfaces with loading, empty, or error states; reserve raw `art-card-xs` for untitled compact surfaces and sticky action regions.
 
 ## Enforce Perceptible Hierarchy
 
@@ -51,9 +51,11 @@ Inspect the target, child modules, relevant Art/Element Plus APIs, and at least 
 
 - Use semantic interactive elements, visible `:focus-visible` treatment, accessible names, and forgiving hit areas.
 - Keep labels action-specific. Helper, empty, and error copy must explain consequences or the next useful action.
+- Employee/person controls must show recognizable identity through `ArtEmployeeSelect` (`员工姓名 · 工号`, with organization/position context in the picker); exposing a UUID as option or selected text is a UI defect.
 - Do not block paste or browser zoom. Respect reduced motion and avoid decorative animation that delays work.
 - Prevent accidental horizontal scrolling. Use `min-width: 0`, wrapping, truncation with a full-value path, and responsive grids intentionally.
 - For table workspaces, preserve query, table, operation, pagination, loading, empty, and focus-mode behavior as one workflow.
+- Do not hand-compose a titled card from `art-card-xs`, `ArtSectionTitle`, `ElSkeleton`, and `ArtEmptyState`. Route whole-card state through `ArtSectionCard` so header spacing, state priority, retry behavior, and responsive actions remain consistent. Retain an inner `ArtAsyncState` only when it controls a distinct sub-region and adjacent filters, actions, or metrics must stay visible.
 - Size fixed operation columns from rendered controls and intentional gaps; do not hide valid actions merely to make the column narrower.
 
 ## Verify The Rendered Result

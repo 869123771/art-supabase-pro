@@ -108,7 +108,7 @@
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
-  import ArtAsyncState from '@/components/core/layouts/art-async-state/index.vue'
+  import ArtAsyncState from '@/components/core/feedback/art-async-state/index.vue'
   import WorkflowBusinessSnapshot from '../../modules/workflow-business-snapshot.vue'
   import { actWorkflowTask, fetchWorkflowBusinessSnapshot } from '@/api/workflow'
 

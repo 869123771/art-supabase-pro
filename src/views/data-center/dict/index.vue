@@ -78,7 +78,7 @@
     type ButtonMoreItem
   } from '@/components/core/forms/art-button-more/index.vue'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
-  import ArtEmptyState from '@/components/core/layouts/art-empty-state/index.vue'
+  import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import { ColumnOption } from '@/types'
   import TreeUtils from '@/utils/tree'
   import { useUserStore } from '@/store/modules/user'

@@ -185,7 +185,7 @@
 <script setup lang="ts">
   import { updateCurrentUserPassword, updateCurrentUserProfile } from '@/api/auth'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
-  import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
+  import ArtSectionTitle from '@/components/core/surfaces/art-section-title/index.vue'
   import { useSystemParam } from '@/hooks'
   import { useUserStore } from '@/store/modules/user'
   import defaultAvatar from '@imgs/user/avatar.webp'

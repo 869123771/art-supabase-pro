@@ -40,16 +40,22 @@
       />
     </section>
 
-    <section v-show="activeSection === 'forms'" class="ai-operations__quality art-card-xs">
-      <header class="ai-operations__card-header ai-operations__quality-header">
-        <div>
-          <span>HUMAN-IN-THE-LOOP</span>
-          <h2>AI 填单质量闭环</h2>
-        </div>
-        <ElTag type="primary" effect="plain">
-          平均置信度 {{ overview.data.quality.averageConfidence.toFixed(1) }}%
-        </ElTag>
-      </header>
+    <ArtSectionCard
+      v-show="activeSection === 'forms'"
+      class="ai-operations__quality"
+      preserve-content-structure
+    >
+      <template #header>
+        <header class="ai-operations__card-header ai-operations__quality-header">
+          <div>
+            <span>HUMAN-IN-THE-LOOP</span>
+            <h2>AI 填单质量闭环</h2>
+          </div>
+          <ElTag type="primary" effect="plain">
+            平均置信度 {{ overview.data.quality.averageConfidence.toFixed(1) }}%
+          </ElTag>
+        </header>
+      </template>
 
       <div class="ai-operations__quality-metrics">
         <article v-for="metric in qualityMetricCards" :key="metric.key">
@@ -135,7 +141,7 @@
           </ArtAsyncState>
         </article>
       </div>
-    </section>
+    </ArtSectionCard>
 
     <AiOcrQualityPanel
       v-if="activeSection === 'ocr'"
@@ -252,14 +258,20 @@
       </article>
     </section>
 
-    <section v-show="activeSection === 'overview'" class="ai-operations__health art-card-xs">
-      <div class="ai-operations__health-title">
-        <div class="ai-operations__health-icon"><ArtSvgIcon icon="ri:heart-pulse-line" /></div>
-        <div>
-          <span>质量信号</span>
-          <h2>反馈与异常概览</h2>
+    <ArtSectionCard
+      v-show="activeSection === 'overview'"
+      class="ai-operations__health"
+      preserve-content-structure
+    >
+      <template #header>
+        <div class="ai-operations__health-title">
+          <div class="ai-operations__health-icon"><ArtSvgIcon icon="ri:heart-pulse-line" /></div>
+          <div>
+            <span>质量信号</span>
+            <h2>反馈与异常概览</h2>
+          </div>
         </div>
-      </div>
+      </template>
       <div class="ai-operations__feedback">
         <div
           ><ArtSvgIcon icon="ri:thumb-up-line" /><span>有帮助</span
@@ -281,7 +293,7 @@
           <ArtSvgIcon icon="ri:checkbox-circle-line" /> 当前周期内暂无失败异常
         </div>
       </div>
-    </section>
+    </ArtSectionCard>
 
     <section v-if="activeSection === 'runs'" class="ai-operations__table">
       <ArtTableQuery
@@ -305,13 +317,14 @@
 </template>
 
 <script setup lang="tsx">
+  import ArtSectionCard from '@/components/core/surfaces/art-section-card/index.vue'
   import dayjs from 'dayjs'
   import { ElMessage } from 'element-plus'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type { ArtTableQueryExpose } from '@/components/core/tables/art-table-query/index.vue'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
-  import ArtAsyncState from '@/components/core/layouts/art-async-state/index.vue'
-  import ArtEmptyState from '@/components/core/layouts/art-empty-state/index.vue'
+  import ArtAsyncState from '@/components/core/feedback/art-async-state/index.vue'
+  import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import BusinessWorkspaceHeader, {

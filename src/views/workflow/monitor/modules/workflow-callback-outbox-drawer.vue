@@ -48,39 +48,41 @@
         </button>
       </section>
 
-      <section class="workflow-callback-outbox__table art-card-xs">
-        <header>
-          <div class="workflow-callback-outbox__table-heading">
-            <ArtSectionTitle :show-line="false">投递事件</ArtSectionTitle>
-            <p>同一审批实例严格按事件顺序回写，失败事件会阻塞后续状态，避免业务状态倒退。</p>
-            <small>当前展示 {{ visibleItems.length }} 条，最多加载最近 100 条事件</small>
-          </div>
-          <div class="workflow-callback-outbox__tools">
-            <ElTooltip content="刷新投递事件" placement="top">
-              <ArtIconButton
-                icon="ri:refresh-line"
-                circle
-                label="刷新投递事件"
-                :loading="state.loading"
-                @click="loadData"
-              />
-            </ElTooltip>
-            <ElSelect
-              v-model="state.status"
-              placeholder="全部状态"
-              clearable
-              class="workflow-callback-outbox__status-filter"
-              @change="loadData"
-            >
-              <ElOption
-                v-for="option in statusOptions"
-                :key="option.value"
-                :label="option.label"
-                :value="option.value"
-              />
-            </ElSelect>
-          </div>
-        </header>
+      <ArtSectionCard class="workflow-callback-outbox__table" preserve-content-structure>
+        <template #header>
+          <header>
+            <div class="workflow-callback-outbox__table-heading">
+              <ArtSectionTitle :show-line="false">投递事件</ArtSectionTitle>
+              <p>同一审批实例严格按事件顺序回写，失败事件会阻塞后续状态，避免业务状态倒退。</p>
+              <small>当前展示 {{ visibleItems.length }} 条，最多加载最近 100 条事件</small>
+            </div>
+            <div class="workflow-callback-outbox__tools">
+              <ElTooltip content="刷新投递事件" placement="top">
+                <ArtIconButton
+                  icon="ri:refresh-line"
+                  circle
+                  label="刷新投递事件"
+                  :loading="state.loading"
+                  @click="loadData"
+                />
+              </ElTooltip>
+              <ElSelect
+                v-model="state.status"
+                placeholder="全部状态"
+                clearable
+                class="workflow-callback-outbox__status-filter"
+                @change="loadData"
+              >
+                <ElOption
+                  v-for="option in statusOptions"
+                  :key="option.value"
+                  :label="option.label"
+                  :value="option.value"
+                />
+              </ElSelect>
+            </div>
+          </header>
+        </template>
 
         <ArtTable
           :data="visibleItems"
@@ -92,12 +94,13 @@
           height="100%"
           :empty-text="emptyText"
         />
-      </section>
+      </ArtSectionCard>
     </div>
   </ArtDrawer>
 </template>
 
 <script setup lang="tsx">
+  import ArtSectionCard from '@/components/core/surfaces/art-section-card/index.vue'
   import { createFriendlySupabaseError } from '@/utils/supabase'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { storeToRefs } from 'pinia'
@@ -106,7 +109,7 @@
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import ArtDrawer from '@/components/core/drawers/art-drawer/index.vue'
   import type { ArtDrawerExpose } from '@/components/core/drawers/art-drawer/types'
-  import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
+  import ArtSectionTitle from '@/components/core/surfaces/art-section-title/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import ArtTable from '@/components/core/tables/art-table/index.vue'
   import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'

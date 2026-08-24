@@ -1,30 +1,32 @@
 <template>
-  <section class="ocr-quality art-card-xs">
-    <header class="ocr-quality__header">
-      <div class="ocr-quality__header-copy">
-        <span class="ocr-quality__eyebrow"><i />OCR QUALITY OPERATIONS</span>
-        <h2>OCR 质量与复核阈值</h2>
-        <p>统一观察发票、签收回单、收付款凭证及银行流水匹配质量。</p>
-      </div>
-      <div class="ocr-quality__actions">
-        <ElTag :type="isPlatformSuper ? 'primary' : 'info'" effect="plain" round>
-          <ArtSvgIcon
-            :icon="isPlatformSuper ? 'ri:equalizer-2-line' : 'ri:eye-line'"
-            aria-hidden="true"
-          />
-          {{ isPlatformSuper ? '阈值可调' : '只读观察' }}
-        </ElTag>
-        <ElTooltip content="刷新 OCR 质量" placement="bottom">
-          <ArtIconButton
-            icon="ri:refresh-line"
-            circle
-            label="刷新 OCR 质量"
-            :loading="state.loading"
-            @click="loadData"
-          />
-        </ElTooltip>
-      </div>
-    </header>
+  <ArtSectionCard class="ocr-quality" preserve-content-structure>
+    <template #header>
+      <header class="ocr-quality__header">
+        <div class="ocr-quality__header-copy">
+          <span class="ocr-quality__eyebrow"><i />OCR QUALITY OPERATIONS</span>
+          <h2>OCR 质量与复核阈值</h2>
+          <p>统一观察发票、签收回单、收付款凭证及银行流水匹配质量。</p>
+        </div>
+        <div class="ocr-quality__actions">
+          <ElTag :type="isPlatformSuper ? 'primary' : 'info'" effect="plain" round>
+            <ArtSvgIcon
+              :icon="isPlatformSuper ? 'ri:equalizer-2-line' : 'ri:eye-line'"
+              aria-hidden="true"
+            />
+            {{ isPlatformSuper ? '阈值可调' : '只读观察' }}
+          </ElTag>
+          <ElTooltip content="刷新 OCR 质量" placement="bottom">
+            <ArtIconButton
+              icon="ri:refresh-line"
+              circle
+              label="刷新 OCR 质量"
+              :loading="state.loading"
+              @click="loadData"
+            />
+          </ElTooltip>
+        </div>
+      </header>
+    </template>
 
     <div class="ocr-quality__metrics">
       <article v-for="metric in metrics" :key="metric.key">
@@ -122,13 +124,14 @@
         </article>
       </div>
     </ArtAsyncState>
-  </section>
+  </ArtSectionCard>
 </template>
 
 <script setup lang="ts">
+  import ArtSectionCard from '@/components/core/surfaces/art-section-card/index.vue'
   import { createFriendlySupabaseError } from '@/utils/supabase'
   import { ElMessage } from 'element-plus'
-  import ArtAsyncState from '@/components/core/layouts/art-async-state/index.vue'
+  import ArtAsyncState from '@/components/core/feedback/art-async-state/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import {
     applyAiOcrQualityThreshold,

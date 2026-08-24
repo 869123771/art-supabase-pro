@@ -1,50 +1,55 @@
 <template>
-  <section class="workflow-canvas-editor art-card-xs">
-    <header class="workflow-canvas-editor__toolbar">
-      <div>
-        <ArtSectionTitle :show-line="false">审批流程画布</ArtSectionTitle>
-        <p>节点可自由拖放；卡片序号决定审批顺序，自动整理只调整画布位置。</p>
-      </div>
-      <div class="workflow-canvas-editor__toolbar-actions">
-        <ElTag effect="plain" :type="configuredNodeCount === nodes.length ? 'success' : 'warning'">
-          已配置 {{ configuredNodeCount }}/{{ nodes.length }} 个节点
-        </ElTag>
-        <ElButtonGroup>
-          <ElTooltip content="审批顺序前移" placement="bottom">
-            <ElButton
-              :disabled="selectedIndex <= 0"
-              aria-label="审批顺序前移"
-              @click="moveSelected(-1)"
-            >
-              <ArtSvgIcon icon="ri:arrow-up-line" />
-            </ElButton>
-          </ElTooltip>
-          <ElTooltip content="审批顺序后移" placement="bottom">
-            <ElButton
-              :disabled="selectedIndex < 0 || selectedIndex >= nodes.length - 1"
-              aria-label="审批顺序后移"
-              @click="moveSelected(1)"
-            >
-              <ArtSvgIcon icon="ri:arrow-down-line" />
-            </ElButton>
-          </ElTooltip>
-          <ElTooltip content="删除选中节点" placement="bottom">
-            <ElButton
-              type="danger"
-              plain
-              :disabled="selectedIndex < 0"
-              aria-label="删除选中节点"
-              @click="removeSelected"
-            >
-              <ArtSvgIcon icon="ri:delete-bin-6-line" />
-            </ElButton>
-          </ElTooltip>
-        </ElButtonGroup>
-        <ElButton type="primary" @click="addNode">
-          <ArtSvgIcon icon="ri:add-line" />新增审批节点
-        </ElButton>
-      </div>
-    </header>
+  <ArtSectionCard class="workflow-canvas-editor" preserve-content-structure>
+    <template #header>
+      <header class="workflow-canvas-editor__toolbar">
+        <div>
+          <ArtSectionTitle :show-line="false">审批流程画布</ArtSectionTitle>
+          <p>节点可自由拖放；卡片序号决定审批顺序，自动整理只调整画布位置。</p>
+        </div>
+        <div class="workflow-canvas-editor__toolbar-actions">
+          <ElTag
+            effect="plain"
+            :type="configuredNodeCount === nodes.length ? 'success' : 'warning'"
+          >
+            已配置 {{ configuredNodeCount }}/{{ nodes.length }} 个节点
+          </ElTag>
+          <ElButtonGroup>
+            <ElTooltip content="审批顺序前移" placement="bottom">
+              <ElButton
+                :disabled="selectedIndex <= 0"
+                aria-label="审批顺序前移"
+                @click="moveSelected(-1)"
+              >
+                <ArtSvgIcon icon="ri:arrow-up-line" />
+              </ElButton>
+            </ElTooltip>
+            <ElTooltip content="审批顺序后移" placement="bottom">
+              <ElButton
+                :disabled="selectedIndex < 0 || selectedIndex >= nodes.length - 1"
+                aria-label="审批顺序后移"
+                @click="moveSelected(1)"
+              >
+                <ArtSvgIcon icon="ri:arrow-down-line" />
+              </ElButton>
+            </ElTooltip>
+            <ElTooltip content="删除选中节点" placement="bottom">
+              <ElButton
+                type="danger"
+                plain
+                :disabled="selectedIndex < 0"
+                aria-label="删除选中节点"
+                @click="removeSelected"
+              >
+                <ArtSvgIcon icon="ri:delete-bin-6-line" />
+              </ElButton>
+            </ElTooltip>
+          </ElButtonGroup>
+          <ElButton type="primary" @click="addNode">
+            <ArtSvgIcon icon="ri:add-line" />新增审批节点
+          </ElButton>
+        </div>
+      </header>
+    </template>
 
     <div class="workflow-canvas-editor__guide" :class="{ 'is-warning': !tenantId }" role="status">
       <ArtSvgIcon :icon="tenantId ? 'ri:mouse-line' : 'ri:information-line'" />
@@ -352,10 +357,11 @@
         />
       </aside>
     </div>
-  </section>
+  </ArtSectionCard>
 </template>
 
 <script setup lang="ts">
+  import ArtSectionCard from '@/components/core/surfaces/art-section-card/index.vue'
   import {
     Handle,
     MarkerType,
@@ -372,9 +378,9 @@
   import { MiniMap } from '@vue-flow/minimap'
   import { onClickOutside, usePreferredReducedMotion } from '@vueuse/core'
   import { cloneDeep, isEqual, trim } from 'lodash-es'
-  import ArtEmptyState from '@/components/core/layouts/art-empty-state/index.vue'
+  import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
-  import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
+  import ArtSectionTitle from '@/components/core/surfaces/art-section-title/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import { useUserStore } from '@/store/modules/user'
   import { fetchWorkflowRoleOptions, fetchWorkflowUserOptions } from '@/api/workflow'

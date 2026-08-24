@@ -93,7 +93,7 @@
   import { useRouter, type LocationQueryRaw } from 'vue-router'
   import { formatWithDayjs } from '@/utils/time'
   import { fetchHeaderNotificationCenter, markHeaderNotificationsRead } from '@/api/notification'
-  import ArtEmptyState from '@/components/core/layouts/art-empty-state/index.vue'
+  import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
 
   defineOptions({ name: 'ArtNotification' })
 

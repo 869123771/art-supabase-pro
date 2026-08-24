@@ -1,7 +1,7 @@
 <template>
   <ArtPageShell>
     <div class="widget-page">
-      <ArtPageSection
+      <ArtSectionCard
         class="widget-section"
         title="图标选择器"
         subtitle="支持 Remix Icon 搜索、懒加载、缓存、手动输入、清空和命令式打开。"
@@ -42,9 +42,9 @@
           <ElDescriptionsItem label="基础值">{{ iconValue }}</ElDescriptionsItem>
           <ElDescriptionsItem label="自定义值">{{ customIconValue }}</ElDescriptionsItem>
         </ElDescriptions>
-      </ArtPageSection>
+      </ArtSectionCard>
 
-      <ArtPageSection
+      <ArtSectionCard
         class="widget-section"
         title="API"
         subtitle="覆盖 ArtIconPicker 的 props、事件和 expose 方法。"
@@ -57,7 +57,7 @@
             <ArtTable :data="eventRows" :columns="eventColumns" :pagination="false" />
           </ElTabPane>
         </ElTabs>
-      </ArtPageSection>
+      </ArtSectionCard>
     </div>
   </ArtPageShell>
 </template>

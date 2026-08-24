@@ -65,14 +65,20 @@
     </section>
 
     <div class="geofence-config-page__workspace">
-      <section class="geofence-config-page__policy art-card-xs" aria-label="围栏策略设置">
-        <header class="geofence-config-page__section-heading">
-          <span><ArtSvgIcon icon="ri:equalizer-2-line" /></span>
-          <div>
-            <h2>策略工作区</h2>
-            <p>这些配置作为地址围栏的默认建议值，单个地址仍可按现场范围覆盖。</p>
-          </div>
-        </header>
+      <ArtSectionCard
+        class="geofence-config-page__policy"
+        aria-label="围栏策略设置"
+        preserve-content-structure
+      >
+        <template #header>
+          <header class="geofence-config-page__section-heading">
+            <span><ArtSvgIcon icon="ri:equalizer-2-line" /></span>
+            <div>
+              <h2>策略工作区</h2>
+              <p>这些配置作为地址围栏的默认建议值，单个地址仍可按现场范围覆盖。</p>
+            </div>
+          </header>
+        </template>
 
         <ArtForm
           ref="formRef"
@@ -87,17 +93,19 @@
           :show-submit="false"
           class="geofence-config-page__form"
         />
-      </section>
+      </ArtSectionCard>
 
       <aside class="geofence-config-page__side" aria-label="围栏预览与生效说明">
-        <section class="geofence-config-page__preview art-card-xs">
-          <header class="geofence-config-page__section-heading is-compact">
-            <span><ArtSvgIcon icon="ri:radar-line" /></span>
-            <div>
-              <h2>范围预览</h2>
-              <p>以地址地图坐标为圆心进行定位判断</p>
-            </div>
-          </header>
+        <ArtSectionCard class="geofence-config-page__preview" preserve-content-structure>
+          <template #header>
+            <header class="geofence-config-page__section-heading is-compact">
+              <span><ArtSvgIcon icon="ri:radar-line" /></span>
+              <div>
+                <h2>范围预览</h2>
+                <p>以地址地图坐标为圆心进行定位判断</p>
+              </div>
+            </header>
+          </template>
 
           <div class="geofence-config-page__radar" :class="{ 'is-disabled': !form.enabled }">
             <span class="geofence-config-page__radar-axis is-horizontal"></span>
@@ -121,16 +129,18 @@
               <dd>{{ form.unloadingRadiusM.toLocaleString() }} 米</dd>
             </div>
           </dl>
-        </section>
+        </ArtSectionCard>
 
-        <section class="geofence-config-page__guide art-card-xs">
-          <header class="geofence-config-page__section-heading is-compact">
-            <span><ArtSvgIcon icon="ri:route-line" /></span>
-            <div>
-              <h2>规则如何生效</h2>
-              <p>默认策略不会覆盖已单独配置的地址。</p>
-            </div>
-          </header>
+        <ArtSectionCard class="geofence-config-page__guide" preserve-content-structure>
+          <template #header>
+            <header class="geofence-config-page__section-heading is-compact">
+              <span><ArtSvgIcon icon="ri:route-line" /></span>
+              <div>
+                <h2>规则如何生效</h2>
+                <p>默认策略不会覆盖已单独配置的地址。</p>
+              </div>
+            </header>
+          </template>
 
           <ol class="geofence-config-page__steps">
             <li v-for="(step, index) in effectiveSteps" :key="step.title">
@@ -170,7 +180,7 @@
               }}</p>
             </div>
           </div>
-        </section>
+        </ArtSectionCard>
       </aside>
     </div>
 
@@ -218,6 +228,7 @@
 </template>
 
 <script setup lang="ts">
+  import ArtSectionCard from '@/components/core/surfaces/art-section-card/index.vue'
   import type { FormRules } from 'element-plus'
   import { cloneDeep, isEqual } from 'lodash-es'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'

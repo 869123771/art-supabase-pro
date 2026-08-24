@@ -163,7 +163,7 @@
   import { storeToRefs } from 'pinia'
   import { useDraggable, type DraggableEvent } from 'vue-draggable-plus'
   import { ColumnOption } from '@/types'
-  import ArtEmptyState from '@/components/core/layouts/art-empty-state/index.vue'
+  import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import { useTableStore } from '@/store/modules/table'
   import { useCommon } from '@/hooks/core/useCommon'
   import { useTableHeight } from '@/hooks/core/useTableHeight'

@@ -35,7 +35,7 @@
 </template>
 
 <script setup lang="ts">
-  import ArtEmptyState from '@/components/core/layouts/art-empty-state/index.vue'
+  import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import { APPLICATION_PROFILES, type ApplicationCode } from '@/config/application'
   import { useCommon } from '@/hooks/core/useCommon'
 

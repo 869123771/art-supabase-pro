@@ -51,7 +51,7 @@
 </template>
 
 <script setup lang="ts">
-  import ArtEmptyState from '@/components/core/layouts/art-empty-state/index.vue'
+  import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import { LocationFilled, Search } from '@element-plus/icons-vue'
   import { ElMessage } from 'element-plus'
   import { debounce, isNil, trim } from 'lodash-es'

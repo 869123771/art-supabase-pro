@@ -73,22 +73,24 @@
             </article>
           </div>
 
-          <section class="workflow-version__diff art-card-xs">
-            <div class="workflow-version__section-heading">
-              <div>
-                <ArtSectionTitle :show-line="false">版本差异</ArtSectionTitle>
-                <p>
-                  {{
-                    comparisonVersion
-                      ? `与 V${comparisonVersion.versionNo} 对比`
-                      : '首个版本，无历史基线'
-                  }}
-                </p>
-              </div>
-              <ElTag :type="changes.length ? 'warning' : 'success'" effect="light" round>
-                {{ changes.length ? `${changes.length} 项变化` : '配置一致' }}
-              </ElTag>
-            </div>
+          <ArtSectionCard class="workflow-version__diff" preserve-content-structure>
+            <template #header
+              ><div class="workflow-version__section-heading">
+                <div>
+                  <ArtSectionTitle :show-line="false">版本差异</ArtSectionTitle>
+                  <p>
+                    {{
+                      comparisonVersion
+                        ? `与 V${comparisonVersion.versionNo} 对比`
+                        : '首个版本，无历史基线'
+                    }}
+                  </p>
+                </div>
+                <ElTag :type="changes.length ? 'warning' : 'success'" effect="light" round>
+                  {{ changes.length ? `${changes.length} 项变化` : '配置一致' }}
+                </ElTag>
+              </div></template
+            >
 
             <ArtEmptyState
               v-if="!changes.length"
@@ -115,15 +117,17 @@
                 </div>
               </article>
             </div>
-          </section>
+          </ArtSectionCard>
 
-          <section class="workflow-version__nodes art-card-xs">
-            <div class="workflow-version__section-heading">
-              <div>
-                <ArtSectionTitle :show-line="false">节点快照</ArtSectionTitle>
-                <p>历史版本只读，恢复操作会生成或覆盖草稿，不修改已发布证据。</p>
-              </div>
-            </div>
+          <ArtSectionCard class="workflow-version__nodes" preserve-content-structure>
+            <template #header
+              ><div class="workflow-version__section-heading">
+                <div>
+                  <ArtSectionTitle :show-line="false">节点快照</ArtSectionTitle>
+                  <p>历史版本只读，恢复操作会生成或覆盖草稿，不修改已发布证据。</p>
+                </div>
+              </div></template
+            >
             <div class="workflow-version__node-list">
               <article
                 v-for="node in [...selectedVersion.config.nodes].sort((a, b) => a.order - b.order)"
@@ -143,7 +147,7 @@
                 </div>
               </article>
             </div>
-          </section>
+          </ArtSectionCard>
         </main>
       </div>
     </div>
@@ -151,12 +155,13 @@
 </template>
 
 <script setup lang="ts">
+  import ArtSectionCard from '@/components/core/surfaces/art-section-card/index.vue'
   import dayjs from 'dayjs'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
-  import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
-  import ArtEmptyState from '@/components/core/layouts/art-empty-state/index.vue'
+  import ArtSectionTitle from '@/components/core/surfaces/art-section-title/index.vue'
+  import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { saveWorkflowDefinition } from '@/api/workflow'
   import { diffWorkflowConfigs } from '../../modules/workflow-version-diff'

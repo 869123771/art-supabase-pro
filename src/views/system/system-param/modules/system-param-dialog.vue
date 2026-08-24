@@ -1,16 +1,18 @@
-﻿<template>
+<template>
   <ArtDialog ref="dialogRef" size="lg">
     <div class="system-param-dialog">
-      <section class="system-param-dialog__form art-card-xs">
-        <div class="system-param-dialog__section-head">
-          <div>
-            <ArtSectionTitle :show-line="false">参数信息</ArtSectionTitle>
-            <p>配置键名、分组和值内容，保存后可刷新缓存使新值生效。</p>
+      <ArtSectionCard class="system-param-dialog__form" preserve-content-structure>
+        <template #header>
+          <div class="system-param-dialog__section-head">
+            <div>
+              <ArtSectionTitle :show-line="false">参数信息</ArtSectionTitle>
+              <p>配置键名、分组和值内容，保存后可刷新缓存使新值生效。</p>
+            </div>
+            <ElTag round :type="formState.model.builtin ? 'warning' : 'info'" effect="light">
+              {{ formState.model.builtin ? '内置参数' : '自定义参数' }}
+            </ElTag>
           </div>
-          <ElTag round :type="formState.model.builtin ? 'warning' : 'info'" effect="light">
-            {{ formState.model.builtin ? '内置参数' : '自定义参数' }}
-          </ElTag>
-        </div>
+        </template>
 
         <div class="system-param-dialog__form-body">
           <ArtForm
@@ -94,11 +96,14 @@
             </template>
           </ArtForm>
         </div>
-      </section>
+      </ArtSectionCard>
 
       <aside class="system-param-dialog__side" aria-label="参数配置辅助信息">
-        <section class="system-param-dialog__preview art-card-xs">
-          <ArtSectionTitle :show-line="false">配置预览</ArtSectionTitle>
+        <ArtSectionCard
+          class="system-param-dialog__preview"
+          preserve-content-structure
+          title="配置预览"
+        >
           <dl>
             <div>
               <dt>键名</dt>
@@ -131,29 +136,33 @@
               </dd>
             </div>
           </dl>
-        </section>
+        </ArtSectionCard>
 
-        <section class="system-param-dialog__tips art-card-xs">
-          <ArtSectionTitle :show-line="false">维护建议</ArtSectionTitle>
+        <ArtSectionCard
+          class="system-param-dialog__tips"
+          preserve-content-structure
+          title="维护建议"
+        >
           <ul>
             <li>键名建议采用“业务域.模块.字段”的层级命名。</li>
             <li>内置参数用于平台底层策略，建议限制删除和变更范围。</li>
             <li>JSON 类型可承载复杂配置，但需要保持结构稳定。</li>
             <li>修改完成后建议执行一次缓存刷新，确保新值及时生效。</li>
           </ul>
-        </section>
+        </ArtSectionCard>
       </aside>
     </div>
   </ArtDialog>
 </template>
 <script setup lang="ts">
+  import ArtSectionCard from '@/components/core/surfaces/art-section-card/index.vue'
   import type { FormRules } from 'element-plus'
   import type { ComputedRef } from 'vue'
   import { cloneDeep, omit } from 'lodash-es'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
-  import ArtSectionTitle from '@/components/core/forms/art-section-title/index.vue'
+  import ArtSectionTitle from '@/components/core/surfaces/art-section-title/index.vue'
   import {
     addSystemParam,
     editSystemParam,

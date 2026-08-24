@@ -55,7 +55,8 @@ The product is an enterprise logistics and operations system. It should feel cal
 - Use `BusinessWorkspaceHeader` for persistent workflow identity where neighboring business pages already use it.
 - Use `ArtTableQuery` for query/table/pagination workflows and its shared focus mode when persistent context exists above the table.
 - Use `ArtDialog` and `ArtDrawer` for overlays, `ArtForm` for project form behavior, and `ArtSectionTitle` for section identity.
-- Use `art-card-xs` for ordinary business cards instead of recreating border, radius, background, and shadow locally.
+- Use `ArtSectionCard` for titled business content cards and let it own header spacing plus loading, empty, and error states.
+- Use raw `art-card-xs` only for untitled compact surfaces or sticky action regions instead of recreating border, radius, background, and shadow locally.
 - Use bounded `ElScrollbar` regions for long panels and overlays.
 
 ## Immediate Rejection Patterns

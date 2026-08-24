@@ -40,7 +40,7 @@
       </ElButton>
     </section>
 
-    <ArtPageSection
+    <ArtSectionCard
       class="recognition-workbench__capability-workspace"
       :title="focusMode ? '选择识别能力' : '识别能力'"
       subtitle="选择业务场景，系统会进入对应的识别与人工复核流程"
@@ -74,10 +74,10 @@
           </footer>
         </article>
       </div>
-    </ArtPageSection>
+    </ArtSectionCard>
 
     <div v-show="!focusMode" class="recognition-workbench__lower">
-      <ArtPageSection title="标准处理路径" subtitle="识别建议不直接写入正式业务数据">
+      <ArtSectionCard title="标准处理路径" subtitle="识别建议不直接写入正式业务数据">
         <div class="recognition-workbench__flow">
           <template v-for="(item, index) in flowItems" :key="item.title">
             <article>
@@ -90,9 +90,9 @@
             <ArtSvgIcon v-if="index < flowItems.length - 1" icon="ri:arrow-right-line" />
           </template>
         </div>
-      </ArtPageSection>
+      </ArtSectionCard>
 
-      <ArtPageSection title="最近识别" subtitle="仅展示当前账号有权访问的记录">
+      <ArtSectionCard title="最近识别" subtitle="仅展示当前账号有权访问的记录">
         <ArtTable
           :data="recentArtifacts"
           :columns="recentColumns"
@@ -105,7 +105,7 @@
             <ElButton link type="primary" @click="detailRef?.handleOpen(row)">查看</ElButton>
           </template>
         </ArtTable>
-      </ArtPageSection>
+      </ArtSectionCard>
     </div>
 
     <RecognitionWorkbenchDrawer ref="runnerRef" @created="handleCreated" />
