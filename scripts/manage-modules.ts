@@ -12,6 +12,7 @@ import {
 import { spawnSync } from 'node:child_process'
 import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { hostedModuleSharedDependencies } from './hosted-module-dependencies'
 
 type ModuleAction = 'pull' | 'update' | 'install' | 'check' | 'build' | 'setup' | 'status'
 type ModulePackageAction = 'install' | 'check' | 'build'
@@ -29,6 +30,7 @@ interface CommandResult {
 interface PackageManifest {
   dependencies?: Record<string, unknown>
   devDependencies?: Record<string, unknown>
+  peerDependencies?: Record<string, unknown>
   name?: string
   version?: string
 }
@@ -299,14 +301,17 @@ function readPackageManifest(packageRoot: string): PackageManifest {
 
 function readPlatformPackageReference(manifest: PackageManifest): string | undefined {
   const reference =
-    manifest.dependencies?.['art-supabase-pro'] || manifest.devDependencies?.['art-supabase-pro']
+    manifest.dependencies?.['art-supabase-pro'] ||
+    manifest.devDependencies?.['art-supabase-pro'] ||
+    manifest.peerDependencies?.['art-supabase-pro']
   return typeof reference === 'string' ? reference : undefined
 }
 
 function listMissingDirectDependencies(moduleRoot: string, manifest: PackageManifest): string[] {
   const dependencyNames = new Set([
     ...Object.keys(manifest.dependencies ?? {}),
-    ...Object.keys(manifest.devDependencies ?? {})
+    ...Object.keys(manifest.devDependencies ?? {}),
+    ...Object.keys(manifest.peerDependencies ?? {})
   ])
 
   return [...dependencyNames].filter(
@@ -343,6 +348,12 @@ function listDependencyProblems(moduleRoot: string, manifest: PackageManifest): 
   const problems = listMissingDirectDependencies(moduleRoot, manifest).map(
     (dependencyName) => `缺少 ${dependencyName}`
   )
+  const duplicatedSharedDependencies = hostedModuleSharedDependencies.filter(
+    (dependencyName) => dependencyName in (manifest.dependencies ?? {})
+  )
+  for (const dependencyName of duplicatedSharedDependencies) {
+    problems.push(`公共运行时 ${dependencyName} 必须由主仓提供，请改为 peerDependencies`)
+  }
   if (!hasInstalledPlatformTypes(moduleRoot, manifest)) {
     problems.push('art-supabase-pro 类型入口不可用')
   }
