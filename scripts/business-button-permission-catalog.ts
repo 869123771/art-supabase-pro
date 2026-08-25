@@ -323,7 +323,11 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
       button('Edit', '编辑事项', 'Hr:Lifecycle:Edit'),
       button('Delete', '删除事项', 'Hr:Lifecycle:Delete'),
       button('Submit', '提交审批', 'Hr:Lifecycle:Submit'),
-      button('CompleteTask', '完成任务', 'Hr:Lifecycle:CompleteTask')
+      button('CompleteTask', '完成任务', 'Hr:Lifecycle:CompleteTask'),
+      button('Start', '启动或推进事项', 'Hr:Lifecycle:Start'),
+      button('CompleteCase', '办结生命周期事项', 'Hr:Lifecycle:CompleteCase'),
+      button('WaiveTask', '豁免生命周期任务', 'Hr:Lifecycle:WaiveTask'),
+      button('ManageTemplate', '管理标准任务包', 'Hr:Lifecycle:ManageTemplate')
     ]
   },
   {
@@ -338,10 +342,14 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
   {
     menuName: 'HrHeadcount',
     buttons: [
-      button('View', '查看编制', 'Hr:Headcount:View'),
-      button('Add', '新增编制', 'Hr:Headcount:Add'),
-      button('Edit', '编辑编制', 'Hr:Headcount:Edit'),
-      button('Delete', '删除编制', 'Hr:Headcount:Delete')
+      button('View', '查看人力规划与编制', 'Hr:Headcount:View'),
+      button('Add', '新增规划或有效编制', 'Hr:Headcount:Add'),
+      button('Edit', '编辑规划或有效编制', 'Hr:Headcount:Edit'),
+      button('Delete', '删除规划或有效编制', 'Hr:Headcount:Delete'),
+      button('Submit', '提交人力规划', 'Hr:Headcount:Submit'),
+      button('Approve', '审批人力规划', 'Hr:Headcount:Approve'),
+      button('Activate', '启用人力规划', 'Hr:Headcount:Activate'),
+      button('Close', '关闭人力规划', 'Hr:Headcount:Close')
     ]
   },
   {
@@ -424,7 +432,11 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
       button('View', '查看绩效', 'Hr:Performance:View'),
       button('Add', '新增绩效', 'Hr:Performance:Add'),
       button('Edit', '编辑绩效', 'Hr:Performance:Edit'),
-      button('Delete', '删除绩效', 'Hr:Performance:Delete')
+      button('Delete', '删除绩效', 'Hr:Performance:Delete'),
+      button('Activate', '启动或取消绩效周期', 'Hr:Performance:Activate'),
+      button('Review', '提交绩效评价', 'Hr:Performance:Review'),
+      button('Calibrate', '维护绩效校准结果', 'Hr:Performance:Calibrate'),
+      button('Complete', '定案绩效结果', 'Hr:Performance:Complete')
     ]
   },
   {
