@@ -433,7 +433,18 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
       button('View', '查看人才发展', 'Hr:Talent:View'),
       button('Add', '新增人才发展记录', 'Hr:Talent:Add'),
       button('Edit', '编辑人才发展记录', 'Hr:Talent:Edit'),
-      button('Delete', '删除人才发展记录', 'Hr:Talent:Delete')
+      button('Delete', '删除人才发展记录', 'Hr:Talent:Delete'),
+      button('PlanTransition', '推进培养计划', 'Hr:Talent:Plan:Transition'),
+      button('CourseAdd', '新增课程', 'Hr:Talent:Course:Add'),
+      button('CourseEdit', '编辑课程', 'Hr:Talent:Course:Edit'),
+      button('CoursePublish', '发布与停用课程', 'Hr:Talent:Course:Publish'),
+      button('CourseCompetency', '维护课程能力映射', 'Hr:Talent:Course:Competency'),
+      button('SessionAdd', '新增培训班次', 'Hr:Talent:Session:Add'),
+      button('SessionEdit', '编辑培训班次', 'Hr:Talent:Session:Edit'),
+      button('SessionTransition', '推进培训班次', 'Hr:Talent:Session:Transition'),
+      button('EnrollmentAdd', '安排员工学习', 'Hr:Talent:Enrollment:Add'),
+      button('EnrollmentManage', '登记学习结果', 'Hr:Talent:Enrollment:Manage'),
+      button('CertificateManage', '管理学习证书', 'Hr:Talent:Certificate:Manage')
     ]
   },
   {
