@@ -17,7 +17,7 @@ const requiredPermissionMigrations = [
   'tenant_notification_reminder',
   'backfill_new_button_permissions_for_existing_roles'
 ] as const
-type ManagedModule = 'tms' | 'vms' | 'fms' | 'hr' | 'system' | 'workflow'
+type ManagedModule = 'tms' | 'vms' | 'fms' | 'hr' | 'smis' | 'system' | 'workflow'
 
 const managedViewRoots = new Map<ManagedModule, string>([
   ['tms', join(projectRoot, 'modules/art-supabase-tms/src/views')],
@@ -25,12 +25,13 @@ const managedViewRoots = new Map<ManagedModule, string>([
   ['workflow', join(projectRoot, 'src/views/workflow')],
   ['fms', join(projectRoot, 'modules/art-supabase-fms/src/views')],
   ['vms', join(projectRoot, 'modules/art-supabase-vms/src/views')],
-  ['hr', join(projectRoot, 'modules/art-supabase-hr/src/views')]
+  ['hr', join(projectRoot, 'modules/art-supabase-hr/src/views')],
+  ['smis', join(projectRoot, 'modules/art-supabase-smis/src/views')]
 ])
-const businessModules = new Set<ManagedModule>(['tms', 'vms', 'fms', 'hr'])
+const businessModules = new Set<ManagedModule>(['tms', 'vms', 'fms', 'hr', 'smis'])
 const sourceExtensions = new Set(['.ts', '.tsx', '.vue'])
 const permissionPattern =
-  /['"`]((?:System|Workflow|Tms|Finance|Hr|Vehicle|Insurance|Parts|PartsCategory|Supplier)[A-Za-z0-9]*(?::[A-Za-z][A-Za-z0-9]*)+)['"`]/g
+  /['"`]((?:System|Workflow|Tms|Finance|Hr|Smis|Vehicle|Insurance|Parts|PartsCategory|Supplier)[A-Za-z0-9]*(?::[A-Za-z][A-Za-z0-9]*)+)['"`]/g
 const platformSuperPattern = /isPlatformSuper|平台超级管理员|仅平台|platform super administrator/i
 
 // These files use platform-super only for cross-tenant context or for controlled AI writes.
@@ -103,6 +104,7 @@ function resolveBusinessCatalogOwner(menuName: string): ManagedModule {
   if (menuName.startsWith('Tms')) return 'tms'
   if (menuName.startsWith('Finance')) return 'fms'
   if (menuName.startsWith('Hr')) return 'hr'
+  if (menuName.startsWith('Smis')) return 'smis'
   return 'vms'
 }
 

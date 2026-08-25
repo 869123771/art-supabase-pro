@@ -222,6 +222,22 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
   },
 
   {
+    menuName: 'SmisPositionSafetyResponsibility',
+    buttons: [
+      button('View', '查看岗位安全责任制', 'SmisPositionSafetyResponsibility:View'),
+      button('Add', '新增隐患排查标准', 'SmisPositionSafetyResponsibility:Add'),
+      button('Edit', '编辑隐患排查标准', 'SmisPositionSafetyResponsibility:Edit'),
+      button('Delete', '删除隐患排查标准', 'SmisPositionSafetyResponsibility:Delete'),
+      button('Import', '导入隐患排查标准', 'SmisPositionSafetyResponsibility:Import'),
+      button(
+        'DownloadTemplate',
+        '下载导入模板',
+        'SmisPositionSafetyResponsibility:DownloadTemplate'
+      )
+    ]
+  },
+
+  {
     menuName: 'HrEmployeeRoster',
     buttons: [
       button('View', '查看员工', 'Hr:Employee:View'),
