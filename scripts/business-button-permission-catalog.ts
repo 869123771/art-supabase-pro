@@ -334,9 +334,13 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
     menuName: 'HrCompliance',
     buttons: [
       button('View', '查看合同资质', 'Hr:Compliance:View'),
-      button('Add', '新增资质', 'Hr:Compliance:Add'),
+      button('Add', '新增合同或资质', 'Hr:Compliance:Add'),
       button('Edit', '编辑合同资质', 'Hr:Compliance:Edit'),
-      button('Delete', '删除资质', 'Hr:Compliance:Delete')
+      button('Delete', '删除合规草稿', 'Hr:Compliance:Delete'),
+      button('ContractRenew', '续签劳动合同', 'Hr:Compliance:Contract:Renew'),
+      button('ContractTerminate', '终止劳动合同', 'Hr:Compliance:Contract:Terminate'),
+      button('QualificationVerify', '核验员工资质', 'Hr:Compliance:Qualification:Verify'),
+      button('QualificationRevoke', '撤销员工资质', 'Hr:Compliance:Qualification:Revoke')
     ]
   },
   {
@@ -426,7 +430,10 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
       button('Add', '新增员工申请', 'Hr:SelfService:Add'),
       button('Edit', '编辑员工申请', 'Hr:SelfService:Edit'),
       button('Delete', '删除员工申请', 'Hr:SelfService:Delete'),
-      button('Submit', '提交员工申请', 'Hr:SelfService:Submit')
+      button('Submit', '提交员工服务工单', 'Hr:SelfService:Submit'),
+      button('Assign', '分派员工服务工单', 'Hr:SelfService:Assign'),
+      button('Resolve', '处理员工服务工单', 'Hr:SelfService:Resolve'),
+      button('CatalogManage', '管理员工服务目录', 'Hr:SelfService:Catalog:Manage')
     ]
   },
   {
