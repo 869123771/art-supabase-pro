@@ -131,6 +131,7 @@
     isAbsoluteApplicationRedirect,
     resolveSafePostLoginRedirect
   } from '@/utils/auth-redirect'
+  import { preparePostLoginData } from './modules/post-login-data'
 
   defineOptions({ name: 'Login' })
 
@@ -265,19 +266,28 @@
       // 存储 token 和登录状态
       userStore.setToken(accessToken, refreshToken)
       userStore.setLoginStatus(true)
-      await userStore.fetchUserInfo()
-      await userStore.fetchDictList()
+      const { dictionariesReady } = await preparePostLoginData({
+        loadDictionaries: userStore.fetchDictList,
+        loadUserProfile: userStore.fetchUserInfo,
+        onDictionaryError: (error) => {
+          console.error('[Login] 基础字典初始化失败:', error)
+        }
+      })
       // 登录成功处理
       showLoginSuccessNotice()
 
       // 获取 redirect 参数，如果存在则跳转到指定页面，否则跳转到首页
       const targetPath = await resolvePostLoginPath()
       if (isAbsoluteApplicationRedirect(targetPath)) {
+        // 跨应用整页跳转会中断当前请求，先保证字典写入持久化 Store。
+        await dictionariesReady
         window.location.replace(targetPath)
         return
       }
 
       await router.push(targetPath)
+      // 同一应用内跳转时，业务页可先展示；字典完成后由响应式 Store 自动补齐。
+      void dictionariesReady
     } catch (error) {
       if (!(error instanceof HttpError)) {
         console.error('[Login] Unexpected error:', error)
