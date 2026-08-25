@@ -413,7 +413,10 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
       button('View', '查看考勤', 'Hr:Attendance:View'),
       button('Add', '新增考勤排班', 'Hr:Attendance:Add'),
       button('Edit', '编辑考勤排班', 'Hr:Attendance:Edit'),
-      button('Delete', '删除考勤排班', 'Hr:Attendance:Delete')
+      button('Delete', '删除考勤排班', 'Hr:Attendance:Delete'),
+      button('Evaluate', '执行工时核算', 'Hr:Attendance:Evaluate'),
+      button('ReviewCorrection', '审核考勤修正', 'Hr:Attendance:ReviewCorrection'),
+      button('ClosePeriod', '考勤期间封账', 'Hr:Attendance:ClosePeriod')
     ]
   },
   {
