@@ -76,6 +76,9 @@ export const useUserStore = defineStore(
     let userInfoFetchedAt = 0
     //数据字典数据
     const dictMap = ref<DictMap>({})
+    const DICT_CACHE_TTL_MS = 5 * 60 * 1000
+    let dictListFetchedAt = 0
+    let dictListRequest: Promise<void> | null = null
     // 计算属性：获取用户信息
     const getUserInfo = computed<Partial<Api.Auth.UserInfo>>(() => info.value)
     // 计算属性：获取用户信息
@@ -280,25 +283,49 @@ export const useUserStore = defineStore(
       return fetchUserInfo(signal)
     }
 
-    const fetchDictList = async () => {
-      const { data } = await fetchGetDictList()
-      if (!data) return
+    const fetchDictList = async (): Promise<void> => {
+      if (dictListRequest) return dictListRequest
 
-      // 1️⃣ 按字典类型 code 分组
-      const groupData = groupBy(data, (dictItem) => dictItem.dictTypeTable.code) as DictMap
+      dictListRequest = (async () => {
+        const { data } = await fetchGetDictList()
+        if (!data) return
 
-      // 2️⃣ 每个分组内按 sort 正序
-      Object.keys(groupData).forEach((key) => {
-        groupData[key] = (groupData[key] ?? []).slice().sort((a, b) => {
-          return Number(a.sort) - Number(b.sort)
+        const groupData = groupBy(data, (dictItem) => dictItem.dictTypeTable.code) as DictMap
+        Object.keys(groupData).forEach((key) => {
+          groupData[key] = (groupData[key] ?? []).slice().sort((a, b) => {
+            return Number(a.sort) - Number(b.sort)
+          })
         })
-      })
 
-      setDictMap(groupData)
+        setDictMap(groupData)
+        dictListFetchedAt = Date.now()
+      })()
+
+      try {
+        await dictListRequest
+      } finally {
+        dictListRequest = null
+      }
     }
 
     const ensureDictLoaded = async (dictCode: keyof DictMap | string): Promise<void> => {
-      if (dictMap.value[dictCode]?.length) return
+      const cacheIsFresh = Date.now() - dictListFetchedAt < DICT_CACHE_TTL_MS
+      if (dictMap.value[dictCode]?.length && cacheIsFresh) return
+      await fetchDictList()
+    }
+
+    const ensureDictValueLoaded = async (
+      dictCode: keyof DictMap | string,
+      value?: string | number | null
+    ): Promise<void> => {
+      if (value === undefined || value === null || value === '') {
+        await ensureDictLoaded(dictCode)
+        return
+      }
+
+      const cacheIsFresh = Date.now() - dictListFetchedAt < DICT_CACHE_TTL_MS
+      const hasValue = Boolean(getDictItemByValue(dictCode, value))
+      if (hasValue && cacheIsFresh) return
       await fetchDictList()
     }
 
@@ -335,7 +362,8 @@ export const useUserStore = defineStore(
       fetchUserInfo,
       ensureUserInfo,
       fetchDictList,
-      ensureDictLoaded
+      ensureDictLoaded,
+      ensureDictValueLoaded
     }
   },
   {

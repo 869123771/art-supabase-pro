@@ -103,7 +103,6 @@
   import ArtButtonMore, {
     type ButtonMoreItem
   } from '@/components/core/forms/art-button-more/index.vue'
-  import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import ArtDrawer from '@/components/core/drawers/art-drawer/index.vue'
   import type { ArtDrawerExpose } from '@/components/core/drawers/art-drawer/types'
@@ -126,7 +125,10 @@
   import WorkflowBusinessCatalogDialog from './modules/workflow-business-catalog-dialog.vue'
   import WorkflowTemplateLibraryDialog from './modules/workflow-template-library-dialog.vue'
   import WorkflowBusinessMenuFilter from './modules/workflow-business-menu-filter.vue'
-  import { workflowBusinessContracts } from '../modules/workflow-business-contracts'
+  import {
+    getWorkflowBusinessTypeLabel,
+    workflowBusinessContracts
+  } from '../modules/workflow-business-contracts'
 
   defineOptions({ name: 'WorkflowDefinition' })
 
@@ -258,9 +260,7 @@
         prop: 'businessType',
         label: '业务类型',
         minWidth: 150,
-        formatter: (row) => (
-          <ArtDictDisplay value={row.businessType} dictCode="workflowBusinessType" display="text" />
-        )
+        formatter: (row) => getWorkflowBusinessTypeLabel(row.businessType)
       },
       ...(isPlatformSuper.value
         ? [
@@ -630,6 +630,17 @@
       height: 100%;
       min-height: 0;
       overflow: hidden;
+    }
+
+    &__menu-panel {
+      display: flex;
+      align-self: stretch;
+
+      :deep(.workflow-menu-filter) {
+        flex: 1 1 auto;
+        height: auto;
+        min-height: 0;
+      }
     }
 
     &__table-workspace {

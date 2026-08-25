@@ -25,6 +25,7 @@
       <template #header>
         <div class="field-permission-page__scope-heading">
           <div>
+            <span class="field-permission-page__section-kicker">配置范围</span>
             <ArtSectionTitle :show-line="false">选择授权范围</ArtSectionTitle>
             <p>人员配置覆盖其全部角色的合并结果；清除人员例外后恢复角色继承。</p>
           </div>
@@ -113,6 +114,7 @@
         <template #header>
           <header class="field-permission-page__matrix-header">
             <div>
+              <span class="field-permission-page__section-kicker">权限矩阵</span>
               <ArtSectionTitle :show-line="false">字段授权矩阵</ArtSectionTitle>
               <div class="field-permission-page__matrix-context">
                 <strong>{{ configuration.resourceLabel }}</strong>
@@ -141,18 +143,28 @@
         </template>
 
         <div class="field-permission-page__legend" aria-label="权限等级说明">
-          <span v-for="option in accessOptions" :key="option.value">
-            <i :class="`is-${option.value}`" aria-hidden="true" />
-            <b>{{ option.label }}</b>
-            <small>{{ accessMeta[option.value].description }}</small>
+          <span v-for="option in accessOptions" :key="option.value" :class="`is-${option.value}`">
+            <i aria-hidden="true">
+              <ArtSvgIcon :icon="accessMeta[option.value].icon" />
+            </i>
+            <span>
+              <b>{{ option.label }}</b>
+              <small>{{ accessMeta[option.value].description }}</small>
+            </span>
           </span>
         </div>
 
         <div class="field-permission-page__field-list">
+          <div class="field-permission-page__field-columns" aria-hidden="true">
+            <span>敏感字段</span>
+            <span>字段规则</span>
+            <span>授权等级与结果</span>
+          </div>
           <article
             v-for="field in configuration.fields"
             :key="field.id"
             class="field-permission-page__field-row"
+            :class="`is-${effectiveAccess(field)}`"
           >
             <div class="field-permission-page__field-identity">
               <span class="field-permission-page__field-icon" aria-hidden="true">
@@ -184,6 +196,7 @@
             <div class="field-permission-page__field-control">
               <ElSelect
                 v-model="permissionDraft[field.fieldKey]"
+                class="field-permission-page__access-select"
                 :disabled="page.saving || isReadOnly"
                 :aria-label="`${field.fieldLabel}字段权限`"
               >
@@ -199,12 +212,15 @@
                   :value="option.value"
                 />
               </ElSelect>
-              <small>
-                当前生效：
+              <span
+                class="field-permission-page__effective-state"
+                :class="`is-${effectiveAccess(field)}`"
+              >
+                <span>当前生效</span>
                 <b :class="`is-${effectiveAccess(field)}`">
                   {{ accessMeta[effectiveAccess(field)].label }}
                 </b>
-              </small>
+              </span>
             </div>
           </article>
         </div>
@@ -348,6 +364,7 @@
   interface AccessMeta {
     label: string
     description: string
+    icon: string
   }
 
   const userStore = useUserStore()
@@ -386,10 +403,26 @@
   ]
 
   const accessMeta: Record<AccessLevel, AccessMeta> = {
-    hidden: { label: '完全不可见', description: '列表、详情及导出均隐藏' },
-    masked: { label: '脱敏查看', description: '仅展示处理后的安全值' },
-    read: { label: '仅查看', description: '显示原值但禁止修改' },
-    edit: { label: '可编辑', description: '允许查看并维护原值' }
+    hidden: {
+      label: '完全不可见',
+      description: '列表、详情及导出均隐藏',
+      icon: 'ri:eye-close-line'
+    },
+    masked: {
+      label: '脱敏查看',
+      description: '仅展示处理后的安全值',
+      icon: 'ri:eye-off-line'
+    },
+    read: {
+      label: '仅查看',
+      description: '显示原值但禁止修改',
+      icon: 'ri:eye-line'
+    },
+    edit: {
+      label: '可编辑',
+      description: '允许查看并维护原值',
+      icon: 'ri:edit-line'
+    }
   }
 
   const subjectOptions = computed(() =>
@@ -710,13 +743,20 @@
 
 <style scoped lang="scss">
   .field-permission-page {
-    gap: 12px;
+    gap: 14px;
     min-width: 0;
     overflow: visible;
 
     &__scope {
       flex: none;
-      padding: 16px;
+      padding: 18px;
+      background:
+        linear-gradient(
+          135deg,
+          color-mix(in srgb, var(--theme-color) 4%, transparent),
+          transparent 44%
+        ),
+        var(--default-box-color);
     }
 
     &__scope-heading,
@@ -727,11 +767,21 @@
       justify-content: space-between;
 
       p {
-        margin: 5px 0 0;
+        margin: 6px 0 0;
         font-size: 12px;
         line-height: 1.55;
         color: var(--art-text-gray-500);
       }
+    }
+
+    &__section-kicker {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 10px;
+      font-weight: 700;
+      line-height: 1;
+      color: var(--el-color-primary);
+      letter-spacing: 0.12em;
     }
 
     &__scope-heading > div:first-child,
@@ -761,18 +811,22 @@
     &__selectors {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 14px;
-      margin-top: 12px;
+      gap: 12px;
+      margin-top: 14px;
 
       label {
         display: grid;
-        gap: 7px;
+        gap: 8px;
         min-width: 0;
+        padding: 11px 12px 12px;
+        background: color-mix(in srgb, var(--el-fill-color-light) 68%, transparent);
+        border: 1px solid var(--el-border-color-lighter);
+        border-radius: var(--art-surface-radius);
 
         > span {
           font-size: 12px;
           font-weight: 600;
-          color: var(--art-text-gray-700);
+          color: var(--art-text-gray-600);
         }
       }
     }
@@ -782,9 +836,9 @@
       grid-template-columns: auto minmax(0, 1fr) auto;
       gap: 10px;
       align-items: center;
-      padding: 12px 16px;
-      margin: 16px -16px -16px;
-      background: color-mix(in srgb, var(--theme-color) 4%, var(--art-gray-100));
+      padding: 13px 18px;
+      margin: 16px -18px -18px;
+      background: color-mix(in srgb, var(--theme-color) 5%, var(--el-fill-color-lighter));
       border-top: 1px solid
         color-mix(in srgb, var(--theme-color) 14%, var(--el-border-color-lighter));
 
@@ -794,7 +848,9 @@
 
       strong {
         display: block;
-        color: var(--art-text-gray-800);
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--art-text-gray-700);
       }
 
       p {
@@ -843,11 +899,11 @@
 
     &__matrix {
       min-height: 0;
-      padding: 16px;
+      padding: 18px;
     }
 
     &__matrix-header {
-      padding-bottom: 12px;
+      padding-bottom: 14px;
       border-bottom: 1px solid var(--el-border-color-lighter);
     }
 
@@ -859,8 +915,9 @@
       margin-top: 3px;
 
       strong {
-        font-size: 17px;
-        color: var(--art-text-gray-900);
+        font-size: 16px;
+        font-weight: 650;
+        color: var(--art-text-gray-800);
       }
 
       span {
@@ -868,9 +925,15 @@
       }
 
       b {
+        display: inline-flex;
+        align-items: center;
+        min-height: 24px;
+        padding: 2px 8px;
         font-size: 13px;
         font-weight: 600;
         color: var(--el-color-primary);
+        background: var(--el-color-primary-light-9);
+        border-radius: 999px;
       }
     }
 
@@ -900,53 +963,64 @@
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 8px;
-      margin-top: 12px;
+      margin-top: 14px;
 
       > span {
-        display: grid;
-        grid-template-columns: auto minmax(0, 1fr);
-        gap: 2px 7px;
+        display: flex;
+        gap: 9px;
         align-items: center;
         min-width: 0;
-        padding: 9px 10px;
-        background: color-mix(in srgb, var(--el-fill-color-light) 76%, transparent);
+        padding: 10px 11px;
+        background: var(--el-fill-color-extra-light);
         border: 1px solid var(--el-border-color-lighter);
         border-radius: var(--art-control-radius);
-      }
-
-      i {
-        grid-row: 1 / 3;
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
 
         &.is-hidden {
-          background: var(--el-color-danger);
+          background: color-mix(in srgb, var(--el-color-danger) 5%, var(--default-box-color));
         }
 
         &.is-masked {
-          background: var(--el-color-warning);
+          background: color-mix(in srgb, var(--el-color-warning) 6%, var(--default-box-color));
         }
 
         &.is-read {
-          background: var(--el-color-info);
+          background: color-mix(in srgb, var(--el-color-info) 6%, var(--default-box-color));
         }
 
         &.is-edit {
-          background: var(--el-color-success);
+          background: color-mix(in srgb, var(--el-color-success) 6%, var(--default-box-color));
+        }
+
+        > span {
+          min-width: 0;
         }
       }
 
+      i {
+        display: grid;
+        flex: 0 0 30px;
+        place-items: center;
+        width: 30px;
+        height: 30px;
+        font-size: 15px;
+        color: var(--art-text-gray-600);
+        background: color-mix(in srgb, var(--default-box-color) 82%, transparent);
+        border-radius: 9px;
+      }
+
       b {
+        display: block;
         overflow: hidden;
         text-overflow: ellipsis;
         font-size: 12px;
         font-weight: 600;
-        color: var(--art-text-gray-800);
+        color: var(--art-text-gray-700);
         white-space: nowrap;
       }
 
       small {
+        display: block;
+        margin-top: 2px;
         overflow: hidden;
         text-overflow: ellipsis;
         font-size: 11px;
@@ -957,27 +1031,67 @@
 
     &__field-list {
       display: grid;
-      gap: 8px;
-      margin-top: 12px;
+      gap: 7px;
+      margin-top: 14px;
+    }
+
+    &__field-columns {
+      display: grid;
+      grid-template-columns: minmax(220px, 1.15fr) minmax(230px, 1fr) minmax(240px, 0.9fr);
+      gap: 14px;
+      padding: 0 14px 2px;
+
+      span {
+        font-size: 10px;
+        font-weight: 700;
+        color: var(--art-text-gray-400);
+        letter-spacing: 0.08em;
+      }
     }
 
     &__field-row {
+      position: relative;
       display: grid;
       grid-template-columns: minmax(220px, 1.15fr) minmax(230px, 1fr) minmax(240px, 0.9fr);
       gap: 14px;
       align-items: center;
       min-width: 0;
-      padding: 11px 13px;
-      background: var(--el-fill-color-extra-light);
+      padding: 12px 13px 12px 16px;
+      overflow: hidden;
+      background: color-mix(in srgb, var(--el-fill-color-lighter) 66%, transparent);
       border: 1px solid var(--el-border-color-lighter);
       border-radius: var(--art-surface-radius);
       transition:
         background-color 0.18s ease,
         border-color 0.18s ease;
 
+      &::before {
+        position: absolute;
+        inset: 0 auto 0 0;
+        width: 3px;
+        content: '';
+        background: var(--el-color-info);
+      }
+
+      &.is-hidden::before {
+        background: var(--el-color-danger);
+      }
+
+      &.is-masked::before {
+        background: var(--el-color-warning);
+      }
+
+      &.is-read::before {
+        background: var(--el-color-info);
+      }
+
+      &.is-edit::before {
+        background: var(--el-color-success);
+      }
+
       &:hover {
-        background: var(--el-bg-color);
-        border-color: var(--el-border-color);
+        background: var(--default-box-color);
+        border-color: color-mix(in srgb, var(--theme-color) 24%, var(--el-border-color));
       }
     }
 
@@ -999,10 +1113,21 @@
         white-space: nowrap;
       }
 
+      strong {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--art-text-gray-700);
+      }
+
       code {
-        margin-top: 3px;
+        width: fit-content;
+        max-width: 100%;
+        padding: 2px 6px;
+        margin-top: 4px;
         font-size: 11px;
         color: var(--art-text-gray-500);
+        background: color-mix(in srgb, var(--el-fill-color) 68%, transparent);
+        border-radius: 5px;
       }
     }
 
@@ -1013,7 +1138,7 @@
       width: 34px;
       height: 34px;
       color: var(--el-color-primary);
-      background: var(--el-color-primary-light-9);
+      background: color-mix(in srgb, var(--theme-color) 9%, var(--default-box-color));
       border-radius: var(--art-control-radius);
     }
 
@@ -1028,61 +1153,89 @@
       display: inline-flex;
       gap: 4px;
       align-items: center;
+      min-height: 24px;
+      padding: 2px 7px;
       font-size: 12px;
       font-weight: 600;
+      border-radius: 999px;
 
       &.is-owner {
         color: var(--el-color-success-dark-2);
+        background: var(--el-color-success-light-9);
       }
 
       &.is-mask {
         color: var(--el-color-warning-dark-2);
+        background: var(--el-color-warning-light-9);
       }
     }
 
     &__field-default {
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+      padding: 2px 7px;
       font-size: 12px;
       color: var(--art-text-gray-500);
+      background: color-mix(in srgb, var(--el-fill-color) 74%, transparent);
+      border-radius: 999px;
     }
 
     &__field-control {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
+      grid-template-columns: minmax(150px, 1fr) auto;
       gap: 10px;
       align-items: center;
+    }
 
-      small {
-        color: var(--art-text-gray-500);
-        white-space: nowrap;
+    &__access-select {
+      min-width: 0;
+    }
+
+    &__effective-state {
+      display: grid;
+      gap: 1px;
+      min-width: 78px;
+      padding: 5px 8px;
+      white-space: nowrap;
+      background: color-mix(in srgb, var(--el-fill-color-light) 76%, transparent);
+      border-radius: 8px;
+
+      > span {
+        font-size: 10px;
+        color: var(--art-text-gray-400);
       }
 
       b {
-        font-weight: 600;
+        font-size: 12px;
+        font-weight: 650;
+      }
 
-        &.is-hidden {
-          color: var(--el-color-danger);
-        }
+      &.is-hidden b {
+        color: var(--el-color-danger);
+      }
 
-        &.is-masked {
-          color: var(--el-color-warning);
-        }
+      &.is-masked b {
+        color: var(--el-color-warning-dark-2);
+      }
 
-        &.is-read {
-          color: var(--el-color-info);
-        }
+      &.is-read b {
+        color: var(--el-color-info);
+      }
 
-        &.is-edit {
-          color: var(--el-color-success);
-        }
+      &.is-edit b {
+        color: var(--el-color-success-dark-2);
       }
     }
 
     &__audit {
       display: grid;
       gap: 12px;
-      padding-top: 16px;
-      margin-top: 16px;
+      padding: 16px;
+      margin-top: 18px;
+      background: color-mix(in srgb, var(--el-fill-color-lighter) 62%, transparent);
       border-top: 1px solid var(--el-border-color-lighter);
+      border-radius: var(--art-surface-radius);
     }
 
     &__audit-header {
@@ -1173,7 +1326,8 @@
       }
 
       strong {
-        color: var(--art-text-gray-800);
+        font-weight: 600;
+        color: var(--art-text-gray-700);
       }
 
       span,
@@ -1279,6 +1433,10 @@
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
 
+      &__field-columns {
+        display: none;
+      }
+
       &__field-row {
         grid-template-columns: minmax(210px, 1fr) minmax(250px, 1fr);
       }
@@ -1339,6 +1497,10 @@
 
       &__audit-count {
         align-self: flex-start;
+      }
+
+      &__audit {
+        padding: 14px;
       }
 
       &__audit-list li {

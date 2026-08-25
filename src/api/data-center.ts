@@ -170,6 +170,7 @@ export async function fetchGetDictList() {
       sort,
       color,
       tag_type,
+      remark,
       dict_type_table:sys_dict_type!inner(
         code,
         name

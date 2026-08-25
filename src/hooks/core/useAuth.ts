@@ -39,7 +39,7 @@ export const useAuth = () => {
   const { isFrontendMode } = useAppMode()
   const userStore = useUserStore()
   const menuStore = useMenuStore()
-  const { info } = storeToRefs(userStore)
+  const { info, isPlatformSuper } = storeToRefs(userStore)
   const { buttonList } = storeToRefs(menuStore)
   type UserInfoWithDemoButtons = Partial<Api.Auth.UserInfo> & { buttons?: string[] }
 
@@ -56,6 +56,9 @@ export const useAuth = () => {
    * @returns 是否有权限
    */
   const hasAuth = (auth: string): boolean => {
+    // 平台超级管理员是统一权限解析器的隐式兜底；真正的写入仍由 RPC / RLS 再校验。
+    if (isPlatformSuper.value) return true
+
     // 前端模式
     if (isFrontendMode.value) {
       return getFrontendAuthList().includes(auth)

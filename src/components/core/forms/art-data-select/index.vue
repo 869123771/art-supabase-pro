@@ -110,7 +110,13 @@
 
         <div
           class="art-data-select-dialog__layout"
-          :class="{ 'has-pagination': mode === 'table' && showPagination }"
+          :class="[
+            `is-${mode}-mode`,
+            {
+              'has-pagination': mode === 'table' && showPagination,
+              'has-selected-panel': shouldShowSelectedPanel
+            }
+          ]"
         >
           <section class="art-data-select-dialog__main">
             <div
@@ -213,11 +219,23 @@
                   <template #default="{ data }">
                     <span
                       class="art-data-select-dialog__tree-node"
-                      :class="{ 'is-disabled': isRowDisabled(data) }"
+                      :class="{
+                        'is-disabled': isRowDisabled(data) && !hasRowChildren(data),
+                        'is-grouping': isRowDisabled(data) && hasRowChildren(data),
+                        'is-selected': isDraftSelected(data)
+                      }"
                     >
-                      <span class="art-data-select-dialog__tree-label">{{
-                        getRowLabel(data)
-                      }}</span>
+                      <span class="art-data-select-dialog__tree-icon" aria-hidden="true">
+                        <ArtSvgIcon
+                          :icon="hasRowChildren(data) ? 'ri:folder-6-line' : 'ri:node-tree'"
+                        />
+                      </span>
+                      <span class="art-data-select-dialog__tree-copy">
+                        <span class="art-data-select-dialog__tree-label">{{
+                          getRowLabel(data)
+                        }}</span>
+                        <small v-if="getRowDescription(data)">{{ getRowDescription(data) }}</small>
+                      </span>
                       <ArtSvgIcon
                         v-if="!multiple && isDraftSelected(data)"
                         icon="ri:check-line"
@@ -262,8 +280,8 @@
                 :key="getRowKey(row)"
                 class="art-data-select-dialog__selected-item"
               >
-                <div v-if="mode === 'table'" class="art-data-select-dialog__selected-icon">
-                  <ArtSvgIcon icon="ri:building-4-line" />
+                <div class="art-data-select-dialog__selected-icon">
+                  <ArtSvgIcon :icon="mode === 'tree' ? 'ri:node-tree' : 'ri:building-4-line'" />
                 </div>
                 <div class="art-data-select-dialog__selected-text">
                   <strong>{{ getRowLabel(row) }}</strong>
@@ -442,6 +460,11 @@
     if (!props.descriptionKey) return ''
     if (typeof props.descriptionKey === 'function') return props.descriptionKey(row)
     return String(get(row, props.descriptionKey) ?? '')
+  }
+
+  const hasRowChildren = (row: DataSelectRecord): boolean => {
+    const children = get(row, props.childrenKey)
+    return Array.isArray(children) && children.length > 0
   }
 
   const isRowDisabled = (row: DataSelectRecord): boolean => {
@@ -855,8 +878,8 @@
   .art-data-select-dialog__search {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
-    gap: 16px;
-    margin-bottom: 16px;
+    gap: 12px;
+    margin-bottom: 12px;
 
     &.has-filter {
       grid-template-columns: minmax(220px, 1fr) 260px;
@@ -865,7 +888,12 @@
     :deep(.el-input__wrapper),
     :deep(.el-select__wrapper) {
       min-height: 36px;
-      box-shadow: 0 0 0 1px #dfe5f0 inset;
+      background: var(--art-gray-100);
+      box-shadow: none;
+
+      &:focus-within {
+        box-shadow: 0 0 0 1px var(--theme-color) inset;
+      }
     }
   }
 
@@ -873,9 +901,13 @@
     --art-data-select-dialog-panel-height: 438px;
 
     display: flex;
-    gap: 20px;
-    align-items: flex-start;
+    gap: 0;
+    align-items: stretch;
     min-height: 0;
+    overflow: hidden;
+    background: var(--default-box-color);
+    border: 1px solid var(--el-border-color-lighter);
+    border-radius: var(--art-surface-radius, calc(var(--el-border-radius-base) + 2px));
 
     &.has-pagination {
       --art-data-select-dialog-panel-height: 500px;
@@ -887,8 +919,7 @@
     flex: 1;
     flex-direction: column;
     min-width: 0;
-    border: 1px solid #dfe5f0;
-    border-radius: 4px;
+    background: var(--default-box-color);
   }
 
   .art-data-select-dialog__content {
@@ -896,15 +927,19 @@
     min-height: 0;
 
     &.is-tree {
-      padding: 18px 12px 18px 24px;
+      padding: 10px 8px 12px;
     }
 
     :deep(.el-table) {
-      --el-table-header-bg-color: #f8fafc;
-      --el-table-header-text-color: #626883;
-      --el-table-text-color: #3d425f;
-      --el-table-row-hover-bg-color: #f0f0f3;
-      --el-table-current-row-bg-color: #f0f0f3;
+      --el-table-header-bg-color: var(--art-gray-100);
+      --el-table-header-text-color: var(--el-text-color-regular);
+      --el-table-text-color: var(--el-text-color-primary);
+      --el-table-row-hover-bg-color: var(--art-gray-100);
+      --el-table-current-row-bg-color: color-mix(
+        in srgb,
+        var(--theme-color) 7%,
+        var(--default-box-color)
+      );
 
       font-size: 15px;
     }
@@ -920,11 +955,11 @@
     }
 
     :deep(.el-table__row.is-selected-row td.el-table__cell) {
-      background: #f0f0f3;
+      background: color-mix(in srgb, var(--theme-color) 7%, var(--default-box-color));
     }
 
     :deep(.el-table__row:hover > td.el-table__cell) {
-      background: #f0f0f3;
+      background: var(--art-gray-100);
     }
 
     :deep(.art-data-select-dialog__selection-cell .cell) {
@@ -945,41 +980,87 @@
   }
 
   .art-data-select-dialog__tree {
-    color: #3d425f;
+    color: var(--el-text-color-primary);
 
     --el-tree-node-hover-bg-color: transparent;
 
     :deep(.el-tree-node__content) {
-      height: 44px;
-      padding-right: 12px;
-      margin: 4px 0;
-      border-radius: 4px;
+      height: auto;
+      min-height: 46px;
+      padding: 3px 10px 3px 0;
+      margin: 1px 0;
+      border-radius: var(--el-border-radius-base);
+      transition:
+        background-color 0.16s ease,
+        box-shadow 0.16s ease;
     }
 
     :deep(.el-tree-node__content:hover),
     :deep(.el-tree-node.is-current > .el-tree-node__content) {
-      background: #f0f0f3;
+      background: var(--art-gray-100);
+    }
+
+    :deep(.el-tree-node:has(> .el-tree-node__content .is-selected) > .el-tree-node__content) {
+      background: color-mix(in srgb, var(--theme-color) 8%, var(--default-box-color));
+      box-shadow: inset 3px 0 0 var(--theme-color);
     }
 
     :deep(.el-checkbox) {
       height: auto;
-      margin-right: 10px;
+      margin-right: 8px;
+    }
+
+    :deep(.el-tree-node__expand-icon) {
+      color: var(--el-text-color-secondary);
     }
   }
 
   .art-data-select-dialog__tree-node {
     display: flex;
     flex: 1;
-    gap: 8px;
+    gap: 9px;
     align-items: center;
     min-width: 0;
-    font-size: 16px;
-    line-height: 24px;
+    font-size: 14px;
+    line-height: 20px;
 
     &.is-disabled {
       color: var(--el-disabled-text-color);
       cursor: not-allowed;
     }
+
+    &.is-grouping {
+      font-weight: 600;
+      color: var(--el-text-color-primary);
+    }
+  }
+
+  .art-data-select-dialog__tree-icon {
+    display: inline-flex;
+    flex: 0 0 28px;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    color: var(--el-text-color-secondary);
+    background: var(--art-gray-100);
+    border-radius: var(--el-border-radius-base);
+  }
+
+  .art-data-select-dialog__tree-node.is-grouping .art-data-select-dialog__tree-icon {
+    color: var(--theme-color);
+    background: color-mix(in srgb, var(--theme-color) 8%, var(--default-box-color));
+  }
+
+  .art-data-select-dialog__tree-node.is-selected .art-data-select-dialog__tree-icon {
+    color: var(--theme-color);
+    background: color-mix(in srgb, var(--theme-color) 12%, var(--default-box-color));
+  }
+
+  .art-data-select-dialog__tree-copy {
+    display: grid;
+    flex: 1;
+    min-width: 0;
   }
 
   .art-data-select-dialog__tree-label {
@@ -989,11 +1070,23 @@
     white-space: nowrap;
   }
 
+  .art-data-select-dialog__tree-copy small {
+    min-width: 0;
+    margin-top: 1px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 11px;
+    font-weight: 400;
+    line-height: 16px;
+    color: var(--el-text-color-secondary);
+    white-space: nowrap;
+  }
+
   .art-data-select-dialog__tree-check {
     flex: none;
     margin-left: auto;
     font-size: 20px;
-    color: #7d8299;
+    color: var(--el-text-color-secondary);
   }
 
   .art-data-select-dialog__pager {
@@ -1003,8 +1096,9 @@
     justify-content: space-between;
     min-height: 62px;
     padding: 10px 24px;
-    color: #7d8299;
-    border-top: 1px solid #dfe5f0;
+    color: var(--el-text-color-secondary);
+    background: var(--art-gray-100);
+    border-top: 1px solid var(--el-border-color-lighter);
   }
 
   .art-data-select-dialog__selected {
@@ -1016,8 +1110,8 @@
     min-height: 0;
     max-height: var(--art-data-select-dialog-panel-height);
     overflow: hidden;
-    border: 1px solid #dfe5f0;
-    border-radius: 4px;
+    background: color-mix(in srgb, var(--art-gray-100) 68%, var(--default-box-color));
+    border-left: 1px solid var(--el-border-color-lighter);
   }
 
   .art-data-select-dialog__selected-header {
@@ -1025,12 +1119,12 @@
     align-items: center;
     justify-content: space-between;
     min-height: 54px;
-    padding: 0 18px 0 24px;
-    font-size: 16px;
+    padding: 0 14px 0 18px;
+    font-size: 14px;
     font-weight: 600;
-    color: #26294a;
-    background: #f8fafc;
-    border-bottom: 1px solid #dfe5f0;
+    color: var(--el-text-color-primary);
+    background: var(--art-gray-100);
+    border-bottom: 1px solid var(--el-border-color-lighter);
   }
 
   .art-data-select-dialog__selected-scrollbar {
@@ -1047,13 +1141,13 @@
     display: flex;
     gap: 12px;
     align-items: center;
-    min-height: 62px;
-    padding: 12px 16px 12px 24px;
-    border-bottom: 1px solid #eef1f6;
+    min-height: 56px;
+    padding: 9px 12px 9px 16px;
+    border-bottom: 1px solid var(--el-border-color-lighter);
     transition: background-color 0.2s ease;
 
     &:hover {
-      background: #f0f0f3;
+      background: var(--art-gray-100);
     }
   }
 
@@ -1062,12 +1156,12 @@
     flex: none;
     align-items: center;
     justify-content: center;
-    width: 34px;
-    height: 34px;
-    font-size: 20px;
+    width: 30px;
+    height: 30px;
+    font-size: 16px;
     color: var(--el-color-primary);
     background: var(--el-color-primary-light-9);
-    border-radius: 4px;
+    border-radius: var(--el-border-radius-base);
   }
 
   .art-data-select-dialog__selected-text {
@@ -1087,14 +1181,14 @@
       font-size: 15px;
       font-weight: 600;
       line-height: 22px;
-      color: #30344f;
+      color: var(--el-text-color-primary);
     }
 
     span {
       margin-top: 4px;
       font-size: 13px;
       line-height: 18px;
-      color: #9aa0b5;
+      color: var(--el-text-color-secondary);
     }
   }
 
@@ -1104,12 +1198,12 @@
     height: 32px !important;
     padding: 0;
     font-size: 18px;
-    color: #7d8299;
-    border-radius: 4px;
+    color: var(--el-text-color-secondary);
+    border-radius: var(--el-border-radius-base);
 
     &:hover,
     &:focus-visible {
-      color: #7d8299;
+      color: var(--el-text-color-primary);
       background: var(--el-fill-color-light);
     }
   }
@@ -1133,6 +1227,8 @@
       width: auto;
       height: auto;
       max-height: 240px;
+      border-top: 1px solid var(--el-border-color-lighter);
+      border-left: 0;
     }
   }
 </style>

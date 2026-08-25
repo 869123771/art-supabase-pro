@@ -86,7 +86,7 @@ const contracts: Record<string, WorkflowBusinessContract> = {
     fields: [
       { key: 'amount', label: '申请付款金额', valueType: 'number' },
       { key: 'applicationNo', label: '付款申请单号', valueType: 'text' },
-      { key: 'carrierId', label: '承运商ID', valueType: 'text' },
+      { key: 'carrierId', label: '承运商', valueType: 'text', referenceType: 'business' },
       { key: 'carrierName', label: '承运商名称', valueType: 'text' },
       { key: 'plannedPaymentDate', label: '计划付款日期', valueType: 'date' },
       { key: 'statementCount', label: '对账单数量', valueType: 'number' }
@@ -104,7 +104,7 @@ const contracts: Record<string, WorkflowBusinessContract> = {
       { key: 'statementAmount', label: '对账金额', valueType: 'number' },
       { key: 'costCount', label: '费用明细数', valueType: 'number' },
       { key: 'statementNo', label: '对账单号', valueType: 'text' },
-      { key: 'carrierId', label: '承运商ID', valueType: 'text' },
+      { key: 'carrierId', label: '承运商', valueType: 'text', referenceType: 'business' },
       { key: 'carrierName', label: '承运商名称', valueType: 'text' },
       { key: 'settledAmount', label: '已结算金额', valueType: 'number' }
     ],
@@ -121,7 +121,7 @@ const contracts: Record<string, WorkflowBusinessContract> = {
       { key: 'statementAmount', label: '对账金额', valueType: 'number' },
       { key: 'waybillCount', label: '运单数量', valueType: 'number' },
       { key: 'statementNo', label: '对账单号', valueType: 'text' },
-      { key: 'customerId', label: '客户ID', valueType: 'text' },
+      { key: 'customerId', label: '客户', valueType: 'text', referenceType: 'business' },
       { key: 'customerName', label: '客户名称', valueType: 'text' },
       { key: 'settledAmount', label: '已结算金额', valueType: 'number' }
     ],
@@ -140,8 +140,8 @@ const contracts: Record<string, WorkflowBusinessContract> = {
       { key: 'transportMode', label: '运输方式', valueType: 'text' },
       { key: 'contractAmount', label: '合同金额', valueType: 'number' },
       { key: 'contractNo', label: '合同编号', valueType: 'text' },
-      { key: 'carrierId', label: '承运商ID', valueType: 'text' },
-      { key: 'customerId', label: '客户ID', valueType: 'text' },
+      { key: 'carrierId', label: '承运商', valueType: 'text', referenceType: 'business' },
+      { key: 'customerId', label: '客户', valueType: 'text', referenceType: 'business' },
       { key: 'partyName', label: '合同相对方', valueType: 'text' },
       { key: 'billingMethod', label: '计费方式', valueType: 'text' },
       { key: 'signTime', label: '签订时间', valueType: 'date' },
@@ -178,8 +178,13 @@ const contracts: Record<string, WorkflowBusinessContract> = {
     owner: '人力资源',
     fields: [
       { key: 'changeNo', label: '异动单号', valueType: 'text' },
-      { key: 'changeType', label: '异动类型', valueType: 'text' },
-      { key: 'employeeId', label: '员工ID', valueType: 'text' },
+      {
+        key: 'changeType',
+        label: '异动类型',
+        valueType: 'text',
+        dictCode: 'hrPersonnelChangeType'
+      },
+      { key: 'employeeId', label: '员工', valueType: 'text', referenceType: 'employee' },
       { key: 'effectiveDate', label: '生效日期', valueType: 'date' }
     ],
     routePath: () => '/hr/personnel/personnel-change'
@@ -193,8 +198,13 @@ const contracts: Record<string, WorkflowBusinessContract> = {
     owner: '人力资源',
     fields: [
       { key: 'caseNo', label: '事项编号', valueType: 'text' },
-      { key: 'caseType', label: '事项类型', valueType: 'text' },
-      { key: 'employeeId', label: '员工ID', valueType: 'text' },
+      {
+        key: 'caseType',
+        label: '事项类型',
+        valueType: 'text',
+        dictCode: 'hrLifecycleCaseType'
+      },
+      { key: 'employeeId', label: '员工', valueType: 'text', referenceType: 'employee' },
       { key: 'plannedEffectiveDate', label: '计划生效日期', valueType: 'date' }
     ],
     routePath: () => '/hr/personnel/lifecycle'
@@ -208,8 +218,13 @@ const contracts: Record<string, WorkflowBusinessContract> = {
     owner: '员工服务',
     fields: [
       { key: 'requestNo', label: '申请编号', valueType: 'text' },
-      { key: 'requestType', label: '申请类型', valueType: 'text' },
-      { key: 'employeeId', label: '员工ID', valueType: 'text' },
+      {
+        key: 'requestType',
+        label: '申请类型',
+        valueType: 'text',
+        dictCode: 'hrSelfServiceRequestType'
+      },
+      { key: 'employeeId', label: '员工', valueType: 'text', referenceType: 'employee' },
       { key: 'durationHours', label: '申请时长', valueType: 'number' },
       { key: 'startAt', label: '开始时间', valueType: 'date' },
       { key: 'endAt', label: '结束时间', valueType: 'date' }
@@ -225,8 +240,13 @@ const contracts: Record<string, WorkflowBusinessContract> = {
     owner: '招聘管理',
     fields: [
       { key: 'requisitionNo', label: '需求编号', valueType: 'text' },
-      { key: 'organizationId', label: '招聘组织ID', valueType: 'text' },
-      { key: 'positionId', label: '招聘岗位ID', valueType: 'text' },
+      {
+        key: 'organizationId',
+        label: '招聘组织',
+        valueType: 'text',
+        referenceType: 'organization'
+      },
+      { key: 'positionId', label: '招聘岗位', valueType: 'text', referenceType: 'position' },
       { key: 'openingCount', label: '需求人数', valueType: 'number' },
       { key: 'expectedOnboardDate', label: '期望到岗日期', valueType: 'date' }
     ],
@@ -240,6 +260,11 @@ export const workflowBusinessContracts = Object.values(contracts).filter(
 
 export function getWorkflowBusinessContract(businessType: string): WorkflowBusinessContract {
   return contracts[businessType] ?? contracts.generic
+}
+
+export function getWorkflowBusinessTypeLabel(businessType?: string | null): string {
+  if (!businessType) return '未配置业务类型'
+  return contracts[businessType]?.label ?? '未登记审批业务'
 }
 
 export function getWorkflowContextFields(

@@ -54,7 +54,7 @@
                   <span><ArtSvgIcon :icon="domainIcon(contract.domain)" /></span>
                   <div>
                     <strong>{{ contract.label }}</strong>
-                    <small :title="contract.businessType">{{ contract.businessType }}</small>
+                    <small>{{ contract.owner }} · {{ domainLabel(contract.domain) }}</small>
                   </div>
                   <ElTag
                     class="workflow-catalog__risk"
@@ -168,12 +168,21 @@
     }[domain]
   }
 
+  function domainLabel(domain: 'transport' | 'finance' | 'master_data' | 'safety' | 'hr'): string {
+    return {
+      transport: '运输业务',
+      finance: '财务业务',
+      master_data: '基础资料',
+      safety: '安全管理',
+      hr: '人力资源'
+    }[domain]
+  }
+
   async function handleOpen(): Promise<void> {
     await dialogRef.value?.handleOpen(undefined, {
       title: '审批业务覆盖与风险矩阵',
       subtitle: '用于确认哪些业务必须走审批、由谁负责、以哪些可信字段作出决策。',
-      contentMaxHeight: '78vh',
-      contentHeight: '78vh',
+      dialogProps: { class: 'workflow-catalog-dialog' },
       showFooter: false
     })
   }
@@ -514,6 +523,16 @@
         color: var(--art-gray-600);
       }
     }
+  }
+
+  :global(.workflow-catalog-dialog > .el-dialog__body) {
+    height: min(78vh, calc(100vh - 136px));
+    min-height: 420px;
+    overflow: hidden;
+  }
+
+  :global(.workflow-catalog-dialog > .el-dialog__body > .art-dialog__content) {
+    height: 100%;
   }
 
   @media only screen and (width <= 1080px) {

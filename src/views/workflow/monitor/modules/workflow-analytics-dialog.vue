@@ -76,12 +76,8 @@
             <div v-else class="workflow-analytics__business-list">
               <article v-for="item in state.data.businessTypes" :key="item.businessType">
                 <div class="workflow-analytics__business-name">
-                  <ArtDictDisplay
-                    dict-code="workflowBusinessType"
-                    :value="item.businessType"
-                    display="text"
-                  />
-                  <small>{{ item.businessType }}</small>
+                  <strong>{{ getWorkflowBusinessTypeLabel(item.businessType) }}</strong>
+                  <small>审批业务</small>
                 </div>
                 <div
                   ><small>实例数</small><strong>{{ item.totalCount }}</strong></div
@@ -239,7 +235,6 @@
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
-  import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import ArtSectionTitle from '@/components/core/surfaces/art-section-title/index.vue'
   import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import ArtAsyncState from '@/components/core/feedback/art-async-state/index.vue'
@@ -247,6 +242,7 @@
     fetchWorkflowBottleneckAnalytics,
     fetchWorkflowOperationalAnalytics
   } from '@/api/workflow'
+  import { getWorkflowBusinessTypeLabel } from '../../modules/workflow-business-contracts'
 
   defineOptions({ name: 'WorkflowAnalyticsDialog' })
 
@@ -407,7 +403,7 @@
         ]
     const rows = isOverview
       ? state.data.businessTypes.map((item) => [
-          item.businessType,
+          getWorkflowBusinessTypeLabel(item.businessType),
           item.totalCount,
           item.runningCount,
           item.approvedCount,

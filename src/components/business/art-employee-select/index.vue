@@ -43,7 +43,7 @@
 
   interface Props {
     modelValue?: string
-    selectedData?: DataSelectRecord[]
+    selectedData?: EmployeeIntegrationItem[]
     tenantId?: string
     title?: string
     subtitle?: string
@@ -51,6 +51,7 @@
     searchPlaceholder?: string
     disabled?: boolean
     clearable?: boolean
+    apiFn?: typeof fetchEmployeeSelectorList
   }
 
   const props = withDefaults(defineProps<Props>(), {
@@ -127,7 +128,7 @@
 
   const fetchEmployees = async (params: DataSelectFetchParams) => {
     const from = Math.max((params.page - 1) * params.pageSize, 0)
-    const result = await fetchEmployeeSelectorList({
+    const result = await (props.apiFn ?? fetchEmployeeSelectorList)({
       tenantId: resolvedTenantId.value,
       keyword: params.keyword,
       from,

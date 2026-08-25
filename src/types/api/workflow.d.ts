@@ -69,6 +69,8 @@ declare namespace Api {
       label: string
       valueType: 'text' | 'number' | 'boolean' | 'date'
       help?: string
+      dictCode?: string
+      referenceType?: 'employee' | 'organization' | 'position' | 'business'
     }
 
     interface WorkflowBusinessMetric {

@@ -27,7 +27,10 @@
                 }}</small
               >
               <h2>{{ state.detail.businessTitle }}</h2>
-              <p>{{ state.detail.businessType }} · {{ state.detail.businessId }}</p>
+              <p
+                >{{ businessTypeLabel }} ·
+                {{ state.detail.initiatorNameSnapshot || '发起人待确认' }}</p
+              >
             </div>
           </div>
           <div class="workflow-instance__hero-status">
@@ -87,7 +90,7 @@
           <WorkflowTaskBoard :tasks="sortedTasks" />
         </ArtSectionCard>
 
-        <section class="workflow-instance__section art-card-xs">
+        <ArtSectionCard class="workflow-instance__section" preserve-content-structure>
           <ArtProcessTimeline
             :items="actionTimelineItems"
             title="流转记录"
@@ -96,7 +99,7 @@
             empty-title="暂无流转记录"
             empty-description="流程动作发生后会自动记录在这里。"
           />
-        </section>
+        </ArtSectionCard>
       </div>
     </ArtAsyncState>
   </ArtDrawer>
@@ -117,6 +120,7 @@
   import WorkflowBusinessSnapshot from '../../modules/workflow-business-snapshot.vue'
   import WorkflowFlowMap from '@/components/business/workflow-flow-map/index.vue'
   import WorkflowTaskBoard from '../../modules/workflow-task-board.vue'
+  import { getWorkflowBusinessTypeLabel } from '../../modules/workflow-business-contracts'
   import { formatWithDayjs } from '@/utils/time'
   import { createWorkflowActionTimelineItems } from '@/utils/workflow-display'
   import { fetchWorkflowBusinessSnapshot, fetchWorkflowInstanceDetail } from '@/api/workflow'
@@ -160,6 +164,7 @@
   const actionTimelineItems = computed(() =>
     createWorkflowActionTimelineItems(state.detail?.actions)
   )
+  const businessTypeLabel = computed(() => getWorkflowBusinessTypeLabel(state.detail?.businessType))
 
   const formatDate = (value?: string | null): string =>
     value ? String(formatWithDayjs(value) ?? '--') : '--'

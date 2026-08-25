@@ -133,7 +133,6 @@
   import BusinessWorkspaceHeader, {
     type BusinessWorkspaceMetric
   } from '@/components/business/business-workspace-header/index.vue'
-  import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import ArtSectionTitle from '@/components/core/surfaces/art-section-title/index.vue'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
@@ -153,7 +152,10 @@
   import WorkflowTransferDialog from './modules/workflow-transfer-dialog.vue'
   import WorkflowDelegationDialog from './modules/workflow-delegation-dialog.vue'
   import WorkflowInstanceDrawer from './modules/workflow-instance-drawer.vue'
-  import { getWorkflowBusinessContract } from '../modules/workflow-business-contracts'
+  import {
+    getWorkflowBusinessContract,
+    getWorkflowBusinessTypeLabel
+  } from '../modules/workflow-business-contracts'
 
   defineOptions({ name: 'WorkflowWorkbench' })
 
@@ -328,13 +330,7 @@
         prop: 'businessType',
         label: '业务类型',
         minWidth: 145,
-        formatter: (row) => (
-          <ArtDictDisplay
-            dictCode="workflowBusinessType"
-            value={row.instance?.businessType}
-            display="text"
-          />
-        )
+        formatter: (row) => getWorkflowBusinessTypeLabel(row.instance?.businessType)
       },
       { prop: 'nodeName', label: '当前节点', minWidth: 140 },
       {
@@ -592,9 +588,7 @@
         prop: 'businessType',
         label: '业务类型',
         minWidth: 145,
-        formatter: (row) => (
-          <ArtDictDisplay dictCode="workflowBusinessType" value={row.businessType} display="text" />
-        )
+        formatter: (row) => getWorkflowBusinessTypeLabel(row.businessType)
       },
       {
         prop: 'status',

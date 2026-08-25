@@ -1,19 +1,15 @@
 <template>
-  <section class="workflow-business-snapshot" aria-label="审批决策信息">
-    <header>
-      <div>
-        <span>决策信息包</span>
-        <strong>{{ snapshot.title }}</strong>
-        <small>{{ snapshot.subtitle || snapshot.businessNo || snapshot.businessId }}</small>
-      </div>
-      <RouterLink
-        v-if="snapshot.routePath"
-        class="workflow-business-snapshot__source-link"
-        :to="snapshot.routePath"
-      >
+  <ArtSectionCard
+    class="workflow-business-snapshot"
+    title="业务资料"
+    :subtitle="snapshotSubtitle"
+    aria-label="审批业务资料"
+  >
+    <template v-if="snapshot.routePath" #actions>
+      <RouterLink class="workflow-business-snapshot__source-link" :to="snapshot.routePath">
         查看业务原单<ArtSvgIcon icon="ri:arrow-right-up-line" aria-hidden="true" />
       </RouterLink>
-    </header>
+    </template>
 
     <div v-if="snapshot.warnings.length" class="workflow-business-snapshot__warnings">
       <ElAlert
@@ -37,10 +33,18 @@
       </article>
     </div>
 
-    <dl v-if="snapshot.fields.length">
-      <div v-for="field in snapshot.fields" :key="field.label">
+    <dl v-if="displayFields.length">
+      <div v-for="field in displayFields" :key="field.key">
         <dt>{{ field.label }}</dt>
-        <dd>{{ field.value || '—' }}</dd>
+        <dd>
+          <ArtDictDisplay
+            v-if="field.dictCode"
+            :dict-code="field.dictCode"
+            :value="field.value"
+            display="text"
+          />
+          <span v-else>{{ field.value || '—' }}</span>
+        </dd>
       </div>
     </dl>
 
@@ -66,52 +70,84 @@
       description="审批依据：此内容由 OCR 在业务表单人工修正前生成并留存。"
       :rows="6"
     />
-  </section>
+  </ArtSectionCard>
 </template>
 
 <script setup lang="ts">
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
+  import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
+  import ArtSectionCard from '@/components/core/surfaces/art-section-card/index.vue'
   import OcrOriginalText from '@/components/business/ocr-original-text/index.vue'
+  import { getWorkflowBusinessContract } from './workflow-business-contracts'
 
   defineOptions({ name: 'WorkflowBusinessSnapshot' })
 
-  defineProps<{ snapshot: Api.Workflow.WorkflowBusinessSnapshot }>()
+  interface DisplayField {
+    key: string
+    label: string
+    value: string
+    dictCode?: string
+  }
+
+  const props = defineProps<{ snapshot: Api.Workflow.WorkflowBusinessSnapshot }>()
+
+  const businessContract = computed(() => getWorkflowBusinessContract(props.snapshot.businessType))
+  const snapshotSubtitle = computed(() => {
+    const parts = [businessContract.value.label]
+    if (props.snapshot.businessNo) parts.push(props.snapshot.businessNo)
+    else if (props.snapshot.subtitle && props.snapshot.subtitle !== props.snapshot.title) {
+      parts.push(props.snapshot.subtitle)
+    }
+    return parts.join(' · ')
+  })
+  const displayFields = computed<DisplayField[]>(() =>
+    props.snapshot.fields.map((field, index) => {
+      const metadata = businessContract.value.fields.find(
+        (item) => item.key === field.label || item.label === field.label
+      )
+      const value = normalizeFieldValue(field.value)
+      return {
+        key: `${metadata?.key || field.label}-${index}`,
+        label: metadata?.label || normalizeFieldLabel(field.label, index),
+        value: metadata?.referenceType && isUuid(value) ? '已关联，可查看业务原单' : value || '—',
+        dictCode: metadata?.dictCode
+      }
+    })
+  )
+
+  function normalizeFieldValue(value: string): string {
+    const normalized = String(value ?? '').trim()
+    if (!normalized) return ''
+    try {
+      const parsed = JSON.parse(normalized) as unknown
+      if (parsed === null || parsed === undefined) return ''
+      if (typeof parsed === 'string' || typeof parsed === 'number') return String(parsed)
+      if (typeof parsed === 'boolean') return parsed ? '是' : '否'
+      if (Array.isArray(parsed)) return parsed.length ? `${parsed.length} 项` : '—'
+      return '已提供'
+    } catch {
+      return normalized
+    }
+  }
+
+  function normalizeFieldLabel(label: string, index: number): string {
+    const normalized = label.trim()
+    if (!normalized || /^[a-z][a-zA-Z0-9]*$/.test(normalized)) return `业务字段 ${index + 1}`
+    return normalized.replace(/ID$/i, '')
+  }
+
+  function isUuid(value: string): boolean {
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
+  }
 </script>
 
 <style scoped lang="scss">
   .workflow-business-snapshot {
-    display: grid;
-    gap: 14px;
     min-width: 0;
-    padding: 16px;
-    background: var(--el-fill-color-extra-light);
-    border: 1px solid var(--el-border-color-lighter);
-    border-radius: calc(var(--el-border-radius-base) + 2px);
 
-    > header {
-      display: flex;
-      gap: 16px;
-      align-items: flex-start;
-      justify-content: space-between;
-
-      > div {
-        display: grid;
-        gap: 3px;
-        min-width: 0;
-      }
-
-      span,
-      small {
-        font-size: 12px;
-        color: var(--el-text-color-secondary);
-      }
-
-      strong {
-        overflow: hidden;
-        text-overflow: ellipsis;
-        color: var(--el-text-color-primary);
-        white-space: nowrap;
-      }
+    :deep(.art-section-card__body) {
+      display: grid;
+      gap: 14px;
     }
 
     &__warnings {
@@ -207,6 +243,10 @@
         margin: 0;
         color: var(--el-text-color-primary);
         overflow-wrap: anywhere;
+
+        > span {
+          display: block;
+        }
       }
     }
 

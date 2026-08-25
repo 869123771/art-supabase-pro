@@ -40,9 +40,9 @@
 
   const userStore = useUserStore()
   watch(
-    () => props.dictCode,
-    (dictCode) => {
-      if (dictCode) void userStore.ensureDictLoaded(dictCode)
+    () => [props.dictCode, props.value] as const,
+    ([dictCode, value]) => {
+      if (dictCode) void userStore.ensureDictValueLoaded(dictCode, value)
     },
     { immediate: true }
   )

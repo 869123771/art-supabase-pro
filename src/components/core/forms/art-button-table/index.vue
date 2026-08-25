@@ -1,7 +1,7 @@
 <!-- 表格按钮 -->
 <template>
   <button
-    v-auth="resolvedPermission"
+    v-if="canAccess"
     type="button"
     class="art-button-table"
     :class="[buttonClass, type ? `is-${type}` : '', { 'is-disabled': isDisabled }]"
@@ -19,6 +19,7 @@
 
 <script setup lang="ts">
   import { useRoute } from 'vue-router'
+  import { useAuth } from '@/hooks/core/useAuth'
   import { resolveBusinessButtonPermission } from '@/utils/business-permission'
 
   defineOptions({ name: 'ArtButtonTable' })
@@ -46,10 +47,12 @@
 
   const props = withDefaults(defineProps<Props>(), {})
   const route = useRoute()
+  const { hasAuth } = useAuth()
 
   const resolvedPermission = computed(() =>
     resolveBusinessButtonPermission(route, props.type, props.permission)
   )
+  const canAccess = computed(() => !resolvedPermission.value || hasAuth(resolvedPermission.value))
 
   const emit = defineEmits<{
     (e: 'click'): void

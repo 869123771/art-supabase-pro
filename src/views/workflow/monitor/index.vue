@@ -127,6 +127,7 @@
   import WorkflowCancelDialog from './modules/workflow-cancel-dialog.vue'
   import WorkflowCallbackOutboxDrawer from './modules/workflow-callback-outbox-drawer.vue'
   import WorkflowAnalyticsDialog from './modules/workflow-analytics-dialog.vue'
+  import { getWorkflowBusinessTypeLabel } from '../modules/workflow-business-contracts'
 
   defineOptions({ name: 'WorkflowMonitor' })
 
@@ -206,11 +207,11 @@
     <div class="workflow-monitor__business-cell">
       <strong title={row.businessTitle}>{row.businessTitle}</strong>
       <span class="workflow-monitor__business-meta">
-        <ArtDictDisplay dictCode="workflowBusinessType" value={row.businessType} display="text" />
+        <span>{getWorkflowBusinessTypeLabel(row.businessType)}</span>
         <i>·</i>
         <span>{row.initiatorNameSnapshot || '--'}</span>
       </span>
-      <small title={row.businessId}>{row.businessId}</small>
+      <small>{row.definitionName}</small>
     </div>
   )
   const createDefinitionCell = (row: MonitorRow) => (

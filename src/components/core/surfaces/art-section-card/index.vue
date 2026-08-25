@@ -42,7 +42,6 @@
 </template>
 
 <script setup lang="ts">
-  import ArtSectionCard from '@/components/core/surfaces/art-section-card/index.vue'
   import ArtSectionTitle from '@/components/core/surfaces/art-section-title/index.vue'
   import ArtAsyncState from '@/components/core/feedback/art-async-state/index.vue'
 

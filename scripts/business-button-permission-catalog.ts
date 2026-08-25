@@ -236,6 +236,34 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
       )
     ]
   },
+  {
+    menuName: 'SmisPositionRiskList',
+    buttons: [
+      button('View', '查看岗位风险清单', 'SmisPositionRiskList:View'),
+      button('Add', '新增隐患控制措施', 'SmisPositionRiskList:Add'),
+      button('Edit', '编辑隐患控制措施', 'SmisPositionRiskList:Edit'),
+      button('Delete', '删除隐患控制措施', 'SmisPositionRiskList:Delete')
+    ]
+  },
+  {
+    menuName: 'SmisPositionWorkInstruction',
+    buttons: [
+      button('View', '查看岗位作业指导书', 'SmisPositionWorkInstruction:View'),
+      button('Add', '新增岗位作业指导书', 'SmisPositionWorkInstruction:Add'),
+      button('Edit', '编辑岗位作业指导书', 'SmisPositionWorkInstruction:Edit'),
+      button('Delete', '删除岗位作业指导书', 'SmisPositionWorkInstruction:Delete')
+    ]
+  },
+  {
+    menuName: 'SmisLeaveInformation',
+    buttons: [
+      button('View', '查看请假信息', 'SmisLeaveInformation:View'),
+      button('Add', '新增请假信息', 'SmisLeaveInformation:Add'),
+      button('Edit', '编辑请假信息', 'SmisLeaveInformation:Edit'),
+      button('Delete', '删除请假信息', 'SmisLeaveInformation:Delete'),
+      button('Export', '导出请假信息', 'SmisLeaveInformation:Export')
+    ]
+  },
 
   {
     menuName: 'HrEmployeeRoster',
@@ -247,12 +275,33 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
     ]
   },
   {
+    menuName: 'HrOrganizationPosition',
+    buttons: [button('View', '查看组织岗位人员', 'Hr:OrganizationPosition:View')]
+  },
+  {
     menuName: 'HrPosition',
     buttons: [
       button('View', '查看岗位', 'Hr:Position:View'),
       button('Add', '新增岗位', 'Hr:Position:Add'),
       button('Edit', '编辑岗位', 'Hr:Position:Edit'),
       button('Delete', '删除岗位', 'Hr:Position:Delete')
+    ]
+  },
+  {
+    menuName: 'HrJobArchitecture',
+    buttons: [
+      button('JobFamilyView', '查看职族', 'Hr:JobFamily:View'),
+      button('JobFamilyAdd', '新增职族', 'Hr:JobFamily:Add'),
+      button('JobFamilyEdit', '编辑职族', 'Hr:JobFamily:Edit'),
+      button('JobFamilyDelete', '删除职族', 'Hr:JobFamily:Delete'),
+      button('GradeView', '查看职级', 'Hr:Grade:View'),
+      button('GradeAdd', '新增职级', 'Hr:Grade:Add'),
+      button('GradeEdit', '编辑职级', 'Hr:Grade:Edit'),
+      button('GradeDelete', '删除职级', 'Hr:Grade:Delete'),
+      button('JobProfileView', '查看标准职务', 'Hr:JobProfile:View'),
+      button('JobProfileAdd', '新增标准职务', 'Hr:JobProfile:Add'),
+      button('JobProfileEdit', '编辑标准职务', 'Hr:JobProfile:Edit'),
+      button('JobProfileDelete', '删除标准职务', 'Hr:JobProfile:Delete')
     ]
   },
   {
@@ -296,12 +345,59 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
     ]
   },
   {
+    menuName: 'HrCompensation',
+    buttons: [
+      button('View', '查看薪酬管理', 'Hr:Compensation:View'),
+      button('PolicyAdd', '新增薪酬政策', 'Hr:Compensation:Policy:Add'),
+      button('PolicyEdit', '编辑薪酬政策', 'Hr:Compensation:Policy:Edit'),
+      button('PolicyDelete', '删除薪酬政策', 'Hr:Compensation:Policy:Delete'),
+      button('RecordAdd', '新增员工薪酬', 'Hr:Compensation:Record:Add'),
+      button('RecordEdit', '编辑员工薪酬', 'Hr:Compensation:Record:Edit'),
+      button('RecordDelete', '删除员工薪酬', 'Hr:Compensation:Record:Delete'),
+      button('AmountView', '查看薪酬金额', 'Hr:Compensation:Amount:View'),
+      button('AmountEdit', '编辑薪酬金额', 'Hr:Compensation:Amount:Edit'),
+      button('Approve', '批准与终止薪酬', 'Hr:Compensation:Approve')
+    ]
+  },
+  {
+    menuName: 'HrAbsence',
+    buttons: [
+      button('View', '查看假勤管理', 'Hr:Absence:View'),
+      button('PolicyAdd', '新增假别与政策', 'Hr:Absence:Policy:Add'),
+      button('PolicyEdit', '编辑假别与政策', 'Hr:Absence:Policy:Edit'),
+      button('PolicyDelete', '删除假别与政策', 'Hr:Absence:Policy:Delete'),
+      button('BalanceAdjust', '调整休假余额', 'Hr:Absence:Balance:Adjust'),
+      button('RequestAdd', '新增休假申请', 'Hr:Absence:Request:Add'),
+      button('RequestEdit', '编辑休假申请', 'Hr:Absence:Request:Edit'),
+      button('RequestDelete', '删除休假申请', 'Hr:Absence:Request:Delete'),
+      button('Submit', '提交与撤销休假', 'Hr:Absence:Submit'),
+      button('Approve', '审批休假申请', 'Hr:Absence:Approve'),
+      button('ReasonView', '查看休假原因与证明', 'Hr:Absence:Reason:View')
+    ]
+  },
+  {
     menuName: 'HrWorkforceRisk',
     buttons: [button('View', '查看人力风险', 'Hr:WorkforceRisk:View')]
   },
   {
     menuName: 'HrTalentInventory',
     buttons: [button('View', '查看人才盘点', 'Hr:TalentInventory:View')]
+  },
+  {
+    menuName: 'HrSuccession',
+    buttons: [
+      button('View', '查看继任规划', 'Hr:Succession:View'),
+      button('PlanAdd', '新增继任计划', 'Hr:Succession:Plan:Add'),
+      button('PlanEdit', '编辑继任计划', 'Hr:Succession:Plan:Edit'),
+      button('PlanDelete', '删除继任计划', 'Hr:Succession:Plan:Delete'),
+      button('CandidateAdd', '提名继任候选人', 'Hr:Succession:Candidate:Add'),
+      button('CandidateEdit', '编辑继任候选人', 'Hr:Succession:Candidate:Edit'),
+      button('CandidateDelete', '删除继任候选人', 'Hr:Succession:Candidate:Delete'),
+      button('CandidateReview', '评审继任候选人', 'Hr:Succession:Candidate:Review'),
+      button('ActionAdd', '新增发展行动', 'Hr:Succession:Action:Add'),
+      button('ActionEdit', '编辑发展行动', 'Hr:Succession:Action:Edit'),
+      button('ActionDelete', '删除发展行动', 'Hr:Succession:Action:Delete')
+    ]
   },
   {
     menuName: 'HrAttendance',
@@ -348,7 +444,22 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
       button('Edit', '编辑招聘记录', 'Hr:Recruitment:Edit'),
       button('Delete', '删除招聘记录', 'Hr:Recruitment:Delete'),
       button('Submit', '提交招聘审批', 'Hr:Recruitment:Submit'),
-      button('Effect', '启动招聘', 'Hr:Recruitment:Effect')
+      button('Effect', '启动招聘', 'Hr:Recruitment:Effect'),
+      button('CandidateMove', '推进候选人阶段', 'Hr:Recruitment:Candidate:Move'),
+      button('SensitiveView', '查看招聘敏感信息', 'Hr:Recruitment:Sensitive:View'),
+      button('InterviewAdd', '安排面试', 'Hr:Recruitment:Interview:Add'),
+      button('InterviewEdit', '调整或取消面试', 'Hr:Recruitment:Interview:Edit'),
+      button('InterviewComplete', '提交面试评价', 'Hr:Recruitment:Interview:Complete'),
+      button('OfferAdd', '创建 Offer', 'Hr:Recruitment:Offer:Add'),
+      button('OfferEdit', '编辑 Offer', 'Hr:Recruitment:Offer:Edit'),
+      button('OfferSubmit', '提交 Offer 审批', 'Hr:Recruitment:Offer:Submit'),
+      button('OfferApprove', '审批 Offer', 'Hr:Recruitment:Offer:Approve'),
+      button('OfferSend', '发送或撤回 Offer', 'Hr:Recruitment:Offer:Send'),
+      button('OfferRespond', '登记 Offer 反馈', 'Hr:Recruitment:Offer:Respond'),
+      button('HandoffAdd', '创建入职交接', 'Hr:Recruitment:Handoff:Add'),
+      button('HandoffEdit', '编辑入职交接', 'Hr:Recruitment:Handoff:Edit'),
+      button('HandoffComplete', '推进入职交接', 'Hr:Recruitment:Handoff:Complete'),
+      button('TaskManage', '管理入职任务', 'Hr:Recruitment:Task:Manage')
     ]
   },
   {
