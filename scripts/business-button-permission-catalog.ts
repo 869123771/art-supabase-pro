@@ -344,6 +344,53 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
     ]
   },
   {
+    menuName: 'HrEmployeeRelations',
+    buttons: [
+      button('View', '查看员工关系案件', 'Hr:EmployeeRelations:View'),
+      button('Add', '新增员工关系案件', 'Hr:EmployeeRelations:Add'),
+      button('Edit', '编辑员工关系案件', 'Hr:EmployeeRelations:Edit'),
+      button('Delete', '删除员工关系案件草稿', 'Hr:EmployeeRelations:Delete'),
+      button('Assign', '分派与分级员工关系案件', 'Hr:EmployeeRelations:Assign'),
+      button('Investigate', '调查员工关系案件', 'Hr:EmployeeRelations:Investigate'),
+      button('Resolve', '提交员工关系案件解决结论', 'Hr:EmployeeRelations:Resolve'),
+      button('Close', '结案或重新开启员工关系案件', 'Hr:EmployeeRelations:Close'),
+      button('ActionManage', '管理员工关系处置行动', 'Hr:EmployeeRelations:Action:Manage'),
+      button('SensitiveView', '查看员工关系敏感内容', 'Hr:EmployeeRelations:Sensitive:View')
+    ]
+  },
+  {
+    menuName: 'HrBenefits',
+    buttons: [
+      button('View', '查看福利与参保', 'Hr:Benefits:View'),
+      button('PlanManage', '管理福利计划', 'Hr:Benefits:Plan:Manage'),
+      button('EnrollmentManage', '管理员工参保', 'Hr:Benefits:Enrollment:Manage'),
+      button('Approve', '审核员工参保', 'Hr:Benefits:Approve'),
+      button('EventManage', '管理福利人生事件', 'Hr:Benefits:Event:Manage'),
+      button('AmountView', '查看福利缴费金额', 'Hr:Benefits:Amount:View'),
+      button('PayrollExport', '导出福利薪资输入', 'Hr:Benefits:Payroll:Export'),
+      button('AmountEdit', '维护福利缴费金额', 'Hr:Benefits:Amount:Edit'),
+      button('EvidenceView', '查看福利人生事件附件', 'Hr:Benefits:Evidence:View')
+    ]
+  },
+  {
+    menuName: 'HrEmployeeExperience',
+    buttons: [
+      button('View', '查看员工体验工作台', 'Hr:Experience:View'),
+      button('SurveyManage', '管理员工体验调查', 'Hr:Experience:Survey:Manage'),
+      button('QuestionManage', '管理员工体验调查题目', 'Hr:Experience:Question:Manage'),
+      button('Launch', '发布、开放或关闭员工体验调查', 'Hr:Experience:Launch'),
+      button('Respond', '填写匿名员工体验调查', 'Hr:Experience:Respond'),
+      button('InsightsView', '查看匿名聚合洞察', 'Hr:Experience:Insights:View'),
+      button('CommentsView', '查看匿名开放评论', 'Hr:Experience:Comments:View'),
+      button('ActionManage', '管理员工体验改善行动', 'Hr:Experience:Action:Manage'),
+      button('ActionClose', '验收员工体验改善行动', 'Hr:Experience:Action:Close')
+    ]
+  },
+  {
+    menuName: 'HrPeopleAnalytics',
+    buttons: [button('View', '查看人力分析', 'Hr:PeopleAnalytics:View')]
+  },
+  {
     menuName: 'HrHeadcount',
     buttons: [
       button('View', '查看人力规划与编制', 'Hr:Headcount:View'),
@@ -369,6 +416,66 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
       button('AmountView', '查看薪酬金额', 'Hr:Compensation:Amount:View'),
       button('AmountEdit', '编辑薪酬金额', 'Hr:Compensation:Amount:Edit'),
       button('Approve', '批准与终止薪酬', 'Hr:Compensation:Approve')
+    ]
+  },
+  {
+    menuName: 'HrCompensationReview',
+    buttons: [
+      button('View', '查看调薪复核', 'Hr:CompensationReview:View'),
+      button('CycleManage', '管理调薪周期', 'Hr:CompensationReview:Cycle:Manage'),
+      button('BudgetManage', '管理调薪预算', 'Hr:CompensationReview:Budget:Manage'),
+      button('Recommend', '提交调薪建议', 'Hr:CompensationReview:Recommend'),
+      button('Calibrate', '执行调薪校准', 'Hr:CompensationReview:Calibrate'),
+      button('Approve', '批准调薪结果', 'Hr:CompensationReview:Approve'),
+      button('Effect', '批量生效调薪', 'Hr:CompensationReview:Effect'),
+      button('AmountView', '查看调薪金额', 'Hr:CompensationReview:Amount:View'),
+      button('AmountEdit', '编辑调薪金额', 'Hr:CompensationReview:Amount:Edit')
+    ]
+  },
+  {
+    menuName: 'HrContingentWorkforce',
+    buttons: [
+      button('View', '查看外部用工', 'Hr:ContingentWorkforce:View'),
+      button('VendorManage', '管理用工供应商', 'Hr:ContingentWorkforce:Vendor:Manage'),
+      button('WorkerManage', '管理外部人员', 'Hr:ContingentWorkforce:Worker:Manage'),
+      button('EngagementManage', '管理用工任务', 'Hr:ContingentWorkforce:Engagement:Manage'),
+      button('ControlManage', '管理准入控制', 'Hr:ContingentWorkforce:Control:Manage'),
+      button('Activate', '激活外部用工', 'Hr:ContingentWorkforce:Activate'),
+      button('End', '执行外部人员退场', 'Hr:ContingentWorkforce:End'),
+      button('PiiView', '查看外部人员联系方式', 'Hr:ContingentWorkforce:PII:View'),
+      button('CostView', '查看外部用工成本', 'Hr:ContingentWorkforce:Cost:View'),
+      button('CostEdit', '编辑外部用工成本', 'Hr:ContingentWorkforce:Cost:Edit')
+    ]
+  },
+  {
+    menuName: 'HrPolicyAcknowledgement',
+    buttons: [
+      button('View', '查看政策与签收', 'Hr:PolicyAcknowledgement:View'),
+      button('PolicyManage', '管理政策草稿', 'Hr:PolicyAcknowledgement:Policy:Manage'),
+      button('Publish', '发布与退役政策', 'Hr:PolicyAcknowledgement:Publish'),
+      button('ReceiptManage', '管理政策签收', 'Hr:PolicyAcknowledgement:Receipt:Manage'),
+      button('EvidenceView', '查看签收凭证', 'Hr:PolicyAcknowledgement:Evidence:View')
+    ]
+  },
+  {
+    menuName: 'HrOrganizationDesign',
+    buttons: [
+      button('View', '查看组织变革方案', 'Hr:OrganizationDesign:View'),
+      button('ScenarioManage', '管理组织变革草稿', 'Hr:OrganizationDesign:Scenario:Manage'),
+      button('ImpactReview', '提交影响评审', 'Hr:OrganizationDesign:Impact:Review'),
+      button('Approve', '审批组织变革方案', 'Hr:OrganizationDesign:Approve'),
+      button('Handoff', '移交组织主数据执行', 'Hr:OrganizationDesign:Handoff')
+    ]
+  },
+  {
+    menuName: 'HrInternalMobility',
+    buttons: [
+      button('View', '查看内部人才市场', 'Hr:InternalMobility:View'),
+      button('OpportunityManage', '管理内部机会草稿', 'Hr:InternalMobility:Opportunity:Manage'),
+      button('Publish', '发布与关闭内部机会', 'Hr:InternalMobility:Publish'),
+      button('ApplicationSelf', '提交本人内部申请', 'Hr:InternalMobility:Application:Self'),
+      button('ApplicationManage', '评审内部申请', 'Hr:InternalMobility:Application:Manage'),
+      button('Convert', '转正式人事异动', 'Hr:InternalMobility:Convert')
     ]
   },
   {
