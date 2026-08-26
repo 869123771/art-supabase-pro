@@ -264,6 +264,28 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
       button('Export', '导出请假信息', 'SmisLeaveInformation:Export')
     ]
   },
+  {
+    menuName: 'SmisStatutoryHoliday',
+    buttons: [
+      button('View', '查看法定节假日', 'SmisStatutoryHoliday:View'),
+      button('Add', '新增法定节假日', 'SmisStatutoryHoliday:Add'),
+      button('Edit', '编辑法定节假日', 'SmisStatutoryHoliday:Edit'),
+      button('Delete', '删除法定节假日', 'SmisStatutoryHoliday:Delete'),
+      button('Import', '导入法定节假日', 'SmisStatutoryHoliday:Import'),
+      button('Export', '导出法定节假日', 'SmisStatutoryHoliday:Export')
+    ]
+  },
+  {
+    menuName: 'SmisSite',
+    buttons: [
+      button('View', '查看场所', 'SmisSite:View'),
+      button('Add', '新增场所', 'SmisSite:Add'),
+      button('Edit', '编辑场所', 'SmisSite:Edit'),
+      button('Delete', '删除场所', 'SmisSite:Delete'),
+      button('Import', '导入场所', 'SmisSite:Import'),
+      button('Export', '导出场所', 'SmisSite:Export')
+    ]
+  },
 
   {
     menuName: 'HrEmployeeRoster',

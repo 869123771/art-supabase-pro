@@ -60,7 +60,7 @@ setup('登录并保存视觉回归会话', async ({ page }) => {
       authClient
         .from('sys_dictionary')
         .select(
-          'id,type_id,code,label,value,sort,color,tag_type,dict_type_table:sys_dict_type!inner(code,name)'
+          'id,type_id,code,label,value,sort,color,tag_type,remark,parent_id,cascade_parent_id,dict_type_table:sys_dict_type!inner(code,name)'
         )
         .eq('status', '1')
         .eq('dict_type_table.status', '1')

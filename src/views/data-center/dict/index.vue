@@ -104,8 +104,12 @@
   type DictListItem = Api.DataCenter.DictListItem
   type SearchParams = Partial<Pick<DictListItem, 'label' | 'code' | 'i18nScope' | 'status'>>
   type TableParams = SearchParams & Pick<Api.Common.PaginationParams, 'current' | 'size'>
-  type DictDialogOpenData = Partial<DictListItem> & { dictTypeName?: string }
+  type DictDialogOpenData = Partial<DictListItem> & {
+    dictTypeCode?: string
+    dictTypeName?: string
+  }
   type DictTypeItem = Api.DataCenter.DictTypeItem
+  const crossTypeCascadeDictCodes = new Set(['smisSecondaryHazardCategory', 'smisHazardContent'])
 
   interface DictDialogExpose {
     handleOpen: (data?: DictDialogOpenData) => Promise<void>
@@ -379,6 +383,7 @@
     void dictDialogRef.value?.handleOpen({
       typeId: table.currentDictType.id,
       parentId: parent?.id,
+      dictTypeCode: table.currentDictType.code,
       dictTypeName: table.currentDictType.name
     })
   }
@@ -386,16 +391,21 @@
   const handleEdit = (row: DictListItem): void => {
     void dictDialogRef.value?.handleOpen({
       ...row,
+      dictTypeCode: table.currentDictType?.code,
       dictTypeName: table.currentDictType?.name
     })
   }
 
   const getRowMoreActions = (): ButtonMoreItem[] => [
-    {
-      key: 'add',
-      label: '新增下级',
-      icon: 'ri:add-line'
-    },
+    ...(crossTypeCascadeDictCodes.has(table.currentDictType?.code || '')
+      ? []
+      : [
+          {
+            key: 'add',
+            label: '新增下级',
+            icon: 'ri:add-line'
+          }
+        ]),
     {
       key: 'delete',
       label: '删除',

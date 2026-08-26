@@ -171,6 +171,8 @@ export async function fetchGetDictList() {
       color,
       tag_type,
       remark,
+      parent_id,
+      cascade_parent_id,
       dict_type_table:sys_dict_type!inner(
         code,
         name

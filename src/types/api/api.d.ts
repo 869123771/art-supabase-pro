@@ -631,6 +631,7 @@ declare namespace Api {
       tenantId?: string
       typeId?: string
       parentId?: string | null
+      cascadeParentId?: string | null
       name: string
       code: string
       status: string

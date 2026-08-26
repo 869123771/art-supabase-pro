@@ -133,13 +133,28 @@
           </small>
         </span>
       </div>
-      <span
-        v-if="tree.selectedKeys.length"
-        class="dict-type-tree__footer-selection"
-        aria-live="polite"
-      >
-        {{ tree.selectedKeys.length }} 项
-      </span>
+      <div class="dict-type-tree__footer-actions">
+        <span
+          v-if="tree.selectedKeys.length"
+          class="dict-type-tree__footer-selection"
+          aria-live="polite"
+        >
+          {{ tree.selectedKeys.length }} 项
+        </span>
+        <ElButton
+          class="dict-type-tree__expand-toggle"
+          size="small"
+          text
+          :disabled="!expandableNodeKeys.length"
+          :aria-label="canExpandAll ? '全部展开字典目录' : '全部收起字典目录'"
+          @click="toggleAllExpanded"
+        >
+          <ArtSvgIcon
+            :icon="canExpandAll ? 'ri:expand-up-down-line' : 'ri:contract-up-down-line'"
+          />
+          {{ canExpandAll ? '全部展开' : '全部收起' }}
+        </ElButton>
+      </div>
     </div>
   </ElCard>
 
@@ -250,11 +265,25 @@
     }
   })
 
+  const getNodeKey = (node?: Pick<DictTypeItem, 'id'> | null): string | undefined => {
+    return node?.id ? String(node.id) : undefined
+  }
+
   const directoryCount = computed(
     () => treeUtils.treeToList(tree.data).filter((item) => item.nodeType === 'directory').length
   )
   const dictionaryCount = computed(
     () => treeUtils.treeToList(tree.data).filter((item) => item.nodeType === 'dictionary').length
+  )
+  const getExpandableNodeKeys = (nodes: DictTypeItem[]): string[] =>
+    nodes.flatMap((node) => {
+      if (!node.children?.length) return []
+      const key = getNodeKey(node)
+      return [...(key ? [key] : []), ...getExpandableNodeKeys(node.children)]
+    })
+  const expandableNodeKeys = computed(() => getExpandableNodeKeys(tree.data))
+  const canExpandAll = computed(() =>
+    expandableNodeKeys.value.some((key) => !tree.expandedKeys.includes(key))
   )
 
   const getCurrentDictType = computed<DictTypeItem | undefined>(() => {
@@ -301,10 +330,6 @@
     }
 
     emit('tree-node-click', data)
-  }
-
-  const getNodeKey = (node?: Pick<DictTypeItem, 'id'> | null): string | undefined => {
-    return node?.id ? String(node.id) : undefined
   }
 
   function getDictTypeData(data: unknown): DictTypeItem | undefined {
@@ -451,6 +476,15 @@
         elTreeNode.expanded = expandedKeySet.has(key)
       }
     })
+  }
+
+  const setAllExpanded = (expanded: boolean): void => {
+    tree.expandedKeys = expanded ? [...expandableNodeKeys.value] : []
+    applyExpandedKeys()
+  }
+
+  const toggleAllExpanded = (): void => {
+    setAllExpanded(canExpandAll.value)
   }
 
   const handleNodeExpand = (data: DictTypeItem): void => {
@@ -631,13 +665,15 @@
     }
   }
 
+  const resetDragState = (): void => {
+    tree.draggingBatchKeys = []
+    tree.dragSourceData = []
+  }
+
   const handleNodeDragEnd = (): void => {
-    window.setTimeout(() => {
-      if (!tree.loading) {
-        tree.draggingBatchKeys = []
-        tree.dragSourceData = []
-      }
-    }, 150)
+    // Element Plus emits node-drag-end before node-drop. Defer one microtask so the
+    // drop handler can snapshot the batch, then clear the visual drag state immediately.
+    queueMicrotask(resetDragState)
   }
 
   const handleNodeDrop = async (
@@ -652,9 +688,6 @@
     const dropNodeKey = getNodeKey(dropData)
 
     try {
-      tree.loading = true
-      await nextTick()
-
       if (batchKeys.length > 1 && dropNodeKey) {
         tree.data = moveSelectedLeaves(dragSourceData, batchKeys, dropNodeKey, dropType)
         if (dropType === 'inner') {
@@ -673,8 +706,7 @@
     } catch (error) {
       ElMessage.error(getFriendlySupabaseErrorMessage(error, '目录拖拽保存失败'))
     } finally {
-      tree.draggingBatchKeys = []
-      tree.dragSourceData = []
+      resetDragState()
       await handleGetDictTypeList()
       if (currentKey) {
         await nextTick()
@@ -1002,6 +1034,18 @@
         border: 1px solid var(--el-color-primary-light-8);
         border-radius: 999px;
       }
+
+      &-actions {
+        display: flex;
+        flex: none;
+        gap: 4px;
+        align-items: center;
+      }
+    }
+
+    &__expand-toggle {
+      flex: none;
+      margin-left: 0;
     }
   }
 

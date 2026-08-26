@@ -50,6 +50,7 @@
 
   type DictListItem = Api.DataCenter.DictListItem
   type DictFormData = Omit<Partial<DictListItem>, 'tagType'> & {
+    dictTypeCode?: string
     dictTypeName: string
     tagType?: Api.Common.TagType | ''
   }
@@ -81,6 +82,8 @@
   const dataDefault: DictFormData = {
     typeId: '',
     parentId: undefined,
+    cascadeParentId: undefined,
+    dictTypeCode: '',
     dictTypeName: '',
     label: '',
     code: '',
@@ -100,6 +103,34 @@
     { label: '警告', value: 'warning' },
     { label: '危险', value: 'danger' }
   ]
+  interface CascadeParentConfig {
+    parentTypeCode: string
+    label: string
+    placeholder: string
+    help: string
+  }
+  const cascadeParentConfigs: Record<string, CascadeParentConfig> = {
+    smisSecondaryHazardCategory: {
+      parentTypeCode: 'smisPrimaryHazardCategory',
+      label: '上级字典项',
+      placeholder: '请选择上级字典项',
+      help: '选择后，该二级类别只会在对应的一级类别下显示'
+    },
+    smisHazardContent: {
+      parentTypeCode: 'smisSecondaryHazardCategory',
+      label: '上级字典项',
+      placeholder: '请选择上级字典项',
+      help: '选择后，该隐患内容只会在对应的二级类别下显示'
+    }
+  }
+  function getCascadeParentConfig(): CascadeParentConfig | undefined {
+    return cascadeParentConfigs[form.value.data.dictTypeCode || '']
+  }
+  const getParentTypeId = (): string => {
+    const cascadeConfig = getCascadeParentConfig()
+    if (!cascadeConfig) return String(form.value.data.typeId || '')
+    return String(getDictMap.value[cascadeConfig.parentTypeCode]?.[0]?.typeId || '')
+  }
   const form: Ref<FormGroup> = ref({
     data: cloneDeep(dataDefault),
     items: computed(
@@ -117,15 +148,16 @@
             }
           },
           {
-            label: '上级字典项',
-            key: 'parentId',
+            label: getCascadeParentConfig()?.label || '上级字典项',
+            key: getCascadeParentConfig() ? 'cascadeParentId' : 'parentId',
             type: 'treeSelect',
             span: 24,
+            help: getCascadeParentConfig()?.help,
             api: fetchGetDictListByTypeId,
             immediate: false,
             params: {},
             beforeFetch: () => ({
-              typeId: String(form.value.data.typeId || '')
+              typeId: getParentTypeId()
             }),
             shouldFetch: (params): boolean => !!params?.typeId,
             afterFetch: ({ data = [] }) => {
@@ -151,7 +183,7 @@
               checkStrictly: true,
               defaultExpandAll: true,
               renderAfterExpand: false,
-              placeholder: '不选择则为一级字典项',
+              placeholder: getCascadeParentConfig()?.placeholder || '不选择则为一级字典项',
               props: {
                 label: 'label',
                 value: 'id',
@@ -262,7 +294,18 @@
             trigger: 'change'
           }
         ],
-        value: [{ required: true, message: '字典值不能为空', trigger: 'change' }]
+        value: [{ required: true, message: '字典值不能为空', trigger: 'change' }],
+        ...(getCascadeParentConfig()
+          ? {
+              cascadeParentId: [
+                {
+                  required: true,
+                  message: getCascadeParentConfig()?.placeholder,
+                  trigger: 'change'
+                }
+              ]
+            }
+          : {})
       }
     })
   })
@@ -272,7 +315,9 @@
     formRef.value?.ref.value?.clearValidate()
   }
 
-  const handleOpen = async (data: DictListItem = {} as DictListItem): Promise<void> => {
+  const handleOpen = async (
+    data: DictListItem & { dictTypeCode?: string; dictTypeName?: string } = {} as DictListItem
+  ): Promise<void> => {
     handleResetFields()
     if (!isEmpty(data)) {
       form.value.data = {
@@ -283,8 +328,11 @@
     await dialogRef.value?.handleOpen(data, {
       title: isEdit.value ? '编辑字典' : '新增字典',
       width: '60%',
+      contentMaxHeight: '70vh',
       onOpen: async () => {
-        await formRef.value?.reloadOptions('parentId')
+        await formRef.value?.reloadOptions(
+          getCascadeParentConfig() ? 'cascadeParentId' : 'parentId'
+        )
       },
       onConfirm: handleSubmit,
       onReset: handleResetFields
@@ -293,7 +341,8 @@
 
   const normalizePayload = (data: DictListItem): DictListItem => ({
     ...data,
-    parentId: data.parentId === '' ? null : data.parentId
+    parentId: data.parentId === '' ? null : data.parentId,
+    cascadeParentId: data.cascadeParentId === '' ? null : data.cascadeParentId
   })
 
   const handleSubmit = async (): Promise<boolean> => {
@@ -307,6 +356,7 @@
       const params = normalizePayload(
         omit(rest, [
           'dictTypeName',
+          'dictTypeCode',
           'children',
           'tenantId',
           'createBy',
