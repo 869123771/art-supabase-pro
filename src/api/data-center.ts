@@ -1,12 +1,17 @@
 import { useSupabase } from '@/hooks'
 import { WRITE_PERMISSION_DENIED_MESSAGE } from '@/hooks/core/useSupabase'
 import type { QueryResult } from '@/types/api/response'
-import { applyFilters, FilterSpec } from '@/utils/supabase'
+import { applyFilters, fetchAllRangePages, FilterSpec } from '@/utils/supabase'
 import { invokeSupabaseFunctionWithSessionRecovery } from '@/utils/supabase/functions'
 
 const { supabase, keysToSnakeDeep, responseHandle } = useSupabase()
 
 type DataCenterQueryResult<T> = QueryResult<T>
+type DictionaryWithType = Api.DataCenter.DictListItem & {
+  dictTypeTable: { code: string; name: string }
+}
+
+const DICTIONARY_BATCH_SIZE = 500
 
 interface MetadataPayload {
   schemas?: string[]
@@ -157,35 +162,40 @@ export async function fetchDictTypeIdByDictionaryId(id: string): Promise<string 
 }
 
 // 字典项列表
-export async function fetchGetDictList() {
-  const query = supabase
-    .from('sys_dictionary')
-    .select(
-      `
-      id,
-      type_id,
-      code,
-      label,
-      value,
-      sort,
-      color,
-      tag_type,
-      remark,
-      parent_id,
-      cascade_parent_id,
-      dict_type_table:sys_dict_type!inner(
-        code,
-        name
-      )
-    `
-    )
-    .eq('status', '1')
-    .eq('dict_type_table.status', '1')
-    .order('sort', { ascending: true })
+export async function fetchGetDictList(): Promise<QueryResult<DictionaryWithType[]>> {
+  return await fetchAllRangePages<DictionaryWithType>(
+    ({ from, to }) => {
+      const query = supabase
+        .from('sys_dictionary')
+        .select(
+          `
+          id,
+          type_id,
+          code,
+          label,
+          value,
+          sort,
+          color,
+          tag_type,
+          remark,
+          parent_id,
+          cascade_parent_id,
+          dict_type_table:sys_dict_type!inner(
+            code,
+            name
+          )
+        `
+        )
+        .eq('status', '1')
+        .eq('dict_type_table.status', '1')
+        .order('sort', { ascending: true })
+        .order('id', { ascending: true })
+        .range(from, to)
 
-  return await responseHandle<
-    Array<Api.DataCenter.DictListItem & { dictTypeTable: { code: string; name: string } }>
-  >(() => query, { ignoreCheck: true })
+      return responseHandle<DictionaryWithType[]>(() => query, { ignoreCheck: true })
+    },
+    { pageSize: DICTIONARY_BATCH_SIZE }
+  )
 }
 
 // 删除字典项

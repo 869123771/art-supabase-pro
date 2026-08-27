@@ -10,7 +10,7 @@
       :metrics="workspaceMetrics"
       refreshable
       refresh-label="刷新消息提醒数据"
-      :refresh-loading="page.loading || page.loadingTenants"
+      :refresh-loading="page.loading"
       @refresh="loadWorkspace"
     >
       <template #actions>
@@ -42,25 +42,6 @@
             <span>{{ tenantValidityText }}</span>
           </div>
         </div>
-
-        <label class="notification-reminder-page__scope-field">
-          <span>租户范围</span>
-          <ElSelect
-            v-model="selectedTenantId"
-            filterable
-            :loading="page.loadingTenants"
-            :disabled="tenantOptions.length <= 1 || page.loading"
-            placeholder="请选择租户"
-            @change="changeTenant"
-          >
-            <ElOption
-              v-for="tenant in tenantOptions"
-              :key="tenant.id"
-              :label="`${tenant.tenantName}（${tenant.tenantCode}）`"
-              :value="tenant.id!"
-            />
-          </ElSelect>
-        </label>
 
         <label class="notification-reminder-page__scope-field">
           <span>提醒场景</span>
@@ -106,7 +87,7 @@
     </section>
 
     <ArtPageShell
-      :loading="page.loading || page.loadingTenants"
+      :loading="page.loading"
       loading-mode="skeleton"
       :error="page.error"
       :empty="!workspace"
@@ -273,8 +254,8 @@
     runNotificationRemindersNow,
     testNotificationChannel
   } from '@/api/notification-reminder'
-  import { fetchGetTenantList } from '@/api/system-manage'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import { useTenantScopeStore } from '@/store/modules/tenantScope'
   import NotificationRuleDialog from './modules/notification-rule-dialog.vue'
   import NotificationChannelDialog from './modules/notification-channel-dialog.vue'
 
@@ -289,7 +270,6 @@
 
   interface PageGroup {
     loading: boolean
-    loadingTenants: boolean
     dispatching: boolean
     testingChannel: Api.NotificationReminder.ChannelCode | ''
     error: Error | null
@@ -307,13 +287,12 @@
   const ruleDialogRef = ref<DialogExpose<Rule>>()
   const channelDialogRef = ref<DialogExpose<ChannelConfig>>()
   const workspace = shallowRef<Api.NotificationReminder.Workspace | null>(null)
-  const tenantOptions = shallowRef<Api.SystemManage.TenantListItem[]>([])
-  const selectedTenantId = ref(typeof route.query.tenantId === 'string' ? route.query.tenantId : '')
+  const { effectiveTenantId } = storeToRefs(useTenantScopeStore())
+  const selectedTenantId = computed(() => effectiveTenantId.value ?? '')
   const scenarioFilter = ref(typeof route.query.scenario === 'string' ? route.query.scenario : '')
 
   const page = reactive<PageGroup>({
     loading: false,
-    loadingTenants: false,
     dispatching: false,
     testingChannel: '',
     error: null
@@ -534,34 +513,6 @@
     }
   }
 
-  const loadTenants = async (): Promise<void> => {
-    page.loadingTenants = true
-    page.error = null
-    try {
-      const { data, error } = await fetchGetTenantList({ from: 0, to: 999 })
-      if (error) throw error
-      tenantOptions.value = data ?? []
-      if (!tenantOptions.value.some((tenant) => tenant.id === selectedTenantId.value)) {
-        selectedTenantId.value = tenantOptions.value[0]?.id ?? ''
-      }
-      await loadWorkspace()
-    } catch (error) {
-      page.error = new Error('租户范围加载失败，请检查权限后重试。', { cause: error })
-    } finally {
-      page.loadingTenants = false
-    }
-  }
-
-  const changeTenant = async (): Promise<void> => {
-    ruleTable.current = 1
-    scenarioFilter.value = ''
-    await router.replace({
-      path: route.path,
-      query: { ...route.query, tenantId: selectedTenantId.value || undefined, scenario: undefined }
-    })
-    await loadWorkspace()
-  }
-
   const changeScenario = async (): Promise<void> => {
     ruleTable.current = 1
     await router.replace({
@@ -648,7 +599,7 @@
     }
   )
 
-  onMounted(() => void loadTenants())
+  onMounted(() => void loadWorkspace())
 </script>
 
 <style scoped lang="scss">
@@ -665,7 +616,7 @@
 
     &__scope {
       display: grid;
-      grid-template-columns: minmax(300px, 1.15fr) minmax(230px, 0.85fr) minmax(230px, 0.85fr);
+      grid-template-columns: minmax(300px, 1.15fr) minmax(230px, 0.85fr);
       gap: 16px;
       align-items: end;
       padding: 16px;

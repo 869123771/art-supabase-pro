@@ -33,43 +33,48 @@
     </section>
 
     <div class="number-rule-page__workspace">
-      <aside v-if="isDesktopMenuLayout" class="number-rule-page__menu-panel">
-        <DocumentNumberMenuFilter
-          :data="menuTree"
-          :scenes="scenes"
-          :selected-menu-id="selectedMenuId"
-          :loading="menuFilterLoading"
-          @select="handleMenuSelect"
-          @refresh="handleMenuRefresh"
-        />
-      </aside>
+      <ArtWorkspaceSplitter :breakpoint="1200" narrow-mode="hide">
+        <template #primary>
+          <aside v-if="isDesktopMenuLayout" class="number-rule-page__menu-panel">
+            <DocumentNumberMenuFilter
+              :data="menuTree"
+              :scenes="scenes"
+              :selected-menu-id="selectedMenuId"
+              :loading="menuFilterLoading"
+              @select="handleMenuSelect"
+              @refresh="handleMenuRefresh"
+            />
+          </aside>
+        </template>
 
-      <div class="number-rule-page__table-workspace">
-        <section v-if="!isDesktopMenuLayout" class="number-rule-page__mobile-menu art-card-xs">
-          <span aria-hidden="true"><ArtSvgIcon icon="ri:node-tree" /></span>
-          <div>
-            <small>当前功能范围</small>
-            <strong>{{ selectedMenuLabel }}</strong>
-          </div>
-          <ElButton type="primary" plain @click="openMenuDrawer">
-            <ArtSvgIcon icon="ri:filter-3-line" />
-            菜单筛选
-          </ElButton>
-        </section>
+        <div class="number-rule-page__table-workspace">
+          <section v-if="!isDesktopMenuLayout" class="number-rule-page__mobile-menu art-card-xs">
+            <span aria-hidden="true"><ArtSvgIcon icon="ri:node-tree" /></span>
+            <div>
+              <small>当前功能范围</small>
+              <strong>{{ selectedMenuLabel }}</strong>
+            </div>
+            <ElButton type="primary" plain @click="openMenuDrawer">
+              <ArtSvgIcon icon="ri:filter-3-line" />
+              菜单筛选
+            </ElButton>
+          </section>
 
-        <ArtTableQuery
-          ref="tableQueryRef"
-          focusable
-          v-model="table.searchQuery"
-          :search-items="table.searchItems"
-          :header-actions="table.headerActions"
-          header-actions-placement="workspace"
-          :api-fn="fetchTableData"
-          :columns-factory="columnsFactory"
-          :table-header-props="{ layout: 'refresh,size,fullscreen,columns,settings' }"
-          :table-props="tableProps"
-        />
-      </div>
+          <ArtTableQuery
+            ref="tableQueryRef"
+            focusable
+            v-model="table.searchQuery"
+            :search-items="table.searchItems"
+            :header-actions="table.headerActions"
+            header-actions-placement="workspace"
+            :api-fn="fetchTableData"
+            :columns-factory="columnsFactory"
+            :table-header-props="{ layout: 'refresh,size,fullscreen,columns,settings' }"
+            :table-props="tableProps"
+            focus-scope-selector=".number-rule-page__workspace"
+          />
+        </div>
+      </ArtWorkspaceSplitter>
     </div>
 
     <DocumentNumberDialog
@@ -102,6 +107,7 @@
   import { ElTag } from 'element-plus'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import ArtDrawer from '@/components/core/drawers/art-drawer/index.vue'
+  import ArtWorkspaceSplitter from '@/components/core/layouts/art-workspace-splitter/index.vue'
   import type { ArtDrawerExpose } from '@/components/core/drawers/art-drawer/types'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
@@ -675,11 +681,8 @@
     }
 
     &__workspace {
-      display: grid;
       flex: 1 1 auto;
-      grid-template-rows: minmax(0, 1fr);
-      grid-template-columns: 264px minmax(0, 1fr);
-      gap: 12px;
+      width: 100%;
       min-width: 0;
       min-height: 0;
       overflow: hidden;
@@ -875,15 +878,5 @@
 
     padding: 0 !important;
     overflow: hidden !important;
-  }
-
-  :global(.art-table-focus-page .number-rule-page__workspace) {
-    display: grid !important;
-    grid-template-columns: 264px minmax(0, 1fr) !important;
-    gap: 12px !important;
-  }
-
-  :global(.art-table-focus-page .number-rule-page__menu-panel.art-table-focus-hidden) {
-    display: block !important;
   }
 </style>

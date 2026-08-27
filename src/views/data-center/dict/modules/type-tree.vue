@@ -429,10 +429,6 @@
     replaceSelectedKeys([key], key)
   }
 
-  const getRootNodeKeys = (nodes: DictTypeItem[]): string[] => {
-    return nodes.map(getNodeKey).filter((key): key is string => Boolean(key))
-  }
-
   const getTreeNodeKeys = (nodes: DictTypeItem[]): Set<string> => {
     return new Set(
       treeUtils
@@ -446,7 +442,7 @@
     const availableKeys = getTreeNodeKeys(tree.data)
 
     if (!tree.hasInitializedExpandedKeys) {
-      tree.expandedKeys = getRootNodeKeys(tree.data).filter((key) => availableKeys.has(key))
+      tree.expandedKeys = []
       tree.hasInitializedExpandedKeys = true
       return
     }

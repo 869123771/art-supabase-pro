@@ -241,6 +241,7 @@
   import ArtDataSelect from '@/components/core/forms/art-data-select/index.vue'
   import ArtUserSelect from '@/components/core/forms/art-user-select/index.vue'
   import ArtSectionTitle from '@/components/core/surfaces/art-section-title/index.vue'
+  import { useTenantScopeFormPolicy } from '@/hooks/core/useTenantScopeFormPolicy'
   import { calculateResponsiveSpan, type ResponsiveBreakpoint } from '@/utils/form/responsive'
   import {
     cloneModelValue,
@@ -280,6 +281,7 @@
 
   const { width } = useWindowSize()
   const { t } = useI18n()
+  const { effectiveTenantId, isTenantScopeItem } = useTenantScopeFormPolicy()
   const isMobile = computed(() => width.value < 500)
 
   const formInstance = useTemplateRef<FormInstance>('formRef')
@@ -759,6 +761,7 @@
 
   const loadImmediateOptions = () => {
     props.items.forEach((item) => {
+      if (isTenantScopeItem(item)) return
       if (item.api && item.immediate !== false) {
         const signature = getOptionsRequestSignature(item)
         if (asyncRequestSignatureMap.value[item.key] === signature) return
@@ -770,7 +773,9 @@
   }
 
   const reloadOptions = async (key?: string) => {
-    const targetItems = key ? props.items.filter((item) => item.key === key) : props.items
+    const targetItems = (key ? props.items.filter((item) => item.key === key) : props.items).filter(
+      (item) => !isTenantScopeItem(item)
+    )
     const results = await Promise.all(targetItems.filter((item) => item.api).map(fetchOptions))
     return key ? results[0] : results
   }
@@ -983,8 +988,18 @@
   }
 
   const filteredFormItems = computed(() => {
-    return props.items.filter((item) => !isFormItemHidden(item))
+    return props.items.filter((item) => !isTenantScopeItem(item) && !isFormItemHidden(item))
   })
+
+  const syncTenantScopeField = () => {
+    const tenantItem = props.items.find(isTenantScopeItem)
+    if (!tenantItem) return
+
+    const tenantId = effectiveTenantId.value ?? ''
+    if (getFieldValue(tenantItem.key) !== tenantId) {
+      setFieldValue(tenantItem.key, tenantId, tenantItem)
+    }
+  }
 
   /**
    * 可见的表单项
@@ -1037,6 +1052,7 @@
 
     // 恢复初始表单值，保留默认值而不是简单清空。
     commitModelValue(cloneModelValue(initialModelValue.value))
+    syncTenantScopeField()
 
     // 触发 reset 事件
     emit('reset')
@@ -1046,6 +1062,7 @@
    * 处理提交事件
    */
   const handleSubmit = () => {
+    syncTenantScopeField()
     // 对外只抛出清洗后的结果，避免业务层重复过滤空值。
     emit('submit', getSanitizedOutput())
   }
@@ -1079,6 +1096,12 @@
       })),
     normalizeClearedFormValues,
     { deep: true, immediate: true }
+  )
+
+  watch(
+    () => [effectiveTenantId.value, props.items.some(isTenantScopeItem), getFieldValue('tenantId')],
+    syncTenantScopeField,
+    { immediate: true }
   )
 
   defineExpose({

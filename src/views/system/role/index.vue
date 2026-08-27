@@ -21,59 +21,61 @@
     </BusinessWorkspaceHeader>
 
     <div class="role-page__workspace">
-      <aside v-if="isDesktopOrganizationLayout" class="role-page__organization-panel">
-        <OrganizationScopeFilter
-          scope-type="role"
-          :data="organizationTree"
-          :loading="organizationFilterLoading"
-          :selected-key="selectedOrganizationKey"
-          :include-descendants="includeDescendantOrganizations"
-          :tenant-id="selectedTenantId"
-          :tenant-options="tenantOptions"
-          :show-tenant-select="isPlatformSuper"
-          @select="handleOrganizationSelect"
-          @refresh="handleOrganizationRefresh"
-          @update:include-descendants="handleIncludeDescendantsChange"
-          @update:tenant-id="handleTenantChange"
-        />
-      </aside>
+      <ArtWorkspaceSplitter :breakpoint="1200" narrow-mode="hide">
+        <template #primary>
+          <aside v-if="isDesktopOrganizationLayout" class="role-page__organization-panel">
+            <OrganizationScopeFilter
+              scope-type="role"
+              :data="organizationTree"
+              :loading="organizationFilterLoading"
+              :selected-key="selectedOrganizationKey"
+              :include-descendants="includeDescendantOrganizations"
+              :global-scope="isAllTenants"
+              @select="handleOrganizationSelect"
+              @refresh="handleOrganizationRefresh"
+              @update:include-descendants="handleIncludeDescendantsChange"
+            />
+          </aside>
+        </template>
 
-      <div class="role-page__table-workspace">
-        <section v-if="!isDesktopOrganizationLayout" class="role-page__mobile-scope art-card-xs">
-          <span class="role-page__mobile-scope-icon" aria-hidden="true">
-            <ArtSvgIcon icon="ri:node-tree" />
-          </span>
-          <div>
-            <small>当前组织范围</small>
-            <strong>{{ selectedOrganizationLabel }}</strong>
-          </div>
-          <ElButton type="primary" plain @click="openOrganizationDrawer">
-            <ArtSvgIcon icon="ri:filter-3-line" />
-            组织筛选
-          </ElButton>
-        </section>
+        <div class="role-page__table-workspace">
+          <section v-if="!isDesktopOrganizationLayout" class="role-page__mobile-scope art-card-xs">
+            <span class="role-page__mobile-scope-icon" aria-hidden="true">
+              <ArtSvgIcon icon="ri:node-tree" />
+            </span>
+            <div>
+              <small>当前组织范围</small>
+              <strong>{{ selectedOrganizationLabel }}</strong>
+            </div>
+            <ElButton type="primary" plain @click="openOrganizationDrawer">
+              <ArtSvgIcon icon="ri:filter-3-line" />
+              组织筛选
+            </ElButton>
+          </section>
 
-        <ArtTableQuery
-          ref="tableQueryRef"
-          focusable
-          v-model="searchForm"
-          v-model:columns="columnChecks"
-          v-model:show-search-bar="showSearchBar"
-          :loading="loading"
-          :data="data"
-          :table-columns="columns"
-          :pagination="pagination"
-          :search-bar-props="searchBarProps"
-          :header-actions="headerActions"
-          header-actions-placement="workspace"
-          :table-props="tableProps"
-          @search="handleSearch"
-          @reset="resetSearchParams"
-          @refresh="refreshData"
-          @pagination:size-change="handleSizeChange"
-          @pagination:current-change="handleCurrentChange"
-        />
-      </div>
+          <ArtTableQuery
+            ref="tableQueryRef"
+            focusable
+            v-model="searchForm"
+            v-model:columns="columnChecks"
+            v-model:show-search-bar="showSearchBar"
+            :loading="loading"
+            :data="data"
+            :table-columns="columns"
+            :pagination="pagination"
+            :search-bar-props="searchBarProps"
+            :header-actions="headerActions"
+            header-actions-placement="workspace"
+            :table-props="tableProps"
+            @search="handleSearch"
+            @reset="resetSearchParams"
+            @refresh="refreshData"
+            @pagination:size-change="handleSizeChange"
+            @pagination:current-change="handleCurrentChange"
+            focus-scope-selector=".role-page__workspace"
+          />
+        </div>
+      </ArtWorkspaceSplitter>
     </div>
 
     <RoleEditDialog ref="roleEditDialogRef" @success="refreshData" />
@@ -87,13 +89,10 @@
         :loading="organizationFilterLoading"
         :selected-key="selectedOrganizationKey"
         :include-descendants="includeDescendantOrganizations"
-        :tenant-id="selectedTenantId"
-        :tenant-options="tenantOptions"
-        :show-tenant-select="isPlatformSuper"
+        :global-scope="isAllTenants"
         @select="handleOrganizationSelect"
         @refresh="handleOrganizationRefresh"
         @update:include-descendants="handleIncludeDescendantsChange"
-        @update:tenant-id="handleTenantChange"
       />
     </ArtDrawer>
   </div>
@@ -104,13 +103,9 @@
   import { useMediaQuery } from '@vueuse/core'
   import { ButtonMoreItem } from '@/components/core/forms/art-button-more/index.vue'
   import { useTable } from '@/hooks/core/useTable'
-  import {
-    deleteRole,
-    fetchGetEnableTenantList,
-    fetchGetRoleList,
-    fetchGetRoleOrganizationTree
-  } from '@/api/system-manage'
+  import { deleteRole, fetchGetRoleList, fetchGetRoleOrganizationTree } from '@/api/system-manage'
   import ArtDrawer from '@/components/core/drawers/art-drawer/index.vue'
+  import ArtWorkspaceSplitter from '@/components/core/layouts/art-workspace-splitter/index.vue'
   import type { ArtDrawerExpose } from '@/components/core/drawers/art-drawer/types'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import ArtButtonMore from '@/components/core/forms/art-button-more/index.vue'
@@ -132,6 +127,7 @@
     ArtTableQueryTableProps
   } from '@/components/core/tables/art-table-query/index.vue'
   import { useUserStore } from '@/store/modules/user'
+  import { useTenantScopeStore } from '@/store/modules/tenantScope'
   import TreeUtils from '@/utils/tree'
   import OrganizationScopeFilter from '../shared/organization-scope-filter.vue'
   import MasterDataDeleteGuard, {
@@ -147,7 +143,6 @@
 
   type RoleListItem = Api.SystemManage.RoleListItem
   type OrganizationFilterItem = Api.SystemManage.OrganizationScopeFilterItem
-  type TenantListItem = Api.SystemManage.TenantListItem
   type RoleSearchParams = Api.SystemManage.RoleSearchParams & {
     daterange?: [string, string] | null
   }
@@ -165,7 +160,8 @@
   })
 
   const showSearchBar = ref(false)
-  const { getDictMap, getUserInfo, isPlatformSuper } = storeToRefs(useUserStore())
+  const { getDictMap, isPlatformSuper } = storeToRefs(useUserStore())
+  const { effectiveTenantId, isAllTenants } = storeToRefs(useTenantScopeStore())
   const ALL_ORGANIZATIONS_KEY = '__all_organizations__'
   const UNASSIGNED_ORGANIZATION_KEY = '__unassigned_organization__'
   const organizationTreeUtils = new TreeUtils({
@@ -177,9 +173,8 @@
   const deleteGuardRef = ref<MasterDataDeleteGuardExpose>()
   const isDesktopOrganizationLayout = useMediaQuery('(min-width: 1201px)')
   const organizationTree = ref<OrganizationFilterItem[]>([])
-  const tenantOptions = ref<TenantListItem[]>([])
   const organizationFilterLoading = ref(false)
-  const selectedTenantId = ref(getUserInfo.value.tenantId ?? '')
+  const selectedTenantId = computed(() => effectiveTenantId.value ?? '')
   const selectedOrganizationKey = ref(ALL_ORGANIZATIONS_KEY)
   const includeDescendantOrganizations = ref(true)
   const selectedOrganization = computed(() =>
@@ -548,7 +543,7 @@
       searchParams as RoleSearchParams
     const { from, to } = pageInfoHandler(pagination)
     return await fetchGetRoleList({
-      tenantId: selectedTenantId.value || getUserInfo.value.tenantId,
+      tenantId: selectedTenantId.value || undefined,
       organizationIds: selectedOrganizationIds.value,
       organizationUnassigned: selectedOrganizationKey.value === UNASSIGNED_ORGANIZATION_KEY,
       roleName,
@@ -563,23 +558,11 @@
     })
   }
 
-  const loadTenantOptions = async (): Promise<void> => {
-    if (!isPlatformSuper.value) return
-    const response = await fetchGetEnableTenantList()
-    tenantOptions.value = response.data ?? []
-    if (
-      !selectedTenantId.value ||
-      !tenantOptions.value.some((item) => item.id === selectedTenantId.value)
-    ) {
-      selectedTenantId.value = tenantOptions.value[0]?.id ?? ''
-    }
-  }
-
   const loadOrganizationTree = async (): Promise<void> => {
     organizationFilterLoading.value = true
     try {
       const response = await fetchGetRoleOrganizationTree({
-        tenantId: selectedTenantId.value || getUserInfo.value.tenantId
+        tenantId: selectedTenantId.value || undefined
       })
       organizationTree.value = response.data ?? []
 
@@ -606,14 +589,6 @@
     if (selectedOrganization.value) await getData()
   }
 
-  const handleTenantChange = async (tenantId: string): Promise<void> => {
-    if (!tenantId || selectedTenantId.value === tenantId) return
-    selectedTenantId.value = tenantId
-    selectedOrganizationKey.value = ALL_ORGANIZATIONS_KEY
-    await loadOrganizationTree()
-    await getData()
-  }
-
   const handleOrganizationRefresh = async (): Promise<void> => {
     await loadOrganizationTree()
     await refreshData()
@@ -637,7 +612,6 @@
   }
 
   onMounted(async () => {
-    await loadTenantOptions()
     await loadOrganizationTree()
   })
 
@@ -661,10 +635,8 @@
     }
 
     &__workspace {
-      display: grid;
       flex: 1 1 auto;
-      grid-template-columns: 264px minmax(0, 1fr);
-      gap: 12px;
+      width: 100%;
       min-width: 0;
       min-height: 0;
     }
@@ -1006,12 +978,6 @@
       }
     }
 
-    @media (width <= 1200px) {
-      &__workspace {
-        grid-template-columns: minmax(0, 1fr);
-      }
-    }
-
     @media (width <= 640px) {
       &__hero {
         flex-direction: column;
@@ -1047,15 +1013,5 @@
 
     padding: 0 !important;
     overflow: hidden !important;
-  }
-
-  :global(.art-table-focus-page .role-page__workspace) {
-    display: grid !important;
-    grid-template-columns: 264px minmax(0, 1fr) !important;
-    gap: 12px !important;
-  }
-
-  :global(.art-table-focus-page .role-page__organization-panel.art-table-focus-hidden) {
-    display: block !important;
   }
 </style>

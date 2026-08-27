@@ -286,6 +286,111 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
       button('Export', '导出场所', 'SmisSite:Export')
     ]
   },
+  {
+    menuName: 'SmisInspectionCategory',
+    buttons: [
+      button('View', '查看检验类别', 'SmisInspectionCategory:View'),
+      button('Add', '新增检验类别', 'SmisInspectionCategory:Add'),
+      button('Edit', '编辑检验类别', 'SmisInspectionCategory:Edit'),
+      button('Delete', '删除检验类别', 'SmisInspectionCategory:Delete')
+    ]
+  },
+  {
+    menuName: 'SmisEquipmentCategory',
+    buttons: [
+      button('View', '查看设备分类', 'SmisEquipmentCategory:View'),
+      button('Add', '新增设备分类', 'SmisEquipmentCategory:Add'),
+      button('Edit', '编辑设备分类', 'SmisEquipmentCategory:Edit'),
+      button('Delete', '删除设备分类', 'SmisEquipmentCategory:Delete')
+    ]
+  },
+  {
+    menuName: 'SmisStorageLocation',
+    buttons: [
+      button('View', '查看存放位置', 'SmisStorageLocation:View'),
+      button('Add', '新增存放位置', 'SmisStorageLocation:Add'),
+      button('Edit', '编辑存放位置', 'SmisStorageLocation:Edit'),
+      button('Delete', '删除存放位置', 'SmisStorageLocation:Delete')
+    ]
+  },
+  {
+    menuName: 'SmisEquipmentLedgerList',
+    buttons: [
+      button('View', '查看设备台账', 'SmisEquipmentLedger:View'),
+      button('Add', '新增设备', 'SmisEquipmentLedger:Add'),
+      button('Edit', '编辑设备', 'SmisEquipmentLedger:Edit'),
+      button('Delete', '删除设备', 'SmisEquipmentLedger:Delete'),
+      button('Attachment', '维护设备附件', 'SmisEquipmentLedger:Attachment'),
+      button('Inspection', '维护设备检验', 'SmisEquipmentLedger:Inspection')
+    ]
+  },
+  {
+    menuName: 'SmisEquipmentDepreciation',
+    buttons: [
+      button('View', '查看设备折旧', 'SmisEquipmentDepreciation:View'),
+      button('Add', '新增设备折旧', 'SmisEquipmentDepreciation:Add'),
+      button('Edit', '编辑设备折旧', 'SmisEquipmentDepreciation:Edit'),
+      button('Delete', '删除设备折旧', 'SmisEquipmentDepreciation:Delete')
+    ]
+  },
+  {
+    menuName: 'SmisInspectionDeclaration',
+    buttons: [
+      button('View', '查看检验申报', 'SmisInspectionDeclaration:View'),
+      button('Add', '新增检验申报', 'SmisInspectionDeclaration:Add'),
+      button('Edit', '编辑检验申报', 'SmisInspectionDeclaration:Edit'),
+      button('Delete', '删除检验申报', 'SmisInspectionDeclaration:Delete')
+    ]
+  },
+  {
+    menuName: 'SmisSpecialEquipmentAnalysis',
+    buttons: [button('View', '查看特种设备统计', 'SmisSpecialEquipmentAnalysis:View')]
+  },
+  {
+    menuName: 'SmisSpecialEquipmentLedger',
+    buttons: [
+      button('View', '查看特种设备台账', 'SmisSpecialEquipmentLedger:View'),
+      button('ReminderView', '查看设备提醒', 'SmisEquipmentReminder:View'),
+      button('ReminderManage', '维护设备提醒', 'SmisEquipmentReminder:Manage')
+    ]
+  },
+  {
+    menuName: 'SmisSupplier',
+    buttons: [
+      button('View', '查看供应商', 'SmisSupplier:View'),
+      button('Add', '新增供应商', 'SmisSupplier:Add'),
+      button('Edit', '编辑供应商', 'SmisSupplier:Edit'),
+      button('Delete', '删除供应商', 'SmisSupplier:Delete'),
+      button('Export', '导出供应商', 'SmisSupplier:Export')
+    ]
+  },
+  {
+    menuName: 'SmisHazardSourceLedger',
+    buttons: [
+      button('View', '查看危险源台账', 'SmisHazardSourceLedger:View'),
+      button('Add', '新增危险源', 'SmisHazardSourceLedger:Add'),
+      button('Edit', '编辑危险源', 'SmisHazardSourceLedger:Edit'),
+      button('Delete', '删除危险源', 'SmisHazardSourceLedger:Delete'),
+      button('Submit', '提交危险源', 'SmisHazardSourceLedger:Submit'),
+      button('Import', '导入危险源', 'SmisHazardSourceLedger:Import'),
+      button('Export', '导出危险源', 'SmisHazardSourceLedger:Export'),
+      button('Statistics', '危险源统计分析', 'SmisHazardSourceLedger:Statistics'),
+      button('DownloadTemplate', '下载危险源导入模板', 'SmisHazardSourceLedger:DownloadTemplate')
+    ]
+  },
+  {
+    menuName: 'SmisEmergencyRescuePlan',
+    buttons: [
+      button('View', '查看应急预案', 'SmisEmergencyRescuePlan:View'),
+      button('Add', '新增应急预案', 'SmisEmergencyRescuePlan:Add'),
+      button('Edit', '编辑应急预案', 'SmisEmergencyRescuePlan:Edit'),
+      button('Delete', '删除应急预案', 'SmisEmergencyRescuePlan:Delete'),
+      button('Submit', '提交应急预案', 'SmisEmergencyRescuePlan:Submit'),
+      button('Void', '置废应急预案', 'SmisEmergencyRescuePlan:Void'),
+      button('Activate', '恢复有效预案', 'SmisEmergencyRescuePlan:Activate'),
+      button('Push', '下推演练计划', 'SmisEmergencyRescuePlan:Push')
+    ]
+  },
 
   {
     menuName: 'HrEmployeeRoster',

@@ -21,50 +21,52 @@
     </BusinessWorkspaceHeader>
 
     <div class="user-page__workspace">
-      <aside v-if="isDesktopOrganizationLayout" class="user-page__organization-panel">
-        <OrganizationScopeFilter
-          :data="organizationTree"
-          :loading="organizationFilterLoading"
-          :selected-key="selectedOrganizationKey"
-          :include-descendants="includeDescendantOrganizations"
-          :tenant-id="selectedTenantId"
-          :tenant-options="tenantOptions"
-          :show-tenant-select="isPlatformSuper"
-          @select="handleOrganizationSelect"
-          @refresh="handleOrganizationRefresh"
-          @update:include-descendants="handleIncludeDescendantsChange"
-          @update:tenant-id="handleTenantChange"
-        />
-      </aside>
+      <ArtWorkspaceSplitter :breakpoint="1200" narrow-mode="hide">
+        <template #primary>
+          <aside v-if="isDesktopOrganizationLayout" class="user-page__organization-panel">
+            <OrganizationScopeFilter
+              :data="organizationTree"
+              :loading="organizationFilterLoading"
+              :selected-key="selectedOrganizationKey"
+              :include-descendants="includeDescendantOrganizations"
+              :global-scope="isAllTenants"
+              @select="handleOrganizationSelect"
+              @refresh="handleOrganizationRefresh"
+              @update:include-descendants="handleIncludeDescendantsChange"
+            />
+          </aside>
+        </template>
 
-      <div class="user-page__table-workspace">
-        <section v-if="!isDesktopOrganizationLayout" class="user-page__mobile-scope art-card-xs">
-          <span class="user-page__mobile-scope-icon" aria-hidden="true">
-            <ArtSvgIcon icon="ri:node-tree" />
-          </span>
-          <div>
-            <small>当前组织范围</small>
-            <strong>{{ selectedOrganizationLabel }}</strong>
-          </div>
-          <ElButton type="primary" plain @click="openOrganizationDrawer">
-            <ArtSvgIcon icon="ri:filter-3-line" />
-            组织筛选
-          </ElButton>
-        </section>
+        <div class="user-page__table-workspace">
+          <section v-if="!isDesktopOrganizationLayout" class="user-page__mobile-scope art-card-xs">
+            <span class="user-page__mobile-scope-icon" aria-hidden="true">
+              <ArtSvgIcon icon="ri:node-tree" />
+            </span>
+            <div>
+              <small>当前组织范围</small>
+              <strong>{{ selectedOrganizationLabel }}</strong>
+            </div>
+            <ElButton type="primary" plain @click="openOrganizationDrawer">
+              <ArtSvgIcon icon="ri:filter-3-line" />
+              组织筛选
+            </ElButton>
+          </section>
 
-        <ArtTableQuery
-          ref="tableQueryRef"
-          v-model="searchForm"
-          :search-items="searchItems"
-          :api-fn="fetchTableData"
-          :columns-factory="columnsFactory"
-          :header-actions="headerActions"
-          header-actions-placement="workspace"
-          :table-props="tableProps"
-          :on-success="handleTableSuccess"
-          focusable
-        />
-      </div>
+          <ArtTableQuery
+            ref="tableQueryRef"
+            v-model="searchForm"
+            :search-items="searchItems"
+            :api-fn="fetchTableData"
+            :columns-factory="columnsFactory"
+            :header-actions="headerActions"
+            header-actions-placement="workspace"
+            :table-props="tableProps"
+            :on-success="handleTableSuccess"
+            focusable
+            focus-scope-selector=".user-page__workspace"
+          />
+        </div>
+      </ArtWorkspaceSplitter>
     </div>
 
     <UserDialog ref="userDialogRef" @success="handleSaveSuccess" />
@@ -76,13 +78,10 @@
         :loading="organizationFilterLoading"
         :selected-key="selectedOrganizationKey"
         :include-descendants="includeDescendantOrganizations"
-        :tenant-id="selectedTenantId"
-        :tenant-options="tenantOptions"
-        :show-tenant-select="isPlatformSuper"
+        :global-scope="isAllTenants"
         @select="handleOrganizationSelect"
         @refresh="handleOrganizationRefresh"
         @update:include-descendants="handleIncludeDescendantsChange"
-        @update:tenant-id="handleTenantChange"
       />
     </ArtDrawer>
   </div>
@@ -93,6 +92,7 @@
   import { useMediaQuery } from '@vueuse/core'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import ArtDrawer from '@/components/core/drawers/art-drawer/index.vue'
+  import ArtWorkspaceSplitter from '@/components/core/layouts/art-workspace-splitter/index.vue'
   import type { ArtDrawerExpose } from '@/components/core/drawers/art-drawer/types'
   import UserDialog from './modules/user-dialog.vue'
   import OrganizationScopeFilter from '../shared/organization-scope-filter.vue'
@@ -108,9 +108,9 @@
   import { formatWithDayjs } from '@/utils/time'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { useUserStore } from '@/store/modules/user'
+  import { useTenantScopeStore } from '@/store/modules/tenantScope'
   import {
     deactivateUser,
-    fetchGetEnableTenantList,
     fetchGetUserList,
     fetchGetUserOrganizationTree,
     resetUser
@@ -133,13 +133,13 @@
 
   type UserListItem = Api.SystemManage.UserListItem
   type OrganizationFilterItem = Api.SystemManage.OrganizationScopeFilterItem
-  type TenantListItem = Api.SystemManage.TenantListItem
 
   const ALL_ORGANIZATIONS_KEY = '__all_organizations__'
   const UNASSIGNED_ORGANIZATION_KEY = '__unassigned_organization__'
 
   const userStore = useUserStore()
-  const { getDictMap, getUserInfo, isPlatformSuper } = storeToRefs(userStore)
+  const { getDictMap, getUserInfo } = storeToRefs(userStore)
+  const { effectiveTenantId, isAllTenants } = storeToRefs(useTenantScopeStore())
   const { loadPasswordPolicy, createTemporaryPassword } = useSystemParam()
   const organizationTreeUtils = new TreeUtils({
     idKey: 'id',
@@ -167,9 +167,8 @@
   const organizationDrawerRef = ref<ArtDrawerExpose<Record<string, never>>>()
   const isDesktopOrganizationLayout = useMediaQuery('(min-width: 1201px)')
   const organizationTree = ref<OrganizationFilterItem[]>([])
-  const tenantOptions = ref<TenantListItem[]>([])
   const organizationFilterLoading = ref(false)
-  const selectedTenantId = ref(getUserInfo.value.tenantId ?? '')
+  const selectedTenantId = computed(() => effectiveTenantId.value ?? '')
   const selectedOrganizationKey = ref(ALL_ORGANIZATIONS_KEY)
   const includeDescendantOrganizations = ref(true)
   const overview = reactive<{ total: number; rows: UserOverviewRow[] }>({
@@ -303,7 +302,7 @@
     })
     return fetchGetUserList({
       ...params,
-      tenantId: selectedTenantId.value || getUserInfo.value.tenantId,
+      tenantId: selectedTenantId.value || undefined,
       organizationIds: selectedOrganizationIds.value,
       organizationUnassigned: selectedOrganizationKey.value === UNASSIGNED_ORGANIZATION_KEY,
       from,
@@ -311,23 +310,11 @@
     })
   }
 
-  const loadTenantOptions = async (): Promise<void> => {
-    if (!isPlatformSuper.value) return
-    const response = await fetchGetEnableTenantList()
-    tenantOptions.value = response.data ?? []
-    if (
-      !selectedTenantId.value ||
-      !tenantOptions.value.some((item) => item.id === selectedTenantId.value)
-    ) {
-      selectedTenantId.value = tenantOptions.value[0]?.id ?? ''
-    }
-  }
-
   const loadOrganizationTree = async (): Promise<void> => {
     organizationFilterLoading.value = true
     try {
       const response = await fetchGetUserOrganizationTree({
-        tenantId: selectedTenantId.value || getUserInfo.value.tenantId
+        tenantId: selectedTenantId.value || undefined
       })
       organizationTree.value = response.data ?? []
 
@@ -356,14 +343,6 @@
   const handleIncludeDescendantsChange = async (value: boolean): Promise<void> => {
     includeDescendantOrganizations.value = value
     if (selectedOrganization.value) await refreshUsersFromOrganization()
-  }
-
-  const handleTenantChange = async (tenantId: string): Promise<void> => {
-    if (!tenantId || selectedTenantId.value === tenantId) return
-    selectedTenantId.value = tenantId
-    selectedOrganizationKey.value = ALL_ORGANIZATIONS_KEY
-    await loadOrganizationTree()
-    await refreshUsersFromOrganization()
   }
 
   const handleOrganizationRefresh = async (): Promise<void> => {
@@ -423,6 +402,18 @@
       label: '用户类型',
       minWidth: 110,
       dict: { code: 'userType', display: 'auto' }
+    },
+    {
+      prop: 'tenant',
+      label: '所属租户',
+      minWidth: 180,
+      formatter: (row: UserListItem) =>
+        h('div', { class: 'user-organization-cell' }, [
+          h('p', { title: row.tenant?.tenantName }, row.tenant?.tenantName || '--'),
+          row.tenant?.tenantCode
+            ? h('small', { title: row.tenant.tenantCode }, row.tenant.tenantCode)
+            : null
+        ])
     },
     {
       prop: 'organization',
@@ -642,7 +633,6 @@
   }
 
   onMounted(async () => {
-    await loadTenantOptions()
     await loadOrganizationTree()
   })
 
@@ -667,10 +657,8 @@
     }
 
     &__workspace {
-      display: grid;
       flex: 1 1 auto;
-      grid-template-columns: 264px minmax(0, 1fr);
-      gap: 12px;
+      width: 100%;
       min-width: 0;
       min-height: 0;
     }
@@ -682,12 +670,14 @@
     }
 
     &__organization-panel {
+      height: 100%;
       overflow: hidden;
     }
 
     &__table-workspace {
       display: flex;
       flex-direction: column;
+      height: 100%;
     }
 
     &__mobile-scope {
@@ -1007,12 +997,6 @@
       margin-right: 0;
     }
 
-    @media (width <= 1200px) {
-      &__workspace {
-        grid-template-columns: minmax(0, 1fr);
-      }
-    }
-
     @media (width <= 900px) {
       &__hero {
         align-items: flex-start;
@@ -1063,15 +1047,5 @@
 
     padding: 0 !important;
     overflow: hidden !important;
-  }
-
-  :global(.art-table-focus-page .user-page__workspace) {
-    display: grid !important;
-    grid-template-columns: 264px minmax(0, 1fr) !important;
-    gap: 12px !important;
-  }
-
-  :global(.art-table-focus-page .user-page__organization-panel.art-table-focus-hidden) {
-    display: block !important;
   }
 </style>

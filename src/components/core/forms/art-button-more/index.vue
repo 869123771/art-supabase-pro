@@ -30,12 +30,14 @@
 <script setup lang="ts">
   import { useRoute } from 'vue-router'
   import { useAuth } from '@/hooks/core/useAuth'
+  import { useTenantScopeAccessPolicy } from '@/hooks/core/useTenantScopeAccessPolicy'
   import { resolveBusinessButtonPermission } from '@/utils/business-permission'
 
   defineOptions({ name: 'ArtButtonMore' })
 
   const { hasAuth } = useAuth()
   const route = useRoute()
+  const { isCrossTenantReadOnly } = useTenantScopeAccessPolicy()
 
   export interface ButtonMoreItem {
     /** 按钮标识，可用于点击事件 */
@@ -77,6 +79,7 @@
 
   // 检查是否有任何有权限的 item
   const hasAnyAuthItem = computed(() => {
+    if (isCrossTenantReadOnly.value) return false
     if (props.auth && !hasAuth(props.auth)) return false
     return dropdownList.value.some(isItemAuthorized)
   })

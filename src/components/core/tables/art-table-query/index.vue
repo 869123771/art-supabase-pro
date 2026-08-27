@@ -283,12 +283,20 @@
   import { exportExcel, mapExcelRowsToRecords, type ExcelColumn } from '@/utils/file'
   import { useCrossPageSelection } from './use-cross-page-selection'
   import { useRoute } from 'vue-router'
+  import { useTenantScopeAccessPolicy } from '@/hooks/core/useTenantScopeAccessPolicy'
   import { resolveBusinessButtonPermission } from '@/utils/business-permission'
+  import { useTenantScopeStore } from '@/store/modules/tenantScope'
+  import {
+    filterTenantDimensionDescriptors,
+    isTenantDimensionDescriptor
+  } from '@/utils/tenant-dimension-visibility'
 
   defineOptions({ name: 'ArtTableQuery' })
 
   const { hasAuth } = useAuth()
   const route = useRoute()
+  const { isCrossTenantReadOnly } = useTenantScopeAccessPolicy()
+  const { isPlatformScope } = storeToRefs(useTenantScopeStore())
 
   export interface ArtTableQuerySanitizeOutputOptions {
     /** 移除空字符串 */
@@ -857,7 +865,10 @@
   })
 
   const resolvedColumns = computed(() =>
-    isManaged.value ? (managedTable.columns?.value ?? props.tableColumns) : props.tableColumns
+    filterTenantDimensionDescriptors(
+      isManaged.value ? (managedTable.columns?.value ?? props.tableColumns) : props.tableColumns,
+      isPlatformScope.value
+    )
   )
 
   const resolvedPagination = computed(() =>
@@ -1029,6 +1040,9 @@
     action: ArtTableQueryHeaderAction,
     scope: ArtTableQueryHeaderActionContext['scope'] = 'default'
   ): boolean => {
+    if (isCrossTenantReadOnly.value && ['add', 'delete', 'import'].includes(String(action.type))) {
+      return false
+    }
     const permission = getHeaderActionPermission(action)
     if (permission && !hasAuth(permission)) return false
     if (typeof action.hidden === 'function') {
@@ -1173,21 +1187,29 @@
     columns: ArtTableQueryExcelColumns | undefined,
     ctx: ArtTableQueryHeaderActionContext
   ): ArtTableQueryExcelColumn[] => {
-    if (typeof columns === 'function') return columns(ctx)
-    if (Array.isArray(columns) && columns.length) return columns
+    const excelColumns =
+      typeof columns === 'function'
+        ? columns(ctx)
+        : Array.isArray(columns) && columns.length
+          ? columns
+          : resolvedColumns.value.filter(isExcelColumn).map((column: ColumnOption) => ({
+              key: column.prop as string,
+              title: String(column.label),
+              width: typeof column.width === 'number' ? column.width : undefined,
+              formatter: column.formatter
+                ? (_value: unknown, row: TableQueryRecord) => {
+                    const formattedValue = column.formatter?.(row)
+                    if (formattedValue && typeof formattedValue === 'object') return ''
+                    return formattedValue as string | number | boolean | null | undefined
+                  }
+                : undefined
+            }))
 
-    return resolvedColumns.value.filter(isExcelColumn).map((column: ColumnOption) => ({
-      key: column.prop as string,
-      title: String(column.label),
-      width: typeof column.width === 'number' ? column.width : undefined,
-      formatter: column.formatter
-        ? (_value: unknown, row: TableQueryRecord) => {
-            const formattedValue = column.formatter?.(row)
-            if (formattedValue && typeof formattedValue === 'object') return ''
-            return formattedValue as string | number | boolean | null | undefined
-          }
-        : undefined
-    }))
+    return isPlatformScope.value
+      ? excelColumns
+      : excelColumns.filter(
+          (column) => !isTenantDimensionDescriptor({ key: column.key, label: column.title })
+        )
   }
 
   const getActionFilename = (
@@ -1557,6 +1579,8 @@
     refreshData: () => Promise<void>
     /** 新增后刷新，默认回到第一页。 */
     refreshCreate: () => Promise<void>
+    /** 数据上下文变化后刷新；保留查询条件并回到第一页。 */
+    refreshContext: () => Promise<void>
     /** 编辑后刷新，默认保留当前页。 */
     refreshUpdate: () => Promise<void>
     /** 删除后刷新，当前页为空时自动回退上一页。 */
@@ -1590,6 +1614,7 @@
   defineExpose<ArtTableQueryExpose>({
     refreshData: managedTable.refreshData,
     refreshCreate: managedTable.refreshCreate,
+    refreshContext: managedTable.refreshCreate,
     refreshUpdate: managedTable.refreshUpdate,
     refreshRemove,
     getData,

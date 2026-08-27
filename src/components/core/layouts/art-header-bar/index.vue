@@ -74,6 +74,7 @@
       </div>
 
       <div class="art-header-bar__actions flex-c">
+        <PlatformTenantScopeSwitcher />
         <ArtApplicationSwitcher />
 
         <!-- 搜索 -->
@@ -222,6 +223,7 @@
   import { useWebsiteConfig } from '@/hooks'
   import ArtUserMenu from './widget/ArtUserMenu.vue'
   import ArtApplicationSwitcher from './widget/ArtApplicationSwitcher.vue'
+  import PlatformTenantScopeSwitcher from '@/components/business/platform-tenant-scope-switcher/index.vue'
 
   defineOptions({ name: 'ArtHeaderBar' })
 

@@ -23,29 +23,6 @@
     </header>
 
     <div class="user-organization-filter__controls">
-      <div v-if="showTenantSelect" class="user-organization-filter__tenant">
-        <label for="user-organization-tenant">租户范围</label>
-        <ElSelect
-          id="user-organization-tenant"
-          :model-value="tenantId"
-          filterable
-          placeholder="请选择租户"
-          @change="handleTenantChange"
-        >
-          <ElOption
-            v-for="tenant in validTenantOptions"
-            :key="tenant.id"
-            :label="tenant.tenantName"
-            :value="tenant.id"
-          >
-            <div class="user-organization-filter__tenant-option">
-              <span>{{ tenant.tenantName }}</span>
-              <small>{{ tenant.tenantCode }}</small>
-            </div>
-          </ElOption>
-        </ElSelect>
-      </div>
-
       <ElInput
         v-model="keyword"
         clearable
@@ -75,6 +52,7 @@
       </button>
 
       <button
+        v-if="showUnassigned"
         type="button"
         :class="{ 'is-active': selectedKey === UNASSIGNED_ORGANIZATION_KEY }"
         @click="handleQuickSelect(UNASSIGNED_ORGANIZATION_KEY)"
@@ -121,8 +99,8 @@
               </span>
               <span class="user-organization-filter__node-copy">
                 <strong :title="node.organizationName">{{ node.organizationName }}</strong>
-                <small :title="node.organizationCode" translate="no">
-                  {{ node.organizationCode }}
+                <small :title="getOrganizationMeta(node)" translate="no">
+                  {{ getOrganizationMeta(node) }}
                 </small>
               </span>
               <span v-if="node.scopeCount" class="user-organization-filter__node-count">
@@ -136,7 +114,7 @@
       <ArtEmptyState
         v-else
         title="暂无组织结构"
-        description="当前租户还没有可用的组织节点。"
+        :description="emptyDescription"
         size="compact"
         :visual-size="68"
       />
@@ -188,9 +166,7 @@
   const UNASSIGNED_ORGANIZATION_KEY = '__unassigned_organization__'
 
   type Organization = Api.SystemManage.OrganizationScopeFilterItem
-  type Tenant = Api.SystemManage.TenantListItem
-
-  type ScopeType = 'user' | 'role' | 'employee'
+  type ScopeType = 'user' | 'role' | 'employee' | 'position'
 
   const props = withDefaults(
     defineProps<{
@@ -199,17 +175,13 @@
       loading?: boolean
       selectedKey: string
       includeDescendants?: boolean
-      tenantId?: string
-      tenantOptions?: Tenant[]
-      showTenantSelect?: boolean
+      globalScope?: boolean
     }>(),
     {
       loading: false,
       scopeType: 'user',
       includeDescendants: true,
-      tenantId: undefined,
-      tenantOptions: () => [],
-      showTenantSelect: false
+      globalScope: false
     }
   )
 
@@ -217,7 +189,6 @@
     select: [key: string]
     refresh: []
     'update:includeDescendants': [value: boolean]
-    'update:tenantId': [value: string]
   }>()
 
   const treeUtils = new TreeUtils({
@@ -230,11 +201,23 @@
   const treeProps = { children: 'children', label: 'organizationName' }
 
   const scopeCopy = computed(() => {
+    const rangeLabel = props.globalScope ? '全部租户内' : '当前租户内'
+    if (props.scopeType === 'position') {
+      return {
+        entityLabel: '岗位',
+        allLabel: '全部岗位',
+        allDescription: `${rangeLabel}全部组织岗位`,
+        unassignedLabel: '',
+        unassignedDescription: '',
+        assignedSuffix: '个岗位已配置',
+        countUnit: '个'
+      }
+    }
     if (props.scopeType === 'role') {
       return {
         entityLabel: '角色',
         allLabel: '全部角色',
-        allDescription: '当前租户内全部角色',
+        allDescription: `${rangeLabel}全部角色`,
         unassignedLabel: '待归属角色',
         unassignedDescription: '尚未绑定适用组织',
         assignedSuffix: '个角色已归属',
@@ -245,7 +228,7 @@
       return {
         entityLabel: '员工',
         allLabel: '全部员工',
-        allDescription: '当前租户内全部员工档案',
+        allDescription: `${rangeLabel}全部员工档案`,
         unassignedLabel: '待归属员工',
         unassignedDescription: '尚未分配所属组织',
         assignedSuffix: '名员工已归属',
@@ -255,18 +238,19 @@
     return {
       entityLabel: '用户',
       allLabel: '全部用户',
-      allDescription: '当前租户内全部账号',
+      allDescription: `${rangeLabel}全部账号`,
       unassignedLabel: '待归属用户',
       unassignedDescription: '尚未分配所属组织',
       assignedSuffix: '人已归属',
       countUnit: '人'
     }
   })
+  const showUnassigned = computed(() => props.scopeType !== 'position')
+  const emptyDescription = computed(() =>
+    props.globalScope ? '全部租户中暂无可用组织节点。' : '当前租户还没有可用的组织节点。'
+  )
 
   const flatOrganizations = computed(() => treeUtils.treeToList(props.data))
-  const validTenantOptions = computed(() =>
-    props.tenantOptions.filter((tenant): tenant is Tenant & { id: string } => Boolean(tenant.id))
-  )
   const organizationCount = computed(() => flatOrganizations.value.length)
   const assignedScopeCount = computed(() =>
     flatOrganizations.value.reduce((total, item) => total + (item.scopeCount ?? 0), 0)
@@ -287,6 +271,7 @@
   })
   const selectedScopeCount = computed<number | null>(() => {
     if (props.selectedKey === UNASSIGNED_ORGANIZATION_KEY) return null
+    if (props.scopeType === 'position' && props.selectedKey === ALL_ORGANIZATIONS_KEY) return null
     if (props.selectedKey === ALL_ORGANIZATIONS_KEY) return assignedScopeCount.value
     if (!selectedNode.value) return null
 
@@ -306,11 +291,21 @@
     return iconMap[type]
   }
 
+  const getOrganizationMeta = (organization: Organization): string => {
+    const tenantName = props.globalScope ? organization.tenant?.tenantName : undefined
+    return [tenantName, organization.organizationCode].filter(Boolean).join(' · ')
+  }
+
   const filterNode = (value: string, data: TreeNodeData): boolean => {
     const organization = data as Organization
     const normalized = value.trim().toLocaleLowerCase('zh-CN')
     if (!normalized) return true
-    return [organization.organizationName, organization.organizationCode].some((field) =>
+    return [
+      organization.organizationName,
+      organization.organizationCode,
+      organization.tenant?.tenantName,
+      organization.tenant?.tenantCode
+    ].some((field) =>
       String(field ?? '')
         .toLocaleLowerCase('zh-CN')
         .includes(normalized)
@@ -330,8 +325,6 @@
   const handleCascadeChange = (value: string | number | boolean): void => {
     emit('update:includeDescendants', Boolean(value))
   }
-  const handleTenantChange = (value: string): void => emit('update:tenantId', value)
-
   watch(keyword, (value) => treeRef.value?.filter(value))
   watch(() => props.selectedKey, syncCurrentNode, { immediate: true })
   watch(
@@ -417,32 +410,6 @@
       flex: none;
       gap: 10px;
       padding: 14px 14px 10px;
-    }
-
-    &__tenant {
-      display: grid;
-      gap: 6px;
-
-      label {
-        font-size: 11px;
-        font-weight: 600;
-        color: var(--el-text-color-secondary);
-      }
-
-      :deep(.el-select) {
-        width: 100%;
-      }
-    }
-
-    &__tenant-option {
-      display: flex;
-      gap: 10px;
-      align-items: center;
-      justify-content: space-between;
-
-      small {
-        color: var(--el-text-color-secondary);
-      }
     }
 
     &__quick {

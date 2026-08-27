@@ -105,14 +105,14 @@
           </div>
           <ElScrollbar max-height="380px">
             <VueDraggable
-              v-model="columns"
+              v-model="visibleColumnsModel"
               :disabled="false"
               filter=".fixed-column"
               :prevent-on-filter="false"
               @move="checkColumnMove"
             >
               <div
-                v-for="item in columns"
+                v-for="item in visibleColumnsModel"
                 :key="item.prop || item.type"
                 class="column-option flex-c"
                 :class="{ 'fixed-column': item.fixed }"
@@ -182,10 +182,15 @@
   import { storeToRefs } from 'pinia'
   import { TableSizeEnum } from '@/enums/formEnum'
   import { useTableStore } from '@/store/modules/table'
+  import { useTenantScopeStore } from '@/store/modules/tenantScope'
   import { VueDraggable } from 'vue-draggable-plus'
   import { useI18n } from 'vue-i18n'
   import type { ColumnOption } from '@/types/component'
   import { ElScrollbar } from 'element-plus'
+  import {
+    filterTenantDimensionDescriptors,
+    isTenantDimensionDescriptor
+  } from '@/utils/tenant-dimension-visibility'
 
   defineOptions({ name: 'ArtTableHeader' })
 
@@ -224,6 +229,21 @@
   const columns = defineModel<ColumnOption[]>('columns', {
     required: false,
     default: () => []
+  })
+  const { isPlatformScope } = storeToRefs(useTenantScopeStore())
+  const visibleColumnsModel = computed({
+    get: () => filterTenantDimensionDescriptors(columns.value, isPlatformScope.value),
+    set: (nextColumns: ColumnOption[]) => {
+      if (isPlatformScope.value) {
+        columns.value = nextColumns
+        return
+      }
+
+      const reorderedVisibleColumns = [...nextColumns]
+      columns.value = columns.value.map((column) =>
+        isTenantDimensionDescriptor(column) ? column : (reorderedVisibleColumns.shift() ?? column)
+      )
+    }
   })
 
   const emit = defineEmits<{
@@ -266,7 +286,7 @@
     let matchesCompactPreset = true
     let allColumnsVisible = true
 
-    columns.value.forEach((column) => {
+    visibleColumnsModel.value.forEach((column) => {
       const isStructural = isStructuralColumn(column)
       const isVisible = getColumnVisibility(column)
       const compactVisible = isStructural || visibleBusinessColumns < 5
@@ -282,7 +302,7 @@
 
   const applyColumnPreset = (preset: ColumnPreset): void => {
     let visibleBusinessColumns = 0
-    columns.value.forEach((column) => {
+    visibleColumnsModel.value.forEach((column) => {
       const isStructural = isStructuralColumn(column)
       const visible = preset === 'all' || isStructural || visibleBusinessColumns < 5
 

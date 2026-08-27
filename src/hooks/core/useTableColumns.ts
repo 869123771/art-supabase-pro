@@ -39,11 +39,11 @@ import type { ColumnOption } from '@/types/component'
 /**
  * 特殊列类型
  */
-const SPECIAL_COLUMNS: Record<string, { prop: string; label: string }> = {
-  selection: { prop: '__selection__', label: $t('table.column.selection') },
-  expand: { prop: '__expand__', label: $t('table.column.expand') },
-  index: { prop: '__index__', label: $t('table.column.index') },
-  globalIndex: { prop: '__globalIndex__', label: $t('table.column.index') }
+const SPECIAL_COLUMNS: Record<string, { prop: string; labelKey: string }> = {
+  selection: { prop: '__selection__', labelKey: 'table.column.selection' },
+  expand: { prop: '__expand__', labelKey: 'table.column.expand' },
+  index: { prop: '__index__', labelKey: 'table.column.index' },
+  globalIndex: { prop: '__globalIndex__', labelKey: 'table.column.index' }
 }
 
 /**
@@ -76,7 +76,13 @@ export const getColumnChecks = <T>(columns: ColumnOption<T>[]) =>
     const visibility = getColumnVisibility(col)
 
     if (special) {
-      return { ...col, prop: special.prop, label: special.label, checked: true, visible: true }
+      return {
+        ...col,
+        prop: special.prop,
+        label: $t(special.labelKey),
+        checked: true,
+        visible: true
+      }
     }
     return { ...col, checked: visibility, visible: visibility }
   })

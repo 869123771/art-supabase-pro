@@ -4,58 +4,63 @@
       action-hint="字典类型和关联字典项已自动定位；处理完成后可返回继续删除。"
     />
     <div class="dict-layout business-workspace-content">
-      <ElSplitter class="dict-splitter">
-        <ElSplitterPanel size="316px" min="288px" max="380px">
+      <ArtWorkspaceSplitter
+        class="dict-splitter"
+        primary-size="316px"
+        primary-min="288px"
+        primary-max="380px"
+        :breakpoint="960"
+        stacked-primary-size="520px"
+      >
+        <template #primary>
           <div class="dict-tree-panel">
             <TypeTree :target-node-id="deleteTargetTypeId" @tree-node-click="handleTreeNodeClick" />
           </div>
-        </ElSplitterPanel>
+        </template>
 
-        <ElSplitterPanel>
-          <div class="dict-table-panel">
-            <BusinessWorkspaceHeader
-              v-show="!table.focusMode || !isDictionarySelected"
-              class="dict-type-overview"
-              eyebrow="DICTIONARY TYPE"
-              :title="dictWorkspaceTitle"
-              :description="dictWorkspaceDescription"
-              icon="ri:book-2-line"
-              :tags="dictWorkspaceTags"
-              density="compact"
-            >
-              <template v-if="isDictionarySelected" #actions>
-                <BusinessTableWorkspaceActions :table="tableQueryRef" />
-              </template>
-            </BusinessWorkspaceHeader>
+        <div class="dict-table-panel">
+          <BusinessWorkspaceHeader
+            v-show="!table.focusMode || !isDictionarySelected"
+            class="dict-type-overview"
+            eyebrow="DICTIONARY TYPE"
+            :title="dictWorkspaceTitle"
+            :description="dictWorkspaceDescription"
+            icon="ri:book-2-line"
+            :tags="dictWorkspaceTags"
+            density="compact"
+          >
+            <template v-if="isDictionarySelected" #actions>
+              <BusinessTableWorkspaceActions :table="tableQueryRef" />
+            </template>
+          </BusinessWorkspaceHeader>
 
-            <ArtTableQuery
-              v-if="isDictionarySelected"
-              ref="tableQueryRef"
-              v-model="table.searchQuery"
-              v-model:focus-mode="table.focusMode"
-              :search-items="table.searchItems"
-              :api-fn="fetchTableData"
-              :data-transformer="transformDictTree"
-              :columns-factory="table.columnsFactory"
-              :header-actions="table.headerActions"
-              header-actions-placement="workspace"
-              :immediate="false"
-              :search-bar-props="table.searchBarProps"
-              :table-props="table.props"
-              focusable
-              focus-scope-selector=".dict-layout"
+          <ArtTableQuery
+            v-if="isDictionarySelected"
+            ref="tableQueryRef"
+            v-model="table.searchQuery"
+            v-model:focus-mode="table.focusMode"
+            :search-items="table.searchItems"
+            :api-fn="fetchTableData"
+            :data-transformer="transformDictTree"
+            :columns-factory="table.columnsFactory"
+            :header-actions="table.headerActions"
+            header-actions-placement="workspace"
+            :immediate="false"
+            :search-bar-props="table.searchBarProps"
+            :table-props="table.props"
+            focusable
+            focus-scope-selector=".dict-layout"
+          />
+
+          <div v-else class="dict-selection-empty art-card-xs">
+            <ArtEmptyState
+              :title="selectionEmptyTitle"
+              :description="selectionEmptyDescription"
+              :visual-size="104"
             />
-
-            <div v-else class="dict-selection-empty art-card-xs">
-              <ArtEmptyState
-                :title="selectionEmptyTitle"
-                :description="selectionEmptyDescription"
-                :visual-size="104"
-              />
-            </div>
           </div>
-        </ElSplitterPanel>
-      </ElSplitter>
+        </div>
+      </ArtWorkspaceSplitter>
     </div>
 
     <DictDialog ref="dictDialogRef" @success="handleSaveSuccess" />
@@ -79,6 +84,7 @@
   } from '@/components/core/forms/art-button-more/index.vue'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
+  import ArtWorkspaceSplitter from '@/components/core/layouts/art-workspace-splitter/index.vue'
   import { ColumnOption } from '@/types'
   import TreeUtils from '@/utils/tree'
   import { useUserStore } from '@/store/modules/user'
@@ -491,13 +497,8 @@
       min-height: 0;
     }
 
-    .dict-tree-panel {
-      padding-right: 8px;
-    }
-
     .dict-table-panel {
       gap: 12px;
-      padding-left: 8px;
 
       .dict-type-overview {
         flex: none;
@@ -551,86 +552,8 @@
       color: var(--el-text-color-placeholder);
     }
 
-    .dict-splitter {
-      :deep(.el-splitter-panel) {
-        overflow: hidden;
-      }
-
-      :deep(.el-splitter-bar) {
-        width: 16px;
-        cursor: col-resize;
-      }
-
-      :deep(.el-splitter-bar::before) {
-        position: absolute;
-        top: 0;
-        bottom: 0;
-        left: 50%;
-        width: 1px;
-        content: '';
-        background: var(--el-border-color);
-        opacity: 0;
-        transform: translateX(-50%);
-        transition:
-          opacity 0.18s ease,
-          background-color 0.18s ease;
-      }
-
-      :deep(.el-splitter-bar__dragger) {
-        width: 16px;
-        height: 56px;
-        border-radius: 999px;
-        opacity: 0.28;
-        transition:
-          opacity 0.18s ease,
-          background-color 0.18s ease,
-          box-shadow 0.18s ease;
-      }
-
-      :deep(.el-splitter-bar__dragger::before) {
-        width: 3px;
-        height: 32px;
-        background: var(--el-color-primary);
-        border-radius: 999px;
-      }
-
-      :deep(.el-splitter-bar:hover::before),
-      :deep(.el-splitter-bar:has(.el-splitter-bar__dragger-active)::before) {
-        background: var(--el-color-primary-light-7);
-        opacity: 1;
-      }
-
-      :deep(.el-splitter-bar:hover .el-splitter-bar__dragger),
-      :deep(.el-splitter-bar__dragger-active) {
-        opacity: 1;
-      }
-    }
-
     @media (width <= 960px) {
       height: auto;
-
-      .dict-splitter {
-        display: block;
-
-        :deep(.el-splitter-panel) {
-          width: 100% !important;
-          height: auto;
-          overflow: visible;
-        }
-
-        :deep(.el-splitter-bar) {
-          display: none;
-        }
-      }
-
-      .dict-tree-panel {
-        padding-right: 0;
-        margin-bottom: 20px;
-      }
-
-      .dict-table-panel {
-        padding-left: 0;
-      }
     }
   }
 </style>

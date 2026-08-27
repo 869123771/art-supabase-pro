@@ -10,7 +10,7 @@
     @mousedown="handleTableMouseDown"
   >
     <ElTable ref="elTableRef" v-loading="!!loading" v-bind="mergedTableProps">
-      <template v-for="col in columns" :key="col.prop || col.type">
+      <template v-for="col in visibleColumns" :key="col.prop || col.type">
         <!-- 渲染全局序号列 -->
         <ElTableColumn v-if="col.type === 'globalIndex'" v-bind="{ ...col }">
           <template #default="{ $index }">
@@ -165,11 +165,13 @@
   import { ColumnOption } from '@/types'
   import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import { useTableStore } from '@/store/modules/table'
+  import { useTenantScopeStore } from '@/store/modules/tenantScope'
   import { useCommon } from '@/hooks/core/useCommon'
   import { useTableHeight } from '@/hooks/core/useTableHeight'
   import { useEventListener, useResizeObserver, useWindowSize } from '@vueuse/core'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import TreeUtils from '@/utils/tree'
+  import { filterTenantDimensionDescriptors } from '@/utils/tenant-dimension-visibility'
 
   defineOptions({ name: 'ArtTable' })
 
@@ -199,6 +201,7 @@
   const rowKeysBeforeDrag = ref<string[]>([])
   const tableStore = useTableStore()
   const { isBorder, isZebra, tableSize, isFullScreen, isHeaderBackground } = storeToRefs(tableStore)
+  const { isPlatformScope } = storeToRefs(useTenantScopeStore())
 
   interface RowDragPayload<T = ArtTableRow> {
     row?: T
@@ -276,6 +279,9 @@
     additionalHeightOffset: 0,
     selectedRowKeys: () => []
   })
+  const visibleColumns = computed(() =>
+    filterTenantDimensionDescriptors(props.columns, isPlatformScope.value)
+  )
   const instance = getCurrentInstance()
   const attrs = useAttrs()
 
@@ -436,13 +442,13 @@
   const showPagination = computed(() => !!currentPagination.value && !isEmpty.value)
 
   const hasDraggableColumn = computed(() =>
-    props.columns.some(
+    visibleColumns.value.some(
       (column) => column.draggable === true || typeof column.draggable === 'function'
     )
   )
 
   const hasSelectionColumn = computed(() =>
-    props.columns.some((column) => column.type === 'selection')
+    visibleColumns.value.some((column) => column.type === 'selection')
   )
 
   // Element Plus 在部分场景会先用 $index = -1 进行预渲染。

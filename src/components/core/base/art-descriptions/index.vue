@@ -8,7 +8,7 @@
     :label-width="labelWidth"
   >
     <ElDescriptionsItem
-      v-for="item in items"
+      v-for="item in visibleItems"
       :key="item.key"
       :label="item.label"
       :span="item.span"
@@ -50,6 +50,9 @@
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import { formatArtValue } from '@/utils/ui'
   import type { ArtDescriptionItem } from './types'
+  import { storeToRefs } from 'pinia'
+  import { useTenantScopeStore } from '@/store/modules/tenantScope'
+  import { filterTenantDimensionDescriptors } from '@/utils/tenant-dimension-visibility'
 
   defineOptions({ name: 'ArtDescriptions' })
 
@@ -92,6 +95,10 @@
   const breakpoints = useBreakpoints({ mobile: 0, tablet: 768, desktop: 1200 })
   const activeBreakpoint = breakpoints.active()
   const { copy } = useClipboard()
+  const { isPlatformScope } = storeToRefs(useTenantScopeStore())
+  const visibleItems = computed(() =>
+    filterTenantDimensionDescriptors(props.items, isPlatformScope.value)
+  )
 
   const resolvedColumns = computed(() => {
     if (activeBreakpoint.value === 'mobile') return props.mobileColumns

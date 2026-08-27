@@ -6,7 +6,7 @@
  *
  * ## 主要功能
  *
- * - 权限验证 - 根据路由 meta 中的权限列表验证用户权限
+ * - 权限验证 - 通过统一权限解析器验证按钮权限及平台超级管理员覆盖规则
  * - DOM 控制 - 无权限时自动移除元素，而非隐藏
  * - 响应式更新 - 权限变化时自动更新元素状态
  *
@@ -26,26 +26,20 @@
  * ## 注意事项
  *
  * - 该指令会直接移除 DOM 元素，而不是使用 v-if 隐藏
- * - 权限列表从当前路由的 meta.authList 中获取
+ * - 权限判断与编程式 `hasAuth` 调用保持一致
  *
  * @module directives/auth
  * @author Art Design Pro Team
  */
 
 import { App, Directive, DirectiveBinding } from 'vue'
-import { useMenuStore } from '@/store/modules/menu'
-import { AppRouteRecord } from '@/types'
+import { useAuth } from '@/hooks/core/useAuth'
 
 export type AuthDirective = Directive<HTMLElement, string | undefined>
 
 function checkAuthPermission(el: HTMLElement, binding: DirectiveBinding<string | undefined>): void {
-  // 获取当前路由的权限列表
-  const menuStore = useMenuStore()
-  // const authList = (router.currentRoute.value.meta.authList as Array<{ authMark: string }>) || []
-
-  const authList: AppRouteRecord[] = menuStore.buttonList
-  // 检查是否有对应的权限标识
-  const hasPermission = binding.value ? authList?.some((item) => item.name === binding.value) : true
+  const { hasAuth } = useAuth()
+  const hasPermission = binding.value ? hasAuth(binding.value) : true
   // 如果没有权限，移除元素
   if (!hasPermission) {
     removeElement(el)

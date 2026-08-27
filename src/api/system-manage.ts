@@ -6,6 +6,7 @@ import { buildSpecsFromMap, applyFilters, type Op } from '@/utils/supabase'
 import { toNextDayStartUTC, toStartOfDayUTC } from '@/utils'
 import { omit } from 'lodash-es'
 import TreeUtils from '@/utils/tree'
+import { resolveTenantScopeId } from '@/utils/tenant-scope-context'
 const { supabase, keysToSnakeDeep, responseHandle } = useSupabase()
 
 const organizationTreeUtils = new TreeUtils({
@@ -99,6 +100,7 @@ export async function fetchGetUserList(params: Api.SystemManage.UserSearchParams
     .select(
       `
         *,
+        tenant:sys_tenant!sys_user_tenant_id_fkey(tenant_code, tenant_name, builtin_type),
         organization:sys_organization!sys_user_organization_id_fkey(
           id,
           organization_code,
@@ -163,11 +165,12 @@ export async function fetchGetOrganizationList(
   params: Api.SystemManage.OrganizationSearchParams = {}
 ) {
   const { keyword, tenantId, organizationType, status, recordId } = params
+  const scopedTenantId = resolveTenantScopeId(tenantId)
   const response = await responseHandle<Api.SystemManage.OrganizationListItem[]>(
     () =>
       supabase.rpc('get_organization_list_secure', {
         p_keyword: keyword?.trim() || undefined,
-        p_tenant_id: tenantId || undefined,
+        p_tenant_id: scopedTenantId,
         p_organization_type: organizationType || undefined,
         p_status: status || undefined,
         p_record_id: recordId || undefined
@@ -238,23 +241,21 @@ export async function fetchGetEnableOrganizationTree(
 }
 
 export async function fetchGetUserOrganizationTree(params: { tenantId?: string } = {}) {
-  if (!params.tenantId) {
-    return { data: [], error: null }
-  }
-
-  const query = supabase
+  let query = supabase
     .from('sys_organization')
     .select(
       `
         id, tenant_id, parent_id, organization_code, organization_name,
         organization_type, status, sort, is_system,
+        tenant:sys_tenant!sys_organization_tenant_id_fkey(tenant_code, tenant_name),
         members:sys_user!sys_user_organization_id_fkey(id, status)
       `
     )
-    .eq('tenant_id', params.tenantId)
     .eq('status', '1')
     .order('sort', { ascending: true })
     .order('organization_name', { ascending: true })
+
+  if (params.tenantId) query = query.eq('tenant_id', params.tenantId)
 
   const response = await responseHandle<
     Array<Api.SystemManage.OrganizationScopeFilterItem & { members?: Array<{ id: string }> }>
@@ -271,31 +272,35 @@ export async function fetchGetUserOrganizationTree(params: { tenantId?: string }
         scopeCount: members?.length ?? 0
       })),
       (a, b) => {
+        const tenantDiff = (a.tenant?.tenantName ?? '').localeCompare(
+          b.tenant?.tenantName ?? '',
+          'zh-CN'
+        )
         const sortDiff = (a.sort ?? 0) - (b.sort ?? 0)
-        return sortDiff || a.organizationName.localeCompare(b.organizationName, 'zh-CN')
+        return (
+          tenantDiff || sortDiff || a.organizationName.localeCompare(b.organizationName, 'zh-CN')
+        )
       }
     )
   }
 }
 
 export async function fetchGetRoleOrganizationTree(params: { tenantId?: string } = {}) {
-  if (!params.tenantId) {
-    return { data: [], error: null }
-  }
-
-  const query = supabase
+  let query = supabase
     .from('sys_organization')
     .select(
       `
         id, tenant_id, parent_id, organization_code, organization_name,
         organization_type, status, sort, is_system,
+        tenant:sys_tenant!sys_organization_tenant_id_fkey(tenant_code, tenant_name),
         roles:sys_role!sys_role_organization_id_fkey(id, enabled)
       `
     )
-    .eq('tenant_id', params.tenantId)
     .eq('status', '1')
     .order('sort', { ascending: true })
     .order('organization_name', { ascending: true })
+
+  if (params.tenantId) query = query.eq('tenant_id', params.tenantId)
 
   const response = await responseHandle<
     Array<Api.SystemManage.OrganizationScopeFilterItem & { roles?: Array<{ id: string }> }>
@@ -312,8 +317,14 @@ export async function fetchGetRoleOrganizationTree(params: { tenantId?: string }
         scopeCount: roles?.length ?? 0
       })),
       (a, b) => {
+        const tenantDiff = (a.tenant?.tenantName ?? '').localeCompare(
+          b.tenant?.tenantName ?? '',
+          'zh-CN'
+        )
         const sortDiff = (a.sort ?? 0) - (b.sort ?? 0)
-        return sortDiff || a.organizationName.localeCompare(b.organizationName, 'zh-CN')
+        return (
+          tenantDiff || sortDiff || a.organizationName.localeCompare(b.organizationName, 'zh-CN')
+        )
       }
     )
   }

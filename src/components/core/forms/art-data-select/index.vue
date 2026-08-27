@@ -317,6 +317,9 @@
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import TreeUtils from '@/utils/tree'
+  import { storeToRefs } from 'pinia'
+  import { useTenantScopeStore } from '@/store/modules/tenantScope'
+  import { filterTenantDimensionDescriptors } from '@/utils/tenant-dimension-visibility'
   import type {
     ArtDataSelectEmits,
     ArtDataSelectExpose,
@@ -371,6 +374,7 @@
   })
 
   const emit = defineEmits<ArtDataSelectEmits>()
+  const { isPlatformScope } = storeToRefs(useTenantScopeStore())
 
   const tableRef = ref<DataSelectTableInstance>()
   const treeRef = ref<InstanceType<typeof ElTree>>()
@@ -417,14 +421,16 @@
   }))
 
   const normalizedColumns = computed<DataSelectColumn[]>(() => {
-    if (props.columns.length) return props.columns
-    return [
-      {
-        prop: typeof props.labelKey === 'string' ? props.labelKey : 'label',
-        label: '名称',
-        minWidth: 180
-      }
-    ]
+    const columns = props.columns.length
+      ? props.columns
+      : [
+          {
+            prop: typeof props.labelKey === 'string' ? props.labelKey : 'label',
+            label: '名称',
+            minWidth: 180
+          }
+        ]
+    return filterTenantDimensionDescriptors(columns, isPlatformScope.value)
   })
 
   const isComponentValue = (value: unknown): value is Component => {

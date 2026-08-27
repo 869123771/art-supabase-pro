@@ -20,6 +20,7 @@
 <script setup lang="ts">
   import { useRoute } from 'vue-router'
   import { useAuth } from '@/hooks/core/useAuth'
+  import { useTenantScopeAccessPolicy } from '@/hooks/core/useTenantScopeAccessPolicy'
   import { resolveBusinessButtonPermission } from '@/utils/business-permission'
 
   defineOptions({ name: 'ArtButtonTable' })
@@ -48,11 +49,19 @@
   const props = withDefaults(defineProps<Props>(), {})
   const route = useRoute()
   const { hasAuth } = useAuth()
+  const { isCrossTenantReadOnly } = useTenantScopeAccessPolicy()
 
   const resolvedPermission = computed(() =>
     resolveBusinessButtonPermission(route, props.type, props.permission)
   )
-  const canAccess = computed(() => !resolvedPermission.value || hasAuth(resolvedPermission.value))
+  const isMutationAction = computed(() =>
+    ['add', 'edit', 'delete', 'sign'].includes(String(props.type))
+  )
+  const canAccess = computed(
+    () =>
+      !(isCrossTenantReadOnly.value && isMutationAction.value) &&
+      (!resolvedPermission.value || hasAuth(resolvedPermission.value))
+  )
 
   const emit = defineEmits<{
     (e: 'click'): void

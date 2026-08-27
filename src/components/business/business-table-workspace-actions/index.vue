@@ -1,6 +1,11 @@
 <template>
   <div class="business-table-workspace-actions" aria-label="表格显示与主要操作">
-    <div class="business-table-workspace-actions__display" role="group" aria-label="表格显示设置">
+    <div
+      v-if="showDisplayControls"
+      class="business-table-workspace-actions__display"
+      role="group"
+      aria-label="表格显示设置"
+    >
       <div
         class="business-table-workspace-actions__toggle"
         title="显示搜索、刷新、密度、全屏和列设置等辅助工具"
@@ -56,10 +61,12 @@
     defineProps<{
       table?: ArtTableQueryExpose | null
       focusable?: boolean
+      showDisplayControls?: boolean
     }>(),
     {
       table: null,
-      focusable: true
+      focusable: true,
+      showDisplayControls: true
     }
   )
 

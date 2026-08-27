@@ -339,6 +339,7 @@ declare namespace Api {
       OrganizationListItem,
       | 'id'
       | 'tenantId'
+      | 'tenant'
       | 'parentId'
       | 'organizationCode'
       | 'organizationName'

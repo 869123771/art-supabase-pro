@@ -24,47 +24,52 @@
     </BusinessWorkspaceHeader>
 
     <div class="workflow-definition__workspace">
-      <aside v-if="isDesktopMenuLayout" class="workflow-definition__menu-panel">
-        <WorkflowBusinessMenuFilter
-          :data="menuTree"
-          :selected-menu-id="selectedMenuId"
-          :loading="menuLoading"
-          @select="handleMenuSelect"
-          @refresh="handleMenuRefresh"
-        />
-      </aside>
+      <ArtWorkspaceSplitter :breakpoint="1200" narrow-mode="hide">
+        <template #primary>
+          <aside v-if="isDesktopMenuLayout" class="workflow-definition__menu-panel">
+            <WorkflowBusinessMenuFilter
+              :data="menuTree"
+              :selected-menu-id="selectedMenuId"
+              :loading="menuLoading"
+              @select="handleMenuSelect"
+              @refresh="handleMenuRefresh"
+            />
+          </aside>
+        </template>
 
-      <div class="workflow-definition__table-workspace">
-        <section v-if="!isDesktopMenuLayout" class="workflow-definition__mobile-menu art-card-xs">
-          <span aria-hidden="true"><ArtSvgIcon icon="ri:node-tree" /></span>
-          <div
-            ><small>当前业务范围</small><strong>{{ selectedMenuLabel }}</strong></div
-          >
-          <ElButton type="primary" plain @click="openMenuDrawer">
-            <ArtSvgIcon icon="ri:filter-3-line" />业务筛选
-          </ElButton>
-        </section>
+        <div class="workflow-definition__table-workspace">
+          <section v-if="!isDesktopMenuLayout" class="workflow-definition__mobile-menu art-card-xs">
+            <span aria-hidden="true"><ArtSvgIcon icon="ri:node-tree" /></span>
+            <div
+              ><small>当前业务范围</small><strong>{{ selectedMenuLabel }}</strong></div
+            >
+            <ElButton type="primary" plain @click="openMenuDrawer">
+              <ArtSvgIcon icon="ri:filter-3-line" />业务筛选
+            </ElButton>
+          </section>
 
-        <ArtTableQuery
-          ref="tableQueryRef"
-          focusable
-          v-model="table.searchQuery"
-          :search-items="table.searchItems"
-          :api-fn="fetchTableData"
-          :columns-factory="table.columnsFactory"
-          :header-actions="table.headerActions"
-          header-actions-placement="workspace"
-          :search-bar-props="{ span: 8, labelWidth: 88 }"
-          :table-props="{
-            rowKey: 'id',
-            tableLayout: 'fixed',
-            emptyText: '暂无审批流程定义',
-            emptyDescription: isPlatformSuper
-              ? '可以新建流程，或调整筛选条件后重新查询。'
-              : '当前租户还没有可查看的流程，请联系平台管理员配置。'
-          }"
-        />
-      </div>
+          <ArtTableQuery
+            ref="tableQueryRef"
+            focusable
+            v-model="table.searchQuery"
+            :search-items="table.searchItems"
+            :api-fn="fetchTableData"
+            :columns-factory="table.columnsFactory"
+            :header-actions="table.headerActions"
+            header-actions-placement="workspace"
+            :search-bar-props="{ span: 8, labelWidth: 88 }"
+            :table-props="{
+              rowKey: 'id',
+              tableLayout: 'fixed',
+              emptyText: '暂无审批流程定义',
+              emptyDescription: isPlatformSuper
+                ? '可以新建流程，或调整筛选条件后重新查询。'
+                : '当前租户还没有可查看的流程，请联系平台管理员配置。'
+            }"
+            focus-scope-selector=".workflow-definition__workspace"
+          />
+        </div>
+      </ArtWorkspaceSplitter>
     </div>
 
     <WorkflowVersionHistoryDialog ref="versionHistoryRef" @success="handleSaveSuccess" />
@@ -105,6 +110,7 @@
   } from '@/components/core/forms/art-button-more/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import ArtDrawer from '@/components/core/drawers/art-drawer/index.vue'
+  import ArtWorkspaceSplitter from '@/components/core/layouts/art-workspace-splitter/index.vue'
   import type { ArtDrawerExpose } from '@/components/core/drawers/art-drawer/types'
   import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
   import BusinessWorkspaceHeader from '@/components/business/business-workspace-header/index.vue'
@@ -614,11 +620,8 @@
     }
 
     &__workspace {
-      display: grid;
       flex: 1 1 auto;
-      grid-template-rows: minmax(0, 1fr);
-      grid-template-columns: 264px minmax(0, 1fr);
-      gap: 12px;
+      width: 100%;
       min-width: 0;
       min-height: 0;
       overflow: hidden;
@@ -831,7 +834,6 @@
 
   @media (width <= 1200px) {
     .workflow-definition__workspace {
-      display: block;
       overflow: visible;
     }
 
