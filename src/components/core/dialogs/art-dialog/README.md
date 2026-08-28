@@ -49,7 +49,7 @@ onOpen: async (_data, api) => {
 - 默认显示“取消”和“确定”按钮
 - 确认成功后默认自动关闭
 - 关闭完成后默认重置运行时数据和 Loading 状态
-- 设置 `contentHeight` 或 `contentMaxHeight` 后自动使用 `ElScrollbar`
+- 内容区域默认最大高度为 `min(70vh, calc(100vh - 200px))`，超过后由弹窗内的 `ElScrollbar` 滚动，避免外层遮罩出现滚动条
 - 未封装的 `ElDialog` Props、事件和属性可以直接透传
 
 ## 配置方式与优先级
@@ -217,7 +217,7 @@ dialogRef.value?.handleOpen(data, {
 
 When the dialog enters fullscreen mode, `contentHeight` and `contentMaxHeight` stop constraining the content area. The dialog body uses the available viewport height and only scrolls when the content actually exceeds it. Exiting fullscreen restores the configured height limits.
 
-`contentHeight` 是固定内容高度；`contentMaxHeight` 是最大内容高度，内容没超过时自然适应，超过后自动出现滚动条。没有设置 `contentHeight` 和 `contentMaxHeight` 时，不会额外创建 `ElScrollbar`。
+`contentHeight` 是固定内容高度；`contentMaxHeight` 是最大内容高度，内容没超过时自然适应，超过后自动出现滚动条。`ArtDialog` 默认使用 `min(70vh, calc(100vh - 200px))` 作为内容最大高度，业务弹窗可以通过组件 Props 或 `handleOpen` 覆盖。
 
 弹窗 Body 本身不设置内边距，默认内容间距由 `art-dialog__content` 承担，因此滚动条会贴近弹窗右侧边缘。确需贴边展示的特殊内容可在弹窗类名上覆盖 `--art-dialog-content-padding: 0`。
 
@@ -280,7 +280,7 @@ dialogRef.value?.handleOpen(user, {
 | `title` | `string` | `''` | 标题 |
 | `width` | `string \| number` | `'50%'` | 弹窗宽度 |
 | `contentHeight` | `string \| number` | `undefined` | 内容固定高度，设置后启用滚动条 |
-| `contentMaxHeight` | `string \| number` | `undefined` | 内容最大高度，超过后启用滚动条 |
+| `contentMaxHeight` | `string \| number` | `'min(70vh, calc(100vh - 200px))'` | 内容最大高度，超过后启用滚动条 |
 | `showFooter` | `boolean` | `true` | 是否显示 Footer |
 | `showCancelButton` | `boolean` | `true` | 是否显示取消按钮 |
 | `showConfirmButton` | `boolean` | `true` | 是否显示确定按钮 |

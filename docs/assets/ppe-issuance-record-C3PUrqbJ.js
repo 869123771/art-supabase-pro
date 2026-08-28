@@ -1,0 +1,1 @@
+import{Dt as e,Kt as t,vt as n}from"./framework-Dc3kpLtW.js";import{t as r}from"./smis-page-placeholder-B2q5h69I.js";var i=e({name:`SmisPpeIssuanceRecord`,__name:`index`,setup(e){return(e,i)=>(t(),n(r,{section:`安全生产 / 防护用品管理`,title:`防护用品发放记录`}))}});export{i as default};

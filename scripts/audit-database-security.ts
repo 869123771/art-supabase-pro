@@ -11,6 +11,12 @@ const internalHelperMigrationName = 'restrict_internal_security_definer_helpers'
 const explicitExecutionBoundaryVersion = '20260823112749'
 const explicitExecutionBoundaryName = 'make_public_function_execution_explicit'
 const privilegedBatchBoundaryName = 'bound_privileged_batch_rpc_inputs'
+// `supabase migration fetch --linked` restores immutable production history,
+// including older function definitions whose ACLs were tightened by a later
+// migration. Apply per-file ACL rules to every pending/future migration while
+// retaining the historical boundary assertions above for the fetched history.
+const synchronizedRemoteHistoryVersion = '20260828032639'
+const pendingVersionsBeforeRemoteHistory = new Set(['20260827123340'])
 const migrationPattern = /^(\d{14})_([a-z0-9_]+)\.sql$/
 const publicFunctionPattern =
   /create\s+(?:or\s+replace\s+)?function\s+public\.([a-z_][a-z0-9_]*)\s*\(/gi
@@ -208,9 +214,14 @@ assert.match(
   '客户依赖分析与清理必须限制为最多 500 个客户'
 )
 
-const governedMigrations = migrations.filter(({ version }) => version > securityBoundaryVersion)
+const requiresStrictPerFileAcl = (version: string): boolean =>
+  version > synchronizedRemoteHistoryVersion || pendingVersionsBeforeRemoteHistory.has(version)
+
+const governedMigrations = migrations.filter(
+  ({ version }) => version > securityBoundaryVersion && requiresStrictPerFileAcl(version)
+)
 const explicitAclMigrations = migrations.filter(
-  ({ version }) => version > explicitExecutionBoundaryVersion
+  ({ version }) => version > explicitExecutionBoundaryVersion && requiresStrictPerFileAcl(version)
 )
 const missingFunctionAcl: string[] = []
 const missingExplicitFunctionAcl: string[] = []

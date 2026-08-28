@@ -1,0 +1,1 @@
+import{Dt as e,Kt as t,vt as n}from"./framework-Dc3kpLtW.js";import{t as r}from"./smis-page-placeholder-B2q5h69I.js";var i=e({name:`SmisMaterialCategory`,__name:`index`,setup(e){return(e,i)=>(t(),n(r,{section:`安全生产 / 防护用品管理`,title:`物料类别`}))}});export{i as default};

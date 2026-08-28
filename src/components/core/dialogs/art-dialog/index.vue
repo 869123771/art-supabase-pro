@@ -165,6 +165,8 @@
 
   const emit = defineEmits<ArtDialogEmits<T>>()
 
+  const DEFAULT_CONTENT_MAX_HEIGHT = 'min(70vh, calc(100vh - 200px))'
+
   const attrs = useAttrs()
   const slots = defineSlots<ArtDialogSlots<T>>()
   const dialogRef = shallowRef<DialogInstance>()
@@ -281,11 +283,15 @@
 
   const normalizedContentMaxHeight = computed(() => {
     if (isFullscreen.value) return undefined
-    return normalizeSize(options.value.contentMaxHeight ?? options.value.contentHeight)
+    return normalizeSize(
+      options.value.contentMaxHeight ?? options.value.contentHeight ?? DEFAULT_CONTENT_MAX_HEIGHT
+    )
   })
 
   const shouldUseScrollbar = computed(() => {
-    return Boolean(options.value.contentHeight || options.value.contentMaxHeight)
+    return Boolean(
+      normalizedContentHeight.value || normalizedContentMaxHeight.value || isFullscreen.value
+    )
   })
 
   const dialogClass = computed(() => [

@@ -391,6 +391,31 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
       button('Push', '下推演练计划', 'SmisEmergencyRescuePlan:Push')
     ]
   },
+  {
+    menuName: 'SmisEmergencyDrillPlan',
+    buttons: [
+      button('View', '查看演练计划', 'SmisEmergencyDrillPlan:View'),
+      button('Add', '新增演练计划', 'SmisEmergencyDrillPlan:Add'),
+      button('Edit', '编辑演练计划', 'SmisEmergencyDrillPlan:Edit'),
+      button('Delete', '删除演练计划', 'SmisEmergencyDrillPlan:Delete'),
+      button('Submit', '提交演练计划', 'SmisEmergencyDrillPlan:Submit'),
+      button('Push', '下推演练记录', 'SmisEmergencyDrillPlan:Push')
+    ]
+  },
+  {
+    menuName: 'SmisEmergencyDrillRecord',
+    buttons: [
+      button('View', '查看演练记录', 'SmisEmergencyDrillRecord:View'),
+      button('Add', '新增演练记录', 'SmisEmergencyDrillRecord:Add'),
+      button('Edit', '编辑演练记录', 'SmisEmergencyDrillRecord:Edit'),
+      button('Delete', '删除演练记录', 'SmisEmergencyDrillRecord:Delete'),
+      button('Submit', '提交演练记录', 'SmisEmergencyDrillRecord:Submit')
+    ]
+  },
+  {
+    menuName: 'SmisEmergencyDrillReport',
+    buttons: [button('View', '查看演练报表', 'SmisEmergencyDrillReport:View')]
+  },
 
   {
     menuName: 'HrEmployeeRoster',

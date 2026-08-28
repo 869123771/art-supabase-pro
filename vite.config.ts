@@ -339,6 +339,8 @@ export default ({ mode }: { mode: string }) => {
         'xgplayer',
         'crypto-js',
         'file-saver',
+        // 设备台账页面来自 SMIS 子模块，不在根页面扫描范围内；显式预构建可避免首次导航 404。
+        'qrcode.vue',
         'vue-img-cutter',
         'element-plus/es',
         // 预打包 Monaco Editor 的核心和语言 Worker 文件

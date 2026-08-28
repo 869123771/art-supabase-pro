@@ -17,6 +17,14 @@ const requiredPermissionMigrations = [
   'tenant_notification_reminder',
   'backfill_new_button_permissions_for_existing_roles'
 ] as const
+// These versions already exist in the linked production migration history. They
+// repeat the immediately preceding migration byte-for-byte, so keep them for a
+// faithful history checkout while continuing to reject any new duplicates.
+const remoteDuplicateMigrationAllowlist = new Set([
+  '20260823113536_expand_talent_aging_route_and_due_soon.sql',
+  '20260823122825_expand_vms_workflow_smis_decision_workspaces.sql',
+  '20260823123745_optimize_organization_route_first_load.sql'
+])
 type ManagedModule = 'tms' | 'vms' | 'fms' | 'hr' | 'smis' | 'system' | 'workflow'
 
 const managedViewRoots = new Map<ManagedModule, string>([
@@ -84,6 +92,215 @@ const platformSuperAllowlist = new Map<string, string>([
   [
     'modules/art-supabase-tms/src/views/delivery-management/modules/waybill-receipt-ocr-panel.vue',
     'controlled AI workflow-state write'
+  ],
+  [
+    'modules/art-supabase-hr/src/views/operations/absence/index.vue',
+    'cross-tenant absence workspace context'
+  ],
+  [
+    'modules/art-supabase-hr/src/views/operations/absence/modules/absence-dialog.vue',
+    'cross-tenant absence assignment'
+  ],
+  [
+    'modules/art-supabase-hr/src/views/operations/attendance/index.vue',
+    'cross-tenant attendance context and controlled period reopen'
+  ],
+  [
+    'modules/art-supabase-hr/src/views/operations/attendance/modules/attendance-dialog.vue',
+    'cross-tenant attendance assignment'
+  ],
+  [
+    'modules/art-supabase-hr/src/views/operations/benefits/index.vue',
+    'cross-tenant benefits workspace context'
+  ],
+  [
+    'modules/art-supabase-hr/src/views/operations/benefits/modules/benefit-record-dialog.vue',
+    'cross-tenant benefit assignment'
+  ],
+  [
+    'modules/art-supabase-hr/src/views/operations/compensation-review/modules/compensation-review-dialog.vue',
+    'cross-tenant compensation-review assignment'
+  ],
+  [
+    'modules/art-supabase-hr/src/views/operations/compensation/index.vue',
+    'cross-tenant compensation context and sensitive columns'
+  ],
+  [
+    'modules/art-supabase-hr/src/views/operations/compensation/modules/compensation-dialog.vue',
+    'cross-tenant compensation assignment'
+  ],
+  [
+    'modules/art-supabase-hr/src/views/operations/contingent-workforce/modules/contingent-workforce-dialog.vue',
+    'cross-tenant contingent-workforce assignment'
+  ],
+  [
+    'modules/art-supabase-hr/src/views/operations/employee-experience/index.vue',
+    'cross-tenant employee-experience context'
+  ],
+  [
+    'modules/art-supabase-hr/src/views/operations/employee-experience/modules/experience-action-dialog.vue',
+    'cross-tenant experience-action assignment'
+  ],
+  [
+    'modules/art-supabase-hr/src/views/operations/employee-experience/modules/experience-survey-dialog.vue',
+    'cross-tenant experience-survey assignment'
+  ],
+  [
+    'modules/art-supabase-hr/src/views/operations/employee-relations/index.vue',
+    'cross-tenant employee-relations context'
+  ],
+  [
+    'modules/art-supabase-hr/src/views/operations/employee-relations/modules/employee-relation-record-dialog.vue',
+    'cross-tenant employee-relation assignment'
+  ],
+  [
+    'modules/art-supabase-hr/src/views/operations/headcount/index.vue',
+    'cross-tenant workforce-planning context'
+  ],
+  [
+    'modules/art-supabase-hr/src/views/operations/headcount/modules/workforce-planning-dialog.vue',
+    'cross-tenant workforce-plan assignment'
+  ],
+  [
+    'modules/art-supabase-hr/src/views/operations/policy-acknowledgement/modules/policy-document-dialog.vue',
+    'cross-tenant policy-document assignment'
+  ],
+  [
+    'modules/art-supabase-hr/src/views/operations/self-service/index.vue',
+    'cross-tenant service-delivery context'
+  ],
+  [
+    'modules/art-supabase-hr/src/views/operations/self-service/modules/service-delivery-dialog.vue',
+    'cross-tenant service-delivery assignment'
+  ],
+  [
+    'modules/art-supabase-hr/src/views/personnel/compliance/index.vue',
+    'cross-tenant compliance workspace context'
+  ],
+  [
+    'modules/art-supabase-hr/src/views/personnel/compliance/modules/compliance-record-dialog.vue',
+    'cross-tenant compliance-record assignment'
+  ],
+  [
+    'modules/art-supabase-hr/src/views/personnel/job-architecture/index.vue',
+    'cross-tenant job-architecture context and tenant columns'
+  ],
+  [
+    'modules/art-supabase-hr/src/views/personnel/job-architecture/modules/job-architecture-dialog.vue',
+    'cross-tenant job-architecture assignment'
+  ],
+  [
+    'modules/art-supabase-hr/src/views/personnel/lifecycle/index.vue',
+    'cross-tenant lifecycle workspace context'
+  ],
+  [
+    'modules/art-supabase-hr/src/views/personnel/lifecycle/modules/lifecycle-dialog.vue',
+    'cross-tenant lifecycle assignment'
+  ],
+  [
+    'modules/art-supabase-hr/src/views/personnel/organization-design/modules/organization-design-dialog.vue',
+    'cross-tenant organization-design assignment'
+  ],
+  [
+    'modules/art-supabase-hr/src/views/recruitment/workbench/index.vue',
+    'cross-tenant recruitment workspace context'
+  ],
+  [
+    'modules/art-supabase-hr/src/views/recruitment/workbench/modules/recruitment-dialog.vue',
+    'cross-tenant recruitment assignment'
+  ],
+  [
+    'modules/art-supabase-hr/src/views/talent/development/index.vue',
+    'cross-tenant learning workspace context'
+  ],
+  [
+    'modules/art-supabase-hr/src/views/talent/development/modules/learning-dialog.vue',
+    'cross-tenant learning assignment'
+  ],
+  [
+    'modules/art-supabase-hr/src/views/talent/internal-mobility/index.vue',
+    'cross-tenant internal-mobility context'
+  ],
+  [
+    'modules/art-supabase-hr/src/views/talent/internal-mobility/modules/internal-mobility-dialog.vue',
+    'cross-tenant internal-opportunity assignment'
+  ],
+  [
+    'modules/art-supabase-hr/src/views/talent/performance/index.vue',
+    'cross-tenant performance workspace context'
+  ],
+  [
+    'modules/art-supabase-hr/src/views/talent/performance/modules/performance-dialog.vue',
+    'cross-tenant performance assignment'
+  ],
+  [
+    'modules/art-supabase-hr/src/views/talent/succession/index.vue',
+    'cross-tenant succession workspace context'
+  ],
+  [
+    'modules/art-supabase-hr/src/views/talent/succession/modules/succession-dialog.vue',
+    'cross-tenant succession assignment'
+  ],
+  [
+    'modules/art-supabase-smis/src/views/basic-data/inspection-category/index.vue',
+    'cross-tenant inspection-category context and tenant columns'
+  ],
+  [
+    'modules/art-supabase-smis/src/views/basic-data/inspection-category/modules/inspection-category-dialog.vue',
+    'cross-tenant inspection-category assignment'
+  ]
+])
+
+const sourceReferenceExemptions = new Map<string, string>([
+  ...[
+    'SmisStatutoryHoliday:View',
+    'SmisSite:View',
+    'SmisInspectionCategory:View',
+    'SmisEquipmentCategory:View',
+    'SmisStorageLocation:View',
+    'SmisEquipmentLedger:View',
+    'SmisEquipmentDepreciation:View',
+    'SmisInspectionDeclaration:View',
+    'SmisSpecialEquipmentAnalysis:View',
+    'SmisSpecialEquipmentLedger:View',
+    'SmisEquipmentReminder:View',
+    'SmisSupplier:View',
+    'Hr:JobFamily:View',
+    'Hr:Grade:View'
+  ].map((code) => [code, 'page-route read boundary'] as const),
+  ...[
+    'Hr:EmployeeRelations:Sensitive:View',
+    'Hr:Benefits:Amount:View',
+    'Hr:Benefits:Payroll:Export',
+    'Hr:Benefits:Evidence:View',
+    'Hr:Experience:Comments:View',
+    'Hr:Compensation:Amount:View',
+    'Hr:Compensation:Amount:Edit',
+    'Hr:CompensationReview:Amount:View',
+    'Hr:ContingentWorkforce:PII:View',
+    'Hr:ContingentWorkforce:Cost:View',
+    'Hr:PolicyAcknowledgement:Evidence:View',
+    'Hr:Absence:Reason:View'
+  ].map((code) => [code, 'server or field-level authorization boundary'] as const),
+  ...[
+    'Hr:Lifecycle:Add',
+    'Hr:Lifecycle:Edit',
+    'Hr:Lifecycle:Delete',
+    'Hr:Succession:Plan:Add',
+    'Hr:Succession:Plan:Edit',
+    'Hr:Succession:Plan:Delete',
+    'Hr:Succession:Candidate:Add',
+    'Hr:Succession:Candidate:Edit',
+    'Hr:Succession:Candidate:Delete',
+    'Hr:Succession:Action:Add',
+    'Hr:Succession:Action:Edit',
+    'Hr:Succession:Action:Delete',
+    'Hr:Performance:Edit',
+    'Hr:Performance:Delete'
+  ].map((code) => [code, 'deterministic entity-action permission resolver'] as const),
+  [
+    'SmisEquipmentLedger:Inspection',
+    'inspection declaration is authorized at its workflow boundary'
   ]
 ])
 
@@ -129,6 +346,10 @@ const catalogRows = [
 const catalogCodes = new Set(catalogRows.map((row) => row.code))
 assert.equal(catalogCodes.size, catalogRows.length, '业务按钮权限码存在重复，请保持全局唯一')
 
+for (const code of sourceReferenceExemptions.keys()) {
+  assert.ok(catalogCodes.has(code), `页面权限引用例外未登记在目录中：${code}`)
+}
+
 for (const row of catalogRows) {
   assert.match(
     row.code,
@@ -167,14 +388,29 @@ const duplicateVersions = migrationFiles
 assert.deepEqual(duplicateVersions, [], `迁移版本号重复：${duplicateVersions.join(', ')}`)
 
 const duplicateContents = migrationFiles
-  .filter((migration, index, migrations) =>
-    migrations.some(
-      (candidate, candidateIndex) =>
-        candidateIndex < index && candidate.contentHash === migration.contentHash
-    )
+  .filter(
+    (migration, index, migrations) =>
+      !remoteDuplicateMigrationAllowlist.has(migration.fileName) &&
+      migrations.some(
+        (candidate, candidateIndex) =>
+          candidateIndex < index && candidate.contentHash === migration.contentHash
+      )
   )
   .map((migration) => migration.fileName)
 assert.deepEqual(duplicateContents, [], `存在内容完全重复的迁移：${duplicateContents.join(', ')}`)
+
+for (const fileName of remoteDuplicateMigrationAllowlist) {
+  const duplicateIndex = migrationFiles.findIndex((migration) => migration.fileName === fileName)
+  assert.notEqual(duplicateIndex, -1, `远端重复迁移兼容项不存在：${fileName}`)
+  assert.ok(
+    migrationFiles.some(
+      (candidate, candidateIndex) =>
+        candidateIndex < duplicateIndex &&
+        candidate.contentHash === migrationFiles[duplicateIndex]!.contentHash
+    ),
+    `远端重复迁移兼容项不再重复，请移除白名单：${fileName}`
+  )
+}
 
 if (migrationFiles.length > 0) {
   assert.ok(
@@ -257,6 +493,7 @@ const allManagedSource = [...sourceText.values()].join('\n')
 const missingExplicitReferences = catalogRows.filter(
   ({ code, owner }) =>
     availableSourceModules.has(owner) &&
+    !sourceReferenceExemptions.has(code) &&
     !allManagedSource.includes(`'${code}'`) &&
     !allManagedSource.includes(`"${code}"`) &&
     !allManagedSource.includes(`\`${code}\``)

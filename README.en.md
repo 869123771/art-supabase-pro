@@ -1,8 +1,8 @@
 <div align="center">
   <img src="./src/assets/images/common/logo.webp" width="96" alt="Art Supabase Pro Logo" />
   <h1>Art Supabase Pro</h1>
-  <p><strong>An enterprise business platform powered by Vue 3 and Supabase</strong></p>
-  <p>Connect permissions, data, workflows, transportation, fleet operations, finance, and AI in one production-oriented application.</p>
+  <p><strong>A modular enterprise business platform powered by Vue 3 and Supabase</strong></p>
+  <p>One shared platform for transportation, fleet, finance, HR, safety, driver operations, workflows, and governed AI.</p>
 
   <p>
     <a href="https://gitee.com/wangyanghub/art-supabase-pro">Gitee</a>
@@ -19,15 +19,33 @@
 
 ## Overview
 
-Art Supabase Pro goes beyond a UI-only admin template. It uses Supabase Auth, PostgreSQL, RLS, Storage, Realtime, RPC, and Edge Functions as its backend foundation and provides reusable, real-world enterprise workflows in a Vue 3 application.
+Art Supabase Pro goes beyond a UI-only admin template. It uses Supabase Auth, PostgreSQL, RLS, Storage, Realtime, RPC, and Edge Functions as its backend foundation. A shared platform runtime and independently maintained domain repositories combine into one reproducible application.
 
 The project currently includes:
 
 - Enterprise platform capabilities: authentication, multi-tenancy, RBAC, dynamic menus, button permissions, dictionaries, attachments, system parameters, and audit records.
 - End-to-end TMS operations: customers, carriers, drivers, cargo, contracts, stations, order entry, waybills, dispatching, delivery, in-transit monitoring, and financial settlement.
 - Vehicle lifecycle management: archives, approval, insurance, inspection, maintenance, accidents, mileage, routine checks, parts, suppliers, and expiry reminders.
+- Finance: transportation settlement, receivables, treasury, accounting, invoices, tax, fixed assets, payroll, and financial reporting.
+- Human resources: organizations, positions, employee lifecycle, recruitment, workforce planning, attendance, compensation, performance, talent, and employee services.
+- Safety management: equipment ledgers, qualifications and training, emergency response, anti-violation programs, PPE, tools, and accident management.
 - Approval workflows: versioned definitions, conditional nodes, tasks, transfer, delegation, reminders, monitoring, callback compensation, and full audit trails.
 - Governed AI capabilities: intelligent order entry, SQL assistant, project assistant, dispatch recommendations, transport anomaly analysis, cost review, profit diagnostics, receivables risk, vehicle health, OCR, and AI operations.
+
+## Repository Ecosystem
+
+| Repository | Responsibility | Dev port |
+| --- | --- | --: |
+| [`art-supabase-pro`](https://gitee.com/wangyanghub/art-supabase-pro) | Platform host, shared runtime, workflows, data center, and AI governance | `3006` |
+| [`art-supabase-tms`](https://gitee.com/wangyanghub/art-supabase-tms) | Transportation management and execution | `3016` |
+| [`art-supabase-vms`](https://gitee.com/wangyanghub/art-supabase-vms) | Vehicle lifecycle management | `3015` |
+| [`art-supabase-fms`](https://gitee.com/wangyanghub/art-supabase-fms) | Transportation finance and enterprise accounting | `3012` |
+| [`art-supabase-hr`](https://gitee.com/wangyanghub/art-supabase-hr) | Human resources and talent operations | `3013` |
+| [`art-supabase-smis`](https://gitee.com/wangyanghub/art-supabase-smis) | Safety management and equipment governance | `3014` |
+| [`supabase-mobile-tms-driver`](https://gitee.com/wangyanghub/supabase-mobile-tms-driver) | Driver-facing H5 and WeChat Mini Program | — |
+| [`art-supabase-doc`](https://gitee.com/wangyanghub/art-supabase-doc) | Product, development, deployment, and operations documentation | `5173` |
+
+The main repository pins domain applications with Git submodules and supplies authentication, tenancy, navigation, permissions, layout, shared components, and the Supabase client. Domain repositories own their pages, APIs, types, and business rules. The driver app joins the same TMS execution lifecycle through controlled server contracts.
 
 ## Product Highlights
 
@@ -71,6 +89,20 @@ Track receivables, payables, collections, payments, invoices, cost review, and t
 
 ![AI operations center](screenshort/12-ai-operations.png)
 
+### HR and safety operations
+
+HR connects organizations, positions, employee identities, employment status, account provisioning, and lifecycle history in one workspace. SMIS connects safety master data, equipment, qualifications, training, emergency response, PPE, tools, and incident governance.
+
+![HR employee directory](screenshort/13-hr-employee-roster.png)
+
+![SMIS emergency drill planning](screenshort/15-smis-emergency-drill-plan.png)
+
+### TMS driver workspace
+
+The H5 and WeChat Mini Program driver app brings the assigned vehicle, active task, transport milestones, remaining mileage, and field actions into one mobile workspace backed by controlled TMS lifecycle contracts.
+
+![TMS driver workspace](screenshort/16-driver-mobile-home.png)
+
 ## Technology Stack
 
 | Category             | Technologies                                                       |
@@ -85,12 +117,12 @@ Track receivables, payables, collections, payments, invoices, cost review, and t
 
 Requirements:
 
-- Node.js `>= 20.19.0`
-- pnpm `>= 8.8.0`
+- Node.js `>= 22.0.0`
+- pnpm `>= 11.9.0`
 - A Supabase project
 
 ```bash
-git clone https://gitee.com/wangyanghub/art-supabase-pro.git
+git clone --recurse-submodules https://gitee.com/wangyanghub/art-supabase-pro.git
 cd art-supabase-pro
 pnpm install
 ```

@@ -1,1 +1,0 @@
-import{Dt as e,Kt as t,vt as n}from"./framework-Dc3kpLtW.js";import{t as r}from"./smis-page-placeholder-B2q5h69I.js";var i=e({name:`SmisEmergencyDrillPlan`,__name:`index`,setup(e){return(e,i)=>(t(),n(r,{section:`安全生产 · 应急救援`,title:`应急演练计划`}))}});export{i as default};

@@ -1,0 +1,1 @@
+import{Dt as e,Kt as t,vt as n}from"./framework-Dc3kpLtW.js";import{t as r}from"./smis-page-placeholder-B2q5h69I.js";var i=e({name:`SmisSafetyTrainingPlan`,__name:`index`,setup(e){return(e,i)=>(t(),n(r,{section:`资质培训 / 培训管理`,title:`安全培训计划`}))}});export{i as default};
