@@ -27,6 +27,7 @@ export interface ResourcePanelProps {
   multiple?: boolean
   limit?: number
   pageSize?: number
+  internalScroll?: boolean
   showAction?: boolean
   dbClickConfirm?: boolean
   defaultFileType?: string

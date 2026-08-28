@@ -134,6 +134,7 @@
 
   const emit = defineEmits<{
     (e: 'update:modelValue', value: string | string[]): void
+    (e: 'resource-change', value: Api.DataCenter.Resources.ResourceListItem[]): void
   }>()
 
   const uploadBtnRef = ref<HTMLElement>()
@@ -251,6 +252,7 @@
     fileList.value[index].url = resource.url
 
     updateModelValue()
+    emit('resource-change', [resource])
   }
 
   function beforeUpload(rawFile: File) {
@@ -292,6 +294,7 @@
       return { name: item.originName ?? item.objectName ?? '资源文件', url: item.url }
     })
     updateModelValue()
+    emit('resource-change', selected)
   }
 
   const handleUpload = async (options: UploadRequestOptions): Promise<unknown> => {

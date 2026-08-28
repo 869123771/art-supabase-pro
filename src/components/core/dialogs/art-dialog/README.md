@@ -219,6 +219,8 @@ When the dialog enters fullscreen mode, `contentHeight` and `contentMaxHeight` s
 
 `contentHeight` 是固定内容高度；`contentMaxHeight` 是最大内容高度，内容没超过时自然适应，超过后自动出现滚动条。`ArtDialog` 默认使用 `min(70vh, calc(100vh - 200px))` 作为内容最大高度，业务弹窗可以通过组件 Props 或 `handleOpen` 覆盖。
 
+无论业务传入多大的 `contentHeight` 或 `contentMaxHeight`，非全屏弹窗都会自动保留头部、底部和视口安全间距；最外层遮罩不参与滚动，超出内容统一由弹窗内的 `ElScrollbar` 承接。
+
 弹窗 Body 本身不设置内边距，默认内容间距由 `art-dialog__content` 承担，因此滚动条会贴近弹窗右侧边缘。确需贴边展示的特殊内容可在弹窗类名上覆盖 `--art-dialog-content-padding: 0`。
 
 ## 自定义插槽

@@ -379,6 +379,36 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
     ]
   },
   {
+    menuName: 'SmisAccidentFlashReport',
+    buttons: [
+      button('View', '查看事故快报', 'SmisAccidentFlashReport:View'),
+      button('Add', '新增事故快报', 'SmisAccidentFlashReport:Add'),
+      button('Edit', '编辑事故快报', 'SmisAccidentFlashReport:Edit'),
+      button('Delete', '删除事故快报', 'SmisAccidentFlashReport:Delete'),
+      button('Export', '导出事故快报', 'SmisAccidentFlashReport:Export')
+    ]
+  },
+  {
+    menuName: 'SmisWorkInjuryDeclaration',
+    buttons: [
+      button('View', '查看工伤申报', 'SmisWorkInjuryDeclaration:View'),
+      button('Add', '新增工伤申报', 'SmisWorkInjuryDeclaration:Add'),
+      button('Edit', '编辑工伤申报', 'SmisWorkInjuryDeclaration:Edit'),
+      button('Delete', '删除工伤申报', 'SmisWorkInjuryDeclaration:Delete'),
+      button('Export', '导出工伤申报', 'SmisWorkInjuryDeclaration:Export')
+    ]
+  },
+  {
+    menuName: 'SmisAccidentInvestigation',
+    buttons: [
+      button('View', '查看事故分析单', 'SmisAccidentInvestigation:View'),
+      button('Add', '新增事故分析单', 'SmisAccidentInvestigation:Add'),
+      button('Edit', '编辑事故分析单', 'SmisAccidentInvestigation:Edit'),
+      button('Delete', '删除事故分析单', 'SmisAccidentInvestigation:Delete'),
+      button('Export', '导出事故分析单', 'SmisAccidentInvestigation:Export')
+    ]
+  },
+  {
     menuName: 'SmisEmergencyRescuePlan',
     buttons: [
       button('View', '查看应急预案', 'SmisEmergencyRescuePlan:View'),

@@ -36,7 +36,7 @@
     </div>
 
     <div class="mt-2 min-h-0 flex-1">
-      <el-scrollbar v-if="loading || resources.length">
+      <component :is="resourceListContainer" v-if="loading || resources.length">
         <div class="flex flex-wrap px-[2px] pt-[2px]">
           <el-space fill wrap :fill-ratio="9">
             <template v-for="resource in resources" :key="resource.id">
@@ -99,7 +99,7 @@
             <div v-for="i in 10" :key="i" class="resource-placeholder" />
           </el-space>
         </div>
-      </el-scrollbar>
+      </component>
       <div v-else class="h-full w-full flex flex-1 items-center justify-center">
         <ArtEmptyState
           title="暂无可用资源"
@@ -190,7 +190,7 @@
   import type { FileType, Resource, ResourcePanelProps } from './type.ts'
   import ArtMenuRight from '@/components/core/others/art-menu-right/index.vue'
   import type { MenuItemType } from '@/components/core/others/art-menu-right/index.vue'
-  import { ElMessage, ElMessageBox } from 'element-plus'
+  import { ElMessage, ElMessageBox, ElScrollbar } from 'element-plus'
   import { deleteResource, fetchGetResourceList } from '@/api/data-center'
   import useResourceStore from '@/store/modules/resource'
   import { pageInfoHandler } from '@utils/table/tableUtils'
@@ -204,6 +204,7 @@
   const props = withDefaults(defineProps<ResourcePanelProps>(), {
     multiple: false,
     limit: undefined,
+    internalScroll: true,
     showAction: true,
     pageSize: 30,
     dbClickConfirm: false
@@ -298,6 +299,7 @@
   const selected = ref<Resource[]>([])
 
   const loading = ref(false)
+  const resourceListContainer = computed(() => (props.internalScroll ? ElScrollbar : 'div'))
 
   const menu = ref({
     resource: {} as Resource,

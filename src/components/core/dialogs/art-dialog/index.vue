@@ -166,6 +166,7 @@
   const emit = defineEmits<ArtDialogEmits<T>>()
 
   const DEFAULT_CONTENT_MAX_HEIGHT = 'min(70vh, calc(100vh - 200px))'
+  const MAX_CONTENT_VIEWPORT_HEIGHT = 'calc(100dvh - 160px)'
 
   const attrs = useAttrs()
   const slots = defineSlots<ArtDialogSlots<T>>()
@@ -256,6 +257,10 @@
     return typeof value === 'number' ? `${value}px` : value
   }
 
+  const clampContentSizeToViewport = (value?: string) => {
+    return value ? `min(${value}, ${MAX_CONTENT_VIEWPORT_HEIGHT})` : undefined
+  }
+
   const dialogSizeMap = {
     sm: 'var(--art-dialog-width-sm)',
     md: 'var(--art-dialog-width-md)',
@@ -278,13 +283,15 @@
   const normalizedContentHeight = computed(() => {
     if (isFullscreen.value) return undefined
     const height = options.value.contentHeight
-    return normalizeSize(height)
+    return clampContentSizeToViewport(normalizeSize(height))
   })
 
   const normalizedContentMaxHeight = computed(() => {
     if (isFullscreen.value) return undefined
-    return normalizeSize(
-      options.value.contentMaxHeight ?? options.value.contentHeight ?? DEFAULT_CONTENT_MAX_HEIGHT
+    return clampContentSizeToViewport(
+      normalizeSize(
+        options.value.contentMaxHeight ?? options.value.contentHeight ?? DEFAULT_CONTENT_MAX_HEIGHT
+      )
     )
   })
 
@@ -402,6 +409,24 @@
 <style scoped lang="scss">
   :global(.art-dialog) {
     max-width: calc(100vw - 32px);
+  }
+
+  :global(.art-dialog:not(.is-fullscreen)) {
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100dvh - 16px);
+    overflow: hidden;
+  }
+
+  :global(.art-dialog:not(.is-fullscreen) > .el-dialog__header),
+  :global(.art-dialog:not(.is-fullscreen) > .el-dialog__footer) {
+    flex: none;
+  }
+
+  :global(.art-dialog:not(.is-fullscreen) > .el-dialog__body) {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
   }
 
   :global(.art-dialog > .el-dialog__body) {

@@ -7,7 +7,7 @@
     :dialog-props="dialogProps"
     @closed="handleClosed"
   >
-    <div class="h-[595px]">
+    <div class="art-resource-picker__content">
       <ResourcePanel
         v-model="modelValue"
         v-bind="panelProps"
@@ -62,6 +62,7 @@
     multiple: props.multiple,
     limit: props.limit,
     pageSize: props.pageSize,
+    internalScroll: false,
     showAction: props.showAction,
     dbClickConfirm: props.dbClickConfirm,
     defaultFileType: props.defaultFileType,
@@ -112,3 +113,9 @@
     { immediate: true }
   )
 </script>
+
+<style scoped lang="scss">
+  .art-resource-picker__content {
+    min-height: 0;
+  }
+</style>

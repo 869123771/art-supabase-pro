@@ -560,6 +560,13 @@ html.dark .el-card {
   border-radius: var(--art-modal-radius) !important;
 }
 
+// 弹窗只允许内容区滚动。Element Plus 默认让遮罩内层 overflow: auto，
+// 长表单会与 ArtDialog 的 ElScrollbar 形成双滚动条。
+.el-modal-dialog .el-overlay-dialog {
+  overflow: hidden;
+  overscroll-behavior: contain;
+}
+
 // 弹窗动画：轻量缩放与位移，保持企业后台的稳定感
 .dialog-fade-enter-active {
   animation: art-overlay-in var(--art-motion-duration-fast) ease-out both !important;
