@@ -150,6 +150,7 @@
     loadingCustomClass: '',
     contentHeight: undefined,
     contentMaxHeight: undefined,
+    useScrollbar: true,
     showFooter: true,
     showCancelButton: true,
     showConfirmButton: true,
@@ -188,6 +189,7 @@
     loadingCustomClass: props.loadingCustomClass,
     contentHeight: props.contentHeight,
     contentMaxHeight: props.contentMaxHeight,
+    useScrollbar: props.useScrollbar,
     showFooter: props.showFooter,
     showCancelButton: props.showCancelButton,
     showConfirmButton: props.showConfirmButton,
@@ -297,7 +299,8 @@
 
   const shouldUseScrollbar = computed(() => {
     return Boolean(
-      normalizedContentHeight.value || normalizedContentMaxHeight.value || isFullscreen.value
+      options.value.useScrollbar !== false &&
+      (normalizedContentHeight.value || normalizedContentMaxHeight.value || isFullscreen.value)
     )
   })
 
@@ -319,7 +322,9 @@
   )
 
   const setFullscreen = (value: boolean) => {
+    if (isFullscreen.value === value) return
     setOptions({ fullscreen: value } as Partial<ArtDialogOptions<T>>)
+    emit('fullscreen-change', value)
   }
 
   const toggleFullscreen = () => {

@@ -8,6 +8,7 @@
     :class="{ 'is-empty': isEmpty, 'is-row-selection-dragging': isRowSelectionDragging }"
     :style="containerHeight"
     @mousedown="handleTableMouseDown"
+    @wheel.capture="handleWheelBoundary"
   >
     <ElTable ref="elTableRef" v-loading="!!loading" v-bind="mergedTableProps">
       <template v-for="col in visibleColumns" :key="col.prop || col.type">
@@ -35,13 +36,21 @@
             :key="child.prop || child.label"
             v-bind="cleanColumnProps(child)"
           >
-            <template v-if="child.useHeaderSlot && child.prop" #header="headerScope">
+            <template
+              v-if="child.required || (child.useHeaderSlot && child.prop)"
+              #header="headerScope"
+            >
               <slot
+                v-if="child.useHeaderSlot && child.prop"
                 :name="child.headerSlotName || `${child.prop}-header`"
                 v-bind="{ ...headerScope, prop: child.prop, label: child.label }"
               >
                 {{ child.label }}
               </slot>
+              <span v-else class="art-table__required-header">
+                {{ child.label
+                }}<span class="art-table__required-marker" aria-hidden="true">*</span>
+              </span>
             </template>
             <template v-if="shouldUseCustomCellTemplate(child)" #default="slotScope">
               <div v-if="shouldRenderSlotScope(slotScope)" class="art-table__cell-content">
@@ -74,13 +83,17 @@
 
         <!-- 渲染普通列 -->
         <ElTableColumn v-else v-bind="cleanColumnProps(col)">
-          <template v-if="col.useHeaderSlot && col.prop" #header="headerScope">
+          <template v-if="col.required || (col.useHeaderSlot && col.prop)" #header="headerScope">
             <slot
+              v-if="col.useHeaderSlot && col.prop"
               :name="col.headerSlotName || `${col.prop}-header`"
               v-bind="{ ...headerScope, prop: col.prop, label: col.label }"
             >
               {{ col.label }}
             </slot>
+            <span v-else class="art-table__required-header">
+              {{ col.label }}<span class="art-table__required-marker" aria-hidden="true">*</span>
+            </span>
           </template>
           <template v-if="shouldUseCustomCellTemplate(col)" #default="slotScope">
             <div v-if="shouldRenderSlotScope(slotScope)" class="art-table__cell-content">
@@ -525,6 +538,48 @@
     return content !== null && (typeof content === 'object' || typeof content === 'function')
   }
 
+  const canConsumeVerticalWheel = (element: HTMLElement, deltaY: number): boolean => {
+    const maxScrollTop = element.scrollHeight - element.clientHeight
+    if (maxScrollTop <= 1) return false
+    return deltaY < 0 ? element.scrollTop > 1 : element.scrollTop < maxScrollTop - 1
+  }
+
+  /**
+   * Element Plus 表格内部始终包含一个滚动容器。仅有横向溢出时，这个容器会吞掉
+   * 纵向滚轮，导致外层弹窗/抽屉无法滚动。内部确实可纵向滚动时保持原行为；否则
+   * 将纵向滚动交给最近的可滚动父容器，避免形成滚轮陷阱。
+   */
+  const handleWheelBoundary = (event: WheelEvent): void => {
+    if (event.ctrlKey || event.deltaY === 0 || Math.abs(event.deltaX) >= Math.abs(event.deltaY))
+      return
+
+    const tableElement = event.currentTarget as HTMLElement | null
+    const eventTarget = event.target as HTMLElement | null
+    if (!tableElement || !eventTarget) return
+
+    let innerElement: HTMLElement | null = eventTarget
+    while (innerElement && tableElement.contains(innerElement)) {
+      if (canConsumeVerticalWheel(innerElement, event.deltaY)) return
+      if (innerElement === tableElement) break
+      innerElement = innerElement.parentElement
+    }
+
+    let parentElement = tableElement.parentElement
+    while (parentElement) {
+      const overflowY = window.getComputedStyle(parentElement).overflowY
+      if (
+        /auto|scroll|overlay/.test(overflowY) &&
+        canConsumeVerticalWheel(parentElement, event.deltaY)
+      ) {
+        event.preventDefault()
+        event.stopPropagation()
+        parentElement.scrollTop += event.deltaY
+        return
+      }
+      parentElement = parentElement.parentElement
+    }
+  }
+
   const getRowIdentity = (row: ArtTableRow): string => {
     const rowKey = props.rowKey
     if (typeof rowKey === 'function') return String(rowKey(row))
@@ -797,6 +852,7 @@
     delete columnProps.dragIcon
     delete columnProps.dict
     delete columnProps.children
+    delete columnProps.required
     return columnProps
   }
 

@@ -154,6 +154,12 @@
     setPosition: (position: [number, number]) => void
   }
 
+  interface AMapMarkerOptions {
+    position: [number, number]
+    anchor?: 'bottom-center'
+    content?: HTMLElement
+  }
+
   interface AMapMapInstance {
     add: (marker: AMapMarkerInstance) => void
     addControl: (control: unknown) => void
@@ -206,7 +212,7 @@
     DistrictSearch: new (options: Record<string, unknown>) => AMapDistrictSearchInstance
     Geocoder: new (options: Record<string, unknown>) => AMapGeocoderInstance
     Map: new (container: HTMLElement, options: Record<string, unknown>) => AMapMapInstance
-    Marker: new (options: { position: [number, number] }) => AMapMarkerInstance
+    Marker: new (options: AMapMarkerOptions) => AMapMarkerInstance
     PlaceSearch: new (options: Record<string, unknown>) => AMapPlaceSearchInstance
     Scale: new () => unknown
     ToolBar: new (options: Record<string, unknown>) => unknown
@@ -626,7 +632,15 @@
 
     const position: [number, number] = [Number(longitude), Number(latitude)]
     if (!markerInstance) {
-      markerInstance = new amapNamespace.Marker({ position })
+      const markerContent = document.createElement('span')
+      markerContent.className = 'art-address-map-marker'
+      markerContent.setAttribute('role', 'img')
+      markerContent.setAttribute('aria-label', '当前选择位置')
+      markerInstance = new amapNamespace.Marker({
+        position,
+        anchor: 'bottom-center',
+        content: markerContent
+      })
       amapInstance.add(markerInstance)
     } else {
       markerInstance.setPosition(position)
@@ -817,5 +831,39 @@
       max-height: calc(100% - 24px);
       padding: 10px;
     }
+  }
+
+  :global(.art-address-map-marker) {
+    position: relative;
+    display: block;
+    width: 34px;
+    height: 44px;
+    filter: drop-shadow(0 7px 8px rgb(36 33 91 / 26%));
+  }
+
+  :global(.art-address-map-marker::before) {
+    position: absolute;
+    top: 2px;
+    left: 4px;
+    width: 26px;
+    height: 26px;
+    content: '';
+    background: linear-gradient(135deg, var(--theme-color), var(--el-color-primary-dark-2));
+    border: 3px solid var(--el-color-white);
+    border-radius: 50% 50% 50% 7px;
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--theme-color) 22%, transparent);
+    transform: rotate(-45deg);
+  }
+
+  :global(.art-address-map-marker::after) {
+    position: absolute;
+    top: 11px;
+    left: 13px;
+    width: 8px;
+    height: 8px;
+    content: '';
+    background: var(--el-color-white);
+    border-radius: 50%;
+    box-shadow: 0 0 0 3px rgb(255 255 255 / 22%);
   }
 </style>

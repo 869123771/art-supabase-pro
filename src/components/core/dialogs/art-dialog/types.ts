@@ -30,6 +30,8 @@ export interface ArtDialogOptions<TData = unknown> extends ArtOverlayOptions<
   exitFullscreenText?: string
   /** 内容区域最大高度，超过后启用滚动容器 */
   contentMaxHeight?: string | number
+  /** 是否允许 ArtDialog 为内容区创建滚动容器；画布类内容可关闭 */
+  useScrollbar?: boolean
   /** 单次打开时额外传递给 ElDialog 的属性 */
   dialogProps?: Partial<DialogPropsPublic> & Record<string, unknown>
 }
@@ -74,6 +76,8 @@ export interface ArtDialogEmits<TData = unknown> {
   reset: []
   /** 打开、关闭或确认回调发生异常 */
   error: [error: unknown]
+  /** 全屏状态切换完成 */
+  'fullscreen-change': [value: boolean]
   'open-auto-focus': []
   'close-auto-focus': []
 }

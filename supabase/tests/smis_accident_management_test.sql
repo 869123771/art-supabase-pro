@@ -18,29 +18,49 @@ select ok((select relrowsecurity from pg_class where oid='public.smis_accident_p
 select ok((select relrowsecurity from pg_class where oid='public.smis_work_injury_declaration'::regclass), 'work injury declarations enforce RLS');
 select ok((select relrowsecurity from pg_class where oid='public.smis_accident_analysis'::regclass), 'accident analyses enforce RLS');
 select ok((select relrowsecurity from pg_class where oid='public.smis_accident_analysis_participant'::regclass), 'analysis participants enforce RLS');
-select has_function('app_private', 'guard_smis_accident_platform_super_write', array[]::text[], 'platform-super write guard exists');
-select is(
-  (select count(*)::integer from pg_trigger where not tgisinternal and tgname in (
-    'smis_accident_report_platform_super_write', 'smis_accident_measure_platform_super_write',
-    'smis_accident_person_platform_super_write', 'smis_work_injury_platform_super_write'
-  )),
-  4,
-  'every accident management table enforces platform-super writes'
+select hasnt_function(
+  'app_private',
+  'guard_smis_accident_platform_super_write',
+  array[]::text[],
+  'accident writes are not hard-gated to platform-super'
 );
 select is(
   (select count(*)::integer from pg_trigger where not tgisinternal and tgname in (
+    'smis_accident_report_platform_super_write', 'smis_accident_measure_platform_super_write',
+    'smis_accident_person_platform_super_write', 'smis_work_injury_platform_super_write',
     'smis_accident_analysis_platform_super_write',
     'smis_accident_analysis_participant_platform_super_write'
   )),
-  2,
-  'analysis tables enforce platform-super writes'
+  0,
+  'accident management tables do not retain platform-super write triggers'
+);
+select ok(
+  not exists (
+    select 1
+    from pg_policy policy
+    where policy.polrelid in (
+      'public.smis_accident_report'::regclass,
+      'public.smis_accident_prevention_measure'::regclass,
+      'public.smis_accident_person'::regclass,
+      'public.smis_accident_analysis'::regclass,
+      'public.smis_accident_analysis_participant'::regclass,
+      'public.smis_work_injury_declaration'::regclass
+    )
+      and policy.polcmd in ('a', 'w', 'd')
+      and concat_ws(
+        ' ',
+        pg_get_expr(policy.polqual, policy.polrelid),
+        pg_get_expr(policy.polwithcheck, policy.polrelid)
+      ) like '%is_platform_super() AND%'
+  ),
+  'write policies use tenant scope and button permissions instead of a platform-super gate'
 );
 select ok(
   exists(select 1 from pg_trigger where not tgisinternal and tgname='smis_accident_report_create_analysis'),
   'accident report automatically creates an analysis row'
 );
 select ok(
-  not exists (
+  exists (
     select 1
     from sys_role_menu rm
     join sys_role role on role.id=rm.role_id and role.tenant_id=rm.tenant_id
@@ -51,7 +71,7 @@ select ok(
     )
       and role.builtin_type is distinct from 'platform_super'
   ),
-  'ordinary roles do not receive accident investigation write buttons'
+  'ordinary business roles can receive accident investigation write buttons'
 );
 
 select has_function('public', 'smis_list_accident_employee_candidates_secure', array['integer', 'integer', 'text'], 'employee candidate RPC exists');

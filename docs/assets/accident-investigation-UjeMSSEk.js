@@ -1,1 +1,0 @@
-import{Dt as e,Kt as t,vt as n}from"./framework-Dc3kpLtW.js";import{t as r}from"./smis-page-placeholder-B2q5h69I.js";var i=e({name:`SmisAccidentInvestigation`,__name:`index`,setup(e){return(e,i)=>(t(),n(r,{section:`安全生产 / 安全事故`,title:`事故调查处理`}))}});export{i as default};

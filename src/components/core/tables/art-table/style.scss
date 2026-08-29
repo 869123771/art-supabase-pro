@@ -219,3 +219,13 @@
     justify-content: center;
   }
 }
+
+:deep(.art-table__required-header) {
+  display: inline-flex;
+  gap: 3px;
+  align-items: center;
+}
+
+:deep(.art-table__required-marker) {
+  color: var(--el-color-danger);
+}

@@ -67,6 +67,8 @@ export interface ColumnOption<T = ComponentRecord> {
   prop?: string
   // 列标题
   label?: string
+  // 编辑型表格中的必填列；表头会以与表单一致的红色星号提示
+  required?: boolean
   // 分组表头子列
   children?: ColumnOption<T>[]
   // 列宽度

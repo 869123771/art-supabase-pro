@@ -118,11 +118,13 @@
         ref="dialogRef"
         width="1080px"
         :show-footer="true"
+        :use-scrollbar="false"
         append-to-body
         :close-on-click-modal="false"
         show-fullscreen-button
         @opened="handleDialogOpened"
         @closed="handleDialogClosed"
+        @fullscreen-change="handleMapFullscreenChange"
       >
         <div class="art-address-picker-map">
           <ArtAddressMap
@@ -743,6 +745,13 @@
     mapRef.value?.resize()
   }
 
+  const waitForMapLayout = async (): Promise<void> => {
+    await nextTick()
+    await new Promise<void>((resolve) => {
+      window.requestAnimationFrame(() => resolve())
+    })
+  }
+
   const handleOpenPicker = async (): Promise<void> => {
     if (props.disabled) return
     regionAdcode.value = findRegionAdcode(resolvedRegionOptions.value, currentRegionPath.value)
@@ -768,6 +777,7 @@
 
   const handleDialogOpened = async (): Promise<void> => {
     try {
+      await waitForMapLayout()
       await initializeMap()
       mapRef.value?.setSearchKeyword(searchKeyword.value)
       if (hasCoordinate.value) {
@@ -781,6 +791,8 @@
       } else if (searchKeyword.value) {
         mapRef.value?.searchPoi({ silent: true, fallbackKeyword: fullAddress.value })
       }
+      await waitForMapLayout()
+      mapRef.value?.resize()
     } catch (error) {
       mapMessage.value = getFriendlySupabaseErrorMessage(
         error,
@@ -792,6 +804,12 @@
   const handleDialogClosed = (): void => {
     mapRef.value?.destroy()
     mapMessage.value = ''
+  }
+
+  const handleMapFullscreenChange = async (): Promise<void> => {
+    await waitForMapLayout()
+    await waitForMapLayout()
+    mapRef.value?.resize()
   }
 
   const confirmPick = (): void => {
@@ -962,7 +980,9 @@
 
   .art-address-picker-map {
     position: relative;
-    height: 100%;
+    flex: none;
+    width: 100%;
+    height: calc(min(820px, 100dvh - 32px) - 136px);
     min-height: 0;
     overflow: hidden;
     background: var(--el-fill-color-light);
@@ -970,6 +990,8 @@
     border-radius: var(--el-border-radius-base);
 
     &__canvas {
+      position: absolute;
+      inset: 0;
       width: 100%;
       height: 100%;
     }
@@ -1029,7 +1051,9 @@
   }
 
   :global(.art-address-picker-dialog:not(.is-fullscreen) .art-dialog__content) {
+    display: flex;
     flex: 1;
+    flex-direction: column;
     height: 100%;
     min-height: 0;
   }
@@ -1097,6 +1121,7 @@
   :global(.art-address-picker-dialog.is-fullscreen > .el-dialog__body) {
     display: flex;
     flex-direction: column;
+    overflow: hidden;
 
     --art-dialog-content-padding: 20px 24px 0;
   }
