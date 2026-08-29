@@ -43,22 +43,24 @@
         </aside>
 
         <main id="recognition-current-workspace" class="recognition-runner__workspace">
-          <section class="recognition-runner__workspace-head art-card-xs">
-            <span class="recognition-runner__workspace-icon">
-              <ArtSvgIcon :icon="currentCapability.icon" />
-            </span>
-            <div class="recognition-runner__workspace-copy">
-              <span>当前识别场景</span>
-              <h2>{{ currentCapability.title }}</h2>
-              <p>{{ currentCapability.description }}</p>
-            </div>
-            <div class="recognition-runner__workspace-meta">
-              <ElTag :type="currentStatusType" effect="plain" round>
-                {{ currentStatusLabel }}
-              </ElTag>
-              <small>{{ currentCapability.businessLabel }}</small>
-            </div>
-          </section>
+          <Transition name="recognition-scene" mode="out-in">
+            <section :key="feature" class="recognition-runner__workspace-head art-card-xs">
+              <span class="recognition-runner__workspace-icon">
+                <ArtSvgIcon :icon="currentCapability.icon" />
+              </span>
+              <div class="recognition-runner__workspace-copy">
+                <span>当前识别场景</span>
+                <h2>{{ currentCapability.title }}</h2>
+                <p>{{ currentCapability.description }}</p>
+              </div>
+              <div class="recognition-runner__workspace-meta">
+                <ElTag :type="currentStatusType" effect="plain" round>
+                  {{ currentStatusLabel }}
+                </ElTag>
+                <small>{{ currentCapability.businessLabel }}</small>
+              </div>
+            </section>
+          </Transition>
 
           <component
             :is="currentRunner"
@@ -68,37 +70,43 @@
             @created="handleCreated"
           />
 
-          <section v-else-if="businessContext" class="recognition-runner__context art-card-xs">
-            <div class="recognition-runner__context-hero">
-              <span><ArtSvgIcon :icon="businessContext.icon" /></span>
-              <div>
-                <small>{{ businessContext.eyebrow }}</small>
-                <h3>{{ businessContext.title }}</h3>
-                <p>{{ businessContext.description }}</p>
-              </div>
-            </div>
-
-            <ol class="recognition-runner__flow" aria-label="标准处理步骤">
-              <li v-for="(step, index) in businessContext.steps" :key="step.title">
-                <span>{{ index + 1 }}</span>
+          <Transition name="recognition-scene" mode="out-in">
+            <section
+              v-if="!currentRunner && businessContext"
+              :key="feature"
+              class="recognition-runner__context art-card-xs"
+            >
+              <div class="recognition-runner__context-hero">
+                <span><ArtSvgIcon :icon="businessContext.icon" /></span>
                 <div>
-                  <strong>{{ step.title }}</strong>
-                  <small>{{ step.description }}</small>
+                  <small>{{ businessContext.eyebrow }}</small>
+                  <h3>{{ businessContext.title }}</h3>
+                  <p>{{ businessContext.description }}</p>
                 </div>
-              </li>
-            </ol>
-
-            <div class="recognition-runner__context-action">
-              <div>
-                <ArtSvgIcon icon="ri:information-line" />
-                <span>{{ businessContext.helper }}</span>
               </div>
-              <ElButton type="primary" @click="goBusinessContext">
-                {{ businessContext.actionLabel }}
-                <ArtSvgIcon icon="ri:arrow-right-line" />
-              </ElButton>
-            </div>
-          </section>
+
+              <ol class="recognition-runner__flow" aria-label="标准处理步骤">
+                <li v-for="(step, index) in businessContext.steps" :key="step.title">
+                  <span>{{ index + 1 }}</span>
+                  <div>
+                    <strong>{{ step.title }}</strong>
+                    <small>{{ step.description }}</small>
+                  </div>
+                </li>
+              </ol>
+
+              <div class="recognition-runner__context-action">
+                <div>
+                  <ArtSvgIcon icon="ri:information-line" />
+                  <span>{{ businessContext.helper }}</span>
+                </div>
+                <ElButton type="primary" @click="goBusinessContext">
+                  {{ businessContext.actionLabel }}
+                  <ArtSvgIcon icon="ri:arrow-right-line" />
+                </ElButton>
+              </div>
+            </section>
+          </Transition>
         </main>
       </div>
     </div>
@@ -287,6 +295,8 @@
       display: flex;
       flex-direction: column;
       padding: 16px;
+      animation: recognition-runner-panel-in var(--art-motion-duration-slow)
+        var(--art-motion-ease-out) both;
     }
 
     &__sidebar-head {
@@ -331,14 +341,16 @@
         border: 1px solid transparent;
         border-radius: var(--el-border-radius-base);
         transition:
-          color 0.18s ease,
-          background-color 0.18s ease,
-          border-color 0.18s ease,
-          box-shadow 0.18s ease;
+          color var(--art-motion-duration-fast) var(--art-motion-ease-out),
+          background-color var(--art-motion-duration-fast) var(--art-motion-ease-out),
+          border-color var(--art-motion-duration-fast) var(--art-motion-ease-out),
+          box-shadow var(--art-motion-duration-base) var(--art-motion-ease-out),
+          transform var(--art-motion-duration-fast) var(--art-motion-ease-out);
 
         &:hover {
           background: var(--art-gray-50);
           border-color: var(--art-card-border);
+          transform: translate3d(2px, 0, 0);
         }
 
         &.is-active {
@@ -362,6 +374,10 @@
       color: var(--art-text-gray-500);
       background: var(--art-gray-50);
       border-radius: calc(var(--el-border-radius-base) - 1px);
+      transition:
+        color var(--art-motion-duration-fast) var(--art-motion-ease-out),
+        background-color var(--art-motion-duration-fast) var(--art-motion-ease-out),
+        transform var(--art-motion-duration-base) var(--art-motion-ease-out);
     }
 
     &__scene-copy,
@@ -392,6 +408,9 @@
       justify-self: center;
       font-size: 16px;
       color: var(--art-text-gray-400);
+      transition:
+        color var(--art-motion-duration-fast) var(--art-motion-ease-out),
+        transform var(--art-motion-duration-base) var(--art-motion-ease-out);
     }
 
     &__switcher button.is-active &__scene-icon,
@@ -402,6 +421,11 @@
 
     &__switcher button.is-active &__scene-icon {
       background: color-mix(in srgb, var(--theme-color) 11%, transparent);
+      transform: scale(1.05);
+    }
+
+    &__switcher button.is-active &__scene-state {
+      transform: scale(1.08);
     }
 
     &__governance {
@@ -443,6 +467,8 @@
       flex-direction: column;
       gap: 12px;
       min-width: 0;
+      animation: recognition-runner-panel-in var(--art-motion-duration-slow)
+        var(--art-motion-ease-out) 50ms both;
     }
 
     &__workspace-head {
@@ -454,6 +480,7 @@
     }
 
     &__workspace-icon {
+      position: relative;
       display: grid;
       place-items: center;
       width: 44px;
@@ -462,6 +489,16 @@
       color: var(--theme-color);
       background: color-mix(in srgb, var(--theme-color) 9%, transparent);
       border-radius: var(--custom-radius);
+
+      &::after {
+        position: absolute;
+        inset: -1px;
+        content: '';
+        border: 1px solid color-mix(in srgb, var(--theme-color) 28%, transparent);
+        border-radius: inherit;
+        animation: recognition-scene-icon-settle var(--art-motion-duration-slow)
+          var(--art-motion-ease-out) both;
+      }
     }
 
     &__workspace-copy {
@@ -565,6 +602,14 @@
         padding: 13px;
         background: var(--art-gray-50);
         border-radius: var(--el-border-radius-base);
+        animation: recognition-flow-step-in var(--art-motion-duration-base)
+          var(--art-motion-ease-out) both;
+
+        @for $index from 1 through 3 {
+          &:nth-child(#{$index}) {
+            animation-delay: #{60ms + ($index - 1) * 45ms};
+          }
+        }
 
         > span {
           display: grid;
@@ -646,6 +691,64 @@
       > div {
         display: flex;
       }
+    }
+
+    .recognition-scene-enter-active {
+      transition:
+        opacity var(--art-motion-duration-slow) var(--art-motion-ease-out),
+        transform var(--art-motion-duration-slow) var(--art-motion-ease-out);
+    }
+
+    .recognition-scene-leave-active {
+      transition:
+        opacity var(--art-motion-duration-fast) var(--art-motion-ease-in),
+        transform var(--art-motion-duration-fast) var(--art-motion-ease-in);
+    }
+
+    .recognition-scene-enter-from {
+      opacity: 0;
+      transform: translate3d(10px, 0, 0) scale(0.99);
+    }
+
+    .recognition-scene-leave-to {
+      opacity: 0;
+      transform: translate3d(-6px, 0, 0) scale(0.995);
+    }
+  }
+
+  @keyframes recognition-runner-panel-in {
+    from {
+      opacity: 0;
+      transform: translate3d(0, 10px, 0);
+    }
+
+    to {
+      opacity: 1;
+      transform: translate3d(0, 0, 0);
+    }
+  }
+
+  @keyframes recognition-scene-icon-settle {
+    from {
+      opacity: 0;
+      transform: scale(0.76);
+    }
+
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  @keyframes recognition-flow-step-in {
+    from {
+      opacity: 0;
+      transform: translate3d(8px, 0, 0);
+    }
+
+    to {
+      opacity: 1;
+      transform: translate3d(0, 0, 0);
     }
   }
 
@@ -734,8 +837,29 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .recognition-runner__switcher button {
-      transition: none;
+    .recognition-runner {
+      &__sidebar,
+      &__workspace,
+      &__workspace-icon::after,
+      &__flow li {
+        animation: none;
+      }
+
+      &__switcher button,
+      &__scene-icon,
+      &__scene-state,
+      .recognition-scene-enter-active,
+      .recognition-scene-leave-active {
+        transition: none;
+      }
+
+      &__switcher button:hover,
+      &__switcher button.is-active &__scene-icon,
+      &__switcher button.is-active &__scene-state,
+      .recognition-scene-enter-from,
+      .recognition-scene-leave-to {
+        transform: none;
+      }
     }
   }
 </style>

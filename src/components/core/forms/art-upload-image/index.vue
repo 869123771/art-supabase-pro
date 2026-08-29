@@ -106,7 +106,7 @@
   import {
     normalizeUploadModelUrls,
     shouldSyncUploadFileList
-  } from '@/components/core/forms/art-upload-image/model-utils'
+  } from '@/components/core/forms/upload-model-utils'
   import ResourceListItem = Api.DataCenter.Resources.ResourceListItem
   import { uploadAttachment } from '@/api/common'
 

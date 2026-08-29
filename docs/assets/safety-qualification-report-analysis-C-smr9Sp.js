@@ -1,0 +1,1 @@
+import{Dt as e,Kt as t,vt as n}from"./framework-Dc3kpLtW.js";import{t as r}from"./smis-page-placeholder-CkN9Vtiq.js";var i=e({name:`SmisSafetyQualificationReportAnalysis`,__name:`index`,setup(e){return(e,i)=>(t(),n(r,{section:`资质培训 / 安全资质管理`,title:`安全资质报表分析`}))}});export{i as default};

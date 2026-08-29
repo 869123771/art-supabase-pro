@@ -8,7 +8,7 @@ Shared components are organized by responsibility, not by the page that first ne
 | --- | --- | --- |
 | `core/base` | Small dependency-light display and interaction primitives | icon buttons, copy text, badges |
 | `core/forms` | Inputs, selectors, form composition, and validation-aware controls | `ArtForm`, data selectors, upload controls |
-| `core/feedback` | Loading, skeleton, empty, error, and status feedback | `ArtAsyncState`, `ArtEmptyState` |
+| `core/feedback` | Loading, skeleton, empty, error, permission, and status feedback | `ArtAsyncState`, `ArtEmptyState`, `ArtPermissionGuard` |
 | `core/surfaces` | Reusable visual containers and section chrome | `ArtSectionCard`, `ArtSectionTitle` |
 | `core/layouts` | Application shell, page geometry, navigation, and structural flow | page shell, page section, menu, header, timeline |
 | `core/tables` | Table rendering, querying, pagination, and table tooling | `ArtTable`, `ArtTableQuery` |

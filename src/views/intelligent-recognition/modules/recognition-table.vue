@@ -1,6 +1,8 @@
 <template>
   <ArtTableQuery
     ref="tableRef"
+    class="recognition-table"
+    :class="{ 'is-motion-ready': motionReady }"
     focusable
     v-model="searchQuery"
     :search-items="searchItems"
@@ -83,6 +85,7 @@
   const { getDictMap } = storeToRefs(userStore)
   const getDictItemByValue = userStore.getDictItemByValue
   const tableRef = ref<ArtTableQueryExpose>()
+  const motionReady = ref(false)
   const searchQuery = reactive<Search>({
     creator: '',
     feature: '',
@@ -346,10 +349,28 @@
     void tableRef.value?.getData()
   }
 
+  onMounted(async () => {
+    await nextTick()
+    motionReady.value = true
+  })
+
   defineExpose({ refresh, tableQuery: tableRef })
 </script>
 
 <style scoped lang="scss">
+  .recognition-table {
+    &.is-motion-ready {
+      animation: recognition-table-in var(--art-motion-duration-slow) var(--art-motion-ease-out)
+        70ms backwards;
+
+      .recognition-table__queue-context,
+      .recognition-table__quick-filters {
+        animation: recognition-table-control-in var(--art-motion-duration-base)
+          var(--art-motion-ease-out) 150ms backwards;
+      }
+    }
+  }
+
   .recognition-table__queue-context {
     min-width: 0;
 
@@ -407,6 +428,10 @@
       color: var(--theme-color);
       background: color-mix(in srgb, var(--theme-color) 8%, transparent);
       border-radius: var(--custom-radius);
+      transition:
+        color var(--art-motion-duration-fast) var(--art-motion-ease-out),
+        background-color var(--art-motion-duration-fast) var(--art-motion-ease-out),
+        transform var(--art-motion-duration-fast) var(--art-motion-ease-out);
     }
 
     > div {
@@ -419,6 +444,13 @@
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+    }
+
+    &:hover > span,
+    &:focus-visible > span {
+      color: var(--el-color-white);
+      background: var(--theme-color);
+      transform: translate3d(2px, 0, 0) scale(1.04);
     }
 
     strong {
@@ -490,11 +522,62 @@
     white-space: nowrap;
   }
 
+  @keyframes recognition-table-in {
+    from {
+      opacity: 0;
+      transform: translate3d(0, 12px, 0);
+    }
+
+    to {
+      opacity: 1;
+      transform: translate3d(0, 0, 0);
+    }
+  }
+
+  @keyframes recognition-table-control-in {
+    from {
+      opacity: 0;
+      transform: translate3d(-8px, 0, 0);
+    }
+
+    to {
+      opacity: 1;
+      transform: translate3d(0, 0, 0);
+    }
+  }
+
   @media (width <= 720px) {
     .recognition-table__queue-context {
       span {
         display: none;
       }
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .recognition-table.is-motion-ready,
+    .recognition-table.is-motion-ready .recognition-table__queue-context,
+    .recognition-table.is-motion-ready .recognition-table__quick-filters {
+      animation: recognition-table-fade var(--art-motion-duration-fast) ease-out backwards;
+    }
+
+    :deep(.recognition-table__document > span) {
+      transition: none;
+    }
+
+    :deep(.recognition-table__document:hover > span),
+    :deep(.recognition-table__document:focus-visible > span) {
+      transform: none;
+    }
+  }
+
+  @keyframes recognition-table-fade {
+    from {
+      opacity: 0;
+    }
+
+    to {
+      opacity: 1;
     }
   }
 </style>

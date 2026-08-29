@@ -8,7 +8,7 @@
       empty-text="识别记录不存在或无权查看"
       @retry="retryLoad"
     >
-      <div v-if="detail.data" class="recognition-detail">
+      <div v-if="detail.data" :key="detail.data.id" class="recognition-detail">
         <section class="recognition-detail__summary">
           <div class="recognition-detail__score" :class="confidenceClass">
             <strong>{{ confidence }}%</strong>
@@ -357,6 +357,8 @@
       background: color-mix(in srgb, var(--theme-color) 4%, var(--art-main-bg-color));
       border: 1px solid color-mix(in srgb, var(--theme-color) 12%, var(--art-card-border));
       border-radius: var(--custom-radius);
+      animation: recognition-detail-panel-in var(--art-motion-duration-slow)
+        var(--art-motion-ease-out) backwards;
     }
 
     &__score {
@@ -367,6 +369,8 @@
       height: 86px;
       border: 6px solid currentcolor;
       border-radius: 50%;
+      animation: recognition-detail-score-settle var(--art-motion-duration-slow)
+        var(--art-motion-ease-out) 70ms backwards;
 
       strong,
       span {
@@ -426,11 +430,21 @@
       background: var(--art-gray-50);
       border: 1px solid var(--art-card-border);
       border-radius: var(--custom-radius);
+      animation: recognition-detail-panel-in var(--art-motion-duration-base)
+        var(--art-motion-ease-out) 80ms backwards;
 
       > div {
         position: relative;
         min-width: 0;
         padding: 11px 13px;
+        animation: recognition-detail-context-in var(--art-motion-duration-base)
+          var(--art-motion-ease-out) backwards;
+
+        @for $index from 1 through 3 {
+          &:nth-child(#{$index}) {
+            animation-delay: #{110ms + ($index - 1) * 28ms};
+          }
+        }
       }
 
       > div + div {
@@ -486,6 +500,14 @@
       padding: 7px 10px 7px 6px;
       border: 1px solid transparent;
       border-radius: var(--el-border-radius-base);
+      animation: recognition-detail-progress-in var(--art-motion-duration-base)
+        var(--art-motion-ease-out) backwards;
+
+      @for $index from 1 through 3 {
+        &:nth-child(#{$index}) {
+          animation-delay: #{140ms + ($index - 1) * 34ms};
+        }
+      }
 
       &::after {
         position: absolute;
@@ -533,6 +555,8 @@
         color: var(--theme-color);
         background: color-mix(in srgb, var(--theme-color) 10%, var(--default-box-color));
         border-color: color-mix(in srgb, var(--theme-color) 35%, var(--art-card-border));
+        animation: recognition-detail-active-marker var(--art-motion-duration-slow)
+          var(--art-motion-ease-out) 250ms backwards;
       }
 
       .is-stopped & {
@@ -610,6 +634,8 @@
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 9px;
+      animation: recognition-detail-panel-in var(--art-motion-duration-base)
+        var(--art-motion-ease-out) 150ms backwards;
 
       article {
         min-width: 0;
@@ -657,6 +683,64 @@
     }
   }
 
+  @keyframes recognition-detail-panel-in {
+    from {
+      opacity: 0;
+      transform: translate3d(10px, 0, 0);
+    }
+
+    to {
+      opacity: 1;
+      transform: translate3d(0, 0, 0);
+    }
+  }
+
+  @keyframes recognition-detail-score-settle {
+    from {
+      opacity: 0;
+      transform: scale(0.92) rotate(-3deg);
+    }
+
+    to {
+      opacity: 1;
+      transform: scale(1) rotate(0);
+    }
+  }
+
+  @keyframes recognition-detail-context-in {
+    from {
+      opacity: 0;
+      transform: translate3d(-7px, 0, 0);
+    }
+
+    to {
+      opacity: 1;
+      transform: translate3d(0, 0, 0);
+    }
+  }
+
+  @keyframes recognition-detail-progress-in {
+    from {
+      opacity: 0;
+      transform: translate3d(0, 8px, 0);
+    }
+
+    to {
+      opacity: 1;
+      transform: translate3d(0, 0, 0);
+    }
+  }
+
+  @keyframes recognition-detail-active-marker {
+    from {
+      transform: scale(0.88);
+    }
+
+    to {
+      transform: scale(1);
+    }
+  }
+
   @media (width <= 640px) {
     .recognition-detail {
       &__summary {
@@ -681,6 +765,30 @@
           border-left: 0;
         }
       }
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .recognition-detail {
+      &__summary,
+      &__score,
+      &__context,
+      &__context > div,
+      &__progress-item,
+      &__fields,
+      &__progress-marker {
+        animation: recognition-detail-fade var(--art-motion-duration-fast) ease-out backwards;
+      }
+    }
+  }
+
+  @keyframes recognition-detail-fade {
+    from {
+      opacity: 0;
+    }
+
+    to {
+      opacity: 1;
     }
   }
 </style>

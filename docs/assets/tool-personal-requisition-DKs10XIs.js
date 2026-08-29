@@ -1,1 +1,0 @@
-import{Dt as e,Kt as t,vt as n}from"./framework-Dc3kpLtW.js";import{t as r}from"./smis-page-placeholder-B2q5h69I.js";var i=e({name:`SmisToolPersonalRequisition`,__name:`index`,setup(e){return(e,i)=>(t(),n(r,{section:`安全生产 / 工器具领用`,title:`工器具个人领用`}))}});export{i as default};

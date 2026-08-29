@@ -56,12 +56,16 @@ Use these components before assembling equivalent Element Plus plumbing:
 | Side-panel business workflow | `ArtDrawer` |
 | Metadata-driven form | `ArtForm` |
 | Business data selection | `ArtTableSingleSelect` / `ArtTableMultipleSelect` / tree variants from `src/components/core/forms/art-data-select` |
-| Uploads and common actions | Existing `Art*` core form/action component |
+| Generic file attachments | `ArtUploadFile` |
+| Image upload and preview | `ArtUploadImage` |
+| Structured Excel import | `ArtExcelImport` |
+| Resource-library selection | `ArtResourcePicker` |
+| Common actions | Existing `Art*` core action component |
 | Business section title | `ArtSectionTitle` |
 | Titled business content card with async states | `ArtSectionCard` |
 | Business landing/list/workspace identity and metrics | `BusinessWorkspaceHeader` |
 
-When a project wrapper already exists, use it before raw Element Plus primitives. For example, prefer `ArtExcelImport`, `ArtUploadImage`, `ArtButtonTable`, `ArtButtonMore`, and similar `src/components/core` wrappers over page-local `ElUpload`, ad hoc action buttons, or custom dropdown wiring. If the wrapper is close but missing a broadly reusable capability, extend the wrapper first and consume that extension from the business page.
+When a project wrapper already exists, use it before raw Element Plus primitives. Generic document, archive, and file attachments must use `ArtUploadFile`; image upload and preview must use `ArtUploadImage`; structured spreadsheet import must use `ArtExcelImport`; resource-library workflows must use `ArtResourcePicker`. Business views must not own raw `ElUpload`, hidden file inputs, `uploadAttachment` lifecycles, size/error handling, or attachment-list synchronization. If a shared upload contract is missing a broadly reusable capability, extend the matching core component first. Prefer `ArtButtonTable`, `ArtButtonMore`, and similar `src/components/core` wrappers over ad hoc action buttons or custom dropdown wiring.
 
 Business landing pages, list workspaces, operational workbenches, and module home pages must use `BusinessWorkspaceHeader` for the page identity, eyebrow, description, feature tags, overview metrics, and header actions. Do not hand-build page-local hero/overview headers or create domain-specific copies of the workspace header. If a reusable header capability is missing, extend `src/components/business/business-workspace-header/index.vue` and consume the extension everywhere. Use `ArtPageHeader` instead for create, edit, detail, or configuration workflow pages that need back navigation; detail pages must present read-only values through `ArtDescriptions` or purpose-built display components rather than disabled form controls.
 
@@ -106,6 +110,8 @@ Use `ArtTableQuery` as the default composition for list pages that combine filte
 ```
 
 Prefer `headerActions` for common toolbar actions instead of `#header-left`; only use the slot when the action cannot be expressed with `ArtTableQueryHeaderAction`. Search form action buttons should remain aligned to the right side of the card, including reset/search and expand/collapse controls.
+
+When a new or modified list page enables `ArtTableQuery` focus mode, preserve the route DOM boundary and verify the complete focus contract. The rendered route must retain a real `.art-page-view` ancestor; permission guards and other page wrappers must forward that class and route height styles to a real, flex-capable DOM element rather than a Fragment or bare slot. Use `focus-scope-selector` for inseparable composite workspaces such as “navigation tree + query table”, and point it at their nearest shared workspace ancestor. Entering focus mode must hide page hero/metrics and unrelated siblings while keeping the selected workspace context, search, actions, table, empty/loading state, and pagination usable; the toolbar exit action and `Esc` must restore the exact pre-focus layout and search visibility.
 
 Type table records at the hook boundary:
 

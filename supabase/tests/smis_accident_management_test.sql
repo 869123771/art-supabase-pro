@@ -3,7 +3,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions, pg_catalog;
 
-select plan(40);
+select plan(50);
 
 select has_table('public', 'smis_accident_report', 'accident report table exists');
 select has_table('public', 'smis_accident_prevention_measure', 'prevention measure table exists');
@@ -11,6 +11,7 @@ select has_table('public', 'smis_accident_person', 'accident person snapshot tab
 select has_table('public', 'smis_work_injury_declaration', 'work injury declaration table exists');
 select has_table('public', 'smis_accident_analysis', 'accident analysis table exists');
 select has_table('public', 'smis_accident_analysis_participant', 'analysis participant table exists');
+select has_table('public', 'smis_historical_accident_case', 'historical accident case table exists');
 
 select ok((select relrowsecurity from pg_class where oid='public.smis_accident_report'::regclass), 'accident reports enforce RLS');
 select ok((select relrowsecurity from pg_class where oid='public.smis_accident_prevention_measure'::regclass), 'prevention measures enforce RLS');
@@ -18,6 +19,7 @@ select ok((select relrowsecurity from pg_class where oid='public.smis_accident_p
 select ok((select relrowsecurity from pg_class where oid='public.smis_work_injury_declaration'::regclass), 'work injury declarations enforce RLS');
 select ok((select relrowsecurity from pg_class where oid='public.smis_accident_analysis'::regclass), 'accident analyses enforce RLS');
 select ok((select relrowsecurity from pg_class where oid='public.smis_accident_analysis_participant'::regclass), 'analysis participants enforce RLS');
+select ok((select relrowsecurity from pg_class where oid='public.smis_historical_accident_case'::regclass), 'historical accident cases enforce RLS');
 select hasnt_function(
   'app_private',
   'guard_smis_accident_platform_super_write',
@@ -44,7 +46,8 @@ select ok(
       'public.smis_accident_person'::regclass,
       'public.smis_accident_analysis'::regclass,
       'public.smis_accident_analysis_participant'::regclass,
-      'public.smis_work_injury_declaration'::regclass
+      'public.smis_work_injury_declaration'::regclass,
+      'public.smis_historical_accident_case'::regclass
     )
       and policy.polcmd in ('a', 'w', 'd')
       and concat_ws(
@@ -85,6 +88,10 @@ select has_function('public', 'smis_delete_work_injury_declarations_secure', arr
 select has_function('public', 'smis_list_accident_analyses_secure', array['integer', 'integer', 'text', 'text', 'uuid[]'], 'accident analysis list RPC exists');
 select has_function('public', 'smis_save_accident_analysis_secure', array['uuid', 'jsonb'], 'accident analysis save RPC exists');
 select has_function('public', 'smis_delete_accident_analyses_secure', array['uuid[]'], 'accident analysis delete RPC exists');
+select has_function('public', 'smis_list_historical_accident_cases_secure', array['integer', 'integer', 'text', 'text', 'date', 'date', 'uuid[]'], 'historical accident case list RPC exists');
+select has_function('public', 'smis_save_historical_accident_case_secure', array['uuid', 'jsonb'], 'historical accident case save RPC exists');
+select has_function('public', 'smis_delete_historical_accident_cases_secure', array['uuid[]'], 'historical accident case delete RPC exists');
+select has_function('public', 'smis_get_safety_accident_statistics_secure', array['date', 'date', 'uuid'], 'safety accident statistics RPC exists');
 
 select ok(
   not exists (
@@ -101,6 +108,10 @@ select ok(
       ,'smis_list_accident_analyses_secure(integer,integer,text,text,uuid[])'
       ,'smis_save_accident_analysis_secure(uuid,jsonb)'
       ,'smis_delete_accident_analyses_secure(uuid[])'
+      ,'smis_list_historical_accident_cases_secure(integer,integer,text,text,date,date,uuid[])'
+      ,'smis_save_historical_accident_case_secure(uuid,jsonb)'
+      ,'smis_delete_historical_accident_cases_secure(uuid[])'
+      ,'smis_get_safety_accident_statistics_secure(date,date,uuid)'
     ]) signature
     where has_function_privilege('anon', 'public.' || signature, 'execute')
   ),
@@ -121,6 +132,10 @@ select ok(
       ,'smis_list_accident_analyses_secure(integer,integer,text,text,uuid[])'
       ,'smis_save_accident_analysis_secure(uuid,jsonb)'
       ,'smis_delete_accident_analyses_secure(uuid[])'
+      ,'smis_list_historical_accident_cases_secure(integer,integer,text,text,date,date,uuid[])'
+      ,'smis_save_historical_accident_case_secure(uuid,jsonb)'
+      ,'smis_delete_historical_accident_cases_secure(uuid[])'
+      ,'smis_get_safety_accident_statistics_secure(date,date,uuid)'
     ]) signature
     where not has_function_privilege('authenticated', 'public.' || signature, 'execute')
   ),
@@ -130,14 +145,18 @@ select ok(
 select is((select count(*)::integer from sys_dictionary d join sys_dict_type t on t.id=d.type_id where t.code='smisAccidentCategory' and d.status='1'), 19, 'accident category dictionary is complete');
 select is((select count(*)::integer from sys_dictionary d join sys_dict_type t on t.id=d.type_id where t.code='smisAccidentLevel' and d.status='1'), 6, 'accident level dictionary is complete');
 select is((select count(*)::integer from sys_dictionary d join sys_dict_type t on t.id=d.type_id where t.code='smisWorkInjuryType' and d.status='1'), 4, 'work injury type dictionary is complete');
+select is((select count(*)::integer from sys_dictionary d join sys_dict_type t on t.id=d.type_id where t.code='smisAccidentCaseStatus' and d.status='1'), 2, 'historical accident case status dictionary is complete');
 
 select is((select count(*)::integer from sys_menu where type='button' and name like 'SmisAccidentFlashReport:%'), 5, 'accident page exposes five button permissions');
 select is((select count(*)::integer from sys_menu where type='button' and name like 'SmisWorkInjuryDeclaration:%'), 5, 'work injury page exposes five button permissions');
 select is((select count(*)::integer from sys_menu where type='button' and name like 'SmisAccidentInvestigation:%'), 5, 'accident analysis page exposes five button permissions');
+select is((select count(*)::integer from sys_menu where type='button' and name like 'SmisHistoricalAccidentCases:%'), 5, 'historical accident case page exposes five button permissions');
+select is((select count(*)::integer from sys_menu where type='button' and name like 'SmisSafetyAccidentStatistics:%'), 1, 'safety accident statistics page exposes one button permission');
 select is((select count(*)::integer from sys_document_number_scene where rule_key in ('smis.accident_report', 'smis.work_injury_declaration') and enabled), 2, 'both document number scenes are enabled');
 select is((select count(*)::integer from pg_constraint where contype='f' and conrelid in ('public.smis_accident_prevention_measure'::regclass, 'public.smis_accident_person'::regclass, 'public.smis_work_injury_declaration'::regclass) and confrelid='public.smis_accident_report'::regclass), 3, 'child records retain normalized accident foreign keys');
 select is((select count(*)::integer from pg_constraint where contype='f' and conrelid='public.smis_accident_analysis'::regclass and confrelid='public.smis_accident_report'::regclass), 1, 'analysis retains one normalized accident foreign key');
 select is((select count(*)::integer from pg_constraint where conrelid='public.smis_accident_analysis'::regclass and contype='u' and conname='smis_accident_analysis_report_key'), 1, 'one accident can only have one analysis');
+select is((select count(*)::integer from pg_constraint where conrelid='public.smis_historical_accident_case'::regclass and contype='f' and confrelid='public.sys_organization'::regclass), 2, 'historical accident case keeps normalized organization references');
 
 select * from finish();
 rollback;

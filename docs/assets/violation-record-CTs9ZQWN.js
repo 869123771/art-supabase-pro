@@ -1,0 +1,1 @@
+import{Dt as e,Kt as t,vt as n}from"./framework-Dc3kpLtW.js";import{t as r}from"./smis-page-placeholder-CkN9Vtiq.js";var i=e({name:`SmisViolationRecord`,__name:`index`,setup(e){return(e,i)=>(t(),n(r,{section:`安全生产 / 反违章管理`,title:`违章记录`}))}});export{i as default};

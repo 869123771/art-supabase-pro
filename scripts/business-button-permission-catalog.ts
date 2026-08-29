@@ -305,6 +305,72 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
     ]
   },
   {
+    menuName: 'SmisMaterialCategory',
+    buttons: [
+      button('View', '查看物料类别', 'SmisMaterialCategory:View'),
+      button('Add', '新增物料类别', 'SmisMaterialCategory:Add'),
+      button('Edit', '编辑物料类别', 'SmisMaterialCategory:Edit'),
+      button('Delete', '删除物料类别', 'SmisMaterialCategory:Delete')
+    ]
+  },
+  {
+    menuName: 'SmisMaterialInformation',
+    buttons: [
+      button('View', '查看物料信息', 'SmisMaterialInformation:View'),
+      button('Add', '新增物料信息', 'SmisMaterialInformation:Add'),
+      button('Edit', '编辑物料信息', 'SmisMaterialInformation:Edit'),
+      button('Delete', '删除物料信息', 'SmisMaterialInformation:Delete'),
+      button('Export', '导出物料信息', 'SmisMaterialInformation:Export')
+    ]
+  },
+  {
+    menuName: 'SmisPpeIssuanceStandard',
+    buttons: [
+      button('View', '查看发放标准', 'SmisPpeIssuanceStandard:View'),
+      button('Add', '新增发放标准', 'SmisPpeIssuanceStandard:Add'),
+      button('Edit', '编辑发放标准', 'SmisPpeIssuanceStandard:Edit'),
+      button('Delete', '删除发放标准', 'SmisPpeIssuanceStandard:Delete'),
+      button('Export', '导出发放标准', 'SmisPpeIssuanceStandard:Export')
+    ]
+  },
+  {
+    menuName: 'SmisPpePersonalStandard',
+    buttons: [
+      button('View', '查看个人标准', 'SmisPpePersonalStandard:View'),
+      button('Generate', '生成个人标准', 'SmisPpePersonalStandard:Generate'),
+      button('Schedule', '设置领用计划', 'SmisPpePersonalStandard:Schedule'),
+      button('Export', '导出个人标准', 'SmisPpePersonalStandard:Export')
+    ]
+  },
+  {
+    menuName: 'SmisPpeIssuanceRecord',
+    buttons: [
+      button('View', '查看发放记录', 'SmisPpeIssuanceRecord:View'),
+      button('Add', '新增发放记录', 'SmisPpeIssuanceRecord:Add'),
+      button('Copy', '复制并新增', 'SmisPpeIssuanceRecord:Copy'),
+      button('Edit', '编辑发放记录', 'SmisPpeIssuanceRecord:Edit'),
+      button('Delete', '删除发放记录', 'SmisPpeIssuanceRecord:Delete'),
+      button('Issue', '发放过账', 'SmisPpeIssuanceRecord:Issue'),
+      button('Import', '导入发放记录', 'SmisPpeIssuanceRecord:Import'),
+      button('DownloadTemplate', '下载导入模板', 'SmisPpeIssuanceRecord:DownloadTemplate'),
+      button('Export', '导出发放记录', 'SmisPpeIssuanceRecord:Export'),
+      button('Statistics', '发放统计分析', 'SmisPpeIssuanceRecord:Statistics'),
+      button('Print', '打印劳保单', 'SmisPpeIssuanceRecord:Print')
+    ]
+  },
+  {
+    menuName: 'SmisPpePersonalRequisition',
+    buttons: [
+      button('View', '查看个人领用', 'SmisPpePersonalRequisition:View'),
+      button('Generate', '生成到期领用单', 'SmisPpePersonalRequisition:Generate'),
+      button('Push', '下推发放', 'SmisPpePersonalRequisition:Push'),
+      button('Confirm', '确认本人领用', 'SmisPpePersonalRequisition:Confirm'),
+      button('Export', '导出个人领用', 'SmisPpePersonalRequisition:Export'),
+      button('Statistics', '个人领用统计', 'SmisPpePersonalRequisition:Statistics'),
+      button('Configure', '配置自动确认', 'SmisPpePersonalRequisition:Configure')
+    ]
+  },
+  {
     menuName: 'SmisStorageLocation',
     buttons: [
       button('View', '查看存放位置', 'SmisStorageLocation:View'),
@@ -387,6 +453,20 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
       button('Delete', '删除事故快报', 'SmisAccidentFlashReport:Delete'),
       button('Export', '导出事故快报', 'SmisAccidentFlashReport:Export')
     ]
+  },
+  {
+    menuName: 'SmisHistoricalAccidentCases',
+    buttons: [
+      button('View', '查看历史事故案例', 'SmisHistoricalAccidentCases:View'),
+      button('Add', '新增历史事故案例', 'SmisHistoricalAccidentCases:Add'),
+      button('Edit', '编辑历史事故案例', 'SmisHistoricalAccidentCases:Edit'),
+      button('Delete', '删除历史事故案例', 'SmisHistoricalAccidentCases:Delete'),
+      button('Export', '导出历史事故案例', 'SmisHistoricalAccidentCases:Export')
+    ]
+  },
+  {
+    menuName: 'SmisSafetyAccidentStatistics',
+    buttons: [button('View', '查看安全事故统计', 'SmisSafetyAccidentStatistics:View')]
   },
   {
     menuName: 'SmisWorkInjuryDeclaration',

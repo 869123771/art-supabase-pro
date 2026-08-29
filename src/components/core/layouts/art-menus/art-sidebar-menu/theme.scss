@@ -408,6 +408,15 @@ $popup-menu-radius: 6px;
     color-mix(in srgb, var(--theme-color) 16%, #181a2a)
   );
 
+  // 用低对比度主题分隔线替换 Element Plus 在深色浮层上的白色边框。
+  border: 0 !important;
+  border-left: 1px solid color-mix(in srgb, var(--theme-color) 24%, #181a2a) !important;
+
+  > .el-menu--popup {
+    transform-origin: left center;
+    animation: art-sidebar-popup-enter 220ms var(--art-motion-ease-out) backwards;
+  }
+
   &.el-menu--vertical,
   .el-menu--popup,
   .el-menu {
@@ -422,6 +431,24 @@ $popup-menu-radius: 6px;
   .el-sub-menu__title:hover,
   .el-menu-item:not(.is-active):hover {
     color: #fff !important;
+  }
+}
+
+@keyframes art-sidebar-popup-enter {
+  from {
+    opacity: 0;
+    transform: translateX(-18px) scale(0.97);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .menu-left-dark-popper > .el-menu--popup {
+    animation: none;
   }
 }
 

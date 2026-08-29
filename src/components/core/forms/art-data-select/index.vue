@@ -314,7 +314,7 @@
   import { ArrowDown, CircleClose, Search } from '@element-plus/icons-vue'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
-  import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
+  import type { ArtDialogExpose, ArtDialogSize } from '@/components/core/dialogs/art-dialog/types'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import TreeUtils from '@/utils/tree'
   import { storeToRefs } from 'pinia'
@@ -379,6 +379,7 @@
   const tableRef = ref<DataSelectTableInstance>()
   const treeRef = ref<InstanceType<typeof ElTree>>()
   const dialogRef = ref<ArtDialogExpose<void>>()
+  const dialogSizePresets: readonly ArtDialogSize[] = ['sm', 'md', 'lg', 'xl', 'full']
   const loading = ref(false)
   const keyword = ref('')
   const filterValue = ref<string | number>()
@@ -666,9 +667,14 @@
     if (props.disabled) return
     draftRows.value = confirmedRows.value.map((row) => ({ ...row }))
     emit('open')
+    const usesSizePreset =
+      typeof props.dialogWidth === 'string' &&
+      dialogSizePresets.includes(props.dialogWidth as ArtDialogSize)
     await dialogRef.value?.handleOpen(undefined, {
       title: props.title,
-      width: props.dialogWidth,
+      ...(usesSizePreset
+        ? { size: props.dialogWidth as ArtDialogSize }
+        : { width: props.dialogWidth }),
       fullscreen: props.fullscreen,
       showFooter: true,
       dialogProps,

@@ -57,10 +57,10 @@
 
 <script setup lang="ts">
   import ArtUploadImage from '@/components/core/forms/art-upload-image/index.vue'
+  import ArtUploadFile from '@/components/core/forms/art-upload-file/index.vue'
   import ArtWangEditor from '@/components/core/forms/art-wang-editor/index.vue'
   import type { FormItem } from '@/components/core/forms/art-form/index.vue'
-  import { ElMessage, ElUpload, ElButton, ElInput } from 'element-plus'
-  import type { UploadFile, UploadFiles, UploadUserFile } from 'element-plus'
+  import { ElMessage, ElButton, ElInput } from 'element-plus'
 
   interface Emits {
     (e: 'update:modelValue', value: Record<string, unknown>): void
@@ -89,7 +89,7 @@
     status?: boolean
     systemName?: string
     imageUpload: string[]
-    multipleFiles: UploadUserFile[]
+    multipleFiles: string[]
     richTextContent: string
   }
 
@@ -586,37 +586,21 @@
       span: 12,
       placeholder: '示例：栅格 span=12 占容器一半宽度，span=24 占满容器'
     },
-    // 文件上传示例 - 使用 render 函数渲染
+    // 文件上传示例 - 使用统一附件组件
     {
       label: '文件上传',
       key: 'multipleFiles',
       span: 12,
       render: () =>
-        h(
-          ElUpload,
-          {
-            multiple: true,
-            limit: 5,
-            action: '#',
-            autoUpload: false,
-            showFileList: true,
-            // accept: '.pdf,.doc,.docx,.txt',
-            onChange: (_file: UploadFile, fileList: UploadFiles) => {
-              formData.value.multipleFiles = fileList as UploadUserFile[]
-            },
-            onRemove: (_file: UploadFile, fileList: UploadFiles) => {
-              formData.value.multipleFiles = fileList as UploadUserFile[]
-            },
-            onExceed: (files: File[], fileList: UploadUserFile[]) => {
-              ElMessage.warning(
-                `最多只能上传 5 个文件，当前选择了 ${files.length + fileList.length} 个文件`
-              )
-            }
-          },
-          {
-            default: () => [h('span', { class: 'el-button el-button--primary' }, '点击上传')]
+        h(ArtUploadFile, {
+          modelValue: formData.value.multipleFiles,
+          title: '点击上传',
+          multiple: true,
+          limit: 5,
+          'onUpdate:modelValue': (value: string | string[]) => {
+            formData.value.multipleFiles = Array.isArray(value) ? value : value ? [value] : []
           }
-        )
+        })
     },
     // 图片上传示例 - 使用 render 函数渲染
     {

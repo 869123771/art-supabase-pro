@@ -1,0 +1,1 @@
+import{Dt as e,Kt as t,vt as n}from"./framework-Dc3kpLtW.js";import{t as r}from"./smis-page-placeholder-CkN9Vtiq.js";var i=e({name:`SmisTrainingStatisticsReport`,__name:`index`,setup(e){return(e,i)=>(t(),n(r,{section:`资质培训 / 培训管理`,title:`培训统计报表`}))}});export{i as default};

@@ -3,7 +3,7 @@ import test from 'node:test'
 import {
   normalizeUploadModelUrls,
   shouldSyncUploadFileList
-} from '../../src/components/core/forms/art-upload-image/model-utils'
+} from '../../src/components/core/forms/upload-model-utils'
 
 test('父组件传入内容相同的新数组时不重建上传列表', () => {
   const lastSyncedUrls = ['https://example.com/first.png', 'https://example.com/second.png']

@@ -79,6 +79,7 @@ Check at minimum:
 - relevant loading, empty, error, disabled, selected, and long-content states;
 - keyboard focus, interaction feedback, console errors, and narrow desktop behavior;
 - light/dark and box-mode variants affected by shared styling.
+- for every new or modified `ArtTableQuery` page with focus mode, enter focus mode in the browser and confirm that the hero, metrics, and unrelated page siblings are removed; composite navigation context, filters, actions, table, pagination, and complete UI states remain correctly sized without clipping or overflow; then exit with both the visible control and `Esc` and confirm the original layout and search visibility are restored. A switch that changes state without changing the rendered layout fails this gate.
 
 Do not declare completion from source review alone. If browser verification is impossible, state that the visual gate remains provisional.
 

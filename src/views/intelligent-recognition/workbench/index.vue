@@ -4,7 +4,7 @@
     :error="loadError"
     :full-height="focusMode"
     class="recognition-workbench business-workspace-page"
-    :class="{ 'is-focus-mode': focusMode }"
+    :class="{ 'is-focus-mode': focusMode, 'is-motion-ready': motionReady }"
     @retry="loadData"
   >
     <RecognitionPageHero
@@ -146,6 +146,7 @@
   const router = useRouter()
   const { focusMode } = useWorkspaceFocus()
   const loading = ref(false)
+  const motionReady = ref(false)
   const loadError = shallowRef<Error | null>(null)
   const runnerRef = ref<RunnerExpose>()
   const detailRef = ref<DetailExpose>()
@@ -212,6 +213,7 @@
   ]
 
   async function loadData(): Promise<void> {
+    motionReady.value = false
     loading.value = true
     loadError.value = null
     try {
@@ -227,6 +229,8 @@
       loadError.value = error instanceof Error ? error : new Error('智能识别工作台加载失败')
     } finally {
       loading.value = false
+      await nextTick()
+      motionReady.value = true
     }
   }
 
@@ -284,6 +288,10 @@
       color: var(--theme-color);
       background: color-mix(in srgb, var(--theme-color) 10%, transparent);
       border-radius: 50%;
+      transition:
+        color var(--art-motion-duration-fast) var(--art-motion-ease-out),
+        background-color var(--art-motion-duration-fast) var(--art-motion-ease-out),
+        transform var(--art-motion-duration-base) var(--art-motion-ease-out);
     }
 
     &__capabilities {
@@ -300,9 +308,9 @@
         border: 1px solid var(--art-card-border);
         border-radius: var(--custom-radius);
         transition:
-          border-color 0.18s ease,
-          box-shadow 0.18s ease,
-          transform 0.18s ease;
+          border-color var(--art-motion-duration-fast) var(--art-motion-ease-out),
+          box-shadow var(--art-motion-duration-base) var(--art-motion-ease-out),
+          transform var(--art-motion-duration-fast) var(--art-motion-ease-out);
 
         > header {
           display: flex;
@@ -378,6 +386,7 @@
       color: var(--theme-color);
       background: color-mix(in srgb, var(--theme-color) 9%, transparent);
       border-radius: var(--custom-radius);
+      transition: transform var(--art-motion-duration-base) var(--art-motion-ease-out);
     }
 
     &__lower {
@@ -461,15 +470,106 @@
         width: 100%;
       }
     }
+
+    &.is-motion-ready {
+      .recognition-workbench__attention,
+      .recognition-workbench__capability-workspace,
+      .recognition-workbench__lower > * {
+        animation: recognition-workbench-reveal var(--art-motion-duration-slow)
+          var(--art-motion-ease-out) backwards;
+      }
+
+      .recognition-workbench__attention {
+        animation-delay: 50ms;
+      }
+
+      .recognition-workbench__attention-icon {
+        animation: recognition-attention-settle var(--art-motion-duration-base)
+          var(--art-motion-ease-out) 140ms backwards;
+      }
+
+      .recognition-workbench__capability-workspace {
+        animation-delay: 90ms;
+      }
+
+      .recognition-workbench__capabilities article {
+        animation: recognition-capability-reveal var(--art-motion-duration-slow)
+          var(--art-motion-ease-out) backwards;
+
+        @for $index from 1 through 4 {
+          &:nth-child(#{$index}) {
+            animation-delay: #{110ms + ($index - 1) * 36ms};
+          }
+        }
+      }
+
+      .recognition-workbench__lower > * {
+        animation-delay: 220ms;
+
+        &:nth-child(2) {
+          animation-delay: 270ms;
+        }
+      }
+    }
+
+    &__capabilities article:hover &__capability-icon,
+    &__capabilities article:focus-within &__capability-icon {
+      transform: translate3d(0, -2px, 0) scale(1.05);
+    }
+
+    &__capabilities article :deep(.el-button svg) {
+      transition: transform var(--art-motion-duration-fast) var(--art-motion-ease-out);
+    }
+
+    &__capabilities article:hover :deep(.el-button svg),
+    &__capabilities article:focus-within :deep(.el-button svg) {
+      transform: translate3d(3px, 0, 0);
+    }
   }
 
-  :global([data-box-mode='border-mode']) .recognition-workbench__capabilities article:hover,
-  :global([data-box-mode='border-mode']) .recognition-workbench__capabilities article:focus-within {
+  @keyframes recognition-workbench-reveal {
+    from {
+      opacity: 0;
+      transform: translate3d(0, 12px, 0) scale(0.992);
+    }
+
+    to {
+      opacity: 1;
+      transform: translate3d(0, 0, 0) scale(1);
+    }
+  }
+
+  @keyframes recognition-capability-reveal {
+    from {
+      opacity: 0;
+      transform: translate3d(0, 10px, 0);
+    }
+
+    to {
+      opacity: 1;
+      transform: translate3d(0, 0, 0);
+    }
+  }
+
+  @keyframes recognition-attention-settle {
+    from {
+      opacity: 0.4;
+      transform: scale(0.88);
+    }
+
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  :global([data-box-mode='border-mode'] .recognition-workbench__capabilities article:hover),
+  :global([data-box-mode='border-mode'] .recognition-workbench__capabilities article:focus-within) {
     border-color: color-mix(in srgb, var(--theme-color) 42%, var(--art-card-border));
   }
 
-  :global([data-box-mode='shadow-mode']) .recognition-workbench__capabilities article:hover,
-  :global([data-box-mode='shadow-mode']) .recognition-workbench__capabilities article:focus-within {
+  :global([data-box-mode='shadow-mode'] .recognition-workbench__capabilities article:hover),
+  :global([data-box-mode='shadow-mode'] .recognition-workbench__capabilities article:focus-within) {
     box-shadow: 0 8px 24px color-mix(in srgb, var(--theme-color) 10%, transparent);
     transform: translateY(-1px);
   }
@@ -528,6 +628,32 @@
       &__flow > svg {
         align-self: center;
         transform: rotate(90deg);
+      }
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .recognition-workbench {
+      &.is-motion-ready .recognition-workbench__attention,
+      &.is-motion-ready .recognition-workbench__attention-icon,
+      &.is-motion-ready .recognition-workbench__capability-workspace,
+      &.is-motion-ready .recognition-workbench__capabilities article,
+      &.is-motion-ready .recognition-workbench__lower > * {
+        animation: none;
+      }
+
+      &__attention-icon,
+      &__capability-icon,
+      &__capabilities article,
+      &__capabilities article :deep(.el-button svg) {
+        transition: none;
+      }
+
+      &__capabilities article:hover &__capability-icon,
+      &__capabilities article:focus-within &__capability-icon,
+      &__capabilities article:hover :deep(.el-button svg),
+      &__capabilities article:focus-within :deep(.el-button svg) {
+        transform: none;
       }
     }
   }

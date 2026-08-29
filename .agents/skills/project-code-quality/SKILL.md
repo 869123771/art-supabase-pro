@@ -52,7 +52,7 @@ Do not hand-write generic parsing, object, collection, date, async, observer, or
 - Use native `button`, `a`, and router-link elements for actions and navigation. Do not attach actions to `div`, `span`, `li`, `p`, or `i`; ARIA roles are reserved for established composite widgets such as tabs.
 - External links opened with `target="_blank"` must include `rel="noopener noreferrer"`; shared navigation helpers must enforce the same opener isolation.
 - Icon-only actions require an accessible name, a visible keyboard focus state, and a tooltip or `title` when the meaning is not obvious.
-- Upload controls must expose one interactive trigger. Do not place an `ElButton` inside `ElUpload`'s own button-like trigger; use the shared import component or a non-interactive visual child.
+- Upload controls must expose one interactive trigger. Generic attachments use `ArtUploadFile`, image previews use `ArtUploadImage`, structured spreadsheet imports use `ArtExcelImport`, and resource-library selection uses `ArtResourcePicker`. Business views must not implement raw upload lifecycles or repurpose `ArtExcelImport` for ordinary files. Do not place an `ElButton` inside `ElUpload`'s own button-like trigger; shared upload triggers use a non-interactive visual child.
 - Business views must use the shared `ArtDialog` and `ArtDrawer` overlay abstractions instead of raw Element Plus overlays.
 - Do not leave `console.log` or `console.debug` in business views. Use visible user feedback for demonstrations and controlled diagnostics for actionable failures.
 - Never use `transition: all` or `transition-all`; enumerate the properties that actually animate. Preserve the global reduced-motion fallback.
