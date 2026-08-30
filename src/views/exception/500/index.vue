@@ -1,7 +1,7 @@
 <template>
   <ArtException
     :btn-events="retryInitialization"
-    :secondary-btn-events="reloadPage"
+    :secondary-btn-events="returnToLogin"
     :data="{
       title: '500',
       heading: $t('exceptionPage.500Title'),
@@ -9,12 +9,12 @@
       desc: $t('exceptionPage.500'),
       hint: $t('exceptionPage.500Hint'),
       btnText: $t('exceptionPage.retryInitialization'),
-      secondaryBtnText: $t('exceptionPage.reload'),
+      secondaryBtnText: $t('exceptionPage.goLogin'),
       supportText: $t('exceptionPage.support'),
       visualLabel: $t('exceptionPage.systemStatus'),
       icon: 'ri:server-line',
       primaryIcon: 'ri:restart-line',
-      secondaryIcon: 'ri:refresh-line',
+      secondaryIcon: 'ri:logout-box-r-line',
       tone: 'danger',
       imgUrl
     }"
@@ -32,7 +32,7 @@
   const router = useRouter()
   const userStore = useUserStore()
 
-  const recoverSystem = async (hardReload: boolean): Promise<void> => {
+  const recoverSystem = async (): Promise<void> => {
     try {
       const session = await recoverCurrentAuthSession()
       if (session.status === 'expired') {
@@ -44,21 +44,22 @@
       userStore.setLoginStatus(true)
       resetRouteInitializationForRetry()
 
-      if (!hardReload) {
-        await router.replace('/')
-        return
-      }
-
-      const reloadUrl = new URL(router.resolve('/').href, window.location.href)
-      window.history.replaceState(window.history.state, '', reloadUrl)
-      window.location.reload()
+      await router.replace('/')
     } catch (error) {
       console.error('[Exception500] 系统恢复失败:', error)
       ElMessage.error('登录状态检查失败，请稍后重试')
     }
   }
 
-  const retryInitialization = (): Promise<void> => recoverSystem(false)
+  const retryInitialization = (): Promise<void> => recoverSystem()
 
-  const reloadPage = (): Promise<void> => recoverSystem(true)
+  const returnToLogin = async (): Promise<void> => {
+    try {
+      resetRouteInitializationForRetry()
+      await userStore.logOut('/')
+    } catch (error) {
+      console.error('[Exception500] 退出登录失败:', error)
+      ElMessage.error('退出登录失败，请稍后重试')
+    }
+  }
 </script>

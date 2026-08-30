@@ -397,7 +397,11 @@ async function handleDynamicRoutes(
     }
 
     if (isRouteInitializationAccessError(error)) {
-      return { name: 'Exception403', replace: true }
+      return {
+        name: 'Exception403',
+        query: { redirect: resolveRouteInitializationTarget(to.fullPath) },
+        replace: true
+      }
     }
 
     return createInitializationFailureRoute(to)

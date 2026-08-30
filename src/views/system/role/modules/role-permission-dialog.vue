@@ -12,13 +12,15 @@
           </div>
           <p>勾选该角色可访问的菜单与按钮权限，保存后对关联用户生效。</p>
         </div>
-        <span class="role-permission-dialog__selection-count">已选 {{ selectedCount }} 项</span>
+        <span class="role-permission-dialog__selection-count">
+          已选 {{ selectedCount }} / {{ permissionCount }} 项
+        </span>
       </section>
 
       <div class="role-permission-dialog__toolbar">
         <ElInput
           v-model="permissionKeyword"
-          placeholder="搜索菜单或按钮权限"
+          placeholder="搜索菜单、按钮或权限标识"
           clearable
           @input="handlePermissionFilter"
         >
@@ -26,34 +28,57 @@
             <ArtSvgIcon icon="ri:search-line" />
           </template>
         </ElInput>
-        <span>支持展开目录后精细配置按钮权限</span>
+        <span v-if="permissionKeyword.trim()">找到 {{ matchedCount }} 个匹配项</span>
+        <span v-else>搜索会自动展开匹配路径</span>
       </div>
 
-      <ElTree
+      <div
         v-if="menuList.length"
-        ref="treeRef"
-        class="role-permission-dialog__tree"
-        :data="menuList"
-        show-checkbox
-        :check-strictly="!isCascadeCheck"
-        :filter-node-method="filterMenuNode"
-        node-key="id"
-        :default-expand-all="isExpandAll"
-        :default-checked-keys="[]"
-        :props="defaultProps"
-        @check="handleTreeCheck"
+        ref="treeViewportRef"
+        class="role-permission-dialog__tree-viewport"
       >
-        <template #default="{ data }">
-          <div class="role-permission-dialog__node">
-            <ArtSvgIcon
-              class="role-permission-dialog__node-icon"
-              :icon="data.isAuth ? 'ri:key-2-line' : 'ri:menu-line'"
-            />
-            <span>{{ data.isAuth ? data.label : defaultProps.label(data) }}</span>
-            <ElTag v-if="data.isAuth" size="small" type="info" effect="plain">按钮</ElTag>
-          </div>
-        </template>
-      </ElTree>
+        <ElTreeV2
+          ref="treeRef"
+          class="role-permission-dialog__tree"
+          :data="menuList"
+          :height="treeHeight"
+          :item-size="40"
+          :default-expanded-keys="initialExpandedKeys"
+          show-checkbox
+          scrollbar-always-on
+          :check-strictly="!isCascadeCheck"
+          :filter-method="filterMenuNode"
+          :props="treeProps"
+          @check="handleTreeCheck"
+          @node-expand="handleNodeExpand"
+          @node-collapse="handleNodeCollapse"
+        >
+          <template #default="{ data }">
+            <div class="role-permission-dialog__node" :title="data.displayLabel">
+              <ArtSvgIcon
+                class="role-permission-dialog__node-icon"
+                :icon="getNodeIcon(data.type)"
+              />
+              <span>{{ data.displayLabel }}</span>
+              <ElTag v-if="data.type === 'button'" size="small" type="info" effect="plain">
+                按钮
+              </ElTag>
+              <span v-if="data.type === 'button'" class="role-permission-dialog__node-code">
+                {{ data.name }}
+              </span>
+            </div>
+          </template>
+        </ElTreeV2>
+      </div>
+
+      <ElEmpty
+        v-else-if="loadError && !contentLoading"
+        class="role-permission-dialog__state"
+        :image-size="72"
+        description="菜单权限加载失败，请稍后重试"
+      >
+        <ElButton type="primary" plain @click="loadPermission">重新加载</ElButton>
+      </ElEmpty>
 
       <ElEmpty v-else-if="!contentLoading" :image-size="72" description="暂无可配置的菜单权限" />
     </div>
@@ -73,16 +98,18 @@
           <ElButton @click="toggleExpandAll">
             {{ isExpandAll ? '全部收起' : '全部展开' }}
           </ElButton>
-          <ElButton @click="toggleSelectAll">
-            {{ isSelectAll ? '取消全选' : '全部选择' }}
-          </ElButton>
+          <ElTooltip content="作用于全部权限，不受当前搜索条件影响" placement="top">
+            <ElButton @click="toggleSelectAll">
+              {{ isSelectAll ? '取消全选' : '全部选择' }}
+            </ElButton>
+          </ElTooltip>
           <ElButton
             type="primary"
             :loading="loading"
             :disabled="contentLoading"
             @click="api.handleConfirm"
           >
-            保存
+            保存权限
           </ElButton>
         </div>
       </div>
@@ -93,9 +120,11 @@
 <script setup lang="ts">
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
+  import { ElTreeV2 } from 'element-plus'
   import { formatMenuTitle } from '@/utils/router'
   import TreeUtils from '@utils/tree'
-  import { uniq } from 'lodash-es'
+  import { omit, uniq } from 'lodash-es'
+  import { useDebounceFn, useElementSize } from '@vueuse/core'
   import type { AppRouteRecord } from '@/types'
   import {
     fetchGetEnableMenuList,
@@ -105,7 +134,20 @@
 
   type RoleListItem = Api.SystemManage.RoleListItem
   type TreeKey = string | number
-  type TreeStoreNode = { expanded: boolean }
+  type PermissionTreeNode = Omit<AppRouteRecord, 'children' | 'id'> & {
+    id: string
+    children?: PermissionTreeNode[]
+    displayLabel: string
+    searchText: string
+  }
+
+  interface PermissionTreeExpose {
+    filter: (query: string) => void
+    getCheckedKeys: () => TreeKey[]
+    getHalfCheckedKeys: () => TreeKey[]
+    setCheckedKeys: (keys: TreeKey[]) => void
+    setExpandedKeys: (keys: TreeKey[]) => void
+  }
 
   interface Emits {
     (e: 'success'): void
@@ -113,71 +155,132 @@
 
   const emit = defineEmits<Emits>()
   const dialogRef = ref<ArtDialogExpose<RoleListItem>>()
-  const treeRef = ref()
+  const treeRef = ref<PermissionTreeExpose>()
+  const treeViewportRef = ref<HTMLElement>()
   const roleData = shallowRef<RoleListItem>()
-  const menuList = ref<AppRouteRecord[]>([])
+  const menuList = ref<PermissionTreeNode[]>([])
   const contentLoading = ref(false)
-  const isExpandAll = ref(true)
+  const loadError = ref(false)
+  const isExpandAll = ref(false)
   const isSelectAll = ref(false)
   const isCascadeCheck = ref(false)
   const permissionKeyword = ref('')
   const selectedCount = ref(0)
+  const initialExpandedKeys = ref<TreeKey[]>([])
+  const manualExpandedKeys = new Set<TreeKey>()
+  const { height: viewportHeight } = useElementSize(treeViewportRef)
+  const treeHeight = computed(() => Math.max(Math.floor(viewportHeight.value), 1))
 
   const treeUtils = new TreeUtils({
     idKey: 'id',
     parentKey: 'parentId',
     childrenKey: 'children',
-    deepClone: true
+    deepClone: false
   })
 
-  const getCheckedKeys = computed<TreeKey[]>(() => treeRef.value?.getCheckedKeys() ?? [])
-  const getHalfCheckedKeys = computed<TreeKey[]>(() => treeRef.value?.getHalfCheckedKeys() ?? [])
-
-  const defaultProps = {
+  const treeProps = {
     children: 'children',
-    label: (data: Record<string, unknown>) => {
-      const meta = data.meta as AppRouteRecord['meta'] | undefined
-      return formatMenuTitle(meta?.title ?? '') || String(data.label ?? '')
+    label: 'displayLabel',
+    value: 'id'
+  }
+
+  const flatMenuList = computed(() =>
+    treeUtils.treeToList(menuList.value, {
+      includeDepth: true,
+      includeParentChain: true
+    })
+  )
+  const getCheckedKeys = (): TreeKey[] => treeRef.value?.getCheckedKeys() ?? []
+  const getHalfCheckedKeys = (): TreeKey[] => treeRef.value?.getHalfCheckedKeys() ?? []
+
+  const getNodeLabel = (data: AppRouteRecord): string =>
+    formatMenuTitle(data.meta?.title ?? '') || data.name || '未命名权限'
+
+  const getNodeIcon = (type?: string): string => {
+    if (type === 'button') return 'ri:key-2-line'
+    if (type === 'folder') return 'ri:folder-3-line'
+    return 'ri:menu-line'
+  }
+
+  const toPermissionNode = (data: AppRouteRecord): PermissionTreeNode | null => {
+    if (!data.id) return null
+    const displayLabel = getNodeLabel(data)
+    return {
+      ...omit(data, ['children']),
+      id: data.id,
+      displayLabel,
+      searchText: `${displayLabel} ${data.name} ${data.path ?? ''}`.toLowerCase()
     }
   }
 
   const getAllMenuKeys = (): TreeKey[] => {
-    const list = treeUtils.treeToList(menuList.value, {
-      includeDepth: true,
-      includeParentChain: true
-    })
-    return (list ?? [])
+    return flatMenuList.value
       .map((item) => item.id)
       .filter(
         (id): id is NonNullable<typeof id> => typeof id === 'string' || typeof id === 'number'
       )
   }
 
+  const getExpandableMenuKeys = (): TreeKey[] =>
+    uniq(
+      flatMenuList.value
+        .map((item) => item.parentId)
+        .filter((parentId): parentId is string => typeof parentId === 'string')
+    )
+
+  const permissionCount = computed(() => getAllMenuKeys().length)
+  const matchedCount = computed(() => {
+    const keyword = permissionKeyword.value.trim().toLowerCase()
+    if (!keyword) return permissionCount.value
+    return flatMenuList.value.filter((item) => item.searchText.includes(keyword)).length
+  })
+
   const resetPermission = (): void => {
     treeRef.value?.setCheckedKeys([])
     roleData.value = undefined
     menuList.value = []
-    isExpandAll.value = true
+    isExpandAll.value = false
     isSelectAll.value = false
     isCascadeCheck.value = false
     permissionKeyword.value = ''
     selectedCount.value = 0
+    loadError.value = false
+    initialExpandedKeys.value = []
+    manualExpandedKeys.clear()
   }
 
   const loadPermission = async (): Promise<void> => {
     if (!roleData.value?.id) return
 
     contentLoading.value = true
+    loadError.value = false
     try {
-      const [{ data: menus }, { data: roleMenus }] = await Promise.all([
+      const [menuResult, roleMenuResult] = await Promise.all([
         fetchGetEnableMenuList(),
         getCurrentRoleMenus({ id: roleData.value.id } as AppRouteRecord)
       ])
-      menuList.value = treeUtils.listToTree(menus ?? []) as AppRouteRecord[]
+      if (menuResult.error || roleMenuResult.error) {
+        loadError.value = true
+        menuList.value = []
+        return
+      }
+
+      const menus = menuResult.data ?? []
+      const roleMenus = roleMenuResult.data ?? []
+      const permissionNodes = (menus ?? [])
+        .map(toPermissionNode)
+        .filter((item): item is PermissionTreeNode => item !== null)
+      menuList.value = treeUtils.listToTree(permissionNodes)
+      initialExpandedKeys.value = menuList.value.map((item) => item.id)
+      initialExpandedKeys.value.forEach((key) => manualExpandedKeys.add(key))
       await nextTick()
-      const menuIds = (roleMenus ?? []).map((item: { menuId: TreeKey }) => item.menuId)
+      const menuIds = roleMenus.map((item: { menuId: TreeKey }) => item.menuId)
       treeRef.value?.setCheckedKeys(menuIds)
+      await nextTick()
       handleTreeCheck()
+    } catch {
+      loadError.value = true
+      menuList.value = []
     } finally {
       contentLoading.value = false
     }
@@ -205,53 +308,78 @@
     const tree = treeRef.value
     if (!tree) return
 
-    Object.values(tree.store.nodesMap).forEach((node) => {
-      const storeNode = node as TreeStoreNode
-      storeNode.expanded = !isExpandAll.value
-    })
-    isExpandAll.value = !isExpandAll.value
+    const shouldExpand = !isExpandAll.value
+    const expandedKeys = shouldExpand ? getExpandableMenuKeys() : initialExpandedKeys.value
+    tree.setExpandedKeys(expandedKeys)
+    manualExpandedKeys.clear()
+    expandedKeys.forEach((key) => manualExpandedKeys.add(key))
+    isExpandAll.value = shouldExpand
   }
 
-  const toggleSelectAll = (): void => {
+  const toggleSelectAll = async (): Promise<void> => {
     const tree = treeRef.value
     if (!tree) return
 
     tree.setCheckedKeys(isSelectAll.value ? [] : getAllMenuKeys())
+    await nextTick()
     handleTreeCheck()
   }
 
   const handleTreeCheck = (): void => {
     const allKeys = getAllMenuKeys()
-    isSelectAll.value = getCheckedKeys.value.length === allKeys.length && allKeys.length > 0
+    isSelectAll.value = getCheckedKeys().length === allKeys.length && allKeys.length > 0
     selectedCount.value = getSelectedMenuIds().length
   }
 
   const filterMenuNode = (value: string, data: Record<string, unknown>): boolean => {
     if (!value.trim()) return true
     const keyword = value.trim().toLowerCase()
-    const label = data.isAuth ? String(data.label ?? '') : defaultProps.label(data)
-    return label.toLowerCase().includes(keyword)
+    return typeof data.searchText === 'string' && data.searchText.includes(keyword)
   }
 
+  const applyPermissionFilter = useDebounceFn((value: string): void => {
+    const tree = treeRef.value
+    if (!tree) return
+
+    tree.filter(value)
+    if (!value.trim()) {
+      tree.setExpandedKeys([...manualExpandedKeys])
+    }
+  }, 120)
+
   const handlePermissionFilter = (value: string): void => {
-    treeRef.value?.filter(value)
+    void applyPermissionFilter(value)
+  }
+
+  const handleNodeExpand = (data: Record<string, unknown>): void => {
+    if (typeof data.id === 'string' || typeof data.id === 'number') {
+      manualExpandedKeys.add(data.id)
+    }
+  }
+
+  const handleNodeCollapse = (data: Record<string, unknown>): void => {
+    if (typeof data.id === 'string' || typeof data.id === 'number') {
+      manualExpandedKeys.delete(data.id)
+    }
+    isExpandAll.value = false
   }
 
   const getSelectedMenuIds = (): TreeKey[] => {
     if (!isCascadeCheck.value) {
-      return getCheckedKeys.value
+      return getCheckedKeys()
     }
 
-    return uniq([...getCheckedKeys.value, ...getHalfCheckedKeys.value])
+    return uniq([...getCheckedKeys(), ...getHalfCheckedKeys()])
   }
 
   const handleCascadeCheckChange = async (): Promise<void> => {
     const tree = treeRef.value
     if (!tree) return
 
-    const checkedKeys = getCheckedKeys.value
+    const checkedKeys = getCheckedKeys()
     await nextTick()
     tree.setCheckedKeys(checkedKeys)
+    await nextTick()
     handleTreeCheck()
   }
 
@@ -283,8 +411,20 @@
     overflow-x: hidden;
   }
 
+  :global(.role-permission-dialog-shell .art-dialog__scrollbar),
+  :global(.role-permission-dialog-shell .art-dialog__scrollbar > .el-scrollbar__wrap),
+  :global(
+    .role-permission-dialog-shell .art-dialog__scrollbar > .el-scrollbar__wrap > .el-scrollbar__view
+  ),
+  :global(.role-permission-dialog-shell .art-dialog__content) {
+    height: 100%;
+  }
+
   .role-permission-dialog {
+    display: flex;
+    flex-direction: column;
     min-width: 0;
+    height: 100%;
 
     &__context {
       display: flex;
@@ -372,11 +512,21 @@
       }
     }
 
+    &__tree-viewport {
+      flex: 1;
+      min-height: 0;
+    }
+
+    &__state {
+      flex: 1;
+    }
+
     &__tree {
-      padding: 2px 6px 12px;
+      width: 100%;
+      padding: 2px 6px 0;
 
       :deep(.el-tree-node__content) {
-        min-height: 36px;
+        min-height: 40px;
         border-radius: var(--el-border-radius-base);
       }
     }
@@ -392,6 +542,14 @@
         text-overflow: ellipsis;
         white-space: nowrap;
       }
+    }
+
+    &__node-code {
+      min-width: 0;
+      margin-left: auto;
+      font-family: var(--art-font-family-mono, ui-monospace, SFMono-Regular, Consolas, monospace);
+      font-size: 11px;
+      color: var(--el-text-color-placeholder);
     }
 
     &__node-icon {

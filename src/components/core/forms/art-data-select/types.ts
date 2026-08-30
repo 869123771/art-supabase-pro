@@ -88,6 +88,7 @@ export interface ArtDataSelectProps {
   treeCheckStrictly?: boolean
   maxTagCount?: number
   emptyText?: string
+  emptyDescription?: string
 }
 
 export interface ArtDataSelectMultipleProps extends Omit<

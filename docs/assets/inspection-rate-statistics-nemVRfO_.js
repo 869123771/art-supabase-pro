@@ -1,0 +1,1 @@
+import{Dt as e,Kt as t,vt as n}from"./framework-Dc3kpLtW.js";import{t as r}from"./smis-page-placeholder-CkN9Vtiq.js";var i=e({name:`SmisDualControlInspectionRateStatistics`,__name:`index`,setup(e){return(e,i)=>(t(),n(r,{section:`双控体系 / 双控报表`,title:`排查率统计`}))}});export{i as default};

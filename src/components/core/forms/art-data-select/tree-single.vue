@@ -15,6 +15,9 @@
     <template v-if="$slots.trigger" #trigger="slotProps">
       <slot name="trigger" v-bind="slotProps" />
     </template>
+    <template v-if="$slots.empty" #empty>
+      <slot name="empty" />
+    </template>
   </ArtDataSelect>
 </template>
 
@@ -54,7 +57,8 @@
     reserveSelected: true,
     treeCheckStrictly: true,
     maxTagCount: 2,
-    emptyText: '暂无数据'
+    emptyText: '暂无数据',
+    emptyDescription: ''
   })
   const emit = defineEmits<ArtDataSelectEmits>()
   const selectRef = ref<ArtDataSelectExpose>()

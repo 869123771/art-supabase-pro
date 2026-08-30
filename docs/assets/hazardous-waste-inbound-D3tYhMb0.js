@@ -1,0 +1,1 @@
+import{Dt as e,Kt as t,vt as n}from"./framework-Dc3kpLtW.js";import{t as r}from"./smis-page-placeholder-CkN9Vtiq.js";var i=e({name:`SmisHazardousWasteInbound`,__name:`index`,setup(e){return(e,i)=>(t(),n(r,{section:`危废管理`,title:`危废入库`}))}});export{i as default};

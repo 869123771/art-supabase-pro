@@ -7,6 +7,7 @@
     v-else
     v-bind="attrs"
     class="art-permission-guard art-full-height"
+    :class="{ 'is-viewport-centered': viewportCentered }"
     role="status"
     aria-live="polite"
     :aria-labelledby="titleId"
@@ -45,7 +46,17 @@
         </div>
 
         <div class="art-permission-guard__actions">
-          <ElButton v-ripple type="primary" @click="handleReload">
+          <ElButton
+            v-if="showRelogin"
+            v-ripple
+            type="primary"
+            :loading="reloginLoading"
+            @click="handleRelogin"
+          >
+            <ArtSvgIcon icon="ri:login-box-line" aria-hidden="true" />
+            重新登录
+          </ElButton>
+          <ElButton v-ripple type="primary" :plain="showRelogin" @click="handleReload">
             <ArtSvgIcon icon="ri:refresh-line" aria-hidden="true" />
             重新检查权限
           </ElButton>
@@ -58,7 +69,11 @@
 
         <p class="art-permission-guard__note">
           <ArtSvgIcon icon="ri:information-line" aria-hidden="true" />
-          授权完成后，请点击“重新检查权限”刷新当前账号的权限状态。
+          {{
+            showRelogin
+              ? '管理员授权后，建议重新登录以同步完整权限；也可以直接重新检查当前权限。'
+              : '授权完成后，请点击“重新检查权限”刷新当前账号的权限状态。'
+          }}
         </p>
       </div>
     </section>
@@ -69,6 +84,8 @@
   import { useRoute, useRouter } from 'vue-router'
   import { useAuth } from '@/hooks/core/useAuth'
   import { useCommon } from '@/hooks/core/useCommon'
+  import { resolveRouteInitializationTarget } from '@/router/guards/routeInitialization'
+  import { useUserStore } from '@/store/modules/user'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
 
   defineOptions({ name: 'ArtPermissionGuard', inheritAttrs: false })
@@ -78,21 +95,27 @@
     forceDenied?: boolean
     resourceName?: string
     showBack?: boolean
+    showRelogin?: boolean
+    viewportCentered?: boolean
   }
 
   const props = withDefaults(defineProps<Props>(), {
     permission: '',
     forceDenied: false,
     resourceName: '',
-    showBack: true
+    showBack: true,
+    showRelogin: false,
+    viewportCentered: false
   })
 
   const attrs = useAttrs()
   const route = useRoute()
   const router = useRouter()
+  const userStore = useUserStore()
   const { hasAuth } = useAuth()
   const { homePath } = useCommon()
   const titleId = useId()
+  const reloginLoading = ref(false)
 
   const hasPermission = computed(() => {
     if (props.forceDenied) return false
@@ -104,9 +127,25 @@
       ? route.meta.title.trim()
       : '当前页面'
   })
+  const retryTarget = computed(() =>
+    resolveRouteInitializationTarget(route.query.redirect || homePath.value || '/')
+  )
 
   const handleReload = (): void => {
+    const reloadUrl = new URL(router.resolve(retryTarget.value).href, window.location.href)
+    window.history.replaceState(window.history.state, '', reloadUrl)
     window.location.reload()
+  }
+
+  const handleRelogin = async (): Promise<void> => {
+    if (reloginLoading.value) return
+    reloginLoading.value = true
+    try {
+      await userStore.logOut(retryTarget.value)
+    } catch {
+      ElMessage.error('退出当前账号失败，请稍后重试')
+      reloginLoading.value = false
+    }
   }
 
   const handleBack = (): void => {
@@ -136,6 +175,12 @@
     place-items: center;
     min-width: 0;
     padding: var(--art-space-4);
+
+    &.is-viewport-centered {
+      width: 100%;
+      height: 100dvh;
+      min-height: 100dvh;
+    }
 
     &__panel {
       position: relative;

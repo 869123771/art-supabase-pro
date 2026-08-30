@@ -1,0 +1,1 @@
+import{Dt as e,Kt as t,vt as n}from"./framework-Dc3kpLtW.js";import{t as r}from"./smis-page-placeholder-CkN9Vtiq.js";var i=e({name:`SmisDualControlHiddenHazardGovernanceTracking`,__name:`index`,setup(e){return(e,i)=>(t(),n(r,{section:`双控体系 / 隐患治理`,title:`隐患治理跟踪`}))}});export{i as default};

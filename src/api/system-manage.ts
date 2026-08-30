@@ -2,7 +2,7 @@ import { AppRouteRecord } from '@/types/router'
 import type { ApplicationCode } from '@/config/application'
 import { useSupabase } from '@/hooks'
 import { WRITE_PERMISSION_DENIED_MESSAGE } from '@/hooks/core/useSupabase'
-import { buildSpecsFromMap, applyFilters, type Op } from '@/utils/supabase'
+import { buildSpecsFromMap, applyFilters, fetchAllRangePages, type Op } from '@/utils/supabase'
 import { toNextDayStartUTC, toStartOfDayUTC } from '@/utils'
 import { omit } from 'lodash-es'
 import TreeUtils from '@/utils/tree'
@@ -1015,23 +1015,38 @@ export async function editRole(params: Api.SystemManage.RoleListItem) {
 /*获取当前角色拥有的菜单*/
 export async function getCurrentRoleMenus(params: AppRouteRecord) {
   const { id } = params
-  return await responseHandle<Array<{ menuId: string }>>(
-    () => supabase.from('sys_role_menu').select().eq('role_id', id),
-    {
-      ignoreCheck: true
-    }
+  return await fetchAllRangePages<{ menuId: string }>(
+    ({ from, to }) =>
+      responseHandle<Array<{ menuId: string }>>(
+        () =>
+          supabase
+            .from('sys_role_menu')
+            .select('menu_id')
+            .eq('role_id', id)
+            .order('menu_id', { ascending: true })
+            .range(from, to),
+        { ignoreCheck: true }
+      ),
+    { pageSize: 500 }
   )
 }
 
 // 获取有用的菜单列表
 export async function fetchGetEnableMenuList() {
-  // 构建查询
-  const query = supabase
-    .from('sys_menu')
-    .select('*', { count: 'exact' })
-    .order('sort', { ascending: true }) // 按sort倒序
-
-  return await responseHandle<AppRouteRecord[]>(() => query, { ignoreCheck: true })
+  return await fetchAllRangePages<AppRouteRecord>(
+    ({ from, to }) =>
+      responseHandle<AppRouteRecord[]>(
+        () =>
+          supabase
+            .from('sys_menu')
+            .select('*')
+            .order('sort', { ascending: true })
+            .order('id', { ascending: true })
+            .range(from, to),
+        { ignoreCheck: true }
+      ),
+    { pageSize: 500 }
+  )
 }
 
 // 保存角色权限

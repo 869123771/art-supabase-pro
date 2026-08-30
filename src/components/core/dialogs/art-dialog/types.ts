@@ -32,6 +32,8 @@ export interface ArtDialogOptions<TData = unknown> extends ArtOverlayOptions<
   contentMaxHeight?: string | number
   /** 是否允许 ArtDialog 为内容区创建滚动容器；画布类内容可关闭 */
   useScrollbar?: boolean
+  /** 路由切换时是否自动关闭，避免 KeepAlive 页面中的 Teleport 弹窗残留 */
+  closeOnRouteChange?: boolean
   /** 单次打开时额外传递给 ElDialog 的属性 */
   dialogProps?: Partial<DialogPropsPublic> & Record<string, unknown>
 }

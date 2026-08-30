@@ -14,6 +14,7 @@
     :subtitle="subtitle"
     :search-placeholder="searchPlaceholder"
     empty-text="暂无可选员工"
+    empty-description="当前租户没有可选的在职或试用期员工，请先完善员工花名册。"
     :show-pagination="true"
     :page-size="10"
     :page-sizes="[10, 20, 30, 50]"
@@ -22,11 +23,18 @@
     @change="handleChange"
     @confirm="handleConfirm"
     @clear="emit('clear')"
-  />
+  >
+    <template #empty>
+      <ArtDataSourceEmptyActions resource-name="员工花名册" :actions="employeeMaintenanceActions" />
+    </template>
+  </ArtTableSingleSelect>
 </template>
 
 <script setup lang="ts">
   import ArtTableSingleSelect from '@/components/core/forms/art-data-select/table-single.vue'
+  import ArtDataSourceEmptyActions, {
+    type ArtDataSourceEmptyAction
+  } from '@/components/business/art-data-source-empty-actions/index.vue'
   import type {
     DataSelectColumn,
     DataSelectFetchParams,
@@ -77,6 +85,14 @@
   const userStore = useUserStore()
   const { getUserInfo } = storeToRefs(userStore)
   const resolvedTenantId = computed(() => props.tenantId || getUserInfo.value.tenantId || '')
+  const employeeMaintenanceActions = [
+    {
+      label: '去维护员工花名册',
+      routeName: 'HrEmployeeRoster',
+      permission: 'Hr:Employee:View',
+      icon: 'ri:contacts-book-3-line'
+    }
+  ] as const satisfies readonly ArtDataSourceEmptyAction[]
 
   const getEmployee = (row: DataSelectRecord): EmployeeIntegrationItem =>
     row as EmployeeIntegrationItem
@@ -120,8 +136,10 @@
 
   const normalizeValue = (
     value: DataSelectKey | DataSelectKey[] | undefined
-  ): string | undefined =>
-    typeof value === 'string' ? value : value == null ? undefined : String(value)
+  ): string | undefined => {
+    const selectedValue = Array.isArray(value) ? value[0] : value
+    return selectedValue == null ? undefined : String(selectedValue)
+  }
 
   const normalizeRows = (rows: DataSelectRecord[]): EmployeeIntegrationItem[] =>
     rows.map(getEmployee)

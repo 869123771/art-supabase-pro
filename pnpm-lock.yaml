@@ -61,6 +61,9 @@ importers:
       dayjs:
         specifier: ^1.11.21
         version: 1.11.21
+      dompurify:
+        specifier: 3.4.12
+        version: 3.4.12
       echarts:
         specifier: ^6.1.0
         version: 6.1.0

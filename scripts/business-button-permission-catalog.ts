@@ -371,6 +371,175 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
     ]
   },
   {
+    menuName: 'SmisToolIssuanceStandard',
+    buttons: [
+      button('View', '查看发放标准', 'SmisToolIssuanceStandard:View'),
+      button('Add', '新增发放标准', 'SmisToolIssuanceStandard:Add'),
+      button('Edit', '编辑发放标准', 'SmisToolIssuanceStandard:Edit'),
+      button('Delete', '删除发放标准', 'SmisToolIssuanceStandard:Delete'),
+      button('Export', '导出发放标准', 'SmisToolIssuanceStandard:Export')
+    ]
+  },
+  {
+    menuName: 'SmisToolPersonalStandard',
+    buttons: [
+      button('View', '查看个人标准', 'SmisToolPersonalStandard:View'),
+      button('Generate', '生成个人标准', 'SmisToolPersonalStandard:Generate'),
+      button('Schedule', '设置领用计划', 'SmisToolPersonalStandard:Schedule'),
+      button('Export', '导出个人标准', 'SmisToolPersonalStandard:Export')
+    ]
+  },
+  {
+    menuName: 'SmisToolIssuanceRecord',
+    buttons: [
+      button('View', '查看发放记录', 'SmisToolIssuanceRecord:View'),
+      button('Add', '新增发放记录', 'SmisToolIssuanceRecord:Add'),
+      button('Copy', '复制并新增', 'SmisToolIssuanceRecord:Copy'),
+      button('Edit', '编辑发放记录', 'SmisToolIssuanceRecord:Edit'),
+      button('Delete', '删除发放记录', 'SmisToolIssuanceRecord:Delete'),
+      button('Issue', '发放过账', 'SmisToolIssuanceRecord:Issue'),
+      button('Import', '导入发放记录', 'SmisToolIssuanceRecord:Import'),
+      button('DownloadTemplate', '下载导入模板', 'SmisToolIssuanceRecord:DownloadTemplate'),
+      button('Export', '导出发放记录', 'SmisToolIssuanceRecord:Export'),
+      button('Statistics', '发放统计分析', 'SmisToolIssuanceRecord:Statistics'),
+      button('Print', '打印工器具发放单', 'SmisToolIssuanceRecord:Print')
+    ]
+  },
+  {
+    menuName: 'SmisToolPersonalRequisition',
+    buttons: [
+      button('View', '查看个人领用', 'SmisToolPersonalRequisition:View'),
+      button('Generate', '生成到期领用单', 'SmisToolPersonalRequisition:Generate'),
+      button('Push', '下推发放', 'SmisToolPersonalRequisition:Push'),
+      button('Confirm', '确认本人领用', 'SmisToolPersonalRequisition:Confirm'),
+      button('Export', '导出个人领用', 'SmisToolPersonalRequisition:Export'),
+      button('Statistics', '个人领用统计', 'SmisToolPersonalRequisition:Statistics'),
+      button('Configure', '配置自动确认', 'SmisToolPersonalRequisition:Configure')
+    ]
+  },
+  {
+    menuName: 'SmisToolRequisitionReturn',
+    buttons: [
+      button('View', '查看归还单', 'SmisToolRequisitionReturn:View'),
+      button('Add', '新增归还单', 'SmisToolRequisitionReturn:Add'),
+      button('Copy', '复制并新增', 'SmisToolRequisitionReturn:Copy'),
+      button('Edit', '编辑归还单', 'SmisToolRequisitionReturn:Edit'),
+      button('Delete', '删除归还单', 'SmisToolRequisitionReturn:Delete'),
+      button('Return', '发起归还', 'SmisToolRequisitionReturn:Return'),
+      button('Submit', '提交归还审批', 'SmisToolRequisitionReturn:Submit'),
+      button('Export', '导出归还单', 'SmisToolRequisitionReturn:Export')
+    ]
+  },
+  {
+    menuName: 'SmisThreeViolationEducation',
+    buttons: [
+      button('View', '查看三违教育信息', 'SmisThreeViolationEducation:View'),
+      button('Add', '新增三违人员信息', 'SmisThreeViolationEducation:Add'),
+      button('Copy', '复制并新增', 'SmisThreeViolationEducation:Copy'),
+      button('Edit', '编辑三违人员信息', 'SmisThreeViolationEducation:Edit'),
+      button('Delete', '删除三违人员信息', 'SmisThreeViolationEducation:Delete'),
+      button('RecordEducation', '记录教育信息', 'SmisThreeViolationEducation:RecordEducation'),
+      button('Export', '导出三违教育信息', 'SmisThreeViolationEducation:Export'),
+      button('Print', '打印安全教育台账', 'SmisThreeViolationEducation:Print')
+    ]
+  },
+  {
+    menuName: 'SmisViolationCategory',
+    buttons: [
+      button('View', '查看违章分类', 'SmisViolationCategory:View'),
+      button('Add', '新增违章分类', 'SmisViolationCategory:Add'),
+      button('Edit', '编辑违章分类', 'SmisViolationCategory:Edit'),
+      button('Delete', '删除违章分类', 'SmisViolationCategory:Delete'),
+      button('Export', '导出违章分类', 'SmisViolationCategory:Export')
+    ]
+  },
+  {
+    menuName: 'SmisWorkItem',
+    buttons: [
+      button('View', '查看作业项目', 'SmisWorkItem:View'),
+      button('Add', '新增作业项目', 'SmisWorkItem:Add'),
+      button('Edit', '编辑作业项目', 'SmisWorkItem:Edit'),
+      button('Delete', '删除作业项目', 'SmisWorkItem:Delete'),
+      button('Export', '导出作业项目', 'SmisWorkItem:Export')
+    ]
+  },
+  {
+    menuName: 'SmisWorkCategory',
+    buttons: [
+      button('View', '查看作业类别', 'SmisWorkCategory:View'),
+      button('Add', '新增作业类别', 'SmisWorkCategory:Add'),
+      button('Edit', '编辑作业类别', 'SmisWorkCategory:Edit'),
+      button('Delete', '删除作业类别', 'SmisWorkCategory:Delete'),
+      button('Export', '导出作业类别', 'SmisWorkCategory:Export')
+    ]
+  },
+  {
+    menuName: 'SmisPermittedOperationItem',
+    buttons: [
+      button('View', '查看准操项目', 'SmisPermittedOperationItem:View'),
+      button('Add', '新增准操项目', 'SmisPermittedOperationItem:Add'),
+      button('Edit', '编辑准操项目', 'SmisPermittedOperationItem:Edit'),
+      button('Delete', '删除准操项目', 'SmisPermittedOperationItem:Delete'),
+      button('Export', '导出准操项目', 'SmisPermittedOperationItem:Export')
+    ]
+  },
+  {
+    menuName: 'SmisSpecialEquipmentPersonnelCertificateLedger',
+    buttons: [
+      button('View', '查看人员证件台账', 'SmisPersonnelCertificateLedger:View'),
+      button('Add', '新增人员证件', 'SmisPersonnelCertificateLedger:Add'),
+      button('Copy', '复制并新增', 'SmisPersonnelCertificateLedger:Copy'),
+      button('Edit', '编辑人员证件', 'SmisPersonnelCertificateLedger:Edit'),
+      button('Delete', '删除人员证件', 'SmisPersonnelCertificateLedger:Delete'),
+      button('Export', '导出人员证件台账', 'SmisPersonnelCertificateLedger:Export'),
+      button('ViewHistory', '查看复审记录', 'SmisPersonnelCertificateLedger:ViewHistory')
+    ]
+  },
+  {
+    menuName: 'SmisAntiViolationStandardLibrary',
+    buttons: [
+      button('View', '查看反违章标准', 'SmisAntiViolationStandardLibrary:View'),
+      button('Add', '新增反违章标准', 'SmisAntiViolationStandardLibrary:Add'),
+      button('Edit', '编辑反违章标准', 'SmisAntiViolationStandardLibrary:Edit'),
+      button('Delete', '删除反违章标准', 'SmisAntiViolationStandardLibrary:Delete'),
+      button('Import', '导入反违章标准', 'SmisAntiViolationStandardLibrary:Import'),
+      button('Export', '导出反违章标准', 'SmisAntiViolationStandardLibrary:Export')
+    ]
+  },
+  {
+    menuName: 'SmisViolationRecord',
+    buttons: [
+      button('View', '查看违章记录', 'SmisViolationRecord:View'),
+      button('Add', '新增违章记录', 'SmisViolationRecord:Add'),
+      button('Copy', '复制并新增', 'SmisViolationRecord:Copy'),
+      button('Edit', '编辑违章记录', 'SmisViolationRecord:Edit'),
+      button('Delete', '删除违章记录', 'SmisViolationRecord:Delete'),
+      button('Export', '导出违章记录', 'SmisViolationRecord:Export')
+    ]
+  },
+  {
+    menuName: 'SmisAnnouncementCategory',
+    buttons: [
+      button('View', '查看公告分类', 'SmisAnnouncementCategory:View'),
+      button('Add', '新增公告分类', 'SmisAnnouncementCategory:Add'),
+      button('Edit', '编辑公告分类', 'SmisAnnouncementCategory:Edit'),
+      button('Delete', '删除公告分类', 'SmisAnnouncementCategory:Delete'),
+      button('Export', '导出公告分类', 'SmisAnnouncementCategory:Export')
+    ]
+  },
+  {
+    menuName: 'SmisViolationAnnouncement',
+    buttons: [
+      button('View', '查看公告', 'SmisViolationAnnouncement:View'),
+      button('Add', '新建公告', 'SmisViolationAnnouncement:Add'),
+      button('Edit', '编辑公告草稿', 'SmisViolationAnnouncement:Edit'),
+      button('Delete', '删除公告草稿', 'SmisViolationAnnouncement:Delete'),
+      button('Publish', '发布公告', 'SmisViolationAnnouncement:Publish'),
+      button('Withdraw', '撤回公告', 'SmisViolationAnnouncement:Withdraw'),
+      button('ReadStats', '查看查阅情况', 'SmisViolationAnnouncement:ReadStats')
+    ]
+  },
+  {
     menuName: 'SmisStorageLocation',
     buttons: [
       button('View', '查看存放位置', 'SmisStorageLocation:View'),
@@ -428,6 +597,61 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
       button('Edit', '编辑供应商', 'SmisSupplier:Edit'),
       button('Delete', '删除供应商', 'SmisSupplier:Delete'),
       button('Export', '导出供应商', 'SmisSupplier:Export')
+    ]
+  },
+  {
+    menuName: 'SmisAllDocuments',
+    buttons: [
+      button('View', '查看全部文档', 'SmisAllDocuments:View'),
+      button('Add', '新增文档', 'SmisAllDocuments:Add'),
+      button('Upload', '上传文档或新版本', 'SmisAllDocuments:Upload'),
+      button('Edit', '编辑文档', 'SmisAllDocuments:Edit'),
+      button('Delete', '删除草稿文档', 'SmisAllDocuments:Delete'),
+      button('Export', '导出文档清单', 'SmisAllDocuments:Export'),
+      button('Follow', '关注或取消关注文档', 'SmisAllDocuments:Follow'),
+      button('Share', '分享文档', 'SmisAllDocuments:Share'),
+      button('CategoryAdd', '新增文档分类', 'SmisAllDocuments:CategoryAdd'),
+      button('CategoryEdit', '编辑文档分类', 'SmisAllDocuments:CategoryEdit'),
+      button('CategoryDelete', '删除文档分类', 'SmisAllDocuments:CategoryDelete')
+    ]
+  },
+  {
+    menuName: 'SmisRequiredKnowledge',
+    buttons: [
+      button('View', '查看应知应会', 'SmisRequiredKnowledge:View'),
+      button('Add', '新增应知应会', 'SmisRequiredKnowledge:Add'),
+      button('Edit', '编辑应知应会', 'SmisRequiredKnowledge:Edit'),
+      button('Delete', '删除应知应会', 'SmisRequiredKnowledge:Delete'),
+      button('Export', '导出应知应会', 'SmisRequiredKnowledge:Export'),
+      button('CategoryAdd', '新增文档分类', 'SmisRequiredKnowledge:CategoryAdd'),
+      button('CategoryEdit', '编辑文档分类', 'SmisRequiredKnowledge:CategoryEdit'),
+      button('CategoryDelete', '删除文档分类', 'SmisRequiredKnowledge:CategoryDelete')
+    ]
+  },
+  {
+    menuName: 'SmisSafetyManagementSystem',
+    buttons: [
+      button('View', '查看安全管理制度', 'SmisSafetyManagementSystem:View'),
+      button('Add', '新增安全管理制度', 'SmisSafetyManagementSystem:Add'),
+      button('Edit', '编辑安全管理制度', 'SmisSafetyManagementSystem:Edit'),
+      button('Delete', '删除安全管理制度', 'SmisSafetyManagementSystem:Delete'),
+      button('Export', '导出安全管理制度', 'SmisSafetyManagementSystem:Export')
+    ]
+  },
+  {
+    menuName: 'SmisLegalRegulation',
+    buttons: [
+      button('View', '查看法律法规', 'SmisLegalRegulation:View'),
+      button('Add', '新增法律法规', 'SmisLegalRegulation:Add'),
+      button('Copy', '复制并新增法律法规', 'SmisLegalRegulation:Copy'),
+      button('Edit', '编辑法律法规', 'SmisLegalRegulation:Edit'),
+      button('Delete', '删除法律法规', 'SmisLegalRegulation:Delete'),
+      button('Export', '导出法律法规', 'SmisLegalRegulation:Export'),
+      button('ComplianceView', '查看合规性评价', 'SmisLegalRegulation:ComplianceView'),
+      button('ComplianceAdd', '新增合规性评价', 'SmisLegalRegulation:ComplianceAdd'),
+      button('ComplianceCopy', '复制并新增合规性评价', 'SmisLegalRegulation:ComplianceCopy'),
+      button('ComplianceEdit', '编辑合规性评价', 'SmisLegalRegulation:ComplianceEdit'),
+      button('ComplianceDelete', '删除合规性评价', 'SmisLegalRegulation:ComplianceDelete')
     ]
   },
   {

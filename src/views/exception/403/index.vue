@@ -1,5 +1,5 @@
 <template>
-  <ArtPermissionGuard force-denied resource-name="目标页面" />
+  <ArtPermissionGuard force-denied resource-name="目标页面" show-relogin viewport-centered />
 </template>
 
 <script setup lang="ts">

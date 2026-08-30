@@ -1,0 +1,1 @@
+import{Dt as e,Kt as t,vt as n}from"./framework-Dc3kpLtW.js";import{t as r}from"./smis-page-placeholder-CkN9Vtiq.js";var i=e({name:`SmisSpecialOperationHazardFactor`,__name:`index`,setup(e){return(e,i)=>(t(),n(r,{section:`特殊作业管理`,title:`危害因素`}))}});export{i as default};

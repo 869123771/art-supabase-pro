@@ -412,8 +412,8 @@
     void formRef.value?.reloadOptions('organizationId')
   }
 
-  const handleEmployeeValueChange = (value: string | undefined): void => {
-    formData.value.hrEmployeeId = value ?? null
+  const handleEmployeeValueChange = (value: string | string[] | undefined): void => {
+    formData.value.hrEmployeeId = (Array.isArray(value) ? value[0] : value) ?? null
   }
 
   const handleEmployeeRowsChange = (rows: EmployeeIntegrationItem[]): void => {

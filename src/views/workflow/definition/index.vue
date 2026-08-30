@@ -719,6 +719,7 @@
 
     :deep(.workflow-definition__name-cell > span) {
       display: grid;
+      flex: 0 0 34px;
       place-items: center;
       width: 34px;
       height: 34px;
@@ -729,6 +730,7 @@
 
     :deep(.workflow-definition__name-cell > div) {
       display: grid;
+      flex: 1 1 auto;
       gap: 2px;
       min-width: 0;
     }

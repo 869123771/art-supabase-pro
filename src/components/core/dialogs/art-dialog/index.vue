@@ -151,6 +151,7 @@
     contentHeight: undefined,
     contentMaxHeight: undefined,
     useScrollbar: true,
+    closeOnRouteChange: true,
     showFooter: true,
     showCancelButton: true,
     showConfirmButton: true,
@@ -170,6 +171,7 @@
   const MAX_CONTENT_VIEWPORT_HEIGHT = 'calc(100dvh - 160px)'
 
   const attrs = useAttrs()
+  const route = useRoute()
   const slots = defineSlots<ArtDialogSlots<T>>()
   const dialogRef = shallowRef<DialogInstance>()
   const scrollbarRef = shallowRef<ScrollbarInstance>()
@@ -190,6 +192,7 @@
     contentHeight: props.contentHeight,
     contentMaxHeight: props.contentMaxHeight,
     useScrollbar: props.useScrollbar,
+    closeOnRouteChange: props.closeOnRouteChange,
     showFooter: props.showFooter,
     showCancelButton: props.showCancelButton,
     showConfirmButton: props.showConfirmButton,
@@ -334,6 +337,19 @@
   watch(
     () => props.loading,
     (value) => setLoading(value)
+  )
+
+  watch(
+    () => route.fullPath,
+    (currentPath, previousPath) => {
+      if (
+        currentPath !== previousPath &&
+        visible.value &&
+        options.value.closeOnRouteChange !== false
+      ) {
+        void handleClose(true)
+      }
+    }
   )
 
   const dialogBindings = computed<Record<string, unknown>>(() => {

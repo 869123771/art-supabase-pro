@@ -169,6 +169,24 @@ const contracts: Record<string, WorkflowBusinessContract> = {
     ],
     routePath: (businessId) => `/vms/vehicle-archive-detail/${businessId}`
   },
+  smis_tool_return: {
+    businessType: 'smis_tool_return',
+    label: '工器具归还',
+    menuName: 'SmisToolRequisitionReturn',
+    domain: 'safety',
+    riskLevel: 'medium',
+    owner: '安全生产',
+    fields: [
+      { key: 'returnNo', label: '归还单号', valueType: 'text' },
+      { key: 'employeeId', label: '领用人', valueType: 'text', referenceType: 'employee' },
+      { key: 'employeeName', label: '领用人姓名', valueType: 'text' },
+      { key: 'sourceDocumentNo', label: '源发放单号', valueType: 'text' },
+      { key: 'returnDate', label: '归还日期', valueType: 'date' },
+      { key: 'itemCount', label: '归还明细数', valueType: 'number' },
+      { key: 'returnQuantity', label: '归还总数量', valueType: 'number' }
+    ],
+    routePath: () => '/smis/safety-production/tool-requisition/tool-requisition-return'
+  },
   hr_personnel_change: {
     businessType: 'hr_personnel_change',
     label: '人事异动',

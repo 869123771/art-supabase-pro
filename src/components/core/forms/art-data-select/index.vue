@@ -136,6 +136,16 @@
                 @row-click="handleTableRowClick"
                 @selection-change="handleTableSelectionChange"
               >
+                <template v-if="emptyDescription || $slots.empty" #empty>
+                  <ArtEmptyState
+                    :title="emptyText"
+                    :description="emptyDescription"
+                    :visual-size="84"
+                    size="compact"
+                  >
+                    <slot name="empty" />
+                  </ArtEmptyState>
+                </template>
                 <ElTableColumn
                   v-if="multiple"
                   type="selection"
@@ -198,6 +208,16 @@
                   </template>
                 </ElTableColumn>
               </ElTable>
+
+              <ArtEmptyState
+                v-else-if="!loading && !tableRows.length && (emptyDescription || $slots.empty)"
+                :title="emptyText"
+                :description="emptyDescription"
+                :visual-size="84"
+                size="compact"
+              >
+                <slot name="empty" />
+              </ArtEmptyState>
 
               <ElScrollbar v-else class="art-data-select-dialog__tree-scrollbar">
                 <ElTree
@@ -370,7 +390,8 @@
     reserveSelected: true,
     treeCheckStrictly: true,
     maxTagCount: 2,
-    emptyText: '暂无数据'
+    emptyText: '暂无数据',
+    emptyDescription: ''
   })
 
   const emit = defineEmits<ArtDataSelectEmits>()
