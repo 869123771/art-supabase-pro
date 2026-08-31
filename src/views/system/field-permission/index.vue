@@ -334,7 +334,7 @@
   } from '@/api/field-permission'
   import { fetchGetRoleList, fetchGetUserList } from '@/api/system-manage'
   import { useAuth } from '@/hooks/core/useAuth'
-  import { useUserStore } from '@/store/modules/user'
+  import { useTenantScopeStore } from '@/store/modules/tenantScope'
   import { formatWithDayjs } from '@/utils/time'
   import { getFieldPermissionAuditChanges } from './modules/field-permission-audit'
 
@@ -367,8 +367,7 @@
     icon: string
   }
 
-  const userStore = useUserStore()
-  const { getUserInfo } = storeToRefs(userStore)
+  const { effectiveTenantId } = storeToRefs(useTenantScopeStore())
   const { hasAuth } = useAuth()
 
   const page = reactive<PageGroup>({
@@ -640,8 +639,8 @@
     page.loading = true
     page.error = null
     try {
-      const tenantId = String(getUserInfo.value.tenantId || '')
-      if (!tenantId) throw new Error('当前账号未绑定租户，无法配置租户字段权限')
+      const tenantId = effectiveTenantId.value ?? ''
+      if (!tenantId) throw new Error('请先在顶部选择具体租户，再配置字段权限')
 
       const [resourceResult, roleResult, userResult] = await Promise.all([
         fetchFieldPermissionResources(),
