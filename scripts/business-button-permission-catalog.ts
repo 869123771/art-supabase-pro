@@ -496,6 +496,74 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
     ]
   },
   {
+    menuName: 'SmisSpecialEquipmentOperatorCertificateLedger',
+    buttons: [
+      button('View', '查看作业人员证件台账', 'SmisSpecialEquipmentOperatorCertificateLedger:View'),
+      button('Add', '新增作业人员证件', 'SmisSpecialEquipmentOperatorCertificateLedger:Add'),
+      button('Copy', '复制并新增', 'SmisSpecialEquipmentOperatorCertificateLedger:Copy'),
+      button('Edit', '编辑作业人员证件', 'SmisSpecialEquipmentOperatorCertificateLedger:Edit'),
+      button('Delete', '删除作业人员证件', 'SmisSpecialEquipmentOperatorCertificateLedger:Delete'),
+      button(
+        'Export',
+        '导出作业人员证件台账',
+        'SmisSpecialEquipmentOperatorCertificateLedger:Export'
+      ),
+      button(
+        'ViewHistory',
+        '查看作业人员复审记录',
+        'SmisSpecialEquipmentOperatorCertificateLedger:ViewHistory'
+      )
+    ]
+  },
+  {
+    menuName: 'SmisSpecialOperationCertificate',
+    buttons: [
+      button('View', '查看特种作业操作证', 'SmisSpecialOperationCertificate:View'),
+      button('Add', '新增特种作业操作证', 'SmisSpecialOperationCertificate:Add'),
+      button('Copy', '复制并新增', 'SmisSpecialOperationCertificate:Copy'),
+      button('Edit', '编辑特种作业操作证', 'SmisSpecialOperationCertificate:Edit'),
+      button('Delete', '删除特种作业操作证', 'SmisSpecialOperationCertificate:Delete'),
+      button('Export', '导出特种作业操作证', 'SmisSpecialOperationCertificate:Export'),
+      button('ViewHistory', '查看特种作业复审记录', 'SmisSpecialOperationCertificate:ViewHistory')
+    ]
+  },
+  {
+    menuName: 'SmisSafetyManagerCertificate',
+    buttons: [
+      button('View', '查看安全管理人员证', 'SmisSafetyManagerCertificate:View'),
+      button('Add', '新增安全管理人员证', 'SmisSafetyManagerCertificate:Add'),
+      button('Copy', '复制并新增', 'SmisSafetyManagerCertificate:Copy'),
+      button('Edit', '编辑安全管理人员证', 'SmisSafetyManagerCertificate:Edit'),
+      button('Delete', '删除安全管理人员证', 'SmisSafetyManagerCertificate:Delete'),
+      button('Export', '导出安全管理人员证', 'SmisSafetyManagerCertificate:Export'),
+      button(
+        'ViewHistory',
+        '查看安全管理人员证复审记录',
+        'SmisSafetyManagerCertificate:ViewHistory'
+      )
+    ]
+  },
+  {
+    menuName: 'SmisRegisteredSafetyEngineerLedger',
+    buttons: [
+      button('View', '查看注册安全工程师台账', 'SmisRegisteredSafetyEngineerLedger:View'),
+      button('Add', '新增注册安全工程师证', 'SmisRegisteredSafetyEngineerLedger:Add'),
+      button('Copy', '复制并新增', 'SmisRegisteredSafetyEngineerLedger:Copy'),
+      button('Edit', '编辑注册安全工程师证', 'SmisRegisteredSafetyEngineerLedger:Edit'),
+      button('Delete', '删除注册安全工程师证', 'SmisRegisteredSafetyEngineerLedger:Delete'),
+      button('Export', '导出注册安全工程师台账', 'SmisRegisteredSafetyEngineerLedger:Export'),
+      button(
+        'ViewHistory',
+        '查看注册安全工程师复审记录',
+        'SmisRegisteredSafetyEngineerLedger:ViewHistory'
+      )
+    ]
+  },
+  {
+    menuName: 'SmisSafetyQualificationReportAnalysis',
+    buttons: [button('View', '查看安全资质报表分析', 'SmisSafetyQualificationReportAnalysis:View')]
+  },
+  {
     menuName: 'SmisAntiViolationStandardLibrary',
     buttons: [
       button('View', '查看反违章标准', 'SmisAntiViolationStandardLibrary:View'),
@@ -749,6 +817,80 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
   {
     menuName: 'SmisEmergencyDrillReport',
     buttons: [button('View', '查看演练报表', 'SmisEmergencyDrillReport:View')]
+  },
+  {
+    menuName: 'SmisSafetyTrainingPlan',
+    buttons: [
+      button('View', '查看培训计划', 'SmisSafetyTrainingPlan:View'),
+      button('Add', '新增培训计划', 'SmisSafetyTrainingPlan:Add'),
+      button('Copy', '复制并新增培训计划', 'SmisSafetyTrainingPlan:Copy'),
+      button('Edit', '编辑培训计划', 'SmisSafetyTrainingPlan:Edit'),
+      button('Delete', '删除培训计划', 'SmisSafetyTrainingPlan:Delete'),
+      button('Publish', '发布培训计划', 'SmisSafetyTrainingPlan:Publish'),
+      button('CreateRecord', '创建培训记录', 'SmisSafetyTrainingPlan:CreateRecord'),
+      button('Export', '导出培训计划', 'SmisSafetyTrainingPlan:Export')
+    ]
+  },
+  {
+    menuName: 'SmisSafetyTrainingRecord',
+    buttons: [
+      button('View', '查看培训记录', 'SmisSafetyTrainingRecord:View'),
+      button('Add', '新增培训记录', 'SmisSafetyTrainingRecord:Add'),
+      button('Edit', '编辑培训记录及签到', 'SmisSafetyTrainingRecord:Edit'),
+      button('Delete', '删除培训记录', 'SmisSafetyTrainingRecord:Delete'),
+      button('Submit', '提交培训记录', 'SmisSafetyTrainingRecord:Submit'),
+      button('Export', '导出培训记录', 'SmisSafetyTrainingRecord:Export')
+    ]
+  },
+  {
+    menuName: 'SmisTrainingStatisticsReport',
+    buttons: [
+      button('View', '查看培训统计报表', 'SmisTrainingStatisticsReport:View'),
+      button('Export', '导出培训统计报表', 'SmisTrainingStatisticsReport:Export')
+    ]
+  },
+  {
+    menuName: 'SmisCourseManagement',
+    buttons: [
+      button('View', '查看课程', 'SmisCourseManagement:View'),
+      button('Add', '新增课程', 'SmisCourseManagement:Add'),
+      button('Edit', '编辑课程', 'SmisCourseManagement:Edit'),
+      button('Delete', '删除课程', 'SmisCourseManagement:Delete'),
+      button('Publish', '发布或关闭课程', 'SmisCourseManagement:Publish'),
+      button('Assign', '分配学习人员', 'SmisCourseManagement:Assign'),
+      button('Learn', '开始或继续学习', 'SmisCourseManagement:Learn'),
+      button('ViewLearningRecord', '查看学习记录', 'SmisCourseManagement:ViewLearningRecord'),
+      button('Export', '导出课程及学习记录', 'SmisCourseManagement:Export')
+    ]
+  },
+  {
+    menuName: 'SmisExamManagement',
+    buttons: [
+      button('View', '查看试卷', 'SmisExamManagement:View'),
+      button('Add', '创建试卷', 'SmisExamManagement:Add'),
+      button('Edit', '编辑试卷', 'SmisExamManagement:Edit'),
+      button('Delete', '删除试卷', 'SmisExamManagement:Delete'),
+      button('Generate', '随机生成试题', 'SmisExamManagement:Generate'),
+      button('Publish', '发布或关闭试卷', 'SmisExamManagement:Publish'),
+      button('Assign', '分配考试人员', 'SmisExamManagement:Assign'),
+      button('Preview', '考试预览', 'SmisExamManagement:Preview'),
+      button('Take', '开始或继续考试', 'SmisExamManagement:Take'),
+      button('ViewRecord', '查看考试记录', 'SmisExamManagement:ViewRecord'),
+      button('ViewDetail', '查看试卷与答卷详情', 'SmisExamManagement:ViewDetail'),
+      button('Export', '导出考试记录', 'SmisExamManagement:Export')
+    ]
+  },
+  {
+    menuName: 'SmisQuestionBankManagement',
+    buttons: [
+      button('View', '查看题库', 'SmisQuestionBankManagement:View'),
+      button('Add', '新增题目', 'SmisQuestionBankManagement:Add'),
+      button('Edit', '编辑题目', 'SmisQuestionBankManagement:Edit'),
+      button('Delete', '删除题目', 'SmisQuestionBankManagement:Delete'),
+      button('ManageCategory', '维护题库分类', 'SmisQuestionBankManagement:ManageCategory'),
+      button('ToggleStatus', '启用或停用题目', 'SmisQuestionBankManagement:ToggleStatus'),
+      button('Export', '导出题库', 'SmisQuestionBankManagement:Export')
+    ]
   },
 
   {
