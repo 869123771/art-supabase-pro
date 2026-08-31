@@ -248,6 +248,14 @@ const platformSuperAllowlist = new Map<string, string>([
   [
     'modules/art-supabase-smis/src/views/basic-data/inspection-category/modules/inspection-category-dialog.vue',
     'cross-tenant inspection-category assignment'
+  ],
+  [
+    'modules/art-supabase-smis/src/views/dual-control-system/risk-control/hazard-factor-category/index.vue',
+    'cross-tenant hazard-factor-category context and tenant columns'
+  ],
+  [
+    'modules/art-supabase-smis/src/views/dual-control-system/risk-control/hazard-factor-category/modules/hazard-factor-category-dialog.vue',
+    'cross-tenant hazard-factor-category assignment'
   ]
 ])
 
@@ -256,6 +264,7 @@ const sourceReferenceExemptions = new Map<string, string>([
     'SmisStatutoryHoliday:View',
     'SmisSite:View',
     'SmisInspectionCategory:View',
+    'SmisDualControlHazardFactorCategory:View',
     'SmisEquipmentCategory:View',
     'SmisStorageLocation:View',
     'SmisEquipmentLedger:View',

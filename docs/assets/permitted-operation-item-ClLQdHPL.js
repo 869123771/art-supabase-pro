@@ -1,1 +1,0 @@
-import{Dt as e,Kt as t,vt as n}from"./framework-Dc3kpLtW.js";import{t as r}from"./qualification-catalog-page-CuYXc8oe.js";var i=e({name:`SmisPermittedOperationItem`,__name:`index`,setup(e){return(e,i)=>(t(),n(r,{"catalog-type":`permitted_operation_item`}))}});export{i as default};

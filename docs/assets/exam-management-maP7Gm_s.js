@@ -1,1 +1,0 @@
-import{Dt as e,Kt as t,vt as n}from"./framework-Dc3kpLtW.js";import{t as r}from"./smis-page-placeholder-CkN9Vtiq.js";var i=e({name:`SmisExamManagement`,__name:`index`,setup(e){return(e,i)=>(t(),n(r,{section:`资质培训`,title:`考试管理`}))}});export{i as default};

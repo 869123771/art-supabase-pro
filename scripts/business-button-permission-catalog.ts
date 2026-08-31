@@ -296,6 +296,15 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
     ]
   },
   {
+    menuName: 'SmisDualControlHazardFactorCategory',
+    buttons: [
+      button('View', '查看危害因素类别', 'SmisDualControlHazardFactorCategory:View'),
+      button('Add', '新增危害因素类别', 'SmisDualControlHazardFactorCategory:Add'),
+      button('Edit', '编辑危害因素类别', 'SmisDualControlHazardFactorCategory:Edit'),
+      button('Delete', '删除危害因素类别', 'SmisDualControlHazardFactorCategory:Delete')
+    ]
+  },
+  {
     menuName: 'SmisEquipmentCategory',
     buttons: [
       button('View', '查看设备分类', 'SmisEquipmentCategory:View'),
