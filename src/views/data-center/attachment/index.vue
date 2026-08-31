@@ -7,7 +7,7 @@
       icon="ri:attachment-2"
     />
     <section class="resource-manager__content business-workspace-content art-card-xs">
-      <ArtResourcePanel v-model="model" :show-action="false" />
+      <ArtResourcePanel v-model="model" :show-action="false" show-copy-actions />
     </section>
   </div>
 </template>

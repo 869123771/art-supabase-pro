@@ -1,0 +1,1 @@
+import{Dt as e,Kt as t,vt as n}from"./framework-Dc3kpLtW.js";import{t as r}from"./qualification-catalog-page-DZ_Rmp9f.js";var i=e({name:`SmisWorkCategory`,__name:`index`,setup(e){return(e,i)=>(t(),n(r,{"catalog-type":`work_category`}))}});export{i as default};

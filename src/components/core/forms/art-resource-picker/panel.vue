@@ -206,6 +206,7 @@
     limit: undefined,
     internalScroll: true,
     showAction: true,
+    showCopyActions: false,
     pageSize: 30,
     dbClickConfirm: false
   })
@@ -303,36 +304,60 @@
 
   const menu = ref({
     resource: {} as Resource,
-    items: computed((): MenuItemType[] => [
-      !isSelected(menu.value.resource)
-        ? {
-            key: 'select',
-            label: '选中',
-            icon: 'ri-check-fill'
-          }
-        : {
-            key: 'deselect',
-            label: '取消选中',
-            icon: 'ri-close-fill'
-          },
-      {
-        key: 'singleSelect',
-        label: '独立此项',
-        icon: 'ri-checkbox-circle-line',
-        showLine: true
-      },
-      {
-        key: 'view',
-        label: '查看',
-        icon: 'ri-eye-line',
-        disabled: !canPreview(menu.value.resource)
-      },
-      {
-        key: 'delete',
-        label: '删除',
-        icon: 'ri-delete-bin-2-line'
+    items: computed((): MenuItemType[] => {
+      const resource = menu.value.resource
+      const copyItems: MenuItemType[] = []
+
+      if (props.showCopyActions) {
+        copyItems.push({
+          key: 'copyLink',
+          label: '复制链接',
+          icon: 'ri-link',
+          disabled: !resource.url
+        })
+        if (isImageResource(resource)) {
+          copyItems.push({
+            key: 'copyImage',
+            label: '复制图片',
+            icon: 'ri-image-line'
+          })
+        }
+        const lastCopyItem = copyItems.at(-1)
+        if (lastCopyItem) lastCopyItem.showLine = true
       }
-    ]),
+
+      return [
+        !isSelected(resource)
+          ? {
+              key: 'select',
+              label: '选中',
+              icon: 'ri-check-fill'
+            }
+          : {
+              key: 'deselect',
+              label: '取消选中',
+              icon: 'ri-close-fill'
+            },
+        {
+          key: 'singleSelect',
+          label: '独立此项',
+          icon: 'ri-checkbox-circle-line',
+          showLine: true
+        },
+        {
+          key: 'view',
+          label: '查看',
+          icon: 'ri-eye-line',
+          disabled: !canPreview(resource)
+        },
+        ...copyItems,
+        {
+          key: 'delete',
+          label: '删除',
+          icon: 'ri-delete-bin-2-line'
+        }
+      ]
+    }),
     handleSelect(item: MenuItemType) {
       const { resource } = menu.value
       if (item.key === 'select') {
@@ -352,6 +377,12 @@
           fileType: resource.suffix
         })
         if (result === 'blocked') ElMessage.warning('浏览器阻止了新页签，请允许本站打开弹出式窗口')
+      }
+      if (item.key === 'copyLink') {
+        void handleCopyLink(resource)
+      }
+      if (item.key === 'copyImage') {
+        void handleCopyImage(resource)
       }
       if (item.key === 'delete') {
         if (resource?.id) {
@@ -433,6 +464,108 @@
    */
   function canPreview(resource: Resource) {
     return Boolean(resource?.url)
+  }
+
+  function isImageResource(resource: Resource): boolean {
+    if (resource.mimeType?.toLowerCase().startsWith('image/')) return true
+    return /^(bmp|gif|jpe?g|png|webp)$/i.test(resource.suffix?.trim() ?? '')
+  }
+
+  async function handleCopyLink(resource: Resource): Promise<void> {
+    const url = resource.url?.trim()
+    if (!url) {
+      ElMessage.warning('当前资源没有可复制的访问链接')
+      return
+    }
+
+    try {
+      await copyPlainText(url)
+      ElMessage.success('资源链接已复制，可粘贴到浏览器或消息中')
+    } catch {
+      ElMessage.error('链接复制失败，请检查浏览器剪贴板权限后重试')
+    }
+  }
+
+  async function copyPlainText(value: string): Promise<void> {
+    if (window.isSecureContext && navigator.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(value)
+        return
+      } catch {
+        // 浏览器拒绝现代剪贴板权限时，继续使用兼容复制通道。
+      }
+    }
+
+    const textarea = document.createElement('textarea')
+    textarea.value = value
+    textarea.setAttribute('readonly', '')
+    textarea.style.position = 'fixed'
+    textarea.style.top = '-9999px'
+    textarea.style.opacity = '0'
+    document.body.appendChild(textarea)
+    textarea.focus()
+    textarea.select()
+    const copied = document.execCommand('copy')
+    textarea.remove()
+    if (!copied) throw new Error('CLIPBOARD_COPY_FAILED')
+  }
+
+  async function handleCopyImage(resource: Resource): Promise<void> {
+    const url = resource.url?.trim()
+    if (!url || !isImageResource(resource)) {
+      ElMessage.warning('当前资源不是可复制的图片')
+      return
+    }
+    if (
+      !window.isSecureContext ||
+      !navigator.clipboard?.write ||
+      typeof ClipboardItem === 'undefined'
+    ) {
+      ElMessage.warning('当前浏览器不支持直接复制图片，请改用“复制链接”')
+      return
+    }
+
+    try {
+      const pngBlob = fetchClipboardImage(url)
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': pngBlob })])
+      ElMessage.success('图片已复制，可直接粘贴到聊天或文档中')
+    } catch (error: unknown) {
+      if (
+        error instanceof DOMException &&
+        (error.name === 'NotAllowedError' || error.name === 'SecurityError')
+      ) {
+        ElMessage.error('浏览器未允许复制图片，请开启本站剪贴板权限后重试')
+        return
+      }
+      ElMessage.error('图片复制失败，请确认资源可访问，或改用“复制链接”')
+    }
+  }
+
+  async function fetchClipboardImage(url: string): Promise<Blob> {
+    const response = await fetch(url, { credentials: 'omit', mode: 'cors' })
+    if (!response.ok) throw new Error('RESOURCE_FETCH_FAILED')
+
+    const source = await response.blob()
+    if (!source.type.startsWith('image/')) throw new Error('RESOURCE_NOT_IMAGE')
+    if (source.type === 'image/png') return source
+
+    const bitmap = await createImageBitmap(source)
+    try {
+      const canvas = document.createElement('canvas')
+      canvas.width = bitmap.width
+      canvas.height = bitmap.height
+      const context = canvas.getContext('2d')
+      if (!context) throw new Error('CANVAS_CONTEXT_UNAVAILABLE')
+      context.drawImage(bitmap, 0, 0)
+      return await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob(
+          (blob) => (blob ? resolve(blob) : reject(new Error('IMAGE_CONVERSION_FAILED'))),
+          'image/png'
+        )
+      })
+    } finally {
+      bitmap.close()
+    }
   }
 
   /**
