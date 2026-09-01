@@ -16,3 +16,5 @@
 - 图片预览上传使用 `ArtUploadImage`。
 - 结构化 Excel 导入使用 `ArtExcelImport`。
 - 仅需要上传事件时可关闭 `show-file-list`，监听 `upload-success` 获取资源信息。
+- 附件名称点击后统一进入公共文件预览页；附件行右侧提供下载、查看和删除操作。
+- `readonly` 模式不显示上传触发器和删除操作，仅保留附件名称、下载与查看。

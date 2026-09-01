@@ -5,14 +5,13 @@
       :http-request="handleUpload"
       :before-upload="beforeUpload"
       :on-success="handleSuccess"
-      :on-remove="handleRemove"
       :on-error="handleError"
       :on-exceed="handleExceed"
       :multiple="multiple"
       :limit="limit"
       :accept="accept"
-      :disabled="disabled || readonly"
-      :show-file-list="showFileList"
+      :disabled="disabled"
+      :show-file-list="false"
       v-bind="$attrs"
     >
       <slot v-if="!readonly" name="trigger" :uploading="uploading">
@@ -35,6 +34,49 @@
         </div>
       </template>
     </ElUpload>
+
+    <ul v-if="showFileList && fileList.length" class="art-upload-file__list">
+      <li
+        v-for="(file, index) in fileList"
+        :key="file.uid ?? file.url ?? `${file.name}-${index}`"
+        class="art-upload-file__item"
+      >
+        <div class="art-upload-file__identity">
+          <ArtSvgIcon
+            :icon="file.status === 'uploading' ? 'ri:loader-4-line' : 'ri:file-line'"
+            :class="{ 'art-upload-file__spinner': file.status === 'uploading' }"
+            aria-hidden="true"
+          />
+          <ArtAttachmentLink v-if="file.url" :file="getFileTarget(file)" />
+          <span v-else class="art-upload-file__pending-name">{{ file.name }}</span>
+        </div>
+
+        <div class="art-upload-file__actions">
+          <ArtIconButton
+            class="art-upload-file__action"
+            icon="ri:download-2-line"
+            label="下载附件"
+            :disabled="!file.url"
+            @click.stop="handleDownload(file)"
+          />
+          <ArtIconButton
+            class="art-upload-file__action"
+            icon="ri:eye-line"
+            label="查看附件"
+            :disabled="!file.url"
+            @click.stop="handlePreview(file)"
+          />
+          <ArtIconButton
+            v-if="!readonly"
+            class="art-upload-file__action"
+            icon="ri:delete-bin-2-line"
+            label="删除附件"
+            tone="danger"
+            @click.stop="handleRemoveFile(file)"
+          />
+        </div>
+      </li>
+    </ul>
   </div>
 </template>
 
@@ -47,6 +89,9 @@
     normalizeUploadModelUrls,
     shouldSyncUploadFileList
   } from '@/components/core/forms/upload-model-utils'
+  import ArtAttachmentLink from '@/components/core/media/art-file-viewer/attachment-link.vue'
+  import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
+  import { downloadAttachment, getFileExtension, viewAttachment } from '@/utils/file'
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
 
   defineOptions({ name: 'ArtUploadFile', inheritAttrs: false })
@@ -162,7 +207,33 @@
     if (!props.showFileList && props.modelValue == null) fileList.value = []
   }
 
-  const handleRemove = (): void => updateModelValue()
+  const getFileTarget = (file: UploadUserFile) => ({
+    name: file.name,
+    url: file.url,
+    fileType: getFileExtension(file.name)
+  })
+
+  const handleDownload = (file: UploadUserFile): void => {
+    if (!file.url) return
+    downloadAttachment(getFileTarget(file))
+  }
+
+  const handlePreview = (file: UploadUserFile): void => {
+    if (!file.url) return
+    viewAttachment(getFileTarget(file))
+  }
+
+  const handleRemoveFile = (file: UploadUserFile): void => {
+    const fileIndex = fileList.value.findIndex(
+      (item) =>
+        item === file ||
+        (file.uid !== undefined && item.uid === file.uid) ||
+        (Boolean(file.url) && item.url === file.url)
+    )
+    if (fileIndex < 0) return
+    fileList.value.splice(fileIndex, 1)
+    updateModelValue()
+  }
 
   const handleExceed = (): void => {
     ElMessage.warning(`当前最多只能上传 ${props.limit} 个文件`)
@@ -227,14 +298,76 @@
       animation: art-upload-file-spin 0.9s linear infinite;
     }
 
-    :deep(.el-upload-list) {
+    &__list {
+      display: grid;
+      gap: 4px;
+      padding: 0;
       margin-top: 12px;
+      margin-bottom: 0;
+      list-style: none;
     }
 
-    :deep(.el-upload-list__item) {
-      min-height: 32px;
-      padding-inline: 8px;
+    &__item {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      min-width: 0;
+      min-height: 36px;
+      padding: 2px 4px 2px 10px;
+      background: var(--el-fill-color-lighter);
       border-radius: var(--el-border-radius-base);
+    }
+
+    &__identity {
+      display: flex;
+      flex: 1;
+      gap: 7px;
+      align-items: center;
+      min-width: 0;
+      color: var(--el-text-color-secondary);
+
+      > .art-svg-icon {
+        flex: 0 0 auto;
+        font-size: 14px;
+      }
+
+      :deep(.art-attachment-link) {
+        display: inline-flex;
+        align-items: center;
+        min-height: 28px;
+      }
+    }
+
+    &__actions {
+      display: inline-flex;
+      flex: 0 0 auto;
+      gap: 2px;
+      align-items: center;
+    }
+
+    &__pending-name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: var(--el-text-color-secondary);
+      white-space: nowrap;
+    }
+
+    &__action {
+      width: 28px !important;
+      height: 28px !important;
+      font-size: 15px !important;
+    }
+
+    &.is-readonly {
+      :deep(.el-upload) {
+        display: none;
+      }
+
+      .art-upload-file__list {
+        margin-top: 0;
+      }
     }
   }
 

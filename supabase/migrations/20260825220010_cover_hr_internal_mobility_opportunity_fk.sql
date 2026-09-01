@@ -1,0 +1,1 @@
+create index if not exists hr_internal_mobility_application_opportunity_tenant_idx on public.hr_internal_mobility_application(opportunity_id,tenant_id);;

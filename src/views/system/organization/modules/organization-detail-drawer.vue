@@ -93,7 +93,7 @@
         </div>
       </section>
 
-      <ElTabs v-model="activeTab" class="organization-detail__tabs">
+      <ElTabs v-model="activeTab" class="organization-detail__tabs" stretch>
         <ElTabPane name="members">
           <template #label>
             <span class="organization-detail__tab-label">

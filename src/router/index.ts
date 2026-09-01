@@ -5,10 +5,14 @@ import { configureNProgress } from '@/utils/router'
 import { setupBeforeEachGuard } from './guards/beforeEach'
 import { setupAfterEachGuard } from './guards/afterEach'
 import { setupRouteErrorRecovery } from './guards/errorRecovery'
+import { normalizeHashRouterBase } from './hashHistory'
+
+normalizeHashRouterBase(import.meta.env.BASE_URL)
 
 // 创建路由实例
 export const router = createRouter({
-  history: createWebHashHistory(),
+  // 显式使用部署基路径，避免从非标准业务 URL 启动时把当前 pathname 误识别为 Hash base。
+  history: createWebHashHistory(import.meta.env.BASE_URL),
   routes: staticRoutes // 静态路由
 })
 

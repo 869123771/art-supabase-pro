@@ -346,6 +346,33 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
     ]
   },
   {
+    menuName: 'SmisDualControlSafetyInspection',
+    buttons: [
+      button('View', '查看安全检查', 'SmisDualControlSafetyInspection:View'),
+      button('Add', '新增安全检查', 'SmisDualControlSafetyInspection:Add'),
+      button('Copy', '复制安全检查', 'SmisDualControlSafetyInspection:Copy'),
+      button('Edit', '编辑安全检查', 'SmisDualControlSafetyInspection:Edit'),
+      button('Delete', '删除安全检查', 'SmisDualControlSafetyInspection:Delete'),
+      button('Export', '导出安全检查', 'SmisDualControlSafetyInspection:Export'),
+      button(
+        'RectificationNotice',
+        '安全检查整改指令书',
+        'SmisDualControlSafetyInspection:RectificationNotice'
+      )
+    ]
+  },
+  {
+    menuName: 'SmisDualControlRiskFourColorMap',
+    buttons: [
+      button('View', '查看风险四色图', 'SmisDualControlRiskFourColorMap:View'),
+      button('AddScene', '新增四色图场景', 'SmisDualControlRiskFourColorMap:AddScene'),
+      button('EditScene', '编辑四色图场景', 'SmisDualControlRiskFourColorMap:EditScene'),
+      button('DeleteScene', '删除四色图场景', 'SmisDualControlRiskFourColorMap:DeleteScene'),
+      button('Save', '保存四色图配置', 'SmisDualControlRiskFourColorMap:Save'),
+      button('Export', '下载四色图', 'SmisDualControlRiskFourColorMap:Export')
+    ]
+  },
+  {
     menuName: 'SmisDualControlDuplicateConfiguration',
     buttons: [
       button('View', '查看重复配置', 'SmisDualControlDuplicateConfiguration:View'),
@@ -941,7 +968,10 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
   },
   {
     menuName: 'SmisEmergencyDrillReport',
-    buttons: [button('View', '查看演练报表', 'SmisEmergencyDrillReport:View')]
+    buttons: [
+      button('View', '查看演练报表', 'SmisEmergencyDrillReport:View'),
+      button('Export', '导出演练报表', 'SmisEmergencyDrillReport:Export')
+    ]
   },
   {
     menuName: 'SmisSafetyTrainingPlan',

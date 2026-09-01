@@ -45,7 +45,7 @@
         title="API"
         subtitle="覆盖 ArtResourcePicker / ResourcePanel 的 props 和事件。"
       >
-        <ElTabs>
+        <ElTabs stretch>
           <ElTabPane label="Props">
             <ArtTable :data="propsRows" :columns="propsColumns" :pagination="false" />
           </ElTabPane>

@@ -49,7 +49,7 @@
         title="API"
         subtitle="覆盖 ArtIconPicker 的 props、事件和 expose 方法。"
       >
-        <ElTabs>
+        <ElTabs stretch>
           <ElTabPane label="Props">
             <ArtTable :data="propsRows" :columns="propsColumns" :pagination="false" />
           </ElTabPane>

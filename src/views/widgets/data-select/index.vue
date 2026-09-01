@@ -111,7 +111,7 @@
         title="API"
         subtitle="四种组件共享 ArtDataSelect 的 props、事件、插槽和 expose 方法。"
       >
-        <ElTabs>
+        <ElTabs stretch>
           <ElTabPane label="Props">
             <ArtTable :data="propsRows" :columns="propsColumns" :pagination="false" />
           </ElTabPane>

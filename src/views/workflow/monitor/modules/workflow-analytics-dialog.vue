@@ -22,7 +22,7 @@
         @retry="loadData"
       />
 
-      <ElTabs v-else-if="state.data && state.bottleneck" v-model="state.activeTab">
+      <ElTabs v-else-if="state.data && state.bottleneck" v-model="state.activeTab" stretch>
         <ElTabPane label="经营概览" name="overview">
           <section class="workflow-analytics__metrics">
             <article v-for="metric in metrics" :key="metric.label" class="art-card-xs">

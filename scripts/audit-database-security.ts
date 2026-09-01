@@ -15,7 +15,7 @@ const privilegedBatchBoundaryName = 'bound_privileged_batch_rpc_inputs'
 // including older function definitions whose ACLs were tightened by a later
 // migration. Apply per-file ACL rules to every pending/future migration while
 // retaining the historical boundary assertions above for the fetched history.
-const synchronizedRemoteHistoryVersion = '20260828032639'
+const synchronizedRemoteHistoryVersion = '20260901071314'
 const pendingVersionsBeforeRemoteHistory = new Set(['20260827123340'])
 const migrationPattern = /^(\d{14})_([a-z0-9_]+)\.sql$/
 const publicFunctionPattern =

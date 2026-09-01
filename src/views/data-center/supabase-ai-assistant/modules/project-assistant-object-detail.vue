@@ -46,7 +46,7 @@
       min-height="0"
       @retry="emit('retry', selectedObject)"
     >
-      <ElTabs v-model="detailTab" class="project-assistant__detail-tabs">
+      <ElTabs v-model="detailTab" class="project-assistant__detail-tabs" stretch>
         <ElTabPane label="智能概览" name="insights">
           <ElScrollbar class="project-assistant__insights-scroll" always>
             <div class="project-assistant__insights">

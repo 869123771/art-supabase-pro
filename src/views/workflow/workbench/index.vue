@@ -32,7 +32,12 @@
         </header>
       </template>
 
-      <ElTabs v-model="activeTab" class="workflow-workbench__tabs" @tab-change="handleTabChange">
+      <ElTabs
+        v-model="activeTab"
+        class="workflow-workbench__tabs"
+        stretch
+        @tab-change="handleTabChange"
+      >
         <ElTabPane name="pending">
           <template #label
             ><span class="workflow-workbench__tab-label"
