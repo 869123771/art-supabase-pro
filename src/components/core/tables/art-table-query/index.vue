@@ -263,7 +263,7 @@
     type VNode,
     type VNodeChild
   } from 'vue'
-  import type { TableProps } from 'element-plus'
+  import type { TableColumnCtx, TableProps } from 'element-plus'
   import { ElMessage, ElMessageBox } from 'element-plus'
   import { useEventListener, useResizeObserver } from '@vueuse/core'
   import { cloneDeep } from 'lodash-es'
@@ -339,6 +339,8 @@
     showSearch?: boolean
     /** 是否禁用查询按钮 */
     disabledSearch?: boolean
+    /** 是否允许在查询项中按 Enter 触发查询 */
+    enableEnterSearch?: boolean
     /** 查询输出清洗策略 */
     sanitizeOutput?: Partial<ArtTableQuerySanitizeOutputOptions>
   }
@@ -378,6 +380,10 @@
     bivarianceHack(params: TParams): TResponse
   }['bivarianceHack']
 
+  type BivariantEventHandler<TArgs extends unknown[]> = {
+    bivarianceHack(...args: TArgs): void
+  }['bivarianceHack']
+
   export interface ArtTableQueryPaginationOptions {
     /** 每页条数选项 */
     pageSizes?: number[]
@@ -403,7 +409,7 @@
    */
   export interface ArtTableQueryTableProps extends ElementTablePassThroughProps {
     /** 行数据 key，默认 id */
-    rowKey?: string | ((row: TableQueryRecord) => string)
+    rowKey?: string | BivariantSyncHandler<TableQueryRecord, string>
     /** 表格布局，默认 fixed */
     tableLayout?: 'fixed' | 'auto'
     /** 表格高度 */
@@ -474,6 +480,18 @@
     additionalHeightOffset?: number
     /** 分页器配置 */
     paginationOptions?: ArtTableQueryPaginationOptions
+    /** ElTable 行点击事件 */
+    onRowClick?: BivariantEventHandler<
+      [TableQueryRecord, TableColumnCtx<TableQueryRecord> | null, PointerEvent]
+    >
+    /** ElTable 行双击事件 */
+    onRowDblclick?: BivariantEventHandler<
+      [TableQueryRecord, TableColumnCtx<TableQueryRecord> | null, MouseEvent]
+    >
+    /** ElTable 当前行变化事件 */
+    onCurrentChange?: BivariantEventHandler<[TableQueryRecord | null, TableQueryRecord | null]>
+    /** ElTable 选择项变化事件 */
+    onSelectionChange?: BivariantEventHandler<[TableQueryRecord[]]>
   }
 
   export type ArtTableQueryApiFn<
@@ -688,7 +706,7 @@
     focusable: false
   })
 
-  const searchModel = defineModel<Record<string, unknown>>({ default: () => ({}) })
+  const searchModel = defineModel<TableQueryRecord>({ default: () => ({}) })
   const columnsModel = defineModel<ColumnOption[]>('columns', { default: () => [] })
   const showSearchBar = defineModel<boolean>('showSearchBar', { default: true })
   const showTableToolbar = defineModel<boolean>('showTableToolbar', { default: false })

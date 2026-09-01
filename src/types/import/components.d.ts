@@ -12,7 +12,6 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
-    AccountingSetupGuide: typeof import('./../../../modules/art-supabase-fms/src/views/modules/accounting-setup-guide.vue')['default']
     ArtAddressPicker: typeof import('./../../components/core/forms/art-address-picker/index.vue')['default']
     ArtAiFeedback: typeof import('./../../components/core/base/art-ai-feedback/index.vue')['default']
     ArtApplicationSwitcher: typeof import('./../../components/core/layouts/art-header-bar/widget/ArtApplicationSwitcher.vue')['default']
@@ -119,6 +118,7 @@ declare module 'vue' {
     ElCard: typeof import('element-plus/es')['ElCard']
     ElCascader: typeof import('element-plus/es')['ElCascader']
     ElCheckbox: typeof import('element-plus/es')['ElCheckbox']
+    ElCheckboxButton: typeof import('element-plus/es')['ElCheckboxButton']
     ElCheckboxGroup: typeof import('element-plus/es')['ElCheckboxGroup']
     ElCol: typeof import('element-plus/es')['ElCol']
     ElCollapse: typeof import('element-plus/es')['ElCollapse']
@@ -215,7 +215,6 @@ declare module 'vue' {
 
 // For TSX support
 declare global {
-  const AccountingSetupGuide: typeof import('./../../../modules/art-supabase-fms/src/views/modules/accounting-setup-guide.vue')['default']
   const ArtAddressPicker: typeof import('./../../components/core/forms/art-address-picker/index.vue')['default']
   const ArtAiFeedback: typeof import('./../../components/core/base/art-ai-feedback/index.vue')['default']
   const ArtApplicationSwitcher: typeof import('./../../components/core/layouts/art-header-bar/widget/ArtApplicationSwitcher.vue')['default']
@@ -322,6 +321,7 @@ declare global {
   const ElCard: typeof import('element-plus/es')['ElCard']
   const ElCascader: typeof import('element-plus/es')['ElCascader']
   const ElCheckbox: typeof import('element-plus/es')['ElCheckbox']
+  const ElCheckboxButton: typeof import('element-plus/es')['ElCheckboxButton']
   const ElCheckboxGroup: typeof import('element-plus/es')['ElCheckboxGroup']
   const ElCol: typeof import('element-plus/es')['ElCol']
   const ElCollapse: typeof import('element-plus/es')['ElCollapse']
