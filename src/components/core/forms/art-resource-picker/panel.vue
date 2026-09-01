@@ -41,23 +41,42 @@
       class="resource-paste-zone"
       :class="{ 'is-uploading': uploading }"
       :disabled="uploading"
-      aria-label="粘贴剪贴板图片并上传"
-      @paste="handlePasteImage"
+      aria-label="粘贴剪贴板文件并上传"
+      @paste="handlePasteFiles"
     >
       <span class="resource-paste-zone__icon" aria-hidden="true">
-        <ArtSvgIcon :icon="uploading ? 'ri-loader-4-line' : 'ri-clipboard-line'" />
+        <ArtSvgIcon :icon="pasteZoneIcon" />
       </span>
       <span class="resource-paste-zone__content">
-        <strong>{{ uploading ? '图片上传中' : '粘贴图片上传' }}</strong>
+        <strong>{{ uploading ? '文件上传中' : '粘贴文件上传' }}</strong>
         <span>
           {{
             uploading
-              ? '正在保存剪贴板图片，请稍候'
-              : '点击此框后按 Ctrl+V（macOS 为 ⌘V），无需先下载图片'
+              ? '正在保存剪贴板文件，请稍候'
+              : '支持图片、文档和音视频；点击此框后按 Ctrl+V（macOS 为 ⌘V）'
           }}
         </span>
       </span>
-      <kbd v-if="!uploading" class="resource-paste-zone__shortcut">Ctrl V</kbd>
+      <div
+        v-if="uploadProgress.visible"
+        class="resource-paste-zone__progress"
+        role="status"
+        aria-live="polite"
+      >
+        <div class="resource-paste-zone__progress-copy">
+          <strong>{{ uploadProgressLabel }}</strong>
+          <span :title="uploadProgressDetail">{{ uploadProgressDetail }}</span>
+          <small> 已处理 {{ uploadProgress.processed }}/{{ uploadProgress.total }} 个文件 </small>
+        </div>
+        <el-progress
+          type="circle"
+          :percentage="uploadProgressPercentage"
+          :width="52"
+          :stroke-width="5"
+          :status="uploadProgressStatus"
+        />
+      </div>
+      <kbd v-else class="resource-paste-zone__shortcut">Ctrl V</kbd>
     </button>
 
     <div class="mt-2 min-h-0 flex-1">
@@ -65,49 +84,34 @@
         <div class="flex flex-wrap px-[2px] pt-[2px]">
           <el-space fill wrap :fill-ratio="9">
             <template v-for="resource in resources" :key="resource.id">
-              <button
-                type="button"
+              <div
                 class="resource-item"
                 :class="{ active: isSelected(resource) }"
-                :aria-pressed="isSelected(resource)"
-                :aria-label="`选择资源 ${resource.originName}`"
-                @click="handleClick(resource)"
-                @dblclick="handleDbClick(resource)"
                 @contextmenu.prevent="(e: MouseEvent) => executeContextmenu(e, resource)"
               >
                 <div class="resource-item__cover">
-                  <template v-if="getCover(resource)">
-                    <el-image :src="getCover(resource)" fit="cover" class="h-full w-full" lazy>
-                      <template #error>
-                        <div
-                          class="relative m-[8px] h-[calc(100%-16px)] w-[calc(100%-16px)] flex items-center justify-center overflow-hidden"
-                        >
-                          <div
-                            class="cursor-default overflow-hidden text-ellipsis whitespace-pre-wrap"
-                          >
-                            {{ resource.originName }}
-                          </div>
-                        </div>
-                      </template>
-                    </el-image>
-                  </template>
-                  <template v-else>
-                    <div
-                      class="relative m-[8px] h-[calc(100%-16px)] w-[calc(100%-16px)] flex items-center justify-center overflow-hidden"
-                    >
-                      <div class="cursor-default overflow-hidden text-ellipsis whitespace-pre-wrap">
-                        {{ resource.originName }}
-                      </div>
-                    </div>
-                  </template>
+                  <ResourceMediaCover
+                    :resource="resource"
+                    :playing="playingResourceKey === getResourcePlaybackKey(resource)"
+                    @toggle-play="toggleMediaPlayback(resource)"
+                    @playback-state-change="handleMediaPlaybackChange(resource, $event)"
+                  />
                 </div>
-                <div v-if="getCover(resource)" class="resource-item__name cursor-default">
+                <div class="resource-item__name cursor-default" :title="resource.originName">
                   {{ resource.originName }}
                 </div>
+                <button
+                  type="button"
+                  class="resource-item__select-surface"
+                  :aria-pressed="isSelected(resource)"
+                  :aria-label="`选择资源 ${resource.originName}`"
+                  @click="handleClick(resource)"
+                  @dblclick="handleDbClick(resource)"
+                />
                 <div class="resource-item__selected">
                   <ArtSvgIcon icon="ri-checkbox-circle-fill" class="resource-item__selected-icon" />
                 </div>
-              </button>
+              </div>
             </template>
             <template v-if="resources.length === 0">
               <el-skeleton
@@ -219,6 +223,7 @@
 
 <script setup lang="ts">
   import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
+  import ResourceMediaCover from './resource-media-cover.vue'
   import type { FileType, Resource, ResourcePanelProps } from './type.ts'
   import ArtMenuRight from '@/components/core/others/art-menu-right/index.vue'
   import type { MenuItemType } from '@/components/core/others/art-menu-right/index.vue'
@@ -228,7 +233,9 @@
   import { pageInfoHandler } from '@utils/table/tableUtils'
   import { openFilePreview } from '@/hooks/core/useFilePreview'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import { formatSize } from '@/utils'
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
+  import { useTimeoutFn } from '@vueuse/core'
   import dayjs from 'dayjs'
   import MasterDataDeleteGuard, {
     type MasterDataDeleteGuardOpenOptions
@@ -306,6 +313,25 @@
     suffix: string
   }
 
+  interface UploadProgressState extends Api.DataCenter.Resources.UploadProgress {
+    visible: boolean
+    percentage: number
+    totalBytes: number
+    currentFileName: string
+  }
+
+  const createUploadProgressState = (): UploadProgressState => ({
+    visible: false,
+    percentage: 0,
+    phase: 'preparing',
+    processed: 0,
+    succeeded: 0,
+    failed: 0,
+    total: 0,
+    totalBytes: 0,
+    currentFileName: ''
+  })
+
   const queryParams = ref<ResourceQueryParams>({
     page: 1,
     pageSize: props.pageSize,
@@ -321,6 +347,7 @@
    * 当前资源列表
    */
   const resources = ref<Resource[]>([])
+  const playingResourceKey = ref<string>()
 
   /**
    * 选中资源的key列表,该数据可用做直接返回
@@ -332,6 +359,48 @@
 
   const loading = ref(false)
   const uploading = ref(false)
+  const uploadProgress = reactive<UploadProgressState>(createUploadProgressState())
+  const uploadProgressPercentage = computed(() => uploadProgress.percentage)
+  const uploadProgressStatus = computed<'success' | 'exception' | undefined>(() => {
+    if (uploadProgress.phase === 'completed') return 'success'
+    if (uploadProgress.phase === 'failed') return 'exception'
+    return undefined
+  })
+  const uploadProgressLabel = computed(() => {
+    const labels: Record<Api.DataCenter.Resources.UploadPhase, string> = {
+      preparing: '正在准备文件',
+      hashing: '正在校验文件',
+      checking: '正在检查重复项',
+      uploading: '正在上传资源',
+      saving: '正在保存附件记录',
+      processing: '正在处理上传队列',
+      completed: '上传已完成',
+      failed: uploadProgress.succeeded ? '部分文件上传失败' : '上传失败'
+    }
+    return labels[uploadProgress.phase]
+  })
+  const uploadProgressDetail = computed(() => {
+    if (uploadProgress.phase === 'completed') {
+      return `${uploadProgress.succeeded} 个文件 · ${formatSize(uploadProgress.totalBytes)}`
+    }
+    if (uploadProgress.phase === 'failed') {
+      return `${uploadProgress.succeeded} 个成功，${uploadProgress.failed} 个失败`
+    }
+    return uploadProgress.currentFileName || `${formatSize(uploadProgress.totalBytes)} 待上传`
+  })
+  const pasteZoneIcon = computed(() => {
+    if (uploading.value) return 'ri-loader-4-line'
+    if (uploadProgress.phase === 'completed' && uploadProgress.visible) {
+      return 'ri-checkbox-circle-line'
+    }
+    if (uploadProgress.phase === 'failed' && uploadProgress.visible) return 'ri-error-warning-line'
+    return 'ri-clipboard-line'
+  })
+  const { start: scheduleProgressReset, stop: cancelProgressReset } = useTimeoutFn(
+    () => Object.assign(uploadProgress, createUploadProgressState()),
+    3200,
+    { immediate: false }
+  )
   const resourceListContainer = computed(() => (props.internalScroll ? ElScrollbar : 'div'))
 
   const menu = ref({
@@ -384,6 +453,28 @@
           icon: 'ri-eye-line',
           disabled: !canPreview(resource)
         },
+        ...(isPlayableMediaResource(resource)
+          ? [
+              {
+                key:
+                  playingResourceKey.value === getResourcePlaybackKey(resource)
+                    ? 'pauseMedia'
+                    : 'playMedia',
+                label:
+                  playingResourceKey.value === getResourcePlaybackKey(resource)
+                    ? isVideoResource(resource)
+                      ? '暂停视频'
+                      : '暂停音频'
+                    : isVideoResource(resource)
+                      ? '播放视频'
+                      : '播放音频',
+                icon:
+                  playingResourceKey.value === getResourcePlaybackKey(resource)
+                    ? 'ri-pause-circle-line'
+                    : 'ri-play-circle-line'
+              }
+            ]
+          : []),
         ...copyItems,
         ...(props.showRenameAction
           ? [
@@ -422,6 +513,12 @@
           fileType: resource.suffix
         })
         if (result === 'blocked') ElMessage.warning('浏览器阻止了新页签，请允许本站打开弹出式窗口')
+      }
+      if (item.key === 'playMedia') {
+        playingResourceKey.value = getResourcePlaybackKey(resource)
+      }
+      if (item.key === 'pauseMedia') {
+        playingResourceKey.value = undefined
       }
       if (item.key === 'copyLink') {
         void handleCopyLink(resource)
@@ -496,17 +593,6 @@
   }
 
   /**
-   * 获取封面
-   * @param resource
-   */
-  function getCover(resource: Resource): string | undefined {
-    if (resource?.mimeType?.startsWith('image')) {
-      return resource.url
-    }
-    return undefined
-  }
-
-  /**
    * 判断是否能预览
    * @param resource
    */
@@ -517,6 +603,39 @@
   function isImageResource(resource: Resource): boolean {
     if (resource.mimeType?.toLowerCase().startsWith('image/')) return true
     return /^(bmp|gif|jpe?g|png|webp)$/i.test(resource.suffix?.trim() ?? '')
+  }
+
+  function isVideoResource(resource: Resource): boolean {
+    if (resource.mimeType?.toLowerCase().startsWith('video/')) return true
+    return /^(avi|flv|mkv|mov|mp4|webm|wmv)$/i.test(resource.suffix?.trim() ?? '')
+  }
+
+  function isAudioResource(resource: Resource): boolean {
+    if (resource.mimeType?.toLowerCase().startsWith('audio/')) return true
+    return /^(aac|ape|flac|m4a|mp3|ogg|wav|wavpack|wma)$/i.test(resource.suffix?.trim() ?? '')
+  }
+
+  function isPlayableMediaResource(resource: Resource): boolean {
+    return Boolean(resource.url && (isVideoResource(resource) || isAudioResource(resource)))
+  }
+
+  function getResourcePlaybackKey(resource: Resource): string {
+    return String(resource.id || resource.url || '')
+  }
+
+  function toggleMediaPlayback(resource: Resource): void {
+    if (!isPlayableMediaResource(resource)) return
+    const key = getResourcePlaybackKey(resource)
+    playingResourceKey.value = playingResourceKey.value === key ? undefined : key
+  }
+
+  function handleMediaPlaybackChange(resource: Resource, playing: boolean): void {
+    const key = getResourcePlaybackKey(resource)
+    if (playing) {
+      playingResourceKey.value = key
+      return
+    }
+    if (playingResourceKey.value === key) playingResourceKey.value = undefined
   }
 
   async function handleCopyLink(resource: Resource): Promise<void> {
@@ -725,30 +844,43 @@
    */
   async function handleDelete(resource: Resource): Promise<void> {
     if (!resource.id) return
-    const blocked = await deleteGuardRef.value?.inspect({
-      resourceType: 'attachment',
-      resourceLabel: '附件资源',
-      resources: [{ id: String(resource.id), label: resource.originName || '未命名附件' }]
-    })
-    if (blocked) return
+    try {
+      const blocked = await deleteGuardRef.value?.inspect({
+        resourceType: 'attachment',
+        resourceLabel: '附件资源',
+        resources: [{ id: String(resource.id), label: resource.originName || '未命名附件' }]
+      })
+      if (blocked) return
 
-    ElMessageBox.confirm(`确定要删除“${resource.originName || '未命名附件'}”吗？`, '删除附件', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning',
-      confirmButtonClass: 'el-button--danger'
-    }).then(async () => {
-      const params = {
-        id: resource.id
+      await ElMessageBox.confirm(
+        `确定要删除“${resource.originName || '未命名附件'}”吗？删除后将无法恢复。`,
+        '删除附件',
+        {
+          confirmButtonText: '确认删除',
+          cancelButtonText: '取消',
+          type: 'warning',
+          confirmButtonClass: 'el-button--danger'
+        }
+      )
+
+      loading.value = true
+      const { storageCleanupFailed } = await deleteResource({ id: resource.id })
+      unSelect(resource)
+      await handleGetResourceList()
+      if (storageCleanupFailed) {
+        ElMessage.warning('附件已从资源库删除，但源文件清理异常，请联系管理员处理')
+      } else {
+        ElMessage.success('附件已删除')
       }
-      try {
-        loading.value = true
-        await deleteResource(params)
-        await handleGetResourceList()
-      } finally {
-        loading.value = false
+    } catch (error: unknown) {
+      if (error !== 'cancel' && error !== 'close') {
+        ElMessage.error(
+          getFriendlySupabaseErrorMessage(error, '删除前检查失败，附件未删除，请稍后重试')
+        )
       }
-    })
+    } finally {
+      loading.value = false
+    }
   }
 
   /**
@@ -796,19 +928,85 @@
     return undefined
   }
 
+  function prepareUploadProgress(files: File | File[]): void {
+    const fileList = Array.isArray(files) ? files : [files]
+    cancelProgressReset()
+    Object.assign(uploadProgress, createUploadProgressState(), {
+      visible: true,
+      total: fileList.length,
+      totalBytes: fileList.reduce((total, file) => total + file.size, 0),
+      currentFileName: fileList[0]?.name ?? ''
+    })
+  }
+
+  function calculateUploadPercentage(progress: Api.DataCenter.Resources.UploadProgress): number {
+    if (!progress.total) return 0
+    if (progress.phase === 'completed') return 100
+    if (progress.phase === 'failed' && progress.processed >= progress.total) return 100
+
+    const phaseWeight: Record<Api.DataCenter.Resources.UploadPhase, number> = {
+      preparing: 0,
+      hashing: 0.12,
+      checking: 0.22,
+      uploading: 0.68,
+      saving: 0.9,
+      processing: 0,
+      completed: 1,
+      failed: 0
+    }
+    const percentage = ((progress.processed + phaseWeight[progress.phase]) / progress.total) * 100
+    return Math.min(99, Math.round(percentage))
+  }
+
+  function handleUploadProgress(progress: Api.DataCenter.Resources.UploadProgress): void {
+    const percentage = Math.max(uploadProgress.percentage, calculateUploadPercentage(progress))
+    Object.assign(uploadProgress, progress, {
+      visible: true,
+      percentage,
+      currentFileName: progress.currentFileName ?? uploadProgress.currentFileName
+    })
+  }
+
   async function uploadFiles(
     files: File | File[],
     btn: Api.DataCenter.Resources.Button
   ): Promise<void> {
     if (!btn.upload || uploading.value) return
+    prepareUploadProgress(files)
     uploading.value = true
     try {
       await btn.upload(files, {
         btn,
-        handleGetResourceList
+        handleGetResourceList,
+        onProgress: handleUploadProgress
       })
+      if (uploadProgress.phase !== 'completed') {
+        Object.assign(uploadProgress, {
+          phase: 'completed',
+          percentage: 100,
+          processed: uploadProgress.total,
+          succeeded: uploadProgress.total,
+          failed: 0
+        })
+      }
+    } catch (error: unknown) {
+      if (uploadProgress.phase !== 'failed') {
+        Object.assign(uploadProgress, {
+          phase: 'failed',
+          percentage: Math.max(
+            uploadProgress.percentage,
+            uploadProgress.total
+              ? Math.round((uploadProgress.processed / uploadProgress.total) * 100)
+              : 0
+          ),
+          processed: Math.max(uploadProgress.processed, 1),
+          failed: Math.max(uploadProgress.failed, 1)
+        })
+      }
+      throw error
     } finally {
       uploading.value = false
+      scheduleProgressReset()
     }
   }
 
@@ -827,59 +1025,80 @@
     }
   }
 
-  function getClipboardImageExtension(mimeType: string): string {
+  function getClipboardFileExtension(mimeType: string): string {
     const knownExtensions: Record<string, string> = {
+      'application/msword': 'doc',
+      'application/pdf': 'pdf',
+      'application/vnd.ms-excel': 'xls',
+      'application/vnd.ms-powerpoint': 'ppt',
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation': 'pptx',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'xlsx',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
+      'audio/mpeg': 'mp3',
       'image/jpeg': 'jpg',
       'image/svg+xml': 'svg',
-      'image/x-icon': 'ico'
+      'image/x-icon': 'ico',
+      'text/plain': 'txt',
+      'video/quicktime': 'mov'
     }
-    return knownExtensions[mimeType] ?? mimeType.split('/')[1]?.split('+')[0] ?? 'png'
+    return knownExtensions[mimeType] ?? mimeType.split('/')[1]?.split('+')[0] ?? 'bin'
   }
 
-  function createClipboardImageFile(file: File, index: number, total: number): File {
+  function createClipboardUploadFile(file: File, index: number, total: number): File {
+    const originalName = file.name.trim()
+    const hasUsableName = originalName && !/^(?:image|blob)(?:\.[^.]+)?$/i.test(originalName)
+    if (hasUsableName) return file
+
     const timestamp = dayjs().format('YYYYMMDD_HHmmss')
     const sequence = total > 1 ? `_${index + 1}` : ''
-    const extension = getClipboardImageExtension(file.type)
-    return new File([file], `粘贴图片_${timestamp}${sequence}.${extension}`, {
+    const extension = getClipboardFileExtension(file.type)
+    const prefix = file.type.startsWith('image/') ? '粘贴图片' : '粘贴文件'
+    return new File([file], `${prefix}_${timestamp}${sequence}.${extension}`, {
       type: file.type,
       lastModified: Date.now()
     })
   }
 
-  async function handlePasteImage(event: ClipboardEvent): Promise<void> {
+  async function handlePasteFiles(event: ClipboardEvent): Promise<void> {
     if (uploading.value) return
     const clipboardItems = Array.from(event.clipboardData?.items ?? [])
-    const sourceFiles = clipboardItems
-      .filter((item) => item.kind === 'file' && item.type.startsWith('image/'))
+    const itemFiles = clipboardItems
+      .filter((item) => item.kind === 'file')
       .map((item) => item.getAsFile())
       .filter((file): file is File => file !== null)
+    const sourceFiles = itemFiles.length ? itemFiles : Array.from(event.clipboardData?.files ?? [])
 
     if (!sourceFiles.length) {
-      ElMessage.warning('剪贴板中没有可上传的图片，请先在其他位置右键复制图片')
+      ElMessage.warning('剪贴板中没有可上传的文件，请先复制图片或实际文件后重试')
       return
     }
 
     event.preventDefault()
-    const imageButton = resourceStore.getButton('local-image-upload')
-    if (!imageButton?.upload) {
-      ElMessage.error('图片上传入口暂不可用，请刷新页面后重试')
+    const uploadButton = resourceStore.getButton(
+      sourceFiles.every((file) => file.type.startsWith('image/'))
+        ? 'local-image-upload'
+        : 'local-file-upload'
+    )
+    if (!uploadButton?.upload) {
+      ElMessage.error('文件上传入口暂不可用，请刷新页面后重试')
       return
     }
 
     const files = sourceFiles.map((file, index) =>
-      createClipboardImageFile(file, index, sourceFiles.length)
+      createClipboardUploadFile(file, index, sourceFiles.length)
     )
     try {
-      await uploadFiles(files.length === 1 ? files[0] : files, imageButton)
+      await uploadFiles(files.length === 1 ? files[0] : files, uploadButton)
       ElMessage.success(
-        files.length === 1 ? '剪贴板图片上传成功' : `${files.length} 张图片上传成功`
+        files.length === 1 ? '剪贴板文件上传成功' : `${files.length} 个文件上传成功`
       )
     } catch (error: unknown) {
-      ElMessage.error(getFriendlySupabaseErrorMessage(error, '剪贴板图片上传失败，请稍后重试'))
+      ElMessage.error(getFriendlySupabaseErrorMessage(error, '剪贴板文件上传失败，请稍后重试'))
     }
   }
 
   const handleFileTypesChange = (value: string | number | boolean) => {
+    playingResourceKey.value = undefined
     const { options } = segment.value
     queryParams.value.suffix = options.find((i) => i.value === String(value))?.suffix ?? ''
     handleGetResourceList()
@@ -887,6 +1106,7 @@
 
   const handleGetResourceList = async () => {
     try {
+      playingResourceKey.value = undefined
       loading.value = true
       resources.value = []
       const { suffix, originName, page: current, pageSize: size } = queryParams.value
@@ -993,6 +1213,59 @@
           line-height: 18px;
           color: var(--art-gray-600);
           white-space: nowrap;
+        }
+      }
+
+      &__progress {
+        display: flex;
+        flex: 0 1 274px;
+        gap: 12px;
+        align-items: center;
+        justify-content: flex-end;
+        min-width: 224px;
+        padding: 6px 8px 6px 14px;
+        background-color: color-mix(in srgb, var(--default-box-color) 84%, transparent);
+        border-left: 1px solid color-mix(in srgb, var(--theme-color) 18%, var(--default-border));
+        border-radius: var(--el-border-radius-base);
+
+        :deep(.el-progress) {
+          flex: none;
+        }
+
+        :deep(.el-progress__text) {
+          min-width: auto;
+          font-size: 11px !important;
+          font-weight: 700;
+          color: var(--art-gray-800);
+        }
+      }
+
+      &__progress-copy {
+        display: flex;
+        flex: 1;
+        flex-direction: column;
+        gap: 1px;
+        min-width: 0;
+
+        strong,
+        span,
+        small {
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        strong {
+          font-size: 12px;
+          line-height: 18px;
+          color: var(--art-gray-800);
+        }
+
+        span,
+        small {
+          font-size: 11px;
+          line-height: 16px;
+          color: var(--art-gray-600);
         }
       }
 
@@ -1151,8 +1424,16 @@
     min-width: var(--resource-item-size);
     padding-bottom: 100%;
     overflow: hidden;
-    background-color: #f9fafb;
-    border-radius: 4px;
+    cursor: pointer;
+    user-select: none;
+    background-color: var(--default-box-color);
+    border: 1px solid var(--default-border);
+    border-radius: 8px;
+    box-shadow: 0 2px 7px rgb(15 23 42 / 4%);
+    transition:
+      border-color 160ms ease,
+      box-shadow 160ms ease,
+      transform 160ms ease;
     animation: fadeIn 0.38s ease-out forwards;
 
     :root.dark & {
@@ -1170,21 +1451,35 @@
     right: 0;
     bottom: 0;
     left: 0;
-    height: 24px;
-    padding: 0 10px;
+    height: 28px;
+    padding: 0 9px;
     overflow: hidden;
     text-overflow: ellipsis;
     font-size: 12px;
-    line-height: 24px;
+    font-weight: 500;
+    line-height: 28px;
     color: #fff;
     white-space: nowrap;
-    background-color: rgb(156 163 175 / 60%);
+    pointer-events: none;
+    background: linear-gradient(180deg, rgb(15 23 42 / 52%), rgb(15 23 42 / 78%));
+    backdrop-filter: blur(5px);
+  }
+
+  .resource-item__select-surface {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    cursor: pointer;
+    outline: none;
+    background: transparent;
+    border: 0;
   }
 
   .resource-item__selected {
     position: absolute;
     top: -30px;
     right: -30px;
+    z-index: 3;
     width: 40px;
     height: 40px;
     background-image: linear-gradient(to top right, transparent 50%, var(--main-color) 50%);
@@ -1217,13 +1512,38 @@
   }
 
   .resource-item:hover,
-  .resource-item.active {
-    box-shadow: 0 0 0 2px var(--main-color);
+  .resource-item.active,
+  .resource-item:focus-within {
+    outline: none;
+    border-color: var(--main-color);
+    box-shadow:
+      0 0 0 2px color-mix(in srgb, var(--main-color) 88%, transparent),
+      0 10px 24px rgb(15 23 42 / 10%);
+  }
+
+  .resource-item:hover {
+    transform: translateY(-2px);
   }
 
   @keyframes resource-paste-spin {
     to {
       transform: rotate(360deg);
+    }
+  }
+
+  @media (width <= 768px) {
+    .resource-panel {
+      .resource-paste-zone {
+        flex-wrap: wrap;
+
+        &__progress {
+          flex-basis: 100%;
+          min-width: 0;
+          padding: 9px 8px 4px 46px;
+          border-top: 1px solid color-mix(in srgb, var(--theme-color) 18%, var(--default-border));
+          border-left: 0;
+        }
+      }
     }
   }
 

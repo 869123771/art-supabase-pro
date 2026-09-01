@@ -42,11 +42,17 @@ export async function fetchMasterDataDeleteDependencies(
 ): Promise<MasterDataDeleteDependencyDetail[]> {
   if (!resourceIds.length) return []
   const { data } = await responseHandle<MasterDataDeleteDependencyDetail[]>(
-    () =>
-      supabase.rpc('get_governed_delete_dependency_details', {
+    () => {
+      if (resourceType === 'attachment') {
+        return supabase.rpc('get_attachment_delete_dependency_details', {
+          p_resource_ids: resourceIds
+        })
+      }
+      return supabase.rpc('get_governed_delete_dependency_details', {
         p_resource_type: resourceType,
         p_resource_ids: resourceIds
-      }),
+      })
+    },
     { breakReturn: true }
   )
   return (data ?? []).map((item) => ({

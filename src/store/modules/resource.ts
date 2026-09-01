@@ -2,8 +2,12 @@ import Resources = Api.DataCenter.Resources
 import { uploadAttachment } from '@/api/common'
 
 const uploadAndRefresh = async (files: File | File[], args: Resources.Args): Promise<void> => {
-  await uploadAttachment(files)
-  await args.handleGetResourceList?.()
+  try {
+    await uploadAttachment(files, { onProgress: args.onProgress })
+  } finally {
+    // 部分文件成功、部分失败时也刷新列表，让已完成的上传立即可见。
+    await args.handleGetResourceList?.()
+  }
 }
 
 const resourceDefaultButtons: Resources.Button[] = [
@@ -24,7 +28,8 @@ const resourceDefaultButtons: Resources.Button[] = [
     icon: 'ri-file-upload-line',
     upload: uploadAndRefresh,
     uploadConfig: {
-      accept: '.doc,.xls,.ppt,.txt,.pdf',
+      accept:
+        '.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.pdf,.mp4,.avi,.wmv,.mov,.flv,.mkv,.webm,.mp3,.wav,.ogg,.wma,.aac,.flac,.ape',
       limit: 1
     },
     order: 1

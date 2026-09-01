@@ -315,16 +315,29 @@ export async function deleteResource(params: Api.DataCenter.Resources.ResourceLi
     }
   )
 
+  if (!resourceItem) throw new Error('未找到待删除的附件')
   const { storagePath, objectName } = resourceItem as Api.DataCenter.Resources.ResourceListItem
+
+  await responseHandle(
+    () => supabase.from('sys_attachment').delete({ count: 'exact' }).eq('id', id),
+    {
+      breakReturn: true,
+      requireAffected: true,
+      noAffectedMessage: WRITE_PERMISSION_DENIED_MESSAGE,
+      errorMessage: '附件删除失败，请稍后重试'
+    }
+  )
+
+  if (!storagePath || !objectName) return { storageCleanupFailed: false }
+
   const fullPath = `${storagePath}/${objectName}`
+  const { error } = await supabase.storage.from('attachments').remove([fullPath])
+  if (error) {
+    console.warn('[AttachmentCleanup] 附件记录已删除，但存储对象清理失败:', error)
+    return { storageCleanupFailed: true }
+  }
 
-  await responseHandle(() => supabase.from('sys_attachment').delete().eq('id', id).single(), {
-    breakReturn: true
-  })
-
-  return await responseHandle(() => supabase.storage.from('attachments').remove([fullPath]), {
-    showMessage: true
-  })
+  return { storageCleanupFailed: false }
 }
 
 /**

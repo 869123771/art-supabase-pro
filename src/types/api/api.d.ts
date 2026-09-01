@@ -673,7 +673,27 @@ declare namespace Api {
       interface Args {
         btn?: Button
         handleGetResourceList?: () => void | Promise<void>
+        onProgress?: (progress: UploadProgress) => void
         [key: string]: unknown
+      }
+
+      type UploadPhase =
+        | 'preparing'
+        | 'hashing'
+        | 'checking'
+        | 'uploading'
+        | 'saving'
+        | 'processing'
+        | 'completed'
+        | 'failed'
+
+      interface UploadProgress {
+        phase: UploadPhase
+        processed: number
+        succeeded: number
+        failed: number
+        total: number
+        currentFileName?: string
       }
 
       /** 用户搜索参数 */

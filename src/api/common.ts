@@ -77,6 +77,7 @@ export async function uploadAttachment(
     createBy?: string
     remark?: string
     concurrency?: number
+    onProgress?: (progress: Api.DataCenter.Resources.UploadProgress) => void
   }
 ): Promise<Api.DataCenter.Resources.ResourceListItem[]> {
   const {
@@ -86,7 +87,8 @@ export async function uploadAttachment(
     bucket = 'attachments',
     createBy = userName || nickName,
     remark = '',
-    concurrency = 3
+    concurrency = 3,
+    onProgress
   } = options || {}
 
   // 统一成数组
@@ -94,6 +96,25 @@ export async function uploadAttachment(
   const queue = [...fileList]
   const results: Api.DataCenter.Resources.ResourceListItem[] = []
   const errors: unknown[] = []
+  let processed = 0
+  let succeeded = 0
+  let failed = 0
+
+  const emitProgress = (
+    phase: Api.DataCenter.Resources.UploadPhase,
+    currentFileName?: string
+  ): void => {
+    onProgress?.({
+      phase,
+      processed,
+      succeeded,
+      failed,
+      total: fileList.length,
+      currentFileName
+    })
+  }
+
+  emitProgress('preparing')
 
   // worker（并发控制）
   async function worker() {
@@ -104,9 +125,17 @@ export async function uploadAttachment(
       try {
         const res = await uploadSingle(file)
         results.push(res)
+        succeeded += 1
       } catch (e) {
         console.error('[uploadAttachment]', file.name, e)
         errors.push(e)
+        failed += 1
+      } finally {
+        processed += 1
+        emitProgress(
+          processed === fileList.length ? (failed ? 'failed' : 'completed') : 'processing',
+          file.name
+        )
       }
     }
   }
@@ -123,9 +152,11 @@ export async function uploadAttachment(
 
   async function uploadSingle(file: File) {
     // 1️⃣ hash
+    emitProgress('hashing', file.name)
     const hash = await calcFileHash(file)
 
     // 2️⃣ 查重
+    emitProgress('checking', file.name)
     const { data: existed } = await responseHandle<Api.DataCenter.Resources.ResourceListItem>(
       () =>
         supabase
@@ -151,6 +182,7 @@ export async function uploadAttachment(
 
     // 4️⃣ 上传。对象名由内容哈希生成，相同路径对应相同文件；允许覆盖可修复
     // “Storage 已写入、附件记录写入失败”留下的孤儿对象，使重试具备幂等性。
+    emitProgress('uploading', file.name)
     await responseHandle(
       () =>
         supabase.storage.from(bucket).upload(fullPath, file, {
@@ -172,6 +204,7 @@ export async function uploadAttachment(
     )
 
     // 6️⃣ 写库
+    emitProgress('saving', file.name)
     const insertData = {
       storage_mode: 'supabase',
       origin_name: file.name,
