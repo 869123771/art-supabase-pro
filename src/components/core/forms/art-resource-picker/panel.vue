@@ -988,9 +988,9 @@
 
         span {
           overflow: hidden;
+          text-overflow: ellipsis;
           font-size: 12px;
           line-height: 18px;
-          text-overflow: ellipsis;
           color: var(--art-gray-600);
           white-space: nowrap;
         }
