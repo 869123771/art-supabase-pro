@@ -30,6 +30,8 @@ export interface ResourcePanelProps {
   internalScroll?: boolean
   showAction?: boolean
   showCopyActions?: boolean
+  showPasteUpload?: boolean
+  showRenameAction?: boolean
   dbClickConfirm?: boolean
   defaultFileType?: string
   fileTypes?: FileType[]

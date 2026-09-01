@@ -281,6 +281,29 @@ export async function fetchGetResourceList(params: Api.DataCenter.Resources.Reso
   })
 }
 
+interface RenameResourceParams {
+  id: string
+  originName: string
+}
+
+// 重命名仅更新业务展示名；Storage 对象继续使用内容哈希路径，链接不会失效。
+export async function renameResource(params: RenameResourceParams) {
+  const { id, originName } = params
+  return await responseHandle(
+    () =>
+      supabase
+        .from('sys_attachment')
+        .update({ origin_name: originName }, { count: 'exact' })
+        .eq('id', id),
+    {
+      breakReturn: true,
+      requireAffected: true,
+      noAffectedMessage: WRITE_PERMISSION_DENIED_MESSAGE,
+      errorMessage: '附件重命名失败，请稍后重试'
+    }
+  )
+}
+
 // 删除资源，同时清理 Storage 对象
 export async function deleteResource(params: Api.DataCenter.Resources.ResourceListItem) {
   const { id } = params

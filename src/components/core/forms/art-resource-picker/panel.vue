@@ -35,6 +35,31 @@
       </div>
     </div>
 
+    <button
+      v-if="props.showPasteUpload"
+      type="button"
+      class="resource-paste-zone"
+      :class="{ 'is-uploading': uploading }"
+      :disabled="uploading"
+      aria-label="粘贴剪贴板图片并上传"
+      @paste="handlePasteImage"
+    >
+      <span class="resource-paste-zone__icon" aria-hidden="true">
+        <ArtSvgIcon :icon="uploading ? 'ri-loader-4-line' : 'ri-clipboard-line'" />
+      </span>
+      <span class="resource-paste-zone__content">
+        <strong>{{ uploading ? '图片上传中' : '粘贴图片上传' }}</strong>
+        <span>
+          {{
+            uploading
+              ? '正在保存剪贴板图片，请稍候'
+              : '点击此框后按 Ctrl+V（macOS 为 ⌘V），无需先下载图片'
+          }}
+        </span>
+      </span>
+      <kbd v-if="!uploading" class="resource-paste-zone__shortcut">Ctrl V</kbd>
+    </button>
+
     <div class="mt-2 min-h-0 flex-1">
       <component :is="resourceListContainer" v-if="loading || resources.length">
         <div class="flex flex-wrap px-[2px] pt-[2px]">
@@ -153,31 +178,38 @@
     </div>
 
     <div class="resource-dock">
-      <template v-for="btn in resourceStore.getAllButton()" :key="btn.name">
+      <template v-for="(btn, index) in resourceStore.getAllButton()" :key="btn.name">
         <div class="res-app-container">
-          <div class="res-app">
-            <el-tooltip
-              :content="btn.label"
-              placement="top"
-              :show-after="300"
-              :offset="10"
-              :show-arrow="false"
+          <input
+            :ref="(element) => setFileInputRef(btn.name, element)"
+            type="file"
+            :name="btn.name"
+            class="hidden"
+            v-bind="btn.uploadConfig ?? {}"
+            @change="handleFile($event, btn)"
+          />
+          <el-tooltip
+            :content="btn.label"
+            placement="top"
+            :show-after="300"
+            :offset="10"
+            :show-arrow="false"
+          >
+            <button
+              type="button"
+              class="res-app"
+              :class="getDockEffectClass(index)"
+              :disabled="uploading"
+              :aria-label="btn.label"
+              @click="handleUploadButtonClick(btn)"
+              @mouseenter="hoveredDockIndex = index"
+              @mouseleave="hoveredDockIndex = undefined"
             >
-              <div>
-                <input
-                  type="file"
-                  :name="btn.name"
-                  class="hidden"
-                  v-bind="btn?.uploadConfig ?? {}"
-                  @change="handleFile($event, btn)"
-                  @click.stop="() => {}"
-                />
-                <i class="res-app-icon">
-                  <ArtSvgIcon :icon="btn.icon" />
-                </i>
-              </div>
-            </el-tooltip>
-          </div>
+              <span class="res-app-icon" aria-hidden="true">
+                <ArtSvgIcon :icon="btn.icon" />
+              </span>
+            </button>
+          </el-tooltip>
         </div>
       </template>
     </div>
@@ -191,10 +223,13 @@
   import ArtMenuRight from '@/components/core/others/art-menu-right/index.vue'
   import type { MenuItemType } from '@/components/core/others/art-menu-right/index.vue'
   import { ElMessage, ElMessageBox, ElScrollbar } from 'element-plus'
-  import { deleteResource, fetchGetResourceList } from '@/api/data-center'
+  import { deleteResource, fetchGetResourceList, renameResource } from '@/api/data-center'
   import useResourceStore from '@/store/modules/resource'
   import { pageInfoHandler } from '@utils/table/tableUtils'
   import { openFilePreview } from '@/hooks/core/useFilePreview'
+  import { useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
+  import dayjs from 'dayjs'
   import MasterDataDeleteGuard, {
     type MasterDataDeleteGuardOpenOptions
   } from '@/components/business/master-data-delete-guard/index.vue'
@@ -207,6 +242,8 @@
     internalScroll: true,
     showAction: true,
     showCopyActions: false,
+    showPasteUpload: false,
+    showRenameAction: false,
     pageSize: 30,
     dbClickConfirm: false
   })
@@ -219,6 +256,7 @@
   const modelValue = defineModel<string | string[] | undefined>()
 
   const resourceStore = useResourceStore()
+  const { promptText } = useArtFeedback()
   interface MasterDataDeleteGuardExpose {
     inspect: (options: MasterDataDeleteGuardOpenOptions) => Promise<boolean>
   }
@@ -268,14 +306,6 @@
     suffix: string
   }
 
-  interface ResourceDockListener {
-    app: HTMLDivElement
-    parent: HTMLElement | null
-    click: (event: MouseEvent) => void
-    mouseover: () => void
-    mouseout: () => void
-  }
-
   const queryParams = ref<ResourceQueryParams>({
     page: 1,
     pageSize: props.pageSize,
@@ -284,7 +314,8 @@
     suffix: ''
   })
 
-  const dockListeners: ResourceDockListener[] = []
+  const fileInputRefs = new Map<string, HTMLInputElement>()
+  const hoveredDockIndex = ref<number>()
 
   /**
    * 当前资源列表
@@ -300,6 +331,7 @@
   const selected = ref<Resource[]>([])
 
   const loading = ref(false)
+  const uploading = ref(false)
   const resourceListContainer = computed(() => (props.internalScroll ? ElScrollbar : 'div'))
 
   const menu = ref({
@@ -322,8 +354,10 @@
             icon: 'ri-image-line'
           })
         }
-        const lastCopyItem = copyItems.at(-1)
-        if (lastCopyItem) lastCopyItem.showLine = true
+        if (!props.showRenameAction) {
+          const lastCopyItem = copyItems.at(-1)
+          if (lastCopyItem) lastCopyItem.showLine = true
+        }
       }
 
       return [
@@ -351,6 +385,17 @@
           disabled: !canPreview(resource)
         },
         ...copyItems,
+        ...(props.showRenameAction
+          ? [
+              {
+                key: 'rename',
+                label: '重命名',
+                icon: 'ri-edit-line',
+                showLine: true,
+                disabled: !resource.id
+              }
+            ]
+          : []),
         {
           key: 'delete',
           label: '删除',
@@ -383,6 +428,9 @@
       }
       if (item.key === 'copyImage') {
         void handleCopyImage(resource)
+      }
+      if (item.key === 'rename') {
+        void handleRename(resource)
       }
       if (item.key === 'delete') {
         if (resource?.id) {
@@ -568,6 +616,54 @@
     }
   }
 
+  function getResourceExtension(resource: Resource): string {
+    const suffix = resource.suffix?.trim().replace(/^\./, '') ?? ''
+    return suffix ? `.${suffix}` : ''
+  }
+
+  function getResourceBaseName(resource: Resource, extension: string): string {
+    const currentName = resource.originName?.trim() ?? ''
+    return extension && currentName.toLowerCase().endsWith(extension.toLowerCase())
+      ? currentName.slice(0, -extension.length)
+      : currentName
+  }
+
+  async function handleRename(resource: Resource): Promise<void> {
+    if (!resource.id) return
+
+    const extension = getResourceExtension(resource)
+    const currentBaseName = getResourceBaseName(resource, extension)
+    try {
+      const baseName = await promptText(
+        extension ? `请输入新的文件名，扩展名 ${extension} 将自动保留` : '请输入新的文件名',
+        '重命名附件',
+        {
+          initialValue: currentBaseName,
+          placeholder: '请输入文件名',
+          emptyMessage: '文件名不能为空',
+          maxLength: Math.max(1, 200 - extension.length),
+          maxLengthMessage: '完整文件名不能超过 200 个字符',
+          confirmButtonText: '保存名称',
+          type: 'info'
+        }
+      )
+      const originName = `${baseName}${extension}`
+      if (originName === resource.originName) return
+
+      loading.value = true
+      await renameResource({ id: String(resource.id), originName })
+      resource.originName = originName
+      await handleGetResourceList()
+      ElMessage.success('附件名称已更新，原访问链接保持不变')
+    } catch (error: unknown) {
+      if (error !== 'cancel' && error !== 'close') {
+        ElMessage.error(getFriendlySupabaseErrorMessage(error, '附件重命名失败，请稍后重试'))
+      }
+    } finally {
+      loading.value = false
+    }
+  }
+
   /**
    * 判断是否被选中
    * @param resource
@@ -674,24 +770,112 @@
     confirm()
   }
 
-  function handleFile(ev: Event, btn: Api.DataCenter.Resources.Button) {
+  function setFileInputRef(name: string, element: unknown): void {
+    if (element instanceof HTMLInputElement) {
+      fileInputRefs.set(name, element)
+      return
+    }
+    fileInputRefs.delete(name)
+  }
+
+  function handleUploadButtonClick(btn: Api.DataCenter.Resources.Button): void {
+    if (uploading.value) return
+    if (btn.click) {
+      btn.click(btn, selected.value)
+      return
+    }
+    if (btn.upload) fileInputRefs.get(btn.name)?.click()
+  }
+
+  function getDockEffectClass(index: number): string | undefined {
+    if (hoveredDockIndex.value === undefined) return undefined
+    const distance = Math.abs(index - hoveredDockIndex.value)
+    if (distance === 0) return 'main-effect'
+    if (distance === 1) return 'second-effect'
+    if (distance === 2) return 'third-effect'
+    return undefined
+  }
+
+  async function uploadFiles(
+    files: File | File[],
+    btn: Api.DataCenter.Resources.Button
+  ): Promise<void> {
+    if (!btn.upload || uploading.value) return
+    uploading.value = true
     try {
-      loading.value = true
-      const target = ev.target
-      if (!(target instanceof HTMLInputElement)) return
-
-      const files = target.files
-
-      if (!files || files.length === 0) return
-      btn.upload?.(files.length === 1 ? files[0] : Array.from(files), {
+      await btn.upload(files, {
         btn,
         handleGetResourceList
       })
-
-      // ⚠️ 关键：清空 value，保证同一文件可重复选
-      target.value = ''
     } finally {
-      loading.value = false
+      uploading.value = false
+    }
+  }
+
+  async function handleFile(ev: Event, btn: Api.DataCenter.Resources.Button): Promise<void> {
+    const target = ev.target
+    if (!(target instanceof HTMLInputElement)) return
+    const files = target.files
+    target.value = ''
+    if (!files?.length) return
+
+    try {
+      await uploadFiles(files.length === 1 ? files[0] : Array.from(files), btn)
+      ElMessage.success(files.length === 1 ? '文件上传成功' : `${files.length} 个文件上传成功`)
+    } catch (error: unknown) {
+      ElMessage.error(getFriendlySupabaseErrorMessage(error, '文件上传失败，请检查文件后重试'))
+    }
+  }
+
+  function getClipboardImageExtension(mimeType: string): string {
+    const knownExtensions: Record<string, string> = {
+      'image/jpeg': 'jpg',
+      'image/svg+xml': 'svg',
+      'image/x-icon': 'ico'
+    }
+    return knownExtensions[mimeType] ?? mimeType.split('/')[1]?.split('+')[0] ?? 'png'
+  }
+
+  function createClipboardImageFile(file: File, index: number, total: number): File {
+    const timestamp = dayjs().format('YYYYMMDD_HHmmss')
+    const sequence = total > 1 ? `_${index + 1}` : ''
+    const extension = getClipboardImageExtension(file.type)
+    return new File([file], `粘贴图片_${timestamp}${sequence}.${extension}`, {
+      type: file.type,
+      lastModified: Date.now()
+    })
+  }
+
+  async function handlePasteImage(event: ClipboardEvent): Promise<void> {
+    if (uploading.value) return
+    const clipboardItems = Array.from(event.clipboardData?.items ?? [])
+    const sourceFiles = clipboardItems
+      .filter((item) => item.kind === 'file' && item.type.startsWith('image/'))
+      .map((item) => item.getAsFile())
+      .filter((file): file is File => file !== null)
+
+    if (!sourceFiles.length) {
+      ElMessage.warning('剪贴板中没有可上传的图片，请先在其他位置右键复制图片')
+      return
+    }
+
+    event.preventDefault()
+    const imageButton = resourceStore.getButton('local-image-upload')
+    if (!imageButton?.upload) {
+      ElMessage.error('图片上传入口暂不可用，请刷新页面后重试')
+      return
+    }
+
+    const files = sourceFiles.map((file, index) =>
+      createClipboardImageFile(file, index, sourceFiles.length)
+    )
+    try {
+      await uploadFiles(files.length === 1 ? files[0] : files, imageButton)
+      ElMessage.success(
+        files.length === 1 ? '剪贴板图片上传成功' : `${files.length} 张图片上传成功`
+      )
+    } catch (error: unknown) {
+      ElMessage.error(getFriendlySupabaseErrorMessage(error, '剪贴板图片上传失败，请稍后重试'))
     }
   }
 
@@ -720,89 +904,7 @@
     }
   }
 
-  onMounted(async () => {
-    await handleGetResourceList()
-
-    const apps = Array.from(document.getElementsByClassName('res-app')).filter(
-      (item): item is HTMLDivElement => item instanceof HTMLDivElement
-    )
-
-    for (let i = 0; i < apps.length; i++) {
-      const app = apps[i]
-      const parent = app.parentElement
-      const click = (e: MouseEvent) => {
-        e.stopPropagation()
-        const fileInput = app.querySelector<HTMLInputElement>('input[type="file"]')
-        if (!fileInput) return
-
-        const btn = resourceStore
-          .getAllButton()
-          ?.find((item) => item.name === fileInput.getAttribute('name'))
-        if (btn?.click) {
-          btn.click(btn, selected.value)
-        }
-        if (btn?.upload) {
-          fileInput.click()
-        }
-      }
-      const mouseover = () => {
-        const index = i
-        app.className = 'res-app main-effect'
-
-        if (index === 0) {
-          if (apps[1]) {
-            apps[1].className = 'res-app second-effect'
-          }
-          if (apps[2]) {
-            apps[2].className = 'res-app third-effect'
-          }
-        } else if (index === apps.length - 1) {
-          if (apps[index - 1]) {
-            apps[index - 1].className = 'res-app second-effect'
-          }
-          if (apps[index - 2]) {
-            apps[index - 2].className = 'res-app third-effect'
-          }
-        } else {
-          if (apps[index - 1]) {
-            apps[index - 1].className = 'res-app second-effect'
-          }
-          if (apps[index + 1]) {
-            apps[index + 1].className = 'res-app second-effect'
-          }
-
-          if (index - 2 > -1 && apps[index - 2]) {
-            apps[index - 2].className = 'res-app third-effect'
-          }
-
-          if (index + 2 < apps.length && apps[index + 2]) {
-            apps[index + 2].className = 'res-app third-effect'
-          }
-        }
-      }
-
-      const mouseout = () => {
-        for (const dockApp of Array.from(apps)) {
-          dockApp.className = 'res-app'
-        }
-      }
-
-      app.addEventListener('click', click)
-      parent?.addEventListener('mouseover', mouseover)
-      parent?.addEventListener('mouseout', mouseout)
-      dockListeners.push({ app, parent, click, mouseover, mouseout })
-    }
-  })
-
-  onUnmounted(() => {
-    // 取消监听
-    dockListeners.forEach(({ app, parent, click, mouseover, mouseout }) => {
-      app.removeEventListener('click', click)
-      parent?.removeEventListener('mouseover', mouseover)
-      parent?.removeEventListener('mouseout', mouseout)
-    })
-    dockListeners.length = 0
-  })
+  onMounted(handleGetResourceList)
 </script>
 
 <style scoped lang="scss">
@@ -820,6 +922,97 @@
     position: relative;
 
     --resource-item-size: 120px;
+
+    .resource-paste-zone {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      width: 100%;
+      min-height: 58px;
+      padding: 10px 14px;
+      margin-top: 10px;
+      color: var(--art-gray-800);
+      text-align: left;
+      cursor: pointer;
+      background-color: color-mix(in srgb, var(--theme-color) 5%, var(--default-box-color));
+      border: 1px dashed color-mix(in srgb, var(--theme-color) 42%, var(--default-border));
+      border-radius: var(--art-control-radius);
+      transition:
+        color 180ms ease,
+        background-color 180ms ease,
+        border-color 180ms ease,
+        box-shadow 180ms ease;
+
+      &:hover,
+      &:focus-visible {
+        color: var(--theme-color);
+        background-color: color-mix(in srgb, var(--theme-color) 9%, var(--default-box-color));
+        border-color: var(--theme-color);
+      }
+
+      &:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--theme-color) 18%, transparent);
+      }
+
+      &:disabled {
+        cursor: wait;
+        opacity: 0.8;
+      }
+
+      &__icon {
+        display: inline-flex;
+        flex: 0 0 34px;
+        align-items: center;
+        justify-content: center;
+        width: 34px;
+        height: 34px;
+        font-size: 20px;
+        color: var(--theme-color);
+        background-color: color-mix(in srgb, var(--theme-color) 12%, transparent);
+        border-radius: var(--el-border-radius-base);
+      }
+
+      &__content {
+        display: flex;
+        flex: 1;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 0;
+
+        strong {
+          font-size: 14px;
+          line-height: 20px;
+          color: inherit;
+        }
+
+        span {
+          overflow: hidden;
+          font-size: 12px;
+          line-height: 18px;
+          text-overflow: ellipsis;
+          color: var(--art-gray-600);
+          white-space: nowrap;
+        }
+      }
+
+      &__shortcut {
+        flex: none;
+        padding: 3px 7px;
+        font-family: inherit;
+        font-size: 11px;
+        line-height: 16px;
+        color: var(--art-gray-700);
+        background-color: var(--default-box-color);
+        border: 1px solid var(--default-border);
+        border-radius: var(--el-border-radius-small);
+        box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--art-gray-900) 12%, transparent);
+      }
+
+      &.is-uploading &__icon {
+        animation: resource-paste-spin 900ms linear infinite;
+      }
+    }
 
     .resource-dock {
       position: absolute;
@@ -877,6 +1070,11 @@
           background-color 0.3s,
           box-shadow 0.3s,
           transform 0.3s;
+
+        &:disabled {
+          cursor: wait;
+          opacity: 0.62;
+        }
 
         /* dark-bg-dark-4 dark-shadow-dark-9 */
         :root.dark & {
@@ -1021,5 +1219,27 @@
   .resource-item:hover,
   .resource-item.active {
     box-shadow: 0 0 0 2px var(--main-color);
+  }
+
+  @keyframes resource-paste-spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  @media (width <= 640px) {
+    .resource-panel {
+      .resource-paste-zone {
+        align-items: flex-start;
+
+        &__content span {
+          white-space: normal;
+        }
+
+        &__shortcut {
+          display: none;
+        }
+      }
+    }
   }
 </style>

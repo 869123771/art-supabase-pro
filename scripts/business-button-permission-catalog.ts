@@ -305,6 +305,122 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
     ]
   },
   {
+    menuName: 'SmisDualControlRiskIdentification',
+    buttons: [
+      button('View', '查看风险辨识', 'SmisDualControlRiskIdentification:View'),
+      button('Add', '新增风险点', 'SmisDualControlRiskIdentification:Add'),
+      button('Edit', '编辑风险点', 'SmisDualControlRiskIdentification:Edit'),
+      button('Delete', '删除风险点', 'SmisDualControlRiskIdentification:Delete'),
+      button('Copy', '复制风险点', 'SmisDualControlRiskIdentification:Copy'),
+      button('Generate', '生成所有风险点', 'SmisDualControlRiskIdentification:Generate'),
+      button('Import', '导入风险点', 'SmisDualControlRiskIdentification:Import'),
+      button('Export', '导出风险点', 'SmisDualControlRiskIdentification:Export'),
+      button(
+        'MaintainHazards',
+        '维护危害因素',
+        'SmisDualControlRiskIdentification:MaintainHazards'
+      ),
+      button('Void', '作废危害因素', 'SmisDualControlRiskIdentification:Void')
+    ]
+  },
+  {
+    menuName: 'SmisDualControlInspectionStandard',
+    buttons: [
+      button('View', '查看排查标准', 'SmisDualControlInspectionStandard:View'),
+      button('Add', '新增排查标准或排查项', 'SmisDualControlInspectionStandard:Add'),
+      button('Edit', '编辑排查标准或排查项', 'SmisDualControlInspectionStandard:Edit'),
+      button('Delete', '删除排查标准或排查项', 'SmisDualControlInspectionStandard:Delete'),
+      button('Export', '导出排查项', 'SmisDualControlInspectionStandard:Export'),
+      button('Void', '作废排查标准或排查项', 'SmisDualControlInspectionStandard:Void')
+    ]
+  },
+  {
+    menuName: 'SmisDualControlInspectionType',
+    buttons: [
+      button('View', '查看排查类型', 'SmisDualControlInspectionType:View'),
+      button('Add', '新增排查类型', 'SmisDualControlInspectionType:Add'),
+      button('Edit', '编辑排查类型', 'SmisDualControlInspectionType:Edit'),
+      button('Delete', '删除排查类型', 'SmisDualControlInspectionType:Delete'),
+      button('Export', '导出排查类型', 'SmisDualControlInspectionType:Export'),
+      button('Void', '作废排查类型', 'SmisDualControlInspectionType:Void')
+    ]
+  },
+  {
+    menuName: 'SmisDualControlDuplicateConfiguration',
+    buttons: [
+      button('View', '查看重复配置', 'SmisDualControlDuplicateConfiguration:View'),
+      button('Add', '新增重复配置', 'SmisDualControlDuplicateConfiguration:Add'),
+      button('Edit', '编辑重复配置', 'SmisDualControlDuplicateConfiguration:Edit'),
+      button('Delete', '删除重复配置', 'SmisDualControlDuplicateConfiguration:Delete'),
+      button('Export', '导出重复配置', 'SmisDualControlDuplicateConfiguration:Export'),
+      button('Void', '作废重复配置', 'SmisDualControlDuplicateConfiguration:Void')
+    ]
+  },
+  {
+    menuName: 'SmisDualControlRiskAssessmentStandardModel',
+    buttons: [
+      button('View', '查看风险评估标准模型', 'SmisDualControlRiskAssessmentStandardModel:View'),
+      button('Add', '新增风险判定标准', 'SmisDualControlRiskAssessmentStandardModel:Add'),
+      button('Edit', '编辑风险评估标准模型', 'SmisDualControlRiskAssessmentStandardModel:Edit'),
+      button('Delete', '删除风险判定标准', 'SmisDualControlRiskAssessmentStandardModel:Delete')
+    ]
+  },
+  {
+    menuName: 'SmisDualControlRiskEvaluationControl',
+    buttons: [
+      button('View', '查看风险评价及管控', 'SmisDualControlRiskEvaluationControl:View'),
+      button('Evaluate', '执行定量风险评价', 'SmisDualControlRiskEvaluationControl:Evaluate'),
+      button('AddMeasure', '新增风险控制措施', 'SmisDualControlRiskEvaluationControl:AddMeasure'),
+      button('EditMeasure', '编辑风险控制措施', 'SmisDualControlRiskEvaluationControl:EditMeasure'),
+      button(
+        'DeleteMeasure',
+        '删除风险控制措施',
+        'SmisDualControlRiskEvaluationControl:DeleteMeasure'
+      ),
+      button('VoidMeasure', '作废风险控制措施', 'SmisDualControlRiskEvaluationControl:VoidMeasure'),
+      button('Export', '导出风险评价及措施', 'SmisDualControlRiskEvaluationControl:Export')
+    ]
+  },
+  {
+    menuName: 'SmisDualControlSafetyRiskList',
+    buttons: [
+      button('View', '查看安全风险清单', 'SmisDualControlSafetyRiskList:View'),
+      button('Add', '新增安全风险', 'SmisDualControlSafetyRiskList:Add'),
+      button('Edit', '编辑安全风险', 'SmisDualControlSafetyRiskList:Edit'),
+      button('Delete', '删除安全风险', 'SmisDualControlSafetyRiskList:Delete'),
+      button('Export', '导出安全风险清单', 'SmisDualControlSafetyRiskList:Export')
+    ]
+  },
+  {
+    menuName: 'SmisDualControlRiskClassificationControl',
+    buttons: [
+      button('View', '查看风险分级管控', 'SmisDualControlRiskClassificationControl:View'),
+      button('Add', '新增风险管控配置', 'SmisDualControlRiskClassificationControl:Add'),
+      button('Edit', '编辑风险管控配置', 'SmisDualControlRiskClassificationControl:Edit'),
+      button('Delete', '删除风险管控配置', 'SmisDualControlRiskClassificationControl:Delete'),
+      button('Import', '导入风险管控配置', 'SmisDualControlRiskClassificationControl:Import'),
+      button('Export', '导出风险管控配置', 'SmisDualControlRiskClassificationControl:Export'),
+      button('Configure', '设置风险分级管控', 'SmisDualControlRiskClassificationControl:Configure')
+    ]
+  },
+  {
+    menuName: 'SmisDualControlRiskListSummary',
+    buttons: [
+      button('View', '查看风险清单汇总', 'SmisDualControlRiskListSummary:View'),
+      button('Export', '导出风险清单汇总', 'SmisDualControlRiskListSummary:Export')
+    ]
+  },
+  {
+    menuName: 'SmisDualControlRiskInspectionTask',
+    buttons: [
+      button('View', '查看风险巡查任务', 'SmisDualControlRiskInspectionTask:View'),
+      button('Export', '导出风险巡查任务', 'SmisDualControlRiskInspectionTask:Export'),
+      button('Cancel', '取消风险巡查任务', 'SmisDualControlRiskInspectionTask:Cancel'),
+      button('Transfer', '转交风险巡查任务', 'SmisDualControlRiskInspectionTask:Transfer'),
+      button('Execute', '执行风险巡查任务', 'SmisDualControlRiskInspectionTask:Execute')
+    ]
+  },
+  {
     menuName: 'SmisEquipmentCategory',
     buttons: [
       button('View', '查看设备分类', 'SmisEquipmentCategory:View'),

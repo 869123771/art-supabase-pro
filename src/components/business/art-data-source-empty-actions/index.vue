@@ -83,9 +83,9 @@
       gap: var(--art-space-1);
       align-items: flex-start;
       margin: 0;
-      color: var(--art-text-gray-600);
       font-size: 13px;
       line-height: 1.6;
+      color: var(--art-text-gray-600);
       text-align: left;
     }
   }

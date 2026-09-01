@@ -64,6 +64,9 @@
     pageSize: props.pageSize,
     internalScroll: false,
     showAction: props.showAction,
+    showCopyActions: props.showCopyActions,
+    showPasteUpload: props.showPasteUpload,
+    showRenameAction: props.showRenameAction,
     dbClickConfirm: props.dbClickConfirm,
     defaultFileType: props.defaultFileType,
     fileTypes: props.fileTypes

@@ -27,32 +27,40 @@
       </div>
     </template>
 
-    <ElScrollbar v-loading="tree.loading">
-      <ElTree
+    <div ref="treeViewportRef" v-loading="tree.loading" class="dict-type-tree__viewport">
+      <ElTreeV2
         v-if="tree.data.length"
         ref="treeRef"
+        class="dict-type-tree__virtual-tree"
         :data="tree.data"
+        :height="treeHeight"
+        :item-size="40"
         :props="tree.props"
-        :filter-node-method="filterNode"
-        :draggable="!tree.keyword.trim()"
-        :allow-drop="allowDrop"
+        :filter-method="filterNode"
         :default-expanded-keys="tree.expandedKeys"
-        node-key="id"
         highlight-current
+        scrollbar-always-on
         @node-click="handleNodeClick"
         @node-expand="handleNodeExpand"
         @node-collapse="handleNodeCollapse"
-        @node-drag-start="handleNodeDragStart"
-        @node-drop="handleNodeDrop"
-        @node-drag-end="handleNodeDragEnd"
       >
         <template #default="{ data }">
           <div
             class="dict-type-tree__node"
             :class="{
               'is-multi-selected': isNodeSelected(data),
-              'is-selectable-leaf': isSelectableLeaf(data)
+              'is-selectable-leaf': isSelectableLeaf(data),
+              'is-dragging': isDraggingNode(data),
+              'is-drop-before': isDropTarget(data, 'before'),
+              'is-drop-inner': isDropTarget(data, 'inner'),
+              'is-drop-after': isDropTarget(data, 'after')
             }"
+            :draggable="!tree.keyword.trim()"
+            @dragstart.stop="handleNodeDragStart(data, $event)"
+            @dragover.stop.prevent="handleNodeDragOver(data, $event)"
+            @dragleave.stop="handleNodeDragLeave($event)"
+            @drop.stop.prevent="handleNodeDrop(data, $event)"
+            @dragend.stop="handleNodeDragEnd"
           >
             <div class="dict-type-tree__label">
               <ArtSvgIcon
@@ -108,7 +116,7 @@
             </div>
           </div>
         </template>
-      </ElTree>
+      </ElTreeV2>
 
       <ArtEmptyState
         v-else-if="!tree.loading"
@@ -119,7 +127,7 @@
       >
         <ElButton type="primary" @click="handleAdd()">新增根节点</ElButton>
       </ArtEmptyState>
-    </ElScrollbar>
+    </div>
 
     <div class="dict-type-tree__footer" role="note">
       <div class="dict-type-tree__footer-hint">
@@ -165,9 +173,9 @@
 <script setup lang="ts">
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
-  import type { ElTree, NodeDropType } from 'element-plus'
-  import { ElMessage } from 'element-plus'
+  import { ElMessage, ElTreeV2, type NodeDropType, type TreeV2Instance } from 'element-plus'
   import { cloneDeep, uniq } from 'lodash-es'
+  import { useElementSize } from '@vueuse/core'
   import TreeUtils from '@/utils/tree'
   import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import { deleteDictType, fetchGetDictTypeList, saveDictTypeTreeOrder } from '@/api/data-center'
@@ -183,7 +191,7 @@
   }>()
 
   type DictTypeItem = Api.DataCenter.DictTypeItem
-  type AllowDrop = NonNullable<InstanceType<typeof ElTree>['$props']['allowDrop']>
+  type ActiveDropType = Exclude<NodeDropType, 'none'>
 
   interface DictTypeDialogExpose {
     handleOpen: (
@@ -206,19 +214,17 @@
     selectionAnchorKey?: string
     draggingBatchKeys: string[]
     dragSourceData: DictTypeItem[]
+    dropTargetKey?: string
+    dropType?: ActiveDropType
     props: {
       children: string
       label: string
+      value: string
       class: (data: unknown) => Record<string, boolean>
     }
   }
 
   const deleteGuardRef = ref<MasterDataDeleteGuardExpose>()
-
-  interface ElementTreeNode {
-    data?: unknown
-    expanded?: boolean
-  }
 
   interface TreeOrderUpdate {
     id: string
@@ -246,8 +252,11 @@
     childrenKey: 'children'
   })
 
-  const treeRef = ref<InstanceType<typeof ElTree>>()
+  const treeRef = ref<TreeV2Instance>()
+  const treeViewportRef = ref<HTMLElement>()
   const dictTypeDialogRef = ref<DictTypeDialogExpose>()
+  const { height: viewportHeight } = useElementSize(treeViewportRef)
+  const treeHeight = computed(() => Math.max(Math.floor(viewportHeight.value), 1))
   const tree = reactive<TreeState>({
     keyword: '',
     loading: false,
@@ -258,9 +267,12 @@
     selectionAnchorKey: undefined,
     draggingBatchKeys: [],
     dragSourceData: [],
+    dropTargetKey: undefined,
+    dropType: undefined,
     props: {
       children: 'children',
       label: 'name',
+      value: 'id',
       class: getNodeClass
     }
   })
@@ -303,6 +315,9 @@
 
   const handleFilter = (value: string): void => {
     treeRef.value?.filter(value)
+    if (!value.trim()) {
+      applyExpandedKeys()
+    }
   }
 
   function getNodeClass(data: unknown): Record<string, boolean> {
@@ -310,16 +325,15 @@
 
     return {
       'is-multi-selected': isNodeSelected(node),
-      'is-selectable-leaf': isSelectableLeaf(node)
+      'is-selectable-leaf': isSelectableLeaf(node),
+      'is-dragging': isDraggingNode(node),
+      'is-drop-before': isDropTarget(node, 'before'),
+      'is-drop-inner': isDropTarget(node, 'inner'),
+      'is-drop-after': isDropTarget(node, 'after')
     }
   }
 
-  const handleNodeClick = (
-    rawData: unknown,
-    _node: unknown,
-    _nodeInstance: unknown,
-    event: MouseEvent
-  ): void => {
+  const handleNodeClick = (rawData: unknown, _node: unknown, event: MouseEvent): void => {
     const data = getDictTypeData(rawData)
     if (!data) return
 
@@ -335,11 +349,6 @@
   function getDictTypeData(data: unknown): DictTypeItem | undefined {
     if (!data || typeof data !== 'object' || !('nodeType' in data)) return undefined
     return data as DictTypeItem
-  }
-
-  function getTreeNodeData(node: unknown): DictTypeItem | undefined {
-    if (!node || typeof node !== 'object' || !('data' in node)) return undefined
-    return getDictTypeData((node as ElementTreeNode).data)
   }
 
   function isSelectableLeaf(node?: DictTypeItem | null): boolean {
@@ -460,18 +469,7 @@
   }
 
   const applyExpandedKeys = (): void => {
-    const expandedKeySet = new Set(tree.expandedKeys)
-    const treeNodes = treeUtils.treeToList(tree.data)
-
-    treeNodes.forEach((node) => {
-      const key = getNodeKey(node)
-      if (!key) return
-
-      const elTreeNode = treeRef.value?.getNode(key)
-      if (elTreeNode) {
-        elTreeNode.expanded = expandedKeySet.has(key)
-      }
-    })
+    treeRef.value?.setExpandedKeys(tree.expandedKeys)
   }
 
   const setAllExpanded = (expanded: boolean): void => {
@@ -483,14 +481,18 @@
     setAllExpanded(canExpandAll.value)
   }
 
-  const handleNodeExpand = (data: DictTypeItem): void => {
+  const handleNodeExpand = (rawData: unknown): void => {
+    const data = getDictTypeData(rawData)
+    if (!data) return
     const key = getNodeKey(data)
     if (!key) return
 
     tree.expandedKeys = uniq([...tree.expandedKeys, key])
   }
 
-  const handleNodeCollapse = (data: DictTypeItem): void => {
+  const handleNodeCollapse = (rawData: unknown): void => {
+    const data = getDictTypeData(rawData)
+    if (!data) return
     const key = getNodeKey(data)
     if (!key) return
 
@@ -501,24 +503,6 @@
 
     const collapsedKeySet = new Set(descendantKeys)
     tree.expandedKeys = tree.expandedKeys.filter((itemKey) => !collapsedKeySet.has(itemKey))
-  }
-
-  const allowDrop: AllowDrop = (draggingNode, dropNode, type) => {
-    const draggingData = getTreeNodeData(draggingNode)
-    const dropData = getTreeNodeData(dropNode)
-    if (!draggingData || !dropData) return false
-
-    const batchKeys = getBatchKeysForDragging(draggingData)
-    const dropKey = getNodeKey(dropData)
-
-    if (batchKeys.length > 1) {
-      if (dropKey && batchKeys.includes(dropKey)) return false
-      if (type === 'inner') return dropData.nodeType === 'directory'
-      return type === 'prev' || type === 'next'
-    }
-
-    if (type !== 'inner') return true
-    return dropData.nodeType === 'directory'
   }
 
   const getBatchKeysForDragging = (data: DictTypeItem): string[] => {
@@ -552,11 +536,19 @@
     }
   }
 
-  const removeSelectedLeaves = (
+  const getOrderedNodeKeys = (keys: string[], nodes: DictTypeItem[]): string[] => {
+    const keySet = new Set(keys)
+
+    return getFlatTreeNodes(nodes)
+      .map(getNodeKey)
+      .filter((key): key is string => Boolean(key && keySet.has(key)))
+  }
+
+  const removeTreeNodes = (
     sourceTree: DictTypeItem[],
-    selectedKeys: string[]
+    nodeKeys: string[]
   ): { nextTree: DictTypeItem[]; movedNodes: DictTypeItem[] } => {
-    const orderedKeys = getOrderedSelectableKeys(selectedKeys, sourceTree)
+    const orderedKeys = getOrderedNodeKeys(nodeKeys, sourceTree)
     let nextTree = cloneDeep(sourceTree)
     const movedNodes: DictTypeItem[] = []
 
@@ -575,22 +567,20 @@
     }
   }
 
-  const moveSelectedLeaves = (
+  const moveTreeNodes = (
     sourceTree: DictTypeItem[],
-    selectedKeys: string[],
+    nodeKeys: string[],
     targetNodeKey: string,
-    dropType: NodeDropType
+    dropType: ActiveDropType
   ): DictTypeItem[] => {
-    if (selectedKeys.includes(targetNodeKey)) return sourceTree
+    if (nodeKeys.includes(targetNodeKey)) return sourceTree
 
-    const { nextTree, movedNodes } = removeSelectedLeaves(sourceTree, selectedKeys)
+    const { nextTree, movedNodes } = removeTreeNodes(sourceTree, nodeKeys)
     if (!movedNodes.length) return sourceTree
 
     if (dropType === 'inner') {
-      return moveSelectedLeavesToDirectory(nextTree, movedNodes, targetNodeKey) ?? sourceTree
+      return moveTreeNodesToDirectory(nextTree, movedNodes, targetNodeKey) ?? sourceTree
     }
-
-    if (dropType !== 'before' && dropType !== 'after') return sourceTree
 
     const dropContext = getDropSiblingContext(nextTree, targetNodeKey)
     if (!dropContext) return sourceTree
@@ -607,7 +597,7 @@
     return nextTree
   }
 
-  const moveSelectedLeavesToDirectory = (
+  const moveTreeNodesToDirectory = (
     nextTree: DictTypeItem[],
     movedNodes: DictTypeItem[],
     targetDirectoryId: string
@@ -645,12 +635,64 @@
     return updates
   }
 
-  const handleNodeDragStart = (draggingNode: unknown): void => {
-    const draggingData = getTreeNodeData(draggingNode)
-    if (!draggingData) return
+  const isDraggingNode = (node?: DictTypeItem | null): boolean => {
+    const key = getNodeKey(node)
+    return Boolean(key && tree.draggingBatchKeys.includes(key))
+  }
+
+  const isDropTarget = (node: DictTypeItem | undefined, dropType: ActiveDropType): boolean => {
+    const key = getNodeKey(node)
+    return Boolean(key && key === tree.dropTargetKey && dropType === tree.dropType)
+  }
+
+  const resetDropTarget = (): void => {
+    tree.dropTargetKey = undefined
+    tree.dropType = undefined
+  }
+
+  const resolveDropType = (data: DictTypeItem, event: DragEvent): ActiveDropType => {
+    const target = event.currentTarget as HTMLElement
+    const { top, height } = target.getBoundingClientRect()
+    const pointerRatio = height > 0 ? (event.clientY - top) / height : 0.5
+
+    if (data.nodeType === 'directory') {
+      if (pointerRatio < 0.25) return 'before'
+      if (pointerRatio > 0.75) return 'after'
+      return 'inner'
+    }
+
+    return pointerRatio < 0.5 ? 'before' : 'after'
+  }
+
+  const isDropAllowed = (dropData: DictTypeItem, dropType: ActiveDropType): boolean => {
+    const dropKey = getNodeKey(dropData)
+    if (!dropKey || !tree.draggingBatchKeys.length || !tree.dragSourceData.length) return false
+    if (dropType === 'inner' && dropData.nodeType !== 'directory') return false
+
+    const blockedTargetKeys = new Set(
+      tree.draggingBatchKeys.flatMap((draggingKey) =>
+        treeUtils
+          .getDescendants(tree.dragSourceData, draggingKey, true)
+          .map(getNodeKey)
+          .filter((key): key is string => Boolean(key))
+      )
+    )
+
+    return !blockedTargetKeys.has(dropKey)
+  }
+
+  const handleNodeDragStart = (draggingData: DictTypeItem, event: DragEvent): void => {
+    if (tree.keyword.trim()) {
+      event.preventDefault()
+      return
+    }
 
     tree.dragSourceData = cloneDeep(tree.data)
     tree.draggingBatchKeys = getBatchKeysForDragging(draggingData)
+    event.dataTransfer?.setData('text/plain', getNodeKey(draggingData) ?? '')
+    if (event.dataTransfer) {
+      event.dataTransfer.effectAllowed = 'move'
+    }
 
     if (tree.draggingBatchKeys.length === 1) {
       if (isSelectableLeaf(draggingData)) {
@@ -664,35 +706,55 @@
   const resetDragState = (): void => {
     tree.draggingBatchKeys = []
     tree.dragSourceData = []
+    resetDropTarget()
   }
 
   const handleNodeDragEnd = (): void => {
-    // Element Plus emits node-drag-end before node-drop. Defer one microtask so the
-    // drop handler can snapshot the batch, then clear the visual drag state immediately.
-    queueMicrotask(resetDragState)
+    resetDragState()
   }
 
-  const handleNodeDrop = async (
-    _draggingNode: unknown,
-    dropNode: unknown,
-    dropType: NodeDropType
-  ): Promise<void> => {
+  const handleNodeDragOver = (dropData: DictTypeItem, event: DragEvent): void => {
+    const dropType = resolveDropType(dropData, event)
+    if (!isDropAllowed(dropData, dropType)) {
+      resetDropTarget()
+      if (event.dataTransfer) event.dataTransfer.dropEffect = 'none'
+      return
+    }
+
+    tree.dropTargetKey = getNodeKey(dropData)
+    tree.dropType = dropType
+    if (event.dataTransfer) event.dataTransfer.dropEffect = 'move'
+  }
+
+  const handleNodeDragLeave = (event: DragEvent): void => {
+    const currentTarget = event.currentTarget as HTMLElement
+    const relatedTarget = event.relatedTarget
+    if (relatedTarget instanceof Node && currentTarget.contains(relatedTarget)) return
+    resetDropTarget()
+  }
+
+  const handleNodeDrop = async (dropData: DictTypeItem, event: DragEvent): Promise<void> => {
     const currentKey = treeRef.value?.getCurrentKey()
-    const batchKeys = tree.draggingBatchKeys
+    const batchKeys = [...tree.draggingBatchKeys]
     const dragSourceData = tree.dragSourceData
-    const dropData = getTreeNodeData(dropNode)
+    const dropType = resolveDropType(dropData, event)
     const dropNodeKey = getNodeKey(dropData)
 
+    if (!dropNodeKey || !isDropAllowed(dropData, dropType)) {
+      resetDragState()
+      return
+    }
+
     try {
-      if (batchKeys.length > 1 && dropNodeKey) {
-        tree.data = moveSelectedLeaves(dragSourceData, batchKeys, dropNodeKey, dropType)
-        if (dropType === 'inner') {
-          tree.expandedKeys = uniq([...tree.expandedKeys, dropNodeKey])
-        }
-        replaceSelectedKeys(batchKeys, batchKeys[0])
-        await nextTick()
-        applyExpandedKeys()
+      tree.data = moveTreeNodes(dragSourceData, batchKeys, dropNodeKey, dropType)
+      if (dropType === 'inner') {
+        tree.expandedKeys = uniq([...tree.expandedKeys, dropNodeKey])
       }
+      if (batchKeys.length > 1) {
+        replaceSelectedKeys(batchKeys, batchKeys[0])
+      }
+      await nextTick()
+      applyExpandedKeys()
 
       const updates = buildTreeOrderUpdates(tree.data)
       await saveDictTypeTreeOrder(updates)
@@ -775,7 +837,9 @@
         treeRef.value?.setCurrentKey(currentKey)
       }
       focusTargetNode()
-      treeRef.value?.filter(tree.keyword)
+      if (tree.keyword.trim()) {
+        treeRef.value?.filter(tree.keyword)
+      }
     } finally {
       tree.loading = false
     }
@@ -827,16 +891,15 @@
     }
 
     :deep(.el-tree-node__content) {
-      height: 38px;
-      margin-top: 2px;
       border-radius: var(--el-border-radius-base);
     }
 
-    :deep(.el-tree__drop-indicator) {
-      z-index: 2;
-      height: 2px;
-      background-color: var(--el-color-primary);
-      box-shadow: 0 0 0 1px var(--el-color-primary-light-7);
+    :deep(.el-tree-node.is-drop-before > .el-tree-node__content) {
+      box-shadow: inset 0 2px 0 var(--el-color-primary);
+    }
+
+    :deep(.el-tree-node.is-drop-after > .el-tree-node__content) {
+      box-shadow: inset 0 -2px 0 var(--el-color-primary);
     }
 
     :deep(.el-tree-node.is-multi-selected > .el-tree-node__content) {
@@ -857,6 +920,15 @@
   }
 
   .dict-type-tree {
+    &__viewport {
+      flex: 1;
+      min-height: 0;
+    }
+
+    &__virtual-tree {
+      height: 100%;
+    }
+
     &__header {
       display: grid;
       gap: 12px;
@@ -895,12 +967,39 @@
       justify-content: space-between;
       width: 100%;
       min-width: 0;
+      height: 100%;
       padding-right: 6px;
       border-radius: var(--el-border-radius-base);
+
+      &[draggable='true'] {
+        cursor: grab;
+
+        &:active {
+          cursor: grabbing;
+        }
+      }
 
       &.is-multi-selected {
         color: var(--el-color-primary);
         background: var(--el-color-primary-light-9);
+      }
+
+      &.is-dragging {
+        opacity: 0.55;
+      }
+
+      &.is-drop-before {
+        box-shadow: inset 0 2px 0 var(--el-color-primary);
+      }
+
+      &.is-drop-after {
+        box-shadow: inset 0 -2px 0 var(--el-color-primary);
+      }
+
+      &.is-drop-inner {
+        color: var(--el-color-primary);
+        background: var(--el-color-primary-light-8);
+        box-shadow: inset 0 0 0 2px var(--el-color-primary);
       }
 
       &:hover,

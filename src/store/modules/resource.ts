@@ -1,15 +1,17 @@
 import Resources = Api.DataCenter.Resources
 import { uploadAttachment } from '@/api/common'
 
+const uploadAndRefresh = async (files: File | File[], args: Resources.Args): Promise<void> => {
+  await uploadAttachment(files)
+  await args.handleGetResourceList?.()
+}
+
 const resourceDefaultButtons: Resources.Button[] = [
   {
     name: 'local-image-upload',
     label: '图片上传',
     icon: 'ri-image-add-line',
-    upload: async (files: File | File[], args: Resources.Args) => {
-      await uploadAttachment(files)
-      args?.handleGetResourceList?.()
-    },
+    upload: uploadAndRefresh,
     uploadConfig: {
       accept: 'image/*',
       limit: 1
@@ -20,10 +22,7 @@ const resourceDefaultButtons: Resources.Button[] = [
     name: 'local-file-upload',
     label: '文件上传',
     icon: 'ri-file-upload-line',
-    upload: async (files: File | File[], args: Resources.Args) => {
-      await uploadAttachment(files)
-      args?.handleGetResourceList?.()
-    },
+    upload: uploadAndRefresh,
     uploadConfig: {
       accept: '.doc,.xls,.ppt,.txt,.pdf',
       limit: 1
