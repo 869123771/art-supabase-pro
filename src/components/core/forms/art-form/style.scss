@@ -26,6 +26,28 @@
     :deep(.el-col) {
       min-width: 0;
     }
+
+    :deep(.el-form-item__content),
+    :deep(.el-input),
+    :deep(.el-select),
+    :deep(.el-tree-select),
+    :deep(.el-input-number),
+    :deep(.el-date-editor.el-input),
+    :deep(.el-date-editor.el-input__wrapper) {
+      width: 100%;
+      min-width: 0;
+      max-width: 100%;
+    }
+
+    :deep(.el-range-input) {
+      min-width: 0;
+    }
+
+    :deep(.el-range-separator),
+    :deep(.el-range__icon),
+    :deep(.el-range__close-icon) {
+      flex: none;
+    }
   }
 
   &-item {

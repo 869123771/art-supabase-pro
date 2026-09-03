@@ -1,0 +1,1 @@
+import{Dt as e,Kt as t,vt as n}from"./framework-CEwusMeK.js";import{t as r}from"./smis-page-placeholder-CMPoJ1v9.js";var i=e({name:`SmisHazardousWasteCatalog`,__name:`index`,setup(e){return(e,i)=>(t(),n(r,{section:`危废管理`,title:`危废名录`}))}});export{i as default};

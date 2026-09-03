@@ -130,16 +130,29 @@ html.dark .el-card {
   }
 }
 
-// 标准顶部页签统一采用紧凑高度，让文字与激活指示线保持清晰、稳定的视觉关联。
-.el-tabs.el-tabs--top:not(.el-tabs--card):not(.el-tabs--border-card) > .el-tabs__header {
+// 标准顶部页签统一采用紧凑高度，并为首尾标签保留一致的横向留白。
+// 激活线覆盖标签的完整点击区域，因此首项可与底部分隔线左端对齐，文字仍保留呼吸空间。
+.el-tabs.el-tabs--top:not(.el-tabs--card, .el-tabs--border-card) > .el-tabs__header {
   .el-tabs__item {
+    position: relative;
     height: 40px;
+    padding-inline: var(--art-space-4);
     line-height: 40px;
+
+    &.is-active::after {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      z-index: 1;
+      width: 100%;
+      height: 3px;
+      content: '';
+      background-color: var(--theme-color);
+    }
   }
 
   .el-tabs__active-bar {
-    height: 3px;
-    background-color: var(--theme-color);
+    display: none;
   }
 }
 // -------------------------------- 修改 el-size=default 组件默认高度 end --------------------------------

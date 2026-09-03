@@ -225,7 +225,7 @@ Vue 3 + TypeScript + Element Plus
 | 前端框架    | Vue 3、TypeScript、Vite、Vue Router、Pinia                         |
 | UI 与可视化 | Element Plus、SCSS、Tailwind CSS、ECharts、Vue Flow                |
 | 数据与后端  | Supabase、PostgreSQL、RLS、Realtime、Storage、Edge Functions       |
-| 编辑与文件  | Monaco Editor、WangEditor、XLSX、File Viewer、XGPlayer             |
+| 编辑与文件  | Monaco Editor、Tiptap、XLSX、File Viewer、XGPlayer                 |
 | 工程质量    | ESLint、Prettier、Stylelint、vue-tsc、Playwright、Node Test Runner |
 
 ## 快速开始

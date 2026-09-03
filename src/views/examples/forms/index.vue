@@ -58,7 +58,7 @@
 <script setup lang="ts">
   import ArtUploadImage from '@/components/core/forms/art-upload-image/index.vue'
   import ArtUploadFile from '@/components/core/forms/art-upload-file/index.vue'
-  import ArtWangEditor from '@/components/core/forms/art-wang-editor/index.vue'
+  import ArtTiptapEditor from '@/components/core/forms/art-tiptap-editor/index.vue'
   import type { FormItem } from '@/components/core/forms/art-form/index.vue'
   import { ElMessage, ElButton, ElInput } from 'element-plus'
 
@@ -625,7 +625,7 @@
       key: 'richTextContent',
       span: 24,
       render: () =>
-        h(ArtWangEditor, {
+        h(ArtTiptapEditor, {
           modelValue: formData.value.richTextContent,
           height: '300px',
           placeholder: '请输入富文本内容…',

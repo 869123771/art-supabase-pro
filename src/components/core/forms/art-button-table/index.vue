@@ -4,7 +4,11 @@
     v-if="canAccess"
     type="button"
     class="art-button-table"
-    :class="[buttonClass, type ? `is-${type}` : '', { 'is-disabled': isDisabled }]"
+    :class="[
+      buttonClass,
+      type ? `is-${type}` : '',
+      { 'is-disabled': isDisabled, 'is-label-visible': showLabel }
+    ]"
     :style="buttonStyle"
     :aria-busy="loading"
     :aria-disabled="isDisabled"
@@ -14,6 +18,7 @@
     @click="handleClick"
   >
     <ArtSvgIcon :icon="iconContent" :class="{ 'animate-spin': loading }" />
+    <span v-if="showLabel" class="art-button-table__label">{{ accessibleLabel }}</span>
   </button>
 </template>
 
@@ -44,6 +49,8 @@
     disabled?: boolean
     /** 业务动作名称，用于按钮标题和无障碍文本 */
     label?: string
+    /** 是否直接显示业务动作文字 */
+    showLabel?: boolean
   }
 
   const props = withDefaults(defineProps<Props>(), {})
@@ -168,6 +175,14 @@
       --art-table-button-semantic: var(--art-action-view);
     }
 
+    &.is-label-visible {
+      display: inline-flex;
+      gap: 5px;
+      width: auto;
+      min-width: 32px;
+      padding: 0 10px;
+    }
+
     &:hover:not(.is-disabled) {
       color: var(--art-action-color);
       background: color-mix(
@@ -199,6 +214,11 @@
       cursor: not-allowed;
       box-shadow: none;
       opacity: 0.48;
+    }
+
+    &__label {
+      line-height: 1;
+      white-space: nowrap;
     }
   }
 

@@ -213,7 +213,7 @@ export default ({ mode }: { mode: string }) => {
               },
               {
                 name: 'rich-editor',
-                test: (id) => matchPackages(id, ['@wangeditor']),
+                test: (id) => matchPackages(id, ['@tiptap']),
                 priority: 30
               },
               {

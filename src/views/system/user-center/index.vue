@@ -73,7 +73,7 @@
           </div>
         </header>
 
-        <ElTabs v-model="activeTab" class="user-center__tabs" stretch>
+        <ElTabs v-model="activeTab" class="user-center__tabs">
           <ElTabPane name="profile">
             <template #label>
               <span class="user-center__tab-label">

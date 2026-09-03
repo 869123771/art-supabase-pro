@@ -16,7 +16,7 @@
         <el-splitter-panel>
           <div class="result-section">
             <div class="tabs-header">
-              <el-tabs v-model="tabs.active" class="result-tabs" stretch>
+              <el-tabs v-model="tabs.active" class="result-tabs">
                 <el-tab-pane
                   v-for="{ label, name } in tabs.list"
                   :key="name"

@@ -321,7 +321,7 @@
               show-icon
               title="选择租户后才能加载审批成员和角色"
             />
-            <ElTabs v-model="activeInspectorTab" stretch>
+            <ElTabs v-model="activeInspectorTab">
               <ElTabPane label="审批设置" name="approval">
                 <ArtForm
                   ref="approvalFormRef"

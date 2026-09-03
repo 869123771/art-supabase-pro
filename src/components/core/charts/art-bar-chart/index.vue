@@ -159,7 +159,12 @@
         },
         yAxis: {
           type: 'value',
-          axisLabel: getAxisLabelStyle(props.showAxisLabel),
+          min: props.yAxisMin,
+          max: props.yAxisMax,
+          axisLabel: {
+            ...getAxisLabelStyle(props.showAxisLabel),
+            formatter: props.valueSuffix ? `{value}${props.valueSuffix}` : undefined
+          },
           axisLine: getAxisLineStyle(props.showAxisLine),
           splitLine: getSplitLineStyle(props.showSplitLine)
         }

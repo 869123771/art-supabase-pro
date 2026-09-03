@@ -184,6 +184,7 @@
   import { useEventListener, useResizeObserver, useWindowSize } from '@vueuse/core'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import TreeUtils from '@/utils/tree'
+  import { handoffVerticalWheel } from '@/utils/ui/wheel-scroll'
   import { filterTenantDimensionDescriptors } from '@/utils/tenant-dimension-visibility'
 
   defineOptions({ name: 'ArtTable' })
@@ -538,46 +539,14 @@
     return content !== null && (typeof content === 'object' || typeof content === 'function')
   }
 
-  const canConsumeVerticalWheel = (element: HTMLElement, deltaY: number): boolean => {
-    const maxScrollTop = element.scrollHeight - element.clientHeight
-    if (maxScrollTop <= 1) return false
-    return deltaY < 0 ? element.scrollTop > 1 : element.scrollTop < maxScrollTop - 1
-  }
-
   /**
    * Element Plus 表格内部始终包含一个滚动容器。仅有横向溢出时，这个容器会吞掉
    * 纵向滚轮，导致外层弹窗/抽屉无法滚动。内部确实可纵向滚动时保持原行为；否则
    * 将纵向滚动交给最近的可滚动父容器，避免形成滚轮陷阱。
    */
   const handleWheelBoundary = (event: WheelEvent): void => {
-    if (event.ctrlKey || event.deltaY === 0 || Math.abs(event.deltaX) >= Math.abs(event.deltaY))
-      return
-
     const tableElement = event.currentTarget as HTMLElement | null
-    const eventTarget = event.target as HTMLElement | null
-    if (!tableElement || !eventTarget) return
-
-    let innerElement: HTMLElement | null = eventTarget
-    while (innerElement && tableElement.contains(innerElement)) {
-      if (canConsumeVerticalWheel(innerElement, event.deltaY)) return
-      if (innerElement === tableElement) break
-      innerElement = innerElement.parentElement
-    }
-
-    let parentElement = tableElement.parentElement
-    while (parentElement) {
-      const overflowY = window.getComputedStyle(parentElement).overflowY
-      if (
-        /auto|scroll|overlay/.test(overflowY) &&
-        canConsumeVerticalWheel(parentElement, event.deltaY)
-      ) {
-        event.preventDefault()
-        event.stopPropagation()
-        parentElement.scrollTop += event.deltaY
-        return
-      }
-      parentElement = parentElement.parentElement
-    }
+    handoffVerticalWheel(event, tableElement)
   }
 
   const getRowIdentity = (row: ArtTableRow): string => {

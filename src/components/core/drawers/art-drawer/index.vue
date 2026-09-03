@@ -63,6 +63,7 @@
         height: normalizedContentHeight,
         maxHeight: normalizedContentHeight
       }"
+      @wheel.capture="handleWheelBoundary"
     >
       <div class="art-drawer__content">
         <component
@@ -130,6 +131,7 @@
     ArtScrollOptions
   } from './types'
   import { mergeOverlayRecords, useArtOverlay } from '@/hooks/core/useArtOverlay'
+  import { handoffVerticalWheel } from '@/utils/ui/wheel-scroll'
 
   defineOptions({
     name: 'ArtDrawer',
@@ -344,6 +346,11 @@
 
   const scrollTo = (scrollOptions: ArtScrollOptions) => {
     scrollbarRef.value?.scrollTo(scrollOptions as never)
+  }
+
+  const handleWheelBoundary = (event: WheelEvent): void => {
+    const scrollOwner = scrollbarRef.value?.wrapRef
+    handoffVerticalWheel(event, scrollOwner, scrollOwner)
   }
 
   const handleOpenedStart = () => {

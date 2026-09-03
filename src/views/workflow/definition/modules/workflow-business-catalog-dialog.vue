@@ -111,7 +111,7 @@
                   </footer>
                 </article>
               </section>
-              <ElEmpty v-else description="当前菜单下暂无已接入审批的业务" />
+              <ArtEmptyState v-else title="当前菜单下暂无已接入审批的业务" />
 
               <section class="workflow-catalog__boundary art-card-xs">
                 <span><ArtSvgIcon icon="ri:flow-chart" /></span>
@@ -135,6 +135,7 @@
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
+  import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import type { AppRouteRecord } from '@/types/router'
   import { workflowBusinessContracts } from '../../modules/workflow-business-contracts'
   import WorkflowBusinessMenuFilter from './workflow-business-menu-filter.vue'

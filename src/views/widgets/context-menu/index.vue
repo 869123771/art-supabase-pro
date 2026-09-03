@@ -36,7 +36,7 @@
         title="API"
         subtitle="包含组件 props、菜单项字段、事件和 expose 方法。"
       >
-        <ElTabs stretch>
+        <ElTabs>
           <ElTabPane label="Props">
             <ArtTable :data="propsRows" :columns="propsColumns" :pagination="false" />
           </ElTabPane>

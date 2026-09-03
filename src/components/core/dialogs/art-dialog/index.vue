@@ -56,6 +56,7 @@
       :element-loading-background="options.loadingBackground"
       :element-loading-custom-class="options.loadingCustomClass"
       class="art-dialog__scrollbar"
+      @wheel.capture="handleWheelBoundary"
     >
       <div class="art-dialog__content">
         <component
@@ -129,6 +130,7 @@
   } from './types'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import { mergeOverlayRecords, useArtOverlay } from '@/hooks/core/useArtOverlay'
+  import { handoffVerticalWheel } from '@/utils/ui/wheel-scroll'
 
   defineOptions({
     name: 'ArtDialog',
@@ -384,6 +386,11 @@
 
   const scrollTo = (scrollOptions: ArtScrollOptions) => {
     scrollbarRef.value?.scrollTo(scrollOptions as never)
+  }
+
+  const handleWheelBoundary = (event: WheelEvent): void => {
+    const scrollOwner = scrollbarRef.value?.wrapRef
+    handoffVerticalWheel(event, scrollOwner, scrollOwner)
   }
 
   const handleOpenedStart = () => {

@@ -96,7 +96,7 @@
             <small v-else>需人工核对</small>
           </article>
         </div>
-        <ElEmpty v-else description="暂无可展示的结构化字段" :image-size="72" />
+        <ArtEmptyState v-else title="暂无可展示的结构化字段" size="compact" :visual-size="72" />
 
         <ArtSectionTitle class="recognition-detail__section">运行与审计</ArtSectionTitle>
         <ArtDescriptions :data="auditData" :items="auditItems" :columns="2" />
@@ -115,6 +115,7 @@
 
 <script setup lang="ts">
   import ArtAsyncState from '@/components/core/feedback/art-async-state/index.vue'
+  import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import ArtDescriptions from '@/components/core/base/art-descriptions/index.vue'
   import type { ArtDescriptionItem } from '@/components/core/base/art-descriptions/types'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'

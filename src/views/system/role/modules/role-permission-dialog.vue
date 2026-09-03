@@ -71,16 +71,16 @@
         </ElTreeV2>
       </div>
 
-      <ElEmpty
-        v-else-if="loadError && !contentLoading"
+      <ArtAsyncState
+        v-else-if="!contentLoading"
         class="role-permission-dialog__state"
-        :image-size="72"
-        description="菜单权限加载失败，请稍后重试"
-      >
-        <ElButton type="primary" plain @click="loadPermission">重新加载</ElButton>
-      </ElEmpty>
-
-      <ElEmpty v-else-if="!contentLoading" :image-size="72" description="暂无可配置的菜单权限" />
+        :error="loadError ? '菜单权限加载失败，请稍后重试' : null"
+        :empty="!loadError"
+        empty-text="暂无可配置的菜单权限"
+        :empty-image-size="72"
+        :min-height="240"
+        @retry="loadPermission"
+      />
     </div>
 
     <template #footer="{ loading, api }">
@@ -119,6 +119,7 @@
 
 <script setup lang="ts">
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
+  import ArtAsyncState from '@/components/core/feedback/art-async-state/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import { ElTreeV2 } from 'element-plus'
   import { formatMenuTitle } from '@/utils/router'

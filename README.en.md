@@ -110,7 +110,7 @@ The H5 and WeChat Mini Program driver app brings the assigned vehicle, active ta
 | Frontend             | Vue 3, TypeScript, Vite, Vue Router, Pinia                         |
 | UI and visualization | Element Plus, SCSS, Tailwind CSS, ECharts, Vue Flow                |
 | Backend and data     | Supabase, PostgreSQL, RLS, Realtime, Storage, Edge Functions       |
-| Editors and files    | Monaco Editor, WangEditor, XLSX, File Viewer, XGPlayer             |
+| Editors and files    | Monaco Editor, Tiptap, XLSX, File Viewer, XGPlayer                 |
 | Quality              | ESLint, Prettier, Stylelint, vue-tsc, Playwright, Node Test Runner |
 
 ## Quick Start

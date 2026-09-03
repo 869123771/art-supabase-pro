@@ -362,6 +362,8 @@ drawerRef.value?.handleOpen(data, {
 
 抽屉 Body 本身不设置内边距，默认内容间距由 `art-drawer__content` 承担，因此滚动条会贴近抽屉边缘。确需贴边展示的特殊内容可在抽屉类名上覆盖 `--art-drawer-content-padding: 0`。
 
+抽屉内容中嵌套 `ElScrollbar`、表格等独立滚动区时，内部仍可滚动的方向由内部消费；内部没有滚动空间或已到边界时，纵向滚轮会自动交给抽屉外层，避免形成滚轮陷阱。
+
 - 详情类抽屉设置 `showFooter: false`
 - 编辑类抽屉让内部表单暴露 `handleOpen` 和 `handleSubmit`
 - 校验或接口失败时返回 `false`

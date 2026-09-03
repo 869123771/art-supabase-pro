@@ -116,6 +116,12 @@ export interface BarChartProps extends BaseChartProps, AxisDisplayProps, Interac
   stack?: boolean
   /** 圆角 */
   borderRadius?: number | number[]
+  /** 数值轴最小值 */
+  yAxisMin?: number
+  /** 数值轴最大值 */
+  yAxisMax?: number
+  /** 数值轴标签后缀 */
+  valueSuffix?: string
 }
 
 // 折线图数据项接口

@@ -83,7 +83,7 @@
         </ElTree>
       </ElScrollbar>
 
-      <ElEmpty v-else :image-size="58" description="暂无已接入编号的菜单" />
+      <ArtEmptyState v-else title="暂无已接入编号的菜单" size="compact" :visual-size="58" />
     </div>
 
     <footer class="number-menu-filter__footer">
@@ -110,6 +110,7 @@
 <script setup lang="ts">
   import { ElTree, type TreeNodeData } from 'element-plus'
   import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
+  import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import type { AppRouteRecord } from '@/types/router'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
 

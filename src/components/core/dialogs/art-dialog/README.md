@@ -221,6 +221,8 @@ When the dialog enters fullscreen mode, `contentHeight` and `contentMaxHeight` s
 
 无论业务传入多大的 `contentHeight` 或 `contentMaxHeight`，非全屏弹窗都会自动保留头部、底部和视口安全间距；最外层遮罩不参与滚动，超出内容统一由弹窗内的 `ElScrollbar` 承接。
 
+内容中嵌套 `ElScrollbar`、表格等独立滚动区时，内部仍可滚动的方向由内部消费；内部没有滚动空间或已到边界时，纵向滚轮会自动交给弹窗外层，避免鼠标停留在局部区域时整页无法滚动。
+
 弹窗 Body 本身不设置内边距，默认内容间距由 `art-dialog__content` 承担，因此滚动条会贴近弹窗右侧边缘。确需贴边展示的特殊内容可在弹窗类名上覆盖 `--art-dialog-content-padding: 0`。
 
 ## 自定义插槽

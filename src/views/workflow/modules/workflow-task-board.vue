@@ -1,6 +1,11 @@
 <template>
   <div class="workflow-task-board">
-    <ElEmpty v-if="!taskGroups.length" :image-size="72" description="流程尚未生成审批任务" />
+    <ArtEmptyState
+      v-if="!taskGroups.length"
+      title="流程尚未生成审批任务"
+      size="compact"
+      :visual-size="72"
+    />
 
     <section
       v-for="group in taskGroups"
@@ -100,6 +105,7 @@
 <script setup lang="ts">
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
+  import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import { formatWithDayjs } from '@/utils/time'
 
   defineOptions({ name: 'WorkflowTaskBoard' })

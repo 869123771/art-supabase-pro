@@ -130,6 +130,13 @@ function scanFile(file: string, content: string): Finding[] {
   })
 
   if (path.extname(file) === '.vue') {
+    for (const match of content.matchAll(/<(?:ElEmpty|el-empty)\b/g)) {
+      if (match.index == null || excerptAt(content, match.index).includes('data-ui-audit-allow')) {
+        continue
+      }
+      addFinding(match.index, 'consistency/use-art-empty-state')
+    }
+
     if (
       ![
         'src/components/business/business-workspace-header/index.vue',

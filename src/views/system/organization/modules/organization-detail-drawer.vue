@@ -93,7 +93,7 @@
         </div>
       </section>
 
-      <ElTabs v-model="activeTab" class="organization-detail__tabs" stretch>
+      <ElTabs v-model="activeTab" class="organization-detail__tabs">
         <ElTabPane name="members">
           <template #label>
             <span class="organization-detail__tab-label">
@@ -113,10 +113,11 @@
               <ArtDictDisplay dict-code="status" :value="member.status" display="tag" />
             </article>
           </div>
-          <ElEmpty
+          <ArtEmptyState
             v-else
-            :image-size="96"
-            description="该组织暂无直接归属成员，可前往用户管理分配组织。"
+            title="该组织暂无直接归属成员"
+            description="可前往用户管理分配组织。"
+            :visual-size="96"
           />
         </ElTabPane>
 
@@ -145,10 +146,11 @@
               </div>
             </article>
           </div>
-          <ElEmpty
+          <ArtEmptyState
             v-else
-            :image-size="96"
-            description="该组织暂无适用角色，可前往角色管理建立职责角色。"
+            title="该组织暂无适用角色"
+            description="可前往角色管理建立职责角色。"
+            :visual-size="96"
           />
         </ElTabPane>
 
@@ -167,7 +169,7 @@
               </div>
             </article>
           </div>
-          <ElEmpty v-else :image-size="96" description="当前组织角色尚未配置菜单权限。" />
+          <ArtEmptyState v-else title="当前组织角色尚未配置菜单权限" :visual-size="96" />
         </ElTabPane>
       </ElTabs>
     </div>
@@ -179,6 +181,7 @@
   import type { ArtDrawerExpose } from '@/components/core/drawers/art-drawer/types'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
+  import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import { fetchGetOrganizationDetail } from '@/api/system-manage'
 
   type Organization = Api.SystemManage.OrganizationListItem

@@ -246,6 +246,95 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
     ]
   },
   {
+    menuName: 'SmisDualControlPersonnelChecklist',
+    buttons: [
+      button('View', '查看人员双控清单', 'SmisDualControlPersonnelChecklist:View'),
+      button('Export', '导出人员双控清单', 'SmisDualControlPersonnelChecklist:Export'),
+      button('ViewShift', '查看人员倒班表', 'SmisDualControlPersonnelChecklist:ViewShift'),
+      button('ViewRisk', '查看人员岗位风险', 'SmisDualControlPersonnelChecklist:ViewRisk'),
+      button(
+        'ViewInspection',
+        '查看人员排查清单',
+        'SmisDualControlPersonnelChecklist:ViewInspection'
+      ),
+      button(
+        'ViewResponsibility',
+        '查看人员岗位责任',
+        'SmisDualControlPersonnelChecklist:ViewResponsibility'
+      )
+    ]
+  },
+  {
+    menuName: 'SmisDualControlRiskControlInformationChecklist',
+    buttons: [
+      button('View', '查看风险管控信息清单', 'SmisDualControlRiskControlInformationChecklist:View'),
+      button(
+        'ViewDetail',
+        '查看风险管控详情',
+        'SmisDualControlRiskControlInformationChecklist:ViewDetail'
+      ),
+      button(
+        'Export',
+        '导出风险管控信息清单',
+        'SmisDualControlRiskControlInformationChecklist:Export'
+      )
+    ]
+  },
+  {
+    menuName: 'SmisDualControlHiddenHazardGovernanceLedger',
+    buttons: [
+      button('View', '查看隐患治理信息台账', 'SmisDualControlHiddenHazardGovernanceLedger:View'),
+      button(
+        'ViewDetail',
+        '查看隐患治理详情',
+        'SmisDualControlHiddenHazardGovernanceLedger:ViewDetail'
+      ),
+      button('Export', '导出隐患治理信息台账', 'SmisDualControlHiddenHazardGovernanceLedger:Export')
+    ]
+  },
+  {
+    menuName: 'SmisDualControlPositionRiskChecklist',
+    buttons: [
+      button('View', '查看岗位风险清单', 'SmisDualControlPositionRiskChecklist:View'),
+      button('Export', '导出岗位风险清单', 'SmisDualControlPositionRiskChecklist:Export'),
+      button(
+        'ViewIdentificationUnit',
+        '查看风险辨识单位',
+        'SmisDualControlPositionRiskChecklist:ViewIdentificationUnit'
+      )
+    ]
+  },
+  {
+    menuName: 'SmisDualControlAccidentHiddenHazardInspectionChecklist',
+    buttons: [
+      button(
+        'View',
+        '查看事故隐患排查清单',
+        'SmisDualControlAccidentHiddenHazardInspectionChecklist:View'
+      ),
+      button(
+        'Export',
+        '导出事故隐患排查清单',
+        'SmisDualControlAccidentHiddenHazardInspectionChecklist:Export'
+      )
+    ]
+  },
+  {
+    menuName: 'SmisDualControlPositionSafetyResponsibilityChecklist',
+    buttons: [
+      button(
+        'View',
+        '查看岗位安全责任制清单',
+        'SmisDualControlPositionSafetyResponsibilityChecklist:View'
+      ),
+      button(
+        'Export',
+        '导出岗位安全责任制清单',
+        'SmisDualControlPositionSafetyResponsibilityChecklist:Export'
+      )
+    ]
+  },
+  {
     menuName: 'SmisPositionWorkInstruction',
     buttons: [
       button('View', '查看岗位作业指导书', 'SmisPositionWorkInstruction:View'),
@@ -438,6 +527,96 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
     ]
   },
   {
+    menuName: 'SmisDualControlManagementReport',
+    buttons: [
+      button('View', '查看双控管控报表', 'SmisDualControlManagementReport:View'),
+      button('Export', '导出双控管控报表', 'SmisDualControlManagementReport:Export')
+    ]
+  },
+  {
+    menuName: 'SmisDualControlHiddenHazardInspectionReport',
+    buttons: [
+      button('View', '查看隐患排查报表', 'SmisDualControlHiddenHazardInspectionReport:View'),
+      button('Export', '导出隐患排查报表', 'SmisDualControlHiddenHazardInspectionReport:Export')
+    ]
+  },
+  {
+    menuName: 'SmisDualControlHiddenHazardGovernanceReport',
+    buttons: [
+      button('View', '查看隐患治理报表', 'SmisDualControlHiddenHazardGovernanceReport:View'),
+      button('Export', '导出隐患治理报表', 'SmisDualControlHiddenHazardGovernanceReport:Export')
+    ]
+  },
+  {
+    menuName: 'SmisDualControlInspectionRateStatistics',
+    buttons: [
+      button('View', '查看排查率统计', 'SmisDualControlInspectionRateStatistics:View'),
+      button('ViewDetail', '查看排查率明细', 'SmisDualControlInspectionRateStatistics:ViewDetail'),
+      button('Export', '导出排查率统计', 'SmisDualControlInspectionRateStatistics:Export')
+    ]
+  },
+  {
+    menuName: 'SmisDualControlMissedInspectionRateStatistics',
+    buttons: [
+      button('View', '查看漏查率统计', 'SmisDualControlMissedInspectionRateStatistics:View'),
+      button(
+        'ViewDetail',
+        '查看漏查率明细',
+        'SmisDualControlMissedInspectionRateStatistics:ViewDetail'
+      ),
+      button('Export', '导出漏查率统计', 'SmisDualControlMissedInspectionRateStatistics:Export')
+    ]
+  },
+  {
+    menuName: 'SmisDualControlHiddenHazardInspectionRecord',
+    buttons: [
+      button('View', '查看隐患排查记录', 'SmisDualControlHiddenHazardInspectionRecord:View'),
+      button(
+        'ViewDetail',
+        '查看隐患排查明细',
+        'SmisDualControlHiddenHazardInspectionRecord:ViewDetail'
+      ),
+      button('Export', '导出隐患排查记录', 'SmisDualControlHiddenHazardInspectionRecord:Export')
+    ]
+  },
+  {
+    menuName: 'SmisDualControlNoHiddenHazardPersonnelStatistics',
+    buttons: [
+      button(
+        'View',
+        '查看未提隐患人员统计',
+        'SmisDualControlNoHiddenHazardPersonnelStatistics:View'
+      ),
+      button(
+        'Export',
+        '导出未提隐患人员统计',
+        'SmisDualControlNoHiddenHazardPersonnelStatistics:Export'
+      )
+    ]
+  },
+  {
+    menuName: 'SmisDualControlTeamSelfInspectionCoverage',
+    buttons: [
+      button('View', '查看班组自查涵盖率', 'SmisDualControlTeamSelfInspectionCoverage:View'),
+      button('Export', '导出班组自查涵盖率', 'SmisDualControlTeamSelfInspectionCoverage:Export')
+    ]
+  },
+  {
+    menuName: 'SmisDualControlSpecialEquipmentRiskControlStatistics',
+    buttons: [
+      button(
+        'View',
+        '查看特种设备风控统计',
+        'SmisDualControlSpecialEquipmentRiskControlStatistics:View'
+      ),
+      button(
+        'Export',
+        '导出特种设备风控统计',
+        'SmisDualControlSpecialEquipmentRiskControlStatistics:Export'
+      )
+    ]
+  },
+  {
     menuName: 'SmisDualControlRiskInspectionTask',
     buttons: [
       button('View', '查看风险巡查任务', 'SmisDualControlRiskInspectionTask:View'),
@@ -445,6 +624,85 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
       button('Cancel', '取消风险巡查任务', 'SmisDualControlRiskInspectionTask:Cancel'),
       button('Transfer', '转交风险巡查任务', 'SmisDualControlRiskInspectionTask:Transfer'),
       button('Execute', '执行风险巡查任务', 'SmisDualControlRiskInspectionTask:Execute')
+    ]
+  },
+  {
+    menuName: 'SmisDualControlHiddenHazardInspectionPlan',
+    buttons: [
+      button('View', '查看隐患排查计划', 'SmisDualControlHiddenHazardInspectionPlan:View'),
+      button('Add', '新增隐患排查计划', 'SmisDualControlHiddenHazardInspectionPlan:Add'),
+      button('Edit', '编辑隐患排查计划', 'SmisDualControlHiddenHazardInspectionPlan:Edit'),
+      button('Delete', '删除隐患排查计划', 'SmisDualControlHiddenHazardInspectionPlan:Delete'),
+      button('Void', '作废隐患排查计划', 'SmisDualControlHiddenHazardInspectionPlan:Void'),
+      button('Export', '导出隐患排查计划', 'SmisDualControlHiddenHazardInspectionPlan:Export')
+    ]
+  },
+  {
+    menuName: 'SmisDualControlHiddenHazardInspectionTask',
+    buttons: [
+      button('View', '查看隐患排查任务', 'SmisDualControlHiddenHazardInspectionTask:View'),
+      button('Cancel', '取消隐患排查任务', 'SmisDualControlHiddenHazardInspectionTask:Cancel'),
+      button('Transfer', '转交隐患排查任务', 'SmisDualControlHiddenHazardInspectionTask:Transfer'),
+      button('Execute', '执行隐患排查任务', 'SmisDualControlHiddenHazardInspectionTask:Execute'),
+      button('Export', '导出隐患排查任务', 'SmisDualControlHiddenHazardInspectionTask:Export')
+    ]
+  },
+  {
+    menuName: 'SmisDualControlHiddenHazardGovernanceTracking',
+    buttons: [
+      button('View', '查看隐患治理跟踪', 'SmisDualControlHiddenHazardGovernanceTracking:View'),
+      button('Register', '登记隐患', 'SmisDualControlHiddenHazardGovernanceTracking:Register'),
+      button('Approve', '核准隐患', 'SmisDualControlHiddenHazardGovernanceTracking:Approve'),
+      button('Rectify', '提交隐患整改', 'SmisDualControlHiddenHazardGovernanceTracking:Rectify'),
+      button('Accept', '验收隐患', 'SmisDualControlHiddenHazardGovernanceTracking:Accept'),
+      button('Export', '导出隐患治理跟踪', 'SmisDualControlHiddenHazardGovernanceTracking:Export')
+    ]
+  },
+  {
+    menuName: 'SmisDualControlQuickReport',
+    buttons: [
+      button('View', '查看随手拍', 'SmisDualControlQuickReport:View'),
+      button('Submit', '提交随手拍', 'SmisDualControlQuickReport:Submit')
+    ]
+  },
+  {
+    menuName: 'SmisDualControlPublicHiddenHazardReport',
+    buttons: [
+      button('View', '查看公众举报隐患', 'SmisDualControlPublicHiddenHazardReport:View'),
+      button('Register', '登记公众举报隐患', 'SmisDualControlPublicHiddenHazardReport:Register'),
+      button('Export', '导出公众举报隐患', 'SmisDualControlPublicHiddenHazardReport:Export')
+    ]
+  },
+  {
+    menuName: 'SmisDualControlHiddenHazardRectificationNotice',
+    buttons: [
+      button('View', '查看隐患整改通知书', 'SmisDualControlHiddenHazardRectificationNotice:View'),
+      button(
+        'Export',
+        '导出隐患整改通知书',
+        'SmisDualControlHiddenHazardRectificationNotice:Export'
+      ),
+      button('Print', '打印隐患整改通知书', 'SmisDualControlHiddenHazardRectificationNotice:Print')
+    ]
+  },
+  {
+    menuName: 'SmisDualControlHiddenHazardInspectionRectification',
+    buttons: [
+      button(
+        'View',
+        '查看隐患检查落实整改',
+        'SmisDualControlHiddenHazardInspectionRectification:View'
+      ),
+      button(
+        'Create',
+        '新增整改落实记录',
+        'SmisDualControlHiddenHazardInspectionRectification:Create'
+      ),
+      button(
+        'Export',
+        '导出整改落实记录',
+        'SmisDualControlHiddenHazardInspectionRectification:Export'
+      )
     ]
   },
   {
@@ -613,6 +871,50 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
       button('Edit', '编辑作业项目', 'SmisWorkItem:Edit'),
       button('Delete', '删除作业项目', 'SmisWorkItem:Delete'),
       button('Export', '导出作业项目', 'SmisWorkItem:Export')
+    ]
+  },
+  {
+    menuName: 'SmisSpecialOperationType',
+    buttons: [
+      button('View', '查看作业类型', 'SmisSpecialOperationType:View'),
+      button('Add', '新增作业类型', 'SmisSpecialOperationType:Add'),
+      button('Edit', '编辑作业类型', 'SmisSpecialOperationType:Edit'),
+      button('Delete', '删除作业类型', 'SmisSpecialOperationType:Delete'),
+      button('Export', '导出作业类型', 'SmisSpecialOperationType:Export'),
+      button('Void', '作废作业类型', 'SmisSpecialOperationType:Void')
+    ]
+  },
+  {
+    menuName: 'SmisSpecialOperationSafetyChecklist',
+    buttons: [
+      button('View', '查看安全检查表', 'SmisSpecialOperationSafetyChecklist:View'),
+      button('Add', '新增安全排查项', 'SmisSpecialOperationSafetyChecklist:Add'),
+      button('Edit', '编辑安全排查项', 'SmisSpecialOperationSafetyChecklist:Edit'),
+      button('Delete', '删除安全排查项', 'SmisSpecialOperationSafetyChecklist:Delete'),
+      button('Export', '导出安全检查表', 'SmisSpecialOperationSafetyChecklist:Export'),
+      button('Void', '作废安全排查项', 'SmisSpecialOperationSafetyChecklist:Void')
+    ]
+  },
+  {
+    menuName: 'SmisSpecialOperationHazardFactor',
+    buttons: [
+      button('View', '查看危害因素', 'SmisSpecialOperationHazardFactor:View'),
+      button('Add', '新增危害因素', 'SmisSpecialOperationHazardFactor:Add'),
+      button('Edit', '编辑危害因素', 'SmisSpecialOperationHazardFactor:Edit'),
+      button('Delete', '删除危害因素', 'SmisSpecialOperationHazardFactor:Delete'),
+      button('Export', '导出危害因素', 'SmisSpecialOperationHazardFactor:Export'),
+      button('Void', '作废危害因素', 'SmisSpecialOperationHazardFactor:Void')
+    ]
+  },
+  {
+    menuName: 'SmisSpecialOperationSiteAnalysisForm',
+    buttons: [
+      button('View', '查看现场分析表', 'SmisSpecialOperationSiteAnalysisForm:View'),
+      button('Add', '新增现场分析项', 'SmisSpecialOperationSiteAnalysisForm:Add'),
+      button('Edit', '编辑现场分析项', 'SmisSpecialOperationSiteAnalysisForm:Edit'),
+      button('Delete', '删除现场分析项', 'SmisSpecialOperationSiteAnalysisForm:Delete'),
+      button('Export', '导出现场分析表', 'SmisSpecialOperationSiteAnalysisForm:Export'),
+      button('Void', '作废现场分析项', 'SmisSpecialOperationSiteAnalysisForm:Void')
     ]
   },
   {
