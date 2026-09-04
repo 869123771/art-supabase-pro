@@ -1,6 +1,6 @@
 <template>
-  <ArtDialog ref="dialogRef">
-    <div class="menu-tree-sort" v-loading="tree.loading">
+  <ArtDialog ref="dialogRef" :loading="tree.loading">
+    <div class="menu-tree-sort">
       <ArtSectionCard
         class="menu-tree-sort__guide"
         aria-label="拖拽规则"

@@ -27,7 +27,15 @@
       </div>
     </template>
 
-    <div ref="treeViewportRef" v-loading="tree.loading" class="dict-type-tree__viewport">
+    <div ref="treeViewportRef" class="dict-type-tree__viewport" :aria-busy="tree.loading">
+      <ArtOverlayLoading
+        v-if="tree.loading"
+        loading
+        overlay
+        size="compact"
+        text="正在加载字典类型…"
+        description=""
+      />
       <ElTreeV2
         v-if="tree.data.length"
         ref="treeRef"
@@ -194,10 +202,7 @@
   type ActiveDropType = Exclude<NodeDropType, 'none'>
 
   interface DictTypeDialogExpose {
-    handleOpen: (
-      data?: DictTypeItem,
-      options?: { parentId?: string; treeData: DictTypeItem[] }
-    ) => Promise<void>
+    handleOpen: (data?: DictTypeItem, options?: { parentId?: string }) => Promise<void>
   }
 
   interface MasterDataDeleteGuardExpose {
@@ -775,15 +780,12 @@
 
   const handleAdd = (parent?: DictTypeItem): void => {
     void dictTypeDialogRef.value?.handleOpen(undefined, {
-      parentId: parent?.id,
-      treeData: tree.data
+      parentId: parent?.id
     })
   }
 
   const handleEdit = (data: DictTypeItem): void => {
-    void dictTypeDialogRef.value?.handleOpen(data, {
-      treeData: tree.data
-    })
+    void dictTypeDialogRef.value?.handleOpen(data)
   }
 
   const handleDelete = async (row: DictTypeItem): Promise<void> => {
@@ -921,6 +923,7 @@
 
   .dict-type-tree {
     &__viewport {
+      position: relative;
       flex: 1;
       min-height: 0;
     }

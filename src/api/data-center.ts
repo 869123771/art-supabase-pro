@@ -3,6 +3,7 @@ import { WRITE_PERMISSION_DENIED_MESSAGE } from '@/hooks/core/useSupabase'
 import type { QueryResult } from '@/types/api/response'
 import { applyFilters, fetchAllRangePages, FilterSpec } from '@/utils/supabase'
 import { invokeSupabaseFunctionWithSessionRecovery } from '@/utils/supabase/functions'
+import TreeUtils from '@/utils/tree'
 
 const { supabase, keysToSnakeDeep, responseHandle } = useSupabase()
 
@@ -12,6 +13,11 @@ type DictionaryWithType = Api.DataCenter.DictListItem & {
 }
 
 const DICTIONARY_BATCH_SIZE = 500
+const dictTypeTreeUtils = new TreeUtils({
+  idKey: 'id',
+  parentKey: 'parentId',
+  childrenKey: 'children'
+})
 
 interface MetadataPayload {
   schemas?: string[]
@@ -69,6 +75,32 @@ export async function fetchGetDictTypeList(params: Partial<Api.DataCenter.DictTy
 
   query = applyFilters(query, specs, { skipEmpty: true, camelToSnake: false })
   return await responseHandle(() => query, { ignoreCheck: true })
+}
+
+/**
+ * 获取可作为上级节点的字典目录树。
+ * 编辑目录时排除当前目录及其后代，避免形成循环层级。
+ */
+export async function fetchGetDictDirectoryTree(params: { excludeId?: string } = {}) {
+  const response = await responseHandle<Api.DataCenter.DictTypeItem[]>(
+    () =>
+      supabase
+        .from('sys_dict_type')
+        .select('id, parent_id, node_type, name, code, status, sort')
+        .eq('node_type', 'directory')
+        .order('sort', { ascending: true })
+        .order('name', { ascending: true }),
+    { ignoreCheck: true, showErrorMessage: true }
+  )
+  const tree = dictTypeTreeUtils.listToTree(response.data ?? [], (a, b) => {
+    const sortDiff = Number(a.sort ?? 0) - Number(b.sort ?? 0)
+    return sortDiff || a.name.localeCompare(b.name, 'zh-CN')
+  })
+  const data = params.excludeId
+    ? dictTypeTreeUtils.removeNodesByCondition(tree, (node) => node.id === params.excludeId).tree
+    : tree
+
+  return { ...response, data }
 }
 
 // 删除字典类型

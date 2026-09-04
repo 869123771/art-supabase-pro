@@ -122,8 +122,15 @@
             <div
               class="art-data-select-dialog__content"
               :class="{ 'is-tree': mode === 'tree' }"
-              v-loading="loading"
+              :aria-busy="loading"
             >
+              <ArtOverlayLoading
+                v-if="loading"
+                loading
+                overlay
+                text="正在加载可选数据…"
+                description="正在获取最新列表，请稍候"
+              />
               <ElTable
                 v-if="mode === 'table'"
                 ref="tableRef"
@@ -956,6 +963,7 @@
   }
 
   .art-data-select-dialog__content {
+    position: relative;
     height: 438px;
     min-height: 0;
 

@@ -93,7 +93,14 @@
       </section>
     </ArtSectionCard>
 
-    <div v-loading="loading.state" class="ai-planner__list">
+    <div class="ai-planner__list" :aria-busy="loading.state">
+      <ArtOverlayLoading
+        v-if="loading.state"
+        loading
+        overlay
+        text="正在加载项目建议…"
+        description="正在获取最新建议，请稍候"
+      />
       <ProjectPlannerEmptyState
         v-if="!state.suggestions.length && !loading.state"
         mode="initial"
@@ -264,6 +271,7 @@
     }
 
     &__list {
+      position: relative;
       min-height: 240px;
     }
   }

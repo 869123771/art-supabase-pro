@@ -21,7 +21,7 @@
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
-  import { addDictType, editDictType } from '@/api/data-center'
+  import { addDictType, editDictType, fetchGetDictDirectoryTree } from '@/api/data-center'
   import { useUserStore } from '@/store/modules/user'
   import { uniqueValidator } from '@/utils/form/validator'
 
@@ -34,13 +34,11 @@
 
   interface OpenOptions {
     parentId?: string
-    treeData: DictTypeItem[]
   }
 
   interface FormGroup {
     data: DictTypeItem
     editing: boolean
-    parentOptions: DictTypeItem[]
     items: ComputedRef<FormItem[]>
     rules: ComputedRef<FormRules>
   }
@@ -68,7 +66,6 @@
   const form: UnwrapNestedRefs<FormGroup> = reactive<FormGroup>({
     data: createInitialForm(),
     editing: false,
-    parentOptions: [] as DictTypeItem[],
     items: computed<FormItem[]>((): FormItem[] => [
       {
         label: '节点类型',
@@ -85,18 +82,25 @@
       {
         label: '上级目录',
         key: 'parentId',
-        type: 'treeSelect',
+        type: 'cascader',
+        api: fetchGetDictDirectoryTree,
+        params: {
+          excludeId: form.editing && form.data.nodeType === 'directory' ? form.data.id : undefined
+        },
+        resultField: 'data',
+        labelField: 'name',
+        valueField: 'id',
+        childrenField: 'children',
+        description: '仅展示目录节点；不选择则创建为根节点。',
         props: {
-          data: form.parentOptions,
           clearable: true,
-          checkStrictly: true,
-          defaultExpandAll: true,
-          renderAfterExpand: false,
-          placeholder: '不选择则为根节点',
+          filterable: true,
+          separator: ' / ',
+          placeholder: '请选择上级目录',
+          style: { width: '100%' },
           props: {
-            label: 'name',
-            value: 'id',
-            children: 'children'
+            checkStrictly: true,
+            emitPath: false
           }
         }
       },
@@ -165,30 +169,6 @@
     }))
   })
 
-  const normalizeDirectoryOptions = (
-    nodes: DictTypeItem[],
-    excludedIds: Set<string>
-  ): DictTypeItem[] =>
-    nodes
-      .filter(
-        (node) => node.nodeType === 'directory' && !!node.id && !excludedIds.has(String(node.id))
-      )
-      .map((node) => ({
-        ...node,
-        children: normalizeDirectoryOptions(node.children ?? [], excludedIds)
-      }))
-
-  const collectNodeIds = (node?: DictTypeItem): Set<string> => {
-    const ids = new Set<string>()
-    const walk = (current?: DictTypeItem): void => {
-      if (!current) return
-      if (current.id) ids.add(current.id)
-      current.children?.forEach(walk)
-    }
-    walk(node)
-    return ids
-  }
-
   const resetForm = (): void => {
     Object.assign(form.data, createInitialForm())
     formRef.value?.ref.value?.clearValidate()
@@ -199,10 +179,7 @@
     parentId: data.parentId === '' ? null : data.parentId
   })
 
-  const handleOpen = async (
-    data?: DictTypeItem,
-    options: OpenOptions = { treeData: [] }
-  ): Promise<void> => {
+  const handleOpen = async (data?: DictTypeItem, options: OpenOptions = {}): Promise<void> => {
     resetForm()
     form.editing = !!data?.id
 
@@ -212,8 +189,6 @@
       form.data.parentId = options.parentId
       form.data.nodeType = options.parentId ? 'dictionary' : 'directory'
     }
-
-    form.parentOptions = normalizeDirectoryOptions(options.treeData, collectNodeIds(data))
 
     await dialogRef.value?.handleOpen(data, {
       title: form.editing

@@ -1,1 +1,0 @@
-import{Dt as e,Kt as t,vt as n}from"./framework-CEwusMeK.js";import{t as r}from"./qualification-catalog-page-BFCVaYA2.js";var i=e({name:`SmisWorkItem`,__name:`index`,setup(e){return(e,i)=>(t(),n(r,{"catalog-type":`work_item`}))}});export{i as default};

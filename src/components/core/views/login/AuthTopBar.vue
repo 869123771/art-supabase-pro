@@ -1,7 +1,8 @@
 <!-- 授权页右上角组件 -->
 <template>
   <div
-    class="absolute w-full flex-cb top-4.5 z-10 flex-c !justify-end max-[1180px]:!justify-between"
+    class="auth-top-bar absolute w-full flex-cb top-4.5 z-10 flex-c !justify-end max-[1180px]:!justify-between"
+    :class="{ 'auth-top-bar--dark': isDark }"
   >
     <div class="flex-cc !hidden max-[1180px]:!flex ml-2 max-sm:ml-6">
       <ArtLogo class="icon" size="46" />
@@ -27,12 +28,17 @@
             <ArtSvgIcon v-if="color === systemThemeColor" icon="ri:check-fill" class="text-white" />
           </button>
         </div>
-        <div class="btn palette-btn relative z-[2] h-8 w-8 c-p flex-cc tad-300">
+        <button
+          type="button"
+          class="btn palette-btn relative z-[2] h-9 w-9 c-p flex-cc tad-300"
+          aria-label="选择主题色"
+          title="选择主题色"
+        >
           <ArtSvgIcon
             icon="ri:palette-line"
-            class="text-xl text-g-800 transition-colors duration-300"
+            class="auth-top-bar__icon text-xl transition-colors duration-300"
           />
-        </div>
+        </button>
       </div>
       <ElDropdown
         v-if="shouldShowLanguage"
@@ -41,12 +47,13 @@
       >
         <button
           type="button"
-          class="btn language-btn h-8 w-8 c-p flex-cc tad-300"
+          class="btn language-btn h-9 w-9 c-p flex-cc tad-300"
           aria-label="切换语言"
+          title="切换语言"
         >
           <ArtSvgIcon
             icon="ri:translate-2"
-            class="text-[19px] text-g-800 transition-colors duration-300"
+            class="auth-top-bar__icon text-[19px] transition-colors duration-300"
           />
         </button>
         <template #dropdown>
@@ -66,14 +73,15 @@
       <button
         v-if="shouldShowThemeToggle"
         type="button"
-        class="btn theme-btn h-8 w-8 c-p flex-cc tad-300"
+        class="btn theme-btn h-9 w-9 c-p flex-cc tad-300"
         :aria-label="isDark ? '切换到浅色模式' : '切换到深色模式'"
         :aria-pressed="isDark"
+        :title="isDark ? '切换到浅色模式' : '切换到深色模式'"
         @click="themeAnimation"
       >
         <ArtSvgIcon
           :icon="isDark ? 'ri:sun-fill' : 'ri:moon-line'"
-          class="text-xl text-g-800 transition-colors duration-300"
+          class="auth-top-bar__icon text-xl transition-colors duration-300"
         />
       </button>
     </div>
@@ -117,8 +125,33 @@
 </script>
 
 <style scoped>
+  .btn {
+    color: var(--art-gray-800);
+    background: transparent;
+    border: 0;
+    border-radius: var(--el-border-radius-base);
+    box-shadow: none;
+  }
+
+  .btn:hover {
+    color: var(--theme-color);
+    background: color-mix(in srgb, var(--theme-color) 9%, transparent);
+  }
+
+  .btn:active {
+    background: color-mix(in srgb, var(--theme-color) 14%, transparent);
+  }
+
+  .btn:focus-visible {
+    color: var(--theme-color);
+    outline: none;
+    background: color-mix(in srgb, var(--theme-color) 14%, transparent);
+    box-shadow: none;
+  }
+
   .color-dots {
     pointer-events: none;
+    background: color-mix(in srgb, var(--el-bg-color) 94%, transparent);
     box-shadow: 0 2px 12px var(--art-gray-300);
     backdrop-filter: blur(10px);
     transform: translateX(10px);
@@ -142,24 +175,27 @@
     transform: translateX(0) scale(1.1);
   }
 
-  .color-picker-expandable:hover .color-dots {
+  .color-picker-expandable:hover .color-dots,
+  .color-picker-expandable:focus-within .color-dots {
     pointer-events: auto;
     opacity: 1;
     transform: translateX(0);
   }
 
-  .color-picker-expandable:hover .color-dot {
+  .color-picker-expandable:hover .color-dot,
+  .color-picker-expandable:focus-within .color-dot {
     opacity: 1;
     transform: translateX(0) scale(1);
   }
 
-  .dark .color-dots {
-    background-color: var(--art-gray-200);
-    box-shadow: none;
+  .color-picker-expandable:hover .palette-btn :deep(.art-svg-icon),
+  .color-picker-expandable:focus-within .palette-btn :deep(.art-svg-icon) {
+    color: v-bind(color);
   }
 
-  .color-picker-expandable:hover .palette-btn :deep(.art-svg-icon) {
-    color: v-bind(color);
+  .auth-top-bar:not(.auth-top-bar--dark) .color-picker-expandable:hover .palette-btn,
+  .auth-top-bar:not(.auth-top-bar--dark) .color-picker-expandable:focus-within .palette-btn {
+    background: transparent;
   }
 
   @media (width <= 1040px) {

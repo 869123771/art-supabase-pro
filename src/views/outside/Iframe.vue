@@ -1,5 +1,12 @@
 <template>
-  <div class="box-border w-full h-full" v-loading="isLoading">
+  <div class="relative box-border w-full h-full" :aria-busy="isLoading">
+    <ArtOverlayLoading
+      v-if="isLoading"
+      loading
+      overlay
+      text="正在加载页面…"
+      description="正在连接目标页面，请稍候"
+    />
     <iframe
       ref="iframeRef"
       :src="iframeUrl"

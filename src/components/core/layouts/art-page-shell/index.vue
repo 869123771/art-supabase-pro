@@ -79,7 +79,7 @@
       margin-inline: auto;
     }
 
-    :deep(> .art-async-state > :not(.el-loading-mask)) {
+    :deep(> .art-async-state > *) {
       min-width: 0;
     }
 

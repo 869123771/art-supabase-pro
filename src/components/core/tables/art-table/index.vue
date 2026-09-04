@@ -7,10 +7,11 @@
     class="art-table"
     :class="{ 'is-empty': isEmpty, 'is-row-selection-dragging': isRowSelectionDragging }"
     :style="containerHeight"
+    :aria-busy="!!loading"
     @mousedown="handleTableMouseDown"
     @wheel.capture="handleWheelBoundary"
   >
-    <ElTable ref="elTableRef" v-loading="!!loading" v-bind="mergedTableProps">
+    <ElTable ref="elTableRef" v-bind="mergedTableProps">
       <template v-for="col in visibleColumns" :key="col.prop || col.type">
         <!-- 渲染全局序号列 -->
         <ElTableColumn v-if="col.type === 'globalIndex'" v-bind="{ ...col }">
@@ -150,6 +151,15 @@
       </template>
     </ElTable>
 
+    <ArtOverlayLoading
+      v-if="loading"
+      loading
+      overlay
+      text="正在加载表格数据…"
+      description="正在获取最新列表，请稍候"
+      :style="tableLoadingStyle"
+    />
+
     <div
       class="pagination custom-pagination"
       v-if="showPagination"
@@ -171,12 +181,13 @@
 
 <script setup lang="ts">
   import { ref, computed, nextTick, watch, watchEffect, getCurrentInstance, useAttrs } from 'vue'
-  import type { ComponentPublicInstance } from 'vue'
+  import type { ComponentPublicInstance, CSSProperties } from 'vue'
   import type { TableProps } from 'element-plus'
   import { storeToRefs } from 'pinia'
   import { useDraggable, type DraggableEvent } from 'vue-draggable-plus'
   import { ColumnOption } from '@/types'
   import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
+  import ArtOverlayLoading from '@/components/core/feedback/art-overlay-loading/index.vue'
   import { useTableStore } from '@/store/modules/table'
   import { useTenantScopeStore } from '@/store/modules/tenantScope'
   import { useCommon } from '@/hooks/core/useCommon'
@@ -454,6 +465,10 @@
   )
 
   const showPagination = computed(() => !!currentPagination.value && !isEmpty.value)
+  const tableLoadingStyle = computed<CSSProperties>(() => ({
+    top: '0',
+    bottom: showPagination.value ? `${paginationHeight.value + PAGINATION_SPACING.value}px` : '0'
+  }))
 
   const hasDraggableColumn = computed(() =>
     visibleColumns.value.some(

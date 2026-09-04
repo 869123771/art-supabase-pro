@@ -706,6 +706,53 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
     ]
   },
   {
+    menuName: 'SmisHazardousWasteWarehouseDefinition',
+    buttons: [
+      button('View', '查看危废仓库', 'SmisHazardousWasteWarehouseDefinition:View'),
+      button('Add', '新增危废仓库', 'SmisHazardousWasteWarehouseDefinition:Add'),
+      button('Edit', '编辑危废仓库', 'SmisHazardousWasteWarehouseDefinition:Edit'),
+      button('Delete', '删除危废仓库', 'SmisHazardousWasteWarehouseDefinition:Delete'),
+      button('Export', '导出危废仓库', 'SmisHazardousWasteWarehouseDefinition:Export')
+    ]
+  },
+  {
+    menuName: 'SmisHazardousWasteCatalog',
+    buttons: [
+      button('View', '查看危废名录', 'SmisHazardousWasteCatalog:View'),
+      button('AddCategory', '新增危废分类', 'SmisHazardousWasteCatalog:AddCategory'),
+      button('EditCategory', '编辑危废分类', 'SmisHazardousWasteCatalog:EditCategory'),
+      button('DeleteCategory', '删除危废分类', 'SmisHazardousWasteCatalog:DeleteCategory'),
+      button('Add', '新增危废名录', 'SmisHazardousWasteCatalog:Add'),
+      button('Edit', '编辑危废名录', 'SmisHazardousWasteCatalog:Edit'),
+      button('Delete', '删除危废名录', 'SmisHazardousWasteCatalog:Delete'),
+      button('Export', '导出危废名录', 'SmisHazardousWasteCatalog:Export')
+    ]
+  },
+  {
+    menuName: 'SmisHazardousWasteInbound',
+    buttons: [
+      button('View', '查看危废入库', 'SmisHazardousWasteInbound:View'),
+      button('Add', '新增危废入库', 'SmisHazardousWasteInbound:Add'),
+      button('Edit', '编辑危废入库', 'SmisHazardousWasteInbound:Edit'),
+      button('Delete', '删除危废入库', 'SmisHazardousWasteInbound:Delete'),
+      button('Export', '导出危废入库', 'SmisHazardousWasteInbound:Export'),
+      button('Submit', '提交危废入库', 'SmisHazardousWasteInbound:Submit'),
+      button('Review', '审核危废入库', 'SmisHazardousWasteInbound:Review')
+    ]
+  },
+  {
+    menuName: 'SmisHazardousWasteOutbound',
+    buttons: [
+      button('View', '查看危废出库', 'SmisHazardousWasteOutbound:View'),
+      button('Add', '新增危废出库', 'SmisHazardousWasteOutbound:Add'),
+      button('Edit', '编辑危废出库', 'SmisHazardousWasteOutbound:Edit'),
+      button('Delete', '删除危废出库', 'SmisHazardousWasteOutbound:Delete'),
+      button('Export', '导出危废出库', 'SmisHazardousWasteOutbound:Export'),
+      button('Submit', '提交危废出库', 'SmisHazardousWasteOutbound:Submit'),
+      button('Review', '审核危废出库', 'SmisHazardousWasteOutbound:Review')
+    ]
+  },
+  {
     menuName: 'SmisEquipmentCategory',
     buttons: [
       button('View', '查看设备分类', 'SmisEquipmentCategory:View'),
@@ -915,6 +962,162 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
       button('Delete', '删除现场分析项', 'SmisSpecialOperationSiteAnalysisForm:Delete'),
       button('Export', '导出现场分析表', 'SmisSpecialOperationSiteAnalysisForm:Export'),
       button('Void', '作废现场分析项', 'SmisSpecialOperationSiteAnalysisForm:Void')
+    ]
+  },
+  {
+    menuName: 'SmisSpecialOperationWorkbench',
+    buttons: [
+      button('View', '查看特殊作业票', 'SmisSpecialOperationWorkbench:View'),
+      button('Add', '新增特殊作业票', 'SmisSpecialOperationWorkbench:Add'),
+      button('Copy', '复制特殊作业票', 'SmisSpecialOperationWorkbench:Copy'),
+      button('Edit', '编辑特殊作业票', 'SmisSpecialOperationWorkbench:Edit'),
+      button('Delete', '删除特殊作业票', 'SmisSpecialOperationWorkbench:Delete'),
+      button('Export', '导出特殊作业台账', 'SmisSpecialOperationWorkbench:Export'),
+      button('Void', '作废特殊作业票', 'SmisSpecialOperationWorkbench:Void'),
+      button('Start', '审批并开始作业', 'SmisSpecialOperationWorkbench:Start'),
+      button(
+        'RequestAcceptance',
+        '申请特殊作业验收',
+        'SmisSpecialOperationWorkbench:RequestAcceptance'
+      ),
+      button('Accept', '验收特殊作业票', 'SmisSpecialOperationWorkbench:Accept'),
+      button('Print', '打印特殊作业票', 'SmisSpecialOperationWorkbench:Print')
+    ]
+  },
+  {
+    menuName: 'SmisHotWorkApplication',
+    buttons: [
+      button('View', '查看动火作业票', 'SmisHotWorkApplication:View'),
+      button('Add', '新增动火作业票', 'SmisHotWorkApplication:Add'),
+      button('Copy', '复制动火作业票', 'SmisHotWorkApplication:Copy'),
+      button('Edit', '编辑动火作业票', 'SmisHotWorkApplication:Edit'),
+      button('Delete', '删除动火作业票', 'SmisHotWorkApplication:Delete'),
+      button('Export', '导出动火作业台账', 'SmisHotWorkApplication:Export'),
+      button('Void', '作废动火作业票', 'SmisHotWorkApplication:Void'),
+      button('Start', '审批并开始动火作业', 'SmisHotWorkApplication:Start'),
+      button('RequestAcceptance', '申请动火作业验收', 'SmisHotWorkApplication:RequestAcceptance'),
+      button('Accept', '验收动火作业票', 'SmisHotWorkApplication:Accept'),
+      button('Print', '打印动火作业票', 'SmisHotWorkApplication:Print')
+    ]
+  },
+  {
+    menuName: 'SmisWorkAtHeightApplication',
+    buttons: [
+      button('View', '查看高处作业票', 'SmisWorkAtHeightApplication:View'),
+      button('Add', '新增高处作业票', 'SmisWorkAtHeightApplication:Add'),
+      button('Copy', '复制高处作业票', 'SmisWorkAtHeightApplication:Copy'),
+      button('Edit', '编辑高处作业票', 'SmisWorkAtHeightApplication:Edit'),
+      button('Delete', '删除高处作业票', 'SmisWorkAtHeightApplication:Delete'),
+      button('Export', '导出高处作业台账', 'SmisWorkAtHeightApplication:Export'),
+      button('Void', '作废高处作业票', 'SmisWorkAtHeightApplication:Void'),
+      button('Start', '审批并开始高处作业', 'SmisWorkAtHeightApplication:Start'),
+      button(
+        'RequestAcceptance',
+        '申请高处作业验收',
+        'SmisWorkAtHeightApplication:RequestAcceptance'
+      ),
+      button('Accept', '验收高处作业票', 'SmisWorkAtHeightApplication:Accept'),
+      button('Print', '打印高处作业票', 'SmisWorkAtHeightApplication:Print')
+    ]
+  },
+  {
+    menuName: 'SmisLiftingOperationApplication',
+    buttons: [
+      button('View', '查看吊装作业票', 'SmisLiftingOperationApplication:View'),
+      button('Add', '新增吊装作业票', 'SmisLiftingOperationApplication:Add'),
+      button('Copy', '复制吊装作业票', 'SmisLiftingOperationApplication:Copy'),
+      button('Edit', '编辑吊装作业票', 'SmisLiftingOperationApplication:Edit'),
+      button('Delete', '删除吊装作业票', 'SmisLiftingOperationApplication:Delete'),
+      button('Export', '导出吊装作业台账', 'SmisLiftingOperationApplication:Export'),
+      button('Void', '作废吊装作业票', 'SmisLiftingOperationApplication:Void'),
+      button('Start', '审批并开始吊装作业', 'SmisLiftingOperationApplication:Start'),
+      button(
+        'RequestAcceptance',
+        '申请吊装作业验收',
+        'SmisLiftingOperationApplication:RequestAcceptance'
+      ),
+      button('Accept', '验收吊装作业票', 'SmisLiftingOperationApplication:Accept'),
+      button('Print', '打印吊装作业票', 'SmisLiftingOperationApplication:Print')
+    ]
+  },
+  {
+    menuName: 'SmisConfinedSpaceOperationApplication',
+    buttons: [
+      button('View', '查看受限空间作业票', 'SmisConfinedSpaceOperationApplication:View'),
+      button('Add', '新增受限空间作业票', 'SmisConfinedSpaceOperationApplication:Add'),
+      button('Copy', '复制受限空间作业票', 'SmisConfinedSpaceOperationApplication:Copy'),
+      button('Edit', '编辑受限空间作业票', 'SmisConfinedSpaceOperationApplication:Edit'),
+      button('Delete', '删除受限空间作业票', 'SmisConfinedSpaceOperationApplication:Delete'),
+      button('Export', '导出受限空间作业台账', 'SmisConfinedSpaceOperationApplication:Export'),
+      button('Void', '作废受限空间作业票', 'SmisConfinedSpaceOperationApplication:Void'),
+      button('Start', '审批并开始受限空间作业', 'SmisConfinedSpaceOperationApplication:Start'),
+      button(
+        'RequestAcceptance',
+        '申请受限空间作业验收',
+        'SmisConfinedSpaceOperationApplication:RequestAcceptance'
+      ),
+      button('Accept', '验收受限空间作业票', 'SmisConfinedSpaceOperationApplication:Accept'),
+      button('Print', '打印受限空间作业票', 'SmisConfinedSpaceOperationApplication:Print')
+    ]
+  },
+  {
+    menuName: 'SmisTemporaryElectricityApplication',
+    buttons: [
+      button('View', '查看临时用电作业票', 'SmisTemporaryElectricityApplication:View'),
+      button('Add', '新增临时用电作业票', 'SmisTemporaryElectricityApplication:Add'),
+      button('Copy', '复制临时用电作业票', 'SmisTemporaryElectricityApplication:Copy'),
+      button('Edit', '编辑临时用电作业票', 'SmisTemporaryElectricityApplication:Edit'),
+      button('Delete', '删除临时用电作业票', 'SmisTemporaryElectricityApplication:Delete'),
+      button('Export', '导出临时用电作业台账', 'SmisTemporaryElectricityApplication:Export'),
+      button('Void', '作废临时用电作业票', 'SmisTemporaryElectricityApplication:Void'),
+      button('Start', '审批并开始临时用电作业', 'SmisTemporaryElectricityApplication:Start'),
+      button(
+        'RequestAcceptance',
+        '申请临时用电作业验收',
+        'SmisTemporaryElectricityApplication:RequestAcceptance'
+      ),
+      button('Accept', '验收临时用电作业票', 'SmisTemporaryElectricityApplication:Accept'),
+      button('Print', '打印临时用电作业票', 'SmisTemporaryElectricityApplication:Print')
+    ]
+  },
+  {
+    menuName: 'SmisRoadBreakingOperationApplication',
+    buttons: [
+      button('View', '查看断路作业票', 'SmisRoadBreakingOperationApplication:View'),
+      button('Add', '新增断路作业票', 'SmisRoadBreakingOperationApplication:Add'),
+      button('Copy', '复制断路作业票', 'SmisRoadBreakingOperationApplication:Copy'),
+      button('Edit', '编辑断路作业票', 'SmisRoadBreakingOperationApplication:Edit'),
+      button('Delete', '删除断路作业票', 'SmisRoadBreakingOperationApplication:Delete'),
+      button('Export', '导出断路作业台账', 'SmisRoadBreakingOperationApplication:Export'),
+      button('Void', '作废断路作业票', 'SmisRoadBreakingOperationApplication:Void'),
+      button('Start', '审批并开始断路作业', 'SmisRoadBreakingOperationApplication:Start'),
+      button(
+        'RequestAcceptance',
+        '申请断路作业验收',
+        'SmisRoadBreakingOperationApplication:RequestAcceptance'
+      ),
+      button('Accept', '验收断路作业票', 'SmisRoadBreakingOperationApplication:Accept'),
+      button('Print', '打印断路作业票', 'SmisRoadBreakingOperationApplication:Print')
+    ]
+  },
+  {
+    menuName: 'SmisBlindPlateOperationApplication',
+    buttons: [
+      button('View', '查看盲板抽堵作业票', 'SmisBlindPlateOperationApplication:View'),
+      button('Add', '新增盲板抽堵作业票', 'SmisBlindPlateOperationApplication:Add'),
+      button('Copy', '复制盲板抽堵作业票', 'SmisBlindPlateOperationApplication:Copy'),
+      button('Edit', '编辑盲板抽堵作业票', 'SmisBlindPlateOperationApplication:Edit'),
+      button('Delete', '删除盲板抽堵作业票', 'SmisBlindPlateOperationApplication:Delete'),
+      button('Export', '导出盲板抽堵作业台账', 'SmisBlindPlateOperationApplication:Export'),
+      button('Void', '作废盲板抽堵作业票', 'SmisBlindPlateOperationApplication:Void'),
+      button('Start', '审批并开始盲板抽堵作业', 'SmisBlindPlateOperationApplication:Start'),
+      button(
+        'RequestAcceptance',
+        '申请盲板抽堵作业验收',
+        'SmisBlindPlateOperationApplication:RequestAcceptance'
+      ),
+      button('Accept', '验收盲板抽堵作业票', 'SmisBlindPlateOperationApplication:Accept'),
+      button('Print', '打印盲板抽堵作业票', 'SmisBlindPlateOperationApplication:Print')
     ]
   },
   {

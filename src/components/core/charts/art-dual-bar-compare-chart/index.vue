@@ -1,12 +1,15 @@
 <!-- 双向堆叠柱状图 -->
 <template>
-  <div ref="chartRef" :style="{ height: props.height }" v-loading="props.loading"> </div>
+  <ArtChartLoading :height="props.height" :loading="props.loading">
+    <div ref="chartRef" class="w-full h-full"></div>
+  </ArtChartLoading>
 </template>
 
 <script setup lang="ts">
   import { useChartOps, useChartComponent } from '@/hooks/core/useChart'
   import type { EChartsOption, BarSeriesOption } from '@/plugins/echarts'
   import type { BidirectionalBarChartProps } from '@/types/component/chart'
+  import ArtChartLoading from '@/components/core/charts/art-chart-loading/index.vue'
 
   defineOptions({ name: 'ArtDualBarCompareChart' })
 

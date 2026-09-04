@@ -1,1 +1,0 @@
--- Schema was applied and verified before migration history reconciliation.;

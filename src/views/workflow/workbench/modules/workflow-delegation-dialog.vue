@@ -31,8 +31,9 @@
       </ArtSectionCard>
 
       <ArtSectionCard
-        v-loading="state.loading"
         class="workflow-delegation__history"
+        :loading="state.loading"
+        loading-mode="mask"
         preserve-content-structure
       >
         <template #header>

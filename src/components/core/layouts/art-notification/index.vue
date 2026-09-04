@@ -37,7 +37,15 @@
       </button>
     </div>
 
-    <div v-loading="state.loading" class="art-notification-panel__body">
+    <div class="art-notification-panel__body" :aria-busy="state.loading">
+      <ArtOverlayLoading
+        v-if="state.loading"
+        loading
+        overlay
+        size="compact"
+        text="正在加载通知…"
+        description=""
+      />
       <ElScrollbar class="art-notification-panel__scrollbar" always>
         <div v-if="state.error" class="art-notification-panel__error">
           <ArtSvgIcon icon="ri:wifi-off-line" />
@@ -395,6 +403,7 @@
     }
 
     &__body {
+      position: relative;
       flex: 1;
       min-height: 0;
     }

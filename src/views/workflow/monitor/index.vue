@@ -41,10 +41,18 @@
     </ElAlert>
 
     <section
-      v-loading="callbackHealth.loading"
       class="workflow-monitor__callback-health art-card-xs"
       :class="{ 'is-attention': callbackIssueCount > 0 }"
+      :aria-busy="callbackHealth.loading"
     >
+      <ArtOverlayLoading
+        v-if="callbackHealth.loading"
+        loading
+        overlay
+        size="compact"
+        text="正在检查回调健康度…"
+        description=""
+      />
       <span
         ><ArtSvgIcon :icon="callbackIssueCount ? 'ri:error-warning-line' : 'ri:shield-check-line'"
       /></span>
@@ -468,6 +476,7 @@
     }
 
     &__callback-health {
+      position: relative;
       display: flex;
       flex: 0 0 auto;
       gap: 14px;

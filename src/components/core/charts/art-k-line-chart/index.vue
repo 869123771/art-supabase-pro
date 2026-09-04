@@ -1,17 +1,15 @@
 <!-- k线图表 -->
 <template>
-  <div
-    ref="chartRef"
-    class="relative w-full"
-    :style="{ height: props.height }"
-    v-loading="props.loading"
-  ></div>
+  <ArtChartLoading class="w-full" :height="props.height" :loading="props.loading">
+    <div ref="chartRef" class="w-full h-full"></div>
+  </ArtChartLoading>
 </template>
 
 <script setup lang="ts">
   import type { EChartsOption } from '@/plugins/echarts'
   import { useChartOps, useChartComponent } from '@/hooks/core/useChart'
   import type { KLineChartProps } from '@/types/component/chart'
+  import ArtChartLoading from '@/components/core/charts/art-chart-loading/index.vue'
 
   defineOptions({ name: 'ArtKLineChart' })
 

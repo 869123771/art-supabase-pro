@@ -1,10 +1,17 @@
 <template>
   <article
-    v-loading="isPending"
-    element-loading-text="正在更新建议..."
     :class="{ 'is-processing': isPending }"
     class="ai-planner__suggestion art-card-xs"
+    :aria-busy="isPending"
   >
+    <ArtOverlayLoading
+      v-if="isPending"
+      loading
+      overlay
+      size="compact"
+      text="正在更新建议…"
+      description=""
+    />
     <header>
       <div class="ai-planner__rank">{{ displayIndex + 1 }}</div>
       <div class="ai-planner__title">
@@ -263,23 +270,6 @@
 
       &.is-processing {
         box-shadow: 0 0 0 1px var(--el-color-primary-light-7);
-      }
-
-      :deep(.el-loading-mask) {
-        background-color: color-mix(in srgb, var(--art-main-bg-color) 82%, transparent);
-        border-radius: var(--custom-radius);
-        backdrop-filter: blur(2px);
-      }
-
-      :deep(.el-loading-spinner .circular) {
-        width: 34px;
-        height: 34px;
-      }
-
-      :deep(.el-loading-text) {
-        margin-top: 8px;
-        font-size: 12px;
-        font-weight: 600;
       }
 
       header {

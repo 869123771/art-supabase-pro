@@ -51,13 +51,9 @@
 
     <ElScrollbar
       v-if="normalizedContentHeight"
-      v-loading="contentLoading"
       ref="scrollbarRef"
       :always="options.scrollbarAlways"
       :native="options.nativeScrollbar"
-      :element-loading-text="options.loadingText"
-      :element-loading-background="options.loadingBackground"
-      :element-loading-custom-class="options.loadingCustomClass"
       class="art-drawer__scrollbar"
       :style="{
         height: normalizedContentHeight,
@@ -66,6 +62,31 @@
       @wheel.capture="handleWheelBoundary"
     >
       <div class="art-drawer__content">
+        <ArtOverlayLoading
+          :loading="contentLoading"
+          :text="options.loadingText"
+          :background="options.loadingBackground"
+          :custom-class="options.loadingCustomClass"
+        >
+          <component
+            :is="options.content"
+            v-if="options.content"
+            v-bind="options.contentProps"
+            :data="openData"
+            :drawer-api="exposedApi"
+          />
+          <slot v-else :data="openData" :loading="contentLoading" :api="exposedApi" />
+        </ArtOverlayLoading>
+      </div>
+    </ElScrollbar>
+
+    <div v-else class="art-drawer__content">
+      <ArtOverlayLoading
+        :loading="contentLoading"
+        :text="options.loadingText"
+        :background="options.loadingBackground"
+        :custom-class="options.loadingCustomClass"
+      >
         <component
           :is="options.content"
           v-if="options.content"
@@ -74,25 +95,7 @@
           :drawer-api="exposedApi"
         />
         <slot v-else :data="openData" :loading="contentLoading" :api="exposedApi" />
-      </div>
-    </ElScrollbar>
-
-    <div
-      v-else
-      v-loading="contentLoading"
-      :element-loading-text="options.loadingText"
-      :element-loading-background="options.loadingBackground"
-      :element-loading-custom-class="options.loadingCustomClass"
-      class="art-drawer__content"
-    >
-      <component
-        :is="options.content"
-        v-if="options.content"
-        v-bind="options.contentProps"
-        :data="openData"
-        :drawer-api="exposedApi"
-      />
-      <slot v-else :data="openData" :loading="contentLoading" :api="exposedApi" />
+      </ArtOverlayLoading>
     </div>
 
     <template v-if="options.showFooter" #footer>
@@ -130,6 +133,7 @@
     ArtDrawerSlots,
     ArtScrollOptions
   } from './types'
+  import ArtOverlayLoading from '@/components/core/feedback/art-overlay-loading/index.vue'
   import { mergeOverlayRecords, useArtOverlay } from '@/hooks/core/useArtOverlay'
   import { handoffVerticalWheel } from '@/utils/ui/wheel-scroll'
 

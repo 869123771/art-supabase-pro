@@ -1,1 +1,0 @@
-import{Dt as e,Kt as t,vt as n}from"./framework-CEwusMeK.js";import{t as r}from"./smis-page-placeholder-CMPoJ1v9.js";var i=e({name:`SmisWorkAtHeightApplication`,__name:`index`,setup(e){return(e,i)=>(t(),n(r,{section:`特殊作业管理`,title:`高处作业申请`}))}});export{i as default};

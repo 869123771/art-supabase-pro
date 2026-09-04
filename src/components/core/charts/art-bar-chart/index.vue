@@ -1,6 +1,8 @@
 <!-- 柱状图 -->
 <template>
-  <div ref="chartRef" :style="{ height: props.height }" v-loading="props.loading"> </div>
+  <ArtChartLoading :height="props.height" :loading="props.loading">
+    <div ref="chartRef" class="w-full h-full"></div>
+  </ArtChartLoading>
 </template>
 
 <script setup lang="ts">
@@ -8,6 +10,7 @@
   import { getCssVar } from '@/utils/ui'
   import { graphic, type EChartsOption } from '@/plugins/echarts'
   import type { BarChartProps, BarDataItem } from '@/types/component/chart'
+  import ArtChartLoading from '@/components/core/charts/art-chart-loading/index.vue'
 
   defineOptions({ name: 'ArtBarChart' })
 

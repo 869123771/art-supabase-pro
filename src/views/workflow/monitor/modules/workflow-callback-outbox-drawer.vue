@@ -28,7 +28,15 @@
         </template>
       </ElAlert>
 
-      <section v-loading="state.loading" class="workflow-callback-outbox__metrics">
+      <section class="workflow-callback-outbox__metrics" :aria-busy="state.loading">
+        <ArtOverlayLoading
+          v-if="state.loading"
+          loading
+          overlay
+          size="compact"
+          text="正在加载指标…"
+          description=""
+        />
         <button
           v-for="metric in metricCards"
           :key="metric.key"
@@ -405,6 +413,7 @@
     }
 
     &__metrics {
+      position: relative;
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 10px;

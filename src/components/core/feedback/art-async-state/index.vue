@@ -1,6 +1,5 @@
 <template>
   <div
-    v-loading="isMaskLoading"
     class="art-async-state"
     :class="{ 'is-full-height': fullHeight }"
     :style="{ minHeight: normalizedMinHeight }"
@@ -15,6 +14,14 @@
     >
       {{ statusAnnouncement }}
     </span>
+
+    <ArtOverlayLoading
+      v-if="isMaskLoading"
+      loading
+      overlay
+      text="正在加载内容…"
+      description="正在获取最新数据，请稍候"
+    />
 
     <ElSkeleton
       v-if="loading && loadingMode === 'skeleton'"
@@ -55,6 +62,7 @@
 
 <script setup lang="ts">
   import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
+  import ArtOverlayLoading from '@/components/core/feedback/art-overlay-loading/index.vue'
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
 
   defineOptions({ name: 'ArtAsyncState' })

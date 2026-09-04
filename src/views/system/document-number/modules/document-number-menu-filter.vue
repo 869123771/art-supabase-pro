@@ -53,7 +53,15 @@
       <small>点击目录包含下级</small>
     </div>
 
-    <div v-loading="loading" class="number-menu-filter__tree-area">
+    <div class="number-menu-filter__tree-area" :aria-busy="loading">
+      <ArtOverlayLoading
+        v-if="loading"
+        loading
+        overlay
+        size="compact"
+        text="正在加载菜单树…"
+        description=""
+      />
       <ElScrollbar v-if="filterTree.length">
         <ElTree
           ref="treeRef"
@@ -393,6 +401,7 @@
     }
 
     &__tree-area {
+      position: relative;
       display: flex;
       flex: 1 1 auto;
       flex-direction: column;

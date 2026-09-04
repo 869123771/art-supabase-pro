@@ -1,12 +1,8 @@
 <!-- 折线图，支持多组数据，支持阶梯式动画效果 -->
 <template>
-  <div
-    ref="chartRef"
-    class="relative w-[calc(100%+10px)]"
-    :style="{ height: props.height }"
-    v-loading="props.loading"
-  >
-  </div>
+  <ArtChartLoading class="w-[calc(100%+10px)]" :height="props.height" :loading="props.loading">
+    <div ref="chartRef" class="w-full h-full"></div>
+  </ArtChartLoading>
 </template>
 
 <script setup lang="ts">
@@ -14,6 +10,7 @@
   import { getCssVar, hexToRgba } from '@/utils/ui'
   import { useChartOps, useChartComponent } from '@/hooks/core/useChart'
   import type { LineChartProps, LineDataItem } from '@/types/component/chart'
+  import ArtChartLoading from '@/components/core/charts/art-chart-loading/index.vue'
 
   defineOptions({ name: 'ArtLineChart' })
 
