@@ -68,24 +68,24 @@ const mdmMenu: TestMenuNode = {
       children: []
     },
     {
-      id: 'test-mdm-partner',
+      id: 'test-mdm-organization',
       parentId: 'test-mdm-root',
-      name: 'MDMPartner',
-      path: 'partner',
+      name: 'MDMOrganization',
+      path: 'organization',
       component: '',
       type: 'folder',
       sort: 1,
-      meta: menuMeta('往来主体', 'ri:building-4-line'),
+      meta: menuMeta('组织与人员', 'ri:organization-chart'),
       children: [
         {
-          id: 'test-mdm-partner-directory',
-          parentId: 'test-mdm-partner',
-          name: 'MDMBusinessPartnerDirectory',
-          path: 'business-partner-directory',
+          id: 'test-mdm-organization-directory',
+          parentId: 'test-mdm-organization',
+          name: 'MDMOrganizationDirectory',
+          path: 'organization-directory',
           component: '/mdm/catalog',
           type: 'menu',
           sort: 1,
-          meta: menuMeta('统一往来主体', 'ri:community-line'),
+          meta: menuMeta('组织机构主数据', 'ri:organization-chart'),
           children: []
         }
       ]
@@ -188,8 +188,19 @@ test.describe('MDM, WMS and MES application scaffolds', () => {
     await openWorkspace(page, '/#/mdm/workbench', '主数据治理工作台')
     await page.screenshot({ path: testInfo.outputPath('mdm-workbench.png'), fullPage: true })
 
-    await openWorkspace(page, '/#/mdm/partner/business-partner-directory', '统一往来主体')
-    await expect(page.getByText('目录记录', { exact: true })).toBeVisible()
+    await openWorkspace(page, '/#/mdm/organization/organization-directory', '组织机构主数据')
+    await expect(page.getByText('权威来源约定', { exact: true })).toBeVisible()
+    await expect(page.getByText('当前结果', { exact: true })).toBeVisible()
+    const keywordInput = page.getByPlaceholder('组织编码或名称')
+    await keywordInput.fill('ROOT')
+    await keywordInput.press('Enter')
+    await expect(page.getByText('ROOT', { exact: true }).first()).toBeVisible()
+    await expect(page.getByRole('button', { name: '查看详情' }).first()).toBeVisible()
+    await page.getByRole('button', { name: '查看详情' }).first().click()
+    await expect(page.getByText('主数据详情', { exact: true })).toBeVisible()
+    await expect(page.getByText('治理与来源', { exact: true })).toBeVisible()
+    await expectNoHorizontalOverflow(page)
+    await page.screenshot({ path: testInfo.outputPath('mdm-catalog-detail.png'), fullPage: true })
   })
 
   test('opens the WMS workspace', async ({ page }, testInfo) => {

@@ -117,7 +117,14 @@ export default ({ mode }: { mode: string }) => {
     server: {
       port: Number(VITE_PORT),
       watch: {
-        ignored: ['**/.codex/**', '**/.idea/**', `**/${outDir}/**`, '**/dist/**', '**/dist-ssr/**']
+        ignored: [
+          '**/.artifacts/**',
+          '**/.codex/**',
+          '**/.idea/**',
+          `**/${outDir}/**`,
+          '**/dist/**',
+          '**/dist-ssr/**'
+        ]
       },
       proxy: {
         '/api': {
