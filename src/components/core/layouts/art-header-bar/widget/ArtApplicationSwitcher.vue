@@ -82,9 +82,12 @@
     platform: 'ri:building-4-line',
     fms: 'ri:bank-card-line',
     hr: 'ri:team-line',
+    mdm: 'ri:database-2-line',
+    mes: 'ri:factory-line',
     smis: 'ri:shield-check-line',
     tms: 'ri:apps-2-line',
     vms: 'ri:truck-line',
+    wms: 'ri:warehouse-line',
     docs: 'ri:book-open-line'
   }
 

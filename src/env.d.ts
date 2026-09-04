@@ -1,7 +1,8 @@
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {
-  readonly VITE_APP_CODE?: 'platform' | 'fms' | 'hr' | 'smis' | 'tms' | 'vms'
+  readonly VITE_APP_CODE?:
+    'platform' | 'fms' | 'hr' | 'mdm' | 'mes' | 'smis' | 'tms' | 'vms' | 'wms'
 }
 
 interface ImportMeta {

@@ -25,7 +25,8 @@ const remoteDuplicateMigrationAllowlist = new Set([
   '20260823122825_expand_vms_workflow_smis_decision_workspaces.sql',
   '20260823123745_optimize_organization_route_first_load.sql'
 ])
-type ManagedModule = 'tms' | 'vms' | 'fms' | 'hr' | 'smis' | 'system' | 'workflow'
+type ManagedModule =
+  'tms' | 'vms' | 'fms' | 'hr' | 'mdm' | 'mes' | 'smis' | 'wms' | 'system' | 'workflow'
 
 const managedViewRoots = new Map<ManagedModule, string>([
   ['tms', join(projectRoot, 'modules/art-supabase-tms/src/views')],
@@ -34,9 +35,21 @@ const managedViewRoots = new Map<ManagedModule, string>([
   ['fms', join(projectRoot, 'modules/art-supabase-fms/src/views')],
   ['vms', join(projectRoot, 'modules/art-supabase-vms/src/views')],
   ['hr', join(projectRoot, 'modules/art-supabase-hr/src/views')],
-  ['smis', join(projectRoot, 'modules/art-supabase-smis/src/views')]
+  ['mdm', join(projectRoot, 'modules/art-supabase-mdm/src/views')],
+  ['mes', join(projectRoot, 'modules/art-supabase-mes/src/views')],
+  ['smis', join(projectRoot, 'modules/art-supabase-smis/src/views')],
+  ['wms', join(projectRoot, 'modules/art-supabase-wms/src/views')]
 ])
-const businessModules = new Set<ManagedModule>(['tms', 'vms', 'fms', 'hr', 'smis'])
+const businessModules = new Set<ManagedModule>([
+  'tms',
+  'vms',
+  'fms',
+  'hr',
+  'mdm',
+  'mes',
+  'smis',
+  'wms'
+])
 const sourceExtensions = new Set(['.ts', '.tsx', '.vue'])
 const permissionPattern =
   /['"`]((?:System|Workflow|Tms|Finance|Hr|Smis|Vehicle|Insurance|Parts|PartsCategory|Supplier)[A-Za-z0-9]*(?::[A-Za-z][A-Za-z0-9]*)+)['"`]/g

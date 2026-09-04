@@ -6,15 +6,18 @@
 
 ## 仓库与所有权
 
-| 应用代码 | 仓库 | 代码与发布所有权 |
-| --- | --- | --- |
-| `platform` | `art-supabase-pro` | Auth、租户、用户、组织、菜单、角色权限、数据中心与共享前端运行契约 |
-| `fms` | `art-supabase-fms` | FMS 财务管理应用 |
-| `hr` | `art-supabase-hr` | HR 人力资源应用 |
-| `smis` | `art-supabase-smis` | SMIS 安全生产应用 |
-| `vms` | `art-supabase-vms` | VMS 车辆管理应用 |
-| `tms` | `art-supabase-tms` | TMS 智慧运输应用 |
-| `docs` | `art-supabase-doc` | 产品、开发与运维文档站 |
+| 应用代码   | 仓库                | 代码与发布所有权                                             |
+| ---------- | ------------------- | ------------------------------------------------------------ |
+| `platform` | `art-supabase-pro`  | Auth、租户、用户、菜单、角色权限、数据中心与共享前端运行契约 |
+| `fms`      | `art-supabase-fms`  | FMS 财务管理应用                                             |
+| `hr`       | `art-supabase-hr`   | HR 人力资源应用                                              |
+| `mdm`      | `art-supabase-mdm`  | MDM 主数据治理、统一目录与跨域只读契约                       |
+| `mes`      | `art-supabase-mes`  | MES 制造执行应用                                             |
+| `smis`     | `art-supabase-smis` | SMIS 安全生产应用                                            |
+| `vms`      | `art-supabase-vms`  | VMS 车辆管理应用                                             |
+| `tms`      | `art-supabase-tms`  | TMS 智慧运输应用                                             |
+| `wms`      | `art-supabase-wms`  | WMS 仓储管理应用                                             |
+| `docs`     | `art-supabase-doc`  | 产品、开发与运维文档站                                       |
 
 每个业务仓拥有自己的 `package.json`、lockfile、`src/main.ts`、页面、领域 API、质量门禁和部署产物。主仓提供可版本化的平台公共契约，但不反向导入业务仓源码。
 

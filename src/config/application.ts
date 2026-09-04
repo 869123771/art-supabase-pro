@@ -5,7 +5,17 @@
  * frontend declares only its own application code and requests the matching
  * menu tree from the platform contract.
  */
-export const APPLICATION_CODES = ['platform', 'fms', 'hr', 'smis', 'tms', 'vms'] as const
+export const APPLICATION_CODES = [
+  'platform',
+  'fms',
+  'hr',
+  'mdm',
+  'mes',
+  'smis',
+  'tms',
+  'vms',
+  'wms'
+] as const
 
 export type ApplicationCode = (typeof APPLICATION_CODES)[number]
 
@@ -48,6 +58,22 @@ export const APPLICATION_PROFILES: Record<ApplicationCode, ApplicationProfile> =
     deploymentPath: '/art-supabase-hr/',
     developmentPort: 3013
   },
+  mdm: {
+    code: 'mdm',
+    name: 'Art Supabase MDM',
+    description: '跨业务域主数据治理与统一目录',
+    defaultPath: '/mdm/workbench',
+    deploymentPath: '/art-supabase-mdm/',
+    developmentPort: 3017
+  },
+  mes: {
+    code: 'mes',
+    name: 'Art Supabase MES',
+    description: '生产执行、工艺与制造协同',
+    defaultPath: '/mes/workbench',
+    deploymentPath: '/art-supabase-mes/',
+    developmentPort: 3019
+  },
   smis: {
     code: 'smis',
     name: 'Art Supabase SMIS',
@@ -71,6 +97,14 @@ export const APPLICATION_PROFILES: Record<ApplicationCode, ApplicationProfile> =
     defaultPath: '/vms/vehicle-archive-manage',
     deploymentPath: '/art-supabase-vms/',
     developmentPort: 3015
+  },
+  wms: {
+    code: 'wms',
+    name: 'Art Supabase WMS',
+    description: '仓库、库存与作业执行',
+    defaultPath: '/wms/workbench',
+    deploymentPath: '/art-supabase-wms/',
+    developmentPort: 3018
   }
 }
 

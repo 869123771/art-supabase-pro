@@ -32,9 +32,12 @@ test('resolves every GitHub Pages application from the current account domain', 
     platform: 'https://869123771.github.io/art-supabase-pro/',
     fms: 'https://869123771.github.io/art-supabase-fms/',
     hr: 'https://869123771.github.io/art-supabase-hr/',
+    mdm: 'https://869123771.github.io/art-supabase-mdm/',
+    mes: 'https://869123771.github.io/art-supabase-mes/',
     smis: 'https://869123771.github.io/art-supabase-smis/',
     tms: 'https://869123771.github.io/art-supabase-tms/',
-    vms: 'https://869123771.github.io/art-supabase-vms/'
+    vms: 'https://869123771.github.io/art-supabase-vms/',
+    wms: 'https://869123771.github.io/art-supabase-wms/'
   } as const
 
   for (const code of APPLICATION_CODES) {

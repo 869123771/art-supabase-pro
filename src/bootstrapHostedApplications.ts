@@ -42,6 +42,24 @@ registerHostedApplication(
   ])
 )
 registerHostedApplication(
+  'mdm',
+  '../modules/art-supabase-mdm/src/views',
+  import.meta.glob<HostedRouteComponentModule>([
+    '../modules/art-supabase-mdm/src/views/**/*.vue',
+    '!../modules/art-supabase-mdm/src/views/**/modules/**/*.vue',
+    '!../modules/art-supabase-mdm/src/views/**/components/**/*.vue'
+  ])
+)
+registerHostedApplication(
+  'mes',
+  '../modules/art-supabase-mes/src/views',
+  import.meta.glob<HostedRouteComponentModule>([
+    '../modules/art-supabase-mes/src/views/**/*.vue',
+    '!../modules/art-supabase-mes/src/views/**/modules/**/*.vue',
+    '!../modules/art-supabase-mes/src/views/**/components/**/*.vue'
+  ])
+)
+registerHostedApplication(
   'smis',
   '../modules/art-supabase-smis/src/views',
   import.meta.glob<HostedRouteComponentModule>([
@@ -66,5 +84,14 @@ registerHostedApplication(
     '../modules/art-supabase-vms/src/views/**/*.vue',
     '!../modules/art-supabase-vms/src/views/**/modules/**/*.vue',
     '!../modules/art-supabase-vms/src/views/**/components/**/*.vue'
+  ])
+)
+registerHostedApplication(
+  'wms',
+  '../modules/art-supabase-wms/src/views',
+  import.meta.glob<HostedRouteComponentModule>([
+    '../modules/art-supabase-wms/src/views/**/*.vue',
+    '!../modules/art-supabase-wms/src/views/**/modules/**/*.vue',
+    '!../modules/art-supabase-wms/src/views/**/components/**/*.vue'
   ])
 )

@@ -21,3 +21,15 @@
 	path = modules/art-supabase-doc
 	url = https://gitee.com/wangyanghub/art-supabase-doc.git
 	branch = master
+[submodule "modules/art-supabase-mdm"]
+	path = modules/art-supabase-mdm
+	url = https://gitee.com/wangyanghub/art-supabase-mdm.git
+	branch = master
+[submodule "modules/art-supabase-wms"]
+	path = modules/art-supabase-wms
+	url = https://gitee.com/wangyanghub/art-supabase-wms.git
+	branch = master
+[submodule "modules/art-supabase-mes"]
+	path = modules/art-supabase-mes
+	url = https://gitee.com/wangyanghub/art-supabase-mes.git
+	branch = master

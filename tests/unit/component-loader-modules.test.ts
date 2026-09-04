@@ -28,6 +28,9 @@ test('accepts independently built application view registrations before bootstra
 test('identifies missing business application pages for the host fallback', () => {
   assert.equal(resolveHostedApplicationCode('/vms/vehicle-query'), 'vms')
   assert.equal(resolveHostedApplicationCode('/fms/account-set'), 'fms')
+  assert.equal(resolveHostedApplicationCode('/mdm/workbench'), 'mdm')
+  assert.equal(resolveHostedApplicationCode('/mes/workbench'), 'mes')
+  assert.equal(resolveHostedApplicationCode('/wms/workbench'), 'wms')
   assert.equal(resolveHostedApplicationCode('/system/user'), null)
   assert.equal(resolveHostedApplicationCode('/unknown/page'), null)
 })
