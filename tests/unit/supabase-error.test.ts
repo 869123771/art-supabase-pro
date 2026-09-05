@@ -4,6 +4,7 @@ import { AuthApiError, AuthRetryableFetchError } from '@supabase/supabase-js'
 import {
   formatSupabaseAuthErrorMessage,
   getFriendlySupabaseErrorMessage,
+  isSupabaseSessionFailure,
   normalizeSupabaseFunctionError
 } from '../../src/utils/supabase'
 
@@ -31,6 +32,31 @@ test('uses stable Supabase and Postgres error codes before technical messages', 
     getFriendlySupabaseErrorMessage({ code: '23503', message: 'foreign key violation' }),
     '该数据正在被其他业务使用，暂时不能修改或删除'
   )
+})
+
+test('distinguishes an expired PostgREST session from a real permission denial', () => {
+  const expiredSessionError = {
+    code: '42501',
+    message: 'Authentication required',
+    status: 401
+  }
+  const permissionError = {
+    code: '42501',
+    message: 'permission denied for table mdm_position'
+  }
+
+  assert.equal(isSupabaseSessionFailure(expiredSessionError), true)
+  assert.equal(getFriendlySupabaseErrorMessage(expiredSessionError), '登录状态已失效，请重新登录')
+  assert.equal(isSupabaseSessionFailure(permissionError), false)
+  assert.equal(getFriendlySupabaseErrorMessage(permissionError), '当前账号没有此操作权限')
+})
+
+test('recognizes a nested 401 response from Supabase functions', () => {
+  const error = {
+    context: new Response(null, { status: 401 })
+  }
+
+  assert.equal(isSupabaseSessionFailure(error), true)
 })
 
 test('parses serialized errors without exposing JSON to the user', () => {

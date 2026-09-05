@@ -8,6 +8,7 @@ import '@styles/index.scss'
 import '@utils/sys/console'
 import { setupGlobDirectives } from './directives'
 import { setupErrorHandle } from './utils/sys/error-handle'
+import { setupSupabaseSessionLifecycle } from './plugins/supabase-session'
 
 /**
  * 启动平台公共运行壳。
@@ -19,6 +20,7 @@ export function bootstrapPlatformApp(): VueApp<Element> {
   const app = createApp(App)
   initStore(app)
   initRouter(app)
+  setupSupabaseSessionLifecycle()
   setupGlobDirectives(app)
   setupErrorHandle(app)
   app.use(language)

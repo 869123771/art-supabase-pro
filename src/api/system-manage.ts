@@ -1057,24 +1057,66 @@ export async function saveRoleMenuList(params: { p_role_id: string; p_menu_ids: 
   })
 }
 
-// 获取菜单列表
-export async function fetchGetMenuList(params: AppRouteRecord & { recordId?: string }) {
+export interface MenuListParams {
+  name?: string
+  path?: string
+  recordId?: string
+}
+
+interface MenuRowsQueryOptions {
+  parentId?: string
+  rootOnly?: boolean
+  includeChildState?: boolean
+}
+
+async function fetchMenuRows(
+  params: MenuListParams,
+  options: MenuRowsQueryOptions = {},
+  signal?: AbortSignal
+) {
   const { name, path, recordId } = params
-  const specs = buildSpecsFromMap({
-    path,
-    id: recordId
+  const query = supabase.rpc('list_menu_management_nodes', {
+    p_name: name?.trim() || null,
+    p_path: path?.trim() || null,
+    p_record_id: recordId || null,
+    p_parent_id: options.parentId || null,
+    p_root_only: Boolean(options.rootOnly),
+    p_include_child_state: Boolean(options.includeChildState)
   })
 
-  // 构建查询
-  let query = supabase.from('sys_menu').select('*', { count: 'exact' })
+  return await responseHandle<AppRouteRecord[]>(
+    () => (signal ? query.abortSignal(signal) : query),
+    { ignoreCheck: true }
+  )
+}
 
-  if (name) {
-    query = query.filter('meta->>title', 'ilike', `%${name}%`)
-  }
-  // applyFilters 支持传入 FilterSpec[]（这里 specs 已为 snake_case）
-  query = applyFilters(query, specs, { skipEmpty: true, camelToSnake: false })
+// 菜单管理默认只加载一级节点；搜索和定向定位保留全局查询能力。
+export async function fetchGetMenuList(params: MenuListParams, signal?: AbortSignal) {
+  const hasGlobalFilter = Boolean(params.name?.trim() || params.path?.trim() || params.recordId)
+  return await fetchMenuRows(
+    params,
+    {
+      rootOnly: !hasGlobalFilter,
+      includeChildState: true
+    },
+    signal
+  )
+}
 
-  return await responseHandle<AppRouteRecord[]>(() => query, { ignoreCheck: true })
+// 展开树节点时只查询直属子节点。
+export async function fetchGetMenuChildren(parentId: string) {
+  return await fetchMenuRows(
+    {},
+    {
+      parentId,
+      includeChildState: true
+    }
+  )
+}
+
+// 排序、编辑和级联删除等低频操作仍需要完整树，按需加载而不是随页面初始化加载。
+export async function fetchGetAllMenuList() {
+  return await fetchMenuRows({})
 }
 
 /*删除菜单*/

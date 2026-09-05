@@ -95,8 +95,8 @@ const mdmMenu: TestMenuNode = {
 
 const testMenus: Record<'mdm' | 'wms' | 'mes', TestMenuNode> = {
   mdm: mdmMenu,
-  wms: createAppMenu('wms', 'WMS仓储管理', 'ri:warehouse-line', '/wms/workbench'),
-  mes: createAppMenu('mes', 'MES制造执行', 'ri:factory-line', '/mes/workbench')
+  wms: createAppMenu('wms', 'WMS仓储管理', 'ri:store-3-line', '/wms/workbench'),
+  mes: createAppMenu('mes', 'MES制造执行', 'ri:tools-line', '/mes/workbench')
 }
 
 function flattenMenu(node: TestMenuNode): TestMenuNode[] {

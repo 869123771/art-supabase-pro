@@ -109,7 +109,8 @@ const MESSAGE_RULES: Array<{ pattern: RegExp; message: string }> = [
     message: ERROR_CODE_MESSAGES.email_not_confirmed
   },
   {
-    pattern: /jwt expired|invalid jwt|token.*expired|refresh token.*not found/i,
+    pattern:
+      /authentication required|jwt expired|invalid jwt|missing.*jwt|token.*expired|refresh token.*not found/i,
     message: '登录状态已失效，请重新登录'
   },
   {
@@ -156,6 +157,15 @@ const CODE_KEYS = ['code', 'error_code', 'errorCode'] as const
 const NAME_KEYS = ['name', 'error_name', 'errorName'] as const
 const MESSAGE_KEYS = ['message', 'msg', 'error_description', 'errorDescription', 'details'] as const
 const STATUS_KEYS = ['status', 'statusCode', 'httpStatusCode'] as const
+const SESSION_ERROR_CODES = new Set([
+  'PGRST301',
+  'bad_jwt',
+  'refresh_token_already_used',
+  'refresh_token_not_found',
+  'session_not_found'
+])
+const SESSION_ERROR_MESSAGE =
+  /authentication required|jwt expired|invalid jwt|missing.*jwt|token.*expired|refresh token.*not found/i
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object'
@@ -206,7 +216,21 @@ function collectErrorDetails(value: unknown, details: ErrorDetails, depth = 0): 
 
   if ('error' in value) collectErrorDetails(value.error, details, depth + 1)
   if ('cause' in value) collectErrorDetails(value.cause, details, depth + 1)
+  if ('context' in value) collectErrorDetails(value.context, details, depth + 1)
   if ('data' in value) collectErrorDetails(value.data, details, depth + 1)
+  if ('response' in value) collectErrorDetails(value.response, details, depth + 1)
+}
+
+/** 精确识别登录会话失效，避免把真正的数据库 42501 权限错误误判为掉线。 */
+export function isSupabaseSessionFailure(...values: unknown[]): boolean {
+  const details: ErrorDetails = { codes: [], names: [], messages: [], statuses: [] }
+  values.forEach((value) => collectErrorDetails(value, details))
+
+  return (
+    details.statuses.includes(401) ||
+    details.codes.some((code) => SESSION_ERROR_CODES.has(code)) ||
+    details.messages.some((message) => SESSION_ERROR_MESSAGE.test(message))
+  )
 }
 
 function hasChineseText(value: string): boolean {
@@ -267,6 +291,15 @@ export function getFriendlySupabaseErrorMessage(
 ): string {
   const details: ErrorDetails = { codes: [], names: [], messages: [], statuses: [] }
   collectErrorDetails(error, details)
+
+  // PostgREST may pair SQLSTATE 42501 with HTTP 401 and "Authentication required".
+  // Authentication takes precedence in that shape; a plain 42501 remains a real permission error.
+  const authenticationMessage = details.messages.find((rawMessage) =>
+    SESSION_ERROR_MESSAGE.test(rawMessage)
+  )
+  if (details.statuses.includes(401) || authenticationMessage) {
+    return STATUS_MESSAGES[401]
+  }
 
   for (const code of details.codes) {
     const message = ERROR_CODE_MESSAGES[code] ?? ERROR_CODE_MESSAGES[code.toUpperCase()]

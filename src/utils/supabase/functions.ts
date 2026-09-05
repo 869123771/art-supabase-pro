@@ -1,39 +1,11 @@
 import type { FunctionInvokeOptions } from '@supabase/supabase-js'
 import { supabase } from '@/plugins/supabase'
+import { isSupabaseSessionFailure } from './error'
+import { refreshSupabaseSessionOnce } from './session'
 
 type SupabaseFunctionResponse<T> = {
   data: T | null
   error: unknown | null
-}
-
-let refreshSessionPromise: Promise<boolean> | null = null
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === 'object'
-}
-
-function getResponseStatus(error: unknown): number | undefined {
-  if (error instanceof Response) return error.status
-  if (!isRecord(error)) return undefined
-
-  const context = error.context
-  if (context instanceof Response) return context.status
-
-  const status = error.status ?? error.statusCode
-  return typeof status === 'number' ? status : undefined
-}
-
-async function refreshSessionOnce(): Promise<boolean> {
-  if (!refreshSessionPromise) {
-    refreshSessionPromise = supabase.auth
-      .refreshSession()
-      .then(({ error }) => !error)
-      .catch(() => false)
-      .finally(() => {
-        refreshSessionPromise = null
-      })
-  }
-  return refreshSessionPromise
 }
 
 /**
@@ -48,8 +20,8 @@ export async function invokeSupabaseFunctionWithSessionRecovery<T>(
     supabase.functions.invoke<T>(functionName, options)
 
   let response = await invoke()
-  if (getResponseStatus(response.error) !== 401) return response
-  if (!(await refreshSessionOnce())) return response
+  if (!isSupabaseSessionFailure(response.error)) return response
+  if (!(await refreshSupabaseSessionOnce())) return response
 
   response = await invoke()
   return response

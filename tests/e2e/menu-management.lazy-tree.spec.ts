@@ -1,0 +1,86 @@
+import { expect, test, type Page, type Request } from '@playwright/test'
+
+interface MenuRpcPayload {
+  p_parent_id: string | null
+  p_root_only: boolean
+}
+
+interface MenuRpcRow {
+  id: string
+  parent_id: string | null
+}
+
+const isMenuRpcRequest = (request: Request): boolean =>
+  request.method() === 'POST' && request.url().includes('/rest/v1/rpc/list_menu_management_nodes')
+
+const readMenuRpcPayload = (request: Request): MenuRpcPayload =>
+  request.postDataJSON() as MenuRpcPayload
+
+async function readMenuRows(request: Request): Promise<MenuRpcRow[]> {
+  const response = await request.response()
+  expect(response, '菜单 RPC 应返回网络响应').not.toBeNull()
+  expect(response?.ok(), `菜单 RPC 请求失败：${response?.status()}`).toBe(true)
+  return (await response?.json()) as MenuRpcRow[]
+}
+
+async function waitForMenuTable(page: Page): Promise<void> {
+  await expect(page.getByRole('heading', { name: '菜单管理', exact: true })).toBeVisible({
+    timeout: 60_000
+  })
+  await expect(page.locator('.el-loading-mask:visible')).toHaveCount(0, { timeout: 60_000 })
+  await expect(page.locator('.el-table__body-wrapper tbody tr')).toHaveCount(16, {
+    timeout: 60_000
+  })
+}
+
+test('菜单管理首层与展开请求保持精简且层级正确', async ({ page }) => {
+  test.setTimeout(120_000)
+  const menuRequests: Request[] = []
+  const legacyChildQueries: string[] = []
+
+  page.on('request', (request) => {
+    if (isMenuRpcRequest(request)) menuRequests.push(request)
+    if (request.url().includes('/rest/v1/sys_menu') && request.url().includes('parent_id=in.')) {
+      legacyChildQueries.push(request.url())
+    }
+  })
+
+  const rootRequestPromise = page.waitForRequest(
+    (request) => isMenuRpcRequest(request) && readMenuRpcPayload(request).p_root_only === true
+  )
+  await page.goto('/#/system/menu', { waitUntil: 'domcontentloaded' })
+  await expect(page).not.toHaveURL(/#\/auth\/login/)
+  const rootRequest = await rootRequestPromise
+  const rootRows = await readMenuRows(rootRequest)
+
+  expect(readMenuRpcPayload(rootRequest)).toMatchObject({
+    p_parent_id: null,
+    p_root_only: true
+  })
+  expect(rootRows.length).toBeGreaterThan(0)
+  expect(rootRows.every((row) => row.parent_id === null)).toBe(true)
+  await waitForMenuTable(page)
+
+  const firstRoot = rootRows[0]
+  const childRequestPromise = page.waitForRequest((request) => {
+    if (!isMenuRpcRequest(request)) return false
+    const payload = readMenuRpcPayload(request)
+    return payload.p_parent_id === firstRoot.id && payload.p_root_only === false
+  })
+
+  await page
+    .locator('.el-table__body-wrapper tbody tr')
+    .first()
+    .locator('.el-table__expand-icon')
+    .click()
+  const childRequest = await childRequestPromise
+  const childRows = await readMenuRows(childRequest)
+
+  expect(childRows.length).toBeGreaterThan(0)
+  expect(childRows.every((row) => row.parent_id === firstRoot.id)).toBe(true)
+  await expect(page.locator('.el-table__body-wrapper tbody tr')).toHaveCount(
+    rootRows.length + childRows.length
+  )
+  expect(menuRequests).toHaveLength(2)
+  expect(legacyChildQueries).toEqual([])
+})

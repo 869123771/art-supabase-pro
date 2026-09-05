@@ -137,6 +137,13 @@ function scanFile(file: string, content: string): Finding[] {
       addFinding(match.index, 'consistency/use-art-empty-state')
     }
 
+    for (const match of content.matchAll(
+      /<(?:div|section)\b[^>]*class=["'][^"']*__state[^"']*["'][^>]*>[\s\S]{0,500}?<ElIcon\b[^>]*\bis-loading\b/gs
+    )) {
+      if (match.index == null || match[0].includes('data-ui-audit-allow')) continue
+      addFinding(match.index, 'consistency/use-art-overlay-loading')
+    }
+
     if (
       ![
         'src/components/business/business-workspace-header/index.vue',

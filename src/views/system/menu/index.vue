@@ -74,6 +74,7 @@
   } from './modules/menu-presentation'
   import TreeUtils from '@/utils/tree'
   import { ElMessage, ElTag } from 'element-plus'
+  import { uniqBy } from 'lodash-es'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type {
     ArtTableQueryExpose,
@@ -85,7 +86,13 @@
   import type { ApiResponse } from '@/utils/table/tableCache'
 
   import { formatWithDayjs } from '@/utils/time'
-  import { deleteMenu, fetchGetMenuList } from '@/api/system-manage'
+  import {
+    deleteMenu,
+    fetchGetAllMenuList,
+    fetchGetMenuChildren,
+    fetchGetMenuList,
+    type MenuListParams
+  } from '@/api/system-manage'
   import { useAuth } from '@/hooks/core/useAuth'
   import MasterDataDeleteGuard, {
     type MasterDataDeleteGuardOpenOptions
@@ -131,9 +138,6 @@
 
   const { hasAuth } = useAuth()
   const canSortMenu = computed(() => hasAuth('System:Menu:Edit'))
-
-  const isExpanded = ref(false)
-  const expandRowKeys = ref<string[]>([])
 
   const showSearchBar = ref(false)
   // 弹窗相关
@@ -182,10 +186,11 @@
     rowKey: 'id',
     tableLayout: 'fixed',
     stripe: false,
+    lazy: true,
+    load: loadMenuChildren,
     treeProps: { children: 'children', hasChildren: 'hasChildren' },
     rowClassName: () => 'menu-tree-row',
     defaultExpandAll: false,
-    expandRowKeys: expandRowKeys.value,
     emptyText: '暂无符合条件的菜单',
     emptyDescription: '可调整筛选条件，或新增菜单后再配置页面与按钮权限。',
     paginationOptions: {
@@ -206,14 +211,7 @@
       icon: 'ri:drag-move-2-line',
       permission: 'System:Menu:Edit',
       buttonProps: { plain: true },
-      onClick: () => void menuSortDialogRef.value?.handleOpen(tableData.value)
-    },
-    {
-      key: 'toggle-expand',
-      label: isExpanded.value ? '收起' : '展开',
-      icon: isExpanded.value ? 'ri:collapse-diagonal-line' : 'ri:expand-diagonal-line',
-      buttonProps: { plain: true },
-      onClick: toggleExpand
+      onClick: () => void handleOpenSort()
     }
   ])
 
@@ -235,7 +233,10 @@
       label: '菜单信息',
       minWidth: 230,
       formatter: (row: AppRouteRecord) => {
-        const permissionCount = getDirectPermissionCount(row)
+        const permissionCount = getDirectPermissionCount({
+          ...row,
+          children: row.id ? loadedChildrenByParent.get(row.id) : row.children
+        })
         return h('div', { class: 'menu-identity-cell' }, [
           h(
             'span',
@@ -322,7 +323,7 @@
             type: 'view',
             label: '查看详情',
             permission: 'System:Menu:View',
-            onClick: () => menuDetailDrawerRef.value?.handleOpen(row, tableData.value)
+            onClick: () => void handleView(row)
           }),
           h(ArtButtonMore, {
             list: getMenuActions(row),
@@ -334,9 +335,13 @@
 
   // 数据相关
   const tableData = ref<AppRouteRecord[]>([])
-  const flatMenuRows = computed(() => treeUtils.treeToList(tableData.value))
+  const loadedChildrenByParent = reactive(new Map<string, AppRouteRecord[]>())
+  const completeMenuTreeCache = shallowRef<AppRouteRecord[] | null>(null)
+  const loadedMenuRows = computed(() =>
+    uniqBy([tableData.value, ...loadedChildrenByParent.values()].flat(), (row) => row.id)
+  )
   const overviewCards = computed<BusinessWorkspaceMetric[]>(() => {
-    const rows = flatMenuRows.value
+    const rows = loadedMenuRows.value
     const navigationRows = rows.filter((row) => row.type !== 'button')
     const permissionRows = rows.filter(
       (row) => row.type === 'button' || row.meta?.menuType === 'button'
@@ -345,9 +350,9 @@
 
     return [
       {
-        label: '全部节点',
+        label: '已加载节点',
         value: rows.length,
-        description: `${tableData.value.length} 个一级入口`,
+        description: `${tableData.value.length} 个当前入口`,
         icon: 'ri:node-tree',
         tone: 'primary'
       },
@@ -404,10 +409,10 @@
   const handleMenuAction = (item: ButtonMoreItem, row: AppRouteRecord): void => {
     switch (item.key) {
       case 'add':
-        handleAdd(row.type === 'folder' ? 'menu' : 'button', row)
+        void handleAdd(row.type === 'folder' ? 'menu' : 'button', row)
         break
       case 'edit':
-        handleEdit(row)
+        void handleEdit(row)
         break
       case 'delete':
         void handleDelete(row)
@@ -415,56 +420,121 @@
     }
   }
 
-  const fetchTableData = (params: AppRouteRecord) => {
-    return fetchGetMenuList({
-      ...params,
+  const fetchTableData = (params: MenuListParams, context?: { signal?: AbortSignal }) => {
+    const query: MenuListParams = {
+      name: params.name,
+      path: params.path,
       recordId: typeof route.query.recordId === 'string' ? route.query.recordId : undefined
-    })
+    }
+
+    return fetchGetMenuList(query, context?.signal)
   }
 
   const responseAdapter = (response: { data: AppRouteRecord[] }): ApiResponse<AppRouteRecord> => {
-    const treeData = treeUtils.listToTree(response.data, (a, b) => (a.sort ?? 0) - (b.sort ?? 0))
-    tableData.value = treeData
-    if (isExpanded.value) {
-      expandRowKeys.value = getExpandableRowKeys(treeData)
-    }
+    loadedChildrenByParent.clear()
+    completeMenuTreeCache.value = null
+    tableData.value = response.data
 
     return {
-      records: treeData,
-      total: treeData.length,
+      records: response.data,
+      total: response.data.length,
       current: tableApiParams.current,
       size: tableApiParams.size
+    }
+  }
+
+  const loadCompleteMenuTree = async (): Promise<AppRouteRecord[]> => {
+    if (completeMenuTreeCache.value) return completeMenuTreeCache.value
+
+    const { data, error } = await fetchGetAllMenuList()
+    if (error) throw error
+
+    const tree = treeUtils.listToTree(data ?? [], (a, b) => (a.sort ?? 0) - (b.sort ?? 0))
+    completeMenuTreeCache.value = tree
+    return tree
+  }
+
+  const showMenuTreeLoadError = (error: unknown): void => {
+    ElMessage.error(getFriendlySupabaseErrorMessage(error, '菜单层级加载失败，请稍后重试'))
+  }
+
+  const loadMenuChildren: NonNullable<ArtTableQueryTableProps['load']> = async (
+    row,
+    _treeNode,
+    resolve
+  ) => {
+    const menu = row as AppRouteRecord
+    if (!menu.id) {
+      resolve([])
+      return
+    }
+
+    const { data, error } = await fetchGetMenuChildren(menu.id)
+    if (error) {
+      showMenuTreeLoadError(error)
+      resolve([])
+      return
+    }
+
+    const children = data ?? []
+    loadedChildrenByParent.set(menu.id, children)
+    resolve(children)
+  }
+
+  const handleView = async (row: AppRouteRecord): Promise<void> => {
+    try {
+      await menuDetailDrawerRef.value?.handleOpen(row, await loadCompleteMenuTree())
+    } catch (error) {
+      showMenuTreeLoadError(error)
+    }
+  }
+
+  const handleOpenSort = async (): Promise<void> => {
+    try {
+      await menuSortDialogRef.value?.handleOpen(await loadCompleteMenuTree())
+    } catch (error) {
+      showMenuTreeLoadError(error)
     }
   }
 
   /**
    * 添加菜单/权限
    */
-  const handleAdd = (type: MenuType, row?: AppRouteRecord): void => {
-    void openMenuDialog({
-      row: {},
-      type,
-      parent: row,
-      menuTree: tableData.value
-    })
+  const handleAdd = async (type: MenuType, row?: AppRouteRecord): Promise<void> => {
+    try {
+      await openMenuDialog({
+        row: {},
+        type,
+        parent: row,
+        menuTree: await loadCompleteMenuTree()
+      })
+    } catch (error) {
+      showMenuTreeLoadError(error)
+    }
   }
 
   /**
    * 编辑菜单/权限
    * @param row 菜单行数据
    */
-  const handleEdit = (row: AppRouteRecord): void => {
-    void openMenuDialog({
-      row,
-      parent: row,
-      menuTree: tableData.value
-    })
+  const handleEdit = async (row: AppRouteRecord): Promise<void> => {
+    try {
+      await openMenuDialog({
+        row,
+        parent: row,
+        menuTree: await loadCompleteMenuTree()
+      })
+    } catch (error) {
+      showMenuTreeLoadError(error)
+    }
   }
 
   /**
    * 提交表单数据
    */
   const handleSubmit = (): void => {
+    completeMenuTreeCache.value = null
+    loadedChildrenByParent.clear()
     void tableQueryRef.value?.refreshData()
   }
 
@@ -473,10 +543,11 @@
    */
   const handleDelete = async (row: AppRouteRecord): Promise<void> => {
     try {
-      const ids = treeUtils
-        .getDescendants(tableData.value, row.id as string, true)
-        ?.map((item) => String(item.id))
-      const descendants = treeUtils.getDescendants(tableData.value, row.id as string, true)
+      if (!row.id) throw new Error('未找到需要删除的菜单')
+
+      const completeMenuTree = await loadCompleteMenuTree()
+      const descendants = treeUtils.getDescendants(completeMenuTree, row.id, true)
+      const ids = descendants.map((item) => String(item.id))
       const blocked = await deleteGuardRef.value?.inspect({
         resourceType: 'menu',
         resourceLabel: '菜单',
@@ -499,27 +570,14 @@
       )
       await deleteMenu({ ids })
       ElMessage.success('菜单删除成功')
-      await tableQueryRef.value?.refreshRemove()
+      completeMenuTreeCache.value = null
+      loadedChildrenByParent.clear()
+      await tableQueryRef.value?.refreshData()
     } catch (error) {
       if (error !== 'cancel') {
         ElMessage.error(getFriendlySupabaseErrorMessage(error, '删除失败'))
       }
     }
-  }
-
-  /**
-   * 切换展开/收起所有菜单
-   */
-  const toggleExpand = (): void => {
-    isExpanded.value = !isExpanded.value
-    expandRowKeys.value = isExpanded.value ? getExpandableRowKeys(tableData.value) : []
-  }
-
-  const getExpandableRowKeys = (rows: AppRouteRecord[]): string[] => {
-    return treeUtils
-      .treeToList(rows)
-      .map((row) => row.id)
-      .filter((id): id is string => id != null)
   }
 
   watch(

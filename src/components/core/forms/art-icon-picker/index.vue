@@ -43,57 +43,59 @@
       </div>
 
       <div class="art-icon-picker__panel">
-        <ElScrollbar ref="scrollbarRef" height="52vh" always @scroll="handleScroll">
-          <div v-if="visibleIcons.length" class="art-icon-picker__grid">
-            <ElTooltip
-              v-for="icon in visibleIcons"
-              :key="icon"
-              :content="icon"
-              placement="top"
-              :show-after="400"
-            >
-              <button
-                type="button"
-                class="art-icon-picker__item"
-                :class="{ 'is-selected': icon === modelValue }"
-                :aria-label="`选择图标 ${icon}`"
-                @click="handleSelect(icon)"
+        <ArtOverlayLoading
+          :loading="loading && !visibleIcons.length"
+          text="正在加载图标库"
+          description="正在同步 Remix Icon 图标集合，请稍候"
+          min-height="52vh"
+        >
+          <ElScrollbar ref="scrollbarRef" height="52vh" always @scroll="handleScroll">
+            <div v-if="visibleIcons.length" class="art-icon-picker__grid">
+              <ElTooltip
+                v-for="icon in visibleIcons"
+                :key="icon"
+                :content="icon"
+                placement="top"
+                :show-after="400"
               >
-                <ArtSvgIcon :icon="icon" class="art-icon-picker__icon" />
-              </button>
-            </ElTooltip>
-          </div>
+                <button
+                  type="button"
+                  class="art-icon-picker__item"
+                  :class="{ 'is-selected': icon === modelValue }"
+                  :aria-label="`选择图标 ${icon}`"
+                  @click="handleSelect(icon)"
+                >
+                  <ArtSvgIcon :icon="icon" class="art-icon-picker__icon" />
+                </button>
+              </ElTooltip>
+            </div>
 
-          <div v-else-if="loading" class="art-icon-picker__state">
-            <ElIcon class="is-loading" :size="28"><Loading /></ElIcon>
-            <span>正在加载图标...</span>
-          </div>
+            <div v-else-if="loadError" class="art-icon-picker__state">
+              <ArtEmptyState
+                title="图标数据加载失败"
+                description="请检查网络连接后重新加载。"
+                :visual-size="82"
+                size="compact"
+              >
+                <ElButton type="primary" @click="loadIcons(true)">重新加载</ElButton>
+              </ArtEmptyState>
+            </div>
 
-          <div v-else-if="loadError" class="art-icon-picker__state">
             <ArtEmptyState
-              title="图标数据加载失败"
-              description="请检查网络连接后重新加载。"
+              v-else
+              title="没有匹配的图标"
+              description="尝试使用更简短的关键词。"
               :visual-size="82"
               size="compact"
-            >
-              <ElButton type="primary" @click="loadIcons(true)">重新加载</ElButton>
-            </ArtEmptyState>
+              class="art-icon-picker__state"
+            />
+          </ElScrollbar>
+
+          <div class="art-icon-picker__summary">
+            <span> 已显示 {{ visibleIcons.length }} / {{ filteredIcons.length }} 个图标 </span>
+            <span v-if="hasMore">向下滚动加载更多</span>
           </div>
-
-          <ArtEmptyState
-            v-else
-            title="没有匹配的图标"
-            description="尝试使用更简短的关键词。"
-            :visual-size="82"
-            size="compact"
-            class="art-icon-picker__state"
-          />
-        </ElScrollbar>
-
-        <div class="art-icon-picker__summary">
-          <span> 已显示 {{ visibleIcons.length }} / {{ filteredIcons.length }} 个图标 </span>
-          <span v-if="hasMore">向下滚动加载更多</span>
-        </div>
+        </ArtOverlayLoading>
       </div>
 
       <template #footer="{ api }">
@@ -108,7 +110,8 @@
 
 <script setup lang="ts">
   import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
-  import { Loading, Picture, Search } from '@element-plus/icons-vue'
+  import ArtOverlayLoading from '@/components/core/feedback/art-overlay-loading/index.vue'
+  import { Picture, Search } from '@element-plus/icons-vue'
   import type { ScrollbarInstance } from 'element-plus'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'

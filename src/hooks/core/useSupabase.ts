@@ -2,7 +2,16 @@ import { supabase } from '@/plugins/supabase'
 import { isBoolean } from 'lodash-es'
 import { ElMessage } from 'element-plus'
 import type { QueryResult } from '@/types/api/response'
-import { getFriendlySupabaseErrorMessage, normalizeSupabaseFunctionError } from '@/utils/supabase'
+import {
+  getFriendlySupabaseErrorMessage,
+  isSupabaseSessionFailure,
+  normalizeSupabaseFunctionError
+} from '@/utils/supabase'
+import {
+  notifySupabaseSessionExpired,
+  refreshSupabaseSessionOnce,
+  SUPABASE_SESSION_EXPIRED_MESSAGE
+} from '@/utils/supabase/session'
 
 export type SupabaseAction = 'select' | 'insert' | 'update' | 'delete' | 'rpc'
 export const WRITE_PERMISSION_DENIED_MESSAGE = '当前账号没有该数据的维护权限'
@@ -34,6 +43,7 @@ interface QueryResponse {
   data?: unknown
   error?: unknown
   count?: number | null
+  status?: number
   response?: {
     json?: () => Promise<unknown>
   }
@@ -140,7 +150,23 @@ export function useSupabase() {
     // Frontend checks are not an authorization boundary. Supabase RLS owns data access control.
     void ignoreCheck
 
-    const { data, error, count, response } = await queryFactory()
+    let queryResponse = await queryFactory()
+    let sessionFailure = isSupabaseSessionFailure(queryResponse, queryResponse.error)
+    let sessionFailureHandled = false
+
+    if (sessionFailure) {
+      const refreshedSession = await refreshSupabaseSessionOnce()
+      if (refreshedSession) {
+        queryResponse = await queryFactory()
+        sessionFailure = isSupabaseSessionFailure(queryResponse, queryResponse.error)
+      }
+
+      if (sessionFailure) {
+        sessionFailureHandled = await notifySupabaseSessionExpired()
+      }
+    }
+
+    const { data, error, count, response } = queryResponse
     if (error) {
       let responseJson: unknown
       try {
@@ -152,13 +178,14 @@ export function useSupabase() {
       const responseBody = responseJson ?? (normalizedError !== error ? normalizedError : undefined)
       const responseError = isPlainObject(responseBody) ? responseBody : undefined
       const queryError = isPlainObject(error) ? error : undefined
-      const message =
-        options.formatErrorMessage?.(error, responseBody) ||
-        getFriendlySupabaseErrorMessage(
-          [responseError, queryError, normalizedError, error],
-          options.errorMessage
-        )
-      if (showMessage || showErrorMessage) {
+      const message = sessionFailure
+        ? SUPABASE_SESSION_EXPIRED_MESSAGE
+        : options.formatErrorMessage?.(error, responseBody) ||
+          getFriendlySupabaseErrorMessage(
+            [responseError, queryError, normalizedError, error],
+            options.errorMessage
+          )
+      if ((showMessage || showErrorMessage) && !sessionFailureHandled) {
         ElMessage.error(message)
       }
       if (breakReturn) {

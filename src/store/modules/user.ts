@@ -171,34 +171,30 @@ export const useUserStore = defineStore(
       if (currentUserId) {
         localStorage.setItem(StorageConfig.LAST_USER_ID_KEY, String(currentUserId))
       }
-      await logout()
-      // 清空用户信息
-      info.value = {}
-      // 重置登录状态
-      isLogin.value = false
-      // 重置锁屏状态
-      isLock.value = false
-      // 清空锁屏密码
-      lockPassword.value = ''
-      // 清空访问令牌
-      accessToken.value = ''
-      // 清空刷新令牌
-      refreshToken.value = ''
-      // 注意：不清空工作台标签页，等下次登录时根据用户判断
-      // 移除iframe路由缓存
-      sessionStorage.removeItem('iframeRoutes')
-      // 清空主页路径
-      useMenuStore().setHomePath('')
-      // 重置路由状态
-      resetRouterState(500)
-      // 跳转到登录页，携带当前路由作为 redirect 参数
-      const currentRoute = router.currentRoute.value
-      const redirect =
-        redirectTarget ?? (currentRoute.path !== '/auth/login' ? currentRoute.fullPath : undefined)
-      await router.push({
-        name: 'Login',
-        query: redirect ? { redirect } : undefined
-      })
+      try {
+        await logout()
+      } finally {
+        // 即使远端会话已不可用，也必须清掉本地持久化登录壳。
+        info.value = {}
+        isLogin.value = false
+        isLock.value = false
+        lockPassword.value = ''
+        accessToken.value = ''
+        refreshToken.value = ''
+        // 注意：不清空工作台标签页，等下次登录时根据用户判断
+        sessionStorage.removeItem('iframeRoutes')
+        useMenuStore().setHomePath('')
+        resetRouterState(500)
+
+        const currentRoute = router.currentRoute.value
+        const redirect =
+          redirectTarget ??
+          (currentRoute.path !== '/auth/login' ? currentRoute.fullPath : undefined)
+        await router.push({
+          name: 'Login',
+          query: redirect ? { redirect } : undefined
+        })
+      }
     }
 
     /**

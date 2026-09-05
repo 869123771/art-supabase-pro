@@ -83,11 +83,11 @@
     fms: 'ri:bank-card-line',
     hr: 'ri:team-line',
     mdm: 'ri:database-2-line',
-    mes: 'ri:factory-line',
+    mes: 'ri:tools-line',
     smis: 'ri:shield-check-line',
     tms: 'ri:apps-2-line',
     vms: 'ri:truck-line',
-    wms: 'ri:warehouse-line',
+    wms: 'ri:store-3-line',
     docs: 'ri:book-open-line'
   }
 
