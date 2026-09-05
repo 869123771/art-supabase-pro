@@ -1,0 +1,1 @@
+import{Et as e}from"./common-utils-BqyWzPML.js";function t(t,n,r){let i=String(e(t,n)??``),a=String(e(t,r)??``);return a?`${i}（${a}）`:i}export{t};

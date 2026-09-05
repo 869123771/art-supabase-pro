@@ -1,1 +1,0 @@
-import{Dt as e,Kt as t,vt as n}from"./framework-CEwusMeK.js";import{t as r}from"./document-page-CrIW4iIV.js";var i=e({name:`SmisHazardousWasteInbound`,__name:`index`,setup(e){return(e,i)=>(t(),n(r,{direction:`inbound`}))}});export{i as default};

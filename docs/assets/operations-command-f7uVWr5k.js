@@ -1,0 +1,1 @@
+import{Ot as e,qt as t,yt as n}from"./framework-DJQMI0NS.js";import{t as r}from"./enterprise-big-screen-DDcVif-1.js";var i=e({name:`OperationsCommand`,__name:`index`,setup(e){return(e,i)=>(t(),n(r,{mode:`operations`}))}});export{i as default};

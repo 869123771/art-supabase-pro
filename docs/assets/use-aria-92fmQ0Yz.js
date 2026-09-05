@@ -1,0 +1,1 @@
+import{P as e}from"./common-utils-BqyWzPML.js";import{mt as t}from"./style-nJerGBDB.js";var n=t({ariaLabel:String,ariaOrientation:{type:String,values:[`horizontal`,`vertical`,`undefined`]},ariaControls:String}),r=t=>e(n,t);export{r as t};

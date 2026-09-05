@@ -1,1 +1,0 @@
-import{H as e}from"./framework-CEwusMeK.js";var t=()=>e&&/firefox/i.test(window.navigator.userAgent),n=()=>e&&/android/i.test(window.navigator.userAgent);export{t as n,n as t};

@@ -1,1 +1,0 @@
-import{Dt as e,Kt as t,vt as n}from"./framework-CEwusMeK.js";import{t as r}from"./enterprise-big-screen-Cu4kskzs.js";var i=e({name:`BusinessCockpit`,__name:`index`,setup(e){return(e,i)=>(t(),n(r,{mode:`business`}))}});export{i as default};
