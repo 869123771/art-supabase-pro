@@ -69,6 +69,7 @@
   .art-overlay-loading {
     position: relative;
     min-width: 0;
+    height: 100%;
 
     &.is-loading:not(.is-overlay) {
       min-height: min(var(--art-overlay-loading-min-height), calc(100dvh - 220px));
@@ -177,6 +178,7 @@
 
     &__content {
       min-width: 0;
+      height: 100%;
     }
 
     &.is-loading &__content {

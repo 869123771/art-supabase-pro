@@ -42,12 +42,11 @@
         class="dict-type-tree__virtual-tree"
         :data="tree.data"
         :height="treeHeight"
-        :item-size="40"
+        :item-size="TREE_ROW_HEIGHT"
         :props="tree.props"
         :filter-method="filterNode"
         :default-expanded-keys="tree.expandedKeys"
         highlight-current
-        scrollbar-always-on
         @node-click="handleNodeClick"
         @node-expand="handleNodeExpand"
         @node-collapse="handleNodeCollapse"
@@ -260,6 +259,7 @@
   const treeRef = ref<TreeV2Instance>()
   const treeViewportRef = ref<HTMLElement>()
   const dictTypeDialogRef = ref<DictTypeDialogExpose>()
+  const TREE_ROW_HEIGHT = 40
   const { height: viewportHeight } = useElementSize(treeViewportRef)
   const treeHeight = computed(() => Math.max(Math.floor(viewportHeight.value), 1))
   const tree = reactive<TreeState>({

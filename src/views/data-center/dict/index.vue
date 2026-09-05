@@ -113,9 +113,10 @@
   type DictDialogOpenData = Partial<DictListItem> & {
     dictTypeCode?: string
     dictTypeName?: string
+    cascadeParentTypeId?: string | null
+    cascadeParentTypeName?: string
   }
   type DictTypeItem = Api.DataCenter.DictTypeItem
-  const crossTypeCascadeDictCodes = new Set(['smisSecondaryHazardCategory', 'smisHazardContent'])
 
   interface DictDialogExpose {
     handleOpen: (data?: DictDialogOpenData) => Promise<void>
@@ -390,7 +391,9 @@
       typeId: table.currentDictType.id,
       parentId: parent?.id,
       dictTypeCode: table.currentDictType.code,
-      dictTypeName: table.currentDictType.name
+      dictTypeName: table.currentDictType.name,
+      cascadeParentTypeId: table.currentDictType.cascadeParentTypeId,
+      cascadeParentTypeName: table.currentDictType.cascadeParentType?.name
     })
   }
 
@@ -398,12 +401,14 @@
     void dictDialogRef.value?.handleOpen({
       ...row,
       dictTypeCode: table.currentDictType?.code,
-      dictTypeName: table.currentDictType?.name
+      dictTypeName: table.currentDictType?.name,
+      cascadeParentTypeId: table.currentDictType?.cascadeParentTypeId,
+      cascadeParentTypeName: table.currentDictType?.cascadeParentType?.name
     })
   }
 
   const getRowMoreActions = (): ButtonMoreItem[] => [
-    ...(crossTypeCascadeDictCodes.has(table.currentDictType?.code || '')
+    ...(table.currentDictType?.cascadeParentTypeId
       ? []
       : [
           {

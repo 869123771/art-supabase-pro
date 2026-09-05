@@ -42,10 +42,9 @@
           class="role-permission-dialog__tree"
           :data="menuList"
           :height="treeHeight"
-          :item-size="40"
+          :item-size="TREE_ROW_HEIGHT"
           :default-expanded-keys="initialExpandedKeys"
           show-checkbox
-          scrollbar-always-on
           :check-strictly="!isCascadeCheck"
           :filter-method="filterMenuNode"
           :props="treeProps"
@@ -121,7 +120,7 @@
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import ArtAsyncState from '@/components/core/feedback/art-async-state/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
-  import { ElTreeV2 } from 'element-plus'
+  import { ElTreeV2, type TreeV2Instance } from 'element-plus'
   import { formatMenuTitle } from '@/utils/router'
   import TreeUtils from '@utils/tree'
   import { omit, uniq } from 'lodash-es'
@@ -142,21 +141,13 @@
     searchText: string
   }
 
-  interface PermissionTreeExpose {
-    filter: (query: string) => void
-    getCheckedKeys: () => TreeKey[]
-    getHalfCheckedKeys: () => TreeKey[]
-    setCheckedKeys: (keys: TreeKey[]) => void
-    setExpandedKeys: (keys: TreeKey[]) => void
-  }
-
   interface Emits {
     (e: 'success'): void
   }
 
   const emit = defineEmits<Emits>()
   const dialogRef = ref<ArtDialogExpose<RoleListItem>>()
-  const treeRef = ref<PermissionTreeExpose>()
+  const treeRef = ref<TreeV2Instance>()
   const treeViewportRef = ref<HTMLElement>()
   const roleData = shallowRef<RoleListItem>()
   const menuList = ref<PermissionTreeNode[]>([])
@@ -169,6 +160,7 @@
   const selectedCount = ref(0)
   const initialExpandedKeys = ref<TreeKey[]>([])
   const manualExpandedKeys = new Set<TreeKey>()
+  const TREE_ROW_HEIGHT = 40
   const { height: viewportHeight } = useElementSize(treeViewportRef)
   const treeHeight = computed(() => Math.max(Math.floor(viewportHeight.value), 1))
 
@@ -284,6 +276,8 @@
       menuList.value = []
     } finally {
       contentLoading.value = false
+      await nextTick()
+      treeRef.value?.scrollTo(0)
     }
   }
 
@@ -343,6 +337,7 @@
     if (!tree) return
 
     tree.filter(value)
+    tree.scrollTo(0)
     if (!value.trim()) {
       tree.setExpandedKeys([...manualExpandedKeys])
     }
@@ -389,8 +384,9 @@
     roleData.value = data
     await dialogRef.value?.handleOpen(data, {
       title: '配置菜单权限',
-      size: 'md',
-      contentHeight: '66vh',
+      subtitle: `为“${data.roleName}”配置可访问的菜单和操作权限`,
+      size: 'lg',
+      contentHeight: 'min(68vh, 640px)',
       dialogProps: {
         class: 'el-dialog-border',
         bodyClass: 'role-permission-dialog-shell'
@@ -418,6 +414,11 @@
     .role-permission-dialog-shell .art-dialog__scrollbar > .el-scrollbar__wrap > .el-scrollbar__view
   ),
   :global(.role-permission-dialog-shell .art-dialog__content) {
+    height: 100%;
+  }
+
+  :global(.role-permission-dialog-shell .art-overlay-loading),
+  :global(.role-permission-dialog-shell .art-overlay-loading__content) {
     height: 100%;
   }
 
@@ -515,7 +516,9 @@
 
     &__tree-viewport {
       flex: 1;
+      width: 100%;
       min-height: 0;
+      overflow: hidden;
     }
 
     &__state {

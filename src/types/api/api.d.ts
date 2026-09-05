@@ -657,6 +657,8 @@ declare namespace Api {
       id?: string
       tenantId?: string
       parentId?: string | null
+      cascadeParentTypeId?: string | null
+      cascadeParentType?: Pick<DictTypeItem, 'id' | 'name' | 'code'> | null
       nodeType: DictTypeNodeType
       name: string
       code: string

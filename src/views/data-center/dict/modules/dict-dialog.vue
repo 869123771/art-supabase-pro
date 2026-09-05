@@ -1,15 +1,17 @@
 <template>
-  <ArtDialog ref="dialogRef">
+  <ArtDialog ref="dialogRef" size="lg">
     <ArtForm
       ref="formRef"
       v-model="form.data"
       :items="form.items"
       :rules="form.rules"
       :span="12"
-      :gutter="20"
-      label-width="100px"
+      :gutter="24"
+      root-class="dict-entry-form"
       :show-reset="false"
       :show-submit="false"
+      :validate-on-rule-change="false"
+      scroll-to-error
     >
       <template #color>
         <el-color-picker v-model="form.data.color" :predefine="elementPlusPresetColors" />
@@ -52,6 +54,8 @@
   type DictFormData = Omit<Partial<DictListItem>, 'tagType'> & {
     dictTypeCode?: string
     dictTypeName: string
+    cascadeParentTypeId?: string | null
+    cascadeParentTypeName?: string
     tagType?: Api.Common.TagType | ''
   }
   interface ArtFormExpose {
@@ -85,6 +89,8 @@
     cascadeParentId: undefined,
     dictTypeCode: '',
     dictTypeName: '',
+    cascadeParentTypeId: null,
+    cascadeParentTypeName: '',
     label: '',
     code: '',
     value: '',
@@ -103,33 +109,21 @@
     { label: '警告', value: 'warning' },
     { label: '危险', value: 'danger' }
   ]
-  interface CascadeParentConfig {
-    parentTypeCode: string
-    label: string
-    placeholder: string
-    help: string
-  }
-  const cascadeParentConfigs: Record<string, CascadeParentConfig> = {
-    smisSecondaryHazardCategory: {
-      parentTypeCode: 'smisPrimaryHazardCategory',
-      label: '上级字典项',
-      placeholder: '请选择上级字典项',
-      help: '选择后，该二级类别只会在对应的一级类别下显示'
-    },
-    smisHazardContent: {
-      parentTypeCode: 'smisSecondaryHazardCategory',
-      label: '上级字典项',
-      placeholder: '请选择上级字典项',
-      help: '选择后，该隐患内容只会在对应的二级类别下显示'
-    }
-  }
-  function getCascadeParentConfig(): CascadeParentConfig | undefined {
-    return cascadeParentConfigs[form.value.data.dictTypeCode || '']
-  }
+  const hasCascadeParentType = (): boolean => !!form.value.data.cascadeParentTypeId
+  const getParentFieldKey = (): 'cascadeParentId' | 'parentId' =>
+    hasCascadeParentType() ? 'cascadeParentId' : 'parentId'
+  const getParentTypeName = (): string =>
+    form.value.data.cascadeParentTypeName || form.value.data.dictTypeName || '字典项'
+  const getParentFieldLabel = (): string =>
+    hasCascadeParentType() ? `所属${getParentTypeName()}` : '上级字典项'
+  const getParentPlaceholder = (): string =>
+    hasCascadeParentType() ? `请选择${getParentTypeName()}` : '不选择则为一级字典项'
+  const getParentDescription = (): string =>
+    hasCascadeParentType()
+      ? `必选。选择后，“${form.value.data.dictTypeName}”只会在对应的“${getParentTypeName()}”下显示；若列表为空，请先在“${getParentTypeName()}”中新增可用字典项。`
+      : '可选。不选择则创建为一级字典项；选择后将作为所选字典项的下级。'
   const getParentTypeId = (): string => {
-    const cascadeConfig = getCascadeParentConfig()
-    if (!cascadeConfig) return String(form.value.data.typeId || '')
-    return String(getDictMap.value[cascadeConfig.parentTypeCode]?.[0]?.typeId || '')
+    return String(form.value.data.cascadeParentTypeId || form.value.data.typeId || '')
   }
   const form: Ref<FormGroup> = ref({
     data: cloneDeep(dataDefault),
@@ -137,22 +131,25 @@
       (): FormItem[] =>
         [
           {
+            label: '归属与层级',
+            key: 'ownershipSection',
+            type: 'divider',
+            span: 24
+          },
+          {
             label: '所属类型',
             key: 'dictTypeName',
             type: 'input',
-            span: 24,
             props: {
-              placeholder: '请输入所属类型',
-              clearable: true,
+              placeholder: '所属字典类型',
               disabled: true
             }
           },
           {
-            label: getCascadeParentConfig()?.label || '上级字典项',
-            key: getCascadeParentConfig() ? 'cascadeParentId' : 'parentId',
+            label: getParentFieldLabel(),
+            key: getParentFieldKey(),
             type: 'treeSelect',
-            span: 24,
-            help: getCascadeParentConfig()?.help,
+            description: getParentDescription(),
             api: fetchGetDictListByTypeId,
             immediate: false,
             params: {},
@@ -183,13 +180,20 @@
               checkStrictly: true,
               defaultExpandAll: true,
               renderAfterExpand: false,
-              placeholder: getCascadeParentConfig()?.placeholder || '不选择则为一级字典项',
+              placeholder: getParentPlaceholder(),
+              emptyText: `暂无可选的${getParentTypeName()}`,
               props: {
                 label: 'label',
                 value: 'id',
                 children: 'children'
               }
             }
+          },
+          {
+            label: '字典内容',
+            key: 'contentSection',
+            type: 'divider',
+            span: 24
           },
           {
             label: '字典标签',
@@ -228,6 +232,12 @@
             }
           },
           {
+            label: '展示设置',
+            key: 'presentationSection',
+            type: 'divider',
+            span: 24
+          },
+          {
             label: '国际化范围',
             key: 'i18nScope',
             type: 'radioGroup',
@@ -247,9 +257,12 @@
             label: '排序',
             key: 'sort',
             type: 'number',
-            help: '值越小越靠前',
+            description: '值越小，显示位置越靠前。',
             props: {
-              placeholder: '请输入排序'
+              placeholder: '请输入排序',
+              min: 0,
+              step: 1,
+              stepStrictly: true
             }
           },
           {
@@ -261,6 +274,12 @@
             label: '标签样式',
             key: 'tagType',
             slots: 'tagType'
+          },
+          {
+            label: '补充说明',
+            key: 'descriptionSection',
+            type: 'divider',
+            span: 24
           },
           {
             label: '备注信息',
@@ -295,12 +314,12 @@
           }
         ],
         value: [{ required: true, message: '字典值不能为空', trigger: 'change' }],
-        ...(getCascadeParentConfig()
+        ...(hasCascadeParentType()
           ? {
               cascadeParentId: [
                 {
                   required: true,
-                  message: getCascadeParentConfig()?.placeholder,
+                  message: getParentPlaceholder(),
                   trigger: 'change'
                 }
               ]
@@ -327,12 +346,12 @@
     }
     await dialogRef.value?.handleOpen(data, {
       title: isEdit.value ? '编辑字典' : '新增字典',
-      width: '60%',
-      contentMaxHeight: '70vh',
+      subtitle: `维护“${form.value.data.dictTypeName}”的取值、层级与展示方式`,
+      size: 'lg',
+      confirmText: isEdit.value ? '保存更改' : '创建字典项',
+      contentMaxHeight: 'min(72vh, calc(100vh - 200px))',
       onOpen: async () => {
-        await formRef.value?.reloadOptions(
-          getCascadeParentConfig() ? 'cascadeParentId' : 'parentId'
-        )
+        await formRef.value?.reloadOptions(getParentFieldKey())
       },
       onConfirm: handleSubmit,
       onReset: handleResetFields
@@ -357,6 +376,8 @@
         omit(rest, [
           'dictTypeName',
           'dictTypeCode',
+          'cascadeParentTypeId',
+          'cascadeParentTypeName',
           'children',
           'tenantId',
           'createBy',

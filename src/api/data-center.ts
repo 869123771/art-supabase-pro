@@ -3,6 +3,7 @@ import { WRITE_PERMISSION_DENIED_MESSAGE } from '@/hooks/core/useSupabase'
 import type { QueryResult } from '@/types/api/response'
 import { applyFilters, fetchAllRangePages, FilterSpec } from '@/utils/supabase'
 import { invokeSupabaseFunctionWithSessionRecovery } from '@/utils/supabase/functions'
+import { pick } from 'lodash-es'
 import TreeUtils from '@/utils/tree'
 
 const { supabase, keysToSnakeDeep, responseHandle } = useSupabase()
@@ -11,6 +12,10 @@ type DataCenterQueryResult<T> = QueryResult<T>
 type DictionaryWithType = Api.DataCenter.DictListItem & {
   dictTypeTable: { code: string; name: string }
 }
+export type DictionaryTypeOption = Pick<
+  Api.DataCenter.DictTypeItem,
+  'id' | 'name' | 'code' | 'cascadeParentTypeId'
+>
 
 const DICTIONARY_BATCH_SIZE = 500
 const dictTypeTreeUtils = new TreeUtils({
@@ -69,12 +74,45 @@ export async function fetchGetDictTypeList(params: Partial<Api.DataCenter.DictTy
 
   let query = supabase
     .from('sys_dict_type')
-    .select('*', { count: 'exact' })
+    .select('*')
     .order('sort', { ascending: true })
     .order('name', { ascending: true })
 
   query = applyFilters(query, specs, { skipEmpty: true, camelToSnake: false })
-  return await responseHandle(() => query, { ignoreCheck: true })
+  const response = await responseHandle<Api.DataCenter.DictTypeItem[]>(() => query, {
+    ignoreCheck: true
+  })
+  const typeById = new Map((response.data ?? []).map((item) => [item.id, item]))
+
+  return {
+    ...response,
+    data: (response.data ?? []).map((item) => {
+      const parentType = item.cascadeParentTypeId
+        ? typeById.get(item.cascadeParentTypeId)
+        : undefined
+      return {
+        ...item,
+        cascadeParentType: parentType ? pick(parentType, ['id', 'name', 'code']) : null
+      }
+    })
+  }
+}
+
+/** 获取可配置为级联上级的启用字典类型。 */
+export async function fetchGetDictionaryTypeOptions(params: { excludeId?: string } = {}) {
+  let query = supabase
+    .from('sys_dict_type')
+    .select('id, name, code, cascade_parent_type_id')
+    .eq('node_type', 'dictionary')
+    .eq('status', '1')
+    .order('name', { ascending: true })
+
+  if (params.excludeId) query = query.neq('id', params.excludeId)
+
+  return await responseHandle<DictionaryTypeOption[]>(() => query, {
+    ignoreCheck: true,
+    showErrorMessage: true
+  })
 }
 
 /**

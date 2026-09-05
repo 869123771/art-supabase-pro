@@ -5,11 +5,13 @@
       v-model="form.data"
       :items="form.items"
       :rules="form.rules"
-      :span="24"
-      :gutter="20"
-      label-width="100px"
+      :span="12"
+      :gutter="24"
+      root-class="dict-type-form"
       :show-reset="false"
       :show-submit="false"
+      :validate-on-rule-change="false"
+      scroll-to-error
     />
   </ArtDialog>
 </template>
@@ -21,7 +23,12 @@
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
-  import { addDictType, editDictType, fetchGetDictDirectoryTree } from '@/api/data-center'
+  import {
+    addDictType,
+    editDictType,
+    fetchGetDictDirectoryTree,
+    fetchGetDictionaryTypeOptions
+  } from '@/api/data-center'
   import { useUserStore } from '@/store/modules/user'
   import { uniqueValidator } from '@/utils/form/validator'
 
@@ -30,6 +37,7 @@
   interface ArtFormExpose {
     ref: Ref<FormInstance | undefined>
     validate: () => Promise<boolean | void>
+    reloadOptions: (key?: string) => Promise<unknown>
   }
 
   interface OpenOptions {
@@ -55,6 +63,7 @@
   const createInitialForm = (): DictTypeItem => ({
     id: undefined,
     parentId: undefined,
+    cascadeParentTypeId: null,
     nodeType: 'directory',
     name: '',
     code: '',
@@ -68,40 +77,29 @@
     editing: false,
     items: computed<FormItem[]>((): FormItem[] => [
       {
+        label: '节点定义',
+        key: 'definitionSection',
+        type: 'divider',
+        span: 24
+      },
+      {
         label: '节点类型',
         key: 'nodeType',
         type: 'radioGroup',
+        span: 24,
         props: {
           disabled: form.editing,
+          onChange: (value: DictTypeItem['nodeType']) => {
+            if (value === 'directory') {
+              form.data.cascadeParentTypeId = null
+              return
+            }
+            void nextTick(() => formRef.value?.reloadOptions('cascadeParentTypeId'))
+          },
           options: [
             { label: '目录', value: 'directory' },
             { label: '字典类型', value: 'dictionary' }
           ]
-        }
-      },
-      {
-        label: '上级目录',
-        key: 'parentId',
-        type: 'cascader',
-        api: fetchGetDictDirectoryTree,
-        params: {
-          excludeId: form.editing && form.data.nodeType === 'directory' ? form.data.id : undefined
-        },
-        resultField: 'data',
-        labelField: 'name',
-        valueField: 'id',
-        childrenField: 'children',
-        description: '仅展示目录节点；不选择则创建为根节点。',
-        props: {
-          clearable: true,
-          filterable: true,
-          separator: ' / ',
-          placeholder: '请选择上级目录',
-          style: { width: '100%' },
-          props: {
-            checkStrictly: true,
-            emitPath: false
-          }
         }
       },
       {
@@ -121,10 +119,71 @@
         }
       },
       {
+        label: '层级关系',
+        key: 'hierarchySection',
+        type: 'divider',
+        span: 24
+      },
+      {
+        label: '上级目录',
+        key: 'parentId',
+        type: 'cascader',
+        span: 24,
+        api: fetchGetDictDirectoryTree,
+        params: {
+          excludeId: form.editing && form.data.nodeType === 'directory' ? form.data.id : undefined
+        },
+        resultField: 'data',
+        labelField: 'name',
+        valueField: 'id',
+        childrenField: 'children',
+        description: '可选。仅展示目录节点；不选择则放在字典目录根层级。',
+        props: {
+          clearable: true,
+          filterable: true,
+          separator: ' / ',
+          placeholder: '请选择上级目录',
+          style: { width: '100%' },
+          props: {
+            checkStrictly: true,
+            emitPath: false
+          }
+        }
+      },
+      {
+        label: '级联上级类型',
+        key: 'cascadeParentTypeId',
+        type: 'select',
+        span: 24,
+        hidden: form.data.nodeType !== 'dictionary',
+        api: fetchGetDictionaryTypeOptions,
+        immediate: false,
+        params: {
+          excludeId: form.editing ? form.data.id : undefined
+        },
+        resultField: 'data',
+        labelField: 'name',
+        valueField: 'id',
+        labelFn: (option) => `${String(option.name ?? '')} · ${String(option.code ?? '')}`,
+        description:
+          '可选。配置后，本类型的每个字典项都必须归属到所选上级类型的一个字典项；适用于一级、二级等分类级联。',
+        props: {
+          clearable: true,
+          filterable: true,
+          placeholder: '请选择级联上级类型'
+        }
+      },
+      {
+        label: '展示设置',
+        key: 'presentationSection',
+        type: 'divider',
+        span: 24
+      },
+      {
         label: '排序',
         key: 'sort',
         type: 'number',
-        help: '值越小越靠前',
+        description: '值越小，显示位置越靠前。',
         props: {
           min: 0,
           step: 1,
@@ -140,9 +199,16 @@
         }
       },
       {
+        label: '补充说明',
+        key: 'descriptionSection',
+        type: 'divider',
+        span: 24
+      },
+      {
         label: '描述',
         key: 'remark',
         type: 'input',
+        span: 24,
         props: {
           type: 'textarea',
           rows: 4,
@@ -176,7 +242,9 @@
 
   const normalizePayload = (data: DictTypeItem): DictTypeItem => ({
     ...data,
-    parentId: data.parentId === '' ? null : data.parentId
+    parentId: data.parentId === '' ? null : data.parentId,
+    cascadeParentTypeId:
+      data.nodeType === 'dictionary' && data.cascadeParentTypeId ? data.cascadeParentTypeId : null
   })
 
   const handleOpen = async (data?: DictTypeItem, options: OpenOptions = {}): Promise<void> => {
@@ -196,6 +264,20 @@
           ? '编辑字典目录'
           : '编辑字典类型'
         : '新增字典节点',
+      subtitle: form.editing
+        ? '调整节点归属、级联关系与展示设置'
+        : '先定义节点用途，再配置目录归属与级联关系',
+      size: 'md',
+      confirmText: form.editing ? '保存更改' : '创建节点',
+      contentMaxHeight: 'min(72vh, calc(100vh - 200px))',
+      onOpen: async () => {
+        await Promise.all([
+          formRef.value?.reloadOptions('parentId'),
+          form.data.nodeType === 'dictionary'
+            ? formRef.value?.reloadOptions('cascadeParentTypeId')
+            : undefined
+        ])
+      },
       onConfirm: handleSubmit,
       onReset: resetForm
     })
