@@ -1,6 +1,6 @@
 <!-- 更多按钮 -->
 <template>
-  <div>
+  <div class="art-button-more">
     <ElDropdown v-if="hasAnyAuthItem">
       <ArtIconButton
         icon="ri:more-2-fill"
@@ -15,8 +15,8 @@
               :disabled="item.disabled"
               @click="handleClick(item)"
             >
-              <div class="flex-c gap-2" :style="{ color: item.color }">
-                <ArtSvgIcon v-if="item.icon" :icon="item.icon" />
+              <div class="art-button-more__item" :style="{ color: item.color }">
+                <ArtSvgIcon v-if="item.icon" :icon="item.icon" :style="{ color: item.iconColor }" />
                 <span>{{ item.label }}</span>
               </div>
             </ElDropdownItem>
@@ -92,3 +92,22 @@
     emit('click', item)
   }
 </script>
+
+<style scoped lang="scss">
+  .art-button-more {
+    display: inline-flex;
+    flex: none;
+
+    &__item {
+      display: inline-flex;
+      gap: 8px;
+      align-items: center;
+      min-width: max-content;
+      white-space: nowrap;
+
+      :deep(.art-svg-icon) {
+        flex: none;
+      }
+    }
+  }
+</style>
