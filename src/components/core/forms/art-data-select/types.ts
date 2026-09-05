@@ -113,6 +113,8 @@ export interface ArtDataSelectEmits {
   (e: 'clear'): void
   (e: 'open'): void
   (e: 'close'): void
+  /** Raw diagnostic cause; the component owns inline recovery feedback, not a toast. */
+  (e: 'load-error', error: unknown): void
 }
 
 export interface ArtDataSelectExpose {

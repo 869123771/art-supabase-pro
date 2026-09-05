@@ -430,6 +430,7 @@ function useTableImpl<TApiFn extends AnyTableApiFn, TRecord>(
       loadingState.value = 'error'
       data.value = []
       const tableError = handleError(err, '获取表格数据失败')
+      error.value = tableError
       throw tableError
     } finally {
       // 只有当前控制器是活跃的才清空

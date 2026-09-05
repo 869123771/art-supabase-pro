@@ -256,6 +256,7 @@ export const useUserStore = defineStore(
 
     const fetchUserInfo = async (signal?: AbortSignal): Promise<boolean> => {
       const { data, error, session } = await fetchGetUserInfo(signal)
+      signal?.throwIfAborted()
       if (error) {
         throw new Error('用户资料加载失败', { cause: error })
       }

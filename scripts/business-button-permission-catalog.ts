@@ -31,6 +31,62 @@ const crud = (
 ]
 
 export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] = [
+  {
+    menuName: 'MdmOperationTemplate',
+    buttons: [
+      ...crud({ view: true, export: true }),
+      button('Copy', '复制'),
+      button('Enable', '启用'),
+      button('Disable', '禁用'),
+      button('Bind', '绑定'),
+      button('Unbind', '解绑')
+    ]
+  },
+  {
+    menuName: 'MdmWorkCenter',
+    buttons: [
+      ...crud({ view: true, import: true, export: true }),
+      button('Copy', '复制'),
+      button('ExportQr', '导出二维码'),
+      button('Configure', '设置'),
+      button('Personnel', '人员安排'),
+      button('Devices', '配置设备'),
+      button('UpdateProcess', '更新产品工艺')
+    ]
+  },
+  {
+    menuName: 'MdmPersonnelWorkCenter',
+    buttons: crud({ view: true, export: true })
+  },
+  { menuName: 'MdmProcessRoute', buttons: crud({ view: true, export: true }) },
+  {
+    menuName: 'MdmProductionDepartment',
+    buttons: [
+      ...crud({ view: true, import: true, export: true }),
+      button('Enable', '启用'),
+      button('Disable', '禁用')
+    ]
+  },
+  {
+    menuName: 'MdmProductionPersonnel',
+    buttons: [
+      ...crud({ view: true, import: true, export: true }),
+      button('Enable', '启用'),
+      button('Disable', '禁用')
+    ]
+  },
+  {
+    menuName: 'MdmFactoryCalendar',
+    buttons: [
+      button('View', '查看'),
+      button('Configure', '设置日历'),
+      button('AddPattern', '新增轮班模式'),
+      button('EditPattern', '编辑轮班模式'),
+      button('DeletePattern', '删除轮班模式'),
+      button('ReferencePattern', '参考轮班模式'),
+      button('Reminder', '设置日历提醒')
+    ]
+  },
   { menuName: 'TmsCargo', buttons: crud({ import: true, export: true }) },
   { menuName: 'TmsCarrier', buttons: crud({ view: true, import: true, export: true }) },
   { menuName: 'TmsCarrierDetail', buttons: [button('AiAnalyze', 'AI 经营评估')] },

@@ -1,5 +1,6 @@
 import { useSupabase } from '@/hooks'
 import { createFriendlySupabaseError } from '@/utils/supabase'
+import { buildOrIlikeFilter } from '@/utils/supabase/search'
 
 const { supabase, responseHandle } = useSupabase()
 
@@ -52,7 +53,7 @@ export async function fetchWorkflowDefinitionList(params: WorkflowDefinitionList
     .order('update_time', { ascending: false })
     .range(from, to)
 
-  if (keyword) query = query.or(`code.ilike.%${keyword}%,name.ilike.%${keyword}%`)
+  if (keyword) query = query.or(buildOrIlikeFilter(['code', 'name'], keyword))
   if (businessTypes?.length) query = query.in('business_type', businessTypes)
   else if (businessType) query = query.eq('business_type', businessType)
   if (status) query = query.eq('status', status)

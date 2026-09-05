@@ -1,5 +1,5 @@
 <template>
-  <ArtDialog ref="dialogRef" :loading="contentLoading">
+  <ArtDialog ref="dialogRef" :loading="loadState.loading" @close="invalidatePermissionLoad">
     <div class="role-permission-dialog">
       <section class="role-permission-dialog__context art-card-xs">
         <div class="role-permission-dialog__context-icon" aria-hidden="true">
@@ -7,13 +7,16 @@
         </div>
         <div class="role-permission-dialog__context-copy">
           <div>
-            <strong>{{ roleData?.roleName || '未选择角色' }}</strong>
-            <span>{{ roleData?.roleCode }}</span>
+            <strong :title="roleData?.roleName">{{ roleData?.roleName || '未选择角色' }}</strong>
+            <span :title="roleData?.roleCode">{{ roleData?.roleCode }}</span>
           </div>
           <p>勾选该角色可访问的菜单与按钮权限，保存后对关联用户生效。</p>
         </div>
         <span class="role-permission-dialog__selection-count">
-          已选 {{ selectedCount }} / {{ permissionCount }} 项
+          <template v-if="loadState.ready"
+            >已选 {{ selectedCount }} / {{ permissionCount }} 项</template
+          >
+          <template v-else>{{ loadState.error ? '权限未加载' : '正在加载权限…' }}</template>
         </span>
       </section>
 
@@ -21,6 +24,8 @@
         <ElInput
           v-model="permissionKeyword"
           placeholder="搜索菜单、按钮或权限标识"
+          aria-label="搜索菜单、按钮或权限标识"
+          :disabled="!canEditPermissions"
           clearable
           @input="handlePermissionFilter"
         >
@@ -28,7 +33,7 @@
             <ArtSvgIcon icon="ri:search-line" />
           </template>
         </ElInput>
-        <span v-if="permissionKeyword.trim()">找到 {{ matchedCount }} 个匹配项</span>
+        <span v-if="permissionKeyword.trim()" role="status">找到 {{ matchedCount }} 个匹配项</span>
         <span v-else>搜索会自动展开匹配路径</span>
       </div>
 
@@ -36,8 +41,11 @@
         v-if="menuList.length"
         ref="treeViewportRef"
         class="role-permission-dialog__tree-viewport"
+        :aria-busy="loadState.loading"
+        :inert="permissionSaving || loadState.loading"
       >
         <ElTreeV2
+          v-show="!hasNoSearchMatches"
           ref="treeRef"
           class="role-permission-dialog__tree"
           :data="menuList"
@@ -45,15 +53,20 @@
           :item-size="TREE_ROW_HEIGHT"
           :default-expanded-keys="initialExpandedKeys"
           show-checkbox
-          :check-strictly="!isCascadeCheck"
+          check-strictly
           :filter-method="filterMenuNode"
           :props="treeProps"
-          @check="handleTreeCheck"
+          @check-change="handleTreeCheckChange"
           @node-expand="handleNodeExpand"
           @node-collapse="handleNodeCollapse"
         >
           <template #default="{ data }">
-            <div class="role-permission-dialog__node" :title="data.displayLabel">
+            <div
+              class="role-permission-dialog__node"
+              :title="
+                data.type === 'button' ? `${data.displayLabel} · ${data.name}` : data.displayLabel
+              "
+            >
               <ArtSvgIcon
                 class="role-permission-dialog__node-icon"
                 :icon="getNodeIcon(data.type)"
@@ -68,14 +81,27 @@
             </div>
           </template>
         </ElTreeV2>
+        <ArtAsyncState
+          v-if="hasNoSearchMatches"
+          empty
+          empty-text="未找到匹配的菜单或按钮"
+          empty-description="换个关键词或清空搜索，已勾选的权限不会改变。"
+          :empty-image-size="72"
+          :min-height="180"
+        >
+          <template #empty-action>
+            <ElButton @click="clearPermissionFilter">清空搜索</ElButton>
+          </template>
+        </ArtAsyncState>
       </div>
 
       <ArtAsyncState
-        v-else-if="!contentLoading"
+        v-else-if="!loadState.loading"
         class="role-permission-dialog__state"
-        :error="loadError ? '菜单权限加载失败，请稍后重试' : null"
-        :empty="!loadError"
+        :error="loadState.error ? '菜单权限加载失败，未修改现有授权。请重新加载后再保存。' : null"
+        :empty="!loadState.error"
         empty-text="暂无可配置的菜单权限"
+        empty-description="当前没有可配置菜单，现有授权保持不变。"
         :empty-image-size="72"
         :min-height="240"
         @retry="loadPermission"
@@ -84,28 +110,30 @@
 
     <template #footer="{ loading, api }">
       <div class="role-permission-dialog__footer">
-        <ElTooltip content="开启后，选择父菜单会联动其下级菜单与按钮权限" placement="top">
-          <ElCheckbox
-            v-model="isCascadeCheck"
-            :disabled="contentLoading"
-            @change="handleCascadeCheckChange"
-          >
-            父子关联
+        <ElTooltip
+          content="开启本身不会改变当前选择；之后勾选或取消父菜单时，才会同步其下级权限"
+          placement="top"
+        >
+          <ElCheckbox v-model="isCascadeCheck" :disabled="!canEditPermissions">
+            父级联动下级
           </ElCheckbox>
         </ElTooltip>
         <div class="role-permission-dialog__footer-actions">
-          <ElButton @click="toggleExpandAll">
+          <ElButton
+            :disabled="!canEditPermissions || !!permissionKeyword.trim()"
+            @click="toggleExpandAll"
+          >
             {{ isExpandAll ? '全部收起' : '全部展开' }}
           </ElButton>
           <ElTooltip content="作用于全部权限，不受当前搜索条件影响" placement="top">
-            <ElButton @click="toggleSelectAll">
+            <ElButton :disabled="!canEditPermissions" @click="toggleSelectAll">
               {{ isSelectAll ? '取消全选' : '全部选择' }}
             </ElButton>
           </ElTooltip>
           <ElButton
             type="primary"
             :loading="loading"
-            :disabled="contentLoading"
+            :disabled="!canEditPermissions"
             @click="api.handleConfirm"
           >
             保存权限
@@ -145,14 +173,23 @@
     (e: 'success'): void
   }
 
+  interface PermissionLoadState {
+    loading: boolean
+    error: boolean
+    ready: boolean
+  }
+
   const emit = defineEmits<Emits>()
   const dialogRef = ref<ArtDialogExpose<RoleListItem>>()
   const treeRef = ref<TreeV2Instance>()
   const treeViewportRef = ref<HTMLElement>()
   const roleData = shallowRef<RoleListItem>()
   const menuList = ref<PermissionTreeNode[]>([])
-  const contentLoading = ref(false)
-  const loadError = ref(false)
+  const loadState = reactive<PermissionLoadState>({ loading: false, error: false, ready: false })
+  const permissionSaving = ref(false)
+  // A role may be reopened before its previous API calls settle. Only the latest
+  // load may publish data, checked keys, readiness, or scroll position.
+  let loadSequence = 0
   const isExpandAll = ref(false)
   const isSelectAll = ref(false)
   const isCascadeCheck = ref(false)
@@ -184,7 +221,6 @@
     })
   )
   const getCheckedKeys = (): TreeKey[] => treeRef.value?.getCheckedKeys() ?? []
-  const getHalfCheckedKeys = (): TreeKey[] => treeRef.value?.getHalfCheckedKeys() ?? []
 
   const getNodeLabel = (data: AppRouteRecord): string =>
     formatMenuTitle(data.meta?.title ?? '') || data.name || '未命名权限'
@@ -222,13 +258,32 @@
     )
 
   const permissionCount = computed(() => getAllMenuKeys().length)
+  const canEditPermissions = computed(
+    () =>
+      loadState.ready &&
+      !loadState.loading &&
+      !loadState.error &&
+      !permissionSaving.value &&
+      permissionCount.value > 0
+  )
   const matchedCount = computed(() => {
     const keyword = permissionKeyword.value.trim().toLowerCase()
     if (!keyword) return permissionCount.value
     return flatMenuList.value.filter((item) => item.searchText.includes(keyword)).length
   })
+  const hasNoSearchMatches = computed(
+    () => Boolean(permissionKeyword.value.trim()) && matchedCount.value === 0
+  )
+
+  const invalidatePermissionLoad = (): void => {
+    loadSequence += 1
+    loadState.ready = false
+  }
+  onBeforeUnmount(invalidatePermissionLoad)
 
   const resetPermission = (): void => {
+    invalidatePermissionLoad()
+    Object.assign(loadState, { loading: false, error: false, ready: false })
     treeRef.value?.setCheckedKeys([])
     roleData.value = undefined
     menuList.value = []
@@ -237,23 +292,25 @@
     isCascadeCheck.value = false
     permissionKeyword.value = ''
     selectedCount.value = 0
-    loadError.value = false
     initialExpandedKeys.value = []
     manualExpandedKeys.clear()
   }
 
   const loadPermission = async (): Promise<void> => {
-    if (!roleData.value?.id) return
+    const roleId = roleData.value?.id
+    if (!roleId || permissionSaving.value) return
+    const sequence = ++loadSequence
+    const isCurrentLoad = (): boolean => sequence === loadSequence && roleData.value?.id === roleId
 
-    contentLoading.value = true
-    loadError.value = false
+    Object.assign(loadState, { loading: true, error: false, ready: false })
     try {
       const [menuResult, roleMenuResult] = await Promise.all([
         fetchGetEnableMenuList(),
-        getCurrentRoleMenus({ id: roleData.value.id } as AppRouteRecord)
+        getCurrentRoleMenus({ id: roleId })
       ])
+      if (!isCurrentLoad()) return
       if (menuResult.error || roleMenuResult.error) {
-        loadError.value = true
+        loadState.error = true
         menuList.value = []
         return
       }
@@ -265,55 +322,69 @@
         .filter((item): item is PermissionTreeNode => item !== null)
       menuList.value = treeUtils.listToTree(permissionNodes)
       initialExpandedKeys.value = menuList.value.map((item) => item.id)
+      manualExpandedKeys.clear()
       initialExpandedKeys.value.forEach((key) => manualExpandedKeys.add(key))
       await nextTick()
+      if (!isCurrentLoad()) return
       const menuIds = roleMenus.map((item: { menuId: TreeKey }) => item.menuId)
       treeRef.value?.setCheckedKeys(menuIds)
       await nextTick()
+      if (!isCurrentLoad()) return
       handleTreeCheck()
+      loadState.ready = true
     } catch {
-      loadError.value = true
-      menuList.value = []
+      if (isCurrentLoad()) {
+        loadState.error = true
+        menuList.value = []
+      }
     } finally {
-      contentLoading.value = false
-      await nextTick()
-      treeRef.value?.scrollTo(0)
+      if (isCurrentLoad()) {
+        loadState.loading = false
+        await nextTick()
+        if (isCurrentLoad()) treeRef.value?.scrollTo(0)
+      }
     }
   }
 
   const savePermission = async (): Promise<boolean> => {
-    if (!roleData.value?.id) return false
+    const roleId = roleData.value?.id
+    if (!roleId || !canEditPermissions.value || !treeRef.value) return false
+    const sequence = loadSequence
+    permissionSaving.value = true
 
     try {
       const menuIds = getSelectedMenuIds()
       const { error } = await saveRoleMenuList({
-        p_role_id: roleData.value.id,
+        p_role_id: roleId,
         p_menu_ids: menuIds.filter((key): key is string => typeof key === 'string')
       })
-      if (error) return false
+      if (error || sequence !== loadSequence) return false
 
       emit('success')
       return true
     } catch {
       return false
+    } finally {
+      permissionSaving.value = false
     }
   }
 
   const toggleExpandAll = (): void => {
     const tree = treeRef.value
-    if (!tree) return
+    if (!tree || !canEditPermissions.value || permissionKeyword.value.trim()) return
 
     const shouldExpand = !isExpandAll.value
-    const expandedKeys = shouldExpand ? getExpandableMenuKeys() : initialExpandedKeys.value
+    const expandedKeys = shouldExpand ? getExpandableMenuKeys() : []
     tree.setExpandedKeys(expandedKeys)
     manualExpandedKeys.clear()
     expandedKeys.forEach((key) => manualExpandedKeys.add(key))
     isExpandAll.value = shouldExpand
+    tree.scrollTo(0)
   }
 
   const toggleSelectAll = async (): Promise<void> => {
     const tree = treeRef.value
-    if (!tree) return
+    if (!tree || !canEditPermissions.value) return
 
     tree.setCheckedKeys(isSelectAll.value ? [] : getAllMenuKeys())
     await nextTick()
@@ -326,15 +397,26 @@
     selectedCount.value = getSelectedMenuIds().length
   }
 
+  const handleTreeCheckChange = (data: Record<string, unknown>, checked: boolean): void => {
+    const tree = treeRef.value
+    if (!tree) return
+
+    const nodeId = data.id
+    if (isCascadeCheck.value && (typeof nodeId === 'string' || typeof nodeId === 'number')) {
+      tree.setChecked(nodeId, checked, true)
+    }
+    handleTreeCheck()
+  }
+
   const filterMenuNode = (value: string, data: Record<string, unknown>): boolean => {
     if (!value.trim()) return true
     const keyword = value.trim().toLowerCase()
     return typeof data.searchText === 'string' && data.searchText.includes(keyword)
   }
 
-  const applyPermissionFilter = useDebounceFn((value: string): void => {
+  const applyPermissionFilter = useDebounceFn((value: string, sequence: number): void => {
     const tree = treeRef.value
-    if (!tree) return
+    if (!tree || sequence !== loadSequence || !canEditPermissions.value) return
 
     tree.filter(value)
     tree.scrollTo(0)
@@ -344,42 +426,33 @@
   }, 120)
 
   const handlePermissionFilter = (value: string): void => {
-    void applyPermissionFilter(value)
+    void applyPermissionFilter(value, loadSequence)
+  }
+
+  const clearPermissionFilter = (): void => {
+    permissionKeyword.value = ''
+    handlePermissionFilter('')
   }
 
   const handleNodeExpand = (data: Record<string, unknown>): void => {
+    if (permissionKeyword.value.trim()) return
     if (typeof data.id === 'string' || typeof data.id === 'number') {
       manualExpandedKeys.add(data.id)
     }
   }
 
   const handleNodeCollapse = (data: Record<string, unknown>): void => {
+    if (permissionKeyword.value.trim()) return
     if (typeof data.id === 'string' || typeof data.id === 'number') {
       manualExpandedKeys.delete(data.id)
     }
     isExpandAll.value = false
   }
 
-  const getSelectedMenuIds = (): TreeKey[] => {
-    if (!isCascadeCheck.value) {
-      return getCheckedKeys()
-    }
-
-    return uniq([...getCheckedKeys(), ...getHalfCheckedKeys()])
-  }
-
-  const handleCascadeCheckChange = async (): Promise<void> => {
-    const tree = treeRef.value
-    if (!tree) return
-
-    const checkedKeys = getCheckedKeys()
-    await nextTick()
-    tree.setCheckedKeys(checkedKeys)
-    await nextTick()
-    handleTreeCheck()
-  }
+  const getSelectedMenuIds = (): TreeKey[] => getCheckedKeys()
 
   const handleOpen = async (data: RoleListItem): Promise<void> => {
+    if (permissionSaving.value) return
     resetPermission()
     roleData.value = data
     await dialogRef.value?.handleOpen(data, {
@@ -393,6 +466,7 @@
       },
       onOpen: loadPermission,
       onConfirm: savePermission,
+      onClose: () => !permissionSaving.value,
       onReset: resetPermission
     })
   }
@@ -451,6 +525,7 @@
     }
 
     &__context-copy {
+      flex: 1;
       min-width: 0;
 
       > div {
@@ -468,10 +543,14 @@
         }
 
         span {
-          flex: none;
+          flex: 0 1 auto;
+          min-width: 0;
           padding: 1px 7px;
+          overflow: hidden;
+          text-overflow: ellipsis;
           font-size: 11px;
           color: var(--el-text-color-secondary);
+          white-space: nowrap;
           background: var(--el-fill-color-light);
           border-radius: 999px;
         }
@@ -508,8 +587,8 @@
       }
 
       > span {
-        font-size: 11px;
-        color: var(--el-text-color-placeholder);
+        font-size: 12px;
+        color: var(--el-text-color-secondary);
         text-align: right;
       }
     }
@@ -537,6 +616,7 @@
 
     &__node {
       display: flex;
+      flex: 1;
       gap: 7px;
       align-items: center;
       min-width: 0;
@@ -546,14 +626,19 @@
         text-overflow: ellipsis;
         white-space: nowrap;
       }
+
+      :deep(.el-tag) {
+        flex: none;
+      }
     }
 
     &__node-code {
       min-width: 0;
+      max-width: 45%;
       margin-left: auto;
       font-family: var(--art-font-family-mono, ui-monospace, SFMono-Regular, Consolas, monospace);
-      font-size: 11px;
-      color: var(--el-text-color-placeholder);
+      font-size: 12px;
+      color: var(--el-text-color-secondary);
     }
 
     &__node-icon {
@@ -579,6 +664,10 @@
       &__context {
         flex-wrap: wrap;
         align-items: flex-start;
+      }
+
+      &__context-copy {
+        flex-basis: calc(100% - 48px);
       }
 
       &__selection-count {

@@ -11,6 +11,7 @@
     @clear="emit('clear')"
     @open="emit('open')"
     @close="emit('close')"
+    @load-error="(error) => emit('load-error', error)"
   >
     <template v-if="$slots.trigger" #trigger="slotProps">
       <slot name="trigger" v-bind="slotProps" />

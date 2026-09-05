@@ -17,14 +17,8 @@ const requiredPermissionMigrations = [
   'tenant_notification_reminder',
   'backfill_new_button_permissions_for_existing_roles'
 ] as const
-// These versions already exist in the linked production migration history. They
-// repeat the immediately preceding migration byte-for-byte, so keep them for a
-// faithful history checkout while continuing to reject any new duplicates.
-const remoteDuplicateMigrationAllowlist = new Set([
-  '20260823113536_expand_talent_aging_route_and_due_soon.sql',
-  '20260823122825_expand_vms_workflow_smis_decision_workspaces.sql',
-  '20260823123745_optimize_organization_route_first_load.sql'
-])
+// Local migration SQL is intentionally absent; new migrations must remain unique.
+const remoteDuplicateMigrationAllowlist = new Set<string>()
 type ManagedModule =
   'tms' | 'vms' | 'fms' | 'hr' | 'mdm' | 'mes' | 'smis' | 'wms' | 'system' | 'workflow'
 

@@ -69,6 +69,7 @@
       ref="dialogRef"
       :subtitle="subtitle"
       :dialog-props="dialogProps"
+      @close="invalidateLoad"
       @opened="handleDialogOpened"
       @closed="handleDialogClosed"
     >
@@ -113,7 +114,6 @@
           :class="[
             `is-${mode}-mode`,
             {
-              'has-pagination': mode === 'table' && showPagination,
               'has-selected-panel': shouldShowSelectedPanel
             }
           ]"
@@ -131,8 +131,16 @@
                 text="正在加载可选数据…"
                 description="正在获取最新列表，请稍候"
               />
+              <ElScrollbar v-if="loadError" class="art-data-select-dialog__tree-scrollbar">
+                <ArtAsyncState
+                  :error="loadError"
+                  error-title="可选数据加载失败"
+                  size="compact"
+                  @retry="loadData"
+                />
+              </ElScrollbar>
               <ElTable
-                v-if="mode === 'table'"
+                v-else-if="mode === 'table'"
                 ref="tableRef"
                 :data="tableRows"
                 :row-key="getTableRowKey"
@@ -275,14 +283,16 @@
             </div>
 
             <div v-if="mode === 'table' && showPagination" class="art-data-select-dialog__pager">
-              <span>共 {{ total }} 条</span>
+              <span>{{ loadError ? '数量暂不可用' : `共 ${total} 条` }}</span>
               <ElPagination
                 v-model:current-page="page"
                 v-model:page-size="innerPageSize"
                 background
                 layout="prev, pager, next, sizes"
+                :pager-count="5"
                 :page-sizes="pageSizes"
                 :total="total"
+                :disabled="loading || !!loadError"
                 @change="loadData"
               />
             </div>
@@ -317,6 +327,8 @@
                 <ElButton
                   text
                   class="art-data-select-dialog__selected-remove"
+                  :aria-label="`移除 ${getRowLabel(row)}`"
+                  :title="`移除 ${getRowLabel(row)}`"
                   @click="removeDraft(row)"
                 >
                   <ArtSvgIcon icon="ri:close-line" />
@@ -334,6 +346,7 @@
 
 <script setup lang="ts">
   import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
+  import ArtAsyncState from '@/components/core/feedback/art-async-state/index.vue'
   import { get, isEqual, uniqBy } from 'lodash-es'
   import type { Component } from 'vue'
   import type { ComponentPublicInstance } from 'vue'
@@ -409,6 +422,11 @@
   const dialogRef = ref<ArtDialogExpose<void>>()
   const dialogSizePresets: readonly ArtDialogSize[] = ['sm', 'md', 'lg', 'xl', 'full']
   const loading = ref(false)
+  const loadError = shallowRef<Error | null>(null)
+  const isOpen = ref(false)
+  // This generation also owns selection synchronization and dialog-close invalidation;
+  // guarding only the resolved list would still allow stale control updates after nextTick.
+  let loadGeneration = 0
   const keyword = ref('')
   const filterValue = ref<string | number>()
   const page = ref(1)
@@ -572,8 +590,9 @@
     ]).filter((row) => keys.includes(getRowKey(row)))
   }
 
-  const applyDraftToControls = async () => {
+  const applyDraftToControls = async (generation = loadGeneration) => {
     await nextTick()
+    if (generation !== loadGeneration) return
     syncingSelection.value = true
     try {
       if (props.mode === 'table') {
@@ -659,7 +678,9 @@
   }
 
   const loadData = async () => {
+    const generation = ++loadGeneration
     loading.value = true
+    loadError.value = null
     try {
       if (props.apiFn) {
         const result = await props.apiFn({
@@ -670,6 +691,8 @@
             [normalizedFilterKey.value]: filterValue.value
           }
         })
+        if (generation !== loadGeneration) return
+        if (!Array.isArray(result) && result.error) throw result.error
         const list = extractListFromResult(result)
         tableRows.value = props.mode === 'tree' ? normalizeTreeRows(list) : list
         total.value = extractTotalFromResult(result, list)
@@ -677,12 +700,19 @@
         localFilterRows()
       }
       syncConfirmedFromProps()
-      await applyDraftToControls()
+      await applyDraftToControls(generation)
+      if (generation !== loadGeneration) return
       if (props.mode === 'tree') {
         treeRef.value?.filter?.(keyword.value)
       }
+    } catch (cause) {
+      if (generation !== loadGeneration) return
+      tableRows.value = []
+      total.value = 0
+      loadError.value = new Error('请检查网络连接后重新加载，已选内容会保留。', { cause })
+      emit('load-error', cause)
     } finally {
-      loading.value = false
+      if (generation === loadGeneration) loading.value = false
     }
   }
 
@@ -692,7 +722,8 @@
   }
 
   const open = async () => {
-    if (props.disabled) return
+    if (props.disabled || isOpen.value) return
+    isOpen.value = true
     draftRows.value = confirmedRows.value.map((row) => ({ ...row }))
     emit('open')
     const usesSizePreset =
@@ -705,6 +736,7 @@
         : { width: props.dialogWidth }),
       fullscreen: props.fullscreen,
       showFooter: true,
+      confirmDisabled: true,
       dialogProps,
       onOpen: loadData,
       onConfirm: confirm
@@ -712,8 +744,17 @@
   }
 
   const close = () => {
+    invalidateLoad()
     void dialogRef.value?.handleClose(true)
   }
+
+  const invalidateLoad = () => {
+    ++loadGeneration
+    isOpen.value = false
+    loading.value = false
+  }
+
+  onBeforeUnmount(invalidateLoad)
 
   const reload = async () => {
     await loadData()
@@ -745,6 +786,7 @@
   }
 
   const confirm = () => {
+    if (loading.value || loadError.value) return false
     updateConfirmed(draftRows.value, 'confirm')
     return true
   }
@@ -777,13 +819,13 @@
   }
 
   const setSingle = (row: DataSelectRecord) => {
-    if (isRowDisabled(row)) return
+    if (loading.value || loadError.value || isRowDisabled(row)) return
     draftRows.value = [row]
     void applyDraftToControls()
   }
 
   const toggleDraftRow = (row: DataSelectRecord) => {
-    if (isRowDisabled(row)) return
+    if (loading.value || loadError.value || isRowDisabled(row)) return
     const key = getRowKey(row)
     if (props.multiple) {
       if (draftKeys.value.includes(key)) {
@@ -803,14 +845,14 @@
   }
 
   const handleTableSelectionChange = (rows: DataSelectRecord[]) => {
-    if (!props.multiple || syncingSelection.value) return
+    if (!props.multiple || syncingSelection.value || loading.value || loadError.value) return
     const pageKeys = tableRows.value.map((row) => getRowKey(row))
     const persistedRows = draftRows.value.filter((row) => !pageKeys.includes(getRowKey(row)))
     draftRows.value = uniqueRows([...persistedRows, ...rows])
   }
 
   const handleTreeCheck = () => {
-    if (!props.multiple || syncingSelection.value) return
+    if (!props.multiple || syncingSelection.value || loading.value || loadError.value) return
     const checkedRows = (treeRef.value?.getCheckedNodes?.(false, false) ?? []) as DataSelectRecord[]
     draftRows.value = uniqueRows(checkedRows)
   }
@@ -828,6 +870,22 @@
       getRowDescription(data).toLowerCase().includes(normalizedValue)
     )
   }
+
+  watch(
+    [loading, loadError],
+    () => dialogRef.value?.setOptions({ confirmDisabled: loading.value || !!loadError.value }),
+    { flush: 'sync' }
+  )
+
+  watch(
+    () => props.apiFn,
+    () => {
+      ++loadGeneration
+      // The dialog can remain visible while its tenant/source-specific loader changes.
+      if (isOpen.value) handleSearch()
+      else loading.value = false
+    }
+  )
 
   watch(
     () => [props.modelValue, props.selectedData, props.data],
@@ -915,8 +973,16 @@
     color: var(--el-text-color-placeholder);
   }
 
+  .art-data-select-dialog__body {
+    display: flex;
+    flex-direction: column;
+    height: min(548px, calc(100dvh - 260px));
+    min-height: 0;
+  }
+
   .art-data-select-dialog__search {
     display: grid;
+    flex: none;
     grid-template-columns: minmax(0, 1fr);
     gap: 12px;
     margin-bottom: 12px;
@@ -938,9 +1004,8 @@
   }
 
   .art-data-select-dialog__layout {
-    --art-data-select-dialog-panel-height: 438px;
-
     display: flex;
+    flex: 1;
     gap: 0;
     align-items: stretch;
     min-height: 0;
@@ -948,10 +1013,6 @@
     background: var(--default-box-color);
     border: 1px solid var(--el-border-color-lighter);
     border-radius: var(--art-surface-radius, calc(var(--el-border-radius-base) + 2px));
-
-    &.has-pagination {
-      --art-data-select-dialog-panel-height: 500px;
-    }
   }
 
   .art-data-select-dialog__main {
@@ -959,12 +1020,14 @@
     flex: 1;
     flex-direction: column;
     min-width: 0;
+    min-height: 0;
     background: var(--default-box-color);
   }
 
   .art-data-select-dialog__content {
     position: relative;
-    height: 438px;
+    flex: 1;
+    height: 0;
     min-height: 0;
 
     &.is-tree {
@@ -1132,6 +1195,8 @@
 
   .art-data-select-dialog__pager {
     display: flex;
+    flex: none;
+    flex-wrap: wrap;
     gap: 16px;
     align-items: center;
     justify-content: space-between;
@@ -1140,6 +1205,14 @@
     color: var(--el-text-color-secondary);
     background: var(--art-gray-100);
     border-top: 1px solid var(--el-border-color-lighter);
+
+    :deep(.el-pagination) {
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: flex-end;
+      max-width: 100%;
+      margin-left: auto;
+    }
   }
 
   .art-data-select-dialog__selected {
@@ -1147,9 +1220,7 @@
     flex: none;
     flex-direction: column;
     width: 300px;
-    height: var(--art-data-select-dialog-panel-height);
     min-height: 0;
-    max-height: var(--art-data-select-dialog-panel-height);
     overflow: hidden;
     background: color-mix(in srgb, var(--art-gray-100) 68%, var(--default-box-color));
     border-left: 1px solid var(--el-border-color-lighter);
@@ -1157,6 +1228,7 @@
 
   .art-data-select-dialog__selected-header {
     display: flex;
+    flex: none;
     align-items: center;
     justify-content: space-between;
     min-height: 54px;
@@ -1260,16 +1332,17 @@
       flex-direction: column;
     }
 
-    .art-data-select-dialog__content {
-      height: 52vh;
-    }
-
     .art-data-select-dialog__selected {
+      flex: 0 0 30%;
       width: auto;
-      height: auto;
-      max-height: 240px;
+      max-height: 160px;
       border-top: 1px solid var(--el-border-color-lighter);
       border-left: 0;
+    }
+
+    .art-data-select-dialog__pager {
+      gap: 8px;
+      padding: 8px 12px;
     }
   }
 </style>

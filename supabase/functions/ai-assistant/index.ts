@@ -660,7 +660,7 @@ async function executeTool(
       p_limit: limit
     }),
     userClient
-      .from('vehicle_archive')
+      .from('mdm_vehicle')
       .select('id,plate_no,company_name,service_end_time')
       .not('service_end_time', 'is', null)
       .lte('service_end_time', until)

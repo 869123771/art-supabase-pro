@@ -168,9 +168,13 @@ export async function resetPassword(params: Api.Auth.ResetPwdParams) {
  * @returns 用户信息
  */
 export async function fetchGetUserInfo(signal?: AbortSignal): Promise<CurrentUserInfoResult> {
+  signal?.throwIfAborted()
   // 让 Supabase 从自身会话中取令牌，以便 SDK 在验证前自动刷新即将过期的会话。
   // 显式传入 Pinia 中持久化的 JWT 会跳过这个刷新步骤，导致刷新页面后误进 500。
   const { data: claimsData, error: claimsError } = await supabase.auth.getClaims()
+  // Auth SDK calls do not accept this signal. A timed-out attempt must not
+  // continue into session/profile loading once its authentication call settles.
+  signal?.throwIfAborted()
   if (claimsError || !claimsData) {
     throw new Error('当前登录身份校验失败', { cause: claimsError })
   }
@@ -181,6 +185,7 @@ export async function fetchGetUserInfo(signal?: AbortSignal): Promise<CurrentUse
   }
 
   const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+  signal?.throwIfAborted()
   if (sessionError || !sessionData.session) {
     throw new Error('当前登录会话已失效', { cause: sessionError })
   }
@@ -204,7 +209,15 @@ export async function fetchGetUserInfo(signal?: AbortSignal): Promise<CurrentUse
     })
   ])
 
-  if (profileResult.data && typeof superResult.data === 'boolean') {
+  signal?.throwIfAborted()
+  if (superResult.error) {
+    throw new Error('账号权限校验失败，请重试', { cause: superResult.error })
+  }
+  if (typeof superResult.data !== 'boolean') {
+    throw new Error('账号权限校验未返回有效结果，请重试')
+  }
+
+  if (profileResult.data) {
     Object.assign(profileResult.data, { platformSuper: superResult.data })
   }
 

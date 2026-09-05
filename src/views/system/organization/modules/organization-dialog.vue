@@ -155,7 +155,7 @@
       },
       {
         validator: uniqueValidator({
-          table: 'sys_organization',
+          table: 'mdm_organization',
           field: 'organization_code',
           getExcludeId: () => form.id,
           extraWhere: () => ({ tenant_id: form.tenantId }),

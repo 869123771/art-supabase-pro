@@ -413,6 +413,8 @@ interface ArtTableQueryExpose {
 
 普通状态下，非批量动作在业务头部，勾选后的批量条仍在表格上方；专注状态下，非批量动作自动回到表格左侧，右侧完整工具栏临时强制显示。退出专注后，动作返回业务头部，并恢复进入前的工具栏开关状态。`showTableToolbar` 默认关闭，关闭且没有批量上下文时不保留空工具栏行。
 
+窄屏进入专注模式后也必须保留工具栏和“退出专注模式”按钮，不能应用普通状态的移动端工具栏隐藏规则。工具栏允许换行，确保触屏用户不依赖键盘 Esc 即可退出。业务权限变化导致表格卸载时，仍由 `ArtTableQuery` 清理专注模式布局。
+
 ```vue
 <ArtTableQuery :selection-actions="selectionActions" :show-table-toolbar="false" />
 ```

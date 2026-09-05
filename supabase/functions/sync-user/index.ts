@@ -83,7 +83,7 @@ async function validateEmployeeLink(employeeId: unknown, tenantId: unknown, targ
   if (employeeId === null || employeeId === undefined || employeeId === "") return null
   if (typeof employeeId !== "string" || typeof tenantId !== "string") return "员工档案关联信息无效"
   const { data: employee, error: employeeError } = await supabaseDB
-    .from("hr_employee")
+    .from("mdm_employee")
     .select("id, tenant_id, employment_status")
     .eq("id", employeeId)
     .maybeSingle()

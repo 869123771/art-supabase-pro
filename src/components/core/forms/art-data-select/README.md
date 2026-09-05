@@ -19,6 +19,14 @@ All variants delegate to `index.vue` and share the contracts exported by `types.
 - When a selected value may not exist in the current page of results, provide `selected-data` so its label and description remain available.
 - Remote loaders use `api-fn` and should return a list plus an optional total. Loading, empty, selected, and pagination states are owned by the component.
 
+## Request lifecycle and recovery
+
+Only the latest load may update rows, totals, loading state, or table/tree selection synchronization. Closing/unmounting invalidates unfinished work; replacing `api-fn` while open resets the page and loads the new source. This is result invalidation, not transport cancellation.
+
+A thrown/rejected loader error or a returned `error` is shown through the shared inline retry state, never as an empty successful result. Search and selected rows stay available, and retry reuses the current query. Confirmation is disabled while loading or after failure; cancel stays available. `load-error` exposes the current raw diagnostic cause through all four variants; do not display that raw value or add another generic error toast. Providers retain responsibility for access control and any existing business-specific notifications.
+
 ## Visual behavior
 
 The dialog is one split workspace rather than separate nested cards: the source list or tree is the primary pane, and the optional selected summary is a quieter secondary pane. Keep business-specific labels and icons outside this core component; use `label-key` and `description-key` to provide meaningful context.
+
+The search/list/selected workspace shares a viewport-bounded height. Only list/tree and selected entries scroll; pagination is outside the shrinking list body. Narrow screens stack the selected summary with a bounded share of the available height and allow pagination controls to wrap. Do not restore fixed per-pane heights: they hide pagination behind the dialog footer at low viewport heights.

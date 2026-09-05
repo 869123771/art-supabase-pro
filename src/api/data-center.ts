@@ -3,7 +3,6 @@ import { WRITE_PERMISSION_DENIED_MESSAGE } from '@/hooks/core/useSupabase'
 import type { QueryResult } from '@/types/api/response'
 import { applyFilters, fetchAllRangePages, FilterSpec } from '@/utils/supabase'
 import { invokeSupabaseFunctionWithSessionRecovery } from '@/utils/supabase/functions'
-import { pick } from 'lodash-es'
 import TreeUtils from '@/utils/tree'
 
 const { supabase, keysToSnakeDeep, responseHandle } = useSupabase()
@@ -74,28 +73,14 @@ export async function fetchGetDictTypeList(params: Partial<Api.DataCenter.DictTy
 
   let query = supabase
     .from('sys_dict_type')
-    .select('*')
+    .select('*, cascade_parent_type:dict_type_cascade_parent(id, name, code)')
     .order('sort', { ascending: true })
     .order('name', { ascending: true })
 
   query = applyFilters(query, specs, { skipEmpty: true, camelToSnake: false })
-  const response = await responseHandle<Api.DataCenter.DictTypeItem[]>(() => query, {
+  return await responseHandle<Api.DataCenter.DictTypeItem[]>(() => query, {
     ignoreCheck: true
   })
-  const typeById = new Map((response.data ?? []).map((item) => [item.id, item]))
-
-  return {
-    ...response,
-    data: (response.data ?? []).map((item) => {
-      const parentType = item.cascadeParentTypeId
-        ? typeById.get(item.cascadeParentTypeId)
-        : undefined
-      return {
-        ...item,
-        cascadeParentType: parentType ? pick(parentType, ['id', 'name', 'code']) : null
-      }
-    })
-  }
 }
 
 /** 获取可配置为级联上级的启用字典类型。 */

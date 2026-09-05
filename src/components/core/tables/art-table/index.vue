@@ -4,6 +4,7 @@
 <!-- 获取 ref：默认暴露了 elTableRef 外部通过 ref.value.elTableRef 可以调用 el-table 方法 -->
 <template>
   <div
+    ref="containerRef"
     class="art-table"
     :class="{ 'is-empty': isEmpty, 'is-row-selection-dragging': isRowSelectionDragging }"
     :style="containerHeight"
@@ -14,7 +15,7 @@
     <ElTable ref="elTableRef" v-bind="mergedTableProps">
       <template v-for="col in visibleColumns" :key="col.prop || col.type">
         <!-- 渲染全局序号列 -->
-        <ElTableColumn v-if="col.type === 'globalIndex'" v-bind="{ ...col }">
+        <ElTableColumn v-if="col.type === 'globalIndex'" v-bind="cleanColumnProps(col)">
           <template #default="{ $index }">
             <span>{{ getGlobalIndex($index) }}</span>
           </template>
@@ -192,7 +193,7 @@
   import { useTenantScopeStore } from '@/store/modules/tenantScope'
   import { useCommon } from '@/hooks/core/useCommon'
   import { useTableHeight } from '@/hooks/core/useTableHeight'
-  import { useEventListener, useResizeObserver, useWindowSize } from '@vueuse/core'
+  import { useElementSize, useEventListener, useResizeObserver, useWindowSize } from '@vueuse/core'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import TreeUtils from '@/utils/tree'
   import { handoffVerticalWheel } from '@/utils/ui/wheel-scroll'
@@ -219,6 +220,8 @@
   type ArtTableColumn = ColumnOption<ArtTableRow>
 
   const { width } = useWindowSize()
+  const containerRef = ref<HTMLElement>()
+  const { width: containerWidth } = useElementSize(containerRef)
   const elTableRef = ref<ArtTableInstance | null>(null)
   const paginationRef = ref<HTMLElement>()
   const tableHeaderRef = ref<HTMLElement>()
@@ -288,6 +291,8 @@
     additionalHeightOffset?: number
     /** 已选中行 key，用于选中行背景展示 */
     selectedRowKeys?: Array<string | number>
+    /** 容器低于此宽度时解除固定列，保留完整横向滚动；0 表示关闭。 */
+    fixedColumnMinWidth?: number
   }
 
   const props = withDefaults(defineProps<ArtTableProps>(), {
@@ -302,7 +307,8 @@
     emptyDescription: '',
     showTableHeader: true,
     additionalHeightOffset: 0,
-    selectedRowKeys: () => []
+    selectedRowKeys: () => [],
+    fixedColumnMinWidth: 640
   })
   const visibleColumns = computed(() =>
     filterTenantDimensionDescriptors(props.columns, isPlatformScope.value)
@@ -442,6 +448,7 @@
       ...props
     } as Record<string, unknown>
     delete tableProps.selectedRowKeys
+    delete tableProps.fixedColumnMinWidth
 
     return {
       ...tableProps,
@@ -801,6 +808,9 @@
   // 清理列属性，移除插槽相关的自定义属性，确保它们不会被 ElTableColumn 错误解释
   const cleanColumnProps = (col: ArtTableColumn) => {
     const columnProps = { ...col }
+    if (containerWidth.value > 0 && containerWidth.value < props.fixedColumnMinWidth) {
+      columnProps.fixed = false
+    }
     const shouldDefaultOverflowTooltip =
       columnProps.showOverflowTooltip === undefined &&
       !['selection', 'expand', 'globalIndex'].includes(String(columnProps.type)) &&

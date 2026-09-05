@@ -2,6 +2,7 @@ import { useSupabase } from '@/hooks'
 import { WRITE_PERMISSION_DENIED_MESSAGE } from '@/hooks/core/useSupabase'
 import { getDocumentNumberPeriodKey, renderDocumentNumber } from '@/utils/document-number'
 import { applyFilters } from '@/utils/supabase'
+import { buildOrIlikeFilter } from '@/utils/supabase/search'
 
 const { supabase, keysToSnakeDeep, responseHandle } = useSupabase()
 
@@ -60,7 +61,7 @@ export async function fetchDocumentNumberRuleList(params: SearchParams = {}) {
   const normalizedKeyword = keyword.trim()
   if (normalizedKeyword) {
     query = query.or(
-      `rule_name.ilike.%${normalizedKeyword}%,rule_key.ilike.%${normalizedKeyword}%,target_table.ilike.%${normalizedKeyword}%`
+      buildOrIlikeFilter(['rule_name', 'rule_key', 'target_table'], normalizedKeyword)
     )
   }
 

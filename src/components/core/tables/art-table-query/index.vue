@@ -229,7 +229,15 @@
         </template>
       </ArtTableHeader>
 
+      <ArtEmptyState
+        v-if="isManaged && managedTable.error.value && !resolvedLoading"
+        title="数据加载失败"
+        description="暂时无法获取列表，请检查网络后重试。"
+      >
+        <ElButton type="primary" @click="handleRefresh">重新加载</ElButton>
+      </ArtEmptyState>
       <ArtTable
+        v-else
         ref="tableRef"
         v-bind="artTableBindings"
         @row-drag-start="handleRowDragStart"
@@ -269,6 +277,7 @@
   import { cloneDeep } from 'lodash-es'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import ArtExcelImport from '@/components/core/forms/art-excel-import/index.vue'
+  import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import ArtTable from '@/components/core/tables/art-table/index.vue'
   import type { ArtTableInstance } from '@/components/core/tables/art-table/index.vue'
   import type { ColumnOption } from '@/types'

@@ -143,6 +143,11 @@ async function installApplicationMenuMocks(page: Page): Promise<void> {
     const payload = route.request().postDataJSON() as { p_app_code?: string }
     const code = payload.p_app_code as keyof typeof testMenus
     const menu = testMenus[code]
+    if (payload.p_app_code === 'platform') {
+      // The host aggregates the separately requested application menus below.
+      await route.fulfill({ json: { flat: [], tree: [] } })
+      return
+    }
     if (!menu) {
       await route.continue()
       return
@@ -159,6 +164,17 @@ async function expectNoHorizontalOverflow(page: Page): Promise<void> {
   expect(overflow.scrollWidth).toBeLessThanOrEqual(overflow.clientWidth + 1)
 }
 
+async function dismissSettingGuide(page: Page): Promise<void> {
+  const guide = page.locator('.setting-guide')
+  const shown = await guide
+    .waitFor({ state: 'visible', timeout: 2_000 })
+    .then(() => true)
+    .catch(() => false)
+  if (!shown) return
+  await guide.getByRole('button', { name: '知道了' }).click()
+  await expect(guide).toBeHidden()
+}
+
 async function openWorkspace(page: Page, path: string, heading: string): Promise<void> {
   const errors: string[] = []
   const handleConsole = (message: ConsoleMessage) => {
@@ -173,6 +189,7 @@ async function openWorkspace(page: Page, path: string, heading: string): Promise
     })
     await expect(page.locator('.el-loading-mask:visible')).toHaveCount(0, { timeout: 60_000 })
     await expect(page.locator('.el-skeleton')).toHaveCount(0, { timeout: 60_000 })
+    await dismissSettingGuide(page)
     await expectNoHorizontalOverflow(page)
     expect(errors).toEqual([])
   } finally {
@@ -183,14 +200,121 @@ async function openWorkspace(page: Page, path: string, heading: string): Promise
 test.describe('MDM, WMS and MES application scaffolds', () => {
   test.describe.configure({ timeout: 120_000 })
 
+  test('MDM health uses record quality and treats empty data explicitly', async ({
+    page
+  }, testInfo) => {
+    await installApplicationMenuMocks(page)
+    let empty = false
+    await page.route('**/rest/v1/rpc/mdm_get_governance_overview_secure', async (route) => {
+      await route.fulfill({
+        json: {
+          domains: empty ? [] : [{ key: 'organization', recordCount: 10, attentionCount: 5 }]
+        }
+      })
+    })
+    await openWorkspace(page, '/#/mdm/workbench', '主数据治理工作台')
+    await expect(page.locator('.coverage-ring')).toContainText('50%')
+    await expect(page.locator('.coverage-legend')).toContainText('5 条')
+    await expect(page.getByText('资料完整率', { exact: true })).toBeVisible()
+    await page.screenshot({ path: testInfo.outputPath('mdm-health.png'), fullPage: true })
+    await page.locator('.governance-rules article').last().scrollIntoViewIfNeeded()
+    await expect(page.locator('.domain-list button')).toHaveCount(5)
+    await expect(page.locator('.domain-list button').last()).toBeInViewport()
+    await expect(page.locator('.governance-rules article').last()).toBeInViewport()
+    await expectNoHorizontalOverflow(page)
+    await page.screenshot({ path: testInfo.outputPath('mdm-health-lower.png'), fullPage: true })
+    empty = true
+    await page.getByRole('button', { name: '刷新主数据概览' }).click()
+    await expect(page.getByText('暂无可评估的主数据', { exact: true })).toBeVisible()
+    await expect(page.locator('.coverage-ring')).toHaveCount(0)
+  })
+
+  test('MDM overview failure shows retry instead of successful zero counts', async ({
+    page
+  }, testInfo) => {
+    await installApplicationMenuMocks(page)
+    let fail = true
+    await page.route('**/rest/v1/rpc/mdm_get_governance_overview_secure', async (route) => {
+      await route.fulfill(
+        fail
+          ? { status: 500, json: { code: 'XX000', message: 'database internal details' } }
+          : { json: { domains: [{ key: 'organization', recordCount: 10, attentionCount: 2 }] } }
+      )
+    })
+    await page.goto('/#/mdm/workbench', { waitUntil: 'domcontentloaded' })
+    const directory = page.locator('.mdm-workbench__directory')
+    await expect(directory.getByText('主数据概览加载失败', { exact: true })).toBeVisible({
+      timeout: 60_000
+    })
+    await expect(page.locator('.coverage-ring')).toHaveCount(0)
+    await expect(page.locator('.mdm-workbench')).not.toContainText('database internal details')
+    await dismissSettingGuide(page)
+    await page.screenshot({ path: testInfo.outputPath('mdm-health-error.png'), fullPage: true })
+    fail = false
+    await directory.getByRole('button', { name: '重新加载' }).click()
+    await expect(page.locator('.coverage-ring')).toContainText('80%')
+    await expectNoHorizontalOverflow(page)
+  })
+
+  test('MDM invalid statistics cannot render a misleading health percentage', async ({ page }) => {
+    await installApplicationMenuMocks(page)
+    let domains: unknown = [{ key: 'organization', recordCount: 10, attentionCount: 20 }]
+    await page.route('**/rest/v1/rpc/mdm_get_governance_overview_secure', (route) =>
+      route.fulfill({ json: { domains } })
+    )
+    await page.goto('/#/mdm/workbench', { waitUntil: 'domcontentloaded' })
+    const directory = page.locator('.mdm-workbench__directory')
+    const error = directory.getByText('主数据概览加载失败', { exact: true })
+    await expect(error).toBeVisible({ timeout: 60_000 })
+    await expect(page.locator('.coverage-ring')).toHaveCount(0)
+
+    for (const invalid of [
+      null,
+      [{ key: 'organization', recordCount: -1, attentionCount: 0 }],
+      [{ key: 'organization', recordCount: 10 }],
+      [
+        { key: 'organization', recordCount: 10, attentionCount: 1 },
+        { key: 'organization', recordCount: 10, attentionCount: 1 }
+      ]
+    ]) {
+      domains = invalid
+      const response = page.waitForResponse('**/rest/v1/rpc/mdm_get_governance_overview_secure')
+      await directory.getByRole('button', { name: '重新加载' }).click()
+      await response
+      await expect(error).toBeVisible()
+      await expect(page.locator('.coverage-ring')).toHaveCount(0)
+    }
+
+    domains = [{ key: 'organization', recordCount: 10, attentionCount: 2 }]
+    await directory.getByRole('button', { name: '重新加载' }).click()
+    await expect(page.locator('.coverage-ring')).toContainText('80%')
+  })
+
   test('opens the MDM governance workspace and catalog', async ({ page }, testInfo) => {
     await installApplicationMenuMocks(page)
     await openWorkspace(page, '/#/mdm/workbench', '主数据治理工作台')
     await page.screenshot({ path: testInfo.outputPath('mdm-workbench.png'), fullPage: true })
 
     await openWorkspace(page, '/#/mdm/organization/organization-directory', '组织机构主数据')
-    await expect(page.getByText('权威来源约定', { exact: true })).toBeVisible()
+    await expect(page.locator('.mdm-catalog-page__table-context')).toContainText('来源系统维护')
     await expect(page.getByText('当前结果', { exact: true })).toBeVisible()
+    const overview = page.locator('.mdm-catalog-page__overview')
+    const query = page.locator('.mdm-catalog-page .art-table-query')
+    const initialHeight = (await query.boundingBox())!.height
+    await page.getByRole('switch', { name: '进入专注模式' }).locator('..').click()
+    await expect(overview).toBeHidden()
+    await expect(query).toHaveClass(/is-focus-mode/)
+    await expect(page.locator('.mdm-catalog-page__table-context')).toContainText('组织机构主数据')
+    await expect(page.getByText('资料质量度', { exact: true })).toBeVisible()
+    await expect
+      .poll(async () => (await query.boundingBox())!.height)
+      .toBeGreaterThan(initialHeight)
+    await page.keyboard.press('Escape')
+    await expect(overview).toBeVisible()
+    await expect(query).not.toHaveClass(/is-focus-mode/)
+    await page.getByRole('switch', { name: '进入专注模式' }).locator('..').click()
+    await page.getByRole('button', { name: '退出专注' }).click()
+    await expect(overview).toBeVisible()
     const keywordInput = page.getByPlaceholder('组织编码或名称')
     await keywordInput.fill('ROOT')
     await keywordInput.press('Enter')
@@ -200,20 +324,27 @@ test.describe('MDM, WMS and MES application scaffolds', () => {
     await expect(page.getByText('主数据详情', { exact: true })).toBeVisible()
     await expect(page.getByText('治理与来源', { exact: true })).toBeVisible()
     await expectNoHorizontalOverflow(page)
-    await page.screenshot({ path: testInfo.outputPath('mdm-catalog-detail.png'), fullPage: true })
+    await page.screenshot({
+      path: testInfo.outputPath('mdm-catalog-detail.png'),
+      fullPage: true,
+      animations: 'disabled'
+    })
   })
 
   test('opens the WMS workspace', async ({ page }, testInfo) => {
     await installApplicationMenuMocks(page)
     await openWorkspace(page, '/#/wms/workbench', '仓储运营工作台')
-    await expect(page.getByText('架构准备阶段', { exact: true })).toBeVisible()
+    await expect(page.getByText('建设准备中', { exact: true })).toBeVisible()
     await page.screenshot({ path: testInfo.outputPath('wms-workbench.png'), fullPage: true })
   })
 
   test('opens the MES workspace', async ({ page }, testInfo) => {
     await installApplicationMenuMocks(page)
     await openWorkspace(page, '/#/mes/workbench', '制造执行工作台')
-    await expect(page.getByText('架构准备阶段', { exact: true })).toBeVisible()
+    await expect(page.getByText('建设准备中', { exact: true })).toBeVisible()
+    for (const tag of await page.locator('.readiness-list .el-tag').all()) {
+      expect((await tag.boundingBox())!.width).toBeGreaterThanOrEqual(60)
+    }
     await page.screenshot({ path: testInfo.outputPath('mes-workbench.png'), fullPage: true })
   })
 })

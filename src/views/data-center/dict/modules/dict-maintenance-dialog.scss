@@ -1,0 +1,10 @@
+.dict-maintenance-form {
+  min-width: 0;
+
+  @media (width <= 600px) {
+    :deep(.el-col) {
+      flex: 0 0 100%;
+      max-width: 100%;
+    }
+  }
+}

@@ -75,7 +75,7 @@ const loadRegistrationRuntime = async (): Promise<RegistrationRuntime> => {
   if (tenantError || !registerTenant) throw new Error("注册公共租户未正确配置")
 
   const { data: rootOrganization, error: organizationError } = await supabaseAdmin
-    .from("sys_organization")
+    .from("mdm_organization")
     .select("id")
     .eq("tenant_id", registerTenant.id)
     .eq("is_system", true)

@@ -128,6 +128,7 @@
     "dompurify": "3.4.12",
     "echarts": "^6.1.0",
     "element-plus": "^2.14.2",
+    "exceljs": "4.4.0",
     "file-saver": "^2.0.5",
     "highlight.js": "^11.10.0",
     "lodash-es": "^4.18.1",

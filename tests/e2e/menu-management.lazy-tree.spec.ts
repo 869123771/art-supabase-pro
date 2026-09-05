@@ -23,17 +23,17 @@ async function readMenuRows(request: Request): Promise<MenuRpcRow[]> {
   return (await response?.json()) as MenuRpcRow[]
 }
 
-async function waitForMenuTable(page: Page): Promise<void> {
+async function waitForMenuTable(page: Page, rootCount: number): Promise<void> {
   await expect(page.getByRole('heading', { name: '菜单管理', exact: true })).toBeVisible({
     timeout: 60_000
   })
   await expect(page.locator('.el-loading-mask:visible')).toHaveCount(0, { timeout: 60_000 })
-  await expect(page.locator('.el-table__body-wrapper tbody tr')).toHaveCount(16, {
+  await expect(page.locator('.el-table__body-wrapper tbody tr')).toHaveCount(rootCount, {
     timeout: 60_000
   })
 }
 
-test('菜单管理首层与展开请求保持精简且层级正确', async ({ page }) => {
+test('菜单管理首层与展开请求保持精简且层级正确', async ({ page }, testInfo) => {
   test.setTimeout(120_000)
   const menuRequests: Request[] = []
   const legacyChildQueries: string[] = []
@@ -59,7 +59,7 @@ test('菜单管理首层与展开请求保持精简且层级正确', async ({ pa
   })
   expect(rootRows.length).toBeGreaterThan(0)
   expect(rootRows.every((row) => row.parent_id === null)).toBe(true)
-  await waitForMenuTable(page)
+  await waitForMenuTable(page, rootRows.length)
 
   const firstRoot = rootRows[0]
   const childRequestPromise = page.waitForRequest((request) => {
@@ -83,4 +83,19 @@ test('菜单管理首层与展开请求保持精简且层级正确', async ({ pa
   )
   expect(menuRequests).toHaveLength(2)
   expect(legacyChildQueries).toEqual([])
+
+  // Exercise the real ancestor-query consumer without persisting any menu changes.
+  const rows = page.locator('.el-table__body-wrapper tbody tr')
+  const parentTitle = await rows.first().locator('.menu-identity-cell__heading strong').innerText()
+  const childTitle = await rows.nth(1).locator('.menu-identity-cell__heading strong').innerText()
+  await rows.nth(1).getByRole('button', { name: '查看详情', exact: true }).click()
+  const breadcrumb = page.getByRole('navigation', { name: '菜单层级路径' })
+  await expect(breadcrumb).toBeVisible()
+  await expect(breadcrumb.locator(':scope > span')).toHaveText([parentTitle, childTitle])
+  await expect(
+    page.locator('.menu-detail__metrics article').filter({ hasText: '层级深度' }).locator('strong')
+  ).toHaveText('2')
+  await breadcrumb.screenshot({ path: testInfo.outputPath('menu-ancestor-path.png') })
+  await page.keyboard.press('Escape')
+  await expect(breadcrumb).toBeHidden()
 })

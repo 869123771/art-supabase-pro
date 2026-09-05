@@ -1,3 +1,4 @@
+import { buildOrIlikeFilter } from '@/utils/supabase/search'
 import { useSupabase } from '@/hooks'
 import { omit } from 'lodash-es'
 
@@ -62,10 +63,8 @@ export async function fetchAiPromptList(params: AiPromptSearchParams) {
   if (params.feature) query = query.eq('feature', params.feature)
   if (params.status) query = query.eq('status', params.status)
   if (params.keyword?.trim()) {
-    const keyword = params.keyword.trim().replace(/[,%()]/g, ' ')
-    query = query.or(
-      `name.ilike.%${keyword}%,version.ilike.%${keyword}%,description.ilike.%${keyword}%`
-    )
+    const keyword = params.keyword.trim()
+    query = query.or(buildOrIlikeFilter(['name', 'version', 'description'], keyword))
   }
 
   return await responseHandle<AiPromptTemplate[]>(() => query, {

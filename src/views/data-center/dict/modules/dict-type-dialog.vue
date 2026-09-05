@@ -6,8 +6,10 @@
       :items="form.items"
       :rules="form.rules"
       :span="12"
-      :gutter="24"
-      root-class="dict-type-form"
+      :gutter="20"
+      label-position="top"
+      label-width="auto"
+      root-class="dict-maintenance-form dict-type-form"
       :show-reset="false"
       :show-submit="false"
       :validate-on-rule-change="false"
@@ -87,9 +89,13 @@
         key: 'nodeType',
         type: 'radioGroup',
         span: 24,
+        description: form.editing
+          ? '节点类型创建后不可更改。'
+          : '根层级仅支持目录；字典类型需选择上级目录。',
         props: {
           disabled: form.editing,
           onChange: (value: DictTypeItem['nodeType']) => {
+            formRef.value?.ref.value?.clearValidate('parentId')
             if (value === 'directory') {
               form.data.cascadeParentTypeId = null
               return
@@ -107,7 +113,8 @@
         key: 'name',
         type: 'input',
         props: {
-          maxlength: 100
+          maxlength: 100,
+          placeholder: form.data.nodeType === 'directory' ? '请输入目录名称' : '请输入字典类型名称'
         }
       },
       {
@@ -115,7 +122,8 @@
         key: 'code',
         type: 'input',
         props: {
-          maxlength: 100
+          maxlength: 100,
+          placeholder: form.data.nodeType === 'directory' ? '请输入目录编码' : '请输入字典类型编码'
         }
       },
       {
@@ -137,12 +145,16 @@
         labelField: 'name',
         valueField: 'id',
         childrenField: 'children',
-        description: '可选。仅展示目录节点；不选择则放在字典目录根层级。',
+        description:
+          form.data.nodeType === 'dictionary'
+            ? '必选。字典类型必须归属到目录，根层级只展示目录。'
+            : '可选。不选择则作为最外层目录。',
         props: {
           clearable: true,
           filterable: true,
           separator: ' / ',
-          placeholder: '请选择上级目录',
+          placeholder:
+            form.data.nodeType === 'dictionary' ? '请选择字典类型所属目录' : '请选择上级目录',
           style: { width: '100%' },
           props: {
             checkStrictly: true,
@@ -187,7 +199,9 @@
         props: {
           min: 0,
           step: 1,
-          stepStrictly: true
+          stepStrictly: true,
+          controlsPosition: 'right',
+          style: { width: '100%' }
         }
       },
       {
@@ -211,7 +225,8 @@
         span: 24,
         props: {
           type: 'textarea',
-          rows: 4,
+          rows: 3,
+          placeholder: '请输入节点的用途或维护说明',
           maxlength: 500,
           showWordLimit: true
         }
@@ -231,7 +246,11 @@
           }),
           trigger: 'change'
         }
-      ]
+      ],
+      parentId:
+        form.data.nodeType === 'dictionary'
+          ? [{ required: true, message: '请选择字典类型所属目录', trigger: 'change' }]
+          : []
     }))
   })
 
@@ -319,3 +338,7 @@
     handleOpen
   })
 </script>
+
+<style scoped lang="scss">
+  @use './dict-maintenance-dialog';
+</style>

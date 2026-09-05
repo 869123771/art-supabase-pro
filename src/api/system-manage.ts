@@ -1,3 +1,4 @@
+import { buildOrIlikeFilter } from '@/utils/supabase/search'
 import { AppRouteRecord } from '@/types/router'
 import type { ApplicationCode } from '@/config/application'
 import { useSupabase } from '@/hooks'
@@ -101,7 +102,7 @@ export async function fetchGetUserList(params: Api.SystemManage.UserSearchParams
       `
         *,
         tenant:sys_tenant!sys_user_tenant_id_fkey(tenant_code, tenant_name, builtin_type),
-        organization:sys_organization!sys_user_organization_id_fkey(
+        organization:mdm_organization!sys_user_organization_id_fkey(
           id,
           organization_code,
           organization_name
@@ -191,7 +192,7 @@ export async function fetchGetOrganizationDetail(id: string) {
   return await responseHandle<Api.SystemManage.OrganizationListItem | null>(
     () =>
       supabase
-        .from('sys_organization')
+        .from('mdm_organization')
         .select(ORGANIZATION_DETAIL_SELECT)
         .eq('id', id)
         .maybeSingle(),
@@ -242,7 +243,7 @@ export async function fetchGetEnableOrganizationTree(
 
 export async function fetchGetUserOrganizationTree(params: { tenantId?: string } = {}) {
   let query = supabase
-    .from('sys_organization')
+    .from('mdm_organization')
     .select(
       `
         id, tenant_id, parent_id, organization_code, organization_name,
@@ -287,7 +288,7 @@ export async function fetchGetUserOrganizationTree(params: { tenantId?: string }
 
 export async function fetchGetRoleOrganizationTree(params: { tenantId?: string } = {}) {
   let query = supabase
-    .from('sys_organization')
+    .from('mdm_organization')
     .select(
       `
         id, tenant_id, parent_id, organization_code, organization_name,
@@ -347,7 +348,7 @@ export async function fetchGetEnableOrganizationUserList(params: { tenantId?: st
         nick_name,
         user_email,
         status,
-        organization:sys_organization!sys_user_organization_id_fkey(
+        organization:mdm_organization!sys_user_organization_id_fkey(
           id,
           organization_code,
           organization_name
@@ -367,7 +368,7 @@ export async function fetchGetEnableOrganizationUserList(params: { tenantId?: st
 
 export async function addOrganization(params: Api.SystemManage.OrganizationSavePayload) {
   return await responseHandle(
-    () => supabase.from('sys_organization').insert(keysToSnakeDeep(params)),
+    () => supabase.from('mdm_organization').insert(keysToSnakeDeep(params)),
     {
       showMessage: true,
       breakReturn: true
@@ -380,7 +381,7 @@ export async function editOrganization(params: Api.SystemManage.OrganizationSave
   return await responseHandle(
     () =>
       supabase
-        .from('sys_organization')
+        .from('mdm_organization')
         .update(keysToSnakeDeep(payload), { count: 'exact' })
         .eq('id', id),
     {
@@ -396,7 +397,7 @@ export async function deleteOrganization(id: string) {
   return await responseHandle(
     () =>
       supabase
-        .from('sys_organization')
+        .from('mdm_organization')
         .delete({ count: 'exact' })
         .eq('id', id)
         .eq('is_system', false),
@@ -486,9 +487,7 @@ export async function fetchGetSystemParamList(params: SystemParamSearchParams) {
 
   const trimmedKeyword = keyword.trim()
   if (trimmedKeyword) {
-    query = query.or(
-      `param_name.ilike.%${trimmedKeyword}%,param_key.ilike.%${trimmedKeyword}%,remark.ilike.%${trimmedKeyword}%`
-    )
+    query = query.or(buildOrIlikeFilter(['param_name', 'param_key', 'remark'], trimmedKeyword))
   }
 
   query = applyFilters(query, specs, { skipEmpty: true, camelToSnake: false })
@@ -956,7 +955,7 @@ export async function fetchGetRoleList(params: Api.SystemManage.RoleSearchParams
       `
         *,
         tenant:sys_tenant!sys_role_tenant_id_fkey(tenant_code, tenant_name, builtin_type),
-        organization:sys_organization!sys_role_organization_id_fkey(
+        organization:mdm_organization!sys_role_organization_id_fkey(
           id, organization_code, organization_name
         )
       `,
@@ -1013,7 +1012,7 @@ export async function editRole(params: Api.SystemManage.RoleListItem) {
 }
 
 /*获取当前角色拥有的菜单*/
-export async function getCurrentRoleMenus(params: AppRouteRecord) {
+export async function getCurrentRoleMenus(params: { id: string }) {
   const { id } = params
   return await fetchAllRangePages<{ menuId: string }>(
     ({ from, to }) =>

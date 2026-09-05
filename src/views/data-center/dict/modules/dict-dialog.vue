@@ -1,20 +1,29 @@
 <template>
-  <ArtDialog ref="dialogRef" size="lg">
+  <ArtDialog ref="dialogRef" size="md">
     <ArtForm
       ref="formRef"
       v-model="form.data"
       :items="form.items"
       :rules="form.rules"
       :span="12"
-      :gutter="24"
-      root-class="dict-entry-form"
+      :gutter="20"
+      label-position="top"
+      label-width="auto"
+      root-class="dict-maintenance-form dict-entry-form"
       :show-reset="false"
       :show-submit="false"
       :validate-on-rule-change="false"
       scroll-to-error
     >
       <template #color>
-        <el-color-picker v-model="form.data.color" :predefine="elementPlusPresetColors" />
+        <div class="dict-color-field">
+          <el-color-picker
+            v-model="form.data.color"
+            :predefine="elementPlusPresetColors"
+            aria-label="选择字典文字颜色"
+          />
+          <span>{{ form.data.color || '默认颜色' }}</span>
+        </div>
       </template>
 
       <template #tagType>
@@ -23,7 +32,7 @@
             <el-option
               v-for="option in tagTypeOptions"
               :key="option.value"
-              :label="option.value"
+              :label="option.label"
               :value="option.value"
             >
               <div class="dict-tag-style-field__option">
@@ -139,16 +148,13 @@
           {
             label: '所属类型',
             key: 'dictTypeName',
-            type: 'input',
-            props: {
-              placeholder: '所属字典类型',
-              disabled: true
-            }
+            type: 'text'
           },
           {
             label: getParentFieldLabel(),
             key: getParentFieldKey(),
             type: 'treeSelect',
+            span: 24,
             description: getParentDescription(),
             api: fetchGetDictListByTypeId,
             immediate: false,
@@ -262,7 +268,9 @@
               placeholder: '请输入排序',
               min: 0,
               step: 1,
-              stepStrictly: true
+              stepStrictly: true,
+              controlsPosition: 'right',
+              style: { width: '100%' }
             }
           },
           {
@@ -287,9 +295,9 @@
             type: 'input',
             span: 24,
             props: {
-              placeholder: '请输入描述',
+              placeholder: '请输入字典项的用途或补充说明',
               type: 'textarea',
-              rows: 4,
+              rows: 3,
               clearable: true
             }
           }
@@ -347,7 +355,7 @@
     await dialogRef.value?.handleOpen(data, {
       title: isEdit.value ? '编辑字典' : '新增字典',
       subtitle: `维护“${form.value.data.dictTypeName}”的取值、层级与展示方式`,
-      size: 'lg',
+      size: 'md',
       confirmText: isEdit.value ? '保存更改' : '创建字典项',
       contentMaxHeight: 'min(72vh, calc(100vh - 200px))',
       onOpen: async () => {
@@ -409,6 +417,16 @@
 </script>
 
 <style scoped lang="scss">
+  @use './dict-maintenance-dialog';
+
+  .dict-color-field {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    min-height: 36px;
+    color: var(--el-text-color-regular);
+  }
+
   .dict-tag-style-field {
     display: flex;
     gap: 8px;

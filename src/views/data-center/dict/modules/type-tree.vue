@@ -5,10 +5,17 @@
         <div class="dict-type-tree__titlebar">
           <div>
             <strong>字典目录</strong>
-            <span>{{ directoryCount }} 个目录 · {{ dictionaryCount }} 个类型</span>
+            <span v-if="tree.loading">正在加载目录…</span>
+            <span v-else-if="tree.error">目录加载失败</span>
+            <span v-else>{{ directoryCount }} 个目录 · {{ dictionaryCount }} 个类型</span>
           </div>
           <ElTooltip content="新增根节点" placement="top">
-            <ElButton type="primary" aria-label="新增根节点" @click="handleAdd()">
+            <ElButton
+              type="primary"
+              aria-label="新增根节点"
+              :disabled="!canInteract"
+              @click="handleAdd()"
+            >
               <ArtSvgIcon icon="ri:add-fill" />
               <span>新增</span>
             </ElButton>
@@ -17,6 +24,8 @@
         <ElInput
           v-model="tree.keyword"
           placeholder="搜索目录名称或字典编码"
+          aria-label="搜索目录名称或字典编码"
+          :disabled="!canInteract"
           clearable
           @input="handleFilter"
         >
@@ -36,8 +45,14 @@
         text="正在加载字典类型…"
         description=""
       />
+      <ArtAsyncState
+        v-if="tree.error"
+        :error="tree.error"
+        error-title="字典目录加载失败"
+        @retry="handleGetDictTypeList"
+      />
       <ElTreeV2
-        v-if="tree.data.length"
+        v-else-if="tree.data.length"
         ref="treeRef"
         class="dict-type-tree__virtual-tree"
         :data="tree.data"
@@ -46,6 +61,7 @@
         :props="tree.props"
         :filter-method="filterNode"
         :default-expanded-keys="tree.expandedKeys"
+        :inert="tree.loading"
         highlight-current
         @node-click="handleNodeClick"
         @node-expand="handleNodeExpand"
@@ -142,10 +158,8 @@
           <ArtSvgIcon icon="ri:drag-move-2-line" />
         </span>
         <span class="dict-type-tree__footer-copy">
-          <strong>{{ tree.keyword.trim() ? '排序已暂停' : '拖拽排序' }}</strong>
-          <small>
-            {{ tree.keyword.trim() ? '清空搜索后可继续拖拽' : '调整目录层级与节点顺序' }}
-          </small>
+          <strong>{{ footerHint.title }}</strong>
+          <small>{{ footerHint.description }}</small>
         </span>
       </div>
       <div class="dict-type-tree__footer-actions">
@@ -160,7 +174,7 @@
           class="dict-type-tree__expand-toggle"
           size="small"
           text
-          :disabled="!expandableNodeKeys.length"
+          :disabled="!canInteract || !expandableNodeKeys.length"
           :aria-label="canExpandAll ? '全部展开字典目录' : '全部收起字典目录'"
           @click="toggleAllExpanded"
         >
@@ -183,7 +197,7 @@
   import { ElMessage, ElTreeV2, type NodeDropType, type TreeV2Instance } from 'element-plus'
   import { cloneDeep, uniq } from 'lodash-es'
   import { useElementSize } from '@vueuse/core'
-  import TreeUtils from '@/utils/tree'
+  import TreeUtils, { TreeDataError } from '@/utils/tree'
   import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import { deleteDictType, fetchGetDictTypeList, saveDictTypeTreeOrder } from '@/api/data-center'
   import DictTypeDialog from './dict-type-dialog.vue'
@@ -211,6 +225,7 @@
   interface TreeState {
     keyword: string
     loading: boolean
+    error: string
     data: DictTypeItem[]
     expandedKeys: string[]
     hasInitializedExpandedKeys: boolean
@@ -257,6 +272,7 @@
   })
 
   const treeRef = ref<TreeV2Instance>()
+  let loadSequence = 0
   const treeViewportRef = ref<HTMLElement>()
   const dictTypeDialogRef = ref<DictTypeDialogExpose>()
   const TREE_ROW_HEIGHT = 40
@@ -265,6 +281,7 @@
   const tree = reactive<TreeState>({
     keyword: '',
     loading: false,
+    error: '',
     data: [],
     expandedKeys: [],
     hasInitializedExpandedKeys: false,
@@ -286,21 +303,35 @@
     return node?.id ? String(node.id) : undefined
   }
 
+  const canInteract = computed(() => !tree.loading && !tree.error)
+  const footerHint = computed(() => {
+    if (tree.error) return { title: '排序不可用', description: '目录加载成功后可调整顺序' }
+    if (tree.loading) return { title: '正在加载目录', description: '加载完成后可继续操作' }
+    if (!tree.data.length) return { title: '尚无目录', description: '新增目录后可调整层级与顺序' }
+    return tree.keyword.trim()
+      ? { title: '排序已暂停', description: '清空搜索后可继续拖拽' }
+      : { title: '拖拽排序', description: '调整目录层级与节点顺序' }
+  })
+  const flatTree = computed(() => treeUtils.treeToList(tree.data))
   const directoryCount = computed(
-    () => treeUtils.treeToList(tree.data).filter((item) => item.nodeType === 'directory').length
+    () => flatTree.value.filter((item) => item.nodeType === 'directory').length
   )
   const dictionaryCount = computed(
-    () => treeUtils.treeToList(tree.data).filter((item) => item.nodeType === 'dictionary').length
+    () => flatTree.value.filter((item) => item.nodeType === 'dictionary').length
   )
-  const getExpandableNodeKeys = (nodes: DictTypeItem[]): string[] =>
-    nodes.flatMap((node) => {
-      if (!node.children?.length) return []
+  const getExpandableNodeKeys = (nodes: DictTypeItem[]): string[] => {
+    const keys: string[] = []
+    treeUtils.traverse(nodes, (node) => {
       const key = getNodeKey(node)
-      return [...(key ? [key] : []), ...getExpandableNodeKeys(node.children)]
+      if (key && node.children?.length) keys.push(key)
     })
+    return keys
+  }
   const expandableNodeKeys = computed(() => getExpandableNodeKeys(tree.data))
-  const canExpandAll = computed(() =>
-    expandableNodeKeys.value.some((key) => !tree.expandedKeys.includes(key))
+  const canExpandAll = computed(
+    () =>
+      !expandableNodeKeys.value.length ||
+      expandableNodeKeys.value.some((key) => !tree.expandedKeys.includes(key))
   )
 
   const getCurrentDictType = computed<DictTypeItem | undefined>(() => {
@@ -673,6 +704,15 @@
     const dropKey = getNodeKey(dropData)
     if (!dropKey || !tree.draggingBatchKeys.length || !tree.dragSourceData.length) return false
     if (dropType === 'inner' && dropData.nodeType !== 'directory') return false
+    if (
+      dropType !== 'inner' &&
+      !dropData.parentId &&
+      tree.draggingBatchKeys.some(
+        (key) => treeUtils.findNode(tree.dragSourceData, key)?.nodeType === 'dictionary'
+      )
+    ) {
+      return false
+    }
 
     const blockedTargetKeys = new Set(
       tree.draggingBatchKeys.flatMap((draggingKey) =>
@@ -779,6 +819,7 @@
   }
 
   const handleAdd = (parent?: DictTypeItem): void => {
+    if (!canInteract.value) return
     void dictTypeDialogRef.value?.handleOpen(undefined, {
       parentId: parent?.id
     })
@@ -823,10 +864,13 @@
   }
 
   const handleGetDictTypeList = async (): Promise<void> => {
+    const sequence = ++loadSequence
     const currentKey = treeRef.value?.getCurrentKey()
+    Object.assign(tree, { loading: true, error: '' })
     try {
-      tree.loading = true
-      const { data = [] } = await fetchGetDictTypeList()
+      const { data = [], error } = await fetchGetDictTypeList()
+      if (sequence !== loadSequence) return
+      if (error) throw error
       tree.data = treeUtils.listToTree(
         data as DictTypeItem[],
         (a, b) => Number(a.sort || 0) - Number(b.sort || 0)
@@ -834,6 +878,7 @@
       syncExpandedKeysAfterDataLoad()
       syncSelectedKeysAfterDataLoad()
       await nextTick()
+      if (sequence !== loadSequence) return
       applyExpandedKeys()
       if (currentKey) {
         treeRef.value?.setCurrentKey(currentKey)
@@ -842,8 +887,14 @@
       if (tree.keyword.trim()) {
         treeRef.value?.filter(tree.keyword)
       }
+    } catch (error) {
+      if (sequence !== loadSequence) return
+      tree.error =
+        error instanceof TreeDataError
+          ? '字典层级存在循环关联，请联系管理员修正上级关系后重新加载。'
+          : getFriendlySupabaseErrorMessage(error, '字典目录暂时无法加载，请稍后重试。')
     } finally {
-      tree.loading = false
+      if (sequence === loadSequence) tree.loading = false
     }
   }
 
@@ -865,6 +916,10 @@
 
   onMounted(() => {
     void handleGetDictTypeList()
+  })
+
+  onBeforeUnmount(() => {
+    loadSequence++
   })
 
   defineExpose({

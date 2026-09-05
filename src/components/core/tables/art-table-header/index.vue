@@ -5,7 +5,10 @@
       <slot name="left"></slot>
     </div>
 
-    <div class="art-table-header__right flex-c md:justify-end max-md:mt-3 max-sm:!hidden">
+    <div
+      class="art-table-header__right flex-c flex-wrap gap-y-2 md:justify-end max-md:mt-3"
+      :class="{ 'max-sm:!hidden': !focusMode }"
+    >
       <button
         v-if="showSearchBar != null"
         type="button"

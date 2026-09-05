@@ -1,3 +1,4 @@
+import { buildOrIlikeFilter } from '@/utils/supabase/search'
 import { useSupabase } from '@/hooks'
 
 const { supabase, keysToSnakeDeep, responseHandle } = useSupabase()
@@ -239,10 +240,8 @@ export async function fetchAiFeatureConfigList(params: AiFeatureConfigSearchPara
   if (params.feature) query = query.eq('feature', params.feature)
   if (typeof params.enabled === 'boolean') query = query.eq('enabled', params.enabled)
   if (params.keyword?.trim()) {
-    const keyword = params.keyword.trim().replace(/[,%()]/g, ' ')
-    query = query.or(
-      `model.ilike.%${keyword}%,vision_model.ilike.%${keyword}%,fallback_model.ilike.%${keyword}%`
-    )
+    const keyword = params.keyword.trim()
+    query = query.or(buildOrIlikeFilter(['model', 'vision_model', 'fallback_model'], keyword))
   }
 
   return await responseHandle<AiFeatureConfig[]>(() => query, {

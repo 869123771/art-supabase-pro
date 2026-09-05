@@ -1,4 +1,4 @@
-import { clone as shallowClone, cloneDeep } from 'lodash-es'
+import { clone as shallowClone, cloneDeep, get, omit } from 'lodash-es'
 
 type ID = string | number
 
@@ -7,6 +7,21 @@ export interface TreeNode {
   // must include id and parent id fields but names are configurable
 }
 type TreeRecord = Record<string, unknown>
+
+interface TreeVisit {
+  node: TreeNode
+  depth: number
+  parent: TreeVisit | null
+}
+
+export class TreeDataError extends Error {
+  readonly code = 'TREE_CYCLE'
+
+  constructor() {
+    super('树形数据存在循环关联，请检查上级关系后重试')
+    this.name = 'TreeDataError'
+  }
+}
 
 interface TreeUtilsOptions {
   idKey?: string
@@ -53,10 +68,6 @@ export default class TreeUtils {
     ;(node as TreeRecord)[key] = value
   }
 
-  private deleteValue(node: TreeNode, key: string): void {
-    delete (node as TreeRecord)[key]
-  }
-
   private getNodeId(node: TreeNode, key = this.idKey): ID {
     return this.getValue(node, key) as ID
   }
@@ -73,6 +84,48 @@ export default class TreeUtils {
     }
 
     return this.getValue(node, this.childrenKey) as TreeNode[]
+  }
+
+  // Clone fields once, never deep-clone a subtree that is immediately discarded.
+  private cloneFields(node: TreeNode): TreeNode {
+    return this.clone(omit(node, [this.childrenKey]))
+  }
+
+  /** Iterative preorder; active-path identity detects cycles without dropping DAG branches. */
+  private *walk(tree: TreeNode[]): Generator<TreeVisit> {
+    const frames: { nodes: TreeNode[]; index: number; parent: TreeVisit | null }[] = [
+      { nodes: tree, index: 0, parent: null }
+    ]
+    const active = new WeakSet<TreeNode>()
+    while (frames.length) {
+      const frame = frames[frames.length - 1]
+      if (frame.index >= frame.nodes.length) {
+        if (frame.parent) active.delete(frame.parent.node)
+        frames.pop()
+        continue
+      }
+      const node = frame.nodes[frame.index++]
+      if (!node || typeof node !== 'object' || Array.isArray(node)) continue
+      if (active.has(node)) throw new TreeDataError()
+      const visit: TreeVisit = {
+        node,
+        parent: frame.parent,
+        depth: frame.parent ? frame.parent.depth + 1 : 0
+      }
+      active.add(node)
+      yield visit
+      const children = this.getChildren(node)
+      if (children.length) frames.push({ nodes: children, index: 0, parent: visit })
+      else active.delete(node)
+    }
+  }
+
+  private ancestorIds(visit: TreeVisit): ID[] {
+    const path: ID[] = []
+    for (let parent = visit.parent; parent; parent = parent.parent) {
+      path.push(this.getNodeId(parent.node))
+    }
+    return path.reverse()
   }
 
   /**
@@ -92,26 +145,18 @@ export default class TreeUtils {
 
     if (!Array.isArray(source)) return []
 
-    const normalizeNodes = (nodes: unknown[]): T[] =>
-      nodes
-        .filter(
-          (node): node is Record<string, unknown> =>
-            typeof node === 'object' && node !== null && !Array.isArray(node)
-        )
-        .map((rawNode) => {
-          const node = this.clone(rawNode) as TreeNode
-          const children = this.getValue(node, this.childrenKey)
-
-          if (Array.isArray(children)) {
-            this.setValue(node, this.childrenKey, normalizeNodes(children))
-          } else {
-            this.deleteValue(node, this.childrenKey)
-          }
-
-          return node as T
-        })
-
-    return normalizeNodes(source)
+    const roots: TreeNode[] = []
+    const normalized = new WeakMap<TreeVisit, TreeNode>()
+    for (const visit of this.walk(source)) {
+      const node = this.cloneFields(visit.node)
+      if (Array.isArray(this.getValue(visit.node, this.childrenKey))) {
+        this.setValue(node, this.childrenKey, [])
+      }
+      normalized.set(visit, node)
+      if (visit.parent) this.ensureChildren(normalized.get(visit.parent)!).push(node)
+      else roots.push(node)
+    }
+    return roots as T[]
   }
 
   /**
@@ -123,14 +168,15 @@ export default class TreeUtils {
    */
   listToTree<T extends object = TreeNode>(items: T[], sortFn?: (a: T, b: T) => number): T[] {
     if (!Array.isArray(items)) return []
+    if (this.detectCycle(items).hasCycle) throw new TreeDataError()
 
     const map = new Map<ID, TreeNode>()
     const roots: TreeNode[] = []
 
     // 1) build map with cloned nodes and init children
     for (const raw of items) {
-      const node = this.clone(raw) as TreeNode
-      this.ensureChildren(node)
+      const node = this.cloneFields(raw as TreeNode)
+      this.setValue(node, this.childrenKey, [])
       map.set(this.getNodeId(node), node)
     }
 
@@ -148,20 +194,11 @@ export default class TreeUtils {
 
     // 3) sort if sortFn provided
     if (sortFn) {
-      const sortRecursively = (nodes: TreeNode[]) => {
-        // Sort current level
-        nodes.sort((a, b) => sortFn(a as T, b as T))
-
-        // Sort children recursively
-        for (const node of nodes) {
-          const children = this.getChildren(node)
-          if (children.length > 0) {
-            sortRecursively(children)
-          }
-        }
+      const compare = (a: TreeNode, b: TreeNode): number => sortFn(a as T, b as T)
+      roots.sort(compare)
+      for (const { node } of this.walk(roots)) {
+        this.getChildren(node).sort(compare)
       }
-
-      sortRecursively(roots)
     }
 
     return roots as T[]
@@ -181,40 +218,23 @@ export default class TreeUtils {
     const includeDepth = opts?.includeDepth ?? false
     const includeParentChain = opts?.includeParentChain ?? false
 
-    const walk = (nodes: TreeNode[], depth = 0, parentChain: ID[] = []) => {
-      for (const raw of nodes) {
-        const node = this.clone(raw)
-        // remove children when flattening (to avoid circular large objects)
-        const children = this.getChildren(node)
-        this.deleteValue(node, this.childrenKey)
-
-        if (includeDepth) node.__depth = depth
-        if (includeParentChain) node.__parentChain = [...parentChain]
-
-        result.push(node)
-
-        if (children.length) {
-          walk(children, depth + 1, [...parentChain, this.getNodeId(node)])
-        }
-      }
+    for (const visit of this.walk(tree as TreeNode[])) {
+      const node = this.cloneFields(visit.node)
+      if (includeDepth) node.__depth = visit.depth
+      if (includeParentChain) node.__parentChain = this.ancestorIds(visit)
+      result.push(node)
     }
-
-    walk(tree as TreeNode[], 0, [])
     return result as T[]
   }
 
   /**
    * findNode
    * Find node by id in tree (DFS)
-   * Returns the node reference from the cloned tree (not original)
+   * Returns the first matching reference from the supplied tree (does not clone).
    */
   findNode<T extends object = TreeNode>(tree: T[], id: ID): T | null {
-    const stack = [...tree] as TreeNode[]
-    while (stack.length) {
-      const node = stack.pop()!
+    for (const { node } of this.walk(tree as TreeNode[])) {
       if (this.getNodeId(node) === id) return node as T
-      const children = this.getChildren(node)
-      if (children.length) stack.push(...children)
     }
     return null
   }
@@ -229,10 +249,19 @@ export default class TreeUtils {
     id: ID,
     patch: Partial<T>
   ): { tree: T[]; updatedNode: T | null } {
-    const t = this.clone(tree) as TreeNode[]
+    const t = this.normalizeTreeData<TreeNode>(tree)
     const target = this.findNode(t, id)
     if (!target) return { tree: t as T[], updatedNode: null }
-    Object.assign(target, patch)
+    const fields = this.cloneFields(patch as TreeNode)
+    if (Object.hasOwn(patch, this.childrenKey)) {
+      const children = this.getValue(patch as TreeNode, this.childrenKey)
+      this.setValue(
+        fields,
+        this.childrenKey,
+        Array.isArray(children) ? this.normalizeTreeData(children) : this.clone(children)
+      )
+    }
+    Object.assign(target, fields)
     return { tree: t as T[], updatedNode: target as T }
   }
 
@@ -243,8 +272,8 @@ export default class TreeUtils {
    * - returns new tree (cloned)
    */
   addNode<T extends object = TreeNode>(tree: T[], node: T): T[] {
-    const t = this.clone(tree) as TreeNode[]
-    const newNode = this.clone(node) as TreeNode
+    const t = this.normalizeTreeData<TreeNode>(tree)
+    const [newNode] = this.normalizeTreeData<TreeNode>([node])
     this.ensureChildren(newNode)
 
     // try to find parent
@@ -273,45 +302,46 @@ export default class TreeUtils {
    * - This will remove the node and its entire subtree.
    */
   removeNode<T extends object = TreeNode>(tree: T[], id: ID): { tree: T[]; removed: T | null } {
-    const t = this.clone(tree) as TreeNode[]
-    let removed: TreeNode | null = null
-
-    const walk = (nodes: TreeNode[]) => {
-      for (let i = nodes.length - 1; i >= 0; i--) {
-        const node = nodes[i]
-        if (this.getNodeId(node) === id) {
-          removed = nodes.splice(i, 1)[0]
-          return true
-        }
-        const children = this.getChildren(node)
-        if (children.length) {
-          const found = walk(children)
-          if (found) return true
-        }
+    const t = this.normalizeTreeData<TreeNode>(tree)
+    // Keep the established reverse-sibling lookup when duplicate IDs exist.
+    const frames = [{ nodes: t, index: t.length - 1 }]
+    while (frames.length) {
+      const frame = frames[frames.length - 1]
+      if (frame.index < 0) {
+        frames.pop()
+        continue
       }
-      return false
+      const index = frame.index--
+      const node = frame.nodes[index]
+      if (this.getNodeId(node) === id) {
+        frame.nodes.splice(index, 1)
+        return { tree: t as T[], removed: node as T }
+      }
+      const children = this.getChildren(node)
+      if (children.length) frames.push({ nodes: children, index: children.length - 1 })
     }
-
-    walk(t)
-    return { tree: t as T[], removed: removed as T | null }
+    return { tree: t as T[], removed: null }
   }
 
   /**
    * mapTree
-   * Map each node to new value (like Array.map) while preserving structure.
+   * Map in preorder over one isolated snapshot, preserving the input structure.
+   * Mappers may read children but must not mutate them; returned children are rebuilt.
    */
   mapTree<T extends object = TreeNode>(tree: T[], mapper: (node: T) => T): T[] {
-    const mapNode = (node: TreeNode): TreeNode => {
-      const mapped = mapper(this.clone(node) as T) as TreeNode
-      const children = this.getChildren(node)
-      this.setValue(
-        mapped,
-        this.childrenKey,
-        children && children.length ? children.map(mapNode) : []
-      )
-      return mapped
+    const snapshot = this.normalizeTreeData<TreeNode>(tree)
+    const roots: TreeNode[] = []
+    const mappedNodes = new WeakMap<TreeVisit, TreeNode>()
+    for (const visit of this.walk(snapshot)) {
+      // Own both callback/result shells so assigning children never rewrites the snapshot
+      // or an object returned from an external closure. Payloads were cloned above.
+      const mapped = shallowClone(mapper(shallowClone(visit.node) as T)) as TreeNode
+      this.setValue(mapped, this.childrenKey, [])
+      mappedNodes.set(visit, mapped)
+      if (visit.parent) this.ensureChildren(mappedNodes.get(visit.parent)!).push(mapped)
+      else roots.push(mapped)
     }
-    return (tree as TreeNode[]).map(mapNode) as T[]
+    return roots as T[]
   }
 
   /**
@@ -321,38 +351,26 @@ export default class TreeUtils {
   traverse<T extends object = TreeNode>(
     tree: T[],
     callback: (node: T, depth: number, parentChain: ID[]) => boolean | void
-  ) {
-    const walk = (nodes: TreeNode[], depth = 0, parentChain: ID[] = []) => {
-      for (const node of nodes) {
-        const stop = callback(node as T, depth, parentChain)
-        if (stop === false) return false
-        const children = this.getChildren(node)
-        if (children.length) {
-          const res = walk(children, depth + 1, [...parentChain, this.getNodeId(node)])
-          if (res === false) return false
-        }
-      }
-      return true
+  ): boolean {
+    for (const visit of this.walk(tree as TreeNode[])) {
+      if (callback(visit.node as T, visit.depth, this.ancestorIds(visit)) === false) return false
     }
-    return walk(tree as TreeNode[], 0, [])
+    return true
   }
 
   /**
    * sortTree
-   * Sort nodes in-place by compareFn; applies recursively to children.
+   * Sort a structural copy at every level.
    * - compareFn same as Array.prototype.sort
-   * - returns sorted tree (cloned if deepClone true)
+   * - deepClone controls business-field cloning, never structural isolation.
    */
   sortTree<T extends object = TreeNode>(tree: T[], compareFn: (a: T, b: T) => number): T[] {
-    const t = this.clone(tree) as TreeNode[]
-    const sortRec = (nodes: TreeNode[]) => {
-      nodes.sort((a, b) => compareFn(a as T, b as T))
-      for (const n of nodes) {
-        const children = this.getChildren(n)
-        if (children.length) sortRec(children)
-      }
+    const t = this.normalizeTreeData<TreeNode>(tree)
+    const compare = (a: TreeNode, b: TreeNode): number => compareFn(a as T, b as T)
+    t.sort(compare)
+    for (const { node } of this.walk(t)) {
+      this.getChildren(node).sort(compare)
     }
-    sortRec(t)
     return t as T[]
   }
 
@@ -367,34 +385,36 @@ export default class TreeUtils {
     for (const it of items) {
       const node = it as TreeNode
       const parentId = this.getValue(node, this.parentKey)
-      parentMap.set(this.getNodeId(node), this.isId(parentId) ? parentId : null)
+      parentMap.set(
+        this.getNodeId(node),
+        !this.isRootParent(parentId) && this.isId(parentId) ? parentId : null
+      )
     }
 
     const visited = new Set<ID>()
-    const stack = new Set<ID>()
     const cycles: ID[][] = []
-
-    const visit = (nodeId: ID) => {
-      if (!parentMap.has(nodeId)) return false
-      if (stack.has(nodeId)) {
-        // found a cycle -- reconstruct cycle
-        const cycle = Array.from(stack).slice(Array.from(stack).indexOf(nodeId))
-        cycles.push(cycle)
-        return true
+    for (const start of parentMap.keys()) {
+      if (visited.has(start)) continue
+      const path: ID[] = []
+      const offsets = new Map<ID, number>()
+      let current: ID | null | undefined = start
+      while (
+        current !== null &&
+        current !== undefined &&
+        parentMap.has(current) &&
+        !visited.has(current)
+      ) {
+        const cycleStart = offsets.get(current)
+        if (cycleStart !== undefined) {
+          cycles.push(path.slice(cycleStart))
+          break
+        }
+        offsets.set(current, path.length)
+        path.push(current)
+        current = parentMap.get(current)
       }
-      if (visited.has(nodeId)) return false
-
-      visited.add(nodeId)
-      stack.add(nodeId)
-      const parent = parentMap.get(nodeId)
-      if (parent !== null && parent !== undefined && parentMap.has(parent)) {
-        visit(parent)
-      }
-      stack.delete(nodeId)
-      return false
+      for (const id of path) visited.add(id)
     }
-
-    for (const id of parentMap.keys()) visit(id)
 
     return { hasCycle: cycles.length > 0, cycles }
   }
@@ -405,58 +425,38 @@ export default class TreeUtils {
    * - Build using tree (not flat list)
    */
   getPathToNode<T extends object = TreeNode>(tree: T[], targetId: ID): ID[] | null {
-    const path: ID[] = []
-    const found = (nodes: TreeNode[]): boolean => {
-      for (const n of nodes) {
-        path.push(this.getNodeId(n))
-        if (this.getNodeId(n) === targetId) return true
-        const children = this.getChildren(n)
-        if (children.length) {
-          if (found(children)) return true
-        }
-        path.pop()
-      }
-      return false
+    for (const visit of this.walk(tree as TreeNode[])) {
+      if (this.getNodeId(visit.node) === targetId) return [...this.ancestorIds(visit), targetId]
     }
-    const ok = found(tree as TreeNode[])
-    return ok ? path : null
+    return null
   }
 
   /**
    * getDescendants
-   * Return flat list of descendants for given node id (including node if includeSelf)
+   * Return flat cloned records without children (including node if includeSelf).
    */
   getDescendants<T extends object = TreeNode>(tree: T[], id: ID, includeSelf = false): T[] {
     const node = this.findNode(tree, id)
     if (!node) return []
-    const res: TreeNode[] = []
-    const walk = (n: TreeNode) => {
-      res.push(this.clone(n))
-      const children = this.getChildren(n)
-      if (children.length) for (const c of children) walk(c)
-    }
-    if (includeSelf) walk(node as TreeNode)
-    else {
-      const children = this.getChildren(node as TreeNode)
-      for (const c of children) walk(c)
-    }
-    return res as T[]
+    const records = this.treeToList([node])
+    return includeSelf ? records : records.slice(1)
   }
 
   /**
    * getAncestors
-   * Requires the flattened list (or original items) to reconstruct ancestors
-   * If you only have tree, you can use getPathToNode then lookup nodes by id.
+   * Return flat cloned records from root to target (inclusive), without children.
+   * Use the actual visited path, not independent ID lookups across other branches.
    */
   getAncestors<T extends object = TreeNode>(tree: T[], targetId: ID): T[] {
-    const path = this.getPathToNode(tree, targetId)
-    if (!path) return []
-    const res: TreeNode[] = []
-    for (const id of path) {
-      const n = this.findNode(tree, id)
-      if (n) res.push(this.clone(n as TreeNode))
+    for (const visit of this.walk(tree as TreeNode[])) {
+      if (this.getNodeId(visit.node) !== targetId) continue
+      const records: TreeNode[] = []
+      for (let current: TreeVisit | null = visit; current; current = current.parent) {
+        records.push(this.cloneFields(current.node))
+      }
+      return records.reverse() as T[]
     }
-    return res as T[]
+    return []
   }
 
   /**
@@ -481,31 +481,15 @@ export default class TreeUtils {
     order: 'asc' | 'desc' = 'asc',
     sortFn?: (a: T, b: T) => number
   ): T[] {
-    const t = this.clone(tree) as TreeNode[]
-
-    // 获取嵌套字段的值
-    const getFieldValue = (node: TreeNode, fieldPath: string): unknown => {
-      const parts = fieldPath.split('.')
-      let value: unknown = node
-
-      for (const part of parts) {
-        if (value && typeof value === 'object' && part in value) {
-          value = (value as Record<string, unknown>)[part]
-        } else {
-          return undefined
-        }
-      }
-
-      return value
-    }
-
     // 默认排序函数
-    const defaultSortFn = (a: TreeNode, b: TreeNode): number => {
-      const aValue = getFieldValue(a, field)
-      const bValue = getFieldValue(b, field)
+    const defaultSortFn = (a: T, b: T): number => {
+      const aValue: unknown = get(a, field)
+      const bValue: unknown = get(b, field)
 
       // 处理 undefined 和 null
-      if (aValue === undefined || aValue === null) return 1
+      if (aValue === undefined || aValue === null) {
+        return bValue === undefined || bValue === null ? 0 : 1
+      }
       if (bValue === undefined || bValue === null) return -1
 
       // 根据类型比较
@@ -519,22 +503,7 @@ export default class TreeUtils {
       return order === 'asc' ? aStr.localeCompare(bStr) : bStr.localeCompare(aStr)
     }
 
-    // 使用提供的排序函数或默认排序函数
-    const compareFn = sortFn ? (a: TreeNode, b: TreeNode) => sortFn(a as T, b as T) : defaultSortFn
-
-    // 递归排序
-    const sortRecursively = (nodes: TreeNode[]) => {
-      nodes.sort(compareFn)
-      for (const node of nodes) {
-        const children = this.getChildren(node)
-        if (children.length > 0) {
-          sortRecursively(children)
-        }
-      }
-    }
-
-    sortRecursively(t)
-    return t as T[]
+    return this.sortTree(tree, sortFn ?? defaultSortFn)
   }
 
   /**
@@ -547,37 +516,30 @@ export default class TreeUtils {
     tree: T[],
     condition: (node: T) => boolean
   ): { tree: T[]; removed: T[] } {
-    const t = this.clone(tree) as TreeNode[]
+    const t = this.normalizeTreeData<TreeNode>(tree)
     const removed: TreeNode[] = []
-
-    const removeRecursively = (nodes: TreeNode[]): TreeNode[] => {
-      const result: TreeNode[] = []
-
-      for (const node of nodes) {
-        // 检查当前节点是否满足删除条件
-        if (condition(node as T)) {
-          removed.push(this.clone(node))
-          // 跳过当前节点及其子节点（不添加到结果中）
-          continue
-        }
-
-        // 保留当前节点
-        const newNode = { ...node }
-
-        // 递归处理子节点
-        const children = this.getChildren(node)
-        if (children.length > 0) {
-          this.setValue(newNode, this.childrenKey, removeRecursively(children))
-        }
-
-        result.push(newNode)
+    const result: TreeNode[] = []
+    const frames = [{ nodes: t, index: 0, kept: result }]
+    while (frames.length) {
+      const frame = frames[frames.length - 1]
+      if (frame.index >= frame.nodes.length) {
+        frames.pop()
+        continue
       }
-
-      return result
+      const node = frame.nodes[frame.index++]
+      if (condition(node as T)) {
+        removed.push(node)
+        continue
+      }
+      frame.kept.push(node)
+      const children = this.getChildren(node)
+      if (children.length) {
+        const kept: TreeNode[] = []
+        this.setValue(node, this.childrenKey, kept)
+        frames.push({ nodes: children, index: 0, kept })
+      }
     }
-
-    const filteredTree = removeRecursively(t)
-    return { tree: filteredTree as T[], removed: removed as T[] }
+    return { tree: result as T[], removed: removed as T[] }
   }
 }
 

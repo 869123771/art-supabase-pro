@@ -1,7 +1,7 @@
 <template>
   <div
     class="art-async-state"
-    :class="{ 'is-full-height': fullHeight }"
+    :class="{ 'is-full-height': fullHeight, 'is-compact': size === 'compact' }"
     :style="{ minHeight: normalizedMinHeight }"
     :aria-busy="loading"
   >
@@ -80,6 +80,7 @@
     emptyImageSize?: number
     fullHeight?: boolean
     minHeight?: string | number
+    size?: 'default' | 'compact'
   }
 
   type EmptyStateSize = 'compact' | 'default'
@@ -96,7 +97,8 @@
     emptyDescription: '',
     emptyImageSize: 96,
     fullHeight: false,
-    minHeight: 180
+    minHeight: 180,
+    size: 'default'
   })
 
   const emit = defineEmits<{ retry: [] }>()
@@ -163,6 +165,19 @@
 
     &__empty {
       min-height: inherit;
+    }
+
+    &.is-compact &__result {
+      --el-result-title-margin-top: 12px;
+      --el-result-subtitle-margin-top: 8px;
+      --el-result-extra-margin-top: 16px;
+
+      padding: var(--art-space-3);
+
+      :deep(.el-result__icon svg) {
+        width: 40px;
+        height: 40px;
+      }
     }
   }
 </style>
