@@ -314,6 +314,9 @@ export const useUserStore = defineStore(
 
       const request = (async () => {
         const { data, error } = await fetchGetDictListByTypeCode(dictCode)
+        console.info(
+          `[DictDiagnostic] code=${dictCode} count=${data?.length ?? 0} error=${error instanceof Error ? error.message : String(error)}`
+        )
         if (error) throw error
 
         dictMap.value = {
