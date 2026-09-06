@@ -84,6 +84,7 @@
     hr: 'ri:team-line',
     mdm: 'ri:database-2-line',
     mes: 'ri:tools-line',
+    pmis: 'ri:settings-5-line',
     smis: 'ri:shield-check-line',
     tms: 'ri:apps-2-line',
     vms: 'ri:truck-line',

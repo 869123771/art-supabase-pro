@@ -23,6 +23,7 @@ export const hostedApplicationSourceDirectories = {
   '@hr': 'modules/art-supabase-hr/src',
   '@mdm': 'modules/art-supabase-mdm/src',
   '@mes': 'modules/art-supabase-mes/src',
+  '@pmis': 'modules/art-supabase-pmis/src',
   '@smis': 'modules/art-supabase-smis/src',
   '@tms': 'modules/art-supabase-tms/src',
   '@vms': 'modules/art-supabase-vms/src',

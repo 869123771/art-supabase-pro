@@ -253,6 +253,42 @@ export async function fetchGetDictList(): Promise<QueryResult<DictionaryWithType
   )
 }
 
+/** 按字典类型编码精确加载启用项，供业务页面按需补齐持久化字典缓存。 */
+export async function fetchGetDictListByTypeCode(
+  dictCode: string
+): Promise<QueryResult<DictionaryWithType[]>> {
+  return await responseHandle<DictionaryWithType[]>(
+    () =>
+      supabase
+        .from('sys_dictionary')
+        .select(
+          `
+          id,
+          type_id,
+          code,
+          label,
+          value,
+          sort,
+          color,
+          tag_type,
+          remark,
+          parent_id,
+          cascade_parent_id,
+          dict_type_table:sys_dict_type!inner(
+            code,
+            name
+          )
+        `
+        )
+        .eq('status', '1')
+        .eq('dict_type_table.status', '1')
+        .eq('dict_type_table.code', dictCode)
+        .order('sort', { ascending: true })
+        .order('id', { ascending: true }),
+    { ignoreCheck: true }
+  )
+}
+
 // 删除字典项
 export async function deleteDict(params: Api.DataCenter.DictListItem) {
   const { id } = params

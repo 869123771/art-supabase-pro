@@ -11,6 +11,7 @@ export const APPLICATION_CODES = [
   'hr',
   'mdm',
   'mes',
+  'pmis',
   'smis',
   'tms',
   'vms',
@@ -73,6 +74,14 @@ export const APPLICATION_PROFILES: Record<ApplicationCode, ApplicationProfile> =
     defaultPath: '/mes/workbench',
     deploymentPath: '/art-supabase-mes/',
     developmentPort: 3019
+  },
+  pmis: {
+    code: 'pmis',
+    name: 'PMIS设备管理',
+    description: '设备点检、巡检与预防性维护管理',
+    defaultPath: '/pmis/inspection/inspection-sheet',
+    deploymentPath: '/art-supabase-pmis/',
+    developmentPort: 3020
   },
   smis: {
     code: 'smis',

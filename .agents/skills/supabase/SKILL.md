@@ -10,6 +10,19 @@ metadata:
 
 ## Core Principles
 
+### Project tenant-scope invariant
+
+For `art-supabase-pro`, apply this invariant to every table, view, RPC, Edge Function, and Data API provider that handles tenant-owned business data:
+
+- Only platform super administrators can select `全部租户` or another tenant in the application header. Ordinary users and tenant administrators are always bound to their authenticated tenant, including when they forge `x-art-tenant-scope`.
+- `app_private.current_read_tenant_id()` returns the ordinary user's tenant, the concrete header tenant for platform-selected, and `NULL` for platform-all. Test `NULL` as all tenants with `app_private.tenant_in_current_read_scope(tenant_id)` or an equivalent null-safe predicate. Never compare `tenant_id = current_read_tenant_id()` directly.
+- Do not implement SELECT as `is_platform_super() OR tenant_id = current_user_tenant_id()`: the super branch leaks all tenants after a concrete tenant is selected. Apply the canonical read predicate and keep separate permission/ownership conditions.
+- `SECURITY DEFINER` readers bypass RLS and therefore must repeat the canonical read predicate in every base query, count, option list, recursive CTE, and related-record lookup.
+- Platform-all remains writable for authorized platform super administrators. Bind an existing-row mutation to that row's tenant, a child creation to its parent tenant, and a root create/import to an explicit target tenant. Do not require a header switch when the target is already unambiguous, and never default business data to the platform tenant merely because the actor is platform super.
+- Preserve `canonical_platform_super_write` on every RLS-enabled public table with `tenant_id`, or provide a reviewed equivalent that grants the same authenticated platform-super write path. Do not derive this authority from `x-art-tenant-scope`; the header selects a view, while `is_platform_super()` grants authority.
+- Do not treat login bootstrap identity as an ordinary business list. The current `sys_user` row identified by `auth_user_id = auth.uid()` must remain readable even while a valid, stale, or invalid tenant scope is persisted; scope reads of other users normally. A global restrictive tenant policy on `sys_user` is invalid because it can turn a successful Auth login into `PGRST116` during profile loading.
+- Verify platform-all, platform-selected, ordinary-own, and forged-header ordinary behavior after every tenant-boundary migration. For mutation changes, also verify platform-all create/edit with an explicit or inherited target tenant.
+
 **1. Supabase changes frequently — verify against changelog and current docs before implementing.**
 Do not rely on training data for Supabase features. Function signatures, config.toml settings, and API conventions change between versions.
 

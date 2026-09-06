@@ -281,7 +281,8 @@
 
   const { width } = useWindowSize()
   const { t } = useI18n()
-  const { effectiveTenantId, isTenantScopeItem } = useTenantScopeFormPolicy()
+  const { effectiveTenantId, shouldExposeTenantField, isTenantScopeItem } =
+    useTenantScopeFormPolicy()
   const isMobile = computed(() => width.value < 500)
 
   const formInstance = useTemplateRef<FormInstance>('formRef')
@@ -988,14 +989,18 @@
   }
 
   const filteredFormItems = computed(() => {
-    return props.items.filter((item) => !isTenantScopeItem(item) && !isFormItemHidden(item))
+    return props.items.filter(
+      (item) =>
+        (shouldExposeTenantField.value || !isTenantScopeItem(item)) && !isFormItemHidden(item)
+    )
   })
 
   const syncTenantScopeField = () => {
     const tenantItem = props.items.find(isTenantScopeItem)
     if (!tenantItem) return
 
-    const tenantId = effectiveTenantId.value ?? ''
+    const tenantId = effectiveTenantId.value
+    if (!tenantId) return
     if (getFieldValue(tenantItem.key) !== tenantId) {
       setFieldValue(tenantItem.key, tenantId, tenantItem)
     }

@@ -2,9 +2,14 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
   readTenantScopeId,
+  readPlatformTenantScopeActive,
+  readMutationTenantScopeId,
+  normalizePlatformTenantReadUrl,
   resolveTenantScopeId,
   shouldAttachTenantScopeHeader,
+  TENANT_SCOPE_MODE_STORAGE_KEY,
   TENANT_SCOPE_STORAGE_KEY,
+  writePlatformTenantScopeActive,
   writeTenantScopeId
 } from '../../src/utils/tenant-scope-context'
 
@@ -66,6 +71,48 @@ test('tenant scope context persists only valid concrete tenant UUIDs', () => {
   }
 })
 
+test('platform scope state is explicit even when all tenants is selected', () => {
+  const originalDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'sessionStorage')
+  const storage = new MemoryStorage()
+  Object.defineProperty(globalThis, 'sessionStorage', { configurable: true, value: storage })
+
+  try {
+    writePlatformTenantScopeActive(true)
+    assert.equal(readPlatformTenantScopeActive(), true)
+    assert.equal(storage.getItem(TENANT_SCOPE_MODE_STORAGE_KEY), '1')
+
+    writePlatformTenantScopeActive(false)
+    assert.equal(readPlatformTenantScopeActive(), false)
+  } finally {
+    if (originalDescriptor) {
+      Object.defineProperty(globalThis, 'sessionStorage', originalDescriptor)
+    } else {
+      Reflect.deleteProperty(globalThis, 'sessionStorage')
+    }
+  }
+})
+
+test('platform table reads discard legacy tenant filters but preserve business filters and RPCs', () => {
+  assert.equal(
+    normalizePlatformTenantReadUrl(
+      'https://example.supabase.co/rest/v1/mdm_production_department?select=*&tenant_id=eq.platform&enabled=eq.true'
+    ),
+    'https://example.supabase.co/rest/v1/mdm_production_department?select=*&enabled=eq.true'
+  )
+  assert.equal(
+    normalizePlatformTenantReadUrl(
+      'https://example.supabase.co/rest/v1/mdm_employee?organization.tenant_id=eq.platform&name=ilike.%25A%25'
+    ),
+    'https://example.supabase.co/rest/v1/mdm_employee?name=ilike.%25A%25'
+  )
+  assert.equal(
+    normalizePlatformTenantReadUrl(
+      'https://example.supabase.co/rest/v1/rpc/list_people?tenant_id=platform'
+    ),
+    'https://example.supabase.co/rest/v1/rpc/list_people?tenant_id=platform'
+  )
+})
+
 test('tenant scope header is attached only to Supabase Data API requests', () => {
   assert.equal(
     shouldAttachTenantScopeHeader('https://example.supabase.co/rest/v1/sys_user?select=*'),
@@ -94,4 +141,19 @@ test('tenant scope header is attached only to Supabase Data API requests', () =>
     false
   )
   assert.equal(shouldAttachTenantScopeHeader('not a Supabase request'), false)
+})
+
+test('mutation tenant scope is read only from explicit table and supported RPC payloads', () => {
+  const tenantId = '7529f951-938e-4e2c-ac0d-316c136ae1f9'
+  assert.equal(readMutationTenantScopeId(JSON.stringify({ tenant_id: tenantId })), tenantId)
+  assert.equal(
+    readMutationTenantScopeId(JSON.stringify({ p_header: { tenant_id: tenantId } })),
+    tenantId
+  )
+  assert.equal(
+    readMutationTenantScopeId(JSON.stringify({ p_document: { tenant_id: tenantId } })),
+    tenantId
+  )
+  assert.equal(readMutationTenantScopeId(JSON.stringify({ tenant_id: 'invalid' })), null)
+  assert.equal(readMutationTenantScopeId('not-json'), null)
 })

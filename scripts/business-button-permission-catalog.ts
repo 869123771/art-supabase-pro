@@ -31,6 +31,55 @@ const crud = (
 ]
 
 export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] = [
+  ...[
+    'MdmUnitOfMeasure',
+    'MdmMaterialType',
+    'MdmMaterialCategory',
+    'MdmMaterialAttributeGroup',
+    'MdmMaterialCodeRule',
+    'MdmMaterialArchive'
+  ].map((menuName) => ({
+    menuName,
+    buttons: [
+      ...crud({ view: true, export: true }),
+      button('Copy', '复制'),
+      button('Enable', '启用'),
+      button('Disable', '停用'),
+      ...(menuName === 'MdmMaterialArchive' ? [button('GenerateCode', '生成编码')] : [])
+    ]
+  })),
+  {
+    menuName: 'MdmBomMaintenance',
+    buttons: [
+      ...crud({ view: true, export: true }),
+      button('Copy', '复制'),
+      button('Submit', '提交审核'),
+      button('Approve', '审核通过'),
+      button('Archive', '归档或作废')
+    ]
+  },
+  {
+    menuName: 'MdmBomStructure',
+    buttons: [button('View', '查看')]
+  },
+  {
+    menuName: 'MdmEsop',
+    buttons: [
+      ...crud({ view: true, import: true, export: true }),
+      button('Copy', '复制'),
+      button('Enable', '启用'),
+      button('Disable', '停用')
+    ]
+  },
+  {
+    menuName: 'MdmProductionEquipment',
+    buttons: [
+      ...crud({ view: true, import: true, export: true }),
+      button('Copy', '复制'),
+      button('Enable', '启用'),
+      button('Disable', '停用')
+    ]
+  },
   {
     menuName: 'MdmOperationTemplate',
     buttons: [

@@ -252,7 +252,7 @@ Apply the same ownership model to `ArtDrawer`.
 - Keep business rules out of `src/api` providers. Do not put form defaults, conditional fields, empty-string-to-null conversion, date formatting, attachment shaping, validation-derived values, or feature-specific field removal in API request functions.
 - Keep API providers transport-focused: choose the table or endpoint, extract path/query identifiers required by the request, convert key naming such as camelCase to snake_case, execute the request, and apply generic response handling.
 - Treat identifier extraction for an update request as transport work; treat deciding whether an identifier or field belongs in the payload as business work.
-- Remove audit/read-only fields such as `tenantId`, `createBy`, `createTime`, `updateBy`, and `updateTime` while constructing the business payload, not inside the API provider.
+- Remove audit/read-only fields such as `createBy`, `createTime`, `updateBy`, and `updateTime` while constructing the business payload, not inside the API provider. Remove `tenantId` for ordinary/concrete-scope writes that derive it server-side; retain a validated `tenantId` for platform-all create/import when it is the explicit business target.
 - Normalize optional database values according to the schema after validation. For nullable non-text values such as dates, numbers, and UUIDs, convert blank form values to `null` before the API call.
 - If payload construction is reused by multiple screens in one feature, place it in that feature's `modules` or feature composable. Do not turn the API provider into a domain service.
 
@@ -282,6 +282,14 @@ Shared component placement is responsibility-based. Read `src/components/README.
 
 ## Supabase Table Rules
 
+### Tenant scope is global shell state
+
+- Only platform super administrators may render the header tenant switcher. Do not use tenant-admin roles, route permissions, or module permissions as a substitute for `isPlatformSuper`.
+- Read APIs accept an optional tenant filter: ordinary users resolve to their authenticated tenant, platform-selected resolves to the selected tenant, and platform-all omits the filter. In views/composables use `useTenantScopeStore().effectiveTenantId`; never replace its platform-all `null` with `getUserInfo.tenantId`.
+- The compatibility normalization in `src/plugins/supabase.ts` protects legacy direct table reads, but new providers must still model the optional scope correctly. RPCs must obtain the server-side read scope; do not send the login tenant as a read parameter.
+- Platform-all is a writable management workspace. Existing-row update/delete gets its tenant from the row. Child creation gets it from the tenant-owned parent. Root create/import must expose or otherwise require an explicit tenant target. Do not force a header switch when the operation already identifies its target tenant.
+- A concrete header tenant is a scope boundary, not cosmetic UI. Reads must return only that tenant, and creation/reference options must not mix tenants.
+
 When creating or changing Supabase tables for this project, first inspect the closest existing table and match its conventions. New business tables must include the standard audit columns and `tenant_id` unless the user explicitly says otherwise:
 
 ```sql
@@ -292,7 +300,7 @@ update_time timestamptz not null default now(),
 tenant_id uuid not null default app_private.current_user_tenant_id()
 ```
 
-Do not use `uuid default auth.uid()` for `create_by` or `update_by` in this project. These fields are display strings and map to frontend `createBy` / `updateBy`. Do not ask business forms to pass `tenant_id` for ordinary inserts. Business tables should derive the tenant from the authenticated user with `app_private.current_user_tenant_id()` at the database default/policy layer. Use `app_private.default_register_tenant_id()` only for registration/default-user flows that intentionally land in the public registration tenant.
+Do not use `uuid default auth.uid()` for `create_by` or `update_by` in this project. These fields are display strings and map to frontend `createBy` / `updateBy`. Do not ask business forms to pass `tenant_id` for ordinary inserts. Business tables should derive the tenant from the authenticated user with `app_private.current_user_tenant_id()` at the database default/policy layer. Platform-all create/import is the exception: it must pass or derive a concrete target tenant and must never silently use the authenticated platform tenant. Use `app_private.default_register_tenant_id()` only for registration/default-user flows that intentionally land in the public registration tenant.
 
 For project-provided setup SQL, assign system configuration rows in `sys_role`, `sys_menu`, `sys_dict_type`, and `sys_dictionary` to the platform administrator tenant (`tenant_code = 'platform'`). The protected built-in `R_REGISTER` role is the exception when it already belongs to the public registration tenant; do not move or recreate it under `platform`, but platform super administrators must be able to grant its menu permissions. Use `624944977@qq.com` for `create_by` / `update_by`. Business seed rows that belong to ordinary feature tables should use the public registration tenant (`tenant_code = 'public-register'`) with `create_by` / `update_by = '624944977@qq.com'`.
 
@@ -310,7 +318,7 @@ for each row
 execute function public.trg_set_update_time_and_by();
 ```
 
-Also include the table's tenant isolation policies in the SQL itself: `tenant_select`, `tenant_insert`, `tenant_update`, and `tenant_delete` or the closest existing variant for the table's access model. Prefer `app_private.is_platform_super()` for platform-wide access, `app_private.current_user_tenant_id()` for tenant scoping, and `app_private.owns_record(create_by)` when creator ownership should be preserved. Do not ship a new business table without its RLS enabled and matching policies.
+Also include the table's tenant isolation policies in the SQL itself: `tenant_select`, `tenant_insert`, `tenant_update`, and `tenant_delete` or the closest existing variant for the table's access model. SELECT policies must compose with `app_private.tenant_in_current_read_scope(tenant_id)` so platform-all, platform-selected, and ordinary-own reads share one contract; do not use an unconditional platform-super OR branch that defeats the selected tenant. Write policies may allow platform-super cross-tenant maintenance, must keep ordinary users on `app_private.current_user_tenant_id()`, and should preserve `app_private.owns_record(create_by)` when creator ownership is required. Do not ship a new business table without its RLS enabled and matching policies.
 
 Frontend API insert/update helpers should omit `createBy`, `createTime`, `updateBy`, and `updateTime` before writing, unless the existing neighboring module intentionally supplies audit values.
 

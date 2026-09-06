@@ -5,8 +5,11 @@
     <mapping directory="$PROJECT_DIR$/modules/art-supabase-doc" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/modules/art-supabase-fms" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/modules/art-supabase-hr" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/modules/art-supabase-mdm" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/modules/art-supabase-mes" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/modules/art-supabase-smis" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/modules/art-supabase-tms" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/modules/art-supabase-vms" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/modules/art-supabase-wms" vcs="Git" />
   </component>
 </project>

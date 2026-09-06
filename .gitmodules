@@ -33,3 +33,7 @@
 	path = modules/art-supabase-mes
 	url = https://gitee.com/wangyanghub/art-supabase-mes.git
 	branch = master
+[submodule "modules/art-supabase-pmis"]
+	path = modules/art-supabase-pmis
+	url = https://gitee.com/wangyanghub/art-supabase-pmis.git
+	branch = master

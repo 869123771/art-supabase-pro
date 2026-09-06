@@ -17,9 +17,13 @@
     "paths": {
       "@fms/*": ["modules/art-supabase-fms/src/*"],
       "@hr/*": ["modules/art-supabase-hr/src/*"],
+      "@mdm/*": ["modules/art-supabase-mdm/src/*"],
+      "@mes/*": ["modules/art-supabase-mes/src/*"],
+      "@pmis/*": ["modules/art-supabase-pmis/src/*"],
       "@smis/*": ["modules/art-supabase-smis/src/*"],
       "@vms/*": ["modules/art-supabase-vms/src/*"],
       "@tms/*": ["modules/art-supabase-tms/src/*"],
+      "@wms/*": ["modules/art-supabase-wms/src/*"],
       "@/*": ["src/*"],
       "@views/*": ["src/views/*"],
       "@imgs/*": ["src/assets/images/*"],
@@ -40,12 +44,20 @@
     "modules/art-supabase-fms/src/**/*.vue",
     "modules/art-supabase-hr/src/**/*.ts",
     "modules/art-supabase-hr/src/**/*.vue",
+    "modules/art-supabase-mdm/src/**/*.ts",
+    "modules/art-supabase-mdm/src/**/*.vue",
+    "modules/art-supabase-mes/src/**/*.ts",
+    "modules/art-supabase-mes/src/**/*.vue",
+    "modules/art-supabase-pmis/src/**/*.ts",
+    "modules/art-supabase-pmis/src/**/*.vue",
     "modules/art-supabase-smis/src/**/*.ts",
     "modules/art-supabase-smis/src/**/*.vue",
     "modules/art-supabase-vms/src/**/*.ts",
     "modules/art-supabase-vms/src/**/*.vue",
     "modules/art-supabase-tms/src/**/*.ts",
-    "modules/art-supabase-tms/src/**/*.vue"
+    "modules/art-supabase-tms/src/**/*.vue",
+    "modules/art-supabase-wms/src/**/*.ts",
+    "modules/art-supabase-wms/src/**/*.vue"
   ],
   "exclude": ["node_modules", "dist", "supabase", "**/*.js", "src/types/import/components.d.ts"]
 }

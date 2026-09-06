@@ -60,6 +60,15 @@ registerHostedApplication(
   ])
 )
 registerHostedApplication(
+  'pmis',
+  '../modules/art-supabase-pmis/src/views',
+  import.meta.glob<HostedRouteComponentModule>([
+    '../modules/art-supabase-pmis/src/views/**/*.vue',
+    '!../modules/art-supabase-pmis/src/views/**/modules/**/*.vue',
+    '!../modules/art-supabase-pmis/src/views/**/components/**/*.vue'
+  ])
+)
+registerHostedApplication(
   'smis',
   '../modules/art-supabase-smis/src/views',
   import.meta.glob<HostedRouteComponentModule>([

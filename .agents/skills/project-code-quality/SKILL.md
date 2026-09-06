@@ -23,6 +23,21 @@ Keep every change maintainable at repository scale, not merely functional in the
 - Extend the closest shared module when three or more callers need the same behavior, or when the behavior is cross-cutting policy such as error normalization.
 - Do not create a wrapper that only renames an existing library or project utility.
 
+## Preserve The Tenant-Scope Contract
+
+Treat tenant scope as a cross-layer security and data-correctness contract, not a page filter.
+
+- Only `isPlatformSuper` users may see or use the header tenant switcher. Tenant administrators and ordinary users never receive a cross-tenant UI or server capability.
+- Ordinary users always read and write only their authenticated tenant. Ignore forged tenant-scope headers at the database boundary.
+- Platform super in `全部租户` reads across tenants and retains authorized mutations. Platform super with a concrete header tenant reads and writes only that tenant unless an operation explicitly targets an existing row from the all-tenant workspace.
+- For reads, use `useTenantScopeStore().effectiveTenantId` as an optional filter. `null` for platform super means all tenants; never fall back from that `null` to `getUserInfo.tenantId` or the platform tenant.
+- For writes in the all-tenant workspace, derive the target from the affected row, a tenant-owned parent object, or an explicit tenant selector on create/import. Never use the authenticated platform tenant as an implicit business-data target. Do not require a header switch when the operation already has an unambiguous target tenant.
+- Tenant-owned RLS tables must retain the project-wide `canonical_platform_super_write` policy (or an audited equivalent) so platform-all mutations are not rejected after the UI has resolved an explicit target. This bypass is based only on the authenticated `is_platform_super()` capability; request headers never grant it.
+- Direct table reads, views, and `SECURITY DEFINER` read RPCs must implement the same ordinary/all/selected semantics. Use `app_private.current_read_tenant_id()` null-safely or `app_private.tenant_in_current_read_scope(tenant_id)`; never write `tenant_id = app_private.current_read_tenant_id()` because platform-all resolves to `NULL`.
+- Authentication bootstrap is the control-plane exception: the authenticated user's own `sys_user` profile must remain readable before the shell can validate or restore a persisted tenant scope. Scope other users normally, but never attach a restrictive tenant policy that can hide `auth_user_id = auth.uid()`; verify refresh/login with a valid selected tenant and a stale invalid tenant ID.
+- A platform-super bypass such as `is_platform_super() OR tenant_id = current_user_tenant_id()` is invalid for reads: it ignores a concrete header selection. Preserve permission and ownership predicates while applying the canonical tenant-read predicate.
+- Verify at least four cases for tenant-sensitive work: platform-all, platform-selected, ordinary-own, and ordinary with a forged cross-tenant header. Add all-tenant create/edit coverage when the change includes mutations.
+
 ## Reuse Before Creating
 
 Follow this order:

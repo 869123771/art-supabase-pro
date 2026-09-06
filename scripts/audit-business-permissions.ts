@@ -20,7 +20,7 @@ const requiredPermissionMigrations = [
 // Local migration SQL is intentionally absent; new migrations must remain unique.
 const remoteDuplicateMigrationAllowlist = new Set<string>()
 type ManagedModule =
-  'tms' | 'vms' | 'fms' | 'hr' | 'mdm' | 'mes' | 'smis' | 'wms' | 'system' | 'workflow'
+  'tms' | 'vms' | 'fms' | 'hr' | 'mdm' | 'mes' | 'pmis' | 'smis' | 'wms' | 'system' | 'workflow'
 
 const managedViewRoots = new Map<ManagedModule, string>([
   ['tms', join(projectRoot, 'modules/art-supabase-tms/src/views')],
@@ -31,6 +31,7 @@ const managedViewRoots = new Map<ManagedModule, string>([
   ['hr', join(projectRoot, 'modules/art-supabase-hr/src/views')],
   ['mdm', join(projectRoot, 'modules/art-supabase-mdm/src/views')],
   ['mes', join(projectRoot, 'modules/art-supabase-mes/src/views')],
+  ['pmis', join(projectRoot, 'modules/art-supabase-pmis/src/views')],
   ['smis', join(projectRoot, 'modules/art-supabase-smis/src/views')],
   ['wms', join(projectRoot, 'modules/art-supabase-wms/src/views')]
 ])
@@ -41,12 +42,13 @@ const businessModules = new Set<ManagedModule>([
   'hr',
   'mdm',
   'mes',
+  'pmis',
   'smis',
   'wms'
 ])
 const sourceExtensions = new Set(['.ts', '.tsx', '.vue'])
 const permissionPattern =
-  /['"`]((?:System|Workflow|Tms|Finance|Hr|Smis|Vehicle|Insurance|Parts|PartsCategory|Supplier)[A-Za-z0-9]*(?::[A-Za-z][A-Za-z0-9]*)+)['"`]/g
+  /['"`]((?:System|Workflow|Tms|Finance|Hr|Mdm|Smis|Vehicle|Insurance|Parts|PartsCategory|Supplier)[A-Za-z0-9]*(?::[A-Za-z][A-Za-z0-9]*)+)['"`]/g
 const platformSuperPattern = /isPlatformSuper|平台超级管理员|仅平台|platform super administrator/i
 
 // These files use platform-super only for cross-tenant context or for controlled AI writes.
@@ -337,6 +339,7 @@ function resolveBusinessCatalogOwner(menuName: string): ManagedModule {
   if (menuName.startsWith('Tms')) return 'tms'
   if (menuName.startsWith('Finance')) return 'fms'
   if (menuName.startsWith('Hr')) return 'hr'
+  if (menuName.startsWith('Mdm')) return 'mdm'
   if (menuName.startsWith('Smis')) return 'smis'
   return 'vms'
 }

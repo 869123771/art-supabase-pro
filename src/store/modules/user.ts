@@ -45,7 +45,7 @@ import { StorageConfig } from '@/utils/storage/storage-config'
 import type { DictMap } from '@/types/store'
 
 import { fetchGetUserInfo, logout } from '@/api/auth'
-import { fetchGetDictList } from '@/api/data-center'
+import { fetchGetDictList, fetchGetDictListByTypeCode } from '@/api/data-center'
 import { groupBy } from 'lodash-es'
 import { SYSTEM_PARAM_DEFAULTS } from '@/config/system-param-defaults'
 import { hasPlatformSuperAccess } from '@/utils/platform-super-access'
@@ -79,6 +79,8 @@ export const useUserStore = defineStore(
     const DICT_CACHE_TTL_MS = 5 * 60 * 1000
     let dictListFetchedAt = 0
     let dictListRequest: Promise<void> | null = null
+    const dictCodeFetchedAt = new Map<string, number>()
+    const dictCodeRequests = new Map<string, Promise<void>>()
     // 计算属性：获取用户信息
     const getUserInfo = computed<Partial<Api.Auth.UserInfo>>(() => info.value)
     // 计算属性：获取用户信息
@@ -296,6 +298,7 @@ export const useUserStore = defineStore(
 
         setDictMap(groupData)
         dictListFetchedAt = Date.now()
+        Object.keys(groupData).forEach((code) => dictCodeFetchedAt.set(code, dictListFetchedAt))
       })()
 
       try {
@@ -305,10 +308,35 @@ export const useUserStore = defineStore(
       }
     }
 
+    const fetchDictByCode = async (dictCode: string): Promise<void> => {
+      const activeRequest = dictCodeRequests.get(dictCode)
+      if (activeRequest) return activeRequest
+
+      const request = (async () => {
+        const { data, error } = await fetchGetDictListByTypeCode(dictCode)
+        if (error) throw error
+
+        dictMap.value = {
+          ...dictMap.value,
+          [dictCode]: (data ?? []).slice().sort((a, b) => Number(a.sort) - Number(b.sort))
+        }
+        dictCodeFetchedAt.set(dictCode, Date.now())
+      })()
+      dictCodeRequests.set(dictCode, request)
+
+      try {
+        await request
+      } finally {
+        dictCodeRequests.delete(dictCode)
+      }
+    }
+
     const ensureDictLoaded = async (dictCode: keyof DictMap | string): Promise<void> => {
-      const cacheIsFresh = Date.now() - dictListFetchedAt < DICT_CACHE_TTL_MS
+      const code = String(dictCode)
+      const fetchedAt = dictCodeFetchedAt.get(code) ?? dictListFetchedAt
+      const cacheIsFresh = Date.now() - fetchedAt < DICT_CACHE_TTL_MS
       if (dictMap.value[dictCode]?.length && cacheIsFresh) return
-      await fetchDictList()
+      await fetchDictByCode(code)
     }
 
     const ensureDictValueLoaded = async (
@@ -320,10 +348,12 @@ export const useUserStore = defineStore(
         return
       }
 
-      const cacheIsFresh = Date.now() - dictListFetchedAt < DICT_CACHE_TTL_MS
+      const code = String(dictCode)
+      const fetchedAt = dictCodeFetchedAt.get(code) ?? dictListFetchedAt
+      const cacheIsFresh = Date.now() - fetchedAt < DICT_CACHE_TTL_MS
       const hasValue = Boolean(getDictItemByValue(dictCode, value))
       if (hasValue && cacheIsFresh) return
-      await fetchDictList()
+      await fetchDictByCode(code)
     }
 
     return {

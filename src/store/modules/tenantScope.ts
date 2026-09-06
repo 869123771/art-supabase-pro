@@ -1,7 +1,11 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { fetchGetTenantList } from '@/api/system-manage'
-import { readTenantScopeId, writeTenantScopeId } from '@/utils/tenant-scope-context'
+import {
+  readTenantScopeId,
+  writePlatformTenantScopeActive,
+  writeTenantScopeId
+} from '@/utils/tenant-scope-context'
 import { useUserStore } from './user'
 
 type TenantScopeOption = Api.SystemManage.TenantListItem & { id: string }
@@ -37,6 +41,7 @@ export const useTenantScopeStore = defineStore(
       scopeOwnerUserId.value = currentUserId
       selectedTenantId.value = null
       writeTenantScopeId(null)
+      writePlatformTenantScopeActive(isPlatformScope.value)
       tenantOptions.value = []
       if (hadSelectedTenant) revision.value += 1
     }
@@ -47,9 +52,11 @@ export const useTenantScopeStore = defineStore(
         tenantOptions.value = []
         selectedTenantId.value = userStore.getUserInfo.tenantId ?? null
         writeTenantScopeId(null)
+        writePlatformTenantScopeActive(false)
         loadError.value = null
         return
       }
+      writePlatformTenantScopeActive(true)
       writeTenantScopeId(selectedTenantId.value)
       if (tenantOptions.value.length && !force) return
 
@@ -86,6 +93,7 @@ export const useTenantScopeStore = defineStore(
       if (selectedTenantId.value === tenantId) return
 
       selectedTenantId.value = tenantId
+      writePlatformTenantScopeActive(true)
       writeTenantScopeId(tenantId)
       revision.value += 1
     }

@@ -26,7 +26,7 @@
           </span>
           <span class="tenant-scope-switcher__item-copy">
             <strong>全部租户</strong>
-            <small>跨租户全局管理</small>
+            <small>跨租户查看与管理，新增时明确所属租户</small>
           </span>
           <ArtSvgIcon
             v-if="isAllTenants"

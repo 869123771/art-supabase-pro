@@ -1,5 +1,12 @@
 <template>
-  <ElTag v-if="resolvedMode === 'tag'" :type="tagType">
+  <ElTag
+    v-if="resolvedMode === 'tag'"
+    :type="tagType"
+    effect="light"
+    size="small"
+    round
+    class="art-dict-display__tag"
+  >
     {{ label }}
   </ElTag>
 
@@ -83,6 +90,17 @@
 
 <style scoped lang="scss">
   .art-dict-display {
+    &__tag {
+      max-width: 100%;
+      vertical-align: middle;
+
+      :deep(.el-tag__content) {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+    }
+
     &__badge {
       display: inline-flex;
       flex-direction: row-reverse;

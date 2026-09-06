@@ -1,6 +1,5 @@
 import { storeToRefs } from 'pinia'
 import { computed } from 'vue'
-import { useUserStore } from '@/store/modules/user'
 import { useTenantScopeStore } from '@/store/modules/tenantScope'
 
 interface TenantScopedFormItem {
@@ -9,19 +8,18 @@ interface TenantScopedFormItem {
 
 /**
  * Resolves the tenant used by create forms.
- * A platform super uses the explicitly selected tenant, while "all tenants" falls back to the
- * authenticated actor tenant. Ordinary users always use their own tenant.
+ * A concrete shell scope supplies the tenant automatically. In the all-tenant scope, platform
+ * administrators keep mutation access but must preserve/select the operation target tenant.
  */
 export function useTenantScopeFormPolicy() {
-  const { getUserInfo } = storeToRefs(useUserStore())
-  const { effectiveTenantId: selectedTenantId } = storeToRefs(useTenantScopeStore())
-  const effectiveTenantId = computed(
-    () => selectedTenantId.value ?? getUserInfo.value.tenantId ?? null
-  )
+  const { isAllTenants, effectiveTenantId: selectedTenantId } = storeToRefs(useTenantScopeStore())
+  const effectiveTenantId = computed(() => selectedTenantId.value ?? null)
+  const shouldExposeTenantField = computed(() => isAllTenants.value)
   const isTenantScopeItem = (item: TenantScopedFormItem): boolean => item.key === 'tenantId'
 
   return {
     effectiveTenantId,
+    shouldExposeTenantField,
     isTenantScopeItem
   }
 }
