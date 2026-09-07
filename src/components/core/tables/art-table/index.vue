@@ -42,20 +42,31 @@
               v-if="child.required || (child.useHeaderSlot && child.prop)"
               #header="headerScope"
             >
-              <slot
-                v-if="child.useHeaderSlot && child.prop"
-                :name="child.headerSlotName || `${child.prop}-header`"
-                v-bind="{ ...headerScope, prop: child.prop, label: child.label }"
-              >
-                {{ child.label }}
-              </slot>
-              <span v-else class="art-table__required-header">
-                {{ child.label
-                }}<span class="art-table__required-marker" aria-hidden="true">*</span>
+              <span class="art-table__header-label">
+                <span v-if="child.required" class="art-table__required-marker" aria-hidden="true"
+                  >*</span
+                >
+                <slot
+                  v-if="child.useHeaderSlot && child.prop"
+                  :name="child.headerSlotName || `${child.prop}-header`"
+                  v-bind="{ ...headerScope, prop: child.prop, label: child.label }"
+                >
+                  {{ child.label }}
+                </slot>
+                <template v-else>{{ child.label }}</template>
+                <span v-if="child.required" class="sr-only">（必填）</span>
               </span>
             </template>
             <template v-if="shouldUseCustomCellTemplate(child)" #default="slotScope">
-              <div v-if="shouldRenderSlotScope(slotScope)" class="art-table__cell-content">
+              <div
+                v-if="shouldRenderSlotScope(slotScope)"
+                class="art-table__cell-content"
+                :class="{
+                  'is-validation-error': isCellValidationError(child, slotScope.row)
+                }"
+                :data-art-validation-key="getCellValidationKey(child, slotScope.row)"
+                :aria-invalid="isCellValidationError(child, slotScope.row) ? 'true' : undefined"
+              >
                 <span class="art-table__cell-value">
                   <slot
                     v-if="child.useSlot && child.prop"
@@ -78,6 +89,13 @@
                   />
                   <span v-else>{{ getColumnCellContent(child, slotScope) }}</span>
                 </span>
+                <span
+                  v-if="getCellValidationError(child, slotScope.row)"
+                  class="sr-only"
+                  role="alert"
+                >
+                  {{ getCellValidationError(child, slotScope.row)?.message }}
+                </span>
               </div>
             </template>
           </ElTableColumn>
@@ -86,19 +104,29 @@
         <!-- 渲染普通列 -->
         <ElTableColumn v-else v-bind="cleanColumnProps(col)">
           <template v-if="col.required || (col.useHeaderSlot && col.prop)" #header="headerScope">
-            <slot
-              v-if="col.useHeaderSlot && col.prop"
-              :name="col.headerSlotName || `${col.prop}-header`"
-              v-bind="{ ...headerScope, prop: col.prop, label: col.label }"
-            >
-              {{ col.label }}
-            </slot>
-            <span v-else class="art-table__required-header">
-              {{ col.label }}<span class="art-table__required-marker" aria-hidden="true">*</span>
+            <span class="art-table__header-label">
+              <span v-if="col.required" class="art-table__required-marker" aria-hidden="true"
+                >*</span
+              >
+              <slot
+                v-if="col.useHeaderSlot && col.prop"
+                :name="col.headerSlotName || `${col.prop}-header`"
+                v-bind="{ ...headerScope, prop: col.prop, label: col.label }"
+              >
+                {{ col.label }}
+              </slot>
+              <template v-else>{{ col.label }}</template>
+              <span v-if="col.required" class="sr-only">（必填）</span>
             </span>
           </template>
           <template v-if="shouldUseCustomCellTemplate(col)" #default="slotScope">
-            <div v-if="shouldRenderSlotScope(slotScope)" class="art-table__cell-content">
+            <div
+              v-if="shouldRenderSlotScope(slotScope)"
+              class="art-table__cell-content"
+              :class="{ 'is-validation-error': isCellValidationError(col, slotScope.row) }"
+              :data-art-validation-key="getCellValidationKey(col, slotScope.row)"
+              :aria-invalid="isCellValidationError(col, slotScope.row) ? 'true' : undefined"
+            >
               <button
                 v-if="isColumnDraggable(col, slotScope.row)"
                 type="button"
@@ -132,6 +160,9 @@
                   :is="getColumnCellContent(col, slotScope)"
                 />
                 <span v-else>{{ getColumnCellContent(col, slotScope) }}</span>
+              </span>
+              <span v-if="getCellValidationError(col, slotScope.row)" class="sr-only" role="alert">
+                {{ getCellValidationError(col, slotScope.row)?.message }}
               </span>
             </div>
           </template>
@@ -186,7 +217,7 @@
   import type { TableProps } from 'element-plus'
   import { storeToRefs } from 'pinia'
   import { useDraggable, type DraggableEvent } from 'vue-draggable-plus'
-  import { ColumnOption } from '@/types'
+  import type { ColumnOption, TableColumnValidationContext } from '@/types'
   import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import ArtOverlayLoading from '@/components/core/feedback/art-overlay-loading/index.vue'
   import { useTableStore } from '@/store/modules/table'
@@ -213,6 +244,29 @@
     setScrollTop: (top?: number) => void
   }
 
+  export interface ArtTableValidationError {
+    row: unknown
+    rowIndex: number
+    prop: string
+    label: string
+    value: unknown
+    message: string
+  }
+
+  export interface ArtTableValidationResult {
+    valid: boolean
+    errors: ArtTableValidationError[]
+    firstError?: ArtTableValidationError
+  }
+
+  export interface ArtTableExpose {
+    validate: () => Promise<ArtTableValidationResult>
+    validateField: (props: string | string[]) => Promise<ArtTableValidationResult>
+    clearValidate: (props?: string | string[]) => void
+    scrollToTop: () => void
+    elTableRef: ArtTableInstance | null
+  }
+
   // ArtTable 是项目级通用表格外壳，行数据由各业务模块决定字段形状；这里把动态边界集中到一个别名中。
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   type ArtTableRow = any
@@ -227,6 +281,14 @@
   const tableHeaderRef = ref<HTMLElement>()
   const sortableTargetRef = ref<HTMLElement>()
   const rowKeysBeforeDrag = ref<string[]>([])
+  interface InternalTableValidationError extends ArtTableValidationError {
+    row: ArtTableRow
+    key: string
+  }
+  const validationErrors = ref(new Map<string, InternalTableValidationError>())
+  const validationRowKeys = new WeakMap<object, string>()
+  let validationRowKeySeed = 0
+  let validationRefreshSeed = 0
   const tableStore = useTableStore()
   const { isBorder, isZebra, tableSize, isFullScreen, isHeaderBackground } = storeToRefs(tableStore)
   const { isPlatformScope } = storeToRefs(useTenantScopeStore())
@@ -497,6 +559,7 @@
     return (
       (col.useSlot && col.prop) ||
       !!col.dict ||
+      isValidationColumn(col) ||
       col.draggable === true ||
       typeof col.draggable === 'function'
     )
@@ -540,6 +603,220 @@
       }
       return undefined
     }, row)
+  }
+
+  const isValidationColumn = (column: ArtTableColumn): boolean =>
+    Boolean(column.prop && (column.required || column.rules))
+
+  const getValidationRowKey = (row: ArtTableRow): string => {
+    const identity = getRowIdentity(row)
+    if (identity) return `key:${identity}`
+    if (row && typeof row === 'object') {
+      const existing = validationRowKeys.get(row)
+      if (existing) return existing
+      const generated = `row:${++validationRowKeySeed}`
+      validationRowKeys.set(row, generated)
+      return generated
+    }
+    return `value:${String(row)}`
+  }
+
+  const getValidationKey = (column: ArtTableColumn, row: ArtTableRow): string =>
+    `${getValidationRowKey(row)}::${String(column.prop)}`
+
+  const getCellValidationKey = (column: ArtTableColumn, row: ArtTableRow): string | undefined =>
+    isValidationColumn(column) ? getValidationKey(column, row) : undefined
+
+  const getCellValidationError = (
+    column: ArtTableColumn,
+    row: ArtTableRow
+  ): InternalTableValidationError | undefined => {
+    if (!isValidationColumn(column)) return undefined
+    return validationErrors.value.get(getValidationKey(column, row))
+  }
+
+  const isCellValidationError = (column: ArtTableColumn, row: ArtTableRow): boolean =>
+    Boolean(getCellValidationError(column, row))
+
+  const isRequiredValueEmpty = (value: unknown): boolean =>
+    value === undefined ||
+    value === null ||
+    (typeof value === 'string' && value.trim() === '') ||
+    (Array.isArray(value) && value.length === 0)
+
+  const getValidationColumns = (): ArtTableColumn[] => {
+    const columns: ArtTableColumn[] = []
+    const visit = (items: ArtTableColumn[]): void => {
+      items.forEach((column) => {
+        if (column.children?.length) visit(column.children)
+        else if (isValidationColumn(column)) columns.push(column)
+      })
+    }
+    visit(visibleColumns.value)
+    return columns
+  }
+
+  const resolveValidationMessage = (
+    message: ArtTableColumn['requiredMessage'],
+    context: TableColumnValidationContext<ArtTableRow>,
+    fallback: string
+  ): string => (typeof message === 'function' ? message(context) : message || fallback)
+
+  const validateCell = async (
+    column: ArtTableColumn,
+    row: ArtTableRow,
+    rowIndex: number
+  ): Promise<InternalTableValidationError | undefined> => {
+    const prop = String(column.prop)
+    const value = getCellValue(row, prop)
+    const context: TableColumnValidationContext<ArtTableRow> = { row, rowIndex, prop, value }
+    const label = column.label || prop
+    const key = getValidationKey(column, row)
+    const createError = (message: string): InternalTableValidationError => ({
+      key,
+      row,
+      rowIndex,
+      prop,
+      label,
+      value,
+      message
+    })
+
+    if (column.required && isRequiredValueEmpty(value)) {
+      return createError(
+        resolveValidationMessage(
+          column.requiredMessage,
+          context,
+          `第 ${rowIndex + 1} 行“${label}”不能为空`
+        )
+      )
+    }
+
+    const rules = column.rules ? (Array.isArray(column.rules) ? column.rules : [column.rules]) : []
+    for (const rule of rules) {
+      try {
+        const result = await rule.validator(context)
+        if (result === false || typeof result === 'string') {
+          return createError(
+            typeof result === 'string'
+              ? result
+              : resolveValidationMessage(
+                  rule.message,
+                  context,
+                  `第 ${rowIndex + 1} 行“${label}”填写不正确`
+                )
+          )
+        }
+      } catch {
+        return createError(
+          resolveValidationMessage(
+            rule.message,
+            context,
+            `第 ${rowIndex + 1} 行“${label}”校验失败，请检查后重试`
+          )
+        )
+      }
+    }
+    return undefined
+  }
+
+  const focusValidationError = async (
+    error: InternalTableValidationError | undefined
+  ): Promise<void> => {
+    if (!error) return
+    await nextTick()
+    const cells = Array.from(
+      containerRef.value?.querySelectorAll<HTMLElement>('[data-art-validation-key]') ?? []
+    )
+    const cell = cells.find((item) => item.dataset.artValidationKey === error.key)
+    if (!cell) return
+    cell.scrollIntoView({ behavior: 'auto', block: 'nearest', inline: 'nearest' })
+    const control = cell.querySelector<HTMLElement>(
+      'input:not([disabled]), textarea:not([disabled]), button:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    )
+    control?.focus({ preventScroll: true })
+  }
+
+  const toValidationResult = (
+    errors: InternalTableValidationError[]
+  ): ArtTableValidationResult => ({
+    valid: errors.length === 0,
+    errors,
+    firstError: errors[0]
+  })
+
+  const validateColumns = async (
+    columns: ArtTableColumn[],
+    replaceAll: boolean
+  ): Promise<ArtTableValidationResult> => {
+    const rows = flattenRows(props.data ?? [])
+    const errors: InternalTableValidationError[] = []
+    for (const [rowIndex, row] of rows.entries()) {
+      for (const column of columns) {
+        const error = await validateCell(column, row, rowIndex)
+        if (error) errors.push(error)
+      }
+    }
+
+    const nextErrors = replaceAll
+      ? new Map<string, InternalTableValidationError>()
+      : new Map(validationErrors.value)
+    if (!replaceAll) {
+      const propsToReplace = new Set(columns.map((column) => String(column.prop)))
+      nextErrors.forEach((error, key) => {
+        if (propsToReplace.has(error.prop)) nextErrors.delete(key)
+      })
+    }
+    errors.forEach((error) => nextErrors.set(error.key, error))
+    validationErrors.value = nextErrors
+    await focusValidationError(errors[0])
+    return toValidationResult(errors)
+  }
+
+  const validate = (): Promise<ArtTableValidationResult> =>
+    validateColumns(getValidationColumns(), true)
+
+  const validateField = (fields: string | string[]): Promise<ArtTableValidationResult> => {
+    const fieldSet = new Set(Array.isArray(fields) ? fields : [fields])
+    return validateColumns(
+      getValidationColumns().filter((column) => fieldSet.has(String(column.prop))),
+      false
+    )
+  }
+
+  const clearValidate = (fields?: string | string[]): void => {
+    validationRefreshSeed++
+    if (!fields) {
+      validationErrors.value = new Map()
+      return
+    }
+    const fieldSet = new Set(Array.isArray(fields) ? fields : [fields])
+    const nextErrors = new Map(validationErrors.value)
+    nextErrors.forEach((error, key) => {
+      if (fieldSet.has(error.prop)) nextErrors.delete(key)
+    })
+    validationErrors.value = nextErrors
+  }
+
+  const revalidateActiveErrors = async (): Promise<void> => {
+    const currentErrors = [...validationErrors.value.values()]
+    if (!currentErrors.length) return
+    const refreshId = ++validationRefreshSeed
+    const rows = flattenRows(props.data ?? [])
+    const columns = getValidationColumns()
+    const nextErrors = new Map(validationErrors.value)
+    for (const currentError of currentErrors) {
+      const rowIndex = rows.indexOf(currentError.row)
+      const column = columns.find((item) => String(item.prop) === currentError.prop)
+      if (rowIndex < 0 || !column) {
+        nextErrors.delete(currentError.key)
+        continue
+      }
+      const error = await validateCell(column, currentError.row, rowIndex)
+      if (error) nextErrors.set(error.key, error)
+      else nextErrors.delete(currentError.key)
+    }
+    if (refreshId === validationRefreshSeed) validationErrors.value = nextErrors
   }
 
   const getDictColumnValue = (col: ArtTableColumn, row: ArtTableRow) => {
@@ -805,6 +1082,15 @@
     { immediate: true, flush: 'post' }
   )
 
+  watch(
+    () => props.data,
+    (value, previous) => {
+      if (value !== previous) clearValidate()
+      else void revalidateActiveErrors()
+    },
+    { deep: true, flush: 'post' }
+  )
+
   // 清理列属性，移除插槽相关的自定义属性，确保它们不会被 ElTableColumn 错误解释
   const cleanColumnProps = (col: ArtTableColumn) => {
     const columnProps = { ...col }
@@ -847,6 +1133,8 @@
     delete columnProps.dict
     delete columnProps.children
     delete columnProps.required
+    delete columnProps.requiredMessage
+    delete columnProps.rules
     return columnProps
   }
 
@@ -924,6 +1212,9 @@
   )
 
   defineExpose({
+    validate,
+    validateField,
+    clearValidate,
     scrollToTop,
     elTableRef
   })

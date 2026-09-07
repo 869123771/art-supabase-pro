@@ -2,11 +2,7 @@
 <template>
   <div class="art-button-more">
     <ElDropdown v-if="hasAnyAuthItem">
-      <ArtIconButton
-        icon="ri:more-2-fill"
-        label="更多操作"
-        class="!size-8 bg-g-200 dark:bg-g-300/45 text-sm"
-      />
+      <ArtIconButton icon="ri:more-2-fill" label="更多操作" class="art-button-more__trigger" />
       <template #dropdown>
         <ElDropdownMenu>
           <template v-for="item in dropdownList" :key="item.key">
@@ -97,6 +93,29 @@
   .art-button-more {
     display: inline-flex;
     flex: none;
+    align-items: center;
+    height: 32px;
+    line-height: 0;
+    vertical-align: middle;
+
+    :deep(.el-dropdown),
+    :deep(.el-tooltip__trigger) {
+      display: inline-flex;
+      align-items: center;
+      height: 32px;
+      line-height: 0;
+      vertical-align: middle;
+    }
+
+    &__trigger {
+      width: 32px;
+      height: 32px;
+      padding: 0;
+      font-size: 14px;
+      line-height: 1;
+      vertical-align: middle;
+      background: var(--el-fill-color-light);
+    }
 
     &__item {
       display: inline-flex;

@@ -1,7 +1,10 @@
 .art-table-query {
   display: flex;
-  flex: 1;
+  flex: 1 1 0;
   flex-direction: column;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
   min-height: 0;
 
   :deep(.art-table-card) {
@@ -39,6 +42,9 @@
 }
 
 :deep(.art-table-card) {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
   min-height: 0;
 }
 

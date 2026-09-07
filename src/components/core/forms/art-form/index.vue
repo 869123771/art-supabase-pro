@@ -265,6 +265,9 @@
     checkboxGroup: ElCheckboxGroup, // 复选框组
     radioGroup: ElRadioGroup, // 单选框组
     date: ElDatePicker, // 日期选择器
+    daterange: ElDatePicker, // 日期范围选择器（兼容业务表单快捷写法）
+    datetimerange: ElDatePicker, // 日期时间范围选择器
+    monthrange: ElDatePicker, // 月份范围选择器
     rate: ElRate, // 评分
     slider: ElSlider, // 滑块
     cascader: ElCascader, // 级联选择器
@@ -278,6 +281,7 @@
 
   const dividerType = 'divider'
   const textType = 'text'
+  const datePickerShortcutTypes = ['daterange', 'datetimerange', 'monthrange'] as const
 
   const { width } = useWindowSize()
   const { t } = useI18n()
@@ -811,7 +815,8 @@
         'timePicker',
         'timeSelect',
         'dataSelect',
-        'userSelect'
+        'userSelect',
+        ...datePickerShortcutTypes
       ].includes(String(item.type))
     ) {
       return `请选择${label}`
@@ -844,7 +849,8 @@
         'date',
         'timePicker',
         'timeSelect',
-        'dataSelect'
+        'dataSelect',
+        ...datePickerShortcutTypes
       ].includes(itemType)
     ) {
       defaults.clearable = true
@@ -852,6 +858,10 @@
 
     if (['select', 'cascader', 'treeSelect', 'userSelect'].includes(itemType)) {
       defaults.filterable = true
+    }
+
+    if (datePickerShortcutTypes.includes(itemType as (typeof datePickerShortcutTypes)[number])) {
+      defaults.type = itemType
     }
 
     if (isTextareaItem(item)) {

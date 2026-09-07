@@ -85,6 +85,35 @@ For table dictionary display, use the table column dictionary configuration, for
 
 For editable controls returned by an `ArtTable` column `formatter`, use TSX/JSX `v-model={row.field}` directly on the writable row field. Do not spell the same binding as `modelValue={row.field}` plus `onUpdate:modelValue`. When a selection or numeric edit also resets dependent fields, recalculates values, or emits an immutable parent update, keep the direct `v-model` binding and attach the additional business effect to the component's semantic event such as `onChange` or `onSelect`. A computed expression such as `row.field ?? ''` is not a writable model target; initialize the row model before rendering instead. Read-only table cells should render display content rather than a disabled or read-only form control solely to show a value.
 
+Editable `ArtTable` field validation must use the table's public validation contract instead of page-local error classes or `items.some(...)` field scans:
+
+- Declare required fields with `required: true`; use `requiredMessage` when the row-specific prompt needs business context.
+- Put range, format, and conditional field rules in the column's `rules` validator. Validators return `true`/`void` when valid, `false` or a business-safe Chinese message when invalid. Keep cross-row uniqueness, minimum/maximum row counts, and workflow-state rules in the owning business component.
+- Bind a typed `ref<ArtTableExpose>()` and call `await tableRef.value?.validate()` from the parent submit flow. Use the returned `firstError?.message` for one concise toast or inline summary; `ArtTable` owns red control borders, `aria-invalid`, first-error scrolling/focus, and clearing corrected errors.
+- Use `validateField()` only for an intentional partial check and `clearValidate()` when resetting or replacing the table model. Do not add feature-local `is-error` classes, danger-border SCSS, `aria-invalid` expressions, or duplicated required-value helpers for editable table cells.
+
+```ts
+const detailTableRef = ref<ArtTableExpose>()
+const columns: ColumnOption<DetailRow>[] = [
+  {
+    prop: 'quantity',
+    label: '数量',
+    required: true,
+    rules: {
+      validator: ({ value }) => Number(value) > 0,
+      message: ({ rowIndex }) => `第 ${rowIndex + 1} 行数量必须大于 0`
+    },
+    formatter: (row) => <ElInputNumber v-model={row.quantity} min={0.001} />
+  }
+]
+
+const result = await detailTableRef.value?.validate()
+if (result?.valid === false) {
+  ElMessage.warning(result.firstError?.message || '请完整填写明细')
+  return false
+}
+```
+
 For tree-shaped data operations, use the shared utilities in `src/utils/tree.ts` such as `TreeUtils.normalizeTreeData`, `listToTree`, `treeToList`, and related helpers. Do not hand-write page-local tree parsing, recursive children normalization, list/tree conversion, node lookup, flattening, or descendant traversal logic. In particular, do not add business-level `normalize*Options`, `parse*Options`, or `afterFetch` callbacks solely to parse or normalize tree API responses. Normalize reusable tree responses in the shared API with `TreeUtils`, so business forms receive a standard tree directly. If `TreeUtils` does not cover a needed tree operation, extend it first and then consume it from shared APIs or business pages.
 
 For business section titles such as "基础信息", "车辆证件", or "车辆档案附件", use `ArtSectionTitle` to keep the visual language consistent. In `ArtForm`, use items with `type: 'divider'` and `span: 24`, because the divider is rendered through `ArtSectionTitle`. Do not create page-local `h3` headings and SCSS for section titles. Use the default right-side line for ordinary section breaks; pass `:show-line="false"` only for compact header rows where the line should be hidden, such as a title with a right-aligned action button.

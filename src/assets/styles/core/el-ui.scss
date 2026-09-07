@@ -369,11 +369,38 @@ html.dark .el-card {
 
 // 修改el-tag样式
 .el-tag {
+  // Keep semantic tags immune to broad parent selectors such as `> span` used by
+  // identity icons. ElTag renders a span root, so those selectors otherwise stretch
+  // status tags into oversized icon tiles.
+  display: inline-flex !important;
+  flex: 0 0 auto !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: fit-content !important;
+  max-width: 100%;
+  height: 24px !important;
+  padding: 0 9px !important;
+  font-size: var(--el-tag-font-size, 12px) !important;
   font-weight: 500;
+  line-height: 1 !important;
+  color: var(--el-tag-text-color) !important;
+  vertical-align: middle;
+  background-color: var(--el-tag-bg-color) !important;
+  border-color: var(--el-tag-border-color) !important;
   transition: none !important;
 
-  &.el-tag--default {
-    height: 26px !important;
+  &.el-tag--small {
+    height: 20px !important;
+    padding: 0 7px !important;
+  }
+
+  &.el-tag--large {
+    height: 32px !important;
+    padding: 0 11px !important;
+  }
+
+  &.is-round {
+    border-radius: var(--el-tag-border-radius-rounded) !important;
   }
 }
 

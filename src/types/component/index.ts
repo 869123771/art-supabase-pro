@@ -59,6 +59,25 @@ export interface DictColumnOption<T = ComponentRecord> {
   value?: (row: T) => string | number | null | undefined
 }
 
+/** 编辑表格列校验时提供给业务规则的上下文。 */
+export interface TableColumnValidationContext<T = ComponentRecord> {
+  row: T
+  rowIndex: number
+  prop: string
+  value: unknown
+}
+
+export type TableColumnValidationMessage<T = ComponentRecord> =
+  string | ((context: TableColumnValidationContext<T>) => string)
+
+/** 编辑表格列的自定义校验规则；返回 true/void 表示通过，false 或字符串表示失败。 */
+export interface TableColumnValidationRule<T = ComponentRecord> {
+  validator: (
+    context: TableColumnValidationContext<T>
+  ) => boolean | string | void | Promise<boolean | string | void>
+  message?: TableColumnValidationMessage<T>
+}
+
 // 表格列配置接口
 export interface ColumnOption<T = ComponentRecord> {
   // 列类型
@@ -69,6 +88,10 @@ export interface ColumnOption<T = ComponentRecord> {
   label?: string
   // 编辑型表格中的必填列；表头会以与表单一致的红色星号提示
   required?: boolean
+  // 必填校验失败提示；支持根据当前行生成业务提示
+  requiredMessage?: TableColumnValidationMessage<T>
+  // 业务自定义校验规则；由 ArtTable.validate / validateField 触发
+  rules?: TableColumnValidationRule<T> | TableColumnValidationRule<T>[]
   // 分组表头子列
   children?: ColumnOption<T>[]
   // 列宽度

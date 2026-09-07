@@ -136,6 +136,30 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
       button('Reminder', '设置日历提醒')
     ]
   },
+  {
+    menuName: 'PmisInspectionSheet',
+    buttons: [button('ViewDetail', '查看明细'), button('Export', '导出')]
+  },
+  { menuName: 'PmisInspectionAnalysis', buttons: [button('Export', '导出')] },
+  {
+    menuName: 'PmisInspectionPlan',
+    buttons: [...crud({ view: true, import: true, export: true }), button('Copy', '复制')]
+  },
+  {
+    menuName: 'PmisInspectionDetail',
+    buttons: [button('ViewDetail', '查看明细'), button('Export', '导出')]
+  },
+  { menuName: 'PmisInspectionDashboard', buttons: [button('ViewDetail', '查看明细')] },
+  {
+    menuName: 'PmisInspectionReport',
+    buttons: [button('ViewDetail', '查看明细'), button('Export', '导出')]
+  },
+  { menuName: 'PmisPatrolTask', buttons: [button('View', '查看'), button('Export', '导出')] },
+  { menuName: 'PmisPatrolAnalysis', buttons: [button('Export', '导出')] },
+  {
+    menuName: 'PmisPatrolPlan',
+    buttons: [...crud({ view: true, import: true, export: true }), button('Copy', '复制')]
+  },
   { menuName: 'TmsCargo', buttons: crud({ import: true, export: true }) },
   { menuName: 'TmsCarrier', buttons: crud({ view: true, import: true, export: true }) },
   { menuName: 'TmsCarrierDetail', buttons: [button('AiAnalyze', 'AI 经营评估')] },

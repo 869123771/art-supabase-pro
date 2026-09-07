@@ -4,7 +4,7 @@
     :type="type"
     :size="size"
     :loading="isExporting"
-    :disabled="disabled || !hasData"
+    :disabled="disabled || (disableWhenEmpty && !hasData)"
     v-ripple
     @click="handleExport"
   >
@@ -55,6 +55,8 @@
     size?: 'large' | 'default' | 'small'
     /** 是否禁用 */
     disabled?: boolean
+    /** 无数据时是否禁用按钮；关闭后点击会给出统一的无数据提示 */
+    disableWhenEmpty?: boolean
     /** 按钮文本 */
     buttonText?: string
     /** 加载中文本 */
@@ -92,6 +94,7 @@
     type: 'primary',
     size: 'default',
     disabled: false,
+    disableWhenEmpty: true,
     buttonText: '导出 Excel',
     loadingText: '导出中...',
     autoIndex: false,
@@ -342,10 +345,12 @@
 
       // 显示错误消息
       if (props.showErrorMessage) {
-        ElMessage.error({
+        const message = {
           message: exportError.message,
           duration: 5000
-        })
+        }
+        if (exportError.code === 'NO_DATA') ElMessage.warning(message)
+        else ElMessage.error(message)
       }
     } finally {
       isExporting.value = false
