@@ -138,7 +138,11 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
   },
   {
     menuName: 'PmisInspectionSheet',
-    buttons: [button('ViewDetail', '查看明细'), button('Export', '导出')]
+    buttons: [
+      button('ViewDetail', '查看明细'),
+      button('Export', '导出'),
+      button('Execute', '执行点检')
+    ]
   },
   { menuName: 'PmisInspectionAnalysis', buttons: [button('Export', '导出')] },
   {
@@ -154,7 +158,10 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
     menuName: 'PmisInspectionReport',
     buttons: [button('ViewDetail', '查看明细'), button('Export', '导出')]
   },
-  { menuName: 'PmisPatrolTask', buttons: [button('View', '查看'), button('Export', '导出')] },
+  {
+    menuName: 'PmisPatrolTask',
+    buttons: [button('View', '查看'), button('Export', '导出'), button('Execute', '执行巡检')]
+  },
   { menuName: 'PmisPatrolAnalysis', buttons: [button('Export', '导出')] },
   {
     menuName: 'PmisPatrolPlan',
