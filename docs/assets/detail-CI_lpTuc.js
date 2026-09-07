@@ -1,0 +1,1 @@
+import{Ot as e,qt as t,yt as n}from"./framework-DJQMI0NS.js";import{t as r}from"./calendar-workspace-BRyi4NiF.js";var i=e({name:`PmisInspectionDetail`,__name:`index`,setup(e){return(e,i)=>(t(),n(r,{mode:`detail`}))}});export{i as default};
