@@ -31,6 +31,24 @@ const crud = (
 ]
 
 export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] = [
+  {
+    menuName: 'MdmGovernance',
+    buttons: [
+      button('View', '查看治理中心'),
+      button('AssignSteward', '配置数据责任人'),
+      button('ManageRules', '管理质量规则'),
+      button('RunQuality', '执行质量检测'),
+      button('ResolveIssue', '处理质量问题'),
+      button('CreateChange', '发起主数据变更'),
+      button('SubmitChange', '提交或撤回变更'),
+      button('ReviewChange', '审核主数据变更'),
+      button('PublishChange', '发布到期变更'),
+      button('ManageMatch', '扫描与评审匹配'),
+      button('MergeRecord', '合并或拆分黄金记录'),
+      button('ManageConsumers', '管理下游消费者'),
+      button('ReplayEvent', '重放失败事件')
+    ]
+  },
   ...[
     'MdmUnitOfMeasure',
     'MdmMaterialType',
@@ -167,6 +185,51 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
     menuName: 'PmisPatrolPlan',
     buttons: [...crud({ view: true, import: true, export: true }), button('Copy', '复制')]
   },
+  { menuName: 'PmisPatrolDetail', buttons: [button('View', '查看'), button('Export', '导出')] },
+  { menuName: 'PmisPatrolReport', buttons: [button('View', '查看'), button('Export', '导出')] },
+  { menuName: 'PmisMaintenanceSetting', buttons: crud({ view: true, export: true }) },
+  {
+    menuName: 'PmisMaintenancePlan',
+    buttons: [...crud({ view: true, import: true, export: true }), button('Copy', '复制')]
+  },
+  {
+    menuName: 'PmisMaintenanceTask',
+    buttons: [
+      ...crud({ view: true, export: true }),
+      button('Copy', '复制'),
+      button('Execute', '执行保养'),
+      button('Confirm', '确认保养')
+    ]
+  },
+  { menuName: 'PmisMaintenanceAnalysis', buttons: [button('Export', '导出')] },
+  {
+    menuName: 'PmisMaintenanceDetail',
+    buttons: [button('View', '查看'), button('Export', '导出')]
+  },
+  {
+    menuName: 'PmisMaintenanceReport',
+    buttons: [button('View', '查看'), button('Export', '导出')]
+  },
+  { menuName: 'PmisRepairSetting', buttons: crud({ view: true, export: true }) },
+  {
+    menuName: 'PmisRepairTask',
+    buttons: [...crud({ view: true, export: true }), button('Copy', '复制')]
+  },
+  { menuName: 'PmisRepairAnalysis', buttons: [button('Export', '导出')] },
+  {
+    menuName: 'PmisPreventivePlan',
+    buttons: [...crud({ view: true, import: true, export: true }), button('Copy', '复制')]
+  },
+  {
+    menuName: 'PmisPreventiveTask',
+    buttons: [
+      ...crud({ view: true, export: true }),
+      button('Copy', '复制'),
+      button('Execute', '执行预防维修')
+    ]
+  },
+  { menuName: 'PmisPreventiveAnalysis', buttons: [button('Export', '导出')] },
+  { menuName: 'PmisPreventiveDetail', buttons: [button('View', '查看'), button('Export', '导出')] },
   { menuName: 'TmsCargo', buttons: crud({ import: true, export: true }) },
   { menuName: 'TmsCarrier', buttons: crud({ view: true, import: true, export: true }) },
   { menuName: 'TmsCarrierDetail', buttons: [button('AiAnalyze', 'AI 经营评估')] },

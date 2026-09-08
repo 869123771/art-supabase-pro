@@ -214,7 +214,7 @@
 | `inputTag` | `ElInputTag` | 无 |
 | `number` | `ElInputNumber` | 无 |
 | `select` | `ElSelect` + `ElOption` | `props.options` / `options` / `api` |
-| `segment` | `ElSegmented` | `props.options` / `options` / `api` |
+| `segment` | `ElSegmented` | `props.options` / `options` / `api`；默认保持紧凑宽度，需要铺满时显式传入 `props.block` |
 | `switch` | `ElSwitch` | 无 |
 | `checkbox` | `ElCheckbox` | 无 |
 | `checkboxGroup` | `ElCheckboxGroup` + `ElCheckbox` / `ElCheckboxButton` | `props.options` / `options` / `api`；`props.optionType='button'` 使用按钮样式 |

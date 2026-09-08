@@ -199,7 +199,7 @@
     {
       label: '状态',
       key: 'status',
-      type: 'radioGroup',
+      type: 'segment',
       props: {
         options: getDictMap.value.status ?? [],
         disabled: isSystemTenant.value

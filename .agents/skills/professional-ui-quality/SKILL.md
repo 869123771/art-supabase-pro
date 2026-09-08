@@ -11,8 +11,8 @@ Treat visual quality, usability, accessibility, and rendered verification as fea
 
 Choose one mode before acting:
 
-- **Create**: new page, new workflow, or substantial redesign. Read [project-visual-baseline.md](references/project-visual-baseline.md), [creative-direction.md](references/creative-direction.md), and [web-interface-checklist.md](references/web-interface-checklist.md).
-- **Improve**: targeted polish or feature work inside an established page. Read [project-visual-baseline.md](references/project-visual-baseline.md) and the relevant sections of [web-interface-checklist.md](references/web-interface-checklist.md). Preserve the established page language unless the user requests a redesign.
+- **Create**: new page, new workflow, or substantial redesign. Read [project-visual-baseline.md](references/project-visual-baseline.md), [user-approved-esop-patterns.md](references/user-approved-esop-patterns.md), [creative-direction.md](references/creative-direction.md), and [web-interface-checklist.md](references/web-interface-checklist.md).
+- **Improve**: targeted polish or feature work inside an established page. Read [project-visual-baseline.md](references/project-visual-baseline.md), [user-approved-esop-patterns.md](references/user-approved-esop-patterns.md) when the work involves choices, status fields, tables, CRUD overlays, or attachments, and the relevant sections of [web-interface-checklist.md](references/web-interface-checklist.md). Preserve the established page language unless the user requests a redesign.
 - **Review**: visual, UX, accessibility, PR, or design-system audit. Read [project-visual-baseline.md](references/project-visual-baseline.md), [web-interface-checklist.md](references/web-interface-checklist.md), and [review-rubric.md](references/review-rubric.md). Report findings; do not implement fixes unless requested.
 
 Use [review-rubric.md](references/review-rubric.md) for every formal score, approval decision, or final quality report. Do not load creative guidance for a narrow maintenance change with a fixed visual direction.

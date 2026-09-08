@@ -1,5 +1,6 @@
 import { defineConfig, loadEnv } from 'vite'
 import vue from '@vitejs/plugin-vue'
+import { templateCompilerOptions } from '@tresjs/core'
 import vueJsx from '@vitejs/plugin-vue-jsx'
 import { existsSync, readdirSync } from 'node:fs'
 import path from 'path'
@@ -136,7 +137,7 @@ export default ({ mode }: { mode: string }) => {
     },
     // 路径别名
     resolve: {
-      dedupe: hostedModuleSharedDependencies,
+      dedupe: [...new Set([...hostedModuleSharedDependencies, 'three'])],
       alias: {
         ...hostedApplicationAliases,
         '@': fileURLToPath(new URL('./src', import.meta.url)),
@@ -219,6 +220,11 @@ export default ({ mode }: { mode: string }) => {
                 priority: 30
               },
               {
+                name: '3d-runtime',
+                test: (id) => matchPackages(id, ['three', '@tresjs']),
+                priority: 30
+              },
+              {
                 name: 'rich-editor',
                 test: (id) => matchPackages(id, ['@tiptap']),
                 priority: 30
@@ -248,7 +254,7 @@ export default ({ mode }: { mode: string }) => {
       }
     },
     plugins: [
-      vue(),
+      vue({ ...templateCompilerOptions }),
       vueJsx(),
       tailwindcss(),
       ...(enableFileViewerPlugin
@@ -337,6 +343,8 @@ export default ({ mode }: { mode: string }) => {
         'echarts/charts',
         'echarts/components',
         'echarts/renderers',
+        '@tresjs/core',
+        'three',
         'xlsx',
         'xgplayer',
         'crypto-js',

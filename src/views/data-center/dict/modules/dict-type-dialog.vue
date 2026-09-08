@@ -87,7 +87,7 @@
       {
         label: '节点类型',
         key: 'nodeType',
-        type: 'radioGroup',
+        type: 'segment',
         span: 24,
         description: form.editing
           ? '节点类型创建后不可更改。'
@@ -207,7 +207,7 @@
       {
         label: '状态',
         key: 'status',
-        type: 'radioGroup',
+        type: 'segment',
         props: {
           options: getDictMap.value?.status ?? []
         }

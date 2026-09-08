@@ -23,6 +23,16 @@ For `art-supabase-pro`, apply this invariant to every table, view, RPC, Edge Fun
 - Do not treat login bootstrap identity as an ordinary business list. The current `sys_user` row identified by `auth_user_id = auth.uid()` must remain readable even while a valid, stale, or invalid tenant scope is persisted; scope reads of other users normally. A global restrictive tenant policy on `sys_user` is invalid because it can turn a successful Auth login into `PGRST116` during profile loading.
 - Verify platform-all, platform-selected, ordinary-own, and forged-header ordinary behavior after every tenant-boundary migration. For mutation changes, also verify platform-all create/edit with an explicit or inherited target tenant.
 
+### Project database delivery policy
+
+For `art-supabase-pro`, do not create, fetch, reconstruct, retain, or publish migration SQL files under `supabase/migrations` (or another directory). This project intentionally uses reviewed direct database execution instead of repository-managed migration artifacts.
+
+- Do not run `supabase migration new`, `supabase migration fetch`, `supabase db pull`, `supabase db push`, or MCP `apply_migration`.
+- Apply approved schema, RLS, function, trigger, grant, comment, seed, and scheduler changes directly with MCP `execute_sql`; use `supabase db query --linked` only as the documented fallback when MCP is unavailable.
+- Before a production mutation, take and verify a recoverable backup, run the SQL inside `BEGIN`/`ROLLBACK` against the target when the operation supports transactional validation, and inspect dependencies and cross-tenant violations. Then execute the reviewed statement directly and immediately run post-change assertions, lint/advisors, and the relevant application tests.
+- Keep durable audit evidence in architecture/runbook documentation and ordinary automated tests, not in migration SQL. Never repopulate `supabase/migrations` merely to align local and remote migration history.
+- Existing remote migration-history rows are operational history only; do not materialize their SQL in the workspace.
+
 **1. Supabase changes frequently — verify against changelog and current docs before implementing.**
 Do not rely on training data for Supabase features. Function signatures, config.toml settings, and API conventions change between versions.
 
@@ -101,7 +111,7 @@ supabase <group> <command> --help  # Flags for a specific command
 
 - `supabase db query` requires **CLI v2.79.0+** → use MCP `execute_sql` or `psql` as fallback
 - `supabase db advisors` requires **CLI v2.81.3+** → use MCP `get_advisors` as fallback
-- When you need a new migration SQL file, **always** create it with `supabase migration new <name>` first. Never invent a migration filename or rely on memory for the expected format.
+- This project forbids migration SQL artifacts; follow the project database delivery policy above instead of generating a migration.
 
 **Version check and upgrade:** Run `supabase --version` to check. For CLI changelogs and version-specific features, consult the [CLI documentation](https://supabase.com/docs/reference/cli/introduction) or [GitHub releases](https://github.com/supabase/cli/releases).
 
@@ -131,16 +141,16 @@ Before implementing any Supabase feature, find the relevant documentation. Use t
 
 ## Making and Committing Schema Changes
 
-**To make schema changes, use `execute_sql` (MCP) or `supabase db query` (CLI).** These run SQL directly on the database without creating migration history entries, so you can iterate freely and generate a clean migration when ready.
+**To make schema changes, use `execute_sql` (MCP) or `supabase db query` (CLI).** These run reviewed SQL directly on the database without creating local migration artifacts.
 
 Do NOT use `apply_migration` to change a local database schema — it writes a migration history entry on every call, which means you can't iterate, and `supabase db diff` / `supabase db pull` will produce empty or conflicting diffs. If you use it, you'll be stuck with whatever SQL you passed on the first try.
 
-**When ready to commit** your changes to a migration file:
+**For `art-supabase-pro`, do not generate or commit a migration file.** When the direct change is ready:
 
 1. **Run advisors** → `supabase db advisors` (CLI v2.81.3+) or MCP `get_advisors`. Fix any issues.
 2. **Review the Security Checklist above** if your changes involve views, functions, triggers, or storage.
-3. **Generate the migration** → `supabase db pull <descriptive-name> --local --yes`
-4. **Verify** → `supabase migration list --local`
+3. **Transactionally validate** → execute the reviewed SQL inside `BEGIN` / `ROLLBACK` against the target database when supported.
+4. **Apply directly and verify** → execute through MCP `execute_sql` or the CLI fallback, then run post-change assertions and record the outcome in the relevant runbook or audit document.
 
 ## Reference Guides
 

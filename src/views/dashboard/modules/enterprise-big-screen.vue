@@ -1,5 +1,5 @@
 <template>
-  <div class="enterprise-screen" :class="`is-${mode}`">
+  <div ref="screenRef" class="enterprise-screen" :class="`is-${mode}`">
     <ArtAsyncState
       class="enterprise-screen__state"
       :loading="state.loading"
@@ -39,6 +39,10 @@
                 <ArtSvgIcon :icon="item.icon" />
                 {{ item.label }}
               </RouterLink>
+              <RouterLink to="/dashboard/asset-maintenance-command">
+                <ArtSvgIcon icon="ri:settings-3-line" />
+                设备运维
+              </RouterLink>
               <RouterLink to="/tms/in-transit-monitor">
                 <ArtSvgIcon icon="ri:route-line" />
                 在途监控
@@ -51,6 +55,18 @@
                 <span>{{ dateText }}</span>
               </div>
               <span class="live-status"><i /> 数据已同步</span>
+              <button
+                type="button"
+                class="screen-icon-button"
+                :aria-label="fullscreenButtonLabel"
+                :aria-pressed="isFullscreen"
+                :title="fullscreenButtonLabel"
+                @click="toggleScreenFullscreen"
+              >
+                <ArtSvgIcon
+                  :icon="isFullscreen ? 'ri:fullscreen-exit-line' : 'ri:fullscreen-line'"
+                />
+              </button>
               <button
                 type="button"
                 class="screen-icon-button"
@@ -154,79 +170,23 @@
                 <div class="screen-column screen-column--center">
                   <article class="screen-panel trend-panel">
                     <ScreenPanelHeading
-                      eyebrow="BUSINESS PULSE · 本月"
-                      title="订单与收入脉搏"
-                      icon="ri:pulse-line"
+                      eyebrow="ENTERPRISE DIGITAL TWIN"
+                      title="全域经营数字孪生"
+                      icon="ri:global-line"
                     >
                       <template #aside>
-                        <span class="panel-caption">共 {{ monthOrderCount }} 单</span>
+                        <span class="panel-caption is-live">六域实时融合</span>
                       </template>
                     </ScreenPanelHeading>
-                    <div class="trend-summary">
-                      <div>
-                        <span>本月开单收入</span>
-                        <strong>{{
-                          formatCurrency(
-                            data.transport.trend.reduce((sum, item) => sum + item.freightAmount, 0)
-                          )
-                        }}</strong>
-                      </div>
-                      <div>
-                        <span>日均订单</span>
-                        <strong>{{ averageDailyOrders }} <em>单</em></strong>
-                      </div>
-                      <div>
-                        <span>履约完成</span>
-                        <strong>{{ completionRate }}<em>%</em></strong>
-                      </div>
-                    </div>
-                    <div class="pulse-chart" :class="{ 'is-empty': !monthOrderCount }">
-                      <svg viewBox="0 0 760 230" role="img" aria-label="本月订单趋势折线图">
-                        <defs>
-                          <linearGradient id="pulse-area" x1="0" y1="0" x2="0" y2="1">
-                            <stop
-                              offset="0%"
-                              stop-color="var(--screen-accent)"
-                              stop-opacity=".35"
-                            />
-                            <stop
-                              offset="100%"
-                              stop-color="var(--screen-accent)"
-                              stop-opacity="0"
-                            />
-                          </linearGradient>
-                        </defs>
-                        <g class="pulse-chart__grid">
-                          <line
-                            v-for="line in [35, 80, 125, 170, 215]"
-                            :key="line"
-                            x1="24"
-                            :y1="line"
-                            x2="744"
-                            :y2="line"
-                          />
-                        </g>
-                        <path v-if="monthOrderCount" :d="trendAreaPath" class="pulse-chart__area" />
-                        <polyline
-                          v-if="monthOrderCount"
-                          :points="trendPoints"
-                          class="pulse-chart__line"
-                        />
-                        <g v-if="monthOrderCount">
-                          <circle
-                            v-for="point in trendPointList"
-                            :key="point.key"
-                            :cx="point.x"
-                            :cy="point.y"
-                            r="3.5"
-                          />
-                        </g>
-                      </svg>
-                      <p v-if="!monthOrderCount">本月尚无订单，数据产生后将在此形成经营趋势</p>
-                      <div class="trend-axis" aria-hidden="true">
-                        <span v-for="label in trendAxisLabels" :key="label">{{ label }}</span>
-                      </div>
-                    </div>
+                    <EnterpriseCommandCore
+                      mode="business"
+                      :title="decisionHeadline"
+                      :score="businessScore"
+                      :active-count="data.transport.inTransitCount"
+                      :risk-count="totalRiskCount"
+                      :nodes="domainHealth"
+                      :telemetry="commandTelemetry"
+                    />
                   </article>
 
                   <article class="screen-panel chain-panel">
@@ -280,7 +240,7 @@
                       >
                     </ScreenPanelHeading>
                     <div class="risk-list">
-                      <div v-for="item in riskItems" :key="item.label" class="risk-item">
+                      <div v-for="item in visibleRiskItems" :key="item.label" class="risk-item">
                         <i :class="`is-${item.tone}`" />
                         <div
                           ><strong>{{ item.label }}</strong
@@ -333,6 +293,7 @@
                     </div>
                   </div>
                   <div v-else class="screen-empty">
+                    <div class="screen-empty__radar" aria-hidden="true"> <i /><i /><i /><b /> </div>
                     <ArtSvgIcon icon="ri:route-line" />
                     <strong>暂无在途任务</strong>
                     <span>新任务进入运输状态后将自动出现在队列中</span>
@@ -344,34 +305,20 @@
                     eyebrow="CONTROL TOWER"
                     title="全域运营态势"
                     icon="ri:radar-line"
+                  >
+                    <template #aside>
+                      <span class="panel-caption is-live">同步 {{ refreshText }}</span>
+                    </template>
+                  </ScreenPanelHeading>
+                  <EnterpriseCommandCore
+                    mode="operations"
+                    title="运输资源实时联动"
+                    :score="businessScore"
+                    :active-count="data.transport.inTransitCount"
+                    :risk-count="totalRiskCount"
+                    :nodes="domainHealth"
+                    :telemetry="commandTelemetry"
                   />
-                  <div class="network-core">
-                    <div class="network-orbit network-orbit--outer" />
-                    <div class="network-orbit network-orbit--inner" />
-                    <div class="network-sweep" />
-                    <div class="network-center">
-                      <span>当前在途</span>
-                      <strong>{{ data.transport.inTransitCount }}</strong>
-                      <small>TRANSPORTING</small>
-                    </div>
-                    <div
-                      v-for="node in networkNodes"
-                      :key="node.label"
-                      class="network-node"
-                      :class="`at-${node.position}`"
-                    >
-                      <i :class="`is-${node.tone}`"><ArtSvgIcon :icon="node.icon" /></i>
-                      <div
-                        ><strong>{{ node.value }}</strong
-                        ><span>{{ node.label }}</span></div
-                      >
-                    </div>
-                  </div>
-                  <div class="network-footnote">
-                    <span><i class="is-success" />正常履约</span>
-                    <span><i class="is-warning" />待处置</span>
-                    <span>最近同步 {{ refreshText }}</span>
-                  </div>
                 </article>
 
                 <article class="screen-panel alert-panel">
@@ -435,11 +382,21 @@
           </main>
 
           <footer class="screen-footer">
-            <span>数据范围：当前租户可见业务数据</span>
-            <span>{{
+            <div class="screen-footer__bus" aria-label="企业应用域接入状态">
+              <span
+                v-for="system in businessSystems"
+                :key="system.code"
+                :class="`is-${system.state}`"
+                :title="system.description"
+              >
+                <i />
+                <b>{{ system.code }}</b>
+              </span>
+            </div>
+            <span class="screen-footer__view">{{
               mode === 'business' ? '管理驾驶舱 · 经营决策视角' : '运营控制塔 · 实时履约视角'
             }}</span>
-            <span>亿企工场 · 企业数字运营平台</span>
+            <span class="screen-footer__scope">当前租户业务数据 · ENTERPRISE DATA BUS</span>
           </footer>
         </div>
       </ElScrollbar>
@@ -449,6 +406,7 @@
 
 <script setup lang="ts">
   import dayjs from 'dayjs'
+  import EnterpriseCommandCore from './enterprise-command-core.vue'
   import ScreenPanelHeading from './screen-panel-heading.vue'
   import {
     fetchEnterpriseDashboardData,
@@ -478,10 +436,22 @@
     requestId: number
   }
 
+  interface BusinessSystem {
+    code: string
+    state: 'live' | 'linked' | 'ready'
+    description: string
+  }
+
   const props = defineProps<Props>()
   const router = useRouter()
+  const screenRef = ref<HTMLElement | null>(null)
   const currentTime = ref(new Date().toISOString())
   const state = reactive<ScreenState>({ loading: false, loaded: false, error: null, requestId: 0 })
+  const {
+    isFullscreen,
+    isSupported: isFullscreenSupported,
+    toggle: toggleFullscreen
+  } = useFullscreen(screenRef, { autoExit: true })
 
   const createEmptyData = (): EnterpriseDashboardData => ({
     generatedAt: new Date().toISOString(),
@@ -527,6 +497,10 @@
   const modeTitle = computed(() =>
     mode.value === 'business' ? '企业经营驾驶舱' : '全域运营态势大屏'
   )
+  const fullscreenButtonLabel = computed(() => {
+    if (!isFullscreenSupported.value) return '当前浏览器不支持全屏'
+    return isFullscreen.value ? '退出全屏' : '进入全屏'
+  })
   const timeText = computed(() => dayjs(currentTime.value).format('HH:mm:ss'))
   const dateText = computed(() => dayjs(currentTime.value).format('YYYY年MM月DD日 · dddd'))
   const refreshText = computed(() => dayjs(data.generatedAt).format('HH:mm:ss'))
@@ -544,17 +518,24 @@
       icon: 'ri:radar-line'
     }
   ] as const
+  const businessSystems: BusinessSystem[] = [
+    { code: 'TMS', state: 'live', description: '运输管理实时指标已接入' },
+    { code: 'VMS', state: 'live', description: '车辆管理实时指标已接入' },
+    { code: 'FMS', state: 'live', description: '财务管理实时指标已接入' },
+    { code: 'HR', state: 'live', description: '人力资源实时指标已接入' },
+    { code: 'SMIS', state: 'live', description: '安全管理实时指标已接入' },
+    { code: 'PMIS', state: 'linked', description: '设备管理业务域已联通' },
+    { code: 'MDM', state: 'linked', description: '主数据治理业务域已联通' },
+    { code: 'WMS', state: 'ready', description: '仓储管理应用域已预留' },
+    { code: 'MES', state: 'ready', description: '制造执行应用域已预留' },
+    { code: 'AI', state: 'ready', description: '智能分析应用域已预留' }
+  ]
 
   const transportRevenue = computed(() =>
     data.transport.trend.reduce((sum, item) => sum + item.freightAmount, 0)
   )
   const monthOrderCount = computed(() =>
     data.transport.trend.reduce((sum, item) => sum + item.orderCount, 0)
-  )
-  const averageDailyOrders = computed(() =>
-    data.transport.trend.length
-      ? Math.round(monthOrderCount.value / data.transport.trend.length)
-      : 0
   )
   const completedCount = computed(() => data.transport.statusCounts.completed ?? 0)
   const statusTotal = computed(() =>
@@ -568,6 +549,11 @@
     percentage(data.safety.equipmentNormal, data.safety.equipmentTotal)
   )
   const workforceRate = computed(() => percentage(data.workforce.active, data.workforce.total))
+  const financeHealthScore = computed(() =>
+    data.finance.cashOutflow
+      ? Math.min(100, Math.round((data.finance.cashInflow / data.finance.cashOutflow) * 100))
+      : 100
+  )
   const safetyScore = computed(() =>
     Math.max(
       0,
@@ -579,7 +565,13 @@
   )
   const businessScore = computed(() =>
     Math.round(
-      (completionRate.value + fleetRate.value + workforceRate.value + safetyScore.value) / 4
+      (completionRate.value +
+        fleetRate.value +
+        workforceRate.value +
+        safetyScore.value +
+        equipmentRate.value +
+        financeHealthScore.value) /
+        6
     )
   )
   const scoreRingStyle = computed(() => ({
@@ -768,6 +760,13 @@
       caption: `${data.safety.equipmentNormal}/${data.safety.equipmentTotal} 台设备正常`,
       icon: 'ri:settings-3-line',
       tone: scoreTone(equipmentRate.value)
+    },
+    {
+      label: '资金运行',
+      score: financeHealthScore.value,
+      caption: `流入 ${formatCompactCurrency(data.finance.cashInflow)} · 流出 ${formatCompactCurrency(data.finance.cashOutflow)}`,
+      icon: 'ri:funds-box-line',
+      tone: scoreTone(financeHealthScore.value)
     }
   ])
   const riskItems = computed(() => [
@@ -803,6 +802,56 @@
     }
   ])
   const totalRiskCount = computed(() => riskItems.value.reduce((sum, item) => sum + item.value, 0))
+  const visibleRiskItems = computed(() => riskItems.value.slice(0, 4))
+  const commandTelemetry = computed(() =>
+    mode.value === 'business'
+      ? [
+          { label: '本月订单', value: monthOrderCount.value, unit: '单', tone: 'primary' as const },
+          {
+            label: '本月运输收入',
+            value: formatCompactCurrency(transportRevenue.value),
+            tone: 'success' as const
+          },
+          {
+            label: '当前在途',
+            value: data.transport.inTransitCount,
+            unit: '单',
+            tone: 'info' as const
+          },
+          {
+            label: '风险事项',
+            value: totalRiskCount.value,
+            unit: '项',
+            tone: totalRiskCount.value ? ('danger' as const) : ('success' as const)
+          }
+        ]
+      : [
+          {
+            label: '待调度',
+            value: data.transport.pendingDispatchCount,
+            unit: '单',
+            tone: data.transport.pendingDispatchCount ? ('warning' as const) : ('success' as const)
+          },
+          {
+            label: '今日完成',
+            value: data.transport.completedTodayCount,
+            unit: '单',
+            tone: 'success' as const
+          },
+          {
+            label: '运营车辆',
+            value: data.fleet.operating,
+            unit: '台',
+            tone: 'primary' as const
+          },
+          {
+            label: '设备在线率',
+            value: equipmentRate.value,
+            unit: '%',
+            tone: scoreTone(equipmentRate.value)
+          }
+        ]
+  )
 
   const fulfillmentStages = computed(() => {
     const definitions = [
@@ -822,62 +871,6 @@
     })
   })
   const activeOrders = computed(() => data.transport.transitOrders.slice(0, 6))
-  const networkNodes = computed(() => [
-    {
-      label: '待调度',
-      value: data.transport.pendingDispatchCount,
-      icon: 'ri:time-line',
-      tone: 'warning',
-      position: 'top'
-    },
-    {
-      label: '今日完成',
-      value: data.transport.completedTodayCount,
-      icon: 'ri:checkbox-circle-line',
-      tone: 'success',
-      position: 'right'
-    },
-    {
-      label: '运营车辆',
-      value: data.fleet.operating,
-      icon: 'ri:truck-line',
-      tone: 'primary',
-      position: 'bottom'
-    },
-    {
-      label: '风险事项',
-      value: totalRiskCount.value,
-      icon: 'ri:alarm-warning-line',
-      tone: totalRiskCount.value ? 'danger' : 'success',
-      position: 'left'
-    }
-  ])
-
-  const trendPointList = computed(() => {
-    const values = data.transport.trend.map((item) => item.orderCount)
-    const max = Math.max(...values, 1)
-    const width = 720
-    const height = 180
-    return values.map((value, index) => ({
-      key: `${index}-${value}`,
-      x: 24 + (values.length <= 1 ? 0 : (index / (values.length - 1)) * width),
-      y: 215 - (value / max) * height
-    }))
-  })
-  const trendPoints = computed(() =>
-    trendPointList.value.map((item) => `${item.x},${item.y}`).join(' ')
-  )
-  const trendAreaPath = computed(() => {
-    const points = trendPointList.value
-    if (!points.length) return ''
-    return `M ${points[0].x} 215 L ${points.map((item) => `${item.x} ${item.y}`).join(' L ')} L ${points.at(-1)?.x ?? 24} 215 Z`
-  })
-  const trendAxisLabels = computed(() => {
-    const labels = data.transport.trend.map((item) => item.label)
-    if (!labels.length) return ['月初', '月中', '月末']
-    return [labels[0], labels[Math.floor((labels.length - 1) / 2)], labels.at(-1)]
-  })
-
   useIntervalFn(() => {
     currentTime.value = new Date().toISOString()
   }, 1000)
@@ -924,14 +917,6 @@
     }).format(value)
   }
 
-  function formatCurrency(value: number): string {
-    return new Intl.NumberFormat('zh-CN', {
-      style: 'currency',
-      currency: 'CNY',
-      maximumFractionDigits: 0
-    }).format(value)
-  }
-
   function formatCompactCurrency(value: number): string {
     return `${formatCompactNumber(value)} 元`
   }
@@ -944,6 +929,19 @@
     if (diff < 0) return `已超时 ${Math.abs(diff)} 分钟`
     if (diff < 60) return `${diff} 分钟后到达`
     return `${Math.floor(diff / 60)} 小时 ${diff % 60} 分后到达`
+  }
+
+  async function toggleScreenFullscreen(): Promise<void> {
+    if (!isFullscreenSupported.value) {
+      ElMessage.warning('当前浏览器不支持全屏显示')
+      return
+    }
+
+    try {
+      await toggleFullscreen()
+    } catch {
+      ElMessage.error('全屏切换失败，请检查浏览器权限后重试')
+    }
   }
 
   function exitScreen(): void {

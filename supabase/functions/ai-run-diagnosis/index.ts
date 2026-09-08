@@ -1,9 +1,6 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
 import { createClient, type SupabaseClient } from 'jsr:@supabase/supabase-js@2'
-import {
-  loadAiRuntimeConfig,
-  type AiRuntimeConfig
-} from '../_shared/ai-runtime-config.ts'
+import { loadAiRuntimeConfig, type AiRuntimeConfig } from '../_shared/ai-runtime-config.ts'
 import {
   resolveAiProviderEndpoints,
   type AiProviderEndpoint
@@ -22,13 +19,7 @@ const DEFAULT_PROMPT = [
 
 type DiagnosisSeverity = 'low' | 'medium' | 'high' | 'critical'
 type DiagnosisCategory =
-  | 'provider'
-  | 'configuration'
-  | 'prompt'
-  | 'tool'
-  | 'data'
-  | 'performance'
-  | 'unknown'
+  'provider' | 'configuration' | 'prompt' | 'tool' | 'data' | 'performance' | 'unknown'
 type DiagnosisPriority = 'P0' | 'P1' | 'P2'
 type DiagnosisOwner = 'platform' | 'tenant' | 'provider'
 
@@ -139,7 +130,8 @@ function sanitizeForDiagnosis(value: unknown, depth = 0): unknown {
   if (depth > 4) return '[已省略深层数据]'
   if (typeof value === 'string') return value.slice(0, 1200)
   if (typeof value === 'number' || typeof value === 'boolean' || value == null) return value
-  if (Array.isArray(value)) return value.slice(0, 20).map((item) => sanitizeForDiagnosis(item, depth + 1))
+  if (Array.isArray(value))
+    return value.slice(0, 20).map((item) => sanitizeForDiagnosis(item, depth + 1))
   if (typeof value !== 'object') return String(value).slice(0, 300)
 
   return Object.fromEntries(
@@ -214,11 +206,7 @@ function parseDiagnosis(content: string): DiagnosisResult {
             priority: enumValue(action.priority, ['P0', 'P1', 'P2'] as const, 'P2'),
             title: textValue(action.title, 200),
             steps: stringArray(action.steps, 6, 300),
-            owner: enumValue(
-              action.owner,
-              ['platform', 'tenant', 'provider'] as const,
-              'platform'
-            )
+            owner: enumValue(action.owner, ['platform', 'tenant', 'provider'] as const, 'platform')
           }
         })
         .filter((item) => item.title)
@@ -229,11 +217,7 @@ function parseDiagnosis(content: string): DiagnosisResult {
   if (!summary) throw new DiagnosisError('invalid_payload', 'AI 诊断缺少结论摘要。')
 
   return {
-    severity: enumValue(
-      payload.severity,
-      ['low', 'medium', 'high', 'critical'] as const,
-      'medium'
-    ),
+    severity: enumValue(payload.severity, ['low', 'medium', 'high', 'critical'] as const, 'medium'),
     category: enumValue(
       payload.category,
       ['provider', 'configuration', 'prompt', 'tool', 'data', 'performance', 'unknown'] as const,
@@ -324,7 +308,11 @@ async function requestProvider(
         let response = await send(true)
         if (!response.ok && response.status === 400) {
           const compatibilityError = (await response.text()).slice(0, 2000)
-          if (/response_format|json_object|unsupported|schema|invalid request/i.test(compatibilityError)) {
+          if (
+            /response_format|json_object|unsupported|schema|invalid request/i.test(
+              compatibilityError
+            )
+          ) {
             response = await send(false)
           } else {
             const code = classifyProviderError(compatibilityError, response.status)
@@ -347,11 +335,18 @@ async function requestProvider(
         return { content, model, provider: endpoint.label, usage: payload?.usage ?? {} }
       } catch (error) {
         if (error instanceof DOMException && error.name === 'AbortError') {
-          lastError = new DiagnosisError('provider_timeout', providerErrorMessage('provider_timeout'), 504)
+          lastError = new DiagnosisError(
+            'provider_timeout',
+            providerErrorMessage('provider_timeout'),
+            504
+          )
         } else if (error instanceof DiagnosisError) {
           lastError = error
         } else {
-          lastError = new DiagnosisError('provider_unreachable', providerErrorMessage('provider_unreachable'))
+          lastError = new DiagnosisError(
+            'provider_unreachable',
+            providerErrorMessage('provider_unreachable')
+          )
         }
         if (attempt >= config.maxRetries) break
       }
@@ -389,28 +384,38 @@ async function requestProviderWithFallback(
   throw lastError
 }
 
-async function checkRateLimit(
-  admin: SupabaseClient,
-  userId: string,
-  config: AiRuntimeConfig
-) {
+async function checkRateLimit(admin: SupabaseClient, userId: string, config: AiRuntimeConfig) {
   const minuteAgo = new Date(Date.now() - 60_000).toISOString()
   const dayAgo = new Date(Date.now() - 86_400_000).toISOString()
   const [minuteResult, dayResult] = await Promise.all([
-    admin.from('ai_run').select('id', { count: 'exact', head: true }).eq('auth_user_id', userId).eq('feature', FEATURE).gte('started_at', minuteAgo),
-    admin.from('ai_run').select('id', { count: 'exact', head: true }).eq('auth_user_id', userId).eq('feature', FEATURE).gte('started_at', dayAgo)
+    admin
+      .from('ai_run')
+      .select('id', { count: 'exact', head: true })
+      .eq('auth_user_id', userId)
+      .eq('feature', FEATURE)
+      .gte('started_at', minuteAgo),
+    admin
+      .from('ai_run')
+      .select('id', { count: 'exact', head: true })
+      .eq('auth_user_id', userId)
+      .eq('feature', FEATURE)
+      .gte('started_at', dayAgo)
   ])
   if (minuteResult.error || dayResult.error) {
     throw new DiagnosisError('rate_limit_check_failed', '无法校验 AI 诊断调用配额。')
   }
-  if ((minuteResult.count ?? 0) >= config.rateLimitPerMinute || (dayResult.count ?? 0) >= config.rateLimitPerDay) {
+  if (
+    (minuteResult.count ?? 0) >= config.rateLimitPerMinute ||
+    (dayResult.count ?? 0) >= config.rateLimitPerDay
+  ) {
     throw new DiagnosisError('rate_limited', 'AI 诊断次数已达到限额，请稍后再试。', 429)
   }
 }
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
-  if (req.method !== 'POST') return json({ code: 'method_not_allowed', message: 'Method not allowed' }, 405)
+  if (req.method !== 'POST')
+    return json({ code: 'method_not_allowed', message: 'Method not allowed' }, 405)
 
   const startedAt = Date.now()
   let admin: SupabaseClient | null = null
@@ -439,8 +444,10 @@ Deno.serve(async (req) => {
       userClient.rpc('current_is_super')
     ])
     const user = authResult.data.user
-    if (authResult.error || !user) throw new DiagnosisError('unauthorized', 'Invalid or expired session', 401)
-    if (superResult.error) throw new DiagnosisError('permission_check_failed', '无法校验 AI 诊断权限。')
+    if (authResult.error || !user)
+      throw new DiagnosisError('unauthorized', 'Invalid or expired session', 401)
+    if (superResult.error)
+      throw new DiagnosisError('permission_check_failed', '无法校验 AI 诊断权限。')
     const isPlatformSuper = superResult.data === true
 
     admin = createClient(supabaseUrl, serviceRoleKey, {
@@ -477,7 +484,8 @@ Deno.serve(async (req) => {
       rateLimitPerDay: 80,
       promptVersion: 'v1'
     })
-    if (!runtimeConfig.enabled) throw new DiagnosisError('feature_disabled', 'AI 运行诊断当前已停用。', 503)
+    if (!runtimeConfig.enabled)
+      throw new DiagnosisError('feature_disabled', 'AI 运行诊断当前已停用。', 503)
     if (runtimeConfig.provider !== 'openai_compatible') {
       throw new DiagnosisError('unsupported_provider', '当前诊断服务协议暂不受支持。', 503)
     }
@@ -485,17 +493,19 @@ Deno.serve(async (req) => {
 
     let targetQuery = admin
       .from('ai_run')
-      .select('id,conversation_id,tenant_id,auth_user_id,feature,model,prompt_version,status,input_tokens,output_tokens,latency_ms,tool_calls,error_code,error_message,metadata,started_at,finished_at,feedback:ai_feedback(rating,comment,create_time)')
+      .select(
+        'id,conversation_id,tenant_id,auth_user_id,feature,model,prompt_version,status,input_tokens,output_tokens,latency_ms,tool_calls,error_code,error_message,metadata,started_at,finished_at,feedback:ai_feedback(rating,comment,create_time)'
+      )
       .eq('id', targetRunId)
     if (!isPlatformSuper) {
-      targetQuery = targetQuery
-        .eq('tenant_id', appUser.tenant_id)
-        .eq('auth_user_id', user.id)
+      targetQuery = targetQuery.eq('tenant_id', appUser.tenant_id).eq('auth_user_id', user.id)
     }
     const { data: targetData, error: targetError } = await targetQuery.maybeSingle()
     const target = targetData as TargetRun | null
-    if (targetError || !target) throw new DiagnosisError('run_not_found', '运行记录不存在或已被删除。', 404)
-    if (target.feature === FEATURE) throw new DiagnosisError('invalid_target', '诊断运行记录不能再次作为诊断目标。', 400)
+    if (targetError || !target)
+      throw new DiagnosisError('run_not_found', '运行记录不存在或已被删除。', 404)
+    if (target.feature === FEATURE)
+      throw new DiagnosisError('invalid_target', '诊断运行记录不能再次作为诊断目标。', 400)
 
     const [toolResult, messageResult] = await Promise.all([
       admin
@@ -517,12 +527,10 @@ Deno.serve(async (req) => {
       throw new DiagnosisError('context_load_failed', '无法读取本次运行的诊断上下文。')
     }
 
-    const publishedPrompt = await loadPublishedAiPrompt(
-      admin,
-      appUser.tenant_id,
-      FEATURE,
-      { content: DEFAULT_PROMPT, version: runtimeConfig.promptVersion }
-    )
+    const publishedPrompt = await loadPublishedAiPrompt(admin, appUser.tenant_id, FEATURE, {
+      content: DEFAULT_PROMPT,
+      version: runtimeConfig.promptVersion
+    })
     const providerEndpoints = resolveAiProviderEndpoints(runtimeConfig)
     if (!providerEndpoints.length) {
       throw new DiagnosisError('missing_api_key', 'AI 服务尚未配置 API Key。', 503)
@@ -627,9 +635,13 @@ Deno.serve(async (req) => {
       durationMs: latencyMs
     })
   } catch (error) {
-    const normalized = error instanceof DiagnosisError
-      ? error
-      : new DiagnosisError('server_error', error instanceof Error ? error.message : 'Unknown error')
+    const normalized =
+      error instanceof DiagnosisError
+        ? error
+        : new DiagnosisError(
+            'server_error',
+            error instanceof Error ? error.message : 'Unknown error'
+          )
     console.error('ai-run-diagnosis error', normalized.code, normalized.message)
     if (admin && diagnosisRunId) {
       const { error: updateError } = await admin
@@ -643,7 +655,8 @@ Deno.serve(async (req) => {
           update_by: auditEmail || 'system'
         })
         .eq('id', diagnosisRunId)
-      if (updateError) console.error('ai-run-diagnosis audit failure update failed', updateError.message)
+      if (updateError)
+        console.error('ai-run-diagnosis audit failure update failed', updateError.message)
     }
     return json({ code: normalized.code, message: normalized.message }, normalized.status)
   }

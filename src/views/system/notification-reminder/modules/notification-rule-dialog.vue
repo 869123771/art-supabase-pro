@@ -199,10 +199,9 @@
     {
       label: '重复方式',
       key: 'repeatMode',
-      type: 'radioGroup',
+      type: 'segment',
       span: 24,
       props: {
-        optionType: 'button',
         options: [
           { label: '仅提醒一次', value: 'once' },
           { label: '按间隔重复', value: 'repeat' }

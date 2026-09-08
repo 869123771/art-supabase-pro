@@ -212,10 +212,17 @@ test.describe('MDM, WMS and MES application scaffolds', () => {
         }
       })
     })
-    await openWorkspace(page, '/#/mdm/workbench', '主数据治理工作台')
+    await openWorkspace(page, '/#/mdm/workbench', '治理总览')
     await expect(page.locator('.coverage-ring')).toContainText('50%')
     await expect(page.locator('.coverage-legend')).toContainText('5 条')
     await expect(page.getByText('资料完整率', { exact: true })).toBeVisible()
+    const pendingMetric = page
+      .locator('.business-workspace-header__metric')
+      .filter({ hasText: '待完善记录' })
+    await expect(pendingMetric).toContainText('5')
+    await expect(page.getByText('独立主档类型', { exact: true })).toBeVisible()
+    await expect(page.getByText('另有 2 类关系/明细对象', { exact: true })).toBeVisible()
+    await expect(page.locator('.domain-list__count').first()).toContainText('5 条待完善')
     await page.screenshot({ path: testInfo.outputPath('mdm-health.png'), fullPage: true })
     await page.locator('.governance-rules article').last().scrollIntoViewIfNeeded()
     await expect(page.locator('.domain-list button')).toHaveCount(5)
@@ -292,11 +299,11 @@ test.describe('MDM, WMS and MES application scaffolds', () => {
 
   test('opens the MDM governance workspace and catalog', async ({ page }, testInfo) => {
     await installApplicationMenuMocks(page)
-    await openWorkspace(page, '/#/mdm/workbench', '主数据治理工作台')
+    await openWorkspace(page, '/#/mdm/workbench', '治理总览')
     await page.screenshot({ path: testInfo.outputPath('mdm-workbench.png'), fullPage: true })
 
     await openWorkspace(page, '/#/mdm/organization/organization-directory', '组织机构主数据')
-    await expect(page.locator('.mdm-catalog-page__table-context')).toContainText('来源系统维护')
+    await expect(page.locator('.catalog-navigator__note')).toContainText('来源系统维护')
     await expect(page.getByText('当前结果', { exact: true })).toBeVisible()
     const overview = page.locator('.mdm-catalog-page__overview')
     const query = page.locator('.mdm-catalog-page .art-table-query')
@@ -304,7 +311,6 @@ test.describe('MDM, WMS and MES application scaffolds', () => {
     await page.getByRole('switch', { name: '进入专注模式' }).locator('..').click()
     await expect(overview).toBeHidden()
     await expect(query).toHaveClass(/is-focus-mode/)
-    await expect(page.locator('.mdm-catalog-page__table-context')).toContainText('组织机构主数据')
     await expect(page.getByText('资料质量度', { exact: true })).toBeVisible()
     await expect
       .poll(async () => (await query.boundingBox())!.height)

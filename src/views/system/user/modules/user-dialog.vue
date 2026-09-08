@@ -336,7 +336,7 @@
     {
       label: '状态',
       key: 'status',
-      type: 'radioGroup',
+      type: 'segment',
       span: 24,
       props: {
         options: getDictMap.value.status ?? [],

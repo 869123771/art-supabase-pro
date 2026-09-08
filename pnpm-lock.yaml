@@ -13,7 +13,7 @@ importers:
         version: 2.3.2(vue@3.5.40(typescript@6.0.3))
       '@file-viewer/preset-all':
         specifier: 2.1.28
-        version: 2.1.28(three@0.184.0)
+        version: 2.1.28(three@0.185.1)
       '@file-viewer/vue3':
         specifier: 2.1.28
         version: 2.1.28(typescript@6.0.3)
@@ -71,6 +71,9 @@ importers:
       '@tiptap/vue-3':
         specifier: 3.31.0
         version: 3.31.0(@floating-ui/dom@1.8.0)(@tiptap/core@3.31.0(@tiptap/pm@3.31.0))(@tiptap/pm@3.31.0)(vue@3.5.40(typescript@6.0.3))
+      '@tresjs/core':
+        specifier: 5.8.3
+        version: 5.8.3(three@0.185.1)(vue@3.5.40(typescript@6.0.3))
       '@vue-flow/background':
         specifier: 1.3.2
         version: 1.3.2(@vue-flow/core@1.48.2(vue@3.5.40(typescript@6.0.3)))(vue@3.5.40(typescript@6.0.3))
@@ -152,6 +155,9 @@ importers:
       tailwindcss:
         specifier: ^4.3.1
         version: 4.3.2
+      three:
+        specifier: 0.185.1
+        version: 0.185.1
       vue:
         specifier: ^3.5.38
         version: 3.5.40(typescript@6.0.3)
@@ -192,6 +198,9 @@ importers:
       '@types/node':
         specifier: ^26.0.1
         version: 26.1.1
+      '@types/three':
+        specifier: 0.185.0
+        version: 0.185.0
       '@typescript-eslint/eslint-plugin':
         specifier: ^8.62.0
         version: 8.64.0(@typescript-eslint/parser@8.64.0(eslint@10.7.0(jiti@2.7.0))(typescript@6.0.3))(eslint@10.7.0(jiti@2.7.0))(typescript@6.0.3)
@@ -617,6 +626,9 @@ packages:
   '@ctrl/tinycolor@4.2.0':
     resolution: {integrity: sha512-kzyuwOAQnXJNLS9PSyrk0CWk35nWJW/zl/6KvnTBMFK65gm7U1/Z5BqjxeapjZCIhQcM/DsrEmcbRwDyXyXK4A==}
     engines: {node: '>=14'}
+
+  '@dimforge/rapier3d-compat@0.12.0':
+    resolution: {integrity: sha512-uekIGetywIgopfD97oDL5PfeezkFpNhwlzlaEYNOA0N6ghdsOvh/HYjSMek5Q2O1PYvRSDFcqFVJl4r4ZBwOow==}
 
   '@element-plus/icons-vue@2.3.2':
     resolution: {integrity: sha512-OzIuTaIfC8QXEPmJvB4Y4kw34rSXdCJzxcD1kFStBvr8bK6X1zQAYDo0CNMjojnfTqRQCJ0I7prlErcoRiET2A==}
@@ -1342,6 +1354,9 @@ packages:
     engines: {node: '>=20'}
     hasBin: true
 
+  '@pmndrs/pointer-events@6.6.30':
+    resolution: {integrity: sha512-YD2jWdgEqqAWJNOOZ1WZMunUby8jwuQyOMk8zbeqC39R4nkZnGvu1Pa5EMGbV1zd2vZTxXDxYcAVxtQuhVwf3g==}
+
   '@polka/url@1.0.0-next.29':
     resolution: {integrity: sha512-wwQAWhWSuHaag8c4q/KN/vCoeOJYshAIvMQwD4GpSb3OiZklFfvAgmj0VCBBImRpuF/aFgIRzllXlVX93Jevww==}
 
@@ -1785,6 +1800,15 @@ packages:
   '@tonejs/midi@2.0.28':
     resolution: {integrity: sha512-RII6YpInPsOZ5t3Si/20QKpNqB1lZ2OCFJSOzJxz38YdY/3zqDr3uaml4JuCWkdixuPqP1/TBnXzhQ39csyoVg==}
 
+  '@tresjs/core@5.8.3':
+    resolution: {integrity: sha512-1I5Y/qJ1z5JnObUwtkCnKFiCQw2cS2tp0KH18FgBQAD6quQ87eGzHrWThrdcuv6RFAgwuRTpTH7qBNWmtW3tSQ==}
+    peerDependencies:
+      three: '>=0.133'
+      vue: '>=3.4'
+
+  '@tweenjs/tween.js@23.1.3':
+    resolution: {integrity: sha512-vJmvvwFxYuGnF2axRtPYocag6Clbb5YS7kLL+SO/TeVFzHqDIWrNKYtcsPMibjDx9O+bu+psAy9NKfWklassUA==}
+
   '@tybys/wasm-util@0.10.3':
     resolution: {integrity: sha512-F3fo1MYrRJYL3zER0OUOmkutjr1Vp23m7OsSgp7nq4SP6OqX6C/56XFIPAl5bt3zaBRjmW7SGz3u/6LwFpYcOg==}
 
@@ -1918,6 +1942,12 @@ packages:
   '@types/sortablejs@1.15.9':
     resolution: {integrity: sha512-7HP+rZGE2p886PKV9c9OJzLBI6BBJu1O7lJGYnPyG3fS4/duUCcngkNCjsLwIMV+WMqANe3tt4irrXHSIe68OQ==}
 
+  '@types/stats.js@0.17.4':
+    resolution: {integrity: sha512-jIBvWWShCvlBqBNIZt0KAshWpvSjhkwkEu4ZUcASoAvhmrgAUI2t1dXrjSL4xXVLB4FznPrIsX3nKXFl/Dt4vA==}
+
+  '@types/three@0.185.0':
+    resolution: {integrity: sha512-O2Uy8Cj4Nonr8dWUUbifMdPe8B0Mq7EdOHb89S4+kjUw/KhbjTZrUuYlrQ1bpUKG+EP9QJnN7qNxbHGlGoLHMA==}
+
   '@types/trusted-types@2.0.7':
     resolution: {integrity: sha512-ScaPdn1dQczgbl0QFTeTOmVHFULt394XJgOQNoyVhZ6r2vLnMLJfBPd53SB52T/3G36VI1/g2MZaX0cwDuXsfw==}
 
@@ -1926,6 +1956,9 @@ packages:
 
   '@types/web-bluetooth@0.0.21':
     resolution: {integrity: sha512-oIQLCGWtcFZy2JW77j9k8nHzAOpqMHLQejDA48XXMWH6tjCQHz5RCFz1bzsmROyL6PUm+LLnUiI4BCn221inxA==}
+
+  '@types/webxr@0.5.24':
+    resolution: {integrity: sha512-h8fgEd/DpoS9CBrjEQXR+dIDraopAEfu4wYVNY2tEPwk60stPWhvZMf4Foo5FakuQ7HFZoa8WceaWFervK2Ovg==}
 
   '@typescript-eslint/eslint-plugin@8.64.0':
     resolution: {integrity: sha512-CGvQPBxN3wZLu6Rz2kFUpZeoCm78xUic92ck39KPePkO1NPOwjCqdQnm5Q87tpWw9vcBvW8XLrDXjH9PWYtJ3Q==}
@@ -3169,6 +3202,9 @@ packages:
       picomatch:
         optional: true
 
+  fflate@0.8.3:
+    resolution: {integrity: sha512-tbZNuJrLwGUp3zshBtdy4W+ORxZuIh8a5ilyIEQDC5rY1f3U20JMry0Ll3WBzU58EZKsEuJFXhb5gwv8CsPvgA==}
+
   figures@3.2.0:
     resolution: {integrity: sha512-yaduQFRKLXYOGgEn6AZau90j3ggSOyiqXU0F9JZfeXYhNa+Jk4X+s45A2zg5jns87GAFa34BBm2kXw4XpNcbdg==}
     engines: {node: '>=8'}
@@ -3943,6 +3979,9 @@ packages:
   mermaid@11.16.0:
     resolution: {integrity: sha512-Zvm3kbstgdpvIJPPItlL7fppIZ3kibvc1oZIGxdvk9t6UFz6flv+Jw7FtRGKwfcI8OckmH04LqG6LlS6X4B1pA==}
 
+  meshoptimizer@1.1.1:
+    resolution: {integrity: sha512-oRFNWJRDA/WTrVj7NWvqa5HqE1t9MYDj2VaWirQCzCCrAd2GHrqR/sQezCxiWATPNlKTcRaPRHPJwIRoPBAp5g==}
+
   mgrs@1.0.0:
     resolution: {integrity: sha512-awNbTOqCxK1DBGjalK3xqWIstBZgN6fxsMSiXLs9/spqWkF2pAhb2rrYCFSsr1/tT7PhcDGjZndG8SWYn0byYA==}
 
@@ -4406,6 +4445,10 @@ packages:
   quickselect@3.0.0:
     resolution: {integrity: sha512-XdjUArbK4Bm5fLLvlm5KpTFOiOThgfWWI4axAZDWg4E/0mKdZyI9tNEfds27qCi1ze/vwTR16kvmmGhRra3c2g==}
 
+  radashi@12.9.1:
+    resolution: {integrity: sha512-HCvrL1Ag7qnyH11UiSWQaEIiizJ7kldHjBw63aELoum7C8nQrSLqotLDuKKvoRPtO0w8azCzUQcL3yrU3lBksw==}
+    engines: {node: '>=16.0.0'}
+
   railroad-diagrams@1.0.0:
     resolution: {integrity: sha512-cz93DjNeLY0idrCNOH6PviZGRN9GJhsdm9hpn1YCS879fj4W+x5IFJhhkRZcwVgMmFF7R82UA/7Oh+R8lLZg6A==}
 
@@ -4812,6 +4855,9 @@ packages:
 
   three@0.184.0:
     resolution: {integrity: sha512-wtTRjG92pM5eUg/KuUnHsqSAlPM296brTOcLgMRqEeylYTh/CdtvKUvCyyCQTzFuStieWxvZb8mVTMvdPyUpxg==}
+
+  three@0.185.1:
+    resolution: {integrity: sha512-5aojFCXKwnjBRZvUnt3WFfEcvUJgkN5LlijRFN95hMy8WVkG4I0QNcJE+OuWvuJ0bOdStrbfXn0pkd6/QyiAlg==}
 
   through@2.3.8:
     resolution: {integrity: sha512-w89qg7PI8wAdvX60bMDP+bFoD5Dvhm9oLheFp5O4a2QF0cSBGsBX4qZmadPMvVqlLJBBci+WqGGOAPvcDeNSVg==}
@@ -5665,6 +5711,8 @@ snapshots:
 
   '@ctrl/tinycolor@4.2.0': {}
 
+  '@dimforge/rapier3d-compat@0.12.0': {}
+
   '@element-plus/icons-vue@2.3.2(vue@3.5.40(typescript@6.0.3))':
     dependencies:
       vue: 3.5.40(typescript@6.0.3)
@@ -5837,12 +5885,12 @@ snapshots:
       tinycolor2: 1.6.0
       utif: 3.1.0
 
-  '@file-viewer/preset-all@2.1.28(three@0.184.0)':
+  '@file-viewer/preset-all@2.1.28(three@0.185.1)':
     dependencies:
       '@file-viewer/core': 2.1.28
       '@file-viewer/renderer-3d': 2.1.28
       '@file-viewer/renderer-archive': 2.1.28
-      '@file-viewer/renderer-cad': 2.1.28(three@0.184.0)
+      '@file-viewer/renderer-cad': 2.1.28(three@0.185.1)
       '@file-viewer/renderer-data': 2.1.28
       '@file-viewer/renderer-drawing': 2.1.28
       '@file-viewer/renderer-eda': 2.1.28
@@ -5875,10 +5923,10 @@ snapshots:
       jszip: 3.10.1
       libarchive.js: 2.0.2
 
-  '@file-viewer/renderer-cad@2.1.28(three@0.184.0)':
+  '@file-viewer/renderer-cad@2.1.28(three@0.185.1)':
     dependencies:
       '@file-viewer/core': 2.1.28
-      '@flyfish-dev/cad-viewer': 0.6.6(three@0.184.0)
+      '@flyfish-dev/cad-viewer': 0.6.6(three@0.185.1)
     transitivePeerDependencies:
       - three
 
@@ -6018,10 +6066,10 @@ snapshots:
 
   '@floating-ui/utils@0.2.12': {}
 
-  '@flyfish-dev/cad-viewer@0.6.6(three@0.184.0)':
+  '@flyfish-dev/cad-viewer@0.6.6(three@0.185.1)':
     dependencies:
       '@mlightcad/libredwg-web': 0.7.7
-      dwf-viewer: 0.6.4(three@0.184.0)
+      dwf-viewer: 0.6.4(three@0.185.1)
       dxf-parser: 1.1.2
     transitivePeerDependencies:
       - three
@@ -6395,6 +6443,8 @@ snapshots:
   '@playwright/test@1.62.1':
     dependencies:
       playwright: 1.62.1
+
+  '@pmndrs/pointer-events@6.6.30': {}
 
   '@polka/url@1.0.0-next.29': {}
 
@@ -6774,6 +6824,17 @@ snapshots:
       array-flatten: 3.0.0
       midi-file: 1.2.4
 
+  '@tresjs/core@5.8.3(three@0.185.1)(vue@3.5.40(typescript@6.0.3))':
+    dependencies:
+      '@pmndrs/pointer-events': 6.6.30
+      '@vue/devtools-api': 8.1.5
+      '@vueuse/core': 14.3.0(vue@3.5.40(typescript@6.0.3))
+      radashi: 12.9.1
+      three: 0.185.1
+      vue: 3.5.40(typescript@6.0.3)
+
+  '@tweenjs/tween.js@23.1.3': {}
+
   '@tybys/wasm-util@0.10.3':
     dependencies:
       tslib: 2.8.1
@@ -6926,12 +6987,25 @@ snapshots:
 
   '@types/sortablejs@1.15.9': {}
 
+  '@types/stats.js@0.17.4': {}
+
+  '@types/three@0.185.0':
+    dependencies:
+      '@dimforge/rapier3d-compat': 0.12.0
+      '@tweenjs/tween.js': 23.1.3
+      '@types/stats.js': 0.17.4
+      '@types/webxr': 0.5.24
+      fflate: 0.8.3
+      meshoptimizer: 1.1.1
+
   '@types/trusted-types@2.0.7':
     optional: true
 
   '@types/web-bluetooth@0.0.18': {}
 
   '@types/web-bluetooth@0.0.21': {}
+
+  '@types/webxr@0.5.24': {}
 
   '@typescript-eslint/eslint-plugin@8.64.0(@typescript-eslint/parser@8.64.0(eslint@10.7.0(jiti@2.7.0))(typescript@6.0.3))(eslint@10.7.0(jiti@2.7.0))(typescript@6.0.3)':
     dependencies:
@@ -8058,9 +8132,9 @@ snapshots:
     dependencies:
       readable-stream: 2.3.8
 
-  dwf-viewer@0.6.4(three@0.184.0):
+  dwf-viewer@0.6.4(three@0.185.1):
     optionalDependencies:
-      three: 0.184.0
+      three: 0.185.1
 
   dxf-parser@1.1.2:
     dependencies:
@@ -8386,6 +8460,8 @@ snapshots:
   fdir@6.5.0(picomatch@4.0.5):
     optionalDependencies:
       picomatch: 4.0.5
+
+  fflate@0.8.3: {}
 
   figures@3.2.0:
     dependencies:
@@ -9104,6 +9180,8 @@ snapshots:
       ts-dedent: 2.3.0
       uuid: 14.0.1
 
+  meshoptimizer@1.1.1: {}
+
   mgrs@1.0.0: {}
 
   micromatch@4.0.8:
@@ -9549,6 +9627,8 @@ snapshots:
   queue-microtask@1.2.3: {}
 
   quickselect@3.0.0: {}
+
+  radashi@12.9.1: {}
 
   railroad-diagrams@1.0.0: {}
 
@@ -10008,6 +10088,8 @@ snapshots:
       source-map-support: 0.5.21
 
   three@0.184.0: {}
+
+  three@0.185.1: {}
 
   through@2.3.8: {}
 

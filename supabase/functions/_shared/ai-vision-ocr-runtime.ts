@@ -1,9 +1,6 @@
 import type { SupabaseClient } from 'jsr:@supabase/supabase-js@2'
 import { createClient } from 'jsr:@supabase/supabase-js@2'
-import {
-  resolveAiProviderEndpoints,
-  type AiProviderEndpoint
-} from './ai-provider-endpoints.ts'
+import { resolveAiProviderEndpoints, type AiProviderEndpoint } from './ai-provider-endpoints.ts'
 import { extractAiProviderJson, extractAiProviderText } from './ai-provider-json.ts'
 import { loadAiRuntimeConfig } from './ai-runtime-config.ts'
 import { loadPublishedAiPrompt } from './ai-prompt-template.ts'
@@ -28,7 +25,6 @@ export interface VisionOcrNormalizedResult {
 
 export interface VisionOcrRuntimeContext<TInput, TResult extends VisionOcrNormalizedResult> {
   admin: SupabaseClient
-  userClient: SupabaseClient
   appUser: { tenant_id: string; user_email: string }
   userId: string
   input: TInput
@@ -106,9 +102,7 @@ function stringValue(value: unknown): string | null {
 function isUuid(value: string | null): value is string {
   return Boolean(
     value &&
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-        value
-      )
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
   )
 }
 
@@ -166,10 +160,6 @@ export function createVisionOcrHandler<TInput, TResult extends VisionOcrNormaliz
 
       const user = authData.user
       const admin = createClient(supabaseUrl, serviceRoleKey, {
-        auth: { autoRefreshToken: false, persistSession: false }
-      })
-      const userClient = createClient(supabaseUrl, supabaseAnonKey, {
-        global: { headers: { Authorization: authHeader } },
         auth: { autoRefreshToken: false, persistSession: false }
       })
       const { data: appUser, error: appUserError } = await admin
@@ -288,12 +278,7 @@ export function createVisionOcrHandler<TInput, TResult extends VisionOcrNormaliz
           1,
           60
         ),
-        rateLimitPerDay: integerValue(
-          Deno.env.get(`AI_${config.envPrefix}_PER_DAY`),
-          100,
-          1,
-          5000
-        ),
+        rateLimitPerDay: integerValue(Deno.env.get(`AI_${config.envPrefix}_PER_DAY`), 100, 1, 5000),
         promptVersion: 'v1'
       })
       if (!runtimeConfig.enabled) {
@@ -388,7 +373,11 @@ export function createVisionOcrHandler<TInput, TResult extends VisionOcrNormaliz
       const userContent = [
         {
           type: 'text',
-          text: JSON.stringify({ context: inputMetadata, expectedShape: config.expectedShape }, null, 2)
+          text: JSON.stringify(
+            { context: inputMetadata, expectedShape: config.expectedShape },
+            null,
+            2
+          )
         },
         ...imageUrls.map((url) => ({ type: 'image_url', image_url: { url } }))
       ]
@@ -436,7 +425,10 @@ export function createVisionOcrHandler<TInput, TResult extends VisionOcrNormaliz
             response = await requestProvider(endpoint)
             continue
           }
-          if (!((response.status === 429 || response.status >= 500) && attempt < runtimeConfig.maxRetries)) {
+          if (!(
+            (response.status === 429 || response.status >= 500) &&
+            attempt < runtimeConfig.maxRetries
+          )) {
             break
           }
           response = await requestProvider(endpoint)
@@ -448,7 +440,11 @@ export function createVisionOcrHandler<TInput, TResult extends VisionOcrNormaliz
       let providerResult: { response: Response; errorText: string } | null = null
       for (const endpoint of endpoints) {
         let result = await requestConfiguredModel(endpoint, endpoint.model)
-        if (!result.response.ok && endpoint.fallbackModel && endpoint.fallbackModel !== resolvedModel) {
+        if (
+          !result.response.ok &&
+          endpoint.fallbackModel &&
+          endpoint.fallbackModel !== resolvedModel
+        ) {
           result = await requestConfiguredModel(endpoint, endpoint.fallbackModel)
         }
         providerResult = result
@@ -456,7 +452,11 @@ export function createVisionOcrHandler<TInput, TResult extends VisionOcrNormaliz
           activeEndpoint = endpoint
           break
         }
-        console.error(`${config.feature} provider attempt failed`, endpoint.label, result.response.status)
+        console.error(
+          `${config.feature} provider attempt failed`,
+          endpoint.label,
+          result.response.status
+        )
       }
       if (!providerResult?.response.ok) {
         const message = providerResult?.errorText || 'AI provider request failed'
@@ -485,7 +485,8 @@ export function createVisionOcrHandler<TInput, TResult extends VisionOcrNormaliz
         if (repair.response.ok) {
           providerPayload = await repair.response.json()
           usage = {
-            prompt_tokens: (usage?.prompt_tokens ?? 0) + (providerPayload?.usage?.prompt_tokens ?? 0),
+            prompt_tokens:
+              (usage?.prompt_tokens ?? 0) + (providerPayload?.usage?.prompt_tokens ?? 0),
             completion_tokens:
               (usage?.completion_tokens ?? 0) + (providerPayload?.usage?.completion_tokens ?? 0)
           }
@@ -505,16 +506,13 @@ export function createVisionOcrHandler<TInput, TResult extends VisionOcrNormaliz
       const rawOcrText = normalizeOcrRawText(result.rawText)
       const proposedPayload = config.proposedPayload(result)
       const runtimeContext = {
-            admin,
-            userClient,
-            appUser,
-            userId: user.id,
-            input,
-            result
-          }
-      const extraResponse = config.enrichResponse
-        ? await config.enrichResponse(runtimeContext)
-        : {}
+        admin,
+        appUser,
+        userId: user.id,
+        input,
+        result
+      }
+      const extraResponse = config.enrichResponse ? await config.enrichResponse(runtimeContext) : {}
       const { data: thresholdRow } = await admin
         .from('ai_ocr_quality_threshold')
         .select('review_confidence_threshold')

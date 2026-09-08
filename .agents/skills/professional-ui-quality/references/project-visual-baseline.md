@@ -13,6 +13,8 @@ Resolve conflicts in this order:
 
 Do not copy accidental defects from a neighboring page. Preserve its valid structure and correct defects against the higher-priority sources.
 
+The ESOP workflow is a user-approved visual reference for low-cardinality choices, status editing, information-rich tables, CRUD overlays, and attachment handling. For comparable business shapes, read [user-approved-esop-patterns.md](user-approved-esop-patterns.md) and reuse its decision rules without copying ESOP-specific content or forcing the pattern onto unsuitable workflows.
+
 ## Product Character
 
 The product is an enterprise logistics and operations system. It should feel calm, precise, trustworthy, and efficient under sustained daily use.

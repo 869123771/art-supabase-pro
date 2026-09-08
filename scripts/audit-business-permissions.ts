@@ -48,7 +48,7 @@ const businessModules = new Set<ManagedModule>([
 ])
 const sourceExtensions = new Set(['.ts', '.tsx', '.vue'])
 const permissionPattern =
-  /['"`]((?:System|Workflow|Tms|Finance|Hr|Mdm|Smis|Vehicle|Insurance|Parts|PartsCategory|Supplier)[A-Za-z0-9]*(?::[A-Za-z][A-Za-z0-9]*)+)['"`]/g
+  /['"`]((?:System|Workflow|Tms|Finance|Hr|Mdm|Pmis|Smis|Vehicle|Insurance|Parts|PartsCategory|Supplier)[A-Za-z0-9]*(?::[A-Za-z][A-Za-z0-9]*)+)['"`]/g
 const platformSuperPattern = /isPlatformSuper|平台超级管理员|仅平台|platform super administrator/i
 
 // These files use platform-super only for cross-tenant context or for controlled AI writes.
@@ -340,6 +340,7 @@ function resolveBusinessCatalogOwner(menuName: string): ManagedModule {
   if (menuName.startsWith('Finance')) return 'fms'
   if (menuName.startsWith('Hr')) return 'hr'
   if (menuName.startsWith('Mdm')) return 'mdm'
+  if (menuName.startsWith('Pmis')) return 'pmis'
   if (menuName.startsWith('Smis')) return 'smis'
   return 'vms'
 }

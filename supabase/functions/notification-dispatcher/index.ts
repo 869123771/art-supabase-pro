@@ -50,11 +50,12 @@ async function parseProviderResponse(response: Response): Promise<{ externalId: 
   }
   const providerCode = Number(payload.errcode ?? payload.code ?? 0)
   if (Number.isFinite(providerCode) && providerCode !== 0 && providerCode !== 200) {
-    throw new Error(getText(payload.errmsg) || getText(payload.message) || `渠道返回 ${providerCode}`)
+    throw new Error(
+      getText(payload.errmsg) || getText(payload.message) || `渠道返回 ${providerCode}`
+    )
   }
   return {
-    externalId:
-      getText(payload.id) || getText(payload.messageId) || getText(payload.msgid) || ''
+    externalId: getText(payload.id) || getText(payload.messageId) || getText(payload.msgid) || ''
   }
 }
 

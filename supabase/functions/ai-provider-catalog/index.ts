@@ -397,7 +397,10 @@ async function readProviderError(response: Response): Promise<string> {
   return raw
 }
 
-function createProviderBenchmarkError(status: number, providerMessage: string): ProviderBenchmarkError {
+function createProviderBenchmarkError(
+  status: number,
+  providerMessage: string
+): ProviderBenchmarkError {
   if (status === 401 || status === 403) {
     return new ProviderBenchmarkError(
       'provider_auth_failed',
@@ -496,7 +499,8 @@ async function benchmarkModel(
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
-  if (req.method !== 'POST') return json({ code: 'method_not_allowed', message: 'Method not allowed' }, 405)
+  if (req.method !== 'POST')
+    return json({ code: 'method_not_allowed', message: 'Method not allowed' }, 405)
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
   const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? ''
@@ -547,7 +551,10 @@ Deno.serve(async (req) => {
       return json({ code: 'invalid_model', message: '请选择有效的模型 ID' }, 400)
     }
     if (!apiKey) {
-      return json({ code: 'provider_not_configured', message: 'AI 服务密钥尚未配置，无法测速' }, 503)
+      return json(
+        { code: 'provider_not_configured', message: 'AI 服务密钥尚未配置，无法测速' },
+        503
+      )
     }
     try {
       return json(await benchmarkModel(baseUrl, apiKey, model))

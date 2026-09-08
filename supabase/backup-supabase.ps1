@@ -470,10 +470,16 @@ function Save-StorageBucket {
 
   if ($cliResult.Succeeded) {
     if ($cliResult.Output) { Write-Host $cliResult.Output }
+    $files = @(Get-ChildItem -LiteralPath $Destination -File -Recurse | ForEach-Object {
+      [pscustomobject]@{
+        path = $_.FullName.Substring($Destination.Length).TrimStart([char[]]'\/')
+        bytes = $_.Length
+      }
+    })
     return [pscustomobject]@{
       bucket = $BucketId
       method = 'supabase-cli'
-      files = $null
+      files = $files
     }
   }
 
@@ -539,6 +545,9 @@ try {
     Invoke-Supabase @('link', '--project-ref', $ProjectRef, '--password', $plainPassword)
   }
   $dbTarget = if ($DbUrl) { @('--db-url', $DbUrl) } else { @('--linked', '--password', $plainPassword) }
+  # `db query --linked` uses the Management API and does not accept --password,
+  # while dump commands do. Keep command-specific targets separate.
+  $queryTarget = if ($DbUrl) { @('--db-url', $DbUrl) } else { @('--linked') }
   $connection = Get-LinkedDatabaseConnection -Password $plainPassword -DatabaseUrl $DbUrl
 
   Write-Host 'Exporting database roles, schema, and data...'
@@ -548,9 +557,11 @@ try {
   Invoke-Supabase (@('db', 'dump') + $dbTarget + @('--data-only', '--use-copy', '--file', (Join-Path $databasePath 'data.sql')))
   Invoke-Supabase (@('db', 'dump') + $dbTarget + @('--schema', 'supabase_migrations', '--file', (Join-Path $databasePath 'migration-history-schema.sql')))
   Invoke-Supabase (@('db', 'dump') + $dbTarget + @('--schema', 'supabase_migrations', '--data-only', '--use-copy', '--file', (Join-Path $databasePath 'migration-history-data.sql')))
-  # Standard schema dumps omit managed auth/storage schemas. This records only the
-  # changes made to those managed schemas, which can safely be replayed on a new project.
-  Invoke-Supabase (@('db', 'diff') + $dbTarget + @('--schema', 'auth,storage', '--output', (Join-Path $databasePath 'managed-schema-changes.sql')))
+  # Standard schema dumps omit managed auth/storage schemas. Capture their complete
+  # definitions as a recovery reference without requiring a shadow database. The
+  # managed schemas are platform-owned and must not be replayed wholesale; restore
+  # only reviewed project-specific policies/triggers from this snapshot.
+  Invoke-Supabase (@('db', 'dump') + $dbTarget + @('--schema', 'auth,storage', '--keep-comments', '--file', (Join-Path $databasePath 'managed-schema-snapshot.sql')))
 
   Write-Host 'Capturing deployed Edge Function source and metadata...'
   Invoke-Supabase @('functions', 'download', '--project-ref', $ProjectRef, '--use-api')
@@ -565,10 +576,24 @@ try {
   Invoke-SupabaseJsonWithRetry `
     -Arguments @('projects', 'list', '--output', 'json') `
     -OutputPath (Join-Path $metadataPath 'projects.json') | Out-Null
-  & supabase db query @dbTarget --agent=no --output json 'select id, name, public, file_size_limit, allowed_mime_types, created_at, updated_at from storage.buckets order by id' |
+  $storageBucketSql = 'select id, name, public, file_size_limit, allowed_mime_types, created_at, updated_at from storage.buckets order by id'
+  $storageBucketOutput = if ($DbUrl) {
+    & supabase db query --db-url $DbUrl --agent=no --output json $storageBucketSql
+  }
+  else {
+    & supabase db query --linked --agent=no --output json $storageBucketSql
+  }
+  $storageBucketOutput |
     Set-Content -Path (Join-Path $metadataPath 'storage-buckets.json') -Encoding utf8
   if ($LASTEXITCODE -ne 0) { throw 'Unable to list Storage buckets.' }
-  & supabase db query @dbTarget --agent=no --output json "select schemaname, tablename from pg_publication_tables where pubname = 'supabase_realtime' order by schemaname, tablename" |
+  $realtimeSql = "select schemaname, tablename from pg_publication_tables where pubname = 'supabase_realtime' order by schemaname, tablename"
+  $realtimeOutput = if ($DbUrl) {
+    & supabase db query --db-url $DbUrl --agent=no --output json $realtimeSql
+  }
+  else {
+    & supabase db query --linked --agent=no --output json $realtimeSql
+  }
+  $realtimeOutput |
     Set-Content -Path (Join-Path $metadataPath 'realtime-publication-tables.json') -Encoding utf8
   if ($LASTEXITCODE -ne 0) { throw 'Unable to list Realtime publication tables.' }
 
@@ -608,8 +633,8 @@ try {
     created_at = (Get-Date).ToUniversalTime().ToString('o')
     project_ref = $ProjectRef
     supabase_cli = (& supabase --version)
-    includes = @('database roles', 'database schema', 'database data', 'migration history', 'managed auth/storage schema changes', 'RLS policies/grants/functions/triggers', 'Realtime publication tables', 'Storage bucket files', 'Storage bucket metadata', 'Edge Function source and JWT settings')
-    limitations = @('Edge Function secret values cannot be read back from Supabase; only their names are recorded. Re-enter their values before deploying functions.', 'Dashboard-only settings such as OAuth providers, SMTP, custom domains, and Auth URL configuration must be recreated separately.')
+    includes = @('database roles', 'database schema', 'database data', 'migration history', 'managed auth/storage schema snapshot', 'RLS policies/grants/functions/triggers', 'Realtime publication tables', 'Storage bucket files', 'Storage bucket metadata', 'Edge Function source and JWT settings')
+    limitations = @('The auth/storage schema snapshot is a recovery reference, not an automatic restore script. Review and extract only project-specific policies and triggers because Supabase owns the managed base schemas.', 'Edge Function secret values cannot be read back from Supabase; only their names are recorded. Re-enter their values before deploying functions.', 'Dashboard-only settings such as OAuth providers, SMTP, custom domains, and Auth URL configuration must be recreated separately.')
     files = $files
   } | ConvertTo-Json -Depth 6 | Set-Content -Path (Join-Path $backupPath 'manifest.json') -Encoding utf8
 

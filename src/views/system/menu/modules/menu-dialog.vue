@@ -199,13 +199,12 @@
       {
         label: '菜单类型',
         key: 'type',
-        type: 'radioGroup',
+        type: 'segment',
         span: 24,
         description: form.value.id
           ? '菜单类型创建后不建议变更，避免影响现有路由和授权。'
           : '请选择目录、菜单或按钮权限。按钮权限需挂在具体菜单下。',
         props: {
-          optionType: 'button',
           disabled: !!form.value.id,
           validateEvent: false,
           onChange: handleMenuTypeChange,

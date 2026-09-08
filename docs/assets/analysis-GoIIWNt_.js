@@ -1,0 +1,1 @@
+import{Ot as e,qt as t,yt as n}from"./framework-DJQMI0NS.js";import{t as r}from"./analysis-workspace-DiWq8M9-.js";var i=e({name:`PmisInspectionAnalysis`,__name:`index`,setup(e){return(e,i)=>(t(),n(r,{kind:`inspection`}))}});export{i as default};
