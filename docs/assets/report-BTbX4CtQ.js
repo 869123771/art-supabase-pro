@@ -1,1 +1,0 @@
-import{Ot as e,qt as t,yt as n}from"./framework-DJQMI0NS.js";import{t as r}from"./task-workspace-B1peZCw5.js";var i=e({__name:`index`,setup(e){return(e,i)=>(t(),n(r,{kind:`maintenance`,mode:`report`}))}});export{i as default};

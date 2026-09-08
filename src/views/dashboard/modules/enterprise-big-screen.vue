@@ -107,12 +107,11 @@
                       icon="ri:focus-2-line"
                     />
                     <div class="decision-score">
-                      <div class="score-ring" :style="scoreRingStyle">
-                        <div>
-                          <strong>{{ businessScore }}</strong>
-                          <span>综合健康度</span>
-                        </div>
-                      </div>
+                      <ScreenGaugeChart
+                        class="decision-score__gauge"
+                        :value="businessScore"
+                        label="综合健康度"
+                      />
                       <div class="decision-score__copy">
                         <strong>{{ decisionHeadline }}</strong>
                         <p>{{ decisionDescription }}</p>
@@ -129,41 +128,19 @@
                   <article class="screen-panel finance-panel">
                     <ScreenPanelHeading
                       eyebrow="CASH & MARGIN"
-                      title="资金与利润桥"
-                      icon="ri:funds-box-line"
+                      title="资金收支对比"
+                      icon="ri:bar-chart-box-line"
+                    >
+                      <template #aside>
+                        <span class="finance-margin">毛利率 {{ grossMarginRate }}%</span>
+                      </template>
+                    </ScreenPanelHeading>
+                    <ScreenStageChart
+                      class="finance-comparison-chart"
+                      :items="financeComparisonItems"
+                      unit="元"
+                      accent-var="--screen-cyan"
                     />
-                    <div class="finance-balance">
-                      <span>运输收入</span>
-                      <strong>{{ formatCompactCurrency(transportRevenue) }}</strong>
-                      <i />
-                      <span>已审成本</span>
-                      <strong>{{ formatCompactCurrency(data.finance.approvedWaybillCost) }}</strong>
-                    </div>
-                    <div class="margin-bar" aria-label="运输毛利率">
-                      <div>
-                        <span>估算毛利率</span>
-                        <strong>{{ grossMarginRate }}%</strong>
-                      </div>
-                      <i><b :style="{ width: `${grossMarginRate}%` }" /></i>
-                    </div>
-                    <div class="finance-grid">
-                      <div
-                        ><span>应收口径</span
-                        ><strong>{{ formatCompactCurrency(data.finance.receivable) }}</strong></div
-                      >
-                      <div
-                        ><span>应付口径</span
-                        ><strong>{{ formatCompactCurrency(data.finance.payable) }}</strong></div
-                      >
-                      <div
-                        ><span>现金流入</span
-                        ><strong>{{ formatCompactCurrency(data.finance.cashInflow) }}</strong></div
-                      >
-                      <div
-                        ><span>现金流出</span
-                        ><strong>{{ formatCompactCurrency(data.finance.cashOutflow) }}</strong></div
-                      >
-                    </div>
                   </article>
                 </div>
 
@@ -195,18 +172,7 @@
                       title="运输履约链路"
                       icon="ri:route-line"
                     />
-                    <div class="fulfillment-chain">
-                      <div
-                        v-for="(item, index) in fulfillmentStages"
-                        :key="item.label"
-                        class="chain-node"
-                      >
-                        <span>{{ item.label }}</span>
-                        <strong>{{ item.value }}</strong>
-                        <small>{{ item.caption }}</small>
-                        <i v-if="index < fulfillmentStages.length - 1"><b /></i>
-                      </div>
-                    </div>
+                    <ScreenStageChart class="fulfillment-stage-chart" :items="fulfillmentStages" />
                   </article>
                 </div>
 
@@ -217,16 +183,13 @@
                       title="跨域健康度"
                       icon="ri:heart-pulse-line"
                     />
-                    <div class="health-list">
-                      <div v-for="item in domainHealth" :key="item.label" class="health-item">
-                        <div>
-                          <span><ArtSvgIcon :icon="item.icon" />{{ item.label }}</span>
-                          <strong>{{ item.score }}<em> / 100</em></strong>
-                        </div>
-                        <i><b :class="`is-${item.tone}`" :style="{ width: `${item.score}%` }" /></i>
-                        <small>{{ item.caption }}</small>
-                      </div>
-                    </div>
+                    <ScreenHorizontalBarChart
+                      class="domain-health-chart"
+                      :items="domainHealthChartItems"
+                      unit="/100"
+                      summary-label="跨域健康度"
+                      value-label="健康度"
+                    />
                   </article>
 
                   <article class="screen-panel risk-panel">
@@ -327,15 +290,11 @@
                     title="异常与资源"
                     icon="ri:error-warning-line"
                   />
-                  <div class="alert-summary">
-                    <div
-                      ><span>风险总量</span><strong>{{ totalRiskCount }}</strong></div
-                    >
-                    <div
-                      ><span>逾期巡检</span
-                      ><strong>{{ data.safety.overdueInspections }}</strong></div
-                    >
-                  </div>
+                  <ScreenDonutChart
+                    class="operations-risk-chart"
+                    :items="riskDonutItems"
+                    center-label="风险事项"
+                  />
                   <div class="risk-list risk-list--compact">
                     <div v-for="item in riskItems" :key="item.label" class="risk-item">
                       <i :class="`is-${item.tone}`" />
@@ -366,16 +325,10 @@
                 <article class="screen-panel flow-panel">
                   <ScreenPanelHeading
                     eyebrow="ORDER PIPELINE"
-                    title="订单履约漏斗"
-                    icon="ri:filter-3-line"
+                    title="订单阶段分布"
+                    icon="ri:bar-chart-grouped-line"
                   />
-                  <div class="flow-track">
-                    <div v-for="item in fulfillmentStages" :key="item.label">
-                      <span>{{ item.label }}</span>
-                      <i><b :style="{ width: `${Math.max(item.percent, 4)}%` }" /></i>
-                      <strong>{{ item.value }}</strong>
-                    </div>
-                  </div>
+                  <ScreenStageChart class="operations-stage-chart" :items="fulfillmentStages" />
                 </article>
               </section>
             </template>
@@ -407,7 +360,11 @@
 <script setup lang="ts">
   import dayjs from 'dayjs'
   import EnterpriseCommandCore from './enterprise-command-core.vue'
+  import ScreenDonutChart from './screen-donut-chart.vue'
+  import ScreenGaugeChart from './screen-gauge-chart.vue'
+  import ScreenHorizontalBarChart from './screen-horizontal-bar-chart.vue'
   import ScreenPanelHeading from './screen-panel-heading.vue'
+  import ScreenStageChart from './screen-stage-chart.vue'
   import {
     fetchEnterpriseDashboardData,
     type EnterpriseDashboardData
@@ -574,9 +531,6 @@
         6
     )
   )
-  const scoreRingStyle = computed(() => ({
-    '--score-angle': `${Math.max(0, Math.min(100, businessScore.value)) * 3.6}deg`
-  }))
   const grossMarginRate = computed(() => {
     if (!transportRevenue.value) return 0
     return Math.max(
@@ -802,7 +756,24 @@
     }
   ])
   const totalRiskCount = computed(() => riskItems.value.reduce((sum, item) => sum + item.value, 0))
+  const riskDonutItems = computed(() =>
+    riskItems.value.map((item) => ({ label: item.label, value: item.value }))
+  )
   const visibleRiskItems = computed(() => riskItems.value.slice(0, 4))
+  const domainHealthChartItems = computed(() =>
+    domainHealth.value.map((item) => ({
+      label: item.label,
+      value: item.score,
+      caption: item.caption,
+      tone: item.tone
+    }))
+  )
+  const financeComparisonItems = computed(() => [
+    { label: '运输收入', value: transportRevenue.value, caption: '运单收入' },
+    { label: '已审成本', value: data.finance.approvedWaybillCost, caption: '审核口径' },
+    { label: '现金流入', value: data.finance.cashInflow, caption: '实收资金' },
+    { label: '现金流出', value: data.finance.cashOutflow, caption: '实付资金' }
+  ])
   const commandTelemetry = computed(() =>
     mode.value === 'business'
       ? [
@@ -861,13 +832,9 @@
       { key: 'signed', label: '待结案', caption: '回单核验' },
       { key: 'completed', label: '已完成', caption: '履约闭环' }
     ]
-    const max = Math.max(
-      ...definitions.map((item) => data.transport.statusCounts[item.key] ?? 0),
-      1
-    )
     return definitions.map((item) => {
       const value = data.transport.statusCounts[item.key] ?? 0
-      return { ...item, value, percent: Math.round((value / max) * 100) }
+      return { ...item, value }
     })
   })
   const activeOrders = computed(() => data.transport.transitOrders.slice(0, 6))

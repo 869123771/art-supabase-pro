@@ -1,0 +1,1 @@
+import{Vn as e}from"./framework-CYzF-5kq.js";var t=(e=``)=>e.replace(/[|\\{}()[\]^$+*?.]/g,`\\$&`).replace(/-/g,`\\x2d`),n=t=>e(t);export{t as n,n as t};

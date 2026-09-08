@@ -13,6 +13,8 @@
   --screen-success: #2bd49b;
   --screen-warning: #f4b653;
   --screen-danger: #ff6474;
+  --screen-chart-track: rgb(120 157 187 / 13%);
+  --screen-chart-grid: rgb(120 157 187 / 11%);
 
   position: fixed;
   inset: 0;
@@ -459,6 +461,14 @@
   }
 }
 
+.trend-panel,
+.network-panel {
+  border-color: color-mix(in srgb, var(--screen-accent) 34%, transparent);
+  box-shadow:
+    inset 0 1px rgb(255 255 255 / 4%),
+    0 18px 36px rgb(0 0 0 / 16%);
+}
+
 .panel-caption {
   display: inline-flex;
   align-items: center;
@@ -505,7 +515,7 @@
 
 .decision-score {
   display: grid;
-  grid-template-columns: 128px minmax(0, 1fr);
+  grid-template-columns: 140px minmax(0, 1fr);
   gap: 17px;
   align-items: center;
   margin: 20px 0 16px;
@@ -529,42 +539,9 @@
   }
 }
 
-.score-ring {
-  display: grid;
-  place-items: center;
-  width: 128px;
-  height: 128px;
-  background: conic-gradient(var(--screen-accent) var(--score-angle), rgb(133 167 202 / 12%) 0);
-  border-radius: 50%;
-  box-shadow: 0 0 28px rgb(79 124 255 / 12%);
-
-  &::before {
-    position: absolute;
-    width: 102px;
-    height: 102px;
-    content: '';
-    background: #0c1d31;
-    border: 1px solid rgb(139 180 219 / 10%);
-    border-radius: 50%;
-  }
-
-  div {
-    position: relative;
-    display: grid;
-    gap: 3px;
-    text-align: center;
-
-    strong {
-      font-size: 34px;
-      line-height: 1;
-      color: var(--screen-text-strong);
-    }
-
-    span {
-      font-size: 10px;
-      color: var(--screen-text-muted);
-    }
-  }
+.decision-score__gauge {
+  width: 140px;
+  height: 140px;
 }
 
 .decision-signals {
@@ -605,221 +582,32 @@
   }
 }
 
-.finance-balance {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 5px 16px;
-  align-items: center;
-  margin-top: 18px;
-
-  span {
-    font-size: 11px;
-    color: var(--screen-text-muted);
-  }
-
-  strong {
-    font-size: 16px;
-    color: var(--screen-text-strong);
-    text-align: right;
-  }
-
-  i {
-    grid-column: 1 / -1;
-    height: 1px;
-    margin: 4px 0;
-    background: var(--screen-line);
-  }
+.finance-margin {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--screen-success);
 }
 
-.margin-bar {
-  margin: 18px 0;
-
-  div {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 7px;
-  }
-
-  span {
-    font-size: 11px;
-    color: var(--screen-text-muted);
-  }
-
-  strong {
-    font-size: 14px;
-    color: var(--screen-success);
-  }
-
-  > i {
-    display: block;
-    height: 7px;
-    overflow: hidden;
-    background: rgb(134 176 218 / 10%);
-    border-radius: 999px;
-  }
-
-  b {
-    display: block;
-    height: 100%;
-    background: linear-gradient(90deg, var(--screen-accent), var(--screen-success));
-    border-radius: inherit;
-  }
-}
-
-.finance-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-  margin-top: auto;
-
-  div {
-    display: grid;
-    gap: 5px;
-    padding: 10px;
-    background: rgb(131 169 214 / 6%);
-    border-radius: var(--el-border-radius-small);
-  }
-
-  span {
-    font-size: 10px;
-    color: var(--screen-text-muted);
-  }
-
-  strong {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    font-size: 12px;
-    color: var(--screen-text-strong);
-    white-space: nowrap;
-  }
+.finance-comparison-chart {
+  flex: 1;
+  min-height: 190px;
+  margin-top: 6px;
 }
 
 .chain-panel {
   justify-content: space-between;
 }
 
-.fulfillment-chain {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 0;
-  margin: auto 0;
+.fulfillment-stage-chart {
+  flex: 1;
+  min-height: 104px;
+  margin-top: 4px;
 }
 
-.chain-node {
-  position: relative;
-  display: grid;
-  justify-items: center;
-  min-width: 0;
-  text-align: center;
-
-  > span {
-    font-size: 10px;
-    color: var(--screen-text-muted);
-  }
-
-  > strong {
-    margin: 5px 0 3px;
-    font-size: 22px;
-    color: var(--screen-text-strong);
-  }
-
-  > small {
-    font-size: 9px;
-    color: #607e96;
-  }
-
-  > i {
-    position: absolute;
-    top: 35px;
-    right: -23%;
-    width: 46%;
-    height: 1px;
-    background: rgb(131 169 214 / 18%);
-
-    b {
-      position: absolute;
-      top: -2px;
-      right: 0;
-      width: 5px;
-      height: 5px;
-      background: var(--screen-accent);
-      border-radius: 50%;
-    }
-  }
-}
-
-.health-list {
-  display: grid;
-  gap: 15px;
-  margin-top: 20px;
-}
-
-.health-item {
-  min-width: 0;
-
-  > div {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 7px;
-  }
-
-  span {
-    display: inline-flex;
-    gap: 7px;
-    align-items: center;
-    font-size: 11px;
-    color: var(--screen-text);
-  }
-
-  strong {
-    font-size: 14px;
-    color: var(--screen-text-strong);
-  }
-
-  em {
-    font-size: 9px;
-    font-style: normal;
-    color: var(--screen-text-muted);
-  }
-
-  > i {
-    display: block;
-    height: 5px;
-    overflow: hidden;
-    background: rgb(134 176 218 / 10%);
-    border-radius: 999px;
-  }
-
-  b {
-    display: block;
-    height: 100%;
-    background: var(--screen-accent);
-    border-radius: inherit;
-  }
-
-  b.is-success {
-    background: var(--screen-success);
-  }
-
-  b.is-warning {
-    background: var(--screen-warning);
-  }
-
-  b.is-danger {
-    background: var(--screen-danger);
-  }
-
-  small {
-    display: block;
-    margin-top: 5px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    font-size: 9px;
-    color: #607e96;
-    white-space: nowrap;
-  }
+.domain-health-chart {
+  flex: 1;
+  min-height: 260px;
+  margin-top: 8px;
 }
 
 .risk-count {
@@ -1125,29 +913,10 @@
   }
 }
 
-.alert-summary {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-  margin: 16px 0 0;
-
-  div {
-    display: grid;
-    gap: 5px;
-    padding: 12px;
-    background: rgb(255 100 116 / 6%);
-    border-left: 2px solid rgb(255 100 116 / 45%);
-  }
-
-  span {
-    font-size: 9px;
-    color: var(--screen-text-muted);
-  }
-
-  strong {
-    font-size: 22px;
-    color: var(--screen-text-strong);
-  }
+.operations-risk-chart {
+  flex: none;
+  height: 142px;
+  margin-top: 5px;
 }
 
 .risk-list--compact {
@@ -1183,43 +952,10 @@
   }
 }
 
-.flow-track {
-  display: grid;
-  gap: 10px;
-  margin-top: 17px;
-
-  > div {
-    display: grid;
-    grid-template-columns: 58px minmax(0, 1fr) 34px;
-    gap: 9px;
-    align-items: center;
-  }
-
-  span {
-    font-size: 10px;
-    color: var(--screen-text-muted);
-  }
-
-  i {
-    display: block;
-    height: 7px;
-    overflow: hidden;
-    background: rgb(134 176 218 / 9%);
-    border-radius: 999px;
-  }
-
-  b {
-    display: block;
-    height: 100%;
-    background: linear-gradient(90deg, var(--screen-accent), var(--screen-cyan));
-    border-radius: inherit;
-  }
-
-  strong {
-    font-size: 12px;
-    color: var(--screen-text-strong);
-    text-align: right;
-  }
+.operations-stage-chart {
+  flex: 1;
+  min-height: 142px;
+  margin-top: 5px;
 }
 
 .screen-footer {
@@ -1371,28 +1107,30 @@
   }
 
   .decision-score {
-    grid-template-columns: 108px minmax(0, 1fr);
+    grid-template-columns: 116px minmax(0, 1fr);
     gap: 13px;
     margin: 12px 0;
   }
 
-  .score-ring {
-    width: 108px;
-    height: 108px;
-
-    &::before {
-      width: 84px;
-      height: 84px;
-    }
+  .decision-score__gauge {
+    width: 116px;
+    height: 116px;
   }
 
-  .health-list {
-    gap: 5px;
-    margin-top: 8px;
+  .fulfillment-stage-chart {
+    min-height: 90px;
   }
 
-  .health-item > div {
-    margin-bottom: 3px;
+  .finance-comparison-chart {
+    min-height: 150px;
+  }
+
+  .domain-health-chart {
+    min-height: 230px;
+  }
+
+  .operations-risk-chart {
+    height: 118px;
   }
 
   .health-item span {
@@ -1429,15 +1167,6 @@
   .trend-panel .enterprise-command-core,
   .network-panel .enterprise-command-core {
     margin-top: 8px;
-  }
-
-  .finance-balance,
-  .margin-bar {
-    margin-top: 12px;
-  }
-
-  .margin-bar {
-    margin-bottom: 12px;
   }
 }
 
@@ -1565,33 +1294,14 @@
     grid-template-columns: 112px minmax(0, 1fr);
   }
 
-  .score-ring {
+  .decision-score__gauge {
     width: 112px;
     height: 112px;
   }
 
-  .score-ring::before {
-    width: 88px;
-    height: 88px;
-  }
-
-  .fulfillment-chain {
-    grid-template-columns: 1fr;
-    gap: 8px;
-  }
-
-  .chain-node {
-    grid-template-columns: 1fr auto;
-    justify-items: start;
-    text-align: left;
-  }
-
-  .chain-node > small {
-    grid-column: 1 / -1;
-  }
-
-  .chain-node > i {
-    display: none;
+  .fulfillment-stage-chart,
+  .operations-stage-chart {
+    min-height: 220px;
   }
 
   .dispatch-item {

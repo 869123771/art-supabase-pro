@@ -1,0 +1,1 @@
+import{An as e,Qt as t,Xt as n,w as r}from"./framework-CYzF-5kq.js";function i(){let i=e(!1),a=e=>{i.value=e};return r(document,`keydown`,e=>{e.key===`Escape`&&i.value&&a(!1)}),t(()=>a(!1)),n(()=>a(!1)),{focusMode:i,setFocusMode:a}}export{i as t};

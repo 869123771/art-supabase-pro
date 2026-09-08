@@ -107,22 +107,33 @@
                       <span class="panel-caption is-live">{{ healthLabel }}</span>
                     </template>
                   </ScreenPanelHeading>
-                  <div class="asset-health-gauge" :style="healthGaugeStyle">
-                    <div>
-                      <strong>{{ equipmentHealth }}</strong>
-                      <span>综合健康度</span>
-                    </div>
+                  <AssetVitalsChart
+                    class="asset-vitals"
+                    :health="equipmentHealth"
+                    :connected-rate="connectedRate"
+                    :inspection-rate="inspectionCompletionRate"
+                  />
+                  <div class="asset-status-composition__heading">
+                    <span>设备状态构成</span>
+                    <strong>{{ data.equipment.enabled }} 台在册</strong>
+                  </div>
+                  <div
+                    class="asset-status-distribution"
+                    role="img"
+                    :aria-label="equipmentStatusSummary"
+                  >
+                    <i
+                      v-for="item in equipmentStatuses"
+                      :key="item.label"
+                      :class="`is-${item.tone}`"
+                      :style="{ width: `${item.percent}%` }"
+                    />
                   </div>
                   <div class="asset-status-grid">
                     <div v-for="item in equipmentStatuses" :key="item.label">
-                      <span><i :class="`is-${item.tone}`" />{{ item.label }}</span>
                       <strong>{{ item.value }}<em> 台</em></strong>
+                      <span><i :class="`is-${item.tone}`" />{{ item.label }}</span>
                     </div>
-                  </div>
-                  <div class="asset-coverage">
-                    <span>信号接入覆盖</span>
-                    <strong>{{ connectedRate }}%</strong>
-                    <i><b :style="{ width: `${connectedRate}%` }" /></i>
                   </div>
                 </article>
 
@@ -131,19 +142,19 @@
                     eyebrow="WORKSHOP LOAD"
                     title="车间设备负荷"
                     icon="ri:building-4-line"
+                  >
+                    <template #aside>
+                      <span class="panel-caption">{{ data.departmentLoad.length }} 个车间</span>
+                    </template>
+                  </ScreenPanelHeading>
+                  <ScreenHorizontalBarChart
+                    v-if="data.departmentLoad.length"
+                    class="department-load-chart"
+                    :items="departmentLoadChartItems"
+                    summary-label="车间设备负荷"
+                    value-label="设备"
+                    risk-label="故障"
                   />
-                  <div v-if="data.departmentLoad.length" class="department-load-list">
-                    <div v-for="item in data.departmentLoad" :key="item.departmentName">
-                      <header>
-                        <strong>{{ item.departmentName }}</strong>
-                        <span>{{ item.equipmentTotal }} 台</span>
-                      </header>
-                      <i><b :style="{ width: `${departmentWidth(item.equipmentTotal)}%` }" /></i>
-                      <small>
-                        故障 {{ item.faultCount }} 台 · 未闭环维修 {{ item.openRepairCount }} 单
-                      </small>
-                    </div>
-                  </div>
                   <div v-else class="asset-compact-empty">
                     <ArtSvgIcon icon="ri:building-4-line" />
                     <span>暂无已归属车间的设备</span>
@@ -185,14 +196,11 @@
                       >
                     </template>
                   </ScreenPanelHeading>
-                  <div class="maintenance-pipeline">
-                    <div v-for="(stage, index) in repairPipeline" :key="stage.label">
-                      <span>{{ stage.label }}</span>
-                      <strong>{{ stage.value }}</strong>
-                      <small>{{ stage.caption }}</small>
-                      <i v-if="index < repairPipeline.length - 1"><b /></i>
-                    </div>
-                  </div>
+                  <ScreenStageChart
+                    class="maintenance-pipeline-chart"
+                    :items="repairPipeline"
+                    accent-var="--asset-green"
+                  />
                   <div class="inspection-progress">
                     <div>
                       <span>今日点巡检完成率</span>
@@ -258,28 +266,36 @@
                       >
                     </template>
                   </ScreenPanelHeading>
-                  <div v-if="visibleUpcomingTasks.length" class="upcoming-task-list">
-                    <div v-for="item in visibleUpcomingTasks" :key="item.id">
-                      <time :datetime="item.dueDate">
-                        <strong>{{ dayText(item.dueDate) }}</strong>
-                        <span>{{ monthText(item.dueDate) }}</span>
-                      </time>
-                      <div>
-                        <header>
-                          <strong>{{ item.equipmentName }}</strong>
-                          <span :class="{ 'is-overdue': isTaskOverdue(item.dueDate) }">
-                            {{
-                              isTaskOverdue(item.dueDate) ? '已逾期' : planKindLabel(item.planKind)
-                            }}
-                          </span>
-                        </header>
-                        <p>{{ item.planName }}</p>
-                        <small
-                          >{{ item.responsibleName || '待安排负责人' }} · {{ item.taskNo }}</small
-                        >
+                  <template v-if="visibleUpcomingTasks.length">
+                    <AssetMaintenanceWindowChart
+                      class="maintenance-window-chart"
+                      :items="maintenanceWindowChartItems"
+                    />
+                    <div class="upcoming-task-list is-compact">
+                      <div v-for="item in visibleUpcomingTasks" :key="item.id">
+                        <time :datetime="item.dueDate">
+                          <strong>{{ dayText(item.dueDate) }}</strong>
+                          <span>{{ monthText(item.dueDate) }}</span>
+                        </time>
+                        <div>
+                          <header>
+                            <strong>{{ item.equipmentName }}</strong>
+                            <span :class="{ 'is-overdue': isTaskOverdue(item.dueDate) }">
+                              {{
+                                isTaskOverdue(item.dueDate)
+                                  ? '已逾期'
+                                  : planKindLabel(item.planKind)
+                              }}
+                            </span>
+                          </header>
+                          <p>{{ item.planName }}</p>
+                          <small
+                            >{{ item.responsibleName || '待安排负责人' }} · {{ item.taskNo }}</small
+                          >
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  </template>
                   <div v-else class="asset-compact-empty">
                     <ArtSvgIcon icon="ri:calendar-check-line" />
                     <span>暂无待执行保养任务</span>
@@ -310,8 +326,12 @@
 
 <script setup lang="ts">
   import dayjs from 'dayjs'
+  import AssetMaintenanceWindowChart from './asset-maintenance-window-chart.vue'
   import AssetReliabilityCore from './asset-reliability-core.vue'
+  import AssetVitalsChart from './asset-vitals-chart.vue'
+  import ScreenHorizontalBarChart from './screen-horizontal-bar-chart.vue'
   import ScreenPanelHeading from './screen-panel-heading.vue'
+  import ScreenStageChart from './screen-stage-chart.vue'
   import {
     fetchAssetMaintenanceDashboardData,
     type AssetMaintenanceDashboardData
@@ -393,7 +413,7 @@
           0,
           Math.min(100, Math.round((data.equipment.normal / data.equipment.enabled) * 100))
         )
-      : 100
+      : 0
   )
   const connectedRate = computed(() =>
     data.equipment.enabled
@@ -403,7 +423,7 @@
   const inspectionCompletionRate = computed(() =>
     data.inspection.todayTotal
       ? Math.round((data.inspection.todayCompleted / data.inspection.todayTotal) * 100)
-      : 100
+      : 0
   )
   const totalOverdue = computed(
     () => data.inspection.overdue + data.maintenance.overdue + data.repair.overdue
@@ -412,15 +432,12 @@
     () => data.equipment.fault + totalOverdue.value + data.repair.emergency
   )
   const healthLabel = computed(() => {
+    if (!data.equipment.enabled) return '暂无在册设备'
     if (equipmentHealth.value >= 90) return '运行稳定'
     if (equipmentHealth.value >= 75) return '重点观察'
     if (equipmentHealth.value >= 60) return '需安排检修'
     return '高风险运行'
   })
-  const healthGaugeStyle = computed(() => ({
-    '--health-angle': `${equipmentHealth.value * 3.6}deg`
-  }))
-
   const primaryMetrics = computed(() => [
     {
       label: '设备总量',
@@ -472,23 +489,44 @@
     }
   ])
 
-  const equipmentStatuses = computed(() => [
-    { label: '正常运行', value: data.equipment.normal, tone: 'success' },
-    { label: '保养维护', value: data.equipment.maintenance, tone: 'primary' },
-    { label: '设备故障', value: data.equipment.fault, tone: 'danger' },
-    { label: '空闲待机', value: data.equipment.idle, tone: 'info' }
-  ])
+  const equipmentStatuses = computed(() => {
+    const total = Math.max(data.equipment.enabled, 1)
+    return [
+      { label: '正常运行', value: data.equipment.normal, tone: 'success' },
+      { label: '保养维护', value: data.equipment.maintenance, tone: 'primary' },
+      { label: '设备故障', value: data.equipment.fault, tone: 'danger' },
+      { label: '空闲待机', value: data.equipment.idle, tone: 'info' }
+    ].map((item) => ({ ...item, percent: Math.max(0, (item.value / total) * 100) }))
+  })
+  const equipmentStatusSummary = computed(
+    () =>
+      `设备状态构成：${equipmentStatuses.value
+        .map((item) => `${item.label} ${item.value}台`)
+        .join('，')}`
+  )
   const repairPipeline = computed(() => [
     { label: '故障上报', value: data.repair.reported, caption: '等待受理' },
     { label: '抢修执行', value: data.repair.inProgress, caption: '维修处理中' },
     { label: '待确认', value: data.repair.pendingConfirm, caption: '等待验收' },
     { label: '本月闭环', value: data.repair.completedMonth, caption: '已完成工单' }
   ])
-  const maxDepartmentEquipment = computed(() =>
-    Math.max(...data.departmentLoad.map((item) => item.equipmentTotal), 1)
+  const departmentLoadChartItems = computed(() =>
+    data.departmentLoad.map((item) => ({
+      label: item.departmentName,
+      value: item.equipmentTotal,
+      riskValue: item.faultCount,
+      caption: `未闭环 ${item.openRepairCount} 单`
+    }))
   )
   const visibleActiveWorkOrders = computed(() => data.activeWorkOrders.slice(0, 4))
-  const visibleUpcomingTasks = computed(() => data.upcomingTasks.slice(0, 4))
+  const visibleUpcomingTasks = computed(() => data.upcomingTasks.slice(0, 2))
+  const maintenanceWindowChartItems = computed(() =>
+    data.upcomingTasks.map((item) => ({
+      name: item.equipmentName,
+      dueDate: item.dueDate,
+      planName: item.planName
+    }))
+  )
   const businessSystems: BusinessSystem[] = [
     { code: 'MDM', state: 'live' },
     { code: 'PMIS', state: 'live' },
@@ -531,10 +569,6 @@
     if (score >= 75) return 'primary'
     if (score >= 60) return 'warning'
     return 'danger'
-  }
-
-  function departmentWidth(value: number): number {
-    return Math.max(5, Math.round((value / maxDepartmentEquipment.value) * 100))
   }
 
   function urgencyTone(urgency: Urgency): MetricTone {

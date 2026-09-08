@@ -1,10 +1,5 @@
 <template>
-  <div
-    ref="rootRef"
-    class="asset-reliability-core"
-    role="img"
-    :aria-label="`设备综合健康度 ${health} 分，当前故障 ${faultCount} 台，未闭环维修 ${openRepairCount} 单`"
-  >
+  <div ref="rootRef" class="asset-reliability-core" role="img" :aria-label="coreSummary">
     <TresCanvas
       v-if="isWebGlSupported"
       class="asset-reliability-core__canvas"
@@ -17,6 +12,7 @@
       <AssetReliabilityScene
         :accent-color="resolvedAccentColor"
         :health="health"
+        :has-data="hasData"
         :risk-count="riskCount"
         :connected-rate="connectedRate"
       />
@@ -31,12 +27,12 @@
 
     <div class="asset-reactor-center">
       <span><i /> RELIABILITY CORE</span>
-      <strong>{{ health }}</strong>
-      <small>设备综合健康度</small>
+      <strong>{{ hasData ? health : '—' }}</strong>
+      <small>{{ hasData ? '设备综合健康度' : '等待设备接入' }}</small>
     </div>
 
     <div class="asset-reactor-status" :class="`is-${healthTone}`">
-      {{ healthLabel }} · {{ faultCount ? `${faultCount} 台故障` : '设备状态稳定' }}
+      {{ statusText }}
     </div>
 
     <div class="asset-reactor-nodes" aria-hidden="true">
@@ -76,18 +72,30 @@
     const canvas = document.createElement('canvas')
     return Boolean(canvas.getContext('webgl2') || canvas.getContext('webgl'))
   })
+  const hasData = computed(() => props.total > 0)
+  const coreSummary = computed(() =>
+    hasData.value
+      ? `设备综合健康度 ${props.health} 分，当前故障 ${props.faultCount} 台，未闭环维修 ${props.openRepairCount} 单`
+      : '暂无在册设备，等待设备数据接入'
+  )
 
   const healthTone = computed(() => {
+    if (!hasData.value) return 'info'
     if (props.health >= 90) return 'success'
     if (props.health >= 75) return 'primary'
     if (props.health >= 60) return 'warning'
     return 'danger'
   })
   const healthLabel = computed(() => {
+    if (!hasData.value) return '暂无设备数据'
     if (props.health >= 90) return '运行稳定'
     if (props.health >= 75) return '重点观察'
     if (props.health >= 60) return '需安排检修'
     return '高风险运行'
+  })
+  const statusText = computed(() => {
+    if (!hasData.value) return '暂无设备数据 · 等待资产接入'
+    return `${healthLabel.value} · ${props.faultCount ? `${props.faultCount} 台故障` : '设备状态稳定'}`
   })
   const nodes = computed(() => [
     { label: '设备总量', value: props.total, unit: '台', icon: 'ri:database-2-line' },
@@ -275,6 +283,12 @@
       color: #ffe2a8;
       background: rgb(244 182 83 / 9%);
       border-color: rgb(244 182 83 / 24%);
+    }
+
+    &.is-info {
+      color: #d8dcff;
+      background: rgb(99 91 255 / 9%);
+      border-color: rgb(99 91 255 / 24%);
     }
 
     &.is-danger {

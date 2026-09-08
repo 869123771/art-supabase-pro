@@ -149,6 +149,7 @@
   interface Props {
     accentColor: string
     health: number
+    hasData: boolean
     riskCount: number
     connectedRate: number
   }
@@ -182,6 +183,7 @@
   const pulseRef = shallowRef<Mesh | null>(null)
 
   const coreColor = computed(() => {
+    if (!props.hasData) return props.accentColor
     if (props.health < 60 || props.riskCount > 10) return '#ff6474'
     if (props.health < 80 || props.riskCount > 0) return '#f4b653'
     return '#20e3b2'
