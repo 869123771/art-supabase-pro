@@ -4,9 +4,15 @@
   <TresPointLight :position="keyLightPosition" :intensity="58" :color="accentColor" />
   <TresPointLight :position="fillLightPosition" :intensity="32" color="#35c7d7" />
 
-  <TresGroup ref="systemRef" :rotation="[0.14, 0, 0]">
+  <TresGroup ref="systemRef" :rotation="systemRotation">
     <TresMesh ref="coreRef">
-      <TresIcosahedronGeometry :args="[0.78, 2]" />
+      <TresTorusGeometry v-if="variant === 'treasury'" :args="[0.66, 0.24, 18, 72]" />
+      <TresBoxGeometry v-else-if="variant === 'flow'" :args="[1.08, 0.76, 0.76, 5, 4, 4]" />
+      <TresCylinderGeometry v-else-if="variant === 'fleet'" :args="[0.72, 0.92, 0.64, 8]" />
+      <TresOctahedronGeometry v-else-if="variant === 'field'" :args="[0.86, 2]" />
+      <TresSphereGeometry v-else-if="variant === 'topology'" :args="[0.78, 24, 18]" />
+      <TresOctahedronGeometry v-else-if="variant === 'people'" :args="[0.8, 1]" />
+      <TresIcosahedronGeometry v-else :args="[0.78, 2]" />
       <TresMeshPhysicalMaterial
         color="#173d70"
         :emissive="accentColor"
@@ -19,7 +25,7 @@
       />
     </TresMesh>
 
-    <TresMesh ref="globeRef">
+    <TresMesh ref="globeRef" :scale="globeScale">
       <TresSphereGeometry :args="[1.24, 56, 56]" />
       <TresMeshPhysicalMaterial
         color="#0c2b55"
@@ -134,6 +140,7 @@
     accentColor: string
     mode: 'business' | 'operations'
     signals: DomainSignal[]
+    variant: 'sentinel' | 'field' | 'treasury' | 'flow' | 'fleet' | 'topology' | 'people'
   }
 
   interface Particle {
@@ -166,13 +173,33 @@
   const props = defineProps<Props>()
 
   const sceneOrigin = new Vector3(0, 0, 0)
-  const cameraPosition = new Vector3(0, 0.35, 7)
+  const cameraPosition = computed(() =>
+    ['flow', 'fleet'].includes(props.variant)
+      ? new Vector3(0, 0.25, 7.6)
+      : props.variant === 'people'
+        ? new Vector3(0, 0.42, 7.25)
+        : new Vector3(0, 0.35, 7)
+  )
   const keyLightPosition = new Vector3(3.5, 4, 5)
   const fillLightPosition = new Vector3(-4, -2, 2)
   const satellitePosition = new Vector3(1.86, 0, 0)
   const floorPosition = new Vector3(0, -1.58, 0)
   const pulseFloorPosition = new Vector3(0, -1.55, 0)
   const wireframeScale = new Vector3(1.018, 1.018, 1.018)
+  const systemRotation = computed<[number, number, number]>(() => {
+    if (props.variant === 'treasury') return [0.3, 0, 0.08]
+    if (props.variant === 'flow') return [0.04, 0, 0]
+    if (props.variant === 'fleet') return [0.08, 0, 0]
+    if (props.variant === 'people') return [0.04, 0, 0.08]
+    return [0.14, 0, 0]
+  })
+  const globeScale = computed(() => {
+    if (props.variant === 'treasury') return new Vector3(1.08, 0.58, 1.08)
+    if (props.variant === 'flow') return new Vector3(1.34, 0.68, 0.84)
+    if (props.variant === 'fleet') return new Vector3(1.32, 0.7, 0.9)
+    if (props.variant === 'people') return new Vector3(0.88, 1.24, 0.88)
+    return new Vector3(1, 1, 1)
+  })
 
   const systemRef = shallowRef<Group | null>(null)
   const coreRef = shallowRef<Mesh | null>(null)
@@ -198,15 +225,33 @@
     props.signals.slice(0, 6).map((signal, index) => {
       const angle = index * (Math.PI / 3) - Math.PI / 6
       const radialOffset = index % 2 === 0 ? 2.14 : 2.38
+      let position = new Vector3(
+        Math.cos(angle) * radialOffset,
+        Math.sin(angle) * 0.92,
+        Math.sin(angle) * 0.64
+      )
+      if (props.variant === 'treasury') {
+        position = new Vector3(Math.cos(angle) * radialOffset, Math.sin(angle) * 0.5, 0.2)
+      } else if (props.variant === 'flow') {
+        position = new Vector3(-2.5 + index, index % 2 === 0 ? 0.72 : -0.72, (index % 3) * 0.18)
+      } else if (props.variant === 'fleet') {
+        position = new Vector3(
+          Math.cos(angle) * 2.55,
+          Math.sin(angle) * 0.55,
+          Math.sin(angle) * 0.34
+        )
+      } else if (props.variant === 'people') {
+        position = new Vector3(
+          index % 2 === 0 ? -1.55 : 1.55,
+          1.35 - Math.floor(index / 2) * 1.35,
+          (index % 3) * 0.2
+        )
+      }
       return {
         key: signal.label,
         score: signal.score,
         color: signalColors[signal.tone],
-        position: new Vector3(
-          Math.cos(angle) * radialOffset,
-          Math.sin(angle) * 0.92,
-          Math.sin(angle) * 0.64
-        )
+        position
       }
     })
   )
@@ -230,15 +275,23 @@
       const height = 0.16 + (score / 100) * 0.72 * (0.55 + (index % 4) * 0.15)
       const angle = index * (Math.PI / 12)
       const radius = 2.48 + (index % 3) * 0.11
+      const laneOffset = ((index % 8) - 3.5) * 0.54
+      const isLane = props.variant === 'flow' || props.variant === 'fleet'
       return {
         key: `tower-${index}`,
         height,
         color: signal?.color ?? props.accentColor,
-        position: new Vector3(
-          Math.cos(angle) * radius,
-          floorPosition.y + height / 2,
-          Math.sin(angle) * radius
-        )
+        position: isLane
+          ? new Vector3(
+              laneOffset,
+              floorPosition.y + height / 2,
+              -1.1 + Math.floor(index / 8) * 1.1
+            )
+          : new Vector3(
+              Math.cos(angle) * radius,
+              floorPosition.y + height / 2,
+              Math.sin(angle) * radius
+            )
       }
     })
   )
@@ -264,7 +317,10 @@
   onBeforeRender(({ elapsed }) => {
     if (reducedMotion.value === 'reduce') return
 
-    if (systemRef.value) systemRef.value.rotation.y = elapsed * 0.08
+    if (systemRef.value) {
+      const speed = props.variant === 'flow' || props.variant === 'fleet' ? 0.028 : 0.08
+      systemRef.value.rotation.y = elapsed * speed
+    }
     if (coreRef.value) {
       coreRef.value.rotation.x = elapsed * 0.21
       coreRef.value.rotation.z = elapsed * -0.16

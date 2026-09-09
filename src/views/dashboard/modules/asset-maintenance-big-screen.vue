@@ -79,7 +79,11 @@
           </header>
 
           <main class="asset-screen-content">
-            <section class="metric-rail" aria-label="设备运维核心指标">
+            <section
+              class="metric-rail"
+              :style="{ gridTemplateColumns: `repeat(${primaryMetrics.length}, minmax(0, 1fr))` }"
+              aria-label="设备运维核心指标"
+            >
               <article v-for="metric in primaryMetrics" :key="metric.label" class="hero-metric">
                 <div class="hero-metric__icon" :class="`is-${metric.tone}`">
                   <ArtSvgIcon :icon="metric.icon" />
@@ -326,6 +330,7 @@
 
 <script setup lang="ts">
   import dayjs from 'dayjs'
+  import { formatScreenDate } from './screen-format'
   import AssetMaintenanceWindowChart from './asset-maintenance-window-chart.vue'
   import AssetReliabilityCore from './asset-reliability-core.vue'
   import AssetVitalsChart from './asset-vitals-chart.vue'
@@ -401,7 +406,7 @@
   const data = reactive<AssetMaintenanceDashboardData>(createEmptyData())
 
   const timeText = computed(() => dayjs(currentTime.value).format('HH:mm:ss'))
-  const dateText = computed(() => dayjs(currentTime.value).format('YYYY年MM月DD日 · dddd'))
+  const dateText = computed(() => formatScreenDate(currentTime.value))
   const refreshText = computed(() => dayjs(data.generatedAt).format('HH:mm:ss'))
   const fullscreenButtonLabel = computed(() => {
     if (!isFullscreenSupported.value) return '当前浏览器不支持全屏'
@@ -440,14 +445,6 @@
   })
   const primaryMetrics = computed(() => [
     {
-      label: '设备总量',
-      value: data.equipment.total,
-      unit: '台',
-      hint: `${data.equipment.critical} 台关键设备`,
-      icon: 'ri:database-2-line',
-      tone: 'primary' as MetricTone
-    },
-    {
       label: '设备健康度',
       value: equipmentHealth.value,
       unit: '%',
@@ -470,14 +467,6 @@
       hint: `${data.inspection.todayCompleted}/${data.inspection.todayTotal} 项已完成`,
       icon: 'ri:checkbox-circle-line',
       tone: scoreTone(inspectionCompletionRate.value)
-    },
-    {
-      label: '未闭环维修',
-      value: data.repair.open,
-      unit: '单',
-      hint: `${data.repair.inProgress} 单抢修中`,
-      icon: 'ri:tools-line',
-      tone: data.repair.open ? ('warning' as MetricTone) : ('success' as MetricTone)
     },
     {
       label: '逾期任务',

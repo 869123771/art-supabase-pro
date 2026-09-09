@@ -19,6 +19,9 @@ import {
   GaugeChart,
   ScatterChart,
   RadarChart,
+  FunnelChart,
+  TreemapChart,
+  GraphChart,
   MapChart,
   CandlestickChart
 } from 'echarts/charts'
@@ -50,6 +53,9 @@ echarts.use([
   GaugeChart,
   ScatterChart,
   RadarChart,
+  FunnelChart,
+  TreemapChart,
+  GraphChart,
   MapChart,
   CandlestickChart,
 

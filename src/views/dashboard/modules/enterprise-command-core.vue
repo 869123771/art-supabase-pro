@@ -2,9 +2,9 @@
   <div
     ref="coreRootRef"
     class="enterprise-command-core"
-    :class="`is-${mode}`"
+    :class="[`is-${mode}`, `is-scene-${sceneVariant}`]"
     role="img"
-    :aria-label="`${title}，综合健康度 ${score} 分，当前在途 ${activeCount} 单，风险事项 ${riskCount} 项`"
+    :aria-label="`${title}，${scoreLabel} ${score} 分，${activeLabel} ${activeCount}${activeUnit}，风险事项 ${riskCount} 项`"
   >
     <div class="enterprise-command-core__scene">
       <TresCanvas
@@ -16,7 +16,12 @@
         power-preference="high-performance"
         aria-hidden="true"
       >
-        <EnterpriseCommandScene :accent-color="resolvedAccentColor" :mode="mode" :signals="nodes" />
+        <EnterpriseCommandScene
+          :accent-color="resolvedAccentColor"
+          :mode="mode"
+          :signals="nodes"
+          :variant="sceneVariant"
+        />
       </TresCanvas>
       <div v-else class="command-fallback-orb" aria-hidden="true"><i /><i /></div>
 
@@ -65,13 +70,15 @@
       </div>
 
       <div class="command-core-summary">
-        <small>{{ mode === 'business' ? 'ENTERPRISE INDEX' : 'LIVE TRANSPORT' }}</small>
+        <small>{{
+          coreEyebrow || (mode === 'business' ? 'ENTERPRISE INDEX' : 'LIVE TRANSPORT')
+        }}</small>
         <strong>{{ mode === 'business' ? score : activeCount }}</strong>
-        <span>{{ mode === 'business' ? '综合健康度' : '当前在途任务' }}</span>
+        <span>{{ mode === 'business' ? scoreLabel : activeLabel }}</span>
       </div>
 
       <div class="command-core-title">
-        <span><i /> DIGITAL TWIN ONLINE</span>
+        <span><i /> {{ onlineLabel }}</span>
         <strong>{{ title }}</strong>
       </div>
     </div>
@@ -93,6 +100,8 @@
 
   type CommandMode = 'business' | 'operations'
   type CommandTone = 'primary' | 'success' | 'warning' | 'danger' | 'info'
+  type CommandSceneVariant =
+    'sentinel' | 'field' | 'treasury' | 'flow' | 'fleet' | 'topology' | 'people'
 
   interface CommandNode {
     label: string
@@ -117,9 +126,21 @@
     riskCount: number
     nodes: CommandNode[]
     telemetry: CommandTelemetryItem[]
+    scoreLabel?: string
+    activeLabel?: string
+    activeUnit?: string
+    coreEyebrow?: string
+    onlineLabel?: string
+    sceneVariant?: CommandSceneVariant
   }
 
-  defineProps<Props>()
+  withDefaults(defineProps<Props>(), {
+    scoreLabel: '综合健康度',
+    activeLabel: '当前在途任务',
+    activeUnit: '单',
+    onlineLabel: 'DIGITAL TWIN ONLINE',
+    sceneVariant: 'sentinel'
+  })
 
   const coreRootRef = ref<HTMLElement | null>(null)
   const accentColor = useCssVar('--theme-color', coreRootRef, {

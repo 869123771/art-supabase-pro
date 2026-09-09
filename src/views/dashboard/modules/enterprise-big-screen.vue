@@ -81,7 +81,11 @@
           </header>
 
           <main class="screen-content">
-            <section class="metric-rail" aria-label="核心经营指标">
+            <section
+              class="metric-rail"
+              :style="{ gridTemplateColumns: `repeat(${primaryMetrics.length}, minmax(0, 1fr))` }"
+              aria-label="核心经营指标"
+            >
               <article v-for="metric in primaryMetrics" :key="metric.label" class="hero-metric">
                 <div class="hero-metric__icon" :class="`is-${metric.tone}`">
                   <ArtSvgIcon :icon="metric.icon" />
@@ -359,6 +363,7 @@
 
 <script setup lang="ts">
   import dayjs from 'dayjs'
+  import { formatScreenDate } from './screen-format'
   import EnterpriseCommandCore from './enterprise-command-core.vue'
   import ScreenDonutChart from './screen-donut-chart.vue'
   import ScreenGaugeChart from './screen-gauge-chart.vue'
@@ -459,7 +464,7 @@
     return isFullscreen.value ? '退出全屏' : '进入全屏'
   })
   const timeText = computed(() => dayjs(currentTime.value).format('HH:mm:ss'))
-  const dateText = computed(() => dayjs(currentTime.value).format('YYYY年MM月DD日 · dddd'))
+  const dateText = computed(() => formatScreenDate(currentTime.value))
   const refreshText = computed(() => dayjs(data.generatedAt).format('HH:mm:ss'))
   const screenNavItems = [
     {
@@ -586,22 +591,6 @@
             tone: 'success'
           },
           {
-            label: '车辆运营率',
-            value: String(fleetRate.value),
-            unit: '%',
-            hint: `${data.fleet.operating}/${data.fleet.total} 台运营中`,
-            icon: 'ri:truck-line',
-            tone: 'success'
-          },
-          {
-            label: '在岗人数',
-            value: String(data.workforce.active),
-            unit: '人',
-            hint: `人员总量 ${data.workforce.total} 人`,
-            icon: 'ri:team-line',
-            tone: 'primary'
-          },
-          {
             label: '风险待处理',
             value: String(totalRiskCount.value),
             unit: '项',
@@ -642,22 +631,6 @@
             hint: `车队总量 ${data.fleet.total} 台`,
             icon: 'ri:truck-line',
             tone: 'success'
-          },
-          {
-            label: '逾期巡检',
-            value: String(data.safety.overdueInspections),
-            unit: '项',
-            hint: '安全巡检任务',
-            icon: 'ri:shield-check-line',
-            tone: data.safety.overdueInspections ? 'danger' : 'success'
-          },
-          {
-            label: '证照临期',
-            value: String(data.fleet.dueDocuments),
-            unit: '项',
-            hint: '未来 30 天到期',
-            icon: 'ri:calendar-event-line',
-            tone: data.fleet.dueDocuments ? 'warning' : 'success'
           }
         ]
   )
