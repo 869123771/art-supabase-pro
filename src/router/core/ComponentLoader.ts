@@ -19,6 +19,27 @@ const warnedMissingHostedApplications = new Set<HostedApplicationCode>()
 
 type HostedApplicationCode = Exclude<ApplicationCode, 'platform'>
 
+/**
+ * 复用同一路由组件正在进行或已经完成的加载任务，避免连续导航重复请求同一模块。
+ * 加载失败后清除缓存，让路由恢复流程可以重新请求。
+ */
+export function createCachedRouteLoader(moduleLoader: RouteComponentLoader): AsyncRouteComponent {
+  let loadingTask: Promise<Component> | undefined
+
+  return () => {
+    if (!loadingTask) {
+      loadingTask = moduleLoader()
+        .then((componentModule) => componentModule.default)
+        .catch((error: unknown) => {
+          loadingTask = undefined
+          throw error
+        })
+    }
+
+    return loadingTask
+  }
+}
+
 export function resolveHostedApplicationCode(componentPath: string): HostedApplicationCode | null {
   const applicationCode = componentPath.split('/').filter(Boolean)[0]
   if (
@@ -116,33 +137,21 @@ export class ComponentLoader {
       return this.createErrorComponent(componentPath)
     }
 
-    return async () => {
-      const componentModule = await module()
-
-      return componentModule.default
-    }
+    return createCachedRouteLoader(module)
   }
 
   /**
    * 加载布局组件
    */
   loadLayout(): AsyncRouteComponent {
-    return async () => {
-      const componentModule = await import('@/views/index/index.vue')
-
-      return componentModule.default
-    }
+    return createCachedRouteLoader(() => import('@/views/index/index.vue'))
   }
 
   /**
    * 加载 iframe 组件
    */
   loadIframe(): AsyncRouteComponent {
-    return async () => {
-      const componentModule = await import('@/views/outside/Iframe.vue')
-
-      return componentModule.default
-    }
+    return createCachedRouteLoader(() => import('@/views/outside/Iframe.vue'))
   }
 
   /**

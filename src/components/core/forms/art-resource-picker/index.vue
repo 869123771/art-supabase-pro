@@ -3,7 +3,8 @@
     ref="dialogRef"
     :width="width"
     :fullscreen="fullscreen"
-    :show-footer="false"
+    show-footer
+    :use-scrollbar="false"
     :dialog-props="dialogProps"
     @closed="handleClosed"
   >
@@ -11,10 +12,14 @@
       <ResourcePanel
         v-model="modelValue"
         v-bind="panelProps"
+        :footer-target="footerTarget"
         @cancel="handleCancel"
         @confirm="handleConfirm"
       />
     </div>
+    <template #footer>
+      <div ref="footerTarget" class="art-resource-picker__footer" />
+    </template>
   </ArtDialog>
 </template>
 
@@ -52,6 +57,7 @@
   const visibleModel = defineModel<boolean>('visible', { default: false })
   const modelValue = defineModel<string | string[] | undefined>()
   const dialogRef = ref<ArtDialogExpose<void>>()
+  const footerTarget = ref<HTMLElement>()
 
   const dialogProps = {
     appendToBody: true,
@@ -62,7 +68,7 @@
     multiple: props.multiple,
     limit: props.limit,
     pageSize: props.pageSize,
-    internalScroll: false,
+    internalScroll: true,
     showAction: props.showAction,
     showCopyActions: props.showCopyActions,
     showPasteUpload: props.showPasteUpload,
@@ -77,7 +83,8 @@
       title: props.title,
       width: props.width,
       fullscreen: props.fullscreen,
-      showFooter: false
+      showFooter: true,
+      useScrollbar: false
     })
   }
 
@@ -119,6 +126,11 @@
 
 <style scoped lang="scss">
   .art-resource-picker__content {
+    height: min(620px, calc(100dvh - 176px));
     min-height: 0;
+  }
+
+  .art-resource-picker__footer {
+    width: 100%;
   }
 </style>

@@ -25,11 +25,13 @@
   import imgUrl from '@imgs/svg/500.svg'
   import { recoverCurrentAuthSession } from '@/api/auth'
   import { resetRouteInitializationForRetry } from '@/router/guards/beforeEach'
+  import { resolveRouteInitializationTarget } from '@/router/guards/routeInitialization'
   import { useUserStore } from '@/store/modules/user'
 
   defineOptions({ name: 'Exception500' })
 
   const router = useRouter()
+  const route = useRoute()
   const userStore = useUserStore()
 
   const recoverSystem = async (): Promise<void> => {
@@ -44,7 +46,7 @@
       userStore.setLoginStatus(true)
       resetRouteInitializationForRetry()
 
-      await router.replace('/')
+      await router.replace(resolveRouteInitializationTarget(route.query.redirect))
     } catch (error) {
       console.error('[Exception500] 系统恢复失败:', error)
       ElMessage.error('登录状态检查失败，请稍后重试')

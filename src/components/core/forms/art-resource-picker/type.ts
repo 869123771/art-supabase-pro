@@ -35,6 +35,8 @@ export interface ResourcePanelProps {
   dbClickConfirm?: boolean
   defaultFileType?: string
   fileTypes?: FileType[]
+  /** 可选的外部底部栏挂载点，用于让弹窗内的分页、上传与确认操作保持可见 */
+  footerTarget?: string | HTMLElement
 }
 
 export interface ResourcePanelEmits {

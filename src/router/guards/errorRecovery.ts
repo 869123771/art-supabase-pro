@@ -1,4 +1,5 @@
 import type { Router } from 'vue-router'
+import { finishPendingLoading } from './beforeEach'
 
 const RECOVERY_QUERY_KEY = '__route_reload'
 const RECOVERY_STORAGE_KEY = 'art-route-module-recovery'
@@ -21,10 +22,17 @@ export function setupRouteErrorRecovery(router: Router): void {
   removeRecoveryQuery()
 
   router.onError((error, to) => {
-    if (!isModuleLoadError(error)) return
+    finishPendingLoading(to.fullPath)
+    if (!isModuleLoadError(error)) {
+      redirectToFailurePage(router, to.fullPath)
+      return
+    }
 
     const recoveryState = createRecoveryState(to.fullPath)
-    if (!recoveryState) return
+    if (!recoveryState) {
+      redirectToFailurePage(router, to.fullPath)
+      return
+    }
     sessionStorage.setItem(RECOVERY_STORAGE_KEY, JSON.stringify(recoveryState))
 
     reloadAtRoute(to.fullPath)
@@ -36,6 +44,20 @@ export function setupRouteErrorRecovery(router: Router): void {
     sessionStorage.removeItem(RECOVERY_STORAGE_KEY)
     removeRecoveryQuery()
   })
+}
+
+function redirectToFailurePage(router: Router, targetPath: string): void {
+  if (router.currentRoute.value.name === 'Exception500') return
+
+  void router
+    .replace({
+      name: 'Exception500',
+      query: { redirect: targetPath },
+      replace: true
+    })
+    .catch((recoveryError: unknown) => {
+      console.error('[RouteRecovery] 无法打开路由异常页:', recoveryError)
+    })
 }
 
 function reloadAtRoute(path: string): void {

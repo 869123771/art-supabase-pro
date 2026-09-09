@@ -149,74 +149,78 @@
       />
     </div>
 
-    <div class="resource-panel__footer flex justify-between pt-2">
-      <div class="flex items-center">
-        <el-tag
-          v-if="props.multiple && props.limit"
-          size="large"
-          class="mr-2"
-          :class="{
-            'color-[var(--el-color-danger)]': props.limit && selectedKeys.length >= props.limit
-          }"
-        >
-          {{ selectedKeys.length }}
-          <template v-if="props.multiple && props.limit"> /{{ props.limit }} </template>
-        </el-tag>
-        <el-pagination
-          v-model:current-page="queryParams.page"
-          :disabled="loading"
-          :total="queryParams.total"
-          :page-size="queryParams.pageSize"
-          background
-          layout="prev, pager, next"
-          :pager-count="5"
-          @change="handleGetResourceList"
-        />
-      </div>
-      <div v-if="props.showAction">
-        <slot name="actions">
-          <el-button @click="cancel"> 取消 </el-button>
-          <el-button type="primary" @click="confirm"> 确认 </el-button>
-        </slot>
-      </div>
-    </div>
-
-    <div class="resource-dock">
-      <template v-for="(btn, index) in resourceStore.getAllButton()" :key="btn.name">
-        <div class="res-app-container">
-          <input
-            :ref="(element) => setFileInputRef(btn.name, element)"
-            type="file"
-            :name="btn.name"
-            class="hidden"
-            v-bind="btn.uploadConfig ?? {}"
-            @change="handleFile($event, btn)"
-          />
-          <el-tooltip
-            :content="btn.label"
-            placement="top"
-            :show-after="300"
-            :offset="10"
-            :show-arrow="false"
-          >
-            <button
-              type="button"
-              class="res-app"
-              :class="getDockEffectClass(index)"
-              :disabled="uploading"
-              :aria-label="btn.label"
-              @click="handleUploadButtonClick(btn)"
-              @mouseenter="hoveredDockIndex = index"
-              @mouseleave="hoveredDockIndex = undefined"
+    <Teleport :to="props.footerTarget ?? 'body'" :disabled="!props.footerTarget">
+      <div class="resource-panel resource-panel__footer-shell">
+        <div class="resource-panel__footer flex justify-between">
+          <div class="resource-panel__pagination flex items-center">
+            <el-tag
+              v-if="props.multiple && props.limit"
+              size="large"
+              class="mr-2"
+              :class="{
+                'color-[var(--el-color-danger)]': props.limit && selectedKeys.length >= props.limit
+              }"
             >
-              <span class="res-app-icon" aria-hidden="true">
-                <ArtSvgIcon :icon="btn.icon" />
-              </span>
-            </button>
-          </el-tooltip>
+              {{ selectedKeys.length }}
+              <template v-if="props.multiple && props.limit"> /{{ props.limit }} </template>
+            </el-tag>
+            <el-pagination
+              v-model:current-page="queryParams.page"
+              :disabled="loading"
+              :total="queryParams.total"
+              :page-size="queryParams.pageSize"
+              background
+              layout="prev, pager, next"
+              :pager-count="5"
+              @change="handleGetResourceList"
+            />
+          </div>
+          <div v-if="props.showAction" class="resource-panel__actions">
+            <slot name="actions">
+              <el-button @click="cancel">取消</el-button>
+              <el-button type="primary" @click="confirm">确认</el-button>
+            </slot>
+          </div>
         </div>
-      </template>
-    </div>
+
+        <div class="resource-dock" aria-label="资源上传入口">
+          <template v-for="(btn, index) in resourceStore.getAllButton()" :key="btn.name">
+            <div class="res-app-container">
+              <input
+                :ref="(element) => setFileInputRef(btn.name, element)"
+                type="file"
+                :name="btn.name"
+                class="hidden"
+                v-bind="btn.uploadConfig ?? {}"
+                @change="handleFile($event, btn)"
+              />
+              <el-tooltip
+                :content="btn.label"
+                placement="top"
+                :show-after="300"
+                :offset="10"
+                :show-arrow="false"
+              >
+                <button
+                  type="button"
+                  class="res-app"
+                  :class="getDockEffectClass(index)"
+                  :disabled="uploading"
+                  :aria-label="btn.label"
+                  @click="handleUploadButtonClick(btn)"
+                  @mouseenter="hoveredDockIndex = index"
+                  @mouseleave="hoveredDockIndex = undefined"
+                >
+                  <span class="res-app-icon" aria-hidden="true">
+                    <ArtSvgIcon :icon="btn.icon" />
+                  </span>
+                </button>
+              </el-tooltip>
+            </div>
+          </template>
+        </div>
+      </div>
+    </Teleport>
     <MasterDataDeleteGuard ref="deleteGuardRef" @cleared="handleGetResourceList" />
   </div>
 </template>
@@ -1418,6 +1422,35 @@
     }
   }
 
+  .resource-panel__footer-shell {
+    width: 100%;
+    min-height: 40px;
+  }
+
+  .resource-panel__footer {
+    gap: var(--art-space-3);
+    align-items: center;
+    width: 100%;
+    min-height: 40px;
+  }
+
+  .resource-panel__pagination,
+  .resource-panel__actions {
+    position: relative;
+    z-index: 1;
+  }
+
+  .resource-panel__actions {
+    display: flex;
+    flex: none;
+    gap: var(--art-space-2);
+
+    :deep(.el-button) {
+      min-width: 72px;
+      margin-left: 0;
+    }
+  }
+
   .resource-item {
     position: relative;
     box-sizing: border-box;
@@ -1545,6 +1578,16 @@
         }
       }
     }
+
+    .resource-panel__footer-shell {
+      min-height: 88px;
+      padding-top: 48px;
+
+      .resource-dock {
+        top: 0;
+        bottom: auto;
+      }
+    }
   }
 
   @media (width <= 640px) {
@@ -1560,6 +1603,27 @@
           display: none;
         }
       }
+    }
+  }
+
+  @media (width <= 520px) {
+    .resource-panel__footer-shell {
+      min-height: 136px;
+    }
+
+    .resource-panel__footer {
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .resource-panel__pagination {
+      justify-content: center;
+      width: 100%;
+    }
+
+    .resource-panel__actions {
+      justify-content: center;
+      width: 100%;
     }
   }
 </style>

@@ -87,17 +87,12 @@
           background: getMenuTheme.background
         }"
       >
-        <ArtLogo v-if="!isDualMenu" class="logo" />
-
-        <span
-          :class="{ 'is-dual-menu-name': isDualMenu }"
-          :style="{
-            color: getMenuTheme.systemNameColor,
-            opacity: !menuOpen ? 0 : 1
-          }"
-        >
-          {{ siteName }}
-        </span>
+        <ArtLogo
+          v-if="!isDualMenu || menuOpen"
+          class="logo"
+          :variant="isDualMenu ? 'wordmark' : menuOpen ? 'full' : 'mark'"
+          :dark="getMenuTheme.theme === MenuThemeEnum.DARK"
+        />
       </button>
       <ElScrollbar :style="scrollbarStyle">
         <ElMenu
@@ -152,13 +147,12 @@
 
 <script setup lang="ts">
   import { useSettingStore } from '@/store/modules/setting'
-  import { MenuTypeEnum, MenuWidth } from '@/enums/appEnum'
+  import { MenuThemeEnum, MenuTypeEnum, MenuWidth } from '@/enums/appEnum'
   import { useMenuStore } from '@/store/modules/menu'
   import { isIframe } from '@/utils/navigation'
   import { handleMenuJump } from '@/utils/navigation'
   import SidebarSubmenu from './widget/SidebarSubmenu.vue'
   import { useCommon } from '@/hooks/core/useCommon'
-  import { useWebsiteConfig } from '@/hooks'
   import { useWindowSize, useTimeoutFn } from '@vueuse/core'
   import type { AppRouteRecord } from '@/types/router'
 
@@ -171,7 +165,6 @@
   const route = useRoute()
   const router = useRouter()
   const settingStore = useSettingStore()
-  const { siteName } = useWebsiteConfig()
 
   const { getMenuOpenWidth, menuType, uniqueOpened, dualMenuShowText, menuOpen, getMenuTheme } =
     storeToRefs(settingStore)

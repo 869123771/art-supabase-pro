@@ -440,7 +440,7 @@
   const userStore = useUserStore()
   const { isPlatformSuper } = storeToRefs(userStore)
   const isReadOnly = computed(() => !isPlatformSuper.value)
-  const hasUnsavedChanges = computed(() => !isEqual(toRaw(form), originalForm.value))
+  const hasUnsavedChanges = computed(() => !isEqual(form, originalForm.value))
   const publishState = computed(() => {
     if (isReadOnly.value) {
       return {

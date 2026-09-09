@@ -75,6 +75,10 @@ const menuProcessor = new MenuProcessor()
 
 // 跟踪是否需要关闭 loading
 let pendingLoading = false
+let pendingLoadingTimer: ReturnType<typeof setTimeout> | undefined
+let pendingLoadingPath: string | undefined
+
+const ROUTE_LOADING_DELAY_MS = 120
 
 // 路由初始化失败标记，防止错误页与动态路由之间循环跳转。
 // 可由异常页的显式重试动作或重新登录重置。
@@ -101,7 +105,22 @@ export function getPendingLoading(): boolean {
  * 重置 pendingLoading 状态
  */
 export function resetPendingLoading(): void {
+  if (pendingLoadingTimer) {
+    clearTimeout(pendingLoadingTimer)
+    pendingLoadingTimer = undefined
+  }
   pendingLoading = false
+}
+
+/**
+ * 结束当前路由加载反馈。导航完成、取消和异常都必须调用，避免遮罩残留。
+ */
+export function finishPendingLoading(path?: string): void {
+  if (path && pendingLoadingPath && path !== pendingLoadingPath) return
+
+  resetPendingLoading()
+  pendingLoadingPath = undefined
+  loadingService.hideLoading()
 }
 
 /**
@@ -139,7 +158,11 @@ export function setupBeforeEachGuard(router: Router): void {
   // 初始化路由注册器
   routeRegistry = new RouteRegistry(router)
 
-  router.beforeEach(async (to: RouteLocationNormalized) => {
+  router.beforeEach(async (to: RouteLocationNormalized, from: RouteLocationNormalized) => {
+    if (routeRegistry?.isRegistered() && to.path !== from.path) {
+      startRouteLoading(to)
+    }
+
     try {
       return await handleRouteGuard(to, router)
     } catch (error) {
@@ -156,10 +179,32 @@ export function setupBeforeEachGuard(router: Router): void {
 function closeLoading(): void {
   if (pendingLoading) {
     nextTick(() => {
-      loadingService.hideLoading()
-      pendingLoading = false
+      finishPendingLoading()
     })
   }
+}
+
+/**
+ * 延迟显示页面切换反馈，避免快速路由闪烁，同时遮住尚未切换的旧页面。
+ */
+function startRouteLoading(to: RouteLocationNormalized, immediate = false): void {
+  if (pendingLoadingTimer) clearTimeout(pendingLoadingTimer)
+
+  pendingLoading = true
+  pendingLoadingPath = to.fullPath
+  const title = typeof to.meta.title === 'string' ? to.meta.title.trim() : ''
+  const loadingText = title ? `正在打开${title}` : '正在打开页面'
+  const showLoading = (): void => {
+    pendingLoadingTimer = undefined
+    if (pendingLoading) loadingService.showLoading(loadingText)
+  }
+
+  if (immediate) {
+    showLoading()
+    return
+  }
+
+  pendingLoadingTimer = setTimeout(showLoading, ROUTE_LOADING_DELAY_MS)
 }
 
 /**
@@ -296,8 +341,7 @@ async function handleDynamicRoutes(
   routeInitInProgress = true
 
   // 显示 loading
-  pendingLoading = true
-  loadingService.showLoading()
+  startRouteLoading(to, true)
 
   try {
     // 1. 每次应用启动都刷新一次持久化用户资料，确保租户、角色与内置身份变更及时生效

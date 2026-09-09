@@ -214,21 +214,6 @@
     .logo {
       margin-left: 22px;
     }
-
-    > span {
-      position: absolute;
-      top: 0;
-      bottom: 0;
-      left: 58px;
-      box-sizing: border-box;
-      margin-left: 10px;
-      font-size: 18px;
-
-      &.is-dual-menu-name {
-        left: 25px;
-        margin: auto;
-      }
-    }
   }
 
   .el-menu {
@@ -278,12 +263,6 @@
     .menu-left-close .header {
       .logo {
         display: none;
-      }
-
-      p {
-        left: 16px;
-        font-size: 0;
-        opacity: 0 !important;
       }
     }
 

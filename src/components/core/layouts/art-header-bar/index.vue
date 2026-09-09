@@ -18,10 +18,11 @@
           aria-label="返回首页"
           @click="toHome"
         >
-          <ArtLogo class="pl-4.5" />
-          <p v-if="isHeaderLeftMenu || width >= 1400" class="my-0 mx-2 ml-2 text-lg">
-            {{ siteName }}
-          </p>
+          <ArtLogo
+            class="pl-4.5 pr-2"
+            :variant="isHeaderLeftMenu || width >= 1400 ? 'full' : 'mark'"
+            :dark="isDark"
+          />
         </button>
 
         <ArtLogo
@@ -220,7 +221,6 @@
   import { themeAnimation } from '@/utils/ui/animation'
   import { useCommon } from '@/hooks/core/useCommon'
   import { useHeaderBar } from '@/hooks/core/useHeaderBar'
-  import { useWebsiteConfig } from '@/hooks'
   import ArtUserMenu from './widget/ArtUserMenu.vue'
   import ArtApplicationSwitcher from './widget/ArtApplicationSwitcher.vue'
   import PlatformTenantScopeSwitcher from '@/components/business/platform-tenant-scope-switcher/index.vue'
@@ -242,7 +242,6 @@
   const router = useRouter()
   const { locale } = useI18n()
   const { width } = useWindowSize()
-  const { siteName } = useWebsiteConfig()
 
   const settingStore = useSettingStore()
   const userStore = useUserStore()

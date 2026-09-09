@@ -1,10 +1,35 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
+  createCachedRouteLoader,
   mapApplicationViewModules,
   registerApplicationViewModules,
   resolveHostedApplicationCode
 } from '../../src/router/core/ComponentLoader'
+
+test('reuses an in-flight route component request and retries after a failure', async () => {
+  let calls = 0
+  let shouldFail = true
+  const component = { name: 'CachedRouteComponent' }
+  const loader = createCachedRouteLoader(async () => {
+    calls += 1
+    if (shouldFail) throw new Error('temporary route load failure')
+    return { default: component }
+  })
+
+  const firstResults = await Promise.allSettled([loader(), loader()])
+  assert.equal(calls, 1)
+  assert.equal(
+    firstResults.every((result) => result.status === 'rejected'),
+    true
+  )
+
+  shouldFail = false
+  const [firstRetry, secondRetry] = await Promise.all([loader(), loader()])
+  assert.equal(calls, 2)
+  assert.equal(firstRetry, component)
+  assert.equal(secondRetry, component)
+})
 
 test('maps flattened child views behind the stable application route prefix', () => {
   const loader = async () => ({ default: {} })

@@ -61,20 +61,24 @@ let loadingInstance: LoadingInstance | null = null
 export const loadingService = {
   /**
    * 显示 loading
+   * @param text 本次操作的状态文案
    * @returns 关闭 loading 的函数
    */
-  showLoading(): () => void {
+  showLoading(text?: string): () => void {
     if (!loadingInstance) {
       // 每次显示时获取最新的配置，确保背景色与当前主题同步
       const config = {
         ...DEFAULT_LOADING_CONFIG,
         background: getLoadingBackground(),
-        text: getLoadingTitle()
+        text: text || getLoadingTitle()
       }
       loadingInstance = ElLoading.service(config)
       loadingInstance.$el?.setAttribute('role', 'status')
       loadingInstance.$el?.setAttribute('aria-live', 'polite')
       loadingInstance.$el?.setAttribute('aria-label', '系统正在加载，请稍候')
+    } else if (text && loadingInstance.$el) {
+      const textElement = loadingInstance.$el.querySelector<HTMLElement>('.el-loading-text')
+      if (textElement) textElement.textContent = text
     }
     return () => this.hideLoading()
   },
