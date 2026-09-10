@@ -308,20 +308,6 @@
               </div>
             </section>
           </main>
-
-          <footer class="screen-footer">
-            <div class="screen-footer__bus" aria-label="设备业务域接入状态">
-              <span
-                v-for="system in businessSystems"
-                :key="system.code"
-                :class="`is-${system.state}`"
-              >
-                <i /><b>{{ system.code }}</b>
-              </span>
-            </div>
-            <span class="screen-footer__view">设备资产 · 点巡检 · 保养 · 维修闭环</span>
-            <span class="screen-footer__scope">当前租户业务数据 · ASSET RELIABILITY BUS</span>
-          </footer>
         </div>
       </ElScrollbar>
     </ArtAsyncState>
@@ -350,11 +336,6 @@
     loaded: boolean
     error: Error | null
     requestId: number
-  }
-
-  interface BusinessSystem {
-    code: string
-    state: 'live' | 'linked' | 'ready'
   }
 
   const router = useRouter()
@@ -516,15 +497,6 @@
       planName: item.planName
     }))
   )
-  const businessSystems: BusinessSystem[] = [
-    { code: 'MDM', state: 'live' },
-    { code: 'PMIS', state: 'live' },
-    { code: 'SMIS', state: 'linked' },
-    { code: 'IoT', state: 'linked' },
-    { code: 'EAM', state: 'ready' },
-    { code: 'AI', state: 'ready' }
-  ]
-
   useIntervalFn(() => {
     currentTime.value = new Date().toISOString()
   }, 1000)

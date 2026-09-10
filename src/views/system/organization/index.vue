@@ -212,7 +212,7 @@
     rowKey: 'id',
     tableLayout: 'fixed',
     treeProps: { children: 'children', hasChildren: 'hasChildren' },
-    indent: 18,
+    indent: 24,
     defaultExpandAll: true,
     rowClassName: ({ row }) => {
       const organization = row as Organization
@@ -713,6 +713,8 @@
 
     :deep(.organization-tree-row > td:first-child .cell) {
       position: relative;
+      display: flex;
+      align-items: center;
       overflow: hidden;
     }
 

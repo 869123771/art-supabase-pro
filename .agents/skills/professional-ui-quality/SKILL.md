@@ -56,7 +56,7 @@ Inspect the target, child modules, relevant Art/Element Plus APIs, and at least 
 - Prevent accidental horizontal scrolling. Use `min-width: 0`, wrapping, truncation with a full-value path, and responsive grids intentionally.
 - For table workspaces, preserve query, table, operation, pagination, loading, empty, and focus-mode behavior as one workflow.
 - Do not hand-compose a titled card from `art-card-xs`, `ArtSectionTitle`, `ElSkeleton`, and `ArtEmptyState`. Route whole-card state through `ArtSectionCard` so header spacing, state priority, retry behavior, and responsive actions remain consistent. Retain an inner `ArtAsyncState` only when it controls a distinct sub-region and adjacent filters, actions, or metrics must stay visible.
-- Size fixed operation columns from rendered controls and intentional gaps; do not hide valid actions merely to make the column narrower.
+- Size fixed operation columns from rendered controls and intentional gaps; do not hide valid actions merely to make the column narrower. Use `BusinessTableRowActions` for table-row icon actions so every module inherits the same 8px spacing; do not recreate row-action spacing in page-local styles.
 
 ## Verify The Rendered Result
 

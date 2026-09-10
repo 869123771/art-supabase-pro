@@ -1,1 +1,0 @@
-import{Ot as e,Rt as t,rn as n}from"./framework-CYzF-5kq.js";import{t as r}from"./qualification-catalog-page-C5AX63Ri.js";var i=t({name:`SmisWorkItem`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{"catalog-type":`work_item`}))}});export{i as default};

@@ -782,6 +782,29 @@
     }
   }
 
+  @media (height <= 850px) and (width > 1100px) {
+    .enterprise-command-core {
+      grid-template-rows: minmax(248px, 1fr) auto;
+
+      &__scene {
+        min-height: 248px;
+      }
+
+      &__telemetry {
+        margin-top: 6px;
+
+        > div {
+          gap: 2px;
+          padding: 6px 10px 7px;
+        }
+
+        strong {
+          font-size: 14px;
+        }
+      }
+    }
+  }
+
   @media (width <= 1100px) {
     .enterprise-command-core {
       grid-template-rows: 420px auto;

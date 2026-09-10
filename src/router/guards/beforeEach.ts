@@ -79,6 +79,7 @@ let pendingLoadingTimer: ReturnType<typeof setTimeout> | undefined
 let pendingLoadingPath: string | undefined
 
 const ROUTE_LOADING_DELAY_MS = 120
+const EXCEPTION_ROUTE_NAMES = new Set(['Exception403', 'Exception404', 'Exception500'])
 
 // 路由初始化失败标记，防止错误页与动态路由之间循环跳转。
 // 可由异常页的显式重试动作或重新登录重置。
@@ -193,7 +194,8 @@ function startRouteLoading(to: RouteLocationNormalized, immediate = false): void
   pendingLoading = true
   pendingLoadingPath = to.fullPath
   const title = typeof to.meta.title === 'string' ? to.meta.title.trim() : ''
-  const loadingText = title ? `正在打开${title}` : '正在打开页面'
+  const isExceptionRoute = typeof to.name === 'string' && EXCEPTION_ROUTE_NAMES.has(to.name)
+  const loadingText = title && !isExceptionRoute ? `正在打开「${title}」` : '页面加载中'
   const showLoading = (): void => {
     pendingLoadingTimer = undefined
     if (pendingLoading) loadingService.showLoading(loadingText)

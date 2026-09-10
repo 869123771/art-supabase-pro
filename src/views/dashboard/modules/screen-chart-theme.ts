@@ -3,7 +3,15 @@ export function useScreenChartTheme() {
 
   const readScreenColor = (name: string, fallback: string) => {
     if (!rootRef.value) return fallback
-    return getComputedStyle(rootRef.value).getPropertyValue(name).trim() || fallback
+    const rawColor = getComputedStyle(rootRef.value).getPropertyValue(name).trim() || fallback
+    const probe = rootRef.value.ownerDocument.createElement('span')
+    probe.style.position = 'absolute'
+    probe.style.visibility = 'hidden'
+    probe.style.color = rawColor
+    rootRef.value.appendChild(probe)
+    const resolvedColor = getComputedStyle(probe).color
+    probe.remove()
+    return resolvedColor || fallback
   }
 
   return { rootRef, readScreenColor }

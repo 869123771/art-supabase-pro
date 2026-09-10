@@ -1,0 +1,1 @@
+import{Ot as e,Rt as t,rn as n}from"./framework-CYzF-5kq.js";import{t as r}from"./task-workspace-BDK-vszx.js";var i=t({name:`PmisInspectionReport`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{kind:`inspection`,mode:`report`}))}});export{i as default};

@@ -33,7 +33,15 @@ export type DomainCommandTone = 'primary' | 'success' | 'warning' | 'danger' | '
 export type DomainCommandLayout =
   'sentinel' | 'field' | 'treasury' | 'flow' | 'fleet' | 'topology' | 'people'
 export type DomainCommandChartVariant =
-  'bar' | 'rose' | 'donut' | 'radar' | 'funnel' | 'treemap' | 'graph' | 'lollipop'
+  | 'bar'
+  | 'horizontal-bar'
+  | 'rose'
+  | 'donut'
+  | 'radar'
+  | 'funnel'
+  | 'treemap'
+  | 'graph'
+  | 'lollipop'
 export type DomainCommandTrendVariant = 'area' | 'line' | 'bar' | 'step'
 
 export interface DomainCommandMetric {
@@ -168,7 +176,7 @@ export const domainCommandDefinitions: Record<DomainCommandKind, DomainCommandDe
     alertTitle: '重点风险事项',
     layout: 'field',
     sceneVariant: 'field',
-    distributionChart: 'rose',
+    distributionChart: 'horizontal-bar',
     stageChart: 'funnel',
     trendChart: 'bar',
     trendPrimaryLabel: '业务总量',
@@ -192,7 +200,7 @@ export const domainCommandDefinitions: Record<DomainCommandKind, DomainCommandDe
     alertTitle: '财务阻塞事项',
     layout: 'treasury',
     sceneVariant: 'treasury',
-    distributionChart: 'donut',
+    distributionChart: 'horizontal-bar',
     stageChart: 'lollipop',
     trendChart: 'area',
     trendPrimaryLabel: '预计流入',
@@ -240,8 +248,8 @@ export const domainCommandDefinitions: Record<DomainCommandKind, DomainCommandDe
     alertTitle: '高风险车辆',
     layout: 'fleet',
     sceneVariant: 'fleet',
-    distributionChart: 'rose',
-    stageChart: 'radar',
+    distributionChart: 'horizontal-bar',
+    stageChart: 'horizontal-bar',
     trendChart: 'bar',
     trendPrimaryLabel: '健康得分',
     trendSecondaryLabel: '风险得分'
@@ -289,7 +297,7 @@ export const domainCommandDefinitions: Record<DomainCommandKind, DomainCommandDe
     layout: 'people',
     sceneVariant: 'people',
     distributionChart: 'treemap',
-    stageChart: 'rose',
+    stageChart: 'horizontal-bar',
     trendChart: 'area',
     trendPrimaryLabel: '期末人数',
     trendSecondaryLabel: '离职人数'
@@ -757,7 +765,15 @@ async function loadSafetyProduction(): Promise<DomainCommandData> {
     distribution: Object.entries(riskLevelCounts).map(([label, value]) => ({
       label,
       value,
-      caption: '风险点'
+      caption: '风险点',
+      tone:
+        label === '重大风险'
+          ? ('danger' as const)
+          : label === '较大风险'
+            ? ('warning' as const)
+            : label === '低风险'
+              ? ('success' as const)
+              : ('info' as const)
     })),
     stages: [
       { label: '未开始', value: tasks.overview.notStarted, caption: '待执行' },
@@ -917,10 +933,11 @@ async function loadFinancialRisk(): Promise<DomainCommandData> {
         tone: exceptions.closeBlockingCount ? 'danger' : 'success'
       }
     ],
-    distribution: aging.buckets.map((item) => ({
+    distribution: aging.buckets.map((item, index) => ({
       label: receivableAgingLabels[item.key],
       value: item.amount ?? item.statementCount,
-      caption: `${item.statementCount} 笔`
+      caption: `${item.statementCount} 笔`,
+      tone: (['success', 'info', 'primary', 'warning', 'danger'] as const)[index]
     })),
     stages: forecast.horizons.map((item) => ({
       label: `${item.days}天`,
@@ -1228,10 +1245,10 @@ async function loadFleetCompliance(): Promise<DomainCommandData> {
       { label: '低风险', value: overview.low, caption: '运行平稳', tone: 'success' }
     ],
     stages: [
-      { label: '严重', value: overview.critical, caption: '风险红线' },
-      { label: '高风险', value: overview.high, caption: '重点关注' },
-      { label: '中风险', value: overview.medium, caption: '持续监测' },
-      { label: '低风险', value: overview.low, caption: '健康运行' }
+      { label: '严重', value: overview.critical, caption: '风险红线', tone: 'danger' },
+      { label: '高风险', value: overview.high, caption: '重点关注', tone: 'warning' },
+      { label: '中风险', value: overview.medium, caption: '持续监测', tone: 'info' },
+      { label: '低风险', value: overview.low, caption: '健康运行', tone: 'success' }
     ],
     trend: fleet.data.slice(0, 8).map((item) => ({
       label: item.plateNo,
@@ -1521,11 +1538,21 @@ async function loadWorkforceInsight(): Promise<DomainCommandData> {
       .slice(0, 6)
       .map((item) => ({ label: item.name, value: item.headcount, caption: `${item.share}%` })),
     stages: [
-      { label: '严重风险', value: risk.criticalCount, caption: '立即处置' },
-      { label: '合同到期', value: risk.expiringContractCount, caption: '未来60天' },
-      { label: '资质到期', value: risk.expiringQualificationCount, caption: '未来60天' },
-      { label: '试用到期', value: risk.probationDueCount, caption: '未来30天' },
-      { label: '编制缺口', value: risk.vacancyCount, caption: '待补充' }
+      { label: '严重风险', value: risk.criticalCount, caption: '立即处置', tone: 'danger' },
+      {
+        label: '合同到期',
+        value: risk.expiringContractCount,
+        caption: '未来60天',
+        tone: 'warning'
+      },
+      {
+        label: '资质到期',
+        value: risk.expiringQualificationCount,
+        caption: '未来60天',
+        tone: 'warning'
+      },
+      { label: '试用到期', value: risk.probationDueCount, caption: '未来30天', tone: 'info' },
+      { label: '编制缺口', value: risk.vacancyCount, caption: '待补充', tone: 'primary' }
     ],
     trend: analytics.flowTrend.map((item) => ({
       label: dayjs(item.month).format('MM月'),

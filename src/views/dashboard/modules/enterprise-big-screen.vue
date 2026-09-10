@@ -337,24 +337,6 @@
               </section>
             </template>
           </main>
-
-          <footer class="screen-footer">
-            <div class="screen-footer__bus" aria-label="企业应用域接入状态">
-              <span
-                v-for="system in businessSystems"
-                :key="system.code"
-                :class="`is-${system.state}`"
-                :title="system.description"
-              >
-                <i />
-                <b>{{ system.code }}</b>
-              </span>
-            </div>
-            <span class="screen-footer__view">{{
-              mode === 'business' ? '管理驾驶舱 · 经营决策视角' : '运营控制塔 · 实时履约视角'
-            }}</span>
-            <span class="screen-footer__scope">当前租户业务数据 · ENTERPRISE DATA BUS</span>
-          </footer>
         </div>
       </ElScrollbar>
     </ArtAsyncState>
@@ -396,12 +378,6 @@
     loaded: boolean
     error: Error | null
     requestId: number
-  }
-
-  interface BusinessSystem {
-    code: string
-    state: 'live' | 'linked' | 'ready'
-    description: string
   }
 
   const props = defineProps<Props>()
@@ -480,19 +456,6 @@
       icon: 'ri:radar-line'
     }
   ] as const
-  const businessSystems: BusinessSystem[] = [
-    { code: 'TMS', state: 'live', description: '运输管理实时指标已接入' },
-    { code: 'VMS', state: 'live', description: '车辆管理实时指标已接入' },
-    { code: 'FMS', state: 'live', description: '财务管理实时指标已接入' },
-    { code: 'HR', state: 'live', description: '人力资源实时指标已接入' },
-    { code: 'SMIS', state: 'live', description: '安全管理实时指标已接入' },
-    { code: 'PMIS', state: 'linked', description: '设备管理业务域已联通' },
-    { code: 'MDM', state: 'linked', description: '主数据治理业务域已联通' },
-    { code: 'WMS', state: 'ready', description: '仓储管理应用域已预留' },
-    { code: 'MES', state: 'ready', description: '制造执行应用域已预留' },
-    { code: 'AI', state: 'ready', description: '智能分析应用域已预留' }
-  ]
-
   const transportRevenue = computed(() =>
     data.transport.trend.reduce((sum, item) => sum + item.freightAmount, 0)
   )

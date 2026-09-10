@@ -36,17 +36,19 @@
     span {
       display: block;
       margin-bottom: 3px;
-      font-size: 10px;
-      font-weight: 700;
+      font-size: 9px;
+      font-weight: 650;
       color: var(--screen-text-muted);
-      letter-spacing: 1.1px;
+      letter-spacing: 0.9px;
+      opacity: 0.82;
     }
 
     h2 {
       margin: 0;
       overflow: hidden;
       text-overflow: ellipsis;
-      font-size: 16px;
+      font-size: 15px;
+      font-weight: 650;
       line-height: 1.2;
       color: var(--screen-text-strong);
       white-space: nowrap;

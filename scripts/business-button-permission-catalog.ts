@@ -125,7 +125,51 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
     menuName: 'MdmPersonnelWorkCenter',
     buttons: crud({ view: true, export: true })
   },
-  { menuName: 'MdmProcessRoute', buttons: crud({ view: true, export: true }) },
+  {
+    menuName: 'MdmProcessRoute',
+    buttons: [
+      ...crud({ view: true, import: true, export: true }),
+      button('Copy', '复制'),
+      button('ManageGroup', '管理分组')
+    ]
+  },
+  ...['MdmSalesCustomer', 'MdmSalesProject', 'MdmOperationSet'].map((menuName) => ({
+    menuName,
+    buttons: [
+      ...crud({ view: true, import: true, export: true }),
+      button('Copy', '复制'),
+      button('ManageGroup', '管理分组')
+    ]
+  })),
+  ...['MdmDocumentType', 'MdmActivityFormula', 'MdmOperationControlCode', 'MdmWorkstation'].map(
+    (menuName) => ({
+      menuName,
+      buttons: [...crud({ view: true, export: true }), button('Copy', '复制')]
+    })
+  ),
+  {
+    menuName: 'MesWorkOrder',
+    buttons: [
+      ...crud({ view: true, import: true, export: true }),
+      button('Print', '打印'),
+      button('Annotate', '批注'),
+      button('Confirm', '确认'),
+      button('Close', '结案'),
+      button('Reopen', '重新打开'),
+      button('Restore', '恢复')
+    ]
+  },
+  {
+    menuName: 'MesOperationTask',
+    buttons: [
+      button('View', '查看'),
+      button('Export', '导出'),
+      button('Schedule', '排程'),
+      button('Close', '关闭'),
+      button('Reopen', '重新打开'),
+      button('Delete', '删除')
+    ]
+  },
   {
     menuName: 'MdmProductionDepartment',
     buttons: [

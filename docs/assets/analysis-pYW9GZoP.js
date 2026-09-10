@@ -1,0 +1,1 @@
+import{Ot as e,Rt as t,rn as n}from"./framework-CYzF-5kq.js";import{t as r}from"./analysis-workspace-Dh5beIot.js";var i=t({__name:`index`,setup(t){return(t,i)=>(n(),e(r,{kind:`preventive`}))}});export{i as default};

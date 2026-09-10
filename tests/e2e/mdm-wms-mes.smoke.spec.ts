@@ -68,25 +68,37 @@ const mdmMenu: TestMenuNode = {
       children: []
     },
     {
-      id: 'test-mdm-organization',
+      id: 'test-mdm-governance-directory',
       parentId: 'test-mdm-root',
-      name: 'MDMOrganization',
-      path: 'organization',
+      name: 'MdmGovernanceDirectory',
+      path: 'governance',
       component: '',
       type: 'folder',
       sort: 1,
-      meta: menuMeta('组织与人员', 'ri:organization-chart'),
+      meta: menuMeta('统一治理目录', 'ri:book-shelf-line'),
       children: [
         {
-          id: 'test-mdm-organization-directory',
-          parentId: 'test-mdm-organization',
-          name: 'MDMOrganizationDirectory',
-          path: 'organization-directory',
-          component: '/mdm/catalog',
-          type: 'menu',
+          id: 'test-mdm-organization',
+          parentId: 'test-mdm-governance-directory',
+          name: 'MdmOrganization',
+          path: 'organization',
+          component: '',
+          type: 'folder',
           sort: 1,
-          meta: menuMeta('组织机构主数据', 'ri:organization-chart'),
-          children: []
+          meta: menuMeta('组织与人员', 'ri:organization-chart'),
+          children: [
+            {
+              id: 'test-mdm-organization-directory',
+              parentId: 'test-mdm-organization',
+              name: 'MdmOrganizationDirectory',
+              path: 'organization-directory',
+              component: '/mdm/catalog',
+              type: 'menu',
+              sort: 1,
+              meta: menuMeta('组织机构主数据', 'ri:organization-chart'),
+              children: []
+            }
+          ]
         }
       ]
     }
@@ -302,7 +314,11 @@ test.describe('MDM, WMS and MES application scaffolds', () => {
     await openWorkspace(page, '/#/mdm/workbench', '治理总览')
     await page.screenshot({ path: testInfo.outputPath('mdm-workbench.png'), fullPage: true })
 
-    await openWorkspace(page, '/#/mdm/organization/organization-directory', '组织机构主数据')
+    await openWorkspace(
+      page,
+      '/#/mdm/governance/organization/organization-directory',
+      '组织机构主数据'
+    )
     await expect(page.locator('.catalog-navigator__note')).toContainText('来源系统维护')
     await expect(page.getByText('当前结果', { exact: true })).toBeVisible()
     const overview = page.locator('.mdm-catalog-page__overview')

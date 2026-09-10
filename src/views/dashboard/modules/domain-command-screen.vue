@@ -152,19 +152,12 @@
                     icon="ri:bar-chart-horizontal-line"
                   />
                   <DomainInsightChart
-                    v-if="data.distribution.length"
                     class="domain-distribution-chart"
-                    :items="data.distribution"
+                    :items="distributionItems"
                     :variant="definition.distributionChart"
                     :title="definition.distributionTitle"
                     unit=""
                   />
-                  <div v-else class="domain-empty domain-empty--compact">
-                    <div class="domain-empty__radar" aria-hidden="true"><i /><i /><b /></div>
-                    <ArtSvgIcon icon="ri:radar-line" />
-                    <strong>暂无结构性异常</strong>
-                    <span>新的业务数据进入后将自动生成分布图</span>
-                  </div>
                 </article>
               </div>
 
@@ -269,16 +262,6 @@
               </div>
             </section>
           </main>
-
-          <footer class="domain-footer">
-            <div class="domain-footer__bus" aria-label="业务系统接入状态">
-              <span v-for="system in businessSystems" :key="system" title="业务系统已连接">
-                <i /> <b>{{ system }}</b>
-              </span>
-            </div>
-            <span>{{ definition.description }}</span>
-            <span>当前租户业务数据 · ENTERPRISE COMMAND BUS</span>
-          </footer>
         </div>
       </ElScrollbar>
     </ArtAsyncState>
@@ -292,6 +275,7 @@
     domainCommandDefinitions,
     fetchDomainCommandData,
     type DomainCommandDefinition,
+    type DomainCommandChartItem,
     type DomainCommandData,
     type DomainCommandKind,
     type DomainCommandTone
@@ -365,8 +349,39 @@
   const showAlertPanel = computed(
     () =>
       data.alerts.length > 0 ||
-      !['flow', 'fleet', 'topology', 'people'].includes(definition.value.layout)
+      !['field', 'flow', 'fleet', 'topology', 'people'].includes(definition.value.layout)
   )
+  const distributionItems = computed(() => {
+    if (definition.value.layout === 'field') {
+      const sourceByLabel = new Map(data.distribution.map((item) => [item.label, item]))
+      const baseline: DomainCommandChartItem[] = [
+        { label: '重大风险', value: 0, tone: 'danger' },
+        { label: '较大风险', value: 0, tone: 'warning' },
+        { label: '一般风险', value: 0, tone: 'info' },
+        { label: '低风险', value: 0, tone: 'success' }
+      ]
+      const knownLabels = new Set(baseline.map((item) => item.label))
+
+      return [
+        ...baseline.map((item) => ({ ...item, ...sourceByLabel.get(item.label) })),
+        ...data.distribution.filter((item) => !knownLabels.has(item.label))
+      ]
+    }
+
+    if (data.distribution.length) return data.distribution
+
+    const labelsByLayout: Record<DomainCommandDefinition['layout'], string[]> = {
+      sentinel: ['访问控制', '输入安全', '输出合规', '模型稳定'],
+      field: ['重大风险', '较大风险', '一般风险', '低风险'],
+      treasury: ['当前应收', '30 天内', '31–60 天', '61–90 天', '90 天以上'],
+      flow: ['运输费用', '车辆档案', '运输合同', '其他流程'],
+      fleet: ['严重风险', '高风险', '中风险', '低风险'],
+      topology: ['完整性', '唯一性', '一致性', '时效性', '分发状态'],
+      people: ['核心组织', '保障组织', '协作组织']
+    }
+
+    return labelsByLayout[definition.value.layout].map((label) => ({ label, value: 0 }))
+  })
   const coreTelemetry = computed(() => [
     { label: definition.value.scoreLabel, value: data.score, unit: '/100', tone: scoreTone.value },
     {
@@ -388,8 +403,6 @@
     if (definition.value.layout === 'flow') return 4
     return 6
   })
-  const businessSystems = ['TMS', 'VMS', 'FMS', 'HR', 'SMIS', 'PMIS', 'MDM', 'AI']
-
   useIntervalFn(() => {
     currentTime.value = new Date().toISOString()
   }, 1000)

@@ -67,7 +67,10 @@
                 :data-art-validation-key="getCellValidationKey(child, slotScope.row)"
                 :aria-invalid="isCellValidationError(child, slotScope.row) ? 'true' : undefined"
               >
-                <span class="art-table__cell-value">
+                <component
+                  :is="isRowActionsColumn(child) ? BusinessTableRowActions : 'span'"
+                  class="art-table__cell-value"
+                >
                   <slot
                     v-if="child.useSlot && child.prop"
                     :name="child.slotName || child.prop"
@@ -88,7 +91,7 @@
                     :is="getColumnCellContent(child, slotScope)"
                   />
                   <span v-else>{{ getColumnCellContent(child, slotScope) }}</span>
-                </span>
+                </component>
                 <span
                   v-if="getCellValidationError(child, slotScope.row)"
                   class="sr-only"
@@ -139,7 +142,10 @@
               >
                 <ArtSvgIcon :icon="col.dragIcon || 'ri:draggable'" />
               </button>
-              <span class="art-table__cell-value">
+              <component
+                :is="isRowActionsColumn(col) ? BusinessTableRowActions : 'span'"
+                class="art-table__cell-value"
+              >
                 <slot
                   v-if="col.useSlot && col.prop"
                   :name="col.slotName || col.prop"
@@ -160,7 +166,7 @@
                   :is="getColumnCellContent(col, slotScope)"
                 />
                 <span v-else>{{ getColumnCellContent(col, slotScope) }}</span>
-              </span>
+              </component>
               <span v-if="getCellValidationError(col, slotScope.row)" class="sr-only" role="alert">
                 {{ getCellValidationError(col, slotScope.row)?.message }}
               </span>
@@ -212,7 +218,17 @@
 </template>
 
 <script setup lang="ts">
-  import { ref, computed, nextTick, watch, watchEffect, getCurrentInstance, useAttrs } from 'vue'
+  import {
+    ref,
+    computed,
+    nextTick,
+    watch,
+    watchEffect,
+    getCurrentInstance,
+    useAttrs,
+    h,
+    isVNode
+  } from 'vue'
   import type { ComponentPublicInstance, CSSProperties } from 'vue'
   import type { TableProps } from 'element-plus'
   import { storeToRefs } from 'pinia'
@@ -220,6 +236,7 @@
   import type { ColumnOption, TableColumnValidationContext } from '@/types'
   import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import ArtOverlayLoading from '@/components/core/feedback/art-overlay-loading/index.vue'
+  import BusinessTableRowActions from '@/components/business/business-table-row-actions/index.vue'
   import { useTableStore } from '@/store/modules/table'
   import { useTenantScopeStore } from '@/store/modules/tenantScope'
   import { useCommon } from '@/hooks/core/useCommon'
@@ -564,6 +581,11 @@
       typeof col.draggable === 'function'
     )
   }
+
+  const isRowActionsColumn = (col: ArtTableColumn): boolean => col.prop === 'operation'
+
+  const isBusinessTableRowActions = (content: unknown): boolean =>
+    isVNode(content) && content.type === BusinessTableRowActions
 
   const EMPTY_CELL_TEXT = '--'
 
@@ -1118,7 +1140,17 @@
         const value = userFormatter
           ? userFormatter(row)
           : getCellValue(row, String(columnProps.prop))
-        return formatEmptyCellValue(value)
+        const formattedValue = formatEmptyCellValue(value)
+
+        if (
+          isRowActionsColumn(columnProps) &&
+          userFormatter &&
+          !isBusinessTableRowActions(formattedValue)
+        ) {
+          return h(BusinessTableRowActions, null, { default: () => formattedValue })
+        }
+
+        return formattedValue
       }
     }
 

@@ -917,7 +917,7 @@
     if (['select', 'checkboxGroup', 'radioGroup'].includes(String(item.type))) {
       delete props.options
     }
-    if (String(item.type) === 'cascader') {
+    if (['cascader', 'segment'].includes(String(item.type))) {
       props.options = options
     }
     if (String(item.type) === 'treeSelect') {

@@ -82,7 +82,7 @@
     position: relative;
     z-index: 1;
     display: grid;
-    grid-template-rows: 76px minmax(0, 1fr) 28px;
+    grid-template-rows: 76px minmax(0, 1fr);
     width: 100%;
     min-width: 1180px;
     height: 100vh;
@@ -509,6 +509,10 @@
   .domain-panel {
     border-radius: 3px 12px;
   }
+
+  &.has-no-alerts .domain-distribution-panel {
+    grid-row-end: 13;
+  }
 }
 
 .is-layout-treasury {
@@ -639,11 +643,11 @@
   }
 
   .domain-distribution-panel {
-    grid-area: 1 / 7 / 7 / 10;
+    grid-area: 1 / 7 / 8 / 10;
   }
 
   .domain-stage-panel {
-    grid-area: 1 / 10 / 7 / 13;
+    grid-area: 1 / 10 / 8 / 13;
   }
 
   .domain-score-panel {
@@ -655,7 +659,7 @@
   }
 
   .domain-alert-panel {
-    grid-area: 7 / 9 / 13 / 13;
+    grid-area: 8 / 9 / 13 / 13;
   }
 
   .domain-panel {
@@ -673,11 +677,11 @@
   --screen-cyan: #6fd5ff;
 
   .domain-distribution-panel {
-    grid-area: 1 / 6 / 7 / 10;
+    grid-area: 1 / 6 / 5 / 10;
   }
 
   .domain-alert-panel {
-    grid-area: 1 / 10 / 5 / 13;
+    grid-area: 1 / 10 / 4 / 13;
   }
 
   .domain-core-panel {
@@ -685,11 +689,11 @@
   }
 
   .domain-trend-panel {
-    grid-area: 7 / 6 / 13 / 10;
+    grid-area: 5 / 6 / 13 / 10;
   }
 
   .domain-stage-panel {
-    grid-area: 5 / 10 / 13 / 13;
+    grid-area: 4 / 10 / 13 / 13;
   }
 
   .domain-panel {
@@ -973,15 +977,18 @@
   strong {
     position: relative;
     z-index: 1;
-    font-size: 12px;
-    color: var(--screen-text-strong);
+    font-size: 11px;
+    font-weight: 600;
+    color: #c5d7e6;
   }
 
   span {
     position: relative;
     z-index: 1;
+    max-width: 240px;
     margin-top: 4px;
     font-size: 9px;
+    line-height: 1.5;
     color: var(--screen-text-muted);
   }
 
@@ -1001,74 +1008,6 @@
     width: 156px;
     height: 156px;
     margin-bottom: -78px;
-  }
-}
-
-.domain-footer {
-  display: grid;
-  grid-template-columns: minmax(430px, 1fr) auto minmax(300px, 1fr);
-  gap: 16px;
-  align-items: center;
-  font-size: 8px;
-  color: #58748d;
-  border-top: 1px solid rgb(134 176 218 / 8%);
-
-  > span:nth-child(2) {
-    color: #7897b0;
-    text-align: center;
-  }
-
-  > span:last-child {
-    justify-self: end;
-    white-space: nowrap;
-  }
-
-  &__bus {
-    position: relative;
-    display: flex;
-    gap: 11px;
-    align-items: center;
-    min-width: 0;
-    overflow: hidden;
-
-    &::after {
-      position: absolute;
-      right: 0;
-      bottom: -4px;
-      left: 0;
-      height: 1px;
-      content: '';
-      background: linear-gradient(
-        90deg,
-        transparent,
-        var(--screen-cyan),
-        var(--screen-accent),
-        transparent
-      );
-      background-size: 42% 100%;
-      opacity: 0.45;
-      animation: domainBusFlow 4.8s linear infinite;
-    }
-
-    span {
-      display: inline-flex;
-      gap: 4px;
-      align-items: center;
-      color: var(--screen-success);
-    }
-
-    i {
-      width: 4px;
-      height: 4px;
-      background: currentcolor;
-      border-radius: 50%;
-      box-shadow: 0 0 6px currentcolor;
-    }
-
-    b {
-      font-size: 8px;
-      letter-spacing: 0.5px;
-    }
   }
 }
 
@@ -1107,7 +1046,7 @@
 
 @media (height <= 960px) and (width > 1100px) {
   .domain-command-screen__stage {
-    grid-template-rows: 68px minmax(0, 1fr) 24px;
+    grid-template-rows: 68px minmax(0, 1fr);
   }
 
   .domain-content {
@@ -1176,7 +1115,7 @@
   }
 
   .domain-command-screen__stage {
-    grid-template-rows: auto auto 32px;
+    grid-template-rows: auto auto;
     min-width: 0;
     height: auto;
     min-height: 100%;
@@ -1237,14 +1176,6 @@
   .domain-core-panel {
     min-height: 540px;
   }
-
-  .domain-footer {
-    grid-template-columns: minmax(0, 1fr) auto;
-  }
-
-  .domain-footer > span:nth-child(2) {
-    display: none;
-  }
 }
 
 @media (width <= 640px) {
@@ -1276,18 +1207,6 @@
     width: 104px;
     height: 104px;
   }
-
-  .domain-footer {
-    grid-template-columns: 1fr;
-  }
-
-  .domain-footer > span:last-child {
-    display: none;
-  }
-
-  .domain-footer__bus span:nth-child(n + 7) {
-    display: none;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1295,7 +1214,6 @@
   .domain-live-status i,
   .domain-status-pill i,
   .domain-empty__radar::before,
-  .domain-footer__bus::after,
   .is-spinning {
     animation: none;
   }
@@ -1314,16 +1232,6 @@
 @keyframes domainRadarSweep {
   to {
     transform: rotate(360deg);
-  }
-}
-
-@keyframes domainBusFlow {
-  from {
-    background-position-x: -55%;
-  }
-
-  to {
-    background-position-x: 155%;
   }
 }
 

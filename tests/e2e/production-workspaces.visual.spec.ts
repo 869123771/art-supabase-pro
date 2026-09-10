@@ -324,6 +324,24 @@ test('production master-data workspaces share the SMIS visual system', async ({
       await page.keyboard.press('Escape')
       await expect(page.locator('.business-workspace-header')).toBeVisible()
     }
+    if (path === 'process-route') {
+      await page.getByRole('button', { name: '新增路线', exact: true }).click()
+      const dialog = page.getByRole('dialog')
+      await expect(dialog.getByText('新工艺路线', { exact: true })).toBeVisible()
+      await expect(dialog.getByText('路线识别', { exact: true })).toBeVisible()
+      await expect(dialog.getByText('策略与状态', { exact: true })).toBeVisible()
+      const enabledStatus = dialog.locator('.el-form-item').filter({ hasText: '启用状态' })
+      await expect(enabledStatus.getByText('是', { exact: true })).toBeVisible()
+      await expect(enabledStatus.getByText('否', { exact: true })).toBeVisible()
+      expect(
+        await dialog.evaluate((element) => element.scrollWidth <= element.clientWidth + 1)
+      ).toBe(true)
+      await page.screenshot({
+        path: testInfo.outputPath('process-route-dialog.png'),
+        animations: 'disabled'
+      })
+      await dialog.getByRole('button', { name: '取消', exact: true }).click()
+    }
   }
 
   expect(pageErrors).toEqual([])

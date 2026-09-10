@@ -1,1 +1,0 @@
-import{Ot as e,Rt as t,rn as n}from"./framework-CYzF-5kq.js";import{t as r}from"./task-workspace-BUzsRySP.js";var i=t({name:`PmisPatrolTask`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{kind:`patrol`,mode:`task`}))}});export{i as default};

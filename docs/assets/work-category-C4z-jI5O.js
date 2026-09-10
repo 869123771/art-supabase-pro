@@ -1,0 +1,1 @@
+import{Ot as e,Rt as t,rn as n}from"./framework-CYzF-5kq.js";import{t as r}from"./qualification-catalog-page-BL_Xl_Yf.js";var i=t({name:`SmisWorkCategory`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{"catalog-type":`work_category`}))}});export{i as default};

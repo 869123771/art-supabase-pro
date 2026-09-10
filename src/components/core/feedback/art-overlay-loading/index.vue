@@ -16,7 +16,7 @@
       <div class="art-overlay-loading__visual" aria-hidden="true">
         <span class="art-overlay-loading__orbit" />
         <span class="art-overlay-loading__icon">
-          <ArtSvgIcon icon="ri:loader-4-line" />
+          <span class="art-overlay-loading__spinner" />
         </span>
       </div>
       <strong>{{ text || '正在加载内容…' }}</strong>
@@ -31,7 +31,6 @@
 
 <script setup lang="ts">
   import type { CSSProperties } from 'vue'
-  import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
 
   defineOptions({ name: 'ArtOverlayLoading' })
 
@@ -109,21 +108,10 @@
 
     &__orbit {
       position: absolute;
-      inset: 0;
-      background: conic-gradient(
-          from 20deg,
-          transparent 0 24%,
-          var(--theme-color) 44%,
-          transparent 64%
-        )
-        border-box;
-      border: 2px solid transparent;
+      inset: 3px;
+      box-sizing: border-box;
+      border: 1px solid color-mix(in srgb, var(--theme-color) 16%, transparent);
       border-radius: 50%;
-      mask:
-        linear-gradient(#000 0 0) padding-box,
-        linear-gradient(#000 0 0);
-      mask-composite: exclude;
-      animation: art-overlay-loading-spin 1.15s linear infinite;
     }
 
     &__icon {
@@ -137,6 +125,18 @@
       border: 1px solid color-mix(in srgb, var(--theme-color) 18%, transparent);
       border-radius: 50%;
       box-shadow: 0 8px 22px color-mix(in srgb, var(--theme-color) 14%, transparent);
+    }
+
+    &__spinner {
+      box-sizing: border-box;
+      width: 18px;
+      height: 18px;
+      border: 2px solid color-mix(in srgb, var(--theme-color) 20%, transparent);
+      border-top-color: var(--theme-color);
+      border-radius: 50%;
+      transform-origin: center;
+      animation: art-overlay-loading-spin 0.85s linear infinite;
+      will-change: transform;
     }
 
     &__state strong {
@@ -167,8 +167,12 @@
     &.is-compact &__icon {
       width: 30px;
       height: 30px;
-      font-size: 16px;
       box-shadow: 0 5px 14px color-mix(in srgb, var(--theme-color) 12%, transparent);
+    }
+
+    &.is-compact &__spinner {
+      width: 14px;
+      height: 14px;
     }
 
     &.is-compact &__state strong,
@@ -196,7 +200,7 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .art-overlay-loading__orbit {
+    .art-overlay-loading__spinner {
       animation-duration: 2.4s;
     }
   }

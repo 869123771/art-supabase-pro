@@ -61,11 +61,14 @@ Use these components before assembling equivalent Element Plus plumbing:
 | Structured Excel import | `ArtExcelImport` |
 | Resource-library selection | `ArtResourcePicker` |
 | Common actions | Existing `Art*` core action component |
+| Table-row action group | `BusinessTableRowActions` |
 | Business section title | `ArtSectionTitle` |
 | Titled business content card with async states | `ArtSectionCard` |
 | Business landing/list/workspace identity and metrics | `BusinessWorkspaceHeader` |
 
 When a project wrapper already exists, use it before raw Element Plus primitives. Generic document, archive, and file attachments must use `ArtUploadFile`; image upload and preview must use `ArtUploadImage`; structured spreadsheet import must use `ArtExcelImport`; resource-library workflows must use `ArtResourcePicker`. Business views must not own raw `ElUpload`, hidden file inputs, `uploadAttachment` lifecycles, size/error handling, or attachment-list synchronization. If a shared upload contract is missing a broadly reusable capability, extend the matching core component first. Prefer `ArtButtonTable`, `ArtButtonMore`, and similar `src/components/core` wrappers over ad hoc action buttons or custom dropdown wiring.
+
+Group table-row actions with `BusinessTableRowActions`. It owns the project-wide 8px spacing and clears the legacy `ArtButtonTable` margin. `ArtTable` automatically applies it to columns whose `prop` is `operation`; use it explicitly for row-like action groups outside `ArtTable`. Do not add page-local row-action gap or button-margin overrides.
 
 Business landing pages, list workspaces, operational workbenches, and module home pages must use `BusinessWorkspaceHeader` for the page identity, eyebrow, description, feature tags, overview metrics, and header actions. Do not hand-build page-local hero/overview headers or create domain-specific copies of the workspace header. If a reusable header capability is missing, extend `src/components/business/business-workspace-header/index.vue` and consume the extension everywhere. Use `ArtPageHeader` instead for create, edit, detail, or configuration workflow pages that need back navigation; detail pages must present read-only values through `ArtDescriptions` or purpose-built display components rather than disabled form controls.
 

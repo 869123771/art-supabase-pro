@@ -91,6 +91,7 @@
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { useMediaQuery } from '@vueuse/core'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
+  import BusinessTableRowActions from '@/components/business/business-table-row-actions/index.vue'
   import ArtDrawer from '@/components/core/drawers/art-drawer/index.vue'
   import ArtWorkspaceSplitter from '@/components/core/layouts/art-workspace-splitter/index.vue'
   import type { ArtDrawerExpose } from '@/components/core/drawers/art-drawer/types'
@@ -496,7 +497,7 @@
       width: 146,
       fixed: 'right',
       formatter: (row: UserListItem) =>
-        h('div', { class: 'user-operation-cell' }, [
+        h(BusinessTableRowActions, null, () => [
           h(ArtButtonTable, {
             type: 'edit',
             permission: 'System:User:Edit',
@@ -985,16 +986,6 @@
     :deep(.user-organization-cell__empty) {
       font-size: 12px;
       color: var(--el-text-color-placeholder);
-    }
-
-    :deep(.user-operation-cell) {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-    }
-
-    :deep(.user-operation-cell .art-button-table) {
-      margin-right: 0;
     }
 
     @media (width <= 900px) {

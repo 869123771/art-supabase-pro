@@ -23,7 +23,7 @@ Use this reference when designing or improving low-cardinality choices, status f
 - Give the primary entity column a compact identity treatment: meaningful icon or file-type mark, strong title, and stable secondary metadata such as code, version, or category on a quieter line.
 - Use small inline icons for genuine relationships or scope metadata such as product count, route count, attachment type, or ownership. Pair icons with text or a tooltip; do not make users decode unexplained symbols.
 - Render business status as a restrained semantic tag or badge, while keeping ordinary categorical values as text unless they need emphasis.
-- Use compact icon actions for familiar row operations such as view and edit, with accessible names, tooltips, visible focus, and forgiving hit areas. Put infrequent operations in the established more-actions control without hiding valid primary actions.
+- Use compact icon actions for familiar row operations such as view and edit, with accessible names, tooltips, visible focus, and forgiving hit areas. Put infrequent operations in the established more-actions control without hiding valid primary actions. Render row action groups through `BusinessTableRowActions`, which standardizes an 8px gap and clears legacy per-button margins; do not duplicate this spacing in feature SCSS.
 - Keep column headers, row alignment, whitespace, and metadata hierarchy doing most of the visual work. Avoid adding an icon, badge, or tinted box to every cell.
 
 ## Create And Edit Overlays

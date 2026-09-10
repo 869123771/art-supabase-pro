@@ -1,0 +1,1 @@
+import{Ot as e,Rt as t,rn as n}from"./framework-CYzF-5kq.js";import{t as r}from"./plan-workspace-KNGfbiDG.js";var i=t({name:`PmisInspectionPlan`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{kind:`inspection`}))}});export{i as default};

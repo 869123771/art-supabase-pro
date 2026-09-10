@@ -112,7 +112,7 @@
               radius: isDonut ? ['50%', '79%'] : ['20%', '82%'],
               center: ['32%', '50%'],
               roseType: isDonut ? undefined : 'radius',
-              minAngle: hasValue ? 4 : 360,
+              minAngle: hasValue ? 4 : 0,
               startAngle: 108,
               silent: !hasValue,
               itemStyle: {
@@ -235,7 +235,7 @@
             xAxis: {
               type: 'value',
               show: false,
-              max: Math.max(...visibleItems.map((item) => item.value), 1)
+              max: Math.max(...visibleItems.map((item) => item.value), 1) * 1.24
             },
             yAxis: {
               type: 'category',
@@ -247,7 +247,7 @@
             series: [
               {
                 type: 'bar',
-                barWidth: visibleItems.length === 1 ? 42 : 30,
+                barWidth: visibleItems.length === 1 ? 28 : 24,
                 showBackground: true,
                 backgroundStyle: { color: track, borderRadius: 7 },
                 itemStyle: {
@@ -262,8 +262,8 @@
                   position: 'insideLeft',
                   distance: 14,
                   color: strong,
-                  fontSize: 11,
-                  fontWeight: 700,
+                  fontSize: 10,
+                  fontWeight: 600,
                   formatter: (params: unknown) => {
                     if (!params || typeof params !== 'object' || !('name' in params)) return ''
                     const item = visibleItems.find((entry) => entry.label === String(params.name))
@@ -356,6 +356,75 @@
               ],
               links: orbitNodes.map((item) => ({ source: '治理中心', target: item.name })),
               ...getAnimationConfig(90, 1000)
+            }
+          ]
+        }
+      }
+
+      if (props.variant === 'horizontal-bar') {
+        const toneColors = {
+          primary: accent,
+          success,
+          warning,
+          danger,
+          info: cyan
+        }
+        const maxValue = Math.max(...visibleItems.map((item) => item.value), 1)
+
+        return {
+          grid: { left: 8, right: 36, top: 6, bottom: 6, containLabel: true },
+          tooltip: {
+            ...tooltip,
+            trigger: 'axis',
+            axisPointer: { type: 'shadow' as const }
+          },
+          xAxis: {
+            type: 'value',
+            min: 0,
+            max: Math.ceil(maxValue * 1.18),
+            show: false
+          },
+          yAxis: {
+            type: 'category',
+            inverse: true,
+            data: visibleItems.map((item) => item.label),
+            axisLine: { show: false },
+            axisTick: { show: false },
+            axisLabel: {
+              color: muted,
+              fontSize: 10,
+              margin: 12,
+              width: 72,
+              overflow: 'truncate'
+            }
+          },
+          series: [
+            {
+              type: 'bar',
+              barWidth: visibleItems.length >= 5 ? 12 : 16,
+              showBackground: true,
+              backgroundStyle: { color: track, borderRadius: 8 },
+              itemStyle: {
+                borderRadius: [0, 8, 8, 0],
+                color: (params: { dataIndex: number }) => {
+                  const item = visibleItems[params.dataIndex]
+                  return item?.tone
+                    ? toneColors[item.tone]
+                    : colors[params.dataIndex % colors.length]
+                }
+              },
+              label: {
+                show: true,
+                position: 'right',
+                distance: 8,
+                color: strong,
+                fontSize: 10,
+                fontWeight: 700,
+                formatter: `{c}${props.unit}`
+              },
+              emphasis: { focus: 'series' },
+              data: visibleItems.map((item) => item.value),
+              ...getAnimationConfig(100, 800)
             }
           ]
         }

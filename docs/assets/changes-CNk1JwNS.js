@@ -1,1 +1,0 @@
-import{Ot as e,Rt as t,rn as n}from"./framework-CYzF-5kq.js";import{t as r}from"./center-AZeOgdW6.js";var i=t({name:`MdmChangeManagement`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{"initial-view":`changes`}))}});export{i as default};
