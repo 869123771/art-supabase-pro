@@ -77,9 +77,9 @@
           </template>
 
           <template #header-right>
-            <ElTooltip content="header-right 插槽：业务侧可追加轻量工具">
+            <ArtTooltip content="header-right 插槽：业务侧可追加轻量工具">
               <ElTag effect="plain" type="success">header-right slot</ElTag>
-            </ElTooltip>
+            </ArtTooltip>
           </template>
 
           <template #status="{ row }">

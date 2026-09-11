@@ -51,7 +51,7 @@
         >
           <ElScrollbar ref="scrollbarRef" height="52vh" always @scroll="handleScroll">
             <div v-if="visibleIcons.length" class="art-icon-picker__grid">
-              <ElTooltip
+              <ArtTooltip
                 v-for="icon in visibleIcons"
                 :key="icon"
                 :content="icon"
@@ -67,7 +67,7 @@
                 >
                   <ArtSvgIcon :icon="icon" class="art-icon-picker__icon" />
                 </button>
-              </ElTooltip>
+              </ArtTooltip>
             </div>
 
             <div v-else-if="loadError" class="art-icon-picker__state">

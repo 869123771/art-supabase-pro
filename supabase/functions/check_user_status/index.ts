@@ -22,21 +22,48 @@ Deno.serve(async (request: Request) => {
     const email = String(body?.email ?? '')
       .trim()
       .toLowerCase()
-    if (!email) return json({ error: 'Missing email' }, 400)
+    const cleanupUnprovisioned = body?.cleanupUnprovisioned === true
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
     if (!supabaseUrl || !serviceRoleKey) return json({ error: 'Server not configured' }, 500)
 
     const admin = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false } })
-    const { data: user, error: userError } = await admin
-      .from('sys_user')
-      .select('user_email,status,deleted_at,tenant_id')
-      .eq('user_email', email)
-      .maybeSingle()
+    let authUserId: string | null = null
+    if (!email) {
+      const authorization = request.headers.get('authorization')
+      const accessToken = authorization?.match(/^Bearer\s+(.+)$/i)?.[1]
+      if (!accessToken) return json({ code: 'no_authorization', error: '请重新登录后再试' }, 401)
 
-    if (userError) return json({ error: 'Database query failed', detail: userError.message }, 500)
-    if (!user) return json({ allowed: true, error: 'not_found' })
+      const { data: authData, error: authError } = await admin.auth.getUser(accessToken)
+      if (authError || !authData.user) {
+        return json({ code: 'bad_jwt', error: '登录状态已失效，请重新登录' }, 401)
+      }
+      authUserId = authData.user.id
+    }
+
+    let userQuery = admin
+      .from('sys_user')
+      .select('user_email,status,deleted_at,tenant_id,user_roles')
+    userQuery = email ? userQuery.eq('user_email', email) : userQuery.eq('auth_user_id', authUserId)
+    const { data: user, error: userError } = await userQuery.maybeSingle()
+
+    if (userError) return json({ code: 'access_check_failed', error: '账号准入检查失败' }, 500)
+    if (!user) {
+      if (authUserId && cleanupUnprovisioned) {
+        await admin.auth.admin.deleteUser(authUserId).catch(() => undefined)
+      }
+      return email
+        ? json({ allowed: true, code: 'not_found' })
+        : json(
+            {
+              allowed: false,
+              code: 'user_not_provisioned',
+              error: '当前身份尚未绑定系统账号，请先使用已有账号登录并完成绑定'
+            },
+            403
+          )
+    }
     if (user.deleted_at) {
       return json(
         { allowed: false, code: 'user_deactivated', error: '账号已注销，请联系管理员' },
@@ -52,9 +79,7 @@ Deno.serve(async (request: Request) => {
       .select('status,service_start_date,service_end_date')
       .eq('id', user.tenant_id)
       .maybeSingle()
-    if (tenantError) {
-      return json({ error: 'Tenant query failed', detail: tenantError.message }, 500)
-    }
+    if (tenantError) return json({ code: 'access_check_failed', error: '租户准入检查失败' }, 500)
     if (!tenant || tenant.status !== '1') {
       return json({ allowed: false, code: 'tenant_disabled', error: '所属租户已停用' }, 403)
     }
@@ -86,8 +111,35 @@ Deno.serve(async (request: Request) => {
       )
     }
 
+    const roleCodes = Array.isArray(user.user_roles)
+      ? user.user_roles.filter((role): role is string => typeof role === 'string' && role.length > 0)
+      : []
+    if (!roleCodes.length) {
+      return json(
+        { allowed: false, code: 'role_not_assigned', error: '当前账号尚未分配角色，请联系管理员' },
+        403
+      )
+    }
+
+    const { data: roles, error: roleError } = await admin
+      .from('sys_role')
+      .select('role_code,enabled')
+      .eq('tenant_id', user.tenant_id)
+      .eq('enabled', true)
+      .in('role_code', roleCodes)
+    if (roleError) return json({ code: 'access_check_failed', error: '角色准入检查失败' }, 500)
+
+    const hasActiveRole = Boolean(roles?.length)
+    if (!hasActiveRole) {
+      return json(
+        { allowed: false, code: 'role_inactive', error: '当前账号没有可用角色，请联系管理员' },
+        403
+      )
+    }
+
     return json({ allowed: true })
   } catch (error) {
-    return json({ error: 'Unexpected error', detail: String(error) }, 500)
+    console.error('check_user_status failed', error)
+    return json({ code: 'unexpected_failure', error: '账号准入检查失败，请稍后重试' }, 500)
   }
 })

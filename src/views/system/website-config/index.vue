@@ -263,6 +263,10 @@
                 </ElFormItem>
               </template>
 
+              <template v-else-if="section.key === 'auth'">
+                <AuthChannelSettings v-model="form.authChannels" :disabled="isReadOnly" />
+              </template>
+
               <template v-else-if="section.key === 'seo'">
                 <ElFormItem label="SEO 标题" prop="seoTitle">
                   <ElInput v-model.trim="form.seoTitle" maxlength="80" />
@@ -398,11 +402,13 @@
   import { formatWithDayjs } from '@/utils/time'
   import ArtUploadImage from '@/components/core/forms/art-upload-image/index.vue'
   import ArtForm from '@/components/core/forms/art-form/index.vue'
+  import AuthChannelSettings from './modules/auth-channel-settings.vue'
+  import { getAuthChannelValidationMessage, normalizeAuthChannels } from '@/utils/supabase'
 
   defineOptions({ name: 'WebsiteConfig' })
 
   type WebsiteConfig = Api.SystemManage.WebsiteConfigItem
-  type SectionKey = 'overview' | 'identity' | 'login' | 'seo' | 'contact' | 'preview'
+  type SectionKey = 'overview' | 'identity' | 'login' | 'auth' | 'seo' | 'contact' | 'preview'
 
   interface NavigationItem {
     key: SectionKey
@@ -467,6 +473,7 @@
     { key: 'overview', label: '状态概览', icon: 'ri:pulse-line' },
     { key: 'identity', label: '系统标识', icon: 'ri:dashboard-line' },
     { key: 'login', label: '登录体验', icon: 'ri:shield-user-line' },
+    { key: 'auth', label: '认证渠道', icon: 'ri:login-box-line' },
     { key: 'seo', label: 'SEO 展现', icon: 'ri:search-eye-line' },
     { key: 'contact', label: '联系合规', icon: 'ri:file-copy-2-line' },
     { key: 'preview', label: '发布预览', icon: 'ri:edit-box-line' }
@@ -486,6 +493,13 @@
       icon: 'ri:shield-user-line',
       title: '登录体验',
       description: '控制登录欢迎文案、验证码、安全锁定、默认语言、维护模式与注册策略。'
+    },
+    {
+      key: 'auth',
+      label: '认证渠道',
+      icon: 'ri:login-box-line',
+      title: '多渠道认证',
+      description: '管理登录页与个人中心可用的 OAuth/OIDC 渠道；敏感凭据始终留在认证服务端。'
     },
     {
       key: 'seo',
@@ -615,7 +629,8 @@
 
   const setForm = (config: WebsiteConfig): void => {
     Object.assign(form, createWebsiteConfigDefaults(), config, {
-      turnstileSize: config.turnstileSize === 'flexible' ? 'hidden' : config.turnstileSize
+      turnstileSize: config.turnstileSize === 'flexible' ? 'hidden' : config.turnstileSize,
+      authChannels: normalizeAuthChannels(config.authChannels)
     })
     originalForm.value = cloneDeep(form)
   }
@@ -638,6 +653,7 @@
     ])
     return {
       ...payload,
+      authChannels: normalizeAuthChannels(payload.authChannels),
       siteShortName: payload.siteShortName?.trim() || null,
       siteDescription: payload.siteDescription?.trim() || null,
       logoUrl: payload.logoUrl?.trim() || null,
@@ -671,6 +687,12 @@
     }
     if (!hasUnsavedChanges.value) {
       ElMessage.info('当前配置没有需要发布的变更')
+      return
+    }
+    const authChannelError = getAuthChannelValidationMessage(form.authChannels)
+    if (authChannelError) {
+      ElMessage.warning(authChannelError)
+      scrollToSection('auth')
       return
     }
 
@@ -1107,27 +1129,84 @@
 
   @media (width <= 640px) {
     .website-config-page {
+      gap: var(--art-space-3);
+
+      :deep(> .art-async-state) {
+        gap: var(--art-space-3);
+      }
+
       &__nav-panel {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        display: flex;
+        flex-direction: row;
+        gap: var(--art-space-1);
+        padding: 6px;
+        overflow-x: auto;
+        overscroll-behavior-inline: contain;
+        scrollbar-width: none;
+
+        &::-webkit-scrollbar {
+          display: none;
+        }
       }
 
       &__nav-title {
-        padding-bottom: 0;
+        display: none;
+      }
+
+      &__nav-item {
+        flex: 0 0 auto;
+        width: auto;
+        min-height: 40px;
+        padding-inline: 12px;
+        white-space: nowrap;
       }
 
       &__publish-tip {
         display: none;
       }
 
-      &__summary,
+      &__summary {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: var(--art-space-2);
+      }
+
+      &__summary-card {
+        min-height: 78px;
+        padding: 12px;
+
+        strong {
+          margin: 5px 0 0;
+          font-size: 15px;
+          overflow-wrap: anywhere;
+        }
+
+        p {
+          display: none;
+        }
+
+        .art-svg-icon {
+          font-size: 18px;
+        }
+      }
+
       &__section-body,
       &__preview-grid {
         grid-template-columns: 1fr;
       }
 
+      &__content {
+        gap: var(--art-space-3);
+      }
+
       &__action-buttons {
         flex-wrap: wrap;
         justify-content: flex-start;
+      }
+
+      &__actions.is-readonly {
+        position: static;
+        box-shadow: none !important;
+        backdrop-filter: none;
       }
     }
   }

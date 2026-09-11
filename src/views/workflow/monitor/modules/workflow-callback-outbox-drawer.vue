@@ -65,7 +65,7 @@
               <small>当前展示 {{ visibleItems.length }} 条，最多加载最近 100 条事件</small>
             </div>
             <div class="workflow-callback-outbox__tools">
-              <ElTooltip content="刷新投递事件" placement="top">
+              <ArtTooltip content="刷新投递事件" placement="top">
                 <ArtIconButton
                   icon="ri:refresh-line"
                   circle
@@ -73,7 +73,7 @@
                   :loading="state.loading"
                   @click="loadData"
                 />
-              </ElTooltip>
+              </ArtTooltip>
               <ElSelect
                 v-model="state.status"
                 placeholder="全部状态"

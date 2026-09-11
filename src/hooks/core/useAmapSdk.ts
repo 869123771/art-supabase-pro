@@ -7,13 +7,15 @@ export interface UseAmapSdkOptions {
   securityJsCode?: MaybeRefOrGetter<string | undefined>
 }
 
+export type AmapBrowserNamespace = ArtAmapBrowserNamespace
+
 let amapSdkLoadPromise: Promise<ArtAmapBrowserNamespace> | undefined
 
 /**
  * Loads the AMap browser SDK once and then ensures every caller's plugin set is available.
  * Call this composable during component setup; call `loadAmap` when the map is actually needed.
  */
-export function useAmapSdk<TNamespace>(options: UseAmapSdkOptions) {
+export function useAmapSdk<TNamespace extends ArtAmapBrowserNamespace>(options: UseAmapSdkOptions) {
   const scriptUrl = computed(() => {
     const key = toValue(options.key)?.trim()
     return key ? `https://webapi.amap.com/maps?v=2.0&key=${encodeURIComponent(key)}` : ''
@@ -43,7 +45,7 @@ export function useAmapSdk<TNamespace>(options: UseAmapSdkOptions) {
 
     const amap = getLoadedAmap()
     await loadAmapPlugins(amap, [...(toValue(options.plugins) ?? [])])
-    return amap as unknown as TNamespace
+    return amap as TNamespace
   }
 
   return { loadAmap }

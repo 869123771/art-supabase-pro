@@ -27,6 +27,8 @@
 </template>
 
 <script setup lang="ts">
+  import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+
   defineOptions({ name: 'ArtProgressCard' })
 
   interface Props {
@@ -51,8 +53,10 @@
 
   const animationDuration = 500
   const currentPercentage = ref(0)
+  let animationFrameId: number | null = null
 
   const animateProgress = () => {
+    if (animationFrameId !== null) cancelAnimationFrame(animationFrameId)
     const startTime = Date.now()
     const startValue = currentPercentage.value
     const endValue = props.percentage
@@ -65,11 +69,13 @@
       currentPercentage.value = startValue + (endValue - startValue) * progress
 
       if (progress < 1) {
-        requestAnimationFrame(animate)
+        animationFrameId = requestAnimationFrame(animate)
+      } else {
+        animationFrameId = null
       }
     }
 
-    requestAnimationFrame(animate)
+    animationFrameId = requestAnimationFrame(animate)
   }
 
   onMounted(() => {
@@ -83,4 +89,8 @@
       animateProgress()
     }
   )
+
+  onBeforeUnmount(() => {
+    if (animationFrameId !== null) cancelAnimationFrame(animationFrameId)
+  })
 </script>

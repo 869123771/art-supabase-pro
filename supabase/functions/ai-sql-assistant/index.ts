@@ -1,5 +1,9 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
-import { createClient, type SupabaseClient } from 'jsr:@supabase/supabase-js@2'
+import { type SupabaseClient } from 'jsr:@supabase/supabase-js@2'
+import {
+  authenticateAiEdgeRequest,
+  authorizeAiEdgeAppUser
+} from '../_shared/ai-edge-user-context.ts'
 import {
   loadAiRuntimeConfig,
   type AiRuntimeConfig
@@ -39,11 +43,6 @@ interface SqlAiGenerateRequest {
   }
 }
 
-interface AppUser {
-  tenant_id: string
-  user_email: string
-  status: string | null
-}
 
 interface ProviderUsage {
   prompt_tokens?: number
@@ -381,47 +380,23 @@ Deno.serve(async (req) => {
   let auditEmail = ''
 
   try {
-    const authHeader = req.headers.get('Authorization') ?? ''
-    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? ''
-    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    if (!authHeader || !supabaseUrl || !supabaseAnonKey || !serviceRoleKey) {
-      throw new AiSqlError('unauthorized', 'Authentication required', 401)
+    const authentication = await authenticateAiEdgeRequest(req)
+    if (!authentication.ok) {
+      throw new AiSqlError(authentication.code, authentication.message, authentication.status)
     }
-
-    const token = authHeader.replace(/^Bearer\s+/i, '')
-    const authClient = createClient(supabaseUrl, supabaseAnonKey, {
-      auth: { autoRefreshToken: false, persistSession: false }
-    })
-    const userClient = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } },
-      auth: { autoRefreshToken: false, persistSession: false }
-    })
-    const [authResult, superResult] = await Promise.all([
-      authClient.auth.getUser(token),
-      userClient.rpc('current_is_super')
+    const [context, superResult] = await Promise.all([
+      authorizeAiEdgeAppUser(authentication),
+      authentication.userClient.rpc('current_is_super')
     ])
-    const user = authResult.data.user
-    if (authResult.error || !user) {
-      throw new AiSqlError('unauthorized', 'Invalid or expired session', 401)
-    }
     if (superResult.error) {
       throw new AiSqlError('permission_check_failed', '无法校验 AI SQL 权限。')
     }
-    const isPlatformSuper = superResult.data === true
-
-    admin = createClient(supabaseUrl, serviceRoleKey, {
-      auth: { autoRefreshToken: false, persistSession: false }
-    })
-    const { data: appUserData, error: appUserError } = await admin
-      .from('sys_user')
-      .select('tenant_id,user_email,status')
-      .eq('auth_user_id', user.id)
-      .maybeSingle()
-    const appUser = appUserData as AppUser | null
-    if (appUserError || !appUser?.tenant_id || appUser.status === '0') {
-      throw new AiSqlError('forbidden', 'Active application user is required', 403)
+    if (!context.ok) {
+      throw new AiSqlError(context.code, context.message, context.status)
     }
+    const isPlatformSuper = superResult.data === true
+    const { userClient, user, appUser } = context
+    admin = context.admin
     auditEmail = appUser.user_email
 
     const body = (await req.json()) as SqlAiGenerateRequest

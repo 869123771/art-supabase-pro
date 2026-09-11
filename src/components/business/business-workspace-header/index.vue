@@ -36,7 +36,7 @@
           class="business-workspace-header__actions"
           aria-label="页面操作"
         >
-          <ElTooltip v-if="refreshable" :content="refreshLabel" placement="bottom">
+          <ArtTooltip v-if="refreshable" :content="refreshLabel" placement="bottom">
             <ArtIconButton
               icon="ri:refresh-line"
               circle
@@ -45,7 +45,7 @@
               :disabled="refreshDisabled"
               @click="emit('refresh')"
             />
-          </ElTooltip>
+          </ArtTooltip>
           <slot name="actions" />
         </div>
       </div>

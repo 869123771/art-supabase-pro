@@ -10,6 +10,7 @@ import {
   writeFileSync
 } from 'node:fs'
 import { spawnSync } from 'node:child_process'
+import { createHash } from 'node:crypto'
 import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { hostedModuleSharedDependencies } from './hosted-module-dependencies'
@@ -58,6 +59,8 @@ const pnpmInstallOptions = [
   '--side-effects-cache=false'
 ]
 const preparedEsbuildBinaries = new Map<string, string>()
+const useWorkspacePlatform = process.argv.includes('--workspace-platform')
+let preparedWorkspacePlatformPackage: string | undefined
 
 function formatCommand(command: string, args: string[]): string {
   return [command, ...args].join(' ')
@@ -361,6 +364,8 @@ function listDependencyProblems(moduleRoot: string, manifest: PackageManifest): 
 }
 
 function createPinnedPlatformPackage(module: ModuleDefinition, reference: string): string {
+  if (useWorkspacePlatform) return createWorkspacePlatformPackage()
+
   const commit = /\/archive\/([0-9a-f]{40})\.tar\.gz(?:$|[?#])/i.exec(reference)?.[1]
   if (!commit) {
     throw new Error(`${module.path} 的 art-supabase-pro 依赖不是可识别的锁定提交。`)
@@ -392,6 +397,48 @@ function createPinnedPlatformPackage(module: ModuleDefinition, reference: string
     false
   )
   if (!existsSync(packagePath)) throw new Error(`本地主仓包生成失败：${packagePath}`)
+  return packagePath
+}
+
+function createWorkspacePlatformPackage(): string {
+  if (preparedWorkspacePlatformPackage) return preparedWorkspacePlatformPackage
+
+  const manifest = readPackageManifest(projectRoot)
+  if (!manifest.name || !manifest.version) {
+    throw new Error('主仓 package.json 缺少 name 或 version，无法生成工作区包。')
+  }
+
+  const commonGitDirectory = readGitCommonDirectory()
+  const packageDirectory = resolve(commonGitDirectory, 'module-packages', 'workspace')
+  ensurePathInside(commonGitDirectory, packageDirectory, '工作区主仓包目录')
+  mkdirSync(packageDirectory, { recursive: true })
+
+  const packageName = manifest.name.replace(/^@/, '').replaceAll('/', '-')
+  const packedPath = resolve(packageDirectory, `${packageName}-${manifest.version}.tgz`)
+  ensurePathInside(packageDirectory, packedPath, '工作区主仓临时包')
+  if (existsSync(packedPath)) unlinkSync(packedPath)
+
+  console.log('[module] 从当前主仓工作区生成集成验证包。')
+  runPackageManager(
+    ['pack', '--json', '--pack-destination', packageDirectory],
+    projectRoot,
+    undefined,
+    false
+  )
+  if (!existsSync(packedPath)) throw new Error(`工作区主仓包生成失败：${packedPath}`)
+
+  const contentHash = createHash('sha256')
+    .update(readFileSync(packedPath))
+    .digest('hex')
+    .slice(0, 12)
+  const packagePath = resolve(
+    packageDirectory,
+    `${packageName}-${manifest.version}-workspace-${contentHash}.tgz`
+  )
+  ensurePathInside(packageDirectory, packagePath, '工作区主仓包')
+  if (existsSync(packagePath)) unlinkSync(packagePath)
+  renameSync(packedPath, packagePath)
+  preparedWorkspacePlatformPackage = packagePath
   return packagePath
 }
 
@@ -756,7 +803,24 @@ function runPackageAction(modules: ModuleDefinition[], action: ModulePackageActi
     const moduleRoot = join(projectRoot, module.path)
     const manifest = readPackageManifest(moduleRoot)
     if (action !== 'install') ensureModuleDependencies(module, moduleRoot, manifest)
-    runModulePackageAction(module, action, manifest)
+    if (action !== 'build') {
+      runModulePackageAction(module, action, manifest)
+      return
+    }
+
+    const previousOutputDirectory = process.env.VITE_OUT_DIR
+    process.env.VITE_OUT_DIR = resolve(
+      projectRoot,
+      '.artifacts',
+      'module-builds',
+      basename(module.path)
+    )
+    try {
+      runModulePackageAction(module, action, manifest)
+    } finally {
+      if (previousOutputDirectory === undefined) delete process.env.VITE_OUT_DIR
+      else process.env.VITE_OUT_DIR = previousOutputDirectory
+    }
   })
 }
 
@@ -786,6 +850,7 @@ function printUsage(): void {
 
 也可以使用 npm run modules:<action>，实际安装始终由项目锁定的 pnpm 执行。
 命令末尾可指定子仓简称，例如：pnpm modules:install -- vms fms。
+跨主仓与子仓的未提交联调可追加 --workspace-platform，先打包当前主仓工作区再验证。
 `)
 }
 
@@ -812,7 +877,9 @@ function main(): void {
     releaseOperationLock = acquireOperationLock(action)
     const allModules = readModuleDefinitions()
     allModules.forEach(restoreInterruptedModuleInstall)
-    const selectors = process.argv.slice(3).filter((argument) => argument !== '--')
+    const selectors = process.argv
+      .slice(3)
+      .filter((argument) => argument !== '--' && argument !== '--workspace-platform')
     const modules = selectModules(allModules, selectors)
 
     switch (action) {

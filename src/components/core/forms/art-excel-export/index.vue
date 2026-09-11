@@ -19,12 +19,12 @@
 </template>
 
 <script setup lang="ts" generic="TRow extends object = Record<string, unknown>">
-  import * as XLSX from 'xlsx'
-  import FileSaver from 'file-saver'
-  import { ref, computed, nextTick } from 'vue'
+  import { ref, computed } from 'vue'
   import { Loading } from '@element-plus/icons-vue'
   import type { ButtonType } from 'element-plus'
+  import { uniq } from 'lodash-es'
   import { useThrottleFn } from '@vueuse/core'
+  import { exportExcel, type ExcelColumn } from '@/utils/file'
 
   defineOptions({ name: 'ArtExcelExport' })
 
@@ -149,164 +149,13 @@
     }
   }
 
-  /** 格式化单元格值 */
-  const formatCellValue = (value: ExportValue, key: string, row: TRow, index: number): string => {
-    // 使用列配置的格式化函数
-    const column = props.columns[key]
-    if (column?.formatter) {
-      return column.formatter(value, row, index)
-    }
-
-    // 处理特殊值
-    if (value === null || value === undefined) {
-      return ''
-    }
-
-    if (value instanceof Date) {
-      return value.toLocaleDateString('zh-CN')
-    }
-
-    if (typeof value === 'boolean') {
-      return value ? '是' : '否'
-    }
-
-    return String(value)
-  }
-
-  /** 处理数据 */
-  const processData = (data: TRow[]): Record<string, string>[] => {
-    const processedData = data.map((item, index) => {
-      const processedItem: Record<string, string> = {}
-
-      // 添加序号列
-      if (props.autoIndex) {
-        processedItem[props.indexColumnTitle] = String(index + 1)
-      }
-
-      // 处理数据列
-      Object.entries(item).forEach(([key, value]) => {
-        // 获取列标题
-        let columnTitle = key
-        if (props.columns[key]?.title) {
-          columnTitle = props.columns[key].title
-        } else if (props.headers[key]) {
-          columnTitle = props.headers[key]
-        }
-
-        // 格式化值
-        processedItem[columnTitle] = formatCellValue(value, key, item, index)
-      })
-
-      return processedItem
-    })
-
-    return processedData
-  }
-
-  /** 计算列宽度 */
-  const calculateColumnWidths = (data: Record<string, string>[]): XLSX.ColInfo[] => {
-    if (data.length === 0) return []
-
-    const sampleSize = Math.min(data.length, 100) // 只取前100行计算列宽
-    const columns = Object.keys(data[0])
-
-    return columns.map((column) => {
-      // 使用配置的列宽度
-      const configWidth = Object.values(props.columns).find((col) => col.title === column)?.width
-
-      if (configWidth) {
-        return { wch: configWidth }
-      }
-
-      // 自动计算列宽度
-      const maxLength = Math.max(
-        column.length, // 标题长度
-        ...data.slice(0, sampleSize).map((row) => String(row[column] || '').length)
-      )
-
-      // 限制最小和最大宽度
-      const width = Math.min(Math.max(maxLength + 2, 8), 50)
-      return { wch: width }
-    })
-  }
-
-  /** 导出到 Excel */
-  const exportToExcel = async (
-    data: TRow[],
-    filename: string,
-    sheetName: string
-  ): Promise<void> => {
-    try {
-      emit('export-progress', 10)
-
-      // 处理数据
-      const processedData = processData(data)
-      emit('export-progress', 30)
-
-      // 创建工作簿
-      const workbook = XLSX.utils.book_new()
-
-      // 设置工作簿属性
-      if (props.workbookOptions) {
-        workbook.Props = {
-          Title: filename,
-          Subject: '数据导出',
-          Author: props.workbookOptions.creator || 'Art Design Pro',
-          Manager: props.workbookOptions.lastModifiedBy || '',
-          Company: '系统导出',
-          Category: '数据',
-          Keywords: 'excel,export,data',
-          Comments: '由系统自动生成',
-          CreatedDate: props.workbookOptions.created || new Date(),
-          ModifiedDate: props.workbookOptions.modified || new Date()
-        }
-      }
-
-      emit('export-progress', 50)
-
-      // 创建工作表
-      const worksheet = XLSX.utils.json_to_sheet(processedData)
-
-      // 设置列宽度
-      worksheet['!cols'] = calculateColumnWidths(processedData)
-
-      emit('export-progress', 70)
-
-      // 添加工作表到工作簿
-      XLSX.utils.book_append_sheet(workbook, worksheet, sheetName)
-
-      emit('export-progress', 85)
-
-      // 生成 Excel 文件
-      const excelBuffer = XLSX.write(workbook, {
-        bookType: 'xlsx',
-        type: 'array',
-        compression: true
-      })
-
-      // 创建 Blob 并下载
-      const blob = new Blob([excelBuffer], {
-        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-      })
-
-      emit('export-progress', 95)
-
-      // 使用时间戳确保文件名唯一
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
-      const finalFilename = `${filename}_${timestamp}.xlsx`
-
-      FileSaver.saveAs(blob, finalFilename)
-
-      emit('export-progress', 100)
-
-      // 等待下载开始
-      await nextTick()
-
-      return Promise.resolve()
-    } catch (error) {
-      throw new ExportError(`Excel 导出失败: ${(error as Error).message}`, 'EXPORT_FAILED', error)
-    }
-  }
+  const buildColumns = (data: TRow[]): ExcelColumn<TRow>[] =>
+    uniq(data.flatMap((row) => Object.keys(row))).map((key) => ({
+      key,
+      title: props.columns[key]?.title || props.headers[key] || key,
+      width: props.columns[key]?.width,
+      formatter: props.columns[key]?.formatter
+    }))
 
   /** 处理导出 */
   const handleExport = useThrottleFn(async () => {
@@ -322,7 +171,18 @@
       emit('before-export', props.data)
 
       // 执行导出
-      await exportToExcel(props.data, props.filename, props.sheetName)
+      await exportExcel({
+        data: props.data,
+        columns: buildColumns(props.data),
+        filename: props.filename,
+        sheetName: props.sheetName,
+        autoIndex: props.autoIndex,
+        indexColumnTitle: props.indexColumnTitle,
+        maxRows: props.maxRows,
+        filenameSuffix: 'datetime',
+        workbookProperties: props.workbookOptions,
+        onProgress: (progress) => emit('export-progress', progress)
+      })
 
       // 触发成功事件
       emit('export-success', props.filename, props.data.length)
@@ -338,7 +198,7 @@
       const exportError =
         error instanceof ExportError
           ? error
-          : new ExportError(`导出失败: ${(error as Error).message}`, 'UNKNOWN_ERROR', error)
+          : new ExportError('导出失败，请检查数据后重试', 'EXPORT_FAILED', error)
 
       // 触发错误事件
       emit('export-error', exportError)

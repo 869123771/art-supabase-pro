@@ -11,6 +11,7 @@ interface Finding {
 
 const projectRoot = process.cwd()
 const sourceRoot = path.join(projectRoot, 'src')
+const modulesRoot = path.join(projectRoot, 'modules')
 const supportedExtensions = new Set(['.vue', '.scss', '.css', '.ts', '.tsx'])
 
 async function collectFiles(directory: string): Promise<string[]> {
@@ -21,6 +22,26 @@ async function collectFiles(directory: string): Promise<string[]> {
       if (entry.isDirectory()) return collectFiles(resolved)
       return supportedExtensions.has(path.extname(entry.name)) ? [resolved] : []
     })
+  )
+
+  return nested.flat()
+}
+
+async function collectModuleVueFiles(): Promise<string[]> {
+  const entries = await readdir(modulesRoot, { withFileTypes: true })
+  const nested = await Promise.all(
+    entries
+      .filter((entry) => entry.isDirectory())
+      .map(async (entry) => {
+        const moduleSourceRoot = path.join(modulesRoot, entry.name, 'src')
+        try {
+          return (await collectFiles(moduleSourceRoot)).filter(
+            (file) => path.extname(file) === '.vue'
+          )
+        } catch {
+          return []
+        }
+      })
   )
 
   return nested.flat()
@@ -98,7 +119,7 @@ function findRawTitledCards(file: string, content: string): number[] {
   return offsets
 }
 
-function scanFile(file: string, content: string): Finding[] {
+function scanFile(file: string, content: string, tooltipOnly = false): Finding[] {
   const findings: Finding[] = []
   const relativeFile = path.relative(projectRoot, file).replaceAll('\\', '/')
 
@@ -110,6 +131,18 @@ function scanFile(file: string, content: string): Finding[] {
       excerpt: excerptAt(content, offset)
     })
   }
+
+  if (
+    path.extname(file) === '.vue' &&
+    relativeFile !== 'src/components/core/feedback/art-tooltip/index.vue'
+  ) {
+    for (const match of content.matchAll(/<(?:ElTooltip|el-tooltip)\b/g)) {
+      if (match.index == null || match[0].includes('data-ui-audit-allow')) continue
+      addFinding(match.index, 'consistency/use-art-tooltip')
+    }
+  }
+
+  if (tooltipOnly) return findings
 
   const rules = [
     {
@@ -246,13 +279,18 @@ function scanFile(file: string, content: string): Finding[] {
 }
 
 const files = await collectFiles(sourceRoot)
+const moduleVueFiles = await collectModuleVueFiles()
 const findings = (
-  await Promise.all(
-    files.map(async (file) => {
+  await Promise.all([
+    ...files.map(async (file) => {
       const content = await readFile(file, 'utf8')
       return scanFile(file, content)
+    }),
+    ...moduleVueFiles.map(async (file) => {
+      const content = await readFile(file, 'utf8')
+      return scanFile(file, content, true)
     })
-  )
+  ])
 ).flat()
 
 if (findings.length > 0) {
@@ -264,5 +302,7 @@ if (findings.length > 0) {
   })
   process.exitCode = 1
 } else {
-  console.log(`UI audit passed (${files.length} files checked).`)
+  console.log(
+    `UI audit passed (${files.length} source files and ${moduleVueFiles.length} module Vue files checked).`
+  )
 }

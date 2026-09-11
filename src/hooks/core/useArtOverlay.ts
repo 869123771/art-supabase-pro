@@ -1,4 +1,4 @@
-import type { Component, Ref, ShallowRef } from 'vue'
+import { nextTick, ref, shallowRef, toRaw, type Component, type Ref, type ShallowRef } from 'vue'
 
 export type Awaitable<T> = T | Promise<T>
 export type ArtScrollOptions =
@@ -168,6 +168,7 @@ export const useArtOverlay = <TData, TApi, TOptions extends ArtOverlayOptions<TD
   const handleOpen = async (data = {} as TData, openOptions: Partial<TOptions> = {}) => {
     const sequence = ++openSequence
     options.value = config.mergeOptions(config.getDefaultOptions(), openOptions)
+    const activeOptions = options.value
     loading.value = Boolean(options.value.loading)
     confirmLoading.value = false
     initialData.value = cloneOverlayData(data)
@@ -179,9 +180,9 @@ export const useArtOverlay = <TData, TApi, TOptions extends ArtOverlayOptions<TD
     if (sequence !== openSequence || !visible.value) return
 
     try {
-      await options.value.onOpen?.(openData.value, config.getApi())
+      await activeOptions.onOpen?.(openData.value, config.getApi())
     } catch (error) {
-      config.emitError(error)
+      if (sequence === openSequence && visible.value) config.emitError(error)
     }
   }
 
@@ -195,6 +196,7 @@ export const useArtOverlay = <TData, TApi, TOptions extends ArtOverlayOptions<TD
         if (canClose === false) return false
       }
 
+      ++openSequence
       visible.value = false
       return true
     } catch (error) {
@@ -237,6 +239,7 @@ export const useArtOverlay = <TData, TApi, TOptions extends ArtOverlayOptions<TD
   }
 
   const handleClosed = () => {
+    ++openSequence
     visible.value = false
     closePending.value = false
     if (options.value.resetOnClose) handleReset()

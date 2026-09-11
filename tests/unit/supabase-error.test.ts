@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { AuthApiError, AuthRetryableFetchError } from '@supabase/supabase-js'
 import {
+  createFriendlySupabaseFunctionError,
   formatSupabaseAuthErrorMessage,
   getFriendlySupabaseErrorMessage,
   isSupabaseSessionFailure,
@@ -125,6 +126,23 @@ test('normalizes an Edge Function response body before creating the user message
   const normalized = await normalizeSupabaseFunctionError(rawError)
 
   assert.equal(getFriendlySupabaseErrorMessage(normalized), '当前记录不允许提交')
+})
+
+test('creates one friendly Edge Function error with the response as its cause', async () => {
+  const rawError = {
+    context: new Response(
+      JSON.stringify({ code: 'BUSINESS_BLOCKED', message: '当前记录不允许提交' }),
+      {
+        status: 409,
+        headers: { 'content-type': 'application/json' }
+      }
+    )
+  }
+
+  const error = await createFriendlySupabaseFunctionError(rawError, '操作失败，请稍后重试')
+
+  assert.equal(error.message, '当前记录不允许提交')
+  assert.ok(error.cause)
 })
 
 test('does not expose long or technical Chinese provider details', () => {

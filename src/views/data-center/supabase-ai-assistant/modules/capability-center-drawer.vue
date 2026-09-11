@@ -9,7 +9,7 @@
           <strong>Supabase 全域能力中心</strong>
           <small>实时探测平台能力、安全边界与 AI 可用工具</small>
         </div>
-        <ElTooltip content="刷新能力快照" placement="bottom">
+        <ArtTooltip content="刷新能力快照" placement="bottom">
           <ArtIconButton
             class="capability-center__refresh"
             icon="ri:refresh-line"
@@ -18,7 +18,7 @@
             :loading="loading"
             @click="loadSnapshot"
           />
-        </ElTooltip>
+        </ArtTooltip>
       </div>
     </template>
 
@@ -372,7 +372,7 @@
     loading.value = true
     drawerRef.value?.setLoading(true)
     try {
-      snapshot.value = await fetchProjectCatalog<ProjectCapabilitySnapshot>({
+      snapshot.value = await fetchProjectCatalog({
         catalogAction: 'capability_snapshot'
       })
     } catch (error) {

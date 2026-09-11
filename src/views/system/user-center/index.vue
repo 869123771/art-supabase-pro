@@ -176,6 +176,17 @@
               />
             </section>
           </ElTabPane>
+
+          <ElTabPane name="login-methods">
+            <template #label>
+              <span class="user-center__tab-label">
+                <ArtSvgIcon icon="ri:login-box-line" />
+                登录方式
+              </span>
+            </template>
+
+            <LoginMethods />
+          </ElTabPane>
         </ElTabs>
       </main>
     </div>
@@ -186,6 +197,7 @@
   import { updateCurrentUserPassword, updateCurrentUserProfile } from '@/api/auth'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import ArtSectionTitle from '@/components/core/surfaces/art-section-title/index.vue'
+  import LoginMethods from './modules/login-methods.vue'
   import { useSystemParam } from '@/hooks'
   import { useUserStore } from '@/store/modules/user'
   import defaultAvatar from '@imgs/user/avatar.webp'
@@ -232,7 +244,7 @@
     validatePasswordComplexity
   } = useSystemParam()
 
-  const activeTab = ref<'profile' | 'security'>('profile')
+  const activeTab = ref<'profile' | 'security' | 'login-methods'>('profile')
   const isEdit = ref(false)
   const isEditPwd = ref(false)
   const profileLoading = ref(false)

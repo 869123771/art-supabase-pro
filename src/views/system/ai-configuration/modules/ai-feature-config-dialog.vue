@@ -13,14 +13,14 @@
           <ElTag :type="form.model.enabled ? 'success' : 'info'" round effect="light">
             {{ form.model.enabled ? '运行中' : '已停用' }}
           </ElTag>
-          <ElTooltip content="重新读取远端模型目录" placement="bottom">
+          <ArtTooltip content="重新读取远端模型目录" placement="bottom">
             <ArtIconButton
               icon="ri:refresh-line"
               circle
               :class="{ 'is-loading': catalog.loading }"
               @click="refreshModelCatalog"
             />
-          </ElTooltip>
+          </ArtTooltip>
         </div>
       </section>
 

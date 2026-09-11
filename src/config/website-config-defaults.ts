@@ -1,3 +1,5 @@
+import { AUTH_CHANNEL_PRESETS } from '@/utils/supabase/auth-channels'
+
 export const WEBSITE_CONFIG_DEFAULTS: Api.SystemManage.WebsiteConfigItem = {
   siteName: 'Art Supabase Pro',
   siteShortName: 'Art Supabase Pro',
@@ -19,6 +21,7 @@ export const WEBSITE_CONFIG_DEFAULTS: Api.SystemManage.WebsiteConfigItem = {
   captchaMaxAttempts: 0,
   captchaLockMinutes: 10,
   registerEnabled: true,
+  authChannels: AUTH_CHANNEL_PRESETS.map((channel) => ({ ...channel })),
   maintenanceEnabled: false,
   maintenanceMessage: '维护模式开启时建议填写，例如：系统今晚 23:00-24:00 升级维护',
   seoTitle: 'Art Design Pro',
@@ -34,5 +37,6 @@ export const WEBSITE_CONFIG_DEFAULTS: Api.SystemManage.WebsiteConfigItem = {
 }
 
 export const createWebsiteConfigDefaults = (): Api.SystemManage.WebsiteConfigItem => ({
-  ...WEBSITE_CONFIG_DEFAULTS
+  ...WEBSITE_CONFIG_DEFAULTS,
+  authChannels: WEBSITE_CONFIG_DEFAULTS.authChannels.map((channel) => ({ ...channel }))
 })

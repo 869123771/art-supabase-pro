@@ -83,7 +83,8 @@
       loading.value = true
       const params: Api.Auth.ForgetPwdParams = {
         email: form.value.email,
-        redirectTo: location.origin + location.pathname + '#/auth/reset-password'
+        redirectTo:
+          location.origin + location.pathname + '#/auth/reset-password?auth_action=recovery'
       }
       const { error } = await forgetPassword(params)
       if (!error) {

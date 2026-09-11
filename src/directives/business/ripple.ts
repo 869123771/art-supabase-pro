@@ -46,6 +46,14 @@ export interface RippleOptions {
 
 export type RippleDirective = Directive<HTMLElement, RippleOptions>
 
+interface RippleState {
+  handleMouseDown: (event: MouseEvent) => void
+  animationFrames: Set<number>
+  removalTimers: Set<number>
+}
+
+const rippleStates = new WeakMap<HTMLElement, RippleState>()
+
 export const vRipple: RippleDirective = {
   mounted(el: HTMLElement, binding: DirectiveBinding) {
     // 获取指令的配置参数
@@ -55,8 +63,14 @@ export const vRipple: RippleDirective = {
     el.style.position = 'relative'
     el.style.overflow = 'hidden'
 
+    const state: RippleState = {
+      animationFrames: new Set<number>(),
+      removalTimers: new Set<number>(),
+      handleMouseDown: () => undefined
+    }
+
     // 点击事件处理
-    el.addEventListener('mousedown', (e: MouseEvent) => {
+    state.handleMouseDown = (e: MouseEvent) => {
       const rect = el.getBoundingClientRect()
       const left = e.clientX - rect.left
       const top = e.clientY - rect.top
@@ -98,16 +112,32 @@ export const vRipple: RippleDirective = {
       el.appendChild(ripple)
 
       // 触发动画
-      requestAnimationFrame(() => {
+      const animationFrame = requestAnimationFrame(() => {
+        state.animationFrames.delete(animationFrame)
         ripple.style.transform = 'scale(2)'
         ripple.style.opacity = '0'
       })
+      state.animationFrames.add(animationFrame)
 
       // 动画结束后移除水波纹元素
-      setTimeout(() => {
+      const removalTimer = window.setTimeout(() => {
+        state.removalTimers.delete(removalTimer)
         ripple.remove()
       }, animationDuration + 500) // 增加500ms缓冲时间
-    })
+      state.removalTimers.add(removalTimer)
+    }
+
+    rippleStates.set(el, state)
+    el.addEventListener('mousedown', state.handleMouseDown)
+  },
+
+  unmounted(el: HTMLElement) {
+    const state = rippleStates.get(el)
+    if (!state) return
+    el.removeEventListener('mousedown', state.handleMouseDown)
+    state.animationFrames.forEach((id) => cancelAnimationFrame(id))
+    state.removalTimers.forEach((id) => window.clearTimeout(id))
+    rippleStates.delete(el)
   }
 }
 

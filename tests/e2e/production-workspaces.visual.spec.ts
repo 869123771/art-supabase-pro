@@ -13,6 +13,7 @@ const pages = [
   ['department', 'MdmProductionDepartment', '/mdm/production/department', '部门 / 产线'],
   ['personnel', 'MdmProductionPersonnel', '/mdm/production/personnel', '人员配置'],
   ['calendar', 'MdmFactoryCalendar', '/mdm/production/calendar', '工厂日历'],
+  ['shift-scheduling', 'MdmShiftScheduling', '/mdm/production/shift-scheduling', '排班管理'],
   ['operation-template', 'MdmOperationTemplate', '/mdm/production/operation-template', '作业模板'],
   ['work-center', 'MdmWorkCenter', '/mdm/production/work-center', '工作中心'],
   [
@@ -228,6 +229,96 @@ async function installFixtures(page: Page) {
   await page.route('**/rest/v1/rpc/mdm_delete_personnel_common_work_centers', (route) =>
     route.fulfill({ json: 1 })
   )
+  await page.route('**/rest/v1/rpc/mdm_list_shift_schedule_departments_secure', (route) =>
+    route.fulfill({ json: [department] })
+  )
+  await page.route('**/rest/v1/rpc/mdm_list_shift_schedule_patterns_secure', (route) =>
+    route.fulfill({
+      json: [
+        {
+          id: '00000000-0000-4000-8000-000000000601',
+          tenantId: department.tenant_id,
+          departmentId: department.id,
+          name: '两班轮换',
+          description: '白班与夜班轮换',
+          sort: 1,
+          color: '#5b5bd6',
+          shifts: [
+            { name: '白班', startTime: '08:00', endTime: '17:00' },
+            { name: '夜班', startTime: '20:00', endTime: '05:00' }
+          ]
+        }
+      ]
+    })
+  )
+  await page.route('**/rest/v1/rpc/mdm_list_shift_schedules_secure', (route) =>
+    route.fulfill({
+      json: [
+        {
+          id: '00000000-0000-4000-8000-000000000701',
+          tenantId: department.tenant_id,
+          departmentId: department.id,
+          patternId: '00000000-0000-4000-8000-000000000601',
+          patternName: '两班轮换',
+          patternColor: '#5b5bd6',
+          shiftIndex: 1,
+          shiftName: '白班',
+          shiftStartTime: '08:00',
+          shiftEndTime: '17:00',
+          dateMode: 'single',
+          startDate: '2026-09-15',
+          endDate: '2026-09-15',
+          note: '总装一线试排',
+          memberCount: 1,
+          members: [
+            {
+              id: '00000000-0000-4000-8000-000000000201',
+              tenantId: department.tenant_id,
+              departmentId: department.id,
+              employeeName: '张明',
+              employeeNo: 'P-001',
+              phone: '13800000000',
+              jobTitle: '装配技师',
+              avatarUrl: '',
+              employmentStatus: 'active',
+              organization: {
+                id: department.id,
+                organizationCode: department.code,
+                organizationName: department.name
+              }
+            }
+          ],
+          createTime: '2026-09-01T08:00:00Z',
+          updateTime: '2026-09-01T08:00:00Z'
+        }
+      ]
+    })
+  )
+  await page.route('**/rest/v1/rpc/mdm_list_shift_schedule_people_secure', (route) =>
+    route.fulfill({
+      json: {
+        records: [
+          {
+            id: '00000000-0000-4000-8000-000000000201',
+            tenantId: department.tenant_id,
+            departmentId: department.id,
+            employeeName: '张明',
+            employeeNo: 'P-001',
+            phone: '13800000000',
+            jobTitle: '装配技师',
+            avatarUrl: '',
+            employmentStatus: 'active',
+            organization: {
+              id: department.id,
+              organizationCode: department.code,
+              organizationName: department.name
+            }
+          }
+        ],
+        total: 1
+      }
+    })
+  )
 }
 
 test('production master-data workspaces share the SMIS visual system', async ({
@@ -281,6 +372,33 @@ test('production master-data workspaces share the SMIS visual system', async ({
         animations: 'disabled'
       })
       await dialog.getByRole('button', { name: '取消', exact: true }).click()
+    }
+    if (path === 'shift-scheduling') {
+      await expect(page.getByRole('button', { name: /白班.*1人/ })).toBeVisible()
+      await page.getByRole('button', { name: '新增排班', exact: true }).first().click()
+      const dialog = page.getByRole('dialog')
+      await expect(dialog.getByText('班次安排', { exact: true })).toBeVisible()
+      await expect(dialog.getByText('班组人员', { exact: true })).toBeVisible()
+      await expect(dialog.getByText('单个日期', { exact: true })).toBeVisible()
+      expect(
+        await dialog.evaluate((element) => element.scrollWidth <= element.clientWidth + 1)
+      ).toBe(true)
+      await page.screenshot({
+        path: testInfo.outputPath('shift-scheduling-dialog.png'),
+        animations: 'disabled'
+      })
+      await dialog.locator('.art-data-select__multiple-input').click()
+      const peopleDialog = page.getByRole('dialog').filter({ hasText: '添加班组人员' }).last()
+      await expect(peopleDialog.getByText('张明', { exact: true })).toBeVisible()
+      await expect(peopleDialog.getByText('总装一线', { exact: true })).toBeVisible()
+      await page.screenshot({
+        path: testInfo.outputPath('shift-scheduling-people-dialog.png'),
+        animations: 'disabled'
+      })
+      await peopleDialog.getByRole('button', { name: '取消', exact: true }).click()
+      await dialog.getByRole('button', { name: '取消', exact: true }).click()
+      await page.getByText('班表视图', { exact: true }).click()
+      await expect(page.getByText('两班轮换', { exact: true })).toBeVisible()
     }
     if (path === 'work-center') {
       await expect(page.getByText('总装工作中心', { exact: true })).toBeVisible()

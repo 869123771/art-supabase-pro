@@ -21,7 +21,7 @@
       <ElScrollbar style="height: calc(100% - 135px)">
         <ul>
           <li v-for="menu in firstLevelMenus" :key="menu.path">
-            <ElTooltip
+            <ArtTooltip
               class="box-item"
               effect="dark"
               :content="$t(menu.meta.title)"
@@ -55,7 +55,7 @@
                 </span>
                 <div v-if="menu.meta.showBadge" class="art-badge art-badge-dual" />
               </button>
-            </ElTooltip>
+            </ArtTooltip>
           </li>
         </ul>
       </ElScrollbar>

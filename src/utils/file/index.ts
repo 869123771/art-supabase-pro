@@ -5,7 +5,7 @@ export type ExcelCellValue = string | number | boolean | null | undefined | Date
 
 export type ExcelRecord = Record<string, unknown>
 
-export interface ExcelColumn<TRecord extends ExcelRecord = ExcelRecord> {
+export interface ExcelColumn<TRecord extends object = ExcelRecord> {
   key: keyof TRecord | string
   title: string
   width?: number
@@ -13,7 +13,7 @@ export interface ExcelColumn<TRecord extends ExcelRecord = ExcelRecord> {
   formatter?: (value: unknown, row: TRecord, index: number) => ExcelCellValue
 }
 
-export interface ExportExcelOptions<TRecord extends ExcelRecord = ExcelRecord> {
+export interface ExportExcelOptions<TRecord extends object = ExcelRecord> {
   data: TRecord[]
   columns: ExcelColumn<TRecord>[]
   filename?: string
@@ -21,6 +21,16 @@ export interface ExportExcelOptions<TRecord extends ExcelRecord = ExcelRecord> {
   autoIndex?: boolean
   indexColumnTitle?: string
   maxRows?: number
+  filenameSuffix?: 'date' | 'datetime' | false
+  workbookProperties?: ExcelWorkbookProperties
+  onProgress?: (progress: number) => void
+}
+
+export interface ExcelWorkbookProperties {
+  creator?: string
+  lastModifiedBy?: string
+  created?: Date
+  modified?: Date
 }
 
 const formatExcelCellValue = (value: unknown): string => {
@@ -32,7 +42,7 @@ const formatExcelCellValue = (value: unknown): string => {
 
 const calculateExcelColumnWidths = (
   rows: Record<string, string>[],
-  columns: ExcelColumn[]
+  columns: Array<Pick<ExcelColumn<object>, 'title' | 'width'>>
 ): ColInfo[] => {
   if (!rows.length) return []
 
@@ -51,7 +61,7 @@ const calculateExcelColumnWidths = (
   })
 }
 
-export const buildExcelRows = <TRecord extends ExcelRecord>(
+export const buildExcelRows = <TRecord extends object>(
   data: TRecord[],
   columns: ExcelColumn<TRecord>[],
   options: Pick<ExportExcelOptions<TRecord>, 'autoIndex' | 'indexColumnTitle'> = {}
@@ -64,7 +74,7 @@ export const buildExcelRows = <TRecord extends ExcelRecord>(
     }
 
     columns.forEach((column) => {
-      const value = row[column.key]
+      const value = Reflect.get(row, String(column.key))
       const formattedValue = column.formatter ? column.formatter(value, row, index) : value
       output[column.title] = formatExcelCellValue(formattedValue)
     })
@@ -73,7 +83,18 @@ export const buildExcelRows = <TRecord extends ExcelRecord>(
   })
 }
 
-export const exportExcel = async <TRecord extends ExcelRecord>(
+export const buildExcelFilename = (
+  filename: string,
+  suffix: ExportExcelOptions['filenameSuffix'] = 'date',
+  now = new Date()
+): string => {
+  if (suffix === false) return `${filename}.xlsx`
+  const value =
+    suffix === 'datetime' ? now.toISOString().replace(/[:.]/g, '-') : now.toISOString().slice(0, 10)
+  return `${filename}_${value}.xlsx`
+}
+
+export const exportExcel = async <TRecord extends object>(
   options: ExportExcelOptions<TRecord>
 ): Promise<void> => {
   const {
@@ -83,7 +104,10 @@ export const exportExcel = async <TRecord extends ExcelRecord>(
     sheetName = 'Sheet1',
     autoIndex = false,
     indexColumnTitle = '序号',
-    maxRows = 100000
+    maxRows = 100000,
+    filenameSuffix = 'date',
+    workbookProperties = {},
+    onProgress
   } = options
 
   if (!Array.isArray(data) || !data.length) {
@@ -96,31 +120,43 @@ export const exportExcel = async <TRecord extends ExcelRecord>(
     throw new Error(`导出数据不能超过 ${maxRows} 行`)
   }
 
+  onProgress?.(10)
   const [{ default: FileSaver }, XLSX] = await Promise.all([import('file-saver'), import('xlsx')])
   const rows = buildExcelRows(data, columns, { autoIndex, indexColumnTitle })
+  onProgress?.(30)
   const worksheet = XLSX.utils.json_to_sheet(rows)
-  worksheet['!cols'] = calculateExcelColumnWidths(rows, columns as ExcelColumn[])
+  worksheet['!cols'] = calculateExcelColumnWidths(rows, columns)
+  onProgress?.(50)
 
   const workbook = XLSX.utils.book_new()
   workbook.Props = {
     Title: filename,
     Subject: '数据导出',
-    Author: 'Art Design Pro',
-    CreatedDate: new Date(),
-    ModifiedDate: new Date()
+    Author: workbookProperties.creator || 'Art Design Pro',
+    Manager: workbookProperties.lastModifiedBy || '',
+    Company: '系统导出',
+    Category: '数据',
+    Keywords: 'excel,export,data',
+    Comments: '由系统自动生成',
+    CreatedDate: workbookProperties.created || new Date(),
+    ModifiedDate: workbookProperties.modified || new Date()
   }
   XLSX.utils.book_append_sheet(workbook, worksheet, sheetName)
+  onProgress?.(70)
 
   const buffer = XLSX.write(workbook, {
     bookType: 'xlsx',
     type: 'array',
     compression: true
   })
+  onProgress?.(85)
   const blob = new Blob([buffer], {
     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
   })
 
-  FileSaver.saveAs(blob, `${filename}_${new Date().toISOString().slice(0, 10)}.xlsx`)
+  onProgress?.(95)
+  FileSaver.saveAs(blob, buildExcelFilename(filename, filenameSuffix))
+  onProgress?.(100)
 }
 
 export async function importExcelFile(file: File): Promise<Array<Record<string, unknown>>> {
@@ -204,6 +240,16 @@ export const downloadFile = (url?: string, filename = 'attachment'): void => {
   document.body.appendChild(link)
   link.click()
   document.body.removeChild(link)
+}
+
+/** 下载内存文件并在浏览器接管后统一释放临时对象 URL。 */
+export const downloadBlob = (blob: Blob, filename: string): void => {
+  const url = URL.createObjectURL(blob)
+  try {
+    downloadFile(url, filename)
+  } finally {
+    globalThis.setTimeout(() => URL.revokeObjectURL(url), 0)
+  }
 }
 
 export const viewAttachment = (file: FileActionTarget): void => {

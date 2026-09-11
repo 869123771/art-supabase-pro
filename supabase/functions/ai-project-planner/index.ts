@@ -1,5 +1,9 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
-import { createClient, type SupabaseClient } from 'jsr:@supabase/supabase-js@2'
+import { type SupabaseClient } from 'jsr:@supabase/supabase-js@2'
+import {
+  authenticateAiEdgeRequest,
+  authorizeAiEdgeAppUser
+} from '../_shared/ai-edge-user-context.ts'
 import {
   loadAiRuntimeConfig,
   type AiRuntimeConfig
@@ -58,11 +62,6 @@ interface PlannerRequest {
   metadata?: Record<string, unknown>
 }
 
-interface AppUser {
-  tenant_id: string
-  user_email: string
-  status: string | null
-}
 
 interface SuggestionCandidate {
   category: SuggestionCategory
@@ -711,42 +710,22 @@ Deno.serve(async (request) => {
     return json({ code: 'method_not_allowed', message: 'Method not allowed' }, 405)
   }
 
-  const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
-  const anonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? ''
-  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-  const authHeader = request.headers.get('Authorization') ?? ''
-  if (!supabaseUrl || !anonKey || !serviceRoleKey || !authHeader) {
-    return json({ code: 'unauthorized', message: 'Authentication required' }, 401)
+  const authentication = await authenticateAiEdgeRequest(
+    request,
+    'Invalid or expired session'
+  )
+  if (!authentication.ok) {
+    return json(
+      { code: authentication.code, message: authentication.message },
+      authentication.status
+    )
   }
 
-  const authClient = createClient(supabaseUrl, anonKey, {
-    auth: { autoRefreshToken: false, persistSession: false }
-  })
-  const token = authHeader.replace(/^Bearer\s+/i, '')
-  const {
-    data: { user },
-    error: authError
-  } = await authClient.auth.getUser(token)
-  if (authError || !user) {
-    return json({ code: 'unauthorized', message: 'Invalid or expired session' }, 401)
+  const context = await authorizeAiEdgeAppUser(authentication, '仅已启用的系统用户可使用 AI 项目规划台')
+  if (!context.ok) {
+    return json({ code: context.code, message: context.message }, context.status)
   }
-
-  const admin = createClient(supabaseUrl, serviceRoleKey, {
-    auth: { autoRefreshToken: false, persistSession: false }
-  })
-  const userClient = createClient(supabaseUrl, anonKey, {
-    global: { headers: { Authorization: authHeader } },
-    auth: { autoRefreshToken: false, persistSession: false }
-  })
-  const { data: appUserData, error: appUserError } = await admin
-    .from('sys_user')
-    .select('tenant_id,user_email,status')
-    .eq('auth_user_id', user.id)
-    .maybeSingle()
-  const appUser = appUserData as AppUser | null
-  if (appUserError || !appUser?.tenant_id || appUser.status === '0') {
-    return json({ code: 'forbidden', message: '仅已启用的系统用户可使用 AI 项目规划台' }, 403)
-  }
+  const { admin, userClient, user, appUser } = context
   const { data: isPlatformSuper, error: permissionError } = await userClient.rpc('current_is_super')
   if (permissionError) {
     return json({ code: 'permission_check_failed', message: '无法确认 AI 项目规划台权限' }, 500)

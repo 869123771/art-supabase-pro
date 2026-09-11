@@ -323,6 +323,13 @@ html.dark .el-card {
   }
 }
 
+// Tooltip 箭头由 ArtTooltip 统一禁用；同时覆盖表格溢出提示等组件内部生成的 Tooltip。
+.el-popper[role='tooltip']:not(.el-popover, .el-select__popper, .el-dropdown__popper) {
+  > .el-popper__arrow {
+    display: none !important;
+  }
+}
+
 .el-dropdown-selfdefine:focus {
   outline: none !important;
 }

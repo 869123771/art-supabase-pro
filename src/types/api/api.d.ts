@@ -85,6 +85,12 @@ declare namespace Api {
       captchaToken?: string
     }
 
+    interface LoginParams {
+      identifier: string
+      password: string
+      captchaToken?: string
+    }
+
     /** 忘记密码参数 */
     interface ForgetPwdParams {
       email: string
@@ -94,14 +100,34 @@ declare namespace Api {
     /** 重置密码参数 */
     interface ResetPwdParams {
       password: string
-      accessToken: string
-      refreshToken?: string
     }
 
     /** 登录响应 */
     interface LoginResponse {
       token: string
       refreshToken: string
+    }
+
+    /** 登录页与个人中心共用的第三方认证渠道。敏感凭据只配置在认证服务端。 */
+    interface AuthChannel {
+      key: string
+      label: string
+      provider: string
+      icon: string
+      description?: string | null
+      scopes?: string | null
+      queryParamName?: string | null
+      queryParamValue?: string | null
+      enabled: boolean
+      allowLinking: boolean
+    }
+
+    interface LinkedIdentity {
+      id: string
+      provider: string
+      email?: string | null
+      createdAt?: string | null
+      updatedAt?: string | null
     }
 
     /** 用户信息 */
@@ -589,6 +615,7 @@ declare namespace Api {
       captchaMaxAttempts: number
       captchaLockMinutes: number
       registerEnabled: boolean
+      authChannels: Api.Auth.AuthChannel[]
       maintenanceEnabled: boolean
       maintenanceMessage?: string | null
       seoTitle?: string | null

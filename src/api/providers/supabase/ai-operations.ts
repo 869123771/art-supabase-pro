@@ -1,5 +1,6 @@
 import dayjs from 'dayjs'
 import { useSupabase } from '@/hooks'
+import { createFriendlySupabaseFunctionError } from '@/utils/supabase/error'
 import type { AiFeedbackIssueType } from '@/api/providers/supabase/ai-feedback'
 
 export type { AiFeedbackIssueType } from '@/api/providers/supabase/ai-feedback'
@@ -525,29 +526,12 @@ export async function fetchAiRunDetail(id: string): Promise<AiRunDetail> {
   }
 }
 
-async function normalizeFunctionError(error: unknown): Promise<Error> {
-  if (error && typeof error === 'object' && 'context' in error) {
-    const context = (error as { context?: unknown }).context
-    if (context instanceof Response) {
-      try {
-        const payload = (await context.clone().json()) as { message?: unknown }
-        if (typeof payload.message === 'string' && payload.message)
-          return new Error(payload.message)
-      } catch {
-        // Fall back to the original Edge Function error.
-      }
-    }
-  }
-  if (error instanceof Error) return error
-  return new Error('AI 运行诊断暂时不可用')
-}
-
 export async function diagnoseAiRun(id: string): Promise<AiRunDiagnosisResponse> {
   const { data, error } = await supabase.functions.invoke<AiRunDiagnosisResponse>(
     'ai-run-diagnosis',
     { body: { runId: id } }
   )
-  if (error) throw await normalizeFunctionError(error)
+  if (error) throw await createFriendlySupabaseFunctionError(error, 'AI 运行诊断暂时不可用')
   if (!data?.runId || !data.diagnosis?.summary) throw new Error('AI 运行诊断返回格式无效')
   return data
 }

@@ -1,6 +1,8 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { fetchGetTenantList } from '@/api/system-manage'
+import { clearAiProviderCatalogCache } from '@/api/providers/supabase/ai-configuration'
+import { clearSystemParamCache } from '@/hooks/core/system-param/read-system-param'
 import {
   readTenantScopeId,
   writePlatformTenantScopeActive,
@@ -33,11 +35,18 @@ export const useTenantScopeStore = defineStore(
       isAllTenants.value ? '全部租户' : (selectedTenant.value?.tenantName ?? '当前租户')
     )
 
+    const invalidateScopeCaches = (): void => {
+      userStore.clearDictionaryCache()
+      clearSystemParamCache()
+      clearAiProviderCatalogCache()
+    }
+
     const resetForCurrentUser = (): void => {
       const currentUserId = userStore.getUserInfo.userId ?? null
       if (scopeOwnerUserId.value === currentUserId) return
 
       const hadSelectedTenant = selectedTenantId.value !== null
+      invalidateScopeCaches()
       scopeOwnerUserId.value = currentUserId
       selectedTenantId.value = null
       writeTenantScopeId(null)
@@ -74,6 +83,7 @@ export const useTenantScopeStore = defineStore(
           selectedTenantId.value &&
           !tenantOptions.value.some((tenant) => tenant.id === selectedTenantId.value)
         ) {
+          invalidateScopeCaches()
           selectedTenantId.value = null
           writeTenantScopeId(null)
           revision.value += 1
@@ -92,6 +102,7 @@ export const useTenantScopeStore = defineStore(
       }
       if (selectedTenantId.value === tenantId) return
 
+      invalidateScopeCaches()
       selectedTenantId.value = tenantId
       writePlatformTenantScopeActive(true)
       writeTenantScopeId(tenantId)

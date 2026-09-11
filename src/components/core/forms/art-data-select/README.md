@@ -11,6 +11,8 @@
 
 All variants delegate to `index.vue` and share the contracts exported by `types.ts`.
 
+Common defaults live in `defaults.ts`; keep array defaults as factories so instances never share mutable state. Variants override only pagination and selected-panel defaults: table multiple enables both, tree multiple enables the selected panel, and single selectors disable both. The base component keeps pagination enabled and derives selected-panel visibility from `multiple` unless explicitly set.
+
 ## Data contract
 
 - Use `row-key` for the stable record identifier and `label-key` for the primary display text.

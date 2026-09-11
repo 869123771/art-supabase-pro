@@ -64,7 +64,7 @@ export interface CacheItem<T> {
   params: string
   // 缓存标签，用于分组管理
   tags: Set<string>
-  // 访问次数（用于 LRU 算法）
+  // 访问次数（用于统计；LRU 使用 Map 的访问顺序）
   accessCount: number
   // 最后访问时间
   lastAccessTime: number
@@ -76,9 +76,16 @@ export class TableCache<T> {
   private cacheTime: number
   private maxSize: number
   private enableLog: boolean
+  private nextExpiry = Infinity
 
   constructor(cacheTime = 5 * 60 * 1000, maxSize = 50, enableLog = false) {
     // 默认5分钟，最多50条缓存
+    if (!Number.isFinite(cacheTime) || cacheTime < 0) {
+      throw new RangeError('缓存有效期必须是非负有限数值')
+    }
+    if (!Number.isSafeInteger(maxSize) || maxSize < 0) {
+      throw new RangeError('缓存容量必须是非负安全整数')
+    }
     this.cacheTime = cacheTime
     this.maxSize = maxSize
     this.enableLog = enableLog
@@ -97,54 +104,38 @@ export class TableCache<T> {
   }
 
   // 🔧 优化：增强类型安全性
-  private generateTags(params: Record<string, unknown>): Set<string> {
+  private generateTags(value: unknown): Set<string> {
+    const params = value && typeof value === 'object' ? value : {}
     const tags = new Set<string>()
 
     // 添加搜索条件标签
-    const searchKeys = Object.keys(params).filter(
-      (key) =>
+    const searchEntries = Object.entries(params).filter(
+      ([key, value]) =>
         !['current', 'size', 'total'].includes(key) &&
-        params[key] !== undefined &&
-        params[key] !== '' &&
-        params[key] !== null
+        value !== undefined &&
+        value !== '' &&
+        value !== null
     )
 
-    if (searchKeys.length > 0) {
-      const searchTag = searchKeys.map((key) => `${key}:${String(params[key])}`).join('|')
+    if (searchEntries.length > 0) {
+      const searchTag = hash(Object.fromEntries(searchEntries))
       tags.add(`search:${searchTag}`)
     } else {
       tags.add('search:default')
     }
 
     // 添加分页标签
-    tags.add(`pagination:${params.size || 10}`)
+    tags.add(`pagination:${('size' in params && params.size) || 10}`)
     // 添加通用分页标签，用于清理所有分页缓存
     tags.add('pagination')
 
     return tags
   }
 
-  // 🔧 优化：LRU 缓存清理
+  // 淘汰顺序由 Map 维护，无需遍历比较访问频次。
   private evictLRU(): void {
-    if (this.cache.size <= this.maxSize) return
-
-    // 找到最少使用的缓存项
-    let lruKey = ''
-    let minAccessCount = Infinity
-    let oldestTime = Infinity
-
-    for (const [key, item] of this.cache.entries()) {
-      if (
-        item.accessCount < minAccessCount ||
-        (item.accessCount === minAccessCount && item.lastAccessTime < oldestTime)
-      ) {
-        lruKey = key
-        minAccessCount = item.accessCount
-        oldestTime = item.lastAccessTime
-      }
-    }
-
-    if (lruKey) {
+    while (this.cache.size > this.maxSize) {
+      const lruKey = this.cache.keys().next().value!
       this.cache.delete(lruKey)
       this.log(`LRU 清理缓存: ${lruKey}`)
     }
@@ -152,12 +143,14 @@ export class TableCache<T> {
 
   // 设置缓存
   set(params: unknown, data: T[], response: ApiResponse<T>): void {
+    if (this.maxSize === 0 || this.cacheTime === 0) return
     const key = this.generateKey(params)
-    const tags = this.generateTags(params as Record<string, unknown>)
+    const tags = this.generateTags(params)
     const now = Date.now()
 
     // 检查是否需要清理
-    this.evictLRU()
+    this.cache.delete(key)
+    if (this.cache.size >= this.maxSize && now >= this.nextExpiry) this.cleanupExpired()
 
     this.cache.set(key, {
       data,
@@ -168,6 +161,8 @@ export class TableCache<T> {
       accessCount: 1,
       lastAccessTime: now
     })
+    this.nextExpiry = Math.min(this.nextExpiry, now + this.cacheTime)
+    this.evictLRU()
   }
 
   // 获取缓存
@@ -178,7 +173,7 @@ export class TableCache<T> {
     if (!item) return null
 
     // 检查是否过期
-    if (Date.now() - item.timestamp > this.cacheTime) {
+    if (Date.now() - item.timestamp >= this.cacheTime) {
       this.cache.delete(key)
       return null
     }
@@ -186,6 +181,9 @@ export class TableCache<T> {
     // 更新访问统计
     item.accessCount++
     item.lastAccessTime = Date.now()
+    // Map insertion order is the LRU list, including accesses in the same millisecond.
+    this.cache.delete(key)
+    this.cache.set(key, item)
 
     return item
   }
@@ -196,9 +194,7 @@ export class TableCache<T> {
 
     for (const [key, item] of this.cache.entries()) {
       // 检查是否包含任意一个标签
-      const hasMatchingTag = tags.some((tag) =>
-        Array.from(item.tags).some((itemTag) => itemTag.includes(tag))
-      )
+      const hasMatchingTag = tags.some((tag) => item.tags.has(tag))
 
       if (hasMatchingTag) {
         this.cache.delete(key)
@@ -224,6 +220,7 @@ export class TableCache<T> {
   // 清空所有缓存
   clear(): void {
     this.cache.clear()
+    this.nextExpiry = Infinity
   }
 
   // 获取缓存统计信息
@@ -253,11 +250,14 @@ export class TableCache<T> {
   cleanupExpired(): number {
     let cleanedCount = 0
     const now = Date.now()
+    this.nextExpiry = Infinity
 
     for (const [key, item] of this.cache.entries()) {
-      if (now - item.timestamp > this.cacheTime) {
+      if (now - item.timestamp >= this.cacheTime) {
         this.cache.delete(key)
         cleanedCount++
+      } else {
+        this.nextExpiry = Math.min(this.nextExpiry, item.timestamp + this.cacheTime)
       }
     }
 

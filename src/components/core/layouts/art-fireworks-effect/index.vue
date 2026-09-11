@@ -531,6 +531,7 @@
      * 启动动画循环
      */
     start(): void {
+      if (this.animationId) return
       this.animate()
     }
 
@@ -557,6 +558,8 @@
 
   /** 烟花系统实例 */
   const fireworkSystem = new FireworkSystem()
+  let isComponentMounted = true
+  let isInitialized = false
 
   /**
    * 处理键盘快捷键
@@ -610,23 +613,31 @@
     // 设置初始画布大小
     resizeCanvas()
 
+    // 监听器必须在异步预加载前注册，确保它们归属当前组件作用域。
+    useEventListener(window, 'keydown', handleKeyPress)
+    useEventListener(window, 'resize', resizeCanvas)
+    mittBus.on('triggerFireworks', handleFireworkTrigger)
+
     // 预加载所有图片资源
     await fireworkSystem.preloadAllImages()
+    if (!isComponentMounted) return
+    isInitialized = true
 
     // 启动动画循环
     fireworkSystem.start()
-
-    // 注册事件监听器
-    useEventListener(window, 'keydown', handleKeyPress) // 键盘快捷键
-    useEventListener(window, 'resize', resizeCanvas) // 窗口大小变化
-    mittBus.on('triggerFireworks', handleFireworkTrigger) // 外部触发事件
   })
+
+  onActivated(() => {
+    if (isInitialized) fireworkSystem.start()
+  })
+  onDeactivated(() => fireworkSystem.stop())
 
   /**
    * 组件卸载时的清理逻辑
    * 停止动画循环并移除事件监听器，防止内存泄漏
    */
   onUnmounted(() => {
+    isComponentMounted = false
     fireworkSystem.stop()
     mittBus.off('triggerFireworks', handleFireworkTrigger)
   })

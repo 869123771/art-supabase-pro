@@ -23,43 +23,16 @@
 </template>
 
 <script setup lang="ts">
+  import { dataSelectDefaults } from './defaults'
   import ArtDataSelect from './index.vue'
   import type { ArtDataSelectEmits, ArtDataSelectExpose, ArtDataSelectSingleProps } from './types'
 
   defineOptions({ name: 'ArtTableSingleSelect' })
 
   const props = withDefaults(defineProps<ArtDataSelectSingleProps>(), {
-    data: () => [],
-    selectedData: () => [],
-    columns: () => [],
-    title: '选择数据',
-    subtitle: '',
-    placeholder: '请选择',
-    searchPlaceholder: '请输入关键词',
-    filterPlaceholder: '请选择分类',
-    filterKey: 'type',
-    filterOptions: () => [],
-    rowKey: 'id',
-    labelKey: 'label',
-    descriptionKey: undefined,
-    disabledKey: 'disabled',
-    childrenKey: 'children',
-    resultField: 'data',
-    totalField: 'total',
-    dialogWidth: 'xl',
-    fullscreen: false,
-    pageSize: 10,
-    pageSizes: () => [10, 20, 30, 50],
+    ...dataSelectDefaults,
     showPagination: false,
-    showSearch: true,
-    showSelectedPanel: false,
-    clearable: true,
-    disabled: false,
-    reserveSelected: true,
-    treeCheckStrictly: true,
-    maxTagCount: 2,
-    emptyText: '暂无数据',
-    emptyDescription: ''
+    showSelectedPanel: false
   })
   const emit = defineEmits<ArtDataSelectEmits>()
   const selectRef = ref<ArtDataSelectExpose>()

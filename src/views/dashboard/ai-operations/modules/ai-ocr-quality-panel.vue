@@ -15,7 +15,7 @@
             />
             {{ isPlatformSuper ? '阈值可调' : '只读观察' }}
           </ElTag>
-          <ElTooltip content="刷新 OCR 质量" placement="bottom">
+          <ArtTooltip content="刷新 OCR 质量" placement="bottom">
             <ArtIconButton
               icon="ri:refresh-line"
               circle
@@ -23,7 +23,7 @@
               :loading="state.loading"
               @click="loadData"
             />
-          </ElTooltip>
+          </ArtTooltip>
         </div>
       </header>
     </template>

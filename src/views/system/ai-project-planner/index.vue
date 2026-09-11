@@ -23,7 +23,7 @@
             <span>{{ toolbarSubtitle }}</span>
           </div>
           <div class="ai-planner__toolbar-actions">
-            <ElTooltip content="刷新建议" placement="bottom">
+            <ArtTooltip content="刷新建议" placement="bottom">
               <ArtIconButton
                 icon="ri:refresh-line"
                 circle
@@ -31,7 +31,7 @@
                 :loading="loading.state"
                 @click="loadState(true)"
               />
-            </ElTooltip>
+            </ArtTooltip>
             <ElSegmented v-model="filters.status" :options="statusFilterOptions" />
           </div>
         </header>

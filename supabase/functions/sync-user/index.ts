@@ -156,14 +156,17 @@ function isPlatformSuper(profile: CallerProfile | null) {
   )
 }
 
-async function isProtectedPlatformSuperUser(snapshot: Record<string, any>): Promise<boolean> {
+async function isProtectedPlatformSuperUser(snapshot: Record<string, unknown>): Promise<boolean> {
   if (String(snapshot.user_email || '').toLowerCase() === '869123771@qq.com') return true
-  const roleCodes = Array.isArray(snapshot.user_roles) ? snapshot.user_roles : []
-  if (!roleCodes.length) return false
+  const roleCodes = Array.isArray(snapshot.user_roles)
+    ? snapshot.user_roles.filter((role): role is string => typeof role === 'string')
+    : []
+  const tenantId = typeof snapshot.tenant_id === 'string' ? snapshot.tenant_id : ''
+  if (!roleCodes.length || !tenantId) return false
   const { data } = await supabaseDB
     .from('sys_role')
     .select('id')
-    .eq('tenant_id', snapshot.tenant_id)
+    .eq('tenant_id', tenantId)
     .eq('builtin_type', 'platform_super')
     .in('role_code', roleCodes)
     .limit(1)
@@ -225,9 +228,10 @@ async function validateEmployeeLink(
   if (accountError) return '员工账号关联校验失败，请稍后重试'
   return linkedUsers?.length ? '所选员工已开通登录账号' : null
 }
-function getFriendlyErrorMessage(error: any, action: string): string {
-  const errorMsg = error?.message || String(error)
-  const errorCode = error?.code || ''
+function getFriendlyErrorMessage(error: unknown, action: string): string {
+  const errorRecord = error && typeof error === 'object' ? error as Record<string, unknown> : null
+  const errorMsg = typeof errorRecord?.message === 'string' ? errorRecord.message : String(error)
+  const errorCode = typeof errorRecord?.code === 'string' ? errorRecord.code : ''
   const isPermissionError =
     errorMsg.toLowerCase().includes('permission denied') ||
     errorMsg.toLowerCase().includes('row-level security') ||

@@ -9,7 +9,7 @@
   >
     <div
       class="project-assistant business-workspace-page art-full-height"
-      :class="{ 'is-focus-mode': focusMode }"
+      :class="[{ 'is-focus-mode': focusMode }, `is-mobile-panel-${mobilePanel}`]"
     >
       <BusinessWorkspaceHeader
         v-if="!focusMode"
@@ -51,9 +51,31 @@
         </button>
       </section>
 
+      <nav class="project-assistant__mobile-nav art-card-xs" aria-label="AI 助手工作区">
+        <button
+          v-for="item in mobilePanels"
+          :key="item.key"
+          type="button"
+          :class="{ 'is-active': mobilePanel === item.key }"
+          :disabled="item.key === 'detail' && !selectedObject"
+          :aria-pressed="mobilePanel === item.key"
+          :title="item.key === 'detail' && !selectedObject ? '请先选择数据库对象' : undefined"
+          @click="mobilePanel = item.key"
+        >
+          <ArtSvgIcon :icon="item.icon" aria-hidden="true" />
+          <span>{{ item.label }}</span>
+        </button>
+      </nav>
+
       <section class="project-assistant__workspace">
         <ElSplitter class="project-assistant__splitter" lazy>
-          <ElSplitterPanel size="280px" min="240px" max="400px" collapsible>
+          <ElSplitterPanel
+            class="project-assistant__object-panel"
+            size="280px"
+            min="240px"
+            max="400px"
+            collapsible
+          >
             <ProjectAssistantObjectBrowser
               :focus-mode="focusMode"
               :schemas="schemas"
@@ -66,14 +88,18 @@
               @toggle-focus="toggleFocusMode"
               @refresh="loadObjects('refresh')"
               @filter="loadObjects('filter')"
-              @select="selectObject"
+              @select="handleObjectSelect"
               @update:keyword="filters.keyword = $event"
               @update:schema="filters.schema = $event"
               @update:object-type="filters.objectType = $event"
             />
           </ElSplitterPanel>
 
-          <ElSplitterPanel min="380px">
+          <ElSplitterPanel
+            v-if="selectedObject"
+            class="project-assistant__detail-panel"
+            min="380px"
+          >
             <ProjectAssistantObjectDetail
               :selected-object="selectedObject"
               :detail="detail"
@@ -83,14 +109,20 @@
               :assistant-mode="assistantMode"
               :can-edit-description="canEditSelectedDescription"
               :chat-sending="chat.sending"
-              @analyze="runObjectAnalysis"
+              @analyze="handleObjectAnalysis"
               @edit-description="editObjectDescription"
               @copy-ddl="copyDdl"
-              @retry="selectObject"
+              @retry="handleObjectSelect"
             />
           </ElSplitterPanel>
 
-          <ElSplitterPanel size="390px" min="320px" max="540px" collapsible>
+          <ElSplitterPanel
+            class="project-assistant__chat-panel"
+            :size="selectedObject ? '390px' : undefined"
+            min="320px"
+            max="540px"
+            collapsible
+          >
             <ProjectAssistantChatPanel
               ref="chatPanelRef"
               :chat="chat"
@@ -142,11 +174,12 @@
 
 <script setup lang="ts">
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
-  import { useEventListener, useStorage } from '@vueuse/core'
+  import { useEventListener, useMediaQuery, useStorage } from '@vueuse/core'
   import { ElMessage } from 'element-plus'
   import { updateProjectObjectDescription } from '@/api/supabase-ai-assistant'
   import type {
     ProjectAssistantConversationSummary,
+    ProjectDatabaseObject,
     ProjectAssistantSafetyMode,
     ProjectEdgeFunctionResult,
     ProjectObjectType
@@ -160,7 +193,8 @@
   import ProjectAssistantObjectDetail from './modules/project-assistant-object-detail.vue'
   import {
     getProjectAssistantStats,
-    type ProjectAssistantChatMessage
+    type ProjectAssistantChatMessage,
+    type ProjectAssistantObjectAiAction
   } from './modules/project-assistant-presenter'
   import { useProjectAssistantCatalog } from './modules/use-project-assistant-catalog'
   import { useProjectAssistantChat } from './modules/use-project-assistant-chat'
@@ -181,6 +215,8 @@
   interface ChatPanelExpose {
     scrollToBottom: () => void
   }
+
+  type MobilePanel = 'objects' | 'detail' | 'chat'
 
   const {
     detail,
@@ -203,6 +239,8 @@
   const chatPanelRef = ref<ChatPanelExpose>()
   const historyDrawerRef = ref<HistoryDrawerExpose>()
   const capabilityCenterRef = ref<CapabilityCenterExpose>()
+  const isCompactWorkspace = useMediaQuery('(width <= 900px)')
+  const mobilePanel = ref<MobilePanel>('objects')
   const focusMode = useStorage('supabase-ai-assistant:focus-mode', false)
   const assistantMode = useStorage<ProjectAssistantSafetyMode>(
     'supabase-ai-assistant:safety-mode',
@@ -245,15 +283,32 @@
       ['table', 'view', 'materialized_view'].includes(selectedObject.value?.objectType || '')
   )
   const stats = computed(() => getProjectAssistantStats(overview.value, edgeFunctions.value))
+  const mobilePanels: Array<{ key: MobilePanel; label: string; icon: string }> = [
+    { key: 'objects', label: '对象', icon: 'ri:database-2-line' },
+    { key: 'detail', label: '详情', icon: 'ri:file-search-line' },
+    { key: 'chat', label: '助手', icon: 'ri:sparkling-2-line' }
+  ]
 
   function selectStat(type: ProjectObjectType): void {
     if (type === 'all') {
+      if (isCompactWorkspace.value) mobilePanel.value = 'chat'
       chat.input = '列出项目 Edge Functions，并指出未启用 JWT 校验的函数'
       void sendMessage()
       return
     }
+    if (isCompactWorkspace.value) mobilePanel.value = 'objects'
     filters.objectType = type
     void loadObjects('filter')
+  }
+
+  function handleObjectSelect(item: ProjectDatabaseObject): void {
+    if (isCompactWorkspace.value) mobilePanel.value = 'detail'
+    void selectObject(item)
+  }
+
+  function handleObjectAnalysis(action?: ProjectAssistantObjectAiAction): void {
+    runObjectAnalysis(action)
+    if (action && isCompactWorkspace.value) mobilePanel.value = 'chat'
   }
 
   async function toggleAssistantMode(): Promise<boolean> {
@@ -495,6 +550,10 @@
       min-height: 0;
     }
 
+    &__mobile-nav {
+      display: none;
+    }
+
     &.is-focus-mode {
       gap: 8px;
     }
@@ -598,32 +657,79 @@
         height: auto;
       }
 
+      &__mobile-nav {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: var(--art-space-1);
+        padding: var(--art-space-1);
+
+        button {
+          display: inline-flex;
+          gap: var(--art-space-2);
+          align-items: center;
+          justify-content: center;
+          min-width: 0;
+          min-height: 44px;
+          padding-inline: var(--art-space-2);
+          font: inherit;
+          color: var(--el-text-color-secondary);
+          cursor: pointer;
+          background: transparent;
+          border: 0;
+          border-radius: var(--art-control-radius);
+          transition:
+            color 0.18s ease,
+            background-color 0.18s ease,
+            box-shadow 0.18s ease;
+
+          &:hover {
+            color: var(--theme-color);
+            background: color-mix(in srgb, var(--theme-color) 6%, transparent);
+          }
+
+          &:focus-visible {
+            outline: 2px solid color-mix(in srgb, var(--theme-color) 55%, transparent);
+            outline-offset: 1px;
+          }
+
+          &:disabled {
+            color: var(--el-text-color-placeholder);
+            cursor: not-allowed;
+            background: transparent;
+            opacity: 0.64;
+          }
+
+          &.is-active {
+            font-weight: 600;
+            color: var(--theme-color);
+            background: color-mix(in srgb, var(--theme-color) 10%, var(--default-box-color));
+            box-shadow: inset 0 -2px 0 var(--theme-color);
+          }
+        }
+      }
+
       &__splitter {
         display: block;
         height: auto;
 
         :deep(.el-splitter-panel) {
+          display: none;
           width: 100% !important;
-          height: 560px;
-          margin-bottom: 12px;
-          overflow: visible;
+          height: min(680px, calc(100dvh - 132px));
+          min-height: 520px;
+          margin: 0;
+          overflow: hidden;
         }
 
         :deep(.el-splitter-bar) {
           display: none;
         }
+      }
 
-        :deep(.el-splitter-panel:has(.project-assistant-object-browser)) {
-          height: 420px;
-        }
-
-        :deep(.el-splitter-panel:has(.project-assistant__detail)) {
-          height: 600px;
-        }
-
-        :deep(.el-splitter-panel:has(.project-assistant__chat)) {
-          height: 680px;
-        }
+      &.is-mobile-panel-objects :deep(.project-assistant__object-panel),
+      &.is-mobile-panel-detail :deep(.project-assistant__detail-panel),
+      &.is-mobile-panel-chat :deep(.project-assistant__chat-panel) {
+        display: block;
       }
     }
 
@@ -631,17 +737,27 @@
       gap: var(--art-space-3);
 
       &__stats {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        display: flex;
         gap: var(--art-space-1);
         padding: var(--art-space-2);
+        overflow-x: auto;
+        overscroll-behavior-inline: contain;
+        scrollbar-width: none;
+
+        &::-webkit-scrollbar {
+          display: none;
+        }
 
         button {
-          min-width: 0;
-          min-height: 64px;
+          flex: 0 0 112px;
+          min-width: 112px;
+          min-height: 56px;
           padding-inline: var(--art-space-2);
 
           > span {
             flex: 0 0 auto;
+            width: 28px;
+            height: 28px;
           }
 
           > div {
@@ -654,6 +770,12 @@
             }
           }
         }
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      &__mobile-nav button {
+        transition: none;
       }
     }
   }

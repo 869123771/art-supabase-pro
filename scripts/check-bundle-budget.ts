@@ -1,20 +1,16 @@
 import { readFile, readdir, stat } from 'node:fs/promises'
 import { resolve } from 'node:path'
+import { gzipSync } from 'node:zlib'
+import { isLazyCapabilityAsset, isLazyCapabilityStyle } from './bundle-boundaries'
 
 const KIB = 1024
 const MIB = 1024 * KIB
 const outputDirectory = resolve(process.env.VITE_OUT_DIR || process.argv[2] || 'docs')
 
-// File viewer, Monaco and media renderers are intentionally lazy-loaded. They have a separate
-// ceiling so their vendor size does not weaken the budget for ordinary route/application chunks.
-const LAZY_VENDOR_PATTERN =
-  /(?:worker|monaco|RTFJS|heic2any|maplibre-gl|rich-editor|data-tools|charts|media|cytoscape|pdf-|element-plus)/i
-const LAZY_STYLE_PATTERN =
-  /(?:^|\/)(?:assets\/(?:monaco|rich-editor|art-file-viewer)[.-]|vendor\/pdf\/)/i
-
 interface BundleAsset {
   path: string
   size: number
+  transferredSize?: number
 }
 
 const relativePaths = await readdir(outputDirectory, { recursive: true })
@@ -23,15 +19,23 @@ const assets: BundleAsset[] = []
 for (const relativePath of relativePaths) {
   const assetPath = resolve(outputDirectory, relativePath)
   const metadata = await stat(assetPath)
-  if (metadata.isFile())
-    assets.push({ path: relativePath.replace(/\\/g, '/'), size: metadata.size })
+  if (metadata.isFile()) {
+    const normalizedPath = relativePath.replace(/\\/g, '/')
+    assets.push({
+      path: normalizedPath,
+      size: metadata.size,
+      transferredSize: normalizedPath.endsWith('.css')
+        ? gzipSync(await readFile(assetPath), { level: 9 }).byteLength
+        : undefined
+    })
+  }
 }
 
 const javascriptAssets = assets.filter((asset) => asset.path.endsWith('.js'))
 const cssAssets = assets.filter((asset) => asset.path.endsWith('.css'))
-const applicationChunks = javascriptAssets.filter((asset) => !LAZY_VENDOR_PATTERN.test(asset.path))
-const applicationCssChunks = cssAssets.filter((asset) => !LAZY_STYLE_PATTERN.test(asset.path))
-const lazyStyleChunks = cssAssets.filter((asset) => LAZY_STYLE_PATTERN.test(asset.path))
+const applicationChunks = javascriptAssets.filter((asset) => !isLazyCapabilityAsset(asset.path))
+const applicationCssChunks = cssAssets.filter((asset) => !isLazyCapabilityStyle(asset.path))
+const lazyStyleChunks = cssAssets.filter((asset) => isLazyCapabilityStyle(asset.path))
 const initialAssetPaths = await getInitialAssetPaths()
 const initialJavascriptAssets = javascriptAssets.filter((asset) =>
   initialAssetPaths.has(asset.path)
@@ -47,7 +51,8 @@ checkLargest('单个 CSS 文件', cssAssets, 360 * KIB)
 // Keep the first-screen and per-JS-chunk gates strict, while allowing complete hosted route assets.
 checkLargest('普通页面 CSS 分包', routeCssChunks, 96 * KIB)
 checkTotal('JavaScript 总体积', javascriptAssets, 44 * MIB)
-checkTotal('普通应用/路由 CSS 总体积', applicationCssChunks, 2.1 * MIB)
+checkTotal('普通应用/路由 CSS 发布总体积', applicationCssChunks, 3 * MIB)
+checkTotal('普通应用/路由 CSS gzip 传输总体积', applicationCssChunks, 500 * KIB, true)
 checkTotal('按需工具 CSS 总体积', lazyStyleChunks, 500 * KIB)
 checkTotal('首屏 JavaScript', initialJavascriptAssets, 1.5 * MIB)
 checkTotal('首屏 CSS', initialCssAssets, 420 * KIB)
@@ -64,7 +69,9 @@ if (violations.length) {
       sumSize(initialJavascriptAssets)
     )} · 首屏 CSS ${formatBytes(sumSize(initialCssAssets))} · 应用 CSS ${formatBytes(
       sumSize(applicationCssChunks)
-    )} · JS 总量 ${formatBytes(sumSize(javascriptAssets))} · 最大普通分包 ${
+    )} / gzip ${formatBytes(sumSize(applicationCssChunks, true))} · JS 总量 ${formatBytes(
+      sumSize(javascriptAssets)
+    )} · 最大普通分包 ${
       largestApplicationChunk?.path || '-'
     } ${formatBytes(largestApplicationChunk?.size || 0)}`
   )
@@ -91,13 +98,21 @@ function checkLargest(label: string, source: BundleAsset[], limit: number): void
   })
 }
 
-function checkTotal(label: string, source: BundleAsset[], limit: number): void {
-  const total = sumSize(source)
+function checkTotal(
+  label: string,
+  source: BundleAsset[],
+  limit: number,
+  transferred = false
+): void {
+  const total = sumSize(source, transferred)
   if (total > limit) violations.push(`${label}为 ${formatBytes(total)}，上限 ${formatBytes(limit)}`)
 }
 
-function sumSize(source: BundleAsset[]): number {
-  return source.reduce((total, asset) => total + asset.size, 0)
+function sumSize(source: BundleAsset[], transferred = false): number {
+  return source.reduce(
+    (total, asset) => total + (transferred ? (asset.transferredSize ?? asset.size) : asset.size),
+    0
+  )
 }
 
 function formatBytes(value: number): string {

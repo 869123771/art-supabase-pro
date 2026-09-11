@@ -73,6 +73,7 @@
 
   const { t } = useI18n()
   const router = useRouter()
+  const route = useRoute()
   const {
     passwordMinLength,
     loadPasswordPolicy,
@@ -84,10 +85,6 @@
   const loading = ref(false)
 
   const formRef = ref<FormInstance>()
-  interface SupabaseResetParams {
-    accessToken: string
-    refreshToken: string
-  }
 
   const form = ref({
     password: '',
@@ -162,15 +159,12 @@
     await formRef.value?.validate()
     try {
       loading.value = true
-      const resetParams = parseSupabaseResetParams()
-      if (!resetParams) {
+      if (route.query.auth_action !== 'recovery') {
         ElMessage.error('无效或已过期的重置链接')
         return
       }
       const params: Api.Auth.ResetPwdParams = {
-        password: form.value.password,
-        accessToken: resetParams.accessToken,
-        refreshToken: resetParams.refreshToken
+        password: form.value.password
       }
       const { error } = await resetPassword(params)
       if (!error) {
@@ -184,62 +178,6 @@
       }
     } finally {
       loading.value = false
-    }
-  }
-
-  /**
-   * 解析 Vue hash 路由 + Supabase token 的复杂 URL
-   * @returns {Object} 包含 access_token, expires_at, type 等参数
-   */
-  const parseSupabaseResetParams = (): SupabaseResetParams | null => {
-    // 获取完整 hash，例如 "#/auth/reset-password#access_token=eyJhbGci..."
-    const fullHash = window.location.hash
-
-    // 查找最后一个 '#' 的位置
-    const lastHashIndex = fullHash.lastIndexOf('#')
-
-    if (lastHashIndex === -1 || lastHashIndex === fullHash.length - 1) {
-      return null
-    }
-
-    // 提取真正的查询参数部分
-    // 例如: "#access_token=eyJhbGci..." -> "access_token=eyJhbGci..."
-    const paramsPart = fullHash.substring(lastHashIndex + 1)
-
-    try {
-      // 使用 URLSearchParams 解析
-      const params = new URLSearchParams(paramsPart)
-
-      // 提取关键参数
-      const accessToken = params.get('access_token')
-      const type = params.get('type')
-      const expiresAt = params.get('expires_at')
-      const refreshToken = params.get('refresh_token')
-
-      // 验证必要参数
-      if (!accessToken || !type) {
-        return null
-      }
-
-      // 检查是否为重置密码类型
-      if (type !== 'recovery') {
-        return null
-      }
-
-      // 检查过期时间
-      if (expiresAt) {
-        const expiresTimestamp = parseInt(expiresAt) * 1000 // 转换为毫秒
-        if (Date.now() > expiresTimestamp) {
-          return null
-        }
-      }
-
-      return {
-        accessToken,
-        refreshToken: refreshToken || ''
-      }
-    } catch {
-      return null
     }
   }
 

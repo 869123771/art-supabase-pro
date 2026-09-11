@@ -28,50 +28,39 @@
                 <div class="execution-info" v-if="result?.durationMs">
                   <span class="duration">耗时 {{ result.durationMs }}ms</span>
                 </div>
-                <el-tooltip
-                  content="AI 写 SQL (Ctrl/Cmd + I)"
-                  placement="top"
-                  :offset="8"
-                  :show-arrow="false"
-                >
+                <ArtTooltip content="AI 写 SQL (Ctrl/Cmd + I)" placement="top" :offset="8">
                   <ArtIconButton
                     @click="openAiDialog(aiErrorContext ? 'fix' : 'generate')"
                     icon="ri-robot-2-line"
                     class="!size-6.5"
                   />
-                </el-tooltip>
-                <el-tooltip
+                </ArtTooltip>
+                <ArtTooltip
                   v-if="!executing"
                   content="执行 (Shift + Enter)"
                   placement="top"
                   :offset="8"
-                  :show-arrow="false"
                 >
                   <ArtIconButton
                     @click="() => handleExecute()"
                     icon="ri-play-line"
                     class="!size-6.5"
                   />
-                </el-tooltip>
-                <el-tooltip v-else content="执行中" placement="top" :offset="8" :show-arrow="false">
+                </ArtTooltip>
+                <ArtTooltip v-else content="执行中" placement="top" :offset="8">
                   <ArtIconButton
                     @click="() => handleExecute()"
                     icon="ri-loader-2-line"
                     :loading="executing"
                     class="size-6.5! animate-spin duration-3000"
                   />
-                </el-tooltip>
-                <el-tooltip
-                  content="格式化 SQL (Ctrl/Cmd + Shift + F)"
-                  placement="top"
-                  :offset="8"
-                  :show-arrow="false"
-                >
+                </ArtTooltip>
+                <ArtTooltip content="格式化 SQL (Ctrl/Cmd + Shift + F)" placement="top" :offset="8">
                   <ArtIconButton @click="handleFormat" icon="ri-magic-line" class="size-6.5!" />
-                </el-tooltip>
-                <el-tooltip content="清空" placement="top" :offset="8" :show-arrow="false">
+                </ArtTooltip>
+                <ArtTooltip content="清空" placement="top" :offset="8">
                   <ArtIconButton @click="handleClear" icon="ri-close-line" class="size-6.5!" />
-                </el-tooltip>
+                </ArtTooltip>
               </div>
             </div>
             <ElScrollbar class="tabs-content">

@@ -20,12 +20,11 @@
       aria-hidden="true"
     />
   </button>
-  <ElTooltip
+  <ArtTooltip
     v-else
     :content="label"
     placement="top"
     :show-after="350"
-    :show-arrow="false"
     popper-class="art-tiptap-editor-tooltip"
   >
     <button
@@ -48,7 +47,7 @@
         aria-hidden="true"
       />
     </button>
-  </ElTooltip>
+  </ArtTooltip>
 </template>
 
 <script setup lang="ts">

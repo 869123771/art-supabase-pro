@@ -68,6 +68,151 @@
     color: var(--el-text-color-placeholder);
   }
 
+  .auth-channels {
+    margin-top: 18px;
+  }
+
+  .auth-channels__divider {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 12px;
+    font-size: 12px;
+    color: var(--el-text-color-secondary);
+
+    &::before {
+      position: absolute;
+      right: 0;
+      left: 0;
+      height: 1px;
+      content: '';
+      background: var(--el-border-color-lighter);
+    }
+
+    span {
+      position: relative;
+      padding: 0 12px;
+      background: var(--el-bg-color);
+    }
+  }
+
+  .auth-channels__icons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    justify-content: center;
+    max-height: 94px;
+    padding: 2px 4px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+  }
+
+  .auth-channels__button {
+    --auth-channel-accent: var(--el-color-primary);
+
+    width: 42px;
+    height: 42px;
+    margin: 0;
+    color: var(--auth-channel-accent);
+    background: var(--el-fill-color-blank);
+    border-color: var(--el-border-color-light);
+    box-shadow: 0 5px 14px rgb(31 35 48 / 5%);
+    transition:
+      color 0.2s ease,
+      background-color 0.2s ease,
+      border-color 0.2s ease,
+      box-shadow 0.2s ease,
+      transform 0.2s ease;
+
+    :deep(.art-svg-icon) {
+      font-size: 20px;
+    }
+
+    :deep(.el-icon) {
+      margin: 0;
+      font-size: 17px;
+    }
+
+    .auth-channels__spinner {
+      width: 17px;
+      height: 17px;
+      animation: auth-channel-spin 0.8s linear infinite;
+    }
+
+    &:hover,
+    &:focus-visible {
+      color: var(--auth-channel-accent);
+      background: color-mix(in srgb, var(--auth-channel-accent) 9%, var(--el-bg-color));
+      border-color: color-mix(in srgb, var(--auth-channel-accent) 35%, transparent);
+      box-shadow: 0 8px 18px rgb(31 35 48 / 10%);
+      transform: translateY(-2px);
+    }
+
+    &.is-wechat {
+      --auth-channel-accent: #07c160;
+    }
+
+    &.is-dingtalk,
+    &.is-feishu {
+      --auth-channel-accent: #1677ff;
+    }
+
+    &.is-wecom {
+      --auth-channel-accent: #2bad6f;
+    }
+
+    &.is-google {
+      --auth-channel-accent: #4285f4;
+    }
+
+    &.is-microsoft {
+      --auth-channel-accent: #0078d4;
+    }
+
+    &.is-github {
+      --auth-channel-accent: var(--el-text-color-primary);
+    }
+  }
+
+  .auth-channels__hint {
+    margin: 8px 0 0;
+    font-size: 11px;
+    line-height: 16px;
+    color: var(--el-text-color-secondary);
+    text-align: center;
+  }
+
+  .auth-oauth-error {
+    padding: 9px 11px;
+    margin-top: 14px;
+    background: color-mix(in srgb, var(--el-color-danger) 7%, var(--el-bg-color));
+    border: 1px solid color-mix(in srgb, var(--el-color-danger) 18%, transparent);
+    border-radius: var(--art-control-radius);
+
+    :deep(.el-alert__content) {
+      min-width: 0;
+      padding-right: 18px;
+    }
+
+    :deep(.el-alert__title) {
+      font-size: 12px;
+      line-height: 18px;
+    }
+
+    :deep(.el-alert__icon) {
+      margin-right: 7px;
+      font-size: 15px;
+    }
+
+    :deep(.el-alert__close-btn) {
+      top: 50%;
+      right: 10px;
+      transform: translateY(-50%);
+    }
+  }
+
   .form__trust span {
     display: inline-flex;
     gap: 5px;
@@ -175,6 +320,23 @@
       border-radius: var(--custom-radius);
     }
   }
+
+  .form {
+    .auth-channels__icons {
+      flex-wrap: nowrap;
+      gap: 6px;
+    }
+
+    .auth-channels__button {
+      flex: 0 0 36px;
+      width: 36px;
+      height: 36px;
+
+      :deep(.art-svg-icon) {
+        font-size: 18px;
+      }
+    }
+  }
 }
 
 /* 滑入动画 */
@@ -187,5 +349,11 @@
   to {
     opacity: 1;
     transform: translateX(0);
+  }
+}
+
+@keyframes auth-channel-spin {
+  to {
+    transform: rotate(360deg);
   }
 }

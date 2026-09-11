@@ -345,6 +345,7 @@
 </template>
 
 <script setup lang="ts">
+  import { dataSelectDefaults } from './defaults'
   import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import ArtAsyncState from '@/components/core/feedback/art-async-state/index.vue'
   import { get, isEqual, uniqBy } from 'lodash-es'
@@ -379,39 +380,11 @@
   }
 
   const props = withDefaults(defineProps<ArtDataSelectProps>(), {
+    ...dataSelectDefaults,
     mode: 'table',
     multiple: false,
-    data: () => [],
-    selectedData: () => [],
-    columns: () => [],
-    title: '选择数据',
-    subtitle: '',
-    placeholder: '请选择',
-    searchPlaceholder: '请输入关键词',
-    filterPlaceholder: '请选择分类',
-    filterKey: 'type',
-    filterOptions: () => [],
-    rowKey: 'id',
-    labelKey: 'label',
-    descriptionKey: undefined,
-    disabledKey: 'disabled',
-    childrenKey: 'children',
-    resultField: 'data',
-    totalField: 'total',
-    dialogWidth: 'xl',
-    fullscreen: false,
-    pageSize: 10,
-    pageSizes: () => [10, 20, 30, 50],
     showPagination: true,
-    showSearch: true,
-    showSelectedPanel: undefined,
-    clearable: true,
-    disabled: false,
-    reserveSelected: true,
-    treeCheckStrictly: true,
-    maxTagCount: 2,
-    emptyText: '暂无数据',
-    emptyDescription: ''
+    showSelectedPanel: undefined
   })
 
   const emit = defineEmits<ArtDataSelectEmits>()
@@ -432,9 +405,10 @@
   const page = ref(1)
   const innerPageSize = ref(props.pageSize)
   const total = ref(0)
-  const tableRows = ref<DataSelectRecord[]>([])
-  const confirmedRows = ref<DataSelectRecord[]>([])
-  const draftRows = ref<DataSelectRecord[]>([])
+  // 选择器可能承载大列表；行对象由 API/父组件拥有，数组替换即可驱动视图，无需深层代理。
+  const tableRows = shallowRef<DataSelectRecord[]>([])
+  const confirmedRows = shallowRef<DataSelectRecord[]>([])
+  const draftRows = shallowRef<DataSelectRecord[]>([])
   const syncingSelection = ref(false)
 
   const dialogProps = {

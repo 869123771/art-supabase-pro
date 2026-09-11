@@ -1,4 +1,13 @@
-import { serve } from 'https://deno.land/std@0.201.0/http/server.ts';
+import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
+import { createClient } from 'jsr:@supabase/supabase-js@2'
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
+}
+
+function stringFilter(value: unknown, fallback = ''): string {
+  return typeof value === 'string' ? value : fallback
+}
 
 Deno.serve(async (req: Request) => {
   try {
@@ -33,60 +42,58 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // 🌟 核心修改点：删除了多余的 apikey 请求头，仅保留用户 Token 验证
-    // 验证用户 Token 有效性，获取用户信息
-    const verifyRes = await fetch(
-      `${SUPABASE_URL.replace(/\/$/, '')}/auth/v1/user`,
-      {
-        method: 'GET',
-        headers: { 'Authorization': `Bearer ${token}` } // 移除了 apikey: SERVICE_ROLE
-      }
-    );
-
-    if (!verifyRes.ok) {
+    const anonKey = Deno.env.get('SUPABASE_ANON_KEY')
+    if (!anonKey) {
+      return new Response(JSON.stringify({ success: false, error: 'Server misconfigured' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      })
+    }
+    const userClient = createClient(SUPABASE_URL, anonKey, {
+      global: { headers: { Authorization: authHeader } },
+      auth: { autoRefreshToken: false, persistSession: false }
+    })
+    const { data: userData, error: userError } = await userClient.auth.getUser(token)
+    if (userError || !userData.user) {
       return new Response(
         JSON.stringify({ success: false, error: 'Invalid token or unable to verify' }),
         { status: 401, headers: { 'Content-Type': 'application/json' } }
       );
     }
-    const user = await verifyRes.json();
-
-    // 管理员权限校验（已兼容你配置的 user_metadata.is_admin = true）
-    const isAdmin = 
-      (user?.role === 'admin') || 
-      (user?.app_metadata && user.app_metadata.role === 'admin') || 
-      (user?.user_metadata && user.user_metadata.is_admin === true) || 
-      false;
-    
-    if (!isAdmin) {
+    const { data: isSuper, error: permissionError } = await userClient.rpc('current_is_super')
+    if (permissionError || isSuper !== true) {
       return new Response(
-        JSON.stringify({ success: false, error: 'Forbidden: admin role required' }),
+        JSON.stringify({ success: false, error: 'Forbidden: platform super role required' }),
         { status: 403, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
     // 解析前端传入的过滤条件
-    let filters: any = {};
+    let filters: Record<string, unknown> = {};
     if (method === 'GET') {
       url.searchParams.forEach((v, k) => { filters[k] = v; });
     } else if (method === 'POST') {
       try {
-        filters = await req.json();
+        const parsed: unknown = await req.json();
+        filters = isRecord(parsed) ? parsed : {};
       } catch {
         filters = {};
       }
     }
 
     // 提取并格式化日志查询参数
-    const service = (filters.service || 'postgres');
-    const limit = Math.min(Number(filters.limit || 100), 1000);
+    const service = stringFilter(filters.service, 'postgres');
+    const requestedLimit = Number(filters.limit ?? 100)
+    const limit = Number.isFinite(requestedLimit)
+      ? Math.max(1, Math.min(Math.trunc(requestedLimit), 1000))
+      : 100
     const since = filters.since;
     const until = filters.until;
     const level = filters.level;
     const status_code = filters.status_code;
     const function_id = filters.function_id;
     const query_text = filters.query_text;
-    const order = (filters.order || 'desc').toLowerCase();
+    const order = stringFilter(filters.order, 'desc').toLowerCase();
 
     // 构造 Supabase Logs API 请求
     const logsBase = `${SUPABASE_URL.replace(/\/$/, '')}/logs/v1`;
@@ -115,28 +122,32 @@ Deno.serve(async (req: Request) => {
     }
 
     // 解析日志响应数据（兼容多种返回格式）
-    let payload: any;
+    let payload: unknown;
     try {
       payload = await logsRes.json();
     } catch {
       payload = await logsRes.text();
     }
 
-    let entries: any[] = [];
+    let entries: unknown[] = [];
     if (Array.isArray(payload)) entries = payload;
-    else if (payload && Array.isArray(payload.logs)) entries = payload.logs;
-    else if (payload && payload.rows && Array.isArray(payload.rows)) entries = payload.rows;
+    else if (isRecord(payload) && Array.isArray(payload.logs)) entries = payload.logs;
+    else if (isRecord(payload) && Array.isArray(payload.rows)) entries = payload.rows;
     else if (typeof payload === 'string') entries = payload.split('\n').filter(Boolean).map((l) => ({ line: l }));
 
     // 二次精细过滤日志数据
     const total_before = entries.length;
     const statusCodes = (typeof status_code === 'string') 
-      ? status_code.split(',').map((s: any) => s.trim()) 
-      : (Array.isArray(status_code) ? status_code : null);
+      ? status_code.split(',').map((value) => value.trim())
+      : (Array.isArray(status_code)
+          ? status_code.filter((value): value is string => typeof value === 'string')
+          : null);
 
-    const filtered = entries.filter((e: any) => {
+    const filtered = entries.filter((rawEntry) => {
+      const e = isRecord(rawEntry) ? rawEntry : { value: rawEntry }
       const text = JSON.stringify(e).toLowerCase();
-      if (level && !(String(e.level || '').toLowerCase() === level.toLowerCase() || text.includes(`\"level\":\"${level.toLowerCase()}\"`))) return false;
+      const normalizedLevel = stringFilter(level).toLowerCase()
+      if (normalizedLevel && !(String(e.level || '').toLowerCase() === normalizedLevel || text.includes(`\"level\":\"${normalizedLevel}\"`))) return false;
       if (statusCodes) {
         const sc = String(e.status_code || e.status || '');
         if (!statusCodes.includes(sc)) return false;

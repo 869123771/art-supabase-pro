@@ -110,14 +110,14 @@
 
     <template #footer="{ loading, api }">
       <div class="role-permission-dialog__footer">
-        <ElTooltip
+        <ArtTooltip
           content="开启本身不会改变当前选择；之后勾选或取消父菜单时，才会同步其下级权限"
           placement="top"
         >
           <ElCheckbox v-model="isCascadeCheck" :disabled="!canEditPermissions">
             父级联动下级
           </ElCheckbox>
-        </ElTooltip>
+        </ArtTooltip>
         <div class="role-permission-dialog__footer-actions">
           <ElButton
             :disabled="!canEditPermissions || !!permissionKeyword.trim()"
@@ -125,11 +125,11 @@
           >
             {{ isExpandAll ? '全部收起' : '全部展开' }}
           </ElButton>
-          <ElTooltip content="作用于全部权限，不受当前搜索条件影响" placement="top">
+          <ArtTooltip content="作用于全部权限，不受当前搜索条件影响" placement="top">
             <ElButton :disabled="!canEditPermissions" @click="toggleSelectAll">
               {{ isSelectAll ? '取消全选' : '全部选择' }}
             </ElButton>
-          </ElTooltip>
+          </ArtTooltip>
           <ElButton
             type="primary"
             :loading="loading"

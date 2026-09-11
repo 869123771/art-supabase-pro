@@ -182,7 +182,7 @@
   import { isNil, trim } from 'lodash-es'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
-  import { useAmapSdk } from '@/hooks/core/useAmapSdk'
+  import { useAmapSdk, type AmapBrowserNamespace } from '@/hooks/core/useAmapSdk'
   import ArtAddressMap from './modules/map.vue'
   import type {
     AddressCoordinateSource,
@@ -250,7 +250,7 @@
     getCurrentPosition: (callback: (status: string, result: AMapGeolocationResult) => void) => void
   }
 
-  interface AMapLocationNamespace {
+  interface AMapLocationNamespace extends AmapBrowserNamespace {
     Geolocation: new (options: Record<string, unknown>) => AMapGeolocationInstance
   }
 

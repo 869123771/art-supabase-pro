@@ -1,4 +1,5 @@
 import { buildOrIlikeFilter } from '@/utils/supabase/search'
+import { createFriendlySupabaseFunctionError } from '@/utils/supabase/error'
 import { useSupabase } from '@/hooks'
 
 const { supabase, keysToSnakeDeep, responseHandle } = useSupabase()
@@ -95,6 +96,10 @@ export type AiFeatureConfigWritePayload = Pick<
 
 let providerCatalogPromise: Promise<AiProviderCatalog> | null = null
 
+export const clearAiProviderCatalogCache = (): void => {
+  providerCatalogPromise = null
+}
+
 function inferLegacyModelMetadata(model: AiProviderModel) {
   const parameterMatch = model.id.match(/(?:^|[-_./])(\d+(?:\.\d+)?)([bm])(?=[-_./]|$)/i)
   const parameterValue = parameterMatch ? Number(parameterMatch[1]) : null
@@ -172,41 +177,22 @@ function normalizeProviderModel(model: AiProviderModel): AiProviderModel {
   }
 }
 
-async function normalizeFunctionError(
-  error: unknown,
-  fallbackMessage = '远端模型目录暂时不可用'
-): Promise<Error> {
-  if (error && typeof error === 'object' && 'context' in error) {
-    const context = (error as { context?: unknown }).context
-    if (context instanceof Response) {
-      try {
-        const payload = (await context.clone().json()) as { message?: unknown }
-        if (typeof payload.message === 'string' && payload.message)
-          return new Error(payload.message)
-      } catch {
-        // Fall back to the original function error.
-      }
-    }
-  }
-  if (error instanceof Error) return error
-  return new Error(fallbackMessage)
-}
-
 export async function fetchAiProviderCatalog(params?: {
   forceRefresh?: boolean
 }): Promise<AiProviderCatalog> {
   if (!providerCatalogPromise || params?.forceRefresh) {
-    providerCatalogPromise = (async () => {
+    const request = (async () => {
       const { data, error } = await supabase.functions.invoke<AiProviderCatalog>(
         'ai-provider-catalog',
         { body: { forceRefresh: params?.forceRefresh === true } }
       )
-      if (error) throw await normalizeFunctionError(error)
+      if (error) throw await createFriendlySupabaseFunctionError(error, '远端模型目录暂时不可用')
       if (!data || !Array.isArray(data.models)) throw new Error('远端模型目录返回格式无效')
       return { ...data, models: data.models.map(normalizeProviderModel) }
     })()
-    providerCatalogPromise.catch(() => {
-      providerCatalogPromise = null
+    providerCatalogPromise = request
+    request.catch(() => {
+      if (providerCatalogPromise === request) providerCatalogPromise = null
     })
   }
   return await providerCatalogPromise
@@ -219,7 +205,7 @@ export async function benchmarkAiProviderModel(model: string): Promise<AiModelBe
   const { data, error } = await supabase.functions.invoke<AiModelBenchmark>('ai-provider-catalog', {
     body: { action: 'benchmark', model: normalizedModel }
   })
-  if (error) throw await normalizeFunctionError(error, '模型测速暂时不可用')
+  if (error) throw await createFriendlySupabaseFunctionError(error, '模型测速暂时不可用')
   if (!data || data.model !== normalizedModel || !Number.isFinite(data.totalMs)) {
     throw new Error('模型测速返回格式无效')
   }

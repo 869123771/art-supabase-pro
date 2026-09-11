@@ -54,7 +54,7 @@ export const readSystemParamValue = async <TValue>(
     })
     .catch(() => options.fallback)
     .finally(() => {
-      pendingLoadCache.delete(options.key)
+      if (pendingLoadCache.get(options.key) === nextLoad) pendingLoadCache.delete(options.key)
     })
 
   pendingLoadCache.set(options.key, nextLoad)

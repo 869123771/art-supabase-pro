@@ -11,6 +11,7 @@
     ".env.production",
     "src",
     "public",
+    "scripts/ui-audit.ts",
     "scripts/build-log-policy.mjs",
     "scripts/build-log-policy.d.mts"
   ],
@@ -41,7 +42,7 @@
     "lint": "eslint \"src/**/*.{js,mjs,cjs,ts,tsx,vue}\" \"scripts/**/*.{js,mjs,cjs,ts,tsx}\" \"tests/**/*.{js,mjs,cjs,ts,tsx}\" \"*.{js,mjs,cjs,ts}\"",
     "typecheck": "vue-tsc --noEmit --pretty false",
     "test:unit": "tsx --test tests/unit/*.test.ts",
-    "test:coverage": "tsx --test --experimental-test-coverage \"--test-coverage-include=src/**/*.ts\" \"--test-coverage-include=supabase/functions/_shared/*.ts\" \"--test-coverage-include=scripts/*.ts\" --test-coverage-lines=85 --test-coverage-branches=70 --test-coverage-functions=80 tests/unit/*.test.ts",
+    "test:coverage": "node -e \"require('node:fs').mkdirSync('.artifacts/coverage',{recursive:true})\" && tsx --test --experimental-test-coverage --test-reporter=dot --test-reporter-destination=stdout --test-reporter=lcov --test-reporter-destination=.artifacts/coverage/lcov.info \"--test-coverage-include=src/**/*.ts\" \"--test-coverage-include=supabase/functions/_shared/*.ts\" \"--test-coverage-include=scripts/*.ts\" --test-coverage-lines=85 --test-coverage-branches=70 --test-coverage-functions=80 tests/unit/*.test.ts",
     "test:db": "supabase db query --linked --file supabase/tests/workflow_engine_test.sql",
     "test:e2e": "playwright test",
     "test:e2e:auth": "playwright test tests/e2e/auth-pages.accessibility.spec.ts --project=public-desktop-1440 --project=public-mobile-390",

@@ -1,5 +1,9 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
-import { createClient, type SupabaseClient } from 'jsr:@supabase/supabase-js@2'
+import { type SupabaseClient } from 'jsr:@supabase/supabase-js@2'
+import {
+  authenticateAiEdgeRequest,
+  authorizeAiEdgeAppUser
+} from '../_shared/ai-edge-user-context.ts'
 import { loadAiRuntimeConfig, type AiRuntimeConfig } from '../_shared/ai-runtime-config.ts'
 import {
   resolveAiProviderEndpoints,
@@ -27,11 +31,6 @@ interface DiagnosisRequest {
   runId: string
 }
 
-interface AppUser {
-  tenant_id: string
-  user_email: string
-  status: string | null
-}
 
 interface TargetRun {
   id: string
@@ -423,45 +422,23 @@ Deno.serve(async (req) => {
   let auditEmail = ''
 
   try {
-    const authHeader = req.headers.get('Authorization') ?? ''
-    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
-    const anonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? ''
-    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    if (!authHeader || !supabaseUrl || !anonKey || !serviceRoleKey) {
-      throw new DiagnosisError('unauthorized', 'Authentication required', 401)
+    const authentication = await authenticateAiEdgeRequest(req)
+    if (!authentication.ok) {
+      throw new DiagnosisError(authentication.code, authentication.message, authentication.status)
     }
-
-    const token = authHeader.replace(/^Bearer\s+/i, '')
-    const authClient = createClient(supabaseUrl, anonKey, {
-      auth: { autoRefreshToken: false, persistSession: false }
-    })
-    const userClient = createClient(supabaseUrl, anonKey, {
-      global: { headers: { Authorization: authHeader } },
-      auth: { autoRefreshToken: false, persistSession: false }
-    })
-    const [authResult, superResult] = await Promise.all([
-      authClient.auth.getUser(token),
-      userClient.rpc('current_is_super')
+    const [context, superResult] = await Promise.all([
+      authorizeAiEdgeAppUser(authentication),
+      authentication.userClient.rpc('current_is_super')
     ])
-    const user = authResult.data.user
-    if (authResult.error || !user)
-      throw new DiagnosisError('unauthorized', 'Invalid or expired session', 401)
-    if (superResult.error)
+    if (superResult.error) {
       throw new DiagnosisError('permission_check_failed', '无法校验 AI 诊断权限。')
-    const isPlatformSuper = superResult.data === true
-
-    admin = createClient(supabaseUrl, serviceRoleKey, {
-      auth: { autoRefreshToken: false, persistSession: false }
-    })
-    const { data: appUserData, error: appUserError } = await admin
-      .from('sys_user')
-      .select('tenant_id,user_email,status')
-      .eq('auth_user_id', user.id)
-      .maybeSingle()
-    const appUser = appUserData as AppUser | null
-    if (appUserError || !appUser?.tenant_id || appUser.status === '0') {
-      throw new DiagnosisError('forbidden', 'Active application user is required', 403)
     }
+    if (!context.ok) {
+      throw new DiagnosisError(context.code, context.message, context.status)
+    }
+    const isPlatformSuper = superResult.data === true
+    const { userClient, user, appUser } = context
+    admin = context.admin
     auditEmail = appUser.user_email
 
     const body = (await req.json()) as DiagnosisRequest

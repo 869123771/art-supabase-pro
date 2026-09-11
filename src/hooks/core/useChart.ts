@@ -105,6 +105,16 @@ export function useChart(options: UseChartOptions = {}) {
   let isDestroyed = false
   let emptyStateDiv: HTMLElement | null = null
   const delayedResizeTimerIds = new Set<number>()
+  const scheduledFrameIds = new Set<number>()
+
+  const scheduleFrame = (callback: FrameRequestCallback): number => {
+    const frameId = requestAnimationFrame((timestamp) => {
+      scheduledFrameIds.delete(frameId)
+      callback(timestamp)
+    })
+    scheduledFrameIds.add(frameId)
+    return frameId
+  }
 
   // 清理定时器的统一方法
   const clearTimers = () => {
@@ -122,6 +132,8 @@ export function useChart(options: UseChartOptions = {}) {
     }
     delayedResizeTimerIds.forEach((timerId) => clearTimeout(timerId))
     delayedResizeTimerIds.clear()
+    scheduledFrameIds.forEach((frameId) => cancelAnimationFrame(frameId))
+    scheduledFrameIds.clear()
   }
 
   // 使用 requestAnimationFrame 优化 resize 处理
@@ -199,7 +211,7 @@ export function useChart(options: UseChartOptions = {}) {
 
         if (chart && !isDestroyed) {
           // 使用 requestAnimationFrame 优化主题更新
-          requestAnimationFrame(() => {
+          scheduleFrame(() => {
             if (chart && !isDestroyed) {
               const currentOptions = chart.getOption()
               if (currentOptions) {
@@ -424,7 +436,7 @@ export function useChart(options: UseChartOptions = {}) {
         entries.forEach((entry) => {
           if (entry.isIntersecting && pendingOptions && !isDestroyed) {
             // 使用 requestAnimationFrame 确保在下一帧初始化图表
-            requestAnimationFrame(() => {
+            scheduleFrame(() => {
               if (!isDestroyed && pendingOptions) {
                 try {
                   // 元素变为可见，初始化图表

@@ -9,7 +9,7 @@
             <span v-else-if="tree.error">目录加载失败</span>
             <span v-else>{{ directoryCount }} 个目录 · {{ dictionaryCount }} 个类型</span>
           </div>
-          <ElTooltip content="新增根节点" placement="top">
+          <ArtTooltip content="新增根节点" placement="top">
             <ElButton
               type="primary"
               aria-label="新增根节点"
@@ -19,7 +19,7 @@
               <ArtSvgIcon icon="ri:add-fill" />
               <span>新增</span>
             </ElButton>
-          </ElTooltip>
+          </ArtTooltip>
         </div>
         <ElInput
           v-model="tree.keyword"
@@ -101,7 +101,7 @@
             </div>
 
             <div class="dict-type-tree__actions" @click.stop>
-              <ElTooltip v-if="data.nodeType === 'directory'" content="新增下级" placement="top">
+              <ArtTooltip v-if="data.nodeType === 'directory'" content="新增下级" placement="top">
                 <ElButton
                   size="small"
                   circle
@@ -112,8 +112,8 @@
                 >
                   <ArtSvgIcon icon="ri:add-line" />
                 </ElButton>
-              </ElTooltip>
-              <ElTooltip content="编辑" placement="top">
+              </ArtTooltip>
+              <ArtTooltip content="编辑" placement="top">
                 <ElButton
                   size="small"
                   circle
@@ -123,8 +123,8 @@
                 >
                   <ArtSvgIcon icon="ri:pencil-line" />
                 </ElButton>
-              </ElTooltip>
-              <ElTooltip content="删除" placement="top">
+              </ArtTooltip>
+              <ArtTooltip content="删除" placement="top">
                 <ElButton
                   size="small"
                   circle
@@ -135,7 +135,7 @@
                 >
                   <ArtSvgIcon icon="ri:delete-bin-5-line" />
                 </ElButton>
-              </ElTooltip>
+              </ArtTooltip>
             </div>
           </div>
         </template>

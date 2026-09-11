@@ -57,7 +57,7 @@
 <script setup lang="tsx">
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import dayjs from 'dayjs'
-  import { ElMessage, ElTooltip } from 'element-plus'
+  import { ElMessage } from 'element-plus'
   import type { ComputedRef, UnwrapNestedRefs } from 'vue'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import {
@@ -69,6 +69,7 @@
     type ButtonMoreItem
   } from '@/components/core/forms/art-button-more/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
+  import ArtTooltip from '@/components/core/feedback/art-tooltip/index.vue'
   import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
   import BusinessWorkspaceHeader, {
     type BusinessWorkspaceMetric
@@ -312,7 +313,7 @@
         minWidth: 320,
         showOverflowTooltip: false,
         formatter: (row: AiPromptTemplate) => (
-          <ElTooltip
+          <ArtTooltip
             content={row.systemPrompt}
             placement="top"
             showAfter={350}
@@ -320,7 +321,7 @@
             popperClass="ai-prompt-prompt-tooltip"
           >
             <div class="ai-prompt__prompt-preview">{row.systemPrompt}</div>
-          </ElTooltip>
+          </ArtTooltip>
         )
       },
       {
@@ -354,16 +355,16 @@
         formatter: (row: AiPromptTemplate) => (
           <div class="ai-prompt__actions">
             {row.status === 'draft' ? (
-              <ElTooltip content="编辑草稿（发布前可反复修改）" placement="top">
+              <ArtTooltip content="编辑草稿（发布前可反复修改）" placement="top">
                 <ArtButtonTable
                   type="edit"
                   permission="System:AiPrompt:Edit"
                   onClick={() => openDialog({ mode: 'edit', row })}
                 />
-              </ElTooltip>
+              </ArtTooltip>
             ) : null}
             {row.status !== 'published' ? (
-              <ElTooltip
+              <ArtTooltip
                 content={row.status === 'archived' ? '回滚到此版本' : '发布版本'}
                 placement="top"
               >
@@ -373,7 +374,7 @@
                   permission="System:AiPrompt:Publish"
                   onClick={() => void handlePublish(row)}
                 />
-              </ElTooltip>
+              </ArtTooltip>
             ) : null}
             <ArtButtonMore
               list={() => getMoreActions(row)}

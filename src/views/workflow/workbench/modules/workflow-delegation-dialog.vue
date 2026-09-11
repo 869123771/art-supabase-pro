@@ -42,7 +42,7 @@
               <ArtSectionTitle :show-line="false">委托记录</ArtSectionTitle>
               <p>我发出的委托可以撤销；收到的委托用于说明待办来源。</p>
             </div>
-            <ElTooltip content="刷新委托记录" placement="top">
+            <ArtTooltip content="刷新委托记录" placement="top">
               <ArtIconButton
                 icon="ri:refresh-line"
                 circle
@@ -50,7 +50,7 @@
                 :loading="state.loading"
                 @click="loadData"
               />
-            </ElTooltip>
+            </ArtTooltip>
           </div>
         </template>
 

@@ -214,6 +214,7 @@
 | `inputTag` | `ElInputTag` | 无 |
 | `number` | `ElInputNumber` | 无 |
 | `select` | `ElSelect` + `ElOption` | `props.options` / `options` / `api` |
+| `tagStyleSelect` | `ArtTagStyleSelect` | `props.options` / `options` / `api`；选项右侧显示 Tag 预览 |
 | `segment` | `ElSegmented` | `props.options` / `options` / `api`；默认保持紧凑宽度，需要铺满时显式传入 `props.block` |
 | `switch` | `ElSwitch` | 无 |
 | `checkbox` | `ElCheckbox` | 无 |

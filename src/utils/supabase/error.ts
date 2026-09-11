@@ -281,6 +281,14 @@ export async function normalizeSupabaseFunctionError(error: unknown): Promise<un
   }
 }
 
+export async function createFriendlySupabaseFunctionError(
+  error: unknown,
+  fallback?: string
+): Promise<Error> {
+  const normalized = await normalizeSupabaseFunctionError(error)
+  return createFriendlySupabaseError(normalized ?? error, fallback)
+}
+
 /**
  * 将 Supabase Auth、PostgREST 与 Edge Function 的技术异常转换为用户可读提示。
  * 稳定错误码优先；已有中文业务提示会被保留，未知英文或序列化异常不会泄露到界面。

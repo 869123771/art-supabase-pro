@@ -9,7 +9,7 @@ interface SqlExecuteRequest {
 interface SqlExecuteResponse {
   status: 'ok' | 'error'
   message?: string
-  rows?: any[]
+  rows?: unknown[]
   columns?: Array<{
     name: string
     type?: string | null
@@ -32,6 +32,55 @@ interface SqlExecuteResponse {
   notices?: string[]
   warnings?: string[]
   query_text?: string
+}
+
+type SqlExecuteColumnInput = NonNullable<SqlExecuteResponse['columns']>[number]
+
+interface SqlExecutionResult {
+  error?: boolean
+  error_message?: string
+  rows?: unknown[]
+  columns?: SqlExecuteColumnInput[]
+  command_tag?: string
+  row_count?: number
+  duration_ms?: number
+  notices?: string[]
+  warnings?: string[]
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
+}
+
+function normalizeSqlExecutionResult(value: unknown): SqlExecutionResult {
+  if (!isRecord(value)) return {}
+  return {
+    error: value.error === true,
+    error_message: typeof value.error_message === 'string' ? value.error_message : undefined,
+    rows: Array.isArray(value.rows) ? value.rows : undefined,
+    columns: Array.isArray(value.columns)
+      ? value.columns.filter(isRecord).map((column) => ({
+          name: typeof column.name === 'string' ? column.name : '',
+          type: typeof column.type === 'string' ? column.type : null,
+          fullType: typeof column.fullType === 'string' ? column.fullType : null,
+          nullable: typeof column.nullable === 'boolean' ? column.nullable : null,
+          jsType: typeof column.jsType === 'string' ? column.jsType : null,
+          description: typeof column.description === 'string' ? column.description : null,
+          maxLength: typeof column.maxLength === 'number' ? column.maxLength : null,
+          precision: typeof column.precision === 'number' ? column.precision : null,
+          scale: typeof column.scale === 'number' ? column.scale : null
+        }))
+      : undefined,
+    command_tag: typeof value.command_tag === 'string' ? value.command_tag : undefined,
+    row_count: typeof value.row_count === 'number' ? value.row_count : undefined,
+    duration_ms: typeof value.duration_ms === 'number' ? value.duration_ms : undefined,
+    notices: Array.isArray(value.notices)
+      ? value.notices.filter((item): item is string => typeof item === 'string')
+      : undefined,
+    warnings: Array.isArray(value.warnings)
+      ? value.warnings.filter((item): item is string => typeof item === 'string')
+      : undefined
+  }
 }
 
 function corsHeaders(req: Request): Record<string, string> {
@@ -93,9 +142,9 @@ function formatErrorMessage(errorMessage: string): string {
   return `Failed to run sql query: ${msg}`
 }
 
-function processColumns(columns: any[]): SqlExecuteResponse['columns'] {
+function processColumns(columns: SqlExecuteColumnInput[]): SqlExecuteResponse['columns'] {
   if (!columns || !Array.isArray(columns)) return []
-  return columns.map((col: any) => {
+  return columns.map((col) => {
     const jsType = col.jsType || (col.type ? mapPostgresTypeToJSType(col.type) : 'string')
     return {
       name: col.name || '',
@@ -303,7 +352,7 @@ Deno.serve(async (req: Request) => {
     })
 
     const durationMs = Date.now() - startTime
-    const result = data as any
+    const result = normalizeSqlExecutionResult(data)
 
     if (error) {
       const pgMessage = error.message || 'SQL execution failed'

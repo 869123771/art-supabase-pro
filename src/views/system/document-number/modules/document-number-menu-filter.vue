@@ -11,7 +11,7 @@
         </div>
       </div>
 
-      <ElTooltip content="刷新菜单目录" placement="top">
+      <ArtTooltip content="刷新菜单目录" placement="top">
         <ArtIconButton
           icon="ri:refresh-line"
           circle
@@ -19,7 +19,7 @@
           :loading="loading"
           @click="emit('refresh')"
         />
-      </ElTooltip>
+      </ArtTooltip>
     </header>
 
     <div class="number-menu-filter__search">
@@ -121,6 +121,7 @@
   import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import type { AppRouteRecord } from '@/types/router'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
+  import TreeUtils from '@/utils/tree'
 
   interface FilterMenuNode extends AppRouteRecord {
     directSceneCount: number
@@ -189,17 +190,10 @@
   const filterTree = computed<FilterMenuNode[]>(() =>
     props.data.map(toFilterNode).filter((item): item is FilterMenuNode => Boolean(item))
   )
-  const flatFilterTree = computed<FilterMenuNode[]>(() => {
-    const result: FilterMenuNode[] = []
-    const visit = (items: FilterMenuNode[]): void => {
-      items.forEach((item) => {
-        result.push(item)
-        visit(item.children ?? [])
-      })
-    }
-    visit(filterTree.value)
-    return result
-  })
+  const filterTreeUtils = new TreeUtils({ idKey: 'id', childrenKey: 'children', deepClone: false })
+  const flatFilterTree = computed<FilterMenuNode[]>(() =>
+    filterTreeUtils.treeToList(filterTree.value)
+  )
   const sceneCount = computed(() => props.scenes.length)
   const menuPageCount = computed(
     () => flatFilterTree.value.filter((item) => item.directSceneCount > 0).length

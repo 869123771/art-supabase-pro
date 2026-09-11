@@ -2,6 +2,7 @@ import { computed, readonly, ref } from 'vue'
 import AppConfig from '@/config'
 import { fetchWebsiteConfig } from '@/api/system-manage'
 import { createWebsiteConfigDefaults } from '@/config/website-config-defaults'
+import { normalizeAuthChannels } from '@/utils/supabase'
 
 type UseWebsiteConfig = Api.SystemManage.WebsiteConfigItem
 
@@ -10,10 +11,14 @@ const loading = ref(false)
 const loaded = ref(false)
 let pendingLoad: Promise<UseWebsiteConfig> | null = null
 
-const mergeWebsiteConfig = (config?: Partial<UseWebsiteConfig> | null): UseWebsiteConfig => ({
-  ...createWebsiteConfigDefaults(),
-  ...(config ?? {})
-})
+const mergeWebsiteConfig = (config?: Partial<UseWebsiteConfig> | null): UseWebsiteConfig => {
+  const defaults = createWebsiteConfigDefaults()
+  return {
+    ...defaults,
+    ...(config ?? {}),
+    authChannels: normalizeAuthChannels(config?.authChannels ?? defaults.authChannels)
+  }
+}
 
 const getDocumentHead = (): HTMLHeadElement | null => {
   if (typeof document === 'undefined') return null

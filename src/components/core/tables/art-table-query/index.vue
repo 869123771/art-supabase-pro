@@ -515,6 +515,9 @@
     TRecord[],
     TRecord[]
   >
+  export type ArtTableQuerySuccessHandler<TRecord = TableQueryRecord> = BivariantEventHandler<
+    [TRecord[], ApiResponse<TRecord>]
+  >
   export type ArtTableQueryHeaderActionType = 'add' | 'delete' | 'import' | 'export'
   export type ArtTableQueryHeaderActionContent =
     string | Component | ((ctx: ArtTableQueryHeaderActionContext) => VNodeChild)
@@ -667,11 +670,11 @@
     /** 响应适配器，用于把接口响应转成 records/total/current/size */
     responseAdapter?: ArtTableQueryResponseAdapter
     /** 请求成功回调 */
-    onSuccess?: (data: TableQueryRecord[], response: ApiResponse<TableQueryRecord>) => void
+    onSuccess?: ArtTableQuerySuccessHandler
     /** 请求失败回调 */
     onError?: (error: TableError) => void
     /** 缓存命中回调 */
-    onCacheHit?: (data: TableQueryRecord[], response: ApiResponse<TableQueryRecord>) => void
+    onCacheHit?: ArtTableQuerySuccessHandler
     /** 是否开启 useTable 调试日志 */
     debug?: boolean
     /** 内管模式的列工厂函数，用法同 useTable.core.columnsFactory。 */

@@ -148,6 +148,7 @@
     },
     "placeholder": {
       "username": "Please enter your account",
+      "identifier": "Please enter your email or mobile number",
       "email": "Please enter your email",
       "phone": "Please enter your mobile phone",
       "password": "Please enter your password",

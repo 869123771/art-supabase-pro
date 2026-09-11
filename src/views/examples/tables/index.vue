@@ -262,11 +262,11 @@
         <template #avatar-header="{ column }">
           <div class="flex-c gap-1">
             <span>{{ column.label }}</span>
-            <ElTooltip content="包含头像、姓名和邮箱" placement="top">
+            <ArtTooltip content="包含头像、姓名和邮箱" placement="top">
               <ElIcon>
                 <QuestionFilled />
               </ElIcon>
-            </ElTooltip>
+            </ArtTooltip>
           </div>
         </template>
 

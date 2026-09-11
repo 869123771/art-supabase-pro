@@ -10,7 +10,7 @@
           <small>{{ menuPageCount }} 个功能页 · {{ contractCount }} 类审批</small>
         </div>
       </div>
-      <ElTooltip content="刷新业务目录" placement="top">
+      <ArtTooltip content="刷新业务目录" placement="top">
         <ArtIconButton
           icon="ri:refresh-line"
           circle
@@ -18,7 +18,7 @@
           :loading="loading"
           @click="emit('refresh')"
         />
-      </ElTooltip>
+      </ArtTooltip>
     </header>
 
     <div class="workflow-menu-filter__search">

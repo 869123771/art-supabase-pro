@@ -1,5 +1,9 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
-import { createClient, type SupabaseClient } from 'jsr:@supabase/supabase-js@2'
+import { type SupabaseClient } from 'jsr:@supabase/supabase-js@2'
+import {
+  authenticateAiEdgeRequest,
+  authorizeAiEdgeAppUser
+} from '../_shared/ai-edge-user-context.ts'
 import { loadAiRuntimeConfig, type AiRuntimeConfig } from '../_shared/ai-runtime-config.ts'
 import {
   resolveAiProviderEndpoints,
@@ -45,12 +49,6 @@ interface AssistantRequest {
   comment?: string
   messages?: AssistantMessage[]
   context?: AssistantContext
-}
-
-interface AppUser {
-  tenant_id: string
-  user_email: string
-  status: string | null
 }
 
 interface ProviderMessage {
@@ -225,9 +223,9 @@ function addDays(date: Date, days: number): Date {
   return result
 }
 
-function groupCounts(rows: Array<Record<string, unknown>>, key: string): Record<string, number> {
+function groupCounts<T extends object>(rows: readonly T[], key: string): Record<string, number> {
   return rows.reduce<Record<string, number>>((result, row) => {
-    const value = stringValue(row[key]) || 'unknown'
+    const value = stringValue(Object.entries(row).find(([entryKey]) => entryKey === key)?.[1]) || 'unknown'
     result[value] = (result[value] ?? 0) + 1
     return result
   }, {})
@@ -631,14 +629,13 @@ async function executeTool(
 
     const rows = (data ?? []) as Array<Record<string, unknown>>
     const anomalies = detectTransportAnomalies(rows, { staleHours, limit })
-    const anomalyRows = anomalies as unknown as Array<Record<string, unknown>>
     return {
       asOf: new Date().toISOString(),
       staleHours,
       scannedOrders: rows.length,
       total: anomalies.length,
-      severity: groupCounts(anomalyRows, 'severity'),
-      types: groupCounts(anomalyRows, 'type'),
+      severity: groupCounts(anomalies, 'severity'),
+      types: groupCounts(anomalies, 'type'),
       anomalies
     }
   }
@@ -725,42 +722,22 @@ Deno.serve(async (req) => {
   if (req.method !== 'POST')
     return json({ code: 'method_not_allowed', message: 'Method not allowed' }, 405)
 
-  const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
-  const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? ''
-  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-  const authHeader = req.headers.get('Authorization') ?? ''
-  if (!supabaseUrl || !supabaseAnonKey || !serviceRoleKey || !authHeader) {
-    return json({ code: 'unauthorized', message: 'Authentication required' }, 401)
+  const authentication = await authenticateAiEdgeRequest(req, 'Invalid or expired session')
+  if (!authentication.ok) {
+    return json(
+      { code: authentication.code, message: authentication.message },
+      authentication.status
+    )
   }
 
-  const token = authHeader.replace(/^Bearer\s+/i, '')
-  const authClient = createClient(supabaseUrl, supabaseAnonKey, {
-    auth: { autoRefreshToken: false, persistSession: false }
-  })
-  const {
-    data: { user },
-    error: authError
-  } = await authClient.auth.getUser(token)
-  if (authError || !user) {
-    return json({ code: 'unauthorized', message: 'Invalid or expired session' }, 401)
+  const context = await authorizeAiEdgeAppUser(
+    authentication,
+    'Active application user is required'
+  )
+  if (!context.ok) {
+    return json({ code: context.code, message: context.message }, context.status)
   }
-
-  const admin = createClient(supabaseUrl, serviceRoleKey, {
-    auth: { autoRefreshToken: false, persistSession: false }
-  })
-  const userClient = createClient(supabaseUrl, supabaseAnonKey, {
-    global: { headers: { Authorization: authHeader } },
-    auth: { autoRefreshToken: false, persistSession: false }
-  })
-  const { data: appUserData, error: appUserError } = await admin
-    .from('sys_user')
-    .select('tenant_id,user_email,status')
-    .eq('auth_user_id', user.id)
-    .maybeSingle()
-  const appUser = appUserData as AppUser | null
-  if (appUserError || !appUser?.tenant_id || appUser.status === '0') {
-    return json({ code: 'forbidden', message: 'Active application user is required' }, 403)
-  }
+  const { admin, userClient, user, appUser } = context
 
   let runId = ''
   const startedAt = Date.now()

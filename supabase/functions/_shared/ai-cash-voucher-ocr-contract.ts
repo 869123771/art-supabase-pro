@@ -1,4 +1,12 @@
 import { normalizeOcrRawText } from 'https://raw.githubusercontent.com/869123771/art-supabase-pro/e1297b558a4856b89910d9991d397e22fb7a992a/supabase/functions/_shared/ai-ocr-text.ts'
+import {
+  isOcrRecord as isRecord,
+  normalizeOcrConfidence as confidenceValue,
+  normalizeOcrDate as normalizeDate,
+  normalizeOcrNonNegativeNumber as numberValue,
+  normalizeOcrStringArray as stringArray,
+  normalizeOcrTextValue as textValue
+} from './ai-ocr-values.ts'
 
 export const AI_CASH_VOUCHER_FIELDS = [
   'payerName',
@@ -57,47 +65,6 @@ export interface ContractValidationResult {
 }
 
 const PAYMENT_METHODS = new Set(['bank_transfer', 'cash', 'wechat', 'alipay', 'other'])
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
-}
-
-function textValue(value: unknown, maxLength = 500): string | null {
-  if (typeof value !== 'string') return null
-  const normalized = value.trim()
-  return normalized ? normalized.slice(0, maxLength) : null
-}
-
-function numberValue(value: unknown): number | null {
-  if (value === null || value === undefined || value === '') return null
-  const normalized = Number(value)
-  return Number.isFinite(normalized) && normalized >= 0 ? normalized : null
-}
-
-function confidenceValue(value: unknown): number {
-  const normalized = Number(value)
-  return Number.isFinite(normalized) ? Math.min(1, Math.max(0, normalized)) : 0
-}
-
-function stringArray(value: unknown): string[] {
-  if (!Array.isArray(value)) return []
-  return value
-    .map((item) => textValue(item))
-    .filter((item): item is string => Boolean(item))
-    .slice(0, 20)
-}
-
-function normalizeDate(value: unknown): string | null {
-  const source = textValue(value, 40)
-  if (!source) return null
-  const match = source.match(/^(\d{4})[-/.年](\d{1,2})[-/.月](\d{1,2})日?$/)
-  if (!match) return null
-  const normalized = `${match[1]}-${match[2].padStart(2, '0')}-${match[3].padStart(2, '0')}`
-  const date = new Date(`${normalized}T00:00:00Z`)
-  return Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== normalized
-    ? null
-    : normalized
-}
 
 function normalizePaymentMethod(value: unknown): AiCashVoucherDraft['paymentMethod'] {
   const source = textValue(value, 40)

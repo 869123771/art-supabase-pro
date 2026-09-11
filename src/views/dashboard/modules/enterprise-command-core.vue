@@ -7,23 +7,17 @@
     :aria-label="`${title}，${scoreLabel} ${score} 分，${activeLabel} ${activeCount}${activeUnit}，风险事项 ${riskCount} 项`"
   >
     <div class="enterprise-command-core__scene">
-      <TresCanvas
-        v-if="isWebGlSupported"
-        class="enterprise-command-core__canvas"
-        alpha
-        :antialias="true"
-        :clear-alpha="0"
-        power-preference="high-performance"
-        aria-hidden="true"
-      >
-        <EnterpriseCommandScene
-          :accent-color="resolvedAccentColor"
-          :mode="mode"
-          :signals="nodes"
-          :variant="sceneVariant"
-        />
-      </TresCanvas>
-      <div v-else class="command-fallback-orb" aria-hidden="true"><i /><i /></div>
+      <EnterpriseCommandCanvas
+        v-if="isWebGlSupported && isSceneActive"
+        :accent-color="resolvedAccentColor"
+        :mode="mode"
+        :signals="nodes"
+        :variant="sceneVariant"
+        @ready="sceneReady = true"
+      />
+      <div v-if="!isWebGlSupported || !sceneReady" class="command-fallback-orb" aria-hidden="true">
+        <i /><i />
+      </div>
 
       <svg
         class="command-energy-links"
@@ -95,8 +89,9 @@
 </template>
 
 <script setup lang="ts">
-  import { TresCanvas } from '@tresjs/core'
-  import EnterpriseCommandScene from './enterprise-command-scene.vue'
+  const EnterpriseCommandCanvas = defineAsyncComponent(
+    () => import('./enterprise-command-canvas.vue')
+  )
 
   type CommandMode = 'business' | 'operations'
   type CommandTone = 'primary' | 'success' | 'warning' | 'danger' | 'info'
@@ -143,6 +138,8 @@
   })
 
   const coreRootRef = ref<HTMLElement | null>(null)
+  const sceneReady = ref(false)
+  const isSceneActive = ref(true)
   const accentColor = useCssVar('--theme-color', coreRootRef, {
     initialValue: '#635bff',
     observe: true
@@ -151,6 +148,15 @@
   const isWebGlSupported = useSupported(() => {
     const canvas = document.createElement('canvas')
     return Boolean(canvas.getContext('webgl2') || canvas.getContext('webgl'))
+  })
+
+  onActivated(() => {
+    isSceneActive.value = true
+  })
+
+  onDeactivated(() => {
+    isSceneActive.value = false
+    sceneReady.value = false
   })
 </script>
 

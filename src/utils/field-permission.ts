@@ -61,6 +61,22 @@ export const formatSensitiveNumber = (
   return numericValue.toLocaleString('zh-CN', options)
 }
 
+export interface SensitiveNumberAffixOptions {
+  prefix?: string
+  suffix?: string
+  numberFormat?: Intl.NumberFormatOptions
+}
+
+/** 给可脱敏数值追加币种或单位；空值和掩码保持原样，避免显示成“¥***”或“-- 元”。 */
+export const formatSensitiveNumberWithAffix = (
+  value: number | string | null | undefined,
+  options: SensitiveNumberAffixOptions = {}
+): string => {
+  const formatted = formatSensitiveNumber(value, options.numberFormat)
+  if (formatted === MASK_PLACEHOLDER || formatted === '--') return formatted
+  return `${options.prefix ?? ''}${formatted}${options.suffix ?? ''}`
+}
+
 export const omitNonEditableFields = <
   TRecord extends Record<string, unknown>,
   TKey extends Extract<keyof TRecord, string>

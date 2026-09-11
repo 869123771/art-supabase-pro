@@ -235,6 +235,7 @@
 
 <script setup lang="ts">
   import ArtSectionCard from '@/components/core/surfaces/art-section-card/index.vue'
+  import { downloadBlob } from '@/utils/file'
   import { createFriendlySupabaseError } from '@/utils/supabase'
   import dayjs from 'dayjs'
   import { useAsyncState } from '@vueuse/core'
@@ -433,12 +434,10 @@
           item.p90HandleHours
         ])
     const csv = [header, ...rows].map((row) => row.map(escapeCsv).join(',')).join('\r\n')
-    const url = URL.createObjectURL(new Blob(['\ufeff', csv], { type: 'text/csv;charset=utf-8' }))
-    const anchor = document.createElement('a')
-    anchor.href = url
-    anchor.download = `${isOverview ? '审批运营汇总' : '审批瓶颈明细'}_${state.days}天_${dayjs().format('YYYYMMDD_HHmm')}.csv`
-    anchor.click()
-    URL.revokeObjectURL(url)
+    downloadBlob(
+      new Blob(['\ufeff', csv], { type: 'text/csv;charset=utf-8' }),
+      `${isOverview ? '审批运营汇总' : '审批瓶颈明细'}_${state.days}天_${dayjs().format('YYYYMMDD_HHmm')}.csv`
+    )
     ElMessage.success(`${isOverview ? '审批运营汇总' : '审批瓶颈明细'}已导出`)
   }
 

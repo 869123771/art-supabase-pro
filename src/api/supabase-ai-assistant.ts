@@ -1,6 +1,11 @@
 import { useSupabase } from '@/hooks'
 import { normalizeFunctionError } from './ai-assistant'
 import { invokeSupabaseFunctionWithSessionRecovery } from '@/utils/supabase/functions'
+import {
+  isProjectCatalogResult,
+  isRecord,
+  type ProjectCatalogResultMap
+} from '@/api/contracts/ai-client-contracts'
 import type {
   ProjectAssistantChatRequest,
   ProjectAssistantChatResponse,
@@ -22,7 +27,9 @@ export async function fetchProjectAssistantCapabilities(): Promise<ProjectAssist
       { body: { action: 'capabilities' } }
     )
   if (error) throw await normalizeFunctionError(error)
-  if (!data?.version || !data.features) throw new Error('助手能力信息返回了无效结果')
+  if (!data?.version || !isRecord(data.features) || !isRecord(data.access)) {
+    throw new Error('助手能力信息返回了无效结果')
+  }
   return keysToCamelDeep<ProjectAssistantCapabilities>(data)
 }
 
@@ -51,14 +58,21 @@ export async function submitProjectAssistantFeedback(
   if (error) throw await normalizeFunctionError(error)
 }
 
-export async function fetchProjectCatalog<T>(params: ProjectCatalogRequest): Promise<T> {
-  const { data, error } = await invokeSupabaseFunctionWithSessionRecovery<{ data: T }>(
+export async function fetchProjectCatalog<TAction extends ProjectCatalogRequest['catalogAction']>(
+  params: ProjectCatalogRequest & { catalogAction: TAction }
+): Promise<ProjectCatalogResultMap[TAction]> {
+  const { data, error } = await invokeSupabaseFunctionWithSessionRecovery<{ data: unknown }>(
     'ai-project-assistant',
     { body: { ...params, action: 'catalog' } }
   )
   if (error) throw await normalizeFunctionError(error)
   if (!data || !('data' in data)) throw new Error('项目目录返回了无效结果')
-  return keysToCamelDeep<T>(data.data)
+  const result: unknown = keysToCamelDeep(data.data)
+  if (!isProjectCatalogResult(params.catalogAction, result)) {
+    throw new Error('项目目录返回了无效结果')
+  }
+  // catalogAction 与上方运行时校验共同收窄结果；断言只保留在 Function 传输边界。
+  return result as ProjectCatalogResultMap[TAction]
 }
 
 export async function updateProjectObjectDescription(
@@ -84,7 +98,9 @@ export async function fetchProjectAssistantHistory(
       { body: { action: 'history_list', query, limit } }
     )
   if (error) throw await normalizeFunctionError(error)
-  if (!data?.conversations) throw new Error('会话历史返回了无效结果')
+  if (!Array.isArray(data?.conversations) || !Number.isFinite(data.total)) {
+    throw new Error('会话历史返回了无效结果')
+  }
   return keysToCamelDeep<ProjectAssistantHistoryListResponse>(data)
 }
 
@@ -97,7 +113,9 @@ export async function fetchProjectAssistantConversation(
       { body: { action: 'history_detail', conversationId } }
     )
   if (error) throw await normalizeFunctionError(error)
-  if (!data?.conversation || !data.messages) throw new Error('会话详情返回了无效结果')
+  if (!isRecord(data?.conversation) || !Array.isArray(data.messages) || !Array.isArray(data.runs)) {
+    throw new Error('会话详情返回了无效结果')
+  }
   return keysToCamelDeep<ProjectAssistantHistoryDetailResponse>(data)
 }
 

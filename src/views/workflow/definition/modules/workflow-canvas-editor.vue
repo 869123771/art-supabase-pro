@@ -14,7 +14,7 @@
             已配置 {{ configuredNodeCount }}/{{ nodes.length }} 个节点
           </ElTag>
           <ElButtonGroup>
-            <ElTooltip content="审批顺序前移" placement="bottom">
+            <ArtTooltip content="审批顺序前移" placement="bottom">
               <ElButton
                 :disabled="selectedIndex <= 0"
                 aria-label="审批顺序前移"
@@ -22,8 +22,8 @@
               >
                 <ArtSvgIcon icon="ri:arrow-up-line" />
               </ElButton>
-            </ElTooltip>
-            <ElTooltip content="审批顺序后移" placement="bottom">
+            </ArtTooltip>
+            <ArtTooltip content="审批顺序后移" placement="bottom">
               <ElButton
                 :disabled="selectedIndex < 0 || selectedIndex >= nodes.length - 1"
                 aria-label="审批顺序后移"
@@ -31,8 +31,8 @@
               >
                 <ArtSvgIcon icon="ri:arrow-down-line" />
               </ElButton>
-            </ElTooltip>
-            <ElTooltip content="删除选中节点" placement="bottom">
+            </ArtTooltip>
+            <ArtTooltip content="删除选中节点" placement="bottom">
               <ElButton
                 type="danger"
                 plain
@@ -42,7 +42,7 @@
               >
                 <ArtSvgIcon icon="ri:delete-bin-6-line" />
               </ElButton>
-            </ElTooltip>
+            </ArtTooltip>
           </ElButtonGroup>
           <ElButton type="primary" @click="addNode">
             <ArtSvgIcon icon="ri:add-line" />新增审批节点
@@ -75,22 +75,22 @@
       <div class="workflow-canvas-editor__canvas" :aria-label="flowAriaLabel">
         <div class="workflow-canvas-editor__canvas-toolbar" role="toolbar" aria-label="画布工具">
           <ElButtonGroup>
-            <ElTooltip content="撤销（Ctrl+Z）" placement="bottom">
+            <ArtTooltip content="撤销（Ctrl+Z）" placement="bottom">
               <ElButton :disabled="!canUndo" aria-label="撤销画布调整" @click="undoStructure">
                 <ArtSvgIcon icon="ri:arrow-go-back-line" />
               </ElButton>
-            </ElTooltip>
-            <ElTooltip content="重做（Ctrl+Shift+Z）" placement="bottom">
+            </ArtTooltip>
+            <ArtTooltip content="重做（Ctrl+Shift+Z）" placement="bottom">
               <ElButton :disabled="!canRedo" aria-label="重做画布调整" @click="redoStructure">
                 <ArtSvgIcon icon="ri:arrow-go-forward-line" />
               </ElButton>
-            </ElTooltip>
+            </ArtTooltip>
           </ElButtonGroup>
 
           <i class="workflow-canvas-editor__canvas-toolbar-divider" aria-hidden="true"></i>
 
           <ElButtonGroup>
-            <ElTooltip content="指针模式：选择和拖动节点" placement="bottom">
+            <ArtTooltip content="指针模式：选择和拖动节点" placement="bottom">
               <ElButton
                 :type="interactionMode === 'select' ? 'primary' : 'default'"
                 :plain="interactionMode !== 'select'"
@@ -99,8 +99,8 @@
               >
                 <ArtSvgIcon icon="ri:cursor-line" />
               </ElButton>
-            </ElTooltip>
-            <ElTooltip content="手型模式：拖动画布" placement="bottom">
+            </ArtTooltip>
+            <ArtTooltip content="手型模式：拖动画布" placement="bottom">
               <ElButton
                 :type="interactionMode === 'pan' ? 'primary' : 'default'"
                 :plain="interactionMode !== 'pan'"
@@ -109,18 +109,18 @@
               >
                 <ArtSvgIcon icon="ri:hand" />
               </ElButton>
-            </ElTooltip>
+            </ArtTooltip>
           </ElButtonGroup>
 
           <i class="workflow-canvas-editor__canvas-toolbar-divider" aria-hidden="true"></i>
 
           <ElButtonGroup>
-            <ElTooltip content="适配画布" placement="bottom">
+            <ArtTooltip content="适配画布" placement="bottom">
               <ElButton aria-label="适配全部节点" @click="fitCanvas">
                 <ArtSvgIcon icon="ri:fullscreen-line" />
               </ElButton>
-            </ElTooltip>
-            <ElTooltip
+            </ArtTooltip>
+            <ArtTooltip
               :content="
                 layoutMode === 'horizontal' ? '当前为横向布局，点击重新整理' : '横向整理节点'
               "
@@ -133,8 +133,8 @@
               >
                 <ArtSvgIcon icon="ri:organization-chart" />
               </ElButton>
-            </ElTooltip>
-            <ElTooltip
+            </ArtTooltip>
+            <ArtTooltip
               :content="layoutMode === 'vertical' ? '当前为纵向布局，点击重新整理' : '纵向整理节点'"
               placement="bottom"
             >
@@ -145,8 +145,11 @@
               >
                 <ArtSvgIcon icon="ri:node-tree" />
               </ElButton>
-            </ElTooltip>
-            <ElTooltip :content="layoutLocked ? '解锁节点位置' : '锁定节点位置'" placement="bottom">
+            </ArtTooltip>
+            <ArtTooltip
+              :content="layoutLocked ? '解锁节点位置' : '锁定节点位置'"
+              placement="bottom"
+            >
               <ElButton
                 :type="layoutLocked ? 'primary' : 'default'"
                 :plain="!layoutLocked"
@@ -155,8 +158,8 @@
               >
                 <ArtSvgIcon :icon="layoutLocked ? 'ri:lock-line' : 'ri:lock-unlock-line'" />
               </ElButton>
-            </ElTooltip>
-            <ElTooltip
+            </ArtTooltip>
+            <ArtTooltip
               :content="inspectorVisible ? '收起属性面板' : '显示属性面板'"
               placement="bottom"
             >
@@ -168,7 +171,7 @@
                   :icon="inspectorVisible ? 'ri:sidebar-fold-line' : 'ri:sidebar-unfold-line'"
                 />
               </ElButton>
-            </ElTooltip>
+            </ArtTooltip>
           </ElButtonGroup>
         </div>
 

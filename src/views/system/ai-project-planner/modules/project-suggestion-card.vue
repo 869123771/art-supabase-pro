@@ -82,7 +82,7 @@
       <div class="ai-planner__action-group">
         <span class="ai-planner__action-label">反馈与复用</span>
         <div class="ai-planner__feedback">
-          <ElTooltip content="复制完整提示词">
+          <ArtTooltip content="复制完整提示词">
             <ElButton
               :loading="isActionPending('copied')"
               :disabled="isPending"
@@ -91,7 +91,7 @@
               <ArtSvgIcon icon="ri:file-copy-line" />
               复制{{ suggestion.feedback.copied ? ` · ${suggestion.feedback.copied}` : '' }}
             </ElButton>
-          </ElTooltip>
+          </ArtTooltip>
           <ElButton
             :type="suggestion.feedback.sentiment === 1 ? 'success' : ''"
             :loading="isActionPending('liked')"

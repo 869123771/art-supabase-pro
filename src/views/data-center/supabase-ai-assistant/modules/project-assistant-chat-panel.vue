@@ -14,12 +14,12 @@
         </span>
       </div>
       <div class="project-assistant__chat-actions">
-        <ElTooltip content="会话历史" placement="bottom">
+        <ArtTooltip content="会话历史" placement="bottom">
           <ElButton text circle aria-label="会话历史" @click="emit('open-history')">
             <ArtSvgIcon icon="ri:history-line" />
           </ElButton>
-        </ElTooltip>
-        <ElTooltip content="导出当前会话" placement="bottom">
+        </ArtTooltip>
+        <ArtTooltip content="导出当前会话" placement="bottom">
           <ElButton
             text
             circle
@@ -29,7 +29,7 @@
           >
             <ArtSvgIcon icon="ri:download-2-line" />
           </ElButton>
-        </ElTooltip>
+        </ArtTooltip>
         <ElButton text type="primary" @click="emit('reset')">
           <ArtSvgIcon icon="ri:chat-new-line" /> 新对话
         </ElButton>
@@ -40,7 +40,7 @@
       <ArtSvgIcon :icon="getObjectIcon(activeChatObject.objectType)" />
       <span>正在分析</span>
       <strong>{{ activeChatObject.schemaName }}.{{ activeChatObject.objectName }}</strong>
-      <ElTooltip :content="chat.contextLocked ? '解除上下文锁定' : '锁定当前对象上下文'">
+      <ArtTooltip :content="chat.contextLocked ? '解除上下文锁定' : '锁定当前对象上下文'">
         <ElButton
           text
           circle
@@ -51,7 +51,7 @@
         >
           <ArtSvgIcon :icon="chat.contextLocked ? 'ri:pushpin-fill' : 'ri:pushpin-line'" />
         </ElButton>
-      </ElTooltip>
+      </ArtTooltip>
     </div>
 
     <ElScrollbar ref="chatScrollbarRef" class="project-assistant__messages">

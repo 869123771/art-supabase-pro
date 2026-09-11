@@ -39,6 +39,7 @@
  * @author Art Design Pro Team
  */
 
+import { debounce } from 'lodash-es'
 import type { ApiResponse } from './tableCache'
 import { tableConfig } from './tableConfig'
 
@@ -54,116 +55,52 @@ export interface TableError {
   details?: unknown
 }
 
-// 辅助函数：从对象中提取记录数组
-function extractRecords<T>(obj: Record<string, unknown>, fields: string[]): T[] {
-  for (const field of fields) {
-    if (field in obj && Array.isArray(obj[field])) {
-      return obj[field] as T[]
-    }
+// Empty arrays are valid results; absence is represented separately.
+function extractRecords<T>(obj: Record<string, unknown>): T[] | undefined {
+  for (const field of tableConfig.recordFields) {
+    if (Array.isArray(obj[field])) return obj[field] as T[]
   }
-  return []
 }
 
-// 辅助函数：从对象中提取总数
-function extractTotal(obj: Record<string, unknown>, records: unknown[], fields: string[]): number {
-  for (const field of fields) {
-    if (field in obj && typeof obj[field] === 'number') {
-      return obj[field] as number
-    }
-  }
-  return records.length
-}
-
-// 辅助函数：提取分页参数
-function extractPagination(
-  obj: Record<string, unknown>,
-  data?: Record<string, unknown>
-): Pick<ApiResponse<unknown>, 'current' | 'size'> | undefined {
-  const result: Partial<Pick<ApiResponse<unknown>, 'current' | 'size'>> = {}
-  const sources = [obj, data ?? {}]
-
-  const currentFields = tableConfig.currentFields
-  for (const src of sources) {
-    for (const field of currentFields) {
-      if (field in src && typeof src[field] === 'number') {
-        result.current = src[field] as number
-        break
+function extractNumber(
+  sources: Record<string, unknown>[],
+  fields: string[],
+  minimum: number
+): number | undefined {
+  for (const source of sources) {
+    for (const field of fields) {
+      const value = source[field]
+      if (typeof value === 'number' && Number.isSafeInteger(value) && value >= minimum) {
+        return value
       }
     }
-    if (result.current !== undefined) break
   }
-
-  const sizeFields = tableConfig.sizeFields
-  for (const src of sources) {
-    for (const field of sizeFields) {
-      if (field in src && typeof src[field] === 'number') {
-        result.size = src[field] as number
-        break
-      }
-    }
-    if (result.size !== undefined) break
-  }
-
-  if (result.current === undefined && result.size === undefined) return undefined
-  return result
 }
 
-/**
- * 默认响应适配器 - 支持多种常见的API响应格式
- */
+/** Normalize supported list envelopes with one field policy at both levels. */
 export const defaultResponseAdapter = <T>(response: unknown): ApiResponse<T> => {
-  // 定义支持的字段
-  const recordFields = tableConfig.recordFields
+  if (Array.isArray(response)) return { records: response, total: response.length }
+  if (!response || typeof response !== 'object') return { records: [], total: 0 }
 
-  if (!response) {
-    return { records: [], total: 0 }
+  const outer = response as Record<string, unknown>
+  const direct = extractRecords<T>(outer)
+  const nested =
+    outer.data && typeof outer.data === 'object' && !Array.isArray(outer.data)
+      ? (outer.data as Record<string, unknown>)
+      : undefined
+  const source = direct === undefined && nested ? nested : outer
+  const records = direct ?? extractRecords<T>(source) ?? []
+  const sources = source === outer ? [outer] : [source, outer]
+  const result: ApiResponse<T> = {
+    records,
+    total: extractNumber(sources, tableConfig.totalFields, 0) ?? records.length
   }
-
-  if (Array.isArray(response)) {
-    return { records: response, total: response.length }
-  }
-
-  if (typeof response !== 'object') {
-    console.warn(
-      '[tableUtils] 无法识别的响应格式，支持的格式包括: 数组、包含' +
-        recordFields.join('/') +
-        '字段的对象、嵌套data对象。当前格式:',
-      response
-    )
-    return { records: [], total: 0 }
-  }
-
-  const res = response as Record<string, unknown>
-  let records = extractRecords<T>(res, recordFields)
-  let total = extractTotal(res, records, tableConfig.totalFields)
-  let pagination: Pick<ApiResponse<unknown>, 'current' | 'size'> | undefined
-
-  // 处理标准格式或直接列表
-  pagination = extractPagination(res)
-
-  // 如果没有找到，检查嵌套data
-  if (records.length === 0 && 'data' in res && typeof res.data === 'object') {
-    const data = res.data as Record<string, unknown>
-    records = extractRecords(data, ['list', 'records', 'items'])
-    total = extractTotal(data, records, tableConfig.totalFields)
-    pagination = extractPagination(res, data)
-
-    if (Array.isArray(res.data)) {
-      records = res.data as T[]
-      total = records.length
-    }
-  }
-
-  if (!recordFields.some((field) => field in res) && records.length === 0) {
-    console.warn('[tableUtils] 无法识别的响应格式')
-    console.warn('支持的字段包括: ' + recordFields.join('、'), response)
-    console.warn('扩展字段请到 utils/table/tableConfig 文件配置')
-  }
-
-  const result: ApiResponse<T> = { records, total }
-  if (pagination) {
-    Object.assign(result, pagination)
-  }
+  // Envelope pagination wins over nested pagination, preserving the public contract.
+  const paginationSources = source === outer ? [outer] : [outer, source]
+  const current = extractNumber(paginationSources, tableConfig.currentFields, 1)
+  const size = extractNumber(paginationSources, tableConfig.sizeFields, 1)
+  if (current !== undefined) result.current = current
+  if (size !== undefined) result.size = size
   return result
 }
 
@@ -195,72 +132,58 @@ export const updatePaginationFromResponse = <T>(
 }
 
 /**
- * 创建智能防抖函数 - 支持取消和立即执行
+ * 合并等待中的调用，全部返回最后一组参数的执行结果。
+ * cancel 以 undefined 结束尚未执行的调用；已开始的请求不受影响。
+ * flush 立即执行等待批次，业务失败仍以原始错误拒绝。
  */
 export const createSmartDebounce = <TArgs extends unknown[], TResult>(
   fn: (...args: TArgs) => Promise<TResult>,
   delay: number
-): ((...args: TArgs) => Promise<TResult>) & {
+): ((...args: TArgs) => Promise<TResult | void>) & {
   cancel: () => void
   flush: () => Promise<TResult | void>
 } => {
-  let timeoutId: NodeJS.Timeout | null = null
-  let lastArgs: TArgs | null = null
-  let lastResolve: ((value: TResult | PromiseLike<TResult>) => void) | null = null
-  let lastReject: ((reason?: unknown) => void) | null = null
-
-  const debouncedFn = (...args: TArgs): Promise<TResult> => {
-    return new Promise((resolve, reject) => {
-      if (timeoutId) clearTimeout(timeoutId)
-      lastArgs = args
-      lastResolve = resolve
-      lastReject = reject
-      timeoutId = setTimeout(async () => {
-        try {
-          const result = await fn(...args)
-          resolve(result)
-        } catch (error) {
-          reject(error)
-        } finally {
-          timeoutId = null
-          lastArgs = null
-          lastResolve = null
-          lastReject = null
-        }
-      }, delay)
-    })
+  type Waiter = {
+    resolve: (value: TResult | void) => void
+    reject: (reason: unknown) => void
   }
+  let pending: Waiter[] = []
 
-  debouncedFn.cancel = () => {
-    if (timeoutId) clearTimeout(timeoutId)
-    timeoutId = null
-    lastArgs = null
-    lastResolve = null
-    lastReject = null
-  }
-
-  debouncedFn.flush = async () => {
-    if (timeoutId && lastArgs && lastResolve && lastReject) {
-      clearTimeout(timeoutId)
-      timeoutId = null
-      const args = lastArgs
-      const resolve = lastResolve
-      const reject = lastReject
-      lastArgs = null
-      lastResolve = null
-      lastReject = null
-      try {
-        const result = await fn(...args)
-        resolve(result)
-        return result
-      } catch (error) {
-        reject(error)
-        throw error
-      }
+  const execute = async (args: TArgs): Promise<TResult> => {
+    // Detach before awaiting: an older request must never clear a newer batch.
+    const batch = pending
+    pending = []
+    try {
+      const result = await fn(...args)
+      batch.forEach(({ resolve }) => resolve(result))
+      return result
+    } catch (error) {
+      batch.forEach(({ reject }) => reject(error))
+      throw error
     }
-    return Promise.resolve()
   }
+  const scheduled = debounce((args: TArgs) => {
+    const execution = execute(args)
+    // Timer callbacks have no consumer; callers and flush still receive the rejection.
+    void execution.catch(() => {})
+    return execution
+  }, delay)
 
+  const debouncedFn = (...args: TArgs): Promise<TResult | void> =>
+    new Promise((resolve, reject) => {
+      pending.push({ resolve, reject })
+      scheduled(args)
+    })
+
+  debouncedFn.cancel = (): void => {
+    scheduled.cancel()
+    const batch = pending
+    pending = []
+    batch.forEach(({ resolve }) => resolve())
+  }
+  debouncedFn.flush = async (): Promise<TResult | void> => {
+    if (pending.length) return scheduled.flush()
+  }
   return debouncedFn
 }
 

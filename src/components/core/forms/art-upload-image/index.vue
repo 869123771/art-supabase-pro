@@ -101,6 +101,7 @@
 <script setup lang="tsx">
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import { ElMessage, UploadUserFile, UploadRequestOptions, type UploadFile } from 'element-plus'
+  import ArtTooltip from '@/components/core/feedback/art-tooltip/index.vue'
   import ArtResourcePicker from '@/components/core/forms/art-resource-picker/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import {
@@ -153,7 +154,7 @@
   function btnRender() {
     return (
       <div class="upload-container" style={getSize.value}>
-        <el-tooltip content="打开资源选择器">
+        <ArtTooltip content="打开资源选择器">
           <button
             type="button"
             class="resource-btn"
@@ -166,7 +167,7 @@
           >
             <ArtSvgIcon icon="ri-folder-open-line" />
           </button>
-        </el-tooltip>
+        </ArtTooltip>
         <div class="upload-prompt">
           <span class="upload-prompt__icon" aria-hidden="true">
             <ArtSvgIcon icon="ri-add-line" />

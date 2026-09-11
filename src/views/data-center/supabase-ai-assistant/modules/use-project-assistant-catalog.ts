@@ -76,9 +76,9 @@ export function useProjectAssistantCatalog() {
     errors.overview = null
     try {
       const [overviewResult, schemaResult, edgeResult] = await Promise.all([
-        fetchProjectCatalog<ProjectOverview>({ catalogAction: 'overview' }),
-        fetchProjectCatalog<string[]>({ catalogAction: 'schemas' }),
-        fetchProjectCatalog<ProjectEdgeFunctionResult>({ catalogAction: 'edge_functions' })
+        fetchProjectCatalog({ catalogAction: 'overview' }),
+        fetchProjectCatalog({ catalogAction: 'schemas' }),
+        fetchProjectCatalog({ catalogAction: 'edge_functions' })
       ])
       overview.value = overviewResult
       schemas.value = schemaResult
@@ -97,7 +97,7 @@ export function useProjectAssistantCatalog() {
     loading.objects = true
     errors.objects = null
     try {
-      const result = await fetchProjectCatalog<ProjectDatabaseObject[]>({
+      const result = await fetchProjectCatalog({
         catalogAction: 'list_objects',
         args: { ...filters, limit: 100 }
       })
@@ -126,12 +126,12 @@ export function useProjectAssistantCatalog() {
 
     try {
       const [detailResult, relationResult] = await Promise.all([
-        fetchProjectCatalog<ProjectObjectDetail>({
+        fetchProjectCatalog({
           catalogAction: 'object_detail',
           args: { objectType: item.objectType, schema: item.schemaName, name: item.objectName }
         }),
         item.objectType === 'table'
-          ? fetchProjectCatalog<ProjectRelationship[]>({
+          ? fetchProjectCatalog({
               catalogAction: 'relationships',
               args: { schema: item.schemaName, name: item.objectName }
             })

@@ -15,6 +15,7 @@ import tailwindcss from '@tailwindcss/vite'
 import { fileViewerRenderers } from '@file-viewer/vite-plugin'
 import { visualizer } from 'rollup-plugin-visualizer'
 import { createBuildLogPolicy } from './scripts/build-log-policy'
+import { shouldPreloadHtmlDependency } from './scripts/bundle-boundaries'
 import { createFileViewerAssetSyncPlugin } from './scripts/file-viewer-asset-sync'
 import {
   hostedApplicationSourceDirectories,
@@ -156,14 +157,12 @@ export default ({ mode }: { mode: string }) => {
         polyfill: false,
         resolveDependencies: (_filename, dependencies, context) => {
           if (context.hostType !== 'html') return dependencies
-          return dependencies.filter(
-            (dependency) =>
-              !/(?:media|monaco|rich-editor|data-tools|file-viewer)[.-]/.test(dependency)
-          )
+          return dependencies.filter(shouldPreloadHtmlDependency)
         }
       },
       chunkSizeWarningLimit: buildLogPolicy.chunkSizeWarningLimit,
       minify: 'oxc',
+      cssMinify: 'lightningcss',
       reportCompressedSize: false,
       rolldownOptions: {
         ...buildLogPolicy.rolldownOptions,
@@ -272,7 +271,10 @@ export default ({ mode }: { mode: string }) => {
         : []),
       createFileViewerAssetSyncPlugin({
         enabled: enableFileViewerPlugin && enableFileViewerAssets,
-        sourceRoot: fileViewerAssetStageDir
+        sourceRoot: fileViewerAssetStageDir,
+        // The preset imports these workers through `new URL(..., import.meta.url)`, so Vite emits
+        // hashed copies in assets/. Do not also ship byte-identical compatibility copies.
+        excludedFiles: ['vendor/pptx/pptx.worker.js', 'vendor/libarchive/worker-bundle.js']
       }),
       buildLogPolicy.summaryPlugin,
       // 自动按需导入 API
@@ -333,7 +335,7 @@ export default ({ mode }: { mode: string }) => {
     ],
     // 依赖预构建：避免运行时重复请求与转换，提升首次加载速度
     optimizeDeps: {
-      entries: ['index.html', 'src/views/**/*.vue'],
+      entries: ['index.html'],
       ignoreOutdatedRequests: true,
       // Element Plus 的按需样式入口会导入 Sass 源码。让 Vite 直接按需处理它们，
       // 避免懒加载页面首次访问时触发依赖重优化和整页刷新。

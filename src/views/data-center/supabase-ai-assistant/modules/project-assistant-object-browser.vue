@@ -6,7 +6,7 @@
         <small>{{ objects.length }} 条结果</small>
       </div>
       <div class="project-assistant-object-browser__actions">
-        <ElTooltip content="刷新项目对象" placement="bottom">
+        <ArtTooltip content="刷新项目对象" placement="bottom">
           <ArtIconButton
             icon="ri:refresh-line"
             circle
@@ -15,8 +15,8 @@
             :disabled="loading && loadSource !== 'refresh'"
             @click="emit('refresh')"
           />
-        </ElTooltip>
-        <ElTooltip :content="focusMode ? '退出专注模式' : '进入专注模式'" placement="bottom">
+        </ArtTooltip>
+        <ArtTooltip :content="focusMode ? '退出专注模式' : '进入专注模式'" placement="bottom">
           <ArtIconButton
             :class="{ 'is-active': focusMode }"
             :icon="focusMode ? 'dashicons:fullscreen-exit-alt' : 'dashicons:fullscreen-alt'"
@@ -24,7 +24,7 @@
             :label="focusMode ? '退出专注模式' : '进入专注模式'"
             @click="emit('toggle-focus')"
           />
-        </ElTooltip>
+        </ArtTooltip>
       </div>
     </div>
 

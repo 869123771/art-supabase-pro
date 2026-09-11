@@ -79,8 +79,18 @@ export const useUserStore = defineStore(
     const DICT_CACHE_TTL_MS = 5 * 60 * 1000
     let dictListFetchedAt = 0
     let dictListRequest: Promise<void> | null = null
+    let dictCacheVersion = 0
     const dictCodeFetchedAt = new Map<string, number>()
     const dictCodeRequests = new Map<string, Promise<void>>()
+
+    const clearDictionaryCache = (): void => {
+      dictCacheVersion += 1
+      dictMap.value = {}
+      dictListFetchedAt = 0
+      dictListRequest = null
+      dictCodeFetchedAt.clear()
+      dictCodeRequests.clear()
+    }
     // 计算属性：获取用户信息
     const getUserInfo = computed<Partial<Api.Auth.UserInfo>>(() => info.value)
     // 计算属性：获取用户信息
@@ -183,6 +193,7 @@ export const useUserStore = defineStore(
         lockPassword.value = ''
         accessToken.value = ''
         refreshToken.value = ''
+        clearDictionaryCache()
         // 注意：不清空工作台标签页，等下次登录时根据用户判断
         sessionStorage.removeItem('iframeRoutes')
         useMenuStore().setHomePath('')
@@ -285,9 +296,10 @@ export const useUserStore = defineStore(
     const fetchDictList = async (): Promise<void> => {
       if (dictListRequest) return dictListRequest
 
-      dictListRequest = (async () => {
+      const loadVersion = dictCacheVersion
+      const request = (async () => {
         const { data } = await fetchGetDictList()
-        if (!data) return
+        if (!data || loadVersion !== dictCacheVersion) return
 
         const groupData = groupBy(data, (dictItem) => dictItem.dictTypeTable.code) as DictMap
         Object.keys(groupData).forEach((key) => {
@@ -300,11 +312,12 @@ export const useUserStore = defineStore(
         dictListFetchedAt = Date.now()
         Object.keys(groupData).forEach((code) => dictCodeFetchedAt.set(code, dictListFetchedAt))
       })()
+      dictListRequest = request
 
       try {
-        await dictListRequest
+        await request
       } finally {
-        dictListRequest = null
+        if (dictListRequest === request) dictListRequest = null
       }
     }
 
@@ -312,12 +325,14 @@ export const useUserStore = defineStore(
       const activeRequest = dictCodeRequests.get(dictCode)
       if (activeRequest) return activeRequest
 
+      const loadVersion = dictCacheVersion
       const request = (async () => {
         const { data, error } = await fetchGetDictListByTypeCode(dictCode)
         console.info(
           `[DictDiagnostic] code=${dictCode} count=${data?.length ?? 0} error=${error instanceof Error ? error.message : String(error)}`
         )
         if (error) throw error
+        if (loadVersion !== dictCacheVersion) return
 
         dictMap.value = {
           ...dictMap.value,
@@ -330,7 +345,7 @@ export const useUserStore = defineStore(
       try {
         await request
       } finally {
-        dictCodeRequests.delete(dictCode)
+        if (dictCodeRequests.get(dictCode) === request) dictCodeRequests.delete(dictCode)
       }
     }
 
@@ -378,6 +393,7 @@ export const useUserStore = defineStore(
       getDictLabelByValue,
       getDictItemByValue,
       getDictTagTypeByValue,
+      clearDictionaryCache,
       getDictTagByValue,
       setDictMap,
       setUserInfo,

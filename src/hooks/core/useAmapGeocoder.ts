@@ -21,7 +21,7 @@ interface AMapGeocoderInstance {
   ) => void
 }
 
-interface AMapConstructor {
+interface AMapConstructor extends ArtAmapBrowserNamespace {
   Geocoder: new (options: { city: string }) => AMapGeocoderInstance
 }
 

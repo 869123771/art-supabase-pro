@@ -14,6 +14,7 @@
       icon="ri:dashboard-3-line"
       :tags="workspaceTags"
       class="operations-dashboard__header"
+      density="compact"
       refreshable
       refresh-label="刷新运营数据"
       :refresh-loading="overview.loading"
@@ -212,23 +213,14 @@
   const pageError = computed(() => (overview.loaded ? null : overview.error))
   const metricCards = computed<DashboardMetric[]>(() => [
     {
-      key: 'today-order',
-      label: '今日开单',
-      value: formatNumberValue(overview.data.todayOrderCount, locale.value),
-      unit: '单',
-      hint: '今日新增运输订单',
-      icon: 'ri:file-list-3-line',
-      tone: 'primary',
-      route: '/tms/order-list'
-    },
-    {
-      key: 'today-freight',
-      label: '今日运费',
-      value: formatCurrencyValue(overview.data.todayFreightAmount, 'CNY', locale.value),
-      hint: '按今日开单金额汇总',
-      icon: 'ri:money-cny-circle-line',
-      tone: 'info',
-      route: '/tms/order-list'
+      key: 'risk',
+      label: '风险待处理',
+      value: formatNumberValue(reminderTotal.value, locale.value),
+      unit: '项',
+      hint: `${overview.data.pendingAuditVehicleCount} 台车辆待审核`,
+      icon: 'ri:alarm-warning-line',
+      tone: 'danger',
+      route: '/vms/reminder-manage'
     },
     {
       key: 'pending-dispatch',
@@ -251,6 +243,25 @@
       route: '/tms/in-transit-monitor'
     },
     {
+      key: 'today-order',
+      label: '今日开单',
+      value: formatNumberValue(overview.data.todayOrderCount, locale.value),
+      unit: '单',
+      hint: '今日新增运输订单',
+      icon: 'ri:file-list-3-line',
+      tone: 'primary',
+      route: '/tms/order-list'
+    },
+    {
+      key: 'today-freight',
+      label: '今日运费',
+      value: formatCurrencyValue(overview.data.todayFreightAmount, 'CNY', locale.value),
+      hint: '按今日开单金额汇总',
+      icon: 'ri:money-cny-circle-line',
+      tone: 'info',
+      route: '/tms/order-list'
+    },
+    {
       key: 'completed-today',
       label: '今日完成',
       value: formatNumberValue(overview.data.completedTodayCount, locale.value),
@@ -259,16 +270,6 @@
       icon: 'ri:checkbox-circle-line',
       tone: 'success',
       route: '/tms/order-list'
-    },
-    {
-      key: 'risk',
-      label: '风险待处理',
-      value: formatNumberValue(reminderTotal.value, locale.value),
-      unit: '项',
-      hint: `${overview.data.pendingAuditVehicleCount} 台车辆待审核`,
-      icon: 'ri:alarm-warning-line',
-      tone: 'danger',
-      route: '/vms/reminder-manage'
     }
   ])
 

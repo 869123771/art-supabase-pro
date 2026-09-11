@@ -67,6 +67,25 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
     ]
   })),
   {
+    menuName: 'MdmWarehouseDefinition',
+    buttons: [
+      ...crud({ view: true, export: true }),
+      button('Copy', '复制'),
+      button('Enable', '启用'),
+      button('Disable', '禁用'),
+      button('ManageGroup', '管理分组')
+    ]
+  },
+  ...['MdmSupplyChainCodeRule', 'MdmOutboundRule'].map((menuName) => ({
+    menuName,
+    buttons: [
+      ...crud({ view: true, export: true }),
+      button('Copy', '复制'),
+      button('Enable', '启用'),
+      button('Disable', '停用')
+    ]
+  })),
+  {
     menuName: 'MdmBomMaintenance',
     buttons: [
       ...crud({ view: true, export: true }),
@@ -197,6 +216,10 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
       button('ReferencePattern', '参考轮班模式'),
       button('Reminder', '设置日历提醒')
     ]
+  },
+  {
+    menuName: 'MdmShiftScheduling',
+    buttons: crud({ view: true })
   },
   {
     menuName: 'PmisInspectionSheet',
@@ -597,14 +620,14 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
     ]
   },
   {
-    menuName: 'SmisStatutoryHoliday',
+    menuName: 'MdmStatutoryHoliday',
     buttons: [
-      button('View', '查看法定节假日', 'SmisStatutoryHoliday:View'),
-      button('Add', '新增法定节假日', 'SmisStatutoryHoliday:Add'),
-      button('Edit', '编辑法定节假日', 'SmisStatutoryHoliday:Edit'),
-      button('Delete', '删除法定节假日', 'SmisStatutoryHoliday:Delete'),
-      button('Import', '导入法定节假日', 'SmisStatutoryHoliday:Import'),
-      button('Export', '导出法定节假日', 'SmisStatutoryHoliday:Export')
+      button('View', '查看法定节假日', 'MdmStatutoryHoliday:View'),
+      button('Add', '新增法定节假日', 'MdmStatutoryHoliday:Add'),
+      button('Edit', '编辑法定节假日', 'MdmStatutoryHoliday:Edit'),
+      button('Delete', '删除法定节假日', 'MdmStatutoryHoliday:Delete'),
+      button('Import', '导入法定节假日', 'MdmStatutoryHoliday:Import'),
+      button('Export', '导出法定节假日', 'MdmStatutoryHoliday:Export')
     ]
   },
   {

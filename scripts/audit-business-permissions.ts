@@ -270,7 +270,6 @@ const platformSuperAllowlist = new Map<string, string>([
 
 const sourceReferenceExemptions = new Map<string, string>([
   ...[
-    'SmisStatutoryHoliday:View',
     'SmisSite:View',
     'SmisInspectionCategory:View',
     'SmisDualControlHazardFactorCategory:View',

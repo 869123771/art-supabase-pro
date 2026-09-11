@@ -458,18 +458,19 @@
    */
   onUnmounted(() => {
     handleDisconnect()
+    document.removeEventListener('visibilitychange', handleVisibilityChange)
   })
 
   /**
    * 监听页面可见性变化，页面隐藏时断开连接
    */
-  onMounted(() => {
-    document.addEventListener('visibilitychange', () => {
-      if (document.hidden && isConnected.value) {
-        addLog('info', '页面隐藏，保持连接')
-      }
-    })
-  })
+  const handleVisibilityChange = (): void => {
+    if (document.hidden && isConnected.value) {
+      addLog('info', '页面隐藏，保持连接')
+    }
+  }
+
+  onMounted(() => document.addEventListener('visibilitychange', handleVisibilityChange))
 </script>
 
 <style scoped>

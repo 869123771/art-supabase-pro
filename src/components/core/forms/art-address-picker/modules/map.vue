@@ -55,7 +55,7 @@
   import { LocationFilled, Search } from '@element-plus/icons-vue'
   import { ElMessage } from 'element-plus'
   import { debounce, isNil, trim } from 'lodash-es'
-  import { useAmapSdk } from '@/hooks/core/useAmapSdk'
+  import { useAmapSdk, type AmapBrowserNamespace } from '@/hooks/core/useAmapSdk'
   import type { AddressMapPickResult } from '../types'
 
   defineOptions({ name: 'ArtAddressMap' })
@@ -207,7 +207,7 @@
     setLevel?: (level: DistrictLevel) => void
   }
 
-  interface AMapConstructor {
+  interface AMapConstructor extends AmapBrowserNamespace {
     AutoComplete: new (options: Record<string, unknown>) => AMapAutoCompleteInstance
     DistrictSearch: new (options: Record<string, unknown>) => AMapDistrictSearchInstance
     Geocoder: new (options: Record<string, unknown>) => AMapGeocoderInstance

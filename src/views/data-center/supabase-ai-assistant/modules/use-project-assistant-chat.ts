@@ -9,6 +9,7 @@ import {
   renameProjectAssistantConversation
 } from '@/api/supabase-ai-assistant'
 import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
+import { downloadBlob } from '@/utils/file'
 import type {
   ProjectAssistantCapabilities,
   ProjectAssistantConversationSummary,
@@ -176,12 +177,10 @@ export function useProjectAssistantChat(options: UseProjectAssistantChatOptions)
           : [])
       ])
     ].join('\n')
-    const url = URL.createObjectURL(new Blob([content], { type: 'text/markdown;charset=utf-8' }))
-    const anchor = document.createElement('a')
-    anchor.href = url
-    anchor.download = `supabase-ai-${new Date().toISOString().slice(0, 10)}.md`
-    anchor.click()
-    URL.revokeObjectURL(url)
+    downloadBlob(
+      new Blob([content], { type: 'text/markdown;charset=utf-8' }),
+      `supabase-ai-${new Date().toISOString().slice(0, 10)}.md`
+    )
     ElMessage.success('会话已导出为 Markdown')
   }
 

@@ -1,23 +1,17 @@
 <template>
   <div ref="rootRef" class="asset-reliability-core" role="img" :aria-label="coreSummary">
-    <TresCanvas
-      v-if="isWebGlSupported"
-      class="asset-reliability-core__canvas"
-      alpha
-      :antialias="true"
-      :clear-alpha="0"
-      power-preference="high-performance"
-      aria-hidden="true"
-    >
-      <AssetReliabilityScene
-        :accent-color="resolvedAccentColor"
-        :health="health"
-        :has-data="hasData"
-        :risk-count="riskCount"
-        :connected-rate="connectedRate"
-      />
-    </TresCanvas>
-    <div v-else class="asset-reactor-fallback" aria-hidden="true"><i /><i /><i /></div>
+    <AssetReliabilityCanvas
+      v-if="isWebGlSupported && isSceneActive"
+      :accent-color="resolvedAccentColor"
+      :health="health"
+      :has-data="hasData"
+      :risk-count="riskCount"
+      :connected-rate="connectedRate"
+      @ready="sceneReady = true"
+    />
+    <div v-if="!isWebGlSupported || !sceneReady" class="asset-reactor-fallback" aria-hidden="true">
+      <i /><i /><i />
+    </div>
 
     <div class="asset-reactor-rings" aria-hidden="true"><i /><i /><i /></div>
     <div class="asset-reactor-scan" aria-hidden="true" />
@@ -48,8 +42,9 @@
 </template>
 
 <script setup lang="ts">
-  import { TresCanvas } from '@tresjs/core'
-  import AssetReliabilityScene from './asset-reliability-scene.vue'
+  const AssetReliabilityCanvas = defineAsyncComponent(
+    () => import('./asset-reliability-canvas.vue')
+  )
 
   interface Props {
     health: number
@@ -63,6 +58,8 @@
 
   const props = defineProps<Props>()
   const rootRef = ref<HTMLElement | null>(null)
+  const sceneReady = ref(false)
+  const isSceneActive = ref(true)
   const accentColor = useCssVar('--theme-color', rootRef, {
     initialValue: '#635bff',
     observe: true
@@ -71,6 +68,15 @@
   const isWebGlSupported = useSupported(() => {
     const canvas = document.createElement('canvas')
     return Boolean(canvas.getContext('webgl2') || canvas.getContext('webgl'))
+  })
+
+  onActivated(() => {
+    isSceneActive.value = true
+  })
+
+  onDeactivated(() => {
+    isSceneActive.value = false
+    sceneReady.value = false
   })
   const hasData = computed(() => props.total > 0)
   const coreSummary = computed(() =>

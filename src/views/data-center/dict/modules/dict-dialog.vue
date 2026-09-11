@@ -25,24 +25,6 @@
           <span>{{ form.data.color || '默认颜色' }}</span>
         </div>
       </template>
-
-      <template #tagType>
-        <div class="dict-tag-style-field">
-          <el-select v-model="form.data.tagType" clearable placeholder="请选择标签样式">
-            <el-option
-              v-for="option in tagTypeOptions"
-              :key="option.value"
-              :label="option.label"
-              :value="option.value"
-            >
-              <div class="dict-tag-style-field__option">
-                <span class="dict-tag-style-field__value">{{ option.value }}</span>
-                <el-tag :type="option.value">{{ option.label }}</el-tag>
-              </div>
-            </el-option>
-          </el-select>
-        </div>
-      </template>
     </ArtForm>
   </ArtDialog>
 </template>
@@ -111,13 +93,6 @@
     remark: ''
   }
   const elementPlusPresetColors = ['#409EFF', '#67C23A', '#E6A23C', '#F56C6C', '#909399']
-  const tagTypeOptions: Array<{ label: string; value: Api.Common.TagPreset }> = [
-    { label: '主要', value: 'primary' },
-    { label: '成功', value: 'success' },
-    { label: '信息', value: 'info' },
-    { label: '警告', value: 'warning' },
-    { label: '危险', value: 'danger' }
-  ]
   const hasCascadeParentType = (): boolean => !!form.value.data.cascadeParentTypeId
   const getParentFieldKey = (): 'cascadeParentId' | 'parentId' =>
     hasCascadeParentType() ? 'cascadeParentId' : 'parentId'
@@ -281,7 +256,8 @@
           {
             label: '标签样式',
             key: 'tagType',
-            slots: 'tagType'
+            type: 'tagStyleSelect',
+            props: { clearable: true, placeholder: '请选择标签样式' }
           },
           {
             label: '补充说明',
@@ -425,39 +401,5 @@
     align-items: center;
     min-height: 36px;
     color: var(--el-text-color-regular);
-  }
-
-  .dict-tag-style-field {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-    width: 100%;
-
-    .el-select {
-      flex: 1;
-      min-width: 0;
-    }
-
-    .el-tag {
-      flex: none;
-    }
-
-    &__option {
-      display: flex;
-      gap: 12px;
-      align-items: center;
-      justify-content: space-between;
-      width: 100%;
-      min-width: 0;
-    }
-
-    &__value {
-      overflow: hidden;
-      text-overflow: ellipsis;
-      font-family:
-        ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
-      color: var(--el-text-color-regular);
-      white-space: nowrap;
-    }
   }
 </style>

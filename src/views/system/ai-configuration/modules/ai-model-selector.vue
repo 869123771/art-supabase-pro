@@ -70,7 +70,7 @@
               <span>测速状态</span>
               <strong>失败</strong>
             </div>
-            <ElTooltip
+            <ArtTooltip
               :content="
                 item.benchmarkable
                   ? getBenchmarkError(item.id)
@@ -90,7 +90,7 @@
               >
                 {{ getBenchmarkError(item.id) ? '重试' : '测速' }}
               </ElButton>
-            </ElTooltip>
+            </ArtTooltip>
           </div>
         </div>
       </ElOption>

@@ -76,3 +76,36 @@ test('copies missing and changed file-viewer assets', async (context) => {
   )
   assert.deepEqual(result, { copied: 3, unchanged: 0, total: 3 })
 })
+
+test('omits compatibility assets that the application bundle already emits', async (context) => {
+  const fixture = await createFixture()
+  context.after(() => rm(fixture.root, { recursive: true, force: true }))
+
+  const sourceWorker = path.join(fixture.sourceRoot, 'vendor/pptx/pptx.worker.js')
+  await mkdir(path.dirname(sourceWorker), { recursive: true })
+  await writeFile(sourceWorker, 'bundled-worker-content')
+  await writeFile(
+    path.join(fixture.sourceRoot, 'flyfish-viewer-assets.json'),
+    `${JSON.stringify({
+      schemaVersion: 1,
+      assets: [
+        { id: 'pdf-cjk-font-fallback', to: path.join(fixture.sourceRoot, 'vendor/pdf/fonts') },
+        { id: 'pptx-worker', to: sourceWorker }
+      ]
+    })}\n`
+  )
+
+  const result = await syncFileViewerAssets(fixture.sourceRoot, fixture.targetRoot, [
+    'vendor/pptx/pptx.worker.js'
+  ])
+  const manifest = JSON.parse(
+    await readFile(path.join(fixture.targetRoot, 'flyfish-viewer-assets.json'), 'utf8')
+  ) as { assets: Array<{ id: string }> }
+
+  await assert.rejects(stat(path.join(fixture.targetRoot, 'vendor/pptx/pptx.worker.js')))
+  assert.deepEqual(
+    manifest.assets.map((asset) => asset.id),
+    ['pdf-cjk-font-fallback']
+  )
+  assert.deepEqual(result, { copied: 1, unchanged: 1, total: 2 })
+})

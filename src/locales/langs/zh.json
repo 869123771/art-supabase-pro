@@ -148,6 +148,7 @@
     },
     "placeholder": {
       "username": "请输入账号",
+      "identifier": "请输入邮箱或手机号",
       "email": "请输入邮箱",
       "phone": "请输入手机号",
       "password": "请输入密码",

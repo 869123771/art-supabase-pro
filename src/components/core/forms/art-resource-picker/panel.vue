@@ -194,13 +194,7 @@
                 v-bind="btn.uploadConfig ?? {}"
                 @change="handleFile($event, btn)"
               />
-              <el-tooltip
-                :content="btn.label"
-                placement="top"
-                :show-after="300"
-                :offset="10"
-                :show-arrow="false"
-              >
+              <ArtTooltip :content="btn.label" placement="top" :show-after="300" :offset="10">
                 <button
                   type="button"
                   class="res-app"
@@ -215,7 +209,7 @@
                     <ArtSvgIcon :icon="btn.icon" />
                   </span>
                 </button>
-              </el-tooltip>
+              </ArtTooltip>
             </div>
           </template>
         </div>
@@ -350,7 +344,8 @@
   /**
    * 当前资源列表
    */
-  const resources = ref<Resource[]>([])
+  // 资源卡片只整体替换列表，避免为大量只读资源记录创建深层响应式代理。
+  const resources = shallowRef<Resource[]>([])
   const playingResourceKey = ref<string>()
 
   /**

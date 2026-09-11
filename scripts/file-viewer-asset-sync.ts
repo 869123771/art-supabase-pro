@@ -21,6 +21,7 @@ export interface FileViewerAssetSyncResult {
 interface FileViewerAssetSyncPluginOptions {
   enabled: boolean
   sourceRoot: string
+  excludedFiles?: string[]
 }
 
 function isNodeError(error: unknown): error is NodeJS.ErrnoException {
@@ -96,7 +97,13 @@ async function writeFileIfChanged(target: string, content: Buffer): Promise<bool
   return true
 }
 
-async function createOutputManifest(sourceRoot: string, targetRoot: string): Promise<Buffer> {
+const normalizeRelativePath = (relativePath: string): string => relativePath.replace(/\\/g, '/')
+
+async function createOutputManifest(
+  sourceRoot: string,
+  targetRoot: string,
+  excludedFiles: ReadonlySet<string>
+): Promise<Buffer> {
   const sourceManifest = path.join(sourceRoot, ASSET_MANIFEST)
   const parsed: unknown = JSON.parse(await readFile(sourceManifest, 'utf8'))
   if (!isRecord(parsed)) {
@@ -105,17 +112,23 @@ async function createOutputManifest(sourceRoot: string, targetRoot: string): Pro
 
   const manifest = parsed as FileViewerAssetManifest
   const assets = Array.isArray(manifest.assets)
-    ? manifest.assets.map((asset) => {
-        if (!isRecord(asset) || typeof asset.to !== 'string') return asset
+    ? manifest.assets
+        .filter((asset) => {
+          if (!isRecord(asset) || typeof asset.to !== 'string') return true
+          const relativeTarget = normalizeRelativePath(path.relative(sourceRoot, asset.to))
+          return !excludedFiles.has(relativeTarget)
+        })
+        .map((asset) => {
+          if (!isRecord(asset) || typeof asset.to !== 'string') return asset
 
-        const relativeTarget = path.relative(sourceRoot, asset.to)
-        if (relativeTarget.startsWith('..') || path.isAbsolute(relativeTarget)) return asset
+          const relativeTarget = path.relative(sourceRoot, asset.to)
+          if (relativeTarget.startsWith('..') || path.isAbsolute(relativeTarget)) return asset
 
-        return {
-          ...asset,
-          to: path.join(targetRoot, relativeTarget)
-        }
-      })
+          return {
+            ...asset,
+            to: path.join(targetRoot, relativeTarget)
+          }
+        })
     : manifest.assets
 
   return Buffer.from(`${JSON.stringify({ ...manifest, assets }, null, 2)}\n`)
@@ -129,16 +142,19 @@ async function createOutputManifest(sourceRoot: string, targetRoot: string): Pro
  */
 export async function syncFileViewerAssets(
   sourceRoot: string,
-  targetRoot: string
+  targetRoot: string,
+  excludedFilePaths: string[] = []
 ): Promise<FileViewerAssetSyncResult> {
   const sourceInfo = await stat(sourceRoot)
   if (!sourceInfo.isDirectory()) {
     throw new Error(`File Viewer 构建资源目录不存在：${sourceRoot}`)
   }
 
-  const relativeFiles = (await listFiles(sourceRoot)).filter(
-    (relativePath) => relativePath !== ASSET_MANIFEST
-  )
+  const excludedFiles = new Set(excludedFilePaths.map(normalizeRelativePath))
+  const relativeFiles = (await listFiles(sourceRoot)).filter((relativePath) => {
+    const normalizedPath = normalizeRelativePath(relativePath)
+    return normalizedPath !== ASSET_MANIFEST && !excludedFiles.has(normalizedPath)
+  })
   let copied = 0
   let unchanged = 0
 
@@ -157,7 +173,7 @@ export async function syncFileViewerAssets(
 
   const manifestChanged = await writeFileIfChanged(
     path.join(targetRoot, ASSET_MANIFEST),
-    await createOutputManifest(sourceRoot, targetRoot)
+    await createOutputManifest(sourceRoot, targetRoot, excludedFiles)
   )
   if (manifestChanged) copied += 1
   else unchanged += 1
@@ -189,7 +205,11 @@ export function createFileViewerAssetSyncPlugin(options: FileViewerAssetSyncPlug
         if (!resolvedConfig) throw new Error('Vite 配置尚未完成，无法同步 File Viewer 资源')
 
         const targetRoot = path.resolve(resolvedConfig.root, resolvedConfig.build.outDir)
-        const result = await syncFileViewerAssets(options.sourceRoot, targetRoot)
+        const result = await syncFileViewerAssets(
+          options.sourceRoot,
+          targetRoot,
+          options.excludedFiles
+        )
         console.log(
           `[vite] File Viewer 资源同步完成：复制 ${result.copied}，跳过未变化 ${result.unchanged}`
         )

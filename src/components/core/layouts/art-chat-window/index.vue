@@ -34,7 +34,7 @@
             size="small"
             class="art-ai-assistant__mode-switch"
           />
-          <ElTooltip
+          <ArtTooltip
             v-if="!isMobile"
             :content="isExpanded ? '退出放大' : '放大对话'"
             placement="bottom"
@@ -46,8 +46,8 @@
               class="art-ai-assistant__header-button"
               @click="toggleExpanded"
             />
-          </ElTooltip>
-          <ElTooltip v-if="isProjectMode" content="打开 Supabase AI 工作台" placement="bottom">
+          </ArtTooltip>
+          <ArtTooltip v-if="isProjectMode" content="打开 Supabase AI 工作台" placement="bottom">
             <ArtIconButton
               icon="ri:dashboard-line"
               circle
@@ -55,8 +55,8 @@
               class="art-ai-assistant__header-button"
               @click="openProjectWorkbench"
             />
-          </ElTooltip>
-          <ElTooltip content="新建对话" placement="bottom">
+          </ArtTooltip>
+          <ArtTooltip content="新建对话" placement="bottom">
             <ArtIconButton
               icon="ri:chat-new-line"
               circle
@@ -64,8 +64,8 @@
               class="art-ai-assistant__header-button"
               @click="resetConversation"
             />
-          </ElTooltip>
-          <ElTooltip content="关闭" placement="bottom">
+          </ArtTooltip>
+          <ArtTooltip content="关闭" placement="bottom">
             <ArtIconButton
               icon="ri:close-line"
               circle
@@ -73,7 +73,7 @@
               class="art-ai-assistant__header-button"
               @click="api.handleClose()"
             />
-          </ElTooltip>
+          </ArtTooltip>
         </div>
       </header>
     </template>

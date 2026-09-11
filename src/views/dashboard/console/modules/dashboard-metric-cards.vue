@@ -52,6 +52,7 @@
     display: grid;
     gap: 12px;
     min-width: 0;
+    container-type: inline-size;
 
     &__header {
       display: flex;
@@ -233,25 +234,53 @@
     transform: translateY(-2px);
   }
 
-  @media screen and (width <= 1260px) {
+  @container (width <= 1100px) {
     .metric-cards {
       grid-template-columns: repeat(3, minmax(0, 1fr));
     }
   }
 
-  @media screen and (width <= 760px) {
+  @container (width <= 620px) {
     .metric-cards {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
-  }
 
-  @media screen and (width <= 560px) {
     .dashboard-overview__header > span {
       display: none;
     }
+
+    .metric-card {
+      gap: 10px;
+      min-height: 82px;
+      padding: 12px;
+
+      &__icon {
+        flex-basis: 36px;
+        width: 36px;
+        height: 36px;
+        font-size: 17px;
+      }
+
+      &__copy {
+        gap: 1px;
+
+        strong {
+          font-size: 19px;
+        }
+
+        small {
+          display: none;
+        }
+      }
+
+      &__arrow {
+        top: 8px;
+        right: 8px;
+      }
+    }
   }
 
-  @media screen and (width <= 480px) {
+  @container (width <= 320px) {
     .metric-cards {
       grid-template-columns: 1fr;
     }

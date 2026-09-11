@@ -52,5 +52,11 @@ const tenantScopeFetch: typeof fetch = async (input, init) => {
 }
 
 export const supabase = createClient(supabaseUrl, supabaseKey, {
-  global: { fetch: tenantScopeFetch }
+  global: { fetch: tenantScopeFetch },
+  auth: {
+    // OAuth 与密码找回使用查询参数中的一次性授权码，避免 implicit token fragment
+    // 和 Vue Hash 路由同时占用 `#`，造成回调后无法恢复 Supabase 会话。
+    detectSessionInUrl: true,
+    flowType: 'pkce'
+  }
 })

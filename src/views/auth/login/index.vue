@@ -22,6 +22,15 @@
             :closable="false"
             :title="websiteConfig.maintenanceMessage || '系统维护中，请稍后再试'"
           />
+          <ElAlert
+            v-if="oauthError"
+            class="auth-oauth-error"
+            type="error"
+            show-icon
+            :closable="true"
+            :title="oauthError"
+            @close="oauthError = ''"
+          />
           <ElForm
             ref="formRef"
             :model="formData"
@@ -30,16 +39,18 @@
             @keyup.enter="handleSubmit"
             class="mt-[25px]"
           >
-            <ElFormItem prop="email">
+            <ElFormItem prop="identifier">
               <ElInput
                 class="custom-height"
-                :placeholder="$t('login.placeholder.email')"
-                v-model.trim="formData.email"
-                name="email"
-                autocomplete="email"
-                aria-label="登录邮箱"
+                :placeholder="$t('login.placeholder.identifier')"
+                v-model.trim="formData.identifier"
+                name="username"
+                autocomplete="username"
+                autocapitalize="none"
+                :spellcheck="false"
+                aria-label="邮箱或手机号"
               >
-                <template #prefix><ArtSvgIcon icon="ri:mail-line" /></template>
+                <template #prefix><ArtSvgIcon icon="ri:user-3-line" /></template>
               </ElInput>
             </ElFormItem>
             <ElFormItem prop="password">
@@ -106,6 +117,39 @@
             </div>
           </ElForm>
 
+          <div v-if="enabledAuthChannels.length" class="auth-channels">
+            <div class="auth-channels__divider"><span>其他方式</span></div>
+            <div class="auth-channels__icons" role="group" aria-label="第三方登录方式">
+              <ArtTooltip
+                v-for="channel in enabledAuthChannels"
+                :key="channel.key"
+                :content="`${channel.label}登录`"
+                placement="top"
+                effect="dark"
+                popper-class="auth-channel-tooltip"
+                :show-after="240"
+                :hide-after="0"
+                :disabled="Boolean(oauthLoadingKey)"
+              >
+                <ElButton
+                  circle
+                  class="auth-channels__button"
+                  :class="`is-${channel.key}`"
+                  :disabled="Boolean(oauthLoadingKey || loading)"
+                  :aria-label="`使用${channel.label}登录`"
+                  :aria-busy="oauthLoadingKey === channel.key"
+                  @click="handleAuthChannelLogin(channel)"
+                >
+                  <ElIcon v-if="oauthLoadingKey === channel.key" class="auth-channels__spinner">
+                    <Loading />
+                  </ElIcon>
+                  <ArtSvgIcon v-if="oauthLoadingKey !== channel.key" :icon="channel.icon" />
+                </ElButton>
+              </ArtTooltip>
+            </div>
+            <p class="auth-channels__hint">首次使用需先在个人中心绑定</p>
+          </div>
+
           <div class="form__trust">
             <span><ArtSvgIcon icon="ri:lock-line" /> TLS 安全连接</span>
             <i />
@@ -122,7 +166,13 @@
   import { useI18n } from 'vue-i18n'
   import { HttpError } from '@/utils/http/error'
   import { ElMessage, ElNotification, type FormInstance, type FormRules } from 'element-plus'
-  import { login } from '@/api/auth'
+  import { Loading } from '@element-plus/icons-vue'
+  import {
+    checkCurrentUserAccess,
+    getCurrentAuthSession,
+    login,
+    signInWithAuthChannel
+  } from '@/api/auth'
   import { MenuProcessor } from '@/router/core/MenuProcessor'
   import { getFirstMenuPath } from '@/utils'
   import { useWebsiteConfig } from '@/hooks'
@@ -132,6 +182,7 @@
     resolveSafePostLoginRedirect
   } from '@/utils/auth-redirect'
   import { preparePostLoginData } from './modules/post-login-data'
+  import { buildAuthCallbackUrl, getFriendlySupabaseErrorMessage } from '@/utils/supabase'
 
   defineOptions({ name: 'Login' })
 
@@ -169,12 +220,17 @@
   const formData = reactive({
     account: '',
     username: '',
-    email: '624944977@qq.com',
+    identifier: '624944977@qq.com',
     password: '123456',
     rememberPassword: true
   })
 
   const loading = ref(false)
+  const oauthLoadingKey = ref('')
+  const oauthError = ref('')
+  const enabledAuthChannels = computed(() =>
+    websiteConfig.value.authChannels.filter((channel) => channel.enabled)
+  )
   const showTurnstile = computed(() => websiteConfig.value.captchaEnabled)
   const turnstileSiteKey = computed(() => websiteConfig.value.turnstileSiteKey)
   const turnstileWidgetSize = computed(() =>
@@ -194,7 +250,7 @@
   )
 
   const rules = computed<FormRules>(() => ({
-    email: [{ required: true, message: t('login.placeholder.email'), trigger: 'blur' }],
+    identifier: [{ required: true, message: t('login.placeholder.identifier'), trigger: 'blur' }],
     password: [{ required: true, message: t('login.placeholder.password'), trigger: 'blur' }]
   }))
 
@@ -227,9 +283,80 @@
     return getFirstMenuPath(menuList) || '/'
   }
 
-  onMounted(() => {
-    void loadWebsiteConfig()
-  })
+  onMounted(() => void initializeLoginPage())
+
+  const initializeLoginPage = async (): Promise<void> => {
+    await loadWebsiteConfig()
+    if (route.query.auth_action === 'login') {
+      await handleOAuthCallback()
+    }
+  }
+
+  const completeAuthenticatedLogin = async (tokens: {
+    accessToken: string
+    refreshToken?: string
+  }): Promise<void> => {
+    userStore.setToken(tokens.accessToken, tokens.refreshToken)
+    userStore.setLoginStatus(true)
+    const { dictionariesReady } = await preparePostLoginData({
+      loadDictionaries: userStore.fetchDictList,
+      loadUserProfile: userStore.fetchUserInfo,
+      onDictionaryError: (error) => {
+        console.error('[Login] 基础字典初始化失败:', error)
+      }
+    })
+    showLoginSuccessNotice()
+
+    const targetPath = await resolvePostLoginPath()
+    if (isAbsoluteApplicationRedirect(targetPath)) {
+      await dictionariesReady
+      window.location.replace(targetPath)
+      return
+    }
+
+    await router.push(targetPath)
+    void dictionariesReady
+  }
+
+  const handleOAuthCallback = async (): Promise<void> => {
+    const channelKey = typeof route.query.channel === 'string' ? route.query.channel : ''
+    oauthLoadingKey.value = channelKey || 'oauth'
+    oauthError.value = ''
+    try {
+      const tokens = await getCurrentAuthSession()
+      await checkCurrentUserAccess(true)
+      await completeAuthenticatedLogin(tokens)
+    } catch (error) {
+      oauthError.value = getFriendlySupabaseErrorMessage(error, '第三方登录未完成，请重新发起登录')
+      await userStore.logOut()
+    } finally {
+      oauthLoadingKey.value = ''
+    }
+  }
+
+  const handleAuthChannelLogin = async (channel: Api.Auth.AuthChannel): Promise<void> => {
+    oauthLoadingKey.value = channel.key
+    oauthError.value = ''
+    const requestedRedirect =
+      typeof route.query.redirect === 'string' ? route.query.redirect : undefined
+    const redirectTo = buildAuthCallbackUrl(
+      window.location.href,
+      '/auth/login',
+      'login',
+      channel.key,
+      requestedRedirect
+    )
+    try {
+      await signInWithAuthChannel(channel, redirectTo)
+    } catch (error) {
+      oauthError.value =
+        error instanceof Error && error.message
+          ? error.message
+          : `${channel.label}登录暂时不可用，请稍后重试`
+    } finally {
+      oauthLoadingKey.value = ''
+    }
+  }
 
   // 登录
   const handleSubmit = async () => {
@@ -249,10 +376,10 @@
       const captchaToken = await resolveCaptchaToken()
 
       // 登录请求
-      const { email, password } = formData
+      const { identifier, password } = formData
 
-      const params: Api.Auth.RegisterParams = {
-        email,
+      const params: Api.Auth.LoginParams = {
+        identifier,
         password,
         captchaToken
       }
@@ -263,31 +390,7 @@
         throw new Error('Login failed - no token received')
       }
 
-      // 存储 token 和登录状态
-      userStore.setToken(accessToken, refreshToken)
-      userStore.setLoginStatus(true)
-      const { dictionariesReady } = await preparePostLoginData({
-        loadDictionaries: userStore.fetchDictList,
-        loadUserProfile: userStore.fetchUserInfo,
-        onDictionaryError: (error) => {
-          console.error('[Login] 基础字典初始化失败:', error)
-        }
-      })
-      // 登录成功处理
-      showLoginSuccessNotice()
-
-      // 获取 redirect 参数，如果存在则跳转到指定页面，否则跳转到首页
-      const targetPath = await resolvePostLoginPath()
-      if (isAbsoluteApplicationRedirect(targetPath)) {
-        // 跨应用整页跳转会中断当前请求，先保证字典写入持久化 Store。
-        await dictionariesReady
-        window.location.replace(targetPath)
-        return
-      }
-
-      await router.push(targetPath)
-      // 同一应用内跳转时，业务页可先展示；字典完成后由响应式 Store 自动补齐。
-      void dictionariesReady
+      await completeAuthenticatedLogin({ accessToken, refreshToken })
     } catch (error) {
       if (!(error instanceof HttpError)) {
         console.error('[Login] Unexpected error:', error)
@@ -352,5 +455,18 @@
     height: 0;
     margin: 0;
     overflow: hidden;
+  }
+</style>
+
+<style lang="scss">
+  .auth-channel-tooltip.el-popper.is-dark {
+    padding: 7px 10px;
+    font-size: 12px;
+    line-height: 16px;
+    color: #fff;
+    background: rgb(31 33 47 / 96%);
+    border: 1px solid rgb(255 255 255 / 8%);
+    border-radius: 7px;
+    box-shadow: 0 8px 24px rgb(15 18 32 / 18%);
   }
 </style>

@@ -403,12 +403,28 @@
     if (definition.value.layout === 'flow') return 4
     return 6
   })
-  useIntervalFn(() => {
+  const clockInterval = useIntervalFn(() => {
     currentTime.value = new Date().toISOString()
   }, 1000)
-  useIntervalFn(() => {
+  const dataRefreshInterval = useIntervalFn(() => {
     void loadData(false)
   }, 60000)
+  let wasDeactivated = false
+
+  onActivated(() => {
+    clockInterval.resume()
+    dataRefreshInterval.resume()
+    if (wasDeactivated) void loadData(false)
+    wasDeactivated = false
+  })
+
+  onDeactivated(() => {
+    wasDeactivated = true
+    clockInterval.pause()
+    dataRefreshInterval.pause()
+    state.requestId += 1
+    state.loading = false
+  })
 
   watch(
     () => props.kind,

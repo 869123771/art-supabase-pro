@@ -4,6 +4,7 @@ import {
   canEditField,
   canViewField,
   formatSensitiveNumber,
+  formatSensitiveNumberWithAffix,
   getFieldAccess,
   isMaskedValue,
   mergeFieldAccessMaps,
@@ -37,6 +38,13 @@ test('sensitive number formatting preserves masks and formats numeric values', (
   assert.equal(formatSensitiveNumber(null), '--')
   assert.equal(formatSensitiveNumber(1234.5), '1,234.50')
   assert.equal(formatSensitiveNumber('12.3456', { maximumFractionDigits: 4 }), '12.3456')
+})
+
+test('adds currency and unit affixes without decorating masked or empty values', () => {
+  assert.equal(formatSensitiveNumberWithAffix(0, { prefix: '¥' }), '¥0.00')
+  assert.equal(formatSensitiveNumberWithAffix('1234.5', { suffix: ' 元' }), '1,234.50 元')
+  assert.equal(formatSensitiveNumberWithAffix('***', { prefix: '¥' }), '***')
+  assert.equal(formatSensitiveNumberWithAffix(null, { suffix: ' km' }), '--')
 })
 
 test('write payload helper removes every field without edit permission', () => {

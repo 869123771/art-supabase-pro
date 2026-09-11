@@ -11,7 +11,7 @@
         </div>
       </div>
 
-      <ElTooltip content="刷新组织结构" placement="top">
+      <ArtTooltip content="刷新组织结构" placement="top">
         <ArtIconButton
           icon="ri:refresh-line"
           circle
@@ -19,7 +19,7 @@
           :loading="loading"
           @click="emit('refresh')"
         />
-      </ElTooltip>
+      </ArtTooltip>
     </header>
 
     <div class="user-organization-filter__controls">

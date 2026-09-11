@@ -52,7 +52,7 @@
               <span class="art-form-item__label">
                 <component v-if="typeof item.label !== 'string'" :is="item.label" />
                 <span v-else>{{ item.label }}</span>
-                <ElTooltip v-if="item.help" placement="top" effect="dark">
+                <ArtTooltip v-if="item.help" placement="top" effect="dark">
                   <template #content>
                     <component v-if="typeof item.help !== 'string'" :is="item.help" />
                     <span v-else class="whitespace-pre-line">{{ item.help }}</span>
@@ -60,7 +60,7 @@
                   <ElIcon class="art-form-item__help-icon" aria-label="查看帮助信息" tabindex="0">
                     <QuestionFilled />
                   </ElIcon>
-                </ElTooltip>
+                </ArtTooltip>
               </span>
             </template>
             <div class="art-form-item__content">
@@ -224,7 +224,6 @@
     ElSwitch,
     ElTimePicker,
     ElTimeSelect,
-    ElTooltip,
     ElTreeSelect,
     type FormInstance,
     type FormItemProp,
@@ -238,6 +237,7 @@
     Search
   } from '@element-plus/icons-vue'
   import ArtIconPicker from '@/components/core/forms/art-icon-picker/index.vue'
+  import ArtTagStyleSelect from '@/components/core/forms/art-tag-style-select/index.vue'
   import ArtDataSelect from '@/components/core/forms/art-data-select/index.vue'
   import ArtUserSelect from '@/components/core/forms/art-user-select/index.vue'
   import ArtSectionTitle from '@/components/core/surfaces/art-section-title/index.vue'
@@ -259,6 +259,7 @@
     inputTag: ElInputTag, // 标签输入框
     number: ElInputNumber, // 数字输入框
     select: ElSelect, // 选择器
+    tagStyleSelect: ArtTagStyleSelect, // 标签样式选择器
     segment: ElSegmented, // 分段选择器
     switch: ElSwitch, // 开关
     checkbox: ElCheckbox, // 复选框
@@ -343,7 +344,7 @@
   export type FormItemComponentProps<TType extends FormItemType = FormItemType> = TType extends
     'radioGroup' | 'checkboxGroup'
     ? FormItemPassThroughProps & FormItemChoiceGroupProps
-    : TType extends 'select' | 'segment' | 'cascader' | 'treeSelect'
+    : TType extends 'select' | 'tagStyleSelect' | 'segment' | 'cascader' | 'treeSelect'
       ? FormItemPassThroughProps & FormItemOptionProps
       : TType extends 'divider'
         ? FormItemPassThroughProps & FormItemDividerProps
@@ -608,6 +609,7 @@
     'textarea',
     'inputTag',
     'select',
+    'tagStyleSelect',
     'treeSelect',
     'cascader'
   ]
@@ -659,6 +661,7 @@
 
   const optionComponentTypes = [
     'select',
+    'tagStyleSelect',
     'segment',
     'checkboxGroup',
     'radioGroup',
@@ -918,6 +921,9 @@
       delete props.options
     }
     if (['cascader', 'segment'].includes(String(item.type))) {
+      props.options = options
+    }
+    if (String(item.type) === 'tagStyleSelect') {
       props.options = options
     }
     if (String(item.type) === 'treeSelect') {

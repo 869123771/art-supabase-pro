@@ -27,7 +27,7 @@ interface AmapDrivingInstance {
   ) => void
 }
 
-interface AmapDrivingNamespace {
+interface AmapDrivingNamespace extends ArtAmapBrowserNamespace {
   Driving: new (options: Record<string, unknown>) => AmapDrivingInstance
   DrivingPolicy?: { LEAST_TIME?: number }
 }

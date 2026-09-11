@@ -1,4 +1,5 @@
 import { invokeSupabaseFunctionWithSessionRecovery } from '@/utils/supabase/functions'
+import { createFriendlySupabaseFunctionError } from '@/utils/supabase/error'
 import type {
   AiAssistantChatRequest,
   AiAssistantChatResponse,
@@ -27,19 +28,5 @@ export async function submitAiAssistantFeedback(params: AiAssistantFeedbackReque
 }
 
 export async function normalizeFunctionError(error: unknown): Promise<Error> {
-  if (error && typeof error === 'object' && 'context' in error) {
-    const context = (error as { context?: unknown }).context
-    if (context instanceof Response) {
-      try {
-        const payload = (await context.clone().json()) as { message?: unknown }
-        if (typeof payload.message === 'string' && payload.message) {
-          return new Error(payload.message)
-        }
-      } catch {
-        // Fall back to the original function error.
-      }
-    }
-  }
-  if (error instanceof Error) return error
-  return new Error('AI 助手暂时不可用，请稍后重试')
+  return await createFriendlySupabaseFunctionError(error, 'AI 助手暂时不可用，请稍后重试')
 }
