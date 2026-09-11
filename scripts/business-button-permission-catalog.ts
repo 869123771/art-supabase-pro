@@ -90,6 +90,7 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
     buttons: [
       ...crud({ view: true, export: true }),
       button('Copy', '复制'),
+      button('ManageGroup', '管理分组'),
       button('Submit', '提交审核'),
       button('Approve', '审核通过'),
       button('Archive', '归档或作废')

@@ -1,0 +1,1 @@
+import{$t as e,Zt as t,jn as n,w as r}from"./framework-ClRJ96jm.js";function i(){let i=n(!1),a=e=>{i.value=e};return r(document,`keydown`,e=>{e.key===`Escape`&&i.value&&a(!1)}),e(()=>a(!1)),t(()=>a(!1)),{focusMode:i,setFocusMode:a}}export{i as t};

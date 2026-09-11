@@ -1,0 +1,1 @@
+import{Ot as e,Rt as t,in as n}from"./framework-ClRJ96jm.js";import{t as r}from"./calendar-workspace-5lQmriJ9.js";var i=t({__name:`index`,setup(t){return(t,i)=>(n(),e(r,{kind:`patrol`,mode:`detail`}))}});export{i as default};

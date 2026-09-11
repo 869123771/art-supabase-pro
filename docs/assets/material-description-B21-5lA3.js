@@ -1,0 +1,1 @@
+function e(e){return e?[e.materialName,e.specificationModel,e.drawingNo].map(e=>e?.trim()).filter(Boolean).join(` · `):`—`}export{e as t};

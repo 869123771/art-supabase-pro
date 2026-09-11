@@ -27,7 +27,7 @@
     "data-asset",
     "eda"
   ],
-  "copiedAt": "2026-09-10T06:01:00.442Z",
+  "copiedAt": "2026-09-11T14:48:48.385Z",
   "assets": [
     {
       "rendererId": "pdf",
@@ -57,12 +57,6 @@
       "rendererId": "pdf",
       "id": "pdf-cjk-font-fallback",
       "to": "D:\\spa\\art-supabase-pro\\docs\\vendor\\pdf\\fonts",
-      "copied": true
-    },
-    {
-      "rendererId": "office-presentation",
-      "id": "pptx-worker",
-      "to": "D:\\spa\\art-supabase-pro\\docs\\vendor\\pptx\\pptx.worker.js",
       "copied": true
     },
     {
@@ -99,12 +93,6 @@
       "rendererId": "typst",
       "id": "typst-font-assets",
       "to": "D:\\spa\\art-supabase-pro\\docs\\wasm\\typst\\fonts",
-      "copied": true
-    },
-    {
-      "rendererId": "archive",
-      "id": "libarchive-worker",
-      "to": "D:\\spa\\art-supabase-pro\\docs\\vendor\\libarchive\\worker-bundle.js",
       "copied": true
     },
     {
