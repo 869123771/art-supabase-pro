@@ -188,6 +188,7 @@ Deno.serve(async (req: Request) => {
         user_email: email,
         user_roles: [runtime.roleCode],
         user_type: '2',
+        account_identity_type: 'external',
         tenant_id: runtime.tenantId,
         organization_id: runtime.organizationId,
         status: runtime.autoEnableUser ? '1' : '2',

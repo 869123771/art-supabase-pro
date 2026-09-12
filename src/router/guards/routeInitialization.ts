@@ -1,4 +1,6 @@
-export const ROUTE_INITIALIZATION_STAGE_TIMEOUT_MS = 12_000
+// 首次鉴权导航可能需要等待 Supabase 冷启动并并行解析多个应用菜单 RPC。
+// 12 秒会提前取消仍在正常处理的请求，因此保留更适合冷启动的等待窗口。
+export const ROUTE_INITIALIZATION_STAGE_TIMEOUT_MS = 30_000
 export const ROUTE_INITIALIZATION_TIMEOUT_RETRIES = 1
 export const ROUTE_INITIALIZATION_TRANSIENT_RETRIES = 1
 export const ROUTE_INITIALIZATION_RETRY_DELAY_MS = 200
@@ -125,8 +127,10 @@ async function runBoundedOperation<T>(
   let timeoutId: ReturnType<typeof setTimeout> | undefined
   const timeoutPromise = new Promise<never>((_, reject) => {
     timeoutId = setTimeout(() => {
-      abortController.abort()
       reject(new RouteInitializationTimeoutError(stage, timeoutMs))
+      // 先落定路由超时，再取消底层请求，避免 transport 的取消异常抢先结束竞态，
+      // 从而绕过既定的超时重试策略。
+      abortController.abort()
     }, timeoutMs)
   })
 

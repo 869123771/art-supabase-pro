@@ -1,0 +1,1 @@
+import{Ot as e,Rt as t,in as n}from"./framework-ClRJ96jm.js";import{t as r}from"./department-setting-workspace-C8QQAEjM.js";var i=t({__name:`index`,setup(t){return(t,i)=>(n(),e(r,{kind:`maintenance`}))}});export{i as default};

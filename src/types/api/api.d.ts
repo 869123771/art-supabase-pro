@@ -142,6 +142,9 @@ declare namespace Api {
 
   /** 系统管理类型 */
   namespace SystemManage {
+    type UserAccountIdentityType =
+      'employee' | 'external' | 'service' | 'platform' | 'pending_review'
+
     /** 用户列表 */
     type UserList = Api.Common.PaginatedResponse<UserListItem>
 
@@ -155,13 +158,25 @@ declare namespace Api {
         OrganizationListItem,
         'id' | 'organizationCode' | 'organizationName'
       > | null
+      accountIdentityType?: UserAccountIdentityType
       hrEmployeeId?: string | null
       hrEmployee?: {
         id: string
+        tenantId?: string
+        organizationId?: string | null
         employeeNo: string
         employeeName: string
+        avatarUrl?: string | null
         jobTitle?: string | null
         employmentStatus: string
+        gender?: string | null
+        phone?: string | null
+        email?: string | null
+        organization?: {
+          id: string
+          organizationCode: string
+          organizationName: string
+        } | null
       } | null
       avatar?: string | null
       status?: string
@@ -192,6 +207,7 @@ declare namespace Api {
         | 'id'
         | 'tenantId'
         | 'organizationId'
+        | 'accountIdentityType'
         | 'userName'
         | 'userGender'
         | 'userPhone'

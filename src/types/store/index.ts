@@ -129,6 +129,7 @@ export interface DictMap extends Record<string, Api.DataCenter.DictListItem[] | 
   status?: Api.DataCenter.DictListItem[]
   sex?: Api.DataCenter.DictListItem[]
   userType?: Api.DataCenter.DictListItem[]
+  sysUserIdentityType?: Api.DataCenter.DictListItem[]
   menuType?: Api.DataCenter.DictListItem[]
   i18nScope?: Api.DataCenter.DictListItem[]
   commonBoolean?: Api.DataCenter.DictListItem[]

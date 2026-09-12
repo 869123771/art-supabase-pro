@@ -1,20 +1,51 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import dayjs from 'dayjs'
 import { buildMaterialCodePreview } from '../../modules/art-supabase-mdm/src/views/material/reference/modules/material-code-preview'
 
 describe('buildMaterialCodePreview', () => {
-  it('uses business prefix values and pads before the fixed field', () => {
+  it('builds the material-type scheme and pads before the fixed segment', () => {
     assert.deepEqual(
       buildMaterialCodePreview({
-        fixedField: 'X',
-        segments: [{ source: 'material_type' }, { source: 'date', format: 'YYYY' }],
+        fixedField: '',
+        segments: [{ source: 'material_type' }, { source: 'fixed', value: '-' }],
         sequenceDigits: 4,
-        codeLength: 12,
-        materialTypePrefix: 'RM',
-        date: dayjs('2026-09-11')
+        codeLength: 8,
+        materialTypePrefix: 'R'
       }),
-      { code: 'RM20260X0001', overflow: 0, padding: 1 }
+      { code: 'R00-0001', overflow: 0, padding: 2 }
+    )
+    assert.equal(
+      buildMaterialCodePreview({
+        fixedField: '',
+        segments: [{ source: 'material_type' }, { source: 'fixed', value: '-' }],
+        sequenceDigits: 4,
+        codeLength: 8,
+        materialTypePrefix: 'C'
+      }).code,
+      'C00-0001'
+    )
+  })
+
+  it('builds the material-category scheme from its configured prefix', () => {
+    assert.deepEqual(
+      buildMaterialCodePreview({
+        fixedField: '',
+        segments: [{ source: 'material_category' }, { source: 'fixed', value: '-' }],
+        sequenceDigits: 4,
+        codeLength: 10,
+        materialCategoryPrefix: 'R101'
+      }),
+      { code: 'R1010-0001', overflow: 0, padding: 1 }
+    )
+    assert.equal(
+      buildMaterialCodePreview({
+        fixedField: '',
+        segments: [{ source: 'material_category' }, { source: 'fixed', value: '-' }],
+        sequenceDigits: 4,
+        codeLength: 10,
+        materialCategoryPrefix: 'C03'
+      }).code,
+      'C0300-0001'
     )
   })
 

@@ -70,6 +70,7 @@
     </div>
 
     <UserDialog ref="userDialogRef" @success="handleSaveSuccess" />
+    <UserDetailDrawer ref="userDetailRef" />
     <UserRoleDialog ref="userRoleRef" @success="tableQueryRef?.refreshUpdate()" />
     <ArtDrawer ref="organizationDrawerRef">
       <OrganizationScopeFilter
@@ -96,13 +97,15 @@
   import ArtWorkspaceSplitter from '@/components/core/layouts/art-workspace-splitter/index.vue'
   import type { ArtDrawerExpose } from '@/components/core/drawers/art-drawer/types'
   import UserDialog from './modules/user-dialog.vue'
+  import UserDetailDrawer from './modules/user-detail-drawer.vue'
   import OrganizationScopeFilter from '../shared/organization-scope-filter.vue'
-  import { ElAvatar } from 'element-plus'
+  import { ElAvatar, ElMessage } from 'element-plus'
   import type { ColumnOption } from '@/types'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type {
     ArtTableQueryExpose,
     ArtTableQueryHeaderAction,
+    ArtTableQueryHeaderActionContext,
     ArtTableQueryProps,
     ArtTableQueryTableProps
   } from '@/components/core/tables/art-table-query/index.vue'
@@ -126,6 +129,7 @@
   } from '@/components/business/business-workspace-header/index.vue'
   import TreeUtils from '@/utils/tree'
   import MasterDeleteProcessingNotice from '@/components/business/master-delete-processing-notice/index.vue'
+  import { useAuth } from '@/hooks/core/useAuth'
 
   defineOptions({ name: 'User' })
 
@@ -142,6 +146,7 @@
   const { getDictMap, getUserInfo } = storeToRefs(userStore)
   const { effectiveTenantId, isAllTenants } = storeToRefs(useTenantScopeStore())
   const { loadPasswordPolicy, createTemporaryPassword } = useSystemParam()
+  const { hasAuth } = useAuth()
   const organizationTreeUtils = new TreeUtils({
     idKey: 'id',
     parentKey: 'parentId',
@@ -156,14 +161,20 @@
     handleOpen: (data: UserListItem) => Promise<void>
   }
 
+  interface UserDetailDrawerExpose {
+    handleOpen: (data: UserListItem) => Promise<void>
+  }
+
   interface UserOverviewRow {
     status?: unknown
+    accountIdentityType?: unknown
     userPhone?: unknown
     userEmail?: unknown
   }
 
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const userDialogRef = ref<UserDialogExpose>()
+  const userDetailRef = ref<UserDetailDrawerExpose>()
   const userRoleRef = ref<UserRoleDialogExpose>()
   const organizationDrawerRef = ref<ArtDrawerExpose<Record<string, never>>>()
   const isDesktopOrganizationLayout = useMediaQuery('(min-width: 1201px)')
@@ -185,6 +196,9 @@
         (row) => String(row.userPhone ?? '').trim() && String(row.userEmail ?? '').trim()
       ).length
   )
+  const pendingIdentityCount = computed(
+    () => overview.rows.filter((row) => String(row.accountIdentityType) === 'pending_review').length
+  )
   const workspaceMetrics = computed<BusinessWorkspaceMetric[]>(() => [
     {
       label: '当前结果',
@@ -205,6 +219,13 @@
       description: '本页已填写手机和邮箱',
       icon: 'ri:contacts-book-2-line',
       tone: 'info'
+    },
+    {
+      label: '本页待确认',
+      value: pendingIdentityCount.value,
+      description: '历史账号需确认人员身份',
+      icon: 'ri:user-search-line',
+      tone: pendingIdentityCount.value > 0 ? 'warning' : 'success'
     }
   ])
   const selectedOrganization = computed(() =>
@@ -238,6 +259,7 @@
     userGender: undefined,
     userPhone: undefined,
     userEmail: undefined,
+    accountIdentityType: undefined,
     status: ''
   })
 
@@ -271,6 +293,16 @@
       }
     },
     {
+      label: '账号身份',
+      key: 'accountIdentityType',
+      type: 'select',
+      props: {
+        clearable: true,
+        placeholder: '请选择账号身份',
+        options: getDictMap.value.sysUserIdentityType ?? []
+      }
+    },
+    {
       label: '性别',
       key: 'userGender',
       type: 'radioGroup',
@@ -286,6 +318,14 @@
       label: '新增用户',
       permission: 'System:User:Add',
       onClick: () => openDialog()
+    },
+    {
+      type: 'delete',
+      label: '批量注销',
+      permission: 'System:User:Delete',
+      content: ({ selectedCount }: ArtTableQueryHeaderActionContext) =>
+        `确定注销选中的 ${selectedCount} 个用户吗？这些账号将不能继续登录，历史业务记录仍会保留。`,
+      onClick: handleBatchDelete
     }
   ])
 
@@ -369,6 +409,14 @@
   }
 
   const columnsFactory = (): ColumnOption<UserListItem>[] => [
+    {
+      type: 'selection',
+      width: 50,
+      fixed: 'left',
+      reserveSelection: true,
+      selectable: (row: UserListItem) =>
+        hasAuth('System:User:Delete') && !isCurrentUser(row) && !isProtectedUser(row)
+    },
     { type: 'index', width: 60, label: '序号' },
     {
       prop: 'userInfo',
@@ -397,6 +445,12 @@
           ])
         ])
       }
+    },
+    {
+      prop: 'accountIdentityType',
+      label: '账号身份',
+      minWidth: 116,
+      dict: { code: 'sysUserIdentityType', display: 'auto' }
     },
     {
       prop: 'userType',
@@ -494,10 +548,14 @@
     {
       prop: 'operation',
       label: '操作',
-      width: 146,
+      width: 188,
       fixed: 'right',
       formatter: (row: UserListItem) =>
         h(BusinessTableRowActions, null, () => [
+          h(ArtButtonTable, {
+            type: 'view',
+            onClick: () => userDetailRef.value?.handleOpen(row)
+          }),
           h(ArtButtonTable, {
             type: 'edit',
             permission: 'System:User:Edit',
@@ -574,6 +632,7 @@
   const handleTableSuccess: NonNullable<ArtTableQueryProps['onSuccess']> = (rows, response) => {
     overview.rows = rows.map((row) => ({
       status: row.status,
+      accountIdentityType: row.accountIdentityType,
       userPhone: row.userPhone,
       userEmail: row.userEmail
     }))
@@ -633,8 +692,43 @@
     }
   }
 
+  async function handleBatchDelete({
+    selectedRows,
+    api
+  }: ArtTableQueryHeaderActionContext): Promise<void> {
+    const rows = selectedRows as UserListItem[]
+    let successCount = 0
+    const failures: string[] = []
+
+    for (const row of rows) {
+      if (isCurrentUser(row) || isProtectedUser(row)) {
+        failures.push(`${row.nickName || row.userName}：受保护账号`)
+        continue
+      }
+      try {
+        await deactivateUser(row, { showMessage: false })
+        successCount += 1
+      } catch (error) {
+        const reason = error instanceof Error ? error.message : '注销失败'
+        failures.push(`${row.nickName || row.userName}：${reason}`)
+      }
+    }
+
+    if (successCount) await api.refreshRemove()
+    if (!failures.length) {
+      ElMessage.success(`已注销 ${successCount} 个用户，历史业务记录已保留`)
+      return
+    }
+
+    const failurePreview = failures.slice(0, 3).join('；')
+    const remaining = failures.length > 3 ? `；另有 ${failures.length - 3} 项失败` : ''
+    const message = `${successCount ? `成功 ${successCount} 项，` : ''}失败 ${failures.length} 项：${failurePreview}${remaining}`
+    if (successCount) ElMessage.warning(message)
+    else ElMessage.error(message)
+  }
+
   onMounted(async () => {
-    await loadOrganizationTree()
+    await Promise.all([userStore.ensureDictLoaded('sysUserIdentityType'), loadOrganizationTree()])
   })
 
   watch(

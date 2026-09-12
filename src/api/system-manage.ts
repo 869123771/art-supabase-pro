@@ -50,6 +50,14 @@ interface DeleteUserSyncPayload {
   auth_user_id?: string
 }
 
+interface UserEmployeeReference extends NonNullable<Api.SystemManage.UserListItem['hrEmployee']> {
+  userId: string
+}
+
+interface UserEmployeeReferencePayload {
+  records?: UserEmployeeReference[]
+}
+
 // 获取用户列表
 export async function fetchGetUserList(params: Api.SystemManage.UserSearchParams) {
   const {
@@ -58,6 +66,7 @@ export async function fetchGetUserList(params: Api.SystemManage.UserSearchParams
     organizationId,
     organizationIds,
     organizationUnassigned,
+    accountIdentityType,
     userName,
     userPhone,
     userGender,
@@ -85,6 +94,7 @@ export async function fetchGetUserList(params: Api.SystemManage.UserSearchParams
       userGender,
       status,
       tenantId,
+      accountIdentityType,
       organizationId: organizationUnassigned ? undefined : organizationId
     },
     opsMap
@@ -123,7 +133,37 @@ export async function fetchGetUserList(params: Api.SystemManage.UserSearchParams
     query = query.in('organization_id', organizationIds)
   }
 
-  return await responseHandle(() => query, { ignoreCheck: true })
+  const response = await responseHandle<Api.SystemManage.UserListItem[]>(() => query, {
+    ignoreCheck: true,
+    showErrorMessage: true,
+    breakReturn: true,
+    errorMessage: '用户列表加载失败，请重试'
+  })
+  const rows = response.data ?? []
+  const userIds = rows.map((row) => row.id).filter((id): id is string => Boolean(id))
+  if (!userIds.length) return response
+
+  // 员工档案含敏感字段，不能通过 PostgREST 关系查询放大 sys_user 的读取权限。
+  // 独立的安全函数仅返回用户页所需引用；引用加载失败时仍保留用户主列表。
+  const employeeResponse = await responseHandle<UserEmployeeReferencePayload>(
+    () =>
+      supabase.rpc('system_list_user_employee_references_secure', {
+        p_user_ids: userIds
+      }),
+    { ignoreCheck: true }
+  )
+  const employeeByUserId = new Map(
+    (employeeResponse.data?.records ?? []).map((employee) => [employee.userId, employee])
+  )
+  response.data = rows.map((row) => {
+    const employee = row.id ? employeeByUserId.get(row.id) : undefined
+    if (!employee) return row
+    return {
+      ...row,
+      hrEmployee: employee
+    }
+  })
+  return response
 }
 
 // 获取租户列表
@@ -819,7 +859,10 @@ export async function resetUser(params: Api.SystemManage.UserListItem) {
 }
 
 /*注销用户：保留业务资料，只撤销登录与角色授权。*/
-export async function deactivateUser(params: Api.SystemManage.UserListItem) {
+export async function deactivateUser(
+  params: Api.SystemManage.UserListItem,
+  options: { showMessage?: boolean } = {}
+) {
   const { id, authUserId } = params
   if (!id) {
     throw new Error('未找到需要注销的用户')
@@ -833,7 +876,7 @@ export async function deactivateUser(params: Api.SystemManage.UserListItem) {
       body: payload
     })
   await responseHandle(invokeResp, {
-    showMessage: true,
+    showMessage: options.showMessage ?? true,
     breakReturn: true
   })
 }
@@ -873,6 +916,32 @@ export async function editUser(params: Api.SystemManage.UserListItem) {
     })
   await responseHandle(invokeResp, {
     showMessage: true,
+    breakReturn: true
+  })
+}
+
+/** 员工建档完成后，将既有登录账号与员工档案建立一对一关联。 */
+export async function linkUserToEmployee(params: {
+  userId: string
+  employeeId: string
+  tenantId: string
+}) {
+  const invokeResp = () =>
+    supabase.functions.invoke('sync-user', {
+      body: JSON.stringify(
+        keysToSnakeDeep({
+          action: 'update',
+          id: params.userId,
+          appUserData: {
+            tenantId: params.tenantId,
+            accountIdentityType: 'employee',
+            hrEmployeeId: params.employeeId
+          }
+        })
+      )
+    })
+  await responseHandle(invokeResp, {
+    showMessage: false,
     breakReturn: true
   })
 }

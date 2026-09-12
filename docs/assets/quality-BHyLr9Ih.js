@@ -1,1 +1,0 @@
-import{Ot as e,Rt as t,in as n}from"./framework-ClRJ96jm.js";import{t as r}from"./center-fHMOpXQQ.js";var i=t({name:`MdmDataQuality`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{"initial-view":`quality`}))}});export{i as default};

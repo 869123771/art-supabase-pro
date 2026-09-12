@@ -1,5 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.35.0'
 import { v4 as uuidv4 } from 'npm:uuid@9.0.0'
+import { validateUserAccountIdentity } from '../_shared/user-account-identity-policy.ts'
 
 const allowedOrigins = [
   'http://localhost:3006',
@@ -29,6 +30,7 @@ const SYS_USER_COLUMNS = new Set([
   'avatar',
   'tenant_id',
   'organization_id',
+  'account_identity_type',
   'hr_employee_id'
 ])
 
@@ -228,6 +230,37 @@ async function validateEmployeeLink(
   if (accountError) return '员工账号关联校验失败，请稍后重试'
   return linkedUsers?.length ? '所选员工已开通登录账号' : null
 }
+async function validateAccountIdentityLink(
+  input: {
+    identityType: unknown
+    employeeId: unknown
+    remark: unknown
+  },
+  tenantId: unknown,
+  callerIsSuper: boolean,
+  targetUserId?: string
+): Promise<string | null> {
+  if (typeof tenantId !== 'string' || !tenantId) return '账号所属租户信息无效'
+  const { data: tenant, error: tenantError } = await supabaseDB
+    .from('sys_tenant')
+    .select('builtin_type')
+    .eq('id', tenantId)
+    .maybeSingle()
+  if (tenantError || !tenant) return '账号所属租户不存在或不可用'
+
+  const policyError = validateUserAccountIdentity({
+    identityType: input.identityType,
+    employeeId: input.employeeId,
+    remark: input.remark,
+    tenantBuiltinType: tenant.builtin_type,
+    callerIsPlatformSuper: callerIsSuper
+  })
+  if (policyError) return policyError
+
+  return input.identityType === 'employee'
+    ? await validateEmployeeLink(input.employeeId, tenantId, targetUserId)
+    : null
+}
 function getFriendlyErrorMessage(error: unknown, action: string): string {
   const errorRecord = error && typeof error === 'object' ? error as Record<string, unknown> : null
   const errorMsg = typeof errorRecord?.message === 'string' ? errorRecord.message : String(error)
@@ -356,9 +389,14 @@ Deno.serve(async (req: Request) => {
       const targetTenantId = callerIsSuper
         ? String(cleanedAppUserData.tenant_id || callerProfile.tenant_id)
         : callerProfile.tenant_id
-      const employeeLinkError = await validateEmployeeLink(
-        cleanedAppUserData.hr_employee_id,
-        targetTenantId
+      const employeeLinkError = await validateAccountIdentityLink(
+        {
+          identityType: cleanedAppUserData.account_identity_type,
+          employeeId: cleanedAppUserData.hr_employee_id,
+          remark: cleanedAppUserData.remark
+        },
+        targetTenantId,
+        callerIsSuper
       )
       if (employeeLinkError)
         return new Response(JSON.stringify({ ok: false, error: employeeLinkError }), {
@@ -472,13 +510,36 @@ Deno.serve(async (req: Request) => {
           status: 403,
           headers: corsHeaders(origin)
         })
-      if (action === 'update' && cleanedAppUserData.hr_employee_id) {
+      if (action === 'update') {
+        const { data: existingUser, error: existingUserError } = await supabaseDB
+          .from('sys_user')
+          .select('tenant_id, account_identity_type, hr_employee_id, remark')
+          .eq('id', id)
+          .maybeSingle()
+        if (existingUserError || !existingUser)
+          return new Response(JSON.stringify({ ok: false, error: '用户不存在或不可用' }), {
+            status: 404,
+            headers: corsHeaders(origin)
+          })
         const targetTenantId = String(
-          cleanedAppUserData.tenant_id || callerProfile?.tenant_id || ''
+          cleanedAppUserData.tenant_id || existingUser.tenant_id || callerProfile?.tenant_id || ''
         )
-        const employeeLinkError = await validateEmployeeLink(
-          cleanedAppUserData.hr_employee_id,
+        const employeeLinkError = await validateAccountIdentityLink(
+          {
+            identityType:
+              cleanedAppUserData.account_identity_type ?? existingUser.account_identity_type,
+            employeeId: Object.prototype.hasOwnProperty.call(
+              cleanedAppUserData,
+              'hr_employee_id'
+            )
+              ? cleanedAppUserData.hr_employee_id
+              : existingUser.hr_employee_id,
+            remark: Object.prototype.hasOwnProperty.call(cleanedAppUserData, 'remark')
+              ? cleanedAppUserData.remark
+              : existingUser.remark
+          },
           targetTenantId,
+          callerIsSuper,
           id
         )
         if (employeeLinkError)

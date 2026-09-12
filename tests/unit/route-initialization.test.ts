@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
+  ROUTE_INITIALIZATION_STAGE_TIMEOUT_MS,
   isTransientRouteInitializationError,
   isRouteInitializationAccessError,
   RouteInitializationAccessError,
@@ -8,6 +9,10 @@ import {
   resolveRouteInitializationTarget,
   runRouteInitializationStage
 } from '../../src/router/guards/routeInitialization'
+
+test('route initialization keeps a cold-start-safe default timeout budget', () => {
+  assert.equal(ROUTE_INITIALIZATION_STAGE_TIMEOUT_MS, 30_000)
+})
 
 test('route initialization stage returns the operation result', async () => {
   const result = await runRouteInitializationStage('user-profile', async () => 'ready', {

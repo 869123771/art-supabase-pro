@@ -1554,10 +1554,10 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
   {
     menuName: 'SmisEquipmentDepreciation',
     buttons: [
-      button('View', '查看设备折旧', 'SmisEquipmentDepreciation:View'),
-      button('Add', '新增设备折旧', 'SmisEquipmentDepreciation:Add'),
-      button('Edit', '编辑设备折旧', 'SmisEquipmentDepreciation:Edit'),
-      button('Delete', '删除设备折旧', 'SmisEquipmentDepreciation:Delete')
+      button('View', '查看折旧方法', 'SmisEquipmentDepreciation:View'),
+      button('Add', '新增折旧方法', 'SmisEquipmentDepreciation:Add'),
+      button('Edit', '编辑折旧方法', 'SmisEquipmentDepreciation:Edit'),
+      button('Delete', '删除折旧方法', 'SmisEquipmentDepreciation:Delete')
     ]
   },
   {
