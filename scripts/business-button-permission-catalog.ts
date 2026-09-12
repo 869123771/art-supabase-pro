@@ -161,12 +161,18 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
       button('ManageGroup', '管理分组')
     ]
   })),
-  ...['MdmDocumentType', 'MdmActivityFormula', 'MdmOperationControlCode', 'MdmWorkstation'].map(
-    (menuName) => ({
-      menuName,
-      buttons: [...crud({ view: true, export: true }), button('Copy', '复制')]
-    })
-  ),
+  ...['MdmDocumentType', 'MdmOperationControlCode', 'MdmWorkstation'].map((menuName) => ({
+    menuName,
+    buttons: [...crud({ view: true, export: true }), button('Copy', '复制')]
+  })),
+  {
+    menuName: 'MdmActivityFormula',
+    buttons: [
+      ...crud({ view: true, export: true }),
+      button('Copy', '复制'),
+      button('ManageParameter', '管理公式参数')
+    ]
+  },
   {
     menuName: 'MesWorkOrder',
     buttons: [

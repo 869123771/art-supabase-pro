@@ -6,7 +6,10 @@
   <div
     ref="containerRef"
     class="art-table"
-    :class="{ 'is-empty': isEmpty, 'is-row-selection-dragging': isRowSelectionDragging }"
+    :class="{
+      'is-empty': isEmpty,
+      'is-row-selection-dragging': isRowSelectionDragging
+    }"
     :style="containerHeight"
     :aria-busy="!!loading"
     @mousedown="handleTableMouseDown"
@@ -190,12 +193,12 @@
     </ElTable>
 
     <ArtOverlayLoading
-      v-if="loading"
+      v-if="loading && isEmpty"
       loading
       overlay
+      size="compact"
       text="正在加载表格数据…"
       description="正在获取最新列表，请稍候"
-      :style="tableLoadingStyle"
     />
 
     <div
@@ -229,7 +232,7 @@
     h,
     isVNode
   } from 'vue'
-  import type { ComponentPublicInstance, CSSProperties } from 'vue'
+  import type { ComponentPublicInstance } from 'vue'
   import type { TableProps } from 'element-plus'
   import { storeToRefs } from 'pinia'
   import { useDraggable, type DraggableEvent } from 'vue-draggable-plus'
@@ -551,11 +554,6 @@
   )
 
   const showPagination = computed(() => !!currentPagination.value && !isEmpty.value)
-  const tableLoadingStyle = computed<CSSProperties>(() => ({
-    top: '0',
-    bottom: showPagination.value ? `${paginationHeight.value + PAGINATION_SPACING.value}px` : '0'
-  }))
-
   const hasDraggableColumn = computed(() =>
     visibleColumns.value.some(
       (column) => column.draggable === true || typeof column.draggable === 'function'

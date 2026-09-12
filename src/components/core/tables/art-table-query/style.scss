@@ -42,10 +42,14 @@
 }
 
 :deep(.art-table-card) {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
   width: 100%;
   min-width: 0;
   max-width: 100%;
   min-height: 0;
+  overflow: hidden;
 }
 
 :deep(.art-table-card > .el-card__body) {

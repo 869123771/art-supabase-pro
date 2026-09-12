@@ -115,6 +115,8 @@ async function installFixtures(page: Page) {
         name: '总装工作中心',
         department_id: department.id,
         department,
+        operation_control_code_id: null,
+        operation_control_code: null,
         main_center_id: null,
         main_center: null,
         personnel_mode: '指定人数',
@@ -190,6 +192,30 @@ async function installFixtures(page: Page) {
                   create_by: '',
                   create_time: '2026-09-01T08:00:00Z',
                   update_time: '2026-09-01T08:00:00Z'
+                }
+              ],
+              total: 1
+            }
+          : { records: [], total: 0 }
+    })
+  })
+  await page.route('**/rest/v1/rpc/mdm_work_center_activities', (route) =>
+    route.fulfill({ json: [] })
+  )
+  await page.route('**/rest/v1/rpc/mdm_work_center_reference_options', async (route) => {
+    const kind = (route.request().postDataJSON() as { p_kind?: string }).p_kind
+    await route.fulfill({
+      json:
+        kind === 'activity_formula'
+          ? {
+              records: [
+                {
+                  id: '00000000-0000-4000-8000-000000000801',
+                  code: 'AF-001',
+                  name: '标准机器活动',
+                  activity_type: 'machine',
+                  plan_expression: '批量 × 标准工时',
+                  report_expression: '良品数 × 标准工时'
                 }
               ],
               total: 1
@@ -405,6 +431,12 @@ test('production master-data workspaces share the SMIS visual system', async ({
       await page.getByRole('button', { name: '新增工作中心', exact: true }).click()
       const dialog = page.getByRole('dialog').first()
       await expect(dialog.getByText('工作中心资料', { exact: true })).toBeVisible()
+      await dialog.getByRole('tab', { name: '活动信息', exact: true }).click()
+      await expect(dialog.getByText('暂无活动信息', { exact: true })).toBeVisible()
+      await dialog.getByRole('button', { name: '新增', exact: true }).click()
+      await expect(dialog.getByRole('columnheader', { name: '活动名称' })).toBeVisible()
+      await expect(dialog.getByRole('columnheader', { name: '计划活动量公式' })).toBeVisible()
+      await expect(dialog.getByRole('columnheader', { name: '汇报活动量公式' })).toBeVisible()
       await dialog.getByRole('tab', { name: '自动化', exact: true }).click()
       await expect(
         dialog.getByText('自动化采用独立编辑，避免在查看策略时误改触发条件。')

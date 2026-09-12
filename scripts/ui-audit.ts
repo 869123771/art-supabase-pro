@@ -142,6 +142,15 @@ function scanFile(file: string, content: string, tooltipOnly = false): Finding[]
     }
   }
 
+  if (path.extname(file) === '.vue') {
+    for (const match of content.matchAll(/\bv-loading(?::[\w-]+)?(?:\s*=|\s|>)/g)) {
+      if (match.index == null || excerptAt(content, match.index).includes('data-ui-audit-allow')) {
+        continue
+      }
+      addFinding(match.index, 'consistency/use-art-overlay-loading')
+    }
+  }
+
   if (tooltipOnly) return findings
 
   const rules = [
