@@ -1,4 +1,4 @@
-import { formatWithDayjs } from '@/utils/time'
+import { formatWithDayjs, isValidDateTimeValue } from '@/utils/time'
 
 export type ArtValueFormat = 'text' | 'number' | 'money' | 'date' | 'datetime' | 'boolean'
 
@@ -8,6 +8,18 @@ export interface ArtValueFormatOptions {
   locale?: string
   trueText?: string
   falseText?: string
+}
+
+export interface DateTimeValueFormatOptions {
+  emptyText?: string
+  format?: string
+  invalidText?: string
+  timezone?: string
+}
+
+export interface PercentValueFormatOptions {
+  emptyText?: string
+  fractionDigits?: number
 }
 
 const isEmptyValue = (value: unknown): boolean =>
@@ -28,6 +40,41 @@ export function formatCurrencyValue(value: unknown, currency = 'CNY', locale = '
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
   }).format(numberValue)
+}
+
+/** Format CNY values with the application-wide currency style; blank AI values mean zero. */
+export function formatCnyCurrencyValue(value: unknown): string {
+  return formatCurrencyValue(value ?? 0)
+}
+
+export function formatPercentValue(
+  value: unknown,
+  options: PercentValueFormatOptions = {}
+): string {
+  const emptyText = options.emptyText ?? '--'
+  if (isEmptyValue(value)) return emptyText
+  const numberValue = Number(value)
+  if (!Number.isFinite(numberValue)) return String(value)
+  return `${numberValue.toFixed(options.fractionDigits ?? 1)}%`
+}
+
+export function formatDateTimeValue(
+  value: string | Date | null | undefined,
+  options: DateTimeValueFormatOptions = {}
+): string {
+  const emptyText = options.emptyText ?? '--'
+  if (value == null || value === '') return emptyText
+  if (options.invalidText !== undefined && !isValidDateTimeValue(value)) {
+    return options.invalidText
+  }
+  return (
+    formatWithDayjs(value, options.format ?? 'YYYY-MM-DD HH:mm:ss', options.timezone) ?? emptyText
+  )
+}
+
+/** Create a view formatter while keeping date parsing and invalid-value policy centralized. */
+export function createDateTimeFormatter(options: DateTimeValueFormatOptions = {}) {
+  return (value: string | Date | null | undefined): string => formatDateTimeValue(value, options)
 }
 
 export function formatArtValue(

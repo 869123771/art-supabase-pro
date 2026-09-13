@@ -77,6 +77,7 @@
 </template>
 
 <script setup lang="ts">
+  import { normalizeNullableText } from '@/utils/form/normalize'
   import type { FormRules } from 'element-plus'
   import type { ComputedRef } from 'vue'
   import { cloneDeep, omit } from 'lodash-es'
@@ -285,9 +286,9 @@
       feature: raw.feature,
       version: raw.version.trim(),
       name: raw.name.trim(),
-      description: raw.description.trim() || null,
+      description: normalizeNullableText(raw.description),
       systemPrompt: raw.systemPrompt.trim(),
-      changeNote: raw.changeNote.trim() || null,
+      changeNote: normalizeNullableText(raw.changeNote),
       status: 'draft',
       metadata: {}
     }

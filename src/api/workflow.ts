@@ -1,3 +1,4 @@
+import { normalizeNullableText } from '@/utils/form/normalize'
 import { useSupabase } from '@/hooks'
 import { createFriendlySupabaseError } from '@/utils/supabase'
 import { buildOrIlikeFilter } from '@/utils/supabase/search'
@@ -239,7 +240,7 @@ export async function fetchPlatformGlobalPendingWorkflowTasks(
   return await responseHandle<Api.Workflow.WorkflowNodeTaskPage>(
     () =>
       supabase.rpc('search_platform_global_pending_workflow_tasks', {
-        p_keyword: keyword?.trim() || null,
+        p_keyword: normalizeNullableText(keyword),
         p_business_type: businessType || null,
         p_tenant_id: tenantId || null,
         p_from: from,
@@ -373,7 +374,7 @@ export async function fetchWorkflowMonitorList(params: Api.Workflow.WorkflowMoni
   return await responseHandle<Api.Workflow.WorkflowMonitorPage>(
     () =>
       supabase.rpc('search_workflow_instances_for_monitor', {
-        p_keyword: keyword?.trim() || null,
+        p_keyword: normalizeNullableText(keyword),
         p_business_type: businessType || null,
         p_status: status || null,
         p_sla_status: slaStatus || null,

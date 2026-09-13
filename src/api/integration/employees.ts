@@ -1,3 +1,4 @@
+import { normalizeNullableText } from '@/utils/form/normalize'
 import { useSupabase } from '@/hooks'
 
 /** 跨应用可依赖的员工只读数据契约。 */
@@ -49,7 +50,7 @@ export async function fetchEmployeeSelectorList(params: EmployeeSelectorContract
         p_from: Math.max(from, 0),
         p_to: Math.max(to, from),
         p_tenant_id: tenantId || null,
-        p_keyword: keyword?.trim() || null
+        p_keyword: normalizeNullableText(keyword)
       }),
     { showErrorMessage: true }
   )

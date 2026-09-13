@@ -36,6 +36,8 @@
 </template>
 
 <script setup lang="ts">
+  import { normalizeStringList } from '@/utils/form/normalize'
+
   import type { Component } from 'vue'
   import ArtTableSingleSelect from '@/components/core/forms/art-data-select/table-single.vue'
   import ArtTableMultipleSelect from '@/components/core/forms/art-data-select/table-multiple.vue'
@@ -182,13 +184,8 @@
     return selectedValue == null ? undefined : String(selectedValue)
   }
 
-  const normalizeRows = (rows: DataSelectRecord[]): EmployeeIntegrationItem[] =>
-    rows.map(getEmployee)
-
-  const normalizeValues = (value: DataSelectKey | DataSelectKey[] | undefined): string[] =>
-    (Array.isArray(value) ? value : value == null ? [] : [value]).map(String)
   const updateValue = (value: DataSelectKey | DataSelectKey[] | undefined): void => {
-    if (props.multiple) emit('update:modelValues', normalizeValues(value))
+    if (props.multiple) emit('update:modelValues', normalizeStringList(value))
     else emit('update:modelValue', normalizeValue(value))
   }
 
@@ -204,18 +201,18 @@
   }
 
   const handleSelectedDataChange = (rows: DataSelectRecord[]): void =>
-    emit('update:selectedData', normalizeRows(rows))
+    emit('update:selectedData', rows.map(getEmployee))
 
   const handleChange = (
     value: DataSelectKey | DataSelectKey[] | undefined,
     rows: DataSelectRecord[]
-  ): void => emit('change', normalizeValue(value), normalizeRows(rows))
+  ): void => emit('change', normalizeValue(value), rows.map(getEmployee))
 
   const handleConfirm = (
     value: DataSelectKey | DataSelectKey[] | undefined,
     rows: DataSelectRecord[]
   ): void => {
-    if (props.multiple) emit('confirmMultiple', normalizeValues(value), normalizeRows(rows))
-    else emit('confirm', normalizeValue(value), normalizeRows(rows))
+    if (props.multiple) emit('confirmMultiple', normalizeStringList(value), rows.map(getEmployee))
+    else emit('confirm', normalizeValue(value), rows.map(getEmployee))
   }
 </script>

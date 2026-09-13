@@ -33,6 +33,13 @@ export function formatWithDayjs(
   return timezone ? d.tz(timezone).format(format) : d.format(format)
 }
 
+/** Whether a value can be interpreted by the shared date/time formatter. */
+export function isValidDateTimeValue(value: string | Date | null | undefined): boolean {
+  if (value == null || value === '') return false
+  if (typeof value === 'string' && /^\d{2}:\d{2}(:\d{2})?$/.test(value)) return true
+  return dayjs(value).isValid()
+}
+
 export function toStartOfDayUTC(dateStr: string) {
   if (!dateStr) return null
   const d = new Date(dateStr + 'T00:00:00Z')

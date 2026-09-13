@@ -43,6 +43,7 @@
 </template>
 
 <script setup lang="ts">
+  import { normalizeNullableText } from '@/utils/form/normalize'
   import type { FormRules } from 'element-plus'
   import { cloneDeep } from 'lodash-es'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
@@ -397,10 +398,10 @@
     leaderUserId: form.leaderUserId || null,
     status: form.status,
     sort: Number(form.sort || 0),
-    phone: form.phone?.trim() || null,
-    email: form.email?.trim() || null,
-    address: form.address?.trim() || null,
-    description: form.description?.trim() || null
+    phone: normalizeNullableText(form.phone),
+    email: normalizeNullableText(form.email),
+    address: normalizeNullableText(form.address),
+    description: normalizeNullableText(form.description)
   })
 
   const handleSubmit = async (): Promise<boolean> => {

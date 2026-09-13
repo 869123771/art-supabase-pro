@@ -13,3 +13,6 @@ export * from './responsive'
 
 // 表单选项显示
 export * from './option'
+
+// 数据库文本归一化
+export * from './normalize'

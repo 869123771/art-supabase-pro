@@ -234,6 +234,8 @@
 </template>
 
 <script setup lang="ts">
+  import { createDateTimeFormatter } from '@/utils/ui/format'
+
   import ArtSectionCard from '@/components/core/surfaces/art-section-card/index.vue'
   import { downloadBlob } from '@/utils/file'
   import { createFriendlySupabaseError } from '@/utils/supabase'
@@ -372,7 +374,7 @@
     state.activeTab === 'overview' ? '导出业务汇总' : '导出瓶颈明细'
   )
 
-  const formatDate = (value: string) => dayjs(value).format('YYYY-MM-DD HH:mm')
+  const formatDate = createDateTimeFormatter({ format: 'YYYY-MM-DD HH:mm' })
 
   async function loadData(): Promise<void> {
     await request.executeImmediate(state.days)

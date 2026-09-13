@@ -52,6 +52,17 @@ Do not hand-write generic parsing, object, collection, date, async, observer, or
 - Use focused collection/object helpers such as `uniq`, `uniqBy`, `omit`, `get`, and `cloneDeep` instead of repeating `Set`-based de-duplication, manual property deletion, dynamic indexing, or ad-hoc deep cloning.
 - When repeated display formatting has one policy, give it one named shared helper; keep domain-specific normalization beside the domain rather than in a generic UI utility.
 
+### Main-repository ownership for cross-subrepository code
+
+- Before adding any helper, component, composable, payload normalizer, formatter, parser, or validator in a subrepository, search the main repository and every `modules/**` repository for the same behavior and symbol.
+- Generic frontend behavior used by two or more repositories belongs to the main repository. Put pure helpers under `src/utils/**`, reusable stateful behavior under `src/hooks/**`, and reusable business UI under `src/components/business/**` or the closest existing core boundary. Subrepositories must import the canonical implementation through `@/`.
+- A subrepository may own only domain-specific policy or behavior that cannot be expressed without that domain's types and invariants. A local wrapper that merely renames a library or main-repository helper is not a valid ownership boundary; call or configure the shared helper directly.
+- When duplication is found, migrate every repository in the same change, delete the local implementations, remove stale imports/tests, and run `pnpm reuse:audit` plus typechecks for every affected repository. Do not fix only the repository named in the immediate bug report.
+- Database text normalization is explicit at the write-payload boundary. Use `normalizeNonNullableText` for `NOT NULL` text columns and `normalizeNullableText` only when blank input semantically means SQL `NULL`. Never use a global transport interceptor to guess column nullability, and never emit `.trim() || null` directly.
+- Use `normalizeNullableNumber`, `normalizeStringList`, shared tenant display utilities, and shared date/currency/percent formatters instead of recreating their logic in pages or subrepositories.
+- Independently deployable code is a packaging boundary, not ordinary frontend duplication. Supabase Edge Functions may share only code included in that function project's deployable `_shared` tree, and standalone module Vite bootstrap files may retain the minimal platform-root resolver required to locate the main package. Do not import main-repository source across those boundaries unless the deployment/build packaging is changed and verified in the same task.
+- `pnpm reuse:audit` is the executable guard for raw nullable-text normalization, canonical-helper redeclarations, and identical generic frontend helpers copied across repositories. Fix findings by centralizing behavior; do not weaken or bypass the audit to make checks pass.
+
 ## Protect User-Facing Error Quality
 
 - Never render or toast raw error objects, `JSON.stringify(error)`, `String(error)`, provider class names, stack traces, SQL text, or unexplained English SDK messages.

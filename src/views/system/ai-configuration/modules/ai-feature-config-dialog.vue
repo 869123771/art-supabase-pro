@@ -92,6 +92,7 @@
 </template>
 
 <script setup lang="ts">
+  import { normalizeNullableText } from '@/utils/form/normalize'
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import { ElMessage, type FormRules } from 'element-plus'
   import { cloneDeep } from 'lodash-es'
@@ -423,8 +424,8 @@
       enabled: form.model.enabled,
       provider: form.model.provider.trim(),
       model: form.model.model.trim(),
-      visionModel: form.model.visionModel?.trim() || null,
-      fallbackModel: form.model.fallbackModel?.trim() || null,
+      visionModel: normalizeNullableText(form.model.visionModel),
+      fallbackModel: normalizeNullableText(form.model.fallbackModel),
       timeoutMs: Number(form.model.timeoutMs),
       maxRetries: Number(form.model.maxRetries),
       temperature: Number(form.model.temperature),

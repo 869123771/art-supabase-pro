@@ -1,3 +1,4 @@
+import { normalizeNullableText } from '@/utils/form/normalize'
 import { buildOrIlikeFilter } from '@/utils/supabase/search'
 import { AppRouteRecord } from '@/types/router'
 import type { ApplicationCode } from '@/config/application'
@@ -1144,8 +1145,8 @@ async function fetchMenuRows(
 ) {
   const { name, path, recordId } = params
   const query = supabase.rpc('list_menu_management_nodes', {
-    p_name: name?.trim() || null,
-    p_path: path?.trim() || null,
+    p_name: normalizeNullableText(name),
+    p_path: normalizeNullableText(path),
     p_record_id: recordId || null,
     p_parent_id: options.parentId || null,
     p_root_only: Boolean(options.rootOnly),

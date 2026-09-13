@@ -114,6 +114,8 @@
 </template>
 
 <script setup lang="ts">
+  import { createDateTimeFormatter } from '@/utils/ui/format'
+
   import ArtAsyncState from '@/components/core/feedback/art-async-state/index.vue'
   import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import ArtDescriptions from '@/components/core/base/art-descriptions/index.vue'
@@ -125,7 +127,6 @@
   import OcrOriginalText from '@/components/business/ocr-original-text/index.vue'
   import RecognitionSourceGallery from './recognition-source-gallery.vue'
   import { fetchRecognitionArtifactDetail } from '@/api/intelligent-recognition'
-  import { formatWithDayjs } from '@/utils/time'
   import { buildRecognitionBusinessRoute } from '@/utils/intelligent-recognition'
   import {
     confidencePercent,
@@ -288,9 +289,7 @@
     return String(value || '未识别')
   }
 
-  function formatDateTime(value?: string | null): string {
-    return value ? (formatWithDayjs(value, 'YYYY-MM-DD HH:mm') ?? '-') : '-'
-  }
+  const formatDateTime = createDateTimeFormatter({ format: 'YYYY-MM-DD HH:mm', emptyText: '-' })
 
   async function loadDetail(id: string): Promise<void> {
     detail.loading = true

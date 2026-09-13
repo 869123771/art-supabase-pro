@@ -1,3 +1,4 @@
+import { normalizeNullableText } from '@/utils/form/normalize'
 import { useSupabase } from '@/hooks'
 import type { ApiRequestOptions } from '@/types/api/request'
 import { withRequestOptions } from '@/api/providers/supabase/query'
@@ -80,7 +81,7 @@ export async function fetchCarrierOptions(
         supabase.rpc('tms_list_carrier_options_secure', {
           p_exclude_id: params.excludeId || null,
           p_include_disabled: params.includeDisabled ?? false,
-          p_keyword: String(params.companyName || params.carrierCode || '').trim() || null,
+          p_keyword: normalizeNullableText(String(params.companyName || params.carrierCode || '')),
           p_ids: params.ids?.length ? params.ids : null,
           p_max_rows: params.maxRows ?? 200
         }),
@@ -118,7 +119,7 @@ export async function fetchCustomerSelectorList(
         supabase.rpc('tms_list_customer_selector_secure', {
           p_from: params.from ?? 0,
           p_to: params.to ?? 9,
-          p_keyword: String(params.keyword ?? '').trim() || null,
+          p_keyword: normalizeNullableText(String(params.keyword ?? '')),
           p_address_type: params.addressType || null
         }),
         options

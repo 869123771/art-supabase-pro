@@ -1,3 +1,4 @@
+import { normalizeNullableText } from '@/utils/form/normalize'
 import { useSupabase } from '@/hooks'
 
 const { supabase, responseHandle } = useSupabase()
@@ -48,8 +49,8 @@ export async function submitAiFeedback(
   const correction: AiFeedbackCorrection = {
     schemaVersion: 1,
     issueType: payload.issueType ?? null,
-    correctAnswer: payload.correctAnswer?.trim() || null,
-    contextLabel: payload.contextLabel?.trim() || null
+    correctAnswer: normalizeNullableText(payload.correctAnswer),
+    contextLabel: normalizeNullableText(payload.contextLabel)
   }
   const { data } = await responseHandle<AiFeedbackRecord>(
     () =>
@@ -59,7 +60,7 @@ export async function submitAiFeedback(
           {
             run_id: payload.runId,
             rating: payload.rating,
-            comment: payload.comment?.trim() || null,
+            comment: normalizeNullableText(payload.comment),
             correction
           },
           { onConflict: 'run_id,auth_user_id' }

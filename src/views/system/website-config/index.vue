@@ -392,6 +392,7 @@
 </template>
 
 <script setup lang="ts">
+  import { normalizeNullableText } from '@/utils/form/normalize'
   import { ElMessage, type FormRules } from 'element-plus'
   import { cloneDeep, isEqual, omit } from 'lodash-es'
   import { fetchWebsiteConfig, saveWebsiteConfig } from '@/api/system-manage'
@@ -654,26 +655,28 @@
     return {
       ...payload,
       authChannels: normalizeAuthChannels(payload.authChannels),
-      siteShortName: payload.siteShortName?.trim() || null,
-      siteDescription: payload.siteDescription?.trim() || null,
-      logoUrl: payload.logoUrl?.trim() || null,
-      faviconUrl: payload.faviconUrl?.trim() || null,
-      watermarkCustomText: payload.watermarkCustomText?.trim() || null,
-      loginSubtitle: payload.loginSubtitle?.trim() || payload.loginDescription?.trim() || null,
-      loginDescription: payload.loginDescription?.trim() || null,
-      turnstileSiteKey: payload.turnstileSiteKey?.trim() || null,
+      siteShortName: normalizeNullableText(payload.siteShortName),
+      siteDescription: normalizeNullableText(payload.siteDescription),
+      logoUrl: normalizeNullableText(payload.logoUrl),
+      faviconUrl: normalizeNullableText(payload.faviconUrl),
+      watermarkCustomText: normalizeNullableText(payload.watermarkCustomText),
+      loginSubtitle:
+        normalizeNullableText(payload.loginSubtitle) ??
+        normalizeNullableText(payload.loginDescription),
+      loginDescription: normalizeNullableText(payload.loginDescription),
+      turnstileSiteKey: normalizeNullableText(payload.turnstileSiteKey),
       turnstileSize: payload.turnstileSize || 'normal',
       turnstileTheme: payload.turnstileTheme || 'auto',
-      maintenanceMessage: payload.maintenanceMessage?.trim() || null,
-      seoTitle: payload.seoTitle?.trim() || null,
-      seoKeywords: payload.seoKeywords?.trim() || null,
-      seoDescription: payload.seoDescription?.trim() || null,
-      contactEmail: payload.contactEmail?.trim() || null,
-      contactPhone: payload.contactPhone?.trim() || null,
-      contactAddress: payload.contactAddress?.trim() || null,
-      copyrightText: payload.copyrightText?.trim() || null,
-      icpRecord: payload.icpRecord?.trim() || null,
-      policeRecord: payload.policeRecord?.trim() || null,
+      maintenanceMessage: normalizeNullableText(payload.maintenanceMessage),
+      seoTitle: normalizeNullableText(payload.seoTitle),
+      seoKeywords: normalizeNullableText(payload.seoKeywords),
+      seoDescription: normalizeNullableText(payload.seoDescription),
+      contactEmail: normalizeNullableText(payload.contactEmail),
+      contactPhone: normalizeNullableText(payload.contactPhone),
+      contactAddress: normalizeNullableText(payload.contactAddress),
+      copyrightText: normalizeNullableText(payload.copyrightText),
+      icpRecord: normalizeNullableText(payload.icpRecord),
+      policeRecord: normalizeNullableText(payload.policeRecord),
       captchaMaxAttempts: Number(payload.captchaMaxAttempts || 0),
       captchaLockMinutes: Number(payload.captchaLockMinutes || 0),
       enabled: true

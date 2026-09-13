@@ -1,3 +1,4 @@
+import { normalizeNullableText } from '@/utils/form/normalize'
 import dayjs from 'dayjs'
 import { useSupabase } from '@/hooks'
 import { createFriendlySupabaseFunctionError } from '@/utils/supabase/error'
@@ -410,7 +411,7 @@ export async function updateAiFeedbackResolution(
         p_feedback_id: payload.feedbackId,
         p_status: payload.status,
         p_issue_type: payload.issueType ?? null,
-        p_resolution_note: payload.resolutionNote?.trim() || null
+        p_resolution_note: normalizeNullableText(payload.resolutionNote)
       }),
     { breakReturn: true, showErrorMessage: true }
   )
