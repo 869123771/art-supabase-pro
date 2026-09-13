@@ -214,6 +214,9 @@ declare module 'vue' {
     WorkflowBusinessHistoryDrawer: typeof import('./../../components/business/workflow-business-history/workflow-business-history-drawer.vue')['default']
     WorkflowFlowMap: typeof import('./../../components/business/workflow-flow-map/index.vue')['default']
   }
+  export interface GlobalDirectives {
+    vLoading: typeof import('element-plus/es')['ElLoadingDirective']
+  }
 }
 
 // For TSX support

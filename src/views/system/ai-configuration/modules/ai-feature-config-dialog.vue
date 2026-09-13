@@ -17,7 +17,7 @@
             <ArtIconButton
               icon="ri:refresh-line"
               circle
-              :class="{ 'is-loading': catalog.loading }"
+              :loading="catalog.loading"
               @click="refreshModelCatalog"
             />
           </ArtTooltip>
@@ -498,10 +498,6 @@
       display: flex;
       gap: 8px;
       align-items: center;
-
-      .is-loading :deep(svg) {
-        animation: ai-config-dialog-spin 0.8s linear infinite;
-      }
     }
 
     &__summary-icon {
@@ -513,12 +509,6 @@
       color: var(--el-color-primary);
       background: var(--el-color-primary-light-9);
       border-radius: var(--el-border-radius-base);
-    }
-  }
-
-  @keyframes ai-config-dialog-spin {
-    to {
-      transform: rotate(360deg);
     }
   }
 </style>

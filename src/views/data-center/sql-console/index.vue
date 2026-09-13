@@ -52,7 +52,7 @@
                     @click="() => handleExecute()"
                     icon="ri-loader-2-line"
                     :loading="executing"
-                    class="size-6.5! animate-spin duration-3000"
+                    class="size-6.5!"
                   />
                 </ArtTooltip>
                 <ArtTooltip content="格式化 SQL (Ctrl/Cmd + Shift + F)" placement="top" :offset="8">
@@ -63,17 +63,19 @@
                 </ArtTooltip>
               </div>
             </div>
+            <ArtOverlayLoading
+              v-if="executing && !result"
+              loading
+              overlay
+              text="正在执行 SQL…"
+              description="正在查询数据库并整理结果，请稍候"
+              class="result-section__loading"
+            />
             <ElScrollbar class="tabs-content">
               <div class="tabs-content__inner">
                 <div v-if="!result" class="empty-state">
-                  <ArtSvgIcon
-                    v-if="executing"
-                    :loading="executing"
-                    icon="ri-loader-2-line"
-                    class="size-[30px] animate-spin duration-3000"
-                  />
                   <ArtEmptyState
-                    v-else
+                    v-if="!executing"
                     title="等待执行 SQL"
                     description="执行后将在这里展示查询结果、耗时与错误信息"
                     size="compact"
@@ -147,6 +149,7 @@
   import { ElMessage } from 'element-plus'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
+  import ArtOverlayLoading from '@/components/core/feedback/art-overlay-loading/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import { executeSql, fetchDatabaseMetadata, generateSqlByAi } from '@/api/data-center'
   import Editor from './modules/editor.vue'
@@ -400,6 +403,10 @@
           color: var(--el-text-color-secondary);
         }
       }
+    }
+
+    > .result-section__loading {
+      top: 40px;
     }
 
     > .tabs-content {
