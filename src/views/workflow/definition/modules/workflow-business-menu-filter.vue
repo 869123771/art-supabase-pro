@@ -73,7 +73,7 @@
                 <ArtSvgIcon :icon="resolveNodeIcon(data)" />
               </span>
               <span class="workflow-menu-filter__node-copy">
-                <strong :title="resolveLabel(data)">{{ resolveLabel(data) }}</strong>
+                <strong :title="resolveMenuLabel(data)">{{ resolveMenuLabel(data) }}</strong>
                 <small>{{
                   data.directCount ? `${data.directCount} 类直接接入` : '业务目录'
                 }}</small>
@@ -112,6 +112,7 @@
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import type { AppRouteRecord } from '@/types/router'
+  import { resolveMenuLabel } from '@/utils/navigation/menu'
   import TreeUtils from '@/utils/tree'
   import { workflowBusinessContracts } from '../../modules/workflow-business-contracts'
 
@@ -173,7 +174,7 @@
   const contractCount = computed(() => workflowBusinessContracts.length)
   const menuPageCount = computed(() => flatTree.value.filter((item) => item.directCount > 0).length)
   const selectedLabel = computed(() =>
-    selectedNode.value ? resolveLabel(selectedNode.value) : '全部业务'
+    selectedNode.value ? resolveMenuLabel(selectedNode.value) : '全部业务'
   )
   const selectedCount = computed(
     () => selectedNode.value?.businessTypes.length ?? contractCount.value
@@ -181,11 +182,7 @@
   const defaultExpandedKeys = computed(() =>
     filterTree.value.map((item) => item.id).filter((id): id is string => typeof id === 'string')
   )
-  const treeProps = { children: 'children', label: (data: TreeNodeData) => resolveLabel(data) }
-
-  function resolveLabel(menu: { meta?: { title?: unknown }; name?: unknown }): string {
-    return String(menu.meta?.title || menu.name || '未命名菜单')
-  }
+  const treeProps = { children: 'children', label: (data: TreeNodeData) => resolveMenuLabel(data) }
 
   function resolveNodeIcon(menu: WorkflowMenuNode): string {
     if (menu.children?.length) return 'ri:folder-3-line'
@@ -196,7 +193,7 @@
     const menu = data as WorkflowMenuNode
     const normalized = value.trim().toLocaleLowerCase('zh-CN')
     if (!normalized) return true
-    return [resolveLabel(menu), menu.name, menu.path, ...menu.searchTerms].some((field) =>
+    return [resolveMenuLabel(menu), menu.name, menu.path, ...menu.searchTerms].some((field) =>
       String(field ?? '')
         .toLocaleLowerCase('zh-CN')
         .includes(normalized)
@@ -213,7 +210,7 @@
   }
 
   function handleNodeClick(menu: WorkflowMenuNode): void {
-    if (menu.id) emit('select', String(menu.id), menu.businessTypes, resolveLabel(menu))
+    if (menu.id) emit('select', String(menu.id), menu.businessTypes, resolveMenuLabel(menu))
   }
 
   async function syncCurrentNode(): Promise<void> {

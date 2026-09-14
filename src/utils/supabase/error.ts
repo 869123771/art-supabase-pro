@@ -166,6 +166,9 @@ const SESSION_ERROR_CODES = new Set([
 ])
 const SESSION_ERROR_MESSAGE =
   /authentication required|jwt expired|invalid jwt|missing.*jwt|token.*expired|refresh token.*not found/i
+const REQUEST_ABORT_CODES = new Set(['ABORT_ERR'])
+const REQUEST_ABORT_NAMES = new Set(['AbortError'])
+const REQUEST_ABORT_MESSAGE = /\baborterror\b|(?:operation|request|signal) (?:was |is )?aborted/i
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object'
@@ -230,6 +233,21 @@ export function isSupabaseSessionFailure(...values: unknown[]): boolean {
     details.statuses.includes(401) ||
     details.codes.some((code) => SESSION_ERROR_CODES.has(code)) ||
     details.messages.some((message) => SESSION_ERROR_MESSAGE.test(message))
+  )
+}
+
+/**
+ * 识别由 AbortSignal 主动取消的 Supabase 请求。
+ * 取消是“旧请求让位给新请求”的正常控制流，不应展示为接口加载失败。
+ */
+export function isSupabaseRequestAbortFailure(...values: unknown[]): boolean {
+  const details: ErrorDetails = { codes: [], names: [], messages: [], statuses: [] }
+  values.forEach((value) => collectErrorDetails(value, details))
+
+  return (
+    details.codes.some((code) => REQUEST_ABORT_CODES.has(code.toUpperCase())) ||
+    details.names.some((name) => REQUEST_ABORT_NAMES.has(name)) ||
+    details.messages.some((message) => REQUEST_ABORT_MESSAGE.test(message))
   )
 }
 

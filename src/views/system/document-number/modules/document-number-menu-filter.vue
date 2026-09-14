@@ -80,7 +80,7 @@
                 <ArtSvgIcon :icon="resolveNodeIcon(data)" />
               </span>
               <span class="number-menu-filter__node-copy">
-                <strong :title="resolveLabel(data)">{{ resolveLabel(data) }}</strong>
+                <strong :title="resolveMenuLabel(data)">{{ resolveMenuLabel(data) }}</strong>
                 <small>{{
                   data.directSceneCount ? `${data.directSceneCount} 项直接接入` : '业务目录'
                 }}</small>
@@ -121,6 +121,7 @@
   import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import type { AppRouteRecord } from '@/types/router'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
+  import { resolveMenuLabel } from '@/utils/navigation/menu'
   import TreeUtils from '@/utils/tree'
 
   interface FilterMenuNode extends AppRouteRecord {
@@ -152,7 +153,7 @@
   const keyword = ref('')
   const treeProps = {
     children: 'children',
-    label: (data: TreeNodeData) => resolveLabel(data)
+    label: (data: TreeNodeData) => resolveMenuLabel(data)
   }
 
   const sceneMap = computed(() => {
@@ -205,13 +206,9 @@
     flatFilterTree.value.find((item) => item.id === props.selectedMenuId)
   )
   const selectedLabel = computed(() =>
-    selectedNode.value ? resolveLabel(selectedNode.value) : '全部功能'
+    selectedNode.value ? resolveMenuLabel(selectedNode.value) : '全部功能'
   )
   const selectedSceneCount = computed(() => selectedNode.value?.sceneCount ?? sceneCount.value)
-
-  function resolveLabel(menu: { meta?: { title?: unknown }; name?: unknown }): string {
-    return String(menu.meta?.title || menu.name || '未命名菜单')
-  }
 
   const resolveNodeIcon = (menu: FilterMenuNode): string => {
     if (menu.children?.length) return 'ri:folder-3-line'
@@ -222,7 +219,7 @@
     const menu = data as FilterMenuNode
     const normalized = value.trim().toLocaleLowerCase('zh-CN')
     if (!normalized) return true
-    return [resolveLabel(menu), menu.name, menu.path, ...menu.sceneNames].some((field) =>
+    return [resolveMenuLabel(menu), menu.name, menu.path, ...menu.sceneNames].some((field) =>
       String(field ?? '')
         .toLocaleLowerCase('zh-CN')
         .includes(normalized)

@@ -161,10 +161,12 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
       button('ManageGroup', '管理分组')
     ]
   })),
-  ...['MdmDocumentType', 'MdmOperationControlCode', 'MdmWorkstation'].map((menuName) => ({
-    menuName,
-    buttons: [...crud({ view: true, export: true }), button('Copy', '复制')]
-  })),
+  ...['MdmDocumentType', 'MdmBusinessType', 'MdmOperationControlCode', 'MdmWorkstation'].map(
+    (menuName) => ({
+      menuName,
+      buttons: [...crud({ view: true, export: true }), button('Copy', '复制')]
+    })
+  ),
   {
     menuName: 'MdmActivityFormula',
     buttons: [
@@ -177,12 +179,15 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
     menuName: 'MesWorkOrder',
     buttons: [
       ...crud({ view: true, import: true, export: true }),
+      button('Copy', '复制'),
+      button('Get', '获取工单'),
       button('Print', '打印'),
       button('Annotate', '批注'),
       button('Confirm', '确认'),
       button('Close', '结案'),
       button('Reopen', '重新打开'),
-      button('Restore', '恢复')
+      button('Restore', '恢复'),
+      button('MaintainDueDate', '交期维护')
     ]
   },
   {
@@ -195,6 +200,14 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
       button('Reopen', '重新打开'),
       button('Delete', '删除')
     ]
+  },
+  {
+    menuName: 'MesScheduling',
+    buttons: [button('View', '查看')]
+  },
+  {
+    menuName: 'MesSchedulingGantt',
+    buttons: [button('View', '查看')]
   },
   {
     menuName: 'MdmProductionDepartment',

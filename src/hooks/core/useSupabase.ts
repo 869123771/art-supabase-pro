@@ -4,6 +4,7 @@ import { ElMessage } from 'element-plus'
 import type { QueryResult } from '@/types/api/response'
 import {
   getFriendlySupabaseErrorMessage,
+  isSupabaseRequestAbortFailure,
   isSupabaseSessionFailure,
   normalizeSupabaseFunctionError
 } from '@/utils/supabase'
@@ -168,6 +169,16 @@ export function useSupabase() {
 
     const { data, error, count, response } = queryResponse
     if (error) {
+      if (isSupabaseRequestAbortFailure(error)) {
+        const abortError = new Error('请求已取消', { cause: error })
+        abortError.name = 'AbortError'
+        if (breakReturn) throw abortError
+        return {
+          data: null,
+          error: returnRawError ? keysToCamelDeep(error) : abortError
+        }
+      }
+
       let responseJson: unknown
       try {
         responseJson = await response?.json?.()

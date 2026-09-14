@@ -5,6 +5,7 @@ import {
   createFriendlySupabaseFunctionError,
   formatSupabaseAuthErrorMessage,
   getFriendlySupabaseErrorMessage,
+  isSupabaseRequestAbortFailure,
   isSupabaseSessionFailure,
   normalizeSupabaseFunctionError
 } from '../../src/utils/supabase'
@@ -58,6 +59,26 @@ test('recognizes a nested 401 response from Supabase functions', () => {
   }
 
   assert.equal(isSupabaseSessionFailure(error), true)
+})
+
+test('recognizes Supabase AbortSignal responses without confusing database cancellations', () => {
+  const requestAbort = {
+    code: '',
+    message: 'AbortError: This operation was aborted',
+    details: 'AbortError: This operation was aborted',
+    hint: 'Request was aborted (timeout or manual cancellation)'
+  }
+  const statementTimeout = {
+    code: '57014',
+    message: 'canceling statement due to statement timeout'
+  }
+
+  assert.equal(isSupabaseRequestAbortFailure(requestAbort), true)
+  assert.equal(
+    isSupabaseRequestAbortFailure(new DOMException('The user aborted a request.', 'AbortError')),
+    true
+  )
+  assert.equal(isSupabaseRequestAbortFailure(statementTimeout), false)
 })
 
 test('parses serialized errors without exposing JSON to the user', () => {
