@@ -1,0 +1,37 @@
+@use './ai-surface-mixins' as ai;
+
+:where(
+  .art-ai-assistant,
+  .project-assistant,
+  .project-assistant-shell,
+  .ai-configuration,
+  .ai-config-dialog,
+  .ai-prompt,
+  .ai-prompt-dialog,
+  .ai-planner,
+  .ai-operations,
+  .ai-feedback-quality,
+  .ocr-quality,
+  .ai-run-detail,
+  .recognition-workbench,
+  .recognition-runner,
+  .recognition-detail,
+  .recognition-table,
+  .ai-order-drawer,
+  .ai-order-source,
+  .ai-order-result,
+  .collection-advisor,
+  .profit-analyst,
+  .invoice-auditor,
+  .cost-auditor,
+  .bank-batch,
+  .carrier-advisor,
+  .transport-advisor,
+  .vehicle-health-advisor,
+  .capability-center,
+  .ocr-log-drawer,
+  .ocr-original-text,
+  .smis-ai-panel-frame
+) {
+  @include ai.text-hierarchy;
+}

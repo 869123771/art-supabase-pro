@@ -37,6 +37,7 @@ export interface VisionOcrConfig<TInput, TResult extends VisionOcrNormalizedResu
   entityType: string
   entityTable: string
   envPrefix: string
+  requiredPermission?: string | ((body: Record<string, unknown>) => string | null)
   defaultPrompt: string
   expectedShape: Record<string, unknown>
   defaultMaxTokens?: number
@@ -170,8 +171,28 @@ export function createVisionOcrHandler<TInput, TResult extends VisionOcrNormaliz
       if (appUserError || !appUser?.tenant_id || appUser.status === '0') {
         return json({ code: 'forbidden', message: config.labels.forbidden }, 403)
       }
-
       const body = (await req.json()) as Record<string, unknown>
+      const requiredPermission =
+        typeof config.requiredPermission === 'function'
+          ? config.requiredPermission(body)
+          : config.requiredPermission
+      if (requiredPermission) {
+        const userClient = createClient(supabaseUrl, supabaseAnonKey, {
+          global: { headers: { Authorization: authHeader } },
+          auth: { autoRefreshToken: false, persistSession: false }
+        })
+        const { data: hasPermission, error: permissionError } = await userClient.rpc(
+          'current_has_permission',
+          { p_permission: requiredPermission }
+        )
+        if (permissionError || hasPermission !== true) {
+          if (permissionError) {
+            console.error('AI permission check failed', requiredPermission, permissionError.message)
+          }
+          return json({ code: 'forbidden', message: config.labels.forbidden }, 403)
+        }
+      }
+
       const action = body.action === 'review' ? 'review' : 'analyze'
       if (action === 'review') {
         const artifactId = stringValue(body.artifactId)

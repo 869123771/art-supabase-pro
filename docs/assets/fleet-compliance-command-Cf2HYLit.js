@@ -1,1 +1,0 @@
-import{Ot as e,Rt as t,in as n}from"./framework-ClRJ96jm.js";import{t as r}from"./domain-command-screen-BE5hwUZT.js";var i=t({name:`FleetComplianceCommand`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{kind:`fleet-compliance`}))}});export{i as default};

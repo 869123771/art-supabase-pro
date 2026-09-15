@@ -159,7 +159,7 @@
   defineOptions({ name: 'ArtSidebarMenu' })
 
   const MOBILE_BREAKPOINT = 800
-  const ANIMATION_DELAY = 350
+  const SIDEBAR_RESIZE_DURATION_MS = 170
   const MENU_CLOSE_WIDTH = MenuWidth.CLOSE
 
   const route = useRoute()
@@ -240,14 +240,14 @@
       return {
         height: '100%',
         transform: 'translateY(0)',
-        transition: 'transform 0.3s ease'
+        transition: `transform ${SIDEBAR_RESIZE_DURATION_MS}ms var(--art-motion-ease-out)`
       }
     }
     const isCollapsed = isDualMenu.value && !menuOpen.value
     return {
       transform: isCollapsed ? 'translateY(-50px)' : 'translateY(0)',
       height: isCollapsed ? 'calc(100% + 50px)' : 'calc(100% - 60px)',
-      transition: 'transform 0.3s ease'
+      transition: `transform ${SIDEBAR_RESIZE_DURATION_MS}ms var(--art-motion-ease-out)`
     }
   })
 
@@ -258,7 +258,7 @@
     () => {
       showMobileModal.value = false
     },
-    ANIMATION_DELAY,
+    SIDEBAR_RESIZE_DURATION_MS,
     { immediate: false }
   )
 

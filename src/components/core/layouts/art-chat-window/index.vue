@@ -360,6 +360,7 @@
   const MOBILE_BREAKPOINT = 640
   const route = useRoute()
   const router = useRouter()
+  const isSmisPage = computed(() => route.path.startsWith('/smis/'))
   const userStore = useUserStore()
   const { width } = useWindowSize()
   const { isOnline } = useNetwork()
@@ -374,12 +375,18 @@
   ]
   const isProjectMode = computed(() => assistantMode.value === 'project')
   const assistantModeLabel = computed(() => (isProjectMode.value ? '只读安全模式' : '权限内只读'))
-  const assistantTitle = computed(() => (isProjectMode.value ? 'Supabase 管理助手' : 'AI 业务助理'))
+  const assistantTitle = computed(() =>
+    isProjectMode.value ? 'Supabase 管理助手' : isSmisPage.value ? 'AI 安全助理' : 'AI 业务助理'
+  )
   const assistantIcon = computed(() =>
     isProjectMode.value ? 'ri:database-2-line' : 'ri:sparkling-2-fill'
   )
   const assistantEyebrow = computed(() =>
-    isProjectMode.value ? 'SUPABASE PROJECT COPILOT' : 'ART BUSINESS COPILOT'
+    isProjectMode.value
+      ? 'SUPABASE PROJECT COPILOT'
+      : isSmisPage.value
+        ? 'SMIS SAFETY COPILOT'
+        : 'ART BUSINESS COPILOT'
   )
   const welcomeTitle = computed(() =>
     isProjectMode.value ? '想了解项目里的什么？' : '今天想了解什么？'
@@ -387,7 +394,9 @@
   const welcomeDescription = computed(() =>
     isProjectMode.value
       ? '我可以只读查看数据库对象、DDL、外键关系和 Edge Function 元数据，并生成变更方案。'
-      : '我会结合当前页面和你的数据权限，查询订单、运输经营情况与车辆临期事项。'
+      : isSmisPage.value
+        ? '我会在你的数据权限内查询隐患、特殊作业、培训与安全知识，并生成可复核的安全交底提纲。'
+        : '我会结合当前页面和你的数据权限，查询订单、运输经营情况与车辆临期事项。'
   )
   const dataCapabilityLabel = computed(() =>
     isProjectMode.value ? '项目实时元数据' : '实时业务数据'
@@ -478,6 +487,30 @@
         }
       ]
     }
+    if (isSmisPage.value) {
+      return [
+        {
+          label: '查看近 30 天隐患概览',
+          description: '汇总待核准、整改中与待验收事项',
+          icon: 'ri:alarm-warning-line'
+        },
+        {
+          label: '查看近 30 天特殊作业概览',
+          description: '了解作业票阶段与近期安排',
+          icon: 'ri:shield-check-line'
+        },
+        {
+          label: '生成当前安全交底提纲',
+          description: '结合近期隐患、作业与知识库',
+          icon: 'ri:file-list-3-line'
+        },
+        {
+          label: '搜索动火相关安全知识',
+          description: '检索权限内制度、措施与案例',
+          icon: 'ri:book-open-line'
+        }
+      ]
+    }
     const items: PromptSuggestion[] = [
       {
         label: '总结最近订单',
@@ -530,23 +563,41 @@
             icon: 'ri:file-list-3-line'
           }
         ]
-      : [
-          {
-            label: '经营摘要',
-            prompt: '总结当前页面相关的核心业务数据与变化趋势',
-            icon: 'ri:bar-chart-box-line'
-          },
-          {
-            label: '风险提醒',
-            prompt: '检查当前业务范围内需要关注的风险与临期事项',
-            icon: 'ri:alarm-warning-line'
-          },
-          {
-            label: '下一步建议',
-            prompt: '根据当前数据给出清晰、可执行的下一步建议',
-            icon: 'ri:route-line'
-          }
-        ]
+      : isSmisPage.value
+        ? [
+            {
+              label: '隐患概览',
+              prompt: '查看近 30 天隐患概览与待闭环事项',
+              icon: 'ri:alarm-warning-line'
+            },
+            {
+              label: '安全交底',
+              prompt: '生成当前页面相关的安全交底提纲',
+              icon: 'ri:shield-check-line'
+            },
+            {
+              label: '知识检索',
+              prompt: '搜索当前作业相关的安全知识与控制措施',
+              icon: 'ri:book-open-line'
+            }
+          ]
+        : [
+            {
+              label: '经营摘要',
+              prompt: '总结当前页面相关的核心业务数据与变化趋势',
+              icon: 'ri:bar-chart-box-line'
+            },
+            {
+              label: '风险提醒',
+              prompt: '检查当前业务范围内需要关注的风险与临期事项',
+              icon: 'ri:alarm-warning-line'
+            },
+            {
+              label: '下一步建议',
+              prompt: '根据当前数据给出清晰、可执行的下一步建议',
+              icon: 'ri:route-line'
+            }
+          ]
   )
 
   function formatCurrentTime(): string {
@@ -732,6 +783,11 @@
       get_recent_orders: '最近订单',
       get_transport_overview: '运输概览',
       get_vehicle_expiries: '车辆到期',
+      get_smis_hazard_overview: '隐患概览',
+      get_smis_special_operation_overview: '特殊作业概览',
+      get_smis_training_overview: '安全培训概览',
+      search_smis_safety_knowledge: '安全知识检索',
+      generate_smis_safety_briefing: '安全交底提纲',
       get_project_overview: '项目概览',
       list_database_objects: '数据库对象',
       get_database_object_detail: '对象定义',

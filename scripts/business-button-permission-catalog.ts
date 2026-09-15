@@ -62,8 +62,7 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
       ...crud({ view: true, export: true }),
       button('Copy', '复制'),
       button('Enable', '启用'),
-      button('Disable', '停用'),
-      ...(menuName === 'MdmMaterialArchive' ? [button('GenerateCode', '生成编码')] : [])
+      button('Disable', '停用')
     ]
   })),
   {
@@ -198,7 +197,9 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
       button('Schedule', '排程'),
       button('Close', '关闭'),
       button('Reopen', '重新打开'),
-      button('Delete', '删除')
+      button('Delete', '删除'),
+      button('Annotate', '工序批注'),
+      button('MaintainDueDate', '要求完工日期维护')
     ]
   },
   {
@@ -941,6 +942,11 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
       button('Approve', '核准隐患', 'SmisDualControlHiddenHazardGovernanceTracking:Approve'),
       button('Rectify', '提交隐患整改', 'SmisDualControlHiddenHazardGovernanceTracking:Rectify'),
       button('Accept', '验收隐患', 'SmisDualControlHiddenHazardGovernanceTracking:Accept'),
+      button(
+        'AiForecast',
+        'AI 隐患风险趋势',
+        'SmisDualControlHiddenHazardGovernanceTracking:AiForecast'
+      ),
       button('Export', '导出隐患治理跟踪', 'SmisDualControlHiddenHazardGovernanceTracking:Export')
     ]
   },
@@ -948,7 +954,8 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
     menuName: 'SmisDualControlQuickReport',
     buttons: [
       button('View', '查看随手拍', 'SmisDualControlQuickReport:View'),
-      button('Submit', '提交随手拍', 'SmisDualControlQuickReport:Submit')
+      button('Submit', '提交随手拍', 'SmisDualControlQuickReport:Submit'),
+      button('AiAnalyze', 'AI 现场分析', 'SmisDualControlQuickReport:AiAnalyze')
     ]
   },
   {
@@ -1267,6 +1274,7 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
         'SmisSpecialOperationWorkbench:RequestAcceptance'
       ),
       button('Accept', '验收特殊作业票', 'SmisSpecialOperationWorkbench:Accept'),
+      button('AiPrecheck', 'AI 作业票预审', 'SmisSpecialOperationWorkbench:AiPrecheck'),
       button('Print', '打印特殊作业票', 'SmisSpecialOperationWorkbench:Print')
     ]
   },
@@ -1283,6 +1291,7 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
       button('Start', '审批并开始动火作业', 'SmisHotWorkApplication:Start'),
       button('RequestAcceptance', '申请动火作业验收', 'SmisHotWorkApplication:RequestAcceptance'),
       button('Accept', '验收动火作业票', 'SmisHotWorkApplication:Accept'),
+      button('AiPrecheck', 'AI 动火票预审', 'SmisHotWorkApplication:AiPrecheck'),
       button('Print', '打印动火作业票', 'SmisHotWorkApplication:Print')
     ]
   },
@@ -1303,6 +1312,7 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
         'SmisWorkAtHeightApplication:RequestAcceptance'
       ),
       button('Accept', '验收高处作业票', 'SmisWorkAtHeightApplication:Accept'),
+      button('AiPrecheck', 'AI 高处作业票预审', 'SmisWorkAtHeightApplication:AiPrecheck'),
       button('Print', '打印高处作业票', 'SmisWorkAtHeightApplication:Print')
     ]
   },
@@ -1323,6 +1333,7 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
         'SmisLiftingOperationApplication:RequestAcceptance'
       ),
       button('Accept', '验收吊装作业票', 'SmisLiftingOperationApplication:Accept'),
+      button('AiPrecheck', 'AI 吊装作业票预审', 'SmisLiftingOperationApplication:AiPrecheck'),
       button('Print', '打印吊装作业票', 'SmisLiftingOperationApplication:Print')
     ]
   },
@@ -1343,6 +1354,11 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
         'SmisConfinedSpaceOperationApplication:RequestAcceptance'
       ),
       button('Accept', '验收受限空间作业票', 'SmisConfinedSpaceOperationApplication:Accept'),
+      button(
+        'AiPrecheck',
+        'AI 受限空间作业票预审',
+        'SmisConfinedSpaceOperationApplication:AiPrecheck'
+      ),
       button('Print', '打印受限空间作业票', 'SmisConfinedSpaceOperationApplication:Print')
     ]
   },
@@ -1363,6 +1379,11 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
         'SmisTemporaryElectricityApplication:RequestAcceptance'
       ),
       button('Accept', '验收临时用电作业票', 'SmisTemporaryElectricityApplication:Accept'),
+      button(
+        'AiPrecheck',
+        'AI 临时用电作业票预审',
+        'SmisTemporaryElectricityApplication:AiPrecheck'
+      ),
       button('Print', '打印临时用电作业票', 'SmisTemporaryElectricityApplication:Print')
     ]
   },
@@ -1383,6 +1404,7 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
         'SmisRoadBreakingOperationApplication:RequestAcceptance'
       ),
       button('Accept', '验收断路作业票', 'SmisRoadBreakingOperationApplication:Accept'),
+      button('AiPrecheck', 'AI 断路作业票预审', 'SmisRoadBreakingOperationApplication:AiPrecheck'),
       button('Print', '打印断路作业票', 'SmisRoadBreakingOperationApplication:Print')
     ]
   },
@@ -1403,6 +1425,11 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
         'SmisBlindPlateOperationApplication:RequestAcceptance'
       ),
       button('Accept', '验收盲板抽堵作业票', 'SmisBlindPlateOperationApplication:Accept'),
+      button(
+        'AiPrecheck',
+        'AI 盲板抽堵作业票预审',
+        'SmisBlindPlateOperationApplication:AiPrecheck'
+      ),
       button('Print', '打印盲板抽堵作业票', 'SmisBlindPlateOperationApplication:Print')
     ]
   },
@@ -1435,6 +1462,7 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
       button('Edit', '编辑人员证件', 'SmisPersonnelCertificateLedger:Edit'),
       button('Delete', '删除人员证件', 'SmisPersonnelCertificateLedger:Delete'),
       button('Export', '导出人员证件台账', 'SmisPersonnelCertificateLedger:Export'),
+      button('AiAnalyze', 'AI 证件识别', 'SmisPersonnelCertificateLedger:AiAnalyze'),
       button('ViewHistory', '查看复审记录', 'SmisPersonnelCertificateLedger:ViewHistory')
     ]
   },
@@ -1451,6 +1479,7 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
         '导出作业人员证件台账',
         'SmisSpecialEquipmentOperatorCertificateLedger:Export'
       ),
+      button('AiAnalyze', 'AI 证件识别', 'SmisSpecialEquipmentOperatorCertificateLedger:AiAnalyze'),
       button(
         'ViewHistory',
         '查看作业人员复审记录',
@@ -1467,6 +1496,7 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
       button('Edit', '编辑特种作业操作证', 'SmisSpecialOperationCertificate:Edit'),
       button('Delete', '删除特种作业操作证', 'SmisSpecialOperationCertificate:Delete'),
       button('Export', '导出特种作业操作证', 'SmisSpecialOperationCertificate:Export'),
+      button('AiAnalyze', 'AI 证件识别', 'SmisSpecialOperationCertificate:AiAnalyze'),
       button('ViewHistory', '查看特种作业复审记录', 'SmisSpecialOperationCertificate:ViewHistory')
     ]
   },
@@ -1479,6 +1509,7 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
       button('Edit', '编辑安全管理人员证', 'SmisSafetyManagerCertificate:Edit'),
       button('Delete', '删除安全管理人员证', 'SmisSafetyManagerCertificate:Delete'),
       button('Export', '导出安全管理人员证', 'SmisSafetyManagerCertificate:Export'),
+      button('AiAnalyze', 'AI 证件识别', 'SmisSafetyManagerCertificate:AiAnalyze'),
       button(
         'ViewHistory',
         '查看安全管理人员证复审记录',
@@ -1495,6 +1526,7 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
       button('Edit', '编辑注册安全工程师证', 'SmisRegisteredSafetyEngineerLedger:Edit'),
       button('Delete', '删除注册安全工程师证', 'SmisRegisteredSafetyEngineerLedger:Delete'),
       button('Export', '导出注册安全工程师台账', 'SmisRegisteredSafetyEngineerLedger:Export'),
+      button('AiAnalyze', 'AI 证件识别', 'SmisRegisteredSafetyEngineerLedger:AiAnalyze'),
       button(
         'ViewHistory',
         '查看注册安全工程师复审记录',
@@ -1585,7 +1617,8 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
       button('View', '查看检验申报', 'SmisInspectionDeclaration:View'),
       button('Add', '新增检验申报', 'SmisInspectionDeclaration:Add'),
       button('Edit', '编辑检验申报', 'SmisInspectionDeclaration:Edit'),
-      button('Delete', '删除检验申报', 'SmisInspectionDeclaration:Delete')
+      button('Delete', '删除检验申报', 'SmisInspectionDeclaration:Delete'),
+      button('AiAnalyze', 'AI 检验报告识别', 'SmisInspectionDeclaration:AiAnalyze')
     ]
   },
   {

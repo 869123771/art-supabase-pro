@@ -23,3 +23,6 @@
 @use './core/theme-animation.scss';
 
 @use './core/global.scss';
+
+// AI surfaces share explicit semantic text levels across light and dark themes.
+@use './core/ai-surface.scss';
