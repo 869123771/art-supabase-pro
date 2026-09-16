@@ -112,6 +112,7 @@ const setWebsiteConfig = (config: UseWebsiteConfig): void => {
 
 export function useWebsiteConfig() {
   const siteName = computed(() => websiteConfig.value.siteName || AppConfig.systemInfo.name)
+  const brandName = computed(() => siteName.value.trim() || AppConfig.systemInfo.name)
   const loginTitle = computed(() => websiteConfig.value.loginTitle || `欢迎使用 ${siteName.value}`)
   const loginSubtitle = computed(
     () => websiteConfig.value.loginSubtitle || websiteConfig.value.loginDescription || ''
@@ -141,6 +142,7 @@ export function useWebsiteConfig() {
     websiteConfigLoading: readonly(loading),
     websiteConfigLoaded: readonly(loaded),
     siteName,
+    brandName,
     loginTitle,
     loginSubtitle,
     loadWebsiteConfig,

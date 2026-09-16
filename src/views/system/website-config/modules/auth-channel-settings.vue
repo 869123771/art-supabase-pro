@@ -1,14 +1,27 @@
 <template>
   <div class="auth-channel-settings">
     <div class="auth-channel-settings__toolbar">
-      <div>
-        <strong>{{ channels.length }} 个认证渠道</strong>
+      <div class="auth-channel-settings__toolbar-copy">
+        <div class="auth-channel-settings__count">
+          <strong>认证渠道</strong>
+          <span>{{ channels.length }} 个</span>
+        </div>
         <p>Provider 必须已在 Supabase Auth 中启用；这里不保存 AppID 或 Secret。</p>
       </div>
-      <ElDropdown v-if="!disabled" trigger="click" @command="addPreset">
+      <ElButton
+        v-if="!disabled && availablePresets.length === 0"
+        type="primary"
+        plain
+        @click="addPreset('custom')"
+      >
+        <ArtSvgIcon icon="ri:add-line" />
+        添加自定义渠道
+      </ElButton>
+      <ElDropdown v-else-if="!disabled" trigger="click" @command="addPreset">
         <ElButton type="primary" plain>
           <ArtSvgIcon icon="ri:add-line" />
           添加渠道
+          <ArtSvgIcon icon="ri:arrow-down-s-line" />
         </ElButton>
         <template #dropdown>
           <ElDropdownMenu>
@@ -19,7 +32,7 @@
             >
               {{ preset.label }}
             </ElDropdownItem>
-            <ElDropdownItem divided command="custom">自定义渠道</ElDropdownItem>
+            <ElDropdownItem command="custom">自定义渠道</ElDropdownItem>
           </ElDropdownMenu>
         </template>
       </ElDropdown>
@@ -205,16 +218,43 @@
       justify-content: space-between;
       min-width: 0;
 
+      .el-button {
+        flex: none;
+        min-height: 36px;
+      }
+    }
+
+    &__toolbar-copy {
+      min-width: 0;
+
+      p {
+        margin: 6px 0 0;
+        font-size: 12px;
+        line-height: 20px;
+        color: var(--el-text-color-secondary);
+      }
+    }
+
+    &__count {
+      display: flex;
+      gap: var(--art-space-2);
+      align-items: center;
+
       strong {
         font-size: 14px;
         color: var(--el-text-color-primary);
       }
 
-      p {
-        margin: 4px 0 0;
+      span {
+        display: inline-flex;
+        align-items: center;
+        min-height: 22px;
+        padding: 0 8px;
         font-size: 12px;
-        line-height: 20px;
-        color: var(--el-text-color-secondary);
+        font-weight: 600;
+        color: var(--el-color-primary);
+        background: var(--el-color-primary-light-9);
+        border-radius: 999px;
       }
     }
 
@@ -230,7 +270,7 @@
       align-items: start;
       min-width: 0;
       padding: var(--art-space-4);
-      background: var(--art-gray-100);
+      background: color-mix(in srgb, var(--art-gray-100) 72%, var(--default-box-color));
       border: 1px solid var(--el-border-color-lighter);
       border-radius: var(--custom-radius);
 
@@ -307,6 +347,8 @@
       &__actions {
         display: grid;
         gap: var(--art-space-3);
+        padding-left: var(--art-space-4);
+        border-left: 1px solid var(--el-border-color-lighter);
 
         > div {
           display: flex;
@@ -333,6 +375,10 @@
           grid-template-columns: repeat(3, max-content);
           grid-column: 1 / -1;
           align-items: center;
+          padding-top: var(--art-space-3);
+          padding-left: 0;
+          border-top: 1px solid var(--el-border-color-lighter);
+          border-left: 0;
         }
       }
     }
@@ -356,6 +402,7 @@
         &__actions {
           grid-template-columns: minmax(0, 1fr);
           grid-column: auto;
+          padding-top: var(--art-space-3);
         }
 
         &__parameter {

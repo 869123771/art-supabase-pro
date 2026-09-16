@@ -1,30 +1,28 @@
 <!-- 系统logo -->
 <template>
-  <div class="flex-cc shrink-0 gap-2.5">
+  <div class="art-logo" :class="{ 'art-logo--dark': dark }">
     <img
       v-if="variant !== 'wordmark'"
       :style="logoStyle"
       src="@imgs/common/logo.webp"
       width="36"
       height="36"
-      :alt="variant === 'mark' ? '亿企工场 Logo' : ''"
-      class="block object-contain"
+      :alt="variant === 'mark' ? `${brandName} Logo` : ''"
+      class="art-logo__mark"
     />
-    <img
+    <span
       v-if="variant !== 'mark'"
-      :src="wordmarkSrc"
       :style="wordmarkStyle"
-      width="420"
-      height="100"
-      alt="亿企工场"
-      class="block object-contain"
-    />
+      class="art-logo__wordmark"
+      :title="brandName"
+      >{{ brandName }}</span
+    >
   </div>
 </template>
 
 <script setup lang="ts">
-  import wordmarkLight from '@imgs/common/wordmark-light.png'
-  import wordmarkDark from '@imgs/common/wordmark-dark.png'
+  import type { CSSProperties } from 'vue'
+  import { useWebsiteConfig } from '@/hooks'
 
   defineOptions({ name: 'ArtLogo' })
 
@@ -43,10 +41,67 @@
     dark: false
   })
 
-  const logoStyle = computed(() => ({ width: `${props.size}px`, height: `${props.size}px` }))
-  const wordmarkSrc = computed(() => (props.dark ? wordmarkDark : wordmarkLight))
-  const wordmarkStyle = computed(() => ({
-    width: `${Number(props.size) * 2.52}px`,
-    height: `${Number(props.size) * 0.6}px`
+  const { brandName } = useWebsiteConfig()
+
+  const logoSize = computed(() => {
+    if (typeof props.size === 'number') return `${props.size}px`
+    return /^\d+(?:\.\d+)?$/.test(props.size) ? `${props.size}px` : props.size
+  })
+
+  const logoStyle = computed<CSSProperties>(() => ({
+    width: logoSize.value,
+    height: logoSize.value
+  }))
+
+  const wordmarkStyle = computed<CSSProperties>(() => ({
+    fontSize: `calc(${logoSize.value} * 0.62)`,
+    maxWidth: `calc(${logoSize.value} * 4.5)`
   }))
 </script>
+
+<style scoped lang="scss">
+  .art-logo {
+    display: inline-flex;
+    flex-shrink: 0;
+    gap: 10px;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    line-height: 1;
+
+    &__mark {
+      display: block;
+      flex: none;
+      object-fit: contain;
+    }
+
+    &__wordmark {
+      display: block;
+      min-width: 0;
+      overflow: hidden;
+      font-family: 'HarmonyOS Sans', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+      font-weight: 800;
+      line-height: 1.08;
+      color: #08275d;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      letter-spacing: 0.025em;
+      background: linear-gradient(180deg, #164c92 0%, #061c49 86%);
+      background-clip: text;
+      filter: drop-shadow(0 1px 0 rgb(255 255 255 / 42%));
+      -webkit-text-fill-color: transparent;
+      -webkit-text-stroke: 0.35px rgb(2 20 54 / 72%);
+    }
+
+    &--dark {
+      .art-logo__wordmark {
+        color: #f3f7ff;
+        background: linear-gradient(180deg, #ffffff 0%, #d9e7fb 88%);
+        background-clip: text;
+        filter: drop-shadow(0 1px 2px rgb(0 0 0 / 35%));
+        -webkit-text-fill-color: transparent;
+        -webkit-text-stroke: 0.3px rgb(10 35 74 / 48%);
+      }
+    }
+  }
+</style>

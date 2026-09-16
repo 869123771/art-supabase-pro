@@ -96,6 +96,7 @@
                 </ElFormItem>
                 <ElFormItem label="系统简称" prop="siteShortName">
                   <ElInput v-model.trim="form.siteShortName" maxlength="40" />
+                  <p>用于空间受限的紧凑场景；左上角品牌文字始终使用系统名称。</p>
                 </ElFormItem>
                 <ElFormItem label="水印内容" prop="watermarkContentType">
                   <ElSelect v-model="form.watermarkContentType">
@@ -395,6 +396,7 @@
   import { normalizeNullableText } from '@/utils/form/normalize'
   import { ElMessage, type FormRules } from 'element-plus'
   import { cloneDeep, isEqual, omit } from 'lodash-es'
+  import { useEventListener } from '@vueuse/core'
   import { fetchWebsiteConfig, saveWebsiteConfig } from '@/api/system-manage'
   import { createWebsiteConfigDefaults } from '@/config/website-config-defaults'
   import { useWebsiteConfig } from '@/hooks'
@@ -443,6 +445,7 @@
   })
   const form = reactive<WebsiteConfig>(createWebsiteConfigDefaults())
   const originalForm = ref<WebsiteConfig>(createWebsiteConfigDefaults())
+  const pageScrollContainer = shallowRef<HTMLElement | null>(null)
   const { setWebsiteConfig, loadWebsiteConfig } = useWebsiteConfig()
   const userStore = useUserStore()
   const { isPlatformSuper } = storeToRefs(userStore)
@@ -738,35 +741,48 @@
     })
   }
 
-  const setupSectionObserver = (): (() => void) | undefined => {
-    if (typeof IntersectionObserver === 'undefined') return undefined
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const activeEntry = entries
-          .filter((entry) => entry.isIntersecting)
-          .sort((left, right) => right.intersectionRatio - left.intersectionRatio)[0]
-        if (activeEntry?.target?.id) {
-          page.activeSection = activeEntry.target.id as SectionKey
-        }
-      },
-      {
-        rootMargin: '-160px 0px -60% 0px',
-        threshold: [0.1, 0.35, 0.6]
-      }
-    )
-
-    const observedKeys: SectionKey[] = ['overview', ...formSections.map((section) => section.key)]
-
-    observedKeys.forEach((key) => {
-      const target = document.getElementById(key)
-      if (target) observer.observe(target)
+  const getSectionElements = (): Array<{ key: SectionKey; element: HTMLElement }> => {
+    return navigationItems.flatMap(({ key }) => {
+      const element = document.getElementById(key)
+      return element ? [{ key, element }] : []
     })
-
-    return () => observer.disconnect()
   }
 
-  let stopObserver: (() => void) | undefined
+  const syncActiveSection = (): void => {
+    const scrollContainer = pageScrollContainer.value
+    const sections = getSectionElements()
+    if (!scrollContainer || sections.length === 0) return
+
+    const isAtBottom =
+      scrollContainer.scrollTop + scrollContainer.clientHeight >= scrollContainer.scrollHeight - 2
+    if (isAtBottom) {
+      page.activeSection = sections.at(-1)?.key ?? page.activeSection
+      return
+    }
+
+    const containerTop = scrollContainer.getBoundingClientRect().top
+    const scrollMarginTop = Number.parseFloat(getComputedStyle(sections[0].element).scrollMarginTop)
+    const activationLine =
+      containerTop + (Number.isFinite(scrollMarginTop) ? scrollMarginTop : 0) + 1
+
+    let activeSection = sections[0].key
+    for (const section of sections) {
+      if (section.element.getBoundingClientRect().top > activationLine) break
+      activeSection = section.key
+    }
+    page.activeSection = activeSection
+  }
+
+  let activeSectionFrame: number | undefined
+  const scheduleActiveSectionSync = (): void => {
+    if (activeSectionFrame !== undefined) return
+    activeSectionFrame = window.requestAnimationFrame(() => {
+      activeSectionFrame = undefined
+      syncActiveSection()
+    })
+  }
+
+  useEventListener(pageScrollContainer, 'scroll', scheduleActiveSectionSync, { passive: true })
 
   const loadPage = async (): Promise<void> => {
     page.loading = true
@@ -774,8 +790,8 @@
     try {
       await fetchConfig()
       await nextTick()
-      stopObserver?.()
-      stopObserver = setupSectionObserver()
+      pageScrollContainer.value = getPageScrollContainer()
+      syncActiveSection()
     } catch (error) {
       page.error = error instanceof Error ? error : new Error('网站配置加载失败')
     } finally {
@@ -786,7 +802,7 @@
   onMounted(() => void loadPage())
 
   onBeforeUnmount(() => {
-    stopObserver?.()
+    if (activeSectionFrame !== undefined) window.cancelAnimationFrame(activeSectionFrame)
   })
 </script>
 
