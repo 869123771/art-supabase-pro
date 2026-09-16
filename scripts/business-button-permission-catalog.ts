@@ -204,7 +204,15 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
   },
   {
     menuName: 'MesScheduling',
-    buttons: [button('View', '查看')]
+    buttons: [
+      button('View', '查看'),
+      button('AutoSchedule', '自动排产'),
+      button('ConfigureRule', '规则配置')
+    ]
+  },
+  {
+    menuName: 'MesSchedulingRule',
+    buttons: crud({ view: true })
   },
   {
     menuName: 'MesSchedulingGantt',
