@@ -23,6 +23,7 @@
         <ElCol
           v-for="item in visibleFormItems"
           :key="item.key"
+          v-show="!isFormItemCollapsed(item)"
           :xs="getColSpan(getItemSpan(item), 'xs')"
           :sm="getColSpan(getItemSpan(item), 'sm')"
           :md="getColSpan(getItemSpan(item), 'md')"
@@ -34,6 +35,10 @@
             :show-line="getDividerShowLine(item)"
             :show-label="getDividerShowLabel(item)"
             :show-marker="getDividerShowMarker(item)"
+            :collapsible="isDividerCollapsible(item)"
+            :expanded="!isSectionCollapsed(item.key)"
+            :accessible-label="getDividerAccessibleLabel(item)"
+            @toggle="toggleSection(item.key)"
           >
             <slot
               :name="item.key"
@@ -330,6 +335,12 @@
     showLabel?: boolean
     /** Whether to show the divider leading marker. */
     showMarker?: boolean
+    /** Whether the fields below this divider can be collapsed. */
+    collapsible?: boolean
+    /** Whether this section is collapsed when the form is mounted or reset. */
+    defaultCollapsed?: boolean
+    /** Accessible section name used by the expand/collapse button. */
+    accessibleLabel?: string
   }
 
   export interface FormItemTextProps {
@@ -483,6 +494,8 @@
     defaultExpanded?: boolean
     /** 是否显示展开/收起按钮 */
     showExpand?: boolean
+    /** 是否允许 divider 分区标题折叠其下方字段 */
+    collapsibleSections?: boolean
     /** 提交时是否清洗空值 */
     sanitizeOutput?: Partial<SanitizeOutputOptions>
   }
@@ -505,6 +518,7 @@
     isExpand: false,
     defaultExpanded: false,
     showExpand: true,
+    collapsibleSections: true,
     sanitizeOutput: () => ({})
   })
 
@@ -519,6 +533,7 @@
   const modelValue = defineModel<FormRecord>({ default: () => ({}) })
   const initialModelValue = ref<FormRecord>({})
   const isExpanded = ref(props.defaultExpanded)
+  const collapsedSectionKeys = ref<Set<string>>(new Set())
   const asyncOptionsMap = ref<Record<string, FormRecord[]>>({})
   const asyncLoadingMap = ref<Record<string, boolean>>({})
   const asyncRequestSignatureMap = ref<Record<string, string>>({})
@@ -909,6 +924,37 @@
 
   const getDividerShowMarker = (item: FormItem): boolean => getProps(item).showMarker !== false
 
+  const getDividerAccessibleLabel = (item: FormItem): string => {
+    const dividerProps = getProps(item)
+    if (typeof dividerProps.accessibleLabel === 'string') return dividerProps.accessibleLabel
+    return typeof item.label === 'string' ? item.label : ''
+  }
+
+  const isDividerCollapsible = (item: FormItem): boolean =>
+    props.collapsibleSections && getProps(item).collapsible !== false
+
+  const isSectionCollapsed = (sectionKey: string): boolean =>
+    collapsedSectionKeys.value.has(sectionKey)
+
+  const toggleSection = (sectionKey: string): void => {
+    const nextKeys = new Set(collapsedSectionKeys.value)
+    if (nextKeys.has(sectionKey)) nextKeys.delete(sectionKey)
+    else nextKeys.add(sectionKey)
+    collapsedSectionKeys.value = nextKeys
+  }
+
+  const findOwningDivider = (item: FormItem): FormItem | undefined => {
+    const itemIndex = filteredFormItems.value.findIndex((candidate) => candidate.key === item.key)
+    if (itemIndex <= 0) return undefined
+
+    for (let index = itemIndex - 1; index >= 0; index -= 1) {
+      const candidate = filteredFormItems.value[index]
+      if (candidate && isDividerItem(candidate)) return candidate
+    }
+
+    return undefined
+  }
+
   const getFormItemLabelWidth = (item: FormItem): string | number | undefined => {
     return item.label ? item.labelWidth || labelWidth.value : undefined
   }
@@ -1004,6 +1050,12 @@
     return !!unref(item.hidden)
   }
 
+  const isFormItemCollapsed = (item: FormItem): boolean => {
+    if (isDividerItem(item)) return false
+    const divider = findOwningDivider(item)
+    return !!(divider && isDividerCollapsible(divider) && isSectionCollapsed(divider.key))
+  }
+
   const filteredFormItems = computed(() => {
     return props.items.filter(
       (item) =>
@@ -1074,6 +1126,7 @@
     // 恢复初始表单值，保留默认值而不是简单清空。
     commitModelValue(cloneModelValue(initialModelValue.value))
     syncTenantScopeField()
+    resetCollapsedSections()
 
     // 触发 reset 事件
     emit('reset')
@@ -1089,10 +1142,37 @@
   }
 
   const handleValidate = (prop: FormItemProp, isValid: boolean, message: string) => {
+    if (!isValid) {
+      const fieldKey = Array.isArray(prop) ? prop.join('.') : String(prop)
+      const fieldItem = filteredFormItems.value.find((item) => item.key === fieldKey)
+      const divider = fieldItem ? findOwningDivider(fieldItem) : undefined
+      if (divider && isSectionCollapsed(divider.key)) {
+        const nextKeys = new Set(collapsedSectionKeys.value)
+        nextKeys.delete(divider.key)
+        collapsedSectionKeys.value = nextKeys
+        nextTick(() => formInstance.value?.scrollToField(prop))
+      }
+    }
     emit('validate', prop, isValid, message)
   }
 
-  onMounted(loadImmediateOptions)
+  const resetCollapsedSections = (): void => {
+    collapsedSectionKeys.value = new Set(
+      filteredFormItems.value
+        .filter(
+          (item) =>
+            isDividerItem(item) &&
+            isDividerCollapsible(item) &&
+            getProps(item).defaultCollapsed === true
+        )
+        .map((item) => item.key)
+    )
+  }
+
+  onMounted(() => {
+    resetCollapsedSections()
+    loadImmediateOptions()
+  })
 
   watch(
     () =>
@@ -1125,6 +1205,13 @@
     { immediate: true }
   )
 
+  watch(
+    () => modelValue.value,
+    (nextModel, previousModel) => {
+      if (nextModel !== previousModel) nextTick(resetCollapsedSections)
+    }
+  )
+
   defineExpose({
     ref: formInstance,
     validate: (...args: Parameters<FormInstance['validate']>) =>
@@ -1136,6 +1223,10 @@
     reset: handleReset,
     fetchOptions,
     reloadOptions,
+    expandAllSections: () => {
+      collapsedSectionKeys.value = new Set()
+    },
+    resetCollapsedSections,
     // 允许外部在不触发提交事件时主动获取清洗后的输出。
     getOutput: getSanitizedOutput
   })

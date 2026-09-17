@@ -45,6 +45,7 @@ onOpen: async (_data, api) => {
 - 默认启用 `append-to-body`，避免弹窗被专注模式、祖先层叠上下文或裁剪容器遮挡
 - 默认启用 `destroy-on-close`
 - 默认启用 `draggable`
+- 默认显示全屏切换按钮；特殊弹窗可通过 `:show-fullscreen-button="false"` 显式关闭
 - 默认宽度为 `50%`
 - 默认显示“取消”和“确定”按钮
 - 确认成功后默认自动关闭
@@ -283,6 +284,8 @@ dialogRef.value?.handleOpen(user, {
 | --- | --- | --- | --- |
 | `title` | `string` | `''` | 标题 |
 | `width` | `string \| number` | `'50%'` | 弹窗宽度 |
+| `fullscreen` | `boolean` | `false` | 是否以全屏状态打开 |
+| `showFullscreenButton` | `boolean` | `true` | 是否显示全屏切换按钮 |
 | `contentHeight` | `string \| number` | `undefined` | 内容固定高度，设置后启用滚动条 |
 | `contentMaxHeight` | `string \| number` | `'min(70vh, calc(100vh - 200px))'` | 内容最大高度，超过后启用滚动条 |
 | `showFooter` | `boolean` | `true` | 是否显示 Footer |

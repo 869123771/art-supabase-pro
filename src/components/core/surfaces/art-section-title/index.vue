@@ -8,7 +8,27 @@
       }
     ]"
   >
-    <template v-if="showLabel">
+    <button
+      v-if="showLabel && collapsible"
+      type="button"
+      class="art-section-title__toggle"
+      :aria-expanded="expanded"
+      :aria-label="`${expanded ? '收起' : '展开'}${accessibleLabel || '当前分区'}`"
+      @click="emit('toggle')"
+    >
+      <span class="art-section-title__content">
+        <slot>
+          <component v-if="typeof title !== 'string'" :is="title" />
+          <span v-else>{{ title }}</span>
+        </slot>
+      </span>
+      <ArtSvgIcon
+        class="art-section-title__toggle-icon"
+        :icon="expanded ? 'ri:arrow-up-s-line' : 'ri:arrow-down-s-line'"
+        aria-hidden="true"
+      />
+    </button>
+    <template v-else-if="showLabel">
       <slot>
         <component v-if="typeof title !== 'string'" :is="title" />
         <span v-else>{{ title }}</span>
@@ -19,6 +39,7 @@
 
 <script setup lang="ts">
   import type { Component, VNodeChild } from 'vue'
+  import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
 
   defineOptions({ name: 'ArtSectionTitle' })
 
@@ -30,14 +51,24 @@
       showLine?: boolean
       showLabel?: boolean
       showMarker?: boolean
+      collapsible?: boolean
+      expanded?: boolean
+      accessibleLabel?: string
     }>(),
     {
       title: '',
       showLine: true,
       showLabel: true,
-      showMarker: true
+      showMarker: true,
+      collapsible: false,
+      expanded: true,
+      accessibleLabel: ''
     }
   )
+
+  const emit = defineEmits<{
+    toggle: []
+  }>()
 </script>
 
 <style scoped lang="scss">
@@ -65,6 +96,46 @@
       margin-left: 12px;
       content: '';
       background: var(--el-border-color-lighter);
+    }
+
+    &__toggle {
+      display: inline-flex;
+      gap: var(--art-space-2);
+      align-items: center;
+      min-width: 0;
+      padding: 2px 4px;
+      margin: -2px -4px;
+      font: inherit;
+      color: inherit;
+      text-align: left;
+      cursor: pointer;
+      background: transparent;
+      border: 0;
+      border-radius: var(--art-control-radius-sm);
+      transition:
+        color var(--art-motion-duration-fast) ease,
+        background-color var(--art-motion-duration-fast) ease;
+
+      &:hover {
+        color: var(--theme-color);
+        background: color-mix(in srgb, var(--theme-color) 8%, transparent);
+      }
+
+      &:focus-visible {
+        color: var(--theme-color);
+        outline: none;
+        box-shadow: var(--art-themed-action-focus-shadow);
+      }
+    }
+
+    &__content {
+      display: inline-flex;
+      min-width: 0;
+    }
+
+    &__toggle-icon {
+      flex: none;
+      font-size: 18px;
     }
   }
 </style>

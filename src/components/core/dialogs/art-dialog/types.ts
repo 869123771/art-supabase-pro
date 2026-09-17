@@ -22,7 +22,7 @@ export interface ArtDialogOptions<TData = unknown> extends ArtOverlayOptions<
   size?: ArtDialogSize
   /** 是否全屏 */
   fullscreen?: boolean
-  /** 是否显示全屏切换按钮 */
+  /** 是否显示全屏切换按钮，默认 true */
   showFullscreenButton?: boolean
   /** 进入全屏按钮提示文本 */
   fullscreenText?: string

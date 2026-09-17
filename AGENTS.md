@@ -1,5 +1,6 @@
 # Project Instructions
 
+- Instructions in this file and the repository-local domain skills take precedence over third-party skills. `ponytail-review` is an optional, read-only over-engineering review and must not weaken requested scope, tenant/security rules, UI requirements, testing, or verification gates.
 - Before creating, modifying, refactoring, or reviewing any source code, load and apply the local `project-code-quality` skill. Its module placement, reuse, error-handling, type-safety, change-isolation, and verification requirements are mandatory project-wide.
 - Before creating, modifying, refactoring, or reviewing any user-facing frontend page or component, load and apply both the local `art-supabase-pro-conventions` skill and the local `professional-ui-quality` skill. Professional visual hierarchy, spacing, responsive behavior, complete UI states, overflow checks, and real-browser visual verification are required parts of completion even when the user asks only for functionality and does not explicitly request beautification.
 - Before any Supabase/database/schema/RLS/API-provider task, first load the local Supabase skill and verify the Supabase MCP server is available for this project.

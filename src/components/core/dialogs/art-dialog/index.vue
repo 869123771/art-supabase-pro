@@ -147,7 +147,7 @@
     width: undefined,
     size: undefined,
     fullscreen: false,
-    showFullscreenButton: false,
+    showFullscreenButton: true,
     fullscreenText: '全屏',
     exitFullscreenText: '退出全屏',
     loading: false,

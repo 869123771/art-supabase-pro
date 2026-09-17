@@ -2,7 +2,7 @@
   <ElSplitter
     class="art-workspace-splitter"
     :class="{
-      'is-primary-hidden': narrowState === 'hide',
+      'is-primary-hidden': primaryHidden,
       'is-stacked': narrowState === 'stack'
     }"
     :style="splitterStyle"
@@ -39,6 +39,7 @@
       secondaryMin?: SplitterSize
       breakpoint?: number
       narrowMode?: NarrowMode
+      primaryCollapsed?: boolean
       stackedPrimarySize?: string
       stackedSecondaryMinSize?: string
     }>(),
@@ -49,6 +50,7 @@
       secondaryMin: '0px',
       breakpoint: 960,
       narrowMode: 'stack',
+      primaryCollapsed: false,
       stackedPrimarySize: '320px',
       stackedSecondaryMinSize: '520px'
     }
@@ -56,6 +58,7 @@
 
   const isNarrow = useMediaQuery(() => `(max-width: ${props.breakpoint}px)`)
   const narrowState = computed<NarrowMode>(() => (isNarrow.value ? props.narrowMode : 'none'))
+  const primaryHidden = computed(() => props.primaryCollapsed || narrowState.value === 'hide')
   const splitterStyle = computed<CSSProperties>(() => ({
     '--art-workspace-splitter-stacked-primary-size': props.stackedPrimarySize,
     '--art-workspace-splitter-stacked-secondary-min-size': props.stackedSecondaryMinSize
