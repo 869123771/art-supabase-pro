@@ -26,14 +26,29 @@
       </div>
     </div>
 
-    <div v-if="$slots.default" class="art-page-header__actions">
+    <div
+      v-if="(designReference && isPlatformSuper) || $slots.default"
+      class="art-page-header__actions"
+    >
       <slot />
+      <PageDesignReference
+        v-if="designReference && isPlatformSuper"
+        :title="title"
+        surface-kind="detail"
+        :style-snapshot="{
+          component: 'ArtPageHeader',
+          showBack
+        }"
+      />
     </div>
   </header>
 </template>
 
 <script setup lang="ts">
+  import { storeToRefs } from 'pinia'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
+  import PageDesignReference from '@/components/business/page-design-reference/index.vue'
+  import { useUserStore } from '@/store/modules/user'
 
   defineOptions({ name: 'ArtPageHeader' })
 
@@ -42,14 +57,17 @@
       title: string
       subtitle?: string
       showBack?: boolean
+      designReference?: boolean
     }>(),
     {
       subtitle: '',
-      showBack: false
+      showBack: false,
+      designReference: true
     }
   )
 
   const emit = defineEmits<{ back: [] }>()
+  const { isPlatformSuper } = storeToRefs(useUserStore())
 </script>
 
 <style scoped lang="scss">

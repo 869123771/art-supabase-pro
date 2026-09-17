@@ -16,7 +16,7 @@
       </div>
 
       <div
-        v-if="tags.length || refreshable || $slots.actions"
+        v-if="tags.length || refreshable || (designReference && isPlatformSuper) || $slots.actions"
         class="business-workspace-header__aside"
         aria-label="业务特性与操作"
       >
@@ -32,7 +32,7 @@
           </ElTag>
         </div>
         <div
-          v-if="refreshable || $slots.actions"
+          v-if="refreshable || (designReference && isPlatformSuper) || $slots.actions"
           class="business-workspace-header__actions"
           aria-label="页面操作"
         >
@@ -46,6 +46,17 @@
               @click="emit('refresh')"
             />
           </ArtTooltip>
+          <PageDesignReference
+            v-if="designReference && isPlatformSuper"
+            :title="title"
+            surface-kind="workspace"
+            :style-snapshot="{
+              component: 'BusinessWorkspaceHeader',
+              density,
+              hasTags: tags.length > 0,
+              hasMetrics: metrics.length > 0
+            }"
+          />
           <slot name="actions" />
         </div>
       </div>
@@ -89,8 +100,11 @@
 
 <script setup lang="ts">
   import type { TagProps } from 'element-plus'
+  import { storeToRefs } from 'pinia'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
+  import PageDesignReference from '@/components/business/page-design-reference/index.vue'
+  import { useUserStore } from '@/store/modules/user'
 
   export interface BusinessWorkspaceTag {
     label: string
@@ -123,6 +137,7 @@
       refreshLabel?: string
       refreshLoading?: boolean
       refreshDisabled?: boolean
+      designReference?: boolean
     }>(),
     {
       eyebrow: 'BUSINESS OPERATIONS',
@@ -132,7 +147,8 @@
       refreshable: false,
       refreshLabel: '刷新页面数据',
       refreshLoading: false,
-      refreshDisabled: false
+      refreshDisabled: false,
+      designReference: true
     }
   )
 
@@ -140,6 +156,8 @@
     'metric-click': [metric: BusinessWorkspaceMetric]
     refresh: []
   }>()
+
+  const { isPlatformSuper } = storeToRefs(useUserStore())
 
   const handleMetricClick = (metric: BusinessWorkspaceMetric): void => {
     if (metric.interactive && !metric.loading) emit('metric-click', metric)

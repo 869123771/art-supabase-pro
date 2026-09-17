@@ -186,7 +186,8 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
       button('Close', '结案'),
       button('Reopen', '重新打开'),
       button('Restore', '恢复'),
-      button('MaintainDueDate', '交期维护')
+      button('MaintainDueDate', '交期维护'),
+      button('ReloadSnapshot', '重读 BOM/工艺')
     ]
   },
   {

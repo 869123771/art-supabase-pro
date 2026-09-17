@@ -22,18 +22,35 @@ test('工作区刷新采用轻量图标并固定在业务按钮左侧', async ({
 
   const actions = header.locator('.business-workspace-header__actions')
   const refresh = actions.getByRole('button', { name: '刷新运营数据' })
+  const designReference = actions.locator('.page-design-reference')
+  const designReferenceButton = designReference.getByRole('button', {
+    name: /将本页作为设计参考|编辑本页设计参考/
+  })
   await expect(refresh).toBeVisible()
   await expect(refresh).toHaveClass(/art-icon-button/)
   await expect(refresh).not.toHaveClass(/el-button/)
+  await expect(designReferenceButton).toBeVisible()
 
   const ordering = await actions.evaluate((element) => {
     const children = [...element.children]
     const refreshIndex = children.findIndex((child) => child.classList.contains('art-icon-button'))
-    const businessButtonIndex = children.findIndex((child) => child.classList.contains('el-button'))
-    return { refreshIndex, businessButtonIndex }
+    const designReferenceIndex = children.findIndex((child) =>
+      child.classList.contains('page-design-reference')
+    )
+    const businessButtonIndex = children.findIndex(
+      (child) => child.classList.contains('el-button') && !child.closest('.page-design-reference')
+    )
+    return { refreshIndex, designReferenceIndex, businessButtonIndex }
   })
   expect(ordering.refreshIndex).toBe(0)
-  expect(ordering.businessButtonIndex).toBeGreaterThan(ordering.refreshIndex)
+  expect(ordering.designReferenceIndex).toBe(ordering.refreshIndex + 1)
+  expect(ordering.businessButtonIndex).toBeGreaterThan(ordering.designReferenceIndex)
+
+  await designReferenceButton.click()
+  await expect(page.getByText('记录你喜欢这页的原因')).toBeVisible()
+  await expect(page.getByRole('checkbox', { name: '信息层级' })).toBeVisible()
+  await expectNoHorizontalOverflow(page)
+  await page.getByRole('button', { name: '关闭' }).click()
 
   await refresh.focus()
   await expect(refresh).toBeFocused()
