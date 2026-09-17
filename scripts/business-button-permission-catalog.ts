@@ -2538,7 +2538,7 @@ export const systemButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] = [
   },
   {
     menuName: 'WebsiteConfig',
-    buttons: [button('Publish', '保存并发布配置')]
+    buttons: [button('Publish', '保存并发布配置'), button('GenerateWordmark', 'AI 生成品牌字图')]
   },
   {
     menuName: 'AiConfiguration',

@@ -38,6 +38,7 @@
 </template>
 
 <script setup lang="ts">
+  import { ElTag } from 'element-plus'
   import ArtDescriptions from '@/components/core/base/art-descriptions/index.vue'
   import type { ArtDescriptionItem } from '@/components/core/base/art-descriptions/types'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'

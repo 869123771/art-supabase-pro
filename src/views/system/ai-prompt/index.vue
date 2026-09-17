@@ -1,6 +1,7 @@
 <template>
-  <div class="ai-prompt business-workspace-page">
+  <div class="ai-prompt business-workspace-page art-full-height">
     <BusinessWorkspaceHeader
+      density="compact"
       eyebrow="PROMPT GOVERNANCE"
       title="AI Prompt 中心"
       description="集中管理系统指令的草稿、发布与回滚，让每次调整可审计、可验证、可恢复。"
@@ -394,12 +395,13 @@
 
 <style scoped lang="scss">
   .ai-prompt {
-    display: grid;
-    gap: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
     width: 100%;
     min-width: 0;
     max-width: 100%;
-    padding-bottom: 20px;
+    min-height: 0;
     overflow: hidden;
 
     > * {
@@ -430,157 +432,18 @@
       max-width: 100%;
     }
 
-    &__hero,
-    &__hero-main,
-    &__hero-actions,
-    &__brand,
-    &__metrics article,
-    &__metric-icon,
     &__governance,
     &__governance > div {
       display: flex;
       align-items: center;
     }
 
-    &__hero {
-      justify-content: space-between;
-      padding: 26px 28px;
-      background:
-        radial-gradient(circle at 88% 15%, rgb(99 102 241 / 12%), transparent 28%),
-        var(--art-main-bg-color);
-    }
-
-    &__hero-main {
-      min-width: 0;
-
-      > div:last-child {
-        min-width: 0;
-      }
-
-      span {
-        display: block;
-        margin-bottom: 5px;
-        font-size: 10px;
-        font-weight: 700;
-        color: var(--el-color-primary);
-        letter-spacing: 0.14em;
-      }
-
-      h1 {
-        margin: 0 0 5px;
-        font-size: 24px;
-        color: var(--art-text-gray-900);
-      }
-
-      p {
-        margin: 0;
-        font-size: 13px;
-        line-height: 1.7;
-        color: var(--art-text-gray-500);
-        overflow-wrap: anywhere;
-      }
-    }
-
-    &__brand {
-      flex: 0 0 58px;
-      justify-content: center;
-      width: 58px;
-      height: 58px;
-      margin-right: 18px;
-      color: white;
-      background: linear-gradient(145deg, var(--el-color-primary), #7c3aed);
-      border-radius: var(--custom-radius);
-
-      :deep(svg) {
-        display: block;
-        width: 25px;
-        height: 25px;
-      }
-    }
-
-    &__hero-actions {
-      flex: 0 0 auto;
-      gap: 10px;
-      margin-left: 18px;
-    }
-
-    &__metrics {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 16px;
-
-      article {
-        min-width: 0;
-        padding: 20px 22px;
-
-        > div:last-child {
-          display: grid;
-          min-width: 0;
-        }
-
-        span,
-        small {
-          overflow: hidden;
-          text-overflow: ellipsis;
-          color: var(--art-text-gray-500);
-          white-space: nowrap;
-        }
-
-        span {
-          font-size: 12px;
-        }
-
-        strong {
-          margin: 3px 0 1px;
-          font-size: 22px;
-          color: var(--art-text-gray-900);
-        }
-
-        small {
-          font-size: 11px;
-        }
-      }
-    }
-
-    &__metric-icon {
-      flex: 0 0 42px;
-      justify-content: center;
-      width: 42px;
-      height: 42px;
-      margin-right: 14px;
-      border-radius: var(--el-border-radius-base);
-
-      :deep(svg) {
-        display: block;
-        width: 20px;
-        height: 20px;
-      }
-
-      &.is-primary {
-        color: var(--el-color-primary);
-        background: var(--el-color-primary-light-9);
-      }
-
-      &.is-success {
-        color: var(--el-color-success);
-        background: var(--el-color-success-light-9);
-      }
-
-      &.is-warning {
-        color: var(--el-color-warning);
-        background: var(--el-color-warning-light-9);
-      }
-
-      &.is-info {
-        color: var(--el-color-info);
-        background: var(--el-color-info-light-9);
-      }
-    }
-
     &__governance {
-      gap: 20px;
+      flex: none;
+      gap: 16px;
       justify-content: space-between;
-      padding: 17px 22px;
+      min-height: 54px;
+      padding: 10px 16px;
 
       > div {
         min-width: 0;
@@ -588,9 +451,9 @@
         > :deep(svg) {
           display: block;
           flex: 0 0 auto;
-          width: 22px;
-          height: 22px;
-          margin-right: 13px;
+          width: 20px;
+          height: 20px;
+          margin-right: 11px;
           color: var(--el-color-primary);
         }
       }
@@ -601,14 +464,14 @@
       }
 
       strong {
-        margin-bottom: 3px;
+        margin-bottom: 2px;
         font-size: 13px;
         color: var(--art-text-gray-900);
       }
 
       span {
         font-size: 12px;
-        line-height: 1.6;
+        line-height: 1.5;
         color: var(--art-text-gray-500);
         overflow-wrap: anywhere;
       }
@@ -712,28 +575,11 @@
     white-space: pre-wrap;
   }
 
-  @media (width <= 1200px) {
-    .ai-prompt {
-      &__metrics {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
-    }
-  }
-
   @media (width <= 768px) {
     .ai-prompt {
-      &__hero,
       &__governance {
         flex-direction: column;
         align-items: flex-start;
-      }
-
-      &__hero-actions {
-        margin-left: 0;
-      }
-
-      &__metrics {
-        grid-template-columns: 1fr;
       }
     }
   }

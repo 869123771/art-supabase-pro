@@ -47,7 +47,7 @@
             :alt="file.name || '上传图片预览'"
             class="absolute rounded-md"
             :style="getSize"
-            fit="cover"
+            :fit="previewFit"
             :zoom-rate="1.2"
             :max-scale="7"
             :min-scale="0.2"
@@ -117,6 +117,9 @@
     modelValue = null,
     title = null,
     size = 120,
+    width,
+    height,
+    previewFit = 'cover',
     fileSize = 10 * 1024 * 1024,
     fileType = 'image/*',
     limit = 5,
@@ -126,6 +129,9 @@
     modelValue?: string | string[] | null
     title?: string
     size?: number
+    width?: number | string
+    height?: number | string
+    previewFit?: 'fill' | 'contain' | 'cover' | 'none' | 'scale-down'
     fileSize?: number
     fileType?: string
     limit?: number
@@ -145,9 +151,12 @@
   const ElImageRefs = ref<Array<{ $el?: HTMLElement }> | { $el?: HTMLElement } | null>(null)
 
   const getSize = computed(() => {
+    const toCssSize = (value: number | string): string =>
+      typeof value === 'number' ? `${value}px` : value
+
     return {
-      width: `${size ?? 120}px`,
-      height: `${size ?? 120}px`
+      width: toCssSize(width ?? size ?? 120),
+      height: toCssSize(height ?? size ?? 120)
     }
   })
 

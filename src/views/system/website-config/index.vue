@@ -96,7 +96,7 @@
                 </ElFormItem>
                 <ElFormItem label="系统简称" prop="siteShortName">
                   <ElInput v-model.trim="form.siteShortName" maxlength="40" />
-                  <p>用于空间受限的紧凑场景；左上角品牌文字始终使用系统名称。</p>
+                  <p>用于空间受限的紧凑场景；菜单品牌文字和 AI 字图均以系统名称为准。</p>
                 </ElFormItem>
                 <ElFormItem label="水印内容" prop="watermarkContentType">
                   <ElSelect v-model="form.watermarkContentType">
@@ -124,6 +124,18 @@
                     maxlength="255"
                     show-word-limit
                     :rows="3"
+                  />
+                </ElFormItem>
+                <ElFormItem label="菜单品牌字图" prop="wordmarkImageEnabled" class="is-wide">
+                  <WebsiteWordmarkSettings
+                    :enabled="form.wordmarkImageEnabled"
+                    :light-url="form.wordmarkLightUrl"
+                    :dark-url="form.wordmarkDarkUrl"
+                    :site-name="form.siteName"
+                    :disabled="isReadOnly"
+                    @update:enabled="form.wordmarkImageEnabled = $event"
+                    @update:light-url="form.wordmarkLightUrl = $event"
+                    @update:dark-url="form.wordmarkDarkUrl = $event"
                   />
                 </ElFormItem>
                 <ElFormItem label="启用水印" prop="watermarkEnabled" class="is-wide">
@@ -406,6 +418,7 @@
   import ArtUploadImage from '@/components/core/forms/art-upload-image/index.vue'
   import ArtForm from '@/components/core/forms/art-form/index.vue'
   import AuthChannelSettings from './modules/auth-channel-settings.vue'
+  import WebsiteWordmarkSettings from './modules/website-wordmark-settings.vue'
   import { getAuthChannelValidationMessage, normalizeAuthChannels } from '@/utils/supabase'
 
   defineOptions({ name: 'WebsiteConfig' })
@@ -556,6 +569,18 @@
 
   const rules: FormRules<WebsiteConfig> = {
     siteName: [{ required: true, message: '请输入系统名称', trigger: 'blur' }],
+    wordmarkImageEnabled: [
+      {
+        validator: (_rule, value, callback) => {
+          if (value && (!form.wordmarkLightUrl?.trim() || !form.wordmarkDarkUrl?.trim())) {
+            callback(new Error('启用品牌字图后，请同时配置亮色和暗色字图'))
+            return
+          }
+          callback()
+        },
+        trigger: 'change'
+      }
+    ],
     loginTitle: [{ required: true, message: '请输入登录欢迎标题', trigger: 'blur' }],
     watermarkContentType: [{ required: true, message: '请选择水印内容', trigger: 'change' }],
     captchaType: [{ required: true, message: '请选择验证码类型', trigger: 'change' }],
@@ -662,6 +687,8 @@
       siteDescription: normalizeNullableText(payload.siteDescription),
       logoUrl: normalizeNullableText(payload.logoUrl),
       faviconUrl: normalizeNullableText(payload.faviconUrl),
+      wordmarkLightUrl: normalizeNullableText(payload.wordmarkLightUrl),
+      wordmarkDarkUrl: normalizeNullableText(payload.wordmarkDarkUrl),
       watermarkCustomText: normalizeNullableText(payload.watermarkCustomText),
       loginSubtitle:
         normalizeNullableText(payload.loginSubtitle) ??

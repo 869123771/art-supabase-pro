@@ -429,6 +429,9 @@ verify_jwt = true
 [functions.ai-project-planner]
 verify_jwt = true
 
+[functions.ai-website-wordmark]
+verify_jwt = true
+
 [functions.ai-bank-statement-batch-match]
 verify_jwt = true
 

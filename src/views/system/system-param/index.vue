@@ -1,6 +1,7 @@
 <template>
-  <div class="system-param-page business-workspace-page">
+  <div class="system-param-page business-workspace-page art-full-height">
     <BusinessWorkspaceHeader
+      density="compact"
       eyebrow="SYSTEM GOVERNANCE"
       title="参数设置"
       description="统一管理系统运行参数、登录体验、安全策略与审计策略。支持分组维护、内置保护、缓存刷新与按键名读取，便于后续业务模块复用。"
@@ -443,7 +444,7 @@
     display: flex;
     flex-direction: column;
     gap: 12px;
-    min-height: 100%;
+    min-height: 0;
 
     &__hero {
       display: flex;

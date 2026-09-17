@@ -1,6 +1,7 @@
 <template>
-  <div class="ai-configuration business-workspace-page">
+  <div class="ai-configuration business-workspace-page art-full-height">
     <BusinessWorkspaceHeader
+      density="compact"
       eyebrow="AI CONTROL PLANE"
       title="AI 配置中心"
       description="集中管理能力开关、模型路由、生成参数、超时策略与调用配额，修改后新请求即时生效。"
@@ -324,12 +325,13 @@
 
 <style scoped lang="scss">
   .ai-configuration {
-    display: grid;
-    gap: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
     width: 100%;
     min-width: 0;
     max-width: 100%;
-    padding-bottom: 20px;
+    min-height: 0;
     overflow: hidden;
 
     > * {
@@ -345,179 +347,30 @@
       max-width: 100%;
     }
 
-    &__hero,
-    &__hero-main,
-    &__hero-actions,
-    &__metrics article,
     &__governance,
     &__governance > div {
       display: flex;
       align-items: center;
     }
 
-    &__control-plane {
-      display: grid;
-      overflow: hidden;
-      background:
-        linear-gradient(
-          115deg,
-          color-mix(in srgb, var(--theme-color) 5%, transparent),
-          transparent 42%
-        ),
-        var(--art-main-bg-color);
-    }
-
-    &__hero {
-      position: relative;
-      justify-content: space-between;
-      min-height: 108px;
-      padding: 22px 26px;
-      overflow: hidden;
-      border-bottom: 1px solid var(--el-border-color-lighter);
-
-      &::after {
-        position: absolute;
-        top: -110px;
-        right: 7%;
-        width: 280px;
-        height: 280px;
-        pointer-events: none;
-        content: '';
-        background: radial-gradient(circle, rgb(91 143 249 / 16%), transparent 68%);
-      }
-    }
-
-    &__hero-main {
-      flex: 1;
-      gap: 17px;
-      min-width: 0;
-
-      > div:last-child {
-        min-width: 0;
-      }
-
-      span {
-        font-size: 10px;
-        font-weight: 700;
-        color: var(--el-color-primary);
-        letter-spacing: 0.16em;
-      }
-
-      h1 {
-        margin: 3px 0 5px;
-        font-size: 23px;
-        color: var(--el-text-color-primary);
-      }
-
-      p {
-        margin: 0;
-        font-size: 13px;
-        line-height: 1.7;
-        color: var(--el-text-color-secondary);
-        overflow-wrap: anywhere;
-      }
-    }
-
-    &__brand {
-      display: grid;
-      flex: 0 0 56px;
-      place-items: center;
-      width: 56px;
-      height: 56px;
-      font-size: 26px;
-      color: #fff;
-      background: linear-gradient(145deg, var(--el-color-primary), #7157de);
-      border-radius: var(--custom-radius);
-      box-shadow: 0 14px 30px rgb(64 116 255 / 24%);
-    }
-
-    &__hero-actions {
-      z-index: 1;
-      flex-shrink: 0;
-      gap: 10px;
-    }
-
-    &__metrics {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      min-width: 0;
-
-      article {
-        gap: 14px;
-        min-width: 0;
-        padding: 17px 18px;
-        border-right: 1px solid var(--el-border-color-lighter);
-
-        > div:last-child {
-          display: grid;
-          gap: 3px;
-          min-width: 0;
-        }
-
-        span,
-        small {
-          color: var(--el-text-color-secondary);
-        }
-
-        span {
-          font-size: 12px;
-        }
-
-        strong {
-          font-size: 22px;
-          color: var(--el-text-color-primary);
-        }
-
-        small {
-          font-size: 11px;
-        }
-      }
-    }
-
-    &__control-body {
-      display: grid;
-      grid-template-columns: minmax(0, 1.45fr) minmax(320px, 0.55fr);
-      min-width: 0;
-    }
-
-    &__metric-icon {
-      display: grid;
-      flex: 0 0 42px;
-      place-items: center;
-      width: 42px;
-      height: 42px;
-      font-size: 20px;
-      border-radius: var(--el-border-radius-base);
-
-      &.is-primary {
-        color: var(--el-color-primary);
-        background: var(--el-color-primary-light-9);
-      }
-
-      &.is-success {
-        color: var(--el-color-success);
-        background: var(--el-color-success-light-9);
-      }
-
-      &.is-warning {
-        color: var(--el-color-warning);
-        background: var(--el-color-warning-light-9);
-      }
-    }
-
     &__governance {
+      flex: none;
+      gap: 16px;
       justify-content: space-between;
       min-width: 0;
-      height: 100%;
-      padding: 16px 18px;
+      min-height: 54px;
+      padding: 10px 16px;
       background: color-mix(in srgb, var(--art-main-bg-color) 96%, var(--el-color-warning));
 
       > div {
         gap: 12px;
         min-width: 0;
 
-        > svg {
-          font-size: 22px;
+        > :deep(svg) {
+          display: block;
+          flex: 0 0 auto;
+          width: 20px;
+          height: 20px;
           color: var(--el-color-primary);
         }
 
@@ -561,40 +414,7 @@
       }
     }
 
-    @media (width <= 900px) {
-      &__hero {
-        flex-direction: column;
-        gap: 14px;
-        align-items: flex-start;
-      }
-
-      &__hero-actions {
-        align-self: flex-end;
-      }
-
-      &__metrics {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-      }
-
-      &__control-body {
-        grid-template-columns: 1fr;
-      }
-
-      &__governance {
-        border-top: 1px solid var(--el-border-color-lighter);
-      }
-    }
-
     @media (width <= 680px) {
-      &__metrics {
-        grid-template-columns: 1fr;
-
-        article {
-          border-right: 0;
-          border-bottom: 1px solid var(--el-border-color-lighter);
-        }
-      }
-
       &__governance {
         flex-direction: column;
         gap: 12px;

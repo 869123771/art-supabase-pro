@@ -1012,9 +1012,12 @@
     }
 
     &__workspace {
+      display: flex;
       flex: 1;
+      flex-direction: column;
       min-height: 0;
       padding: 18px;
+      overflow: hidden;
     }
 
     &__workspace-header {
@@ -1031,6 +1034,21 @@
     }
 
     &__tabs {
+      display: flex;
+      flex: 1;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+    &__tabs :deep(.el-tabs__content) {
+      flex: 1;
+      min-height: 0;
+    }
+
+    &__tabs :deep(.el-tab-pane) {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
       min-height: 0;
     }
 

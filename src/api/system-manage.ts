@@ -9,6 +9,8 @@ import { toNextDayStartUTC, toStartOfDayUTC } from '@/utils'
 import { omit } from 'lodash-es'
 import TreeUtils from '@/utils/tree'
 import { resolveTenantScopeId } from '@/utils/tenant-scope-context'
+import { invokeSupabaseFunctionWithSessionRecovery } from '@/utils/supabase/functions'
+import { createFriendlySupabaseFunctionError } from '@/utils/supabase/error'
 const { supabase, keysToSnakeDeep, responseHandle } = useSupabase()
 
 const organizationTreeUtils = new TreeUtils({
@@ -785,6 +787,31 @@ export async function saveWebsiteConfig(params: WebsiteConfigItem) {
       noAffectedMessage: WRITE_PERMISSION_DENIED_MESSAGE
     }
   )
+}
+
+export async function generateWebsiteWordmark(
+  params: Api.SystemManage.WebsiteWordmarkGenerateRequest
+): Promise<Api.SystemManage.WebsiteWordmarkGenerateResponse> {
+  const { data, error } =
+    await invokeSupabaseFunctionWithSessionRecovery<Api.SystemManage.WebsiteWordmarkGenerateResponse>(
+      'ai-website-wordmark',
+      { body: params }
+    )
+
+  if (error) {
+    throw await createFriendlySupabaseFunctionError(
+      error,
+      'AI 品牌字图生成服务暂时不可用，请稍后重试'
+    )
+  }
+  if (
+    !data?.imageBase64 ||
+    !data.runId ||
+    (data.mimeType !== 'image/png' && data.mimeType !== 'image/webp')
+  ) {
+    throw new Error('AI 品牌字图服务返回了无效结果')
+  }
+  return data
 }
 
 const parseGeofenceConfig = (row: SystemParamItem | null): GeofenceConfigItem | null => {

@@ -616,6 +616,9 @@ declare namespace Api {
       siteDescription?: string | null
       logoUrl?: string | null
       faviconUrl?: string | null
+      wordmarkImageEnabled: boolean
+      wordmarkLightUrl?: string | null
+      wordmarkDarkUrl?: string | null
       watermarkEnabled: boolean
       watermarkContentType: WebsiteWatermarkContentType
       watermarkCustomText?: string | null
@@ -648,6 +651,21 @@ declare namespace Api {
       createTime?: string
       updateBy?: string
       updateTime?: string
+    }
+
+    type WebsiteWordmarkTheme = 'light' | 'dark'
+
+    interface WebsiteWordmarkGenerateRequest {
+      siteName: string
+    }
+
+    interface WebsiteWordmarkGenerateResponse {
+      imageBase64: string
+      mimeType: 'image/png' | 'image/webp'
+      model: string
+      runId: string
+      revisedPrompt?: string | null
+      generatedAt: string
     }
 
     interface GeofenceConfigItem {

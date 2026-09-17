@@ -11,12 +11,22 @@
       class="art-logo__mark"
     />
     <span
-      v-if="variant !== 'mark'"
+      v-if="variant !== 'mark' && !useWordmarkImage"
       :style="wordmarkStyle"
       class="art-logo__wordmark"
       :title="brandName"
       >{{ brandName }}</span
     >
+    <img
+      v-else-if="variant !== 'mark'"
+      :src="wordmarkImageUrl"
+      :style="wordmarkImageStyle"
+      :alt="brandName"
+      width="1008"
+      height="240"
+      class="art-logo__wordmark-image"
+      @error="handleWordmarkImageError"
+    />
   </div>
 </template>
 
@@ -41,7 +51,8 @@
     dark: false
   })
 
-  const { brandName } = useWebsiteConfig()
+  const { brandName, websiteConfig } = useWebsiteConfig()
+  const failedWordmarkUrl = ref('')
 
   const logoSize = computed(() => {
     if (typeof props.size === 'number') return `${props.size}px`
@@ -57,6 +68,33 @@
     fontSize: `calc(${logoSize.value} * 0.62)`,
     maxWidth: `calc(${logoSize.value} * 4.5)`
   }))
+
+  const wordmarkImageUrl = computed(() => {
+    const url = props.dark
+      ? websiteConfig.value.wordmarkDarkUrl
+      : websiteConfig.value.wordmarkLightUrl
+    return url?.trim() || ''
+  })
+
+  const useWordmarkImage = computed(
+    () =>
+      websiteConfig.value.wordmarkImageEnabled &&
+      Boolean(wordmarkImageUrl.value) &&
+      failedWordmarkUrl.value !== wordmarkImageUrl.value
+  )
+
+  const wordmarkImageStyle = computed<CSSProperties>(() => ({
+    width: `calc(${logoSize.value} * 2.52)`,
+    height: `calc(${logoSize.value} * 0.6)`
+  }))
+
+  const handleWordmarkImageError = (): void => {
+    failedWordmarkUrl.value = wordmarkImageUrl.value
+  }
+
+  watch(wordmarkImageUrl, () => {
+    failedWordmarkUrl.value = ''
+  })
 </script>
 
 <style scoped lang="scss">
@@ -75,17 +113,23 @@
       object-fit: contain;
     }
 
+    &__wordmark-image {
+      display: block;
+      flex: none;
+      object-fit: contain;
+    }
+
     &__wordmark {
       display: block;
       min-width: 0;
       overflow: hidden;
+      text-overflow: ellipsis;
       font-family: 'HarmonyOS Sans', 'PingFang SC', 'Microsoft YaHei', sans-serif;
       font-weight: 800;
       line-height: 1.08;
       color: #08275d;
-      text-overflow: ellipsis;
-      white-space: nowrap;
       letter-spacing: 0.025em;
+      white-space: nowrap;
       background: linear-gradient(180deg, #164c92 0%, #061c49 86%);
       background-clip: text;
       filter: drop-shadow(0 1px 0 rgb(255 255 255 / 42%));
@@ -96,7 +140,7 @@
     &--dark {
       .art-logo__wordmark {
         color: #f3f7ff;
-        background: linear-gradient(180deg, #ffffff 0%, #d9e7fb 88%);
+        background: linear-gradient(180deg, #fff 0%, #d9e7fb 88%);
         background-clip: text;
         filter: drop-shadow(0 1px 2px rgb(0 0 0 / 35%));
         -webkit-text-fill-color: transparent;
