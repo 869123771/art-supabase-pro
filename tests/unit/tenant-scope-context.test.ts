@@ -6,12 +6,28 @@ import {
   readMutationTenantScopeId,
   normalizePlatformTenantReadUrl,
   resolveTenantScopeId,
+  resolveTenantWorkspaceId,
   shouldAttachTenantScopeHeader,
   TENANT_SCOPE_MODE_STORAGE_KEY,
   TENANT_SCOPE_STORAGE_KEY,
   writePlatformTenantScopeActive,
   writeTenantScopeId
 } from '../../src/utils/tenant-scope-context'
+
+test('tenant-bound workspaces prefer the selected tenant and fall back to the home tenant', () => {
+  assert.equal(
+    resolveTenantWorkspaceId(
+      '7529f951-938e-4e2c-ac0d-316c136ae1f9',
+      '028e6a68-a9db-4055-974c-1e05bfe94b0f'
+    ),
+    '7529f951-938e-4e2c-ac0d-316c136ae1f9'
+  )
+  assert.equal(
+    resolveTenantWorkspaceId(null, '028e6a68-a9db-4055-974c-1e05bfe94b0f'),
+    '028e6a68-a9db-4055-974c-1e05bfe94b0f'
+  )
+  assert.equal(resolveTenantWorkspaceId(null, null), '')
+})
 
 class MemoryStorage implements Storage {
   private readonly values = new Map<string, string>()

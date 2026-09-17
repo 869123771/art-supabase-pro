@@ -18,8 +18,8 @@
         <div class="website-wordmark-settings__guidance">
           <ArtSvgIcon icon="ri:information-line" aria-hidden="true" />
           <span>
-            推荐使用 1008×240 透明 PNG/WebP；菜单内实际约为 91×22px。AI
-            仅创作一次字形，并自动生成同款深色与浅色配色后存入资源管理器。
+            推荐使用 1008×240 透明 PNG/WebP；菜单内实际约为 91×22px。AI AI
+            生成艺术风格，系统用真实字体精确排版名称，并自动输出同款深色与浅色配色后存入资源管理器。
           </span>
         </div>
         <ElButton
@@ -29,7 +29,7 @@
           @click="handleGenerate"
         >
           <ArtSvgIcon icon="ri:magic-line" aria-hidden="true" />
-          AI 生成两套配色
+          AI 艺术字生成
         </ElButton>
       </div>
 

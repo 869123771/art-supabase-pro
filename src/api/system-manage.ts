@@ -807,7 +807,7 @@ export async function generateWebsiteWordmark(
   if (
     !data?.imageBase64 ||
     !data.runId ||
-    (data.mimeType !== 'image/png' && data.mimeType !== 'image/webp')
+    !['image/png', 'image/jpeg', 'image/webp'].includes(data.mimeType)
   ) {
     throw new Error('AI 品牌字图服务返回了无效结果')
   }

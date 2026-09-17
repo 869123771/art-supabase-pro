@@ -94,6 +94,16 @@ export const normalizePlatformTenantReadUrl = (requestUrl: string): string => {
 export const resolveTenantScopeId = (explicitTenantId?: string | null): string | undefined =>
   explicitTenantId?.trim() || readTenantScopeId() || undefined
 
+/**
+ * Tenant-bound configuration workspaces cannot aggregate records across tenants. In platform
+ * "all tenants" mode they use the signed-in platform tenant as a read-only preview target, while
+ * a concrete shell selection always takes precedence.
+ */
+export const resolveTenantWorkspaceId = (
+  effectiveTenantId?: string | null,
+  homeTenantId?: string | null
+): string => effectiveTenantId?.trim() || homeTenantId?.trim() || ''
+
 export const writeTenantScopeId = (tenantId: string | null): void => {
   if (typeof sessionStorage === 'undefined') return
   try {

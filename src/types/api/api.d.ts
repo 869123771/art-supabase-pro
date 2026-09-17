@@ -661,7 +661,7 @@ declare namespace Api {
 
     interface WebsiteWordmarkGenerateResponse {
       imageBase64: string
-      mimeType: 'image/png' | 'image/webp'
+      mimeType: 'image/jpeg' | 'image/png' | 'image/webp'
       model: string
       runId: string
       revisedPrompt?: string | null

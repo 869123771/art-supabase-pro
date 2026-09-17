@@ -6,10 +6,7 @@
       title="字段权限"
       description="按角色批量授权、按人员设置例外，统一控制列表、详情、导出与打印中的敏感字段。"
       icon="ri:shield-keyhole-line"
-      :tags="[
-        { label: '租户内隔离', type: 'primary' },
-        { label: subjectType === 'role' ? '角色授权' : '人员例外', type: 'info' }
-      ]"
+      :tags="workspaceTags"
       :metrics="overviewMetrics"
       refreshable
       refresh-label="刷新字段权限配置"
@@ -24,10 +21,15 @@
     >
       <template #header>
         <div class="field-permission-page__scope-heading">
-          <div>
-            <span class="field-permission-page__section-kicker">配置范围</span>
-            <ArtSectionTitle :show-line="false">选择授权范围</ArtSectionTitle>
-            <p>人员配置覆盖其全部角色的合并结果；清除人员例外后恢复角色继承。</p>
+          <div class="field-permission-page__heading-copy">
+            <span class="field-permission-page__heading-icon" aria-hidden="true">
+              <ArtSvgIcon icon="ri:focus-3-line" />
+            </span>
+            <div>
+              <span class="field-permission-page__section-kicker">配置范围</span>
+              <ArtSectionTitle :show-line="false">选择授权范围</ArtSectionTitle>
+              <p>人员配置覆盖其全部角色的合并结果；清除人员例外后恢复角色继承。</p>
+            </div>
           </div>
           <div class="field-permission-page__scope-mode">
             <span>授权对象</span>
@@ -43,9 +45,20 @@
         </div>
       </template>
 
+      <div v-if="isAllTenants" class="field-permission-page__scope-preview" role="status">
+        <span aria-hidden="true"><ArtSvgIcon icon="ri:information-2-line" /></span>
+        <div>
+          <strong>全部租户模式下展示平台租户预览</strong>
+          <p>当前读取“{{ activeTenantLabel }}”的字段目录；如需修改授权，请先在顶部选择具体租户。</p>
+        </div>
+      </div>
+
       <div class="field-permission-page__selectors">
         <label>
-          <span>业务表单</span>
+          <span class="field-permission-page__selector-label">
+            <ArtSvgIcon icon="ri:file-list-3-line" />
+            业务表单
+          </span>
           <ElSelect
             v-model="selectedResourceKey"
             filterable
@@ -64,7 +77,10 @@
         </label>
 
         <label>
-          <span>{{ subjectType === 'role' ? '授权角色' : '授权人员' }}</span>
+          <span class="field-permission-page__selector-label">
+            <ArtSvgIcon :icon="subjectType === 'role' ? 'ri:team-line' : 'ri:user-line'" />
+            {{ subjectType === 'role' ? '授权角色' : '授权人员' }}
+          </span>
           <ElSelect
             v-model="selectedSubjectId"
             filterable
@@ -308,8 +324,8 @@
         </ElButton>
       </template>
       <span v-else class="field-permission-page__readonly-state">
-        <ArtSvgIcon icon="ri:lock-2-line" />
-        需要“维护字段权限”按钮权限
+        <ArtSvgIcon :icon="isAllTenants ? 'ri:building-4-line' : 'ri:lock-2-line'" />
+        {{ isAllTenants ? '选择具体租户后可维护' : '需要“维护字段权限”按钮权限' }}
       </span>
     </ArtStickyActionBar>
   </div>
@@ -324,7 +340,8 @@
   import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import ArtStickyActionBar from '@/components/core/layouts/art-sticky-action-bar/index.vue'
   import BusinessWorkspaceHeader, {
-    type BusinessWorkspaceMetric
+    type BusinessWorkspaceMetric,
+    type BusinessWorkspaceTag
   } from '@/components/business/business-workspace-header/index.vue'
   import {
     fetchFieldPermissionAuditLogs,
@@ -335,7 +352,9 @@
   import { fetchGetRoleList, fetchGetUserList } from '@/api/system-manage'
   import { useAuth } from '@/hooks/core/useAuth'
   import { useTenantScopeStore } from '@/store/modules/tenantScope'
+  import { useUserStore } from '@/store/modules/user'
   import { formatWithDayjs } from '@/utils/time'
+  import { resolveTenantWorkspaceId } from '@/utils/tenant-scope-context'
   import { getFieldPermissionAuditChanges } from './modules/field-permission-audit'
 
   defineOptions({ name: 'FieldPermission' })
@@ -367,8 +386,13 @@
     icon: string
   }
 
-  const { effectiveTenantId } = storeToRefs(useTenantScopeStore())
+  const userStore = useUserStore()
+  const { effectiveTenantId, isAllTenants } = storeToRefs(useTenantScopeStore())
   const { hasAuth } = useAuth()
+  const activeTenantId = computed(() =>
+    resolveTenantWorkspaceId(effectiveTenantId.value, userStore.getUserInfo.tenantId)
+  )
+  const activeTenantLabel = computed(() => (isAllTenants.value ? '平台运营租户' : '当前所选租户'))
 
   const page = reactive<PageGroup>({
     loading: false,
@@ -431,7 +455,19 @@
     () =>
       subjectOptions.value.find((option) => option.value === selectedSubjectId.value)?.label || '--'
   )
-  const isReadOnly = computed(() => !hasAuth('System:FieldPermission:Manage'))
+  const isReadOnly = computed(() => isAllTenants.value || !hasAuth('System:FieldPermission:Manage'))
+  const workspaceTags = computed<BusinessWorkspaceTag[]>(() => [
+    {
+      label: isAllTenants.value ? '平台租户预览' : '租户内隔离',
+      type: isAllTenants.value ? 'warning' : 'primary',
+      effect: 'plain'
+    },
+    {
+      label: subjectType.value === 'role' ? '角色授权' : '人员例外',
+      type: 'info',
+      effect: 'plain'
+    }
+  ])
   const changedFieldCount = computed(
     () =>
       configuration.value?.fields.filter(
@@ -472,6 +508,13 @@
     ]
   })
   const actionState = computed(() => {
+    if (isAllTenants.value) {
+      return {
+        icon: 'ri:building-4-line',
+        title: '当前为平台租户只读预览',
+        description: '请先在顶部切换到具体租户，再维护该租户的字段授权。'
+      }
+    }
     if (isReadOnly.value) {
       return {
         icon: 'ri:eye-line',
@@ -639,8 +682,8 @@
     page.loading = true
     page.error = null
     try {
-      const tenantId = effectiveTenantId.value ?? ''
-      if (!tenantId) throw new Error('请先在顶部选择具体租户，再配置字段权限')
+      const tenantId = activeTenantId.value
+      if (!tenantId) throw new Error('当前账号未绑定可用租户，无法加载字段权限')
 
       const [resourceResult, roleResult, userResult] = await Promise.all([
         fetchFieldPermissionResources(),
@@ -651,10 +694,14 @@
       const catalogError = resourceResult.error ?? roleResult.error ?? userResult.error
       if (catalogError) throw catalogError
       const roles = Array.isArray(roleResult.data)
-        ? (roleResult.data as Api.SystemManage.RoleListItem[])
+        ? (roleResult.data as Api.SystemManage.RoleListItem[]).filter(
+            (role) => !role.tenantId || role.tenantId === tenantId
+          )
         : []
       const users = Array.isArray(userResult.data)
-        ? (userResult.data as Api.SystemManage.UserListItem[])
+        ? (userResult.data as Api.SystemManage.UserListItem[]).filter(
+            (user) => !user.tenantId || user.tenantId === tenantId
+          )
         : []
       resources.value = resourceResult.data ?? []
       roleOptions.value = roles
@@ -670,8 +717,12 @@
           value: String(user.id)
         }))
 
-      selectedResourceKey.value ||= resources.value[0]?.resourceKey ?? ''
-      selectedSubjectId.value ||= roleOptions.value[0]?.value ?? ''
+      if (!resources.value.some((resource) => resource.resourceKey === selectedResourceKey.value)) {
+        selectedResourceKey.value = resources.value[0]?.resourceKey ?? ''
+      }
+      if (!roleOptions.value.some((option) => option.value === selectedSubjectId.value)) {
+        selectedSubjectId.value = roleOptions.value[0]?.value ?? ''
+      }
       await loadConfiguration()
     } catch (error) {
       page.error = new Error('字段权限目录加载失败，请检查租户与菜单权限后重试。', {
@@ -737,11 +788,25 @@
     else await loadCatalog()
   }
 
-  onMounted(() => void loadCatalog())
+  const reloadTenantWorkspace = async (): Promise<void> => {
+    configuration.value = null
+    auditLogs.value = []
+    permissionDraft.value = {}
+    savedDraft.value = {}
+    selectedResourceKey.value = ''
+    selectedSubjectId.value = ''
+    await loadCatalog()
+  }
+
+  watch(activeTenantId, () => void reloadTenantWorkspace(), { immediate: true })
 </script>
 
 <style scoped lang="scss">
+  @use '@/assets/styles/core/ai-surface-mixins' as aiSurface;
+
   .field-permission-page {
+    @include aiSurface.text-hierarchy;
+
     gap: 14px;
     min-width: 0;
     overflow: visible;
@@ -788,6 +853,29 @@
       min-width: 0;
     }
 
+    &__heading-copy {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+    }
+
+    &__heading-icon {
+      display: grid;
+      flex: 0 0 38px;
+      place-items: center;
+      width: 38px;
+      height: 38px;
+      margin-top: 1px;
+      color: var(--el-color-primary);
+      background: linear-gradient(
+        145deg,
+        var(--el-color-primary-light-8),
+        color-mix(in srgb, var(--el-color-primary) 5%, var(--default-box-color))
+      );
+      border: 1px solid color-mix(in srgb, var(--el-color-primary) 18%, transparent);
+      border-radius: var(--art-control-radius);
+    }
+
     &__scope-heading :deep(.art-section-title),
     &__matrix-header :deep(.art-section-title) {
       margin: 0;
@@ -827,6 +915,52 @@
           font-weight: 600;
           color: var(--art-text-gray-600);
         }
+      }
+    }
+
+    &__scope-preview {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      padding: 10px 12px;
+      margin-top: 14px;
+      color: var(--el-color-warning-dark-2);
+      background: color-mix(in srgb, var(--el-color-warning) 8%, var(--default-box-color));
+      border: 1px solid color-mix(in srgb, var(--el-color-warning) 24%, transparent);
+      border-radius: var(--art-control-radius);
+
+      > span {
+        display: grid;
+        flex: 0 0 30px;
+        place-items: center;
+        width: 30px;
+        height: 30px;
+        color: var(--el-color-warning-dark-2);
+        background: color-mix(in srgb, var(--el-color-warning) 14%, var(--default-box-color));
+        border-radius: 9px;
+      }
+
+      strong {
+        display: block;
+        font-size: 13px;
+        font-weight: 650;
+      }
+
+      p {
+        margin: 2px 0 0;
+        font-size: 12px;
+        color: var(--art-text-gray-600);
+      }
+    }
+
+    &__selector-label {
+      display: inline-flex;
+      gap: 6px;
+      align-items: center;
+      color: var(--art-text-gray-700) !important;
+
+      :deep(.art-svg-icon) {
+        color: var(--el-color-primary);
       }
     }
 
