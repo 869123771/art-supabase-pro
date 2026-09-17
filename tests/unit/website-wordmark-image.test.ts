@@ -61,10 +61,13 @@ test('generates both menu colorways from one AI request', () => {
     'src/views/system/website-config/modules/wordmark-image.ts',
     'utf8'
   )
+  const logoComponent = readFileSync('src/components/core/base/art-logo/index.vue', 'utf8')
   assert.equal(component.match(/AI 艺术字生成/g)?.length, 1)
   assert.match(component, /generateWebsiteWordmark\(\{ siteName \}\)/)
   assert.match(component, /createGeneratedWordmarkFiles\(generated, siteName\)/)
   assert.match(imageModule, /createExactWordmarkMask\(siteName\)/)
+  assert.match(logoComponent, /logoSize\.value} \* 3\.02/)
+  assert.match(logoComponent, /logoSize\.value} \* 0\.72/)
   assert.match(imageModule, /light: new File/)
   assert.match(imageModule, /dark: new File/)
 })

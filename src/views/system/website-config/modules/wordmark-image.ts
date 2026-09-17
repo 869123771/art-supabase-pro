@@ -196,8 +196,8 @@ async function createExactWordmarkMask(siteName: string): Promise<HTMLCanvasElem
 
   const fontFamily = '"HarmonyOS Sans", "PingFang SC", "Microsoft YaHei", sans-serif'
   const maxWidth = WORDMARK_IMAGE_WIDTH - 72
-  const maxHeight = WORDMARK_IMAGE_HEIGHT - 44
-  let fontSize = 176
+  const maxHeight = WORDMARK_IMAGE_HEIGHT - 28
+  let fontSize = 204
   await document.fonts?.load(`800 ${fontSize}px "HarmonyOS Sans"`, text)
 
   const applyFont = (): void => {
@@ -289,7 +289,7 @@ export async function createGeneratedWordmarkFiles(
 
   // Image models are useful for visual direction but cannot guarantee exact Chinese glyphs.
   // Always typeset the configured system name with a real font, then use the AI result only as
-  // a subtle clipped texture so the exported wordmark stays legible at the 91×22px menu size.
+  // a subtle clipped texture so the exported wordmark stays legible at the 109×26px menu size.
   const maskCanvas = await createExactWordmarkMask(siteName)
 
   const safeName = siteName.trim().replace(/[\\/:*?"<>|\s]+/g, '-') || 'website'

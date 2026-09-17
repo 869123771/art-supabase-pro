@@ -84,8 +84,10 @@
   )
 
   const wordmarkImageStyle = computed<CSSProperties>(() => ({
-    width: `calc(${logoSize.value} * 2.52)`,
-    height: `calc(${logoSize.value} * 0.6)`
+    // Match the perceived cap height of the default 0.62em text. The transparent source image
+    // contains a small safety margin, so its element must be slightly taller than the glyph itself.
+    width: `calc(${logoSize.value} * 3.02)`,
+    height: `calc(${logoSize.value} * 0.72)`
   }))
 
   const handleWordmarkImageError = (): void => {

@@ -18,7 +18,7 @@
         <div class="website-wordmark-settings__guidance">
           <ArtSvgIcon icon="ri:information-line" aria-hidden="true" />
           <span>
-            推荐使用 1008×240 透明 PNG/WebP；菜单内实际约为 91×22px。AI AI
+            推荐使用 1008×240 透明 PNG/WebP；菜单按约 109×26px 展示，与默认品牌文字视觉高度一致。AI
             生成艺术风格，系统用真实字体精确排版名称，并自动输出同款深色与浅色配色后存入资源管理器。
           </span>
         </div>
