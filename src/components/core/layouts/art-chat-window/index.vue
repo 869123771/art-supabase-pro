@@ -41,7 +41,6 @@
           >
             <ArtIconButton
               :icon="isExpanded ? 'dashicons:fullscreen-exit-alt' : 'dashicons:fullscreen-alt'"
-              circle
               :aria-label="isExpanded ? '退出放大' : '放大对话'"
               class="art-ai-assistant__header-button"
               @click="toggleExpanded"
@@ -50,7 +49,6 @@
           <ArtTooltip v-if="isProjectMode" content="打开 Supabase AI 工作台" placement="bottom">
             <ArtIconButton
               icon="ri:dashboard-line"
-              circle
               aria-label="打开 Supabase AI 工作台"
               class="art-ai-assistant__header-button"
               @click="openProjectWorkbench"
@@ -59,7 +57,6 @@
           <ArtTooltip content="新建对话" placement="bottom">
             <ArtIconButton
               icon="ri:chat-new-line"
-              circle
               aria-label="新建对话"
               class="art-ai-assistant__header-button"
               @click="resetConversation"
@@ -68,7 +65,6 @@
           <ArtTooltip content="关闭" placement="bottom">
             <ArtIconButton
               icon="ri:close-line"
-              circle
               :aria-label="`关闭 ${assistantTitle}`"
               class="art-ai-assistant__header-button"
               @click="api.handleClose()"
@@ -273,16 +269,15 @@
               </div>
               <span class="art-ai-assistant__send-actions">
                 <small>Enter 发送</small>
-                <ElButton
-                  type="primary"
-                  circle
+                <ArtIconButton
+                  class="art-ai-assistant__send-button"
+                  icon="ri:arrow-up-line"
+                  variant="solid"
                   :loading="state.sending"
                   :disabled="!state.input.trim() || !isOnline"
-                  aria-label="发送消息"
+                  label="发送消息"
                   @click="sendMessage"
-                >
-                  <ArtSvgIcon icon="ri:arrow-up-line" />
-                </ElButton>
+                />
               </span>
             </div>
           </div>
@@ -1567,11 +1562,10 @@
         color: var(--el-text-color-placeholder);
       }
 
-      .el-button {
+      .art-ai-assistant__send-button {
         width: 36px;
         height: 36px;
         margin: 0;
-        box-shadow: 0 7px 16px rgb(64 116 255 / 22%);
       }
     }
 

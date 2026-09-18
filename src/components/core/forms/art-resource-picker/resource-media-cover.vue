@@ -33,17 +33,14 @@
         <ArtSvgIcon icon="ri:video-line" />
         <span>视频封面不可用</span>
       </div>
-      <button
-        type="button"
+      <ArtIconButton
         class="resource-media-cover__control"
+        :icon="props.playing ? 'ri:pause-fill' : 'ri:play-fill'"
+        :label="props.playing ? '暂停视频' : '播放视频'"
         :disabled="videoFailed || !props.resource.url"
-        :aria-label="props.playing ? '暂停视频' : '播放视频'"
-        :title="props.playing ? '暂停视频' : '播放视频'"
         @click.stop="emit('togglePlay')"
         @dblclick.stop
-      >
-        <ArtSvgIcon :icon="props.playing ? 'ri:pause-fill' : 'ri:play-fill'" />
-      </button>
+      />
       <span v-if="durationLabel" class="resource-media-cover__duration">{{ durationLabel }}</span>
     </template>
 
@@ -60,17 +57,14 @@
         @ended="handleEnded"
         @error="mediaFailed = true"
       />
-      <button
-        type="button"
+      <ArtIconButton
         class="resource-media-cover__audio-control"
+        :icon="props.playing ? 'ri:pause-fill' : 'ri:music-2-fill'"
+        :label="props.playing ? '暂停音频' : '播放音频'"
         :disabled="mediaFailed || !props.resource.url"
-        :aria-label="props.playing ? '暂停音频' : '播放音频'"
-        :title="props.playing ? '暂停音频' : '播放音频'"
         @click.stop="emit('togglePlay')"
         @dblclick.stop
-      >
-        <ArtSvgIcon :icon="props.playing ? 'ri:pause-fill' : 'ri:music-2-fill'" />
-      </button>
+      />
       <div
         class="resource-media-cover__wave"
         :class="{ 'is-playing': props.playing }"
@@ -100,6 +94,7 @@
 
 <script setup lang="ts">
   import type { Resource } from './type'
+  import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
 
   defineOptions({ name: 'ResourceMediaCover' })
 
@@ -335,7 +330,7 @@
       color: #fff;
       background: rgb(15 23 42 / 68%);
       border: 1px solid rgb(255 255 255 / 42%);
-      border-radius: 50%;
+      border-radius: var(--art-control-radius);
       box-shadow: 0 6px 18px rgb(15 23 42 / 28%);
       backdrop-filter: blur(5px);
       transform: translate(-50%, -58%);

@@ -13,7 +13,6 @@
           <ArtIconButton
             class="capability-center__refresh"
             icon="ri:refresh-line"
-            circle
             label="刷新能力快照"
             :loading="loading"
             @click="loadSnapshot"

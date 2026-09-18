@@ -9,7 +9,6 @@
         <ArtTooltip content="刷新项目对象" placement="bottom">
           <ArtIconButton
             icon="ri:refresh-line"
-            circle
             label="刷新项目对象"
             :loading="loading && loadSource === 'refresh'"
             :disabled="loading && loadSource !== 'refresh'"
@@ -20,7 +19,6 @@
           <ArtIconButton
             :class="{ 'is-active': focusMode }"
             :icon="focusMode ? 'dashicons:fullscreen-exit-alt' : 'dashicons:fullscreen-alt'"
-            circle
             :label="focusMode ? '退出专注模式' : '进入专注模式'"
             @click="emit('toggle-focus')"
           />

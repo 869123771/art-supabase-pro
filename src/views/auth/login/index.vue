@@ -131,20 +131,15 @@
                 :hide-after="0"
                 :disabled="Boolean(oauthLoadingKey)"
               >
-                <ElButton
-                  circle
+                <ArtIconButton
                   class="auth-channels__button"
                   :class="`is-${channel.key}`"
+                  :icon="channel.icon"
+                  :label="`使用${channel.label}登录`"
+                  :loading="oauthLoadingKey === channel.key"
                   :disabled="Boolean(oauthLoadingKey || loading)"
-                  :aria-label="`使用${channel.label}登录`"
-                  :aria-busy="oauthLoadingKey === channel.key"
                   @click="handleAuthChannelLogin(channel)"
-                >
-                  <ElIcon v-if="oauthLoadingKey === channel.key" class="auth-channels__spinner">
-                    <Loading />
-                  </ElIcon>
-                  <ArtSvgIcon v-if="oauthLoadingKey !== channel.key" :icon="channel.icon" />
-                </ElButton>
+                />
               </ArtTooltip>
             </div>
             <p class="auth-channels__hint">首次使用需先在个人中心绑定</p>
@@ -166,7 +161,6 @@
   import { useI18n } from 'vue-i18n'
   import { HttpError } from '@/utils/http/error'
   import { ElMessage, ElNotification, type FormInstance, type FormRules } from 'element-plus'
-  import { Loading } from '@element-plus/icons-vue'
   import {
     checkCurrentUserAccess,
     getCurrentAuthSession,
@@ -177,6 +171,7 @@
   import { getFirstMenuPath } from '@/utils'
   import { useWebsiteConfig } from '@/hooks'
   import ArtTurnstileCaptcha from '@/components/core/forms/art-turnstile-captcha/index.vue'
+  import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
   import {
     isAbsoluteApplicationRedirect,
     resolveSafePostLoginRedirect

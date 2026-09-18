@@ -64,16 +64,13 @@
           <span class="work-tab-title" :title="item.customTitle || formatMenuTitle(item.title)">
             {{ item.customTitle || formatMenuTitle(item.title) }}
           </span>
-          <button
+          <ArtIconButton
             v-if="list.length > 1 && !item.fixedTab"
-            type="button"
-            class="inline-flex flex-cc relative ml-0.5 p-1 rounded-full tad-200 hover:bg-g-200"
-            :aria-label="`关闭${item.customTitle || formatMenuTitle(item.title)}`"
-            :title="`关闭${item.customTitle || formatMenuTitle(item.title)}`"
+            class="relative ml-0.5 size-5! text-[10px]!"
+            icon="ri:close-large-fill"
+            :label="`关闭${item.customTitle || formatMenuTitle(item.title)}`"
             @click.stop="closeWorktab('current', item.path)"
-          >
-            <ArtSvgIcon icon="ri:close-large-fill" class="text-[10px] text-g-600" />
-          </button>
+          />
           <div
             v-if="tabStyle === 'tab-google'"
             class="line absolute top-0 bottom-0 left-0 w-px h-4 my-auto bg-g-400 transition-opacity duration-150"
@@ -133,6 +130,7 @@
   import { MenuItemType } from '../../others/art-menu-right/index.vue'
   import { useCommon } from '@/hooks/core/useCommon'
   import { WorkTab } from '@/types'
+  import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
 
   defineOptions({ name: 'ArtWorkTab' })
 

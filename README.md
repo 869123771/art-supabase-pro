@@ -274,19 +274,23 @@ pnpm build
 
 常用命令：
 
-| 命令                      | 说明                                               |
-| ------------------------- | -------------------------------------------------- |
-| `pnpm dev`                | 启动开发服务器                                     |
-| `pnpm check:fast`         | 运行 UI 审计、类型检查、ESLint 与单元测试          |
-| `pnpm check`              | 在快速检查基础上增加 Stylelint                     |
-| `pnpm check:ci`           | 运行完整静态检查、快照校验、生产构建与核心视觉回归 |
-| `pnpm lint:stylelint:fix` | 自动修复可安全处理的样式规范问题                   |
-| `pnpm test:e2e`           | 运行完整 Playwright 端到端测试                     |
-| `pnpm test:e2e:core`      | 运行 1440 桌面与 390 移动端核心页面视觉回归        |
-| `pnpm test:e2e:install`   | 安装 CI 所需的 Playwright Chromium                 |
-| `pnpm snapshot:check`     | 校验 AI 项目快照是否与当前代码一致                 |
-| `pnpm build`              | 构建生产版本                                       |
-| `pnpm build:analyze`      | 生成构建体积分析                                   |
+| 命令                                    | 说明                                               |
+| --------------------------------------- | -------------------------------------------------- |
+| `pnpm dev`                              | 启动开发服务器                                     |
+| `pnpm check:fast`                       | 运行 UI 审计、类型检查、ESLint 与单元测试          |
+| `pnpm check`                            | 在快速检查基础上增加 Stylelint                     |
+| `pnpm check:ci`                         | 运行完整静态检查、快照校验、生产构建与核心视觉回归 |
+| `pnpm lint:stylelint:fix`               | 自动修复可安全处理的样式规范问题                   |
+| `pnpm test:e2e`                         | 运行完整 Playwright 端到端测试                     |
+| `pnpm test:e2e:core`                    | 运行 1440 桌面与 390 移动端核心页面视觉回归        |
+| `pnpm test:e2e:install`                 | 安装 CI 所需的 Playwright Chromium                 |
+| `pnpm snapshot:check`                   | 校验 AI 项目快照是否与当前代码一致                 |
+| `pnpm build`                            | 构建生产版本                                       |
+| `pnpm build:analyze`                    | 生成构建体积分析                                   |
+| `pnpm repo:pull`                        | 同步拉取主仓及全部 Git 子仓                        |
+| `pnpm repo:publish -- "feat: 提交说明"` | 构建 docs，提交并推送主仓及有改动的子仓            |
+
+统一发布命令会先检查分支和上游状态，构建所有有改动子仓的 `docs`，再构建主仓 `docs`。提交和推送始终按照“子仓在前、主仓在后”的顺序执行，并在结束时确认主仓与全部子仓均无未提交内容。若拉取后子仓版本领先于主仓记录，`repo:pull` 会保留新的 `gitlink`，确认后执行一次 `repo:publish` 即可提交主仓指针。
 
 ## 项目结构
 

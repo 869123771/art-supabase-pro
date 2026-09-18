@@ -15,20 +15,15 @@
       </div>
       <div class="project-assistant__chat-actions">
         <ArtTooltip content="会话历史" placement="bottom">
-          <ElButton text circle aria-label="会话历史" @click="emit('open-history')">
-            <ArtSvgIcon icon="ri:history-line" />
-          </ElButton>
+          <ArtIconButton icon="ri:history-line" label="会话历史" @click="emit('open-history')" />
         </ArtTooltip>
         <ArtTooltip content="导出当前会话" placement="bottom">
-          <ElButton
-            text
-            circle
-            aria-label="导出当前会话"
+          <ArtIconButton
+            icon="ri:download-2-line"
+            label="导出当前会话"
             :disabled="!chat.messages.length"
             @click="emit('export-conversation')"
-          >
-            <ArtSvgIcon icon="ri:download-2-line" />
-          </ElButton>
+          />
         </ArtTooltip>
         <ElButton text type="primary" @click="emit('reset')">
           <ArtSvgIcon icon="ri:chat-new-line" /> 新对话
@@ -41,16 +36,13 @@
       <span>正在分析</span>
       <strong>{{ activeChatObject.schemaName }}.{{ activeChatObject.objectName }}</strong>
       <ArtTooltip :content="chat.contextLocked ? '解除上下文锁定' : '锁定当前对象上下文'">
-        <ElButton
-          text
-          circle
-          size="small"
-          :type="chat.contextLocked ? 'primary' : ''"
-          :aria-label="chat.contextLocked ? '解除上下文锁定' : '锁定当前对象上下文'"
+        <ArtIconButton
+          class="size-6.5! text-base!"
+          :class="{ 'is-active': chat.contextLocked }"
+          :icon="chat.contextLocked ? 'ri:pushpin-fill' : 'ri:pushpin-line'"
+          :label="chat.contextLocked ? '解除上下文锁定' : '锁定当前对象上下文'"
           @click="emit('toggle-context')"
-        >
-          <ArtSvgIcon :icon="chat.contextLocked ? 'ri:pushpin-fill' : 'ri:pushpin-line'" />
-        </ElButton>
+        />
       </ArtTooltip>
     </div>
 
@@ -178,17 +170,15 @@
           <span v-else><ArtSvgIcon icon="ri:shield-check-line" /> 只读安全模式</span>
           <span class="project-assistant__send-actions">
             <small>Enter 发送</small>
-            <ElButton
-              type="primary"
-              circle
-              :class="{ 'is-stopping': chat.sending }"
+            <ArtIconButton
+              class="project-assistant__send-button"
+              :icon="chat.sending ? 'ri:stop-fill' : 'ri:arrow-up-line'"
+              :tone="chat.sending ? 'danger' : 'theme'"
+              variant="solid"
               :disabled="!chat.sending && !chat.input.trim()"
-              :aria-label="chat.sending ? '停止等待' : '发送消息'"
-              :title="chat.sending ? '停止等待' : '发送消息'"
+              :label="chat.sending ? '停止等待' : '发送消息'"
               @click="handlePrimaryAction"
-            >
-              <ArtSvgIcon :icon="chat.sending ? 'ri:stop-fill' : 'ri:arrow-up-line'" />
-            </ElButton>
+            />
           </span>
         </div>
       </div>
@@ -199,6 +189,7 @@
 <script setup lang="ts">
   import type { ScrollbarInstance } from 'element-plus'
   import ArtAiFeedback from '@/components/core/base/art-ai-feedback/index.vue'
+  import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
   import type {
     ProjectAssistantSafetyMode,
     ProjectDatabaseObject
@@ -379,7 +370,12 @@
         white-space: nowrap;
       }
 
-      .el-button {
+      .is-active {
+        color: var(--theme-color);
+        background: color-mix(in srgb, var(--theme-color) 10%, transparent);
+      }
+
+      .art-icon-button {
         flex: 0 0 auto;
         margin-left: auto;
       }
@@ -710,11 +706,10 @@
         color: var(--el-text-color-placeholder);
       }
 
-      .el-button {
+      .project-assistant__send-button {
         width: 32px;
         height: 32px;
         margin: 0;
-        box-shadow: 0 6px 14px rgb(64 128 255 / 24%);
       }
     }
 

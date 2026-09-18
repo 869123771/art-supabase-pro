@@ -111,13 +111,14 @@
 
   .auth-channels__button {
     --auth-channel-accent: var(--el-color-primary);
+    --art-action-color: var(--auth-channel-accent);
 
     width: 42px;
     height: 42px;
     margin: 0;
     color: var(--auth-channel-accent);
     background: var(--el-fill-color-blank);
-    border-color: var(--el-border-color-light);
+    border: 1px solid var(--el-border-color-light);
     box-shadow: 0 5px 14px rgb(31 35 48 / 5%);
     transition:
       color 0.2s ease,
@@ -128,17 +129,6 @@
 
     :deep(.art-svg-icon) {
       font-size: 20px;
-    }
-
-    :deep(.el-icon) {
-      margin: 0;
-      font-size: 17px;
-    }
-
-    .auth-channels__spinner {
-      width: 17px;
-      height: 17px;
-      animation: auth-channel-spin 0.8s linear infinite;
     }
 
     &:hover,
@@ -349,11 +339,5 @@
   to {
     opacity: 1;
     transform: translateX(0);
-  }
-}
-
-@keyframes auth-channel-spin {
-  to {
-    transform: rotate(360deg);
   }
 }

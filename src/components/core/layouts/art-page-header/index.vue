@@ -1,15 +1,12 @@
 <template>
   <header class="art-page-header art-card-xs" :class="{ 'has-back': showBack }">
-    <ElButton
+    <ArtIconButton
       v-if="showBack"
       class="art-page-header__back"
-      text
-      circle
-      aria-label="返回"
+      icon="ri:arrow-left-line"
+      label="返回"
       @click="emit('back')"
-    >
-      <ArtSvgIcon icon="ri:arrow-left-line" />
-    </ElButton>
+    />
 
     <div class="art-page-header__identity">
       <div class="art-page-header__title-row">
@@ -26,29 +23,14 @@
       </div>
     </div>
 
-    <div
-      v-if="(designReference && isPlatformSuper) || $slots.default"
-      class="art-page-header__actions"
-    >
+    <div v-if="$slots.default" class="art-page-header__actions">
       <slot />
-      <PageDesignReference
-        v-if="designReference && isPlatformSuper"
-        :title="title"
-        surface-kind="detail"
-        :style-snapshot="{
-          component: 'ArtPageHeader',
-          showBack
-        }"
-      />
     </div>
   </header>
 </template>
 
 <script setup lang="ts">
-  import { storeToRefs } from 'pinia'
-  import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
-  import PageDesignReference from '@/components/business/page-design-reference/index.vue'
-  import { useUserStore } from '@/store/modules/user'
+  import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
 
   defineOptions({ name: 'ArtPageHeader' })
 
@@ -57,22 +39,20 @@
       title: string
       subtitle?: string
       showBack?: boolean
-      designReference?: boolean
     }>(),
     {
       subtitle: '',
-      showBack: false,
-      designReference: true
+      showBack: false
     }
   )
 
   const emit = defineEmits<{ back: [] }>()
-  const { isPlatformSuper } = storeToRefs(useUserStore())
 </script>
 
 <style scoped lang="scss">
   .art-page-header {
     display: flex;
+    flex-wrap: wrap;
     gap: var(--art-space-3);
     align-items: center;
     min-width: 0;
@@ -84,7 +64,7 @@
     }
 
     &__identity {
-      flex: 1;
+      flex: 1 1 320px;
       min-width: 0;
     }
 
@@ -117,7 +97,8 @@
 
     &__actions {
       display: flex;
-      flex: none;
+      flex: 0 1 auto;
+      flex-wrap: wrap;
       gap: var(--art-space-2);
       align-items: center;
       justify-content: flex-end;

@@ -31,15 +31,12 @@
           >
             <header>
               <strong>{{ item.title || '未命名会话' }}</strong>
-              <ElButton
-                text
-                circle
-                size="small"
-                aria-label="重命名会话"
+              <ArtIconButton
+                class="size-6.5! text-base!"
+                icon="ri:edit-line"
+                label="重命名会话"
                 @click.stop="emit('rename', item)"
-              >
-                <ArtSvgIcon icon="ri:edit-line" />
-              </ElButton>
+              />
             </header>
             <p>{{ item.lastMessage?.content || '暂无消息摘要' }}</p>
             <footer>
@@ -58,6 +55,7 @@
 <script setup lang="ts">
   import ArtDrawer from '@/components/core/drawers/art-drawer/index.vue'
   import type { ArtDrawerExpose } from '@/components/core/drawers/art-drawer/types'
+  import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
   import type { ProjectAssistantConversationSummary } from '@/types/supabase-ai-assistant'
 
   defineOptions({ name: 'ProjectAssistantHistoryDrawer' })

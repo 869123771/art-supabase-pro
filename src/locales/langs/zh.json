@@ -40,8 +40,17 @@
     "logOutTips": "您是否要退出登录?"
   },
   "search": {
+    "dialogTitle": "全局搜索",
     "placeholder": "搜索页面",
+    "resultsTitle": "搜索结果",
+    "resultCount": "{count} 个页面",
     "historyTitle": "搜索历史",
+    "historyHint": "最近访问",
+    "deleteHistory": "删除搜索历史",
+    "noResultsTitle": "没有找到相关页面",
+    "noResultsDescription": "未找到与“{keyword}”匹配的页面，请尝试更短或不同的关键词",
+    "emptyHistoryTitle": "暂无搜索记录",
+    "emptyHistoryDescription": "输入页面名称，快速前往你需要的功能",
     "switchKeydown": "切换",
     "selectKeydown": "选择",
     "exitKeydown": "关闭"

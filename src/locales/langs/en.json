@@ -40,8 +40,17 @@
     "logOutTips": "Do you want to log out?"
   },
   "search": {
+    "dialogTitle": "Global search",
     "placeholder": "Search page",
+    "resultsTitle": "Search results",
+    "resultCount": "{count} pages",
     "historyTitle": "Search history",
+    "historyHint": "Recently visited",
+    "deleteHistory": "Delete search history",
+    "noResultsTitle": "No matching pages",
+    "noResultsDescription": "No pages match “{keyword}”. Try a shorter or different keyword.",
+    "emptyHistoryTitle": "No search history yet",
+    "emptyHistoryDescription": "Enter a page name to jump directly to the feature you need.",
     "switchKeydown": "Navigate",
     "selectKeydown": "Select",
     "exitKeydown": "Close"

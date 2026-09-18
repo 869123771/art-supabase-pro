@@ -9,37 +9,30 @@
       class="art-table-header__right flex-c flex-wrap gap-y-2 md:justify-end max-md:mt-3"
       :class="{ 'max-sm:!hidden': !focusMode }"
     >
-      <button
+      <ArtIconButton
         v-if="showSearchBar != null"
-        type="button"
-        class="button"
-        @click="search"
-        :class="showSearchBar ? 'active !bg-theme hover:!bg-theme/80' : ''"
-        :aria-label="showSearchBar ? '收起搜索条件' : '展开搜索条件'"
-        :title="showSearchBar ? '收起搜索条件' : '展开搜索条件'"
+        class="art-table-header__action"
+        icon="ri:search-line"
+        :variant="showSearchBar ? 'solid' : 'ghost'"
+        :label="showSearchBar ? '收起搜索条件' : '展开搜索条件'"
         :aria-pressed="showSearchBar"
-      >
-        <ArtSvgIcon icon="ri:search-line" :class="showSearchBar ? 'text-white' : 'text-g-700'" />
-      </button>
-      <button
+        @click="search"
+      />
+      <ArtIconButton
         v-if="shouldShow('refresh')"
-        type="button"
-        class="button"
+        class="art-table-header__action"
+        icon="ri:refresh-line"
+        label="刷新表格"
+        :loading="loading && isManualRefresh"
         @click="refresh"
-        :class="{ loading: loading && isManualRefresh }"
-        aria-label="刷新表格"
-        title="刷新表格"
-      >
-        <ArtSvgIcon
-          icon="ri:refresh-line"
-          :class="loading && isManualRefresh ? 'animate-spin text-g-600' : ''"
-        />
-      </button>
+      />
 
       <ElDropdown v-if="shouldShow('size')" @command="handleTableSizeChange">
-        <button type="button" class="button" aria-label="调整表格密度" title="调整表格密度">
-          <ArtSvgIcon icon="ri:arrow-up-down-fill" />
-        </button>
+        <ArtIconButton
+          class="art-table-header__action"
+          icon="ri:arrow-up-down-fill"
+          label="调整表格密度"
+        />
         <template #dropdown>
           <ElDropdownMenu>
             <div
@@ -59,26 +52,23 @@
         </template>
       </ElDropdown>
 
-      <button
+      <ArtIconButton
         v-if="shouldShow('fullscreen')"
-        type="button"
-        class="button"
-        :aria-label="isFullScreen ? '退出全屏' : '表格全屏'"
-        :title="isFullScreen ? '退出全屏' : '表格全屏'"
+        class="art-table-header__action"
+        :icon="isFullScreen ? 'dashicons:fullscreen-exit-alt' : 'dashicons:fullscreen-alt'"
+        :label="isFullScreen ? '退出全屏' : '表格全屏'"
         :aria-pressed="isFullScreen"
         @click="toggleFullScreen"
-      >
-        <ArtSvgIcon
-          :icon="isFullScreen ? 'dashicons:fullscreen-exit-alt' : 'dashicons:fullscreen-alt'"
-        />
-      </button>
+      />
 
       <!-- 列设置 -->
       <ElPopover v-if="shouldShow('columns')" placement="bottom" trigger="click" :width="232">
         <template #reference>
-          <button type="button" class="button" aria-label="设置显示列" title="设置显示列">
-            <ArtSvgIcon icon="ri:align-right" />
-          </button>
+          <ArtIconButton
+            class="art-table-header__action"
+            icon="ri:align-right"
+            label="设置显示列"
+          />
         </template>
         <div>
           <div class="column-presets">
@@ -146,9 +136,11 @@
       <!-- 其他设置 -->
       <ElPopover v-if="shouldShow('settings')" placement="bottom" trigger="click">
         <template #reference>
-          <button type="button" class="button" aria-label="表格显示设置" title="表格显示设置">
-            <ArtSvgIcon icon="ri:settings-line" />
-          </button>
+          <ArtIconButton
+            class="art-table-header__action"
+            icon="ri:settings-line"
+            label="表格显示设置"
+          />
         </template>
         <div>
           <ElCheckbox v-if="showZebra" v-model="isZebra" :value="true">{{
@@ -166,7 +158,7 @@
       <button
         v-if="focusMode != null"
         type="button"
-        class="button focus-button"
+        class="focus-button"
         :class="{ active: focusMode }"
         :aria-label="focusMode ? '退出专注模式' : '进入专注模式'"
         :aria-pressed="focusMode"
@@ -190,6 +182,7 @@
   import { useI18n } from 'vue-i18n'
   import type { ColumnOption } from '@/types/component'
   import { ElScrollbar } from 'element-plus'
+  import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
   import {
     filterTenantDimensionDescriptors,
     isTenantDimensionDescriptor
@@ -446,14 +439,40 @@
 </script>
 
 <style scoped lang="scss">
-  .button {
+  .art-table-header {
+    gap: var(--art-space-3);
+    min-width: 0;
+
+    &__left {
+      display: flex;
+      flex: 1;
+      align-items: center;
+      min-width: 0;
+    }
+
+    &__right {
+      flex: none;
+      min-width: 0;
+    }
+  }
+
+  .art-table-header__action {
+    margin-right: 6px;
+  }
+
+  .focus-button {
     display: inline-flex;
+    gap: 4px;
     align-items: center;
     justify-content: center;
-    width: 32px;
+    width: auto;
     height: 32px;
-    margin-right: 10px;
+    padding: 0 8px;
+    margin-right: 0;
+    font-size: 12px;
+    line-height: 1;
     color: var(--art-gray-700);
+    white-space: nowrap;
     cursor: pointer;
     background: color-mix(in srgb, var(--art-gray-200) 72%, var(--default-box-color));
     border: 1px solid transparent;
@@ -486,16 +505,6 @@
       background: color-mix(in srgb, var(--theme-color) 10%, var(--default-box-color));
       box-shadow: var(--art-themed-action-active-shadow);
     }
-  }
-
-  .focus-button {
-    gap: 4px;
-    width: auto;
-    padding: 0 8px;
-    margin-right: 0;
-    font-size: 12px;
-    line-height: 1;
-    white-space: nowrap;
   }
 
   .column-presets {
@@ -569,7 +578,7 @@
   }
 
   @media (width <= 767px) {
-    .button {
+    .art-table-header__action {
       margin-right: 0;
       margin-left: 8px;
     }

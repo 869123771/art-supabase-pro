@@ -6,7 +6,8 @@
     class="art-icon-button size-8.5 inline-flex flex-cc c-p border-0 bg-transparent text-g-600 dark:text-g-800 text-xl rounded tad-300 hover:bg-hover-color"
     :class="[
       `art-icon-button--${tone}`,
-      { 'rounded-full': circle, 'art-icon-button--loading': loading }
+      `art-icon-button--${variant}`,
+      { 'art-icon-button--loading': loading }
     ]"
     :disabled="disabled || loading"
     :aria-busy="loading || undefined"
@@ -25,20 +26,20 @@
   interface Props {
     /** 图标名称 */
     icon: string
-    /** 圆角按钮 */
-    circle?: boolean
     /** 是否禁用 */
     disabled?: boolean
     /** 是否处于加载状态；加载时保留动作含义并旋转图标 */
     loading?: boolean
     tone?: 'theme' | 'danger'
+    variant?: 'ghost' | 'solid'
     permission?: string
     /** 按钮动作名称，用于无障碍文本和悬停提示 */
     label?: string
   }
 
   const props = withDefaults(defineProps<Props>(), {
-    tone: 'theme'
+    tone: 'theme',
+    variant: 'ghost'
   })
 
   const emit = defineEmits<{
@@ -113,6 +114,23 @@
 
     &.art-icon-button--loading :deep(svg) {
       animation: art-icon-button-spin 0.8s linear infinite;
+    }
+
+    &.art-icon-button--solid {
+      color: var(--el-color-white);
+      background-color: var(--art-action-color);
+      box-shadow: 0 6px 14px color-mix(in srgb, var(--art-action-color) 24%, transparent);
+
+      &:not(:disabled):hover {
+        color: var(--el-color-white);
+        background-color: color-mix(in srgb, var(--art-action-color) 88%, black);
+      }
+
+      &:not(:disabled):active,
+      &.art-icon-button--loading {
+        color: var(--el-color-white);
+        background-color: color-mix(in srgb, var(--art-action-color) 82%, black);
+      }
     }
 
     @media (prefers-reduced-motion: reduce) {

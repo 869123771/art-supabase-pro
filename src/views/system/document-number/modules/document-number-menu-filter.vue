@@ -14,7 +14,6 @@
       <ArtTooltip content="刷新菜单目录" placement="top">
         <ArtIconButton
           icon="ri:refresh-line"
-          circle
           label="刷新菜单目录"
           :loading="loading"
           @click="emit('refresh')"

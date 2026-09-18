@@ -8,7 +8,7 @@ async function expectNoHorizontalOverflow(page: Page): Promise<void> {
   expect(viewport.scrollWidth).toBeLessThanOrEqual(viewport.clientWidth + 1)
 }
 
-test('工作区刷新采用轻量图标并固定在业务按钮左侧', async ({ page }) => {
+test('全局设计参考紧跟页面刷新，工作区刷新保持在业务按钮左侧', async ({ page }) => {
   test.setTimeout(120_000)
   const pageErrors: string[] = []
   page.on('pageerror', (error) => pageErrors.push(error.message))
@@ -22,35 +22,51 @@ test('工作区刷新采用轻量图标并固定在业务按钮左侧', async ({
 
   const actions = header.locator('.business-workspace-header__actions')
   const refresh = actions.getByRole('button', { name: '刷新运营数据' })
-  const designReference = actions.locator('.page-design-reference')
-  const designReferenceButton = designReference.getByRole('button', {
-    name: /将本页作为设计参考|编辑本页设计参考/
-  })
   await expect(refresh).toBeVisible()
   await expect(refresh).toHaveClass(/art-icon-button/)
   await expect(refresh).not.toHaveClass(/el-button/)
-  await expect(designReferenceButton).toBeVisible()
+  await expect(actions.locator('.page-design-reference')).toHaveCount(0)
 
   const ordering = await actions.evaluate((element) => {
     const children = [...element.children]
     const refreshIndex = children.findIndex((child) => child.classList.contains('art-icon-button'))
-    const designReferenceIndex = children.findIndex((child) =>
-      child.classList.contains('page-design-reference')
-    )
-    const businessButtonIndex = children.findIndex(
-      (child) => child.classList.contains('el-button') && !child.closest('.page-design-reference')
-    )
-    return { refreshIndex, designReferenceIndex, businessButtonIndex }
+    const businessButtonIndex = children.findIndex((child) => child.classList.contains('el-button'))
+    return { refreshIndex, businessButtonIndex }
   })
   expect(ordering.refreshIndex).toBe(0)
-  expect(ordering.designReferenceIndex).toBe(ordering.refreshIndex + 1)
-  expect(ordering.businessButtonIndex).toBeGreaterThan(ordering.designReferenceIndex)
+  expect(ordering.businessButtonIndex).toBeGreaterThan(ordering.refreshIndex)
 
-  await designReferenceButton.click()
-  await expect(page.getByText('记录你喜欢这页的原因')).toBeVisible()
-  await expect(page.getByRole('checkbox', { name: '信息层级' })).toBeVisible()
+  const globalHeader = page.locator('.art-header-bar__main').first()
+  const globalRefresh = globalHeader.getByRole('button', { name: '刷新当前页面' })
+  const routeReference = globalHeader.locator('.page-design-reference')
+  const routeReferenceButton = routeReference.locator(
+    'button[aria-label="将当前路由标记为设计参考"], button[aria-label="编辑当前路由设计参考"]'
+  )
+  await expect(globalRefresh).toBeVisible()
+  await expect(routeReferenceButton).toBeVisible()
+  await expect(routeReference.locator('.el-popover')).toHaveCount(0)
+
+  const headerOrdering = await globalHeader.evaluate((element) => {
+    const refreshButton = element.querySelector<HTMLButtonElement>(
+      'button[aria-label="刷新当前页面"]'
+    )
+    const reference = element.querySelector<HTMLElement>('.page-design-reference')
+    return {
+      sameParent: refreshButton?.parentElement === reference?.parentElement,
+      adjacent: refreshButton?.nextElementSibling === reference
+    }
+  })
+  expect(headerOrdering).toEqual({ sameParent: true, adjacent: true })
+
+  await routeReferenceButton.focus()
+  await expect(routeReferenceButton).toBeFocused()
+  await routeReferenceButton.click()
+  await expect(page.getByText('参考截图', { exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: /点击选择、拖入或粘贴图片/ })).toBeVisible()
+  await expect(page.getByRole('checkbox', { name: '布局紧凑' })).toBeVisible()
+  await expect(page.getByRole('textbox', { name: '设计参考补充说明' })).toBeVisible()
+  await page.getByRole('button', { name: '取消', exact: true }).click()
   await expectNoHorizontalOverflow(page)
-  await page.getByRole('button', { name: '关闭' }).click()
 
   await refresh.focus()
   await expect(refresh).toBeFocused()

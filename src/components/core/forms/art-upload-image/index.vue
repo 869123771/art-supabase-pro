@@ -21,25 +21,20 @@
       <div class="preview-list upload-container relative" :style="getSize">
         <template v-if="file.url">
           <div class="preview-mask">
-            <button
-              type="button"
+            <ArtIconButton
               class="preview-action"
-              aria-label="预览图片"
-              title="预览图片"
+              icon="ri-eye-line"
+              label="预览图片"
               @click.stop="handleView(index)"
-            >
-              <ArtSvgIcon icon="ri-eye-line" aria-hidden="true" />
-            </button>
-            <button
+            />
+            <ArtIconButton
               v-if="!readonly"
-              type="button"
               class="preview-action preview-action--danger"
-              aria-label="删除图片"
-              title="删除图片"
+              icon="ri-delete-bin-2-line"
+              tone="danger"
+              label="删除图片"
               @click.stop="handleRemove(index)"
-            >
-              <ArtSvgIcon icon="ri-delete-bin-2-line" aria-hidden="true" />
-            </button>
+            />
           </div>
           <el-image
             ref="ElImageRefs"
@@ -104,6 +99,7 @@
   import ArtTooltip from '@/components/core/feedback/art-tooltip/index.vue'
   import ArtResourcePicker from '@/components/core/forms/art-resource-picker/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
+  import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
   import {
     normalizeUploadModelUrls,
     shouldSyncUploadFileList
@@ -471,7 +467,7 @@
         cursor: pointer;
         background: rgb(15 23 42 / 48%);
         border: 1px solid rgb(255 255 255 / 38%);
-        border-radius: 50%;
+        border-radius: var(--art-control-radius);
         opacity: 0;
         transform: scale(0.92);
         transition:

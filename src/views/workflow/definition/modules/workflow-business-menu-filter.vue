@@ -13,7 +13,6 @@
       <ArtTooltip content="刷新业务目录" placement="top">
         <ArtIconButton
           icon="ri:refresh-line"
-          circle
           label="刷新业务目录"
           :loading="loading"
           @click="emit('refresh')"

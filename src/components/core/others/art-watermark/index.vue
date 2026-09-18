@@ -10,7 +10,7 @@
       <ElWatermark
         class="h-full w-full"
         :content="watermarkContent"
-        :font="{ fontSize: fontSize, color: fontColor }"
+        :font="{ fontSize: fontSize, color: resolvedFontColor }"
         :rotate="rotate"
         :gap="watermarkGap"
         :offset="watermarkOffset"
@@ -30,7 +30,7 @@
 
   const settingStore = useSettingStore()
   const userStore = useUserStore()
-  const { watermarkVisible } = storeToRefs(settingStore)
+  const { watermarkVisible, isDark } = storeToRefs(settingStore)
   const { websiteConfig, websiteConfigLoaded, loadWebsiteConfig, resolveWatermarkContent } =
     useWebsiteConfig()
   const teleportReady = ref(false)
@@ -61,13 +61,8 @@
   const props = withDefaults(defineProps<WatermarkProps>(), {
     content: '',
     visible: false,
-    fontSize: 14,
-    fontColor: 'rgba(71, 85, 105, 0.05)',
+    fontSize: 16,
     rotate: -22,
-    gapX: 340,
-    gapY: 260,
-    offsetX: 170,
-    offsetY: 130,
     zIndex: 3100
   })
 
@@ -82,10 +77,13 @@
   const watermarkContent = computed(
     () => props.content || resolveWatermarkContent(userStore.getUserInfo)
   )
-  const watermarkGap = computed<[number, number]>(() => [props.gapX ?? 220, props.gapY ?? 190])
+  const resolvedFontColor = computed(
+    () => props.fontColor ?? (isDark.value ? 'rgba(226, 232, 240, 0.14)' : 'rgba(51, 65, 85, 0.12)')
+  )
+  const watermarkGap = computed<[number, number]>(() => [props.gapX ?? 240, props.gapY ?? 180])
   const watermarkOffset = computed<[number, number]>(() => [
-    props.offsetX ?? 110,
-    props.offsetY ?? 95
+    props.offsetX ?? 120,
+    props.offsetY ?? 90
   ])
 
   onMounted(async () => {

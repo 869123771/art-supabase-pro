@@ -34,6 +34,24 @@ export interface DataSelectFilterOption {
   value: string | number
 }
 
+/** Optional hierarchical navigator displayed beside a table data source. */
+export interface DataSelectNavigation {
+  /** Flat records; the selector builds the hierarchy from rowKey/parentKey. */
+  data: DataSelectRecord[]
+  title?: string
+  rowKey?: string
+  parentKey?: string
+  labelKey?: string
+  descriptionKey?: string
+  childrenKey?: string
+  /** Key added to apiFn.params.filters when a node is selected. */
+  filterKey?: string
+  allLabel?: string
+  allDescription?: string
+  searchPlaceholder?: string
+  emptyText?: string
+}
+
 export interface DataSelectFetchParams {
   keyword: string
   page: number
@@ -68,6 +86,7 @@ export interface ArtDataSelectProps {
   filterPlaceholder?: string
   filterKey?: string
   filterOptions?: DataSelectFilterOption[]
+  navigation?: DataSelectNavigation
   rowKey?: string | ((row: DataSelectRecord) => DataSelectKey)
   labelKey?: string | ((row: DataSelectRecord) => string)
   descriptionKey?: string | ((row: DataSelectRecord) => string)

@@ -14,7 +14,6 @@
       <ArtTooltip content="刷新组织结构" placement="top">
         <ArtIconButton
           icon="ri:refresh-line"
-          circle
           label="刷新组织结构"
           :loading="loading"
           @click="emit('refresh')"

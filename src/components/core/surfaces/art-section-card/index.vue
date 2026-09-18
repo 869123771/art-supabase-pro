@@ -105,6 +105,7 @@
 
     &__header {
       display: flex;
+      flex-wrap: wrap;
       gap: var(--art-space-3);
       align-items: flex-start;
       justify-content: space-between;
@@ -113,7 +114,7 @@
     }
 
     &__identity {
-      flex: 1;
+      flex: 1 1 240px;
       min-width: 0;
 
       :deep(.art-section-title) {
@@ -131,7 +132,7 @@
 
     &__actions {
       display: flex;
-      flex: none;
+      flex: 0 1 auto;
       flex-wrap: wrap;
       gap: var(--art-space-2);
       align-items: center;

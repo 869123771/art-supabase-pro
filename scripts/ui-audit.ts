@@ -207,11 +207,11 @@ function scanFile(file: string, content: string, tooltipOnly = false): Finding[]
       if (!hasWidth || !hasHeight) addFinding(match.index, 'images/require-intrinsic-size')
     }
 
-    for (const match of content.matchAll(/<ElButton\b[^>]*\bcircle\b[^>]*>/gs)) {
+    for (const match of content.matchAll(
+      /<(?:ElButton|ArtIconButton)\b[^>]*\scircle(?:\s|=|\/?>)[^>]*>/gs
+    )) {
       if (match.index == null || match[0].includes('data-ui-audit-allow')) continue
-      if (!/(?:aria-label|title)\s*=/.test(match[0])) {
-        addFinding(match.index, 'a11y/icon-button-requires-name')
-      }
+      addFinding(match.index, 'consistency/no-circular-icon-actions')
     }
 
     for (const match of content.matchAll(

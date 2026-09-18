@@ -16,7 +16,7 @@
       </div>
 
       <div
-        v-if="tags.length || refreshable || (designReference && isPlatformSuper) || $slots.actions"
+        v-if="tags.length || refreshable || $slots.actions"
         class="business-workspace-header__aside"
         aria-label="业务特性与操作"
       >
@@ -32,31 +32,19 @@
           </ElTag>
         </div>
         <div
-          v-if="refreshable || (designReference && isPlatformSuper) || $slots.actions"
+          v-if="refreshable || $slots.actions"
           class="business-workspace-header__actions"
           aria-label="页面操作"
         >
           <ArtTooltip v-if="refreshable" :content="refreshLabel" placement="bottom">
             <ArtIconButton
               icon="ri:refresh-line"
-              circle
               :label="refreshLabel"
               :loading="refreshLoading"
               :disabled="refreshDisabled"
               @click="emit('refresh')"
             />
           </ArtTooltip>
-          <PageDesignReference
-            v-if="designReference && isPlatformSuper"
-            :title="title"
-            surface-kind="workspace"
-            :style-snapshot="{
-              component: 'BusinessWorkspaceHeader',
-              density,
-              hasTags: tags.length > 0,
-              hasMetrics: metrics.length > 0
-            }"
-          />
           <slot name="actions" />
         </div>
       </div>
@@ -100,11 +88,8 @@
 
 <script setup lang="ts">
   import type { TagProps } from 'element-plus'
-  import { storeToRefs } from 'pinia'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
-  import PageDesignReference from '@/components/business/page-design-reference/index.vue'
-  import { useUserStore } from '@/store/modules/user'
 
   export interface BusinessWorkspaceTag {
     label: string
@@ -137,7 +122,6 @@
       refreshLabel?: string
       refreshLoading?: boolean
       refreshDisabled?: boolean
-      designReference?: boolean
     }>(),
     {
       eyebrow: 'BUSINESS OPERATIONS',
@@ -147,8 +131,7 @@
       refreshable: false,
       refreshLabel: '刷新页面数据',
       refreshLoading: false,
-      refreshDisabled: false,
-      designReference: true
+      refreshDisabled: false
     }
   )
 
@@ -156,8 +139,6 @@
     'metric-click': [metric: BusinessWorkspaceMetric]
     refresh: []
   }>()
-
-  const { isPlatformSuper } = storeToRefs(useUserStore())
 
   const handleMetricClick = (metric: BusinessWorkspaceMetric): void => {
     if (metric.interactive && !metric.loading) emit('metric-click', metric)
@@ -232,6 +213,7 @@
       }
 
       p {
+        max-width: 760px;
         margin: 0;
         font-size: 13px;
         line-height: 1.6;
@@ -338,6 +320,7 @@
       flex-direction: column;
       gap: 10px;
       align-items: flex-end;
+      max-width: min(48%, 640px);
     }
 
     &__tags,
@@ -471,12 +454,22 @@
 
     @media (width <= 900px) {
       &__hero {
+        flex-wrap: wrap;
         align-items: flex-start;
       }
 
       &__aside {
-        flex-direction: column;
-        align-items: flex-end;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        width: calc(100% - 66px);
+        max-width: none;
+        margin-left: 66px;
+      }
+
+      &--compact .business-workspace-header__aside {
+        width: calc(100% - 54px);
+        margin-left: 54px;
       }
 
       &__metric {
@@ -491,6 +484,7 @@
       }
 
       &__aside {
+        flex-direction: column;
         align-items: flex-start;
         width: calc(100% - 66px);
         margin-left: 66px;

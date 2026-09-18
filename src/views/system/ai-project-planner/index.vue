@@ -26,7 +26,6 @@
             <ArtTooltip content="刷新建议" placement="bottom">
               <ArtIconButton
                 icon="ri:refresh-line"
-                circle
                 label="刷新建议"
                 :loading="loading.state"
                 @click="loadState(true)"

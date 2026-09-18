@@ -45,7 +45,6 @@
             <ArtTooltip content="刷新委托记录" placement="top">
               <ArtIconButton
                 icon="ri:refresh-line"
-                circle
                 label="刷新委托记录"
                 :loading="state.loading"
                 @click="loadData"

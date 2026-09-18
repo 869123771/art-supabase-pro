@@ -68,7 +68,6 @@
               <ArtTooltip content="刷新投递事件" placement="top">
                 <ArtIconButton
                   icon="ri:refresh-line"
-                  circle
                   label="刷新投递事件"
                   :loading="state.loading"
                   @click="loadData"

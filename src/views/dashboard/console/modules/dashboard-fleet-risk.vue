@@ -221,7 +221,7 @@
       font-size: 22px;
       color: var(--risk-tone);
       background: color-mix(in srgb, var(--risk-tone) 10%, var(--el-bg-color));
-      border-radius: 50%;
+      border-radius: var(--art-control-radius);
       transition:
         color 0.18s ease,
         background 0.18s ease,

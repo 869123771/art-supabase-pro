@@ -36,16 +36,13 @@
             </slot>
           </div>
         </div>
-        <button
+        <ArtIconButton
           v-if="options.showFullscreenButton"
-          type="button"
-          class="art-icon-button art-drawer__fullscreen-button"
-          :aria-label="fullscreenLabel"
-          :title="fullscreenLabel"
+          class="art-drawer__fullscreen-button"
+          :icon="fullscreenIcon"
+          :label="fullscreenLabel"
           @click.stop="toggleFullscreen"
-        >
-          <ArtSvgIcon :icon="fullscreenIcon" />
-        </button>
+        />
       </div>
     </template>
 
@@ -134,6 +131,7 @@
     ArtScrollOptions
   } from './types'
   import ArtOverlayLoading from '@/components/core/feedback/art-overlay-loading/index.vue'
+  import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
   import { mergeOverlayRecords, useArtOverlay } from '@/hooks/core/useArtOverlay'
   import { handoffVerticalWheel } from '@/utils/ui/wheel-scroll'
 

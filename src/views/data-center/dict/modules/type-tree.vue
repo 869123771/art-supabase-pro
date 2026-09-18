@@ -102,39 +102,29 @@
 
             <div class="dict-type-tree__actions" @click.stop>
               <ArtTooltip v-if="data.nodeType === 'directory'" content="新增下级" placement="top">
-                <ElButton
-                  size="small"
-                  circle
-                  text
-                  type="primary"
-                  :aria-label="`在${data.name}下新增`"
+                <ArtIconButton
+                  class="size-6.5! text-base!"
+                  icon="ri:add-line"
+                  :label="`在${data.name}下新增`"
                   @click="handleAdd(data)"
-                >
-                  <ArtSvgIcon icon="ri:add-line" />
-                </ElButton>
+                />
               </ArtTooltip>
               <ArtTooltip content="编辑" placement="top">
-                <ElButton
-                  size="small"
-                  circle
-                  text
-                  :aria-label="`编辑${data.name}`"
+                <ArtIconButton
+                  class="size-6.5! text-base!"
+                  icon="ri:pencil-line"
+                  :label="`编辑${data.name}`"
                   @click="handleEdit(data)"
-                >
-                  <ArtSvgIcon icon="ri:pencil-line" />
-                </ElButton>
+                />
               </ArtTooltip>
               <ArtTooltip content="删除" placement="top">
-                <ElButton
-                  size="small"
-                  circle
-                  text
-                  type="danger"
-                  :aria-label="`删除${data.name}`"
+                <ArtIconButton
+                  class="size-6.5! text-base!"
+                  icon="ri:delete-bin-5-line"
+                  tone="danger"
+                  :label="`删除${data.name}`"
                   @click="handleDelete(data)"
-                >
-                  <ArtSvgIcon icon="ri:delete-bin-5-line" />
-                </ElButton>
+                />
               </ArtTooltip>
             </div>
           </div>
@@ -199,6 +189,7 @@
   import { useElementSize } from '@vueuse/core'
   import TreeUtils, { TreeDataError } from '@/utils/tree'
   import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
+  import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
   import { deleteDictType, fetchGetDictTypeList, saveDictTypeTreeOrder } from '@/api/data-center'
   import DictTypeDialog from './dict-type-dialog.vue'
   import MasterDataDeleteGuard, {

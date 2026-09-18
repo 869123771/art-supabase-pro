@@ -10,18 +10,18 @@
         <p>让工作台更鲜明、更高效，也更像你的产品。</p>
       </div>
     </div>
-    <button
-      type="button"
+    <ArtIconButton
       class="setting-header__close"
-      aria-label="关闭界面设置"
+      icon="ri:close-line"
+      label="关闭界面设置"
       @click="$emit('close')"
-    >
-      <ArtSvgIcon icon="ri:close-line" />
-    </button>
+    />
   </header>
 </template>
 
 <script setup lang="ts">
+  import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
+
   defineEmits<{
     close: []
   }>()

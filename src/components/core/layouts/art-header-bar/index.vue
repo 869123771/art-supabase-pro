@@ -49,6 +49,11 @@
           @click="() => reload()"
         />
 
+        <!-- 当前路由设计参考（仅平台超级管理员） -->
+        <PageDesignReference
+          v-if="isPlatformSuper && shouldShowRefreshButton && !isHeaderLeftMenu"
+        />
+
         <!-- 快速入口 -->
         <ArtFastEnter
           v-if="shouldShowFastEnter && !isHeaderLeftMenu && width >= headerBarFastEnterMinWidth"
@@ -224,6 +229,7 @@
   import ArtUserMenu from './widget/ArtUserMenu.vue'
   import ArtApplicationSwitcher from './widget/ArtApplicationSwitcher.vue'
   import PlatformTenantScopeSwitcher from '@/components/business/platform-tenant-scope-switcher/index.vue'
+  import PageDesignReference from '@/components/business/page-design-reference/index.vue'
 
   defineOptions({ name: 'ArtHeaderBar' })
 
@@ -266,7 +272,7 @@
   const { menuOpen, systemThemeColor, showSettingGuide, menuType, isDark, tabStyle } =
     storeToRefs(settingStore)
 
-  const { language } = storeToRefs(userStore)
+  const { language, isPlatformSuper } = storeToRefs(userStore)
   const { menuList } = storeToRefs(menuStore)
 
   const showNotice = ref(false)

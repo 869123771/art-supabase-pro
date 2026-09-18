@@ -31,6 +31,8 @@
     "modules:check": "tsx scripts/manage-modules.ts check",
     "modules:build": "tsx scripts/manage-modules.ts build",
     "modules:setup": "tsx scripts/manage-modules.ts setup",
+    "repo:pull": "tsx scripts/repository-workflow.ts pull",
+    "repo:publish": "tsx scripts/repository-workflow.ts publish",
     "build:analyze": "tsx scripts/analyze-build.ts",
     "bundle:check": "tsx scripts/check-bundle-budget.ts",
     "database:security:audit": "tsx scripts/audit-database-security.ts",

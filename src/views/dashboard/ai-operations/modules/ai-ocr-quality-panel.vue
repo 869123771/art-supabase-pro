@@ -18,7 +18,6 @@
           <ArtTooltip content="刷新 OCR 质量" placement="bottom">
             <ArtIconButton
               icon="ri:refresh-line"
-              circle
               label="刷新 OCR 质量"
               :loading="state.loading"
               @click="loadData"

@@ -8,7 +8,12 @@
     :style="splitterStyle"
     lazy
   >
-    <ElSplitterPanel :size="primarySize" :min="primaryMin" :max="primaryMax">
+    <ElSplitterPanel
+      :size="primarySize"
+      :min="primaryMin"
+      :max="primaryMax"
+      :collapsible="primaryCollapsible"
+    >
       <div class="art-workspace-splitter__primary">
         <slot name="primary" />
       </div>
@@ -40,6 +45,7 @@
       breakpoint?: number
       narrowMode?: NarrowMode
       primaryCollapsed?: boolean
+      primaryCollapsible?: boolean
       stackedPrimarySize?: string
       stackedSecondaryMinSize?: string
     }>(),
@@ -51,6 +57,7 @@
       breakpoint: 960,
       narrowMode: 'stack',
       primaryCollapsed: false,
+      primaryCollapsible: true,
       stackedPrimarySize: '320px',
       stackedSecondaryMinSize: '520px'
     }

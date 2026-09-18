@@ -16,7 +16,6 @@
           <ArtTooltip content="重新读取远端模型目录" placement="bottom">
             <ArtIconButton
               icon="ri:refresh-line"
-              circle
               :loading="catalog.loading"
               @click="refreshModelCatalog"
             />

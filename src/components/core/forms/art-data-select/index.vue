@@ -75,41 +75,6 @@
     >
       <div class="art-data-select-dialog__body">
         <div
-          v-if="showSearch"
-          class="art-data-select-dialog__search"
-          :class="{ 'has-filter': normalizedFilterOptions.length }"
-        >
-          <ElInput
-            v-model="keyword"
-            clearable
-            :placeholder="searchPlaceholder"
-            @keyup.enter="handleSearch"
-            @clear="handleSearch"
-          >
-            <template #prefix>
-              <ElIcon>
-                <Search />
-              </ElIcon>
-            </template>
-          </ElInput>
-          <ElSelect
-            v-if="normalizedFilterOptions.length"
-            v-model="filterValue"
-            clearable
-            :placeholder="filterPlaceholder"
-            @change="handleSearch"
-            @clear="handleSearch"
-          >
-            <ElOption
-              v-for="item in normalizedFilterOptions"
-              :key="item.value"
-              :label="item.label"
-              :value="item.value"
-            />
-          </ElSelect>
-        </div>
-
-        <div
           class="art-data-select-dialog__layout"
           :class="[
             `is-${mode}-mode`,
@@ -118,7 +83,102 @@
             }
           ]"
         >
+          <aside v-if="navigation" class="art-data-select-dialog__navigation">
+            <div class="art-data-select-dialog__navigation-header">
+              <span>{{ navigation.title || '分类导航' }}</span>
+              <small>{{ navigationRows.length }} 项</small>
+            </div>
+            <ElInput
+              v-model="navigationKeyword"
+              clearable
+              :placeholder="navigation.searchPlaceholder || '搜索分类'"
+              class="art-data-select-dialog__navigation-search"
+            >
+              <template #prefix>
+                <ElIcon><Search /></ElIcon>
+              </template>
+            </ElInput>
+            <button
+              type="button"
+              class="art-data-select-dialog__navigation-all"
+              :class="{ 'is-current': !selectedNavigationKey }"
+              @click="selectNavigation()"
+            >
+              <span class="art-data-select-dialog__navigation-icon" aria-hidden="true">
+                <ArtSvgIcon icon="ri:apps-2-line" />
+              </span>
+              <span class="art-data-select-dialog__navigation-copy">
+                <strong>{{ navigation.allLabel || '全部' }}</strong>
+                <small v-if="navigation.allDescription">{{ navigation.allDescription }}</small>
+              </span>
+              <ArtSvgIcon v-if="!selectedNavigationKey" icon="ri:check-line" aria-hidden="true" />
+            </button>
+            <ElScrollbar class="art-data-select-dialog__navigation-scrollbar">
+              <ElTree
+                ref="navigationTreeRef"
+                :data="navigationTreeData"
+                :props="navigationTreeProps"
+                :node-key="navigationRowKey"
+                :current-node-key="selectedNavigationKey || undefined"
+                :filter-node-method="filterNavigationNode"
+                default-expand-all
+                highlight-current
+                :expand-on-click-node="false"
+                :empty-text="navigation.emptyText || '暂无分类'"
+                @node-click="selectNavigation"
+              >
+                <template #default="{ data }">
+                  <span class="art-data-select-dialog__navigation-node">
+                    <span class="art-data-select-dialog__navigation-icon" aria-hidden="true">
+                      <ArtSvgIcon icon="ri:folder-3-line" />
+                    </span>
+                    <span class="art-data-select-dialog__navigation-copy">
+                      <strong>{{ getNavigationLabel(data) }}</strong>
+                      <small v-if="getNavigationDescription(data)">
+                        {{ getNavigationDescription(data) }}
+                      </small>
+                    </span>
+                  </span>
+                </template>
+              </ElTree>
+            </ElScrollbar>
+          </aside>
+
           <section class="art-data-select-dialog__main">
+            <div
+              v-if="showSearch"
+              class="art-data-select-dialog__search"
+              :class="{ 'has-filter': normalizedFilterOptions.length }"
+            >
+              <ElInput
+                v-model="keyword"
+                clearable
+                :placeholder="searchPlaceholder"
+                @keyup.enter="handleSearch"
+                @clear="handleSearch"
+              >
+                <template #prefix>
+                  <ElIcon>
+                    <Search />
+                  </ElIcon>
+                </template>
+              </ElInput>
+              <ElSelect
+                v-if="normalizedFilterOptions.length"
+                v-model="filterValue"
+                clearable
+                :placeholder="filterPlaceholder"
+                @change="handleSearch"
+                @clear="handleSearch"
+              >
+                <ElOption
+                  v-for="item in normalizedFilterOptions"
+                  :key="item.value"
+                  :label="item.label"
+                  :value="item.value"
+                />
+              </ElSelect>
+            </div>
             <div
               class="art-data-select-dialog__content"
               :class="{ 'is-tree': mode === 'tree' }"
@@ -392,6 +452,7 @@
 
   const tableRef = ref<DataSelectTableInstance>()
   const treeRef = ref<InstanceType<typeof ElTree>>()
+  const navigationTreeRef = ref<InstanceType<typeof ElTree>>()
   const dialogRef = ref<ArtDialogExpose<void>>()
   const dialogSizePresets: readonly ArtDialogSize[] = ['sm', 'md', 'lg', 'xl', 'full']
   const loading = ref(false)
@@ -402,6 +463,8 @@
   let loadGeneration = 0
   const keyword = ref('')
   const filterValue = ref<string | number>()
+  const navigationKeyword = ref('')
+  const selectedNavigationKey = ref<DataSelectKey>()
   const page = ref(1)
   const innerPageSize = ref(props.pageSize)
   const total = ref(0)
@@ -426,6 +489,22 @@
   const multipleDisplayLabels = computed(() => displayRows.value.map((row) => getRowLabel(row)))
   const normalizedFilterOptions = computed(() => props.filterOptions ?? [])
   const normalizedFilterKey = computed(() => props.filterKey ?? 'type')
+  const navigationRowKey = computed(() => props.navigation?.rowKey ?? 'id')
+  const navigationParentKey = computed(() => props.navigation?.parentKey ?? 'parentId')
+  const navigationChildrenKey = computed(() => props.navigation?.childrenKey ?? 'children')
+  const navigationRows = computed(() => props.navigation?.data ?? [])
+  const navigationTreeData = computed(() =>
+    new TreeUtils({
+      idKey: navigationRowKey.value,
+      parentKey: navigationParentKey.value,
+      childrenKey: navigationChildrenKey.value,
+      deepClone: false
+    }).listToTree(navigationRows.value)
+  )
+  const navigationTreeProps = computed(() => ({
+    label: (data: DataSelectRecord) => getNavigationLabel(data),
+    children: navigationChildrenKey.value
+  }))
   const shouldShowSelectedPanel = computed(() => props.showSelectedPanel ?? props.multiple)
   const treeUtils = computed(
     () => new TreeUtils({ childrenKey: props.childrenKey, deepClone: false })
@@ -487,6 +566,28 @@
     if (!props.descriptionKey) return ''
     if (typeof props.descriptionKey === 'function') return props.descriptionKey(row)
     return String(get(row, props.descriptionKey) ?? '')
+  }
+
+  function getNavigationKey(row: DataSelectRecord): DataSelectKey {
+    return get(row, navigationRowKey.value) as DataSelectKey
+  }
+
+  function getNavigationLabel(row: DataSelectRecord): string {
+    return String(get(row, props.navigation?.labelKey ?? 'label') ?? '')
+  }
+
+  function getNavigationDescription(row: DataSelectRecord): string {
+    const key = props.navigation?.descriptionKey
+    return key ? String(get(row, key) ?? '') : ''
+  }
+
+  const filterNavigationNode = (value: string, row: DataSelectRecord): boolean => {
+    if (!value) return true
+    const query = value.toLowerCase()
+    return (
+      getNavigationLabel(row).toLowerCase().includes(query) ||
+      getNavigationDescription(row).toLowerCase().includes(query)
+    )
   }
 
   const hasRowChildren = (row: DataSelectRecord): boolean => {
@@ -662,7 +763,13 @@
           page: page.value,
           pageSize: innerPageSize.value,
           filters: {
-            [normalizedFilterKey.value]: filterValue.value
+            [normalizedFilterKey.value]: filterValue.value,
+            ...(props.navigation
+              ? {
+                  [props.navigation.filterKey ?? 'navigationId']:
+                    selectedNavigationKey.value || undefined
+                }
+              : {})
           }
         })
         if (generation !== loadGeneration) return
@@ -693,6 +800,12 @@
   const handleSearch = () => {
     page.value = 1
     void loadData()
+  }
+
+  const selectNavigation = (row?: DataSelectRecord) => {
+    selectedNavigationKey.value = row ? getNavigationKey(row) : undefined
+    navigationTreeRef.value?.setCurrentKey?.(selectedNavigationKey.value as never)
+    handleSearch()
   }
 
   const open = async () => {
@@ -741,6 +854,8 @@
   const handleDialogClosed = () => {
     keyword.value = ''
     filterValue.value = undefined
+    navigationKeyword.value = ''
+    selectedNavigationKey.value = undefined
     page.value = 1
     emit('close')
   }
@@ -885,6 +1000,8 @@
     }
   )
 
+  watch(navigationKeyword, (value) => navigationTreeRef.value?.filter?.(value))
+
   watch(
     () => confirmedRows.value,
     (rows) => {
@@ -959,7 +1076,8 @@
     flex: none;
     grid-template-columns: minmax(0, 1fr);
     gap: 12px;
-    margin-bottom: 12px;
+    padding: 12px;
+    border-bottom: 1px solid var(--el-border-color-lighter);
 
     &.has-filter {
       grid-template-columns: minmax(220px, 1fr) 260px;
@@ -996,6 +1114,154 @@
     min-width: 0;
     min-height: 0;
     background: var(--default-box-color);
+  }
+
+  .art-data-select-dialog__navigation {
+    display: flex;
+    flex: 0 0 240px;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+    background: color-mix(in srgb, var(--art-gray-100) 44%, var(--default-box-color));
+    border-right: 1px solid var(--el-border-color-lighter);
+  }
+
+  .art-data-select-dialog__navigation-header {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 54px;
+    padding: 0 16px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--el-text-color-primary);
+    background: var(--art-gray-100);
+    border-bottom: 1px solid var(--el-border-color-lighter);
+
+    small {
+      font-size: 12px;
+      font-weight: 400;
+      color: var(--el-text-color-secondary);
+    }
+  }
+
+  .art-data-select-dialog__navigation-search {
+    flex: none;
+    padding: 12px;
+
+    :deep(.el-input__wrapper) {
+      min-height: 36px;
+      background: var(--default-box-color);
+      box-shadow: 0 0 0 1px var(--el-border-color-lighter) inset;
+    }
+  }
+
+  .art-data-select-dialog__navigation-all {
+    display: flex;
+    flex: none;
+    gap: 9px;
+    align-items: center;
+    width: calc(100% - 16px);
+    min-height: 48px;
+    padding: 7px 10px;
+    margin: 0 8px 4px;
+    color: var(--el-text-color-primary);
+    text-align: left;
+    cursor: pointer;
+    background: transparent;
+    border: 0;
+    border-radius: var(--el-border-radius-base);
+
+    &:hover,
+    &:focus-visible,
+    &.is-current {
+      background: var(--art-gray-100);
+    }
+
+    &.is-current {
+      box-shadow: inset 3px 0 0 var(--theme-color);
+    }
+
+    > .art-svg-icon:last-child {
+      flex: none;
+      margin-left: auto;
+      color: var(--theme-color);
+    }
+  }
+
+  .art-data-select-dialog__navigation-scrollbar {
+    flex: 1;
+    height: 0;
+    min-height: 0;
+    padding: 0 8px 10px;
+
+    :deep(.el-tree) {
+      background: transparent;
+    }
+
+    :deep(.el-tree-node__content) {
+      height: auto;
+      min-height: 48px;
+      padding-right: 8px;
+      margin: 1px 0;
+      border-radius: var(--el-border-radius-base);
+    }
+
+    :deep(.el-tree-node__content:hover),
+    :deep(.el-tree-node.is-current > .el-tree-node__content) {
+      background: var(--art-gray-100);
+    }
+
+    :deep(.el-tree-node.is-current > .el-tree-node__content) {
+      box-shadow: inset 3px 0 0 var(--theme-color);
+    }
+  }
+
+  .art-data-select-dialog__navigation-node {
+    display: flex;
+    flex: 1;
+    gap: 9px;
+    align-items: center;
+    min-width: 0;
+  }
+
+  .art-data-select-dialog__navigation-icon {
+    display: inline-flex;
+    flex: 0 0 28px;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    color: var(--theme-color);
+    background: color-mix(in srgb, var(--theme-color) 8%, var(--default-box-color));
+    border-radius: var(--el-border-radius-base);
+  }
+
+  .art-data-select-dialog__navigation-copy {
+    display: grid;
+    flex: 1;
+    min-width: 0;
+
+    strong,
+    small {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    strong {
+      font-size: 13px;
+      font-weight: 600;
+      line-height: 19px;
+    }
+
+    small {
+      font-size: 11px;
+      line-height: 16px;
+      color: var(--el-text-color-secondary);
+    }
   }
 
   .art-data-select-dialog__content {
@@ -1304,6 +1570,22 @@
 
     .art-data-select-dialog__layout {
       flex-direction: column;
+    }
+
+    .art-data-select-dialog__navigation {
+      flex: 0 0 auto;
+      width: auto;
+      max-height: 190px;
+      border-right: 0;
+      border-bottom: 1px solid var(--el-border-color-lighter);
+    }
+
+    .art-data-select-dialog__navigation-header {
+      min-height: 44px;
+    }
+
+    .art-data-select-dialog__navigation-search {
+      padding: 8px 12px;
     }
 
     .art-data-select-dialog__selected {
