@@ -348,7 +348,6 @@
         border-radius: var(--art-control-radius, var(--el-border-radius-base));
 
         .art-svg-icon {
-          margin-right: 7px;
           font-size: 17px;
         }
       }

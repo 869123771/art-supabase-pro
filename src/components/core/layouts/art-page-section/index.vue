@@ -43,7 +43,8 @@
 
     &__header {
       display: flex;
-      gap: var(--art-space-3);
+      flex-wrap: wrap;
+      gap: var(--art-space-2) var(--art-space-3);
       align-items: flex-start;
       justify-content: space-between;
       min-width: 0;
@@ -51,7 +52,7 @@
     }
 
     &__identity {
-      flex: 1;
+      flex: 1 1 120px;
       min-width: 0;
 
       :deep(.art-section-title) {
@@ -70,25 +71,15 @@
     &__actions {
       display: flex;
       flex: none;
+      flex-wrap: wrap;
       gap: var(--art-space-2);
       align-items: center;
       justify-content: flex-end;
+      max-width: 100%;
     }
 
     &__body {
       min-width: 0;
-    }
-
-    @media (width <= 640px) {
-      &__header {
-        flex-direction: column;
-      }
-
-      &__actions {
-        flex-wrap: wrap;
-        justify-content: flex-start;
-        width: 100%;
-      }
     }
   }
 </style>

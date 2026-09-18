@@ -3,6 +3,7 @@ import test from 'node:test'
 import {
   createCachedRouteLoader,
   mapApplicationViewModules,
+  preloadRouteComponent,
   registerApplicationViewModules,
   resolveHostedApplicationCode
 } from '../../src/router/core/ComponentLoader'
@@ -29,6 +30,23 @@ test('reuses an in-flight route component request and retries after a failure', 
   assert.equal(calls, 2)
   assert.equal(firstRetry, component)
   assert.equal(secondRetry, component)
+})
+
+test('preloads only marked route loaders and shares the cached request with navigation', async () => {
+  let calls = 0
+  const component = { name: 'PrefetchedRouteComponent' }
+  const loader = createCachedRouteLoader(async () => {
+    calls += 1
+    return { default: component }
+  })
+
+  await preloadRouteComponent(loader)
+  const resolved = await loader()
+
+  assert.equal(calls, 1)
+  assert.equal(resolved, component)
+  await preloadRouteComponent(() => component)
+  assert.equal(calls, 1)
 })
 
 test('maps flattened child views behind the stable application route prefix', () => {

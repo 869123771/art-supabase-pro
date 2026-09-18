@@ -21,6 +21,8 @@ Build calm, information-dense enterprise workspaces with clear hierarchy, compac
 - Prefer compact tables, short search rows, semantic status tags, and one clear primary action per region.
 - Use theme tokens, existing spacing tokens, and shared interaction components. Preserve dark mode, responsive behavior, focus visibility, loading, empty, error, and disabled states.
 - Use `ArtIconButton` for icon-only actions. Keep its compact project-standard corner radius; do not turn routine actions into circular controls. Reserve true circles for semantic dots, avatars, chart marks, map markers, and color swatches.
+- Keep icon-and-label controls vertically centered with the shared `--art-control-icon-gap` rhythm. `ElButton`, `ElTag`, and `ElLink` already inherit it; custom native controls must use `.art-icon-label` instead of page-local icon margins.
+- Keep card and section header actions beside the title whenever their intrinsic widths fit. Let the shared flex header wrap naturally only when the container cannot hold both; do not force action rows with viewport-only breakpoints or oversized title flex bases.
 - Keep loading feedback inside the initiating icon action: rotate the existing icon while preserving the action's size and identity. Do not inject a second spinner or replace the icon with loading text.
 - Use `variant="solid"` only for a genuinely primary icon action such as send/submit; routine refresh, navigation, collapse, close, and row-tool actions stay on the default ghost treatment.
 

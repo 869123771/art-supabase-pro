@@ -158,7 +158,7 @@
       <button
         v-if="focusMode != null"
         type="button"
-        class="focus-button"
+        class="focus-button art-icon-label art-icon-label--compact"
         :class="{ active: focusMode }"
         :aria-label="focusMode ? '退出专注模式' : '进入专注模式'"
         :aria-pressed="focusMode"
@@ -461,10 +461,6 @@
   }
 
   .focus-button {
-    display: inline-flex;
-    gap: 4px;
-    align-items: center;
-    justify-content: center;
     width: auto;
     height: 32px;
     padding: 0 8px;
@@ -532,7 +528,7 @@
 
       button {
         display: inline-flex;
-        gap: 5px;
+        gap: var(--art-control-icon-gap);
         align-items: center;
         justify-content: center;
         min-width: 0;

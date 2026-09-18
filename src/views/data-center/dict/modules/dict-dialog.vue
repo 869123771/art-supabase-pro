@@ -15,6 +15,24 @@
       :validate-on-rule-change="false"
       scroll-to-error
     >
+      <template #dictTypeName>
+        <div class="dict-entry-type">
+          <el-tag
+            class="dict-entry-type__tag"
+            effect="light"
+            size="large"
+            :disable-transitions="true"
+            :title="form.data.dictTypeName || '未指定类型'"
+          >
+            <ArtSvgIcon icon="ri:book-2-line" aria-hidden="true" />
+            <span>{{ form.data.dictTypeName || '未指定类型' }}</span>
+          </el-tag>
+          <span v-if="form.data.dictTypeCode" class="dict-entry-type__code">
+            类型编码 · {{ form.data.dictTypeCode }}
+          </span>
+        </div>
+      </template>
+
       <template #color>
         <div class="dict-color-field">
           <el-color-picker
@@ -32,6 +50,7 @@
 <script setup lang="ts">
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
+  import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import ArtForm from '@/components/core/forms/art-form/index.vue'
   import type { FormItem } from '@/components/core/forms/art-form/index.vue'
   import type { FormInstance, FormRules } from 'element-plus'
@@ -123,7 +142,8 @@
           {
             label: '所属类型',
             key: 'dictTypeName',
-            type: 'text'
+            type: 'text',
+            span: 24
           },
           {
             label: getParentFieldLabel(),
@@ -395,9 +415,40 @@
 <style scoped lang="scss">
   @use './dict-maintenance-dialog';
 
+  .dict-entry-type {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--art-space-2) var(--art-space-3);
+    align-items: center;
+    min-height: 32px;
+
+    &__tag {
+      max-width: 100%;
+      padding-inline: var(--art-space-3);
+      font-weight: 600;
+      color: var(--theme-color);
+      background: color-mix(in srgb, var(--theme-color) 9%, var(--default-box-color));
+      border-color: color-mix(in srgb, var(--theme-color) 22%, var(--art-card-border));
+
+      span:last-child {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+    }
+
+    &__code {
+      font-size: 12px;
+      line-height: 20px;
+      color: var(--el-text-color-secondary);
+      letter-spacing: 0.01em;
+      overflow-wrap: anywhere;
+    }
+  }
+
   .dict-color-field {
     display: flex;
-    gap: 12px;
+    gap: var(--art-space-3);
     align-items: center;
     min-height: 36px;
     color: var(--el-text-color-regular);

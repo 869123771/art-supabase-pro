@@ -1,6 +1,6 @@
 <template>
   <div class="business-workspace-focus-toggle" :class="{ 'is-active': model }" :title="title">
-    <span class="business-workspace-focus-toggle__label">
+    <span class="business-workspace-focus-toggle__label art-icon-label">
       <ArtSvgIcon :icon="model ? 'ri:focus-3-fill' : 'ri:focus-3-line'" />
       专注模式
     </span>
@@ -56,9 +56,6 @@
     }
 
     &__label {
-      display: inline-flex;
-      gap: 5px;
-      align-items: center;
       font-size: 12px;
       font-weight: 600;
     }

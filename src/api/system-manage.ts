@@ -11,6 +11,7 @@ import TreeUtils from '@/utils/tree'
 import { resolveTenantScopeId } from '@/utils/tenant-scope-context'
 import { invokeSupabaseFunctionWithSessionRecovery } from '@/utils/supabase/functions'
 import { createFriendlySupabaseFunctionError } from '@/utils/supabase/error'
+import type { QueryResult } from '@/types/api/response'
 const { supabase, keysToSnakeDeep, responseHandle } = useSupabase()
 
 const organizationTreeUtils = new TreeUtils({
@@ -46,6 +47,7 @@ type WebsiteConfigParamMeta = Api.SystemManage.WebsiteConfigParamMeta
 const WEBSITE_CONFIG_PARAM_KEY = 'website.config'
 type GeofenceConfigItem = Api.SystemManage.GeofenceConfigItem
 const GEOFENCE_CONFIG_PARAM_KEY = 'tms.geofence.config'
+const GEOFENCE_CONFIG_REQUEST_TIMEOUT_MS = 20_000
 
 interface DeleteUserSyncPayload {
   action: 'deactivate'
@@ -850,8 +852,9 @@ export async function fetchGeofenceConfig(): Promise<{
         .select('*')
         .eq('param_key', GEOFENCE_CONFIG_PARAM_KEY)
         .eq('enabled', true)
+        .abortSignal(AbortSignal.timeout(GEOFENCE_CONFIG_REQUEST_TIMEOUT_MS))
         .maybeSingle(),
-    { ignoreCheck: true, showErrorMessage: true }
+    { ignoreCheck: true, showErrorMessage: false }
   )
   return { data: parseGeofenceConfig(data), error }
 }
@@ -1311,14 +1314,63 @@ export interface AccessibleApplication {
   sort: number
 }
 
-/** 获取当前用户可进入的独立应用。 */
-export async function fetchAccessibleApplications(signal?: AbortSignal) {
+const ACCESSIBLE_APPLICATIONS_CACHE_TTL_MS = 30_000
+let accessibleApplicationsCache: { data: AccessibleApplication[]; fetchedAt: number } | undefined
+let accessibleApplicationsRequest: Promise<QueryResult<AccessibleApplication[]>> | undefined
+let accessibleApplicationsCacheVersion = 0
+
+/** 登录身份切换时清理用户维度缓存，避免复用上一账号的应用范围。 */
+export function clearAccessibleApplicationsCache(): void {
+  accessibleApplicationsCacheVersion += 1
+  accessibleApplicationsCache = undefined
+  accessibleApplicationsRequest = undefined
+}
+
+function getCachedAccessibleApplications(): QueryResult<AccessibleApplication[]> | undefined {
+  if (
+    !accessibleApplicationsCache ||
+    Date.now() - accessibleApplicationsCache.fetchedAt >= ACCESSIBLE_APPLICATIONS_CACHE_TTL_MS
+  ) {
+    return undefined
+  }
+
+  const data = accessibleApplicationsCache.data.slice()
+  return { data, total: data.length, error: null }
+}
+
+async function requestAccessibleApplications(
+  signal?: AbortSignal
+): Promise<QueryResult<AccessibleApplication[]>> {
+  const requestCacheVersion = accessibleApplicationsCacheVersion
   const query = supabase.rpc('get_accessible_applications')
-  return await responseHandle<AccessibleApplication[]>(
+  const result = await responseHandle<AccessibleApplication[]>(
     () => (signal ? query.abortSignal(signal) : query),
     {
       showMessage: false,
       ignoreCheck: true
     }
   )
+
+  if (requestCacheVersion === accessibleApplicationsCacheVersion && !result.error && result.data) {
+    accessibleApplicationsCache = {
+      data: result.data.slice(),
+      fetchedAt: Date.now()
+    }
+  }
+
+  return result
+}
+
+/** 获取当前用户可进入的独立应用。 */
+export async function fetchAccessibleApplications(signal?: AbortSignal) {
+  const cached = getCachedAccessibleApplications()
+  if (cached) return cached
+
+  // 路由初始化携带的 signal 只服务当前导航，不能共享给壳层组件。
+  if (signal) return await requestAccessibleApplications(signal)
+
+  accessibleApplicationsRequest ??= requestAccessibleApplications().finally(() => {
+    accessibleApplicationsRequest = undefined
+  })
+  return await accessibleApplicationsRequest
 }

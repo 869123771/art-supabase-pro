@@ -1,7 +1,7 @@
 <template>
   <ArtPageShell
     :loading="page.loading"
-    loading-mode="skeleton"
+    loading-mode="mask"
     :skeleton-rows="8"
     :error="page.error"
     class="geofence-config-page"
@@ -453,7 +453,10 @@
     page.loading = true
     page.error = null
     try {
-      const { data } = await fetchGeofenceConfig()
+      const { data, error } = await fetchGeofenceConfig()
+      if (error) {
+        throw new Error('电子围栏配置加载失败', { cause: error })
+      }
       const next = data ?? createInitialConfig()
       replaceConfig(next)
       original.value = cloneDeep(next)

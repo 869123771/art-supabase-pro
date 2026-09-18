@@ -362,13 +362,46 @@ html.dark .el-card {
   }
 }
 
-// 修改el-button样式
+// 图文控件统一使用 flex 间距，兼容 ElIcon、ArtSvgIcon 与纯文本节点的组合。
+// Element Plus 默认只处理 `ElIcon + span`，直接插入 ArtSvgIcon 时不会自动留白。
 .el-button {
+  column-gap: var(--art-control-icon-gap);
+
+  > span {
+    position: relative;
+    z-index: 10;
+    display: inline-flex;
+    gap: var(--art-control-icon-gap);
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    line-height: 1;
+  }
+
+  [class*='el-icon'] + span {
+    margin-left: 0 !important;
+  }
+
+  .art-svg-icon,
+  .el-icon {
+    flex: none;
+  }
+
+  &.el-button--small,
+  &.el-button--small > span {
+    gap: var(--art-control-icon-gap-compact);
+  }
+
+  &.el-button--large,
+  &.el-button--large > span {
+    gap: var(--art-control-icon-gap-spacious);
+  }
+
   &.el-button--text {
     background-color: transparent !important;
     padding: 0 !important;
 
-    span {
+    > span {
       margin-left: 0 !important;
     }
   }
@@ -408,6 +441,52 @@ html.dark .el-card {
 
   &.is-round {
     border-radius: var(--el-tag-border-radius-rounded) !important;
+  }
+
+  .el-tag__content {
+    display: inline-flex;
+    gap: var(--art-control-icon-gap);
+    align-items: center;
+    min-width: 0;
+    line-height: 1;
+  }
+
+  &.el-tag--small .el-tag__content {
+    gap: var(--art-control-icon-gap-compact);
+  }
+
+  .art-svg-icon,
+  .el-icon {
+    flex: none;
+  }
+}
+
+.el-link__inner {
+  gap: var(--art-control-icon-gap);
+  align-items: center;
+
+  .art-svg-icon,
+  .el-icon {
+    flex: none;
+  }
+}
+
+// 原生按钮、链接和状态文本需要图文组合时复用该类，避免页面级 margin 微调。
+.art-icon-label {
+  display: inline-flex;
+  gap: var(--art-control-icon-gap);
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  line-height: 1;
+
+  > .art-svg-icon,
+  > .el-icon {
+    flex: none;
+  }
+
+  &--compact {
+    gap: var(--art-control-icon-gap-compact);
   }
 }
 
@@ -798,12 +877,6 @@ html.dark .el-card {
       }
     }
   }
-}
-
-// 实现水波纹在文字下面效果
-.el-button > span {
-  position: relative;
-  z-index: 10;
 }
 
 // 优化颜色选择器圆角

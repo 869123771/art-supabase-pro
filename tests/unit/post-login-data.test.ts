@@ -17,7 +17,7 @@ function createDeferred(): {
   return { promise, resolve, reject }
 }
 
-test('loads dictionaries in parallel without blocking the required user profile', async () => {
+test('starts dictionaries only after the required user profile and an explicit trigger', async () => {
   const dictionaries = createDeferred()
   let dictionaryStarted = false
 
@@ -29,9 +29,11 @@ test('loads dictionaries in parallel without blocking the required user profile'
     loadUserProfile: async () => true
   })
 
+  assert.equal(dictionaryStarted, false)
+  const dictionariesReady = initialization.startDictionaries()
   assert.equal(dictionaryStarted, true)
   dictionaries.resolve()
-  await initialization.dictionariesReady
+  await dictionariesReady
 })
 
 test('rejects login initialization when the business user profile is unavailable', async () => {
@@ -58,6 +60,19 @@ test('reports dictionary failures without turning them into login failures', asy
     }
   })
 
-  await initialization.dictionariesReady
+  await initialization.startDictionaries()
   assert.equal(reportedError, dictionaryError)
+})
+
+test('starts the dictionary request at most once', async () => {
+  let startCount = 0
+  const initialization = await preparePostLoginData({
+    loadDictionaries: async () => {
+      startCount += 1
+    },
+    loadUserProfile: async () => true
+  })
+
+  await Promise.all([initialization.startDictionaries(), initialization.startDictionaries()])
+  assert.equal(startCount, 1)
 })

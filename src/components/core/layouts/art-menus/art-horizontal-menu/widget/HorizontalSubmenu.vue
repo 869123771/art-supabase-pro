@@ -24,6 +24,8 @@
   <ElMenuItem
     v-else-if="isNavigableRoute"
     :index="item.path || item.meta.title"
+    @mouseenter="preloadMenuRoute(item)"
+    @focusin="preloadMenuRoute(item)"
     @click="goPage(item)"
   >
     <ArtSvgIcon
@@ -47,7 +49,7 @@
 <script lang="ts" setup>
   import { computed, type PropType } from 'vue'
   import { AppRouteRecord } from '@/types/router'
-  import { handleMenuJump } from '@/utils/navigation'
+  import { handleMenuJump, preloadMenuRoute } from '@/utils/navigation'
   import { formatMenuTitle } from '@/utils/router'
 
   const props = defineProps({

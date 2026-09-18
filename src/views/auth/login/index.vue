@@ -101,10 +101,11 @@
                 class="w-full custom-height"
                 type="primary"
                 @click="handleSubmit"
-                :loading="loading"
+                :loading="loading || websiteConfigLoading"
+                :disabled="!websiteConfigLoaded || Boolean(oauthLoadingKey)"
                 v-ripple
               >
-                <span>{{ $t('login.btnText') }}</span>
+                <span>{{ websiteConfigLoaded ? $t('login.btnText') : '正在加载登录配置…' }}</span>
                 <ArtSvgIcon icon="ri:arrow-right-line" />
               </ElButton>
             </div>
@@ -137,7 +138,7 @@
                   :icon="channel.icon"
                   :label="`使用${channel.label}登录`"
                   :loading="oauthLoadingKey === channel.key"
-                  :disabled="Boolean(oauthLoadingKey || loading)"
+                  :disabled="Boolean(oauthLoadingKey || loading || !websiteConfigLoaded)"
                   @click="handleAuthChannelLogin(channel)"
                 />
               </ArtTooltip>
@@ -168,6 +169,7 @@
     signInWithAuthChannel
   } from '@/api/auth'
   import { MenuProcessor } from '@/router/core/MenuProcessor'
+  import { clearAccessibleApplicationsCache } from '@/api/system-manage'
   import { getFirstMenuPath } from '@/utils'
   import { useWebsiteConfig } from '@/hooks'
   import ArtTurnstileCaptcha from '@/components/core/forms/art-turnstile-captcha/index.vue'
@@ -182,7 +184,14 @@
   defineOptions({ name: 'Login' })
 
   const { t, locale } = useI18n()
-  const { websiteConfig, loginTitle, loginSubtitle, loadWebsiteConfig } = useWebsiteConfig()
+  const {
+    websiteConfig,
+    websiteConfigLoading,
+    websiteConfigLoaded,
+    loginTitle,
+    loginSubtitle,
+    loadWebsiteConfig
+  } = useWebsiteConfig()
   const formKey = ref(0)
 
   // 监听语言切换，重置表单
@@ -204,6 +213,7 @@
   const router = useRouter()
   const route = useRoute()
   const menuProcessor = new MenuProcessor()
+  const POST_LOGIN_BACKGROUND_IDLE_MS = 5_000
   const turnstileToken = ref('')
   const turnstileRef = ref<{
     reset?: () => void
@@ -224,9 +234,13 @@
   const oauthLoadingKey = ref('')
   const oauthError = ref('')
   const enabledAuthChannels = computed(() =>
-    websiteConfig.value.authChannels.filter((channel) => channel.enabled)
+    websiteConfigLoaded.value
+      ? websiteConfig.value.authChannels.filter((channel) => channel.enabled)
+      : []
   )
-  const showTurnstile = computed(() => websiteConfig.value.captchaEnabled)
+  const showTurnstile = computed(
+    () => websiteConfigLoaded.value && websiteConfig.value.captchaEnabled
+  )
   const turnstileSiteKey = computed(() => websiteConfig.value.turnstileSiteKey)
   const turnstileWidgetSize = computed(() =>
     websiteConfig.value.turnstileSize === 'compact' ? 'compact' : 'flexible'
@@ -291,9 +305,10 @@
     accessToken: string
     refreshToken?: string
   }): Promise<void> => {
+    clearAccessibleApplicationsCache()
     userStore.setToken(tokens.accessToken, tokens.refreshToken)
     userStore.setLoginStatus(true)
-    const { dictionariesReady } = await preparePostLoginData({
+    const { startDictionaries } = await preparePostLoginData({
       loadDictionaries: userStore.fetchDictList,
       loadUserProfile: userStore.fetchUserInfo,
       onDictionaryError: (error) => {
@@ -304,13 +319,41 @@
 
     const targetPath = await resolvePostLoginPath()
     if (isAbsoluteApplicationRedirect(targetPath)) {
-      await dictionariesReady
       window.location.replace(targetPath)
       return
     }
 
     await router.push(targetPath)
-    void dictionariesReady
+    scheduleDictionariesAfterNavigationIdle(startDictionaries)
+  }
+
+  const scheduleDictionariesAfterNavigationIdle = (
+    startDictionaries: () => Promise<void>
+  ): void => {
+    let idleTimer: ReturnType<typeof setTimeout> | undefined
+
+    const clearIdleTimer = (): void => {
+      if (!idleTimer) return
+      clearTimeout(idleTimer)
+      idleTimer = undefined
+    }
+    const stopBeforeGuard = router.beforeEach(() => {
+      clearIdleTimer()
+    })
+    const stopAfterGuard = router.afterEach(() => {
+      schedule()
+    })
+    const schedule = (): void => {
+      clearIdleTimer()
+      idleTimer = setTimeout(() => {
+        idleTimer = undefined
+        stopBeforeGuard()
+        stopAfterGuard()
+        void startDictionaries()
+      }, POST_LOGIN_BACKGROUND_IDLE_MS)
+    }
+
+    schedule()
   }
 
   const handleOAuthCallback = async (): Promise<void> => {
@@ -355,7 +398,7 @@
 
   // 登录
   const handleSubmit = async () => {
-    if (!formRef.value) return
+    if (!formRef.value || !websiteConfigLoaded.value || loading.value) return
 
     try {
       // 表单验证

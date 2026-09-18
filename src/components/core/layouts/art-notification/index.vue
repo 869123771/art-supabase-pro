@@ -132,6 +132,8 @@
   const visible = ref(false)
   const barActiveIndex = ref(0)
   let animationTimer: ReturnType<typeof setTimeout> | undefined
+  let warmupTimer: ReturnType<typeof setTimeout> | undefined
+  const NOTIFICATION_WARMUP_DELAY_MS = 30_000
 
   const createEmptyCenter = (): Api.Notification.HeaderNotificationCenter => ({
     notices: [],
@@ -268,6 +270,10 @@
   function showPanel(open: boolean): void {
     if (animationTimer) clearTimeout(animationTimer)
     if (open) {
+      if (warmupTimer) {
+        clearTimeout(warmupTimer)
+        warmupTimer = undefined
+      }
       visible.value = true
       animationTimer = setTimeout(() => {
         show.value = true
@@ -281,12 +287,22 @@
     }, 250)
   }
 
+  function scheduleNotificationWarmup(): void {
+    if (warmupTimer) clearTimeout(warmupTimer)
+    warmupTimer = setTimeout(() => {
+      warmupTimer = undefined
+      void loadNotificationCenter()
+    }, NOTIFICATION_WARMUP_DELAY_MS)
+  }
+
   watch(() => props.value, showPanel)
+  watch(() => router.currentRoute.value.fullPath, scheduleNotificationWarmup)
   useIntervalFn(() => void loadNotificationCenter(), 60_000)
 
-  onMounted(() => void loadNotificationCenter())
+  onMounted(scheduleNotificationWarmup)
   onUnmounted(() => {
     if (animationTimer) clearTimeout(animationTimer)
+    if (warmupTimer) clearTimeout(warmupTimer)
   })
 </script>
 
@@ -560,10 +576,6 @@
 
       .el-button {
         width: 100%;
-
-        svg {
-          margin-left: 6px;
-        }
       }
     }
 

@@ -27,7 +27,7 @@ async function collectFiles(directory: string): Promise<string[]> {
   return nested.flat()
 }
 
-async function collectModuleVueFiles(): Promise<string[]> {
+async function collectModuleUiFiles(): Promise<string[]> {
   const entries = await readdir(modulesRoot, { withFileTypes: true })
   const nested = await Promise.all(
     entries
@@ -35,9 +35,7 @@ async function collectModuleVueFiles(): Promise<string[]> {
       .map(async (entry) => {
         const moduleSourceRoot = path.join(modulesRoot, entry.name, 'src')
         try {
-          return (await collectFiles(moduleSourceRoot)).filter(
-            (file) => path.extname(file) === '.vue'
-          )
+          return await collectFiles(moduleSourceRoot)
         } catch {
           return []
         }
@@ -149,6 +147,27 @@ function scanFile(file: string, content: string, tooltipOnly = false): Finding[]
       }
       addFinding(match.index, 'consistency/use-art-overlay-loading')
     }
+  }
+
+  for (const match of content.matchAll(
+    /\.(?:art-svg-icon|el-icon)\s*\{[^}]*\bmargin-(?:left|right)\s*:/gs
+  )) {
+    if (match.index == null || match[0].includes('data-ui-audit-allow')) continue
+    addFinding(match.index, 'consistency/use-icon-label-gap')
+  }
+
+  for (const match of content.matchAll(
+    /(?::deep\()?\.art-(?:section-card|page-section)__header\)?\s*\{[^}]*\bflex-direction\s*:\s*column/gs
+  )) {
+    if (match.index == null || match[0].includes('data-ui-audit-allow')) continue
+    addFinding(match.index, 'layout/use-intrinsic-section-header-wrap')
+  }
+
+  for (const match of content.matchAll(
+    /(?::deep\()?\.art-(?:section-card|page-section)__actions\)?\s*\{[^}]*\bwidth\s*:\s*100%/gs
+  )) {
+    if (match.index == null || match[0].includes('data-ui-audit-allow')) continue
+    addFinding(match.index, 'layout/use-intrinsic-section-header-actions')
   }
 
   if (tooltipOnly) return findings
@@ -288,14 +307,14 @@ function scanFile(file: string, content: string, tooltipOnly = false): Finding[]
 }
 
 const files = await collectFiles(sourceRoot)
-const moduleVueFiles = await collectModuleVueFiles()
+const moduleUiFiles = await collectModuleUiFiles()
 const findings = (
   await Promise.all([
     ...files.map(async (file) => {
       const content = await readFile(file, 'utf8')
       return scanFile(file, content)
     }),
-    ...moduleVueFiles.map(async (file) => {
+    ...moduleUiFiles.map(async (file) => {
       const content = await readFile(file, 'utf8')
       return scanFile(file, content, true)
     })
@@ -312,6 +331,6 @@ if (findings.length > 0) {
   process.exitCode = 1
 } else {
   console.log(
-    `UI audit passed (${files.length} source files and ${moduleVueFiles.length} module Vue files checked).`
+    `UI audit passed (${files.length} source files and ${moduleUiFiles.length} module UI files checked).`
   )
 }

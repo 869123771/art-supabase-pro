@@ -22,3 +22,10 @@
     style: (attrs.style as string) || ''
   }))
 </script>
+
+<style scoped>
+  .art-svg-icon {
+    flex: none;
+    vertical-align: -0.125em;
+  }
+</style>

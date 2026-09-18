@@ -13,6 +13,11 @@ import { APPLICATION_CODES, type ApplicationCode } from '@/config/application'
 type AsyncRouteComponent = () => Promise<Component>
 type RouteComponentModule = { default: Component }
 type RouteComponentLoader = () => Promise<RouteComponentModule>
+const ROUTE_COMPONENT_PRELOAD = Symbol('route-component-preload')
+
+type PreloadableAsyncRouteComponent = AsyncRouteComponent & {
+  [ROUTE_COMPONENT_PRELOAD]: AsyncRouteComponent
+}
 
 const registeredApplicationModules: Record<string, RouteComponentLoader> = {}
 const warnedMissingHostedApplications = new Set<HostedApplicationCode>()
@@ -26,7 +31,7 @@ type HostedApplicationCode = Exclude<ApplicationCode, 'platform'>
 export function createCachedRouteLoader(moduleLoader: RouteComponentLoader): AsyncRouteComponent {
   let loadingTask: Promise<Component> | undefined
 
-  return () => {
+  const loadComponent = (() => {
     if (!loadingTask) {
       loadingTask = moduleLoader()
         .then((componentModule) => componentModule.default)
@@ -37,7 +42,22 @@ export function createCachedRouteLoader(moduleLoader: RouteComponentLoader): Asy
     }
 
     return loadingTask
+  }) as PreloadableAsyncRouteComponent
+  loadComponent[ROUTE_COMPONENT_PRELOAD] = loadComponent
+  return loadComponent
+}
+
+/** 在用户表达导航意图时预热动态路由组件，正式跳转会复用同一个加载任务。 */
+export async function preloadRouteComponent(component: unknown): Promise<void> {
+  if (
+    typeof component !== 'function' ||
+    !(ROUTE_COMPONENT_PRELOAD in component) ||
+    typeof component[ROUTE_COMPONENT_PRELOAD] !== 'function'
+  ) {
+    return
   }
+
+  await component[ROUTE_COMPONENT_PRELOAD]()
 }
 
 export function resolveHostedApplicationCode(componentPath: string): HostedApplicationCode | null {

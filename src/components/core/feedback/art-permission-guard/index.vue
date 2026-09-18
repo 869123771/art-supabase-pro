@@ -365,10 +365,6 @@
       :deep(.el-button) {
         min-width: 118px;
         margin-left: 0;
-
-        .art-svg-icon {
-          margin-right: 6px;
-        }
       }
     }
 

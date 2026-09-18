@@ -61,6 +61,9 @@
   --art-space-4: 16px;
   --art-space-5: 24px;
   --art-space-6: 32px;
+  --art-control-icon-gap: 6px;
+  --art-control-icon-gap-compact: 4px;
+  --art-control-icon-gap-spacious: 8px;
   --art-page-gap: var(--art-space-3);
   --art-page-padding: var(--art-space-4);
   --art-page-inline-padding: 20px;

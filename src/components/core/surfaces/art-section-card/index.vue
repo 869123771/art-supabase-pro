@@ -106,7 +106,7 @@
     &__header {
       display: flex;
       flex-wrap: wrap;
-      gap: var(--art-space-3);
+      gap: var(--art-space-2) var(--art-space-3);
       align-items: flex-start;
       justify-content: space-between;
       min-width: 0;
@@ -114,7 +114,7 @@
     }
 
     &__identity {
-      flex: 1 1 240px;
+      flex: 1 1 120px;
       min-width: 0;
 
       :deep(.art-section-title) {
@@ -132,12 +132,13 @@
 
     &__actions {
       display: flex;
-      flex: 0 1 auto;
+      flex: 0 0 auto;
       flex-wrap: wrap;
       gap: var(--art-space-2);
       align-items: center;
       justify-content: flex-end;
       min-width: 0;
+      max-width: 100%;
     }
 
     &__body {
@@ -146,15 +147,6 @@
 
     @media (width <= 640px) {
       padding: var(--art-space-4);
-
-      &__header {
-        flex-direction: column;
-      }
-
-      &__actions {
-        justify-content: flex-start;
-        width: 100%;
-      }
     }
   }
 </style>

@@ -177,7 +177,7 @@
 
     &.is-label-visible {
       display: inline-flex;
-      gap: 5px;
+      gap: var(--art-control-icon-gap);
       width: auto;
       min-width: 32px;
       padding: 0 10px;

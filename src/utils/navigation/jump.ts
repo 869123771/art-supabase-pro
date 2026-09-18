@@ -16,6 +16,7 @@
  */
 import { AppRouteRecord } from '@/types/router'
 import { router } from '@/router'
+import { preloadRouteComponent } from '@/router/core/ComponentLoader'
 import { isNavigableMenuItem } from './route'
 
 const findFirstLeafMenu = (items: AppRouteRecord[]): AppRouteRecord | undefined => {
@@ -64,4 +65,25 @@ export const handleMenuJump = (item: AppRouteRecord, jumpToFirst: boolean = fals
 
   // 跳转到子菜单路径
   return router.push(firstChild.path)
+}
+
+/**
+ * 鼠标悬停或键盘聚焦菜单时预热对应的异步页面组件。
+ * 只加载用户正在指向的页面，不在登录后批量下载全部业务模块。
+ */
+export const preloadMenuRoute = async (
+  item: AppRouteRecord,
+  jumpToFirst: boolean = false
+): Promise<void> => {
+  if (item.meta.link && !item.meta.isIframe) return
+
+  const target = jumpToFirst && item.children?.length ? findFirstLeafMenu(item.children) : item
+  if (!target || (target.meta.link && !target.meta.isIframe)) return
+
+  const matchedRoutes = router.resolve(target.path).matched
+  await Promise.allSettled(
+    matchedRoutes.flatMap((route) =>
+      Object.values(route.components ?? {}).map((component) => preloadRouteComponent(component))
+    )
+  )
 }
