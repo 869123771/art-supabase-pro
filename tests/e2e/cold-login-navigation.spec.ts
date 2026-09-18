@@ -49,6 +49,9 @@ test('全新浏览器首次登录后可以立即切换到另一个菜单', async
 
   const credentials = readDemoCredentials()
   await page.goto('/#/auth/login', { waitUntil: 'domcontentloaded' })
+  await expect(page.getByRole('heading', { name: '欢迎使用', exact: true })).toBeVisible({
+    timeout: 30_000
+  })
   await page.getByRole('textbox', { name: '邮箱或手机号' }).fill(credentials.email)
   await page.locator('input[name="password"]').fill(credentials.password)
 
@@ -60,6 +63,7 @@ test('全新浏览器首次登录后可以立即切换到另一个菜单', async
   })
   const dashboardReadyAt = Date.now()
 
+  await page.getByRole('menuitem', { name: '系统管理', exact: true }).click()
   const targetMenu = page.locator('.el-menu-item').filter({ hasText: '电子围栏配置' }).first()
   await expect(targetMenu).toBeVisible({ timeout: 30_000 })
   const navigationStartedAt = Date.now()
